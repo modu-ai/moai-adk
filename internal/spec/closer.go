@@ -29,6 +29,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/execerr"
 )
 
 // CloseOptions configures Close() invocations.
@@ -407,7 +409,9 @@ func runGitInDir(dir string, args ...string) error {
 	cmd := exec.Command("git", args...)
 	cmd.Dir = dir
 	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("git %s: %w (output: %s)", strings.Join(args, " "), err, strings.TrimSpace(string(out)))
+		// execerr.StatusDetail, not %w: a raw *exec.ExitError chain would be
+		// mistaken for an intentional ExitCoder at the cmd/moai seam (t130).
+		return fmt.Errorf("git %s: %s (output: %s)", strings.Join(args, " "), execerr.StatusDetail(err), strings.TrimSpace(string(out)))
 	}
 	return nil
 }
@@ -418,7 +422,7 @@ func gitRevParseHead(dir string) (string, error) {
 	cmd.Dir = dir
 	out, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("git rev-parse HEAD: %w", err)
+		return "", fmt.Errorf("git rev-parse HEAD: %s", execerr.StatusDetail(err))
 	}
 	return strings.TrimSpace(string(out)), nil
 }

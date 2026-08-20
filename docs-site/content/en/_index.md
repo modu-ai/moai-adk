@@ -35,7 +35,7 @@ Run `moai web` to watch the chain and the SPEC pipeline side by side on the Kanb
 
 ![moai web console — Overview screen with SPEC counts, in-progress SPECs, and session registry](/images/profile/web-console-v31-overview.png)
 
-More: [Kanban Mode](/en/advanced/kanban-mode) · [manager-kanban agent](/en/advanced/manager-kanban) · [`/moai todo`](/en/utility-commands/moai-todo) · [moai web console](/en/advanced/moai-web-console)
+More: [Kanban Mode](/en/advanced/kanban-mode) · [manager-lead Lead Coordinator](/en/advanced/manager-lead) · [`/moai todo`](/en/utility-commands/moai-todo) · [moai web console](/en/advanced/moai-web-console)
 
 ## Three Core Values of MoAI 3.1
 

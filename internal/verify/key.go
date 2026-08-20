@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/execerr"
 )
 
 // digestHexLen is the hex length of the tree-state digest suffix in a key
@@ -59,7 +61,9 @@ func gitOutput(ctx context.Context, repoDir string, args ...string) (string, err
 	cmd := exec.CommandContext(ctx, "git", append([]string{"-C", repoDir}, args...)...)
 	out, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("git %s: %w", strings.Join(args, " "), err)
+		// execerr.StatusDetail, not %w: a raw *exec.ExitError chain would be
+		// mistaken for an intentional ExitCoder at the cmd/moai seam (t130).
+		return "", fmt.Errorf("git %s: %s", strings.Join(args, " "), execerr.StatusDetail(err))
 	}
 	return string(out), nil
 }

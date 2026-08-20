@@ -56,7 +56,7 @@ func TestSessionStartKanbanNoticeReachesOperator(t *testing.T) {
 	for _, want := range []string{
 		"Kanban Mode: run tjpyre",
 		"moai cc -k --name plan",
-		"moai cc -k --name run",
+		"moai glm -k --name run",
 		"moai cc -k --name sync",
 	} {
 		if !strings.Contains(out.SystemMessage, want) {

@@ -345,7 +345,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	// startup-only gating, for the same reasons the kanban block below
 	// records; the operator copies N worker launch lines instead of four
 	// companion lines. The notice reads the lead loop's data (backlog queue,
-	// worker registry) under the project root on the same ProjectDir-then-CWD
+	// lane registry) under the project root on the same ProjectDir-then-CWD
 	// preference chain the kanban notice uses; an empty root degrades to
 	// fail-open summary lines inside the notice rather than failing here.
 	factoryRoot := input.ProjectDir

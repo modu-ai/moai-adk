@@ -88,9 +88,93 @@ The im-not-ai skill is shared publicly under the MIT License. MoAI-ADK has porte
 
 ---
 
+## design-dna — Reference-Design Deconstruction Taxonomy
+
+The following reference material is derived from the design-dna open-source skill:
+
+**Source Repository**: https://github.com/zanwei/design-dna
+**License**: MIT License — Copyright (c) 2026 the design-dna authors
+
+### Imported Components
+
+The three-dimension Design DNA taxonomy (imported 2026-08-19) is incorporated into the `moai-domain-design-dna` skill:
+
+1. The `design_system` / `design_style` / `visual_effects` dimension split and its field groups + enum vocabularies -> `.claude/skills/moai-domain-design-dna/references/dna-schema.md`
+2. The extraction rules (dominance-based colour roles, relative radius measurement, multi-reference conflict resolution, `enabled: false` non-invention gating) and the performance-tier technology map -> `.claude/skills/moai-domain-design-dna/SKILL.md` + `references/effects-implementation.md`
+
+### Attribution
+
+The design-dna skill is shared publicly under the MIT License. MoAI-ADK has distilled the taxonomy and its extraction/generation rules, rewritten the prose for MoAI skill conventions and progressive-disclosure layout, and cross-referenced overlapping material to its existing owners rather than restating it. The MIT copyright notice is retained per the license terms.
+
+---
+
+## motion-design — Vendor-Neutral Motion Principles
+
+The following reference material is derived from the motion-design open-source skill:
+
+**Source Repository**: https://github.com/LottieFiles/motion-design-skill
+**License**: MIT License — Copyright (c) 2025 LottieFiles
+
+### Imported Components
+
+The vendor-neutral motion-principles taxonomy (imported 2026-08-19) is incorporated into the `moai-ref-ui-polish` skill:
+
+1. The Three Pillars decision passes, the Three Motion Layers amplitude/offset model, the two 1/3 Rules, the attention budget, and the stagger-budget table -> `.claude/skills/moai-ref-ui-polish/references/motion-principles.md`
+2. The four motion-personality archetypes, the UI-adapted reading of Disney's 12 animation principles with their numeric ranges, and the emotion-to-motion / path-as-language maps -> the same reference file
+
+### Attribution
+
+The motion-design skill is shared publicly under the MIT License. The source contains no Lottie or LottieFiles tooling — it is purely implementation-agnostic motion principle. MoAI-ADK has distilled that principle layer into a single progressive-disclosure reference file, rewritten the prose for MoAI skill conventions, dropped the publisher's branding and install framing, and cross-referenced the overlapping implementation rules to their existing owner (`moai-ref-ui-polish/SKILL.md` § Motion) rather than restating them. The MIT copyright notice is retained per the license terms.
+
+---
+
+## gsap-skills — Reduced-Motion and Compositor-Cost Rules
+
+The following reference material is derived from the gsap-skills open-source skill set:
+
+**Source Repository**: https://github.com/greensock/gsap-skills
+**License**: MIT License — Copyright (c) 2026 GreenSock
+
+### Imported Components
+
+Two library-independent rules (imported 2026-08-19) are incorporated into the `moai-ref-ui-polish` skill:
+
+1. The `prefers-reduced-motion` accessibility branch as a required authoring step for every non-decorative animation -> `.claude/skills/moai-ref-ui-polish/SKILL.md` § Motion Accessibility and Cost
+2. The compositor-versus-layout framing for why `transform` and `opacity` outperform layout-triggering properties -> the same section
+
+### Attribution
+
+The gsap-skills set is shared publicly under the MIT License. MoAI-ADK imported only the two rules that hold independently of any animation library, restated in platform-neutral terms. No GSAP API surface, framework-lifecycle guidance, membership or licensing material, or vendor-recommendation trigger was carried over — `moai-ref-ui-polish` remains vendor-neutral and names no animation library as a default. The MIT copyright notice is retained per the license terms.
+
+---
+
+## genjutsu — Design-Audit Detection Suite
+
+The following reference material is derived from the genjutsu open-source skill plugin:
+
+**Source Repository**: https://github.com/AThevon/genjutsu
+**License**: MIT License — Copyright (c) 2026 Adrien Thevon
+
+### Imported Components
+
+The design-audit detection suite and two hover-doctrine rules (imported 2026-08-19) are incorporated into the `moai-ref-ui-polish` skill:
+
+1. The grep-based audit patterns — motion-gap detection, the three-stack reduced-motion probe, the accessibility and layout-property checks, and the duration/easing inventory method with its 3-5-value system budget -> `.claude/skills/moai-ref-ui-polish/references/design-audit.md`
+2. The mobile no-hover doctrine (gate hover behind a pointer media query) and its desktop inverse (hover is a required affordance on pointer devices) -> `.claude/skills/moai-ref-ui-polish/SKILL.md` § Interaction
+
+### Attribution
+
+The genjutsu plugin is shared publicly under the MIT License. MoAI-ADK imported only the detection layer and the two hover rules, adapting them for MoAI conventions: the hardcoded source root was parameterized, per-pattern signal quality was added so a match is treated as a candidate rather than a defect, the source's own three-tier severity vocabulary was mapped onto the skill's existing HIGH/MEDIUM/LOW scale rather than introducing a second one, and volatile published library sizes were replaced by a measure-it instruction. Not imported: the separately vendored third-party `ui-ux-pro-max` dataset and its Python CLI, the framework-specific API cheat sheets, and the plugin's persona scaffolding. The MIT copyright notice is retained per the license terms.
+
+---
+
 **Import Date (harness)**: 2026-04-26
 **Import Date (Karpathy)**: 2026-04-28
 **Import Date (im-not-ai)**: 2026-06-15
+**Import Date (design-dna)**: 2026-08-19
+**Import Date (motion-design)**: 2026-08-19
+**Import Date (gsap-skills)**: 2026-08-19
+**Import Date (genjutsu)**: 2026-08-19
 **MoAI-ADK License**: MIT
 **Combined Compatibility**: Apache 2.0 imports distributed under MIT with both Apache and MIT attributions preserved.
 

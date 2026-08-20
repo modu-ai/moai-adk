@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>다이어그램 다국어 데모 v3 — MaruBuri + 콜아웃 수정</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&family=Noto+Serif:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Noto+Sans+JP:wght@400;500;700&family=Noto+Serif+JP:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700&family=Noto+Serif+KR:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
+<style>
+@font-face { font-family:'MaruBuri'; src:url(https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-ExtraLight.woff2); font-weight:200; font-display:swap; }
+@font-face { font-family:'MaruBuri'; src:url(https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-Light.woff2); font-weight:300; font-display:swap; }
+@font-face { font-family:'MaruBuri'; src:url(https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-Regular.woff2); font-weight:400; font-display:swap; }
+@font-face { font-family:'MaruBuri'; src:url(https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-SemiBold.woff2); font-weight:600; font-display:swap; }
+@font-face { font-family:'MaruBuri'; src:url(https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-Bold.woff2); font-weight:700; font-display:swap; }
+:root{
+  --bg:#faf9f7; --ink:#141413; --muted:#78716c; --line:#e7e5e4; --rule:#d6d3d1; --clay:#D97757;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:"Pretendard","Noto Sans KR",system-ui,sans-serif;line-height:1.6}
+.wrap{max-width:1480px;margin:0 auto;padding:36px 24px 90px}
+h1{font-family:"MaruBuri","Noto Serif KR",Georgia,serif;font-size:40px;font-weight:600;margin:0 0 6px;letter-spacing:-0.01em}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--clay);margin:0 0 4px}
+.sub{font-size:14px;color:var(--muted);margin:0 0 6px;max-width:920px}
+.note{font-size:13px;color:#8C857A;margin:0 0 24px;max-width:920px}
+.fontpol{font-family:var(--mono);font-size:11.5px;background:#FBF6F1;border:1px solid #E8D5C8;border-radius:8px;padding:10px 14px;margin:0 0 24px;color:#6B6359;line-height:1.8}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+@media(max-width:1180px){.grid{grid-template-columns:1fr}}
+.panel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 18px 20px}
+.panel .tag{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin-bottom:6px}
+.panel.ko .tag{background:#FBE9DF;color:#B85C3E}
+.panel.en .tag{background:#dbeafe;color:#1e40af}
+.panel.ja .tag{background:#dcfce7;color:#15803d}
+.panel.zh .tag{background:#f1f5f9;color:#475569}
+.panel h2{font-size:16px;margin:0 0 2px;font-weight:600}
+.panel .fonts{font-family:var(--mono);font-size:10.5px;color:#8C857A;margin:0 0 10px}
+.canvas{background:#FAF9F5;border:1px solid var(--line);border-radius:8px;padding:8px;overflow-x:auto}
+.canvas svg{display:block;width:100%;height:auto;min-width:540px}
+.legend{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:6px}
+.legend b{color:#B85C3E}
+.verdict{margin-top:30px;border-top:1px solid var(--line);padding-top:22px}
+.verdict h3{font-family:"MaruBuri","Noto Serif KR",Georgia,serif;font-size:24px;font-weight:600;margin:0 0 10px}
+.verdict p{font-size:14px;max-width:880px;color:#44403c;margin:0 0 8px}
+.verdict b{color:var(--ink)}
+.pick{display:inline-block;margin-top:6px;background:#D97757;color:#fff;font-weight:600;font-size:13px;padding:5px 12px;border-radius:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">v3 · MaruBuri + 콜아웃 수정</p>
+  <h1>같은 아키텍처, 네 언어 — D 스타일(clay/ivory)</h1>
+  <p class="sub">한국어 제목은 MaruBuri로 교체, 콜아웃은 화살표와 겹쳐서 제거 → focal은 색(clay-tint 카드)+FOCAL 라벨+하단 메모로 표현.</p>
+  <div class="fontpol">
+폰트 정책 — 한국어 제목: <b>MaruBuri</b>(네이버 hangeul CDN) · 한국어 본문: Pretendard<br>
+영·일·중 제목: <b>Noto Serif / Serif JP / Serif SC</b>(Google Fonts) · 본문: Noto Sans 계열 · 공통 eyebrow: JetBrains Mono
+  </div>
+
+  <div class="grid">
+
+    <!-- ============ 한국어 (MaruBuri) ============ -->
+    <div class="panel ko">
+      <span class="tag">KO · 한국어</span>
+      <h2>제목 MaruBuri · 본문 Pretendard</h2>
+      <p class="fonts">serif: 'MaruBuri' · sans: 'Pretendard','Noto Sans KR'</p>
+      <div class="canvas">
+<svg viewBox="0 0 1180 712" role="img" aria-label="한국어 다이어그램">
+  <defs>
+    <marker id="km" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto"><path d="M0 0L10 4L0 8z" fill="#8C857A"/></marker>
+    <marker id="kk" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto"><path d="M0 0L10 4L0 8z" fill="#D97757"/></marker>
+  </defs>
+  <rect width="1180" height="712" fill="#FAF9F5"/>
+  <text x="60" y="40" font-family="JetBrains Mono,monospace" font-size="10" letter-spacing="2.2" fill="#B85C3E">ARCHITECTURE · 요청 흐름</text>
+  <text x="58" y="80" font-family="MaruBuri,Noto Serif KR,serif" font-size="36" font-weight="600" fill="#141413">웹 서비스 아키텍처</text>
+  <text x="60" y="102" font-family="Pretendard,Noto Sans KR,sans-serif" font-size="13" fill="#8C857A">요청이 거치는 네 계층</text>
+  <line x1="60" y1="112" x2="1120" y2="112" stroke="#E8DDD0" stroke-width="1"/>
+  <rect x="60" y="120" width="1060" height="124" rx="8" fill="#F3EFE6"/><rect x="60" y="276" width="1060" height="124" rx="8" fill="#F3EFE6"/><rect x="60" y="432" width="1060" height="124" rx="8" fill="#F3EFE6"/><rect x="60" y="588" width="1060" height="124" rx="8" fill="#F3EFE6"/>
+  <g font-family="JetBrains Mono,monospace" font-size="10" font-weight="500" fill="#B85C3E" letter-spacing="1.4">
+    <text x="76" y="142">01 · CLIENT</text><text x="76" y="298">02 · EDGE</text><text x="76" y="454">03 · APPLICATION</text><text x="76" y="610">04 · DATA</text>
+  </g>
+  <g fill="none" stroke-linecap="round">
+    <path d="M590 228 V 282" stroke="#D97757" stroke-width="2" marker-end="url(#kk)"/>
+    <path d="M590 384 V 416 H 390 V 438" stroke="#D97757" stroke-width="2" marker-end="url(#kk)"/>
+    <path d="M590 384 V 416 H 790 V 438" stroke="#8C857A" stroke-width="1.6" marker-end="url(#km)"/>
+    <path d="M390 540 V 594" stroke="#D97757" stroke-width="2" marker-end="url(#kk)"/>
+    <path d="M790 540 V 594" stroke="#8C857A" stroke-width="1.6" marker-end="url(#km)"/>
+    <path d="M560 494 H 740 V 594" stroke="#8C857A" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#km)"/>
+  </g>
+  <g font-family="JetBrains Mono,monospace" font-size="10" fill="#8C857A">
+    <rect x="600" y="244" width="40" height="15" rx="2" fill="#FAF9F5"/><text x="620" y="255" text-anchor="middle">요청</text>
+    <rect x="300" y="406" width="40" height="15" rx="2" fill="#FAF9F5"/><text x="320" y="417" text-anchor="middle">라우트</text>
+    <rect x="844" y="406" width="40" height="15" rx="2" fill="#FAF9F5"/><text x="864" y="417" text-anchor="middle">검증</text>
+    <rect x="600" y="546" width="40" height="15" rx="2" fill="#FAF9F5"/><text x="620" y="557" text-anchor="middle">캐시</text>
+  </g>
+  <g><rect x="430" y="136" width="320" height="92" rx="10" fill="#FFFFFF" stroke="#D9CDBE" stroke-width="1"/>
+    <g transform="translate(446,165) scale(1.4)" fill="none" stroke="#D97757" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M4 21a8 8 0 0 1 16 0"/></g>
+    <text x="488" y="172" font-family="Pretendard,Noto Sans KR,sans-serif" font-size="17" font-weight="600" fill="#141413">웹 브라우저</text>
+    <text x="488" y="196" font-family="Pretendard,Noto Sans KR,sans-serif" font-size="14" fill="#6B6359">사용자 진입점 · HTTPS :443</text></g>
+  <g><rect x="430" y="292" width="320" height="92" rx="10" fill="#FFFFFF" stroke="#D9CDBE" stroke-width="1"/>
+    <g transform="translate(446,321) scale(1.4)" fill="none" stroke="#D97757" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M12 2v3 M12 19v3 M2 12h3 M19 12h3 M5 5l2 2 M17 17l2 2 M19 5l-2 2 M7 17l-2 2"/></g>
+    <text x="488" y="328" font-family="Pretendard,Noto Sans KR,sans-serif" font-size="17" font-weight="600" fill="#141413">API 게이트웨이</text>
+    <text x="488" y="352" font-family="Pretendard,Noto Sans KR,sans-serif" font-size="14" fill="#6B6359">라우팅 · 인증 · 속도 제한</text></g>
+  <g><rect x="220" y="448" width="340" height="92" rx="10" fill="#FBE9DF" stroke="#D97757" stroke-width="1.6"/>
+    <text x="236" y="468" font-family="JetBrains Mono,monospace" font-size="8" letter-spacing="1.6" font-weight="600" fill="#D97757">★ FOCAL</text>
+    <g transform="translate(236,477) scale(1.4)" fill="none" stroke="#D97757" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z M4 7.5l8 4.5 8-4.5 M12 12v9"/></g>
+    <text x="278" y="492" font-family="Pretendard,Noto Sans KR,sans-serif" font-size="17" font-weight="600" fill="#141413">백엔드 서비스</text>
+    <text x="278" y="516" font-family="Pretendard,Noto Sans KR,sans-serif" font-size="14" fill="#6B6359">비즈니스 로직 · Go · gRPC</text></g>
+  <g><rect x="620" y="448" width="340" height="92" rx="10" fill="#FFFFFF" stroke="#D9CDBE" stroke-width="1"/>
+    <g transform="translate(636,477) scale(1.4)" fill="none" stroke="#8C857A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.4 8.3-8 9-4.6-.7-8-4-8-9V6z"/></g>
+    <text x="678" y="484" font-family="Pretendard,Noto Sans KR,sans-serif" font-size="17" font-weight="600" fill="#141413">인증 서비스</text>
+    <text x="678" y="508" font-family="Pretendard,Noto Sans KR,sans-serif" font-size="14" fill="#6B6359">JWT 발급 · 토큰 검증</text></g>
+  <g><rect x="220" y="604" width="340" height="92" rx="10" fill="#FFFFFF" stroke="#D9CDBE" stroke-width="1"/>
+    <g transform="translate(236,633) scale(1.4)" fill="none" stroke="#8C857A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c5 0 9 1.3 9 3s-4 3-9 3-9-1.3-9-3 4-3 9-3z M3 6v12c0 1.7 4 3 9 3s9-1.3 9-3V6"/></g>
+    <text x="278" y="640" font-family="Pretendard,Noto Sans KR,sans-serif" font-size="17" font-weight="600" fill="#141413">Postgres DB</text>
+    <text x="278" y="664" font-family="Pretendard,Noto Sans KR,sans-serif" font-size="14" fill="#6B6359">영속 저장 · SQL</text></g>
+  <g><rect x="620" y="604" width="340" height="92" rx="10" fill="#FFFFFF" stroke="#D9CDBE" stroke-width="1"/>
+    <g transform="translate(636,633) scale(1.4)" fill="none" stroke="#8C857A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h6l-1 8 9-12h-6z"/></g>
+    <text x="678" y="640" font-family="Pretendard,Noto Sans KR,sans-serif" font-size="17" font-weight="600" fill="#141413">Redis 캐시</text>
+    <text x="678" y="664" font-family="Pretendard,Noto Sans KR,sans-serif" font-size="14" fill="#6B6359">인메모리 · TTL</text></g>
+</svg>
+      </div>
+      <p class="legend">KO — 제목 MaruBuri · <b>★ focal: 백엔드</b> (clay-tint 카드 + clay 보더)</p>
+    </div>
+
+    <!-- ============ 영어 (Noto Serif) ============ -->
+    <div class="panel en">
+      <span class="tag">EN · English</span>
+      <h2>Heading Noto Serif · Body Noto Sans</h2>
+      <p class="fonts">serif: 'Noto Serif' · sans: 'Noto Sans'</p>
+      <div class="canvas">
+<svg viewBox="0 0 1180 712" role="img" aria-label="English diagram">
+  <defs>
+    <marker id="em" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto"><path d="M0 0L10 4L0 8z" fill="#8C857A"/></marker>
+    <marker id="ek" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto"><path d="M0 0L10 4L0 8z" fill="#D97757"/></marker>
+  </defs>
+  <rect width="1180" height="712" fill="#FAF9F5"/>
+  <text x="60" y="40" font-family="JetBrains Mono,monospace" font-size="10" letter-spacing="2.2" fill="#B85C3E">ARCHITECTURE · REQUEST FLOW</text>
+  <text x="58" y="80" font-family="Noto Serif,Georgia,serif" font-size="36" fill="#141413">Web Service Architecture</text>
+  <text x="60" y="102" font-family="Noto Sans,system-ui,sans-serif" font-size="13" fill="#8C857A">Four layers a request traverses</text>
+  <line x1="60" y1="112" x2="1120" y2="112" stroke="#E8DDD0" stroke-width="1"/>
+  <rect x="60" y="120" width="1060" height="124" rx="8" fill="#F3EFE6"/><rect x="60" y="276" width="1060" height="124" rx="8" fill="#F3EFE6"/><rect x="60" y="432" width="1060" height="124" rx="8" fill="#F3EFE6"/><rect x="60" y="588" width="1060" height="124" rx="8" fill="#F3EFE6"/>
+  <g font-family="JetBrains Mono,monospace" font-size="10" font-weight="500" fill="#B85C3E" letter-spacing="1.4">
+    <text x="76" y="142">01 · CLIENT</text><text x="76" y="298">02 · EDGE</text><text x="76" y="454">03 · APPLICATION</text><text x="76" y="610">04 · DATA</text>
+  </g>
+  <g fill="none" stroke-linecap="round">
+    <path d="M590 228 V 282" stroke="#D97757" stroke-width="2" marker-end="url(#ek)"/>
+    <path d="M590 384 V 416 H 390 V 438" stroke="#D97757" stroke-width="2" marker-end="url(#ek)"/>
+    <path d="M590 384 V 416 H 790 V 438" stroke="#8C857A" stroke-width="1.6" marker-end="url(#em)"/>
+    <path d="M390 540 V 594" stroke="#D97757" stroke-width="2" marker-end="url(#ek)"/>
+    <path d="M790 540 V 594" stroke="#8C857A" stroke-width="1.6" marker-end="url(#em)"/>
+    <path d="M560 494 H 740 V 594" stroke="#8C857A" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#em)"/>
+  </g>
+  <g font-family="JetBrains Mono,monospace" font-size="10" fill="#8C857A">
+    <rect x="600" y="244" width="44" height="15" rx="2" fill="#FAF9F5"/><text x="622" y="255" text-anchor="middle">request</text>
+    <rect x="300" y="406" width="40" height="15" rx="2" fill="#FAF9F5"/><text x="320" y="417" text-anchor="middle">route</text>
+    <rect x="844" y="406" width="40" height="15" rx="2" fill="#FAF9F5"/><text x="864" y="417" text-anchor="middle">verify</text>
+    <rect x="600" y="546" width="40" height="15" rx="2" fill="#FAF9F5"/><text x="620" y="557" text-anchor="middle">cache</text>
+  </g>
+  <g><rect x="430" y="136" width="320" height="92" rx="10" fill="#FFFFFF" stroke="#D9CDBE" stroke-width="1"/>
+    <g transform="translate(446,165) scale(1.4)" fill="none" stroke="#D97757" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M4 21a8 8 0 0 1 16 0"/></g>
+    <text x="488" y="172" font-family="Noto Sans,system-ui,sans-serif" font-size="17" font-weight="600" fill="#141413">Web Browser</text>
+    <text x="488" y="196" font-family="Noto Sans,system-ui,sans-serif" font-size="14" fill="#6B6359">User entry · HTTPS :443</text></g>
+  <g><rect x="430" y="292" width="320" height="92" rx="10" fill="#FFFFFF" stroke="#D9CDBE" stroke-width="1"/>
+    <g transform="translate(446,321) scale(1.4)" fill="none" stroke="#D97757" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M12 2v3 M12 19v3 M2 12h3 M19 12h3 M5 5l2 2 M17 17l2 2 M19 5l-2 2 M7 17l-2 2"/></g>
+    <text x="488" y="328" font-family="Noto Sans,system-ui,sans-serif" font-size="17" font-weight="600" fill="#141413">API Gateway</text>
+    <text x="488" y="352" font-family="Noto Sans,system-ui,sans-serif" font-size="14" fill="#6B6359">Routing · Auth · Rate limit</text></g>
+  <g><rect x="220" y="448" width="340" height="92" rx="10" fill="#FBE9DF" stroke="#D97757" stroke-width="1.6"/>
+    <text x="236" y="468" font-family="JetBrains Mono,monospace" font-size="8" letter-spacing="1.6" font-weight="600" fill="#D97757">★ FOCAL</text>
+    <g transform="translate(236,477) scale(1.4)" fill="none" stroke="#D97757" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z M4 7.5l8 4.5 8-4.5 M12 12v9"/></g>
+    <text x="278" y="492" font-family="Noto Sans,system-ui,sans-serif" font-size="17" font-weight="600" fill="#141413">Backend Service</text>
+    <text x="278" y="516" font-family="Noto Sans,system-ui,sans-serif" font-size="14" fill="#6B6359">Business logic · Go · gRPC</text></g>
+  <g><rect x="620" y="448" width="340" height="92" rx="10" fill="#FFFFFF" stroke="#D9CDBE" stroke-width="1"/>
+    <g transform="translate(636,477) scale(1.4)" fill="none" stroke="#8C857A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.4 8.3-8 9-4.6-.7-8-4-8-9V6z"/></g>
+    <text x="678" y="484" font-family="Noto Sans,system-ui,sans-serif" font-size="17" font-weight="600" fill="#141413">Auth Service</text>
+    <text x="678" y="508" font-family="Noto Sans,system-ui,sans-serif" font-size="14" fill="#6B6359">JWT issue · Verify</text></g>
+  <g><rect x="220" y="604" width="340" height="92" rx="10" fill="#FFFFFF" stroke="#D9CDBE" stroke-width="1"/>
+    <g transform="translate(236,633) scale(1.4)" fill="none" stroke="#8C857A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c5 0 9 1.3 9 3s-4 3-9 3-9-1.3-9-3 4-3 9-3z M3 6v12c0 1.7 4 3 9 3s9-1.3 9-3V6"/></g>
+    <text x="278" y="640" font-family="Noto Sans,system-ui,sans-serif" font-size="17" font-weight="600" fill="#141413">Postgres DB</text>
+    <text x="278" y="664" font-family="Noto Sans,system-ui,sans-serif" font-size="14" fill="#6B6359">Persistent · SQL</text></g>
+  <g><rect x="620" y="604" width="340" height="92" rx="10" fill="#FFFFFF" stroke="#D9CDBE" stroke-width="1"/>
+    <g transform="translate(636,633) scale(1.4)" fill="none" stroke="#8C857A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h6l-1 8 9-12h-6z"/></g>
+    <text x="678" y="640" font-family="Noto Sans,system-ui,sans-serif" font-size="17" font-weight="600" fill="#141413">Redis Cache</text>
+    <text x="678" y="664" font-family="Noto Sans,system-ui,sans-serif" font-size="14" fill="#6B6359">In-memory · TTL</text></g>
+</svg>
+      </div>
+      <p class="legend">EN — Noto Serif · <b>★ focal: backend</b> (clay-tint card + clay border)</p>
+    </div>
+
+    <!-- ============ 일본어 (Noto Serif JP) ============ -->
+    <div class="panel ja">
+      <span class="tag">JA · 日本語</span>
+      <h2>見出し Noto Serif JP · 本文 Noto Sans JP</h2>
+      <p class="fonts">serif: 'Noto Serif JP' · sans: 'Noto Sans JP'</p>
+      <div class="canvas">
+<svg viewBox="0 0 1180 712" role="img" aria-label="日本語ダイアグラム">
+  <defs>
+    <marker id="jm" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto"><path d="M0 0L10 4L0 8z" fill="#8C857A"/></marker>
+    <marker id="jk" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto"><path d="M0 0L10 4L0 8z" fill="#D97757"/></marker>
+  </defs>
+  <rect width="1180" height="712" fill="#FAF9F5"/>
+  <text x="60" y="40" font-family="JetBrains Mono,monospace" font-size="10" letter-spacing="2.2" fill="#B85C3E">ARCHITECTURE · リクエストフロー</text>
+  <text x="58" y="80" font-family="Noto Serif JP,serif" font-size="34" fill="#141413">Webサービスアーキテクチャ</text>
+  <text x="60" y="102" font-family="Noto Sans JP,sans-serif" font-size="13" fill="#8C857A">リクエストが通る4層</text>
+  <line x1="60" y1="112" x2="1120" y2="112" stroke="#E8DDD0" stroke-width="1"/>
+  <rect x="60" y="120" width="1060" height="124" rx="8" fill="#F3EFE6"/><rect x="60" y="276" width="1060" height="124" rx="8" fill="#F3EFE6"/><rect x="60" y="432" width="1060" height="124" rx="8" fill="#F3EFE6"/><rect x="60" y="588" width="1060" height="124" rx="8" fill="#F3EFE6"/>
+  <g font-family="JetBrains Mono,monospace" font-size="10" font-weight="500" fill="#B85C3E" letter-spacing="1.4">
+    <text x="76" y="142">01 · CLIENT</text><text x="76" y="298">02 · EDGE</text><text x="76" y="454">03 · APPLICATION</text><text x="76" y="610">04 · DATA</text>
+  </g>
+  <g fill="none" stroke-linecap="round">
+    <path d="M590 228 V 282" stroke="#D97757" stroke-width="2" marker-end="url(#jk)"/>
+    <path d="M590 384 V 416 H 390 V 438" stroke="#D97757" stroke-width="2" marker-end="url(#jk)"/>
+    <path d="M590 384 V 416 H 790 V 438" stroke="#8C857A" stroke-width="1.6" marker-end="url(#jm)"/>
+    <path d="M390 540 V 594" stroke="#D97757" stroke-width="2" marker-end="url(#jk)"/>
+    <path d="M790 540 V 594" stroke="#8C857A" stroke-width="1.6" marker-end="url(#jm)"/>
+    <path d="M560 494 H 740 V 594" stroke="#8C857A" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#jm)"/>
+  </g>
+  <g font-family="JetBrains Mono,monospace" font-size="9" fill="#8C857A">
+    <rect x="596" y="244" width="50" height="15" rx="2" fill="#FAF9F5"/><text x="621" y="255" text-anchor="middle">リクエスト</text>
+    <rect x="298" y="406" width="46" height="15" rx="2" fill="#FAF9F5"/><text x="321" y="417" text-anchor="middle">ルーティング</text>
+    <rect x="844" y="406" width="40" height="15" rx="2" fill="#FAF9F5"/><text x="864" y="417" text-anchor="middle">検証</text>
+    <rect x="600" y="546" width="40" height="15" rx="2" fill="#FAF9F5"/><text x="620" y="557" text-anchor="middle">キャッシュ</text>
+  </g>
+  <g><rect x="430" y="136" width="320" height="92" rx="10" fill="#FFFFFF" stroke="#D9CDBE" stroke-width="1"/>
+    <g transform="translate(446,165) scale(1.4)" fill="none" stroke="#D97757" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M4 21a8 8 0 0 1 16 0"/></g>
+    <text x="488" y="172" font-family="Noto Sans JP,sans-serif" font-size="17" font-weight="600" fill="#141413">Webブラウザ</text>
+    <text x="488" y="196" font-family="Noto Sans JP,sans-serif" font-size="14" fill="#6B6359">ユーザー入口 · HTTPS :443</text></g>
+  <g><rect x="430" y="292" width="320" height="92" rx="10" fill="#FFFFFF" stroke="#D9CDBE" stroke-width="1"/>
+    <g transform="translate(446,321) scale(1.4)" fill="none" stroke="#D97757" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M12 2v3 M12 19v3 M2 12h3 M19 12h3 M5 5l2 2 M17 17l2 2 M19 5l-2 2 M7 17l-2 2"/></g>
+    <text x="488" y="328" font-family="Noto Sans JP,sans-serif" font-size="17" font-weight="600" fill="#141413">APIゲートウェイ</text>
+    <text x="488" y="352" font-family="Noto Sans JP,sans-serif" font-size="14" fill="#6B6359">ルーティング · 認証 · レート制限</text></g>
+  <g><rect x="220" y="448" width="340" height="92" rx="10" fill="#FBE9DF" stroke="#D97757" stroke-width="1.6"/>
+    <text x="236" y="468" font-family="JetBrains Mono,monospace" font-size="8" letter-spacing="1.6" font-weight="600" fill="#D97757">★ FOCAL</text>
+    <g transform="translate(236,477) scale(1.4)" fill="none" stroke="#D97757" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z M4 7.5l8 4.5 8-4.5 M12 12v9"/></g>
+    <text x="278" y="492" font-family="Noto Sans JP,sans-serif" font-size="17" font-weight="600" fill="#141413">バックエンドサービス</text>
+    <text x="278" y="516" font-family="Noto Sans JP,sans-serif" font-size="14" fill="#6B6359">ビジネスロジック · Go · gRPC</text></g>
+  <g><rect x="620" y="448" width="340" height="92" rx="10" fill="#FFFFFF" stroke="#D9CDBE" stroke-width="1"/>
+    <g transform="translate(636,477) scale(1.4)" fill="none" stroke="#8C857A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.4 8.3-8 9-4.6-.7-8-4-8-9V6z"/></g>
+    <text x="678" y="484" font-family="Noto Sans JP,sans-serif" font-size="17" font-weight="600" fill="#141413">認証サービス</text>
+    <text x="678" y="508" font-family="Noto Sans JP,sans-serif" font-size="14" fill="#6B6359">JWT発行 · 検証</text></g>
+  <g><rect x="220" y="604" width="340" height="92" rx="10" fill="#FFFFFF" stroke="#D9CDBE" stroke-width="1"/>
+    <g transform="translate(236,633) scale(1.4)" fill="none" stroke="#8C857A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c5 0 9 1.3 9 3s-4 3-9 3-9-1.3-9-3 4-3 9-3z M3 6v12c0 1.7 4 3 9 3s9-1.3 9-3V6"/></g>
+    <text x="278" y="640" font-family="Noto Sans JP,sans-serif" font-size="17" font-weight="600" fill="#141413">Postgres DB</text>
+    <text x="278" y="664" font-family="Noto Sans JP,sans-serif" font-size="14" fill="#6B6359">永続 · SQL</text></g>
+  <g><rect x="620" y="604" width="340" height="92" rx="10" fill="#FFFFFF" stroke="#D9CDBE" stroke-width="1"/>
+    <g transform="translate(636,633) scale(1.4)" fill="none" stroke="#8C857A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h6l-1 8 9-12h-6z"/></g>
+    <text x="678" y="640" font-family="Noto Sans JP,sans-serif" font-size="17" font-weight="600" fill="#141413">Redisキャッシュ</text>
+    <text x="678" y="664" font-family="Noto Sans JP,sans-serif" font-size="14" fill="#6B6359">インメモリ · TTL</text></g>
+</svg>
+      </div>
+      <p class="legend">JA — Noto Serif JP · <b>★ focal: バックエンド</b> (clay-tint + clay border)</p>
+    </div>
+
+    <!-- ============ 중국어 (Noto Serif SC) ============ -->
+    <div class="panel zh">
+      <span class="tag">ZH · 中文</span>
+      <h2>标题 Noto Serif SC · 正文 Noto Sans SC</h2>
+      <p class="fonts">serif: 'Noto Serif SC' · sans: 'Noto Sans SC'</p>
+      <div class="canvas">
+<svg viewBox="0 0 1180 712" role="img" aria-label="中文架构图">
+  <defs>
+    <marker id="zm" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto"><path d="M0 0L10 4L0 8z" fill="#8C857A"/></marker>
+    <marker id="zk" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto"><path d="M0 0L10 4L0 8z" fill="#D97757"/></marker>
+  </defs>
+  <rect width="1180" height="712" fill="#FAF9F5"/>
+  <text x="60" y="40" font-family="JetBrains Mono,monospace" font-size="10" letter-spacing="2.2" fill="#B85C3E">ARCHITECTURE · 请求流</text>
+  <text x="58" y="80" font-family="Noto Serif SC,serif" font-size="36" fill="#141413">Web 服务架构</text>
+  <text x="60" y="102" font-family="Noto Sans SC,sans-serif" font-size="13" fill="#8C857A">请求经过的四层</text>
+  <line x1="60" y1="112" x2="1120" y2="112" stroke="#E8DDD0" stroke-width="1"/>
+  <rect x="60" y="120" width="1060" height="124" rx="8" fill="#F3EFE6"/><rect x="60" y="276" width="1060" height="124" rx="8" fill="#F3EFE6"/><rect x="60" y="432" width="1060" height="124" rx="8" fill="#F3EFE6"/><rect x="60" y="588" width="1060" height="124" rx="8" fill="#F3EFE6"/>
+  <g font-family="JetBrains Mono,monospace" font-size="10" font-weight="500" fill="#B85C3E" letter-spacing="1.4">
+    <text x="76" y="142">01 · CLIENT</text><text x="76" y="298">02 · EDGE</text><text x="76" y="454">03 · APPLICATION</text><text x="76" y="610">04 · DATA</text>
+  </g>
+  <g fill="none" stroke-linecap="round">
+    <path d="M590 228 V 282" stroke="#D97757" stroke-width="2" marker-end="url(#zk)"/>
+    <path d="M590 384 V 416 H 390 V 438" stroke="#D97757" stroke-width="2" marker-end="url(#zk)"/>
+    <path d="M590 384 V 416 H 790 V 438" stroke="#8C857A" stroke-width="1.6" marker-end="url(#zm)"/>
+    <path d="M390 540 V 594" stroke="#D97757" stroke-width="2" marker-end="url(#zk)"/>
+    <path d="M790 540 V 594" stroke="#8C857A" stroke-width="1.6" marker-end="url(#zm)"/>
+    <path d="M560 494 H 740 V 594" stroke="#8C857A" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#zm)"/>
+  </g>
+  <g font-family="JetBrains Mono,monospace" font-size="10" fill="#8C857A">
+    <rect x="600" y="244" width="40" height="15" rx="2" fill="#FAF9F5"/><text x="620" y="255" text-anchor="middle">请求</text>
+    <rect x="300" y="406" width="40" height="15" rx="2" fill="#FAF9F5"/><text x="320" y="417" text-anchor="middle">路由</text>
+    <rect x="844" y="406" width="40" height="15" rx="2" fill="#FAF9F5"/><text x="864" y="417" text-anchor="middle">验证</text>
+    <rect x="600" y="546" width="40" height="15" rx="2" fill="#FAF9F5"/><text x="620" y="557" text-anchor="middle">缓存</text>
+  </g>
+  <g><rect x="430" y="136" width="320" height="92" rx="10" fill="#FFFFFF" stroke="#D9CDBE" stroke-width="1"/>
+    <g transform="translate(446,165) scale(1.4)" fill="none" stroke="#D97757" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M4 21a8 8 0 0 1 16 0"/></g>
+    <text x="488" y="172" font-family="Noto Sans SC,sans-serif" font-size="17" font-weight="600" fill="#141413">Web 浏览器</text>
+    <text x="488" y="196" font-family="Noto Sans SC,sans-serif" font-size="14" fill="#6B6359">用户入口 · HTTPS :443</text></g>
+  <g><rect x="430" y="292" width="320" height="92" rx="10" fill="#FFFFFF" stroke="#D9CDBE" stroke-width="1"/>
+    <g transform="translate(446,321) scale(1.4)" fill="none" stroke="#D97757" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M12 2v3 M12 19v3 M2 12h3 M19 12h3 M5 5l2 2 M17 17l2 2 M19 5l-2 2 M7 17l-2 2"/></g>
+    <text x="488" y="328" font-family="Noto Sans SC,sans-serif" font-size="17" font-weight="600" fill="#141413">API 网关</text>
+    <text x="488" y="352" font-family="Noto Sans SC,sans-serif" font-size="14" fill="#6B6359">路由 · 认证 · 限流</text></g>
+  <g><rect x="220" y="448" width="340" height="92" rx="10" fill="#FBE9DF" stroke="#D97757" stroke-width="1.6"/>
+    <text x="236" y="468" font-family="JetBrains Mono,monospace" font-size="8" letter-spacing="1.6" font-weight="600" fill="#D97757">★ FOCAL</text>
+    <g transform="translate(236,477) scale(1.4)" fill="none" stroke="#D97757" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z M4 7.5l8 4.5 8-4.5 M12 12v9"/></g>
+    <text x="278" y="492" font-family="Noto Sans SC,sans-serif" font-size="17" font-weight="600" fill="#141413">后端服务</text>
+    <text x="278" y="516" font-family="Noto Sans SC,sans-serif" font-size="14" fill="#6B6359">业务逻辑 · Go · gRPC</text></g>
+  <g><rect x="620" y="448" width="340" height="92" rx="10" fill="#FFFFFF" stroke="#D9CDBE" stroke-width="1"/>
+    <g transform="translate(636,477) scale(1.4)" fill="none" stroke="#8C857A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.4 8.3-8 9-4.6-.7-8-4-8-9V6z"/></g>
+    <text x="678" y="484" font-family="Noto Sans SC,sans-serif" font-size="17" font-weight="600" fill="#141413">认证服务</text>
+    <text x="678" y="508" font-family="Noto Sans SC,sans-serif" font-size="14" fill="#6B6359">JWT 签发 · 验证</text></g>
+  <g><rect x="220" y="604" width="340" height="92" rx="10" fill="#FFFFFF" stroke="#D9CDBE" stroke-width="1"/>
+    <g transform="translate(236,633) scale(1.4)" fill="none" stroke="#8C857A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c5 0 9 1.3 9 3s-4 3-9 3-9-1.3-9-3 4-3 9-3z M3 6v12c0 1.7 4 3 9 3s9-1.3 9-3V6"/></g>
+    <text x="278" y="640" font-family="Noto Sans SC,sans-serif" font-size="17" font-weight="600" fill="#141413">Postgres 数据库</text>
+    <text x="278" y="664" font-family="Noto Sans SC,sans-serif" font-size="14" fill="#6B6359">持久 · SQL</text></g>
+  <g><rect x="620" y="604" width="340" height="92" rx="10" fill="#FFFFFF" stroke="#D9CDBE" stroke-width="1"/>
+    <g transform="translate(636,633) scale(1.4)" fill="none" stroke="#8C857A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h6l-1 8 9-12h-6z"/></g>
+    <text x="678" y="640" font-family="Noto Sans SC,sans-serif" font-size="17" font-weight="600" fill="#141413">Redis 缓存</text>
+    <text x="678" y="664" font-family="Noto Sans SC,sans-serif" font-size="14" fill="#6B6359">内存 · TTL</text></g>
+</svg>
+      </div>
+      <p class="legend">ZH — Noto Serif SC · <b>★ focal: 后端</b> (clay-tint + clay border)</p>
+    </div>
+
+  </div>
+
+  <div class="verdict">
+    <h3>수정 내역</h3>
+    <p><b>1. 한국어 제목 → MaruBuri</b>: 오라버니 주신 @font-face에서 weight 중복 선언(SemiBold/Bold가 400과 600/700에 동시 매핑)을 정리해 200/300/400/600/700 표준 매핑으로 통일했습니다. CDN(hangeul.pstatic.net) 응답 확인됨.</p>
+    <p><b>2. 콜아웃 제거</b>: 점선 리더가 <b>게이트웨이→인증 화살표(x 590-790, y=416)를 가로지르고</b> 텍스트도 그 라인 위에 겹쳤습니다(이미지로 확인). 우리 4계층 밴드 레이아웃이 빽빽해서 diagram-design식 "여백에 떠 있는 콜아웃"이 자연스럽지 않습니다 — 그 레이아웃은 여유 있는 작은 노드(B 참고)에 맞는 형식이에요.</p>
+    <p><b>3. focal은 색+라벨로</b>: 백엔드 카드에 clay-tint 배경 + clay 보더(1.6px 강화) + "★ FOCAL" eyebrow + 진입 화살표(clay)로 focal을 자명하게 표현. 하단 legend에도 "★ focal: 백엔드"로 명시.</p>
+    <p style="margin-top:12px">콜아웃 자체를 꼭 원하시면, 레이아웃을 diagram-design처럼 작은 노드+넓은 여백으로 바꿔야 합니다(=정보 밀도 포기). 그 트레이드오프가 아니라면, focal=색 표현이 우리 밴드 레이아웃에 맞는 정답입니다.</p>
+    <span class="pick">권장: focal=색 표현 유지, MaruBuri 확정 → svg-infographic 재스킨 반영</span>
+  </div>
+</div>
+</body>
+</html>

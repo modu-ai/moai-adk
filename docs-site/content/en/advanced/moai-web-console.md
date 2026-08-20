@@ -22,7 +22,7 @@ The screen has three parts. The **rail** on the left stacks the five areas verti
 | Kanban | `/kanban` | Chain session board plus the four-column SPEC pipeline |
 | Specs | `/specs` | SPEC catalog search, filters and detail, close debt and MUST-FIX drift |
 | Monitor | `/monitor` | Sessions, goals, verification and epics in four panels |
-| Settings | `/settings` | Profile preferences and project sections across nine tabs |
+| Settings | `/settings` | Profile preferences and project sections (11 tabs) |
 
 What sits at the right of the appbar depends on the area. The four observation areas show a **live indicator**; the settings area shows a **save cluster** (the change count and the save button). The context chips (`lang` · `model` · `effort` · `dev`) render in the settings area only — they exist so you can confirm the key values of the profile you are editing before you save.
 
@@ -114,7 +114,7 @@ One discipline shows up all over the screen.
 
 The settings area is the only place in the console that writes files. It defines no validation rules of its own and calls the **same validation and persistence layer** as the terminal wizard (`moai profile`, `moai update -c`). That is why editing from either side produces the same result.
 
-Choosing Settings in the rail unfolds nine tabs below it as a vertical list.
+Choosing Settings in the rail unfolds eleven tabs below it as a vertical list.
 
 1. **Identity** — display name and project-level identity fields
 2. **Language** — conversation, commit message, code comment and documentation language
@@ -125,6 +125,8 @@ Choosing Settings in the rail unfolds nine tabs below it as a vertical list.
 7. **Audit** — the audit model and the per-backend gates
 8. **Agents** — per-agent profile and model assignment
 9. **Report** — report format and output preferences
+10. **MCP** — per-tool activation toggles for `moai mcp-server`. Write-capable tools carry a distinguishing mark
+11. **Cross-Session** — the inbound posture for cross-session messaging: how inbound messages are handled (`accept` · `hold` · `refuse`), cross-machine sending isolation, and held-dialog expiry. It edits `crosssession.yaml`, and the launcher injects this value into sessions from the next `moai cc`/`glm`/`cg` run — sessions already running keep the posture they were launched with
 
 The number beside each tab is how many fields that tab renders. A tab with errors carries a warning mark instead of the number, so the list itself tells you which tab to open.
 

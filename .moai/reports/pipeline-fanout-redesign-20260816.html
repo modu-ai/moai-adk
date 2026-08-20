@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>팀·칸반 실행 구조 재설계</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --ivory:#FAF9F5; --paper:#FFFFFF; --slate:#141413;
+  --clay:#D97757; --clay-d:#B85C3E; --oat:#E3DACC; --olive:#788C5D;
+  --g100:#F0EEE6; --g300:#D1CFC5; --g500:#87867F; --g700:#3D3D3A;
+  --sans:"Pretendard",system-ui,-apple-system,sans-serif;
+  --serif:"Noto Serif KR",ui-serif,Georgia,serif;
+  --mono:"JetBrains Mono",ui-monospace,"SF Mono",monospace;
+  --max-width:860px; --radius-panel:12px; --radius-row:8px;
+  --border:1.5px solid var(--g300);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ivory);color:var(--slate);
+  font-family:var(--sans);font-size:16px;line-height:1.75;
+  -webkit-font-smoothing:antialiased}
+.wrap{max-width:var(--max-width);margin:0 auto;padding:56px 24px 96px}
+h1{font-family:var(--serif);font-size:34px;line-height:1.3;margin:0 0 8px;letter-spacing:-.02em}
+h2{font-family:var(--serif);font-size:23px;margin:56px 0 6px;padding-top:22px;
+  border-top:var(--border);letter-spacing:-.01em}
+h3{font-size:17px;margin:32px 0 6px;color:var(--g700)}
+p{margin:12px 0}
+.sub{color:var(--g500);font-size:14px;margin:0 0 8px}
+.lead{background:var(--g100);border-left:3px solid var(--clay);
+  padding:14px 18px;border-radius:0 var(--radius-row) var(--radius-row) 0;
+  margin:16px 0 22px;font-size:15px;color:var(--g700)}
+.lead b{color:var(--slate)}
+code{font-family:var(--mono);font-size:.88em;background:var(--g100);
+  padding:2px 6px;border-radius:4px;border:1px solid var(--g300)}
+.term{border-bottom:1.5px dotted var(--clay);font-weight:600}
+table{width:100%;border-collapse:collapse;margin:20px 0;font-size:14.5px;
+  background:var(--paper);border-radius:var(--radius-panel);overflow:hidden;
+  border:var(--border)}
+th{background:var(--g100);text-align:left;padding:11px 14px;font-weight:700;
+  font-size:13px;letter-spacing:.02em;color:var(--g700);
+  border-bottom:var(--border)}
+td{padding:11px 14px;border-bottom:1px solid var(--g300);vertical-align:top}
+tr:last-child td{border-bottom:none}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));
+  gap:12px;margin:28px 0 8px}
+.kpi{background:var(--paper);border:var(--border);border-radius:var(--radius-panel);
+  padding:16px 18px}
+.kpi .lbl{font-size:12px;color:var(--g500);letter-spacing:.03em;
+  text-transform:uppercase;margin-bottom:6px}
+.kpi .val{font-family:var(--mono);font-size:26px;font-weight:600;line-height:1.15}
+.kpi .val s{color:var(--g500);text-decoration-color:var(--clay);font-size:19px;
+  font-weight:400;margin-right:6px}
+.kpi .note{font-size:12.5px;color:var(--g500);margin-top:5px}
+.good{color:var(--olive)}
+.warn{color:var(--clay-d)}
+.tl{list-style:none;padding:0;margin:24px 0}
+.tl li{position:relative;padding:0 0 26px 34px;border-left:2px solid var(--g300)}
+.tl li:last-child{border-left-color:transparent;padding-bottom:4px}
+.tl li::before{content:"";position:absolute;left:-8px;top:4px;width:14px;height:14px;
+  border-radius:50%;background:var(--clay);border:3px solid var(--ivory)}
+.tl .mh{font-weight:700;font-size:15.5px}
+.tl .mm{font-size:13px;color:var(--g500);font-family:var(--mono)}
+.risk{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+  gap:12px;margin:20px 0}
+.risk .r{background:var(--paper);border:var(--border);
+  border-left:3px solid var(--clay);border-radius:var(--radius-row);padding:14px 16px}
+.risk .r b{display:block;font-size:14px;margin-bottom:5px}
+.risk .r span{font-size:13.5px;color:var(--g700)}
+.risk .r .fix{display:block;margin-top:8px;font-size:13px;color:var(--olive);font-weight:600}
+blockquote{margin:16px 0;padding:12px 18px;background:var(--paper);
+  border:var(--border);border-radius:var(--radius-row);
+  font-size:14.5px;color:var(--g700)}
+blockquote p{margin:0}
+.ex{background:var(--paper);border:var(--border);border-radius:var(--radius-row);
+  padding:14px 18px;margin:18px 0;font-size:14.5px}
+.ex .tag{display:inline-block;background:var(--olive);color:#fff;font-size:11px;
+  font-weight:700;letter-spacing:.06em;padding:2px 8px;border-radius:4px;
+  margin-bottom:8px}
+figure{margin:26px 0}
+figcaption{font-size:13px;color:var(--g500);margin-top:8px;text-align:center}
+pre.mermaid{background:var(--paper);border:var(--border);
+  border-radius:var(--radius-panel);padding:18px;overflow-x:auto;
+  font-family:var(--mono);font-size:13px;text-align:center}
+.gap{background:var(--paper);border:var(--border);border-left:3px solid var(--g500);
+  border-radius:var(--radius-row);padding:16px 18px;margin:20px 0;font-size:14.5px}
+.gap b{color:var(--clay-d)}
+footer{margin-top:64px;padding-top:20px;border-top:var(--border);
+  font-size:13px;color:var(--g500)}
+@media print{
+  body{background:#fff}
+  .kpi,table,.risk .r,blockquote,.ex{break-inside:avoid}
+  h2{break-after:avoid}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>팀·칸반 실행 구조 재설계</h1>
+<p class="sub">2026-08-16 · lead 세션 · 근거: Claude Code 공식 문서 4건 + 저장소 실측</p>
+
+<div class="lead">
+<b>한 줄 요약.</b> 지금 구조는 카드 한 장을 옮기는 데 lead 가 12번 개입합니다.
+단계를 4개에서 3개로 줄이고, 진행 상황을 <b>lead 의 기억이 아니라 디스크</b>에 두고,
+카드 성격에 따라 <b>줄 세우기(파이프라인)</b>와 <b>나눠 맡기(팬아웃)</b>를 갈라 쓰면
+개입이 각각 9번과 2번으로 줍니다.
+</div>
+
+<div class="kpis">
+  <div class="kpi"><div class="lbl">파이프라인 단계</div>
+    <div class="val"><s>4</s>3</div>
+    <div class="note">review 를 sync 가 흡수</div></div>
+  <div class="kpi"><div class="lbl">카드당 lead 접점</div>
+    <div class="val"><s>12</s><span class="good">2~9</span></div>
+    <div class="note">팬아웃 2 · 파이프라인 9</div></div>
+  <div class="kpi"><div class="lbl">카드당 이름 재지정</div>
+    <div class="val"><s>1+</s><span class="good">0</span></div>
+    <div class="note">이름을 역할에 고정</div></div>
+  <div class="kpi"><div class="lbl">실행 형태</div>
+    <div class="val"><s>1</s>2</div>
+    <div class="note">파이프라인 / 팬아웃</div></div>
+</div>
+
+<h2>1. 무엇이 문제인가</h2>
+
+<div class="lead">
+먼저 용어 하나. <span class="term">컬럼 (column)</span> 은 칸반 보드에서 카드가 지나가는
+칸이고, 칸마다 그 일을 맡는 세션이 하나씩 붙어 있습니다. 지금은
+<code>plan → run → review → sync</code> 네 칸입니다.
+</div>
+
+<h3>1.1 review 칸은 sync 와 하는 일이 겹칩니다</h3>
+
+<p>확인해 보니 <code>/moai review</code> 와 sync 단계의 품질 게이트가
+<b>같은 심판(에이전트)</b>을 씁니다.</p>
+
+<table>
+<thead><tr><th>확인한 곳</th><th>내용</th></tr></thead>
+<tbody>
+<tr><td><code>review.md:23</code></td><td><code>agents: ["sync-auditor"]</code> — review 가 sync 게이트의 심판을 <b>직접</b> 호출</td></tr>
+<tr><td><code>sync.md:6</code></td><td><code>agents: ["manager-docs", "manager-git"]</code> — <b>sync-auditor 가 여기엔 없음</b></td></tr>
+<tr><td>CLAUDE.md §5</td><td><code>sync (manager-docs) → sync-audit (sync-auditor)</code> — 중복은 <b>단계 사슬</b>에서 성립</td></tr>
+<tr><td><code>sync.md:81</code></td><td>순조로운 경로에선 4차원 판정이 확정이고 sync-auditor 는 <b>예비</b> 심판</td></tr>
+<tr><td><code>kanban-dispatch.md:28</code></td><td><code>review</code> 칸은 보드에만 따로 추가돼 있음</td></tr>
+</tbody>
+</table>
+
+<div class="ex">
+<span class="tag">정밀화 — 초판이 뭉뚱그린 곳</span>
+초판은 “둘이 같은 심판을 쓴다”고만 적었는데, 그것만 보고 <code>sync.md</code> 를 열면
+<b>sync-auditor 가 안 보여서 막힙니다</b>. 정확히는 —
+<b>review 트리거가 sync 게이트의 심판을 그대로 호출</b>하고,
+sync 쪽에서는 그 심판에 <b>단계 사슬</b>을 통해 도달합니다(순조롭지 않은 경로의 예비 심판).
+결론은 그대로지만, 이렇게 안 적으면 다음 사람이 헛짚습니다.
+<br><br>
+코드가 아직 4역할(<code>internal/kanban/bootstrap.go:25</code>)인 것은
+<b>아직 안 고친 것이지 반증이 아닙니다.</b>
+</div>
+
+<div class="ex">
+<span class="tag">주의할 점</span>
+다만 <code>/moai review</code> 에는 <b>렌즈</b>가 있습니다 —
+<code>--security</code>(보안만 집중), <code>--deep</code>(다단계 정밀), <code>--lean</code>(과잉설계 점검) 등.
+sync 게이트에는 이 선택지가 없습니다. 그래서 칸을 없앨 때
+<b>렌즈는 sync 디스패치의 인자로 옮겨야</b> 기능이 안 빕니다.
+</div>
+
+<h3>1.2 lead 가 병목입니다</h3>
+
+<p>카드 한 장이 칸을 하나 지날 때마다 lead 는 세 가지를 합니다 —
+지시 보내기, 완료 증거 읽기, <code>/clear</code> 요청하기.</p>
+
+<table>
+<thead><tr><th>형태</th><th class="num">지시</th><th class="num">증거 읽기</th><th class="num">/clear</th><th class="num">합계</th></tr></thead>
+<tbody>
+<tr><td>현행 4칸</td><td class="num">4</td><td class="num">4</td><td class="num">4</td><td class="num warn"><b>12</b></td></tr>
+<tr><td>3칸</td><td class="num">3</td><td class="num">3</td><td class="num">3</td><td class="num">9</td></tr>
+<tr><td>팬아웃 (카드 1장)</td><td class="num">1</td><td class="num">1</td><td class="num">0</td><td class="num good"><b>2</b></td></tr>
+</tbody>
+</table>
+
+<p>게다가 진행 중인 카드는 칸마다 1장으로 묶여 있어서,
+처리 속도가 <b>가장 느린 칸</b>에 발이 묶입니다.</p>
+
+<h3>1.3 lead 의 컨텍스트가 제일 먼저 찹니다</h3>
+
+<div class="lead">
+<span class="term">컨텍스트 윈도우 (context window)</span> 는 Claude 가 한 대화에서
+기억할 수 있는 총량입니다. 책상 넓이라고 보시면 됩니다 — 서류를 계속 올리면
+언젠가 자리가 없고, 꽉 차기 전부터 이미 손이 굼떠집니다.
+</div>
+
+<blockquote><p>“Most best practices are based on one constraint: Claude's context window fills up fast, and <b>performance degrades as it fills</b>.” — 공식 best-practices 문서</p></blockquote>
+
+<p>그리고 세션끼리 주고받는 메시지는 공짜가 아닙니다. 공식 문서는 도착한 메시지가
+<b>“사용자가 직접 친 프롬프트처럼 사용량에 잡힌다”</b>고 적습니다.
+모든 지시와 모든 보고가 lead 를 거치니, lead 의 책상이 제일 먼저 찹니다.</p>
+
+<h3>1.4 <code>/clear</code> 할 때마다 이름을 다시 붙이는 이유</h3>
+
+<p>이건 원인이 예상과 달랐습니다. 공식 문서는 이렇게 적습니다:</p>
+
+<blockquote><p>“<code>/clear</code>: start fresh with an empty context. <b>You keep a name you set with <code>--name</code> or <code>/rename</code> in the new conversation</b>, but not an AI-generated session title”</p></blockquote>
+
+<p>그리고 저장소를 확인하니 MoAI 는 그 이름을 실제로 넘기고 있었습니다 —
+<code>internal/cli/kanban.go:360</code> 의 <code>leadNameArgs</code> 가
+<code>--name lead-&lt;run-id&gt;</code> 를 claude 인자로 붙입니다.</p>
+
+<p>즉 <b><code>/clear</code> 는 이름을 지우지 않습니다.</b> 다시 붙여야 했던 진짜 이유는
+이름이 <b>역할이 아니라 그때 하던 작업</b>을 담고 있었기 때문입니다.
+작업이 바뀌면 이름이 틀려지니 손이 갑니다.</p>
+
+<h2>2. 공식 문서가 준 원칙 4가지</h2>
+
+<div class="lead">
+재설계를 제 취향으로 하지 않기 위해, 판단의 기준을 공식 문서에서 먼저 뽑았습니다.
+아래 4개가 그 기준입니다.
+</div>
+
+<table>
+<thead><tr><th style="width:44px">#</th><th>원칙</th><th>근거 인용</th></tr></thead>
+<tbody>
+<tr><td><b>P1</b></td><td>컨텍스트가 가장 근본적인 제약</td>
+<td>“The context window is the most important resource to manage.”</td></tr>
+<tr><td><b>P2</b></td><td>문맥은 대화가 아니라 <b>산출물</b>이 나른다</td>
+<td>“Once the spec is complete, <b>start a fresh session</b> to execute it. The new session has clean context … and you have a written spec to reference.”</td></tr>
+<tr><td><b>P3</b></td><td>신선한 컨텍스트가 리뷰를 개선한다</td>
+<td>“A fresh context improves code review since Claude won't be biased toward code it just wrote.”</td></tr>
+<tr><td><b>P4</b></td><td>조사는 별도 컨텍스트로 밀어낸다</td>
+<td>“Subagents run in separate context windows and <b>report back summaries</b>”</td></tr>
+</tbody>
+</table>
+
+<div class="ex">
+<span class="tag">헷갈리기 쉬운 곳</span>
+P3 를 보고 “리뷰는 따로 있어야 하는 것 아닌가” 싶지만 <b>반대 근거가 아닙니다</b>.
+P3 가 요구하는 건 <i>리뷰하는 쪽이 코드를 쓴 쪽과 다른 컨텍스트일 것</i>이고,
+sync 세션은 run 세션과 애초에 별개입니다. 그러니 review 칸을 없애도
+신선함은 그대로 유지됩니다.
+</div>
+
+<h2>3. 재설계 — 결정 3가지</h2>
+
+<h3>D1. 파이프라인은 3단계</h3>
+<p><code>plan → run → sync</code>. review 는 sync 가 흡수하고, 렌즈는 sync 지시문의 인자로 넘깁니다.</p>
+
+<h3>D2. lead 는 기억하지 않고 <b>읽습니다</b></h3>
+<p>보드 상태를 디스크에서 다시 만들어 냅니다 — 백로그 파일 + SPEC 상태 + <code>progress.md</code>.</p>
+
+<div class="ex">
+<span class="tag">이미 절반은 그렇게 돼 있음</span>
+<code>kanban-dispatch.md</code> 는 이미
+“column position is … <b>re-derived from SPEC status after a clear</b>” 라고 적어 뒀습니다.
+그런데 동시에 6블록짜리 핸드오프를 붙여넣게 하고 있죠. 두 지침이 서로 어긋납니다.
+붙여넣기를 <b>명령 한 줄</b>로 바꾸면 모순이 사라지고 <code>/clear</code> 비용이 0 에 수렴합니다.
+</div>
+
+<h3>D3. 세션 이름은 <b>역할</b>에 고정</h3>
+<p><code>plan</code> / <code>run</code> / <code>sync</code>, 겹치면 <code>-1</code>. 카드 정보는 이름에 넣지 않습니다.</p>
+
+<div class="ex">
+<span class="tag">발견한 함정</span>
+Claude Code v2.1.232 이상은 살아있는 세션과 이름이 겹치면
+<b>두 단어짜리 접미사를 제멋대로 붙입니다</b> — 예: <code>plan-graceful-unicorn</code>.
+그러니 <code>-1</code> 은 <b>MoAI 가 실행 전에 미리 배정</b>해야 하고,
+충돌 처리를 런타임에 맡기면 원하는 이름을 못 얻습니다.
+이 제약은 기존 카드 <b>t56</b> 에 추가해야 합니다.
+</div>
+
+<h2>4. 핵심 — 두 가지 실행 형태를 갈라 쓴다</h2>
+
+<div class="lead">
+지금까지는 모든 카드를 한 줄로 세워 보냈습니다. 그런데 카드에는 두 종류가 있습니다 —
+<b>설계 판단이 들어가는 것</b>과 <b>그냥 고치면 되는 것</b>. 둘은 다른 방식으로 처리해야 합니다.
+</div>
+
+<figure>
+<pre class="mermaid">
+flowchart TD
+  A["백로그 카드"] --> B{"설계 판단이<br/>들어가는가?"}
+  B -->|"예 · C급"| C["파이프라인 (칸반)"]
+  B -->|"아니오 · A/B급"| D["팬아웃 (팀)"]
+  C --> C1["plan"] --> C2["run"] --> C3["sync"] --> E["done"]
+  D --> D1["worker-1: 카드 통째"]
+  D --> D2["worker-2: 카드 통째"]
+  D --> D3["worker-N: 카드 통째"]
+  D1 --> E
+  D2 --> E
+  D3 --> E
+</pre>
+<noscript>
+<p><b>흐름 요약:</b> 백로그의 카드는 “설계 판단이 들어가는가”로 갈립니다.
+들어가면(C급) 파이프라인으로 보내 <code>plan → run → sync</code> 를 차례로 통과시키고,
+안 들어가면(A/B급) 팬아웃으로 보내 worker-1..N 이 각자 카드를 통째로 맡아 끝냅니다.
+두 경로 모두 done 으로 모입니다.</p>
+</noscript>
+<figcaption>카드 성격에 따라 갈라지는 두 경로</figcaption>
+</figure>
+
+<table>
+<thead><tr><th></th><th>파이프라인 (칸반)</th><th>팬아웃 (팀)</th></tr></thead>
+<tbody>
+<tr><td>형태</td><td>카드 1장이 3단계를 통과</td><td>워커 N 이 각자 카드 1장을 끝까지</td></tr>
+<tr><td>맞는 카드</td><td>C급 — 설계 변경</td><td>A급 직접 종료 · B급 원인 미확인 결함</td></tr>
+<tr><td>처리량</td><td>1장 / 파이프라인 지연</td><td class="good">N장 / 카드 지연</td></tr>
+<tr><td>카드당 lead 접점</td><td class="num">9</td><td class="num good">2</td></tr>
+<tr><td>단계 간 인수인계</td><td class="num">3회</td><td class="num good">0회</td></tr>
+<tr><td>격리</td><td>카드당 worktree</td><td>워커당 worktree <b>(필수)</b></td></tr>
+<tr><td>세션 이름</td><td><code>plan</code>/<code>run</code>/<code>sync</code></td><td><code>worker-1</code>…<code>worker-N</code></td></tr>
+</tbody>
+</table>
+
+<div class="ex">
+<span class="tag">왜 팬아웃이 싼가</span>
+빠른 이유가 “병렬이라서”가 아닙니다. <b>단계 경계가 없어서</b>입니다.
+경계가 하나 생길 때마다 지시 1회 + 증거 읽기 1회 + <code>/clear</code> 왕복 1회가 따라붙는데,
+팬아웃에는 그 경계가 0개입니다. 그래서 시간뿐 아니라 <b>lead 의 컨텍스트도</b> 아낍니다.
+</div>
+
+<h2>5. 통신 규약 — 메시지는 초인종, 진실은 디스크</h2>
+
+<div class="lead">
+세션끼리 보내는 메시지는 생각보다 약한 채널입니다. 공식 문서가 명시한 한계를
+그대로 옮기면, “메시지를 믿고 진행”하는 설계는 성립하지 않습니다.
+</div>
+
+<table>
+<thead><tr><th>공식 문서가 말하는 한계</th><th>그래서 생기는 결론</th></tr></thead>
+<tbody>
+<tr><td>배달이 보장되지 않음 (전달 / 보류 / 거부 셋 중 하나)</td><td>메시지 도착을 전제로 진행하면 안 됨</td></tr>
+<tr><td>답신 경로가 보장되지 않음</td><td>회신을 기다려 멈추면 조용히 정지함</td></tr>
+<tr><td>반복 메시지 제한 · 세션당 미열람 50건 상한</td><td>메시지로 상태를 폴링하면 안 됨</td></tr>
+<tr><td>텍스트만 건너감 (대화 이력도 파일도 안 감)</td><td>맥락은 메시지가 아니라 디스크가 날라야 함</td></tr>
+</tbody>
+</table>
+
+<p>그래서 규칙은 세 줄입니다.</p>
+<ol>
+<li><b>지시는 포인터만</b> — 카드 번호 / SPEC 번호 / 실행 명령 / worktree 경로 / 완료 증거 위치. 설명 산문 금지.</li>
+<li><b>완료는 디스크에서 읽는다</b> — 메시지는 “가서 확인해라”는 초인종일 뿐.</li>
+<li><b>회신이 안 와도 진행이 막히지 않아야 한다.</b></li>
+</ol>
+
+<h2>6. 이행 순서</h2>
+
+<ul class="tl">
+<li><div class="mh">M1 · review 칸 폐지 → 3단계</div>
+<div class="mm">규모 S · 신규</div>
+렌즈(<code>--security</code> 등)를 sync 지시문 인자로 이전. 이걸 빼먹으면 기능이 빕니다.</li>
+
+<li><div class="mh">M2 · 세션 이름을 역할에 고정</div>
+<div class="mm">규모 S~M · 기존 카드 t56 (제약 추가)</div>
+<code>-1</code> 접미사를 MoAI 가 실행 전에 선배정. 런타임에 맡기면 무작위 접미사가 붙습니다.</li>
+
+<li><div class="mh">M3 · 보드 상태를 디스크에서 파생</div>
+<div class="mm">규모 M · 기존 카드 t55</div>
+<code>/clear</code> 후 6블록 붙여넣기 → 명령 한 줄로 복귀.</li>
+
+<li><div class="mh">M4 · 팀 모드 <code>-t N</code> (팬아웃)</div>
+<div class="mm">규모 M · 기존 카드 t57</div>
+lead + worker-1..N. 워커마다 worktree 를 반드시 따로.</li>
+
+<li><div class="mh">M5 · 메시지 형식 강제</div>
+<div class="mm">규모 S~M · 기존 카드 t58</div>
+전달 항목 고정 + 길이 상한 + 설명 산문 금지.</li>
+</ul>
+
+<p><b>순서는 강제됩니다.</b> M3 의 “한 줄 복귀”는 이름이 안정적(M2)이어야 성립하고,
+M2 는 단계가 정리된 뒤(M1)라야 무엇이 역할인지 확정됩니다.</p>
+
+<h2>7. 위험</h2>
+
+<div class="risk">
+<div class="r"><b>R1 · 렌즈 유실</b><span>review 를 없애면서 보안·정밀 렌즈 선택지가 같이 사라질 수 있음</span><span class="fix">→ M1 범위 안에서 sync 인자로 이전</span></div>
+<div class="r"><b>R2 · 무작위 접미사</b><span>이름 충돌 처리를 런타임에 맡기면 <code>plan-graceful-unicorn</code> 같은 이름이 붙음</span><span class="fix">→ MoAI 가 실행 전 <code>-1</code> 선배정</span></div>
+<div class="r"><b>R3 · worktree 공유</b><span>팬아웃 워커가 같은 작업 트리를 쓰면 병렬이 아니라 직렬 + 충돌</span><span class="fix">→ 워커당 worktree 필수, launcher 경유</span></div>
+<div class="r"><b>R4 · Windows 불가</b><span>네이티브 Windows 는 세션 간 메시징 자체가 안 되어 두 모드 모두 성립 안 함 (WSL2 만 가능)</span><span class="fix">→ 카드 t61 로 문서화</span></div>
+<div class="r"><b>R5 · 상태 정확성 의존</b><span>디스크 파생 보드는 SPEC 상태값이 정확해야만 맞음</span><span class="fix">→ 상태 전이 소유권 준수 확인</span></div>
+</div>
+
+<h2>8. 성공 지표</h2>
+
+<table>
+<thead><tr><th>지표</th><th>현재</th><th>목표</th></tr></thead>
+<tbody>
+<tr><td>카드당 lead 접점</td><td class="num">12</td><td class="num good">9 (파이프라인) / 2 (팬아웃)</td></tr>
+<tr><td><code>/clear</code> 후 복귀</td><td>6블록 붙여넣기</td><td class="good">명령 1줄</td></tr>
+<tr><td>카드당 <code>/rename</code></td><td class="num">1회 이상</td><td class="num good">0회</td></tr>
+<tr><td>동시 진행 카드</td><td class="num">1</td><td class="num good">N (워커 수)</td></tr>
+</tbody>
+</table>
+
+<h2>9. 아직 확인 못 한 것</h2>
+
+<div class="gap">
+<p><b>접점 숫자(12 / 9 / 2)는 측정값이 아닙니다.</b>
+<code>kanban-dispatch.md</code> 의 주기 정의에서 세어 낸 <b>구조적 계산</b>입니다.
+실제 운용에서는 재지시나 블로커로 더 늘어날 수 있습니다.</p>
+
+<p><b><code>/rename</code> 반복의 실제 경로는 재현하지 않았습니다.</b>
+공식 문서와 <code>kanban.go:360</code> 상으로는 이름이 유지되어야 하므로,
+버전 차이 같은 다른 원인이 있을 수 있습니다. M2 착수 전 1회 재현을 권합니다.</p>
+
+<p><b><code>/moai review</code> 의 렌즈가 sync 게이트에서 실제로 동작하는지 미확인.</b>
+M1 에서 확인이 필요합니다.</p>
+
+<p><b>팬아웃의 처리량 이득은 워커가 서로 다른 worktree 를 점유할 때만 성립합니다.</b>
+같은 트리를 공유하면 병렬로 보여도 직렬입니다.</p>
+</div>
+
+<footer>
+근거: Claude Code 공식 문서 — cross-session-messaging · best-practices · sessions · context-window ·
+저장소 실측 — <code>workflows/review.md</code>, <code>kanban-dispatch.md</code>, <code>internal/cli/kanban.go</code>, CLAUDE.md §5<br>
+에이전트용 lean 판본: <code>pipeline-fanout-redesign-20260816.md</code>
+</footer>
+
+</div>
+
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+mermaid.initialize({
+  startOnLoad: true,
+  theme: "base",
+  themeVariables: {
+    primaryColor:"#FAF9F5", primaryTextColor:"#141413", primaryBorderColor:"#D97757",
+    lineColor:"#87867F", secondaryColor:"#E3DACC", tertiaryColor:"#F0EEE6",
+    fontFamily:"Pretendard, system-ui, sans-serif"
+  }
+});
+</script>
+</body>
+</html>

@@ -50,7 +50,7 @@ MoAI-ADK uses **12 core agents** (11 MoAI custom + 1 Anthropic built-in).
 | `manager-docs` | Documentation generation, CHANGELOG, README sync | Sync | inherit / low {{< icon flash muted >}} | `moai-workflow-project` |
 | `manager-git` | PR creation, Git branching, merge strategy | PR (Tier L) | sonnet / low {{< icon flash muted >}} | `moai-foundation-core` |
 | `manager-design` | Claude Design bidirectional collaboration (D1-D5 pipeline) | Design | inherit / medium {{< icon flash primary >}} | `moai-foundation-core` |
-| `manager-kanban` | Hierarchical-team Tier L coordination (sole Agent-carrier, depth-2 sealed) | Run (Tier L) | inherit / xhigh {{< icon flash danger >}} | `moai-foundation-core`, `moai-workflow-project` |
+| `manager-lead` | Hierarchical-team Tier L coordination (sole Agent-carrier, depth-2 sealed) | Run (Tier L) | inherit / xhigh {{< icon flash danger >}} | `moai-foundation-core`, `moai-workflow-project` |
 
 ### Evaluator Agents (2)
 
@@ -123,15 +123,15 @@ flowchart TD
     Q5 -->|No| DIRECT["MoAI handles directly<br>Simple tasks"]
 ```
 
-## Hierarchical Teams — How manager-kanban Works
+## Hierarchical Teams — How manager-lead Works
 
-`manager-kanban` is a dedicated agent for coordinating Tier L run phases. It writes no code itself. Instead, it splits the work into milestones, hands each one to a leaf worker, then folds context and runs cross-verification at every milestone boundary. Leaf workers are created on demand via `Agent(general-purpose)` and run on worktree-isolated branches so their write surfaces never overlap.
+`manager-lead` is a dedicated agent for coordinating Tier L run phases. It writes no code itself. Instead, it splits the work into milestones, hands each one to a leaf worker, then folds context and runs cross-verification at every milestone boundary. Leaf workers are created on demand via `Agent(general-purpose)` and run on worktree-isolated branches so their write surfaces never overlap.
 
 This delegation path is a variant of serial (sequential sub-agents), not a new execution mode. It is also unrelated to the Agent Teams layer — now an experimental explicit-request surface; the `MODE_TEAM_UNAVAILABLE` sentinel remains documented history.
 
 ### Entry Conditions — All Three Must Hold
 
-The orchestrator spawns `manager-kanban` only when **all** three conditions below hold. If any one falls short, the orchestrator processes the milestones sequentially itself in serial. Attaching `manager-kanban` to work that does not meet the bar only adds coordination cost that is never recovered.
+The orchestrator spawns `manager-lead` only when **all** three conditions below hold. If any one falls short, the orchestrator processes the milestones sequentially itself in serial. Attaching `manager-lead` to work that does not meet the bar only adds coordination cost that is never recovered.
 
 | Axis | Threshold |
 |------|-----------|
@@ -149,14 +149,14 @@ flowchart TD
     Q2 -->|"No"| MODE5
     Q2 -->|"Yes"| Q3{"3 or more domains?"}
     Q3 -->|"No"| MODE5
-    Q3 -->|"Yes"| LEAD["Spawn manager-kanban<br>Coordinate leaf-worker fan-out"]
+    Q3 -->|"Yes"| LEAD["Spawn manager-lead<br>Coordinate leaf-worker fan-out"]
 ```
 
 ### The depth-2 Seal
 
-`manager-kanban` is the **only** catalog agent that carries `Agent` in its `tools:` list. Every other agent omits `Agent`, which is how the flat hierarchy is maintained — and this is the single place where that exception is opened, one layer deep. So orchestrator → `manager-kanban` is depth 1, `manager-kanban` → leaf worker is depth 2, and no depth 3 is ever created.
+`manager-lead` is the **only** catalog agent that carries `Agent` in its `tools:` list. Every other agent omits `Agent`, which is how the flat hierarchy is maintained — and this is the single place where that exception is opened, one layer deep. So orchestrator → `manager-lead` is depth 1, `manager-lead` → leaf worker is depth 2, and no depth 3 is ever created.
 
-Leaf workers receive their `tools:` list at spawn time, and `Agent` is always excluded from it. Should leaf workers later be defined as files, declaring themselves via the frontmatter field `leaf_of: manager-kanban` or the body marker `<!-- manager-kanban leaf-worker -->` makes the CI guard in `internal/template/manager_kanban_depth_test.go` check that file's `tools:` for `Agent` and fail the build if it is present.
+Leaf workers receive their `tools:` list at spawn time, and `Agent` is always excluded from it. Should leaf workers later be defined as files, declaring themselves via the frontmatter field `leaf_of: manager-lead` or the body marker `<!-- manager-lead leaf-worker -->` makes the CI guard in `internal/template/manager_lead_depth_test.go` check that file's `tools:` for `Agent` and fail the build if it is present.
 
 {{< callout type="warning" >}}
 This seal is a **MoAI policy invariant, not a runtime invariant**. The Claude Code runtime itself permits deeper recursion — nested spawning is enabled by default as of v2.1.219, with a default depth ceiling of 3. Since the runtime will not stop it, the only two things actually holding the depth are the practice of omitting `Agent` from `tools:` and the CI guard above.
@@ -164,17 +164,17 @@ This seal is a **MoAI policy invariant, not a runtime invariant**. The Claude Co
 
 ```mermaid
 flowchart TD
-    ORCH["Orchestrator"] -->|"depth 1"| LEAD["manager-kanban<br>Agent in tools (only one)"]
+    ORCH["Orchestrator"] -->|"depth 1"| LEAD["manager-lead<br>Agent in tools (only one)"]
     LEAD -->|"depth 2"| W1["Leaf worker A<br>no Agent in tools"]
     LEAD -->|"depth 2"| W2["Leaf worker B<br>no Agent in tools"]
     W1 -.->|"blocked"| X["depth 3 recursion"]
     W2 -.->|"blocked"| X
-    GUARD["manager_kanban_depth_test.go<br>CI guard"] -.->|"caught by build failure"| X
+    GUARD["manager_lead_depth_test.go<br>CI guard"] -.->|"caught by build failure"| X
 ```
 
 ### Context Folding in Three Steps
 
-Once every AC row for milestone Mn is PASS and the cross-verification of those rows also comes back PASS, `manager-kanban` takes three steps before moving to the next milestone. The procedure **composes only existing tooling** — it introduces no new Go code, no new hooks, and no new CLI subcommands.
+Once every AC row for milestone Mn is PASS and the cross-verification of those rows also comes back PASS, `manager-lead` takes three steps before moving to the next milestone. The procedure **composes only existing tooling** — it introduces no new Go code, no new hooks, and no new CLI subcommands.
 
 1. **Persist evidence** — redirect each AC's verification command output to `.moai/state/verify/<session>/M<n>.<AC-id>.{log,out}`. `/tmp` is not used because the OS clears it. The cited evidence is valid only if that path actually opens at audit time. An AC whose evidence could not be captured is marked `GAP`, not `PASS`.
 2. **Append a fold row** — add one line to `progress.md` §E.2 in the existing row format: `M<n>: <AC-id-1>=PASS, ... | evidence: .moai/state/verify/<session>/M<n>.* | fold-at: <ISO-8601>`. The `M<n>:` prefix was chosen so it does not collide with the §E heading matcher in `internal/spec/era.go`, letting the two coexist without touching the matcher.
@@ -194,11 +194,11 @@ flowchart TD
 
 ### Peer Cross-Verification
 
-When a leaf worker marks an AC as PASS, `manager-kanban` spawns a second read-only `Agent(general-purpose)` that **did not do that work**. Read-only is enforced by omitting Write/Edit/NotebookEdit from its `tools:`. That worker re-runs the Given-When-Then commands from `acceptance.md` §D verbatim and returns one of `PASS` / `PARTIAL` / `FAIL`.
+When a leaf worker marks an AC as PASS, `manager-lead` spawns a second read-only `Agent(general-purpose)` that **did not do that work**. Read-only is enforced by omitting Write/Edit/NotebookEdit from its `tools:`. That worker re-runs the Given-When-Then commands from `acceptance.md` §D verbatim and returns one of `PASS` / `PARTIAL` / `FAIL`.
 
 The second worker has no stake in the author's claim. That is what exposes self-report failures such as miscounting a grep result, citing a stale baseline, or skipping one verification command.
 
-On `FAIL` or `PARTIAL`, `manager-kanban` does not advance to the next milestone. It returns a blocker report to the orchestrator carrying the AC ID, the evidence the author offered, the cross-verifying worker's evidence, and the point where the two diverged. Asking the user is the orchestrator's job — sub-agents do not use the user channel. Tier S skips cross-verification (the scope is small enough that verification costs more than it returns).
+On `FAIL` or `PARTIAL`, `manager-lead` does not advance to the next milestone. It returns a blocker report to the orchestrator carrying the AC ID, the evidence the author offered, the cross-verifying worker's evidence, and the point where the two diverged. Asking the user is the orchestrator's job — sub-agents do not use the user channel. Tier S skips cross-verification (the scope is small enough that verification costs more than it returns).
 
 The role differs from `sync-auditor` in the sync phase. `sync-auditor` is a final skeptical read that scores four dimensions after implementation is done; peer cross-verification is a binary verdict attached to each individual AC during implementation. Neither substitutes for the other.
 

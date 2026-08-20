@@ -1,0 +1,755 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>통합 보드 설계 — 모드 재명명과 단일 엔진</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    :root{
+      --ivory:#FAF9F5;--paper:#FFFFFF;--slate:#141413;
+      --clay:#D97757;--clay-d:#B85C3E;--oat:#E3DACC;--olive:#788C5D;
+      --g100:#F0EEE6;--g300:#D1CFC5;--g500:#87867F;--g700:#3D3D3A;
+      --sans:"Pretendard",system-ui,-apple-system,"Segoe UI",sans-serif;
+      --serif:"Noto Serif KR",ui-serif,Georgia,serif;
+      --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+      --max-width:1100px;--radius-row:8px;--border:1.5px solid var(--g300);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--ivory);color:var(--g700);font-family:var(--sans);
+         font-size:15px;line-height:1.6;padding:56px 32px 120px;-webkit-font-smoothing:antialiased}
+    .page{max-width:var(--max-width);margin:0 auto}
+
+    .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.08em;
+             text-transform:uppercase;color:var(--g500);margin-bottom:10px}
+    h1{font-family:var(--serif);font-weight:700;font-size:31px;color:var(--slate);
+       letter-spacing:-.01em;line-height:1.25;margin-bottom:18px}
+
+    .goal-box{border:var(--border);border-left:3px solid var(--clay);border-radius:10px;
+              background:var(--paper);padding:18px 20px;margin-bottom:26px;
+              font-size:14.5px;max-width:840px}
+    .goal-box b{color:var(--slate)}
+
+    .sec-head{font-family:var(--serif);font-weight:700;font-size:23px;color:var(--slate);
+              margin:48px 0 6px;padding-bottom:8px;border-bottom:2px solid var(--oat)}
+    .sec-intro{font-size:14.5px;margin:12px 0 18px;max-width:780px}
+    h3{font-family:var(--serif);font-weight:700;font-size:17px;color:var(--slate);margin:26px 0 8px}
+    h4{font-family:var(--serif);font-weight:700;font-size:15px;color:var(--slate);margin:18px 0 6px}
+    p{margin-bottom:12px;max-width:780px}
+    code{font-family:var(--mono);font-size:12.5px;background:var(--g100);padding:1px 5px;border-radius:4px}
+    td code,th code,pre code{background:none;padding:0}
+    ul,ol{margin:0 0 12px 20px;max-width:780px}
+    li{margin-bottom:6px}
+    .lead{border-left:2px solid var(--oat);padding-left:14px;margin-bottom:16px;max-width:780px;font-size:14.5px}
+
+    .summary-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:22px 0 8px}
+    @media(max-width:760px){.summary-strip{grid-template-columns:repeat(2,1fr)}}
+    .sum-cell{border:var(--border);border-radius:10px;background:var(--paper);padding:14px 16px}
+    .sum-cell .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;
+                 text-transform:uppercase;color:var(--g500);margin-bottom:6px}
+    .sum-cell .v{font-family:var(--serif);font-weight:700;font-size:24px;color:var(--slate);line-height:1.15}
+    .sum-cell .v.accent{color:var(--clay)}
+    .sum-cell .v.good{color:var(--olive)}
+    .sum-cell .n{font-size:12px;color:var(--g500);margin-top:4px}
+
+    table{border-collapse:collapse;width:100%;margin:14px 0 20px;font-size:13.5px;
+          background:var(--paper);border:var(--border);border-radius:var(--radius-row);overflow:hidden}
+    th{background:var(--g100);color:var(--slate);text-align:left;font-weight:700;
+       padding:9px 12px;border-bottom:1px solid var(--g300);font-size:12.5px}
+    td{padding:9px 12px;border-bottom:1px solid var(--g300);vertical-align:top}
+    tr:last-child td{border-bottom:none}
+    .ok{color:var(--olive);font-weight:700}
+    .part{color:var(--clay);font-weight:700}
+    .no{color:var(--clay-d);font-weight:700}
+    .dim{color:var(--g500)}
+
+    .milestones{display:flex;flex-direction:column;margin-top:18px}
+    .milestone{display:grid;grid-template-columns:78px 28px 1fr;gap:0 18px}
+    .milestone .when{text-align:right;font-family:var(--mono);font-size:12px;color:var(--g500);padding-top:4px}
+    .milestone .dot-col{display:flex;flex-direction:column;align-items:center}
+    .milestone .dot{width:14px;height:14px;border-radius:50%;background:var(--paper);
+                    border:3px solid var(--clay);margin-top:5px;flex-shrink:0}
+    .milestone .dot.done{background:var(--olive);border-color:var(--olive)}
+    .milestone .line{width:2px;flex:1;background:var(--g300);margin:4px 0}
+    .milestone:last-child .line{display:none}
+    .milestone .body{padding-bottom:28px}
+    .milestone .body h3{font-size:17px;margin:0 0 4px}
+    .milestone .body p{font-size:13.8px;margin-bottom:8px}
+    .tag-row{display:flex;gap:7px;flex-wrap:wrap}
+    .tag{font-family:var(--mono);font-size:11px;background:var(--oat);color:var(--slate);
+         padding:2px 8px;border-radius:5px}
+
+    .risks{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:16px}
+    @media(max-width:760px){.risks{grid-template-columns:1fr}}
+    .risk{border:var(--border);border-radius:10px;background:var(--paper);padding:14px 16px}
+    .risk h4{font-size:15px;margin:0 0 6px;display:flex;align-items:center;gap:8px}
+    .sev{font-family:var(--mono);font-size:10px;letter-spacing:.05em;padding:2px 7px;
+         border-radius:4px;text-transform:uppercase}
+    .sev.high{background:var(--clay);color:#fff}
+    .sev.mid{background:var(--oat);color:var(--slate)}
+    .sev.low{background:var(--g100);color:var(--g500)}
+    .risk p{font-size:13.4px;margin-bottom:6px}
+    .risk .mit{font-size:13px;color:var(--g500)}
+    .risk .mit b{color:var(--olive)}
+
+    .metric-row{display:grid;grid-template-columns:14px 1fr 200px;gap:12px;align-items:baseline;
+                padding:11px 4px;border-bottom:1px solid var(--g300)}
+    .metric-indicator{width:10px;height:10px;border-radius:50%;background:var(--g300)}
+    .metric-label{font-size:14px;color:var(--slate)}
+    .metric-target{font-family:var(--mono);font-size:12.5px;color:var(--g500);text-align:right}
+
+    .callout{display:flex;gap:12px;border:var(--border);border-color:var(--oat);
+             background:rgba(227,218,204,.35);border-radius:10px;padding:14px 16px;
+             margin:18px 0;font-size:14px;max-width:840px}
+    .callout .ico{color:var(--clay);font-weight:600;flex-shrink:0}
+    .callout p:last-child{margin-bottom:0}
+
+    pre.mermaid{background:var(--paper);border:var(--border);border-radius:10px;padding:18px;
+                margin:18px 0;font-family:var(--mono);font-size:12px;color:var(--g500);
+                overflow-x:auto;text-align:center}
+    pre.code{background:var(--paper);border:var(--border);border-radius:10px;padding:15px 17px;
+             margin:14px 0;font-family:var(--mono);font-size:12.5px;line-height:1.6;
+             color:var(--slate);overflow-x:auto}
+    pre.code .cm{color:var(--g500)}
+    pre.code .hl{color:var(--clay)}
+
+    details.fold{border:var(--border);border-radius:10px;background:var(--paper);margin:12px 0;overflow:hidden}
+    details.fold>summary{list-style:none;cursor:pointer;padding:13px 16px;font-family:var(--serif);
+                         font-size:15.5px;color:var(--slate);display:flex;align-items:baseline;gap:10px}
+    details.fold>summary::-webkit-details-marker{display:none}
+    details.fold>summary::before{content:"▸";color:var(--clay);font-family:var(--sans);font-size:12px}
+    details.fold[open]>summary::before{content:"▾"}
+    details.fold .fold-body{padding:0 16px 16px}
+    details.fold .fold-body p{font-size:13.8px}
+
+    footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--g300);
+           font-family:var(--mono);font-size:11.5px;color:var(--g500);line-height:1.9}
+    footer a{color:var(--g500)}
+
+    @media print{
+      body{background:#fff;color:#000;padding:0;font-size:11pt}
+      .page{max-width:none}
+      .risk,.milestone,details.fold{page-break-inside:avoid}
+      details[open]{display:block}
+      h1,h3,.sec-head{page-break-after:avoid}
+      *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <div class="eyebrow">MoAI-ADK · 통합 설계 · 2026-08-17</div>
+  <h1>통합 보드 설계<br>— 모드 재명명과 단일 실행 엔진</h1>
+
+  <div class="goal-box">
+    <b>이 문서가 정하는 것</b> — 세 가지입니다.
+    <br><br>
+    <b>① 모드 이름</b>: 숫자(Mode 1~6)를 버리고 <b>동시성 축 하나</b>로 정렬된 4개 이름을 씁니다.
+    현행 이름은 축이 뒤섞여 있어 <code>parallel</code>(4)과 <code>sub-agent</code>(5)가 서로를 구별하지 못합니다 — 둘 다 서브에이전트를 씁니다.
+    <br><br>
+    <b>② 보드 통합</b>: 팩토리와 칸반을 <b>하나의 엔진</b>으로 합칩니다. 모드를 사람이 고르는 게 아니라
+    <b>카드 클래스가 경로를 고릅니다.</b> <code>Agent()</code>가 실행 엔진이 되면 두 모드의 세션 구조가 같아져
+    <b>명령이 둘일 이유가 사라집니다.</b>
+    <br><br>
+    <b>③ 계층과 과금</b>: <b>공장장</b>(Claude)이 판정하고 <b>반장·작업자</b>(GLM)가 실행합니다.
+    Claude 주간 리밋을 태우지 않으면서 처리량을 얻는 유일한 배치입니다.
+    <br><br>
+    <b>승계 관계</b> — 이 문서는 새 설계가 아니라
+    <code>pipeline-fanout-redesign-20260816</code>의 D1~D3을 <b>그대로 물려받고</b>,
+    거기에 실행 엔진(<code>Agent()</code>) · 백엔드 배정 · 모드 명명을 얹은 것입니다.
+  </div>
+
+  <div class="summary-strip">
+    <div class="sum-cell">
+      <div class="k">모드 개수</div>
+      <div class="v">6 → <span class="good">4</span></div>
+      <div class="n">숫자 폐지 · 축 통일</div>
+    </div>
+    <div class="sum-cell">
+      <div class="k">실행 명령</div>
+      <div class="v">2 → <span class="good">1</span></div>
+      <div class="n"><code>-f</code> 폐지, <code>-k</code>로 통합</div>
+    </div>
+    <div class="sum-cell">
+      <div class="k">카드당 리드 접점</div>
+      <div class="v accent">12 → 6/2</div>
+      <div class="n">계산값 · 측정 아님</div>
+    </div>
+    <div class="sum-cell">
+      <div class="k">Claude 소모</div>
+      <div class="v good">판정만</div>
+      <div class="n">실행은 전부 z.ai</div>
+    </div>
+  </div>
+
+  <div class="sec-head">1. 왜 이름을 바꾸는가</div>
+
+  <p class="lead">
+    이름은 장식이 아닙니다. 고를 때 <b>무엇을 고르는 건지 알려주는 장치</b>예요.
+    지금 이름은 그 일을 못 합니다.
+  </p>
+
+  <h3>1.1 현행 6개 — 축이 뒤섞여 있습니다</h3>
+
+  <table>
+    <thead><tr><th style="width:44px">#</th><th style="width:130px">이름</th><th style="width:150px">이름이 가리키는 축</th><th>문제</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td><code>trivial</code></td><td>작업 크기</td><td class="ok">문제 없음</td></tr>
+      <tr><td>2</td><td><code>background</code></td><td>실행 위치</td><td class="no">런타임 기본값에 흡수됨 (v2.1.198부터 서브에이전트는 기본 백그라운드) — 고를 게 없음</td></tr>
+      <tr><td>3</td><td><code>agent-team</code></td><td>조직 형태</td><td class="no">RETIRED인데 숫자를 점유 — 4·5·6이 밀려 있음</td></tr>
+      <tr><td>4</td><td><code>parallel</code></td><td>동시성</td><td class="part">5와 같은 축의 다른 값인데 이름이 다른 축을 가리킴</td></tr>
+      <tr><td>5</td><td><code>sub-agent</code></td><td>실행 주체</td><td class="no"><b>4도 서브에이전트를 씁니다</b> — 이름이 4와 5를 구별하지 못함</td></tr>
+      <tr><td>6</td><td><code>workflow</code></td><td>도구 이름</td><td class="part">무엇이 다른지가 이름에 없음</td></tr>
+    </tbody>
+  </table>
+
+  <p><b>가장 큰 문제는 4와 5입니다.</b> 실제 차이는 <b>동시에 몇 개를 스폰하는가</b>(여럿 vs 하나)인데,
+  이름은 <code>parallel</code>(동시성)과 <code>sub-agent</code>(주체)로 서로 다른 축을 가리켜요.
+  <b>이름만 보고는 뭐가 다른지 알 수 없습니다.</b></p>
+
+  <p>그리고 <b>숫자가 아무 의미를 안 나릅니다.</b> "Mode 4"는 순서도 크기도 알려주지 않아요.
+  3번이 은퇴한 채 숫자를 붙들고 있어서 순서마저 어긋나 있습니다.</p>
+
+  <h3>1.2 새 이름 — 축 하나로 정렬</h3>
+
+  <p>기준을 <b>"한 번에 몇 갈래로 일이 나뉘는가"</b> 하나로 통일합니다. 그러면 이름이 저절로 순서를 갖습니다.</p>
+
+  <table>
+    <thead><tr><th style="width:120px">새 이름</th><th style="width:130px">갈래</th><th>언제</th><th style="width:130px">현행</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><b><code>direct</code></b><br><span class="dim">직접</span></td>
+        <td>0 (스폰 없음)</td>
+        <td>오타·한 줄 포맷 등 의미 변화 없는 수정</td>
+        <td class="dim">Mode 1 trivial</td>
+      </tr>
+      <tr>
+        <td><b><code>serial</code></b><br><span class="dim">한 갈래씩</span></td>
+        <td>1 (순차)</td>
+        <td>코딩 중심 작업 — 단계가 앞 단계 결과에 의존</td>
+        <td class="dim">Mode 5 sub-agent</td>
+      </tr>
+      <tr>
+        <td><b><code>fanout</code></b><br><span class="dim">갈래치기</span></td>
+        <td>N (동시, 3~5)</td>
+        <td>서로 독립인 항목 여럿 — 조사·감사·독립 카드</td>
+        <td class="dim">Mode 4 parallel</td>
+      </tr>
+      <tr>
+        <td><b><code>sweep</code></b><br><span class="dim">일괄</span></td>
+        <td>수십~수백 (스크립트가 조율)</td>
+        <td>단일 규칙의 기계적 변환 — 호출부 일괄 개명 등</td>
+        <td class="dim">Mode 6 workflow</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p><code>serial</code>은 <code>parallel</code>의 반대말이라 <code>fanout</code>과 자연스럽게 대비됩니다.
+  네 이름이 <b>갈래 수 오름차순</b>으로 정렬되니 순서를 따로 외울 필요가 없어요.</p>
+
+  <div class="callout">
+    <span class="ico">★</span>
+    <div>
+      <p><b>사라지는 둘</b></p>
+      <p><b><code>background</code></b>는 모드에서 <b>옵션으로 강등</b>합니다.
+      Claude Code v2.1.198부터 서브에이전트는 <b>기본이 백그라운드</b>이고 런타임이 알아서 정해요.
+      고를 수 없는 것을 모드 목록에 두면 고를 수 있다고 착각하게 됩니다.</p>
+      <p><b><code>agent-team</code></b>은 이미 RETIRED입니다. 숫자를 회수하고 <b>각주로만</b> 남깁니다 —
+      <code>--team</code> 플래그가 오면 여전히 거절하고 <code>serial</code>로 떨어뜨립니다(동작 불변).</p>
+    </div>
+  </div>
+
+  <details class="fold">
+    <summary>이행 매핑 — 기존 문서를 어떻게 고치나</summary>
+    <div class="fold-body">
+      <table>
+        <thead><tr><th style="width:190px">기존 표기</th><th style="width:130px">새 표기</th><th>처리</th></tr></thead>
+        <tbody>
+          <tr><td><code>Mode 1</code> / <code>trivial</code></td><td><code>direct</code></td><td>개명</td></tr>
+          <tr><td><code>Mode 2</code> / <code>background</code></td><td>—</td><td class="part">모드에서 제거, <code>run_in_background</code> 옵션 설명으로 이전</td></tr>
+          <tr><td><code>Mode 3</code> / <code>agent-team</code></td><td>—</td><td class="no">tombstone 각주로 축소, 숫자 회수</td></tr>
+          <tr><td><code>Mode 4</code> / <code>parallel</code></td><td><code>fanout</code></td><td>개명</td></tr>
+          <tr><td><code>Mode 5</code> / <code>sub-agent</code></td><td><code>serial</code></td><td>개명</td></tr>
+          <tr><td><code>Mode 6</code> / <code>workflow</code></td><td><code>sweep</code></td><td>개명</td></tr>
+        </tbody>
+      </table>
+      <p><b>핸드오프 열거형도 같이 바뀝니다.</b> 현행
+      <code>solo-sequential | parallel-subagents | agent-team | dynamic-workflow</code> 네 값 중
+      <code>agent-team</code>은 죽었고 나머지 셋은 새 이름과 1:1로 대응하므로
+      <code>serial | fanout | sweep</code>으로 정리됩니다.</p>
+      <p><b>영향 범위</b>: <code>orchestration-mode-selection.md</code>(정본) ·
+      <code>session-handoff.md</code>(열거형) · <code>moai-constitution.md</code> ·
+      <code>agent-common-protocol.md</code> · CLAUDE.md §14. 문자열 치환이라 위험은 낮지만
+      <b>숫자 참조가 남으면 두 체계가 공존</b>하므로 한 번에 끝내야 합니다.</p>
+    </div>
+  </details>
+
+  <div class="sec-head">2. 보드 통합 — 카드가 경로를 고른다</div>
+
+  <p class="lead">
+    지금은 팩토리와 칸반이 <b>다른 명령</b>입니다. 그런데 그 차이의 근거가 곧 사라져요.
+  </p>
+
+  <h3>2.1 모드를 갈랐던 것은 세션 구조였습니다</h3>
+
+  <table>
+    <thead><tr><th style="width:110px"></th><th>기존</th><th>Agent 실행 엔진 이후</th></tr></thead>
+    <tbody>
+      <tr><td><b>팩토리</b></td><td>터미널 N개 (워커마다 하나)</td><td class="ok">반장 1세션 + Agent N</td></tr>
+      <tr><td><b>칸반</b></td><td>터미널 4개 (컬럼=세션)</td><td class="ok">반장 1세션 + Agent</td></tr>
+      <tr><td colspan="3" style="background:var(--g100)"><b>세션 구조가 같아집니다.</b> 모드를 가르던 건 "터미널을 몇 개 어떻게 띄우나"였는데, 그게 없어지면 명령이 둘일 이유가 없습니다.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>2.2 남는 차이는 경로 길이 하나뿐</h3>
+
+  <p>카드 클래스가 이미 경로를 규정하고 있습니다. 새로 만들 게 아니라 <b>이름을 붙여주면 됩니다.</b></p>
+
+  <table>
+    <thead><tr><th style="width:70px">클래스</th><th style="width:160px">성격</th><th style="width:190px">경로</th><th>모드</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><b>A</b></td>
+        <td>한 파일 한 줄, 설계 판단 없음, CI가 회귀를 잡음</td>
+        <td><code>run</code> → PR<br><span class="dim">1스테이지</span></td>
+        <td><code>fanout</code> — 카드 N장이 수평으로 동시에</td>
+      </tr>
+      <tr>
+        <td><b>B</b></td>
+        <td>결함인데 원인 미상</td>
+        <td><code>run → sync</code><br><span class="dim">2스테이지</span></td>
+        <td><code>fanout</code></td>
+      </tr>
+      <tr>
+        <td><b>C</b></td>
+        <td>설계 결정 포함, 여러 서브시스템</td>
+        <td><code>plan → run → sync</code><br><span class="dim">3스테이지</span></td>
+        <td><code>serial</code> — 1장이 수직으로 이동</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <span class="ico">★</span>
+    <div>
+      <p><b>모드 이름이 경로 이름과 같아집니다.</b> A/B급은 <code>fanout</code>으로,
+      C급은 <code>serial</code>로 돕니다. 그러면 "팩토리"와 "칸반"이라는 <b>모드 이름 자체가 불필요</b>해져요 —
+      하나의 보드에 두 경로가 있고, 경로 이름은 오케스트레이션 모드 이름 그대로입니다.</p>
+    </div>
+  </div>
+
+  <h3>2.3 그래도 팩토리 경로는 없앨 수 없습니다</h3>
+
+  <p>"칸반에 <code>Agent()</code>를 넣으면 팩토리가 불필요하지 않나"는 절반만 맞습니다.
+  카드당 리드 접점을 세어 보면 이유가 보여요.</p>
+
+  <table>
+    <thead><tr><th style="width:200px">형태</th><th>디스패치</th><th>증거 읽기</th><th><code>/clear</code></th><th>합</th></tr></thead>
+    <tbody>
+      <tr><td>현행 4컬럼 (세션)</td><td>4</td><td>4</td><td>4</td><td><b>12</b></td></tr>
+      <tr><td>3단계 (세션)</td><td>3</td><td>3</td><td>3</td><td><b>9</b></td></tr>
+      <tr><td><b>3단계 (Agent)</b></td><td>3</td><td>3</td><td class="ok">0</td><td><b>6</b></td></tr>
+      <tr><td><b>fanout (Agent)</b></td><td>1</td><td>1</td><td class="ok">0</td><td class="ok"><b>2</b></td></tr>
+    </tbody>
+  </table>
+
+  <p><code>Agent()</code>가 지우는 건 <b><code>/clear</code> 왕복</b>입니다 — Agent는 카드 단위 수명이라
+  세션 위생이 필요 없으니까요. 하지만 <b>디스패치와 증거 읽기는 남습니다.</b>
+  단계 경계가 있는 한 사라지지 않아요.</p>
+
+  <p>선행 문서가 그 이유를 정확히 적어놨습니다 &mdash;
+  <b>"팬아웃이 빠른 이유는 병렬이어서가 아니라 단계 경계가 없어서다."</b></p>
+
+  <p>그래서 <b>6 대 2, 3배 차이가 남습니다.</b> A급 카드를 3단계에 태우면 의례 비용을 세 배 물어요.
+  <b>통합은 표면에서 하고, 경로는 갈라 둡니다.</b></p>
+
+  <div class="sec-head">3. 계층과 과금</div>
+
+  <pre class="mermaid">
+flowchart TD
+  U["오라버니"] <--> C["공장장 chief · Claude<br/>큐 · 클래스 판정 · 최종 판정"]
+  C -->|"카드 적재"| Q[("todo 큐<br/>디스크 SSOT")]
+  C -.->|"초인종 (비신뢰)"| L
+
+  Q --> L["반장 lead · GLM<br/>경로 실행 · 레인 감시"]
+
+  L -->|"A/B급 · fanout"| W1["작업자 ×N<br/>카드 통째"]
+  L -->|"C급 · serial"| W2["plan → run → sync<br/>1장 순차"]
+
+  W1 --> E[("증거<br/>branch·SHA·RED/GREEN")]
+  W2 --> E
+  E --> C
+  C -->|"PASS"| D["done"]
+  C -->|"FAIL (상한 2)"| Q
+
+  style C fill:#E3DACC,stroke:#D97757
+  style E fill:#F0EEE6,stroke:#788C5D
+  </pre>
+
+  <noscript>
+    <p><b>구조 요약</b>: 오라버니 ↔ 공장장(Claude, 큐·클래스 판정·최종 판정) → todo 큐(디스크 SSOT)
+    → 반장(GLM, 경로 실행) → A/B급은 fanout으로 작업자 N명이 카드를 통째로,
+    C급은 serial로 plan→run→sync 순차. 작업자 산출물은 증거(branch·SHA·RED/GREEN)로 디스크에 남고,
+    공장장이 그것을 읽어 PASS면 done, FAIL이면 큐로 반환(재작업 상한 2회).
+    공장장→반장 메시지는 초인종일 뿐 위임 채널이 아님.</p>
+  </noscript>
+
+  <table>
+    <thead><tr><th style="width:120px">역할</th><th style="width:110px">백엔드</th><th>하는 일</th><th style="width:100px">공장 대응</th></tr></thead>
+    <tbody>
+      <tr><td><b>공장장</b> <code>chief</code></td><td class="accent">Claude</td>
+          <td>오라버니와 대화 · 큐의 유일한 생산자 · <b>클래스 판정</b> · 최종 PASS/FAIL</td><td>Plant Manager</td></tr>
+      <tr><td><b>반장</b> <code>lead</code></td><td>GLM</td>
+          <td>큐 폴링 · 경로 실행 · 작업자 스폰 · 레인 감시</td><td>Foreman</td></tr>
+      <tr><td><b>작업자</b> <code>worker</code></td><td>GLM</td>
+          <td><code>Agent()</code>로 실제 작업. worktree 격리</td><td>Operator</td></tr>
+    </tbody>
+  </table>
+
+  <p><b>칸반(かんばん)은 원래 토요타 생산 시스템의 작업 지시 카드입니다.</b>
+  공장 은유는 팩토리에만 맞는 게 아니라 칸반에도 정통이에요 — 그래서 세 이름이 한 은유로 묶입니다.</p>
+
+  <h3>과금 배치가 이 설계의 존재 이유입니다</h3>
+
+  <p>Claude 리밋은 <b>롤링 5시간 + 고정 주간 캡</b>이고 프롬프트·툴콜·thinking이 같은 통에서 빠집니다.
+  <code>Agent()</code>는 <b>부모 세션의 백엔드를 상속</b>하므로, 반장을 GLM 세션에 올리면
+  <b>작업자 팬아웃 전체가 z.ai 토큰</b>으로 나갑니다.</p>
+
+  <table>
+    <thead><tr><th style="width:230px">배치</th><th>처리량</th><th>Claude 소모</th></tr></thead>
+    <tbody>
+      <tr><td>터미널 레인 4개 (현행)</td><td>4</td><td class="part">레인당 1</td></tr>
+      <tr><td>Claude 반장 + Agent×8</td><td>8</td><td class="no"><b>9배</b> (반장 + 워커 8)</td></tr>
+      <tr><td><b>GLM 반장 + Agent×N</b></td><td>N</td><td class="ok"><b>0</b></td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <span class="ico">★</span>
+    <div>
+      <p><b>제약 하나</b>: GLM 반장은 <b>Claude 작업자를 만들 수 없습니다.</b>
+      <code>model: "opus"</code>를 지정해도 그 이름은 <code>ANTHROPIC_DEFAULT_OPUS_MODEL</code>이 가리키는
+      GLM 모델로 매핑돼요. 그래서 <b>최종 판정은 반드시 공장장(또는 별도 Claude 세션)이</b> 합니다 —
+      반장이 스폰할 수 없습니다.</p>
+    </div>
+  </div>
+
+  <div class="sec-head">4. 승계하는 규약</div>
+
+  <p class="sec-intro">
+    아래 셋은 <code>pipeline-fanout-redesign-20260816</code>에서 이미 결정된 것입니다.
+    바꾸지 않고 그대로 물려받아요.
+  </p>
+
+  <table>
+    <thead><tr><th style="width:70px">결정</th><th style="width:200px">내용</th><th>이 설계에서의 위치</th></tr></thead>
+    <tbody>
+      <tr><td><b>D1</b></td><td>파이프라인 3단계<br><code>plan → run → sync</code></td>
+          <td><code>review</code> 컬럼 폐지. <code>/moai review</code>가 sync 게이트와 <b>같은 심판(<code>sync-auditor</code>)을 직접 호출</b>하므로 중복. 렌즈(<code>--security</code> 등)는 sync 디스패치 파라미터로 이전 — 여기가 유일한 기능 손실 지점</td></tr>
+      <tr><td><b>D2</b></td><td>리드는 기억하지 않고<br>디스크에서 읽는다</td>
+          <td>보드 상태를 <code>backlog.json</code> + SPEC frontmatter + <code>progress.md</code>에서 파생. <code>/clear</code> 후 복귀는 <b>명령 1줄</b></td></tr>
+      <tr><td><b>D3</b></td><td>세션 이름은 역할에 고정</td>
+          <td><code>chief</code> / <code>lead</code> / <code>worker-N</code>. 카드 정보를 이름에 넣지 않음. 충돌 시 <code>-1</code>은 <b>런치 전 선배정</b>(런타임에 맡기면 두 단어 접미사가 자동 부여됨)</td></tr>
+    </tbody>
+  </table>
+
+  <h3>통신 규약 — 메시지는 초인종, 디스크가 진실</h3>
+
+  <p>세션 간 메시지는 <b>배달이 보장되지 않고</b>, 배달되면 <b>수신 측 할당량을 프롬프트처럼 소모</b>하며,
+  <b>승인을 대신할 수 없습니다.</b> 그래서:</p>
+
+  <ol>
+    <li><b>위임은 큐로.</b> 메시지는 "가서 읽어라" 알림일 뿐입니다</li>
+    <li><b>완료 판정은 디스크에서.</b> 보고를 믿지 않고 증거를 읽습니다</li>
+    <li><b>회신이 안 와도 진행이 막히지 않아야</b> 합니다 — 반장은 폴링으로 큐를 집습니다</li>
+    <li><b>디스패치는 포인터만.</b> 카드 id · SPEC id · 실행 명령 · worktree 경로 · 증거 위치. <b>설명 산문 금지</b></li>
+  </ol>
+
+  <div class="sec-head">5. 실행 규율 3가지</div>
+
+  <table>
+    <thead><tr><th style="width:170px">규율</th><th>내용</th><th style="width:190px">근거</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><b>시차 스폰</b></td>
+        <td>작업자를 동시에 띄우지 않습니다. 첫 워커가 출력을 시작한 뒤 나머지를 스폰해요.
+            동시 스폰은 서로의 캐시를 못 읽어 <b>전부 쓰기 요금</b>을 냅니다</td>
+        <td>N=8 동시 312K vs 시차 66K 토큰 <span class="dim">(프리픽스 39K/에이전트 추정)</span></td>
+      </tr>
+      <tr>
+        <td><b>증거는 포인터로</b></td>
+        <td>작업자 보고는 <code>branch + SHA + RED/GREEN + 증거 경로</code>로 제한.
+            <b>서술 금지.</b> 공장장은 의심될 때만 경로를 엽니다</td>
+        <td>리드 컨텍스트 압박의 가장 싼 처방</td>
+      </tr>
+      <tr>
+        <td><b>재작업 상한 2회</b></td>
+        <td>FAIL이 2회 반복되면 같은 워커에 다시 맡기지 않고 <b>공장장으로 에스컬레이션</b>합니다</td>
+        <td>무한 왕복 방지 · 3회 동일 실패는 별도 진단 신호</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="sec-head">6. 명령 표면</div>
+
+  <pre class="code"><span class="cm"># 공장장 — 대화 · 큐 · 판정 (Claude)</span>
+moai cc <span class="hl">--chief</span>
+
+<span class="cm"># 반장 — 경로 실행 (GLM). 동시 카드 수는 N</span>
+moai glm <span class="hl">-k N</span>
+
+<span class="cm"># -f 는 폐지. 경로는 카드 클래스가 정하므로 모드 플래그가 필요 없다.</span></pre>
+
+  <p>기존 <code>-k</code>는 4역할 companion을 손으로 띄우는 형태였습니다.
+  새 <code>-k N</code>은 <b>반장 1세션 + 동시 카드 N장</b>이고, companion 세션은 필요 없어요 —
+  단계는 <code>Agent()</code> 스테이지가 됩니다.</p>
+
+  <div class="sec-head">7. 마일스톤</div>
+
+  <p class="sec-intro">
+    <b>선행 문서의 M1~M5를 그대로 잇고</b> 그 위에 실행 엔진과 명명을 얹습니다.
+    기존 카드가 있는 항목은 그 카드를 씁니다 — 새 카드를 만들지 않아요.
+  </p>
+
+  <div class="milestones">
+
+    <div class="milestone">
+      <div class="when">S0</div>
+      <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+      <div class="body">
+        <h3>접점 실측 &mdash; 계산을 측정으로 바꾸기</h3>
+        <p>12 / 9 / 6 / 2 는 전부 <b>구조적 계산이고 측정값이 아닙니다.</b>
+        카드 한 장을 현행 방식으로 돌리며 리드 접점과 토큰을 실제로 셉니다.
+        통합 판단의 근거가 이 숫자이므로 <b>여기서 어긋나면 아래가 전부 흔들립니다.</b></p>
+        <div class="tag-row"><span class="tag">선결</span><span class="tag">코드 변경 0</span></div>
+      </div>
+    </div>
+
+    <div class="milestone">
+      <div class="when">S1</div>
+      <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+      <div class="body">
+        <h3>모드 재명명 &mdash; 6개를 4개로</h3>
+        <p><code>direct / serial / fanout / sweep</code>. 숫자 폐지,
+        <code>background</code>는 옵션으로 강등, <code>agent-team</code>은 각주로.
+        핸드오프 열거형도 같이 정리합니다. 문자열 치환이라 위험은 낮지만
+        <b>숫자 참조가 남으면 두 체계가 공존</b>하므로 한 번에 끝냅니다.</p>
+        <div class="tag-row"><span class="tag">신규</span><span class="tag">Tier S~M</span><span class="tag">일괄 치환</span></div>
+      </div>
+    </div>
+
+    <div class="milestone">
+      <div class="when">S2</div>
+      <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+      <div class="body">
+        <h3>review 컬럼 폐지 &mdash; 3단계 (D1)</h3>
+        <p><code>plan → run → sync</code>. 렌즈를 sync 디스패치 파라미터로 이전합니다.
+        <b>선행 문서 M1</b>이고 카드가 없어 신규 발행이 필요해요.
+        착수 전 확인할 것 하나 &mdash; <code>/moai review</code>의 렌즈가
+        <b>sync 게이트에서 실제로 동작하는지</b>는 미확인 상태입니다.</p>
+        <div class="tag-row"><span class="tag">선행문서 M1</span><span class="tag">카드 신규</span><span class="tag">Tier S</span></div>
+      </div>
+    </div>
+
+    <div class="milestone">
+      <div class="when">S3</div>
+      <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+      <div class="body">
+        <h3>세션 이름 역할 고정 (D3)</h3>
+        <p><code>chief</code> / <code>lead</code> / <code>worker-N</code>, 충돌 시 <code>-1</code> 선배정.
+        <b>기존 카드 t56</b>이 이미 이 내용이고, 여기에 D3 제약(런타임에 맡기면 무작위 두 단어 접미사)을
+        추가하면 됩니다. t21(run-id 불일치)이 이 카드로 소멸할 가능성이 있어요.</p>
+        <div class="tag-row"><span class="tag">t56</span><span class="tag">t21 흡수 가능</span><span class="tag">Tier S~M</span></div>
+      </div>
+    </div>
+
+    <div class="milestone">
+      <div class="when">S4</div>
+      <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+      <div class="body">
+        <h3>보드 상태 디스크 파생 (D2)</h3>
+        <p>핸드오프 붙여넣기를 <b>명령 1줄</b>로 대체합니다. <b>기존 카드 t55</b>.
+        S3(이름 안정)과 S2(3단계)가 선행이어야 복귀 지점이 단순해집니다 &mdash;
+        선행 문서가 명시한 순서 제약 그대로예요.</p>
+        <div class="tag-row"><span class="tag">t55</span><span class="tag">S2·S3 선행</span><span class="tag">Tier M</span></div>
+      </div>
+    </div>
+
+    <div class="milestone">
+      <div class="when">S5</div>
+      <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+      <div class="body">
+        <h3>통합 실행 엔진 &mdash; <code>-k N</code>에 <code>-f</code> 흡수</h3>
+        <p>반장 1세션이 큐를 폴링하고 <b>카드 클래스에 따라 경로를 갈라</b> Agent를 스폰합니다.
+        시차 스폰 규율을 지시문에 박습니다. <b>기존 카드 t85</b>가 팩토리 루프이므로
+        여기에 클래스 분기와 <code>-f</code> 폐지를 흡수시키면 됩니다.</p>
+        <div class="tag-row"><span class="tag">t85 확장</span><span class="tag">GLM 백엔드</span><span class="tag">Tier M</span></div>
+      </div>
+    </div>
+
+    <div class="milestone">
+      <div class="when">S6</div>
+      <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+      <div class="body">
+        <h3>공장장 세션 &mdash; <code>moai cc --chief</code></h3>
+        <p>큐의 유일한 생산자이자 최종 판정자. <b>기존 카드 t84</b>(Desk 세션)를
+        명칭만 공장장으로 바꿔 재사용합니다. 백로그 승격은 여전히 오라버니 몫이고요
+        &mdash; 공장장은 대화까지만 합니다.</p>
+        <div class="tag-row"><span class="tag">t84 개명</span><span class="tag">Claude</span><span class="tag">Tier M</span></div>
+      </div>
+    </div>
+
+    <div class="milestone">
+      <div class="when">S7</div>
+      <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+      <div class="body">
+        <h3>메시지 포맷 강제 + 용어집</h3>
+        <p>디스패치를 포인터로 제한하고 길이 상한을 겁니다(<b>t58</b>).
+        그리고 <code>lane</code> · <code>card</code> · <code>column</code> · <code>chief</code> ·
+        <code>lead</code> · <code>worker</code> · 네 모드 이름을 용어집으로 정의합니다(<b>t59</b>) &mdash;
+        지금은 어디에도 정의가 없어요.</p>
+        <div class="tag-row"><span class="tag">t58</span><span class="tag">t59</span><span class="tag">docs-site 4로케일</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="sec-head">8. 리스크</div>
+
+  <div class="risks">
+    <div class="risk">
+      <h4>접점 수가 측정값이 아님 <span class="sev high">높음</span></h4>
+      <p>12 / 9 / 6 / 2 는 디스패치 주기 정의에서 나온 <b>구조적 계산</b>입니다.
+      통합의 근거가 이 숫자인데 재본 적이 없어요.</p>
+      <p class="mit"><b>완화</b> &mdash; S0을 선결로. 실측이 계산과 크게 어긋나면
+      통합 판단 자체를 재검토합니다.</p>
+    </div>
+
+    <div class="risk">
+      <h4>클래스 오판 <span class="sev high">높음</span></h4>
+      <p>통합 후 <b>유일한 분기점</b>이 공장장의 클래스 판정입니다.
+      C급을 fanout에 태우면 설계 판단이 검토 없이 나가고, A급을 serial에 태우면 3배 낭비예요.</p>
+      <p class="mit"><b>완화</b> &mdash; 애매하면 <b>serial로</b>. 낭비는 회복되지만
+      검토 없이 나간 설계 변경은 회복이 어렵습니다.</p>
+    </div>
+
+    <div class="risk">
+      <h4>렌즈 유실 <span class="sev mid">중간</span></h4>
+      <p>review 흡수 시 <code>--security</code> / <code>--deep</code> 등 렌즈 선택이 사라질 수 있습니다.
+      게다가 <b>sync 게이트에서 렌즈가 실제로 동작하는지 미확인</b>이에요.</p>
+      <p class="mit"><b>완화</b> &mdash; S2 범위 안에서 sync 디스패치 파라미터로 이전하고,
+      착수 전에 동작을 먼저 확인합니다.</p>
+    </div>
+
+    <div class="risk">
+      <h4>두 명명 체계 공존 <span class="sev mid">중간</span></h4>
+      <p>숫자 참조가 한 군데라도 남으면 "Mode 4"와 <code>fanout</code>이 같이 돌아다닙니다.
+      새 이름의 목적이 정확히 그 혼란 제거인데 역효과가 나요.</p>
+      <p class="mit"><b>완화</b> &mdash; S1을 <b>일괄 치환 한 번</b>으로. 잔여 숫자 참조 0건을
+      grep 가드로 확인합니다.</p>
+    </div>
+
+    <div class="risk">
+      <h4>GLM 품질 미달 재작업 <span class="sev mid">중간</span></h4>
+      <p>저가 백엔드가 카드를 망치면 재작업 비용이 절감분을 삼킵니다.
+      최악은 Claude로 다시 하는 것 &mdash; 두 번 냅니다.</p>
+      <p class="mit"><b>완화</b> &mdash; 클래스 라우팅을 엄격히. C급 plan은 공장장이 직접.
+      재작업률을 계측해 임계 초과 시 라우팅 조정.</p>
+    </div>
+
+    <div class="risk">
+      <h4>공장장 컨텍스트 압박 <span class="sev low">낮음</span></h4>
+      <p>계층이 줄면 판정이 공장장에 몰립니다. N장 증거가 한 곳으로 들어와요.</p>
+      <p class="mit"><b>완화</b> &mdash; 증거 포인터화(§5)가 1차 방어.
+      부족하면 별도 Claude 판정 세션을 분리합니다.</p>
+    </div>
+  </div>
+
+  <div class="sec-head">9. 성공 지표</div>
+
+  <div>
+    <div class="metric-row">
+      <div class="metric-indicator"></div>
+      <div class="metric-label">모드 숫자 참조가 남지 않는다</div>
+      <div class="metric-target">grep <code>Mode [1-6]</code> = 0건</div>
+    </div>
+    <div class="metric-row">
+      <div class="metric-indicator"></div>
+      <div class="metric-label">실행 명령이 하나로 줄었다</div>
+      <div class="metric-target"><code>-f</code> 폐지, <code>-k N</code>만</div>
+    </div>
+    <div class="metric-row">
+      <div class="metric-indicator"></div>
+      <div class="metric-label">카드당 리드 접점 (실측)</div>
+      <div class="metric-target">serial ≤ 6 · fanout ≤ 2</div>
+    </div>
+    <div class="metric-row">
+      <div class="metric-indicator"></div>
+      <div class="metric-label"><code>/clear</code> 후 복귀</div>
+      <div class="metric-target">6블록 붙여넣기 → 1줄</div>
+    </div>
+    <div class="metric-row">
+      <div class="metric-indicator"></div>
+      <div class="metric-label">동일 카드 배치의 Claude 소모</div>
+      <div class="metric-target">현행 대비 70% 이상 감소</div>
+    </div>
+    <div class="metric-row">
+      <div class="metric-indicator"></div>
+      <div class="metric-label">클래스 오판율</div>
+      <div class="metric-target">&lt; 10% (경로 변경 발생 기준)</div>
+    </div>
+  </div>
+
+  <div class="sec-head">10. 아직 재지 않은 것</div>
+
+  <div class="callout">
+    <span class="ico">★</span>
+    <div>
+      <p>이 설계는 <b>코드·설정 실측 + 공식 문서</b> 위에 섰지만, 아래는 <b>계산이거나 미확인</b>입니다.
+      S0이 이 중 첫째와 셋째를 재는 단계예요.</p>
+      <ul style="margin-bottom:0">
+        <li><b>접점 수 12/9/6/2</b> &mdash; 구조적 계산. 선행 문서가 §9에서 스스로 "측정값이 아니다"라고 적었고,
+            제가 얹은 6도 같은 한계를 물려받습니다</li>
+        <li><b>프리픽스 39K 토큰</b> &mdash; 실측 바이트(룰 136,345 B + CLAUDE.md 19,040 B)를
+            4 B/토큰으로 나눈 <b>추정</b>. 서브에이전트가 실제로 받는 프리픽스는 별도 계측이 필요합니다</li>
+        <li><b>GLM 반장의 Agent 과금</b> &mdash; 코드상 z.ai 경로가 맞지만
+            <b>대시보드로 확인하지 않았습니다</b>(카드 t77)</li>
+        <li><b>sync 게이트의 렌즈 동작</b> &mdash; 미확인. S2 착수 전 확인 필요</li>
+        <li><b>클래스 판정의 정확도</b> &mdash; 사람이든 모델이든 얼마나 맞히는지 데이터가 없습니다.
+            통합 후 유일한 분기점이므로 가장 먼저 나빠질 수 있는 지점이에요</li>
+      </ul>
+    </div>
+  </div>
+
+  <footer>
+    승계 · .moai/reports/pipeline-fanout-redesign-20260816.md (D1~D3, 접점 계산, 통신 규약)
+    · .moai/reports/manager-lead-design-20260816.md (리드 컨텍스트 방어)
+    · .moai/reports/factory-kanban-multi-llm-redesign-20260817.md (백엔드 배정, 토큰 회계)
+    <br>
+    실측 · orchestration-mode-selection.md §A(6-mode 카탈로그) · kanban-dispatch.md(카드 클래스 A/B/C)
+    · internal/cli/glm.go:278 setGLMEnv · internal/config/envkeys.go(ANTHROPIC_DEFAULT_* 4종)
+    · internal/cli/cc.go(-k 만 존재) · always-loaded 룰 136,345 B · CLAUDE.md 19,040 B
+    <br>
+    기존 카드 · t55(D2) · t56(D3) · t58(메시지 포맷) · t59(용어집) · t77(GLM 과금 실증) · t84(공장장) · t85(반장 루프)
+    &nbsp;&mdash;&nbsp; Generated: 2026-08-17
+  </footer>
+
+</div>
+
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad:true, theme:"base",
+    themeVariables:{
+      primaryColor:"#FAF9F5", primaryTextColor:"#141413", primaryBorderColor:"#D97757",
+      lineColor:"#87867F", secondaryColor:"#E3DACC", tertiaryColor:"#F0EEE6"
+    }
+  });
+</script>
+</body>
+</html>

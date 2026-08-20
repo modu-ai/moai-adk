@@ -37,7 +37,7 @@ description: "완료 조건을 한 번 정하면 충족될 때까지 Claude Code
 
 ```mermaid
 flowchart TD
-    A[/goal 조건 설정<br>즉시 첫 턴 시작/] --> B[Claude가 한 턴 작업 수행]
+    A["goal 조건 설정<br>즉시 첫 턴 시작"] --> B[Claude가 한 턴 작업 수행]
     B --> C{빠른 모델이<br>조건 충족 평가}
     C -->|아니오 + 사유| D[사유를 다음 턴<br>지침으로 전달]
     D --> B

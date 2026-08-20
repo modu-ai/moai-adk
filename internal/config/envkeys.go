@@ -213,11 +213,21 @@ const (
 	EnvMoaiFactoryWorkers = "MOAI_FACTORY_WORKERS"
 
 	// EnvMoaiFactoryWorker marks a session as a WORKER of a factory run and
-	// carries its `worker-<n>` label. It is the factory counterpart of
-	// EnvMoaiKanbanLabel: the worker needs the raised Stop-hook block cap
+	// carries its `lane-<n>` label. It is the factory counterpart of
+	// EnvMoaiKanbanLabel: the lane needs the raised Stop-hook block cap
 	// (it fields long dispatch-driven turns) but must not be seeded with any
 	// chain, and the lead is signalled by EnvMoaiFactoryWorkers instead.
 	EnvMoaiFactoryWorker = "MOAI_FACTORY_WORKER"
+
+	// EnvMoaiSessionPID carries an explicit override for the PID recorded in
+	// the multi-session coordination registry. A hook subprocess exits within
+	// milliseconds of registering, so its own PID is worthless to the liveness
+	// probe that reads the registry back; the registry needs the PID of the
+	// long-lived session process instead. The resolver normally derives that
+	// PID by walking the process ancestry, and reads this variable first when
+	// a caller knows the session PID outright (the launcher path, or a test
+	// injecting a known-live PID).
+	EnvMoaiSessionPID = "MOAI_SESSION_PID"
 
 	// EnvChainNodeID carries the origin-trail chain node ID from the spawning
 	// context to the child process. Set by the spawner (moai cc -w,
@@ -317,6 +327,16 @@ const (
 	// actually persists. MoAI does not own this env (it is a Claude Code runtime
 	// env); the const centralizes the name per CLAUDE.local.md §14.
 	EnvClaudeCodeStopHookBlockCap = "CLAUDE_CODE_STOP_HOOK_BLOCK_CAP"
+
+	// EnvClaudeCodeMaxConcurrentSubagents is the runtime per-session cap on
+	// concurrently running subagents (default 20 per turn). t118 (v3.1.1
+	// launcher axis): the launcher seeds it on every kanban companion and
+	// factory worker lane so one lane's fan-out cannot crowd out the others —
+	// the operator-confirmed architecture is DefaultLaneMaxConcurrentSubagents
+	// (10) agents in parallel per lane. MoAI does not own this env (it is a
+	// Claude Code runtime env); the const centralizes the name per
+	// CLAUDE.local.md §14.
+	EnvClaudeCodeMaxConcurrentSubagents = "CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS"
 )
 
 // Anthropic API environment variables.
@@ -331,6 +351,21 @@ const (
 	// counterpart of EnvAnthropicAuthToken: both authenticate against the same
 	// API, but they are distinct variables with distinct client precedence.
 	EnvAnthropicAPIKey = "ANTHROPIC_API_KEY"
+
+	// EnvAnthropicDefaultModel names the model new sessions start on. Per the
+	// Claude Code v2.1.236 changelog it differs from ANTHROPIC_MODEL in that a
+	// later /model pick overrides it and persists across restarts. It is a
+	// SESSION-STARTING model, not a tier-slot override: the four
+	// EnvAnthropicDefault<Tier>Model names below resolve an alias to a concrete
+	// model ID, and this one does not participate in that resolution.
+	//
+	// MoAI neither reads nor writes this variable; the constant exists so the
+	// ANTHROPIC_* namespace stays completely enumerated (the package's stated
+	// SSOT contract) and so the name is available to any future consumer
+	// without a bare literal. Observation scope: the changelog entry. The
+	// official model-configuration page documents ANTHROPIC_MODEL and the four
+	// tier names but not this one, so the changelog is the citable source.
+	EnvAnthropicDefaultModel = "ANTHROPIC_DEFAULT_MODEL"
 
 	// EnvAnthropicDefaultHaikuModel overrides the default Haiku model ID.
 	EnvAnthropicDefaultHaikuModel = "ANTHROPIC_DEFAULT_HAIKU_MODEL"

@@ -260,7 +260,7 @@
     ],
     "StopFailure": [
       {
-        "matcher": "rate_limit|authentication_failed|billing_error|max_output_tokens",
+        "matcher": "rate_limit|authentication_failed|oauth_org_not_allowed|billing_error|max_output_tokens",
         "hooks": [
           {
             "command": "bash",

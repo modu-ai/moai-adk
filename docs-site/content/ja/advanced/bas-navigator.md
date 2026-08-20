@@ -149,4 +149,4 @@ cat .moai/project/navigator/audit-report.json | jq '.summary'
 | Step 3 | tree-sitter AST で記号を補強   | `capability-symbols.json`      |
 | Step 4 | 監査で差を捕まえてサイクルを閉じる | `audit-report.json`            |
 
-BAS Navigatorは単一の情報源グラフ1つに3つの同期化軸を載せ、コードが変わっても文書が遅れないようにします。コマンドの仕様に興味があれば`utility-commands/moai-codemaps.md`を、設計の背景に興味があれば各段階を定義したSPEC(SPEC-NAVIGATOR-SYNC-001, 002, 003)を参照してください。次に読みやすいページは、同じ高度セクションの`manager-kanban.md`と`autonomy-tier.md`です。どちらもこのコードマップの上で動くエージェント組織と自律等級を扱います。
+BAS Navigatorは単一の情報源グラフ1つに3つの同期化軸を載せ、コードが変わっても文書が遅れないようにします。コマンドの仕様に興味があれば`utility-commands/moai-codemaps.md`を、設計の背景に興味があれば各段階を定義したSPEC(SPEC-NAVIGATOR-SYNC-001, 002, 003)を参照してください。次に読みやすいページは、同じ高度セクションの`manager-lead.md`と`autonomy-tier.md`です。どちらもこのコードマップの上で動くエージェント組織と自律等級を扱います。

@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/execerr"
 	"github.com/spf13/cobra"
 )
 
@@ -216,7 +217,9 @@ func materializeSessionWorktree(branch string, out io.Writer) (string, error) {
 func gitWorktreeAddReal(destDir, branch string) (string, error) {
 	cmd := exec.Command("git", "worktree", "add", "-b", branch, destDir)
 	if out, err := cmd.CombinedOutput(); err != nil {
-		return "", fmt.Errorf("%s: %w", strings.TrimSpace(string(out)), err)
+		// execerr.StatusDetail, not %w: a raw *exec.ExitError chain would be
+		// mistaken for an intentional ExitCoder at the cmd/moai seam (t130).
+		return "", fmt.Errorf("%s (%s)", strings.TrimSpace(string(out)), execerr.StatusDetail(err))
 	}
 	abs, err := filepath.Abs(destDir)
 	if err != nil {
@@ -293,7 +296,7 @@ func gitConfigSetReal(dir, key, value string) error {
 func gitSafeDirAddReal(path string) error {
 	cmd := exec.Command("git", "config", "--global", "--add", "safe.directory", path)
 	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("%s: %w", strings.TrimSpace(string(out)), err)
+		return fmt.Errorf("%s (%s)", strings.TrimSpace(string(out)), execerr.StatusDetail(err))
 	}
 	return nil
 }
@@ -643,7 +646,7 @@ func worktreeIsDirty(wtPath string) (bool, error) {
 func gitWorktreeRemoveReal(wtPath string) error {
 	cmd := exec.Command("git", "worktree", "remove", wtPath)
 	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("%s: %w", strings.TrimSpace(string(out)), err)
+		return fmt.Errorf("%s (%s)", strings.TrimSpace(string(out)), execerr.StatusDetail(err))
 	}
 	return nil
 }

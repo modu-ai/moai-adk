@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-// exitCoder is defined in fang.go (SPEC-CLI-TUX-V3-001 M1b) and reused here —
-// it mirrors the cmd/moai/main.go ExitCoder interface.
+// ExitCoder is defined in exitcode.go and reused here —
+// it is the boundary cmd/moai/main.go resolves via ResolveExitCode.
 
 // TestExitCodeErrorSatisfiesExitCoder proves the cli-root exitCodeError type
 // (shared by astgrep/hook/hook_pre_push/spec_lint/spec_drift/migrate_agency/
@@ -25,7 +25,7 @@ func TestExitCodeErrorSatisfiesExitCoder(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			var ec exitCoder
+			var ec ExitCoder
 			if !errors.As(tc.err, &ec) {
 				t.Fatalf("errors.As(exitCodeError, &exitCoder) = false; want true (type must satisfy ExitCoder boundary)")
 			}
@@ -56,7 +56,7 @@ func TestExitCodeBoundary_DeferRuns(t *testing.T) {
 	if !deferRan {
 		t.Fatalf("defer did not run; returning an ExitCoder must let defers execute (os.Exit would skip it)")
 	}
-	var ec exitCoder
+	var ec ExitCoder
 	if !errors.As(err, &ec) {
 		t.Fatalf("errors.As = false; want ExitCoder")
 	}

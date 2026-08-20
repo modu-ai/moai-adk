@@ -31,6 +31,19 @@ Removes GLM-specific environment variables from `.claude/settings.local.json`, r
 | `-m, --model <model>` | Override the model selection |
 | `-w, --worktree [name]` | Launch inside an isolated git worktree (`.claude/worktrees/<name>/`) — name omitted means auto-generated |
 | `--chrome` / `--no-chrome` | Toggle the Chrome MCP |
+| `-k, --kanban [SPEC-ID]` | Enter as the kanban lead — seeds the `plan → run → sync` chain in this session. With a SPEC-ID attached, that SPEC is the target |
+| `-k --name <role>` | Join an open kanban run as a companion session. Roles are `plan` · `run` · `sync`. If a live session already holds the role name, the next number is attached (`plan-1`, `plan-2`, …) |
+| `-f, --factory [N]` | Enter as the **factory lead** — a factory run opening N lanes (`lane-1`…`lane-N`). Omit N and the run starts with a single lane (`lane-1`), grown one at a time with the incremental form below. The lead deals the cards the operator picks to free lanes over cross-session messages |
+| `-f lane-<n>` | Bring up one more lane (`lane-<n>`) and attach it to the lead socket of a running factory. A label already held by a live session bumps to the next free number. `moai glm -f lane-<n>` behaves the same on the GLM backend |
+| `-k <N>` / `-k <N> --name lane-<i>` | The v1.2.0 combined form, still valid — `-k <N>` is the lead of an N-lane run, `-k <N> --name lane-<i>` is lane `<i>` within it. `-k --name lane-<i>` without N defaults to 8 lanes |
+
+{{< callout type="info" >}}
+`-k` is the kanban chain token, and `-f` is the dedicated entry token for **Factory Mode**. One `-k` is still read three ways — no argument or a SPEC-ID is the kanban lead, `--name <role>` is a kanban companion, and a number is a lane run. A launch takes one entry token only, so `-k` together with `-f` is an error. The mixed-backend launcher `moai cg` refuses both modes (the factory-side refusal sentinel is `FACTORY_MODE_UNSUPPORTED_BACKEND`). For the full contract see [Kanban Mode](/en/advanced/kanban-mode) and [manager-lead Lead Coordinator](/en/advanced/manager-lead).
+{{< /callout >}}
+
+A card travels differently here than in kanban. In kanban one card moves across the `plan → run → sync` columns, while in a factory one card goes whole to one lane and passes the three phases serially inside it. Each phase is spawned by that session as `Agent()` subagents, and write-capable spawns are isolated with `isolation: "worktree"`. A lane runs at most 10 concurrent subagents, and the launcher seeds that value into lanes and companion sessions through `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS`, so N lanes sharing one machine's capacity is guaranteed by configuration rather than by operator restraint. Never bring the lanes up all at once — start the first, confirm it is actually producing output, then activate the rest.
+
+The backend mix is decided by token availability first. One starting point is the lead on GLM, plan on Claude (Opus), run on GLM, and sync on Claude (Opus), placing Opus only on the phases where judgment is heavy. A different combination, or unifying on a single backend, is equally fine.
 
 The permission mode is one of `default`, `acceptEdits` (project default), `plan`, `auto`, `bypassPermissions`, `dontAsk`. The `auto` mode runs a background classifier that inspects actions and requires a Team plan + Sonnet/Opus 4.6 or later.
 

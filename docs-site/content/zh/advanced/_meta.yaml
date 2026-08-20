@@ -53,8 +53,8 @@ index:
   title: "自主级别 (MOAI_AUTONOMY_TIER)"
 "kanban-mode":
   title: "看板模式"
-"manager-kanban":
-  title: "manager-kanban 层级团队"
+"manager-lead":
+  title: "manager-lead 领导协调者"
 "multi-model-audit":
   title: "多模型审计收敛"
 "bas-navigator":
@@ -69,6 +69,6 @@ index:
 new_items:
   - kanban-mode
   - bas-navigator
-  - manager-kanban
+  - manager-lead
   - multi-model-audit
   - autonomy-tier

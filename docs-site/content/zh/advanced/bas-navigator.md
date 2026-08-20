@@ -149,4 +149,4 @@ cat .moai/project/navigator/audit-report.json | jq '.summary'
 | Step 3 | 用 tree-sitter AST 增强符号    | `capability-symbols.json`       |
 | Step 4 | 审计抓差异、闭合循环           | `audit-report.json`             |
 
-BAS Navigator 在一份唯一真相图上搭起三条同步轴，让代码变了文档也不掉队。若想看命令规格，见 `utility-commands/moai-codemaps.md`；若想看设计背景，见定义各阶段的 SPEC（SPEC-NAVIGATOR-SYNC-001、002、003）。接下来读起来顺手的页面是同属高级章节的 `manager-kanban.md` 与 `autonomy-tier.md`。两者分别讨论在这张代码地图之上运作的智能体组织和自主等级。
+BAS Navigator 在一份唯一真相图上搭起三条同步轴，让代码变了文档也不掉队。若想看命令规格，见 `utility-commands/moai-codemaps.md`；若想看设计背景，见定义各阶段的 SPEC（SPEC-NAVIGATOR-SYNC-001、002、003）。接下来读起来顺手的页面是同属高级章节的 `manager-lead.md` 与 `autonomy-tier.md`。两者分别讨论在这张代码地图之上运作的智能体组织和自主等级。

@@ -1,0 +1,810 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>moai-mcp로 Codex ↔ Claude 세션이 통신되나</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&family=Noto+Serif+KR:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    :root {
+      --ivory:  #FAF9F5;
+      --paper:  #FFFFFF;
+      --slate:  #141413;
+      --clay:   #D97757;
+      --clay-d: #B85C3E;
+      --oat:    #E3DACC;
+      --olive:  #788C5D;
+
+      --g100: #F0EEE6;
+      --g300: #D1CFC5;
+      --g500: #87867F;
+      --g700: #3D3D3A;
+
+      --sans:  "Noto Sans KR", system-ui, -apple-system, sans-serif;
+      --serif: "Noto Serif KR", ui-serif, Georgia, serif;
+      --mono:  "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+      --max-width:    1100px;
+      --content-max:  680px;
+      --radius-panel: 12px;
+      --radius-row:   8px;
+      --border:       1.5px solid var(--g300);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--ivory);
+      color: var(--g700);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.65;
+      -webkit-font-smoothing: antialiased;
+      padding: 56px 24px 120px;
+    }
+
+    .page {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 210px minmax(0, 1fr);
+      gap: 48px;
+    }
+
+    @media (max-width: 920px) {
+      .page { grid-template-columns: 1fr; }
+      nav { display: none; }
+    }
+
+    nav {
+      position: sticky;
+      top: 32px;
+      align-self: start;
+      font-size: 13px;
+    }
+
+    nav .nav-label {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--g500);
+      margin-bottom: 12px;
+    }
+
+    nav a {
+      display: block;
+      padding: 5px 0 5px 12px;
+      border-left: 2px solid var(--g300);
+      color: var(--g700);
+      text-decoration: none;
+    }
+
+    nav a:hover { color: var(--slate); border-color: var(--clay); }
+
+    nav a.l2 {
+      padding-left: 24px;
+      font-size: 12.5px;
+      color: var(--g500);
+    }
+
+    nav .nav-files {
+      margin-top: 28px;
+      border-top: 1px solid var(--g300);
+      padding-top: 16px;
+    }
+
+    nav .nav-files code {
+      display: block;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--g500);
+      padding: 3px 0;
+      word-break: break-all;
+    }
+
+    header { margin-bottom: 12px; }
+
+    .eyebrow {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--g500);
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: 30px;
+      color: var(--slate);
+      letter-spacing: -0.01em;
+      margin-bottom: 14px;
+      line-height: 1.25;
+    }
+
+    .tldr {
+      border: var(--border);
+      border-left: 3px solid var(--clay);
+      border-radius: 10px;
+      background: var(--paper);
+      padding: 16px 18px;
+      margin-bottom: 8px;
+      font-size: 14.5px;
+    }
+
+    .tldr b { color: var(--slate); }
+
+    h2 {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: 22px;
+      color: var(--slate);
+      margin: 40px 0 14px;
+      scroll-margin-top: 24px;
+    }
+
+    h3 {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: 16.5px;
+      color: var(--slate);
+      margin: 22px 0 8px;
+    }
+
+    p { margin-bottom: 12px; max-width: var(--content-max); }
+    code { font-family: var(--mono); font-size: 13px; }
+
+    ul, ol { margin: 0 0 12px 20px; max-width: var(--content-max); }
+    li { margin-bottom: 6px; }
+
+    .lead {
+      font-size: 15px;
+      color: var(--g700);
+      border-left: 2px solid var(--oat);
+      padding-left: 14px;
+      margin-bottom: 16px;
+      max-width: var(--content-max);
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 14px 0 18px;
+      font-size: 13.5px;
+      background: var(--paper);
+      border: var(--border);
+      border-radius: var(--radius-row);
+      overflow: hidden;
+    }
+
+    th {
+      background: var(--g100);
+      color: var(--slate);
+      text-align: left;
+      font-weight: 700;
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--g300);
+      font-size: 12.5px;
+    }
+
+    td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--g300);
+      vertical-align: top;
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    .yes { color: var(--olive); font-weight: 700; }
+    .no  { color: var(--clay-d); font-weight: 700; }
+
+    details.step {
+      border: var(--border);
+      border-radius: 10px;
+      background: var(--paper);
+      margin: 14px 0;
+      overflow: hidden;
+    }
+
+    details.step > summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 14px 16px;
+      font-family: var(--serif);
+      font-size: 16px;
+      color: var(--slate);
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+    }
+
+    details.step > summary::-webkit-details-marker { display: none; }
+
+    details.step > summary::before {
+      content: "▸";
+      color: var(--clay);
+      font-family: var(--sans);
+      font-size: 12px;
+    }
+
+    details.step[open] > summary::before { content: "▾"; }
+
+    details.step > summary .step-num {
+      font-family: var(--mono);
+      font-size: 12px;
+      background: var(--oat);
+      color: var(--slate);
+      padding: 2px 8px;
+      border-radius: 6px;
+      flex-shrink: 0;
+    }
+
+    details.step > summary .where {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--g500);
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    details.step .step-body { padding: 0 16px 16px; }
+    details.step .step-body p { font-size: 14px; margin-bottom: 10px; }
+
+    .tabs {
+      border: var(--border);
+      border-radius: 10px;
+      background: var(--paper);
+      margin: 16px 0 8px;
+      overflow: hidden;
+    }
+
+    .tabbar {
+      display: flex;
+      flex-wrap: wrap;
+      border-bottom: 1px solid var(--g300);
+      background: var(--g100);
+    }
+
+    .tabbar button {
+      appearance: none;
+      border: none;
+      background: none;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--g500);
+      padding: 10px 16px;
+      cursor: pointer;
+      border-right: 1px solid var(--g300);
+    }
+
+    .tabbar button.active {
+      background: var(--paper);
+      color: var(--slate);
+      border-bottom: 2px solid var(--clay);
+      margin-bottom: -1px;
+    }
+
+    .tab-pane {
+      display: none;
+      margin: 0;
+      padding: 16px 18px;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      line-height: 1.65;
+      color: var(--slate);
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    .tab-pane.active { display: block; }
+
+    .hl { color: var(--clay); }
+    .cm { color: var(--g500); }
+
+    .callout {
+      display: flex;
+      gap: 12px;
+      border: var(--border);
+      border-color: var(--oat);
+      background: rgba(227, 218, 204, 0.35);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin: 18px 0;
+      font-size: 14px;
+      max-width: var(--content-max);
+    }
+
+    .callout .ico { color: var(--clay); font-weight: 600; flex-shrink: 0; }
+    .callout p:last-child { margin-bottom: 0; }
+
+    pre.mermaid {
+      background: var(--paper);
+      border: var(--border);
+      border-radius: 10px;
+      padding: 18px;
+      margin: 18px 0;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--g500);
+      overflow-x: auto;
+      text-align: center;
+    }
+
+    details.faq-item {
+      border-bottom: 1px solid var(--g300);
+      padding: 4px 0;
+    }
+
+    details.faq-item > summary {
+      list-style: none;
+      cursor: pointer;
+      font-family: var(--serif);
+      font-size: 16px;
+      color: var(--slate);
+      padding: 12px 4px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    details.faq-item > summary::-webkit-details-marker { display: none; }
+
+    details.faq-item > summary::before {
+      content: "+";
+      color: var(--clay);
+      font-size: 18px;
+      font-weight: 400;
+      width: 20px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+
+    details.faq-item[open] > summary::before { content: "−"; }
+
+    details.faq-item .faq-body {
+      padding: 0 4px 16px 30px;
+      font-size: 14px;
+      color: var(--g700);
+      max-width: var(--content-max);
+    }
+
+    details.faq-item .faq-body p { margin-bottom: 8px; }
+
+    footer {
+      margin-top: 64px;
+      padding-top: 20px;
+      border-top: 1px solid var(--g300);
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--g500);
+      line-height: 1.9;
+    }
+
+    footer a { color: var(--g500); }
+
+    @media print {
+      .page { grid-template-columns: 1fr; }
+      nav { display: none; }
+      body { background: white; color: black; padding: 0; font-size: 12pt; }
+      details.step { page-break-inside: avoid; }
+      details[open] { display: block; }
+      a[href]::after { content: " (" attr(href) ")"; font-size: 10pt; color: #555; }
+      h1, h2, h3 { page-break-after: avoid; }
+      .no-print { display: none !important; }
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <nav>
+    <div class="nav-label">On this page</div>
+    <a href="#tldr">한 줄 결론</a>
+    <a href="#now">지금 실제로 오가는 것</a>
+    <a href="#walkthrough">왜 안 되는지 6단계</a>
+    <a href="#evidence" class="l2">실측 증거</a>
+    <a href="#gap">유일하게 열린 틈</a>
+    <a href="#howto">되게 하려면</a>
+    <a href="#faq">FAQ</a>
+    <div class="nav-files">
+      <div class="nav-label">Referenced Files</div>
+      <code>internal/cli/mcp_server.go</code>
+      <code>internal/cli/mcp_codex.go</code>
+      <code>internal/cli/codex_task.go</code>
+      <code>.mcp.json</code>
+      <code>~/.codex/config.toml</code>
+    </div>
+  </nav>
+
+  <main>
+
+    <header>
+      <div class="eyebrow">MoAI-ADK · MCP 조사 보고 · 2026-08-17</div>
+      <h1>moai-mcp로 Codex ↔ Claude 세션이<br>서로 통신할 수 있나?</h1>
+      <div class="tldr" id="tldr">
+        <b>TL;DR</b> &mdash; <b>지금은 안 됩니다. 그리고 MCP 프로토콜만으로는 원리적으로도 안 됩니다.</b>
+        MCP는 <b>한 클라이언트 ↔ 한 서버</b>의 요청/응답 규약이지, 서로 다른 두 에이전트 사이의 <b>메시지 중계</b>를
+        정의하지 않아요. 현재 moai-mcp가 실제로 하는 일은 <b>Claude → codex 단방향 위임</b>
+        (<code>codex_task</code>·<code>codex_audit</code>)뿐이고, 그마저도 codex를 <b>자식 프로세스로 새로 띄우는</b>
+        방식이라 "이미 돌고 있는 codex 세션"에 말을 거는 게 아닙니다.
+        <br><br>
+        다만 <b>공식 문서에 명시된 틈이 하나</b> 있어요 &mdash; Claude Code의 <b>세션별 inbox 소켓</b>은
+        스크립트·훅이 직접 포스트할 수 있게 열려 있습니다. 여기에 도구를 하나 붙이면
+        <b>codex → Claude 단방향 알림</b>은 만들 수 있습니다. 현재 moai에는 그 배선이 <b>0건</b>입니다.
+      </div>
+    </header>
+
+    <h2 id="now">지금 실제로 오가는 것</h2>
+
+    <p class="lead">
+      먼저 용어 하나만 풀고 갈게요. <b>MCP (Model Context Protocol)</b>는
+      AI 도구에게 "쓸 수 있는 도구 목록"을 넘겨주는 <b>규약</b>이에요. 식당으로 치면 <b>메뉴판</b>입니다 &mdash;
+      손님(AI)이 메뉴를 보고 주문하면 주방(서버)이 만들어 내주는 구조죠.
+      <b>메뉴판은 옆 테이블 손님에게 쪽지를 전달해 주지 않습니다.</b> 이 한 문장이 이 보고서의 전부예요.
+    </p>
+
+    <p>현재 <code>moai mcp-server</code>가 노출하는 도구는 17개이고, 그중 codex 계열은 5개입니다. 방향은 전부 한쪽입니다.</p>
+
+    <table>
+      <thead>
+        <tr><th>도구</th><th>하는 일</th><th>방향</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>codex_task</code></td><td>codex에게 작업을 시키고 결과를 받음 (background 가능)</td><td>Claude → codex</td></tr>
+        <tr><td><code>codex_audit</code></td><td>codex에게 코드 리뷰를 시킴 (native / adversarial)</td><td>Claude → codex</td></tr>
+        <tr><td><code>codex_job_status</code> / <code>_result</code> / <code>_cancel</code></td><td>백그라운드 job 상태 조회·회수·취소</td><td>Claude → codex</td></tr>
+        <tr><td><code>session_list</code></td><td>활성 moai 세션 <b>목록 조회</b> (읽기 전용)</td><td>조회만</td></tr>
+        <tr><td colspan="3" style="color:var(--clay-d)"><b>메시지를 보내는 도구 — 0개.</b> 17개 중 세션 간 전송 도구는 존재하지 않습니다.</td></tr>
+      </tbody>
+    </table>
+
+    <pre class="mermaid">
+flowchart TD
+  U["사용자"] --> CC["Claude Code 세션"]
+  CC -->|"stdio (MCP)"| M["moai mcp-server<br/>(자식 프로세스)"]
+  M -->|"spawn + JSON-RPC"| CX["codex app-server<br/>(또 다른 자식 프로세스)"]
+  CX -.->|"결과 반환만"| M
+  M -.->|"tools/call 응답"| CC
+  CX -->|"메시지 전송 경로<br/>존재하지 않음"| X["다른 Claude 세션"]
+  style X fill:#F0EEE6,stroke:#B85C3E,stroke-dasharray: 5 5
+    </pre>
+
+    <noscript>
+      <p><b>흐름 요약</b>: 사용자 → Claude Code 세션 → (stdio MCP) → moai mcp-server(자식 프로세스)
+      → (spawn + JSON-RPC) → codex app-server(또 다른 자식 프로세스). 결과는 같은 길로 되돌아올 뿐이고,
+      codex에서 다른 Claude 세션으로 가는 경로는 존재하지 않습니다.</p>
+    </noscript>
+
+    <h2 id="walkthrough">왜 안 되는지 &mdash; 6단계</h2>
+    <p>각 항목을 눌러서 펼치면 근거가 나옵니다. 앞의 3개는 공식 문서, 뒤의 3개는 이 저장소에서 직접 확인한 값이에요.</p>
+
+    <details class="step" open>
+      <summary><span class="step-num">1</span> MCP는 1:1 연결이다<span class="where">공식 스펙</span></summary>
+      <div class="step-body">
+        <p>MCP 공식 아키텍처 문서는 이렇게 씁니다 &mdash; 호스트(Claude Code 같은 AI 앱)는
+        <b>서버마다 전용 클라이언트를 하나씩</b> 만들고, 각 클라이언트는 <b>전용 연결(dedicated connection)</b>을 유지합니다.</p>
+        <p>그리고 결정적인 문장: <b>"stdio 전송을 쓰는 로컬 MCP 서버는 통상 단일 클라이언트를 서빙한다"</b>
+        (<i>Local MCP servers that use the STDIO transport typically serve a single MCP client</i>).</p>
+        <p>즉 Claude가 붙은 moai 서버와 codex가 붙은 moai 서버는 <b>같은 프로그램이지만 서로 다른 프로세스</b>가 됩니다.
+        옆 테이블과 메뉴판을 공유하지 않는 거예요.</p>
+      </div>
+    </details>
+
+    <details class="step">
+      <summary><span class="step-num">2</span> 서버가 클라이언트에게 말 걸 수단이 거의 없다<span class="where">공식 스펙</span></summary>
+      <div class="step-body">
+        <p>MCP에서 <b>서버가 제공</b>하는 것은 tools · resources · prompts 3가지.
+        반대로 <b>클라이언트가 제공</b>하는 것은 현재 <b>elicitation(사용자에게 추가 입력 요청)</b> 하나뿐입니다.</p>
+        <p>예전에 있던 <b>sampling</b>(서버가 클라이언트의 LLM을 빌려 쓰기)과 <b>logging</b>은
+        프로토콜 버전 <code>2026-07-28</code>에서 <b>deprecated</b> 됐어요.</p>
+        <p>남은 elicitation조차 <b>같은 연결 안에서 그 사용자에게 묻는</b> 용도지,
+        "다른 클라이언트에게 전달"이 아닙니다. <b>중계(relay) 프리미티브는 스펙에 아예 없습니다.</b></p>
+      </div>
+    </details>
+
+    <details class="step">
+      <summary><span class="step-num">3</span> codex 스레드는 외부로 말을 걸 수 없다<span class="where">OpenAI 공식</span></summary>
+      <div class="step-body">
+        <p>codex의 <b>app-server</b> 문서를 확인했습니다. 두 가지가 명확해요.</p>
+        <p><b>(가) 클라이언트가 codex 프로세스를 소유합니다</b> &mdash; 외부 클라이언트가
+        <i>spawns and owns</i> 하는 구조라, <b>이미 실행 중인 codex 세션에 나중에 끼어드는 게 아닙니다.</b>
+        <code>thread/start</code>로 새 스레드를 열거나 <code>thread/resume</code>으로 기존 스레드를 다시 여는 것뿐이에요.</p>
+        <p><b>(나)</b> 문서에는 <b>codex 스레드가 codex 바깥의 에이전트나 세션에 메시지를 보내는 메커니즘이 없습니다.</b>
+        API는 thread/turn 관리와 도구 연동에 한정됩니다.</p>
+      </div>
+    </details>
+
+    <details class="step">
+      <summary><span class="step-num">4</span> moai-mcp는 stdio 전용이다<span class="where">실측</span></summary>
+      <div class="step-body">
+        <p><code>internal/cli/mcp_server.go:90</code> 이 한 줄이 전부를 결정합니다.</p>
+        <p><code>return server.ServeStdio(s)</code> &mdash; HTTP도, SSE도 아닌 <b>표준입출력 전용</b>이에요.</p>
+        <p><b>왜 중요하냐면</b>: stdio 서버는 자기를 띄운 부모 프로세스하고만 파이프로 대화합니다.
+        Claude가 띄운 moai 서버와 codex가 띄운 moai 서버는 <b>메모리를 1바이트도 공유하지 않습니다.</b>
+        상태를 나누려면 디스크(파일)를 거쳐야 하고, 그건 통신이 아니라 <b>게시판에 메모 붙여놓기</b>에 가깝습니다.</p>
+      </div>
+    </details>
+
+    <details class="step">
+      <summary><span class="step-num">5</span> codex는 moai를 아예 안 붙여놨다<span class="where">실측</span></summary>
+      <div class="step-body">
+        <p><code>~/.codex/config.toml</code>의 <code>[mcp_servers.*]</code> 항목을 전수 확인했습니다.
+        등록된 건 5개 &mdash; <code>node_repl</code>, <code>zai-mcp-server</code>, <code>qmd</code>,
+        <code>sequential-thinking</code>, <code>computer-use</code>.</p>
+        <p><b>moai는 없습니다.</b> (검색에 걸린 <code>zai-mcp-server</code>는 이름에 <code>mcp-server</code>가
+        들어갔을 뿐 다른 서버예요.)</p>
+        <p>반대로 <code>.mcp.json</code>에는 <code>"moai": {"command": "moai", "args": ["mcp-server"]}</code>가
+        들어 있습니다 &mdash; <b>이건 Claude Code 전용 배선</b>이고요.</p>
+      </div>
+    </details>
+
+    <details class="step">
+      <summary><span class="step-num">6</span> Claude Code의 메시징은 Claude Code 전용이다<span class="where">Anthropic 공식</span></summary>
+      <div class="step-body">
+        <p>Claude Code에는 세션끼리 대화하는 기능이 실제로 있습니다 &mdash;
+        <code>ListAgents</code>로 찾고 <code>SendMessage</code>로 보냅니다 (v2.1.224+, macOS·Linux).</p>
+        <p>그런데 <b>목록에 뜨는 대상</b>이 문서에 못박혀 있어요:
+        ① 이 세션 안의 서브에이전트 ② <b>같은 머신의 다른 Claude Code 세션</b>
+        ③ 내 클라우드 세션 ④ Remote Control로 연결된 다른 머신의 세션.</p>
+        <p><b>codex는 이 목록의 어디에도 해당하지 않습니다.</b> 발견 방식이 "Claude Code 세션이
+        디스크에 자기를 등록하고 inbox 소켓을 바인딩"하는 구조라, 그 등록을 하지 않는 프로그램은
+        애초에 보이지 않아요.</p>
+      </div>
+    </details>
+
+    <h3 id="evidence">실측 증거 &mdash; 직접 확인한 값들</h3>
+    <p>아래는 추측이 아니라 이 저장소와 이 머신에서 실제로 읽은 값입니다.</p>
+
+    <div class="tabs" data-tabs="config-tabs">
+      <div class="tabbar">
+        <button data-pane="p1" class="active">전송 방식</button>
+        <button data-pane="p2">codex 호출</button>
+        <button data-pane="p3">Claude 배선</button>
+        <button data-pane="p4">codex 배선</button>
+        <button data-pane="p5">소켓 연동</button>
+      </div>
+<pre class="tab-pane active" id="p1"><span class="cm">// internal/cli/mcp_server.go:90</span>
+<span class="cm">// stdio 전용 — HTTP/SSE 전송 없음</span>
+return server.<span class="hl">ServeStdio</span>(s)
+
+<span class="cm">→ 클라이언트마다 별도 프로세스. 메모리 공유 없음.</span></pre>
+<pre class="tab-pane" id="p2"><span class="cm">// internal/cli/mcp_codex.go:51</span>
+codexAppServerSubcmd = <span class="hl">"app-server"</span>
+
+<span class="cm">// :274, :357 — codex를 자식 프로세스로 spawn</span>
+cmd := exec.<span class="hl">CommandContext</span>(ctx, binaryPath, args...)
+
+<span class="cm">// JSON-RPC 핸드셰이크 순서</span>
+initialize → thread/start → turn/start
+             (또는 thread/resume 으로 기존 스레드 재개)
+
+<span class="cm">→ "실행 중인 세션에 접속"이 아니라 "새로 띄우기".</span></pre>
+<pre class="tab-pane" id="p3"><span class="cm">// .mcp.json — Claude Code 전용 배선</span>
+{
+  "mcpServers": {
+    "context7": { ... },
+    <span class="hl">"moai"</span>: {
+      "command": "moai",
+      "args": ["mcp-server"]
+    }
+  }
+}</pre>
+<pre class="tab-pane" id="p4"><span class="cm">$ grep -E '^\[mcp_servers' ~/.codex/config.toml</span>
+
+[mcp_servers.node_repl]
+[mcp_servers.zai-mcp-server]
+[mcp_servers.qmd]
+[mcp_servers.sequential-thinking]
+[mcp_servers.computer-use]
+
+<span class="cm">→ moai 없음. codex는 moai 도구를 하나도 못 봅니다.</span></pre>
+<pre class="tab-pane" id="p5"><span class="cm">$ grep -rn 'CLAUDE_CODE_MESSAGING_SOCKET|SendMessage|ListAgents' \
+    internal/ --include='*.go' | grep -v _test</span>
+
+<span class="cm">(결과 없음 — 0건)</span>
+
+<span class="cm">→ moai Go 코드에 Claude Code 메시징 소켓 연동이 전혀 없습니다.</span></pre>
+    </div>
+
+    <h2 id="gap">유일하게 열린 틈 &mdash; inbox 소켓</h2>
+
+    <p class="lead">
+      여기부터가 실제로 쓸모 있는 부분이에요. "안 된다"로 끝나지 않는 이유입니다.
+    </p>
+
+    <p>Claude Code 공식 문서에는 <b>세션의 inbox 소켓</b>(inbox socket)을 설명하는 절이 따로 있고,
+    그 절의 도입부가 이렇게 시작합니다 &mdash; <i>"스크립트나 훅이 세션에 포스트하게 하고 싶을 때 이 절을 읽으라"</i>.
+    즉 <b>Claude가 아닌 프로그램이 Claude 세션에 메시지를 넣는 것을 공식적으로 상정하고 있습니다.</b></p>
+
+    <p>세션은 두 개의 환경변수를 내보냅니다:</p>
+
+    <table>
+      <thead><tr><th>환경변수</th><th>내용</th></tr></thead>
+      <tbody>
+        <tr><td><code>CLAUDE_CODE_MESSAGING_SOCKET</code></td><td>그 세션의 inbox 소켓 경로 (<code>/status</code>의 <code>Peer address</code> 행에도 표시)</td></tr>
+        <tr><td><code>CLAUDE_CODE_MESSAGING_TOKEN</code></td><td>세션별 토큰. 접속 첫 줄에 <code>{"type":"auth","token":"…"}</code>로 보냄</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <span class="ico">★</span>
+      <div>
+        <p><b>단, 자기 세션의 자식만 우대받습니다.</b> 문서는 "<b>own-child</b>" 규칙을 둬서,
+        그 세션이 직접 낳은 프로세스(훅·Bash 명령)가 포스트한 메시지만 검증 후 바로 전달합니다.</p>
+        <p>그 밖에서 온 것은 <b>일반 peer 메시지</b>로 취급되어 수신 세션의
+        <code>crossSessionInbound</code> 설정(<code>accept</code>/<code>hold</code>/<code>refuse</code>)을 따릅니다.
+        기본값에서는 <b>승인 대화상자가 뜰 수 있고</b>, 5분(<code>dialogExpiry</code>) 내 응답이 없으면 버려집니다.</p>
+      </div>
+    </div>
+
+    <h2 id="howto">되게 하려면 &mdash; 3가지 경로</h2>
+
+    <p>비용이 낮은 순서입니다. <b>어느 것도 지금 구현되어 있지 않습니다.</b></p>
+
+    <table>
+      <thead>
+        <tr><th style="width:34px">#</th><th>경로</th><th>방향</th><th>필요한 작업</th><th>난이도</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>A</td>
+          <td><b>파일 경유 간접 통신</b><br>기존 session registry / goal state / handoff 레코드를 우편함처럼 사용</td>
+          <td>양방향<br>(단, <b>폴링</b>)</td>
+          <td>codex config.toml에 moai 등록 + 읽기/쓰기 도구 1쌍 추가. 인프라는 이미 있음</td>
+          <td><span class="yes">낮음</span></td>
+        </tr>
+        <tr>
+          <td>B</td>
+          <td><b>inbox 소켓 주입 도구 신설</b><br>moai에 "지정한 Claude 세션 소켓에 텍스트를 포스트"하는 도구를 추가</td>
+          <td>codex → Claude<br>(단방향, 실시간)</td>
+          <td>codex config.toml에 moai 등록 + Go 쪽에 소켓 클라이언트 신규 구현(현재 0건) + 토큰 처리</td>
+          <td>중간</td>
+        </tr>
+        <tr>
+          <td>C</td>
+          <td><b>MCP 서버를 HTTP 전송으로 전환</b><br>한 프로세스를 두 호스트가 공유 → 진짜 공유 상태</td>
+          <td>양방향</td>
+          <td><code>ServeStdio</code> → streamable HTTP 전환, 인증·수명주기·동시성 전부 신규 설계</td>
+          <td><span class="no">높음</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <span class="ico">★</span>
+      <div>
+        <p><b>제 추천은 A입니다.</b> Claude → codex는 이미 <code>codex_task</code>로 되고 있으니
+        빠진 건 <b>돌아오는 길</b> 하나뿐인데, moai에는 이미 세션 레지스트리·goal 상태·handoff 레코드라는
+        <b>파일 기반 상태 저장소가 다 있습니다.</b> 새 프로토콜을 만들 게 아니라 그걸 우편함으로 쓰는 게
+        가장 적은 코드로 끝나요.</p>
+        <p>실시간성이 꼭 필요할 때만 B를 얹으면 됩니다.</p>
+      </div>
+    </div>
+
+    <h2 id="faq">FAQ</h2>
+
+    <details class="faq-item">
+      <summary>그럼 지금 codex한테 일을 시키는 건 되는 건가요?</summary>
+      <div class="faq-body">
+        <p><b>네, 그건 잘 됩니다.</b> <code>codex_task</code>로 작업을 주고 결과를 받고,
+        <code>background: true</code>로 오래 걸리는 일을 맡긴 뒤 <code>codex_job_status</code>로 진행을 볼 수 있어요.</p>
+        <p><code>resume_last: true</code>를 주면 이 프로젝트에서 마지막으로 쓴 codex 스레드를 이어서 씁니다.
+        다만 <b>"내가 다른 터미널에서 돌리고 있는 codex"에 접속하는 건 아닙니다</b> &mdash;
+        moai가 기록해 둔 스레드 ID를 다시 여는 것이고, 프로세스는 새로 뜹니다.</p>
+      </div>
+    </details>
+
+    <details class="faq-item">
+      <summary>codex를 MCP 서버로 만들어서 Claude에 붙이면 되지 않나요?</summary>
+      <div class="faq-body">
+        <p>붙일 수는 있지만 <b>질문의 답은 되지 않습니다.</b> 그렇게 하면 Claude가 codex를 도구로 쓰는
+        구조가 되는데, 그건 지금 <code>codex_task</code>가 하는 일과 방향이 같아요 &mdash;
+        여전히 <b>Claude → codex 단방향</b>입니다.</p>
+        <p>참고로 OpenAI는 초기에 codex를 MCP 서버로 노출하는 실험을 했지만,
+        MCP의 요청/응답 모델이 스트리밍 diff·승인 흐름·스레드 지속성·서버발 요청을 감당하지 못해
+        <b>클라이언트 연결용으로는 app-server를 쓰도록</b> 방향을 잡았습니다.</p>
+      </div>
+    </details>
+
+    <details class="faq-item">
+      <summary>Claude 세션끼리는 되는데 왜 codex만 안 되나요?</summary>
+      <div class="faq-body">
+        <p>발견(discovery) 방식 때문입니다. Claude Code 세션은 시작할 때
+        <b>디스크의 파일에 자기를 등록하고 inbox 소켓을 바인딩</b>합니다.
+        <code>ListAgents</code>는 그 파일들을 읽어서 목록을 만들어요.</p>
+        <p>codex는 그 등록을 하지 않으니 <b>존재 자체가 보이지 않습니다.</b>
+        같은 이유로, 컨테이너 안의 세션과 호스트의 세션도 서로 못 봅니다 &mdash;
+        파일시스템이 다르니까요. (같은 컨테이너 안 두 세션끼리는 됩니다.)</p>
+      </div>
+    </details>
+
+    <details class="faq-item">
+      <summary>메시지를 보낼 수 있게 되면 뭐가 위험한가요?</summary>
+      <div class="faq-body">
+        <p>Claude Code 문서가 이미 선을 그어놨고, 그 선을 그대로 따르는 게 좋습니다:</p>
+        <p><b>① 메시지는 승인이 아니다</b> &mdash; 다른 세션에서 온 메시지는 권한 프롬프트에 대신 답할 수 없습니다.
+        <b>② 설정을 못 바꾼다</b> &mdash; 다른 세션이 요청했다는 이유로 권한 설정이나 <code>CLAUDE.md</code>를 바꾸지 않습니다.
+        <b>③ 슬래시 명령은 실행되지 않는다</b> &mdash; 텍스트로 도착할 뿐입니다.
+        <b>④ 권한 프롬프트는 그대로 뜬다</b>.</p>
+        <p>추가로 <b>루프 방지</b>도 들어 있어요 &mdash; 반복 메시지 rate limit, 짧은 시간 내 동일 메시지 폐기,
+        세션당 대기 50개 상한. 두 세션이 서로 메시지를 주고받는 무한 루프는 저절로 멈춥니다.</p>
+      </div>
+    </details>
+
+    <details class="faq-item">
+      <summary>"통신"이라는 말을 어디까지 인정해야 하나요?</summary>
+      <div class="faq-body">
+        <p>구분해서 보시는 게 좋아요. 세 가지가 전부 다릅니다.</p>
+        <p><b>위임(delegation)</b> &mdash; A가 B를 도구로 불러 결과를 받는 것. <b>지금 되는 것.</b><br>
+        <b>공유 상태(shared state)</b> &mdash; 둘 다 같은 파일을 읽고 쓰는 것. 경로 A로 가능.<br>
+        <b>메시징(messaging)</b> &mdash; 상대가 <i>지금</i> 하던 일 중간에 끼어드는 것. 경로 B가 필요.</p>
+        <p>보통 "세션끼리 통신"이라고 할 때 기대하는 건 세 번째인데,
+        실제 업무에서 필요한 건 두 번째인 경우가 많습니다.</p>
+      </div>
+    </details>
+
+    <details class="faq-item">
+      <summary>스스로 확인해 보려면 뭘 쳐보면 되나요?</summary>
+      <div class="faq-body">
+        <p>네 가지를 직접 확인하실 수 있어요:</p>
+        <p><b>①</b> Claude Code 세션에서 <code>/list-agents</code> (또는 <code>/peers</code>) &mdash;
+        목록에 codex가 없다는 걸 눈으로 확인.<br>
+        <b>②</b> <code>/status</code> &mdash; <code>Peer address</code> 행에 이 세션의 소켓 경로가 보입니다.<br>
+        <b>③</b> <code>grep -E '^\[mcp_servers' ~/.codex/config.toml</code> &mdash; moai가 없음을 확인.<br>
+        <b>④</b> <code>grep -n ServeStdio internal/cli/mcp_server.go</code> &mdash; stdio 전용임을 확인.</p>
+      </div>
+    </details>
+
+    <footer>
+      Sources:
+      <a href="https://modelcontextprotocol.io/docs/learn/architecture">modelcontextprotocol.io/docs/learn/architecture</a> ·
+      <a href="https://code.claude.com/docs/en/cross-session-messaging">code.claude.com/docs/en/cross-session-messaging</a> ·
+      <a href="https://learn.chatgpt.com/docs/app-server">learn.chatgpt.com/docs/app-server</a> ·
+      <a href="https://learn.chatgpt.com/docs/extend/mcp">learn.chatgpt.com/docs/extend/mcp</a>
+      <br>
+      실측: internal/cli/mcp_server.go · internal/cli/mcp_codex.go · .mcp.json · ~/.codex/config.toml
+      &nbsp;&mdash;&nbsp; Generated: 2026-08-17
+    </footer>
+
+  </main>
+
+</div>
+
+<script>
+document.querySelectorAll("[data-tabs]").forEach(function(box) {
+  var btns = box.querySelectorAll("button");
+  var panes = box.querySelectorAll(".tab-pane");
+  btns.forEach(function(btn) {
+    btn.addEventListener("click", function() {
+      btns.forEach(function(b) { b.classList.remove("active"); });
+      panes.forEach(function(p) { p.classList.remove("active"); });
+      btn.classList.add("active");
+      var target = document.getElementById(btn.dataset.pane);
+      if (target) target.classList.add("active");
+    });
+  });
+});
+</script>
+
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: "base",
+    themeVariables: {
+      primaryColor:      "#FAF9F5",
+      primaryTextColor:  "#141413",
+      primaryBorderColor: "#D97757",
+      lineColor:         "#87867F",
+      secondaryColor:    "#E3DACC",
+      tertiaryColor:     "#F0EEE6"
+    }
+  });
+</script>
+</body>
+</html>

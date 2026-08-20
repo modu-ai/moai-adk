@@ -99,7 +99,7 @@ flowchart TD
 
 ## 启用要求 (v2.1.178+)
 
-智能体团队是**实验性功能，默认关闭**。需要 Claude Code v2.1.178 以上，并把环境变量 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` 设为 `1` 启用。
+智能体团队目前仍是**实验性功能**。自 MoAI-ADK v3.1.1 起，分发模板默认搭载环境变量 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` —— 经 `moai init`/`moai update` 设置的项目无需任何操作即已开启。想在自己手工搭建的项目里关闭，就从 shell 环境移除该变量，或删掉 `settings.json` 中的对应条目。
 
 ### v2.1.178 的变化
 

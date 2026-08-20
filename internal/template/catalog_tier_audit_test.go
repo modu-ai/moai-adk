@@ -174,7 +174,9 @@ func TestAllSkillsInCatalog(t *testing.T) {
 	// net +1 = 32.
 	// moai-kanban-foreman added (kanban foreman loop-iteration skill driving
 	// the bare /loop backlog dispatch cycle, core.skills), net +1 = 33.
-	const expectedSkillCount = 33
+	// moai-domain-design-dna added (reference-design deconstruction +
+	// generation domain skill, core.skills), net +1 = 34.
+	const expectedSkillCount = 34
 	if len(diskSkills) != expectedSkillCount {
 		t.Errorf("expected %d skill directories on disk, found %d: %v", expectedSkillCount, len(diskSkills), diskSkills)
 	}

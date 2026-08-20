@@ -5,31 +5,46 @@ package template
 // model calls route to z.ai through the Anthropic-compat shim; z.ai does NOT
 // implement Claude's 5-level effort vocabulary. This overlay collapses the Claude
 // effort ({low, medium, high, xhigh, max}) that the plan_type tier profile
-// produced (§B.6/§B.7) onto z.ai's 3-state reasoning control (thinking-off +
-// reasoning_effort ∈ {high, max}), with a coding-max override for the
-// code-producing run-phase agent (manager-develop). It is an OVERLAY, not a third plan_type: plan_type stays
-// {api, subscription} and the overlay remaps only the EFFORT dimension. The MODEL
-// dimension is already carried under GLM by the llm.glm.models tier→GLM env
-// mapping (ANTHROPIC_DEFAULT_*), so the overlay never touches model.
+// produced (§B.6/§B.7) onto GLM-5.3's 3-level reasoning_effort control
+// ({low, high, max}), with a coding-max override for the code-producing
+// run-phase agent (manager-develop). It is an OVERLAY, not a third plan_type:
+// plan_type stays {api, subscription} and the overlay remaps only the EFFORT
+// dimension. The MODEL dimension is already carried under GLM by the
+// llm.glm.models tier→GLM env mapping (ANTHROPIC_DEFAULT_*), so the overlay
+// never touches model.
 //
-// Sources for the collapse mapping (research.md §B, z.ai official docs):
-//   - thinking is a binary enabled/disabled toggle
-//   - reasoning_effort accepts ONLY {high, max}; max is the omit-default; high is
-//     explicit; reasoning_effort is moot when thinking is disabled
-//   - z.ai recommends reasoning_effort: max for coding tasks
+// Sources for the collapse mapping (z.ai official docs, https://docs.z.ai/guides/llm/glm-5.3):
+//   - GLM-5.3 reasons ALWAYS. "Disabling reasoning is no longer supported" — a
+//     request carrying thinking.type "disabled" FAILS against glm-5.3.
+//   - reasoning_effort accepts {low, high, max}; max is the default.
+//   - Official migration guidance for callers that previously disabled thinking:
+//     "change it to enabled and set reasoning_effort to low before updating the
+//     model ID to glm-5.3. Otherwise, the request will fail."
+//   - z.ai recommends reasoning_effort: max for coding tasks.
+//
+// This is why the collapse floor is the WIRE-REAL `low` state (thinking enabled,
+// reasoning_effort=low) rather than the pre-5.3 thinking-off state: under
+// glm-5.3 the thinking-off state is not merely weaker, it is unreachable.
 
 import "github.com/modu-ai/moai-adk/internal/config"
 
-// GLM canonical reasoning-state names (REQ-MTP-027). z.ai's reasoning control has
-// exactly three reachable states; these named constants are the collapse output
-// domain (no magic literals per CLAUDE.local.md §14).
+// GLM canonical reasoning-state names (REQ-MTP-027). GLM-5.3's reasoning control
+// has exactly three reachable levels; these named constants are the collapse
+// output domain (no magic literals per CLAUDE.local.md §14).
+//
+// The state names are the z.ai reasoning_effort tokens themselves — the pre-5.3
+// {thinking-off, reasoning-high, reasoning-max} vocabulary described a wire shape
+// (a thinking toggle crossed with a 2-value effort) that glm-5.3 no longer has.
+// Naming the state after the wire value it carries removes the translation step
+// and keeps the settings widget domain and the wire domain identical.
 const (
-	// GLMStateThinkingOff is the "thinking disabled" state (reasoning phase off).
-	GLMStateThinkingOff = "thinking-off"
-	// GLMStateReasoningHigh is thinking enabled with reasoning_effort=high.
-	GLMStateReasoningHigh = "reasoning-high"
-	// GLMStateReasoningMax is thinking enabled with reasoning_effort=max.
-	GLMStateReasoningMax = "reasoning-max"
+	// GLMStateLow is thinking enabled with reasoning_effort=low (the floor under
+	// glm-5.3 — the pre-5.3 thinking-off state is unreachable, see the file doc).
+	GLMStateLow = "low"
+	// GLMStateHigh is thinking enabled with reasoning_effort=high.
+	GLMStateHigh = "high"
+	// GLMStateMax is thinking enabled with reasoning_effort=max (z.ai default).
+	GLMStateMax = "max"
 )
 
 // GLM wire field names + value tokens (REQ-MTP-027, no magic literals per §14).
@@ -40,61 +55,75 @@ const (
 	GLMReasoningEffortKey = "reasoning_effort"
 	// GLMThinkingKey is the z.ai request field toggling the reasoning phase.
 	GLMThinkingKey = "thinking"
+	// GLMReasoningEffortLow is the z.ai lightweight reasoning level. Under
+	// glm-5.3 it REPLACES the retired thinking-disabled state — z.ai's own
+	// migration guidance is to set reasoning_effort=low where thinking was
+	// previously disabled.
+	GLMReasoningEffortLow = "low"
 	// GLMReasoningEffortHigh is the z.ai economical-loop reasoning level.
 	GLMReasoningEffortHigh = "high"
 	// GLMReasoningEffortMax is the z.ai coding-task / omit-default reasoning level.
 	GLMReasoningEffortMax = "max"
-	// GLMThinkingEnabledVal / GLMThinkingDisabledVal are the z.ai thinking toggle
-	// values.
-	GLMThinkingEnabledVal  = "enabled"
-	GLMThinkingDisabledVal = "disabled"
+	// GLMThinkingEnabledVal is the z.ai thinking toggle value. glm-5.3 accepts
+	// only this value — the "disabled" counterpart was retired upstream and is
+	// deliberately not declared here, so no caller can reach an unreachable state.
+	GLMThinkingEnabledVal = "enabled"
 )
 
 // GLMReasoningState is one collapsed z.ai reasoning-control state. It carries the
 // canonical state Name (for tests / display) plus the wire representation
-// (ThinkingEnabled + ReasoningEffort). ReasoningEffort is "" when thinking is
-// disabled (z.ai fact: reasoning_effort is moot without thinking).
+// (ThinkingEnabled + ReasoningEffort).
+//
+// ThinkingEnabled is true in every reachable glm-5.3 state — the field is kept
+// (rather than dropped) because it is the shape the wire writers already branch
+// on, and because a future backend that reintroduces a reasoning-off mode would
+// need it back. Under glm-5.3 it is invariantly true, so ReasoningEffort is
+// always populated.
 type GLMReasoningState struct {
 	// Name is the canonical state name (GLMState* constant).
 	Name string
-	// ThinkingEnabled is the z.ai thinking toggle (false = thinking disabled).
+	// ThinkingEnabled is the z.ai thinking toggle. Invariantly true under
+	// glm-5.3: "Disabling reasoning is no longer supported."
 	ThinkingEnabled bool
-	// ReasoningEffort is the z.ai reasoning_effort value (high | max); empty when
-	// thinking is disabled.
+	// ReasoningEffort is the z.ai reasoning_effort value (low | high | max).
 	ReasoningEffort string
 }
 
 // The three reachable GLM reasoning states, built from the named value constants.
 var (
-	glmReasoningThinkingOff = GLMReasoningState{Name: GLMStateThinkingOff, ThinkingEnabled: false, ReasoningEffort: ""}
-	glmReasoningHigh        = GLMReasoningState{Name: GLMStateReasoningHigh, ThinkingEnabled: true, ReasoningEffort: GLMReasoningEffortHigh}
-	glmReasoningMax         = GLMReasoningState{Name: GLMStateReasoningMax, ThinkingEnabled: true, ReasoningEffort: GLMReasoningEffortMax}
+	glmReasoningLow  = GLMReasoningState{Name: GLMStateLow, ThinkingEnabled: true, ReasoningEffort: GLMReasoningEffortLow}
+	glmReasoningHigh = GLMReasoningState{Name: GLMStateHigh, ThinkingEnabled: true, ReasoningEffort: GLMReasoningEffortHigh}
+	glmReasoningMax  = GLMReasoningState{Name: GLMStateMax, ThinkingEnabled: true, ReasoningEffort: GLMReasoningEffortMax}
 )
 
 // CollapseClaudeEffortToGLM maps a Claude effort level (EffortLevel* constants)
 // onto the GLM canonical reasoning state (REQ-MTP-027):
 //
-//	low   → thinking disabled     (fastest, least thorough → skip reasoning)
+//	low   → reasoning_effort low  (fastest, least thorough → z.ai's floor level)
 //	medium → reasoning_effort high (balanced → economical-loop level)
 //	high  → reasoning_effort high (deep but not maximal; z.ai has no level between
 //	                               high and max, so medium/high converge)
 //	xhigh → reasoning_effort max  (extended reasoning → ceiling)
 //	max   → reasoning_effort max  (ceiling → ceiling)
 //
+// The mapping SHAPE is unchanged from the pre-5.3 version (same 5→3 grouping,
+// same totality clause); only the floor's identity moved, from the retired
+// thinking-off state to the wire-real `low` level, per z.ai's own migration
+// guidance for callers that previously disabled thinking.
+//
 // The mapping is lossy (5→3) by design — z.ai offers fewer levels than Claude —
-// and TOTAL over the input: an unrecognized effort maps to the GLM omit-default
-// state (reasoning-max), so a drifted effort string never panics and never
-// under-reasons.
+// and TOTAL over the input: an unrecognized effort maps to the GLM default
+// level (max), so a drifted effort string never panics and never under-reasons.
 func CollapseClaudeEffortToGLM(effort string) GLMReasoningState {
 	switch effort {
 	case EffortLevelLow:
-		return glmReasoningThinkingOff
+		return glmReasoningLow
 	case EffortLevelMedium, EffortLevelHigh:
 		return glmReasoningHigh
 	case EffortLevelXHigh, EffortLevelMax:
 		return glmReasoningMax
 	default:
-		// Totality clause: unrecognized effort → z.ai omit-default (reasoning-max).
+		// Totality clause: unrecognized effort → z.ai default level (max).
 		return glmReasoningMax
 	}
 }
@@ -104,7 +133,7 @@ func CollapseClaudeEffortToGLM(effort string) GLMReasoningState {
 // state set as a closed widget domain without re-declaring the literals — the
 // same domain CollapseClaudeEffortToGLM produces.
 func GLMReasoningStateNames() []string {
-	return []string{GLMStateReasoningMax, GLMStateReasoningHigh, GLMStateThinkingOff}
+	return []string{GLMStateMax, GLMStateHigh, GLMStateLow}
 }
 
 // glmCodingMaxOverrideAgents is the coding-max override set (REQ-MTP-028): the
@@ -112,7 +141,7 @@ func GLMReasoningStateNames() []string {
 // max for coding tasks. manager-develop runs run-phase implementation at Claude
 // effort xhigh. builder-harness was removed by SPEC-GLM-EFFORT-TUNE-001 P1 — its
 // artifact-scaffolding role falls under the standard collapse
-// (high → reasoning-high) per the CG-mode cost-reduction goal. No other retained
+// (high → the `high` level) per the CG-mode cost-reduction goal. No other retained
 // agent is overridden. Named constant collection per §14.
 var glmCodingMaxOverrideAgents = map[string]bool{
 	"manager-develop": true,
@@ -136,7 +165,7 @@ func GLMCodingMaxOverrideAgents() []string {
 }
 
 // ResolveGLMReasoning returns the per-agent GLM reasoning state under a GLM
-// backend (REQ-MTP-028): agents in the coding-max override set force reasoning-max
+// backend (REQ-MTP-028): agents in the coding-max override set force the `max` level
 // REGARDLESS of their collapse result; every other agent uses the collapse of its
 // Claude effort. This is the per-agent overlay logic; it stays defined and
 // unit-tested even when the delivery wire carries only a session-level value (the
@@ -144,7 +173,7 @@ func GLMCodingMaxOverrideAgents() []string {
 func ResolveGLMReasoning(agentName, claudeEffort string) GLMReasoningState {
 	if IsGLMCodingMaxOverrideAgent(agentName) {
 		// Coding-max override (z.ai coding-task recommendation) — lifts the collapse
-		// result to reasoning-max for the code-producing run-phase agent (manager-develop).
+		// result to the `max` level for the code-producing run-phase agent (manager-develop).
 		return glmReasoningMax
 	}
 	return CollapseClaudeEffortToGLM(claudeEffort)
@@ -154,11 +183,11 @@ func ResolveGLMReasoning(agentName, claudeEffort string) GLMReasoningState {
 // Branch-B explicit-write delivery (REQ-MTP-030). Env vars and the
 // settings.local.json env block are session-global (no per-agent reasoning-control
 // channel through the z.ai shim), so the per-agent overlay collapses to ONE session
-// value. That value is reasoning-high: an operator cost policy sets the session
+// value. That value is the `high` level: an operator cost policy sets the session
 // floor at the thinking-enabled `high` state rather than the `max` ceiling, since a
 // session-global value is paid by every spawn in the session, not only by the
 // code-producing one. The per-agent collapse+override logic (ResolveGLMReasoning)
-// remains defined and unit-tested — manager-develop still resolves to reasoning-max
+// remains defined and unit-tested — manager-develop still resolves to the `max` level
 // there — but the wire carries this session-level derived value (the documented
 // delivery-granularity limitation, research.md §D).
 //

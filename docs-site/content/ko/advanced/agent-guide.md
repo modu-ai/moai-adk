@@ -72,7 +72,7 @@ MoAI-ADK는 **12개 에이전트** (11개 MoAI 사용자 정의 + 1개 Anthropic
 | `manager-docs` | CHANGELOG · README · frontmatter 동기화 | 문서 |
 | `manager-git` | PR 생성, 브랜치 전략, 머지 | PR |
 | `manager-design` | 디자인 도구와 양방향으로 설계를 주고받음 | 디자인 |
-| `manager-kanban` | Tier L 규모 구현을 마일스톤별로 조정 | 구현 (Tier L) |
+| `manager-lead` | Tier L 규모 구현을 마일스톤별로 조정 | 구현 (Tier L) |
 
 ### 평가자 에이전트 — 2개
 
@@ -166,13 +166,13 @@ flowchart TD
 
 한 가지 헷갈리기 쉬운 점이 있습니다. `claude-code-guide`는 은퇴한 MoAI 커스텀 파일과 같은 이름을 쓰는 Claude Code 내장 도우미가 있습니다. 내장 도우미를 부르는 것은 거부 대상이 아닙니다 — 거부는 MoAI 커스텀 파일에만 걸립니다.
 
-## 계층형 팀 — manager-kanban
+## 계층형 팀 — manager-lead
 
-`manager-kanban`는 Tier L 규모의 구현을 조정하는 전용 에이전트입니다. 직접 코드를 쓰지 않고, 마일스톤을 나눠 리프 워커(leaf worker)에게 맡긴 뒤 각 마일스톤 경계에서 컨텍스트를 접고 검증을 교차로 돌립니다. 리프 워커는 그때그때 `Agent(general-purpose)`로 만들어지며, 서로 쓰기 영역이 겹치지 않게 worktree로 격리된 브랜치에서 실행됩니다.
+`manager-lead`는 Tier L 규모의 구현을 조정하는 전용 에이전트입니다. 직접 코드를 쓰지 않고, 마일스톤을 나눠 리프 워커(leaf worker)에게 맡긴 뒤 각 마일스톤 경계에서 컨텍스트를 접고 검증을 교차로 돌립니다. 리프 워커는 그때그때 `Agent(general-purpose)`로 만들어지며, 서로 쓰기 영역이 겹치지 않게 worktree로 격리된 브랜치에서 실행됩니다.
 
 ### 세 조건을 모두 만족할 때만
 
-오케스트레이터는 아래 세 조건이 **모두(AND)** 성립할 때만 `manager-kanban`를 만듭니다. 하나라도 모자라면 오케스트레이터가 직접 순차 처리합니다 — 조건 못 채운 작업에 조정 에이전트를 붙이면 비용만 늘고 회수가 안 되기 때문입니다.
+오케스트레이터는 아래 세 조건이 **모두(AND)** 성립할 때만 `manager-lead`를 만듭니다. 하나라도 모자라면 오케스트레이터가 직접 순차 처리합니다 — 조건 못 채운 작업에 조정 에이전트를 붙이면 비용만 늘고 회수가 안 되기 때문입니다.
 
 | 조건 | 기준 |
 |------|------|
@@ -184,16 +184,16 @@ flowchart TD
 
 ### depth-2 봉인 — 계층이 두 겹까지만 열리는 까닭
 
-12개 에이전트 가운데 `manager-kanban`만이 `tools:` 목록에 `Agent` 도구를 담고 있습니다. 나머지는 모두 `Agent`를 빼서 평면 구조를 유지합니다. 그래서 오케스트레이터 → `manager-kanban`가 1단, `manager-kanban` → 리프 워커가 2단이고, 3단은 생기지 않습니다.
+12개 에이전트 가운데 `manager-lead`만이 `tools:` 목록에 `Agent` 도구를 담고 있습니다. 나머지는 모두 `Agent`를 빼서 평면 구조를 유지합니다. 그래서 오케스트레이터 → `manager-lead`가 1단, `manager-lead` → 리프 워커가 2단이고, 3단은 생기지 않습니다.
 
 ```mermaid
 flowchart TD
-    ORCH["오케스트레이터"] -->|"1단"| LEAD["manager-kanban<br>tools에 Agent 포함 (예외)"]
+    ORCH["오케스트레이터"] -->|"1단"| LEAD["manager-lead<br>tools에 Agent 포함 (예외)"]
     LEAD -->|"2단"| W1["리프 워커 A<br>tools에 Agent 없음"]
     LEAD -->|"2단"| W2["리프 워커 B<br>tools에 Agent 없음"]
     W1 -.->|"차단"| X["3단 재귀<br>생성 안 됨"]
     W2 -.->|"차단"| X
-    GUARD["CI 가드<br>manager_kanban_depth_test.go"] -.->|"위반 시 빌드 실패"| X
+    GUARD["CI 가드<br>manager_lead_depth_test.go"] -.->|"위반 시 빌드 실패"| X
 ```
 
 {{< callout type="warning" >}}

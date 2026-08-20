@@ -507,7 +507,7 @@ func TestGLMReasoningEnvVarsForEffort(t *testing.T) {
 		wantPresent   bool
 		wantReasoning string
 	}{
-		{"low disables thinking (no key)", template.EffortLevelLow, false, ""},
+		{"low → reasoning low (glm-5.3 cannot disable thinking)", template.EffortLevelLow, true, template.GLMReasoningEffortLow},
 		{"medium → reasoning high", template.EffortLevelMedium, true, template.GLMReasoningEffortHigh},
 		{"high → reasoning high", template.EffortLevelHigh, true, template.GLMReasoningEffortHigh},
 		{"xhigh → reasoning max", template.EffortLevelXHigh, true, template.GLMReasoningEffortMax},

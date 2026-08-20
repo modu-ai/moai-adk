@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>공식 문서 대조 감사 — 칸반·워크플로</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    :root{
+      --ivory:#FAF9F5;--paper:#FFFFFF;--slate:#141413;
+      --clay:#D97757;--clay-d:#B85C3E;--oat:#E3DACC;--olive:#788C5D;
+      --g100:#F0EEE6;--g300:#D1CFC5;--g500:#87867F;--g700:#3D3D3A;
+      --sans:"Pretendard",system-ui,-apple-system,"Segoe UI",sans-serif;
+      --serif:"Noto Serif KR",ui-serif,Georgia,serif;
+      --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+      --max-width:1100px;--radius-row:8px;--border:1.5px solid var(--g300);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--ivory);color:var(--g700);font-family:var(--sans);
+         font-size:15px;line-height:1.6;padding:56px 32px 120px;-webkit-font-smoothing:antialiased}
+    .page{max-width:var(--max-width);margin:0 auto}
+    .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.08em;
+             text-transform:uppercase;color:var(--g500);margin-bottom:10px}
+    h1{font-family:var(--serif);font-weight:700;font-size:31px;color:var(--slate);
+       letter-spacing:-.01em;line-height:1.25;margin-bottom:18px}
+    .goal-box{border:var(--border);border-left:3px solid var(--clay);border-radius:10px;
+              background:var(--paper);padding:18px 20px;margin-bottom:26px;font-size:14.5px;max-width:850px}
+    .goal-box b{color:var(--slate)}
+    .stamp{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:.05em;
+           background:var(--clay);color:#fff;padding:3px 9px;border-radius:5px;margin-bottom:10px}
+    .sec-head{font-family:var(--serif);font-weight:700;font-size:23px;color:var(--slate);
+              margin:48px 0 6px;padding-bottom:8px;border-bottom:2px solid var(--oat)}
+    .sec-intro{font-size:14.5px;margin:12px 0 18px;max-width:790px}
+    h3{font-family:var(--serif);font-weight:700;font-size:17px;color:var(--slate);margin:26px 0 8px}
+    p{margin-bottom:12px;max-width:790px}
+    code{font-family:var(--mono);font-size:12.5px;background:var(--g100);padding:1px 5px;border-radius:4px}
+    td code,th code,pre code{background:none;padding:0}
+    ul,ol{margin:0 0 12px 20px;max-width:790px}
+    li{margin-bottom:6px}
+    .lead{border-left:2px solid var(--oat);padding-left:14px;margin-bottom:16px;max-width:790px;font-size:14.5px}
+    blockquote{border-left:3px solid var(--oat);padding:8px 0 8px 14px;margin:10px 0 14px;
+               color:var(--g700);font-size:13.8px;max-width:790px;background:rgba(227,218,204,.2)}
+
+    .summary-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:22px 0 8px}
+    @media(max-width:760px){.summary-strip{grid-template-columns:repeat(2,1fr)}}
+    .sum-cell{border:var(--border);border-radius:10px;background:var(--paper);padding:14px 16px}
+    .sum-cell .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;
+                 text-transform:uppercase;color:var(--g500);margin-bottom:6px}
+    .sum-cell .v{font-family:var(--serif);font-weight:700;font-size:24px;color:var(--slate);line-height:1.15}
+    .sum-cell .v.accent{color:var(--clay)}
+    .sum-cell .v.good{color:var(--olive)}
+    .sum-cell .n{font-size:12px;color:var(--g500);margin-top:4px}
+
+    table{border-collapse:collapse;width:100%;margin:14px 0 20px;font-size:13.5px;
+          background:var(--paper);border:var(--border);border-radius:var(--radius-row);overflow:hidden}
+    th{background:var(--g100);color:var(--slate);text-align:left;font-weight:700;
+       padding:9px 12px;border-bottom:1px solid var(--g300);font-size:12.5px}
+    td{padding:9px 12px;border-bottom:1px solid var(--g300);vertical-align:top}
+    tr:last-child td{border-bottom:none}
+    .ok{color:var(--olive);font-weight:700}
+    .part{color:var(--clay);font-weight:700}
+    .no{color:var(--clay-d);font-weight:700}
+    .dim{color:var(--g500)}
+
+    .finding{border:var(--border);border-radius:10px;background:var(--paper);
+             padding:16px 18px;margin:14px 0;max-width:880px}
+    .finding h4{display:flex;align-items:center;gap:9px;margin:0 0 8px;font-size:16px;
+                font-family:var(--serif);font-weight:700;color:var(--slate)}
+    .badge{font-family:var(--mono);font-size:10px;letter-spacing:.05em;padding:2px 8px;
+           border-radius:4px;text-transform:uppercase;flex-shrink:0}
+    .badge.crit{background:var(--clay);color:#fff}
+    .badge.maj{background:var(--clay-d);color:#fff}
+    .badge.min{background:var(--oat);color:var(--slate)}
+    .badge.info{background:var(--g100);color:var(--g500)}
+    .badge.good{background:var(--olive);color:#fff}
+    .finding p{font-size:13.8px;margin-bottom:8px}
+    .finding .ev{font-family:var(--mono);font-size:11.5px;color:var(--g500);
+                 border-top:1px solid var(--g300);padding-top:8px;margin-top:10px}
+
+    .milestones{display:flex;flex-direction:column;margin-top:18px}
+    .milestone{display:grid;grid-template-columns:74px 28px 1fr;gap:0 18px}
+    .milestone .when{text-align:right;font-family:var(--mono);font-size:12px;color:var(--g500);padding-top:4px}
+    .milestone .dot-col{display:flex;flex-direction:column;align-items:center}
+    .milestone .dot{width:14px;height:14px;border-radius:50%;background:var(--paper);
+                    border:3px solid var(--clay);margin-top:5px;flex-shrink:0}
+    .milestone .line{width:2px;flex:1;background:var(--g300);margin:4px 0}
+    .milestone:last-child .line{display:none}
+    .milestone .body{padding-bottom:26px}
+    .milestone .body h3{font-size:16.5px;margin:0 0 4px}
+    .milestone .body p{font-size:13.8px;margin-bottom:8px}
+    .tag-row{display:flex;gap:7px;flex-wrap:wrap}
+    .tag{font-family:var(--mono);font-size:11px;background:var(--oat);color:var(--slate);
+         padding:2px 8px;border-radius:5px}
+
+    .callout{display:flex;gap:12px;border:var(--border);border-color:var(--oat);
+             background:rgba(227,218,204,.35);border-radius:10px;padding:14px 16px;
+             margin:18px 0;font-size:14px;max-width:850px}
+    .callout .ico{color:var(--clay);font-weight:600;flex-shrink:0}
+    .callout p:last-child{margin-bottom:0}
+
+    pre.code{background:var(--paper);border:var(--border);border-radius:10px;padding:15px 17px;
+             margin:14px 0;font-family:var(--mono);font-size:12.5px;line-height:1.6;
+             color:var(--slate);overflow-x:auto}
+    pre.code .cm{color:var(--g500)}
+    pre.code .hl{color:var(--clay)}
+
+    details.fold{border:var(--border);border-radius:10px;background:var(--paper);margin:12px 0;overflow:hidden}
+    details.fold>summary{list-style:none;cursor:pointer;padding:13px 16px;font-family:var(--serif);
+                         font-size:15.5px;color:var(--slate);display:flex;align-items:baseline;gap:10px}
+    details.fold>summary::-webkit-details-marker{display:none}
+    details.fold>summary::before{content:"▸";color:var(--clay);font-family:var(--sans);font-size:12px}
+    details.fold[open]>summary::before{content:"▾"}
+    details.fold .fold-body{padding:0 16px 16px}
+    details.fold .fold-body p{font-size:13.8px}
+
+    footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--g300);
+           font-family:var(--mono);font-size:11.5px;color:var(--g500);line-height:1.9}
+    footer a{color:var(--g500)}
+
+    @media print{
+      body{background:#fff;color:#000;padding:0;font-size:11pt}
+      .page{max-width:none}
+      .finding,.milestone,details.fold{page-break-inside:avoid}
+      details[open]{display:block}
+      h1,h3,.sec-head{page-break-after:avoid}
+      *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <div class="eyebrow">MoAI-ADK · 공식 문서 대조 감사 · 2026-08-17</div>
+  <h1>칸반 · 워크플로 전면 감사<br>— 공식 문서 8편 대조</h1>
+
+  <div class="goal-box">
+    <span class="stamp">치명 1 · 중대 3 · 정정 3 · 기회 7</span>
+    <p><b>가장 먼저 볼 것</b> — <code>settings.json</code>에
+    <code>CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1"</code>이 켜져 있습니다.
+    그것도 <b>템플릿에도</b> 들어 있어 모든 배포 사용자에게 나갑니다.
+    그런데 MoAI 독트린은 Agent Teams를 <b>RETIRED</b>로 선언했어요. 선언과 설정이 정반대입니다.</p>
+    <p>공식 문서는 이 상태의 결과를 명확히 적습니다 &mdash;
+    <b>이름을 붙인 서브에이전트가 teammate로 뜨고</b>, teammate는 <b>출력 없이 idle 알림만</b> 보냅니다.
+    그래서 <b>"서브에이전트 결과를 기다리는 오케스트레이션 흐름이 멈출 수 있다"</b>고 명시돼 있어요.
+    MoAI의 칸반·팬아웃이 정확히 그 흐름입니다.</p>
+    <p style="margin-bottom:0">읽은 문서: agent-teams · sub-agents · workflows · worktrees ·
+    skills · scheduled-tasks · goal · cross-session-messaging (8편 전부).
+    아래는 <b>실측으로 확인한 것만</b> 싣고, 제 이전 주장 중 <b>반증된 3건도 그대로 정정</b>했습니다.</p>
+  </div>
+
+  <div class="summary-strip">
+    <div class="sum-cell">
+      <div class="k">치명 결함</div>
+      <div class="v accent">1</div>
+      <div class="n">agent-teams 선언·설정 모순</div>
+    </div>
+    <div class="sum-cell">
+      <div class="k">중대 결함</div>
+      <div class="v accent">3</div>
+      <div class="n">도구 선언이 런타임과 어긋남</div>
+    </div>
+    <div class="sum-cell">
+      <div class="k">제 주장 정정</div>
+      <div class="v">3</div>
+      <div class="n">반증된 것 그대로 표기</div>
+    </div>
+    <div class="sum-cell">
+      <div class="k">미사용 네이티브 기능</div>
+      <div class="v good">7</div>
+      <div class="n">쓰면 바로 이득</div>
+    </div>
+  </div>
+
+  <div class="sec-head">1. 치명 — 지금 잘못될 수 있는 것</div>
+
+  <div class="finding">
+    <h4><span class="badge crit">치명</span> F-1. Agent Teams가 켜진 채 배포되고 있습니다</h4>
+    <p><b>실측</b>: <code>.claude/settings.json:360</code>과
+    <code>internal/template/templates/.claude/settings.json.tmpl:386</code> 둘 다
+    <code>"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"</code>.
+    <b>템플릿에 있으므로 모든 배포 사용자가 켠 상태로 받습니다.</b></p>
+    <p><b>독트린과 정반대</b>입니다. CLAUDE.md §15는 "Agent Teams RETIRED — Mode 3은 tombstone"이라 선언하고,
+    <code>orchestration-mode-selection.md</code>는 Mode 3을 "결정 트리가 절대 선택하지 않음"이라 적습니다.</p>
+    <p><b>공식 문서가 경고하는 결과</b>:</p>
+    <blockquote>
+      "while agent teams are enabled, a subagent that Claude names launches as a teammate,
+      so teams can form even when you didn't ask for one"<br><br>
+      "<b>An orchestration flow that waits on subagent results can stall.</b>"<br><br>
+      "Subagents: Claude receives the subagent's result when it completes.
+      Teammates: the idle notification reports that the teammate stopped, <b>without its output</b>."
+    </blockquote>
+    <p>MoAI의 Agent 도구에는 <code>name</code> 파라미터가 있고, 칸반과 교차세션 메시징 규칙은
+    <b>이름 기반 주소지정을 권장</b>합니다. 즉 반장이 이름 붙은 워커를 스폰하면
+    <b>teammate가 되어 결과를 못 받습니다.</b></p>
+    <p>게다가 이 값은 <b>하위 스코프에서 되돌릴 수 없습니다</b> &mdash;
+    프로젝트·로컬 설정과 managed settings가 사용자 설정보다 나중에 적용되므로,
+    어느 한 곳의 <code>"1"</code>이 이깁니다.</p>
+    <p><b>조치</b>: 값을 <code>"0"</code>으로 바꾸거나 키를 제거합니다.
+    문서상 <b>세션 재시작이 필요 없습니다</b> &mdash; 설정 파일의 <code>env</code>는 저장 시 즉시 반영되고,
+    다음 스폰마다 다시 읽습니다. 팀 기능을 의도적으로 쓰려면
+    <b>독트린 쪽을 고쳐야</b>지 설정만 켜둔 채로는 안 됩니다.</p>
+    <div class="ev">근거 · code.claude.com/docs/en/agent-teams · 실측 settings.json:360 + settings.json.tmpl:386</div>
+  </div>
+
+  <div class="sec-head">2. 중대 — 선언이 런타임과 어긋남</div>
+
+  <div class="finding">
+    <h4><span class="badge maj">중대</span> F-2. 백그라운드 서브에이전트에는 Task 도구가 없습니다</h4>
+    <p><b>실측</b>: MoAI 에이전트 <b>11개 전부</b>가 <code>tools:</code>에
+    <code>TaskCreate, TaskUpdate, TaskList, TaskGet</code>을 선언합니다.</p>
+    <p>그런데 공식 문서의 <b>백그라운드 서브에이전트 도구 목록</b>에 Task 계열이 <b>없습니다</b>.
+    유지되는 것은 Read · Grep · Glob · Bash · PowerShell · Edit · Write · NotebookEdit ·
+    WebFetch · WebSearch · TodoWrite · Skill · ToolSearch · EnterWorktree · ExitWorktree ·
+    Monitor · TaskStop · SendMessage · Artifact뿐이에요.</p>
+    <p><b>그리고 v2.1.198부터 서브에이전트는 기본이 백그라운드입니다</b>(CLAUDE.md §14도 이를 적고 있음).
+    즉 선언한 Task 도구가 <b>런타임에서 제거된 상태로 도는 게 기본</b>입니다.</p>
+    <p><b>영향</b>: <code>manager-kanban</code>의 TaskList 기반 조율, 각 에이전트의 진행 추적이
+    <b>조용히 동작하지 않을 수 있습니다.</b> 도구가 없으면 호출이 실패하지 오류가 나지 않아요.</p>
+    <p><b>조치</b>: (a) Task 조율이 필요한 에이전트는 <code>background: false</code>를 명시하거나
+    (b) Task 도구 의존을 걷어내고 파일 기반 진행 기록으로 대체합니다.
+    <b>어느 쪽이든 먼저 실측</b>해야 합니다 &mdash; 실제로 제거되는지 확인 없이 고치면 헛수고입니다.</p>
+    <div class="ev">근거 · docs/en/sub-agents "Second filter (background subagents only)" · 실측 11/11 에이전트 선언</div>
+  </div>
+
+  <div class="finding">
+    <h4><span class="badge maj">중대</span> F-3. 서브에이전트는 <code>Workflow</code> 도구를 못 씁니다</h4>
+    <p>공식 문서의 <b>첫 번째 필터</b>(모든 서브에이전트에서 제거)에
+    <code>Workflow</code>가 포함됩니다. <code>AskUserQuestion</code> · <code>ScheduleWakeup</code> ·
+    <code>EnterPlanMode</code> · <code>TaskOutput</code>도 함께요.</p>
+    <p><b>결론</b>: <code>sweep</code>(대량 팬아웃)은 <b>메인 세션 전용</b>입니다.
+    반장을 서브에이전트로 만들면 sweep을 못 씁니다. 반장은 반드시 <b>세션</b>이어야 해요.</p>
+    <p>부수 효과 하나는 <b>이득</b>입니다 &mdash; 서브에이전트에서 <code>AskUserQuestion</code>이
+    <b>런타임 차원에서 제거</b>되므로, MoAI의 "서브에이전트는 사용자에게 묻지 않는다" 규칙은
+    프롬프트 규율이 아니라 <b>이미 기계적으로 강제</b>되고 있습니다.</p>
+    <div class="ev">근거 · docs/en/sub-agents "First filter (removed from all subagents)"</div>
+  </div>
+
+  <div class="finding">
+    <h4><span class="badge maj">중대</span> F-4. 서브에이전트는 출력 스타일을 받지 않습니다</h4>
+    <p>공식 문서: <b>"What doesn't transfer: Output style"</b>.
+    auto memory와 컨텍스트 창 크기도 전달되지 않아요.</p>
+    <p><b>영향 두 갈래</b>. 나쁜 쪽은 산출물 톤·형식이 메인 세션과 달라진다는 것이고,
+    좋은 쪽은 <b>출력 스타일 32,342 B가 서브에이전트 프리픽스에서 빠진다</b>는 겁니다.</p>
+    <p>제가 앞서 추정한 프리픽스 39K 토큰(룰 136,345 B + CLAUDE.md 19,040 B ÷ 4)은
+    출력 스타일을 이미 제외한 값이라 <b>방향은 맞습니다.</b>
+    다만 CLAUDE.md는 <b>전 레벨이 전달된다</b>고 문서가 명시하므로 그 부분은 확정입니다.</p>
+    <div class="ev">근거 · docs/en/sub-agents "Context at Startup" · 실측 출력스타일 32,342 B</div>
+  </div>
+
+  <div class="sec-head">3. 제 이전 주장 중 정정할 것</div>
+
+  <p class="lead">
+    감사는 자기 주장도 대상입니다. 이번에 문서를 다 읽고 보니
+    <b>제가 앞서 드린 지적 셋이 근거를 잃었습니다.</b> 그대로 적습니다.
+  </p>
+
+  <div class="finding">
+    <h4><span class="badge info">정정</span> C-1. "N=8은 근거 없다"는 제 지적이 약합니다</h4>
+    <p>저는 t85의 <code>N=8</code>을 두고 <b>"문서 상한 3-5를 초과"</b>라고 했습니다.
+    그 3-5의 출처를 확인해 보니 <b>agent-teams 문서의 팀 크기 권고</b>였어요 &mdash;
+    "Start with 3-5 teammates for most workflows."</p>
+    <p>그런데 그건 <b>teammate</b> 얘기지 서브에이전트 팬아웃이 아닙니다. 실제 한도는 다릅니다:</p>
+    <table style="margin-top:10px">
+      <thead><tr><th style="width:210px">대상</th><th>한도</th></tr></thead>
+      <tbody>
+        <tr><td>Agent Teams teammate</td><td>3-5 권고 (하드 리밋 없음)</td></tr>
+        <tr><td><b>동시 서브에이전트</b></td><td class="ok"><b>20</b> (<code>CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS</code>)</td></tr>
+        <tr><td>워크플로 동시 에이전트</td><td>16 (CPU 적으면 감소), 런당 1,000</td></tr>
+      </tbody>
+    </table>
+    <p><b>따라서 N=8은 런타임 한도(20) 안이고, 서브에이전트 팬아웃에 3-5를 적용할 직접 근거가 없습니다.</b>
+    오라버니가 8을 유지한 판단이 문서상 더 지지받습니다.</p>
+    <p>다만 MoAI 규칙 <code>orchestration-mode-selection.md</code>가 3-5를 명시하고 5 초과를 anti-pattern으로
+    적어둔 것은 사실이므로, <b>규칙 쪽 근거를 다시 세우거나 상한을 올리거나 둘 중 하나</b>를 해야 합니다.
+    지금은 규칙과 운영이 어긋난 상태예요.</p>
+    <div class="ev">근거 · docs/en/agent-teams "Choose an appropriate team size" · docs/en/sub-agents "Concurrent limit"</div>
+  </div>
+
+  <div class="finding">
+    <h4><span class="badge info">정정</span> C-2. 시차 스폰은 워크플로에서 이미 자동입니다</h4>
+    <p>저는 "시차 스폰 규율을 지시문에 명문화하라"고 했는데, <b>워크플로 런타임이 이미 합니다.</b></p>
+    <blockquote>
+      "When a fan-out starts several matching agents at once, Claude Code holds all but the first
+      until the first agent's response begins, then releases the held agents together so their
+      first requests read the shared prefix." &mdash;
+      <code>CLAUDE_CODE_WORKFLOW_PREFIX_STAGGER_MS</code>, 기본 <b>5000</b>ms
+    </blockquote>
+    <p>즉 <b><code>sweep</code>을 쓰면 프리픽스 재지불(F-2 지적)이 자동으로 해결됩니다.</b>
+    같은 model·effort·agent type·tools·schema·cwd를 공유하는 형제 에이전트만 해당돼요.</p>
+    <p><b>단, 이건 워크플로 문서의 서술입니다.</b> Agent 도구를 직접 여러 번 부르는
+    <code>fanout</code>에도 같은 hold가 걸리는지는 <b>문서에 명시가 없어 미확인</b>입니다.
+    fanout에는 여전히 수동 규율이 필요할 수 있습니다.</p>
+    <div class="ev">근거 · docs/en/workflows "Prompt caching in a fan-out"</div>
+  </div>
+
+  <div class="finding">
+    <h4><span class="badge good">반증</span> C-3. 이미 쓰고 있는 것 둘을 "미사용"으로 적을 뻔했습니다</h4>
+    <p>실측하니 제가 제안하려던 둘이 <b>이미 채택돼 있었습니다</b>:</p>
+    <ul style="margin-bottom:8px">
+      <li><b><code>.worktreeinclude</code></b> &mdash; 저장소 루트에 <b>1,055 B로 존재</b>.
+          gitignore된 파일을 워크트리로 자동 복사하는 기능을 이미 씁니다</li>
+      <li><b>에이전트 <code>memory:</code> 필드</b> &mdash; <b>11개 에이전트 전부</b> 선언.
+          네이티브 영속 메모리를 이미 씁니다</li>
+    </ul>
+    <p>실측 없이 "안 쓰고 있다"고 적었으면 <b>없는 결함을 만들어낼 뻔했습니다.</b></p>
+    <div class="ev">실측 · <code>ls .worktreeinclude</code> · <code>grep -l '^memory:' .claude/agents/moai/*.md</code></div>
+  </div>
+
+  <div class="sec-head">4. 문서가 답을 준 미해결 카드 2건</div>
+
+  <div class="finding">
+    <h4><span class="badge min">해결</span> t41 &mdash; <code>moai worktree done</code> rc=128 lock의 원인</h4>
+    <p>카드 t41은 "세션이 시작 시 스스로 건 lock이 원인"이라 적으면서 <b>원인 미확인</b>으로 남겨뒀습니다.
+    공식 문서에 그대로 있습니다:</p>
+    <blockquote>
+      "While an agent is running, Claude runs <code>git worktree lock</code> on its worktree
+      so that concurrent cleanup cannot remove it. The lock is released when the agent finishes."<br><br>
+      "The sweep also releases a lock Claude Code set for a session whose process has exited,
+      so a killed background session doesn't leave its worktree permanently locked."
+      &mdash; v2.1.210 이전에는 수동 <code>git worktree unlock</code>이 필요했음
+    </blockquote>
+    <p><b>즉 lock은 버그가 아니라 설계된 동작</b>이고, 죽은 세션의 lock 자동 해제는 v2.1.210부터입니다.
+    t41의 조치(“git stderr 그대로 전달 + lock 감지 시 안내”)는 여전히 유효하지만,
+    <b>원인 조사 단계는 이 인용으로 끝납니다.</b></p>
+    <div class="ev">근거 · docs/en/worktrees "Clean up subagent and background-session worktrees"</div>
+  </div>
+
+  <div class="finding">
+    <h4><span class="badge min">정정</span> <code>env -u</code> 거부의 진짜 원인</h4>
+    <p><code>kanban-dispatch.md</code>는 <code>env -u VAR cmd</code>가 거부되는 이유를
+    "argv[0]이 env일 때 가드가 나머지 argv를 env 플래그로 스캔하는 <b>인자 경계 오파싱</b>"이라 설명합니다.</p>
+    <p>공식 문서를 보면 <b>워크트리 격리의 네 번째 검사</b>가 더 정확한 근거입니다:</p>
+    <blockquote>
+      "<b>Command shape</b>: Claude Code blocks a Bash or Monitor command it can't verify stays
+      inside the worktree... It refuses shell constructs it can't statically trace, such as
+      brace expansion and heredocs with unquoted delimiters. <b>You can't turn this check off.</b>"
+    </blockquote>
+    <p>규칙이 채택한 우회(<code>unset … && cmd</code> 한 줄, 서브셸 금지, 스크립트 파일 금지)는
+    <b>여전히 정답</b>입니다 &mdash; 정적 추적이 가능한 형태라서요.
+    다만 <b>설명을 이 근거로 교체</b>해야 재발 시 진단이 빨라집니다.</p>
+    <div class="ev">근거 · docs/en/worktrees "How Claude Code enforces isolation"</div>
+  </div>
+
+  <div class="sec-head">5. 안 쓰고 있는 네이티브 기능 7가지</div>
+
+  <p class="sec-intro">전부 <b>이미 있는 기능</b>이라 새로 만들 게 없습니다. 이득이 큰 순서예요.</p>
+
+  <table>
+    <thead><tr><th style="width:180px">기능</th><th>무엇</th><th style="width:230px">칸반에 어떻게</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><b><code>loop.md</code></b></td>
+        <td><code>.claude/loop.md</code>(프로젝트) 또는 <code>~/.claude/loop.md</code>가
+            <b>bare <code>/loop</code>의 기본 프롬프트를 대체</b>합니다. 25,000 B 제한,
+            <b>수정이 다음 반복부터 즉시 반영</b></td>
+        <td class="ok">반장의 "큐 폴링 → 픽 → 스폰 → 증거 수집" 루프를 여기에.
+            <code>/loop</code> 한 번으로 반장이 돕니다</td>
+      </tr>
+      <tr>
+        <td><b><code>Monitor</code> 도구</b></td>
+        <td>백그라운드 스크립트를 돌리며 <b>출력 줄을 스트리밍</b>. 문서가
+            "폴링을 아예 없애고 종종 더 토큰 효율적"이라 명시</td>
+        <td class="ok">큐 파일 변경 감시에 폴링 대신. 반장이 idle 대기 없이 즉시 반응</td>
+      </tr>
+      <tr>
+        <td><b>백그라운드 세션</b></td>
+        <td>"Backgrounding the session carries <code>/loop</code> tasks over to a background
+            session, <b>which keeps running without a terminal</b>"</td>
+        <td class="ok">반장을 터미널 없이 운영. 오라버니가 창을 닫아도 돕니다</td>
+      </tr>
+      <tr>
+        <td><b>스킬 <code>disallowed-tools</code></b></td>
+        <td>스킬 활성 동안 도구를 <b>풀에서 제거</b>. 문서가 든 예가 정확히
+            <b>"자율 루프에서 <code>AskUserQuestion</code> 제거"</b></td>
+        <td class="ok">반장 루프 스킬에서 사용자 질문을 <b>기계적으로</b> 차단.
+            지금은 프롬프트 규율로만 막습니다</td>
+      </tr>
+      <tr>
+        <td><b>스킬 <code>context: fork</code></b></td>
+        <td>스킬을 <b>포크된 서브에이전트</b>에서 실행. <code>agent</code>·<code>background</code>
+            필드와 함께. 포크는 두 도구 필터를 <b>모두 건너뜁니다</b></td>
+        <td class="part">무거운 스킬을 메인 컨텍스트 밖으로.
+            단 포크는 프롬프트 캐시를 <b>공유</b>하므로 비용 특성이 다릅니다</td>
+      </tr>
+      <tr>
+        <td><b><code>workflowSizeGuideline</code></b></td>
+        <td><code>small</code>(&lt;5) / <code>medium</code>(&lt;15, 기본) /
+            <code>large</code>(&lt;50) / <code>unrestricted</code>.
+            25 에이전트 초과 시 <b>Large workflow 경고</b></td>
+        <td class="ok">sweep 규모를 카드 클래스에 맞춰 고정.
+            지금은 설정 없이 기본값에 맡기고 있습니다</td>
+      </tr>
+      <tr>
+        <td><b><code>Explore</code> 오버라이드</b></td>
+        <td>내장 <code>Explore</code>/<code>Plan</code>은 <b>CLAUDE.md와 git status를 건너뜁니다</b>.
+            자체 정의로 덮어써 <b>haiku 등 저가 모델</b>로 돌릴 수 있음</td>
+        <td class="ok">조사 작업의 프리픽스가 이미 싼데,
+            모델까지 낮추면 <b>가장 싼 팬아웃 단위</b>가 됩니다</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <details class="fold">
+    <summary>네이티브 <code>/goal</code>과 MoAI <code>/moai goal</code> &mdash; 금지는 타당하나 이유가 다릅니다</summary>
+    <div class="fold-body">
+      <p>MoAI는 네이티브 <code>/goal</code> 사용을 금지하고 자체 <code>stop-goal</code> 평가자를 씁니다.
+      문서를 읽어 보니 <b>금지 자체는 타당하지만 근거를 정확히 해야 합니다.</b></p>
+      <table style="margin-top:10px">
+        <thead><tr><th style="width:150px"></th><th>네이티브 <code>/goal</code></th><th>MoAI <code>/moai goal</code></th></tr></thead>
+        <tbody>
+          <tr><td>구현</td><td>prompt 기반 Stop hook 래퍼</td><td>자체 Stop hook 평가자</td></tr>
+          <tr><td><b>평가자</b></td><td class="no">small fast model(기본 Haiku).
+              <b>도구를 호출하지 않음</b> &mdash; 대화에 드러난 것만 판단</td>
+              <td class="ok">shell 명령 실행 가능 &mdash; exit code로 기계 판정</td></tr>
+          <tr><td>판정</td><td>Not yet met / Met / <b>Impossible</b>(자동 클리어)</td><td>조건 배열 수렴</td></tr>
+          <tr><td>조건 길이</td><td>4,000자</td><td>제한 명시 없음</td></tr>
+          <tr><td>세션당</td><td>1개</td><td>세션별 상태 파일</td></tr>
+          <tr><td>무진전</td><td>도구 미사용 여러 턴 → 자동 중단</td><td>stagnation guard</td></tr>
+          <tr><td>비대화식</td><td class="part"><code>claude -p "/goal ..."</code> 가능</td><td>프로그램적 arm</td></tr>
+        </tbody>
+      </table>
+      <p><b>핵심 차이는 "평가자가 도구를 못 쓴다"</b>입니다. 네이티브는 대화에 드러난 것만 보므로
+      <code>go test</code> exit code 같은 기계 조건을 <b>직접 확인할 수 없습니다.</b>
+      MoAI 평가자는 명령을 실행하므로 더 강해요.</p>
+      <p><b>다만 "human-only라서 금지"라는 서술이 있다면 정정해야 합니다</b> &mdash;
+      문서상 <code>-p</code>로도 arm할 수 있습니다. 금지 근거는 <b>평가 능력의 차이</b>여야 합니다.</p>
+      <p>그리고 유용한 사실 하나 &mdash; 네이티브는 <b>서브에이전트나 백그라운드 셸이 실행 중이면
+      그 턴의 평가를 건너뜁니다.</b> MoAI 평가자도 같은 처리를 하는지 확인할 가치가 있습니다.</p>
+    </div>
+  </details>
+
+  <div class="sec-head">6. 명령 표면 &mdash; 진입점을 <code>-k</code> 하나로</div>
+
+  <p class="lead">
+    지적하신 대로 <b><code>--chief</code>를 따로 만들면 진입 경로가 둘</b>이 됩니다.
+    세션 등록과 소켓 바인딩이 갈라지면 서로를 못 찾아요. <code>-k</code>가 유일한 문이어야 합니다.
+  </p>
+
+  <pre class="code"><span class="cm"># 공장장 — 백엔드는 런처가 정하고, 역할은 -k 가 정한다</span>
+moai cc  <span class="hl">-k N</span>     <span class="cm"># Claude 공장장</span>
+moai glm <span class="hl">-k N</span>     <span class="cm"># GLM 공장장</span>
+
+<span class="cm"># 진입 직후 공장장이 출력하는 안내 (SessionStart)</span>
+<span class="cm">#   ① 기본 — 추가 세션 없음. 카드는 Agent 작업자가 처리</span>
+<span class="cm">#   ② Claude 판정이 필요할 때</span>
+<span class="cm">#      moai cc  -k --name judge</span>
+<span class="cm">#   ③ Claude 작업자가 필요한 카드</span>
+<span class="cm">#      moai cc  -k --name worker-1</span>
+<span class="cm">#   ④ GLM 작업자를 손으로 띄울 때</span>
+<span class="cm">#      moai glm -k --name worker-2</span></pre>
+
+  <p>모든 세션이 같은 <code>-k</code> 경로로 들어가므로 <b>등록·발견·소켓이 동일</b>합니다.
+  현재도 안내 뼈대는 있습니다 &mdash; <code>session_start_kanban_i18n.go:74</code>가
+  "GLM 백엔드로 돌리려면 <code>moai glm -k --name ...</code>을 쓰세요"를 출력하고 있어요.
+  <b>역할 목록과 백엔드 선택지를 넓히면 됩니다.</b></p>
+
+  <div class="callout">
+    <span class="ico">★</span>
+    <div>
+      <p><b>다만 <code>-k</code>가 지금은 4역할 고정입니다</b> &mdash;
+      <code>bootstrap.go:25</code>의 <code>CompanionRoles</code>가
+      <code>plan / run / review / sync</code>. D1(review 폐지 → 3단계)이 <b>코드에 미이행</b>이라
+      안내도 아직 4역할이에요. <b>안내 개편과 D1은 같은 카드로 묶어야</b> 두 번 고치지 않습니다.</p>
+    </div>
+  </div>
+
+  <div class="sec-head">7. 처리 순서</div>
+
+  <div class="milestones">
+
+    <div class="milestone">
+      <div class="when">P0</div>
+      <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+      <div class="body">
+        <h3>agent-teams 플래그 결정 &mdash; 지금 당장</h3>
+        <p>켠 채로 둘지, 끌지를 정합니다. <b>독트린과 설정 중 하나는 틀렸고</b>,
+        틀린 쪽을 고쳐야 해요. 끄는 쪽이면 <code>settings.json</code>과 <b>템플릿 둘 다</b>
+        <code>"0"</code>으로. 켜는 쪽이면 Mode 3 tombstone 독트린을 되살려야 합니다.</p>
+        <p>어느 쪽이든 <b>이름 붙은 서브에이전트가 teammate로 뜨는지</b>를 먼저 실측하세요 &mdash;
+        칸반 팬아웃이 여기에 걸립니다.</p>
+        <div class="tag-row"><span class="tag">치명</span><span class="tag">템플릿 동반</span><span class="tag">즉시</span></div>
+      </div>
+    </div>
+
+    <div class="milestone">
+      <div class="when">P1</div>
+      <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+      <div class="body">
+        <h3>도구 선언 실측 &mdash; Task 계열이 실제로 제거되나</h3>
+        <p>백그라운드 서브에이전트에서 <code>TaskCreate</code>를 불러 보고 결과를 봅니다.
+        제거된다면 11개 에이전트의 선언을 손봐야 하고, 아니면 문서 해석이 틀린 겁니다.
+        <b>고치기 전에 재는 게 순서</b>예요.</p>
+        <div class="tag-row"><span class="tag">중대</span><span class="tag">실측 선행</span></div>
+      </div>
+    </div>
+
+    <div class="milestone">
+      <div class="when">P2</div>
+      <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+      <div class="body">
+        <h3>동시성 상한 근거 재정립</h3>
+        <p>규칙의 3-5는 <b>agent-teams 문서 인용</b>이고 서브에이전트 팬아웃에는 직접 적용되지 않습니다.
+        상한을 올리든 근거를 새로 세우든, <b>규칙과 운영이 어긋난 상태를 먼저 없애야</b> 합니다.
+        지금은 t85가 8로 돌고 규칙은 5 초과를 anti-pattern이라 적고 있어요.</p>
+        <div class="tag-row"><span class="tag">C-1 정정</span><span class="tag">규칙 수정</span></div>
+      </div>
+    </div>
+
+    <div class="milestone">
+      <div class="when">P3</div>
+      <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+      <div class="body">
+        <h3><code>loop.md</code> + Monitor로 반장 루프 구현</h3>
+        <p>반장의 큐 폴링을 <code>.claude/loop.md</code>에 넣고,
+        파일 감시는 <code>Monitor</code>로 바꿉니다. 새 코드가 거의 없어요 &mdash;
+        네이티브 기능 조합입니다. 백그라운드 세션으로 돌리면 터미널도 필요 없고요.</p>
+        <div class="tag-row"><span class="tag">기회</span><span class="tag">코드 최소</span><span class="tag">t85 연계</span></div>
+      </div>
+    </div>
+
+    <div class="milestone">
+      <div class="when">P4</div>
+      <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+      <div class="body">
+        <h3>안내 개편 + D1(3단계) 동시 처리</h3>
+        <p><code>CompanionRoles</code>를 3역할로 줄이면서 SessionStart 안내를
+        백엔드 선택지까지 담도록 넓힙니다. <b>두 변경이 같은 파일을 건드리므로 분리하면 두 번 고칩니다.</b></p>
+        <div class="tag-row"><span class="tag">D1</span><span class="tag">bootstrap.go</span><span class="tag">i18n 4로케일</span></div>
+      </div>
+    </div>
+
+    <div class="milestone">
+      <div class="when">P5</div>
+      <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+      <div class="body">
+        <h3>규칙 문서 근거 교체 3건</h3>
+        <p>t41 lock 원인(worktree 문서), <code>env -u</code> 거부 근거(명령 형태 검사),
+        네이티브 <code>/goal</code> 금지 사유(평가자 도구 부재)를 공식 문서 인용으로 교체합니다.
+        <b>동작은 안 바뀌고 진단 속도만 빨라집니다.</b></p>
+        <div class="tag-row"><span class="tag">문서만</span><span class="tag">Tier S</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="sec-head">8. 아직 재지 않은 것</div>
+
+  <div class="callout">
+    <span class="ico">★</span>
+    <div>
+      <p>이 감사는 <b>공식 문서 8편 + 저장소 실측</b>에 섰습니다. 다음은 <b>문서 해석이지 관측이 아닙니다</b>:</p>
+      <ul style="margin-bottom:0">
+        <li><b>이름 붙은 서브에이전트가 실제로 teammate가 되는가</b> &mdash; F-1의 핵심인데
+            문서 서술만 있고 이 저장소에서 재현하지 않았습니다. P0이 이걸 잽니다</li>
+        <li><b>Task 도구가 실제로 제거되는가</b> &mdash; F-2 동일. 도구 목록에 없다는 문서 근거뿐입니다</li>
+        <li><b><code>fanout</code>에도 prefix stagger가 걸리는가</b> &mdash; 워크플로 문서의 서술이고
+            Agent 직접 팬아웃은 명시가 없습니다</li>
+        <li><b>MoAI 평가자가 서브에이전트 실행 중 턴을 건너뛰는가</b> &mdash; 네이티브는 건너뜁니다.
+            MoAI 쪽은 확인 안 했습니다</li>
+      </ul>
+    </div>
+  </div>
+
+  <footer>
+    공식 문서 8편 ·
+    <a href="https://code.claude.com/docs/en/agent-teams">agent-teams</a> ·
+    <a href="https://code.claude.com/docs/en/sub-agents">sub-agents</a> ·
+    <a href="https://code.claude.com/docs/en/workflows">workflows</a> ·
+    <a href="https://code.claude.com/docs/en/worktrees">worktrees</a> ·
+    <a href="https://code.claude.com/docs/en/skills">skills</a> ·
+    <a href="https://code.claude.com/docs/en/scheduled-tasks">scheduled-tasks</a> ·
+    <a href="https://code.claude.com/docs/en/goal">goal</a> ·
+    <a href="https://code.claude.com/docs/en/cross-session-messaging">cross-session-messaging</a>
+    <br>
+    실측 · .claude/settings.json:360 · settings.json.tmpl:386 · 에이전트 11/11 Task 도구 선언 ·
+    11/11 memory 필드 · .worktreeinclude 1,055 B · loop.md 부재 · bootstrap.go:25 CompanionRoles 4역할 ·
+    session_start_kanban_i18n.go:74
+    <br>
+    승계 · unified-board-design-20260817.md · pipeline-fanout-redesign-20260816.md ·
+    factory-kanban-multi-llm-redesign-20260817.md
+    &nbsp;&mdash;&nbsp; Generated: 2026-08-17
+  </footer>
+
+</div>
+</body>
+</html>

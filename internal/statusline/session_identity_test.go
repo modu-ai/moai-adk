@@ -17,7 +17,7 @@ import (
 func namedData() *StatusData {
 	return &StatusData{
 		SessionName: "Team-A-Lead",
-		AgentName:   "manager-kanban",
+		AgentName:   "manager-lead",
 		Directory:   "statusline-session-name",
 		Backlog:     BacklogCounts{Picked: 12, Queued: 26, Available: true},
 	}
@@ -28,7 +28,7 @@ func TestRenderSessionLine_OrdersIdentityThenWorkload(t *testing.T) {
 
 	got := NewRenderer("default", true, nil).renderSessionLine(namedData())
 
-	for _, want := range []string{"🏷️ Team-A-Lead", "👤 manager-kanban", "🔄 TODO: 12 / 26"} {
+	for _, want := range []string{"🏷️ Team-A-Lead", "👤 manager-lead", "🔄 TODO: 12/26"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing %q in %q", want, got)
 		}
@@ -38,7 +38,7 @@ func TestRenderSessionLine_OrdersIdentityThenWorkload(t *testing.T) {
 	// several sessions are open, and the workload only means something once
 	// you know whose it is.
 	nameAt := strings.Index(got, "Team-A-Lead")
-	agentAt := strings.Index(got, "manager-kanban")
+	agentAt := strings.Index(got, "manager-lead")
 	boardAt := strings.Index(got, "🔄 ")
 	if nameAt >= agentAt || agentAt >= boardAt {
 		t.Errorf("want name < agent < backlog, got %d/%d/%d in %q", nameAt, agentAt, boardAt, got)
@@ -76,7 +76,7 @@ func TestRenderSessionLine_SegmentsDisablable(t *testing.T) {
 
 	cfg := map[string]bool{SegmentSession: false}
 	got := NewRenderer("default", true, cfg).renderSessionLine(namedData())
-	if strings.Contains(got, "Team-A-Lead") || strings.Contains(got, "manager-kanban") {
+	if strings.Contains(got, "Team-A-Lead") || strings.Contains(got, "manager-lead") {
 		t.Errorf("disabled session segment still rendered: %q", got)
 	}
 	if !strings.Contains(got, "🔄 ") {

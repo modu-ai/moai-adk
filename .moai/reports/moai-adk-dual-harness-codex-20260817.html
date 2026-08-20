@@ -1,0 +1,1024 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>moai-adk for Codex — 듀얼 하네스 재설계</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    :root {
+      --ivory:  #FAF9F5;
+      --paper:  #FFFFFF;
+      --slate:  #141413;
+      --clay:   #D97757;
+      --clay-d: #B85C3E;
+      --oat:    #E3DACC;
+      --olive:  #788C5D;
+
+      --g100: #F0EEE6;
+      --g300: #D1CFC5;
+      --g500: #87867F;
+      --g700: #3D3D3A;
+
+      --sans:  "Pretendard", system-ui, -apple-system, "Segoe UI", sans-serif;
+      --serif: "Noto Serif KR", ui-serif, Georgia, serif;
+      --mono:  "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+      --max-width:    1100px;
+      --radius-panel: 12px;
+      --radius-row:   8px;
+      --border:       1.5px solid var(--g300);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--ivory);
+      color: var(--g700);
+      font-family: var(--sans);
+      font-size: 15px;
+      line-height: 1.6;
+      padding: 56px 32px 120px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .page { max-width: var(--max-width); margin: 0 auto; }
+
+    .eyebrow {
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--g500);
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: 32px;
+      color: var(--slate);
+      letter-spacing: -0.01em;
+      line-height: 1.25;
+      margin-bottom: 18px;
+    }
+
+    .goal-box {
+      border: var(--border);
+      border-left: 3px solid var(--clay);
+      border-radius: 10px;
+      background: var(--paper);
+      padding: 18px 20px;
+      margin-bottom: 28px;
+      font-size: 14.5px;
+      max-width: 820px;
+    }
+
+    .goal-box b { color: var(--slate); }
+
+    .sec-head {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: 23px;
+      color: var(--slate);
+      margin: 48px 0 6px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--oat);
+      scroll-margin-top: 20px;
+    }
+
+    .sec-intro {
+      font-size: 14.5px;
+      color: var(--g700);
+      margin: 12px 0 18px;
+      max-width: 760px;
+    }
+
+    h3 {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: 17px;
+      color: var(--slate);
+      margin: 26px 0 8px;
+    }
+
+    p { margin-bottom: 12px; max-width: 760px; }
+    code { font-family: var(--mono); font-size: 12.5px; background: var(--g100); padding: 1px 5px; border-radius: 4px; }
+    td code, th code { background: none; padding: 0; }
+
+    ul, ol { margin: 0 0 12px 20px; max-width: 760px; }
+    li { margin-bottom: 6px; }
+
+    .lead {
+      border-left: 2px solid var(--oat);
+      padding-left: 14px;
+      margin-bottom: 16px;
+      max-width: 760px;
+      font-size: 14.5px;
+    }
+
+    /* summary strip */
+    .summary-strip {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin: 22px 0 8px;
+    }
+
+    @media (max-width: 760px) { .summary-strip { grid-template-columns: repeat(2, 1fr); } }
+
+    .sum-cell {
+      border: var(--border);
+      border-radius: 10px;
+      background: var(--paper);
+      padding: 14px 16px;
+    }
+
+    .sum-cell .k {
+      font-family: var(--mono);
+      font-size: 10.5px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--g500);
+      margin-bottom: 6px;
+    }
+
+    .sum-cell .v {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: 25px;
+      color: var(--slate);
+      line-height: 1.15;
+    }
+
+    .sum-cell .v.accent { color: var(--clay); }
+    .sum-cell .n { font-size: 12px; color: var(--g500); margin-top: 4px; }
+
+    /* tables */
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin: 14px 0 20px;
+      font-size: 13.5px;
+      background: var(--paper);
+      border: var(--border);
+      border-radius: var(--radius-row);
+      overflow: hidden;
+    }
+
+    th {
+      background: var(--g100);
+      color: var(--slate);
+      text-align: left;
+      font-weight: 700;
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--g300);
+      font-size: 12.5px;
+    }
+
+    td { padding: 9px 12px; border-bottom: 1px solid var(--g300); vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+
+    .ok   { color: var(--olive); font-weight: 700; }
+    .part { color: var(--clay); font-weight: 700; }
+    .none { color: var(--clay-d); font-weight: 700; }
+
+    /* milestones */
+    .milestones { display: flex; flex-direction: column; margin-top: 18px; }
+
+    .milestone {
+      display: grid;
+      grid-template-columns: 92px 28px 1fr;
+      gap: 0 18px;
+    }
+
+    .milestone .when {
+      text-align: right;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--g500);
+      padding-top: 4px;
+    }
+
+    .milestone .dot-col { display: flex; flex-direction: column; align-items: center; }
+
+    .milestone .dot {
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: var(--paper);
+      border: 3px solid var(--clay);
+      margin-top: 5px;
+      flex-shrink: 0;
+    }
+
+    .milestone .dot.done { background: var(--olive); border-color: var(--olive); }
+    .milestone .line { width: 2px; flex: 1; background: var(--g300); margin: 4px 0; }
+    .milestone:last-child .line { display: none; }
+    .milestone .body { padding-bottom: 30px; }
+
+    .milestone .body h3 {
+      font-family: var(--serif);
+      font-weight: 700;
+      font-size: 17.5px;
+      color: var(--slate);
+      margin: 0 0 4px;
+    }
+
+    .milestone .body p { font-size: 14px; margin-bottom: 8px; }
+
+    .tag-row { display: flex; gap: 7px; flex-wrap: wrap; }
+
+    .tag {
+      font-family: var(--mono);
+      font-size: 11px;
+      background: var(--oat);
+      color: var(--slate);
+      padding: 2px 8px;
+      border-radius: 5px;
+    }
+
+    /* risks */
+    .risks { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 16px; }
+    @media (max-width: 760px) { .risks { grid-template-columns: 1fr; } }
+
+    .risk {
+      border: var(--border);
+      border-radius: 10px;
+      background: var(--paper);
+      padding: 14px 16px;
+    }
+
+    .risk h4 {
+      font-family: var(--serif);
+      font-size: 15.5px;
+      color: var(--slate);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sev {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: 0.05em;
+      padding: 2px 7px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    .sev.high { background: var(--clay); color: #fff; }
+    .sev.mid  { background: var(--oat); color: var(--slate); }
+    .sev.low  { background: var(--g100); color: var(--g500); }
+
+    .risk p { font-size: 13.5px; margin-bottom: 6px; }
+    .risk .mit { font-size: 13px; color: var(--g500); }
+    .risk .mit b { color: var(--olive); }
+
+    /* metrics */
+    .metrics-list { margin-top: 14px; }
+
+    .metric-row {
+      display: grid;
+      grid-template-columns: 14px 1fr 190px;
+      gap: 12px;
+      align-items: baseline;
+      padding: 11px 4px;
+      border-bottom: 1px solid var(--g300);
+    }
+
+    .metric-indicator { width: 10px; height: 10px; border-radius: 50%; }
+    .metric-indicator.unmet { background: var(--g300); }
+    .metric-indicator.met { background: var(--olive); }
+    .metric-label { font-size: 14px; color: var(--slate); }
+    .metric-target { font-family: var(--mono); font-size: 12.5px; color: var(--g500); text-align: right; }
+
+    /* callout */
+    .callout {
+      display: flex;
+      gap: 12px;
+      border: var(--border);
+      border-color: var(--oat);
+      background: rgba(227, 218, 204, 0.35);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin: 18px 0;
+      font-size: 14px;
+      max-width: 820px;
+    }
+
+    .callout .ico { color: var(--clay); font-weight: 600; flex-shrink: 0; }
+    .callout p:last-child { margin-bottom: 0; }
+
+    pre.mermaid {
+      background: var(--paper);
+      border: var(--border);
+      border-radius: 10px;
+      padding: 18px;
+      margin: 18px 0;
+      font-family: var(--mono);
+      font-size: 12px;
+      color: var(--g500);
+      overflow-x: auto;
+      text-align: center;
+    }
+
+    pre.code {
+      background: var(--paper);
+      border: var(--border);
+      border-radius: 10px;
+      padding: 15px 17px;
+      margin: 14px 0;
+      font-family: var(--mono);
+      font-size: 12.5px;
+      line-height: 1.6;
+      color: var(--slate);
+      overflow-x: auto;
+    }
+
+    pre.code .cm { color: var(--g500); }
+    pre.code .hl { color: var(--clay); }
+
+    details.fold {
+      border: var(--border);
+      border-radius: 10px;
+      background: var(--paper);
+      margin: 12px 0;
+      overflow: hidden;
+    }
+
+    details.fold > summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 13px 16px;
+      font-family: var(--serif);
+      font-size: 15.5px;
+      color: var(--slate);
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+    }
+
+    details.fold > summary::-webkit-details-marker { display: none; }
+    details.fold > summary::before { content: "▸"; color: var(--clay); font-family: var(--sans); font-size: 12px; }
+    details.fold[open] > summary::before { content: "▾"; }
+    details.fold .fold-body { padding: 0 16px 16px; }
+    details.fold .fold-body p { font-size: 13.8px; }
+    details.fold .fold-body table { margin-top: 8px; }
+
+    footer {
+      margin-top: 64px;
+      padding-top: 20px;
+      border-top: 1px solid var(--g300);
+      font-family: var(--mono);
+      font-size: 11.5px;
+      color: var(--g500);
+      line-height: 1.9;
+    }
+
+    footer a { color: var(--g500); }
+
+    @media print {
+      body { background: white; color: black; padding: 0; font-size: 11pt; }
+      .page { max-width: none; }
+      .milestone, .risk, details.fold { page-break-inside: avoid; }
+      details[open] { display: block; }
+      h1, h3, .sec-head { page-break-after: avoid; }
+      .no-print { display: none !important; }
+      * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <div class="eyebrow">MoAI-ADK · 재설계 계획 · 2026-08-17</div>
+  <h1>moai-adk for Codex<br>Claude Code · Codex 듀얼 하네스 재설계</h1>
+
+  <div class="goal-box">
+    <b>목표</b> &mdash; 하나의 moai-adk가 <b>Claude Code와 Codex 두 하네스에서 동등하게</b> 동작한다.
+    <br><br>
+    <b>이 계획이 지금 가능해진 이유</b> &mdash; 2026-07-14 범용화 전략 문서는 훅·서브에이전트를
+    <b>"Claude 전용, 이식 불가"</b>로 판정했습니다. 그 판정은 <b>더 이상 사실이 아닙니다.</b>
+    현재 Codex 공식 문서는 <b>훅 11종</b>, <b>서브에이전트</b>, <b>스킬</b>, <b>플러그인</b>을 모두 문서화하고 있고,
+    훅의 계약(stdin JSON · exit 2 차단 · stdout JSON)이 Claude Code와 <b>사실상 동형</b>입니다.
+    <br><br>
+    그래서 이 재설계의 성격은 <b>"기능을 포기하고 최소공통분모로 내려가는 이식"이 아니라,
+    거의 같은 모양의 두 하네스에 같은 자산을 이중 발행하는 일</b>입니다.
+  </div>
+
+  <div class="summary-strip">
+    <div class="sum-cell">
+      <div class="k">훅 이벤트 대응</div>
+      <div class="v accent">8 / 11</div>
+      <div class="n">moai 11종 중 8종이 Codex에 1:1</div>
+    </div>
+    <div class="sum-cell">
+      <div class="k">이중 발행 대상 자산</div>
+      <div class="v">43</div>
+      <div class="n">에이전트 11 + 스킬 32</div>
+    </div>
+    <div class="sum-cell">
+      <div class="k">재사용되는 훅 로직</div>
+      <div class="v">22,659</div>
+      <div class="n">internal/hook LOC · 105 파일</div>
+    </div>
+    <div class="sum-cell">
+      <div class="k">지시문 압축 과제</div>
+      <div class="v accent">71 → 32KiB</div>
+      <div class="n">룰 71개 vs AGENTS.md 한도</div>
+    </div>
+  </div>
+
+  <div class="sec-head" id="s1">1. 무엇이 달라졌나 &mdash; 7월 진단의 반전</div>
+
+  <p class="lead">
+    먼저 <b>하네스 (harness)</b>라는 말부터 풀게요. AI 코딩 도구(Claude Code, Codex) 자체를 감싸서
+    품질·비용·절차를 통제하는 <b>바깥 껍데기</b>를 말합니다. moai-adk가 바로 그 껍데기예요.
+    껍데기가 도구에 붙으려면 <b>붙일 자리(=확장 지점)</b>가 필요한데, 7월에는 Codex에 그 자리가 없다고 봤던 겁니다.
+  </p>
+
+  <p>2026-07-14 <code>moai-adk-universal-20260714</code> 문서의 이식성 판정은 이랬습니다:</p>
+
+  <table>
+    <thead><tr><th>항목</th><th>7월 판정</th><th>2026-08-17 현재 사실</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>훅 (11+ 이벤트)</td>
+        <td class="none">Codex/Gemini에 대응물 없음 → Claude 전용</td>
+        <td class="ok">Codex 훅 11종 정식 문서화. 계약이 거의 동형</td>
+      </tr>
+      <tr>
+        <td>서브에이전트</td>
+        <td class="none">대응물 없음 → Claude 전용</td>
+        <td class="ok">Codex 서브에이전트 정식 지원 (TOML 정의)</td>
+      </tr>
+      <tr>
+        <td>스킬</td>
+        <td class="part">부분 — Claude 의존 스킬은 분리 필요</td>
+        <td class="ok">양쪽 다 SKILL.md + 점진적 공개. 경로만 다름</td>
+      </tr>
+      <tr>
+        <td>지시문</td>
+        <td class="part">부분 — 경로 스코프 룰이 이식 안 됨</td>
+        <td class="part">Codex AGENTS.md도 <b>계층·경로 스코프</b> 지원. 단 32KiB 한도</td>
+      </tr>
+      <tr>
+        <td>슬래시 커맨드 <code>/moai</code></td>
+        <td class="none">대응물 없음</td>
+        <td class="none">여전히 없음 → <b>스킬로 이식</b> (<code>$moai</code>)</td>
+      </tr>
+      <tr>
+        <td>MCP</td>
+        <td class="ok">이식 가능</td>
+        <td class="ok">변동 없음. 양쪽 다 MCP 클라이언트</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <span class="ico">★</span>
+    <div>
+      <p><b>가장 큰 반전은 훅입니다.</b> moai의 최대 자산은 <code>internal/hook</code>
+      &mdash; <b>105개 파일, 22,659줄</b>이에요. 7월 판정대로라면 이 전부가 Claude 전용 유물이 됩니다.</p>
+      <p>실제로는 <b>이벤트 이름만 번역하면 그대로 동작</b>합니다. 다시 쓸 필요가 없어요.</p>
+    </div>
+  </div>
+
+  <div class="sec-head" id="s2">2. 대응 관계 지도</div>
+
+  <p class="sec-intro">
+    설계에 들어가기 전에, 두 하네스가 실제로 얼마나 닮았는지 항목별로 맞춰봤습니다.
+    아래 표들이 이 재설계 전체의 근거예요.
+  </p>
+
+  <h3>2.1 훅 &mdash; 11종 중 8종이 1:1</h3>
+
+  <p>moai가 <code>settings.json</code>에 거는 훅 이벤트는 11개입니다
+  (<code>moai hook &lt;event&gt;</code> 디스패처가 받는 이름 기준). Codex도 11개예요.</p>
+
+  <table>
+    <thead><tr><th style="width:180px">moai 훅 이벤트</th><th style="width:180px">Codex 이벤트</th><th>비고</th></tr></thead>
+    <tbody>
+      <tr><td><code>pre-tool</code></td><td><code>PreToolUse</code></td><td class="ok">1:1. Codex는 <code>permissionDecision: "deny"</code> + <code>updatedInput</code> 재작성까지 지원</td></tr>
+      <tr><td><code>post-tool</code></td><td><code>PostToolUse</code></td><td class="ok">1:1. <code>decision: "block"</code>으로 출력 대체 가능</td></tr>
+      <tr><td><code>session-start</code></td><td><code>SessionStart</code></td><td class="ok">1:1. 매처로 <code>startup/resume/clear/compact</code> 구분, <code>additionalContext</code> 주입</td></tr>
+      <tr><td><code>session-end</code></td><td><code>SessionEnd</code></td><td class="ok">1:1. 단 타임아웃 기본 <b>1초</b>(최대 3초) &mdash; moai 쪽 정리 로직 축약 필요</td></tr>
+      <tr><td><code>stop</code></td><td><code>Stop</code></td><td class="ok">1:1. <code>decision: "block"</code> + <code>reason</code>이 새 프롬프트가 됨</td></tr>
+      <tr><td><code>stop-goal</code></td><td><code>Stop</code></td><td class="ok">goal 평가자도 Stop에 얹힘. <b>단 §4 충돌 주의</b></td></tr>
+      <tr><td><code>subagent-stop</code></td><td><code>SubagentStop</code></td><td class="ok">1:1. 매처로 서브에이전트 타입 필터</td></tr>
+      <tr><td><code>user-prompt-submit</code></td><td><code>UserPromptSubmit</code></td><td class="ok">1:1</td></tr>
+      <tr><td><code>notification</code></td><td>&mdash;</td><td class="part">Codex는 훅이 아니라 <code>notify</code> 설정 키로 별도 처리</td></tr>
+      <tr><td><code>teammate-idle</code></td><td>&mdash;</td><td class="none">Agent Teams 전용 &mdash; moai에서 <b>이미 RETIRED</b>라 손실 없음</td></tr>
+      <tr><td><code>task-completed</code></td><td>&mdash;</td><td class="none">동일 (팀 모드 전용)</td></tr>
+      <tr><td colspan="3" style="background:var(--g100)"><b>Codex에만 있는 3종 (추가 기회)</b> &mdash; <code>PermissionRequest</code>(승인 프롬프트 가로채기) · <code>PostCompact</code> · <code>SubagentStart</code></td></tr>
+    </tbody>
+  </table>
+
+  <details class="fold">
+    <summary>훅 계약 비교 &mdash; 왜 "번역만 하면 된다"고 하는가</summary>
+    <div class="fold-body">
+      <table>
+        <thead><tr><th>계약 요소</th><th>Claude Code</th><th>Codex</th></tr></thead>
+        <tbody>
+          <tr><td>입력</td><td>stdin JSON</td><td class="ok">stdin JSON (<code>session_id</code>, <code>hook_event_name</code>, <code>cwd</code>, <code>model</code>, <code>turn_id</code>)</td></tr>
+          <tr><td>성공</td><td>exit 0</td><td class="ok">exit 0</td></tr>
+          <tr><td>차단</td><td>exit 2 + stderr</td><td class="ok">exit 2 + stderr</td></tr>
+          <tr><td>구조화 출력</td><td>stdout JSON (<code>decision</code>, <code>continue</code>, <code>stopReason</code>, <code>systemMessage</code>)</td><td class="ok">stdout JSON (<code>continue</code>, <code>stopReason</code>, <code>systemMessage</code>, <code>additionalContext</code>)</td></tr>
+          <tr><td>매처</td><td>도구 이름 정규식</td><td class="ok">도구 이름 정규식 (<code>Bash</code>, <code>^apply_patch$</code>, <code>mcp__.*</code>)</td></tr>
+          <tr><td>타임아웃</td><td>기본 5초 (설정 가능)</td><td class="part">기본 <b>600초</b> / SessionEnd만 1초</td></tr>
+          <tr><td>비동기</td><td>백그라운드 지원</td><td class="ok"><code>"async": true</code>, 세션당 동시 8개</td></tr>
+          <tr><td>신뢰 모델</td><td>settings 신뢰 프롬프트</td><td class="part"><code>/hooks</code>로 <b>해시 기반 명시 신뢰 필요</b> &mdash; 변경 시 재승인</td></tr>
+          <tr><td>출력 한도</td><td>&mdash;</td><td class="part">모델 노출 메시지 약 2,500 토큰 (<code>additionalContextLimit</code>)</td></tr>
+        </tbody>
+      </table>
+      <p><b>실질 차이는 3개뿐입니다</b>: SessionEnd 타임아웃(1초), 해시 기반 신뢰 승인, 출력 토큰 한도.
+      셋 다 로직이 아니라 <b>운영 제약</b>이라 어댑터 층에서 흡수됩니다.</p>
+    </div>
+  </details>
+
+  <h3>2.2 에이전트 &mdash; 형식만 바뀐다</h3>
+
+  <p>moai 에이전트 11개는 Markdown + YAML frontmatter입니다. Codex는 <b>TOML 파일 1개 = 에이전트 1개</b>예요.</p>
+
+  <table>
+    <thead><tr><th style="width:230px">Claude Code</th><th style="width:250px">Codex</th><th>변환</th></tr></thead>
+    <tbody>
+      <tr><td><code>.claude/agents/moai/*.md</code></td><td><code>.codex/agents/*.toml</code> (프로젝트)<br><code>~/.codex/agents/*.toml</code> (개인)</td><td>경로 + 형식 변환</td></tr>
+      <tr><td>frontmatter <code>name</code></td><td><code>name</code></td><td class="ok">그대로</td></tr>
+      <tr><td>frontmatter <code>description</code></td><td><code>description</code></td><td class="ok">그대로</td></tr>
+      <tr><td>본문 (에이전트 지시문)</td><td><code>developer_instructions</code></td><td class="ok">본문 → 필드 값</td></tr>
+      <tr><td><code>model</code> / effort</td><td><code>model</code> / <code>model_reasoning_effort</code></td><td class="ok">effort 등급 <code>ultra·max·xhigh·high·medium·low</code></td></tr>
+      <tr><td><code>tools:</code> CSV</td><td><code>mcp_servers</code>, <code>skills.config</code>, <code>sandbox_mode</code></td><td class="part">도구 화이트리스트 개념이 달라 <b>재매핑 필요</b></td></tr>
+      <tr><td>내장 <code>Explore</code></td><td>내장 <code>default</code> / <code>worker</code> / <code>explorer</code></td><td class="ok"><code>Explore</code> → <code>explorer</code></td></tr>
+    </tbody>
+  </table>
+
+  <h3>2.3 스킬 &mdash; 경로만 다르다</h3>
+
+  <table>
+    <thead><tr><th style="width:150px">항목</th><th>Claude Code</th><th>Codex</th></tr></thead>
+    <tbody>
+      <tr><td>스캔 경로</td><td><code>.claude/skills/</code></td><td><code>.agents/skills/</code> (CWD→repo root 상향) · <code>~/.agents/skills</code> · <code>/etc/codex/skills</code></td></tr>
+      <tr><td>파일</td><td><code>SKILL.md</code></td><td class="ok"><code>SKILL.md</code> (<code>name</code> + <code>description</code> 필수)</td></tr>
+      <tr><td>점진적 공개</td><td>이름·설명만 상시, 본문은 호출 시</td><td class="ok">동일</td></tr>
+      <tr><td>리스팅 예산</td><td><code>skillListingBudgetFraction</code></td><td class="ok">컨텍스트의 2% 또는 8,000자</td></tr>
+      <tr><td>명시 호출</td><td>Skill 도구</td><td><code>$skill-name</code></td></tr>
+      <tr><td>벤더 확장</td><td>&mdash;</td><td><code>agents/openai.yaml</code> (타 도구는 무시)</td></tr>
+      <tr><td>심볼릭 링크</td><td>&mdash;</td><td class="ok">지원 &mdash; <b>단일 원본 + 링크 배치가 가능</b></td></tr>
+    </tbody>
+  </table>
+
+  <p><b>심볼릭 링크 지원이 설계상 중요합니다.</b> 스킬 32개를 두 벌 복사하지 않고
+  <code>.agents/skills/</code>를 정본으로 두고 <code>.claude/skills/</code>를 링크로 만들 수 있어요.</p>
+
+  <h3>2.4 지시문 &mdash; 유일한 진짜 난제</h3>
+
+  <table>
+    <thead><tr><th style="width:150px">항목</th><th>Claude Code</th><th>Codex</th></tr></thead>
+    <tbody>
+      <tr><td>루트 파일</td><td><code>CLAUDE.md</code></td><td><code>AGENTS.md</code> (+ <code>AGENTS.override.md</code> 우선)</td></tr>
+      <tr><td>계층</td><td>디렉터리별 중첩 지원</td><td class="ok">repo root → CWD 하향 병합, <b>가까울수록 우선</b></td></tr>
+      <tr><td>글로벌</td><td><code>~/.claude/CLAUDE.md</code></td><td class="ok"><code>~/.codex/AGENTS.md</code></td></tr>
+      <tr><td>대체 파일명</td><td>&mdash;</td><td><code>project_doc_fallback_filenames</code></td></tr>
+      <tr><td><b>크기 한도</b></td><td>사실상 없음</td><td class="none"><code>project_doc_max_bytes</code> <b>기본 32 KiB</b> &mdash; 초과분은 조용히 잘림</td></tr>
+      <tr><td>경로 스코프 룰</td><td><code>.claude/rules/</code> 71개, <code>paths:</code> 조건부 로딩</td><td class="part">동등물 없음. 중첩 AGENTS.md로 근사</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <span class="ico">★</span>
+    <div>
+      <p><b>여기가 이 재설계의 유일한 진짜 난제입니다.</b> moai의 룰은 <b>71개</b>이고
+      항상 로딩되는 것만 200KB를 넘습니다. Codex의 AGENTS.md 한도는 <b>32 KiB</b>예요.</p>
+      <p>그대로 밀어 넣으면 <b>말없이 잘립니다</b>. 해법은 §3의 L2에서 다룹니다 &mdash;
+      요약하면 <b>계약은 AGENTS.md에, 상세는 스킬에</b>.</p>
+    </div>
+  </div>
+
+  <div class="sec-head" id="s3">3. 재설계 아키텍처 &mdash; 5층</div>
+
+  <p class="sec-intro">
+    핵심 원칙 하나: <b>하네스별 코드를 늘리지 않고, 경계를 한 곳에 모은다.</b>
+    moai 안에 <code>if codex { ... } else { ... }</code>가 흩어지면 유지가 불가능해집니다.
+    그래서 하네스 차이는 <b>L1 어댑터 한 층</b>에만 존재하게 설계합니다.
+  </p>
+
+  <pre class="mermaid">
+flowchart TD
+  subgraph HARNESS["하네스 (둘 다 지원)"]
+    CC["Claude Code<br/>settings.json"]
+    CX["Codex<br/>config.toml + hooks.json"]
+  end
+
+  CC -->|"stdin JSON"| L1
+  CX -->|"stdin JSON"| L1
+
+  L1["L1 — 하네스 어댑터<br/>이벤트 이름 정규화 · 출력 방언 변환"]
+  L1 --> L0["L0 — 중립 코어<br/>internal/hook 로직 · spec · git · lsp · mx · gate"]
+
+  L2["L2 — 자산 정본<br/>.agents/skills (정본) · agents 정의 · AGENTS.md"]
+  L2 -.->|"생성/링크"| CC
+  L2 -.->|"생성/링크"| CX
+
+  L3["L3 — 배선 생성기<br/>moai init --agent claude|codex|both"]
+  L3 -.-> CC
+  L3 -.-> CX
+
+  L4["L4 — moai mcp-server<br/>양쪽 모두 MCP 클라이언트"]
+  CC -.-> L4
+  CX -.-> L4
+  </pre>
+
+  <noscript>
+    <p><b>구조 요약</b>: Claude Code(settings.json)와 Codex(config.toml + hooks.json) 두 하네스가 모두
+    stdin JSON으로 <b>L1 하네스 어댑터</b>를 호출하고, L1은 이벤트 이름과 출력 방언만 변환해
+    <b>L0 중립 코어</b>(기존 훅 로직·spec·git·lsp·mx·gate)에 넘깁니다.
+    <b>L2 자산 정본</b>(.agents/skills 정본, 에이전트 정의, AGENTS.md)이 두 하네스 쪽 배치를 생성·링크하고,
+    <b>L3 배선 생성기</b>(<code>moai init --agent</code>)가 각 하네스 설정 파일을 씁니다.
+    <b>L4 moai mcp-server</b>는 양쪽이 모두 MCP 클라이언트이므로 변경 없이 공유됩니다.</p>
+  </noscript>
+
+  <h3>L0 &mdash; 중립 코어 (변경 최소)</h3>
+  <p>SPEC 워크플로, 품질 게이트, git/worktree, LSP, MX, codemaps. 이미 하네스 중립적이고
+  <b>이번 재설계에서 건드릴 이유가 거의 없습니다.</b> 훅 <i>로직</i>도 여기에 남습니다 &mdash;
+  하네스에 묶여 있는 건 로직이 아니라 <b>이벤트 이름과 페이로드 모양</b>뿐이에요.</p>
+
+  <h3>L1 &mdash; 하네스 어댑터 (신규, 이번 작업의 핵심)</h3>
+  <p><code>moai hook &lt;event&gt;</code> 디스패처 앞에 <b>정규화 층</b>을 하나 넣습니다.
+  기존 11개 서브커맨드는 그대로 두고, Codex 이벤트 이름을 받아 같은 자리로 보냅니다.</p>
+
+  <pre class="code"><span class="cm"># Claude Code 쪽 (기존, 변경 없음)</span>
+moai hook pre-tool          <span class="cm"># settings.json 이 호출</span>
+
+<span class="cm"># Codex 쪽 (신규) — 같은 바이너리, 같은 로직</span>
+moai hook <span class="hl">--harness codex</span> PreToolUse
+
+<span class="cm"># 또는 이벤트 이름 자동 판별 (권장)</span>
+moai hook PreToolUse        <span class="cm"># PascalCase → codex 방언으로 자동 인식</span></pre>
+
+  <p>어댑터가 흡수해야 하는 차이는 <b>딱 3가지</b>입니다:</p>
+  <ol>
+    <li><b>이벤트 이름 매핑</b> &mdash; <code>pre-tool ↔ PreToolUse</code> 등 8쌍 (§2.1 표)</li>
+    <li><b>출력 방언</b> &mdash; Claude의 <code>decision</code> ↔ Codex의 <code>permissionDecision</code>/<code>continue</code></li>
+    <li><b>운영 제약</b> &mdash; SessionEnd 1초 예산, 출력 2,500토큰 한도에 맞춘 잘라내기</li>
+  </ol>
+
+  <h3>L2 &mdash; 자산 정본과 이중 발행</h3>
+
+  <table>
+    <thead><tr><th style="width:110px">자산</th><th>정본 위치</th><th>Claude Code 배치</th><th>Codex 배치</th></tr></thead>
+    <tbody>
+      <tr><td>스킬 32</td><td><code>.agents/skills/</code></td><td><code>.claude/skills/</code> ← 링크</td><td class="ok">정본 그대로 (Codex 기본 스캔 경로)</td></tr>
+      <tr><td>에이전트 11</td><td><code>.moai/agents/*.yaml</code> (중립)</td><td><code>.claude/agents/moai/*.md</code> 생성</td><td><code>.codex/agents/*.toml</code> 생성</td></tr>
+      <tr><td>지시문</td><td><code>AGENTS.md</code> (정본)</td><td><code>CLAUDE.md</code> = <code>@AGENTS.md</code> + Claude 전용 층</td><td class="ok">정본 그대로</td></tr>
+      <tr><td>룰 71</td><td><code>.claude/rules/</code></td><td>현행 유지 (경로 스코프 로딩)</td><td class="part"><b>계약만</b> AGENTS.md에, 상세는 스킬 참조로</td></tr>
+      <tr><td><code>/moai</code> 커맨드</td><td>스킬 본문</td><td><code>.claude/commands/moai.md</code></td><td class="part"><code>$moai</code> 스킬로 호출 (커스텀 슬래시 없음)</td></tr>
+    </tbody>
+  </table>
+
+  <details class="fold">
+    <summary>32 KiB 한도를 넘기지 않는 방법 &mdash; "계약은 위, 상세는 아래"</summary>
+    <div class="fold-body">
+      <p>룰 71개를 AGENTS.md에 넣는 건 불가능합니다. 대신 <b>세 갈래로 쪼갭니다</b>:</p>
+      <table>
+        <thead><tr><th style="width:150px">내용 성격</th><th>어디로</th><th>예산</th></tr></thead>
+        <tbody>
+          <tr><td><b>계약</b> &mdash; 항상 지켜야 하는 짧은 명령형 규칙</td><td>AGENTS.md 루트</td><td>~8 KiB</td></tr>
+          <tr><td><b>영역별 규칙</b> &mdash; 특정 디렉터리에서만 유효</td><td>해당 디렉터리의 중첩 <code>AGENTS.md</code></td><td>각 ~4 KiB</td></tr>
+          <tr><td><b>상세 절차·근거·예시</b></td><td>스킬 (<code>SKILL.md</code> + references)</td><td>무제한 (점진적 공개)</td></tr>
+        </tbody>
+      </table>
+      <p>이건 임시방편이 아니라 <b>Codex가 권장하는 패턴 그 자체</b>입니다 &mdash;
+      문서가 "특화된 작업에 가까운 곳에 override를 두라"고 명시하고,
+      스킬은 애초에 "이름·설명만 상시 노출, 본문은 필요할 때"라는 점진적 공개 구조예요.</p>
+      <p><b>부수 효과</b>: 이 압축은 Claude Code 쪽에도 이득입니다. 현재 always-loaded 룰이
+      약 210KB인데, 이 작업은 진행 중인 <code>SPEC-ALWAYS-LOADED-DIET-001</code>과 목표가 같습니다.</p>
+    </div>
+  </details>
+
+  <h3>L3 &mdash; 배선 생성기</h3>
+  <p><code>moai init --agent claude|codex|both</code>가 각 하네스의 설정 파일을 써줍니다.
+  사용자는 하네스 차이를 몰라도 됩니다.</p>
+
+  <pre class="code"><span class="cm"># Codex 쪽 생성물 예시 — .codex/hooks.json</span>
+{
+  "hooks": {
+    "<span class="hl">PreToolUse</span>": [{
+      "matcher": "Bash",
+      "hooks": [{ "type": "command",
+                  "command": "moai hook PreToolUse",
+                  "timeout": 30 }]
+    }],
+    "<span class="hl">SessionStart</span>": [{
+      "hooks": [{ "type": "command",
+                  "command": "moai hook SessionStart" }]
+    }]
+  }
+}
+
+<span class="cm"># .codex/config.toml — MCP 서버 등록 (현재 누락되어 있음)</span>
+[mcp_servers.<span class="hl">moai</span>]
+command = "moai"
+args = ["mcp-server"]</pre>
+
+  <h3>L4 &mdash; MCP (변경 없음)</h3>
+  <p>양쪽 다 MCP 클라이언트이므로 <code>moai mcp-server</code>는 그대로 재사용됩니다.
+  현재 <code>~/.codex/config.toml</code>에 moai가 <b>등록조차 안 되어 있는데</b>, L3가 이를 자동화합니다.</p>
+
+  <div class="sec-head" id="s4">4. 주의해야 할 충돌 지점</div>
+
+  <p class="sec-intro">
+    두 하네스가 닮았다는 건 좋은 소식이지만, <b>닮았기 때문에 생기는 충돌</b>도 있습니다.
+    설계 단계에서 정하고 가야 할 것들이에요.
+  </p>
+
+  <table>
+    <thead><tr><th style="width:190px">충돌</th><th>내용</th><th>제안</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><b><code>/goal</code> 이름 충돌</b></td>
+        <td>Codex에 <b>내장 <code>/goal</code></b>이 이미 있습니다 (설정·편집·일시정지·재개·조회·해제).
+            moai의 <code>/moai goal</code>과 개념이 겹칩니다.</td>
+        <td>Codex에서는 <b>내장 <code>/goal</code>을 쓰고</b>, moai의 goal 평가자는
+            <code>Stop</code> 훅 계층으로만 남깁니다. 중복 구현 금지.</td>
+      </tr>
+      <tr>
+        <td><b><code>/review</code>, <code>/plan</code></b></td>
+        <td>Codex 내장 커맨드와 moai 워크플로 이름이 겹칩니다.</td>
+        <td>moai 쪽은 <code>$moai-review</code> / <code>$moai-plan</code> 스킬 이름으로 <b>네임스페이스 분리</b>.</td>
+      </tr>
+      <tr>
+        <td><b>훅 신뢰 승인</b></td>
+        <td>Codex는 비관리 훅을 <b>해시 기준으로 명시 신뢰</b>해야 실행합니다.
+            <code>moai update</code>로 훅이 바뀌면 <b>조용히 실행이 멈춥니다</b>.</td>
+        <td><code>moai update</code> 후 <b>"<code>/hooks</code>에서 재승인하세요"</b> 안내 필수.
+            L3가 이 안내를 출력하도록 배선.</td>
+      </tr>
+      <tr>
+        <td><b>SessionEnd 1초</b></td>
+        <td>Codex의 SessionEnd 타임아웃은 기본 1초, 최대 3초입니다.
+            moai의 세션 종료 정리 작업이 넘칠 수 있습니다.</td>
+        <td>정리 작업을 <b>SessionEnd 밖으로</b> 옮기거나 <code>async</code> 훅으로 분리.</td>
+      </tr>
+      <tr>
+        <td><b>훅 병합 규칙</b></td>
+        <td>Codex는 상위 계층이 하위를 <b>대체하지 않고 병합</b>합니다
+            (<i>"Higher-precedence config layers don't replace lower-precedence hooks"</i>).</td>
+        <td>사용자 <code>~/.codex/hooks.json</code>과 프로젝트 훅이 <b>둘 다 실행</b>됨을 전제로
+            moai 훅을 <b>멱등하게</b> 유지.</td>
+      </tr>
+      <tr>
+        <td><b>Rules ≠ rules</b></td>
+        <td>Codex의 <b>Rules</b>는 Starlark <code>.rules</code> 파일로
+            <b>샌드박스 밖 명령 실행</b>을 통제합니다. moai의 <code>.claude/rules/</code>(지시문)와 <b>전혀 다른 것</b>입니다.</td>
+        <td>용어 혼동 방지 &mdash; 문서에서 <b>"실행 정책(Codex Rules)"</b>과
+            <b>"지시문 룰(moai rules)"</b>을 명확히 구분해 표기.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="sec-head" id="s5">5. 마일스톤</div>
+
+  <p class="sec-intro">
+    순서는 <b>위험이 낮고 즉시 이득이 나는 것부터</b>입니다.
+    M1·M2만 끝나도 Codex 사용자가 moai 자산을 쓸 수 있어요.
+  </p>
+
+  <div class="milestones">
+
+    <div class="milestone">
+      <div class="when">M1</div>
+      <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+      <div class="body">
+        <h3>자산 정본화 &mdash; 스킬 32개를 <code>.agents/skills/</code>로</h3>
+        <p>스킬을 중립 경로로 옮기고 <code>.claude/skills/</code>는 링크로 대체합니다.
+        <b>Codex 쪽 코드 변경 0</b>으로 즉시 소비 가능해집니다. Claude Code 동작은 그대로예요.</p>
+        <div class="tag-row"><span class="tag">가장 싼 승리</span><span class="tag">동작 변화 없음</span><span class="tag">Template-First</span></div>
+      </div>
+    </div>
+
+    <div class="milestone">
+      <div class="when">M2</div>
+      <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+      <div class="body">
+        <h3>지시문 이중화 &mdash; AGENTS.md 정본화 + 32 KiB 다이어트</h3>
+        <p>AGENTS.md를 정본으로 만들고 <code>CLAUDE.md</code>는 이를 임포트하는 얇은 층으로 바꿉니다.
+        룰 71개는 §3 L2의 3갈래 규칙으로 재배치합니다.
+        진행 중인 <code>SPEC-ALWAYS-LOADED-DIET-001</code>과 <b>같은 방향</b>이라 함께 처리하면 이득이 큽니다.</p>
+        <div class="tag-row"><span class="tag">난이도 최상</span><span class="tag">diet SPEC과 통합</span><span class="tag">32 KiB 게이트</span></div>
+      </div>
+    </div>
+
+    <div class="milestone">
+      <div class="when">M3</div>
+      <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+      <div class="body">
+        <h3>L1 훅 어댑터 &mdash; 이벤트 이름 정규화</h3>
+        <p><code>moai hook</code>이 Codex 이벤트 이름(PascalCase)을 받아들이도록 앞단에 매핑 층을 추가합니다.
+        <b>기존 훅 로직 22,659줄은 그대로</b>이고, 추가되는 건 매핑 테이블과 출력 방언 변환뿐입니다.
+        테스트는 두 하네스 페이로드를 모두 먹이는 골든 테스트로.</p>
+        <div class="tag-row"><span class="tag">internal/hook</span><span class="tag">8쌍 매핑</span><span class="tag">골든 테스트</span></div>
+      </div>
+    </div>
+
+    <div class="milestone">
+      <div class="when">M4</div>
+      <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+      <div class="body">
+        <h3>L3 배선 생성기 &mdash; <code>moai init --agent</code></h3>
+        <p><code>.codex/hooks.json</code>, <code>.codex/config.toml</code>(MCP 등록 포함),
+        <code>.codex/agents/*.toml</code>을 생성합니다. 훅 <b>재승인 안내</b>도 여기서 출력합니다.
+        기존 <code>settings.json</code> 생성기와 같은 자리에 형제로 붙습니다.</p>
+        <div class="tag-row"><span class="tag">internal/template</span><span class="tag">멱등 생성</span><span class="tag">재승인 안내</span></div>
+      </div>
+    </div>
+
+    <div class="milestone">
+      <div class="when">M5</div>
+      <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+      <div class="body">
+        <h3>에이전트 이중 발행 &mdash; 11개를 TOML로</h3>
+        <p>중립 정의(YAML)에서 Claude용 <code>.md</code>와 Codex용 <code>.toml</code>을 동시 생성합니다.
+        <code>tools:</code> 화이트리스트 → <code>mcp_servers</code>/<code>sandbox_mode</code> 재매핑이 이 단계의 실제 작업량이에요.
+        <code>Explore</code> → <code>explorer</code> 대응을 먼저 검증합니다.</p>
+        <div class="tag-row"><span class="tag">도구 재매핑</span><span class="tag">effort 등급 대응</span></div>
+      </div>
+    </div>
+
+    <div class="milestone">
+      <div class="when">M6</div>
+      <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+      <div class="body">
+        <h3>플러그인 패키징 &mdash; 배포 경로 단일화</h3>
+        <p>Codex 플러그인(<code>.codex-plugin/plugin.json</code>)으로 스킬 + MCP 서버를 묶어
+        마켓플레이스 배포 경로를 확보합니다. <b>수요 확인 후 착수</b> &mdash; M1~M5 없이는 의미가 없습니다.</p>
+        <div class="tag-row"><span class="tag">수요 기반</span><span class="tag">후순위</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="sec-head" id="s6">6. 리스크</div>
+
+  <div class="risks">
+    <div class="risk">
+      <h4>지시문 압축 손실 <span class="sev high">높음</span></h4>
+      <p>룰 71개 → 32 KiB. 계약을 옮기다 <b>강제력이 약해질 수</b> 있습니다.
+      특히 [HARD] 규칙이 스킬로 내려가면 "필요할 때만" 로딩돼 상시 구속력을 잃습니다.</p>
+      <p class="mit"><b>완화</b> &mdash; [HARD] 규칙은 <b>반드시 AGENTS.md에 남기고</b>,
+      스킬로는 근거·예시·절차만 내린다. 분류 기준을 M2 착수 전에 문서화.</p>
+    </div>
+
+    <div class="risk">
+      <h4>훅 신뢰 재승인 누락 <span class="sev high">높음</span></h4>
+      <p>Codex는 훅이 바뀌면 <b>말없이 실행을 건너뜁니다</b>.
+      <code>moai update</code> 후 품질 게이트가 조용히 죽어 있을 수 있어요 &mdash;
+      "실패 신호가 없다"가 "통과"로 오독되는 전형적 위험입니다.</p>
+      <p class="mit"><b>완화</b> &mdash; <code>moai doctor</code>가 훅 신뢰 상태를 <b>능동 점검</b>하고,
+      미승인 시 경고. update 직후 안내 출력.</p>
+    </div>
+
+    <div class="risk">
+      <h4>하네스 분기 확산 <span class="sev mid">중간</span></h4>
+      <p><code>if codex</code>가 코드 곳곳에 퍼지면 유지비가 두 배가 됩니다.</p>
+      <p class="mit"><b>완화</b> &mdash; 하네스 분기는 <b>L1 어댑터 안에서만</b> 허용.
+      CI에 <code>internal/hook</code> 밖 하네스 분기 금지 검사(grep 가드) 추가.</p>
+    </div>
+
+    <div class="risk">
+      <h4>테스트 매트릭스 증가 <span class="sev mid">중간</span></h4>
+      <p>훅 11 × 하네스 2 = 검증 조합이 두 배. 로컬 전체 스위트는 이미 금지 관행입니다.</p>
+      <p class="mit"><b>완화</b> &mdash; 페이로드 <b>골든 파일</b> 기반 테이블 테스트로 흡수.
+      실 codex 바이너리가 필요한 검증은 CI에서만, 없으면 skip.</p>
+    </div>
+
+    <div class="risk">
+      <h4>Codex 사양 변화 속도 <span class="sev mid">중간</span></h4>
+      <p>훅·서브에이전트·플러그인 모두 신생 기능입니다.
+      실제로 <b>7월과 8월 사이에 판정이 뒤집혔어요.</b> 또 바뀔 수 있습니다.</p>
+      <p class="mit"><b>완화</b> &mdash; 어댑터 층을 얇게 유지해 교체 비용을 낮춘다.
+      <code>/harness:release-update</code>에 <b>Codex 릴리스 추적</b>을 추가.</p>
+    </div>
+
+    <div class="risk">
+      <h4>최소공통분모 퇴행 <span class="sev low">낮음</span></h4>
+      <p>양쪽을 맞추려다 Claude Code 전용 강점(출력 스타일, AskUserQuestion, statusline)을
+      버리는 방향으로 흐를 수 있습니다.</p>
+      <p class="mit"><b>완화</b> &mdash; <b>점진적 향상</b> 원칙 &mdash;
+      코어는 어디서나, 전용 기능은 있는 하네스에서 그대로 살린다. 제거하지 않는다.</p>
+    </div>
+  </div>
+
+  <div class="sec-head" id="s7">7. 성공 지표</div>
+
+  <p class="sec-intro">전부 <b>기계로 확인 가능한</b> 형태로 잡았습니다. "잘 된 것 같다"는 판정 근거가 아니에요.</p>
+
+  <div class="metrics-list">
+    <div class="metric-row">
+      <div class="metric-indicator unmet"></div>
+      <div class="metric-label">Codex 세션에서 moai 스킬이 목록에 뜬다</div>
+      <div class="metric-target"><code>/skills</code> 에 32개 노출</div>
+    </div>
+    <div class="metric-row">
+      <div class="metric-indicator unmet"></div>
+      <div class="metric-label">Codex 세션에서 moai 훅이 신뢰·실행된다</div>
+      <div class="metric-target"><code>/hooks</code> 에 8종 trusted</div>
+    </div>
+    <div class="metric-row">
+      <div class="metric-indicator unmet"></div>
+      <div class="metric-label">AGENTS.md가 한도 안에 들어간다</div>
+      <div class="metric-target">루트 &lt; 32 KiB (잘림 0)</div>
+    </div>
+    <div class="metric-row">
+      <div class="metric-indicator unmet"></div>
+      <div class="metric-label">동일 SPEC이 양쪽 하네스에서 완주한다</div>
+      <div class="metric-target">plan→run→sync 2회 통과</div>
+    </div>
+    <div class="metric-row">
+      <div class="metric-indicator unmet"></div>
+      <div class="metric-label">하네스 분기가 어댑터 밖으로 새지 않는다</div>
+      <div class="metric-target">CI grep 가드 0건</div>
+    </div>
+    <div class="metric-row">
+      <div class="metric-indicator unmet"></div>
+      <div class="metric-label">Claude Code 기존 동작이 회귀하지 않는다</div>
+      <div class="metric-target">기존 테스트 전량 통과</div>
+    </div>
+  </div>
+
+  <div class="sec-head" id="s8">8. 스스로 확인해 볼 것</div>
+
+  <p>이 계획의 전제를 직접 검증하실 수 있는 명령들입니다.</p>
+
+  <pre class="code"><span class="cm"># ① Codex 훅이 실제로 있는지</span>
+codex   <span class="cm"># 세션 진입 후</span>
+/hooks
+
+<span class="cm"># ② Codex 서브에이전트</span>
+/agent          <span class="cm"># 또는 /subagents</span>
+
+<span class="cm"># ③ 스킬 스캔 경로 확인</span>
+/skills
+
+<span class="cm"># ④ moai를 Codex MCP로 등록 (현재 누락)</span>
+codex mcp add moai -- moai mcp-server
+
+<span class="cm"># ⑤ 비대화식 검증 — CI 에서 쓸 형태</span>
+codex exec --json "list the repo's quality gates" | jq</pre>
+
+  <div class="callout">
+    <span class="ico">★</span>
+    <div>
+      <p><b>미검증으로 남긴 것</b> &mdash; 이 계획은 <b>공식 문서 기준</b>으로 작성했고,
+      실제 Codex 바이너리에서 훅·서브에이전트를 <b>실행 검증하지 않았습니다.</b></p>
+      <p>M3 착수 전에 위 ①~⑤를 한 번 돌려 <b>문서와 실제가 일치하는지</b> 먼저 확인하시길 권합니다.
+      특히 훅 stdin 페이로드의 실제 필드 구성은 골든 테스트의 기준값이 되므로,
+      <b>추측이 아니라 실측으로</b> 잡아야 합니다.</p>
+    </div>
+  </div>
+
+  <footer>
+    Sources:
+    <a href="https://learn.chatgpt.com/docs/hooks">hooks</a> ·
+    <a href="https://learn.chatgpt.com/docs/agent-configuration/subagents">subagents</a> ·
+    <a href="https://learn.chatgpt.com/docs/build-skills">build-skills</a> ·
+    <a href="https://learn.chatgpt.com/docs/build-plugins">build-plugins</a> ·
+    <a href="https://learn.chatgpt.com/docs/agent-configuration/agents-md">agents-md</a> ·
+    <a href="https://learn.chatgpt.com/docs/agent-configuration/rules">rules</a> ·
+    <a href="https://learn.chatgpt.com/docs/config-file/config-reference">config-reference</a> ·
+    <a href="https://learn.chatgpt.com/docs/non-interactive-mode">non-interactive-mode</a> ·
+    <a href="https://learn.chatgpt.com/docs/developer-commands?surface=cli">developer-commands</a> ·
+    <a href="https://learn.chatgpt.com/docs/permission-modes">permission-modes</a> ·
+    <a href="https://learn.chatgpt.com/docs/app-server">app-server</a> ·
+    <a href="https://learn.chatgpt.com/docs/extend/mcp">extend/mcp</a>
+    <br>
+    실측: internal/hook (105 files · 22,659 LOC) · internal/cli/hook*.go · internal/template/templates/.claude/ · ~/.codex/config.toml
+    <br>
+    선행 문서: .moai/reports/moai-adk-universal-20260714.md · .moai/reports/mcp-codex-claude-messaging-20260817.md
+    &nbsp;&mdash;&nbsp; Generated: 2026-08-17
+  </footer>
+
+</div>
+
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: "base",
+    themeVariables: {
+      primaryColor:      "#FAF9F5",
+      primaryTextColor:  "#141413",
+      primaryBorderColor: "#D97757",
+      lineColor:         "#87867F",
+      secondaryColor:    "#E3DACC",
+      tertiaryColor:     "#F0EEE6"
+    }
+  });
+</script>
+</body>
+</html>

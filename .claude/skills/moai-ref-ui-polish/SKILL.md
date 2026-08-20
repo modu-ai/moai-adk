@@ -18,17 +18,17 @@ when_to_use: >
 
 user-invocable: false
 metadata:
-  version: "1.0.0"
+  version: "1.2.0"
   category: "domain"
   status: "active"
-  updated: "2026-07-28"
-  tags: "ui, polish, design, animation, typography, motion, frontend, reference"
+  updated: "2026-08-19"
+  tags: "ui, polish, design, animation, typography, motion, frontend, accessibility, audit, reference"
 
 # MoAI Extension: Progressive Disclosure
 progressive_disclosure:
   enabled: true
   level1_tokens: 100
-  level2_tokens: 3000
+  level2_tokens: 5000
 ---
 
 # UI Polish Reference
@@ -63,7 +63,7 @@ Before suggesting polish changes, identify the project's existing styling system
 | Pattern | Rule | Common Mistake |
 |---------|------|----------------|
 | Enter animation easing | `ease-out` (decelerate) — element arrives calmly | `ease-in` on enter (element appears to slam into place) |
-| Exit animation easing | `ease-out`, softer than enter (small fixed `translateY`) | Full-height collapse, or harsher-than-enter motion |
+| Exit animation easing | `ease-in` (accelerates away), mirroring the enter curve (small fixed `translateY`) | Full-height collapse, or harsher-than-enter motion |
 | Interruptible state changes | CSS `transition` (can be interrupted mid-animation) | `keyframes` for interactive states (cannot interrupt) |
 | Staged entrances | Stagger semantic chunks ~100ms — only for infrequent staged entrances | Staggering routine, high-frequency interactions (feels sluggish) |
 | Contextual icon animation | `opacity`/`scale`/`blur` cross-fade (scale 0.25→1, opacity 0→1, blur 4px→0) | Toggling `visibility` (jarring, no transition) |
@@ -78,6 +78,18 @@ Before suggesting polish changes, identify the project's existing styling system
 | With motion library (Framer Motion et al.) | `transition: { type: "spring", duration: 0.3, bounce: 0 }` |
 | Without motion library (CSS) | `cubic-bezier(0.2, 0, 0, 1)` for the standard "decelerate" curve |
 | Never | `transition: all` — always specify exact properties (`transition-property: scale, opacity`) |
+
+### Motion Accessibility and Cost
+
+| Rule | Detail |
+|------|--------|
+| Reduced-motion branch (required) | Every non-decorative animation needs a `prefers-reduced-motion: reduce` path. Vestibular-disorder users are physically harmed by large-displacement and parallax motion. Reduce to an opacity cross-fade or remove the animation — never merely shorten it. The branch is authored at the same time as the animation, not retrofitted |
+| Animate the compositor, not the layout | `transform` and `opacity` are composited and skip layout and most paint. `width`, `height`, `top`, `left`, `margin`, and `padding` trigger layout on every frame (thrashing), which is why the same visual effect janks when driven by the wrong property. Move with `translate`, resize with `scale` |
+
+> Motion principles behind these rules — the three decision passes, motion layers, the
+> 1/3 rules, stagger budgets, personality archetypes, Disney-adapted ranges, and the
+> emotion-to-motion map — live in `references/motion-principles.md` (L3, load on demand
+> when motion is the substance of the work).
 
 ## Typography
 
@@ -104,6 +116,8 @@ Before suggesting polish changes, identify the project's existing styling system
 | Minimum hit area (touch/mobile) | 44 × 44 px |
 | Minimum hit area (dense desktop) | 40 × 40 px (extend with pseudo-element if the visual is smaller) |
 | Hit area overlap | Never let hit areas overlap |
+| Hover on touch (never load-bearing) | `:hover` does not exist on touch — anything reachable only by hover is simply gone on a phone. Keep affordances visible by default and gate hover styling behind `@media (hover: hover) and (pointer: fine)` |
+| Hover on pointer (always present) | The inverse rule: on a pointer device every clickable surface needs a distinct hover state, transitioning over ~100-200ms. A pointer resting on a target with no feedback reads as broken |
 | `will-change` | Only `transform`, `opacity`, `filter` — and only when first-frame stutter is observed; never `will-change: all` |
 
 ## Icons
@@ -138,6 +152,12 @@ Before suggesting polish changes, identify the project's existing styling system
 | Needs changes | Only MEDIUM or LOW findings remain |
 | Approve | No actionable findings remain |
 
+> Auditing an existing codebase rather than reviewing a diff? `references/design-audit.md`
+> (L3, load on demand) carries the mechanical detection patterns behind the checklists
+> below — motion gaps, accessibility violations, layout-property animation, and the
+> duration/easing inventories that only surface across a whole codebase. It reports into
+> the severity scale and finding caps above, not a separate one.
+
 <!-- moai:evolvable-start id="rationalizations" -->
 ## Common Rationalizations
 
@@ -165,13 +185,17 @@ Before suggesting polish changes, identify the project's existing styling system
 - Separate icon asset files per state instead of `currentColor` recoloring
 - Page-load enter animation fires without a skip (`initial={false}`)
 - `will-change: all`, or `will-change` set permanently instead of only on stutter
+- Animation with no `prefers-reduced-motion` branch (or a branch that only shortens the duration instead of removing the displacement)
+- Movement driven by `top`/`left`/`width`/`height` where a `transform` would do (layout thrashing every frame)
 
 <!-- moai:evolvable-end -->
 
 <!-- moai:evolvable-start id="verification" -->
 ## Verification
 
-- [ ] Enter/exit animations use `ease-out`; exits are softer than enters
+- [ ] Enter animations decelerate (`ease-out`); exit animations accelerate (`ease-in`), and entrances run longer than exits
+- [ ] Every non-decorative animation has a `prefers-reduced-motion: reduce` branch
+- [ ] Movement uses `transform`/`opacity`, not `width`/`height`/`top`/`left`
 - [ ] Nested elements follow `outerRadius = innerRadius + padding`
 - [ ] Depth uses semi-transparent shadow; structure uses border
 - [ ] Every `transition` specifies exact properties (no `transition: all`)

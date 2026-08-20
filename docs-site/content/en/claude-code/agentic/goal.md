@@ -37,7 +37,7 @@ Only one goal can be active per session. The same `/goal` command handles settin
 
 ```mermaid
 flowchart TD
-    A[/goal condition set<br>first turn starts immediately/] --> B[Claude works one turn]
+    A["goal condition set<br>first turn starts immediately"] --> B[Claude works one turn]
     B --> C{Fast model evaluates<br>condition satisfaction}
     C -->|No + reason| D[Reason handed as guidance<br>for the next turn]
     D --> B

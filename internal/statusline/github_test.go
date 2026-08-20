@@ -3,6 +3,7 @@ package statusline
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -169,12 +170,16 @@ func TestMaybeRefreshGitHubCounts_EmptyRootIsANoOp(t *testing.T) {
 func TestRenderSessionLine_GitHubCounts(t *testing.T) {
 	t.Parallel()
 
+	// The counts live on the repo segment, never on the session line: the
+	// 2026-08-18 layout merge moved them off this line, and the 2026-08-20
+	// restore put them back on the repo segment rather than here. The session
+	// line stays free of the glyph in both the fetched and unfetched cases.
 	d := namedData()
 	d.GitHub = GitHubCounts{OpenIssues: 7, OpenPRs: 3, Available: true}
 
 	got := NewRenderer("default", true, nil).renderSessionLine(d)
-	if !strings.Contains(got, "🔀 7 / 3") {
-		t.Errorf("github segment missing from %q", got)
+	if strings.Contains(got, "🔀") {
+		t.Errorf("github counts must not render on the session line, got %q", got)
 	}
 
 	d.GitHub = GitHubCounts{} // never fetched
@@ -184,19 +189,21 @@ func TestRenderSessionLine_GitHubCounts(t *testing.T) {
 	}
 }
 
-// TestRender_GitHubAndRepoIconDistinction pins the icon swap's contextual
-// split: the GitHub PR icon is 🔀 (the 📥 replacement) while the repo indicator
-// is 📡 (the old repo-segment 🔀 replacement). The two substitutions share the
-// 🔀 glyph on opposite sides, so a blanket substitution would either leave the
-// repo prefix as 🔀 or re-replace the fresh PR icon with 📡 — both bug
-// directions are asserted against here in a single render where both slots
-// are live.
-func TestRender_GitHubAndRepoIconDistinction(t *testing.T) {
+// TestRender_ForgeCountsRenderDistinctlyFromAheadBehind is the restore, and
+// the shape of the restore is the point.
+//
+// The counts were removed on 2026-08-18 because the merged layout put two
+// slash-joined pairs side by side and an operator read the branch's "59/0" as
+// issues over pull requests. Bringing the numbers back in that form would
+// bring the misread back with them, so this pins the distinction: exactly one
+// slash pair on the line (ahead/behind), and each count carrying its own glyph
+// with no slash joining them.
+func TestRender_ForgeCountsRenderDistinctlyFromAheadBehind(t *testing.T) {
 	t.Parallel()
 
 	r := newTestRenderer()
 	data := &StatusData{
-		Git:    GitStatusData{Branch: "main", Available: true},
+		Git:    GitStatusData{Branch: "main", Available: true, Ahead: 59, Behind: 0},
 		Memory: MemoryData{TokensUsed: 50000, TokenBudget: 200000, Available: true},
 		GitHub: GitHubCounts{OpenIssues: 7, OpenPRs: 3, Available: true},
 		Workspace: WorkspaceData{
@@ -206,31 +213,64 @@ func TestRender_GitHubAndRepoIconDistinction(t *testing.T) {
 
 	got := r.Render(data, ModeDefault)
 
-	if !strings.Contains(got, "📡 modu-ai/moai-adk | 🅱️ main") {
-		t.Errorf("repo indicator must render 📡, got %q", got)
+	if !strings.Contains(got, "📡 modu-ai/moai-adk, 59/0 🐛7 🔀3 | 🅱️ main") {
+		t.Errorf("repo segment must carry glyph-tagged counts beside the a/b pair, got %q", got)
 	}
-	if !strings.Contains(got, "🔀 7 / 3") {
-		t.Errorf("github segment must render 🔀 issues / PRs, got %q", got)
+	// The misread this guards against needs a second number/number pair to
+	// happen. Exactly one may appear — the ahead/behind pair. (The slash in
+	// owner/name is not a number pair and is not what was misread.)
+	if n := len(regexp.MustCompile(`\d+/\d+`).FindAllString(got, -1)); n != 1 {
+		t.Errorf("the line carries %d number/number pairs, want exactly 1 (ahead/behind) — got %q", n, got)
 	}
-	if strings.Contains(got, "🔀 modu-ai") {
-		t.Errorf("repo prefix must not remain 🔀, got %q", got)
+}
+
+// TestRender_ForgeCountsOmitZeros keeps the bar quiet about nothing: a zero
+// count is absent rather than printed, matching the dirty count in the same
+// segment.
+func TestRender_ForgeCountsOmitZeros(t *testing.T) {
+	t.Parallel()
+
+	data := &StatusData{
+		Git:    GitStatusData{Branch: "main", Available: true},
+		GitHub: GitHubCounts{OpenIssues: 0, OpenPRs: 2, Available: true},
+		Workspace: WorkspaceData{
+			Repo: &RepoInfo{Host: "github.com", Owner: "modu-ai", Name: "moai-adk"},
+		},
 	}
-	if strings.Contains(got, "📡 3") {
-		t.Errorf("PR count must not inherit the repo indicator's 📡 (blanket-substitution bug), got %q", got)
+
+	got := newTestRenderer().renderRepoBranchSegment(data)
+	if strings.Contains(got, "🐛") {
+		t.Errorf("a zero issue count must not render, got %q", got)
+	}
+	if !strings.Contains(got, "🔀2") {
+		t.Errorf("the non-zero change-request count must render, got %q", got)
+	}
+
+	data.GitHub = GitHubCounts{OpenIssues: 4, OpenPRs: 1, Available: false}
+	if got := newTestRenderer().renderRepoBranchSegment(data); strings.Contains(got, "🐛") || strings.Contains(got, "🔀") {
+		t.Errorf("counts from an unavailable cache must not render, got %q", got)
 	}
 }
 
 func TestRenderSessionLine_GitHubSegmentDisablable(t *testing.T) {
 	t.Parallel()
 
-	d := namedData()
-	d.GitHub = GitHubCounts{OpenIssues: 7, OpenPRs: 3, Available: true}
+	// The SegmentGitHub gate governs the restored counts: with it off the
+	// numbers are absent and the repo part renders exactly as it did before
+	// they came back.
+	d := &StatusData{
+		Git:    GitStatusData{Branch: "main", Available: true},
+		GitHub: GitHubCounts{OpenIssues: 7, OpenPRs: 3, Available: true},
+		Workspace: WorkspaceData{
+			Repo: &RepoInfo{Host: "github.com", Owner: "modu-ai", Name: "moai-adk"},
+		},
+	}
 
-	got := NewRenderer("default", true, map[string]bool{SegmentGitHub: false}).renderSessionLine(d)
+	got := NewRenderer("default", true, map[string]bool{SegmentGitHub: false}).renderRepoBranchSegment(d)
 	if strings.Contains(got, "⚠️") || strings.Contains(got, "🔀") {
 		t.Errorf("disabled github segment still rendered: %q", got)
 	}
-	if !strings.Contains(got, "🔄 TODO: 12 / 26") {
-		t.Errorf("backlog must survive disabling the github segment: %q", got)
+	if !strings.Contains(got, "📡 modu-ai/moai-adk") {
+		t.Errorf("repo part must survive the gate, got %q", got)
 	}
 }

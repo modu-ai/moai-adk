@@ -1,0 +1,6 @@
+=== RUN   TestPRMergeCleanup_AnchoredSessionSkipsRemoval
+    session_worktree_prmerge_anchor_test.go:74: PR-merge cleanup removed a worktree with a live anchored session
+--- FAIL: TestPRMergeCleanup_AnchoredSessionSkipsRemoval (0.07s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.291s
+FAIL

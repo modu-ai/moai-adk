@@ -138,10 +138,12 @@ const (
 	DefaultGLMMedium = "glm-5.3"
 	DefaultGLMLow    = "glm-5.3"
 	DefaultGLMFable  = "glm-5.3"
-	// Additional GLM models — those exposed by ValidGLMModels() (glm-5.2,
-	// glm-5.1, glm-4.7, glm-4.5-air) are selectable in the tier slots;
-	// glm-4.5, glm-4.6, and glm-5-turbo are named constants with no config
-	// surface.
+	// Additional GLM models — those exposed by ValidGLMModels() (glm-5.1,
+	// glm-4.7, glm-4.5-air) are selectable in the tier slots; glm-4.5,
+	// glm-4.6, glm-5.2, and glm-5-turbo are named constants with no config
+	// surface. glm-5.2 left the offered set when glm-5.3 became every tier's
+	// default, but stays declared so an existing llm.yaml naming it still
+	// loads and still resolves a context window.
 	DefaultGLM45     = "glm-4.5"
 	DefaultGLM46     = "glm-4.6"
 	DefaultGLM47     = "glm-4.7"
@@ -368,12 +370,29 @@ var DefaultGLMTaskTimeout = 600 * time.Second
 // runaway generation cannot consume the job's whole budget.
 const DefaultGLMTaskMaxTokens = 8192
 
-// DefaultFactoryWorkers is the fan-out size a bare `-f` / `--factory` takes
-// when the operator supplies no count (SPEC-FACTORY-WORKER-FANOUT-001
-// REQ-FF-001, t85 lead loop). The value 8 is the operator-decided factory
-// default — large enough to keep a card queue draining, small enough to sit
-// under the session-count a single operator hand-launches comfortably.
+// DefaultFactoryWorkers is the fan-out size the count-less `-k --name
+// lane-<n>` form takes when the operator supplies no count
+// (SPEC-FACTORY-WORKER-FANOUT-001 REQ-FF-001, t85 lead loop). The value 8 is
+// the operator-decided factory default for that legacy entry — large enough to
+// keep a card queue draining, small enough to sit under the session-count a
+// single operator hand-launches comfortably. The t118 `-f` entry has its own,
+// smaller default (DefaultFactoryLeadWorkers).
 const DefaultFactoryWorkers = 8
+
+// DefaultFactoryLeadWorkers is the fan-out a bare `-f` / `--factory` (no
+// count) resolves to (t118 launcher axis, v3.1.1): one lane. The revived -f
+// entry starts the minimal factory — lead plus lane-1 — which the operator
+// then grows one lane at a time with `-f lane-<n>`, so the count-less
+// default is 1, not the legacy form's 8 (DefaultFactoryWorkers).
+const DefaultFactoryLeadWorkers = 1
+
+// DefaultLaneMaxConcurrentSubagents is the per-lane concurrent-subagent cap
+// the launcher seeds on kanban companion and factory lane sessions (t118,
+// operator-confirmed architecture: each lane runs up to 10 agents in
+// parallel). It rides CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS (runtime default
+// 20) so N lanes fanning out simultaneously divide the machine's capacity by
+// construction rather than by operator restraint.
+const DefaultLaneMaxConcurrentSubagents = 10
 
 // DefaultGLMJobCancelGrace is how long glm_job_cancel waits for a cancelled
 // job's in-flight HTTP call to end on its own. Derived from

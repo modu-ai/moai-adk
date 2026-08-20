@@ -2,12 +2,12 @@
 title: MCP 服务器
 weight: 12
 draft: false
-description: "梳理 MoAI-ADK 自带的 moai mcp-server（stdio 本地 MCP 服务器）的配置、17-工具目录、认证和延迟加载策略。"
+description: "梳理 MoAI-ADK 自带的 moai mcp-server（stdio 本地 MCP 服务器）的配置、21-工具目录、认证和延迟加载策略。"
 ---
 
 # MCP 服务器
 
-MoAI-ADK 在 Claude Code 的 MCP 生态之上，又叠加了一个**自有的 MCP 服务器**。一个二进制文件（`moai mcp-server`）以 stdio 本地服务器的方式运行，向 Claude Code 运行时暴露 MoAI-ADK 独有的 17 个工具——SPEC 生命周期审计、验证快照、目标引擎、跨模型审计、codex 委托等。
+MoAI-ADK 在 Claude Code 的 MCP 生态之上，又叠加了一个**自有的 MCP 服务器**。一个二进制文件（`moai mcp-server`）以 stdio 本地服务器的方式运行，向 Claude Code 运行时暴露 MoAI-ADK 独有的 21 个工具——SPEC 生命周期审计、验证快照、目标引擎、跨模型审计、codex·GLM 委托等。
 
 {{< callout type="info" title="两份 MCP 文档的关系" >}}
 [**Claude Code 通用 MCP**](/zh/claude-code/extensibility/mcp) 讲的是平台自身的 MCP（Model Context Protocol）集成——USB 端口比喻、服务器注册、传输类型、`/mcp` 命令、OAuth 认证、延迟加载原理。
@@ -29,14 +29,14 @@ Claude Code 的 MCP 生态与 MoAI 的自有 MCP 服务器是各自独立的服�
 flowchart TD
     CC["Claude Code 运行时<br/>(工具权限 · 延迟加载 · 审批)"]
     CMCP["通用 MCP 服务器<br/>(context7, chrome-devtools, …)"]
-    MMCP["moai mcp-server<br/>(MoAI 自有 · 17 工具)"]
+    MMCP["moai mcp-server<br/>(MoAI 自有 · 21 工具)"]
     CC --> CMCP
     CC --> MMCP
-    MMCP --> TOOLS["SPEC lifecycle · 验证 · 目标 · 审计 · codex 委托"]
+    MMCP --> TOOLS["SPEC lifecycle · 验证 · 目标 · 审计 · codex/GLM 委托"]
     CMCP --> EXT["外部工具 (库文档 · 浏览器自动化 · …)"]
 ```
 
-关键在于，"MoAI 不配置 MCP"是一个**半真半假的说法**。不默认配置外部 MCP 服务器（context7、playwright 等）是对的。但 MoAI 自有的那个服务器在 `moai init` 时就会以 default-on 装上。这个服务器正是 MoAI 的 17-工具目录触达 Claude Code 的通道。
+关键在于，"MoAI 不配置 MCP"是一个**半真半假的说法**。不默认配置外部 MCP 服务器（context7、playwright 等）是对的。但 MoAI 自有的那个服务器在 `moai init` 时就会以 default-on 装上。这个服务器正是 MoAI 的 21-工具目录触达 Claude Code 的通道。
 
 ## .mcp.json 配置
 
@@ -93,9 +93,9 @@ flowchart TD
 
 用户不直接手编 `.mcp.json`。`moai mcp add|remove|list` CLI 管理该文件，且此 CLI 通过 atomic-RWM seam（flock 文件锁 + compare-retry + 备份后写入 + idempotent-skip）运作。即使两个会话同时编辑，也不会让一边的变更覆盖另一边。
 
-## 17-工具目录
+## 21-工具目录
 
-`moai mcp-server` 暴露的 17 个工具分为五组。调用时都带 `mcp__moai__` 前缀。
+`moai mcp-server` 暴露的 21 个工具分为六组。调用时都带 `mcp__moai__` 前缀。
 
 ### SPEC 生命周期
 
@@ -121,10 +121,10 @@ manager-develop 在 run-phase 自验证（接缝 §E）中使用，sync-auditor 
 | 工具 | 目的 | 消费智能体 | CLI 等价物 |
 |------|------|---------------|------------|
 | `mcp__moai__goal_arm` | 条件声明目标武装 | **编排器主会话专用**（未连线到任何智能体） | `moai goal arm` / `/moai goal` |
-| `mcp__moai__goal_status` | 读取已武装的目标状态 | manager-develop, manager-kanban | `moai goal status` |
-| `mcp__moai__session_list` | 活跃 moai 会话列表 | manager-kanban | `moai session list` |
+| `mcp__moai__goal_status` | 读取已武装的目标状态 | manager-develop, manager-lead | `moai goal status` |
+| `mcp__moai__session_list` | 活跃 moai 会话列表 | manager-lead | `moai session list` |
 
-`goal_arm` 是编排器专用的——自治循环武装是编排器关注的事，所以不在智能体内调用。这是为了保留平面层级武装表面而做的设计。`goal_status` 是 manager-develop / manager-kanban 读取已武装条件进度的通道，`session_list` 是 manager-kanban 在 fan-out 前检测同一检出上并发会话的竞争缓解手段。
+`goal_arm` 是编排器专用的——自治循环武装是编排器关注的事，所以不在智能体内调用。这是为了保留平面层级武装表面而做的设计。`goal_status` 是 manager-develop / manager-lead 读取已武装条件进度的通道，`session_list` 是 manager-lead 在 fan-out 前检测同一检出上并发会话的竞争缓解手段。
 
 ### 跨模型审计（第二意见）
 
@@ -148,6 +148,17 @@ manager-develop 在 run-phase 自验证（接缝 §E）中使用，sync-auditor 
 | `mcp__moai__codex_job_cancel` | 中断正在运行的后台 codex 任务 | super-advisor | `moai codex job cancel` |
 
 codex 委托工具族连线到 super-advisor——因为按需高推理咨询智能体是后台跨模型委托的自然消费者。用 `codex_task` 委托任务，用 `codex_job_status` / `codex_job_result` 轮询完成情况，用 `codex_job_cancel` 中断。codex 是可选的（optional）——缺失或不可用时返回 fail-open 的 `inconclusive`，而非 hard error。
+
+### GLM 委托（后台任务）
+
+| 工具 | 目的 | 消费智能体 | CLI 等价物 |
+|------|------|---------------|------------|
+| `mcp__moai__glm_task` | 把任务（任意提示词）委托给 GLM（z.ai）（同步或后台） | super-advisor | —（无对应 CLI） |
+| `mcp__moai__glm_job_status` | 读取后台 GLM 任务的状态/记录 | super-advisor | — |
+| `mcp__moai__glm_job_result` | 读取后台 GLM 任务的输出 | super-advisor | — |
+| `mcp__moai__glm_job_cancel` | 中断正在运行的后台 GLM 任务 | super-advisor | — |
+
+GLM 委托工具族与 codex 委托同形，也连线到 super-advisor。`glm_task` 在 `background` 为假时直接返回完成的文本，为真时立即返回任务 ID（此后用 `glm_job_status`·`glm_job_result`·`glm_job_cancel` 观察·中断）。响应 token 上限可用 `max_tokens` 覆盖，默认上限值定在服务器一侧。后台任务活在服务器进程里，进程结束它也一并结束。GLM 同样是可选的——密钥缺失或连不上 z.ai 时，只返回结构化的 fail-open 结果，而不是工具错误。
 
 ### MCP-over-CLI 规则
 
@@ -177,9 +188,9 @@ GLM、codex、Claude——三个后端都遵循 fail-open 原则。不可用的�
 
 ## 后台任务进度跟踪
 
-codex 委托工具中的 `codex_task` 可以用 `background: true` 启动后台任务。此时不等待任务结束就立即返回任务 ID。
+codex·GLM 委托工具中的 `codex_task` 和 `glm_task` 可以用 `background: true` 启动后台任务。此时不等待任务结束就立即返回任务 ID。
 
-进度通过两个工具来轮询：
+进度通过两个工具来轮询（下面以 codex 为例——GLM 由 `glm_job_*` 扮演同样角色）：
 
 ```text
 codex_task(background=true) ──▶ 返回任务 ID

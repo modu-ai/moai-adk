@@ -12,6 +12,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/execerr"
 	wtg "github.com/modu-ai/moai-adk/internal/worktree"
 )
 
@@ -46,7 +47,10 @@ func projectRoot() (string, error) {
 	cmd := exec.Command("git", "rev-parse", "--show-toplevel")
 	out, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("project root: %w (run from inside a git repo)", err)
+		// StatusDetail, not %w: in a non-git cwd git exits 128 and a raw
+		// *exec.ExitError chain would be mistaken for an intentional
+		// ExitCoder at the cmd/moai seam — the t129 silent failure.
+		return "", fmt.Errorf("project root: %s (run from inside a git repo)", execerr.StatusDetail(err))
 	}
 	return strings.TrimSpace(string(out)), nil
 }

@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MoAI Web Console 확장 기획안</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --ivory:#FAF9F5; --paper:#FFFFFF; --slate:#141413; --clay:#D97757; --clay-d:#B85C3E;
+  --oat:#E3DACC; --olive:#788C5D;
+  --g100:#F0EEE6; --g300:#D1CFC5; --g500:#87867F; --g700:#3D3D3A;
+  --sans:"Pretendard",system-ui,-apple-system,sans-serif;
+  --serif:"Noto Serif KR",ui-serif,Georgia,serif;
+  --mono:"JetBrains Mono",ui-monospace,"SF Mono",monospace;
+  --max-width:860px; --radius-panel:12px; --radius-row:8px; --border:1.5px solid var(--g300);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ivory);color:var(--slate);font-family:var(--sans);
+     font-size:16px;line-height:1.72;-webkit-font-smoothing:antialiased;letter-spacing:-.011em}
+.wrap{max-width:var(--max-width);margin:0 auto;padding:56px 24px 96px}
+h1{font-family:var(--serif);font-size:2.05rem;line-height:1.25;margin:0 0 10px;letter-spacing:-.03em}
+h2{font-family:var(--serif);font-size:1.35rem;margin:56px 0 6px;letter-spacing:-.02em;
+   padding-top:22px;border-top:var(--border)}
+h3{font-size:1.05rem;margin:30px 0 8px;letter-spacing:-.015em}
+p{margin:0 0 14px}
+a{color:var(--clay);text-decoration:none;border-bottom:1px solid rgba(217,119,87,.35)}
+a:hover{color:var(--clay-d)}
+code{font-family:var(--mono);font-size:.855em;background:var(--g100);
+     padding:.14em .38em;border-radius:4px;letter-spacing:0}
+.sub{color:var(--g500);font-size:.9rem;margin:0 0 4px}
+.lead{font-size:1.06rem;color:var(--g700);margin:18px 0 0}
+.meta{display:flex;gap:8px;flex-wrap:wrap;margin:22px 0 0}
+.tag{font-family:var(--mono);font-size:.72rem;letter-spacing:.02em;background:var(--paper);
+     border:var(--border);border-radius:99px;padding:4px 11px;color:var(--g700)}
+
+/* KPI strip */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:30px 0 0}
+.kpi{background:var(--paper);border:var(--border);border-radius:var(--radius-panel);padding:16px 14px}
+.kpi .n{font-family:var(--serif);font-size:1.75rem;line-height:1;letter-spacing:-.03em}
+.kpi .l{font-size:.78rem;color:var(--g500);margin-top:7px}
+.kpi.warn .n{color:var(--clay)}
+
+/* generic panel */
+.panel{background:var(--paper);border:var(--border);border-radius:var(--radius-panel);
+       padding:20px 22px;margin:18px 0}
+.note{background:var(--g100);border-left:3px solid var(--olive);border-radius:var(--radius-row);
+      padding:14px 16px;margin:16px 0;font-size:.94rem}
+.note.warn{border-left-color:var(--clay);background:#FBF1EC}
+.note b{font-weight:600}
+.gloss{color:var(--g500);font-size:.93em}
+
+/* tables */
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:.9rem}
+th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--g300);vertical-align:top}
+th{font-size:.76rem;letter-spacing:.05em;text-transform:uppercase;color:var(--g500);
+   border-bottom:var(--border);font-weight:600}
+tbody tr:last-child td{border-bottom:none}
+td.mono,th.mono{font-family:var(--mono);font-size:.8rem;letter-spacing:0}
+
+/* timeline */
+.tl{list-style:none;margin:20px 0 0;padding:0 0 0 26px;border-left:2px solid var(--oat)}
+.tl li{position:relative;padding:0 0 26px 16px}
+.tl li::before{content:"";position:absolute;left:-33px;top:5px;width:12px;height:12px;
+  border-radius:50%;background:var(--paper);border:2.5px solid var(--clay)}
+.tl li.done::before{background:var(--olive);border-color:var(--olive)}
+.tl li.later::before{border-color:var(--g300)}
+.tl h4{margin:0 0 4px;font-size:1rem;letter-spacing:-.01em}
+.tl .when{font-family:var(--mono);font-size:.72rem;color:var(--g500);letter-spacing:.02em}
+
+/* risk grid */
+.risks{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:18px 0 0}
+.risk{background:var(--paper);border:var(--border);border-left:3px solid var(--clay);
+      border-radius:var(--radius-row);padding:14px 16px}
+.risk .t{font-weight:600;font-size:.95rem;margin-bottom:5px}
+.risk .b{font-size:.88rem;color:var(--g700)}
+.risk.low{border-left-color:var(--olive)}
+
+/* chain board mock */
+.board{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:18px 0 0}
+.col{background:var(--paper);border:var(--border);border-radius:var(--radius-row);padding:12px 10px;font-size:.78rem}
+.col .role{font-weight:600;font-size:.86rem;margin-bottom:8px;letter-spacing:-.01em}
+.col .row{color:var(--g500);font-family:var(--mono);font-size:.7rem;line-height:1.75;letter-spacing:0}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;vertical-align:middle}
+.dot.on{background:var(--olive)} .dot.off{background:var(--g300)}
+.col.off{background:var(--g100)}
+
+pre.mermaid{background:var(--paper);border:var(--border);border-radius:var(--radius-panel);
+  padding:18px;overflow-x:auto;font-family:var(--mono);font-size:.78rem;line-height:1.6;margin:18px 0}
+figcaption{font-size:.8rem;color:var(--g500);margin-top:-6px;margin-bottom:20px}
+ul.plain{margin:10px 0 14px;padding-left:20px}
+ul.plain li{margin-bottom:6px}
+.footer{margin-top:64px;padding-top:20px;border-top:var(--border);font-size:.8rem;color:var(--g500)}
+
+@media (max-width:720px){
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  .risks{grid-template-columns:1fr}
+  .board{grid-template-columns:1fr}
+  .wrap{padding:36px 18px 64px}
+}
+@media print{
+  body{background:#fff}
+  .wrap{max-width:none;padding:0}
+  h2{page-break-after:avoid}
+  .panel,.risk,.kpi{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<p class="sub">기획안 · 2026-08-14 · moai-adk-go <code>main</code></p>
+<h1>MoAI Web Console 확장 기획안</h1>
+<p class="lead">설정 편집기였던 <code>moai web</code>을, MoAI-Kanban 체인이 지금 어디까지 갔는지 지켜보는 <b>운영 콘솔</b>로 넓히는 계획입니다.</p>
+
+<div class="meta">
+  <span class="tag">mode: plan</span>
+  <span class="tag">audience: basic</span>
+  <span class="tag">읽는 순서 1/2</span>
+  <span class="tag">짝 문서: 시각 재설계 브리프</span>
+</div>
+
+<div class="kpis">
+  <div class="kpi"><div class="n">5</div><div class="l">메뉴 영역</div></div>
+  <div class="kpi"><div class="n">3</div><div class="l">구현 단계</div></div>
+  <div class="kpi warn"><div class="n">3</div><div class="l">기록 안 되는 데이터</div></div>
+  <div class="kpi warn"><div class="n">6</div><div class="l">남은 결정</div></div>
+</div>
+
+<h2>1. 왜 이걸 만드나</h2>
+
+<p>지금 <code>moai web</code>은 설정값을 고치는 화면 하나와 SPEC 목록 하나가 전부입니다. 그런데 실제로 개발하는 동안 궁금한 건 설정값이 아니라 <b>“지금 무슨 일이 벌어지고 있나”</b>입니다.</p>
+
+<p>특히 <b>MoAI-Kanban</b> — 하나의 작업을 다섯 개 터미널 세션에 나눠 태우는 개발 방식 — 을 쓰기 시작하면서 이 필요가 뚜렷해졌습니다.</p>
+
+<pre class="mermaid">
+flowchart LR
+  L["0. Lead<br/>Opus 5 · medium"] --> P["1. Plan<br/>Opus 5 · high"]
+  P --> R["2. Run<br/>GLM-5.2 · xhigh"]
+  R --> V["3. Review<br/>Opus 5 · medium"]
+  V --> S["4. Sync<br/>GLM-5.2 · high"]
+  S -.완료 증거 보고.-> L
+</pre>
+<noscript>
+  <p class="gloss">흐름: Lead가 Plan에 계획을 지시하고 → Run이 그 계획을 구현하고 → Review가 코드를 검토하고 →
+  Sync가 문서를 맞춘 뒤 커밋합니다. 각 단계가 끝나면 Lead가 증거를 읽고 다음 단계를 지시합니다.</p>
+</noscript>
+<figcaption>MoAI-Kanban의 5역할 체인. 화살표 하나가 터미널 하나에서 다른 터미널로 넘기는 지시입니다.</figcaption>
+
+<h3>토큰을 아끼는 원리</h3>
+<p>역할마다 필요한 판단의 깊이가 다릅니다. 그래서 <b>역할별로 모델과 과금 방식을 다르게</b> 겁니다.</p>
+
+<table>
+  <thead><tr><th>#</th><th>역할</th><th class="mono">모델</th><th class="mono">effort</th><th>과금</th></tr></thead>
+  <tbody>
+    <tr><td>0</td><td>Lead</td><td class="mono">Opus 5</td><td class="mono">medium</td><td>Claude Max (정액)</td></tr>
+    <tr><td>1</td><td>Plan</td><td class="mono">Opus 5</td><td class="mono">high</td><td>Claude Max (정액)</td></tr>
+    <tr><td>2</td><td>Run</td><td class="mono">GLM-5.2</td><td class="mono">xhigh</td><td>API 종량</td></tr>
+    <tr><td>3</td><td>Review</td><td class="mono">Opus 5</td><td class="mono">medium</td><td>Claude Max (정액)</td></tr>
+    <tr><td>4</td><td>Sync</td><td class="mono">GLM-5.2</td><td class="mono">high</td><td>API 종량</td></tr>
+  </tbody>
+</table>
+
+<p>설계와 판단이 걸린 자리(Plan·Review)는 Opus에 두고, 분량이 많고 기계적인 자리(Run·Sync)는 GLM으로 내립니다. 그리고 <b>세션을 나누는 것 자체가 절약</b>입니다. 한 세션이 계획부터 커밋까지 다 하면 대화가 계속 불어나 매 턴마다 그 전부를 다시 읽지만, 역할을 나누면 각 세션이 자기 단계에 필요한 만큼만 들고 갑니다.</p>
+
+<div class="note">
+  <b>콘솔이 답해야 할 질문 네 개.</b>
+  <ul class="plain">
+    <li>지금 카드가 어느 역할에 있나? 누가 일하고 누가 노나?</li>
+    <li>각 세션이 어떤 모델로 돌고, 대화를 얼마나 썼나?</li>
+    <li>어디서 막혔나 — 다음 역할 세션이 안 떠 있진 않나?</li>
+    <li>이번 체인이 종량 과금을 얼마나 태웠나?</li>
+  </ul>
+</div>
+
+<h2>2. 무엇을 만드나 — 메뉴 다섯 영역</h2>
+
+<p>왼쪽으로 갈수록 <b>보는 것</b>, 오른쪽으로 갈수록 <b>바꾸는 것</b>으로 배열합니다.</p>
+
+<table>
+  <thead><tr><th>영역</th><th class="mono">라우트</th><th>목적</th><th>상태</th></tr></thead>
+  <tbody>
+    <tr><td><b>개요</b></td><td class="mono">/</td><td>지금 이 프로젝트가 어떤 상태인지 한 화면</td><td>신규</td></tr>
+    <tr><td><b>칸반</b></td><td class="mono">/kanban</td><td>5역할 체인의 살아있는 상태 + SPEC 파이프라인</td><td>신규</td></tr>
+    <tr><td><b>SPEC</b></td><td class="mono">/specs</td><td>목록·상태·드리프트·상세</td><td>기존 확장</td></tr>
+    <tr><td><b>모니터</b></td><td class="mono">/monitor</td><td>세션·목표·검증·에픽</td><td>신규</td></tr>
+    <tr><td><b>설정</b></td><td class="mono">/settings</td><td>지금의 10개 탭 그대로</td><td>이동만</td></tr>
+  </tbody>
+</table>
+
+<h3>칸반 화면은 이런 모양입니다</h3>
+<p>다섯 역할을 가로로 놓고, 각 열에 그 세션이 지금 어떤 상태인지 얹습니다.</p>
+
+<div class="board">
+  <div class="col"><div class="role">Lead</div><div class="row"><span class="dot on"></span>활성<br>Opus 5<br>medium<br>CW 26%</div></div>
+  <div class="col"><div class="role">Plan</div><div class="row"><span class="dot on"></span>활성<br>Opus 5<br>high<br>CW 14%</div></div>
+  <div class="col"><div class="role">Run</div><div class="row"><span class="dot on"></span>활성<br>GLM-5.2<br>xhigh<br>CW 41%</div></div>
+  <div class="col off"><div class="role">Review</div><div class="row"><span class="dot off"></span>미기동<br>—<br>—<br>—</div></div>
+  <div class="col"><div class="role">Sync</div><div class="row"><span class="dot on"></span>활성<br>GLM-5.2<br>high<br>CW 8%</div></div>
+</div>
+<figcaption>CW = 컨텍스트 사용률(그 세션이 대화 한도를 얼마나 썼는지). 위 그림에서 Review가 미기동이라 체인이 그 자리에서 멈춥니다.</figcaption>
+
+<div class="note warn">
+  <b>미기동 표시가 이 화면의 핵심 가치입니다.</b> 카드가 갈 곳의 세션이 없으면 그건 대기가 아니라 결함이고,
+  조용히 멈춰 있는 상태가 가장 진단하기 비싼 실패 모양이기 때문입니다.
+</div>
+
+<h2>3. 좋은 소식 — “MCP 연동”은 거의 공짜입니다</h2>
+
+<p class="gloss">MCP (Model Context Protocol) — Claude가 외부 도구를 부를 때 쓰는 규약. moai는 이걸로 17개 도구를 노출합니다.</p>
+
+<p>처음엔 웹이 MCP 서버에 말을 걸어 데이터를 받아와야 한다고 생각하기 쉽습니다. 그런데 코드를 열어보니 <b>MCP 도구 17개가 전부 내부 Go 패키지를 얇게 감싼 껍데기</b>였습니다.</p>
+
+<table>
+  <thead><tr><th class="mono">MCP 도구</th><th class="mono">실제로 부르는 함수</th></tr></thead>
+  <tbody>
+    <tr><td class="mono">session_list</td><td class="mono">session.QueryActiveWork</td></tr>
+    <tr><td class="mono">goal_status</td><td class="mono">goal.LoadGoal</td></tr>
+    <tr><td class="mono">spec_progress</td><td class="mono">spec.ListDocs</td></tr>
+    <tr><td class="mono">verify_snapshot</td><td class="mono">verify.Load</td></tr>
+  </tbody>
+</table>
+
+<p><code>moai web</code>도 같은 바이너리 안의 Go 코드입니다. 그러니 웹이 자기 자신에게 MCP로 말을 걸 이유가 없습니다 — <b>같은 패키지를 읽으면 그게 곧 동기화</b>입니다. 실제로 지금 SPEC 보드가 이미 그렇게 하고 있습니다(<code>board.go:89</code>).</p>
+
+<div class="note">
+  <b>따라서 남는 신규 작업은 하나뿐입니다.</b> 동기화는 이미 돼 있고,
+  <b>“파일이 바뀐 걸 브라우저에 알리는 채널”</b>만 만들면 됩니다.
+  이걸 SSE <span class="gloss">(Server-Sent Events — 서버가 브라우저로 소식을 밀어 보내는 단방향 통로)</span>로 구현합니다.
+  Go 표준 라이브러리만으로 되고 외부 의존성이 0이라, 오프라인 원칙을 깨지 않습니다.
+</div>
+
+<h2>4. 어떻게 나눠서 만드나 — 3단계</h2>
+
+<p>한 번에 완성되지 않습니다. 뒤에 나오는 데이터 공백 때문에 <b>1단계는 지금 바로</b> 되고, 2·3단계는 상태 기록 쪽을 먼저 고쳐야 합니다.</p>
+
+<ul class="tl">
+  <li>
+    <span class="when">1단계 · 선행조건 없음</span>
+    <h4>지금 데이터로 되는 것 전부</h4>
+    <p>개요 · SPEC 목록/상세 · 설정 이동 · 칸반 뷰 B(SPEC 파이프라인) · SSE 채널.
+    <b>이 단계만으로도 콘솔은 충분히 쓸모가 있습니다.</b></p>
+  </li>
+  <li class="later">
+    <span class="when">2단계 · <code>Record.role</code> 추가 후</span>
+    <h4>칸반 뷰 A 기본형</h4>
+    <p>기동 여부 · 역할 · 백엔드(정액/종량) · 마지막 활동 시각. 위 그림의 왼쪽 절반이 채워집니다.</p>
+  </li>
+  <li class="later">
+    <span class="when">3단계 · 상태 층 개편 후</span>
+    <h4>칸반 뷰 A 완성형</h4>
+    <p>모델 · effort · 컨텍스트 사용률 · 비용. 위 그림이 전부 채워집니다.</p>
+  </li>
+</ul>
+
+<h3>화면별 작업 크기</h3>
+<table>
+  <thead><tr><th>화면</th><th>데이터</th><th>신규 코드</th><th>단계</th></tr></thead>
+  <tbody>
+    <tr><td>개요</td><td>전부 기존</td><td>뷰모델 + 템플릿</td><td>1</td></tr>
+    <tr><td>칸반 뷰 B</td><td>기존 (<code>spec.ListDocs</code>)</td><td>컬럼 계산 + 템플릿</td><td>1</td></tr>
+    <tr><td>SPEC</td><td>기존</td><td>상세 라우트 + 필터</td><td>1</td></tr>
+    <tr><td>모니터</td><td>기존</td><td>패널 4개</td><td>1</td></tr>
+    <tr><td>설정</td><td>기존</td><td>라우트 이동만</td><td>1</td></tr>
+    <tr><td>실시간 채널</td><td>—</td><td><code>events.go</code> 신규</td><td>1</td></tr>
+    <tr><td>칸반 뷰 A</td><td><b>생산자 작업 필요</b></td><td>뷰모델 + 템플릿 + 상태 기록</td><td>2–3</td></tr>
+  </tbody>
+</table>
+
+<h2>5. 나쁜 소식 — 지금 기록되지 않는 것 세 가지</h2>
+
+<p>칸반 뷰 A를 만들려면 세션마다 역할·모델·사용량을 알아야 하는데, <b>셋 다 디스크에 남지 않습니다.</b> 파일을 직접 열어 확인한 사실입니다.</p>
+
+<div class="risks">
+  <div class="risk">
+    <div class="t">1. 역할이 저장되지 않습니다</div>
+    <div class="b"><code>plan-tjq3pi</code> 같은 라벨은 실행할 때 읽히지만 어떤 상태 파일에도 안 남습니다.
+    <code>kanban.Record</code>에도 <code>active-sessions.json</code>에도 role 필드가 없습니다.
+    → 어느 세션이 Plan인지 콘솔이 알 방법이 없습니다.</div>
+  </div>
+  <div class="risk">
+    <div class="t">2. 컨텍스트 사용률은 단일 슬롯입니다</div>
+    <div class="b"><code>context-usage.json</code>이 프로젝트당 파일 <b>하나</b>이고, 상태줄을 그리는 세션이 매번 통째로 덮어씁니다.
+    5개 세션 사용량을 여기서 읽는 건 구조적으로 불가능합니다.</div>
+  </div>
+  <div class="risk">
+    <div class="t">3. 모델·effort가 저장되지 않습니다</div>
+    <div class="b">상태줄이 보여주는 <code>Opus 5 / medium</code>은 런타임에서 실시간으로 읽는 값이라 디스크에 안 남습니다.
+    <code>Backend</code>(claude/glm)만 유일하게 저장됩니다.</div>
+  </div>
+  <div class="risk low">
+    <div class="t">4. 단계 상태는 아직 어디에도 없습니다</div>
+    <div class="b">완료/작업중/대기는 지금 리드 세션의 판단으로만 존재합니다.
+    <b>하트비트로 추정</b>해서 시작하고(추가 작업 0), 정확한 기록이 필요해지면 리드가 남기는 방식으로 올리기를 권합니다.</div>
+  </div>
+</div>
+
+<div class="note warn">
+  <b>2번은 문서를 쓰는 중에 눈앞에서 관측했습니다.</b>
+  처음 읽었을 때 <code>session_id 368a2bd9… / 260000 토큰</code>이었는데,
+  잠시 뒤 다시 보니 <code>session_id e463a3c9… / 0 토큰</code>으로 다른 세션이 통째로 덮어썼습니다.
+  추측이 아니라 실제로 벌어진 일입니다.
+</div>
+
+<p>이 세 가지를 메우는 작업은 <b>웹 UI가 아니라 상태 기록 쪽</b>이므로, 웹 SPEC과 분리해서 별도로 진행하기를 권합니다. 한 SPEC에 소비자와 생산자가 섞이면 어느 쪽이 막혔는지 구분이 어려워집니다.</p>
+
+<h2>6. 지키기로 한 원칙</h2>
+
+<table>
+  <thead><tr><th>원칙</th><th>이유</th></tr></thead>
+  <tbody>
+    <tr><td><b>모니터링 화면은 읽기 전용</b><br>(카드 드래그 이동 없음)</td>
+        <td>SPEC 상태 전이는 소유자가 정해져 있습니다 — <code>draft→in-progress</code>는 manager-develop,
+        <code>in-progress→implemented</code>는 manager-docs. 웹에서 손으로 바꾸면 그 규율이 무너지고 감사 로그에 소유자 없는 전이가 남습니다.</td></tr>
+    <tr><td><b>네트워크 요청 0</b></td>
+        <td>지금 콘솔의 불변식입니다. SSE도 fsnotify도 전부 로컬이라 이 원칙을 깨지 않습니다.</td></tr>
+    <tr><td><b>확인된 사실과 추정을 구분</b></td>
+        <td>세션 목록에는 이미 죽은 프로세스가 남을 수 있고, 단계 상태도 추정으로 시작합니다.
+        구분하지 않으면 화면이 조용히 거짓말을 합니다.</td></tr>
+    <tr><td><b>빌드 스텝 추가 금지</b></td>
+        <td>Node·번들러 없이 손으로 쓴 CSS 한 장과 순수 JS로 유지합니다.</td></tr>
+  </tbody>
+</table>
+
+<h2>7. 성공 기준</h2>
+<ul class="plain">
+  <li>세션을 열고 <b>개요 한 화면</b>만 봐도 지금 상태가 파악된다.</li>
+  <li>칸반 체인에서 <b>미기동 역할이 있으면 즉시 눈에 띈다.</b></li>
+  <li>파일이 바뀌면 <b>새로고침 없이</b> 화면이 따라온다.</li>
+  <li>실시간이 끊기면 <b>끊겼다고 말한다</b> (조용히 낡은 화면을 보여주지 않는다).</li>
+  <li>설정 편집의 폼 계약(<code>name</code> 속성·저장 경로)이 <b>하나도 바뀌지 않는다.</b></li>
+</ul>
+
+<h2>8. 남은 결정 여섯 가지</h2>
+<table>
+  <thead><tr><th>#</th><th>결정할 것</th><th>권장</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>칸반 뷰 B를 4컬럼으로 줄일지</td><td>줄인다 (역할 흐름은 뷰 A가 맡음)</td></tr>
+    <tr><td>2</td><td>체인 단계 상태를 어떻게 알아낼지</td><td>하트비트 추정 → 나중에 리드 기록</td></tr>
+    <tr><td>3</td><td>생산자 작업을 별도 SPEC으로 뺄지</td><td>뺀다</td></tr>
+    <tr><td>4</td><td>비용(금액)을 표시할지</td><td>1단계는 정액/종량 배지만</td></tr>
+    <tr><td>5</td><td>개요를 <code>/</code>로 올릴지</td><td>올린다</td></tr>
+    <tr><td>6</td><td>SPEC 상세를 페이지로 할지 패널로 할지</td><td>미정</td></tr>
+  </tbody>
+</table>
+
+<h2>9. 지금 바로 시작할 수 있는 것</h2>
+<p>디자인 시안을 기다리지 않아도 되는 작업이 있습니다. <b>화면 없이 성립하는 것</b>들입니다.</p>
+
+<div class="panel">
+  <table>
+    <thead><tr><th>작업</th><th>파일</th><th>디자인 의존</th></tr></thead>
+    <tbody>
+      <tr><td>SSE 실시간 채널</td><td class="mono">internal/web/events.go (신규)</td><td>없음</td></tr>
+      <tr><td>fsnotify 감시 + 디바운스</td><td class="mono">같은 파일</td><td>없음</td></tr>
+      <tr><td><code>Record.role</code> 추가</td><td class="mono">internal/kanban/record.go</td><td>없음</td></tr>
+      <tr><td>진입 시 역할 기록</td><td class="mono">internal/cli/cc.go · glm.go</td><td>없음</td></tr>
+      <tr><td>뷰모델 조립 로직</td><td class="mono">overview.go · kanban.go · monitor.go</td><td>없음</td></tr>
+      <tr><td>라우트 골격</td><td class="mono">internal/web/app.go</td><td>없음</td></tr>
+      <tr><td class="gloss">화면 템플릿</td><td class="mono gloss">*.templ</td><td class="gloss">있음 — 시안 대기</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>즉 <b>데이터를 만들어 내보내는 층까지는 지금 다 짤 수 있고</b>, 그걸 그리는 층만 시안을 기다리면 됩니다. 뷰모델이 먼저 확정되면 시안 작업도 실제 데이터 모양을 보고 할 수 있어 오히려 낫습니다.</p>
+
+<div class="footer">
+  <p>정본 문서: <code>.moai/reports/webredesign/moai-web-menu-spec.md</code> (467줄)<br>
+  짝 문서: <code>moai-web-redesign-brief.md</code> — 시각 재설계 지침<br>
+  이 HTML은 사람이 읽는 판본입니다. 에이전트 컨텍스트로 넣을 때는 옆의 <code>.md</code>를 쓰세요.</p>
+</div>
+
+</div>
+
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: "base",
+    themeVariables: {
+      primaryColor:"#FAF9F5", primaryTextColor:"#141413", primaryBorderColor:"#D97757",
+      lineColor:"#87867F", secondaryColor:"#E3DACC", tertiaryColor:"#F0EEE6",
+      fontFamily:"Pretendard, system-ui, sans-serif"
+    }
+  });
+</script>
+</body>
+</html>

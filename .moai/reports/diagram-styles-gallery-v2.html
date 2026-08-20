@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>다이어그램 스타일 갤러리 v2 — 버그 수정 + Claude 톤 폰트</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Noto+Serif+KR:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" rel="stylesheet">
+<style>
+  :root{
+    --bg:#faf9f7; --panel:#ffffff; --ink:#141413; --muted:#78716c;
+    --line:#e7e5e4; --rule:#d6d3d1; --clay:#D97757;
+    --serif:"Newsreader","Noto Serif KR",Georgia,serif;
+    --sans:"Pretendard","Noto Sans KR",system-ui,-apple-system,sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.6}
+  .wrap{max-width:1480px;margin:0 auto;padding:36px 24px 90px}
+  h1{font-family:var(--serif);font-size:40px;font-weight:500;margin:0 0 6px;letter-spacing:-0.01em}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--clay);margin:0 0 4px}
+  .sub{font-size:14px;color:var(--muted);margin:0 0 6px;max-width:860px}
+  .note{font-size:13px;color:#8C857A;margin:0 0 28px;max-width:860px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+  @media(max-width:1180px){.grid{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 20px 22px}
+  .panel .tag{display:inline-block;font-family:var(--mono);font-size:11px;letter-spacing:0.08em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin-bottom:9px}
+  .panel.a .tag{background:#dbeafe;color:#1e40af}
+  .panel.b .tag{background:#f3ddd4;color:#9a3b22}
+  .panel.c .tag{background:#FBE9DF;color:#B85C3E}
+  .panel.d .tag{background:#D97757;color:#fff}
+  .panel.d{border-color:#D97757;box-shadow:0 0 0 1px #D97757 inset}
+  .panel h2{font-family:var(--serif);font-size:21px;font-weight:500;margin:0 0 3px}
+  .panel .who{font-size:12.5px;color:var(--muted);margin:0 0 12px}
+  .principles{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 13px}
+  .principles span{font-family:var(--mono);font-size:10px;color:#57534e;background:#f5f5f4;border:1px solid var(--rule);padding:2px 6px;border-radius:4px}
+  .panel.d .principles span{background:#FBF6F1;border-color:#E8D5C8}
+  .canvas{border-radius:8px;padding:8px;overflow-x:auto}
+  .canvas svg{display:block;width:100%;height:auto;min-width:540px}
+  .panel.a .canvas{background:#fff}
+  .panel.b .canvas{background:#faf7f2}
+  .panel.c .canvas,.panel.d .canvas{background:#FAF9F5}
+  .legend{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:7px}
+  .verdict{margin-top:32px;border-top:1px solid var(--line);padding-top:24px}
+  .verdict h3{font-family:var(--serif);font-size:26px;font-weight:500;margin:0 0 12px}
+  .verdict p{font-size:14.5px;max-width:880px;color:#44403c;margin:0 0 10px}
+  .verdict b{color:var(--ink)}
+  .fixes{font-family:var(--mono);font-size:12px;background:#FBF6F1;border:1px solid #E8D5C8;border-radius:8px;padding:12px 14px;margin:14px 0;color:#6B6359}
+  .pick{display:inline-block;margin-top:6px;background:#D97757;color:#fff;font-weight:600;font-size:13px;padding:5px 12px;border-radius:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">v2 · 버그 수정 + Claude 톤 폰트</p>
+  <h1>같은 아키텍처, 네 가지 스타일 톤</h1>
+  <p class="sub">웹 서비스 요청 흐름(클라이언트 → 엣지 → 애플리케이션 → 데이터)을 각 스킬/톤의 규칙 그대로 그렸습니다.</p>
+  <p class="note">제목은 <b>Newsreader + Noto Serif KR</b>(Claude 브랜드 serif 톤), 본문은 <b>Pretendard</b>(영문+CJK), eyebrow는 JetBrains Mono. 아이콘은 카드 패딩 안쪽에 붙게 공식 수정, 콜아웃은 백엔드를 정확히 가리키게 수정.</p>
+
+  <div class="grid">
+
+    <!-- ============ A ============ -->
+    <div class="panel a">
+      <span class="tag">A · svg-infographic 원래</span>
+      <h2>자체 파랑 neutral 팔레트</h2>
+      <p class="who">정확하지만 프로젝트 톤과 안 맞음 — 이질적</p>
+      <div class="principles"><span>accent #2563eb 파랑</span><span>#ffffff 순백</span><span>GitHub-neutral</span><span>4계층 밴드</span></div>
+      <div class="canvas">
+<svg viewBox="0 0 1180 752" role="img" aria-label="A svg-infographic 파랑 톤">
+  <defs>
+    <marker id="am" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto"><path d="M0 0L10 4L0 8z" fill="#57606a"/></marker>
+    <marker id="ab" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto"><path d="M0 0L10 4L0 8z" fill="#2563eb"/></marker>
+  </defs>
+  <rect width="1180" height="752" fill="#ffffff"/>
+  <text x="60" y="54" font-family="Newsreader,Noto Serif KR,Georgia,serif" font-size="34" font-weight="500" fill="#1f2328">웹 서비스 아키텍처</text>
+  <text x="60" y="82" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="14" fill="#57606a">요청이 거치는 네 계층</text>
+  <rect x="60" y="120" width="1060" height="124" rx="8" fill="#f6f8fa"/><rect x="60" y="276" width="1060" height="124" rx="8" fill="#f6f8fa"/><rect x="60" y="432" width="1060" height="124" rx="8" fill="#f6f8fa"/><rect x="60" y="588" width="1060" height="124" rx="8" fill="#f6f8fa"/>
+  <g font-family="JetBrains Mono,ui-monospace,monospace" font-size="10" font-weight="500" fill="#57606a" letter-spacing="1">
+    <text x="76" y="142">01 · CLIENT</text><text x="76" y="298">02 · EDGE</text><text x="76" y="454">03 · APPLICATION</text><text x="76" y="610">04 · DATA</text>
+  </g>
+  <g fill="none" stroke-linecap="round">
+    <path d="M590 228 V 282" stroke="#2563eb" stroke-width="2" marker-end="url(#ab)"/>
+    <path d="M590 384 V 416 H 390 V 438" stroke="#2563eb" stroke-width="2" marker-end="url(#ab)"/>
+    <path d="M590 384 V 416 H 790 V 438" stroke="#57606a" stroke-width="1.6" marker-end="url(#am)"/>
+    <path d="M390 540 V 594" stroke="#2563eb" stroke-width="2" marker-end="url(#ab)"/>
+    <path d="M790 540 V 594" stroke="#57606a" stroke-width="1.6" marker-end="url(#am)"/>
+    <path d="M560 494 H 740 V 594" stroke="#57606a" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#am)"/>
+  </g>
+  <g font-family="JetBrains Mono,ui-monospace,monospace" font-size="10" fill="#57606a">
+    <rect x="600" y="244" width="40" height="15" rx="2" fill="#f6f8fa"/><text x="620" y="255" text-anchor="middle">요청</text>
+    <rect x="300" y="406" width="40" height="15" rx="2" fill="#f6f8fa"/><text x="320" y="417" text-anchor="middle">라우트</text>
+    <rect x="844" y="406" width="40" height="15" rx="2" fill="#f6f8fa"/><text x="864" y="417" text-anchor="middle">검증</text>
+    <rect x="600" y="546" width="40" height="15" rx="2" fill="#f6f8fa"/><text x="620" y="557" text-anchor="middle">캐시</text>
+  </g>
+  <g><rect x="430" y="136" width="320" height="92" rx="12" fill="#ffffff" stroke="#d0d7de" stroke-width="1.2"/>
+    <g transform="translate(446,165) scale(1.4)" fill="none" stroke="#2563eb" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M4 21a8 8 0 0 1 16 0"/></g>
+    <text x="488" y="172" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="17" font-weight="600" fill="#1f2328">웹 브라우저</text>
+    <text x="488" y="196" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="14" fill="#57606a">사용자 진입점 · HTTPS :443</text></g>
+  <g><rect x="430" y="292" width="320" height="92" rx="12" fill="#ffffff" stroke="#d0d7de" stroke-width="1.2"/>
+    <g transform="translate(446,321) scale(1.4)" fill="none" stroke="#2563eb" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M12 2v3 M12 19v3 M2 12h3 M19 12h3 M5 5l2 2 M17 17l2 2 M19 5l-2 2 M7 17l-2 2"/></g>
+    <text x="488" y="328" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="17" font-weight="600" fill="#1f2328">API 게이트웨이</text>
+    <text x="488" y="352" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="14" fill="#57606a">라우팅 · 인증 · 속도 제한</text></g>
+  <g><rect x="220" y="448" width="340" height="92" rx="12" fill="#ffffff" stroke="#d0d7de" stroke-width="1.2"/>
+    <g transform="translate(236,477) scale(1.4)" fill="none" stroke="#2563eb" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z M4 7.5l8 4.5 8-4.5 M12 12v9"/></g>
+    <text x="278" y="484" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="17" font-weight="600" fill="#1f2328">백엔드 서비스</text>
+    <text x="278" y="508" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="14" fill="#57606a">비즈니스 로직 · Go · gRPC</text></g>
+  <g><rect x="620" y="448" width="340" height="92" rx="12" fill="#ffffff" stroke="#d0d7de" stroke-width="1.2"/>
+    <g transform="translate(636,477) scale(1.4)" fill="none" stroke="#57606a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.4 8.3-8 9-4.6-.7-8-4-8-9V6z"/></g>
+    <text x="678" y="484" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="17" font-weight="600" fill="#1f2328">인증 서비스</text>
+    <text x="678" y="508" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="14" fill="#57606a">JWT 발급 · 토큰 검증</text></g>
+  <g><rect x="220" y="604" width="340" height="92" rx="12" fill="#ffffff" stroke="#d0d7de" stroke-width="1.2"/>
+    <g transform="translate(236,633) scale(1.4)" fill="none" stroke="#57606a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c5 0 9 1.3 9 3s-4 3-9 3-9-1.3-9-3 4-3 9-3z M3 6v12c0 1.7 4 3 9 3s9-1.3 9-3V6"/></g>
+    <text x="278" y="640" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="17" font-weight="600" fill="#1f2328">Postgres DB</text>
+    <text x="278" y="664" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="14" fill="#57606a">영속 저장 · SQL · 트랜잭션</text></g>
+  <g><rect x="620" y="604" width="340" height="92" rx="12" fill="#ffffff" stroke="#d0d7de" stroke-width="1.2"/>
+    <g transform="translate(636,633) scale(1.4)" fill="none" stroke="#57606a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h6l-1 8 9-12h-6z"/></g>
+    <text x="678" y="640" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="17" font-weight="600" fill="#1f2328">Redis 캐시</text>
+    <text x="678" y="664" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="14" fill="#57606a">인메모리 · TTL · 세션</text></g>
+</svg>
+      </div>
+      <p class="legend">파랑 active path · 회색 보조 · 점선 캐시</p>
+    </div>
+
+    <!-- ============ B ============ -->
+    <div class="panel b">
+      <span class="tag">B · diagram-design</span>
+      <h2>rust editorial (외부 도구)</h2>
+      <p class="who">단일 focal + 세리프 + 헤어라인 — 세련됨</p>
+      <div class="principles"><span>accent #b5523a rust</span><span>paper #faf7f2</span><span>Newsreader serif</span><span>단일 focal</span><span>1px 헤어라인</span></div>
+      <div class="canvas">
+<svg viewBox="0 0 960 600" role="img" aria-label="B diagram-design rust 톤">
+  <defs>
+    <marker id="bm" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L9 4L0 8z" fill="#78716c"/></marker>
+    <marker id="bc" markerUnits="userSpaceOnUse" markerWidth="9" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0 0L9 4L0 8z" fill="#b5523a"/></marker>
+  </defs>
+  <rect width="960" height="600" fill="#faf7f2"/>
+  <text x="64" y="42" font-family="JetBrains Mono,ui-monospace,monospace" font-size="9" letter-spacing="2.4" fill="#a8a29e">ARCHITECTURE · 요청 흐름</text>
+  <text x="62" y="78" font-family="Newsreader,Noto Serif KR,Georgia,serif" font-size="30" font-weight="500" fill="#1c1917">웹 서비스 아키텍처</text>
+  <text x="64" y="100" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="13" fill="#78716c">요청이 거치는 네 계층</text>
+  <line x1="64" y1="112" x2="896" y2="112" stroke="#e7e5e4" stroke-width="1"/>
+  <g fill="none" stroke-linecap="round">
+    <path d="M480 192 V 232" stroke="#78716c" stroke-width="1.2" marker-end="url(#bm)"/>
+    <path d="M480 292 V 336" stroke="#b5523a" stroke-width="1.6" marker-end="url(#bc)"/>
+    <path d="M480 292 V 316 H 244 V 336" stroke="#78716c" stroke-width="1.2" marker-end="url(#bm)"/>
+    <path d="M480 404 V 440 H 336 V 472" stroke="#78716c" stroke-width="1.2" marker-end="url(#bm)"/>
+    <path d="M480 404 V 448 H 624 V 472" stroke="#78716c" stroke-width="1.2" stroke-dasharray="4 3" marker-end="url(#bm)"/>
+  </g>
+  <g font-family="JetBrains Mono,ui-monospace,monospace" font-size="8" fill="#78716c">
+    <rect x="492" y="204" width="34" height="12" fill="#faf7f2"/><text x="509" y="213" text-anchor="middle">요청</text>
+    <rect x="492" y="304" width="34" height="12" fill="#faf7f2"/><text x="509" y="313" text-anchor="middle">라우트</text>
+    <rect x="324" y="308" width="34" height="12" fill="#faf7f2"/><text x="341" y="317" text-anchor="middle">검증</text>
+    <rect x="376" y="432" width="34" height="12" fill="#faf7f2"/><text x="393" y="441" text-anchor="middle">쿼리</text>
+    <rect x="560" y="432" width="34" height="12" fill="#faf7f2"/><text x="577" y="441" text-anchor="middle">캐시</text>
+  </g>
+  <g><rect x="384" y="132" width="192" height="60" rx="8" fill="#efeae3" stroke="#a8a29e" stroke-width="1"/>
+    <text x="396" y="152" font-family="JetBrains Mono,ui-monospace,monospace" font-size="7" letter-spacing="1.6" fill="#a8a29e">CLIENT</text>
+    <text x="396" y="172" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="13" font-weight="600" fill="#1c1917">웹 브라우저</text>
+    <text x="396" y="186" font-family="JetBrains Mono,ui-monospace,monospace" font-size="9" fill="#78716c">:443 HTTPS</text></g>
+  <g><rect x="384" y="232" width="192" height="60" rx="8" fill="#ffffff" stroke="#1c1917" stroke-width="1"/>
+    <text x="396" y="252" font-family="JetBrains Mono,ui-monospace,monospace" font-size="7" letter-spacing="1.6" fill="#a8a29e">EDGE</text>
+    <text x="396" y="272" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="13" font-weight="600" fill="#1c1917">API 게이트웨이</text>
+    <text x="396" y="286" font-family="JetBrains Mono,ui-monospace,monospace" font-size="9" fill="#78716c">REST</text></g>
+  <g><rect x="152" y="336" width="184" height="68" rx="8" fill="#ffffff" stroke="#1c1917" stroke-width="1"/>
+    <text x="164" y="356" font-family="JetBrains Mono,ui-monospace,monospace" font-size="7" letter-spacing="1.6" fill="#a8a29e">AUTH</text>
+    <text x="164" y="378" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="13" font-weight="600" fill="#1c1917">인증 서비스</text>
+    <text x="164" y="394" font-family="JetBrains Mono,ui-monospace,monospace" font-size="9" fill="#78716c">JWT</text></g>
+  <g><rect x="388" y="336" width="184" height="68" rx="8" fill="#f4ddd5" stroke="#b5523a" stroke-width="1.2"/>
+    <text x="400" y="356" font-family="JetBrains Mono,ui-monospace,monospace" font-size="7" letter-spacing="1.6" fill="#b5523a">APP · FOCAL</text>
+    <text x="400" y="378" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="13" font-weight="600" fill="#1c1917">백엔드 서비스</text>
+    <text x="400" y="394" font-family="JetBrains Mono,ui-monospace,monospace" font-size="9" fill="#78716c">Go · gRPC</text></g>
+  <g><rect x="248" y="472" width="176" height="76" rx="8" fill="#efeae3" stroke="#78716c" stroke-width="1"/>
+    <text x="260" y="492" font-family="JetBrains Mono,ui-monospace,monospace" font-size="7" letter-spacing="1.6" fill="#a8a29e">STORE</text>
+    <text x="260" y="514" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="13" font-weight="600" fill="#1c1917">Postgres</text>
+    <text x="260" y="530" font-family="JetBrains Mono,ui-monospace,monospace" font-size="9" fill="#78716c">SQL · 영속</text></g>
+  <g><rect x="536" y="472" width="176" height="76" rx="8" fill="#efeae3" stroke="#78716c" stroke-width="1"/>
+    <text x="548" y="492" font-family="JetBrains Mono,ui-monospace,monospace" font-size="7" letter-spacing="1.6" fill="#a8a29e">CACHE</text>
+    <text x="548" y="514" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="13" font-weight="600" fill="#1c1917">Redis</text>
+    <text x="548" y="530" font-family="JetBrains Mono,ui-monospace,monospace" font-size="9" fill="#78716c">TTL · 인메모리</text></g>
+  <path d="M636 372 H 596" stroke="#b5523a" stroke-width="1" stroke-dasharray="2 3" fill="none"/>
+  <circle cx="596" cy="372" r="2.5" fill="#b5523a"/>
+  <text x="644" y="362" font-family="Newsreader,Noto Serif KR,Georgia,serif" font-style="italic" font-size="14" fill="#b5523a">백엔드만 유일한 focal.</text>
+  <text x="644" y="380" font-family="Newsreader,Noto Serif KR,Georgia,serif" font-style="italic" font-size="14" fill="#78716c">코랄 1곳, 나머지는 절제.</text>
+  <text x="64" y="576" font-family="JetBrains Mono,ui-monospace,monospace" font-size="8" fill="#a8a29e">5 nodes · 5 arrows · density ≈ 3/10</text>
+</svg>
+      </div>
+      <p class="legend">rust = 유일 focal(백엔드) · 점선 캐시 · 헤어라인 1px</p>
+    </div>
+
+    <!-- ============ C ============ -->
+    <div class="panel c">
+      <span class="tag">C · html-report 실제 톤</span>
+      <h2>clay / ivory — 우리 프로젝트 진짜 톤</h2>
+      <p class="who">보고서에 실제로 임베드되는 mermaid 다이어그램 톤 (SKILL.md §296)</p>
+      <div class="principles"><span>accent #D97757 clay</span><span>ivory #FAF9F5</span><span>slate #141413</span><span>Pretendard + serif</span></div>
+      <div class="canvas">
+<svg viewBox="0 0 1180 752" role="img" aria-label="C html-report clay/ivory 톤">
+  <defs>
+    <marker id="cm" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto"><path d="M0 0L10 4L0 8z" fill="#8C857A"/></marker>
+    <marker id="ck" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto"><path d="M0 0L10 4L0 8z" fill="#D97757"/></marker>
+  </defs>
+  <rect width="1180" height="752" fill="#FAF9F5"/>
+  <text x="60" y="54" font-family="Newsreader,Noto Serif KR,Georgia,serif" font-size="34" font-weight="500" fill="#141413">웹 서비스 아키텍처</text>
+  <text x="60" y="82" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="14" fill="#8C857A">요청이 거치는 네 계층</text>
+  <rect x="60" y="120" width="1060" height="124" rx="8" fill="#F3EFE6"/><rect x="60" y="276" width="1060" height="124" rx="8" fill="#F3EFE6"/><rect x="60" y="432" width="1060" height="124" rx="8" fill="#F3EFE6"/><rect x="60" y="588" width="1060" height="124" rx="8" fill="#F3EFE6"/>
+  <g font-family="JetBrains Mono,ui-monospace,monospace" font-size="10" font-weight="500" fill="#8C857A" letter-spacing="1">
+    <text x="76" y="142">01 · CLIENT</text><text x="76" y="298">02 · EDGE</text><text x="76" y="454">03 · APPLICATION</text><text x="76" y="610">04 · DATA</text>
+  </g>
+  <g fill="none" stroke-linecap="round">
+    <path d="M590 228 V 282" stroke="#D97757" stroke-width="2" marker-end="url(#ck)"/>
+    <path d="M590 384 V 416 H 390 V 438" stroke="#D97757" stroke-width="2" marker-end="url(#ck)"/>
+    <path d="M590 384 V 416 H 790 V 438" stroke="#8C857A" stroke-width="1.6" marker-end="url(#cm)"/>
+    <path d="M390 540 V 594" stroke="#D97757" stroke-width="2" marker-end="url(#ck)"/>
+    <path d="M790 540 V 594" stroke="#8C857A" stroke-width="1.6" marker-end="url(#cm)"/>
+    <path d="M560 494 H 740 V 594" stroke="#8C857A" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#cm)"/>
+  </g>
+  <g font-family="JetBrains Mono,ui-monospace,monospace" font-size="10" fill="#8C857A">
+    <rect x="600" y="244" width="40" height="15" rx="2" fill="#F3EFE6"/><text x="620" y="255" text-anchor="middle">요청</text>
+    <rect x="300" y="406" width="40" height="15" rx="2" fill="#F3EFE6"/><text x="320" y="417" text-anchor="middle">라우트</text>
+    <rect x="844" y="406" width="40" height="15" rx="2" fill="#F3EFE6"/><text x="864" y="417" text-anchor="middle">검증</text>
+    <rect x="600" y="546" width="40" height="15" rx="2" fill="#F3EFE6"/><text x="620" y="557" text-anchor="middle">캐시</text>
+  </g>
+  <g><rect x="430" y="136" width="320" height="92" rx="12" fill="#FFFFFF" stroke="#E8DDD0" stroke-width="1.2"/>
+    <g transform="translate(446,165) scale(1.4)" fill="none" stroke="#D97757" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M4 21a8 8 0 0 1 16 0"/></g>
+    <text x="488" y="172" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="17" font-weight="600" fill="#141413">웹 브라우저</text>
+    <text x="488" y="196" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="14" fill="#6B6359">사용자 진입점 · HTTPS :443</text></g>
+  <g><rect x="430" y="292" width="320" height="92" rx="12" fill="#FFFFFF" stroke="#E8DDD0" stroke-width="1.2"/>
+    <g transform="translate(446,321) scale(1.4)" fill="none" stroke="#D97757" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M12 2v3 M12 19v3 M2 12h3 M19 12h3 M5 5l2 2 M17 17l2 2 M19 5l-2 2 M7 17l-2 2"/></g>
+    <text x="488" y="328" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="17" font-weight="600" fill="#141413">API 게이트웨이</text>
+    <text x="488" y="352" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="14" fill="#6B6359">라우팅 · 인증 · 속도 제한</text></g>
+  <g><rect x="220" y="448" width="340" height="92" rx="12" fill="#FFFFFF" stroke="#E8DDD0" stroke-width="1.2"/>
+    <g transform="translate(236,477) scale(1.4)" fill="none" stroke="#D97757" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z M4 7.5l8 4.5 8-4.5 M12 12v9"/></g>
+    <text x="278" y="484" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="17" font-weight="600" fill="#141413">백엔드 서비스</text>
+    <text x="278" y="508" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="14" fill="#6B6359">비즈니스 로직 · Go · gRPC</text></g>
+  <g><rect x="620" y="448" width="340" height="92" rx="12" fill="#FFFFFF" stroke="#E8DDD0" stroke-width="1.2"/>
+    <g transform="translate(636,477) scale(1.4)" fill="none" stroke="#8C857A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.4 8.3-8 9-4.6-.7-8-4-8-9V6z"/></g>
+    <text x="678" y="484" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="17" font-weight="600" fill="#141413">인증 서비스</text>
+    <text x="678" y="508" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="14" fill="#6B6359">JWT 발급 · 토큰 검증</text></g>
+  <g><rect x="220" y="604" width="340" height="92" rx="12" fill="#FFFFFF" stroke="#E8DDD0" stroke-width="1.2"/>
+    <g transform="translate(236,633) scale(1.4)" fill="none" stroke="#8C857A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c5 0 9 1.3 9 3s-4 3-9 3-9-1.3-9-3 4-3 9-3z M3 6v12c0 1.7 4 3 9 3s9-1.3 9-3V6"/></g>
+    <text x="278" y="640" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="17" font-weight="600" fill="#141413">Postgres DB</text>
+    <text x="278" y="664" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="14" fill="#6B6359">영속 저장 · SQL · 트랜잭션</text></g>
+  <g><rect x="620" y="604" width="340" height="92" rx="12" fill="#FFFFFF" stroke="#E8DDD0" stroke-width="1.2"/>
+    <g transform="translate(636,633) scale(1.4)" fill="none" stroke="#8C857A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h6l-1 8 9-12h-6z"/></g>
+    <text x="678" y="640" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="17" font-weight="600" fill="#141413">Redis 캐시</text>
+    <text x="678" y="664" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="14" fill="#6B6359">인메모리 · TTL · 세션</text></g>
+</svg>
+      </div>
+      <p class="legend">clay active path · warm muted 보조 · 점선 캐시 (모든 카드 동일 — focal 없음)</p>
+    </div>
+
+    <!-- ============ D (정답, 수정됨) ============ -->
+    <div class="panel d">
+      <span class="tag">D · svg-infographic 재스킨 ★ 수정됨</span>
+      <h2>우리 톤(clay/ivory) + editorial 원칙</h2>
+      <p class="who">아이콘 정렬 · 콜아웃 위치 · Claude 톤 폰트 모두 수정</p>
+      <div class="principles"><span>accent #D97757 clay</span><span>ivory #FAF9F5</span><span>단일 focal(백엔드)</span><span>Newsreader 제목</span><span>Pretendard 본문</span><span>1px 헤어라인</span></div>
+      <div class="canvas">
+<svg viewBox="0 0 1180 752" role="img" aria-label="D 재스킨 clay/ivory editorial 톤 수정본">
+  <defs>
+    <marker id="dm" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto"><path d="M0 0L10 4L0 8z" fill="#8C857A"/></marker>
+    <marker id="dk" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto"><path d="M0 0L10 4L0 8z" fill="#D97757"/></marker>
+  </defs>
+  <rect width="1180" height="752" fill="#FAF9F5"/>
+  <text x="60" y="40" font-family="JetBrains Mono,ui-monospace,monospace" font-size="10" letter-spacing="2.2" fill="#B85C3E">ARCHITECTURE · 요청 흐름</text>
+  <text x="58" y="80" font-family="Newsreader,Noto Serif KR,Georgia,serif" font-size="36" font-weight="500" fill="#141413">웹 서비스 아키텍처</text>
+  <text x="60" y="102" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="13" fill="#8C857A">요청이 거치는 네 계층</text>
+  <line x1="60" y1="112" x2="1120" y2="112" stroke="#E8DDD0" stroke-width="1"/>
+  <rect x="60" y="120" width="1060" height="124" rx="8" fill="#F3EFE6"/><rect x="60" y="276" width="1060" height="124" rx="8" fill="#F3EFE6"/><rect x="60" y="432" width="1060" height="124" rx="8" fill="#F3EFE6"/><rect x="60" y="588" width="1060" height="124" rx="8" fill="#F3EFE6"/>
+  <g font-family="JetBrains Mono,ui-monospace,monospace" font-size="10" font-weight="500" fill="#B85C3E" letter-spacing="1.4">
+    <text x="76" y="142">01 · CLIENT</text><text x="76" y="298">02 · EDGE</text><text x="76" y="454">03 · APPLICATION</text><text x="76" y="610">04 · DATA</text>
+  </g>
+  <g fill="none" stroke-linecap="round">
+    <path d="M590 228 V 282" stroke="#D97757" stroke-width="2" marker-end="url(#dk)"/>
+    <path d="M590 384 V 416 H 390 V 438" stroke="#D97757" stroke-width="2" marker-end="url(#dk)"/>
+    <path d="M590 384 V 416 H 790 V 438" stroke="#8C857A" stroke-width="1.6" marker-end="url(#dm)"/>
+    <path d="M390 540 V 594" stroke="#D97757" stroke-width="2" marker-end="url(#dk)"/>
+    <path d="M790 540 V 594" stroke="#8C857A" stroke-width="1.6" marker-end="url(#dm)"/>
+    <path d="M560 494 H 740 V 594" stroke="#8C857A" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#dm)"/>
+  </g>
+  <g font-family="JetBrains Mono,ui-monospace,monospace" font-size="10" fill="#8C857A">
+    <rect x="600" y="244" width="40" height="15" rx="2" fill="#FAF9F5"/><text x="620" y="255" text-anchor="middle">요청</text>
+    <rect x="300" y="406" width="40" height="15" rx="2" fill="#FAF9F5"/><text x="320" y="417" text-anchor="middle">라우트</text>
+    <rect x="844" y="406" width="40" height="15" rx="2" fill="#FAF9F5"/><text x="864" y="417" text-anchor="middle">검증</text>
+    <rect x="600" y="546" width="40" height="15" rx="2" fill="#FAF9F5"/><text x="620" y="557" text-anchor="middle">캐시</text>
+  </g>
+  <g><rect x="430" y="136" width="320" height="92" rx="10" fill="#FFFFFF" stroke="#D9CDBE" stroke-width="1"/>
+    <g transform="translate(446,165) scale(1.4)" fill="none" stroke="#D97757" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M4 21a8 8 0 0 1 16 0"/></g>
+    <text x="488" y="172" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="17" font-weight="600" fill="#141413">웹 브라우저</text>
+    <text x="488" y="196" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="14" fill="#6B6359">사용자 진입점 · HTTPS :443</text></g>
+  <g><rect x="430" y="292" width="320" height="92" rx="10" fill="#FFFFFF" stroke="#D9CDBE" stroke-width="1"/>
+    <g transform="translate(446,321) scale(1.4)" fill="none" stroke="#D97757" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M12 2v3 M12 19v3 M2 12h3 M19 12h3 M5 5l2 2 M17 17l2 2 M19 5l-2 2 M7 17l-2 2"/></g>
+    <text x="488" y="328" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="17" font-weight="600" fill="#141413">API 게이트웨이</text>
+    <text x="488" y="352" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="14" fill="#6B6359">라우팅 · 인증 · 속도 제한</text></g>
+  <!-- FOCAL: 백엔드만 clay-tint + clay 보더 + FOCAL 라벨 -->
+  <g><rect x="220" y="448" width="340" height="92" rx="10" fill="#FBE9DF" stroke="#D97757" stroke-width="1.4"/>
+    <text x="236" y="468" font-family="JetBrains Mono,ui-monospace,monospace" font-size="8" letter-spacing="1.6" fill="#D97757">FOCAL</text>
+    <g transform="translate(236,477) scale(1.4)" fill="none" stroke="#D97757" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z M4 7.5l8 4.5 8-4.5 M12 12v9"/></g>
+    <text x="278" y="492" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="17" font-weight="600" fill="#141413">백엔드 서비스</text>
+    <text x="278" y="516" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="14" fill="#6B6359">비즈니스 로직 · Go · gRPC</text></g>
+  <g><rect x="620" y="448" width="340" height="92" rx="10" fill="#FFFFFF" stroke="#D9CDBE" stroke-width="1"/>
+    <g transform="translate(636,477) scale(1.4)" fill="none" stroke="#8C857A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.4 8.3-8 9-4.6-.7-8-4-8-9V6z"/></g>
+    <text x="678" y="484" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="17" font-weight="600" fill="#141413">인증 서비스</text>
+    <text x="678" y="508" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="14" fill="#6B6359">JWT 발급 · 토큰 검증</text></g>
+  <g><rect x="220" y="604" width="340" height="92" rx="10" fill="#FFFFFF" stroke="#D9CDBE" stroke-width="1"/>
+    <g transform="translate(236,633) scale(1.4)" fill="none" stroke="#8C857A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3c5 0 9 1.3 9 3s-4 3-9 3-9-1.3-9-3 4-3 9-3z M3 6v12c0 1.7 4 3 9 3s9-1.3 9-3V6"/></g>
+    <text x="278" y="640" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="17" font-weight="600" fill="#141413">Postgres DB</text>
+    <text x="278" y="664" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="14" fill="#6B6359">영속 저장 · SQL · 트랜잭션</text></g>
+  <g><rect x="620" y="604" width="340" height="92" rx="10" fill="#FFFFFF" stroke="#D9CDBE" stroke-width="1"/>
+    <g transform="translate(636,633) scale(1.4)" fill="none" stroke="#8C857A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L4 14h6l-1 8 9-12h-6z"/></g>
+    <text x="678" y="640" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="17" font-weight="600" fill="#141413">Redis 캐시</text>
+    <text x="678" y="664" font-family="Pretendard,Noto Sans KR,system-ui,sans-serif" font-size="14" fill="#6B6359">인메모리 · TTL · 세션</text></g>
+  <!-- 콜아웃: 백엔드 오른쪽 중앙(560,494)에서 점선 리더로 연결 -->
+  <path d="M560 494 H 600 V 410 H 700" stroke="#D97757" stroke-width="1" stroke-dasharray="3 3" fill="none"/>
+  <circle cx="560" cy="494" r="2.5" fill="#D97757"/>
+  <text x="708" y="406" font-family="Newsreader,Noto Serif KR,Georgia,serif" font-style="italic" font-size="15" fill="#D97757">백엔드 = 단일 focal.</text>
+  <text x="708" y="424" font-family="Newsreader,Noto Serif KR,Georgia,serif" font-style="italic" font-size="15" fill="#8C857A">clay 1곳, 나머지 절제.</text>
+</svg>
+      </div>
+      <p class="legend">clay = 단일 focal(백엔드) + active path · 헤어라인 1px · 제목 Newsreader serif · 본문 Pretendard</p>
+    </div>
+
+  </div>
+
+  <div class="verdict">
+    <h3>수정 내역</h3>
+    <div class="fixes">
+버그 1 — 아이콘 transform: translate(card.x-1, ...) → translate(card.x+16, ...)<br>
+　　　authoring.md §5 공식(cx-12k) 적용. 아이콘이 카드 보더가 아니라 패딩 안쪽에.<br>
+버그 2 — 콜아웃: 점 (560,494) 백엔드 오른쪽 중앙에 배치, 점선 리더로 명확히 연결.<br>
+폰트 — Newsreader(Claude Copernicus 톤) + Noto Serif KR(제목) / Pretendard(본문) / JetBrains Mono(eyebrow).
+    </div>
+    <p>이제 <b>C와 D</b>를 비교해 보세요. 같은 우리 토큰(clay/ivory), D만 editorial 원칙(단일 focal·serif 제목·헤어라인·콜아웃)을 더했습니다. 그 차이로 <b>보고서 다이어그램(C)이 발표용 인포그래픽(D)으로</b> 올라갑니다.</p>
+    <p>오라버니가 원하시는 Claude 톤의 serif 제목 + 한국어/영문 동시 지원은 <b>로컬 환경에서 CDN으로 완벽히 가능</b>합니다. svg-infographic의 팔레트를 파랑 → clay/ivory로 바꾸고 이 디자인 원칙을 차용하면, 같은 스킬이 D를 만들어냅니다.</p>
+    <span class="pick">권장: D 방향으로 svg-infographic 재스킨 (이 톤 + 이 디테일)</span>
+  </div>
+</div>
+</body>
+</html>

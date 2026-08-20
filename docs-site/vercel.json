@@ -199,13 +199,13 @@
       "permanent": true
     },
     {
-      "source": "/:locale(ko|en|ja|zh)/advanced/manager-lead",
-      "destination": "/:locale/advanced/manager-kanban",
+      "source": "/:locale(ko|en|ja|zh)/advanced/manager-kanban",
+      "destination": "/:locale/advanced/manager-lead",
       "permanent": true
     },
     {
-      "source": "/advanced/manager-lead",
-      "destination": "/ko/advanced/manager-kanban",
+      "source": "/advanced/manager-kanban",
+      "destination": "/ko/advanced/manager-lead",
       "permanent": true
     }
   ],

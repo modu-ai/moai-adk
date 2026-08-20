@@ -2,6 +2,7 @@ package hook
 
 import (
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -232,5 +233,42 @@ func TestSanitizeWorktreeBranchSuffix(t *testing.T) {
 		if got := sanitizeWorktreeBranchSuffix(tt.in); got != tt.want {
 			t.Errorf("sanitizeWorktreeBranchSuffix(%q) = %q, want %q", tt.in, got, tt.want)
 		}
+	}
+}
+
+// TestWorktreeCreateNonGitCwdCarriesDiagnostics pins the failure contract of a
+// WorktreeCreate whose cwd sits outside any git repository. Measured before the
+// fix: the CLI exited 128 with ZERO bytes on stderr, because the raw
+// *exec.ExitError travelled up the wrap chain and both ExitCoder seams
+// (cmd/moai/main.go and internal/cli/fang.go) matched its ExitCode() method --
+// silencing the message and passing the raw exit code through as if a
+// subcommand had chosen it. This hook gates every worktree-isolated agent
+// spawn, so a diagnostics-free failure leaves the user with no cause to read.
+//
+// Two properties are asserted: the error names the cause, and the chain exposes
+// NO *exec.ExitError, so neither seam mistakes it for a deliberate exit code.
+func TestWorktreeCreateNonGitCwdCarriesDiagnostics(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir() // a plain directory: no repository anywhere beneath it
+
+	_, err := resolveWorktreeRepoRoot(dir)
+	if err == nil {
+		t.Fatalf("resolveWorktreeRepoRoot(%q) = nil error, want failure outside a repository", dir)
+	}
+
+	msg := err.Error()
+	if !strings.Contains(msg, dir) {
+		t.Errorf("error does not name the directory it failed under: %q", msg)
+	}
+	if !strings.Contains(strings.ToLower(msg), "repository") {
+		t.Errorf("error does not name the cause (expected the not-a-repository text): %q", msg)
+	}
+
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		t.Errorf("error chain exposes *exec.ExitError (code %d): both ExitCoder seams would "+
+			"silence the message and exit with the raw code; carry the exit status as data instead: %q",
+			exitErr.ExitCode(), msg)
 	}
 }

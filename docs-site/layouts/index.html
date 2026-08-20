@@ -66,7 +66,7 @@
             <p>{{ i18n "home_kanban_body" }}</p>
             <div class="cw-feat-tags">
               {{- with site.GetPage "/advanced/kanban-mode" }}<a href="{{ .RelPermalink }}">{{ .Title }}</a>{{ end -}}
-              {{- with site.GetPage "/advanced/manager-kanban" }} · <a href="{{ .RelPermalink }}">{{ .Title }}</a>{{ end -}}
+              {{- with site.GetPage "/advanced/manager-lead" }} · <a href="{{ .RelPermalink }}">{{ .Title }}</a>{{ end -}}
               {{- with site.GetPage "/utility-commands/moai-todo" }} · <a href="{{ .RelPermalink }}">{{ .Title }}</a>{{ end -}}
             </div>
           </div>

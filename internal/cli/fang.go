@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"errors"
 	"image/color"
 	"io"
 	"os"
@@ -129,18 +128,17 @@ func moaiColorScheme(c lipgloss.LightDarkFunc) fang.ColorScheme {
 	}
 }
 
-// exitCoder mirrors the cmd/moai/main.go ExitCoder interface: an error carrying
-// a custom process exit code (the `moai worktree verify` 0/1/2/3 chain).
-type exitCoder interface{ ExitCode() int }
-
 // moaiErrorHandler styles genuine errors through fang's default renderer, but
-// stays silent for ExitCoder carriers. Those are not user-facing failures — the
-// subcommand already emitted its structured output and set SilenceErrors; fang
-// would otherwise print a spurious styled "ERROR" box for a clean 0/1/2/3 exit
-// (fang's DefaultErrorHandler runs unconditionally, ignoring SilenceErrors).
+// stays silent for intentional ExitCoder carriers (ResolveExitCode — the
+// `moai worktree verify` 0/1/2/3 chain). Those are not user-facing failures —
+// the subcommand already emitted its structured output and set
+// SilenceErrors; fang would otherwise print a spurious styled "ERROR" box for
+// a clean 0/1/2/3 exit (fang's DefaultErrorHandler runs unconditionally,
+// ignoring SilenceErrors). A %w-wrapped raw *exec.ExitError resolves false —
+// it renders as the genuine error it is instead of being silenced (card
+// t130: the silent rc=128 failure face).
 func moaiErrorHandler(w io.Writer, styles fang.Styles, err error) {
-	var ec exitCoder
-	if errors.As(err, &ec) {
+	if _, ok := ResolveExitCode(err); ok {
 		return
 	}
 	fang.DefaultErrorHandler(w, styles, err)

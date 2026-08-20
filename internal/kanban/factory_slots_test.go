@@ -29,8 +29,8 @@ func TestFactoryFreeSlots(t *testing.T) {
 		t.Parallel()
 		root := t.TempDir()
 		if err := SaveFactoryRegistry(FactoryRegistryPath(root), map[string]FactoryWorkerEntry{
-			"worker-1": {PID: 11100},
-			"worker-3": {PID: 11101},
+			"lane-1": {PID: 11100},
+			"lane-3": {PID: 11101},
 		}); err != nil {
 			t.Fatalf("seed registry: %v", err)
 		}
@@ -44,7 +44,7 @@ func TestFactoryFreeSlots(t *testing.T) {
 		t.Parallel()
 		root := t.TempDir()
 		if err := SaveFactoryRegistry(FactoryRegistryPath(root), map[string]FactoryWorkerEntry{
-			"worker-2": {PID: 11100},
+			"lane-2": {PID: 11100},
 		}); err != nil {
 			t.Fatalf("seed registry: %v", err)
 		}
@@ -58,7 +58,7 @@ func TestFactoryFreeSlots(t *testing.T) {
 		t.Parallel()
 		root := t.TempDir()
 		if err := SaveFactoryRegistry(FactoryRegistryPath(root), map[string]FactoryWorkerEntry{
-			"worker-9": {PID: 11100},
+			"lane-9": {PID: 11100},
 		}); err != nil {
 			t.Fatalf("seed registry: %v", err)
 		}
@@ -75,17 +75,17 @@ func TestPruneFactoryDeadClaims(t *testing.T) {
 	t.Parallel()
 
 	reg := map[string]FactoryWorkerEntry{
-		"worker-1": {PID: 11100}, // live
-		"worker-2": {PID: 11101}, // dead
-		"worker-3": {PID: 0},     // non-positive
-		"worker-4": {PID: -5},    // negative
+		"lane-1": {PID: 11100}, // live
+		"lane-2": {PID: 11101}, // dead
+		"lane-3": {PID: 0},     // non-positive
+		"lane-4": {PID: -5},    // negative
 	}
 	got := PruneFactoryDeadClaims(reg, func(pid int) bool { return pid == 11100 })
 	if len(got) != 1 {
-		t.Fatalf("pruned registry = %v, want only worker-1", got)
+		t.Fatalf("pruned registry = %v, want only lane-1", got)
 	}
-	if _, ok := got["worker-1"]; !ok {
-		t.Errorf("live claim worker-1 must survive, got %v", got)
+	if _, ok := got["lane-1"]; !ok {
+		t.Errorf("live claim lane-1 must survive, got %v", got)
 	}
 }
 
@@ -142,14 +142,14 @@ func TestFactoryRegistryRoundTrip(t *testing.T) {
 
 	root := t.TempDir()
 	seed := map[string]FactoryWorkerEntry{
-		"worker-1": {PID: os.Getpid(), RegisteredAt: "2026-08-17T00:00:00Z"},
+		"lane-1": {PID: os.Getpid(), RegisteredAt: "2026-08-17T00:00:00Z"},
 	}
 	if err := SaveFactoryRegistry(FactoryRegistryPath(root), seed); err != nil {
 		t.Fatalf("save: %v", err)
 	}
 	got := LoadFactoryRegistry(FactoryRegistryPath(root))
-	if len(got) != 1 || got["worker-1"].PID != os.Getpid() {
-		t.Errorf("round trip = %v, want worker-1 at this pid", got)
+	if len(got) != 1 || got["lane-1"].PID != os.Getpid() {
+		t.Errorf("round trip = %v, want lane-1 at this pid", got)
 	}
 
 	// A malformed file fails open to an empty registry (never an error).

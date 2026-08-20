@@ -37,6 +37,17 @@ When the operator says `/moai todo "<description>"`, run
 | `moai todo done <n>` | Remove the addressed row under the lock. A bare `<n>` means `t<n>`; the explicit id (`moai todo done t3`) is the preferred form because positions move. |
 | `moai todo next` | Print the queued items oldest-first — read-only candidates. |
 | `moai todo next <n> [--spec <SPEC-ID>]` | Mark the addressed item `picked` (attaching `spec_id` when given) as one locked write. |
+| `moai todo edit <n> "<text>" [--expect <prefix>]` | Rewrite the addressed card's text under the lock. `id`, `added_at`, `state`, and `spec_id` are preserved, so a correction never churns the card's identity the way `done` + re-add does. The confirmation carries the prior text as well as the new one, so a wrong edit is reversed by editing back. |
+| `moai todo move <n> (--top\|--bottom\|--before <m>\|--after <m>)` | Reposition the card within the queue order under the lock. Exactly one destination is required. The move permutes the order and nothing else — no card is dropped, duplicated, or altered — so a wrong move is reversed by another move. |
+
+| `moai todo drop <n> "<reason>" [--expect <prefix>]` | Move the addressed **queued** card to `dropped` under the lock, prefixing its text with `[DROPPED — <reason>] `. The card stays in the file — `done` removes a finished card, `drop` keeps a discarded one visible with its reason — and it is no longer a pick candidate. A picked card is unpicked first, so nothing `undrop` cannot restore is ever taken. |
+| `moai todo undrop <n> [--expect <prefix>]` | Return the addressed dropped card to `queued`, stripping the marker. The state is the authority, so a card marked dropped by hand (no marker in its text) undrops with its text untouched. `drop` + `undrop` returns the queue file to the same bytes. |
+
+[HARD] `edit`, `move`, `drop`, and `undrop` are operator acts, exactly like
+`add` and the pick. Correct a card's wording, move it, or discard it because
+the operator said to — never on inferred priority, never as tidy-up, never to
+fold one card into another, and never because a card looks stale. The queue
+records the operator's intent; it does not curate it.
 
 The queue is never mutated through any other surface. A missing backlog file is
 an empty queue, never an error; a malformed file is reported and left untouched.
@@ -67,7 +78,9 @@ an empty queue, never an error; a malformed file is reported and left untouched.
   is what distinguishes a backlog item from a card already on the board.
 - `state` — `queued` | `picked` | `dropped`. A picked item stays in the file so
   the operator can see what is in flight; it is removed when its card reaches
-  `done`.
+  `done`. A dropped item stays too, carrying its `[DROPPED — <reason>] ` marker
+  and recoverable with `undrop` — a discard is a decision on the record, not an
+  erasure.
 
 ## Picking the next card
 
@@ -86,13 +99,14 @@ the queue in order until it empties. That is still their pick, made once instead
 of one at a time, and the lead then admits those cards in the authorized order
 without asking again. It grants nothing else: no additions to the queue, no
 reordering, and no cover for a card that turns out to need a decision the
-authorization never covered. See `kanban-dispatch.md` § Batch admission.
+authorization never covered. See `kanban-dispatch.md` § Entry into the board is
+an operator act.
 
 Once picked:
 
 1. Record it with `moai todo next <n> --spec <SPEC-ID>` (one locked write).
-2. Dispatch to the `plan` session per `kanban-dispatch.md` — the card enters the
-   `plan` column, and SPEC authoring happens there, not here.
+2. Dispatch to the `plan` session per `kanban-dispatch.md` — the card enters
+   the `plan` column, and SPEC authoring happens there, not here.
 
 ## Outside Kanban Mode
 
@@ -117,4 +131,4 @@ Say this plainly when it applies rather than implying a board exists.
 
 - `.claude/rules/moai/workflow/kanban-dispatch.md` — the dispatch cycle this feeds
 - `.claude/rules/moai/core/askuser-protocol.md` — the channel the pick runs through
-- `.claude/agents/moai/manager-kanban.md` — the coordination agent
+- `.claude/agents/moai/manager-lead.md` — the coordination agent

@@ -41,7 +41,7 @@ This glossary is the canonical definition surface for the L1 / L2 worktree-layer
 
 | Layer | Name | What it is | Path / Trigger | Lifetime | Owner |
 |-------|------|-----------|----------------|----------|-------|
-| **L1** | Claude-native session worktree | Session-scoped isolation owned by a Claude Code session. Entered by short name — `moai cc -w <name>` (the launcher passes `-w` straight through to `claude`), `claude -w <name>`, or the in-session `EnterWorktree(<name>)` tool — or materialized autonomously for a subagent spawned with `Agent(isolation: "worktree")` (auto-named; the runtime decides whether to materialize it). | `.claude/worktrees/<name>/` on branch `worktree-<name>` (auto-named subagent trees use the runtime's generated name; kanban/team card worktrees rename to `WT-<name>` per the WT- naming rule below); base per `worktree.baseRef` (`fresh` = remote default branch by default) | Session-scoped — the running session holds a `git worktree lock` on the tree by design (held while the session runs, released on its exit; a dead session's lock auto-releases on Claude Code 2.1.210+); disposed via the session-end keep/remove prompt, or `git worktree unlock` + `git worktree remove` once the session is done | Claude Code runtime. `moai worktree` does NOT manage these trees — they are never in its registry, so `done` / `clean` / `recover` have nothing to close on them |
+| **L1** | Claude-native session worktree | Session-scoped isolation owned by a Claude Code session. Entered by short name — `moai cc -w <name>` (the launcher passes `-w` straight through to `claude`), `claude -w <name>`, or the in-session `EnterWorktree(<name>)` tool — or materialized autonomously for a subagent spawned with `Agent(isolation: "worktree")` (auto-named; the runtime decides whether to materialize it). | `.claude/worktrees/<name>/` on branch `worktree-<name>` (auto-named subagent trees use the runtime's generated name; kanban/team card worktrees rename to `WT-<slug>` per the WT- naming rule below); base per `worktree.baseRef` (`fresh` = remote default branch by default) | Session-scoped — the running session holds a `git worktree lock` on the tree by design (held while the session runs, released on its exit; a dead session's lock auto-releases on Claude Code 2.1.210+); disposed via the session-end keep/remove prompt, or `git worktree unlock` + `git worktree remove` once the session is done | Claude Code runtime. `moai worktree` does NOT manage these trees — they are never in its registry, so `done` / `clean` / `recover` have nothing to close on them |
 | **L2** | MoAI persistent SPEC worktree | A persistent, SPEC-scoped working directory entered **by absolute path** — `moai cc -w ~/.moai/worktrees/<project>/<SPEC>`. Used for multi-session SPEC development (run + sync phases reuse the same L2 worktree). | `~/.moai/worktrees/<project>/<SPEC>/` | Persistent — lifecycle owned by the `moai worktree` verbs (`sync`, `remove`, `clean`, `recover`, `done`, plus the guard trio `snapshot` / `verify` / `restore`); disposed only via `moai worktree done SPEC-XXX` after both run + sync PRs merge | MoAI (user-managed via `moai worktree` CLI) |
 
 Relationships:
@@ -53,12 +53,16 @@ Relationships:
 
 [HARD] **An unpushed worktree branch is the work's only instance.** A card or lane worktree is created from inside the session with the Claude tool (`EnterWorktree(<name>)`) or launched by the operator (`moai cc -w <name>`) — never with a bare `git worktree add`. Until its branch has been integrated and the remote merge has landed, dispose of no worktree, L1 or L2: disposal before that destroys the only copy of the work.
 
-[HARD] **Kanban/team card worktree branches carry the `WT-` prefix.** `EnterWorktree(<name>)` auto-names its branch `worktree-<name>`; for card worktrees, rename immediately after creation with `git branch -m WT-<name>` (renaming the checked-out branch inside a worktree is safe — the tree, its lock, and the session anchoring are unaffected — and `moai cc -w <name>` re-entry resolves by tree name, not branch name). `WT-` is the session-worktree branch convention (`SessionWorktreeBranchPrefix`, `internal/cli/session_worktree.go`).
+[HARD] **Kanban/team card worktree branches carry the `WT-` prefix followed by a descriptive slug.** `EnterWorktree(<name>)` auto-names its branch `worktree-<name>`; for card worktrees, rename immediately after creation with `git branch -m WT-<slug>` (renaming the checked-out branch inside a worktree is safe — the tree, its lock, and the session anchoring are unaffected — and `moai cc -w <name>` re-entry resolves by tree name, not branch name). `WT-` is the session-worktree branch convention (`SessionWorktreeBranchPrefix`, `internal/cli/session_worktree.go`).
+
+[HARD] **The slug describes the change; the card id stays out of the branch name.** At most 3 hyphen-separated tokens, at most 24 characters, lowercase `a-z0-9-` — `WT-branch-naming`, not `WT-t0`. The **worktree directory** still carries the card id (`.claude/worktrees/<card-id>`), which is what the disposal tooling and the evidence path key on, so the id is never lost — it simply stops living in the branch name. Traceability moves onto the dispatch `card:` field, the commit messages, and the evidence path; the full contract is `kanban-dispatch.md` § Isolation is entered, never provisioned.
+
+Nothing reads a card id back out of a branch name: `internal/cli/session_worktree_prmerge.go` matches the `WT-` prefix only (`strings.HasPrefix`), never the remainder. The prefix is load-bearing; the suffix is for humans.
 
 The rename is also a disposal-path switch, and that is deliberate:
 
 - Left as `worktree-<name>`, the tree is **invisible to the PR-merge auto-cleanup sweep** — that sweep enumerates `git worktree list` and considers only `WT-` branches — so disposal stays manual: the session-end keep/remove prompt, or `git worktree unlock` + `git worktree remove`.
-- Renamed to `WT-<name>`, the tree becomes a **sweep candidate**: where `Workflow.Worktree.AutoCleanup` is enabled (distributed default: off), the sweep removes a `WT-` worktree once its branch reads merged (gh `MERGED` state, or the `git branch --merged origin/main` fallback — squash-merge blind) and the tree is clean, re-checking dirtiness immediately before removal, and never while a live session is anchored in the tree.
+- Renamed to `WT-<slug>`, the tree becomes a **sweep candidate**: where `Workflow.Worktree.AutoCleanup` is enabled (distributed default: off), the sweep removes a `WT-` worktree once its branch reads merged (gh `MERGED` state, or the `git branch --merged origin/main` fallback — squash-merge blind) and the tree is clean, re-checking dirtiness immediately before removal, and never while a live session is anchored in the tree.
 
 Either way the unpushed-branch rule above still governs timing — the sweep's merged-branch condition is the same "after the remote merge" boundary. The lane-side procedure that consumes `WT-` branches lives in `kanban-dispatch.md` § Integration into the release branch is self-served.
 
@@ -153,6 +157,16 @@ Use `"head"` when isolating subagents that must operate on in-progress work. To 
 
 This setting governs **Claude-native** worktrees only, which is now every worktree the launcher creates — `moai cc -w <name>` passes `-w` straight through to `claude`.
 
+**Creating a card worktree on a release branch.** Because the default is `origin/HEAD`, a worktree created while a release branch is the intended base starts behind it — measured on one such branch, 34 commits behind, with the reflog reading `branch: Created from origin/main`. Two ways out, and the difference between them is not convenience:
+
+- **Set the base after creation**, while the new tree still has no commits of its own: `git -C <tree> reset --hard <ref>`, then `git -C <tree> merge-base --is-ancestor <ref> HEAD` and read the exit code. Only for a tree that is empty and clean; once it carries a commit, this discards it.
+- **Set `baseRef` to `"head"`**, which makes creation inherit rather than default.
+
+`"head"` carries a trap worth stating plainly, because the name invites the wrong reading: it is **the HEAD of the tree the launcher ran in**, not the branch you had in mind. Run `moai cc -w <name>` from the primary checkout while intending a release branch and the new worktree inherits whatever the primary happens to be sitting on — wrong in a quieter direction than the default was, because the reflog now names a plausible commit instead of an obviously-unrelated one. Using it correctly therefore adds a procedural requirement of its own: the launcher must be run from inside a tree already on the intended base.
+
+That asymmetry is the reason to prefer the reset path for card work. `baseRef` is silent whether it lands right or wrong; the reset path ends in an exit code somebody read.
+
+
 ### `.worktreeinclude` (Copy Gitignored Files into Native Worktrees)
 
 A native worktree is a fresh checkout, so untracked files (`.env`, `.env.local`, local config) are not present. Add a `.worktreeinclude` file at the project root to copy them automatically when Claude creates a worktree. It uses `.gitignore` syntax; only files that match a pattern AND are gitignored are copied (tracked files are never duplicated):
@@ -183,7 +197,7 @@ The shell-`cd` form (`cd <path> && <launcher>`), the `git -C <path>` form, and t
 ### Decision Tree
 
 ```
-Is this a parallel write workers within a hierarchical team (e.g., manager-kanban fan-out)?
+Is this a parallel write workers within a hierarchical team (e.g., manager-lead fan-out)?
   YES → Use Agent(isolation: "worktree") for write agents
         Do NOT use isolation for read-only agents
   NO ↓
@@ -204,7 +218,7 @@ Is this a one-shot sub-agent task?
 
 ### HARD Rules
 
-- [ZONE:Evolvable] [HARD] Implementation leaf workers spawned in parallel by `manager-kanban` (or any parallel-write fan-out shape) MUST use `isolation: "worktree"` when spawned via Agent()
+- [ZONE:Evolvable] [HARD] Implementation leaf workers spawned in parallel by `manager-lead` (or any parallel-write fan-out shape) MUST use `isolation: "worktree"` when spawned via Agent()
 - [ZONE:Evolvable] [HARD] Read-only teammates (read-only research/review roles: researcher / analyst / reviewer) MUST NOT use `isolation: "worktree"` — read-only enforcement rests on tool restriction (`Explore`, or a `tools:` list omitting Write/Edit); the spawn-time `mode` parameter is deprecated and ignored since Claude Code v2.1.213, so a teammate is read-only only when its tools cannot write
 - [ZONE:Evolvable] [HARD] One-shot sub-agents that write files across 3 or more paths per invocation MUST use `isolation: "worktree"`. This includes write-heavy retained agents (manager-develop), per-spawn `Agent(general-purpose)` specialists with a write-heavy domain whitelist (e.g. backend / frontend / devops / refactoring), and team-mode role profiles (implementer, tester, designer).
 <!-- @MX:ANCHOR: WorktreeMUSTRule — invariant contract; all write-heavy agents MUST declare isolation:worktree; enforced by LR-05 lint rule -->
@@ -438,4 +452,4 @@ Worktree usage is user opt-in; the default flow runs all phases on a `feat/SPEC-
 
 ---
 
-Version: 4.3.0 (WT- card-branch naming + disposal-path reconciliation; release self-integration pointer)
+Version: 4.4.0 (descriptive card-branch slugs — card id leaves the branch name, stays on the tree path; WT- naming + disposal-path reconciliation; release self-integration pointer)

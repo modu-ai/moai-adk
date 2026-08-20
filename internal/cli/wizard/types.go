@@ -50,7 +50,7 @@ type WizardResult struct {
 	DesignEnabled             bool   // design.enabled: true (fixed default, no longer asked)
 	ClaudeDesignEnabled       bool   // design.claude_design.enabled: true (fixed default, no longer asked)
 
-	// Worktree advisory (SPEC-CLI-WORKTREE-ADVISORY-001). Wizard-collected;
+	// Worktree advisory. Wizard-collected;
 	// seeded false when the question is skipped (--non-interactive).
 	WorktreeAutoCreate bool // workflow.worktree.auto_create
 

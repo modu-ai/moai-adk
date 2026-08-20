@@ -1,0 +1,15 @@
+=== RUN   TestRunRemove_RefusesWhenAnchoredSessionLive
+    remove_anchor_test.go:51: remove must refuse (non-zero exit) while a live session is anchored in the worktree
+--- FAIL: TestRunRemove_RefusesWhenAnchoredSessionLive (0.02s)
+=== RUN   TestRunRemove_ForceOverridesAnchorWarning
+    remove_anchor_test.go:78: --force must warn about the anchored session(s), output: "Removed worktree at /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunRemove_ForceOverridesAnchorWarning1692769285/001\n"
+--- FAIL: TestRunRemove_ForceOverridesAnchorWarning (0.02s)
+=== RUN   TestRunRemove_RemovesWhenNoAnchoredSession
+--- PASS: TestRunRemove_RemovesWhenNoAnchoredSession (0.04s)
+=== RUN   TestRunRemove_Success
+--- PASS: TestRunRemove_Success (0.00s)
+=== RUN   TestRunRemove_Error
+--- PASS: TestRunRemove_Error (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/worktree	1.495s
+FAIL

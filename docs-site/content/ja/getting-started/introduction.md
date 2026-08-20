@@ -46,7 +46,7 @@ MoAI-ADK は Claude Code を **3 つの柱**で包む Agentic Development Kit �
 - **`/moai goal`** — 完了条件の宣言 1 行で、セッションが自律的に進行します。
 - **カンバンモード** — 複数のセッションを同時に実行します。
 - **BAS Navigator** — 3 段階のコードマップを自動同期します。
-- **manager-kanban** — Tier L の並列ファンアウトで大規模作業を調整します。
+- **manager-lead** — SPEC 内の Tier L マイルストーンファンアウトに加え、カンバン・ファクトリーのリードセッションディスパッチも担う調整役です。
 - **multi-model audit** — 複数モデルの交差検証でバイアスを捉えます。
 - **autonomy tier** — 自律の段階を調整して、安全に回します。
 - **profile matrix** — 12 エージェント × 3 プロファイルでモデルを割り当てます。

@@ -184,18 +184,13 @@ func (r *Renderer) renderSessionLine(data *StatusData) string {
 	// above (words excluded for 16-language shipping) because TODO reads the
 	// same way in every supported language.
 	if r.isSegmentEnabled(SegmentBacklog) && data.Backlog.Available {
-		segs = append(segs, fmt.Sprintf("🔄 TODO: %d / %d", data.Backlog.Picked, data.Backlog.Queued))
+		segs = append(segs, fmt.Sprintf("🔄 TODO: %d/%d", data.Backlog.Picked, data.Backlog.Queued))
 	}
 
-	// GitHub: 🔀 open issues / open pull requests (first number issues, second
-	// PRs). Served from cache, so this is a file read even when the network is
-	// down. One icon over both counts (operator request 2026-08-17): the pair
-	// reads as one service's activity, and the former ⚠️/🔀 split spent two
-	// icons saying so. The 🔀 here is the PR icon — distinct from the repo
-	// indicator, which renders 📡 (see renderRepoBranchSegment).
-	if r.isSegmentEnabled(SegmentGitHub) && data.GitHub.Available {
-		segs = append(segs, fmt.Sprintf("🔀 %d / %d", data.GitHub.OpenIssues, data.GitHub.OpenPRs))
-	}
+	// The GitHub 🔀 counts do not render anywhere: the 2026-08-18 layout merge
+	// first moved them onto the repo segment's head, and the operator's
+	// same-day follow-up removed that prefix outright (see
+	// renderRepoBranchSegment).
 
 	return r.joinSegments(segs)
 }
@@ -511,20 +506,25 @@ func (r *Renderer) isPREnabled() bool {
 }
 
 // renderRepoBranchSegment renders the combined repo + branch segment in the
-// form "📡 owner/name | 🅱️ branch ↑N +N" — layout v3 CH3. The 📡 repo indicator
-// is distinct from the 🔀 PR icon rendered by renderSessionLine.
+// form "📡 owner/name, ahead/behind | 🅱️ branch +N" — layout v3 CH3 as merged
+// per operator request 2026-08-18, minus the GitHub head the same operator
+// removed the same day: the "🔀 issues / PRs ->" prefix was cut because the
+// always-on "ahead/behind" pair added with the merge already occupies the
+// slot the arrow pointed at.
 //
 // Behavior:
-//   - Workspace.Repo present + Branch present: "📡 owner/name | 🅱️ branch ↑N +N"
+//   - Workspace.Repo present + Branch present: "📡 owner/name, ahead/behind | 🅱️ branch +N"
+//   - ahead/behind:                            always shown, zeros included ("0/0")
 //   - Workspace.Repo nil or incomplete:        "" (segment hidden — no git remote context)
 //   - Branch empty:                            "" (empty — no git context)
-//   - Ahead == 0:                              "↑N" portion omitted
-//   - Behind > 0:                              " ↓N" appended after ahead
 //   - Dirty (Modified + Staged + Untracked) == 0: " +N" portion omitted
 //   - Worktree active:                          "[WT] " prefix prepended to branch
 //
 // @MX:NOTE: [AUTO] layout v3 CH3 — replaces standalone renderGitBranch + renderRepoSegment pair.
 // @MX:NOTE: [AUTO] Hide entire segment when git is uninitialized or remote repo info is missing (per user request 2026-05-22).
+// @MX:NOTE: [AUTO] 2026-08-18 merge — GitHub 🔀 counts moved here from renderSessionLine; ahead/behind demoted from ↑N/↓N arrows on the branch to an always-on "a/b" pair on the repo.
+// @MX:NOTE: [AUTO] 2026-08-18 operator follow-up — the merged "🔀 i / p ->" prefix removed again (redundant beside the always-on a/b pair); GitHub counts then rendered nowhere.
+// @MX:NOTE: [AUTO] 2026-08-20 — counts restored as a glyph-tagged suffix (renderForgeCounts). The 2026-08-18 removal fixed a misread of "59/0" as issues/PRs, so the restored form carries a glyph per number and no slash, which is the distinction the merged layout lacked.
 func (r *Renderer) renderRepoBranchSegment(data *StatusData) string {
 	if data == nil || !data.Git.Available || data.Git.Branch == "" {
 		return ""
@@ -539,19 +539,14 @@ func (r *Renderer) renderRepoBranchSegment(data *StatusData) string {
 		return ""
 	}
 
-	branch := "🅱️ " + data.Git.Branch
+	// Worktree marker rides between the branch glyph and the branch name
+	// (operator request 2026-08-18): "🅱️ [WT] release/v3.1.1", not a leading
+	// prefix that separates the glyph from the branch it marks.
+	branch := data.Git.Branch
 	if r.isSegmentEnabled(SegmentWorktree) && data.Worktree != "" {
 		branch = "[WT] " + branch
 	}
-
-	// Ahead/Behind suffix (0 values omitted)
-	var aheadBehind string
-	if data.Git.Ahead > 0 {
-		aheadBehind += fmt.Sprintf(" ↑%d", data.Git.Ahead)
-	}
-	if data.Git.Behind > 0 {
-		aheadBehind += fmt.Sprintf(" ↓%d", data.Git.Behind)
-	}
+	branch = "🅱️ " + branch
 
 	// Dirty count (omitted when 0)
 	dirty := data.Git.Modified + data.Git.Staged + data.Git.Untracked
@@ -560,8 +555,40 @@ func (r *Renderer) renderRepoBranchSegment(data *StatusData) string {
 		dirtySuffix = fmt.Sprintf(" +%d", dirty)
 	}
 
-	inner := fmt.Sprintf("%s%s%s", branch, aheadBehind, dirtySuffix)
-	return fmt.Sprintf("📡 %s/%s | %s", repo.Owner, repo.Name, inner)
+	repoPart := fmt.Sprintf("📡 %s/%s, %d/%d", repo.Owner, repo.Name, data.Git.Ahead, data.Git.Behind)
+
+	return repoPart + r.renderForgeCounts(data) + " | " + branch + dirtySuffix
+}
+
+// renderForgeCounts renders the cached open issue and change-request counts as
+// a suffix on the repo part, or "" when there is nothing to say.
+//
+// [HARD] The counts must not look like the ahead/behind pair they sit beside.
+// They were removed on 2026-08-18 precisely because the merged form put two
+// slash-joined pairs side by side and an operator read the branch's "59/0" as
+// issues over pull requests. So each number carries its OWN glyph and no
+// slash joins them: "📡 owner/name, 59/0 🐛12 🔀3" separates the pair (a/b,
+// slashed) from the counts (glyph-tagged, unslashed) by shape rather than by
+// position, which is what the earlier layout got wrong.
+//
+// A zero is omitted, matching the dirty count in the same segment: a bar that
+// says nothing about issues is a repository with no open issues, and printing
+// "🐛0" would spend width to say so. When both are zero the whole suffix is
+// absent, which is also what an unfetched cache renders — the counts are a
+// convenience, and distinguishing "none" from "not yet known" is not worth a
+// glyph on a status bar.
+func (r *Renderer) renderForgeCounts(data *StatusData) string {
+	if !r.isSegmentEnabled(SegmentGitHub) || !data.GitHub.Available {
+		return ""
+	}
+	var out string
+	if data.GitHub.OpenIssues > 0 {
+		out += fmt.Sprintf(" 🐛%d", data.GitHub.OpenIssues)
+	}
+	if data.GitHub.OpenPRs > 0 {
+		out += fmt.Sprintf(" 🔀%d", data.GitHub.OpenPRs)
+	}
+	return out
 }
 
 // handoffStage classifies accumulated context usage into the two-stage handoff

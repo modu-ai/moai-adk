@@ -2,12 +2,12 @@
 title: MCP 서버
 weight: 12
 draft: false
-description: "MoAI-ADK가 자체 제공하는 moai mcp-server(stdio 로컬 MCP 서버)의 프로비저닝, 17-도구 카탈로그, 인증, 지연 로드 방침을 정리합니다."
+description: "MoAI-ADK가 자체 제공하는 moai mcp-server(stdio 로컬 MCP 서버)의 프로비저닝, 21-도구 카탈로그, 인증, 지연 로드 방침을 정리합니다."
 ---
 
 # MCP 서버
 
-MoAI-ADK는 Claude Code의 MCP 생태계 위에 올라타되, 그 위에 **자체 MCP 서버**를 하나 더 얹습니다. 바이너리 하나(`moai mcp-server`)가 stdio 로컬 서버로 실행되며, SPEC 라이프사이클 감사, 검증 스냅샷, 골 엔진, 교차 모델 감사, codex 위임 등 MoAI-ADK 고유의 17개 도구를 Claude Code 런타임에 노출합니다.
+MoAI-ADK는 Claude Code의 MCP 생태계 위에 올라타되, 그 위에 **자체 MCP 서버**를 하나 더 얹습니다. 바이너리 하나(`moai mcp-server`)가 stdio 로컬 서버로 실행되며, SPEC 라이프사이클 감사, 검증 스냅샷, 골 엔진, 교차 모델 감사, codex·GLM 위임 등 MoAI-ADK 고유의 21개 도구를 Claude Code 런타임에 노출합니다.
 
 {{< callout type="info" title="두 MCP 문서의 관계" >}}
 [**Claude Code 일반 MCP**](/ko/claude-code/extensibility/mcp)는 플랫폼 자체의 MCP(Model Context Protocol) 통합을 다룹니다 — USB 포트 비유, 서버 등록, 전송 타입, `/mcp` 명령, OAuth 인증, 지연 로드 원리.
@@ -29,14 +29,14 @@ Claude Code의 MCP 생태계와 MoAI의 자체 MCP 서버는 서로 별개의 �
 flowchart TD
     CC["Claude Code 런타임<br/>(도구 권한 · 지연 로드 · 승인)"]
     CMCP["일반 MCP 서버<br/>(context7, chrome-devtools, …)"]
-    MMCP["moai mcp-server<br/>(MoAI 자체 · 17 도구)"]
+    MMCP["moai mcp-server<br/>(MoAI 자체 · 21 도구)"]
     CC --> CMCP
     CC --> MMCP
-    MMCP --> TOOLS["SPEC lifecycle · 검증 · 골 · 감사 · codex 위임"]
+    MMCP --> TOOLS["SPEC lifecycle · 검증 · 골 · 감사 · codex/GLM 위임"]
     CMCP --> EXT["외부 도구 (라이브러리 문서 · 브라우저 자동화 · …)"]
 ```
 
-핵심은 "MoAI가 MCP를 프로비저닝하지 않는다"는 것이 **반쪽짜리 진실**이라는 점입니다. 외부 MCP 서버(context7, playwright 등)는 기본으로 프로비저닝하지 않는 것이 맞습니다. 하지만 MoAI 자체 서버 하나는 `moai init` 시점에 default-on으로 깔립니다. 이 서버가 곧 MoAI의 17-도구 카탈로그가 Claude Code에 닿는 통로입니다.
+핵심은 "MoAI가 MCP를 프로비저닝하지 않는다"는 것이 **반쪽짜리 진실**이라는 점입니다. 외부 MCP 서버(context7, playwright 등)는 기본으로 프로비저닝하지 않는 것이 맞습니다. 하지만 MoAI 자체 서버 하나는 `moai init` 시점에 default-on으로 깔립니다. 이 서버가 곧 MoAI의 21-도구 카탈로그가 Claude Code에 닿는 통로입니다.
 
 ## .mcp.json 프로비저닝
 
@@ -93,9 +93,9 @@ flowchart TD
 
 사용자가 직접 `.mcp.json`을 손편집하지 않습니다. `moai mcp add|remove|list` CLI가 파일을 관리하며, 이 CLI는 atomic-RWM seam(flock 파일 잠금 + compare-retry + 백업 후 기록 + idempotent-skip)으로 동작합니다. 두 세션이 동시에 편집해도 한쪽의 변경이 다른 쪽을 덮어쓰지 않습니다.
 
-## 17-도구 카탈로그
+## 21-도구 카탈로그
 
-`moai mcp-server`가 노출하는 17개 도구는 다섯 그룹으로 나뉩니다. 호출 시점에는 모두 `mcp__moai__` 접두사가 붙습니다.
+`moai mcp-server`가 노출하는 21개 도구는 여섯 그룹으로 나뉩니다. 호출 시점에는 모두 `mcp__moai__` 접두사가 붙습니다.
 
 ### SPEC 라이프사이클
 
@@ -121,10 +121,10 @@ manager-develop가 run-phase 자가 검증(이음매 §E)에서 쓰며, sync-aud
 | 도구 | 목적 | 소비 에이전트 | CLI 등가물 |
 |------|------|---------------|------------|
 | `mcp__moai__goal_arm` | 조건 선언 골 무장 | **오케스트레이터 메인 세션 전용** (어떤 에이전트에도 배선되지 않음) | `moai goal arm` / `/moai goal` |
-| `mcp__moai__goal_status` | 무장된 골 상태 읽기 | manager-develop, manager-kanban | `moai goal status` |
-| `mcp__moai__session_list` | 활성 moai 세션 목록 | manager-kanban | `moai session list` |
+| `mcp__moai__goal_status` | 무장된 골 상태 읽기 | manager-develop, manager-lead | `moai goal status` |
+| `mcp__moai__session_list` | 활성 moai 세션 목록 | manager-lead | `moai session list` |
 
-`goal_arm`은 오케스트레이터 전용입니다 — 자율 루프 무장은 오케스트레이터 관심사이므로 에이전트 안에서 호출하지 않습니다. 평면 계층 무장 표면을 보존하기 위한 설계입니다. `goal_status`는 manager-develop / manager-kanban가 무장된 조건의 진행을 읽는 채널이고, `session_list`는 manager-kanban가 팬아웃 전 동일 체크아웃의 동시 세션을 감지하는 경쟁 완화 수단입니다.
+`goal_arm`은 오케스트레이터 전용입니다 — 자율 루프 무장은 오케스트레이터 관심사이므로 에이전트 안에서 호출하지 않습니다. 평면 계층 무장 표면을 보존하기 위한 설계입니다. `goal_status`는 manager-develop / manager-lead가 무장된 조건의 진행을 읽는 채널이고, `session_list`는 manager-lead가 팬아웃 전 동일 체크아웃의 동시 세션을 감지하는 경쟁 완화 수단입니다.
 
 ### 교차 모델 감사 (제2의 의견)
 
@@ -148,6 +148,17 @@ manager-develop가 run-phase 자가 검증(이음매 §E)에서 쓰며, sync-aud
 | `mcp__moai__codex_job_cancel` | 실행 중인 백그라운드 codex 작업 중단 | super-advisor | `moai codex job cancel` |
 
 codex 위임 도구군은 super-advisor에 배선되어 있습니다 — 수시 고추론 자문 에이전트가 백그라운드 교차 모델 위임의 자연스러운 소비자이기 때문입니다. `codex_task`로 작업을 위임하고, `codex_job_status` / `codex_job_result`로 완료를 폴링하고, `codex_job_cancel`로 중단합니다. codex는 선택적(optional)입니다 — 누락되거나 사용 불가면 fail-open `inconclusive`를 반환하며, hard error가 아닙니다.
+
+### GLM 위임 (백그라운드 작업)
+
+| 도구 | 목적 | 소비 에이전트 | CLI 등가물 |
+|------|------|---------------|------------|
+| `mcp__moai__glm_task` | 작업(임의 프롬프트)을 GLM(z.ai)에 위임 (동기 또는 백그라운드) | super-advisor | — (해당 CLI 없음) |
+| `mcp__moai__glm_job_status` | 백그라운드 GLM 작업 상태/기록 읽기 | super-advisor | — |
+| `mcp__moai__glm_job_result` | 백그라운드 GLM 작업 출력 읽기 | super-advisor | — |
+| `mcp__moai__glm_job_cancel` | 실행 중인 백그라운드 GLM 작업 중단 | super-advisor | — |
+
+GLM 위임 도구군은 codex 위임과 같은 모양으로 super-advisor에 배선되어 있습니다. `glm_task`는 `background`가 거짓이면 완료된 텍스트를 그대로 돌려주고, 참이면 즉시 작업 ID를 돌려줍니다(이후 `glm_job_status`·`glm_job_result`·`glm_job_cancel`로 관찰·중단). 응답 토큰 상한은 `max_tokens`로 덮을 수 있고, 기본 상한값이 서버 쪽에 정해져 있습니다. 백그라운드 작업은 서버 프로세스 안에 살므로 프로세스가 끝나면 함께 끝납니다. GLM도 선택적입니다 — 키가 없거나 z.ai에 닿지 않으면 구조화된 fail-open 결과를 반환할 뿐, 도구 에러가 아닙니다.
 
 ### MCP-over-CLI 규칙
 
@@ -177,9 +188,9 @@ GLM, codex, Claude — 세 백엔드 모두 fail-open 원칙을 따릅니다. �
 
 ## 백그라운드 작업 진행 추적
 
-codex 위임 도구 가운데 `codex_task`는 `background: true`로 백그라운드 작업을 시작할 수 있습니다. 이 경우 작업이 끝날 때까지 대기하지 않고 즉시 작업 ID를 반환합니다.
+codex·GLM 위임 도구 가운데 `codex_task`와 `glm_task`는 `background: true`로 백그라운드 작업을 시작할 수 있습니다. 이 경우 작업이 끝날 때까지 대기하지 않고 즉시 작업 ID를 반환합니다.
 
-진행 상태는 두 도구로 폴링합니다:
+진행 상태는 두 도구로 폴링합니다 (아래는 codex 예시 — GLM은 `glm_job_*`가 같은 역할):
 
 ```text
 codex_task(background=true) ──▶ 작업 ID 반환

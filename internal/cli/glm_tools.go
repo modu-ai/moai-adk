@@ -28,6 +28,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/atomicfile"
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/execerr"
 	"github.com/modu-ai/moai-adk/internal/lockfile"
 )
 
@@ -1011,7 +1012,9 @@ func detectNodeVersion() (int, string, error) {
 
 	out, err := exec.Command("node", "--version").Output() //nolint:gosec
 	if err != nil {
-		return 0, "", fmt.Errorf("node --version 실행 실패: %w", err)
+		// execerr.StatusDetail, not %w: a raw *exec.ExitError chain would be
+		// mistaken for an intentional ExitCoder at the cmd/moai seam (t130).
+		return 0, "", fmt.Errorf("node --version 실행 실패: %s", execerr.StatusDetail(err))
 	}
 
 	versionStr := strings.TrimSpace(string(out))

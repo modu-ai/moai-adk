@@ -1,0 +1,124 @@
+// session_pid.go — resolves the PID the coordination registry records.
+//
+// The registry is written from a hook subprocess (`moai hook session-start`
+// → Registry.Register). That subprocess exits within milliseconds, so its own
+// PID is dead by the time any reader probes it. Every liveness probe over the
+// registry — the stale-registry caveat in the Pre-Edit Sync Check, and the
+// anchor guard's own `isProcessAlive` — therefore judged every live session
+// dead, which reads as "no concurrent session, safe to proceed" exactly when
+// isolation is required.
+//
+// The registry needs the PID of the long-lived session process instead. That
+// is the same PID `workers.json` already carries: the factory launcher stamps
+// `os.Getpid()` and then `syscall.Exec`s into Claude Code, so the launcher's
+// PID *becomes* the session's. A hook subprocess has no such luck — it must
+// look up the ancestry it was spawned from.
+package session
+
+import (
+	"os"
+	"strconv"
+	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/config"
+)
+
+// maxAncestryDepth bounds the parent walk. The real chain is at most
+// session → wrapper shell → moai (depth 2); the bound is generous enough for
+// an extra layer of shell indirection and small enough that a cyclic or
+// malformed /proc view cannot spin.
+const maxAncestryDepth = 8
+
+// wrapperProcessNames are the process names the walk steps THROUGH rather than
+// stopping at: the hook wrapper is a shell script, and depending on whether the
+// runtime's `sh -c` and the wrapper's own `exec` collapse, zero or more shells
+// sit between the session and the moai binary. None of them is the session.
+//
+// Names are compared against the OS-reported command name, which several
+// platforms truncate (Linux comm is 15 chars, the BSD/darwin P_comm field 16),
+// so keep every entry short enough to survive truncation.
+var wrapperProcessNames = map[string]bool{
+	"sh": true, "bash": true, "zsh": true, "dash": true,
+	"ksh": true, "fish": true, "csh": true, "tcsh": true,
+	"env": true, "moai": true,
+}
+
+// procInfoFunc reports a process's parent PID and command name. It is a package
+// var so the ancestry walk can be tested against a synthetic process tree
+// without spawning anything — the same test seam `alive` uses in
+// internal/kanban/factory_slots.go.
+type procInfoFunc func(pid int) (ppid int, comm string, ok bool)
+
+var (
+	procInfo   procInfoFunc = platformProcInfo
+	pidIsAlive              = isProcessAlive
+)
+
+// resolveSessionPID reports the PID to record for a session registered from
+// this process. Resolution order:
+//
+//  1. MOAI_SESSION_PID, when it names a live process — the caller knew the
+//     session PID outright and said so.
+//  2. The nearest ancestor that is not a wrapper shell, when the platform can
+//     report ancestry and that ancestor is live.
+//  3. os.Getpid() — the pre-existing behavior, kept as the fallback so a
+//     platform without ancestry support (Windows) or an unreadable process
+//     table degrades to what it recorded before rather than to nothing.
+//
+// A PID from step 3 may still be an ephemeral hook subprocess. That is a known
+// residual limit, not a silent one: the fallback is reached only where the
+// ancestry is genuinely unavailable.
+func resolveSessionPID() int {
+	if pid, ok := sessionPIDFromEnv(os.Getenv(config.EnvMoaiSessionPID)); ok {
+		return pid
+	}
+	if pid := ancestorSessionPID(os.Getpid()); pid > 0 {
+		return pid
+	}
+	return os.Getpid()
+}
+
+// sessionPIDFromEnv parses an explicit PID override, accepting it only when it
+// names a process that is actually alive. A stale value left over in an
+// inherited environment is rejected rather than recorded.
+func sessionPIDFromEnv(raw string) (int, bool) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return 0, false
+	}
+	pid, err := strconv.Atoi(raw)
+	if err != nil || pid <= 0 {
+		return 0, false
+	}
+	if !pidIsAlive(pid) {
+		return 0, false
+	}
+	return pid, true
+}
+
+// ancestorSessionPID walks up from start and returns the first ancestor that is
+// not a wrapper shell, or 0 when the ancestry cannot be resolved. PID 1 and
+// below are never returned: reaching init means the walk ran past the session
+// rather than finding it.
+func ancestorSessionPID(start int) int {
+	pid := start
+	for depth := 0; depth < maxAncestryDepth; depth++ {
+		ppid, _, ok := procInfo(pid)
+		if !ok || ppid <= 1 {
+			return 0
+		}
+		_, comm, ok := procInfo(ppid)
+		if !ok {
+			return 0
+		}
+		if wrapperProcessNames[comm] {
+			pid = ppid
+			continue
+		}
+		if !pidIsAlive(ppid) {
+			return 0
+		}
+		return ppid
+	}
+	return 0
+}

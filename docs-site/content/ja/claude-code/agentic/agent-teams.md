@@ -103,7 +103,7 @@ flowchart TD
 
 ## 有効化要件 (v2.1.178+)
 
-エージェントチームは **実験的機能でデフォルトで無効化** されています。Claude Code v2.1.178 以上が必要で、環境変数 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` を `1` に設定して有効化します。
+エージェントチームはまだ**実験的機能**です。Claude Code v2.1.178 以上が必要です。MoAI-ADK v3.1.1 からは配布テンプレートが環境変数 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` をデフォルトで積んでおり — `moai init`/`moai update` で設定されたプロジェクトでは、追加の手順なしに有効になっています。手で管理しているプロジェクトでオフにするには、シェル環境から変数を取り除くか、`settings.json` から該当エントリを削除します。
 
 ### v2.1.178 の変化
 

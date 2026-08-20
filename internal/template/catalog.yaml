@@ -103,6 +103,11 @@ catalog:
               path: templates/.claude/skills/moai-domain-svg-infographic/
               hash: 04e15e8246939a28712efcf8969d58a483002e3d7f7e5efb458effd7c64e3b6b
               version: 1.0.0
+            - name: moai-domain-design-dna
+              tier: core
+              path: templates/.claude/skills/moai-domain-design-dna/
+              hash: ec96c86bbead5e69c2f68b53cec2b2bb3dd4a6ac5ffcfe4c61f72767a0d29750
+              version: 1.0.0
         agents:
             - name: sync-auditor
               tier: core
@@ -124,10 +129,10 @@ catalog:
               path: templates/.claude/agents/moai/manager-git.md
               hash: 56eb72557ec24c8907c8b260f1d829c2e0300c5f6eea352f898196db6a00e132
               version: 1.0.0
-            - name: manager-kanban
+            - name: manager-lead
               tier: core
-              path: templates/.claude/agents/moai/manager-kanban.md
-              hash: 4349014e2db23345bebf5d76f3d5b60c8944c433569373eb3c8c78e58cf0e344
+              path: templates/.claude/agents/moai/manager-lead.md
+              hash: 0b6d4e56dc7ad73d7b6770d2815698a93962c010d504e126c81a64b4c614e86e
               version: 1.0.0
             - name: manager-spec
               tier: core
@@ -240,7 +245,7 @@ catalog:
                 - name: moai-ref-ui-polish
                   tier: optional-pack:frontend
                   path: templates/.claude/skills/moai-ref-ui-polish/
-                  hash: dd64c0fcd3048b61d10b8f2208390c5214d467c7978cbe6aaad7613d3d683197
+                  hash: 874652c5e256c7d5756a19ec8e141df095b93521a2af64be519319ffa7aa2094
                   version: 1.0.0
                 - name: moai-ref-seo
                   tier: optional-pack:frontend

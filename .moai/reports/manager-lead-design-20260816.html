@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>manager-lead 설계 — 리드 세션 컨텍스트 방어</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+  --ivory:#FAF9F5; --paper:#FFFFFF; --slate:#141413;
+  --clay:#D97757; --clay-d:#B85C3E; --oat:#E3DACC; --olive:#788C5D;
+  --g100:#F0EEE6; --g300:#D1CFC5; --g500:#87867F; --g700:#3D3D3A;
+  --sans:"Pretendard Variable",Pretendard,system-ui,-apple-system,sans-serif;
+  --serif:"Noto Serif KR",ui-serif,Georgia,serif;
+  --mono:"JetBrains Mono",ui-monospace,"SF Mono",monospace;
+  --max-width:860px; --radius-panel:12px; --radius-row:8px;
+  --border:1.5px solid var(--g300);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ivory);color:var(--slate);font-family:var(--sans);
+  font-size:16px;line-height:1.75;-webkit-font-smoothing:antialiased}
+.wrap{max-width:var(--max-width);margin:0 auto;padding:48px 24px 96px}
+header.top{border-bottom:3px solid var(--clay);padding-bottom:20px;margin-bottom:8px}
+h1{font-family:var(--serif);font-size:30px;line-height:1.35;margin:0 0 10px;font-weight:700}
+.sub{color:var(--g500);font-size:14px;margin:0}
+.sub code{font-size:12.5px}
+h2{font-family:var(--serif);font-size:22px;margin:56px 0 6px;font-weight:700;
+  padding-bottom:8px;border-bottom:var(--border)}
+h3{font-size:17px;margin:32px 0 8px;font-weight:600}
+h4{font-size:15px;margin:22px 0 6px;font-weight:600;color:var(--g700)}
+p{margin:10px 0}
+code{font-family:var(--mono);font-size:0.86em;background:var(--g100);
+  padding:1.5px 5px;border-radius:4px;color:var(--clay-d)}
+pre{font-family:var(--mono);font-size:12.5px;line-height:1.6;background:var(--slate);
+  color:#E8E6DF;padding:16px 18px;border-radius:var(--radius-row);overflow-x:auto}
+pre code{background:none;color:inherit;padding:0;font-size:inherit}
+a{color:var(--clay-d)}
+
+/* plain-language lead */
+.lead{background:var(--g100);border-left:4px solid var(--olive);
+  padding:14px 18px;border-radius:0 var(--radius-row) var(--radius-row) 0;margin:14px 0 22px}
+.lead p{margin:0;font-size:15px;color:var(--g700)}
+.term{border-bottom:1.5px dotted var(--olive);cursor:help}
+
+/* KPI strip */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:28px 0 8px}
+.kpi{background:var(--paper);border:var(--border);border-radius:var(--radius-panel);
+  padding:16px 14px;text-align:center}
+.kpi .n{font-family:var(--serif);font-size:30px;font-weight:700;line-height:1.1;color:var(--clay-d)}
+.kpi .n small{font-size:15px;color:var(--g500);font-weight:500}
+.kpi .l{font-size:12px;color:var(--g500);margin-top:6px;line-height:1.4}
+
+/* tables */
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px}
+th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--g300);vertical-align:top}
+th{background:var(--g100);font-weight:600;font-size:12.5px;color:var(--g700);
+  text-transform:none;letter-spacing:0}
+tbody tr:hover{background:var(--g100)}
+td code,th code{font-size:12px}
+.num{text-align:right;font-family:var(--mono);font-size:13px;white-space:nowrap}
+
+/* badges */
+.b{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 8px;
+  border-radius:99px;white-space:nowrap;line-height:1.6}
+.b-now{background:#E4EBD9;color:#3F5230}
+.b-build{background:#F6E2D8;color:#8E4326}
+.b-break{background:#F3D6D0;color:#9C2E1C}
+.b-frozen{background:var(--g100);color:var(--g500)}
+
+/* milestone timeline */
+.tl{list-style:none;padding:0;margin:20px 0 8px;position:relative}
+.tl:before{content:"";position:absolute;left:15px;top:8px;bottom:8px;width:2px;background:var(--oat)}
+.tl li{position:relative;padding:0 0 20px 46px}
+.tl li:before{content:attr(data-s);position:absolute;left:0;top:0;width:32px;height:32px;
+  border-radius:50%;background:var(--paper);border:2px solid var(--clay);
+  font-family:var(--mono);font-size:11.5px;font-weight:600;color:var(--clay-d);
+  display:flex;align-items:center;justify-content:center}
+.tl li.brk:before{background:var(--clay);color:#fff;border-color:var(--clay-d)}
+.tl h4{margin:4px 0 4px}
+.tl p{margin:0;font-size:14px;color:var(--g700)}
+
+/* panels */
+.panel{background:var(--paper);border:var(--border);border-radius:var(--radius-panel);
+  padding:18px 20px;margin:18px 0}
+.panel h4{margin-top:0}
+.warn{background:#FCF3EF;border-color:#EFC9B8}
+.ok{background:#F3F6EF;border-color:#CFDCC0}
+
+/* worked example */
+.ex{border:1.5px dashed var(--g300);border-radius:var(--radius-row);
+  padding:14px 18px;margin:16px 0;background:var(--paper)}
+.ex .tag{display:inline-block;font-size:11px;font-weight:700;color:var(--olive);
+  letter-spacing:.08em;margin-bottom:6px}
+.ex p{font-size:14.5px;margin:6px 0}
+
+/* two-col */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
+@media (max-width:680px){.two,.kpis{grid-template-columns:1fr 1fr}}
+@media (max-width:460px){.kpis{grid-template-columns:1fr}}
+
+/* mermaid */
+pre.mermaid{background:var(--paper);border:var(--border);color:var(--slate);
+  padding:18px;text-align:center;font-size:12px}
+noscript p{font-size:14px;color:var(--g700);background:var(--g100);
+  padding:12px 16px;border-radius:var(--radius-row);display:block}
+
+figure{margin:20px 0}
+figcaption{font-size:12.5px;color:var(--g500);margin-top:8px;text-align:center}
+ul,ol{padding-left:22px}
+li{margin:5px 0}
+.foot{margin-top:64px;padding-top:18px;border-top:var(--border);
+  font-size:12.5px;color:var(--g500)}
+@media print{
+  body{background:#fff} .wrap{padding:0}
+  .kpi,.panel,.ex,table{break-inside:avoid} pre{white-space:pre-wrap}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <h1>manager-lead 설계<br>— 리드 세션 컨텍스트를 지키는 방법</h1>
+  <p class="sub">작성 2026-08-16 · 설계 문서(실행 없음) · 선행 <code>pipeline-fanout-redesign-20260816.md</code></p>
+</header>
+
+<div class="lead">
+  <p><strong>이 문서가 답하려는 질문 하나.</strong> 여러 터미널에 세션을 띄워 일을 나눠 시키면,
+  지시를 내리는 <strong>리드 세션</strong>이 가장 먼저 숨이 찹니다. 모든 지시와 모든 완료 보고가
+  그 한 곳을 지나가기 때문입니다. 그 숨참을 어떻게 늦출 것인가 — 그리고 그 일을 맡을 에이전트의
+  이름을 <code>manager-kanban</code>에서 <code>manager-lead</code>로 바꾸려면 무엇을 손대야 하는가.</p>
+</div>
+
+<div class="kpis">
+  <div class="kpi"><div class="n">65</div><div class="l">이름을 바꿔야 하는<br>파일 (실측)</div></div>
+  <div class="kpi"><div class="n">1</div><div class="l">한 커밋에 묶어야<br>깨지지 않는 단계</div></div>
+  <div class="kpi"><div class="n">7<small> / 4</small></div><div class="l">제안 기제 /<br>오늘 바로 가능</div></div>
+  <div class="kpi"><div class="n">9<small>→</small>2</div><div class="l">카드당 리드 접점<br>(팬아웃 적용 시)</div></div>
+</div>
+
+<h2>1. 왜 리드가 먼저 차는가</h2>
+
+<div class="lead">
+  <p><strong>먼저 용어 하나.</strong> <span class="term">컨텍스트 윈도우 (context window)</span>는
+  AI가 한 번에 기억하고 있을 수 있는 대화의 총량입니다. 책상 넓이라고 생각하면 됩니다 —
+  서류를 계속 올려두면 언젠가 자리가 없어지고, 자리가 좁아질수록 일도 굼떠집니다.
+  공식 문서 표현으로는 “가장 중요하게 관리해야 할 자원”입니다.</p>
+</div>
+
+<p>리드 세션은 구조적으로 <strong>모든 것이 지나가는 유일한 통로</strong>입니다. 카드 한 장이
+보드를 건너갈 때 리드가 손대는 지점을 세어 보면 이렇습니다.</p>
+
+<figure>
+<svg viewBox="0 0 720 190" width="100%" height="190" role="img" aria-label="카드 1장당 리드 접점 수 막대그래프: 현행 4컬럼 12, 3컬럼 9, 팬아웃 2">
+  <text x="0" y="16" font-family="Pretendard, sans-serif" font-size="12.5" fill="#87867F">카드 1장당 리드 접점 (디스패치 + 증거 읽기 + /clear 요청)</text>
+  <!-- rows -->
+  <text x="0" y="56" font-family="Pretendard, sans-serif" font-size="13" fill="#3D3D3A">현행 4컬럼</text>
+  <rect x="110" y="42" width="516" height="20" rx="4" fill="#F0EEE6"/>
+  <rect x="110" y="42" width="516" height="20" rx="4" fill="#D97757"/>
+  <text x="638" y="57" font-family="JetBrains Mono, monospace" font-size="13" font-weight="600" fill="#B85C3E">12</text>
+
+  <text x="0" y="98" font-family="Pretendard, sans-serif" font-size="13" fill="#3D3D3A">3컬럼</text>
+  <rect x="110" y="84" width="516" height="20" rx="4" fill="#F0EEE6"/>
+  <rect x="110" y="84" width="387" height="20" rx="4" fill="#D97757" opacity="0.72"/>
+  <text x="638" y="99" font-family="JetBrains Mono, monospace" font-size="13" font-weight="600" fill="#B85C3E">9</text>
+
+  <text x="0" y="140" font-family="Pretendard, sans-serif" font-size="13" fill="#3D3D3A">팬아웃</text>
+  <rect x="110" y="126" width="516" height="20" rx="4" fill="#F0EEE6"/>
+  <rect x="110" y="126" width="86" height="20" rx="4" fill="#788C5D"/>
+  <text x="638" y="141" font-family="JetBrains Mono, monospace" font-size="13" font-weight="600" fill="#4E6138">2</text>
+
+  <line x1="0" y1="162" x2="720" y2="162" stroke="#D1CFC5" stroke-width="1"/>
+  <text x="0" y="181" font-family="Pretendard, sans-serif" font-size="11.5" fill="#87867F">※ 측정값이 아니라 kanban-dispatch.md 의 디스패치 주기 정의에서 나온 구조적 계산입니다.</text>
+</svg>
+<figcaption>접점이 줄면 리드 책상에 올라가는 서류도 그만큼 줄어듭니다.</figcaption>
+</figure>
+
+<div class="panel warn">
+  <h4>과장하지 않기 위해 먼저 밝힐 것</h4>
+  <p style="margin:0;font-size:14.5px">위 <strong>12 / 9 / 2</strong>는 실제로 세어 본 숫자가 아닙니다.
+  규칙 문서에 적힌 “한 카드는 이런 순서로 움직인다”는 정의에서 산술로 뽑은 값입니다.
+  방향은 믿을 만하지만, 크기는 실측으로 다시 확인해야 합니다.</p>
+</div>
+
+<h2>2. 이름 바꾸기 — 무엇을 손대야 하나</h2>
+
+<div class="lead">
+  <p><strong>리네임 (rename)</strong>은 그냥 문자열 치환처럼 보이지만, 이 프로젝트에서는 아닙니다.
+  파일 이름 자체가 <span class="term">가드 테스트 (guard test)</span> — 규칙이 깨졌는지 자동으로 검사하는
+  테스트 — 안에 <strong>문자열 그대로 박혀 있기</strong> 때문입니다. 순서를 틀리면 빌드가 빨간불이 됩니다.</p>
+</div>
+
+<h3>2.1 실측 집계</h3>
+
+<table>
+<thead><tr><th>구분</th><th class="num">파일 수</th><th>비고</th></tr></thead>
+<tbody>
+<tr><td><strong>조치 대상</strong></td><td class="num"><strong>65</strong></td><td>아래 그룹 G1–G6</td></tr>
+<tr><td>자동 재생성</td><td class="num">~600</td><td><code>docs-site/public/**</code> — 사이트 빌드 산출물이라 손댈 필요 없음</td></tr>
+<tr><td>동결 <span class="b b-frozen">수정 금지</span></td><td class="num">11</td><td>CHANGELOG · 릴리스 노트 · 과거 SPEC · 백업 · 캐시 · 런타임 상태</td></tr>
+</tbody>
+</table>
+
+<p><strong>동결이 왜 수정 금지인가.</strong> <code>CHANGELOG.md</code>나 지난 릴리스 노트는 “그때 그 이름은
+이랬다”는 기록입니다. 지금 이름으로 소급해 고치면 기록이 아니라 위조가 됩니다.</p>
+
+<h3>2.2 그룹별 대상</h3>
+
+<table>
+<thead><tr><th>그룹</th><th class="num">파일</th><th>핵심 지점</th></tr></thead>
+<tbody>
+<tr><td><strong>G1</strong> 에이전트 정의 + 템플릿 미러</td><td class="num">2</td>
+  <td>파일명 변경 + <span class="term">프론트매터</span>(파일 맨 위 설정 블록)의 <code>name:</code></td></tr>
+<tr><td><strong>G2</strong> Go 소스</td><td class="num">11</td>
+  <td><code>manager_kanban_depth_test.go:89</code> — 파일명을 문자열로 직접 비교. <strong>여기가 급소</strong></td></tr>
+<tr><td><strong>G3</strong> 규칙 + CLAUDE.md (로컬 8 + 미러 8)</td><td class="num">16</td>
+  <td><code>CLAUDE.md:47,57,59</code> 외</td></tr>
+<tr><td><strong>G4</strong> 스킬 · 설정 · 개발문서</td><td class="num">4</td>
+  <td><code>workflow.yaml:17,20,22</code>는 주석뿐</td></tr>
+<tr><td><strong>G5</strong> docs-site 4개 언어</td><td class="num">29</td>
+  <td>페이지 파일명 변경 + 사이드바 + <strong>구 주소 리다이렉트</strong></td></tr>
+<tr><td><strong>G6</strong> README</td><td class="num">3</td>
+  <td><code>README.md:353</code> · <code>.ja:351</code> · <code>.zh:357</code></td></tr>
+</tbody>
+</table>
+
+<div class="ex">
+  <span class="tag">발견한 결함 1</span>
+  <p><strong><code>README.ko.md</code>에는 이 에이전트 줄이 아예 없습니다.</strong> 참조 건수 0건 —
+  실제로 세어 확인했습니다. 영어·일본어·중국어 README에는 있는 표 한 줄이 한국어판에만 빠져 있습니다.
+  리네임과 무관한 기존 결함이므로, 같은 작업에서 <strong>고치는 게 아니라 새로 추가</strong>해야 4개 언어가 맞습니다.</p>
+</div>
+
+<div class="ex">
+  <span class="tag">발견한 결함 2</span>
+  <p><strong>이름 바꾸기는 이미 절반 진행돼 있습니다.</strong> 가드 테스트 파일 안의 <em>함수 이름</em>은
+  이미 <code>TestManagerLead…</code>입니다(<code>:40</code>, <code>:103</code>). 파일 이름과 문자열만 옛 이름으로 남아 있습니다.
+  누군가 절반만 바꾸고 멈춘 상태이므로, 나머지 절반을 맞추는 작업입니다.</p>
+</div>
+
+<h3>2.3 실행 순서 — 6단계</h3>
+
+<ol class="tl">
+  <li data-s="S1" class="brk">
+    <h4>G1 + G2 를 <strong>한 커밋으로</strong> <span class="b b-break">깨지는 단계</span></h4>
+    <p>파일 13개. 나눠서 커밋하면 <strong>어느 쪽을 먼저 해도 빌드가 빨간불</strong>이 됩니다.</p>
+  </li>
+  <li data-s="S2">
+    <h4><code>make build</code></h4>
+    <p>목록 파일의 지문값(hash)이 자동으로 다시 계산됩니다 — <code>Makefile:23-25</code>가
+    <code>gen-catalog-hashes.go --all</code>을 먼저 돌립니다. 사람이 손댈 것은 <code>name:</code>과 <code>path:</code>뿐.</p>
+  </li>
+  <li data-s="S3"><h4>규칙 문서 + CLAUDE.md (16개)</h4>
+    <p>로컬 8개를 고치고, 배포용 템플릿 8개에 그대로 미러링.</p></li>
+  <li data-s="S4"><h4>스킬 · 설정 · 개발문서 (4개)</h4><p>대부분 주석과 참조 링크.</p></li>
+  <li data-s="S5"><h4>docs-site 4개 언어 (29개)</h4>
+    <p>페이지 주소가 바뀌므로 <code>vercel.json</code>에 <strong>구 주소 → 새 주소 리다이렉트</strong>를 반드시 추가.
+    빠뜨리면 기존 링크가 전부 404가 됩니다.</p></li>
+  <li data-s="S6"><h4>README 3개 + 한국어판 줄 신설</h4><p>위 결함 1 처리.</p></li>
+</ol>
+
+<div class="panel warn">
+  <h4>S1 이 왜 나눠지면 안 되는가 — 손으로 따라가 보기</h4>
+  <p style="font-size:14.5px;margin-bottom:8px">가드 테스트 <code>manager_kanban_depth_test.go:89</code>에는 이런 줄이 있습니다.</p>
+  <pre><code>if carriers[0] != "manager-kanban.md" {   // ← 파일 이름을 글자 그대로 비교</code></pre>
+  <ul style="font-size:14.5px;margin-top:12px">
+    <li><strong>에이전트 파일만 먼저 바꾸면</strong> → 테스트는 여전히 옛 이름을 찾음 → <code>DEPTH_SEAL_VIOLATION</code> 실패</li>
+    <li><strong>테스트만 먼저 바꾸면</strong> → 아직 없는 <code>manager-lead.md</code>를 기대함 → 역시 실패</li>
+  </ul>
+  <p style="font-size:14.5px;margin-bottom:0"><strong>두 방향 모두 깨집니다.</strong> 그래서 한 커밋입니다.</p>
+</div>
+
+<div class="panel ok">
+  <h4>확인한 “안 해도 되는 것”</h4>
+  <p style="margin:0;font-size:14.5px"><code>.moai/config/sections/delegation.yaml</code>은 이 에이전트를
+  <strong>한 번도 언급하지 않습니다</strong>(0건, 실측). 목록에 있을 법하지만 없으므로, 손댈 필요가 없습니다.</p>
+</div>
+
+<h2>3. manager-lead 는 무엇을 갖고 무엇을 못 갖는가</h2>
+
+<div class="lead">
+  <p>경계를 제가 정한 게 아닙니다. <strong>이미 정해져 있습니다.</strong> 에이전트에게 허용된 도구 목록에
+  <code>SendMessage</code>(다른 세션에 말 걸기)가 <strong>없습니다</strong>. 그러니 이 에이전트는
+  구조적으로 다른 세션에 직접 지시를 보낼 수 없습니다. 판단하고 문안을 써서 넘길 뿐입니다.</p>
+</div>
+
+<table>
+<thead><tr><th>manager-lead 가 가진 것</th><th>오케스트레이터가 유지 (양보 불가)</th></tr></thead>
+<tbody>
+<tr><td>카드 등급 분류 (A · B · C)</td><td><strong>사용자에게 묻는 일 전부</strong> — AskUserQuestion</td></tr>
+<tr><td>지시 문안 <strong>작성</strong></td><td>지시 <strong>발송</strong> — SendMessage</td></tr>
+<tr><td>증거 판독 → 합·불 판정</td><td>목표 걸기 — <code>goal_arm</code>은 어떤 에이전트에도 연결돼 있지 않음</td></tr>
+<tr><td>보드 상태를 디스크에서 읽어 복원</td><td>최종 결정 — 카드 승격, 착수 승인</td></tr>
+<tr><td>레인 워커 팬아웃 (유일하게 <code>Agent</code> 보유)</td><td>운영자에게 <code>/clear</code> 요청 전달</td></tr>
+</tbody>
+</table>
+
+<h2>4. 완료 보고 배경 흡수 — 실제로 얼마나 아끼나</h2>
+
+<div class="lead">
+  <p><strong>솔직하게 먼저.</strong> “보고서를 배경에서 처리해 리드 책상에 안 올리기”는 <strong>절반만 가능합니다.</strong>
+  다른 세션이 보낸 메시지는 <span class="term">하위 에이전트 (subagent)</span>가 직접 받을 수 없습니다.
+  반드시 <strong>리드 세션에 먼저 도착</strong>합니다. 그러니 메시지 자체의 비용은 0으로 못 만듭니다.</p>
+</div>
+
+<p>그럼 아낄 수 있는 건 뭘까요. <strong>메시지가 “가서 읽어라”라고 가리킨 그 대상</strong>입니다.
+두 항목은 성질이 완전히 다릅니다.</p>
+
+<div class="two">
+  <div class="panel">
+    <h4>① 메시지 도착 <span class="b b-frozen">못 줄임</span></h4>
+    <p style="font-size:14.5px;margin-bottom:0">상한이 <strong>고정</strong>돼 있습니다.
+    “포인터만 보내라”는 규약을 지키면 카드당 몇 줄로 끝납니다. 이건 남는 비용입니다.</p>
+  </div>
+  <div class="panel ok">
+    <h4>② 증거 읽기 <span class="b b-now">전량 흡수</span></h4>
+    <p style="font-size:14.5px;margin-bottom:0">상한이 <strong>없습니다</strong>. 진행 기록 + 검증 로그 +
+    코드 변경분 + CI 상태 JSON. 카드가 클수록 무한정 커집니다. <strong>여기가 진짜 절감처</strong>입니다.</p>
+  </div>
+</div>
+
+<pre class="mermaid">
+flowchart TD
+  A["companion 세션<br/>완료 메시지 발신"] --> B["리드 세션 도착<br/>(불가피 · 고정 비용)"]
+  B --> C{"리드: 메시지를<br/>열어서 읽는가?"}
+  C -->|"기존 방식"| D["리드가 직접<br/>증거 전부 읽음<br/>(상한 없음)"]
+  C -->|"제안"| E["경로만 뽑아<br/>manager-lead 스폰"]
+  E --> F["별도 컨텍스트에서<br/>증거 읽기 · 전량 소모"]
+  F --> G["6줄 이내 판정문 반환"]
+  D --> H["리드 책상이 빨리 참"]
+  G --> I["리드 책상은 거의 그대로"]
+</pre>
+
+<noscript>
+  <p><strong>흐름 요약:</strong> companion 세션의 완료 메시지는 반드시 리드 세션에 먼저 도착한다(고정 비용).
+  기존 방식은 리드가 증거를 직접 전부 읽어 컨텍스트가 빨리 찬다. 제안 방식은 리드가 경로만 뽑아
+  manager-lead 를 띄우고, 증거 읽기는 별도 컨텍스트에서 소모한 뒤 6줄 이내 판정문만 돌려받는다.</p>
+</noscript>
+
+<h3>4.1 돌려받는 형식 (고정)</h3>
+
+<pre><code>card: t42 | run -> sync
+verdict: PASS | GAP | FAIL
+evidence: .moai/specs/SPEC-X/progress.md, "AC-3 PASS · go test 통과 로그 첨부"
+gaps: CodeRabbit 리뷰 미도달 | none</code></pre>
+
+<div class="ex">
+  <span class="tag">왜 evidence 줄이 필수인가</span>
+  <p><code>verdict: PASS</code>만 돌려받으면, 리드는 <strong>“통과했다더라”라는 말을 검증 없이 믿는</strong> 셈이 됩니다.
+  이 저장소 규칙(<code>verification-claim-integrity.md</code>)이 정확히 그걸 금지합니다 —
+  <em>“증거의 부재는 성공의 증거가 아니다.”</em> 그래서 어느 파일이 무엇을 보여줬는지 한 줄이 반드시 따라붙습니다.</p>
+</div>
+
+<h2>5. 리드 컨텍스트 방어 기제 7개</h2>
+
+<div class="lead">
+  <p>가성비 순 — <strong>“아끼는 양 ÷ 만드는 비용”</strong>이 큰 것부터입니다.
+  4개는 오늘 당장 가능하고, 3개는 만들어야 합니다.</p>
+</div>
+
+<table>
+<thead><tr><th class="num">순</th><th>기제</th><th>아끼는 것</th><th>드는 비용 / 깨지는 것</th><th>가용</th></tr></thead>
+<tbody>
+<tr><td class="num">1</td><td><strong>보드 상태를 디스크에서 읽기</strong><br><span style="font-size:12.5px;color:#87867F">기억하지 않는다</span></td>
+  <td>기억할 상태가 0이 됨. <code>/clear</code> 후 복귀가 <strong>6블록 붙여넣기 → 명령 1줄</strong></td>
+  <td>매 턴 파일 읽기(소량) / SPEC 상태가 틀리면 보드도 틀림</td><td><span class="b b-now">오늘</span></td></tr>
+<tr><td class="num">2</td><td><strong>메시지는 포인터만 · 길이 상한</strong></td>
+  <td>접점마다 붙던 설명 산문이 사라짐</td>
+  <td>없음(규약) / 설명이 필요한 카드는 파일 왕복 1회 추가</td><td><span class="b b-now">오늘</span></td></tr>
+<tr><td class="num">3</td><td><strong>증거 읽기를 하위 에이전트로</strong></td>
+  <td>§4의 “상한 없는 항” 전량</td>
+  <td>스폰 1회 + 왕복 지연 / 리드가 근거를 직접 못 봄 → 경로 인용 필수</td><td><span class="b b-now">오늘</span></td></tr>
+<tr><td class="num">4</td><td><strong><code>/btw</code>로 곁가지 질문 격리</strong></td>
+  <td>질문·답변이 대화 이력에 아예 안 들어감</td>
+  <td>없음 / 적용 범위가 좁음(운영자 질문에 한정)</td><td><span class="b b-now">오늘</span></td></tr>
+<tr><td class="num">5</td><td><strong>A·B급은 팬아웃, C급만 파이프라인</strong></td>
+  <td>접점 <strong>9 → 2</strong>. 절대 효과는 가장 큼</td>
+  <td>워커마다 별도 작업 폴더 필수 / C급을 팬아웃 태우면 설계 판단이 무검토 통과</td><td><span class="b b-build">빌드</span></td></tr>
+<tr><td class="num">6</td><td><strong><code>/clear</code> 주기 + 1줄 복귀</strong></td>
+  <td>리드 컨텍스트를 주기적으로 0으로</td>
+  <td><span class="term">프롬프트 캐시</span> 폐기 / 1번 기제 없으면 붙여넣기로 회귀</td><td><span class="b b-now">오늘</span></td></tr>
+<tr><td class="num">7</td><td><strong>압축 지시문</strong></td>
+  <td>대화가 압축될 때 무엇을 남길지 지정</td>
+  <td>항상 로드되는 문서가 조금 길어짐 / 없음</td><td><span class="b b-build">빌드</span></td></tr>
+</tbody>
+</table>
+
+<div class="ex">
+  <span class="tag">1번을 손으로 따라가 보기</span>
+  <p><strong>지금:</strong> <code>/clear</code> 하면 리드는 어디까지 했는지 잊습니다 → 6블록짜리 복귀 메시지를 붙여넣어야 함.</p>
+  <p><strong>제안:</strong> 리드가 아무것도 기억하지 않습니다. 대신 <code>moai todo list</code>로 대기 카드를 읽고,
+  SPEC 파일 맨 위의 <code>status:</code>로 어느 컬럼인지 알아냅니다. 복귀 메시지는 필요 없습니다.</p>
+  <p><strong>이미 절반은 이 설계입니다.</strong> 규칙 문서가 이미
+  “<em>clear 뒤 컬럼 위치는 SPEC 상태에서 다시 유도한다</em>”라고 적고 있습니다. 나머지 절반(붙여넣기)이 그와 모순될 뿐입니다.
+  필요한 도구 <code>moai todo</code>·<code>moai handoff</code>는 <strong>실행해서 존재를 확인했습니다.</strong></p>
+</div>
+
+<h2>6. 활용 시나리오 — 이 저장소의 실제 상황으로</h2>
+
+<h3>S-1. 이번 리네임 작업 그 자체</h3>
+<p>파일 65개 · 도메인 4개(에이전트 / Go / 규칙·스킬 / docs-site) · 단계 6개. Tier L 기준
+(마일스톤 3개 이상 <strong>그리고</strong> 파일 10개 이상 <strong>그리고</strong> 도메인 교차)을 <strong>세 조건 모두</strong> 충족합니다.
+manager-lead 가 S1은 단독·원자로, S3~S6은 병렬로 워커를 배치합니다. <strong>S1만은 절대 병렬화 금지.</strong></p>
+
+<h3>S-2. docs-site 4개 언어 동기화</h3>
+<p>언어마다 워커 1개(en / ko / ja / zh). 단, <code>_meta.yaml</code>과 사이드바 <code>main.yaml</code>은
+<strong>4개 언어가 공유하는 파일</strong>이라 워커에게 주지 않습니다 — 네 워커가 같은 파일을 동시에 쓰면 서로 덮어씁니다.
+manager-lead 가 마지막에 혼자 처리합니다.</p>
+
+<h3>S-3. sync 레인 완료 판정</h3>
+<p><code>sync</code> 세션이 “SPEC-X 완료, 진행 기록 참조” 한 줄을 보냅니다. 리드는 <strong>경로만 뽑아</strong>
+manager-lead 에 넘기고, manager-lead 가 진행 기록 + 검증 로그 + 코드리뷰 상태를 읽고 한 줄로 답합니다.
+리뷰가 <em>rate limited</em>로 안 돌았다면 <strong>GAP</strong> — 카드는 그 자리에 머뭅니다.</p>
+
+<h3>S-4. 백로그 잔여 카드 분류</h3>
+<p><code>moai todo list</code> 결과를 넘기면 A/B/C 등급과 라우팅 표가 돌아옵니다.
+리드는 <strong>표만 받아</strong> 운영자에게 선택지로 제시합니다 — 묻는 일은 오케스트레이터 몫이니까요.</p>
+
+<h3>S-5. <code>README.ko.md</code> 누락 줄 채우기</h3>
+<p>S-2 과정에서 발견된 결함입니다. 파일 1개 · 줄 1개 · 회귀는 CI가 잡음 → <strong>A급</strong>.
+파이프라인 3단계를 태울 이유가 없고, 워커 하나로 끝냅니다.</p>
+
+<h2>7. 위험</h2>
+
+<table>
+<thead><tr><th>위험</th><th>완화</th></tr></thead>
+<tbody>
+<tr><td><strong>R1</strong> S1을 나눠 커밋 → 빌드 빨간불</td><td>13개 파일 원자 커밋. 리뷰어에게 “나누지 말 것” 명시</td></tr>
+<tr><td><strong>R2</strong> docs-site 주소 변경 → 기존 링크 404</td><td><code>vercel.json</code> 리다이렉트를 <strong>같은 PR</strong>에 포함</td></tr>
+<tr><td><strong>R3</strong> 디스크 파생 보드가 SPEC 상태 정확도에 의존</td><td>상태 전이 소유권 규칙 준수 확인 후 도입</td></tr>
+<tr><td><strong>R4</strong> 팬아웃 워커가 같은 작업 폴더 공유 → 직렬화·충돌</td><td>워커당 작업 폴더 필수, 런처 경유 생성</td></tr>
+<tr><td><strong>R5</strong> 하위 에이전트가 판정만 돌려주고 근거를 빠뜨림</td><td>반환 형식에 <code>evidence:</code> 줄 필수화</td></tr>
+</tbody>
+</table>
+
+<h2>8. 아직 확인하지 못한 것</h2>
+
+<div class="lead">
+  <p>이 절이 이 문서에서 가장 중요합니다. <strong>확인한 것과 확인하지 못한 것을 섞지 않기 위해</strong> 따로 뺐습니다.</p>
+</div>
+
+<table>
+<thead><tr><th>#</th><th>전제</th><th>상태</th></tr></thead>
+<tbody>
+<tr><td>U1</td><td>접점 12 / 9 / 2</td><td>규칙 문서에서 나온 <strong>구조적 계산</strong>. 측정 아님</td></tr>
+<tr><td>U2</td><td>세션 간 메시지의 배달 미보장 · 개수 상한(수락 50 / 보류 100) · 반복 제한</td><td>팀 리드가 공식 문서 근거로 제공. <strong>이 세션에서 공식 문서를 직접 열어보지는 않음</strong></td></tr>
+<tr><td>U3</td><td>“하위 에이전트는 별도 컨텍스트에서 돌고 요약만 보고한다”</td><td>팀 리드 제공 공식 인용. 저장소 측 방증: 도구 설명에 “tool output을 컨텍스트 밖에 둔다”</td></tr>
+<tr><td>U4</td><td>§4의 절감 규모</td><td><strong>토큰을 재지 않았습니다.</strong> 주장하는 것은 크기가 아니라 형태(고정 vs 무상한)뿐</td></tr>
+<tr><td>U5</td><td><code>review</code> 컬럼 폐지</td><td>결정은 확정, <strong>코드는 미반영</strong> — <code>bootstrap.go:25</code>가 아직 4역할 하드코딩</td></tr>
+<tr><td>U6</td><td>팬아웃 런처 <code>-t N</code></td><td>미구현</td></tr>
+<tr><td>U7</td><td>manager-lead 에 <code>SendMessage</code>를 줄지</td><td><strong>지금 없다는 것은 실측.</strong> 줄지 말지는 미결정 — 주면 §3의 경계가 바뀜</td></tr>
+<tr><td>U8</td><td><code>/moai review</code>의 렌즈가 sync 게이트에서 실제로 도는지</td><td>미확인 (선행 보고서에서 승계)</td></tr>
+</tbody>
+</table>
+
+<h2>직접 확인해 보실 것</h2>
+
+<div class="panel">
+<p style="margin-top:0">제 말을 믿지 않고 직접 확인하실 수 있는 것들입니다. 터미널에서 그대로 붙여넣으면 됩니다.</p>
+<pre><code># 1. 조치 대상이 정말 65개인가 (생성물·백업·이력을 전부 제외한 수)
+grep -rl "manager-kanban\|manager_kanban" \
+  --include="*.md" --include="*.go" --include="*.yaml" --include="*.json" . 2>/dev/null \
+  | grep -vE "^\./\.git/|/\.claude/worktrees/|docs-site/public/|\.moai/backups/|\.moai-backups/|\.moai/cache/|\.moai/reports/|\.moai/specs/|\.moai/release-notes/|\.moai/state/|^\./CHANGELOG\.md$" \
+  | wc -l
+
+# 2. 급소 한 줄 — 파일 이름을 문자열로 비교하는 그 자리
+sed -n '89p' internal/template/manager_kanban_depth_test.go
+
+# 3. README 한국어판에 정말 그 줄이 없는가 (0 이 나와야 함)
+grep -c "manager-kanban" README.ko.md
+
+# 4. delegation.yaml 은 정말 언급이 없는가 (0 이 나와야 함)
+grep -c "manager-kanban" .moai/config/sections/delegation.yaml</code></pre>
+<p style="margin-bottom:0;font-size:14px;color:#3D3D3A">1번이 65가 아니라면 그 사이에 파일이 바뀐 것이고,
+3·4번이 0이 아니라면 제 실측이 틀린 것입니다. 그때는 이 문서의 해당 절부터 다시 보셔야 합니다.</p>
+</div>
+
+<p class="foot">
+manager-lead 설계 · 2026-08-16 · 설계 문서이며 <strong>어떤 파일도 변경하지 않았습니다</strong>.
+대응 마크다운: <code>.moai/reports/manager-lead-design-20260816.md</code>
+</p>
+
+</div>
+
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: "base",
+    themeVariables: {
+      primaryColor:      "#FAF9F5",
+      primaryTextColor:  "#141413",
+      primaryBorderColor:"#D97757",
+      lineColor:         "#87867F",
+      secondaryColor:    "#E3DACC",
+      tertiaryColor:     "#F0EEE6",
+      fontFamily:        "Pretendard, system-ui, sans-serif"
+    }
+  });
+</script>
+</body>
+</html>

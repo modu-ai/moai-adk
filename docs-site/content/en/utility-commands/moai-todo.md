@@ -113,7 +113,11 @@ The same queue is also operable from the terminal. The slash command `/moai todo
 # Add an item — prints the issued id and queue position on one line
 $ moai todo add "clean up error paths in auth middleware"
 
-# View the queue (id · state · text)
+# Two or more words add even without `add` (natural-language fallthrough)
+$ moai todo rename the stale hint
+
+# View the queue (id · state · text) — a bare call with no verb gives the same result
+$ moai todo
 $ moai todo list
 
 # View as structured records
@@ -127,17 +131,28 @@ $ moai todo next
 
 # Record a pick — optionally attaching the SPEC identifier
 $ moai todo next 4 --spec SPEC-AUTH-001
+
+# Add and pick in one locked write
+$ moai todo add "tidy up the graph query docs" --pick
+
+# Revert the picked mark — on a card not yet handed to plan
+$ moai todo unpick 4
 ```
 
 | Command | Behavior |
 |------|------|
-| `moai todo add "<text>"` | Adds an item and prints the issued id and position. |
+| `moai todo` (bare) | Prints the queue. Same output as `list`. |
+| `moai todo <two or more words>` | Adds the natural-language text as an item. A single word (including a typo'd verb) is an error, not an add. |
+| `moai todo add "<text>" [--pick]` | Adds an item and prints the issued id and position. With `--pick`, the add and the picked mark land in one locked write. |
 | `moai todo list` / `--json` | Renders the queue. `--json` emits the full records as JSON. |
 | `moai todo done <n>` | Removes item `n`. The explicit `t<n>` id form is preferred — queue positions move under concurrent adds. |
 | `moai todo next` | Prints queued items oldest-first. Read-only. |
 | `moai todo next <n> [--spec <SPEC-ID>]` | Marks the item `picked`; with `--spec`, records the identifier verbatim. One locked write. |
+| `moai todo unpick <n>` | Reverts the `picked` mark. Because the pick itself is a human judgment, the revert is also done directly by a human. |
 
 The CLI never prompts. It takes arguments and flags, prints one line, and reports errors on stderr — a shape that is safe in scripts and CI.
+
+Run it inside a linked worktree and the queue still **resolves to the one queue of the primary checkout** — the contract is one repository, one queue. A `moai todo add` from a card worktree lands in the same file the lead and the foreman loop read. Projects without git metadata keep the queue at `~/.moai/todo/<project-key>/backlog.json`.
 
 Both surfaces share the same storage layer. Mutations hold the sibling lock file (backlog.lock) next to the queue file and land through a same-directory temp-file write followed by an atomic rename; reads are lock-free. Item ids are issued inside the lock from the persisted high-water mark (`last_seq`), so a removed item's id is never reused.
 

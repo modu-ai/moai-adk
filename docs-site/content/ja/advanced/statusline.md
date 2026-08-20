@@ -1,415 +1,166 @@
 ---
-title: Statusline システム — 3-line レイアウト完全ガイド
+title: Statusline システム — 3+1 行レイアウト完全ガイド
 weight: 78
 draft: false
 ---
 
-Claude Code と moai-adk-go の統合のための **カスタム statusline システム** です。トークノミクスは測定から始まります — コンテキスト使用率 (CW%)、プロンプトキャッシュヒット率、rate limit 消費率をターミナル下部に常時表示して、トークン運用の状態を一目で読めるようにします。Claude Code v2.1.139 から effort/thinking、v2.1.145 から workspace.repo + pr フィールドが stdin JSON に追加され、豊富なコンテキストを表示できます。
+測定できなければ制御できません。エージェンティック開発はひとつのセッションで数十万トークンを使い、コンテキストウィンドウ(context window、モデルが一度に記憶できる対話の総量)を急速に埋め、複数のエージェント(自ら作業する AI の助手)が並列で回り、プロンプトキャッシュ(prompt cache、同じ文脈を再利用して費用を減らす手法)の命中を左右します。このすべてがターミナルの中で目に見えなければ、「なぜ今度のセッションは費用が2倍になったのか」という問いに答えられません。**カスタム statusline システム**はまさにこの地点から出発します。トークノミクス(tokenomics、トークンを経済的に使う考え方)は測定から始まるので、コンテキスト使用率とキャッシュ命中率、rate limit の消費率をターミナル下部に常に表示しておきます。
 
-> MoAI ワークフローは PR 中心です。すべての SPEC は plan-PR → run-PR → sync-PR のサイクルを生成するので、statusline に現在の PR 番号 + レビュー状態 + コンテキスト使用率 + handoff 勧告を即座に露出すると開発効率が大きく高まります。
+この文書は、statusline が何を示すか、データがどう流れるか、そしてコンテキストが埋まるときどんな信号が出るかを入門書の水準で整理します。セグメント書式の細部よりも「なぜこの情報が要るのか、どう読むのか」を先に説明します。
 
-## 概要
+## ステータスラインはなぜ必要か
 
-### 最終レイアウト (3-line v3)
+エージェンティックコーディングで費用と品質を決める変数は5つです。どのモデルを使うか、どの推論深度で回っているか、コンテキストウィンドウがどれだけ埋まったか、rate limit がどれだけ残っているか、そしてプロンプトキャッシュがちゃんと効いているか。この5つは互いにつながっています。コンテキストが埋まれば SSE ストール(stream stall、ストリーミングが止まる現象)が起き、キャッシュが効かなければ費用がすぐに上がり、rate limit が底をつけば重い作業を止めざるを得ません。
 
-```
-🤖 Opus │ 🧠 xhigh·t │ ♻️ 87% │ 🔅 v2.1.212 │ 🗿 v3.0.0 │ ⏳ 4h 52m │ 💬 MoAI
+問題は、これらの変数がデフォルトでは見えないことです。Claude Code 自身のステータスバーは豊富ですが、MoAI ワークフローが扱う情報 — アクティブな SPEC(要件仕様書)、現在の PR のレビュー状態、ハンドオフ(handoff、セッションをつなぐ仕組み)の勧告タイミング — までは含みません。そこで MoAI は独自のステータスラインをターミナル下部に3行で表示し、マルチセッションランでは4行目まで付けて、「今トークンをどう使っているか」と「今どこで何をしているか」を一目で読めるようにします。
+
+## 行の一覧
+
+基本レイアウトは3行で、セッション名・バックログ観測があれば4行目(セッション行)が最後に条件付きで付きます。下の例は実際にレンダーされた出力の一例で、各セグメントが使うグリフ(glyph、小さな図形文字)までそのまま写しています。
+
+```text
+🤖 Opus │ 🧠 xhigh·t │ ♻️ 87% │ 🔅 cc v2.1.212 │ 🗿 v3.1.1 │ ⏳ 4h 52m │ 💬 MoAI
 🪫 CW: ███████░░░ 72% (⚠️/clear) │ 🔋 5H: █████░░░░░ 56% (46m) │ 🔋 7D: █░░░░░░░░░ 13% (May 28)
-📁 moai-adk-go │ 🔀 modu-ai/moai-adk | 🅱️ main ↑5 +2 │ 💾 +0 M1 ?1 │ 💌 PR #1234 (⌥approved)
+📁 moai-adk-go │ 📡 modu-ai/moai-adk | 🅱️ main ↑5 +2 │ 📫 +0 M1 ?1 │ 💌 PR #1234 (⌥approved)
+🏷️ run │ 🔄 TODO: 1 / 3 │ 🔀 2 / 1
 ```
 
-- **Line 1 (Info)**: モデル · effort/thinking · キャッシュヒット率 · Claude Code バージョン · MoAI バージョン · セッション時間 · output style
-- **Line 2 (Usage bars)**: CW (context window) · 5H (rolling) · 7D (rolling) — 各 bar は絵文字 + label + bar + % + reset 情報
-- **Line 3 (Git/PR)**: ディレクトリ · リポジトリ+ブランチ統合 · git status · アクティブ SPEC task · PR 情報
+- **1行目 — セッションが「どう」回っているか**: モデル、推論深度、キャッシュ命中率、Claude Code バージョン、MoAI バージョン、セッション時間、出力スタイルを1行で示します。「このセッションがどの設定で回っているか」を即座に知らせます。
+- **2行目 — 予算が「どれだけ」残っているか**: コンテキストウィンドウ使用率(CW)と2つのローリング rate limit(5時間・7日)をゲージバーで示します。「今すぐ重い作業を回してよいか」を判断する根拠です。
+- **3行目 — 今「どこで、何を」しているか**: ディレクトリ、リポジトリとブランチ、git 状態、アクティブな SPEC タスク、開いている PR のレビュー状態をまとめます。PR 中心のワークフローで最もよく目にする行です。
+- **4行目(条件付き) — 誰として、どれだけ積もっているか**: セッション名(`🏷️`)、エージェント名(`👤`)、バックログ状況(`🔄` `TODO: 進行中 / 待機`)、開いている issue・PR 数(`🔀`)を示します。カンバンの同伴セッションのような名前付きセッションで自然に付き、観測元がなければそのセグメントは縮み、すべて空なら行自体が省略されます。セッション名を強調表示する場所でもあるので、ターミナルを複数開いてどの窓がどの役割か分からなくなったときの最初の手がかりになります。
 
-### データフロー
+## データが流れる経路
 
-```
-Claude Code (stdin JSON を渡す)
-    ↓
-.moai/status_line.sh (shell wrapper — settings.json statusLine.command)
-    ↓
-moai statusline (Go binary)
-    ↓
-internal/statusline/types.go (StdinData パース)
-    ↓
-internal/statusline/builder.go (CollectMemory, CollectMetrics, etc.)
-    ↓
-internal/statusline/renderer.go (3-line v3 layout)
-    ↓
-ターミナル表示
+statusline は単一のプログラムではなく、短いパイプラインです。Claude Code がレンダー周期ごとにセッション状態を JSON として渡し、MoAI がそれを受けて3行に加工してターミナルへ返します。
+
+```mermaid
+flowchart TD
+    A["Claude Code<br/>(セッション状態を stdin JSON で渡す)"] --> B[".moai/status_line.sh<br/>(shell wrapper — settings.json statusLine.command)"]
+    B --> C["moai statusline<br/>(Go 単一バイナリ)"]
+    C --> D1["internal/statusline<br/>(stdin JSON パース)"]
+    D1 --> D2["internal/statusline<br/>(メモリ・メトリクス・git 収集)"]
+    D2 --> D3["internal/statusline<br/>(3-line レンダー)"]
+    D3 --> E["ターミナル下部に3行表示"]
 ```
 
-## Line 1 — Info (7 segments)
+なぜ shell wrapper が間に入るのでしょう? Claude Code の `statusLine.command` はコマンド文字列を1つだけ受け取ります。そこで `.moai/status_line.sh` が最小限のシェルラッパーとなって `moai statusline` バイナリを呼び出し、重い仕事(パース・収集・レンダー)はすべてコンパイル済みの Go バイナリの中で高速に処理されます。そのおかげで、レンダーごとに複数のプロセスを立てずに十分な情報を一度に描けます。
 
-### Model
+データ収集の段階では、stdin にない情報も補います。git 状態はローカルの `git status --porcelain` を直接パースし、MoAI バージョンはローカル設定から読み、アクティブなタスクはセッション状態ファイルから取ります。こうすると Claude Code が渡さない文脈まで1行に収められます。
 
-- **フォーマット**: `🤖 <model display name>`
-- **データソース**: stdin `model.display_name` (または string shorthand)
-- **例**: `🤖 Opus 4.7`, `🤖 Sonnet 4.6`, `🤖 Haiku 4.5`
-- **非表示条件**: `model` field 不在または `data.Metrics.Model == ""`
-- **セグメントキー**: `model`
+## 1行目 — セッションが「どう」回っているか
 
-### Effort / Thinking
+1行目は「このセッションの設定と状態」を読む行です。モデル名はもちろん、Claude Code v2.1.139 から stdin に追加された **effort/thinking** 値で「どの推論深度で、拡張思考(thinking)が有効か」を示します。`xhigh·t` のようにレベルの後ろに `·t` が付いていれば拡張思考が有効という意味で、この表示があればモデルポリシーが実際に適用されているかを一目で点検できます。
 
-- **フォーマット**: `🧠 <level>[·t]`
-- **データソース**: stdin `effort.level` + `thinking.enabled` (Claude Code v2.1.139+)
-- **Level 値**: `low` / `medium` / `high` / `xhigh` / `max`
-- **`·t` 接尾辞**: `thinking.enabled == true` のとき追加 (extended reasoning 有効)
-- **例**:
-  - `🧠 xhigh·t` (xhigh effort + thinking 有効)
-  - `🧠 high` (high effort, thinking なし)
-  - `·t` (effort 不在 + thinking のみ有効)
-- **非表示条件**: `effort` + `thinking` の両方が不在 (effort.level 空文字列を含む)
-- **セグメントキー**: `effort_thinking`
+なかでも**キャッシュ命中率**はトークノミクスの中心的な指標です。`cache_read` トークンを `(cache_read + cache_creation)` で割った値で、常にロードされる指針を減らせばこの数字はすぐ上がります。逆に毎ターン大きなファイルを新しく読んだり指針ツリーが急に変わったりすると下がります。命中率が低く出るときは、どの変更がキャッシュを削っているかを追う手がかりになります。
 
-今のセッションがどの推論深度で回っているかを常時確認できる点で、このセグメントはモデルポリシーが実際に適用されているかを検証する窓でもあります。
+データが足りないときは、値を作り上げず静かに隠します(graceful degradation)。キャッシュ生成トークンが0、または両方の値が0なら命中率セグメントを表示しません。この謙虚な省略が「ない数字で偽りの確信」を与えることを防ぎます。
 
-### キャッシュヒット率
+## 2行目 — 予算が「どれだけ」残っているか
 
-- **フォーマット**: `♻️ <N>%` (N = cache_read / (cache_read + cache_creation) × 100、小数点切り捨て)
-- **データソース**: stdin `current_usage.cache_read_tokens` + `current_usage.cache_creation_tokens`
-- **例**: `♻️ 28%` (cache_read 2000, cache_creation 5000 → 2000/7000)
-- **非表示条件**: `current_usage` 不在 · `cache_creation == 0` (fresh cache write なし) · 両方 0 — 値を作り上げず静かに省略 (graceful degradation)
-- **トグル**: `cache_hit: false` in statusline.yaml → 非表示 (default-on)
-- **セグメントキー**: `cache_hit`
-- **参考**: キャッシュヒット率は `♻️`、Line 3 の Git Status は `💾` と絵文字で区別されます。prompt-cache 再利用率のモニタリング (SPEC-TOKEN-EFFICIENCY-001 P0-2)
+2行目は3つのゲージバーで構成され、それぞれ意味が違います。
 
-キャッシュヒット率はコンテキストダイエットの効果測定器です — 常時ロード指針を減らすとこの数字が上がるのを即座に見られます。
+- **CW(コンテキストウィンドウ)**: 現在のセッションが窓をどれだけ埋めたかを示します。バーの色は緑から黄、赤へ続く連続グラデーションで、先頭のバッテリーグリフは表示パーセンテージが70%を超えると「弱いバッテリー」標識に変わります。窓がいっぱいになると SSE ストールのリスクが高まるので、このゲージは「いつセッションを切り替えるか」の最初の信号です。
+- **5H(5時間ローリング)**: 直近5時間の rate limit 消費率です。リセット時刻を併せて示し、「上限が解けるまでどれだけ待つか」を知らせます。
+- **7D(7日ローリング)**: 直近7日の rate limit 消費率です。週単位の予算がどれだけ残っているかを見積もらせます。
 
-### Claude Code バージョン
+サブスクリプション料金プランのユーザーにとって 5H/7D バーは事実上の予算ゲージです。この2本を見れば、「今すぐ重い作業を回すか、それとも費用削減のために CG モードで GLM ワーカーに任せるか」を合理的に決められます。CW バーがいっぱいで 5H バーも高ければ、セッションを止めてハンドオフでつなぐ方が費用と安定性の両面で有利です。
 
-- **フォーマット**: `🔅 v<version>` (3-line レイアウトで実際にレンダーされる形式)
-- **データソース**: stdin `version` 文字列
-- **例**: `🔅 v2.1.212`
-- **参考**: 名前付きプリセット (full/compact/minimal) は廃止され、セグメントを直接オンオフします (SPEC-V3R6-STATUSLINE-PRESET-RETIRE-001)。かつての full モードの `🔅 cc v<version>` 接頭変形は 5-line レイアウトとともに廃止され、もはやレンダーされません。
-- **非表示条件**: `version` 空文字列
-- **セグメントキー**: `claude_version`
+## 3行目 — 今「どこで、何を」しているか
 
-### MoAI バージョン
+3行目は作業の文脈をまとめます。ディレクトリ、リポジトリとブランチ(先行・遅行の差と汚れたファイル数を含む)、git 状態、アクティブな SPEC タスク、開いている PR のレビュー状態が1行に入ります。
 
-- **フォーマット**: `🗿 v<current>` またはアップデート可能時 `🗿 v<current> -> 🗿 v<latest>`
-- **データソース**: `.moai/config/sections/system.yaml` `moai.version` + バックグラウンド update checker の結果
-- **例**:
-  - `🗿 v3.0.0` (最新)
-  - `🗿 v2.18.0 -> 🗿 v3.0.0` (アップデート勧告)
-- **セグメントキー**: `moai_version`
+リポジトリとブランチは1つの統合セグメントとしてレンダーされます。`owner/name` 部分は Claude Code v2.1.145 から stdin に追加された `workspace.repo` から来て、ブランチはローカル git から読みます。リポジトリ表示には `📡` グリフが付き、ブランチとは ASCII パイプ(`|`)でつながれて、2つの値が合わさると「どのリポジトリのどのブランチで作業しているか」が一目で入ります。ワークツリー(つながれた別の作業ディレクトリ)で作業中のときはブランチの前に `[WT]` 標識が付き、通常のチェックアウトと区別されます。
 
-### セッション時間
+git 状態はメールボックスのグリフで作業状況を先に知らせます — `📬` ステージ済み、`📮` 修正あり、`📪` 未追跡のファイルあり、`📭` クリーン — そして `+ステージ M修正 ?未追跡` の個数が続きます。色と形の両方を使うので、白黒ターミナルでも読めます。
 
-- **フォーマット**: `⏳ <X>h <Y>m` (≥1h) / `⏳ <X>m` (<1h) / `⏳ <X>d <Y>h` (≥24h)
-- **データソース**: stdin `cost.total_duration_ms`
-- **例**: `⏳ 4h 52m`, `⏳ 35m`, `⏳ 1d 3h`
-- **セグメントキー**: `session_time`
+PR セグメントはレビュー状態を色で分けます。`approved` は緑、`pending` は黄、`changes_requested` は赤、`draft` はグレーで表示され、レビュー待ちの PR の状態を色だけで把握できます。MoAI ワークフローではすべての SPEC が plan-PR → run-PR → sync-PR サイクルを作るので、PR 状態を常に表示しておけば次の一手を決めるのに直接役立ちます。
 
-### Output Style
+## ハンドオフマーカー — コンテキストが埋まるとき
 
-- **フォーマット**: `💬 <style name>`
-- **データソース**: stdin `output_style.name`
-- **例**: `💬 MoAI`, `💬 R2-D2`, `💬 default`
-- **非表示条件**: `output_style.name` 空文字列
-- **セグメントキー**: `output_style`
+CW バーの横に付くマーカーは、statusline が送る最も重要な勧告です。コンテキスト使用量がモデル別のしきい値を超えると2段階で点きます。soft 段階は「可能ならセッションを切り替えて」という勧告で、hard 段階は「今すぐ切り替えて」という上位の信号です。
 
-## Line 2 — Usage Bars (3 segments)
+```mermaid
+flowchart TD
+    A["コンテキスト使用率の測定<br/>(raw 使用量基準)"] --> B{"ウィンドウサイズクラス"}
+    B -- "1M コンテキスト<br/>(Opus 5, GLM-5.3)" --> C{"使用率 50% 以上?"}
+    B -- "200K / 256K 標準<br/>(Sonnet, Haiku, Fable)" --> D{"使用率 90% 以上?"}
+    C -- "いいえ" --> N["マーカーなし<br/>(安全区間)"]
+    D -- "いいえ" --> N
+    C -- "はい" --> S["soft マーカー (⚠️/clear)<br/>勧告"]
+    D -- "はい" --> S
+    S --> H{"auto-compact 認識<br/>天井に到達?"}
+    H -- "いいえ" --> KEEP["soft のまま"]
+    H -- "はい" --> HD["hard マーカー (🛑/clear!)<br/>上位信号"]
+    HD --> CLR["進行状況の保存 →<br/>paste-ready resume → /clear"]
+    S --> CLR
+```
 
-### CW (Context Window)
+しきい値がモデルクラスごとに違うのは、窓が大きいほど早めに切り替える方が SSE ストール予防に有利だからです。1M コンテキストモデルは半分(50%)まで埋まったとき、200K/256K モデルは90%まで埋まったときに soft マーカーが点きます。hard マーカーは auto-compact が作動する時点を先取りして織り込んだ天井です。ただしランタイムの auto-compact がしばしばこの天井を先取するので、hard 段階は実際にはまれに発火する上位信号です。
 
-- **フォーマット**: `<icon> CW: <bar> <pct>% [(⚠️/clear) | (🛑/clear!)]`
-- **データソース**:
-  - bar: `context_window.context_window_size` × auto-compact threshold (default 85%) → scaled budget
-  - パーセンテージ: `context_window.used_percentage` (事前計算) または `current_usage` tokens の合算
-  - handoff suffix の有効条件: `handoffGuideStage(data)` の判定 (下の 2 段階の表を参照)
-- **バッテリー絵文字** (`BatteryIcon`, `internal/statusline/gradient.go`):
-  - `🔋` (表示パーセンテージ ≤ 70%)
-  - `🪫` (表示パーセンテージ > 70%)
-  - bar 自体はブロックごとに緑 → 黄 → 赤の連続グラデーション色を付けます (バッテリー閾値とは別)
-- **`(⚠️/clear)` / `(🛑/clear!)` handoff suffix**:
-  - 1M context モデル (Opus 5, GLM-5.3): used_percentage ≥50% (raw context_window_size 基準)
-  - 200K context モデル (Sonnet/Haiku): used_percentage ≥90%
-  - 意味: 次の turn 開始前に `/clear` を勧告 + paste-ready resume message の活用
-- **例**: `🪫 CW: ███████░░░ 72% (⚠️/clear)`
-- **セグメントキー**: `context`
+マーカーが点いたら、決まった順序に従えばよいです。進行中の作業を `progress.md` に保存し、オーケストレーターが作った paste-ready resume メッセージを受け取ってから `/clear` でセッションを空にし、そのメッセージを新しいセッションに貼り付けて続けます。この流れはセッションハンドオフ規則と一致します。
 
-### 5H (5 時間 rolling rate limit)
+### GLM コンテキストゲージの補正 (Issue #653)
 
-- **フォーマット**: `🔋 5H: <bar> <pct>% [(<reset>)]`
-- **データソース**: stdin `rate_limits.five_hour.{used_percentage, resets_at}`
-- **Reset フォーマット**:
-  - <60 分: `(Nm)` (例: `(47m)`)
-  - <24 時間: `(Nh Nm)` (例: `(2h 15m)`)
-  - ≥24 時間: `(Mon DD)` (例: `(May 28)`)
-- **例**: `🔋 5H: █████░░░░░ 56% (47m)`
-- **データ不在**: `rate_limits.five_hour == null` → bar 0%、reset `(rolling)`
-- **セグメントキー**: `usage_5h`
+ひとつ注意点があります。GLM-5.3 は実際には 1M コンテキストモデルですが、Claude Code はプロバイダに関係なく Claude スロット基準(Opus=1M, Sonnet/Haiku=200K)で `context_window_size` を報告します。そのため GLM セッションでは元の観測値が約 180K と誤って出ることがあります。MoAI は2か所でこの値を正します — ランチャーが `CLAUDE_CODE_MAX_CONTEXT_TOKENS` 環境変数でセッションに 1M ウィンドウを宣言し、ステータスラインは `internal/statusline/memory.go` の `ResolveGLMContextWindow` で観測値を補正します。`glm-5.3` は 1,000,000 にマッピングされ、`MOAI_STATUSLINE_CONTEXT_SIZE` 環境変数で直接上書きしたり、`llm.glm.context_windows` テーブルで設定したりもできます。GLM セッションでは元の値ではなく、MoAI ステータスラインの CW% を信頼してください。
 
-### 7D (7 日 rolling rate limit)
+## コンテキスト使用量スナップショット — 次のセッションのために
 
-- **フォーマット**: `🔋 7D: <bar> <pct>% [(<reset>)]`
-- **データソース**: stdin `rate_limits.seven_day.{used_percentage, resets_at}`
-- **Reset フォーマット**: `(Mon DD)` (絶対日付)
-- **例**: `🔋 7D: █░░░░░░░░░ 13% (May 28)`
-- **セグメントキー**: `usage_7d`
+ステータスラインはレンダーのたびに観測値を `.moai/state/context-usage.json` にも記録します。このスナップショットは、次のセッションが始まるときに「直前に窓がどれだけ埋まっていたか」を読む根拠に使われます。`raw_pct`(生の使用率)と `stage`(none/soft/hard)が主要なフィールドで、どのセッションが書いた値か区別するために `session_id`, `writer_pid`, `captured_at` を併せて残します。
 
-サブスクリプション料金プランのユーザーにとって 5H/7D bar は事実上の予算ゲージです — rate limit が消費される前に重い作業を配置するか、CG モードで GLM ワーカーに渡すかを、この 2 つの bar を見て判断できます。
+なぜセッション区別が要るのでしょう? ひとつの作業ディレクトリを複数のセッションが共有するとき、あるセッションが別のセッションの使用量を引き継いで「窓がいっぱいだ」と誤判断してはいけません。そこで記録を書いたセッションの身元を確認し、一致しない・古い記録は無視して元の観測値にフォールバックします。目的は保守的に振る舞うことであって、欠けた値で偽りの確信を与えることではありません。
 
-## Line 3 — Git / PR (5 segments)
+## 設定 — オンとオフ
 
-### Directory
-
-- **フォーマット**: `📁 <directory name>`
-- **データソース**: stdin `workspace.project_dir` (basename) または `cwd`
-- **例**: `📁 moai-adk-go`, `📁 my-project`
-- **非表示条件**: `data.Directory` 空文字列
-- **セグメントキー**: `directory`
-
-### Repo + Branch (統合セグメント)
-
-- **フォーマット**: `🔀 <owner>/<name> | 🅱️ <branch>[ ↑N][ ↓N][ +N]`
-- **データソース**:
-  - `🔀 owner/name`: stdin `workspace.repo.{host, owner, name}` (Claude Code v2.1.145+)
-  - `🅱️ branch`: ローカル git `branch --show-current`
-  - `↑N`: ahead count (origin/<branch> 比)
-  - `↓N`: behind count
-  - `+N`: dirty count = Modified + Staged + Untracked
-- **例**:
-  - `🔀 modu-ai/moai-adk | 🅱️ main ↑3 +2` (repo + branch + ahead + dirty)
-  - `🔀 modu-ai/moai-adk | 🅱️ main` (clean branch, no ahead)
-- **非表示条件** (3 つのうちどれか一つでも該当するとセグメント全体を非表示):
-  - branch 空文字列または git 利用不可
-  - `workspace.repo` nil (git 未初期化または remote 未設定) — repo なしで branch のみ表示する fallback はありません
-  - `repo.owner` または `repo.name` 空文字列
-- **Worktree モード**: `worktree` segment 有効 + `workspace.git_worktree` 存在時に branch へ `[WT] ` prefix
-- **セグメントキー**: `git_branch` (combined)。`🔀 owner/name` 部分 (`repo`) はこのセグメント内でレンダーされ、16-key 設定スキーマ外の 17 番目のセグメントです (個別トグル不可)。
-
-### Git Status
-
-- **フォーマット**: `💾 +<staged> M<modified> ?<untracked>`
-- **データソース**: ローカル git `git status --porcelain` のパース
-- **例**: `💾 +0 M1 ?1` (staged 0, modified 1, untracked 1)
-- **非表示条件**: git 利用不可
-- **参考**: 以前の mailbox 4 種の emoji (`📬`/`📫`/`📪`/`📭`) は廃止、統一された `💾` を使用
-- **セグメントキー**: `git_status`
-
-### Task (アクティブ SPEC workflow)
-
-- **フォーマット**: `📋 [<command> <SPEC-ID>-<stage>]`
-- **データソース**: `~/.moai/state/last-session-state.json` の `active_task` フィールド (該当ファイルの作成時点でのみ露出)
-- **例**: `📋 [run SPEC-AUTH-001-run]`
-- **非表示条件**: アクティブ task 不在 (`active_task` nil または command 空文字列) → segment 非表示
-- **セグメントキー**: `task` (v3.0.0 から default-on — 未設定キーはアクティブと解釈)
-
-### PR (アクティブ GitHub Pull Request)
-
-- **フォーマット**: `💌 PR #<number> (⌥<review_state>)` (state があるとき) / `💌 PR #<number>` (state 空文字列)
-- **データソース**: stdin `pr.{number, url, review_state}` (Claude Code v2.1.145+)
-- **Review state 値**: `approved` / `pending` / `changes_requested` / `draft` / その他 (raw passthrough)
-- **カラーコーディング** (review_state portion):
-  - `approved`: 緑 (Success)
-  - `pending`: 黄 (Warning)
-  - `changes_requested`: 赤 (Error)
-  - `draft`: グレー (Muted)
-  - その他: 色なし (raw passthrough)
-- **例**:
-  - `💌 PR #1234 (⌥approved)` (緑)
-  - `💌 PR #1023 (⌥pending)` (黄)
-  - `💌 PR #7 (⌥changes_requested)` (赤)
-  - `💌 PR #99 (⌥draft)` (グレー)
-  - `💌 PR #100` (state なし)
-- **非表示条件**:
-  - `pr` フィールド不在 (PR なし、または v2.1.145 以下)
-  - `pr.number == 0`
-  - `SegmentPR` config が明示的に false
-- **セグメントキー**: `pr` (default on per v3.0.0)
-
-## 設定
-
-### 基本構造
-
-`.moai/config/sections/statusline.yaml` で segment の有効化を管理します。
+セグメントは `.moai/config/sections/statusline.yaml` でオン・オフします。各行が1つのセグメントトグルです。
 
 ```yaml
 statusline:
-  theme: catppuccin-mocha    # 色テーマ
+  theme: catppuccin-mocha    # カラーテーマ
   segments:
-    # Line 1
+    # 1行目
     model: true
     effort_thinking: true
-    cache_hit: true        # キャッシュヒット率 ♻️
+    cache_hit: true
     claude_version: true
     moai_version: true
     session_time: true
     output_style: true
-
-    # Line 2
+    # 2行目
     context: true
     usage_5h: true
     usage_7d: true
-
-    # Line 3
+    # 3行目
     directory: true
-    git_branch: true       # combined repo+branch
+    git_branch: true         # リポジトリ+ブランチ統合
     git_status: true
-    task: true             # default-on per v3.0.0
-    pr: true               # default on per v3.0.0
-    worktree: false
+    task: true
+    pr: true
+    worktree: false          # opt-in
+    # 4行目 — セッション行 (デフォルトでオン。明示しなくてもレンダーされます)
+    session: true            # 🏷️ セッション名 + 👤 エージェント
+    backlog: true            # 🔄 TODO: 進行中 / 待機
+    github: true             # 🔀 開いている issue / PR
 ```
 
-### 更新間隔
+16個のキーが正式な設定スキーマです。リポジトリを意味する `owner/name` 部分は `git_branch` セグメントの中で一緒にレンダーされる17番目の要素で、スキーマ外なので個別トグルはありません。セッション行の3キー(`session`·`backlog`·`github`)はこの16キースキーマとは別に、設定に書かなくてもデフォルトでオンとしてレンダーされます — 観測元(セッション名、バックログキュー、GitHub キャッシュ)がなければ該当セグメントは静かに省略されます。過去の名前付きプリセット(full/compact/minimal)は廃止されたので、好みの組み合わせはセグメント単位で直接オン・オフします。
 
-Statusline の更新間隔は `settings.json` の `statusLine.refreshInterval` で設定します (単位: **秒**、デフォルト値 `10`)。`.moai/config/sections/statusline.yaml` ではなく Claude Code ランタイム設定に該当します。値が低すぎると CPU 使用量が増え、高すぎるとコンテキスト使用率の変化が遅く反映されます。
-
-```json
-{
-  "statusLine": {
-    "type": "command",
-    "command": "$CLAUDE_PROJECT_DIR/.moai/status_line.sh",
-    "refreshInterval": 10
-  }
-}
-```
-
-### Segment 有効化マトリックス
-
-| セグメント | ライン | デフォルト有効 | stdin field |
-|---------|------|----------|-------------|
-| `model` | L1 | ✓ | `model.display_name` |
-| `effort_thinking` | L1 | ✓ | `effort.level` + `thinking.enabled` |
-| `cache_hit` | L1 | ✓ | `current_usage.cache_read_tokens` + `cache_creation_tokens` |
-| `claude_version` | L1 | ✓ | `version` |
-| `moai_version` | L1 | ✓ | (ローカル config) |
-| `session_time` | L1 | ✓ | `cost.total_duration_ms` |
-| `output_style` | L1 | ✓ | `output_style.name` |
-| `context` | L2 | ✓ | `context_window.*` |
-| `usage_5h` | L2 | ✓ | `rate_limits.five_hour.*` |
-| `usage_7d` | L2 | ✓ | `rate_limits.seven_day.*` |
-| `directory` | L3 | ✓ | `workspace.project_dir` |
-| `git_branch` (combined) | L3 | ✓ | `workspace.repo.*` + local git |
-| `git_status` | L3 | ✓ | local git |
-| `task` | L3 | ✓ (v3.0.0+) | セッション状態の `active_task` |
-| `pr` | L3 | ✓ (v3.0.0+) | `pr.*` (Claude Code v2.1.145+) |
-| `worktree` | L3 | ✗ opt-in | `workspace.git_worktree` |
-
-> 上の 16 個が正式な設定スキーマキーです。`repo` (`🔀 owner/name`) は `git_branch` セグメント内でレンダーされる 17 番目のセグメントで、設定スキーマ外のため個別トグルがありません。
-
-## Handoff Guide — `(⚠️/clear)` 勧告基準
-
-CW bar の handoff suffix はコンテキスト使用量がモデル別の閾値を超えると有効化されます。これは SSE stall のリスクを事前に防ぎ、paste-ready resume message の活用を勧める視覚的マーカーで、**2 段階**で動作します。
-
-- **soft 段階** `(⚠️/clear)`: バンドの soft 閾値に到達したとき
-- **hard 段階** `(🛑/clear!)`: auto-compact-aware ceiling (`min(cap, auto-compact-threshold + margin)`) に到達したとき (`internal/statusline/renderer.go`)。ランタイムの auto-compact がしばしばこの ceiling を先取りするため、hard 段階は実際にはまれにしか発火しない上位信号です。
-
-| モデルクラス | Context Window | 閾値 | 勧告タイミング |
-|------------|----------------|--------|----------|
-| **1M context** (Opus 5, GLM-5.3) | 1,000,000 tokens | **≥50%** | ~500K トークン使用 |
-| **256K context** (Fable) | 256,000 tokens | **≥90%** | ~230K トークン使用 |
-| **200K context** (Sonnet, Haiku) | 200,000 tokens | **≥90%** | ~180K トークン使用 |
-| その他 / 不明 | — | 表示しない | (安全 default) |
-
-> 閾値は `internal/statusline/renderer.go` の handoff 段階判定で強制されます。この閾値は `.claude/rules/moai/workflow/context-window-management.md` HARD rule と一致します。
-
-### GLM コンテキストゲージ補正 (Issue #653)
-
-GLM-5.3 は実際の 1M コンテキストモデルですが、Claude Code は provider と無関係に Claude スロット基準で `context_window_size` を報告するため、GLM セッションで raw telemetry (`effectiveWindow`) が ~180K と誤って表示されることがあります。MoAI はこれを `ResolveGLMContextWindow` (`internal/statusline/memory.go`) で補正します。`MOAI_STATUSLINE_CONTEXT_SIZE` 環境変数 (明示的オーバーライド) または `llm.yaml` の `glm.context_windows` テーブル (glm-5.3 → 1,000,000) から値を解釈します。GLM セッションでは raw `effectiveWindow` ではなく MoAI statusline の CW% を信頼してください。
-
-有効化時のユーザーフローは次のとおりです。
-
-1. `(⚠️/clear)` marker の露出
-2. 進行中の作業を `progress.md` などに保存
-3. orchestrator が paste-ready resume message を生成 (session-handoff.md 6-block フォーマット)
-4. `/clear` 実行後に resume message を貼り付け
-5. 新しいセッションで作業を継続
-
-## stdin JSON スキーマ参照
-
-Claude Code が statusline スクリプトに渡す stdin JSON の全フィールド一覧は [公式 docs Available data](https://code.claude.com/docs/en/statusline#available-data) を参照してください。moai-adk-go は次のフィールドを活用します。
-
-```json
-{
-  "session_id": "abc...",
-  "transcript_path": "/path/to/transcript.jsonl",
-  "cwd": "/path/to/cwd",
-  "model": {"id": "claude-opus-4-8", "display_name": "Opus"},
-  "workspace": {
-    "current_dir": "...",
-    "project_dir": "...",
-    "git_worktree": "feature-xyz",
-    "repo": {"host": "github.com", "owner": "modu-ai", "name": "moai-adk"}
-  },
-  "version": "2.1.212",
-  "output_style": {"name": "MoAI"},
-  "cost": {
-    "total_cost_usd": 1.234,
-    "total_duration_ms": 17520000,
-    "total_lines_added": 156,
-    "total_lines_removed": 23
-  },
-  "context_window": {
-    "used_percentage": 62,
-    "context_window_size": 1000000,
-    "total_input_tokens": 620000,
-    "total_output_tokens": 0,
-    "current_usage": {
-      "input_tokens": 8500,
-      "output_tokens": 1200,
-      "cache_creation_input_tokens": 5000,
-      "cache_read_input_tokens": 605300
-    }
-  },
-  "exceeds_200k_tokens": true,
-  "effort": {"level": "xhigh"},
-  "thinking": {"enabled": true},
-  "rate_limits": {
-    "five_hour": {"used_percentage": 56, "resets_at": 1779286800},
-    "seven_day": {"used_percentage": 13, "resets_at": 1779832400}
-  },
-  "pr": {
-    "number": 1234,
-    "url": "https://github.com/modu-ai/moai-adk/pull/1234",
-    "review_state": "approved"
-  }
-}
-```
-
-## バージョン履歴
-
-- **v3.0.0 layout v3** (2026-05-22): 3-line layout の再設計 — repo+branch 統合 segment、directory を L3 head へ、`🪫 CW:` 絵文字を前へ、`(⚠️/clear)` handoff suffix、`💾` git status の統一、`💌 PR #N (⌥state)` 形式
-- **v3.0.0 STATUSLINE-STDINFIELDS-001** (2026-05-21): `workspace.repo` + `exceeds_200k_tokens` + `pr` stdin フィールドマッピングを追加、1M context handoff threshold 75% → 50%
-- **v3.0.0 STATUSLINE-V2145-001** (2026-05-20): PR segment を追加 (v2.1.145+ stdin)、4-locale docs の同期
-- **v2.1.139** (Claude Code): `effort.level` + `thinking.enabled` stdin JSON を追加
-- **v2.1.145** (Claude Code): `workspace.repo` + `pr` stdin JSON を追加
+更新間隔は `settings.json` の `statusLine.refreshInterval`(単位: 秒、デフォルト値 10)で決めます。ステータスラインの設定ファイルではなく Claude Code ランタイム設定に当たります。間隔を短くしすぎると CPU 負担が増え、長くしすぎるとコンテキスト使用率の変化が遅く反映されます。通常はデフォルト値で十分です。
 
 ## トラブルシューティング
 
-### Statusline に PR が出ない
+**PR が出ないなら** 3点を確認します。Claude Code が v2.1.145 以上である必要があります(stdin に `pr` フィールドが入るのはこのバージョンから)。現在のブランチに開いた PR があるか `gh pr view` で確認します。設定で `pr: false` と明示されていないかも見ます。
 
-- Claude Code バージョンを確認: `🔅 v2.1.145` 以上が必要 (それ以前のバージョンは stdin に `pr` フィールドを含まない)
-- 現在の branch に OPEN PR があるか確認: `gh pr view`
-- `statusline.yaml` に `pr: false` と明示されていないか確認
+**ハンドオフマーカーが出ないなら** たいてい正常です。1M モデルで 50% 未満、200K/256K モデルで 90% 未満なら、まだしきい値に達していません。しきい値を超えているのに出ないなら、モデルのウィンドウサイズが正しくマッピングされているか(特に GLM 補正)を確認します。
 
-### `(⚠️/clear)` が表示されない
+**色が出ないなら** ターミナルが ANSI 256-color に対応しているか、`NO_COLOR=1` が設定されていないか、テーマが環境に合っているかを確認します。
 
-- 1M context モデル: used_percentage が 50% 未満 → 正常 (まだ閾値未達)
-- 200K context モデル: used_percentage が 90% 未満 → 正常
-- 閾値を超えているのに表示されない: `shouldShowHandoffGuide` 関数の `MemoryData.ContextWindowSize` マッピングを確認 (boundary defect の可能性)
+**実際の出力を確認したいなら** サンプル stdin をパイプで渡して、ステータスラインを一度描いてみられます。`moai statusline` コマンドにセッション状態を含む JSON 文字列を標準入力として与えると、ターミナルに印字される3行がそのまま出ます。この方法で、設定変更がレンダーにどんな影響を与えるかをレンダリングなしに点検できます。
 
-### 色が表示されない
+## `/cd` でディレクトリを変える (CC 2.1.169+)
 
-- ターミナルが ANSI 256-color をサポートするか確認
-- `theme: catppuccin-mocha` が環境に適合するか確認
-- `NO_COLOR=1` 環境変数の設定有無を確認
-
-### 検証コマンド
-
-```bash
-# stdin fixture で statusline の実出力を確認
-NOW=$(date +%s)
-echo '{"session_id":"test","model":{"display_name":"Opus"},"workspace":{"repo":{"host":"github.com","owner":"modu-ai","name":"moai-adk"}},"version":"2.1.212","output_style":{"name":"MoAI"},"context_window":{"used_percentage":62,"context_window_size":1000000},"exceeds_200k_tokens":true,"effort":{"level":"xhigh"},"thinking":{"enabled":true},"rate_limits":{"five_hour":{"used_percentage":56,"resets_at":'$((NOW + 2820))'},"seven_day":{"used_percentage":13,"resets_at":'$((NOW + 518400))'}},"cost":{"total_duration_ms":17520000},"pr":{"number":1234,"url":"https://github.com/modu-ai/moai-adk/pull/1234","review_state":"approved"}}' | moai statusline
-```
-
-## `/cd` キャッシュ保存ディレクトリ切替 (CC 2.1.169+)
-
-Claude Code 2.1.169+ はセッションの作業ディレクトリを **プロンプトキャッシュを保存しながら** 変更する `/cd <path>` コマンドを提供します — statusline の `cwd` フィールドが新しいディレクトリを反映するよう更新されますが、進行中の推論コンテキストは再構築されません。これは新しいターミナルセッションを開くことに対するキャッシュ保存の代替です: `/cd` は蓄積されたコンテキストを維持し、新しいターミナルは最初から cold-start します。statusline がコンテキスト損失なく離れたい `cwd` を表示するとき (例: セッション中に L2 worktree へ切替)、`/cd` が摩擦の少ない経路です。resume-pattern の統合は [セッションハンドオフ](/ja/workflow-commands/moai-sync) を参照してください。
+Claude Code 2.1.169 以上では、**プロンプトキャッシュを保持したまま**セッションの作業ディレクトリを変える `/cd <path>` コマンドを使えます。ステータスラインのディレクトリ表示は新しいパスに更新されますが、それまで積んだ推論コンテキストは積み直しません。新しいターミナルセッションを開く代わりにキャッシュを活かしておく方法と考えればよいです。セッション途中でコンテキストを失わずに作業ディレクトリだけ移したいとき(例: 作業中にワークツリーへ切り替える)に最も手間の少ない選択です。resume パターンとの連携は[セッションハンドオフ](/ja/workflow-commands/moai-sync)を参照してください。
 
 ## 関連ドキュメント
 
-- [Settings JSON](/ja/advanced/settings-json) — Claude Code `statusLine` フィールド設定
+- [Settings JSON](/ja/advanced/settings-json) — Claude Code `statusLine` フィールドの設定

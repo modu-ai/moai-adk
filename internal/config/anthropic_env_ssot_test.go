@@ -47,6 +47,7 @@ var bannedAnthropicEnvNames = []string{
 	EnvAnthropicBaseURL,
 	EnvAnthropicDefaultFableModel,
 	EnvAnthropicDefaultHaikuModel,
+	EnvAnthropicDefaultModel,
 	EnvAnthropicDefaultOpusModel,
 	EnvAnthropicDefaultSonnetModel,
 	EnvAnthropicReasoningEffort,
@@ -125,7 +126,7 @@ func TestNoBareAnthropicEnvVarLiteralsInProduction(t *testing.T) {
 }
 
 // TestAnthropicBannedSetCoversAllNames asserts at runtime that the derived
-// banned set holds exactly the 9 ANTHROPIC_* names defined in envkeys.go
+// banned set holds exactly the 10 ANTHROPIC_* names defined in envkeys.go
 // (REQ-EAS-008). It is a top-level test function — NOT a sub-test — because the
 // acceptance verdict selects it with a bare top-level -run pattern.
 //
@@ -134,7 +135,7 @@ func TestNoBareAnthropicEnvVarLiteralsInProduction(t *testing.T) {
 func TestAnthropicBannedSetCoversAllNames(t *testing.T) {
 	t.Parallel()
 
-	const wantLen = 9
+	const wantLen = 10
 	if len(bannedAnthropicEnvNames) != wantLen {
 		t.Fatalf("banned set size = %d, want %d", len(bannedAnthropicEnvNames), wantLen)
 	}
@@ -154,6 +155,7 @@ func TestAnthropicBannedSetCoversAllNames(t *testing.T) {
 		{"EnvAnthropicBaseURL", EnvAnthropicBaseURL},
 		{"EnvAnthropicDefaultFableModel", EnvAnthropicDefaultFableModel},
 		{"EnvAnthropicDefaultHaikuModel", EnvAnthropicDefaultHaikuModel},
+		{"EnvAnthropicDefaultModel", EnvAnthropicDefaultModel},
 		{"EnvAnthropicDefaultOpusModel", EnvAnthropicDefaultOpusModel},
 		{"EnvAnthropicDefaultSonnetModel", EnvAnthropicDefaultSonnetModel},
 		{"EnvAnthropicReasoningEffort", EnvAnthropicReasoningEffort},

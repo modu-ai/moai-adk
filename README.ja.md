@@ -21,7 +21,7 @@
   <a href="https://codecov.io/gh/modu-ai/moai-adk"><img src="https://codecov.io/gh/modu-ai/moai-adk/branch/main/graph/badge.svg" alt="Codecov"></a>
   <br>
   <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.26+-00ADD8?style=flat&logo=go&logoColor=white" alt="Go"></a>
-  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.0-blue.svg" alt="Release"></a>
+  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.1-blue.svg" alt="Release"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
 </p>
 
@@ -62,6 +62,25 @@ moai cc -k --name sync
 
 コンパニオン・セッションは**ターミナルを 1 つずつ新しく開いて手動で**立ち上げる。名前は役割名だけで付ける — run-id はリード・セッションの識別子であり、コンパニオンはそれを背負わない。同じ役割名がすでに生きていれば次の番号が付く。セッションが別のセッションの代わりに立つことはない。どの列でも `moai cc` の代わりに `moai glm` を使えば、その列だけ GLM バックエンドで動く。
 
+### どのバックエンドをどの列に
+
+カンバンを開くとき、ブートストラップ案内が既定の推奨も一緒に知らせます — トークンの空きを優先するなら、リードは `moai glm -k`、plan は `moai cc -k --name plan`、run は `moai glm -k --name run`、sync は `moai cc -k --name sync`。理由はレーンごとに必要な推論の種類です。plan と sync は判断とレビューを回す列なので Claude に置き、run は実装中心なので GLM でコストを下げます。リードは判定を下す席ではなく、キューを見張ってカードを運ぶ席なので、待ち続けても安い GLM が合います。GLM リードの下で Claude の判定が必要になったら、`judge` という名前のセッションから抜け道を作ります — GLM リードが Claude を使う唯一の経路です。あるアカウントが 429 で詰まり始めたら、レーンをアカウントに分散して置く運用が効きます。この組み合わせはあくまで既定の推奨 — 別の組み合わせも、全セッションをひとつのバックエンドに統一しても構いません。
+
+### ファクトリーモード — レーン N 本で複数のカードを同時に
+
+`-f` はファクトリーリードを開く。これがカンバンの 2 つ目の形態だ。カンバンのカードが列を渡り歩くのに対し、ファクトリーのカードは**丸ごと 1 本のレーン**へ入り、そのレーンがセッション内で `plan → run → sync` を直列に運ぶ。各段階は `Agent()` サブエージェントとしてスポーンされる。レーンのラベルは `lane-1` … `lane-N`。
+
+```bash
+moai cc -f                    # リード — 既定はレーン 1 本 (lane-1)
+moai cc -f 4                  # リード — レーン 4 本
+moai cc -f lane-1             # レーン 1 本、各自別ターミナルで
+moai glm -f lane-3            # …GLM バックエンドのレーンも同じ形
+```
+
+レーンは `moai cc -f lane-<n>` で 1 本ずつ増やす。生きているセッションが使っているラベルは次の空き番号へ繰り上がる。1 本のレーンは最大 10 個の `Agent()` サブエージェントを同時に走らせ、書き込みを担うスポーンはそれぞれの worktree に隔離される。レーンを一度に全部立ち上げてはいけない — まず最初の 1 本を上げ、実際に出力が出ているのを確かめてから残りを活性化する。カードがレーンをまたいで分割されることはない。`-k` は 3 役割のカンバンチェーンを回すトークンのままで、1 回の起動に進入トークンは 1 つだけだから `-k` と `-f` の併用はエラーになる。`moai cg` はファクトリーモードを拒否する。
+
+> 詳しくは: [カンバンモード — ファクトリーモード](https://adk.mo.ai.kr/ja/advanced/kanban-mode)
+
 ボードは `backlog → plan → run → sync → done` の 5 列である。`backlog` には意図的に担当セッションを置かない。だから仕事は人が入れたときだけボードに入る。
 
 ```text
@@ -79,8 +98,8 @@ moai cc -k --name sync
 オペレーター ── /moai todo ──▶ backlog ─▶ plan ─▶ run ─▶ sync ─▶ done
                           (リードが読んだ証拠だけでカードを次の列へ)
 
-レーン — カード t0:  run セッション + ワークツリー WT-t0   ┐ 2 つの流れは同じボードを
-レーン — カード t1:  run セッション + ワークツリー WT-t1   ┘ 並んで流れ、混ざらない
+レーン — カード t0:  run セッション + ワークツリー t0      ┐ 2 つの流れは同じボードを
+レーン — カード t1:  run セッション + ワークツリー t1      ┘ 並んで流れ、混ざらない
 ```
 
 | 語 | 一行定義 |
@@ -92,7 +111,7 @@ moai cc -k --name sync
 | リード (lead) | 調整するセッション。読んだ証拠だけでカードを進め、コードは自分で書かない |
 | コンパニオン (companion) | 列ごとに座って作業するセッション。ターミナル 1 つずつ人が手で立ち上げる |
 | ラン ID (run-id) | リードが開始時に告知する短い識別子。リード・セッションの名前であり、コンパニオンはそれを背負わない |
-| ワークツリー (worktree) | カード専用の隔離チェックアウト（`WT-<カード>` ブランチ）。run から sync まで 1 本が貫く |
+| ワークツリー (worktree) | カード専用の隔離チェックアウト。ディレクトリがカード ID、ブランチは何をしたかを表す `WT-<スラッグ>`。run から sync まで 1 本が貫く |
 | ディスパッチ (dispatch) | リードがコンパニオンに送る指示 — 仕事へのポインタであって複製ではない |
 
 定義と例を備えた正式な用語集: [カンバンボード用語](https://adk.mo.ai.kr/ja/core-concepts/kanban-board-terms)
@@ -105,7 +124,7 @@ moai cc -k --name sync
   <img src="./assets/images/moai-web-overview.png" alt="moai web コンソール Overview 画面 — SPEC 集計、進行中 SPEC 一覧、セッション・レジストリ" width="90%">
 </p>
 
-詳しくは: [カンバンモード](https://adk.mo.ai.kr/ja/advanced/kanban-mode) · [`/moai todo`](https://adk.mo.ai.kr/ja/utility-commands/moai-todo)
+詳しくは: [カンバンモード](https://adk.mo.ai.kr/ja/advanced/kanban-mode) · [manager-lead リードコーディネーター](https://adk.mo.ai.kr/ja/advanced/manager-lead) · [`/moai todo`](https://adk.mo.ai.kr/ja/utility-commands/moai-todo)
 
 ---
 
@@ -274,7 +293,7 @@ claude        # または moai cc — プロジェクト内で Claude Code を�
 
 ### MCP サーバー
 
-`moai init` はデフォルトで**ちょうど 1 つ**の有効な MCP エントリを用意する — 自前の `moai mcp-server`（ローカル stdio サーバー）だ。このサーバーが 5 グループにまとめた 17 個の MoAI ツールを Claude Code に公開する。ドキュメントに記載された非活性の 4 エントリ（`context7`・`chrome-devtools`・`playwright`・`ast-grep`）は `moai mcp add <名前>` で有効化する。`moai mcp add|remove|list` CLI が atomic-RWM seam でエントリを管理するため、ユーザーが `.mcp.json` を手で編集する必要はない。
+`moai init` はデフォルトで**ちょうど 1 つ**の有効な MCP エントリを用意する — 自前の `moai mcp-server`（ローカル stdio サーバー）だ。このサーバーが 6 グループにまとめた 21 個の MoAI ツールを Claude Code に公開する。ドキュメントに記載された非活性の 4 エントリ（`context7`・`chrome-devtools`・`playwright`・`ast-grep`）は `moai mcp add <名前>` で有効化する。`moai mcp add|remove|list` CLI が atomic-RWM seam でエントリを管理するため、ユーザーが `.mcp.json` を手で編集する必要はない。
 
 | グループ | ツール | 目的 |
 |------|------|------|
@@ -283,6 +302,7 @@ claude        # または moai cc — プロジェクト内で Claude Code を�
 | ゴール + セッション | `goal_arm`, `goal_status`, `session_list` | 自律ループ + マルチセッション調整 |
 | クロスモデル監査 | `audit_multi`, `codex_audit`, `glm_audit`, `audit_cache` | 多監査者収束 |
 | codex 委譲 | `codex_task`, `codex_setup`, `codex_job_*` | バックグラウンド・クロスモデル作業 |
+| GLM 委譲 | `glm_task`, `glm_job_status`, `glm_job_result`, `glm_job_cancel` | GLM(z.ai)へのバックグラウンド作業委譲 |
 
 すべてのバックエンドは fail-open だ — GLM（`~/.moai/.env.glm`）と codex（`~/.codex/auth.json`）はオプションであり、利用不能なバックエンドは `inconclusive` を返すだけで hard error ではない。
 
@@ -307,7 +327,7 @@ SPEC ごとに独立した作業ツリーを与える。`moai cc -w <名前>` �
 | CWD 衝突の解決 | `(worktree_path, session_id)` の組で再利用パスを区別 |
 | 深さの上限 | 入れ子の複雑さを制限 |
 
-> **今すぐ使える**: `moai cc -k`（または `moai glm -k`）でリードを立ち上げ、`-k --name <role>` でコンパニオンを 1 つずつ接続する — ターミナル 1 台に 1 つ、手で立ち上げる。`moai chain <status|lineage|back|list|prune>` で系譜を読み、`moai todo <add|list|next|done>` で `backlog` 列を運用する。起動手順は上の「v3.1 の新機能 — カンバンモード」節にある。
+> **今すぐ使える**: `moai cc -k`（または `moai glm -k`）でリードを立ち上げ、`-k --name <role>` でコンパニオンを 1 つずつ接続する — ターミナル 1 台に 1 つ、手で立ち上げる。`moai chain <status|lineage|back|list|prune>` で系譜を読み、`moai todo`（引数なしでキュー表示、`add`·`list`·`next`·`done`·`unpick`、2 語以上はそのままカード追加）で `backlog` 列を運用する。起動手順は上の「v3.1 の新機能 — カンバンモード」節にある。
 
 > 詳しくは: [カンバンモード・ガイド](https://adk.mo.ai.kr/ja/advanced/kanban-mode)
 
@@ -354,10 +374,10 @@ AI エージェント同士がコンテキスト・不変条件・危険区域�
 ### moai web コンソール
 
 <p align="center">
-  <img src="./assets/images/moai-web-settings.png" alt="moai web コンソール設定画面 — プロファイルバーと 10 個の設定タブ" width="90%">
+  <img src="./assets/images/moai-web-settings.png" alt="moai web コンソール設定画面 — プロファイルバーと 11 個の設定タブ" width="90%">
 </p>
 
-`moai web` がローカルホスト限定のコンソールを開く。画面は Overview・Kanban・Specs・Monitor・Settings の 5 つで、設定画面は Identity・Language・LLM・3rd Party LLM・Workflow・Git & Worktree・Audit・Agents・Report・MCP の 10 タブに分かれる。プロファイルの作成・改名・削除も同じ画面で行う。
+`moai web` がローカルホスト限定のコンソールを開く。画面は Overview・Kanban・Specs・Monitor・Settings の 5 つで、設定画面は Identity・Language・LLM・3rd Party LLM・Workflow・Git & Worktree・Audit・Agents・Report・MCP・Cross-Session の 11 タブに分かれる。プロファイルの作成・改名・削除も同じ画面で行う。
 
 ### ref / domain スキル
 
@@ -415,7 +435,7 @@ flowchart TD
 | | manager-docs | 🔵 | sync 段階のドキュメント化 |
 | | manager-git | 🩵 | PR 作成・ルーティング |
 | | manager-design | 🟠 | デザイン段階の協業 (Claude Design) |
-| | manager-kanban | 🔴 | 階層チーム Tier L 調整（唯一の Agent 保持、深さ 2 封印） |
+| | manager-lead | 🔴 | 階層チーム Tier L 調整 + カンバン・ファクトリーのリードセッション配車（唯一の Agent 保持、深さ 2 封印） |
 | **評価者** | plan-auditor | 🔴 | 独立 plan 監査（偏り防止） |
 | | sync-auditor | 🔴 | 4 次元品質採点（機能性 40 · セキュリティ 25 · 制作 20 · 一貫性 15） |
 | **ビルダー** | builder-harness | 🟠 | プロジェクト専用エージェント・スキル・コマンド・フックのスキャフォールド |
@@ -440,9 +460,10 @@ flowchart TD
 ### ステータスラインの読み方
 
 ```
-🤖 Opus │ 🧠 xhigh·t │ ♻️ 87% │ 🔅 v2.1.212 │ 🗿 v3.0.1 │ ⏳ 2h 34m │ 💬 MoAI
+🤖 Opus │ 🧠 xhigh·t │ ♻️ 87% │ 🔅 cc v2.1.212 │ 🗿 v3.1.1 │ ⏳ 2h 34m │ 💬 MoAI
 🪫 CW: ████████░░ 88% (⚠️/clear) │ 🔋 5H: ████░░░░░░ 45% (4h 30m) │ 🪫 7D: ████████░░ 82% (Jan 21)
-📁 moai-adk-go │ 🔀 modu-ai/moai-adk | 🅱️ feat/statusline ↑2 +3 │ 💾 +1 M2 ?0 │ 📋 [run SPEC-AUTH-001-run] │ 💌 PR #1042 (⌥approved)
+📁 moai-adk-go │ 📡 modu-ai/moai-adk | 🅱️ feat/statusline ↑2 +3 │ 📫 +1 M2 ?0 │ 📋 [run SPEC-AUTH-001-run] │ 💌 PR #1042 (⌥approved)
+🏷️ run │ 🔄 TODO: 1 / 3 │ 🔀 2 / 1
 ```
 
 | 要素 | 意味 |
@@ -453,11 +474,12 @@ flowchart TD
 | CW: コンテキスト | コンテキスト・ウィンドウ使用率 + 2 段階 `/clear` マーカー (⚠️ ソフト, 🛑 ハード) |
 | 5H / 7D | 料金プラン使用率 + リセット時刻 |
 | 📁 ディレクトリ | プロジェクト・ディレクトリ名 |
-| 🔀 リポジトリ | GitHub リポジトリ `owner/name` |
+| 📡 リポジトリ | GitHub リポジトリ `owner/name` (PR アイコン 🔀 と区別) |
 | 🅱️ ブランチ | 現在のブランチ + `↑`先行 `↓`遅行 + `+`変更数 |
-| 💾 git 状態 | ステージ / 変更 / 未追跡の数 |
+| 📫 git 状態 | メールボックス・アイコン（📬 ステージ / 📫 修正 / 📪 未追跡 / 📭 クリーン）+ 件数 |
 | 📋 タスク | アクティブな SPEC ワークフロー `[コマンド SPEC-ID-フェーズ]` |
 | 💌 PR | アクティブな GitHub PR 番号 + レビュー状態 (`⌥状態`) |
+| 🏷️ セッション行 | 最終行に条件付き — セッション名 · 👤 エージェント · 🔄 `TODO: 進行中 / 待機` バックログ · 🔀 開いている issue/PR 数 |
 
 > 詳しくは: [ステータスライン・ガイド](https://adk.mo.ai.kr/ja/advanced/statusline)
 
@@ -637,7 +659,7 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて G
 | [はじめに](https://adk.mo.ai.kr/ja/getting-started) | 紹介 · インストール · Windows ガイド · init ウィザード · クイックスタート · CLI 概要 · FAQ |
 | [基本概念](https://adk.mo.ai.kr/ja/core-concepts) | アイデンティティ · 憲法 · ハーネス・エンジニアリング · SPEC ベース開発 · DDD · TRUST 5 |
 | [ワークフロー・コマンド](https://adk.mo.ai.kr/ja/workflow-commands) | `plan` · `run` · `sync` — SPEC パイプラインの主軸 |
-| [ユーティリティ・コマンド](https://adk.mo.ai.kr/ja/utility-commands) | `fix` · `loop` · `gate` · `review` · `clean` · `codemaps` · `e2e` · `feedback` · `goal` |
+| [ユーティリティ・コマンド](https://adk.mo.ai.kr/ja/utility-commands) | `fix` · `loop` · `gate` · `review` · `clean` · `codemaps` · `e2e` · `feedback` · `goal` · `todo` |
 | [CLI リファレンス](https://adk.mo.ai.kr/ja/cli-reference) | ターミナル `moai` バイナリのすべてのコマンド (全 36 個) |
 | [Claude Code ガイド](https://adk.mo.ai.kr/ja/claude-code) | Claude Code 統合 — 基礎 · コンテキスト/メモリ · エージェンティック · 拡張性 |
 | [Multi-LLM](https://adk.mo.ai.kr/ja/multi-llm) | CG モードとモデル方針 |
@@ -651,14 +673,15 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて G
 
 [**Claude Code ではじめる実践エージェンティック・コーディング**](https://adk.mo.ai.kr/book) — moai-adk 著者による実践ハーネス・エンジニアリング・ガイド。[book.mo.ai.kr](https://book.mo.ai.kr)
 
-### CLI コマンド表 (よく使う 13 個)
+### CLI コマンド表 (よく使う 14 個)
 
 | コマンド | 説明 |
 |---|---|
 | `moai init` | 対話式プロジェクト設定 (言語/フレームワーク/方法論を自動検出) |
 | `moai doctor` | システム状態の診断と環境検証 |
 | `moai status` | プロジェクト状態の要約 (Git ブランチ、品質指標) |
-| `moai update` | 最新版へ更新 (自動ロールバック対応) |
+| `moai update` | 最新版へ更新 (削除前バックアップ · 自動ロールバック対応) |
+| `moai graph <build\|query>` | コードベースグラフ (edges.jsonl) の生成・照会 — 呼び出し元の検索、影響半径、マイルストーンの交差検査 |
 | `moai cc` / `moai glm` / `moai cg` | Claude 専用 / GLM 専用 / ハイブリッドのセッション |
 | `moai worktree <sync\|done\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree の保守 (ワークツリーへの出入りはランチャーの仕事) |
 | `moai session <list\|register\|current>` | マルチセッション調整 |
@@ -667,7 +690,7 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて G
 | `moai harness <status\|apply\|rollback\|disable>` | ハーネス学習ライフサイクル |
 | `moai handoff <save\|list>` | セッション・ハンドオフ記録 |
 | `moai preference <list\|decay-scan\|toggle>` | 決定メモリ管理 |
-| `moai web` | Web コンソール — 5 画面 (Overview · Kanban · Specs · Monitor · Settings)、10 タブ設定 |
+| `moai web` | Web コンソール — 5 画面 (Overview · Kanban · Specs · Monitor · Settings)、11 タブ設定 |
 
 > 全 36 コマンド: [CLI リファレンス](https://adk.mo.ai.kr/ja/cli-reference)
 
@@ -696,7 +719,7 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて G
 ### ステータスラインのバージョン表示は何を意味する?
 
 ```
-🗿 v3.0.1 ⬆️ v3.0.2
+🗿 v3.1.0 ⬆️ v3.1.1
 ```
 
 前の値が現在インストールされている moai-adk のバージョンで、矢印は利用可能な更新があることを示す。`moai update` を実行すると消える。

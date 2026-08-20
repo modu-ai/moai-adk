@@ -475,7 +475,7 @@ func checkLiteralAskUserQuestion(file string, body []byte) []LintViolation {
 // is absent — see agentNameFor). Initially the single sanctioned pilot agent.
 var nestingPilotAllowlist = map[string]bool{
 	"sync-auditor": true,
-	"manager-kanban": true, // depth-1 fan-out (SPEC-V3R2-ORC-004)
+	"manager-lead": true, // depth-1 fan-out (SPEC-V3R2-ORC-004; renamed from manager-kanban)
 }
 
 // agentNameFor resolves the canonical agent name used for allowlist lookups.

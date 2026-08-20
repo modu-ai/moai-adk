@@ -43,3 +43,9 @@ github:
   title: "moai ast-grep / ast-edit structural search"
 epic:
   title: "moai epic Epic Progress"
+graph:
+  title: "moai graph Dependency Graph"
+tokens:
+  title: "moai tokens Token Accounting"
+memory:
+  title: "moai memory Memory Maintenance"

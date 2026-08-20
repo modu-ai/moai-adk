@@ -13,6 +13,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
+	"github.com/modu-ai/moai-adk/internal/execerr"
 	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/template"
@@ -601,7 +602,9 @@ func runGitCommand(dir string, args ...string) (string, error) {
 	cmd.Dir = dir
 	out, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("git %s failed: %w", strings.Join(args, " "), err)
+		// execerr.StatusDetail, not %w: a raw *exec.ExitError chain would be
+		// mistaken for an intentional ExitCoder at the cmd/moai seam (t130).
+		return "", fmt.Errorf("git %s failed: %s", strings.Join(args, " "), execerr.StatusDetail(err))
 	}
 	// Do not TrimSpace to preserve trailing newline (matches original exec.Output() behavior)
 	return string(out) + "\n", nil
@@ -772,7 +775,10 @@ func launchClaudeDefault(profileName string, extraArgs []string) error {
 		if errors.As(err, &ee) && ee.ExitCode() == 1 {
 			fmt.Fprintln(os.Stderr, "No previous session found, starting new session...")
 		} else {
-			return fmt.Errorf("resume session failed: %w", err)
+			// StatusDetail, not %w: claude exiting 2+ would otherwise be
+			// mistaken for an intentional ExitCoder at the cmd/moai seam and
+			// exit silently with claude's raw code (t130).
+			return fmt.Errorf("resume session failed: %s", execerr.StatusDetail(err))
 		}
 	}
 

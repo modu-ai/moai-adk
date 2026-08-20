@@ -207,16 +207,30 @@ func runShowBlocker(p printer.Printer) error {
 	return nil
 }
 
-// findStateDir walks up the directory tree looking for .moai/state/.
+// findStateDir walks up the directory tree looking for .moai/state/,
+// starting from the current working directory.
 func findStateDir() (string, error) {
 	// Start from current working directory
 	cwd, err := os.Getwd()
 	if err != nil {
 		return "", err
 	}
+	return findStateDirFrom(cwd)
+}
 
+// findStateDirFrom is findStateDir with the starting directory supplied
+// rather than read from the process, so the walk can be exercised over a
+// fully-owned directory tree instead of whatever the machine happens to have
+// above the working directory.
+//
+// The walk is bottom-up and unbounded: it stops at the first ancestor holding
+// .moai/state, and otherwise climbs to the filesystem root. A caller whose
+// working directory sits inside the user's home therefore inherits any
+// ~/.moai/state on the machine — which is why callers that need a specific
+// directory pass it explicitly instead of relying on this.
+func findStateDirFrom(start string) (string, error) {
 	// Walk up looking for .moai/state/
-	dir := cwd
+	dir := start
 	for {
 		stateDir := filepath.Join(dir, ".moai", "state")
 		if info, err := os.Stat(stateDir); err == nil && info.IsDir() {
@@ -232,5 +246,5 @@ func findStateDir() (string, error) {
 		dir = parent
 	}
 
-	return "", fmt.Errorf(".moai/state/ directory not found from %s", cwd)
+	return "", fmt.Errorf(".moai/state/ directory not found from %s", start)
 }

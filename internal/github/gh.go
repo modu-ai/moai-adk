@@ -11,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/execerr"
 )
 
 // ghBin caches the resolved gh binary path to avoid repeated exec.LookPath calls.
@@ -329,9 +331,12 @@ func pushWithGit(ctx context.Context, workDir string) error {
 	if runErr := cmd.Run(); runErr != nil {
 		errMsg := strings.TrimSpace(stderr.String())
 		if errMsg == "" {
-			errMsg = runErr.Error()
+			errMsg = execerr.StatusDetail(runErr)
 		}
-		return fmt.Errorf("push: %s: %w", errMsg, runErr)
+		// StatusDetail, not %w: a raw *exec.ExitError chain would be mistaken
+		// for an intentional ExitCoder at the cmd/moai seam (t130) — a failed
+		// push must print and exit 1, not exit silently with git's code.
+		return fmt.Errorf("push: %s (%s)", errMsg, execerr.StatusDetail(runErr))
 	}
 
 	return nil
@@ -356,12 +361,14 @@ func execGH(ctx context.Context, dir string, args ...string) (string, error) {
 	if err := cmd.Run(); err != nil {
 		errMsg := strings.TrimSpace(stderr.String())
 		if errMsg == "" {
-			errMsg = err.Error()
+			errMsg = execerr.StatusDetail(err)
 		}
+		// StatusDetail, not %w: a raw *exec.ExitError chain would be mistaken
+		// for an intentional ExitCoder at the cmd/moai seam (t130).
 		if len(args) == 0 {
-			return "", fmt.Errorf("gh: %s: %w", errMsg, err)
+			return "", fmt.Errorf("gh: %s (%s)", errMsg, execerr.StatusDetail(err))
 		}
-		return "", fmt.Errorf("gh %s: %s: %w", args[0], errMsg, err)
+		return "", fmt.Errorf("gh %s: %s (%s)", args[0], errMsg, execerr.StatusDetail(err))
 	}
 
 	return strings.TrimRight(stdout.String(), "\n\r"), nil

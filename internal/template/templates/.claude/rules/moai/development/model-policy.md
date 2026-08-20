@@ -99,7 +99,7 @@ Re-verified against the CC 2.1.197 Sonnet 5 release + `code.claude.com/docs/en/m
 The template deliberately does **NOT** set `availableModels` or `enforceAvailableModels`. A closed `availableModels` allowlist combined with `enforceAvailableModels: true` hides any model not in the list from the `/model` picker (CC v2.1.172 behavior), which caused two problems:
 
 1. **New-model lockout** — every new Claude model (for example a new `fable` generation, or any future tier) was invisible in `/model` until an operator manually appended it to the allowlist. This recurred on every model release.
-2. **GLM allowlist maintenance** — enforcement forced every GLM swap target (`glm-5.2` and the other GLM tiers) to be enumerated in the allowlist, or the swap was declined (see GLM-mode reconciliation below).
+2. **GLM allowlist maintenance** — enforcement forced every GLM swap target (whichever model id each GLM tier slot held) to be enumerated in the allowlist, or the swap was declined (see GLM-mode reconciliation below).
 
 Dropping `enforceAvailableModels` resolves both at once: all Claude models (current and future) auto-appear in the picker with no maintenance, and the GLM swap is admitted without an allowlist. Only the Default-model cost lever is retained — `"model": "sonnet"` alone still routes the busy-agent cost through Sonnet by default.
 
@@ -107,11 +107,29 @@ Why this is `[1m]`-safe: the lever operates on the **Default** model resolution 
 
 ### GLM-mode reconciliation
 
-[ZONE:Evolvable] [HARD] With `enforceAvailableModels` unset, GLM mode needs no allowlist reconciliation. When GLM mode is active (`moai glm` whole-session, or the GLM teammate panes of `moai cg`), the GLM activation sets `ANTHROPIC_DEFAULT_OPUS_MODEL` to the configured GLM high model (default `glm-5.2`), surfaced in the model UI as the Opus-slot alias. The CC 2.1.176 redirect-blocking semantics — which decline an `ANTHROPIC_DEFAULT_*_MODEL` redirect to a model NOT in `availableModels` — apply ONLY when `enforceAvailableModels` is `true`. Because the template no longer sets that flag, the GLM swap is never checked against an allowlist and is admitted directly; the session runs on the configured GLM model instead of silently falling back to Sonnet.
+[ZONE:Evolvable] [HARD] With `enforceAvailableModels` unset, GLM mode needs no allowlist reconciliation. When GLM mode is active (`moai glm` whole-session, or the GLM teammate panes of `moai cg`), the GLM activation sets `ANTHROPIC_DEFAULT_OPUS_MODEL` to the configured GLM high model (currently `glm-5.3`; the `DefaultGLMHigh` constant is the SSOT, so read it there rather than trusting this line after a model generation turns over), surfaced in the model UI as the Opus-slot alias. The CC 2.1.176 redirect-blocking semantics — which decline an `ANTHROPIC_DEFAULT_*_MODEL` redirect to a model NOT in `availableModels` — apply ONLY when `enforceAvailableModels` is `true`. Because the template no longer sets that flag, the GLM swap is never checked against an allowlist and is admitted directly; the session runs on the configured GLM model instead of silently falling back to Sonnet.
 
 This supersedes the earlier approach of enumerating the GLM model ids in `availableModels` (the `[1m]`-variant + raw-GLM-id expansion). That expansion existed only to satisfy `enforceAvailableModels: true`; removing the enforcement flag removes the need for the expansion entirely. The Default model stays `sonnet` — a non-GLM (`moai cc` / plain Claude) session still resolves its Default to Sonnet; the only change is that no model is hidden and no swap is declined.
 
 Scope note: this is a **static template change** in `.claude/settings.json.tmpl` (removal of the `availableModels` + `enforceAvailableModels` keys). It touches no Go runtime code (`glm.go` / `launcher.go` / `settings.go` unchanged) and writes nothing to `settings.local.json` — so the solo `moai glm` "settings.local.json clean" design (no GLM env leak to subsequent plain-`claude` invocations) is preserved.
+
+### Three model-selection env axes (they are not interchangeable)
+
+Claude Code exposes three separate `ANTHROPIC_*` axes for choosing a model. They are frequently confused because the names are near-identical, and only the third is one MoAI writes.
+
+| Variable | What it selects | Lifetime |
+|---|---|---|
+| `ANTHROPIC_MODEL` | The model for **the session launched with it**. Documented as applying only to that session — a separate terminal needs its own value rather than a `/model` switch. | Session-scoped; does not persist |
+| `ANTHROPIC_DEFAULT_MODEL` | The model **new sessions start on**. A later `/model` pick overrides it, and that pick persists across restarts. | Starting value; overridable and the override persists |
+| `ANTHROPIC_DEFAULT_<TIER>_MODEL` (`OPUS` / `SONNET` / `HAIKU` / `FABLE`) | Which concrete model ID a **tier alias** resolves to. This is the alias→ID resolution layer, not a session-model choice. | Per-slot mapping, for as long as it is exported |
+
+**MoAI writes only the third axis.** The GLM activation path (`setGLMEnv` in `glm.go`) sets all four `ANTHROPIC_DEFAULT_<TIER>_MODEL` variables so each tier slot resolves to the configured GLM model. MoAI neither reads nor writes `ANTHROPIC_MODEL` or `ANTHROPIC_DEFAULT_MODEL`.
+
+**The layering to be aware of.** A user who exports `ANTHROPIC_DEFAULT_MODEL` globally sets a starting model for *every* session, a GLM session included. That value is a session-model choice and MoAI's writes are slot resolutions, so the two axes are orthogonal rather than in conflict — but they are both in play at once, and the resulting session can start on a model that is not what the tier mapping suggests. When a GLM session reports an unexpected starting model, check for a globally-exported `ANTHROPIC_DEFAULT_MODEL` before suspecting the slot mapping.
+
+**Observation scope (read this before relying on the row above).** `ANTHROPIC_DEFAULT_MODEL` was introduced in the Claude Code v2.1.236 changelog, and the changelog entry is the only source for it: a fetch of the official model-configuration page enumerates `ANTHROPIC_MODEL`, all four `ANTHROPIC_DEFAULT_<TIER>_MODEL` names, `ANTHROPIC_CUSTOM_MODEL_OPTION`, `ANTHROPIC_SMALL_FAST_MODEL`, and `ANTHROPIC_BASE_URL` — but zero occurrences of `ANTHROPIC_DEFAULT_MODEL`. This is upstream doc lag, the same situation the `CLAUDE_CODE_DISABLE_1M_CONTEXT` note above records, and the changelog is likewise the citable source here.
+
+Consequently the precedence between `ANTHROPIC_DEFAULT_MODEL` and the tier variables **has not been observed** — no behavioral test was run, and no documentation states it. The orthogonality claim above is an inference from the two variables' stated purposes (session-starting model vs alias resolution), not a measurement. Treat it as a working assumption until either the docs catch up or a session is run with both exported.
 
 ## Model Policy Tiers (3-tier — high/medium/low)
 

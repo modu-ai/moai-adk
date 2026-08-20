@@ -69,22 +69,19 @@ func runCG(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// SPEC-FACTORY-WORKER-FANOUT-001 v1.2.0: the retired -f/--factory token
-	// errors on cg too — before the kanban rejection, so the operator who
-	// reaches for the retired flag gets the retirement message, not a
-	// backend-mismatch one that does not name their typo.
-	if err := rejectRetiredFactoryFlag(args); err != nil {
+	// t118 launcher axis: -f/--factory is the live factory entry again, and
+	// Factory Mode stays unavailable on cg (SPEC-FACTORY-WORKER-FANOUT-001).
+	// The factory rejection runs FIRST because its unified parse
+	// (parseLauncherEntry) also surfaces the -f value errors and the -f+-k
+	// conflict — the most precise error an operator holding both tokens can
+	// get — before the kanban rejection answers the plain -k shapes.
+	if err := rejectFactoryOnCG(args); err != nil {
 		return err
 	}
 	// SPEC-FACTORY-MODE-001 REQ-FM-004: Kanban Mode is unavailable on cg. The
 	// rejection precedes --spawn so `moai cg --kanban --spawn` fails here
 	// rather than in the spawned window, where the operator would not see it.
 	if err := rejectKanbanOnCG(args); err != nil {
-		return err
-	}
-	// SPEC-FACTORY-WORKER-FANOUT-001: Factory Mode is unavailable on cg for
-	// the same premise and at the same placement.
-	if err := rejectFactoryOnCG(args); err != nil {
 		return err
 	}
 

@@ -163,7 +163,7 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 		metrics["input_size"] = len(input.ToolInput)
 	}
 
-	// Collect Agent (formerly Task) subagent metrics (SPEC-MONITOR-001).
+	// Collect Agent (formerly Task) subagent metrics.
 	// Best-effort: errors are logged internally and never propagated.
 	// Since v2.1.63 Claude Code renamed Task → Agent; accept both for backward compatibility.
 	if input.ToolName == "Agent" || input.ToolName == "Task" {

@@ -1,0 +1,707 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>팩토리·칸반 멀티 LLM 재설계 감사</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&family=JetBrains+Mono:wght@400;500&display=swap">
+  <style>
+    :root {
+      --ivory:#FAF9F5; --paper:#FFFFFF; --slate:#141413;
+      --clay:#D97757; --clay-d:#B85C3E; --oat:#E3DACC; --olive:#788C5D;
+      --g100:#F0EEE6; --g300:#D1CFC5; --g500:#87867F; --g700:#3D3D3A;
+      --sans:"Pretendard",system-ui,-apple-system,"Segoe UI",sans-serif;
+      --serif:"Noto Serif KR",ui-serif,Georgia,serif;
+      --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+      --max-width:1100px; --radius-row:8px; --border:1.5px solid var(--g300);
+    }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { background:var(--ivory); color:var(--g700); font-family:var(--sans);
+           font-size:15px; line-height:1.6; padding:56px 32px 120px; -webkit-font-smoothing:antialiased; }
+    .page { max-width:var(--max-width); margin:0 auto; }
+
+    .eyebrow { font-family:var(--mono); font-size:11px; letter-spacing:.08em;
+               text-transform:uppercase; color:var(--g500); margin-bottom:10px; }
+    h1 { font-family:var(--serif); font-weight:700; font-size:31px; color:var(--slate);
+         letter-spacing:-.01em; line-height:1.25; margin-bottom:18px; }
+
+    .verdict { border:var(--border); border-left:3px solid var(--clay); border-radius:10px;
+               background:var(--paper); padding:18px 20px; margin-bottom:26px;
+               font-size:14.5px; max-width:840px; }
+    .verdict b { color:var(--slate); }
+    .verdict .stamp { display:inline-block; font-family:var(--mono); font-size:11px;
+                      letter-spacing:.05em; background:var(--clay); color:#fff;
+                      padding:3px 9px; border-radius:5px; margin-bottom:10px; }
+
+    .sec-head { font-family:var(--serif); font-weight:700; font-size:23px; color:var(--slate);
+                margin:48px 0 6px; padding-bottom:8px; border-bottom:2px solid var(--oat); }
+    .sec-intro { font-size:14.5px; margin:12px 0 18px; max-width:770px; }
+    h3 { font-family:var(--serif); font-weight:700; font-size:17px; color:var(--slate); margin:26px 0 8px; }
+    h4 { font-family:var(--serif); font-weight:700; font-size:15px; color:var(--slate); margin:18px 0 6px; }
+    p { margin-bottom:12px; max-width:770px; }
+    code { font-family:var(--mono); font-size:12.5px; background:var(--g100); padding:1px 5px; border-radius:4px; }
+    td code, th code, pre code { background:none; padding:0; }
+    ul, ol { margin:0 0 12px 20px; max-width:770px; }
+    li { margin-bottom:6px; }
+    .lead { border-left:2px solid var(--oat); padding-left:14px; margin-bottom:16px; max-width:770px; font-size:14.5px; }
+
+    .summary-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin:22px 0 8px; }
+    @media (max-width:760px){ .summary-strip{ grid-template-columns:repeat(2,1fr); } }
+    .sum-cell { border:var(--border); border-radius:10px; background:var(--paper); padding:14px 16px; }
+    .sum-cell .k { font-family:var(--mono); font-size:10.5px; letter-spacing:.06em;
+                   text-transform:uppercase; color:var(--g500); margin-bottom:6px; }
+    .sum-cell .v { font-family:var(--serif); font-weight:700; font-size:24px; color:var(--slate); line-height:1.15; }
+    .sum-cell .v.accent { color:var(--clay); }
+    .sum-cell .v.good { color:var(--olive); }
+    .sum-cell .n { font-size:12px; color:var(--g500); margin-top:4px; }
+
+    table { border-collapse:collapse; width:100%; margin:14px 0 20px; font-size:13.5px;
+            background:var(--paper); border:var(--border); border-radius:var(--radius-row); overflow:hidden; }
+    th { background:var(--g100); color:var(--slate); text-align:left; font-weight:700;
+         padding:9px 12px; border-bottom:1px solid var(--g300); font-size:12.5px; }
+    td { padding:9px 12px; border-bottom:1px solid var(--g300); vertical-align:top; }
+    tr:last-child td { border-bottom:none; }
+    .ok{color:var(--olive);font-weight:700;} .part{color:var(--clay);font-weight:700;} .no{color:var(--clay-d);font-weight:700;}
+
+    .finding { border:var(--border); border-radius:10px; background:var(--paper);
+               padding:16px 18px; margin:14px 0; max-width:860px; }
+    .finding h4 { display:flex; align-items:center; gap:9px; margin:0 0 8px; font-size:16px; }
+    .badge { font-family:var(--mono); font-size:10px; letter-spacing:.05em; padding:2px 8px;
+             border-radius:4px; text-transform:uppercase; flex-shrink:0; }
+    .badge.crit { background:var(--clay); color:#fff; }
+    .badge.maj  { background:var(--clay-d); color:#fff; }
+    .badge.min  { background:var(--oat); color:var(--slate); }
+    .badge.keep { background:var(--olive); color:#fff; }
+    .finding p { font-size:13.8px; margin-bottom:8px; }
+    .finding .ev { font-family:var(--mono); font-size:12px; color:var(--g500);
+                   border-top:1px solid var(--g300); padding-top:8px; margin-top:10px; }
+
+    .milestones { display:flex; flex-direction:column; margin-top:18px; }
+    .milestone { display:grid; grid-template-columns:78px 28px 1fr; gap:0 18px; }
+    .milestone .when { text-align:right; font-family:var(--mono); font-size:12px; color:var(--g500); padding-top:4px; }
+    .milestone .dot-col { display:flex; flex-direction:column; align-items:center; }
+    .milestone .dot { width:14px; height:14px; border-radius:50%; background:var(--paper);
+                      border:3px solid var(--clay); margin-top:5px; flex-shrink:0; }
+    .milestone .line { width:2px; flex:1; background:var(--g300); margin:4px 0; }
+    .milestone:last-child .line { display:none; }
+    .milestone .body { padding-bottom:28px; }
+    .milestone .body h3 { font-size:17px; margin:0 0 4px; }
+    .milestone .body p { font-size:13.8px; margin-bottom:8px; }
+    .tag-row { display:flex; gap:7px; flex-wrap:wrap; }
+    .tag { font-family:var(--mono); font-size:11px; background:var(--oat); color:var(--slate);
+           padding:2px 8px; border-radius:5px; }
+
+    .risks { display:grid; grid-template-columns:repeat(2,1fr); gap:14px; margin-top:16px; }
+    @media (max-width:760px){ .risks{ grid-template-columns:1fr; } }
+    .risk { border:var(--border); border-radius:10px; background:var(--paper); padding:14px 16px; }
+    .risk h4 { font-size:15px; margin-bottom:6px; display:flex; align-items:center; gap:8px; }
+    .sev { font-family:var(--mono); font-size:10px; letter-spacing:.05em; padding:2px 7px;
+           border-radius:4px; text-transform:uppercase; }
+    .sev.high{background:var(--clay);color:#fff;} .sev.mid{background:var(--oat);color:var(--slate);}
+    .sev.low{background:var(--g100);color:var(--g500);}
+    .risk p { font-size:13.4px; margin-bottom:6px; }
+    .risk .mit { font-size:13px; color:var(--g500); }
+    .risk .mit b { color:var(--olive); }
+
+    .metric-row { display:grid; grid-template-columns:14px 1fr 210px; gap:12px; align-items:baseline;
+                  padding:11px 4px; border-bottom:1px solid var(--g300); }
+    .metric-indicator { width:10px; height:10px; border-radius:50%; background:var(--g300); }
+    .metric-label { font-size:14px; color:var(--slate); }
+    .metric-target { font-family:var(--mono); font-size:12.5px; color:var(--g500); text-align:right; }
+
+    .callout { display:flex; gap:12px; border:var(--border); border-color:var(--oat);
+               background:rgba(227,218,204,.35); border-radius:10px; padding:14px 16px;
+               margin:18px 0; font-size:14px; max-width:840px; }
+    .callout .ico { color:var(--clay); font-weight:600; flex-shrink:0; }
+    .callout p:last-child { margin-bottom:0; }
+
+    pre.mermaid { background:var(--paper); border:var(--border); border-radius:10px; padding:18px;
+                  margin:18px 0; font-family:var(--mono); font-size:12px; color:var(--g500);
+                  overflow-x:auto; text-align:center; }
+    pre.code { background:var(--paper); border:var(--border); border-radius:10px; padding:15px 17px;
+               margin:14px 0; font-family:var(--mono); font-size:12.5px; line-height:1.6;
+               color:var(--slate); overflow-x:auto; }
+    pre.code .cm { color:var(--g500); } pre.code .hl { color:var(--clay); }
+
+    details.fold { border:var(--border); border-radius:10px; background:var(--paper); margin:12px 0; overflow:hidden; }
+    details.fold > summary { list-style:none; cursor:pointer; padding:13px 16px; font-family:var(--serif);
+                             font-size:15.5px; color:var(--slate); display:flex; align-items:baseline; gap:10px; }
+    details.fold > summary::-webkit-details-marker { display:none; }
+    details.fold > summary::before { content:"▸"; color:var(--clay); font-family:var(--sans); font-size:12px; }
+    details.fold[open] > summary::before { content:"▾"; }
+    details.fold .fold-body { padding:0 16px 16px; }
+    details.fold .fold-body p { font-size:13.8px; }
+
+    footer { margin-top:64px; padding-top:20px; border-top:1px solid var(--g300);
+             font-family:var(--mono); font-size:11.5px; color:var(--g500); line-height:1.9; }
+    footer a { color:var(--g500); }
+
+    @media print {
+      body{background:#fff;color:#000;padding:0;font-size:11pt;} .page{max-width:none;}
+      .finding,.risk,.milestone,details.fold{page-break-inside:avoid;}
+      details[open]{display:block;} h1,h3,.sec-head{page-break-after:avoid;}
+      *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <div class="eyebrow">MoAI-ADK · 설계 감사 + 재설계 · 2026-08-17</div>
+  <h1>팩토리 · 칸반 멀티 LLM 재설계 감사<br>— 토큰 풀을 설계 축으로</h1>
+
+  <div class="verdict">
+    <span class="stamp">판정: 아이디어 유효 · 제출 설계는 목표 역행</span>
+    <p><b>오라버니 아이디어는 실용성이 있습니다.</b> 그것도 재료가 이미 거의 다 갖춰져 있어요 &mdash;
+    <code>audit_multi</code>(3백엔드 교차검증), <code>codex_task</code>(OpenAI 위임),
+    <code>glm_audit</code>(z.ai 직결), <code>moai glm</code>/<code>cg</code>가 전부 구현돼 있습니다.</p>
+    <p><b>그런데 제출된 GLM 설계는 그 목표와 반대 방향입니다.</b> 핵심 제안인
+    "터미널 레인 → <code>Agent()</code> 워커 통합"은 <b>모든 워커를 단일 Claude 계정 할당량에 집중</b>시킵니다.
+    <code>Agent()</code>는 부모 세션의 백엔드·크레덴셜을 그대로 씁니다.
+    N=8 팬아웃은 5시간 창과 주간 캡을 <b>8배 빠르게</b> 태웁니다.</p>
+    <p style="margin-bottom:0"><b>결정적 발견 하나로 문제가 풀립니다</b> &mdash;
+    <code>moai glm</code> 세션에서 스폰한 <code>Agent()</code>는 <b>z.ai 토큰을 씁니다.</b>
+    즉 <b>lead 팀 전체를 GLM 백엔드에 올리면</b> Agent 팬아웃의 처리량을 얻으면서
+    Claude 할당량은 <b>한 톨도 쓰지 않습니다.</b> 이게 재설계의 축입니다.</p>
+  </div>
+
+  <div class="summary-strip">
+    <div class="sum-cell">
+      <div class="k">사용 가능한 토큰 풀</div>
+      <div class="v good">3</div>
+      <div class="n">Claude · z.ai/GLM · OpenAI/codex</div>
+    </div>
+    <div class="sum-cell">
+      <div class="k">GLM 작업위임 MCP 도구</div>
+      <div class="v accent">0</div>
+      <div class="n">감사용 <code>glm_audit</code> 1개뿐 &mdash; 최대 갭</div>
+    </div>
+    <div class="sum-cell">
+      <div class="k">Agent 팬아웃 프리픽스</div>
+      <div class="v accent">~39K</div>
+      <div class="n">토큰/워커 (추정) × N 회 콜드</div>
+    </div>
+    <div class="sum-cell">
+      <div class="k">문서상 동시성 상한</div>
+      <div class="v">3–5</div>
+      <div class="n">제출안 N=8 은 근거 없음</div>
+    </div>
+  </div>
+
+  <div class="sec-head">1. 목표 정렬 검사 &mdash; 무엇을 풀려고 했나</div>
+
+  <p class="lead">
+    감사의 첫 단계는 성능이 아니라 <b>목표 대조</b>입니다.
+    설계가 아무리 정교해도 다른 문제를 풀고 있으면 소용이 없으니까요.
+  </p>
+
+  <table>
+    <thead><tr><th style="width:230px">오라버니가 요구한 것</th><th style="width:150px">제출 설계의 처리</th><th>판정</th></tr></thead>
+    <tbody>
+      <tr><td><b>주간·5시간 리밋 회피</b></td><td>다루지 않음</td>
+          <td class="no">미달 &mdash; 오히려 소모 가속</td></tr>
+      <tr><td><b>여러 LLM에 토큰 분산</b></td><td>§4 "남겨두는 것"으로 강등</td>
+          <td class="no">미달 &mdash; 1순위 목표가 각주로</td></tr>
+      <tr><td><b>LLM 교차 검증</b></td><td>review Agent (같은 모델)</td>
+          <td class="no">미달 &mdash; 동종 자기검증</td></tr>
+      <tr><td><b>가성비 (비용 대비 성능)</b></td><td>비용 항목 없음</td>
+          <td class="no">미달 &mdash; 정량표에 토큰 열이 없음</td></tr>
+      <tr><td><b>가용비 (리밋 안 걸리고 계속)</b></td><td>다루지 않음</td>
+          <td class="no">미달</td></tr>
+      <tr><td>처리량 (동시 카드 수)</td><td>4 → N</td>
+          <td class="ok">달성</td></tr>
+      <tr><td>운영자 개입 제거</td><td>자동 배차 풀</td>
+          <td class="ok">달성</td></tr>
+      <tr><td>세션 위생 비용</td><td>Agent 카드 단위 수명</td>
+          <td class="ok">달성</td></tr>
+    </tbody>
+  </table>
+
+  <p><b>요약하면</b> &mdash; 제출 설계는 <b>처리량 문제</b>를 잘 풀었습니다.
+  다만 오라버니가 1순위로 요구한 <b>비용·가용성 문제</b>는 손대지 않았고,
+  핵심 제안이 그 문제를 <b>악화</b>시킵니다.</p>
+
+  <div class="sec-head">2. 감사 소견 &mdash; 결함 3건</div>
+
+  <div class="finding">
+    <h4><span class="badge crit">치명</span> F-1. 백엔드 단일화 &mdash; 토큰 분산 수단을 스스로 제거</h4>
+    <p><b>주장</b>: "카드 실행 엔진은 이미 <code>Agent()</code>로 충분하다."</p>
+    <p><b>문제</b>: 터미널 레인의 구조적 장점은 처리량이 아니라
+    <b>레인마다 다른 백엔드·크레덴셜을 붙일 수 있다</b>는 점입니다.
+    <code>Agent()</code>는 부모 세션의 환경을 그대로 상속하므로
+    <b>워커 N개가 전부 같은 계정에서 차감</b>됩니다.</p>
+    <p>Claude 리밋은 <b>롤링 5시간 창 + 고정 주간 캡</b>이고,
+    <b>모든 프롬프트·툴콜·파일읽기·thinking이 같은 할당량에서 빠집니다.</b>
+    Claude Code와 Claude 채팅이 <b>같은 통</b>을 씁니다.
+    N=8 팬아웃은 그 통을 8배 속도로 비웁니다.</p>
+    <p>설계 §4가 "GLM 절감 워커는 하이브리드 변형으로"라고 적은 것은
+    <b>1순위 목표가 부록으로 밀렸다</b>는 자백입니다.</p>
+    <div class="ev">근거 · Agent 도구 <code>model</code> enum = sonnet|opus|haiku|fable (GLM·codex 없음)
+      · Claude 공식 리밋 구조(5h 롤링 + 고정 주간, 채팅과 공유)</div>
+  </div>
+
+  <div class="finding">
+    <h4><span class="badge maj">중대</span> F-2. 프리픽스 재지불 &mdash; N을 키울수록 단위 비용이 오른다</h4>
+    <p>서브에이전트는 스폰할 때마다 <b>항상 로딩되는 프리픽스</b>를 처음부터 다시 읽습니다.
+    이 저장소 실측으로 <b>룰 136,345 B + CLAUDE.md 19,040 B = 155,385 B</b>,
+    토큰으로 <b>약 39K (추정)</b>입니다.</p>
+    <p>게다가 <b>동시</b> 스폰은 서로의 캐시를 읽을 수 없습니다 &mdash;
+    첫 워커가 캐시를 <i>쓰는 중</i>이라 나머지가 읽을 게 없어요.
+    그래서 N개 전부가 <b>쓰기 요금(1.25×)</b>을 냅니다.
+    이건 저장소 규칙 <code>cache-aware-execution.md</code>가 이미 명시한 사항이고,
+    같은 규칙이 <b>시차 스폰(stagger)</b>을 지시합니다.</p>
+    <table style="margin-top:10px">
+      <thead><tr><th>방식</th><th>프리픽스 비용 (추정)</th><th>비고</th></tr></thead>
+      <tbody>
+        <tr><td>N=8 동시 스폰</td><td class="no">8 × 39K ≈ <b>312K 토큰</b></td><td>전부 콜드 쓰기</td></tr>
+        <tr><td>N=4 시차 스폰</td><td class="ok">39K + 3×3.9K ≈ <b>51K 토큰</b></td><td>1개만 쓰기, 3개는 캐시 읽기(0.1×)</td></tr>
+      </tbody>
+    </table>
+    <p>제출 설계의 정량표에는 <b>토큰 열이 아예 없습니다.</b>
+    처리량만 세고 비용을 세지 않으면 "개선"이 어느 방향인지 알 수 없습니다.</p>
+    <div class="ev">근거 · 실측 <code>wc -c</code> always-loaded 룰 136,345 B · CLAUDE.md 19,040 B
+      · <code>cache-aware-execution.md</code> 지시문 2 (stagger-spawn)</div>
+  </div>
+
+  <div class="finding">
+    <h4><span class="badge maj">중대</span> F-3. 교차 검증 부재 &mdash; 이미 있는 기계를 안 씀</h4>
+    <p>설계는 검수를 "S급 리드 직접 / M급+ review <code>Agent()</code>"로 나눴습니다.
+    그런데 review Agent는 <b>같은 모델의 자기 검증</b>이에요.
+    같은 학습·같은 편향이라 <b>같은 곳을 놓칩니다.</b> 게다가 Claude 토큰을 <b>추가로</b> 씁니다.
+    &mdash; 두 번 나쁩니다.</p>
+    <p><b>정작 필요한 기계는 이미 구현돼 있습니다</b>: <code>audit_multi</code>가
+    codex와 glm을 <b>병렬로 돌리고</b> 세션의 claude 판정과 융합합니다.
+    독립성도 구조적으로 강제돼 있어요 &mdash; codex/glm 고루틴은
+    <b>claude 분석을 절대 받지 않습니다.</b> 백엔드가 없으면 <code>inconclusive</code>로 fail-open 하고요.</p>
+    <p>즉 검증을 <code>audit_multi</code>로 돌리면
+    <b>교차 검증과 토큰 분산을 한 번에</b> 얻습니다. 설계는 이 도구를 언급조차 하지 않았습니다.</p>
+    <div class="ev">근거 · <code>internal/cli/mcp_convergence.go</code> (errgroup 병렬, 독립성 구조 강제, fail-open)</div>
+  </div>
+
+  <details class="fold">
+    <summary>제출 설계의 사실 주장 검증 &mdash; 맞은 것 / 틀린 것 / 확인 불가</summary>
+    <div class="fold-body">
+      <table>
+        <thead><tr><th style="width:290px">주장</th><th style="width:90px">판정</th><th>확인 내용</th></tr></thead>
+        <tbody>
+          <tr><td>"런타임 상한 20"</td><td class="ok">사실</td>
+              <td><code>CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS</code> 기본 20</td></tr>
+          <tr><td>"MoAI 보수 상한 3~5"</td><td class="ok">사실</td>
+              <td><code>orchestration-mode-selection.md</code> Mode 4 = 3-5, Anthropic "Start with 3-5" 근거</td></tr>
+          <tr><td>"기본 8" (N=8)</td><td class="no">근거 없음</td>
+              <td>문서 상한 3-5를 초과. 규칙은 5 초과를 <b>anti-pattern</b>으로 명시</td></tr>
+          <tr><td>"<code>-k</code>는 4역할 고정"</td><td class="ok">사실</td>
+              <td><code>cc.go</code> <code>-k --name &lt;role&gt;-&lt;run-id&gt;</code>, 칸반 4컬럼</td></tr>
+          <tr><td>"<code>moai cc -f [N]</code> 의미 변경"</td><td class="part">전제 어긋남</td>
+              <td>현재 <code>cc.go</code>에 <code>-f</code> <b>플래그가 없음</b>. "변경"이 아니라 신설</td></tr>
+          <tr><td>"Agent()는 부모 백엔드만"</td><td class="ok">사실</td>
+              <td>이게 F-1의 근거. 설계가 스스로 적어놓고 결론에 반영하지 않음</td></tr>
+          <tr><td>"오늘 레인 4 + 워커 3 동시 실측"</td><td class="part">확인 불가</td>
+              <td>레인 4개는 메모리와 부합. 워커 3개 실행은 이 세션에서 검증 못 함</td></tr>
+          <tr><td>"1M 창이 리드 압박의 완화책"</td><td class="no">역방향</td>
+              <td>1M 창은 비용을 <b>늘리는</b> 요인. 게다가 1M 모델의 핸드오프 임계는 <b>50%</b>(~500K)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </details>
+
+  <div class="sec-head">3. CT 계층 제안 평가</div>
+
+  <p class="sec-intro">
+    오라버니가 추가로 제안하신 <b>CT(Control Tower) 계층</b> &mdash;
+    사용자와 대화하는 세션을 lead 위에 두고, 거기서 todo를 만들어 각 lead에게 내리는 구조 &mdash;
+    를 따로 감사했습니다. <b>결론부터: 방향은 옳고, 통신 방식만 고쳐야 합니다.</b>
+  </p>
+
+  <h3>3.1 살릴 것</h3>
+
+  <div class="finding">
+    <h4><span class="badge keep">채택</span> 사용자 창구 단일화는 실질 이득</h4>
+    <p>lead가 여럿이면 오라버니가 <b>여러 세션과 각각 대화</b>해야 합니다.
+    제출 설계 §1이 지적한 "운영자 개입 3회"도 결국 그 문제예요.
+    CT는 <b>토큰이 아니라 사람의 주의력</b>을 아낍니다 &mdash; 이건 별개의, 그리고 실제인 이득입니다.</p>
+    <p>덤으로 <b>질문 채널이 하나로 모입니다.</b> 저장소 규칙상 사용자 질문은
+    오케스트레이터만 할 수 있는데, lead가 여럿이면 그 창구가 여럿이 됩니다. CT는 이걸 정리해요.</p>
+  </div>
+
+  <div class="finding">
+    <h4><span class="badge keep">채택</span> todo 생성·우선순위를 한 곳에서</h4>
+    <p>큐가 SSOT인 건 제출 설계도 옳게 봤습니다. CT가 <b>큐의 유일한 생산자</b>가 되면
+    카드 클래스 판정(A/B/C)과 우선순위가 일관됩니다.
+    lead들은 <b>소비자</b>로만 두면 경합이 사라집니다.</p>
+  </div>
+
+  <h3>3.2 고칠 것</h3>
+
+  <div class="finding">
+    <h4><span class="badge crit">치명</span> C-1. 메시지를 위임 채널로 쓰면 안 됩니다</h4>
+    <p>CT → lead 지시를 세션 간 메시지로 보낸다면, 공식 문서가 명시한 제약을 전부 받습니다:</p>
+    <ul>
+      <li><b>배달이 보장되지 않습니다</b> &mdash; 수신 세션 설정에 따라 <code>hold</code>/<code>refuse</code>될 수 있고,
+          기본값에서도 승인 대화상자가 뜨면 <b>5분 뒤 폐기</b>됩니다</li>
+      <li><b>수신 측 할당량을 씁니다</b> &mdash; 배달된 메시지는 "오라버니가 타이핑한 프롬프트와 동일하게" 과금됩니다</li>
+      <li><b>승인이 되지 않습니다</b> &mdash; CT가 lead의 권한 게이트를 대신 통과시킬 수 없습니다</li>
+      <li><b>평문만</b>, 세션당 대기 50개 상한, 반복 메시지 rate limit</li>
+    </ul>
+    <p><b>해법</b>: <b>큐(디스크)가 위임 채널</b>이고, 메시지는 <b>"큐 봤어?" 알림(nudge)</b>일 뿐이라고 못박습니다.
+    이건 새 원칙이 아니라 저장소가 이미 채택한 규율이에요 &mdash;
+    <code>kanban-dispatch.md</code>가 "완료는 읽어서 확인하지, 보고를 믿지 않는다"로 같은 말을 합니다.
+    lead는 메시지가 안 와도 <b>폴링으로 큐를 집습니다.</b></p>
+  </div>
+
+  <div class="finding">
+    <h4><span class="badge maj">중대</span> C-2. "Control Tower"는 이름이 역할과 어긋납니다</h4>
+    <p>오라버니 설명에서 <b>모니터링은 lead가 합니다</b> &mdash;
+    "lead가 지속적으로 레인 상태를 모니터링". 그런데 관제탑(Control Tower)의 은유는
+    <b>바로 그 감시</b>예요. CT가 실제로 하는 일은 접수 · 기획 · 배분입니다.</p>
+    <p>게다가 MoAI에는 이미 <b>lead</b>가 있어서 리더십이 2층이 되면 헷갈립니다.</p>
+    <p><b>추천 &mdash; <code>Desk</code></b>. 언론사의 "데스크"가 정확히 이 역할입니다:
+    기자들에게 일을 배분하고, 올라온 기사를 검수하고, 바깥과 소통하는 자리.
+    한국어에서 <b>이미 통용되는 직책명</b>이라 번역투가 아니고, 짧고, lead와 층위가 안 겹칩니다.</p>
+    <table style="margin-top:10px">
+      <thead><tr><th style="width:130px">후보</th><th>장점</th><th>단점</th></tr></thead>
+      <tbody>
+        <tr><td><b>Desk</b> <span class="ok">추천</span></td><td>역할과 정확히 일치, 한국어 통용, 짧음, 충돌 없음</td><td>은유가 약간 밋밋</td></tr>
+        <tr><td>Dispatcher</td><td>배분 의미가 직접적</td><td class="no"><code>kanban-dispatch.md</code>에서 <b>lead가 dispatch를 수행</b> &mdash; 용어 충돌</td></tr>
+        <tr><td>Control Tower</td><td>다중 레인 은유가 선명</td><td class="no">관제는 lead의 일 &mdash; 이름-역할 불일치, 리더십 2층 혼동</td></tr>
+        <tr><td>Conductor</td><td>지휘 은유</td><td>MoAI의 orchestrator와 의미 중복</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="finding">
+    <h4><span class="badge min">경미</span> C-3. 칸반에 Desk를 두는 실익은 조건부입니다</h4>
+    <p>칸반은 카드 1장이 4컬럼을 통과하는 구조라 <b>lead 하나면 충분</b>합니다.
+    Desk를 얹어도 중간에 한 층이 늘 뿐이에요.</p>
+    <p><b>실익이 생기는 경우는 하나</b> &mdash; <b>칸반 런을 동시에 여러 개</b> 돌릴 때.
+    그때는 Desk가 런 간 우선순위와 자원 배분을 맡아야 합니다.</p>
+    <p>다만 주의할 게 있어요. <code>kanban-dispatch.md</code>는
+    <b>"백로그 진입은 운영자의 행위"</b>를 [HARD]로 못박고 있습니다.
+    Desk가 카드를 자동 승격하면 <b>이 규칙을 어깁니다.</b>
+    Desk는 오라버니와 대화해 고르는 것까지만 하고, <b>선택 자체는 여전히 오라버니 몫</b>으로 남겨야 합니다.</p>
+  </div>
+
+  <div class="sec-head">4. 결정적 발견 &mdash; GLM lead 팀</div>
+
+  <div class="callout">
+    <span class="ico">★</span>
+    <div>
+      <p><b><code>moai glm</code> 세션에서 스폰한 <code>Agent()</code>는 z.ai 토큰을 씁니다.</b></p>
+      <p>근거: <code>moai glm</code>은 <code>ANTHROPIC_BASE_URL</code>·<code>ANTHROPIC_AUTH_TOKEN</code>을
+      <b>프로세스 환경에 주입</b>합니다. 서브에이전트는 같은 프로세스에서 같은 환경으로 API를 호출하므로
+      <b>요청이 통째로 z.ai로 나갑니다.</b></p>
+      <p>모델 티어 이름도 안전합니다 &mdash; <code>ANTHROPIC_DEFAULT_OPUS_MODEL</code> /
+      <code>_SONNET_</code> / <code>_HAIKU_</code> / <code>_FABLE_</code> 네 개가 티어 이름을 GLM 모델 id로 매핑합니다.</p>
+    </div>
+  </div>
+
+  <p>이 하나로 제출 설계의 딜레마가 풀립니다. 설계는
+  <b>"Agent 팬아웃(처리량)"</b>과 <b>"GLM 절감(비용)"</b>이 배타적이라고 보고 후자를 포기했는데,
+  <b>배타적이지 않습니다.</b> <b>GLM 세션 위에서 Agent를 팬아웃하면 둘 다 얻습니다.</b></p>
+
+  <table>
+    <thead><tr><th style="width:190px">구성</th><th>처리량</th><th>Claude 할당량 소모</th><th>판정</th></tr></thead>
+    <tbody>
+      <tr><td>터미널 레인 4개 (현행)</td><td>4</td><td>레인당 1</td><td class="part">분산은 되나 처리량 상한</td></tr>
+      <tr><td>Claude lead + Agent×8 (제출안)</td><td>8</td><td class="no"><b>9배</b> (리드 + 워커 8)</td><td class="no">처리량↑ 비용↑↑</td></tr>
+      <tr><td><b>GLM lead + Agent×N</b></td><td>N</td><td class="ok"><b>0</b></td><td class="ok">둘 다 달성</td></tr>
+    </tbody>
+  </table>
+
+  <div class="sec-head">5. 재설계 &mdash; 3-토큰-풀 아키텍처</div>
+
+  <p class="lead">
+    설계의 1급 축을 <b>"워커가 어디서 도느냐"</b>에서
+    <b>"누가 요금을 내느냐"</b>로 바꿉니다. 이게 전부예요. 나머지는 배선입니다.
+  </p>
+
+  <pre class="mermaid">
+flowchart TD
+  U["오라버니"] <--> D["Desk (Claude)<br/>대화 · 카드 판정 · todo 생성<br/>컨텍스트 얇게 유지"]
+  D -->|"카드 적재 (위임 채널)"| Q[("todo 큐<br/>디스크 SSOT")]
+  D -.->|"nudge (알림, 비신뢰)"| L1
+  D -.->|"기동 명령어 제공"| U
+
+  Q --> L1["Lead A (GLM)<br/>레인 감시 · 빈 슬롯 픽"]
+  Q --> L2["Lead B (GLM)"]
+
+  L1 --> W1["Agent ×N<br/>z.ai 토큰"]
+  L2 --> W2["Agent ×N<br/>z.ai 토큰"]
+
+  W1 --> V["검증: audit_multi<br/>codex ∥ glm → claude 융합"]
+  W2 --> V
+  V -->|"PASS"| M["통합 브랜치 no-ff"]
+  V -->|"FAIL"| Q
+
+  style D fill:#E3DACC,stroke:#D97757
+  style V fill:#F0EEE6,stroke:#788C5D
+  </pre>
+
+  <noscript>
+    <p><b>구조 요약</b>: 오라버니 ↔ Desk(Claude, 대화·판정·todo 생성) → todo 큐(디스크 SSOT)에 카드 적재.
+    Desk는 lead에게 nudge 알림만 보내고(비신뢰 채널), 위임은 큐로 합니다.
+    Lead A/B는 GLM 백엔드 세션으로, 큐를 폴링해 빈 슬롯만큼 카드를 집고 Agent를 팬아웃합니다
+    (전부 z.ai 토큰). 완료분은 audit_multi(codex ∥ glm 병렬 → claude 융합)로 검증하고,
+    PASS는 통합 브랜치에 no-ff 병합, FAIL은 큐로 되돌립니다.</p>
+  </noscript>
+
+  <h3>토큰 풀 배정 원칙</h3>
+
+  <table>
+    <thead><tr><th style="width:150px">토큰 풀</th><th style="width:170px">쓰는 곳</th><th>원칙</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><b>Claude</b><br><span style="color:var(--g500);font-size:12px">희소 · 5h+주간 캡</span></td>
+        <td>Desk 대화<br>최종 게이트 판정</td>
+        <td class="ok"><b>판단에만.</b> 생성·검색·구현 같은 대량 토큰 작업은 절대 여기 두지 않는다</td>
+      </tr>
+      <tr>
+        <td><b>z.ai / GLM</b><br><span style="color:var(--g500);font-size:12px">저가 · 별도 크레덴셜</span></td>
+        <td>lead 세션 전체<br>Agent 워커 팬아웃</td>
+        <td class="ok"><b>대량 실행의 본체.</b> 처리량은 여기서 산다</td>
+      </tr>
+      <tr>
+        <td><b>OpenAI / codex</b><br><span style="color:var(--g500);font-size:12px">별도 구독·API 키</span></td>
+        <td><code>codex_task</code> 위임<br>교차검증 한 축</td>
+        <td class="ok"><b>3번째 통.</b> GLM이 리밋에 걸릴 때의 예비 레인이기도 하다</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>가장 큰 갭 &mdash; <code>glm_task</code>가 없다</h3>
+
+  <p>MCP 도구를 전수 확인했더니 <b>비대칭</b>이 드러났습니다:</p>
+
+  <table>
+    <thead><tr><th style="width:150px">백엔드</th><th>감사 위임</th><th>작업 위임</th><th>터미널 필요?</th></tr></thead>
+    <tbody>
+      <tr><td>codex</td><td class="ok"><code>codex_audit</code></td><td class="ok"><code>codex_task</code> (+job 3종)</td><td class="ok">불필요</td></tr>
+      <tr><td>GLM</td><td class="ok"><code>glm_audit</code></td><td class="no"><b>없음</b></td><td class="no">필요 (<code>moai glm</code>/<code>cg</code>)</td></tr>
+    </tbody>
+  </table>
+
+  <p>제출 설계가 "GLM 절감 워커는 터미널 하이브리드로"라고 한 건 이 갭 때문입니다.
+  그런데 <b><code>glm_audit</code>은 이미 z.ai Anthropic-호환 엔드포인트를 직접 HTTP로 때립니다.</b>
+  같은 배관에 프롬프트만 일반화하면 <code>glm_task</code>가 됩니다.
+  <b>이 도구 하나가 추가되면 터미널 없이도 3-백엔드 팩토리가 성립합니다.</b></p>
+
+  <div class="sec-head">6. 마일스톤</div>
+
+  <div class="milestones">
+
+    <div class="milestone">
+      <div class="when">M1</div>
+      <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+      <div class="body">
+        <h3>GLM lead 실증 &mdash; 코드 0줄</h3>
+        <p><code>moai glm</code> 세션에서 <code>Agent()</code>를 2~3개 스폰하고,
+        z.ai 대시보드에서 <b>토큰이 실제로 그쪽에서 빠지는지</b> 확인합니다.
+        Claude 사용량이 <b>안 늘어나는 것</b>도 같이 봅니다.
+        이 실측이 재설계 전체의 전제라, <b>여기서 틀리면 나머지가 무너집니다.</b></p>
+        <div class="tag-row"><span class="tag">선결 검증</span><span class="tag">코드 변경 없음</span><span class="tag">전제 확인</span></div>
+      </div>
+    </div>
+
+    <div class="milestone">
+      <div class="when">M2</div>
+      <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+      <div class="body">
+        <h3>검증을 <code>audit_multi</code>로 교체</h3>
+        <p>review Agent를 <code>audit_multi</code> 호출로 바꿉니다.
+        <b>교차 검증과 토큰 분산을 동시에</b> 얻고, 도구는 이미 있으니 배선만 하면 됩니다.
+        <code>audit_model</code>을 <code>codex+glm</code>으로 두고 fail-open 경로를 확인합니다.</p>
+        <div class="tag-row"><span class="tag">기존 도구 활용</span><span class="tag">F-3 해소</span></div>
+      </div>
+    </div>
+
+    <div class="milestone">
+      <div class="when">M3</div>
+      <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+      <div class="body">
+        <h3><code>glm_task</code> 신설 &mdash; 터미널 없는 GLM 위임</h3>
+        <p><code>mcp_glm.go</code>의 z.ai 호출 배관을 재사용해 일반 작업 위임 도구를 만듭니다.
+        <code>codex_task</code>와 <b>같은 모양</b>(background job · 상태 조회 · 취소)으로 맞추면
+        팩토리 라우터가 두 백엔드를 <b>동일하게</b> 다룰 수 있습니다.</p>
+        <div class="tag-row"><span class="tag">최대 갭 해소</span><span class="tag">codex_task 대칭</span></div>
+      </div>
+    </div>
+
+    <div class="milestone">
+      <div class="when">M4</div>
+      <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+      <div class="body">
+        <h3>Desk 세션 &mdash; <code>moai cc --desk</code></h3>
+        <p>대화·카드 판정·todo 생성만 하는 얇은 세션. 큐의 <b>유일한 생산자</b>가 됩니다.
+        lead 기동 명령어를 출력해 오라버니가 붙여넣을 수 있게 하고,
+        <b>위임은 큐로, 알림만 메시지로</b> 원칙을 세션 컨텍스트에 심습니다.
+        백로그 승격은 여전히 오라버니가 고릅니다([HARD] 유지).</p>
+        <div class="tag-row"><span class="tag">C-1 해소</span><span class="tag">큐=위임</span><span class="tag">메시지=알림</span></div>
+      </div>
+    </div>
+
+    <div class="milestone">
+      <div class="when">M5</div>
+      <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+      <div class="body">
+        <h3>팩토리 lead 루프 &mdash; <code>moai glm -f N</code></h3>
+        <p>큐 폴링 → 빈 슬롯만큼 카드 픽 → Agent 팬아웃 → 증거 수집 → 통합.
+        <b>N 기본값은 4</b>로 둡니다(문서 상한 3-5 준수).
+        그리고 <b>시차 스폰</b>을 지시문에 박아 F-2를 구조적으로 막습니다.</p>
+        <div class="tag-row"><span class="tag">N=4 기본</span><span class="tag">stagger 강제</span><span class="tag">GLM 백엔드</span></div>
+      </div>
+    </div>
+
+    <div class="milestone">
+      <div class="when">M6</div>
+      <div class="dot-col"><span class="dot"></span><span class="line"></span></div>
+      <div class="body">
+        <h3>토큰 회계 계측 &mdash; 개선을 증명 가능하게</h3>
+        <p>카드당 <b>풀별 토큰 소모</b>를 기록합니다. 이게 없으면
+        "가성비 개선"이 주장으로만 남습니다. 제출 설계의 정량표에 토큰 열이 없던 게 정확히 그 문제였어요.
+        Desk가 이 수치를 보고 라우팅을 조정합니다.</p>
+        <div class="tag-row"><span class="tag">측정 없으면 개선 없음</span><span class="tag">라우팅 피드백</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="sec-head">7. 리스크</div>
+
+  <div class="risks">
+    <div class="risk">
+      <h4>GLM 품질 미달로 재작업 <span class="sev high">높음</span></h4>
+      <p>저가 백엔드가 카드를 망치면 재작업 비용이 절감분을 삼킵니다.
+      최악은 <b>Claude로 다시 하는 것</b> &mdash; 그럼 두 번 냅니다.</p>
+      <p class="mit"><b>완화</b> &mdash; 카드 클래스 라우팅을 엄격히.
+      설계 판단이 있는 C급은 GLM에 보내지 않는다. M1 실증에서 <b>재작업률</b>을 먼저 잰다.</p>
+    </div>
+
+    <div class="risk">
+      <h4>fail-open의 조용한 통과 <span class="sev high">높음</span></h4>
+      <p><code>audit_multi</code>는 백엔드가 없으면 <code>inconclusive</code>로 열어줍니다.
+      크레덴셜이 만료돼도 <b>실패 신호가 안 뜨고</b>, 검증이 사실상 claude 단독으로 퇴화합니다.</p>
+      <p class="mit"><b>완화</b> &mdash; <code>inconclusive</code> 비율을 계측하고 임계 초과 시 경고.
+      "증거 없음은 통과가 아니다"는 저장소 규율 그대로.</p>
+    </div>
+
+    <div class="risk">
+      <h4>Desk 계층의 정보 손실 <span class="sev mid">중간</span></h4>
+      <p>Desk → lead → Agent 3층이라 요약이 두 번 일어납니다.
+      전달될 때마다 맥락이 깎여요.</p>
+      <p class="mit"><b>완화</b> &mdash; 카드는 <b>포인터</b>로만 전달(SPEC id · 경로 · 계약 절).
+      본문을 복사해 내리지 않는다. 이건 칸반 규칙이 이미 요구하는 형태.</p>
+    </div>
+
+    <div class="risk">
+      <h4>크레덴셜 3벌 관리 <span class="sev mid">중간</span></h4>
+      <p>Claude · z.ai · OpenAI 각각 만료·한도·요금이 따로 돕니다.
+      하나 끊기면 그 레인만 조용히 멈춥니다.</p>
+      <p class="mit"><b>완화</b> &mdash; <code>moai doctor</code>에 <b>3풀 헬스체크</b> 추가.
+      <code>codex_setup</code>이 이미 codex 쪽 선례를 만들어 뒀다.</p>
+    </div>
+
+    <div class="risk">
+      <h4>GLM도 리밋이 있다 <span class="sev mid">중간</span></h4>
+      <p>z.ai 역시 무한이 아닙니다. GLM에 전부 몰면 <b>병목이 옮겨갈</b> 뿐이에요.</p>
+      <p class="mit"><b>완화</b> &mdash; codex를 <b>예비 레인</b>으로 상시 배선.
+      M6 계측이 풀별 소진 속도를 보여주면 Desk가 옮긴다.</p>
+    </div>
+
+    <div class="risk">
+      <h4>모델 id 불일치 <span class="sev low">낮음</span></h4>
+      <p>GLM 세션에서 Claude 모델 id를 넘기면 z.ai가 서빙하지 못합니다.
+      <code>mcp_glm.go</code>가 이미 이 경우를 인지하고 있어요.</p>
+      <p class="mit"><b>완화</b> &mdash; GLM 세션에서는 <b>모델 오버라이드 금지</b>,
+      티어 이름(<code>ANTHROPIC_DEFAULT_*</code> 매핑)에만 의존.</p>
+    </div>
+  </div>
+
+  <div class="sec-head">8. 성공 지표</div>
+
+  <p class="sec-intro">전부 <b>숫자로 확인 가능한</b> 형태입니다. "빨라진 것 같다"는 근거가 아니에요.</p>
+
+  <div>
+    <div class="metric-row">
+      <div class="metric-indicator"></div>
+      <div class="metric-label">동일 카드 배치에서 Claude 할당량 소모</div>
+      <div class="metric-target">현행 대비 <b>70% 이상 감소</b></div>
+    </div>
+    <div class="metric-row">
+      <div class="metric-indicator"></div>
+      <div class="metric-label">주간 캡 도달 없이 완주한 카드 수</div>
+      <div class="metric-target">주당 카드 수 <b>2배 이상</b></div>
+    </div>
+    <div class="metric-row">
+      <div class="metric-indicator"></div>
+      <div class="metric-label">교차 검증이 실제로 2백엔드 이상에서 성립</div>
+      <div class="metric-target"><code>inconclusive</code> 비율 <b>&lt; 20%</b></div>
+    </div>
+    <div class="metric-row">
+      <div class="metric-indicator"></div>
+      <div class="metric-label">GLM 레인 재작업률</div>
+      <div class="metric-target"><b>&lt; 20%</b> (초과 시 라우팅 조정)</div>
+    </div>
+    <div class="metric-row">
+      <div class="metric-indicator"></div>
+      <div class="metric-label">동시 Agent 스폰이 상한을 지킨다</div>
+      <div class="metric-target">lead당 <b>≤ 5</b>, 시차 스폰</div>
+    </div>
+    <div class="metric-row">
+      <div class="metric-indicator"></div>
+      <div class="metric-label">오라버니가 대화하는 세션 수</div>
+      <div class="metric-target"><b>1개</b> (Desk)</div>
+    </div>
+  </div>
+
+  <div class="sec-head">9. 미검증 &mdash; 먼저 재야 할 것</div>
+
+  <div class="callout">
+    <span class="ico">★</span>
+    <div>
+      <p>이 재설계는 <b>코드·설정 실측 + 공식 문서</b> 위에 세웠지만,
+      다음 세 가지는 <b>아직 재지 않았습니다.</b> M1이 이걸 재는 단계예요.</p>
+      <ul style="margin-bottom:0">
+        <li><b>GLM 세션의 Agent 과금 실측</b> &mdash; 코드상 z.ai로 나가는 게 맞지만
+            <b>대시보드로 확인하지 않았습니다.</b> 재설계 전체의 전제라 가장 먼저 재야 합니다</li>
+        <li><b>프리픽스 39K 토큰</b> &mdash; 바이트 수 실측을 4 B/토큰으로 나눈 <b>추정</b>입니다.
+            서브에이전트가 실제로 무엇을 받는지는 별도 계측이 필요합니다</li>
+        <li><b>GLM 재작업률</b> &mdash; 저가 백엔드의 품질이 카드 클래스별로 어떤지 데이터가 없습니다.
+            이 값이 나쁘면 절감 효과가 사라집니다</li>
+      </ul>
+    </div>
+  </div>
+
+  <footer>
+    실측 · <code>internal/cli/mcp_server.go</code>(도구 16종) · <code>internal/cli/mcp_convergence.go</code>(3백엔드 융합)
+    · <code>internal/cli/mcp_glm.go</code>(z.ai 직결) · <code>internal/cli/glm.go</code>(env 주입)
+    · <code>internal/config/envkeys.go</code>(<code>ANTHROPIC_DEFAULT_*</code> 4종) · <code>internal/cli/cc.go</code>(<code>-k</code>만 존재)
+    · always-loaded 룰 136,345 B · CLAUDE.md 19,040 B
+    <br>
+    규칙 · <code>orchestration-mode-selection.md</code>(Mode 4 = 3-5) · <code>cache-aware-execution.md</code>(stagger-spawn)
+    · <code>kanban-dispatch.md</code>(백로그=운영자 행위, 완료는 읽어서 확인)
+    · <code>cross-session-messaging.md</code>
+    <br>
+    Sources ·
+    <a href="https://code.claude.com/docs/en/cross-session-messaging">Claude Code cross-session messaging</a> ·
+    <a href="https://www.truefoundry.com/blog/claude-code-limits-explained">Claude Code rate limits (5h + weekly)</a>
+    &nbsp;&mdash;&nbsp; Generated: 2026-08-17
+  </footer>
+
+</div>
+
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({
+    startOnLoad: true, theme: "base",
+    themeVariables: {
+      primaryColor:"#FAF9F5", primaryTextColor:"#141413", primaryBorderColor:"#D97757",
+      lineColor:"#87867F", secondaryColor:"#E3DACC", tertiaryColor:"#F0EEE6"
+    }
+  });
+</script>
+</body>
+</html>

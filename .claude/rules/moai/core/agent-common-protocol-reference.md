@@ -192,3 +192,75 @@ If a per-edit nudge is ever re-proposed, the only defensible variant is stateful
 Rationale: when 2+ Claude Code sessions operate on the same project root + same memory hash (`~/.claude/projects/{hash}/memory/`), they may both consume the same paste-ready resume and attempt the same `/moai <subcommand>` work. The git working tree is shared; the memory file is shared. Without a pre-spawn fetch, the second session works on a stale baseline and may produce duplicate commits, conflicting frontmatter edits, or CHANGELOG entry races.
 
 Origin: an earlier sync-phase race incident — a parallel session committed a spec.md frontmatter status update between manager-develop's final run-phase commit and manager-docs' sync commit. Detection occurred retrospectively when `git push` succeeded with an unexpected intermediate commit in the push range. The parallel-session-race-during-long-agent-runs lesson was reinforced and a pre-spawn-fetch-discipline lesson added.
+
+---
+
+## Hook Invocation Surface detail
+
+> Relocated from `agent-common-protocol.md` § Hook Invocation Surface to keep the always-loaded file within its size budget. The compact 3-row table (script / trigger / exit-code semantics) and the orchestrator translation responsibility remain inline there.
+
+Full per-row owning-policy detail (the compact inline table drops the Owning REQ column):
+
+| Hook script | Owning REQ |
+|-------------|------------|
+| `.claude/hooks/moai/status-transition-ownership.sh` | Status Transition Ownership Matrix per `.claude/rules/moai/development/spec-frontmatter-schema.md` |
+| `.claude/hooks/moai/sync-phase-quality-gate.sh` | sync-phase quality gate policy (lint + test + coverage delta) + dependency manifest audit on `go.mod` / `package-lock.json` / etc. changes |
+| `.claude/hooks/moai/team-ac-verify.sh` | per-AC PASS evidence file verification (per the canonical team activation policy) |
+
+Cell-level semantics the compact table summarizes:
+
+- `status-transition-ownership.sh` — exit 0 always (advisory); the transition site is audit-logged to `.moai/logs/status-transition-audit.log`; exit-2 blocking is reserved for future ownership-mismatch enforcement.
+- `sync-phase-quality-gate.sh` — exit 0 always; a failing check emits an advisory `systemMessage`; blocking mode (opt-in via `MOAI_SYNC_GATE_BLOCKING=1`) emits stdout JSON `{"decision":"block"}`.
+- `team-ac-verify.sh` — exit 0 always; the reject decision MUST ride the exit-0 stdout channel because `decision` is documented only for PostToolUse/Stop/SubagentStop/UserPromptSubmit/ConfigChange/PreCompact/PostToolBatch — NOT TaskCompleted (the official TaskCompleted reject contract is `continue:false` + `stopReason`). The reject-path trigger itself is a minimal stub; full AC-verification logic is deferred to a follow-up SPEC.
+
+Hook subagent boundary acceptance criterion:
+
+```bash
+grep -rn 'AskUserQuestion\|mcp__askuser' .claude/hooks/moai/ \
+  | grep -v "^[^:]*:[0-9]*:[ \t]*#"
+# Expected: no matches (hook scripts do not invoke AskUserQuestion)
+```
+
+## Ledger Closure clause bodies
+
+> Relocated verbatim from `agent-common-protocol.md` § Ledger Closure to keep the always-loaded file within its size budget. The invariant, the [HARD] four-clause summary, and the scope-boundary note remain inline there.
+
+The persistence-layer analogue is `session-handoff.md` Block 3-4 preconditions; the subsection codifies the in-session interrupt case (no `/clear`), the orchestration-layer analogue of the model-API rule that every `tool_use` receives a `tool_result`. Externally grounded in `github.com/wquguru/harness-books` book1 ch04 "账本闭环": whenever the system has promised an execution externally, it must close the ledger on interrupt.
+
+- **(a) Synthetic result on aborted Agent() delegation.** When an `Agent()` delegation is aborted — user interrupt (Ctrl+C), parent-abort propagation (the orchestrator's own turn was aborted and the sub-agent was killed), or timeout (no return before a wall-clock or token-budget ceiling) — the orchestrator SHALL emit a **synthetic ledger-closing artifact** into its own context before issuing the next delegation. The artifact is a short prose summary (NOT a structured data record; no JSON schema, no `.moai/state/ledger.json`), naming what was delegated, that it did not return, and the abort reason if known. Its purpose is to close the open promise so the next turn does not proceed as if the delegation returned cleanly. This clause does NOT change the "Missing Inputs" blocker-report pattern: a blocker report is a *return*, not an *abort*; this clause covers only the case where no return is produced at all.
+- **(b) team-ac-verify.sh reject-path `ledger_note` field.** When `.claude/hooks/moai/team-ac-verify.sh` rejects a `TaskCompleted`, it signals the rejection via stdout JSON `{"continue":false,"stopReason":"AC verification failed: ...","ledger_note":"..."}` and exits 0 — per Claude Code hook semantics, stdout JSON is honored only on exit 0 (on exit 2 stdout is discarded and only stderr is surfaced), so the reject decision and its `ledger_note` MUST ride the exit-0 stdout channel. The orchestrator injects this `ledger_note` as the ledger-closing artifact for that task.
+- **(c) TeammateIdle exit-2 task closure.** When the TeammateIdle hook rejects a task's completion via exit-2 ("keep working"), the rejected task's TaskList entry MUST NOT be left in an open state without a reassignment owner. The orchestrator re-assigns the task (spawn a new teammate, re-delegate to the same teammate with a refined prompt, or close it as obsolete with a synthetic closing note). This binds the orchestrator's TaskList hygiene, not the hook's exit-2 emission. The parent-abort propagation that book1 ch07 names — cleanup handlers registered to avoid orphan tasks — is the source for this clause.
+- **(d) Cross-references.** book1 ch04 (账本闭环 — the ledger-closure invariant); book1 ch07 (parent-abort propagates to forked children; agents are observable lifecycle objects via SubagentStart/SubagentStop hooks, exit-code-2 stderr feedback); `.claude/rules/moai/workflow/session-handoff.md` Block 3-4 preconditions (the persistence-layer analogue across `/clear`); and the ledger-closing artifact's truthfulness bound — `.claude/rules/moai/core/verification-claim-integrity.md` §1.1 surface 1 (orchestrator self-report): the artifact MUST be a real summary, not a fabricated "success".
+
+## Per-Spawn Model Injection rationale
+
+> Relocated from `agent-common-protocol.md` § Per-Spawn Model Injection to keep the always-loaded file within its size budget. The [HARD] rule and the four operative bullets remain inline there.
+
+Omitting the `model` argument is not neutral. Nearly every agent definition carries `model: inherit`, so a spawn without an explicit model silently runs the agent on the parent session's model rather than its profiled one. The profile is still computed — nothing reports that it was never applied, which is why the rule is stated in the always-loaded file rather than left to the detailed policy file that only loads while agent files are being edited.
+
+Full profile matrix, precedence order, and channel table: `.claude/rules/moai/development/model-policy.md`.
+
+## Background Agent Execution rationale
+
+> Relocated from `agent-common-protocol.md` § Background Agent Execution to keep the always-loaded file within its size budget. The [HARD] default alignment and the four spawning rules remain inline there.
+
+The retained safeguard is **concurrency, not backgrounding**: MoAI does not run two write-capable agents concurrently, and orchestrator work performed concurrently with a write-capable agent is **read-only**. This binds specifically to the parallel write workers within a hierarchical team shape (e.g., `manager-lead` fan-out) — the orchestrator (or `manager-lead`) sequences write-capable leaf workers rather than running them concurrently, so a file-write race between agents is structurally prevented. The earlier blanket ban on background Write/Edit had its stated basis (background writes auto-denied) removed by v2.1.186 and no longer describes the runtime.
+
+## Error Recovery retry-safety detail
+
+> Relocated from `agent-common-protocol.md` § Error Recovery Pattern to keep the always-loaded file within its size budget. The 4-step pattern and the asymmetric-retry summary remain inline there.
+
+- **Idempotent / read-only calls** (re-reading a file, re-running a search or query, re-running an initializer, fetching a URL) may be retried up to the ceiling — repeating them produces the same observable result, so a transient failure (a file lock, a network blip) is legitimately recovered by a retry.
+- **Side-effecting calls** (writing/editing a file, committing, pushing, opening a pull request, deploying, mutating external-API state) carry a duplicate-effect hazard. When a side-effecting call fails *ambiguously* — the failure signal is present but whether the effect already landed is uncertain — first **observe the current state** to determine whether the effect already occurred, and retry only when the effect is confirmed absent. Retrying without first observing state risks a duplicate commit, a duplicate pull request, or a double deploy. The absence of a success signal is not evidence the effect did not land.
+
+This refines the inline step 3 ("do not retry the identical call") along the side-effect axis: for a side-effecting call, "try an alternative approach" begins with observing whether the effect already occurred.
+
+## Attributable diff-check detail
+
+> Relocated from `agent-common-protocol.md` § Parallel Execution → Attributable diff-check doctrinal switch to keep the always-loaded file within its size budget. The switch rule, the three match conditions, the four mismatch names, and the never-silent-skip boundary remain inline there (SPEC-SYNC-PARALLEL-DOCS-001 A9).
+
+The switch consults the shared diagnostic snapshot via `moai verify check --key-current` (the live snapshot surface wired at `.claude/skills/moai/workflows/sync/quality-gates-quality.md` Step 0.5.2, keyed by HEAD SHA) BEFORE re-executing; on all-three attribution match, it consumes the attributable §E evidence (`.claude/rules/moai/development/manager-develop-prompt-template.md` § Section E → attribution discipline clause) for that dimension INSTEAD of re-executing the corresponding command. This is a composition-time doctrinal switch — no mechanical "about to re-run command X" preamble token exists to intercept (the batch is orchestrator-composed single-turn multi-Bash; re-execution is implicit Bash); it binds the orchestrator's batch-composition discipline, not a runtime hook.
+
+On all-three match (the default path), the batch records the snapshot key + cited §E evidence path as its baseline-attribution per VCI §2 and DOES NOT re-execute the corresponding command (test / lint / vet / cover). The verification dimension is marked PASS-attributed, not PASS-reexecuted — both satisfy VCI §1.1, but the attribution path is faster and the re-execution path is stronger.
+
+On ANY mismatch (`snapshot_key_drift` / `command_drift` / `missing_section_e` / `output_drift`), the batch SHALL fall back to re-execution of the affected verification dimension — any-mismatch → re-execute, never silent skip. The fallback is logged with the mismatch reason; the batch NEVER silently skips verification — the VCI §1.1 invariant holds on every path. Full pattern: `.claude/rules/moai/workflow/verification-batch-pattern.md` § Attributable diff-check pattern.

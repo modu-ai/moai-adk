@@ -2,12 +2,12 @@
 title: MCP サーバー
 weight: 12
 draft: false
-description: "MoAI-ADK が自身で提供する moai mcp-server（stdio ローカル MCP サーバー）のプロビジョニング、17 ツールカタログ、認証、遅延ロード方針を整理します。"
+description: "MoAI-ADK が自身で提供する moai mcp-server（stdio ローカル MCP サーバー）のプロビジョニング、21 ツールカタログ、認証、遅延ロード方針を整理します。"
 ---
 
 # MCP サーバー
 
-MoAI-ADK は Claude Code の MCP エコシステムの上に乗り、さらにその上に**独自の MCP サーバー**を1つ載せます。バイナリ1つ（`moai mcp-server`）が stdio ローカルサーバーとして動作し、SPEC ライフサイクル監査、検証スナップショット、ゴールエンジン、クロスモデル監査、codex 委任など、MoAI-ADK 固有の17個のツールを Claude Code ランタイムに公開します。
+MoAI-ADK は Claude Code の MCP エコシステムの上に乗り、さらにその上に**独自の MCP サーバー**を1つ載せます。バイナリ1つ（`moai mcp-server`）が stdio ローカルサーバーとして動作し、SPEC ライフサイクル監査、検証スナップショット、ゴールエンジン、クロスモデル監査、codex·GLM 委任など、MoAI-ADK 固有の21個のツールを Claude Code ランタイムに公開します。
 
 {{< callout type="info" title="2つのMCP文書の関係" >}}
 [**Claude Code 一般 MCP**](/ja/claude-code/extensibility/mcp)はプラットフォーム自身の MCP（Model Context Protocol）統合を扱います — USB ポートの比喩、サーバー登録、転送タイプ、`/mcp` コマンド、OAuth 認証、遅延ロードの原理。
@@ -29,14 +29,14 @@ Claude Code の MCP エコシステムと MoAI の独自 MCP サーバーは、�
 flowchart TD
     CC["Claude Code ランタイム<br/>(ツール権限 · 遅延ロード · 承認)"]
     CMCP["一般 MCP サーバー<br/>(context7, chrome-devtools, …)"]
-    MMCP["moai mcp-server<br/>(MoAI 自身 · 17 ツール)"]
+    MMCP["moai mcp-server<br/>(MoAI 自身 · 21 ツール)"]
     CC --> CMCP
     CC --> MMCP
-    MMCP --> TOOLS["SPEC lifecycle · 検証 · ゴール · 監査 · codex 委任"]
+    MMCP --> TOOLS["SPEC lifecycle · 検証 · ゴール · 監査 · codex/GLM 委任"]
     CMCP --> EXT["外部ツール (ライブラリ文書 · ブラウザ自動化 · …)"]
 ```
 
-ここでの要点は、「MoAI は MCP をプロビジョニングしない」という主張が**半分だけの真実**だという点です。外部 MCP サーバー（context7, playwright など）をデフォルトでプロビジョニングしないのは正しいです。しかし MoAI 自身のサーバー1つは `moai init` の時点で default-on で入ります。このサーバーこそが、MoAI の17ツールカタログが Claude Code に届く通路です。
+ここでの要点は、「MoAI は MCP をプロビジョニングしない」という主張が**半分だけの真実**だという点です。外部 MCP サーバー（context7, playwright など）をデフォルトでプロビジョニングしないのは正しいです。しかし MoAI 自身のサーバー1つは `moai init` の時点で default-on で入ります。このサーバーこそが、MoAI の21ツールカタログが Claude Code に届く通路です。
 
 ## .mcp.json プロビジョニング
 
@@ -93,9 +93,9 @@ flowchart TD
 
 ユーザーが直接 `.mcp.json` を手編集しません。`moai mcp add|remove|list` CLI がファイルを管理し、この CLI は atomic-RWM シーム（flock ファイルロック + compare-retry + バックアップ後書き込み + idempotent-skip）で動作します。2つのセッションが同時に編集しても、一方の変更がもう一方を上書きしません。
 
-## 17-ツールカタログ
+## 21-ツールカタログ
 
-`moai mcp-server` が公開する17個のツールは5つのグループに分かれます。呼び出し時点ではすべて `mcp__moai__` 接頭辞が付きます。
+`moai mcp-server` が公開する21個のツールは6つのグループに分かれます。呼び出し時点ではすべて `mcp__moai__` 接頭辞が付きます。
 
 ### SPEC ライフサイクル
 
@@ -121,10 +121,10 @@ manager-develop が run-phase の自己検証（継ぎ目 §E）で使い、sync
 | ツール | 目的 | 消費エージェント | CLI 等価物 |
 |------|------|---------------|------------|
 | `mcp__moai__goal_arm` | 条件宣言ゴール武装 | **オーケストレータ メインセッション専用**（いかなるエージェントにも配線されない） | `moai goal arm` / `/moai goal` |
-| `mcp__moai__goal_status` | 武装されたゴール状態読み取り | manager-develop, manager-kanban | `moai goal status` |
-| `mcp__moai__session_list` | アクティブな moai セッション一覧 | manager-kanban | `moai session list` |
+| `mcp__moai__goal_status` | 武装されたゴール状態読み取り | manager-develop, manager-lead | `moai goal status` |
+| `mcp__moai__session_list` | アクティブな moai セッション一覧 | manager-lead | `moai session list` |
 
-`goal_arm` はオーケストレータ専用です — 自律ループの武装はオーケストレータの関心事なので、エージェントの中からは呼び出しません。平坦階層の武装表面を保つための設計です。`goal_status` は manager-develop / manager-kanban が武装された条件の進行を読むチャネルで、`session_list` は manager-kanban がファンアウト前に同一チェックアウトの同時セッションを検出する競合緩和の手段です。
+`goal_arm` はオーケストレータ専用です — 自律ループの武装はオーケストレータの関心事なので、エージェントの中からは呼び出しません。平坦階層の武装表面を保つための設計です。`goal_status` は manager-develop / manager-lead が武装された条件の進行を読むチャネルで、`session_list` は manager-lead がファンアウト前に同一チェックアウトの同時セッションを検出する競合緩和の手段です。
 
 ### クロスモデル監査（第二の意見）
 
@@ -148,6 +148,17 @@ manager-develop が run-phase の自己検証（継ぎ目 §E）で使い、sync
 | `mcp__moai__codex_job_cancel` | 実行中のバックグラウンド codex ジョブ中断 | super-advisor | `moai codex job cancel` |
 
 codex 委任ツール群は super-advisor に配線されています — 随時の高推論相談エージェントがバックグラウンドのクロスモデル委譲の自然な消費者だからです。`codex_task` でジョブを委譲し、`codex_job_status` / `codex_job_result` で完了をポーリングし、`codex_job_cancel` で中断します。codex は選択的（optional）です — 欠落や利用不可なら fail-open な `inconclusive` を返し、hard error ではありません。
+
+### GLM 委任（バックグラウンドジョブ）
+
+| ツール | 目的 | 消費エージェント | CLI 等価物 |
+|------|------|---------------|------------|
+| `mcp__moai__glm_task` | ジョブ(任意のプロンプト)を GLM(z.ai) に委譲（同期またはバックグラウンド） | super-advisor | — （該当 CLI なし） |
+| `mcp__moai__glm_job_status` | バックグラウンド GLM ジョブの状態/記録読み取り | super-advisor | — |
+| `mcp__moai__glm_job_result` | バックグラウンド GLM ジョブの出力読み取り | super-advisor | — |
+| `mcp__moai__glm_job_cancel` | 実行中のバックグラウンド GLM ジョブの中断 | super-advisor | — |
+
+GLM 委任ツール群は codex 委任と同じ形で super-advisor に配線されています。`glm_task` は `background` が偽なら完了したテキストをそのまま返し、真なら即座にジョブ ID を返します(以降は `glm_job_status`·`glm_job_result`·`glm_job_cancel` で観察・中断)。応答トークン上限は `max_tokens` で上書きでき、既定の上限値はサーバー側で定められています。バックグラウンドジョブはサーバープロセスの中で生きるため、プロセスが終われば一緒に終わります。GLM も選択的です — キーがないか z.ai に届かなければ構造化された fail-open 結果を返すだけで、ツールエラーではありません。
 
 ### MCP-over-CLI 規則
 
@@ -177,9 +188,9 @@ GLM、codex、Claude — 3つのバックエンドはすべて fail-open 原則�
 
 ## バックグラウンドジョブ進行追跡
 
-codex 委任ツールのうち `codex_task` は `background: true` でバックグラウンドジョブを開始できます。この場合ジョブが終わるまで待たず、即座にジョブ ID を返します。
+codex·GLM 委任ツールのうち `codex_task` と `glm_task` は `background: true` でバックグラウンドジョブを開始できます。この場合ジョブが終わるまで待たず、即座にジョブ ID を返します。
 
-進行状況は2つのツールでポーリングします:
+進行状況は2つのツールでポーリングします (下は codex の例 — GLM は `glm_job_*` が同じ役割を担います):
 
 ```text
 codex_task(background=true) ──▶ ジョブ ID 返却

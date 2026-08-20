@@ -34,20 +34,63 @@ type forgeSpec struct {
 	bin string
 	// issueArgs and prArgs each end in a jq filter that reduces the listing to
 	// a bare integer, so the caller parses one number whichever forge answered.
+	// They are the enumerating fallback, used when countArgs is empty.
 	issueArgs []string
 	prArgs    []string
+	// countArgs, when set, is a SINGLE call answering both counts as two lines
+	// — issues first, change requests second. A forge that can be asked for a
+	// total does not need its items listed, so this path is preferred wherever
+	// it exists (see forgeGitHub).
+	countArgs []string
+	// rateArgs, when set, is a call reporting how much API budget remains, as
+	// a bare integer, WITHOUT consuming any of it. Empty means the forge
+	// offers no free way to ask and the refresh proceeds unguarded.
+	rateArgs []string
 }
 
+// forgeGitHub asks for totals rather than for listings.
+//
+// `gh repo view --json issues,pullRequests` returns each connection's
+// totalCount for the OPEN state — the number the two `list` forms were
+// reaching by counting items. Measured against `cli/cli` on 2026-08-20:
+//
+//   - the totals call cost 1 GraphQL point and reported 1012 open issues;
+//   - `issue list --limit 1000` cost 10 points — one per page of a hundred —
+//     and reported 1000, the cap rather than the count.
+//
+// The enumeration was therefore both dearer and, past its cap, wrong. The
+// totals are exact at any size and cost one point for BOTH numbers, since the
+// single call answers issues and pull requests together.
+//
+// issueArgs/prArgs remain as the shape a forge without a totals endpoint uses;
+// on GitHub countArgs takes precedence and they go unused.
 var forgeGitHub = forgeSpec{
 	name: "github",
 	bin:  "gh",
+	countArgs: []string{"repo", "view", "--json", "issues,pullRequests",
+		"--jq", ".issues.totalCount, .pullRequests.totalCount"},
+	rateArgs: []string{"api", "rate_limit", "--jq", ".resources.graphql.remaining"},
 	issueArgs: []string{"issue", "list", "--state", "open",
 		"--limit", githubListLimit, "--json", "number", "--jq", "length"},
 	prArgs: []string{"pr", "list", "--state", "open",
 		"--limit", githubListLimit, "--json", "number", "--jq", "length"},
 }
 
-// forgeGitLab differs from GitHub in two ways that are easy to get wrong.
+// forgeGitLab still enumerates, and the asymmetry with GitHub is deliberate
+// rather than an oversight. `glab` exposes no count-only listing: `issue list`
+// and `mr list` return items, and the total lives in a REST pagination header
+// (`X-Total`) that `glab` does not surface through its own JSON output.
+// Reaching it would mean calling the API around `glab`, which buys a second
+// authentication path to get right — a poor trade for a status bar. GitLab
+// therefore keeps the page-bounded enumeration and the truncation trade
+// `gitlabPageSize` documents.
+//
+// Unverified: `glab` is not installed on the machine this was written on
+// (measured absent from PATH, 2026-08-20), so the paragraph above rests on
+// glab's documented output rather than on a run. A later confirmation that a
+// count-only path exists should move GitLab onto countArgs the same way.
+//
+// It also differs from GitHub in two ways that are easy to get wrong.
 //
 // Open is glab's default for both listings, so no state flag is passed: `gh`
 // needs `--state open` to widen from its own default, while giving glab a state

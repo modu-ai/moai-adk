@@ -36,7 +36,7 @@ moai cc -k --name sync
 
 ![moai web 콘솔 Overview 화면 — SPEC 집계, 진행 중 SPEC 목록, 세션 레지스트리](/images/profile/web-console-v31-overview.png)
 
-자세히: [칸반 모드](/ko/advanced/kanban-mode) · [manager-kanban 에이전트](/ko/advanced/manager-kanban) · [`/moai todo`](/ko/utility-commands/moai-todo) · [moai web 콘솔](/ko/advanced/moai-web-console)
+자세히: [칸반 모드](/ko/advanced/kanban-mode) · [manager-lead 리드 코디네이터](/ko/advanced/manager-lead) · [`/moai todo`](/ko/utility-commands/moai-todo) · [moai web 콘솔](/ko/advanced/moai-web-console)
 
 ## MoAI 3.1의 세 가지 핵심 가치
 

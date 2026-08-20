@@ -21,6 +21,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/config/atomicfile"
 	"github.com/modu-ai/moai-adk/internal/defs"
+	"github.com/modu-ai/moai-adk/internal/execerr"
 	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/profile"
 	"github.com/modu-ai/moai-adk/internal/runtime/gobin"
@@ -763,7 +764,9 @@ func reexecNewBinary() error {
 		child.Stdout = os.Stdout
 		child.Stderr = os.Stderr
 		if err := child.Run(); err != nil {
-			return fmt.Errorf("re-exec on windows: %w", err)
+			// StatusDetail, not %w: a raw *exec.ExitError chain would be
+			// mistaken for an intentional ExitCoder at the cmd/moai seam (t130).
+			return fmt.Errorf("re-exec on windows: %s", execerr.StatusDetail(err))
 		}
 		os.Exit(0)
 	}

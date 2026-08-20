@@ -110,7 +110,7 @@ func isSyncPhaseDocs(lowerTitle string) bool {
 // as run-complete/implemented, causing a false StatusGitConsistencyRule drift on
 // SPECs whose only commit so far is the plan-phase commit (frontmatter still draft).
 // @MX:NOTE: [AUTO] plan-phase feat → draft (plan-merge), not implemented
-// @MX:REASON: SPEC-V3R6-LINT-CLASSIFYPRTITLE-001 — plan-phase commit must not imply run completion
+// @MX:REASON: plan-phase commit must not imply run completion
 var planPhaseFeatPattern = regexp.MustCompile(`^feat\(spec-[a-z0-9-]+-[0-9]+\):.*plan-phase`)
 
 func isPlanPhaseFeat(lowerTitle string) bool {

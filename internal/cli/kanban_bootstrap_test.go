@@ -29,7 +29,7 @@ func TestParseCompanionLabelRecognizesWithoutConsuming(t *testing.T) {
 		{"absent", []string{"-p", "dev"}, ""},
 		{"no value", []string{"--name"}, ""},
 		{"non-companion name", []string{"--name", "oauth-migration"}, ""},
-		{"unknown role", []string{"--name", "lead-tjlgt1"}, ""},
+		{"lead shape is not a companion role", []string{"--name", "lead-tjlgt1"}, ""},
 		{"empty args", nil, ""},
 	}
 
@@ -82,7 +82,7 @@ func TestEnterKanbanModeSetsRunID(t *testing.T) {
 	if runID == "" {
 		t.Fatalf("%s not set by enterKanbanMode", config.EnvMoaiKanbanID)
 	}
-	if _, ok := kanban.SplitLeadLabel(kanban.LeadLabel(runID)); !ok {
+	if _, ok := kanban.SplitLeadLabel(kanban.RoleLead + "-" + runID); !ok {
 		t.Errorf("run id %q does not produce a parseable lead label", runID)
 	}
 	if os.Getenv(config.EnvMoaiKanban) != "1" {

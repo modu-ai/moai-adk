@@ -33,7 +33,7 @@ moai cc -k --name sync
 
 ![moai web コンソールのOverview画面 — SPEC集計、進行中SPEC一覧、セッションレジストリ](/images/profile/web-console-v31-overview.png)
 
-詳しくは: [カンバンモード](/ja/advanced/kanban-mode) · [manager-kanban エージェント](/ja/advanced/manager-kanban) · [`/moai todo`](/ja/utility-commands/moai-todo) · [moai web コンソール](/ja/advanced/moai-web-console)
+詳しくは: [カンバンモード](/ja/advanced/kanban-mode) · [manager-lead リードコーディネーター](/ja/advanced/manager-lead) · [`/moai todo`](/ja/utility-commands/moai-todo) · [moai web コンソール](/ja/advanced/moai-web-console)
 
 ## MoAI 3.1の3つのコアバリュー
 

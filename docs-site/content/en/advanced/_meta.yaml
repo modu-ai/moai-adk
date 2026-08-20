@@ -53,8 +53,8 @@ index:
   title: "Autonomy Tier (MOAI_AUTONOMY_TIER)"
 "kanban-mode":
   title: "Kanban Mode"
-"manager-kanban":
-  title: "manager-kanban Hierarchical Team"
+"manager-lead":
+  title: "manager-lead Lead Coordinator"
 "multi-model-audit":
   title: "Multi-model Audit Convergence"
 "bas-navigator":
@@ -69,6 +69,6 @@ index:
 new_items:
   - kanban-mode
   - bas-navigator
-  - manager-kanban
+  - manager-lead
   - multi-model-audit
   - autonomy-tier
