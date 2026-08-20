@@ -61,8 +61,18 @@
 //     runners inflate the CPU class and the syscall class by different
 //     factors, so a mix-mismatched reference moves the ratio on healthy
 //     code (observed 2.56x-3.61x, ubuntu job 95500006280).
-//   - Measure the reference immediately before the measured operation, in
-//     the same process.
+//   - Price the reference in the SAME WINDOW as the measured operation, not
+//     in a burst before it. Load is not constant across a multi-second
+//     measured loop, so a reference median taken once at t=0 stops
+//     representing the load the measured samples actually saw (measured
+//     2026-08-20, GitHub windows-latest: worst=305ms against a 24ms median —
+//     a spike inside the measured window that the pre-priced reference never
+//     saw, inflating only the numerator). AssertPaired interleaves the two
+//     and is the preferred entry point; Assert's precomputed refUnit is the
+//     legacy form.
+//   - Give both sides the SAME sample count. A 10-sample reference median
+//     under a 100-sample measured median makes the denominator the noisiest
+//     term in the ratio.
 //   - Use the median of several reference runs; use the median of the
 //     measured samples for the ratio (medians move together under load;
 //     quantile mixes like p95-vs-median do not).
@@ -76,6 +86,7 @@ package timing
 import (
 	"fmt"
 	"math"
+	"os"
 	"slices"
 	"sort"
 	"testing"
@@ -156,19 +167,77 @@ func Median(ref func(), warmup, n int) time.Duration {
 // fn runs on the calling goroutine and may call t.Fatalf directly to fail
 // on functional errors (wrong decision, write error) inside the loop.
 func Assert(t *testing.T, b Bound, refUnit time.Duration, fn func()) {
-	st := measure(fn, b.Iterations, b.Warmup)
+	report(t, b, refUnit, measure(fn, b.Iterations, b.Warmup))
+}
+
+// AssertPaired prices the reference and the measured operation TOGETHER —
+// alternating one reference run with one measured run for b.Iterations rounds
+// — and then enforces the same three bounds as Assert. Prefer it over Assert
+// wherever the reference can be expressed as a func: a precomputed refUnit
+// forces the reference to be priced in a burst BEFORE the measured loop, which
+// breaks the premise the calibrated arm rests on (both sides must see the same
+// load).
+//
+// Three differences from Assert, each closing one way the ratio moved on
+// healthy code:
+//
+//   - Same window: every measured sample is bracketed by a reference sample,
+//     so a load excursion inside the measured loop lands on both sides of the
+//     ratio instead of only the numerator.
+//   - Equal N: both medians rest on b.Iterations samples, so the denominator
+//     is no noisier than the numerator.
+//   - Alternating order: odd rounds run fn first, even rounds run ref first,
+//     so neither side systematically inherits the other's warm caches.
+//
+// b.Warmup rounds of BOTH functions run first and are discarded.
+func AssertPaired(t *testing.T, b Bound, ref, fn func()) {
+	refSt, st := measurePaired(ref, fn, b.Iterations, b.Warmup)
+	report(t, b, refSt.Median, st)
+}
+
+// report logs the measured distribution beside the reference unit and raises
+// one t.Errorf per violated bound.
+func report(t *testing.T, b Bound, refUnit time.Duration, st Stats) {
 	ratio := math.Inf(1)
 	if refUnit > 0 {
 		ratio = float64(st.Median) / float64(refUnit)
 	}
-	t.Logf("%s: n=%d median=%v p95=%v worst=%v avg=%v | refUnit=%v ratio=%.2fx (maxUnits=%.2fx, steadyCeiling=%v, budget=%v)",
+	line := fmt.Sprintf("%s: n=%d median=%v p95=%v worst=%v avg=%v | refUnit=%v ratio=%.2fx (maxUnits=%.2fx, steadyCeiling=%v, budget=%v)",
 		b.Name, st.N, st.Median.Round(time.Microsecond), st.P95.Round(time.Microsecond),
 		st.Worst.Round(time.Microsecond), st.Avg.Round(time.Microsecond),
 		refUnit.Round(time.Microsecond), ratio, b.MaxUnits, b.SteadyCeiling, b.Budget)
+	t.Log(line)
+	publish(line)
 
 	for _, err := range Check(b, refUnit, st) {
 		t.Errorf("%s: %v", b.Name, err)
 	}
+}
+
+// publish appends line to the GitHub Actions job summary when running there,
+// and does nothing otherwise.
+//
+// t.Log alone is not enough to keep the ratio observable: `go test` discards a
+// PASSING package's output unless -v is set, and the CI suite does not run
+// verbose (it would flood the log). So the healthy ratio — the only baseline
+// that tells a genuine regression apart from a bound set too tight — was
+// visible ONLY on the run that failed, leaving one sample per platform in
+// existence and no way to judge whether it was high. Appending one line to the
+// job summary records the healthy figure on green runs too.
+//
+// Failures are ignored on purpose: an unwritable summary file must never turn
+// a passing latency assertion red.
+func publish(line string) {
+	path := os.Getenv("GITHUB_STEP_SUMMARY")
+	if path == "" {
+		return
+	}
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		return
+	}
+	defer func() { _ = f.Close() }()
+	_, _ = fmt.Fprintf(f, "`%s`\n\n", line)
 }
 
 // Check evaluates the three bounds against already-measured stats and
@@ -205,24 +274,58 @@ func measure(fn func(), iterations, warmup int) Stats {
 		fn()
 	}
 	samples := make([]time.Duration, 0, iterations)
-	var total time.Duration
 	for range iterations {
-		start := time.Now()
-		fn()
-		elapsed := time.Since(start)
-		samples = append(samples, elapsed)
-		total += elapsed
+		samples = append(samples, timeOne(fn))
 	}
-	st := Stats{
+	return summarize(samples)
+}
+
+// measurePaired runs ref and fn alternately for iterations rounds (after
+// warmup rounds of both, discarded) and summarizes each side separately. Odd
+// rounds run fn first so neither side always follows the other.
+func measurePaired(ref, fn func(), iterations, warmup int) (refSt, st Stats) {
+	for range warmup {
+		ref()
+		fn()
+	}
+	refSamples := make([]time.Duration, 0, iterations)
+	samples := make([]time.Duration, 0, iterations)
+	for i := range iterations {
+		if i%2 == 0 {
+			refSamples = append(refSamples, timeOne(ref))
+			samples = append(samples, timeOne(fn))
+			continue
+		}
+		samples = append(samples, timeOne(fn))
+		refSamples = append(refSamples, timeOne(ref))
+	}
+	return summarize(refSamples), summarize(samples)
+}
+
+// timeOne runs fn once on the calling goroutine and returns its duration.
+func timeOne(fn func()) time.Duration {
+	start := time.Now()
+	fn()
+	return time.Since(start)
+}
+
+// summarize reduces per-invocation durations to the reported distribution.
+// Returns the zero Stats on empty input.
+func summarize(samples []time.Duration) Stats {
+	if len(samples) == 0 {
+		return Stats{}
+	}
+	var total time.Duration
+	for _, s := range samples {
+		total += s
+	}
+	return Stats{
 		N:      len(samples),
 		Median: median(samples),
 		P95:    percentile(samples, 0.95),
 		Worst:  slices.Max(samples),
+		Avg:    total / time.Duration(len(samples)),
 	}
-	if len(samples) > 0 {
-		st.Avg = total / time.Duration(len(samples))
-	}
-	return st
 }
 
 // median returns the 50th percentile of a non-empty sample set.

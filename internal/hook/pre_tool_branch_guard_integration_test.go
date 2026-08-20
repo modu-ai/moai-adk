@@ -1,6 +1,7 @@
 package hook
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -130,11 +131,13 @@ func TestBranchGuard_QualityGateNotInvoked(t *testing.T) {
 //   - worst < 100% of budget (5s). The contract itself: no single invocation
 //     may consume the whole PreToolUse budget, because one that does stalls the
 //     user's session.
-//   - median <= 1.5x ONE reference `git rev-parse` spawn, measured in this
-//     same run. The CALIBRATED arm — it measures code, not machine. Healthy
-//     checkBranchState performs exactly one spawn (ResolveGitDirs primary
-//     path) plus sub-millisecond parsing, so the ratio sits at ~1.0x on any
-//     machine under any load; a change that adds a second subprocess moves it
+//   - median <= 1.5x ONE reference `git rev-parse` spawn, interleaved with
+//     the measured runs (timing.AssertPaired) so both sides see the same load
+//     window and rest on the same sample count. The CALIBRATED arm — it
+//     measures code, not machine. Healthy checkBranchState performs exactly
+//     one spawn (ResolveGitDirs primary path) plus sub-millisecond parsing,
+//     so the ratio sits at ~1.0x (measured 1.06x, darwin/arm64, 2026-08-20)
+//     on any machine under any load; a change that adds a second subprocess moves it
 //     to >= 2.0x and trips the bound even while every absolute figure stays
 //     inside the generous budget fractions. This closes the gap the earlier
 //     forms left: the 500ms absolute ceiling measured machine load (breached
@@ -170,18 +173,23 @@ func TestBranchGuard_Latency(t *testing.T) {
 		ToolInput:     json.RawMessage(`{"command": "git switch -c feat/perf"}`),
 	}
 
-	// Reference unit: ONE `git rev-parse` spawn with the exact arguments
-	// ResolveGitDirs issues on its primary path — the machine-cost unit
-	// checkBranchState is dominated by. Spawned in this process, immediately
-	// before the measured loop, so the calibrated ratio measures spawn units
-	// per deny decision rather than machine speed.
-	refUnit := timing.Median(func() {
+	// Reference unit: ONE `git rev-parse` spawn mirroring what
+	// internal/core/git.runGitRevParse does on ResolveGitDirs' primary path —
+	// the same arguments AND the same plumbing (two separate buffers with
+	// cmd.Run, not CombinedOutput's single shared pipe), so the reference
+	// carries the measured operation's cost MIX and not merely its cost class.
+	// timing.AssertPaired interleaves this with the measured runs, so both
+	// sides see the same load window (see the internal/timing reference rules).
+	ref := func() {
 		cmd := exec.Command("git", "-C", repo, "rev-parse",
 			"--path-format=absolute", "--git-dir", "--git-common-dir")
-		if out, err := cmd.CombinedOutput(); err != nil {
-			t.Fatalf("reference rev-parse spawn failed: %v (%s)", err, out)
+		var stdout, stderr bytes.Buffer
+		cmd.Stdout = &stdout
+		cmd.Stderr = &stderr
+		if err := cmd.Run(); err != nil {
+			t.Fatalf("reference rev-parse spawn failed: %v (%s)", err, stderr.String())
 		}
-	}, 3, 10)
+	}
 
 	// The PreToolUse budget the guard must fit inside. The ceilings below are
 	// fractions of it.
@@ -196,14 +204,14 @@ func TestBranchGuard_Latency(t *testing.T) {
 	// wide headroom over healthy code while tripping on any change that adds
 	// a second subprocess (>= 2.0x) — the regression class invisible to the
 	// budget fractions when absolute figures stay generous.
-	timing.Assert(t, timing.Bound{
+	timing.AssertPaired(t, timing.Bound{
 		Name:          "checkBranchState",
 		Budget:        hookBudget,
 		SteadyCeiling: steadyCeiling,
 		MaxUnits:      1.5,
 		Iterations:    100,
 		Warmup:        3,
-	}, refUnit, func() {
+	}, ref, func() {
 		decision, _ := checkBranchState(input, repo)
 		if decision != DecisionDeny {
 			t.Fatalf("checkBranchState decision = %q, want %q "+
