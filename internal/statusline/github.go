@@ -29,10 +29,30 @@ const githubFetchBudget = 20 * time.Second
 const githubListLimit = "1000"
 
 // GitHubCounts is the repository's open work, as of the last successful fetch.
+//
+// Available and Suppressed answer two different questions and only their
+// combination is renderable: Available says whether a number was read,
+// Suppressed says whether a number was ever going to exist. A checkout with no
+// forge is not a checkout whose fetch failed, and rendering the two alike is
+// the defect this pair exists to prevent.
 type GitHubCounts struct {
-	OpenIssues int   `json:"open_issues"`
-	OpenPRs    int   `json:"open_prs"`
-	Available  bool  `json:"-"`          // false when no cache could be read
+	OpenIssues int  `json:"open_issues"`
+	OpenPRs    int  `json:"open_prs"`
+	Available  bool `json:"-"` // false when no cache could be read
+	// Suppressed marks a checkout no forge will answer for: the operator set
+	// `statusline.forge: none` (or a value naming no forge), the remote is on
+	// no recognised host, or the forge's CLI is not installed. The pair is then
+	// dropped entirely rather than shown as "-/-", which would promise an
+	// answer that is not coming.
+	//
+	// Serialized: the refresh child pays the git and PATH lookups that decide
+	// it, so the render path reads the verdict instead of re-deriving it. The
+	// explicit config opt-out is the one case the read side decides for itself,
+	// since it must hold before any child has run.
+	//
+	// Not a latch — every refresh rewrites it, so installing the CLI or naming
+	// a forge brings the pair back within one TTL.
+	Suppressed bool  `json:"suppressed,omitempty"`
 	FetchedAt  int64 `json:"fetched_at"` // unix seconds; 0 when never fetched
 }
 
@@ -42,8 +62,17 @@ func githubCachePath(boardRoot string) string {
 }
 
 // resolveGitHubCounts reads the cached counts. Best-effort + fail-open: an
-// absent, unreadable, or corrupt cache yields Available=false and renders
-// nothing. Constant-cost — one read of one small file per statusline render.
+// absent, unreadable, or corrupt cache yields Available=false, which renders as
+// "-/-" — unknown, not zero, and not absent. Constant-cost: one read of one
+// small cache file, plus one read of the small config file below.
+//
+// The config read is what lets an explicit opt-out take effect immediately. The
+// refresh child decides every other suppression case and writes its verdict
+// into the cache, but `statusline.forge: none` must hold on the very first
+// render of a checkout that has never had a child run — otherwise the operator
+// who just switched the counts off watches "-/-" until a TTL elapses. Only the
+// override is consulted here; the remote host and the CLI's presence cost a
+// subprocess each and stay on the child's side of the line.
 //
 // This NEVER calls the network. The render path only reads; refreshing is the
 // detached child's job (see maybeRefreshGitHubCounts).
@@ -51,15 +80,22 @@ func resolveGitHubCounts(boardRoot string) GitHubCounts {
 	if boardRoot == "" {
 		return GitHubCounts{}
 	}
-	data, err := os.ReadFile(githubCachePath(boardRoot))
-	if err != nil {
-		return GitHubCounts{}
-	}
 	var c GitHubCounts
-	if err := json.Unmarshal(data, &c); err != nil {
-		return GitHubCounts{}
+	if data, err := os.ReadFile(githubCachePath(boardRoot)); err == nil {
+		if err := json.Unmarshal(data, &c); err == nil {
+			c.Available = true
+		} else {
+			c = GitHubCounts{}
+		}
 	}
-	c.Available = true
+	if override := forgeOverride(boardRoot); override != "" {
+		if _, ok := resolveForge("", override); !ok {
+			// The value names no forge — "none", "off", or a typo. All three
+			// mean the operator will not get counts here, and an absent pair is
+			// the symptom a typo should show (see resolveForge).
+			c.Suppressed = true
+		}
+	}
 	return c
 }
 
@@ -142,6 +178,10 @@ func RefreshGitHubCounts(ctx context.Context, boardRoot string) error {
 
 	prev := resolveGitHubCounts(boardRoot)
 	prev.FetchedAt = time.Now().Unix()
+	// This run re-decides suppression from scratch: a forge that appeared, or a
+	// CLI that was installed since the last refresh, must not stay hidden by a
+	// verdict reached before it existed.
+	prev.Suppressed = false
 	if err := writeGitHubCache(boardRoot, prev); err != nil {
 		return err
 	}
@@ -151,10 +191,19 @@ func RefreshGitHubCounts(ctx context.Context, boardRoot string) error {
 
 	forge, ok := resolveForge(originRemoteURL(ctx, boardRoot), forgeOverride(boardRoot))
 	if !ok {
-		return nil // no forge for this checkout; the segment stays absent
+		// No forge for this checkout — opted out, or a remote on a host nothing
+		// recognises. Record it so the pair is dropped rather than shown as
+		// "-/-": nothing about waiting will produce a count here.
+		prev.Suppressed = true
+		return writeGitHubCache(boardRoot, prev)
 	}
 	if _, err := exec.LookPath(forge.bin); err != nil {
-		return nil // the forge's CLI is not installed; keep rendering the stale count
+		// The forge exists but its CLI does not. Same verdict, same reason: the
+		// next refresh cannot succeed either, and "-/-" would keep offering an
+		// answer that will not arrive. Installing the CLI clears this on the
+		// next TTL, since the flag above is rewritten every run.
+		prev.Suppressed = true
+		return writeGitHubCache(boardRoot, prev)
 	}
 
 	if !forgeBudgetAllows(ctx, boardRoot, forge) {

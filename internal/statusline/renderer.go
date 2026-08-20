@@ -569,20 +569,26 @@ func (r *Renderer) renderRepoBranchSegment(data *StatusData) string {
 // renderForgePair renders the repo segment's slash pair — open issues over
 // open change requests — as a ", i/p" fragment, or "" when the segment is off.
 //
-// Three states, each of which must be readable as itself:
+// Four states, each of which must be readable as itself:
 //
 //   - fetched:   ", 7/3" — and ", 0/0" when the repo genuinely has nothing
 //     open. Zeros are printed rather than omitted, so the pair keeps a fixed
 //     shape and a quiet repository still shows the operator that the counts
 //     are live.
-//   - unknown:   ", -/-" — the cache is absent, unreadable, or corrupt (see
-//     resolveGitHubCounts, which fails open to Available=false). Printing 0/0
-//     here would report a silent fetch failure as an empty backlog, which is
-//     the one reading that must never be possible: absence of data is not
-//     evidence of zero.
+//   - unknown:   ", -/-" — the cache is absent, unreadable, or corrupt, or a
+//     present forge failed to answer (see resolveGitHubCounts, which fails open
+//     to Available=false). Printing 0/0 here would report a silent fetch
+//     failure as an empty backlog, which is the one reading that must never be
+//     possible: absence of data is not evidence of zero.
 //   - gated off: "" — the segment carries no pair at all. "-/-" would claim a
 //     fetch was attempted; the user asked for no forge data, so the repo part
 //     ends after the name.
+//   - suppressed: "" — same rendering, reached the other way: no forge will
+//     ever answer for this checkout (`statusline.forge: none`, an unrecognised
+//     host, or a missing forge CLI — see GitHubCounts.Suppressed). "-/-" is
+//     reserved for a state the next refresh could change on its own; this one
+//     cannot, so showing a defect marker for it would send the operator
+//     looking for a fault that is not there.
 //
 // [HARD] Exactly one number/number pair may appear on this line. Git
 // ahead/behind used to hold this slot, and on 2026-08-18 an operator read the
@@ -590,6 +596,9 @@ func (r *Renderer) renderRepoBranchSegment(data *StatusData) string {
 // by side. The slot now belongs to the counts; ahead/behind is not rendered.
 func (r *Renderer) renderForgePair(data *StatusData) string {
 	if !r.isSegmentEnabled(SegmentGitHub) {
+		return ""
+	}
+	if data.GitHub.Suppressed {
 		return ""
 	}
 	if !data.GitHub.Available {
