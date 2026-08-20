@@ -56,14 +56,14 @@ Three rules govern the value.
 {{< icon warning warn >}} **Shell hooks do NOT honor `MOAI_HOME`.** Only the Go binary — the `moai` CLI and its subcommands — reads this variable. The shell script wrappers under `.claude/hooks/` and any external tool that writes the `~/.moai` path as a literal string never consult it, so they keep looking at the default location. Relocating `MOAI_HOME` therefore moves **the Go-side state only**, and the paths the shell hooks use diverge from it. Use it only when that limitation is acceptable.
 {{< /callout >}}
 
-The user's home directory itself resolves HOME-first: a non-empty `HOME` is used as-is, and only then does resolution fall through to the operating system's home lookup. That is why overriding `HOME` in a test or a container works identically on every platform.
+The user's home directory itself resolves HOME-first: a non-empty `HOME` is used as-is, and only when it is empty does resolution fall through to the operating system's home lookup. That is why overriding `HOME` in a test or a container works identically on every platform.
 
 ## `moai doctor` — see how full it is first
 
 `moai doctor` carries a **Home Disk Usage** entry in its diagnostic list. It is advisory: exceeding the threshold never blocks another command.
 
 ```bash
-$ moai doctor
+moai doctor
 ```
 
 What the entry reports:

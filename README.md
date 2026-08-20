@@ -130,7 +130,7 @@ Full guide: [Kanban Mode](https://adk.mo.ai.kr/en/advanced/kanban-mode) · [mana
 
 Kanban Mode aside, here is what else landed in v3.1.1. Each one is covered in full in its own section further down.
 
-**Home directory hygiene.** The longer you use it, the more leftovers from past runs pile up in `~/.moai`. `moai clean --home` clears them out, staying inside an allowlist — it is a dry run by default, so it shows you what would go before anything goes, and actual deletion needs `--force`. How old something has to be before it is swept is set by `state.home_retention_days` (30 days by default, `0` turns it off). To see how far the directory has grown right now, `moai doctor` reports it under Home Disk Usage. The home path itself can be moved with the `MOAI_HOME` environment variable — it takes absolute paths only.
+**Home directory hygiene.** The longer you use it, the more leftovers from past runs pile up in `~/.moai`. `moai clean --home` clears them out, staying inside an allowlist — it is a dry run by default, so it shows you what would go before anything goes, and actual deletion needs `--force`. How old something has to be before it is swept is set by `state.home_retention_days` (30 days by default, `0` turns it off). To see how far the directory has grown right now, `moai doctor` reports it under Home Disk Usage. The home path itself can be moved with the `MOAI_HOME` environment variable — it takes absolute paths only. Only Go processes read it, though: move the path and the statusline and the shell hooks still look under `$HOME/.moai`. Shell-side credentials like `.env.glm` and the statusline's data stay behind, and your state quietly splits in two.
 
 <p align="center">
   <img src="./assets/images/home-hygiene-infographic-en.png" alt="~/.moai home hygiene — MOAI_HOME keeps the path in one place, moai doctor reports usage, and moai clean --home deletes only inside the allowlist" width="85%">
@@ -144,7 +144,7 @@ Kanban Mode aside, here is what else landed in v3.1.1. Each one is covered in fu
 
 **Statusline GitLab support.** `statusline.forge` picks whether open work is counted on GitHub or on GitLab. Left empty, it decides from the origin remote's host.
 
-**A bare `/loop` becomes the kanban foreman.** Typing `/loop` with no arguments starts a cycle that watches the backlog queue, dispatches the next card to an isolated worker, confirms completion from evidence it read rather than from a claim, and reports. Nobody is watching that seat, so putting cards in the queue and picking them stays the operator's job — the foreman only carries them.
+**A bare `/loop` becomes the kanban foreman.** Typing `/loop` with no arguments starts a cycle that watches the backlog queue, dispatches the next card the operator has already marked `picked` to an isolated worker, confirms completion from evidence it read rather than from a claim, and reports. Nobody is watching that seat, so both putting cards in the queue and picking them stay the operator's job — the foreman never picks, it only carries.
 
 ---
 

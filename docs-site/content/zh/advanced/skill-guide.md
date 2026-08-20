@@ -115,7 +115,7 @@ MoAI-ADK 模板共提供 **34 个技能**。目录按安装范围分为随每个
 
 | 技能名称              | 说明                                        |
 | ---------------------- | ------------------------------------------- |
-| `moai-meta-harness`    | 动态生成项目特化的智能体团队         |
+| `moai-meta-harness`    | **DEPRECATED** —— 遗留的 7-Phase 元 harness。重定向到 v4 Builder（`/moai:harness <自然语言请求>`） |
 | `moai-harness-learner` | Harness 学习子系统、自动更新提案 |
 | `moai-kanban-foreman`  | 无人值守看板工头的一轮 —— 监视积压队列，把已挑选的卡片分给隔离的工作者，并收集证据 |
 

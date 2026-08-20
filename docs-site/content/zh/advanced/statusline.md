@@ -173,7 +173,7 @@ statusline:
     backlog: true            # 🔄 TODO: 进行中/待办
 ```
 
-十六个键是正式的设置 schema。表示仓库的 `owner/name` 部分作为第十七个元素在 `git_branch` 段落里一并渲染，位于 schema 之外，没有单独开关。`github` 键名字照旧，但现在开关的是**第三行**仓库段落的 🐛/🔀 后缀，而向哪个托管服务询问由上面的 `forge` 键决定。会话行的两个键（`session`·`backlog`）独立于这套 16 键 schema，不写进设置也默认开启渲染 —— 没有观测来源（会话名、积压队列、forge 缓存）时对应段落安静省略。过去那些带名字的预设 (full/compact/minimal) 已废弃，想要的组合按段落逐个开关即可。
+十六个键是正式的设置 schema。表示仓库的 `owner/name` 部分作为第十七个元素在 `git_branch` 段落里一并渲染，位于 schema 之外，没有单独开关。`github` 键名字照旧，但现在开关的是**第三行**仓库段落的 🐛/🔀 后缀，而向哪个托管服务询问由上面的 `forge` 键决定。上面例子里写出的十九个开关中，十六个属于这套 schema，其余三个（`github`·`session`·`backlog`）在 schema 之外。这三个键不写进设置也默认开启渲染 —— 没有观测来源（会话名、积压队列、forge 缓存）时对应段落安静省略。过去那些带名字的预设 (full/compact/minimal) 已废弃，想要的组合按段落逐个开关即可。
 
 刷新周期由 `settings.json` 的 `statusLine.refreshInterval`（单位：秒，默认 10）决定。这不是状态栏设置文件，而是 Claude Code 运行时设置。周期太短 CPU 负担加大，太长则上下文使用率的变化反映滞后。一般默认值就够用。
 

@@ -56,14 +56,14 @@ export MOAI_HOME=/Volumes/work/moai-home
 {{< icon warning warn >}} **Shell 钩子不遵循 `MOAI_HOME`。** 读取这个变量的只有 Go 二进制(`moai` CLI 及其子命令)。`.claude/hooks/` 下的 shell 脚本包装器,以及把 `~/.moai` 路径当字符串直接写死的外部工具,都不会查阅这个变量,因此仍然看默认位置。也就是说,迁移 `MOAI_HOME` 只会带走 **Go 一侧的状态**,和 shell 钩子使用的路径会分叉。只有在能接受这个限制时才使用它。
 {{< /callout >}}
 
-用户主目录本身按 HOME 优先解析:`HOME` 非空就用它的值,只有这时才回退到操作系统的主目录查询。因此在测试或容器里替换 `HOME`,在每个平台上的效果都一致。
+用户主目录本身按 HOME 优先解析:`HOME` 非空就直接用它的值,只有它为空时才回退到操作系统的主目录查询。因此在测试或容器里替换 `HOME`,在每个平台上的效果都一致。
 
 ## `moai doctor` —— 先看塞了多满
 
 `moai doctor` 的诊断清单里带有 **Home Disk Usage** 项。它是建议 (advisory) 性质的,超标也不会拦住其他命令。
 
 ```bash
-$ moai doctor
+moai doctor
 ```
 
 该项报告的内容:

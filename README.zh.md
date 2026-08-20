@@ -130,7 +130,7 @@ moai glm -f lane-3            # ……GLM 后端上的一条泳道
 
 除了看板模式，v3.1.1 还带来了下面这些。每一项都在后面对应的章节里细讲。
 
-**主目录清理。** 用得越久，`~/.moai` 里堆的历史运行产物就越多。`moai clean --home` 只在允许清单的范围内清理它们 —— 默认是 dry-run，先把要删的东西摆出来给你看，真删要加 `--force`。从几天前的东西开始清由 `state.home_retention_days` 决定（默认 30 天，填 `0` 就关掉）。眼下膨胀到多大，`moai doctor` 的 Home Disk Usage 项会告诉你。主目录本身可以用 `MOAI_HOME` 环境变量挪走 —— 只接受绝对路径。
+**主目录清理。** 用得越久，`~/.moai` 里堆的历史运行产物就越多。`moai clean --home` 只在允许清单的范围内清理它们 —— 默认是 dry-run，先把要删的东西摆出来给你看，真删要加 `--force`。从几天前的东西开始清由 `state.home_retention_days` 决定（默认 30 天，填 `0` 就关掉）。眼下膨胀到多大，`moai doctor` 的 Home Disk Usage 项会告诉你。主目录本身可以用 `MOAI_HOME` 环境变量挪走 —— 只接受绝对路径。不过读这个变量的只有 Go 进程，路径挪了，状态栏和 shell 钩子照旧看 `$HOME/.moai`。`.env.glm` 这类 shell 侧的凭据和状态栏数据就留在原地，状态悄悄裂成两处。
 
 <p align="center">
   <img src="./assets/images/home-hygiene-infographic-zh.png" alt="~/.moai 主目录清理 —— 用 MOAI_HOME 把路径归到一处，用 moai doctor 看用量，用 moai clean --home 只在允许清单范围内删除" width="85%">
@@ -144,7 +144,7 @@ moai glm -f lane-3            # ……GLM 后端上的一条泳道
 
 **状态栏支持 GitLab。** 用 `statusline.forge` 选择在 GitHub 还是 GitLab 上统计打开中的工作。留空就按 origin 远端的主机判断。
 
-**裸 `/loop` 变成看板工头。** 不带参数只敲 `/loop`，转起来的是这样一个循环：盯着积压队列，把下一张卡片派给隔离的工人，完成与否不看主张、只看读到的证据，然后汇报。这是没人盯着的位置，所以往队列里放卡片和挑卡片依旧是操作者的事，工头只负责搬运。
+**裸 `/loop` 变成看板工头。** 不带参数只敲 `/loop`，转起来的是这样一个循环：盯着积压队列，把操作者已经标成 `picked` 的下一张卡片派给隔离的工人，完成与否不看主张、只看读到的证据，然后汇报。这是没人盯着的位置，所以往队列里放卡片和挑卡片都是操作者的事，工头不挑，只负责搬运。
 
 ---
 
