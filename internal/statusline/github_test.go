@@ -189,88 +189,101 @@ func TestRenderSessionLine_GitHubCounts(t *testing.T) {
 	}
 }
 
-// TestRender_ForgeCountsRenderDistinctlyFromAheadBehind is the restore, and
-// the shape of the restore is the point.
+// TestRender_ForgePairIsIssuesOverPRs pins what the slash pair on the repo
+// segment means: open issues over open change requests.
 //
-// The counts were removed on 2026-08-18 because the merged layout put two
-// slash-joined pairs side by side and an operator read the branch's "59/0" as
-// issues over pull requests. Bringing the numbers back in that form would
-// bring the misread back with them, so this pins the distinction: exactly one
-// slash pair on the line (ahead/behind), and each count carrying its own glyph
-// with no slash joining them.
-func TestRender_ForgeCountsRenderDistinctlyFromAheadBehind(t *testing.T) {
-	t.Parallel()
-
-	r := newTestRenderer()
-	data := &StatusData{
-		Git:    GitStatusData{Branch: "main", Available: true, Ahead: 59, Behind: 0},
-		Memory: MemoryData{TokensUsed: 50000, TokenBudget: 200000, Available: true},
-		GitHub: GitHubCounts{OpenIssues: 7, OpenPRs: 3, Available: true},
-		Workspace: WorkspaceData{
-			Repo: &RepoInfo{Host: "github.com", Owner: "modu-ai", Name: "moai-adk"},
-		},
-	}
-
-	got := r.Render(data, ModeDefault)
-
-	if !strings.Contains(got, "📡 modu-ai/moai-adk, 59/0 🐛7 🔀3 | 🅱️ main") {
-		t.Errorf("repo segment must carry glyph-tagged counts beside the a/b pair, got %q", got)
-	}
-	// The misread this guards against needs a second number/number pair to
-	// happen. Exactly one may appear — the ahead/behind pair. (The slash in
-	// owner/name is not a number pair and is not what was misread.)
-	if n := len(regexp.MustCompile(`\d+/\d+`).FindAllString(got, -1)); n != 1 {
-		t.Errorf("the line carries %d number/number pairs, want exactly 1 (ahead/behind) — got %q", n, got)
-	}
-}
-
-// TestRender_ForgeCountsOmitZeros keeps the bar quiet about nothing: a zero
-// count is absent rather than printed, matching the dirty count in the same
-// segment.
-func TestRender_ForgeCountsOmitZeros(t *testing.T) {
+// The pair used to be git ahead/behind. It is not any more (operator decision
+// 2026-08-20): the forge counts answer a question the operator actually asks
+// of a status bar, and ahead/behind was answering one they did not. Only one
+// slash pair may appear on the line, so the two could not both stay — the
+// 2026-08-18 misread of "59/0" as issues-over-PRs is exactly what happens when
+// two number/number pairs sit side by side.
+func TestRender_ForgePairIsIssuesOverPRs(t *testing.T) {
 	t.Parallel()
 
 	data := &StatusData{
-		Git:    GitStatusData{Branch: "main", Available: true},
-		GitHub: GitHubCounts{OpenIssues: 0, OpenPRs: 2, Available: true},
-		Workspace: WorkspaceData{
-			Repo: &RepoInfo{Host: "github.com", Owner: "modu-ai", Name: "moai-adk"},
-		},
+		Git:       GitStatusData{Branch: "main", Available: true, Ahead: 59, Behind: 7},
+		Memory:    MemoryData{TokensUsed: 50000, TokenBudget: 200000, Available: true},
+		GitHub:    GitHubCounts{OpenIssues: 1, OpenPRs: 1, Available: true},
+		Workspace: WorkspaceData{Repo: &RepoInfo{Host: "github.com", Owner: "modu-ai", Name: "moai-adk"}},
 	}
 
-	got := newTestRenderer().renderRepoBranchSegment(data)
-	if strings.Contains(got, "🐛") {
-		t.Errorf("a zero issue count must not render, got %q", got)
-	}
-	if !strings.Contains(got, "🔀2") {
-		t.Errorf("the non-zero change-request count must render, got %q", got)
+	seg := newTestRenderer().renderRepoBranchSegment(data)
+	if want := "📡 modu-ai/moai-adk, 1/1 | 🅱️ main"; seg != want {
+		t.Errorf("repo segment = %q, want %q", seg, want)
 	}
 
-	data.GitHub = GitHubCounts{OpenIssues: 4, OpenPRs: 1, Available: false}
-	if got := newTestRenderer().renderRepoBranchSegment(data); strings.Contains(got, "🐛") || strings.Contains(got, "🔀") {
-		t.Errorf("counts from an unavailable cache must not render, got %q", got)
+	// Ahead/behind must not reach the bar in any form — not as the pair it
+	// used to be, and not as the ↑N/↓N arrows it was before that.
+	for _, gone := range []string{"59", "7", "↑", "↓"} {
+		if strings.Contains(seg, gone) {
+			t.Errorf("ahead/behind leaked into the segment as %q: %q", gone, seg)
+		}
+	}
+
+	// Exactly one number/number pair on the line. (owner/name is not a number
+	// pair and was never what got misread.)
+	if n := len(regexp.MustCompile(`\d+/\d+`).FindAllString(seg, -1)); n != 1 {
+		t.Errorf("segment carries %d number/number pairs, want exactly 1 (issues/PRs) — got %q", n, seg)
+	}
+
+	// The dirty count still rides behind the branch, and the pair survives a
+	// full render.
+	data.Git.Modified = 3
+	full := newTestRenderer().Render(data, ModeDefault)
+	if want := "📡 modu-ai/moai-adk, 1/1 | 🅱️ main +3"; !strings.Contains(full, want) {
+		t.Errorf("full render must contain %q, got %q", want, full)
 	}
 }
 
-func TestRenderSessionLine_GitHubSegmentDisablable(t *testing.T) {
+// TestRender_ForgePairUnknownIsNotZero keeps "we have no counts" visibly
+// different from "there is nothing open".
+//
+// The cache is written by a detached refresh that can be absent, stale, or
+// broken; when it is, an honest bar says so rather than printing 0/0, which
+// would report a silent fetch failure as a quiet repository.
+func TestRender_ForgePairUnknownIsNotZero(t *testing.T) {
 	t.Parallel()
 
-	// The SegmentGitHub gate governs the restored counts: with it off the
-	// numbers are absent and the repo part renders exactly as it did before
-	// they came back.
+	base := func() *StatusData {
+		return &StatusData{
+			Git:       GitStatusData{Branch: "main", Available: true},
+			Workspace: WorkspaceData{Repo: &RepoInfo{Host: "github.com", Owner: "modu-ai", Name: "moai-adk"}},
+		}
+	}
+
+	unknown := base()
+	unknown.GitHub = GitHubCounts{} // never fetched: absent, unreadable, or corrupt cache
+	gotUnknown := newTestRenderer().renderRepoBranchSegment(unknown)
+	if want := "📡 modu-ai/moai-adk, -/- | 🅱️ main"; gotUnknown != want {
+		t.Errorf("unfetched counts = %q, want %q", gotUnknown, want)
+	}
+
+	empty := base()
+	empty.GitHub = GitHubCounts{OpenIssues: 0, OpenPRs: 0, Available: true}
+	gotEmpty := newTestRenderer().renderRepoBranchSegment(empty)
+	if want := "📡 modu-ai/moai-adk, 0/0 | 🅱️ main"; gotEmpty != want {
+		t.Errorf("fetched-and-empty counts = %q, want %q", gotEmpty, want)
+	}
+
+	if gotUnknown == gotEmpty {
+		t.Errorf("unknown and genuinely-zero counts must not render identically: both %q", gotEmpty)
+	}
+}
+
+// TestRender_ForgePairSegmentGate: with the github segment off the pair is
+// absent entirely — not "-/-", which would claim a fetch had been attempted.
+func TestRender_ForgePairSegmentGate(t *testing.T) {
+	t.Parallel()
+
 	d := &StatusData{
-		Git:    GitStatusData{Branch: "main", Available: true},
-		GitHub: GitHubCounts{OpenIssues: 7, OpenPRs: 3, Available: true},
-		Workspace: WorkspaceData{
-			Repo: &RepoInfo{Host: "github.com", Owner: "modu-ai", Name: "moai-adk"},
-		},
+		Git:       GitStatusData{Branch: "main", Available: true},
+		GitHub:    GitHubCounts{OpenIssues: 7, OpenPRs: 3, Available: true},
+		Workspace: WorkspaceData{Repo: &RepoInfo{Host: "github.com", Owner: "modu-ai", Name: "moai-adk"}},
 	}
 
 	got := NewRenderer("default", true, map[string]bool{SegmentGitHub: false}).renderRepoBranchSegment(d)
-	if strings.Contains(got, "⚠️") || strings.Contains(got, "🔀") {
-		t.Errorf("disabled github segment still rendered: %q", got)
-	}
-	if !strings.Contains(got, "📡 modu-ai/moai-adk") {
-		t.Errorf("repo part must survive the gate, got %q", got)
+	if want := "📡 modu-ai/moai-adk | 🅱️ main"; got != want {
+		t.Errorf("gated segment = %q, want %q", got, want)
 	}
 }

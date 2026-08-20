@@ -282,10 +282,12 @@ func TestRender_GitOnlyBranch(t *testing.T) {
 
 	got := r.Render(data, ModeDefault)
 
-	// Layout v3 CH3 (2026-05-22 fix, 2026-08-18 merge): repo info present ->
-	// "📡 owner/name, ahead/behind | 🅱️ branch" form. clean -> no dirty suffix.
-	if !strings.Contains(got, "📡 modu-ai/moai-adk, 0/0 | 🅱️ main") && !strings.Contains(got, "📭 main +0") {
-		t.Errorf("should show clean branch as '📡 modu-ai/moai-adk, 0/0 | 🅱️ main' or '📭 main +0', got %q", got)
+	// Layout v3 CH3 (2026-05-22 fix, 2026-08-18 merge, 2026-08-20 pair
+	// reassignment): repo info present -> "📡 owner/name, issues/PRs | 🅱️
+	// branch" form. No GitHub cache in this fixture, so the pair is the
+	// unknown marker rather than a count. Clean -> no dirty suffix.
+	if !strings.Contains(got, "📡 modu-ai/moai-adk, -/- | 🅱️ main") {
+		t.Errorf("should show clean branch as '📡 modu-ai/moai-adk, -/- | 🅱️ main', got %q", got)
 	}
 }
 
@@ -671,46 +673,6 @@ func TestCostNotRendered(t *testing.T) {
 	}
 }
 
-func TestRenderGitBranchV3(t *testing.T) {
-	tests := []struct {
-		name     string
-		git      GitStatusData
-		worktree string
-		want     string
-	}{
-		// Clean state → "🅱️ main +0"
-		{"clean", GitStatusData{Branch: "main", Available: true}, "", "🅱️ main +0"},
-		// Modified files (no longer prefixed with 🔨 — mailbox/M-count carry the signal)
-		{"modified", GitStatusData{Branch: "feat", Modified: 2, Available: true}, "", "🅱️ feat +2"},
-		// Staged files (no longer prefixed with 📦)
-		{"staged", GitStatusData{Branch: "main", Staged: 1, Available: true}, "", "🅱️ main +1"},
-		// Modified + Staged: dirty count is sum, no prefix emoji
-		{"modified+staged", GitStatusData{Branch: "main", Modified: 2, Staged: 1, Available: true}, "", "🅱️ main +3"},
-		// Ahead only → "🅱️ feat ↑2 +0"
-		{"ahead", GitStatusData{Branch: "feat", Ahead: 2, Available: true}, "", "🅱️ feat ↑2 +0"},
-		// Behind only → "🅱️ feat ↓1 +0"
-		{"behind", GitStatusData{Branch: "feat", Behind: 1, Available: true}, "", "🅱️ feat ↓1 +0"},
-		// Ahead + Behind → "🅱️ feat ↑2 ↓1 +0"
-		{"ahead+behind", GitStatusData{Branch: "feat", Ahead: 2, Behind: 1, Available: true}, "", "🅱️ feat ↑2 ↓1 +0"},
-		// Ahead + dirty → "🅱️ feat ↑2 +3"
-		{"ahead+dirty", GitStatusData{Branch: "feat", Ahead: 2, Modified: 3, Available: true}, "", "🅱️ feat ↑2 +3"},
-		// Zero ahead/behind explicitly omitted
-		{"zero ahead/behind", GitStatusData{Branch: "main", Ahead: 0, Behind: 0, Available: true}, "", "🅱️ main +0"},
-		// Unavailable → empty string
-		{"unavailable", GitStatusData{Available: false}, "", ""},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			data := &StatusData{Git: tt.git, Worktree: tt.worktree}
-			got := renderGitBranch(data)
-			if got != tt.want {
-				t.Errorf("renderGitBranch() = %q, want %q", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestRenderSessionTime(t *testing.T) {
 	tests := []struct {
 		name string
@@ -899,6 +861,7 @@ func TestRenderDefaultV3_Line3(t *testing.T) {
 			Untracked: 1,
 			Available: true,
 		},
+		GitHub: GitHubCounts{OpenIssues: 4, OpenPRs: 2, Available: true},
 		Workspace: WorkspaceData{
 			Repo: &RepoInfo{Host: "github.com", Owner: "modu-ai", Name: "moai-adk"},
 		},
@@ -912,11 +875,18 @@ func TestRenderDefaultV3_Line3(t *testing.T) {
 	if !strings.Contains(l3, "📁 moai-adk-go") {
 		t.Errorf("default L3 must contain directory at head, got: %q", l3)
 	}
-	// Layout v3 CH3 (2026-05-22 fix, 2026-08-18 merge): combined repo+branch segment.
-	// "📡 owner/name, ahead/behind | 🅱️ branch +N" (pipe separator, repo prefix required).
-	// dirty = Staged(3) + Modified(2) + Untracked(1) = 6; ahead/behind ride the repo part.
-	if !strings.Contains(l3, "📡 modu-ai/moai-adk, 2/1 | 🅱️ feat/auth +6") {
+	// Layout v3 CH3 (2026-05-22 fix, 2026-08-18 merge, 2026-08-20 pair
+	// reassignment): combined repo+branch segment, "📡 owner/name, issues/PRs
+	// | 🅱️ branch +N" (pipe separator, repo prefix required). dirty =
+	// Staged(3) + Modified(2) + Untracked(1) = 6; the forge counts ride the
+	// repo part where ahead/behind used to.
+	if !strings.Contains(l3, "📡 modu-ai/moai-adk, 4/2 | 🅱️ feat/auth +6") {
 		t.Errorf("default L3 must contain combined repo_branch segment with pipe separator, got: %q", l3)
+	}
+	// Ahead=2 / Behind=1 are still carried on GitStatusData but must not reach
+	// the line in any form.
+	if strings.Contains(l3, "2/1") || strings.Contains(l3, "↑") || strings.Contains(l3, "↓") {
+		t.Errorf("ahead/behind must not render on L3, got: %q", l3)
 	}
 	if strings.Contains(l3, "📦") || strings.Contains(l3, "🔨") {
 		t.Errorf("default L3 must not contain legacy 📦/🔨 prefix, got: %q", l3)
