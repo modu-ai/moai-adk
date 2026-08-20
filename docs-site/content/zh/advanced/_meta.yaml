@@ -65,6 +65,9 @@ index:
 "moai-web-console":
   title: "moai web 控制台"
   weight: 85
+"home-hygiene":
+  title: "主目录卫生 (~/.moai)"
+  weight: 96
 # v3.1 NEW-badge section-level list (SPEC-DESIGN-DOCS-V31-001 M3).
 new_items:
   - kanban-mode
@@ -72,3 +75,4 @@ new_items:
   - manager-lead
   - multi-model-audit
   - autonomy-tier
+  - home-hygiene

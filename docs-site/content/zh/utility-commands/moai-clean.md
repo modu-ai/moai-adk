@@ -222,9 +222,31 @@ $ moai clean --home --force
 ```
 
 - **默认 dry-run**。想要删除必须显式加上 `--force`,而且它也只在允许名单之内生效。
-- 保留时长由 `~/.moai/config/sections/` 的 `state.home_retention_days` 决定。
 - 删除之前想看占用了多少,`moai doctor` 的 **Home Disk Usage** 诊断会先告诉你 —— 属于建议 (advisory) 性质的检查,阈值跟随编译时的默认值。
-- 想把 `~/.moai` 本身挪个位置,可以用 `MOAI_HOME` 环境变量重新指定主目录根(仅非空绝对路径有效,相对路径被忽略)。
+- 想把 `~/.moai` 本身挪个位置,可以用 `MOAI_HOME` 环境变量重新指定主目录根(仅非空绝对路径有效,空值等同未设置,相对路径被忽略)。不过读取这个变量的只有 Go 二进制,**shell 钩子并不遵循它**。
+
+### 允许名单的 4 类
+
+| 类别 | 对象 | 条件 |
+|------|------|------|
+| `debug` | `claude-profiles/<配置档案>/debug/` 下的条目 | 超过保留期 |
+| `releases` | `releases/` 里的发行版二进制(及配对的 `.sha256`) | 除当前版本与**其余中最新的 3 个**之外的。`version.json`、`LATEST` 永远不是候选 |
+| `logs` | 根 `logs/` 里的文件 | 超过保留期 |
+| `backups` | `backups/removed-*` 目录 | 超过保留期 |
+
+不在名单上的东西,扫描器根本看不见。而且受保护的对象(`config/`、`state/`、`projects/`、`worktrees/`、`mcp/`、`bin/`、`search/`、`studio/`、`plugins/`,以及 `launch.yaml`、`preferences.yaml` 和所有以 `credentials` 开头的文件)在允许名单**内部**同样胜出 —— 老旧的 `backups/removed-*` 里只要有一个这样的文件,整个目录就被跳过。`~/.claude` 即使加上 `--force` 也不会被读取。
+
+### `state.home_retention_days`
+
+保留期只从 **HOME 层级**的文件 `~/.moai/config/sections/state.yaml` 读取。它与项目的 `state.retention_days` 是不同的键、不同的层级 —— 主目录只有一个而项目有多个,分开读取位置可以防止多个项目用不同的时长去清理同一个主目录。
+
+| 值 | 行为 |
+|---|---|
+| 无该键 / 无该文件 | 默认值 **30 天** |
+| 正整数 | 只有比该天数更旧的条目才成为候选 |
+| `0` | 清理**停用** —— 不会产生候选 |
+
+完整的说明见 [主目录卫生](/zh/advanced/home-hygiene)。
 
 ## 相关文档
 

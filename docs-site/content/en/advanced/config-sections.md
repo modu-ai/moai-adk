@@ -2,7 +2,7 @@
 title: Configuration Sections Reference
 weight: 71
 draft: false
-description: "Key configuration file keys in .moai/config/sections/ (handoff/delegation/llm/statusline/security)."
+description: "Key configuration file keys in .moai/config/sections/ (handoff/delegation/llm/statusline/security/workflow/crosssession)."
 ---
 
 MoAI-ADK project settings are split into several YAML files under `.moai/config/sections/`. While the [settings.json guide](/en/advanced/settings-json) covers Claude Code runtime settings, this page documents the keys of the main section files that control MoAI-ADK's own behavior.
@@ -96,11 +96,12 @@ Related: [Profile Matrix](/en/advanced/profile-matrix), [3-Tier Agent Architectu
 
 ## statusline.yaml — status line
 
-Controls statusline theme and 16 segment toggles.
+Controls the statusline theme, which hosting service the `github` segment counts against, and 16 segment toggles.
 
 ```yaml
 statusline:
   theme: "catppuccin-mocha"   # catppuccin-mocha | catppuccin-latte
+  # forge: gitlab             # github | gitlab | none (unset detects from the origin host)
   segments:
     model: true
     context: true
@@ -112,6 +113,7 @@ statusline:
 | Key | Description |
 |-----|-------------|
 | `theme` | Exactly 2 themes exist: `catppuccin-mocha` (default) or `catppuccin-latte` |
+| `forge` | One of `github` · `gitlab` · `none` — which hosting service the `github` segment counts open work against. Leave it unset and the value is decided from the origin remote's host: `github.com` selects `gh`, `gitlab.com` selects `glab`. A self-hosted instance carries no signal in its name, so set it explicitly there. An unrecognised value renders nothing rather than falling back to detection, so a typo shows as an absent segment instead of a wrong count |
 | `segments` | 16 individual segment toggles (the only runtime lever). All on by default; inactive states are handled gracefully with no output |
 
 Segments are placed across 3 lines — line 1 (model·version·session meta), line 2 (context window·API usage bar), line 3 (directory·git·workflow·PR).
@@ -173,6 +175,28 @@ workflow:
 **Exemptions and failure direction.** The git agent that has to create branches is exempted by identity, and the `MOAI_BRANCH_GUARD_EXEMPT=1` environment variable also bypasses it. When classification is uncertain (not a git repository, `git rev-parse` failing, and so on) the command is allowed through and only an audit-log entry is written — the guard refuses only on positive evidence.
 
 Work that needs a different branch belongs in a worktree rather than behind a refusal. For the procedure see [moai worktree](/en/cli-reference/worktree/).
+
+## crosssession.yaml — cross-session messaging
+
+Decides how this session treats messages from your other Claude Code sessions. The `moai cc` · `moai glm` · `moai cg` launchers translate these values into a transient `--settings` file at launch, and the web console edits this file through the settings seam. A session launched without the launcher — a bare `claude` command — does not read this file.
+
+```yaml
+crosssession:
+  inbound: ""             # "" | accept | hold | refuse
+  isolate_machines: false # default — no approval required before a message leaves this machine
+  dialog_expiry: ""       # "" | 60s | 5m | 10m | never
+```
+
+| Key | Value | Description |
+|-----|-------|-------------|
+| `inbound` | `""` (default) | Claude Code decides per message from the two sessions' permission-mode classes |
+| `inbound` | `accept` | Delivers the message. A worker session meant to take messages unattended needs this value |
+| `inbound` | `hold` | Parks each message for approval. A message held this way does not expire; it is delivered when an `accept` later applies |
+| `inbound` | `refuse` | Drops the message |
+| `isolate_machines` | `false` (default) | **No approval is required before a message goes to a session beyond this machine.** Messages between sessions on the same machine never leave the machine whatever the value is, but a message to a session beyond it travels through Anthropic servers — so the default permits that path without asking. Decide whether to keep it rather than inheriting it unread |
+| `isolate_machines` | `true` | Requires your explicit approval before any message leaves the machine, even in `bypassPermissions` mode. A `true` from ANY settings scope applies, so a checked-in project file can turn the requirement on but not off — turning it off means removing the `true` from every scope that sets it |
+| `dialog_expiry` | `""` (default) | Keeps Claude Code's five-minute default |
+| `dialog_expiry` | `60s` · `5m` · `10m` · `never` | Deadline for the approval dialog on a **default**-held message; `never` holds until the session ends. It does not apply to a message held by an explicit `inbound: hold` |
 
 ## Related Documentation
 

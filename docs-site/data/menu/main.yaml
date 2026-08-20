@@ -107,6 +107,12 @@ main:
     defaultOpen: true
     sub:
       - name:
+          ko: 책 — 실전 에이전틱 코딩
+          en: The Book — Practical Agentic Coding
+          ja: 書籍 — 実践エージェンティックコーディング
+          zh: 书籍 — 实战 Agentic Coding
+        ref: /core-concepts/book
+      - name:
           ko: "MoAI-ADK란?"
           en: "What is MoAI-ADK?"
           ja: MoAI-ADKとは？
@@ -206,6 +212,12 @@ main:
           ja: /moai harness
           zh: /moai harness
         ref: /workflow-commands/moai-harness
+      - name:
+          ko: /moai goal
+          en: /moai goal
+          ja: /moai goal
+          zh: /moai goal
+        ref: /workflow-commands/moai-goal
 
   - name:
       ko: 유틸리티 명령어
@@ -436,6 +448,12 @@ main:
           ja: moai memory メモリ管理
           zh: moai memory 记忆维护
         ref: /cli-reference/memory
+      - name:
+          ko: moai ast-grep / ast-edit 구조 검색·치환
+          en: moai ast-grep / ast-edit Structural Search
+          ja: moai ast-grep / ast-edit 構造検索・置換
+          zh: moai ast-grep / ast-edit 结构搜索替换
+        ref: /cli-reference/ast-grep
 
   - name:
       ko: 멀티 LLM
@@ -732,6 +750,12 @@ main:
           ja: MX スキャナ内部構造
           zh: MX 扫描器内部结构
         ref: /advanced/mx-scanner-internals
+      - name:
+          ko: 홈 디렉터리 위생 (~/.moai)
+          en: Home Directory Hygiene (~/.moai)
+          ja: ホームディレクトリ衛生 (~/.moai)
+          zh: 主目录卫生 (~/.moai)
+        ref: /advanced/home-hygiene
 
   - name:
       ko: 참여하기

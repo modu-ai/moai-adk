@@ -222,9 +222,31 @@ $ moai clean --home --force
 ```
 
 - **Dry-run is the default.** Deletion requires an explicit `--force`, and even that operates only inside the allowlist.
-- Retention periods are set by `state.home_retention_days` in `~/.moai/config/sections/`.
 - Before deleting, the **Home Disk Usage** check in `moai doctor` reports how full things are — an advisory check whose thresholds follow the compiled defaults.
-- To relocate `~/.moai` itself, point `MOAI_HOME` at a new home root (only a non-empty absolute path is honored; relative paths are ignored).
+- To relocate `~/.moai` itself, point `MOAI_HOME` at a new home root (only a non-empty absolute path is honored; an empty value equals unset and relative paths are disregarded). Note that only the Go binary reads this variable — **shell hooks do not honor it**.
+
+### The four allowlisted categories
+
+| Category | Target | Condition |
+|----------|--------|-----------|
+| `debug` | entries under `claude-profiles/<profile>/debug/` | past the retention window |
+| `releases` | release binaries in `releases/` (plus their paired `.sha256`) | everything except the current version and the **3 newest of the rest**. `version.json` and `LATEST` are never candidates |
+| `logs` | files in the root `logs/` | past the retention window |
+| `backups` | `backups/removed-*` directories | past the retention window |
+
+Anything not on the list is invisible to the scanner. And the carve-outs (`config/`, `state/`, `projects/`, `worktrees/`, `mcp/`, `bin/`, `search/`, `studio/`, `plugins/`, plus `launch.yaml`, `preferences.yaml`, and every file whose name starts with `credentials`) win **inside** the allowlist too: if an aged `backups/removed-*` holds even one such file, the whole directory is skipped. `~/.claude` is not read even under `--force`.
+
+### `state.home_retention_days`
+
+The retention window is read only from the **HOME tier** file `~/.moai/config/sections/state.yaml`. It is a different key on a different tier from a project's `state.retention_days` — there is one home but many projects, and separating the read site stops two projects from cleaning the same home with two different windows.
+
+| Value | Behavior |
+|---|---|
+| Key absent / file absent | The default of **30 days** |
+| Positive integer | Only entries older than that many days become candidates |
+| `0` | Cleaning **disabled** — no candidate is produced |
+
+The full story: [Home Directory Hygiene](/en/advanced/home-hygiene).
 
 ## Related Documents
 

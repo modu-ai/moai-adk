@@ -57,9 +57,9 @@ flowchart TD
 
 ## Skill Categories
 
-The MoAI-ADK template ships **32 skills** in total. The catalog splits them by installation scope into **19 core skills**, deployed with every project, and **13 optional-pack skills** (backend 3, design 1, devops 5, frontend 4), deployed on demand. By function they group as Foundation 4 + Workflow 8 + Domain 6 + Reference 11 + Meta/Harness 2 = 31 specialized skills, plus the 1 `moai` umbrella skill that routes requests to them. In user projects, you can additionally author custom `hns-*` harness skills. Programming-language support is provided by rules under `rules/moai/languages/` and is not a separate skill.
+The MoAI-ADK template ships **34 skills** in total. The catalog splits them by installation scope into **21 core skills**, deployed with every project, and **13 optional-pack skills** (backend 3, design 1, devops 5, frontend 4), deployed on demand. By function they group as Foundation 4 + Workflow 8 + Domain 7 + Reference 11 + Meta/Harness 3 = 33 specialized skills, plus the 1 `moai` umbrella skill that routes requests to them. In user projects, you can additionally author custom `hns-*` harness skills. Programming-language support is provided by rules under `rules/moai/languages/` and is not a separate skill.
 
-This count is also a result of dieting — the skill catalog was refined from 48 → 38 over the v3 period, and now stands at 32 with the optional packs included. The current prefix for custom harness skills is `hns-*` (the legacy `harness-*` is also recognized).
+This count is also a result of dieting — the skill catalog was refined from 48 → 38 over the v3 period, and now stands at 34 with the optional packs included. The current prefix for custom harness skills is `hns-*` (the legacy `harness-*` is also recognized).
 
 ### Foundation (Core Philosophy) - 4
 
@@ -83,7 +83,7 @@ This count is also a result of dieting — the skill catalog was refined from 48
 | `moai-workflow-loop`     | Ralph Engine autonomous loop, LSP integration              |
 | `moai-workflow-docs-claim-check` | Read-only claim verification for public docs (README, release notes) |
 
-### Domain (Domain Expertise) - 6
+### Domain (Domain Expertise) - 7
 
 | Skill name                   | Description                                             |
 | --------------------------- | ------------------------------------------------ |
@@ -93,6 +93,7 @@ This count is also a result of dieting — the skill catalog was refined from 48
 | `moai-domain-html-report`   | Markdown → single-file HTML report renderer (6 modes, no external dependencies) |
 | `moai-domain-humanize`      | AI text humanization and post-editing (KO/EN/JA/ZH)    |
 | `moai-domain-svg-infographic` | Editable SVG technical infographics (architecture, flow, comparison), CJK fonts |
+| `moai-domain-design-dna`    | Reverse-engineers a reference design (screenshot, image set, URL) into a Design DNA JSON, and generates a new artifact from it |
 
 ### Reference (Best Practices) - 11
 
@@ -110,14 +111,15 @@ This count is also a result of dieting — the skill catalog was refined from 48
 | `moai-ref-ui-polish`       | UI design completeness, interface-polish reference |
 | `moai-ref-cross-model-audit` | Cross-model audit convergence (parallel codex + GLM review, verdict convergence) |
 
-### Meta/Harness (System Extension) - 2
+### Meta/Harness (System Extension) - 3
 
 | Skill name              | Description                                        |
 | ---------------------- | ------------------------------------------- |
 | `moai-meta-harness`    | **DEPRECATED** — the legacy 7-Phase meta-harness. Redirects to the v4 Builder (`/moai:harness <natural-language request>`) |
 | `moai-harness-learner` | The harness learning subsystem, auto-update proposals |
+| `moai-kanban-foreman`  | One unattended kanban foreman iteration — watch the backlog, dispatch a picked card to an isolated worker, collect evidence |
 
-> The 32 skills ship with the MoAI-ADK template (19 core immediately, 13 via optional packs), and each skill loads independently to save tokens. Users can additionally author per-project custom `hns-*` harness skills (the legacy `harness-*` prefix is also recognized).
+> The 34 skills ship with the MoAI-ADK template (21 core immediately, 13 via optional packs), and each skill loads independently to save tokens. Users can additionally author per-project custom `hns-*` harness skills (the legacy `harness-*` prefix is also recognized).
 
 ## The Progressive Disclosure System
 
@@ -155,8 +157,8 @@ flowchart TD
 
 ### Token Savings
 
-- **Naive approach**: loading all 32 skills = about 135,000 tokens (infeasible)
-- **Progressive disclosure**: metadata only = about 5,200 tokens (97% savings)
+- **Naive approach**: loading all 34 skills = about 170,000 tokens (infeasible)
+- **Progressive disclosure**: metadata only = about 3,400 tokens (98% savings)
 - **Load on demand**: only the 2-3 skills the task needs = about 15,000 additional tokens
 
 ## The Skill Trigger Mechanism

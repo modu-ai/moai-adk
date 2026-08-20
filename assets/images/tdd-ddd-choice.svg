@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 860" width="1000" height="860" font-family="Pretendard, 'Noto Sans KR', 'Noto Sans JP', 'Noto Sans SC', 'Apple SD Gothic Neo', 'Hiragino Sans', 'Microsoft YaHei', system-ui, sans-serif">
+  <!-- tdd-ddd-choice.svg — 방법론 자동 선택 분기 (top-to-bottom).
+       프로젝트 분석 -> 판정 "신규 프로젝트이거나 커버리지 10% 이상?"
+       예   -> TDD (기본) -> RED -> GREEN -> REFACTOR
+       아니오 -> DDD       -> ANALYZE -> PRESERVE -> IMPROVE
+       SOURCE OF TRUTH: README.ko.md 의 세 번째 mermaid flowchart TD 블록.
+       둘 중 하나를 고치면 반드시 나머지도 함께 고칠 것.
+       Layout table (W=1000, H=860, M=48):
+         A  프로젝트 분석  x=340 y=56 w=320 h=72  cx=500
+         B  판정 diamond   cx=500 cy=255 halfW=230 halfH=75
+         TDD lane cx=270 (x=120 w=300) / DDD lane cx=730 (x=580 w=300)
+         method box y=390 h=72 | step rows y=506 / 598 / 690, h=60 -->
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#6B6A63"/>
+    </marker>
+    <marker id="arrowTdd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#3D7A4E"/>
+    </marker>
+    <marker id="arrowDdd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#B3591E"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1000" height="860" fill="#F5F4F1"/>
+
+  <!-- A -->
+  <rect x="340" y="56" width="320" height="72" rx="10" fill="#FFFFFF" stroke="#DDDCD6" stroke-width="2"/>
+  <text x="500" y="100" font-size="22" font-weight="700" fill="#141413" text-anchor="middle">프로젝트 분석</text>
+  <line x1="500" y1="128" x2="500" y2="172" stroke="#6B6A63" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- B — decision diamond -->
+  <path d="M 500 180 L 730 255 L 500 330 L 270 255 Z" fill="#FFFFFF" stroke="#DDDCD6" stroke-width="2"/>
+  <text x="500" y="249" font-size="18" font-weight="700" fill="#141413" text-anchor="middle">신규 프로젝트이거나</text>
+  <text x="500" y="275" font-size="18" font-weight="700" fill="#141413" text-anchor="middle">커버리지 10% 이상?</text>
+
+  <!-- branch edges -->
+  <line x1="270" y1="255" x2="270" y2="382" stroke="#3D7A4E" stroke-width="2.5" marker-end="url(#arrowTdd)"/>
+  <text x="282" y="302" font-size="16" font-weight="700" fill="#3D7A4E">예</text>
+  <line x1="730" y1="255" x2="730" y2="382" stroke="#B3591E" stroke-width="2.5" marker-end="url(#arrowDdd)"/>
+  <text x="718" y="302" font-size="16" font-weight="700" fill="#B3591E" text-anchor="end">아니오</text>
+
+  <!-- TDD lane -->
+  <rect x="120" y="390" width="300" height="72" rx="10" fill="#FFFFFF" stroke="#3D7A4E" stroke-width="2.5"/>
+  <text x="270" y="434" font-size="22" font-weight="700" fill="#141413" text-anchor="middle">TDD (기본)</text>
+  <line x1="270" y1="462" x2="270" y2="498" stroke="#3D7A4E" stroke-width="2.5" marker-end="url(#arrowTdd)"/>
+  <rect x="120" y="506" width="300" height="60" rx="10" fill="#FFFFFF" stroke="#DDDCD6" stroke-width="2"/>
+  <text x="270" y="543" font-size="20" font-weight="700" fill="#141413" text-anchor="middle">RED</text>
+  <line x1="270" y1="566" x2="270" y2="590" stroke="#3D7A4E" stroke-width="2.5" marker-end="url(#arrowTdd)"/>
+  <rect x="120" y="598" width="300" height="60" rx="10" fill="#FFFFFF" stroke="#DDDCD6" stroke-width="2"/>
+  <text x="270" y="635" font-size="20" font-weight="700" fill="#141413" text-anchor="middle">GREEN</text>
+  <line x1="270" y1="658" x2="270" y2="682" stroke="#3D7A4E" stroke-width="2.5" marker-end="url(#arrowTdd)"/>
+  <rect x="120" y="690" width="300" height="60" rx="10" fill="#FFFFFF" stroke="#DDDCD6" stroke-width="2"/>
+  <text x="270" y="727" font-size="20" font-weight="700" fill="#141413" text-anchor="middle">REFACTOR</text>
+
+  <!-- DDD lane -->
+  <rect x="580" y="390" width="300" height="72" rx="10" fill="#FFFFFF" stroke="#B3591E" stroke-width="2.5"/>
+  <text x="730" y="434" font-size="22" font-weight="700" fill="#141413" text-anchor="middle">DDD</text>
+  <line x1="730" y1="462" x2="730" y2="498" stroke="#B3591E" stroke-width="2.5" marker-end="url(#arrowDdd)"/>
+  <rect x="580" y="506" width="300" height="60" rx="10" fill="#FFFFFF" stroke="#DDDCD6" stroke-width="2"/>
+  <text x="730" y="543" font-size="20" font-weight="700" fill="#141413" text-anchor="middle">ANALYZE</text>
+  <line x1="730" y1="566" x2="730" y2="590" stroke="#B3591E" stroke-width="2.5" marker-end="url(#arrowDdd)"/>
+  <rect x="580" y="598" width="300" height="60" rx="10" fill="#FFFFFF" stroke="#DDDCD6" stroke-width="2"/>
+  <text x="730" y="635" font-size="20" font-weight="700" fill="#141413" text-anchor="middle">PRESERVE</text>
+  <line x1="730" y1="658" x2="730" y2="682" stroke="#B3591E" stroke-width="2.5" marker-end="url(#arrowDdd)"/>
+  <rect x="580" y="690" width="300" height="60" rx="10" fill="#FFFFFF" stroke="#DDDCD6" stroke-width="2"/>
+  <text x="730" y="727" font-size="20" font-weight="700" fill="#141413" text-anchor="middle">IMPROVE</text>
+
+  <text x="48" y="826" font-size="13" fill="#8A8980">방법론은 사람이 고르지 않는다 — moai init 이 커버리지를 보고 정한다.</text>
+</svg>

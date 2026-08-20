@@ -77,7 +77,7 @@ moai cc -f lane-1             # 레인 하나, 각자 별도 터미널에서
 moai glm -f lane-3            # …GLM 백엔드로 띄운 레인 하나
 ```
 
-레인은 `moai cc -f lane-<n>`으로 하나씩 늘린다. 이미 살아 있는 세션이 쥔 이름이면 다음 빈 번호로 붙는다. 레인 하나가 동시에 돌리는 `Agent()` 서브에이전트는 최대 10개이고, 쓰기를 맡는 스폰은 각자의 워크트리로 격리한다. 레인을 한꺼번에 켜지 말고 첫 레인을 먼저 올려 실제로 출력이 나오는 것을 확인한 뒤 나머지를 띄운다. 카드는 레인에 쪼개어 넣지 않는다. `-k`는 그대로 세 역할짜리 칸반 체인을 돌린다. 한 번의 실행에 진입 토큰은 하나뿐이라 `-k`와 `-f`를 함께 쓰면 에러이고, `moai cg`는 팩토리 모드를 거부한다.
+레인은 `moai cc -f lane-<n>`으로 하나씩 늘린다. 이 형태는 레인 이름을 이미 정하므로 `--name`/`-n`을 함께 주면 에러다. 번호는 살아 있는 세션이 쥔 것만 건너뛴다 — 죽은 레인의 번호는 풀려서 다시 쓰인다. 어느 번호를 누가 쥐고 있는지는 `.moai/state/factory/workers.json`에 적히고, 남은 claim도 여기서 치운다. 레인 하나가 동시에 돌리는 `Agent()` 서브에이전트는 최대 10개이고, 쓰기를 맡는 스폰은 각자의 워크트리로 격리한다. 레인을 한꺼번에 켜지 말고 첫 레인을 먼저 올려 실제로 출력이 나오는 것을 확인한 뒤 나머지를 띄운다. 카드는 레인에 쪼개어 넣지 않는다. `-k`는 그대로 세 역할짜리 칸반 체인을 돌린다. 한 번의 실행에 진입 토큰은 하나뿐이라 `-k`와 `-f`를 함께 쓰면 에러이고, `moai cg`는 팩토리 모드를 거부한다.
 
 > 자세히: [칸반 모드 — 팩토리 모드](https://adk.mo.ai.kr/ko/advanced/kanban-mode)
 
@@ -125,6 +125,26 @@ moai glm -f lane-3            # …GLM 백엔드로 띄운 레인 하나
 </p>
 
 자세한 안내: [칸반 모드](https://adk.mo.ai.kr/ko/advanced/kanban-mode) · [manager-lead 리드 코디네이터](https://adk.mo.ai.kr/ko/advanced/manager-lead) · [`/moai todo`](https://adk.mo.ai.kr/ko/utility-commands/moai-todo)
+
+### v3.1.1에서 더해진 것
+
+칸반 모드 말고도 v3.1.1에 들어온 것들이다. 각각은 뒤의 해당 절에서 자세히 다룬다.
+
+**홈 디렉터리 정리.** 오래 쓸수록 `~/.moai`에는 지난 실행 산출물이 쌓인다. `moai clean --home`이 허용목록 범위 안에서만 그것을 치운다 — 기본은 dry-run이라 무엇이 지워질지 먼저 보여주고, 실제 삭제는 `--force`를 줘야 한다. 며칠 지난 것부터 치울지는 `state.home_retention_days`(기본 30일, `0`이면 끔)로 정한다. 지금 얼마나 불었는지는 `moai doctor`의 Home Disk Usage 항목이 알려준다. 홈 경로 자체는 `MOAI_HOME` 환경변수로 옮길 수 있다 — 절대 경로만 받는다. 다만 이 변수를 읽는 건 Go 프로세스뿐이라, 경로를 옮겨도 statusline과 셸 훅은 여전히 `$HOME/.moai`를 본다. `.env.glm` 같은 셸 쪽 자격증명과 statusline 데이터만 옛 자리에 남아, 상태가 조용히 두 곳으로 갈린다.
+
+<p align="center">
+  <img src="./assets/images/home-hygiene-infographic-ko.png" alt="~/.moai 홈 정리 — MOAI_HOME으로 경로를 한 곳에 모으고, moai doctor로 사용량을 보고, moai clean --home으로 허용목록 안에서만 지운다" width="85%">
+</p>
+
+**세션 간 메시지 설정.** 다른 Claude Code 세션이 보내는 메시지를 바로 받을지, 승인을 받고 받을지, 아예 막을지를 `crosssession.yaml`에서 정한다. 이 머신 밖으로 나가는 메시지에 승인을 요구하는 스위치도 여기 있다.
+
+<p align="center">
+  <img src="./assets/images/cross-session-infographic-ko.png" alt="세션 간 메시징 — inbound·isolate_machines·dialog_expiry 세 설정으로 받는 쪽을 통제한다. 메시지는 사실만 나르고 승인은 사용자 몫이다" width="85%">
+</p>
+
+**스테이터스라인 GitLab 지원.** `statusline.forge`로 열린 작업을 GitHub과 GitLab 중 어느 쪽에서 셀지 고른다. 비워 두면 origin 리모트 호스트를 보고 판단한다.
+
+**맨 `/loop`가 칸반 포먼이 된다.** 인자 없이 `/loop`만 치면 백로그 큐를 지켜보다 운영자가 이미 `picked`로 골라둔 다음 카드를 격리된 워커에 배차하고, 완료는 주장이 아니라 읽은 증거로 확인한 뒤 보고하는 사이클이 돈다. 사람이 지켜보지 않는 자리라 카드를 큐에 넣는 것도 고르는 것도 운영자 몫이고, 포먼은 고르지 않고 나르기만 한다.
 
 ---
 
@@ -242,7 +262,7 @@ git clone https://github.com/modu-ai/moai-adk.git
 cd moai-adk && make build
 ```
 
-이미 설치했다면 `moai update`로 최신 버전으로 올린다.
+이미 설치했다면 `moai update`로 최신 버전으로 올린다. v3.1.1부터 `moai update`는 템플릿 관리 디렉터리를 지우고 다시 깔기 전에, 그 안에 있던 관리 대상 밖 파일을 `.moai-backups/<타임스탬프>/pre-clean/`으로 먼저 옮겨 둔다. 백업이 실패하면 삭제로 넘어가지 않고 그 자리에서 멈춘다 — 직접 넣어 둔 파일이 재배포에 조용히 쓸려 나가지 않는다.
 
 > 💡 **비용을 줄이려면 — z.ai GLM 추천**: [이 링크](https://z.ai/subscribe?ic=1NDV03BGWU)로 z.ai에 가입하면 일정 토큰을 보너스로 받는다. 이 링크는 moai-adk 오픈소스 개발을 후원하는 경로이기도 하다. 무료 모델(GLM-4.7-Flash, GLM-4.5-Flash)도 있으니 [z.ai 요금제](https://docs.z.ai/guides/overview/pricing)를 참고한다.
 
@@ -327,7 +347,7 @@ SPEC마다 독립된 작업 트리를 준다. `moai cc -w <이름>`으로 진입
 | CWD 충돌 해결 | `(worktree_path, session_id)` 쌍으로 재사용 경로를 구분 |
 | 깊이 상한 | 중첩 복잡도를 제한 |
 
-> **지금 쓸 수 있다**: `moai cc -k`(또는 `moai glm -k`)로 리드를 띄우고, `-k --name <role>`로 동반 세션을 하나씩 붙인다 — 터미널당 하나씩 손으로 띄운다. `moai chain <status|lineage|back|list|prune>`으로 계보를 읽고, `moai todo`(인자 없이 대기열 보기, `add`·`list`·`next`·`done`·`unpick`, 두 단어 이상은 그대로 카드 추가)로 `backlog` 컬럼을 운영한다. 실행 순서는 위 "v3.1 새 기능 — 칸반 모드" 절에 있다.
+> **지금 쓸 수 있다**: `moai cc -k`(또는 `moai glm -k`)로 리드를 띄우고, `-k --name <role>`로 동반 세션을 하나씩 붙인다 — 터미널당 하나씩 손으로 띄운다. `moai chain <status|lineage|back|list|prune>`으로 계보를 읽고, `moai todo`(인자 없이 대기열 보기, `add`·`list`·`next`·`done`·`unpick`·`drop`·`undrop`·`edit`·`move`, 두 단어 이상은 그대로 카드 추가)로 `backlog` 컬럼을 운영한다. 실행 순서는 위 "v3.1 새 기능 — 칸반 모드" 절에 있다.
 
 > 자세히: [칸반 모드 가이드](https://adk.mo.ai.kr/ko/advanced/kanban-mode)
 
@@ -374,14 +394,14 @@ AI 에이전트끼리 컨텍스트·불변 계약·위험 구역을 주고받는
 ### moai web 콘솔
 
 <p align="center">
-  <img src="./assets/images/moai-web-settings.png" alt="moai web 콘솔 설정 화면 — 프로파일 바와 10개 설정 탭" width="90%">
+  <img src="./assets/images/moai-web-settings.png" alt="moai web 콘솔 설정 화면 — 프로파일 바와 11개 설정 탭" width="90%">
 </p>
 
 `moai web`이 로컬호스트에만 열리는 콘솔을 띄운다. 화면은 Overview·Kanban·Specs·Monitor·Settings 다섯 개이고, 설정 화면은 Identity·Language·LLM·3rd Party LLM·Workflow·Git & Worktree·Audit·Agents·Report·MCP·Cross-Session 열한 개 탭으로 나뉜다. 프로파일 생성·이름 변경·삭제도 같은 화면에서 한다.
 
 ### ref / domain 스킬
 
-`moai-ref-api-patterns`, `moai-ref-owasp-checklist`, `moai-ref-llm-security`, `moai-ref-react-patterns`, `moai-ref-testing-pyramid`, `moai-ref-ui-polish`, `moai-ref-secops`, `moai-ref-supply-chain`, `moai-ref-seo`, `moai-ref-git-workflow`와 `moai-domain-backend`, `moai-domain-frontend`, `moai-domain-database`, `moai-domain-testing`, `moai-domain-uiux`가 에이전트에 현장 지식을 주입한다.
+ref 스킬 11개(`moai-ref-api-patterns`, `moai-ref-owasp-checklist`, `moai-ref-llm-security`, `moai-ref-react-patterns`, `moai-ref-testing-pyramid`, `moai-ref-ui-polish`, `moai-ref-secops`, `moai-ref-supply-chain`, `moai-ref-seo`, `moai-ref-git-workflow`, `moai-ref-cross-model-audit`)와 domain 스킬 7개(`moai-domain-backend`, `moai-domain-frontend`, `moai-domain-database`, `moai-domain-design-dna`, `moai-domain-html-report`, `moai-domain-humanize`, `moai-domain-svg-infographic`)가 에이전트에 현장 지식을 주입한다.
 
 ### 크로스 플랫폼
 
@@ -444,6 +464,8 @@ flowchart TD
 | **내장** | Explore | ⚪ | 읽기 전용 코드베이스 탐색 |
 
 비용 색은 기본 `medium` 프로파일의 모델×추론 셀을 따른다 (`moai model profile`으로 확인): 🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ 세션 모델 상속 (사용자 추가 에이전트). 프로파일(`high`/`low`)을 바꾸면 배정이 달라진다. 작성과 감사를 처음부터 나눠 맡기니 자기 일을 자기가 채점하는 일이 없다.
+
+열두 개 가운데 열한 개가 moai-adk가 만든 에이전트이고, `Explore`는 Claude Code에 이미 있는 내장 에이전트다. `Explore`는 자기 모델을 따로 갖지 않고 세션 모델을 그대로 물려받아 프로파일 셀이 없다. 그래서 카탈로그는 12개이고, 뒤에 나오는 모델 프로파일 절의 셀 수는 11 × 3 = 33이다 — 두 숫자는 서로 어긋난 것이 아니라 세는 대상이 다르다.
 
 ### trust-but-verify — 완료 주장에 증거를 묶기
 
@@ -551,7 +573,7 @@ LSP 진단·AST-grep·린터를 병렬로 훑어 잡힌 문제를 레벨로 묶�
 
 ### `.moai/config/sections/`
 
-프로젝트 설정은 YAML 단면 파일로 나뉜다.
+프로젝트 설정은 YAML 단면 파일로 나뉜다. `moai init`이 깔아 주는 단면은 모두 33개이고, 그 가운데 자주 손대는 것은 아래 여섯 개다.
 
 | 단면 | 역할 |
 |---|---|
@@ -561,6 +583,17 @@ LSP 진단·AST-grep·린터를 병렬로 훑어 잡힌 문제를 레벨로 묶�
 | `workflow.yaml` | 워크플로우 동작 |
 | `lsp.yaml` | LSP 게이트 임계값 (SSOT) |
 | `user.yaml` | 사용자 정보 |
+
+v3.1.1에서 손댈 만한 단면이 넷 늘었다.
+
+| 단면 | 역할 |
+|---|---|
+| `crosssession.yaml` | 세션 간 메시지 취급. `inbound`(빈 값·`accept`·`hold`·`refuse`), `isolate_machines`(이 머신 밖으로 나가는 메시지에 승인을 요구할지), `dialog_expiry`(보류된 메시지의 승인 대화 기한) |
+| `cache.yaml` | 프롬프트 캐시 설정 파일. `session_ttl`(`1h`·`5m`·`off`)과 `spec_ttl`, 캐시할 최소 조각 크기를 담고 `moai web` 설정 편집기를 그대로 오간다. 다만 지금은 이 값을 읽는 코드가 없어, 고쳐도 동작은 달라지지 않는다 |
+| `state.yaml` | `home_retention_days` — `moai clean --home`이 며칠 지난 것부터 치울지. HOME 티어(`~/.moai/config/sections/state.yaml`)에서만 읽고, 기본은 30일, `0`을 주면 홈 정리를 끈다 |
+| `statusline.yaml` | 기존 테마·세그먼트 토글에 `forge` 키가 붙었다. `github`·`gitlab`·`none` 중 하나로, 스테이터스라인이 열린 작업을 어느 호스팅에서 셀지 정한다. 비워 두면 origin 리모트 호스트로 판단하므로, 자체 호스팅 인스턴스에서는 직접 적어 준다 |
+
+`gate.yaml`의 `ast_grep_gate.rules_dir`은 새 키가 아니라 **기본값이 바뀐 키**다. 빈 문자열이던 기본값이 `.moai/config/astgrep-rules`가 됐고, `moai init`/`moai update`가 그 자리에 번들 룰셋을 깐다. 코드 쪽 폴백 경로는 사라졌으니 이제 이 키가 룰셋 위치의 유일한 출처다 — 룰을 다른 곳으로 옮겼다면 이 값도 함께 고쳐야 게이트가 룰을 찾는다.
 
 환경변수가 파일 값을 덮어쓴다. 자세한 우선순위와 전체 단면 목록은 [CLI 레퍼런스](https://adk.mo.ai.kr/ko/cli-reference)를 본다.
 
@@ -660,7 +693,7 @@ Claude의 각 티어는 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수를 통해 GLM �
 | [핵심 개념](https://adk.mo.ai.kr/ko/core-concepts) | 정체성 · 컨스티튜션 · 하네스 엔지니어링 · SPEC 기반 개발 · DDD · TRUST 5 |
 | [워크플로우 커맨드](https://adk.mo.ai.kr/ko/workflow-commands) | `plan` · `run` · `sync` — SPEC 파이프라인 주축 |
 | [유틸리티 커맨드](https://adk.mo.ai.kr/ko/utility-commands) | `fix` · `loop` · `gate` · `review` · `clean` · `codemaps` · `e2e` · `feedback` · `goal` · `todo` |
-| [CLI 레퍼런스](https://adk.mo.ai.kr/ko/cli-reference) | 터미널 `moai` 바이너리의 모든 커맨드 (전체 36개) |
+| [CLI 레퍼런스](https://adk.mo.ai.kr/ko/cli-reference) | 터미널 `moai` 바이너리의 모든 커맨드 (전체 49개) |
 | [Claude Code 가이드](https://adk.mo.ai.kr/ko/claude-code) | Claude Code 통합 — 기초 · 컨텍스트/메모리 · 에이전틱 · 확장성 |
 | [Multi-LLM](https://adk.mo.ai.kr/ko/multi-llm) | CG 모드와 모델 정책 |
 | [비용 최적화](https://adk.mo.ai.kr/ko/cost-optimization) | 프롬프트 캐싱 전략과 토큰 비용 절감 |
@@ -673,12 +706,12 @@ Claude의 각 티어는 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수를 통해 GLM �
 
 [**클로드 코드로 시작하는 실전 에이전틱 코딩**](https://adk.mo.ai.kr/book) — moai-adk 저자가 쓴 실전 하네스 엔지니어링 가이드. [book.mo.ai.kr](https://book.mo.ai.kr)
 
-### CLI 명령표 (자주 쓰는 14개)
+### CLI 명령표 (자주 쓰는 17개)
 
 | 커맨드 | 설명 |
 |---|---|
 | `moai init` | 대화형 프로젝트 설정 (언어/프레임워크/방법론 자동 감지) |
-| `moai doctor` | 시스템 상태 진단과 환경 검증 |
+| `moai doctor` | 시스템 상태 진단과 환경 검증 — Home Disk Usage 항목이 `~/.moai`가 얼마나 불었는지 권고로 알려준다 |
 | `moai status` | 프로젝트 상태 요약 (Git 브랜치, 품질 지표) |
 | `moai update` | 최신 버전으로 업데이트 (삭제 전 백업 · 자동 롤백 지원) |
 | `moai graph <build\|query>` | 코드베이스 그래프(edges.jsonl) 생성·조회 — 호출자 찾기, 폭발 반경, 마일스톤 교차검사 |
@@ -690,15 +723,20 @@ Claude의 각 티어는 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수를 통해 GLM �
 | `moai harness <status\|apply\|rollback\|disable>` | 하네스 학습 라이프사이클 |
 | `moai handoff <save\|list>` | 세션 핸드오프 기록 |
 | `moai preference <list\|decay-scan\|toggle>` | 결정 메모리 관리 |
+| `moai memory <doctor\|archive>` | 에이전트 메모리 점검과 오래된 항목 보관 |
+| `moai tokens record` | 풀별 토큰 사용 원장 기록 |
+| `moai clean [--home]` | 오래된 실행 산출물 정리. `--home`을 붙이면 `~/.moai`를 허용목록 범위 안에서 치운다. 기본은 dry-run이고 `--force`를 줘야 실제로 지운다 |
 | `moai web` | 웹 콘솔 — 5개 화면(Overview · Kanban · Specs · Monitor · Settings), 11-탭 설정 |
 
-> 전체 36개 커맨드: [CLI 레퍼런스](https://adk.mo.ai.kr/ko/cli-reference)
+> 전체 49개 커맨드: [CLI 레퍼런스](https://adk.mo.ai.kr/ko/cli-reference)
 
 ### ref / domain 스킬
 
-**ref (현장 지식)**: `moai-ref-api-patterns`, `moai-ref-owasp-checklist`, `moai-ref-llm-security`, `moai-ref-react-patterns`, `moai-ref-testing-pyramid`, `moai-ref-ui-polish`, `moai-ref-secops`, `moai-ref-supply-chain`, `moai-ref-seo`, `moai-ref-git-workflow`
+**ref (현장 지식) 11개**: `moai-ref-api-patterns`, `moai-ref-owasp-checklist`, `moai-ref-llm-security`, `moai-ref-react-patterns`, `moai-ref-testing-pyramid`, `moai-ref-ui-polish`, `moai-ref-secops`, `moai-ref-supply-chain`, `moai-ref-seo`, `moai-ref-git-workflow`, `moai-ref-cross-model-audit`
 
-**domain (전문 영역)**: `moai-domain-backend`, `moai-domain-frontend`, `moai-domain-database`, `moai-domain-testing`, `moai-domain-uiux`, `moai-domain-html-report`, `moai-domain-humanize`, `moai-domain-svg-infographic`
+**domain (전문 영역) 7개**: `moai-domain-backend`, `moai-domain-frontend`, `moai-domain-database`, `moai-domain-design-dna`, `moai-domain-html-report`, `moai-domain-humanize`, `moai-domain-svg-infographic`
+
+`moai-domain-design-dna`는 v3.1.1에 새로 들어왔다. 스크린샷이든 이미지 묶음이든 살아 있는 URL이든 참고할 디자인 하나를 받아 색·간격·모서리·타이포 같은 잴 수 있는 값과 그 디자인의 결, 특수 렌더링 효과까지 Design DNA JSON 한 벌로 역추출한다. 그 JSON을 다시 넣으면 같은 결을 지닌 새 산출물을 만든다 — "이 화면처럼 만들어 줘"를 말로 옮기지 않고 값으로 옮기는 경로다.
 
 ### CHANGELOG
 

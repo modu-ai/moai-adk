@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>v3.1.1 문서 4로케일 반영 계획</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{
+--ivory:#FAF9F5;--paper:#FFFFFF;--slate:#141413;--clay:#D97757;--clay-d:#B85C3E;
+--oat:#E3DACC;--olive:#788C5D;
+--g100:#F0EEE6;--g300:#D1CFC5;--g500:#87867F;--g700:#3D3D3A;
+--sans:"Pretendard",system-ui,-apple-system,sans-serif;
+--serif:"Noto Serif KR",ui-serif,Georgia,serif;
+--mono:"JetBrains Mono",ui-monospace,"SF Mono",monospace;
+--max-width:900px;--radius-panel:12px;--radius-row:8px;--border:1.5px solid var(--g300);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ivory);color:var(--slate);font-family:var(--sans);
+font-size:15px;line-height:1.7;-webkit-font-smoothing:antialiased}
+.wrap{max-width:var(--max-width);margin:0 auto;padding:48px 24px 96px}
+h1{font-family:var(--serif);font-size:30px;line-height:1.3;margin:0 0 8px;letter-spacing:-.02em}
+h2{font-family:var(--serif);font-size:21px;margin:52px 0 14px;padding-bottom:8px;
+border-bottom:2px solid var(--oat);letter-spacing:-.01em}
+h3{font-size:16px;margin:28px 0 10px;color:var(--g700)}
+.sub{color:var(--g500);font-size:13.5px;margin:0 0 4px}
+.meta{color:var(--g500);font-size:12.5px;font-family:var(--mono);margin:0 0 32px}
+code{font-family:var(--mono);font-size:.88em;background:var(--g100);
+padding:1px 5px;border-radius:4px;color:var(--clay-d);white-space:nowrap}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13.5px}
+th{text-align:left;background:var(--g100);font-weight:600;padding:9px 11px;
+border-bottom:var(--border);font-size:12.5px;color:var(--g700)}
+td{padding:9px 11px;border-bottom:1px solid var(--g300);vertical-align:top}
+tr:last-child td{border-bottom:none}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:28px 0 8px}
+.kpi{background:var(--paper);border:var(--border);border-radius:var(--radius-panel);padding:16px 14px}
+.kpi .n{font-family:var(--serif);font-size:27px;line-height:1.1;display:block;margin-bottom:5px}
+.kpi .l{font-size:11.5px;color:var(--g500);line-height:1.45;display:block}
+.kpi.warn .n{color:var(--clay)}
+.panel{background:var(--paper);border:var(--border);border-radius:var(--radius-panel);
+padding:18px 20px;margin:16px 0}
+.panel.alert{border-color:var(--clay);background:#FDF6F3}
+.panel.ok{border-color:var(--olive);background:#F6F8F3}
+.panel p:first-child{margin-top:0}.panel p:last-child{margin-bottom:0}
+.tl{list-style:none;margin:18px 0;padding:0 0 0 26px;border-left:2px solid var(--oat)}
+.tl li{position:relative;padding:0 0 22px 16px}
+.tl li:last-child{padding-bottom:0}
+.tl li::before{content:"";position:absolute;left:-33px;top:5px;width:12px;height:12px;
+border-radius:50%;background:var(--paper);border:2.5px solid var(--clay)}
+.tl li.gate::before{background:var(--clay)}
+.tl li.done::before{border-color:var(--olive);background:var(--olive)}
+.tl .mh{font-weight:600;font-size:14.5px}
+.tl .mt{font-family:var(--mono);font-size:11px;color:var(--g500);
+letter-spacing:.04em;text-transform:uppercase;display:block;margin-bottom:2px}
+.tl .md{font-size:13.5px;color:var(--g700);margin-top:3px}
+.tag{display:inline-block;font-family:var(--mono);font-size:10.5px;padding:1.5px 7px;
+border-radius:20px;border:1px solid var(--g300);color:var(--g700);
+background:var(--g100);margin-left:6px;vertical-align:1.5px;white-space:nowrap}
+.tag.new{border-color:var(--olive);color:#4A5C37;background:#F1F5EC}
+.tag.chg{border-color:var(--clay);color:var(--clay-d);background:#FBF0EC}
+.tag.fix{border-color:var(--g500);color:var(--g700)}
+.risks{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0}
+.risk{background:var(--paper);border:var(--border);border-left:3px solid var(--clay);
+border-radius:var(--radius-row);padding:13px 15px}
+.risk .rt{font-weight:600;font-size:13.5px;margin-bottom:4px}
+.risk .rb{font-size:12.5px;color:var(--g700);line-height:1.6}
+.risk.low{border-left-color:var(--olive)}
+ul.tight{padding-left:20px;margin:10px 0}
+ul.tight li{margin-bottom:5px}
+.scroll{overflow-x:auto}
+.foot{margin-top:56px;padding-top:16px;border-top:1px solid var(--g300);
+color:var(--g500);font-size:12px}
+@media(max-width:700px){.kpis{grid-template-columns:repeat(2,1fr)}.risks{grid-template-columns:1fr}}
+@media print{body{background:#fff}.wrap{padding:0}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>v3.1.1 문서 4로케일 반영 계획</h1>
+<p class="sub">README.ko.md 전수 정독 + v3.1.0..HEAD 사용자 노출 변경 인벤토리 기반</p>
+<p class="meta">moai-adk-go · release/v3.1.1 · 2026-08-20 · 근거: .moai/reports/v311-docs/{readme-ko-inventory, post-31-change-inventory, docs-4locale-surface-map}.md</p>
+
+<div class="kpis">
+<div class="kpi"><span class="n">339</span><span class="l">v3.1.0..HEAD 커밋</span></div>
+<div class="kpi warn"><span class="n">33</span><span class="l">사용자 노출 변경<br>(신규 19 · 변경 14)</span></div>
+<div class="kpi warn"><span class="n">3</span><span class="l">CHANGELOG가 실제로<br>기록한 항목</span></div>
+<div class="kpi"><span class="n">778×4</span><span class="l">README 줄 수<br>(4로케일 완전 동형)</span></div>
+</div>
+
+<h2>먼저 짚을 것 — 릴리즈가 아직 안 끝났습니다</h2>
+
+<div class="panel alert">
+<p><strong>"릴리즈 완료"는 코드 기준으로만 참입니다.</strong> 실측 결과:</p>
+<ul class="tight">
+<li>PR #1585 (<code>release/v3.1.1</code> → main) <strong>머지됨</strong> — 2026-08-20 08:50</li>
+<li><code>pkg/version/version.go:8</code> = <code>v3.1.1</code>, CHANGELOG <code>[3.1.1] - 2026-08-20</code> 작성됨</li>
+<li><strong>그런데</strong> <code>git tag -l 'v3.1*'</code> → <code>v3.1.0</code>까지만. <code>v3.1.1</code> 태그가 없습니다</li>
+<li><strong>그리고</strong> GitHub 릴리즈 <code>v3.1.1</code>이 <strong>Draft</strong> 상태(08-15 생성 — PR 머지보다 5일 앞선 스테일 초안). Latest는 여전히 v3.1.0</li>
+</ul>
+<p>문서 작업 자체는 이것과 무관하게 진행할 수 있습니다. 다만 <strong>문서를 머지하기 전에 태그·게시가 끝나야</strong> 합니다 — README가 v3.1.1을 소개하는데 릴리즈 페이지에 v3.1.1이 없으면 그 문서가 거짓말이 됩니다. 그래서 M0을 게이트로 세웁니다.</p>
+</div>
+
+<h2>진단 — 문서가 어디서 어긋났나</h2>
+
+<p>버전 <em>도장</em>은 이미 v3.1.1로 찍혀 있습니다(README 배지 L24, 스테이터스라인 예시 L463, <code>docs-site/hugo.toml:55</code>). 어긋난 건 <strong>내용</strong>입니다. 어긋남이 세 종류로 갈립니다.</p>
+
+<h3>① 아예 없는 것 — 3.1.1에서 새로 생겼는데 문서에 한 줄도 없음</h3>
+<div class="scroll">
+<table>
+<thead><tr><th style="width:26%">사용자가 보는 표면</th><th style="width:38%">근거</th><th>비고</th></tr></thead>
+<tbody>
+<tr><td><code>moai clean --home</code> <span class="tag new">신규</span></td><td><code>internal/cli/clean.go:50</code>, <code>clean_home.go</code></td><td>기본 dry-run, <code>--force</code>로 실삭제. 허용목록 4범주만</td></tr>
+<tr><td><code>MOAI_HOME</code> 환경변수 <span class="tag new">신규</span></td><td><code>internal/config/envkeys.go:22</code>, <code>internal/paths/paths.go</code></td><td>절대경로만. 셸 훅은 미준수(문서화된 함정)</td></tr>
+<tr><td><code>moai doctor</code> → Home Disk Usage <span class="tag new">신규</span></td><td><code>internal/cli/doctor.go:188</code>, <code>doctor_disk.go:67</code></td><td>권고 항목. 정리 가능 용량 추정치 표시</td></tr>
+<tr><td><code>state.home_retention_days</code> <span class="tag new">신규</span></td><td><code>internal/cli/clean_home.go:91</code></td><td>HOME 티어 전용. 미설정 30일, <code>0</code>이면 비활성</td></tr>
+<tr><td><code>moai memory doctor|archive</code> <span class="tag new">신규</span></td><td><code>internal/cli/memory.go:136,281</code></td><td>README CLI 표(14행)에 없음</td></tr>
+<tr><td><code>moai tokens record</code> <span class="tag new">신규</span></td><td><code>internal/cli/tokens.go:405,420</code></td><td>풀별 토큰 원장</td></tr>
+<tr><td><code>crosssession.yaml</code> 3키 <span class="tag new">신규</span></td><td><code>templates/.moai/config/sections/crosssession.yaml</code></td><td><code>inbound</code>/<code>isolate_machines</code>/<code>dialog_expiry</code>. 웹 콘솔 탭도 신설</td></tr>
+<tr><td><code>cache.yaml</code> 4키 <span class="tag new">신규</span></td><td><code>.moai/config/sections/cache.yaml</code></td><td>프롬프트 캐시 TTL 전략</td></tr>
+<tr><td><code>statusline.forge</code> <span class="tag new">신규</span></td><td><code>templates/.moai/config/sections/statusline.yaml</code>, <code>internal/statusline/forge.go</code></td><td>GitLab 지원. 스테이터스라인 표시가 실제로 바뀜</td></tr>
+<tr><td>맨 <code>/loop</code> = 칸반 포먼 <span class="tag new">신규</span></td><td><code>templates/.claude/loop.md</code>, <code>moai-kanban-foreman/SKILL.md</code></td><td>사용자 프로젝트로 배포됨</td></tr>
+<tr><td><code>moai-domain-design-dna</code> 스킬 <span class="tag new">신규</span></td><td><code>templates/.claude/skills/moai-domain-design-dna/</code></td><td>레퍼런스 디자인 → Design DNA JSON</td></tr>
+<tr><td>ast-grep 룰셋 6개 배포 <span class="tag new">신규</span></td><td><code>templates/.moai/config/astgrep-rules/{go,security}/</code></td><td>init/update가 실제로 깔기 시작</td></tr>
+<tr><td><code>MOAI_SESSION_PID</code> <span class="tag new">신규</span></td><td><code>internal/cli/launch_session_pid.go</code></td><td>POSIX 전용(Windows 미각인)</td></tr>
+</tbody>
+</table>
+</div>
+
+<h3>② 틀린 것 — 문서가 단언한 숫자가 실측과 다름</h3>
+
+<p>전부 제가 직접 세어 확인했습니다. <code>moai graph</code>는 CLI 표 L684에 이미 있고, MCP 21개와 12-에이전트는 <strong>맞습니다</strong> — 아래는 실제로 틀린 것만.</p>
+
+<div class="scroll">
+<table>
+<thead><tr><th style="width:30%">README 주장</th><th style="width:16%">실측</th><th style="width:16%">위치</th><th>확인 방법</th></tr></thead>
+<tbody>
+<tr><td>ref 스킬 <strong>10개</strong></td><td><strong>11개</strong></td><td>L384, L699</td><td><code>ls templates/.claude/skills/moai-ref-*</code> → 11</td></tr>
+<tr><td>domain 스킬 <strong>5개</strong>(L384) / <strong>8개</strong>(L701)</td><td><strong>7개</strong></td><td>L384, L701</td><td>같은 방식 → 7 (design-dna 포함). <em>양쪽 다 틀림</em></td></tr>
+<tr><td>전체 CLI <strong>36개</strong></td><td><strong>49개</strong></td><td>L663, L695</td><td>워크트리 트리 재빌드 바이너리의 <code>moai --help</code> 최상위 열거 (<code>help</code>/<code>completion</code>/자기참조 <code>moai</code> 제외)</td></tr>
+<tr><td>설정 탭 <strong>10개</strong>(alt) vs <strong>11개</strong>(본문)</td><td><strong>11개</strong></td><td>L377 vs L380·L693</td><td>본문이 11개를 실제로 열거. alt가 Cross-Session 신설 전 값</td></tr>
+<tr><td><code>.moai/config/sections/</code> = <strong>6개</strong></td><td>배포 <strong>33개</strong></td><td>L552-563</td><td>"자주 만지는 6개" 의도로 읽히나 문장은 전체처럼 서술</td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="panel">
+<p><strong>충돌이지만 틀린 건 아닌 것 하나</strong> — L429 "12-에이전트 카탈로그" vs L569 "11 에이전트 × 3 프로파일". 실측: MoAI 커스텀 11 + 내장 <code>Explore</code> 1 = 12. <strong>둘 다 맞습니다.</strong> 다만 README가 이 관계를 한 번도 설명하지 않아 독자가 오탈자로 읽습니다 → 한 문장 추가로 해소.</p>
+</div>
+
+<h3>③ 바뀐 것 — 기존 서술이 옛 동작을 설명하고 있음</h3>
+<div class="scroll">
+<table>
+<thead><tr><th style="width:28%">변경</th><th style="width:34%">근거</th><th>README 영향</th></tr></thead>
+<tbody>
+<tr><td><code>ast_grep_gate.rules_dir</code> 기본값 <code>""</code> → <code>.moai/config/astgrep-rules</code> <span class="tag chg">기본값</span></td><td><code>templates/.moai/config/sections/gate.yaml</code></td><td>미언급. 폴백이 없어져 동작이 달라짐</td></tr>
+<tr><td>GLM-5.3 = 1M 컨텍스트 <span class="tag chg">변경</span></td><td><code>internal/config/envkeys.go:314</code></td><td>L636·L640-645가 glm-5.3/1M을 이미 서술 — <strong>확인만</strong></td></tr>
+<tr><td><code>manager-kanban</code> → <code>manager-lead</code> 되돌림 <span class="tag chg">개명</span></td><td><code>.claude/agents/moai/manager-lead.md</code></td><td>L438이 이미 manager-lead — <strong>확인만</strong></td></tr>
+<tr><td>보드 6열 → 5열(review 흡수) <span class="tag chg">변경</span></td><td><code>kanban-dispatch-detail.md:39</code></td><td>L46·L84가 이미 5열 — <strong>확인만</strong></td></tr>
+<tr><td><code>moai update</code>가 삭제 전 백업 <span class="tag fix">수정</span></td><td>커밋 <code>aefaddb71</code>, <code>update_dryrun_preview.go</code></td><td>미언급. 사용자 체감 큰 안전성 개선</td></tr>
+<tr><td>설치 스크립트 REST 레이트리밋 회피 <span class="tag fix">수정</span></td><td><code>install.sh</code>/<code>.ps1</code>/<code>.bat</code></td><td>미언급(동작 동일, 실패가 사라짐)</td></tr>
+<tr><td>웹 콘솔 Cross-Session 패널 <span class="tag chg">변경</span></td><td><code>internal/web/screens.templ</code></td><td>L380 탭 목록엔 반영됨, L377 alt만 스테일</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>계획 — 7 마일스톤</h2>
+
+<p><strong>정본은 <code>README.ko.md</code>입니다.</strong> ko를 먼저 완성하고 en/ja/zh를 파생합니다(<code>hns-oss-docs-readme-sync</code> 규약). 4개 파일이 현재 778줄·72헤딩·같은 줄번호로 <strong>완전 동형</strong>이므로, 이 동형성을 깨지 않는 것이 작업 내내 유일한 구조적 제약입니다.</p>
+
+<ul class="tl">
+
+<li class="gate"><span class="mt">M0 · 게이트</span>
+<span class="mh">릴리즈 마감 — 태그 + 게시</span>
+<div class="md"><code>v3.1.1</code> 태그 생성·푸시, Draft 릴리즈를 실제 머지 헤드 기준으로 재생성해 게시. <strong>M6 머지 전까지만 끝나면 됩니다</strong> — M1~M5와 병행 가능. 안 끝나면 문서가 없는 릴리즈를 가리키게 됩니다.</div>
+</li>
+
+<li><span class="mt">M1 · ko</span>
+<span class="mh">사실 정정 5건 + 모호성 해소 1건</span>
+<div class="md">위 ②표 그대로. ref 10→11, domain 5·8→7, CLI 36→49, alt 텍스트 10→11, 설정 섹션 문장을 "자주 쓰는 6개"로 한정. 12 vs 11 에이전트는 "커스텀 11 + 내장 Explore 1" 한 문장 추가. <strong>줄 수 증가 없음</strong>(치환 위주).</div>
+</li>
+
+<li><span class="mt">M2 · ko</span>
+<span class="mh">v3.1.1 소개 절 신설</span>
+<div class="md">L40 <code>## v3.1 새 기능 — 칸반 모드</code> 아래에 <code>### v3.1.1에서 더해진 것</code>을 신설. 담을 것: 홈 정리 3종(<code>MOAI_HOME</code>·<code>clean --home</code>·doctor 디스크), 크로스세션 설정, 프롬프트 캐시 설정, forge 스테이터스라인, <code>/loop</code> 포먼. H2를 새로 파지 <strong>않습니다</strong> — 12개 H2 구조가 4로케일 동형성의 뼈대라 건드리면 파생 비용이 커집니다.</div>
+</li>
+
+<li><span class="mt">M3 · ko</span>
+<span class="mh">CLI 표(L676-696) 확장</span>
+<div class="md"><code>moai memory</code>, <code>moai tokens</code> 행 추가. <code>moai clean</code> 행에 <code>--home</code> 명시, <code>moai doctor</code> 행에 Home Disk Usage 명시. 총계 36→49 동시 수정(M1과 같은 숫자라 한 번에).</div>
+</li>
+
+<li><span class="mt">M4 · ko</span>
+<span class="mh">설정 절(L550-591) 확장</span>
+<div class="md"><code>crosssession.yaml</code>·<code>cache.yaml</code>·<code>state.yaml</code>(<code>home_retention_days</code>)·<code>statusline.yaml</code>(<code>forge</code>) 추가. <code>gate.ast_grep_gate.rules_dir</code> 기본값 변경은 <strong>별도 한 줄</strong>로 — 기본값이 바뀐 항목은 신규 항목과 성격이 달라 뭉뚱그리면 놓칩니다.</div>
+</li>
+
+<li><span class="mt">M5 · ko</span>
+<span class="mh">스킬·기능 절 갱신</span>
+<div class="md">L382-385·L697-702 스킬 절을 실측값으로 재작성하고 <code>design-dna</code> 소개. <code>moai update</code> 백업 개선을 FAQ 또는 설치 절에 한 줄. GLM 1M / manager-lead / 5열 보드는 <strong>확인만</strong>(이미 정확).</div>
+</li>
+
+<li><span class="mt">M6 · en/ja/zh</span>
+<span class="mh">3로케일 파생 + 동형성 검증</span>
+<div class="md">ko 확정 후 en → ja/zh 순. 검증: 4파일 줄 수 일치, 헤딩 수·순서 일치, 본문 이모지 0건, URL 화이트리스트. <code>hns-oss-docs-verify</code> 레시피가 이 게이트를 그대로 담고 있습니다.</div>
+</li>
+
+<li><span class="mt">M7 · docs-site</span>
+<span class="mh">160페이지×4 반영 + 메뉴 구멍 3건</span>
+<div class="md">신규 페이지: <code>cli-reference/{memory,tokens}</code>, <code>advanced/home-hygiene</code>, <code>core-concepts/cross-session</code>(잠정). 갱신: <code>advanced/statusline</code>(forge), <code>utility-commands/moai-clean</code>(<code>--home</code>), <code>cli-reference/doctor</code>, <code>advanced/kanban-mode</code>(<code>/loop</code> 포먼). 조사에서 드러난 메뉴 누락 3건도 같이: <code>workflow-commands/moai-goal</code> 중복 페이지, <code>cli-reference/ast-grep</code> 미링크, <code>core-concepts/book</code> 미링크. 검증은 <strong>무경고 hugo 빌드</strong>.</div>
+</li>
+
+</ul>
+
+<h2>범위에 대해 제가 내린 판단 3가지</h2>
+
+<div class="panel">
+<p><strong>1. CHANGELOG도 같이 고칩니다.</strong> <code>[3.1.1]</code> 절이 Summary + SPEC 3건만 담고 있고 <code>Changed</code>/<code>Fixed</code> 하위절이 아예 없습니다. 위에 나열한 33건 중 30건이 CHANGELOG에 없습니다. README가 CHANGELOG를 가리키는데(L703-706) 그쪽이 비어 있으면 링크가 헛돕니다. 릴리즈 노트의 원천이기도 하니 M0에 묶습니다.</p>
+</div>
+
+<div class="panel">
+<p><strong>2. 기존 숫자 오류(②)도 함께 고칩니다.</strong> 엄밀히는 "3.1 이후 업데이트 반영"이 아니라 그 전부터 있던 오류입니다. 다만 같은 줄·같은 문단을 어차피 건드리고, 4로케일 파생을 두 번 돌리는 게 훨씬 비쌉니다. 한 번에 처리하는 게 맞다고 봅니다.</p>
+</div>
+
+<div class="panel ok">
+<p><strong>3. 내부 변경은 넣지 않습니다.</strong> always-loaded 다이어트(295,044→288,975바이트), 룰 파일 신설, <code>internal/paths</code> 리팩터, 오케스트레이션 모드 카탈로그 개명, 테스트 하네스 수정 — CHANGELOG가 명시적으로 "사용자 노출 표면 없음"이라 적은 것들입니다. README에 들어가면 독자가 쓸 수 없는 정보로 분량만 늘립니다.</p>
+</div>
+
+<h2>위험</h2>
+
+<div class="risks">
+<div class="risk">
+<div class="rt">4로케일 동형성 파손</div>
+<div class="rb">778줄·72헤딩 동일이 현재 유일한 검증 가능한 불변식입니다. ko에서 한 절 늘리고 파생을 빠뜨리면 조용히 깨집니다. <strong>완화</strong>: M6를 별도 마일스톤으로 분리하고 줄 수·헤딩 수 대조를 종료 게이트로.</div>
+</div>
+<div class="risk">
+<div class="rt">태그 없이 문서가 먼저 나감</div>
+<div class="rb">README가 v3.1.1을 소개하는데 릴리즈 페이지에 없으면 링크가 404. <strong>완화</strong>: M0을 M6 머지의 선행 조건으로 고정.</div>
+</div>
+<div class="risk">
+<div class="rt">숫자가 또 낡음</div>
+<div class="rb">36→49 같은 수치는 다음 릴리즈에 또 틀립니다. 근본은 README가 코드에서 파생되지 않는다는 점. <strong>완화</strong>: 이번엔 수기 정정, 별도 카드로 "숫자 자동 검증" 제안(범위 밖).</div>
+</div>
+<div class="risk low">
+<div class="rt">docs-site 신규 페이지 과잉</div>
+<div class="rb">페이지 4개 × 4로케일 = 16파일. 메뉴·<code>_meta.yaml</code>까지 동반. <strong>완화</strong>: 신규 페이지를 최소로 두고 가능한 건 기존 페이지 갱신으로 흡수. 위 M7은 이미 그렇게 짰습니다.</div>
+</div>
+</div>
+
+<h2>완료 판정</h2>
+
+<ul class="tight">
+<li><code>git tag -l v3.1.1</code>이 태그를 출력하고, <code>gh release view v3.1.1</code>이 Draft가 아님</li>
+<li>README 4파일의 <strong>줄 수가 서로 같고</strong>, <code>grep -c '^#\{2,3\} '</code> 결과가 4파일 동일</li>
+<li>②표의 5개 수치가 실측과 일치 — 각 숫자를 세는 명령을 근거로 첨부</li>
+<li>①표 13개 표면이 README 또는 docs-site에서 <strong>각각 최소 1회</strong> 검색됨</li>
+<li><code>hugo --printPathWarnings</code> <strong>무경고</strong> 빌드 + sitemap 생성</li>
+<li>본문 장식 이모지 0건, URL 블랙리스트 0건 (<code>hns-oss-docs-verify</code>)</li>
+<li>CHANGELOG <code>[3.1.1]</code>에 <code>Added</code>/<code>Changed</code>/<code>Fixed</code> 3개 하위절이 존재하고, 사용자 노출 33건이 귀속됨</li>
+</ul>
+
+<div class="foot">
+근거 파일 — <code>.moai/reports/v311-docs/readme-ko-inventory.md</code> (README.ko.md 778줄 전수) ·
+<code>post-31-change-inventory.md</code> (v3.1.0..HEAD 339커밋) ·
+<code>docs-4locale-surface-map.md</code> (README 동형성 + docs-site 160페이지×4 + 버전 문자열 위치).
+숫자는 렌더 시점 실측이며, 커밋이 더 쌓이면 재측정이 필요합니다.
+</div>
+
+</div>
+</body>
+</html>

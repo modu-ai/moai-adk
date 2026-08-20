@@ -74,7 +74,7 @@ The queue is stored at `.moai/state/kanban/backlog.json`. It lives inside the pr
 |------|------|
 | `id` | A short, stable identifier assigned at add time. Never reused after removal. |
 | `spec_id` | An optional link to a SPEC identifier. Filled when the pick records it via `--spec`; when the id is not yet known it stays `null` even in the `picked` state. |
-| `state` | The lifecycle discriminator. One of `queued` · `picked` · `dropped` — this value is what separates "still a backlog item" from "already a card on the board". A picked item stays in the file so ongoing work is visible. The only way an item leaves the queue is an explicit `moai todo done` run by a human — nothing removes it automatically when its work completes. (`dropped` is a value defined in the record schema; no command sets it.) |
+| `state` | The lifecycle discriminator. One of `queued` · `picked` · `dropped` — this value is what separates "still a backlog item" from "already a card on the board". A picked item stays in the file so ongoing work is visible. The only way an item is **removed from the file** is an explicit `moai todo done` run by a human — nothing removes it automatically when its work completes. Discarding is not removal: `moai todo drop <n> "<reason>"` moves a card to `dropped` while keeping it in the file, prefixing its text with the reason, and `moai todo undrop <n>` reverses that exactly. A dropped card is not a pick candidate. |
 
 The file is written atomically (write to a temp file, then rename) so a crash mid-write cannot truncate the queue. A missing file is not an error but an **empty queue**, and a malformed file is reported and left untouched — the human intent stored here is the one value that cannot be regenerated.
 
@@ -149,6 +149,10 @@ $ moai todo unpick 4
 | `moai todo next` | Prints queued items oldest-first. Read-only. |
 | `moai todo next <n> [--spec <SPEC-ID>]` | Marks the item `picked`; with `--spec`, records the identifier verbatim. One locked write. |
 | `moai todo unpick <n>` | Reverts the `picked` mark. Because the pick itself is a human judgment, the revert is also done directly by a human. |
+| `moai todo drop <n> "<reason>" [--expect <prefix>]` | Moves a queued card to `dropped`, prefixing its text with a `[DROPPED — <reason>] ` marker. Both arguments are required; an empty reason, or one containing `]`, is refused. The card stays in the file and only leaves the pick candidates. `--expect` runs the drop only when the card's text starts with that prefix. |
+| `moai todo undrop <n> [--expect <prefix>]` | Returns a `dropped` card to `queued`, stripping the marker when one is present. The state is the authority, not the marker — a card marked dropped by hand undrops with its text untouched. An exact reversal of `drop`. |
+| `moai todo edit <n> "<text>" [--expect <prefix>]` | Rewrites only the card's text. `id`, `added_at`, `state`, and `spec_id` are preserved, so a correction never churns the card's identity the way done + re-add does. The confirmation prints both the new and the prior text. |
+| `moai todo move <n> (--top \| --bottom \| --before <m> \| --after <m>)` | Repositions the card within the queue file's **order**. Exactly one destination flag is required — none, or two, is a malformed invocation and is refused. The move permutes the items and nothing else, so a wrong move is reversed by another move. |
 
 The CLI never prompts. It takes arguments and flags, prints one line, and reports errors on stderr — a shape that is safe in scripts and CI.
 

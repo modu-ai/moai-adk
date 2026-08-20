@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 1100" width="920" height="1100" font-family="Pretendard, 'Noto Sans KR', 'Noto Sans JP', 'Noto Sans SC', 'Apple SD Gothic Neo', 'Hiragino Sans', 'Microsoft YaHei', system-ui, sans-serif">
+  <!-- workflow-flow.svg — MoAI 전체 요청 흐름 (top-to-bottom).
+       사용자 요청 -> 의도 분석 -> plan -> 독립 감사 -> run -> trust-but-verify
+       -> sync -> 결정 메모리 + 교훈, 그리고 "다음 세션" 점선 피드백 간선이
+       결정 메모리에서 의도 분석으로 되돌아온다.
+       SOURCE OF TRUTH: README.ko.md 의 첫 번째 ```mermaid flowchart TD``` 블록.
+       둘 중 하나를 고치면 반드시 나머지도 함께 고칠 것.
+       Layout table (W=920, H=1100, M=48, node x=180 w=460, cx=410,
+       badgeCx=218 r=14, textX=248, 1-line h=72 / 2-line h=96):
+         n1 사용자 요청            y=60   h=72
+         n2 의도 분석              y=176  h=96
+         n3 plan                   y=316  h=72
+         n4 독립 감사              y=432  h=96
+         n5 run                    y=572  h=72
+         n6 trust-but-verify       y=688  h=96
+         n7 sync                   y=828  h=72
+         n8 결정 메모리 + 교훈     y=944  h=72
+       feedback lane x=760 (n8.cy=980 -> n2.cy=224) -->
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#6B6A63"/>
+    </marker>
+    <marker id="arrowAccent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#3D7A4E"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="920" height="1100" fill="#F5F4F1"/>
+
+  <!-- n1 -->
+  <rect x="180" y="60" width="460" height="72" rx="10" fill="#FFFFFF" stroke="#DDDCD6" stroke-width="2"/>
+  <circle cx="218" cy="96" r="14" fill="#3D7A4E"/>
+  <text x="218" y="101" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">1</text>
+  <text x="248" y="104" font-size="22" font-weight="700" fill="#141413">사용자 요청</text>
+  <line x1="410" y1="132" x2="410" y2="168" stroke="#6B6A63" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- n2 -->
+  <rect x="180" y="176" width="460" height="96" rx="10" fill="#FFFFFF" stroke="#3D7A4E" stroke-width="2.5"/>
+  <circle cx="218" cy="224" r="14" fill="#3D7A4E"/>
+  <text x="218" y="229" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">2</text>
+  <text x="248" y="216" font-size="22" font-weight="700" fill="#141413">의도 분석</text>
+  <text x="248" y="242" font-size="16" fill="#5C5B55">Analyze-First 라우팅</text>
+  <line x1="410" y1="272" x2="410" y2="308" stroke="#6B6A63" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- n3 -->
+  <rect x="180" y="316" width="460" height="72" rx="10" fill="#FFFFFF" stroke="#DDDCD6" stroke-width="2"/>
+  <circle cx="218" cy="352" r="14" fill="#3D7A4E"/>
+  <text x="218" y="357" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">3</text>
+  <text x="248" y="360" font-size="22" font-weight="700" fill="#141413">plan — SPEC 작성</text>
+  <line x1="410" y1="388" x2="410" y2="424" stroke="#6B6A63" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- n4 -->
+  <rect x="180" y="432" width="460" height="96" rx="10" fill="#FFFFFF" stroke="#DDDCD6" stroke-width="2"/>
+  <circle cx="218" cy="480" r="14" fill="#3D7A4E"/>
+  <text x="218" y="485" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">4</text>
+  <text x="248" y="472" font-size="22" font-weight="700" fill="#141413">독립 감사</text>
+  <text x="248" y="498" font-size="16" fill="#5C5B55">plan-auditor</text>
+  <line x1="410" y1="528" x2="410" y2="564" stroke="#6B6A63" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- n5 -->
+  <rect x="180" y="572" width="460" height="72" rx="10" fill="#FFFFFF" stroke="#DDDCD6" stroke-width="2"/>
+  <circle cx="218" cy="608" r="14" fill="#3D7A4E"/>
+  <text x="218" y="613" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">5</text>
+  <text x="248" y="616" font-size="22" font-weight="700" fill="#141413">run — TDD / DDD 구현</text>
+  <line x1="410" y1="644" x2="410" y2="680" stroke="#6B6A63" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- n6 -->
+  <rect x="180" y="688" width="460" height="96" rx="10" fill="#FFFFFF" stroke="#DDDCD6" stroke-width="2"/>
+  <circle cx="218" cy="736" r="14" fill="#3D7A4E"/>
+  <text x="218" y="741" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">6</text>
+  <text x="248" y="728" font-size="22" font-weight="700" fill="#141413">trust-but-verify</text>
+  <text x="248" y="754" font-size="16" fill="#5C5B55">검증 일괄 실행</text>
+  <line x1="410" y1="784" x2="410" y2="820" stroke="#6B6A63" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- n7 -->
+  <rect x="180" y="828" width="460" height="72" rx="10" fill="#FFFFFF" stroke="#DDDCD6" stroke-width="2"/>
+  <circle cx="218" cy="864" r="14" fill="#3D7A4E"/>
+  <text x="218" y="869" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">7</text>
+  <text x="248" y="872" font-size="22" font-weight="700" fill="#141413">sync — 문서 + PR</text>
+  <line x1="410" y1="900" x2="410" y2="936" stroke="#6B6A63" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- n8 -->
+  <rect x="180" y="944" width="460" height="72" rx="10" fill="#FFFFFF" stroke="#3D7A4E" stroke-width="2.5"/>
+  <circle cx="218" cy="980" r="14" fill="#3D7A4E"/>
+  <text x="218" y="985" font-size="14" font-weight="700" fill="#FFFFFF" text-anchor="middle">8</text>
+  <text x="248" y="988" font-size="22" font-weight="700" fill="#141413">결정 메모리 + 교훈</text>
+
+  <!-- feedback edge: n8 -> n2, dashed, lane x=760 -->
+  <path d="M 640 980 H 760 V 224 H 648" fill="none" stroke="#3D7A4E" stroke-width="2.5" stroke-dasharray="8 6" marker-end="url(#arrowAccent)"/>
+  <text x="772" y="608" font-size="16" font-weight="700" fill="#3D7A4E">다음 세션</text>
+
+  <text x="48" y="1064" font-size="13" fill="#8A8980">모든 요청은 하나의 순서를 지난다 — 학습된 결정은 다음 세션의 의도 분석으로 되돌아온다.</text>
+</svg>

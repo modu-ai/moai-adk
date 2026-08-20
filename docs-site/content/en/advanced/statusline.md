@@ -21,14 +21,14 @@ The base layout is three lines; when a session name or backlog observation exist
 ```text
 🤖 Opus │ 🧠 xhigh·t │ ♻️ 87% │ 🔅 cc v2.1.212 │ 🗿 v3.1.1 │ ⏳ 4h 52m │ 💬 MoAI
 🪫 CW: ███████░░░ 72% (⚠️/clear) │ 🔋 5H: █████░░░░░ 56% (46m) │ 🔋 7D: █░░░░░░░░░ 13% (May 28)
-📁 moai-adk-go │ 📡 modu-ai/moai-adk | 🅱️ main ↑5 +2 │ 📫 +0 M1 ?1 │ 💌 PR #1234 (⌥approved)
-🏷️ run │ 🔄 TODO: 1 / 3 │ 🔀 2 / 1
+📁 moai-adk-go │ 📡 modu-ai/moai-adk, 5/0 🐛12 🔀3 | 🅱️ main +2 │ 📫 +0 M1 ?1 │ 💌 PR #1234 (⌥approved)
+🏷️ run │ 👤 manager-develop │ 🔄 TODO: 1/3
 ```
 
 - **Line 1 — how the session is running**: model, reasoning depth, cache hit rate, Claude Code version, MoAI version, session time, and output style in one line. It tells you at once which configuration the session is running under.
 - **Line 2 — how much budget remains**: context-window usage (CW) and two rolling rate limits (5-hour · 7-day) as gauge bars. This is the evidence for deciding whether a heavy job can run right now.
-- **Line 3 — where, and on what**: directory, repository and branch, git status, the active SPEC task, and the review state of the open PR, bundled together. This is the line you will see most often in a PR-centric workflow.
-- **Line 4 (conditional) — as whom, and how much is queued**: the session name (🏷️), agent name (👤), backlog state (🔄 `TODO: in progress / queued`), and open issue·PR counts (🔀). It appears naturally on named sessions — kanban companions — and segments shrink when their source of observation is missing; when all are empty, the line itself is omitted. It is also where the session name is highlighted, which makes it the first signal when you have several terminals open and lose track of which window plays which role.
+- **Line 3 — where, and on what**: directory, repository and branch, open issue and change-request counts, git status, the active SPEC task, and the review state of the open PR, bundled together. This is the line you will see most often in a PR-centric workflow.
+- **Line 4 (conditional) — as whom, and how much is queued**: the session name (🏷️), agent name (👤), and backlog state (🔄 `TODO: in progress/queued`). It appears naturally on named sessions — kanban companions — and segments shrink when their source of observation is missing; when all are empty, the line itself is omitted. It is also where the session name is highlighted, which makes it the first signal when you have several terminals open and lose track of which window plays which role.
 
 ## The path the data takes
 
@@ -70,7 +70,36 @@ For subscription-plan users, the 5H/7D bars are effectively budget gauges. Readi
 
 Line 3 bundles the work's context. Directory, repository and branch (including ahead/behind and dirty-file counts), git status, the active SPEC task, and the review state of the open PR all sit in one line.
 
-The repository and branch render as one merged segment. The `owner/name` part comes from `workspace.repo`, added to stdin since Claude Code v2.1.145, and the branch is read from local git. The repo display carries the 📡 glyph and joins the branch with an ASCII pipe (`|`); merged, "which repo's which branch am I working in" lands at a glance. When working in a worktree (a linked separate working directory), a `[WT]` mark precedes the branch to distinguish it from an ordinary checkout.
+The repository and branch render as one merged segment. The `owner/name` part comes from `workspace.repo`, added to stdin since Claude Code v2.1.145, followed by the ahead/behind commit pair against the remote, slash-joined as `5/0`. The branch is read from local git. The repo display carries the 📡 glyph and joins the branch with an ASCII pipe (`|`); merged, "which repo's which branch am I working in" lands at a glance. When working in a worktree (a linked separate working directory), a `[WT]` mark precedes the branch to distinguish it from an ordinary checkout.
+
+### Open item counts — 🐛 issues, 🔀 change requests
+
+The repo segment is followed by the counts of **open issues (🐛) and open change requests (🔀)** for this repository. These used to sit on line 4; they now ride on the same segment as the repository they belong to, so position answers "which repo is this number about".
+
+Each number carries **its own glyph and no slash joins them**. The ahead/behind pair in front (`5/0`) is already a slash-joined pair, and putting a second slash-joined pair beside it made an operator read the branch's ahead/behind as "issues over PRs". So the pair is slashed and the counts are glyph-tagged — separated by shape rather than by position. A zero is omitted, and when both are zero the whole suffix disappears.
+
+### `statusline.forge` — which hosting service to ask
+
+Where those counts come from is decided by the `statusline.forge` key in `statusline.yaml`.
+
+```yaml
+statusline:
+  forge: gitlab    # github | gitlab | none
+```
+
+| Value | Behavior |
+|---|---|
+| Unset (default) | Decided from the `origin` remote's host — `github.com` selects `gh`, `gitlab.com` selects `glab` |
+| `github` | Always counts via `gh` |
+| `gitlab` | Always counts via `glab` |
+| `none` (or `off`) | No counting — the suffix is not rendered |
+| Any other value | Renders nothing, and **does not fall back to detection** |
+
+That last row matters. On a typo, quietly counting against whatever the hostname suggested would make a wrong number look right. So an unrecognised value shows as a **missing** segment — a symptom that traces straight back to the value just typed.
+
+A self-hosted instance carries no signal in its name: a company GitLab at `git.example.com` is indistinguishable in shape from a company GitHub Enterprise. Only the two public hosts are auto-detected; anything else waits for this key rather than being guessed at.
+
+When the CLI (`gh` or `glab`) is absent from PATH there are simply no counts, not an error — the suffix stays quietly empty and the rest of the line renders unchanged. The GitHub path asks for totals in a single call; the GitLab path enumerates one page (up to 100 items), so a project with more open items than that reports the page rather than the true count.
 
 Git status leads with mailbox glyphs — 📬 staged, 📫 modified, 📪 untracked files present, 📭 clean — followed by the `+staged Mmodified ?untracked` counts. It uses both color and shape, so it reads in a black-and-white terminal too.
 
@@ -117,6 +146,7 @@ Segments toggle in `.moai/config/sections/statusline.yaml`. Each key is one segm
 ```yaml
 statusline:
   theme: catppuccin-mocha    # color theme
+  forge: gitlab              # github | gitlab | none (unset = decide from the origin host)
   segments:
     # line 1
     model: true
@@ -137,13 +167,13 @@ statusline:
     task: true
     pr: true
     worktree: false          # opt-in
+    github: true             # 🐛/🔀 open item counts (repo-segment suffix)
     # line 4 — session line (on by default; rendered even when unstated)
     session: true            # 🏷️ session name + 👤 agent
-    backlog: true            # 🔄 TODO: in progress / queued
-    github: true             # 🔀 open issues / PRs
+    backlog: true            # 🔄 TODO: in progress/queued
 ```
 
-Sixteen keys form the official configuration schema. The `owner/name` repository part is a seventeenth element rendered inside the `git_branch` segment, outside the schema, so it has no individual toggle. The session line's three keys (`session` · `backlog` · `github`) are separate from this 16-key schema and render on by default even when unstated in the configuration — segments whose source of observation is missing (session name, backlog queue, GitHub cache) are quietly omitted. The former named presets (full/compact/minimal) are deprecated, so toggle the combination you want per segment.
+Sixteen keys form the official configuration schema. The `owner/name` repository part is a seventeenth element rendered inside the `git_branch` segment, outside the schema, so it has no individual toggle. The `github` key keeps its name but now toggles the 🐛/🔀 suffix on the **line 3** repo segment, while the `forge` key above decides which hosting service is asked. Of the nineteen toggles written out above, sixteen are that schema; the remaining three (`github` · `session` · `backlog`) sit outside it. All three render on by default even when unstated in the configuration — segments whose source of observation is missing (session name, backlog queue, forge cache) are quietly omitted. The former named presets (full/compact/minimal) are deprecated, so toggle the combination you want per segment.
 
 The refresh interval is set by `statusLine.refreshInterval` in `settings.json` (unit: seconds, default 10). This is a Claude Code runtime setting, not a statusline configuration file. Too short an interval burdens the CPU; too long delays the reflection of context-usage changes. The default is usually enough.
 

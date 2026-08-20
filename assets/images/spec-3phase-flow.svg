@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 1010" width="860" height="1010" font-family="Pretendard, 'Noto Sans KR', 'Noto Sans JP', 'Noto Sans SC', 'Apple SD Gothic Neo', 'Hiragino Sans', 'Microsoft YaHei', system-ui, sans-serif">
+  <!-- spec-3phase-flow.svg — SPEC 3-페이즈 수명주기 (top-to-bottom).
+       plan -> plan-auditor -> (PASS) run -> sync-auditor -> (PASS) sync
+       -> @MX 태그 + Navigator 갱신. 두 게이트는 각각 DEBT 되돌림 간선을 갖는다:
+       plan-auditor -> plan, sync-auditor -> run. 이 되돌림 간선이 이 그림의
+       핵심이므로 왼쪽 레인에 굵은 별색(#B3591E)으로 그린다.
+       SOURCE OF TRUTH: README.ko.md 의 두 번째 mermaid flowchart TD 블록.
+       둘 중 하나를 고치면 반드시 나머지도 함께 고칠 것.
+       Layout table (W=860, H=1010, M=48, node x=200 w=460, cx=430,
+       DEBT lane x=124, 1-line h=72 / 2-line h=96):
+         P  plan          y=64  h=96   cy=112
+         PA plan-auditor  y=212 h=96   cy=260
+         R  run           y=380 h=96   cy=428
+         SA sync-auditor  y=548 h=96   cy=596
+         S  sync          y=716 h=72   cy=752
+         MX @MX+Navigator y=856 h=72   cy=892 -->
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#6B6A63"/>
+    </marker>
+    <marker id="arrowPass" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#3D7A4E"/>
+    </marker>
+    <marker id="arrowDebt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#B3591E"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="860" height="1010" fill="#F5F4F1"/>
+
+  <!-- P -->
+  <rect x="200" y="64" width="460" height="96" rx="10" fill="#FFFFFF" stroke="#DDDCD6" stroke-width="2"/>
+  <text x="430" y="104" font-size="22" font-weight="700" fill="#141413" text-anchor="middle">plan — SPEC 작성</text>
+  <text x="430" y="130" font-size="16" fill="#5C5B55" text-anchor="middle">GEARS 요구사항 + 인수 기준</text>
+  <line x1="430" y1="160" x2="430" y2="204" stroke="#6B6A63" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- PA (gate) -->
+  <rect x="200" y="212" width="460" height="96" rx="10" fill="#FFFFFF" stroke="#3D7A4E" stroke-width="2.5"/>
+  <text x="430" y="252" font-size="22" font-weight="700" fill="#141413" text-anchor="middle">plan-auditor</text>
+  <text x="430" y="278" font-size="16" fill="#5C5B55" text-anchor="middle">독립 감사 (편향 방지)</text>
+  <line x1="430" y1="308" x2="430" y2="372" stroke="#3D7A4E" stroke-width="2.5" marker-end="url(#arrowPass)"/>
+  <text x="442" y="346" font-size="15" font-weight="700" fill="#3D7A4E">PASS</text>
+  <path d="M 200 260 H 124 V 112 H 192" fill="none" stroke="#B3591E" stroke-width="3" marker-end="url(#arrowDebt)"/>
+  <text x="116" y="190" font-size="15" font-weight="700" fill="#B3591E" text-anchor="end">DEBT</text>
+
+  <!-- R -->
+  <rect x="200" y="380" width="460" height="96" rx="10" fill="#FFFFFF" stroke="#DDDCD6" stroke-width="2"/>
+  <text x="430" y="420" font-size="22" font-weight="700" fill="#141413" text-anchor="middle">run — TDD / DDD 구현</text>
+  <text x="430" y="446" font-size="16" fill="#5C5B55" text-anchor="middle">cycle_type 자동 선택</text>
+  <line x1="430" y1="476" x2="430" y2="540" stroke="#6B6A63" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- SA (gate) -->
+  <rect x="200" y="548" width="460" height="96" rx="10" fill="#FFFFFF" stroke="#3D7A4E" stroke-width="2.5"/>
+  <text x="430" y="588" font-size="22" font-weight="700" fill="#141413" text-anchor="middle">sync-auditor</text>
+  <text x="430" y="614" font-size="16" fill="#5C5B55" text-anchor="middle">4-차원 품질 채점</text>
+  <line x1="430" y1="644" x2="430" y2="708" stroke="#3D7A4E" stroke-width="2.5" marker-end="url(#arrowPass)"/>
+  <text x="442" y="682" font-size="15" font-weight="700" fill="#3D7A4E">PASS</text>
+  <path d="M 200 596 H 124 V 428 H 192" fill="none" stroke="#B3591E" stroke-width="3" marker-end="url(#arrowDebt)"/>
+  <text x="116" y="518" font-size="15" font-weight="700" fill="#B3591E" text-anchor="end">DEBT</text>
+
+  <!-- S -->
+  <rect x="200" y="716" width="460" height="72" rx="10" fill="#FFFFFF" stroke="#DDDCD6" stroke-width="2"/>
+  <text x="430" y="760" font-size="22" font-weight="700" fill="#141413" text-anchor="middle">sync — 문서 동기화 + PR</text>
+  <line x1="430" y1="788" x2="430" y2="848" stroke="#6B6A63" stroke-width="2" marker-end="url(#arrow)"/>
+
+  <!-- MX -->
+  <rect x="200" y="856" width="460" height="72" rx="10" fill="#FFFFFF" stroke="#DDDCD6" stroke-width="2"/>
+  <text x="430" y="900" font-size="22" font-weight="700" fill="#141413" text-anchor="middle">@MX 태그 + Navigator 갱신</text>
+
+  <text x="48" y="976" font-size="13" fill="#8A8980">두 게이트는 통과만 시키지 않는다 — DEBT 판정은 앞 페이즈로 되돌려 보낸다 (왼쪽 되돌림 간선).</text>
+</svg>

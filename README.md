@@ -77,7 +77,7 @@ moai cc -f lane-1             # a lane, in its own terminal
 moai glm -f lane-3            # …and one lane on the GLM backend
 ```
 
-Grow a run one lane at a time with `moai cc -f lane-<n>`; a label already held by a live session bumps to the next free number. A lane runs up to 10 concurrent `Agent()` subagents, and write-capable spawns are isolated in their own worktree. Never bring every lane up at once — start the first, confirm it is actually producing output, then activate the rest. Cards are never split across lanes. `-k` still drives the three-role kanban chain; one launch takes one entry token, so `-k` with `-f` is an error, and `moai cg` refuses factory mode.
+Grow a run one lane at a time with `moai cc -f lane-<n>`. That form already names the lane, so passing `--name`/`-n` alongside it is an error. A number is skipped only while a live session holds it — a dead lane's number is released and reused. Which numbers are held is recorded in `.moai/state/factory/workers.json`, and that is where stale claims get cleared. A lane runs up to 10 concurrent `Agent()` subagents, and write-capable spawns are isolated in their own worktree. Never bring every lane up at once — start the first, confirm it is actually producing output, then activate the rest. Cards are never split across lanes. `-k` still drives the three-role kanban chain; one launch takes one entry token, so `-k` with `-f` is an error, and `moai cg` refuses factory mode.
 
 > Details: [Kanban mode — Factory Mode](https://adk.mo.ai.kr/en/advanced/kanban-mode)
 
@@ -125,6 +125,26 @@ Full glossary with definitions and examples: [Kanban board terms](https://adk.mo
 </p>
 
 Full guide: [Kanban Mode](https://adk.mo.ai.kr/en/advanced/kanban-mode) · [manager-lead Lead Coordinator](https://adk.mo.ai.kr/en/advanced/manager-lead) · [`/moai todo`](https://adk.mo.ai.kr/en/utility-commands/moai-todo)
+
+### What v3.1.1 adds
+
+Kanban Mode aside, here is what else landed in v3.1.1. Each one is covered in full in its own section further down.
+
+**Home directory hygiene.** The longer you use it, the more leftovers from past runs pile up in `~/.moai`. `moai clean --home` clears them out, staying inside an allowlist — it is a dry run by default, so it shows you what would go before anything goes, and actual deletion needs `--force`. How old something has to be before it is swept is set by `state.home_retention_days` (30 days by default, `0` turns it off). To see how far the directory has grown right now, `moai doctor` reports it under Home Disk Usage. The home path itself can be moved with the `MOAI_HOME` environment variable — it takes absolute paths only. Only Go processes read it, though: move the path and the statusline and the shell hooks still look under `$HOME/.moai`. Shell-side credentials like `.env.glm` and the statusline's data stay behind, and your state quietly splits in two.
+
+<p align="center">
+  <img src="./assets/images/home-hygiene-infographic-en.png" alt="~/.moai home hygiene — MOAI_HOME keeps the path in one place, moai doctor reports usage, and moai clean --home deletes only inside the allowlist" width="85%">
+</p>
+
+**Cross-session messaging settings.** Whether a message from another Claude Code session arrives directly, waits for approval, or is refused outright is decided in `crosssession.yaml`. The switch that requires approval before a message leaves this machine lives there too.
+
+<p align="center">
+  <img src="./assets/images/cross-session-infographic-en.png" alt="Cross-session messaging — inbound, isolate_machines, and dialog_expiry control the receiving side. A message carries facts; approval stays with the user" width="85%">
+</p>
+
+**Statusline GitLab support.** `statusline.forge` picks whether open work is counted on GitHub or on GitLab. Left empty, it decides from the origin remote's host.
+
+**A bare `/loop` becomes the kanban foreman.** Typing `/loop` with no arguments starts a cycle that watches the backlog queue, dispatches the next card the operator has already marked `picked` to an isolated worker, confirms completion from evidence it read rather than from a claim, and reports. Nobody is watching that seat, so both putting cards in the queue and picking them stay the operator's job — the foreman never picks, it only carries.
 
 ---
 
@@ -242,7 +262,7 @@ git clone https://github.com/modu-ai/moai-adk.git
 cd moai-adk && make build
 ```
 
-Already installed? Run `moai update` to move to the latest version.
+Already installed? Run `moai update` to move to the latest version. From v3.1.1, before `moai update` wipes a template-managed directory and redeploys it, it first moves any unmanaged file sitting inside to `.moai-backups/<timestamp>/pre-clean/`. If that backup fails it stops right there instead of going on to delete — a file you put there yourself is not quietly swept away by a redeploy.
 
 > 💡 **To cut costs — z.ai GLM recommended**: signing up via [this link](https://z.ai/subscribe?ic=1NDV03BGWU) grants bonus tokens. The link is also a way to sponsor moai-adk open-source development. Free models (GLM-4.7-Flash, GLM-4.5-Flash) exist too — see the [z.ai pricing](https://docs.z.ai/guides/overview/pricing).
 
@@ -327,7 +347,7 @@ Every SPEC gets its own working tree. Enter with `moai cc -w <name>`; add `--spa
 | CWD-collision resolution | `(worktree_path, session_id)` pair disambiguates reused paths |
 | Depth ceiling | Caps nesting complexity |
 
-> **Available now**: `moai cc -k` (or `moai glm -k`) starts the lead and `-k --name <role>` joins each companion — launched by hand, one per terminal. `moai chain <status|lineage|back|list|prune>` reads the lineage, and `moai todo` (bare invocation lists the queue; subcommands `add` · `list` · `next` · `done` · `unpick`; two or more words become a new card) operates the `backlog` column. The launch sequence is in the "What's New in v3.1 — Kanban Mode" section above.
+> **Available now**: `moai cc -k` (or `moai glm -k`) starts the lead and `-k --name <role>` joins each companion — launched by hand, one per terminal. `moai chain <status|lineage|back|list|prune>` reads the lineage, and `moai todo` (bare invocation lists the queue; subcommands `add` · `list` · `next` · `done` · `unpick` · `drop` · `undrop` · `edit` · `move`; two or more words become a new card) operates the `backlog` column. The launch sequence is in the "What's New in v3.1 — Kanban Mode" section above.
 
 > Details: [Kanban Mode Guide](https://adk.mo.ai.kr/en/advanced/kanban-mode)
 
@@ -374,14 +394,14 @@ Korean, Japanese, Chinese, and English docs are maintained in the same PR. Trans
 ### moai web console
 
 <p align="center">
-  <img src="./assets/images/moai-web-settings.png" alt="moai web console — Settings screen with profile bar and 10 setting tabs" width="90%">
+  <img src="./assets/images/moai-web-settings.png" alt="moai web console — Settings screen with profile bar and 11 setting tabs" width="90%">
 </p>
 
 `moai web` opens a console bound to localhost. Five screens — Overview, Kanban, Specs, Monitor, Settings; the settings screen splits into eleven tabs: Identity, Language, LLM, 3rd Party LLM, Workflow, Git & Worktree, Audit, Agents, Report, MCP, Cross-Session. Profile create/rename/delete lives on the same screen.
 
 ### ref / domain skills
 
-`moai-ref-api-patterns`, `moai-ref-owasp-checklist`, `moai-ref-llm-security`, `moai-ref-react-patterns`, `moai-ref-testing-pyramid`, `moai-ref-ui-polish`, `moai-ref-secops`, `moai-ref-supply-chain`, `moai-ref-seo`, `moai-ref-git-workflow` and `moai-domain-backend`, `moai-domain-frontend`, `moai-domain-database`, `moai-domain-testing`, `moai-domain-uiux` inject field knowledge into agents.
+Eleven ref skills (`moai-ref-api-patterns`, `moai-ref-owasp-checklist`, `moai-ref-llm-security`, `moai-ref-react-patterns`, `moai-ref-testing-pyramid`, `moai-ref-ui-polish`, `moai-ref-secops`, `moai-ref-supply-chain`, `moai-ref-seo`, `moai-ref-git-workflow`, `moai-ref-cross-model-audit`) and seven domain skills (`moai-domain-backend`, `moai-domain-frontend`, `moai-domain-database`, `moai-domain-design-dna`, `moai-domain-html-report`, `moai-domain-humanize`, `moai-domain-svg-infographic`) inject field knowledge into agents.
 
 ### Cross-platform
 
@@ -444,6 +464,8 @@ flowchart TD
 | **Built-in** | Explore | ⚪ | Read-only codebase exploration |
 
 Cost colors follow the default `medium` profile's model×effort cells (inspect via `moai model profile`): 🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ session-model inherit (user-added agents). Assignments shift when switching profiles (`high`/`low`). Authoring and auditing are separated from the start, so the writing side never grades its own work.
+
+Eleven of the twelve are agents moai-adk built; `Explore` is a built-in that already ships with Claude Code. `Explore` carries no model of its own — it inherits the session model — so it has no profile cell. That is why the catalog counts 12 while the model profile section further down counts 11 × 3 = 33 cells: the two numbers are not in conflict, they count different things.
 
 ### trust-but-verify — binding evidence to completion claims
 
@@ -551,7 +573,7 @@ Sweeps LSP diagnostics, AST-grep, and linters in parallel, buckets issues by lev
 
 ### `.moai/config/sections/`
 
-Project configuration splits into YAML section files.
+Project configuration splits into YAML section files. `moai init` lays down 33 sections in all; the six below are the ones you end up editing.
 
 | Section | Role |
 |---|---|
@@ -561,6 +583,17 @@ Project configuration splits into YAML section files.
 | `workflow.yaml` | Workflow behavior |
 | `lsp.yaml` | LSP gate thresholds (SSOT) |
 | `user.yaml` | User information |
+
+v3.1.1 adds four more sections worth touching.
+
+| Section | Role |
+|---|---|
+| `crosssession.yaml` | How cross-session messages are handled. `inbound` (empty, `accept`, `hold`, `refuse`), `isolate_machines` (whether a message leaving this machine needs approval), `dialog_expiry` (the deadline on the approval dialog for a held message) |
+| `cache.yaml` | The prompt cache settings file. It holds `session_ttl` (`1h`, `5m`, `off`), `spec_ttl`, and the smallest chunk worth caching, and round-trips through the `moai web` settings editor. Nothing currently reads these values, so changing them does not change behavior |
+| `state.yaml` | `home_retention_days` — how old something has to be before `moai clean --home` sweeps it. Read from the HOME tier only (`~/.moai/config/sections/state.yaml`); 30 days by default, and `0` turns home cleanup off |
+| `statusline.yaml` | A `forge` key joins the existing theme and segment toggles. One of `github`, `gitlab`, or `none`, it decides which host the statusline counts open work on. Left empty it decides from the origin remote's host, so on a self-hosted instance write it in yourself |
+
+`gate.yaml`'s `ast_grep_gate.rules_dir` is not a new key — it is a key whose **default changed**. What used to default to an empty string now defaults to `.moai/config/astgrep-rules`, and `moai init` / `moai update` lay the bundled ruleset down at that path. The fallback path on the code side is gone, so this key is now the only source of truth for where the ruleset lives — move the rules elsewhere and this value has to move with them, or the gate will not find them.
 
 Environment variables override file values. For precedence details and the full section list, see the [CLI reference](https://adk.mo.ai.kr/en/cli-reference).
 
@@ -660,7 +693,7 @@ The [adk.mo.ai.kr](https://adk.mo.ai.kr) online documentation is organized into 
 | [Core Concepts](https://adk.mo.ai.kr/en/core-concepts) | moai-adk identity, constitution, harness engineering, SPEC-based development, DDD, TRUST 5 |
 | [Workflow Commands](https://adk.mo.ai.kr/en/workflow-commands) | `plan` · `run` · `sync` — SPEC pipeline backbone |
 | [Utility Commands](https://adk.mo.ai.kr/en/utility-commands) | `fix` · `loop` · `gate` · `review` · `clean` · `codemaps` · `e2e` · `feedback` · `goal` · `todo` |
-| [CLI Reference](https://adk.mo.ai.kr/en/cli-reference) | Every `moai` binary command (36 total) |
+| [CLI Reference](https://adk.mo.ai.kr/en/cli-reference) | Every `moai` binary command (49 total) |
 | [Claude Code Guide](https://adk.mo.ai.kr/en/claude-code) | Claude Code integration — basics, context·memory, agentic, extensibility |
 | [Multi-LLM](https://adk.mo.ai.kr/en/multi-llm) | CG mode and model policy |
 | [Cost Optimization](https://adk.mo.ai.kr/en/cost-optimization) | Prompt caching strategies and token cost reduction |
@@ -673,12 +706,12 @@ The [adk.mo.ai.kr](https://adk.mo.ai.kr) online documentation is organized into 
 
 [**Practical Agentic Coding with Claude Code**](https://adk.mo.ai.kr/book) — a hands-on harness engineering guide by the moai-adk author. [book.mo.ai.kr](https://book.mo.ai.kr)
 
-### CLI command table (14 frequently used)
+### CLI command table (17 frequently used)
 
 | Command | Description |
 |---|---|
 | `moai init` | Interactive project setup (auto-detects language/framework/methodology) |
-| `moai doctor` | System state diagnosis and environment verification |
+| `moai doctor` | System state diagnosis and environment verification — the Home Disk Usage check reports, as advice, how far `~/.moai` has grown |
 | `moai status` | Project status summary (Git branch, quality metrics) |
 | `moai update` | Update to latest version (pre-deletion backup · auto-rollback supported) |
 | `moai graph <build\|query>` | Build/query the codebase graph (edges.jsonl) — caller lookup, blast radius, milestone cross-checks |
@@ -690,15 +723,20 @@ The [adk.mo.ai.kr](https://adk.mo.ai.kr) online documentation is organized into 
 | `moai harness <status\|apply\|rollback\|disable>` | Harness learning lifecycle |
 | `moai handoff <save\|list>` | Session handoff records |
 | `moai preference <list\|decay-scan\|toggle>` | Decision memory management |
+| `moai memory <doctor\|archive>` | Agent memory checks and archiving of stale entries |
+| `moai tokens record` | Per-pool token usage ledger records |
+| `moai clean [--home]` | Clear leftovers from past runs. With `--home` it sweeps `~/.moai` inside the allowlist. Dry run by default; `--force` to actually delete |
 | `moai web` | Web console — 5 screens (Overview · Kanban · Specs · Monitor · Settings), 11-tab settings |
 
-> All 36 commands: [CLI reference](https://adk.mo.ai.kr/en/cli-reference)
+> All 49 commands: [CLI reference](https://adk.mo.ai.kr/en/cli-reference)
 
 ### ref / domain skills
 
-**ref (field knowledge)**: `moai-ref-api-patterns`, `moai-ref-owasp-checklist`, `moai-ref-llm-security`, `moai-ref-react-patterns`, `moai-ref-testing-pyramid`, `moai-ref-ui-polish`, `moai-ref-secops`, `moai-ref-supply-chain`, `moai-ref-seo`, `moai-ref-git-workflow`
+**ref (field knowledge) — 11**: `moai-ref-api-patterns`, `moai-ref-owasp-checklist`, `moai-ref-llm-security`, `moai-ref-react-patterns`, `moai-ref-testing-pyramid`, `moai-ref-ui-polish`, `moai-ref-secops`, `moai-ref-supply-chain`, `moai-ref-seo`, `moai-ref-git-workflow`, `moai-ref-cross-model-audit`
 
-**domain (specialist domains)**: `moai-domain-backend`, `moai-domain-frontend`, `moai-domain-database`, `moai-domain-testing`, `moai-domain-uiux`, `moai-domain-html-report`, `moai-domain-humanize`, `moai-domain-svg-infographic`
+**domain (specialist domains) — 7**: `moai-domain-backend`, `moai-domain-frontend`, `moai-domain-database`, `moai-domain-design-dna`, `moai-domain-html-report`, `moai-domain-humanize`, `moai-domain-svg-infographic`
+
+`moai-domain-design-dna` is new in v3.1.1. Hand it one design to work from — a screenshot, a set of images, or a live URL — and it reverse-engineers a single Design DNA JSON covering the measurable values (color, spacing, corners, typography), the feel of that design, and its special rendering effects. Feed the JSON back in and it produces a new artifact carrying the same feel — a route that moves "make it look like this screen" across as values instead of as words.
 
 ### CHANGELOG
 

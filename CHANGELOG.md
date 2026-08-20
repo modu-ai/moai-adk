@@ -43,6 +43,40 @@ v3.1.1 is a maintenance release on top of v3.1.0, gathered from two integration 
   - **M4 — all 5 rule files mirrored to templates.** The two modified and three new rule files are mirrored byte-identical to `internal/template/templates/` (sources authored neutral, so no sanitization was needed — scan evidence in progress.md §E.2 M4), `make build` regenerates the embedded catalog, and the three template-neutrality CI targets pass locally in isolation exactly as CI runs them.
   - 16 acceptance criteria (AC-ALD-001..016), all PASS, verified against the run-phase implementation at PR #1577 squash `67466e997d` on origin/main (per-milestone commits M1 `a203a7c3a` → M2 `6d701d26c` → M3 `fcc07d1bc` → M4 `9269a5e56` preserved inside that squash). Final state measured by both the authoritative guard (`go test ./internal/config/ -run TestAlwaysLoaded` green; budget constant unchanged) and the frontmatter-aware auxiliary: `files=14 bytes=288975 tokens=72243 headroom=2757`. Zero Go files changed across the entire run phase. This sync commit carries only the frontmatter `in-progress → completed` terminal transition on `spec.md` (sole YAML-frontmatter artifact — plan.md / acceptance.md / progress.md use the markdown-header convention), the `progress.md §E.4` audit-ready signal, and this CHANGELOG entry — zero further changes (sync is markdown-only). README / docs-site unchanged — this is internal rule architecture with no user-facing surface (no CLI, no config key, no documented behavior change; the rules govern agent-side context discipline). `sync_commit_sha` populated as a `pending-backfill-*` placeholder (self-referential-hazard workaround per `spec-frontmatter-schema.md` D3 — a commit cannot know its own SHA until after it lands) and backfilled in a follow-up commit. Route B (PR-mandatory, this repo's `enforce_admins: true` branch-protection override). 🗿 MoAI
 
+- **Factory Mode.** `moai cc -f <N>` (or `moai glm -f <N>`) launches a lead session plus N numbered lanes (`lane-1`..`lane-N`); each lane carries one whole card through plan, run, and sync in a single session. `moai cc -f lane-<n>` re-enters an individual lane. The kanban chain keeps `-k`.
+- **`moai graph build` and `moai graph query`.** Build a call-graph edge index (`edges.jsonl`) over the repository, then query it for callers and blast radius. `graph build` also reports milestone-to-card cross-check edges and can list milestones with no card via `--milestones-no-card`.
+- **`moai memory doctor` and `moai memory archive`.** Diagnose the memory store (broken links, orphaned topic files) and archive superseded entries.
+- **`moai tokens record`.** Record token usage into the per-pool ledger.
+- **`moai todo` gains `drop`, `undrop`, `edit`, `move`, and `unpick`**, plus a bare `moai todo` list form and natural-language `add`.
+- **New MCP tools for GLM delegation and cross-model audit.** `glm_task`, `glm_job_status`, `glm_job_result`, and `glm_job_cancel` delegate a task to the z.ai backend as a synchronous or background job; `glm_audit` and `audit_multi` add single-backend and multi-backend audit convergence.
+- **Config section `crosssession.yaml`.** `inbound` (`""` / `accept` / `hold` / `refuse`) controls how this session treats messages from your other Claude Code sessions; `isolate_machines` requires explicit approval before a message leaves the machine; `dialog_expiry` bounds how long a held message waits.
+- **Config section `cache.yaml`.** `cacheStrategy.enabled`, `cacheStrategy.session_ttl` (`1h` / `5m` / `off`), and `cacheStrategy.spec_ttl` (`5m` / `off`) control Anthropic prompt-cache breakpoint injection, alongside a minimum cacheable segment size. GLM caches implicitly and is unaffected.
+- **`statusline.forge`.** Select the forge the statusline reports items from — `github`, `gitlab`, or `none`.
+- **A bare `/loop` now runs the kanban foreman.** Each iteration watches the backlog queue, dispatches the next operator-picked card to an isolated worker, and reports on evidence read rather than on claims.
+- **`moai-domain-design-dna` skill.** Reverse-engineer a reference design — screenshot, image set, or URL — into a portable Design DNA JSON, then generate a new self-contained artifact from it.
+- **Six ast-grep rule files now ship with the templates** under `.moai/config/astgrep-rules/{go,security}/`, so `moai init` and `moai update` deploy a working baseline ruleset instead of a single example rule.
+- **`MOAI_SESSION_PID`** is stamped into launched sessions on POSIX platforms (Windows launches do not set it).
+- **`ANTHROPIC_DEFAULT_MODEL`** is now a recognized environment key.
+
+### Changed
+
+- **`gate.ast_grep_gate.rules_dir` now defaults to `.moai/config/astgrep-rules`** instead of `""`, and the shipped config is the sole source of truth — the code-side fallback path is gone. A project that relied on the empty-value fallback must set the key explicitly.
+- **`manager-kanban` is `manager-lead` again**, reversing the v3.1.0 rename. The one agent now covers both the kanban lead and the factory lead session. Any local prompt, script, or config naming `manager-kanban` must be updated; the old name no longer resolves.
+- **The kanban board has five columns, not six.** The `review` column is gone — the sync gate absorbs the review verdict.
+- **Companion sessions are named by bare role** (`plan`, `run`, `sync`, collision-bumped when duplicated), and factory lanes are named `lane-<N>`.
+- **GLM-5.3 is recognized as a 1M-context model** on every surface that reports a context window, rather than being treated as a 200K session.
+- **The orchestration mode catalog is renamed onto the spawn-count axis**, going from six modes to four: `direct`, `serial`, `fanout`, `sweep`. Configuration referring to the previous names needs updating.
+
+### Fixed
+
+- **`moai update` backs up unmanaged files before removing managed roots.** A template redeploy previously wiped managed roots first, silently dropping local-only files that had no template counterpart.
+- **A raw `*exec.ExitError` is rejected at the exit-code seam.** It had been structurally satisfying the `ExitCoder` interface, so a subprocess's exit code passed through as the CLI's own and its output was silently dropped.
+- **Installer scripts resolve the latest version without the rate-limited REST API**, using the `/releases/latest` redirect instead, and `install.bat` now ships with CRLF line endings so `cmd.exe` runs it.
+- **`moai mcp` is registered on the root command** and is reachable again.
+- **Worktree and hook correctness.** `moai worktree done` now surfaces git's stderr and points at the lock when removal fails instead of exiting silently; anchor guards protect the session's own worktree during remove, clean, and post-PR-merge cleanup; and `isolation: worktree` agent spawns no longer fail with zero diagnostics on a non-repository cwd.
+- **`/moai gate` resolves the Node test step to a run-form command**, preferring `test:run` over a watch-mode runner and dropping stray flags.
+- **An armed goal now disarms** when a turn dies on an unrecoverable API error, instead of leaving the session looping against a condition nothing is advancing.
+
 ## [3.1.0] - 2026-08-15
 
 ### Summary

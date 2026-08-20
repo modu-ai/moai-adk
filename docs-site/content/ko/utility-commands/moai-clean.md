@@ -222,9 +222,31 @@ $ moai clean --home --force
 ```
 
 - **dry-run이 기본**입니다. 삭제를 원하면 `--force`를 명시적으로 붙여야 하고, 그마저 허용 목록 안쪽에서만 작동합니다.
-- 보존 기간은 `~/.moai/config/sections/`의 `state.home_retention_days`로 정합니다.
 - 삭제 전에 얼마나 차 있는지는 `moai doctor`의 **Home Disk Usage** 진단이 먼저 알려 줍니다 — 권고(advisory) 성격의 체크이고, 임계값은 컴파일된 기본값을 따릅니다.
-- `~/.moai`의 위치 자체를 옮기고 싶다면 `MOAI_HOME` 환경변수로 홈 루트를 재지정할 수 있습니다(비어 있지 않은 절대 경로만 유효, 상대 경로는 무시).
+- `~/.moai`의 위치 자체를 옮기고 싶다면 `MOAI_HOME` 환경변수로 홈 루트를 재지정할 수 있습니다(비어 있지 않은 절대 경로만 유효, 빈 값은 미설정과 같고 상대 경로는 무시). 다만 이 변수를 읽는 것은 Go 바이너리뿐이라 **셸 훅은 따르지 않습니다**.
+
+### 허용 목록 4범주
+
+| 범주 | 대상 | 조건 |
+|------|------|------|
+| `debug` | `claude-profiles/<프로필>/debug/` 항목 | 보존 기간 경과 |
+| `releases` | `releases/`의 릴리즈 바이너리(+ 짝지어진 `.sha256`) | 현재 버전과 **나머지 중 최신 3개**를 제외한 나머지. `version.json`·`LATEST`는 후보 아님 |
+| `logs` | 루트 `logs/`의 파일 | 보존 기간 경과 |
+| `backups` | `backups/removed-*` 디렉터리 | 보존 기간 경과 |
+
+목록에 없는 것은 스캐너에게 아예 보이지 않습니다. 그리고 보존 대상(`config/`·`state/`·`projects/`·`worktrees/`·`mcp/`·`bin/`·`search/`·`studio/`·`plugins/`, `launch.yaml`·`preferences.yaml`, `credentials`로 시작하는 모든 파일)은 허용 목록 **안쪽에서도** 이깁니다 — 오래된 `backups/removed-*` 안에 그런 파일이 하나라도 있으면 그 디렉터리는 통째로 건너뜁니다. `~/.claude`는 `--force`를 붙여도 읽히지 않습니다.
+
+### `state.home_retention_days`
+
+보존 기간은 **홈 티어** 파일 `~/.moai/config/sections/state.yaml`에서만 읽습니다. 프로젝트의 `state.retention_days`와는 다른 키·다른 티어입니다 — 홈은 하나인데 프로젝트는 여럿이라, 프로젝트마다 다른 기간으로 같은 홈을 정리하는 일을 막습니다.
+
+| 값 | 동작 |
+|---|---|
+| 키 없음 / 파일 없음 | 기본값 **30일** |
+| 양의 정수 | 그 일수보다 오래된 항목만 후보 |
+| `0` | 정리 **비활성화** — 후보가 나오지 않음 |
+
+전체 이야기는 [홈 디렉터리 위생](/ko/advanced/home-hygiene)에 있습니다.
 
 ## 관련 문서
 

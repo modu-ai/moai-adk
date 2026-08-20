@@ -65,6 +65,9 @@ index:
 "moai-web-console":
   title: "moai web 웹 콘솔"
   weight: 85
+"home-hygiene":
+  title: "홈 디렉터리 위생 (~/.moai)"
+  weight: 96
 # v3.1 NEW-badge section-level list (SPEC-DESIGN-DOCS-V31-001 M3).
 # 페이지-level frontmatter added_in/new 와 union-combine 된다.
 # slug 가 이 목록에 있으면 사이드바에 자동으로 NEW 배지가 렌더된다.
@@ -75,3 +78,4 @@ new_items:
   - manager-lead
   - multi-model-audit
   - autonomy-tier
+  - home-hygiene

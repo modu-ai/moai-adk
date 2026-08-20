@@ -2,7 +2,7 @@
 title: 配置章节参考
 weight: 71
 draft: false
-description: ".moai/config/sections/ 的主要配置文件键参考 (handoff/delegation/llm/statusline/security)。"
+description: ".moai/config/sections/ 的主要配置文件键参考 (handoff/delegation/llm/statusline/security/workflow/crosssession)。"
 ---
 
 MoAI-ADK的项目设置分为 `.moai/config/sections/` 下的多个YAML文件。[settings.json指南](/zh/advanced/settings-json)涵盖Claude Code运行时设置，而本页面记录控制MoAI-ADK自身行为的主要section文件的键。
@@ -96,11 +96,12 @@ llm:
 
 ## statusline.yaml — 状态栏
 
-控制statusline主题和16个段切换。
+控制statusline主题、`github` 段所统计的托管服务，以及16个段切换。
 
 ```yaml
 statusline:
   theme: "catppuccin-mocha"   # catppuccin-mocha | catppuccin-latte
+  # forge: gitlab             # github | gitlab | none（不填则按 origin 主机判定）
   segments:
     model: true
     context: true
@@ -112,6 +113,7 @@ statusline:
 | 键 | 说明 |
 |----|------|
 | `theme` | 恰好存在2个主题: `catppuccin-mocha` (默认) 或 `catppuccin-latte` |
+| `forge` | 取 `github` · `gitlab` · `none` 之一，决定 `github` 段在哪个托管服务上统计未完成的工作。留空则按 origin 远程的主机判定——`github.com` 选 `gh`，`gitlab.com` 选 `glab`。自建实例的名字里没有线索，必须显式指定。无法识别的取值不会退回判定，而是什么都不渲染——于是拼写错误表现为该段缺失，而不是错误的数字 |
 | `segments` | 16个段单独切换 (唯一的运行时控制杆)。全部默认on，非活动状态正常处理为无输出 |
 
 段放置在3行中 — 行1(模型·版本·会话元数据)，行2(上下文窗口·API使用量栏)，行3(目录·git·工作流·PR)。
@@ -173,6 +175,28 @@ workflow:
 **例外与失败方向。** 需要创建分支的 git 负责代理按身份获得豁免，也可以通过 `MOAI_BRANCH_GUARD_EXEMPT=1` 环境变量绕过。判定不确定时（不是仓库、`git rev-parse` 执行失败等）不做拒绝而是放行，只写入审计日志 — 只有在证据确凿时才拒绝。
 
 需要切换分支的工作，正统做法是移到工作树而不是让它被拒绝。具体步骤请参阅 [moai worktree](/zh/cli-reference/worktree/)。
+
+## crosssession.yaml — 会话间消息
+
+决定本会话如何对待来自你其他 Claude Code 会话的消息。`moai cc` · `moai glm` · `moai cg` 启动器会在启动时把这些取值写入一个临时的 `--settings` 文件，Web 控制台则通过设置 seam 编辑本文件。不经启动器、直接用 `claude` 起的会话不会读取本文件。
+
+```yaml
+crosssession:
+  inbound: ""             # "" | accept | hold | refuse
+  isolate_machines: false # 默认——消息离开本机前不要求批准
+  dialog_expiry: ""       # "" | 60s | 5m | 10m | never
+```
+
+| 键 | 取值 | 说明 |
+|----|------|------|
+| `inbound` | `""`（默认） | 由 Claude Code 依据两个会话的权限模式类别逐条判断 |
+| `inbound` | `accept` | 直接投递消息。要让无人值守的工作会话能收到消息，就需要这个取值 |
+| `inbound` | `hold` | 每条消息都扣下等待批准。这样扣下的消息不会过期，等到后来适用 `accept` 时才投递 |
+| `inbound` | `refuse` | 丢弃消息 |
+| `isolate_machines` | `false`（默认） | **消息发往本机之外的会话时不要求批准。** 同一台机器上的会话之间无论取值如何都不会离开本机，但发往机外会话的消息要经过 Anthropic 服务器——默认就是在无批准的情况下允许这条路径，是否保留默认值请自行判断 |
+| `isolate_machines` | `true` | 消息离开本机前必须获得你的明确批准（即使在 `bypassPermissions` 模式下）。任何一个设置作用域写了 `true` 即生效，因此签入仓库的项目文件能打开这项要求却关不掉——要关掉必须把写了 `true` 的每个作用域都清除 |
+| `dialog_expiry` | `""`（默认） | 沿用 Claude Code 的五分钟默认值 |
+| `dialog_expiry` | `60s` · `5m` · `10m` · `never` | **按默认判断**扣下的消息，其批准对话框的期限；`never` 会一直扣到会话结束。对以显式 `inbound: hold` 扣下的消息不适用 |
 
 ## 相关文档
 

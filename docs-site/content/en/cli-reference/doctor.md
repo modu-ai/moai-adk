@@ -34,6 +34,22 @@ moai doctor [OPTIONS]
 
 `moai doctor config` in turn offers `dump` (dump merged settings) and `diff <tier-a> <tier-b>` (compare two settings tiers).
 
+## Home Disk Usage check {{< new-badge v3.1.1 >}}
+
+A full `moai doctor` run carries a **Home Disk Usage** entry. It reports how full the `~/.moai` home directory is and is **advisory**: exceeding the threshold never blocks another command.
+
+| Reported item | Content |
+|---------------|---------|
+| Total size | The total `~/.moai` footprint plus its three largest entries |
+| Per-profile breakdown | The size of each `claude-profiles/<profile>` with its category split |
+| Release count | How many binaries remain in `releases/`, and the current version |
+| Cleanable bytes | The estimate of what `moai clean --home` could actually delete |
+| `~/.claude` | Size only — never a cleanup target on any path |
+
+When the cleanable estimate exceeds the threshold (a compiled default of 500 MB) the status turns WARN and recommends `moai clean --home` (dry-run by default). Below it, the status stays OK. When no `~/.moai` exists at all, the check reports "nothing to report" and passes.
+
+The estimate calls **the same scanner** `moai clean --home` uses, so the number doctor quotes and the list clean actually deletes cannot drift apart. Full detail: [Home Directory Hygiene](/en/advanced/home-hygiene).
+
 ## Examples
 
 ```bash

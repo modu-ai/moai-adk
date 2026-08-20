@@ -234,7 +234,7 @@ Attach no count to `-f` and the run starts with one lane (`lane-1`) by default. 
 
 ### Every card goes to one lane whole
 
-What the factory lead does differs from a kanban lead. Where a kanban lead coordinates the phases of a single card, the factory lead **polls the backlog queue** and **routes the cards picked by the operator** (or by the kanban foreman loop — a bare `/loop`) **to free lanes**. The unit of routing is always the whole card — every card goes to one lane in its entirety, and that lane carries it through the serial 3-stage path (`plan -> run -> sync`, one stage completing before the next begins) in-session. Each stage is spawned and run by the lane as an `Agent()` sub-agent; a card is never split across lanes.
+What the factory lead does differs from a kanban lead. Where a kanban lead coordinates the phases of a single card, the factory lead **routes already-picked cards to free lanes**. Reading the queue and picking a card is not the factory lead's job — the operator is always the one who picks (`moai todo next <n>`), and the factory routes only those **picked** cards. The kanban foreman loop (a bare `/loop`) is no exception: it dispatches the next **picked** card and never picks one itself. The unit of routing is always the whole card — every card goes to one lane in its entirety, and that lane carries it through the serial 3-stage path (`plan -> run -> sync`, one stage completing before the next begins) in-session. Each stage is spawned and run by the lane as an `Agent()` sub-agent; a card is never split across lanes.
 
 Every lane can run up to 10 agents concurrently in parallel — the launcher injects a `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` cap into each lane session, so N lanes fanning out simultaneously divide the machine's capacity by construction rather than by operator restraint.
 
@@ -277,6 +277,31 @@ The detailed procedure of each phase inherits the existing chaining rules:
 - **sync** — the sync gate runs the review lenses (matched to the surfaces the change touched) and reaches the review verdict itself, then updates docs, writes the changelog, and closes the phase. See [`/moai sync`](/en/workflow-commands/moai-sync).
 
 What Kanban Mode adds on top is the **multi-session board viewpoint** — the lead session coordinates, run sessions work in parallel, and the Origin-Trail Chain tracks that lineage. For the detailed rules of the chain phases themselves, see the `/moai` unified command and `/moai goal`.
+
+## The unattended foreman — a bare `/loop` {{< new-badge v3.1.1 >}}
+
+In this project, typing **`/loop`** with no arguments makes that session repeat one **kanban foreman** cycle unattended. It is not the ordinary iterative-fix loop: it is a watch-dispatch-collect cycle over the backlog queue.
+
+What one iteration does is small and idempotent.
+
+```mermaid
+flowchart TD
+    Start["bare /loop — one iteration begins"] --> Skill["Load the moai-kanban-foreman skill"]
+    Skill --> Fail{"Skill missing or<br/>failed to load?"}
+    Fail -->|Yes| Stop["Stop the loop + one-line reason<br/>(never improvise a replacement protocol)"]
+    Fail -->|No| Watch["Arm the queue watch if it is not armed yet"]
+    Watch --> Check["Check the backlog queue"]
+    Check --> One["Dispatch or collect evidence for ONE card<br/>(at most one per iteration)"]
+    One --> Report["Close with a 2-6 line report, then reschedule"]
+```
+
+Three boundaries bind this loop.
+
+- **It cannot ask the operator.** While the skill is active, `AskUserQuestion` is removed from the tool pool. The loop runs with nobody watching, so there is no channel to ask through — anything needing judgement is reported in the iteration output instead.
+- **It schedules work, it never generates it.** Admitting a card to the backlog (`moai todo add`) and picking the next one remain the operator's acts. The foreman only moves an already-picked card into a free lane.
+- **It answers no approval gate on the operator's behalf.** Implementation Kickoff Approval and every other human gate still fire inside the unattended loop, and the foreman never passes one by proxy.
+
+Completion is always judged on **evidence it read** — the card advances on the progress record on disk, not on a lane's reply. To test a single cycle by hand, invoke the `moai-kanban-foreman` skill directly.
 
 ## When to use it, when not to
 

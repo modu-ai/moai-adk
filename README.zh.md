@@ -77,7 +77,7 @@ moai cc -f lane-1             # 一条泳道，在自己的终端里
 moai glm -f lane-3            # ……GLM 后端上的一条泳道
 ```
 
-用 `moai cc -f lane-<n>` 一条一条地加泳道；编号已被活着的会话占用时顺延到下一个空号。一条泳道最多并发运行 10 个 `Agent()` 子智能体，其中承担写入的生成各自隔离在自己的工作树里。千万不要一次把所有泳道全开 —— 先起第一条，确认它真的开始产出，再激活其余。卡片绝不会被拆到多条泳道上。`-k` 依旧驱动三角色的看板链；一次启动只能带一个进入标记，所以 `-k` 与 `-f` 同时给出会报错，`moai cg` 也拒绝工厂模式。
+用 `moai cc -f lane-<n>` 一条一条地加泳道。这种写法已经指定了泳道名，再给 `--name`/`-n` 会报错。只有活着的会话占用的编号才会被跳过 —— 泳道死了，编号就释放，可以再用。哪个编号被谁占着，记在 `.moai/state/factory/workers.json` 里，残留的占用也从这里清掉。一条泳道最多并发运行 10 个 `Agent()` 子智能体，其中承担写入的生成各自隔离在自己的工作树里。千万不要一次把所有泳道全开 —— 先起第一条，确认它真的开始产出，再激活其余。卡片绝不会被拆到多条泳道上。`-k` 依旧驱动三角色的看板链；一次启动只能带一个进入标记，所以 `-k` 与 `-f` 同时给出会报错，`moai cg` 也拒绝工厂模式。
 
 > 详见：[看板模式 —— 工厂模式](https://adk.mo.ai.kr/zh/advanced/kanban-mode)
 
@@ -125,6 +125,26 @@ moai glm -f lane-3            # ……GLM 后端上的一条泳道
 </p>
 
 详细指引：[看板模式](https://adk.mo.ai.kr/zh/advanced/kanban-mode) · [manager-lead 领导协调者](https://adk.mo.ai.kr/zh/advanced/manager-lead) · [`/moai todo`](https://adk.mo.ai.kr/zh/utility-commands/moai-todo)
+
+### v3.1.1 新增的部分
+
+除了看板模式，v3.1.1 还带来了下面这些。每一项都在后面对应的章节里细讲。
+
+**主目录清理。** 用得越久，`~/.moai` 里堆的历史运行产物就越多。`moai clean --home` 只在允许清单的范围内清理它们 —— 默认是 dry-run，先把要删的东西摆出来给你看，真删要加 `--force`。从几天前的东西开始清由 `state.home_retention_days` 决定（默认 30 天，填 `0` 就关掉）。眼下膨胀到多大，`moai doctor` 的 Home Disk Usage 项会告诉你。主目录本身可以用 `MOAI_HOME` 环境变量挪走 —— 只接受绝对路径。不过读这个变量的只有 Go 进程，路径挪了，状态栏和 shell 钩子照旧看 `$HOME/.moai`。`.env.glm` 这类 shell 侧的凭据和状态栏数据就留在原地，状态悄悄裂成两处。
+
+<p align="center">
+  <img src="./assets/images/home-hygiene-infographic-zh.png" alt="~/.moai 主目录清理 —— 用 MOAI_HOME 把路径归到一处，用 moai doctor 看用量，用 moai clean --home 只在允许清单范围内删除" width="85%">
+</p>
+
+**跨会话消息设置。** 别的 Claude Code 会话发来的消息，是直接收下、先经审批再收下、还是干脆挡掉，由 `crosssession.yaml` 决定。要求走出这台机器的消息必须先经审批的开关也在这里。
+
+<p align="center">
+  <img src="./assets/images/cross-session-infographic-zh.png" alt="跨会话消息 —— inbound、isolate_machines、dialog_expiry 三个设置控制接收的一侧。消息只搬运事实，审批归用户" width="85%">
+</p>
+
+**状态栏支持 GitLab。** 用 `statusline.forge` 选择在 GitHub 还是 GitLab 上统计打开中的工作。留空就按 origin 远端的主机判断。
+
+**裸 `/loop` 变成看板工头。** 不带参数只敲 `/loop`，转起来的是这样一个循环：盯着积压队列，把操作者已经标成 `picked` 的下一张卡片派给隔离的工人，完成与否不看主张、只看读到的证据，然后汇报。这是没人盯着的位置，所以往队列里放卡片和挑卡片都是操作者的事，工头不挑，只负责搬运。
 
 ---
 
@@ -242,7 +262,7 @@ git clone https://github.com/modu-ai/moai-adk.git
 cd moai-adk && make build
 ```
 
-已安装过？用 `moai update` 升到最新版本。
+已安装过？用 `moai update` 升到最新版本。从 v3.1.1 起，`moai update` 在清空并重铺模板管理目录之前，会先把那里面不受管理的文件挪到 `.moai-backups/<时间戳>/pre-clean/`。备份失败就当场停下，不会往删除那一步走 —— 你自己放进去的文件不会在重铺时被悄悄冲掉。
 
 > 💡 **想省成本 —— 推荐 z.ai GLM**：通过[这个链接](https://z.ai/subscribe?ic=1NDV03BGWU)注册 z.ai 可获得一定量的赠送 token。这个链接也是赞助 moai-adk 开源开发的途径。也有免费模型（GLM-4.7-Flash、GLM-4.5-Flash），参见 [z.ai 定价](https://docs.z.ai/guides/overview/pricing)。
 
@@ -327,7 +347,7 @@ claude        # 或者 moai cc —— 在项目里运行 Claude Code
 | CWD 冲突消解 | 用 `(worktree_path, session_id)` 对区分复用路径 |
 | 深度上限 | 限制嵌套复杂度 |
 
-> **现在就能用**：`moai cc -k`（或 `moai glm -k`）启动主控，用 `-k --name <role>` 逐个接入伴随会话 —— 每终端一个，手动启动。`moai chain <status|lineage|back|list|prune>` 读谱系，`moai todo`（不带参数查看队列，`add`·`list`·`next`·`done`·`unpick`，两个以上的词直接当作追加卡片）运营 `backlog` 列。启动顺序见上文“v3.1 新功能 —— 看板模式”一节。
+> **现在就能用**：`moai cc -k`（或 `moai glm -k`）启动主控，用 `-k --name <role>` 逐个接入伴随会话 —— 每终端一个，手动启动。`moai chain <status|lineage|back|list|prune>` 读谱系，`moai todo`（不带参数查看队列，`add`·`list`·`next`·`done`·`unpick`·`drop`·`undrop`·`edit`·`move`，两个以上的词直接当作追加卡片）运营 `backlog` 列。启动顺序见上文“v3.1 新功能 —— 看板模式”一节。
 
 > 详见：[看板模式指南](https://adk.mo.ai.kr/zh/advanced/kanban-mode)
 
@@ -374,14 +394,14 @@ TRUST 5（Tested · Readable · Unified · Secured · Trackable）作用于每�
 ### moai web 控制台
 
 <p align="center">
-  <img src="./assets/images/moai-web-settings.png" alt="moai web 控制台设置画面 —— 档案栏和 10 个设置标签页" width="90%">
+  <img src="./assets/images/moai-web-settings.png" alt="moai web 控制台设置画面 —— 档案栏和 11 个设置标签页" width="90%">
 </p>
 
 `moai web` 打开一个只监听本地主机的控制台。画面共五个 —— Overview、Kanban、Specs、Monitor、Settings；设置画面分成十一个标签页：Identity、Language、LLM、3rd Party LLM、Workflow、Git & Worktree、Audit、Agents、Report、MCP、Cross-Session。档案的创建、改名、删除也在同一画面完成。
 
 ### ref / domain 技能
 
-`moai-ref-api-patterns`、`moai-ref-owasp-checklist`、`moai-ref-llm-security`、`moai-ref-react-patterns`、`moai-ref-testing-pyramid`、`moai-ref-ui-polish`、`moai-ref-secops`、`moai-ref-supply-chain`、`moai-ref-seo`、`moai-ref-git-workflow` 与 `moai-domain-backend`、`moai-domain-frontend`、`moai-domain-database`、`moai-domain-testing`、`moai-domain-uiux` 向智能体注入现场知识。
+ref 技能 11 个（`moai-ref-api-patterns`、`moai-ref-owasp-checklist`、`moai-ref-llm-security`、`moai-ref-react-patterns`、`moai-ref-testing-pyramid`、`moai-ref-ui-polish`、`moai-ref-secops`、`moai-ref-supply-chain`、`moai-ref-seo`、`moai-ref-git-workflow`、`moai-ref-cross-model-audit`）与 domain 技能 7 个（`moai-domain-backend`、`moai-domain-frontend`、`moai-domain-database`、`moai-domain-design-dna`、`moai-domain-html-report`、`moai-domain-humanize`、`moai-domain-svg-infographic`）向智能体注入现场知识。
 
 ### 跨平台
 
@@ -444,6 +464,8 @@ flowchart TD
 | **内置** | Explore | ⚪ | 只读代码库探查 |
 
 成本颜色跟随默认 `medium` 档位的模型×推理单元（用 `moai model profile` 查看）：🔴 opus+high · 🟠 opus+medium · 🔵 opus+low · 🩵 sonnet+low · ⚪ 继承会话模型（用户自加智能体）。切换档位（`high`/`low`）后指派随之变化。写作和审计从一开始就分给别人 —— 写的人永远不给自己的作业打分。
+
+十二个里有十一个是 moai-adk 自造的智能体，`Explore` 是 Claude Code 本来就有的内置智能体。`Explore` 不另外持有自己的模型，而是原样继承会话模型，所以没有档案单元。目录是 12 个，而后面模型档案一节里的单元数是 11 × 3 = 33 —— 两个数字并不矛盾，它们数的是不同的东西。
 
 ### trust-but-verify —— 给完成主张绑上证据
 
@@ -551,7 +573,7 @@ CG 模式由 Claude 主控负责战略、计划和审计，GLM 工人扛大批�
 
 ### `.moai/config/sections/`
 
-项目配置拆成一组 YAML 切面文件。
+项目配置拆成一组 YAML 切面文件。`moai init` 铺下的切面一共 33 个，其中经常动的是下面这六个。
 
 | 切面 | 职责 |
 |---|---|
@@ -561,6 +583,17 @@ CG 模式由 Claude 主控负责战略、计划和审计，GLM 工人扛大批�
 | `workflow.yaml` | 工作流行为 |
 | `lsp.yaml` | LSP 门禁阈值（SSOT） |
 | `user.yaml` | 用户信息 |
+
+v3.1.1 又多了四个值得一动的切面。
+
+| 切面 | 职责 |
+|---|---|
+| `crosssession.yaml` | 跨会话消息的处置。`inbound`（留空 · `accept` · `hold` · `refuse`）、`isolate_machines`（本机之外的消息是否要求审批）、`dialog_expiry`（被挂起的消息，其审批对话的期限） |
+| `cache.yaml` | 提示缓存的配置文件。存放 `session_ttl`（`1h` · `5m` · `off`）、`spec_ttl` 和值得缓存的最小片段大小，在 `moai web` 设置编辑器里原样往返。但目前没有代码读取这些值，改了也不会改变行为 |
+| `state.yaml` | `home_retention_days` —— `moai clean --home` 从几天前的东西开始清。只从 HOME 层（`~/.moai/config/sections/state.yaml`）读取，默认 30 天，填 `0` 就关掉主目录清理 |
+| `statusline.yaml` | 在原有的主题与段落开关之上多了 `forge` 键。取 `github` · `gitlab` · `none` 之一，决定状态栏在哪个托管平台上统计打开中的工作。留空则按 origin 远端的主机判断，所以自建实例上要自己写明 |
+
+`gate.yaml` 的 `ast_grep_gate.rules_dir` 不是新键，而是**默认值变了的键**。原本是空字符串的默认值现在成了 `.moai/config/astgrep-rules`，`moai init`/`moai update` 会把捆绑的规则集铺在那个位置。代码一侧的回退路径已经取消，所以这个键现在是规则集位置的唯一出处 —— 把规则挪到别处的话，这个值也要一起改，门禁才找得到规则。
 
 环境变量覆盖文件值。优先级细节和完整切面清单见 [CLI 参考](https://adk.mo.ai.kr/zh/cli-reference)。
 
@@ -660,7 +693,7 @@ Claude 的每一档通过 `ANTHROPIC_DEFAULT_*_MODEL` 环境变量映射到 GLM 
 | [核心概念](https://adk.mo.ai.kr/zh/core-concepts) | 身份 · 宪章 · 框架工程 · 基于 SPEC 的开发 · DDD · TRUST 5 |
 | [工作流命令](https://adk.mo.ai.kr/zh/workflow-commands) | `plan` · `run` · `sync` —— SPEC 流水线主轴 |
 | [实用命令](https://adk.mo.ai.kr/zh/utility-commands) | `fix` · `loop` · `gate` · `review` · `clean` · `codemaps` · `e2e` · `feedback` · `goal` · `todo` |
-| [CLI 参考](https://adk.mo.ai.kr/zh/cli-reference) | 终端 `moai` 二进制的全部命令（共 36 个） |
+| [CLI 参考](https://adk.mo.ai.kr/zh/cli-reference) | 终端 `moai` 二进制的全部命令（共 49 个） |
 | [Claude Code 指南](https://adk.mo.ai.kr/zh/claude-code) | Claude Code 集成 —— 基础 · 上下文/记忆 · 智能体 · 扩展性 |
 | [Multi-LLM](https://adk.mo.ai.kr/zh/multi-llm) | CG 模式与模型策略 |
 | [成本优化](https://adk.mo.ai.kr/zh/cost-optimization) | 提示缓存策略与 token 成本削减 |
@@ -673,12 +706,12 @@ Claude 的每一档通过 `ANTHROPIC_DEFAULT_*_MODEL` 环境变量映射到 GLM 
 
 [**用 Claude Code 开始实战智能体编程**](https://adk.mo.ai.kr/book) —— moai-adk 作者写的实战框架工程指南。[book.mo.ai.kr](https://book.mo.ai.kr)
 
-### CLI 命令表（常用 14 个）
+### CLI 命令表（常用 17 个）
 
 | 命令 | 说明 |
 |---|---|
 | `moai init` | 交互式项目初始化（自动检测语言/框架/方法论） |
-| `moai doctor` | 系统状态诊断与环境校验 |
+| `moai doctor` | 系统状态诊断与环境校验 —— Home Disk Usage 项会告诉你 `~/.moai` 膨胀到了多大 |
 | `moai status` | 项目状态摘要（Git 分支、质量指标） |
 | `moai update` | 升级到最新版（删除前备份 · 支持自动回滚） |
 | `moai graph <build\|query>` | 生成/查询代码库图（edges.jsonl）—— 找调用方、波及范围、里程碑交叉检查 |
@@ -690,15 +723,20 @@ Claude 的每一档通过 `ANTHROPIC_DEFAULT_*_MODEL` 环境变量映射到 GLM 
 | `moai harness <status\|apply\|rollback\|disable>` | 框架学习生命周期 |
 | `moai handoff <save\|list>` | 会话交接记录 |
 | `moai preference <list\|decay-scan\|toggle>` | 决策记忆管理 |
+| `moai memory <doctor\|archive>` | 智能体记忆体检与旧条目归档 |
+| `moai tokens record` | 按池记录 token 使用台账 |
+| `moai clean [--home]` | 清理旧的运行产物。加上 `--home` 就在允许清单范围内清理 `~/.moai`。默认是 dry-run，要加 `--force` 才真正删除 |
 | `moai web` | 网页控制台 —— 5 个画面（Overview · Kanban · Specs · Monitor · Settings）、11 标签页设置 |
 
-> 全部 36 个命令：[CLI 参考](https://adk.mo.ai.kr/zh/cli-reference)
+> 全部 49 个命令：[CLI 参考](https://adk.mo.ai.kr/zh/cli-reference)
 
 ### ref / domain 技能
 
-**ref（现场知识）**：`moai-ref-api-patterns`、`moai-ref-owasp-checklist`、`moai-ref-llm-security`、`moai-ref-react-patterns`、`moai-ref-testing-pyramid`、`moai-ref-ui-polish`、`moai-ref-secops`、`moai-ref-supply-chain`、`moai-ref-seo`、`moai-ref-git-workflow`
+**ref（现场知识）11 个**：`moai-ref-api-patterns`、`moai-ref-owasp-checklist`、`moai-ref-llm-security`、`moai-ref-react-patterns`、`moai-ref-testing-pyramid`、`moai-ref-ui-polish`、`moai-ref-secops`、`moai-ref-supply-chain`、`moai-ref-seo`、`moai-ref-git-workflow`、`moai-ref-cross-model-audit`
 
-**domain（专业领域）**：`moai-domain-backend`、`moai-domain-frontend`、`moai-domain-database`、`moai-domain-testing`、`moai-domain-uiux`、`moai-domain-html-report`、`moai-domain-humanize`、`moai-domain-svg-infographic`
+**domain（专业领域）7 个**：`moai-domain-backend`、`moai-domain-frontend`、`moai-domain-database`、`moai-domain-design-dna`、`moai-domain-html-report`、`moai-domain-humanize`、`moai-domain-svg-infographic`
+
+`moai-domain-design-dna` 是 v3.1.1 新加的。给它一份要参考的设计 —— 截图也好、一组图片也好、活的 URL 也好 —— 它会把颜色、间距、圆角、字体这些量得出来的值，连同那份设计的气质和特殊渲染效果，一并反推成一份 Design DNA JSON。再把这份 JSON 喂回去，它就造出气质相同的新产物 —— 这是把“做成这个画面的样子”从话语搬到数值上的路径。
 
 ### CHANGELOG
 
