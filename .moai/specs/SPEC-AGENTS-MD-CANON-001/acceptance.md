@@ -46,9 +46,13 @@ rather than the line proxy.
 **AC-AMC-007** — Given either M1 stop-condition arm trips — the contract projection exceeding
 24,576 B (Arm A), **or** the post-diet surface projection including the contract layer exceeding
 66,371 tokens (Arm B) — When M1 concludes, Then a blocker report is returned naming the shortfall in
-that arm's unit and the two levers it offers, and no file has been moved. (Negative-path criterion:
-M1 passes by halting correctly, not only by succeeding. Arm B is the one that decides whether M5 can
-close; clearing Arm A alone is not sufficient to proceed.)
+that arm's unit and the two levers it offers, and no file has been moved.
+
+This is a **pass** of `AC-AMC-007`, not a failure of M1: the pilot's purpose is to establish whether
+the target is reachable, and a measured "not by this much" is the deliverable it was built to
+produce. Arm B is the one that decides whether M5 can close, and it should be expected to fire —
+`spec.md` §C.4's correction roughly doubled the minimum cut. Clearing Arm A alone is not sufficient
+to proceed.
 
 ## §C. M2 — contract layer
 

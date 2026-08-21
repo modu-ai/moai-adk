@@ -31,6 +31,16 @@ shortfall — so the ratchet's reachability is tested before M2 rather than disc
 `AC-AMC-007` now covers both arms. E3 (optional) folded in while editing the bound: the ±1,000
 tolerance makes 67,256 the strict maximum, so 66,371 is conservative by ~885 tokens.
 
+**v0.3.5 — dispatcher readability additions to the E1/E2 edits.** No requirement or criterion
+changed. §C.4 now **explains** the net-additive mechanism rather than citing it: a clause authored
+into `AGENTS.md` does not leave the always-loaded rules, because `REQ-AMC-002` forbids the move and
+`REQ-AMC-001` independently requires the clause in `AGENTS.md` — so the surface grows by
+`|AGENTS.md|` and the cut is `stated cut + |AGENTS.md|`. Written out because four readers in
+sequence (card author, SPEC author, dispatcher, two audit iterations) each made the relocation
+assumption working from the citation alone. M1's stop condition and `AC-AMC-007` now state that
+returning a blocker with the measured shortfall is a **correct outcome** of the pilot, and that
+Arm B should be expected to fire given the roughly doubled minimum cut.
+
 Two dispatcher refinements folded into the earlier revision: `AC-AMC-016` now **cites the existing**
 `TestAlwaysLoadedTokenBudget_OverBudgetFails` for the token-budget negative path rather than
 proposing a duplicate fixture (verified passing on this tree), leaving only the Codex-cap dimension

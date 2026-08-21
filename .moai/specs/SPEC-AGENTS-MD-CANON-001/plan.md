@@ -85,6 +85,14 @@ its obligation. Both are settled here, before any file moves.
 
 **Stop condition — two arms. Both must clear before M2 starts.**
 
+> **Returning a blocker here is a correct outcome, not a milestone failure.** M1 exists to find out
+> whether the target is reachable; "it is not, and here is the shortfall in measured units" is the
+> answer it was built to produce, and it is produced at the cheapest possible moment — before M2's
+> irreversible authoring. Arm B in particular should be **expected** to fire: `spec.md` §C.4's
+> correction roughly doubled the minimum cut (4,841 → 10,985 tokens), so the diet is materially
+> larger than the card assumed. An M1 that halts with a number is doing its job; an M1 that
+> proceeds past a shortfall it did not measure is the failure this milestone prevents.
+
 *Arm A — contract fits its ceiling.* If the contract projection exceeds **24,576 B**, do not
 proceed to M2. Return a blocker naming the shortfall in bytes and the two levers — deeper
 condensation with its stated quality cost, or renegotiating the ceiling against the 8,192 B

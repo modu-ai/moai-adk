@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENTS-MD-CANON-001
 title: "AGENTS.md canonical contract layer for Codex dual-harness"
-version: "0.3.4"
+version: "0.3.5"
 status: draft
 created: 2026-08-22
 updated: 2026-08-22
@@ -35,6 +35,7 @@ tier: L
 | 2026-08-22 | 0.3.2 | Plan-audit iteration 2 (FAIL 0.83) revision. N1: headroom ratio pinned in `REQ-AMC-013` at 15 % ±2 percentage points, so `AC-AMC-019`'s check no longer reads a free variable. N2: stale `AC-AMC-012` cross-reference in `design.md` §4 corrected to `AC-AMC-013`. |
 | 2026-08-22 | 0.3.3 | Plan-audit iteration 3 (FAIL 0.82) revision. D1: `AC-AMC-019` now reads the 13 %-17 % band rather than resolving the ratio solely from the constant's comment. D2: the achieved figure must be measured over an enumeration including the root `AGENTS.md` and every `@`-imported contract document — `alwaysLoadedSurface()` omits it today, so relocation into `AGENTS.md` would have scored as a diet (`REQ-AMC-013`, `AC-AMC-017`, plan.md M5). D3: the band's implied diet target (achieved ≤ 66,371 tokens) stated in §C.4. D4: document version and HISTORY brought current, with the provenance rule above added so `version:` is derived from the table rather than from a commit message. D5 (optional): `AC-AMC-018`'s measured state defined. Dispatcher additions: the enumeration content is bound into `REQ-AMC-008`, and the extension is ordered **before any measurement cited as a ratchet basis** (`REQ-AMC-013`, `AC-AMC-018`, `plan.md` M1/M5) — a late fix manufactures false evidence in the gap rather than merely delaying correctness. |
 | 2026-08-22 | 0.3.4 | Plan-audit iteration 4 (FAIL 0.87, one finding) revision. E1: §C.4's required-cut figures recomputed over the enumeration `REQ-AMC-013` ¶2 requires — the contract layer is net-additive per §D.2 / `REQ-AMC-001` / `REQ-AMC-002`, so `AGENTS.md` joins the surface with nothing removed; cuts corrected 4,841 → **10,985** and 8,911 → **15,055** at the ceiling case, with the governing formula stated. E2: M1's stop condition gained **Arm B** — project the post-diet surface including the contract layer against 66,371 tokens and blocker on shortfall, so the ratchet's reachability is tested at M1 rather than discovered at M5 (`plan.md` M1, `AC-AMC-007`). E3 (optional, folded in while editing the bound): the ±1,000 tolerance makes 67,256 the strict maximum, so 66,371 is conservative by ~885 tokens — noted, not relaxed. |
+| 2026-08-22 | 0.3.5 | Dispatcher readability additions to the E1/E2 edits; no requirement or criterion changed. §C.4 now **explains** the net-additive mechanism instead of citing it — a clause authored into `AGENTS.md` does not leave the always-loaded rules (`REQ-AMC-002` forbids it, `REQ-AMC-001` independently requires the clause in `AGENTS.md`), so the surface *grows* by `\|AGENTS.md\|` and the cut is `stated cut + \|AGENTS.md\|`. Stated rather than cross-referenced because four readers in sequence made the relocation assumption from the citation alone. M1's stop condition and `AC-AMC-007` now state that returning a blocker with the measured shortfall is a **correct outcome** of the pilot, not a milestone failure, and that Arm B should be expected to fire given the roughly doubled minimum cut. |
 
 ---
 
@@ -230,12 +231,23 @@ figure at **N ≤ 66,371 tokens**. Measured against that ceiling:
 
 **The cut is computed over the enumeration `REQ-AMC-013` ¶2 requires — one that includes
 `AGENTS.md`.** The four rows in §A.1 measure the *unextended* enumeration, since the file does not
-exist yet, so they are not the quantity the ratchet is measured against. And the contract layer is
-**net-additive**: per §D.2, excluding Claude-only clauses from `AGENTS.md` "removes nothing from
-either harness's binding surface", `REQ-AMC-002` forbids moving obligations off the always-loaded
-rules, and `REQ-AMC-001` requires `AGENTS.md` to carry every Codex-binding `[HARD]` clause. The
-clauses therefore exist in both places by construction: `AGENTS.md` joins the measured surface with
-nothing removed in exchange.
+exist yet, so they are not the quantity the ratchet is measured against.
+
+**Authoring `AGENTS.md` is a duplication, not a relocation — and that is the whole of the
+correction.** A clause that goes into `AGENTS.md` does **not** leave the always-loaded rules: it
+stays there, still loaded on every Claude turn, because `REQ-AMC-002` forbids moving any obligation
+off the always-loaded surface and `REQ-AMC-001` independently requires `AGENTS.md` to carry every
+Codex-binding `[HARD]` clause. §D.2 states the same property from the other side — excluding
+Claude-only clauses from `AGENTS.md` "removes nothing from either harness's binding surface". So
+the two requirements put each contract clause in *both* places by construction, and `AGENTS.md`
+joins the measured surface with **nothing removed in exchange**. The measured surface therefore
+*grows* by `|AGENTS.md|` at the moment the file is authored, which is why the required cut is
+`stated cut + |AGENTS.md|` rather than the stated cut alone.
+
+This is spelled out rather than cited because the assumption it corrects is an easy one to make
+again: four separate readers — the card author, this SPEC's author, the dispatcher, and two audit
+iterations — each worked from figures that quietly treated the contract layer as a relocation. A
+cross-reference lets the next reader repeat that inference; a stated mechanism does not.
 
 So the required cut is `stated surface + |AGENTS.md| − 66,371`. At `AGENTS.md`'s ceiling
 (24,576 B ÷ 4 = 6,144 tokens — the worst case, and the one to plan against):
