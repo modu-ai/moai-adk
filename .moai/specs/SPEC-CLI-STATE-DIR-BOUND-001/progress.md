@@ -128,9 +128,136 @@ FAIL	github.com/modu-ai/moai-adk/internal/cli	0.846s
 
 **정본 경로의 출처**: `filepath.Join(projectRootOf(stateDir), ChainStateDir)` 로 만든다. 선언된 상수(`ChainStateDir = ".moai/state/chain"`)를 다시 하중을 받는 자리에 두기 위해서다 — 레거시 경로는 누가 선언한 값이 아니라 `filepath.Dir(stateDir)+"chain"` 산술의 부산물이었다(spec.md REQ-7 근거 2).
 
+### M3 — clean carve-out + REQ-10 가시화
+
+REQ-10 의 한 줄은 여섯 소비자 **전부**에 있다(AP-13d). `clean` 만 AC 로 이진 판정되지만 그것은 최소 요구다.
+
+| 소비자 | 위치 | 출력 경로 |
+|---|---|---|
+| `clean.go` `runClean` | 삭제 후보 열거 **이전** | `printResolvedRoot` → `Printer.Info` → stderr |
+| `state.go` `runStateDump` | store 생성 이전 | 같음 |
+| `state.go` `runShowBlocker` | blocker 검색 이전 | 같음 |
+| `chain.go` `resolveChainDirWith` | 레거시 처분 이전 | `announceResolvedRoot` → stderr |
+| `chain.go` `loadRegistryForOverlay` | 레지스트리 읽기 이전 | 같음 |
+| `tokens.go` `resolveTokensStateDir` | 반환 이전 (폴백 분기 포함) | 같음 |
+
+**선언된 부수 결과 — 기존 테스트 2건의 단언 수정**: `TestStateM2_JSON_StdoutByteIdentical` / `TestStateM2_Human_StdoutByteIdentical` 은 `stderr.Len() != 0` 으로 **stderr 완전 공백**을 단언하고 있었다. REQ-10 의 한 줄이 그 단언과 정면으로 충돌한다.
+
+- **stdout 바이트 동일 단언은 한 글자도 건드리지 않았다** — M2 SPEC 의 하중은 그쪽이다.
+- stderr 단언은 그 테스트가 지키려던 성질(**데이터 페이로드가 stderr 로 새지 않는다**)로 좁혔다: `assertStderrCarriesOnlyResolvedRoot` 가 해석-루트 줄 외의 어떤 줄도 허용하지 않는다. 완전 공백보다 약하지만, 채널 분리라는 원래 계약은 그대로다.
+- 이것은 AP-1 이 경고한 "올바른 구현이 만들지 않는 계약을 테스트에 고정하는 것"의 반대 방향이다 — 새 요구사항이 옛 단언을 무효화한 경우이며, 조용히 넘기지 않고 여기 기록한다.
+
+**AC-015 판정 2 를 위한 주석 조정**: `runClean` 의 주석에 `CLAUDE_PROJECT_DIR` 리터럴을 썼더니 `grep -c "EnvClaudeProjectDir\|CLAUDE_PROJECT_DIR" internal/cli/clean.go` 가 3을 반환했다(기대 0). 그 grep 은 "환경변수가 clean 의 해석 경로에 아예 없다"를 이진 판정하는 장치이므로, 주석이 그것을 무디게 만들면 안 된다. 변수 이름은 `findStateDirNoEnv` 의 주석이 갖고 있고, `clean.go` 는 그리로 가리킨다.
+
+### §D.4 삭제량 확인 — 임계 초과, 검토 결과 복제 아님
+
+`git diff --numstat -- internal/cli/state.go` → **+76 / −25 (순증 +51)**. §D.4 의 임계(순증 20줄)를 넘으므로 D1(위임 vs 복제) 재검토를 실행했다.
+
+**판정: 복제가 아니다.** 임계의 목적은 "홈 가드를 복제했는가"를 잡는 것이고, 그 질문은 순증 줄 수가 아니라 코드로 답한다:
+
+- `grep -c "for {" internal/cli/state.go` → **0**. 상향 순회가 없다.
+- `state.go` 에 `paths.Home` 참조가 **0건**이다. 홈 경계 판정 로직이 복제되지 않았다.
+- `EvalSymlinks` 2건은 주석 1 + `normalizeDir` 1 이며, 걷기와 무관한 REQ-8 계약이다.
+
+순증 +51 의 귀속: 주석 +39(옛 걷기 서술을 새 계약 서술로 교체 — AC-014 가 요구), REQ-10 헬퍼 3개와 호출 2곳 약 +14, `normalizeDir` +6, 진입점 분리(`findStateDirNoEnv`) +8. 걷기 본체는 **순감**했다. 즉 증가분은 전부 이 SPEC 이 **새로 요구한 것**(REQ-8·REQ-9·REQ-10)이며 위임 대상의 복제가 아니다.
+
+### AC PASS/FAIL 매트릭스
+
+모든 판정 명령은 `unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED && …` 로 환경을 걷어낸 뒤 이 트리에서 실행했다.
+
+| AC | REQ | 상태 | 판정 명령 | 관측된 출력 |
+|---|---|---|---|---|
+| AC-001 | REQ-1 | **PASS** | `go test ./internal/cli/ -run 'TestStateDirHonoursProjectDirEnv' -v` | `--- PASS: TestStateDirHonoursProjectDirEnv (0.00s)` — SKIP 0건, `no tests to run` 없음 |
+| AC-002 | REQ-2 | **PASS** | `go test ./internal/cli/ -run 'TestStateDirDoesNotCrossHomeBoundary' -v` | `--- PASS: TestStateDirDoesNotCrossHomeBoundary (0.00s)` |
+| AC-003 | REQ-6 | **PASS** | ① `grep -c "err := findStateDir()" internal/cli/{clean,tokens,chain,state}.go` ② `grep -c "err := findStateDirNoEnv()" internal/cli/clean.go` ③ `grep -c "for {" internal/cli/state.go` | ① `clean.go:0 tokens.go:1 chain.go:2 state.go:2` (합 5, 기대 5) ② `1` ③ `0` |
+| AC-004 | REQ-3 (부류 A) | **PASS** | `go test ./internal/cli/ -run 'TestStateDirStopsAtProjectRoot' -v` | `--- PASS: TestStateDirStopsAtProjectRoot (0.00s)` |
+| AC-005 | REQ-5 | **PASS** | ① `go test ./internal/cli/ -run 'TestFindStateDirFromWalksUp' -v` ② `grep -c "t.Skip" internal/cli/tokens_state_dir_test.go` ③ `grep -c "err == nil && strings.HasPrefix" …` | ① 세 서브테스트 모두 `--- PASS`, `--- SKIP` 0건 ② `0` ③ `0` |
+| AC-006 | REQ-4 | **PASS** | `go test ./internal/cli/ -run 'TestResolveTokensStateDirFallsBackToCwd' -v` | `--- PASS: TestResolveTokensStateDirFallsBackToCwd (0.00s)` |
+| AC-007 | REQ-6 | **PASS** | ① `grep -c "EnvClaudeProjectDir" internal/cli/chain.go` ② `awk '/^func resolveChainStore/,/^}/' … \| grep -c` ③ `awk '/^func resolveCWD/,/^}/' … \| grep -c` | ① `1` ② `0` ③ `1` — 범위 안은 비었고 범위 밖(`resolveCWD`)은 불변 |
+| AC-008 | REQ-7 | **PASS** | `go test ./internal/cli/ -run 'TestChainDirIsCanonicalUnderBothBranches' -v` | `--- PASS: TestChainDirIsCanonicalUnderBothBranches (0.00s)` (구현 전 FAIL 출력은 위 M2 절) |
+| AC-009 | REQ-7 | **PASS** | `go test ./internal/cli/ -run 'TestChainLegacyEventsRelocation' -v` | 부모 `--- PASS` + 네 서브테스트 각각 `--- PASS`: `legacy_only_is_relocated_once` / `both_present_keeps_the_legacy_file_and_warns` / `canonical_only_is_silent` / `failed_relocation_keeps_using_the_legacy_path` |
+| AC-010 | REQ-8 | **PASS** | ① `go test ./internal/cli/ -run 'TestStateDirReturnsNormalizedPath' -v` ② `grep -c "EvalSymlinks" internal/cli/state.go` | ① 부모 + `walk_branch` + `env_branch` 모두 `--- PASS` ② `2` (≥1) |
+| AC-011 | REQ-3 (부류 B) | **PASS** | `go test ./internal/cli/ -run 'TestStateDirStopsAtNestedBareMoai' -v` | `--- PASS: TestStateDirStopsAtNestedBareMoai (0.00s)` |
+| AC-012 | 횡단 (fail-open) | **PASS** | `go test ./internal/cli/ -run 'TestLoadRegistryForOverlayFailsOpen' -v` | `--- PASS: TestLoadRegistryForOverlayFailsOpen (0.00s)` — 이름이 실재하므로 `no tests to run` 침묵 통과(AP-16)가 아니다 |
+| AC-013 | 횡단 (플랫폼) | **PASS** | `GOOS=windows go vet ./internal/cli/...` | 출력 없음, `vet exit: 0` |
+| AC-014 | 횡단 (문서 정합) | **PASS** | ① `grep -c "unbounded\|inherits any" internal/cli/state.go` ② `grep -c "existing walk-up convention" internal/cli/tokens.go` ③ `grep -c "falls back to findStateDir() directory walk" internal/cli/chain.go` | `0` / `0` / `0` |
+| AC-015 | REQ-9 + REQ-10 | **PASS** | ① `go test ./internal/cli/ -run 'TestCleanIgnoresProjectDirEnv' -v` ② `grep -c "EnvClaudeProjectDir\|CLAUDE_PROJECT_DIR" internal/cli/clean.go` ③ `grep -c "err := findStateDir()" internal/cli/clean.go` ④ `go test ./internal/cli/ -run 'TestCleanAnnouncesResolvedRoot' -v` | ① `--- PASS` ② `0` ③ `0` ④ `--- PASS: TestCleanAnnouncesResolvedRoot (0.00s)` |
+
+15/15 MUST-PASS. FAIL 0건, PASS-WITH-DEBT 0건.
+
+### 횡단 검증
+
+| 항목 | 명령 | 결과 |
+|---|---|---|
+| 영향 패키지 스위트 | `go test ./internal/cli/... ./internal/core/project/...` | 전부 `ok` — `internal/cli` 377.953s, `internal/core/project` 2.014s |
+| lint | `golangci-lint run --timeout=2m ./internal/cli/... ./internal/core/project/...` | `0 issues.` |
+| 크로스 플랫폼 | `GOOS=windows go vet ./internal/cli/...` | 출력 없음, exit 0 |
+| race (영향 테스트) | `go test -race ./internal/cli/ -run 'TestStateDir\|TestChain\|TestClean\|TestFindStateDirFromWalksUp\|TestStateM2\|TestResolveTokens\|TestLoadRegistry'` | `ok github.com/modu-ai/moai-adk/internal/cli 4.910s` |
+| `m2SetupState` 무영향 | `go test ./internal/cli/ -run 'M2' -v` | `TestStateM2_*` 6건 전부 `--- PASS`. `state_m2_test.go` 의 **수정은 2건의 stderr 단언뿐**이며 `m2SetupState`(line 37)는 무변경 — spec.md §A 의 무영향 주장은 관측으로 확인됐다 |
+
+**로컬 `go test ./...` 는 실행하지 않았다.** 전 패키지 판정은 PR CI 몫이다(CLAUDE.local.md §4).
+
+### 커버리지 (변경된 함수 단위)
+
+`go tool cover -func` 로 측정. 해석 경로의 핵심은 전부 100%:
+
+```
+findStateDir            100.0%
+findStateDirFrom        100.0%
+resolveChainDir         100.0%
+disposeLegacyChainDir   100.0%
+isRegularFile           100.0%
+announceResolvedRoot    100.0%
+printResolvedRoot       100.0%
+projectRootOf           100.0%
+resolveChainDirWith      85.7%
+runShowBlocker           83.9%
+findStateDirNoEnv        75.0%
+runStateDump             72.0%
+runClean                 66.7%
+resolveTokensStateDir    66.7%
+normalizeDir             66.7%
+```
+
+85% 미만 5건의 미커버 구간은 전부 **주입 없이는 도달할 수 없는 오류 분기**(`os.Getwd()` 실패, `filepath.EvalSymlinks` 실패)이거나 이 SPEC 이 건드리지 않은 기존 커맨드 본문이다. §D.7 의 "state 해석 경로 커버리지 ≥ 85%" 는 위 100% 항목들이 충족한다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-08-22
+run_commit_sha: pending-backfill-run-final
+run_status: complete
+ac_pass_count: 15
+ac_fail_count: 0
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: not-applicable
+l44_post_push_fetch: not-applicable
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  darwin_amd64: pass
+  windows_vet: pass
+total_run_phase_files: 9
+m1_to_mN_commit_strategy: per-milestone
+```
+
+**커밋** (worktree branch `WT-state-walkup`, 미푸시 — 통합은 리드 몫):
+
+| 커밋 | 마일스톤 |
+|---|---|
+| `977f124d4` | M1 — 해석 계약 + 진입점 분리 + 홈 경계 seam |
+| `9de04cb4d` | M2 — chain 정본 경로 + 레거시 4경우 처분 |
+| `c4a3b90c1` | M3 — clean carve-out + REQ-10 가시화 |
+| (M4-M7) | 검증·문서·progress 기록 커밋 |
+
+**변경 파일 9개**: `internal/cli/{state,chain,clean,tokens}.go`, `internal/core/project/root.go`, `internal/cli/{state_dir_bound_test,chain_state_dir_test,clean_state_dir_test}.go`(신규 3), `internal/cli/{tokens_state_dir_test,state_m2_test}.go`(기존 2 수정). `internal/template/templates/` 무변경(미러 대상 없음), `internal/hook/chain_event.go` 무변경(범위 밖), `internal/hook/cwd_changed_relocate.go` 무변경(범위 밖 — AP-13b).
+
+### 잔여 위험 / 미검증
+
+- **R1 (불변)**: Windows CI 러너의 조상 `.moai/state` 생성 주체는 여전히 미확인이다. 이 변경은 증상을 없애지만 원인을 밝히지 않는다.
+- **§D.6 사후 확인 4건은 실행하지 않았다** — 머지 후 실제 머신 확인 항목이며 run-phase 범위가 아니다. 특히 `~` 하위에서의 A 프로브 재실행은 유닛 테스트가 대신할 수 없는 최종 확인으로 남는다.
+- **REQ-3 부류 B(R5)**: 이 리포의 `internal/hook/.moai/` 형태가 다시 나타나면 그 하위에서 `moai state`/`chain`/`clean` 이 실패한다. 완화는 실패 메시지가 멈춘 디렉터리를 지목하는 것뿐이며 AC-011 이 그것을 고정한다.
+- **새로 관측된 사실(범위 밖)**: `FindProjectRoot` 는 프로젝트 루트가 **$HOME 자신일 때** 거부한다 — 홈 가드가 `.moai` 확인보다 먼저 오기 때문이다. 이 SPEC 이 만든 동작이 아니라 위임 대상의 기존 성질이며 바꾸지 않았다. 테스트 픽스처는 홈 경계를 프로젝트의 부모에 두는 방식으로 이 성질을 피해 간다.
+- **§E 4행의 `loadRegistryForOverlay` 안전성은 여전히 "미확인"**이다(spec.md §E). 이 SPEC 은 그 소비자가 읽는 레지스트리 **개수**를 바꾸지 않았다(AP-13c 준수).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
