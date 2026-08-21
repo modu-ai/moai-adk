@@ -6,10 +6,11 @@ Branch `WT-svg-quality`, worktree `.claude/worktrees/t165`, base `a6fe13232`.
 
 ### Claim
 
-M1-M4 and M6 are complete. M5 produced one sample pair (`journey`) and the
-routing carve-out it would justify is **not yet taken** — the decision is the
-reader's per SPEC §5, so `SKILL.md` § Step 0 is unchanged and the exception list
-is empty as this record is written.
+All six milestones are complete. M1-M4 and M6 landed as text, checker, fixtures,
+mirrors, and attribution. M5 produced one sample pair (`journey`) and put the
+carve-out to the operator per SPEC §5; they declined it, so the exception list is
+empty and `SKILL.md` § Step 0's routing table is unchanged. Every AC is closed —
+AC-BUDGET with a stated estimate rather than a measurement (see Gaps).
 
 ### Evidence
 
@@ -120,13 +121,8 @@ time of the run: four modified skill files, four modified mirrors, modified
 
 ### Gaps
 
-- **AC-REQ-7a/7b/7c are not yet closed.** One pair exists (`journey`); the
-  exception list is empty and `SKILL.md` § Step 0 is unchanged. `timeline` was
-  not rendered, so it cannot be listed whatever its merits. `quadrant` and
-  `ER-schema` were dropped on scope — neither maps onto any of the four
-  archetypes, and adding one is the type-catalogue path the SPEC rejects (§2
-  Out of Scope, plan D1). Reasoning and the pair's observations:
-  `.moai/reports/t165/samples/README.md`.
+(AC-REQ-7 is no longer a gap — see § REQ-7 decision below.)
+
 - **AC-BUDGET is at its boundary, not comfortably inside it.** `SKILL.md` is
   19,094 bytes / 3,080 words after the additions, against a declared
   `level2_tokens: 5000`. No tokenizer was available in this environment, so the
@@ -141,6 +137,42 @@ time of the run: four modified skill files, four modified mirrors, modified
   `archetypes.md` where the table sits.
 - **Full-suite verdict is CI's.** Only `./internal/template/...` was run locally,
   per the repo's local-test discipline.
+
+### REQ-7 decision — the exception list stays empty
+
+**Claim.** The mermaid bypass exception list is empty and `SKILL.md` § Step 0's
+routing table is unchanged. AC-REQ-7a, 7b, and 7c are closed on that basis.
+
+**Evidence.** One pair was produced (`journey`), rendered and committed under
+`.moai/reports/t165/samples/`. The comparison and its observations are recorded
+in that directory's `README.md`. `timeline` was not rendered and therefore could
+not be listed whatever its merits; `quadrant` and `ER-schema` were dropped on
+scope, because neither maps onto any of the four archetypes and adding one is
+the type-catalogue path the SPEC rejects (§2 Out of Scope, plan D1).
+
+The judgement itself is the operator's, per SPEC §5 ("The samples are judged by
+a human"). It was put to them with the pair's observations and the durable cost
+of a carve-out stated, and they chose to leave the list empty. The grounds given
+were the ones the SPEC itself names: AC-REQ-7b states that an empty list passes,
+the skill's own routing rule is that mermaid wins a tie, and one sample is thin
+evidence for a permanent carve-out.
+
+**Per-AC closure.**
+
+- **AC-REQ-7a** — every listed type has both renders committed. Vacuously true
+  on an empty list; the one pair that exists is committed regardless.
+- **AC-REQ-7b** — no type appears without a committed pair. Satisfied: the list
+  is empty, which the AC states explicitly is a pass.
+- **AC-REQ-7c** — every entry is image-path-scoped and none touches
+  locale-synced text. Vacuously true on an empty list. The docs-site 4-locale
+  path is verified unchanged by the run's own diff, which touches only the skill,
+  its template mirror, `internal/template/catalog.yaml`, and this SPEC's
+  artifacts.
+
+**Gap this leaves.** The `journey` comparison is now recorded evidence with no
+decision resting on it. Should a later card revisit the carve-out, the pair is
+there to start from rather than to re-derive — and a second candidate
+(`timeline`, which maps onto A2 the same way) is the obvious next pair.
 
 ### Residual-risk
 
