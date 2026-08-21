@@ -1,6 +1,8 @@
 # plan — SPEC-CODEX-SKILLS-CANONICAL-001
 
-> 마일스톤은 **되돌리기 어려운 결정부터** 배치했다. M1·M2 가 뒤집히면 그 아래가 전부 다시 작성된다. M3·M5 는 iter-3 에서 실측 결과에 따라 내용과 우선순위가 바뀌었으므로 iter-2 판본의 기억으로 읽지 않는다.
+> 마일스톤은 **되돌리기 어려운 결정부터** 배치했다. M1·M2 가 뒤집히면 그 아래가 전부 다시 작성된다.
+>
+> **v0.6.0 범위 축소**: 청소 계열(구 M4 + M3 의 백업 절)은 승계 SPEC 으로 전출했다. 마일스톤 번호는 옮기지 않아 **M4 자리에 구멍이 있다** — 감사 보고서가 인용하는 번호를 보존하기 위해서다(spec HISTORY iter-6). 위험표와 안티패턴 목록에도 같은 이유로 구멍이 있다(R4·R5·R8·R13·R14·R16, AP-6·AP-12·AP-13·AP-14·AP-16).
 
 ## §A. 맥락
 
@@ -15,19 +17,13 @@ Codex CLI 는 `<repo>/.agents/skills/`(CWD→상향 병합)와 `$CODEX_HOME/skil
 | R1 | 상수 기반 미러 집합이 슬림 프로젝트에서 깨진 링크를 만든다 | 높음 | REQ-CSC-006 + AC-CSC-014 (합성 FS 2-스킬 테스트) |
 | R2 | Windows 에서 `os.Symlink` 실패 → 스킬 미노출 | 높음 | 복사 폴백(REQ-CSC-004) + `GOOS=windows go vet` 게이트 |
 | R3 | 폴백이 조용해 "링크인 줄 알았는데 복사본" 상태가 잠복 | 중간 | REQ-CSC-005 관측 가능성 + AC-CSC-006 |
-| R4 | `.agents/` 미등록으로 은퇴 스킬 영구 잔존 | 높음 | REQ-CSC-008 + AC-CSC-007/008 |
-| R5 | 청소 글롭이 사용자 소유 항목까지 삼킨다 | **높음** | REQ-CSC-008/009 접두 한정 + AC-CSC-008(양팔) + AC-CSC-009 |
 | R6 | 미러 실패가 배포 전체를 실패시켜 Claude Code 경로까지 잃는다 | 중간 | fail-open(REQ-CSC-011) + AC-CSC-013 |
 | R7 | 템플릿 트리에 누군가 심볼릭 링크를 다시 넣어 스킬이 무음 소실 | 중간 | REQ-CSC-002 + AC-CSC-001 **양팔**(트리 전체 카운트 + 링크 가시 수집) |
-| R8 | 복사 모드에서 `moai update` 가 매번 스킬 전량을 백업 트리에 복제 | **높음** | REQ-CSC-010 + AC-CSC-012(2번 팔). 근거 spec §A.7 |
 | R9 | `.agents/` 가 사용자 저장소에 커밋됨 — Windows 체크아웃에서 링크가 텍스트 파일로 실체화 | **높음** | REQ-CSC-016 + AC-CSC-015. 근거 spec §A.8 |
 | R10 | 미러 대상에 사용자 실 디렉터리가 있는데 `EEXIST` 를 "지우고 재생성"으로 처리 → 데이터 손실 | **높음** | REQ-CSC-014 + AC-CSC-011(3번 단언) |
-| R11 | 비-`moai` 이름 스킬이 카탈로그에 들어와 미러는 만들고 청소는 못 지움 | 중간 | REQ-CSC-015 + AC-CSC-016. 근거 spec §A.9 |
+| R11 | 비-`moai` 이름 스킬이 카탈로그에 들어와, 여기서 만든 미러에 승계 SPEC 의 청소가 닿지 못함 | 중간 | REQ-CSC-015 + AC-CSC-016. 근거 spec §A.9 |
 | R12 | `manifest.Track` 이 디렉터리 링크에서 EISDIR → `Deploy` 실패, fail-open 과 충돌 | 중간 | REQ-CSC-010(기록 금지) + AC-CSC-012(1번 팔). 근거 spec §A.6 |
-| R13 | 실행 순서가 만든 dangling 링크를 청소가 찾아내고도 지우지 않아 미러가 영구 잔존 | **높음** | REQ-CSC-008 (a)`Lstat`+dangling 제거 · (b)순서 + AC-CSC-007(2) + AC-CSC-008(2). 근거 spec §A.10 |
-| R14 | 백업 금지를 절대 형태로 써서 사용자의 `moai` 접두 실 항목이 무백업 손실 | **높음** | REQ-CSC-010 판별자 한정 + AC-CSC-012(3번 팔). 근거 spec §A.11 |
 | R15 | 출력 seam 부재로 모드·경고가 관측 불가 → MUST AC 3개 판정 불능 | 중간 | REQ-CSC-005(반환 결과) + M2 산출물. 근거 spec §B.D3 + §A.9b |
-| R16 | `os.Lstat` 전환이 기존 7개 청소 뿌리 동작을 함께 바꾼다 | 중간 | 받아들인 결정(spec §B.D6 폭발 반경) + M4 회귀 확인 |
 | R17 | `moai-`(하이픈) 접두 seam 재사용으로 `moai` 스킬이 미러·가드·정리에서 누락 | 중간 | REQ-CSC-015 철자 고정 + AC-CSC-016 [HARD] + M6·§H. 근거 spec §A.9 |
 
 ## §C. 사전 점검 (착수 전)
@@ -35,7 +31,6 @@ Codex CLI 는 `<repo>/.agents/skills/`(CWD→상향 병합)와 `$CODEX_HOME/skil
 - `git rev-parse --show-toplevel` 이 이 worktree 인지 확인한다.
 - `find internal/template/templates -type l | wc -l` == 0 (기준선, **트리 전체** — `.claude/skills/` 하위가 아니다).
 - `grep -n 'agents' internal/template/templates/.gitignore` — 착수 시점에 항목이 없음을 확인한다(M5 의 전제).
-- `ManagedCleanTargets` 의 현재 항목 수와 `.claude/skills/moai*` 의 인덱스를 기록한다(M4 의 순서 배치가 무엇 앞으로 가는지 고정하기 위해).
 - `find internal/template/templates/.claude/skills -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | grep -cv '^moai-'` — **1** 이 나와야 한다(이름이 정확히 `moai` 인 스킬). 0 이 나오면 카탈로그가 바뀐 것이므로 spec §A.9 를 다시 읽는다.
 - `find internal/template/templates/.claude/skills -mindepth 1 -maxdepth 1 -type d | wc -l` 를 착수 시점에 **다시 측정**한다. 34 는 작성 시점 값이며, 테스트는 상수가 아니라 파일시스템과 임베드 FS 를 **서로 대조**해야 한다.
 
@@ -58,7 +53,7 @@ Codex CLI 는 `<repo>/.agents/skills/`(CWD→상향 병합)와 `$CODEX_HOME/skil
 
 - 대상: `internal/template/` (신규 파일 1 + `deployer.go` 소폭)
 - 닫힘 조건: AC-CSC-006, AC-CSC-014
-- 이 결정이 바뀌면 M2~M4 전부 재작성이다.
+- 이 결정이 바뀌면 M2·M3·M5·M6 전부 재작성이다.
 
 ### M2 — 링크 생성 + 폴백 (Priority High)
 
@@ -69,37 +64,14 @@ Codex CLI 는 `<repo>/.agents/skills/`(CWD→상향 병합)와 `$CODEX_HOME/skil
 - 닫힘 조건: AC-CSC-002, AC-CSC-003, AC-CSC-004, AC-CSC-005, AC-CSC-006, AC-CSC-011, AC-CSC-013
 - 상대 링크를 쓰는 이유: 프로젝트 디렉터리를 통째로 옮기거나 복사해도 링크가 살아남는다. 절대 경로는 `moai init` 시점 경로로 굳는다(CLAUDE.local.md §14 와 같은 실패 형태).
 
-### M3 — 미러를 기록·백업 대상에서 제외 (Priority High)
+### M3 — 미러를 manifest 기록 대상에서 제외 (Priority High)
 
-**iter-3 에서 방향이 뒤집혔다.** iter-2 의 M3 는 "미러를 manifest 에 기록한다"였는데, 실측 결과 그 설계는 기존 seam 에서 **구현 불가능**하다(spec §A.6 — `Track` → `HashFile` → `io.Copy` 가 디렉터리 링크에서 EISDIR). 게다가 기록을 시도하면 error 가 올라와 REQ-CSC-011 의 fail-open 과 충돌한다.
+**방향이 두 번 바뀐 자리다.** iter-2 의 M3 는 "미러를 manifest 에 기록한다"였는데 실측 결과 그 설계는 기존 seam 에서 **구현 불가능**하다(spec §A.6 — `Track` → `HashFile` → `io.Copy` 가 디렉터리 링크에서 EISDIR). 기록을 시도하면 error 가 올라와 REQ-CSC-011 의 fail-open 과 충돌한다. 그래서 iter-3 이 "기록하지 않는다"로 뒤집었고, v0.6.0 범위 축소에서 **백업 관련 작업은 승계 SPEC 으로 전출**해 이 마일스톤에는 manifest 한 가지만 남았다.
 
-따라서 이 마일스톤이 하는 일은 **두 가지를 하지 않도록 만드는 것**이다.
+하는 일: 미러 항목에 대해 `manifest.Track` 을 **호출하지 않는다.** 배포기가 정본 파일을 기록하는 기존 경로는 그대로 두고, 미러 생성 경로만 기록 호출을 갖지 않게 한다.
 
-1. 미러 항목에 대해 `manifest.Track` 을 호출하지 않는다.
-2. pre-clean 백업이 미러를 보존하지 않는다 — 복사 모드에서 특히(spec §A.7).
-
-2번은 `backupThenRemove` 쪽 처리가 필요하다. 템플릿에 `.agents/` 가 없어 `templateManagedPaths` 가 항상 공집합이 되는 것이 원인이므로, **이번 실행이 다시 만들 미러인지**(템플릿이 같은 이름의 스킬을 가졌는지)를 판별하는 분기를 새로 작성한다 — REQ-CSC-010 의 판별자 그대로다.
-
-[HARD] **"미러 뿌리를 백업 대상에서 제외하는" 절대 형태로 구현하지 않는다.** 그 형태는 AP-16 이 금지하는 것이며, `moai` 접두를 쓴 사용자 실 항목이 경고도 백업도 없이 사라진다(spec §A.11). 판별은 뿌리 단위가 아니라 **이름 단위**다.
-
-- 닫힘 조건: AC-CSC-012 (3팔 — manifest 부재 / 재배포분 백업 부재 / 은퇴분 백업 보존)
-
-### M4 — 청소 경로 등록 (Priority High, 독립적)
-
-`ManagedCleanTargets` 에 `.agents/skills/moai*` 글롭 추가. 기존 `.claude/skills/moai*` 항목과 같은 형태(`IsGlob: true`)를 따른다.
-
-[HARD] 글롭은 **접두 `moai*` 한정**이다(spec §B.D5). `.agents/` 나 `.agents/skills/` 전체를 잡는 형태는 네임스페이스 분리 계약 위반이며, 이것이 `moai update` 의 삭제 범위를 넓히는 **동작 변경**이라는 점은 spec §A.5 에 근거와 함께 기록돼 있다. 등록 전에 §A.5 를 읽는다.
-
-**[HARD] 이 마일스톤의 진짜 작업은 글롭 등록이 아니라 dangling 링크 제거다.** 등록만 하면 청소는 미러를 **한 개도 지우지 못한다** — 실행 순서가 clean→deploy 이고 청소 안에서 정본 글롭이 먼저 돌아 모든 미러 링크가 dangling 이 되는데, `backupThenRemove` 는 `os.Stat` 으로 판정해 `IsNotExist` 에서 조용히 `return 0, nil` 한다(spec §A.10, 재현 출력 포함). 따라서 두 가지를 함께 넣는다.
-
-- **(a) `os.Lstat` 판정 + dangling 제거** — 결함을 실제로 닫는 절.
-- **(b) 슬라이스 순서** — `.agents/skills/moai*` 를 `.claude/skills/moai*` **앞에** 배치. 이중 방어이며, 중복이라며 지우지 않는다(spec §B.D6).
-
-**(a) 는 공유 코드 변경이다.** `backupThenRemove` 는 모든 관리 대상 청소 항목이 지나가므로 기존 7개 뿌리에서도 dangling 링크가 제거되기 시작한다. spec §B.D6 이 이를 폭발 반경과 함께 **기록된 결정**으로 받아들였으므로, 이 마일스톤은 기존 뿌리에 대한 회귀 확인을 함께 수행한다.
-
-- 대상: `internal/cli/update/deploy/deploy.go`, `internal/defs/dirs.go`(경로 상수)
-- 닫힘 조건: AC-CSC-007(양팔 — 글롭 + 순서), AC-CSC-008(4형태 — dangling 팔 포함), AC-CSC-009
-- M1~M3 과 독립이므로 병행 가능하다.
+- 닫힘 조건: AC-CSC-012 (manifest 부재)
+- pre-clean 백업 정책(`backupThenRemove` 판별 분기)은 **이 SPEC 의 작업이 아니다** — 승계 SPEC 소관(spec HISTORY iter-6 전출 목록).
 
 ### M5 — `.gitignore` 에 `.agents/skills/moai*` 등록 + 템플릿 미러 (Priority **High**)
 
@@ -126,17 +98,12 @@ Codex CLI 는 `<repo>/.agents/skills/`(CWD→상향 병합)와 `$CODEX_HOME/skil
 - **AP-3** — 폴백을 조용히 처리한다. R3.
 - **AP-4** — 미러 실패 시 배포 전체를 실패시킨다. Claude Code 경로까지 잃는 과잉 반응이다(REQ-CSC-011).
 - **AP-5** — 절대 경로 심볼릭 링크. 프로젝트 이동 시 끊긴다.
-- **AP-6** — `.agents/` 또는 `.agents/skills/` 전체를 청소 대상으로 등록한다. 사용자 소유 항목을 삼킨다(REQ-CSC-009, spec §B.D5).
 - **AP-7** — `ls | wc -l` 로 개수를 센다. 셸 별칭 때문에 +2 되는 형태가 이미 두 번 발생했다(spec §A.1). SPEC 자신도 이 형태로 §A.3 부분합을 틀렸다.
 - **AP-8** — `fs.DirEntry.IsDir()` 로 스킬 디렉터리를 수집한다. `Lstat` 기반이라 디렉터리 링크가 **빠지고**, 그러면 소실 검사의 등식이 유지되어 테스트가 통과한다(AC-CSC-001 2번 단언).
 - **AP-9** — 테스트가 "변경 전 커밋 기준선"을 참조한다. Go 테스트는 이전 커밋 코드로 배포할 수 없다. 불변식은 **같은 프로세스 안에서** 얻는다(AC-CSC-010).
 - **AP-10** — `os.Symlink` 의 `EEXIST` 를 "지우고 다시 만든다"로 처리한다. 대상이 사용자 실 디렉터리면 데이터 손실이다(REQ-CSC-014).
 - **AP-11** — 미러 항목을 `manifest.Track` 에 넘긴다. 디렉터리 링크에서 EISDIR 로 실패하고 fail-open 과 충돌한다(spec §A.6).
-- **AP-12** — 청소 테스트에서 **제거만** 단언한다. `.agents/skills/` 전체를 지우고 있어도 통과하므로, 사용자 소유 스킬이 사라지는 상태를 검출하지 못한다. 제거와 생존은 같은 테스트 안에 있어야 한다(AC-CSC-008).
-- **AP-13** — 청소 대상의 존재를 `os.Stat` 으로 판정한다. dangling 링크에서 `IsNotExist` 가 참이 되어 **찾아내고도 지우지 않는다**(spec §A.10).
-- **AP-14** — 청소 테스트 fixture 를 **실 디렉터리로만** 심는다. 실제 산출물은 링크이고, 실 디렉터리는 `os.Stat` 이 성공하므로 dangling 결함이 살아 있어도 통과한다(AC-CSC-008).
 - **AP-15** — `EmbeddedMoaiSkillNames()`(접두 `moai-`)를 미러 집합·가드·정리 판별에 재사용한다. 이름이 정확히 `moai` 인 스킬이 조용히 빠진다(spec §A.9).
-- **AP-16** — 백업 금지를 `.agents/` 전체에 절대 형태로 적용한다. 사용자의 `moai` 접두 실 항목이 경고도 백업도 없이 사라진다(spec §A.11).
 
 ## §H. 부록 — `~/.codex/skills/` 정리 방안 (문서화만, 실행은 별도 승인)
 
