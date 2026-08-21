@@ -1,0 +1,122 @@
+---
+id: SPEC-CLI-CLEAN-SYMLINK-001
+title: "Progress — moai update 청소 경로의 심볼릭 링크 인식"
+version: "0.1.0"
+status: draft
+created: 2026-08-22
+updated: 2026-08-22
+author: manager-spec
+priority: P1
+phase: "v3.1.3 target"
+module: internal/cli/update/deploy
+lifecycle: spec-anchored
+tier: M
+era: V3R6
+tags: "update, clean, symlink, deploy, backup, t173"
+---
+
+# progress.md — SPEC-CLI-CLEAN-SYMLINK-001
+
+## Authoring record
+
+Card t173("moai update 청소 경로 링크 인식")의 plan-phase 산물. 워크트리
+`.claude/worktrees/t173`(branch `WT-clean-links`, HEAD `18f7cfc19` = origin/main + 도시에
+커밋). 이 에이전트는 git을 건드리지 않았다 — 커밋은 오케스트레이터 소관.
+
+## Phase 1 — 탐사 SKIP 사유 (research pre-gathered)
+
+심층 탐사는 위임 **이전에** 오케스트레이터가 완료했고 전량이 커밋된 도시에
+`.moai/reports/t173/measurements.md`(508줄)에 기록되어 있다 — 분기 추적(§1, file:line),
+청소 뿌리 인벤토리(§2), 4회 재현 매트릭스 Run A~D(§3), t81 D2~D4 원문(§4), 미측정
+gap 7건(§5). 이 위임에서는 도시에 인용 라인 전부를 본 트리(`18f7cfc19`)에서 직독
+확인했고(전부 일치), 추가로 두 건을 이 트리에서 신규 확인했다:
+
+1. `internal/template/deployer.go:189`의 `MkdirAll`과 에러 래핑(`template deploy mkdir %q`)
+   — Run D의 verbatim 에러와 일치.
+2. stdlib `os.MkdirAll`(GOROOT `os/path.go`)의 fast-path `Stat` 추적 — 라이브 디렉터리
+   링크에서 nil 반환(보존 처분 기각 근거), dangling에서 slow-path `Mkdir` EEXIST(Run D
+   결함의 배포 측 메커니즘).
+
+따라서 research.md 재수집은 중복 — SKIP, 근거 인용함. Tier M 산물 3종 + progress.md.
+
+## 리드 보충 반영 (2026-08-22, 산물 작성 후 1회)
+
+보충 항목 4(복사 모드 미러 갱신 판별자)를 spec.md §A 맥락 항목 + §E Out-of-Scope
+라우팅으로 반영했다. 인용 원본(읽기 전용, 미커밋 브랜치 내용 — 본 트리에 없음):
+`/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t81/.moai/specs/SPEC-CODEX-SKILLS-CANONICAL-001/spec.md`
+(v0.7.0). 확인 요점: REQ-CSC-004(복사 폴백)·REQ-CSC-005(모드 경고 보고)는 있으나
+**판별자는 정의 없음** — §D가 폴백 플랫폼 미러 고착(2회차 배포부터 REQ-CSC-014 "실
+항목" 분기에 걸려 사용자 항목으로 보존)을 잔존 고지로 적는다.
+
+**라우팅 충돌 기록(리드 인지 필요)**: t81(가) v0.7.0 §D 마지막 문장은 "판별자 도입과
+갱신 경로는 승계 SPEC(`t173`)이 닫는다"라고 적고 있으나, 리드 보충 지시는 이를
+t81(가) 배포 측 요구사항으로 라우팅하라고 한다. 본 반영은 리드 지시를 따랐다(REQ/AC
+추가 없음, 수치 12/11/5 불변) — t81(가) 측 §D 서술과의 정합은 리드·t81(가)가 조율할
+사항이다.
+
+**→ 해결(2026-08-22 리드 결정)**: 어느 형제 SPEC도 판별자를 소유하지 않는다 — 후속 카드
+후보로 **리드 큐가 관리**한다. t81(가) §D의 t173 지목 문장은 이 리드 결정으로 대체되며,
+t81(가) 측 §D 서술 정리는 리드 몫이다.
+
+## 리드 비준 대기 항목 (plan.md §D-5로 이관됨)
+
+1. **FX-1 라이브 디렉터리 링크 처분 = 제거+가시화**(spec.md §B.1 — 보존 기각 근거 포함).
+   회귀면: 현행과 동일한 결과(새 파손 없음)이나 "링크 유지 의도 사용자에게 결과 노출"이
+   새로 가시화됨. 보존으로 뒤집으면 배포 측 변경이 필수(범위 밖) + 순서 제약 활성화.
+2. **FX-3b 글로브 dangling 링크의 제거로 변경**(종전 영구 잔존 → 제거+진행줄) — 관리
+   네임스페이스 위생이나 동작 변경은 동작 변경.
+
+Implementation Kickoff Approval 이전에 리드가 위 2건을 비준/기각해야 한다
+(plan.md `[NEEDS CLARIFICATION]` 마커).
+
+**→ 해결(2026-08-22): 두 항목 모두 리드 비준 완료** — 아래 "리드 결정 확정" 참조.
+plan.md `[NEEDS CLARIFICATION]` 마커는 폐지되어 DECIDED 항목으로 대체됐다.
+
+## 리드 결정 확정 (2026-08-22)
+
+1. **FX-1 라이브 디렉터리 링크 처분 = 제거 + 진행줄 가시화 — 비준됨.** 결정적 근거:
+   실측된 `MkdirAll` fast-path 링크 추적(보존 시 배포 기록이 사용자 외부 트리로 유입,
+   차단하려면 범위 밖 배포 측 게이팅 필요).
+2. **FX-3b 글로브 매치 dangling = 제거 — 비준됨.** dangling에는 데이터 손실 표면이
+   없다(대상 부재) — 관리 네임스페이스 위생. 새 [HARD] 회귀면(사용자 dangling 링크
+   제거)은 양극 픽스처로 고정(AC-CSL-002 ↔ AC-CSL-007).
+3. **판별자 라우팅 정정**: "t81(가) 소관"은 오류 — t81(가)는 자기 범위에서 제외하며
+   (v0.7.0 D1 수정 (b)), 소유는 어느 형제 SPEC도 아닌 **리드 큐의 후속 카드 후보**.
+   위 보충 반영의 라우팅 충돌 기록도 이 결정으로 해결된다.
+4. **Implementation Kickoff Approval — 조건부 허가(리드 전달, 2026-08-22)**: 리드가
+   plan-audit를 선승인했고 런 진입은 감사 판정을 따른다(plan-audit PASS 조건).
+   plan_status는 audit-ready 유지.
+
+## §E.1 Plan-phase Audit-Ready Signal
+
+Plan-phase 산물 작성 완료: `spec.md`, `plan.md`, `acceptance.md`, `progress.md`
+(Tier M 3종 + progress.md — 매 티어 발행).
+
+- 요구사항: **12건**(`REQ-CSL-001` … `REQ-CSL-012`) — Tier M 상한 16 이내.
+- 수용기준: **11건**(`AC-CSL-001` … `AC-CSL-011`) — Tier M 상한 16 이내. 12 REQ 전부
+  §D.2 추적표에서 커버.
+- 픽스처 형태: **5종**(FX-1 라이브 디렉터리 링크 / FX-2 라이브 파일 링크 / FX-3 dangling
+  3배치 / FX-4 실디렉터리 대조 / FX-5 hns 사용자 소유 대조) — spec·plan·acceptance
+  3면 동일 수치(t81 D3 이관).
+- 마일스톤: 4개(M1 링크 분기+처분 → M2 5형태 양극 테스트 → M3 계약 테스트 → M4 회귀
+  스윕+플랫폼) — 결정 가역성 순(처분 의미론 최우선).
+- t81 D2/D3/D4 이관: REQ-CSL-010(형태 일치)/§F 수치 3면 일치/REQ-CSL-011(비공허) +
+  acceptance.md 전 단언의 ≥2축 결합.
+- 개발 방식: TDD(quality.yaml) — M1의 RED는 Run D 재현의 Go 테스트 전환.
+- 미해명 마커: **0건** — 유일 마커(처분 비준)는 2026-08-22 리드 결정으로 DECIDED 항목에
+  대체됐다(위 "리드 결정 확정").
+
+plan_status: audit-ready
+plan_complete_at: 2026-08-22
+
+## §E.2 Run-phase Evidence
+
+_<pending run-phase>_
+
+## §E.3 Run-phase Audit-Ready Signal
+
+_<pending run-phase>_
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+_<pending sync-phase>_
