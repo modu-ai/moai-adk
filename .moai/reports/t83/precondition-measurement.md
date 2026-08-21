@@ -4,6 +4,10 @@
 대상: `codex-cli 0.147.0` (aarch64-apple-darwin), 모델 `gpt-5.6-sol`
 선행: t91(M0) §7 이 "**훅 exit 2 차단 동작 미측정**, **stdout JSON 미측정** — M3 착수 전 2차 실측 필요"로 남긴 Gap
 
+> **정정 (3차 실측 후)**: 이 문서의 §3.1 matcher 추정은 **틀렸고 철회**했다. 그리고 §2 의 "방언 변환 계층은
+> 필요 없을 가능성이 높다"는 전망도 **부분적으로 뒤집혔다** — `continue`/`stopReason`/`systemMessage` 는
+> 선언돼 있으나 동작하지 않는다. 확정판은 `precondition-measurement-round3.md` 를 읽을 것.
+
 **결론 먼저: 세 계약 모두 Claude Code 와 동일하게 동작한다. 그리고 카드가 상정한 "출력 방언 차이"는
 존재하지 않는다** — Codex 0.147.0 은 Claude Code 의 훅 출력 스키마를 통째로 구현하고 있다.
 
@@ -78,8 +82,9 @@ Codex 가 **같은 이름으로 받는다**. M3 의 실제 잔여 범위는 ① 
 
 - **`"version": 1` 없음**, **`"matcher"` 없음**, 타임아웃 키는 `timeout`(바이너리 내부 struct 는 `timeoutSec`)
 - 이벤트 키는 **PascalCase**(`PreToolUse`) — 바이너리에 camelCase 집합(`preToolUse` …)도 있으나 설정 키는 PascalCase 가 동작
-- `"matcher": "*"` 를 넣은 구성은 **경고 없이 미발화**했다. 바이너리에 `invalid matcher ` 문자열이 있고
-  `*` 는 단독으로 유효한 정규식이 아니므로, matcher 가 정규식으로 해석돼 항목째 버려진 것으로 보인다(추정 — §5)
+- ~~`"matcher": "*"` 가 원인으로 보인다(추정)~~ **→ 3차 실측에서 철회.** matcher 는 `"*"`·`"Bash"` 둘 다
+  정상 발화한다. **진짜 원인은 최상위 `"version": 1` 키**로, 파일 전체를 경고 없이 무력화한다(단일 변수 A/B).
+  확정 근거: `precondition-measurement-round3.md` §4
 
 **M0 §1 의 "미지의 이벤트 이름은 조용히 무시된다"가 이름에 국한되지 않는다**: 스키마 위반 항목도 조용히
 무시된다. M4 생성기의 화이트리스트 검증은 **이벤트 이름뿐 아니라 필드 집합까지** 덮어야 한다.
@@ -125,8 +130,7 @@ transcript_path  turn_id
   `continue`·`stopReason`·`suppressOutput`·`systemMessage`·`updatedMCPToolOutput`·`decision:"block"` 은
   바이너리에 **존재를 확인**했을 뿐 **돌려 보지 않았다**. moai 훅이 실제로 쓰는 키가 여기 포함되므로
   (`team-ac-verify.sh` 의 `continue`/`stopReason`, sync 게이트의 `systemMessage`) **M3 착수 전 3차 실측 대상**이다.
-- **`matcher` 가 정규식이라는 것은 추론이다.** `invalid matcher` 문자열 + `*` 미발화로부터의 추론이며,
-  유효한 정규식(예: `Bash`)을 넣어 발화하는지 재보지 않았다.
+- ~~`matcher` 정규식 가설~~ **→ 3차에서 측정·기각**(round3 §4). 이 항목은 해소됐다.
 - **§3.2 의 M0 불일치 원인 미규명.** 이벤트별 차이인지 trust 경로 차이인지 가르지 못했다.
 - exit 2 를 PreToolUse 외 이벤트(Stop/UserPromptSubmit/PermissionRequest)에서 재보지 않았다.
   바이너리 문자열상 의미가 이벤트마다 다르므로(§2 표) 동일 동작을 가정하면 안 된다.
