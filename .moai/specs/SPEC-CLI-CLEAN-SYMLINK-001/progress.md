@@ -307,7 +307,17 @@ M4 `<this-commit>` — 전부 `WT-clean-links`, 미푸시.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-22
+sync_commit_sha: pending-backfill-SPEC-CLI-CLEAN-SYMLINK-001  # backfill 커밋에서 확정 (spec-frontmatter-schema.md D3)
+sync_status: complete
+changelog_entry_position: CHANGELOG.md [Unreleased] > Fixed (최상단)
+frontmatter_status_transitions:
+  spec_md: in-progress -> completed   # sync 커밋에서 단일 전이 (3-phase close)
+  updated_field: unchanged            # 이미 2026-08-22
+docs_surfaces_unchanged: README 4-locale + docs-site — 배포 템플릿에 moai update 출력 예시 없음 (run-phase grep 2건 모두 exit 1)
+route: factory-lane                   # WT-clean-links 미푸시 — 리드가 release/v3.1.3에 통합
+```
 
 ## §F Phase 4 Mode Selection
 
