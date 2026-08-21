@@ -164,3 +164,54 @@ cwd 에서 일어나 `npm` 이 워크트리 루트의 없는 `package.json` 을 
 
 금지된 untracked 4건(`ci-autofix-protocol.md`·`astgrep-rules/`·`t127/`·`diagram-design-absorption/`)은
 스테이징에 **포함되지 않았다** — `git status --short` 로 확인.
+
+
+---
+
+## 9. PR 리뷰 반영 (CodeRabbit, 5건 중 2건 수용 — 실측 후)
+
+리뷰 지적을 그대로 받지 않고 각각 재현했다. **둘은 진짜 결함이었고 내 코드였다.**
+
+### 9.1 tsconfig 는 JSONC 다 (수용, 커밋 `7d7f6cd4b`)
+
+재현: 주석 달린 tsconfig 에 `encoding/json` →
+`invalid character '/' looking for beginning of object key string`.
+
+이게 단순 파싱 실패로 끝나지 않는다. `isSolutionStyleTsconfig` 는 **파싱 실패 시 false** 를
+답하므로, 주석 하나가 solution-style 설정을 "tsc 실행" 경로로 보내고 **이 함수가 막으려던 공허
+통과를 그대로 되살린다.** 실무 tsconfig 는 주석과 후행 쉼표를 흔히 쓴다.
+
+조치: 주석·후행 쉼표를 걷어내고 파싱. 의존성 대신 작은 축약으로 했다 — 이 파일은 구조 질문 하나에
+답하려고 읽을 뿐이라 완전한 JSONC 파서는 질문값보다 비싸다. 문자열 상태와 백슬래시 이스케이프를
+추적해 URL 안의 `//` 가 살아남고 이스케이프된 따옴표가 문자열을 일찍 끝내지 않는다.
+
+**음성 대조 실행**: strip 을 되돌리면 새 회귀 테스트가
+`commented solution-style tsconfig accepted; it passes vacuously` 로 **FAIL** 한다. 되돌리기
+전/후를 모두 관측했다.
+
+### 9.2 `true`/`false` 는 크로스플랫폼이 아니다 (수용, 같은 커밋)
+
+Windows 는 두 유틸리티를 제공하지 않는다. 그리고 typecheck 스텝은 `optional: true` 라
+**LookPath 실패가 스텝을 실패시키는 게 아니라 스킵**한다 — Windows 실행에서는 게이트가 통과해
+차단 단언이 **엉뚱한 이유로** 실패했을 것이다. §5.4 의 `GOOS=windows go vet` 은 컴파일만 보므로
+이걸 잡지 못했고, CI 의 Test 매트릭스는 이 PR 에서 skipping 이었다.
+
+조치: `go version`(exit 0) / 잘못된 go 서브커맨드(exit≠0)로 교체. `go` 는 이 테스트가 도는 곳에
+반드시 있다.
+
+### 9.3 runStep cmd.Dir (미수용 — 범위 밖, 기록 유지)
+
+리뷰가 셋째로 지적한 `cmd.Dir` 미지정은 **실재하는 결함이 맞다**(§6 에서 내가 먼저 기록했다).
+다만 이 축보다 앞서 존재했고 카드가 [HARD] 로 범위 밖에 뒀으므로 손대지 않았다. §6 의 상속된
+한계 기록이 그대로 유효하다.
+
+### 9.4 재검증
+
+`go test ./internal/hook/quality/` ok 3.238s · `golangci-lint` **0 issues** ·
+`GOOS=windows go vet` OK · `go build ./...` OK.
+
+### 9.5 이 건에서 배운 것
+
+`GOOS=windows go vet` 통과를 크로스플랫폼 근거로 읽었는데, **vet 은 컴파일만 본다.** 런타임에
+외부 바이너리를 찾는 테스트는 vet 이 잡을 수 없고, 하필 그 스텝이 optional 이라 실패도 아닌
+스킵으로 조용히 갈렸을 것이다. 크로스플랫폼 주장에 vet 만 인용하면 안 된다.
