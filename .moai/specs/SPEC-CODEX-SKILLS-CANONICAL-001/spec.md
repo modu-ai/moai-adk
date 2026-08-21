@@ -2,7 +2,7 @@
 id: SPEC-CODEX-SKILLS-CANONICAL-001
 title: "Codex 듀얼 하네스 M1 — 배포 스킬을 .agents/skills/ 에도 노출해 Claude Code · Codex CLI 양쪽에서 보이게 한다"
 version: "0.7.0"
-status: draft
+status: in-progress
 created: 2026-08-22
 updated: 2026-08-22
 author: manager-spec

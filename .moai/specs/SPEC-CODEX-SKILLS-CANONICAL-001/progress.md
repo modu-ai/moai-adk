@@ -24,11 +24,92 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+착수 시점 재측정 (worktree `WT-skills-canonical`, 기준 `a338eab1b`):
+
+| 항목 | 명령 | 값 |
+|---|---|---|
+| 템플릿 스킬 디렉터리 | `find internal/template/templates/.claude/skills -mindepth 1 -maxdepth 1 -type d \| wc -l` | **34** (작성 시점과 동일) |
+| 템플릿 트리 심볼릭 링크 | `find internal/template/templates -type l \| wc -l` | **0** |
+| 비-`moai-`(하이픈) 이름 | `... -exec basename {} \; \| grep -cv '^moai-'` | **1** — 이름이 정확히 `moai` 인 스킬. plan §C 가 예고한 값 |
+| `.gitignore` `.agents` 항목 | `grep -n 'agents' internal/template/templates/.gitignore` | 착수 시점 매치 없음 (M5 의 전제 성립) |
+
+### AC 판정 매트릭스
+
+| AC | 상태 | 검증 명령 | 실제 출력 |
+|---|---|---|---|
+| AC-CSC-001 | PASS | `go test ./internal/template/ -run TestEmbed_TemplateTreeHasNoSymlinks -count=1` | `ok github.com/modu-ai/moai-adk/internal/template 0.290s` |
+| AC-CSC-002 | PASS | `go test ./internal/template/ -run TestSkillMirror_BothPathsReadableAfterFullDeploy -count=1` | `ok github.com/modu-ai/moai-adk/internal/template 0.788s` |
+| AC-CSC-003 | PASS | `go test ./internal/template/ -run TestSkillMirror_SlimSetEqualsCanonicalAndIsSmaller -count=1` | `ok ... 0.920s` (슬림 21 < 전량 34) |
+| AC-CSC-004 | PASS | `go test ./internal/template/ -run TestSkillMirror_LinkIsRelativeAndResolves -count=1` | `ok ...` — darwin 에서 링크 모드 성립, 링크 본체 `../../.claude/skills/<name>` |
+| AC-CSC-005 | PASS | `go test ./internal/template/ -run TestSkillMirror_CopyFallbackIsReadable -count=1` | `ok ...` |
+| AC-CSC-006 | PASS | `go test ./internal/template/ -run TestSkillMirror_FallbackIsObservable -count=1` | `ok ...` (양방향) |
+| AC-CSC-010 | PASS | `go test ./internal/template/ -run TestSkillMirror_ClaudePathUnchangedByMirror -count=1` | `ok ...` |
+| AC-CSC-011 | PASS | `go test ./internal/template/ -run TestSkillMirror_PreoccupiedTargets -count=1` | `ok ...` (3-상태 전부) |
+| AC-CSC-012 | PASS | `go test ./internal/template/ -run TestSkillMirror_NotTrackedInManifest -count=1` | `ok ... 0.563s` |
+| AC-CSC-013 | PASS | `go test ./internal/template/ -run TestSkillMirror_FailOpen -count=1` | `ok ...` |
+| AC-CSC-014 | PASS | `go test ./internal/template/ -run TestSkillMirror_SetIsDerivedNotConstant -count=1` | `ok ...` (합성 FS 2개 → 미러 정확히 2개) |
+| AC-CSC-015 | PASS | `MOAI_TEMPLATE_LEAK_STRICT=1 go test ./internal/template/... -count=1` | `ok github.com/modu-ai/moai-adk/internal/template 22.076s` |
+| AC-CSC-016 | PASS | `go test ./internal/template/ -run TestEmbed_SkillNamePrefixInvariant -count=1` | `ok ... 0.290s` |
+
+전량 재실행: `go test ./internal/template/... -count=1 -cover` → `ok ... 45.814s coverage: 86.1% of statements`.
+
+### 위증 검사 (각 판정이 지키는 것을 부수고 붉어지는지 확인)
+
+판정이 통과했다는 사실만으로는 그 판정이 무엇을 지키는지 알 수 없으므로, 항목마다 지키는 대상을 일부러 깨뜨려 실패를 관측했다. 전부 되돌린 뒤 재실행해 green 을 재확인했다.
+
+| 부순 것 | 붉어진 판정 | 관측 출력 |
+|---|---|---|
+| 미러 집합을 상수 3개로 고정 | AC-CSC-014 · 003 · 002 | `mirror set = [moai moai-alpha moai-workflow-tdd], want exactly [moai-alpha moai-beta]` / `slim mirror count 3 must be < full mirror count 3` |
+| 링크 본체를 절대 경로로 | AC-CSC-004 | `link body for "moai-alpha" = "/tmp/absolute/.claude/skills/moai-alpha", want "../../.claude/skills/moai-alpha"` |
+| 선점 실 디렉터리를 지우고 재생성 (AP-10) | AC-CSC-011(3) | `USER.md was destroyed by the re-deploy: open …/moai-gamma/USER.md: no such file or directory` |
+| 미러 실패를 `Deploy` 오류로 전파 | AC-CSC-013(1) | `Deploy failed because mirroring failed: mirror failed: moai-alpha` |
+| 폴백을 조용히 처리 | AC-CSC-006 · 005 | `CopyFallbackUsed() = false after an injected symlink failure — the fallback is silent` |
+| 미러 단계가 `.claude/` 에 쓰기 | AC-CSC-010 | `.claude tree differs: 5 entries without mirror, 8 with` |
+| 미러를 `manifest.Track` 에 전달 | AC-CSC-012 | `track mirror ".agents/skills/moai-alpha": manifest track hash: hash file: read …: is a directory` |
+| 템플릿 트리에 심볼릭 링크 주입 | AC-CSC-001 (양팔) | `template source tree contains 1 symlink(s)` + `skill set on disk (35) differs from the embedded set (34)` |
+| 위 상태에서 2번 팔 수집을 `IsDir()` 로 (AP-8) | — | 2번 팔이 **침묵**했다(1번 팔만 보고). AC 의 [HARD] 가 경계한 사각이 실재함을 확인 |
+| 비-`moai` 이름 스킬 추가 | AC-CSC-016 | `1 skill name(s) without the "moai" prefix: [hns-prefixprobe]` |
+
+두 실측이 SPEC §A 의 주장을 독립적으로 재확인했다. `manifest.Track` 은 디렉터리 링크에서 `is a directory` 로 실패하고(§A.6), `//go:embed` 는 링크를 오류 없이 버린다(§A.2 — 디스크 35 vs 임베드 34, 빌드는 조용).
+
+### §D.4 간접 검증 (판정에는 넣지 않음)
+
+- **커밋 기준선 대조 (1회)**: 변경 전 커밋 `a338eab1b` 를 `git archive` 로 스크래치에 펼쳐, 양쪽 트리에서 동일한 덤프 테스트로 전량 배포 후 `.claude/skills/` 의 (상대경로, SHA-256, 퍼미션) 목록을 뽑아 `diff` 했다. **262 항목, 차이 0** (`diff-exit=0`). 현재 트리 쪽은 미러 기능이 **켜진 기본 상태**로 측정했다. 덤프 헬퍼는 판정 대상이 아니므로 대조 후 삭제했다.
+- **Windows**: `GOOS=windows go vet ./internal/...` → exit 0 (테스트 파일 포함 컴파일). `GOOS=windows GOARCH=amd64 go build ./...` → exit 0. 실동작 판정은 CI 매트릭스 몫.
+- **Codex 실제 노출**: 관측함. `CODEX_HOME=<scratch>` 로 사용자 홈을 분리한 스크래치 프로젝트에 `.claude/skills/moai-probeskill/` 정본과 `.agents/skills/moai-probeskill -> ../../.claude/skills/moai-probeskill` **상대 디렉터리 링크**를 만들고 `codex debug prompt-input`(모델 호출 0회) 실행 → 스킬 목록에 `moai-probeskill: … (file: <project>/.agents/skills/moai-probeskill/SKILL.md)` 로 나타났다. acceptance §D.4 가 지적한 공백 — M0 관측이 링크의 **형태**를 기록하지 않았다는 것 — 이 형태로 닫힌다: REQ-CSC-003 이 강제하는 상대 디렉터리 링크가 실제로 따라가진다.
+
+### 범위 준수
+
+- 변경 파일 8개 전부 `internal/template/` 안이며, spec §D 의 범위 밖 항목은 하나도 실행하지 않았다. `~/.codex/` 는 무변경이다 — 노출 관측은 `CODEX_HOME` 을 스크래치로 돌려 수행했다.
+- `internal/cli/` 호출부는 건드리지 않았다. REQ-CSC-005 는 배포기가 모드·경고를 **반환 결과로 올리는 것**까지를 요구하고 사용자 표시는 호출부 책임으로 규정하며, 이를 판정하는 AC 는 없다. 표시 배선은 미착수 상태다(§E.3 `open_items` 참조).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-08-22
+run_commit_sha: pending-backfill-run-close
+run_status: complete
+ac_pass_count: 13
+ac_fail_count: 0
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: not-performed  # 리드 지시로 push 및 PR 생성 없음 (worktree-local)
+l44_post_push_fetch: not-performed   # 동일
+new_warnings_or_lints_introduced: 0  # golangci-lint run --timeout=5m ./internal/template/... → "0 issues."
+cross_platform_build:
+  darwin_build: pass                 # go build ./... exit 0
+  windows_build: pass                # GOOS=windows GOARCH=amd64 go build ./... exit 0
+  darwin_vet: pass                   # go vet ./internal/... exit 0
+  windows_vet: pass                  # GOOS=windows go vet ./internal/... exit 0
+total_run_phase_files: 8
+m1_to_mN_commit_strategy: milestone-per-commit  # M1 9c94c6b7a / M2 486a472b2 / M3 8094a5782 / M5 1272a2ef1 / M6 42c0c2167
+coverage:
+  internal_template: 86.1           # go test ./internal/template/... -cover
+open_items:
+  - "REQ-CSC-005 의 호출부 표시 배선(internal/cli) 미착수 — 배포기 반환 seam 까지만 구현. 대응 AC 없음."
+  - "status draft → in-progress 전환이 M1 커밋이 아니라 run 마감 커밋에 실렸다 (아래 기록 참조)."
+deviations:
+  - "M1 은 미러 집합 파생 결정을 판정하는 테스트를 먼저 붉게 만든 뒤 구현했다(RED 출력은 위증 검사 표 첫 행과 같은 형태로 §E.2 에 기록). M2·M3 의 구현은 M1 과 같은 커밋 계열에서 함께 착지했으므로, 그 판정들의 근거는 사전 RED 가 아니라 **위증 검사**(지키는 대상을 부수고 붉어짐을 관측) 다. 표로 전부 남겼다."
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
