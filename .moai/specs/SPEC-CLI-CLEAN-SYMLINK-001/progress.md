@@ -282,7 +282,7 @@ verbatim 출력이다 (baseline-attribution: run 시작 HEAD `d19f849be`, run �
 
 ```yaml
 run_complete_at: 2026-08-22
-run_commit_sha: pending-backfill-m4   # M4 커밋이 자기 SHA를 알 수 없음 — 리드/후속 커밋에서 backfill
+run_commit_sha: 73e451ef7             # M4(런 최종 구현 커밋) — backfill 커밋에서 확정
 run_status: complete                  # M1→M4 전 마일스톤 완료, AC 11/11
 ac_pass_count: 11
 ac_fail_count: 0
