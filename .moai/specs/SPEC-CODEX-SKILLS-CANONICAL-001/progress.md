@@ -113,4 +113,23 @@ deviations:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-22
+sync_commit_sha: pending-backfill-SPEC-CODEX-SKILLS-CANONICAL-001
+sync_status: complete
+b12_self_test_a: pass    # grep -c 'SPEC-CODEX-SKILLS-CANONICAL-001' CHANGELOG.md → 0 (중복 없음)
+b12_self_test_b: pass    # acceptance.md AC 표제 13개 = CHANGELOG 가 인용하는 AC 수와 정합 (13/13 PASS)
+b12_self_test_c: pass    # CHANGELOG 가 이름을 든 경로 전부 실재: .claude/skills/, .agents/skills/, internal/template/templates/.gitignore
+changelog_entry_position: "[Unreleased] → ### Added (신규 절)"
+frontmatter_status_transitions:
+  spec_md: in-progress → implemented
+  plan_md: n/a          # frontmatter 없음
+  acceptance_md: n/a    # frontmatter 없음
+  progress_md: n/a      # frontmatter 없음
+  completed_transition: deferred   # 리드 지시 — 병합 경로를 리드가 운전하므로 implemented 까지만
+docs_changed: none
+docs_decision: "README 4-locale · docs-site 무변경. 근거: 배포 트리를 열거하는 문서 페이지가 없고(`.agents/skills` 매치 0건), 미러 수명 관리(복사본 갱신·은퇴 미러 제거)가 승계 카드 소관이라 지금 문서화하면 반쯤 착지한 능력을 완결된 것처럼 기술하게 된다. CHANGELOG 가 이번 변경의 사용자 표면."
+open_items_carried:
+  - "REQ-CSC-005 호출부 표시 배선(internal/cli) 미착수 — 배포기 계층까지만 충족. CHANGELOG 에 사용자-가시 한계로 명시."
+  - "폴백 복사본 고착 — 승계 카드 t173 소관. CHANGELOG 에 사용자-가시 한계로 명시."
+```

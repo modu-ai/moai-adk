@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The deployed skill catalog is now reachable from `.agents/skills/` as well as `.claude/skills/`. Agent runtimes that scan the former — Codex CLI among them — see the skills MoAI-ADK installs with no manual wiring. Each entry is a relative symlink to the canonical directory, so there is still exactly one copy of every skill on disk.
+
+  Claude Code's path is unchanged, and that is a property of the design rather than a claim to be tested for: the mirror is written beside the canonical tree and never into it. The deploy output was diffed against the pre-change commit with the mirror enabled — 262 entries, byte-identical.
+
+  The template source tree carries no symlink and cannot: `//go:embed` drops symlinks, files and directories alike, with no error and no warning, so a link committed to the template would simply be missing from the binary. The link is created at deploy time instead, and a regression test fails if a symlink ever appears in the template tree.
+
+  `.agents/skills/moai*` is added to the deployed `.gitignore`. The mirror is a build product. The `.agents/` root itself stays tracked, so entries you put there are unaffected — and an existing non-symlink entry at a mirror path is never removed or overwritten; the deployer skips it and leaves it alone.
+
+  Two limits are worth knowing up front:
+
+  - **Where symlinks are unavailable the mirror is a copy, and from the second deploy onward that copy is left as it is.** Windows without Developer Mode or elevated privileges is the usual case. The deployer cannot tell a copy it made itself from a directory you created, so it preserves both — the canonical skills refresh on each deploy and the copy does not. It goes stale. Refreshing copies, and removing mirrors of renamed or retired skills, is a deliberate scope split and lands in a follow-up change.
+  - **The fallback warning does not currently reach you.** The deployer reports which mode it used, and any warning, through its return value rather than printing it, and the CLI does not yet read that seam. A deploy that falls back to copying is therefore silent today. Wiring the CLI to surface it is follow-up work.
+
 ## [3.1.2] - 2026-08-21
 
 ### Summary
