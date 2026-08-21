@@ -377,9 +377,62 @@ MEASURED contract (map/table, same intent — server-level grant containing
 wording ("declare mcp_servers containing \"moai\"") remains satisfied by the
 map key.
 
+### MS4 — Close-out: finalized consumption seams (2026-08-22)
+
+Finalized from run-phase learnings (plan §H seams, restated with what M5
+actually shipped):
+
+- **M4 seam (wiring generator)** consumes: (a) the committed
+  `templates/.codex/agents/moai/*.toml` as installable artifacts — layout
+  subdirectory CONFIRMED by P-04; (b) `agentemit.ParseManifest` +
+  the package's fail-closed validators as its output-checking layer
+  (exported for exactly this purpose). Run-phase additions M4 must know:
+  the mcp_servers grant is a TABLE (`[mcp_servers.moai]` command+args) —
+  never an array (kills the file); the repo-root .gitignore carries the
+  template-subtree negation (user-project .gitignore has NO .codex/ rule,
+  so deployed TOMLs are committable by users); `codex exec
+  --dangerously-bypass-approvals-and-sandbox` is required for unattended
+  delegation smokes (t91 §5 approval gate).
+- **M1 seam (skills)**: when skills canonicalize to `.agents/skills`, the
+  manifest class-6 row flips from `deferred-m1` to an emission rule — one
+  YAML row + (if a field ships) a probe of the skills.config value set
+  first (ship-omitted rule applies; P-05 was not probed in M5). No M5
+  artifact changes.
+- **M3 seam (hook adapter)**: per-agent Claude `hooks:` frontmatter (4
+  agents) remains a documented drop; the adapter owns the
+  PostToolUse+collaboration* matcher redesign. M5's loader deliberately
+  does not model the hooks field (lenient unmarshal accepts it).
+
+Probe-reproducibility note: probes are re-runnable when codex-cli moves
+past 0.147.0 (manifest records the version); the harness pattern is
+documented in §E.2 MS2 (isolated CODEX_HOME + auth copy + mtime guard +
+bounded exec count).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-08-22
+run_commit_sha: e6c2239e5   # last implementation commit (M3b); MS4 docs-only close follows
+run_status: complete
+ac_pass_count: 13
+ac_fail_count: 0
+ac_notes: >-
+  AC-001..AC-010 must-pass all PASS; AC-011 PASS via neutrality-by-inheritance
+  (the delegation's literal zero-count grep is unsatisfiable under R-005
+  verbatim bodies - counts mirror the .md sources exactly; both CI neutrality
+  workflows do not scan .toml); AC-012 PASS (plan-phase citations verified by
+  read); AC-013 PASS (manifest completeness test). Probe records P-01..P-04
+  filed with manifest enums locked; P-05/P-06 skipped with rationale.
+preserve_list_post_run_count: 11   # template .claude/agents/moai/*.md, sha256-verified unmodified (AC-002)
+l44_pre_commit_fetch: not-executed   # factory lane - no push, lead integrates
+l44_post_push_fetch: not-pushed      # factory lane - lead integrates
+new_warnings_or_lints_introduced: 0  # golangci-lint baseline 0 issues before AND after
+cross_platform_build:
+  darwin_arm64: ok      # go build ./...
+  windows_amd64: ok     # GOOS=windows GOARCH=amd64 go build ./...
+total_run_phase_files: 26   # distinct: 9 agentemit sources + 11 codex tomls + 2 tests(agentemit+template) + spec/progress + Makefile + .gitignore
+m1_to_mN_commit_strategy: per-milestone commits (M1 7a7a05384, M2 abf08c1f0, M3 445bfd3b5, M3b e6c2239e5, MS4 docs close) - NOT pushed
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
