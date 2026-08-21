@@ -1,0 +1,9 @@
+{"type":"thread.started","thread_id":"01a02570-3798-7710-ae57-197d4e689aaa"}
+{"type":"item.completed","item":{"id":"item_0","type":"error","message":"`--dangerously-bypass-hook-trust` is enabled. Enabled hooks may run without review for this invocation."}}
+{"type":"item.completed","item":{"id":"item_1","type":"error","message":"`--dangerously-bypass-hook-trust` is enabled. Enabled hooks may run without review for this invocation."}}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_2","type":"agent_message","text":"I’ll run that command in the workspace."}}
+{"type":"item.started","item":{"id":"item_3","type":"command_execution","command":"/bin/zsh -lc 'echo T83RANOK'","aggregated_output":"","exit_code":null,"status":"in_progress"}}
+{"type":"item.completed","item":{"id":"item_3","type":"command_execution","command":"/bin/zsh -lc 'echo T83RANOK'","aggregated_output":"T83RANOK\n","exit_code":0,"status":"completed"}}
+{"type":"item.completed","item":{"id":"item_4","type":"agent_message","text":"T83RANOK"}}
+{"type":"turn.completed","usage":{"input_tokens":34884,"cached_input_tokens":28160,"cache_write_input_tokens":0,"output_tokens":102,"reasoning_output_tokens":0}}
