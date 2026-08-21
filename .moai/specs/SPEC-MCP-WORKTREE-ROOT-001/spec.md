@@ -1,7 +1,7 @@
 ---
 id: SPEC-MCP-WORKTREE-ROOT-001
 title: "Let an MCP caller name its own tree, so a worktree SPEC stops being invisible"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-08-22
 updated: 2026-08-22
@@ -77,6 +77,22 @@ behaviour is exactly what it is today.
 | `spec_drift` | `mcp_server.go:597` | same call, same blindness |
 | `spec_progress` | `mcp_server.go:526` | see the note below |
 | `codex_task` / codex audit `cwd` | `mcp_codex.go:1170` | the backend reviews a tree; the wrong tree is what lane-9 saw |
+| `audit_multi` | `mcp_server.go:367`, fan-out `mcp_convergence.go:485` | the surface lane-9 actually used; carries the parameter through to its backends |
+
+**Note on `audit_multi` — carrier, and it costs a signature change.** REQ-6 checks
+the repair against the symptom that motivated it, and that symptom occurred on
+`audit_multi`, not on `codex_audit`. Re-aiming REQ-6 at `codex_audit` — which does
+receive the parameter — would have been the cheaper edit, but it would make AC-6 a
+check of a different surface wearing the same name. So `audit_multi` accepts
+`project_root` and forwards it.
+
+The cost is not one line. Its fan-out seam is
+`backendCallFn(ctx, backend, target, focus string)` (`mcp_convergence.go:353`,
+invoked at `:485`), which carries no root, so the parameter requires widening that
+signature and its injected test doubles. That is contained — one seam, one call
+site, the doubles that implement it — but it is more than the SPEC-tool edits, and
+it lands on the file-count axis the tier note below already flags. Stated here so
+the alternative can be taken instead if the cost is judged wrong.
 
 **Note on `spec_progress` — added beyond the dispatched scope, flagged for veto.**
 The scoping decision named the audit family as `spec_audit`, `spec_drift`, and the
@@ -94,10 +110,10 @@ one place this SPEC exceeds what was dispatched — drop it if that call is wron
   wrong, and a shared-function change would move them all at once. REQ-4 produces
   the per-call-site verdicts instead; the repairs they imply belong to a
   follow-up card.
-- **The four undecided consumers** — `goal_arm` / `goal_status`
-  (`mcp_server.go:466`, `:483`), `verify_snapshot` / `verify_trend` (`:539`,
-  `:569`), and the convergence state directory (`mcp_convergence.go:561`). They
-  are surveyed, not repaired.
+- **The undecided consumers — four MCP tools and the convergence state
+  directory**: `goal_arm` / `goal_status` (`mcp_server.go:466`, `:483`),
+  `verify_snapshot` / `verify_trend` (`:539`, `:569`), and the convergence state
+  directory (`mcp_convergence.go:561`). They are surveyed, not repaired.
 - **Non-MCP consumers.** `goal.go:159`/`:188`, `memory.go:165`/`:287`, and
   `launcher_blockcap_infinite.go:139` run as ordinary CLI invocations in the
   session's own tree, where the same env variable is what the operator expects.
@@ -109,22 +125,41 @@ one place this SPEC exceeds what was dispatched — drop it if that call is wron
   wrong tree, but the causal chain was never demonstrated. AC-6 turns this into a
   post-repair check rather than a claim.
 
+**Both lists above are illustrative, not exhaustive.** The MCP-path set also holds
+at least `mcp_glm.go` (`projectDirResolver`, the GLM `llm.yaml` location) and
+`mcp_server.go:105` (the tool-enablement read), and the CLI-side list is longer
+than the three named. Nothing escapes the SPEC on that account: REQ-4's mandate is
+grep-derived, so the full set is re-derived at M3 rather than taken from this
+prose. The prose names the consumers the reasoning above turned on.
+
 ## §3 Requirements and acceptance criteria
 
-Tier S, so criteria sit inline. Six requirements, six criteria.
+Tier S, so criteria sit inline. Six requirements, seven criteria — REQ-1
+carries two, one per direction of the redirect.
 
 ### REQ-1 — the caller can name its tree
 
-The four in-scope tools SHALL accept an optional string input `project_root`.
+The five in-scope tools SHALL accept an optional string input `project_root`.
 When it is non-empty, the handler SHALL use it as the project root instead of
 `resolveProjectDir()`.
 
-**AC-1** — Given an MCP `spec_audit` call carrying `project_root` set to a
+**AC-1a** — Given an MCP `spec_audit` call carrying `project_root` set to a
 worktree that holds a SPEC absent from the primary checkout, when the call
 returns, then that SPEC appears in the result. Given the same call without the
 parameter, then it does not. **Both directions are asserted**: a test that only
 proves the new path works would pass equally if the parameter were ignored and
 the primary happened to contain the SPEC.
+
+**AC-1b** — Given a codex audit call carrying `project_root` naming a worktree,
+when the review parameters are constructed, then the `cwd` they carry is that
+path (assertable on the `params` map at `mcp_codex.go:1167-1171`, with no live
+backend). Given `audit_multi` called with the same parameter, then the root
+reaching the backend fan-out is that path.
+**Why this is separate from AC-1a**: the codex `cwd` is the surface lane-9's
+symptom appeared on and the surface AC-6's post-repair check reads, yet without
+this criterion nothing in the SPEC asserted its parameter-present direction —
+only the absent and invalid ones. A redirect nobody checks is a redirect nobody
+knows happened.
 
 ### REQ-2 — silence means today's behaviour
 
@@ -192,6 +227,21 @@ worth having. What fails it is not looking.
 - `internal/spec/audit.go:157` — the `baseDir = "."` default that clears the CLI
 - `internal/cli/mcp_server.go:526`, `:583`, `:597`; `internal/cli/mcp_codex.go:1170`
 
+## §4.1 Tier note
+
+Tier S is claimed on the LOC and requirement/criterion axes, both of which fit
+comfortably: the core change is two Go files plus tests, six requirements, seven
+criteria. The **file-count** axis does not fit as cleanly — counting template
+mirrors and the two auditor agent bodies, the touch surface is roughly eight to
+ten paths against the tier's "< 5 files" guidance, and `audit_multi`'s seam
+widening adds to it.
+
+The overrun is mirror bookkeeping and one signature, not hidden complexity, so
+the tier holds. What would flip it is the follow-up scope arriving early: if the
+per-call-site verdicts (REQ-4) turn into repairs inside this card, the file axis
+and the LOC axis move together and Tier M is the honest call. Recorded so the
+decision is visible rather than assumed.
+
 ## §5 Constraints
 
 - Backward compatibility is not negotiable: the parameter is additive and
@@ -203,5 +253,12 @@ worth having. What fails it is not looking.
 
 ## §6 HISTORY
 
+- 0.2.0 (2026-08-22) — plan-audit iter-1 findings applied. D1: `audit_multi`
+  joins REQ-1 as a forwarding carrier, so AC-6 checks the surface the symptom
+  actually occurred on; the seam-widening cost is stated rather than hidden. D2:
+  AC-1 splits into 1a/1b so the codex `cwd` parameter-present direction is
+  asserted — it was the one direction nothing checked. D3/D4/D5: consumer count
+  corrected, both consumer lists marked illustrative with the grep mandate named
+  as the exhaustive source, and the tier call recorded with what would flip it.
 - 0.1.0 (2026-08-22) — initial draft. Scope set to Tier S by the lead after cause
   confirmation falsified the card's first premise and re-attributed its second.

@@ -1,12 +1,13 @@
 # Plan — SPEC-MCP-WORKTREE-ROOT-001
 
-> Tier S: two artifacts, criteria inline in `spec.md` §3. The decision most
-> likely to be argued comes first — whether `spec_progress` belongs in scope —
-> because it is the one place this plan exceeds what was dispatched.
+> Tier S: two artifacts, criteria inline in `spec.md` §3. The two decisions most
+> likely to be argued come first — whether `spec_progress` belongs in scope, and
+> whether `audit_multi` is worth a seam widening — because those are the places
+> this plan spends more than it was handed.
 
 ## §A Context
 
-Four MCP handlers resolve the project root through `resolveProjectDir()`, which
+Five MCP handlers resolve the project root through `resolveProjectDir()`, which
 prefers `CLAUDE_PROJECT_DIR`, which Claude Code sets to the primary checkout even
 for a worktree session. The repair gives the caller a way to say which tree it
 means. The caller knows: an agent with Bash runs `git rev-parse --show-toplevel`
@@ -18,6 +19,7 @@ Surfaces, measured in this worktree at `edcbf593c`:
 |---|---|---|
 | `internal/cli/mcp_server.go` | 526, 583, 597 | `project_root` input on `spec_progress` / `spec_audit` / `spec_drift` |
 | `internal/cli/mcp_codex.go` | 1170 | `project_root` overrides the `"cwd"` handed to codex |
+| `internal/cli/mcp_convergence.go` | 353, 485 | `backendCallFn` widens to carry the root through `audit_multi`'s fan-out; injected doubles follow |
 | `internal/cli/mcp_server.go` | tool registration block (~361-400) | declare the new optional input |
 | `.claude/rules/moai/core/moai-mcp-tools.md` + mirror | — | record the parameter and who passes it |
 | `.claude/agents/moai/{plan-auditor,sync-auditor}.md` + mirrors | — | tell the auditor to pass its own tree |
@@ -25,7 +27,7 @@ Surfaces, measured in this worktree at `edcbf593c`:
 ## §B Known issues going in
 
 - **`resolveProjectDir()` is shared.** The temptation is to fix it once at the
-  bottom. That would move the four undecided consumers at the same time, in a
+  bottom. That would move the five undecided consumers at the same time, in a
   direction nobody has established is right for them. The parameter goes in at
   the handler, above the shared function.
 - **A validation that falls back silently reintroduces the bug.** REQ-3 exists
@@ -65,6 +67,15 @@ project. Pushing the answer down into `resolveProjectDir()` would require the
 server to guess; taking it as an input requires the caller to state a fact it
 already holds.
 
+### D1b — `audit_multi` carries the parameter rather than being swapped out
+
+REQ-6 exists to check the repair against the symptom that motivated it, and that
+symptom happened on `audit_multi`. Pointing REQ-6 at `codex_audit` instead would
+have been the smaller edit and would have made AC-6 a check of a different
+surface under the same name. The cost is real — `backendCallFn` has no root
+parameter, so the seam and its doubles widen — and it is stated in `spec.md` §2
+so it can be traded away deliberately rather than by omission.
+
 ### D2 — `spec_progress` is included, and this is the one scope excess
 
 Dispatched scope named `spec_audit`, `spec_drift`, and the codex `cwd`.
@@ -83,7 +94,7 @@ fix it, and reporting success while it happens.
 
 ### D4 — the verdict table is a deliverable, not a note
 
-The four undecided consumers are deferred, and a deferral is only cheap if the
+The undecided consumers are deferred, and a deferral is only cheap if the
 next card does not have to re-derive the survey. The table's value is in the
 "what evidence would settle this" column; without it the table is a list of
 shrugs.
@@ -92,13 +103,16 @@ shrugs.
 
 ### M1 — `project_root` on the three SPEC tools
 
-Input declaration, handler plumbing, validation. Ends with AC-1, AC-2, AC-3 met
+Input declaration, handler plumbing, validation. Ends with AC-1a, AC-2, AC-3 met
 for `spec_audit`, `spec_drift`, `spec_progress`.
 
-### M2 — `project_root` on the codex path
+### M2 — `project_root` on the codex path and through `audit_multi`
 
-`mcp_codex.go:1170` takes the same parameter with the same validation. Ends with
-AC-2 and AC-3 met there.
+`mcp_codex.go:1170` takes the same parameter with the same validation.
+`audit_multi` accepts it and forwards it: `backendCallFn` (`mcp_convergence.go:353`)
+widens to carry a root, the call site at `:485` passes it, and the injected test
+doubles follow the signature. Ends with **AC-1b, AC-2, and AC-3** met there — the
+parameter-present direction included, which is what iter-1 found missing.
 
 ### M3 — the call-site verdict table
 
@@ -119,11 +133,15 @@ each backend read and whether the lane-9 symptoms recur. Ends with AC-6.
 
 ## §G Anti-patterns
 
-- Fixing `resolveProjectDir()` "while we are in there". Four consumers with
-  undecided verdicts ride on it.
+- Fixing `resolveProjectDir()` "while we are in there". Five consumers with
+  undecided verdicts ride on it — four MCP tools and the convergence state
+  directory.
 - A validation that falls back to the default on a bad path (D3).
-- A test that only exercises the parameter-present path. AC-1 requires the
+- A test that only exercises the parameter-present path. AC-1a requires the
   absent-parameter direction too.
+- The mirror of that mistake, which iter-1 actually caught: asserting only the
+  absent and invalid directions on the codex path and never the present one.
+  AC-1b exists because that is the surface the whole card came from.
 - Changing the CLI's `--base-dir` or `baseDir` default. That path is correct.
 - Writing the verdict table with "unknown" rows that do not say what would settle
   them.
