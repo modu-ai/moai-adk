@@ -552,6 +552,12 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		// Profile-level model policy is no longer applied here.
 	}
 
+	// wizardResult carries the wizard's answers out of the interactive block
+	// so the autonomy-tier apply below covers BOTH entry paths with a single
+	// call: the flag branch for non-interactive runs and the wizard branch for
+	// interactive ones (it stays empty when the wizard did not run).
+	wizardResult := &wizard.WizardResult{}
+
 	if !nonInteractive && isInteractiveStdin() {
 		// Print banner and welcome message
 		uikit.PrintBanner(version.GetVersion())
@@ -570,6 +576,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 			}
 			return fmt.Errorf("wizard failed: %w", wizErr)
 		}
+		wizardResult = result
 
 		// Conversation language + user name: the wizard answer wins over the
 		// profile value. Update both opts (drives template deployment of
@@ -613,6 +620,20 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		// answers always reach opts.
 		applyWizardPage3ToOpts(cmd, result, &opts)
 	}
+
+	// Chain ① wizard+flag → opts link (SPEC-INIT-WIZARD-REPAIR-001 REQ-001 /
+	// REQ-002): applyAutonomyTierFromWizard covers BOTH entry paths — the
+	// --autonomy-tier flag branch for non-interactive runs (closing the
+	// validated-then-discarded gap: the value used to be checked in
+	// validateInitFlags and then dropped) and the wizard branch for interactive
+	// ones (wizardResult stays empty when the wizard did not run). Flag wins
+	// over the wizard answer; the fully-autonomous gates are applied on the
+	// wizard path and re-applied downstream on the flag path.
+	// @MX:SPEC: SPEC-INIT-WIZARD-REPAIR-001
+	applyAutonomyTierFromWizard(
+		cmd.Flags().Changed("autonomy-tier"), getStringFlag(cmd, "autonomy-tier"),
+		wizardResult, &opts,
+	)
 
 	// Default git provider to "github" for backward compatibility
 	if opts.GitProvider == "" {
@@ -697,6 +718,27 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 			return fmt.Errorf("initialization failed: %w\n  Hint: this directory already contains a MoAI project — did you mean 'moai update' (refresh templates in place)? Re-run with --force only to reinitialize from scratch", err)
 		}
 		return fmt.Errorf("initialization failed: %w", err)
+	}
+
+	// Chain ① consumer link (SPEC-INIT-WIZARD-REPAIR-001 REQ-003): wire the
+	// persisted tier selection into the deployed settings immediately after
+	// the initializer returns. Paths are resolved here and passed in (no new
+	// global state); the USER-scope write inside the bundle is a key-scoped
+	// splice limited to the permissions block (spec.md §4 lead ruling). The
+	// call is best-effort: semi-auto/unset produces zero delta and a failure
+	// warns without failing the init.
+	// @MX:SPEC: SPEC-INIT-WIZARD-REPAIR-001
+	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
+		if tierErr := project.ApplyAutonomyTierBundle(
+			opts.ProjectRoot,
+			filepath.Join(homeDir, ".claude", "settings.json"),
+			filepath.Join(opts.ProjectRoot, ".claude", "settings.json"),
+			opts.AutonomyTier,
+		); tierErr != nil {
+			p.Warn("Failed to apply autonomy tier bundle: %v", tierErr)
+		}
+	} else {
+		p.Warn("Failed to resolve home directory for autonomy tier bundle: %v", homeErr)
 	}
 
 	// Route executor result warnings into the collector (they surface once,
