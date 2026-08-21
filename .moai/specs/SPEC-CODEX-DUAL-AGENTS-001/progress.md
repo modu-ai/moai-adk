@@ -438,7 +438,7 @@ m1_to_mN_commit_strategy: per-milestone commits (M1 7a7a05384, M2 abf08c1f0, M3 
 
 ```yaml
 sync_complete_at: 2026-08-22
-sync_commit_sha: pending-backfill-sync   # placeholder; a commit cannot know its own SHA — backfilled in a follow-up commit
+sync_commit_sha: b637ca710                # backfilled from pending-backfill-sync by follow-up commit (placeholder-backfill exemption)
 sync_status: completed                   # spec.md status: in-progress -> completed on the sync commit (frontmatter status+updated only, no body change)
 b12_self_test_a: pass                    # pre-emission grep 'SPEC-CODEX-DUAL-AGENTS-001' CHANGELOG.md -> 0 before writing; -> 1 after
 b12_self_test_b: pass                    # AC count match: acceptance.md distinct AC identifiers = 13; CHANGELOG entry cites 13 as verified
