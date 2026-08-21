@@ -421,6 +421,82 @@ imports that resolve in this repo today (`plan.md` M3), and `AGENTS.md` sits at 
 alongside `CLAUDE.md`, the shallowest possible path. A runtime confirmation belongs to whichever
 session next starts with this tree loaded.
 
+### M5-a — enumeration extension + guard observability (2026-08-22)
+
+**Landed out of milestone order, deliberately.** `REQ-AMC-013` orders the `REQ-AMC-008`
+enumeration extension **before any measurement cited as a ratchet basis** — "not merely before the
+ratchet's final commit". M4 relocates clauses out of the rule files and quotes per-file
+before/after figures; every one of those is a ratchet-basis measurement. Taken with `AGENTS.md`
+unenumerated they would record reductions that did not happen — clauses moved into a file that is
+still always-loaded but no longer counted — and `REQ-AMC-013` states the gap does not close
+retroactively: "measurements taken inside it stay wrong and stay quotable". So this slice of M5
+lands **between M3's suite check and M4's first citation**, which is the window the run-phase
+handoff named. The rest of M5 (Codex-cap byte guard `AC-AMC-016(b)`, the ratchet constant
+`AC-AMC-018` / `AC-AMC-019`) stays after M4 and M6, because it must be measured post-diet on the
+integration branch.
+
+Tree: worktree `.claude/worktrees/t82`, branch `WT-agents-md-diet`, parent `a2c919792`.
+Files written: `internal/config/token_budget_guard.go`, `internal/config/token_budget_guard_test.go`.
+
+**Three changes.**
+
+1. **Fourth fixed slot.** `alwaysLoadedSurface()` now enumerates the root `AGENTS.md`, placed
+   immediately after `CLAUDE.md` because it is that file's `@`-import. The existing hermetic
+   treatment is reused unchanged — a slot absent from disk measures 0 tokens — so a tree without
+   `AGENTS.md` keeps its previous baseline and the enumeration stays a single path
+   (`REQ-AMC-008`: no second, independently-drifting measurement).
+2. **Passing-path observability.** `TestAlwaysLoadedTokenBudget` emitted the token total only
+   through `t.Errorf` on failure, so a passing run printed `ok …` and nothing else — which makes
+   every "quote the achieved figure" criterion unsatisfiable. A `t.Logf` now emits the figure
+   ahead of the over-budget check. This is the line `AC-AMC-018` reads.
+3. **`AC-AMC-017` membership assertion.** `TestAlwaysLoadedSurfaceEnumeration` now asserts the
+   returned surface contains the root `AGENTS.md` by path, not merely by count.
+
+| AC | Claim | Evidence (command → observed) | Status |
+|---|---|---|---|
+| `AC-AMC-017` | The enumeration helper contains the root `AGENTS.md`; the byte guard reuses it rather than re-globbing | `go test -v ./internal/config/ -run 'Enumeration'` → `--- PASS: TestAlwaysLoadedSurfaceEnumeration`. **Falsified before accepting**: with the slot removed the same run fails twice — `surface has 17 entries, want 18 (= 14 no-paths: rules + 4 fixed surfaces)` and `always-loaded surface omits …/AGENTS.md; the Codex contract layer must be enumerated (REQ-AMC-008)`; slot restored, both pass again | PASS |
+| `AC-AMC-016` (a) | Token-budget negative path already covered; no second fixture written | `go test -v ./internal/config/ -run 'OverBudgetFails'` → `--- PASS: TestAlwaysLoadedTokenBudget_OverBudgetFails`. No new fixture authored | PASS (cited, not rebuilt) |
+| `AC-AMC-016` (b) | Codex-cap byte-guard breach fails the build and names the figure + file | Not implemented in this slice | PENDING (M5 proper) |
+| `AC-AMC-015` | Suites green; only the two exempt cardinality assertions edited | `go vet ./internal/config/` clean; `go test -count=1 ./internal/config/` → `ok 3.836s`; `go test ./internal/harness/...` → all `ok`. Edits to `token_budget_guard_test.go`: `wantRuleCount + 3` → `+ 4`, temp-tree `want 4` → `5` (both named by the `AC-AMC-015` carve-out), plus two **new** assertions (the `t.Logf` line and the `AC-AMC-017` membership check). No pre-existing expected-behavior assertion changed | PASS |
+
+**Achieved figure, now measured over the extended enumeration:**
+
+```
+go test -v ./internal/config/ -run 'Budget|AlwaysLoaded'
+  token_budget_guard_test.go:69: always-loaded surface = 74821 tokens
+                                 (budget 76000, headroom 1179, 18 entries)
+```
+
+**This figure supersedes every earlier surface reading in this SPEC's record.** M2's 71,207 and
+M3's 71,264 were measured by `.moai/reports/t82/surface_r3.py` over the **unextended** 17-file
+enumeration and had `|AGENTS.md| ÷ 4` added by hand; the guard now counts it directly. The two
+agree exactly — 71,264 + 3,557 = 74,821 — which is the cross-check that the hand-addition was
+right, not a second measurement path. From here the guard's logged line is the only figure to
+quote.
+
+**Arm B identity, restated on the guard's own reading:**
+
+```
+required cut = 74,821 − 66,371 = 8,450 tok
+available    = 10,670 tok  (nine never-stub-split files, 38.0 % measured precedent)
+margin       = +2,220 tok
+```
+
+Identical to M3's figure, reached without the manual addition.
+
+**Residual risk — headroom is now 1,179 tokens, not 4,793.** The pre-`AGENTS.md` guard read 71,264
+against the 76,000 constant; enumerating the contract layer consumes 3,557 of that headroom. The
+guard still passes, but the margin is thin enough that a sibling card adding a mid-sized
+always-loaded rule on the integration branch would breach it **before** M4's diet lands. That is
+the guard working as designed — the surface really did grow — but whoever integrates this card
+should expect the constant to be under pressure until M4 completes, and should not read a breach
+in that window as a defect in this slice.
+
+**Gap.** The byte-level Codex-cap guard (`REQ-AMC-007` / `REQ-AMC-009` / `AC-AMC-016(b)`) is not
+implemented here; the ceiling is currently enforced by measurement in the progress record, not by
+a failing build. `AlwaysLoadedTokenBudget` is untouched at 76,000 — the ratchet is `AC-AMC-018`'s,
+measured post-diet on the integration branch.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

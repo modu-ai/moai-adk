@@ -63,6 +63,12 @@ func TestAlwaysLoadedTokenBudget(t *testing.T) {
 	if err != nil {
 		t.Fatalf("measureAlwaysLoaded: %v", err)
 	}
+	// Emit the achieved figure on the PASSING path too: every ratchet criterion in
+	// SPEC-AGENTS-MD-CANON-001 quotes this line from `go test -v`, and a guard that
+	// prints only on failure makes those criteria unsatisfiable.
+	t.Logf("always-loaded surface = %d tokens (budget %d, headroom %d, %d entries)",
+		total, AlwaysLoadedTokenBudget, AlwaysLoadedTokenBudget-total, len(surface))
+
 	if total > AlwaysLoadedTokenBudget {
 		t.Errorf("always-loaded surface = %d tokens, exceeds budget %d (overflow %d); surface has %d entries — trim always-loaded rules or raise AlwaysLoadedTokenBudget with justification",
 			total, AlwaysLoadedTokenBudget, total-AlwaysLoadedTokenBudget, len(surface))
@@ -126,9 +132,9 @@ func TestAlwaysLoadedSurfaceEnumeration(t *testing.T) {
 	}
 
 	wantRuleCount := countNoPathsRuleFiles(t, root)
-	wantTotal := wantRuleCount + 3 // + CLAUDE.md + moai.md + MEMORY.md fixed slots
+	wantTotal := wantRuleCount + 4 // + CLAUDE.md + AGENTS.md + moai.md + MEMORY.md fixed slots
 	if len(surface) != wantTotal {
-		t.Errorf("surface has %d entries, want %d (= %d no-paths: rules + 3 fixed surfaces)", len(surface), wantTotal, wantRuleCount)
+		t.Errorf("surface has %d entries, want %d (= %d no-paths: rules + 4 fixed surfaces)", len(surface), wantTotal, wantRuleCount)
 	}
 
 	// AC-TEF-004: a known paths:-scoped rule (languages/go.md carries a paths:
@@ -138,6 +144,22 @@ func TestAlwaysLoadedSurfaceEnumeration(t *testing.T) {
 		if p == scoped {
 			t.Errorf("paths:-scoped file %s must be excluded from the always-loaded surface", scoped)
 		}
+	}
+
+	// AC-AMC-017: the enumeration MUST contain the root AGENTS.md. It is an
+	// @-import of CLAUDE.md and therefore always-loaded; an enumeration that omits
+	// it scores the relocation of clauses INTO AGENTS.md as a reduction while the
+	// always-loaded context is unchanged (REQ-AMC-013).
+	agents := filepath.Join(root, "AGENTS.md")
+	found := false
+	for _, p := range surface {
+		if p == agents {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("always-loaded surface omits %s; the Codex contract layer must be enumerated (REQ-AMC-008)", agents)
 	}
 }
 
@@ -193,9 +215,10 @@ func TestMeasureAlwaysLoaded_WithMemory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("measureAlwaysLoaded: %v", err)
 	}
-	// Enumeration: 1 no-paths: rule + 3 fixed slots = 4.
-	if len(surface) != 4 {
-		t.Errorf("surface len = %d, want 4 (1 no-paths: rule + 3 fixed)", len(surface))
+	// Enumeration: 1 no-paths: rule + 4 fixed slots = 5. AGENTS.md is absent from this
+	// temp tree and contributes 0 tokens (hermetic), but is still enumerated.
+	if len(surface) != 5 {
+		t.Errorf("surface len = %d, want 5 (1 no-paths: rule + 4 fixed)", len(surface))
 	}
 	// MEMORY.md contributes head-capped tokens (25KB/4 = 6400), NOT the full 40KB.
 	memHeadTokens := memoryHeadByteCap / 4
