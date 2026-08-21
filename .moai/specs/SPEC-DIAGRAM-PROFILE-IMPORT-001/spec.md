@@ -1,7 +1,7 @@
 ---
 id: SPEC-DIAGRAM-PROFILE-IMPORT-001
 title: "Absorb diagram-design profile persistence and drawio/mermaid importers as opt-in skill references"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-08-22
 updated: 2026-08-22
@@ -30,18 +30,26 @@ which that SPEC explicitly deferred to sibling cards:
 JSON (Phase 2) and generates from it (Phase 3), but every extraction is
 one-shot: there is no way to save a completed profile under a name and reuse it
 in a later session, so a team re-derives the same reference design each time.
-Measured this session: `grep -c "profile"` across
-`moai-domain-design-dna/SKILL.md` + both references → **0 matches**. The
-persistence concept is absent, not thin.
+Measured this session with a discriminating grep (the marker-profile
+vocabulary, whole directory):
+`grep -rniE "\.design-dna|profile[ -]?(marker|snapshot)|active profile marker" moai-domain-design-dna/`
+→ **0 matches**. The persistence surface is absent, not thin. (The bare word
+"profile" is NOT the discriminator: it appears 6 times in the instance sense —
+a Design DNA profile — at SKILL.md:69/147/185, dna-schema.md:4/115,
+effects-implementation.md:102; none names a save/load/marker mechanism.)
 
 **(b) No migration path in svg-infographic.** The skill's Step 0 routing sends
 existing diagrams to mermaid and its "one diagram, one home" rule forbids
 shipping two forms — but there is no documented way to MIGRATE an existing
 mermaid or draw.io diagram into this skill's numeric-layout authoring path.
-Users with an existing diagram corpus have no on-ramp: measured the same way,
-`grep -ci "drawio\|import"` across the skill → **0 matches**. Demand is real
-(existing-diagram migration), and doing it ad hoc produces exactly the
-dual-maintenance state Step 0 exists to prevent.
+Users with an existing diagram corpus have no on-ramp: measured this session,
+`grep -rn "drawio" moai-domain-svg-infographic/` → **0 matches** (whole
+directory, case-sensitive; `grep -rn "import-mermaid\|import-drawio"` over the
+same tree → **0 matches**). (The substring "import" is NOT the discriminator:
+`grep -ci "drawio\|import"` returns 2 — both the word "important", svg
+SKILL.md:353 and authoring.md:352.) Demand is real (existing-diagram
+migration), and doing it ad hoc produces exactly the dual-maintenance state
+Step 0 exists to prevent.
 
 Both absorptions are **reference-shaped, not script-shaped**: the upstream
 extractors are 78 KB of Python; this SPEC absorbs their structure and
@@ -64,7 +72,7 @@ rules rather than catalogue.
 |---|---|
 | `moai-domain-svg-infographic/references/import-mermaid.md` (new) | Mermaid → IR → numeric-layout migration procedure, opt-in |
 | `moai-domain-svg-infographic/references/import-drawio.md` (new) | draw.io → IR → numeric-layout migration procedure (4 container shapes), opt-in |
-| `moai-domain-svg-infographic/SKILL.md` | Bundled-references table rows for both importers, marked opt-in; default flow untouched |
+| `moai-domain-svg-infographic/SKILL.md` | Bundled-references table rows for both importers, marked opt-in; plus ONE amended sentence in Step 0 (the no-migration default gains its caller-invoked exception, REQ-13) — the sole default-section change |
 
 **In Scope — cross-cutting**: attribution, Template-First mirrors, catalog
 regeneration, 16-language neutrality. The two groups are **separable**: either
@@ -104,14 +112,17 @@ see §5 and plan.md §D for the non-overlap analysis.
 ### Out of Scope — default-flow and routing changes
 
 - The six-step workflow, the Step 0 routing table, the four output dials, and
-  both skills' `description`/`when_to_use` frontmatter are unchanged. The
-  importers are a migration path, not part of the authoring mainline; profile
-  persistence does not alter the analyze→generate flow when no profile exists.
+  both skills' `description`/`when_to_use` frontmatter are unchanged. The sole
+  default-section edit is REQ-13's one-sentence amendment of the Step-0
+  no-migration default. The importers are a migration path, not part of the
+  authoring mainline; profile persistence does not alter the analyze→generate
+  flow when no profile exists.
 
 ## §3 Requirements (GEARS)
 
-Acceptance criteria live in `acceptance.md` (Tier M: 15 criteria). Group (a) =
-REQ-1..REQ-5, group (b) = REQ-6..REQ-12, cross-cutting = REQ-13..REQ-15.
+Acceptance criteria live in `acceptance.md` (Tier M: 16 criteria). Group (a) =
+REQ-1..REQ-5, group (b) = REQ-6..REQ-13, cross-cutting = REQ-14..REQ-16 — 16
+requirements total, at the Tier M ceiling.
 
 ### Group (a) — marker-first profile persistence (design-dna)
 
@@ -179,7 +190,18 @@ of SKILL.md govern imports unchanged).
 diagram, the source mermaid block or drawio file shall be replaced or removed
 **in the same change**; the migrated diagram and its source shall never
 coexist. This extends the skill's existing "one diagram, one home" rule
-(SKILL.md Step 0) to the migration path without exception.
+(SKILL.md Step 0) to the migration path without exception. Three boundaries
+bind the obligation:
+
+- **No auto-discovery.** The importer shall act only on a caller-named source;
+  it shall never scan a project for diagrams to migrate.
+- **Replacement requires caller intent.** The source is deleted because the
+  caller invoked a migration, never as a side effect of reading the source.
+- **Non-owned sources.** **Where** the source lives outside the caller's write
+  scope (another repository's diagram used as a reference), the source text
+  remains untrusted exactly as in REQ-7, the untouched source is left alone,
+  and the import is recorded in the fidelity ledger as a **derivation**, not a
+  migration — the one-home obligation scopes to diagrams the caller maintains.
 
 **REQ-11 (verifier-compat by construction).** The importer references shall
 state the import-relevant numeric constraints of `references/authoring.md`
@@ -198,15 +220,28 @@ Step 0 routing table: the routing table still decides where a diagram lives
 going forward; the importers are the explicit migration path a caller invokes
 when the deliverable is an image.
 
+**REQ-13 (the no-migration default and its one exception).** The svg-infographic
+SKILL.md Step-0 sentence "Nothing here migrates, rewrites, or deprecates an
+existing mermaid diagram" (SKILL.md:43-44) currently denies the migration path
+REQ-6/REQ-12 add to the same file; the amendment shall reconcile them. At
+run-phase that sentence — and only that sentence — shall be amended to state
+that the no-migration default stands **except** for a caller-invoked import
+through the opt-in importer references, in which case the one-home rule
+(SKILL.md:65-67 — "either replace it outright … or leave it alone") governs
+with REQ-10's same-change replacement. The sentence's other claims — additive
+to mermaid, never a replacement, no diagram in both forms — remain standing;
+the opt-in bundle-table row (REQ-12) is the pointer that marks the exception
+at the site of the default.
+
 ### Group (c) — cross-cutting
 
-**REQ-13 (attribution).** Each new reference file shall carry an attribution
+**REQ-14 (attribution).** Each new reference file shall carry an attribution
 line naming `cathrynlavery/diagram-design` v2.6.1 (MIT) for the absorbed
 patterns (marker-first profiles; importer pipeline + fidelity ledger).
 Absorbed content is restated, not copied — this SPEC adds no vendored material,
 so no THIRD_PARTY license file is required by it.
 
-**REQ-14 (Template-First + catalog).** All edits shall land in
+**REQ-15 (Template-First + catalog).** All edits shall land in
 `internal/template/templates/` first, the local `.claude/skills/` mirrors shall
 be updated in the same commit, and **Where** a skill's root `SKILL.md` changes,
 the regenerated `internal/template/catalog.yaml` hash entry shall land in the
@@ -215,7 +250,7 @@ same commit. (Verified this session: the catalog hashes only the root
 reference-file additions alone would not move the hash, but both groups also
 touch SKILL.md, so regeneration is required either way.)
 
-**REQ-15 (neutrality).** The new template files shall observe the 16-language
+**REQ-16 (neutrality).** The new template files shall observe the 16-language
 neutrality contract and the template-neutrality content classes: no SPEC IDs,
 no card ids, no lane names, no moai-adi-internal references, and no internal
 dates beyond the skill metadata's own version fields.
@@ -225,14 +260,23 @@ dates beyond the skill metadata's own version fields.
 All facts below were measured on this branch (HEAD = origin/release/v3.1.3
 merged; t165's absorbed layers present, t166 NOT landed):
 
-- `grep -c "profile"` over design-dna `SKILL.md` + `references/*.md` → 0
-  matches (group-(a) absence).
-- `grep -ci "drawio\|import"` over svg-infographic `SKILL.md` +
-  `references/*.md` → 0 matches (group-(b) absence).
+- Group-(a) absence, discriminating grep (whole directory):
+  `grep -rniE "\.design-dna|profile[ -]?(marker|snapshot)|active profile marker" moai-domain-design-dna/`
+  → **0 matches**. The naive `grep -c "profile"` does NOT discriminate — it
+  returns 6 instance-sense matches (SKILL.md:69/147/185, dna-schema.md:4/115,
+  effects-implementation.md:102); re-measured this session, line numbers
+  confirmed.
+- Group-(b) absence, discriminating greps (whole directory):
+  `grep -rn "drawio" moai-domain-svg-infographic/` → **0 matches**;
+  `grep -rn "import-mermaid\|import-drawio" moai-domain-svg-infographic/` →
+  **0 matches**. The naive `grep -ci "drawio\|import"` does NOT discriminate —
+  it returns 2, both the word "important" (svg SKILL.md:353,
+  authoring.md:352); re-measured this session.
 - `check-svg.mjs` (609 lines): diagnostic codes present are SVG001–SVG003,
-  SVG010–SVG011, SVG020–SVG021, SVG030–SVG031, SVG040, SVG060–SVG064;
-  `grep "paint-order\|attachment\|mask.*gap"` → 0 matches (t166's geometry
-  checks absent on this branch — consistent with lane-6 in-flight).
+  SVG010–SVG011, SVG020–SVG021, SVG030–SVG031, SVG040, SVG050 (parser
+  failure), SVG060–SVG064; `grep "paint-order\|attachment\|mask.*gap"` → 0
+  matches (t166's geometry checks absent on this branch — consistent with
+  lane-6 in-flight).
 - `authoring.md` §2.5 (line 152) carries the six mandatory connector rules
   with the exact numeric constraints REQ-11 restates: C1 `r = 8` (floor 6),
   C2 mask gap 6–10, C3 separation ≥ 12 + bridge `rHop = 5`, C4 fan
@@ -268,9 +312,12 @@ merged; t165's absorbed layers present, t166 NOT landed):
   delta (Linting section) sit in different sections; integration resolves any
   conflict by re-applying the table rows. Run phase re-reads the file at M3
   start.
-- **No default-flow change.** If a reader cannot tell from the default
-  sections that anything changed, group (b) has succeeded; the importers live
-  in references and are reachable only by explicit migration intent.
+- **Default-flow change is confined to one sentence.** The only default-section
+  edit group (b) makes is the REQ-13 amendment of the Step-0 no-migration
+  sentence; the six-step workflow, the routing table, and the dials are
+  untouched. Outside that sentence, a reader cannot tell from the default
+  sections that anything changed — the importers live in references and are
+  reachable only by explicit migration intent.
 - **No verbatim upstream copy.** Restatement only (t165 §5 precedent): the two
   skills' contracts (no external assets, CJK-first budget, one-home rule)
   contradict several upstream defaults, so a verbatim lift would import rules
@@ -286,6 +333,15 @@ merged; t165's absorbed layers present, t166 NOT landed):
 
 ## §6 HISTORY
 
+- 0.2.0 (2026-08-22) — plan-audit iter-1 fixes. D1: §1/§4 gap evidence
+  restated with discriminating greps that actually return 0 (the naive
+  `grep -c "profile"` / `grep -ci "drawio\|import"` return 6 and 2
+  respectively — instance-sense and "important" false positives; both
+  re-measured and recorded). D2: new REQ-13 reconciles the Step-0 no-migration
+  sentence (SKILL.md:43-44) with the importer path via a caller-invoked
+  exception; cross-cutting renumbered REQ-14..16. D3: SVG050 added to the §4
+  enumeration. D5: REQ-10 gains the no-auto-discovery / caller-intent /
+  non-owned-source boundaries. 16 REQ / 16 AC, both at the Tier M ceiling.
 - 0.1.0 (2026-08-22) — initial draft. Group (a) B-8 profile persistence,
   group (b) B-9 importers, cross-cutting attribution/template/neutrality;
   B-10 icon pipeline deferred with rationale. Depends on

@@ -18,7 +18,8 @@ Template root shorthand: `TPL` = `internal/template/templates/.claude/skills`.
 | AC-IMP-003 | (b) | Fidelity ledger (merged/collapsed/dropped + check-svg pass) in both |
 | AC-IMP-004 | (b) | Bulk-replace / one-home in both, phrased as same-change |
 | AC-IMP-005 | (b) | §2.5 numeric obligations (r=8, 6–10, ≥12, paint order) in both |
-| AC-IMP-006 | (b) | SKILL.md table rows opt-in; default flow unchanged in substance |
+| AC-IMP-006 | (b) | SKILL.md table rows opt-in; default flow unchanged outside one sentence |
+| AC-IMP-007 | (b) | Step-0 no-migration sentence amended with the caller-invoked exception |
 | AC-ATTR-001 | (c) | Attribution line in each of the 3 new reference files |
 | AC-TPL-001 | (c) | `make build` exits 0; both skills' catalog hashes changed |
 | AC-TPL-002 | (c) | 5 local mirrors byte-identical to template source |
@@ -78,15 +79,27 @@ Given both importer files, When greps run for `r = 8`, `6–10` (or "6-10"),
 `authoring.md` §2.5 (or "six mandatory connector rules"), Then each lands in
 both files.
 
-### AC-IMP-006 — opt-in discoverability, default unchanged
+### AC-IMP-006 — opt-in discoverability, default unchanged outside one sentence
 
 Given `TPL/moai-domain-svg-infographic/SKILL.md`, When (a) the
 bundled-references table is grepped for both importer filenames plus an opt-in
 marker ("opt-in" or equivalent), Then both rows present; and When (b) the
 six-step workflow headings, the Step 0 routing table rows, and the four-dial
-table are grepped, Then all are present unchanged in substance (additive rows
-only — verified by reading the section, not by byte-diff, since the table gains
-rows).
+table are grepped, Then all are present unchanged in substance (verified by
+reading the sections — the bundle table gains rows; the routing table, the
+workflow, and the dials gain nothing).
+
+### AC-IMP-007 — the no-migration default and its one exception
+
+Given `TPL/moai-domain-svg-infographic/SKILL.md`, When the Step-0 opening
+paragraph is read, Then the sentence "Nothing here migrates, rewrites, or
+deprecates an existing mermaid diagram" is amended to state the caller-invoked
+import exception (opt-in importer references are the sole exception, governed
+by one-home same-change replacement), and the amendment is confined to that
+qualification: the paragraph's other claims — additive to mermaid, never a
+replacement, no diagram in both forms — remain standing, and no other
+default-section sentence changes (diff against the pre-change SKILL.md shows
+exactly one amended sentence outside the bundle table).
 
 ### AC-ATTR-001 — attribution
 
@@ -131,7 +144,7 @@ honest partial, never a silent PASS.
 
 ## §D.1 Severity
 
-- **Must-pass**: AC-DPI-001..003, AC-IMP-001..006, AC-ATTR-001, AC-TPL-001,
+- **Must-pass**: AC-DPI-001..003, AC-IMP-001..007, AC-ATTR-001, AC-TPL-001,
   AC-TPL-003 — these are the contracts the card bought.
 - **Standard**: AC-TPL-002, AC-TPL-004.
 - **Conditional**: AC-VERIFY-001 — gated on lane-6 landing; the gap path is a
@@ -150,14 +163,15 @@ honest partial, never a silent PASS.
 | AC-IMP-004 | REQ-10 |
 | AC-IMP-005 | REQ-11 (construction half) |
 | AC-IMP-006 | REQ-6, REQ-12 |
-| AC-ATTR-001 | REQ-13 |
-| AC-TPL-001 | REQ-14 |
-| AC-TPL-002 | REQ-14 |
-| AC-TPL-003 | REQ-15 |
-| AC-TPL-004 | REQ-6 (default unchanged) |
+| AC-IMP-007 | REQ-13 (+ REQ-10's replacement rule) |
+| AC-ATTR-001 | REQ-14 |
+| AC-TPL-001 | REQ-15 |
+| AC-TPL-002 | REQ-15 |
+| AC-TPL-003 | REQ-16 |
+| AC-TPL-004 | REQ-6, REQ-13 (default unchanged outside the one amendment) |
 | AC-VERIFY-001 | REQ-11 + spec §5 t166 constraint |
 
-Every REQ-1..REQ-15 is covered by ≥ 1 AC.
+Every REQ-1..REQ-16 is covered by ≥ 1 AC.
 
 ## §D.3 Indirect verification
 
@@ -186,6 +200,9 @@ template-content work (t165 precedent: 13 of 14 criteria closed the same way).
 - An import whose source exceeds the `faithful` 24-node ceiling — ledger
   records zone/split, not quiet truncation.
 - A slug collision on save — confirmation, then verify-by-re-read (REQ-5).
+- A source diagram from a repository the caller does not own — untrusted
+  exactly as REQ-7, source left untouched, ledger records a derivation, not a
+  migration; no auto-discovery ever offers to sweep such sources (REQ-10).
 
 ## §D.6 Forward-looking checks
 
@@ -198,5 +215,5 @@ template-content work (t165 precedent: 13 of 14 criteria closed the same way).
 ## §D.7 Definition of Done
 
 5 template files + catalog landed, 5 mirrors byte-identical, `make build`
-green, neutrality greps zero, 15 ACs evidenced in progress.md §E, HISTORY
+green, neutrality greps zero, 16 ACs evidenced in progress.md §E, HISTORY
 updated to 1.0.0 at close.

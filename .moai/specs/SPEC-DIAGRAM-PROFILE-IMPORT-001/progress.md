@@ -6,7 +6,7 @@ Tier M · phase "v3.1.3 target" · created 2026-08-22
 
 plan_status: audit-ready
 plan_complete_at: 2026-08-22
-artifacts: spec.md (15 REQ) · plan.md (M1–M3) · acceptance.md (15 AC) · progress.md (this skeleton)
+artifacts: spec.md v0.2.0 (16 REQ, audit iter-1 fixes D1/D2/D3/D5 applied) · plan.md (M1–M3) · acceptance.md (16 AC) · progress.md (this skeleton)
 tier: M
 depends_on: SPEC-SVG-QUALITY-ABSORB-001 (status: completed — verified this session)
 
