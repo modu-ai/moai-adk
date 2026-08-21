@@ -733,8 +733,56 @@ was drawn down only 6.0 %. Naming the arithmetic here is cheaper than deriving i
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+- run_status: complete (M1-M6 landed; M5's ratchet half deferred by requirement, see below)
+- milestones_landed: M1 `24addddda` · M2 `fd3ac06a8` + `e7484034a` · M3 `a2c919792` · M5-a
+  `af954cc0c` · M4 `243eb07ef` · M6 `8294861c5` · M5-b `c3f732490`
+- milestone_order_deviation: **M5-a landed before M4, deliberately.** `REQ-AMC-013` orders the
+  enumeration extension before *any* measurement cited as a ratchet basis — "not merely before the
+  ratchet's final commit". M4 quotes per-file before/after figures, so running it first would have
+  recorded reductions that did not happen, in a gap the requirement states does not close
+  retroactively.
+- ac_matrix: 21 of 24 PASS with evidence recorded per milestone above; 3 deferred by requirement
+  (`AC-AMC-018` / `AC-AMC-019` / `AC-AMC-020`), none FAIL, none PASS-WITH-DEBT
+- deferred_ac_grounds: `REQ-AMC-014` requires the achieved figure to be a `go test -v` output
+  measured on the **integration branch** carrying merged sibling state, not a card worktree in
+  isolation. Measuring here and calling it achieved is the exact substitution the requirement
+  names. `AlwaysLoadedTokenBudget` is therefore untouched at 76,000; the five-step procedure is
+  recorded in §E.2 M5-b.
+- achieved_figure_worktree: `always-loaded surface = 66266 tokens (budget 76000, headroom 9734,
+  18 entries)` — a worktree reading, explicitly **not** the ratchet basis
+- contract_layer: `AGENTS.md` 14,229 B live and mirrored, 10,347 B under the 24,576 B ceiling and
+  18,539 B under the 32,768 B codex budget
+- falsification_performed: `AC-AMC-017` (slot removed → enumeration test fails twice → restored)
+  and `AC-AMC-016(b)` (+11,000 B on `AGENTS.md` → build fails naming figure and file → restored).
+  Both guards were shown to fire before being accepted as passing.
+- test_evidence: `./internal/config/` ok · `./internal/constitution/` ok · `./internal/hook/` ok ·
+  `./internal/template/` ok (incl. `MOAI_TEMPLATE_LEAK_STRICT=1` leak/neutrality 10/10) ·
+  `./internal/cli/` ok 346.620s · `go vet` clean
+- test_assertions_edited: 2, both named by the `AC-AMC-015` surface-cardinality carve-out
+  (`wantRuleCount + 3` → `+ 4`; temp-tree `want 4` → `5`). No other expected-behavior assertion
+  was changed.
+- deployment_verified: `moai init . --non-interactive` into a scratch project outside the repo —
+  `AGENTS.md` and `CLAUDE.md` deployed, all three `@`-imports resolve against the **deployed**
+  project root, 12 companions deployed
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- sync_status: complete
+- sync_complete_at: 2026-08-22
+- sync_commit_sha: _<backfilled by `moai spec close`; a commit cannot contain its own SHA>_
+- changelog_entry_position: `CHANGELOG.md` `## [Unreleased]` → `### Added` (the contract layer, its
+  byte guard, and the enumeration extension) and `### Changed` (the eleven-document diet and the
+  global-layer warning)
+- frontmatter_status_transitions:
+  - spec.md: draft → in-progress (run) → implemented (this sync commit) → completed
+    (`moai spec close` atomic transition)
+  - plan.md / acceptance.md: no frontmatter block — this SPEC carries `status:` on `spec.md` only
+  - progress.md: §E.3 pending → complete (this sync commit)
+- open_followups:
+  - `AC-AMC-018` / `AC-AMC-019` / `AC-AMC-020` — the ratchet, measured on the integration branch
+    after the batch completes. Procedure: §E.2 M5-b.
+  - The admissible-ratio arithmetic that constrains it: `REQ-AMC-013`'s 13 %-17 % band and the
+    75,000 cap mean the largest achieved figure any admissible ratio can carry is
+    `75,000 ÷ 1.13 = 66,371`. A measurement above that closes no ratchet at any ratio.
+  - `.claude/output-styles/moai/moai.md` — 61,706 B, 23 % of the always-loaded surface, untouched
+    by this SPEC and excluded from M1's reduction bound. The next lever if the ratchet tightens.

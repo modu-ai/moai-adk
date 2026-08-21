@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A root `AGENTS.md` — the standing contract every turn is bound by, regardless of which agent harness reads it. Codex loads project instructions from that filename under a byte cap and truncates the overflow **silently**; a rule cut mid-sentence is worse than an absent one, because it still reads as complete. The file is self-sufficient by construction: it assumes no other instruction document is loaded and no nested `AGENTS.md` exists anywhere in the repository, and its clauses are ordered most-critical-first so that what a truncation drops is what matters least. It ships to every project, and `CLAUDE.md` reaches it through the same `@`-import mechanism it already used for the config sections, so the contract is stated once and loaded once rather than duplicated inline.
+- A byte guard on that contract layer. The ceiling is 24,576 B — the untrusted first session's effective cap of 32,768 B, less a reserve for the reader's own global `~/.codex/AGENTS.md` layer and for future growth. It binds the shipped mirror as well as the live file, because a mirror over the ceiling truncates on the reader's machine no matter what the repository's own copy measures. A breach **fails the build** rather than warning: truncation produces no signal of its own, so this guard is the only one there will ever be.
+- The always-loaded budget guard now counts `AGENTS.md`. Without that, moving a clause out of a rule file and into the contract layer would have scored as a reduction while the loaded context stayed exactly the same — a diet that never happened, recorded as if it had.
+
+### Changed
+
+- Eleven always-loaded documents were reduced to stubs, with their rationale, procedure, worked examples, incident records, and long cross-reference tables moved into eight new companion files that load only when the work touches them. Every obligation stayed where it was; what moved was the material explaining why it exists. The always-loaded surface fell by 8,555 tokens.
+- A personal `~/.codex/AGENTS.md` joins the same merged chain and is consumed **before** a project's own contract, narrowing what that contract can carry. The shipped documentation now says so, because the effect is otherwise invisible until something is already missing.
+
 ## [3.1.2] - 2026-08-21
 
 ### Summary

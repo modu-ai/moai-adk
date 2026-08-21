@@ -2,7 +2,7 @@
 id: SPEC-AGENTS-MD-CANON-001
 title: "AGENTS.md canonical contract layer for Codex dual-harness"
 version: "0.4.0"
-status: in-progress
+status: implemented
 created: 2026-08-22
 updated: 2026-08-22
 author: manager-spec
