@@ -217,14 +217,15 @@ func ProfileMatrixAgents() []string {
 //     policy departs from it in both directions, so this matrix is NOT the
 //     cost-minimal derivation and must not be re-derived back onto the anchor.
 //   - Under a GLM backend these per-agent cells are NOT what reaches the wire.
-//     z.ai's 3-state reasoning control collapses {medium, high} onto one state
-//     and {xhigh, max} onto another, but the delivery channel is session-global:
-//     the launcher injects a single ANTHROPIC_REASONING_EFFORT derived from
-//     SessionGLMReasoningState(), never a per-agent value. A change to these
-//     cells therefore records per-agent intent and takes effect on
-//     Claude-backed sessions, where agent frontmatter is the load-bearing
-//     channel; it does not by itself alter delivered GLM behavior. See
-//     glm_effort_overlay.go.
+//     z.ai's reasoning control collapses every effort above `low` ({medium,
+//     high, xhigh, max}) onto reasoning_effort=max; only `low` stays at the
+//     low level (SPEC-GLM-EFFORT-MAX-001). The delivery channel is
+//     session-global: the launcher injects a single
+//     ANTHROPIC_REASONING_EFFORT derived from SessionGLMReasoningState(),
+//     never a per-agent value. A change to these cells therefore records
+//     per-agent intent and takes effect on Claude-backed sessions, where agent
+//     frontmatter is the load-bearing channel; it does not by itself alter
+//     delivered GLM behavior. See glm_effort_overlay.go.
 //   - Sonnet 5 is retained ONLY for single-shot, input-dominated, non-agentic
 //     rows (Explore search, manager-git mechanics) where the multi-step
 //     completion failure does not apply and the lower input price does.
