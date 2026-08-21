@@ -238,7 +238,7 @@ normalizeDir             66.7%
 
 ```yaml
 run_complete_at: 2026-08-22
-run_commit_sha: pending-backfill-run-final
+run_commit_sha: e85cfa219  # last run-phase evidence commit; this backfill commit follows it
 run_status: complete
 ac_pass_count: 15
 ac_fail_count: 0
