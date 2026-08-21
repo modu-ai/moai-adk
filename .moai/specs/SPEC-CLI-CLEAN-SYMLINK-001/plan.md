@@ -1,7 +1,7 @@
 ---
 id: SPEC-CLI-CLEAN-SYMLINK-001
 title: "Plan — moai update 청소 경로의 심볼릭 링크 인식"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-08-22
 updated: 2026-08-22
@@ -140,8 +140,10 @@ go test ./internal/cli/update/deploy/... -cover -count=1
 ### M3 — 계약 테스트 (독립적 검증 축)
 
 - 교차 계약(AC-CSL-009): 임베디드 템플릿 FS 대 `ManagedCleanTargets` — 모든 비-글롭 루트는
-  템플릿이 보유, 모든 글로브 패턴은 ≥1 매치. 발산 시 실패. t81(가)의 `.agents/` 추가 후
-  release/v3.1.3 통합 시점에 재실행(§D.7).
+  **배포자가 렌더링 후 기록하는 경로**(`.tmpl` 접미사 제거 포함 — 원시 임베디드-FS 경로가
+  아니다. 루트 1은 템플릿이 `settings.json.tmpl`로만 보유하므로 원시 판독은 도시에
+  §1.1(b) 실측으로 반증됨), 모든 글로브 패턴은 렌더링 후 기록 경로 ≥1 매치. 발산 시
+  실패. t81(가)의 `.agents/` 추가 후 release/v3.1.3 통합 시점에 재실행(§D.7).
 - 순서 독립(AC-CSL-008): 링크로 연결된 두 청소 대상(예: 글로브 루트 A의 실디렉터리 + A를
   가리키는 라이브 디렉터리 링크 B)을 `backupThenRemove` 수준에서 양쪽 순서로 처리하고
   최종 상태 동일성 비교(새 seam 불필요 — 기존 단위 경계).

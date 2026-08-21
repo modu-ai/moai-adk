@@ -1,7 +1,7 @@
 ---
 id: SPEC-CLI-CLEAN-SYMLINK-001
 title: "Progress — moai update 청소 경로의 심볼릭 링크 인식"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-08-22
 updated: 2026-08-22
@@ -108,6 +108,22 @@ Plan-phase 산물 작성 완료: `spec.md`, `plan.md`, `acceptance.md`, `progres
 
 plan_status: audit-ready
 plan_complete_at: 2026-08-22
+
+### Plan-audit 진행 (iter-1 FAIL → 수정 적용, iter-2 대기)
+
+- Iteration 1 (2026-08-22): **FAIL 0.92** —
+  `.moai/reports/plan-audit/SPEC-CLI-CLEAN-SYMLINK-001-review-1.md`
+  (must-pass MP-1~MP-7 전부 PASS; blocking 2건 = D1 하위-카운트 드리프트 · D2 계약 용어
+  미고정, optional D3·D4. 4차원: Clarity 0.75 / Testability 1.0 등, 조화평균 0.92 —
+  Tier M 임계 0.80은 충족하나 blocking-class가 판정을 지배).
+- 수정 적용 (v0.1.1, 2026-08-22): D1 — spec.md §B 서두 "배치 2곳/두 진입 팔"을 3배치로
+  정정 + HISTORY 기록. D2 — "보유" = 렌더링 후 기록 경로로 고정(AC-CSL-009 Then-1 ·
+  plan M3; settings.json/.tmpl 사실을 반증 인용으로 명기). D3 — AC-CSL-003에 Then-4
+  진행줄 단언 추가. D4 — AC-CSL-001 RED 라벨 귀속 정정(재실행 = 코드 추적, M1 RED에서
+  관측). 수치 **12 REQ / 11 AC / 5 형태 불변**(AC-CSL-003 단언 3→4는 AC 개수가 아닌
+  단언 수 — 카운트 규율 밖).
+- 다음: iter-2 delta 재감사(D1·D2 중심) → PASS 시 런 진입(리드 조건부 Kickoff 승인 —
+  plan-audit PASS 조건).
 
 ## §E.2 Run-phase Evidence
 
