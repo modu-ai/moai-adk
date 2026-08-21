@@ -9,7 +9,57 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Cycle: TDD (RED → GREEN → REFACTOR). Branch `WT-auto-feedback`, base `70620600d`.
+
+### M1 — 설정 데이터 모델
+
+RED (`go test ./internal/config/ -run 'TestTodoEnabled'`, 편집 전 트리):
+
+```
+internal/config/todo_enabled_test.go:69:18: cfg.TodoEnabled undefined (type *Config has no field or method TodoEnabled)
+internal/config/todo_enabled_test.go:80:10: cfg.TodoEnabled undefined (type *Config has no field or method TodoEnabled)
+internal/config/todo_enabled_test.go:89:6: undefined: TodoEnabledForRoot
+internal/config/todo_enabled_test.go:92:6: undefined: TodoEnabledForRoot
+internal/config/todo_enabled_test.go:98:5: undefined: TodoEnabledForRoot
+FAIL	github.com/modu-ai/moai-adk/internal/config [build failed]
+```
+
+GREEN: `ok  github.com/modu-ai/moai-adk/internal/config  3.062s` (패키지 전체).
+
+납품물: `internal/config/types.go` `WorkflowTodoConfig{Enabled *bool}` + `WorkflowConfig.Todo`,
+`internal/config/defaults.go` 제로값 유지(nil = 활성, 그 이유를 주석으로 명시),
+`internal/config/todo_enabled.go` `(*Config).TodoEnabled()` + `TodoEnabledForRoot(root)`.
+
+### M2 — 런타임 표면 억제 2종
+
+RED (`go test ./internal/hook/ -run 'TestSessionStartKanbanRespectsTodoDisabled'`) — 억제 케이스만 FAIL,
+대조 2케이스는 이미 PASS. 대조가 먼저 초록이라는 사실이 "원래 안 나오던 것"을 통과로 오독할 여지를 없앤다:
+
+```
+--- FAIL: TestSessionStartKanbanRespectsTodoDisabled/disabled_suppresses_the_backlog_line_in_every_locale
+    [en] backlog line present with todo disabled:
+    [ko] backlog line present with todo disabled:
+    [ja] backlog line present with todo disabled:
+    [zh] backlog line present with todo disabled:
+```
+
+RED (`go test ./internal/statusline/ -run 'TestRendererBacklogSegmentGating'`):
+
+```
+internal/statusline/backlog_gating_test.go:71:6: r.SetTodoEnabled undefined (type *Renderer has no field or method SetTodoEnabled)
+FAIL	github.com/modu-ai/moai-adk/internal/statusline [build failed]
+```
+
+GREEN: `ok internal/hook 0.633s`, `ok internal/statusline 0.463s`; 두 패키지 트리 전체도 초록.
+
+납품물: `internal/hook/session_start_kanban.go` 백로그 요약 앞 `config.TodoEnabledForRoot(root)` 가드,
+`internal/statusline/renderer.go` `todoEnabled *bool` + `SetTodoEnabled`/`isTodoEnabled` + 렌더 판정 합류,
+`internal/statusline/builder.go` `Options.TodoEnabled`, `internal/cli/statusline.go` 배선.
+
+statusline 억제 경로 2개는 AND로 합류한다(어느 쪽이든 끄면 꺼진다). 데이터 수집이 아니라 렌더 판정에
+합류시킨 이유는 `Backlog.Available == false`(큐를 못 읽음)와 의도적 숨김이 구별 불가능해지는 것을 막기
+위해서다 — 테스트 5케이스 중 `the pre-existing statusline.yaml path still suppresses` 가 신규 플래그가
+기존 경로를 덮어쓰지 않음을 관측한다.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
