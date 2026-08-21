@@ -2,7 +2,7 @@
 
 Branch `WT-svg-quality`, worktree `.claude/worktrees/t165`, base `a6fe13232`.
 
-## Run-phase Evidence
+## §E.2 Run-phase Evidence
 
 ### Claim
 
@@ -200,3 +200,84 @@ there to start from rather than to re-derive — and a second candidate
   directory** rather than to the project root, creating a stray `.moai/` tree
   inside the skill folder. Removed; the underlying path-resolution behaviour is
   unaddressed and belongs to another card.
+
+---
+
+## §E.3 Run-phase Audit-Ready Signal
+
+```
+run_status: audit-ready
+run_complete_at: 2026-08-22
+run_commits: 04c7f8474, 120c89e79
+ac_pass: 13 of 14 (AC-BUDGET recorded as an estimate, not a measurement — §E.2 Gaps)
+```
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+```
+sync_status: audit-ready
+sync_complete_at: 2026-08-22
+sync_commit_sha: pending-backfill-sync
+```
+
+The placeholder is the documented self-reference workaround: a commit cannot name
+its own hash, so the sync commit writes `pending-backfill-sync` and a follow-up
+commit replaces it with the real SHA (spec-frontmatter-schema.md § SHA
+placeholder backfill exemption).
+
+**Sync-phase deliverables.**
+
+- `CHANGELOG.md` `[Unreleased]` — Summary / Fixed / Added / Changed, naming the
+  accessibility defect as a defect rather than as an addition, and recording that
+  the routing table is unchanged and the exception list empty.
+- Evidence-citation repair in `spec.md` §4 and `plan.md` §H (`3d725d2ab`), at the
+  lead's direction. Citation-only; no requirement or criterion touched.
+- Status transition `in-progress → implemented → completed` on this sync commit,
+  per the 3-phase close.
+
+**Sync-phase gaps.**
+
+- **No README or docs-site change — checked, not assumed.**
+  `grep -rn 'svg-infographic' README*.md docs-site/content` returns 12 matches:
+  8 in the four READMEs and 4 in the per-locale `advanced/skill-guide.md`. Every
+  one is the skill's **name in a catalogue list** or a one-line description of
+  what it produces ("editable SVG technical infographics, CJK font"). None
+  describes its connector geometry, its palette, or its accessibility contract,
+  and this work changed neither the skill's name nor what it produces — so all 12
+  remain accurate and none required a sync edit.
+
+  (An earlier draft of this section claimed the grep returned no match. It
+  returns 12; the conclusion holds but the evidence behind it did not, and the
+  claim is corrected here rather than left standing.)
+- **Pre-existing docs drift, left alone.** The Korean `skill-guide.md` row for
+  this skill omits the "architecture, flow, comparison" clause the en / ja / zh
+  rows carry. It predates this work and is out of its scope; recorded so it is
+  not lost, not repaired here.
+- **`SPEC §4 Evidence` still names `/tmp/diagram-design`.** It is now labelled
+  volatile and explicitly not a precondition, but the clone itself is outside the
+  repository and will not survive a reboot. The three committed files under
+  `.moai/reports/t165/upstream/` are what the citations resolve to.
+
+## §F Phase 4 Mode Selection
+
+```
+Decision: direct
+```
+
+**Input parameters.** Tier M; scope 8 skill/mirror files plus SPEC artifacts;
+domains 2 (skill documentation + one Node script); file mix markdown-dominant with
+one `.mjs`; concurrency benefit LOW (single-skill authoring with no independent
+sub-tasks).
+
+**Mode evaluation.** `direct` selected — the orchestrator executed throughout and
+spawned no `Agent()` at all. `serial` not selected: it is the default fallback,
+but a delegation would have had to re-read the 27 KB survey and both skill files
+the orchestrator had already loaded, so the spawn would have paid for context it
+already held. `fanout` not selected: the work is authoring-heavy rather than
+research-heavy, and the milestones share one file set, so parallel writers would
+race. `sweep` not selected: 8 files with no uniform mechanical transform.
+
+**Recorded retroactively, and stated as such.** The logging contract asks for this
+section before the first run-phase `Agent()` spawn. No spawn occurred, so there was
+no such boundary to write it at; this record is written at sync rather than
+back-dated to pretend otherwise.

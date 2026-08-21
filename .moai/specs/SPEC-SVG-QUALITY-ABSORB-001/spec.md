@@ -1,8 +1,8 @@
 ---
 id: SPEC-SVG-QUALITY-ABSORB-001
 title: "Absorb the diagram-design quality layer into moai-domain-svg-infographic"
-version: 0.1.0
-status: in-progress
+version: "1.0.0"
+status: completed
 created: 2026-08-22
 updated: 2026-08-22
 author: lane-7
@@ -199,5 +199,12 @@ omitting it is a licence defect, not a style miss.
 
 ## §6 HISTORY
 
+- 1.0.0 (2026-08-22) — 3-phase close. M1-M6 landed; 13 of 14 acceptance criteria
+  verified, AC-BUDGET recorded as an estimate rather than a measurement because
+  no tokenizer was available in the run environment. The mermaid bypass exception
+  list closed **empty**: one sample pair (`journey`) was rendered and put to the
+  operator per §5, who declined the carve-out, so §2's routing table is unchanged.
+  The evidence citations in §4 were repaired during sync — they had named a
+  lead-side directory absent from this branch.
 - 0.1.0 (2026-08-22) — initial draft. Scope is the A tier of the absorption
   survey plus an evidence-gated mermaid bypass list.

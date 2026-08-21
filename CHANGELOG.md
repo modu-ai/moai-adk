@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Summary
+
+Six quality layers move into `moai-domain-svg-infographic` from a survey of `cathrynlavery/diagram-design` v2.6.1 (MIT), restated rather than copied.
+
+One of the six was not a thinness but an outright defect: the skill had no accessibility contract at all. An SVG carries no accessible name of its own, so every diagram it emitted was announced as an unlabelled graphic — and a screen reader does not read the `<text>` inside a graphic it cannot name. Every label in every diagram the skill has ever produced was inert. That is the item with an executable guard, and it is the one that could regress silently once the prose was written, so it ships with fixtures that exercise the check in both directions rather than only the passing one.
+
+The other five are rules the demo diagrams' look actually comes from — a semantic-role skin, connector geometry with numbers attached, a node budget, four output dials, and a list of the symptoms that mark a generated-looking schematic. The 39-type catalogue that makes up the bulk of the source was refused: it presupposes a skill that owns every diagram type, while this one routes most types to mermaid, so importing it would have brought a different skill's architecture along with the rules.
+
+Absorbed text is restated, never lifted. The source permits external font loading and HTML output variants, both of which this skill forbids; its "never JetBrains Mono as a blanket dev font" rule is a case in point, since this skill uses JetBrains Mono as its mono role — the rule survives as its intent (mono is for ports, paths, and field types; names take the sans) with the font name dropped.
+
+The mermaid routing table is unchanged and the bypass exception list is empty. One sample pair was rendered for `journey` and is committed as evidence; the carve-out it would have justified was declined, which is the outcome the acceptance criteria name as a pass.
+
+### Fixed
+
+- Every SVG the skill emits now carries a resolving accessible name: `role="img"`, `aria-labelledby`, a `<title>` as the first child of `<svg>`, and a `<desc>` describing the content rather than narrating the geometry. IDs are prefixed per diagram, because two diagrams inlined into one page with bare `title`/`desc` ids collide and the second is announced with the first one's name.
+- `scripts/check-svg.mjs` enforces the contract as errors `SVG060`-`SVG064` and names which part is missing. A graphic that is genuinely decorative declares `aria-hidden="true"` and is exempt; a diagram never is.
+
+### Added
+
+- Six mandatory connector rules in `references/authoring.md` section 2.5, each stated with the number a checker can assert rather than as a preference: rounded orthogonal bends at `r = 8`, a 6-10 unit gap between a label's mask and its own stroke, at least 12 units between any two connectors with a bridge at `rHop = 5` on a crossing, attach points fanned at `offset(k) = L * k / (N + 1)`, and no routing behind a non-endpoint box. That last rule carries its exception: where a cross-cutting node sits on the only direct orthogonal path, the stroke is dashed to signal transit, the label sits at the visible end, and no arrowhead lands on the intervening box. Stating it as an absolute would have made the sibling verifier flag every legitimate transit.
+- A complexity budget: the node ceiling is the `detail` dial's, at most 12 connectors and at most 2 `accent` elements in every mode, with per-archetype ceilings at `references/archetypes.md`. Exceeding one means splitting into an overview and a detail diagram, never shrinking the boxes.
+- Four output dials — format, size, detail, audience — each with a default, because a dial without one turns a four-part contract into four questions on every invocation.
+- Fourteen slop symptoms in `SKILL.md` § Red Flags, each phrased as something to look for in the rendered image rather than as a matter of taste.
+- `scripts/fixtures/a11y-present.svg` and `a11y-missing.svg`, which the accessibility check must pass and fail respectively. A check that only ever passes proves nothing.
+
+### Changed
+
+- `references/authoring.md` section 3 is restructured around eleven semantic roles, each carrying a light and a dark value. The dark column is derived rather than separately maintained: the `ink` and `surface` anchors swap, every other role keeps its distance from its anchor rather than its hex, opacities never change, and `accent` alone shifts one step lighter because the light value's contrast against ivory does not survive against near-black. A role added later inherits the rule instead of needing a judgement. The one-accent focal discipline survives the restructure — it was the thing most likely to be lost, so it is guarded by its own acceptance criterion.
+
 ## [3.1.2] - 2026-08-21
 
 ### Summary
