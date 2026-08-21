@@ -1,0 +1,7 @@
+{"type":"thread.started","thread_id":"01a02566-ffc6-74c1-a51c-e0f08cea12a7"}
+{"type":"item.completed","item":{"id":"item_0","type":"error","message":"`--dangerously-bypass-hook-trust` is enabled. Enabled hooks may run without review for this invocation."}}
+{"type":"item.completed","item":{"id":"item_1","type":"error","message":"`--dangerously-bypass-hook-trust` is enabled. Enabled hooks may run without review for this invocation."}}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_2","type":"agent_message","text":"I’ll run that exact command in the workspace."}}
+{"type":"item.completed","item":{"id":"item_3","type":"agent_message","text":"The command was blocked by a workspace hook:\n\n`T83-BLOCKED-BY-EXIT2 hook refuses this call.`"}}
+{"type":"turn.completed","usage":{"input_tokens":38421,"cached_input_tokens":29184,"cache_write_input_tokens":0,"output_tokens":123,"reasoning_output_tokens":0}}

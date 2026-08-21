@@ -7,12 +7,15 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/cli/printer"
+	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/core/project"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/spf13/cobra"
 )
@@ -79,6 +82,7 @@ func runStateDump(p printer.Printer, phaseArg, specID, format string, resume boo
 	if err != nil {
 		return fmt.Errorf("find state dir: %w", err)
 	}
+	printResolvedRoot(p, stateDir)
 
 	// Create store
 	store := session.NewFileSessionStore(stateDir, 3600*time.Second)
@@ -155,6 +159,7 @@ func runShowBlocker(p printer.Printer) error {
 	if err != nil {
 		return fmt.Errorf("find state dir: %w", err)
 	}
+	printResolvedRoot(p, stateDir)
 
 	// Find blocker files
 	pattern := filepath.Join(stateDir, "blocker-*.json")
@@ -207,10 +212,37 @@ func runShowBlocker(p printer.Printer) error {
 	return nil
 }
 
-// findStateDir walks up the directory tree looking for .moai/state/,
-// starting from the current working directory.
+// findStateDir resolves the project's .moai/state directory for read and
+// append consumers (SPEC-CLI-STATE-DIR-BOUND-001 REQ-1).
+//
+// A caller that names its project through CLAUDE_PROJECT_DIR is taken at its
+// word: that value becomes the project root and no directory traversal
+// happens at all. Otherwise resolution is delegated to the guarded
+// project-root convention (internal/core/project), which stops at the user's
+// home rather than climbing past it — ~/.moai is global state, not a project.
+//
+// Returned paths are EvalSymlinks-normalized on both branches, so one physical
+// directory always yields one string (REQ-8). On darwin that means the
+// /private/var form rather than the /var symlink the caller may have supplied.
+//
+// Destructive consumers must use findStateDirNoEnv instead (REQ-9).
 func findStateDir() (string, error) {
-	// Start from current working directory
+	if projDir := os.Getenv(config.EnvClaudeProjectDir); projDir != "" {
+		return filepath.Join(normalizeDir(projDir), ".moai", "state"), nil
+	}
+	return findStateDirNoEnv()
+}
+
+// findStateDirNoEnv resolves the state directory from the working directory
+// alone and never consults CLAUDE_PROJECT_DIR (REQ-9).
+//
+// The split is deliberate and is carried by the name rather than by a
+// parameter: `moai clean` removes directories under whatever this resolves to,
+// and an inherited environment variable must not be able to decide what gets
+// deleted — a worktree session whose CLAUDE_PROJECT_DIR still names the
+// primary checkout would otherwise delete there. To clean another project, run
+// the command in it.
+func findStateDirNoEnv() (string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return "", err
@@ -218,33 +250,52 @@ func findStateDir() (string, error) {
 	return findStateDirFrom(cwd)
 }
 
-// findStateDirFrom is findStateDir with the starting directory supplied
-// rather than read from the process, so the walk can be exercised over a
+// findStateDirFrom is findStateDirNoEnv with the starting directory supplied
+// rather than read from the process, so the resolution can be exercised over a
 // fully-owned directory tree instead of whatever the machine happens to have
 // above the working directory.
 //
-// The walk is bottom-up and unbounded: it stops at the first ancestor holding
-// .moai/state, and otherwise climbs to the filesystem root. A caller whose
-// working directory sits inside the user's home therefore inherits any
-// ~/.moai/state on the machine — which is why callers that need a specific
-// directory pass it explicitly instead of relying on this.
+// Resolution stops at the project root and fails there when the root holds no
+// state directory; it never continues to an ancestor that happens to have one.
 func findStateDirFrom(start string) (string, error) {
-	// Walk up looking for .moai/state/
-	dir := start
-	for {
-		stateDir := filepath.Join(dir, ".moai", "state")
-		if info, err := os.Stat(stateDir); err == nil && info.IsDir() {
-			return stateDir, nil
-		}
-
-		// Move to parent
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			// Reached root
-			break
-		}
-		dir = parent
+	root, err := project.FindProjectRootFrom(start)
+	if err != nil {
+		return "", err
 	}
+	stateDir := filepath.Join(root, ".moai", "state")
+	if info, statErr := os.Stat(stateDir); statErr != nil || !info.IsDir() {
+		return "", fmt.Errorf(".moai/state/ directory not found in project root %s", root)
+	}
+	return stateDir, nil
+}
 
-	return "", fmt.Errorf(".moai/state/ directory not found from %s", start)
+// normalizeDir resolves symlinks in a directory path, returning it unchanged
+// when it cannot be resolved (a path that does not exist yet, for instance).
+func normalizeDir(dir string) string {
+	if resolved, err := filepath.EvalSymlinks(dir); err == nil {
+		return resolved
+	}
+	return dir
+}
+
+// announceResolvedRoot writes the resolved project root to the given writer
+// before the caller acts on it (REQ-10).
+//
+// Read consumers honour CLAUDE_PROJECT_DIR and `moai clean` does not, so
+// within one session the two can legitimately resolve different projects. The
+// divergence is accepted; this line is what makes it visible, which is why
+// callers emit it before doing their work rather than after.
+func announceResolvedRoot(w io.Writer, stateDir string) {
+	_, _ = fmt.Fprintf(w, "resolved project root: %s\n", projectRootOf(stateDir))
+}
+
+// printResolvedRoot is announceResolvedRoot for the consumers that already hold
+// a Printer. Printer.Info writes to stderr, so both land on the same stream.
+func printResolvedRoot(p printer.Printer, stateDir string) {
+	p.Info("resolved project root: %s", projectRootOf(stateDir))
+}
+
+// projectRootOf maps a .moai/state directory back to its project root.
+func projectRootOf(stateDir string) string {
+	return filepath.Dir(filepath.Dir(stateDir))
 }

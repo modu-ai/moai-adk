@@ -1,0 +1,7 @@
+{"type":"thread.started","thread_id":"01a02567-9c60-7602-a805-7dbf520d16a4"}
+{"type":"item.completed","item":{"id":"item_0","type":"error","message":"`--dangerously-bypass-hook-trust` is enabled. Enabled hooks may run without review for this invocation."}}
+{"type":"item.completed","item":{"id":"item_1","type":"error","message":"`--dangerously-bypass-hook-trust` is enabled. Enabled hooks may run without review for this invocation."}}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_2","type":"agent_message","text":"ZARQUON. I’ll run the command now."}}
+{"type":"item.completed","item":{"id":"item_3","type":"agent_message","text":"ZARQUON.\n\nThe command was blocked by a pre-tool hook (`T83-DENY-VIA-JSON`), so it did not run."}}
+{"type":"turn.completed","usage":{"input_tokens":38480,"cached_input_tokens":29184,"cache_write_input_tokens":0,"output_tokens":132,"reasoning_output_tokens":0}}

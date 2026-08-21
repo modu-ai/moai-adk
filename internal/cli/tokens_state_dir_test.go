@@ -3,8 +3,9 @@ package cli
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/config"
 )
 
 // mustMkdirAll is a t.Fatal-on-error helper so the cases below stay readable.
@@ -16,19 +17,23 @@ func mustMkdirAll(t *testing.T, dir string) string {
 	return dir
 }
 
-// TestFindStateDirFromWalksUp pins the walk-up contract that decides where
+// TestFindStateDirFromWalksUp pins the resolution contract that decides where
 // `moai tokens record` writes its ledger when no state dir is supplied.
 //
-// This is the logic behind a windows-only CI failure: the walk climbs from the
-// working directory to the filesystem root, and on Windows the temp directory
-// lives INSIDE the user profile (%USERPROFILE%\AppData\Local\Temp), so the
-// climb passes through the home directory and picks up any ~/.moai/state on
-// the machine. On Linux and macOS the temp root (/tmp, /var/folders) is not
-// under $HOME, so the same climb never sees it — hence a test that leans on
-// this resolution passes on two platforms and fails on the third.
+// This is the logic behind a windows-only CI failure: resolution climbs from
+// the working directory, and on Windows the temp directory lives INSIDE the
+// user profile (%USERPROFILE%\AppData\Local\Temp), so the climb passed through
+// the home directory and picked up any ~/.moai/state on the machine. On Linux
+// and macOS the temp root (/tmp, /var/folders) is not under $HOME, so the same
+// climb never saw it — hence a test that leaned on this resolution passed on
+// two platforms and failed on the third. The home boundary now stops it
+// (SPEC-CLI-STATE-DIR-BOUND-001).
 //
 // The layout below is windows-shaped on purpose; the assertions hold on every
 // platform because they only compare paths inside a directory the test owns.
+// Expected paths are normalized and actual ones are not, per acceptance.md
+// §D.2 — normalizing both sides would pass under an implementation that does
+// not normalize at all.
 func TestFindStateDirFromWalksUp(t *testing.T) {
 	t.Run("an ancestor state dir wins over the starting directory", func(t *testing.T) {
 		root := t.TempDir()
@@ -39,10 +44,10 @@ func TestFindStateDirFromWalksUp(t *testing.T) {
 		if err != nil {
 			t.Fatalf("findStateDirFrom: %v", err)
 		}
-		if got != ancestor {
-			t.Errorf("got %q, want the ancestor %q", got, ancestor)
+		if got != normPath(t, ancestor) {
+			t.Errorf("got %q, want the ancestor %q", got, normPath(t, ancestor))
 		}
-		if got == filepath.Join(start, ".moai", "state") {
+		if got == normPath(t, filepath.Join(start, ".moai", "state")) {
 			t.Errorf("resolution stayed at the starting directory; the walk-up did not happen")
 		}
 	})
@@ -57,8 +62,8 @@ func TestFindStateDirFromWalksUp(t *testing.T) {
 		if err != nil {
 			t.Fatalf("findStateDirFrom: %v", err)
 		}
-		if got != own {
-			t.Errorf("got %q, want the starting directory's own %q", got, own)
+		if got != normPath(t, own) {
+			t.Errorf("got %q, want the starting directory's own %q", got, normPath(t, own))
 		}
 	})
 
@@ -66,14 +71,17 @@ func TestFindStateDirFromWalksUp(t *testing.T) {
 		root := t.TempDir()
 		start := mustMkdirAll(t, filepath.Join(root, "AppData", "Local", "Temp", "TestSomething", "001"))
 
-		// The walk continues past the test's own directory into whatever the
-		// machine has above it, so the result is not asserted directly — only
-		// that nothing inside `root` was claimed. Asserting an error here
-		// would be asserting the absence of ~/.moai/state on the CI runner,
-		// which is exactly the environment dependency this test documents.
+		// Resolution no longer climbs past the test's own tree into whatever
+		// the machine has above it, so the outcome is now decidable: a tree
+		// with no .moai anywhere in it produces an error on every platform.
+		// The former conditional assertion here was a statement about the CI
+		// runner's home directory rather than about this code.
+		t.Setenv("HOME", root)
+		t.Setenv(config.EnvClaudeProjectDir, "")
+
 		got, err := findStateDirFrom(start)
-		if err == nil && strings.HasPrefix(got, root) {
-			t.Errorf("got %q inside the test tree, which holds no .moai/state", got)
+		if err == nil {
+			t.Errorf("got %q; a tree that holds no .moai must not resolve", got)
 		}
 	})
 }

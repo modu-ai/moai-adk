@@ -60,12 +60,23 @@ type stateYAMLWrapper struct {
 }
 
 // runClean cleans up old runs/ directories based on retention_days.
+//
+// Resolution goes through findStateDirNoEnv, which consults no environment
+// variable (SPEC-CLI-STATE-DIR-BOUND-001 REQ-9): this function removes
+// directories, and an inherited variable naming some other checkout must not be
+// what decides where. To clean another project, run this in it. See
+// findStateDirNoEnv for which variable that is and why it is excluded here.
 func runClean(p printer.Printer, force bool) error {
 	// Locate state directory
-	stateDir, err := findStateDir()
+	stateDir, err := findStateDirNoEnv()
 	if err != nil {
 		return fmt.Errorf("find state dir: %w", err)
 	}
+	// Announced before anything is enumerated: read commands honour the
+	// project-directory environment variable and this one does not, so the two
+	// can legitimately resolve different projects within one session. Saying
+	// which project this is after listing its files would be too late.
+	printResolvedRoot(p, stateDir)
 
 	// Load retention_days (from state.yaml)
 	retentionDays, err := loadRetentionDays(stateDir)

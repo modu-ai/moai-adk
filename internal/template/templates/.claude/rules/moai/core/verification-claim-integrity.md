@@ -49,51 +49,21 @@ Anything else (an inferred value, a stale figure, a "should be" estimate) is una
 
 [ZONE:Evolvable] [HARD] Verification and completion reports — on either binding surface (§1.1) — SHOULD be structured as the following five sections. The format is the operational mechanism that enforces §1 and §2: it forces the actor to separate what is claimed from what was observed, and to make the unobserved explicit. Apply the format to every report, not only the first.
 
-### 3.1 Claim (주장)
+The five sections, in order:
 
-What is being asserted. The completion or verification statement, phrased as a discrete claim (one row per assertion in a matrix, or one sentence per claim in prose).
+| Section | Carries |
+|---|---|
+| **Claim** (주장) | what is being asserted — one discrete claim per row or sentence |
+| **Evidence** (증거) | the command that was run **plus its verbatim output**; a summary is not evidence |
+| **Baseline-attribution** (baseline 귀속) | what it was measured against, per §2 — command + observed output, in this run, against this tree |
+| **Gaps** (미검증) | what was explicitly **NOT** observed; an empty Gaps section asserts nothing was left unobserved, which must itself be true |
+| **Residual-risk** (잔여 위험) | what could still be wrong *despite* what was observed — distinct from Gaps, which is what was not observed |
 
-### 3.2 Evidence (증거)
-
-The actual command that was run **plus its verbatim output** — not a summary. If the claim in §3.1 is "tests pass", the Evidence section contains the literal command and the literal output block it produced. Summarized evidence ("all tests passed") is NOT acceptable as Evidence — the verbatim output is the load-bearing artifact.
-
-### 3.3 Baseline-attribution (baseline 귀속)
-
-The baseline against which the claim was measured (per §2): the command + the observed output, in this run, against this tree. This section answers "measured against what?" and prevents a claim from silently borrowing a number from an unrelated prior measurement.
-
-### 3.4 Gaps (미검증)
-
-What was explicitly **NOT** observed — the negative space. This is the key defense of the entire format. By forcing the actor to enumerate what it did not verify, this section prevents an unobserved claim from passing silently as if it were a success. A report with an empty Gaps section is making the strong assertion that nothing was left unobserved — which itself must be true. When in doubt, name the gap.
-
-### 3.5 Residual-risk (잔여 위험)
-
-Remaining uncertainty and deferred verification — the risk that survives even after the observed evidence. Distinct from Gaps (§3.4, what was not observed): Residual-risk is what could still be wrong despite what WAS observed (flaky tests, environment-specific behavior, deferred criteria, time-of-check-to-time-of-use windows, etc.).
-
-## 4. Cross-References (SSOT — cross-reference only, do not duplicate)
-
-This doctrine cross-references the following canonical surfaces. It does NOT copy their content — each remains the single source of truth for its own subject:
-
-- `.claude/rules/moai/core/agent-common-protocol.md` § Skeptical Evaluation Stance — the fresh-judgment auditor stance (treat claims as suspect until evidence is shown).
-- `.claude/rules/moai/core/moai-constitution.md` § Agent Core Behaviors "Verify, Don't Assume" — the cross-cutting HARD behavior requiring evidence of completion.
-- `.claude/rules/moai/development/manager-develop-prompt-template.md` § E (Self-Verification Deliverables) — the manager-agent self-verification matrix that the 5-section format generalizes and relates to.
-- `.claude/rules/moai/workflow/verification-batch-pattern.md` — the orchestrator-side read-only verification batching pattern (the mechanism by which observed evidence is gathered efficiently).
-- `.claude/output-styles/moai/moai.md` — the Verification Matrix and Completion Report banners (the orchestrator self-report surface bound by §1.1).
-
-## 5. Worked Example — Defect-Claim Hazard
-
-A status report counted N items matching a text pattern (for example, a metadata field absent from N files) and inferred "these N items are debt requiring action" — then proposed batch-modifying all N.
-
-This was an unobserved defect claim: the domain had a dedicated verification tool, and it had not been run. The text pattern was compatible with two contradictory interpretations (items legitimately in a protected or legacy state versus items with a genuinely missing step); only the dedicated tool could disambiguate. When the tool was finally run, the inferred debt did not exist — the items were in their correct state — and had the batch modification proceeded, N items would have been touched for no reason.
-
-Lesson codified: **a defect claim is a hypothesis until the domain's tool confirms it.** Whenever a domain verification tool exists (an audit command, a type checker, a linter, a coverage tool), its output MUST precede any defect / debt / drift claim — §1.1 surface 3 + §2 attribution. Text-pattern matching alone produces a candidate defect, never a verified one.
-
-## 6. Worked Example — Retention-Claim Hazard
-
-A user instructed that a directory of retired artifacts be removed. The actor deleted the artifacts but held one item back — a scan in a shipped workflow file that globbed for files under that directory — on the stated premise that removing it "would withdraw a live feature from every distributed user", and recommended a separate retirement task instead.
-
-That premise was never checked. The actor had verified the scan was *reachable* (the workflow's routing table points at it) and had read that the task which originally delivered the feature still carried an in-service status, then treated both facts as evidence the feature was live. Neither establishes that. When the producers were finally enumerated, every one was already gone: the command that invoked the feature, its workflow file, its dedicated agent, its CLI entry point, the flag that consumed its output, the template scaffold that created the directory, and its documentation pages in every locale. A completed retirement task had removed the feature from the template source permanently, for all distributed users, and a later cleanup commit had swept the orphans that retirement left behind. The scan simply survived both passes. With no producer and no scaffold, the glob could only ever return zero on a user's machine.
-
-Lesson codified: **reachability is not justification, and an originating task still reading as in-service is not proof the feature it delivered is still live** — a later task may have retired it. Before recommending retention against an instruction, enumerate the producers of the thing being retained and check for a completed retirement; an objection whose premise was never verified is an unobserved claim — §1.1 surface 4 + §2 attribution.
+What each section contains in full, the cross-reference table, and the two worked-example incident
+records (the defect-claim hazard and the retention-claim hazard the §1 clauses were written from)
+live in the detail companion `verification-claim-integrity-detail.md`. Load it when composing an
+evidence-bearing report for the first time, or when tracing a clause back to its originating
+failure.
 
 ---
 

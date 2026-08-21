@@ -1,0 +1,220 @@
+# agents-codex.yaml — Codex mapping manifest for the agent dual-publication
+# emitter (the neutral layer's Codex half; the .md files are the other half).
+#
+# Build input only: this file lives in the emitter package, NOT under
+# templates/, and is never distributed to user projects.
+#
+# Codex-behavior facts herein are measured against codex-cli (M0/t91 report);
+# the manifest records the measured version so a future upgrade knows which
+# probe run to repeat. Fields whose value set is not probe-confirmed ship
+# omitted (ship-omitted rule) — never guessed, because codex silently ignores
+# unknown values (t91 section 1).
+
+# codex-cli version the field semantics below were measured against.
+codex_measured_version: "0.147.0"
+
+# Where emitted agent TOMLs live under the project .codex/agents/ root.
+# P-04 MEASURED (codex-cli 0.147.0): .codex/agents/ DOES scan subdirectories
+# (a probe agent at agents/moai/x.toml registered and delegated) — the
+# subdirectory layout is confirmed, flat + moai- prefix stays the fallback.
+layout:
+  mode: subdirectory
+  subdirectory: moai
+  flat_prefix: "moai-"
+
+# Optional-field emission switches. A false switch means the field is omitted
+# from every emitted TOML (Codex default inheritance).
+fields:
+  # model: omitted on all 11 agents in v1 (R-011). P-03 MEASURED: an omitted
+  # model key registers and delegates (inherits the subagent default); an
+  # arbitrary bogus model string is silently accepted at parse — emitting a
+  # Claude alias would be accepted-but-wrong, so omission is the only safe
+  # choice. manager-git's "sonnet" pin is a documented drop below.
+  model:
+    emit: false
+  # model_reasoning_effort: identity mapping, P-02 MEASURED (codex-cli
+  # 0.147.0): all four values registered as agents AND belong to the binary's
+  # reasoning-effort enum {minimal, low, medium, high, xhigh}. Unmapped source
+  # effort fails emission (never a silent downgrade).
+  model_reasoning_effort:
+    emit: true
+    map:
+      low: low
+      medium: medium
+      high: high
+      xhigh: xhigh
+  # sandbox_mode: P-01 MEASURED (codex-cli 0.147.0): the runtime names the
+  # accepted set verbatim on a bad value — "expected one of `read-only`,
+  # `workspace-write`, `danger-full-access`" — and a bad value makes codex
+  # drop the whole agent file (visible "Ignoring malformed agent role
+  # definition" error). workspace-write is a measured member and
+  # delegation-confirmed; a read-only sandbox would break the go-test-style
+  # verification work the agent bodies mandate, so it ships for all 11.
+  sandbox_mode:
+    emit: true
+    value: workspace-write
+    accepted_values:
+      - read-only
+      - workspace-write
+      - danger-full-access
+
+# Semantic-class mapping for Claude tool tokens (R-007: every token appearing
+# in any agent tools CSV must belong to a mapped class or emission fails).
+# The key "mcp__moai__" (trailing underscores) is a PREFIX rule: any token
+# starting with it maps to class moai-mcp (server-level grant, R-009).
+tool_classes:
+  Read: file-read
+  Grep: file-read
+  Glob: file-read
+  Write: file-write
+  Edit: file-write
+  Bash: shell
+  WebFetch: web
+  WebSearch: web
+  TaskCreate: task-list
+  TaskUpdate: task-list
+  TaskList: task-list
+  TaskGet: task-list
+  Skill: skill-loader
+  Agent: subagent-spawn
+  DesignSync: design-sync
+  mcp__moai__: moai-mcp
+
+# Per-class dispositions — every semantic class carries exactly one, with
+# rationale (AC-013: no silent discard).
+classes:
+  - class: file-read
+    disposition: no-field
+    rationale: >-
+      Codex exposes built-in file read; no agent-TOML field exists or is
+      needed. Access level is a sandbox_mode consequence.
+  - class: file-write
+    disposition: documented-drop
+    rationale: >-
+      The Read-vs-Write tool distinction is not mechanically preserved on
+      Codex: its sandbox is workspace-level, not tool-level. Body prose
+      already disciplines write behavior.
+  - class: shell
+    disposition: consequence
+    rationale: >-
+      Shell executes built-in on Codex. A read-only sandbox would break the
+      go-test-style verification work the agent bodies mandate, so the
+      P-01-measured member workspace-write ships via the sandbox_mode field
+      (see fields.sandbox_mode).
+  - class: web
+    disposition: documented-drop
+    rationale: >-
+      No per-agent web field exists; web access is a global Codex
+      feature/config outside agent TOML.
+  - class: task-list
+    disposition: documented-drop
+    rationale: >-
+      The Claude task-tool family has no known Codex equivalent; body prose
+      degrades gracefully (workflows fall back to prose reporting).
+  - class: skill-loader
+    disposition: deferred-m1
+    rationale: >-
+      skills.config value set is unmeasured and M1 owns skills
+      canonicalization to .agents/skills; M5 emits no skills field. When M1
+      lands this row switches from deferred to an emission rule without any
+      M5 artifact change.
+  - class: subagent-spawn
+    disposition: documented-drop
+    rationale: >-
+      Codex delegation exists (internal collaboration* tools) but a per-agent
+      spawn grant is not expressible in agent TOML; lead semantics survive in
+      body prose and the internal tool names have low version stability.
+  - class: design-sync
+    disposition: documented-drop
+    rationale: >-
+      DesignSync is a Claude-specific MCP-backed tool with no Codex
+      equivalent.
+  - class: moai-mcp
+    disposition: emit-field
+    field: mcp_servers
+    rationale: >-
+      Agents carrying any mcp__moai__* token declare the server-level grant
+      as a TOML table [mcp_servers.moai] with command+args (R-009).
+      RUN-PHASE MEASURED CORRECTION: codex-cli 0.147.0 rejects the array
+      form mcp_servers = ["moai"] with "invalid type: sequence, expected a
+      map", dropping the whole agent file; the table form (same shape t91
+      section 5 measured for the global config) registers cleanly. See
+      mcp_server_grant below. Per-tool filtering inside one MCP server is
+      unavailable — documented drop; the body prose already names which
+      tools each agent uses.
+  - class: effort
+    disposition: emit-field
+    field: model_reasoning_effort
+    rationale: >-
+      effort frontmatter maps to model_reasoning_effort through the measured
+      identity enumeration (P-02-confirmed); unmapped values fail emission.
+  - class: model
+    disposition: omit
+    rationale: >-
+      The model field is omitted for all 11 agents in v1 (R-011): a Claude
+      alias is not a Codex model id, so emitting it would be a guess.
+  - class: frontmatter-hooks
+    disposition: documented-drop
+    rationale: >-
+      Codex has no per-agent hooks surface; hooks are project-level
+      .codex/hooks.json. M3 owns the adapter.
+  - class: memory-color-permission
+    disposition: documented-drop
+    rationale: >-
+      memory:, color:, and permissionMode: have no Codex equivalent;
+      permission semantics live in sandbox_mode plus Codex approval policy,
+      memory/color are UI/session state.
+  - class: explore-builtin
+    disposition: correspondence-note
+    rationale: >-
+      Explore is an Anthropic built-in with no .md in the template tree; it
+      corresponds to Codex's built-in explorer and no file is emitted for it.
+
+# Explicit documented drops with their owning rationale.
+documented_drops:
+  - id: model-pin-manager-git
+    rationale: >-
+      manager-git pins the Claude alias "sonnet"; a Claude alias is not a
+      Codex model id. Its cost intent already travels via effort: low, so the
+      TOML omits model entirely.
+  - id: per-tool-mcp-filtering
+    rationale: >-
+      Codex exposes an MCP server's tools as a unit; restricting which of the
+      21 moai tools an agent may call is not expressible per-agent. Coarse
+      server-level grant recorded in class moai-mcp.
+  - id: read-vs-write-distinction
+    rationale: >-
+      Codex sandbox is workspace-level; the granular Read/Write tool split
+      cannot be preserved mechanically.
+  - id: per-agent-web-grants
+    rationale: >-
+      Web access is global Codex config; per-agent WebFetch/WebSearch grants
+      have no carrier.
+  - id: task-tool-family
+    rationale: >-
+      TaskCreate/TaskUpdate/TaskList/TaskGet have no Codex equivalent.
+  - id: per-agent-hooks
+    rationale: >-
+      Claude frontmatter hooks map to project-level .codex/hooks.json on
+      Codex; the adapter is M3's scope.
+  - id: memory-scopes-and-ui-metadata
+    rationale: >-
+      memory scope, color, and permissionMode are Claude session/UI state
+      with no Codex equivalent.
+
+# The server-level MCP grant emitted as a TOML table on every agent carrying
+# mcp__moai__* tools. Shape measured on codex-cli 0.147.0 (the array form is
+# rejected; an empty table fails transport validation — the grant must carry
+# the full definition, matching t91 section 5's global-config registration).
+mcp_server_grant:
+  server: moai
+  command: moai
+  args:
+    - mcp-server
+
+# Correspondence notes (no artifact emitted either side).
+correspondence_notes:
+  - id: explore-builtin
+    note: >-
+      Explore is an Anthropic built-in (no .md in the template tree); Codex
+      ships its own built-in explorer. No TOML is emitted for it.

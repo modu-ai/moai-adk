@@ -369,19 +369,22 @@ func runTokensRecord(opts tokensRecordOpts) (*TokensRecord, error) {
 	return rec, nil
 }
 
-// resolveTokensStateDir returns the ledger's .moai/state directory: the
-// existing walk-up convention (findStateDir, state.go) when a project state
-// dir is found, else <cwd>/.moai/state (created lazily on append) so a fresh
-// checkout records without pre-scaffolding.
+// resolveTokensStateDir returns the ledger's .moai/state directory: the shared
+// project-state resolution (findStateDir, state.go) when a project is found,
+// else <cwd>/.moai/state (created lazily on append) so a fresh checkout records
+// without pre-scaffolding.
 func resolveTokensStateDir() (string, error) {
 	if dir, err := findStateDir(); err == nil {
+		announceResolvedRoot(os.Stderr, dir)
 		return dir, nil
 	}
 	cwd, err := os.Getwd()
 	if err != nil {
 		return "", fmt.Errorf("get working directory: %w", err)
 	}
-	return filepath.Join(cwd, ".moai", "state"), nil
+	fallback := filepath.Join(normalizeDir(cwd), ".moai", "state")
+	announceResolvedRoot(os.Stderr, fallback)
+	return fallback, nil
 }
 
 // readTokensContextSnapshot embeds the statusline context snapshot when the
