@@ -93,8 +93,8 @@ FAIL	github.com/modu-ai/moai-adk/internal/hook/quality [build failed]
 ### 5.2 대조절 포함 테스트 14건
 
 차단(RED)만 있으면 "항상 실패하는 게이트"로도 만족된다. 그래서 **통과 대조절**을 같이 뒀다:
-`TestGateBlocksOnTypecheckFailure`(command `false` → 차단) ↔ `TestGatePassesWhenTypecheckSucceeds`
-(command `true` → 통과). 그 밖: 3티어 각각 · solution-style 차단 · 스크립트 우선 · 오버라이드
+`TestGateBlocksOnTypecheckFailure`(exit≠0 커맨드 → 차단) ↔ `TestGatePassesWhenTypecheckSucceeds`
+(exit 0 커맨드 → 통과). *§9.2 이후 두 커맨드는 `go` 기반 크로스플랫폼 형태다.* 그 밖: 3티어 각각 · solution-style 차단 · 스크립트 우선 · 오버라이드
 타언어 발화 · 사유 부착 · `disabled_steps` · `enabled:false` · 기본값 · Node 엔트리 배선.
 
 ### 5.3 실 바이너리 데모 (`make build` 산출물)
