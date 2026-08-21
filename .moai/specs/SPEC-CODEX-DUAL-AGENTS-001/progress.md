@@ -73,3 +73,21 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+Logged by the orchestrator (lane-9) before the first run-phase Agent() spawn.
+
+**Input parameters**: tier M; scope ~10 files (emitter package + manifest + 11 TOML + tests + template tree); domains 2 (Go emitter code + template artifacts); language mix Go + TOML + markdown; concurrency benefit LOW (coding-heavy — single coherent emitter, sequential test build); Agent Teams prereqs N/A.
+
+**Mode evaluation**:
+- direct — not selected: >trivial (emitter package + tests + probes)
+- serial — **selected**: coding-heavy Tier M implementation per Anthropic's coding-task parallelism caveat; MS1→MS4 are dependent stages (probes lock enums the emitter consumes; mass emission needs the emitter)
+- fanout — not selected: 2 domains only; concurrency benefit LOW
+- sweep — not selected: ~10 files < ~30 threshold; not a uniform mechanical transform (new code)
+
+**Decision: serial** (manager-develop, cycle_type=tdd, sequential MS delegation)
+
+**Justification**: The emitter core is new-code work with tight internal coupling (manifest schema → loader → TOML writer → validators); probe milestone MS2 feeds decisions MS3 consumes. Sequential single-agent delegation matches the dependency chain; fan-out would only parallelize the mechanical MS3 emission, which is one command once MS1 exists. Kickoff: lead batch approval 2026-08-22 + plan-audit iter-3 PASS (conditional grant fired).
+
+**Plan Audit Gate skip record** (run Phase 1): most recent verdict PASS (iter-3, 0.92 ≥ Tier M 0.80); plan-artifact hash unchanged since the verdict (progress.md §F addition is not a hash subject); skip-eligible per the three-condition contract — recorded here per the skip-recording obligation.
