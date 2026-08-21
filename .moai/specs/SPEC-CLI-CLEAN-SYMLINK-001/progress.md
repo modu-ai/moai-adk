@@ -203,6 +203,30 @@ verbatim 출력이다 (baseline-attribution: run 시작 HEAD `d19f849be`, run �
 - 파일 뿌리 dangling(도시에 gap 3)은 `DanglingSymlinkAtFileRoot`로 실측 전환 —
   clean이 링크를 제거+진행줄, deploy 쓰기 성공으로 폐쇄.
 
+### M3 — 계약 테스트 (독립 검증 축)
+
+- **AC-CSL-009 교차 계약** (`deploy_contract_test.go`, 외부 `deploy_test` 패키지 —
+  deploy의 leaf 성질 보존): `template.EmbeddedTemplates()`를 deployer와 동일하게
+  걷는다(디렉터리 스킵·`.tmpl` 접미 제거 — deployer.go 렌더링 규칙) → 렌더링 후
+  기록 경로 집합. 비-글롭 루트 7개 + config 8번째 뿌리 전부 "정확한 파일 또는
+  하위 파일 ≥1 보유"로 커버, 글로브 `.claude/skills/moai*` 매치 ≥1. 루트 1
+  `.claude/settings.json`은 `settings.json.tmpl`→렌더링 경로 판정으로 통과(원시
+  경로 판독 반증 — 도시에 §1.1(b) 준거). **본 트리에서 계약 성립 — 이 테스트는
+  t81(가) `.agents/` 추가 후 release/v3.1.3 통합 시점 재실행 대상의 드리프트
+  가드** (가드 특성상 현행 녹색이 정상; §D.7-1).
+- **AC-CSL-008 순서 독립** (`deploy_symlink_order_test.go`, `backupThenRemove`
+  단위 경계 — 새 seam 없음): 실디렉터리 A(비관리 파일 포함, 템플릿 보유 이름) +
+  A 지목 라이브 디렉터리 링크 B(글로브 매치 이름)를 (a) B→A, (b) A→B 양순서
+  처리 — (b)에서는 A 제거 후 B가 dangling으로 강등되어 dangling 처분으로 제거된다
+  (spec §D.3 둘째 경계 사례의 직접 입증). 양순서 최종 상태 동일: A 실디렉터리
+  재배포+템플릿 파일, B 부재, A 비관리 파일 백업 존재. 4축 전부 양순서 일치.
+  RED 소급: (b)의 B-제거 다리는 M1이 도입한 dangling 처분에 의존 — 구형 코드의
+  같은 경로(Stat ENOENT 무소식 no-op, 도시에 §2.4)에서는 B가 잔존해 bGone=false
+  로 실패한다. 구형 시그니처(2-값)와의 컴파일 결합 때문에 관측 RED 대신 도시에
+  실측 no-op 경로 + M1 RED로부터의 구성적 귀속으로 기록한다(미관측 고지).
+- **GREEN**: `go test ./internal/cli/update/deploy/ -count=1` → ok 0.552s ·
+  `go test ./internal/cli/update/... -count=1` → 6패키지 ok · lint `0 issues.`.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase — M4 완료 시 기입>_
