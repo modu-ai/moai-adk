@@ -497,6 +497,103 @@ implemented here; the ceiling is currently enforced by measurement in the progre
 a failing build. `AlwaysLoadedTokenBudget` is untouched at 76,000 — the ratchet is `AC-AMC-018`'s,
 measured post-diet on the integration branch.
 
+### M4 — detail relocation to lazy companions (2026-08-22)
+
+Tree: worktree `.claude/worktrees/t82`, branch `WT-agents-md-diet`, parent `af954cc0c`.
+
+**Eight new lazy companions, each `paths:`-scoped so it leaves the always-loaded surface**, plus a
+second pass into two companions that already existed. Every stub keeps its obligations and leaves a
+pointer; only rationale, procedure, worked examples, incident records, and long cross-reference
+tables moved.
+
+| Source file | Before | After | Delta | Companion created |
+|---|---:|---:|---:|---|
+| `main-checkout-branch-guard.md` | 11,865 | 6,395 | **−5,470** | `-detail.md` |
+| `moai-mcp-tools.md` | 7,357 | 2,389 | **−4,968** | `-catalogue.md` |
+| `verification-claim-integrity.md` | 13,140 | 8,224 | **−4,916** | `-detail.md` |
+| `cross-session-messaging.md` | 16,672 | 11,823 | **−4,849** | `-detail.md` |
+| `context-window-management.md` | 13,009 | 8,828 | **−4,181** | `-detail.md` |
+| `moai-constitution.md` | 18,958 | 15,433 | **−3,525** | `-detail.md` |
+| `agent-common-protocol.md` | 27,043 | 24,645 | −2,398 | (existing `-reference.md`) |
+| `askuser-protocol.md` | 23,504 | 21,822 | −1,682 | (existing `-reference.md`) |
+| `native-idiom-and-register.md` | 4,967 | 3,952 | −1,015 | `-detail.md` |
+| `CLAUDE.md` | 20,748 | 19,766 | −982 | (compressed in place) |
+| `skill-routing.md` | 5,825 | 5,595 | −230 | `-detail.md` |
+| **Total** | **163,088** | **128,872** | **−34,216 B** | 8 new |
+
+**Achieved figure — the ratchet target is met.**
+
+```
+go test -v ./internal/config/ -run 'Budget|AlwaysLoaded'
+  token_budget_guard_test.go:69: always-loaded surface = 66266 tokens
+                                 (budget 76000, headroom 9734, 18 entries)
+```
+
+Measured over the extended enumeration that M5-a landed, so `AGENTS.md` is counted, not invisible.
+M5-a read 74,821; the diet removed **8,555 tokens**, which agrees with the per-file byte total above
+(34,216 ÷ 4 = 8,554, one token of rounding across eleven files).
+
+**The budget identity closes, and both of its terms were needed.**
+
+```
+required cut = 74,821 − 66,371 = 8,450 tok
+achieved     = 8,555 tok  →  margin +105
+
+  term 1 — nine never-stub-split files:  30,136 B = 7,534 tok
+           (70.6 % of the 10,670-token bound M1 projected at a 38.0 % ratio)
+  term 2 — second pass into already-split files:  4,080 B = 1,020 tok
+           (6.0 % of their 68,115 B remainder — above the 5 % the identity assumed)
+```
+
+Term 1 alone would have fallen **916 tokens short** of the required cut. `AC-AMC-009`'s identity
+names the second term "part of the identity rather than a footnote"; this run is the case that
+proves it — the nine files did not carry the diet on their own, because the 38.0 % pilot ratio was
+measured on `kanban-dispatch.md`, the most rationale-dense file in the set, and the never-split nine
+are more obligation-dense than that sample.
+
+| AC | Claim | Evidence (command → observed) | Status |
+|---|---|---|---|
+| `AC-AMC-011` | No relocated obligation in any created companion | Every new companion grepped for `[HARD]`, `MUST`, `MUST NOT`, `shall` → **0 hits in all 8**. The two appends into existing companions were audited the same way: the Blind Spot Pass append is clean, and an initial Preview-Field-Standards append that carried a duplicate `[HARD]` line was **removed** — `askuser-protocol-reference.md` already owned that section, so the append was redundant as well as non-compliant | PASS |
+| `AC-AMC-002` | No obligation left the always-loaded surface | Each companion is `paths:`-scoped to its stub, so it is off the surface; every clause moved was rationale, procedure, a worked example, an incident record, or a cross-reference table. Obligations that appeared in a moved block were left in the stub rather than carried (the two Opus `[HARD]` principles, the `[HARD]` preview single-select clause) | PASS |
+| `AC-AMC-010` | Claude-side rule-loading semantics unchanged | Surface entry count unchanged at 18 — the eight companions are `paths:`-scoped and never join it. `go test ./internal/config/` → `ok 17.739s`; `./internal/constitution/` → `ok 0.486s`; `./internal/hook/` → `ok 30.409s`; `./internal/template/` → `ok 35.697s`; `./internal/cli/` → `ok 334.733s` | PASS |
+| `AC-AMC-015` | Suites green, no expected-behavior assertion edited | No `_test.go` file modified in this milestone | PASS |
+
+**Template mirrors: landed here, not deferred.** `TestSanitizedPairParity` went red as soon as the
+first two stubs were cut — correctly: it exists to catch a doctrine change that fails to reach the
+distribution mirror. Four registry members drifted (`main-checkout-branch-guard.md`,
+`verification-claim-integrity.md`, `askuser-protocol.md`, `agent-common-protocol.md`). All sixteen
+rule files plus all eight new companions are now mirrored under
+`internal/template/templates/.claude/rules/moai/`, `make build` has run, and the suite is green.
+
+Two mirror treatments, chosen per file rather than uniformly:
+
+- **Byte-copy (8 files + 8 companions).** Verified first that each template copy was byte-identical
+  to its pre-edit local copy (`git show HEAD:<local>` vs the template file) — for eight of the ten
+  edited rules it was, so a copy preserves no sanitization that did not exist. `moai update` cannot
+  regress them, because both sides now match.
+- **Structural re-application (2 files + 2 companions).** `verification-claim-integrity.md` and
+  `main-checkout-branch-guard.md` are genuinely sanitized pairs: the local copies retain SPEC-IDs
+  and REQ tokens the mirrors strip. Their template copies received the *same section removals and
+  the same stub text*, re-sanitized — never a copy. Their two new companions were likewise
+  sanitized on the way out (an originating SPEC-ID generalized to "the originating brain SPEC", the
+  branch-guard Origin block and its REQ ranges dropped).
+
+**Gap — `CLAUDE.md`'s mirror is still deferred, and is now two changes behind.** M3 deferred it
+because the `@AGENTS.md` import would dangle without the template `AGENTS.md`; M4 adds the §4/§7/§15
+compression on top. Both land together in M6. This is unchanged in kind from the M3 note, only
+larger — and still not CI-visible, since no test asserts live/template `CLAUDE.md` parity.
+
+**Residual risk — the margin is 105 tokens.** The achieved figure clears the ratchet target by
+0.16 %. Any always-loaded rule added on the integration branch before `AC-AMC-018` is measured will
+consume it. Two levers remain if that happens and both are already sized: the never-split nine
+retain 29.4 % of their projected yield, and the already-split remainder was drawn down only 6.0 %.
+Neither is exhausted, so a breach is recoverable without re-opening the design.
+
+**Not done here.** `.claude/output-styles/moai/moai.md` is the single largest always-loaded item at
+61,706 B (15,426 tokens, 23 % of the surface) and was left untouched: M1's available-reduction bound
+excluded it, and M4's scope is the always-loaded **rules**. It is the obvious next lever if the
+ratchet is ever raised again, and naming it here is cheaper than rediscovering it.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

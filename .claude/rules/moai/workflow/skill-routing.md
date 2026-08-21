@@ -42,12 +42,11 @@ Agents whose `tools:` include `Skill` load conditional skills per the "Condition
 
 ## 3. Rationale
 
-The two loading mechanisms have different cost profiles:
-
-- `skills:` frontmatter injects each listed skill's FULL body into the agent context at spawn — a fixed cost paid on every invocation, whether or not the skill is used.
-- `Skill()` invocation loads on demand: only the ~100-token metadata line is always visible; the ~5K-token body is paid only when the skill is actually invoked.
-
-Keeping the static preload minimal and routing the rest through explicit `Skill()` instructions converts a fixed per-spawn cost into a pay-per-use cost, while the orchestrator-side injection (section 1) preserves discoverability for domain skills the agent would not know to load.
+The two loading mechanisms have different cost profiles: `skills:` frontmatter injects each listed
+skill's full body at spawn, paid whether or not it is used, while `Skill()` pays ~100 tokens of
+metadata always and the ~5K body only on invocation. Keeping the static preload minimal and routing
+the rest through explicit `Skill()` instructions converts a fixed per-spawn cost into a
+pay-per-use one. Worked detail: `skill-routing-detail.md`.
 
 ## 4. Cross-references
 
