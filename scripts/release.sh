@@ -296,11 +296,38 @@ if command -v gh >/dev/null 2>&1; then
     echo
     sleep 5 # Allow workflow dispatch to register
 
-    RUN_ID="$(gh run list --workflow release.yml --limit 1 --json databaseId --jq '.[0].databaseId' 2>/dev/null || echo "")"
+    # Bind the lookup to THIS tag's commit. Taking the newest release.yml run
+    # instead would watch whatever ran most recently — a re-run of an earlier
+    # tag, or a concurrent release — and report its verdict as this one's.
+    TAG_SHA="$(git rev-parse "${VERSION}^{commit}")"
+
+    # The run does not exist the instant the tag lands, so poll for it rather
+    # than reading once. Bounded: a run that never appears is a failure to
+    # report, not a reason to wait forever.
+    RUN_ID=""
+    LOOKUP_DEADLINE=$(( $(date +%s) + 180 ))
+    while [[ -z "$RUN_ID" ]] && (( $(date +%s) < LOOKUP_DEADLINE )); do
+        RUN_ID="$(gh run list --workflow release.yml --commit "$TAG_SHA" --limit 1 --json databaseId --jq '.[0].databaseId // empty' 2>/dev/null || echo "")"
+        [[ -n "$RUN_ID" ]] && break
+        sleep 5
+    done
 
     if [[ -n "$RUN_ID" ]]; then
-        log_info "Release workflow run: $RUN_ID (polling every 30s, ctrl-C to detach)"
-        gh run watch "$RUN_ID" --interval 30 || log_warn "Watch detached (workflow may still be running)"
+        log_info "Release workflow run: $RUN_ID (commit ${TAG_SHA:0:9}, polling every 30s, ctrl-C to detach)"
+        # Polled rather than `gh run watch`: the watch blocks until the run
+        # ends with no deadline of its own, and a hung workflow would hold the
+        # release script open indefinitely. 45 minutes is well past the
+        # observed build time and short enough to surface a stall.
+        WATCH_DEADLINE=$(( $(date +%s) + 45 * 60 ))
+        while (( $(date +%s) < WATCH_DEADLINE )); do
+            RUN_STATUS="$(gh run view "$RUN_ID" --json status --jq '.status' 2>/dev/null || echo "")"
+            [[ "$RUN_STATUS" == "completed" ]] && break
+            sleep 30
+        done
+        if [[ "$RUN_STATUS" != "completed" ]]; then
+            log_warn "GoReleaser still running after 45m — detaching"
+            echo "  gh run watch $RUN_ID"
+        fi
 
         WORKFLOW_STATE="$(gh run view "$RUN_ID" --json conclusion --jq '.conclusion' 2>/dev/null || echo "unknown")"
         case "$WORKFLOW_STATE" in

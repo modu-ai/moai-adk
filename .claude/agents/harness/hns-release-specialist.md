@@ -172,9 +172,18 @@ required check does not block day-to-day PRs. Delegate to manager-git
 
 ### Phase 7 — GitHub Release Notes (composed English, never pasted)
 
-Wait for GoReleaser (`gh run list --workflow=release.yml`, retry loop). Verify
-release + assets (6 binaries + checksums.txt, names WITHOUT "v" prefix per
-`internal/update/checker.go`).
+Wait for GoReleaser, then verify the release + assets (6 binaries +
+checksums.txt, names WITHOUT "v" prefix per `internal/update/checker.go`).
+
+[HARD] **Bind the wait to this release's commit, and bound it.** Resolve the tag
+(`git rev-parse "vX.Y.Z^{commit}"`) and select the run with `gh run list
+--workflow release.yml --commit "$sha" --limit 1`. Taking the newest run instead
+watches whatever ran most recently — a re-run of an earlier tag, or a concurrent
+release — and reports its verdict as this one's. Poll for the run rather than
+reading once (it does not exist the instant the tag lands), and stop at a
+deadline no later than 45 minutes: a run that never appears, or never finishes,
+is a failure to report rather than a reason to wait forever. `scripts/release.sh`
+implements exactly this.
 
 [HARD] **The release arrives with an empty body — fill it in this phase, before
 reporting the release complete.** `.goreleaser.yml` sets `changelog.disable: true`,
