@@ -1,6 +1,6 @@
 ---
 spec_id: SPEC-CODEX-DUAL-AGENTS-001
-status: draft
+status: in-progress
 tier: M
 era: V3R6
 plan_complete_at: 2026-08-22
@@ -64,7 +64,72 @@ Plan-phase self-verification executed (all observed, not assumed):
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### MS1 — Emitter core + neutral-layer contract (2026-08-22, manager-develop, TDD)
+
+RED evidence (verbatim, captured BEFORE implementation — stubs returned
+`agentemit: not implemented`):
+
+```
+$ go test ./internal/template/agentemit/...
+--- FAIL: TestParseAgentDocParsesFrontmatterContract (0.00s)
+    agentemit_test.go:99: ParseAgentDoc(agents/mdcarrier.md): agentemit: not implemented
+--- FAIL: TestParseAgentDocRejectsBrokenSources (0.00s)
+    agentemit_test.go:163: missing name: error "agentemit: not implemented" must name the offending value "name"
+    agentemit_test.go:163: name stem mismatch: error "agentemit: not implemented" must name the offending value "differentname"
+--- FAIL: TestEmitAllRoundTripsBodyVerbatim (0.00s)
+    agentemit_test.go:176: LoadManifest: agentemit: not implemented
+--- FAIL: TestEmitAllMCPServerMapping (0.00s)
+    agentemit_test.go:206: LoadManifest: agentemit: not implemented
+--- FAIL: TestEmitAllEffortMappingPerManifest (0.00s)
+    agentemit_test.go:227: LoadManifest: agentemit: not implemented
+--- FAIL: TestEmitAllOmitsModel (0.00s)
+    agentemit_test.go:254: LoadManifest: agentemit: not implemented
+--- FAIL: TestEmitAllSandboxOmittedWhenUnconfirmed (0.00s)
+    agentemit_test.go:271: LoadManifest: agentemit: not implemented
+--- FAIL: TestEmitAllDeterministic (0.00s)
+    agentemit_test.go:288: LoadManifest: agentemit: not implemented
+--- FAIL: TestEmitAllMarkdownIdentityIsPassThrough (0.00s)
+    agentemit_test.go:321: LoadManifest: agentemit: not implemented
+--- FAIL: TestEmitAllFailClosedNegatives (0.00s)
+    agentemit_test.go:381: LoadManifest: agentemit: not implemented
+--- FAIL: TestEmitAllFailClosedDuplicateName (0.00s)
+    agentemit_test.go:407: LoadManifest: agentemit: not implemented
+--- FAIL: TestLoadManifestSelfValidates (0.00s)
+    agentemit_test.go:430: LoadManifest: agentemit: not implemented
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template/agentemit	0.374s
+FAIL
+```
+
+GREEN evidence (this run, this tree, HEAD f8b5d9a71 + M1 working tree):
+
+```
+$ go test -cover ./internal/template/agentemit/...
+ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	0.507s	coverage: 93.5% of statements
+
+$ golangci-lint run --timeout=2m ./internal/template/agentemit/...
+0 issues.
+
+$ go build ./... && GOOS=windows GOARCH=amd64 go build ./...
+(exit 0, both)
+
+$ go vet ./internal/template/agentemit/...
+(exit 0)
+```
+
+MS1 decisions recorded:
+- TOML validation strategy (plan §A.6 left to MS1): INDEPENDENT test-side
+  spec-subset decoder (`tomldecodertest_test.go`) + codex-cli smoke parsing
+  (MS2/§D.3) — no new go.mod dependency. go.mod has no TOML library (direct
+  or indirect); the emitted grammar is deliberately tiny (3 string forms +
+  1 array form); the real consumer parses the artifacts in the probe smoke.
+- Loader anchors frontmatter on the FIRST closing `---` (plan-auditor body
+  contains a bare `---` hr at a later line — verified).
+- Manifest embedded at `internal/template/agentemit/agents-codex.yaml`
+  (build input; NOT under templates/; never distributed). `ParseManifest`
+  exported for the M4 seam (plan §H).
+- Fixture sources verified pre-implementation: 11/11 name==stem, zero `'''`,
+  zero CR, all files end `\n`, all UTF-8.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
