@@ -45,12 +45,30 @@ var bannedAnthropicEnvNames = []string{
 	EnvAnthropicAPIKey,
 	EnvAnthropicAuthToken,
 	EnvAnthropicBaseURL,
+	EnvAnthropicCustomModelOption,
+	EnvAnthropicCustomModelOptionDescription,
+	EnvAnthropicCustomModelOptionName,
+	EnvAnthropicCustomModelOptionSupportedCapabilities,
 	EnvAnthropicDefaultFableModel,
+	EnvAnthropicDefaultFableModelDescription,
+	EnvAnthropicDefaultFableModelName,
+	EnvAnthropicDefaultFableModelSupportedCapabilities,
 	EnvAnthropicDefaultHaikuModel,
+	EnvAnthropicDefaultHaikuModelDescription,
+	EnvAnthropicDefaultHaikuModelName,
+	EnvAnthropicDefaultHaikuModelSupportedCapabilities,
 	EnvAnthropicDefaultModel,
 	EnvAnthropicDefaultOpusModel,
+	EnvAnthropicDefaultOpusModelDescription,
+	EnvAnthropicDefaultOpusModelName,
+	EnvAnthropicDefaultOpusModelSupportedCapabilities,
 	EnvAnthropicDefaultSonnetModel,
+	EnvAnthropicDefaultSonnetModelDescription,
+	EnvAnthropicDefaultSonnetModelName,
+	EnvAnthropicDefaultSonnetModelSupportedCapabilities,
+	EnvAnthropicModel,
 	EnvAnthropicReasoningEffort,
+	EnvAnthropicSmallFastModel,
 }
 
 // anthropicScanRoots are the three ENUMERATED production roots this guard
@@ -126,7 +144,7 @@ func TestNoBareAnthropicEnvVarLiteralsInProduction(t *testing.T) {
 }
 
 // TestAnthropicBannedSetCoversAllNames asserts at runtime that the derived
-// banned set holds exactly the 10 ANTHROPIC_* names defined in envkeys.go
+// banned set holds exactly the 28 ANTHROPIC_* names defined in envkeys.go
 // (REQ-EAS-008). It is a top-level test function — NOT a sub-test — because the
 // acceptance verdict selects it with a bare top-level -run pattern.
 //
@@ -135,7 +153,7 @@ func TestNoBareAnthropicEnvVarLiteralsInProduction(t *testing.T) {
 func TestAnthropicBannedSetCoversAllNames(t *testing.T) {
 	t.Parallel()
 
-	const wantLen = 10
+	const wantLen = 28
 	if len(bannedAnthropicEnvNames) != wantLen {
 		t.Fatalf("banned set size = %d, want %d", len(bannedAnthropicEnvNames), wantLen)
 	}
@@ -153,12 +171,30 @@ func TestAnthropicBannedSetCoversAllNames(t *testing.T) {
 		{"EnvAnthropicAPIKey", EnvAnthropicAPIKey},
 		{"EnvAnthropicAuthToken", EnvAnthropicAuthToken},
 		{"EnvAnthropicBaseURL", EnvAnthropicBaseURL},
+		{"EnvAnthropicCustomModelOption", EnvAnthropicCustomModelOption},
+		{"EnvAnthropicCustomModelOptionDescription", EnvAnthropicCustomModelOptionDescription},
+		{"EnvAnthropicCustomModelOptionName", EnvAnthropicCustomModelOptionName},
+		{"EnvAnthropicCustomModelOptionSupportedCapabilities", EnvAnthropicCustomModelOptionSupportedCapabilities},
 		{"EnvAnthropicDefaultFableModel", EnvAnthropicDefaultFableModel},
+		{"EnvAnthropicDefaultFableModelDescription", EnvAnthropicDefaultFableModelDescription},
+		{"EnvAnthropicDefaultFableModelName", EnvAnthropicDefaultFableModelName},
+		{"EnvAnthropicDefaultFableModelSupportedCapabilities", EnvAnthropicDefaultFableModelSupportedCapabilities},
 		{"EnvAnthropicDefaultHaikuModel", EnvAnthropicDefaultHaikuModel},
+		{"EnvAnthropicDefaultHaikuModelDescription", EnvAnthropicDefaultHaikuModelDescription},
+		{"EnvAnthropicDefaultHaikuModelName", EnvAnthropicDefaultHaikuModelName},
+		{"EnvAnthropicDefaultHaikuModelSupportedCapabilities", EnvAnthropicDefaultHaikuModelSupportedCapabilities},
 		{"EnvAnthropicDefaultModel", EnvAnthropicDefaultModel},
 		{"EnvAnthropicDefaultOpusModel", EnvAnthropicDefaultOpusModel},
+		{"EnvAnthropicDefaultOpusModelDescription", EnvAnthropicDefaultOpusModelDescription},
+		{"EnvAnthropicDefaultOpusModelName", EnvAnthropicDefaultOpusModelName},
+		{"EnvAnthropicDefaultOpusModelSupportedCapabilities", EnvAnthropicDefaultOpusModelSupportedCapabilities},
 		{"EnvAnthropicDefaultSonnetModel", EnvAnthropicDefaultSonnetModel},
+		{"EnvAnthropicDefaultSonnetModelDescription", EnvAnthropicDefaultSonnetModelDescription},
+		{"EnvAnthropicDefaultSonnetModelName", EnvAnthropicDefaultSonnetModelName},
+		{"EnvAnthropicDefaultSonnetModelSupportedCapabilities", EnvAnthropicDefaultSonnetModelSupportedCapabilities},
+		{"EnvAnthropicModel", EnvAnthropicModel},
 		{"EnvAnthropicReasoningEffort", EnvAnthropicReasoningEffort},
+		{"EnvAnthropicSmallFastModel", EnvAnthropicSmallFastModel},
 	} {
 		if !got[tc.value] {
 			t.Errorf("banned set is missing %s (%q)", tc.name, tc.value)

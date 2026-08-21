@@ -340,6 +340,13 @@ const (
 )
 
 // Anthropic API environment variables.
+//
+// This block enumerates the ANTHROPIC_* namespace COMPLETELY — that
+// completeness is the package's stated SSOT contract, asserted at runtime by
+// TestAnthropicBannedSetCoversAllNames. Most of these names have no MoAI
+// consumer; they are declared so the namespace has no silent gap and so no
+// future consumer needs a bare literal. Source for the model-selection names:
+// https://code.claude.com/docs/en/model-config.
 const (
 	// EnvAnthropicBaseURL overrides the Anthropic API base URL.
 	EnvAnthropicBaseURL = "ANTHROPIC_BASE_URL"
@@ -352,19 +359,31 @@ const (
 	// API, but they are distinct variables with distinct client precedence.
 	EnvAnthropicAPIKey = "ANTHROPIC_API_KEY"
 
-	// EnvAnthropicDefaultModel names the model new sessions start on. Per the
-	// Claude Code v2.1.236 changelog it differs from ANTHROPIC_MODEL in that a
-	// later /model pick overrides it and persists across restarts. It is a
-	// SESSION-STARTING model, not a tier-slot override: the four
-	// EnvAnthropicDefault<Tier>Model names below resolve an alias to a concrete
-	// model ID, and this one does not participate in that resolution.
+	// EnvAnthropicModel names the model for the session launched with it. It is
+	// documented as applying to that launch only: a separate terminal needs its
+	// own value, and a /model pick saved in a settings file does not survive it
+	// — the next launch returns to this variable's model. It outranks
+	// EnvAnthropicDefaultModel, which applies only when no launch-time selector
+	// (--model, this variable, a settings `model` value, or an organization
+	// default) chose a model.
 	//
-	// MoAI neither reads nor writes this variable; the constant exists so the
-	// ANTHROPIC_* namespace stays completely enumerated (the package's stated
-	// SSOT contract) and so the name is available to any future consumer
-	// without a bare literal. Observation scope: the changelog entry. The
-	// official model-configuration page documents ANTHROPIC_MODEL and the four
-	// tier names but not this one, so the changelog is the citable source.
+	// MoAI neither reads nor writes it.
+	EnvAnthropicModel = "ANTHROPIC_MODEL"
+
+	// EnvAnthropicDefaultModel names the model new sessions start on (Claude
+	// Code v2.1.236+). It is a SESSION-STARTING model, not a tier-slot
+	// override: the four EnvAnthropicDefault<Tier>Model names below resolve an
+	// alias to a concrete model ID, and this one does not participate in that
+	// resolution — the two axes are documented separately and do not compete.
+	//
+	// Claude Code applies it only when none of --model, EnvAnthropicModel, a
+	// settings `model` value (including a choice saved with /model), or an
+	// organization default model selects a model; a saved /model choice keeps
+	// precedence on later launches too. It is ignored outright when set to
+	// `default`, `inherit`, `opusplan`, or `haiku`, when enforceAvailableModels
+	// is on, or when the model is excluded or unavailable to the account.
+	//
+	// MoAI neither reads nor writes it.
 	EnvAnthropicDefaultModel = "ANTHROPIC_DEFAULT_MODEL"
 
 	// EnvAnthropicDefaultHaikuModel overrides the default Haiku model ID.
@@ -378,6 +397,92 @@ const (
 
 	// EnvAnthropicDefaultOpusModel overrides the default Opus model ID.
 	EnvAnthropicDefaultOpusModel = "ANTHROPIC_DEFAULT_OPUS_MODEL"
+
+	// Pinned-model display and capability companions. Each tier variable above
+	// takes a _NAME, _DESCRIPTION, and _SUPPORTED_CAPABILITIES companion that
+	// overrides how the pinned model appears in the /model picker and which
+	// features Claude Code enables for it. They take effect on third-party
+	// providers (Amazon Bedrock, Google Cloud's Agent Platform, Microsoft
+	// Foundry); _NAME and _DESCRIPTION also apply when ANTHROPIC_BASE_URL
+	// points at an LLM gateway, and none of them apply on api.anthropic.com.
+	//
+	// MoAI neither reads nor writes any of them.
+
+	// EnvAnthropicDefaultOpusModelName sets the /model picker display name for
+	// the pinned Opus model.
+	EnvAnthropicDefaultOpusModelName = "ANTHROPIC_DEFAULT_OPUS_MODEL_NAME"
+
+	// EnvAnthropicDefaultOpusModelDescription sets the /model picker
+	// description for the pinned Opus model.
+	EnvAnthropicDefaultOpusModelDescription = "ANTHROPIC_DEFAULT_OPUS_MODEL_DESCRIPTION"
+
+	// EnvAnthropicDefaultOpusModelSupportedCapabilities is the comma-separated
+	// capability list for the pinned Opus model.
+	EnvAnthropicDefaultOpusModelSupportedCapabilities = "ANTHROPIC_DEFAULT_OPUS_MODEL_SUPPORTED_CAPABILITIES"
+
+	// EnvAnthropicDefaultSonnetModelName sets the /model picker display name
+	// for the pinned Sonnet model.
+	EnvAnthropicDefaultSonnetModelName = "ANTHROPIC_DEFAULT_SONNET_MODEL_NAME"
+
+	// EnvAnthropicDefaultSonnetModelDescription sets the /model picker
+	// description for the pinned Sonnet model.
+	EnvAnthropicDefaultSonnetModelDescription = "ANTHROPIC_DEFAULT_SONNET_MODEL_DESCRIPTION"
+
+	// EnvAnthropicDefaultSonnetModelSupportedCapabilities is the
+	// comma-separated capability list for the pinned Sonnet model.
+	EnvAnthropicDefaultSonnetModelSupportedCapabilities = "ANTHROPIC_DEFAULT_SONNET_MODEL_SUPPORTED_CAPABILITIES"
+
+	// EnvAnthropicDefaultHaikuModelName sets the /model picker display name for
+	// the pinned Haiku model.
+	EnvAnthropicDefaultHaikuModelName = "ANTHROPIC_DEFAULT_HAIKU_MODEL_NAME"
+
+	// EnvAnthropicDefaultHaikuModelDescription sets the /model picker
+	// description for the pinned Haiku model.
+	EnvAnthropicDefaultHaikuModelDescription = "ANTHROPIC_DEFAULT_HAIKU_MODEL_DESCRIPTION"
+
+	// EnvAnthropicDefaultHaikuModelSupportedCapabilities is the comma-separated
+	// capability list for the pinned Haiku model.
+	EnvAnthropicDefaultHaikuModelSupportedCapabilities = "ANTHROPIC_DEFAULT_HAIKU_MODEL_SUPPORTED_CAPABILITIES"
+
+	// EnvAnthropicDefaultFableModelName sets the /model picker display name for
+	// the pinned Fable model.
+	EnvAnthropicDefaultFableModelName = "ANTHROPIC_DEFAULT_FABLE_MODEL_NAME"
+
+	// EnvAnthropicDefaultFableModelDescription sets the /model picker
+	// description for the pinned Fable model.
+	EnvAnthropicDefaultFableModelDescription = "ANTHROPIC_DEFAULT_FABLE_MODEL_DESCRIPTION"
+
+	// EnvAnthropicDefaultFableModelSupportedCapabilities is the comma-separated
+	// capability list for the pinned Fable model.
+	EnvAnthropicDefaultFableModelSupportedCapabilities = "ANTHROPIC_DEFAULT_FABLE_MODEL_SUPPORTED_CAPABILITIES"
+
+	// EnvAnthropicCustomModelOption adds ONE custom entry to the /model picker
+	// without replacing the built-in aliases. Claude Code skips model-ID
+	// validation for its value, so any string the endpoint accepts is allowed.
+	// It takes the same three companions as the tier variables above.
+	//
+	// MoAI neither reads nor writes it.
+	EnvAnthropicCustomModelOption = "ANTHROPIC_CUSTOM_MODEL_OPTION"
+
+	// EnvAnthropicCustomModelOptionName sets the custom entry's display name;
+	// unset, the picker shows the model ID.
+	EnvAnthropicCustomModelOptionName = "ANTHROPIC_CUSTOM_MODEL_OPTION_NAME"
+
+	// EnvAnthropicCustomModelOptionDescription sets the custom entry's
+	// description; unset, the picker shows "Custom model (<model-id>)".
+	EnvAnthropicCustomModelOptionDescription = "ANTHROPIC_CUSTOM_MODEL_OPTION_DESCRIPTION"
+
+	// EnvAnthropicCustomModelOptionSupportedCapabilities is the comma-separated
+	// capability list for the custom entry.
+	EnvAnthropicCustomModelOptionSupportedCapabilities = "ANTHROPIC_CUSTOM_MODEL_OPTION_SUPPORTED_CAPABILITIES"
+
+	// EnvAnthropicSmallFastModel named the model for background functionality.
+	// It is DEPRECATED upstream in favour of EnvAnthropicDefaultHaikuModel and
+	// is enumerated here for namespace completeness, not for use: prefer the
+	// Haiku tier variable in any new code.
+	//
+	// MoAI neither reads nor writes it.
+	EnvAnthropicSmallFastModel = "ANTHROPIC_SMALL_FAST_MODEL"
 
 	// EnvAnthropicReasoningEffort carries the GLM effort-overlay's session-global
 	// reasoning-control value (SPEC-MODEL-TIER-PLANTYPE-001 M5, REQ-MTP-030
