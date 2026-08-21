@@ -436,7 +436,23 @@ m1_to_mN_commit_strategy: per-milestone commits (M1 7a7a05384, M2 abf08c1f0, M3 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-22
+sync_commit_sha: pending-backfill-sync   # placeholder; a commit cannot know its own SHA — backfilled in a follow-up commit
+sync_status: completed                   # spec.md status: in-progress -> completed on the sync commit (frontmatter status+updated only, no body change)
+b12_self_test_a: pass                    # pre-emission grep 'SPEC-CODEX-DUAL-AGENTS-001' CHANGELOG.md -> 0 before writing; -> 1 after
+b12_self_test_b: pass                    # AC count match: acceptance.md distinct AC identifiers = 13; CHANGELOG entry cites 13 as verified
+b12_self_test_c: pass                    # claimed paths verified via ls: internal/template/agentemit (10 files), internal/template/templates/.codex/agents/moai (11 tomls)
+changelog_entry_position: CHANGELOG.md [Unreleased] -> Added (first entry under the section head)
+frontmatter_status_transitions:
+  spec_md: in-progress -> completed
+  scope: "status + updated only (updated already 2026-08-22; no other field changed)"
+canary_compliance_check:
+  body_untouched: true                   # spec/plan/acceptance bodies not modified
+  lightweight_scope: true                # lead-scoped: CHANGELOG + frontmatter + SHA bookkeeping only; no README/docs-site (M-series design cards own that surface)
+```
+
+Sync-phase notes: single sync commit `docs(SPEC-CODEX-DUAL-AGENTS-001): sync-phase artifacts` carries the CHANGELOG [Unreleased] entry, the spec.md frontmatter close, and this §E.4 block (with the `pending-backfill-sync` placeholder). A follow-up commit `chore(SPEC-CODEX-DUAL-AGENTS-001): backfill sync_commit_sha` replaces the placeholder with the real sync-commit SHA (placeholder-backfill exemption). Factory lane: not pushed — the lead integrates.
 
 ## §F Phase 4 Mode Selection
 

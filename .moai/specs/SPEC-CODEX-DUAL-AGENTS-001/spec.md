@@ -2,7 +2,7 @@
 id: SPEC-CODEX-DUAL-AGENTS-001
 title: "Codex Dual Harness M5 — Dual Publication of the 11 Agent Definitions from a Neutral Source"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-08-22
 updated: 2026-08-22
 author: manager-spec

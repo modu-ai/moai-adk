@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **[SPEC-CODEX-DUAL-AGENTS-001](.moai/specs/SPEC-CODEX-DUAL-AGENTS-001/spec.md)** — sync-phase close (3-phase plan→run→sync). **The 11 retained MoAI agent definitions are now published in dual form — the existing `.claude/agents/moai/*.md` and a new codex-cli-consumable `.codex/agents/moai/*.toml` — generated deterministically from a single neutral source: the template `.md` frontmatter+body core.** A new `internal/template/agentemit` emitter package (loader → manifest → TOML writer, `agents-codex.yaml` manifest) drives the publication, and the 11 committed `.codex/agents/moai/*.toml` template artifacts ship in `internal/template/templates/` so `moai init`/`moai update` distributes them alongside the markdown set. Golden, embed, and deploy guards pin the emitted TOML against drift from the markdown source.
+  - The `mcp_servers` field in the agent-TOML output is a `[mcp_servers.moai]` table (map shape), not an array — codex-cli rejects the array form. This was a run-phase measured correction (M3 `445bfd3b5` + M3b `e6c2239e5`, errata `a0a426d7c`), not an assumption: the array form failed real codex-cli parsing.
+  - Run-phase per-milestone commits: M1 `7a7a05384` → M2 `abf08c1f0` → M3 `445bfd3b5` → M3b `e6c2239e5` → MS4 `48032316d` → errata `a0a426d7c` — factory lane, not pushed (the lead integrates). 13 acceptance criteria (verified count against `acceptance.md`), all covered by the run-phase §E.2/§E.3 evidence at HEAD `48032316d`. This sync commit carries only the frontmatter `in-progress → completed` transition on `spec.md` (`status:` + `updated:` only), the `progress.md §E.4` audit-ready signal, and this CHANGELOG entry — zero further code changes (lightweight sync per lead scoping: no README/docs-site changes, which belong to the M-series design cards). `sync_commit_sha` populated as a `pending-backfill-sync` placeholder and backfilled in a follow-up commit. 🗿 MoAI
+
 ## [3.1.2] - 2026-08-21
 
 ### Summary
