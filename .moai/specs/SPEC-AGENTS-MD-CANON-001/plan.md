@@ -136,6 +136,10 @@ mistake here is a Claude-side regression, which REQ-AMC-010 forbids.
 - The guard **fails the build**, it does not warn (REQ-AMC-009, rationale `spec.md` §D.7).
   Truncation is measured silent, so this is the only signal that will ever fire.
 - Failure output names the measured byte figure and the offending file.
+- **Do not author a new over-budget fixture.** `TestAlwaysLoadedTokenBudget_OverBudgetFails` already
+  covers the token-budget negative path (over-budget fires, under-budget does not) and passes on
+  this tree. Extend its table-driven shape in the same file for the Codex-cap dimension; a parallel
+  harness would be the second measurement path REQ-AMC-008 forbids.
 - Lower `AlwaysLoadedTokenBudget` to the achieved figure plus a stated headroom ratio, ≤ 75,000,
   measured on the **integration branch** — the `release/vX.Y.Z` branch this card merges into,
   carrying the merged sibling state (REQ-AMC-014). Record `git rev-parse --abbrev-ref HEAD` and

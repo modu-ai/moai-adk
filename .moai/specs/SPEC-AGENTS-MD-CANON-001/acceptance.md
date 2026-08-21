@@ -103,9 +103,27 @@ it is green, and no expected-behavior assertion was edited to accommodate the ch
 
 ## §E. M5 — guard and ratchet
 
-**AC-AMC-016** — Given a test fixture that pushes `AGENTS.md` one byte past its ceiling, When the
-guard runs, Then it **fails the build** — not warns — and its message names the measured byte
-figure and the offending file. (REQ-AMC-009: an advisory-only guard does not pass.)
+**AC-AMC-016** — The negative path has two dimensions, and only one of them needs new coverage.
+
+**(a) Token-budget over-budget detection — already covered; do not write a second fixture.**
+Given `TestAlwaysLoadedTokenBudget_OverBudgetFails`
+(`internal/config/token_budget_guard_test.go`), When
+`go test -v ./internal/config/ -run 'OverBudgetFails'` runs, Then both subtests pass: the
+`over-budget` case plants an `AlwaysLoadedTokenBudget*4 + 4096` byte file in a temp tree and
+asserts the guard fires; the `under-budget` case asserts it does not. Measured on this tree:
+`--- PASS: …/over-budget`, `--- PASS: …/under-budget`, `ok … 0.561s`. A new fixture duplicating
+this would be the second measurement path REQ-AMC-008 forbids.
+
+**(b) Codex-cap byte-guard breach — genuinely new coverage.** Given a case that pushes `AGENTS.md`
+one byte past its ceiling, When the guard runs, Then it **fails the build** — not warns — and its
+message names the measured byte figure and the offending file (REQ-AMC-009). This case extends the
+existing table-driven test in the same file and reuses the same path-resolution and repo-root
+helpers; it does not introduce a parallel harness.
+
+> Why (a) is cited rather than rebuilt: the existing test proves the guard *fires* when the surface
+> is too large. It proves nothing about whether the constant was set from the achieved figure or
+> simply parked at the ceiling — that gap is `AC-AMC-019`'s, and it is the only part of the ratchet
+> still genuinely uncovered.
 
 **AC-AMC-017** — Given the byte guard's implementation, When it is read, Then it calls
 `alwaysLoadedSurface()` (or the same enumeration helper) rather than re-globbing the rule tree.

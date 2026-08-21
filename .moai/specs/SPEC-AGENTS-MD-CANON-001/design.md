@@ -188,6 +188,31 @@ measured default, the 8,192 B reserve, and what the reserve is protecting. It is
 the call site, and it is not read from a user's codex config at test time — the guard stays
 hermetic, like the existing one.
 
+**The negative path reuses what exists.** `TestAlwaysLoadedTokenBudget_OverBudgetFails` already
+proves the token-budget guard fires on an over-budget surface and stays quiet on an under-budget
+one; it passes on this tree. The Codex-cap dimension extends that table-driven test in the same
+file rather than standing up a parallel harness — one measurement path, two thresholds, one place
+to look when either moves.
+
+### 5.2 Why the singleton check is `git ls-files` with two pathspec modifiers
+
+`AC-AMC-010` asks a narrow question — does any `AGENTS.md` exist in the live tree outside the
+repository root? — and three constructions answer it differently:
+
+| Construction | Worktree copies | Template mirror | Verdict |
+|---|---|---|---|
+| `find . -name AGENTS.md` | counted (varies with live lanes) | counted | fails both ways |
+| `find` scoped to the primary checkout root | excluded | **still counted** — the mirror lives in the primary checkout too | closes one half; `AC-AMC-010` still contradicts `REQ-AMC-015` |
+| `git ls-files … ':!internal/template/templates/'` | excluded (untracked / separate index) | excluded by name | closes both |
+
+The third is the form used. It carries two additional modifiers over the bare version, each closing
+a residual hole: **`--full-name` with `:(top)`** makes the result independent of the directory the
+criterion runs from (a plain `git ls-files` invoked from a subdirectory silently scopes to that
+subdirectory — the same nondeterminism in a different disguise), and **`:(exclude,top)`** applies
+the mirror exclusion from the repository root rather than relative to the caller. Measured against
+the `CLAUDE.md` analogue in this worktree: `find` → 7, the guarded form → the 6 live-tree files with
+the mirror correctly excluded.
+
 **The guard is blocking, not advisory.** This is the design's single most load-bearing choice, and
 it follows from a measurement rather than a preference: truncation emits nothing — stderr 0 bytes,
 exit 0, the `truncating` string is a tracing event that never surfaces. There is no runtime signal

@@ -20,6 +20,13 @@ D10-D12 also applied: `REQ-AMC-004` relabelled Unwanted, `REQ-AMC-006`'s leading
 inline rationale moved out of `REQ-AMC-005` / `REQ-AMC-009` into §D.6 / §D.7. AC count 21 → 24,
 REQ count 17 → 18 (Tier L ceiling 25 each).
 
+Two dispatcher refinements folded into the same revision: `AC-AMC-016` now **cites the existing**
+`TestAlwaysLoadedTokenBudget_OverBudgetFails` for the token-budget negative path rather than
+proposing a duplicate fixture (verified passing on this tree), leaving only the Codex-cap dimension
+as new coverage; and `design.md` §5.2 records why the singleton check uses `git ls-files` with
+`:(top)` / `:(exclude,top)` rather than a path-scoped `find` — the latter closes the worktree
+half but not the mirror half, since the mirror lives in the primary checkout too.
+
 Measured figures cited in the artifacts, with their commands:
 
 | Claim | Command | Output |
