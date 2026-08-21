@@ -786,3 +786,4 @@ was drawn down only 6.0 %. Naming the arithmetic here is cheaper than deriving i
     `75,000 ÷ 1.13 = 66,371`. A measurement above that closes no ratchet at any ratio.
   - `.claude/output-styles/moai/moai.md` — 61,706 B, 23 % of the always-loaded surface, untouched
     by this SPEC and excluded from M1's reduction bound. The next lever if the ratchet tightens.
+mx_commit_sha: (this commit)
