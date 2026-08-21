@@ -19,3 +19,13 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+Logged by the orchestrator (lane-9) before the first run-phase Agent() spawn.
+
+**Decision: serial** (manager-develop, cycle_type=tdd)
+
+**Justification**: 8-file surface but a single behavioral seam (one mapping line + its session-default twin) with mechanically-coupled test flips — single-author sequential fits; no parallelism benefit (1 domain, coding-heavy). Kickoff: lead batch approval (plan-ratification message 2026-08-22 covered the §D-1/§D-2 decisions) + plan-audit iter-2 PASS 1.00.
+
+**Plan Audit Gate note**: the iter-1 FAIL verdict meant no skip was available for a would-be gate run; iter-2 PASS + artifact-hash now current. Skip-eligible conditions recorded (PASS 1.00 ≥ 0.75; hash unchanged since the verdict except this §F note, not a hash subject).

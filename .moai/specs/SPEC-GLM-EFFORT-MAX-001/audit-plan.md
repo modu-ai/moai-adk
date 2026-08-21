@@ -74,3 +74,56 @@ FAIL — but read it precisely: the SPEC's substance is strong (0.875 aggregate,
 2. manager-spec: fold the ratified outcomes into plan.md §D-1/§D-2 (marker headings → RESOLVED records; apply the §D-1-not-ratified branch of B-1 if applicable), and fix D2/D3/D4(+D5) in the same edit.
 3. Proceed to Implementation Kickoff Approval, then `/moai run`: the Phase 1 Plan Audit Gate will re-execute this audit (latest verdict FAIL + artifact-hash change ⇒ no skip-eligibility) and should PASS on a clean marker grep + the enumerated defect delta — no from-scratch re-audit needed.
 4. If the lead wants to avoid the gate re-run cost, resolving D1..D4 BEFORE the run-phase gate is the enumerated delta the re-audit will be scoped to.
+
+---
+
+# Iteration 2 — Delta Re-Audit (Phase-1 gate re-execution, scoped to the D1-D6 defect delta)
+
+Revision audited: commit `46ddbd838` (SPEC v0.1.1). Diff `6d12df688..46ddbd838` touches ONLY `spec.md`, `plan.md`, `progress.md`, and this report copy — no code files, no scope creep. Reasoning context ignored per M1 Context Isolation; coordinator claims verified against the artifacts, not trusted.
+
+## Regression Check (prior-iteration defects)
+
+- D1 (critical, MP-7): **RESOLVED** — MP-7 verb re-executed: `grep -rn 'NEEDS CLARIFICATION' plan.md research.md` → 0 matches (research.md absent, Tier S N/A; dir-wide literal survives only inside this audit report — outside verb scope, audit trail preserved). plan.md:42 `§D-1 [RESOLVED 2026-08-22, lead-ratified]` records max + the REQ-GER-004 supersession with three enumerated ratified grounds; plan.md:54 `§D-2 [RESOLVED 2026-08-22, lead-ratified]` puts the mirror hunk in scope; spec.md HISTORY 0.1.1 row records both; M1 unblocked (plan.md:78).
+- D2 (major): **RESOLVED** — plan.md:8 reworded to the honest "8 files: 1 behavior + 4 test flips + 2 comment-only + 1 template doc"; glm.go moved out of "NOT touched" into the affected list as comment-only (item 6, plan.md:14); the false "under the 5-file guidance" claim removed. Enumeration now matches AC-GEM-006's exclusion list.
+- D3 (minor): **RESOLVED** — REQ-GEM-005 (spec.md:63) now carries the profile_matrix.go :219-227 grouping-comment clause ({medium, high, xhigh, max} → max; low → low); AC-GEM-007 (spec.md:81) extended with the matching grep claim; plan §D-3 PRESERVE list corrected with the move-out note; M2 includes the comment update.
+- D4 (minor): **RESOLVED** — AC-GEM-003 (spec.md:73) and REQ-GEM-003 (spec.md:59) reworded: `GLMStateHigh` "present and still referenced" (true — :136 + schema_sections.go:184), `GLMReasoningEffortHigh` "present as a declared constant (deterministically unreferenced in-repo post-change …; exported, so not an unused finding)" — now matches the verified reference inventory exactly. The AC is satisfiable as worded.
+- D5 (minor, optional): **RESOLVED** — plan.md:56 reads "AC-GEM-007".
+- D6 (minor, optional): **RESOLVED** — spec.md §5 Out of Scope carries the recorded-not-fixed staleness note for schema_sections.go:175-180; plan.md B-7 guards run-phase against "fixing" it.
+
+## New-claim verification (revision-introduced text, adversarial pass)
+
+spec.md §1.3 now carries lead-arbitration facts. Each verified against the repo:
+- "M1 commit 763582247 unpushed" — `git cat-file -t 763582247` → commit exists; `git branch -a --contains 763582247` → EMPTY (no local or remote branch carries it). VERIFIED.
+- "stalled draft — v0.1.0" — REBALANCE frontmatter `version: "0.1.0"`. VERIFIED.
+- "its v3.1.0 target already shipped without it" — REBALANCE `phase: "v3.1.0 target"`; repo history shows the v3.1.x release line merged (release/v3.1.2 PR #1589). CONSISTENT.
+- "inactive since 2026-08-15" — REBALANCE `updated: 2026-08-14`. VERIFIED.
+- The spec honestly distinguishes catalog status (`in-progress`, verified directly) from the lead arbitration, and keeps REBALANCE's retirement Out of Scope (§5, separate lead query at batch time). D7 remains clean: REBALANCE is not in {retired, superseded, archived}; the supersession sentence is itself the reconciliation context.
+
+## Must-Pass Results (iteration 2)
+
+- [PASS] MP-1 — REQ-GEM-001..006 / AC-GEM-001..008 sequential, no gaps/duplicates; ceilings held (6≤8, 8≤8).
+- [PASS] MP-2 — all six REQs remain GEARS-conformant through the rewrite (Ubiquitous / While / Where / When / Ubiquitous / Ubiquitous; judgment against the requirement layer only).
+- [PASS] MP-3 — 12/12 canonical fields intact; `version: "0.1.1"` quoted semver, HISTORY 0.1.1 row added (version-history consistency holds).
+- [N/A] MP-4 — single-language Go repo SPEC.
+- [PASS] MP-5 — no D7 BLOCKING; no new SPEC references introduced; supersession facts verified (above).
+- [PASS] MP-6 — no `syscall` in the revision.
+- [PASS] MP-7 — 0 unresolved markers in plan.md (research.md absent).
+
+## Category Scores (iteration 2)
+
+| Dimension | Score | Evidence |
+|-----------|-------|----------|
+| Clarity | 1.0 | D4 fix removes the last ambiguity; REQ-GEM-005 mirror clause no longer contingent (§D-2 resolved, ratified inline) |
+| Completeness | 1.0 | unchanged; §5 Out of Scope now also carries the D6 staleness record |
+| Testability | 1.0 | AC-GEM-003 now precise and satisfiable; AC-GEM-007 extension remains grep-bounded binary |
+| Traceability | 1.0 | delta-consistent: REQ-GEM-005's new profile-matrix clause ↔ AC-GEM-007's new claim |
+
+**Aggregate: 1.0** (Tier S threshold 0.75). Trajectory 0.875 → 1.0 — increasing; no STOP signal.
+
+## Verdict (iteration 2)
+
+**PASS.** All prior-iteration defects resolved with evidence; no new defects found in the delta; no regression (REQ/AC structure, frontmatter, GEARS conformance, D7, D8, MP-7 all re-verified). Implementation Kickoff Approval may proceed; on approval, run-phase M1 (RED) is unblocked per plan.md:78.
+
+Residual observation (non-defect, no action required): the honest 8-file diff set exceeds the Tier S "<5 files" guidance; the plan now discloses this without a false conformity claim, LOC is far under 300, and the tier taxonomy's targeted anti-pattern (1000+ LOC classified Tier S) does not apply. Disclosure suffices.
+
+Gaps (VCI §3.4): z.ai probes P1/P2/P3 still not re-executed (attributed to the committed measurement record, unchanged since iteration 1). Code anchors not re-read file-by-file this iteration — the revision diff provably touches no code file (diffstat), so iteration-1 anchor verification carries forward. audit_multi not run per orchestrator instruction (worktree-blind, t171).
