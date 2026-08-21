@@ -459,6 +459,10 @@ moai-adk-go uses YAML for configuration:
 - **Hook timeout** → settings.json `{"timeout": 60}` (기본 5초).
 - **`moai version` exit 137 (SIGKILL) after binary reinstall** → `cp bin/moai ~/go/bin/moai`만으로 부족; 기존 binary 잔재(go install buildinfo·mmap 캐시)가 꼬여 SHA가 같아도 crash. **반드시 `rm -f ~/go/bin/moai && cp bin/moai ~/go/bin/moai`**(또는 `make install`)로 inode 갱신하며 clean 재설치. 맨손 `go install ./cmd/moai`는 금지 — `LDFLAGS`(Makefile:9)를 안 실어서 `pkg/version`의 컴파일 기본값(`Commit="none"`, `Date="unknown"`)이 박히고, 그러면 `strings ~/go/bin/moai | grep <sha>` 기반 binary lag 검증 자체가 불가능해진다. `make install`(Makefile:38)은 `go install $(LDFLAGS) ./cmd/moai`라 안전. 직후 `~/go/bin/moai version; echo $?`로 exit 0 확인(137이면 rm+cp 재시도). 진단 징후: `bin/moai version`=0인데 `~/go/bin/moai version`=137. binary lag 검증은 §6 검증 규율(clear → 측정).
 
+### [HARD] 사용 중 버그·개선 발견 → 즉시 `/moai:feedback`
+
+MoAI-ADK를 사용하다 버그나 개선이 필요한 부분을 발견하는 족족 `/moai:feedback`으로 피드백을 제출한다 — 세션을 마친 뒤 몰아서 남기지 않는다. 대상: `moai` CLI 동작, 훅, 템플릿, 스킬, 에이전트, 팩토리·칸반 운영 결함 전반. 재현 명령과 관측된 출력을 함께 남긴다. 구분: 유지자에게 보고할 사안은 `/moai:feedback`, 작업으로 예정할 사안은 `/moai todo add`.
+
 ---
 
 ---
