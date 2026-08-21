@@ -136,8 +136,8 @@ the attribution.
 
 ## §H Cross-References
 
-- `.moai/reports/diagram-design-absorption/survey.md` — the source analysis
-- `.moai/reports/diagram-design-absorption/diagram-design-absorption-20260822.md`
-  — the A/B/C/D verdict this implements
+- `.moai/reports/t165/upstream/survey.md` — the source analysis
+- `.moai/reports/t165/upstream/absorption-verdict.md` — the A/B/C/D verdict this
+  implements
 - `.claude/rules/moai/development/skill-authoring.md` — progressive-disclosure
   budgets that bound D4

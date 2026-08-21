@@ -186,10 +186,15 @@ there to start from rather than to re-derive — and a second candidate
 
 ### Observed out of scope
 
-- `SPEC §4 Evidence` and `plan.md §H` cite
-  `.moai/reports/diagram-design-absorption/…`, a path that does not exist on
-  this branch. The artifacts are at `.moai/reports/t165/upstream/`, which
-  `plan.md §C` names correctly. A citation fix, not a content problem.
+- `SPEC §4 Evidence` and `plan.md §H` cited
+  `.moai/reports/diagram-design-absorption/…`, a lead-side uncommitted research
+  directory that does not exist on this branch. The artifacts are at
+  `.moai/reports/t165/upstream/`, which `plan.md §C` already named correctly.
+  **Repaired in sync-phase** at the lead's direction — the citations now name the
+  committed copies (`survey.md`, `absorption-verdict.md`, `UPSTREAM-LICENSE`),
+  and `grep -rn 'diagram-design-absorption'` over `spec.md` and `plan.md` returns
+  no match. The change is a citation repair only: no requirement, criterion, or
+  scope statement was touched.
 - Running a command from a drifted working directory caused the statusline hook
   to write `.moai/state/{config-cache,context-usage}.json` **relative to that
   directory** rather than to the project root, creating a stray `.moai/` tree

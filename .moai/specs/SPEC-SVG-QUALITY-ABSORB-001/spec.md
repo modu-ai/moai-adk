@@ -173,10 +173,14 @@ omitting it is a licence defect, not a style miss.
 
 ## §4 Evidence
 
-- `.moai/reports/diagram-design-absorption/survey.md` — the 412-file survey
-- `.moai/reports/diagram-design-absorption/diagram-design-absorption-20260822.md`
-  — the A/B/C/D classification this SPEC implements the A tier of
-- Source clone: `/tmp/diagram-design` (v2.6.1, MIT, LICENSE present)
+- `.moai/reports/t165/upstream/survey.md` — the 412-file survey
+- `.moai/reports/t165/upstream/absorption-verdict.md` — the A/B/C/D
+  classification this SPEC implements the A tier of
+- `.moai/reports/t165/upstream/UPSTREAM-LICENSE` — the MIT text the REQ-8
+  attribution duty rests on
+- Source clone: `/tmp/diagram-design` (v2.6.1, MIT, LICENSE present). Volatile —
+  the three files above are the committed copies these citations resolve to, and
+  the clone is never a precondition (plan.md §C.2).
 - A-3 absence measured this session: `aria|role=|<title>|<desc>` → 0 matches
   across `SKILL.md`, `references/*.md`, and `scripts/*.mjs`
 
