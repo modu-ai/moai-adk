@@ -34,9 +34,12 @@ Absorbing 39 type specifications would fight this skill's mermaid routing and it
 "one diagram, one home" rule; absorbing the rules behind the look does not.
 
 One of the six is a plain gap rather than a thinness: **the skill has no
-accessibility contract at all.** Measured: `aria`, `role=`, `<title>`, and
-`<desc>` occur zero times across `SKILL.md`, all three references, and both
-scripts. Every SVG this skill emits is currently unreadable to a screen reader.
+accessibility contract at all.** Measured with an anchored pattern —
+`grep -rE 'aria-|\brole=|<title>|<desc>'` — across `SKILL.md`, all three
+references, and both scripts: **zero matches**. (The anchoring matters: a bare
+`aria` also matches the word "v*aria*ble", which occurs once in `render.mjs`
+and is not an accessibility attribute.) Every SVG this skill emits is currently
+unreadable to a screen reader.
 
 ## §2 Scope
 
@@ -44,7 +47,7 @@ scripts. Every SVG this skill emits is currently unreadable to a screen reader.
 
 | Item | Content | Lands in |
 |---|---|---|
-| A-1 | Connector rules, 6 enforced: orthogonal elbow `r=8`; 6–10px mask gap; no overlap, bridge/hop on cross; attachment fan `L·k/(N+1)` with ≥12px spacing; no routing behind a non-endpoint node; mask must not overlap a following node | `references/authoring.md` §2 |
+| A-1 | Connector rules, 6 enforced: orthogonal elbow `r=8`; 6–10px mask gap; no overlap, bridge/hop on cross; attachment fan `L·k/(N+1)` with ≥12px spacing; no routing behind a non-endpoint node **except a geometrically unavoidable transit** (§3 REQ-1); mask must not overlap a following node | `references/authoring.md` §2 |
 | A-2 | Per-type complexity budget table (node ceilings by diagram type) | `SKILL.md` + `references/archetypes.md` |
 | A-3 | Accessible-SVG contract: `role`, `aria-labelledby`, prefixed IDs, `<title>` as first child, `<desc>` describing content | `SKILL.md` + `references/authoring.md` |
 | A-4 | 14 "AI slop" anti-patterns | `SKILL.md` § Red Flags |
@@ -68,6 +71,8 @@ routing to this skill, **on the image-output path only**.
   is what makes its output readable offline and in email.
 - HTML variants, motion modes, and the terminal sub-skin stay out — the static
   SVG + PNG contract is unchanged.
+- This exclusion is checkable rather than stated: REQ-9 gives it an acceptance
+  criterion, because a prohibition nothing tests is a prohibition that drifts.
 
 ### Out of Scope — the docs-site text-sync path
 
@@ -83,15 +88,32 @@ routing to this skill, **on the image-output path only**.
 
 ## §3 Requirements (GEARS)
 
-Acceptance criteria live in `acceptance.md` (Tier M): the scope reaches ten files
-once template mirrors are counted, and thirteen criteria exceed what Tier S
-budgets — tiering up is the prescribed response to that, not trimming the
-criteria until they fit.
+Acceptance criteria live in `acceptance.md` (Tier M). The tier rests on the
+criterion count: fourteen exceed what Tier S budgets (8), and tiering up is the
+prescribed response to that rather than trimming criteria until they fit.
+
+(An earlier draft justified the tier with a file count of ten. That was wrong —
+the change touches four skill files plus their four mirrors, eight. The count is
+corrected here; the tier decision stands on the criterion budget, which is
+independent of it.)
 
 ### REQ-1 — Connector rules (A-1)
 
 `authoring.md` §2 SHALL state the six connector rules as numeric constraints,
 each with the formula or tolerance a checker could later assert.
+
+Rule 5 SHALL carry its exception verbatim in substance: a connector may pass
+behind a non-endpoint box **when that box is geometrically unavoidable on the
+only direct orthogonal path**, and in that case the stroke is dashed (signalling
+transit rather than interaction), the label sits at the connector's visible end,
+and no arrowhead lands on the intervening box's edge. Rerouting remains the
+default; the exception covers the narrow case where rerouting is geometrically
+impossible.
+
+**Why the exception is load-bearing.** Stating rule 5 as an absolute prohibition
+would make the sibling verifier card flag every legitimate dashed transit as a
+violation — a false-positive class introduced by the SPEC rather than by the
+code. An earlier draft of this SPEC did exactly that.
 
 ### REQ-2 — Complexity budgets (A-2)
 
@@ -122,9 +144,24 @@ hex, with a light↔dark inversion rule.
 
 ### REQ-7 — Mermaid bypass exception list (evidence-gated)
 
-The exception list SHALL name only types for which a sample comparison was
-actually produced, and SHALL record, per type, the mermaid output and the
-absorbed-rule output that justified it.
+The exception list SHALL live in `SKILL.md` § Step 0, immediately beneath the
+existing routing table, so a reader deciding a route sees the carve-out at the
+point of decision rather than in a reference they may not open.
+
+It SHALL name only types for which a sample comparison was actually produced,
+and SHALL record, per type, the mermaid output and the absorbed-rule output that
+justified it.
+
+The candidate set to evaluate is seeded as: **journey**, **ER-schema**,
+**quadrant**, **timeline**. These are seeds, not entries — each earns a place on
+the list only through REQ-7's evidence gate, and the run phase MAY add or drop
+candidates as the comparisons come in.
+
+### REQ-9 — No external asset survives the absorption
+
+WHERE absorbed text names a font, an icon source, or any other asset, the
+resulting rule SHALL resolve it from the skill's existing language-aware stacks
+or from an inlined asset, and SHALL NOT introduce a fetch at view time.
 
 ### REQ-8 — Distribution and attribution
 

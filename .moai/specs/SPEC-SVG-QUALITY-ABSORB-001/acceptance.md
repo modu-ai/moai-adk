@@ -20,13 +20,14 @@
 | AC-REQ-7c | REQ-7 | MUST-PASS | Every entry is image-path-scoped; none touches locale-synced text |
 | AC-REQ-8a | REQ-8 | MUST-PASS | Template mirrors updated in the same commit; `make build` clean |
 | AC-REQ-8b | REQ-8 | MUST-PASS | Attribution recorded where the absorbed rules land |
+| AC-REQ-9 | REQ-9 | MUST-PASS | No absorbed rule introduces a view-time asset fetch |
 | AC-BUDGET | REQ-2 | SHOULD | `SKILL.md` stays within its progressive-disclosure budget |
 
 ## §D.1 Severity / Traceability
 
 Every REQ carries at least one MUST-PASS. AC-BUDGET is SHOULD because it
 constrains how the content is distributed between L2 and L3 rather than whether
-the content is correct. 13 criteria against the Tier M ceiling of 16.
+the content is correct. 14 criteria against the Tier M ceiling of 16.
 
 ## §D.2 Given-When-Then
 
@@ -129,6 +130,15 @@ a defect of a different kind from a missing rule.
 **Given** `SKILL.md` after the additions, **when** measured, **then** it remains
 within the progressive-disclosure budget for an L2 body, with A-2's table and
 A-4's detail living at L3 and the L2 body carrying the rule plus a pointer.
+
+### AC-REQ-9 — the no-external-asset contract stays checkable
+
+**Given** the changed skill files, **when** searched for a view-time fetch —
+`fonts.googleapis.com`, `fonts.gstatic.com`, `@import`, and any `http`-scheme
+`url(...)` outside a fragment reference — **then** there are zero matches.
+**Why an AC and not just an exclusion**: a prohibition nothing tests drifts. The
+absorbed source uses a font CDN, so the rule most likely to arrive by copy is
+exactly the one this skill forbids.
 
 ## §D.3 Residual Risk
 

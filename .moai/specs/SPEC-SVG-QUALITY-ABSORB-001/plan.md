@@ -4,9 +4,9 @@
 > restructure and the exception list are the reviewable calls; the rest is
 > rule-writing against a survey that already did the analysis.
 >
-> Tier M (3 artifacts). Tier S was the survey's estimate, but the scope reaches
-> ten files once template mirrors are counted and the criteria exceed Tier S's
-> budget — tiering up is the prescribed response to that.
+> Tier M (3 artifacts). Tier S was the survey's estimate; the criterion count
+> (14) exceeds Tier S's budget of 8, and tiering up is the prescribed response.
+> Scope is eight files: four skill files plus their four mirrors.
 
 ## §A Context
 
@@ -23,7 +23,7 @@ Target surfaces, measured this session:
 | `references/authoring.md` | 12,560 | A-1 §2 connectors, A-3 skeleton, A-6 §3 palette |
 | `references/archetypes.md` | 6,110 | A-2 per-archetype budgets |
 | `scripts/check-svg.mjs` | 16,934 | AC-3b accessible-name check |
-| template mirrors of all of the above | — | Template-First |
+| template mirrors of the four above | — | Template-First (4 files) |
 
 ## §B Known Issues Going In
 
@@ -42,11 +42,15 @@ Target surfaces, measured this session:
 
 ## §C Pre-Flight
 
-1. `/tmp/diagram-design` resolves and still carries `LICENSE` (the attribution
-   basis). If the clone is gone, re-derive from the survey rather than guessing.
-2. `node scripts/check-svg.mjs --help` (or equivalent) runs — AC-3b extends it.
-3. `.moai/reports/diagram-design-absorption/survey.md` readable — the rule text
-   is derived from it, not re-derived from the source tree.
+1. `.moai/reports/t165/upstream/survey.md` readable **from this branch** — the
+   rule text is derived from it. The survey originally lived in an untracked
+   report directory that exists only in the primary checkout, so it is committed
+   here; a pre-flight pointing at the untracked path would fail in the very tree
+   the run executes in.
+2. `.moai/reports/t165/upstream/UPSTREAM-LICENSE` present — the attribution basis
+   (REQ-8), committed for the same reason. The `/tmp/diagram-design` clone is
+   volatile and MUST NOT be a pre-flight dependency.
+3. `node scripts/check-svg.mjs --help` (or equivalent) runs — AC-3b extends it.
 
 ## §D Constraints (Hard)
 
