@@ -250,6 +250,17 @@ Then  항목 수가 0 이고 파일이 유효한 JSON 으로 남는다
 ```
 `go test ./internal/feedback/ -run 'TestQueueResolvesOnSuccess' -v` → PASS
 
+> **M6 부채 — 감사 iter3 인용(원문 그대로).** 아래 AC의 ②③은 이번 회차에 고치지 않는다. 스킬 절의 실제 모양을 알아야 제대로 다시 쓸 수 있으므로 **M6 착수 시점에 재작성**한다.
+>
+> **AC-F-019 as written passes on a skill body that (i) never passes `--title` to the scrubber, (ii) never mentions the queue branch, and (iii) never binds gate labels to `conversation_language` — and its ③ supplement cannot be satisfied without breaking the template language rule.** Before M6 is judged complete, the four greps must be re-authored, and each replacement token must be shown to return **0** against the pre-implementation tree (`git show <base>:<skill path>`). Until then, M6's exit is a claim, not an observation.
+>
+> 위 인용 중 (ii)(iii)은 **이번 회차에 해소했다** — ④⑤ 토큰을 base에서 0을 반환하는 것으로 교체했다(아래 표). 남은 부채는 (i)과 ③ 두 건이다:
+>
+> - **(i) ②의 앵커 부재** — `grep -c -- '--title'` 는 파일 어디의 `--title` 이든 잡는다. 스킬 본문은 이미 제출 명령(`feedback.md:118`)과 `Title: User-provided title`(`:87`)을 담고 있어, 본문만 스크럽하고 `gh issue create --repo <x> --title "<제목>"` 를 쓰는 구현이 ②를 통과한다 — **스크러버가 제목을 받지 않은 채로**. M6에서 호출과의 동일 줄 앵커(예: `grep -cE 'moai feedback scrub[^\n]*--title'`)나 ①과의 줄 번호 일치 검사로 재작성한다.
+> - **③의 한국어 리터럴** — `grep -n '종료 코드\|verdict\|60초'` 가 **영어 전용 + 템플릿 미러 대상**을 한국어로 겨냥한다. 형제 SPEC(`SPEC-TODO-ENABLE-FLAG-001`)에서 같은 형태를 이미 진단해 제거했고(거기서는 행동 왕복 관측에 위임), **같은 커밋이 형제에서는 제거하면서 여기엔 남겼다.** M6 재작성 시 형제의 해법을 참고한다.
+>
+> [HARD] **이 문단을 지우지 않는다.** 부채는 "M6 완료를 판정하기 전"이라는 시점이 붙어야 의미가 있으며, 구두로 넘기면 plan과 run 사이에서 증발한다 — 그 실패 모드의 결과가 공개 이슈 제목의 자격증명이다.
+
 ### AC-F-019 — 스킬 [HARD] 조항 4종 (두 사본 각각)
 
 ```
@@ -262,15 +273,31 @@ Then  두 파일 모두에서 5개 관측이 전부 1건 이상이다
 
 ```bash
 grep -c 'moai feedback scrub' "$SKILL"        # ① 스크러버 경유            >= 1
-grep -c -- '--title' "$SKILL"                 # ② 제목 전달 (REQ-3 · REQ-10) >= 1
-grep -c 'verdict' "$SKILL"                    # ③ 3문장 fail-closed 조항     >= 1
-grep -c 'feedback-draft' "$SKILL"             # ④ 실패 부류 분기 (REQ-9 D4)  >= 1
-grep -c 'conversation_language' "$SKILL"      # ⑤ 라벨 언어 의무 (D11)       >= 1
+grep -c -- '--title' "$SKILL"                 # ② 제목 전달 — M6 부채(앵커 없음) >= 1
+grep -c 'verdict' "$SKILL"                    # ③ fail-closed 조항 — M6 부채   >= 1
+grep -c 'queue.json' "$SKILL"                 # ④ 실패 부류 분기 (REQ-9 D4)  >= 1
+grep -cE 'label[^*]*conversation_language|conversation_language[^*]*label' "$SKILL"   # ⑤ 게이트 라벨 언어 (D11) >= 1
 ```
 
-**② 가 이 AC의 핵심이다.** iter2에서 REQ-3·REQ-10·plan M6 세 곳이 제목 스크럽을 지시했는데 관측은 ① 하나뿐이어서, **본문만 파이프하는 스킬 본문이 24개 AC를 전부 통과하고 제목이 마스킹 없이 제출되는 상태**가 가능했다. ②가 없으면 D1은 문서상으로만 닫힌다.
+**[HARD] 기준 토큰은 base 트리에서 0을 반환해야 한다.** 오늘 이미 통과하는 토큰은 관측이 아니라 장식이다. 각 토큰을 채택하기 전에 미구현 트리에 대고 확인한다:
 
-③은 타임아웃·파싱 불가를 포함한 3문장 조항의 존재를 보되, `grep -c 'verdict'` 는 존재만 확인하므로 **문장 수까지** 볼 것: `grep -n '종료 코드\|verdict\|60초' "$SKILL"` 이 세 조건을 각각 담은 줄을 보여야 한다.
+```bash
+BASE=<구현 이전 커밋>
+git show "$BASE:.claude/skills/moai/workflows/feedback.md" | grep -c '<토큰>'   # 0 이어야 채택 가능
+```
+
+**이번 회차에 교체한 두 토큰의 실측**(미변경 트리, 소스/미러 양쪽):
+
+| 토큰 | base 반환값 | 판정 |
+|---|---|---|
+| `feedback-draft` (구 ④) | **1 / 1** | 기각 — `feedback.md:40`의 **기존** 초안 저장 줄에 이미 걸린다. 큐 분기를 한 글자도 안 쓴 본문이 통과한다 |
+| `conversation_language` (구 ⑤) | **8 / 8** | 기각 — 이슈 제목·템플릿 헤더 언어 규칙(`:38,100,102,103,104,109,120,146`)에 이미 걸린다. 게이트 라벨 의무와 무관하다 |
+| `queue.json` (신 ④) | **0 / 0** | 채택 |
+| `label`↔`conversation_language` 동일 줄 (신 ⑤) | **0 / 0** | 채택 — `label` 단독은 6건(bug/enhancement/question 라벨)이라 벡터가 되지 못하고, 동일 줄 공존이라야 게이트 라벨 의무를 특정한다 |
+
+**② 가 이 AC의 의도상 핵심이다** — ②가 없으면 D1은 문서상으로만 닫힌다. 다만 현재 형태는 앵커가 없어 그 의도를 구현하지 못한다(위 M6 부채 문단 (i)).
+
+③은 타임아웃·파싱 불가를 포함한 3문장 조항의 존재를 보려는 것이나, 현재의 보조 검사(`grep -n '종료 코드\|verdict\|60초'`)는 한국어 리터럴이라 영어 전용 표면에 쓸 수 없다(위 M6 부채 문단 ③).
 
 추가로 verbatim 보존 규칙의 명시적 예외 문장이 ①과 같은 절 범위에 있음을 `grep -n` 줄 번호로 확인한다.
 

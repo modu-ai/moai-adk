@@ -123,6 +123,17 @@ grep -n 'AskUserQuestion\|gh issue create' .claude/skills/moai/workflows/feedbac
 
 **주의**: 스킬 소스/템플릿 쌍의 기존 1줄 드리프트를 확대하지 않는다(`research.md` §5-3).
 
+**[HARD] M6 착수 시 먼저 처리할 부채 — 감사 iter3 인용(원문 그대로)**:
+
+> **AC-F-019 as written passes on a skill body that (i) never passes `--title` to the scrubber, (ii) never mentions the queue branch, and (iii) never binds gate labels to `conversation_language` — and its ③ supplement cannot be satisfied without breaking the template language rule.** Before M6 is judged complete, the four greps must be re-authored, and each replacement token must be shown to return **0** against the pre-implementation tree (`git show <base>:<skill path>`). Until then, M6's exit is a claim, not an observation.
+
+(ii)(iii)은 plan-phase 마지막 회차에 해소했다 — ④를 `queue.json`, ⑤를 `label`↔`conversation_language` 동일 줄 검사로 교체했고 둘 다 base에서 0/0을 실측했다. **M6가 떠안는 부채는 두 건이다**:
+
+1. **②의 앵커 부재** — `grep -c -- '--title'` 는 파일 어디의 `--title` 이든 잡으므로, 본문만 스크럽하고 `gh issue create --repo <x> --title "<제목>"` 를 쓰는 구현이 통과한다(스크러버가 제목을 못 받은 채로). 호출과의 동일 줄 앵커(`grep -cE 'moai feedback scrub[^\n]*--title'`)나 ①과의 줄 번호 일치 검사로 재작성한다.
+2. **③의 한국어 리터럴** — 보조 검사가 영어 전용 + 템플릿 미러 대상을 한국어 토큰으로 겨냥한다. 형제 SPEC(`SPEC-TODO-ENABLE-FLAG-001`)이 같은 형태를 행동 관측 위임으로 해소한 선례를 참고한다.
+
+**재작성한 토큰은 채택 전 base에 대고 0을 확인한다** — 이번 회차에 기각된 두 토큰(`feedback-draft` 1건, `conversation_language` 8건)이 그 확인을 건너뛴 결과였다. M6의 Exit는 이 재작성이 끝나기 전까지 **관측이 아니라 주장**이다.
+
 ### M7 — 웹 콘솔 노출 (결정 D5 확정 — 선택지 A)
 
 **파일**: `internal/settings/schema_sections.go`(필드) + `internal/settings/sectionroute.go`(`RouteSeam` + `ExcludedSections()`에서 제거) + `internal/web/schemaform.go`(탭·패널) + `internal/web/assets/i18n.js`(4로케일) + 고정 테스트 2건 갱신(`internal/settings/sectionroute_test.go:27`, `internal/web/scope_contract_test.go:79`).

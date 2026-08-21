@@ -13,6 +13,8 @@
 
 - 2026-08-22 (iter3, Tier L 상한 회차) — plan-audit iter2 **FAIL 0.84**(임계 0.85, must-pass 7/7 통과) 대응. 블로킹 2건만 처리: **N1** 제목 의무를 관측 가능하게(REQ-10 문구 + AC-F-019를 두 사본 × 5 grep으로 확장, 새 AC 없음), **N2** 누락된 AC-F-013을 M3 Exit에 복귀. 선택 4건(N3~N6)은 상한 회차라 의도적으로 미처리. AC 24 유지(상한 25), version 0.3.0 → 0.4.0.
 
+- 2026-08-22 (iter4, 최종) — plan-audit iter3 **FAIL 0.863**(임계 0.85, must-pass 7/7) + **Tier L 재시도 상한 도달 → 운영자 결정**: 기계적으로 증명된 2건만 수정, 나머지는 M6 부채 이관. **재감사 없음.** 수정: AC-F-019 ④⑤ 토큰을 base 0/0 실측본으로 교체(`queue.json`, `label`↔`conversation_language` 동일 줄) + "기준 토큰은 base에서 0을 반환해야 한다" 규칙 명문화. 이관: ② `--title` 앵커 부재, ③ 한국어 리터럴 — 감사 인용 문단을 영어 원문 그대로 `acceptance.md`·`plan.md` M6 두 곳에 [HARD]로 고정. AC 24 유지, version 0.4.0 → 0.5.0. plan-phase 종료.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_
