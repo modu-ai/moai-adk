@@ -137,7 +137,7 @@ m1_to_mN_commit_strategy: per-milestone commits (M1 28e7d76c5, M2 dd9487719, M3 
 
 ```yaml
 sync_complete_at: 2026-08-22
-sync_commit_sha: "pending-backfill-SPEC-DIAGRAM-PROFILE-IMPORT-001"  # backfilled in follow-up commit (D3 self-SHA pattern)
+sync_commit_sha: "ed78b5c0e"
 sync_status: complete
 b12_self_test_a: pass   # pre-emission grep: 'SPEC-DIAGRAM-PROFILE-IMPORT-001' in CHANGELOG.md → 0 before emission
 b12_self_test_b: pass   # AC count match: distinct AC IDs in acceptance.md = 16; entry references 16 (15 PASS + 1 gap annotation)
