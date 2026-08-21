@@ -121,3 +121,55 @@ func TestCleanMoaiManagedPaths_DanglingSymlinkAtNonGlobRoot(t *testing.T) {
 		t.Errorf("rerun redeploy write failed: %v", err)
 	}
 }
+
+// TestMakeSymlink_SkipsWhenCreationFails is AC-CSL-011 (REQ-CSL-012): when
+// os.Symlink fails — here a deterministic EEXIST collision — the helper must
+// t.Skip the test, never let it fail or assume creation succeeded. The
+// reached-flag stays false exactly when the helper skipped (a skip unwinds
+// the subtest before the assignment runs).
+func TestMakeSymlink_SkipsWhenCreationFails(t *testing.T) {
+	root := t.TempDir()
+	target := filepath.Join(root, "t")
+	link := filepath.Join(root, "l")
+	if err := os.Symlink(target, link); err != nil {
+		t.Skipf("host cannot create symlinks at all, skip-path precondition unavailable: %v", err)
+	}
+	reached := false
+	t.Run("collision", func(t *testing.T) {
+		makeSymlink(t, target, link) // link path occupied: os.Symlink fails
+		reached = true
+	})
+	if reached {
+		t.Error("makeSymlink did not skip on os.Symlink failure (REQ-CSL-012: skip, not fail)")
+	}
+}
+
+// TestCleanMoaiManagedPaths_SelfReferentialLinkSpotCheck is the acceptance
+// §D.3 loop-link spot check: a self-pointing link must not send the clean
+// step into an unbounded traversal (removal-only dispositions never walk
+// through a link). The form classification Stat cannot resolve the loop
+// (ELOOP), so the run fails loudly with the symlink-target attribution —
+// bounded termination, no hang, no partial removal.
+func TestCleanMoaiManagedPaths_SelfReferentialLinkSpotCheck(t *testing.T) {
+	root := t.TempDir()
+	agentsDir := filepath.Join(root, defs.ClaudeDir, defs.AgentsMoaiSubdir)
+	if err := os.MkdirAll(filepath.Dir(agentsDir), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	makeSymlink(t, agentsDir, agentsDir) // link points at itself
+
+	var out bytes.Buffer
+	err := CleanMoaiManagedPaths(root, &out, preCleanTestFS(".claude/agents/moai/manager.md"))
+	if err == nil {
+		t.Fatal("expected an attributed error for the unresolvable self-referential link, got nil")
+	}
+	if !strings.Contains(err.Error(), "stat symlink target") {
+		t.Errorf("error does not attribute the symlink-target stat: %v", err)
+	}
+	// The pathological link itself is untouched — the run aborted before
+	// removal, which is the loud-failure disposition for unclassifiable
+	// forms (dangling links, by contrast, are removed; REQ-CSL-002).
+	if fi, lerr := os.Lstat(agentsDir); lerr != nil || fi.Mode()&os.ModeSymlink == 0 {
+		t.Errorf("self-referential link not left in place after abort: %v", lerr)
+	}
+}

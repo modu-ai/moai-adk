@@ -227,9 +227,83 @@ verbatim 출력이다 (baseline-attribution: run 시작 HEAD `d19f849be`, run �
 - **GREEN**: `go test ./internal/cli/update/deploy/ -count=1` → ok 0.552s ·
   `go test ./internal/cli/update/... -count=1` → 6패키지 ok · lint `0 issues.`.
 
+### M4 — 회귀 스윕 + 플랫폼
+
+- **AC-CSL-011 스킵 경로** (`TestMakeSymlink_SkipsWhenCreationFails`): os.Symlink의
+  결정적 실패(EEXIST 충돌)에서 헬퍼가 t.Skip으로 건너뛰는가 — reached-플래그가
+  스킵 시 미도달임으로 검증 (서브테스트 내 할당 도달 안 함). 전체 링크 테스트가
+  이 헬퍴를 경유하므로 비-darwin 매트릭스에서 생성 불가 시 전원 skip-not-fail.
+- **루프/자기지목 스팟** (`TestCleanMoaiManagedPaths_SelfReferentialLinkSpotCheck`,
+  §D.3 셋째 경계): 자기지목 링크는 형태 판정 Stat이 ELOOP으로 실패 → "stat symlink
+  target" 귀속 에러로 유종 종결(무한 순회 없음, 제거 전 중단 — 미분류 형태의
+  loud-failure 처분). 잔여위험으로 §E.3에 고지.
+- **커버리지**: 최초 측정 82.7% (E3 목표 85% 미달) — per-function 분석으로
+  `InventoryManagedPaths` **0%**(선행 공백, 본 run 미수정 분야)과 미커버 분기
+  식별. `deploy_inventory_test.go`(인벤토리 계약 + carried 실화일 제거 + config
+  루트 Lstat 에러 + 파일링크 백업실패 중단 순서) 추가 후 **91.6%**
+  (`ok ... coverage: 91.6% of statements`, coverprofile 직독).
+- **파괴적 사이트 레지스트리 연쇄 (범위 공개)**: 지정 스코프 스위트
+  `go test ./internal/cli/ -count=1`가 `TestDestructiveTargetRegistry_CoversAllSites`
+  실패로 신규 `removeSymlink`(4개 os.RemoveAll 사이트)의 미등록을 포착 —
+  update-트리 한정 실행으로는 도달하지 않는 가드다.
+  `internal/cli/update_destructive_registry.go`에 removeSymlink 행 1건(보호 근거:
+  링크 엔트리만 제거·대상 구조적 미도달 + 파일링크 분기 백업-선행) 추가, 헤더
+  12행/22사이트 갱신. deploy.go의 파괴적 사이트 색인이라는 기계적 결합 산물로
+  본 SPEC 봉투 내 연쇄로 판정해 수행(카탈로그-해시 재생성 패턴과 동형) — 오케스트레이터
+  검토용 명시 공개. 수정 후 전체 스위트 재실행:
+  `go test ./internal/cli/ -count=1` → `ok ... 323.244s` (FAIL 0건).
+- **문서 영향 조사**: 배포 템플릿 전체에서 update 진행 출력 예시 그레프
+  (`Skipped.*not found` / `backed up.*unmanaged`) — **양쪽 exit 1, 예시 없음**.
+  sync-phase 문서 갱신 후보 없음.
+- **§E 전량 (plan.md §E 대로)**: deploy 패키지 `ok` · update 트리 6패키지 `ok` ·
+  `-run 'Symlink|Clean' -count=1 -v` 29 PASS · `go vet ./internal/cli/...` exit 0 ·
+  `golangci-lint run ./internal/cli/update/...` `0 issues.` ·
+  `golangci-lint run ./internal/cli/` `0 issues.` · coverage 91.6% ·
+  `go build ./...` / `GOOS=windows GOARCH=amd64` / `GOOS=linux GOARCH=amd64` 전부
+  exit 0 · E4 서브에이전트 경계 그레프 exit 1(매치 0건 — 해당 없음).
+
+### E1 — AC 이원 행렬 (11/11)
+
+| AC | 판정 | 검증 | 근거 테스트 |
+|---|---|---|---|
+| AC-CSL-001 (P0) | PASS | 5단언 전부 | DanglingSymlinkAtNonGlobRoot |
+| AC-CSL-002 (P0) | PASS | 3단언 | DanglingSymlinkAtGlobMatchName |
+| AC-CSL-003 (P1) | PASS | 4단언(진행줄 포함) | DanglingSymlinkAtConfigRoot |
+| AC-CSL-004 (P1) | PASS | 양배치 4단언 | LiveDirectorySymlinkRoots |
+| AC-CSL-005 (P1) | PASS | 4단언 | LiveFileSymlinkSettings |
+| AC-CSL-006 (P2) | PASS | 3단언 | RealDirectoryControlNoSymlinkLines |
+| AC-CSL-007 (P2) | PASS | 3단언 | UserOwnedNamespaceUntouched |
+| AC-CSL-008 (P1) | PASS | 양순서 4축 | LinkedRootsOrderIndependence |
+| AC-CSL-009 (P1) | PASS | 루트 8+글로브 1 | CleanSetCoveredByDeployment |
+| AC-CSL-010 (P1) | PASS | 형태 표·축 표기 | §E.2 M2 자점검 표 |
+| AC-CSL-011 (P2) | PASS | reached-플래그 | MakeSymlink_SkipsWhenCreationFails |
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — M4 완료 시 기입>_
+```yaml
+run_complete_at: 2026-08-22
+run_commit_sha: pending-backfill-m4   # M4 커밋이 자기 SHA를 알 수 없음 — 리드/후속 커밋에서 backfill
+run_status: complete                  # M1→M4 전 마일스톤 완료, AC 11/11
+ac_pass_count: 11
+ac_fail_count: 0
+preserve_list_post_run_count: 0       # SPEC 디렉터리 밖 변경은 internal/cli/update/deploy/* (봉투 내) + update_destructive_registry.go(기계적 연쇄, M4 항목에 공개) — PRESERVE 위반 0건
+l44_pre_commit_fetch: n-a-no-push     # factory lane — 푸시 없음, 리드가 release/v3.1.3에 통합
+l44_post_push_fetch: n-a-no-push
+new_warnings_or_lints_introduced: 0   # 패키지 lint 0 issues (baseline 0에서 신규 0), gofmt 신규 파일 전부 정상 (deploy_test.go 선행 드리프트 1건은 미수정 baseline)
+cross_platform_build:
+  darwin_arm64: pass                  # go build ./... exit 0
+  windows_amd64: pass                 # GOOS=windows GOARCH=amd64 go build ./... exit 0
+  linux_amd64: pass                   # GOOS=linux GOARCH=amd64 go build ./... exit 0
+total_run_phase_files: 11             # 코드 7 (deploy.go + 테스트 5 + 레지스트리 1) + SPEC 산물 4
+m1_to_mN_commit_strategy: per-milestone feat commits M1..M4 on WT-clean-links, no push, explicit pathspec staging
+residual_risk:
+  - 자기지목/ELOOP 링크는 "stat symlink target" 에러로 update 중단(제거 아님) — SPEC이 분류하지 않은 형태의 보수적 처분. dangling-등가 제거로 전환하려면 syscall 결합(ELOOP 구분)이 필요해 본 카드 범위 밖; 후속 카드 후보.
+  - 배포 경로(deployer)의 링크 인식은 여전히 없음(spec §E 명시적 제외) — 관리 뿌리 밖에서 사용자가 배포 목적지에 링크를 심는 형태는 불변.
+  - non-darwin 실측 없음(darwin/arm64 단일 호스트) — REQ-CSL-012의 skip 경로가 CI 매트릭스에서 관측될 것.
+```
+
+**커밋 목록 (run-phase)**: M1 `be0959428` · M2 `dda35151b` · M3 `e78fd8f5d` ·
+M4 `<this-commit>` — 전부 `WT-clean-links`, 미푸시.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
