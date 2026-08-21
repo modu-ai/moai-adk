@@ -1,7 +1,7 @@
 ---
 id: SPEC-CODEX-HOOK-ADAPTER-001
 title: "Codex Dual Harness M3 — Hook Adapter: event-name normalization + partial output-dialect mapping"
-version: 0.1.0
+version: 0.2.0
 status: draft
 created: 2026-08-22
 updated: 2026-08-22
@@ -23,7 +23,7 @@ related_specs: []
 MoAI's hook layer is written against Claude Code. Running the same harness under
 `codex-cli` requires a translation seam. The card that motivated this work (t83) assumed
 three differences to absorb — event names, an output dialect, and operational limits — and
-assumed `internal/hook`'s 105 files / 22,659 LOC stay untouched behind a mapping layer.
+assumed `internal/hook`'s existing files stay untouched behind a mapping layer.
 
 Two rounds of direct measurement against `codex-cli 0.147.0` changed what that seam has to
 do. The measurements are recorded in `.moai/reports/t83/precondition-measurement.md` and
@@ -54,8 +54,7 @@ Declaration is not behavior. Measured per key:
 
 The inert three are exactly what MoAI's own hooks emit: `team-ac-verify.sh` rejects a task
 with `{"continue": false, "stopReason": …}`, and the sync-phase quality gate emits an
-advisory `systemMessage`. Under Codex both would do nothing, with no error and no signal —
-the failure mode this SPEC exists to prevent.
+advisory `systemMessage`. Under Codex both would do nothing.
 
 ### Finding C — exit 2 works, but stderr means different things per event
 
@@ -64,52 +63,101 @@ differently: PreToolUse surfaces it to the model as the blocking reason, Stop in
 a continuation prompt and never displays the text. An adapter handling stderr uniformly
 across events would be wrong in one of the two directions.
 
-### Finding D — hook config is silently strict, and project-level wiring did not fire
+### Finding D — a top-level `version` key disables the hooks file; the report is easy to miss
 
-A top-level `"version"` key disables the entire hooks file with no warning or error
-(single-variable A/B: identical file fires without it, fires nothing with it). Separately,
-project-level hook discovery was not observed at all: two paths, four config shapes, and
+A top-level `"version"` key disables the entire hooks file (single-variable A/B: the
+identical file fires without it and fires nothing with it). The failure **is** reported, but
+only as an item in the `--json` event stream:
+
+```
+failed to parse hooks config <path>/hooks.json:
+  unknown field `version`, expected `description` or `hooks` at line 2 column 11
+```
+
+There is no interactive warning and the process still exits 0, so a caller that checks the
+exit code or greps for its own markers sees nothing wrong — which is how this was initially
+mis-recorded as a silent failure. The error names file, field, line, and column, and it also
+establishes the accepted top-level key set: `description` and `hooks`.
+
+### Finding E — project-level hook wiring never fired, and that failure is genuinely silent
+
+Project-level hook discovery was not observed at all: two paths, four config shapes, and
 explicit project trust all produced no hook execution, while the identical file placed at
-`$CODEX_HOME/hooks.json` fired on the first attempt. This contradicts what M0 recorded and
-the cause was not established.
+`$CODEX_HOME/hooks.json` fired on the first attempt. Unlike Finding D, this one emits
+nothing — `probe/run-projectlevel-nofire.jsonl` contains zero error items. This contradicts
+what M0 recorded and the cause was not established.
 
 ## §B Scope
 
 **In Scope**:
 
 - An adapter seam in front of the `moai hook` dispatcher that normalizes Codex hook event
-  names to MoAI's dispatcher argument names.
+  names to MoAI's dispatcher argument names, per the table in REQ-1.
 - A **partial** output mapping covering the three inert keys, and only those.
 - Per-event stderr semantics, so a blocking reason and a continuation prompt are not
   conflated.
-- Hook config emission constraints for whatever writes a Codex hooks file: no top-level
-  `version`, and a field whitelist.
-- Golden-file tests keyed to the payload dumps already captured under
-  `.moai/reports/t91/hook-payloads/` and `.moai/reports/t83/probe/`.
+- A validator expressing the measured hook-config constraints, consumed by the wiring
+  generator card rather than invoked here.
+- Golden-file tests over the payload dumps vendored into this SPEC's `testdata/`.
 
-**Out of Scope — `internal/hook` logic**: the parsing and decision logic stays unchanged.
-Payload field names are snake_case-identical between the harnesses and the observed key sets
-match the t91 goldens exactly, so the adapter sits in front of the dispatcher rather than
-inside it.
+### Out of Scope — `internal/hook` decision logic
 
-**Out of Scope — the wiring generator (t88 / M4)**: this SPEC states the config constraints
-it measured but does not build the generator that emits the file.
+- The parsing and decision logic under `internal/hook/` is not modified. Payload field names
+  are snake_case-identical between the harnesses and the observed key sets match the vendored
+  goldens exactly, so the adapter sits in front of the dispatcher rather than inside it.
+- The adapter's own package lives outside `internal/hook/` (REQ-7), so "no change" is
+  mechanically checkable rather than a judgment about which files count as decision logic.
 
-**Out of Scope — `SubagentStop` mapping**: retired. M0 measured that delegation surfaces as
-`PostToolUse` with `tool_name` beginning `collaboration`, and that `SubagentStart`/`SubagentStop`
-never fire in this build.
+### Out of Scope — the wiring generator (t88 / M4)
 
-**Out of Scope — Codex-only events**: `PermissionRequest`, `PreCompact`, `PostCompact`,
-`SubagentStart` have no MoAI counterpart and are not wired here.
+- This SPEC ships the constraint validator (REQ-5) but does not build the thing that writes a
+  Codex hooks file into a project or a home directory.
+- The generator card consumes REQ-1's table and REQ-5's validator as inputs.
+
+### Out of Scope — events registered but not adapted
+
+- MoAI's dispatcher registers a counterpart for **every** Codex event (see REQ-1's table), so
+  excluding an event here is a scoping decision about measurement coverage, **not** an absence
+  of a counterpart. An earlier draft asserted the absence; that was false.
+- Excluded by lack of measurement: `PreCompact`, `PostCompact`, `PermissionRequest`,
+  `SubagentStart`. No payload capture and no behavioral observation exists for any of them, so
+  adapting them would mean guessing at their contracts.
+- Excluded by measurement: `SubagentStop`. M0 measured that delegation surfaces as
+  `PostToolUse` with `tool_name` beginning `collaboration`, and that `SubagentStart` /
+  `SubagentStop` never fire in this build. Mapping it would wire a dead path.
+
+### Out of Scope — unmeasured output keys
+
+- `suppressOutput`, `updatedMCPToolOutput`, and the `PermissionRequest` behavior fields
+  (`behavior`, `updatedInput`, `updatedPermissions`, `interrupt`) are declared in the binary
+  but never exercised.
+- A MoAI hook that begins emitting one of them falls through to the discard path, which is why
+  REQ-3 is a MUST-PASS rather than a convenience.
 
 ## §C Requirements (GEARS)
 
 ### REQ-1 — Event-name normalization
 
 WHERE a Codex hook invokes the adapter, the adapter SHALL map the Codex event name to the
-MoAI dispatcher's argument name for the eight events with a counterpart, and SHALL reject an
-unrecognized event name with a non-zero exit and a diagnostic rather than defaulting to any
-handler.
+MoAI dispatcher argument name using exactly this table, and SHALL reject an unrecognized
+event name with a non-zero exit and a diagnostic rather than falling through to any handler.
+
+| Codex event | MoAI dispatcher argument | Adapted by M3 |
+|---|---|---|
+| `PreToolUse` | `pre-tool` | yes |
+| `PostToolUse` | `post-tool` | yes |
+| `SessionStart` | `session-start` | yes |
+| `SessionEnd` | `session-end` | yes |
+| `Stop` | `stop` | yes |
+| `UserPromptSubmit` | `user-prompt-submit` | yes |
+| `PreCompact` | `compact` | no — unmeasured (§B) |
+| `PostCompact` | `post-compact` | no — unmeasured (§B) |
+| `PermissionRequest` | `permission-request` | no — unmeasured (§B) |
+| `SubagentStart` | `subagent-start` | no — unmeasured (§B) |
+| `SubagentStop` | `subagent-stop` | no — dead path, measured (§B) |
+
+Eleven Codex events, eleven dispatcher counterparts, six adapted. The dispatcher argument
+names are the registered subcommands in `internal/cli/hook.go`.
 
 ### REQ-2 — Partial output mapping for the three inert keys
 
@@ -121,35 +169,47 @@ carrying an empty reason.
 WHERE a MoAI hook emits `systemMessage` on an event with a working delivery channel, the
 adapter SHALL route it to that channel — `additionalContext` on `UserPromptSubmit`.
 
+WHERE a MoAI hook emits a key measured to work natively, the adapter SHALL pass it through
+unmodified.
+
 ### REQ-3 — Silent no-op is prohibited
 
 WHERE the adapter cannot deliver a message on the event it was emitted for, the adapter SHALL
 discard it AND SHALL record the discard as a diagnostic naming the event, the key, and the
-content length. An advisory that cannot be delivered is not silently dropped.
+content length, written to the adapter's own log sink at `.moai/logs/codex-adapter.jsonl`.
+
+WHERE the underlying hook exited 2, the adapter SHALL NOT write the diagnostic to stderr,
+because stderr on that path carries the blocking reason or continuation prompt REQ-4 requires
+passing through unmodified.
 
 ### REQ-4 — Per-event stderr semantics
 
 WHERE the adapter passes a hook's stderr through on exit 2, it SHALL treat the text as a
-blocking reason for `PreToolUse`, `PermissionRequest`, and `UserPromptSubmit`, and as a
-continuation prompt for `Stop` and `SubagentStop`, and SHALL NOT apply one event's treatment
-to the other class.
+blocking reason for `PreToolUse` and as a continuation prompt for `Stop`, and SHALL NOT apply
+one class's treatment to the other.
 
-### REQ-5 — Hook config emission constraints
+WHERE the event is one whose stderr class is declared in the Codex binary but never observed
+(`UserPromptSubmit` — blocking reason), the adapter SHALL carry the classification with an
+explicit declared-not-measured annotation in the table, so the untested basis stays visible at
+the point of use. Events excluded from adaptation by §B receive no stderr class here.
 
-WHERE anything in this repository emits a Codex hooks config, it SHALL NOT write a top-level
-`version` key, and SHALL restrict emitted keys to the measured-accepted set
-(`hooks`, per-event arrays, `matcher`, `hooks[].type`, `hooks[].command`, `hooks[].timeout`).
+### REQ-5 — Hook config constraint validator
 
-### REQ-6 — Golden-file tests over both harnesses' payloads
+WHERE a Codex hooks config object is presented to the validator this SPEC ships, the validator
+SHALL reject it when it carries a top-level key outside `{description, hooks}` — `version`
+being the measured instance — and SHALL reject a hook entry carrying a key outside
+`{matcher, hooks}` or `{type, command, timeout}` at their respective levels.
 
-WHERE the adapter parses a hook payload, its tests SHALL assert against the captured payload
-dumps rather than hand-written fixtures, covering at minimum `PreToolUse`, `PostToolUse`,
-`SessionStart`, `SessionEnd`, `Stop`, `UserPromptSubmit`.
+### REQ-6 — Golden-file tests over captured payloads
 
-### REQ-7 — `internal/hook` invariance
+WHERE the adapter parses a hook payload, its tests SHALL assert against the payload dumps
+vendored at `.moai/specs/SPEC-CODEX-HOOK-ADAPTER-001/testdata/hook-payloads/`, covering
+`PreToolUse`, `PostToolUse`, `SessionStart`, `SessionEnd`, `Stop`, and `UserPromptSubmit`.
 
-The adapter SHALL NOT modify decision logic in `internal/hook`. A change there is a scope
-violation, not an implementation detail.
+### REQ-7 — Adapter package placement
+
+The adapter SHALL live in a package outside `internal/hook/`, and the change set SHALL contain
+zero modifications to files that existed under `internal/hook/` before this SPEC.
 
 ## §D Evidence (Observed)
 
@@ -163,8 +223,10 @@ with absolute paths masked.
   `probe/run-stop-exit2.jsonl`
 - `continue:false` inert: `probe/run-continuefalse-inert-pretool.jsonl`,
   `probe/run-continuefalse-inert-posttool.jsonl`
-- `version` key disabling the file: `probe/run-versionkey-kills-file.jsonl`
-- project-level non-firing: `probe/run-projectlevel-nofire.jsonl`
+- `version` key disabling the file, and the parse-error item that reports it:
+  `probe/run-versionkey-kills-file.jsonl` line 4
+- project-level non-firing, with zero error items: `probe/run-projectlevel-nofire.jsonl`
+- dispatcher counterpart registrations: `internal/cli/hook.go`
 
 Measurement isolation: a scratch `CODEX_HOME`, with the real `~/.codex/hooks.json` mtime
 unchanged across the whole session and the probe project never entering the real
@@ -184,17 +246,18 @@ afterwards.
   normal approval path is unmeasured, and `permission_mode` was only ever observed as
   `bypassPermissions`.
 - **The inert three were measured on `PreToolUse` and `PostToolUse` only.** Whether they work
-  on `Stop`, `SessionStart`, or `UserPromptSubmit` is unmeasured, so REQ-2's event coverage
-  is stated as a range to confirm at run-phase, not as an established fact.
-- `suppressOutput`, `updatedMCPToolOutput`, and the `PermissionRequest` behavior fields are
-  unmeasured and unmapped.
+  on `Stop`, `SessionStart`, or `UserPromptSubmit` is unmeasured, so REQ-2's event coverage is
+  a range to confirm at run-phase, not an established fact.
+- **Two failure modes report differently.** The `version` key produces a machine-readable error
+  item (Finding D); project-level non-firing produces nothing at all (Finding E). Only the
+  second is silent, and only it justifies a "nothing reports this" framing.
 
 ## §F Blocker Candidate — project-level wiring (carried for M4)
 
-Project-level hook discovery produced no execution under every combination tried. If the
-wiring generator (t88 / M4) is designed to write `.codex/hooks.json` into a project, the
-generated file would install and then do nothing, with nothing reporting that. Two items are
-preconditions for that card rather than this one:
+Project-level hook discovery produced no execution under every combination tried, and produced
+no diagnostic of any kind. If the wiring generator (t88 / M4) is designed to write
+`.codex/hooks.json` into a project, the generated file would install and then do nothing, with
+nothing reporting that. Two items are preconditions for that card rather than this one:
 
 1. Establish whether project-level hook discovery is supported in the target build.
 2. If it is not, either retarget generation at `$CODEX_HOME/hooks.json` or redesign the
@@ -211,10 +274,21 @@ recommended over trusting either record.
   correction banner for a retracted inference
 - `.moai/reports/t83/precondition-measurement-round3.md` — round 3 (MoAI's own keys, Stop
   exit 2, discovery path, matcher)
+- `.moai/reports/t83/plan-audit.md` — iteration-1 audit; §H records what it changed
+- `internal/cli/hook.go` — the dispatcher subcommand registrations REQ-1's table maps onto
 - `.claude/rules/moai/core/verification-claim-integrity.md` — why §E separates measured from
   declared
 
 ## §H HISTORY
 
+- 0.2.0 (2026-08-22) — revised after iteration-1 audit (FAIL 0.63). Two factual corrections:
+  the dispatcher does register a counterpart for all eleven Codex events, so "no MoAI
+  counterpart" was false and the exclusions are restated as measurement-coverage scoping; and
+  the `version` key is not silent — the probe's own event stream carries a parse error naming
+  file, field, line, and column, so the silence claim now applies only to project-level
+  non-firing. Also: REQ-1's table enumerated, goldens vendored into `testdata/` so REQ-6 is
+  executable from the branch, exclusions converted to the project's heading convention, REQ-5
+  re-aimed at a validator this SPEC ships, REQ-3's sink named, REQ-4's unmeasured classes
+  annotated, and REQ-7 pinned to package placement.
 - 0.1.0 (2026-08-22) — initial draft. Scope set by two rounds of measurement that refuted the
   card's output-dialect premise and replaced it with a three-key partial mapping.

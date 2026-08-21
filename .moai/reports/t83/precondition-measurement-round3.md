@@ -100,8 +100,25 @@ t91 골든 `Stop.json` 과 동일 구성.
 | F | `version` 없음, PreToolUse + Stop | **둘 다 발화** |
 | E | 같은 파일에 **`"version": 1` 만 추가** | **둘 다 미발화** |
 
-→ **최상위 `version` 키 하나가 파일 전체를 조용히 무력화한다.** 경고도 오류도 없다.
-증거: `probe/run-versionkey-kills-file.jsonl`.
+→ **최상위 `version` 키 하나가 파일 전체를 무력화한다.**
+
+**정정 (감사 지적 D5, 수용).** 초안은 여기에 "경고도 오류도 없다"고 적었다. **틀렸다.**
+같은 run 의 JSONL **4행**에 오류 아이템이 있다:
+
+```
+failed to parse hooks config <probe-root>/home/hooks.json:
+  unknown field `version`, expected `description` or `hooks` at line 2 column 11
+```
+
+파일·필드·행·열까지 나온다. 내가 훅 발화 여부와 마커 grep 만 보고 **error 아이템을 읽지 않아서**
+무음으로 단정했다. 정확한 진술: **프로세스는 exit 0 이고 대화형 경고도 없으나, `--json` 스트림에는
+기계 판독 가능한 오류가 실린다.** 덤으로 이 메시지가 **허용 최상위 키 집합(`description`, `hooks`)**
+까지 알려 준다 — 내가 추측으로 세우려던 화이트리스트의 실측 근거다.
+
+**진짜 무음은 §3 의 프로젝트 레벨 미발화 쪽이다** — `run-projectlevel-nofire.jsonl` 에는 오류
+아이템이 0건이다. "아무도 알려 주지 않는다"는 서술은 그쪽에만 붙어야 한다.
+
+증거: `probe/run-versionkey-kills-file.jsonl` (4행에 파싱 오류 아이템).
 
 **M4 화이트리스트 검증이 필드 집합까지 덮어야 한다는 근거는 유지된다** — 다만 근거는 matcher 가 아니라
 version 이다. 그리고 이 실패 양식이 M0 §1("미지의 이벤트 이름은 조용히 무시된다")보다 넓다는 점이
@@ -135,7 +152,9 @@ version 이다. 그리고 이 실패 양식이 M0 §1("미지의 이벤트 이�
    `systemMessage` 는 전달 경로 부재로 **정책 결정 필요**(포기 또는 additionalContext 대체).
 2. **이벤트별 stderr 의미 분기**가 어댑터에 들어가야 한다(PreToolUse=사유 표시 / Stop=continuation prompt).
 3. **설정 생성 형태는 엄격하다** — 최상위 `version` 금지, `matcher` 는 허용. 알 수 없는 키가 파일 전체를
-   조용히 죽이므로 생성기는 필드 화이트리스트를 가져야 한다(t88 소관이나 근거는 여기서 확정).
+   죽이므로 생성기는 필드 화이트리스트를 가져야 한다(t88 소관이나 근거는 여기서 확정). 허용 최상위
+   키는 오류 메시지가 명시한 `description`·`hooks` 둘뿐이다. 단 이 실패는 무음이 아니라
+   `--json` 스트림에 오류로 실린다(§4 정정).
 4. **프로젝트 레벨 배선은 현재 빌드에서 동작하지 않는다** — t83 어댑터의 배치 대상과 t88 생성 경로 모두에
    영향. **M4 블로커 후보로 등록.**
 5. 페이로드 동형성은 재확인됐다(Stop 포함) → `internal/hook` 로직 불변 유지 근거 유효.
