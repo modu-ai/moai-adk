@@ -59,7 +59,52 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### D3 결정 — 홈 경계 주입 seam (M1)
+
+**선택**: plan.md §E D3 의 (a) 와 (b) 를 합친 형태. `internal/core/project` 에 **시작 디렉터리만** 받는 `FindProjectRootFrom(start string)` 을 노출하고, **홈 경계는 주입하지 않는다** — 양쪽 모두 `paths.Home()` 으로 해석하며, 테스트는 `t.Setenv("HOME", …)` 로 그 해석의 입력을 제어한다.
+
+**판정 기준("프로덕션과 테스트가 같은 코드 경로를 타는가") 적용**:
+
+- `FindProjectRoot()` 는 `os.Getwd()` 뒤에 `FindProjectRootFrom(dir)` 을 호출하는 얇은 래퍼가 됐다. 정규화·홈 가드·상향 순회 **전부가 한 함수 안**에 있고, 프로덕션과 테스트가 그 함수를 그대로 탄다. 테스트 전용 분기가 없다.
+- 홈 경계를 파라미터로 받지 **않은** 이유가 이 기준이다. 파라미터로 받으면 프로덕션은 `paths.Home()` 을, 테스트는 리터럴을 넘기게 되어 **해석 자체가 두 개**가 된다 — R6 이 경고한 "테스트만 빨간" 실패 모양의 씨앗이다. `HOME` 을 제어하면 테스트도 `paths.Home()` 을 통과한다.
+- `t.Setenv` 는 병렬 테스트에서 패닉하므로 비병렬을 **구조적으로 강제한다**(CLAUDE.local.md §13 의 오염 위험이 여기서 닫힌다). 해당 테스트 어디에도 `t.Parallel()` 이 없다.
+
+**§D 제약 예외 근거**: `internal/core/project/root.go` 를 수정했다(§D "읽기 전용"). 수정 성격은 **동작 변경이 아니라 시작점 파라미터 추출**이며, 기존 본문은 한 줄도 바뀌지 않고 새 함수로 이동했을 뿐이다. 대안 (c)(cli 쪽 래퍼가 홈 경계를 파라미터화)는 걷기를 둘로 갈라 D1·AP-3 과 정면 충돌한다.
+
+**진입점 이름**: acceptance.md §D.2 의 규약을 그대로 채택했다 — `findStateDir()` / `findStateDirNoEnv()`. 대응표 불필요.
+
+### reproduction-first 증거 (구현 전 트리, HEAD d4edbbc70)
+
+명령: `go test ./internal/cli/ -run 'TestStateDir|TestResolveTokensStateDirFallsBackToCwd|TestLoadRegistryForOverlayFailsOpen' -v`
+
+```
+=== RUN   TestStateDirDoesNotCrossHomeBoundary
+    state_dir_bound_test.go:45: resolution succeeded at "/var/folders/kt/.../001/home/.moai/state"; it must stop at the home boundary
+--- FAIL: TestStateDirDoesNotCrossHomeBoundary (0.00s)
+=== RUN   TestStateDirStopsAtProjectRoot
+    state_dir_bound_test.go:66: got "/var/folders/kt/.../001/.moai/state"; resolution must fail at the project root that has no state dir
+--- FAIL: TestStateDirStopsAtProjectRoot (0.00s)
+=== RUN   TestStateDirStopsAtNestedBareMoai
+    state_dir_bound_test.go:89: got "/var/folders/kt/.../001/.moai/state"; the bare .moai in the subdirectory must stop the resolution
+--- FAIL: TestStateDirStopsAtNestedBareMoai (0.00s)
+=== RUN   TestStateDirHonoursProjectDirEnv
+    state_dir_bound_test.go:115: got "/var/folders/kt/.../001/.moai/state", want the named project's state dir "/private/var/folders/kt/.../001/explicit/.moai/state"
+--- FAIL: TestStateDirHonoursProjectDirEnv (0.00s)
+=== RUN   TestStateDirReturnsNormalizedPath/walk_branch
+    state_dir_bound_test.go:143: got "/var/folders/.../001/.moai/state", which is not its own normalized form "/private/var/folders/.../001/.moai/state"
+=== RUN   TestStateDirReturnsNormalizedPath/env_branch
+    state_dir_bound_test.go:158: findStateDir: .moai/state/ directory not found from /var/folders/.../001/sub
+--- FAIL: TestStateDirReturnsNormalizedPath (0.00s)
+=== RUN   TestResolveTokensStateDirFallsBackToCwd
+--- PASS: TestResolveTokensStateDirFallsBackToCwd (0.00s)
+=== RUN   TestLoadRegistryForOverlayFailsOpen
+--- PASS: TestLoadRegistryForOverlayFailsOpen (0.00s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.964s
+```
+
+AC-002 / AC-004 / AC-011 의 요구된 빨간 출력 3건이 위에 있다. AC-001 과 AC-010 양 분기도 함께 빨갛다. AC-006(폴백)과 AC-012(fail-open)는 **불변식 보존**을 확인하는 테스트이므로 구현 전에도 초록인 것이 정상이다 — 이 둘은 reproduction-first 대상이 아니다.
+
+AC-008 의 빨간 출력은 M2 절에 별도로 인용한다.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
