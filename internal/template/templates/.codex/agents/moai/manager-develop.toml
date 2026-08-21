@@ -224,6 +224,8 @@ Static `skills:` preload is kept to a minimum (token diet — progressive disclo
 
 > **Model/effort escalation**: deep-reasoning escalation is an ORCHESTRATOR decision (this agent cannot spawn sub-agents — no `Agent` tool). See `.claude/rules/moai/development/model-policy.md`.
 '''
-mcp_servers = ["moai"]
 model_reasoning_effort = "high"
 sandbox_mode = "workspace-write"
+[mcp_servers.moai]
+command = "moai"
+args = ["mcp-server"]

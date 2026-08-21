@@ -320,6 +320,63 @@ receiving deployed TOMLs can commit them (M4 seam note).
 
 Makefile: `agents-emit` target added (wraps AGENTEMIT_UPDATE=1 golden run).
 
+### MS3b — Run-phase measured correction: mcp_servers map shape (2026-08-22)
+
+The §D.3 supplementary smoke (real emitted TOMLs into a fresh isolated
+scratch; delegation to manager-git returned `SMOKE-OK`) exposed a DEFECT the
+binary tests could not catch: **exactly the 7 MCP carriers were dropped by
+codex with `invalid type: sequence, expected a map`** — the array form
+`mcp_servers = ["moai"]` assumed by plan §A.3 class 9 (an UNMEASURED shape:
+t91 §5 measured the GLOBAL config registration, not the agent-level field)
+is rejected, and a rejected file kills the whole agent (the §A.4 hazard,
+observed on the real artifacts).
+
+Shape probes (same scratch, 1 listing exec — startup error items name the
+verdict per file):
+
+```
+[mcp_servers.moai] command="moai" args=["mcp-server"]  → registers, no error
+mcp_servers = {}                                       → registers (grants nothing)
+[mcp_servers.moai] (empty table)                       → "invalid transport"
+mcp_servers = ["moai"]                                 → "invalid type: sequence, expected a map"
+```
+
+Fix (RED→GREEN; manifest + writer + tests): the manifest carries
+`mcp_server_grant {server: moai, command: moai, args: [mcp-server]}` with
+ParseManifest requiring a complete grant when moai-mcp tokens are mapped
+(an empty table fails transport validation); the writer emits the table
+AFTER all scalar keys; the independent decoder learned table sections.
+
+Re-verification against the real consumer (verbatim):
+
+```
+$ grep -c "Ignoring malformed" resmoke.jsonl → 0
+  listing: builder-harness,e2e-tester,manager-design,manager-develop,manager-docs,
+           manager-git,manager-lead,manager-spec,plan-auditor,super-advisor,
+           sync-auditor,default,explorer,worker        # all 11 register
+$ delegation to manager-spec (previously-dropped carrier) → "CARRIER-SMOKE-OK", 0 malformed
+```
+
+Suites: `go test ./internal/template/...` ok (both pkgs); coverage 91.3%;
+lint 0 issues; windows build + vet clean; `make build` ok (catalog.yaml
+unchanged). RED for the fix (verbatim):
+
+```
+--- FAIL: TestEmitAllMCPServerMapping (0.00s)
+    agentemit_test.go:217: carrier mcp_servers = []string{"moai"}, want a map (table shape)
+--- FAIL: TestRealSetCodexShape (0.00s)
+    golden_test.go:188: .codex/agents/moai/manager-lead.toml (manager-lead): inventory carrier must declare mcp_servers
+    ... (7 carriers)
+```
+
+**Blocker note to orchestrator (E7)**: spec.md R-009's literal
+`mcp_servers = ["moai"]` and plan §A.3 class 9's `mcp_servers = ["moai"]`
+encode the array shape the runtime rejects. The emitter now implements the
+MEASURED contract (map/table, same intent — server-level grant containing
+"moai"). Recommend a spec errata via manager-spec after this run; AC-007's
+wording ("declare mcp_servers containing \"moai\"") remains satisfied by the
+map key.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

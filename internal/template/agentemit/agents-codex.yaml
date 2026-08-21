@@ -132,12 +132,16 @@ classes:
   - class: moai-mcp
     disposition: emit-field
     field: mcp_servers
-    value: ["moai"]
     rationale: >-
       Agents carrying any mcp__moai__* token declare the server-level grant
-      mcp_servers = ["moai"] (R-009). Per-tool filtering inside one MCP
-      server is unavailable — see documented_drops below; the body prose
-      already names which tools each agent uses.
+      as a TOML table [mcp_servers.moai] with command+args (R-009).
+      RUN-PHASE MEASURED CORRECTION: codex-cli 0.147.0 rejects the array
+      form mcp_servers = ["moai"] with "invalid type: sequence, expected a
+      map", dropping the whole agent file; the table form (same shape t91
+      section 5 measured for the global config) registers cleanly. See
+      mcp_server_grant below. Per-tool filtering inside one MCP server is
+      unavailable — documented drop; the body prose already names which
+      tools each agent uses.
   - class: effort
     disposition: emit-field
     field: model_reasoning_effort
@@ -197,6 +201,16 @@ documented_drops:
     rationale: >-
       memory scope, color, and permissionMode are Claude session/UI state
       with no Codex equivalent.
+
+# The server-level MCP grant emitted as a TOML table on every agent carrying
+# mcp__moai__* tools. Shape measured on codex-cli 0.147.0 (the array form is
+# rejected; an empty table fails transport validation — the grant must carry
+# the full definition, matching t91 section 5's global-config registration).
+mcp_server_grant:
+  server: moai
+  command: moai
+  args:
+    - mcp-server
 
 # Correspondence notes (no artifact emitted either side).
 correspondence_notes:

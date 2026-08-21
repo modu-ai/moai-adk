@@ -200,8 +200,11 @@ func TestEmitAllRoundTripsBodyVerbatim(t *testing.T) {
 }
 
 // TestEmitAllMCPServerMapping is AC-007: exactly the agents carrying any
-// mcp__moai__* token declare mcp_servers containing "moai"; the others carry
-// no mcp_servers key at all.
+// mcp__moai__* token declare mcp_servers containing "moai" — as a MAP
+// (table) carrying the server definition, the run-phase-MEASURED shape
+// (codex-cli 0.147.0 rejects the array form with "invalid type: sequence,
+// expected a map"; the [mcp_servers.moai] table with command+args registers
+// cleanly). Non-carriers carry no mcp_servers key at all.
 func TestEmitAllMCPServerMapping(t *testing.T) {
 	man := mustManifest(t)
 	pub, err := agentemit.EmitAll(fullFixtureSet(), "agents", man)
@@ -209,9 +212,20 @@ func TestEmitAllMCPServerMapping(t *testing.T) {
 		t.Fatalf("EmitAll: %v", err)
 	}
 	carrier := mustDecoded(t, pub, ".codex/agents/moai/mdcarrier.toml")
-	servers, ok := carrier["mcp_servers"].([]string)
-	if !ok || len(servers) != 1 || servers[0] != "moai" {
-		t.Errorf("carrier mcp_servers = %#v, want [\"moai\"]", carrier["mcp_servers"])
+	servers, ok := carrier["mcp_servers"].(map[string]any)
+	if !ok {
+		t.Fatalf("carrier mcp_servers = %#v, want a map (table shape)", carrier["mcp_servers"])
+	}
+	moai, ok := servers["moai"].(map[string]any)
+	if !ok {
+		t.Fatalf("carrier mcp_servers.moai = %#v, want the server definition table", servers["moai"])
+	}
+	if moai["command"] != "moai" {
+		t.Errorf("mcp_servers.moai.command = %#v, want \"moai\"", moai["command"])
+	}
+	args, ok := moai["args"].([]string)
+	if !ok || len(args) != 1 || args[0] != "mcp-server" {
+		t.Errorf("mcp_servers.moai.args = %#v, want [\"mcp-server\"]", moai["args"])
 	}
 	for _, plain := range []string{".codex/agents/moai/plainagent.toml", ".codex/agents/moai/twoskills.toml"} {
 		doc := mustDecoded(t, pub, plain)

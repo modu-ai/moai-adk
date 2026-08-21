@@ -52,6 +52,17 @@ type CorrespondenceNote struct {
 	Note string `yaml:"note"`
 }
 
+// McpServerGrant is the server-level MCP grant emitted (as a TOML table)
+// on every agent carrying mcp__moai__* tools. Shape note: codex-cli 0.147.0
+// rejects `mcp_servers = ["moai"]` ("invalid type: sequence, expected a
+// map") — the agent-level field is a MAP of server name -> definition, the
+// same shape t91 section 5 measured for the global config.
+type McpServerGrant struct {
+	Server  string   `yaml:"server"`
+	Command string   `yaml:"command"`
+	Args    []string `yaml:"args"`
+}
+
 // Manifest is the machine-readable Codex mapping manifest.
 type Manifest struct {
 	CodexMeasuredVersion string                  `yaml:"codex_measured_version"`
@@ -61,6 +72,7 @@ type Manifest struct {
 	Classes              []ClassDisposition      `yaml:"classes"`
 	DocumentedDrops      []DocumentedDrop        `yaml:"documented_drops"`
 	CorrespondenceNotes  []CorrespondenceNote    `yaml:"correspondence_notes"`
+	MCPServerGrant       *McpServerGrant         `yaml:"mcp_server_grant"`
 }
 
 // LoadManifest parses and self-validates the embedded default manifest.
@@ -121,6 +133,23 @@ func ParseManifest(data []byte) (Manifest, error) {
 		}
 		if !accepted[fc.Value] {
 			return Manifest{}, fmt.Errorf("agentemit: manifest sandbox_mode value %q is outside the measured value set %v — never emit an unconfirmed value", fc.Value, fc.AcceptedValues)
+		}
+	}
+	// The moai-mcp class requires a complete server grant: an empty table
+	// fails codex transport validation ("invalid transport" — measured).
+	needsGrant := false
+	for _, class := range m.ToolClasses {
+		if class == "moai-mcp" {
+			needsGrant = true
+			break
+		}
+	}
+	if needsGrant {
+		if m.MCPServerGrant == nil {
+			return Manifest{}, fmt.Errorf("agentemit: manifest maps moai-mcp tokens but carries no mcp_server_grant")
+		}
+		if m.MCPServerGrant.Server == "" || m.MCPServerGrant.Command == "" {
+			return Manifest{}, fmt.Errorf("agentemit: mcp_server_grant needs a server name and command (empty table fails codex transport validation)")
 		}
 	}
 	return m, nil

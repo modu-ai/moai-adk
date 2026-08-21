@@ -18,16 +18,35 @@ import (
 )
 
 // decodeTOML parses src into a map keyed by top-level bare key. Values are
-// string or []string. Anything outside the emitter's declared grammar is an
-// error — this decoder is strict by design.
+// string, []string, or map[string]any (from table sections). Anything
+// outside the emitter's declared grammar is an error — this decoder is
+// strict by design.
 func decodeTOML(src string) (map[string]any, error) {
 	out := map[string]any{}
 	lines := strings.Split(src, "\n")
+	// tablePath holds the active [a.b] section path (empty at root).
+	var tablePath []string
 	i := 0
 	for i < len(lines) {
 		line := lines[i]
 		trimmed := strings.TrimSpace(line)
 		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			i++
+			continue
+		}
+		// Table section header: [a.b] — begins a nested table. The emitter
+		// emits sections only AFTER all root scalar keys (TOML requirement).
+		if strings.HasPrefix(trimmed, "[") && strings.HasSuffix(trimmed, "]") {
+			path := strings.Split(strings.TrimSuffix(strings.TrimPrefix(trimmed, "["), "]"), ".")
+			for _, p := range path {
+				if p == "" {
+					return nil, fmt.Errorf("line %d: empty table path component in %q", i+1, trimmed)
+				}
+			}
+			tablePath = path
+			if _, dup := out[path[0]]; dup && len(path) > 0 {
+				return nil, fmt.Errorf("line %d: table %q collides with an existing root key", i+1, trimmed)
+			}
 			i++
 			continue
 		}
@@ -40,40 +59,48 @@ func decodeTOML(src string) (map[string]any, error) {
 			return nil, fmt.Errorf("line %d: empty key", i+1)
 		}
 		rest := strings.TrimSpace(line[eq+1:])
+		var value any
+		var consumed int
 		switch {
 		case strings.HasPrefix(rest, "'''"):
-			value, consumed, err := decodeMultiLineLiteral(lines, i, eq)
+			v, done, err := decodeMultiLineLiteral(lines, i, eq)
 			if err != nil {
 				return nil, err
 			}
-			if _, dup := out[key]; dup {
-				return nil, fmt.Errorf("line %d: duplicate key %q", i+1, key)
-			}
-			out[key] = value
-			i = consumed + 1 // skip past the closing-delimiter line
+			value = v
+			consumed = done + 1 // skip past the closing-delimiter line
 		case strings.HasPrefix(rest, `"`):
-			value, err := decodeBasicString(rest)
+			v, err := decodeBasicString(rest)
 			if err != nil {
 				return nil, fmt.Errorf("line %d: %v", i+1, err)
 			}
-			if _, dup := out[key]; dup {
-				return nil, fmt.Errorf("line %d: duplicate key %q", i+1, key)
-			}
-			out[key] = value
-			i++
+			value = v
+			consumed = i + 1
 		case strings.HasPrefix(rest, "["):
-			value, err := decodeStringArray(rest)
+			v, err := decodeStringArray(rest)
 			if err != nil {
 				return nil, fmt.Errorf("line %d: %v", i+1, err)
 			}
-			if _, dup := out[key]; dup {
-				return nil, fmt.Errorf("line %d: duplicate key %q", i+1, key)
-			}
-			out[key] = value
-			i++
+			value = v
+			consumed = i + 1
 		default:
 			return nil, fmt.Errorf("line %d: value outside emitter grammar: %q", i+1, rest)
 		}
+		// Assign into (optionally) the active table path.
+		target := out
+		for _, p := range tablePath {
+			next, ok := target[p].(map[string]any)
+			if !ok {
+				next = map[string]any{}
+				target[p] = next
+			}
+			target = next
+		}
+		if _, dup := target[key]; dup {
+			return nil, fmt.Errorf("line %d: duplicate key %q", i+1, key)
+		}
+		target[key] = value
+		i = consumed
 	}
 	return out, nil
 }

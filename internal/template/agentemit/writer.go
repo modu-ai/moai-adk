@@ -108,10 +108,6 @@ func renderTOML(doc AgentDoc, man Manifest, hasMCP bool) ([]byte, error) {
 	b.WriteString("description = " + desc + "\n")
 	b.WriteString("developer_instructions = " + body + "\n")
 
-	if hasMCP {
-		b.WriteString("mcp_servers = [\"moai\"]\n")
-	}
-
 	if fc, ok := man.Fields["model_reasoning_effort"]; ok && fc.Emit {
 		mapped, found := fc.Map[doc.Effort]
 		if !found {
@@ -128,6 +124,31 @@ func renderTOML(doc AgentDoc, man Manifest, hasMCP bool) ([]byte, error) {
 			return nil, fmt.Errorf("manifest sandbox_mode value %q is not representable as a TOML basic string", fc.Value)
 		}
 		fmt.Fprintf(&b, "sandbox_mode = %q\n", fc.Value)
+	}
+
+	// MCP server grant LAST, as a TOML table: sections must follow all root
+	// scalar keys. Map shape is the run-phase-measured form — codex-cli
+	// 0.147.0 rejects the array form ("invalid type: sequence, expected a
+	// map") by dropping the whole agent file.
+	if hasMCP {
+		grant := man.MCPServerGrant
+		if grant == nil {
+			return nil, fmt.Errorf("%s: agent carries moai-mcp tools but manifest has no mcp_server_grant", doc.File)
+		}
+		if !basicStringSafe(grant.Server) || !basicStringSafe(grant.Command) {
+			return nil, fmt.Errorf("%s: mcp_server_grant names are not representable as TOML basic strings", doc.File)
+		}
+		fmt.Fprintf(&b, "[mcp_servers.%s]\ncommand = %q\nargs = [", grant.Server, grant.Command)
+		for i, a := range grant.Args {
+			if i > 0 {
+				b.WriteString(", ")
+			}
+			if !basicStringSafe(a) {
+				return nil, fmt.Errorf("%s: mcp_server_grant arg %q is not representable as a TOML basic string", doc.File, a)
+			}
+			fmt.Fprintf(&b, "%q", a)
+		}
+		b.WriteString("]\n")
 	}
 
 	return []byte(b.String()), nil

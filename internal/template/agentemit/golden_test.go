@@ -181,13 +181,20 @@ func TestRealSetCodexShape(t *testing.T) {
 			t.Fatalf("%s: no name", path)
 		}
 
-		// AC-007: MCP server mapping on exactly the 7 carriers.
-		_, hasMCP := doc["mcp_servers"].([]string)
+		// AC-007: MCP server mapping on exactly the 7 carriers — map shape
+		// (the run-phase-measured form; the array form is rejected by codex).
+		servers, hasMCP := doc["mcp_servers"].(map[string]any)
 		if expectedMCPCarriers[name] && !hasMCP {
 			t.Errorf("%s (%s): inventory carrier must declare mcp_servers", path, name)
 		}
 		if !expectedMCPCarriers[name] && hasMCP {
 			t.Errorf("%s (%s): non-carrier must not declare mcp_servers", path, name)
+		}
+		if hasMCP {
+			moai, ok := servers["moai"].(map[string]any)
+			if !ok || moai["command"] != "moai" {
+				t.Errorf("%s (%s): mcp_servers.moai must carry the server definition (command=moai)", path, name)
+			}
 		}
 
 		// AC-008: effort mapping per manifest (identity, P-02-locked).

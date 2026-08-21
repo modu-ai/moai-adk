@@ -229,6 +229,8 @@ Static `skills:` preload stays minimal (token diet); load on demand with `Skill`
 
 > **Model/effort escalation**: deep-reasoning escalation is an ORCHESTRATOR decision (this agent cannot spawn further sub-agents beyond its chartered leaf-worker fan-out — the depth-2 seal binds). See `.claude/rules/moai/development/model-policy.md`.
 '''
-mcp_servers = ["moai"]
 model_reasoning_effort = "xhigh"
 sandbox_mode = "workspace-write"
+[mcp_servers.moai]
+command = "moai"
+args = ["mcp-server"]

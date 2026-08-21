@@ -131,6 +131,8 @@ Static `skills:` preload is kept to a minimum (token diet — progressive disclo
 - Per-spawn `Agent(general-purpose)` pattern basis: `.claude/rules/moai/workflow/archived-agent-rejection.md` §C.
 - Read-only verification batching (single-turn parallel Bash): `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution.
 '''
-mcp_servers = ["moai"]
 model_reasoning_effort = "high"
 sandbox_mode = "workspace-write"
+[mcp_servers.moai]
+command = "moai"
+args = ["mcp-server"]
