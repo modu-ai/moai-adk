@@ -78,8 +78,10 @@ version-resolver:
 template: |
   ## $RESOLVED_VERSION Release Notes (Draft)
 
-  > ⚠️ **이 문서는 Release Drafter가 PR merge 시마다 자동 업데이트하는 draft입니다.**
-  > 실제 릴리스 시 이 내용을 기반으로 `CHANGELOG.md`를 영문+한국어로 작성한 후 `./scripts/release.sh` 실행.
+  > ⚠️ **This is a draft that Release Drafter refreshes on every PR merge. It is not the published body.**
+  > At release time, write the `CHANGELOG.md` section from this list: English only,
+  > opening with `### Summary`, which the release harness composes the published
+  > notes from. Then run `./scripts/release.sh`.
 
   ## Changes
 
