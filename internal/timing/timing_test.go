@@ -9,7 +9,23 @@ import (
 
 // cpuUnit is a deterministic CPU-bound unit: its duration scales linearly
 // with n and is independent of the filesystem or subprocess machinery, so
-// ratios between two cpuUnit calls are stable under machine load.
+// ratios between two cpuUnit calls are stable under *steady* machine load.
+//
+// [HARD] Every test that measures with cpuUnit runs WITHOUT t.Parallel().
+//
+// Steady is the load-bearing word, and the parallel runs in this package broke
+// it. Interleaving reference and measured samples (measurePaired) cancels a
+// load level that holds across both, but a sibling measuring test starting or
+// finishing mid-run is a step change, not a level: the two sides of the ratio
+// land on opposite sides of the step. With ref and fn byte-identical — the
+// ratio's ideal being 1.00x against a 2.00x bound — CI still observed 2.32x,
+// 2.72x, and 4.64x, and the reference unit itself moved 433µs to 1.687ms
+// between runs.
+//
+// So the harness reported a code regression on code that had not changed. The
+// non-parallel tests in a package run to completion before the parallel ones
+// resume, which is what keeps these five off each other's measuring window.
+// Adding t.Parallel() to a measuring test reopens this.
 func cpuUnit(n int) {
 	sum := 0
 	for i := 0; i < n; i++ {
@@ -113,7 +129,7 @@ func TestCheckSteadyAndBudgetArms(t *testing.T) {
 // denominator can inflate (or deflate) several-fold on its own, and the
 // resulting ratio says more about the runner than about the code.
 func TestMeasureCalibratedRatioHealthy(t *testing.T) {
-	t.Parallel()
+	// Deliberately NOT parallel — measuring test; see the note on cpuUnit.
 	unit := func() { cpuUnit(5_000_000) }
 	refSt, st := measurePaired(unit, unit, 30, 3)
 	b := Bound{Budget: 30 * time.Second, SteadyCeiling: 10 * time.Second, MaxUnits: 2.0, Name: "cpu-1x"}
@@ -134,7 +150,7 @@ func TestMeasureCalibratedRatioHealthy(t *testing.T) {
 // letting the growth through undetected. Interleaving the two units puts
 // both halves of the ratio under the same load.
 func TestMeasureCalibratedRatioTripsAt4x(t *testing.T) {
-	t.Parallel()
+	// Deliberately NOT parallel — measuring test; see the note on cpuUnit.
 	refSt, st := measurePaired(func() { cpuUnit(2_000_000) }, func() { cpuUnit(8_000_000) }, 30, 3)
 	b := Bound{Budget: time.Hour, SteadyCeiling: time.Hour, MaxUnits: 1.5, Name: "cpu-4x"}
 	errs := Check(b, refSt.Median, st)
@@ -183,7 +199,7 @@ func TestMedianRunsWarmupPlusSamples(t *testing.T) {
 }
 
 func TestAssertHealthyEndToEnd(t *testing.T) {
-	t.Parallel()
+	// Deliberately NOT parallel — measuring test; see the note on cpuUnit.
 	ref := Median(func() { cpuUnit(5_000_000) }, 2, 10)
 	// Generous bounds: this exercises the Assert wiring (measure + log +
 	// Check) on healthy code and must not fail.
