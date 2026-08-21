@@ -661,6 +661,76 @@ Claude Code renders the assembled file, which is a runtime behavior no test in t
 The evidence that the mechanism works remains the two `.moai/config/sections/*.yaml` imports that
 resolve in this repo today, now joined by a third that resolves in a freshly deployed project.
 
+### M5-b — Codex-cap byte guard (2026-08-22)
+
+Tree: worktree `.claude/worktrees/t82`, branch `WT-agents-md-diet`, parent `8294861c5`.
+Files written: `internal/config/token_budget_guard.go`,
+`internal/config/token_budget_guard_test.go`.
+
+**What landed.** `CodexContractByteCeiling = 24576` plus `MeasureContractBytes(repoRoot)`, which
+returns a `ContractByteBreach{Path, Bytes, Overflow}` per offending document. It reuses
+`alwaysLoadedSurface()` to find the root `AGENTS.md` rather than re-globbing — `REQ-AMC-008` forbids
+a second, independently-drifting measurement path — and then adds the template mirror, because a
+mirror over the ceiling truncates on a user's machine regardless of the live file's size. Absent
+files are skipped, keeping the existing hermetic treatment so a tree without the mirror measures
+the same baseline as before.
+
+| AC | Claim | Evidence (command → observed) | Status |
+|---|---|---|---|
+| `AC-AMC-016` (b) | A breach **fails the build** — not warns — and the message names the measured byte figure and the offending file | **Falsified on the real tree before accepting**: 11,000 bytes appended to `AGENTS.md`, then `go test ./internal/config/ -run 'CodexContractByteCeiling'` → `--- FAIL`, message `…/AGENTS.md = 25229 bytes, exceeds the Codex contract ceiling 24576 (overflow 653) — codex truncates the tail SILENTLY…`. `git checkout -- AGENTS.md` restored 14,229 B and the test passes again | PASS |
+| `AC-AMC-016` (b) negative table | The breach detector fires on each shape it must catch | Four subtests extend the **existing** table-driven test in the same file, reusing its repo-root helpers: `contract-at-ceiling` → 0 breaches (the ceiling is inclusive), `contract-one-byte-over` → 1, `mirror-over-live-under` → 1 (the mirror is bound independently), `both-over` → 2. Each asserts the breach names a path and that `Overflow == Bytes − ceiling`. All PASS | PASS |
+| `AC-AMC-016` (a) | Token-budget negative path cited, not rebuilt | `--- PASS: …/over-budget`, `--- PASS: …/under-budget` — unchanged, no new fixture | PASS |
+| `AC-AMC-017` | The byte guard calls the enumeration helper, and that enumeration contains `AGENTS.md` | `contractDocuments()` calls `alwaysLoadedSurface()` and selects the `AGENTS.md` entry from its output; it returns nil when the enumeration lacks it, which is the condition M5-a's membership assertion already fails on. `TestAlwaysLoadedSurfaceEnumeration` → PASS | PASS |
+| `AC-AMC-015` | Suites green; no expected-behavior assertion edited | `go vet ./internal/config/` clean; `go test -count=1 ./internal/config/` → `ok 2.718s`. The pre-existing `over-budget` / `under-budget` cases are untouched; everything added is new. One fixture line was added inside the new subtests to create `.claude/rules/moai/core/` — required because `contractDocuments` reuses the enumeration helper, which walks that tree | PASS |
+
+**Measured figures, emitted on the passing path** so a ratchet criterion can quote them:
+
+```
+go test -v ./internal/config/ -run 'Budget|AlwaysLoaded|Codex'
+  always-loaded surface = 66266 tokens (budget 76000, headroom 9734, 18 entries)
+  contract document AGENTS.md = 14229 bytes (ceiling 24576, headroom 10347)
+  contract document internal/template/templates/AGENTS.md = 14229 bytes (ceiling 24576, headroom 10347)
+```
+
+**Deferred by construction — `AC-AMC-018`, `AC-AMC-019`, `AC-AMC-020`.** These three ratchet the
+constant, and `REQ-AMC-014` requires the achieved figure to be a `go test -v` output measured on the
+**integration branch** — the `release/vX.Y.Z` branch this card merges into, carrying the merged
+sibling state — not a card worktree measured in isolation. This worktree is not that tree, so
+measuring here and calling it the achieved figure would be the exact substitution the requirement
+names. `AlwaysLoadedTokenBudget` is therefore left untouched at 76,000.
+
+The procedure at integration, in order:
+
+1. Merge this card into `release/vX.Y.Z`, and confirm `AC-AMC-021` still passes there (every
+   shipped file mirrored, `make build` run) — the post-diet precondition `AC-AMC-018` names.
+2. `go test -v ./internal/config/ -run 'Budget|AlwaysLoaded'` on that branch; quote the
+   `always-loaded surface = N tokens` line, and confirm in the **same run** that the enumeration
+   contains `AGENTS.md` (the ordering assertion — a figure produced before the extension does not
+   satisfy the criterion even if the extension lands afterwards).
+3. Record `git rev-parse --abbrev-ref HEAD` and `git rev-list --count main..HEAD` alongside N, so
+   the measured tree is identified rather than asserted.
+4. Set `AlwaysLoadedTokenBudget = N × (1 + ratio)` with the ratio inside `REQ-AMC-013`'s 13 %-17 %
+   band and the constant at or below 75,000; the two figures agree within ±1,000 tokens
+   (`AC-AMC-019` reads **both** halves — the agreement check alone passes vacuously on a ratio the
+   same edit declared).
+5. Rewrite the constant's comment: state the ratio, record the ratchet, and retire the "temporary
+   raise pending a separate card" note (`AC-AMC-020`).
+
+**Residual risk — the admissible ratio band is what the margin is really measured against.**
+`REQ-AMC-013` fixes the band at 13 %-17 % and caps the constant at 75,000, so the largest achieved
+figure any admissible ratio can carry is `75,000 ÷ 1.13 = 66,371` — which is where this SPEC's
+target figure comes from. Today's worktree reading of 66,266 clears it by **105 tokens**, and the
+ratio is then forced to the band's low end: 13 % yields `66,266 × 1.13 = 74,881`, under the cap,
+while 15 % yields 76,206 and 17 % yields 77,531, both over it. So the ratchet closes, but only at
+13 %, and only while N stays at or below 66,371.
+
+N on the integration branch will not equal 66,266 — sibling cards merge in between, and each
+always-loaded rule they add consumes that 105-token margin. If the integration measurement comes in
+over 66,371, no admissible ratio produces a constant at or below 75,000 and the diet has to be
+extended before the ratchet can be set. The two levers M4 left sized are where that would come
+from: 29.4 % of the never-split nine's projected yield is unspent, and the already-split remainder
+was drawn down only 6.0 %. Naming the arithmetic here is cheaper than deriving it at the ratchet.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
