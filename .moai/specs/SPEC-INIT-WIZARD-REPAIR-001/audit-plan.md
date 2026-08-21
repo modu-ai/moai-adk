@@ -1,6 +1,23 @@
 # Plan-Audit — SPEC-INIT-WIZARD-REPAIR-001 (card t174)
 
-Canonical full report: `.moai/reports/plan-audit/SPEC-INIT-WIZARD-REPAIR-001-review-1.md` (iteration 1/2, Tier M). This file carries the verdict surface for the SPEC directory.
+Canonical full reports: iteration 1 `.moai/reports/plan-audit/SPEC-INIT-WIZARD-REPAIR-001-review-1.md` · iteration 2 (current, binding) `.moai/reports/plan-audit/SPEC-INIT-WIZARD-REPAIR-001-review-2.md`. This file carries the verdict surface for the SPEC directory.
+
+## Round 2 (final for Tier M) — binding verdict
+
+**Verdict: PASS — Overall score 1.0 (Tier M threshold 0.80 met; no score regression vs round 1).** Delta re-audit scoped to the round-1 defect delta + regression check, per the Retry Loop Contract. Baseline pinned and verified at fe927cd8f.
+
+- Round-1 blocker 1 (MP-7 markers) — RESOLVED: `grep '\[NEEDS CLARIFICATION' plan.md` → 0 matches; both §B markers replaced by `[RESOLVED 2026-08-22, lead ruling — wire it]` records, and the key-scoped condition verified load-bearing at three layers (REQ-003 splice clause spec.md:82; §4 constraint bullet spec.md:96 "whole-file overwrite is prohibited and MUST be asserted by an M1 preservation test"; plan §D:28 + M1 RED task :42).
+- Round-1 blocker 2 (MP-5/D7-4) — RESOLVED: reconciliation sentence at spec.md:121 (administrative archive, not retirement; capability verified live); SPEC-WT-DOC-001 `status: archived` re-verified; the two other referenced SPECs are `completed`.
+- Round-1 blocker 3 (progress §E.1) — RESOLVED: literal `plan_status: audit-ready` + `plan_complete_at: 2026-08-22` at progress.md:5-6.
+- Delta factual claims spot-checked against the tree, all verified: region-splice semantics of `toolpolicy.WriteUserDefaultMode`/`renderIntoFile` (tier_render.go:106-153); no tool-policy.yaml in the distributed template (find zero matches; audit_registry.go:84 "dev-only, not distributed"); update-wizard TTY gate + absent-yaml no-op + current-value defaults on empty input + delta-only persistence (init_workflow_flags.go:70-78, 85-88, 178-189, 106-134).
+- No regression: 9 REQ / 10 AC within Tier M ceilings; GEARS intact (REQ-003 = When/When/While compound); frontmatter valid (v0.1.1); zero `syscall` matches; no new ambiguity or contradiction.
+- Optional carried (per dispatch scope, non-blocking): D4 byte-identical preamble wording (acceptance.md:3), D5 REQ-005 Where→When (spec.md:84), D6 `related_specs` extra field (spec.md:14); new optional O-4 (splice-preservation assertion lives in M1 RED + §4 MUST rather than a dedicated AC — test-pinned, optional).
+
+This PASS never auto-bypasses Implementation Kickoff Approval — the plan→run human gate remains mandatory and score-independent.
+
+---
+
+## Round 1 — superseded verdict (history, FAIL at iteration 1/2)
 
 **Verdict: FAIL — Overall score 1.0 (gate-driven FAIL: two must-pass failures override the aggregate).**
 
