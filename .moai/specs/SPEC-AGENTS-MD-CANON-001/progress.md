@@ -769,7 +769,7 @@ was drawn down only 6.0 %. Naming the arithmetic here is cheaper than deriving i
 
 - sync_status: complete
 - sync_complete_at: 2026-08-22
-- sync_commit_sha: _<backfilled by `moai spec close`; a commit cannot contain its own SHA>_
+- sync_commit_sha: 4d39c1ae5 (`docs(spec-agents-md-canon-001): sync-phase artifacts (t82)`; backfilled in this follow-up chore commit — a commit cannot contain its own SHA)
 - changelog_entry_position: `CHANGELOG.md` `## [Unreleased]` → `### Added` (the contract layer, its
   byte guard, and the enumeration extension) and `### Changed` (the eleven-document diet and the
   global-layer warning)
@@ -786,4 +786,10 @@ was drawn down only 6.0 %. Naming the arithmetic here is cheaper than deriving i
     `75,000 ÷ 1.13 = 66,371`. A measurement above that closes no ratchet at any ratio.
   - `.claude/output-styles/moai/moai.md` — 61,706 B, 23 % of the always-loaded surface, untouched
     by this SPEC and excluded from M1's reduction bound. The next lever if the ratchet tightens.
-mx_commit_sha: (this commit)
+
+## §E.5 Mx-phase Audit-Ready Signal
+
+- mx_status: no MX annotation pass was required — this SPEC changed documentation, a guard
+  constant, and one enumeration helper; no new exported function crossed an `@MX:ANCHOR`,
+  `@MX:WARN`, or `@MX:TODO` threshold
+- mx_commit_sha: ac441ba57 (`chore(SPEC-AGENTS-MD-CANON-001): Mx-phase audit-ready signal + 3-phase close`)
