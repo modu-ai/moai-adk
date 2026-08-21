@@ -34,3 +34,19 @@ Class C (전체 3단계 진행). worktree t173 / branch `WT-clean-links`
 - 감사관 M4 정직성: 리드 비준 원문 verbatim 대조는 불가(입력에 없음) —
   교차 산출물 정합성으로 대체 검증
 - audit_multi 미실행(t171 워크트리 사각) — 방법론 노트에 기록
+
+## run 단계 (2026-08-22 05:44 리드 판정 PASS — 이탈 1건 수용)
+
+커밋: M1 be0959428(Lstat 분류 + removeSymlink 링크 전용 분기 — Run D 출하 결함 폐쇄: dangling 제거+진행줄·재실행 루프 소멸) · M2 dda35151b(5형태 양극 fixture) · M3 e78fd8f5d(청소집합↔배포집합 계약, 렌더링 목적지 기준) · M4 73e451ef7(플랫폼 skip·ELOOP 스팟·커버리지 91.6%) · 백필 832023d36.
+
+- AC 11/11 PASS (E1 행렬 + RED verbatim) · 3플랫폼 빌드 0 · lint 신규 0
+- **개시 이탈(수용)**: 신규 removeSymlink의 RemoveAll 4지점이 destructive-target registry 가드 건침 → update_destructive_registry.go 행 1개 추가(12행/22지점)로 해소. 리드 판정: "스코프 크립이 아니라 가드 준수" — 범위 밖 병렬 수트가 잡은 것은 D4 스코프 명령의 설계 효과.
+- 잔여: ELOOP 자기지목 = 명시적 귀속 에러로 요란한 실패(후속 카드 후보 — 리드 큐 기록) · 배포 경로 링크 인식 §E 명시 제외 · 비-darwin CI 관찰
+
+## sync 단계 + 종결 (2026-08-22)
+
+경량 sync: CHANGELOG [Unreleased] Fixed 항목 · `in-progress → completed` · §E.4 + sync_commit_sha 31e711707 (백필 18bdf73a4). 3-phase close.
+
+## 통합 조건 (리드 지시)
+
+release/v3.1.3 merge --no-ff 후 **통합 트리에서 M3 계약 테스트 재실행** — t81(가)의 .agents 미러가 청소집합에 합류한 상태에서 REQ-CSL-009 계약(청소집합 ⊆ 배포 렌더링 목적지)이 여전히 성립하는지 검증. 결과는 완료 신호에 포함.
