@@ -274,4 +274,51 @@ m1_to_mN_commit_strategy: per-milestone
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-22
+sync_commit_sha: pending-backfill-SPEC-CLI-STATE-DIR-BOUND-001
+sync_status: complete
+b12_self_test_a: pass    # grep -c 'SPEC-CLI-STATE-DIR-BOUND-001' CHANGELOG.md → 0 (no prior entry)
+b12_self_test_b: pass    # AC-ID census of acceptance.md → 15; §E.2 matrix → 15/15
+b12_self_test_c: pass    # every path named in the entry resolves via ls
+changelog_entry_position: "[Unreleased]"
+frontmatter_status_transitions:
+  spec.md: in-progress → completed
+  plan.md: n/a (markdown-header convention — no YAML frontmatter)
+  acceptance.md: n/a (markdown-header convention — no YAML frontmatter)
+  progress.md: n/a (markdown-header convention — no YAML frontmatter)
+canary_compliance_check: not-applicable   # this SPEC declares no forward-looking policy its own sync tests
+```
+
+`sync_commit_sha` carries the `pending-backfill-*` placeholder per `spec-frontmatter-schema.md` § SHA placeholder backfill exemption (D3): the commit this block describes cannot know its own hash until after it lands. It is backfilled in a follow-up commit.
+
+### 이 sync 커밋이 담은 것
+
+세 가지뿐이며, 전부 마크다운이다. `internal/` 아래는 한 파일도 건드리지 않았다.
+
+| 산출물 | 내용 |
+|---|---|
+| `CHANGELOG.md` `[Unreleased]` | `### Summary` + `### Changed` 6항 + `### Fixed` 1항. 운영자 관점으로 서술하고 REQ/AC 식별자는 인용하지 않았다 — SPEC 밖에서는 뜻이 없기 때문이다 |
+| `spec.md` 프론트매터 | `status: in-progress → completed`. `updated:` 는 이미 `2026-08-22`(= sync 커밋 날짜)라 무변경 |
+| `progress.md` §E.4 | 이 블록 |
+
+docs-site / README 는 손대지 않았다. 이 변경에는 사용자 문서 표면이 없다 — 새 CLI 도, 새 설정 키도, 문서화된 플래그 변경도 없다.
+
+### 관측된 검증
+
+| 항목 | 명령 | 관측된 출력 |
+|---|---|---|
+| CHANGELOG 중복 없음 | `grep -c 'SPEC-CLI-STATE-DIR-BOUND-001' CHANGELOG.md` | `0` — 기존 항목 없음, 병렬 세션 중복 아님 |
+| AC 계수 일치 | `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md \| sort -u \| wc -l` | `15` (AC-001..AC-015). §E.2 매트릭스의 15/15 와 일치 |
+| 인용 경로 실재 | `ls` (9개 변경 파일 중 8개 + 위임 대상) | 전부 존재 |
+| run 커밋 조상 확인 | `git merge-base --is-ancestor e85cfa219 HEAD; echo $?` | `0` — §E.3 의 `run_commit_sha` 가 이 트리의 조상이다 |
+| 빌드 | `go build ./...` | 출력 없음, exit 0 |
+
+`go test ./...` 는 돌리지 않았다. 이 커밋에 코드 변경이 없으므로 스위트를 다시 태울 근거가 없다(CLAUDE.local.md §4 — 전 패키지 판정은 CI 몫).
+
+### 미검증 / 잔여
+
+- **프론트매터 전이는 `spec.md` 한 곳뿐이다.** 배차 지시는 네 산출물 전부를 지목했으나, 이 SPEC 은 `plan.md` / `acceptance.md` / `progress.md` 를 **마크다운 헤더 규약**으로 작성했다 — 세 파일에 YAML 프론트매터 블록이 애초에 없다(`grep -n '^status:' *.md` → `spec.md:5` 한 줄). 없는 블록을 새로 만드는 것은 manager-docs 에게 금지된 본문 수정이므로 하지 않았다. 따라서 완료 상태를 세는 grep 은 4가 아니라 `spec.md:1` + 나머지 `0` 을 낸다 — 그 판정 명령의 리터럴을 여기 적으면 이 문장 자체가 매칭돼 계수를 무디게 만들므로 적지 않는다(§E.2 의 `runClean` 주석 조정과 같은 이유). 이는 결함이 아니라 이 SPEC 의 작성 규약이며, SPEC-ALWAYS-LOADED-DIET-001 이 같은 형태로 마감됐다.
+- `sync_commit_sha` 는 placeholder 상태다. 후속 백필 커밋 전까지 이 필드로 커밋을 되짚을 수 없다.
+- §D.6 의 머지 후 확인 3건(§E.3 이 남긴 항목)은 여전히 미실행이다 — 머지 후 실제 머신 몫이며 sync 범위가 아니다.
+- R1(Windows CI 조상 `.moai/state` 의 생성 주체)은 이 SPEC 이 답하지 않은 채로 남는다. 후속 카드.

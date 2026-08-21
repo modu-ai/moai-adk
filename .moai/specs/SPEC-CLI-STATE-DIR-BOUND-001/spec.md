@@ -2,7 +2,7 @@
 id: SPEC-CLI-STATE-DIR-BOUND-001
 title: "state 디렉터리 탐색의 무한 상향 걷기 제거 — 보호된 프로젝트 루트 규약으로 수렴"
 version: "0.3.1"
-status: in-progress
+status: completed
 created: 2026-08-22
 updated: 2026-08-22
 author: manager-spec

@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Summary
+
+The search for a project's `.moai/state` used to have no upper bound. It walked from the working directory toward the filesystem root and took the first `.moai/state` it found; anywhere below the home directory, that first hit is `~/.moai/state`. So a command run in a directory that was not a MoAI project at all resolved against a state directory the caller never named — and reported success. The same command run under `/tmp` failed with a clear error. The only difference between the two was whether the working directory sat below `$HOME`.
+
+`moai clean` is the sharp end of it, because it deletes: the walk decided which `runs/` directory `os.RemoveAll` was pointed at.
+
+The lookup now stops at the project root. The commands that read or append state share one resolution path with the project-root convention the rest of the codebase already used, which is where the home boundary comes from.
+
+### Changed
+
+- Resolving a project's `.moai/state` no longer climbs past the project root. `moai state dump`, `moai state show-blocker`, `moai chain`, `moai tokens`, and `moai clean` stop at the directory that owns the project and fail there when it has no state directory, instead of continuing upward and succeeding somewhere else.
+- `moai clean` deliberately does **not** read `CLAUDE_PROJECT_DIR`; it anchors on the directory it runs in. The read-and-append commands above do read it. The asymmetry is intentional: the variable does not reliably track a worktree-resident session, and a delete should not inherit its target from the environment — that is the same "a directory the caller never named" hazard arriving through a different door. To clean another project, run the command inside it.
+- The chain event ledger has one location: `<project>/.moai/state/chain`. It previously landed in `.moai/chain` when `CLAUDE_PROJECT_DIR` was unset and in `.moai/state/chain` when it was set, so a single project could scatter its events across two files. A ledger sitting at the legacy `.moai/chain` is relocated once, automatically. Where both exist the legacy file is kept untouched and a warning naming its path is printed — the two are never merged. When a relocation cannot be completed, the command keeps using the legacy path and says so on stderr rather than losing events quietly.
+- Every command that resolves a project's state now prints the project root it resolved, before acting on it; `moai clean` prints it before listing or deleting anything. Because `clean` anchors on the working directory while the readers honor `CLAUDE_PROJECT_DIR`, the two can point at different projects within one session — inspect one project, clean another. The printed line is what makes that visible.
+- A directory holding a bare `.moai` with no `state` inside it now stops resolution and fails there. Previously the walk skipped such a directory and succeeded at an ancestor. This is deliberate: silently skipping a bare `.moai` is the same behavior that let the walk skip past `~/.moai`, and repairing one without the other would leave the hazard in place. The failure message names the directory it stopped at.
+- Resolved state paths are returned in symlink-resolved form. On macOS this changes the string a command prints for the same directory — `/private/var/...` rather than `/var/...`.
+
+### Fixed
+
+- A state-reading command run anywhere under the home directory resolved to `~/.moai/state` and reported success instead of failing. Beneath that, `moai clean` deleted `runs/`, `moai chain` created `~/.moai/chain`, and the readers reported on a project nobody had named. The reproducing case now ends in `not in a MoAI project (no .moai directory found in project directories)` where it previously printed `No blockers found`.
+
 ## [3.1.2] - 2026-08-21
 
 ### Summary
