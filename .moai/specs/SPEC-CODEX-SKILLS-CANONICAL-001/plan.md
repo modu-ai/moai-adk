@@ -26,7 +26,7 @@ Codex CLI 는 `<repo>/.agents/skills/`(CWD→상향 병합)와 `$CODEX_HOME/skil
 | R12 | `manifest.Track` 이 디렉터리 링크에서 EISDIR → `Deploy` 실패, fail-open 과 충돌 | 중간 | REQ-CSC-010(기록 금지) + AC-CSC-012(1번 팔). 근거 spec §A.6 |
 | R13 | 실행 순서가 만든 dangling 링크를 청소가 찾아내고도 지우지 않아 미러가 영구 잔존 | **높음** | REQ-CSC-008 (a)`Lstat`+dangling 제거 · (b)순서 + AC-CSC-007(2) + AC-CSC-008(2). 근거 spec §A.10 |
 | R14 | 백업 금지를 절대 형태로 써서 사용자의 `moai` 접두 실 항목이 무백업 손실 | **높음** | REQ-CSC-010 판별자 한정 + AC-CSC-012(3번 팔). 근거 spec §A.11 |
-| R15 | 출력 seam 부재로 모드·경고가 관측 불가 → MUST AC 3개 판정 불능 | 중간 | REQ-CSC-005(반환 결과) + M2 산출물. 근거 spec §B.D6 |
+| R15 | 출력 seam 부재로 모드·경고가 관측 불가 → MUST AC 3개 판정 불능 | 중간 | REQ-CSC-005(반환 결과) + M2 산출물. 근거 spec §B.D3 + §A.9b |
 | R16 | `os.Lstat` 전환이 기존 7개 청소 뿌리 동작을 함께 바꾼다 | 중간 | 받아들인 결정(spec §B.D6 폭발 반경) + M4 회귀 확인 |
 | R17 | `moai-`(하이픈) 접두 seam 재사용으로 `moai` 스킬이 미러·가드·정리에서 누락 | 중간 | REQ-CSC-015 철자 고정 + AC-CSC-016 [HARD] + M6·§H. 근거 spec §A.9 |
 
@@ -65,7 +65,7 @@ Codex CLI 는 `<repo>/.agents/skills/`(CWD→상향 병합)와 `$CODEX_HOME/skil
 `.agents/skills/<name>` 을 `../../.claude/skills/<name>` 상대 심볼릭 링크로 만들고, 실패 시 복사 폴백 + 모드 보고. 실패-실패 시 fail-open.
 
 - 대상: M1 이 만든 파일 + **출력 seam 신설**
-- **[HARD] 출력 seam 은 이 마일스톤의 산출물이다.** iter-3 까지 여기 "출력 경로는 기존 printer 계층 재사용"이라고 적혀 있었는데 **사실이 아니다** — 실측하면 `internal/template` 에 `io.Writer` 가 없고 `Deploy` 는 `error` 만 돌려주며 패키지 전체에 printer 계층이 없다. 출력 표면은 호출자인 `internal/cli/` 에만 있다. 따라서 모드·경고를 **반환 결과로 올리는 seam** 을 여기서 만든다(REQ-CSC-005, spec §B.D6). 이것을 빠뜨리면 AC-CSC-006·011(3)·013(3) 세 개가 함께 막히고 그중 둘은 MUST 다.
+- **[HARD] 출력 seam 은 이 마일스톤의 산출물이다.** iter-3 까지 여기 "출력 경로는 기존 printer 계층 재사용"이라고 적혀 있었는데 **사실이 아니다** — 실측하면 `internal/template` 에 `io.Writer` 가 없고 `Deploy` 는 `error` 만 돌려주며 패키지 전체에 printer 계층이 없다. 출력 표면은 호출자인 `internal/cli/` 에만 있다. 따라서 모드·경고를 **반환 결과로 올리는 seam** 을 여기서 만든다(REQ-CSC-005 / spec §B.D3 + §A.9b — 그 실측은 §A 에 절로 승격돼 있다). 이것을 빠뜨리면 AC-CSC-006·011(3)·013(3) 세 개가 함께 막히고 그중 둘은 MUST 다.
 - 닫힘 조건: AC-CSC-002, AC-CSC-003, AC-CSC-004, AC-CSC-005, AC-CSC-006, AC-CSC-011, AC-CSC-013
 - 상대 링크를 쓰는 이유: 프로젝트 디렉터리를 통째로 옮기거나 복사해도 링크가 살아남는다. 절대 경로는 `moai init` 시점 경로로 굳는다(CLAUDE.local.md §14 와 같은 실패 형태).
 
@@ -78,9 +78,11 @@ Codex CLI 는 `<repo>/.agents/skills/`(CWD→상향 병합)와 `$CODEX_HOME/skil
 1. 미러 항목에 대해 `manifest.Track` 을 호출하지 않는다.
 2. pre-clean 백업이 미러를 보존하지 않는다 — 복사 모드에서 특히(spec §A.7).
 
-2번은 `backupThenRemove` 쪽 처리가 필요하다. 템플릿에 `.agents/` 가 없어 `templateManagedPaths` 가 항상 공집합이 되는 것이 원인이므로, 미러 뿌리를 백업 대상에서 제외하는 명시적 분기를 두거나 그 뿌리를 managed 로 간주하게 만든다 — 어느 쪽이든 AC-CSC-012 의 2번 팔이 판정한다.
+2번은 `backupThenRemove` 쪽 처리가 필요하다. 템플릿에 `.agents/` 가 없어 `templateManagedPaths` 가 항상 공집합이 되는 것이 원인이므로, **이번 실행이 다시 만들 미러인지**(템플릿이 같은 이름의 스킬을 가졌는지)를 판별하는 분기를 새로 작성한다 — REQ-CSC-010 의 판별자 그대로다.
 
-- 닫힘 조건: AC-CSC-012 (양팔)
+[HARD] **"미러 뿌리를 백업 대상에서 제외하는" 절대 형태로 구현하지 않는다.** 그 형태는 AP-16 이 금지하는 것이며, `moai` 접두를 쓴 사용자 실 항목이 경고도 백업도 없이 사라진다(spec §A.11). 판별은 뿌리 단위가 아니라 **이름 단위**다.
+
+- 닫힘 조건: AC-CSC-012 (3팔 — manifest 부재 / 재배포분 백업 부재 / 은퇴분 백업 보존)
 
 ### M4 — 청소 경로 등록 (Priority High, 독립적)
 

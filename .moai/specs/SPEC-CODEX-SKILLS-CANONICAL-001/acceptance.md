@@ -15,7 +15,7 @@ Tier M 상한: 요구사항 16 / 판정 기준 16. 본 문서는 **16개**를 �
 | AC-CSC-005 | REQ-CSC-004 | Go 테스트 (폴백 주입) |
 | AC-CSC-006 | REQ-CSC-005 | Go 테스트 (반환 결과 관측, 양방향) |
 | AC-CSC-007 | REQ-CSC-008 | Go 테스트 (구분자 중립 + 슬라이스 순서) |
-| AC-CSC-008 | REQ-CSC-008, REQ-CSC-009 | Go 테스트 (**미러 4형태 단일 테스트** — dangling 포함) |
+| AC-CSC-008 | REQ-CSC-008, REQ-CSC-009 | Go 테스트 (**미러 5형태 단일 테스트** — dangling + 링크 추종 탐침 포함) |
 | AC-CSC-009 | REQ-CSC-009 | Go 테스트 (사용자 소유 네임스페이스 전반 생존) |
 | AC-CSC-010 | REQ-CSC-007 | Go 테스트 (**동일 프로세스 seam 토글 불변식**) |
 | AC-CSC-011 | REQ-CSC-012, REQ-CSC-013, REQ-CSC-014 | Go 테스트 (대상 선점 3-상태) |
@@ -76,7 +76,7 @@ Tier M 상한: 요구사항 16 / 판정 기준 16. 본 문서는 **16개**를 �
 **When** `Deploy` 의 **반환 결과에 담긴 모드·경고 정보**를 읽으면,
 **Then** 복사 모드가 사용됐음이 그 결과에 나타나야 한다. 링크 모드가 성공한 실행에서는 **나타나지 않아야** 한다(양방향).
 
-[HARD] "`Deploy` 의 출력 writer 를 버퍼로 캡처한다"는 형태로 쓰지 않는다. 실측하면 `internal/template` 에는 `io.Writer` 가 **없다** — `Deploy` 의 시그니처는 `(ctx, projectRoot, m manifest.Manager, tmplCtx *TemplateContext) error` 이고 패키지 전체에 printer 계층이 없다. 출력 표면은 호출자인 `internal/cli/` 계층에만 있다. 따라서 판정은 **배포기가 반환하는 값**을 대상으로 하며, 사용자 표시 여부는 호출부의 책임이다(REQ-CSC-005, §B.D6). 이 seam 은 run-phase 가 새로 만들어야 하는 것이며 plan M2 의 산출물이다.
+[HARD] "`Deploy` 의 출력 writer 를 버퍼로 캡처한다"는 형태로 쓰지 않는다. 실측하면 `internal/template` 에는 `io.Writer` 가 **없다** — `Deploy` 의 시그니처는 `(ctx, projectRoot, m manifest.Manager, tmplCtx *TemplateContext) error` 이고 패키지 전체에 printer 계층이 없다. 출력 표면은 호출자인 `internal/cli/` 계층에만 있다. 따라서 판정은 **배포기가 반환하는 값**을 대상으로 하며, 사용자 표시 여부는 호출부의 책임이다(REQ-CSC-005 / spec §B.D3 + §A.9b). 이 seam 은 run-phase 가 새로 만들어야 하는 것이며 plan M2 의 산출물이다.
 
 ### AC-CSC-007 — 청소 목록에 등록되어 있다 (경로 구분자 중립)
 
@@ -89,9 +89,9 @@ Tier M 상한: 요구사항 16 / 판정 기준 16. 본 문서는 **16개**를 �
 
 [HARD] 슬래시 리터럴 동치로 단언하지 않는다. 기존 항목은 전부 `filepath.Join` 으로 만들어지므로 Windows 에서 `DisplayPath` 는 백슬래시를 쓴다 — 리터럴 비교는 Windows CI 에서만 실패하고, §D.5 가 전량 판정을 CI 에 맡기므로 그 실패는 반드시 드러난다.
 
-### AC-CSC-008 — 미러의 **네 형태**를 한 테스트에 심고 함께 단언한다
+### AC-CSC-008 — 미러의 **다섯 형태**를 한 테스트에 심고 함께 단언한다
 
-**Given** `t.TempDir()` 프로젝트 하나에 아래 네 항목을 **모두** 심어 두고,
+**Given** `t.TempDir()` 프로젝트 하나에 아래 다섯 항목을 **모두** 심어 두고,
 
 | 항목 | 형태 | 비고 |
 |---|---|---|
@@ -99,20 +99,29 @@ Tier M 상한: 요구사항 16 / 판정 기준 16. 본 문서는 **16개**를 �
 | `.agents/skills/moai-gone` | 심볼릭 링크, 정본이 **이미 삭제됨(dangling)** | 실제 실행 순서가 만드는 상태 |
 | `.agents/skills/moai-copied/SKILL.md` | **실 디렉터리** | 복사 모드 산출물 |
 | `.agents/skills/hns-user-owned/SKILL.md` | **실 디렉터리** | 사용자 소유 |
+| `.agents/skills/moai-linkprobe` | 심볼릭 링크 → `.claude/skills/hns-linkprobe-src/SKILL.md` | **링크 추종 탐침** (아래 참조) |
 
 **When** `CleanMoaiManagedPaths` 를 1회 실행하면,
-**Then** 다음 네 단언이 **같은 테스트 안에서 모두** 참이어야 한다.
+**Then** 다음 여섯 단언이 **같은 테스트 안에서 모두** 참이어야 한다.
 
-1. `moai-live` 가 제거됐다.
-2. **`moai-gone` 이 제거됐다.**
-3. `moai-copied` 가 제거됐다.
+1. `moai-live` 가 제거됐다 — **`os.Lstat` 이 `IsNotExist`**.
+2. **`moai-gone` 이 제거됐다 — `os.Lstat` 이 `IsNotExist`.**
+3. `moai-copied` 가 제거됐다 — `os.Lstat` 이 `IsNotExist`.
 4. `hns-user-owned/SKILL.md` 가 그대로 읽히고 내용이 변하지 않았다.
+5. `moai-linkprobe` **링크 자체가 제거됐다** — `os.Lstat` 이 `IsNotExist`.
+6. **`.claude/skills/hns-linkprobe-src/SKILL.md` 가 그대로 읽힌다** — 청소가 링크를 따라가 대상을 지우지 않았다.
 
-추가로, **정본 `.claude/skills/moai-live/SKILL.md` 가 링크를 통해 삭제되지 않았다** — 청소가 링크를 따라가 정본을 지우는 형태를 함께 배제한다.
+[HARD] **1·2·3·5 는 `os.Stat` 이 아니라 `os.Lstat` 으로 판정한다.** dangling 링크는 청소 **이전에도** `os.Stat` 이 `IsNotExist` 를 돌려주므로(§A.10 실측), `os.Stat` 기반 제거 단언은 2번에 대해 **공허하게 참**이 된다 — 링크가 그대로 남아 있어도 통과한다. 이 AC 가 잡으려는 결함이 정확히 "찾아내고도 지우지 않음"이므로, 판정 syscall 을 틀리면 AC 전체가 무의미해진다.
 
-[HARD] **2번이 이 AC 의 존재 이유다.** iter-3 까지 이 AC 는 `.agents/skills/<name>/SKILL.md` 를 **실 파일로만** 심었다. 그런데 이 SPEC 이 실제로 배포하는 산출물은 심볼릭 링크이고, 실 디렉터리는 `os.Stat` 이 성공해 청소가 정상 동작하므로 — **§A.10 의 결함이 살아 있는 상태에서도 통과했다.** 놓친 축은 제거/생존이 아니라 **실 항목 / 링크 항목**이었다. 네 형태를 한 테스트에 두는 이유는 그 축을 fixture 안에 강제로 넣기 위해서다.
+[HARD] **5·6 의 탐침 이름은 의도적으로 비현실적이다.** 실제 미러는 `moai*` 정본을 가리키는데, 그 정본은 `.claude/skills/moai*` 라는 **자기 자신의 청소 대상**에 걸려 같은 실행에서 삭제된다. 그래서 현실적인 이름으로는 "링크를 따라가 지웠다"와 "정본이 자기 대상으로 지워졌다"가 **파일 존재 여부로 구분되지 않는다** — 둘 다 부재로 끝난다. 정본 자리에 청소 글롭 밖 이름(`hns-linkprobe-src`)을 두는 것은 그 축을 분리해 관측 가능하게 만들기 위한 장치이며, 배포 산출물의 실제 형태를 흉내 내려는 것이 아니다.
 
-[HARD] 네 단언을 별개 테스트로 쪼개지 않는다. 제거 쪽만 단언하는 테스트는 청소가 `.agents/skills/` 전체를 삼키고 있어도 통과하고, 실 항목만 심는 테스트는 dangling 결함을 통과시킨다.
+iter-4 까지 이 자리에는 "정본 `.claude/skills/moai-live/SKILL.md` 가 링크를 통해 삭제되지 않았다"가 적혀 있었다. 그 문장은 **올바른 구현에서 반드시 실패한다** — `moai-live` 는 정본 글롭에 매치되어 링크와 무관하게 지워진다.
+
+[HARD] **2번이 이 AC 의 존재 이유다.** iter-3 까지 이 AC 는 `.agents/skills/<name>/SKILL.md` 를 **실 파일로만** 심었다. 그런데 이 SPEC 이 실제로 배포하는 산출물은 심볼릭 링크이고, 실 디렉터리는 `os.Stat` 이 성공해 청소가 정상 동작하므로 — **§A.10 의 결함이 살아 있는 상태에서도 통과했다.** 놓친 축은 제거/생존이 아니라 **실 항목 / 링크 항목**이었다. 다섯 형태를 한 테스트에 두는 이유는 그 축을 fixture 안에 강제로 넣기 위해서다.
+
+[HARD] 여섯 단언을 별개 테스트로 쪼개지 않는다. 제거 쪽만 단언하는 테스트는 청소가 `.agents/skills/` 전체를 삼키고 있어도 통과하고, 실 항목만 심는 테스트는 dangling 결함을 통과시킨다.
+
+**채택하지 않은 대안 — 청소 후 배포까지 돌려 판정하는 형태.** "clean→deploy 를 모두 돌린 뒤 정본은 임베드에서 재생성돼 존재하고 dangling 미러는 재배포 대상이 아니라 부재"라는 형태는 `moai update` 의 실제 동작에 가깝지만, **이 축의 판정에는 쓸 수 없다.** 청소가 링크를 따라가 정본을 파괴하더라도 바로 뒤의 배포가 그것을 임베드에서 되살리므로, 관측하려는 손상이 관측 직전에 치유된다 — 두 경우의 최종 상태가 동일해진다. 그 형태가 확인하는 것("미러는 살아남지 않고 정본은 존재한다")은 이미 AC-CSC-002·011 이 덮는다.
 
 ### AC-CSC-009 — 사용자 소유 네임스페이스 전반이 생존한다
 
@@ -148,17 +157,19 @@ AC-CSC-008 이 계약의 대표 사례(`hns-*`)를 고정한다면, 이 AC 는 `
 
 이 AC 는 clean 없는 재배포 경로(`moai init` 재실행 등)를 본다. 실제 `moai update` 는 clean → Deploy 순서라 (ii)·(iii) 상태를 만나지 않지만, 만나는 경로가 따로 존재하는 이상 규정되어야 한다.
 
-### AC-CSC-012 — 미러는 기록되지도 백업되지도 않는다 (양팔)
+### AC-CSC-012 — 미러는 기록되지도 백업되지도 않는다 (3팔)
 
-**Given** AC-CSC-002 의 배포에 사용한 manifest manager 와, 그 뒤 `CleanMoaiManagedPaths` 를 실행한 결과가 있고,
+**Given** AC-CSC-002 의 배포에 사용한 manifest manager 와, **템플릿에 대응 스킬이 없는** `.agents/skills/moai-retired/` 실 디렉터리를 추가로 심은 뒤 `CleanMoaiManagedPaths` 를 실행한 결과가 있고,
 **When** manifest 항목과 `.moai-backups/` 트리를 각각 조회하면,
-**Then** 두 단언이 모두 참이어야 한다.
+**Then** 세 단언이 모두 참이어야 한다.
 
 1. **manifest 부재.** manifest 에 `.agents/` 로 시작하는 키가 **0개**이고, `.claude/skills/` 항목의 기존 기록은 변하지 않았다.
-2. **재배포될 미러는 백업되지 않는다.** 템플릿이 같은 이름의 스킬을 가진 미러 항목에 대해 `.moai-backups/**/pre-clean/.agents/` 아래 파일 수가 **0**이다. 링크 모드뿐 아니라 **복사 모드에서도** 0이어야 한다 — 이 단언의 존재 이유가 복사 모드다.
-3. **재배포되지 않을 실 항목은 백업된다.** 템플릿에 대응 스킬이 없는 `.agents/skills/moai-retired/` 실 디렉터리를 심어 두면, 청소 후 그 내용이 `.moai-backups/**/pre-clean/.agents/skills/moai-retired/` 아래에 **보존되어 있어야** 한다.
+2. **재배포될 미러는 백업되지 않는다.** **템플릿이 같은 이름의 스킬을 가진 각 이름 `<n>` 에 대해** `.moai-backups/**/pre-clean/.agents/skills/<n>/` 아래 파일 수가 **0**이다. 링크 모드뿐 아니라 **복사 모드에서도** 0이어야 한다 — 이 단언의 존재 이유가 복사 모드다.
+3. **재배포되지 않을 실 항목은 백업된다.** `.agents/skills/moai-retired/` 의 내용이 청소 후 `.moai-backups/**/pre-clean/.agents/skills/moai-retired/` 아래에 **보존되어 있어야** 한다.
 
-세 단언의 관계가 이 AC 의 요점이다. 1·2번은 "미러는 정본의 파생물"이라는 원칙에서 나오고(spec §A.6·§A.7), **3번은 그 원칙을 절대 형태로 쓰면 열리는 손실 경로를 막는다**(spec §A.11). 청소 글롭은 `moai*` 이고 `moai` 접두는 사용자도 쓸 수 있으므로, 백업을 통째로 금지하면 사용자 항목이 경고도 백업도 없이 사라진다. 판별자는 "이번 실행이 다시 만들 것인가" — `backupThenRemove` 가 template-managed 파일을 백업하지 않는 기존 사유와 같은 기준이다.
+[HARD] 2번을 `.agents/` **서브트리 전체 파일 수**로 측정하지 않는다. 3번이 보존을 요구하는 파일이 바로 그 서브트리 안에 있으므로, 전체 카운트로 쓰면 두 단언이 같은 fixture 에서 동시에 참일 수 없다. 측정 폭은 판별자와 같아야 한다 — 이름 단위로, 템플릿에 대응 스킬이 있는 이름에 한해서만 0 을 요구한다.
+
+세 단언의 관계가 이 AC 의 요점이다. 1·2번은 "미러는 정본의 파생물"이라는 원칙에서 나오고(spec §A.6·§A.7), **3번은 그 원칙을 절대 형태로 쓰면 열리는 손실 경로를 막는다**(spec §A.11). 청소 글롭은 `moai*` 이고 `moai` 접두는 사용자도 쓸 수 있으므로, 백업을 통째로 금지하면 사용자 항목이 경고도 백업도 없이 사라진다. 판별자는 "이번 실행이 다시 만들 것인가" — `backupThenRemove` 가 template-managed **파일**을 백업하지 않을 때 쓰는 것과 같은 기준이며, 미러는 링크·디렉터리라 그 기존 분기를 그대로 타지 않으므로 판정 분기는 새로 쓴다(spec §A.11).
 
 2번만 있고 3번이 없으면 구현자는 `.agents/` 를 백업에서 통째로 제외해 AC 를 통과시키고, 그 순간 3번이 막으려는 손실이 발생한다.
 
@@ -182,7 +193,7 @@ AC-CSC-008 이 계약의 대표 사례(`hns-*`)를 고정한다면, 이 AC 는 `
 
 **Given** 배포되는 템플릿 `.gitignore`(`internal/template/templates/.gitignore`) 와 임베드 FS 가 있고,
 **When** 그 내용을 읽고 기존 게이트를 실행하면,
-**Then** 세 단언이 모두 참이어야 한다.
+**Then** 네 단언이 모두 참이어야 한다.
 
 1. `.gitignore` 가 **`.agents/skills/moai*`** 를 무시하는 항목을 담고 있다.
 2. **`.agents/` 전체를 무시하는 항목은 담고 있지 않다** — 좁은-범위 원칙(§B.D7). 사용자의 `.agents/skills/hns-*` 와 후속 마일스톤의 `.agents/` 소스 파일이 추적에서 빠지면 안 된다.
