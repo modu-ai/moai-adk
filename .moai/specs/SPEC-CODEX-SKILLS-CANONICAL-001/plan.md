@@ -52,7 +52,8 @@ Codex CLI 는 `<repo>/.agents/skills/`(CWD→상향 병합)와 `$CODEX_HOME/skil
 배포기가 "이번 실행에서 실제로 배포한 스킬 집합"을 어떻게 알아내는지 결정하고 구현한다. 후보 두 가지 — (a) Deploy 의 walk 도중 `.claude/skills/<name>/` 경로를 관측해 누적, (b) 배포 완료 후 대상 FS 를 다시 읽어 파생. (a) 는 tier 필터가 이미 적용된 FS 를 그대로 따르므로 §A.3 문제를 구성상 회피한다.
 
 - 대상: `internal/template/` (신규 파일 1 + `deployer.go` 소폭)
-- 닫힘 조건: AC-CSC-006, AC-CSC-014
+- 닫힘 조건: AC-CSC-003(슬림 vs 전량 집합 동치 + tier 필터 관통), AC-CSC-014(합성 FS — 상수 파생 금지)
+- **[HARD] AC-CSC-006 을 이 마일스톤의 닫힘 조건으로 삼지 않는다.** 그 AC 는 반환 결과 seam 을 전제하는데 그 seam 은 M2 의 산출물이므로, M1 은 자기 닫힘 조건을 자기 안에서 닫을 수 없다. 반대로 AC-CSC-003 은 내용상 M1 의 결정(미러 집합 파생 방식)을 판정하는 항목이라 여기로 옮겼다.
 - 이 결정이 바뀌면 M2·M3·M5·M6 전부 재작성이다.
 
 ### M2 — 링크 생성 + 폴백 (Priority High)
@@ -61,7 +62,7 @@ Codex CLI 는 `<repo>/.agents/skills/`(CWD→상향 병합)와 `$CODEX_HOME/skil
 
 - 대상: M1 이 만든 파일 + **출력 seam 신설**
 - **[HARD] 출력 seam 은 이 마일스톤의 산출물이다.** iter-3 까지 여기 "출력 경로는 기존 printer 계층 재사용"이라고 적혀 있었는데 **사실이 아니다** — 실측하면 `internal/template` 에 `io.Writer` 가 없고 `Deploy` 는 `error` 만 돌려주며 패키지 전체에 printer 계층이 없다. 출력 표면은 호출자인 `internal/cli/` 에만 있다. 따라서 모드·경고를 **반환 결과로 올리는 seam** 을 여기서 만든다(REQ-CSC-005 / spec §B.D3 + §A.9b — 그 실측은 §A 에 절로 승격돼 있다). 이것을 빠뜨리면 AC-CSC-006·011(3)·013(3) 세 개가 함께 막히고 그중 둘은 MUST 다.
-- 닫힘 조건: AC-CSC-002, AC-CSC-003, AC-CSC-004, AC-CSC-005, AC-CSC-006, AC-CSC-011, AC-CSC-013
+- 닫힘 조건: AC-CSC-002, AC-CSC-004, AC-CSC-005, AC-CSC-006, AC-CSC-011, AC-CSC-013 (AC-CSC-003 은 M1 로 이관 — 위 참조)
 - 상대 링크를 쓰는 이유: 프로젝트 디렉터리를 통째로 옮기거나 복사해도 링크가 살아남는다. 절대 경로는 `moai init` 시점 경로로 굳는다(CLAUDE.local.md §14 와 같은 실패 형태).
 
 ### M3 — 미러를 manifest 기록 대상에서 제외 (Priority High)
