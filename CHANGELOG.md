@@ -42,6 +42,19 @@ A root `AGENTS.md` joins the repository as the standing contract for any agent h
 - A byte guard on that contract layer. The ceiling is 24,576 B — the untrusted first session's effective cap of 32,768 B, less a reserve for the reader's own global `~/.codex/AGENTS.md` layer and for future growth. It binds the shipped mirror as well as the live file, because a mirror over the ceiling truncates on the reader's machine no matter what the repository's own copy measures. A breach **fails the build** rather than warning: truncation produces no signal of its own, so this guard is the only one there will ever be.
 - The always-loaded budget guard now counts `AGENTS.md`. Without that, moving a clause out of a rule file and into the contract layer would have scored as a reduction while the loaded context stayed exactly the same — a diet that never happened, recorded as if it had.
 
+- The deployed skill catalog is now reachable from `.agents/skills/` as well as `.claude/skills/`. Agent runtimes that scan the former — Codex CLI among them — see the skills MoAI-ADK installs with no manual wiring. Each entry is a relative symlink to the canonical directory, so there is still exactly one copy of every skill on disk.
+
+  Claude Code's path is unchanged, and that is a property of the design rather than a claim to be tested for: the mirror is written beside the canonical tree and never into it. The deploy output was diffed against the pre-change commit with the mirror enabled — 262 entries, byte-identical.
+
+  The template source tree carries no symlink and cannot: `//go:embed` drops symlinks, files and directories alike, with no error and no warning, so a link committed to the template would simply be missing from the binary. The link is created at deploy time instead, and a regression test fails if a symlink ever appears in the template tree.
+
+  `.agents/skills/moai*` is added to the deployed `.gitignore`. The mirror is a build product. The `.agents/` root itself stays tracked, so entries you put there are unaffected — and an existing non-symlink entry at a mirror path is never removed or overwritten; the deployer skips it and leaves it alone.
+
+  Two limits are worth knowing up front:
+
+  - **Where symlinks are unavailable the mirror is a copy, and from the second deploy onward that copy is left as it is.** Windows without Developer Mode or elevated privileges is the usual case. The deployer cannot tell a copy it made itself from a directory you created, so it preserves both — the canonical skills refresh on each deploy and the copy does not. It goes stale. Refreshing copies, and removing mirrors of renamed or retired skills, is a deliberate scope split and lands in a follow-up change.
+  - **The fallback warning does not currently reach you.** The deployer reports which mode it used, and any warning, through its return value rather than printing it, and the CLI does not yet read that seam. A deploy that falls back to copying is therefore silent today. Wiring the CLI to surface it is follow-up work.
+
 ### Changed
 
 - Resolving a project's `.moai/state` no longer climbs past the project root. `moai state dump`, `moai state show-blocker`, `moai chain`, `moai tokens`, and `moai clean` stop at the directory that owns the project and fail there when it has no state directory, instead of continuing upward and succeeding somewhere else.
