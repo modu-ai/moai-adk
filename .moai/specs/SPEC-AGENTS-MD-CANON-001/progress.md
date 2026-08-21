@@ -97,7 +97,102 @@ non-`trusted` `trust_level` values unmeasured.
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — clause classification and compressibility (2026-08-22)
+
+Tree: worktree `.claude/worktrees/t82`, branch `WT-agents-md-diet`, `58f0bdd43`.
+Full report with every command and its output: `.moai/reports/t82/m1-pilot.md`.
+M1 wrote no `AGENTS.md`, moved no rule text, and changed no Go code.
+
+**Verdict: GO, conditional.** Both stop-condition arms clear. The condition is that `AGENTS.md`
+lands near the measured projection (~11.9 KB) rather than at the 24,576 B ceiling — at the ceiling
+Arm B's tightest bound falls 310 tokens short and M4 must add a second pass on an already-stubbed
+file to close it (§5.3 of the report). `spec.md` §E.2's open question is answered: **no second
+output-style pass is required**; neither path touches `.claude/output-styles/moai/moai.md`.
+
+| AC | Claim | Evidence (command → observed) | Status |
+|---|---|---|---|
+| `AC-AMC-003` | Markers expanded to clause blocks; per-block table, byte per row, zero unclassified, Codex-relevant subtotal stated | `python3 .moai/reports/t82/clause-blocks.py > blocks.json` → 97 blocks / 51,639 B; `python3 .moai/reports/t82/classify_report.py --table` → 97 rows, C 35 / **16,135 B**, K 61 / 35,147 B, P 1 / 357 B, unclassified 0 (the script exits non-zero on any unclassified id) | PASS |
+| `AC-AMC-004` | Rewritten clauses preserve subject, modality, binding scope | per-clause diff table, `.moai/reports/t82/m1-pilot.md` §3.1 — 11 of 11 preserved, 0 reverted | PASS |
+| `AC-AMC-005` | Aggregate compression ratio stated with per-clause variance | `python3 .moai/reports/t82/pilot_measure.py` → 5,355 → 2,848 B, ratio **0.5318** (46.8 % reduction); min 0.400 / max 0.728 / mean 0.552 / median 0.504 / stdev 0.119 | PASS |
+| `AC-AMC-006` | Ceiling re-derived against the clause-block figure; explicit reachable/not-reachable verdict with the projected figure | `python3 .moai/reports/t82/project.py` → 16,135 × 0.5318 = 8,581 B + 3,300 B structure (stated assumption) = **11,881 B** vs ceiling 24,576 → **REACHABLE**, 48 % of ceiling used. Ceiling retained at 24,576 B; break-even Codex-relevant verbatim is 40,004 B, 2.5× the measured 16,135 | PASS |
+| `AC-AMC-007` | If either arm trips, a blocker naming the shortfall and the two levers, no file moved | Neither arm tripped. Arm A 11,881 ≤ 24,576. Arm B required cut 7,806 tok vs 10,670 tok available (+2,864). No file moved regardless | PASS (no blocker due) |
+
+**Arm B detail.** Baseline is the guard's own arithmetic, not the byte total: `surface_r3.py`
+reproduces `alwaysLoadedSurface()` + `measureAlwaysLoaded()` → `surface files: 17   guard tokens:
+71207   surface bytes: 284850`. Contract layer is net-additive, so required cut =
+`71,207 + |AGENTS.md|/4 − 66,371`: **7,806 tok** at the measured projection, **10,980 tok** at the
+REQ-AMC-004 ceiling. Available: the conservative measured stub-split precedent (kanban-dispatch
+21,003 → 13,027 = 38.0 %, commit `a203a7c3a`; the other precedent, goal-directive 25,755 → 6,531 =
+74.6 %, commit `6422046bb`) applied to the nine always-loaded files never yet stub-split
+(112,316 B) → 42,680 B = **10,670 tok**.
+
+**Measurement corrections carried into `spec.md` (figures and provenance only).**
+
+- §A.1: token figure `≈ 71,212` → **71,207**, with the per-file-floor provenance stated. The
+  guard sums `len(file)/4` per file; `284,850 / 4` overstates by 5 tokens.
+- §C.4: the `75,282 / 81,426 / 15,055` row retired. `.moai/reports/t82/preflight.md` measured
+  `origin/main`, `release/v3.1.1`, `v3.1.2`, `v3.1.3` and this worktree — all five at 284,850 B —
+  so that state is on no live branch. Required cut at the ceiling case is now **10,980**, with the
+  v3.2 integration-branch re-measurement obligation (`REQ-AMC-014`, `AC-AMC-018`) restated
+  explicitly rather than dropped.
+
+**Finding — the line proxy errs almost entirely in one direction.** `spec.md` §A.4 disclosed
+"15 of 93 markers are prose (overcount), 16 lead into uncounted bodies (undercount)". Read at
+clause-block level: exactly **one** marker carries no obligation (`kanban-dispatch.md:7`, a detail-
+companion navigation note). Nine of the ten structurally non-clause-initial markers are genuine
+obligations sitting mid-sentence, and six markers sit on **headings** (`moai-constitution.md`
+Agent Core Behaviors 1-6) whose whole section body is the obligation — 5,117 B counted by the proxy
+as ~300 B of heading text. The proxy's net error is undercount by 58.7 % (32,543 → 51,639 B), not a
+two-sided bracket.
+
+**Finding — the six-file Claude-only proxy is accurate inside itself and incomplete outside.**
+`design.md` §1.1's six files hold 22,179 B of clause blocks, 21,504 B (97.0 %) of it Claude-only —
+so the 14,360 B line-level upper bound was nearly all usable. But **38.8 % of all Claude-only
+bytes (13,643 B) sit outside those six files**, chiefly `kanban-dispatch.md` (5,899 B) and
+`agent-common-protocol.md` (3,618 B). A file-membership classification would have been wrong in
+both directions on `kanban-dispatch.md`, which splits 10 Codex-relevant / 12 Claude-only.
+
+**Blocked / needs routing (not actioned by this agent).** Four surfaces still carry the retired
+figures and lie outside run-phase authoring ownership:
+
+| Surface | Stale content | Owner |
+|---|---|---|
+| `spec.md` REQ-AMC-014 body | "≈ 71,212 … measured 75,282" | requirement text — manager-spec |
+| `plan.md` §B item 2, §E M1 Arm B block quote, §E M1 Arm B body | 71,212 / 75,282 / 15,055 / 10,985 / "differ by 4,070 tokens" | plan body — manager-spec |
+| `acceptance.md` `AC-AMC-007` note | "71,212 worktree vs 75,282 integration", "37 % difference" | criterion text — manager-spec |
+| `design.md` §branch sensitivity | 71,212 / 75,282 | design body — manager-spec |
+
+Also unrouted: this M1 edit changed `spec.md` §A.1 / §C.4 body figures, which the SPEC's own
+HISTORY provenance rule says must appear as a HISTORY row with a matching `version:` bump.
+`version:` is outside this agent's frontmatter permissions (`status:` / `updated:` only), so the
+row and the bump are left to the committing actor. HISTORY rows 0.3.4 / 0.3.6 and `§E.1` above
+are **not** rewritten — they record what those revisions contained at the time.
+
+**Gaps.** Document structure (3,300 B) is a stated assumption, not a measurement — M2 measures it;
+doubling it still clears Arm A (15,181 B) but adds 825 tok to Arm B's cut. Arm B's 38 % is a
+precedent transplanted onto files it was not measured on. R2 (10,023 B over rules + `CLAUDE.md`) is
+a line-level proxy of the same family as the R1 proxy this milestone corrected, and the R3 movable
+figure (161,482 B) inherits its error. The v3.2 integration branch does not exist, so
+`AC-AMC-018`'s baseline is still unmeasured. `char/4` carries ±15 % against a real tokenizer.
+
+**Residual risk.** Re-inflation is measured, not hypothetical: `kanban-dispatch.md` was dieted to
+13,027 B on 2026-08-17 and measures **25,915 B** today — larger than before its diet. Arm B's
+2,864-token margin is one such event wide.
+
+**Verification.**
+
+```
+go test -count=1 ./internal/config/ -run 'Budget|AlwaysLoaded' -v
+--- PASS: TestAlwaysLoadedTokenBudget (0.00s)
+--- PASS: TestAlwaysLoadedTokenBudget_OverBudgetFails (0.00s)
+--- PASS: TestAlwaysLoadedSurfaceEnumeration (0.01s)
+--- PASS: TestMeasureAlwaysLoaded_WithMemory (0.00s)
+--- PASS: TestWorkflowYAMLUnmarshal_OmittedTokenBudget_PreservesDefaults (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/config	0.637s
+```
+
+`alwaysLoadedSurface()` unextended (M5), no `t.Logf` added (M5),
+`AlwaysLoadedTokenBudget` unchanged at 76,000.
 
 ## §E.3 Run-phase Audit-Ready Signal
 

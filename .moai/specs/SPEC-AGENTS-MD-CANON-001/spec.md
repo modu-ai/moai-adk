@@ -2,7 +2,7 @@
 id: SPEC-AGENTS-MD-CANON-001
 title: "AGENTS.md canonical contract layer for Codex dual-harness"
 version: "0.3.6"
-status: draft
+status: in-progress
 created: 2026-08-22
 updated: 2026-08-22
 author: manager-spec
@@ -62,8 +62,17 @@ makes that file always-loaded.
 | repo-root `MEMORY.md` | 0 (absent; guard treats hermetically) |
 | **total measured surface** | **284,850** |
 
-Estimated tokens (the guard's `char/4`): **≈ 71,212**. Budget constant
-`AlwaysLoadedTokenBudget = 76,000`; headroom ≈ 4,788 tokens; the guard test passes on this tree.
+Estimated tokens (the guard's `char/4`): **71,207**. Budget constant
+`AlwaysLoadedTokenBudget = 76,000`; headroom 4,793 tokens; the guard test passes on this tree.
+
+**Provenance of the token figure (run-phase M1 correction).** 71,207 is the guard's own arithmetic
+— `measureAlwaysLoaded()` sums `len(file)/4` **per file**, so the per-file floors lose 5 tokens
+against `284,850 / 4 = 71,212`. Both figures appear in this SPEC's history; the guard-exact one is
+71,207 and is what `AC-AMC-018` will read off `go test -v`. Reproduced by
+`.moai/reports/t82/surface_r3.py`, which re-implements `alwaysLoadedSurface()` +
+`measureAlwaysLoaded()` (frontmatter-scoped `paths:`, `MEMORY.md` head cap, per-file floor):
+`surface files: 17   guard tokens: 71207   surface bytes: 284850`. Nothing downstream turns on the
+5-token difference; it is recorded so the two figures are not read as two measurements.
 
 ### A.2 Measured codex loading behavior
 
@@ -258,14 +267,29 @@ So the required cut is `stated surface + |AGENTS.md| − 66,371`. At `AGENTS.md`
 
 | Tree | Unextended surface | With `AGENTS.md` at ceiling | Required cut |
 |---|---:|---:|---:|
-| this worktree | 71,212 | 77,356 | **10,985 tokens** |
-| the integration state that forced the 76,000 raise | 75,282 | 81,426 | **15,055 tokens** |
+| this worktree, and every live ref (see below) | 71,207 | 77,351 | **10,980 tokens** |
 
-So §B goal 2's "reduce the always-loaded surface enough" has a number: at least 10,985 tokens, and
-15,055 against the state the ratchet is actually measured on (REQ-AMC-014). M1 sizes its work
+**Figures re-measured at run-phase entry; the second row is retired.** An earlier revision carried a
+second row — 75,282 / 81,426 / 15,055 — labelled "the integration state that forced the 76,000
+raise". That state exists on **no live branch**. Re-measured 2026-08-22 by
+`.moai/reports/t82/measure-surface.py` against `origin/main`, `origin/release/v3.1.1`,
+`origin/release/v3.1.2`, `origin/release/v3.1.3` and this worktree: all five measure 14 rules /
+284,850 B / 71,212 (`total/4`), i.e. 71,207 by the guard's per-file arithmetic (§A.1). The 75,282
+reading was a transient `release/v3.1.1` integration state that the subsequent always-loaded diet
+(the closed `SPEC-ALWAYS-LOADED-DIET-001`) removed. Evidence: `.moai/reports/t82/preflight.md`.
+
+This does not retire the re-measurement obligation. `REQ-AMC-014` and `AC-AMC-018` bind the ratchet
+to the **v3.2 integration branch**, which does not exist yet; a sibling card adding rules raises the
+baseline and the required cut by the same amount — which is exactly how the 76,000 raise arose. The
+figure above is today's reading, not a settled baseline.
+
+So §B goal 2's "reduce the always-loaded surface enough" has a number: at least **10,980 tokens** at
+the ceiling case, re-measured against the v3.2 integration branch when it exists. M1 sizes its work
 against this figure; a diet that lands anywhere above 66,371 cannot satisfy REQ-AMC-013 no matter
 what ratio is declared. A smaller authored `AGENTS.md` reduces the cut proportionally — the formula
-governs, the table is its ceiling case.
+governs, the table is its ceiling case. M1 measured the projected `AGENTS.md` at 11,881 B
+(2,970 tokens), which puts the required cut at **7,806 tokens**
+(`.moai/reports/t82/m1-pilot.md` §5).
 
 > The bound is conservative by design. `AC-AMC-019`'s ±1,000-token tolerance means the strictly
 > admissible maximum is 67,256 rather than 66,371; planning against 66,371 asks for ~885 tokens
