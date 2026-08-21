@@ -140,9 +140,7 @@ func TestStateM2_JSON_StdoutByteIdentical(t *testing.T) {
 	if got := stdout.String(); got != wantJSON {
 		t.Errorf("JSON stdout mismatch\n--- want (%d bytes) ---\n%q\n--- got (%d bytes) ---\n%q", len(wantJSON), wantJSON, len(got), got)
 	}
-	if stderr.Len() != 0 {
-		t.Errorf("JSON path wrote %d bytes to stderr (expected none): %q", stderr.Len(), stderr.String())
-	}
+	assertStderrCarriesOnlyResolvedRoot(t, "JSON", stderr.String())
 }
 
 func TestStateM2_Human_StdoutByteIdentical(t *testing.T) {
@@ -155,8 +153,20 @@ func TestStateM2_Human_StdoutByteIdentical(t *testing.T) {
 	if got := stdout.String(); got != wantHuman {
 		t.Errorf("Human stdout mismatch\n--- want (%d bytes) ---\n%q\n--- got (%d bytes) ---\n%q", len(wantHuman), wantHuman, len(got), got)
 	}
-	if stderr.Len() != 0 {
-		t.Errorf("Human path wrote %d bytes to stderr (expected none): %q", stderr.Len(), stderr.String())
+	assertStderrCarriesOnlyResolvedRoot(t, "Human", stderr.String())
+}
+
+// assertStderrCarriesOnlyResolvedRoot keeps the property this pair of tests was
+// written for — no data payload leaks onto stderr — now that the dump path
+// announces the project root it resolved (SPEC-CLI-STATE-DIR-BOUND-001 REQ-10).
+// The announcement is the one line allowed here; anything else is a leak.
+func assertStderrCarriesOnlyResolvedRoot(t *testing.T, label, stderr string) {
+	t.Helper()
+	for _, line := range strings.Split(strings.TrimRight(stderr, "\n"), "\n") {
+		if line == "" || strings.Contains(line, "resolved project root: ") {
+			continue
+		}
+		t.Errorf("%s path wrote an unexpected line to stderr: %q", label, line)
 	}
 }
 
