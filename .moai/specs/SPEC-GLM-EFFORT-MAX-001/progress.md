@@ -79,7 +79,22 @@ m1_to_mN_commit_strategy: "3 conventional commits (M1 RED a0340aa22 / M2 GREEN 6
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-22
+sync_commit_sha: pending-backfill-SPEC-GLM-EFFORT-MAX-001  # backfilled in the follow-up commit (self-referential-hazard workaround, spec-frontmatter-schema.md D3)
+sync_status: complete (3-phase close: plan → run M1-M4 → sync; this sync commit carries the in-progress → completed transition)
+b12_self_test_a: "grep -c 'SPEC-GLM-EFFORT-MAX-001' CHANGELOG.md → 0 (pre-emission, dedup PASS)"
+b12_self_test_b: "AC count = 8 (AC-GEM-001..008, Tier S inline in spec.md §3 — no acceptance.md); 7 PASS + 1 DEFERRED (AC-GEM-008, lead fresh-session check — §E.2 row left verbatim per lead ruling; live-session result appended by the lead at release-binary install time)"
+b12_self_test_c: "all 11 cited paths verified via ls (CHANGELOG.md + 10 SPEC/impl files incl. template-mirror llm.yaml)"
+changelog_entry_position: "CHANGELOG.md [Unreleased] → Changed (single entry, SPEC-linked)"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (sole frontmatter edit: status; updated already 2026-08-22)"
+  scope: "lightweight sync — CHANGELOG entry + frontmatter close + §E.4; no docs-site surface (internal effort mapping, no user-facing CLI/doc change beyond template-mirror llm.yaml doc block landed in run M3)"
+canary_compliance_check:
+  mx_tag_validation: "n/a — no new exported functions; diff is mapping change + tests + comments (run-phase already swept)"
+  sync_is_markdown_only: true
+```
+
 
 ## §F Phase 4 Mode Selection
 
