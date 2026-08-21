@@ -217,7 +217,7 @@ ac_pass: 13 of 14 (AC-BUDGET recorded as an estimate, not a measurement — §E.
 ```
 sync_status: audit-ready
 sync_complete_at: 2026-08-22
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 68d63318c
 ```
 
 The placeholder is the documented self-reference workaround: a commit cannot name
