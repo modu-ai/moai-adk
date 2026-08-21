@@ -161,9 +161,79 @@ grep -rn 'SPEC-TODO-ENABLE-FLAG\|REQ-' <템플릿 workflow.yaml + SKILL.md>     
 make build                                                                        → exit 0
 ```
 
+### M7 — 검증 스윕
+
+| AC | Status | 판정 명령 | 관측 |
+|---|---|---|---|
+| AC-T-001 | PASS | `go test ./internal/config/ -run 'TestTodoEnabled' -v` | 4 서브테스트 전부 PASS, `ok … 0.258s` |
+| AC-T-002 | PASS | `go test ./internal/hook/ -run 'TestSessionStartKanbanRespectsTodoDisabled' -v` | 억제 1 + 대조 2 전부 PASS, `ok … 0.709s` |
+| AC-T-003 | PASS | `go test ./internal/statusline/ -run 'TestRendererBacklogSegmentGating' -v` | 5 케이스 전부 PASS(기존 statusline.yaml 경로 생존 포함), `ok … 0.450s` |
+| AC-T-004 | PASS | 5개 grep (§M3 절) | `1 / 1 / 1 / 1 / 1` |
+| AC-T-005 | PASS | `go test ./internal/cli/ -run 'TestTodoCommandRegisteredRegardlessOfFlag\|TestTodoVerbsUnaffectedByFlag' -v` | 2 PASS, `ok … 0.972s` |
+| AC-T-006 | PASS | `go test ./internal/cli/wizard/ -run 'TestTodoEnabledQuestion\|TestQuestionOrder\|TestReconfigureQuestions' -v` | `TestQuestionOrder` PASS, `TestReconfigureQuestionsOrder` PASS, `TestTodoEnabledQuestion` PASS |
+| AC-T-007 | PASS | `go test ./internal/cli/wizard/ -run 'TestWizardQuestionTranslationCompleteness' -v` | PASS |
+| AC-T-008 | PASS | `go test ./internal/core/project/ -run 'TestWritePhase1ConfigsPersistsTodoEnabled' -v` | PASS, `ok … 0.455s` |
+| AC-T-009 | PASS | `go test ./internal/settings/ -run 'TestWorkflowTodoEnabledFieldRegistered' -v` + `go test ./internal/web/ -run 'TestI18nKeySetParity' -v` | 둘 다 PASS |
+| AC-T-010 | PASS | §M6 절의 4개 관측 | 템플릿 todo 0건(결정 일치), 인벤토리 PASS, 중립성 0건, `make build` exit 0 |
+| AC-T-011 | **PARTIAL** | `-run '…\|TestTodoEnabledQuestion\|TestFeedbackAutoSubmitQuestion' -v` | `TestFeedbackAutoSubmitQuestion` 이 **RUN 으로 찍히지 않는다** — 형제 SPEC 미착지 |
+
+**AC-T-011 은 절반만 판정됐다.** `acceptance.md` 의 "한쪽만 착지했다면 착지한 쪽 기준으로
+판정하고, 나중 착지 시 재실행" 조항에 해당한다. 이 트리에는 `feedback_auto_submit` 질문이 없고
+(`grep -rn 'feedback_auto_submit' internal/cli/wizard/` → 0건), 따라서 두 질문 공존 상태의 관측은
+**수행되지 않았다 — 갭이다**. 이 SPEC은 첫 착지자이므로 §E.1 규칙 1에 따라 충돌 해소 소유자가
+아니며, 형제 SPEC이 착지할 때 그쪽이 AC-T-011 전체를 재실행한다. `GOOS=windows go vet` 절반은
+아래대로 이미 통과했다.
+
+전 패키지 스윕(로컬 스코프, `go test ./...` 금지 규율 준수):
+
+```
+ok  internal/cli               402.814s
+ok  internal/config              1.862s      (cover 80.7%)
+ok  internal/config/atomicfile   0.572s
+ok  internal/config/toolpolicy   cached
+ok  internal/hook               22.805s      (cover 84.4%)
+ok  internal/statusline         14.138s      (cover 90.5%)
+ok  internal/cli/wizard          cached
+ok  internal/core/project        cached       (cover 88.3%)
+ok  internal/settings            cached       (cover 90.1%)
+ok  internal/settings/agentfm    1.024s
+ok  internal/settings/yamlpatch  0.682s
+ok  internal/web                 cached
+ok  internal/template            cached
+```
+
+```
+GOOS=windows go vet ./internal/config/... ./internal/hook/... ./internal/statusline/... \
+  ./internal/cli/... ./internal/core/project/... ./internal/settings/... ./internal/web/...   → exit 0
+golangci-lint run --timeout=3m                                                                → 0 issues.
+make build                                                                                     → exit 0
+```
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-08-22
+run_commit_sha: pending-backfill-run
+run_status: complete-with-gap
+ac_pass_count: 10
+ac_fail_count: 0
+ac_partial_count: 1        # AC-T-011 — 형제 SPEC 미착지, 재실행은 두 번째 착지자 소관
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: not-performed   # 워크트리 로컬 스택, push 금지 지시
+l44_post_push_fetch: not-performed    # push 하지 않음 (리드가 통합)
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  goos_windows_vet: pass
+  go_build: pass
+total_run_phase_files: 20
+m1_to_mN_commit_strategy: 3 commits (M1-M2 / M3 / M4-M6), 각 커밋 빌드 통과
+```
+
+억제 범위에 대한 정직한 서술(§D.4 마감 게이트 항목): 이 SPEC이 끄는 것은 **런타임 표면 3종**
+(SessionStart 백로그 요약 · statusline TODO 세그먼트 · `workflows/todo.md` 로의 자동 라우팅)이다.
+상시 로드 룰 `kanban-dispatch.md` 와 `SKILL.md` 의 스킬 목록 메타데이터는 **범위 밖이며 여전히
+로드된다** — 플래그를 끈 사용자도 컨텍스트에 `moai todo add` 조항을 계속 갖고 스킬 목록에서
+`/moai todo` 를 계속 본다. "todo 안내를 전부 껐다"는 서술은 이 SPEC에 대해 거짓이다.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
