@@ -17,6 +17,30 @@ gate:
     vet: 30
     lint: 60
     test: 120
+    # A type-check over a large monorepo routinely outlasts the test budget,
+    # so it gets its own.
+    typecheck: 300
+  # The typecheck axis runs between vet and lint, so a type error surfaces
+  # before the slower style pass and a project whose linter config is absent
+  # still gets a correctness gate.
+  #
+  # Node resolves in three tiers: `command` below (any language), then
+  # package.json scripts.typecheck, then `npx --no-install tsc --noEmit` when a
+  # tsconfig.json is present. A solution-style tsconfig (files: [] plus
+  # references) is refused rather than run — it type-checks nothing and would
+  # pass vacuously.
+  #
+  # Every outcome is reported. A skip is not a failure, but it is never
+  # silent: a language with no default prints how to supply one.
+  typecheck:
+    enabled: true
+    # Overrides the language default and enables the axis for ANY language,
+    # e.g. "mypy --strict ." or "npm run typecheck".
+    #
+    # Split on whitespace and executed directly, so shell metacharacters are
+    # NOT interpreted — put a pipeline or a redirect in a script and name the
+    # script here.
+    command: ""
   ast_grep_gate:
     enabled: true
     # rules_dir is the single source of truth for where this checkout's
