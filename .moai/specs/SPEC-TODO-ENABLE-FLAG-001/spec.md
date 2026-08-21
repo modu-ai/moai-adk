@@ -1,7 +1,7 @@
 ---
 id: SPEC-TODO-ENABLE-FLAG-001
 title: "todo 기본 사용 설정 — workflow.todo.enabled 와 런타임 안내 표면 억제"
-version: 0.1.0
+version: "0.2.0"
 status: draft
 created: 2026-08-22
 updated: 2026-08-22
@@ -32,7 +32,7 @@ related_specs: [SPEC-FEEDBACK-AUTO-SUBMIT-001, SPEC-KANBAN-TODO-CLI-001]
 
 **정정 P4 — "사용 안 함일 때 todo 안내가 뜨지 않게 한다"는 문자 그대로는 충족 불가능하다.**
 
-todo 표면 9개 중 둘은 설정으로 게이트할 수 없다.
+**런타임/세션 표면 9개** 중 둘은 설정으로 게이트할 수 없다. (D7 — "9개"는 세션 컨텍스트에 나타나는 표면의 수다. 배포 문서 — `README.md` 4로케일과 `docs-site/content/{en,ko,ja,zh}/` 의 todo 관련 페이지들 — 은 플래그로 억제되는 대상이 아니며 §B에 범위 밖으로 명시했다.)
 
 - `.claude/rules/moai/workflow/kanban-dispatch.md` 는 **의도적으로 상시 로드**되며(파일 자신이 "Intentionally always-loaded"라고 명시), `moai todo add` 를 [HARD] 유일 생산자 조항으로 담고 있다.
 - `.claude/skills/moai/SKILL.md` 의 스킬 목록 메타데이터(`:6`, `:81`, `:105`, `:166-172`)가 `/moai todo` 를 발견 가능하게 만들고 "백로그에 추가해줘" 류 자연어를 라우팅한다.
@@ -46,7 +46,7 @@ Claude Code는 룰 파일을 **경로로** 로드하지 YAML 플래그로 로드
 | ID | 해소한 전제 | 결정 |
 |---|---|---|
 | D3 | P4 | 플래그는 **런타임 표면만 억제**한다. 범위 안: SessionStart 백로그 알림, statusline TODO 세그먼트, `workflows/todo.md` 로의 스킬 라우팅. 범위 밖으로 명시: 상시 로드 룰, 스킬 목록 메타데이터, 슬래시 명령 스텁. |
-| D4 | P3 | 마법사 질문은 **en/ko/ja/zh 4로케일**로 싣는다. 프롬프트는 템플릿이 아니라 Go 소스이므로 16언어 템플릿 중립성 규율이 닿지 않으며, 영어 단독은 `TestWizardQuestionTranslationCompleteness`(`internal/cli/wizard/translations_completeness_test.go:89`)를 실패시킨다. |
+| D4 | P3 | 마법사 질문은 **en/ko/ja/zh 4로케일**로 싣는다. 프롬프트는 템플릿이 아니라 Go 소스이므로 16언어 템플릿 중립성 규율이 닿지 않으며, 영어 단독은 `TestWizardQuestionTranslationCompleteness`(`internal/cli/wizard/translations_completeness_test.go:95`)를 실패시킨다. |
 
 ## §B Scope
 
@@ -66,6 +66,10 @@ Claude Code는 룰 파일을 **경로로** 로드하지 YAML 플래그로 로드
 - `.claude/skills/moai/SKILL.md` 의 스킬 목록 메타데이터를 억제하지 않는다.
 - `.claude/commands/moai/todo.md` 슬래시 명령 스텁의 존재 자체를 건드리지 않는다.
 - 사유는 §A.1 정정 P4. 이를 억제하는 것은 하네스 계층의 별도 문제이며, 해법 후보(예: 유일 생산자 조항을 지연 로드 동반 파일로 이관)는 전부 상시 로드 독트린을 건드리므로 이 SPEC의 크기를 넘는다.
+
+### Out of Scope — 배포 문서의 todo 서술
+- `README.md` 와 그 3개 로케일 변형, `docs-site/content/{en,ko,ja,zh}/` 의 todo 관련 페이지(로케일별 `utility-commands/moai-todo.md` 포함)는 플래그로 억제되지 않는다.
+- 사유: 이들은 세션 컨텍스트 표면이 아니라 발행된 문서다. 플래그는 세션에 나타나는 안내를 다루며, 문서는 기능이 존재한다는 사실을 서술한다 — 기능은 꺼지지 않는다(REQ-3).
 
 ### Out of Scope — 사장 코드 3건의 수리
 - `applyAutonomyTierFromWizard`(`internal/cli/init_autonomy_wizard.go:34`) — 프로덕션 호출자 없음. **카드가 배선 선례로 지목한 파일이 바로 이것이다.**
@@ -89,6 +93,10 @@ Go 필드는 `*bool`이어야 한다(shall) — 평범한 `bool`은 "부재"와 
 
 키의 집은 `workflow.yaml`이다 — `auto_clear.enabled`·`branch_guard.enabled` 라는 형제 선례가 이미 있다. 새 `todo.yaml` 섹션을 만들어서는 안 된다(shall not); 섹션 신설은 등록 지점 6곳을 요구한다.
 
+**잘못된 값의 처리(D3)**: 값이 bool로 해석되지 않는 경우(`enabled: maybe` 등) todo 기능은 **활성**으로 해석된다. 다만 그 경로는 이 키만의 것이 아니다 — `loadWorkflowSection`(`internal/config/loader.go:226-237`)이 언마셜 실패 시 `slog.Warn("failed to load workflow config, using defaults")` 후 반환하므로, 블록 어디의 잘못된 값이든 **`workflow.*` 섹션 전체**가 구성 시점 기본값으로 되돌아간다(사용자가 설정한 `branch_guard`·`worktree`·`loop_prevention` 등이 함께 조용히 무시된다). 이 SPEC은 그 섹션 단위 폴백을 **변경하지 않으며**, 다만 그것이 `readMCPToolEnablement`의 파일 하나짜리 fail-open보다 폭발 반경이 크다는 사실을 기록한다 — 이 SPEC은 판독의 *형태*를 계승하지 사용하는 *기제*를 계승하지 않는다.
+
+어느 경우에도 기존 사용자에게 기능이 OFF로 해석되는 경로는 없다.
+
 ### REQ-2 — 런타임 안내 표면 3종 억제
 
 `workflow.todo.enabled`가 `false`인 경우, 아래 표면은 todo 안내를 출력해서는 안 된다(shall not).
@@ -98,6 +106,12 @@ Go 필드는 `*bool`이어야 한다(shall) — 평범한 `bool`은 "부재"와 
 3. **`workflows/todo.md` 스킬 라우팅** — 온디맨드 로드이므로 라우터가 도달하지 않으면 억제된다. 스킬 본문(및 템플릿 미러)에 플래그 조건을 명시한다.
 
 키가 부재하거나 `true`인 경우 세 표면은 오늘과 동일하게 동작해야 한다.
+
+**[HARD] 억제 대상은 자동 라우팅이지 명시적 호출이 아니다(D2).** 표면 3의 억제는 **추론 라우팅**에만 적용된다 — 사용자가 todo를 말하지 않았는데 오케스트레이터가 "백로그에 추가해줘" 류 자연어를 보고 todo로 보내는 경우. 사용자가 `/moai todo` 또는 `/moai todo "<내용>"` 을 **이름으로 직접 호출**한 경우, 워크플로는 플래그 값과 무관하게 **정상 동작해야 한다**(shall). 거부하거나 무시해서는 안 된다(shall not).
+
+근거는 REQ-3과 같다 — 플래그가 끄는 것은 안내이지 기능이 아니다. 사용자는 §E.3이 기록하듯 플래그를 꺼도 스킬 목록에서 `/moai todo` 를 계속 보므로, 이름으로 부른 기능이 침묵하거나 실패하면 그것이야말로 진단 불가능한 상태가 된다. 이 결정이 없으면 구현자가 임의로 정하게 되고, CLI(동작함)와 슬래시(불명)가 갈라진다.
+
+관측: AC-T-004(스킬 본문의 조건이 자동 라우팅으로 한정됨) + AC-T-005(플래그 false에서 todo 동사가 실제로 동작함).
 
 ### REQ-3 — CLI 명령 등록은 플래그와 무관하게 유지
 
@@ -109,7 +123,7 @@ Go 필드는 `*bool`이어야 한다(shall) — 평범한 `bool`은 "부재"와 
 
 `moai init`이 대화형으로 실행되는 경우, 마법사는 "Quality & Workflow" 그룹에 todo 사용 여부 확인 질문 1개(`todo_enabled`, 기본 `true`)를 제시해야 한다.
 
-- 질문 정의는 `Page3Questions`(`internal/cli/wizard/questions.go`)에 추가한다. `DefaultQuestions`에 넣어서는 안 된다(shall not) — `TestQuestionOrder`(`questions_test.go:101`)가 5개로 고정한다.
+- 질문 정의는 `Page3Questions`(`internal/cli/wizard/questions.go`)에 추가한다. `DefaultQuestions`에 넣어서는 안 된다(shall not) — `TestQuestionOrder`(`questions_test.go:87`)가 5개로 고정한다.
 - en/ko/ja/zh 번역을 `internal/cli/wizard/translations.go`에 함께 실어야 한다(§A.2 결정 D4).
 - 답변은 `saveBoolAnswer`(`wizard.go:459`) → `WizardResult` → `applyWizardPage3ToOpts`(`internal/cli/init.go:185`) 경로로 포착하고, 파일 기록은 `WritePhase1Configs`(`internal/core/project/initializer_expansion.go:30`)에서 `yamlpatch.PatchFile`로 수행해야 한다(주석 보존 + 두 배포 경로 모두에서 실행).
 - 비대화형에서는 마법사가 실행되지 않으므로 기본값(활성)이 유지된다.
@@ -118,7 +132,9 @@ Go 필드는 `*bool`이어야 한다(shall) — 평범한 `bool`은 "부재"와 
 
 웹 설정 화면에서 이 플래그를 토글할 수 있어야 한다. `internal/settings/schema_sections.go`에 `s(SectionWorkflow, "workflow", TypeBool, "workflow", "todo", "enabled")` 한 줄을 추가하면 파싱·렌더·검증·영속은 모두 제네릭으로 처리된다(`workflow.branch_guard.enabled`, `:334`가 선례).
 
-i18n 키를 4로케일 모두에 등록해야 한다 — 누락 시 `internal/web/schema_label_test.go:96`이 실패한다.
+i18n 키를 4로케일 모두에 등록해야 한다 — 누락 시 `TestI18nKeySetParity`(`internal/web/schema_label_test.go:74`)가 실패한다. 이 테스트는 `settings.AllFields()`를 순회하며 각 필드의 `.title`/`.desc`가 4로케일에 모두 있는지 본다.
+
+신규 필드의 **등록 자체**(존재 + `TypeBool` + `PersistSeam`)는 기존 테스트가 관측하지 않으므로 — `TestSchemaCurrentValuesReadsAllSections`는 무관한 13개 키의 고정 맵을 볼 뿐이다 — 명명된 신규 테스트를 납품해야 한다(AC-T-009).
 
 ### REQ-6 — Template-First 미러 + 키 인벤토리
 
@@ -161,9 +177,21 @@ i18n 키를 4로케일 모두에 등록해야 한다 — 누락 시 `internal/we
 | `internal/web/assets/i18n.js` | 4로케일 × 1쌍 | 4로케일 × 1쌍 |
 | `internal/config/testdata/shipped_key_inventory.yaml` | (싣는 경우) 항목 1개 | 항목 1개 |
 
-[HARD] **양쪽 모두 같은 파일의 서로 다른 항목만 추가한다.** 기존 항목의 재배치·재작성·서식 변경을 하지 않으며, 어느 쪽이 먼저 착지하든 나중 것이 텍스트 충돌 없이 얹혀야 한다. 두 번째로 착지하는 쪽은 병합 후 마법사 개수 고정 테스트(`TestQuestionOrder` 5개, `TestReconfigureQuestions` 12개)와 번역 완전성 테스트를 **다시** 돌려 두 질문이 함께 통과함을 확인한다(AC-T-011).
+[HARD] **양쪽 모두 같은 파일의 서로 다른 항목만 추가한다.** 기존 항목의 재배치·재작성·서식 변경을 하지 않는다.
 
-**`depends_on` 미기재 근거**: 두 SPEC 사이에 기능 의존이 없다 — 각자 독립된 설정 키를 읽고 독립된 표면을 바꾸며, 한쪽이 없어도 다른 쪽이 완결된다. 남는 것은 텍스트 충돌 위험뿐이고 그것은 순서 의존이 아니라 위 병합 규율로 다룬다.
+**[HARD] 텍스트 충돌은 예외가 아니라 예상되는 결과다 — 해소 규칙(D4).** "다른 항목만 추가"는 *의미* 충돌을 막을 뿐 *텍스트* 충돌을 막지 못한다. 두 SPEC은 같은 구조체 리터럴의 같은 위치(`questions.go` Page3 "Quality & Workflow" 그룹, `types.go`, `wizard.go` `saveBoolAnswer`, `translations.go` 3개 로케일 블록)에 인접 삽입하며, 인접 줄 삽입은 삽입 항목이 서로 달라도 git에서 충돌한다. 게다가 이 저장소는 전 티어가 PR 경로이므로(`.claude/rules/local/repo-local-pr-policy.md`) 두 SPEC은 같은 9개 파일을 건드리는 **동시 PR 2건**으로 착지한다.
+
+해소 규칙:
+
+1. **두 번째로 착지하는 쪽이 충돌 해소 소유자다.** 먼저 착지한 쪽은 자기 PR을 고치지 않는다.
+2. **해소는 항상 양쪽 항목을 모두 보존한다.** 어느 한쪽 질문·필드·case·번역쌍을 버리는 해소는 금지다 — 버려진 쪽은 개수 고정 테스트가 아니라 **번역 완전성 테스트**에서 뒤늦게 드러난다.
+3. **해소 중 기존 항목을 재배치하지 않는다.** 충돌 구간 밖의 줄은 손대지 않으며, 신규 두 항목의 상대 순서는 임의로 정하되 그 선택을 커밋 본문에 한 줄로 남긴다.
+4. **해소 후 AC-T-011을 다시 실행한다** — 마법사 개수 고정 테스트(`TestQuestionOrder` 5개, `TestReconfigureQuestionsOrder` 12개)와 번역 완전성 테스트가 두 질문이 공존하는 트리에서 통과함을 관측한다. 이 재실행이 해소가 끝났다는 유일한 근거다.
+5. **해소가 4를 통과하지 못하면 되돌리고 리드에게 블로커로 보고한다.** 테스트를 고쳐 통과시키지 않는다.
+
+**`depends_on` 미기재 — 트레이드오프 기록**: 이것은 "의존이 없다"는 관찰이 아니라 **선택**이다. `depends_on`을 선언했다면 Phase 1 Depends_on Pre-flight 가 형제 SPEC이 `completed` 될 때까지 run-phase 진입을 막아 두 SPEC을 **직렬화**했을 것이고, 위의 공유 파일 위험 9종이 통째로 사라졌을 것이다. 그 대신 **동시성을 택했다** — 두 SPEC은 같은 릴리즈(v3.1.3) 배치에 실리고, 직렬화하면 뒤엣것이 앞엣것의 전 사이클(plan→run→sync)을 기다린다.
+
+값은 위 해소 규칙으로 치른다. 기능 축에서 의존이 없다는 것(각자 독립 키·독립 표면, 한쪽이 없어도 완결)은 사실이지만, 그것만으로는 `depends_on` 생략을 정당화하지 못한다 — 생략이 사는 것은 동시성이고 치르는 것은 병합 충돌이다. 이 트레이드오프를 뒤집으려면(직렬화로 전환하려면) 양쪽 SPEC에 `depends_on`을 추가하고 이 절을 함께 고친다.
 
 ### §E.2 Hard 제약 — 그 밖
 
@@ -190,4 +218,15 @@ i18n 키를 4로케일 모두에 등록해야 한다 — 누락 시 `internal/we
 
 ## §G HISTORY
 
+- **2026-08-22** v0.2.0 — plan-audit iter1 FAIL 0.78(Tier M 임계 0.80, must-pass 7/7 통과, 부족분은 Testability 0.65) 대응. 블로킹 5건 + 선택 4건 처리:
+  - **D1**(블로킹, `acceptance.md` AC-T-009 공허) — `TestSchemaLabel`(실재하지 않는 이름)을 `TestI18nKeySetParity`로 교체하고, 필드 존재 + `TypeBool` + `PersistSeam`을 단언하는 명명된 납품 테스트 `TestWorkflowTodoEnabledFieldRegistered`를 AC에 추가. REQ-5 본문에도 "기존 테스트가 등록 자체를 관측하지 않는다"는 사실을 명시.
+  - **D5**(블로킹, `acceptance.md` AC-T-004 커밋 후 공허) — working-tree `git diff` 판정을 **내용 단언**으로 교체. 세 목록 줄의 실제 문자열을 AC에 기록하고 `grep -Fxc` 로 각 1건 존재를 관측(줄 번호 이동에 영향받지 않음).
+  - **D6**(블로킹, `plan.md:11` 거짓 서술) — "Tier M이므로 Route A" → **Route B, 전 티어**. `.claude/rules/local/repo-local-pr-policy.md` 가 이 저장소에서 Route A를 [HARD] 비활성화한다(`main` 이 `enforce_admins: true`).
+  - **D2**(블로킹, 명시적 `/moai todo` 호출 미정의) — REQ-2에 [HARD] 조항 추가: 억제 대상은 **자동/추론 라우팅**이며 이름으로 직접 호출한 경우는 플래그와 무관하게 정상 동작한다. AC-T-004에 조건의 한정 범위 관측을, AC-T-005에 플래그 false 하 동사 왕복 관측을 추가.
+  - **D4**(블로킹, 충돌 규율이 단언에 그침) — "충돌 없이 얹혀야 한다"를 **5조 해소 규칙**으로 교체(두 번째 착지자가 소유자, 양쪽 항목 보존, 재배치 금지, AC-T-011 재실행, 실패 시 되돌리고 블로커 보고). 함께 `depends_on` 미기재 근거를 "의존이 없다"에서 **"직렬화 대신 동시성을 택했고 충돌은 이렇게 해소한다"**는 트레이드오프 기록으로 재작성.
+  - **D3**(선택) — REQ-1에 잘못된 값의 결과(→ 활성)와 `loadWorkflowSection` 의 **섹션 단위** 폴백 폭발 반경을 한 줄로 명시. AC-T-001에 4번째 케이스 추가.
+  - **D7**(선택) — "todo 표면 9개"를 "런타임/세션 표면 9개"로 한정하고, 배포 문서를 §B Out of Scope에 신설.
+  - **D8**(선택) — `version` 을 인용부호로 감쌈.
+  - **D9**(선택) — 드리프트된 인용 2건 정정(`translations_completeness_test.go:89`→`:95`, `questions_test.go:101`→`:87`). AC의 `TestReconfigureQuestions` 패턴은 비앵커 정규식이라 `TestReconfigureQuestionsOrder` 에 매칭되므로 공허하지 않음(감사관 확인).
+  - 유지 판정 항목은 손대지 않음 — 범위 경계 서술, 대조 케이스, AC-T-008의 사장 코드 방어.
 - **2026-08-22** v0.1.0 — 최초 초안(plan-phase). 카드 t170에서 AC 예산 초과(32 > 상한)로 분리 신설. 카드 전제 P4가 반증돼 §A.1에 정정으로 기록하고, 충족 불가능한 문구의 AC를 쓰지 않는다는 [HARD]를 함께 남겼다. Tier M 판단 근거는 §A.

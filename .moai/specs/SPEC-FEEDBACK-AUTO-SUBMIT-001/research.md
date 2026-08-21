@@ -11,11 +11,12 @@
 | 요구 조각 | 판정 | 대상 | 근거 |
 |---|---|---|---|
 | 시크릿 패턴 집합 | **그대로 재사용** | `hook.DefaultSecurityPolicy().SensitiveContentPatterns` (`internal/hook/pre_tool.go:262-273`) | 이미 export, `(?i)` 컴파일, `security.extra_sensitive_content_patterns`로 확장 가능 |
-| 패턴 완전성 | **확장 1건** | `AIza[0-9A-Za-z_-]{35}` (`.moai/astgrep-rules/security/credentials.yml`) | Go 목록에 없음. 두 집합은 서로 포함관계 아님 |
+| 패턴 완전성 | **확장 1건** | `AIza[0-9A-Za-z_-]{35}` (`.moai/astgrep-rules/security/credentials.yml`) | `hook`의 목록에 없음. 두 집합은 서로 포함관계 아님 |
+| 세 번째 Go 패턴 목록 | **조사됨 — 미채택** | `internal/github/workflow/validator.go:155` (`AIza[0-9A-Za-z\\-_]{35}` 포함) | D9: 워크플로 **파일 검증**용 리터럴 목록이며 재사용 가능한 정책 객체가 아니다. `AIza` 를 이미 담고 있다는 사실은 위 확장 판단을 뒤집지 않는다(합집합 방향 동일). iter1의 "Go 목록에는 없다"는 서술이 리포 전체로는 거짓이었고 `hook` 한정으로 정정됨 |
 | 마스킹 변환 자체 | **신규** | — | 텍스트를 재작성하는 함수가 리포에 0건. 기존 3종은 전부 값 단위 표시용 |
 | 마스킹 출력 형태 | **재사용(택1)** | `MaskSecret` / `maskAPIKey` / `maskPartial` | 형태가 이미 3종 — 네 번째 금지 |
-| 환경변수 이름 어휘 | **재사용** | `sandbox.defaultDenyList` (`internal/sandbox/env.go:31-37`) + `env_scrub_extra` | 이름만. `ScrubEnv`는 슬라이스에서 변수를 제거할 뿐 산문 속 값을 못 건드림 |
-| 홈 경로 축약 | **신규** | — | `~` 축약 헬퍼 0건. grep 2건은 모두 반대 방향(`branch.go:179` refname 검사, `detect.go:135` 폴백) |
+| 환경변수 이름 어휘 | **재사용 — 단 접근자 신설 필요** | `internal/sandbox/env.go:32` `defaultDenyList` + `env_scrub_extra` | D3: 이 변수는 **unexported**라 `internal/feedback`이 import할 수 없고, 그 표면의 유일한 export는 이미 배제한 `ScrubEnv`(`:51`)다. `DefaultEnvDenyList()` 접근자를 신설해 재사용한다(복사 금지). iter1은 export 여부를 확인하지 않고 "재사용"으로 적었다 — REQ-4는 확인했는데 REQ-6은 하지 않은 비대칭 |
+| 홈 경로 축약 | **신규** | — | `~` 축약 헬퍼 0건. grep **3건**은 모두 반대 방향(`core/git/branch.go:179` refname 검사, `shell/detect.go:135` 폴백 리터럴, `shell/config.go:222` `HasPrefix(path, "~/")` 확장). D10: iter1은 2건으로 셌으나 결론(축약 헬퍼 부재)은 불변 |
 | 홈 해석 | **재사용** | `paths.Home()` (`internal/paths/paths.go:49`) | `paths.go:8`의 HOME-first 계약 |
 | 취약점 분류 | **신규** | — | 분류기·CVE/CWE 탐지기·어휘 전부 0건. **이 SPEC 최대 신규 작업** |
 | 취약점 정책 문구 | **재사용** | `SECURITY.md` | 인간용 규칙이 이미 존재 — 재발명 금지 |

@@ -1,7 +1,7 @@
 ---
 id: SPEC-FEEDBACK-AUTO-SUBMIT-001
 title: "자동 피드백 전송 — 동의 게이트 · 전송 전 마스킹 스크러버 · 취약점 분류"
-version: 0.2.0
+version: "0.3.0"
 status: draft
 created: 2026-08-22
 updated: 2026-08-22
@@ -54,11 +54,12 @@ D3(todo 런타임 표면 한정)은 `SPEC-TODO-ENABLE-FLAG-001` 소관이다.
 **In Scope**
 
 - `feedback.auto_submit`(bool, 기본 `false`) 설정 키와 그 접근자.
-- `moai feedback scrub` — 마스킹 변환 + 취약점 분류 + 판정 출력을 담당하는 신규 Go 명령과 그 뒤의 `internal/feedback` 패키지.
+- `moai feedback scrub` — 마스킹 변환 + 취약점 분류 + 판정 출력을 담당하는 신규 Go 명령과 그 뒤의 `internal/feedback` 패키지. 스크럽 대상은 **제목과 본문 둘 다**(REQ-3).
+- `internal/sandbox/env.go` — 환경변수 이름 어휘 접근자 `DefaultEnvDenyList()` 신설(REQ-6). 이 SPEC이 다른 패키지를 편집하는 유일한 지점이다.
 - 마스킹 로그(`.moai/logs/feedback-mask.log`, `0o600`)와 전송 실패 재시도 큐(`.moai/state/feedback/queue.json`).
 - `.claude/skills/moai/workflows/feedback.md`(+ 템플릿 미러)의 제출 전 확인 게이트 + 스크러버 경유 [HARD] 조항.
 - `moai init` 마법사 확인 질문 **1개**(자동 전송 동의)와 그 4로케일 번역.
-- 웹 콘솔 토글 노출(§D 결정 D5의 선택지에 따름).
+- 웹 콘솔 토글 노출 — `feedback` 섹션을 `RouteSeam`으로 재개방(§D 결정 D5, 확정).
 - `feedback.auto_submit`의 템플릿 미러 + 키 인벤토리 등록 + `make build`.
 
 **Out of Scope**
@@ -92,17 +93,38 @@ D3(todo 런타임 표면 한정)은 `SPEC-TODO-ENABLE-FLAG-001` 소관이다.
 
 ### REQ-3 — `moai feedback scrub` — 마스킹 변환의 단일 강제 지점
 
-`moai feedback scrub`이 호출되면, 명령은 표준 입력으로 받은 본문에 마스킹 변환(REQ-4·5·6)과 취약점 분류(REQ-7)를 적용하고 마스킹된 본문과 기계 판독 가능한 판정을 표준 출력으로 반환해야 한다.
+`moai feedback scrub`이 호출되면, 명령은 **제출될 모든 텍스트 입력** — 이슈 제목과 본문 — 에 마스킹 변환(REQ-4·5·6)과 취약점 분류(REQ-7)를 적용하고, 마스킹된 제목·본문과 기계 판독 가능한 판정을 표준 출력으로 반환해야 한다.
 
-- 판정은 최소 `verdict`(`ok` | `blocked`), `body`(마스킹 본문), `findings`(항목별 종류·건수), `reason`(blocked일 때의 사유)을 포함한다.
+**[HARD] 제목은 본문과 같은 통제를 받는다(D1).** 제목은 `gh issue create`에 **별도로 조립되는 입력**이며(`.claude/skills/moai/workflows/feedback.md:84,102`), 사용자 자유 텍스트다. 본문만 스크럽하면 이 SPEC의 유일한 보안 통제가 선언된 범위에서 새고, 확인 게이트(REQ-2)가 마스킹 본문만 보여주므로 **제목 속 시크릿은 유일한 사람 체크포인트에서도 보이지 않는다**. 따라서 제목은 스크럽 대상이며, 마스킹된 제목만 제출·표시된다.
+
+- 입력 표면: 본문은 표준 입력, 제목은 `--title` 인자. 파이프 관용구(`… | moai feedback scrub --title "<제목>"`)를 유지하기 위한 분리이며, 두 입력 모두 같은 파이프라인을 통과한다.
+- 판정은 최소 `verdict`(`ok` | `blocked`), `title`(마스킹 제목), `body`(마스킹 본문), `findings`(항목별 종류·건수·위치), `reason`(blocked일 때의 사유)을 포함한다.
+- `findings`의 각 항목은 어디에서 나왔는지(`title` | `body`)를 담아야 한다 — 확인 게이트가 "제목에서 1건 가려졌다"를 사용자에게 말할 수 있어야 하기 때문이다.
 - 스크럽이 완료되면 종료 코드 0으로 종료한다. 도구 자체가 실패한 경우 0이 아닌 코드로 종료하며, 이때 호출자는 제출해서는 안 된다(shall not) — 제출 경로는 fail-closed다. 로깅·큐잉 경로의 fail-open(REQ-8·9)과는 다른 축이다.
-- `findings`는 **마스킹된 값 자체를 담아서는 안 된다**(shall not). 종류와 건수만 담는다.
+- `findings`는 **마스킹된 값 자체를 담아서는 안 된다**(shall not). 종류·건수·위치만 담는다.
+
+**프로젝트 루트 해석(D5)**: 스크러버는 REQ-8·9의 경로를 쓰기 위해 프로젝트 루트를 알아야 한다. 루트는 **현재 작업 디렉터리에서 `.moai/` 마커를 만날 때까지 상향 탐색**해 해석하며, `--root <path>` 인자가 주어지면 그 값이 탐색을 대체한다(테스트가 `t.TempDir()`를 루트로 주입하는 경로가 이것이다). 마커를 찾지 못하고 인자도 없으면 로그·큐 쓰기를 건너뛰되(fail-open, REQ-8·9) 스크럽 자체는 정상 완료한다 — 루트 부재가 마스킹을 막아서는 안 된다(shall not).
 
 ### REQ-4 — 시크릿 패턴 집합: 기존 정책 재사용 + 1건 확장
 
 스크러버는 시크릿 탐지 패턴으로 `hook.DefaultSecurityPolicy().SensitiveContentPatterns`(`internal/hook/pre_tool.go:262-273`)를 재사용해야 한다. 이 집합은 이미 export돼 있고 대소문자 무시로 컴파일되며 `security.extra_sensitive_content_patterns`로 확장 가능하다.
 
-여기에 `AIza[0-9A-Za-z_-]{35}`(Google API key)를 추가해야 한다 — `.moai/astgrep-rules/security/credentials.yml`에는 있고 Go 목록에는 없다. 두 집합은 서로 포함관계가 아니므로 합집합을 취한다.
+여기에 `AIza[0-9A-Za-z_-]{35}`(Google API key)를 추가해야 한다 — `.moai/astgrep-rules/security/credentials.yml`에는 있고 `hook`의 목록에는 없다(D9: 리포에 세 번째 Go 패턴 목록 `internal/github/workflow/validator.go:155`가 있으나 워크플로 파일 검증용이라 재사용 대상이 아니다 — `research.md` §2에 조사됨-미채택으로 기록). 두 집합은 서로 포함관계가 아니므로 합집합을 취한다.
+
+**[HARD] REQ-4 하위 조항 — 탐지기→재작성기 비대칭: 치환 span 규칙**
+
+**탐지기로 건전한 패턴이 재작성기로도 건전하지는 않다(D1b).** 원본 집합은 `MatchString` 불리언 판정에 쓰이므로 "마커의 존재가 민감성을 증명한다"로 충분하지만, 매칭된 span을 그대로 치환하면 두 방향으로 무너진다.
+
+1. **과소 마스킹(치명적)** — `-----BEGIN\s+(RSA\s+)?PRIVATE\s+KEY-----` 와 `-----BEGIN\s+CERTIFICATE-----`(`internal/hook/pre_tool.go:263-264`)는 **헤더 마커만** 매칭한다. span을 치환하면 헤더만 지워지고 **개인키 본문 전체가 공개 이슈로 실려 나간다** — 이 SPEC이 낼 수 있는 최악의 결과다.
+2. **과잉 마스킹** — `compilePatterns`(`internal/hook/pre_tool.go:104`)가 `(?i)`를 붙이므로 `AKIA[0-9A-Z]{16}` 이 대소문자 무시가 된다. 권한 프롬프트에서는 무해하지만 재작성기에서는 사용자 산문 속 평범한 소문자 연속을 먹어치울 수 있다.
+
+따라서 스크러버는:
+
+- 매칭된 span을 **패턴이 시크릿 자체를 앵커할 때만** 치환해야 한다(shall).
+- **마커 앵커 패턴**(`-----BEGIN …`)은 매칭 span이 아니라 **블록 종료자(`-----END … -----`)까지** 마스킹해야 한다(shall). 종료자를 찾지 못하면 입력 끝까지 마스킹한다 — 잘린 키 블록을 통과시켜서는 안 된다(shall not).
+- 대소문자 민감성이 시크릿 형태의 일부인 패턴(`AKIA…` 등)은 재작성 시 **대소문자를 구별해** 적용해야 한다(shall). 원본 집합의 `(?i)` 를 그대로 재작성에 쓰는 것은 금지다(shall not).
+
+관측: AC-F-024(개인키 블록 전체 부재), AC-F-008(소문자 산문 과잉 마스킹 없음).
 
 치환 출력 형태는 기존 값 단위 마스커 3종(`internal/github/secret.go:144`, `internal/cli/glm.go:454`, `internal/cli/glm_tools.go:992`) 중 하나를 채택해 **통일**해야 하며, 네 번째 형태를 만들어서는 안 된다(shall not).
 
@@ -116,7 +138,11 @@ D3(todo 런타임 표면 한정)은 `SPEC-TODO-ENABLE-FLAG-001` 소관이다.
 
 본문에 민감 환경변수의 값이 산문 형태로 포함된 경우, 스크러버는 그 값을 마스킹해야 한다.
 
-민감 변수 이름 어휘는 `sandbox.defaultDenyList`(`internal/sandbox/env.go:31-37`)와 `security.sandbox.env_scrub_extra`에서 가져온다. `ScrubEnv` 자체는 `KEY=VALUE` 슬라이스에서 변수를 제거하는 함수라 산문 속 값을 마스킹할 수 없으므로, 이름 어휘만 재사용하고 변환은 신규 작성한다.
+민감 변수 이름 어휘는 `internal/sandbox`의 denylist와 `security.sandbox.env_scrub_extra`에서 가져온다. `ScrubEnv` 자체는 `KEY=VALUE` 슬라이스에서 변수를 제거하는 함수라 산문 속 값을 마스킹할 수 없으므로, 이름 어휘만 재사용하고 변환은 신규 작성한다.
+
+**[HARD] 재사용 기제를 명시한다(D3).** `internal/sandbox/env.go:32`의 `defaultDenyList`는 **unexported**라 `internal/feedback`이 import할 수 없고, 그 표면의 유일한 export는 이 SPEC이 이미 배제한 `ScrubEnv`(`:51`)다. 따라서 `internal/sandbox`에 접근자 `func DefaultEnvDenyList() []string`를 신설하고 스크러버는 그것을 호출해야 한다(shall). 이름 목록을 `internal/feedback`으로 **복사해서는 안 된다**(shall not) — 복사는 두 목록의 드리프트를 보장하며 AP-4가 패턴 집합에 대해 금지한 것과 같은 실패다.
+
+`internal/sandbox/env.go`는 이 SPEC의 편집 대상이며(§B In Scope, plan.md M2), 접근자는 `defaultDenyList`를 그대로 반환한다(사본을 반환해 호출자가 원본을 변경하지 못하게 한다).
 
 ### REQ-7 — 보안 취약점 내용 분류 시 자동 제출 거부
 
@@ -140,6 +166,17 @@ D3(todo 런타임 표면 한정)은 `SPEC-TODO-ENABLE-FLAG-001` 소관이다.
 
 큐는 `internal/kanban.BacklogStore`(`internal/kanban/backlog_store.go`) 형태를 따른다 — 단일 JSON 파일, 형제 lock 파일, `Mutate()` 읽기-수정-쓰기, `internal/atomicfile.Replace` 경유 원자적 교체. 순수 append-only JSONL은 충분하지 않다(성공 시 삭제가 필요하다).
 
+**[HARD] 기존 로컬 초안 경로와의 관계(D4).** `.claude/skills/moai/workflows/feedback.md:36-44`에 이미 [HARD] 블록이 있어, `gh` **인증 실패·레이트리밋** 시 마스킹되지 않은 제목+본문을 `.moai/state/feedback-draft-<timestamp>.md`에 쓰고 "어떤 초안도 폐기되지 않는다"로 닫는다. 이 SPEC은 그 경로를 **대체하지 않고 실패 부류로 분리한다** — 두 표면은 서로 다른 시점의 서로 다른 실패를 담당한다.
+
+| 실패 시점 | 담당 표면 | 내용 |
+|---|---|---|
+| **제출 이전** — `gh auth status` 실패, 레이트리밋 등 제출을 시작조차 못한 경우 | 기존 초안(`feedback-draft-<ts>.md`) | 스크럽 이전 원문(제목+본문). 사용자가 손으로 이어서 쓰는 작업본이다. |
+| **제출 시도 이후** — `gh issue create` 자체가 실패한 경우 | 신규 재시도 큐(`queue.json`) | **마스킹된** 제목+본문. 재전송 대상이므로 스크럽을 통과한 형태만 담는다. |
+
+즉 `gh issue create` 실패는 **큐가 쓰인다**. 초안 경로는 제출 전 단계의 작업 손실 방지이고 큐는 제출 후 단계의 재시도이며, 같은 실패에 둘 다 쓰이는 경우는 없다. 스킬 본문(REQ-10)은 이 분기를 명시해야 한다(shall).
+
+**주의**: 초안 파일은 스크럽 이전 원문을 담으므로 **로컬 전용이며 어떤 경로로도 전송되지 않는다** — 이는 기존 동작이고 이 SPEC이 바꾸지 않지만, 두 파일이 같은 `.moai/state/` 아래 공존하므로 재전송 코드가 초안 파일을 큐로 오인해서는 안 된다(shall not).
+
 ### REQ-10 — 스킬 본문 구속 조항
 
 `.claude/skills/moai/workflows/feedback.md`와 그 템플릿 미러는 이슈 본문을 `moai feedback scrub`에 통과시킨 뒤 그 출력만을 제출하도록 지시하는 [HARD] 조항을 담아야 한다.
@@ -157,7 +194,11 @@ D3(todo 런타임 표면 한정)은 `SPEC-TODO-ENABLE-FLAG-001` 소관이다.
 
 ### REQ-12 — 웹 콘솔 토글 노출
 
-웹 설정 화면에서 `feedback.auto_submit`을 토글할 수 있어야 한다. 노출 방식은 §D 결정 D5의 두 선택지 중 착수 승인 시점에 확정한다. 어느 쪽이든 4로케일 i18n 키를 등록해야 한다(`internal/web/schema_label_test.go:96`).
+사용자가 웹 설정 화면을 열면, 웹 콘솔은 `feedback.auto_submit`을 불리언 토글로 렌더하고 그 변경을 `.moai/config/sections/feedback.yaml`에 영속해야 한다.
+
+이를 위해 `feedback` 섹션은 `RouteExcluded`에서 `RouteSeam`으로 재개방돼야 한다(shall) — §D 결정 D5의 **선택지 A로 확정**했다(D8: 요구를 다시 쓰게 되는 결정을 산문으로 남겨 두지 않는다). 편집 지점은 넷이다: `internal/settings/schema_sections.go`(필드), `internal/settings/sectionroute.go`(라우트 + `ExcludedSections()` 제거), `internal/web/schemaform.go`(탭 + 패널). 4로케일 i18n 키를 등록해야 한다 — 누락 시 `TestI18nKeySetParity`(`internal/web/schema_label_test.go:74`)가 실패한다.
+
+이 재개방은 **SPEC-WEBCONF-SIMPLIFY-001 M3의 기록된 결정을 되돌린다.** 그 결정을 고정하는 두 테스트(`internal/settings/sectionroute_test.go:27`, `internal/web/scope_contract_test.go:79`)의 기대값을 명시적으로 갱신해야 하며, 갱신 사실을 커밋 메시지에 반전으로 기록해야 한다(shall). 조용히 고칠 테스트가 아니다.
 
 ### REQ-13 — Template-First 미러
 
@@ -182,17 +223,15 @@ D3(todo 런타임 표면 한정)은 `SPEC-TODO-ENABLE-FLAG-001` 소관이다.
 | 마법사 번역 완전성 테스트가 영어 단독 신규 질문에서 실패 | `lens-init.md` §5 |
 | `feedback` 섹션이 `RouteExcluded`이며 두 테스트가 그것을 고정 | `lens-web-todo.md` §A.3 |
 
-### 결정 D5 — 웹 노출 경로 (착수 승인 시점 확정)
+### 결정 D5 — 웹 노출 경로 — **해소됨: 선택지 A**
 
-카드는 키의 집을 `.moai/config/sections/feedback.yaml`로 명시했고 이 SPEC은 그것을 따른다(REQ-1). 열려 있는 것은 **웹 콘솔 노출 방식**이다.
+iter1에서 열어 두었던 결정이며, iter2에서 **선택지 A로 확정하고 선택지 B를 삭제했다**(감사 D8). 요구를 다시 쓰게 되는 결정을 산문으로만 남기면 기계적 clarification 게이트가 아무것도 보지 못하고, REQ-12가 "노출 방식은 나중에 정한다"는 유예를 담아 GEARS 요구가 되지 못했기 때문이다.
 
-**선택지 A (기본안) — `feedback` 섹션을 `RouteSeam`으로 재개방.**
-비용: 편집 4곳(schema field + `sectionRoutes` 항목 + `consoleTabs` 항목 + `schemaSectionMetas` 패널) + i18n 키. 대가: **SPEC-WEBCONF-SIMPLIFY-001 M3의 기록된 결정을 되돌린다**. 그 결정을 강제하는 두 테스트(`internal/settings/sectionroute_test.go:27`, `internal/web/scope_contract_test.go:79`)를 명시적으로 갱신해야 한다 — 조용히 고칠 테스트가 아니라 뒤집을 결정이다. 부수 효과로 `lens-web-todo.md` §A.3의 잠재 불일치(위조 POST가 `feedback.repository`를 seam 쓰기로 밀어 하드 에러를 내는 현상)가 해소된다. 카드 요구("web 설정 화면에서 토글 가능")를 문자 그대로 충족한다.
+**확정: `feedback` 섹션을 `RouteExcluded` → `RouteSeam` 으로 재개방한다.** 편집 4곳(schema field + `sectionRoutes` 항목 + `consoleTabs` 항목 + `schemaSectionMetas` 패널) + i18n 키. 부수 효과로 `lens-web-todo.md` §A.3의 잠재 불일치(위조 POST가 `feedback.repository`를 seam 쓰기로 밀어 하드 에러를 내는 현상)가 해소된다.
 
-**선택지 B (더 싼 대안) — 토글을 `workflow.yaml` 아래 두고 `feedback` 라우트는 닫아 둔다.**
-비용: 편집 1줄. 대가: 키가 `workflow.feedback.auto_submit`이 되어 카드 본문의 명시(`feedback.yaml`에 `auto_submit`)와 어긋나고, REQ-1의 키 집이 바뀌므로 SPEC 개정이 동반된다.
+**근거**: 카드가 키의 집(`feedback.yaml`)과 웹 토글을 **둘 다** 명시했다. 기각한 대안(토글을 `workflow.yaml` 아래 두기)은 편집 1줄로 싸지만 키가 `workflow.feedback.auto_submit`이 되어 카드가 명시한 키의 집을 포기해야 했다. 둘 중 하나를 포기하는 선택지보다 둘 다 지키는 쪽을 택했다.
 
-**권고**: A. 카드가 키의 집과 웹 토글을 모두 명시했고 B는 둘 중 하나를 포기해야 하기 때문이다.
+**대가는 명시적으로 치른다**: 이 재개방은 SPEC-WEBCONF-SIMPLIFY-001 M3의 기록된 결정을 되돌린다. 그 결정을 고정하는 두 테스트를 명시적으로 갱신하고 커밋 메시지에 반전으로 기록한다(REQ-12). 운영자가 이 반전을 원치 않는다면 착수 승인 시점에 되돌릴 수 있으며, 그 경우 REQ-1·REQ-12와 이 절을 함께 개정한다 — 그것이 SPEC 개정 사안이라는 사실 자체가 이 결정을 산문 유예로 두지 않는 이유다.
 
 ## §E Constraints / Non-Goals
 
@@ -230,7 +269,7 @@ D3(todo 런타임 표면 한정)은 `SPEC-TODO-ENABLE-FLAG-001` 소관이다.
 
 같은 한계가 REQ-2의 확인 게이트에도 적용된다 — `AskUserQuestion`은 오케스트레이터 전용 채널이라 Go에서 호출할 수 없다. 우회 폭을 좁히려면 `gh issue create` 자체를 Go 명령으로 감싸야 하며, 그 경로는 후속 카드 후보다(design.md §6).
 
-**두 번째 잔여 위험**: 중복 검색(`feedback.md:71`)이 제출 결정 이전에 제목 유래 키워드를 GitHub로 보낸다. 제목이 시크릿을 담고 있다면 확인 게이트가 뜨기 전에 이미 유출된다.
+**두 번째 잔여 위험**: 중복 검색(`feedback.md:71`)이 제출 결정 이전에 **스크럽되지 않은** 제목 유래 키워드를 GitHub로 보낸다. REQ-3이 제목을 스크럽 대상에 넣었으므로 *제출* 경로의 제목 누출은 닫혔지만, 이 검색 호출은 스크럽 이전 시점에 일어나고 이 SPEC은 그 호출을 변경하지 않으므로 위험이 남는다. 닫으려면 검색을 스크럽 이후로 옮기거나 마스킹된 제목으로 검색해야 하며, 그것은 기존 동작 변경이라 후속 카드다(design.md §10).
 
 **세 번째 잔여 위험**: 취약점 분류기는 신규 작성이며 선례가 없다. 오탐과 미탐이 양방향으로 가능하다. 초기 임계값은 미탐보다 오탐 쪽으로 보수적으로 잡고, 오탐 시 사용자가 수동 경로를 안내받도록 한다.
 
@@ -245,5 +284,18 @@ D3(todo 런타임 표면 한정)은 `SPEC-TODO-ENABLE-FLAG-001` 소관이다.
 
 ## §G HISTORY
 
+- **2026-08-22** v0.3.0 — plan-audit iter1 **FAIL 0.75**(Tier L 임계 0.85) + **MP-2 FAIL** 대응. 감사관이 "leaking scope boundary 를 가진 좋은 SPEC이지 약한 SPEC이 아니다"로 판정했고, 강제 주장의 정직성(§E.3 · design.md §1 · plan.md AP-12)은 유지 판정을 받아 **후퇴시키지 않았다**. 처리 내역:
+  - **D1**(치명, 보안) — 이슈 **제목**이 스크러버를 통과하지 않고 `gh issue create`에 닿는 경로를 REQ-3이 열어 두고 있었다(제목은 `feedback.md:84,102`에서 별도 조립되는 입력이고, 확인 게이트도 본문만 보여주므로 유일한 사람 체크포인트에서도 보이지 않았다). **범위 밖 선언이 아니라 스크럽 대상 확장을 택했다** — REQ-3이 `--title` 인자를 받고 `title` 필드를 돌려주며, `findings`에 위치(`title`|`body`)가 추가된다. design.md §1/§4/§7과 AC-F-003·F-006도 함께 갱신.
+  - **D1b**(치명, 보안) — 탐지기의 패턴 집합을 재작성기로 쓰는 것이 두 방향으로 불건전함을 REQ-4 하위 조항으로 명문화. **과소 마스킹**: `-----BEGIN … PRIVATE KEY-----`(`pre_tool.go:263-264`)는 헤더 마커만 매칭하므로 span 치환은 헤더만 지우고 키 본문을 공개 이슈로 보낸다 → **블록 종료자까지** 마스킹(종료자 부재 시 입력 끝까지). **과잉 마스킹**: `compilePatterns`(`:104`)의 `(?i)` 때문에 `AKIA[0-9A-Z]{16}`이 대소문자 무시가 된다 → 재작성 시 대소문자 구별 적용. 관측은 AC-F-024(개인키 블록 전체 부재) 신설 + AC-F-008에 소문자 `akia…` 산문 케이스 추가.
+  - **D2**(블로킹) — AC-F-023의 `-run` 선택자 2개가 실재 테스트와 매칭되지 않았다(`TestSchemaLabel`·`TestSectionRoute` 둘 다 부재). `TestI18nKeySetParity`, `TestRouteForSectionTable|TestExcludedSectionsAllRejected`로 교체하고 `-v` 출력 줄 검사를 요구. acceptance.md 서두가 금지한 것을 자기가 어긴 지점이었다.
+  - **D3**(블로킹) — REQ-6이 unexported `defaultDenyList`(`internal/sandbox/env.go:32`)의 재사용을 지시했다. 기제를 명시: `internal/sandbox`에 `DefaultEnvDenyList()` 접근자 신설(§B In Scope + plan M2), 복사 금지.
+  - **MP-2 / D8**(블로킹) — REQ-12를 주어 있는 GEARS로 재작성("사용자가 웹 설정 화면을 열면, 웹 콘솔은 … 렌더하고 … 영속해야 한다"). 함께 **§D 결정 D5를 선택지 A로 확정하고 선택지 B를 삭제** — 요구를 다시 쓰게 되는 결정을 산문 유예로 두면 기계적 게이트가 아무것도 보지 못하기 때문이다. `[NEEDS CLARIFICATION]` 마커 대신 해소를 택했다.
+  - **D4**(블로킹) — REQ-9의 재시도 큐가 기존 초안 경로(`feedback.md:36-44`)와 충돌 없이 공존하도록 **실패 부류로 분리**: 제출 이전 실패(auth·레이트리밋) → 기존 초안(스크럽 이전 원문), 제출 시도 이후 실패(`gh issue create`) → 신규 큐(마스킹본). 스킬 본문이 이 분기를 명시하도록 REQ-10 연계.
+  - **D7**(블로킹) — plan.md 마일스톤 3개의 AC 범위 인용 정정(M4 → F-015~F-018, M6 → F-019~F-022, M7 → F-023).
+  - **D5**(블로킹) — 스크러버의 프로젝트 루트 해석 규칙을 REQ-3에 명시(`.moai/` 마커 상향 탐색, `--root` 인자가 대체, 미해석 시 로그·큐 생략하되 스크럽은 완료) + design.md §9 반영.
+  - **D6**(블로킹) — design.md §9에 두 행 추가(타임아웃 상한 → fail-closed, 파싱 불가 stdout → fail-closed), 스킬 [HARD] 조항을 3문장으로, `paths.Home()` 행의 부정확한 서술 정정(`os.UserHomeDir()` 폴백으로 대개 성공).
+  - **D11**(블로킹) — design.md §7 게이트 옵션 3개와 findings 요약을 `conversation_language`로 낸다는 의무 추가(템플릿 미러는 영어 라벨).
+  - **D9 · D10 · D12**(선택) — `Go 목록에는 없다` → `hook의 목록에는 없다`로 한정하고 `validator.go:155`를 research.md §2에 조사됨-미채택으로 기록 / `~` grep 개수 2 → 3 정정(`internal/shell/config.go:222`) / `version` 인용.
+  - AC 23 → **24**(상한 25). D1b가 요구한 두 관측 중 하나(소문자 과잉 마스킹)는 이미 오탐 대조 AC인 AC-F-008에 케이스로 접었다 — 관측은 유지하면서 예산을 지키기 위함이며, 판정 해상도는 단언이 분리돼 있어 떨어지지 않는다.
 - **2026-08-22** v0.2.0 — AC 예산 초과(32 > Tier L 상한 25)로 SPEC을 둘로 분리. todo 축을 `SPEC-TODO-ENABLE-FLAG-001`로 이관하고 이 SPEC은 Tier L(5종)로 재작성. AC 23개.
 - **2026-08-22** v0.1.0 — 최초 초안(plan-phase). 카드 t170 전제 4건이 읽기 전용 렌즈 4종에서 반증돼 정정으로 기록, 운영자 결정 D1~D4 반영.

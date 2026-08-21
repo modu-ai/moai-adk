@@ -8,7 +8,9 @@
 
 run-phase 모듈: `internal/config` · `internal/hook` · `internal/statusline` · `internal/cli/wizard` · `internal/cli` · `internal/core/project` · `internal/settings` · `internal/web` · 스킬 2사본 · 템플릿.
 
-Tier M이므로 Route A(main-direct)가 기본이나, 형제 SPEC과 같은 배치에 실린다면 배치 레인의 통합 규율을 따른다.
+**Route B (PR) — 전 티어.** 이 저장소는 `.claude/rules/local/repo-local-pr-policy.md` 가 [HARD] 로 Route A(main-direct)를 **비활성화**한다: `main` 이 `enforce_admins: true` 로 보호돼 admin 도 직접 푸시가 거부된다. Tier와 무관하게 PR 경로이며, `spec-workflow.md` 의 "Tier S/M은 Route A" 기본값은 이 리포에 적용되지 않는다. 형제 SPEC과 같은 배치에 실린다면 배치 레인의 통합 규율을 함께 따른다.
+
+이 사실은 §E.1의 충돌 해소 규칙과 직결된다 — 두 SPEC이 같은 9개 파일에 **동시 PR 2건**으로 착지하므로 텍스트 충돌은 예외가 아니라 예상되는 결과다.
 
 ## §B Known Issues (착수 전 알고 있어야 할 함정)
 
@@ -83,10 +85,11 @@ grep -n 'backlog' .moai/config/sections/statusline.yaml                         
 ### M3 — 스킬 라우팅 + CLI 등록 유지 확인
 
 **파일**:
-- `.claude/skills/moai/SKILL.md` + `internal/template/templates/.claude/skills/moai/SKILL.md` — 라우팅 단계에서 플래그가 `false`면 `workflows/todo.md`로 라우팅하지 않는다는 조건 명시. **스킬 목록 메타데이터(`:6`, `:81`, `:105`)는 손대지 않는다** — 범위 밖(§B).
+- `.claude/skills/moai/SKILL.md` + `internal/template/templates/.claude/skills/moai/SKILL.md` — 라우팅 단계에서 플래그가 `false`면 **자동/추론 라우팅**으로 `workflows/todo.md` 에 도달하지 않는다는 조건 명시. [HARD] 같은 문장이 **명시적 `/moai todo` 호출은 정상 동작한다**는 한정을 함께 담아야 한다(REQ-2 D2 조항) — 한정 없는 억제 문장은 슬래시 진입점을 침묵시키는 구현을 부른다. **스킬 목록 메타데이터(`:6`, `:81`, `:105`)는 손대지 않는다** — 범위 밖(§B).
 - `internal/cli/todo.go:512` — **변경 없음**. REQ-3의 결정을 테스트로 고정한다.
+- `internal/cli/todo_test.go` — 신규 `TestTodoCommandRegisteredRegardlessOfFlag`(등록 유지) + `TestTodoVerbsUnaffectedByFlag`(플래그 false에서 add→list 왕복이 정상 동작).
 
-**Exit**: 스킬 두 사본에 조건 문장 존재(grep). `go test ./internal/cli/ -run 'TestTodoCommandRegisteredRegardlessOfFlag'` 초록. AC-T-004, AC-T-005.
+**Exit**: 스킬 두 사본에 한정을 담은 조건 문장 존재(grep) + 목록 3줄 내용 불변(AC-T-004). `go test ./internal/cli/ -run 'TestTodo'` 초록. AC-T-004, AC-T-005.
 
 ### M4 — 마법사 질문 1개 (살아 있는 경로만)
 
@@ -109,8 +112,9 @@ grep -n 'backlog' .moai/config/sections/statusline.yaml                         
 - `internal/settings/schema_sections.go` — `s(SectionWorkflow, "workflow", TypeBool, "workflow", "todo", "enabled")` (`:334` 이웃).
 - `internal/web/assets/i18n.js` — 4로케일 × (title, desc).
 - 필요 시 `internal/web/schemaform.go:156` 이웃에 탭 배치 술어 1줄(기본은 workflow 탭).
+- **`internal/settings/schema_sections_test.go` — 신규 테스트 `TestWorkflowTodoEnabledFieldRegistered`**: `settings.AllFields()` 에서 `workflow.todo.enabled` 를 찾아 존재 + `Type == TypeBool` + `Persist.Kind == PersistSeam` 을 단언. 기존 `TestSchemaCurrentValuesReadsAllSections` 는 무관한 13개 키의 고정 맵을 볼 뿐이라 신규 필드에 아무 영향을 받지 않는다 — 이 테스트가 없으면 AC-T-009의 `Then` 을 관측하는 명령이 존재하지 않는다.
 
-**Exit**: `go test ./internal/settings/... ./internal/web/...` 초록. AC-T-009.
+**Exit**: `go test ./internal/settings/... ./internal/web/...` 초록. AC-T-009. i18n 누락은 `TestI18nKeySetParity`(`internal/web/schema_label_test.go:74`)가 잡는다.
 
 ### M6 — 템플릿 결정 + 인벤토리 + 빌드
 

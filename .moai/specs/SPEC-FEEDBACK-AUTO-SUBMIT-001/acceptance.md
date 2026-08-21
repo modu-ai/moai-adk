@@ -4,7 +4,7 @@
 > 이름 붙은 테스트 함수는 해당 마일스톤의 **납품물**이다 — 먼저 쓰고(RED) 판정한다. 존재하지 않는 테스트를 가리키는 `-run` 패턴으로 통과를 주장하는 것, 아무것도 실행하지 않고 통과하는 AC는 둘 다 이 팩토리 런에서 관측된 실패 유형이므로 금지한다.
 > 로컬 검증은 패키지 스코프(`go test ./internal/<pkg>/...`)로만. 전 패키지 판정은 CI 몫(CLAUDE.local.md §4).
 
-**AC 총계: 23 / Tier L 상한 25.**
+**AC 총계: 24 / Tier L 상한 25.**
 
 ## §D AC Matrix
 
@@ -12,12 +12,12 @@
 |---|---|---|---|
 | AC-F-001 | REQ-1 | MUST-PASS | 키 해석: 부재→false, 명시 true→true |
 | AC-F-002 | REQ-2 | MUST-PASS | 확인 게이트가 `gh issue create` 앞에 존재(baseline FAIL 대조 포함) |
-| AC-F-003 | REQ-3 | MUST-PASS | `scrub` 4필드 JSON + exit 0 |
+| AC-F-003 | REQ-3 | MUST-PASS | `scrub` 5필드 JSON(`title` 포함) + `findings.where` + exit 0 |
 | AC-F-004 | REQ-3 | MUST-PASS | 도구 실패 → exit ≠ 0 (fail-closed) |
 | AC-F-005 | REQ-3 | MUST-PASS | `findings`에 원문 값 없음 |
-| AC-F-006 | REQ-4 | MUST-PASS | GitHub 토큰 마스킹 |
+| AC-F-006 | REQ-3·4 | MUST-PASS | GitHub 토큰 마스킹 — **본문과 제목 양쪽**(D1 행동 관측) |
 | AC-F-007 | REQ-4 | MUST-PASS | `AIza` 키 마스킹 (합집합 증명) |
-| AC-F-008 | REQ-4·7 | MUST-PASS | 무해 본문 → 마스킹 0건 **AND** `verdict: ok` (양축 오탐 대조) |
+| AC-F-008 | REQ-4·7 | MUST-PASS | 무해 본문 → 마스킹 0건 **AND** `verdict: ok` + 소문자 산문 과잉 마스킹 없음(D1b) |
 | AC-F-009 | REQ-4 | MUST-PASS | 마스킹 출력 형태가 기존 마스커와 일치 |
 | AC-F-010 | REQ-5 | MUST-PASS | 홈 경로 축약 + `HOME` 오버라이드 반영 |
 | AC-F-011 | REQ-6 | MUST-PASS | 민감 env 값 마스킹 + `env_scrub_extra` 확장 |
@@ -32,9 +32,12 @@
 | AC-F-020 | REQ-11 | MUST-PASS | 마법사 질문 존재·기본 false·개수 고정 테스트 유지 |
 | AC-F-021 | REQ-11 | MUST-PASS | 4로케일 번역 완전성 |
 | AC-F-022 | REQ-11 | MUST-PASS | 마법사 답변이 실제로 파일에 기록됨(사장 경로 배제) |
-| AC-F-023 | REQ-12·13 | MUST-PASS | 웹 등록 + i18n + 템플릿 미러 + 키 인벤토리 + `make build` + 중립성 |
+| AC-F-023 | REQ-12·13 | MUST-PASS | 웹 등록(라우트 반전 포함) + i18n + 템플릿 미러 + 인벤토리 + `make build` + 중립성 |
+| AC-F-024 | REQ-4 | MUST-PASS | 개인키 블록이 헤더부터 종료자까지 통째로 마스킹(D1b 과소 마스킹 방어) |
 
-전 항목 MUST-PASS. Tier L이며 배포 템플릿과 공개 채널 전송 경로를 동시에 건드린다. 보안 조항(REQ-4~8)은 포괄 AC 1건으로 묶지 않고 AC-F-005~016으로 쪼갰다.
+전 항목 MUST-PASS. Tier L이며 배포 템플릿과 공개 채널 전송 경로를 동시에 건드린다. 보안 조항(REQ-3~8)은 포괄 AC 1건으로 묶지 않고 AC-F-005~016·F-024로 쪼갰다.
+
+**REQ-4 하위 조항(치환 span 규칙)의 양방향 관측**: 과소 마스킹은 **AC-F-024**(개인키 블록 전체), 과잉 마스킹은 **AC-F-008 네 번째 케이스**(소문자 산문)가 본다. 감사관이 요구한 두 관측을 AC 두 개로 벌리지 않고 하나는 기존 오탐 대조 AC에 접었다 — 관측은 유지하면서 상한 25를 지키기 위함이고, 두 단언이 분리돼 있어 실패 시 어느 방향인지 구별된다.
 
 ## §D.2 Given-When-Then Scenarios
 
@@ -65,12 +68,17 @@ grep -n 'AskUserQuestion\|gh issue create\|auto_submit' .claude/skills/moai/work
 ### AC-F-003 — 스크러버 계약
 
 ```
-Given 임의의 본문 문자열
-When  echo "<body>" | moai feedback scrub
-Then  stdout 이 verdict/body/findings/reason 4필드를 가진 단일 JSON 객체이고 종료 코드가 0이다
+Given 임의의 제목 문자열과 본문 문자열
+When  echo "<body>" | moai feedback scrub --title "<title>"
+Then  stdout 이 verdict/title/body/findings/reason 5필드를 가진 단일 JSON 객체이고 종료 코드가 0이다
+  And findings 의 각 항목이 where 를 담는다 ("title" | "body")
 ```
 `go test ./internal/cli/ -run 'TestFeedbackScrubContract' -v` → PASS
-+ 바이너리 스모크: `echo 'hello' | ./bin/moai feedback scrub | jq -e '.verdict and (.findings|type=="array")'` → exit 0
++ 바이너리 스모크:
+```bash
+echo 'hello' | ./bin/moai feedback scrub --title 'a title' | jq -e '.verdict and (.title|type=="string") and (.findings|type=="array")'   # exit 0
+```
+`title` 필드가 계약에 있다는 것이 D1(제목이 스크럽을 우회하던 경로)이 닫혔다는 구조적 증거다. 실제 마스킹 관측은 AC-F-006이 한다.
 
 ### AC-F-004 — 도구 실패는 fail-closed
 
@@ -95,9 +103,13 @@ Then  Result.Findings 의 어떤 필드도 그 토큰(또는 8자 이상 부분�
 ```
 Given 본문 "token is ghp_<36자> here"
 When  Scrub 을 호출한다
-Then  Result.Body 에 원본 토큰이 없고 Findings 에 Kind "secret" Count 1 이 있다
+Then  Result.Body 에 원본 토큰이 없고 Findings 에 Kind "secret" Where "body" Count 1 이 있다
+Given 같은 토큰이 본문이 아니라 제목에 들어 있다
+When  Scrub 을 호출한다
+Then  Result.Title 에 원본 토큰이 없고 Findings 에 Kind "secret" Where "title" 이 있다
 ```
 `go test ./internal/feedback/ -run 'TestScrubMasksGitHubToken' -v` → PASS
+두 번째 케이스가 D1의 행동 관측이다 — 제목이 스크럽 대상에서 빠지면 여기서 FAIL한다. `Where` 단언까지 있어야 확인 게이트가 "제목에서 가려졌다"를 말할 수 있다.
 
 ### AC-F-007 — AIza 마스킹 (합집합 증명)
 
@@ -118,8 +130,19 @@ Then  Result.Body 가 입력과 바이트 동일
   And Result.Findings 가 비어 있다        (마스킹 오탐 없음)
   And Result.Verdict == "ok"              (분류 오탐 없음)
 ```
+```
+Given 본문에 소문자 산문 연속이 들어 있다 — AWS 키 접두사를 **소문자로** 쓴 뒤 영숫자 16자가 이어지는 형태
+      (리터럴은 여기 적지 않는다; 아래 주석 참조. 테스트는 그 문자열을 코드에서 조립한다)
+When  Scrub 을 호출한다
+Then  Result.Body 가 입력과 바이트 동일하다   (대소문자 비대칭 과잉 마스킹 없음)
+```
 `go test ./internal/feedback/ -run 'TestScrubBenignBodyUntouchedAndAllowed' -v` → PASS
-세 단언이 각각 다른 축이므로 실패 시 어느 축인지 구별된다. "전부 마스킹" 및 "전부 차단" 축퇴 구현을 동시에 배제한다.
+
+앞 세 단언은 각각 다른 축이라 실패 시 어느 축인지 구별되며, "전부 마스킹"과 "전부 차단" 축퇴 구현을 동시에 배제한다.
+
+네 번째 케이스는 D1b의 **과잉 마스킹** 방향 관측이다. 원본 정책은 `compilePatterns`(`internal/hook/pre_tool.go:104`)가 `(?i)`를 붙여 AWS 키 패턴을 대소문자 무시로 만든다 — 탐지기에서는 무해하지만 재작성기에서는 소문자 산문을 먹는다. 통과하려면 재작성 경로가 대소문자 민감 패턴을 `(?i)` 없이 재컴파일해야 한다(REQ-4 하위 조항). 과소 마스킹 방향은 AC-F-024가 본다.
+
+> **이 케이스를 문서에 리터럴로 적지 않는 이유(실측)**: 이 AC를 작성하며 해당 소문자 문자열을 이 파일에 그대로 쓰려다 PreToolUse 훅에 `Content contains sensitive data` 로 **차단당했다**. 탐지기가 그 소문자 연속을 자격증명으로 판정한 것이며, D1b가 서술한 대소문자 비대칭이 살아 있는 트리에서 관측된 셈이다. 테스트는 문자열을 소스에서 조립하고(예: 접두사 상수 + 16자 더미), 문서는 형태만 서술한다.
 
 ### AC-F-009 — 출력 형태 통일
 
@@ -272,24 +295,50 @@ Then  .moai/config/sections/feedback.yaml 에 auto_submit: true 가 있고 기�
 ### AC-F-023 — 웹 등록 + 템플릿 + 인벤토리 + 빌드 + 중립성
 
 ```
-Given 신규 키가 추가되고 결정 D5 가 확정된 상태
-When  아래 5개 관측을 수행한다
+Given 신규 키가 추가되고 feedback 섹션이 RouteSeam 으로 재개방된 상태
+When  아래 6개 관측을 수행한다
 Then  전부 기대와 일치한다
 ```
 ```bash
-go test ./internal/settings/ ./internal/web/ -run 'TestSchemaCurrentValuesReadsAllSections|TestSchemaLabel|TestSectionRoute|TestScopeContract' -v   # PASS
+go test ./internal/settings/ ./internal/web/ -run 'TestSchemaCurrentValuesReadsAllSections|TestI18nKeySetParity|TestRouteForSectionTable|TestExcludedSectionsAllRejected|TestScopeContract' -v   # PASS
 grep -n 'auto_submit' internal/template/templates/.moai/config/sections/feedback.yaml          # 1건
 grep -n 'feedback.auto_submit' internal/config/testdata/shipped_key_inventory.yaml             # 1건
 grep -rn 'SPEC-FEEDBACK-AUTO-SUBMIT\|REQ-' internal/template/templates/.moai/config/sections/feedback.yaml internal/template/templates/.claude/skills/moai/workflows/feedback.md   # 0건
 make build                                                                                      # exit 0
 ```
-선택지 A를 택했다면 `sectionroute_test.go:27` 과 `scope_contract_test.go:79` 의 기대값이 `RouteSeam` 으로 갱신돼 있고, 그 갱신이 커밋 메시지에 SPEC-WEBCONF-SIMPLIFY-001 M3 반전으로 명시돼야 한다.
+
+**[HARD] `-v` 출력에서 위 5개 테스트 이름이 각각 `=== RUN` 으로 찍히는지 확인한다.** iter1의 이 AC는 `TestSchemaLabel` 과 `TestSectionRoute` 를 가리켰는데 둘 다 실재하지 않아(측정: `internal/web/schema_label_test.go` → `TestSchemaEmptyLabelParity:16` / `TestI18nKeySetParity:74` / `TestI18nSegmentKeysRemovedFromWebDictionary:133`; `internal/settings/sectionroute_test.go` → `TestRouteForSectionTable:8` / `TestSeamSectionsMatchesRoutes:51` / `TestExcludedSectionsAllRejected:74`) 선택자 절반이 0개 테스트에 매칭되고 `ok` 로 조용히 통과했다. 판정 전 확인:
+
+```bash
+grep -c 'func TestI18nKeySetParity' internal/web/schema_label_test.go            # 1
+grep -c 'func TestRouteForSectionTable' internal/settings/sectionroute_test.go   # 1
+grep -c 'func TestExcludedSectionsAllRejected' internal/settings/sectionroute_test.go  # 1
+```
+
+라우트 반전 확인: `sectionroute_test.go:27` 과 `scope_contract_test.go:79` 의 기대값이 `RouteSeam`(및 excluded 목록에서 제거)으로 갱신돼 있고, 그 갱신이 커밋 메시지에 SPEC-WEBCONF-SIMPLIFY-001 M3 반전으로 명시돼야 한다.
+
+### AC-F-024 — 개인키 블록이 통째로 마스킹된다 (과소 마스킹 방어)
+
+```
+Given 본문에 PEM 개인키 블록 전체가 들어 있다 — BEGIN 헤더 + 본문 여러 줄 + END 종료자
+      (테스트는 더미 키 블록을 소스에서 조립한다; 실제 키를 픽스처로 커밋하지 않는다)
+When  Scrub 을 호출한다
+Then  Result.Body 에 헤더도, END 종료자도, 그 사이 본문 어느 줄도 남아 있지 않다
+Given 같은 블록에서 END 종료자를 제거한 입력(잘린 키)
+When  Scrub 을 호출한다
+Then  헤더 이후 입력 끝까지가 마스킹돼 남은 본문 줄이 없다
+```
+`go test ./internal/feedback/ -run 'TestScrubMasksPrivateKeyBlockEntirely' -v` → PASS
+
+D1b의 **과소 마스킹** 방향 관측이며, 이 SPEC이 낼 수 있는 최악의 결과를 직접 막는다. 원본 패턴(`internal/hook/pre_tool.go:263-264`)은 **헤더 마커만** 매칭하므로, 매칭 span을 그대로 치환하는 순진한 구현은 헤더만 지우고 키 본문 전체를 공개 이슈로 실어 보낸다 — 그 구현은 첫 케이스에서 FAIL한다. 두 번째 케이스는 종료자 부재 시 입력 끝까지 마스킹하는 규칙을 고정한다.
 
 ## §D.3 Indirect Verification
 
 - **AC-F-002 의 baseline 반증**: 편집 전 FAIL을 관측하지 못하면 §A.1 정정 P1과 모순이므로 재측정 대상이다.
 - **AC-F-007 이 합집합을 증명한다**: 추가로 `grep -n 'DefaultSecurityPolicy' internal/feedback/` 이 1건 이상이어야 한다 — 패턴 문자열 복사(AP-4) 방어.
 - **AC-F-008·F-013 이 축퇴 구현을 배제한다**: 전부 마스킹/전부 차단하는 구현은 F-008에서, 순서 역전은 F-013 두 번째 단언에서 잡힌다.
+- **AC-F-006 두 번째 케이스와 AC-F-003의 `title` 필드가 함께 D1을 닫는다**: 계약에 필드가 있어도 제목이 파이프라인을 지나지 않으면 F-006에서 FAIL한다. 둘 중 하나만으로는 부족하다.
+- **`-run` 선택자의 실재 확인이 판정보다 먼저다**: iter1에서 AC-F-023의 선택자 절반(`TestSchemaLabel`·`TestSectionRoute`)이 0개 테스트에 매칭돼 `ok` 로 통과했다. 각 AC의 명령을 돌리기 전에 `grep -c 'func <TestName>' <file>` 이 `1` 인지 확인하고, `-v` 출력에서 `=== RUN` 줄을 센다.
 - **AC-F-022 가 사장 경로를 배제한다**: 답변이 파일에 도달하는지를 직접 관측한다.
 - **형제 SPEC 병합 확인**: `SPEC-TODO-ENABLE-FLAG-001` 이 먼저 착지했다면, AC-F-020·F-021 을 병합 후 트리에서 다시 돌려 두 질문이 함께 통과함을 확인한다(`spec.md` §E.1 [HARD]).
 
@@ -297,7 +346,9 @@ make build                                                                      
 
 - [ ] §D.2 전 AC 실행, 관측 출력이 기대와 일치.
 - [ ] AC-F-002 의 편집 전 FAIL / 편집 후 PASS 를 둘 다 관측.
-- [ ] 패키지 스코프 테스트 전부 초록(`feedback`, `config`, `cli`, `cli/wizard`, `core/project`, `settings`, `web`, `template`).
+- [ ] 패키지 스코프 테스트 전부 초록(`feedback`, `sandbox`, `config`, `cli`, `cli/wizard`, `core/project`, `settings`, `web`, `template`).
+- [ ] AC-F-023의 5개 선택자가 `-v` 출력에서 각각 `=== RUN` 으로 찍혔다(0개 실행 아님).
+- [ ] 라우트 반전(SPEC-WEBCONF-SIMPLIFY-001 M3)이 커밋 메시지에 명시됐다.
 - [ ] `go test -race ./internal/feedback/...` 초록.
 - [ ] `GOOS=windows go vet` (plan.md M9 목록) exit 0.
 - [ ] `golangci-lint run --timeout=2m` clean.

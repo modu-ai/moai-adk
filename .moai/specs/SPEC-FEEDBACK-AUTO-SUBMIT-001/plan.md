@@ -7,11 +7,11 @@
 
 카드 t170의 **피드백 축**을 구현한다. todo 축은 `SPEC-TODO-ENABLE-FLAG-001`로 분리됐다.
 
-run-phase 모듈: `internal/feedback`(신규) · `internal/cli` · `internal/config` · `internal/settings` · `internal/web` · 스킬 본문 2사본 · 템플릿 · docs-site 4로케일.
+run-phase 모듈: `internal/feedback`(신규) · `internal/sandbox`(접근자 1개) · `internal/cli` · `internal/config` · `internal/settings` · `internal/web` · 스킬 본문 2사본 · 템플릿 · docs-site 4로케일.
 
-Tier L이므로 Route B(PR 경로)다 — 단계별 브랜치 + PR.
+Route B(PR 경로) — Tier L이기도 하고, 이 저장소는 `.claude/rules/local/repo-local-pr-policy.md` 가 전 티어에 PR을 강제한다(`main` 이 `enforce_admins: true`).
 
-**남은 결정 1건**: `feedback.auto_submit`의 웹 노출 경로(`spec.md` §D 결정 D5, 선택지 A/B). M7 착수 전에 확정돼야 한다. A는 기록된 SPEC-WEBCONF-SIMPLIFY-001 M3 결정의 반전이므로 착수 승인 시점에 운영자에게 제시한다.
+**열린 결정 없음.** iter1의 결정 D5(웹 노출 경로)는 iter2에서 **선택지 A로 확정**됐다(`spec.md` §D). 착수 승인 시점에 운영자가 그 반전(SPEC-WEBCONF-SIMPLIFY-001 M3)을 재고할 수는 있으며, 그 경우 REQ-1·REQ-12와 §D를 함께 개정하는 SPEC 개정 사안이다 — 계획이 진행 중에 갈라지는 유예가 아니다.
 
 ## §B Known Issues (착수 전 알고 있어야 할 함정)
 
@@ -70,13 +70,14 @@ grep -n 'AskUserQuestion\|gh issue create' .claude/skills/moai/workflows/feedbac
 ### M2 — 스크러버 타입 계약 + 마스킹 변환 (신규 타입 계약)
 
 **파일**:
-- `internal/feedback/scrub.go` — `Result` / `Finding` 타입, `Scrub(body string, opt Options) (Result, error)`.
-- `internal/feedback/patterns.go` — 정책 재사용 + `AIza` 합집합.
-- `internal/feedback/paths.go` — `paths.Home()` 기반 홈 축약.
+- `internal/feedback/scrub.go` — `Result` / `Finding`(`Where` 포함) 타입, `Scrub(in Input, opt Options) (Result, error)` — `Input`은 **제목과 본문 둘 다** 담는다(REQ-3 D1).
+- `internal/feedback/patterns.go` — 정책 재사용 + `AIza` 합집합 + **치환 span 규칙**(REQ-4 하위 조항): 마커 앵커 패턴은 블록 종료자까지, 대소문자 민감 패턴은 `(?i)` 없이 재컴파일.
+- `internal/feedback/paths.go` — `paths.Home()` 기반 홈 축약 + `.moai/` 마커 상향 탐색으로 프로젝트 루트 해석(REQ-3 D5).
 - `internal/feedback/env.go` — 이름 어휘 기반 값 마스킹.
-- `internal/feedback/scrub_test.go` — 항목별 양극성(마스킹돼야 함 / 되면 안 됨) + 멱등성.
+- **`internal/sandbox/env.go` — `func DefaultEnvDenyList() []string` 신설**(REQ-6 D3). `defaultDenyList`의 **사본**을 반환한다(호출자가 원본을 변경하지 못하게). 이 SPEC이 `internal/feedback` 밖 패키지를 편집하는 유일한 지점이다.
+- `internal/feedback/scrub_test.go` — 항목별 양극성(마스킹돼야 함 / 되면 안 됨) + 멱등성 + **개인키 블록 전체 마스킹**.
 
-**Exit**: `go test ./internal/feedback/...` 초록. AC-F-005~F-011 대응 테스트 존재.
+**Exit**: `go test ./internal/feedback/... ./internal/sandbox/...` 초록. 대응 AC: **F-005 ~ F-011, F-014, F-024**.
 
 ### M3 — 취약점 분류기 (선례 없는 유일 부분)
 
@@ -93,37 +94,40 @@ grep -n 'AskUserQuestion\|gh issue create' .claude/skills/moai/workflows/feedbac
 - `internal/feedback/queue.go` — `.moai/state/feedback/queue.json`, `BacklogStore` 형태.
 - 대응 테스트 2종.
 
-**Exit**: `go test ./internal/feedback/...` 초록. AC-F-013~F-017. 권한 단언은 Windows skip.
+**Exit**: `go test ./internal/feedback/...` 초록. 대응 AC: **F-015 ~ F-018**(로그 내용·권한 / 로그 fail-open / 큐 적재 / 큐 제거). 권한 단언은 Windows skip.
+
+**주의(D4)**: 큐는 `gh issue create` **실패** 전용이다. `gh auth status` 실패·레이트리밋은 기존 초안 경로(`feedback.md:36-44`, 스크럽 이전 원문)가 담당한다. 재전송 코드가 `.moai/state/feedback-draft-*.md` 를 큐 항목으로 읽어서는 안 된다 — 읽으면 스크럽 이전 원문이 공개 이슈로 나간다.
 
 ### M5 — CLI 배선 (`moai feedback scrub` + 큐 동사)
 
 **파일**:
-- `internal/cli/feedback.go` — `feedback` 부모 명령 + `scrub` 서브커맨드(stdin→stdout JSON). 큐 조작 동사(`queue enqueue|list|resolve`)는 스킬 본문이 호출할 최소 집합만.
+- `internal/cli/feedback.go` — `feedback` 부모 명령 + `scrub` 서브커맨드. 인자: `--title <제목>`(REQ-3 D1), `--root <path>`(REQ-3 D5, 미지정 시 `.moai/` 마커 상향 탐색). 본문은 stdin, 결과는 stdout JSON 한 덩어리. 큐 조작 동사(`queue enqueue|list|resolve`)는 스킬 본문이 호출할 최소 집합만.
 - 등록 지점(`rootCmd.AddCommand`).
-- `internal/cli/feedback_test.go` — 계약(AC-F-003) + 도구 실패 fail-closed(AC-F-004).
+- `internal/cli/feedback_test.go` — 계약(AC-F-003, `title` 필드 포함) + 도구 실패 fail-closed(AC-F-004).
 
-**Exit**: `go test ./internal/cli/...` 초록. 빌드된 바이너리로 스모크 1회.
+**Exit**: `go test ./internal/cli/...` 초록. 대응 AC: **F-003, F-004**. 빌드된 바이너리로 스모크 1회(`--title` 포함).
 
 ### M6 — 스킬 본문 + 마법사 질문 (사용자 대면 흐름)
 
 **파일 — 스킬**:
-- `.claude/skills/moai/workflows/feedback.md` + `internal/template/templates/.claude/skills/moai/workflows/feedback.md` — (a) 스크러버 경유 [HARD] 조항(verbatim 규칙 `:104`의 명시적 예외로 기술), (b) `gh issue create`(`:118`) 앞에 확인 게이트 3옵션(`design.md` §7), (c) `verdict != ok` 또는 종료코드 ≠ 0 → 제출 금지 + SECURITY.md 경로 안내, (d) 실패 시 큐잉.
+- `.claude/skills/moai/workflows/feedback.md` + `internal/template/templates/.claude/skills/moai/workflows/feedback.md` — (a) 스크러버 경유 [HARD] 조항(verbatim 규칙 `:104`의 명시적 예외로 기술), **제목과 본문을 함께 통과시킬 것**(`--title`), (b) `gh issue create`(`:118`) 앞에 확인 게이트 3옵션(`design.md` §7) — 라벨과 findings 요약은 `conversation_language`, 템플릿 미러 예시는 영어(D11), (c) **3문장 [HARD] 조항**(`design.md` §9): 종료코드 ≠ 0 → 제출 금지 / `verdict != ok` → 제출 금지(필드 부재·파싱 불가 포함) / 60초 무응답 → 중단, (d) `gh issue create` 실패 시 큐잉 — 단 `gh auth status` 실패·레이트리밋은 기존 초안 경로(`:36-44`)가 담당한다는 분기를 명시(D4), (e) 게이트가 보여주는 것은 **마스킹된 제목 + 마스킹된 본문 전문 + findings 요약(위치 포함)**.
 
 **파일 — 마법사(살아 있는 경로만)**:
 - `internal/cli/wizard/questions.go` — `Page3Questions`의 "Quality & Workflow" 그룹에 `feedback_auto_submit`(`Default: "false"`).
 - `internal/cli/wizard/types.go` / `wizard.go:459` / `translations.go`(ko/ja/zh) / `internal/cli/init.go:185` / `internal/core/project/initializer_expansion.go:30`(yamlpatch writer).
 - 테스트: `wizard/worktree_test.go`(`:8`, `:29`, `:47`) 3종 세트 복제.
 
-**Exit**: `go test ./internal/cli/wizard/... ./internal/cli/... ./internal/core/project/...` 초록. AC-F-002, F-018~F-021.
+**Exit**: `go test ./internal/cli/wizard/... ./internal/cli/... ./internal/core/project/...` 초록. 대응 AC: **F-002, F-019 ~ F-022**(게이트 존재 / 스킬 [HARD] 조항 / 마법사 질문 / 번역 / 파일 기록).
 
 **주의**: 스킬 소스/템플릿 쌍의 기존 1줄 드리프트를 확대하지 않는다(`research.md` §5-3).
 
-### M7 — 웹 콘솔 노출 (결정 D5 의존)
+### M7 — 웹 콘솔 노출 (결정 D5 확정 — 선택지 A)
 
-**선택지 A**: `schema_sections.go` 필드 + `sectionroute.go`(`RouteSeam`, `ExcludedSections()`에서 제거) + `schemaform.go`(탭·패널) + i18n 4로케일 + 고정 테스트 2건 갱신(커밋 본문에 SPEC-WEBCONF-SIMPLIFY-001 M3 반전 명시).
-**선택지 B**: `schema_sections.go` 필드 1줄 + i18n. 단 REQ-1의 키 집이 바뀌므로 spec.md 개정 동반.
+**파일**: `internal/settings/schema_sections.go`(필드) + `internal/settings/sectionroute.go`(`RouteSeam` + `ExcludedSections()`에서 제거) + `internal/web/schemaform.go`(탭·패널) + `internal/web/assets/i18n.js`(4로케일) + 고정 테스트 2건 갱신(`internal/settings/sectionroute_test.go:27`, `internal/web/scope_contract_test.go:79`).
 
-**Exit**: `go test ./internal/settings/... ./internal/web/...` 초록. AC-F-022.
+[HARD] 두 테스트 갱신은 **결정 반전**이다 — 커밋 본문에 SPEC-WEBCONF-SIMPLIFY-001 M3 반전임을 명시한다(AP-9).
+
+**Exit**: `go test ./internal/settings/... ./internal/web/...` 초록. 대응 AC: **F-023의 웹 절반**(스키마·라우트·i18n).
 
 ### M8 — Template-First 미러 + 키 인벤토리 (기계적, 누락 시 CI 실패)
 
@@ -135,14 +139,14 @@ grep -n 'AskUserQuestion\|gh issue create' .claude/skills/moai/workflows/feedbac
 - `make build`.
 - `docs-site/content/{ko,en,ja,zh}/utility-commands/moai-feedback.md` — "Feedback Settings" 절(en:91 / ko:91 / ja:95 / zh:95)에 4로케일 동시 반영(CLAUDE.local.md §17).
 
-**Exit**: `go test ./internal/config/... ./internal/template/... ./internal/settings/...` 초록. `make build` 성공. AC-F-023.
+**Exit**: `go test ./internal/config/... ./internal/template/... ./internal/settings/...` 초록. `make build` 성공. 대응 AC: **F-023의 템플릿 절반**(미러·인벤토리·빌드·중립성).
 
 ### M9 — 검증 스윕 + PR
 
 ```bash
-go test ./internal/feedback/... ./internal/config/... ./internal/cli/... ./internal/cli/wizard/... ./internal/core/project/... ./internal/settings/... ./internal/web/... ./internal/template/...
+go test ./internal/feedback/... ./internal/sandbox/... ./internal/config/... ./internal/cli/... ./internal/cli/wizard/... ./internal/core/project/... ./internal/settings/... ./internal/web/... ./internal/template/...
 go test -race ./internal/feedback/...
-GOOS=windows go vet ./internal/feedback/... ./internal/config/... ./internal/cli/... ./internal/cli/wizard/... ./internal/core/project/... ./internal/settings/...
+GOOS=windows go vet ./internal/feedback/... ./internal/sandbox/... ./internal/config/... ./internal/cli/... ./internal/cli/wizard/... ./internal/core/project/... ./internal/settings/...
 golangci-lint run --timeout=2m
 make build
 ```

@@ -10,18 +10,20 @@
                 │  ② 본문 조립 (기존)
                 ▼
           moai feedback scrub          ◀── 여기부터 Go (테스트 가능)
-                │  stdin: 본문
-                │  stdout: {verdict, body, findings, reason}
+                │  stdin: 본문 · --title: 제목   ← 제출될 텍스트 입력 전부
+                │  stdout: {verdict, title, body, findings, reason}
                 │  side effect: .moai/logs/feedback-mask.log
                 ▼
           오케스트레이터                ◀── 다시 산문
                 │  ③ verdict != ok → 제출 중단 + SECURITY.md 경로 안내
                 │  ④ auto_submit == false → 확인 게이트 (신규 AskUserQuestion)
-                │  ⑤ gh issue create
+                │  ⑤ gh issue create  ← 마스킹된 제목 + 마스킹된 본문만
                 │  ⑥ 실패 시 moai feedback queue enqueue
                 ▼
              GitHub issue
 ```
+
+**[HARD] 제목도 스크러버를 지난다.** 제목은 `gh issue create`의 별도 입력이고 사용자 자유 텍스트다(`feedback.md:84,102`). 본문만 스크럽하면 통제가 선언된 범위에서 새며, 확인 게이트가 본문만 보여주므로 제목 속 시크릿은 사람 체크포인트도 통과한다. 다이어그램의 `--title` 은 장식이 아니라 이 SPEC의 보안 경계다.
 
 **설계상 가장 중요한 한 줄**: 코드가 소유하는 것은 ②→③ 사이의 **변환**뿐이다. ③④⑤⑥의 판단과 실행은 산문이 소유한다. 이 경계가 곧 `spec.md` §E.3 잔여 위험의 정확한 형태이며, 설계를 읽는 사람이 "스크러버를 넣었으니 강제된다"고 오해하지 않도록 다이어그램에 명시한다.
 
@@ -70,18 +72,22 @@
 // internal/feedback
 type Finding struct {
     Kind  string // "secret" | "env" | "homepath"
+    Where string // "title" | "body"
     Count int
 }
 
 type Result struct {
     Verdict  string    // "ok" | "blocked"
+    Title    string    // 마스킹된 제목
     Body     string    // 마스킹된 본문
-    Findings []Finding // 종류·건수만. 원문 값 금지.
+    Findings []Finding // 종류·위치·건수만. 원문 값 금지.
     Reason   string    // blocked 일 때만 비어 있지 않음
 }
 ```
 
-JSON 필드명은 소문자 스네이크(`verdict` / `body` / `findings` / `reason`). 스킬 본문이 `jq`로 읽을 수 있어야 하므로 **최상위는 배열이 아니라 객체 하나**이고, 진단 로그를 stdout에 섞지 않는다(사람용 메시지는 stderr).
+`Where` 가 있는 이유: 확인 게이트가 "제목에서 1건 가려졌다"를 말할 수 있어야 한다. 위치 없이 건수만 보여주면 사용자는 제목이 손대졌다는 사실을 모른 채 제출을 승인한다.
+
+JSON 필드명은 소문자 스네이크(`verdict` / `title` / `body` / `findings` / `reason`). 스킬 본문이 `jq`로 읽을 수 있어야 하므로 **최상위는 배열이 아니라 객체 하나**이고, 진단 로그를 stdout에 섞지 않는다(사람용 메시지는 stderr).
 
 **종료 코드 축의 분리**:
 
@@ -109,6 +115,15 @@ JSON 필드명은 소문자 스네이크(`verdict` / `body` / `findings` / `reas
 
 **`.moai/logs/` 선택의 부수 이득**: 세 개의 청소 스윕(`internal/cli/update_cleanup.go:133`, `internal/worktree/state_guard.go:54`, `internal/cli/codex_review_gate.go:39`)이 이미 이 디렉터리를 제외한다.
 
+**세 번째 파일이 이미 있다 — 기존 로컬 초안(D4).** `.moai/state/feedback-draft-<timestamp>.md`(`feedback.md:36-44`)는 이 SPEC 이전부터 존재하며 **스크럽 이전 원문**(제목+본문)을 담는다. 위 두 산출물과 같은 `.moai/state/` 아래 살지만 담당 실패가 다르다:
+
+| 실패 시점 | 파일 | 내용 | 이 SPEC이 |
+|---|---|---|---|
+| 제출 **이전**(auth 실패·레이트리밋) | `feedback-draft-<ts>.md` | 스크럽 이전 원문 | 변경하지 않는다 |
+| 제출 **시도 이후**(`gh issue create` 실패) | `queue.json` | 마스킹된 제목+본문 | 신설한다 |
+
+같은 실패에 둘 다 쓰이는 경우는 없다. 초안 파일은 로컬 작업본이라 어떤 경로로도 전송되지 않으며, **재전송 코드가 초안 파일을 큐로 오인해서는 안 된다** — 오인하면 스크럽 이전 원문이 공개 이슈로 나간다.
+
 **전송-1회 의미론이 필요해지면**: handoff의 claim-rename(`internal/hook/handoff_inject.go:116,252` + `consumed/` 아카이브 + `DefaultHandoffStaleTTL`)이 정확한 선례다. 이 SPEC은 재시도를 원하므로 채택하지 않는다.
 
 ## §6 취약점 분류기 설계
@@ -131,17 +146,19 @@ JSON 필드명은 소문자 스네이크(`verdict` / `body` / `findings` / `reas
 
 `AskUserQuestion` 한 라운드, 옵션 3개:
 
-| 옵션 | 라벨 | 결과 |
+| 옵션 | 라벨(의미) | 결과 |
 |---|---|---|
 | 1 | 제출하지 않음 (권장) | `gh issue create` 미실행. 로컬 초안 경로 안내(`feedback.md:40`의 기존 초안 관례 재사용) |
-| 2 | 이대로 제출 | 마스킹 본문 그대로 제출 |
-| 3 | 본문 수정 후 제출 | "Other"로 수정본을 받고, **수정본을 다시 스크럽**한 뒤 재확인 |
+| 2 | 이대로 제출 | 마스킹된 제목+본문 그대로 제출 |
+| 3 | 수정 후 제출 | "Other"로 수정본을 받고, **수정본을 다시 스크럽**한 뒤 재확인 |
 
 `(권장)`은 첫 옵션에만 붙는다(askuser-protocol 규약). 기본값을 "제출하지 않음"에 두는 이유: 공개 채널 게시는 되돌리기 어렵고, `auto_submit: false`를 택한 사용자는 이미 신중 쪽을 고른 사람이다.
 
 **옵션 3의 재스크럽이 §3 멱등성 요구의 출처다.**
 
-질문 본문에는 마스킹된 본문 **전문**과 `findings` 요약(종류별 건수)을 함께 싣는다 — 무엇이 가려졌는지 모르면 사용자는 판단할 수 없다.
+**[HARD] 라벨과 요약은 `conversation_language`로 낸다(D11).** 위 표의 한국어는 **의미를 적은 것이지 리터럴이 아니다**. 이 게이트는 4로케일 템플릿으로 배포되는 스킬 본문에 살고, `askuser-protocol.md`는 옵션 텍스트를 `conversation_language`로 요구한다 — 표를 그대로 구현하면 전 로케일에 한국어 라벨이 나간다. 스킬 본문(소스·템플릿 미러 모두)은 라벨 3개와 `findings` 요약을 `conversation_language`로 렌더하도록 지시해야 하며, 템플릿 미러가 예시로 싣는 라벨 집합은 **영어**다.
+
+질문 본문에는 **마스킹된 제목과 마스킹된 본문 전문**, 그리고 `findings` 요약(종류별 건수 + 위치)을 함께 싣는다 — 무엇이 어디에서 가려졌는지 모르면 사용자는 판단할 수 없다. 제목을 빼면 D1이 닫히지 않는다: 스크럽이 제목을 고쳤는데 사용자가 그 사실을 못 보면 사람 체크포인트가 제 역할을 못 한다.
 
 ## §8 설정 판독 경로
 
@@ -163,9 +180,18 @@ JSON 필드명은 소문자 스네이크(`verdict` / `body` / `findings` / `reas
 | 정책 로드 실패 | 종료 코드 ≠ 0 | 제출 금지 | fail-closed |
 | 정규식 컴파일 실패(사용자 확장 패턴) | `compilePatterns`가 `slog.Warn` 후 건너뜀 | 그 패턴만 무시, 스크럽 계속 | 기존 `pre_tool.go:294` 태도 계승 |
 | 마스킹 로그 쓰기 실패 | 파일 열기 실패 | 스크럽 정상 완료 | fail-open (REQ-8) |
-| `HOME` 미설정 | `paths.Home()` 에러 | 홈 축약만 생략, 나머지 변환 수행 | 부분 실패가 전체 실패가 되지 않게 |
+| **스크러버 무응답(행)** | 호출자 타임아웃 **60초** | 제출 금지 + 사용자에게 보고 | fail-closed. 행은 종료 코드도 JSON도 내지 않으므로 상한 없이는 산문 호출자가 무한 대기한다 |
+| **stdout 파싱 불가**(절단·비JSON, 종료 코드 0) | `jq` 파싱 실패 또는 `verdict` 필드 부재 | 제출 금지 | fail-closed. **부재하는 `verdict`는 `ok`가 아니다** |
+| 홈 해석 실패 | `paths.Home()` 에러 — 드물다: `HOME` 미설정 시 `os.UserHomeDir()`로 폴백해 대개 성공한다(`internal/paths/paths.go:55-60`) | 홈 축약만 생략, 나머지 변환 수행 | 부분 실패가 전체 실패가 되지 않게 |
+| 프로젝트 루트 미해석 | `.moai/` 마커 부재 + `--root` 미지정 | 로그·큐 쓰기 생략, 스크럽은 완료 | fail-open. 루트 부재가 마스킹을 막아서는 안 된다(REQ-3) |
 | 이슈 생성 실패 | `gh` 종료 코드 | 큐 적재 | REQ-9 |
 | 큐 쓰기 실패 | `Mutate()` 에러 | 사용자에게 보고 + 본문을 화면에 출력 | 조용한 폐기 금지(REQ-9)의 최후 수단 |
+
+**[HARD] 스킬 본문의 조항은 세 문장이다** — 두 문장으로는 위 두 신규 행이 덮이지 않는다:
+
+1. 스크러버 종료 코드가 0이 아니면 제출하지 않는다.
+2. `verdict`가 `ok`가 아니면 제출하지 않는다 — **필드가 없거나 출력을 파싱할 수 없는 경우를 포함한다**.
+3. 스크러버가 60초 안에 반환하지 않으면 중단하고 제출하지 않는다.
 
 ## §10 후속 카드 후보 (이 SPEC 범위 밖)
 
