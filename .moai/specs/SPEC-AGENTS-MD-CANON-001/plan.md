@@ -89,8 +89,10 @@ its obligation. Both are settled here, before any file moves.
 > whether the target is reachable; "it is not, and here is the shortfall in measured units" is the
 > answer it was built to produce, and it is produced at the cheapest possible moment — before M2's
 > irreversible authoring. Arm B in particular should be **expected** to fire: `spec.md` §C.4's
-> correction roughly doubled the minimum cut (4,841 → 10,985 tokens), so the diet is materially
-> larger than the card assumed. An M1 that halts with a number is doing its job; an M1 that
+> correction roughly doubled the minimum cut, and on the tree the ratchet is actually measured
+> against — the integration branch — it is **15,055 tokens** (4,841 → 15,055; this worktree's
+> 10,985 is the smaller figure and is *not* what Arm B baselines on). The diet is materially larger
+> than the card assumed. An M1 that halts with a number is doing its job; an M1 that
 > proceeds past a shortfall it did not measure is the failure this milestone prevents.
 
 *Arm A — contract fits its ceiling.* If the contract projection exceeds **24,576 B**, do not
@@ -100,11 +102,14 @@ headroom reserve (with what the reserve is protecting, per `spec.md` §D.1, stat
 visible). Do not silently expand toward 32,768 B.
 
 *Arm B — the diet reaches the ratchet ceiling.* Project the **post-diet always-loaded surface,
-including the contract layer**, against **66,371 tokens** (`spec.md` §C.4). If the projection
-exceeds it, return a blocker naming the shortfall in tokens and the same two levers — deeper
-relocation of R3 material into skills with its navigability cost, or renegotiating the scope with
-what is being traded stated explicitly. Do not proceed to M2 on the assumption that M4 will find
-the difference.
+including the contract layer**, against **66,371 tokens** (`spec.md` §C.4). **Baseline the
+projection on the integration-branch figure recorded at pre-flight (§C), not on this worktree's.**
+The two differ by 4,070 tokens (71,212 vs 75,282) — a 37 % difference in the required cut — so a
+projection baselined on the worktree can clear Arm B and still fail `AC-AMC-018` at M5, which is
+the failure Arm B exists to prevent. If the projection exceeds the ceiling, return a blocker naming
+the shortfall in tokens and the same two levers — deeper relocation of R3 material into skills with
+its navigability cost, or renegotiating the scope with what is being traded stated explicitly. Do
+not proceed to M2 on the assumption that M4 will find the difference.
 
 **Why Arm B exists.** Arm A alone tests only whether the *contract* fits `AGENTS.md`; it says
 nothing about whether the *diet* reaches the figure `REQ-AMC-013` needs. Those are different

@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENTS-MD-CANON-001
 title: "AGENTS.md canonical contract layer for Codex dual-harness"
-version: "0.3.5"
+version: "0.3.6"
 status: draft
 created: 2026-08-22
 updated: 2026-08-22
@@ -36,6 +36,7 @@ tier: L
 | 2026-08-22 | 0.3.3 | Plan-audit iteration 3 (FAIL 0.82) revision. D1: `AC-AMC-019` now reads the 13 %-17 % band rather than resolving the ratio solely from the constant's comment. D2: the achieved figure must be measured over an enumeration including the root `AGENTS.md` and every `@`-imported contract document — `alwaysLoadedSurface()` omits it today, so relocation into `AGENTS.md` would have scored as a diet (`REQ-AMC-013`, `AC-AMC-017`, plan.md M5). D3: the band's implied diet target (achieved ≤ 66,371 tokens) stated in §C.4. D4: document version and HISTORY brought current, with the provenance rule above added so `version:` is derived from the table rather than from a commit message. D5 (optional): `AC-AMC-018`'s measured state defined. Dispatcher additions: the enumeration content is bound into `REQ-AMC-008`, and the extension is ordered **before any measurement cited as a ratchet basis** (`REQ-AMC-013`, `AC-AMC-018`, `plan.md` M1/M5) — a late fix manufactures false evidence in the gap rather than merely delaying correctness. |
 | 2026-08-22 | 0.3.4 | Plan-audit iteration 4 (FAIL 0.87, one finding) revision. E1: §C.4's required-cut figures recomputed over the enumeration `REQ-AMC-013` ¶2 requires — the contract layer is net-additive per §D.2 / `REQ-AMC-001` / `REQ-AMC-002`, so `AGENTS.md` joins the surface with nothing removed; cuts corrected 4,841 → **10,985** and 8,911 → **15,055** at the ceiling case, with the governing formula stated. E2: M1's stop condition gained **Arm B** — project the post-diet surface including the contract layer against 66,371 tokens and blocker on shortfall, so the ratchet's reachability is tested at M1 rather than discovered at M5 (`plan.md` M1, `AC-AMC-007`). E3 (optional, folded in while editing the bound): the ±1,000 tolerance makes 67,256 the strict maximum, so 66,371 is conservative by ~885 tokens — noted, not relaxed. |
 | 2026-08-22 | 0.3.5 | Dispatcher readability additions to the E1/E2 edits; no requirement or criterion changed. §C.4 now **explains** the net-additive mechanism instead of citing it — a clause authored into `AGENTS.md` does not leave the always-loaded rules (`REQ-AMC-002` forbids it, `REQ-AMC-001` independently requires the clause in `AGENTS.md`), so the surface *grows* by `\|AGENTS.md\|` and the cut is `stated cut + \|AGENTS.md\|`. Stated rather than cross-referenced because four readers in sequence made the relocation assumption from the citation alone. M1's stop condition and `AC-AMC-007` now state that returning a blocker with the measured shortfall is a **correct outcome** of the pilot, not a milestone failure, and that Arm B should be expected to fire given the roughly doubled minimum cut. |
+| 2026-08-22 | 0.3.6 | Plan-audit iteration 5 (FAIL 0.90, one finding) revision. F1: `REQ-AMC-010` and `AC-AMC-015` gained a **narrow surface-cardinality carve-out**. Fixed slots are appended unconditionally, so `REQ-AMC-008`'s fourth slot grows `len(surface)` before `AGENTS.md` is authored, breaking two hardcoded counts in `internal/config/token_budget_guard_test.go` (`wantRuleCount + 3` → `+ 4`; temp-tree `want 4` → `5`). Without the carve-out both exits failed a criterion — extend and edit the counts (fails `AC-AMC-015`) or leave the enumeration alone (fails `AC-AMC-017`). The exemption names those two assertions, covers the expected count and its comment only, and binds every behavioral expectation as before. F2 (optional): Arm B's projection is now **baselined on the integration-branch figure recorded at pre-flight** (`plan.md` M1, `AC-AMC-007`) — the two candidate trees differ by 4,070 tokens (37 % of the required cut), so a worktree-baselined projection could clear Arm B and still fail `AC-AMC-018` at M5; the M1 block quote now quotes **15,055** as the figure a reader meets at the point of use. |
 
 ---
 
@@ -213,7 +214,10 @@ guard does not satisfy this requirement. Rationale: §D.7.
 ### C.3 Claude-side non-regression
 
 **REQ-AMC-010** (Unwanted) — The redistribution shall not change Claude Code rule-loading
-semantics, hook wiring, or any existing test's expected behavior.
+semantics, hook wiring, or any existing test's expected behavior — **except** that an assertion
+whose expected value is the *cardinality* of the always-loaded surface is updated by
+`REQ-AMC-008`'s enumeration extension and is exempt. The exemption covers the expected count only;
+every behavioral expectation remains bound. Scope and the two qualifying assertions: `AC-AMC-015`.
 
 **REQ-AMC-011** (Ubiquitous) — `CLAUDE.md` shall reach the contract layer through the same
 `@`-import mechanism it already uses for `.moai/config/sections/*.yaml`, retaining a Claude-only

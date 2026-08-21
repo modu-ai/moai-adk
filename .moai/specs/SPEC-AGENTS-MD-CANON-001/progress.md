@@ -31,6 +31,17 @@ shortfall — so the ratchet's reachability is tested before M2 rather than disc
 `AC-AMC-007` now covers both arms. E3 (optional) folded in while editing the bound: the ±1,000
 tolerance makes 67,256 the strict maximum, so 66,371 is conservative by ~885 tokens.
 
+**v0.3.6 — iteration 5 delta (FAIL 0.90, one finding).** F1: `REQ-AMC-010` / `AC-AMC-015` gained a
+**narrow surface-cardinality carve-out**. Fixed slots append unconditionally, so `REQ-AMC-008`'s
+fourth slot grows `len(surface)` before `AGENTS.md` is authored, breaking two hardcoded counts
+verified in `internal/config/token_budget_guard_test.go` (`wantRuleCount + 3` → `+ 4`; temp-tree
+`want 4` → `5`). Both exits previously failed a criterion; the exemption names those two assertions,
+covers the expected count and comment only, and leaves every behavioral expectation bound. F2
+(optional): Arm B is now baselined on the **integration-branch** figure recorded at pre-flight
+(`plan.md` M1, `AC-AMC-007`) — the trees differ by 4,070 tokens (37 % of the cut), so a
+worktree-baselined projection could clear Arm B and still fail `AC-AMC-018` at M5; the M1 block
+quote quotes **15,055**. Traceability was 1.00 at iteration 5 and is unchanged (no REQ or AC added).
+
 **v0.3.5 — dispatcher readability additions to the E1/E2 edits.** No requirement or criterion
 changed. §C.4 now **explains** the net-additive mechanism rather than citing it: a clause authored
 into `AGENTS.md` does not leave the always-loaded rules, because `REQ-AMC-002` forbids the move and

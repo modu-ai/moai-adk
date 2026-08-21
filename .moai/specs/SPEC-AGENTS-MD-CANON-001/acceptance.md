@@ -44,9 +44,15 @@ explicit with the projected figure, and the ceiling is re-derived against the cl
 rather than the line proxy.
 
 **AC-AMC-007** — Given either M1 stop-condition arm trips — the contract projection exceeding
-24,576 B (Arm A), **or** the post-diet surface projection including the contract layer exceeding
-66,371 tokens (Arm B) — When M1 concludes, Then a blocker report is returned naming the shortfall in
-that arm's unit and the two levers it offers, and no file has been moved.
+24,576 B (Arm A), **or** the post-diet surface projection including the contract layer, **baselined
+on the integration-branch figure recorded at pre-flight**, exceeding 66,371 tokens (Arm B) — When M1
+concludes, Then a blocker report is returned naming the shortfall in that arm's unit and the two
+levers it offers, and no file has been moved.
+
+Arm B's baseline is part of the criterion, not a detail: the two candidate trees differ by 4,070
+tokens (71,212 worktree vs 75,282 integration), a 37 % difference in the required cut, so an Arm B
+projection baselined on the worktree can clear this criterion and still fail `AC-AMC-018` at M5 —
+the exact late-discovery failure Arm B exists to prevent.
 
 This is a **pass** of `AC-AMC-007`, not a failure of M1: the pilot's purpose is to establish whether
 the target is reachable, and a measured "not by this much" is the deliverable it was built to
@@ -107,6 +113,29 @@ exists; an unresolvable import fails this criterion rather than warning.
 
 **AC-AMC-015** — Given the full existing test suite for the affected packages, When it runs, Then
 it is green, and no expected-behavior assertion was edited to accommodate the change.
+
+**Narrow carve-out — surface cardinality only.** An assertion whose expected value is the
+*cardinality* of the always-loaded surface is updated by `REQ-AMC-008`'s enumeration extension and
+is exempt from the no-edit rule. Exactly two assertions qualify, both in
+`internal/config/token_budget_guard_test.go`:
+
+| Assertion | Today | After the extension |
+|---|---|---|
+| `wantTotal := wantRuleCount + 3` (fixed-slot count) | `+ 3` | `+ 4` |
+| `if len(surface) != 4` (temp tree: 1 rule + 3 fixed) | `4` | `5` |
+
+The exemption covers **the expected count and its explanatory comment, nothing else**. It does not
+extend to any behavioral expectation — not the `paths:`-exclusion assertion, not the `MEMORY.md`
+head-cap bound, not the over-budget detection, and not any assertion in another file. Every other
+assertion stays under the no-edit rule.
+
+Why the carve-out is needed and why it is this narrow: fixed slots are appended unconditionally, so
+`len(surface)` grows the moment the fourth slot exists — before `AGENTS.md` is authored and while
+it still contributes 0 tokens. Without the exemption a run-phase actor has two exits and both fail a
+criterion: extend the enumeration and update the counts (fails this AC), or leave the enumeration
+alone (fails `AC-AMC-017` and reopens the defect the extension exists to close). And the no-edit
+rule is what stops an actor making a failing test pass by moving the goalposts — a loose exemption
+hands that back, so the carve-out names its two assertions and admits no others.
 
 ## §E. M5 — guard and ratchet
 
