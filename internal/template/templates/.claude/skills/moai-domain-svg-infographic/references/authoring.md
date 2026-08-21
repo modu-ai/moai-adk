@@ -1,7 +1,8 @@
 # Authoring Reference
 
 Everything the skill body points at: the full geometry and connector formula
-set, the icon set, the palette and type scale, the CJK text-budget worked
+set including the six mandatory connector rules, the icon set, the semantic-role
+palette and type scale, the accessible-SVG contract, the CJK text-budget worked
 example, and the manual checklist used when Node is unavailable.
 
 ---
@@ -148,29 +149,147 @@ Spoke boxes are positioned by their center, so convert back:
 `x = spokeCx(i) - w/2`, `y = spokeCy(i) - h/2`. Then re-run the containment
 check — radial layouts overflow the canvas more often than grid layouts do.
 
+### 2.5 The six mandatory connector rules
+
+The formulas above say where a connector goes. These six say when a connector is
+wrong, and they are not preferences — a diagram breaching any of them is a
+failure, not a stylistic variant. Each is stated with the number or tolerance it
+turns on, so a checker can assert it rather than a reader having to judge it.
+
+**C1 — Orthogonal only; every bend is a rounded right angle at `r = 8`.**
+A plain straight segment is allowed only when the two endpoints share an `x` or a
+`y`. Otherwise use the elbow of §2.2, with each corner replaced by the quadratic
+of that section at `r = 8` (`r = 6` is the floor for a tight layout, where the
+shorter of the two segments meeting at the corner is under `4*r`). A diagonal
+segment between boxes that share neither axis is an automatic fail.
+
+**C2 — A label's mask clears its own stroke by 6–10 units.**
+Every connector label sits on an opaque mask rect, or the stroke shows through
+the glyphs. The mask must not touch the stroke either:
+
+```
+horizontal segment at y = Sy, label height lh, gap g in [6, 10]:
+  maskY = Sy - g - lh          maskBottom = Sy - g
+vertical segment at x = Sx, mask width mw:
+  maskX = Sx + g               (or Sx - g - mw on the other side)
+```
+
+A label whose mask edge lands within 6 units of the stroke hides the connection
+it names. If 6 feels cramped for the label size, take 8 or 10 — never less.
+
+**C3 — No two connectors share a path; separation is ≥ 12 units.**
+Two connectors may not run co-linear for any segment, and two parallel runs stay
+`≥ 12` apart along their whole length, not merely at their endpoints. Where two
+orthogonal connectors must cross, apply the bridge (hop) at the crossing point
+`(X, Y)` with `rHop = 5`, on the horizontal connector by convention:
+
+```
+... H (X - rHop)  A rHop rHop 0 0 1 (X + rHop) Y  H ...
+```
+
+Stacked connectors are a layout symptom, not a drawing problem: two nodes are
+too close, or the diagram is over its node budget. Fix the layout.
+
+**C4 — Connectors on a shared edge fan to distinct attach points.**
+No two connectors may meet a box at the same point. For `N` connectors on an
+edge of length `L`, connector `k` (counting `1..N` from the edge's leading
+corner) attaches at
+
+```
+offset(k) = L * k / (N + 1)
+```
+
+with `offset(k+1) - offset(k) >= 12` (`>= 8` for a box under 120 units on that
+edge). If the even spread cannot hold the floor, the edge carries too many
+connectors — re-route some to another edge or split the node. Connectors leaving
+a fanned edge route orthogonally from their own attach point; they never merge
+into a shared stroke near the box.
+
+**C5 — A connector does not pass behind a box that is neither its source nor its
+destination — except where that box is geometrically unavoidable.**
+Rerouting around an intervening box is the default and covers nearly every case.
+The exception is narrow: a cross-cutting node — a full-width layer band, a footer
+service — physically sits on the only direct orthogonal path between source and
+destination, so no reroute exists. In that case, and only then:
+
+- the stroke is **dashed** (`stroke-dasharray="4,3"`), which is what tells the
+  reader the intervening box is transit rather than an endpoint;
+- the label sits at the connector's **visible end**, typically near the source,
+  so it does not fall behind the intervening box;
+- **no arrowhead lands on the intervening box's edge** — the marker resolves at
+  the true destination only.
+
+An undashed connector crossing behind a non-endpoint box reads as an unlabelled
+interaction with that box, which is a factual error about the system, not an
+aesthetic one. When in doubt, reroute.
+
+**C6 — A label mask may not overlap a node painted after it.**
+C2 keeps the label off its own stroke; this keeps it off the boxes. Connectors
+and their labels are painted before nodes, so a mask landing partly inside a node
+is covered by that node's fill and the text renders as a fragment on the border.
+Place the label on a segment running through open canvas:
+
+```
+label leaving A's right edge: maskX >= A.right + 4
+label entering B's left edge: maskX + maskW <= B.left - 4
+```
+
+A mask fully inside a node is a badge chip and is fine. A mask over a band or
+zone container is fine too, because containers are painted first. Only the
+partial overlap with a later-painted node fails.
+
+**Paint order, since three of the six depend on it:** containers and bands
+first, then connectors, then connector labels, then nodes, then node text.
+
 ---
 
 ## 3. Palette and type scale
 
-This palette is aligned to the project design system (`moai-domain-html-report`
-tokens): warm ivory paper, clay terracotta accent, slate ink. The skill keeps
-its own copy of the values (it does not read a runtime token file), so the
-diagram renders offline; substitute a project's own tokens freely, but
-substitute the whole set so contrast relationships survive.
+Colour is addressed by **semantic role**, never by a raw hex value. Everything
+else in this skill — the archetypes, the focal discipline, the connector
+rules — says `accent` or `surface`, and looks the value up here. Swapping the
+skin therefore means editing this one table; nothing downstream changes.
 
-| Role | Value | Use |
-|------|-------|-----|
-| ink | `#141413` | Primary text (warm black) |
-| ink-muted | `#6B6359` | Captions, secondary text |
-| surface | `#FAF9F5` | Canvas (ivory) |
-| surface-alt | `#F3EFE6` | Band fill, warm tone |
-| border | `#D9CDBE` | Hairline card and divider strokes |
-| accent | `#D97757` | Focal / active path (clay terracotta) |
-| accent-soft | `#FBE9DF` | Focal fill (clay-tint) |
-| accent-strong | `#B85C3E` | Clay hover state, eyebrow text |
-| positive | `#1a7f37` | Success, allowed |
-| caution | `#9a6700` | Warning, degraded |
-| negative | `#cf222e` | Failure, forbidden |
+The default skin is aligned to the project design system
+(`moai-domain-html-report` tokens): warm ivory paper, clay terracotta accent,
+warm near-black ink. The skill keeps its own copy of the values — it does not
+read a runtime token file — so the diagram renders offline. Substitute a
+project's own tokens freely, but substitute the whole set, so the contrast
+relationships survive the swap.
+
+| Role | Light | Dark | Use |
+|------|-------|------|-----|
+| `ink` | `#141413` | `#FAF9F5` | Primary text, primary stroke |
+| `ink-muted` | `#6B6359` | `#A79C8E` | Captions, secondary text, default arrow stroke |
+| `surface` | `#FAF9F5` | `#141413` | Canvas, default node fill |
+| `surface-alt` | `#F3EFE6` | `#232220` | Band fill, secondary container |
+| `border` | `#D9CDBE` | `#3A3733` | Hairline card and divider strokes |
+| `accent` | `#D97757` | `#E08D6F` | Focal node and the active path into it — 1 per diagram, 2 at the absolute most |
+| `accent-soft` | `#FBE9DF` | `#3A2A22` | Fill behind an `accent` border |
+| `accent-strong` | `#B85C3E` | `#F0A98D` | Eyebrow text, hover state |
+| `positive` | `#1a7f37` | `#3FB950` | Success, allowed |
+| `caution` | `#9a6700` | `#D29922` | Warning, degraded |
+| `negative` | `#cf222e` | `#F85149` | Failure, forbidden |
+
+### 3.0 The inversion rule
+
+The dark column is **derived, not independently maintained**. One rule produces
+it, and a role added later inherits the rule instead of needing a judgement:
+
+> Dark mode swaps the two anchors — `ink` and `surface` exchange values — and
+> every other role keeps its **distance from its anchor**, not its hex. A role
+> written as `ink @ α` keeps `α` and picks up the new `ink`. `accent` is the
+> single exception: it shifts one step lighter (`#D97757` → `#E08D6F`), because
+> the light value's contrast against ivory does not survive against near-black.
+
+Two consequences worth stating, because both are easy to lose:
+
+- **Opacities never change.** A hairline at `ink @ 0.12` is `ink @ 0.12` in both
+  modes; only the resolved colour moves. Re-tuning an alpha for dark mode is how
+  the two modes start to drift apart.
+- **`ink` on `surface` must clear WCAG AA in both modes**, and `ink-muted` on
+  `surface` must clear AA for text at 12 units and above. A substituted skin that
+  fails either check is not a skin choice, it is a legibility defect.
 
 ### 3.1 Typography — language-aware font stacks
 
@@ -346,6 +465,21 @@ never as a lint result, and never with a diagnostic code from the script.
 - [ ] No element extends beyond the `viewBox` on any side.
 - [ ] Centers, baselines, and endpoints trace to a formula, not to a literal.
 
+**Accessibility**
+
+- [ ] Root `<svg>` carries `role="img"` (or `aria-hidden="true"` if decorative).
+- [ ] `aria-labelledby` names ids that exist in the file.
+- [ ] `<title>` is the first child of `<svg>`, before `<defs>`.
+- [ ] `<desc>` is present and states the subject, not the shapes.
+- [ ] Neither id is the bare `title` / `desc`; both are prefixed per diagram.
+
+**Connectors**
+
+- [ ] All six rules of section 2.5 hold — bends rounded at `r = 8`, label masks
+      6-10 units clear of their stroke and clear of later-painted nodes, no two
+      connectors sharing a path or an attach point, and any transit behind a
+      non-endpoint box dashed and unmarked.
+
 **Text**
 
 - [ ] Font stack is CJK-first.
@@ -354,3 +488,81 @@ never as a lint result, and never with a diagnostic code from the script.
 
 Record which items were checked and which could not be determined by reading
 alone. An unchecked item is a gap, not a pass.
+---
+
+## 8. Accessible SVG contract
+
+An SVG carries no accessible name of its own. Without the four elements below,
+assistive technology announces the diagram as an unlabelled graphic — every
+label inside it is inert, because screen readers do not read `<text>` nodes out
+of a graphic they cannot name. This is a correctness gap, not a polish item, and
+it applies to every diagram this skill emits.
+
+### 8.1 The skeleton
+
+Copy this and replace `<slug>` with a token unique to the diagram — the output
+filename without its extension is the obvious choice (`auth-flow`,
+`auth-flow-dark`):
+
+```xml
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720"
+     role="img" aria-labelledby="<slug>-title <slug>-desc">
+  <title id="<slug>-title">Authentication token flow</title>
+  <desc id="<slug>-desc">Three services exchange a short-lived access token: the
+    client requests one from the auth service, which validates the credential
+    against the user store before the client calls the API with it.</desc>
+  <defs>…</defs>
+  …
+</svg>
+```
+
+Four constraints hold it together:
+
+1. **`role="img"` on the root.** Without it the element has no accessible role
+   and `aria-labelledby` has nothing to name.
+2. **`<title>` is the first child**, before `<defs>` and before any drawn
+   element. A title placed later may be ignored.
+3. **IDs are prefixed per diagram.** Bare `title` / `desc` IDs are banned: two
+   diagrams inlined into one host document would collide, and the second would
+   be announced with the first one's name. `aria-labelledby` must name IDs that
+   actually exist in the same document.
+4. **`<desc>` describes the content, not the geometry.** "Org chart showing a
+   command centre routing work to specialist agents" is useful; "a box at the
+   top with five boxes below it" is worse than nothing — it costs the reader
+   time and conveys no subject.
+
+Keep `<title>` to roughly 60 characters — it is the diagram's name, near enough
+to what a heading above it would say. Keep `<desc>` to one sentence stating what
+a reader would take away from seeing the image.
+
+### 8.2 Decorative marks
+
+A graphic with no informational content — a specimen glyph sheet, a rule, an
+ornament — carries `aria-hidden="true"` on its root instead, and no `<title>`
+or `<desc>`. Giving a decorative mark an accessible name adds noise to the
+reading order. This is the only exemption; a diagram is never decorative.
+
+### 8.3 Checking it
+
+`scripts/check-svg.mjs` asserts the contract mechanically (`SVG060`–`SVG064`).
+Both directions are worth running, because a check that only ever passes proves
+nothing:
+
+```bash
+node scripts/check-svg.mjs scripts/fixtures/a11y-present.svg   # expect exit 0
+node scripts/check-svg.mjs scripts/fixtures/a11y-missing.svg   # expect exit 1
+```
+
+The checker sees structure, not usefulness: a `<desc>` reading "diagram"
+satisfies it and tells a reader nothing. Absence is mechanical; vacuity is
+yours to catch.
+
+---
+
+## Attribution
+
+The six connector rules (section 2.5), the semantic-role skin and its inversion
+rule (section 3), and the accessible-SVG contract (section 8) were adapted from
+`cathrynlavery/diagram-design` v2.6.1 (MIT), restated rather than copied. Full
+note in `SKILL.md` section Attribution.
+
