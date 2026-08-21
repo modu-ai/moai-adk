@@ -213,7 +213,7 @@ make build                                                                      
 
 ```yaml
 run_complete_at: 2026-08-22
-run_commit_sha: pending-backfill-run
+run_commit_sha: 73af5b73c  # last run-phase commit; this backfill follows it
 run_status: complete-with-gap
 ac_pass_count: 10
 ac_fail_count: 0
