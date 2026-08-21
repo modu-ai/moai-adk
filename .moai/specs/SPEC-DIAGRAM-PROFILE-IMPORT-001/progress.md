@@ -135,7 +135,24 @@ m1_to_mN_commit_strategy: per-milestone commits (M1 28e7d76c5, M2 dd9487719, M3 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+sync_complete_at: 2026-08-22
+sync_commit_sha: "pending-backfill-SPEC-DIAGRAM-PROFILE-IMPORT-001"  # backfilled in follow-up commit (D3 self-SHA pattern)
+sync_status: complete
+b12_self_test_a: pass   # pre-emission grep: 'SPEC-DIAGRAM-PROFILE-IMPORT-001' in CHANGELOG.md → 0 before emission
+b12_self_test_b: pass   # AC count match: distinct AC IDs in acceptance.md = 16; entry references 16 (15 PASS + 1 gap annotation)
+b12_self_test_c: pass   # file paths verified via ls: diagram-profiles.md, import-mermaid.md, import-drawio.md, SKILL.md ×2, spec.md, progress.md
+changelog_entry_position: "[Unreleased] > Added (first bullet)"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (this sync commit; status: + updated: only)"
+  plan_md: "n/a — no transition owned at sync (status untouched)"
+  acceptance_md: "n/a — no transition owned at sync (status untouched)"
+  progress_md: "n/a — §E.4 only (this block)"
+canary_compliance_check:
+  required: false   # SPEC defines no forward-looking policy of its own (template-content absorption; no new gate/hook/policy to self-test)
+rider: "t165 label fix folded into this sync commit — SPEC-SVG-QUALITY-ABSORB-001 spec.md frontmatter phase: \"v3.2\" → \"v3.1.3 target\" (one line, frontmatter only; no correction-note section exists in its progress.md → note skipped per lead instruction)"
+scope: "lightweight sync per lead scoping: CHANGELOG + §E.4 + frontmatter close only; README/docs-site unchanged (no user-facing docs surface touched by this SPEC)"
+```
 
 ## §F Phase 4 Mode Selection
 

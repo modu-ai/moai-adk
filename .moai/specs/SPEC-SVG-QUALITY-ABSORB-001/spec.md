@@ -7,7 +7,7 @@ created: 2026-08-22
 updated: 2026-08-22
 author: lane-7
 priority: medium
-phase: "v3.2"
+phase: "v3.1.3 target"
 module: .claude/skills/moai-domain-svg-infographic
 lifecycle: spec-anchored
 era: V3R6
