@@ -73,9 +73,10 @@ func renderAgentFMGLMBody(t *testing.T, root string) string {
 
 // TestAgentFMGLMReasoningMapRendered (R1+R2): under team_mode glm the rendered
 // rows carry each agent's derived z.ai reasoning state and the panel note is
-// present. The seeded agents cover all three reachable states on the medium
-// column: manager-develop (max via the coding-max override → the max level),
-// manager-git (low → the low level) and manager-spec (high → the high level).
+// present. The seeded agents cover the post SPEC-GLM-EFFORT-MAX-001 collapse on
+// their columns: manager-develop (max via the coding-max override), manager-git
+// (low → the low level) and manager-spec (high → max — no Claude effort maps to
+// the high state anymore; only a stored selection can hold it).
 func TestAgentFMGLMReasoningMapRendered(t *testing.T) {
 	root := t.TempDir()
 	seedAgentFMFile(t, root, "moai", "manager-develop", "opus", "medium")
@@ -95,7 +96,7 @@ func TestAgentFMGLMReasoningMapRendered(t *testing.T) {
 	}{
 		{template.GLMStateMax, "manager-develop"}, // coding-max override
 		{template.GLMStateLow, "manager-git"},     // low → the low level
-		{template.GLMStateHigh, "manager-spec"},   // high → the high level
+		{template.GLMStateMax, "manager-spec"},    // high → max (SPEC-GLM-EFFORT-MAX-001 collapse)
 	} {
 		chip := `data-glm-reasoning="` + want.state + `"`
 		tooltip := "f.llm.glm.effort.opt." + want.state
@@ -106,6 +107,12 @@ func TestAgentFMGLMReasoningMapRendered(t *testing.T) {
 		if !strings.Contains(body, chip+` data-i18n-title="`+tooltip+`"`) {
 			t.Errorf("the %s reasoning chip does not reuse the canonical tooltip key %s", want.agent, tooltip)
 		}
+	}
+	// No row may derive the high state anymore: post SPEC-GLM-EFFORT-MAX-001 no
+	// Claude effort collapses to high (only low stays below max), so a high chip
+	// on these seeds would mean the renderer still applies the old mapping.
+	if strings.Contains(body, `data-glm-reasoning="`+template.GLMStateHigh+`"`) {
+		t.Errorf("rendered body carries a %q reasoning chip — no Claude effort maps to the high state anymore", template.GLMStateHigh)
 	}
 	// R2 — the GLM session-model inheritance note.
 	if !strings.Contains(body, `data-i18n="agentfm.glmnote"`) {

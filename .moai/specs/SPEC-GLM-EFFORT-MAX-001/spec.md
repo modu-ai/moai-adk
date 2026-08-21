@@ -2,7 +2,7 @@
 id: SPEC-GLM-EFFORT-MAX-001
 title: "GLM reasoning effort ceiling raise — collapse medium/high to max"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-08-22
 updated: 2026-08-22
 author: manager-spec
