@@ -109,8 +109,13 @@ requirement exists because Codex silently ignores unknown config values (M0 t91 
 ### R-009 — MCP server mapping (Capability gate) `[AC-007]`
 
 **Where** an agent's `tools:` list contains any `mcp__moai__*` entry, the emitted TOML shall
-declare `mcp_servers = ["moai"]`; the per-tool whitelist distinction shall be recorded as a
-documented drop (coarse server-level grant) in the mapping manifest.
+declare the moai server as a `[mcp_servers.moai]` table (`command = "moai"`,
+`args = ["mcp-server"]`); the per-tool whitelist distinction shall be recorded as a
+documented drop (coarse server-level grant) in the mapping manifest. The table shape is a
+run-phase measured correction: codex-cli 0.147.0 rejects the array form
+`mcp_servers = ["moai"]` ("invalid type: sequence, expected a map"), so the array literal
+in the original requirement text was an unmeasured assumption (progress.md §E.2 MS3b,
+commit e6c2239e5).
 
 ### R-010 — Effort mapping (Ubiquitous) `[AC-008, AC-P02]`
 

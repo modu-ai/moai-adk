@@ -3,6 +3,9 @@
 > Plan-phase implementation plan. Tier M. Mapping table (§A.3) is a first-class deliverable
 > named by the card. Milestones are ordered by decision-reversibility: the decisions most
 > likely to change come first.
+> Errata (updated 2026-08-22): §A.3 row 9 disposition corrected by run-phase measurement —
+> `mcp_servers` emits as the `[mcp_servers.moai]` table, not the array literal (MS3b,
+> commit e6c2239e5; spec.md R-009 carries the same errata).
 
 ## §A Context
 
@@ -67,7 +70,7 @@ class:
 | 6 | Skill loader (`Skill` + `skills:` preload) | `skills.config` (value set unmeasured) | **deferred to M1** — no field emitted in v1 (M1 owns skills canonicalization to `.agents/skills`; t91 §4 verified the scan path + symlinks) | M1 seam | unmeasured → optional probe P-05 |
 | 7 | Subagent spawn (`Agent` — manager-lead only) | delegation exists on Codex (t91 §2: `collaborationspawn_agent`), but per-agent tool grant is not expressible in agent TOML | **documented drop** at field level; lead semantics survive in body prose; internal tool name `collaboration*` has low version stability (t91 §2) | body prose | unmeasured → optional probe |
 | 8 | Design sync (`DesignSync` — manager-design only) | none | **documented drop** (Claude-specific MCP-backed tool) | none | — |
-| 9 | moai MCP (`mcp__moai__*`, 20 distinct tools across 7 agents) | `mcp_servers` | `mcp_servers = ["moai"]` on the 7 agents carrying any `mcp__moai__*` token; **per-tool filtering inside one MCP server treated as unavailable → documented drop** (server exposes all 21; the body prose already names which tools the agent uses — prose-level discipline) | server-level grant; NOTE: non-interactive `codex exec` MCP calls require approval-policy handling (t91 §5) — M4 wiring concern | server + 21 tools **measured** (t91 §5); per-agent filtering unmeasured → optional probe P-06 |
+| 9 | moai MCP (`mcp__moai__*`, 20 distinct tools across 7 agents) | `mcp_servers` | `[mcp_servers.moai]` table (`command = "moai"`, `args = ["mcp-server"]`) on the 7 agents carrying any `mcp__moai__*` token — NOT the array form `mcp_servers = ["moai"]`, which codex-cli 0.147.0 rejects ("invalid type: sequence, expected a map"; run-phase measurement MS3b, commit e6c2239e5); **per-tool filtering inside one MCP server treated as unavailable → documented drop** (server exposes all 21; the body prose already names which tools the agent uses — prose-level discipline) | server-level grant; NOTE: non-interactive `codex exec` MCP calls require approval-policy handling (t91 §5) — M4 wiring concern | server + 21 tools **measured** (t91 §5); table shape **measured** (MS3b, e6c2239e5); per-agent filtering unmeasured → optional probe P-06 |
 | 10 | Effort (`effort:` frontmatter) | `model_reasoning_effort` | identity mapping proposed (`low→low, medium→medium, high→high, xhigh→xhigh`) — preserves relative ordering; direction justified by token-identity where both ladders share names; **never silently downgrade**: unmapped value blocks emission | emitter enum (fail-closed) | field works (M0); **enumeration unmeasured → probe P-02** |
 | 11 | Model (`model:` — `inherit` ×10, `sonnet` ×1 manager-git) | `model` | **omit for all 11 in v1** (inherit Codex default); manager-git's `sonnet` pin = documented drop (a Claude alias is not a Codex model id; its cost intent already travels via `effort: low`) | omission = default | **omission semantics unmeasured → probe P-03** |
 | 12 | Frontmatter `hooks:` (manager-develop, manager-spec, manager-docs, sync-auditor) | no per-agent hooks surface; Codex hooks are project-level `.codex/hooks.json` | **documented drop** → M3 seam (M3 owns the adapter incl. the `PostToolUse`+`collaboration*` redesign per t91 §8) | M3 | hooks layer measured (t91 §6) |
