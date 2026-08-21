@@ -45,6 +45,15 @@ type GateConfig struct {
 	// Keys are step names (e.g., "dotnet format"); a value of false skips that step.
 	// Example: map[string]bool{"dotnet format": false}
 	DisabledSteps map[string]bool
+	// TypecheckEnabled controls the typecheck axis. Default true.
+	TypecheckEnabled bool
+	// TypecheckCommand overrides the language default and enables the axis for
+	// any language. Split on whitespace (strings.Fields) and executed directly,
+	// so shell metacharacters are not interpreted — a pipeline or a redirect
+	// belongs in a script the command invokes.
+	TypecheckCommand string
+	// TypecheckTimeout is the maximum duration allowed for the typecheck step.
+	TypecheckTimeout time.Duration
 }
 
 // DefaultGateConfig returns a GateConfig with production-safe defaults.
@@ -56,6 +65,11 @@ func DefaultGateConfig() *GateConfig {
 		LintTimeout: 60 * time.Second,
 		TestTimeout: 120 * time.Second,
 		AstGrepGate: DefaultAstGrepGateConfig(),
+		// The axis ships on: a project with no type-check surface reports the
+		// skip and passes, so enabling it by default costs nothing while
+		// closing the hole for every project that does have one.
+		TypecheckEnabled: true,
+		TypecheckTimeout: 300 * time.Second,
 	}
 }
 
@@ -67,6 +81,11 @@ type langToolchain struct {
 	vetSteps []gateStep
 	// lintSteps are linter commands run in order. Each is optional.
 	lintSteps []gateStep
+	// typecheckStep is the type-check command, resolved against the project at
+	// run time by resolveTypecheckStep. Nil means the language has no default
+	// type-check axis — the gate then reports the absence rather than passing
+	// quietly, and gate.typecheck.command supplies one for any language.
+	typecheckStep *gateStep
 	// testStep is the test command. Nil means no test step available.
 	testStep *gateStep
 }
@@ -99,8 +118,16 @@ var toolchains = []langToolchain{
 		testStep: &gateStep{name: "go test", binary: "go", args: []string{"test", "./..."}},
 	},
 	// Node.js (TypeScript/JavaScript): package.json
+	//
+	// This entry has no vetSteps, which is what made Node the one type-unsafe
+	// blind spot: mypy sits on the lint axis, Dart analyze on the vet axis, go
+	// vet type-checks as it runs, and a compiled language's test step compiles
+	// first. Node had only lint and test, and a project whose linter config is
+	// absent (biome instead of eslint, say) skipped lint too — leaving a
+	// type-broken build to pass the gate. typecheckStep closes that hole.
 	{
-		markerFiles: []string{"package.json"},
+		markerFiles:   []string{"package.json"},
+		typecheckStep: nodeTypecheckStep(),
 		lintSteps: []gateStep{{
 			name: "eslint", binary: "npx", args: []string{"eslint", "."}, optional: true,
 			configFiles: []string{
@@ -273,23 +300,48 @@ func (g *QualityGate) Run(ctx context.Context) (bool, string) {
 	}
 
 	// Step 1: vet steps
+	var vetReason string
 	for _, step := range tc.vetSteps {
-		if ok, out := g.executeStep(ctx, step, g.config.VetTimeout); !ok {
+		ok, out := g.executeStep(ctx, step, g.config.VetTimeout)
+		if !ok {
 			return false, out
 		}
-	}
-
-	// Step 2: lint steps
-	for _, step := range tc.lintSteps {
-		if ok, out := g.executeStep(ctx, step, g.config.LintTimeout); !ok {
-			return false, out
-		}
+		vetReason = appendReason(vetReason, out)
 	}
 
 	// passReason carries a passing step's notice out to Run's caller. Dropping
 	// it here is what left an absent ast-grep scanner indistinguishable from a
 	// clean scan: the step reported the skip and this frame threw it away.
-	var passReason string
+	passReason := vetReason
+
+	// Step 1.5: typecheck axis.
+	//
+	// It runs after vet and before lint so a type error surfaces before the
+	// slower style pass, and so a project whose linter is absent still gets a
+	// correctness gate. Every outcome is reported: a skip is not a failure,
+	// but it is never silent — that silence is what let a broken build through.
+	if g.config.TypecheckEnabled {
+		step, reason, ok := resolveTypecheckStep(tc.typecheckStep, resolveQualityProjectDir(*g.config, "QualityGate.Run.typecheck"), g.config.TypecheckCommand)
+		switch {
+		case ok:
+			passed, out := g.executeStep(ctx, step, g.config.TypecheckTimeout)
+			if !passed {
+				return false, out
+			}
+			passReason = appendReason(passReason, out)
+		default:
+			passReason = appendReason(passReason, reason)
+		}
+	}
+
+	// Step 2: lint steps
+	for _, step := range tc.lintSteps {
+		ok, out := g.executeStep(ctx, step, g.config.LintTimeout)
+		if !ok {
+			return false, out
+		}
+		passReason = appendReason(passReason, out)
+	}
 
 	// Step 2.5: ast-grep domain rules
 	// ASTG-UPGRADE-001: switched to RunAstGrepGateV2 which uses the unified Scanner
@@ -300,7 +352,7 @@ func (g *QualityGate) Run(ctx context.Context) (bool, string) {
 		if !ok {
 			return false, out
 		}
-		passReason = out
+		passReason = appendReason(passReason, out)
 	}
 
 	// Step 3: test step (skippable)
