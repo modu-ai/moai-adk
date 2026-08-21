@@ -136,3 +136,17 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+Logged by the orchestrator (lane-9) before the first run-phase Agent() spawn.
+
+**Input parameters**: tier M; scope ~3-4 files (deploy.go clean path + tests); domains 1 (Go CLI code); language mix Go; concurrency benefit LOW (single coupled code path — classifier → disposition → tests all in one seam); Agent Teams N/A.
+
+**Mode evaluation**: direct — not selected (>trivial: new branch semantics + 11-AC test suite). serial — **selected** (coding-heavy Tier M, single-agent dependency chain M1→M4). fanout — not selected (1 domain). sweep — not selected (3-4 files, new-code work).
+
+**Decision: serial** (manager-develop, cycle_type=tdd)
+
+**Justification**: the change is one classifier seam in backupThenRemove plus its disposition semantics and test fixtures — a tightly coupled single-author surface. Kickoff: lead conditional grant 2026-08-22 + plan-audit iter-2 PASS 1.00 (condition satisfied).
+
+**Plan Audit Gate skip record**: most recent verdict PASS (iter-2, 1.00 ≥ Tier M 0.80); plan-artifact hash unchanged since the verdict (this §F addition and the audit-report append are not hash subjects); skip-eligible per the three-condition contract.

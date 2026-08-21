@@ -70,3 +70,51 @@ Overall Score: 0.92 (harmonic mean; Tier M PASS threshold 0.80 — score 충족�
 - 스코프 펜스: t81(가) 미러 배포 배제(§E)·판별자 "리드 큐 후보" 라우팅(§A/§E + progress 충돌 기록까지 공개)·배포 측 게이팅 배제(§B.1 근거와 함께)·.moai/config 8번째 뿌리 매트릭스 포함(trace 상태 명시).
 - REQ-CSL-008의 "최종 트리 상태" 한정 — 순서에 따라 진행줄 형태명(live vs dangling)이 갈리는 미세점을 트리 상태로 정확히 좁힘.
 - 12 REQ GEARS 정합·11 AC 이진 판정·추적표 완전·마커 0·syscall 0·프론트매터 완전.
+
+---
+
+# SPEC Review Report: SPEC-CLI-CLEAN-SYMLINK-001 — Iteration 2 (최종)
+Iteration: 2/2 (Tier M 상한 도달 — 본 판정이 최종)
+Verdict: **PASS**
+Overall Score: **1.00** (Clarity 1.0 / Completeness 1.0 / Testability 1.0 / Traceability 1.0 — delta 스코프, 하기 근거)
+
+## Method Note (iter-2)
+
+- 감사 범위는 Retry Loop Contract에 따라 **iter-1 결함 delta + 회귀 체크**로 한정(신규 전수 재감사 아님). audit_multi 계속 미실행(오케스트레이터 지시 — worktree-blind, t171 판정). M1 Context Isolation 동일 적용.
+- 수정 델타 확인: `git diff 075672146..31d338bc4` — 변경이 spec.md(§B 서두 + HISTORY)·acceptance.md(AC-CSL-001/003/009)·plan.md(M3)·progress.md(감사 진행 기록)에 한정, REQ 본문 §C는 무변경, 코드 무변형(`git diff 4b2f203fe..HEAD -- internal/ cmd/ pkg/` 공백 — 도시에 앵커 전부 현행 유효).
+
+## Regression Check (iter-1 결함 전건)
+
+- **D1 (배치 2곳 드리프트) — RESOLVED**: spec.md:88-90 이제 "dangling은 배치 3곳 — 비-글롭 뿌리 / 글로브 매치 이름 / `.moai/config` 뿌리 — 이 같은 형태의 진입 팔이다. 이 중 실측은 2개 배치(Run D), config 팔은 코드 추적 — 도시에 §2.1·gap 4" — 처방 그대로(실측/추적 구분 포함). 잔존 "배치 2곳" 문자열 2건(spec.md:35 HISTORY, progress.md:119 수정 기록)은 **수정 기록 안에서 옛 텍스트를 인용하는 역사적 서술**임을 확인 — 살아있는 분류 주장이 아니므로 드리프트 아님.
+- **D2 ("보유" 용어 미고정) — RESOLVED (적용 표면)**: acceptance.md AC-CSL-009 Then-1 이제 "배포자가 **렌더링 후 기록하는 경로** — 판정 집합은 렌더링 목적지(`.tmpl` 접미사 제거 포함)이며 원시 임베디드-FS 경로가 아니다(루트 1 … 도시에 §1.1(b) 실측으로 반증됨)"로 고정. plan.md M3도 동일 고정 + **글로브 패턴의 매치 기준도 렌더링 후 경로로 통일**(내 처방에 없던 올바른 일반화 — 같은 모호성의 글로브 쪽까지 닫음). 구현 분기 소멸: M3 테스트 작성자가 읽는 두 표면(acceptance AC + plan M3)에서 원시/렌더링 해석이 유일하게 확정.
+  - **REQ-CSL-009(spec.md §C) 미수정의 판정 — 수용 가능**: (a) 내 iter-1 처방이 정확히 "AC-CSL-009와 plan M3에" 범위 지정했고 그대로 이행됨; (b) 2층 구조에서 구성원 판정의 원천은 검증 계층(AC)이며, REQ 계층의 "템플릿이 보유하는 경로"는 제품 어휘로서 AC가 곧 그 측정 집합을 정의함; (c) spec.md 스스로의 HISTORY v0.1.1 기록이 "보유 = 렌더링 후 기록 경로로 고정"을 요구사항 문서 안에 선언 — spec.md 단독 독자도 수정 기록에서 해석에 도달한다. 잔여 위험(향후 수정이 acceptance.md를 안 읽고 §C만 재해석)은 아래 R1으로 기록.
+- **D3 (AC-CSL-003 진행줄 단언 부재) — RESOLVED**: Then-4 추가 — "진행 출력에 해당 경로와 dangling임을 이름붙인 줄이 존재한다(경로+symlink 토큰) — config 뿌리의 진행줄만 빼먹은 구현이 이 AC를 통과하지 못하게 닫는다(REQ-CSL-002/005)". config 루트의 진행줄만 생략한 구현이 11 AC 전부를 통과하던 맹점 폐쇄.
+- **D4 (RED 라벨 귀속 과잉) — RESOLVED**: "단언 1·3은 Run D 실측; 단언 5의 재실행 루프는 Run D 재현 + 코드 추적 — 도시에 gap 2, M1 RED에서 직접 관측된다" — 귀속 정확.
+
+## 회귀 체크 (delta 외 무변형 확인)
+
+- 수치 불변: REQ 열거 12건·AC 열거 11건(grep 전수)·5형태 4면 동일. AC-CSL-003의 단언 3→4는 추적 대상 카운트(REQ/AC/형태) 밖이며 마일스톤 닫힘 조건은 AC-ID 기반이라 무영향(progress.md 수정 기록도 이 점을 스스로 명기).
+- 마커 0(`grep -rn '\[NEEDS CLARIFICATION' plan.md` exit 1)·syscall 0(3산물)·코드 앵커 무드리프트 — 재확인.
+- Frontmatter: version "0.1.1" 인용 semver, updated 갱신, 나머지 불변 — MP-3 유효 유지.
+- Must-pass 재확인: MP-1(순차 무공백)·MP-2(REQ 본문 무변경으로 정합 유지)·MP-3(0.1.1)·MP-4 N/A·MP-5(신규 SPEC 참조 추가 없음 — t81(가) 참조는 iter-1과 동일, draft)·MP-6·MP-7 — **전건 PASS**.
+- 수정 기록의 성실성: spec.md HISTORY v0.1.1 항목과 progress.md 감사 진행 기록이 내 iter-1 판정(FAIL 0.92, blocking 2건, 4결함 배치)을 왜곡 없이 전달 — 감사 결과의 완곡화 없음.
+
+## Must-Pass Results (iter-2): MP-1~MP-7 전건 PASS (상기 회귀 체크 근거)
+
+## Category Scores (iter-2)
+
+| Dimension | Score | Evidence |
+|-----------|-------|----------|
+| Clarity | 1.0 | iter-1의 2결함(D1·D2) 모두 적용 표면에서 해소 — 분류 서술 4면 일치, 계약 판정 집합 이중 고정(AC + plan M3 + HISTORY 선언) |
+| Completeness | 1.0 | 구조 불변(전 섹션·frontmatter 12+2 필드, version 0.1.1 갱신) |
+| Testability | 1.0 | D3 강화로 config-루트 진행줄 맹점 폐쇄 — 11 AC 전건 이진 판정, 공허 단언 0 |
+| Traceability | 1.0 | 12 REQ ↔ 11 AC 추적표 불변, REQ-CSL-002/005의 config 배치 조항까지 AC 커버 |
+
+## Residual Findings (PASS와 무관 — 기록물)
+
+- **R1 [optional/note]** — spec.md §C REQ-CSL-009 — 요구사항 계층의 "템플릿이 보유하는 경로" 문구 자체는 여전히 포괄적 제품 어휘(해석은 AC-CSL-009·plan M3·HISTORY v0.1.1에서 렌더링-후-경로로 확정). 향후 amendment가 이 REQ를 직접 다룰 때 핀 구문("렌더링 후 기록 경로")을 §C에 반영할 것을 권장 — 현 시점 판정에는 불필요.
+- **R2~R4 [iter-1 D5·D6·D7 그대로]** — 배포 재생성 조항(현행 재진술, 모순 아님)·교차 워크트리 SPEC 참조(D7-5 SHOULD, release/v3.1.3 통합 시 §D.7-1로 해소)·"도시에" 조어(정의·일관됨) — 전부 optional, 조치 불요.
+
+## Final Verdict
+
+**PASS — Overall Score 1.00 (delta 스코프).** Tier M 상한(2/2) 도달, 본 판정이 최종. Must-pass 전건 PASS, blocking 결함 0, 잔여는 optional 4건(전부 기록성). 리드의 조건부 Implementation Kickoff Approval(감사 PASS 조건)이 충족된다 — 단 Kickoff 게이트 자체는 감사 판정과 별개의 인간 게이트임은 그대로 유지된다. run-phase M1(Run D의 Go 테스트 RED 전환) 진입 가능.
