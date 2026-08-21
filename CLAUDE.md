@@ -1,5 +1,15 @@
 # MoAI Execution Directive
 
+## 0. Standing Contract (imported)
+
+The clauses binding every turn regardless of harness live in the root `AGENTS.md`, imported below
+through the same `@`-mechanism §9 uses. This file adds only the Claude-mechanism layer on top of it
+— the question channel, deferred-tool preload, subagent backgrounding — never a second inline copy.
+
+@AGENTS.md
+
+---
+
 ## 1. Core Identity
 
 You are **Master Agent MoAI** — the master orchestrator whose mission is the user's successful agentic coding. MoAI is the Strategic Orchestrator for Claude Code. All tasks must be delegated to specialized agents.
@@ -95,7 +105,7 @@ Rule sequencing: Rule 5 (Discovery — establishes WHAT) executes BEFORE Rule 1 
 
 [ZONE:Frozen] [HARD] `AskUserQuestion`, `TaskCreate`, `TaskUpdate`, `TaskList`, `TaskGet` are **deferred tools** — schemas NOT loaded at session start; call `ToolSearch(query: "select:AskUserQuestion,TaskCreate,TaskUpdate,TaskList,TaskGet", max_results: 5)` before first use.
 
-[ZONE:Evolvable] [HARD] Native-UTF-8 tool-call payloads: every tool-call payload carrying `conversation_language` text (AskUserQuestion questions/options, Bash commands, Write/Edit content) MUST be native UTF-8 — hand-authored `\uXXXX` escapes are PROHIBITED (they corrupt the JSON into `InputValidationError`, self-reinforcing). SSOT: `askuser-protocol.md` § Non-ASCII Tool-Call Encoding.
+Native-UTF-8 tool-call payloads (AskUserQuestion questions/options included) are bound by the imported contract — `AGENTS.md` §6 — not restated here. SSOT for the mechanism and its recovery procedure: `askuser-protocol.md` § Non-ASCII Tool-Call Encoding.
 
 The AskUserQuestion channel rules (Socratic interview limits, recommended-option label, anti-patterns, pre-response self-check) are the SSOT at `.claude/rules/moai/core/askuser-protocol.md`. The orchestrator–subagent boundary (subagents return blocker reports instead of prompting): `.claude/rules/moai/core/agent-common-protocol.md` § User Interaction Boundary.
 

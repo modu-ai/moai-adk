@@ -353,6 +353,74 @@ below as a scope-doc gap rather than assumed.
 - The `.gitignore` removal is one line, but it changes what the repository tracks. Any tooling that
   assumed a root `AGENTS.md` could not be committed now sees one.
 
+### M3 — `CLAUDE.md` → `AGENTS.md` import layer (2026-08-22)
+
+Tree: worktree `.claude/worktrees/t82`, branch `WT-agents-md-diet`, parent `e7484034a`.
+Files written: `CLAUDE.md` only. `AGENTS.md`, `internal/config/**`, and
+`internal/template/templates/**` untouched (M2 landed / M5 / M6).
+
+**Two edits, both in `CLAUDE.md`.**
+
+1. **§0 Standing Contract (imported)** — a new leading section carrying `@AGENTS.md`, placed above
+   §1 so the contract is assembled first. Section numbering `§1`-`§17` is unchanged, so every
+   existing cross-reference still resolves. The import uses the same repo-root-relative `@` form
+   §9 already uses for `.moai/config/sections/*.yaml`, satisfying `REQ-AMC-011`.
+2. **`B095` de-duplicated** — the `[ZONE:Evolvable] [HARD]` native-UTF-8 payload clause at §8 was
+   the *only* Codex-relevant (class C) clause block originating in `CLAUDE.md`; M1 classified
+   `B093` / `B094` / `B096` as Claude-only. Its inline obligation text is replaced by a
+   non-obligation pointer to `AGENTS.md` §6 plus the unchanged SSOT reference, so §8 retains
+   exactly the Claude-mechanism layer `REQ-AMC-011` describes and the obligation is carried once,
+   through the import, rather than inline and again imported.
+
+**Size: 20,523 B → 20,748 B (+225).** The §0 block costs more than `B095`'s removal recovers; the
+net is +57 guard tokens on the always-loaded surface.
+
+| AC | Claim | Evidence (command → observed) | Status |
+|---|---|---|---|
+| `AC-AMC-013` | No contract line appears in both the Claude-only layer and the imported `AGENTS.md` | `cat CLAUDE.md AGENTS.md \| grep -n '\[HARD\]' \| sort -k2 \| uniq -d -f1` → no output. `grep -c '\[HARD\]' CLAUDE.md` → `3` (`B093`, `B094`, `B096` — all class K); `AGENTS.md` carries no `[HARD]` marker at all | PASS |
+| `AC-AMC-014` | Every `@`-imported path resolves; an unresolvable import fails rather than warns | Each `^@` line in `CLAUDE.md` resolved with `os.path.isfile` → `OK line 9 AGENTS.md`, `OK line 118 .moai/config/sections/user.yaml`, `OK line 119 .moai/config/sections/language.yaml`. Three of three | PASS |
+| `AC-AMC-015` | Affected-package suites green, no expected-behavior assertion edited | `go test -count=1 ./internal/config/` → `ok 13.297s`; `./internal/constitution/` → `ok 1.750s`; `./internal/hook/` → `ok 37.561s`; `./internal/template/` → `ok 25.574s`; `./internal/cli/ -run 'Constitution\|Doctor\|Instruction\|Claude'` → `ok 47.058s`. No `_test.go` file was modified in this milestone (`git diff --name-only` names `CLAUDE.md` alone) | PASS |
+| `AC-AMC-010` (Claude-side non-regression) | Rule-loading semantics and hook wiring unchanged | No `.claude/rules/**`, `.claude/hooks/**`, or `settings.json` edit; the five suites above cover the guard, the constitution validator, the hook handlers, and the template deployer | PASS |
+
+**Baseline attribution.** `python3 .moai/reports/t82/surface_r3.py` → `surface files: 17   guard
+tokens (sum of per-file len/4): 71264   surface bytes: 285075`. Up 57 tokens from M2's 71,207,
+entirely from `CLAUDE.md`'s +225 B. `AGENTS.md` is still **not** in the enumeration — `REQ-AMC-008`
+orders that extension into M5.
+
+**Arm B identity re-evaluated on the M3 surface:**
+
+```
+required cut = 71,264 + 14,229 ÷ 4 − 66,371 = 8,450 tok
+available    = 10,670 tok  (nine never-stub-split files, 38.0 % measured precedent)
+margin       = +2,220 tok  (first term alone; M2 read +2,277)
+```
+
+**Gap — deliberate, and M6 closes it: the template mirror now diverges.** At `e7484034a` the live
+`CLAUDE.md` and `internal/template/templates/CLAUDE.md` were byte-identical (both 20,523 B, `diff`
+clean). This milestone edits the live file only. Mirroring the `@AGENTS.md` import *now* would ship
+an import with no target, because `internal/template/templates/AGENTS.md` does not exist until M6 —
+precisely the unresolvable-import failure `REQ-AMC-012` and `AC-AMC-014` classify as a failing
+criterion, and on a user's machine nothing would signal it. So the mirror waits for M6, which lands
+both files in one step.
+
+The divergence is **not** CI-visible: `go test ./internal/template/` passes with it present, and no
+test asserts byte-parity between the live and template `CLAUDE.md` (searched
+`internal/template/*_test.go` for `templates/CLAUDE.md` — the three hits are the
+`MOAI:LEARNED-WORKFLOW` marker check, not a parity assertion). Two consequences follow, both
+recorded rather than mitigated here:
+
+- **M6 must mirror `CLAUDE.md` as well as create `AGENTS.md`.** A mirror pass that copies only
+  `AGENTS.md` leaves users without the import that reaches it.
+- **`moai update` run against this dev tree before M6 would revert the §0 edit**, since `CLAUDE.md`
+  is a template-deployed file. Not a code defect; a sequencing hazard for whoever runs update on
+  this worktree.
+
+**Residual risk.** `@`-import resolution was verified by file existence, not by observing Claude
+Code assemble the file — the mechanism is evidenced by the two `.moai/config/sections/*.yaml`
+imports that resolve in this repo today (`plan.md` M3), and `AGENTS.md` sits at the repository root
+alongside `CLAUDE.md`, the shallowest possible path. A runtime confirmation belongs to whichever
+session next starts with this tree loaded.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
