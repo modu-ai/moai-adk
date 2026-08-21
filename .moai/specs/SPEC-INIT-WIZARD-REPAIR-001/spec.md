@@ -1,7 +1,7 @@
 ---
 id: SPEC-INIT-WIZARD-REPAIR-001
 title: "Init autonomy wizard wiring repair: restore three broken init-path chains"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-08-22
 updated: 2026-08-22
@@ -18,6 +18,7 @@ tier: M
 ## HISTORY
 
 - 2026-08-22 — v0.1.0 drafted (manager-spec, card t174 plan-phase). Ground truth: `.moai/reports/t174/measurements.md` (all three lane-5 claims re-verified on origin/main @ 1519f2660). Plan-phase investigation extended the measurements: each item sits inside a longer broken chain; see §1.
+- 2026-08-22 — v0.1.1 audit revision round (iteration-1 FAIL → fix, lead ruling): both plan.md §B markers RESOLVED — wire both — with the conditions pinned in SPEC text (§4 key-scoped USER-write constraint + REQ-003 splice clause; TTY gate + default-preservation binding for the update-wizard step); SPEC-WT-DOC-001 archive reconciliation added to §6.
 
 ## §1 Problem — three intended init-path features whose production wiring is missing
 
@@ -78,7 +79,7 @@ Comment truth (accompanies all three restorations — no removals, so no comment
 
 - **REQ-001** (Chain ① wizard link) **When** the interactive init wizard completes, `runInit` shall apply the wizard's autonomy-tier selection to `opts.AutonomyTier` through `applyAutonomyTierFromWizard`, honouring flag-over-wizard precedence and the sandbox-proof + kill-switch gates on the wizard path.
 - **REQ-002** (Chain ① flag link) **While** init runs non-interactively, an explicitly passed `--autonomy-tier` value shall reach `opts.AutonomyTier` — the value shall no longer be discarded after validation.
-- **REQ-003** (Chain ① consumer link) **When** the initializer returns successfully, `runInit` shall invoke `ApplyAutonomyTierBundle` with the project root, user-scope, and project-scope settings paths; **While** the effective tier is `semi-auto` or unset, the invocation shall produce zero file delta (origin REQ-007 invariant).
+- **REQ-003** (Chain ① consumer link) **When** the initializer returns successfully, `runInit` shall invoke `ApplyAutonomyTierBundle` with the project root, user-scope, and project-scope settings paths; **When** the USER-scope settings file is written, the write shall be a key-scoped splice touching only the `permissions` block (distributed-default: exactly the `defaultMode` key) — never a whole-file overwrite; **While** the effective tier is `semi-auto` or unset, the invocation shall produce zero file delta (origin REQ-007 invariant).
 - **REQ-004** (Chain ② flag link) **When** any of the four workflow toggle flags is explicitly passed, `runInit` shall apply it to opts via `applyWorkflowBranchGuardFlags`, flipping the matching `*Set` tracker; **While** a flag is absent, opts shall remain untouched (distributed-default preservation).
 - **REQ-005** (Chain ② precedence) **Where** `--worktree-auto-create` is explicitly set, the flag value shall take precedence over the wizard's worktree-advisory answer; the wizard answer shall apply only when the flag is absent.
 - **REQ-006** (Chain ② persistence) **When** any toggle `*Set` tracker is true, the initializer shall persist the matching value(s) into workflow.yaml on both the deployer and fallback paths; **While** every tracker is false, the deployed workflow.yaml shall remain byte-identical to the template.
@@ -92,6 +93,7 @@ Comment truth (accompanies all three restorations — no removals, so no comment
 - **Cross-platform**: config writes reuse the existing seams (`yamlpatch.PatchFile`, atomic write helpers); no OS-specific path constructs; `GOOS=windows GOARCH=amd64 go build ./...` must pass (per `internal/cli/CLAUDE.md`).
 - **TDD mode** (`quality.yaml` `constitution.development_mode: tdd`): each wiring link lands test-first; the existing unit suites (`init_autonomy_wizard_test.go`, `init_workflow_flags_test.go`, `initializer_audit_test.go`, `autonomy_bundle_test.go`) are the characterization layer and must stay green without modification to their assertions.
 - **Test isolation**: `t.TempDir()` only; the USER-scope settings write must be testable via an injectable path — tests must never touch the real `~/.claude/settings.json`.
+- **USER-scope write is key-scoped (lead ruling 2026-08-22)**: `~/.claude/settings.json` is user-owned territory. Chain ①'s USER-scope write is a read-modify-write splice limited to the `permissions` block — distributed-default path: exactly the `permissions.defaultMode` key via `toolpolicy.WriteUserDefaultMode`, which preserves every other region (PATH, hooks, env, allow, deny, ask) verbatim. (The `RenderTierPermissions` full-bundle path, reachable only when the initialized project already ships a tool-policy.yaml — the distributed template does not — regenerates deny/ask within the same block per SPEC-AUTONOMY-TIERS-001 REQ-003, still as a region splice.) Whole-file overwrite is prohibited and MUST be asserted by an M1 preservation test.
 - **No new wizard questions, no new config keys**: the wizard UX is not redesigned; only existing questions/flags/keys are wired.
 - **Test scope discipline** (CLAUDE.local.md §4/§6): affected packages locally (`internal/cli`, `internal/core/project`), full-suite verdict read from CI.
 
@@ -116,4 +118,5 @@ Comment truth (accompanies all three restorations — no removals, so no comment
 
 - Measurements (committed authority): `.moai/reports/t174/measurements.md`
 - Origin SPECs whose wiring this repairs: SPEC-AUTONOMY-TIERS-001 (M7 seam + M9 bundle), SPEC-WT-DOC-001 (Surfaces 2-3), SPEC-MOAI-MCP-SERVER-001 (M4 REQ-MCP-015 / AC-MCP-020)
+- Archive reconciliation (audit round-1 MP-5/D7-4): SPEC-WT-DOC-001 carries frontmatter `status: archived` as an **administrative archive, not a feature retirement** — the Surfaces 2-3 capability it specifies is verified live in-tree (plan-audit round-1 re-verification), so it remains a valid design authority for chain ② here.
 - Config-key honesty precedent: SPEC-CONFIG-KEY-HONESTY-001 M5 (reader-status comments)

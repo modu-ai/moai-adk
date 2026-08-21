@@ -2,7 +2,10 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-Status: plan-phase artifacts complete (spec.md + plan.md + acceptance.md + this skeleton, Tier M, GEARS, era V3R6). Two `[NEEDS CLARIFICATION]` markers open in plan.md §B (USER-scope settings write activation; update-wizard prompt step activation) — must resolve before Implementation Kickoff Approval. Ground truth: `.moai/reports/t174/measurements.md`.
+plan_status: audit-ready
+plan_complete_at: 2026-08-22
+
+Plan-phase artifacts complete (spec.md v0.1.1 + plan.md + acceptance.md + progress.md, Tier M, GEARS, era V3R6). Audit round 1 (iteration 1/2): FAIL 1.0 gate-driven — all ground-truth dispositions re-verified and held; 3 blocking items (2 `[NEEDS CLARIFICATION]` markers, SPEC-WT-DOC-001 reconciliation, missing §E.1 literal fields). Revision round applied 2026-08-22 per lead ruling: both markers RESOLVED (wire both) with conditions pinned in SPEC text (spec.md §4 key-scoped USER-write constraint + REQ-003 splice clause; TTY gate + default-preservation for the update-wizard step). Delta re-audit: iteration 2 (final for Tier M) pending. Ground truth: `.moai/reports/t174/measurements.md`.
 
 ## §E.2 Run-phase Evidence
 
