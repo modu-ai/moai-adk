@@ -170,7 +170,7 @@ CLAUDE.md
 ```
 
 The failure mode to watch is **duplicate injection**: leaving a clause inline in `CLAUDE.md` while
-also importing it. AC-AMC-012 tests exactly this.
+also importing it. AC-AMC-013 tests exactly this.
 
 ## 5. Guard design
 

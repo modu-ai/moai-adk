@@ -207,9 +207,20 @@ cosmetic warning.
 ### C.4 Budget ratchet
 
 **REQ-AMC-013** (Ubiquitous) — `AlwaysLoadedTokenBudget` shall equal the achieved post-diet token
-figure plus a stated headroom allowance, and shall be at or below 75,000. A constant set
+figure plus a headroom allowance of **15 %, within ±2 percentage points** (so the admissible band
+is 13 %-17 % of the achieved figure), and shall be at or below 75,000. A constant set
 independently of the achieved figure — at the ceiling, or at any round number — does not satisfy
-this requirement even when it is below 75,000.
+this requirement even when it is below 75,000, and a headroom ratio chosen outside the 13 %-17 %
+band does not satisfy it either.
+
+The ratio is pinned here rather than left to the constant's comment because `AC-AMC-019` checks the
+constant against `achieved × (1 + ratio)`: if the ratio is whatever that same comment declares, the
+check has a free variable and both are chosen by one actor in one edit. Achieved 60,000 with a
+declared 25 % ratio yields exactly 75,000 and passes every criterion with zero delta — the same
+vacuity the derivation check exists to close, relocated rather than removed. Bounding the ratio is
+what makes the check binding; 15 % matches the allowance the original constant already carried
+(`design.md` §5.1), and ±2 points absorbs rounding to a clean constant without admitting a
+ratio chosen to reach a predetermined answer.
 
 **REQ-AMC-014** (Event-detected) — When the ratcheted constant is proposed, the achieved figure
 shall be a `go test -v` output measured on the **integration branch**, defined as the
