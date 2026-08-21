@@ -10,20 +10,19 @@ move. The boundary is **the imperative clause**, detected in three widening ring
 
 | Ring | Detector | Rules + `CLAUDE.md` bytes | Treatment |
 |---|---|---:|---|
-| R1 | `[HARD]`-marked lines | 32,543 | Contract. Always-loaded. Non-negotiable. |
+| R1 | `[HARD]`-marked lines | 32,543 line-proxy / **51,639 measured** | Contract. Always-loaded. Non-negotiable. |
 | R2 | `MUST` / `MUST NOT` / `shall` lines not already in R1 | +11,095 (union 43,638) | Contract by default; demotable only with a recorded per-clause ruling that the sentence is descriptive rather than binding. |
 | R3 | everything else | ~179,500 | Eligible to move to skills and lazy companions. |
 
 R3 is where the entire byte reduction comes from. R1 and R2 are where the difficulty is.
 
 **The ring figures are line-level proxies.** `grep` finds *lines bearing a marker*, which is not
-the same set as *the obligations those lines carry*. Measured error in both directions
-(`spec.md` §A.4): 15 of the 93 rule markers sit non-clause-initially — prose mentions and
-navigation notes counted as contract — while 16 end in `:` and lead into a list, table, or fenced
-block whose body is not counted at all, with no bound on its size. The magnitude is reliable; the
-value is not. So R1's detector is a **seed for classification, not the classification itself**: M1
-expands each marker to its clause block and measures that, and §2's arithmetic below inherits the
-proxy's error bars rather than pretending to a precision it does not have.
+the same set as *the obligations those lines carry*. M1 expanded the markers to clause blocks and
+measured the error (`spec.md` §A.4): it runs **almost entirely one way** — one marker over (357 B
+of navigation prose) and ninety-six under — for a clause-block total of **51,639 B** against the
+proxy's 32,543, **+58.7 %**. The magnitude of the proxy is reliable; its value is not. So R1's
+detector is a **seed for classification, not the classification itself**, and §2's arithmetic below
+is restated on the measured figure.
 
 A **fourth category** sits outside all three: the 75 `[HARD]` lines (11,898 B) in
 `.claude/output-styles/moai/moai.md`. They are binding, but they bind *Claude's rendering*. They
@@ -37,7 +36,8 @@ ordering, the `Skill` tool, cross-session messaging. Excluding these from `AGENT
 nothing from either harness's binding surface; they remain always-loaded on the Claude side, via
 `CLAUDE.md`'s Claude-only layer.
 
-Measured upper bound: the `[HARD]` lines in the six most Claude-mechanism-bound files
+Line-level upper bound, superseded by M1's per-clause split below: the `[HARD]` lines in the six
+most Claude-mechanism-bound files
 (`askuser-protocol`, `session-handoff`, `cache-aware-execution`, `context-window-management`,
 `cross-session-messaging`, `skill-routing`) total **14,360 B across 38 lines**.
 
@@ -51,29 +51,39 @@ grep -h '\[HARD\]' \
   .claude/rules/moai/workflow/skill-routing.md | wc -c    # → 14360
 ```
 
-This is an upper bound, not the answer. File membership is a proxy: those files also carry
+That was an upper bound, not the answer. File membership is a proxy: those files also carry
 harness-generic principles (a subagent may not prompt the user; a peer session is not a proxy for
-the user) that bind Codex exactly as they bind Claude. **The split is per clause, not per file**,
-and producing it is M1's deliverable.
+the user) that bind Codex exactly as they bind Claude. **The split is per clause, not per file.**
 
-The two bounds it produces:
+M1 produced it (`.moai/reports/t82/classification.tsv`, 97 rows, zero unclassified):
 
 ```
-optimistic (full exclusion) : 32,543 − 14,360 = 18,183 B   before any condensation
-pessimistic (no exclusion)  : 32,543 B                     condensation carries everything
-ceiling                     : 24,576 B
+Codex-relevant (35 blocks) : 16,135 B
+Claude-only    (61 blocks) : 35,147 B
+prose, no obligation  (1)  :    357 B
+                             ────────
+clause-block total         : 51,639 B
+ceiling                    : 24,576 B
 ```
+
+Inside the six named files the proxy nearly held — 21,504 of their 22,179 B of clause blocks is
+Claude-only — but 38.8 % of all Claude-only bytes (13,643 B) fall **outside** them, most of it in
+`kanban-dispatch.md`, where Claude-session mechanisms and harness-generic discipline share a file.
+The classification's error direction is a design constraint on M2: **when in doubt, classify to the
+Codex side** (`spec.md` §D.2).
 
 ## 2. The size problem, restated on measured ground
 
 ```
-verbatim R1 contract, rules + CLAUDE.md    32,543 B
+verbatim R1 contract, rules + CLAUDE.md    51,639 B   (clause blocks, measured)
 confirmed project_doc_max_bytes            32,768 B
                                            ─────────
-headroom                                       225 B   (0.7 %)
+overflow                                  −18,871 B   (1.58x the budget)
 ```
 
-It fits. That is the trap. Three claims on the same budget are invisible in the raw line total:
+The line proxy read as a 225 B fit (0.7 % headroom); that fit was an artifact of its undercount, and
+believing it was the trap. The contract does not fit verbatim. Three further claims on the same
+budget are invisible in the raw line total anyway:
 
 1. **Document structure.** `AGENTS.md` is a document, not a line dump — headings, section framing,
    and the connective prose that makes a clause findable all cost bytes.
@@ -81,12 +91,16 @@ It fits. That is the trap. Three claims on the same budget are invisible in the 
    **first** (`spec.md` §D.3). Its size is set on each user's machine and is unknowable here.
 3. **Growth.** Every future rule edit that adds a `[HARD]` clause spends this budget.
 
-With 225 B of slack, the first edit after landing starts silently dropping the tail. So the design
-target is not the fit — it is the **8,192 B reserve** that keeps the fit true a year from now.
+A contract over budget truncates on the first run; one at 99.3 % of budget starts silently dropping
+the tail on the first edit after landing. So the design target is neither — it is the **8,192 B
+reserve** that keeps the fit true a year from now.
 
 Two levers reach 24,576 B, in preference order:
 
-1. **Classification (§1.1)** — free, and removes nothing from anything. Up to 14,360 B.
+1. **Classification (§1.1)** — free, and removes nothing from anything. Measured: 35,504 B of the
+   51,639 B clause-block total (Claude-only plus the one prose block), leaving 16,135 B. Without it
+   the contract does not fit at all, which makes this the load-bearing lever rather than the
+   cheaper of two.
 2. **Condensation** — rewrite each surviving clause imperatively, dropping the rationale that
    currently travels inside the same line. Many `[HARD]` lines in this repo run 300-600 B because
    they carry their own justification inline; the obligation itself is usually one sentence. M1
@@ -222,9 +236,12 @@ to fall back on, so an advisory guard would leave the failure with no detector a
 
 `AlwaysLoadedTokenBudget` drops from 76,000 to a measured figure. Two traps:
 
-- **Branch sensitivity.** This worktree measures ≈ 71,212 tokens — already under 75,000 — so a
-  ratchet derived here would be vacuous. The release integration state that forced the raise
-  measured 75,282. The figure must come from the **integration branch**: the `release/vX.Y.Z`
+- **Branch sensitivity.** This worktree measures 71,207 tokens (guard-exact; 71,212 by `total/4`) —
+  already under 75,000 — so a ratchet derived here would be vacuous. The `release/v3.1.1`
+  integration state that forced the raise measured 75,282; re-measured at run-phase pre-flight that
+  state sits on no live branch and all four live refs read 71,207, so the divergence returns with
+  the first sibling card on the v3.2 branch rather than being visible today. The figure must come
+  from the **integration branch**: the `release/vX.Y.Z`
   branch this card merges into, which carries the merged state of the sibling cards. The
   discriminating property is the merged sibling state, not the branch's name, so the evidence
   records `git rev-parse --abbrev-ref HEAD` and `git rev-list --count main..HEAD` — otherwise any

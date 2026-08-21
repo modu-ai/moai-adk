@@ -28,8 +28,9 @@ is the executable form.)
 block** — the marker line plus its continuation to the next clause or heading — and each block is
 classified Codex-relevant or Claude-mechanism-only, Then a per-block table exists with a byte
 figure per row, zero unclassified rows, and the Codex-relevant subtotal stated. Line-level grep
-counts do not satisfy this criterion (`spec.md` §A.4: 15 of 93 markers are prose, 16 lead into
-uncounted bodies).
+counts do not satisfy this criterion (`spec.md` §A.4: expanded to clause blocks the same 97 markers
+measure 51,639 B against the proxy's 32,543 B, the proxy running roughly one over and ninety-six
+under).
 
 **AC-AMC-004** — Given a rewritten clause, When it is diffed against its original, Then subject,
 modality (`shall` / `shall not` / `MUST` / `MUST NOT`), and binding scope are unchanged; any clause
@@ -49,16 +50,23 @@ on the integration-branch figure recorded at pre-flight**, exceeding 66,371 toke
 concludes, Then a blocker report is returned naming the shortfall in that arm's unit and the two
 levers it offers, and no file has been moved.
 
-Arm B's baseline is part of the criterion, not a detail: the two candidate trees differ by 4,070
-tokens (71,212 worktree vs 75,282 integration), a 37 % difference in the required cut, so an Arm B
-projection baselined on the worktree can clear this criterion and still fail `AC-AMC-018` at M5 —
-the exact late-discovery failure Arm B exists to prevent.
+Arm B's baseline is part of the criterion, not a detail. The two candidate trees can differ
+materially: the `release/v3.1.1` integration state that forced the 76,000 raise measured 75,282
+tokens against a worktree reading of 71,212 — a 4,070-token gap, 37 % of the required cut.
+Re-measured at run-phase pre-flight that divergence is **not present today** — this worktree and all
+four live refs read 71,207 (`spec.md` §C.4) — and it returns as soon as a sibling card lands on the
+v3.2 integration branch. So the baselining requirement stands on its mechanism rather than on
+today's reading: an Arm B projection baselined on a worktree can clear this criterion and still fail
+`AC-AMC-018` at M5, the exact late-discovery failure Arm B exists to prevent.
 
 This is a **pass** of `AC-AMC-007`, not a failure of M1: the pilot's purpose is to establish whether
 the target is reachable, and a measured "not by this much" is the deliverable it was built to
-produce. Arm B is the one that decides whether M5 can close, and it should be expected to fire —
-`spec.md` §C.4's correction roughly doubled the minimum cut. Clearing Arm A alone is not sufficient
-to proceed.
+produce. Arm B is the one that decides whether M5 can close, and at plan-phase it was expected to fire —
+`spec.md` §C.4's correction roughly doubled the minimum cut (4,841 → 10,980 tokens at the ceiling).
+Clearing Arm A alone is not sufficient to proceed. **Measured outcome: neither arm tripped** — Arm A
+projected 11,881 B against 24,576 B, Arm B a required cut of 7,806 tokens against 10,670 available,
+margin +2,864 (`.moai/reports/t82/m1-pilot.md` §4-§5). The expectation above was the plan-phase
+prior and is retained as written; the criterion is unchanged.
 
 ## §C. M2 — contract layer
 
@@ -71,6 +79,25 @@ and its template mirror `internal/template/templates/AGENTS.md`, Then each is at
 and the headroom against 32,768 B is stated for each. The ceiling binds both copies: the mirror is
 what users receive, so a mirror over the ceiling truncates on their machines regardless of the live
 file's size.
+
+**Landing size is bound by an identity, not by a point value.** The ceiling above is an upper
+bound. Arm B's clearance additionally requires that the size `AGENTS.md` actually lands at keeps
+the budget identity true:
+
+```
+required cut  ≤  available reduction
+
+required cut        = (measured always-loaded surface + |AGENTS.md| ÷ 4) − 66,371 tokens
+available reduction = projected reduction of the never-stub-split always-loaded files
+                    + any remainder recovered from files already carrying a lazy companion
+```
+
+Stated as an identity it stays binding when the inputs move. At M1's projected 11,881 B it holds
+with 2,864 tokens of margin; at the 24,576 B ceiling the required cut rises to 10,980 while the nine
+never-split files alone yield 10,670 — a 310-token shortfall that the already-split files' 68,115 B
+remainder covers at a 5 % recovery, which is why the second term of `available reduction` is part of
+the identity rather than a footnote. A point target ("land near 11,881 B") would either
+over-constrain M2 or silently stop binding the moment a figure changed; the identity does neither.
 
 **AC-AMC-010** — Given the repository, When
 

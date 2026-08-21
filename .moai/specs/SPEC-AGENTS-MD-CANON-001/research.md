@@ -43,11 +43,17 @@ Two headline figures:
 - Upper bound on the Claude-only exclusion (six most Claude-mechanism-bound files):
   **14,360 B across 38 lines** — an upper bound only; the per-clause split is M1's deliverable.
 
-**Both are line-level proxies and are labelled as such** (`spec.md` §A.4). Cross-checked error in
-both directions: 15 of 93 rule markers are prose mentions rather than obligations (overcount), and
-16 end in `:` and lead into uncounted bodies (undercount, unbounded). The consequence for the
-design is that no requirement or criterion may depend on 32,543 B being exact — M1 works on clause
-blocks and re-derives the ceiling, and the 8,192 B reserve is what absorbs the difference.
+**Both are line-level proxies and are labelled as such** (`spec.md` §A.4). At plan-phase the error
+was expected in both directions: 15 of 93 rule markers reading as prose mentions (overcount) and 16
+ending in `:` ahead of uncounted bodies (undercount, unbounded). The consequence for the design is
+that no requirement or criterion may depend on 32,543 B being exact — M1 works on clause blocks and
+re-derives the ceiling, and the 8,192 B reserve is what absorbs the difference.
+
+> **Run-phase correction (M1).** Measured, the error is almost entirely one-way: one marker over
+> and ninety-six under, for a clause-block total of **51,639 B** — the contract is 1.58x the budget
+> verbatim, not a 225 B fit, and the Claude-only split measures 35,147 B against the 14,360 B
+> line-level upper bound above. Both headline figures on this page are superseded by
+> `spec.md` §A.4 / §D.2 and are retained as the plan-phase record.
 
 ## What remains unmeasured
 

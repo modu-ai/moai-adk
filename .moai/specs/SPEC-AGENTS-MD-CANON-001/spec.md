@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENTS-MD-CANON-001
 title: "AGENTS.md canonical contract layer for Codex dual-harness"
-version: "0.3.6"
+version: "0.4.0"
 status: in-progress
 created: 2026-08-22
 updated: 2026-08-22
@@ -37,6 +37,7 @@ tier: L
 | 2026-08-22 | 0.3.4 | Plan-audit iteration 4 (FAIL 0.87, one finding) revision. E1: §C.4's required-cut figures recomputed over the enumeration `REQ-AMC-013` ¶2 requires — the contract layer is net-additive per §D.2 / `REQ-AMC-001` / `REQ-AMC-002`, so `AGENTS.md` joins the surface with nothing removed; cuts corrected 4,841 → **10,985** and 8,911 → **15,055** at the ceiling case, with the governing formula stated. E2: M1's stop condition gained **Arm B** — project the post-diet surface including the contract layer against 66,371 tokens and blocker on shortfall, so the ratchet's reachability is tested at M1 rather than discovered at M5 (`plan.md` M1, `AC-AMC-007`). E3 (optional, folded in while editing the bound): the ±1,000 tolerance makes 67,256 the strict maximum, so 66,371 is conservative by ~885 tokens — noted, not relaxed. |
 | 2026-08-22 | 0.3.5 | Dispatcher readability additions to the E1/E2 edits; no requirement or criterion changed. §C.4 now **explains** the net-additive mechanism instead of citing it — a clause authored into `AGENTS.md` does not leave the always-loaded rules (`REQ-AMC-002` forbids it, `REQ-AMC-001` independently requires the clause in `AGENTS.md`), so the surface *grows* by `\|AGENTS.md\|` and the cut is `stated cut + \|AGENTS.md\|`. Stated rather than cross-referenced because four readers in sequence made the relocation assumption from the citation alone. M1's stop condition and `AC-AMC-007` now state that returning a blocker with the measured shortfall is a **correct outcome** of the pilot, not a milestone failure, and that Arm B should be expected to fire given the roughly doubled minimum cut. |
 | 2026-08-22 | 0.3.6 | Plan-audit iteration 5 (FAIL 0.90, one finding) revision. F1: `REQ-AMC-010` and `AC-AMC-015` gained a **narrow surface-cardinality carve-out**. Fixed slots are appended unconditionally, so `REQ-AMC-008`'s fourth slot grows `len(surface)` before `AGENTS.md` is authored, breaking two hardcoded counts in `internal/config/token_budget_guard_test.go` (`wantRuleCount + 3` → `+ 4`; temp-tree `want 4` → `5`). Without the carve-out both exits failed a criterion — extend and edit the counts (fails `AC-AMC-015`) or leave the enumeration alone (fails `AC-AMC-017`). The exemption names those two assertions, covers the expected count and its comment only, and binds every behavioral expectation as before. F2 (optional): Arm B's projection is now **baselined on the integration-branch figure recorded at pre-flight** (`plan.md` M1, `AC-AMC-007`) — the two candidate trees differ by 4,070 tokens (37 % of the required cut), so a worktree-baselined projection could clear Arm B and still fail `AC-AMC-018` at M5; the M1 block quote now quotes **15,055** as the figure a reader meets at the point of use. |
+| 2026-08-22 | 0.4.0 | Run-phase measured-figure correction (M1 pilot + pre-flight). No requirement or criterion changed; REQ stays 18, AC stays 24. (a) §A.4's line-proxy error direction corrected — M1 expanded the 97 markers to clause blocks and measured **51,639 B**, not 32,543, so the proxy runs roughly **one over and ninety-six under** rather than 15 over / 16 under; the verbatim contract therefore does **not** fit 32,768 B, and classification becomes the load-bearing lever rather than an optimisation. (b) §A.1 / §C.4's integration baseline: 75,282 exists on no live branch — all four live refs and this worktree measure 71,207 (guard-exact), so the required cut at the ceiling is **10,980**, not 15,055; §C.4's two rows converge and the second is retired, with the re-measurement obligation kept and its grounds stated. (c) §D.1's derivation re-stated against the clause-block figure, and the 3,300 B document-structure line marked an **assumption** with its basis. (d) §D.2 carries M1's per-clause split (16,135 B Codex-relevant / 35,147 B Claude-only / 357 B prose) and a conservative-direction constraint on M2's classification. Stale figures (32,543 as the contract total, 75,282, 15,055) survive only in the HISTORY rows that record their correction. |
 
 ---
 
@@ -127,33 +128,42 @@ grep -h '\[HARD\]' .claude/output-styles/moai/moai.md | wc -c  # → 11898
 
 **This figure is a line-level proxy for the contract, not a measurement of it.** The commands
 count *lines bearing the marker*, which is a different quantity from *the obligations those lines
-carry*, and it errs in both directions:
+carry*. Plan-phase expected the error to run in both directions. M1 expanded every marker to its
+clause block — the marker line plus its continuation to the next clause or heading — read all 97
+blocks, and measured the direction to be almost entirely **one-way**
+(`.moai/reports/t82/m1-pilot.md` §1, §1.1):
 
-- **Overcount.** **15 of the 93 rule lines** carry `[HARD]` non-clause-initially — prose mentions
-  and navigation notes rather than obligations. A stub's "keeps every [HARD] rule and pointer" line
-  is counted as contract.
-- **Undercount, and unbounded.** A `[HARD]` lead line whose obligation continues into a list,
-  table, or fenced block contributes only its first line. **16 of the 93 end in `:`** —
-  structurally incomplete sentences whose bodies fall outside the total entirely. No bound exists
-  on how much body those 16 carry.
+```
+python3 .moai/reports/t82/clause-blocks.py > .moai/reports/t82/blocks.json
+python3 .moai/reports/t82/summarize.py                         # → 97 blocks, 51,639 B
+```
 
-So the magnitude is trustworthy and the exact value is not. Nothing in this SPEC may depend on
-32,543 B being precise: §D.1's ceiling derivation is stated as a bracket rather than a point, and
-M1's stop condition (`plan.md` §E) is required to survive the figure moving in either direction.
-M1's classification therefore operates on **clause blocks** — a marker line plus its continuation
-to the next clause or heading — not on grep lines, and re-derives the ceiling against the
-clause-block figure once it has one.
+- **Overcount — one block, 357 B.** Of the 97 markers exactly **one** carries no obligation:
+  `kanban-dispatch.md`'s detail-companion note ("the stub keeps every [HARD] rule and pointer").
+  Nine further markers sit non-clause-initially, but each of those is a genuine obligation and is
+  contract. The plan-phase estimate of 15 prose markers is superseded.
+- **Undercount — the other ninety-six, and it dominates.** The clause-block total is **51,639 B**
+  against the proxy's 32,543 B: **+58.7 %**. The worst case is `moai-constitution.md`'s six Agent
+  Core Behaviors, which carry their marker on the *heading* line — the proxy counted six headings
+  of ~50 B each where the entire body is the obligation, 5,117 B across the six.
 
-**Taken at face value against the confirmed 32,768 B budget, the proxy measures 32,543 B — it fits,
-with 225 B of headroom (0.7 %).** That is a numeric fit and a practical failure. Three things consume
-headroom the raw line total does not account for: the document's own structure (headings, section
-framing, the prose that makes clauses navigable), a user's global `~/.codex/AGENTS.md` which joins
-the same chain and is consumed **before** the project document (§D.3), and ordinary future rule
-growth. A contract sized at 99.3 % of budget would begin silently truncating on its first edit.
+**So the corrected error direction is roughly one over and ninety-six under**, not the 15-over /
+16-under bracket this section carried at plan-phase. The magnitude of the proxy is trustworthy and
+its value is not: nothing in this SPEC may depend on 32,543 B being precise. §D.1's ceiling
+derivation was stated as a bracket rather than a point for exactly this reason, and M1's stop
+condition (`plan.md` §E) was required to survive the figure moving in either direction — which it
+did, by 19,096 B upward. §D.1 re-states the derivation against the clause-block figure.
 
-So the work is not "make it fit" — it already does, barely. The work is **to establish real
-headroom**, and §C REQ-AMC-004 sets the contract layer's own ceiling accordingly rather than sizing
-it to fill the budget.
+**Measured as clause blocks, the verbatim contract does not fit the budget.** The proxy read as a
+225 B fit against the confirmed 32,768 B, and that fit was an artifact of the undercount: 51,639 B
+is **1.58× the entire budget**, before the document's own structure, before a user's global
+`~/.codex/AGENTS.md` (consumed *first*, §D.3), and before any future rule growth.
+
+So the work was never "make it fit" — it does not fit — and **classification is the load-bearing
+lever rather than an optimisation**: the Codex-relevant subset measures **16,135 B across 35
+blocks** (§D.2), and only after that cut does a contract with real headroom exist at all.
+§C REQ-AMC-004 sets the contract layer's own ceiling accordingly rather than sizing it to fill the
+budget.
 
 ### A.5 Relationship to SPEC-ALWAYS-LOADED-DIET-001
 
@@ -274,7 +284,9 @@ second row — 75,282 / 81,426 / 15,055 — labelled "the integration state that
 raise". That state exists on **no live branch**. Re-measured 2026-08-22 by
 `.moai/reports/t82/measure-surface.py` against `origin/main`, `origin/release/v3.1.1`,
 `origin/release/v3.1.2`, `origin/release/v3.1.3` and this worktree: all five measure 14 rules /
-284,850 B / 71,212 (`total/4`), i.e. 71,207 by the guard's per-file arithmetic (§A.1). The 75,282
+284,850 B / 71,212 (`total/4`), i.e. 71,207 by the guard's per-file arithmetic (§A.1) — which is why
+the cut above reads 10,980 where `preflight.md` reads 10,985: one cut computed from the guard's
+per-file floors, the other from the total, 5 tokens apart and nothing downstream turning on it. The 75,282
 reading was a transient `release/v3.1.1` integration state that the subsequent always-loaded diet
 (the closed `SPEC-ALWAYS-LOADED-DIET-001`) removed. Evidence: `.moai/reports/t82/preflight.md`.
 
@@ -334,9 +346,12 @@ ratio chosen to reach a predetermined answer.
 **REQ-AMC-014** (Event-detected) — When the ratcheted constant is proposed, the achieved figure
 shall be a `go test -v` output measured on the **integration branch**, defined as the
 release/batch branch this card merges into (`release/vX.Y.Z`), which carries the merged state of
-the sibling cards — not a card worktree measured in isolation. The two differ: this worktree
-measures ≈ 71,212 tokens, already under 75,000, while the release integration state that forced the
-76,000 raise measured 75,282. The evidence shall identify the measured tree by recording
+the sibling cards — not a card worktree measured in isolation. The two can differ, and the gap is not academic: the
+`release/v3.1.1` integration state that forced the 76,000 raise measured 75,282 tokens while each
+constituent card sat within budget on its own. That divergence is **historical, not current** —
+re-measured at run-phase pre-flight, this worktree and all four live refs read the same 71,207
+(§C.4), so no live tree exhibits it today. It returns the moment a sibling card lands on the v3.2
+integration branch, which is why the tree must be named rather than assumed. The evidence shall identify the measured tree by recording
 `git rev-parse --abbrev-ref HEAD` and `git rev-list --count main..HEAD` alongside the figure.
 
 ### C.5 Distribution and disclosure
@@ -365,23 +380,43 @@ Measured grounds: §D.8.
 The dispatcher's instruction is that 32,768 B is a **budget, not a target**. The ceiling is
 therefore derived from what the contract requires, then checked for headroom:
 
+The plan-phase derivation started from the line proxy and was explicitly a **bracket, not a
+point**. M1 re-derived it against the clause-block measurement, as `AC-AMC-006` requires. The
+re-derived steps (`.moai/reports/t82/project.py`, `m1-pilot.md` §4):
+
 | Step | Bytes | Basis |
 |---|---:|---|
-| `[HARD]` line proxy (rules + `CLAUDE.md`) | 32,543 ± | line-level proxy, both error directions disclosed in §A.4 |
-| Less: clauses binding Claude-only mechanisms | −0 … −14,360 | measured upper bound (§D.2); the real figure is M1's deliverable |
-| Plus: document structure (headings, framing prose) | + unmeasured | M2 |
-| **Proposed ceiling** | **24,576** | 75 % of budget |
+| clause-block `[HARD]` total (rules + `CLAUDE.md`) | 51,639 | M1 measurement (§A.4) — supersedes the 32,543 line proxy |
+| Less: clauses binding Claude-only mechanisms (61 blocks) | −35,147 | M1 per-clause classification (§D.2) |
+| Less: the one non-obligation prose marker | −357 | §A.4 |
+| = Codex-relevant contract, verbatim (35 blocks) | 16,135 | |
+| × measured compression ratio 0.5318 | 8,581 | 11-clause pilot (`AC-AMC-005`) |
+| Plus: document structure (headings, framing prose) | +3,300 | **assumption, not a measurement** — see below |
+| = projected `AGENTS.md` | 11,881 | M1 projection |
+| **Ceiling (REQ-AMC-004, unchanged)** | **24,576** | 75 % of budget |
 | **Required headroom** | **≥ 8,192** | absorbs the global-layer slice (§D.3), structure, and future growth |
 
-24,576 B sits above the pessimistic case (no Claude-only exclusion at all, so condensation carries
-the whole 32,543 → 24,576 reduction — a 24.5 % trim, which §D.4's precedent suggests is
-comfortable) and well above the optimistic case (18,183 B before any condensation). If M1's
-measurement shows the contract cannot reach 24,576 B, the ceiling is renegotiated with the number
-in hand rather than the SPEC quietly expanding to fill the budget.
+**The 3,300 B structure line is an assumption and is marked as one wherever it appears.** Its
+basis: roughly 14 sections at ~190 B each (a heading line ~40 B plus one or two sentences of
+navigational prose ~150 B), plus ~600 B of front matter — title, the self-sufficiency declaration,
+and the global `~/.codex/AGENTS.md` warning pointer. The clause-to-origin trace table is a
+`progress.md` deliverable rather than part of `AGENTS.md`, so it is not counted here. It becomes
+**measurable at M2**, when the document has an actual skeleton; until then no criterion may treat
+it as measured. Doubling it leaves Arm A intact (6,600 + 8,581 = 15,181 B) and raises Arm B's
+required cut by 825 tokens.
 
-Because the starting figure is a proxy (§A.4), this derivation is a **bracket, not a point**. M1
-re-derives it against the clause-block measurement; the 8,192 B reserve is what absorbs the proxy's
-error, and trading against that reserve is a decision to state, not a slack to spend silently.
+The plan-phase bracket ran 18,183 B (full Claude-only exclusion) to 32,543 B (none); the
+clause-block measurement moves both ends. The pessimistic case — no classification at all — is now
+51,639 B verbatim, or 27,462 B even after the measured compression ratio, which clears neither the
+ceiling nor a usable margin against the 32,768 B budget: **without classification the contract does
+not fit.** With it the projection lands at 11,881 B, 48 % of the ceiling.
+
+**The ceiling stays at 24,576 B.** The projection leaves room to tighten it, but tightening is a
+SPEC change rather than an M1 finding, and the projection's own inputs still carry error — the
+3,300 B assumption above, and the classification judgement §D.2 describes. The 8,192 B reserve is
+what absorbs both; trading against that reserve is a decision to state, not slack to spend
+silently. If a later measurement shows the contract cannot reach 24,576 B, the ceiling is
+renegotiated with the number in hand rather than the SPEC quietly expanding to fill the budget.
 
 ### D.2 The Claude-only exclusion lever
 
@@ -392,9 +427,29 @@ binding surface: they remain always-loaded on the Claude side.
 
 Measured upper bound — the `[HARD]` lines in the six most Claude-mechanism-bound files
 (`askuser-protocol`, `session-handoff`, `cache-aware-execution`, `context-window-management`,
-`cross-session-messaging`, `skill-routing`): **14,360 B across 38 lines**. This is an upper bound,
+`cross-session-messaging`, `skill-routing`): **14,360 B across 38 lines**. That was an upper bound,
 not the answer: some clauses inside those files state harness-generic principles and must stay.
-Producing the per-clause split is M1's deliverable, alongside the compression ratio.
+
+**M1 produced the per-clause split, and file membership turned out to be the wrong unit.**
+Measured per clause block (`.moai/reports/t82/classification.tsv`, 97 rows, zero unclassified):
+Codex-relevant **16,135 B / 35 blocks**, Claude-only **35,147 B / 61 blocks**, non-obligation prose
+357 B / 1 block. Inside the six named files the file proxy nearly held — 21,504 B of their
+22,179 B of clause blocks is Claude-only (97.0 %) — but **38.8 % of all Claude-only bytes
+(13,643 B) lie outside those six**, most of it in `kanban-dispatch.md`, where Claude-session
+mechanisms (lead/lane dispatch, the `/clear` handoff) and harness-generic discipline (worktree
+rules, verification load, reading evidence rather than trusting it) sit in one file. A file-level
+split would have been wrong in both directions there.
+
+**Classification is now the largest single lever (§D.1), so its error direction is a design
+constraint on M2.** The dangerous error is classifying a Codex-binding clause as Claude-only: the
+clause then never reaches `AGENTS.md`, and Codex loses the obligation with no signal — the same
+silent-loss shape as the truncation this SPEC exists to prevent, and the mirror image of the
+false-diet defect §C.4 corrects. The reverse error is cheap: a Claude-only clause carried into
+`AGENTS.md` costs bytes and nothing else. **When in doubt, classify to the Codex side.** M1's
+sensitivity analysis is what makes that affordable — the projection clears the ceiling even at zero
+compression (16,135 + the assumed 3,300 B of structure = 19,435 B), and the ceiling would be reached only if the
+Codex-relevant volume were 40,004 B, **2.5×** the measured amount. M1 already applied this
+direction to seven boundary clauses (`m1-pilot.md` §2.2); M2 continues it.
 
 ### D.3 Global `~/.codex/AGENTS.md` — decision: warn in shipped docs
 
@@ -531,6 +586,9 @@ diet**:
 - **Whether a second pass is needed is decided by M1's result**, not assumed now. This SPEC's
   ratchet target must be reachable without a second output-style pass; if M1's measurement shows it
   is not, that is a blocker to surface, not a licence to widen scope mid-run.
+  **M1 answered: no second pass is required.** Both stop-condition arms clear without touching this
+  file — Arm A at 11,881 B against the 24,576 B ceiling, Arm B with 2,864 tokens of margin
+  (`.moai/reports/t82/m1-pilot.md` § verdict). The condition is discharged rather than deferred.
 
 ### E.3 Exclusions
 

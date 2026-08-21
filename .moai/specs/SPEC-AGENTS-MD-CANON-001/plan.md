@@ -12,23 +12,30 @@ changes the plan's shape in three ways:
 - The nested-`AGENTS.md` milestone is **gone**. Nested documents are unloaded at repo-root
   invocation and share rather than expand the budget, so Option A — a single self-sufficient root
   contract — is the approved design.
-- The ceiling is **24,576 B**, not 8 KiB. The verbatim contract measures 32,543 B against a
-  confirmed 32,768 B budget: it fits with 0.7 % headroom, which is a numeric fit and a practical
-  failure. The work is establishing headroom, not achieving a fit.
+- The ceiling is **24,576 B**, not 8 KiB. Measured as clause blocks the verbatim contract is
+  51,639 B against a confirmed 32,768 B budget — **1.58x the budget**, so it does not fit at all;
+  the 32,543 B line proxy that read as a 0.7 % fit was undercounting (`spec.md` §A.4). The work is
+  classification plus condensation, and then establishing headroom.
 - The CI byte guard is **mandatory and blocking**, because truncation is measured silent.
 
 ## §B. Known issues entering the plan
 
 1. **The card's baseline was stale** — it undercounts the surface by ~34 % and omits the largest
    always-loaded file.
-2. **The budget ratchet is branch-sensitive.** This worktree measures ≈ 71,212 tokens, already
-   under 75,000; the release integration state that forced the raise measured 75,282. A ratchet
-   proposed from the worktree figure alone would be meaningless.
-3. **The Claude-only exclusion is bounded but not settled.** 14,360 B is an upper bound across six
-   files; the per-clause split is M1's job and determines how much condensation M2 must carry.
-4. **The contract figure is a line-level proxy, not a measurement.** It overcounts (15 of 93
-   markers are prose) and undercounts without bound (16 lead into uncounted bodies). M1 works on
-   clause blocks and re-derives the ceiling; nothing downstream may assume 32,543 B is exact.
+2. **The budget ratchet is branch-sensitive.** The `release/v3.1.1` integration state that forced
+   the raise measured 75,282 tokens while each constituent card sat within budget. Re-measured at
+   run-phase pre-flight, that divergence is not present today — this worktree and all four live
+   refs read 71,207 — but it returns as soon as a sibling card lands on the v3.2 integration
+   branch, so a ratchet proposed from a worktree figure alone is still meaningless.
+3. **The Claude-only exclusion was bounded but not settled — M1 settled it.** The 14,360 B
+   six-file figure was a line-level upper bound; the per-clause split measures **16,135 B
+   Codex-relevant / 35,147 B Claude-only**, with 38.8 % of the Claude-only bytes falling outside
+   those six files (`spec.md` §D.2).
+4. **The contract figure was a line-level proxy, not a measurement.** M1's clause-block expansion
+   measured **51,639 B** against the proxy's 32,543 — the proxy runs roughly one over and
+   ninety-six under, not the 15-over / 16-under bracket assumed here (`spec.md` §A.4). Nothing
+   downstream may assume 32,543 B is exact; the ceiling is re-derived against the clause-block
+   figure in `spec.md` §D.1.
 5. **The ratchet target is unreachable until the guard prints its figure.** The existing test emits
    the token total only on failure — M5's first task is the `t.Logf`, before any ratchet criterion
    can be executed at all.
@@ -65,18 +72,24 @@ records.
 > taken while `AGENTS.md` is unenumerated is not merely early, it is wrong in a way that reads as
 > success, and it does not become right when the guard is fixed later.
 
-**Why first.** Two unmeasured quantities price everything downstream: how much of the 32,543 B
-contract is Claude-only (upper bound 14,360 B), and how far the remainder compresses without losing
-its obligation. Both are settled here, before any file moves.
+**Why first.** Two unmeasured quantities price everything downstream: how much of the contract is
+Claude-only, and how far the remainder compresses without losing its obligation. Both are settled
+here, before any file moves. **Measured:** the clause-block contract is 51,639 B, of which
+16,135 B is Codex-relevant; the pilot compression ratio is 0.5318.
 
 - **Expand markers to clause blocks first.** The 97 figure is a *line* count and the bytes behind
-  it are a proxy that errs in both directions (`spec.md` §A.4: 15 of 93 rule markers are prose
-  mentions; 16 end in `:` and lead into uncounted bodies). Expand each marker to its clause block —
+  it are a proxy that undercounts heavily (`spec.md` §A.4: measured, one marker over and
+  ninety-six under; the clause-block total is 51,639 B against the proxy's 32,543). Expand each
+  marker to its clause block —
   the marker line plus its continuation to the next clause or heading — and measure that. The
   clause-block figure, not the grep figure, is what the ceiling is re-derived against.
 - **Classify** every clause block as Codex-relevant or Claude-mechanism-only. The six-file
-  14,360 B figure is an upper bound, not the answer — clauses inside those files that state
-  harness-generic principles stay in the contract. Deliver the per-block table with bytes.
+  14,360 B figure is a line-level upper bound, not the answer — clauses inside those files that
+  state harness-generic principles stay in the contract, and the measured split puts 38.8 % of the
+  Claude-only bytes outside those six files. Deliver the per-block table with bytes. **When a block
+  is genuinely ambiguous, classify it to the Codex side** — a Codex-binding clause misfiled as
+  Claude-only leaves the contract silently, while the reverse error costs only bytes
+  (`spec.md` §D.2).
 - **Compress** a pilot set at both ends of the distribution — `kanban-dispatch.md` (23 `[HARD]`
   lines, 25,915 B) and `native-idiom-and-register.md` (2 lines, 4,967 B). Rewrite each clause in
   imperative form preserving subject, modality, and scope; measure before/after per clause.
@@ -88,12 +101,19 @@ its obligation. Both are settled here, before any file moves.
 > **Returning a blocker here is a correct outcome, not a milestone failure.** M1 exists to find out
 > whether the target is reachable; "it is not, and here is the shortfall in measured units" is the
 > answer it was built to produce, and it is produced at the cheapest possible moment — before M2's
-> irreversible authoring. Arm B in particular should be **expected** to fire: `spec.md` §C.4's
-> correction roughly doubled the minimum cut, and on the tree the ratchet is actually measured
-> against — the integration branch — it is **15,055 tokens** (4,841 → 15,055; this worktree's
-> 10,985 is the smaller figure and is *not* what Arm B baselines on). The diet is materially larger
-> than the card assumed. An M1 that halts with a number is doing its job; an M1 that
-> proceeds past a shortfall it did not measure is the failure this milestone prevents.
+> irreversible authoring. Arm B in particular was **expected** to fire: `spec.md` §C.4's correction
+> roughly doubled the minimum cut, to **10,980 tokens** at `AGENTS.md`'s ceiling (4,841 → 10,980).
+> Re-measured at pre-flight, the integration branch and this worktree currently read the same
+> 71,207, so the two baselines coincide today — a fact about today's tree, not a licence to baseline
+> on the worktree (`spec.md` §C.4). The diet is materially larger than the card assumed. An M1 that
+> halts with a number is doing its job; an M1 that proceeds past a shortfall it did not measure is
+> the failure this milestone prevents.
+>
+> **Measured outcome: neither arm tripped.** Arm A projected 11,881 B against 24,576 B; Arm B a
+> required cut of 7,806 tokens against 10,670 available, margin +2,864 — conditional on
+> `AGENTS.md` landing near the projection rather than at the ceiling
+> (`.moai/reports/t82/m1-pilot.md`; the binding form of that condition is stated under
+> `AC-AMC-009`).
 
 *Arm A — contract fits its ceiling.* If the contract projection exceeds **24,576 B**, do not
 proceed to M2. Return a blocker naming the shortfall in bytes and the two levers — deeper
@@ -104,9 +124,11 @@ visible). Do not silently expand toward 32,768 B.
 *Arm B — the diet reaches the ratchet ceiling.* Project the **post-diet always-loaded surface,
 including the contract layer**, against **66,371 tokens** (`spec.md` §C.4). **Baseline the
 projection on the integration-branch figure recorded at pre-flight (§C), not on this worktree's.**
-The two differ by 4,070 tokens (71,212 vs 75,282) — a 37 % difference in the required cut — so a
-projection baselined on the worktree can clear Arm B and still fail `AC-AMC-018` at M5, which is
-the failure Arm B exists to prevent. If the projection exceeds the ceiling, return a blocker naming
+The two can differ by 4,070 tokens (71,212 worktree vs 75,282 at the integration state that forced
+the 76,000 raise) — a 37 % difference in the required cut — so a projection baselined on the
+worktree can clear Arm B and still fail `AC-AMC-018` at M5, which is the failure Arm B exists to
+prevent. Today the two coincide at 71,207 (pre-flight); the requirement binds on the mechanism, not
+on today's reading. If the projection exceeds the ceiling, return a blocker naming
 the shortfall in tokens and the same two levers — deeper relocation of R3 material into skills with
 its navigability cost, or renegotiating the scope with what is being traded stated explicitly. Do
 not proceed to M2 on the assumption that M4 will find the difference.
@@ -221,7 +243,7 @@ mistake here is a Claude-side regression, which REQ-AMC-010 forbids.
 | Risk | Effect | Mitigation |
 |---|---|---|
 | Contract will not reach 24,576 B (M1) | Ceiling wrong or condensation insufficient | M1 stop condition halts before any file moves; the trade against the headroom reserve is made explicitly |
-| The clause-block figure lands far from the 32,543 B proxy | Ceiling calibrated to the wrong number | The ceiling is a bracket, not a point (`spec.md` §D.1); M1 re-derives it, and the 8,192 B reserve absorbs the proxy's error |
+| The clause-block figure lands far from the 32,543 B proxy — **it did: 51,639 B, +58.7 %** | Ceiling calibrated to the wrong number | The ceiling is a bracket, not a point (`spec.md` §D.1); M1 re-derived it against the clause-block figure and the ceiling held at 24,576 B, with the 8,192 B reserve untouched |
 | Ratchet appears satisfied without ratcheting | Constant sits at 75,000 while the surface lands far below | AC-AMC-019 checks the constant against `achieved × (1 + stated ratio)` — the ceiling check alone cannot catch this |
 | Over-aggressive condensation changes an obligation | Silent rule change — the worst outcome here | REQ-AMC-003 + AC-AMC-004: subject/modality/scope diffed per clause; failures reverted, not shipped |
 | Ratchet unreachable without the output style | Scope pressure mid-run | `spec.md` §E.2 makes this a blocker to surface, not a scope widening |
