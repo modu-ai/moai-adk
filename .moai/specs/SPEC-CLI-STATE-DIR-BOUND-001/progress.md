@@ -276,7 +276,7 @@ m1_to_mN_commit_strategy: per-milestone
 
 ```yaml
 sync_complete_at: 2026-08-22
-sync_commit_sha: pending-backfill-SPEC-CLI-STATE-DIR-BOUND-001
+sync_commit_sha: 5b11462e4
 sync_status: complete
 b12_self_test_a: pass    # grep -c 'SPEC-CLI-STATE-DIR-BOUND-001' CHANGELOG.md → 0 (no prior entry)
 b12_self_test_b: pass    # AC-ID census of acceptance.md → 15; §E.2 matrix → 15/15
