@@ -109,6 +109,12 @@ func resolveTypecheckStep(base *gateStep, dir, override string) (gateStep, strin
 // it as coverage would rebuild the very blind spot this axis closes. A parse
 // failure answers false: refusing to run on an unreadable config would be a
 // worse failure mode than attempting the check.
+//
+// tsconfig.json is JSONC, not JSON — TypeScript accepts comments and trailing
+// commas, and real configs use them. encoding/json rejects both, and because a
+// parse failure answers false, an unstripped comment would send a solution
+// config down the "run tsc" path and straight back into the vacuous pass this
+// function exists to prevent. Comments are stripped first.
 func isSolutionStyleTsconfig(path string) bool {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -120,7 +126,7 @@ func isSolutionStyleTsconfig(path string) bool {
 		Include    *[]string         `json:"include"`
 		References []json.RawMessage `json:"references"`
 	}
-	if err := json.Unmarshal(data, &cfg); err != nil {
+	if err := json.Unmarshal(stripJSONC(data), &cfg); err != nil {
 		return false
 	}
 

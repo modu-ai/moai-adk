@@ -26,6 +26,17 @@ func writeFixture(t *testing.T, files map[string]string) string {
 	return dir
 }
 
+// Cross-platform stand-ins for the `true` / `false` utilities.
+//
+// Windows ships neither, and the typecheck step is optional, so a LookPath miss
+// SKIPS the step rather than failing it — a Windows run would have seen the gate
+// pass and failed the blocking assertion for the wrong reason. `go` is present
+// wherever these tests run, so its own exit codes carry the signal instead.
+const (
+	cmdExitZero    = "go version"
+	cmdExitNonZero = "go t172-not-a-subcommand"
+)
+
 func typecheckConfig(dir string) *GateConfig {
 	cfg := DefaultGateConfig()
 	cfg.ProjectDir = dir
@@ -183,7 +194,7 @@ func TestGateBlocksOnTypecheckFailure(t *testing.T) {
 
 	dir := writeFixture(t, map[string]string{"go.mod": "module x\n"})
 	cfg := typecheckConfig(dir)
-	cfg.TypecheckCommand = "false" // exits 1
+	cfg.TypecheckCommand = cmdExitNonZero
 	cfg.SkipTests = true
 
 	passed, out := NewQualityGate(cfg).Run(context.Background())
@@ -202,7 +213,7 @@ func TestGatePassesWhenTypecheckSucceeds(t *testing.T) {
 
 	dir := writeFixture(t, map[string]string{"go.mod": "module x\n"})
 	cfg := typecheckConfig(dir)
-	cfg.TypecheckCommand = "true" // exits 0
+	cfg.TypecheckCommand = cmdExitZero
 
 	passed, out := NewQualityGate(cfg).Run(context.Background())
 	if !passed {
@@ -217,7 +228,7 @@ func TestTypecheckDisabledByConfig(t *testing.T) {
 	dir := writeFixture(t, map[string]string{"go.mod": "module x\n"})
 	cfg := typecheckConfig(dir)
 	cfg.TypecheckEnabled = false
-	cfg.TypecheckCommand = "false"
+	cfg.TypecheckCommand = cmdExitNonZero
 
 	if passed, out := NewQualityGate(cfg).Run(context.Background()); !passed {
 		t.Fatalf("disabled typecheck still blocked the gate: %q", out)
@@ -231,7 +242,7 @@ func TestTypecheckDisabledByDisabledSteps(t *testing.T) {
 
 	dir := writeFixture(t, map[string]string{"go.mod": "module x\n"})
 	cfg := typecheckConfig(dir)
-	cfg.TypecheckCommand = "false"
+	cfg.TypecheckCommand = cmdExitNonZero
 	cfg.DisabledSteps = map[string]bool{typecheckStepName: false}
 
 	if passed, out := NewQualityGate(cfg).Run(context.Background()); !passed {
