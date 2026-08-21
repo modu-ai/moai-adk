@@ -26,15 +26,24 @@ changes the plan's shape in three ways:
    proposed from the worktree figure alone would be meaningless.
 3. **The Claude-only exclusion is bounded but not settled.** 14,360 B is an upper bound across six
    files; the per-clause split is M1's job and determines how much condensation M2 must carry.
+4. **The contract figure is a line-level proxy, not a measurement.** It overcounts (15 of 93
+   markers are prose) and undercounts without bound (16 lead into uncounted bodies). M1 works on
+   clause blocks and re-derives the ceiling; nothing downstream may assume 32,543 B is exact.
+5. **The ratchet target is unreachable until the guard prints its figure.** The existing test emits
+   the token total only on failure — M5's first task is the `t.Logf`, before any ratchet criterion
+   can be executed at all.
 
 ## §C. Pre-flight (run-phase entry gate)
 
-- [ ] `go test ./internal/config/ -run 'Budget|AlwaysLoaded'` green on the entry tree.
-- [ ] Integration-branch surface measured, so the ratchet has a real baseline.
-- [ ] `.moai/reports/t82/codex-probe.md` present and its fixture reproducible (the three commands
-      in its § 검증 재현 block).
+- [ ] `go test -v ./internal/config/ -run 'Budget|AlwaysLoaded'` green on the entry tree, with the
+      logged token figure recorded as the pre-diet baseline (requires M5's `t.Logf`, which is
+      therefore the first code change of the run phase).
+- [ ] Integration-branch surface measured (`release/vX.Y.Z`, branch + ahead-count recorded), so the
+      ratchet has a real baseline rather than a worktree-local one.
+- [ ] `.moai/reports/t82/probe-fixture.sh` executes and reproduces the recorded runs.
 
-No premise gate remains: all three entry premises are measured.
+No premise gate remains: all four entry premises (P1-P4) are discharged by measurement
+(`spec.md` §A.2).
 
 ## §D. Constraints
 
@@ -52,9 +61,14 @@ records.
 contract is Claude-only (upper bound 14,360 B), and how far the remainder compresses without losing
 its obligation. Both are settled here, before any file moves.
 
-- **Classify** every one of the 97 `[HARD]` clauses as Codex-relevant or Claude-mechanism-only.
-  The six-file 14,360 B figure is an upper bound, not the answer — clauses inside those files that
-  state harness-generic principles stay in the contract. Deliver the per-clause table with bytes.
+- **Expand markers to clause blocks first.** The 97 figure is a *line* count and the bytes behind
+  it are a proxy that errs in both directions (`spec.md` §A.4: 15 of 93 rule markers are prose
+  mentions; 16 end in `:` and lead into uncounted bodies). Expand each marker to its clause block —
+  the marker line plus its continuation to the next clause or heading — and measure that. The
+  clause-block figure, not the grep figure, is what the ceiling is re-derived against.
+- **Classify** every clause block as Codex-relevant or Claude-mechanism-only. The six-file
+  14,360 B figure is an upper bound, not the answer — clauses inside those files that state
+  harness-generic principles stay in the contract. Deliver the per-block table with bytes.
 - **Compress** a pilot set at both ends of the distribution — `kanban-dispatch.md` (23 `[HARD]`
   lines, 25,915 B) and `native-idiom-and-register.md` (2 lines, 4,967 B). Rewrite each clause in
   imperative form preserving subject, modality, and scope; measure before/after per clause.
@@ -93,6 +107,15 @@ mistake here is a Claude-side regression, which REQ-AMC-010 forbids.
 
 **Why late.** Mechanical once M1-M3 have settled what may move.
 
+> **Trust-notice obligation recorded for t88 (the wiring generator).** Emitting a project-scope
+> `project_doc_max_bytes` from `moai init --agent codex` is valid, but **emitting it alone is not
+> enough**: the value does nothing until the user registers the project
+> `trust_level = "trusted"`, and an unregistered project's config file is ignored **silently**
+> (`spec.md` §D.8). So the generator must either tell the user trust registration is required, or
+> `moai doctor` must actively check for "project config present, trust unregistered, cap not
+> applied". Because the failure is silent, that check is the only detection path there is. This
+> SPEC records the grounds; the obligation itself is t88's to carry.
+
 - Move rationale, procedure, worked examples, incident records, and long cross-reference tables out
   of the always-loaded rules into skills or lazy companions, following the stub + lazy-companion
   pattern inherited from `SPEC-ALWAYS-LOADED-DIET-001`.
@@ -101,14 +124,24 @@ mistake here is a Claude-side regression, which REQ-AMC-010 forbids.
 
 ### M5 — CI byte guard and budget ratchet (Priority: Medium)
 
+- **First, make the existing guard observable.** `TestAlwaysLoadedTokenBudget` emits the token
+  total only via `t.Errorf` on failure, so a passing run prints `ok …` and nothing else — which
+  makes every "quote the achieved figure" criterion unsatisfiable. Add, ahead of the over-budget
+  check:
+  `t.Logf("always-loaded surface = %d tokens (budget %d, headroom %d)", total, AlwaysLoadedTokenBudget, AlwaysLoadedTokenBudget-total)`
+  so a passing `go test -v` emits the figure. Every ratchet criterion reads that line.
 - Extend `internal/config/token_budget_guard.go` with a Codex-cap byte guard reusing
-  `alwaysLoadedSurface()`'s enumeration (REQ-AMC-008) — no second measurement path.
-- The guard is **blocking, not advisory** (REQ-AMC-009). Truncation is measured silent, so this is
-  the only signal that will ever fire.
+  `alwaysLoadedSurface()`'s enumeration (REQ-AMC-008) — no second measurement path. It binds both
+  the live root `AGENTS.md` and its template mirror.
+- The guard **fails the build**, it does not warn (REQ-AMC-009, rationale `spec.md` §D.7).
+  Truncation is measured silent, so this is the only signal that will ever fire.
 - Failure output names the measured byte figure and the offending file.
 - Lower `AlwaysLoadedTokenBudget` to the achieved figure plus a stated headroom ratio, ≤ 75,000,
-  measured on the integration branch (REQ-AMC-014). Update the constant's comment to record the
-  ratchet and retire the "pending a separate card" note.
+  measured on the **integration branch** — the `release/vX.Y.Z` branch this card merges into,
+  carrying the merged sibling state (REQ-AMC-014). Record `git rev-parse --abbrev-ref HEAD` and
+  `git rev-list --count main..HEAD` with the figure so the tree is identified, not asserted.
+- Update the constant's comment to record the ratchet, state the headroom ratio (AC-AMC-019 checks
+  the constant against `achieved × (1 + ratio)`), and retire the "pending a separate card" note.
 
 ### M6 — Template mirror, neutrality, and the global-layer warning (Priority: Medium)
 
@@ -136,10 +169,12 @@ mistake here is a Claude-side regression, which REQ-AMC-010 forbids.
 | Risk | Effect | Mitigation |
 |---|---|---|
 | Contract will not reach 24,576 B (M1) | Ceiling wrong or condensation insufficient | M1 stop condition halts before any file moves; the trade against the headroom reserve is made explicitly |
+| The clause-block figure lands far from the 32,543 B proxy | Ceiling calibrated to the wrong number | The ceiling is a bracket, not a point (`spec.md` §D.1); M1 re-derives it, and the 8,192 B reserve absorbs the proxy's error |
+| Ratchet appears satisfied without ratcheting | Constant sits at 75,000 while the surface lands far below | AC-AMC-019 checks the constant against `achieved × (1 + stated ratio)` — the ceiling check alone cannot catch this |
 | Over-aggressive condensation changes an obligation | Silent rule change — the worst outcome here | REQ-AMC-003 + AC-AMC-004: subject/modality/scope diffed per clause; failures reverted, not shipped |
 | Ratchet unreachable without the output style | Scope pressure mid-run | `spec.md` §E.2 makes this a blocker to surface, not a scope widening |
 | A user's global `~/.codex/AGENTS.md` silently eats the budget | Project rules truncated with no signal | Cannot be guarded mechanically (file is outside the repo); documented warning is the chosen defence (`spec.md` §D.3) |
-| Upstream default differs on another OS or codex version | Ceiling calibrated to a stale figure | Recorded as residual risk (`spec.md` §D.5); re-probe on a codex upgrade |
+| Upstream default differs on another OS or codex version | Ceiling calibrated to a stale figure | Recorded as residual risk (`spec.md` §D.9); re-probe on a codex upgrade |
 | Template mirror drift | Distributed users get a stale contract | M6 mirror + `make build` + CI neutrality guard |
 
 ## §H. Cross-references

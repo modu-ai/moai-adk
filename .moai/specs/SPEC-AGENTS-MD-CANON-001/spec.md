@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENTS-MD-CANON-001
 title: "AGENTS.md canonical contract layer for Codex dual-harness"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-08-22
 updated: 2026-08-22
@@ -22,6 +22,7 @@ tier: L
 |---|---|---|
 | 2026-08-22 | 0.1.0 | Initial draft (plan-phase). Card t82, milestone M2 of the Codex dual-harness epic. |
 | 2026-08-22 | 0.2.0 | Rebuilt on `.moai/reports/t82/codex-probe.md`. Three premises measured: 32,768 B default confirmed, nested merge is root→CWD-path-only, truncation is silent. Nested-AGENTS.md leg dropped (Option A approved by dispatcher). Contract ceiling redefined against 32,768 B. |
+| 2026-08-22 | 0.3.0 | Plan-audit iteration 1 (FAIL 0.69) revision. Enforceability fixes D1-D9: byte-guard criteria made executable, `AGENTS.md` singleton check moved to tracked files, integration branch given a discriminator, cap-raise rationale corrected to the measured position (P4), line-grep proxy disclosed, nested-`CLAUDE.md` asymmetry stated, `REQ-AMC-006` recast onto this SPEC. Parked edits folded in: output-style §8 lineage (t131 / t142), P4 discharged, M4 trust notice. |
 
 ---
 
@@ -62,6 +63,12 @@ is observation, not documentation trust.
 | 4 | The chain **shares one budget, root-first** | with a 42,066 B root, both nested docs vanish entirely — not truncated, never loaded |
 | 5 | Outside a git repo, only the CWD's own doc loads | project-root resolution is git-based |
 | 6 | Truncation is **silent** | stderr 0 bytes, exit 0 at the default log level; the `project doc exceeds remaining budget; truncating` string is a tracing event that never reaches the user |
+| 7 | A project-scope `<repo>/.codex/config.toml` **does** take effect — and beats the user value — but **only** where the project is registered `trust_level = "trusted"` in the user config | `.moai/reports/t82/codex-probe-p4.md`, four-way differential toggling only the trust entry: effective cap 4,096 → 8,192 (rows 3 → 4). Untrusted, the project file is **silently ignored** (stderr 0 bytes on all four runs) |
+
+All four entry premises are **discharged by measurement**. P1-P3 by `codex-probe.md`, P4 by
+`codex-probe-p4.md`. No premise gate remains on run-phase entry; the residual items are named in
+§D.9. The probe fixtures are rebuildable from `.moai/reports/t82/probe-fixture.sh`, which
+reconstructs the tree and prints each recorded run with its expected result.
 
 ### A.3 What finding 3 overturns
 
@@ -90,11 +97,30 @@ grep -h '\[HARD\]' .claude/output-styles/moai/moai.md | wc -c  # → 11898
 |---|---:|---:|
 | `[HARD]` lines across the 14 always-loaded rules | 93 | 30,353 |
 | `[HARD]` lines in `CLAUDE.md` | 4 | 2,190 |
-| **subtotal — verbatim Codex-relevant contract** | **97** | **32,543** |
+| **subtotal — Codex-relevant contract, line-proxy** | **97** | **32,543** |
 | `[HARD]` lines in `.claude/output-styles/moai/moai.md` (Claude render surface, §E.2) | 75 | 11,898 |
 
-**Against the confirmed 32,768 B budget, the verbatim contract measures 32,543 B — it fits, with
-225 B of headroom (0.7 %).** That is a numeric fit and a practical failure. Three things consume
+**This figure is a line-level proxy for the contract, not a measurement of it.** The commands
+count *lines bearing the marker*, which is a different quantity from *the obligations those lines
+carry*, and it errs in both directions:
+
+- **Overcount.** **15 of the 93 rule lines** carry `[HARD]` non-clause-initially — prose mentions
+  and navigation notes rather than obligations. A stub's "keeps every [HARD] rule and pointer" line
+  is counted as contract.
+- **Undercount, and unbounded.** A `[HARD]` lead line whose obligation continues into a list,
+  table, or fenced block contributes only its first line. **16 of the 93 end in `:`** —
+  structurally incomplete sentences whose bodies fall outside the total entirely. No bound exists
+  on how much body those 16 carry.
+
+So the magnitude is trustworthy and the exact value is not. Nothing in this SPEC may depend on
+32,543 B being precise: §D.1's ceiling derivation is stated as a bracket rather than a point, and
+M1's stop condition (`plan.md` §E) is required to survive the figure moving in either direction.
+M1's classification therefore operates on **clause blocks** — a marker line plus its continuation
+to the next clause or heading — not on grep lines, and re-derives the ceiling against the
+clause-block figure once it has one.
+
+**Taken at face value against the confirmed 32,768 B budget, the proxy measures 32,543 B — it fits,
+with 225 B of headroom (0.7 %).** That is a numeric fit and a practical failure. Three things consume
 headroom the raw line total does not account for: the document's own structure (headings, section
 framing, the prose that makes clauses navigable), a user's global `~/.codex/AGENTS.md` which joins
 the same chain and is consumed **before** the project document (§D.3), and ordinary future rule
@@ -141,17 +167,19 @@ that narrows or widens what the clause binds is a defect, not a compression.
 
 ### C.2 Byte-budget conformance
 
-**REQ-AMC-004** (Ubiquitous) — The root `AGENTS.md` shall not exceed **24,576 B** (24 KiB), leaving
+**REQ-AMC-004** (Unwanted) — The root `AGENTS.md` shall not exceed **24,576 B** (24 KiB), leaving
 at least 8,192 B of the confirmed 32,768 B budget as headroom. The ceiling is derived in §D.1 from
 what the contract requires, not from the budget's size.
 
-**REQ-AMC-005** (Unwanted) — The design shall not introduce nested `AGENTS.md` documents. Adding
-one spends root budget for a benefit that materialises only in an area-scoped session, and the
-measurement shows nested documents are unloaded in ordinary repo-root invocation.
+**REQ-AMC-005** (Unwanted) — The live tree shall contain no `AGENTS.md` outside the repository
+root. The template mirror at `internal/template/templates/AGENTS.md` is not a live-tree document
+and is exempt (REQ-AMC-015 requires it). Rationale, and the nested-`CLAUDE.md` asymmetry a reader
+will ask about: §D.6.
 
-**REQ-AMC-006** (Where) — Where future evidence shows sessions are habitually started inside a
-specific directory, a nested `AGENTS.md` for that directory MAY be proposed in a follow-up SPEC,
-and that SPEC shall state the evidence explicitly and re-derive the root ceiling to pay for it.
+**REQ-AMC-006** (Ubiquitous) — This SPEC shall record, in §D.6, the evidence class that would
+justify reviving a nested `AGENTS.md` and the obligation on any reviving SPEC to re-derive the root
+ceiling to pay for it — so that the single-root decision is revisable on stated grounds rather than
+by re-litigation.
 
 **REQ-AMC-007** (Event-detected) — When an edit raises the root `AGENTS.md` above its ceiling, the
 repository's guard shall fail with the measured byte figure and the offending file named.
@@ -160,8 +188,8 @@ repository's guard shall fail with the measured byte figure and the offending fi
 `internal/config/token_budget_guard.go`'s surface enumeration rather than introducing a second,
 independently-drifting measurement path.
 
-**REQ-AMC-009** (Ubiquitous) — Because truncation is measured silent, the CI byte guard shall be
-mandatory and blocking; an advisory-only guard does not satisfy this requirement.
+**REQ-AMC-009** (Ubiquitous) — The CI byte guard shall fail the build on breach; an advisory-only
+guard does not satisfy this requirement. Rationale: §D.7.
 
 ### C.3 Claude-side non-regression
 
@@ -178,14 +206,18 @@ cosmetic warning.
 
 ### C.4 Budget ratchet
 
-**REQ-AMC-013** (Ubiquitous) — `AlwaysLoadedTokenBudget` shall be lowered to a value derived from
-the achieved post-diet measurement taken on the branch this SPEC lands on, and that value shall be
-at or below 75,000.
+**REQ-AMC-013** (Ubiquitous) — `AlwaysLoadedTokenBudget` shall equal the achieved post-diet token
+figure plus a stated headroom allowance, and shall be at or below 75,000. A constant set
+independently of the achieved figure — at the ceiling, or at any round number — does not satisfy
+this requirement even when it is below 75,000.
 
 **REQ-AMC-014** (Event-detected) — When the ratcheted constant is proposed, the achieved figure
-shall be a measured `go test` output on the integration branch, not the figure measured in an
-isolated worktree; the two differ (this worktree measures ≈ 71,212 tokens, while the release
-integration state that forced the 76,000 raise measured 75,282).
+shall be a `go test -v` output measured on the **integration branch**, defined as the
+release/batch branch this card merges into (`release/vX.Y.Z`), which carries the merged state of
+the sibling cards — not a card worktree measured in isolation. The two differ: this worktree
+measures ≈ 71,212 tokens, already under 75,000, while the release integration state that forced the
+76,000 raise measured 75,282. The evidence shall identify the measured tree by recording
+`git rev-parse --abbrev-ref HEAD` and `git rev-list --count main..HEAD` alongside the figure.
 
 ### C.5 Distribution and disclosure
 
@@ -199,6 +231,11 @@ internal dates, commit SHAs, macOS-biased absolute paths, or `CLAUDE.local.md` r
 `~/.codex/AGENTS.md` joins the same merged chain and is consumed before the project document,
 narrowing the project's available budget. Decision and reasoning: §D.3.
 
+**REQ-AMC-018** (Unwanted) — [HARD] The design shall not treat a raised `project_doc_max_bytes` as
+a substitute for the diet. The reduction target is fixed at the **untrusted first session's**
+effective cap of 32,768 B; any raise is headroom layered on top of that, never a relaxation of it.
+Measured grounds: §D.8.
+
 ---
 
 ## §D. Constraints and decisions
@@ -210,7 +247,7 @@ therefore derived from what the contract requires, then checked for headroom:
 
 | Step | Bytes | Basis |
 |---|---:|---|
-| Verbatim `[HARD]` lines (rules + `CLAUDE.md`) | 32,543 | measured, §A.4 |
+| `[HARD]` line proxy (rules + `CLAUDE.md`) | 32,543 ± | line-level proxy, both error directions disclosed in §A.4 |
 | Less: clauses binding Claude-only mechanisms | −0 … −14,360 | measured upper bound (§D.2); the real figure is M1's deliverable |
 | Plus: document structure (headings, framing prose) | + unmeasured | M2 |
 | **Proposed ceiling** | **24,576** | 75 % of budget |
@@ -221,6 +258,10 @@ the whole 32,543 → 24,576 reduction — a 24.5 % trim, which §D.4's precedent
 comfortable) and well above the optimistic case (18,183 B before any condensation). If M1's
 measurement shows the contract cannot reach 24,576 B, the ceiling is renegotiated with the number
 in hand rather than the SPEC quietly expanding to fill the budget.
+
+Because the starting figure is a proxy (§A.4), this derivation is a **bracket, not a point**. M1
+re-derives it against the clause-block measurement; the 8,192 B reserve is what absorbs the proxy's
+error, and trading against that reserve is a decision to state, not a slack to spend silently.
 
 ### D.2 The Claude-only exclusion lever
 
@@ -266,7 +307,69 @@ and it is precisely the users who invest in a personal `AGENTS.md` who would hit
   reduction with no obligation moved off the always-loaded surface. The pattern is proven; §D.1's
   24.5 % pessimistic-case trim is well inside it.
 
-### D.5 Residual unmeasured items
+### D.6 Single root: rationale, the `CLAUDE.md` asymmetry, and the revival condition
+
+**Why single-root** (REQ-AMC-005): a nested `AGENTS.md` spends root budget for a benefit that
+materialises only in an area-scoped session, and the measurement shows nested documents are not
+loaded at all under ordinary repo-root invocation (§A.2 findings 3-4).
+
+**The asymmetry a reader will notice.** This repository already runs five nested per-directory
+instruction files on the Claude side — `internal/{cli,config,hook,spec,template}/CLAUDE.md` — so
+"one instruction file per repository" is plainly not this codebase's shape, and the prior art has
+worked well. The cases differ on two measured properties, and only on those:
+
+| | nested `CLAUDE.md` (existing, works) | nested `AGENTS.md` (rejected) |
+|---|---|---|
+| Loading | by path relevance — loaded when work touches that directory | only along the git-root → CWD chain; **absent at repo-root CWD** |
+| Budget | no byte cap on the set | shares one 32,768 B budget, consumed root-first — a large root starves them entirely |
+
+So the rejection is not a stance against nested instruction files. It is that the codex mechanism
+gives them neither of the two properties that make the Claude-side ones useful.
+
+**Revival condition** (REQ-AMC-006). A future SPEC MAY reintroduce a nested `AGENTS.md` for a
+specific directory when it satisfies both of the following, stated explicitly in its own body:
+
+1. **Evidence of session habit** — that sessions are in fact started inside that directory often
+   enough to matter. Session-registry CWD counts or an equivalent observation; not an assertion
+   that it "would be convenient".
+2. **A re-derived root ceiling** — the root's 24,576 B ceiling lowered by at least the nested
+   document's size, since the budget is shared. A nested file added without paying for it silently
+   truncates the root contract's tail.
+
+Recording the condition here is what makes the decision revisable on stated grounds. Verifying a
+future SPEC's compliance with it is that SPEC's business, not this one's.
+
+### D.7 Why the guard blocks rather than warns
+
+Truncation emits nothing: stderr 0 bytes, exit 0, and the `truncating` string is a tracing event
+that never surfaces (§A.2 finding 6). There is no runtime signal to fall back on, so an advisory
+guard would leave the failure with no detector at all — the warning would scroll past in CI output
+that nobody reads on a green build, and the contract's tail would go missing on every user's
+machine with no one the wiser. Blocking is not a severity preference here; it is the only
+configuration in which the guard detects anything.
+
+### D.8 Cap-raise: measured position, and why the decision is unchanged
+
+The earlier draft rejected raising `project_doc_max_bytes` on the stated ground that it is
+"per-user config, so it cannot ship". **That premise is false**, and the correction matters even
+though the decision does not change.
+
+Measured (`codex-probe-p4.md`, four-way differential toggling only the trust entry): a
+project-scope `<repo>/.codex/config.toml` **does** take effect, and **beats** the user value — but
+only where the user config registers the project `trust_level = "trusted"`. Untrusted, the project
+file is ignored, and ignored **silently** (stderr 0 bytes on all four runs).
+
+The true reason is the stronger one. A distributed user's **first** session is untrusted by
+construction: they clone the repository and run codex before any trust entry exists. At that
+moment the effective cap is 32,768 B, and if the contract does not fit, it truncates — silently,
+on the run that forms their first impression of the harness. A lever that works only after the
+user has already trusted the project cannot carry a constraint that binds before they have.
+
+Hence REQ-AMC-018: the reduction target is fixed at the untrusted first session's 32,768 B, and
+any raise is headroom on top of it. The lever is real, conditional, retroactive, and
+silent-on-failure — three of which disqualify it as a design premise.
+
+### D.9 Residual unmeasured items
 
 Carried openly rather than assumed:
 
@@ -300,17 +403,25 @@ diet**:
   rendering. Copying it into `AGENTS.md` would consume the whole Codex budget to deliver material
   Codex cannot act on. Its 75 `[HARD]` lines (11,898 B) bind Claude's rendering only.
 - **Not exempt from the budget**, because the guard counts it.
-- **Deferred to a follow-up card** for its own §8 diet. This SPEC's ratchet target must be
-  achievable without touching it; if run-phase measurement shows it is not, that is a blocker to
-  surface, not a licence to widen scope mid-run.
+- **Its first render-surface diet has already landed** — cards t131 and t142 (−5,454 and −567
+  tokens), integrated into `release/v3.1.1` under the render-surface ruling. So this is not a
+  deferred-and-untouched surface; it is a surface that has had one pass. **Why 46,765 B remains
+  after that pass: the first pass was a diet, not a removal** — it compressed the render surface
+  without deleting the banner templates, which are what Claude Code actually renders from.
+- **Whether a second pass is needed is decided by M1's result**, not assumed now. This SPEC's
+  ratchet target must be reachable without a second output-style pass; if M1's measurement shows it
+  is not, that is a blocker to surface, not a licence to widen scope mid-run.
 
 ### E.3 Exclusions
 
 ### Out of Scope — nested AGENTS.md documents
 
-- Creating `AGENTS.md` in any directory other than the repository root. Measured to be unloaded in
-  ordinary repo-root invocation while still consuming the shared budget (REQ-AMC-005). A future
-  SPEC may revisit this with evidence of area-scoped session habits (REQ-AMC-006).
+- Creating `AGENTS.md` in any directory of the live tree other than the repository root. Measured to
+  be unloaded in ordinary repo-root invocation while still consuming the shared budget
+  (REQ-AMC-005). The revival condition is recorded in §D.6 (REQ-AMC-006); satisfying it is a future
+  SPEC's work, not this one's.
+- The template mirror `internal/template/templates/AGENTS.md` is **not** covered by this exclusion
+  — REQ-AMC-015 requires it, and it is not a live-tree document.
 
 ### Out of Scope — output-style diet
 
@@ -321,7 +432,10 @@ diet**:
 
 - `AGENTS.override.md` precedence and `project_doc_fallback_filenames` behavior.
 - Shipping or mutating a user's `~/.codex/config.toml`, or raising `project_doc_max_bytes` as a
-  remedy. The cap is treated as fixed at its measured default.
+  remedy for the contract's size. The cap is treated as fixed at the untrusted first session's
+  measured default of 32,768 B (REQ-AMC-018, §D.8). Emitting a project-scope cap from the wiring
+  generator is M4/t88's scope, not this SPEC's — with the trust-notice obligation `plan.md` §E M4
+  records.
 
 ### Out of Scope — conditional-load surfaces
 

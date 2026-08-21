@@ -16,6 +16,15 @@ move. The boundary is **the imperative clause**, detected in three widening ring
 
 R3 is where the entire byte reduction comes from. R1 and R2 are where the difficulty is.
 
+**The ring figures are line-level proxies.** `grep` finds *lines bearing a marker*, which is not
+the same set as *the obligations those lines carry*. Measured error in both directions
+(`spec.md` §A.4): 15 of the 93 rule markers sit non-clause-initially — prose mentions and
+navigation notes counted as contract — while 16 end in `:` and lead into a list, table, or fenced
+block whose body is not counted at all, with no bound on its size. The magnitude is reliable; the
+value is not. So R1's detector is a **seed for classification, not the classification itself**: M1
+expands each marker to its clause block and measures that, and §2's arithmetic below inherits the
+proxy's error bars rather than pretending to a precision it does not have.
+
 A **fourth category** sits outside all three: the 75 `[HARD]` lines (11,898 B) in
 `.claude/output-styles/moai/moai.md`. They are binding, but they bind *Claude's rendering*. They
 stay where they are and never enter `AGENTS.md` (`spec.md` §E.2).
@@ -83,9 +92,20 @@ Two levers reach 24,576 B, in preference order:
    they carry their own justification inline; the obligation itself is usually one sentence. M1
    measures the ratio.
 
-A third lever — raising `project_doc_max_bytes` — is deliberately **not** used. It is a per-user
-config setting, so it cannot help distributed users, and depending on it would make the shipped
-contract silently correct on the maintainer's machine and silently truncated elsewhere.
+A third lever — raising `project_doc_max_bytes` — is deliberately **not** used, but not for the
+reason an earlier draft gave. That draft called it "per-user config, so it cannot ship";
+`codex-probe-p4.md` measures otherwise. A project-scope `<repo>/.codex/config.toml` **does** take
+effect and **beats** the user value — conditional on the user config registering the project
+`trust_level = "trusted"` (four-way differential toggling only the trust entry: effective cap
+4,096 → 8,192).
+
+The real reason is stronger. A distributed user's **first** session is untrusted by construction —
+they clone and run before any trust entry exists — so the effective cap then is 32,768 B, and a
+contract that does not fit truncates **silently** on the run that forms their first impression
+(stderr 0 bytes on all four probe runs, ignoring included). A lever that engages only after the
+user has already trusted the project cannot carry a constraint that binds before they have.
+Hence REQ-AMC-018: the reduction target is fixed at 32,768 B and any raise is headroom on top.
+Full measured position: `spec.md` §D.8.
 
 ## 3. Layout: one document, at the root
 
@@ -115,6 +135,26 @@ unloaded (`spec.md` REQ-AMC-005 / REQ-AMC-006).
 AGENTS.md          ← the entire Codex-relevant contract, ≤ 24,576 B
 CLAUDE.md          ← @AGENTS.md + the Claude-only layer
 ```
+
+### 3.1 Why `CLAUDE.md` gets to be plural and `AGENTS.md` does not
+
+A reader who knows this codebase will object immediately: five nested per-directory instruction
+files already exist on the Claude side — `internal/{cli,config,hook,spec,template}/CLAUDE.md` — and
+they work well. "One instruction file per repository" is plainly not this repository's shape, so
+the single-root rule needs to say why `AGENTS.md` is the exception.
+
+The two mechanisms differ on exactly two measured properties, and those two are the whole answer:
+
+| | nested `CLAUDE.md` | nested `AGENTS.md` |
+|---|---|---|
+| **Loading** | by path relevance — present when work touches that directory | only along the git-root → CWD chain; **absent entirely at repo-root CWD**, the ordinary case |
+| **Budget** | no byte cap over the set | one shared 32,768 B, consumed root-first — a large root starves them to nothing |
+
+Nested `CLAUDE.md` earns its place because it is loaded when relevant and costs nothing when not.
+Nested `AGENTS.md` inverts both: it is *absent* when most needed (a developer at the repo root) and
+*costly* when present (it eats the root's budget). The rejection is of the codex mechanism's
+properties, not of nested instruction files as an idea — and if a future codex version changes
+either property, the revival condition in `spec.md` §D.6 is how that gets revisited.
 
 ## 4. Import layer
 
@@ -159,21 +199,32 @@ to fall back on, so an advisory guard would leave the failure with no detector a
 
 - **Branch sensitivity.** This worktree measures ≈ 71,212 tokens — already under 75,000 — so a
   ratchet derived here would be vacuous. The release integration state that forced the raise
-  measured 75,282. The figure must come from the integration branch (REQ-AMC-014).
+  measured 75,282. The figure must come from the **integration branch**: the `release/vX.Y.Z`
+  branch this card merges into, which carries the merged state of the sibling cards. The
+  discriminating property is the merged sibling state, not the branch's name, so the evidence
+  records `git rev-parse --abbrev-ref HEAD` and `git rev-list --count main..HEAD` — otherwise any
+  branch can be declared "the integration branch", including a card worktree (REQ-AMC-014).
 - **Headroom.** The original constant carried ~15 % over its baseline. Reusing that ratio keeps
   ordinary rule edits from tripping the guard while still catching a real regression; state the
-  ratio used rather than picking a round number.
+  ratio in the constant's comment rather than picking a round number.
+- **The constant must track the achieved figure, not merely clear the ceiling.** Setting it to
+  75,000 while the surface lands at 60,000 passes "≤ 75,000" and ratchets nothing — the guard would
+  then tolerate 15,000 tokens of silent regrowth. AC-AMC-019 closes this by checking the constant
+  against `achieved × (1 + ratio)` within a stated tolerance.
+- **The figure has to be printable.** `TestAlwaysLoadedTokenBudget` emits the total only via
+  `t.Errorf` on failure, so a passing run prints nothing to quote. M5 adds the `t.Logf` first; every
+  ratchet criterion then reads it under `go test -v`.
 
 ## 6. Rejected alternatives
 
 | Alternative | Why rejected |
 |---|---|
 | Nested `AGENTS.md` per area (the card's proposal) | Measured: unloaded at repo-root invocation, and shares rather than expands the budget. Adopting it would silently drop most of the ruleset in ordinary use. |
-| Raise `project_doc_max_bytes` | Per-user config; cannot ship. Would make the contract correct on the maintainer's machine and truncated on everyone else's. |
+| Raise `project_doc_max_bytes` as a substitute for the diet | Project scope **does** work — but only once the user registers the project `trust_level = "trusted"`, and it is ignored silently until then. The distributed user's first session is untrusted, so the binding cap there is 32,768 B (§2, `spec.md` §D.8). Conditional, retroactive, silent-on-failure — usable as headroom, never as a premise. |
 | Generate `AGENTS.md` from the rules at build time | Adds a generator to maintain, and truncation is unaffected — a generated 200 KB file truncates exactly like a hand-written one. The problem is size, not authorship. |
 | Symlink `AGENTS.md` → `CLAUDE.md` | Ships 20,523 B of Claude-specific orchestration to Codex and still leaves the rules unreachable. |
 | Move `[HARD]` clauses into skills, loaded on demand | Forbidden by REQ-AMC-002. A rule that is not always present cannot bind every turn. |
-| Diet the output style here | Scope widening; deferred with measured justification (`spec.md` §E.2 — 75.8 % of it is Claude render templates). |
+| A second output-style pass here | Scope widening. Its first render-surface diet already landed (t131 / t142, −5,454 and −567 tokens, in `release/v3.1.1`); 46,765 B remains because that pass was a diet, not a removal — 75.8 % of the file is Claude render templates. Whether a second pass is needed is M1's call (`spec.md` §E.2). |
 | Size the contract to fill 32,768 B | The budget is not a target. A contract at 99.3 % of budget begins truncating on its first edit, silently. |
 
 ## 7. Open questions carried into run phase
@@ -183,4 +234,4 @@ to fall back on, so an advisory guard would leave the failure with no detector a
   pilot files should report whether it found any.
 - The probe ran on macOS with `codex-cli` 0.147.0. A smaller upstream default on another platform
   or version would invalidate the ceiling's calibration silently — re-probe on a codex upgrade
-  (`spec.md` §D.5).
+  (`spec.md` §D.9).

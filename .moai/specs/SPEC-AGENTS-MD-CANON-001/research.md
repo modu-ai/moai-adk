@@ -21,9 +21,15 @@
 | `project_doc_max_bytes` default | 32,768 B, confirmed | The ceiling is derived against this figure, not an assumed one |
 | Nested `AGENTS.md` merge scope | git-root → CWD path only; unloaded at repo-root invocation; shares the budget root-first | **Overturned the card's nested-document leg.** Single root contract (Option A) is the design |
 | Truncation visibility | Silent — stderr 0 B, exit 0 | The CI byte guard is the only detector, so it is blocking rather than advisory |
+| P4 — cap-raise scope (`codex-probe-p4.md`) | Project scope works, and beats the user value — **only** under `trust_level = "trusted"`; ignored silently otherwise | Corrected the "cannot ship" premise, and strengthened the conclusion: the untrusted first session at 32,768 B is the binding case (REQ-AMC-018) |
 
 Two further findings the probe produced that the card did not anticipate: truncation takes the
 **tail** (the head survives), and outside a git repository only the CWD's own document loads.
+
+**Fixture reproducibility.** `.moai/reports/t82/probe-fixture.sh` rebuilds the three-level fixture
+from scratch and prints each recorded run with its expected result, so `AC-AMC-002` is executable
+by someone other than the original author. The earlier scratchpad path was session-local and did
+not survive.
 
 ## What was measured for this SPEC
 
@@ -32,10 +38,16 @@ and outputs are recorded in `progress.md` §E.1.
 
 Two headline figures:
 
-- Verbatim `[HARD]` contract across the always-loaded rules and `CLAUDE.md`: **32,543 B** — 99.3 %
-  of the confirmed budget, leaving 225 B. A numeric fit and a practical failure.
+- `[HARD]` line proxy across the always-loaded rules and `CLAUDE.md`: **32,543 B** — 99.3 % of the
+  confirmed budget, leaving 225 B. A numeric fit and a practical failure.
 - Upper bound on the Claude-only exclusion (six most Claude-mechanism-bound files):
   **14,360 B across 38 lines** — an upper bound only; the per-clause split is M1's deliverable.
+
+**Both are line-level proxies and are labelled as such** (`spec.md` §A.4). Cross-checked error in
+both directions: 15 of 93 rule markers are prose mentions rather than obligations (overcount), and
+16 end in `:` and lead into uncounted bodies (undercount, unbounded). The consequence for the
+design is that no requirement or criterion may depend on 32,543 B being exact — M1 works on clause
+blocks and re-derives the ceiling, and the 8,192 B reserve is what absorbs the difference.
 
 ## What remains unmeasured
 
@@ -44,8 +56,12 @@ Two headline figures:
 - A user's global `~/.codex/AGENTS.md` was not placed in the fixture. Chain-merge semantics imply it
   is consumed before the project document; `spec.md` §D.3 decides to warn about it in shipped
   documentation rather than treat it as measured.
+- Whether trust registration is offered or recorded automatically on a first interactive run was
+  not observed (`codex debug prompt-input` raises no trust prompt). The real acquisition path for a
+  distributed user is M4/t88's to establish.
+- `trust_level` values other than `"trusted"` were not measured.
 - The probe ran on macOS with `codex-cli` 0.147.0 only. A different default elsewhere is not
-  excluded (`spec.md` §D.5).
+  excluded (`spec.md` §D.9).
 
 ## Prior-art note
 
