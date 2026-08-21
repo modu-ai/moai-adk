@@ -56,3 +56,23 @@ worktree t89 / branch `WT-agent-toml-dual` (base origin/main @ 4b2f203fe).
   토큰 1개 + 감사관 자체 제안 스코프. 오버라이드 승인 메시지가 근거 기록.
 - audit_multi 워크트리 사각(2차 백엔드가 primary에서 실행)은 이번
   판정에 0 기여 — 리드가 후보 카드로 통합 제안 중이라고 회신.
+
+## run 단계 (2026-08-22 04:14 리드 판정 PASS)
+
+커밋 5+정오타 1: M1 `7a7a05384`(emitter core, agentemit 패키지, 커버리지 93.5%) · M2 `abf08c1f0`(프로브 — sandbox 값집합 {read-only, workspace-write, danger-full-access} / effort 열거 {minimal,low,medium,high,xhigh} / model 생략 / 서브디렉터리 스캔 전부 실측 확정, 모델 호출 2회 한정) · M3 `445bfd3b5`(11개 TOML 발행+골든/임베드/배포 가드) · M3b `e6c2239e5`(측정 기반 수정) · MS4 `48032316d`(close-out+§E) · 정오타 `a0a426d7c`.
+
+- AC 13/13 PASS (§E.2/§E.3 근거, 검증 스냅샷 `48032316d:run-final`)
+- 크로스플랫폼 빌드 0 · lint 신규 0 · [HARD] .md 트리 무변경 (골든 테스트 기계 보장)
+- **MS3b 사건**: SPEC이 가정한 `mcp_servers = ["moai"]` 배열형이 codex-cli 0.147.0에서 정확히 7개 운반 에이전트 파일을 통째로 거부("invalid type: sequence, expected a map" — kill-the-file 위험 실증). 실측으로 `[mcp_servers.moai]` 테이블형 확정 → 수정 → 재실증(0 malformed, 11개 등록, 위임 SMOKE-OK). 정오타 커밋이 R-009·§A.3 row 9 시정. 리드 평: "plan에서 가정→smoke가 포획→실측으로 수정" 설계 패턴의 완결 사례.
+
+## sync 단계 + 종결 (2026-08-22)
+
+경량 sync (리드 스코프): CHANGELOG [Unreleased] Added 항목(mcp_servers 테이블형 발견 포함) · spec.md `in-progress → completed` · §E.4 신호 + `sync_commit_sha: b637ca710` (pending-backfill 패턴 → `9d1913050`로 채움). 3-phase close 완료.
+
+## 잔여 (리드 소관/후속)
+
+- 통합: release/v3.1.3에 merge --no-ff 후 push — WT는 release PR 머지까지 유지
+- moai spec audit 종결 후 확인 (서브컨텍스트에서 MCP 불가 — 리드 통합 시점 실행 권고)
+- P-05(skills.config)·P-06(에이전트별 MCP 필터링) 미프로브 — 계획된 생략(M1-deferred/선택)
+- ~/.codex/auth.json mtime 관측: 앰비언트 의심·미확정 (Gap 기록)
+- 후속 카드: M1(t81, skills 정본화 — manifest class-6 deferred→emitted 전환), M3(t83, 훅 어댑터), M4(t88, 배선 생성기 — 에미터 검증기 재사용 시임)
