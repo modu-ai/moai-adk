@@ -189,6 +189,45 @@ path: M parent.cx  nodeY(L)+nodeH
 
 ---
 
+## Size and audience dials against these presets
+
+The `size` dial (`SKILL.md` § The four output dials) overrides an archetype's
+`W`/`H` preset and takes the type ramp with it — a `slide-16x9` canvas carries
+body text at 18 and card titles at 22, not the document-inline 14 and 17,
+because a projected 14 is unreadable from the back of a room. Re-run the
+containment checks after any size change: the box table is unchanged but the
+text budget is not, and a label that fitted at 14 may not fit at 18.
+
+`fit` keeps the archetype preset above. `audience` never changes a count: an
+`executive` diagram drops protocol and port detail from its labels and keeps
+every component.
+
+---
+
+## Per-archetype complexity ceilings
+
+The universal budget is in `SKILL.md` § Complexity budget — 12 nodes at the
+default `balanced` detail, at most 12 connectors, at most 2 `accent` elements.
+These are the shape-specific ceilings on top of it. Exceeding one means the
+diagram is two diagrams.
+
+| Archetype | Ceiling |
+|-----------|---------|
+| A1 architecture stack | 6 layers; 5 cards per layer |
+| A2 left-to-right flow | 6 stages (already the preset's cap); 1 branch label per arrow gap |
+| A3 side-by-side comparison | 3 compared columns; 8 rows |
+| A4 hierarchy tree | 4 levels deep; 12 nodes total; 5 nodes on any one level |
+
+The A1, A2, and A4 ceilings are inherited from the surveyed source's per-type
+budgets (layer stack 6, tree depth 4, org-chart nodes 12); A3 has no counterpart
+there and is derived from this file's own preset, which already describes the
+archetype as two or three columns. Neither set has been re-derived against this
+skill's canvas widths, so treat a ceiling as a prompt to split rather than as a
+measured limit. The inherited ceilings come from
+`cathrynlavery/diagram-design` v2.6.1 (MIT); see `SKILL.md` section Attribution.
+
+---
+
 ## Choosing among the four
 
 | The message is | Archetype |

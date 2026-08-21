@@ -1,0 +1,165 @@
+# Progress — SPEC-SVG-QUALITY-ABSORB-001
+
+Branch `WT-svg-quality`, worktree `.claude/worktrees/t165`, base `a6fe13232`.
+
+## Run-phase Evidence
+
+### Claim
+
+M1-M4 and M6 are complete. M5 produced one sample pair (`journey`) and the
+routing carve-out it would justify is **not yet taken** — the decision is the
+reader's per SPEC §5, so `SKILL.md` § Step 0 is unchanged and the exception list
+is empty as this record is written.
+
+### Evidence
+
+Commands run in this worktree, with what they printed.
+
+**AC-REQ-3b — the checker fails in the right direction (both directions run):**
+
+```
+$ node .../check-svg.mjs .../fixtures/a11y-present.svg
+0 errors, 0 warnings                                              exit=0
+
+$ node .../check-svg.mjs .../fixtures/a11y-missing.svg
+...:3:1  error  SVG060  root <svg> has no role; ...
+...:3:1  error  SVG062  root <svg> has no <title>; ...
+...:3:1  error  SVG063  root <svg> has no <desc>; ...
+...:3:1  error  SVG061  root <svg> has no aria-labelledby ...
+4 errors, 0 warnings                                              exit=1
+```
+
+Two further directions checked ad hoc: a bare `title` / `desc` id pair produced
+two `SVG064` errors (exit 1); an `aria-hidden="true"` root produced 0 errors
+(exit 0), confirming the decorative exemption.
+
+**AC-REQ-1 — six connector rules, each carrying its number:**
+
+```
+$ grep -nE '^\*\*C[1-6] ' references/authoring.md
+159:**C1 — ... rounded right angle at `r = 8`.**
+166:**C2 — A label's mask clears its own stroke by 6–10 units.**
+180:**C3 — No two connectors share a path; separation is ≥ 12 units.**
+193:**C4 — Connectors on a shared edge fan to distinct attach points.**
+208:**C5 — A connector does not pass behind a box that is neither its source nor
+     its destination — except where that box is geometrically unavoidable.**
+226:**C6 — A label mask may not overlap a node painted after it.**
+```
+
+C4 carries `offset(k) = L * k / (N + 1)` with the `>= 12` floor; C5 carries the
+transit exception verbatim in substance (dashed `4,3`, label at the visible end,
+no arrowhead on the intervening edge).
+
+**AC-REQ-2 — every archetype maps to a ceiling:** the four archetypes declared
+in `archetypes.md` (`## A1`..`## A4`) each appear in the ceiling table, and the
+table introduces none that does not exist.
+
+**AC-REQ-4 — 14 entries:** `grep -cE '^\| [0-9]+ \|'` over the slop table
+printed `14`.
+
+**AC-REQ-5 — four dials, values and defaults:** format `svg+png`, size
+`doc-inline`, detail `balanced`, audience `mixed`.
+
+**AC-REQ-6a / 6b:** 11 semantic roles each carry a light and a dark value; the
+inversion is stated once as a rule (section 3.0) rather than as a second
+maintained table. The one-accent discipline survived the restructure —
+`authoring.md:342` still reads "One diagram carries one focal element (two at
+the absolute most)", and the `accent` row of the roles table repeats the cap.
+
+**AC-REQ-8a — mirrors and build:**
+
+```
+$ make build
+catalog.yaml updated successfully (12899 bytes)
+go build -ldflags ... -o bin/moai ./cmd/moai                       exit=0
+
+$ diff -r .claude/skills/moai-domain-svg-infographic \
+          internal/template/templates/.claude/skills/moai-domain-svg-infographic
+                                                                   exit=0
+
+$ MOAI_TEMPLATE_LEAK_STRICT=1 go test ./internal/template/...
+ok  github.com/modu-ai/moai-adk/internal/template  21.010s
+```
+
+**AC-REQ-8b — attribution:** present in `SKILL.md` § Attribution and pointed at
+from `authoring.md` and `archetypes.md`; mirrored.
+
+**AC-REQ-9 — no view-time fetch:**
+
+```
+$ grep -rnE 'fonts\.googleapis\.com|fonts\.gstatic\.com|@import|url\(\s*['"]?https?:' \
+    <skill> <mirror>
+                                                          (no output) exit=1
+```
+
+**AC-REQ-7a — the one sample pair, both renders committed:**
+
+```
+$ mmdc -i journey.mmd -o journey-mermaid.png -s 2 -b white
+Generating single mermaid chart          (Google Chrome 151.0.7922.170)
+
+$ node scripts/render.mjs journey-absorbed.svg --out journey-absorbed.png
+png IHDR   2400x1140
+verified   dimensions match the target                             exit=0
+
+$ node scripts/check-svg.mjs journey-absorbed.svg
+0 errors, 2 warnings                                               exit=0
+```
+
+The two `SVG030` warnings are on the legend text, where the heuristic measures a
+label against its 10-unit colour swatch (the nearest preceding `<rect>`) rather
+than a container. Triaged against the render as noise, not reflowed.
+
+### Baseline-attribution
+
+Every command above was run in this worktree against `WT-svg-quality`, base
+commit `a6fe13232`, working tree as recorded by `git status --porcelain` at the
+time of the run: four modified skill files, four modified mirrors, modified
+`internal/template/catalog.yaml`, plus the untracked `scripts/fixtures/` pair
+(and its mirror) and `.moai/reports/t165/samples/`.
+
+### Gaps
+
+- **AC-REQ-7a/7b/7c are not yet closed.** One pair exists (`journey`); the
+  exception list is empty and `SKILL.md` § Step 0 is unchanged. `timeline` was
+  not rendered, so it cannot be listed whatever its merits. `quadrant` and
+  `ER-schema` were dropped on scope — neither maps onto any of the four
+  archetypes, and adding one is the type-catalogue path the SPEC rejects (§2
+  Out of Scope, plan D1). Reasoning and the pair's observations:
+  `.moai/reports/t165/samples/README.md`.
+- **AC-BUDGET is at its boundary, not comfortably inside it.** `SKILL.md` is
+  19,094 bytes / 3,080 words after the additions, against a declared
+  `level2_tokens: 5000`. No tokenizer was available in this environment, so the
+  token count is an estimate (~4,800-5,400 by word-and-symbol count), not a
+  measurement. Recorded as an estimate rather than reported as a pass.
+- **The 14 slop entries were counted, not validated.** Each is phrased as
+  something observable in a render; whether the set is the right fourteen rests
+  on the surveyed source.
+- **Per-archetype ceilings are inherited, not re-derived** against this skill's
+  canvas widths. A1/A2/A4 come from the source's per-type budgets; A3 has no
+  counterpart there and was derived from this file's own preset. Stated in
+  `archetypes.md` where the table sits.
+- **Full-suite verdict is CI's.** Only `./internal/template/...` was run locally,
+  per the repo's local-test discipline.
+
+### Residual-risk
+
+- `check-svg.mjs` asserts the accessible contract's *structure*. A `<desc>`
+  reading "diagram" satisfies every check and tells a screen-reader user
+  nothing; absence is mechanical, vacuity is not.
+- The `journey` comparison is one sample of one journey. A journey with Latin
+  labels and no satisfaction track could narrow the gap the pair shows.
+- A carve-out, once taken, is durable: every future diagram of that type becomes
+  an image with an image's maintenance cost and leaves the locale-sync path.
+
+### Observed out of scope
+
+- `SPEC §4 Evidence` and `plan.md §H` cite
+  `.moai/reports/diagram-design-absorption/…`, a path that does not exist on
+  this branch. The artifacts are at `.moai/reports/t165/upstream/`, which
+  `plan.md §C` names correctly. A citation fix, not a content problem.
+- Running a command from a drifted working directory caused the statusline hook
+  to write `.moai/state/{config-cache,context-usage}.json` **relative to that
+  directory** rather than to the project root, creating a stray `.moai/` tree
+  inside the skill folder. Removed; the underlying path-resolution behaviour is
+  unaddressed and belongs to another card.

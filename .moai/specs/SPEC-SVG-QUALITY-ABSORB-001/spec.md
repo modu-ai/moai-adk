@@ -2,7 +2,7 @@
 id: SPEC-SVG-QUALITY-ABSORB-001
 title: "Absorb the diagram-design quality layer into moai-domain-svg-infographic"
 version: 0.1.0
-status: draft
+status: in-progress
 created: 2026-08-22
 updated: 2026-08-22
 author: lane-7
