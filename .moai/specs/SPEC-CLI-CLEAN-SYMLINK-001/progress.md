@@ -2,7 +2,7 @@
 id: SPEC-CLI-CLEAN-SYMLINK-001
 title: "Progress — moai update 청소 경로의 심볼릭 링크 인식"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-08-22
 updated: 2026-08-22
 author: manager-spec
@@ -127,11 +127,49 @@ plan_complete_at: 2026-08-22
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run-phase 수행: manager-develop (cycle_type=tdd), 워크트리 `.claude/worktrees/t173`
+(branch `WT-clean-links`). 모든 증거는 이 트리에서 이 에이전트가 직접 실행해 관측한
+verbatim 출력이다 (baseline-attribution: run 시작 HEAD `d19f849be`, run 중 로컬 커밋
+순차 적립).
+
+### M1 — 링크 전용 분기 + 형태별 처분
+
+- **RED (AC-CSL-001, E8 — 구현 이전 verbatim)**: 명령
+  `go test ./internal/cli/update/deploy/ -run 'TestCleanMoaiManagedPaths_DanglingSymlinkAtNonGlobRoot' -count=1 -v`.
+  관측된 실패 (전체 출력은 run 트랜스크립트에 verbatim 보존):
+  ```
+  deploy_symlink_test.go:90: dangling symlink still present after clean (Lstat err = <nil>, want IsNotExist)
+  deploy_symlink_test.go:96: progress output has no line naming .claude/agents/moai as a symlink:
+        ✓ Skipped .claude/agents/moai (not found)          ← Run D의 Skip 재현
+  deploy_symlink_test.go:101: deploy-side MkdirAll(...) failed: mkdir .../.claude/agents/moai: file exists   ← EEXIST 재현
+  deploy_symlink_test.go:110: (재실행 MkdirAll 동일 EEXIST — 재실행 루프 폐쇄 실패)
+  --- FAIL: TestCleanMoaiManagedPaths_DanglingSymlinkAtNonGlobRoot (0.00s)
+  ```
+  AC-CSL-001 RED 기준(단언 1·3·5 실패) 그대로 + 단언 2(진행줄) 실패.
+- **RED (M2 형태 일괄, 구현 이전)**: 같은 경계의 `-run 'Symlink|...|UserOwned...' -v`
+  실행에서 링크 8종 전부 FAIL (glob dangling 잔존·config dangling EEXIST·file-root
+  dangling 잔존·live dir/file 링크 진행줄 부재·target-stat 귀속 상이), 대조군 2종
+  (FX-4 실디렉터리·FX-5 hns 미접촉) PASS — 양극 확인.
+- **GREEN**: `go test ./internal/cli/update/deploy/ -count=1` →
+  `ok github.com/modu-ai/moai-adk/internal/cli/update/deploy 0.559s` (기존 테스트
+  전량 포함 녹색 — REQ-CSL-006 실디렉터리 비회귀). 구현: `backupThenRemove` 판정
+  `os.Lstat` + `fs.ModeSymlink` 검사를 IsDir 이전에 배치 (REQ-CSL-001), 링크 분기
+  `removeSymlink`가 형태별 처분 실행 (dangling/디렉터리/파일), 비-글롭 사전검사
+  Lstat 전환 (dangling이 "Skipped (not found)"로 넘어가지 않게 — 의도된 출력 변경),
+  진행줄 토큰 `dangling symlink` / `directory symlink, target untouched` /
+  `file symlink(, target bytes backed up)`.
+- **정식 검증 (M1 닫힘)**: `go test ./internal/cli/update/... -count=1` → 6패키지
+  전부 `ok` · `go vet ./internal/cli/...` → exit 0 · `golangci-lint run
+  ./internal/cli/update/...` → `0 issues.` · `GOOS=windows GOARCH=amd64 go build ./...`
+  exit 0 · `GOOS=linux GOARCH=amd64 go build ./...` exit 0 · `gofmt -l` 신규 파일
+  0건 (`deploy_test.go` 1건은 본 run 미수정 파일의 선행 드리프트 — baseline).
+- 커밋: M1 커밋 = 이 커밋 (deploy.go + deploy_symlink_test.go + 4 산물 frontmatter
+  `draft → in-progress`). deploy_symlink_forms_test.go는 M2 커밋 소관으로 미커밋
+  유지 (RED 관측은 위에 기록됨 — 테스트와 구현이 함께 녹색 도달).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+_<pending run-phase — M4 완료 시 기입>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

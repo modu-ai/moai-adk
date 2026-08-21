@@ -2,7 +2,7 @@
 id: SPEC-CLI-CLEAN-SYMLINK-001
 title: "Plan — moai update 청소 경로의 심볼릭 링크 인식"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-08-22
 updated: 2026-08-22
 author: manager-spec
