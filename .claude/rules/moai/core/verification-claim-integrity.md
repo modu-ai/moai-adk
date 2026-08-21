@@ -18,7 +18,7 @@ The binding extends to the premise beneath a recommendation. A recommendation to
 
 This direction is the more dangerous one, because its failure is silent. A wrong "remove it" claim is contradicted by the next build or test run; a wrong "keep it" claim preserves dead code and is never contradicted by any signal at all.
 
-This is a policy-layer norm, not a mechanical guarantee. For the complementary mechanical-detection layer that surfaces one shape of this violation at runtime, cross-reference SPEC-STOP-EVIDENCE-GATE-001 (see Cross-References below).
+This is a policy-layer norm, not a mechanical guarantee. For the complementary mechanical-detection layer that surfaces one shape of this violation at runtime, cross-reference SPEC-STOP-EVIDENCE-GATE-001 (the cross-reference table lives in the detail companion, `verification-claim-integrity-detail.md`).
 
 ### 1.1 Binding scope — ALL FOUR surfaces
 
@@ -49,51 +49,21 @@ Anything else (an inferred value, a stale figure, a "should be" estimate) is una
 
 [ZONE:Evolvable] [HARD] Verification and completion reports — on either binding surface (§1.1) — SHOULD be structured as the following five sections. The format is the operational mechanism that enforces §1 and §2: it forces the actor to separate what is claimed from what was observed, and to make the unobserved explicit. Apply the format to every report, not only the first.
 
-### 3.1 Claim (주장)
+The five sections, in order:
 
-What is being asserted. The completion or verification statement, phrased as a discrete claim (one row per assertion in a matrix, or one sentence per claim in prose).
+| Section | Carries |
+|---|---|
+| **Claim** (주장) | what is being asserted — one discrete claim per row or sentence |
+| **Evidence** (증거) | the command that was run **plus its verbatim output**; a summary is not evidence |
+| **Baseline-attribution** (baseline 귀속) | what it was measured against, per §2 — command + observed output, in this run, against this tree |
+| **Gaps** (미검증) | what was explicitly **NOT** observed; an empty Gaps section asserts nothing was left unobserved, which must itself be true |
+| **Residual-risk** (잔여 위험) | what could still be wrong *despite* what was observed — distinct from Gaps, which is what was not observed |
 
-### 3.2 Evidence (증거)
-
-The actual command that was run **plus its verbatim output** — not a summary. If the claim in §3.1 is "tests pass", the Evidence section contains the literal command (`go test ./...`) and the literal output block it produced. Summarized evidence ("all tests passed") is NOT acceptable as Evidence — the verbatim output is the load-bearing artifact.
-
-### 3.3 Baseline-attribution (baseline 귀속)
-
-The baseline against which the claim was measured (per §2): the command + the observed output, in this run, against this tree. This section answers "measured against what?" and prevents a claim from silently borrowing a number from an unrelated prior measurement.
-
-### 3.4 Gaps (미검증)
-
-What was explicitly **NOT** observed — the negative space. This is the key defense of the entire format. By forcing the actor to enumerate what it did not verify, this section prevents an unobserved claim from passing silently as if it were a success. A report with an empty Gaps section is making the strong assertion that nothing was left unobserved — which itself must be true. When in doubt, name the gap.
-
-### 3.5 Residual-risk (잔여 위험)
-
-Remaining uncertainty and deferred verification — the risk that survives even after the observed evidence. Distinct from Gaps (§3.4, what was not observed): Residual-risk is what could still be wrong despite what WAS observed (flaky tests, environment-specific behavior, deferred AC, time-of-check-to-time-of-use windows, etc.).
-
-## 4. Cross-References (SSOT — cross-reference only, do not duplicate)
-
-This doctrine cross-references the following canonical surfaces. It does NOT copy their content — each remains the single source of truth for its own subject:
-
-- `.claude/rules/moai/core/agent-common-protocol.md` § Skeptical Evaluation Stance — the fresh-judgment auditor stance (treat claims as suspect until evidence is shown).
-- `.claude/rules/moai/core/moai-constitution.md` § Agent Core Behaviors #6 "Verify, Don't Assume" — the cross-cutting HARD behavior requiring evidence of completion.
-- `.claude/rules/moai/development/manager-develop-prompt-template.md` § E (Self-Verification Deliverables, E1-E7) — the manager-agent §E self-verification matrix that the 5-section format generalizes and relates to.
-- `.claude/rules/moai/workflow/verification-batch-pattern.md` — the orchestrator-side read-only verification batching pattern (the mechanism by which observed evidence is gathered efficiently).
-- `.claude/output-styles/moai/moai.md` §8 — the Verification Matrix and Completion Report banners (the orchestrator self-report surface bound by §1.1).
-
-## 5. Worked Example — Defect-Claim Hazard
-
-A status report counted 29 SPECs with `status: implemented` and an absent `era:` frontmatter field. From frontmatter text alone, the reporter inferred "these 29 are V3R6 SPECs with a missing close (the legacy 'Mx-phase close' inference — the reporter assumed a separate Mx-phase close commit was required)" and proposed batch-closing all 29.
-
-This was an unobserved defect claim. The reporter had NOT run the domain's dedicated verification tool. When `moai spec audit --json` was finally run, its mechanical era classification showed all 29 were grandfather era (`V3R2-R4` 28 + `V2.x` 1) — `era_final: true`, protected, not subject to V3R6 3-phase close (plan→run→sync) — and MUST-FIX drift across the entire catalog was 0. The inferred "close debt" did not exist; had the batch-close proceeded, 29 grandfather-protected SPECs would have been touched for no reason.
-
-Lesson codified: **a defect claim is a hypothesis until the domain's tool confirms it.** The `era:`-absent + `implemented` text pattern was compatible with two contradictory interpretations (grandfather legacy vs. modern close-debt); only the dedicated tool could disambiguate. Whenever a domain verification tool exists (`moai spec audit` for SPEC lifecycle, `go test -cover` for coverage gaps, `golangci-lint` for code defects), its output MUST precede any defect/debt/drift claim — §1.1 surface 3 + §2 attribution.
-
-## 6. Worked Example — Retention-Claim Hazard
-
-A user instructed that `.moai/brain` be removed. The orchestrator deleted the artifacts but held one item back — a scan in the shipped `plan/context-discovery.md` that globbed `.moai/brain/IDEA-*/proposal.md` — on the stated premise that removing it "would withdraw a live feature from every distributed user", and recommended a separate retirement SPEC instead.
-
-That premise was never checked. The orchestrator had verified the scan was *reachable* (`plan.md`'s routing table points at it) and had read that `SPEC-V3R3-BRAIN-001` still carried `status: implemented`, then treated both facts as evidence the feature was live. Neither establishes that. When the producers were finally enumerated, every one was already gone: the `/moai brain` command, `workflows/brain.md`, the `manager-brain` agent, the `moai brain` CLI, the `/moai project --from-brain` flag, the `templates/.moai/brain/` scaffold, and the docs-site pages in all four locales. `SPEC-SUBCOMMAND-RETIRE-001` (status: completed) had retired the feature from the template source permanently, for all distributed users, and a later cleanup commit had swept the orphans that retirement left behind. The scan simply survived both passes. With no producer and no scaffold, the glob could only ever return zero on a user's machine.
-
-Lesson codified: **reachability is not justification, and a SPEC still reading `status: implemented` is not proof the feature it delivered is still live** — a later SPEC may have retired it. Before recommending retention against an instruction, enumerate the producers of the thing being retained and check for a completed retirement SPEC; an objection whose premise was never verified is an unobserved claim — §1.1 surface 4 + §2 attribution.
+What each section contains in full, the cross-reference table, and the two worked-example incident
+records (the defect-claim hazard and the retention-claim hazard the §1 clauses were written from)
+live in the detail companion `verification-claim-integrity-detail.md`. Load it when composing an
+evidence-bearing report for the first time, or when tracing a clause back to its originating
+failure.
 
 ---
 

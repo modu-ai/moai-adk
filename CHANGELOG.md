@@ -25,6 +25,8 @@ Absorbed text is restated, never lifted. The source permits external font loadin
 
 The mermaid routing table is unchanged and the bypass exception list is empty. One sample pair was rendered for `journey` and is committed as evidence; the carve-out it would have justified was declined, which is the outcome the acceptance criteria name as a pass.
 
+A root `AGENTS.md` joins the repository as the standing contract for any agent harness, not only Claude's. The reason it is one file and not several is the failure mode: codex reads project instructions under a byte cap and drops the overflow with no warning, no stderr, and exit 0 — so a contract that does not fit is not reported missing, it is reported complete. The document is therefore self-sufficient, ordered most-critical-first, and held under a ceiling by a guard that fails the build. Making room for it took eleven always-loaded documents down to stubs against eight lazy companions; no obligation moved, only the prose explaining why each one exists.
+
 ### Added
 
 - **[SPEC-CODEX-DUAL-AGENTS-001](.moai/specs/SPEC-CODEX-DUAL-AGENTS-001/spec.md)** — sync-phase close (3-phase plan→run→sync). **The 11 retained MoAI agent definitions are now published in dual form — the existing `.claude/agents/moai/*.md` and a new codex-cli-consumable `.codex/agents/moai/*.toml` — generated deterministically from a single neutral source: the template `.md` frontmatter+body core.** A new `internal/template/agentemit` emitter package (loader → manifest → TOML writer, `agents-codex.yaml` manifest) drives the publication, and the 11 committed `.codex/agents/moai/*.toml` template artifacts ship in `internal/template/templates/` so `moai init`/`moai update` distributes them alongside the markdown set. Golden, embed, and deploy guards pin the emitted TOML against drift from the markdown source.
@@ -36,6 +38,10 @@ The mermaid routing table is unchanged and the bypass exception list is empty. O
 - Fourteen slop symptoms in `SKILL.md` § Red Flags, each phrased as something to look for in the rendered image rather than as a matter of taste.
 - `scripts/fixtures/a11y-present.svg` and `a11y-missing.svg`, which the accessibility check must pass and fail respectively. A check that only ever passes proves nothing.
 
+- A root `AGENTS.md` — the standing contract every turn is bound by, regardless of which agent harness reads it. Codex loads project instructions from that filename under a byte cap and truncates the overflow **silently**; a rule cut mid-sentence is worse than an absent one, because it still reads as complete. The file is self-sufficient by construction: it assumes no other instruction document is loaded and no nested `AGENTS.md` exists anywhere in the repository, and its clauses are ordered most-critical-first so that what a truncation drops is what matters least. It ships to every project, and `CLAUDE.md` reaches it through the same `@`-import mechanism it already used for the config sections, so the contract is stated once and loaded once rather than duplicated inline.
+- A byte guard on that contract layer. The ceiling is 24,576 B — the untrusted first session's effective cap of 32,768 B, less a reserve for the reader's own global `~/.codex/AGENTS.md` layer and for future growth. It binds the shipped mirror as well as the live file, because a mirror over the ceiling truncates on the reader's machine no matter what the repository's own copy measures. A breach **fails the build** rather than warning: truncation produces no signal of its own, so this guard is the only one there will ever be.
+- The always-loaded budget guard now counts `AGENTS.md`. Without that, moving a clause out of a rule file and into the contract layer would have scored as a reduction while the loaded context stayed exactly the same — a diet that never happened, recorded as if it had.
+
 ### Changed
 
 - Resolving a project's `.moai/state` no longer climbs past the project root. `moai state dump`, `moai state show-blocker`, `moai chain`, `moai tokens`, and `moai clean` stop at the directory that owns the project and fail there when it has no state directory, instead of continuing upward and succeeding somewhere else.
@@ -46,12 +52,14 @@ The mermaid routing table is unchanged and the bypass exception list is empty. O
 - Resolved state paths are returned in symlink-resolved form. On macOS this changes the string a command prints for the same directory — `/private/var/...` rather than `/var/...`.
 - `references/authoring.md` section 3 is restructured around eleven semantic roles, each carrying a light and a dark value. The dark column is derived rather than separately maintained: the `ink` and `surface` anchors swap, every other role keeps its distance from its anchor rather than its hex, opacities never change, and `accent` alone shifts one step lighter because the light value's contrast against ivory does not survive against near-black. A role added later inherits the rule instead of needing a judgement. The one-accent focal discipline survives the restructure — it was the thing most likely to be lost, so it is guarded by its own acceptance criterion.
 
+- Eleven always-loaded documents were reduced to stubs, with their rationale, procedure, worked examples, incident records, and long cross-reference tables moved into eight new companion files that load only when the work touches them. Every obligation stayed where it was; what moved was the material explaining why it exists. The always-loaded surface fell by 8,555 tokens.
+- A personal `~/.codex/AGENTS.md` joins the same merged chain and is consumed **before** a project's own contract, narrowing what that contract can carry. The shipped documentation now says so, because the effect is otherwise invisible until something is already missing.
+
 ### Fixed
 
 - A state-reading command run anywhere under the home directory resolved to `~/.moai/state` and reported success instead of failing. Beneath that, `moai clean` deleted `runs/`, `moai chain` created `~/.moai/chain`, and the readers reported on a project nobody had named. The reproducing case now ends in `not in a MoAI project (no .moai directory found in project directories)` where it previously printed `No blockers found`.
 - Every SVG the skill emits now carries a resolving accessible name: `role="img"`, `aria-labelledby`, a `<title>` as the first child of `<svg>`, and a `<desc>` describing the content rather than narrating the geometry. IDs are prefixed per diagram, because two diagrams inlined into one page with bare `title`/`desc` ids collide and the second is announced with the first one's name.
 - `scripts/check-svg.mjs` enforces the contract as errors `SVG060`-`SVG064` and names which part is missing. A graphic that is genuinely decorative declares `aria-hidden="true"` and is exempt; a diagram never is.
-
 
 ## [3.1.2] - 2026-08-21
 

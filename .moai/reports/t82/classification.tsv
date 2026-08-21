@@ -1,0 +1,98 @@
+id	class	basis
+B000	K	subagent + AskUserQuestion channel; no Codex counterpart
+B001	K	Ledger Closure over Agent() delegation, TaskCompleted / TeammateIdle hooks
+B002	C	conversation_language binds any harness's output
+B003	C	user-facing Markdown, no XML tags
+B004	C	XML reserved for agent-to-agent; the user-facing half binds generically
+B005	C	MCP fallback; codex speaks MCP
+B006	K	Agent() natural-language delegation pattern
+B007	K	per-spawn model injection on Agent() spawns
+B008	K	Claude Code background-subagent default
+B009	C	generic tool-usage discipline
+B010	C	batch independent read-only verifications rather than serialize
+B011	K	pre-spawn gate on Agent() spawns
+B012	C	binds direct edits to shared paths — exactly what a codex turn does
+B013	C	sweep prohibition in the primary checkout
+B014	C	no time predictions in plans or reports
+B015	K	AskUserQuestion preview field
+B016	K	AskUserQuestion report-before-ask gate
+B017	K	forbids appending a decision-type AskUserQuestion
+B018	K	AskUserQuestion preview-as-report substitution
+B019	K	report promise before a decision AskUserQuestion
+B020	K	subagents MUST NOT invoke AskUserQuestion
+B021	K	subagent prose-question prohibition
+B022	K	subagent AskUserQuestion syntax prohibition
+B023	K	completion-report next-step via AskUserQuestion
+B024	K	AskUserQuestion channel monopoly + ToolSearch preload
+B025	C	native-idiom output rule
+B026	K	Claude subagent spawn steering
+B027	K	Claude model/effort defaults (Opus tiers, xhigh)
+B028	C	Surface Assumptions — harness-generic agent behavior
+B029	C	Manage Confusion Actively — harness-generic
+B030	C	Push Back When Warranted — harness-generic
+B031	C	Enforce Simplicity — harness-generic
+B032	C	Maintain Scope Discipline — harness-generic
+B033	C	Verify, Don't Assume — harness-generic
+B034	C	native-idiom invariant for non-English locales
+B035	K	mandates the Skill() tool for the humanize pass
+B036	C	no unobserved verification / defect / premise claim
+B037	C	baseline-integrity attribution
+B038	C	5-section evidence-bearing report format
+B039	K	Claude @-mention loading + /context, prompt-cache economics
+B040	C	bound command output
+B041	C	prefer the quiet form of routine commands
+B042	K	Claude session prompt-cache economics
+B043	K	Claude model/effort switch busts the prompt cache
+B044	K	Claude model-class context windows and /clear thresholds
+B045	K	/clear + paste-ready resume
+B046	K	/clear hard stop
+B047	K	pre-clear announcement, Agent() delegations
+B048	K	paste-ready resume message format
+B049	K	cross-session peer messaging (Claude Code SendMessage)
+B050	K	peer-permission laundering; no codex peer channel
+B051	K	peer message content rule
+B052	K	notify_when_idle notice semantics
+B053	P	navigation note in a stub's detail-companion pointer — no obligation
+B054	K	kanban lead role, moai todo queue production
+B055	K	card promotion via AskUserQuestion after /clear
+B056	K	kanban card cross-check in milestone reports
+B057	K	kanban card-class admission
+B058	K	kanban delegation channel is the queue
+B059	K	nudge-channel idle notice semantics
+B060	K	dispatch language for a kanban lead
+B061	K	kanban dispatch address-block format
+B062	K	SendMessage routing result
+B063	K	kanban lead advances on read evidence (generic form is B036)
+B064	C	CodeRabbit status is not evidence — binds any actor reading gh PR checks
+B065	K	/clear handoff between phases
+B066	C	worktree entered through the launcher, never bare git worktree add
+B067	C	moai worktree done closes L2 trees only
+B068	C	unpushed branch is the work's only instance
+B069	C	a new card starts in a new worktree; exit the previous first
+B070	C	WT- branch naming
+B071	C	traceability carriers once the id leaves the branch name
+B072	C	lane-local verification scoped to the change
+B073	C	never spawn background load
+B074	C	env-scrubbed verification as one compound invocation
+B075	K	lane/lead integration roles in kanban and factory modes
+B076	C	no branch-state change in the primary checkout
+B077	C	re-read branch and commit state before commit or push
+B078	K	paste-ready resume emission triggers
+B079	K	handoff save obligation
+B080	K	handoff save fail-open invariant
+B081	K	6-block resume format
+B082	K	resume Block 1 field spec
+B083	K	resume Block 5 arm-only property
+B084	K	auto-memory integration for the resume message
+B085	K	resume render surface
+B086	K	worktree-anchored resume pattern
+B087	K	paste-ready diet constraints
+B088	K	V0 abort gate in the paste-ready Block 4
+B089	K	Skill() injection into Agent() spawn prompts
+B090	K	orchestrator-direct Skill() loading
+B091	K	skill-description routing is intent-based
+B092	K	skill routing anti-pattern
+B093	K	AskUserQuestion is the sole question channel
+B094	K	deferred-tool ToolSearch preload
+B095	C	native-UTF-8 tool-call payloads; no hand-authored \uXXXX escapes
+B096	K	Claude subagent backgrounding and fan-out caps
