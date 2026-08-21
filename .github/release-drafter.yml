@@ -78,7 +78,7 @@ version-resolver:
 template: |
   ## $RESOLVED_VERSION Release Notes (Draft)
 
-  > ⚠️ **This is a draft Release Drafter refreshes on every PR merge — not the published body.**
+  > ⚠️ **This is a draft that Release Drafter refreshes on every PR merge. It is not the published body.**
   > At release time, write the `CHANGELOG.md` section from this list: English only,
   > opening with `### Summary`, which the release harness composes the published
   > notes from. Then run `./scripts/release.sh`.
