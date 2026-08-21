@@ -41,8 +41,11 @@ no animation, no scripting, no external asset at view time.
 ## Step 0 — Decide whether this is an SVG job
 
 This skill is **additive to the mermaid pipeline, never a replacement for it**.
-Nothing here migrates, rewrites, or deprecates an existing mermaid diagram, and
-no diagram should ever exist in both forms — that is dual maintenance, and it is
+Nothing here migrates, rewrites, or deprecates an existing mermaid diagram on
+its own (the sole exception: a caller-invoked import through the opt-in importer
+references in the bundled-references table, where the one-home rule below
+governs and the source is replaced outright in the same change), and no diagram
+should ever exist in both forms — that is dual maintenance, and it is
 the one failure this section exists to prevent.
 
 Route the request before drawing anything:
@@ -288,6 +291,8 @@ the SVG alone and state the limitation.
 |------|----------|
 | `references/archetypes.md` | The four archetype skeletons with their canvas presets, grid parameters, and per-archetype containment rules |
 | `references/authoring.md` | Full geometry and connector formula set, the icon set, palette and type scale, and the manual no-Node checklist |
+| `references/import-drawio.md` | Opt-in migration path for an existing draw.io source: decode the container (four shapes) first, then IR to a numeric-layout re-author, with one-home replacement in the same change |
+| `references/import-mermaid.md` | Opt-in migration path for an existing mermaid source: IR to a numeric-layout re-author, with one-home replacement in the same change |
 | `references/sketch.md` | Opt-in hand-drawn preset layered over the same computed layout |
 
 | Script | Purpose |
