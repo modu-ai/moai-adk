@@ -39,9 +39,9 @@ func TestIsGLMBackend(t *testing.T) {
 	}
 }
 
-// TestCollapseClaudeEffortToGLM covers the REQ-MTP-027 5→3 collapse (AC-MTP-029):
-// low→thinking-off; medium/high→reasoning-high; xhigh/max→reasoning-max; and the
-// totality clause (unrecognized effort → documented GLM default state).
+// TestCollapseClaudeEffortToGLM covers the REQ-GEM-001 ceiling raise on the
+// 5→3 collapse: low→low (thinking enabled); medium/high/xhigh/max→max; and the
+// totality clause (unrecognized effort → documented GLM default state, max).
 func TestCollapseClaudeEffortToGLM(t *testing.T) {
 	tests := []struct {
 		effort          string
@@ -50,8 +50,8 @@ func TestCollapseClaudeEffortToGLM(t *testing.T) {
 		wantReasoningEf string
 	}{
 		{EffortLevelLow, GLMStateLow, true, GLMReasoningEffortLow},
-		{EffortLevelMedium, GLMStateHigh, true, GLMReasoningEffortHigh},
-		{EffortLevelHigh, GLMStateHigh, true, GLMReasoningEffortHigh},
+		{EffortLevelMedium, GLMStateMax, true, GLMReasoningEffortMax},
+		{EffortLevelHigh, GLMStateMax, true, GLMReasoningEffortMax},
 		{EffortLevelXHigh, GLMStateMax, true, GLMReasoningEffortMax},
 		{EffortLevelMax, GLMStateMax, true, GLMReasoningEffortMax},
 		// Totality: an unrecognized effort maps to the GLM default state
@@ -92,12 +92,12 @@ func TestResolveGLMReasoning_CodingMaxOverride(t *testing.T) {
 		{"manager-develop input=high → override max", "manager-develop", EffortLevelHigh, GLMStateMax},
 		{"manager-develop input=max → override agrees with collapse max", "manager-develop", EffortLevelMax, GLMStateMax},
 		// builder-harness (removed from override by SPEC-GLM-EFFORT-TUNE-001 P1) → standard collapse.
-		{"builder-harness input=low → low (collapse, no longer overridden)", "builder-harness", EffortLevelLow, GLMStateLow},
-		{"builder-harness input=high → high (AC-GET-003 make-or-break)", "builder-harness", EffortLevelHigh, GLMStateHigh},
+		{"builder-harness input=low → low (AC-GET-003 make-or-break, re-anchored to low by SPEC-GLM-EFFORT-MAX-001)", "builder-harness", EffortLevelLow, GLMStateLow},
+		{"builder-harness input=high → max (collapse of high, NOT override)", "builder-harness", EffortLevelHigh, GLMStateMax},
 		{"builder-harness input=xhigh → max (collapse of xhigh, NOT override)", "builder-harness", EffortLevelXHigh, GLMStateMax},
 		// Non-override agent → un-overridden collapse result.
 		{"manager-git input=low → low (collapse, un-overridden)", "manager-git", EffortLevelLow, GLMStateLow},
-		{"manager-spec input=high → high (collapse, un-overridden)", "manager-spec", EffortLevelHigh, GLMStateHigh},
+		{"manager-spec input=high → max (collapse, un-overridden)", "manager-spec", EffortLevelHigh, GLMStateMax},
 		{"super-advisor input=xhigh → max (collapse, not override)", "super-advisor", EffortLevelXHigh, GLMStateMax},
 	}
 	for _, tt := range tests {
@@ -113,7 +113,8 @@ func TestResolveGLMReasoning_CodingMaxOverride(t *testing.T) {
 // TestGLMCodingMaxOverrideAgents_ExactlyOne asserts the override set is EXACTLY
 // {manager-develop} — the single code-producing run-phase agent (z.ai coding-task
 // recommendation). builder-harness was removed by SPEC-GLM-EFFORT-TUNE-001 P1
-// (AC-GET-001); it falls under the standard collapse at reasoning-high.
+// (AC-GET-001); it falls under the standard collapse (post SPEC-GLM-EFFORT-MAX-001:
+// max for every effort above low).
 func TestGLMCodingMaxOverrideAgents_ExactlyOne(t *testing.T) {
 	got := GLMCodingMaxOverrideAgents()
 	sort.Strings(got)
@@ -136,24 +137,30 @@ func TestGLMCodingMaxOverrideAgents_ExactlyOne(t *testing.T) {
 	if IsGLMCodingMaxOverrideAgent("manager-spec") || IsGLMCodingMaxOverrideAgent("sync-auditor") {
 		t.Error("IsGLMCodingMaxOverrideAgent must be false for non-override agents")
 	}
-	// AC-GET-003 make-or-break behavioral assertion: builder-harness now reaches
-	// reasoning-high under a high Claude effort (standard collapse), NOT reasoning-max.
-	if got := ResolveGLMReasoning("builder-harness", EffortLevelHigh); got.Name != GLMStateHigh {
-		t.Errorf("ResolveGLMReasoning(builder-harness, high).Name = %q, want %q (P1: no longer overridden)", got.Name, GLMStateHigh)
+	// AC-GET-003 make-or-break behavioral assertion, re-anchored to the low effort
+	// by SPEC-GLM-EFFORT-MAX-001 (plan B-2): at effort `high` the collapse and the
+	// coding-max override now agree on max, so the not-overridden discrimination
+	// is only observable at low — builder-harness stays at the low level (standard
+	// collapse) where manager-develop is lifted to max (override).
+	if got := ResolveGLMReasoning("builder-harness", EffortLevelLow); got.Name != GLMStateLow {
+		t.Errorf("ResolveGLMReasoning(builder-harness, low).Name = %q, want %q (P1: no longer overridden)", got.Name, GLMStateLow)
+	}
+	if got := ResolveGLMReasoning("manager-develop", EffortLevelLow); got.Name != GLMStateMax {
+		t.Errorf("ResolveGLMReasoning(manager-develop, low).Name = %q, want %q (coding-max override)", got.Name, GLMStateMax)
 	}
 }
 
 // TestSessionGLMReasoningState confirms the Branch-B session-global delivery
-// value is the thinking-enabled reasoning-high floor (an operator cost policy —
-// a session-global value is paid by every spawn, not only the coding one), per
-// the delivery-granularity limitation (research.md §D).
+// value is the thinking-enabled max state (REQ-GEM-002, lead-ratified 2026-08-22:
+// the session-global env is the only reasoning channel under Branch-B, t127
+// measured trivial-spawn cost ≈ 0, and max is z.ai's own omit-default).
 func TestSessionGLMReasoningState(t *testing.T) {
 	got := SessionGLMReasoningState()
-	if got.Name != GLMStateHigh {
-		t.Errorf("SessionGLMReasoningState().Name = %q, want %q (session default)", got.Name, GLMStateHigh)
+	if got.Name != GLMStateMax {
+		t.Errorf("SessionGLMReasoningState().Name = %q, want %q (session default)", got.Name, GLMStateMax)
 	}
-	if !got.ThinkingEnabled || got.ReasoningEffort != GLMReasoningEffortHigh {
-		t.Errorf("SessionGLMReasoningState() = %+v, want thinking enabled + reasoning_effort=high", got)
+	if !got.ThinkingEnabled || got.ReasoningEffort != GLMReasoningEffortMax {
+		t.Errorf("SessionGLMReasoningState() = %+v, want thinking enabled + reasoning_effort=max", got)
 	}
 }
 
@@ -171,11 +178,11 @@ func TestSessionGLMReasoningStateForEffort(t *testing.T) {
 		wantReasoningVal string
 	}{
 		{"low → reasoning low", EffortLevelLow, GLMStateLow, true, GLMReasoningEffortLow},
-		{"medium → high", EffortLevelMedium, GLMStateHigh, true, GLMReasoningEffortHigh},
-		{"high → high", EffortLevelHigh, GLMStateHigh, true, GLMReasoningEffortHigh},
+		{"medium → max", EffortLevelMedium, GLMStateMax, true, GLMReasoningEffortMax},
+		{"high → max", EffortLevelHigh, GLMStateMax, true, GLMReasoningEffortMax},
 		{"xhigh → max", EffortLevelXHigh, GLMStateMax, true, GLMReasoningEffortMax},
 		{"max → max", EffortLevelMax, GLMStateMax, true, GLMReasoningEffortMax},
-		{"empty falls back to session default", "", GLMStateHigh, true, GLMReasoningEffortHigh},
+		{"empty falls back to session default (max)", "", GLMStateMax, true, GLMReasoningEffortMax},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -508,11 +508,11 @@ func TestGLMReasoningEnvVarsForEffort(t *testing.T) {
 		wantReasoning string
 	}{
 		{"low → reasoning low (glm-5.3 cannot disable thinking)", template.EffortLevelLow, true, template.GLMReasoningEffortLow},
-		{"medium → reasoning high", template.EffortLevelMedium, true, template.GLMReasoningEffortHigh},
-		{"high → reasoning high", template.EffortLevelHigh, true, template.GLMReasoningEffortHigh},
+		{"medium → reasoning max", template.EffortLevelMedium, true, template.GLMReasoningEffortMax},
+		{"high → reasoning max", template.EffortLevelHigh, true, template.GLMReasoningEffortMax},
 		{"xhigh → reasoning max", template.EffortLevelXHigh, true, template.GLMReasoningEffortMax},
 		{"max → reasoning max", template.EffortLevelMax, true, template.GLMReasoningEffortMax},
-		{"empty → session default (reasoning high)", "", true, template.GLMReasoningEffortHigh},
+		{"empty → session default (reasoning max)", "", true, template.GLMReasoningEffortMax},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

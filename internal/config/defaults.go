@@ -493,9 +493,16 @@ func NewDefaultGateConfig() GateConfig {
 		Enabled:   true,
 		SkipTests: false,
 		Timeouts: GateTimeouts{
-			Vet:  30,
-			Lint: 60,
-			Test: 120,
+			Vet:       30,
+			Lint:      60,
+			Test:      120,
+			Typecheck: 300,
+		},
+		// The typecheck axis is ON by default. A project with no type-check
+		// surface reports the skip and passes, so enabling it costs nothing
+		// while closing the hole for every project that does have one.
+		Typecheck: GateTypecheck{
+			Enabled: true,
 		},
 		// The ast-grep sub-gate is ON by default in advisory mode (findings
 		// reported, commits never blocked); blocking is opt-in via gate.yaml.
