@@ -131,6 +131,103 @@ MS1 decisions recorded:
 - Fixture sources verified pre-implementation: 11/11 name==stem, zero `'''`,
   zero CR, all files end `\n`, all UTF-8.
 
+### MS2 — Probes: lock the enums (2026-08-22, manager-develop; t91 §9 pattern)
+
+Harness: isolated `CODEX_HOME=/tmp/t89-probe.H4oYTX/home` (auth copied in,
+mode 600); probe project at `/tmp/t89-probe.H4oYTX/proj` with 12 probe agent
+TOMLs (11 under `.codex/agents/moai/`, 1 flat under `.codex/agents/`); real
+`~/.codex` verified untouched by mtime snapshot diff before/after
+(`REAL_CODEX_HOME_UNTOUCHED`, config.toml + auth.json + hooks.json). Scratch
+removed after evidence capture (auth copy deleted first). Total model calls:
+2 (bounded; no loops, no background load). codex-cli 0.147.0 confirmed:
+`codex --version` → `codex-cli 0.147.0` (measured version = manifest pin).
+
+**Run 1 — P-04 layout + per-value file survival** (verbatim):
+
+```
+$ CODEX_HOME=<scratch>/home codex exec --dangerously-bypass-approvals-and-sandbox \
+    -C <scratch>/proj --json "List every custom agent name available to you for
+    delegation (the agent types you can spawn as subagents). Reply with ONLY the
+    comma-separated list of names, no prose, no explanation." < /dev/null
+{"type":"item.completed","item":{"id":"item_1","type":"agent_message","text":"t89flatprobe, t89p01danger, t89p01readonly, t89p01wwrite, t89p02bogus, t89p02high, t89p02low, t89p02medium, t89p02xhigh, t89p03bogusmodel, t89p03omit, t89subprobe, default, explorer, worker"}
+```
+
+Readings: (a) `t89subprobe` (placed at `.codex/agents/moai/sub-probe.toml`)
+IS listed → **P-04: `.codex/agents/` scans subdirectories — subdirectory
+layout CONFIRMED** (manifest knob stays subdirectory/moai). (b) `t89p01bogus`
+(sandbox_mode = "t89-bogus-sandbox") is ABSENT → a bad sandbox value kills
+the whole file (the lead-cited hazard, now measured). (c) All four effort
+candidates AND `t89p02bogus` AND `t89p03bogusmodel` register → effort/model
+bad values are silently accepted at parse (silent-ignore zone).
+
+**Run 2 — P-01 accepted set (runtime names it) + delegation smoke** (verbatim):
+
+```
+$ CODEX_HOME=<scratch>/home codex exec --dangerously-bypass-approvals-and-sandbox \
+    -C <scratch>/proj --json "Delegate to the agent t89subprobe with the message
+    'identify yourself'. Wait for its reply. Then delegate to the agent t89p01wwrite
+    with the same message. Report both exact replies, one per line, prefixed SUB: and WW:." \
+    < /dev/null
+{"type":"item.completed","item":{"id":"item_0","type":"error","message":"Ignoring malformed agent role definition: failed to deserialize agent role file at /tmp/t89-probe.H4oYTX/proj/.codex/agents/moai/p01-bogus.toml: unknown variant `t89-bogus-sandbox`, expected one of `read-only`, `workspace-write`, `danger-full-access`\n"}}
+{"type":"item.completed","item":{"id":"item_5","type":"agent_message","text":"SUB: T89SUBPROBE-OK\nWW: T89P01WWRITE-OK"}}
+```
+
+Readings: (a) **P-01: the runtime names the sandbox value set verbatim —
+{read-only, workspace-write, danger-full-access}** (exactly 3 values;
+malformed file visibly dropped with a named diagnostic). (b) Delegation to
+the t91-pattern agent (fields name/description/developer_instructions/
+model_reasoning_effort/sandbox_mode all present) returned `T89SUBPROBE-OK`;
+delegation to the workspace-write agent returned `T89P01WWRITE-OK` — the
+P-01 emitted-candidate is delegation-confirmed.
+
+**P-02 static enum evidence** (0 model calls, t91's binary-string technique):
+
+```
+$ strings "<codex-runtime>/0.147.0-aarch64-apple-darwin/bin/codex" | grep -o "minimal[a-z ]*low[a-z ]*medium[a-z ]*high"
+minimallowmediumhighxhigh   (x3 occurrences; a broader run adds none/max/ultra)
+```
+
+**P-02: {low, medium, high, xhigh} ⊂ the binary's reasoning-effort enum
+{minimal, low, medium, high, xhigh}** + all four registered as agents →
+identity mapping CONFIRMED and locked in the manifest.
+
+**P-03**: `t89p03omit` (no model key) registered; `sub-probe`/`t89subprobe`
+(no model key) delegated successfully → omission inherits the subagent
+default and works. `t89p03bogusmodel` (model = "t89-bogus-model-string")
+registered silently → arbitrary strings accepted at parse — emitting a
+Claude alias would be accepted-but-wrong. **R-011 omit-model CONFIRMED as
+the only safe choice.**
+
+**P-05 (skills.config)**: SKIPPED — M1-deferred per plan §A.4 (M5 emits no
+skills field regardless; no M5 emission decision depends on it).
+**P-06 (per-agent MCP filtering)**: SKIPPED — optional; the coarse
+server-level grant is the shipped design either way (documented drop stands).
+
+**Manifest locks applied (RED→GREEN, tests in agentemit)**: sandbox_mode
+emit=true value="workspace-write" accepted_values=[read-only,
+workspace-write, danger-full-access]; layout subdirectory confirmed;
+model_reasoning_effort identity map confirmed; FieldConfig.AcceptedValues
+added with ParseManifest membership validation (fail-closed on an
+unconfirmed value). MS2 RED evidence (verbatim):
+
+```
+$ go test ./internal/template/agentemit/...
+--- FAIL: TestParseManifestFailClosed (0.00s)
+    agentemit_edge_test.go:116: sandbox emitted outside the measured value set: want error, got nil
+--- FAIL: TestEmitAllSandboxPerMeasuredSet (0.00s)
+    agentemit_test.go:282: .codex/agents/moai/mdcarrier.toml: sandbox_mode = <nil>, want workspace-write (P-01 measured set member)
+    agentemit_test.go:282: .codex/agents/moai/plainagent.toml: sandbox_mode = <nil>, want workspace-write (P-01 measured set member)
+    agentemit_test.go:282: .codex/agents/moai/twoskills.toml: sandbox_mode = <nil>, want workspace-write (P-01 measured set member)
+FAIL
+```
+
+GREEN (this run, this tree, HEAD 7a7a05384 + MS2 working tree):
+
+```
+$ go test -cover ./internal/template/agentemit/...
+ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	7.121s	coverage: 93.7% of statements
+```
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

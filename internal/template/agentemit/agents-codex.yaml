@@ -14,8 +14,9 @@
 codex_measured_version: "0.147.0"
 
 # Where emitted agent TOMLs live under the project .codex/agents/ root.
-# P-04 measured decision: subdirectory layout preferred; flat + moai- filename
-# prefix is the fallback if .codex/agents/ turns out not to scan subdirs.
+# P-04 MEASURED (codex-cli 0.147.0): .codex/agents/ DOES scan subdirectories
+# (a probe agent at agents/moai/x.toml registered and delegated) — the
+# subdirectory layout is confirmed, flat + moai- prefix stays the fallback.
 layout:
   mode: subdirectory
   subdirectory: moai
@@ -24,12 +25,16 @@ layout:
 # Optional-field emission switches. A false switch means the field is omitted
 # from every emitted TOML (Codex default inheritance).
 fields:
-  # model: omitted on all 11 agents in v1 (R-011). manager-git's Claude-side
-  # "sonnet" pin is a documented drop — see documented_drops below.
+  # model: omitted on all 11 agents in v1 (R-011). P-03 MEASURED: an omitted
+  # model key registers and delegates (inherits the subagent default); an
+  # arbitrary bogus model string is silently accepted at parse — emitting a
+  # Claude alias would be accepted-but-wrong, so omission is the only safe
+  # choice. manager-git's "sonnet" pin is a documented drop below.
   model:
     emit: false
-  # model_reasoning_effort: identity mapping, locked by probe P-02 (every
-  # emitted value confirmed accepted by codex-cli 0.147.0). Unmapped source
+  # model_reasoning_effort: identity mapping, P-02 MEASURED (codex-cli
+  # 0.147.0): all four values registered as agents AND belong to the binary's
+  # reasoning-effort enum {minimal, low, medium, high, xhigh}. Unmapped source
   # effort fails emission (never a silent downgrade).
   model_reasoning_effort:
     emit: true
@@ -38,12 +43,20 @@ fields:
       medium: medium
       high: high
       xhigh: xhigh
-  # sandbox_mode: ship-omitted in v1 — the candidate value set was not
-  # probe-confirmed (P-01), and a wrong-but-accepted value is worse than an
-  # absent one. Codex inherits its default sandbox.
+  # sandbox_mode: P-01 MEASURED (codex-cli 0.147.0): the runtime names the
+  # accepted set verbatim on a bad value — "expected one of `read-only`,
+  # `workspace-write`, `danger-full-access`" — and a bad value makes codex
+  # drop the whole agent file (visible "Ignoring malformed agent role
+  # definition" error). workspace-write is a measured member and
+  # delegation-confirmed; a read-only sandbox would break the go-test-style
+  # verification work the agent bodies mandate, so it ships for all 11.
   sandbox_mode:
-    emit: false
-    value: ""
+    emit: true
+    value: workspace-write
+    accepted_values:
+      - read-only
+      - workspace-write
+      - danger-full-access
 
 # Semantic-class mapping for Claude tool tokens (R-007: every token appearing
 # in any agent tools CSV must belong to a mapped class or emission fails).
@@ -85,9 +98,9 @@ classes:
     disposition: consequence
     rationale: >-
       Shell executes built-in on Codex. A read-only sandbox would break the
-      go-test-style verification work the agent bodies mandate, so sandbox
-      policy (when emitted) must permit workspace writes; the field itself
-      ships omitted until its value set is probe-confirmed.
+      go-test-style verification work the agent bodies mandate, so the
+      P-01-measured member workspace-write ships via the sandbox_mode field
+      (see fields.sandbox_mode).
   - class: web
     disposition: documented-drop
     rationale: >-

@@ -25,6 +25,10 @@ type FieldConfig struct {
 	Emit  bool              `yaml:"emit"`
 	Value string            `yaml:"value"` // emitted value (sandbox_mode)
 	Map   map[string]string `yaml:"map"`   // source->target map (model_reasoning_effort)
+	// AcceptedValues is the probe-measured value set for scalar fields
+	// (sandbox_mode). When non-empty and Emit is true, Value must belong to
+	// it — the emitter's own enforcement of the measured enumeration.
+	AcceptedValues []string `yaml:"accepted_values"`
 }
 
 // ClassDisposition is one semantic class row of the mapping table.
@@ -109,6 +113,15 @@ func ParseManifest(data []byte) (Manifest, error) {
 	}
 	if fc, ok := m.Fields["model_reasoning_effort"]; ok && fc.Emit && len(fc.Map) == 0 {
 		return Manifest{}, fmt.Errorf("agentemit: manifest emits model_reasoning_effort with an empty map")
+	}
+	if fc, ok := m.Fields["sandbox_mode"]; ok && fc.Emit && len(fc.AcceptedValues) > 0 {
+		accepted := make(map[string]bool, len(fc.AcceptedValues))
+		for _, v := range fc.AcceptedValues {
+			accepted[v] = true
+		}
+		if !accepted[fc.Value] {
+			return Manifest{}, fmt.Errorf("agentemit: manifest sandbox_mode value %q is outside the measured value set %v — never emit an unconfirmed value", fc.Value, fc.AcceptedValues)
+		}
 	}
 	return m, nil
 }

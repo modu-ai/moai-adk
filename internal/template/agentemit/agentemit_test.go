@@ -264,10 +264,13 @@ func TestEmitAllOmitsModel(t *testing.T) {
 	}
 }
 
-// TestEmitAllSandboxOmittedWhenUnconfirmed locks the ship-omitted fallback:
-// when the manifest does not confirm the sandbox_mode value set, the field is
-// omitted entirely (Codex default inheritance), never guessed.
-func TestEmitAllSandboxOmittedWhenUnconfirmed(t *testing.T) {
+// TestEmitAllSandboxPerMeasuredSet locks the P-01 probe outcome: the
+// manifest emits sandbox_mode = "workspace-write" (a member of the
+// runtime-measured value set {read-only, workspace-write, danger-full-access},
+// codex-cli 0.147.0) on every agent; and a manifest variant whose value set
+// is unconfirmed (emit: false) omits the key entirely — the ship-omitted
+// fallback, never a guess.
+func TestEmitAllSandboxPerMeasuredSet(t *testing.T) {
 	man := mustManifest(t)
 	pub, err := agentemit.EmitAll(fullFixtureSet(), "agents", man)
 	if err != nil {
@@ -275,8 +278,21 @@ func TestEmitAllSandboxOmittedWhenUnconfirmed(t *testing.T) {
 	}
 	for path := range pub.CodexTOML {
 		doc := mustDecoded(t, pub, path)
+		if got := doc["sandbox_mode"]; got != "workspace-write" {
+			t.Errorf("%s: sandbox_mode = %#v, want workspace-write (P-01 measured set member)", path, doc["sandbox_mode"])
+		}
+	}
+
+	// Ship-omitted fallback face: an unconfirmed manifest variant omits the key.
+	man.Fields["sandbox_mode"].Emit = false
+	pub, err = agentemit.EmitAll(fullFixtureSet(), "agents", man)
+	if err != nil {
+		t.Fatalf("EmitAll (omit variant): %v", err)
+	}
+	for path := range pub.CodexTOML {
+		doc := mustDecoded(t, pub, path)
 		if _, has := doc["sandbox_mode"]; has {
-			t.Errorf("%s: sandbox_mode emitted although the manifest value set is unconfirmed (ship-omitted rule)", path)
+			t.Errorf("%s: sandbox_mode emitted from an unconfirmed manifest variant (ship-omitted rule)", path)
 		}
 	}
 }

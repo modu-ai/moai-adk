@@ -103,6 +103,12 @@ classes:
 			func(s string) string { return strings.Replace(s, "    map:\n      low: low\n", "", 1) }, "map",
 		},
 		"unparseable yaml": {func(s string) string { return "\tbroken: [" }, "parse"},
+		"sandbox emitted outside the measured value set": {
+			func(s string) string {
+				return strings.Replace(s, "tool_classes:",
+					"  sandbox_mode:\n    emit: true\n    value: made-up-sandbox\n    accepted_values:\n      - read-only\n      - workspace-write\n      - danger-full-access\ntool_classes:", 1)
+			}, "made-up-sandbox",
+		},
 	}
 	for label, tc := range cases {
 		_, err := agentemit.ParseManifest([]byte(tc.repl(minimalValid)))
