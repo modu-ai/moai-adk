@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/defs"
+	"github.com/modu-ai/moai-adk/internal/settings/yamlpatch"
 )
 
 // defaultMaxExemptPercentage matches internal/config/defaults.go DefaultMaxExemptPercentage.
@@ -45,6 +46,58 @@ func WritePhase1Configs(opts InitOptions, result *InitResult) error {
 	}
 	if err := writeDesignYAML(sectionsDir, opts, result); err != nil {
 		return err
+	}
+	if err := writeWorkflowTodoYAML(sectionsDir, opts, result); err != nil {
+		return err
+	}
+	return nil
+}
+
+// writeWorkflowTodoYAML persists the todo_enabled wizard answer to
+// workflow.todo.enabled (SPEC-TODO-ENABLE-FLAG-001 REQ-4).
+//
+// nil means the question was never asked (--non-interactive), and an unasked
+// question writes NOTHING — the deployed workflow.yaml is left byte-identical.
+// That is not an optimization: workflow.todo.enabled is default-ON, so absence
+// already carries the answer, and emitting a key on a path where nobody chose
+// it would put a line in every non-interactive project's config for no reason.
+//
+// The write goes through yamlpatch rather than the local patchYAMLPathValue
+// helper its neighbours use, because the deployed workflow.yaml ships WITHOUT a
+// todo block (the M6 decision, following the branch_guard precedent).
+// patchYAMLPathValue returns ok=false for an absent key and leaves the file
+// alone, which would make this writer a silent no-op on exactly the path that
+// matters; yamlpatch upserts the nested mapping and preserves the surrounding
+// comments and key order.
+//
+// The no-deployer fallback (no workflow.yaml at all) creates a minimal block
+// here rather than deferring to yamlpatch: PatchFile tolerates a missing file
+// when reading, but its atomic write stats the original to carry its
+// permissions forward and fails when there is nothing to stat.
+func writeWorkflowTodoYAML(sectionsDir string, opts InitOptions, result *InitResult) error {
+	if opts.TodoEnabled == nil {
+		return nil
+	}
+
+	workflowPath := filepath.Join(sectionsDir, defs.WorkflowYAML)
+	value := fmt.Sprintf("%t", *opts.TodoEnabled)
+
+	if _, statErr := os.Stat(workflowPath); os.IsNotExist(statErr) {
+		content := fmt.Sprintf("workflow:\n    todo:\n        enabled: %s\n", value)
+		if err := os.WriteFile(workflowPath, []byte(content), defs.FilePerm); err != nil {
+			return fmt.Errorf("write workflow.yaml: %w", err)
+		}
+		result.CreatedFiles = append(result.CreatedFiles,
+			filepath.Join(defs.MoAIDir, defs.SectionsSubdir, defs.WorkflowYAML))
+		return nil
+	}
+
+	edit := yamlpatch.KeyEdit{
+		Path:  []string{"workflow", "todo", "enabled"},
+		Value: value,
+	}
+	if err := yamlpatch.PatchFile(workflowPath, []yamlpatch.KeyEdit{edit}); err != nil {
+		return fmt.Errorf("patch workflow.yaml todo.enabled: %w", err)
 	}
 	return nil
 }
