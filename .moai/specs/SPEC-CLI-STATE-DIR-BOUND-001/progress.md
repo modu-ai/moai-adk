@@ -197,6 +197,19 @@ REQ-10 의 한 줄은 여섯 소비자 **전부**에 있다(AP-13d). `clean` 만
 
 **로컬 `go test ./...` 는 실행하지 않았다.** 전 패키지 판정은 PR CI 몫이다(CLAUDE.local.md §4).
 
+### 관측된 A 프로브 재실행 (§D.6 첫 항목, 이 트리에서 선행 확인)
+
+spec.md §A 의 "조용한 성공"을 낳은 바로 그 호출을, 이 트리에서 빌드한 바이너리로 재현했다. 전제는 그대로다 — `~/.moai/state` 존재(`drwxr-xr-x 8 goos staff`).
+
+```
+$ cd ~/t164probe2/sub && unset CLAUDE_PROJECT_DIR && <this-tree>/moai state show-blocker
+  ERROR
+  Find state dir: not in a MoAI project (no .moai directory found in project directories).
+rc=1
+```
+
+이전: `· No blockers found` (rc=0 — 호출자가 지목한 적 없는 `~/.moai/state` 를 상대로 성공). 이후: 에러. **유닛 테스트가 대신할 수 없는 확인이며, 결함이 실제로 사라졌다.** (프로브 디렉터리는 실행 후 제거했다.) §D.6 의 나머지 세 항목은 머지 후 몫으로 남는다.
+
 ### 커버리지 (변경된 함수 단위)
 
 `go tool cover -func` 로 측정. 해석 경로의 핵심은 전부 100%:
