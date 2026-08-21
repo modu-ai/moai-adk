@@ -167,6 +167,42 @@ verbatim 출력이다 (baseline-attribution: run 시작 HEAD `d19f849be`, run �
   `draft → in-progress`). deploy_symlink_forms_test.go는 M2 커밋 소관으로 미커밋
   유지 (RED 관측은 위에 기록됨 — 테스트와 구현이 함께 녹색 도달).
 
+### M2 — 5형태 픽스처 양극 테스트 (deploy_symlink_forms_test.go)
+
+- **RED**: M2 형태 일괄 RED는 M1 GREEN 이전에 관측했다 (위 M1 RED 항 — 링크 8종
+  FAIL / 대조군 2종 PASS). `TestBackupThenRemove_LiveFileSymlinkTemplateCarried`
+  1건는 신규 3-값 시그니처에 의존해 GREEN과 함께 컴파일되므로 독립 RED가 불가능
+  (시그니처 변경 자체가 실패 테스트들에 이끌린 GREEN 리팩터링) — 해당 하위 처분
+  (carried 파일 링크)의 행위 클래스는 AC-CSL-001/005 RED가 커버하며, 본 단위
+  테스트는 그 표면화로 기록한다 (tdd 스킬 red-flag에 대한 정직한 고지).
+- **GREEN**: `go test ./internal/cli/update/deploy/ -count=1` →
+  `ok github.com/modu-ai/moai-adk/internal/cli/update/deploy 0.452s`.
+  AC-CSL-002…007 전부 통과 (must-flag 5종 + must-not-flag 대조 2종).
+- **AC-CSL-010 자점검 — 형태 일치 (REQ-CSL-010)**:
+
+  | 테스트 (AC) | 제품 형태 | 픽스처 형태 | 일치 |
+  |---|---|---|---|
+  | DanglingSymlinkAtNonGlobRoot (001) | dangling, 비-글롭 뿌리 | absent 경로 지목 링크 at `.claude/agents/moai` | ✓ |
+  | DanglingSymlinkAtGlobMatchName (002) | dangling, 글로브 매치 | absent 지목, 이름 `moai-dangling-custom` | ✓ |
+  | DanglingSymlinkAtConfigRoot (003) | dangling, config 뿌리 | absent 지목 at `.moai/config` | ✓ |
+  | DanglingSymlinkAtFileRoot (§D.3) | dangling, 파일 루트 | absent 지목 at settings.json | ✓ |
+  | LiveDirectorySymlinkRoots (004) | 라이브 **디렉터리** 링크 | 실재 dir(센티널 포함) 지목 디렉터리 링크, 비-글롭+글로브 양배치 | ✓ |
+  | LiveFileSymlinkSettings (005) | 라이브 **파일** 링크 | 실재 파일 지목 파일 링크 (디렉터리 링크 아님) | ✓ |
+  | BackupThenRemove_TemplateCarried | 파일 링크, carried 경로 | 실재 파일 지목 + 템플릿 carried | ✓ |
+  | RealDirectoryControl (006) | 링크 없음 (must-not-flag) | 실 디렉터리 + 비관리 파일 | ✓ |
+  | UserOwnedNamespaceUntouched (007) | 사용자 소유(내부 링크 포함) | hns-mine + 내부 dangling badlink | ✓ |
+
+- **AC-CSL-010 자점검 — 축 결합 (REQ-CSL-011)**: 모든 링크 단언 ≥2축 —
+  001: 링크 부재+진행줄+MkdirAll+재배포+재실행 (5축) · 002: 링크 부재+진행줄+
+  형제 스킬 제거/재배포 (3축) · 003: 링크 부재+재배포+진행줄 (3축) · 004:
+  실디렉터리 전환+외부 센티널 무결+진행줄 (+백업 0건은 보조축) · 005: 백업
+  바이트=센티널+최종 실재 파일+복원 흐름+진행줄 (4축) · 006: 백업 존재+진행줄
+  부재+재배포 (3축) · 007: 내용 무결+badlink 잔존+백업 0건 스캔 (3축).
+  bare "백업 수 == 0" 단독 단언: **0건** (백업 카운트는 004 보조축·007 3축
+  결합으로만 등장).
+- 파일 뿌리 dangling(도시에 gap 3)은 `DanglingSymlinkAtFileRoot`로 실측 전환 —
+  clean이 링크를 제거+진행줄, deploy 쓰기 성공으로 폐쇄.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase — M4 완료 시 기입>_
