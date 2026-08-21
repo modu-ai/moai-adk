@@ -83,11 +83,27 @@ its obligation. Both are settled here, before any file moves.
 - **Project** the classified remainder at the measured ratio and compare against the 24,576 B
   ceiling. State the verdict with the number.
 
-**Stop condition.** If the projection exceeds 24,576 B, do not proceed to M2. Return a blocker
-naming the shortfall in bytes and the two levers — deeper condensation with its stated quality
-cost, or renegotiating the ceiling against the 8,192 B headroom reserve (with what the reserve is
-protecting, per `spec.md` §D.1, stated so the trade is visible). Do not silently expand toward
-32,768 B.
+**Stop condition — two arms. Both must clear before M2 starts.**
+
+*Arm A — contract fits its ceiling.* If the contract projection exceeds **24,576 B**, do not
+proceed to M2. Return a blocker naming the shortfall in bytes and the two levers — deeper
+condensation with its stated quality cost, or renegotiating the ceiling against the 8,192 B
+headroom reserve (with what the reserve is protecting, per `spec.md` §D.1, stated so the trade is
+visible). Do not silently expand toward 32,768 B.
+
+*Arm B — the diet reaches the ratchet ceiling.* Project the **post-diet always-loaded surface,
+including the contract layer**, against **66,371 tokens** (`spec.md` §C.4). If the projection
+exceeds it, return a blocker naming the shortfall in tokens and the same two levers — deeper
+relocation of R3 material into skills with its navigability cost, or renegotiating the scope with
+what is being traded stated explicitly. Do not proceed to M2 on the assumption that M4 will find
+the difference.
+
+**Why Arm B exists.** Arm A alone tests only whether the *contract* fits `AGENTS.md`; it says
+nothing about whether the *diet* reaches the figure `REQ-AMC-013` needs. Those are different
+quantities, and only the second decides whether M5 can close at all. Without Arm B, an M1 actor who
+clears 24,576 B proceeds, M2/M3/M4 land, and the shortfall surfaces at M5 — after the expensive,
+least-reversible work is done. That is exactly the discovered-at-M5 failure §C.4 was written to
+prevent, and the stop condition is where it gets caught.
 
 ### M2 — Root `AGENTS.md` contract layer (Priority: High)
 

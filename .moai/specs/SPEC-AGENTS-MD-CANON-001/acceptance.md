@@ -43,9 +43,12 @@ the projection is compared against 24,576 B, Then the verdict (reachable / not r
 explicit with the projected figure, and the ceiling is re-derived against the clause-block figure
 rather than the line proxy.
 
-**AC-AMC-007** — Given the projection exceeds 24,576 B, When M1 concludes, Then a blocker report is
-returned naming the shortfall in bytes and the trade against the 8,192 B reserve, and no file has
-been moved. (Negative-path criterion: M1 passes by halting correctly, not only by succeeding.)
+**AC-AMC-007** — Given either M1 stop-condition arm trips — the contract projection exceeding
+24,576 B (Arm A), **or** the post-diet surface projection including the contract layer exceeding
+66,371 tokens (Arm B) — When M1 concludes, Then a blocker report is returned naming the shortfall in
+that arm's unit and the two levers it offers, and no file has been moved. (Negative-path criterion:
+M1 passes by halting correctly, not only by succeeding. Arm B is the one that decides whether M5 can
+close; clearing Arm A alone is not sufficient to proceed.)
 
 ## §C. M2 — contract layer
 

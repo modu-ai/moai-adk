@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENTS-MD-CANON-001
 title: "AGENTS.md canonical contract layer for Codex dual-harness"
-version: "0.3.3"
+version: "0.3.4"
 status: draft
 created: 2026-08-22
 updated: 2026-08-22
@@ -34,6 +34,7 @@ tier: L
 | 2026-08-22 | 0.3.1 | Dispatcher refinements. `AC-AMC-016` cites the existing `TestAlwaysLoadedTokenBudget_OverBudgetFails` for the token-budget negative path instead of proposing a duplicate fixture; `design.md` §5.2 records why the singleton check uses `git ls-files` with `:(top)` / `:(exclude,top)` rather than a path-scoped `find`. |
 | 2026-08-22 | 0.3.2 | Plan-audit iteration 2 (FAIL 0.83) revision. N1: headroom ratio pinned in `REQ-AMC-013` at 15 % ±2 percentage points, so `AC-AMC-019`'s check no longer reads a free variable. N2: stale `AC-AMC-012` cross-reference in `design.md` §4 corrected to `AC-AMC-013`. |
 | 2026-08-22 | 0.3.3 | Plan-audit iteration 3 (FAIL 0.82) revision. D1: `AC-AMC-019` now reads the 13 %-17 % band rather than resolving the ratio solely from the constant's comment. D2: the achieved figure must be measured over an enumeration including the root `AGENTS.md` and every `@`-imported contract document — `alwaysLoadedSurface()` omits it today, so relocation into `AGENTS.md` would have scored as a diet (`REQ-AMC-013`, `AC-AMC-017`, plan.md M5). D3: the band's implied diet target (achieved ≤ 66,371 tokens) stated in §C.4. D4: document version and HISTORY brought current, with the provenance rule above added so `version:` is derived from the table rather than from a commit message. D5 (optional): `AC-AMC-018`'s measured state defined. Dispatcher additions: the enumeration content is bound into `REQ-AMC-008`, and the extension is ordered **before any measurement cited as a ratchet basis** (`REQ-AMC-013`, `AC-AMC-018`, `plan.md` M1/M5) — a late fix manufactures false evidence in the gap rather than merely delaying correctness. |
+| 2026-08-22 | 0.3.4 | Plan-audit iteration 4 (FAIL 0.87, one finding) revision. E1: §C.4's required-cut figures recomputed over the enumeration `REQ-AMC-013` ¶2 requires — the contract layer is net-additive per §D.2 / `REQ-AMC-001` / `REQ-AMC-002`, so `AGENTS.md` joins the surface with nothing removed; cuts corrected 4,841 → **10,985** and 8,911 → **15,055** at the ceiling case, with the governing formula stated. E2: M1's stop condition gained **Arm B** — project the post-diet surface including the contract layer against 66,371 tokens and blocker on shortfall, so the ratchet's reachability is tested at M1 rather than discovered at M5 (`plan.md` M1, `AC-AMC-007`). E3 (optional, folded in while editing the bound): the ±1,000 tolerance makes 67,256 the strict maximum, so 66,371 is conservative by ~885 tokens — noted, not relaxed. |
 
 ---
 
@@ -227,15 +228,33 @@ cosmetic warning.
 headroom floor at 13 % and the constant capped at 75,000, `1.13 × N ≤ 75,000` bounds the achieved
 figure at **N ≤ 66,371 tokens**. Measured against that ceiling:
 
-| Tree | Measured | Required cut |
-|---|---:|---:|
-| this worktree | 71,212 | **4,841 tokens** |
-| the integration state that forced the 76,000 raise | 75,282 | **8,911 tokens** |
+**The cut is computed over the enumeration `REQ-AMC-013` ¶2 requires — one that includes
+`AGENTS.md`.** The four rows in §A.1 measure the *unextended* enumeration, since the file does not
+exist yet, so they are not the quantity the ratchet is measured against. And the contract layer is
+**net-additive**: per §D.2, excluding Claude-only clauses from `AGENTS.md` "removes nothing from
+either harness's binding surface", `REQ-AMC-002` forbids moving obligations off the always-loaded
+rules, and `REQ-AMC-001` requires `AGENTS.md` to carry every Codex-binding `[HARD]` clause. The
+clauses therefore exist in both places by construction: `AGENTS.md` joins the measured surface with
+nothing removed in exchange.
 
-So §B goal 2's "reduce the always-loaded surface enough" has a number: at least 4,841 tokens, and
-8,911 against the state the ratchet is actually measured on (REQ-AMC-014). M1 sizes its work
+So the required cut is `stated surface + |AGENTS.md| − 66,371`. At `AGENTS.md`'s ceiling
+(24,576 B ÷ 4 = 6,144 tokens — the worst case, and the one to plan against):
+
+| Tree | Unextended surface | With `AGENTS.md` at ceiling | Required cut |
+|---|---:|---:|---:|
+| this worktree | 71,212 | 77,356 | **10,985 tokens** |
+| the integration state that forced the 76,000 raise | 75,282 | 81,426 | **15,055 tokens** |
+
+So §B goal 2's "reduce the always-loaded surface enough" has a number: at least 10,985 tokens, and
+15,055 against the state the ratchet is actually measured on (REQ-AMC-014). M1 sizes its work
 against this figure; a diet that lands anywhere above 66,371 cannot satisfy REQ-AMC-013 no matter
-what ratio is declared.
+what ratio is declared. A smaller authored `AGENTS.md` reduces the cut proportionally — the formula
+governs, the table is its ceiling case.
+
+> The bound is conservative by design. `AC-AMC-019`'s ±1,000-token tolerance means the strictly
+> admissible maximum is 67,256 rather than 66,371; planning against 66,371 asks for ~885 tokens
+> more than the minimum. That direction is deliberate — the tolerance absorbs measurement noise,
+> not slack to spend.
 
 **REQ-AMC-013** (Ubiquitous) — `AlwaysLoadedTokenBudget` shall equal the achieved post-diet token
 figure plus a headroom allowance of **15 %, within ±2 percentage points** (so the admissible band

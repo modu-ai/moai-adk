@@ -20,7 +20,18 @@ D10-D12 also applied: `REQ-AMC-004` relabelled Unwanted, `REQ-AMC-006`'s leading
 inline rationale moved out of `REQ-AMC-005` / `REQ-AMC-009` into §D.6 / §D.7. AC count 21 → 24,
 REQ count 17 → 18 (Tier L ceiling 25 each).
 
-Two dispatcher refinements folded into the same revision: `AC-AMC-016` now **cites the existing**
+**v0.3.4 revision — iteration 4 delta (FAIL 0.87, one finding).** E1: §C.4's required cuts were
+computed over the unextended enumeration while `REQ-AMC-013` ¶2 requires one including
+`AGENTS.md`; since the contract layer is net-additive (§D.2 + `REQ-AMC-001` + `REQ-AMC-002` put the
+clauses in both places by construction), the cuts are corrected to **10,985** (this worktree) and
+**15,055** (integration state) at `AGENTS.md`'s ceiling, with the formula
+`stated surface + |AGENTS.md| − 66,371` governing. E2: M1's stop condition gained **Arm B** —
+project the post-diet surface *including the contract layer* against 66,371 tokens, blocker on
+shortfall — so the ratchet's reachability is tested before M2 rather than discovered at M5;
+`AC-AMC-007` now covers both arms. E3 (optional) folded in while editing the bound: the ±1,000
+tolerance makes 67,256 the strict maximum, so 66,371 is conservative by ~885 tokens.
+
+Two dispatcher refinements folded into the earlier revision: `AC-AMC-016` now **cites the existing**
 `TestAlwaysLoadedTokenBudget_OverBudgetFails` for the token-budget negative path rather than
 proposing a duplicate fixture (verified passing on this tree), leaving only the Codex-cap dimension
 as new coverage; and `design.md` §5.2 records why the singleton check uses `git ls-files` with
