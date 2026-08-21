@@ -74,7 +74,7 @@ Each snapshot is a Design DNA JSON (the three dimensions of
     "slug": "checkout-refresh",
     "origin_reference": "https://example.com/checkout — 3 mobile screenshots, 1 desktop",
     "schema_version": 1,
-    "extracted_at": "2026-05-14"
+    "extracted_at": "(ISO date the profile was extracted)"
   },
   "design_system": { "...": "per dna-schema.md" },
   "design_style": { "...": "per dna-schema.md" },
@@ -85,10 +85,9 @@ Each snapshot is a Design DNA JSON (the three dimensions of
 `origin_reference` names what was extracted (URL, screenshot set, video) so a
 later reader can re-check the profile against its source. `schema_version`
 tracks the three-dimension schema shape (`1` while `dna-schema.md` carries the
-current field set). `extracted_at` is the project's own data — a date a user
-writes into their artifact — which is why an example date may appear here; the
-distinction is between user-generated profile data (theirs) and template-file
-chronology (absent by contract).
+current field set). `extracted_at` is the project's own data — the date a user
+writes into their own artifact; user-generated profile content is theirs to
+date, while this reference file itself carries no internal chronology.
 
 ## Saving a profile (Phase 2 hook)
 
