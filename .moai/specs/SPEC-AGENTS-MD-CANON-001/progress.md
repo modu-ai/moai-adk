@@ -594,6 +594,73 @@ Neither is exhausted, so a breach is recoverable without re-opening the design.
 excluded it, and M4's scope is the always-loaded **rules**. It is the obvious next lever if the
 ratchet is ever raised again, and naming it here is cheaper than rediscovering it.
 
+### M6 — template mirror, neutrality, and the global-layer warning (2026-08-22)
+
+Tree: worktree `.claude/worktrees/t82`, branch `WT-agents-md-diet`, parent `243eb07ef`.
+Files written: `internal/template/templates/AGENTS.md` (new),
+`internal/template/templates/CLAUDE.md` (the two deferred changes, landed together).
+
+**The deferred mirror closes here.** M3 held `CLAUDE.md`'s mirror back because `@AGENTS.md` would
+have dangled without a template `AGENTS.md`; M4 added its compression on top. Both land in this
+step, in the order that keeps the import resolvable at every point a user could observe it: the
+template `AGENTS.md` is created first, then `CLAUDE.md` is mirrored on top of it.
+
+M4 had already mirrored the twenty rule files, so this milestone's mirror work is the two root
+documents. `make build` re-embedded the template FS afterwards.
+
+| AC | Claim | Evidence (command → observed) | Status |
+|---|---|---|---|
+| `AC-AMC-021` | Every shipped file this SPEC lands has a template mirror; `make build` ran after the last mirror edit | 22 shipped-surface files enumerated from `git diff --name-only 57a7ef71b..HEAD` plus `git status --porcelain`, each checked against `internal/template/templates/<path>` → **22 MIRROR OK, missing: none**. `make build` → `catalog.yaml updated successfully (12899 bytes)` + `go build … -o bin/moai` | PASS |
+| `AC-AMC-022` | No SPEC IDs, REQ tokens, audit citations, internal dates, commit SHAs, macOS-biased paths, or `CLAUDE.local.md` references in any template copy | `MOAI_TEMPLATE_LEAK_STRICT=1 go test ./internal/template/ -run 'Leak\|Neutrality' -v` → 10 tests, all PASS, incl. `TestTemplateNoInternalContentLeak`, `TestLeakClassNoDateShaInDefaultTier`, `TestLeakClassReqTokenPartition`. Independent regex scan of `AGENTS.md` and `CLAUDE.md` for SPEC-ID / REQ / AC / date / SHA / `/Users/` / `CLAUDE.local` → **clean, both** | PASS |
+| `AC-AMC-023` | The shipped documentation warns about `~/.codex/AGENTS.md` and states all three facts | `grep -n 'codex/AGENTS.md' internal/template/templates/AGENTS.md` → line 7, the Budget warning: a personal `~/.codex/AGENTS.md` (1) **joins the same merged chain**, (2) is **consumed before** this file, (3) **narrows what the project's contract can carry**. Overflow is dropped from the tail silently, which is why the clauses are ordered most-critical-first | PASS |
+| `AC-AMC-024` | The SPEC's cap-raise position is the measured one; the retired premise appears only inside an explicit correction | `grep -rn 'cannot ship' .moai/specs/SPEC-AGENTS-MD-CANON-001/` → 4 hits, **zero bare assertions**: `spec.md`:529 and `design.md`:110 both introduce it as an earlier draft's claim and mark it false; `research.md`:24 records it as corrected; `acceptance.md`:244 is the criterion itself. §D.8 states the measured position — project scope works only under `trust_level = "trusted"`, the untrusted first session at 32,768 B is binding, non-application is silent (stderr 0 bytes on all four probe runs) | PASS |
+| `AC-AMC-009` (mirror) | Template mirror at or below 24,576 B, headroom against 32,768 B stated | `wc -c internal/template/templates/AGENTS.md` → `14229`, identical to the live file. **10,347 B of headroom** against the ceiling, **18,539 B** against the codex budget — the same figures as the live copy, because the mirror is byte-identical | PASS |
+| `AC-AMC-010` | Exactly one live-tree `AGENTS.md`, at the repository root | The criterion's own command → `AGENTS.md`, one line. The template mirror is correctly excluded by the `:(exclude,top)` pathspec, and appears separately as an untracked `internal/template/templates/AGENTS.md` awaiting this commit | PASS |
+| `AC-AMC-005` | No live-tree `AGENTS.md` outside the repository root | Same command; the only other copy on disk is the template mirror, which `REQ-AMC-005` exempts and `REQ-AMC-015` requires | PASS |
+
+**Deployment verified end-to-end, not by file existence.** `moai init . --non-interactive` was run
+with the freshly built binary into a scratch project outside the repo, and the deployed tree
+inspected:
+
+```
+AGENTS.md   14,229 B   deployed
+CLAUDE.md   19,766 B   deployed
+@-imports resolved against the DEPLOYED project root:
+  OK  line   9  AGENTS.md
+  OK  line 118  .moai/config/sections/user.yaml
+  OK  line 119  .moai/config/sections/language.yaml
+companions deployed: 6 under rules/moai/core/, 6 under rules/moai/workflow/
+```
+
+**This closes M3's stated residual risk.** That milestone recorded that `@`-import resolution had
+been verified by file existence rather than by observing a real assembly, and deferred a runtime
+confirmation to "whichever session next starts with this tree loaded". A deployed project is the
+stronger check and the one that actually matters: it exercises the path a distributed user takes,
+where a dangling import would be silent.
+
+**Baseline attribution.** The always-loaded surface is unchanged by this milestone — mirroring
+writes only under `internal/template/templates/`, which the guard does not enumerate.
+`go test ./internal/config/` → `ok 1.576s` with the guard passing at the M4 figure.
+
+| Suite | Result |
+|---|---|
+| `go test -count=1 ./internal/template/` | `ok 26.672s` |
+| `MOAI_TEMPLATE_LEAK_STRICT=1 … -run 'Leak\|Neutrality' -v` | 10/10 PASS |
+| `go test -count=1 ./internal/config/` | `ok 1.576s` |
+| `go test -count=1 ./internal/hook/` | `ok 25.104s` |
+| `go test -count=1 ./internal/constitution/` | `ok 0.442s` |
+| `go vet ./internal/template/ ./internal/config/` | clean |
+| `go test -count=1 ./internal/cli/` | `ok 346.620s` |
+
+**Gap — none carried forward from M3.** The `CLAUDE.md` mirror deferral recorded at M3 and enlarged
+at M4 is closed; the live and template copies are byte-identical again, so `moai update` on this
+tree can no longer revert the §0 import or the M4 compression.
+
+**Residual risk.** The scratch deployment confirms the import *resolves*; it does not confirm how
+Claude Code renders the assembled file, which is a runtime behavior no test in this repo observes.
+The evidence that the mechanism works remains the two `.moai/config/sections/*.yaml` imports that
+resolve in this repo today, now joined by a third that resolves in a freshly deployed project.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
