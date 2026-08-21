@@ -228,6 +228,98 @@ $ go test -cover ./internal/template/agentemit/...
 ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	7.121s	coverage: 93.7% of statements
 ```
 
+### MS3 — Mass emission + guards (2026-08-22, manager-develop, TDD)
+
+RED evidence (verbatim — committed artifacts did not exist yet; note the
+emission over the REAL 11 succeeded, isolating the failure to the missing
+committed files):
+
+```
+$ go test ./internal/template/agentemit/...
+--- FAIL: TestGoldenCommittedArtifactsMatchEmission (0.01s)
+    golden_test.go:105: .codex/agents/moai/builder-harness.toml: committed artifact missing (open ../templates/.codex/agents/moai/builder-harness.toml: no such file or directory) — regenerate with AGENTEMIT_UPDATE=1
+    ... (11 files, all naming their path)
+--- FAIL: TestEmbedFSPresenceAndByteEquality (0.00s)
+    golden_test.go:255: committed .codex tree missing (open ../templates/.codex/agents/moai: no such file or directory) — regenerate first
+```
+
+Generation + GREEN (this run, this tree, HEAD abf08c1f0 + MS3 working tree):
+
+```
+$ AGENTEMIT_UPDATE=1 go test ./internal/template/agentemit/... -run TestGoldenCommittedArtifactsMatchEmission -v
+    golden_test.go:100: updated .codex/agents/moai/builder-harness.toml (sha256 9ea5d0e6f884)
+    golden_test.go:100: updated .codex/agents/moai/e2e-tester.toml (sha256 c11b5c4278ef)
+    golden_test.go:100: updated .codex/agents/moai/manager-design.toml (sha256 92d68d837f53)
+    golden_test.go:100: updated .codex/agents/moai/manager-develop.toml (sha256 b43bfdf3e5b4)
+    golden_test.go:100: updated .codex/agents/moai/manager-docs.toml (sha256 8411aa8a24fa)
+    golden_test.go:100: updated .codex/agents/moai/manager-git.toml (sha256 a38c4cf2ce77)
+    golden_test.go:100: updated .codex/agents/moai/manager-lead.toml (sha256 a74f6d0a2932)
+    golden_test.go:100: updated .codex/agents/moai/manager-spec.toml (sha256 1da8739d20c8)
+    golden_test.go:100: updated .codex/agents/moai/plan-auditor.toml (sha256 ceec1e60ce2d)
+    golden_test.go:100: updated .codex/agents/moai/super-advisor.toml (sha256 7532cf4ee1da)
+    golden_test.go:100: updated .codex/agents/moai/sync-auditor.toml (sha256 505466f23a76)
+--- PASS: TestGoldenCommittedArtifactsMatchEmission (0.03s)
+
+$ go test ./internal/template/...
+ok  	github.com/modu-ai/moai-adk/internal/template	43.818s
+ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	0.596s
+
+$ go test ./internal/template/ -run TestCodexAgentsDeployFixture -v
+--- PASS: TestCodexAgentsDeployFixture (0.22s)   # AC-010: .codex/agents/moai/ deploys into t.TempDir() fixture, 11/11 byte-equal
+
+$ make build
+catalog.yaml updated successfully (12899 bytes)   # no catalog diff — SKILL.md roots only, t153 premise holds
+go build -ldflags "..." -o bin/moai ./cmd/moai    # exit 0
+
+$ GOOS=windows GOARCH=amd64 go build ./...        # exit 0 (WINDOWS_OK)
+$ go vet ./internal/template/...                  # exit 0 (VET_OK)
+$ golangci-lint run --timeout=2m ./internal/template/agentemit/...
+0 issues.
+```
+
+AC-002 (no .md modification): `git status --porcelain
+internal/template/templates/.claude/agents/moai/` → empty output. AC-004
+cross-process face: the golden test re-emits in a fresh process and
+byte-compares (sha256) against the committed artifacts — PASS.
+
+AC-011 neutrality — delegation grep verbatim result (NOT all-zero):
+
+```
+$ grep -cE 'SPEC-[A-Z]|20[0-9]{2}-[0-9]{2}-[0-9]{2}|[0-9a-f]{9}' internal/template/templates/.codex/agents/moai/*.toml
+e2e-tester:0  manager-design:0  builder-harness:0  manager-develop:1
+manager-git:8  manager-docs:2  manager-lead:2  super-advisor:0
+manager-spec:8  sync-auditor:1  plan-auditor:24
+```
+
+**Interpretation (recorded, not silently normalized)**: the literal `→0`
+target is UNSATISFIABLE under R-005 — the counts mirror the committed .md
+sources byte-for-byte (verified pre-flight: identical counts on the .md
+tree). The matches are pedagogical placeholders (`SPEC-XXX`, `SPEC-ID`,
+regex-walkthrough examples) riding verbatim in bodies, which the real CI
+guards adjudicate as legitimate on the .md side (manager-spec's
+`SPEC-V3R6-SPEC-ID-VALIDATION-001` is pedagogical-allowlisted in
+internal_content_leak_test.go). Both CI neutrality workflows scan extension
+sets {.md,.tmpl,.yaml,.yml,.sh,.json[,.js]} — `.toml` is not scanned, so the
+CI gate passes on the new paths. The M5-enforceable obligation — the EMITTER
+introduces no new token — is enforced by TestNeutralityByInheritance (every
+pattern match in an emitted TOML must already occur in its .md source):
+PASS 11/11.
+
+Local-vs-template drift check (plan §B.1): `diff -rq .claude/agents/moai
+internal/template/templates/.claude/agents/moai` → exactly the 6 known drift
+files (builder-harness, e2e-tester, manager-develop, manager-spec,
+plan-auditor, super-advisor) — unchanged by this SPEC (fixtures-by-difference
+preserved).
+
+Repo-root `.gitignore` fix: the bare `.codex/` rule (local Codex session
+artifacts) also swallowed the template subtree; added
+`!internal/template/templates/.codex/` negation with comment. Root and
+templates/.gitignore are not mirror-paired (verified diff — they already
+diverge); the template .gitignore has no `.codex/` rule, so user projects
+receiving deployed TOMLs can commit them (M4 seam note).
+
+Makefile: `agents-emit` target added (wraps AGENTEMIT_UPDATE=1 golden run).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
