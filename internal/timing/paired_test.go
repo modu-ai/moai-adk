@@ -9,7 +9,7 @@ import (
 // refUnit cannot offer: both sides of the ratio rest on the SAME number of
 // samples, so the denominator is no noisier than the numerator.
 func TestMeasurePairedEqualSampleCounts(t *testing.T) {
-	t.Parallel()
+	// Deliberately NOT parallel — measuring test; see the note on cpuUnit.
 	refSt, st := measurePaired(func() { cpuUnit(200_000) }, func() { cpuUnit(200_000) }, 20, 2)
 	if refSt.N != 20 || st.N != 20 {
 		t.Fatalf("sample counts = ref %d / measured %d; want 20 / 20", refSt.N, st.N)
@@ -55,7 +55,9 @@ func TestMeasurePairedAlternatesOrder(t *testing.T) {
 // TestAssertPairedHealthyEndToEnd runs the exported paired entry point on an
 // operation that costs one reference unit: every bound must pass.
 func TestAssertPairedHealthyEndToEnd(t *testing.T) {
-	t.Parallel()
+	// Deliberately NOT parallel: see the note on cpuUnit. This test measures,
+	// and the other measuring tests in this package are the load that moved
+	// its ratio.
 	AssertPaired(t, Bound{
 		Name:          "paired-cpu-1x",
 		Budget:        30 * time.Second,
