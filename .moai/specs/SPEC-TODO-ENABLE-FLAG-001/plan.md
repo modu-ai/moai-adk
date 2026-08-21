@@ -88,8 +88,11 @@ grep -n 'backlog' .moai/config/sections/statusline.yaml                         
 - `.claude/skills/moai/SKILL.md` + `internal/template/templates/.claude/skills/moai/SKILL.md` — 라우팅 단계에서 플래그가 `false`면 **자동/추론 라우팅**으로 `workflows/todo.md` 에 도달하지 않는다는 조건 명시. [HARD] 같은 문장이 **명시적 `/moai todo` 호출은 정상 동작한다**는 한정을 함께 담아야 한다(REQ-2 D2 조항) — 한정 없는 억제 문장은 슬래시 진입점을 침묵시키는 구현을 부른다. **스킬 목록 메타데이터(`:6`, `:81`, `:105`)는 손대지 않는다** — 범위 밖(§B).
 - `internal/cli/todo.go:512` — **변경 없음**. REQ-3의 결정을 테스트로 고정한다.
 - `internal/cli/todo_test.go` — 신규 `TestTodoCommandRegisteredRegardlessOfFlag`(등록 유지) + `TestTodoVerbsUnaffectedByFlag`(플래그 false에서 add→list 왕복이 정상 동작).
+  [HARD] 두 테스트 모두 **`userHomeDirFn` 을 `t.TempDir()` 로 교체**해야 한다(N2). `t.TempDir()` 로 프로젝트 루트만 잡으면 `resolveTodoQueueRoot`(`todo.go:81-99`)가 git 리포가 아닌 경로에서 `~/.moai/todo/` 로 폴백해 **개발자의 실제 홈에 쓴다**. 선례를 그대로 복제한다: `internal/cli/todo_queue_root_test.go:122`(`orig := userHomeDirFn` → 교체 → `t.Cleanup` 복원).
 
-**Exit**: 스킬 두 사본에 한정을 담은 조건 문장 존재(grep) + 목록 3줄 내용 불변(AC-T-004). `go test ./internal/cli/ -run 'TestTodo'` 초록. AC-T-004, AC-T-005.
+**Exit**: 스킬 두 사본에 `workflow.todo.enabled` 조건 문장 존재 + 목록 3줄 내용 불변(AC-T-004). `go test ./internal/cli/ -run 'TestTodo'` 초록. AC-T-004, AC-T-005.
+
+**주의(N1)**: 한정 문장("명시적 호출은 정상 동작")의 존재는 **한국어 리터럴 grep으로 판정하지 않는다** — 이 스킬 표면은 영어 전용이다. 문장은 영어로 쓰고, 그 한정이 지켜졌는지는 AC-T-005의 왕복 동작이 판정한다.
 
 ### M4 — 마법사 질문 1개 (살아 있는 경로만)
 

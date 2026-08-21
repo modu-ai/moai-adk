@@ -11,6 +11,8 @@
 
 - 2026-08-22 (iter2) — plan-audit iter1 **FAIL 0.75**(Tier L 임계 0.85) + **MP-2 FAIL** 대응 개정. 블로킹 8건(D1 제목 미스크럽 / D1b 탐지기→재작성기 비대칭 / D2 공허 선택자 / D3 unexported 재사용 / MP-2·D8 REQ-12 + 결정 유예 / D4 큐-초안 충돌 / D7 마일스톤 AC 범위 / D5·D6·D11) + 선택 3건(D9·D10·D12) 처리. 강제 주장의 정직성(§E.3 · design.md §1 · plan.md AP-12)은 감사 유지 판정을 받아 **후퇴시키지 않았다**. 결정 D5는 선택지 A로 **해소**(유예 삭제). AC 23 → 24(상한 25). version 0.2.0 → 0.3.0, 항목별 내역은 `spec.md` §G.
 
+- 2026-08-22 (iter3, Tier L 상한 회차) — plan-audit iter2 **FAIL 0.84**(임계 0.85, must-pass 7/7 통과) 대응. 블로킹 2건만 처리: **N1** 제목 의무를 관측 가능하게(REQ-10 문구 + AC-F-019를 두 사본 × 5 grep으로 확장, 새 AC 없음), **N2** 누락된 AC-F-013을 M3 Exit에 복귀. 선택 4건(N3~N6)은 상한 회차라 의도적으로 미처리. AC 24 유지(상한 25), version 0.3.0 → 0.4.0.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_

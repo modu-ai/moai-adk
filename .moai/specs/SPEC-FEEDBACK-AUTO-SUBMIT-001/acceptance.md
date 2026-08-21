@@ -28,7 +28,7 @@
 | AC-F-016 | REQ-8 | MUST-PASS | 로그 쓰기 실패가 스크럽을 중단시키지 않음(fail-open) |
 | AC-F-017 | REQ-9 | MUST-PASS | 전송 실패 → 큐 적재 |
 | AC-F-018 | REQ-9 | MUST-PASS | 이후 성공 → 큐에서 제거 |
-| AC-F-019 | REQ-10 | MUST-PASS | 스킬 [HARD] 조항이 소스·템플릿 두 사본에 존재 |
+| AC-F-019 | REQ-10 | MUST-PASS | 스킬 [HARD] 의무 4종(제목 전달·fail-closed 3문장·실패 분기·라벨 언어)이 두 사본 각각에 존재 |
 | AC-F-020 | REQ-11 | MUST-PASS | 마법사 질문 존재·기본 false·개수 고정 테스트 유지 |
 | AC-F-021 | REQ-11 | MUST-PASS | 4로케일 번역 완전성 |
 | AC-F-022 | REQ-11 | MUST-PASS | 마법사 답변이 실제로 파일에 기록됨(사장 경로 배제) |
@@ -250,18 +250,31 @@ Then  항목 수가 0 이고 파일이 유효한 JSON 으로 남는다
 ```
 `go test ./internal/feedback/ -run 'TestQueueResolvesOnSuccess' -v` → PASS
 
-### AC-F-019 — 스킬 [HARD] 조항 (두 사본)
+### AC-F-019 — 스킬 [HARD] 조항 4종 (두 사본 각각)
 
 ```
 Given 소스 스킬과 템플릿 미러
-When  스크러버 경유 지시문을 grep 한다
-Then  두 파일 모두 1건 이상이다
+When  산문 표면이 지는 [HARD] 의무 4종을 각 사본에서 grep 한다
+Then  두 파일 모두에서 5개 관측이 전부 1건 이상이다
 ```
+
+두 사본 각각에 대해(`SKILL=.claude/skills/moai/workflows/feedback.md`, 그리고 `SKILL=internal/template/templates/.claude/skills/moai/workflows/feedback.md`):
+
 ```bash
-grep -c 'moai feedback scrub' .claude/skills/moai/workflows/feedback.md
-grep -c 'moai feedback scrub' internal/template/templates/.claude/skills/moai/workflows/feedback.md
+grep -c 'moai feedback scrub' "$SKILL"        # ① 스크러버 경유            >= 1
+grep -c -- '--title' "$SKILL"                 # ② 제목 전달 (REQ-3 · REQ-10) >= 1
+grep -c 'verdict' "$SKILL"                    # ③ 3문장 fail-closed 조항     >= 1
+grep -c 'feedback-draft' "$SKILL"             # ④ 실패 부류 분기 (REQ-9 D4)  >= 1
+grep -c 'conversation_language' "$SKILL"      # ⑤ 라벨 언어 의무 (D11)       >= 1
 ```
-→ 둘 다 ≥ 1. 추가로 verbatim 보존 규칙의 명시적 예외 문장이 같은 절 범위에 있음을 `grep -n` 줄 번호로 확인한다.
+
+**② 가 이 AC의 핵심이다.** iter2에서 REQ-3·REQ-10·plan M6 세 곳이 제목 스크럽을 지시했는데 관측은 ① 하나뿐이어서, **본문만 파이프하는 스킬 본문이 24개 AC를 전부 통과하고 제목이 마스킹 없이 제출되는 상태**가 가능했다. ②가 없으면 D1은 문서상으로만 닫힌다.
+
+③은 타임아웃·파싱 불가를 포함한 3문장 조항의 존재를 보되, `grep -c 'verdict'` 는 존재만 확인하므로 **문장 수까지** 볼 것: `grep -n '종료 코드\|verdict\|60초' "$SKILL"` 이 세 조건을 각각 담은 줄을 보여야 한다.
+
+추가로 verbatim 보존 규칙의 명시적 예외 문장이 ①과 같은 절 범위에 있음을 `grep -n` 줄 번호로 확인한다.
+
+**두 사본을 각각 도는 이유**: 소스만 고치고 템플릿 미러를 빠뜨리면 배포 사용자는 통제 없는 워크플로를 받는다. 사본별 합산이 아니라 **사본별 전수**다.
 
 ### AC-F-020 — 마법사 질문 + 개수 고정 유지
 

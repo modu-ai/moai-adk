@@ -1,7 +1,7 @@
 ---
 id: SPEC-TODO-ENABLE-FLAG-001
 title: "todo 기본 사용 설정 — workflow.todo.enabled 와 런타임 안내 표면 억제"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-08-22
 updated: 2026-08-22
@@ -218,6 +218,11 @@ i18n 키를 4로케일 모두에 등록해야 한다 — 누락 시 `TestI18nKey
 
 ## §G HISTORY
 
+- **2026-08-22** v0.3.0 — plan-audit iter2 **PASS 0.87**(Tier M 임계 0.80, must-pass 7/7) 판정에 딸린 **run-phase 진입 전 필수 수정 2건** 처리. 점수를 뒤집는 결함은 아니었으나 넘길 수 없는 부채였다.
+  - **N1** — `acceptance.md` AC-T-004의 `grep -c '명시적'` 이 **한국어 리터럴을 MUST-PASS 통과 조건**으로 삼고 있었다. 대상(`.claude/skills/moai/SKILL.md` + 템플릿 미러)은 영어 전용 표면이라, 스킬을 규칙대로 영어로 쓰면 AC가 거짓 실패하고 AC를 통과시키려 한국어를 넣으면 배포 템플릿 언어 규칙을 어기는 **양자택일 함정**이었다. 그 줄을 삭제하고 한정 문장의 관측을 **AC-T-005의 왕복 동작**에 위임했다 — 산문에 무슨 문장이 있든 이름으로 부른 기능이 동작하지 않으면 거기서 FAIL하므로 문장 검색보다 강한 판정이다. `plan.md` M3에도 같은 주의를 남겼다.
+  - **N2** — `t.TempDir()` 만으로는 홈 오염을 막지 못한다. `resolveTodoQueueRoot`(`internal/cli/todo.go:81-99`)가 git 리포가 아닌 경로에서 `~/.moai/todo/` 로 폴백하므로 신규 `internal/cli` 테스트가 **개발자의 실제 홈에 쓴다**. 격리 seam `userHomeDirFn` 을 이름으로 명명하고 리포에 이미 있는 선례(`internal/cli/todo_queue_root_test.go:122`)를 코드 조각째 인용했다. AC-T-005의 Given에 seam 교체를, Then에 "실제 홈 아래에 아무것도 만들어지지 않는다"를 추가하고 `plan.md` M3에 [HARD]로 걸었다.
+  - 형제 SPEC(`SPEC-FEEDBACK-AUTO-SUBMIT-001`) §E.1을 이 SPEC이 확립한 **충돌 해소 규칙**과 같은 내용으로 정렬했다(리드 지시). 두 문서가 같은 상황을 다르게 서술하면 규율이 아니라 모순이기 때문이다.
+  - 감사관이 "설계된 부채이지 결함이 아니다"로 판정한 **부분적 억제 범위**(상시 로드 룰·스킬 리스팅) 서술은 약화시키지 않았다.
 - **2026-08-22** v0.2.0 — plan-audit iter1 FAIL 0.78(Tier M 임계 0.80, must-pass 7/7 통과, 부족분은 Testability 0.65) 대응. 블로킹 5건 + 선택 4건 처리:
   - **D1**(블로킹, `acceptance.md` AC-T-009 공허) — `TestSchemaLabel`(실재하지 않는 이름)을 `TestI18nKeySetParity`로 교체하고, 필드 존재 + `TypeBool` + `PersistSeam`을 단언하는 명명된 납품 테스트 `TestWorkflowTodoEnabledFieldRegistered`를 AC에 추가. REQ-5 본문에도 "기존 테스트가 등록 자체를 관측하지 않는다"는 사실을 명시.
   - **D5**(블로킹, `acceptance.md` AC-T-004 커밋 후 공허) — working-tree `git diff` 판정을 **내용 단언**으로 교체. 세 목록 줄의 실제 문자열을 AC에 기록하고 `grep -Fxc` 로 각 1건 존재를 관측(줄 번호 이동에 영향받지 않음).

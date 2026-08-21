@@ -85,7 +85,9 @@ grep -n 'AskUserQuestion\|gh issue create' .claude/skills/moai/workflows/feedbac
 - `internal/feedback/classify.go` — 신호 3종(`design.md` §6), 어휘는 상수, 거부 메시지는 `SECURITY.md` 인용.
 - `internal/feedback/classify_test.go` — 차단 케이스 + **오탐 대조** 케이스(축퇴 구현 배제).
 
-**Exit**: `go test ./internal/feedback/...` 초록. AC-F-008, AC-F-012.
+**Exit**: `go test ./internal/feedback/...` 초록. 대응 AC: **F-008, F-012, F-013**.
+
+**F-013을 빠뜨리지 않는다**: 분류가 **마스킹 이전 원문**을 본다는 순서 가드이며, 역순은 `design.md` §3이 "조용한 미탐이며 테스트로 잡기 어렵다"고 부른 바로 그것이다. 분류기를 만드는 이 마일스톤이 그 순서를 고정하는 유일한 자리다.
 
 ### M4 — 온디스크 산출물 2종 (형식 계약)
 

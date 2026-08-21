@@ -88,8 +88,9 @@ Then  두 파일 모두 조건 문장이 1건 이상이다
 ```bash
 grep -c 'workflow.todo.enabled' .claude/skills/moai/SKILL.md                                    # >= 1
 grep -c 'workflow.todo.enabled' internal/template/templates/.claude/skills/moai/SKILL.md        # >= 1
-grep -c '명시적' .claude/skills/moai/SKILL.md                                                     # >= 1 (한정 문장)
 ```
+
+**한정 문장의 관측은 AC-T-005에 위임한다(N1).** 이전 판본은 `grep -c '명시적'` 으로 한국어 리터럴을 통과 조건에 넣었는데, 대상(`.claude/skills/moai/SKILL.md` 와 그 템플릿 미러)은 **영어 전용 표면**이다. 그대로 두면 둘 중 하나가 터진다 — 스킬을 규칙대로 영어로 쓰면 이 MUST-PASS AC가 **거짓 실패**하고, AC를 통과시키려 한국어를 넣으면 배포 템플릿의 언어 규칙을 어긴다. 한정이 실제로 지켜졌는지는 문장 검색이 아니라 **행동**으로 판정하는 편이 더 강하다: AC-T-005의 두 번째 케이스(플래그 false에서 `add → list` 왕복 동작)가 그것이다. 산문에 무슨 문장이 있든, 이름으로 부른 기능이 실제로 동작하지 않으면 거기서 FAIL한다.
 
 **목록 3줄 내용 단언** — 줄 번호가 아니라 **내용**으로 고정한다(D5). 라우팅 절이 추가되면 줄 번호는 이동하지만 내용은 이동하지 않으며, `git diff` 와 달리 커밋 이후에도 판정이 유지된다. 아래 세 문자열은 편집 전 트리(`e7fb0e1d2`)에서 `sed -n '6p;81p;105p'` 로 읽은 값이다:
 
@@ -103,14 +104,27 @@ grep -Fc  -e '- Backlog language (add to the backlog, note this for later, what 
 ### AC-T-005 — CLI 등록 유지 + 플래그 false 하 동사 왕복
 
 ```
-Given workflow.todo.enabled: false (프로젝트 루트는 t.TempDir())
+Given workflow.todo.enabled: false
+  And 프로젝트 루트가 t.TempDir() 이고 userHomeDirFn 이 별도 t.TempDir() 로 교체돼 있다
 When  rootCmd 에서 "todo" 명령을 찾고 --help 를 실행한다
 Then  명령이 존재하고 종료 코드가 0이다
 Given 같은 조건
 When  moai todo add "<문구>" 후 moai todo 로 목록을 읽는다
 Then  추가한 카드가 목록에 나타나고 두 호출 모두 종료 코드 0이다
+  And 개발자의 실제 홈(~/.moai/todo/) 아래에 아무것도 만들어지지 않는다
 ```
 `go test ./internal/cli/ -run 'TestTodoCommandRegisteredRegardlessOfFlag|TestTodoVerbsUnaffectedByFlag' -v` → PASS
+
+**[HARD] `t.TempDir()` 만으로는 홈 오염을 막지 못한다(N2).** `resolveTodoQueueRoot`(`internal/cli/todo.go:81-99`)는 git 리포가 아닌 경로에서 `~/.moai/todo/<project-key>/` 로 폴백하므로, 프로젝트 루트만 임시 디렉터리로 잡은 테스트는 **개발자의 실제 홈에 쓴다**. 격리 seam은 `userHomeDirFn` 이며 선례가 이미 리포에 있다 — `internal/cli/todo_queue_root_test.go:122` 가 정확히 이 형태다:
+
+```go
+home := t.TempDir()
+orig := userHomeDirFn
+userHomeDirFn = func() (string, error) { return home, nil }
+t.Cleanup(func() { userHomeDirFn = orig })
+```
+
+이 SPEC이 추가하는 `internal/cli` 테스트 전부가 이 seam을 써야 한다.
 첫 케이스가 REQ-3(등록 유지)를, 두 번째가 REQ-2 D2 조항의 **행동**(이름으로 부른 기능은 플래그와 무관하게 동작)을 관측한다. 슬래시 표면은 산문이라 기계 관측이 불가능하지만, 그 표면이 위임하는 실제 동작은 여기서 관측된다 — 이 왕복이 실패하면 "명시적 호출은 정상 동작한다"는 조항이 거짓이 된다.
 
 ### AC-T-006 — 마법사 질문 + 개수 고정 유지
