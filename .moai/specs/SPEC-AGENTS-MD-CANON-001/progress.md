@@ -211,7 +211,7 @@ M6). No nested `AGENTS.md` created.
 | `AC-AMC-009` (live file) | Live root `AGENTS.md` at or below 24,576 B, headroom against 32,768 B stated | `wc -c AGENTS.md` → `14229`; headroom 10,347 B vs ceiling, 18,539 B vs budget | PASS |
 | `AC-AMC-009` (mirror) | Template mirror at or below 24,576 B | `internal/template/templates/AGENTS.md` does not exist — M6 creates it | PENDING (M6) |
 | `AC-AMC-009` (identity) | `required cut ≤ available reduction` holds at the landed size | required cut = 71,207 + 14,229 ÷ 4 − 66,371 = **8,393 tok**; available reduction (nine never-stub-split files at the measured 38.0 % precedent) = **10,670 tok** → margin **+2,277**, on the first term alone | PASS |
-| `AC-AMC-010` | Exactly one `AGENTS.md`, at the repository root | `git ls-files --full-name --cached --others --exclude-standard ':(top)*AGENTS.md' ':(exclude,top)internal/template/templates/*'` → `AGENTS.md`, one line. The criterion's own command omits `--others`, so it returns the same single line only once the file is committed; it currently returns empty because the file is untracked, not because a second copy exists | PASS (commit-pending) |
+| `AC-AMC-010` | Exactly one `AGENTS.md`, at the repository root | `git ls-files --full-name --cached --others --exclude-standard ':(top)*AGENTS.md' ':(exclude,top)internal/template/templates/*'` → `AGENTS.md`, one line. Re-run after the M2 commit `fd3ac06a8` with the criterion's own command (`git ls-files --full-name ':(top)*AGENTS.md' ':(exclude,top)internal/template/templates/*'`) → `AGENTS.md`, one line | PASS |
 
 **Baseline attribution.** Always-loaded surface re-measured on this tree after the write:
 `python3 .moai/reports/t82/surface_r3.py` → `surface files: 17   guard tokens (sum of per-file
