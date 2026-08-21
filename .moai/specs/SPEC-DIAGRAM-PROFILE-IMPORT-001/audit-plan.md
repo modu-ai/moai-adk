@@ -74,3 +74,44 @@ Clarity 0.75 · Completeness 0.75 · Testability 0.85 · Traceability 1.00 → *
 3. Optional: D4 line counts, D5 edge-case line.
 
 No other changes requested — do not touch the REQ architecture, the storage decision, or the t166 interface; they verified clean.
+
+---
+
+# Iteration 2 — Delta Re-audit (FINAL; Tier M ceiling 2/2)
+
+Revision audited: commit `baef137ec` (SPEC v0.2.0). Scope per the iteration-1 fix route: D1+D2+D3 delta + regression sweep + D4/D5 spot-check. Every fix claim re-measured; nothing taken from the delegation message on trust.
+
+**Verdict: PASS — Overall score 0.92** (Tier M threshold 0.80). All 7 must-pass criteria PASS. No blocking defect remains. Score trajectory 0.84 → 0.92 (no regression; no STOP signal).
+
+## Regression check — iteration-1 defects
+
+| ID | Status | Evidence |
+|----|--------|----------|
+| D1 (false evidence measurements) | **RESOLVED** | §1/§4 now carry three discriminating greps; all three re-run verbatim by the auditor on this tree → 0 matches each (exit 1): `grep -rniE "\.design-dna\|profile[ -]?(marker\|snapshot)\|active profile marker"` over design-dna/; `grep -rn "drawio"` and `grep -rn "import-mermaid\|import-drawio"` over svg-infographic/. The naive forms are documented as non-discriminating with exactly the line numbers the auditor measured (profile → 6 instance-sense lines; `-ci drawio\|import` → 2, both "important": SKILL.md:353, authoring.md:352). plan §C #3 carries the same greps + the do-not-use-naive-forms warning — the run-phase contradiction vector is closed. |
+| D2 (Step-0 contradiction) | **RESOLVED** | New REQ-13 (spec §3 L223-234) mandates amending exactly the SKILL.md:43-44 sentence with the caller-invoked exception, seeded from the one-home passage at :65-67; §2 scope table + §5 "confined to one sentence" bullet state it; plan §D gains the explicit "ONE EXCEPTION to PRESERVE (REQ-13)" clause and §F M2 decision 2 carries the amendment instruction — spec and plan are mutually consistent (the feared spec-vs-plan contradiction is absent). New AC-IMP-007 verifies the diff shows exactly one amended sentence outside the bundle table; AC-IMP-006(b) is re-scoped to workflow/routing-table/dials so the inter-AC contradiction is gone. The reconciliation is requirement-witnessed at both spec and AC level. |
+| D3 (SVG050 omitted) | **RESOLVED** | §4 L276 now lists "SVG040, SVG050 (parser failure)" — gloss verified against the checker (SVG050 emitted from the structural/parse-error tier; header comment: "error tier covers document structure (SVG001-SVG050)"). |
+| D4 (line counts) | **RESOLVED** | plan §A/§B5 now read "192 lines, `wc -l`" / "385" — matches the auditor's measurements. |
+| D5 (external-source edge) | **RESOLVED (beyond asked)** | REQ-10 gains three GEARS-formed boundaries (no auto-discovery; replacement requires caller intent; non-owned source → untrusted + ledger records a derivation, not a migration); §D.5 carries the matching edge case. |
+
+## Delta verification summary
+
+- REQ census: REQ-1..REQ-16 sequential, no gaps/duplicates; groups (a) 1-5, (b) 6-13, (c) 14-16. 16 ≤ 16 ceiling (at ceiling, not exceeding). New REQ-13 is shall-based GEARS (Ubiquitous with embedded exception scoping); renumbered REQ-14/15/16 are the old 13/14/15 verbatim.
+- AC census: 16 distinct ACs (AC-IMP-007 added); §D.2 traceability fully renumbered — 16/16 both directions, no orphans. §D.1 must-pass list extended to AC-IMP-001..007.
+- Frontmatter: v0.2.0, HISTORY 0.2.0 entry, all 12 canonical fields intact. MP-7 re-verified (plan.md NEEDS CLARIFICATION → 0); D8 syscall → 0.
+- Diff scope 03d77e4c3..baef137ec: only the 5 SPEC-artifact files — zero template/Go files touched (plan-phase discipline held).
+- Lint claim verified by the auditor: `moai spec lint .moai/specs/SPEC-DIAGRAM-PROFILE-IMPORT-001/spec.md` → "No findings — all SPEC documents are valid" (exit 0).
+- progress.md §E.1 counts updated to 16 REQ / 16 AC.
+
+## Residuals (non-blocking)
+
+| ID | Location | Finding | Class | Disposition |
+|----|----------|---------|-------|-------------|
+| R1 | plan.md §A L19, §F M3 (Attribution/catalog/neutrality items), §H L200-203 | Stale cross-cutting REQ pointers after the renumber: five citations still use the old REQ-13/14/15 where the correct numbers are REQ-14 (attribution), REQ-15 (Template-First/catalog/mirrors), REQ-16 (neutrality). acceptance.md — the binding verification surface — is correctly renumbered, and the plan items are self-describing, so misimplementation risk is low. **Routing note:** manager-develop cannot edit plan.md body (Forbidden ownership crossings) — fix via a trivial manager-spec touch-up before kickoff, or accept as documented debt. | minor, SHOULD-FIX | Orchestrator discretion |
+| R2 | plan.md §B1 | Wording still says the SKILL.md delta is "confined to the bundled-references table + at most one opt-in sentence near it" — superseded by §D's explicit ONE EXCEPTION clause; harmonize when touching R1. | NOTE | Fold into R1's touch-up |
+| R3 | spec.md §5 non-overlap bullet | Parenthetical "t167's delta (bundled-references table)" no longer mentions the Step-0 sentence amendment (fully stated in §2 table + §5's own bullet). The non-overlap claim itself remains true — Step 0 is disjoint from t166's Linting section and scripts. | NOTE | No action required |
+
+## Iteration-2 scores
+
+Clarity 0.90 · Completeness 0.90 · Testability 0.90 · Traceability 1.00 → **Overall 0.92** (mean). Deductions are the R1-R3 residuals; no dimension has a blocking defect.
+
+**Verdict: PASS.** The batch kickoff applies; run-phase M1 may proceed on this SPEC. The R1 touch-up (five stale REQ numbers in plan.md) is recommended before M1 so the implementer's milestone checklist reads the correct requirements, but it does not gate the kickoff.

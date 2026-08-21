@@ -21,3 +21,7 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending run-phase>_
+
+## §F Phase 4 Mode Selection
+
+Decision: **serial** (manager-develop, cycle_type=tdd as applicable to template-content work — RED here means pre-flight discriminating greps captured before edits). Justification: markdown/template-content surface (no Go code), two separable-but-sequenced groups (M1 design-dna, M2 importers, M3 verification sweep); single-author serial fits; coding is procedural-document authorship with grep/build gates. Kickoff: lead batch dispatch 2026-08-22 + plan-audit iter-2 PASS 0.92. Plan Audit Gate skip: PASS 0.92 ≥ 0.80 + artifact hash unchanged since the verdict (this §F addition and the R1/R2 touch-up of plan.md are post-verdict edits — NOTE: plan.md pointer touch-up changes the hash; the gate re-execution at run Phase 1 is therefore NOT skipped; manager-develop records the re-verify against the touched plan).
