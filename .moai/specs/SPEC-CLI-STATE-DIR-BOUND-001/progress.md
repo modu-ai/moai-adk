@@ -104,7 +104,29 @@ FAIL	github.com/modu-ai/moai-adk/internal/cli	0.964s
 
 AC-002 / AC-004 / AC-011 의 요구된 빨간 출력 3건이 위에 있다. AC-001 과 AC-010 양 분기도 함께 빨갛다. AC-006(폴백)과 AC-012(fail-open)는 **불변식 보존**을 확인하는 테스트이므로 구현 전에도 초록인 것이 정상이다 — 이 둘은 reproduction-first 대상이 아니다.
 
-AC-008 의 빨간 출력은 M2 절에 별도로 인용한다.
+AC-008 의 빨간 출력은 아래 M2 절에 별도로 인용한다.
+
+### M2 — chain 정본 경로 + 레거시 처분
+
+**reproduction-first (AC-008)**: `resolveChainDir` 을 **동작 보존 추출**만 한 상태(두 분기가 오늘처럼 서로 다른 경로를 만드는 상태)에서 테스트를 먼저 돌렸다. 이 순서가 아니면 "테스트가 결함을 잡는다"를 관측할 수 없다.
+
+명령: `go test ./internal/cli/ -run 'TestChainDirIsCanonicalUnderBothBranches' -v`
+
+```
+=== RUN   TestChainDirIsCanonicalUnderBothBranches
+    chain_state_dir_test.go:57: branches disagree: env ".../001/project/.moai/state/chain" vs discovery ".../001/project/.moai/chain"
+    chain_state_dir_test.go:61: got "/var/folders/.../001/project/.moai/state/chain", want the canonical "/private/var/folders/.../001/project/.moai/state/chain"
+    chain_state_dir_test.go:61: got ".../001/project/.moai/chain", want the canonical ".../001/project/.moai/state/chain"
+    chain_state_dir_test.go:64: got the legacy location ".../001/project/.moai/chain"
+--- FAIL: TestChainDirIsCanonicalUnderBothBranches (0.00s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.846s
+```
+
+세 결함이 한 번에 드러난다 — 두 분기의 경로 불일치, 환경변수 분기의 미정규화, 그리고 walk 분기의 레거시 위치.
+
+**경우 4(이전 실패) 재현 방식**: 퍼미션이 아니라 **주입**이다. `migrateChainEvents` 를 패키지 변수로 두고 테스트가 실패를 강제한다. 퍼미션으로 만들면 Windows 에서 재현되지 않고, 그 플랫폼에서 REQ-7 의 가장 위험한 분기가 검증 없이 배포된다 — `t.Skip` 은 AC-005 의 스킵 금지 정신과도 어긋난다.
+
+**정본 경로의 출처**: `filepath.Join(projectRootOf(stateDir), ChainStateDir)` 로 만든다. 선언된 상수(`ChainStateDir = ".moai/state/chain"`)를 다시 하중을 받는 자리에 두기 위해서다 — 레거시 경로는 누가 선언한 값이 아니라 `filepath.Dir(stateDir)+"chain"` 산술의 부산물이었다(spec.md REQ-7 근거 2).
 
 ## §E.3 Run-phase Audit-Ready Signal
 

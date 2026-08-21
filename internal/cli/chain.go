@@ -13,6 +13,7 @@ package cli
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -57,24 +58,106 @@ resume-target without grep or scrollback archaeology.`,
 	return cmd
 }
 
-// resolveChainStore finds or creates the chain Store from the project root.
-// Prefers CLAUDE_PROJECT_DIR; falls back to findStateDir() directory walk.
+// resolveChainStore finds or creates the chain Store under the project's
+// canonical chain directory, <project-root>/.moai/state/chain — the same path
+// the hook writer uses, whether or not CLAUDE_PROJECT_DIR named the project.
 func resolveChainStore() (*chain.Store, error) {
-	var chainDir string
-	if projDir := os.Getenv(config.EnvClaudeProjectDir); projDir != "" {
-		chainDir = filepath.Join(projDir, ChainStateDir)
-	} else {
-		stateDir, err := findStateDir()
-		if err != nil {
-			return nil, fmt.Errorf("chain: locate project state dir: %w", err)
-		}
-		chainDir = filepath.Join(filepath.Dir(stateDir), "chain")
+	chainDir, err := resolveChainDir()
+	if err != nil {
+		return nil, err
 	}
 	if err := os.MkdirAll(chainDir, 0o755); err != nil {
 		return nil, fmt.Errorf("chain: create state dir: %w", err)
 	}
 	storePath := filepath.Join(chainDir, ChainEventsFile)
 	return chain.NewStore(storePath)
+}
+
+// resolveChainDir returns the directory holding the chain event ledger.
+func resolveChainDir() (string, error) {
+	return resolveChainDirWith(os.Stderr)
+}
+
+// resolveChainDirWith is resolveChainDir with the warning stream supplied.
+//
+// The canonical location is <project-root>/.moai/state/chain regardless of how
+// the project root was reached (SPEC-CLI-STATE-DIR-BOUND-001 REQ-7). It used to
+// depend on that: with CLAUDE_PROJECT_DIR set the CLI wrote to .moai/state/chain
+// and without it to .moai/chain, so one project accumulated two ledgers. The
+// hook writer (internal/hook/chain_event.go) has always written the former,
+// which is what settles which of the two is canonical.
+//
+// Events left at the legacy location are relocated once; the disposition of
+// every case, including a relocation that fails, is in disposeLegacyChainDir.
+func resolveChainDirWith(warn io.Writer) (string, error) {
+	stateDir, err := findStateDir()
+	if err != nil {
+		return "", fmt.Errorf("chain: locate project state dir: %w", err)
+	}
+	announceResolvedRoot(warn, stateDir)
+
+	// Built from the declared constant rather than from path arithmetic on
+	// stateDir: the legacy location was a by-product of taking the parent of
+	// the state dir, never something anyone declared.
+	canonical := filepath.Join(projectRootOf(stateDir), filepath.FromSlash(ChainStateDir))
+	legacy := filepath.Join(filepath.Dir(stateDir), "chain")
+	return disposeLegacyChainDir(canonical, legacy, warn), nil
+}
+
+// disposeLegacyChainDir settles what happens to events sitting at the legacy
+// chain directory, and returns the directory the caller should use.
+//
+// Four outcomes, none of them silent data loss:
+//
+//	legacy only      relocate once to the canonical path
+//	both present     canonical wins, legacy is left untouched, warn
+//	canonical only   nothing happens and nothing is said
+//	relocation fails keep using the legacy path, warn
+//
+// The two ledgers are never merged: reconciling two ordered JSONL streams needs
+// trustworthy timestamps and a deduplication rule, neither of which exists here.
+// A relocation failure returns the legacy path rather than an error on purpose —
+// failing the call would take down every chain subcommand over a directory move.
+func disposeLegacyChainDir(canonical, legacy string, warn io.Writer) string {
+	legacyFile := filepath.Join(legacy, ChainEventsFile)
+	if !isRegularFile(legacyFile) {
+		return canonical
+	}
+	if isRegularFile(filepath.Join(canonical, ChainEventsFile)) {
+		_, _ = fmt.Fprintf(warn, "chain: legacy events retained at %s (canonical ledger already exists; the two are not merged)\n", legacyFile)
+		return canonical
+	}
+	if err := migrateChainEvents(legacyFile, filepath.Join(canonical, ChainEventsFile)); err != nil {
+		_, _ = fmt.Fprintf(warn, "chain: migration failed, using legacy path %s: %v\n", legacyFile, err)
+		return legacy
+	}
+	return canonical
+}
+
+// migrateChainEvents moves the event ledger to its canonical location. It is a
+// variable so a test can force the failure branch without depending on a
+// permission model that differs across platforms.
+var migrateChainEvents = func(src, dst string) error {
+	data, err := os.ReadFile(src)
+	if err != nil {
+		return fmt.Errorf("read legacy ledger: %w", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+		return fmt.Errorf("create canonical dir: %w", err)
+	}
+	if err := os.WriteFile(dst, data, 0o644); err != nil {
+		return fmt.Errorf("write canonical ledger: %w", err)
+	}
+	if err := os.Remove(src); err != nil {
+		return fmt.Errorf("remove legacy ledger: %w", err)
+	}
+	return nil
+}
+
+// isRegularFile reports whether path exists and is a regular file.
+func isRegularFile(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.Mode().IsRegular()
 }
 
 // resolveCWD returns the current working directory, preferring
