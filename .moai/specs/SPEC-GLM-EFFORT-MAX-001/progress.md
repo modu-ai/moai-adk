@@ -5,8 +5,8 @@
 - Tier: S. Artifacts emitted: `spec.md`, `plan.md`, `progress.md` (AC inline in spec.md §3; no acceptance.md per Tier S).
 - Ground truth: `.moai/reports/t175/measurements.md` + direct code reads at worktree HEAD; SPEC ID regex self-check PASS (`SPEC-GLM-EFFORT-MAX-001`), ID unique in `.moai/specs/`.
 - Requirements: REQ-GEM-001..006 (GEARS). Criteria: AC-GEM-001..008 inline.
-- Two `[NEEDS CLARIFICATION]` markers open in plan.md (§D-1 session-default ratification incl. the SPEC-GLM-EFFORT-REBALANCE-001 REQ-GER-004 reversal; §D-2 template-mirror doc-block scope rider) — MUST be resolved via AskUserQuestion before Implementation Kickoff Approval.
-- Status: `draft`. Awaiting plan-audit and Implementation Kickoff Approval.
+- Both plan.md decision markers resolved 2026-08-22, lead-ratified, recorded as `[RESOLVED]` headings (§D-1 session default = `max` + REQ-GER-004 supersession recorded in spec.md §1.3; §D-2 template-mirror doc-block hunk in scope). Audit fixes D1-D6 applied (spec v0.1.1).
+- Status: `draft`. Awaiting Implementation Kickoff Approval.
 
 ## §E.2 Run-phase Evidence
 
