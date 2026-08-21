@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENTS-MD-CANON-001
 title: "AGENTS.md canonical contract layer for Codex dual-harness"
-version: "0.3.0"
+version: "0.3.3"
 status: draft
 created: 2026-08-22
 updated: 2026-08-22
@@ -18,11 +18,22 @@ tier: L
 
 ## HISTORY
 
+> **Provenance rule for this table.** The frontmatter `version:` equals the latest row below, and
+> every row states a change the document actually contains. Neither is taken from a commit message:
+> a commit-message label describes what an author intended to land, and the two drifted apart here
+> once already (`version:` sat at `0.3.0` across two later revisions while commit messages read
+> "v0.3.1" / "v0.3.2"). §D.4 imposes measurement provenance on every figure this SPEC asserts; the
+> document's own revision is one of those figures. Check: `version:` matches the last row, and each
+> row's claims are greppable in the artifacts.
+
 | Date | Version | Change |
 |---|---|---|
 | 2026-08-22 | 0.1.0 | Initial draft (plan-phase). Card t82, milestone M2 of the Codex dual-harness epic. |
 | 2026-08-22 | 0.2.0 | Rebuilt on `.moai/reports/t82/codex-probe.md`. Three premises measured: 32,768 B default confirmed, nested merge is root→CWD-path-only, truncation is silent. Nested-AGENTS.md leg dropped (Option A approved by dispatcher). Contract ceiling redefined against 32,768 B. |
 | 2026-08-22 | 0.3.0 | Plan-audit iteration 1 (FAIL 0.69) revision. Enforceability fixes D1-D9: byte-guard criteria made executable, `AGENTS.md` singleton check moved to tracked files, integration branch given a discriminator, cap-raise rationale corrected to the measured position (P4), line-grep proxy disclosed, nested-`CLAUDE.md` asymmetry stated, `REQ-AMC-006` recast onto this SPEC. Parked edits folded in: output-style §8 lineage (t131 / t142), P4 discharged, M4 trust notice. |
+| 2026-08-22 | 0.3.1 | Dispatcher refinements. `AC-AMC-016` cites the existing `TestAlwaysLoadedTokenBudget_OverBudgetFails` for the token-budget negative path instead of proposing a duplicate fixture; `design.md` §5.2 records why the singleton check uses `git ls-files` with `:(top)` / `:(exclude,top)` rather than a path-scoped `find`. |
+| 2026-08-22 | 0.3.2 | Plan-audit iteration 2 (FAIL 0.83) revision. N1: headroom ratio pinned in `REQ-AMC-013` at 15 % ±2 percentage points, so `AC-AMC-019`'s check no longer reads a free variable. N2: stale `AC-AMC-012` cross-reference in `design.md` §4 corrected to `AC-AMC-013`. |
+| 2026-08-22 | 0.3.3 | Plan-audit iteration 3 (FAIL 0.82) revision. D1: `AC-AMC-019` now reads the 13 %-17 % band rather than resolving the ratio solely from the constant's comment. D2: the achieved figure must be measured over an enumeration including the root `AGENTS.md` and every `@`-imported contract document — `alwaysLoadedSurface()` omits it today, so relocation into `AGENTS.md` would have scored as a diet (`REQ-AMC-013`, `AC-AMC-017`, plan.md M5). D3: the band's implied diet target (achieved ≤ 66,371 tokens) stated in §C.4. D4: document version and HISTORY brought current, with the provenance rule above added so `version:` is derived from the table rather than from a commit message. D5 (optional): `AC-AMC-018`'s measured state defined. Dispatcher additions: the enumeration content is bound into `REQ-AMC-008`, and the extension is ordered **before any measurement cited as a ratchet basis** (`REQ-AMC-013`, `AC-AMC-018`, `plan.md` M1/M5) — a late fix manufactures false evidence in the gap rather than merely delaying correctness. |
 
 ---
 
@@ -36,7 +47,9 @@ it reads as complete — and nothing in the tooling says it happened.
 
 SSOT: `.moai/reports/t82/measurement.md` (2026-08-22). The measured surface is defined by the guard
 that already owns it — `internal/config/token_budget_guard.go` `alwaysLoadedSurface()`: every
-`.claude/rules/moai/**/*.md` without `paths:` frontmatter, plus three fixed slots.
+`.claude/rules/moai/**/*.md` without `paths:` frontmatter, plus three fixed slots. **The
+enumeration does not yet include `AGENTS.md`** — REQ-AMC-013 requires M5 to add it, since this SPEC
+makes that file always-loaded.
 
 | Surface | Bytes |
 |---|---:|
@@ -186,7 +199,11 @@ repository's guard shall fail with the measured byte figure and the offending fi
 
 **REQ-AMC-008** (Ubiquitous) — The byte guard shall reuse
 `internal/config/token_budget_guard.go`'s surface enumeration rather than introducing a second,
-independently-drifting measurement path.
+independently-drifting measurement path, and that enumeration shall include **the root `AGENTS.md`
+and every `@`-imported contract document** alongside its existing rule files and fixed slots.
+
+The ordering constraint that makes this enforceable lives with the measurement it binds — see
+REQ-AMC-013.
 
 **REQ-AMC-009** (Ubiquitous) — The CI byte guard shall fail the build on breach; an advisory-only
 guard does not satisfy this requirement. Rationale: §D.7.
@@ -206,12 +223,45 @@ cosmetic warning.
 
 ### C.4 Budget ratchet
 
+**The band implies a diet target, and it is stated here rather than discovered at M5.** With the
+headroom floor at 13 % and the constant capped at 75,000, `1.13 × N ≤ 75,000` bounds the achieved
+figure at **N ≤ 66,371 tokens**. Measured against that ceiling:
+
+| Tree | Measured | Required cut |
+|---|---:|---:|
+| this worktree | 71,212 | **4,841 tokens** |
+| the integration state that forced the 76,000 raise | 75,282 | **8,911 tokens** |
+
+So §B goal 2's "reduce the always-loaded surface enough" has a number: at least 4,841 tokens, and
+8,911 against the state the ratchet is actually measured on (REQ-AMC-014). M1 sizes its work
+against this figure; a diet that lands anywhere above 66,371 cannot satisfy REQ-AMC-013 no matter
+what ratio is declared.
+
 **REQ-AMC-013** (Ubiquitous) — `AlwaysLoadedTokenBudget` shall equal the achieved post-diet token
 figure plus a headroom allowance of **15 %, within ±2 percentage points** (so the admissible band
 is 13 %-17 % of the achieved figure), and shall be at or below 75,000. A constant set
 independently of the achieved figure — at the ceiling, or at any round number — does not satisfy
 this requirement even when it is below 75,000, and a headroom ratio chosen outside the 13 %-17 %
 band does not satisfy it either.
+
+The achieved figure shall be measured over an enumeration that **includes the root `AGENTS.md` and
+every `@`-imported contract document**, not over `alwaysLoadedSurface()`'s current three fixed
+slots. Verified against the implementation: the function enumerates rules-without-`paths:` plus
+`CLAUDE.md`, the output style, and `MEMORY.md` — `AGENTS.md` is absent. But `REQ-AMC-011` makes
+`AGENTS.md` an `@`-import of `CLAUDE.md`, so it *is* always-loaded from the moment it exists.
+Measured against the unextended enumeration, relocating clauses out of the rule files and into
+`AGENTS.md` would cut the achieved figure by up to ~6,144 tokens (24,576 B ÷ 4) **while removing
+nothing from the always-loaded context** — and the ratchet would record that as a diet. A guard
+that cannot see the file this SPEC creates cannot measure this SPEC's own effect.
+
+**The enumeration extension (REQ-AMC-008) is ordered BEFORE any measurement cited as a ratchet
+basis** — not merely before the ratchet's final commit. A late fix does more than delay
+correctness: it **manufactures false evidence in the gap**. Every measurement taken while
+`AGENTS.md` is unenumerated records a reduction that did not happen — clauses moved out of the rule
+files into a file that is still always-loaded but no longer counted. Those readings are
+indistinguishable from a real diet at the moment they are taken, and they are exactly the figures a
+later actor would quote as the diet's evidence. The gap does not close retroactively: measurements
+taken inside it stay wrong and stay quotable. Sequencing consequence in `plan.md` §E.
 
 The ratio is pinned here rather than left to the constant's comment because `AC-AMC-019` checks the
 constant against `achieved × (1 + ratio)`: if the ratio is whatever that same comment declares, the

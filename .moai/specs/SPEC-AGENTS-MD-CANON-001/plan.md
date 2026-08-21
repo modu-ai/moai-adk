@@ -57,6 +57,14 @@ records.
 
 ### M1 — Clause classification and compressibility measurement (Priority: High)
 
+> **Sequencing boundary against M5's guard extension.** M1 measures *text volume* — clause-block
+> bytes and a compression ratio — which is independent of what the guard enumerates, so M1 may run
+> in parallel with M5's extension. **The moment an M1 figure is cited as a ratchet basis, the
+> enumeration extension must already have landed** (REQ-AMC-008, REQ-AMC-013). The boundary is
+> not "before the ratchet commit" but "before the first measurement anyone will quote": a figure
+> taken while `AGENTS.md` is unenumerated is not merely early, it is wrong in a way that reads as
+> success, and it does not become right when the guard is fixed later.
+
 **Why first.** Two unmeasured quantities price everything downstream: how much of the 32,543 B
 contract is Claude-only (upper bound 14,360 B), and how far the remainder compresses without losing
 its obligation. Both are settled here, before any file moves.
@@ -130,9 +138,20 @@ mistake here is a Claude-side regression, which REQ-AMC-010 forbids.
   check:
   `t.Logf("always-loaded surface = %d tokens (budget %d, headroom %d)", total, AlwaysLoadedTokenBudget, AlwaysLoadedTokenBudget-total)`
   so a passing `go test -v` emits the figure. Every ratchet criterion reads that line.
-- Extend `internal/config/token_budget_guard.go` with a Codex-cap byte guard reusing
-  `alwaysLoadedSurface()`'s enumeration (REQ-AMC-008) — no second measurement path. It binds both
-  the live root `AGENTS.md` and its template mirror.
+- **Extend `alwaysLoadedSurface()` itself to enumerate the root `AGENTS.md` — and do it before any
+  measurement that will be quoted.** This is a code change, not a documentation one, and its
+  ordering is part of the requirement (REQ-AMC-008, REQ-AMC-013): measurements taken in the gap
+  record reductions that did not happen and are indistinguishable from a real diet when read later.
+  The guard cannot stay honest without it: the function today
+  carries three fixed slots (`CLAUDE.md`, the output style, `MEMORY.md`) and does not know about
+  `AGENTS.md`, while M3 makes `AGENTS.md` an `@`-import of `CLAUDE.md` and therefore always-loaded.
+  Unextended, M4's relocation of clauses into `AGENTS.md` would show as up to ~6,144 tokens of
+  "diet" with the always-loaded context unchanged. Add it as a fourth fixed slot, keeping the
+  existing hermetic treatment (a file absent from disk measures 0), so the pre-`AGENTS.md` baseline
+  is unaffected and the enumeration stays one path.
+- Extend `internal/config/token_budget_guard.go` with a Codex-cap byte guard reusing that same
+  enumeration (REQ-AMC-008) — no second measurement path. It binds both the live root `AGENTS.md`
+  and its template mirror.
 - The guard **fails the build**, it does not warn (REQ-AMC-009, rationale `spec.md` §D.7).
   Truncation is measured silent, so this is the only signal that will ever fire.
 - Failure output names the measured byte figure and the offending file.

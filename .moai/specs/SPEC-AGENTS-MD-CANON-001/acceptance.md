@@ -126,19 +126,36 @@ helpers; it does not introduce a parallel harness.
 > still genuinely uncovered.
 
 **AC-AMC-017** — Given the byte guard's implementation, When it is read, Then it calls
-`alwaysLoadedSurface()` (or the same enumeration helper) rather than re-globbing the rule tree.
+`alwaysLoadedSurface()` (or the same enumeration helper) rather than re-globbing the rule tree,
+**and that enumeration contains the root `AGENTS.md` and every `@`-imported contract document**.
+Verified by asserting the returned surface includes `AGENTS.md`; an enumeration that omits it
+fails this criterion, because a diet measured against it would score the relocation of clauses
+into `AGENTS.md` as a reduction while the always-loaded context is unchanged (`REQ-AMC-013`).
 
-**AC-AMC-018** — Given the post-diet **integration branch** — the `release/vX.Y.Z` branch this card
-merges into, carrying the merged sibling state — When
+**AC-AMC-018** — Given the **integration branch** — the `release/vX.Y.Z` branch this card merges
+into, carrying the merged sibling state — in a **post-diet state**, defined as one where
+`AC-AMC-021` passes (every shipped file mirrored, `make build` run), so the measurement follows M6
+rather than landing mid-diet; When
 `go test -v ./internal/config/ -run 'Budget|AlwaysLoaded'` runs there, Then it exits 0, the logged
 `always-loaded surface = N tokens` line is quoted, `AlwaysLoadedTokenBudget` is at or below 75,000,
 and the evidence records `git rev-parse --abbrev-ref HEAD` and `git rev-list --count main..HEAD` so
 the measured tree is identified rather than asserted.
 
+**Ordering assertion.** The enumeration extension (AC-AMC-017) must already have landed at the
+moment this measurement is taken — checked by confirming the enumeration contains `AGENTS.md` in
+the same run that produces N, not in a later one. A figure produced before the extension does not
+satisfy this criterion even if the extension lands afterwards: it measured a surface the guard
+could not fully see, so it records a reduction that did not occur.
+
 **AC-AMC-019** — Given the achieved figure N from AC-AMC-018 and the headroom ratio stated in the
-constant's comment, When `AlwaysLoadedTokenBudget` is compared against `N × (1 + ratio)`, Then the
-two agree within ±1,000 tokens. (Without this, landing the surface at 60,000 and setting the
-constant to 75,000 would satisfy the ceiling check verbatim while ratcheting nothing.)
+constant's comment, When the ratio is checked against the **13 %-17 % band `REQ-AMC-013` fixes**
+and `AlwaysLoadedTokenBudget` is compared against `N × (1 + ratio)`, Then the ratio is inside the
+band **and** the two figures agree within ±1,000 tokens.
+
+Both halves are load-bearing. The agreement check alone reads a ratio the same actor declared in
+the same edit, so the SPEC's own counterexample — achieved 60,000, declared ratio 25 %, constant
+75,000 — produces a delta of exactly 0 and passes. Reading the band is what makes the declared
+ratio answerable to something outside the edit that declared it.
 
 **AC-AMC-020** — Given the ratcheted constant, When its comment block is read, Then the "temporary
 raise pending a separate card" note is retired, replaced by the ratchet's measured justification,
