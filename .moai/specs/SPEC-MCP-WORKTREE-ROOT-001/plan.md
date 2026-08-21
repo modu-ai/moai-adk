@@ -20,6 +20,7 @@ Surfaces, measured in this worktree at `edcbf593c`:
 | `internal/cli/mcp_server.go` | 526, 583, 597 | `project_root` input on `spec_progress` / `spec_audit` / `spec_drift` |
 | `internal/cli/mcp_codex.go` | 1170 | `project_root` overrides the `"cwd"` handed to codex |
 | `internal/cli/mcp_convergence.go` | 353, 485 | `backendCallFn` widens to carry the root through `audit_multi`'s fan-out; injected doubles follow |
+| `internal/cli/mcp_convergence.go` | 387-394 | `performCodexAudit` gains a `cwd` in its params map — it has none today, so this adds the key rather than redirecting it |
 | `internal/cli/mcp_server.go` | tool registration block (~361-400) | declare the new optional input |
 | `.claude/rules/moai/core/moai-mcp-tools.md` + mirror | — | record the parameter and who passes it |
 | `.claude/agents/moai/{plan-auditor,sync-auditor}.md` + mirrors | — | tell the auditor to pass its own tree |
@@ -110,9 +111,17 @@ for `spec_audit`, `spec_drift`, `spec_progress`.
 
 `mcp_codex.go:1170` takes the same parameter with the same validation.
 `audit_multi` accepts it and forwards it: `backendCallFn` (`mcp_convergence.go:353`)
-widens to carry a root, the call site at `:485` passes it, and the injected test
-doubles follow the signature. Ends with **AC-1b, AC-2, and AC-3** met there — the
-parameter-present direction included, which is what iter-1 found missing.
+widens to carry a root, the call site at `:485` passes it, the injected test
+doubles follow the signature, and — the part the seam alone does not reach —
+`performCodexAudit` (`:387-394`) puts that root into its params map as `cwd`.
+
+That last step **adds a key rather than redirecting one**: the fan-out path
+carries no `cwd` today, unlike the single-backend path at `mcp_codex.go:1170`.
+The two codex paths have diverged, and the milestone is not done when the seam
+carries the root — it is done when the params map does.
+
+Ends with **AC-1b, AC-2, and AC-3** met there, asserted on both codex params
+maps.
 
 ### M3 — the call-site verdict table
 
@@ -142,6 +151,9 @@ each backend read and whether the lane-9 symptoms recur. Ends with AC-6.
 - The mirror of that mistake, which iter-1 actually caught: asserting only the
   absent and invalid directions on the codex path and never the present one.
   AC-1b exists because that is the surface the whole card came from.
+- Satisfying AC-1b with a `backendCall` double alone. iter-2 caught this: the
+  double is entered, `performCodexAudit` is not, and the params map — the thing
+  the backend actually receives — goes unasserted. Assert the map.
 - Changing the CLI's `--base-dir` or `baseDir` default. That path is correct.
 - Writing the verdict table with "unknown" rows that do not say what would settle
   them.

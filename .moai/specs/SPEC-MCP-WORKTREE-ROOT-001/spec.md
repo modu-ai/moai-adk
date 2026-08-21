@@ -1,7 +1,7 @@
 ---
 id: SPEC-MCP-WORKTREE-ROOT-001
 title: "Let an MCP caller name its own tree, so a worktree SPEC stops being invisible"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-08-22
 updated: 2026-08-22
@@ -128,7 +128,8 @@ one place this SPEC exceeds what was dispatched — drop it if that call is wron
 **Both lists above are illustrative, not exhaustive.** The MCP-path set also holds
 at least `mcp_glm.go` (`projectDirResolver`, the GLM `llm.yaml` location) and
 `mcp_server.go:105` (the tool-enablement read), and the CLI-side list is longer
-than the three named. Nothing escapes the SPEC on that account: REQ-4's mandate is
+than the three files named — those three hold five call sites between them.
+Nothing escapes the SPEC on that account: REQ-4's mandate is
 grep-derived, so the full set is re-derived at M3 rather than taken from this
 prose. The prose names the consumers the reasoning above turned on.
 
@@ -152,9 +153,28 @@ the primary happened to contain the SPEC.
 
 **AC-1b** — Given a codex audit call carrying `project_root` naming a worktree,
 when the review parameters are constructed, then the `cwd` they carry is that
-path (assertable on the `params` map at `mcp_codex.go:1167-1171`, with no live
-backend). Given `audit_multi` called with the same parameter, then the root
-reaching the backend fan-out is that path.
+path. This is asserted on the `params` map of **both** codex paths, with no live
+backend:
+
+- the single-backend path, `mcp_codex.go:1167-1171`, where `cwd` is today
+  `resolveProjectDir()`;
+- the `audit_multi` fan-out path, `performCodexAudit` (`mcp_convergence.go:387-394`),
+  whose params map carries **no `cwd` key at all** today.
+
+**Why the second bullet is named separately, and why the seam is not enough.**
+An earlier wording asked only that the root "reach the backend fan-out". A
+natural test of that — a `backendCall` double asserting what it received — is
+satisfied while `performCodexAudit` is never entered, and that function is where
+the codex params are actually built. The root could stop at the seam with all
+seven criteria green, contradicting §2's claim that `audit_multi` "carries the
+parameter through to its backends". Pinning the assertion to the params map
+closes that gap.
+
+The second bullet also changes what M2 has to build: `performCodexAudit` does not
+merely pass the wrong `cwd`, it passes none, so the repair adds the key rather
+than redirecting an existing one. The two codex paths have diverged, and this is
+the SPEC's record of it.
+
 **Why this is separate from AC-1a**: the codex `cwd` is the surface lane-9's
 symptom appeared on and the surface AC-6's post-repair check reads, yet without
 this criterion nothing in the SPEC asserted its parameter-present direction —
@@ -225,12 +245,20 @@ worth having. What fails it is not looking.
 - `.moai/reports/t171/cause-confirmation.md` — the measurement this SPEC rests on
 - `internal/cli/session.go:242` — `resolveProjectDir()`
 - `internal/spec/audit.go:157` — the `baseDir = "."` default that clears the CLI
-- `internal/cli/mcp_server.go:526`, `:583`, `:597`; `internal/cli/mcp_codex.go:1170`
+- `internal/cli/mcp_server.go:526`, `:583`, `:597` — the three SPEC-tool handlers
+- `internal/cli/mcp_server.go:367` — `audit_multi` registration, whose declared
+  inputs carry no `project_root` today
+- `internal/cli/mcp_codex.go:1167-1171` — the single-backend codex params, where
+  `cwd` is `resolveProjectDir()`
+- `internal/cli/mcp_convergence.go:353`, `:485` — `backendCallFn` and its call
+  site, the seam the root has to cross
+- `internal/cli/mcp_convergence.go:387-394` — `performCodexAudit`, whose params
+  map carries no `cwd` key at all
 
 ## §4.1 Tier note
 
 Tier S is claimed on the LOC and requirement/criterion axes, both of which fit
-comfortably: the core change is two Go files plus tests, six requirements, seven
+comfortably: the core change is three Go files plus tests, six requirements, seven
 criteria. The **file-count** axis does not fit as cleanly — counting template
 mirrors and the two auditor agent bodies, the touch surface is roughly eight to
 ten paths against the tier's "< 5 files" guidance, and `audit_multi`'s seam
@@ -253,6 +281,15 @@ decision is visible rather than assumed.
 
 ## §6 HISTORY
 
+- 0.3.0 (2026-08-22) — plan-audit iter-2 finding R1 applied, plus two items
+  found by a self-sweep while iter-2 was running. R1: AC-1b asked only that the
+  root reach the backend fan-out, which a `backendCall` double satisfies without
+  ever entering the function that builds the codex params — the root could stop
+  at the seam with every criterion green. AC-1b now pins both codex params maps,
+  and in doing so records that the two paths have diverged: the fan-out path
+  passes no `cwd` at all, so M2 adds the key rather than redirecting one. The
+  self-sweep items: §4's evidence list still named only the pre-D1 surfaces, and
+  a "three named" count mixed files with call sites.
 - 0.2.0 (2026-08-22) — plan-audit iter-1 findings applied. D1: `audit_multi`
   joins REQ-1 as a forwarding carrier, so AC-6 checks the surface the symptom
   actually occurred on; the seam-widening cost is stated rather than hidden. D2:
