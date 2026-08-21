@@ -127,7 +127,7 @@ scripts/ci-watch/              # Dev-only: CI watch loop scripts (5) — not dis
 scripts/ci-autofix/            # Dev-only: CI auto-fix scripts (4) — not distributed
 .claude/skills/hns-workflow-ci-loop/                       # Dev-only: CI watch+autofix skill (removed from template; mirror kept). §2.3에 따라 moai-workflow-ci-loop → hns-* 로 이동(2026-08-15): `.claude/skills/moai*` 글롭이 매 update마다 삭제했음
 .claude/rules/local/ci-watch-protocol.md                     # Dev-only: governs scripts/ci-watch (removed from template; mirror kept)
-.claude/rules/local/ci-autofix-protocol.md                 # Dev-only original form: governs scripts/ci-autofix (template rewritten script-free). §2.3 경로 충돌 유형 — 템플릿과 달라야 하는 파일이 템플릿 경로에 있으면 매 update마다 덮어써진다(2026-08-15 실제 발생). 주의: 다음 update가 `.claude/rules/moai/workflow/`에 템플릿판(script-free)을 다시 깔면 두 판본이 함께 로드되므로, 어느 쪽을 살릴지 정리 필요
+.claude/rules/local/ci-autofix-protocol.md                 # Dev-only 원본: scripts/ci-autofix 를 지배. 배포판(.claude/rules/moai/workflow/ 의 같은 이름, script-free)과 **의도적 쌍둥이** — SPEC-CI-LOOP-DEVONLY-001 의 결정이며 미해결 상태가 아니다. 둘은 `paths:` 범위가 서로 겹치지 않아 함께 로드되지 않는다(로컬판=데브 스킬 SKILL.md, 배포판=manager-develop + .github/workflows/**). #1557(ed04e40e6)이 이 파일을 관리 대상 뿌리 밖으로 옮겨 §2.3 경로 충돌도 해소됐다. 다만 배포판이 update 때마다 `.claude/rules/moai/workflow/` 에 미추적으로 재생성돼 git status 노이즈로 남는다
 CLAUDE.local.md                # This file
 .moai/state/last-cc-version.json # Dev-only: CC tracking state (§21)
 .moai/research/cc-update-*.md  # Dev-only: CC update reports (§21)

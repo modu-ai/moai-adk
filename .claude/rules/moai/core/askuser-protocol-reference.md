@@ -190,3 +190,13 @@ Breaking the loop requires more than retrying the one rejected call:
 ### Scope Note
 
 This is a model-output discipline, not a project-code defect: a correct JSON serializer (for example Go's `encoding/json`) already preserves multi-byte UTF-8 and never emits `ensure_ascii`-style escapes, so it cannot be the pollution source. The discipline binds the orchestrator's own construction of every tool call — `AskUserQuestion`, Bash, Write / Edit, and any other tool whose JSON payload carries non-ASCII text — not just clarification rounds. The `AskUserQuestion` case is the origin example; a corrupted `\uXXXX` escape in a Bash command or a Write payload fails the same way.
+
+## Blind Spot Pass
+
+The **Blind Spot Pass** is an OPTIONAL pre-plan Discovery technique for surfacing the user's **unknown-unknowns**: read-only reconnaissance by `Agent(Explore)`, with findings surfaced to the user through the orchestrator's `AskUserQuestion` channel.
+
+- **When**: the user is working in an **unfamiliar** domain (new subsystem, unfamiliar design/library territory) AND the orchestrator suspects unknown-unknowns — SHOULD run **before plan-phase entry**, before authoring the SPEC. The trigger is a judgment call, NOT an automatic gate; in a familiar domain with no suspected unknown-unknowns, the pass is skipped with no forced overhead.
+- **Mechanism**: (1) spawn `Agent(Explore)` in **read-only** mode to scan the relevant domain (subsystem, library surface, integration points); (2) surface the likely unknown-unknowns through a single `AskUserQuestion` round so the user can react before the plan is authored.
+- **Subagent boundary (preserved)**: `Agent(Explore)` — and any subagent — **does not prompt the user** directly; findings surface only through the orchestrator's channel. A subagent that lacks input returns a blocker report; it never asks the user.
+
+---

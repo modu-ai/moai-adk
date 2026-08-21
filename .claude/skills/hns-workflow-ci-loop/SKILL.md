@@ -161,8 +161,13 @@ fallback); `scripts/ci-autofix/log-fetch.sh` (failure log + PR diff);
 
 - `manager-develop` (cycle_type=autofix) — failure diagnosis + patch proposal subagent
 - `manager-git` — commit/push of auto-fix patches
-- `.claude/rules/moai/workflow/ci-watch-protocol.md` — HARD watch invocation contract
-- `.claude/rules/moai/workflow/ci-autofix-protocol.md` — HARD autofix invocation contract
+- `.claude/rules/local/ci-watch-protocol.md` — HARD watch invocation contract (dev-only; governs `scripts/ci-watch/`)
+- `.claude/rules/local/ci-autofix-protocol.md` — HARD autofix invocation contract (dev-only; governs `scripts/ci-autofix/`)
+
+  Both are the **dev-repo twins**, not the distributed rules of the same basename. The
+  distributed `.claude/rules/moai/workflow/ci-autofix-protocol.md` is deliberately
+  script-free and governs the `manager-develop` autofix cycle instead; it does not
+  describe the scripts this skill runs. `ci-watch-protocol.md` is not distributed at all.
 - `.github/required-checks.yml` — Wave 1 SSoT
 
 ## Common Rationalizations
