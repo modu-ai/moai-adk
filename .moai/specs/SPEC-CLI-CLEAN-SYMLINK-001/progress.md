@@ -309,7 +309,7 @@ M4 `<this-commit>` — 전부 `WT-clean-links`, 미푸시.
 
 ```yaml
 sync_complete_at: 2026-08-22
-sync_commit_sha: pending-backfill-SPEC-CLI-CLEAN-SYMLINK-001  # backfill 커밋에서 확정 (spec-frontmatter-schema.md D3)
+sync_commit_sha: 31e711707             # sync 커밋 — 이 backfill 커밋에서 확정
 sync_status: complete
 changelog_entry_position: CHANGELOG.md [Unreleased] > Fixed (최상단)
 frontmatter_status_transitions:
