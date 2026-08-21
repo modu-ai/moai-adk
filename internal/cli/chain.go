@@ -437,6 +437,7 @@ func loadRegistryForOverlay() []session.Entry {
 	if err != nil {
 		return nil
 	}
+	announceResolvedRoot(os.Stderr, stateDir)
 	regPath := filepath.Join(stateDir, "active-sessions.json")
 	reg := session.NewRegistry(regPath, realClock{})
 	entries, err := reg.Query("")

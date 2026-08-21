@@ -82,6 +82,7 @@ func runStateDump(p printer.Printer, phaseArg, specID, format string, resume boo
 	if err != nil {
 		return fmt.Errorf("find state dir: %w", err)
 	}
+	printResolvedRoot(p, stateDir)
 
 	// Create store
 	store := session.NewFileSessionStore(stateDir, 3600*time.Second)
@@ -158,6 +159,7 @@ func runShowBlocker(p printer.Printer) error {
 	if err != nil {
 		return fmt.Errorf("find state dir: %w", err)
 	}
+	printResolvedRoot(p, stateDir)
 
 	// Find blocker files
 	pattern := filepath.Join(stateDir, "blocker-*.json")
@@ -285,6 +287,12 @@ func normalizeDir(dir string) string {
 // callers emit it before doing their work rather than after.
 func announceResolvedRoot(w io.Writer, stateDir string) {
 	_, _ = fmt.Fprintf(w, "resolved project root: %s\n", projectRootOf(stateDir))
+}
+
+// printResolvedRoot is announceResolvedRoot for the consumers that already hold
+// a Printer. Printer.Info writes to stderr, so both land on the same stream.
+func printResolvedRoot(p printer.Printer, stateDir string) {
+	p.Info("resolved project root: %s", projectRootOf(stateDir))
 }
 
 // projectRootOf maps a .moai/state directory back to its project root.

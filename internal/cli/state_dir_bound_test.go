@@ -181,7 +181,9 @@ func TestResolveTokensStateDirFallsBackToCwd(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resolveTokensStateDir: %v", err)
 	}
-	want := normPath(t, filepath.Join(cwd, ".moai", "state"))
+	// Normalize the directory that exists, then join: EvalSymlinks on a path
+	// that has not been created yet would hand back the raw form.
+	want := filepath.Join(normPath(t, cwd), ".moai", "state")
 	if got != want {
 		t.Errorf("got %q, want the cwd fallback %q", got, want)
 	}

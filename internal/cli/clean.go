@@ -60,12 +60,23 @@ type stateYAMLWrapper struct {
 }
 
 // runClean cleans up old runs/ directories based on retention_days.
+//
+// Resolution deliberately ignores CLAUDE_PROJECT_DIR
+// (SPEC-CLI-STATE-DIR-BOUND-001 REQ-9): this function removes directories, and
+// an inherited environment variable must not be what decides where. A worktree
+// session whose CLAUDE_PROJECT_DIR still names the primary checkout would
+// otherwise delete there. To clean another project, run this in it.
 func runClean(p printer.Printer, force bool) error {
 	// Locate state directory
-	stateDir, err := findStateDir()
+	stateDir, err := findStateDirNoEnv()
 	if err != nil {
 		return fmt.Errorf("find state dir: %w", err)
 	}
+	// Announced before anything is enumerated: read commands honour
+	// CLAUDE_PROJECT_DIR and this one does not, so the two can legitimately
+	// resolve different projects within one session. Saying which project this
+	// is after listing its files would be telling the operator too late.
+	printResolvedRoot(p, stateDir)
 
 	// Load retention_days (from state.yaml)
 	retentionDays, err := loadRetentionDays(stateDir)
