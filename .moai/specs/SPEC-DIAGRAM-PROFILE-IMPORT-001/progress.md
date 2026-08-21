@@ -116,7 +116,7 @@ touched plan, as §F required.
 
 ```yaml
 run_complete_at: 2026-08-22
-run_commit_sha: "pending-backfill-M3"   # backfilled in M3b (self-SHA placeholder, D3 pattern)
+run_commit_sha: "e61a7397a"              # M3 (backfilled in M3b — self-SHA placeholder, D3 pattern)
 run_status: complete-across-16-ac (15 binary PASS + AC-VERIFY-001 documented gap path per acceptance.md D.1)
 ac_pass_count: 15
 ac_fail_count: 0
