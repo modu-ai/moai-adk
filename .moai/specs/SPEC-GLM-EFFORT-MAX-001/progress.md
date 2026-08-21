@@ -81,7 +81,7 @@ m1_to_mN_commit_strategy: "3 conventional commits (M1 RED a0340aa22 / M2 GREEN 6
 
 ```yaml
 sync_complete_at: 2026-08-22
-sync_commit_sha: pending-backfill-SPEC-GLM-EFFORT-MAX-001  # backfilled in the follow-up commit (self-referential-hazard workaround, spec-frontmatter-schema.md D3)
+sync_commit_sha: 7803fab90  # backfilled in the follow-up commit (self-referential-hazard workaround, spec-frontmatter-schema.md D3)
 sync_status: complete (3-phase close: plan → run M1-M4 → sync; this sync commit carries the in-progress → completed transition)
 b12_self_test_a: "grep -c 'SPEC-GLM-EFFORT-MAX-001' CHANGELOG.md → 0 (pre-emission, dedup PASS)"
 b12_self_test_b: "AC count = 8 (AC-GEM-001..008, Tier S inline in spec.md §3 — no acceptance.md); 7 PASS + 1 DEFERRED (AC-GEM-008, lead fresh-session check — §E.2 row left verbatim per lead ruling; live-session result appended by the lead at release-binary install time)"
