@@ -85,7 +85,7 @@
 `CLAUDE.local.md:181` 의 *"`ci-autofix-protocol.md`(dev 원본 vs 템플릿 script-free판)가 그렇게 유실됐다"*
 는 2026-08-15 사고의 **착지 시점 기록**이다. 현재 동작에 맞춰 고치면 기록이 거짓이 된다. 손대지 않았다.
 
-## 5. 판정이 필요한 잔여 1건 (조치하지 않음 — 운영자/리드 몫)
+## 5. 잔여 1건 — 리드 판정 ③ 재추적, 반영 완료
 
 배포판 사본이 `.claude/rules/moai/workflow/ci-autofix-protocol.md` 에 **미추적으로** 남아 있고,
 `.claude/rules/` 전체에서 **유일한 미추적 파일**이다(`git status --porcelain .claude/rules/` 실측 1건).
@@ -97,7 +97,14 @@
 | `.gitignore` 에 추가 | 노이즈 제거. 다만 `.claude/rules/` 에 ignore 선례가 없어(패턴 0건) 새 관행이 된다 |
 | 다시 추적 | #1557 이 **의도적으로** 지운 것을 되돌리는 것 — 데브 저장소 추적 트리에 배포 쌍둥이가 되살아난다 |
 
-기술적 실측은 위가 전부이고, 어느 쪽이 관행상 맞는지는 저장소 소유자 판정이라 손대지 않았다.
+기술적 실측은 위가 전부이고, 어느 쪽이 관행상 맞는지는 저장소 소유자 판정이라 이 verdict 초안 시점에는
+손대지 않았다. 리드가 **③ 재추적**으로 판정했고(`.claude/rules/moai/**` 는 템플릿 미러가 원칙 —
+미러 패리티 회복 / gitignore 신설 선례 없음 / 노이즈 제거), 커밋 `614ad5778` 로 반영했다.
+
+재추적한 내용은 템플릿 소스에서 복사한 것이고 primary 의 기존 미추적 사본과도 byte-identical 임을
+`diff -q` 두 번으로 확인했다(`MIRROR_IDENTICAL`, `SAME_AS_PRIMARY_UNTRACKED`). **#1557 의 결정은
+되돌리지 않았다** — dev 원본은 `.claude/rules/local/` 에 그대로 있고, 공존이 안전한 근거는 §1 의
+`paths:` 서로소다.
 
 ## 6. Template-First — **이번 카드는 해당 없음** (실측 근거)
 
