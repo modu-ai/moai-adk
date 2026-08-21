@@ -2,7 +2,7 @@
 id: SPEC-DIAGRAM-PROFILE-IMPORT-001
 title: "Absorb diagram-design profile persistence and drawio/mermaid importers as opt-in skill references"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-08-22
 updated: 2026-08-22
 author: manager-spec (card t167)

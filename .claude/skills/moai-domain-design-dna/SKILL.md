@@ -146,6 +146,17 @@ is documented once in `moai-domain-html-report` § output; the difference here
 is scope: that skill renders a *report* from markdown, this one generates a
 *designed artifact* from a DNA profile.
 
+## Profile persistence
+
+Phase 2 can end by saving the completed DNA JSON as a **named profile**, and
+Phase 3 can start from the **active profile** instead of re-extracting the same
+reference: `references/diagram-profiles.md` documents the mechanism — the
+project-root `.design-dna/` store, the marker-first `active` selector, the slug
+grammar, schema validation with "not observed" backfill on load, and the
+confirm-before-overwrite / verify-by-re-read save path. A project with no
+profile marker proceeds exactly as above; persistence adds a save hook and a
+start-from option, never a routing change.
+
 ## Delivery gate
 
 Verify before handing over. Each item below has failed in practice.
@@ -189,4 +200,5 @@ it.
 ## References
 
 - `references/dna-schema.md` — the three-dimension field list and enum vocabularies
+- `references/diagram-profiles.md` — named-profile persistence: the `.design-dna/` store, marker-first resolution, slug grammar, load-time validation
 - `references/effects-implementation.md` — performance tiers, technology selection, and per-effect implementation patterns
