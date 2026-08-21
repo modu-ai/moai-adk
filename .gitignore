@@ -125,7 +125,8 @@ logs/*
 # ===========================================
 .codex/
 .agents/
-AGENTS.md
+# AGENTS.md is NOT ignored: the root file is this repository's tracked contract
+# document, and the template mirror ships it to users.
 
 # ===========================================
 # Secrets and Credentials (CRITICAL)

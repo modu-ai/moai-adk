@@ -194,6 +194,165 @@ ok  	github.com/modu-ai/moai-adk/internal/config	0.637s
 `alwaysLoadedSurface()` unextended (M5), no `t.Logf` added (M5),
 `AlwaysLoadedTokenBudget` unchanged at 76,000.
 
+### M2 — root `AGENTS.md` contract layer (2026-08-22)
+
+Tree: worktree `.claude/worktrees/t82`, branch `WT-agents-md-diet`, `57a7ef71b`.
+Files written: `AGENTS.md` (new), `.gitignore` (one ignore rule removed — see the blocker note
+below). `CLAUDE.md`, `internal/config/**`, and `internal/template/templates/**` untouched (M3 / M5 /
+M6). No nested `AGENTS.md` created.
+
+**Landed size: 14,229 B** — `wc -c AGENTS.md` → `14229`. Against `REQ-AMC-004`'s 24,576 B ceiling:
+**10,347 B of headroom**, 57.9 % of the ceiling used. Against the measured 32,768 B codex budget:
+**18,539 B of headroom** for a user's global `~/.codex/AGENTS.md` layer plus future growth.
+
+| AC | Claim | Evidence (command → observed) | Status |
+|---|---|---|---|
+| `AC-AMC-008` | Every Codex-relevant clause block appears in the root document; trace table maps clause → origin with zero unmapped rows | `python3 .moai/reports/t82/trace.py` → `mapped rows: 36 | C blocks: 35 | unmapped C: none | promoted from K: ['B042']`; `python3 .moai/reports/t82/presence.py` → `clauses checked: 36 | missing: none`, exit 0 | PASS |
+| `AC-AMC-009` (live file) | Live root `AGENTS.md` at or below 24,576 B, headroom against 32,768 B stated | `wc -c AGENTS.md` → `14229`; headroom 10,347 B vs ceiling, 18,539 B vs budget | PASS |
+| `AC-AMC-009` (mirror) | Template mirror at or below 24,576 B | `internal/template/templates/AGENTS.md` does not exist — M6 creates it | PENDING (M6) |
+| `AC-AMC-009` (identity) | `required cut ≤ available reduction` holds at the landed size | required cut = 71,207 + 14,229 ÷ 4 − 66,371 = **8,393 tok**; available reduction (nine never-stub-split files at the measured 38.0 % precedent) = **10,670 tok** → margin **+2,277**, on the first term alone | PASS |
+| `AC-AMC-010` | Exactly one `AGENTS.md`, at the repository root | `git ls-files --full-name --cached --others --exclude-standard ':(top)*AGENTS.md' ':(exclude,top)internal/template/templates/*'` → `AGENTS.md`, one line. The criterion's own command omits `--others`, so it returns the same single line only once the file is committed; it currently returns empty because the file is untracked, not because a second copy exists | PASS (commit-pending) |
+
+**Baseline attribution.** Always-loaded surface re-measured on this tree after the write:
+`python3 .moai/reports/t82/surface_r3.py` → `surface files: 17   guard tokens (sum of per-file
+len/4): 71207   surface bytes: 284850` — unchanged from M1, because `alwaysLoadedSurface()` does not
+yet enumerate `AGENTS.md` (`REQ-AMC-008` / `REQ-AMC-013` ¶2 order that extension into M5, before any
+measurement quoted as a ratchet basis). The required cut above therefore adds `|AGENTS.md| ÷ 4`
+explicitly rather than reading it off the guard.
+
+**Go regression check** (no Go code changed; run to confirm the new root file does not perturb the
+guard):
+
+```
+go test -count=1 ./internal/config/ -run 'Budget|AlwaysLoaded' -v
+--- PASS: TestAlwaysLoadedTokenBudget (0.01s)
+--- PASS: TestAlwaysLoadedTokenBudget_OverBudgetFails (0.00s)
+--- PASS: TestAlwaysLoadedSurfaceEnumeration (0.00s)
+--- PASS: TestMeasureAlwaysLoaded_WithMemory (0.00s)
+--- PASS: TestWorkflowYAMLUnmarshal_OmittedTokenBudget_PreservesDefaults (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/config	0.538s
+```
+
+**Classification movement against M1: one clause moved, both directions accounted.**
+
+- **Promoted K → C: `B042`** (`cache-aware-execution.md`:25, "weigh session length as a cost axis",
+  419 B). M1 filed it Claude-only on the `/clear` framing, but the obligation itself — one long
+  session over several short ones, because a fresh session re-pays the always-loaded prefix at write
+  price — rests on prompt-prefix caching, which codex has. Its two neighbouring directives (`B040`,
+  `B041`) were already C. `spec.md` §D.2 directs doubt to the Codex side; the cost is 419 B of
+  verbatim input.
+- **Demoted C → K: none.** Demotion is the silent-loss direction (`spec.md` §D.2), so no clause was
+  moved that way; all 35 of M1's C blocks are in the document.
+- **Not a promotion, but worth naming: `B011`.** `B012` (C) binds a direct edit to a shared path to
+  "the parallel-session detection", and the concrete check lives in `B011`, which is K because it
+  gates `Agent()` spawns. Carrying `B012` without the check would have shipped a clause pointing at
+  nothing — the self-sufficiency failure `REQ-AMC-001` forbids. `AGENTS.md` §2 therefore states the
+  two-command divergence check as part of `B012`'s own obligation. `B011`'s spawn-gate obligation is
+  not carried.
+
+**Structure assumption discharged** (M1 report §7 Gap 1). `python3 .moai/reports/t82/structure.py` →
+`structure total (front matter + headings + rules + blank lines): 1179`, `clause text: 13050`,
+`M1 assumption for structure: 3300 -> delta -2121`. The assumption ran **2,121 B high**, in the safe
+direction.
+
+**Compression ran looser than the pilot ratio, and the projection's use of that ratio was
+optimistic.** Clause text landed at 13,050 B against 16,554 B of mapped verbatim input — an
+aggregate ratio of **0.788**, not the pilot's 0.5318. Three reasons, all visible in the input rather
+than in the authoring: the pilot sampled `kanban-dispatch.md`, the most rationale-dense file in the
+set, where the removable layer is largest; the six `moai-constitution.md` core behaviors (5,117 B,
+31 % of the input) are almost entirely obligation text with little narrative to strip; and `B009`'s
+clause block is a bare heading line whose body the extractor did not capture, so making it
+self-sufficient *added* bytes rather than removing them. The net still lands 2,348 B below M1's
+11,881 B projection because the structure assumption over-ran by more than compression under-ran.
+
+**Trace table — 36 clauses, zero unmapped.** Regenerate with `python3 .moai/reports/t82/trace.py`
+(the table is also written to `.moai/reports/t82/trace.md`).
+
+| Clause | Class | Origin file | Line | Verbatim B | `AGENTS.md` section |
+|---|---|---|---:|---:|---|
+| `B036` | C | `.claude/rules/moai/core/verification-claim-integrity.md` | 9 | 283 | §1 Evidence and verification claims |
+| `B037` | C | `.claude/rules/moai/core/verification-claim-integrity.md` | 37 | 165 | §1 Evidence and verification claims |
+| `B038` | C | `.claude/rules/moai/core/verification-claim-integrity.md` | 50 | 385 | §1 Evidence and verification claims |
+| `B012` | C | `.claude/rules/moai/core/agent-common-protocol.md` | 296 | 412 | §2 Git, branches, and the shared checkout |
+| `B013` | C | `.claude/rules/moai/core/agent-common-protocol.md` | 330 | 436 | §2 Git, branches, and the shared checkout |
+| `B076` | C | `.claude/rules/moai/workflow/main-checkout-branch-guard.md` | 20 | 704 | §2 Git, branches, and the shared checkout |
+| `B077` | C | `.claude/rules/moai/workflow/main-checkout-branch-guard.md` | 58 | 275 | §2 Git, branches, and the shared checkout |
+| `B066` | C | `.claude/rules/moai/workflow/kanban-dispatch.md` | 127 | 676 | §3 Worktrees |
+| `B067` | C | `.claude/rules/moai/workflow/kanban-dispatch.md` | 139 | 454 | §3 Worktrees |
+| `B068` | C | `.claude/rules/moai/workflow/kanban-dispatch.md` | 141 | 246 | §3 Worktrees |
+| `B069` | C | `.claude/rules/moai/workflow/kanban-dispatch.md` | 143 | 693 | §3 Worktrees |
+| `B070` | C | `.claude/rules/moai/workflow/kanban-dispatch.md` | 145 | 550 | §3 Worktrees |
+| `B071` | C | `.claude/rules/moai/workflow/kanban-dispatch.md` | 159 | 513 | §3 Worktrees |
+| `B010` | C | `.claude/rules/moai/core/agent-common-protocol.md` | 227 | 317 | §4 How verification is run |
+| `B064` | C | `.claude/rules/moai/workflow/kanban-dispatch.md` | 98 | 679 | §4 How verification is run |
+| `B072` | C | `.claude/rules/moai/workflow/kanban-dispatch.md` | 171 | 488 | §4 How verification is run |
+| `B073` | C | `.claude/rules/moai/workflow/kanban-dispatch.md` | 173 | 379 | §4 How verification is run |
+| `B074` | C | `.claude/rules/moai/workflow/kanban-dispatch.md` | 179 | 254 | §4 How verification is run |
+| `B028` | C | `.claude/rules/moai/core/moai-constitution.md` | 179 | 573 | §5 Core behaviors |
+| `B029` | C | `.claude/rules/moai/core/moai-constitution.md` | 195 | 462 | §5 Core behaviors |
+| `B030` | C | `.claude/rules/moai/core/moai-constitution.md` | 207 | 640 | §5 Core behaviors |
+| `B031` | C | `.claude/rules/moai/core/moai-constitution.md` | 224 | 2245 | §5 Core behaviors |
+| `B032` | C | `.claude/rules/moai/core/moai-constitution.md` | 253 | 770 | §5 Core behaviors |
+| `B033` | C | `.claude/rules/moai/core/moai-constitution.md` | 270 | 750 | §5 Core behaviors |
+| `B002` | C | `.claude/rules/moai/core/agent-common-protocol.md` | 100 | 99 | §6 Output, language, and format |
+| `B003` | C | `.claude/rules/moai/core/agent-common-protocol.md` | 110 | 102 | §6 Output, language, and format |
+| `B004` | C | `.claude/rules/moai/core/agent-common-protocol.md` | 112 | 228 | §6 Output, language, and format |
+| `B014` | C | `.claude/rules/moai/core/agent-common-protocol.md` | 336 | 231 | §6 Output, language, and format |
+| `B025` | C | `.claude/rules/moai/core/moai-constitution.md` | 22 | 465 | §6 Output, language, and format |
+| `B034` | C | `.claude/rules/moai/core/native-idiom-and-register.md` | 8 | 423 | §6 Output, language, and format |
+| `B095` | C | `CLAUDE.md` | 98 | 393 | §6 Output, language, and format |
+| `B005` | C | `.claude/rules/moai/core/agent-common-protocol.md` | 130 | 68 | §7 Tools and command output |
+| `B009` | C | `.claude/rules/moai/core/agent-common-protocol.md` | 168 | 102 | §7 Tools and command output |
+| `B040` | C | `.claude/rules/moai/workflow/cache-aware-execution.md` | 21 | 361 | §7 Tools and command output |
+| `B041` | C | `.claude/rules/moai/workflow/cache-aware-execution.md` | 23 | 314 | §7 Tools and command output |
+| `B042` | K→C | `.claude/rules/moai/workflow/cache-aware-execution.md` | 25 | 419 | §7 Tools and command output |
+
+`B025` and `B034` state the same native-idiom obligation in two files and are carried by one
+`AGENTS.md` clause; both rows map to it, so the trace has no unmapped origin.
+
+**Ordering is load-bearing and was chosen for it.** Truncation takes the tail silently
+(`spec.md` §A.2 finding 2 / finding 6), so sections run most-critical-first: evidence integrity,
+then the failure modes that destroy work irrecoverably (shared-checkout branch state, worktree
+disposal), then verification practice, then the core behaviors, then output and tool discipline. The
+front matter carries the `~/.codex/AGENTS.md` warning at the top, where it survives any truncation
+that would remove the clauses it warns about.
+
+**Blocker encountered and resolved inside scope: `AGENTS.md` was gitignored.** `.gitignore:128`
+carried a bare `AGENTS.md` under "Cross-tool artifacts (Codex CLI — local-only, not distributed)",
+added `16b5a6c9a` (2026-06-11) when the file was a local scratch artifact. `git check-ignore -v
+AGENTS.md` → `.gitignore:128:AGENTS.md	AGENTS.md`. The pattern has no leading slash, so it also
+matched `internal/template/templates/AGENTS.md`. While it stood, `AC-AMC-010` returned empty rather
+than one line and `REQ-AMC-015`'s mirror could not be tracked — both unsatisfiable, silently. The
+rule was removed (a comment recording why it must stay removed replaces it); `.codex/` and
+`.agents/` remain ignored. No SPEC artifact anticipated this, and no milestone owns it — recorded
+below as a scope-doc gap rather than assumed.
+
+**Gaps (not observed).**
+
+1. **Mirror leg of `AC-AMC-009` unevaluated** — `internal/template/templates/AGENTS.md` does not
+   exist until M6, so only the live file was measured.
+2. **`AC-AMC-010`'s literal command returns empty** on this tree because the file is untracked; the
+   equivalence to "exactly one root `AGENTS.md`" was established with `--others
+   --exclude-standard`. The criterion becomes literally satisfiable at commit.
+3. **Obligation preservation is asserted per clause, not mechanically proved.** `presence.py`
+   checks that a distinctive marker of each clause appears; it cannot check that subject, modality,
+   and scope survived. That reading is the trace table's, and it is a judgement.
+4. **No codex run against the authored file.** The document was measured, not loaded — nothing here
+   observes codex parsing 14,229 B at the repo root.
+5. **Nothing measured about M4's reachability beyond the identity.** The 10,670-token available
+   reduction is M1's projection from a two-point precedent, unchanged by M2.
+
+**Residual risk.**
+
+- The 0.788 aggregate compression ratio means a future clause set with the same shape costs more
+  per clause than `spec.md` §D.1's projection assumes. The ceiling absorbs it here; a re-derivation
+  quoting 0.5318 for a different clause population would not be sound.
+- Classification drift is unchanged by M2 and stays the SPEC's open exposure: a new `[HARD]` clause
+  added to a rule file reaches `AGENTS.md` only if someone classifies it, and M5's byte guard
+  measures size, never completeness.
+- The `.gitignore` removal is one line, but it changes what the repository tracks. Any tooling that
+  assumed a root `AGENTS.md` could not be committed now sees one.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
