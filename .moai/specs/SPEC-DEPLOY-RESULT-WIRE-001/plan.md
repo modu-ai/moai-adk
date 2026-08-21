@@ -34,7 +34,7 @@ Tier **M** 근거: 예상 변경 파일 6-8개(통지 헬퍼 1 + 호출부 3 + �
 
 ## §E. 자가 검증
 
-- AC-DRW-001..008 PASS/FAIL 매트릭스(각 행에 실행 명령과 관측 출력).
+- AC-DRW-001..**009** PASS/FAIL 매트릭스(각 행에 실행 명령과 관측 출력). **AC-DRW-009 를 빼지 않는다** — 프로덕션 배선을 보는 유일한 판정이므로, 자가 검증에서 누락되면 나머지 8건이 전부 이중체 위에서만 초록일 수 있다.
 - `go test ./internal/cli/... ./internal/core/project/...`, `go vet` 동일 범위, `golangci-lint run`.
 - `GOOS=windows go vet` 동일 범위 — **컴파일만 증명**한다고 명시해 기록.
 - 선행 `AC-CSC-010` 재실행 결과.
@@ -49,7 +49,7 @@ Tier **M** 근거: 예상 변경 파일 6-8개(통지 헬퍼 1 + 호출부 3 + �
 - `MirrorModeCopy` 개수를 담은 요약 1줄 + `MirrorModeFailed` **개수 요약 1줄 + 예시 경고 최대 3건**. `MirrorModeSkipped` 는 **버린다**(REQ-DRW-009).
 - [HARD] `failed` 를 항목별 전량 출력하지 않는다. iter-1 은 그렇게 설계해 `REQ-DRW-007`(비비례성)과 모순이었다(감사 D2). 상한은 복사 팔과 `failed` 팔에 **같이** 걸린다.
 - 함수는 writer 를 받지 않고 문자열을 돌려준다 — init 경로가 writer 가 아니라 `[]string`(=`InitResult.Warnings`)을 필요로 하기 때문이다. 세 호출부가 같은 함수를 쓰려면 반환형이 문자열이어야 한다.
-- 닫힘 조건: AC-DRW-001(개수 단언 포함) · AC-DRW-002(위증 팔 포함) · AC-DRW-004(**두 팔**) · AC-DRW-006 · AC-DRW-008 이 이 함수 단위 테스트로 PASS.
+- 닫힘 조건: AC-DRW-001(개수 단언 포함) · AC-DRW-002(위증 팔 포함) · AC-DRW-004(**세 팔** — 비비례 2건 + 상한 1건, `failed` 비비례 팔의 낮은 표본은 **4**) · AC-DRW-006 · AC-DRW-008 이 이 함수 단위 테스트로 PASS.
 
 ### M2 — `moai init` 경로 배선 (Priority High)
 
@@ -61,9 +61,9 @@ Tier **M** 근거: 예상 변경 파일 6-8개(통지 헬퍼 1 + 호출부 3 + �
 
 **[HARD] 두 경로 모두 통지를 `out` 에 싣지 않는다.** iter-1 의 M3 은 clean-reinstall 통지를 `out` 에 실으라고 지시했고, 그 `out` 은 프로덕션에서 stdout 이므로 **명세대로 구현하면 매 실행 `REQ-DRW-004` 를 위반**했다(감사 D1).
 
-- `update_clean_install.go:439` — `opts.Deployer` 승격 후, M1 문자열을 **새 `CleanReinstallOptions.ErrOut io.Writer`** 에 출력한다. 기존 `Out`(진행/진단)의 의미는 바꾸지 않는다. 프로덕션 호출부 두 곳(`update.go:418` / `:625` 의 옵션 리터럴)에서 `ErrOut: cmd.ErrOrStderr()` 를 주입한다 — **주입을 빼면 AC-DRW-003 1번 팔이 붉어진다.** `ErrOut` 이 nil 인 경우는 `os.Stderr` 로 떨어뜨리되 그 기본값을 판정 근거로 쓰지 않는다.
+- `update_clean_install.go:439` — `opts.Deployer` 승격 후, M1 문자열을 **새 `CleanReinstallOptions.ErrOut io.Writer`** 에 출력한다. 기존 `Out`(진행/진단)의 의미는 바꾸지 않는다. 프로덕션 호출부 두 곳(`update.go:418` / `:624` 의 옵션 리터럴)에서 `ErrOut: cmd.ErrOrStderr()` 를 주입한다 — **주입을 빼면 AC-DRW-003 1번 팔이 붉어진다.** `ErrOut` 이 nil 인 경우는 `os.Stderr` 로 떨어뜨리되 그 기본값을 판정 근거로 쓰지 않는다.
 - `update_template_sync.go:323` — 승격 후 **`cmd.ErrOrStderr()`** 에 출력. 판정을 위해 R1 의 배포기 주입 seam 도 이 마일스톤에서 도입하며, 그 기본값이 프로덕션 배포기이자 `ResultDeployer` 를 만족함을 함께 고정한다.
-- 닫힘 조건: AC-DRW-003(**두 호출부, 프로덕션 배선**) · AC-DRW-007 나머지 두 팔 · **AC-DRW-009**.
+- 닫힘 조건: AC-DRW-003(**두 호출부, 프로덕션 배선**) · AC-DRW-007 나머지 두 팔 · **AC-DRW-009 세 단언 전부**(3번 단언이 두 옵션 리터럴의 `ErrOut` 주입을 본다 — 필드만 추가하고 주입을 빼면 여기서 붉어진다).
 
 ### M4 — 회귀 확인 (Priority Medium)
 
@@ -87,9 +87,11 @@ Tier **M** 근거: 예상 변경 파일 6-8개(통지 헬퍼 1 + 호출부 3 + �
 - **AP-8** — `internal/template` 을 함께 고치는 것. F1/F4 는 승계 카드 소관이며, 여기서 손대면 두 카드가 같은 파일에서 충돌한다.
 - **AP-9** — **기본값이나 미주입 구성에서 판정하는 것.** clean-reinstall 의 `Out` nil 분기, `ErrOut` nil 분기, R1 seam 의 미주입 상태 — 어느 것도 "프로덕션이 이렇게 동작한다" 의 근거가 아니다. 판정은 프로덕션이 실제로 주입하는 값 위에서 한다(감사 D1·D5·D7 의 공통 형태).
 - **AP-10** — 코드에 선언된 **기본값을 읽고 스트림을 판정하는 것**. 호출부가 무엇을 주입하는지 확인해야 한다. iter-1 이 이 형태로 §A.4 를 틀렸다.
+- **AP-11** — **위증 검사를 적어 놓고 그것이 자기 AC 안에서 재현 가능한지 보지 않는 것.** iter-2 는 9/9 전부에 위증 검사를 달았으나 `AC-DRW-003` 의 한 건은 그 AC 가 볼 수 없는 대상(호출부 리터럴)을 가리켰다(감사 N4). 위증 검사를 쓸 때는 "이 Given 안에서 그 잘못된 구현을 실제로 만들 수 있는가" 를 함께 확인한다.
+- **AP-12** — `failed` 경고 여러 건을 한 줄로 이어 붙여 줄 수 단언을 통과시키는 것. 명세되지 않은 출력 형식을 판정이 강제하게 되고 spec §D(구현 세부는 run-phase 소관)와 충돌한다.
 
 ## §H. 교차 참조
 
 - `spec.md` §A.2·§A.3(호출부 3곳 + init 비용 실측), §B.D1..D5.
-- `acceptance.md` §D.1 AC-DRW-001..008.
+- `acceptance.md` §D.1 AC-DRW-001..009 + §D.6(기록된 잔존: AST 가드의 한계).
 - `.moai/reports/t81/sync-audit.md` F1 · F2 · F4.

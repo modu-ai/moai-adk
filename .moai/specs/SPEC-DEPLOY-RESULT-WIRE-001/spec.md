@@ -1,7 +1,7 @@
 ---
 id: SPEC-DEPLOY-RESULT-WIRE-001
 title: "배포 결과 seam 소비 — 스킬 미러 복사 폴백을 CLI 가 사용자에게 알린다"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-08-22
 updated: 2026-08-22
@@ -18,6 +18,10 @@ tags: "deployer, skill-mirror, cli, warning, output-stream, codex"
 
 ## HISTORY
 
+- 2026-08-22 (plan-phase, iter-3, v0.3.0) — plan-audit iteration 2(FAIL 0.75, 반복 상한 2/2 도달) 후 리드가 **정정 후 PASS-with-debt** 로 수용한 5건을 닫는다. **N2 가 구현자를 함정에 빠뜨릴 유일한 건이었다**: `AC-DRW-004` 2번 팔이 **올바른 구현에서 붉어졌다** — `REQ-DRW-003` 이 개수 요약 1줄 + 예시 최대 3건이므로 실패 2건은 `1+2=3` 줄, 34건은 `1+3=4` 줄이고 셋은 넷이 아니다. 낮은 표본을 상한 **위**(4)로 올리고, 상한 자체를 판정하는 **3번 팔**을 따로 세웠다(경고를 한 줄로 이어 붙이는 우회는 명세되지 않은 출력 형식을 판정이 몰래 강제하게 되므로 채택하지 않았다 — spec §D 가 문구를 run-phase 소관으로 둔다). 원인은 복사 팔을 그대로 베낀 것이며, 복사 팔은 요약이 항상 1줄이라 같은 산술이 성립하지 않았다.
+  **N4 는 주장을 낮추지 않고 팔을 더해 닫았다.** `AC-DRW-003` 의 두 번째 위증 검사(`ErrOut` 을 추가만 하고 주입하지 않는 구현)는 자기 Given 안에서 재현 불가능했다 — 어떤 AC 도 `update.go` 의 옵션 리터럴을 보지 않았다. `AC-DRW-009` 에 **3번 단언**(`CleanReinstallOptions` 복합 리터럴 전부가 `ErrOut: cmd.ErrOrStderr()` 를 갖는다, `go/parser` 로 확인)을 추가해 그 위증 검사를 실재하게 만들었다. 이 계보가 다섯 번 만들어 낸 결함이 **검사할 수 없는 것을 검사한다고 주장하는 판정**이므로, 주장을 낮추면 그 형태가 그대로 남는다.
+  **N5 는 부채로 미루지 않고 갚았다** — `AC-DRW-009` 1번 단언에 검증 수단(AST 가드)을 명시하고, 2번을 런타임 단언으로 분리했다. 다만 **AST 가드는 리터럴을 증명하지 런타임 값을 증명하지 않는다**는 한계는 남으므로 `acceptance.md` §D.6 에 기록된 잔존으로 명시했다. **N1** — `§D` 의 `:196` → `:205`(iter-2 가 §A.6 만 고치고 §D 를 놓쳐 문서가 자기모순이었다). **N6** — plan `§E`·`§H` 의 `AC-DRW-001..008` → `..009`. **N3** — `§A.4` 의 호출 행 `:625` → `:624`(재측정). 요구사항 10 / 판정 9 불변.
+  **이번 개정 주기에서 배운 것을 규율로 남긴다.** v0.2.0 은 D1 에서 규칙을 뽑았다 — 「판정은 프로덕션 배선에서, 각 판정은 어떤 잘못된 구현에서 붉어지는지를 적는다」. 그리고 그 규칙을 **형식으로는** 9/9 전부에 적용했으나(위증 검사 절), **효력으로는** 규칙이 유래한 결함 바로 한 층 위에 적용하지 못했다 — 위증 검사를 적었지만 그것이 자기 AC 안에서 재현 가능한지는 보지 않았다. 그것이 N4 다. **규칙을 세우고 그 규칙의 출처에 적용하지 않는 것**이 이 계보의 반복 형태이며, 개별 수정보다 이 형태를 기록하는 편이 쓸모 있다.
 - 2026-08-22 (plan-phase, iter-2, v0.2.0) — plan-audit iteration 1(FAIL 0.75, Tier M 임계 0.80)의 결함 7건을 닫는다. **무게중심은 D1 하나다: §A.4 의 스트림 실측이 틀렸다.** clean-reinstall 의 `opts.Out` 이 nil 이면 `os.Stderr` 인 것은 사실이나, **프로덕션 호출부 두 곳이 모두 stdout 을 주입**한다(`update.go:425`·`:627` 의 `Out: out`, 그 `out` 은 `:154` `cmd.OutOrStdout()`) — nil 분기는 프로덕션에서 **실행되지 않는다**. 그래서 "세 곳 중 두 곳이 이미 stderr" 는 거짓이고, stderr 로 나가는 곳은 **init 하나**, stdout 위험은 **둘**이다. 파생 결함 두 개를 함께 닫았다: plan M3 이 clean-reinstall 통지를 `out`(=stdout)에 실으라고 지시해 **명세대로 구현하면 REQ-DRW-004 를 매 실행 위반**했고, `AC-DRW-003` 은 plan R4 가 판정을 "기본 경로(주입 없음 = stderr)" 에 고정해 **프로덕션에 존재하지 않는 경로에서 초록**이었다. 후자는 선행 카드가 세 차례 감사에 걸쳐 제거한 「자기가 막으려는 실패에서 통과하는 판정」과 같은 계열이며, 이 계보에서 **네 번째** 재발이다.
   **스스로 물려받은 교훈 하나를 기록한다.** iter-1 은 `nil ⇒ os.Stderr` 라는 **기본값 선언**을 읽고 스트림을 판정했다. 기본값은 호출부가 무엇을 주입하는지 말해 주지 않는다 — **기본값의 존재는 그 기본값이 쓰인다는 근거가 아니다.** D5(주입 seam 의 기본값)와 D7(음성 팔의 위증 검사 부재)도 같은 형태이며, 세 건을 같은 규율로 닫았다: **판정은 프로덕션 배선에서 이뤄지고, 각 AC 는 어떤 잘못된 구현에서 붉어지는지를 본문에 적는다.**
   나머지: **D2** — `REQ-DRW-007` 의 비비례성이 `failed` 항목의 항목별 출력과 모순 → 통지 전체(요약 + `failed`)에 같은 상한 규칙을 적용하고 `AC-DRW-004` 에 `failed` 팔 추가. **D3** — `AC-DRW-003` 을 stdout 위험 **두 호출부**에 명시적으로 고정. **D4** — 오귀속 문구 행 번호 `196` → **`205`**(재측정). **D5** — plan R1 주입 seam 의 기본값을 `REQ-DRW-010` / `AC-DRW-009` 로 가드. **D6** — `failed` 문구의 정확성을 1-of-3 표본에서 일반화한 것을 **3-of-3 실측**으로 교체(§A.7 신설). **D7** — 모든 AC 에 위증 검사(어떤 잘못된 구현에서 붉어지는가)를 명시. 요구사항 9 → **10**, 판정 8 → **9**(Tier M 상한 16/16 이내).
@@ -62,7 +66,7 @@ internal/core/project/initializer.go:356   i.deployer.Deploy(...)
 | 호출부 | 프로덕션에서 실제로 쓰이는 writer | 실측 근거 |
 |---|---|---|
 | update template sync | **stdout** | `out := cmd.OutOrStdout()` (`update_template_sync.go:51`) |
-| clean reinstall | **stdout** | `opts.Out` 은 nil 이면 `os.Stderr` 로 떨어지지만(`update_clean_install.go:55-56,138-140`), **프로덕션 호출부 두 곳이 모두 stdout 을 주입한다** — `update.go:425` `Out: out`(호출 `:418`, `runUpdate` 스코프)과 `update.go:627` `Out: out`(호출 `:625`, `emitDryRunReinstallPlan` 의 `out` 인자, `:362` 에서 같은 `out` 을 전달). 두 경로의 `out` 은 모두 `update.go:154` `out := cmd.OutOrStdout()` 이다. **nil 분기는 프로덕션에서 실행되지 않는다.** |
+| clean reinstall | **stdout** | `opts.Out` 은 nil 이면 `os.Stderr` 로 떨어지지만(`update_clean_install.go:55-56,138-140`), **프로덕션 호출부 두 곳이 모두 stdout 을 주입한다** — `update.go:425` `Out: out`(호출 `:418`, `runUpdate` 스코프)과 `update.go:627` `Out: out`(호출 `:624`, `emitDryRunReinstallPlan` 의 `out` 인자, `:362` 에서 같은 `out` 을 전달). 두 경로의 `out` 은 모두 `update.go:154` `out := cmd.OutOrStdout()` 이다. **nil 분기는 프로덕션에서 실행되지 않는다.** |
 | init | **stderr** | 경고가 `InitResult.Warnings` → `p.Collect`(`init.go:706`) → `p.emitSummary(cmd.ErrOrStderr())`(`init.go:386` defer) |
 
 **stderr 로 나가는 호출부는 하나(init)뿐이고, stdout 위험은 둘이다.** 두 update 계열 모두 경고를 현재 writer 에 실으면 독트린 위반이다.
@@ -136,7 +140,7 @@ iter-1 은 §B.D3 에서 `failed` 문구가 "정확하다" 고 적으면서 표�
 
 ### Out of Scope — 오귀속 문구 자체의 수정
 
-- `skill_mirror.go:196` 의 `a non-symlink entry already exists at …` 문구는 이 SPEC 이 **고치지 않는다**. 정확한 문구를 쓰려면 배포기가 자기 복사본과 사용자 디렉터리를 구분해야 하고, 그 판별자는 승계 카드(`t173`, sync-audit F1/F4) 소관이다.
+- `skill_mirror.go:205` 의 `a non-symlink entry already exists at …` 문구는 이 SPEC 이 **고치지 않는다**. 정확한 문구를 쓰려면 배포기가 자기 복사본과 사용자 디렉터리를 구분해야 하고, 그 판별자는 승계 카드(`t173`, sync-audit F1/F4) 소관이다.
 - 이 SPEC 은 그 문구를 사용자에게 **올리지 않기로** 결정할 뿐이다(REQ-DRW-009).
 
 ### Out of Scope — 폴백 미러의 고착 해소
