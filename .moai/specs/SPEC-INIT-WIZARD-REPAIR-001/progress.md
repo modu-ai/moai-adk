@@ -101,7 +101,7 @@ Notes: 4 new test files + 3 new production files + 5 modified production/test fi
 
 ```yaml
 sync_complete_at: 2026-08-22
-sync_commit_sha: "pending-backfill"
+sync_commit_sha: "d5700c1c5"
 sync_status: completed
 b12_self_test_a:
   pre_emission_grep_count: 0   # grep -c 'SPEC-INIT-WIZARD-REPAIR-001' CHANGELOG.md before emission
