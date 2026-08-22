@@ -20,7 +20,8 @@ Surfaces, measured in this worktree at `edcbf593c`:
 | `internal/cli/mcp_server.go` | 526, 583, 597 | `project_root` input on `spec_progress` / `spec_audit` / `spec_drift` |
 | `internal/cli/mcp_codex.go` | 1170 | `project_root` overrides the `"cwd"` handed to codex |
 | `internal/cli/mcp_convergence.go` | 353, 485 | `backendCallFn` widens to carry the root through `audit_multi`'s fan-out; injected doubles follow |
-| `internal/cli/mcp_convergence.go` | 387-394 | `performCodexAudit` gains a `cwd` in its params map — it has none today, so this adds the key rather than redirecting it |
+| `internal/cli/mcp_convergence.go` | 387-394 | `performCodexAudit` gains a `cwd` in its params map — it has none today, so this adds the key rather than redirecting it; its signature widens to receive the root |
+| `internal/cli/mcp_convergence.go` | 348-352, 480-483 | the two independence-invariant comments are reworded — they assert the seam takes "nothing else", which the widening makes literally false |
 | `internal/cli/mcp_server.go` | tool registration block (~361-400) | declare the new optional input |
 | `.claude/rules/moai/core/moai-mcp-tools.md` + mirror | — | record the parameter and who passes it |
 | `.claude/agents/moai/{plan-auditor,sync-auditor}.md` + mirrors | — | tell the auditor to pass its own tree |
@@ -34,6 +35,14 @@ Surfaces, measured in this worktree at `edcbf593c`:
 - **A validation that falls back silently reintroduces the bug.** REQ-3 exists
   because the obvious ergonomic choice — ignore a bad path, use the default — is
   the one choice that makes a typo look like success.
+- **The seam's independence invariant is load-bearing.** `mcp_convergence.go:348-352`
+  states that `backendCallFn` takes `(ctx, backend, target, focus)` and nothing
+  else, precisely so `claude_verdict` cannot structurally reach a secondary
+  backend — the compiler enforces it. Widening for the root must reword the
+  comment to say what still holds (`claude_verdict` never reaches a backend)
+  rather than deleting it. A comment left asserting a guarantee the signature no
+  longer expresses is how a real invariant stops being enforced without anyone
+  noticing.
 - **The stale-cwd branch is a trap for the follow-up.** Removing the env branch
   without also fixing the fallback lands on an MCP server's spawn-time cwd, which
   is wrong in the same direction. Record it; do not touch it.

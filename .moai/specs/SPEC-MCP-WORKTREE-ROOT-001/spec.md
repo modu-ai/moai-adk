@@ -1,7 +1,7 @@
 ---
 id: SPEC-MCP-WORKTREE-ROOT-001
 title: "Let an MCP caller name its own tree, so a worktree SPEC stops being invisible"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-08-22
 updated: 2026-08-22
@@ -76,8 +76,15 @@ behaviour is exactly what it is today.
 | `spec_audit` | `mcp_server.go:583` | the reported defect |
 | `spec_drift` | `mcp_server.go:597` | same call, same blindness |
 | `spec_progress` | `mcp_server.go:526` | see the note below |
-| `codex_task` / codex audit `cwd` | `mcp_codex.go:1170` | the backend reviews a tree; the wrong tree is what lane-9 saw |
+| `codex_audit` | `handleCodexAudit`, `mcp_codex.go:1170` | the backend reviews a tree; the wrong tree is what lane-9 saw |
 | `audit_multi` | `mcp_server.go:367`, fan-out `mcp_convergence.go:485` | the surface lane-9 actually used; carries the parameter through to its backends |
+
+**`codex_task` is not in scope.** Row four names `codex_audit` — the tool whose
+handler builds the `cwd` at `mcp_codex.go:1170`. `codex_task` delegates a coding
+task rather than reviewing a tree, so whether its own root resolution is wrong is
+a question this SPEC does not answer; it belongs to REQ-4's survey. An earlier
+draft wrote the two names together in one cell, which left the five-tool count
+resolvable only by following the line citation.
 
 **Note on `audit_multi` — carrier, and it costs a signature change.** REQ-6 checks
 the repair against the symptom that motivated it, and that symptom occurred on
@@ -89,10 +96,24 @@ check of a different surface wearing the same name. So `audit_multi` accepts
 The cost is not one line. Its fan-out seam is
 `backendCallFn(ctx, backend, target, focus string)` (`mcp_convergence.go:353`,
 invoked at `:485`), which carries no root, so the parameter requires widening that
-signature and its injected test doubles. That is contained — one seam, one call
-site, the doubles that implement it — but it is more than the SPEC-tool edits, and
-it lands on the file-count axis the tier note below already flags. Stated here so
-the alternative can be taken instead if the cost is judged wrong.
+signature and its injected test doubles. `performCodexAudit`'s own signature
+widens with it, since the root has to reach the params map it builds.
+
+**One of those touches is load-bearing and must not be done carelessly.** The
+comments at `mcp_convergence.go:348-352` and `:480-483` state an independence
+invariant — the seam takes `(ctx, backend, target, focus)` **and nothing else**,
+so that `claude_verdict` is *structurally* forbidden from reaching a secondary
+backend, with the compiler as the enforcement. Adding a root parameter makes the
+literal wording false, so both comments are reworded in the same change: the
+invariant they protect is that `claude_verdict` never reaches a backend, not that
+the parameter list never grows. Widening the signature without rewording them
+leaves a comment asserting a guarantee the code no longer expresses — the shape
+in which a real invariant quietly stops being enforced.
+
+That is still contained — one seam, one call site, two comments, the doubles that
+implement the signature — but it is more than the SPEC-tool edits, and it lands on
+the file-count axis the tier note below already flags. Stated here so the
+alternative can be taken instead if the cost is judged wrong.
 
 **Note on `spec_progress` — added beyond the dispatched scope, flagged for veto.**
 The scoping decision named the audit family as `spec_audit`, `spec_drift`, and the
@@ -254,6 +275,10 @@ worth having. What fails it is not looking.
   site, the seam the root has to cross
 - `internal/cli/mcp_convergence.go:387-394` — `performCodexAudit`, whose params
   map carries no `cwd` key at all
+- `internal/cli/mcp_convergence.go:348-352`, `:480-483` — the independence-invariant
+  comments the seam widening makes literally false
+- `internal/cli/mcp_codex.go:1152` — `handleCodexAudit`, which owns `:1170` and is
+  why row four of §2 names `codex_audit` rather than `codex_task`
 
 ## §4.1 Tier note
 
@@ -281,6 +306,15 @@ decision is visible rather than assumed.
 
 ## §6 HISTORY
 
+- 0.4.0 (2026-08-22) — plan-audit iter-3's two optional findings applied rather
+  than deferred, because both bite in run-phase. R3: the scope table's fourth row
+  named `codex_task` where the operative surface is `codex_audit`
+  (`handleCodexAudit` owns `mcp_codex.go:1170`) — a wrong tool name in the scope
+  table would have sent the run at the wrong handler. R2: the cost note omitted
+  `performCodexAudit`'s own signature and, more importantly, the two independence
+  -invariant comments the seam widening makes literally false; they are now named
+  as part of the change, with the invariant they protect (`claude_verdict` never
+  reaches a backend) stated so the reword preserves it.
 - 0.3.0 (2026-08-22) — plan-audit iter-2 finding R1 applied, plus two items
   found by a self-sweep while iter-2 was running. R1: AC-1b asked only that the
   root reach the backend fan-out, which a `backendCall` double satisfies without
