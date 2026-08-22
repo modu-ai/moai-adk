@@ -14,6 +14,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/manifest"
+	"github.com/modu-ai/moai-adk/internal/mirrornotice"
 	"github.com/modu-ai/moai-adk/internal/runtime/gobin"
 	"github.com/modu-ai/moai-adk/internal/shell"
 	"github.com/modu-ai/moai-adk/internal/template"
@@ -352,6 +353,24 @@ func (i *projectInitializer) deployTemplates(ctx context.Context, opts InitOptio
 		template.WithSmartPATH(template.BuildSmartPATH()),
 		template.WithVersion(version.GetVersion()),
 	)
+
+	// The deployer reports its skill-mirror outcome by return value and never
+	// prints, so surfacing a copy fallback is this caller's job. The result
+	// extension is optional by design (a Deployer that predates it keeps
+	// compiling), hence the type assertion rather than a wider interface.
+	//
+	// The notice goes into result.Warnings, which internal/cli/init.go already
+	// renders to stderr in its summary panel — no new display surface is added.
+	if rd, ok := i.deployer.(template.ResultDeployer); ok {
+		res, err := rd.DeployWithResult(ctx, opts.ProjectRoot, i.manifestMgr, tmplCtx)
+		// The result is populated even when deployment errors, so read the
+		// notice before deciding whether to abort.
+		result.Warnings = append(result.Warnings, mirrornotice.Lines(res)...)
+		if err != nil {
+			return fmt.Errorf("deploy templates: %w", err)
+		}
+		return nil
+	}
 
 	if err := i.deployer.Deploy(ctx, opts.ProjectRoot, i.manifestMgr, tmplCtx); err != nil {
 		return fmt.Errorf("deploy templates: %w", err)
