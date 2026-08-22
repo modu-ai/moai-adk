@@ -17,8 +17,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/mattn/go-isatty"
-
 	"github.com/modu-ai/moai-adk/internal/core/project"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/settings/yamlpatch"
@@ -72,8 +70,11 @@ func runWorkflowConfigStep(out io.Writer, projectRoot string) error {
 		return nil
 	}
 	// Non-interactive (no TTY on stdin): no-op so CI runs are byte-identical to
-	// the deployed template.
-	if !isatty.IsTerminal(os.Stdin.Fd()) {
+	// the deployed template. isInteractiveStdin is the package's injectable
+	// wrapper over the same isatty check (init_update_notice.go), so the gate's
+	// semantics are unchanged and the interactive path is testable
+	// (SPEC-INIT-WIZARD-REPAIR-001 REQ-007).
+	if !isInteractiveStdin() {
 		return nil
 	}
 
@@ -81,7 +82,6 @@ func runWorkflowConfigStep(out io.Writer, projectRoot string) error {
 	if err != nil {
 		return fmt.Errorf("read workflow defaults: %w", err)
 	}
-
 	newBranch := promptBool(out, "Enable branch-state guard?", curBranch)
 	newCreate := promptBool(out, "Enable worktree auto-create?", curCreate)
 	newMerge := promptBool(out, "Enable worktree auto-merge?", curMerge)

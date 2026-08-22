@@ -248,6 +248,23 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 		i.logger.Warn("page-3 config write failed", "error", err)
 	}
 
+	// Step 3e (SPEC-INIT-WIZARD-REPAIR-001 REQ-006): persist the tracker-gated
+	// workflow toggle selections into workflow.yaml. Like Step 3d this runs on
+	// BOTH the deployer and the fallback path: on the deployer path it patches
+	// the freshly deployed template with the explicitly-flagged values, and on
+	// the fallback path it creates the minimal block. With every *Set tracker
+	// false the call is a no-op leaving the deployed file byte-identical
+	// (distributed-default preservation).
+	// @MX:SPEC: SPEC-INIT-WIZARD-REPAIR-001
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	toggleSectionsDir := filepath.Clean(filepath.Join(opts.ProjectRoot, defs.MoAIDir, defs.SectionsSubdir))
+	if err := WriteWorkflowTogglesYAML(toggleSectionsDir, opts, result); err != nil {
+		result.Warnings = append(result.Warnings, fmt.Sprintf("workflow toggles: %s", err))
+		i.logger.Warn("workflow toggles write failed", "error", err)
+	}
+
 	// Step 4: Create CLAUDE.md
 	if err := ctx.Err(); err != nil {
 		return nil, err

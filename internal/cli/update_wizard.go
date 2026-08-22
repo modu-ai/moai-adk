@@ -7,6 +7,7 @@ package cli
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -89,8 +90,9 @@ func runInitWizard(cmd *cobra.Command, reconfigure bool) error {
 	}
 
 	// Apply configuration updates to .moai/config/sections/
-	// This updates the YAML configuration files based on wizard results
-	if err := applyWizardConfig(cwd, result); err != nil {
+	// This updates the YAML configuration files based on wizard results,
+	// then runs the interactive workflow-toggle step (chain ② link d).
+	if err := applyWizardReconfigureSteps(out, cwd, result); err != nil {
 		return fmt.Errorf("apply configuration: %w", err)
 	}
 
@@ -106,6 +108,24 @@ func runInitWizard(cmd *cobra.Command, reconfigure bool) error {
 
 	_, _ = fmt.Fprintln(out, tui.Pill(tui.PillOpts{Kind: tui.PillOk, Solid: false, Label: "Configuration updated successfully", Theme: &th}))
 
+	return nil
+}
+
+// applyWizardReconfigureSteps applies the reconfigure wizard's config updates
+// and then runs the workflow-toggle step (SPEC-INIT-WIZARD-REPAIR-001 REQ-007
+// / SPEC-WT-DOC-001 Surface 3). The workflow step is a no-op when stdin is not
+// a TTY or workflow.yaml is absent, so CI / non-interactive reconfigures are
+// unchanged. Extracted from runInitWizard so the post-wizard composition is
+// testable without driving the TUI wizard.
+//
+// @MX:SPEC: SPEC-INIT-WIZARD-REPAIR-001
+func applyWizardReconfigureSteps(out io.Writer, cwd string, result *wizard.WizardResult) error {
+	if err := applyWizardConfig(cwd, result); err != nil {
+		return fmt.Errorf("apply configuration: %w", err)
+	}
+	if err := runWorkflowConfigStep(out, cwd); err != nil {
+		return fmt.Errorf("workflow config step: %w", err)
+	}
 	return nil
 }
 

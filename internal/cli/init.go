@@ -205,9 +205,14 @@ func applyWizardPage3ToOpts(cmd *cobra.Command, result *wizard.WizardResult, opt
 	// claude_design_enabled is wizard-only (no CLI flag), so it always applies.
 	opts.ClaudeDesignEnabled = result.ClaudeDesignEnabled
 
-	// Worktree advisory (Issue 3): wizard-only confirm, always applies when the
-	// wizard ran. The --non-interactive path leaves WorktreeAutoCreate false.
-	opts.WorktreeAutoCreate = result.WorktreeAutoCreate
+	// Worktree advisory (Issue 3): wizard-only confirm, applies when the wizard
+	// ran AND --worktree-auto-create was not explicitly supplied (REQ-005
+	// flag-over-wizard precedence, SPEC-INIT-WIZARD-REPAIR-001 — the formerly
+	// unconditional assignment here was the clobber bug). The --non-interactive
+	// path leaves WorktreeAutoCreate false.
+	if !cmd.Flags().Changed("worktree-auto-create") {
+		opts.WorktreeAutoCreate = result.WorktreeAutoCreate
+	}
 
 	// M4 audit + MCP opt-in (SPEC-MOAI-MCP-SERVER-001 REQ-MCP-015 / AC-MCP-020).
 	// The audit selection reuses the M3 typed-config vocabulary. AuditConfigSet
@@ -490,6 +495,14 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		DesignEnabled:             getBoolFlagWithDefault(cmd, "enable-design", true),
 		ClaudeDesignEnabled:       true, // wizard-only; default true
 	}
+
+	// Chain ② flag→opts link (SPEC-INIT-WIZARD-REPAIR-001 REQ-004): the four
+	// workflow toggle flags, applied BEFORE the wizard block so the
+	// flag-over-wizard precedence in applyWizardPage3ToOpts sees the explicit
+	// selection. Tracker-gated: an absent flag leaves opts untouched
+	// (distributed-default preservation).
+	// @MX:SPEC: SPEC-INIT-WIZARD-REPAIR-001
+	applyWorkflowBranchGuardFlags(cmd, &opts)
 
 	// Git mode + provider are auto-detected from the repository's configured
 	// remotes rather than asked in the wizard (no remote → manual, ≥1 remote →
