@@ -165,7 +165,7 @@ Baseline attribution: all of the above ran in this tree, on branch
 
 ```yaml
 sync_complete_at: "2026-08-22"
-sync_commit_sha: "pending-backfill"
+sync_commit_sha: "0264af589"
 sync_status: "completed"
 spec_id: SPEC-CODEX-HOOK-ADAPTER-001
 changelog_entry_position: "[Unreleased] / ### Added / internal/codexadapter entry"
