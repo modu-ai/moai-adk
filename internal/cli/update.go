@@ -359,7 +359,7 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		//
 		// The early return itself does NOT move (REQ-RIL2-026): it stays
 		// ABOVE stripRetiredV2DenyEntries, which rewrites settings.json.
-		return emitDryRunReinstallPlan(cmd.Context(), cwd, getBoolFlag(cmd, "force"), out, th)
+		return emitDryRunReinstallPlan(cmd, cwd, getBoolFlag(cmd, "force"), th)
 	}
 
 	// Retired-deny-rule migration on the v3 path (issue #1101 follow-up). The
@@ -423,6 +423,9 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 				// already-migrated skip.
 				Force: getBoolFlag(cmd, "force"),
 				Out:   out,
+				// Out is stdout here, so warnings need their own stream
+				// (internal/cli/CLAUDE.md:14).
+				ErrOut: cmd.ErrOrStderr(),
 				// Inject the canonical .agency/ migration adapter. When the
 				// project carries a .agency/ legacy directory, this is invoked
 				// in Step 3.5 of the canonical order (REQ-VVCR-025), mirroring
@@ -589,10 +592,15 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 //
 // A detection failure degrades to a warning and no plan, matching the
 // non-dry-run block: a dry run must never fail the command.
-func emitDryRunReinstallPlan(ctx context.Context, cwd string, force bool, out io.Writer, th tui.Theme) error {
+// It takes the cobra command rather than a bare (ctx, out) pair because the
+// clean-reinstall options it builds need BOTH of the command's streams: stdout
+// for the plan itself and stderr for warnings.
+func emitDryRunReinstallPlan(cmd *cobra.Command, cwd string, force bool, th tui.Theme) error {
 	if !isMoAIProject(cwd) {
 		return nil
 	}
+	ctx := cmd.Context()
+	out := cmd.OutOrStdout()
 	fingerprint, fpErr := detectV2Fingerprint(cwd)
 	if fpErr != nil {
 		_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "v2 detection", "failed", fpErr.Error(), &th))
@@ -622,9 +630,12 @@ func emitDryRunReinstallPlan(ctx context.Context, cwd string, force bool, out io
 	defer cancel()
 
 	if _, runErr := runCleanReinstall(planCtx, cwd, CleanReinstallOptions{
-		DryRun:           true,
-		Force:            force,
-		Out:              out,
+		DryRun: true,
+		Force:  force,
+		Out:    out,
+		// Out is stdout here, so warnings need their own stream
+		// (internal/cli/CLAUDE.md:14).
+		ErrOut:           cmd.ErrOrStderr(),
 		RunMigrateAgency: runAgencyMigrationAdapter,
 	}); runErr != nil {
 		return fmt.Errorf("dry-run clean reinstall plan: %w", runErr)
