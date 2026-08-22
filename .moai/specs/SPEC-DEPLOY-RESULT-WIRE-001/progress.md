@@ -107,7 +107,7 @@ m1_to_mN_commit_strategy: "마일스톤당 1커밋 (M1 mirrornotice · M2 init �
 
 ```yaml
 sync_complete_at: 2026-08-22
-sync_commit_sha: pending-backfill-sync-SPEC-DEPLOY-RESULT-WIRE-001
+sync_commit_sha: 43f0490bf
 sync_status: audit-ready
 b12_self_test_a: "grep -c 'SPEC-DEPLOY-RESULT-WIRE-001' CHANGELOG.md → 0 (중복 없음, 방출 진행)"
 b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l → 10 (AC-DRW-001..009 9건 + 선행 회귀 참조 AC-CSC-010 1건). CHANGELOG 는 이 SPEC 소관인 9건을 적는다"
