@@ -2,7 +2,7 @@
 id: SPEC-CODEX-HOOK-ADAPTER-001
 title: "Codex Dual Harness M3 — Hook Adapter: event-name normalization + partial output-dialect mapping"
 version: 0.3.0
-status: in-progress
+status: completed
 created: 2026-08-22
 updated: 2026-08-22
 author: lane-7
