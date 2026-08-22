@@ -2,7 +2,7 @@
 id: SPEC-DEPLOY-RESULT-WIRE-001
 title: "배포 결과 seam 소비 — 스킬 미러 복사 폴백을 CLI 가 사용자에게 알린다"
 version: "0.3.0"
-status: draft
+status: in-progress
 created: 2026-08-22
 updated: 2026-08-22
 author: manager-spec
