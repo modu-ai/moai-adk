@@ -42,7 +42,7 @@
 
 ### 위증 검사 실행 결과 (각 AC 가 명시한 잘못된 구현을 실제로 만들어 붉어지는지 관측)
 
-이 계보가 다섯 번 만들어 낸 결함이 **검사할 수 없는 것을 검사한다고 주장하는 판정**이므로, 초록만으로 끝내지 않고 각 판정을 실제로 깨뜨려 확인했다. 11건 전부 예상대로 붉어졌다.
+이 계보가 다섯 번 만들어 낸 결함이 **검사할 수 없는 것을 검사한다고 주장하는 판정**이므로, 초록만으로 끝내지 않고 각 판정을 실제로 깨뜨려 확인했다. **13건** 전부 예상대로 붉어졌다(아래 표 행 수 = 13 = `falsification_checks_run`). 초판은 이 숫자를 `11` 로 적었다 — 관측은 옳고 **라벨만 틀린** 형태이며, 이 계보의 반복 결함(주장이 실제 검사한 것과 어긋남)의 작은 사례다.
 
 | # | 주입한 잘못된 구현 | 붉어진 판정 (관측) |
 |---|---|---|
@@ -75,7 +75,7 @@
 
 ```yaml
 run_complete_at: 2026-08-22
-run_commit_sha: pending-backfill-run
+run_commit_sha: ba08d8694
 run_status: audit-ready
 ac_pass_count: 9
 ac_fail_count: 0
@@ -93,10 +93,34 @@ coverage:
 lint: "golangci-lint run --timeout=5m (동일 범위) → 0 issues"
 tests: "go test -count=1 ./internal/cli/ ./internal/core/project/ ./internal/mirrornotice/ → 3/3 ok"
 known_baseline_failure: "internal/cli/agentlint TestConstitutionCrossReference — moai-constitution.md 가 agent-authoring.md 를 상호참조하지 않는다는 문서 lint. 이 카드는 .claude/ 를 건드리지 않았다(git status --porcelain .claude/ 무출력, grep -c 'agent-authoring' → 0). 선행 결함"
-total_run_phase_files: 8
+total_run_phase_files: 9
 m1_to_mN_commit_strategy: "마일스톤당 1커밋 (M1 mirrornotice · M2 init · M3 update 두 경로 · M5 CHANGELOG+progress). M4 는 검증 전용이라 diff 없음"
 ```
 
+### 기록된 잔존 2건 (sync-audit 제기, 이 카드에서 고치지 않음)
+
+**1. DoD 는 문자 그대로 충족되지 않았다 — 선행 baseline 예외.** `acceptance.md` §D.5 는 `go test ./internal/cli/...`(서브패키지 포함)를 요구하지만, `internal/cli/agentlint` 의 `TestConstitutionCrossReference` 가 붉다. 위 `known_baseline_failure` 가 그 내용이며, 감사가 독립적으로 재현해 **이 카드 소관이 아님**을 확인했다(이 카드는 `.claude/` 파일을 하나도 건드리지 않는다). 실행 범위를 `./internal/cli/`(서브패키지 제외)로 좁혀 초록을 얻었으므로, **"go test 전부 초록" 이 아니라 "선행 결함 1건을 제외하고 초록"** 이 정확한 서술이다. 나중에 읽는 사람이 이것을 무결점 실행으로 오독하지 않도록 여기 명시한다.
+
+**2. AST 가드의 파일 범위 — 승계 작업.** `AC-DRW-009` 3번 단언은 `internal/cli/update.go` **한 파일만** 파싱한다. 리터럴 **개수**를 고정하지 않은 것은 의도대로이고 그 축의 우려는 해당되지 않지만, `CleanReinstallOptions` 복합 리터럴이 `internal/cli` 의 **다른 파일**에 새로 생기면 판정 밖으로 빠진다. 실측(`grep -rn "CleanReinstallOptions{" internal/`, 전수)으로 프로덕션 리터럴은 `update.go` 의 둘뿐이고 나머지는 전부 `_test.go` 이므로 **오늘 놓치는 것은 없다**. 승계 작업: 파싱 대상을 `internal/cli` 의 비-테스트 소스 전체로 넓히고, AC 문구를 "`internal/cli/update.go` 안의" → "`internal/cli` 프로덕션 소스의" 로 고친다. `acceptance.md` §D.6 의 기존 잔존(AST 가드는 리터럴을 증명하지 런타임 값을 증명하지 않는다)과 나란히 읽는다.
+
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-22
+sync_commit_sha: pending-backfill-sync-SPEC-DEPLOY-RESULT-WIRE-001
+sync_status: audit-ready
+b12_self_test_a: "grep -c 'SPEC-DEPLOY-RESULT-WIRE-001' CHANGELOG.md → 0 (중복 없음, 방출 진행)"
+b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l → 10 (AC-DRW-001..009 9건 + 선행 회귀 참조 AC-CSC-010 1건). CHANGELOG 는 이 SPEC 소관인 9건을 적는다"
+b12_self_test_c: "ls internal/mirrornotice/{notice.go,notice_test.go} · internal/cli/{mirror_notice.go,update.go,update_mirror_notice_test.go} → 전부 존재. grep -n 'ErrOut' internal/cli/update.go → :428 · :638 두 프로덕션 리터럴"
+changelog_entry_position: "[Unreleased] → ### Added, SPEC-CODEX-DUAL-AGENTS-001 항목 바로 뒤 (SPEC 링크를 단 close 항목끼리 모은다)"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (status: 만 변경, updated: 는 이미 2026-08-22)"
+  plan_md: "해당 없음 — frontmatter 없음"
+  acceptance_md: "해당 없음 — frontmatter 없음"
+  progress_md: "해당 없음 — frontmatter 없음"
+docs_surface: "README(4로케일) · docs-site 무변경. 근거: 두 표면 어디에도 `.agents/skills` 미러 기능 서술이 없다(grep 실측 — 유일한 매치 2건은 'agents/skills' 문자열이 다른 문맥에 쓰인 오탐). 이 카드는 문서화되지 않은 표면에 stderr 출력을 더할 뿐이고 새 커맨드·플래그가 없다"
+changelog_reconciliation: "선행 카드가 적은 제약 문장 'The fallback warning does not currently reach you' 는 run-phase M5(ba08d8694)가 같은 자리에서 **치환**했다 — 제약과 그 해제가 나란히 놓이지 않는다. 나란히 남은 첫 번째 제약(2회차 이후 복사본 고착)은 여전히 참이며, 치환된 문장이 '2회차 이후는 mode=skipped 라 통지도 나오지 않는다'를 명시해 같은 후속 작업(t173)으로 두 항목을 묶는다"
+mx_tag_validation: "신규 코드에 @MX 주석 추가 없음. `internal/mirrornotice` 는 순수 함수 2개(goroutine·전역 상태·fan_in ≥3 없음)이고, 세 호출부는 기존 함수 안 몇 줄 추가다 — @MX:WARN/@MX:ANCHOR 트리거 어느 것도 성립하지 않는다"
+sync_audit: "PASS 91/100, blocking 0건 (Functionality 95 / Security 92 / Craft 82 / Consistency 93). 보고서 `.moai/reports/t176/sync-audit.md`"
+audit_findings_disposition: "F-03(total_run_phase_files 8→9) · F-05(run_commit_sha 백필) · 산문 '11건'→'13건' 3건은 이 커밋에 반영. F-01(internal/cli 간헐 실패, 귀속 미확정) · F-02(AST 가드 파일 범위) · F-04 · F-06 · F-07 은 optional 이며 승계 대상 — §E.3 의 '기록된 잔존 2건' 참조"
+```
