@@ -54,9 +54,12 @@ type InitOptions struct {
 	DesignEnabled             bool   // design.enabled (B8); default true
 	ClaudeDesignEnabled       bool   // design.claude_design.enabled (B8); default true
 
-	// Worktree advisory. Mirrors the
-	// wizard.WorktreeAutoCreate selection; persisted to
-	// workflow.worktree.auto_create at init.
+	// Worktree advisory. Mirrors the wizard.WorktreeAutoCreate selection when
+	// the flag is absent (REQ-005 precedence). Persisted to
+	// workflow.worktree.auto_create at init ONLY when the WorktreeAutoCreateSet
+	// tracker fired (an explicit --worktree-auto-create flag,
+	// SPEC-INIT-WIZARD-REPAIR-001 REQ-006) — the wizard advisory alone is
+	// informational and leaves the deployed template default untouched.
 	WorktreeAutoCreate bool // workflow.worktree.auto_create
 
 	// SPEC-WT-DOC-001 workflow toggle opt-in surface. The *Set trackers are
@@ -247,6 +250,40 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 	if err := WritePhase1Configs(opts, result); err != nil {
 		result.Warnings = append(result.Warnings, fmt.Sprintf("page-3 config: %s", err))
 		i.logger.Warn("page-3 config write failed", "error", err)
+	}
+
+	// Step 3e (SPEC-INIT-WIZARD-REPAIR-001 REQ-006): persist the tracker-gated
+	// workflow toggle selections into workflow.yaml. Like Step 3d this runs on
+	// BOTH the deployer and the fallback path: on the deployer path it patches
+	// the freshly deployed template with the explicitly-flagged values, and on
+	// the fallback path it creates the minimal block. With every *Set tracker
+	// false the call is a no-op leaving the deployed file byte-identical
+	// (distributed-default preservation).
+	// @MX:SPEC: SPEC-INIT-WIZARD-REPAIR-001
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	toggleSectionsDir := filepath.Clean(filepath.Join(opts.ProjectRoot, defs.MoAIDir, defs.SectionsSubdir))
+	if err := WriteWorkflowTogglesYAML(toggleSectionsDir, opts, result); err != nil {
+		result.Warnings = append(result.Warnings, fmt.Sprintf("workflow toggles: %s", err))
+		i.logger.Warn("workflow toggles write failed", "error", err)
+	}
+
+	// Step 3f (SPEC-INIT-WIZARD-REPAIR-001 REQ-008 / SPEC-MOAI-MCP-SERVER-001
+	// M4 REQ-MCP-015): persist the audit + codex review-gate selection into
+	// workflow.yaml immediately after Step 3d, on BOTH the deployer and the
+	// fallback path (the function carries its own fresh-file branch for the
+	// latter). AuditConfigSet=false leaves the deployed file byte-identical
+	// (C6 opt-in-default-off) — this invocation is the link that was missing,
+	// making the contract comments at initializer.go Step 3d and
+	// applyWizardPage3ToOpts true as written.
+	// @MX:SPEC: SPEC-INIT-WIZARD-REPAIR-001
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err := writeWorkflowAuditYAML(toggleSectionsDir, opts, result); err != nil {
+		result.Warnings = append(result.Warnings, fmt.Sprintf("workflow audit: %s", err))
+		i.logger.Warn("workflow audit write failed", "error", err)
 	}
 
 	// Step 4: Create CLAUDE.md

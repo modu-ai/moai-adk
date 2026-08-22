@@ -205,9 +205,14 @@ func applyWizardPage3ToOpts(cmd *cobra.Command, result *wizard.WizardResult, opt
 	// claude_design_enabled is wizard-only (no CLI flag), so it always applies.
 	opts.ClaudeDesignEnabled = result.ClaudeDesignEnabled
 
-	// Worktree advisory (Issue 3): wizard-only confirm, always applies when the
-	// wizard ran. The --non-interactive path leaves WorktreeAutoCreate false.
-	opts.WorktreeAutoCreate = result.WorktreeAutoCreate
+	// Worktree advisory (Issue 3): wizard-only confirm, applies when the wizard
+	// ran AND --worktree-auto-create was not explicitly supplied (REQ-005
+	// flag-over-wizard precedence, SPEC-INIT-WIZARD-REPAIR-001 — the formerly
+	// unconditional assignment here was the clobber bug). The --non-interactive
+	// path leaves WorktreeAutoCreate false.
+	if !cmd.Flags().Changed("worktree-auto-create") {
+		opts.WorktreeAutoCreate = result.WorktreeAutoCreate
+	}
 
 	// M4 audit + MCP opt-in (SPEC-MOAI-MCP-SERVER-001 REQ-MCP-015 / AC-MCP-020).
 	// The audit selection reuses the M3 typed-config vocabulary. AuditConfigSet
@@ -491,6 +496,14 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		ClaudeDesignEnabled:       true, // wizard-only; default true
 	}
 
+	// Chain ② flag→opts link (SPEC-INIT-WIZARD-REPAIR-001 REQ-004): the four
+	// workflow toggle flags, applied BEFORE the wizard block so the
+	// flag-over-wizard precedence in applyWizardPage3ToOpts sees the explicit
+	// selection. Tracker-gated: an absent flag leaves opts untouched
+	// (distributed-default preservation).
+	// @MX:SPEC: SPEC-INIT-WIZARD-REPAIR-001
+	applyWorkflowBranchGuardFlags(cmd, &opts)
+
 	// Git mode + provider are auto-detected from the repository's configured
 	// remotes rather than asked in the wizard (no remote → manual, ≥1 remote →
 	// personal; provider from the origin host). Explicit --git-mode /
@@ -552,6 +565,12 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		// Profile-level model policy is no longer applied here.
 	}
 
+	// wizardResult carries the wizard's answers out of the interactive block
+	// so the autonomy-tier apply below covers BOTH entry paths with a single
+	// call: the flag branch for non-interactive runs and the wizard branch for
+	// interactive ones (it stays empty when the wizard did not run).
+	wizardResult := &wizard.WizardResult{}
+
 	if !nonInteractive && isInteractiveStdin() {
 		// Print banner and welcome message
 		uikit.PrintBanner(version.GetVersion())
@@ -570,6 +589,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 			}
 			return fmt.Errorf("wizard failed: %w", wizErr)
 		}
+		wizardResult = result
 
 		// Conversation language + user name: the wizard answer wins over the
 		// profile value. Update both opts (drives template deployment of
@@ -613,6 +633,20 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		// answers always reach opts.
 		applyWizardPage3ToOpts(cmd, result, &opts)
 	}
+
+	// Chain ① wizard+flag → opts link (SPEC-INIT-WIZARD-REPAIR-001 REQ-001 /
+	// REQ-002): applyAutonomyTierFromWizard covers BOTH entry paths — the
+	// --autonomy-tier flag branch for non-interactive runs (closing the
+	// validated-then-discarded gap: the value used to be checked in
+	// validateInitFlags and then dropped) and the wizard branch for interactive
+	// ones (wizardResult stays empty when the wizard did not run). Flag wins
+	// over the wizard answer; the fully-autonomous gates are applied on the
+	// wizard path and re-applied downstream on the flag path.
+	// @MX:SPEC: SPEC-INIT-WIZARD-REPAIR-001
+	applyAutonomyTierFromWizard(
+		cmd.Flags().Changed("autonomy-tier"), getStringFlag(cmd, "autonomy-tier"),
+		wizardResult, &opts,
+	)
 
 	// Default git provider to "github" for backward compatibility
 	if opts.GitProvider == "" {
@@ -697,6 +731,27 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 			return fmt.Errorf("initialization failed: %w\n  Hint: this directory already contains a MoAI project — did you mean 'moai update' (refresh templates in place)? Re-run with --force only to reinitialize from scratch", err)
 		}
 		return fmt.Errorf("initialization failed: %w", err)
+	}
+
+	// Chain ① consumer link (SPEC-INIT-WIZARD-REPAIR-001 REQ-003): wire the
+	// persisted tier selection into the deployed settings immediately after
+	// the initializer returns. Paths are resolved here and passed in (no new
+	// global state); the USER-scope write inside the bundle is a key-scoped
+	// splice limited to the permissions block (spec.md §4 lead ruling). The
+	// call is best-effort: semi-auto/unset produces zero delta and a failure
+	// warns without failing the init.
+	// @MX:SPEC: SPEC-INIT-WIZARD-REPAIR-001
+	if homeDir, homeErr := userHomeDirFn(); homeErr == nil {
+		if tierErr := project.ApplyAutonomyTierBundle(
+			opts.ProjectRoot,
+			filepath.Join(homeDir, ".claude", "settings.json"),
+			filepath.Join(opts.ProjectRoot, ".claude", "settings.json"),
+			opts.AutonomyTier,
+		); tierErr != nil {
+			p.Warn("Failed to apply autonomy tier bundle: %v", tierErr)
+		}
+	} else {
+		p.Warn("Failed to resolve home directory for autonomy tier bundle: %v", homeErr)
 	}
 
 	// Route executor result warnings into the collector (they surface once,

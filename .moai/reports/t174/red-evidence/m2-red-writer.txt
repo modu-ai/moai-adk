@@ -1,0 +1,10 @@
+# github.com/modu-ai/moai-adk/internal/core/project [github.com/modu-ai/moai-adk/internal/core/project.test]
+internal/core/project/initializer_workflow_toggles_test.go:54:12: undefined: WriteWorkflowTogglesYAML
+internal/core/project/initializer_workflow_toggles_test.go:79:12: undefined: WriteWorkflowTogglesYAML
+internal/core/project/initializer_workflow_toggles_test.go:108:12: undefined: WriteWorkflowTogglesYAML
+internal/core/project/initializer_workflow_toggles_test.go:136:12: undefined: WriteWorkflowTogglesYAML
+internal/core/project/initializer_workflow_toggles_test.go:167:12: undefined: WriteWorkflowTogglesYAML
+internal/core/project/initializer_workflow_toggles_test.go:192:12: undefined: WriteWorkflowTogglesYAML
+internal/core/project/initializer_workflow_toggles_test.go:223:12: undefined: WriteWorkflowTogglesYAML
+FAIL	github.com/modu-ai/moai-adk/internal/core/project [build failed]
+FAIL
