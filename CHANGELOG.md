@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`internal/codexadapter` — Codex dual-harness M3 hook adapter, shipped as a library** (`SPEC-CODEX-HOOK-ADAPTER-001`). Groundwork for running MoAI hooks under codex-cli, not a live feature: nothing invokes the package yet — the wiring (the `--agent` config generator) is the follow-up card. What it carries: the complete eleven-event Codex-to-MoAI event table with six events adapted and recognized-but-unadapted ones refused with an error distinct from unknown event names; translation of the three output keys measured inert on codex 0.147.0 (`continue: false` rewritten to the `decision: block` shape with a non-empty default reason, `systemMessage` routed to `additionalContext`), with keys measured working passed through byte-identical — original bytes returned, never re-marshalled; discard diagnostics that record event, key, and length but never content to a sink, keeping stderr silent when the hook exited 2 so its own blocking reason passes through; per-event stderr classification (PreToolUse blocking reason, Stop continuation prompt, unmeasured classes annotated as such); and a config validator that rejects the `version` key in the `--json` failure stream and collects every unknown-key violation at three nesting levels rather than stopping at the first. The mappings encode plan-phase measurements of codex 0.147.0 (`.moai/reports/t83/precondition-measurement.md`, `.moai/reports/t83/precondition-measurement-round3.md`), pinned by golden tests against the captured payload fixtures. `internal/hook` is untouched (REQ-7). All 7 acceptance criteria verified; 38 tests, coverage 87.1%, 0 lint issues, race-clean.
+
 ## [3.1.2] - 2026-08-21
 
 ### Summary

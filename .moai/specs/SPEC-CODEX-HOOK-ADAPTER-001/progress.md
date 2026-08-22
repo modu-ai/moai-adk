@@ -160,3 +160,42 @@ Baseline attribution: all of the above ran in this tree, on branch
 - Nothing calls this package yet. It is a library with tests; wiring it to the
   dispatcher is downstream work, so a defect in how it would be *invoked* is out
   of reach of this SPEC's evidence.
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+```yaml
+sync_complete_at: "2026-08-22"
+sync_commit_sha: "pending-backfill"
+sync_status: "completed"
+spec_id: SPEC-CODEX-HOOK-ADAPTER-001
+changelog_entry_position: "[Unreleased] / ### Added / internal/codexadapter entry"
+b12_self_test_a:
+  pre_emission_grep_count: 0
+  result: PASS
+b12_self_test_b:
+  acceptance_ac_count: 7
+  changelog_cited_ac_count: 7
+  result: PASS
+b12_self_test_c:
+  cited_paths_verified:
+    - internal/codexadapter (package, 13 files)
+    - .moai/reports/t83/precondition-measurement.md
+    - .moai/reports/t83/precondition-measurement-round3.md
+  result: PASS
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed"
+  applied_at: "2026-08-22 (single sync commit, 3-phase close)"
+run_verification:
+  source: "orchestrator independent re-execution at tree 95c4a253b (WT-hook-adapter)"
+  builds_darwin_windows_linux: "exit 0"
+  go_test_cover: "ok ./internal/codexadapter/... coverage: 87.1%"
+  tests: "38 PASS / 0 FAIL"
+  race: "ok"
+  golangci_lint: "0 issues"
+  internal_hook_diff_base_3556ca1de: "0 files"
+scope_note: >-
+  Library-only card. CHANGELOG entry frames the adapter as a tested library,
+  not a live feature; the wiring is the pending follow-up card (M4 --agent
+  generator). README and docs-site deliberately untouched.
+```
+
