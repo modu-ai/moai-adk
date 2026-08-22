@@ -9,7 +9,38 @@ Plan-phase artifacts complete (spec.md v0.1.1 + plan.md + acceptance.md + progre
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run phase 2026-08-22 (manager-develop, cycle_type=tdd, worktree t174 @ branch `WT-init-wizard-repair`). RED evidence files: `.moai/reports/t174/red-evidence/m1-red.txt`, `m2-red-writer.txt`, `m2-red-cli.txt`, `m3-red-init.txt`, `m3-red-cli.txt` (verbatim pre-GREEN failing output per milestone).
+
+**M1 — chain ① autonomy tier (commit f573b12fd)**
+
+| AC | Status | Verification Command | Actual Output |
+|----|--------|---------------------|---------------|
+| AC-001 | PASS | `go test -run TestRunInit_WizardAutonomyTierAppliesBundle ./internal/cli/` | `ok github.com/modu-ai/moai-adk/internal/cli` — USER `permissions.defaultMode=auto` written via injected wizard result; `teammateMode` + env block preserved verbatim (key-scoped splice) |
+| AC-002 | PASS | `go test -run TestRunInit_FlagFullyAutonomousWithoutProofDowngrades ./internal/cli/` | ok — downgraded to `auto` defaultMode + `.moai/logs/autonomy-downgrade.log` advisory naming fully-autonomous→automatic |
+| AC-003 | PASS | `go test -run TestRunInit_FlagAutonomyTierNonInteractive ./internal/cli/` | ok — non-interactive `--autonomy-tier=automatic` reaches the bundle (flag no longer discarded) |
+| AC-004 | PASS | `go test -run TestRunInit_SemiAutoAndEmptyAreZeroDelta ./internal/cli/` | ok — empty/semi-auto wizard answers: USER file snapshots byte-equal, no `permissions.defaultMode` key, PROJECT settings byte-equal between runs |
+| RED (M1) | captured | `go test -run 'TestRunInit_(WizardAutonomyTier…\|FlagAutonomyTier…\|FlagFullyAutonomous…\|SemiAuto…)' ./internal/cli/` | 3 `--- FAIL` (defaultMode missing / advisory log missing), zero-delta guard green — m1-red.txt |
+
+**M2 — chain ② four workflow toggles (commit 1d4f93f49)**
+
+| AC | Status | Verification Command | Actual Output |
+|----|--------|---------------------|---------------|
+| AC-005 | PASS | `go test -run TestRunInit_WorkflowToggleFlagsPersist ./internal/cli/` | ok — all four flags persist (`branch_guard: enabled: true`, `auto_create/merge/cleanup: true`) |
+| AC-006 | PASS | `go test -run TestRunInit_WorkflowToggleFlagsAbsentByteIdentical ./internal/cli/` | ok — non-interactive no-flags init deploys workflow.yaml byte-identical to the embedded template |
+| AC-007 | PASS | `go test -run TestRunInit_WorktreeAutoCreateFlagBeatsWizard ./internal/cli/` | ok — `--worktree-auto-create=true` + wizard false ⇒ persisted true; flag absent ⇒ false (no branch_guard synthesized) |
+| AC-008 (non-TTY half + interactive delta) | PASS | `go test -run 'TestRunWorkflowConfigStep\|TestApplyWizardReconfigureSteps' ./internal/cli/` | ok — non-TTY no-op (file untouched); interactive seam: only answered branch-guard delta persists |
+| writer unit suite | PASS | `go test -run TestWriteWorkflowTogglesYAML ./internal/core/project/` | ok — 7 tests: byte-identity no-op, patch, indent-aware insert (parse-verified nesting), only-set-keys, explicit-false, fresh-file fallback ×2 |
+| RED (M2) | captured | see m2-red-writer.txt / m2-red-cli.txt | writer: `undefined: WriteWorkflowTogglesYAML` (build failed); CLI: 3 `--- FAIL` (flags not persisted / precedence / interactive delta) + byte-identity guard green |
+
+**M3 — chain ③ audit block (commit pending in this run)**
+
+| AC | Status | Verification Command | Actual Output |
+|----|--------|---------------------|---------------|
+| AC-009 | PASS | `go test -run TestRunInit_WizardAuditSelectionPersists ./internal/cli/` | ok — deployed workflow.yaml carries `workflow.audit` (model claude, gates) + `codex.review_gate.enabled: true`; parse-verified `default_mode`/`token_budget`/`worktree` stay direct workflow children (indent fix) |
+| fallback path | PASS | `go test -run 'TestInit_FallbackPathPersistsAuditBlock\|TestInit_FallbackPathAuditUnsetLeavesFallbackBaseline' ./internal/core/project/` | ok — audit block + review-gate on the no-deployer path; AuditConfigSet=false leaves the fallback baseline untouched |
+| characterization | PASS | `go test -run TestWriteWorkflowAuditYAML ./internal/core/project/` | ok — pre-existing audit suite green unmodified (indent-aware insert yields identical output on its 2-space fixtures) |
+| RED (M3) | captured | m3-red-init.txt / m3-red-cli.txt | init-level: `--- FAIL` (workflow.yaml audit block missing), baseline guard green; runInit-level: `--- FAIL` (audit block missing from deployed file) |
+
 
 ## §F Phase 4 Mode Selection
 

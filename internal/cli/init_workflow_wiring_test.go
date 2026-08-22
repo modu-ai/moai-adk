@@ -74,11 +74,14 @@ func TestRunInit_WorkflowToggleFlagsPersist(t *testing.T) {
 }
 
 // TestRunInit_WorkflowToggleFlagsAbsentByteIdentical asserts AC-006: with
-// none of the four flags passed (interactive or not), the deployed
+// none of the four flags passed on a NON-INTERACTIVE run (the CI-relevant
+// path — AuditConfigSet stays false, so neither writer fires), the deployed
 // workflow.yaml is byte-identical to the template — no key synthesized, no
-// comment disturbed.
+// comment disturbed. (An interactive run legitimately writes the audit block
+// per chain ③ / AC-009; its toggle-key preservation is asserted separately
+// in the precedence test.)
 func TestRunInit_WorkflowToggleFlagsAbsentByteIdentical(t *testing.T) {
-	_, workflowPath := runInitForWorkflow(t, &wizard.WizardResult{}, nil)
+	_, workflowPath := runInitForWorkflow(t, nil, nil)
 
 	got, err := os.ReadFile(workflowPath)
 	if err != nil {
@@ -86,7 +89,7 @@ func TestRunInit_WorkflowToggleFlagsAbsentByteIdentical(t *testing.T) {
 	}
 	want := embeddedTemplateWorkflow(t)
 	if !bytes.Equal(got, want) {
-		t.Errorf("no-flags init must deploy workflow.yaml byte-identical to the template;\n--template--\n%s\n--deployed--\n%s", want, got)
+		t.Errorf("no-flags non-interactive init must deploy workflow.yaml byte-identical to the template;\n--template--\n%s\n--deployed--\n%s", want, got)
 	}
 }
 
@@ -110,14 +113,19 @@ func TestRunInit_WorktreeAutoCreateFlagBeatsWizard(t *testing.T) {
 	}
 
 	// Flag absent: the wizard answer applies; false equals the template
-	// default, so the file stays byte-identical (no tracker flipped).
+	// default. The interactive run legitimately writes the audit block (chain
+	// ③), so assert the VALUE: auto_create stays false and no branch_guard
+	// block is synthesized (no tracker flipped).
 	_, workflowPath2 := runInitForWorkflow(t, wiz, nil)
 	got2, err := os.ReadFile(workflowPath2)
 	if err != nil {
 		t.Fatalf("read deployed workflow.yaml (flag absent): %v", err)
 	}
-	if want := embeddedTemplateWorkflow(t); !bytes.Equal(got2, want) {
-		t.Errorf("flag-absent run with wizard answer false must stay byte-identical to the template;\n--template--\n%s\n--deployed--\n%s", want, got2)
+	if !bytes.Contains(got2, []byte("auto_create: false")) {
+		t.Errorf("flag-absent run must keep auto_create false (the wizard answer); got:\n%s", got2)
+	}
+	if bytes.Contains(got2, []byte("branch_guard:")) {
+		t.Errorf("flag-absent run must not synthesize a branch_guard block; got:\n%s", got2)
 	}
 }
 

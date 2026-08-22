@@ -265,6 +265,23 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 		i.logger.Warn("workflow toggles write failed", "error", err)
 	}
 
+	// Step 3f (SPEC-INIT-WIZARD-REPAIR-001 REQ-008 / SPEC-MOAI-MCP-SERVER-001
+	// M4 REQ-MCP-015): persist the audit + codex review-gate selection into
+	// workflow.yaml immediately after Step 3d, on BOTH the deployer and the
+	// fallback path (the function carries its own fresh-file branch for the
+	// latter). AuditConfigSet=false leaves the deployed file byte-identical
+	// (C6 opt-in-default-off) — this invocation is the link that was missing,
+	// making the contract comments at initializer.go Step 3d and
+	// applyWizardPage3ToOpts true as written.
+	// @MX:SPEC: SPEC-INIT-WIZARD-REPAIR-001
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err := writeWorkflowAuditYAML(toggleSectionsDir, opts, result); err != nil {
+		result.Warnings = append(result.Warnings, fmt.Sprintf("workflow audit: %s", err))
+		i.logger.Warn("workflow audit write failed", "error", err)
+	}
+
 	// Step 4: Create CLAUDE.md
 	if err := ctx.Err(); err != nil {
 		return nil, err
