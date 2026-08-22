@@ -2,7 +2,7 @@
 id: SPEC-INIT-WIZARD-REPAIR-001
 title: "Init autonomy wizard wiring repair: restore three broken init-path chains"
 version: "0.1.1"
-status: in-progress
+status: completed
 created: 2026-08-22
 updated: 2026-08-22
 author: manager-spec

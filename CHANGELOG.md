@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **[SPEC-INIT-WIZARD-REPAIR-001](.moai/specs/SPEC-INIT-WIZARD-REPAIR-001/spec.md)** — sync-phase close (3-phase plan→run→sync). Three `moai init` wiring chains that shipped as complete implementations — typed options, wizard plumbing, unit tests, contract comments — with zero production callers are wired back in, so the answers users give during init now take effect.
+  - **The autonomy tier reaches the settings it describes.** `--autonomy-tier` and the wizard's tier answer are effective end-to-end: `automatic` and `fully-autonomous` apply the permission bundle, with the USER-scope write a key-scoped splice (exactly `permissions.defaultMode` on the distributed-default path — every other region of `~/.claude/settings.json` survives, asserted byte-for-byte). `semi-auto` and an absent answer leave both scopes with zero delta. The safety gates are unchanged: `fully-autonomous` without a sandbox proof still downgrades with a logged advisory.
+  - **The four workflow toggles persist.** `--branch-guard` and the three `--worktree-auto-*` flags now land in the deployed `workflow.yaml` (an explicit flag beats the wizard; an init with none of the flags stays byte-identical to the template). Interactive `moai update -c` gains a TTY-gated four-question step whose defaults preserve the current configured values — non-interactive and CI paths are untouched.
+  - **Audit and codex-review-gate wizard selections persist** to `workflow.yaml` on both the deployer and fallback paths; previously the answers were collected and discarded.
+  - **A latent YAML corruption bug caught in passing:** the audit-insert helpers hardcoded a 2-space indent against the template's 4-space `workflow.yaml`, which would have re-parented every later `workflow:` child under `audit:` on first write. The helpers now sample the file's indent and guard the result with a parse check.
+  - Stale comments corrected: a wrong file reference at `internal/core/project/autonomy_bundle.go` and a mis-described reader status for `AutoCleanup` in `internal/config/types.go`. All 10 acceptance criteria pass; run-phase evidence in `progress.md` §E.2.
+
 ## [3.1.2] - 2026-08-21
 
 ### Summary

@@ -99,4 +99,30 @@ Notes: 4 new test files + 3 new production files + 5 modified production/test fi
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-22
+sync_commit_sha: "pending-backfill"
+sync_status: completed
+b12_self_test_a:
+  pre_emission_grep_count: 0   # grep -c 'SPEC-INIT-WIZARD-REPAIR-001' CHANGELOG.md before emission
+b12_self_test_b:
+  acceptance_ac_count: 10      # distinct AC IDs in acceptance.md §D
+  changelog_ac_claim: 10       # "All 10 acceptance criteria pass" in the CHANGELOG entry
+b12_self_test_c:
+  file_paths_verified: true    # all 8 implementation files named in delegation ls-verified
+changelog_entry_position: "[Unreleased] > ### Fixed (top entry)"
+frontmatter_status_transitions:
+  spec_md: in-progress -> completed (sync commit)
+  plan_md: no YAML frontmatter (body-only document; no transition applicable)
+  acceptance_md: no YAML frontmatter (body-only document; no transition applicable)
+  progress_md: n/a (this file; §E.4 populated by this commit)
+canary_compliance_check:
+  readme_touched: false        # out of scope per lead dispatch
+  docs_site_touched: false     # out of scope per lead dispatch
+  codemaps_touched: false      # out of scope per lead dispatch
+sync_scope_note: >-
+  CHANGELOG entry + spec.md frontmatter close + this §E.4 block only.
+  No push performed (release-branch integration is the orchestrator's step).
+  sync_commit_sha backfilled in a follow-up commit per the D3 SHA-placeholder
+  exemption.
+```
