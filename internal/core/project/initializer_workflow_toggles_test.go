@@ -249,3 +249,39 @@ func TestWriteWorkflowTogglesYAML_FreshFileAllTrackersFalseSkips(t *testing.T) {
 		t.Error("no tracker set: workflow.yaml must not be synthesized on the fallback path")
 	}
 }
+
+// TestInsertWorkflowTogglePath_NoWorkflowLineAppends covers the append branch:
+// a document without a `workflow:` mapping gets one appended with the block.
+func TestInsertWorkflowTogglePath_NoWorkflowLineAppends(t *testing.T) {
+	content := "other:\n    key: 1\n"
+	got := insertWorkflowTogglePath(content, "workflow.branch_guard.enabled", true)
+	var doc map[string]any
+	if err := yaml.Unmarshal([]byte(got), &doc); err != nil {
+		t.Fatalf("appended document no longer parses: %v\ngot:\n%s", err, got)
+	}
+	wf, _ := doc["workflow"].(map[string]any)
+	if wf == nil {
+		t.Fatalf("workflow mapping not appended; got:\n%s", got)
+	}
+	if bg, _ := wf["branch_guard"].(map[string]any); bg == nil || bg["enabled"] != true {
+		t.Errorf("branch_guard must parse under the appended workflow mapping; got:\n%s", got)
+	}
+	if o, _ := doc["other"].(map[string]any); o == nil || o["key"] != 1 {
+		t.Errorf("pre-existing top-level mapping must survive; got:\n%s", got)
+	}
+}
+
+// TestWorkflowChildIndent_Edges covers the indent-sampling edge branches:
+// comment lines under `workflow:` are skipped, a non-indented key ends the
+// block, and a bare `workflow:` with no child falls back to 2 spaces.
+func TestWorkflowChildIndent_Edges(t *testing.T) {
+	if got := workflowChildIndent("workflow:\n    # comment only\n    default_mode: \"\"\n"); got != "    " {
+		t.Errorf("comment lines must be skipped: got indent %q, want 4 spaces", got)
+	}
+	if got := workflowChildIndent("workflow:\nother: 1\n"); got != "  " {
+		t.Errorf("non-indented key ends the block: got indent %q, want default 2 spaces", got)
+	}
+	if got := workflowChildIndent("workflow:\n"); got != "  " {
+		t.Errorf("bare workflow: must fall back to 2 spaces: got %q", got)
+	}
+}

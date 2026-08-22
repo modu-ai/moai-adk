@@ -540,11 +540,15 @@ type TokenBudgetConfig struct {
 // WorkflowWorktreeConfig mirrors workflow.worktree.* — worktree automation settings.
 // Distinct from GitStrategyConfig.WorktreeRoot (different key domain, no conflict).
 //
-// Reader status (SPEC-CONFIG-KEY-HONESTY-001 M5): AutoCreate is read once by
+// Reader status (SPEC-CONFIG-KEY-HONESTY-001 M5, updated by
+// SPEC-INIT-WIZARD-REPAIR-001 REQ-009): AutoCreate is read once by
 // internal/cli/worktree_advisory.go only to select advisory wording — it does
-// not gate worktree creation. AutoCleanup and AutoMerge have no production
-// reader (declared but not read). SessionNamePattern has no production reader
-// (no code builds a session name from it).
+// not gate worktree creation. AutoCleanup is read by the two auto-cleanup
+// paths (internal/cli/session_worktree.go cleanupSessionWorktree and
+// session_worktree_prmerge.go prMergeCleanup), gating worktree removal.
+// AutoMerge has no production reader (declared but not read).
+// SessionNamePattern has no production reader (no code builds a session name
+// from it).
 type WorkflowWorktreeConfig struct {
 	AutoCleanup        bool   `yaml:"auto_cleanup"`
 	AutoCreate         bool   `yaml:"auto_create"`
