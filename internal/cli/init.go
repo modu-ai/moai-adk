@@ -220,6 +220,12 @@ func applyWizardPage3ToOpts(cmd *cobra.Command, result *wizard.WizardResult, opt
 	// leaves it nil and the writer then touches nothing.
 	opts.TodoEnabled = result.TodoEnabled
 
+	// Feedback pre-submission gate. Wizard-only confirm, no CLI flag, so it
+	// always applies when the wizard ran. The pointer carries "was it asked"
+	// as well as the answer — --non-interactive leaves it nil and the writer
+	// then touches nothing.
+	opts.FeedbackAutoSubmit = result.FeedbackAutoSubmit
+
 	// M4 audit + MCP opt-in (SPEC-MOAI-MCP-SERVER-001 REQ-MCP-015 / AC-MCP-020).
 	// The audit selection reuses the M3 typed-config vocabulary. AuditConfigSet
 	// is the opt-in tracker: it flips true ONLY when the wizard collected a

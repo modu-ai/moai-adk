@@ -94,6 +94,18 @@ Issue 作成の直前に `gh auth status` を確認します。`gh` が未認証
 
 `/moai feedback` が Issue を作成する対象リポジトリは `.moai/config/sections/feedback.yaml` の `feedback.repository` 値で設定されます。デフォルトは `modu-ai/moai-adk` (MoAI-ADK ツールリポジトリ自体) で、fork を保守するユーザーはこの値を自分の fork リポジトリに変更してフィードバックをリダイレクトできます。
 
+### 送信前の確認
+
+`/moai feedback` は Issue を作成する前に、投稿される内容 — タイトル、本文の全文、そしてマスクした値 (シークレット、トークン、ホームディレクトリの絶対パス) の要約 — を表示し、続行するかどうかを尋ねます。この確認を行うかどうかは `.moai/config/sections/feedback.yaml` の `feedback.auto_submit` 値で決まります。配布時のデフォルト `false` は毎回尋ね、`true` は尋ねずに送信します。
+
+```yaml
+feedback:
+    repository: modu-ai/moai-adk
+    auto_submit: false
+```
+
+`moai init` のセットアップウィザードでもこの値を尋ねます。後から Web コンソールの Feedback セクションで変更できます。`true` にしても省略されるのは確認だけで、マスク処理はそのまま動作し、セキュリティ脆弱性の報告と判断された内容は公開 Issue ではなく非公開のアドバイザリ経路へ案内されます。
+
 ## フィードバックの種類
 
 ### バグレポート

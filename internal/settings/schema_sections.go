@@ -400,6 +400,11 @@ func seamSectionFields() []FieldDef {
 
 		// feedback.
 		s(SectionFeedback, "feedback", TypeText, "feedback", "repository"),
+		// auto_submit — the consent toggle that decides whether the feedback
+		// workflow may submit without asking each time. It is a decision about
+		// what leaves the machine, so it is surfaced in the console rather than
+		// living only in the section file.
+		s(SectionFeedback, "feedback", TypeBool, "feedback", "auto_submit"),
 
 		// observability.
 		s(SectionObservability, "observability", TypeBool, "observability", "enabled"),

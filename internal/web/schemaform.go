@@ -63,6 +63,11 @@ func consoleTabs() []consoleTab {
 		// crosssession.yaml into a session --settings injection; this panel
 		// edits the same file through the yamlpatch seam.
 		{ID: "crosssession", LabelKey: "sec.crosssession.title", Baseline: "Cross-Session"},
+		// feedback — reopened by SPEC-FEEDBACK-AUTO-SUBMIT-001 M7, reversing the
+		// SPEC-WEBCONF-SIMPLIFY-001 M3 reclassification for this section only.
+		// The panel carries the target repository and the auto-submit consent
+		// toggle; both persist through the yamlpatch seam into feedback.yaml.
+		{ID: "feedback", LabelKey: "sec.feedback.title", Baseline: "Feedback"},
 	}
 }
 
@@ -245,6 +250,12 @@ func schemaSectionMetas() []schemaSectionMeta {
 			// session keeps the posture it was launched with.
 			NoteKey: "sec.crosssession.note",
 			Note:    "Applied at the next moai cc/glm/cg launch — running sessions keep the posture they were launched with.",
+		},
+		{
+			ID: settings.SectionFeedback, PanelID: "feedback", Icon: "messages-square",
+			TitleKey: "sec.feedback.title", DescKey: "sec.feedback.desc",
+			Title: "Feedback", Desc: "Target repository for the feedback workflow, and whether it may submit without asking each time.",
+			Fields: settings.SectionFields(settings.SectionFeedback), Extras: true,
 		},
 	}
 }

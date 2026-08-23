@@ -260,21 +260,25 @@ Then  항목 수가 0 이고 파일이 유효한 JSON 으로 남는다
 > - **③의 한국어 리터럴** — `grep -n '종료 코드\|verdict\|60초'` 가 **영어 전용 + 템플릿 미러 대상**을 한국어로 겨냥한다. 형제 SPEC(`SPEC-TODO-ENABLE-FLAG-001`)에서 같은 형태를 이미 진단해 제거했고(거기서는 행동 왕복 관측에 위임), **같은 커밋이 형제에서는 제거하면서 여기엔 남겼다.** M6 재작성 시 형제의 해법을 참고한다.
 >
 > [HARD] **이 문단을 지우지 않는다.** 부채는 "M6 완료를 판정하기 전"이라는 시점이 붙어야 의미가 있으며, 구두로 넘기면 plan과 run 사이에서 증발한다 — 그 실패 모드의 결과가 공개 이슈 제목의 자격증명이다.
+>
+> **M6 처리 결과(2건 모두 해소)**: (i)의 앵커 부재는 `moai feedback scrub[^\n]*--title` 동일 줄 앵커로, ③의 한국어 리터럴은 영어 토큰 `MUST NOT submit`(>= 3) + `60 seconds`(>= 1)로 재작성했다. 재작성 토큰 4종 전부 base `3210da7d3` 에서 소스/미러 양쪽 **0** 을 실측했다 — 아래 AC-F-019 의 실측표와 `progress.md` §E.2 M6 의 부채 해소 절이 그 기록이다.
 
 ### AC-F-019 — 스킬 [HARD] 조항 4종 (두 사본 각각)
 
 ```
 Given 소스 스킬과 템플릿 미러
 When  산문 표면이 지는 [HARD] 의무 4종을 각 사본에서 grep 한다
-Then  두 파일 모두에서 5개 관측이 전부 1건 이상이다
+Then  두 파일 모두에서 7개 관측이 각자의 하한(③-a 는 3, 나머지는 1) 이상이다
 ```
 
 두 사본 각각에 대해(`SKILL=.claude/skills/moai/workflows/feedback.md`, 그리고 `SKILL=internal/template/templates/.claude/skills/moai/workflows/feedback.md`):
 
 ```bash
 grep -c 'moai feedback scrub' "$SKILL"        # ① 스크러버 경유            >= 1
-grep -c -- '--title' "$SKILL"                 # ② 제목 전달 — M6 부채(앵커 없음) >= 1
-grep -c 'verdict' "$SKILL"                    # ③ fail-closed 조항 — M6 부채   >= 1
+grep -cE 'moai feedback scrub[^\n]*--title' "$SKILL"   # ② 제목 전달 — 호출 동일 줄 앵커 >= 1
+grep -c 'verdict' "$SKILL"                    # ③ fail-closed 조항            >= 1
+grep -c 'MUST NOT submit' "$SKILL"            # ③-a 3문장 각각의 금지 절      >= 3
+grep -c '60 seconds' "$SKILL"                 # ③-b 타임아웃 문장             >= 1
 grep -c 'queue.json' "$SKILL"                 # ④ 실패 부류 분기 (REQ-9 D4)  >= 1
 grep -cE 'label[^*]*conversation_language|conversation_language[^*]*label' "$SKILL"   # ⑤ 게이트 라벨 언어 (D11) >= 1
 ```
@@ -295,9 +299,16 @@ git show "$BASE:.claude/skills/moai/workflows/feedback.md" | grep -c '<토큰>' 
 | `queue.json` (신 ④) | **0 / 0** | 채택 |
 | `label`↔`conversation_language` 동일 줄 (신 ⑤) | **0 / 0** | 채택 — `label` 단독은 6건(bug/enhancement/question 라벨)이라 벡터가 되지 못하고, 동일 줄 공존이라야 게이트 라벨 의무를 특정한다 |
 
-**② 가 이 AC의 의도상 핵심이다** — ②가 없으면 D1은 문서상으로만 닫힌다. 다만 현재 형태는 앵커가 없어 그 의도를 구현하지 못한다(위 M6 부채 문단 (i)).
+**② 가 이 AC의 의도상 핵심이다** — ②가 없으면 D1은 문서상으로만 닫힌다.
 
-③은 타임아웃·파싱 불가를 포함한 3문장 조항의 존재를 보려는 것이나, 현재의 보조 검사(`grep -n '종료 코드\|verdict\|60초'`)는 한국어 리터럴이라 영어 전용 표면에 쓸 수 없다(위 M6 부채 문단 ③).
+**M6에서 재작성한 두 토큰의 실측**(base `3210da7d3`, 소스/미러 양쪽):
+
+| 토큰 | base 반환값 | 판정 |
+|---|---|---|
+| `--title` 무앵커 (구 ②) | **0 / 0** | 기각 — base 0이지만 **관측하지 못한다**. 파일 어디의 `--title` 이든 잡으므로, 본문만 스크럽하고 `gh issue create ... --title "<제목>"` 를 쓰는 구현이 통과한다(스크러버가 제목을 못 받은 채로) |
+| `moai feedback scrub[^\n]*--title` (신 ②) | **0 / 0** | 채택 — 스크러버 **호출과 동일 줄**을 요구하므로 제목이 실제로 스크러버로 들어가는 줄이 있어야만 통과한다 |
+| `종료 코드\|verdict\|60초` 보조 (구 ③) | — | 기각 — 한국어 리터럴이 영어 전용 표면(템플릿 미러)을 겨냥한다. 통과시키려면 배포 템플릿의 언어 규칙을 어겨야 하는 자기모순 |
+| `MUST NOT submit` >= 3 · `60 seconds` >= 1 (신 ③-a·③-b) | **0 / 0** | 채택 — 형제 SPEC(`SPEC-TODO-ENABLE-FLAG-001`)의 선례를 따라 한국어 리터럴을 걷어내되, 세 조항이 **각각** 금지를 명시했는지를 건수로 센다. 도구 실패·`verdict` 부재·타임아웃 세 축의 행동 관측은 AC-F-004(fail-closed 종료 코드)와 AC-F-003(`verdict` 계약)이 함께 진다 |
 
 추가로 verbatim 보존 규칙의 명시적 예외 문장이 ①과 같은 절 범위에 있음을 `grep -n` 줄 번호로 확인한다.
 

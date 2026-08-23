@@ -84,13 +84,22 @@ var sectionRoutes = map[string]SectionRoute{
 
 	// workflow — seam-writable (restored, Issue 3 / SPEC-WEBCONF-SIMPLIFY-001 M3
 	// partial reversal). The worktree auto-create toggle + the workflow scalar
-	// fields persist through the yamlpatch seam. The other 7 former seam sections
-	// (harness, ralph, feedback, observability, security, handoff, cache) remain
+	// fields persist through the yamlpatch seam. The other 6 former seam sections
+	// (harness, ralph, observability, security, handoff, cache) remain
 	// RouteExcluded.
 	"workflow": RouteSeam,
 
-	// SPEC-WEBCONF-SIMPLIFY-001 M3: the 7 remaining former seam sections (harness,
-	// ralph, feedback, observability, security, handoff, cache) stay reclassified
+	// feedback — seam-writable (reopened, SPEC-FEEDBACK-AUTO-SUBMIT-001 M7).
+	// This REVERSES the SPEC-WEBCONF-SIMPLIFY-001 M3 reclassification for the
+	// feedback section only: the auto-submit consent toggle is a user decision
+	// about what leaves the machine, so it needs a console surface, and the
+	// section file is where the feedback keys already live. The other six former
+	// seam sections (harness, ralph, observability, security, handoff, cache)
+	// remain RouteExcluded.
+	"feedback": RouteSeam,
+
+	// SPEC-WEBCONF-SIMPLIFY-001 M3: the 6 remaining former seam sections (harness,
+	// ralph, observability, security, handoff, cache) stay reclassified
 	// to RouteExcluded — their tabs are removed and their web write path is gone.
 	// They are absent from this map, so RouteForSection returns the zero value
 	// (RouteExcluded). Their config keys persist in the baked template YAML for
@@ -106,17 +115,19 @@ func RouteForSection(name string) SectionRoute {
 }
 
 // SeamSections는 yamlpatch seam이 유일한 쓰기 경로인 섹션을 반환한다.
-// workflow는 Issue 3에서 RouteSeam으로 부분 복구되었다 (worktree auto-create
-// 토글 + workflow scalar 필드). 나머지 7개 전 seam 섹션은 RouteExcluded로
-// 잔류한다. seam 메커니즘(yamlpatch.PatchFile) 자체는 잔존하며, 향후 SPEC이
-// seam 섹션을 재추가하면 여기에 다시 열거한다.
+// workflow는 Issue 3에서, feedback은 SPEC-FEEDBACK-AUTO-SUBMIT-001 M7에서
+// RouteSeam으로 복구·재개방되었다 (각각 worktree auto-create 토글 + workflow
+// scalar 필드 / auto-submit 동의 토글 + repository). 나머지 6개 전 seam 섹션은
+// RouteExcluded로 잔류한다. seam 메커니즘(yamlpatch.PatchFile) 자체는 잔존하며,
+// 향후 SPEC이 seam 섹션을 재추가하면 여기에 다시 열거한다.
 func SeamSections() []string {
-	return []string{"workflow"}
+	return []string{"workflow", "feedback"}
 }
 
 // ExcludedSections는 명시적 제외군을 반환한다: machine/state 섹션 + 대형 정책
-// 파일 + 미지명 잔여 섹션 + SPEC-WEBCONF-SIMPLIFY-001 M3로 재분류된 7개 전
-// seam 섹션 (workflow는 Issue 3에서 복구되어 제외). RouteForSection은 이 목록
+// 파일 + 미지명 잔여 섹션 + SPEC-WEBCONF-SIMPLIFY-001 M3로 재분류된 6개 전
+// seam 섹션 (workflow는 Issue 3에서 복구, feedback은 SPEC-FEEDBACK-AUTO-SUBMIT-001
+// M7에서 재개방되어 제외). RouteForSection은 이 목록
 // 외의 임의 미등재 이름에도 동일하게 RouteExcluded를 반환한다 (zero value).
 func ExcludedSections() []string {
 	return []string{
@@ -126,10 +137,11 @@ func ExcludedSections() []string {
 		"tool-policy", "lsp", "mx",
 		// 미지명 잔여 섹션.
 		"constitution", "context", "design", "interview",
-		// SPEC-WEBCONF-SIMPLIFY-001 M3: 7 former seam sections reclassified to
+		// SPEC-WEBCONF-SIMPLIFY-001 M3: 6 former seam sections reclassified to
 		// RouteExcluded (tabs removed, web write path gone, config keys persist
 		// in baked template YAML for runtime consumption — REQ-WC-003).
-		// workflow restored to RouteSeam in Issue 3.
-		"harness", "ralph", "feedback", "observability", "security", "handoff", "cache",
+		// workflow restored to RouteSeam in Issue 3; feedback reopened to
+		// RouteSeam in SPEC-FEEDBACK-AUTO-SUBMIT-001 M7.
+		"harness", "ralph", "observability", "security", "handoff", "cache",
 	}
 }
