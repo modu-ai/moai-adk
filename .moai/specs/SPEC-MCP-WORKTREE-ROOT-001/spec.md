@@ -2,7 +2,7 @@
 id: SPEC-MCP-WORKTREE-ROOT-001
 title: "Let an MCP caller name its own tree, so a worktree SPEC stops being invisible"
 version: "0.4.0"
-status: draft
+status: in-progress
 created: 2026-08-22
 updated: 2026-08-22
 author: lane-7
