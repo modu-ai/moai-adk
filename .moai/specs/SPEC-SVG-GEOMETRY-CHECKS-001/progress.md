@@ -637,7 +637,7 @@ posture (§B D8) is likewise stated as wider rather than as matching C6.
 
 ```yaml
 run_complete_at: "2026-08-23"
-run_commit_sha: "<pending — this block is written into the commit it would name; backfill at sync>"
+run_commit_sha: "f80fcc7c5"  # M3, the commit this block was written into; backfilled post-sync
 run_status: PASS
 ac_pass_count: 16
 ac_fail_count: 0
@@ -670,7 +670,7 @@ Notes bounding the block above:
 
 ```yaml
 sync_complete_at: "2026-08-23"
-sync_commit_sha: "pending-backfill-sync — this block is written into the commit it would name"
+sync_commit_sha: "351534a88"  # the sync-close commit this block was written into; backfilled here
 sync_status: PASS
 sync_audit:
   verdict: PASS
