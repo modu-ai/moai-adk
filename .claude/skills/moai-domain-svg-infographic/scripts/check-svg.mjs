@@ -23,10 +23,19 @@
 //   error    deterministic and structural; always fix before rendering
 //   warning  heuristic (character-advance estimation); confirm against the PNG
 //
-// The error tier covers document structure (SVG001-SVG050) and the
+// The error tier covers document structure (SVG001-SVG050), the
 // accessible-SVG contract (SVG060-SVG064: role, aria-labelledby, <title> first,
-// <desc> present, ids prefixed per diagram). Fixtures exercising the contract in
-// both directions live in fixtures/a11y-present.svg and fixtures/a11y-missing.svg.
+// <desc> present, ids prefixed per diagram), and connector geometry
+// (SVG070-SVG072). The SVG07x tier mechanises three of the six connector rules
+// in references/authoring.md section 2.5: SVG070 and SVG073 for a label mask
+// clearing its own stroke by less than 6 or more than 10 units, and only for a
+// mask within 16 units of a connector; SVG071 for a mask partially overlapping a
+// later-painted rect; SVG072 for two connector ARRIVAL points closer than the
+// edge floor (12 units, 8 on an edge under 120) -- departure points, and
+// connectors carrying neither marker, are never compared. SVG074 warns once per
+// file when a transform kept elements out of these checks. Fixtures for every
+// code, and the runner asserting their exact code sets, live in fixtures/ and
+// test-check-svg.mjs.
 
 import { readFileSync } from 'node:fs';
 
@@ -302,6 +311,269 @@ function hasTransform(el) {
 }
 
 // ---------------------------------------------------------------------------
+// Connector geometry (the C2 / C4 / C6 rules of references/authoring.md 2.5)
+// ---------------------------------------------------------------------------
+
+// The documented connector idiom: an arrowhead stands markerLen off the box it
+// points at, elbows are rounded at r = 8, crossings hop at rHop = 5.
+const MARKER_LEN = 10;
+// C2's band: a label mask clears its own stroke by 6 to 10 units inclusive.
+const C2_MIN_CLEARANCE = 6;
+const C2_MAX_CLEARANCE = 10;
+// A mask associates to its own connector only within the band's upper bound
+// plus a tolerance of 6, C2's own lower bound. Beyond that it labels nothing.
+const MASK_WINDOW = C2_MAX_CLEARANCE + C2_MIN_CLEARANCE;
+// C4's fan floor, selected by the length of the edge the arrivals land on.
+const C4_LONG_EDGE = 120;
+const C4_FLOOR_LONG = 12;
+const C4_FLOOR_SHORT = 8;
+
+// Definitions, not painted geometry: document order says nothing about their
+// paint order either, so they are wrong inputs to every check below.
+const NON_RENDERED = new Set(['defs', 'marker', 'symbol', 'clipPath', 'mask', 'pattern']);
+
+const EDGE_NAMES = ['top', 'right', 'bottom', 'left'];
+
+function inNonRendered(el) {
+  for (let cur = el; cur !== null; cur = cur.parent) {
+    if (NON_RENDERED.has(cur.name)) return true;
+  }
+  return false;
+}
+
+const PATH_TOKEN = /([MmLlHhVvQqAaZz])|([+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?)|([\s,]+)|([^])/g;
+
+// Splits a d attribute into command letters and numbers, or returns null on the
+// first character the reader does not handle (C, S, T, malformed numbers).
+function tokenizePath(d) {
+  const out = [];
+  PATH_TOKEN.lastIndex = 0;
+  let m;
+  while ((m = PATH_TOKEN.exec(d)) !== null) {
+    if (m[1] !== undefined) out.push({ cmd: m[1] });
+    else if (m[2] !== undefined) out.push({ n: Number(m[2]) });
+    else if (m[3] !== undefined) continue;
+    else return null;
+  }
+  return out;
+}
+
+function quadraticAt(p0, c, p1, t) {
+  const u = 1 - t;
+  return [
+    u * u * p0[0] + 2 * u * t * c[0] + t * t * p1[0],
+    u * u * p0[1] + 2 * u * t * c[1] + t * t * p1[1],
+  ];
+}
+
+// Recovers a connector's polyline from its d attribute, or null when any part
+// of it cannot be fully interpreted - a connector the reader cannot read is
+// skipped silently rather than approximated.
+function readPolyline(d) {
+  if (typeof d !== 'string') return null;
+  const toks = tokenizePath(d);
+  if (toks === null) return null;
+
+  const points = [];
+  let i = 0;
+  let cx = 0;
+  let cy = 0;
+  let sx = 0;
+  let sy = 0;
+  let started = false;
+
+  const isNumber = () => i < toks.length && toks[i].n !== undefined;
+  const take = () => (isNumber() ? toks[i++].n : null);
+
+  while (i < toks.length) {
+    if (toks[i].cmd === undefined) return null; // coordinates with no command
+    let cmd = toks[i++].cmd;
+
+    if (cmd === 'Z' || cmd === 'z') {
+      if (!started) return null;
+      cx = sx;
+      cy = sy;
+      points.push([cx, cy]);
+      continue;
+    }
+    if (!isNumber()) return null; // a command carrying no arguments
+
+    let first = true;
+    while (isNumber()) {
+      const relative = cmd === cmd.toLowerCase();
+      const kind = cmd.toUpperCase();
+
+      if (kind === 'M' || kind === 'L') {
+        const x = take();
+        const y = take();
+        if (y === null) return null;
+        cx = relative ? cx + x : x;
+        cy = relative ? cy + y : y;
+        if (kind === 'M' && first) {
+          sx = cx;
+          sy = cy;
+          started = true;
+        }
+        points.push([cx, cy]);
+      } else if (kind === 'H') {
+        const x = take();
+        cx = relative ? cx + x : x;
+        points.push([cx, cy]);
+      } else if (kind === 'V') {
+        const y = take();
+        cy = relative ? cy + y : y;
+        points.push([cx, cy]);
+      } else if (kind === 'Q') {
+        // The rounded elbow of 2.2. Its control point is the un-rounded corner,
+        // a point the stroke never reaches, so the curve is subdivided and the
+        // control point dropped: emitting it would bias a clearance measured on
+        // the convex side inward and report a compliant mask.
+        const x1 = take();
+        const y1 = take();
+        const x = take();
+        const y = take();
+        if (y === null) return null;
+        const p0 = [cx, cy];
+        const c = [relative ? cx + x1 : x1, relative ? cy + y1 : y1];
+        const p1 = [relative ? cx + x : x, relative ? cy + y : y];
+        for (const t of [0.25, 0.5, 0.75]) points.push(quadraticAt(p0, c, p1, t));
+        points.push(p1);
+        cx = p1[0];
+        cy = p1[1];
+      } else if (kind === 'A') {
+        // The crossing hop of 2.3: a pass-through between the current point and
+        // the arc endpoint, which is all the clearance checks need.
+        take();
+        take();
+        take();
+        take();
+        take();
+        const x = take();
+        const y = take();
+        if (y === null) return null;
+        cx = relative ? cx + x : x;
+        cy = relative ? cy + y : y;
+        points.push([cx, cy]);
+      } else {
+        return null;
+      }
+
+      if (!started) return null; // a subpath that does not open with M
+      first = false;
+      if (kind === 'M') cmd = relative ? 'l' : 'L'; // implicit repeats are linetos
+    }
+  }
+
+  return points.length >= 2 ? points : null;
+}
+
+function pointSegmentDistance(p, a, b) {
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const len2 = dx * dx + dy * dy;
+  if (len2 === 0) return Math.hypot(p[0] - a[0], p[1] - a[1]);
+  const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / len2));
+  return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
+}
+
+function segmentsCross(a, b, c, d) {
+  const side = (o, p, q) => (p[0] - o[0]) * (q[1] - o[1]) - (p[1] - o[1]) * (q[0] - o[0]);
+  const d1 = side(a, b, c);
+  const d2 = side(a, b, d);
+  const d3 = side(c, d, a);
+  const d4 = side(c, d, b);
+  return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0));
+}
+
+function segmentDistance(a, b, c, d) {
+  if (segmentsCross(a, b, c, d)) return 0;
+  return Math.min(
+    pointSegmentDistance(a, c, d),
+    pointSegmentDistance(b, c, d),
+    pointSegmentDistance(c, a, b),
+    pointSegmentDistance(d, a, b),
+  );
+}
+
+function rectContains(r, p) {
+  return p[0] >= r.x && p[0] <= r.x + r.w && p[1] >= r.y && p[1] <= r.y + r.h;
+}
+
+function rectCorners(r) {
+  return [
+    [r.x, r.y],
+    [r.x + r.w, r.y],
+    [r.x + r.w, r.y + r.h],
+    [r.x, r.y + r.h],
+  ];
+}
+
+// Overlap or touching counts as distance 0, which is C2's crossing case.
+function rectPolylineDistance(r, points) {
+  const corners = rectCorners(r);
+  let best = Infinity;
+  for (let k = 1; k < points.length; k++) {
+    const a = points[k - 1];
+    const b = points[k];
+    if (rectContains(r, a) || rectContains(r, b)) return 0;
+    for (let e = 0; e < 4; e++) {
+      best = Math.min(best, segmentDistance(a, b, corners[e], corners[(e + 1) % 4]));
+      if (best === 0) return 0;
+    }
+  }
+  return best;
+}
+
+function rectOf(el) {
+  const w = num(el.attrs.width);
+  const h = num(el.attrs.height);
+  if (w === null || h === null || w <= 0 || h <= 0) return null;
+  return { x: num(el.attrs.x) ?? 0, y: num(el.attrs.y) ?? 0, w, h };
+}
+
+// The four attach surfaces, ordered top / right / bottom / left so a tie
+// between two equidistant edges resolves deterministically.
+function edgesOf(r) {
+  return [
+    { horizontal: true, at: r.y, from: r.x, length: r.w },
+    { horizontal: false, at: r.x + r.w, from: r.y, length: r.h },
+    { horizontal: true, at: r.y + r.h, from: r.x, length: r.w },
+    { horizontal: false, at: r.x, from: r.y, length: r.h },
+  ];
+}
+
+// An endpoint reaches an edge only where its projection falls inside the edge
+// span; the perpendicular distance is what the standoff is compared against.
+function edgeReach(p, edge) {
+  const offset = (edge.horizontal ? p[0] : p[1]) - edge.from;
+  if (offset < 0 || offset > edge.length) return null;
+  return { distance: Math.abs((edge.horizontal ? p[1] : p[0]) - edge.at), offset };
+}
+
+// The single nearest edge across every box, or null when none is in reach.
+function bindEndpoint(p, boxes, standoff) {
+  let best = null;
+  for (let b = 0; b < boxes.length; b++) {
+    const edges = boxes[b].edges;
+    for (let e = 0; e < 4; e++) {
+      const reach = edgeReach(p, edges[e]);
+      if (reach === null || reach.distance > standoff) continue;
+      if (best !== null && reach.distance >= best.distance) continue;
+      best = { box: b, edge: e, offset: reach.offset, distance: reach.distance, length: edges[e].length };
+    }
+  }
+  return best;
+}
+
+function touchesRect(p, edges, standoff) {
+  for (const edge of edges) {
+    const reach = edgeReach(p, edge);
+    if (reach !== null && reach.distance <= standoff) return true;
+  }
+  return false;
+}
+
+// ---------------------------------------------------------------------------
 // Checks
 // ---------------------------------------------------------------------------
 
@@ -560,6 +832,154 @@ function lint(src, opts) {
         report(WARNING, 'SVG040', el.offset, `<${el.name}> extends past the viewBox on the ${overflow.join(' and ')}`);
       }
     });
+  }
+
+  // SVG070 / SVG071 / SVG072 / SVG073 / SVG074 - connector geometry.
+  // Mechanises C2 (a label mask clears its own stroke by 6-10 units), C4
+  // (connector arrivals on one box edge stay apart) and C6 (a label mask may
+  // not partially overlap a shape painted after it). Nothing new is asked of
+  // the author: a connector, a box and a label mask are inferred from geometry
+  // and sibling order alone, and every ambiguity resolves toward silence.
+  {
+    const candidates = [];
+    walk(svg, (el) => {
+      if (el.name !== 'path' && el.name !== 'rect' && el.name !== 'text') return;
+      if (inNonRendered(el)) return;
+      candidates.push(el);
+    });
+    const skipped = candidates.filter(hasTransform);
+    const usable = candidates.filter((el) => !hasTransform(el));
+
+    // Connectors: a stroked path, the documented idiom being fill="none". A
+    // filled path is a shape; a d the reader cannot read is skipped silently.
+    const connectors = [];
+    for (const el of usable) {
+      if (el.name !== 'path') continue;
+      if (el.attrs.fill === undefined || el.attrs.fill.trim() !== 'none') continue;
+      const points = readPolyline(el.attrs.d);
+      if (points === null) continue;
+      // An arrival point is an endpoint at which a marker resolves. Departures
+      // are never compared: the fan-out trunk and the tree stem deliberately
+      // emit every connector of a family from one identical point.
+      const arrivals = [];
+      if (el.attrs['marker-end'] !== undefined) arrivals.push(points[points.length - 1]);
+      if (el.attrs['marker-start'] !== undefined) arrivals.push(points[0]);
+      connectors.push({ el, points, arrivals, ends: [points[0], points[points.length - 1]] });
+    }
+
+    const boxes = [];
+    for (const el of usable) {
+      if (el.name !== 'rect') continue;
+      const rect = rectOf(el);
+      if (rect === null) continue;
+      boxes.push({ el, rect, edges: edgesOf(rect) });
+    }
+
+    // SVG072 - C4: group arrivals by the edge they land on, then compare
+    // neighbours against the floor that edge's length selects.
+    const groups = new Map();
+    for (const connector of connectors) {
+      for (const point of connector.arrivals) {
+        const bound = bindEndpoint(point, boxes, MARKER_LEN);
+        if (bound === null) continue;
+        const key = bound.box + ':' + bound.edge;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push({ offset: bound.offset, el: connector.el, bound });
+      }
+    }
+    for (const arrivals of groups.values()) {
+      arrivals.sort((a, b) => a.offset - b.offset);
+      for (let k = 1; k < arrivals.length; k++) {
+        const edgeLength = arrivals[k].bound.length;
+        const floor = edgeLength >= C4_LONG_EDGE ? C4_FLOOR_LONG : C4_FLOOR_SHORT;
+        const gap = arrivals[k].offset - arrivals[k - 1].offset;
+        if (gap >= floor) continue;
+        report(
+          ERROR,
+          'SVG072',
+          Math.max(arrivals[k - 1].el.offset, arrivals[k].el.offset),
+          `two connectors arrive ${gap.toFixed(1)} units apart on the ${EDGE_NAMES[arrivals[k].bound.edge]} edge of a ${edgeLength.toFixed(0)}-unit box; C4 fans arrivals at least ${floor} units apart there`,
+        );
+      }
+    }
+
+    // Label-mask candidates: a rect whose immediately following sibling is a
+    // <text>, and which no connector endpoint attaches to. The attach test runs
+    // at the association window rather than the markerLen standoff, so a node a
+    // connector merely stops short of is never read as that connector's own
+    // label. A mask wrapped away from its text is an accepted false negative.
+    const masks = [];
+    for (const box of boxes) {
+      const siblings = box.el.parent ? box.el.parent.children : [];
+      const next = siblings[siblings.indexOf(box.el) + 1];
+      if (next === undefined || next.name !== 'text') continue;
+      const attached = connectors.some((c) => c.ends.some((p) => touchesRect(p, box.edges, MASK_WINDOW)));
+      if (attached) continue;
+      masks.push(box);
+    }
+    const maskSet = new Set(masks.map((m) => m.el));
+
+    // SVG070 / SVG073 - C2: measure against the nearest connector inside the
+    // association window; a mask outside it labels nothing and is not checked.
+    for (const mask of masks) {
+      let nearest = Infinity;
+      for (const connector of connectors) {
+        const distance = rectPolylineDistance(mask.rect, connector.points);
+        if (distance <= MASK_WINDOW && distance < nearest) nearest = distance;
+      }
+      if (nearest === Infinity) continue;
+      if (nearest < C2_MIN_CLEARANCE) {
+        report(
+          ERROR,
+          'SVG070',
+          mask.el.offset,
+          `label mask clears its connector by ${nearest.toFixed(1)} units; C2 needs ${C2_MIN_CLEARANCE} to ${C2_MAX_CLEARANCE}`,
+        );
+      } else if (nearest > C2_MAX_CLEARANCE) {
+        report(
+          WARNING,
+          'SVG073',
+          mask.el.offset,
+          `label mask stands ${nearest.toFixed(1)} units off its connector; C2 keeps it within ${C2_MAX_CLEARANCE}`,
+        );
+      }
+    }
+
+    // SVG071 - C6: a mask may lie fully inside a rect painted after it (the
+    // badge chip) or share no area with it. Anything between the two renders
+    // the label as a fragment on that rect's border. Other masks are out of
+    // scope: C6 constrains overlap with a node, not with a second label.
+    for (const mask of masks) {
+      for (const later of boxes) {
+        if (later.el.offset <= mask.el.offset || maskSet.has(later.el)) continue;
+        const a = mask.rect;
+        const b = later.rect;
+        const overlapX = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+        const overlapY = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+        if (overlapX <= 0 || overlapY <= 0) continue; // disjoint, touching included
+        const contained = a.x >= b.x && a.y >= b.y && a.x + a.w <= b.x + b.w && a.y + a.h <= b.y + b.h;
+        if (contained) continue; // the badge chip C6 allows
+        report(
+          ERROR,
+          'SVG071',
+          mask.el.offset,
+          `label mask partially overlaps a <${later.el.name}> painted after it, so the label renders clipped on that shape's border`,
+        );
+      }
+    }
+
+    // SVG074 - one aggregate note per file. hasTransform walks ancestors, so a
+    // single wrapping <g transform> excludes everything inside it: the count is
+    // the transitively excluded population, stated against the whole candidate
+    // set rather than the number of elements carrying the attribute.
+    if (skipped.length > 0) {
+      report(
+        WARNING,
+        'SVG074',
+        svg.offset,
+        `${skipped.length} of ${candidates.length} candidate elements carry a transform and were skipped; their geometry is unverified`,
+      );
+    }
   }
 
   return diagnostics.sort((a, b) => a.line - b.line || a.column - b.column);

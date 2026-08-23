@@ -1,0 +1,16 @@
+<!-- expect: -->
+<!-- Mask candidacy: a rect 4 units from the stroke whose next sibling is a rect, not a text. It is not a label-mask candidate, so it is not checked - the accepted false negative of the narrow candidate rule. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="400" height="200"
+     role="img" aria-labelledby="mask-no-adjacent-text-title mask-no-adjacent-text-desc">
+  <title id="mask-no-adjacent-text-title">Unlabelled panel</title>
+  <desc id="mask-no-adjacent-text-desc">A panel sits close to a connector but carries no adjacent label text.</desc>
+  <defs>
+    <marker id="mask-no-adjacent-text-arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+      <path d="M 0 0 L 10 4 L 0 8 z" fill="#6B6359"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="400" height="200" fill="#FAF9F5"/>
+  <path d="M 60 120 H 340" stroke="#6B6359" stroke-width="1" fill="none" marker-end="url(#mask-no-adjacent-text-arrow)"/>
+  <rect x="150" y="96" width="90" height="20" fill="#FFFFFF"/>
+  <rect x="250" y="96" width="90" height="20" fill="#EFE9E0"/>
+</svg>

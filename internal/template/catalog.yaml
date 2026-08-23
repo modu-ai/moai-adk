@@ -101,7 +101,7 @@ catalog:
             - name: moai-domain-svg-infographic
               tier: core
               path: templates/.claude/skills/moai-domain-svg-infographic/
-              hash: 1b4c1a053807ebdacd237e7cb37490b3090f5abfd362b132f7ec3b21063ff33a
+              hash: 1519337a5fa9f2b17add17fdf02340fadcc9d6918a143d287d5e5a127fc2e980
               version: 1.0.0
             - name: moai-domain-design-dna
               tier: core

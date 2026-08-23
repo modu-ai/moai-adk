@@ -1,3 +1,4 @@
+<!-- expect: SVG060 SVG061 SVG062 SVG063 -->
 <!-- Fixture: structurally valid but carries no accessible name at all.
      check-svg.mjs must exit 1 and name every missing part (SVG060/061/062/063). -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="400" height="200">
