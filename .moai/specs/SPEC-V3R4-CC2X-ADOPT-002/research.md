@@ -2,8 +2,8 @@
 
 > **Umbrella SPEC**: SPEC-V3R4-CC2X-ADOPT-002 · created by `/harness:release-update`
 > 2026-08-23 (Phase 5 gate resolved as **Option C** — plan + docs sync + child stubs).
-> Child stubs: `SPEC-V3R4-CC2X-ADOPT-002-MSGR-001` (Windows messaging doctrine
-> refresh), `SPEC-V3R4-CC2X-ADOPT-002-MCP-001` (CC 2.1.238/239 MCP behavior notes).
+> Child stubs: `SPEC-V3R4-CC2X-MSGR-001` (Windows messaging doctrine
+> refresh), `SPEC-V3R4-CC2X-MCP-001` (CC 2.1.238/239 MCP behavior notes).
 > Canonical dev-only copy of this research also lives at
 > `.moai/research/cc-update-2.1.237-to-2.1.239.md` (untracked).
 
@@ -92,8 +92,8 @@ Not individually tabled; grouped:
 
 ## Recommended Child SPEC Decomposition
 
-- Child 1 — `SPEC-V3R4-CC2X-ADOPT-002-MSGR-001`: doctrine refresh — cross-session messaging availability + send-result outcomes (`cross-session-messaging.md`, `kanban-dispatch.md`; template + local mirrors).
-- Child 2 — `SPEC-V3R4-CC2X-ADOPT-002-MCP-001`: MCP notes — stdio discover-ordering note in `moai-mcp-tools.md` + headless trust-prompt caveat (docs-site 4-locale if user-facing).
+- Child 1 — `SPEC-V3R4-CC2X-MSGR-001`: doctrine refresh — cross-session messaging availability + send-result outcomes (`cross-session-messaging.md`, `kanban-dispatch.md`; template + local mirrors).
+- Child 2 — `SPEC-V3R4-CC2X-MCP-001`: MCP notes — stdio discover-ordering note in `moai-mcp-tools.md` + headless trust-prompt caveat (docs-site 4-locale if user-facing).
 - (No child needed for BOM — verified clean this run.)
 
 ## References
