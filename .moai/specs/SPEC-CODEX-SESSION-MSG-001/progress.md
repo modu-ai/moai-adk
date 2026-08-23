@@ -189,7 +189,35 @@ Phase 1 (Plan Audit Gate) 재실행 스킵: 최종 판정 PASS 0.987 ≥ Tier L 
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_status: audit-ready
+run_complete_at: 2026-08-23
+run_commit_sha:
+  M1: 7cd610c0f   # session message envelope + file store (internal/sessionmsg + defaults.go)
+  M2: 26e248ce6   # session_msg MCP tool surface (mcp_session_msg.go + registration + catalog 21→25)
+  M3: 8b66b873e   # doctrine codification + template mirrors (2 rules × 본품+미러, make build)
+  M4: 632196e06   # cross-session e2e evidence (session-msg-e2e marker)
+ac_pass_count: 15/15   # M1 7 (AC-CSM-001..006, 014) + M2 5 (007..010, 015) + M3 2 (011, 012) + M4 1 (013)
+ac_fail_count: 0
+preserve_list_post_run_count: 0   # §D 8항 전부 무훼손 (codex_task/glm/registry/frozen Entry, 기존 21도구, 교리 기존 조항 — M3 diff 제거 2줄 = 21→25 헤더+버전승격뿐, .moai/state/** runtime, AGENTS.md)
+l44_pre_commit_fetch: not-refetched-in-run-phase   # 브랜치 격리; base = origin/main 76b2c4ece (리드 M4 승인 시점 실측). 런 중 fetch 미실행 — 추정 아닌 미실행 기록
+l44_post_push_fetch: pending   # push는 오케스트레이터 몫 (마일스톤 경계) — push 후 백필
+new_warnings_or_lints_introduced: 0   # golangci-lint 0 issues (sessionmsg + mcp + config + cli), baseline 0
+cross_platform_build.darwin: exit 0
+cross_platform_build.windows_amd64: exit 0   # GOOS=windows GOARCH=amd64 go build ./...
+coverage: internal/sessionmsg 86.9% (go test -cover, ≥85% 게이트 통과)
+total_run_phase_files: 25 file-changes   # M1 13 + M2 6 + M3 5 + M4 1 (progress.md 마일스톤별 반복 포함)
+m1_to_mN_commit_strategy: 4 milestone commits on WT-codex-session-msg (main-based, release/v3.1.3 배치 밖) — 마일스톤별 개별 Conventional Commit, push 없음
+tdd_cycles: M1 3 RED-GREEN cycles (envelope→agent→store) + M2 3 (boundary-guard→catalog-equality→wiring) — RED 축어 §E.2; M3 docs (TDD 비적용 명시), M4 e2e (실프로세스 관측)
+e2e: serial ×1 — Claude측 실제 bin/moai-dev mcp-server(stdio) × codex-cli 0.147.0 codex exec 왕복 1회 (§E.2 M4 축어)
+step0_deviation: 전역 바이너리 재설치 금지(리드 판정 2026-08-23) — 트리 로컬 bin/moai-dev 사용, 병합 후 재설치
+gaps_carried:
+  - CLAUDE.md §4 "existing 21 MCP tools" 표기 정오후보 (sync-phase 소관)
+  - codex 0.147 approval_policy=never로는 MCP 호출 불가(P3 실측 재확인) — 제품 갭, 감사 gap #6 잔존
+  - lock_windows.go 런타임 실행검증은 CI windows 매트릭스 몫 (darwin은 빌드 게이트만)
+```
+
+§E.2가 근거를 전부 보유 — 본 블록은 신호 요약이며 근거 재진술이 아니다.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
