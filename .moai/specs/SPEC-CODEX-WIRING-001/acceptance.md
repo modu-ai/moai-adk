@@ -17,7 +17,7 @@
 > 범위 의존 — 귀속 명령 `grep -rn 're-approve\|/hooks' internal/cli/*.go | grep -v _test | wc -l`
 > → 10, 글롭형·비재귀; 재귀 범위를 넓히면 수치가 달라진다).
 > **v0.3.0 추가 실측(2026-08-24, rebase 후 트리 @ 915c310de)**: `statusLineAllowlist` 0 ·
-> `17827`(README.md·README.ko.md·README.en.md·README.ja.md·README.zh.md·docs-site/content) 0 —
+> `17827`(README.md·README.ko.md·README.ja.md·README.zh.md·docs-site/content) 0 —
 > 채택. `status_line` 단독은 internal/ Go 46hit(Claude statusline 코드 충돌)으로 채택 제외 —
 > 저장소 코드 토큰은 `statusLineAllowlist`를 쓰고, `status_line` grep은 스크래치 산출물
 > 파일 대상으로만 사용한다.
@@ -128,11 +128,11 @@ TOML로 파싱되고 `tui.status_line` 값이 정확히 기본 구성 5종이다
 `grep -c 'status_line = \["model"\]' …/config.toml` = 1 유지). *And Given* 회귀 가드, *When*
 `go test ./internal/codexwiring/ -run StatusLine`을 실행하면, *Then* (a) 기본 구성이 5개
 정식 토큰과 정확히 일치하고, (b) 기본 구성 ⊆ `statusLineAllowlist`(발행 원천 상수), (c) 기본
-구성에 파싱 별칭 6종(session-id·context-usage·model-name·project·project-root·status·approval)이
+구성에 파싱 별칭 7종(session-id·context-usage·model-name·project·project-root·status·approval)이
 0건이다(정식 토큰만 발행).
 
 **AC-CW-014** (SHOULD, REQ-CW-014) — *Given* sync-phase 문서 갱신, *When*
-`grep -rn '17827' README.md README.ko.md README.en.md README.ja.md README.zh.md docs-site/content/ko/`
+`grep -rn '17827' README.md README.ko.md README.ja.md README.zh.md docs-site/content/ko/`
 를 실행하면, *Then* openai/codex#17827 미해소로 MoAI 고유 statusline 항목(goal·todo·SPEC) 노출이
 불가함을 언급하는 히트 ≥ 1(토큰 base-0: 2026-08-24 실측 0hit). 미달 시 사유와 함께 부채 기록.
 

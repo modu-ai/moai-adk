@@ -8,16 +8,17 @@
 - 카드 t88 (Class C) / 에픽 Codex dual-harness M4. 목표: `moai init --agent claude|codex|both`로
   `.codex/hooks.json` + `.codex/config.toml`(mcp_servers.moai, writes 승인) 배선, codexadapter의
   첫 프로덕션 호출자 확보, 신뢰 안내 + doctor 점검.
-- **베이스 제약 (§A.1 of spec.md)**: 작성 시점 origin/main(76b2c4ece)에는 듀얼 하네스 코어가
-  전무하다 — `internal/codexadapter`·`.codex` 템플릿 전부가 미병합 PR #1602(release/v3.1.3)에
-  있다. run-phase는 #1602 병합 후 베이스에서 시작해야 한다(§C Pre-flight #1).
+- **베이스 제약 (§A.1 of spec.md; review-3 D2 갱신)**: 작성 시점 origin/main(76b2c4ece)에는
+  듀얼 하네스 코어가 전무했다 — `internal/codexadapter`·`.codex` 템플릿 전부가 당시 미병합
+  PR #1602(release/v3.1.3)에 있었다. **2026-08-24 충족**: #1602 병합(915c310de) 후 rebase —
+  pre-flight #1-3 실측 초록.
 - 구 블로커(프로젝트 hooks.json 미발화)는 운영자 실측으로 폐기(spec §A.3). 남은 차단은 배선 부재뿐.
 - t187 정합성 결론(spec §A.4): `writes`는 capability 기반 → config에 도구명 열거 없음.
   단 정확성은 공짜가 아니다 — base 실태 유효 불일치 4도구(실효 승인 집합 10)를 M2가 수정한
   뒤에야 병합 순서 독립으로 성립(base 6 → t187 병합 후 9). 유효값 기준 annotation
   가드 테스트가 그 불변식의 기계화다.
 - **v0.3.0 statusline 범위(운영자 지시 2026-08-24)**: config.toml에 `[tui] status_line`
-  기본 5종을 create-if-absent로 함께 발행(spec §A.6 사실 기준 — 정식 토큰 29종 + 별칭 6종,
+  기본 5종을 create-if-absent로 함께 발행(spec §A.6 사실 기준 — 정식 토큰 29종 + 별칭 7종,
   카드 제안의 "context"/"cwd"/"session-id"는 정식 토큰 context-remaining/current-dir/thread-id로
   확정). command-backed 미지원(#17827) 한계 문서화는 sync-phase(SHOULD, REQ-CW-014).
 
@@ -39,9 +40,9 @@
 3. `go test ./internal/codexadapter/...` 전량 통과(M3 인수 상태 확인).
 4. `.moai/reports/t83/precondition-measurement-round3.md` §4(화이트리스트 근거)의 행 번호가
    run-base와 일치하는지 육안 확인 — 인용이 아니라 원칙(최상위 {description, hooks})만 가져간다.
-   **[review-1 D4 주석]** 이 파일들은 이 워크트리에 없다(release/v3.1.3 수록, #1602 미병합).
-   run-base에서 #1602가 병합돼 있으면 읽힌다; 그 전에는 감사 보고서 `.moai/reports/t88/codex-support-audit.md`
-   §2.4의 인용(화이트리스트 3계층)이 대리 근거다. 조치 불요.
+   **[review-1 D4 주석; review-3 D2 갱신]** 이 파일들은 작성 시점 이 워크트리에 없었다
+   (release/v3.1.3 수록, #1602 미병합). 2026-08-24 rebase 후에는 이 트리에서 직접 읽힌다
+   (`ls .moai/reports/t83/` 실측 hit) — 대리 근거 불필요.
 5. 검증 환경: 격리 `CODEX_HOME` 확보(t83 위생). 실제 `~/.codex/` mtime 무변경 전후 확인.
 
 ## §D. Milestones
@@ -77,7 +78,7 @@
   SessionEnd 타임아웃 상한, 결정론(키 순서·무타임스탬프).
 - **[v0.3.0] status_line 회귀 테스트**(AC-CW-013 회귀 팔 — `-run StatusLine`): (a) 기본
   구성이 5 정식 토큰과 정확 일치, (b) 기본 구성 ⊆ `statusLineAllowlist`, (c) 기본 구성에
-  파싱 별칭 6종 0건, (d) 병합 3분기 각각의 바이트 판정.
+  파싱 별칭 7종 0건, (d) 병합 3분기 각각의 바이트 판정.
 
 ### M2 — `--agent` 플래그 + init/update 배선 + annotation 4도구 수정
 

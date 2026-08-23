@@ -1,7 +1,7 @@
 ---
 id: SPEC-CODEX-WIRING-001
 title: "Codex Dual Harness M4 — wiring generator: moai init --agent claude|codex|both, .codex/hooks.json + config.toml, trust guidance, doctor"
-version: "0.3.0"
+version: "0.3.1"
 status: draft
 created: 2026-08-23
 updated: 2026-08-24
@@ -25,7 +25,8 @@ related_specs: [SPEC-CODEX-DUAL-AGENTS-001, SPEC-CODEX-SKILLS-CANONICAL-001, SPE
 |---|---|---|
 | 0.1.0 | 2026-08-23 | 최초 작성 (plan-phase, card t88 / M4). 구 M4 블로커("프로젝트 hooks.json 미발화") 전제를 운영자 실측 정정(§A.3)으로 폐기하고 재설계 |
 | 0.2.0 | 2026-08-23 | plan-audit review-1(D1 차단 + D2-D6 경미) 적용. D1: §A.4의 "21도구 전부 명시 선언" 주장이 오측이었음을 정정 — 명시 15/21·미선언 6·유효 불일치 4·실효 승인 집합 10으로 교체, REQ-CW-011/AC-CW-010을 유효값 기준선으로 재정의, 4도구 annotation 수정을 plan M2에 명시 + PRESERVE 예외 축소. D2: /hooks 히트수 범위 한정 재기술. D3: §G 격리 주석. D5: 시험명 REQ→AC 이동 |
-| 0.3.0 | 2026-08-24 | 운영자 지시 statusline 범위 추가(카드 t88 본문 개정 2026-08-24). §A.6 사실 기준 신설(공식 문서·소스 확정 — 정식 식별자 29종 + 별칭 6종), REQ-CW-013(status_line create-if-absent 배선)·REQ-CW-014(한계 문서화, SHOULD) 신설, REQ-CW-005 MoAI 관리 범위에 tui.status_line 확정 기재, AC 12→14(MUST 13 + SHOULD 1). Tier M REQ/AC 상한 16 이내 |
+| 0.3.0 | 2026-08-24 | 운영자 지시 statusline 범위 추가(카드 t88 본문 개정 2026-08-24). §A.6 사실 기준 신설(공식 문서·소스 확정 — 정식 식별자 29종 + 별칭 7종), REQ-CW-013(status_line create-if-absent 배선)·REQ-CW-014(한계 문서화, SHOULD) 신설, REQ-CW-005 MoAI 관리 범위에 tui.status_line 확정 기재, AC 12→14(MUST 13 + SHOULD 1). Tier M REQ/AC 상한 16 이내 |
+| 0.3.1 | 2026-08-24 | plan-audit review-3(PASS 0.86) 경미 결함 D1-D3 적용. D1: 미존재 영어 로케일 README 중복 열거 제거(영어 정본=README.md, README 총 4종). D2: rebase 후 낡은 사실 갱신 — §A.1을 작성 기준 사실+해소 이력으로 재서술, §G 격리 주석을 #1602 병합 후 상태(잔여 부재 #1606만)로 갱신, §G 의존 표에 충족 기록, plan §A·§C#4 동일 갱신. D3: 별칭 개수 토큰 수 기준 7종으로 정정(6은 매핑 대상 수) |
 
 ## §A. 측정 전제 (Verified baseline)
 
@@ -33,13 +34,15 @@ related_specs: [SPEC-CODEX-DUAL-AGENTS-001, SPEC-CODEX-SKILLS-CANONICAL-001, SPE
 > `.moai/reports/t88/moai-desktop-compat-20260823.html` (운영자 검증 정정, 2026-08-23) ·
 > `.moai/reports/t83/precondition-measurement{,-round3}.md` (codex-cli 0.147.0 실측, release/v3.1.3 수록).
 
-### §A.1 현재 트리(origin/main) 상태 — 듀얼 하네스 코드는 전무
+### §A.1 작성 기준 트리(origin/main @ 76b2c4ece) 상태 — 듀얼 하네스 코어 부재 → 해소 이력
 
-본 SPEC의 작성 기준 트리(WT-codex-wiring @ 76b2c4ece = origin/main tip)에는 Codex 듀얼 하네스
-코어가 **하나도 없다** — `internal/codexadapter` · `internal/template/templates/.codex/` ·
-`AGENTS.md` 템플릿 · 스킬 미러 전부가 미병합 release batch PR #1602(release/v3.1.3)에 실려 있다
-(`git ls-tree origin/main internal/ | grep codex` → 0건; `origin/release/v3.1.3` → hit).
-따라서 본 SPEC의 run-phase 베이스는 **PR #1602 병합 후(또는 그 위로의 리베이스)** 여야 한다(§G).
+본 SPEC의 작성 기준 트리(WT-codex-wiring @ 76b2c4ece = 당시 origin/main tip)에는 Codex 듀얼
+하네스 코어가 **하나도 없었다** — `internal/codexadapter` · `internal/template/templates/.codex/` ·
+`AGENTS.md` 템플릿 · 스킬 미러 전부가 당시 미병합 release batch PR #1602(release/v3.1.3)에
+실려 있었다(`git ls-tree origin/main internal/ | grep codex` → 0건; `origin/release/v3.1.3` → hit).
+**해소 이력(2026-08-24)**: #1602가 merge commit 915c310de로 main에 병합됐고 본 브랜치는 그
+위로 rebase했다 — 현재 트리에서 `internal/codexadapter` 존재·`go build` green·어댑터 테스트
+초록을 실측했다(plan §C Pre-flight). 잔여 미병합은 #1606(t187)뿐(§G).
 
 반면 배선 그 자체는 어느 브랜치에도 없다 — 감사 확정(§2.1/§2.4/§2.6): init 플래그 목록
 (`internal/cli/init.go:72-125`)에 `--agent` 부재, `.codex/hooks.json` 생성 코드 경로 0개,
@@ -148,8 +151,9 @@ t187 병합 후 25도구 트리 9개(병합 순서 독립). 불변식의 기계�
   context-remaining, context-used, five-hour-limit, weekly-limit, codex-version,
   context-window-size, used-tokens, total-input-tokens, total-output-tokens,
   thread-credits, estimated-thread-cost, thread-id, fast-mode, raw-output, thread-title,
-  workspace-headline, task-progress. **파싱 전용 별칭 6종**(구값 호환 — 발행에 쓰지 않는다):
-  model-name→model, project·project-root→project-name, status→run-state,
+  workspace-headline, task-progress. **파싱 전용 별칭 7종**(구값 호환 — 발행에 쓰지 않는다;
+  별칭 토큰 수 기준이며 매핑 대상 정식 토큰은 6종):
+  model-name→model, project→project-name, project-root→project-name, status→run-state,
   approval→approval-mode, context-usage→context-used, session-id→thread-id.
 - **카드 제안 5종의 정식 토큰 확정**: `model-with-reasoning` · `context-remaining`(카드의
   "context" — Claude statusline CW% 게이지에 대응하는 컨텍스트 게이지, used% = 100 − remaining%) ·
@@ -358,7 +362,7 @@ Given-When-Then 시나리오 14건(AC-CW-001..014 — MUST 13 + SHOULD 1)은 `ac
 매트릭스에 실행 가능한 명령과 함께 명세된다. grep 계열 AC의 토큰은 사전구현 트리에서 0반환을
 실측 기록했다(2026-08-23, 본 트리 — `default_tools_approval_mode`·`checkCodexWiring`·
 `"Codex Wiring"`·`/hooks to re-trust`·`codex /hooks` 전부 0hit. 2026-08-24 v0.3.0 추가 —
-`statusLineAllowlist` 0hit, `17827`(README 5종·docs-site/content) 0hit). 채택 제외 토큰 2종:
+`statusLineAllowlist` 0hit, `17827`(README 4종·docs-site/content) 0hit). 채택 제외 토큰 2종:
 `/hooks` 단독(기존 문구 충돌 — 히트수는 범위 의존적이라 명령으로 귀속한다:
 `grep -rn 're-approve\|/hooks' internal/cli/*.go | grep -v _test | wc -l` → **10**, 글롭형·
 비재귀, internal/cli 최상위 .go 한정; 재귀 범위를 넓히면 수치가 달라진다)와 `status_line`
@@ -387,14 +391,16 @@ Given-When-Then 시나리오 14건(AC-CW-001..014 — MUST 13 + SHOULD 1)은 `ac
 
 | 대상 | 유형 | 내용 |
 |---|---|---|
-| SPEC-CODEX-HOOK-ADAPTER-001 (M3, release PR #1602) | **강함 (depends_on)** | `internal/codexadapter` 전체 표면을 소비. run-phase 베이스에 PR #1602 병합 필수 — 미병합 시 `go build` 자체가 불가(패키지 부재) |
+| SPEC-CODEX-HOOK-ADAPTER-001 (M3, release PR #1602) | **강함 (depends_on)** | `internal/codexadapter` 전체 표면을 소비. run-phase 베이스에 PR #1602 병합 필수 — **2026-08-24 충족(915c310de merge + rebase, pre-flight 실측 초록)** |
 | SPEC-CODEX-DUAL-AGENTS-001 (M5, 동일 PR) | 참조 (related) | `.codex/agents/moai/*.toml` 배포면 — 본 SPEC은 무변경(REQ-CW-012) |
 | SPEC-CODEX-SKILLS-CANONICAL-001 (M1, 동일 PR) | 참조 (related) | `.agents/skills` 미러 — 본 SPEC과 무관하나 같은 배포 체인 |
 | SPEC-CODEX-SESSION-MSG-001 (t187, PR #1606 미병합) | 정합성 (related) | §A.4 — `writes` capability 기반 판정으로 병합 순서 독립. annotation 가드(REQ-CW-011)가 양 트리에서 성립 |
 
-> **브랜치 격리 주석 (plan-audit review-1 D3)**: 위 4개 SPEC 디렉터리는 이 글라 branches의
-> `.moai/specs/`에 없다 — #1602(release batch)·#1606(t187) 미병합 산출물이므로. 조치 불요:
-> 병합 시점에 자동 해소되며, 리드가 run batch 진입 전 #1602 상태를 재확인한다(plan §C #1).
+> **브랜치 격리 주석 (plan-audit review-1 D3; review-3 D2 갱신)**: 작성 시점(76b2c4ece)에는
+> 위 4개 SPEC 디렉터리가 이 브랜치의 `.moai/specs/`에 없었다(#1602·#1606 미병합 산출물).
+> 2026-08-24 #1602 병합(915c310de) 후 rebase로 4종 중 3종(HOOK-ADAPTER·DUAL-AGENTS·
+> SKILLS-CANONICAL, 전부 `completed`)이 이 트리에 존재한다. 잔여 부재는 #1606(t187,
+> SESSION-MSG)뿐 — 병합 순서 독립성은 §A.4가 이미 담보하므로 run 차단 아니다.
 
 ## §H. Risks
 
