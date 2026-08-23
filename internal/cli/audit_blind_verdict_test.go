@@ -54,6 +54,7 @@ func TestSynthesizeReviewOutput_VerdictLineDirections(t *testing.T) {
 		{"stated FAIL uppercase", "VERDICT: FAIL\nreasons follow", "fail"},
 		{"stated fail, markdown bold", "**Verdict:** fail\n\nfindings follow", "fail"},
 		{"stated pass, no bullets", "Verdict: pass — no blocking findings.", "pass"},
+		{"stated inconclusive, no bullets", "Verdict: inconclusive — could not determine from the material shown.", "inconclusive"},
 		{"stated pass but bullets present", "Verdict: pass\n- [P1] secret at vuln.go:7", "fail"},
 		{"no verdict line, bullets", "- [P2] minor style issue", "fail"},
 		{"no verdict line, clean", "The change introduces no blocking issues.", "pass"},
