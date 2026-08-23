@@ -123,6 +123,52 @@ Gaps (M2): 실주행 MCP 서버(t184 재시작 스큐 포함) 검증은 M4 e2e �
 
 Gaps (M3): CLAUDE.md §4 "existing 21 MCP tools" 표기는 본 마일스톤 범위 밖(본품 카탈로그 규칙만 위임됨) — sync-phase 정오후보로 기록. t192 5-tools 텍스트는 본 트리에 부재(리드 실측 76b2c4ece 기준) — 수정 대상 없음.
 
+### M4 — e2e 실주고받기 (session-msg-e2e) — 2026-08-23, 직렬 1회, 실프로세스
+
+**`session-msg-e2e`** — AC-CSM-013 관측 기록. 전 과정 실프로세스: Claude측 액터 = 실제 `bin/moai-dev mcp-server` 프로세스(stdio JSON-RPC 드라이빙, 드라이버: `.moai/reports/t187/e2e/drive_mcp.py`), Codex측 = 실제 `codex exec` 세션(codex-cli 0.147.0)이 스폰한 또 다른 `bin/moai-dev mcp-server`.
+
+**0단계 — 리드 판정 이탈 기록(전역 재설치 금지)**: `~/go/bin/moai`(v3.1.3-rc.0, 릴리스 함대·훅 사용 중)을 재설치하지 않았다. 대신 `go build -o bin/moai-dev ./cmd/moai`(트리 로컬, `bin/`은 .gitignore:12로 비추적). 격리 CODEX_HOME의 `mcp_servers.moai.command`가 이 절대경로를 직접 지목. **전역 재설치는 병합 후 — main 기반 브랜치 바이너리의 전역 설치가 release 전용 수정을 regress시킴(리드 판정 2026-08-23)**.
+
+**공유 스토어 루트(하중 재불변량)**: 양측 루트 = `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t187` (스토어: `.moai/state/session-msg/`). 증명 3중: (a) Claude측 기록의 `cwd` 필드 = 워크트리 절대경로, (b) codex 재등록 후 `session_msg_list`가 양측 에이전트 동시 관측(LISTCOUNT: 2, CLAUDE_AGENTS에 claude- 반환), (c) `find`로 양측 기록 파일이 같은 `agents/` 디렉터리에 존재. **1차 시도 실패 기록(근거 보존)**: `codex mcp add`를 env 없이 하면 codex가 MCP 자식 프로세스에 `CLAUDE_PROJECT_DIR`을 전달하지 않아(환경 새니타이즈) codex측 서버가 cwd(`/tmp/m4-e2e/work`)로 루트를 오해석 — `LISTCOUNT: 1`로 적발, codex 기록이 `/tmp/m4-e2e/work/.moai/state/...`에 잘못 착지한 것을 find로 확인. 수정: `codex mcp add moai --env CLAUDE_PROJECT_DIR=<worktree> -- <abs>/bin/moai-dev mcp-server`(per-server env 고정) 후 재실행.
+
+**승인 정책(P3 실측 재확인)**: 시도 1 `-c approval_policy="never" -s read-only` → MCP 호출 2회 모두 `user cancelled MCP tool call`로 취소(감사 §2.6 그대로 재현). 시도 2 `--dangerously-bypass-approvals-and-sandbox` → 완주. 채택: 후자(프롬프트는 MCP 도구 호출만 지시, 셸 명령 없음, `timeout` + 격리 CODEX_HOME + 스크래치 cwd로 외부 구속).
+
+**3-7단계 축어 증거** (도구 응답의 structuredContent/최종 보고 축어):
+
+```
+# 3) Claude측 등록 (드라이버 → bin/moai-dev mcp-server, tools/call session_msg_register)
+{"content":[{"type":"text","text":"session_msg_register: ok"}],"structuredContent":{"agentId":"claude-ed1c3afc","kind":"claude","name":"claude-e2e","description":"M4 e2e Claude-side actor","version":"1","capabilities":{"messaging":true},"cwd":"/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t187","pid":27305,"host":"goos.local","registeredAt":"2026-08-23T12:03:18.377971Z","lastHeartbeat":"2026-08-23T12:03:18.377971Z"}}
+→ agentId A = claude-ed1c3afc
+
+# 4) Codex측 등록 + 발견 (codex exec, 신규 세션)
+mcp: moai/session_msg_register (completed)
+mcp: moai/session_msg_list (completed)
+AGENTID: codex-79279481
+LISTCOUNT: 2
+CLAUDE_AGENTS: claude-ed1c3afc
+→ agentId B = codex-79279481; 목록에 A·B 양측 관측 (공유 루트 증명)
+
+# 5) Claude→Codex 발신 (드라이버 tools/call session_msg_send)
+{"content":[{"type":"text","text":"session_msg_send: ok"}],"structuredContent":{"from":"claude-ed1c3afc","messageId":"msg-57d40535d4a2f107","to":"codex-79279481"}}
+→ messageId = msg-57d40535d4a2f107
+
+# 6) Codex 수신·확인·회신 (codex exec, 자기 messageId 추출 후 ack)
+mcp: moai/session_msg_send (completed)
+RECEIVED_TEXT: hello from claude over the session-msg broker (M4 e2e)
+ACKED_COUNT: 1
+SENT_MESSAGE_ID: msg-e1b0259fedda5c0b
+
+# 7) Codex→Claude 회신 수신 (드라이버 tools/call session_msg_poll, Claude측)
+{"content":[{"type":"text","text":"session_msg_poll: ok"}],"structuredContent":{"ackedCount":0,"expiredCount":0,"messages":[{"message":{"messageId":"msg-e1b0259fedda5c0b","role":"agent","parts":[{"kind":"text","text":"reply from codex: round trip complete"}]},"delivery":{"senderId":"codex-79279481","senderKind":"codex","sentAt":"2026-08-23T12:08:48.114333Z","expiresAt":"2026-08-24T12:08:48.114333Z","claimedAt":"2026-08-23T12:08:58.895267Z"}}],"remaining":0}}
+→ 왕복 성립: 송신문 축어 수신(RECEIVED_TEXT 일치), ack 삭제 확인(ACKED_COUNT 1), 회신 수신(senderKind codex, A2A camelCase 엔벨로프 관측)
+```
+
+**t184 재시작 전제 실측**: 드라이버 매 호출이 신규 서버 프로세스 — `tools/list`가 25도구 + session_msg 4종을 즉시 관측: `{"init_server":{"name":"moai","version":"v3.1.2"},"total_tools":25,"session_msg_tools":["session_msg_list","session_msg_poll","session_msg_register","session_msg_send"]}`.
+
+**9단계 위생 증명**: 실제 `~/.codex/config.toml`·`hooks.json`의 SHA-256 + mtime before/after 완전 일치(`diff` 무출력, `HYGIENE_UNCHANGED`). 격리 누수 없음. 잔여 프로세스 `pgrep -lx moai-dev` → 0 (codex 종료 시 MCP 서버 회수 확인). 격리 스크래치: `/tmp/m4-e2e/`(home·work), 드라이버·로그: `.moai/reports/t187/e2e/`(비추적).
+
+**스토어 착지 증명**: `agents/{claude-ed1c3afc,codex-79279481}.json` 양측 공유 루트에 존재; `mailbox/claude-ed1c3afc/claimed/msg-e1b0259fedda5c0b.json`(회신 클레임 상태 — at-least-once 시맨틱대로 ack 전 보존), codex 사서함은 ack 완료로 empty.
+
 ## §F Phase 4 Mode Selection
 
 Implementation Kickoff Approval: **통과 (운영자 승인 2026-08-23, 리드 경유 — 진행 모드: 반자율, 각 마일스톤 경계 리드 보고·승인, goal 엔진 무장 없음)**.
