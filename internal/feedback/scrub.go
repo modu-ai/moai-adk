@@ -9,6 +9,8 @@
 package feedback
 
 import (
+	"time"
+
 	"github.com/modu-ai/moai-adk/internal/hook"
 )
 
@@ -83,8 +85,14 @@ type Options struct {
 	Home string
 
 	// ProjectRoot is the directory whose .moai tree receives the mask log and
-	// the retry queue. Empty resolves by walking up from the working directory
-	// looking for the .moai marker. Consumed by the on-disk artefacts.
+	// the retry queue. Empty writes NO on-disk artefact — the scrub itself
+	// never depends on a root being known.
+	//
+	// Resolution lives at the CLI boundary rather than here: the tool resolves
+	// --root, falling back to ResolveProjectRoot, and passes the answer in. A
+	// silent walk-up from the working directory would make any Scrub call
+	// anywhere under a project write into that project's .moai tree, including
+	// from a test, which is exactly the surprise an explicit field avoids.
 	ProjectRoot string
 }
 
@@ -118,6 +126,11 @@ func Scrub(in Input, opt Options) (Result, error) {
 	body, bodyFindings := transform(in.Body, WhereBody, patterns, envValues, home)
 	findings = append(findings, titleFindings...)
 	findings = append(findings, bodyFindings...)
+
+	// Best-effort observation of what was masked. appendMaskLog is fail-open
+	// and returns no error on purpose: logging must never be able to fail a
+	// scrub (REQ-8).
+	appendMaskLog(opt.ProjectRoot, findings, time.Now())
 
 	return Result{
 		Verdict:  verdict,

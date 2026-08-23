@@ -300,6 +300,111 @@ AC-F-013 판정: **PASS** — `go test ./internal/feedback/ -run 'TestClassifyRe
 
 미검증(M3 시점): 임계값 2 는 이 SPEC 이 처음 정한 값이라 실사용 오탐률 근거가 없다. `Options.ProjectRoot` 는 여전히 M4(로그·큐) 소비 전까지 프로덕션 호출자가 없다.
 
+### M4 — 온디스크 산출물 2종
+
+Pre-flight (편집 전 트리 `3bcceffc7`, base `3210da7d3` 대상):
+
+```
+$ git ls-tree -r 3210da7d3 --name-only -- internal/feedback/masklog.go internal/feedback/queue.go | wc -l
+       0
+$ git ls-tree -r 3bcceffc7 --name-only -- internal/feedback/
+internal/feedback/classify.go
+internal/feedback/classify_test.go
+internal/feedback/env.go
+internal/feedback/paths.go
+internal/feedback/paths_test.go
+internal/feedback/patterns.go
+internal/feedback/scrub.go
+internal/feedback/scrub_test.go
+```
+
+두 파일 모두 부재였고 `Options.ProjectRoot` 는 M2 가 만든 뒤 프로덕션 소비자가 없었다 — M4 가 그 소비자다.
+
+RED (`go test ./internal/feedback/ -run 'TestMaskLog|TestQueue' -v`, 테스트만 있고 구현 없는 트리):
+
+```
+# github.com/modu-ai/moai-adk/internal/feedback [github.com/modu-ai/moai-adk/internal/feedback.test]
+internal/feedback/queue_test.go:15:40: undefined: QueueStore
+internal/feedback/queue_test.go:22:15: undefined: NewQueueStore
+internal/feedback/queue_test.go:22:29: undefined: QueuePathForRoot
+internal/feedback/queue_test.go:54:10: undefined: QueuePathForRoot
+internal/feedback/queue_test.go:90:41: undefined: queueFilePerm
+internal/feedback/queue_test.go:91:46: undefined: queueFilePerm
+internal/feedback/masklog_test.go:46:10: undefined: MaskLogPathForRoot
+internal/feedback/masklog_test.go:84:39: undefined: maskLogPerm
+internal/feedback/masklog_test.go:85:48: undefined: maskLogPerm
+internal/feedback/masklog_test.go:127:23: undefined: MaskLogPathForRoot
+internal/feedback/queue_test.go:91:46: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/feedback [build failed]
+FAIL
+```
+
+GREEN — AC별 명령을 각각 1회씩 실행해 관측한 결과:
+
+```
+$ go test ./internal/feedback/ -run 'TestMaskLogRecordsKindAndCountWithoutRawValue' -v
+    masklog_test.go:58: mask log entry: 2026-08-23T18:37:28+09:00 | total=1 | kind=secret where=body count=1
+--- PASS: TestMaskLogRecordsKindAndCountWithoutRawValue (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/feedback	0.568s
+
+$ go test ./internal/feedback/ -run 'TestMaskLog' -v
+--- PASS: TestMaskLogRequiresProjectRoot (0.00s)
+--- PASS: TestMaskLogSkipsCleanScrub (0.00s)
+2026/08/23 18:37:06 WARN feedback: cannot create mask log directory dir=/var/folders/.../001/.moai/logs error="mkdir /var/folders/.../001/.moai/logs: not a directory"
+--- PASS: TestMaskLogRecordsKindAndCountWithoutRawValue (0.00s)
+--- PASS: TestMaskLogFailureIsFailOpen (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/feedback	0.414s
+
+$ go test ./internal/feedback/ -run 'TestMaskLogFailureIsFailOpen' -v
+2026/08/23 18:37:09 WARN feedback: cannot create mask log directory dir=/var/folders/.../001/.moai/logs error="mkdir /var/folders/.../001/.moai/logs: not a directory"
+--- PASS: TestMaskLogFailureIsFailOpen (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/feedback	0.405s
+
+$ go test ./internal/feedback/ -run 'TestQueueEnqueuesOnSendFailure' -v
+--- PASS: TestQueueEnqueuesOnSendFailure (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/feedback	0.411s
+
+$ go test ./internal/feedback/ -run 'TestQueueResolvesOnSuccess' -v
+--- PASS: TestQueueResolvesOnSuccess (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/feedback	0.422s
+```
+
+경계 테스트 3건(AC 외 추가): `TestQueueRefusesBlockedResult`(차단 판정은 큐에 들어가지 못함) · `TestQueueNeverReadsPreScrubDraft`(D4 경계) · `TestQueueMutateSerializesConcurrentEnqueues`(잠금이 read-modify-write 전체를 덮음). 전부 PASS.
+
+패키지 트리 전체 (`go test -count=1 ./internal/feedback/... ./internal/sandbox/...`):
+
+```
+ok  	github.com/modu-ai/moai-adk/internal/feedback	0.693s
+ok  	github.com/modu-ai/moai-adk/internal/sandbox	0.267s
+```
+
+`go vet ./internal/feedback/... ./internal/sandbox/...` · `GOOS=windows go vet ./internal/feedback/... ./internal/sandbox/...` 둘 다 무출력, exit 0.
+`go test -race -count=1 ./internal/feedback/` → `ok ... 1.890s`.
+`golangci-lint run --timeout=3m ./internal/feedback/... ./internal/sandbox/...` → `0 issues.`
+`gofmt -l internal/feedback/` → 무출력.
+`git status --short` → 신규 4파일 + `scrub.go` 수정만. 실제 트리의 `.moai/logs/` 에는 아무것도 쓰이지 않았다(테스트는 전부 `t.TempDir()` 루트를 명시적으로 전달).
+
+AC-F-015 판정: **PASS** — `go test ./internal/feedback/ -run 'TestMaskLogRecordsKindAndCountWithoutRawValue' -v` 가 위 블록을 출력.
+AC-F-016 판정: **PASS** — `go test ./internal/feedback/ -run 'TestMaskLogFailureIsFailOpen' -v` 가 위 블록을 출력.
+AC-F-017 판정: **PASS** — `go test ./internal/feedback/ -run 'TestQueueEnqueuesOnSendFailure' -v` 가 위 블록을 출력.
+AC-F-018 판정: **PASS** — `go test ./internal/feedback/ -run 'TestQueueResolvesOnSuccess' -v` 가 위 블록을 출력.
+
+납품물:
+- `internal/feedback/masklog.go` — `.moai/logs/feedback-mask.log` 잠금 없는 append, `0o600`, 전 실패 경로 `slog.Warn` 강등. 엔트리는 `RFC3339 | total=N | kind=… where=… count=N` 한 줄.
+- `internal/feedback/queue.go` — `.moai/state/feedback/queue.json` 단일 JSON + 형제 lock(`queue.lock`) + `Mutate()` read-modify-write + `atomicfile.Replace`, `0o600`. `EnqueueMasked` / `Resolve` / `Load` / `QueuePathForRoot`.
+- `internal/feedback/masklog_test.go` · `internal/feedback/queue_test.go` — AC 4건 + 경계 3건.
+- `internal/feedback/scrub.go` — `appendMaskLog` 호출 1줄 + `Options.ProjectRoot` 주석 정정(아래 판단 1).
+
+설계 판단 5건:
+
+1. **프로젝트 루트 해석은 `Scrub` 이 아니라 CLI 경계에 둔다.** M2 의 `ProjectRoot` 주석은 "빈 값이면 작업 디렉터리에서 상향 탐색"이라고 적었으나, 그대로 구현하면 프로젝트 아래에서 일어나는 **모든** `Scrub` 호출이 그 프로젝트의 `.moai/` 에 쓴다 — M2·M3 테스트가 실제 리포의 `.moai/logs/` 에 로그를 남긴다(CLAUDE.local.md §6 위반). 빈 값 = **산출물 없음**으로 바꾸고, `--root` 해석과 `ResolveProjectRoot` 폴백은 M5 의 CLI 배선이 진다. `ResolveProjectRoot` 는 그대로 export 되어 있어 M5 가 그대로 쓴다.
+2. **두 산출물의 형태를 통일하지 않는다.** 로그는 잠금 없는 append(인터리빙은 한 줄 훼손, 잠금은 스크럽을 막을 수 있으므로 fail-open 위반), 큐는 잠금 있는 단일 JSON(성공 시 **삭제**를 표현해야 하므로 append-only 불가 — AP-7). `design.md` §5 그대로다.
+3. **`EnqueueMasked` 는 문자열 두 개가 아니라 `Result` 를 받는다.** `Result` 는 구조적으로 스크러버의 산출물이므로, 원문을 큐에 넣는 호출 형태가 아예 존재하지 않는다. 여기에 `verdict != ok` 거부를 더해, 차단된 보고가 재전송 경로로 우회 게시되는 길을 막는다(`ErrQueueBlockedResult`).
+4. **D4 경계는 주석이 아니라 동작으로 관측한다.** 같은 `.moai/state/` 트리에 `feedback-draft-<ts>.md` 를 두고 `Load()` 가 그것을 항목으로 읽지 않음을 단언한다(`TestQueueNeverReadsPreScrubDraft`). 소스에 `feedback-draft` 문자열이 없다는 grep 은 base 에서도 0 이라 아무것도 관측하지 못하므로 채택하지 않았다.
+5. **잠금 프리미티브는 `atomicfile.Claim` 을 재사용한다.** 리포의 "정확히 한 호출자만 진행" 프리미티브이고 POSIX·Windows 양쪽에서 원자적이다. `internal/kanban` 의 잠금은 보드/백로그 경로에 묶여 있어(`AcquireBoardLock(root)`) 임의 경로에 재사용할 수 없다 — 형태만 따르고 코드는 신규(`research.md` §2 의 판정 그대로).
+
+미검증(M4 시점): 잠금 경합 상한(25ms × 40 ≈ 1s)은 4-goroutine × 3 회 테스트에서만 관측했고 다중 **프로세스** 경합은 관측하지 않았다. `Resolve` 는 아직 프로덕션 호출자가 없다 — M5 의 큐 동사(`queue resolve`)가 그 소비자다. 잠금 아티팩트는 프로세스가 비정상 종료하면 남으며(POSIX flock 과 달리 자동 해제되지 않는다), stale-lock 정리 경로는 이 SPEC 범위 밖이다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
