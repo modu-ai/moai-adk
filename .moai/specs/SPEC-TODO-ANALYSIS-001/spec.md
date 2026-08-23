@@ -1,10 +1,10 @@
 ---
 id: SPEC-TODO-ANALYSIS-001
 title: "todo 큐 자동 분석 — 기계적 중복 탐지와 관계 기록, 그리고 큐레이션 금지선의 명문화"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-08-22
-updated: 2026-08-22
+updated: 2026-08-23
 author: manager-spec
 priority: P1
 phase: "v3.1.4 target"
@@ -30,7 +30,7 @@ tier: M
 큐 경로 어디에도 **분석 계층이 없다**. `internal/cli/todo*.go` 와 `internal/kanban/backlog_store.go` 를 훑으면 유사도·중복·관계·정렬 로직은 한 줄도 없고, 대신 두 파일의 주석이 그것을 **명시적으로 거부**하고 있다:
 
 - `internal/cli/todo_drop.go:13` — "no staleness heuristic, no duplicate detection, no absorption of one card into another … a doctrine change would have to come first."
-- `internal/cli/todo_edit_move.go:17` — "Nothing here infers what a card should say or where it belongs — no analysis, no absorption, no silent promotion."
+- `internal/cli/todo_edit_move.go:5-7` — "Nothing here infers what a card should say or where it belongs — no analysis, no absorption, no silent promotion."
 
 즉 이 기능은 "빠진 것"이 아니라 **의도적으로 배제된 것**이고, 코드 주석이 그 전제 조건까지 적어 두었다 — 독트린이 먼저 바뀌어야 한다.
 
@@ -60,20 +60,30 @@ tier: M
 
 독트린이 막는 손해는 두 겹이다. ① 운영자의 의도가 **파괴**되고, ② 파괴된 사실이 **보이지 않는다**. 되돌릴 수 있게 만들면 ①은 완화된다. 그러나 되돌리기는 **누군가 잘못을 알아챘을 때만** 발동한다. 알아챌 수 없는 변경에 대해서는 가역성이 아무것도 사 주지 못한다.
 
+**운영자는 이 위험을 이미 검토하고 완화안까지 적어 두었다.** 카드 t119 본문:
+
+> 오판 1건이 카드를 조용히 삼킬 수 있으므로 드롭은 되돌릴 수 있어야 한다(undrop 동사 존재).
+
+완화안은 위험을 정확히 지목한다. 갈리는 지점은 위험의 식별이 아니라 완화의 **발동 조건**이다. `undrop` 은 실재하지만, 운영자가 "저 카드가 있어야 하는데 없다"고 먼저 알아채야 손이 간다. 흡수와 재정렬은 하필 그 알아챔을 없애는 변형이다 — 흡수된 카드는 애초에 없던 카드와 구별되지 않고, 재정렬된 큐는 운영자의 평상시 화면에서 자기가 정렬한 큐와 구별되지 않는다. 완화안이 요구하는 전제(누군가 알아챈다)를 변형 자체가 무너뜨리는 셈이다. 그러므로 완화안이 틀린 것이 아니라, 이 두 동작에 대해서만 **닿지 않는다**. 이 SPEC 은 완화안을 폐기하지 않는다 — `undrop` 은 그대로 남고, 운영자의 `drop` 은 여전히 되돌릴 수 있다. 그 위에 조건을 하나 더 얹을 뿐이다.
+
 그래서 이 SPEC이 세우는 판정 기준은 가역성 단독이 아니라 **가역성 + 현저성(conspicuousness)** 이다:
 
-> 자동 변경은, 잘못된 결과가 **운영자가 의심하지 않아도 스스로 드러날 때에만** 허용된다.
+> **운영자가 저작한 카드의 내용·순서·존재**에 대한 자동 변경은, 잘못된 결과가 **운영자가 의심하지 않아도 스스로 드러날 때에만** 허용된다.
+
+범위 한정("운영자가 저작한 …")은 의도적이다. 기준이 지키려는 것은 운영자의 의도이지 저장소 내부 불변식이 아니다. 예컨대 `normalizeBacklogRecord`(`internal/kanban/backlog_store.go:326`)가 `last_seq` 를 최대 present id 까지 조용히 끌어올리는 수리는 카드의 내용·순서·존재를 하나도 바꾸지 않으므로 이 기준의 대상이 아니다. 한정어가 없으면 기준이 문자 그대로 기존 정상 동작까지 걸어 버린다.
 
 이 기준으로 카드의 세 요구를 각각 재면 답이 갈린다.
 
 | 동작 | 가역? | 현저? | 판정 |
 |---|---|---|---|
-| 정확 중복 add 를 **거절** | 아무것도 안 바꾸므로 자명 | 예 — 운영자가 id 대신 에러를 받는다 | **자동 허용** |
+| 정확 중복 add 를 **거절** | 아무것도 안 바꾸므로 자명 | **호출자가 exit code 또는 stderr 를 읽을 때에만** — 그때 운영자는 id 대신 에러를 받는다 | **조건부 자동 허용** (아래 잔여 위험) |
 | 근접 중복을 **기록** | 소견 삭제로 가역 | 예 — `list` 가 매번 보여준다 | **자동 허용** |
 | 한 카드를 다른 카드에 **접어 넣기** | `undrop` 으로 부분 가역 | **아니오** — 사라진 카드는 애초에 없던 카드와 구별되지 않는다 | **금지** |
-| 순서 **정리** | 이전 순서를 알아야 가역 | **아니오** — 재정렬된 큐는 운영자가 그렇게 정렬한 큐와 바이트 단위로 동일하다 | **금지** |
+| 순서 **정리** | 이전 순서를 알아야 가역 | **아니오** — 운영자의 기본 화면에서 구별되지 않는다 | **금지** |
 
-순서 정리가 결정적이다. 순서는 큐가 우선순위에 대해 기록하는 **유일한 신호**이고(`internal/cli/todo_edit_move.go:110` "Order is the only thing the queue records about priority"), 재정렬은 파일을 읽어서 탐지할 수 없다. 잘못된 재정렬은 영원히 알아채이지 않으므로, 되돌리기 경로를 아무리 잘 만들어도 발동되지 않는다.
+순서 정리가 결정적이다. 순서는 큐가 우선순위에 대해 기록하는 **유일한 신호**이고(`internal/cli/todo_edit_move.go:99` "Order is the only thing the queue records about priority"), `moai todo list` 의 사람용 렌더는 `id`·`state`·`text` 3열만 찍는다(`internal/cli/todo.go:309`) — `added_at` 은 화면에 아예 없다. 파일 자체는 단조 증가하는 `t<N>` id 와 `added_at` 을 담으므로 **재정렬이 일어났다는 사실은 기계적으로 탐지된다**; 탐지되지 않는 것은 *누가·왜* 재정렬했는가이고, 운영자가 평상시 보는 화면에는 애초에 아무 흔적도 뜨지 않는다. 잘못된 재정렬이 알아채이지 않는 이유가 이것이고, 그래서 되돌리기 경로를 아무리 잘 만들어도 발동되지 않는다.
+
+**잔여 위험 — 기준이 닿지 않는 호출 경로.** 정확 중복 거절의 현저성은 "호출자가 exit code 나 stderr 를 읽는다"는 전제 위에 선다. `manager-lead` 는 카드 id 를 받아야 디스패치가 되므로 실패를 놓칠 수 없지만, `§B.3` 이 요구하는 **에이전트 없는 순수 CLI 호출**(스크립트·파이프)에서 호출자가 종료 코드와 stderr 를 둘 다 버리면 카드는 조용히 유실된다. CLI 는 호출자가 자기 종료 코드를 읽게 만들 수 없다 — 이 경로를 덮는 보완 장치를 이 SPEC 은 만들지 않고 **명시적 잔여 위험으로 선언한다**. `--force` 는 이 경우의 탈출구가 아니라 의도적 중복 입력을 위한 것이다. 같은 위험이 `plan.md §D.3` 과 `§G` 에 기록돼 있다.
 
 ### B.2 그래서 "자동"인 것은 분석이지 변형이 아니다
 
@@ -110,7 +120,7 @@ L2가 없는 호출에서도 큐가 "분석 완료"로 보이면 안 된다. 그
 ### C.1 기계 분석 계층
 
 - **REQ-TA-001** (Ubiquitous) The backlog store **shall** carry a mechanical text analyser that normalizes a card text (Unicode NFC → trim → collapse internal whitespace → case-fold) and classifies a candidate against every non-dropped card as `exact` (normalized texts equal), `near` (token-set Jaccard score ≥ 0.80 and < 1.0), or `none`.
-- **REQ-TA-002** (Event-driven) **When** `moai todo add` runs, the command **shall** execute the mechanical analysis inside the same locked write that would append the card, before the append; **when** `moai todo analyze` runs, the command **shall** execute the same analysis across the whole queue and record findings without appending, removing, reordering, or editing any card.
+- **REQ-TA-002** (Event-driven) **When** `moai todo add` runs, the command **shall** execute the mechanical analysis inside the same locked write that would append the card, before the append; **when** `moai todo analyze` runs, the command **shall** execute the same analysis across the whole queue and record findings without appending, removing, reordering, or editing any card, and **shall not** append a finding whose `{subject_id, related_id, relation, source}` tuple already exists, so two consecutive `analyze` runs leave the `findings` array length unchanged.
 - **REQ-TA-003** (Event-driven) **When** the analysis classifies a candidate as `exact` against a card in state `queued` or `picked`, the command **shall** refuse the append, leave the queue file byte-identical, name the colliding card's id and text prefix on stderr, and exit non-zero.
 - **REQ-TA-004** (Capability-gate) **Where** `--force` is passed to `moai todo add`, the command **shall** append the card despite an `exact` classification and **shall** record one `duplicate-forced` finding naming the colliding id.
 - **REQ-TA-005** (Event-driven) **When** the analysis classifies a candidate as `near`, the command **shall** append the card with its text exactly as given, **shall** leave every field of the related card unchanged, and **shall** record one `near-duplicate` finding carrying the related id and the computed score.
@@ -130,12 +140,12 @@ L2가 없는 호출에서도 큐가 "분석 완료"로 보이면 안 된다. 그
 
 - **REQ-TA-011** (Event-driven) **When** `moai todo list` runs and findings exist, the command **shall** print one indented finding line beneath each card named by a finding, carrying the relation, the counterpart id, the source, and the literal operator command that would act on it.
 - **REQ-TA-012** (Event-driven) **When** `moai todo why <n>` runs, the command **shall** print every finding naming card `<n>`, and **shall** print an explicit no-findings line when none exist; **when** `moai todo list --json` runs, the command **shall** emit the `findings` array alongside `items`.
-- **REQ-TA-013** (State-driven) **While** a card carries a `source: mechanical` finding with no `source: agent` finding naming the same pair, `moai todo list` **shall** mark that finding `unreviewed`.
+- **REQ-TA-013** (State-driven) **While** a card carries a `source: mechanical` finding with no `source: agent` finding naming the same pair — pairs are compared **unordered**, so `{a, b}` and `{b, a}` are the same pair — `moai todo list` **shall** mark that finding `unreviewed`.
 
 ### C.5 독트린 개정
 
 - **REQ-TA-014** (Ubiquitous) `.claude/skills/moai/workflows/todo.md` and `.claude/rules/moai/workflow/kanban-dispatch.md`, together with their `internal/template/templates/` mirrors, **shall** state the analysis boundary explicitly: analysis runs automatically and records; it refuses the admission of an exact duplicate; it never folds, reorders, drops, or edits a card; and the four semantic relations cause nothing but a record.
-- **REQ-TA-015** (Ubiquitous) The `moai todo` command surface **shall** remain headless and prompt-free across every new verb, preserving REQ-TODO-014 (structured stdout, human-readable stderr, exit 0/1, no user-question channel anywhere in `internal/cli`).
+- **REQ-TA-015** (Ubiquitous) The `moai todo` command surface **shall** remain headless and prompt-free across every new verb, preserving REQ-TODO-014 (structured stdout, human-readable stderr, exit 0/1/2, no user-question channel anywhere in `internal/cli`).
 
 ## §D 수용 기준
 
@@ -175,6 +185,7 @@ Tier M — 전체 AC 목록과 각 AC를 붉게 만드는 잘못된 구현은 `a
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-08-22 | manager-spec | 초기 plan-phase 초안 (칸반 카드 t119). |
+| 0.2.0 | 2026-08-23 | manager-spec | plan-audit iteration 1 결함 반영: §B.1 에 카드 t119 완화안 인용·반박(D10), 현저성 기준에 범위 한정 추가(D9), 정확 중복 거절 행에 조건 명시 + 잔여 위험 선언(D2), 순서 탐지 서술 정정(D8), 인용 줄번호 정정(D11), REQ-TA-002 재실행 멱등성(D4) · REQ-TA-013 무순서 쌍(D13) · REQ-TA-015 exit 0/1/2(D6). |
 
 ## §G 상호참조
 

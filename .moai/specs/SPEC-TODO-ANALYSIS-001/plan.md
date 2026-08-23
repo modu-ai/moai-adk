@@ -19,6 +19,8 @@
 
 **M의 상단이라는 단서**: 독트린 [HARD] 절 개정이 들어 있어 "constitutional" 판정으로 L에 걸릴 여지가 있다. 그러나 이 SPEC의 개정은 금지를 **완화하는 것이 아니라 무엇이 허용되는지 이름 붙여 좁히는 것**이므로(§F M1), 헌법적 재설계가 아니라 기존 규칙의 명세화로 본다. plan-audit 이 이 판단에 동의하지 않으면 Tier L 승격(+ design.md, research.md)이 정당한 지적이다.
 
+**plan-audit iteration 1 판정: Tier M 유지.** 근거 — 개정 대상이 `moai-constitution.md` 가 아니라 워크플로 규칙 1 + 스킬 1이고, 방식이 기존 [HARD] 문장을 한 글자도 지우지 않는 추가-only 이며(AC-TA-014 가 잔존을 주장), 영향 파일·LOC 두 축 모두 M 범위 안이다.
+
 ## §C 이미 있는 것 / 새로 만드는 것
 
 | 있는 것 | 위치 | 재사용 방식 |
@@ -48,6 +50,7 @@
 
 - **채택: 거절 + `--force` 탈출구.** 거절은 아무것도 파괴하지 않고(큐 불변), 운영자에게 즉시 보인다(id 대신 에러). §B.1 의 현저성 기준을 통과하는 유일한 변형이다.
 - **위험**: 자동화 스크립트가 add 실패를 무시하면 카드가 조용히 유실된다. 완화 — exit code ≠ 0 + stderr 에 충돌 id 명시. `manager-lead` 는 add 결과를 읽으므로(카드 id를 받아야 디스패치가 되므로) 실패를 놓칠 수 없다.
+- **완화가 닿지 않는 경로**: 위 완화는 L2(에이전트) 경로에서만 성립한다. `spec.md §B.3` 은 에이전트 없는 순수 CLI 실행에서도 L1 이 작동할 것을 요구하고 `AC-TA-015` 로 강제하는데, 그 경로의 호출자(스크립트·파이프)가 exit code 와 stderr 를 둘 다 버리면 완화가 발동하지 않는다. CLI 는 호출자가 자기 종료 코드를 읽게 만들 수 없으므로 이 SPEC 은 보완 장치를 만들지 않고 `spec.md §B.1` 에 **명시적 잔여 위험**으로 선언했다. §B.1 표의 "정확 중복 거절" 행이 무조건 "현저: 예"가 아니라 "호출자가 exit code 또는 stderr 를 읽을 때에만"으로 조건화된 이유가 이것이다.
 
 ## §E 마일스톤 (되돌리기 어려운 순서)
 
@@ -79,7 +82,7 @@
 - `done` 경로에 소견 회수(REQ-TA-007).
 - 구 스키마 왕복 테스트 (AC-TA-012).
 
-`backlog_store.go` 상단 주석의 "no per-item field may ever be added" 는 **여전히 참**이다 — 이 변경은 최상위이므로 그 문장을 고칠 필요가 없다. `spec.md §E` 참조를 이 SPEC으로 갱신만 한다.
+`backlog_store.go:46` 주석의 "no per-item field may ever be added (spec.md §E out-of-scope)" 는 **문장도 참조도 그대로 둔다**. 문장은 여전히 참이고(이 변경은 최상위 필드다), 그 `spec.md §E` 는 SPEC-KANBAN-TODO-CLI-001 `spec.md:92` 의 "No version bump and no new per-item fields" 를 가리키는 정확한 인용이다 — 이 SPEC 으로 돌리면 근거가 없는 곳을 가리키게 된다. 이 파일의 주석 변경은 M2 범위 밖이다.
 
 산출: AC-TA-008, AC-TA-012.
 
@@ -90,13 +93,16 @@
 - `--force` 플래그.
 - 새 동사 `moai todo analyze` — 전체 큐 재분석, 기록만.
 
-산출: AC-TA-001 ~ AC-TA-003, AC-TA-006, AC-TA-015.
+산출: AC-TA-001 ~ AC-TA-003, AC-TA-006, AC-TA-015, AC-TA-016.
+
+`analyze` 는 소견을 **재실행해도 다시 쌓지 않는다**(REQ-TA-002) — 같은 `{subject_id, related_id, relation, source}` 튜플은 두 번 append 되지 않는다. AC-TA-016 이 이것을 잡는다.
 
 ### M4 — 에이전트 계층 동사 + 운영자 가시성 (우선순위: Medium)
 
-- 새 파일 `internal/cli/todo_relate.go`: `relate` / `unrelate`. `relate` 는 두 id 존재 확인 + 소견 append 만; 카드 필드 쓰기 경로가 **코드에 존재하지 않는다** (AC-TA-004/005 가 이것을 잡는다).
+- 새 파일 `internal/cli/todo_relate.go`: `relate` / `unrelate`. `relate` 는 두 id 존재 확인 + 소견 append 만, `unrelate` 는 지목된 소견 1건 remove 만; 카드 필드 쓰기 경로가 **코드에 존재하지 않는다** (AC-TA-004 가 두 동사를 한 픽스처에서 양방향으로 잡고, AC-TA-005 가 네 관계 전부를 잡는다).
 - `internal/cli/todo_why.go` 또는 기존 파일 확장: `why <n>`.
-- `runTodoList` 에 소견 줄 렌더 + `unreviewed` 표시 + `--json` 에 `findings` 포함.
+- `runTodoList` 에 소견 줄 렌더 + `unreviewed` 표시(쌍은 **무순서** 비교 — REQ-TA-013) + `--json` 에 `findings` 포함.
+- `internal/cli/todo_test.go` 의 기존 `todoPromptGuard` 스캔 대상을 `todo.go` 하나에서 **`internal/cli/todo*.go` 비테스트 파일 전부**로 넓힌다(음성 대조는 그대로). AC-TA-013 이 요구하는 것은 가드의 신설이 아니라 범위 확장이다.
 
 산출: AC-TA-004, AC-TA-005, AC-TA-007, AC-TA-009 ~ AC-TA-011, AC-TA-013.
 
