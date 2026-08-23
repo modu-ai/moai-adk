@@ -1,0 +1,17 @@
+<!-- expect: -->
+<!-- C4 arrival semantics: two connectors carrying NO marker, endpoints 4 units apart on one 80-unit edge. Neither endpoint is an arrival point, so nothing is compared. Its twin c4-marker-pair-emits is the same geometry with marker-end added. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="400" height="200"
+     role="img" aria-labelledby="c4-markerless-pair-title c4-markerless-pair-desc">
+  <title id="c4-markerless-pair-title">Undirected pair</title>
+  <desc id="c4-markerless-pair-desc">Two undirected connectors end near each other on one box edge.</desc>
+  <defs>
+    <marker id="c4-markerless-pair-arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+      <path d="M 0 0 L 10 4 L 0 8 z" fill="#6B6359"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="400" height="200" fill="#FAF9F5"/>
+  <path d="M 40 98 H 230" stroke="#6B6359" stroke-width="1" fill="none"/>
+  <path d="M 40 102 H 230" stroke="#6B6359" stroke-width="1" fill="none"/>
+  <rect x="240" y="60" width="120" height="80" fill="#FBE9DF" stroke="#D97757"/>
+  <text x="300" y="105" font-size="11" text-anchor="middle" fill="#141413">service</text>
+</svg>

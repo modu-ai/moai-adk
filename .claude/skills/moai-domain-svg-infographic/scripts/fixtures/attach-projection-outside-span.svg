@@ -1,0 +1,17 @@
+<!-- expect: -->
+<!-- Edge-span test: both endpoints are 10 units off the left edge line but project to y = 170 and y = 174, outside that edge span of 60-140, so neither binds it. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="400" height="200"
+     role="img" aria-labelledby="attach-projection-outside-span-title attach-projection-outside-span-desc">
+  <title id="attach-projection-outside-span-title">Past the corner</title>
+  <desc id="attach-projection-outside-span-desc">Two connectors end level with each other below a box.</desc>
+  <defs>
+    <marker id="attach-projection-outside-span-arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+      <path d="M 0 0 L 10 4 L 0 8 z" fill="#6B6359"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="400" height="200" fill="#FAF9F5"/>
+  <path d="M 40 170 H 230" stroke="#6B6359" stroke-width="1" fill="none" marker-end="url(#attach-projection-outside-span-arrow)"/>
+  <path d="M 40 174 H 230" stroke="#6B6359" stroke-width="1" fill="none" marker-end="url(#attach-projection-outside-span-arrow)"/>
+  <rect x="240" y="60" width="120" height="80" fill="#FBE9DF" stroke="#D97757"/>
+  <text x="300" y="105" font-size="11" text-anchor="middle" fill="#141413">service</text>
+</svg>

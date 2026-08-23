@@ -1,0 +1,17 @@
+<!-- expect: SVG072 -->
+<!-- C4 boundary: the edge is exactly 120, so the 12-unit floor applies rather than the 8-unit one. The arrivals sit 10 apart - silent under an 8-unit floor, reported under the 12-unit floor that governs here. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="400" height="200"
+     role="img" aria-labelledby="c4-edge-exactly-120-title c4-edge-exactly-120-desc">
+  <title id="c4-edge-exactly-120-title">Fan-in</title>
+  <desc id="c4-edge-exactly-120-desc">Several connectors arrive on one box edge.</desc>
+  <defs>
+    <marker id="c4-edge-exactly-120-arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+      <path d="M 0 0 L 10 4 L 0 8 z" fill="#6B6359"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="400" height="200" fill="#FAF9F5"/>
+  <path d="M 40 95 H 230" stroke="#6B6359" stroke-width="1" fill="none" marker-end="url(#c4-edge-exactly-120-arrow)"/>
+  <path d="M 40 105 H 230" stroke="#6B6359" stroke-width="1" fill="none" marker-end="url(#c4-edge-exactly-120-arrow)"/>
+  <rect x="240" y="40" width="120" height="120" fill="#FBE9DF" stroke="#D97757"/>
+  <text x="300" y="105" font-size="11" text-anchor="middle" fill="#141413">service</text>
+</svg>
