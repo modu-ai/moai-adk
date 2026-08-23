@@ -460,6 +460,7 @@ func TestSchemaCurrentValuesReadsAllSections(t *testing.T) {
 		"ralph.lint_as_instruction":                    "true",
 		"ralph.warn_as_instruction":                    "false",
 		"feedback.repository":                          "modu-ai/moai-adk",
+		"feedback.auto_submit":                         "false",
 		"observability.retention_days":                 "30",
 		"security.permission.strict_mode":              "false",
 		"git_strategy.mode":                            "team",

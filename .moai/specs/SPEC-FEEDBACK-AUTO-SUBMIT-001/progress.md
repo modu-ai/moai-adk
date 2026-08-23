@@ -886,6 +886,157 @@ $ GOOS=windows go vet ./internal/settings/... ./internal/web/...      → exit 0
 2. **`sec.feedback.desc` 는 손대지 않는다.** 지금 값은 "피드백 워크플로우 대상 저장소"라 필드가 둘이 된 지금은 좁지만, 카드의 [HARD] 는 공유 파일에 **신규 항목만** 추가하라고 했다. 기존 4줄을 고치는 대신 Go 쪽 패널 `Desc` 베이스라인 문구를 두 필드를 포괄하도록 썼다. 좁아진 i18n 설명 4줄은 아래 잔여 위험에 남긴다.
 
 
+### M8 — Template-First 미러 + 키 인벤토리
+
+착수 HEAD `23c5c18fa`, base `3210da7d3`, 브랜치 `WT-auto-feedback`, 워크트리 `.claude/worktrees/t170`.
+
+#### 편집한 파일
+
+| 파일 | 편집 |
+|---|---|
+| `internal/template/templates/.moai/config/sections/feedback.yaml` | `auto_submit: false` + 중립 주석 5줄. 기존 `repository` 블록 무편집 |
+| `.moai/config/sections/feedback.yaml` | 템플릿과 동일 내용으로 미러 |
+| `internal/settings/testdata/sections/feedback.yaml` | 템플릿과 동일 내용으로 미러 (per-key 기대값의 판독 원천) |
+| `internal/config/testdata/shipped_key_inventory.yaml` | `feedback.auto_submit` 항목 1건 삽입 (`feedback.repository` 바로 앞, 알파벳 순) |
+| `internal/settings/schema_sections_test.go` | `TestSchemaCurrentValuesReadsAllSections` 의 per-key 맵에 `"feedback.auto_submit": "false"` 1줄 |
+| `internal/web/assets/i18n.js` | `sec.feedback.desc` 4로케일 문구 확장 (M7 인계분) |
+| `docs-site/content/{en,ko,ja,zh}/utility-commands/moai-feedback.md` | 신규 절 1개 × 4로케일 |
+
+세 YAML 사본은 서로 바이트 동일하다 (`cp` 로 미러).
+
+#### 인벤토리 `evidence` 는 정직하게 적는다
+
+design.md §8 은 이 키를 **Go 코드가 읽지 않는다**고 못박는다 — 스킬 본문이 설정 파일을 읽어 분기하고, `FeedbackAutoSubmit()` 접근자는 현재 프로덕션 호출자가 없다. 그래서 인벤토리 항목은 `class: R` 에 `evidence: none` 이 아니라 그 사실을 그대로 적었다:
+
+```yaml
+- path: "feedback.auto_submit"
+  class: R
+  evidence: "consumed by the skill body (.claude/skills/moai/workflows/feedback.md); no Go production caller"
+```
+
+`evidence` 필드는 가드가 파싱만 하고 값은 검사하지 않으므로(`loadAllowlistWithCount` 는 `Path` 만 읽는다) 자유 서술이 가능하다 — 검사되지 않는 필드일수록 `none` 으로 뭉개기 쉬운데, 그러면 나중에 이 키를 보는 사람이 "접근자가 있으니 누군가 읽겠지"로 오독한다.
+
+#### 형제 SPEC 공유 파일 확인
+
+`SPEC-TODO-ENABLE-FLAG-001` 이 먼저 착지했는지 실측했다 — 인벤토리에 `todo.` 로 시작하는 항목은 0건이었고(`grep -n 'todo\.' internal/config/testdata/shipped_key_inventory.yaml` → 무출력), 중복 삽입은 발생하지 않았다. 공유 파일 3종(`shipped_key_inventory.yaml`, `schema_sections_test.go`, `i18n.js`)에는 **신규 항목만** 넣었고 기존 항목의 위치·서식은 건드리지 않았다(plan.md AP-10). `gofmt -w` 이후 diff 가 `1 insertion(+)` 단일 줄인 것이 그 관측이다.
+
+`i18n.js` 의 `sec.feedback.desc` 4줄만은 예외적으로 **기존 줄을 고쳤다**. M7 이 "필드가 둘이 된 지금은 좁다"고 잔여 위험에 남긴 항목이며, 이 SPEC 자신의 변경이 부정확하게 만든 기존 설명 1개를 넓히는 것이라 재배치·재서식이 아니다.
+
+#### 두 anti-rot 가드 — 실행 관측
+
+plan.md §B 4번이 지목한 가드 2건. 두 번째 지목(`schema_label_test.go:96`)은 **경로가 다르다** — `internal/settings/` 가 아니라 `internal/web/schema_label_test.go` 이고, 그 안에 `TestSchemaLabel` 이라는 이름의 테스트는 없다(실측: `TestSchemaEmptyLabelParity:16` / `TestI18nKeySetParity:74` / `TestI18nSegmentKeysRemovedFromWebDictionary:133`). 이름으로 돌렸다면 0개 매칭으로 조용히 `ok` 가 찍혔을 것이므로, 실재하는 이름으로 돌렸다.
+
+```
+$ go test ./internal/config/ -run 'TestShippedConfigKeysHaveReaders' -v
+=== RUN   TestShippedConfigKeysHaveReaders/non_vacuous_inventory
+    shipped_key_reader_test.go:132: non-vacuity: 896 shipped keys, 959 inventory entries, 329 struct fields
+--- PASS: TestShippedConfigKeysHaveReaders (0.68s)
+    --- PASS: TestShippedConfigKeysHaveReaders/non_vacuous_inventory (0.00s)
+    --- PASS: TestShippedConfigKeysHaveReaders/collision_resolution (0.00s)
+    --- PASS: TestShippedConfigKeysHaveReaders/accessor_indirection (0.00s)
+    --- PASS: TestShippedConfigKeysHaveReaders/unbound_classification (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/config	1.057s
+
+$ go test ./internal/web/ -run 'TestSchemaEmptyLabelParity|TestI18nKeySetParity|TestI18nSegmentKeysRemovedFromWebDictionary|TestScopeContract' -v
+--- PASS: TestSchemaEmptyLabelParity (0.01s)
+--- PASS: TestI18nKeySetParity (0.05s)
+--- PASS: TestI18nSegmentKeysRemovedFromWebDictionary (0.00s)
+--- PASS: TestScopeContractEditableSections (0.00s)
+--- PASS: TestScopeContractExclusions (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/web	0.499s
+```
+
+키 수가 895 → 896, 인벤토리가 958 → 959 로 각각 1 늘었다 — 이 마일스톤이 넣은 키 1개와 항목 1개다.
+
+#### GREEN — AC-F-023 템플릿 절반 판정
+
+**PASS.** M7 이 웹 절반(스키마·라우트·i18n)을 졌고, M8 은 **템플릿 절반**(미러·인벤토리·`make build`·중립성)을 진다. 이로써 AC-F-023 양쪽이 모두 관측됐다.
+
+acceptance.md 가 지정한 5개 선택자를 `-v` 로 돌려 각각 `=== RUN` 이 찍히는지 확인했다(0개 실행 통과 방지 — §D.3 [HARD]):
+
+```
+$ go test ./internal/settings/ ./internal/web/ -run 'TestSchemaCurrentValuesReadsAllSections|TestI18nKeySetParity|TestRouteForSectionTable|TestExcludedSectionsAllRejected|TestScopeContract' -v
+=== RUN   TestSchemaCurrentValuesReadsAllSections
+=== RUN   TestRouteForSectionTable
+=== RUN   TestExcludedSectionsAllRejected
+--- PASS: TestExcludedSectionsAllRejected (0.00s)
+--- PASS: TestRouteForSectionTable (0.00s)
+--- PASS: TestSchemaCurrentValuesReadsAllSections (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/settings	0.351s
+=== RUN   TestI18nKeySetParity
+--- PASS: TestI18nKeySetParity (0.05s)
+=== RUN   TestScopeContractEditableSections
+=== RUN   TestScopeContractExclusions
+--- PASS: TestScopeContractEditableSections (0.00s)
+--- PASS: TestScopeContractExclusions (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/web	0.597s
+```
+
+나머지 4개 관측:
+
+```
+$ grep -n 'auto_submit' internal/template/templates/.moai/config/sections/feedback.yaml
+13:    auto_submit: false                                                        # 1건
+
+$ grep -n 'feedback.auto_submit' internal/config/testdata/shipped_key_inventory.yaml
+362:- path: "feedback.auto_submit"                                                # 1건
+
+$ grep -rn 'SPEC-FEEDBACK-AUTO-SUBMIT\|REQ-' internal/template/templates/.moai/config/sections/feedback.yaml internal/template/templates/.claude/skills/moai/workflows/feedback.md
+                                                                                 # 0건 (exit 1)
+
+$ make build
+catalog.yaml updated successfully (12899 bytes)
+go build -ldflags "..." -o bin/moai ./cmd/moai                                    # exit 0
+```
+
+`make build` 이후 `git status --porcelain` 에 `internal/template/catalog.yaml` 은 나타나지 않았다 — 카탈로그는 에이전트·스킬만 해시하고 config 섹션 YAML 은 대상이 아니라서, 이번 편집으로는 해시가 움직이지 않는다. (해시가 움직였다면 같은 커밋에 실어야 CI parity 가 통과한다.)
+
+#### 중립성 + 회귀 + 크로스 플랫폼
+
+```
+$ MOAI_TEMPLATE_LEAK_STRICT=1 go test ./internal/template/...
+ok  	github.com/modu-ai/moai-adk/internal/template	21.247s
+ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	(cached)
+
+$ go test ./internal/config/... ./internal/template/... ./internal/settings/... ./internal/web/...
+ok  	github.com/modu-ai/moai-adk/internal/config	1.309s
+ok  	github.com/modu-ai/moai-adk/internal/config/atomicfile	0.545s
+ok  	github.com/modu-ai/moai-adk/internal/config/toolpolicy	(cached)
+ok  	github.com/modu-ai/moai-adk/internal/template	22.277s
+ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	0.564s
+ok  	github.com/modu-ai/moai-adk/internal/settings	0.995s
+ok  	github.com/modu-ai/moai-adk/internal/settings/agentfm	(cached)
+ok  	github.com/modu-ai/moai-adk/internal/settings/yamlpatch	(cached)
+ok  	github.com/modu-ai/moai-adk/internal/web	2.954s
+
+$ go vet ./internal/config/... ./internal/template/... ./internal/settings/... ./internal/web/...         → exit 0 (무출력)
+$ GOOS=windows go vet ./internal/config/... ./internal/template/... ./internal/settings/... ./internal/web/...  → exit 0 (무출력)
+```
+
+`TestConstitutionCrossReference` 는 `internal/cli/agentlint` 소속이라 위 스코프 밖이고, M6·M7 이 기록한 대로 base 에서도 붉다 — 이번 회차에는 **재관측하지 않았다**(아래 미검증).
+
+#### docs-site 4로케일
+
+en/ko/ja/zh 네 파일 모두에 절 1개씩 넣었다. 기존 "대상 저장소 설정" 절 뒤, "피드백 유형" 절 앞이다. 절 제목은 로케일별로 en `Confirming Before Submission` · ko `제출 전 확인` · ja `送信前の確認` · zh `提交前确认`.
+
+```
+$ grep -c '^### ' docs-site/content/{en,ko,ja,zh}/utility-commands/moai-feedback.md
+en:14  ko:14  ja:14  zh:14        # 13 → 14, 네 로케일 동일
+
+$ grep -c '^## ' docs-site/content/{en,ko,ja,zh}/utility-commands/moai-feedback.md
+en:10  ko:10  ja:10  zh:10        # 무변경, 네 로케일 동일
+
+$ grep -c 'auto_submit' docs-site/content/{en,ko,ja,zh}/utility-commands/moai-feedback.md
+en:2  ko:2  ja:2  zh:2            # 산문 1 + YAML 예시 1, 네 로케일 동일
+```
+
+본문에 장식 이모지는 넣지 않았고, Mermaid 는 추가하지 않았다. YAML 예시 블록은 네 로케일에서 바이트 동일하다.
+
+#### 설계 판단 2건
+
+1. **인벤토리 헤더의 `Total entries: 958` 은 고치지 않았다.** 헤더는 `Code baseline: <sha>` 와 한 덩어리로 M1 시점의 스냅샷 기록이고, 어떤 테스트도 이 숫자를 읽지 않는다(가드는 항목을 세어 `minimumShippedKeys` 하한만 본다). 게다가 형제 SPEC 도 항목을 1개 늘리므로 두 카드가 같은 줄을 고치면 충돌한다. 숫자가 스테일해진 사실은 아래 잔여 위험에 남긴다.
+2. **docs 에 스크러버 서사를 새로 열지 않았다.** 이 페이지는 지금까지 마스킹을 한 번도 언급한 적이 없어서, 확인 게이트가 **무엇을 보여주는지** 설명하는 데 필요한 최소한("가려낸 값의 요약")만 적고 스크러버 자체의 절은 만들지 않았다. 페이지 전체를 스크러버 관점으로 다시 쓰는 것은 이 마일스톤의 범위가 아니다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

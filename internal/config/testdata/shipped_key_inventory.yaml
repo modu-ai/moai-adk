@@ -359,6 +359,9 @@
 - path: "design.version"
   class: R
   evidence: none
+- path: "feedback.auto_submit"
+  class: R
+  evidence: "consumed by the skill body (.claude/skills/moai/workflows/feedback.md); no Go production caller"
 - path: "feedback.repository"
   class: R
   evidence: none
