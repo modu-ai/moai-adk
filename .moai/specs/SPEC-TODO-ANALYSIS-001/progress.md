@@ -161,7 +161,9 @@ M1(독트린)·M2(스키마)는 `e04801047`·`2c63f2ac1` 로 이미 착지했다
 
 ### 3-phase close
 
-- plan → `f1bc39310` (draft), run → `ebd828b5d`, sync → 이 커밋. `status: completed` 는 이 sync 커밋에 실린다.
+- plan → `f1bc39310` (draft), run → `ebd828b5d`, sync → `b6716a748`.
+- sync_commit_sha: b6716a748
+- 위 줄은 그 커밋 **다음** 커밋에서 붙는다 — 해시는 커밋 전에 알 수 없다. `status: completed` 는 `b6716a748` 에 실려 있다. 표기는 감사기가 읽는 형태를 따른다(`internal/spec/era.go` `progressFieldListPattern` 은 굵게 표시나 뒤따르는 산문이 붙으면 값을 못 읽는다).
 - **run-phase 에서 `status: in-progress` 로의 중간 전이를 남기지 않았다.** 한 레인이 run 과 sync 를 연속으로 수행했고 그 사이에 커밋이 하나뿐이라, draft → completed 로 한 번에 넘어간다. 3-phase 계약의 문서 흔적이라는 면에서는 결손이며, 여기 기록해 둔다.
 
 ### 미검증 (Gaps)
