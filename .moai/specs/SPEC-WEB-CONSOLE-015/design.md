@@ -100,6 +100,15 @@ hold. It was measured rather than argued, and it does not hold:
 So the §D exclusion stands on evidence, and AC-WC15-034 pins it with an unchanged-diff assertion
 on `watchMap` and `EVENTS` rather than leaving it to assumption.
 
+**Provenance of this exclusion.** Iteration 2 was dispatched with an instruction to do the
+opposite — to move the vocabulary change *into* scope, on the reading that the route decision had
+made the auditor's cost unavoidable. The three measurements above were produced in answer to that
+instruction and withdrew its premise, and the withdrawal was reviewed and approved rather than
+taken unilaterally. The operator's decision (a separate `/todo` route) is unchanged; only the
+consequential scope the dispatch had inferred from it is retracted. Recorded here because a later
+reader comparing the audit's warning against this SPEC's exclusion would otherwise find the
+exclusion looking like the warning was ignored.
+
 **What did enter scope** is the route surface itself, enumerated in spec.md §C.6 and asserted by
 AC-WC15-035: `app.go` `routes()`, a sixth `navRow` in `shell.templ` `rail()`, a `todo` case in
 `icons.templ`'s `iconAt` switch (a missing case renders a blank glyph, since `navRow` passes the
