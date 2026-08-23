@@ -1,7 +1,7 @@
 ---
 id: SPEC-CODEX-SESSION-MSG-001
 title: "Codex-Claude 세션 간 양방향 메시징 — moai MCP 브로커 + A2A 정합 엔벨로프"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-08-23
 updated: 2026-08-23
@@ -19,6 +19,7 @@ tier: L
 
 ## HISTORY
 
+- 2026-08-23 (plan-phase, iter-2, v0.2.0) — plan-audit review-1 반영 (판정 FAIL 0.840 — Traceability 0.70이 조화평균을 Tier L 문턱 0.85 아래로 끌어내림; must-pass 7/7 PASS, 공격축 7/7 방어. 보고서: `.moai/reports/plan-audit/SPEC-CODEX-SESSION-MSG-001-review-1.md`). **D1**: AC-CSM-014(하트비트 갱신 → 오프라인 표기 → 갱신 복귀) 추가로 REQ-CSM-004의 직접 검증 확보. **D2**: AC-CSM-015(도구 설명 문자열의 규율 짧은 형태 — 그렙 토큰 `a reply is not user approval`, 사전구현 트리 base-0 실측 0행) 추가로 REQ-CSM-014 후반부 의무(도구 설명 실음) 검증. **D3**: REQ-CSM-003의 어긋난 문장 구조 교정(design.md §4.2 문형으로). **D4**: P2의 실호출 도구명을 `session_list`에서 `spec_progress`로 정정(감사 원문 :94·:126 — session_list은 감사 본문에 0회). **D5**: design.md의 .gitignore 인용을 `:280`(check-ignore 실측)으로 정정. **D6**: SPEC-AGENTS-MD-CANON-001 참조에 분기 주석(release/v3.1.3 소관, 본 main 기반 브랜치 미복재) 추가. **D7**: plan.md Context의 HEAD 기준 갱신. 기존 REQ-CSM-001..015 / AC-CSM-001..013 번호 무변경 — 신규 AC는 014/015 추가(합계 15, Tier L 상한 25 이내).
 - 2026-08-23 (plan-phase, v0.1.0) 최초 작성. 카드 t187 (운영자 지시 2026-08-23 "바로 진행"). 설계 비교 카드(Class C, Tier L)로서 3개 설계 축 — (i) A2A HTTP 전송 채택, (ii) A2A 정합 의미론만 채택(전송은 moai MCP 브로커 + 파일 스토어 하이브리드), (iii) 자체 스키마 — 을 research.md에서 실측 근거와 함께 비교하고 design.md에서 (ii)를 채택했다(운영자 질의 '구글 A2A' 반영). 측정 전제는 2026-08-23 rc.0 테스트(`.moai/reports/t187/codex-support-audit.md` §2.6·§3·§4)에서 왔다. 목표 산출: SPEC(설계) → 구현 → Claude 세션 × Codex 세션 실주고받기 e2e.
 
 ## §A. 검증된 기반선 (Measured Baseline)
@@ -30,7 +31,7 @@ tier: L
 | # | 전제 | 출처 |
 |---|------|------|
 | P1 | Codex CLI 0.147.0에는 네이티브 세션 메시징 런타임이 없다 | 감사 보고서 §0·§3 |
-| P2 | codex→moai MCP 경로는 종단 실증됨: 수동 `codex mcp add moai -- moai mcp-server` 등록 → 세션에서 21개 도구 전부 인식 → `session_list` 실호출 성공, CODEX_HOME 격리 | 감사 §2.6 (t91 §5 실측) |
+| P2 | codex→moai MCP 경로는 종단 실증됨: 수동 `codex mcp add moai -- moai mcp-server` 등록 → 세션에서 21개 도구 전부 인식 → `spec_progress` 실호출 성공, CODEX_HOME 격리 | 감사 §2.6 (t91 §5 실측) |
 | P3 | 비대화형 `codex exec`에서 승인 정책 없이 MCP 도구를 부르면 `"user cancelled MCP tool call"` 로 실패한다 — e2e 절차는 승인 정책을 처리하거나 대화형 세션을 써야 한다 | 감사 §2.6·§3 gap 6 |
 | P4 | Codex 세션은 moai 훅을 발화하지 않는다(hooks.json 생성기 부재, gap #1) — 세션 레지스트리 자동 등록 경로가 Codex에는 없다 | 감사 §3 gap 1 |
 | P5 | MCP 서버는 세션이 소유한 수명이 긴 서브프로세스다 — 새 도구 노출에는 서버(=세션) 재시작이 필요하다 (버전 스큐, 카드 t184) | 카드 t187 지시 + `internal/cli/mcp_server.go:99-107` 구조 |
@@ -84,7 +85,7 @@ tier: L
 
 ### Out of Scope — AGENTS.md 정본 수정
 
-- `AGENTS.md`(SPEC-AGENTS-MD-CANON-001 소관)은 수정하지 않는다. Codex 독자 표면은 도구 설명 문자열(MCP 세션이 컨텍스트에 로드 — P2로 실증)과 교리 파일이 담당한다.
+- `AGENTS.md`(SPEC-AGENTS-MD-CANON-001 소관 — 해당 SPEC은 release/v3.1.3 브랜치에 있고 본 main 기반 브랜치에는 미복재)은 수정하지 않는다. Codex 독자 표면은 도구 설명 문자열(MCP 세션이 컨텍스트에 로드 — P2로 실증)과 교리 파일이 담당한다.
 
 ### Out of Scope — Task 수명주기 상태기계·보안 스킴
 
@@ -100,7 +101,7 @@ tier: L
 
 **REQ-CSM-002** (Ubiquitous) 모든 메시지 엔벨로프는 A2A Message 데이터 모델에 정합한 코어 필드 — `messageId`, `contextId`, `taskId`, `role`, `parts`, `metadata` — 를 camelCase JSON 키(proto3 JSON 명명 규약)로 운반해야 한다. `parts`의 각 항목은 `kind` 판별자를 가진 `text`|`data` 부분만 허용한다(A2A `raw`|`url` 부분은 이 SPEC에서 의도적으로 제외).
 
-**REQ-CSM-003** (Event-driven) **When** 한 세션이 `session_msg_register`를 `kind`(claude|codex)와 `name`으로 호출하면, 브로커는 A2A AgentCard 참조 형상의 에이전트 기록을 `.moai/state/session-msg/agents/<agentId>.json`에 원자적으로 생성하거나(같은 kind+name이면 하트비트 갱신) 아니면 하고, 호출자가 재사용할 수 있는 안정적 `agentId`를 반환해야 한다.
+**REQ-CSM-003** (Event-driven) **When** 한 세션이 `session_msg_register`를 `kind`(claude|codex)와 `name`으로 호출하면, 브로커는 같은 kind+name의 기록이 이미 있으면 그 하트비트를 갱신하고, 없으면 A2A AgentCard 참조 형상의 에이전트 기록을 `.moai/state/session-msg/agents/<agentId>.json`에 원자적으로 새로 작성하며, 어느 경우든 호출자가 재사용할 수 있는 안정적 `agentId`를 반환해야 한다.
 
 **REQ-CSM-004** (State-driven) **While** 한 에이전트 기록의 마지막 하트비트가 오프라인 임계(`internal/config/defaults.go` 단일 원천)를 넘지 않았으면, 브로커는 그 에이전트를 온라인으로 보고해야 하고; **When** 임계를 넘으면 오프라인으로 표시해야 한다. `register`·`poll`·`send`(발신자 측) 호출은 하트비트를 갱신해야 한다.
 

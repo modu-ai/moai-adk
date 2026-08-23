@@ -4,8 +4,8 @@
 
 ## §A. Context
 
-- 워크트리: `.claude/worktrees/t187` (브랜치 `WT-codex-session-msg` @ 76b2c4ece, origin/main 기준 — release/v3.1.3 배치 밖, 최종 PR은 main 대상 Route B).
-- SPEC 산출물: `spec.md`(REQ-CSM-001..015) / `plan.md`(본 문서) / `acceptance.md`(AC-CSM-001..013) / `design.md`(채택 설계) / `research.md`(A2A 실측·3축 비교) / `progress.md`.
+- 워크트리: `.claude/worktrees/t187` (브랜치 `WT-codex-session-msg` @ 2715f00a5 — plan-audit review-1 시점 HEAD; 최초 작성 시점은 76b2c4ece 기준이었다. origin/main 기반 — release/v3.1.3 배치 밖, 최종 PR은 main 대상 Route B).
+- SPEC 산출물: `spec.md`(REQ-CSM-001..015) / `plan.md`(본 문서) / `acceptance.md`(AC-CSM-001..015) / `design.md`(채택 설계) / `research.md`(A2A 실측·3축 비교) / `progress.md`.
 - 확장 표면: `internal/sessionmsg/`(신규 패키지), `internal/cli/mcp_session_msg.go`(신규), `internal/cli/mcp_server.go`(등록 4줄 추가), `internal/mcp/catalog.go`(4항목 추가), `internal/config/defaults.go`(임계값 5개), `.claude/rules/moai/workflow/cross-session-messaging.md` + 템플릿 미러(교리 확장), `.claude/rules/moai/core/moai-mcp-tools.md` + 템플릿 미러(카탈로그 21→25).
 - 재사용(신규 발명 없음): `add()` 등록 패턴(mcp_server.go:113-135), 카탈로그 가드·콘솔 파생(catalog.go), 자문적 록 패턴(`internal/session/registry_lock_unix.go`), `internal/atomicfile`, C-HRA-008 정적 가드 패턴(mcp_boundary_test.go).
 
@@ -38,7 +38,7 @@ ls internal/mcp/catalog.go internal/cli/mcp_boundary_test.go                # �
 5. **기존 21 도구**: 이름·동작 무변경 — 카탈로그는 추가 전용.
 6. **교리 기존 조항**: `cross-session-messaging.md` 기존 절은 문자 그대로 유지 — 확장 절만 추가.
 7. **`.moai/state/**` 런타임 관리 파일**: usage-log 등 무변경 (신규 루트 `session-msg/` 추가와 무관).
-8. **AGENTS.md**: 무수정(SPEC-AGENTS-MD-CANON-001 소관).
+8. **AGENTS.md**: 무수정(SPEC-AGENTS-MD-CANON-001 소관 — release/v3.1.3 브랜치에 있고 본 main 기반 브랜치에는 미복재).
 
 금지: `--no-verify`, main 직접 push(repo-local 전 Tier PR 정책), `git add -A`(명시 경로만), 로컬 전체 스위트.
 
@@ -52,13 +52,13 @@ acceptance.md §F의 AC 이항 검증 매트릭스 + manager-develop §E 표준(
 
 `internal/sessionmsg/` 패키지. envelope.go(Message/Part/Delivery/Envelope + 검증) → agent.go(등록 멱등·하트비트·조회) → store.go(send/poll/ack + 지연 스윕: 클레임 TTL 환원·메시지 TTL 삭제) → lock.go(에이전트별 자문적 록, 플랫폼 분리). defaults.go에 임계값 5개(`DefaultSessionMsgMessageTTL` 24h, `DefaultSessionMsgClaimTTL` 10m, `DefaultSessionMsgAgentOfflineMinutes` 30, `DefaultSessionMsgPollBatch` 16, `DefaultSessionMsgMaxTextBytes` 65536).
 커밋: `feat(SPEC-CODEX-SESSION-MSG-001): M1 session message envelope + file store`
-AC 연결: AC-CSM-001..006.
+AC 연결: AC-CSM-001..006, AC-CSM-014 (하트비트·온라인/오프라인).
 
 ### M2 — MCP 도구 표면 4종 (사이클: tdd)
 
 `internal/cli/mcp_session_msg.go`(얇은 핸들러 — 인자 파싱→코어 호출→구조화 결과) + `mcp_server.go` 등록 4줄(`add()` 패턴, `session_msg_list`만 read-only hint) + `internal/mcp/catalog.go` 4항목. 정적 가드: `TestSessionMsg_NoAskUserQuestion`·`TestSessionMsg_NoInlineGetenv`(mcp_boundary_test.go 패턴). 경계 단언: 핸들러/코어에 exec.Command·codex-jobs 토큰 0건(AC-CSM-008).
 커밋: `feat(SPEC-CODEX-SESSION-MSG-001): M2 session_msg MCP tool surface (register/list/send/poll)`
-AC 연결: AC-CSM-007..010.
+AC 연결: AC-CSM-007..010, AC-CSM-015 (도구 설명의 규율 짧은 형태 — REQ-CSM-014 후반부).
 
 ### M3 — 교리 전문화 + Template-First (문서·템플릿)
 

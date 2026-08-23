@@ -36,7 +36,7 @@ internal/sessionmsg/
   locks/<agentId>.lock                      # 자문적 록
 ```
 
-ack는 claimed 파일 삭제다(보관 아님 — 단순성 사다리). `.moai/state/`는 기존 blanket gitignore가 덮는다(SPEC-CODEX-PHASE2-001 §C 선례: `.gitignore:207,275`).
+ack는 claimed 파일 삭제다(보관 아님 — 단순성 사다리). `.moai/state/`는 기존 blanket gitignore가 덮는다(`.gitignore:280`의 `.moai/state/` 규칙 — `git check-ignore -v` 실측; plan-audit review-1 D5 정정, 종전 `:207,275` 인용은 오기였다).
 
 ## §3. 데이터 모델
 
