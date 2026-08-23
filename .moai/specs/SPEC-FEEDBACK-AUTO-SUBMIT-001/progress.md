@@ -405,6 +405,128 @@ AC-F-018 판정: **PASS** — `go test ./internal/feedback/ -run 'TestQueueResol
 
 미검증(M4 시점): 잠금 경합 상한(25ms × 40 ≈ 1s)은 4-goroutine × 3 회 테스트에서만 관측했고 다중 **프로세스** 경합은 관측하지 않았다. `Resolve` 는 아직 프로덕션 호출자가 없다 — M5 의 큐 동사(`queue resolve`)가 그 소비자다. 잠금 아티팩트는 프로세스가 비정상 종료하면 남으며(POSIX flock 과 달리 자동 해제되지 않는다), stale-lock 정리 경로는 이 SPEC 범위 밖이다.
 
+### M5 — CLI 배선
+
+Pre-flight (편집 전 트리 `55dc0ec0a`, base `3210da7d3` 대상):
+
+```
+$ git ls-tree -r 3210da7d3 --name-only -- internal/cli/feedback.go internal/cli/feedback_test.go | wc -l
+       0
+$ git show 3210da7d3:internal/cli/root.go | grep -c "newFeedbackCmd"
+0
+$ git show 55dc0ec0a:internal/cli/root.go | grep -c "newFeedbackCmd"
+0
+```
+
+`moai feedback` 은 base 에도 M4 트리에도 존재하지 않았다. M4 가 남긴 두 소비자 공백(`Options.ProjectRoot` 해석, `QueueStore.Resolve`)을 M5 가 메운다.
+
+RED (`go test ./internal/cli/ -run 'TestFeedbackScrubContract|TestFeedbackScrubToolFailureExitsNonZero' -v`, 테스트만 있고 구현 없는 트리):
+
+```
+# github.com/modu-ai/moai-adk/internal/cli [github.com/modu-ai/moai-adk/internal/cli.test]
+internal/cli/feedback_test.go:49:9: undefined: newFeedbackCmd
+internal/cli/feedback_test.go:129:52: undefined: feedbackSecurityFileName
+internal/cli/feedback_test.go:197:14: undefined: resolveFeedbackRoot
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+FAIL
+```
+
+GREEN — AC별 명령을 각각 1회씩 실행해 관측한 결과:
+
+```
+$ go test ./internal/cli/ -run 'TestFeedbackScrubContract' -v
+=== RUN   TestFeedbackScrubContract
+--- PASS: TestFeedbackScrubContract (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.647s
+
+$ go test ./internal/cli/ -run 'TestFeedbackScrubToolFailureExitsNonZero' -v
+=== RUN   TestFeedbackScrubToolFailureExitsNonZero
+--- PASS: TestFeedbackScrubToolFailureExitsNonZero (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.643s
+```
+
+경계 테스트 7건(AC 외 추가), 전부 PASS: `TestFeedbackScrubBlockedVerdictExitsZero`(P3 축 분리 — 차단은 종료 코드 0) · `TestFeedbackScrubWritesMaskLogUnderRoot`(M4 잔여 위험 1 — 산출물이 실제로 생기는지) · `TestFeedbackRootFallbackWalksUpToMarker`(`--root` 미지정 시 상향 탐색) · `TestFeedbackQueueVerbsRoundTrip`(enqueue→list→resolve) · `TestFeedbackQueueRefusesBlockedResult` · `TestFeedbackQueueNeverReadsPreScrubDraft`(D4 경계의 CLI 판) · `TestFeedbackQueueRequiresRoot`.
+
+바이너리 스모크 (`go build -o /tmp/claude-501/moai-m5 ./cmd/moai`, exit 0):
+
+```
+$ SMOKE_SECRET_NAME=smoke-value-0123456789 moai-m5 feedback scrub \
+    --root <scratch> --title 'crash while handling smoke-value-0123456789' < body.txt
+{
+  "verdict": "ok",
+  "title": "crash while handling s...6789",
+  "body": "body mentions s...6789 twice: s...6789\n",
+  "findings": [
+    { "kind": "env", "where": "title", "count": 1 },
+    { "kind": "env", "where": "body",  "count": 2 }
+  ],
+  "reason": ""
+}
+scrub_exit=0
+
+$ ls -l <scratch>/.moai/logs/feedback-mask.log
+-rw-------  1 goos  wheel  97 ...
+$ cat <scratch>/.moai/logs/feedback-mask.log
+2026-08-23T18:55:11+09:00 | total=3 | kind=env where=title count=1 | kind=env where=body count=2
+
+$ moai-m5 feedback queue enqueue --root <scratch> < result.json
+{ "id": "f1", "title": "crash while handling s...6789", ..., "attempts": 0 }
+enqueue_exit=0
+$ ls -l <scratch>/.moai/state/feedback/queue.json
+-rw-------  1 goos  wheel  253 ...
+$ moai-m5 feedback queue list --root <scratch>      → items 1건, list_exit=0
+$ moai-m5 feedback queue resolve f1 --root <scratch> → { "id": "f1", "removed": true }, resolve_exit=0
+
+$ echo 'hello' | moai-m5 feedback scrub --root <scratch> --title 'a title' \
+    | jq -e '.verdict and (.title|type=="string") and (.findings|type=="array")'
+true
+jq_smoke_exit=0
+
+$ (security.yaml 을 깨뜨린 뒤) moai-m5 feedback scrub --root <scratch> --title 't' < body.txt
+exit=1 · stdout 0 바이트 · stderr 272 바이트
+```
+
+`--title` 을 실제로 통과시킨다는 관측은 위 스모크의 `findings[where=title]` 이다(계약 필드 존재가 아니라 마스킹 동작). 마스킹된 값 형태(`s...6789`)는 기존 마스커 그대로다.
+
+패키지 트리 전체 (`go test -timeout 900s ./internal/cli/... ./internal/feedback/...`):
+
+```
+ok  	github.com/modu-ai/moai-adk/internal/cli	343.442s
+ok  	github.com/modu-ai/moai-adk/internal/feedback	5.636s
+… (하위 패키지 전부 ok)
+--- FAIL: TestConstitutionCrossReference (0.00s)
+    agent_lint_test.go:1249: moai-constitution.md should cross-reference agent-authoring.md for effort matrix
+FAIL	github.com/modu-ai/moai-adk/internal/cli/agentlint	1.194s
+```
+
+**이 FAIL 1건은 M5 소관이 아니다** — 단언 대상이 `.claude/rules/moai/core/moai-constitution.md` 이고(`grep -c agent-authoring` → `0`), M5 diff 는 Go 파일 3개뿐이다(`git status --porcelain` → ` M internal/cli/root.go` + 신규 2). M1~M4 도 이 패키지를 돌리지 않았으므로 이번에 처음 보인 것이지 이번에 생긴 것이 아니다. 규칙 파일 부채로 상위에 보고한다.
+
+`go vet ./internal/cli/... ./internal/feedback/...` → exit 0. `GOOS=windows go vet` 동일 대상 → exit 0.
+`go test -race ./internal/feedback/` → `ok ... 1.967s`.
+`golangci-lint run --timeout=3m ./internal/cli/...` → `0 issues.`
+`gofmt -l internal/cli/feedback.go internal/cli/feedback_test.go internal/cli/root.go` → 무출력.
+실제 리포 트리의 `.moai/logs/` 에는 아무것도 쓰이지 않았다(테스트는 `t.TempDir()`, 스모크는 `/tmp` scratch).
+
+AC-F-003 판정: **PASS** — `go test ./internal/cli/ -run 'TestFeedbackScrubContract' -v` 가 위 블록을 출력. 5필드 + `findings[].where` 가 `title`·`body` 양쪽에서 관측됨.
+AC-F-004 판정: **PASS** — `go test ./internal/cli/ -run 'TestFeedbackScrubToolFailureExitsNonZero' -v` 가 위 블록을 출력. 바이너리에서도 exit 1 + stdout 0 바이트로 재관측.
+
+납품물:
+- `internal/cli/feedback.go` — `feedback` 부모(`--root` persistent) + `scrub`(`--title`, 본문 stdin, JSON stdout) + `queue enqueue|list|resolve`. `resolveFeedbackRoot` / `feedbackScrubOptions` / `emitFeedbackJSON`.
+- `internal/cli/root.go` — `rootCmd.AddCommand(newFeedbackCmd())` 1줄 + 주석.
+- `internal/cli/feedback_test.go` — AC 2건 + 경계 7건.
+
+설계 판단 5건:
+
+1. **`--root` 는 신뢰하지 않고 검증한다.** 오타 난 경로가 조용히 상향 탐색으로 폴백하면 **다른 프로젝트**의 `.moai/` 에 쓴다. 명시 `--root` 는 `.moai` 존재를 확인하고 아니면 실패(fail-closed), 미지정만 `ResolveProjectRoot` 로 폴백한다. 사용자 경로는 `filepath.Abs` 로만 해석한다(`filepath.Join(cwd, userPath)` 금지 — CLAUDE.local.md §6).
+2. **루트 미해석의 처리는 동사마다 다르다.** `scrub` 은 루트가 없어도 진행한다(마스킹은 산출물에 의존하지 않는다 — fail-open). `queue` 동사는 쓰기가 존재 이유이므로 루트 없으면 에러다. 두 축을 섞지 않는다.
+3. **정책 로드는 탐지기와 반대로 fail-closed 다.** `security.LoadExtraSecurityConfig` 는 파싱 실패를 기본값으로 강등한다 — 탐지기에서는 놓친 패턴 1건이 "쓰기 1건 허용"이지만, 여기서는 사용자가 설정한 확장 패턴이 조용히 빠진 채 **공개 채널로 나간다**. 그래서 M5 는 같은 파일을 직접 읽고 읽기·파싱 실패를 도구 실패로 올린다. AC-F-004 의 "정책을 로드할 수 없는 조건"이 이것이다.
+4. **`queue enqueue` 는 제목/본문이 아니라 스크러버 JSON 을 통째로 받는다.** M4 의 `EnqueueMasked(Result)` 논리를 CLI 표면까지 연장한 것으로, 원문 문자열을 큐에 넣는 **호출 형태 자체가 존재하지 않는다**. D4 경계도 같은 이유로 유지된다 — 큐 동사는 `queue.json` 외에 아무것도 읽지 않으며, 초안(`feedback-draft-*.md`)이 같은 트리에 있어도 항목으로 채택되지 않음을 `TestFeedbackQueueNeverReadsPreScrubDraft` 가 동작으로 관측한다.
+5. **`env_scrub_extra` 만 로컬 구조체로 선언하고 패턴 확장은 exported 타입을 재사용한다.** 같은 파일을 두 번 언마샬해 (a) `security.ExtraSecurityConfig`(패턴), (b) `security.sandbox.env_scrub_extra` 를 얻는다. 패턴 문자열은 어디에도 복사하지 않는다(AP-4).
+
+미검증(M5 시점): `--root` 미지정 폴백은 단위 테스트(`resolveFeedbackRoot("", nested)`)와 앰비언트 실행으로만 관측했고, 스모크의 산출물 검증은 명시 `--root` 로 했다. `moai feedback` 을 실제로 호출하는 프로덕션 소비자는 아직 없다 — 스킬 본문(M6)이 그 소비자다. `queue` 동사는 재전송을 **수행하지 않는다**(적재/조회/제거만); 재전송 자체는 스킬 본문의 `gh issue create` 재실행이다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
