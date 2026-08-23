@@ -17,6 +17,40 @@ where Bash may be restricted. Use the Bash CLI only when the MCP tool is absent
 from the agent's `tools:` list, or when orchestrating from the main session and
 the CLI form reads more naturally inline.
 
+## The `project_root` input — name your own tree
+
+Five tools accept an optional `project_root` string: `spec_progress`,
+`spec_audit`, `spec_drift`, `codex_audit`, and `audit_multi`. It names the tree
+the call should act on.
+
+[HARD] **An agent working inside a worktree MUST pass it**, and the value is its
+own `git rev-parse --show-toplevel`. This is not a convenience. The server cannot
+work the answer out for itself: it is a long-lived subprocess, so its working
+directory cannot follow a worktree switch, and the environment variable it falls
+back on names the PROJECT — the primary checkout — even for a session working in
+a worktree. Omit the parameter from a worktree and the call acts on the primary
+checkout instead, which means a SPEC that exists only on the card's branch is not
+in the catalogue the auditor reads. It is not reported missing; it is simply
+absent.
+
+The caller is the only party that holds the answer, which is why it is an input
+rather than something inferred.
+
+| Situation | What to pass | What happens |
+|---|---|---|
+| Session in a worktree | `project_root: <git rev-parse --show-toplevel>` | the call acts on that tree |
+| Session in the primary checkout | nothing | resolves exactly as it always has |
+| Path that is not a MoAI project root | — | the call is REJECTED with an error naming the path |
+
+The rejection is deliberate and is not a rough edge. A silent fallback to the
+default would send a caller who mistyped its own worktree path back to acting on
+the primary checkout — the exact failure the parameter exists to prevent —
+while reporting success.
+
+For `audit_multi` the root is forwarded to the codex backend of the fan-out; the
+GLM backend is an HTTP call with no working directory to bind it to, so it takes
+no root.
+
 ## Tool catalogue (21 tools)
 
 ### SPEC lifecycle
