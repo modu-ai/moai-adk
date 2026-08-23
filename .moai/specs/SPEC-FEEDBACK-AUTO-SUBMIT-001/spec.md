@@ -2,7 +2,7 @@
 id: SPEC-FEEDBACK-AUTO-SUBMIT-001
 title: "자동 피드백 전송 — 동의 게이트 · 전송 전 마스킹 스크러버 · 취약점 분류"
 version: "0.5.0"
-status: in-progress
+status: completed
 created: 2026-08-22
 updated: 2026-08-23
 author: manager-spec

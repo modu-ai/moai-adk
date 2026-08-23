@@ -1216,4 +1216,58 @@ AC-F-023 은 유일하게 두 마일스톤이 절반씩 지며, 각 마일스톤
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-23
+sync_commit_sha: pending-backfill-SPEC-FEEDBACK-AUTO-SUBMIT-001   # 커밋은 자기 해시를 알 수 없다 — 후속 커밋에서 백필
+sync_status: complete-pending-integration
+sync_base_sha: cdff7f315          # run-phase HEAD(M9 기록 커밋)
+branch: WT-auto-feedback
+worktree: .claude/worktrees/t170
+changelog_entry_position: "[Unreleased] → Summary 4문단 + Added 최상단 SPEC 항목 1건 + 사용자 대면 항목 3건"
+b12_self_test_a: "pre-emission grep — `git show HEAD:CHANGELOG.md | grep -c 'SPEC-FEEDBACK-AUTO-SUBMIT-001'` = 0 (중복 없음)"
+b12_self_test_b: "AC 개수 대조 — `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l` = 24, CHANGELOG 주장 24 일치 (0이 아니므로 공허 비교 아님)"
+b12_self_test_c: "파일 경로 확인 — CHANGELOG 가 인용한 spec.md · plan.md · design.md 를 `ls` 로 존재 확인"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed"
+  plan_md: n/a          # frontmatter 없음 — 측정: `head -3 plan.md` 가 `# Plan — …` 로 시작
+  acceptance_md: n/a    # frontmatter 없음 — 같은 방식으로 측정
+  progress_md: n/a      # frontmatter 없음 — 같은 방식으로 측정
+  note: "병합된 3-phase close — implemented 를 경유하되 별도 커밋 없이 단일 sync 커밋이 completed 까지 싣는다. 이 SPEC 은 4종 중 spec.md 하나만 frontmatter 를 가지므로 전이도 그 한 파일에서만 일어난다. 나머지 3종에 frontmatter 를 새로 만들지 않았다 — 없는 것을 만드는 것은 본문 편집이고, sync 소관이 아니다. `updated:` 는 이미 2026-08-23 이라 값이 바뀌지 않았다(재기입 불필요). 본문 §A~§H 는 손대지 않았다."
+docs_site_4locale: verified-not-rewritten   # M8(a6682a007)이 착지시킴, sync 는 패리티만 관측
+readme_change: none                          # 근거는 아래 §검증 기록
+external_blocker: t189                       # TestConstitutionCrossReference (agentlint) — 이 SPEC 소관 아님, lane-8
+integration_status: held-by-lead             # 큐: lane-8(t183→t189) → lane-5(t182) → lane-7(이 카드)
+```
+
+### sync 가 바꾼 것 (전부)
+
+| 파일 | 변경 |
+|---|---|
+| `CHANGELOG.md` | `[Unreleased]` Summary 4문단 + Added 4항목(SPEC close 1 + 사용자 대면 3) |
+| `.moai/specs/SPEC-FEEDBACK-AUTO-SUBMIT-001/spec.md` | frontmatter `status`·`updated` 만 |
+| `…/plan.md` | 변경 없음 (frontmatter 부재) |
+| `…/acceptance.md` | 변경 없음 (frontmatter 부재) |
+| `…/progress.md` | 이 §E.4 (frontmatter 부재) |
+| `.moai/reports/t170/sync-report.md` | 신규(5-section 보고서) |
+
+**코드 변경 0건.** docs-site 4로케일은 run-phase M8 이 이미 착지시켰으므로 sync 는 다시 쓰지 않고 관측만 했다.
+
+### 검증 기록 (관측한 것)
+
+- **close 전 `moai spec audit --json`** (워크트리 cwd): `total_specs: 640`, MUST-FIX **1건** — `SPEC-CODEX-SKILLS-CANONICAL-001` 의 `SyncStatusDrift`(타 SPEC, 선재). 이 SPEC 의 drift finding **0건**.
+- **close 후 `moai spec audit --json`**: 아래 "close 후 관측" 참조.
+- `go test ./internal/config/... ./internal/template/...` → 전부 `ok` (config 9.752s / template 52.516s). 문서·CHANGELOG 전용 변경이 이 두 패키지를 움직이지 않음을 확인.
+- **4로케일 패리티**: `moai-feedback.md` 4개 로케일 각각 `auto_submit` 2히트 · `^### ` 헤딩 14개로 동일. 새 절(`제출 전 확인` / `Confirming Before Submission` / 일·중 대응절)은 4로케일 모두 존재.
+- **README 무변경 근거**: `grep -n feedback README.md README.ko.md README.ja.md README.zh.md` → 4파일 각각 3곳(커맨드 나열 2 + 이슈 링크 1)뿐이고 설정 키를 열거하는 문단이 없다. `README.md:574` 의 `.moai/config/sections/` 표는 "편집하게 되는" 6개 + v3.1.1 추가 4개만 싣고 `feedback.yaml` 을 포함하지 않는다. 따라서 이 SPEC 이 README 에 만드는 부채는 없다.
+
+### 검증하지 **않은** 것 (§E.3 의 7건은 그대로 유효하며, sync 에서 더해진 것만 적는다)
+
+1. **`mcp__moai__spec_audit` 의 `project_root` 가 이 워크트리에서 작동하지 않았다.** `project_root=/…/.claude/worktrees/t170` 을 넘겨 호출했는데 결과가 `total_specs: 627` 이고 `SPEC-FEEDBACK-AUTO-SUBMIT-001` 이 출력에 **0회** 등장했다 — 이 SPEC 디렉터리는 워크트리에만 있고 primary 체크아웃(`/Users/goos/MoAI/moai-adk-go/.moai/specs/`, 628개)에는 없다. 즉 primary 를 감사한 것으로 관측된다. 그래서 판정 근거는 워크트리 cwd 에서 실행한 **CLI** (`moai spec audit --json`, `total_specs: 640`)로 잡았다. MCP 쪽 원인 규명은 이 카드 범위 밖이며 별도 카드감이다.
+2. **Hugo 빌드 미실행** — §E.3 의 미검증 5와 동일. sync 에서도 docs-site 를 렌더하지 않았다(이번 sync 는 docs-site 파일을 편집하지 않았다).
+3. **전체 스위트·CI** — 로컬에서 `go test ./...` 를 돌리지 않았다(CLAUDE.local.md §4). 통합 후 PR CI 가 판정한다.
+4. **push·PR·머지 없음** — 리드의 통합 큐 보류 대상. 이 레인은 sync 커밋에서 멈춘다.
+
+### 잔여 위험 (sync 시점에 새로 생긴 것)
+
+- `sync_commit_sha` 가 플레이스홀더로 남는다. 백필 커밋 전까지 이 값은 감사관에게 "sync 는 끝났으나 해시는 미기입" 상태로 읽혀야 한다. 형제 SPEC 사례(`SPEC-CODEX-SKILLS-CANONICAL-001`)에서 보듯, `status` 가 `completed` 에 도달하지 못한 채 플레이스홀더만 남으면 `SyncStatusDrift` MUST-FIX 가 뜬다 — 이 SPEC 은 같은 커밋에서 `completed` 까지 올려 그 형태를 피했다.
+- §E.3 의 누적 잔여 위험 28건은 sync 로 해소되지 않았다. 특히 **20번**(`feedback.auto_submit` 을 Go 코드가 읽지 않는다)은 CHANGELOG 문구가 "convention, not sandbox" 로 정직하게 반영됐을 뿐 기술적으로 달라진 것이 없다.
