@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `moai todo` analyses its own queue. Every `add` measures the new card against the ones already there, and `moai todo analyze` re-reads the whole queue on demand. What the analysis produces is a record, not a change: no card is folded, reordered, dropped, or edited as a consequence of one.
+- An exact duplicate is refused rather than appended. The refusal writes nothing — the queue file stays byte-identical — and names the colliding card on stderr. `moai todo add "<text>" --force` admits it anyway and records that the duplicate was forced, so the collision stays visible instead of being argued about later.
+- A near duplicate (token-set similarity at or above 0.80) is added verbatim and carries a record. Cards that mean the same thing in different words are deliberately not caught: a false positive at this layer discards a card someone wrote.
+- `moai todo relate <a> <b> --relation (contains|absorbs|replaces|conflicts) [--note]` records a judgment a text measure cannot reach, and `moai todo unrelate <index>` removes one. Neither touches a card — `absorbs` performs no absorption.
+- `moai todo why <n>` prints everything the queue knows about a card, and says so explicitly when that is nothing. `moai todo list` prints each record under the card it names, with the command that would act on it, marked `machine-only` while nothing agent-sourced names the same pair.
+- The backlog file gains a top-level `findings` array beside `last_seq`. It always renders as an array, so a file written before this feature loads unchanged and "no findings" never has to be told apart from "no such feature". The five-field per-item contract is untouched, and a finding leaves the file when its card does.
+
 ## [3.1.2] - 2026-08-21
 
 ### Summary

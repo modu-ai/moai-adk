@@ -66,6 +66,17 @@ The queue is stored at `.moai/state/kanban/backlog.json`. It lives inside the pr
       "spec_id": null,
       "state": "queued"
     }
+  ],
+  "findings": [
+    {
+      "subject_id": "t2",
+      "related_id": "t1",
+      "relation": "near-duplicate",
+      "source": "mechanical",
+      "score": 0.83,
+      "note": "",
+      "at": "<RFC3339 timestamp>"
+    }
   ]
 }
 ```
@@ -74,9 +85,22 @@ The queue is stored at `.moai/state/kanban/backlog.json`. It lives inside the pr
 |------|------|
 | `id` | A short, stable identifier assigned at add time. Never reused after removal. |
 | `spec_id` | An optional link to a SPEC identifier. Filled when the pick records it via `--spec`; when the id is not yet known it stays `null` even in the `picked` state. |
+| `findings` | The records kept about **pairs** of cards. A relation belongs to the pair rather than to either card, which is why it lives here and not in an item. Always an array — a file written before this feature loads with an empty one, so "no findings" never has to be told apart from "no such feature". `source` is `mechanical` (a measured text similarity) or `agent` (a judgment written by a human or an agent). A finding leaves the file when its card does. |
 | `state` | The lifecycle discriminator. One of `queued` · `picked` · `dropped` — this value is what separates "still a backlog item" from "already a card on the board". A picked item stays in the file so ongoing work is visible. The only way an item is **removed from the file** is an explicit `moai todo done` run by a human — nothing removes it automatically when its work completes. Discarding is not removal: `moai todo drop <n> "<reason>"` moves a card to `dropped` while keeping it in the file, prefixing its text with the reason, and `moai todo undrop <n>` reverses that exactly. A dropped card is not a pick candidate. |
 
 The file is written atomically (write to a temp file, then rename) so a crash mid-write cannot truncate the queue. A missing file is not an error but an **empty queue**, and a malformed file is reported and left untouched — the human intent stored here is the one value that cannot be regenerated.
+
+## Automatic analysis
+
+The queue reads itself on every add, and across the whole queue on `moai todo analyze`, **looking for cards that resemble each other and recording what it finds**. A record changes no card: not its text, not its position, not its state.
+
+Exactly one thing is ever blocked. A card whose normalized text is identical to one already queued or picked is refused at the door. The refusal erases nothing and leaves the queue file byte-identical; you see an error instead of an id. When you want it anyway, `--force` admits it and records that the duplicate was forced.
+
+A card that resembles another without matching it (token-set Jaccard at or above 0.80) is **added verbatim** and carries a near-duplicate record. Two cards that mean the same thing in different words go unnoticed, and that limit is deliberate: a false positive here throws away a card someone wrote, while judging meaning is what `moai todo relate` is for — and there a mistake costs one line of output.
+
+The four relations `contains` · `absorbs` · `replaces` · `conflicts` are written by hand, by a human or an agent. **Despite their names they do nothing** — writing `absorbs` absorbs no card. What to do about a record is your decision, carried out with `drop`, `edit`, or `move`.
+
+`moai todo list` prints each record as an indented line under the card it names, marked `machine-only` while nothing human-written names the same pair. The mark says only that the record is machine-made — never that nobody reviewed the pair, because the CLI cannot know who called it.
 
 ## Picking the next card
 
@@ -137,6 +161,21 @@ $ moai todo add "tidy up the graph query docs" --pick
 
 # Revert the picked mark — on a card not yet handed to plan
 $ moai todo unpick 4
+
+# Re-analyse the whole queue, recording only (no card is touched)
+$ moai todo analyze
+
+# Add an exact duplicate anyway — the queue records that it was forced
+$ moai todo add "clean up error paths in auth middleware" --force
+
+# Record a relation between two cards (a record only; both cards stay put)
+$ moai todo relate t2 t1 --relation absorbs --note "t2 covers t1"
+
+# Print everything the queue knows about this card
+$ moai todo why t1
+
+# Remove one record — the index is the one `why` prints
+$ moai todo unrelate 2
 ```
 
 | Command | Behavior |
@@ -153,6 +192,11 @@ $ moai todo unpick 4
 | `moai todo undrop <n> [--expect <prefix>]` | Returns a `dropped` card to `queued`, stripping the marker when one is present. The state is the authority, not the marker — a card marked dropped by hand undrops with its text untouched. An exact reversal of `drop`. |
 | `moai todo edit <n> "<text>" [--expect <prefix>]` | Rewrites only the card's text. `id`, `added_at`, `state`, and `spec_id` are preserved, so a correction never churns the card's identity the way done + re-add does. The confirmation prints both the new and the prior text. |
 | `moai todo move <n> (--top \| --bottom \| --before <m> \| --after <m>)` | Repositions the card within the queue file's **order**. Exactly one destination flag is required — none, or two, is a malformed invocation and is refused. The move permutes the items and nothing else, so a wrong move is reversed by another move. |
+| `moai todo add "<text>" --force` | Admits a card the analyser reads as an exact duplicate. The queue records that the duplicate was forced, so the collision stays visible. |
+| `moai todo analyze` | Re-analyses the whole queue and records what it finds. Appends, removes, reorders, and edits nothing; re-running never stacks the same record twice. |
+| `moai todo relate <a> <b> --relation (contains \| absorbs \| replaces \| conflicts) [--note <text>]` | Records one relation between two cards. It is a record only — both cards stay exactly as they were, and `absorbs` performs no absorption. |
+| `moai todo unrelate <index>` | Removes the addressed record. The index is the one `why` prints. No card changes. |
+| `moai todo why <n>` | Prints every record naming the card, or says explicitly that there are none — printing nothing would be indistinguishable from a crash. |
 
 The CLI never prompts. It takes arguments and flags, prints one line, and reports errors on stderr — a shape that is safe in scripts and CI.
 

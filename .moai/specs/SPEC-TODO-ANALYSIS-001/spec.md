@@ -1,8 +1,8 @@
 ---
 id: SPEC-TODO-ANALYSIS-001
 title: "todo 큐 자동 분석 — 기계적 중복 탐지와 관계 기록, 그리고 큐레이션 금지선의 명문화"
-version: "0.2.0"
-status: draft
+version: "1.0.0"
+status: completed
 created: 2026-08-22
 updated: 2026-08-23
 author: manager-spec
@@ -189,6 +189,7 @@ Tier M — 전체 AC 목록과 각 AC를 붉게 만드는 잘못된 구현은 `a
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-08-22 | manager-spec | 초기 plan-phase 초안 (칸반 카드 t119). |
+| 1.0.0 | 2026-08-23 | manager-develop | run + sync 완료. M3(기계 분석기 + `add` 통합) · M4(`relate`/`unrelate`/`why` + `list` 소견 렌더 + 가드 범위 확장) · M5(스킬 표면 갱신 + 템플릿 미러 + `make build`) 착지, docs-site 4로케일 반영. AC-TA-001~016 전부 PASS — 귀속은 `progress.md §E.3`. |
 | 0.2.0 | 2026-08-23 | manager-spec | plan-audit iteration 1 결함 반영: §B.1 에 카드 t119 완화안 인용·반박(D10), 현저성 기준에 범위 한정 추가(D9), 정확 중복 거절 행에 조건 명시 + 잔여 위험 선언(D2), 순서 탐지 서술 정정(D8), 인용 줄번호 정정(D11), REQ-TA-002 재실행 멱등성(D4) · REQ-TA-013 무순서 쌍(D13) · REQ-TA-015 exit 0/1/2(D6). |
 
 ## §G 상호참조

@@ -141,4 +141,31 @@ M1(독트린)·M2(스키마)는 `e04801047`·`2c63f2ac1` 로 이미 착지했다
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+### 착지한 문서
+
+| 표면 | 내용 |
+|---|---|
+| `CHANGELOG.md` `[Unreleased]` | `### Added` 6불릿 — 분석이 기록이지 변형이 아니라는 점, 정확 중복 거절과 `--force`, 근접 중복이 의도적으로 텍스트만 본다는 한계, 네 관계 동사, `why` / `list` 가시성, 가산적 `findings` 배열 |
+| `docs-site/content/{ko,en,ja,zh}/utility-commands/moai-todo.md` | 신규 `## 자동 분석` 절 + 상태 파일 JSON 에 `findings` + 필드 설명 행 + CLI 표 5행 + bash 예시 5개. ko 정본 → en/ja/zh 파생 |
+| `.moai/specs/SPEC-TODO-ANALYSIS-001/spec.md` | frontmatter `status: draft → completed`, `version 0.2.0 → 1.0.0`, §F 이력 행 추가 |
+
+### 실행한 명령과 관측 출력
+
+| 명령 | 관측 |
+|---|---|
+| `hugo --gc --minify` (docs-site) | `Total in 2256 ms`, WARN 0줄, 4로케일 페이지 183/181/181/181, `public/index.html` 생성 |
+| `wc -l` 4로케일 | 215 / 215 / 215 / 215 (동일) |
+| `grep -c "^## "` 4로케일 | 9 / 9 / 9 / 9 (절 수 동일) |
+| 이모지 스캔 (`\U0001F300-\U0001FAFF`) | 4로케일 모두 0 |
+| mermaid 방향 스캔 (`flowchart LR` / `graph LR`) | 4로케일 모두 0 (TD-only 유지) |
+
+### 3-phase close
+
+- plan → `f1bc39310` (draft), run → `ebd828b5d`, sync → 이 커밋. `status: completed` 는 이 sync 커밋에 실린다.
+- **run-phase 에서 `status: in-progress` 로의 중간 전이를 남기지 않았다.** 한 레인이 run 과 sync 를 연속으로 수행했고 그 사이에 커밋이 하나뿐이라, draft → completed 로 한 번에 넘어간다. 3-phase 계약의 문서 흔적이라는 면에서는 결손이며, 여기 기록해 둔다.
+
+### 미검증 (Gaps)
+
+- **번역 3로케일은 사람이 검수하지 않았다.** ko 정본을 기준으로 파생했고, 사실·수치·코드 블록·명령 문법은 기계적으로 동일하게 유지했지만 문장의 자연스러움은 검증되지 않았다.
+- **docs-site 링크 검사기를 돌리지 않았다.** 새 절은 외부 링크를 추가하지 않았고 기존 상호참조도 건드리지 않았으므로 링크 표면은 변하지 않았다 — `hugo` 빌드 무경고가 근거의 전부다.
+- **배포 확인 없음** — Vercel 은 머지 후에 빌드한다. 로컬 `hugo` 빌드가 통과했다는 것뿐이다.
