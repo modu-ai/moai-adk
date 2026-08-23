@@ -115,21 +115,23 @@ deviations:
 
 ```yaml
 sync_complete_at: 2026-08-22
-sync_commit_sha: pending-backfill-SPEC-CODEX-SKILLS-CANONICAL-001
+sync_commit_sha: 179978185
 sync_status: complete
 b12_self_test_a: pass    # grep -c 'SPEC-CODEX-SKILLS-CANONICAL-001' CHANGELOG.md → 0 (중복 없음)
 b12_self_test_b: pass    # acceptance.md AC 표제 13개 = CHANGELOG 가 인용하는 AC 수와 정합 (13/13 PASS)
 b12_self_test_c: pass    # CHANGELOG 가 이름을 든 경로 전부 실재: .claude/skills/, .agents/skills/, internal/template/templates/.gitignore
 changelog_entry_position: "[Unreleased] → ### Added (신규 절)"
 frontmatter_status_transitions:
-  spec_md: in-progress → implemented
+  spec_md: in-progress → implemented → completed
   plan_md: n/a          # frontmatter 없음
   acceptance_md: n/a    # frontmatter 없음
   progress_md: n/a      # frontmatter 없음
-  completed_transition: deferred   # 리드 지시 — 병합 경로를 리드가 운전하므로 implemented 까지만
+  completed_transition: complete   # 리드 종결 수선 지시(카드 t81) — sync 커밋(179978185)이 아닌 그 다음 수선 커밋에서 전이. 3-phase 계약상 전이가 sync 커밋에 실리지 못한 뒤늦은 종결임을 이 줄이 기록한다.
 docs_changed: none
 docs_decision: "README 4-locale · docs-site 무변경. 근거: 배포 트리를 열거하는 문서 페이지가 없고(`.agents/skills` 매치 0건), 미러 수명 관리(복사본 갱신·은퇴 미러 제거)가 승계 카드 소관이라 지금 문서화하면 반쯤 착지한 능력을 완결된 것처럼 기술하게 된다. CHANGELOG 가 이번 변경의 사용자 표면."
 open_items_carried:
   - "REQ-CSC-005 호출부 표시 배선(internal/cli) 미착수 — 배포기 계층까지만 충족. CHANGELOG 에 사용자-가시 한계로 명시."
   - "폴백 복사본 고착 — 승계 카드 t173 소관. CHANGELOG 에 사용자-가시 한계로 명시."
 ```
+
+sync_commit_sha(179978185)는 그 sync 커밋의 **다음** 커밋(종결 수선, 카드 t81)에서 백필된다 — 커밋은 자기 해시를 미리 알 수 없다(spec-frontmatter-schema.md § SHA placeholder backfill exemption). 표기는 감사기가 읽는 나열형을 따른다(`internal/spec/era.go` `progressFieldListPattern` 은 굵은 표시나 뒤따르는 산문이 붙으면 값을 못 읽는다).

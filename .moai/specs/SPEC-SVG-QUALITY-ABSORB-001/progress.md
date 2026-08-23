@@ -215,7 +215,7 @@ ac_pass: 13 of 14 (AC-BUDGET recorded as an estimate, not a measurement — §E.
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ```
-sync_status: audit-ready
+sync_status: complete
 sync_complete_at: 2026-08-22
 sync_commit_sha: 68d63318c
 ```
