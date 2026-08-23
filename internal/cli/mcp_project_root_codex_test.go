@@ -130,6 +130,72 @@ func TestCodexTools_DeclareProjectRootInput(t *testing.T) {
 	}
 }
 
+// Each tool's declared description must match the resolver it actually uses.
+//
+// This is a regression guard, not a nicety. One shared description string
+// promised every tool the resolveProjectDir() fallback, which is NOT what
+// audit_multi does — so a caller reading its schema was told the absent case
+// resolved to the project root when in fact it supplies no root at all. The
+// live post-repair check (M5) caught it: a description that describes four of
+// five tools is not shared, it is wrong.
+func TestProjectRootDescription_MatchesEachToolsResolver(t *testing.T) {
+	srv := newMoaiMCPServer()
+	ctx := context.Background()
+	c, err := client.NewInProcessClient(srv)
+	if err != nil {
+		t.Fatalf("NewInProcessClient: %v", err)
+	}
+	defer closeInProcessClient(c)
+	if _, err := c.Initialize(ctx, mcp.InitializeRequest{}); err != nil {
+		t.Fatalf("initialize: %v", err)
+	}
+	res, err := c.ListTools(ctx, mcp.ListToolsRequest{})
+	if err != nil {
+		t.Fatalf("ListTools: %v", err)
+	}
+
+	// The two descriptions must actually differ, or this test asserts nothing.
+	if projectRootDesc == projectRootPassthroughDesc {
+		t.Fatal("the fallback and pass-through descriptions are identical; one of them is wrong for its tools")
+	}
+
+	want := map[string]string{
+		"spec_progress": projectRootDesc,
+		"spec_audit":    projectRootDesc,
+		"spec_drift":    projectRootDesc,
+		"codex_audit":   projectRootDesc,
+		"audit_multi":   projectRootPassthroughDesc, // supplies NO root when absent
+	}
+	seen := map[string]bool{}
+	for _, tool := range res.Tools {
+		wantDesc, ok := want[tool.Name]
+		if !ok {
+			continue
+		}
+		seen[tool.Name] = true
+		b, _ := json.Marshal(tool.InputSchema)
+		if !strings.Contains(string(b), jsonEscaped(wantDesc)) {
+			t.Errorf("%s declares the wrong project_root description; schema=%s", tool.Name, b)
+		}
+	}
+	for name := range want {
+		if !seen[name] {
+			t.Errorf("tool %q not registered — cannot assert its description", name)
+		}
+	}
+}
+
+// jsonEscaped renders s as it appears inside a marshalled JSON document, minus
+// the surrounding quotes, so a substring check against marshalled schema bytes
+// compares like with like.
+func jsonEscaped(s string) string {
+	b, err := json.Marshal(s)
+	if err != nil {
+		return s
+	}
+	return string(b[1 : len(b)-1])
+}
+
 // AC-1b, single-backend path: the named tree lands in the params map codex
 // receives — asserted on the map itself, with no live backend.
 func TestCodexAudit_ProjectRootLandsInTheParamsMap(t *testing.T) {

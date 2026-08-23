@@ -33,16 +33,39 @@ import (
 // projectRootArg is the optional tool input naming the tree to act on.
 const projectRootArg = "project_root"
 
-// projectRootDesc is the shared input description. One string, so the tools
-// cannot drift into describing the same parameter differently.
-const projectRootDesc = "Optional project or worktree root to act on. Supply your own `git rev-parse --show-toplevel`. " +
-	"Absent or empty resolves as before (CLAUDE_PROJECT_DIR, then the server's working directory), which in a " +
-	"worktree session is the PRIMARY checkout rather than the worktree. An unusable path is rejected, never " +
-	"silently replaced by the default."
+// The two input descriptions share an opening and differ in exactly the way the
+// two resolvers differ — what an ABSENT parameter means. They are separate
+// strings because a single shared one was wrong: it promised every tool the
+// resolveProjectDir() fallback, which is not what the pass-through tools do, so
+// a caller reading the schema for `audit_multi` was told the wrong thing. A
+// description that describes four of five tools is not a shared description, it
+// is an inaccurate one.
+const projectRootDescCommon = "Optional project or worktree root to act on. Supply your own " +
+	"`git rev-parse --show-toplevel`. In a worktree session you MUST pass it: the server's own resolution names " +
+	"the PRIMARY checkout, so omitting it acts on the wrong tree. An unusable path is rejected, never silently " +
+	"replaced by a default. "
 
-// projectRootOption declares the optional input on a tool.
+// projectRootDesc describes the parameter on a tool whose absent case falls back
+// to resolveProjectDir() — the tools that already resolved a root before this
+// parameter existed.
+const projectRootDesc = projectRootDescCommon +
+	"Absent or empty resolves as before: CLAUDE_PROJECT_DIR, then the server's working directory."
+
+// projectRootPassthroughDesc describes the parameter on a tool that carried NO
+// root before this parameter existed, so its absent case supplies none rather
+// than substituting a default.
+const projectRootPassthroughDesc = projectRootDescCommon +
+	"Absent or empty supplies no root at all, exactly as before this parameter existed — the backends then " +
+	"resolve their own working directory."
+
+// projectRootOption declares the optional input on a fallback-semantics tool.
 func projectRootOption() mcp.ToolOption {
 	return mcp.WithString(projectRootArg, mcp.Description(projectRootDesc))
+}
+
+// projectRootPassthroughOption declares it on a pass-through-semantics tool.
+func projectRootPassthroughOption() mcp.ToolOption {
+	return mcp.WithString(projectRootArg, mcp.Description(projectRootPassthroughDesc))
 }
 
 // resolveToolProjectRoot returns the project root a tool call should act on.

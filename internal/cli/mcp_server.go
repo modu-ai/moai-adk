@@ -376,7 +376,10 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		mcp.WithString("focus", mcp.Description("Optional focus area (e.g. 'concurrency', 'auth', 'secret handling').")),
 		mcp.WithObject("gates", mcp.Description("Optional per-auditor gate override (keys: claude/codex/glm; values: off|advisory|required). Defaults: claude+codex required, glm advisory.")),
 		mcp.WithString("session_id", mcp.Description("Optional session id for per-session convergence state persistence (.moai/state/audit-multi/<session>.json). Empty ⇒ persistence no-op.")),
-		projectRootOption(),
+		// Pass-through semantics: this fan-out handed its backends no root
+		// before the parameter existed, so an absent parameter must keep
+		// handing them none rather than substituting a default.
+		projectRootPassthroughOption(),
 	), handleAuditMulti)
 }
 
