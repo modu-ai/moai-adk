@@ -1037,9 +1037,182 @@ en:2  ko:2  ja:2  zh:2            # 산문 1 + YAML 예시 1, 네 로케일 동�
 1. **인벤토리 헤더의 `Total entries: 958` 은 고치지 않았다.** 헤더는 `Code baseline: <sha>` 와 한 덩어리로 M1 시점의 스냅샷 기록이고, 어떤 테스트도 이 숫자를 읽지 않는다(가드는 항목을 세어 `minimumShippedKeys` 하한만 본다). 게다가 형제 SPEC 도 항목을 1개 늘리므로 두 카드가 같은 줄을 고치면 충돌한다. 숫자가 스테일해진 사실은 아래 잔여 위험에 남긴다.
 2. **docs 에 스크러버 서사를 새로 열지 않았다.** 이 페이지는 지금까지 마스킹을 한 번도 언급한 적이 없어서, 확인 게이트가 **무엇을 보여주는지** 설명하는 데 필요한 최소한("가려낸 값의 요약")만 적고 스크러버 자체의 절은 만들지 않았다. 페이지 전체를 스크러버 관점으로 다시 쓰는 것은 이 마일스톤의 범위가 아니다.
 
+### M9 — 검증 스윕
+
+**이 절의 관측 주체는 오케스트레이터다.** 아래 결과는 오케스트레이터가 `a6682a007`(작업 트리 clean) 에 대해 직접 실행해 관측한 것이고, 이 마일스톤은 그것을 **기록**한다. 이 기록을 작성한 에이전트가 다시 돌려본 것이 아니다 — `verification-claim-integrity.md` §2 에 따라 귀속을 명시한다.
+
+기준점: 브랜치 `WT-auto-feedback`, HEAD `a6682a007`, base `3210da7d3`, `git status --porcelain` 무출력.
+
+#### 스윕 결과
+
+| 검사 | 명령 | 관측 |
+|---|---|---|
+| 영향 패키지 회귀 | `go test ./internal/feedback/... ./internal/sandbox/... ./internal/config/... ./internal/cli/... ./internal/cli/wizard/... ./internal/core/project/... ./internal/settings/... ./internal/web/... ./internal/template/... -count=1` | 전 패키지 `ok`, 예외 1건 — `internal/cli/agentlint` `TestConstitutionCrossReference` FAIL(아래 귀속 참조) |
+| 경쟁 상태 | `go test -race -count=1 ./internal/feedback/...` | `ok github.com/modu-ai/moai-adk/internal/feedback 1.856s` |
+| 정적 검사 | 편집한 7개 패키지 트리에 대한 `go vet` | exit 0, 무출력 |
+| 크로스 플랫폼 | 같은 7개 트리에 대한 `GOOS=windows go vet` | exit 0, 무출력 |
+| 린트 | `golangci-lint run --timeout=5m` (feedback / sandbox / cli / settings / web / core-project) | `0 issues.` |
+| 템플릿 중립성 | `MOAI_TEMPLATE_LEAK_STRICT=1 go test ./internal/template/...` | `ok github.com/modu-ai/moai-adk/internal/template 24.045s`, agentemit `ok` |
+| 임베드 빌드 | `make build` | 성공. 직후 `git status --porcelain` 무출력 → `catalog.yaml` 드리프트 없음 |
+
+#### 유일한 실패 1건 — 귀속까지 측정됐다
+
+`internal/cli/agentlint` `TestConstitutionCrossReference` 는 이 SPEC 소관이 **아니다**. 귀속 측정:
+
+- `origin/main` 의 `.claude/rules/moai/core/moai-constitution.md` → `grep -c agent-authoring` = **1**
+- `origin/release/v3.1.3` 의 같은 파일 → **0**
+- 제거 커밋: `243eb07ef` (t82 M4 예산 다이어트, moai-constitution 18,958 → 15,433). 사라진 줄은 `Per-agent effort calibration: see .claude/rules/moai/development/agent-authoring.md § Effort-Level Calibration Matrix`.
+
+즉 이 붉은 신호는 base(`3210da7d3`, release/v3.1.3 계열)에서도 이미 붉었고, M1~M8 의 어떤 편집도 원인이 아니다. **리드가 복구 카드 `t189` 를 lane-8 에 발행했다.** 이 카드에서는 고치지 않고 외부 블로커로만 기록한다.
+
+#### AC 커버리지
+
+`acceptance.md` 의 AC-F id 는 24개이고, §E.2 는 M1~M8 에서 24개 모두에 PASS 판정을 기록했다. (M6~M8 일부는 `판정: AC-F-0NN **PASS**` 어순, 나머지는 `AC-F-0NN 판정: **PASS**` 어순 — 두 형태 모두 유효한 판정 기록이며 문구를 통일하지 않았다.)
+
+#### 통합·PR 은 리드 보류 중
+
+[HARD] 이 레인은 **커밋에서 멈춘다.** push·PR 개설·릴리스 워크트리 진입·머지 모두 리드의 명시적 보류 대상이다. 리드의 통합 큐 순서는 lane-8(t183→t189) → lane-5(t182) → lane-7(이 카드)이며, 이 레인은 진입 전에 리드에게 알린다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-08-23
+run_commit_sha: a6682a007          # M8 = 현재 HEAD. M9 기록 커밋은 이 블록을 쓰는 커밋이라 여기에 담기지 않는다
+run_status: complete-pending-integration
+run_base_sha: 3210da7d3
+branch: WT-auto-feedback
+worktree: .claude/worktrees/t170
+cycle: tdd
+ac_pass_count: 24
+ac_fail_count: 0
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: n/a          # 통합·push 는 리드 보류 — 이 레인은 커밋에서 멈춘다
+l44_post_push_fetch: n/a
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  goos_darwin_vet: pass
+  goos_windows_vet: pass
+  windows_runtime_behavior: not-verified-locally   # CI 소관
+m1_to_mN_commit_strategy: one-commit-per-milestone   # M1~M8 각 1커밋 + M9 기록 커밋
+external_blocker: t189             # TestConstitutionCrossReference (agentlint) — 이 SPEC 소관 아님
+integration_status: held-by-lead   # 큐: lane-8(t183→t189) → lane-5(t182) → lane-7
+```
+
+### 검증 주체 귀속 (읽는 감사관을 위해)
+
+아래 스윕 증거는 **오케스트레이터가 `a6682a007` 에 대해 직접 실행해 관측**한 것을 이 SPEC 이 기록한 것이다. run-phase 에이전트의 새 측정이 아니다. 마일스톤별 AC 판정(M1~M8)은 각 마일스톤 에이전트가 그 시점 트리에서 직접 관측한 것으로, §E.2 에 verbatim 출력이 남아 있다.
+
+### 마일스톤 커밋 8건
+
+| M | SHA | 제목 |
+|---|---|---|
+| M1 | `95fc239e3` | M1 feedback.auto_submit config key |
+| M2 | `e51475068` | M2 scrubber type contract and masking transforms |
+| M3 | `3bcceffc7` | M3 vulnerability classifier reading the pre-mask body |
+| M4 | `55dc0ec0a` | M4 mask log and retry queue |
+| M5 | `d2063308b` | M5 moai feedback scrub and queue verbs |
+| M6 | `38705eb85` | M6 skill gate clauses and wizard question |
+| M7 | `23c5c18fa` | M7 expose feedback section in the web console |
+| M8 | `a6682a007` | M8 template mirror, key inventory, and 4-locale docs |
+
+base `3210da7d3` (release/v3.1.3 계열 머지 커밋).
+
+### AC 커버리지 — 24/24 PASS
+
+| AC | 소유 M | 판정 근거 명령 |
+|---|---|---|
+| AC-F-001 키 해석 | M1 | `go test ./internal/config/ -run 'TestFeedbackAutoSubmit' -v` |
+| AC-F-002 확인 게이트 존재 | M6 | 편집 전/후 양축 grep: `grep -n 'AskUserQuestion\|gh issue create\|auto_submit'` (base 사본에서 `auto_submit` 0건 → FAIL 관측, 편집 후 `:108` < `:143` → PASS) |
+| AC-F-003 스크러버 계약 | M5 | `go test ./internal/cli/ -run 'TestFeedbackScrubContract' -v` |
+| AC-F-004 fail-closed | M5 | `go test ./internal/cli/ -run 'TestFeedbackScrubToolFailureExitsNonZero' -v` + 빌드된 바이너리 재관측(exit 1, stdout 0바이트) |
+| AC-F-005 findings 무원문 | M2 | `go test ./internal/feedback/ -run 'TestFindingsCarryNoRawValue' -v` |
+| AC-F-006 GitHub 토큰 | M2 | `go test ./internal/feedback/ -run 'TestScrubMasksGitHubToken' -v` |
+| AC-F-007 AIza 합집합 | M2 | `go test ./internal/feedback/ -run 'TestScrubMasksGoogleAPIKey' -v` |
+| AC-F-008 무해 본문 양축 | M2 (M3 재관측) | `go test ./internal/feedback/ -run 'TestScrubBenignBodyUntouchedAndAllowed' -v` |
+| AC-F-009 출력 형태 통일 | M2 | `go test ./internal/feedback/ -run 'TestMaskOutputShapeMatchesExistingMasker' -v` |
+| AC-F-010 홈 경로 축약 | M2 | `go test ./internal/feedback/ -run 'TestScrubCollapsesHomePath' -v` |
+| AC-F-011 env 값 마스킹 | M2 | `go test ./internal/feedback/ -run 'TestScrubMasksEnvValues' -v` |
+| AC-F-012 취약점 라우팅 | M3 | `go test ./internal/feedback/ -run 'TestClassifyBlocksVulnerabilityReport' -v` |
+| AC-F-013 분류는 원문을 본다 | M3 | `go test ./internal/feedback/ -run 'TestClassifyReadsPreMaskBody' -v` |
+| AC-F-014 멱등성 | M2 | `go test ./internal/feedback/ -run 'TestScrubIsIdempotent' -v` |
+| AC-F-015 로그 내용 + 권한 | M4 | `go test ./internal/feedback/ -run 'TestMaskLogRecordsKindAndCountWithoutRawValue' -v` |
+| AC-F-016 로그 fail-open | M4 | `go test ./internal/feedback/ -run 'TestMaskLogFailureIsFailOpen' -v` |
+| AC-F-017 실패 → 큐 적재 | M4 | `go test ./internal/feedback/ -run 'TestQueueEnqueuesOnSendFailure' -v` |
+| AC-F-018 성공 → 큐 제거 | M4 | `go test ./internal/feedback/ -run 'TestQueueResolvesOnSuccess' -v` |
+| AC-F-019 스킬 [HARD] 조항 4종 | M6 | 두 사본(SRC/TPL) × 재작성된 7개 grep 관측 + `diff` 드리프트 확인 + 중립성 grep. 기준 토큰은 base 0히트 실측본 |
+| AC-F-020 마법사 질문 + 개수 고정 | M6 | `go test ./internal/cli/wizard/ -run 'TestFeedbackAutoSubmitQuestion\|TestQuestionOrder\|TestReconfigureQuestions' -v` |
+| AC-F-021 4로케일 번역 완전성 | M6 | `go test ./internal/cli/wizard/ -run 'TestFeedbackAutoSubmitTranslationsExist\|TestWizardQuestionTranslationCompleteness' -v` |
+| AC-F-022 답변이 파일에 기록 | M6 | `go test ./internal/core/project/ -run 'TestWritePhase1ConfigsPersistsFeedbackAutoSubmit\|...SkipsFeedbackWhenUnanswered\|...FeedbackNoFile' -v` (실제 로더 재읽기로 판정) |
+| AC-F-023 웹 + 템플릿 + 인벤토리 + 빌드 + 중립성 | M7(웹 절반) + M8(템플릿 절반) | M7: 스키마·라우트·i18n 테스트. M8: 미러 `diff` + 인벤토리 가드 + `make build` + `MOAI_TEMPLATE_LEAK_STRICT=1` |
+| AC-F-024 개인키 블록 통째 마스킹 | M2 | `go test ./internal/feedback/ -run 'TestScrubMasksPrivateKeyBlockEntirely' -v` |
+
+AC-F-023 은 유일하게 두 마일스톤이 절반씩 지며, 각 마일스톤이 자기 절반만 주장하고 나머지를 주장하지 않는다고 명시했다(§E.2 M7·M8).
+
+### 검증 스윕 증거 (오케스트레이터 관측, `a6682a007`)
+
+- 영향 9개 패키지 `-count=1` 회귀 → 전부 `ok`, 예외 1건(외부 블로커, 아래)
+- `go test -race -count=1 ./internal/feedback/...` → `ok … 1.856s`
+- 7개 패키지 트리 `go vet` → exit 0, 무출력
+- 7개 패키지 트리 `GOOS=windows go vet` → exit 0, 무출력
+- `golangci-lint run --timeout=5m` (feedback/sandbox/cli/settings/web/core-project) → `0 issues.`
+- `MOAI_TEMPLATE_LEAK_STRICT=1 go test ./internal/template/...` → `ok … 24.045s`, agentemit `ok`
+- `make build` → 성공, 직후 `git status --porcelain` 무출력(`catalog.yaml` 드리프트 없음)
+
+### 외부 블로커 1건 — 이 SPEC 소관 아님
+
+`internal/cli/agentlint` `TestConstitutionCrossReference` FAIL. 귀속 측정: `origin/main` 의 `moai-constitution.md` 는 `grep -c agent-authoring` = 1, `origin/release/v3.1.3` 은 0. 제거 커밋 `243eb07ef`(t82 M4 예산 다이어트)가 `Per-agent effort calibration: see .claude/rules/moai/development/agent-authoring.md § Effort-Level Calibration Matrix` 줄을 삭제했다. base 에서도 붉으므로 이 SPEC 의 회귀가 아니다. 리드가 복구 카드 **t189** 를 lane-8 에 발행했고, 이 레인은 손대지 않았다.
+
+### 검증하지 **않은** 것 (명시)
+
+1. **전체 스위트 `go test ./...`** — 로컬에서 돌리지 않았다(CLAUDE.local.md §4 규율). 전 패키지 판정은 CI 몫이며, 깨끗한 환경의 PR head 실행이 더 강한 근거다.
+2. **Windows 런타임 동작** — `GOOS=windows go vet` 은 컴파일만 증명한다. 실제 Windows 동작은 CI 매트릭스 소관이다.
+3. **브라우저 확인 없음** — 웹 콘솔의 feedback 섹션(M7)과 `sec.feedback.desc` 4로케일 문구(M8)는 파일 내용 검증으로만 관측했다. 콘솔을 띄워 눈으로 본 적 없다.
+4. **바이너리 스모크는 M5 범위뿐** — M5 가 `moai feedback scrub` 을 빌드된 바이너리로 재관측했다. 그 이후 `~/go/bin/moai` 재설치나 추가 CLI 스모크는 하지 않았다.
+5. **Hugo 빌드 미실행** — M8 의 docs-site 4로케일 편집이 렌더 단계에서 경고 없이 통과하는지 확인하지 않았다(표준 markdown 만 추가; shortcode·Mermaid·이모지 없음).
+6. **`TestConstitutionCrossReference` 의 base 붉음 재관측** — 위 귀속은 `grep -c` 로 직접 측정했으나, base 트리에서 그 테스트 자체를 다시 돌린 회차는 없다.
+7. **인벤토리 헤더 `Total entries: 958`** — 실제 959 와 어긋난 채로 남겼다(형제 SPEC 과 같은 줄 충돌 회피 + 어떤 테스트도 이 숫자를 읽지 않음).
+
+### 누적 잔여 위험 (M2~M8 보고서 §5 에서 취합)
+
+**마스킹 범위 (M2)**
+1. `MaskSecret` 이 값의 첫 1자 + 끝 4자를 남긴다 — 공개 이슈 텍스트에 토큰 꼬리 4자가 남는다. 형태 변경은 세 마스커 통합 카드가 필요하다.
+2. env 값 8자 하한 — 8자 미만 자격증명은 미탐. 산문 훼손 회피와의 의도된 교환.
+3. `AWS_` 접두사 미채택 — deny list 에 이름이 없으면 이름 어휘로 걸리지 않는다(`AKIA` 형태는 정규식이 잡음). deny list 확장은 `internal/sandbox` 소관.
+4. 과잉/과소 마스킹은 양방향 AC 2건으로만 관측됐고 실제 보고서 분포 표본은 없다.
+5. `hook` 정책이 나중에 패턴을 추가하면 재작성 경로도 자동으로 넓어진다(설계된 성질이나 산문 훼손이 먼저 나타날 지점).
+
+**분류기 (M3)**
+6. 영어 어휘 편중 — 한국어·일본어로 쓰인 순수 산문 취약점 보고는 신호를 발생시키지 않는다.
+7. CVE 식별자 단독 차단의 오탐 — "CVE-XXXX-XXXX 때문에 버전 올려주세요" 같은 무해한 요청이 차단된다(비대칭 비용 하에서 의도된 방향).
+8. 경로 토큰 추출 정밀도 — 따옴표·괄호 이형은 놓칠 수 있다(과소 탐지 방향, 단독 차단 아님).
+9. `classify` 가 `hook.DefaultSecurityPolicy()` 를 한 번 더 빌드 — `Scrub` 1회당 정책 컴파일 2회. 루프 소비자가 생기면 재검토.
+10. 거부 메시지 ↔ `SECURITY.md` 동기화 부채(기계적 패리티 검사 없음).
+
+**로그·큐 (M4·M5)**
+11. 로그 인터리빙 — 잠금이 없어 동시 스크럽 시 한 줄이 섞일 수 있다(훼손 결과는 판독 불가 한 줄이지 값 유출 아님).
+12. fail-open 의 이면 — "로그가 없다"를 "마스킹이 없었다"로 읽으면 안 된다. `slog.Warn` 이 유일한 신호.
+13. 큐 재전송 시 재스크럽 — `queue enqueue` 는 stdin JSON 을 신뢰한다. 재전송 직전에 다시 스크럽하지 않으면 유출 경로가 된다(파이프라인이 멱등이므로 재스크럽이 안전).
+14. `queue.lock` 잔존 — 비정상 종료 시 자동 해제되지 않는다. stale-lock 정리는 이 SPEC 범위 밖.
+15. `internal/cli` 스위트는 343초 — 이 패키지 재실행 시 타임아웃 하한 600초를 지켜야 한다(300초로 걸면 통과하는 트리에서 FAIL).
+16. fail-closed 정책 로드가 기존 사용자에게 새 실패 지점이 된다 — `security.yaml` 이 깨진 프로젝트는 "피드백만 안 된다"로 보인다(에러 메시지가 경로+파싱 위치를 싣는 것이 완화책).
+
+**강제력의 한계 (M5·M6·M7)**
+17. **스크러버 도입은 규약 강제이지 샌드박스가 아니다.** `moai feedback` 을 거치지 않고 직접 이슈를 여는 경로는 그대로 열려 있다(plan.md AP-12, design.md §1 — 감사 유지 판정을 받아 후퇴시키지 않은 정직성 주장).
+18. 게이트 3옵션의 `(권장)` 기본이 "제출하지 않음"이라 이탈률이 오를 수 있다(`auto_submit: true` 가 탈출구).
+19. 마법사 질문 문구가 부정형 — "예"가 게이트 **해제**를 뜻해 오독 여지가 있다. 기본 `false` 라 오독 비용은 안전한 쪽으로 떨어진다.
+20. **`feedback.auto_submit` 을 Go 코드가 읽지 않는다**(design.md §8). 스킬 본문이 설정을 직접 읽어 분기하므로 설정↔산문 드리프트를 컴파일러도 테스트도 잡지 않는다. 콘솔에서 켠 값이 실제 전송 동작으로 이어지는지는 스킬 실행 경로에서만 관측된다.
+21. 웹 재개방이 위조 POST 표면을 다시 연다 — `feedback` 이 `RouteSeam` 이 되며 동의 토글이 웹에서 켜질 수 있다(D5 의도). 전송의 fail-closed 3조항이 여전히 유일한 방어선.
+
+**형제 SPEC 병합 (M6·M7·M8)**
+22. `SPEC-TODO-ENABLE-FLAG-001` 과 파일 9종을 공유한다. 이 SPEC 은 [HARD] 규율대로 신규 항목만 추가했으나, 개수 고정 테스트 4건은 숫자가 바뀌었으므로 형제가 나중에 착지하면 같은 4건을 다시 조정해야 한다.
+23. `i18n.js` · `schema_sections_test.go` · `shipped_key_inventory.yaml` 은 인접 삽입이라 diff 컨텍스트가 겹칠 수 있다(알파벳 순이라 인벤토리는 멀리 떨어져 있고 맵은 순서 무관).
+24. 고정 테스트 6곳 중 하나를 놓쳤을 가능성 — 목록을 "붉어진 지점"에서 역산했다. 다른 패키지가 `ExcludedSections()` 나 탭 목록을 복사했다면 CI 에서만 드러난다.
+
+**문서 (M7·M8)**
+25. `sec.feedback.desc` 4로케일 문구가 필드 2개가 된 패널에 대해 좁은 채로 남아 있었으나 M8 에서 4로케일 동시 확장으로 처리했다 — 다만 브라우저 확인은 하지 않았다(위 미검증 3).
+26. docs 문구 ↔ 스킬 본문 사이에 기계적 패리티 검사가 없다. 스킬 본문이 바뀌면 문서가 조용히 어긋난다.
+27. 인벤토리 `evidence` 자유 서술의 내구성 — 가드가 값을 검사하지 않으므로 `class: R` → `W` 재분류는 사람이 해야 한다.
+28. docs 에 스크러버 서사를 새로 열지 않았다 — 마스킹 규칙 전체를 문서에서 찾는 사용자는 이 페이지에서 찾지 못한다.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
