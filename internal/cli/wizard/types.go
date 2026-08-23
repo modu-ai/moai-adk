@@ -54,6 +54,19 @@ type WizardResult struct {
 	// seeded false when the question is skipped (--non-interactive).
 	WorktreeAutoCreate bool // workflow.worktree.auto_create
 
+	// TodoEnabled is the workflow.todo.enabled answer. It is a pointer, unlike
+	// its Page-3 neighbours, because the underlying config gate is default-ON
+	// and absence must stay distinguishable from a "no": nil means the question
+	// was never asked (--non-interactive), and an unasked question writes
+	// nothing rather than falling through a zero value into `enabled: false`.
+	TodoEnabled *bool // workflow.todo.enabled
+
+	// FeedbackAutoSubmit is the feedback.auto_submit answer. Like TodoEnabled
+	// it is a pointer so that "never asked" (--non-interactive) stays
+	// distinguishable from an explicit "no": an unasked question writes
+	// nothing rather than restating the shipped default in every project.
+	FeedbackAutoSubmit *bool // feedback.auto_submit
+
 	// AutonomyTier (SPEC-AUTONOMY-TIERS-001 M7): the interactive autonomy-tier
 	// selection. Reuses the config.AutonomyTier* enum. Empty when the wizard did
 	// not collect a selection (--non-interactive → downstream resolves semi-auto).

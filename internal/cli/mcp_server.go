@@ -156,6 +156,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 	add("spec_progress", mcp.NewTool(
 		"spec_progress",
 		mcp.WithDescription("List SPEC documents + frontmatter under a project root (SPEC lifecycle distribution source). Wraps spec.ListDocs."),
+		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleSpecProgress)
 
@@ -183,6 +184,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		mcp.WithString("filter_spec", mcp.Description("Optional SPEC-ID filter (exact match).")),
 		mcp.WithString("filter_era", mcp.Description("Optional era filter (e.g. V3R6).")),
 		mcp.WithBoolean("include_grandfathered", mcp.Description("Surface grandfathered (V2.x/V3R2-R4/V3R5) SPECs as INFO.")),
+		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleSpecAudit)
 
@@ -190,6 +192,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 	add("spec_drift", mcp.NewTool(
 		"spec_drift",
 		mcp.WithDescription("Read SPEC lifecycle drift (modern-era V3R6 drift findings only). Wraps spec.Audit, filtered to drift."),
+		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleSpecDrift)
 
@@ -219,6 +222,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		mcp.WithString("target", mcp.Enum(codexTargetUncommitted, codexTargetBaseBranch), mcp.Description("What codex reviews: 'uncommittedChanges' or 'baseBranch'.")),
 		mcp.WithString("focus", mcp.Description("Adversarial-only focus area (e.g. 'concurrency', 'auth').")),
 		mcp.WithString("model", mcp.Description("Optional model override (resolved via the model/effort SSOT in M3).")),
+		projectRootOption(),
 		mcp.WithOutputSchema[ReviewOutput](),
 	), handleCodexAudit)
 
@@ -353,8 +357,10 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 	add("glm_audit", mcp.NewTool(
 		"glm_audit",
 		mcp.WithDescription("Run a GLM (z.ai) code review. Calls the z.ai Anthropic-compatible endpoint directly and returns a review-output schema (verdict/summary/findings/next_steps). GLM is OPTIONAL; a missing/unauthenticated/erroring GLM yields verdict 'inconclusive' (fail-open → fall back to the active auditor)."),
+		mcp.WithString("target", mcp.Enum(codexTargetUncommitted, codexTargetBaseBranch), mcp.Description("What GLM reviews: 'uncommittedChanges' (default) or 'baseBranch'. The named change is collected as a diff and sent in the request — GLM has no filesystem, so a target that yields no diff returns 'inconclusive' rather than a verdict.")),
 		mcp.WithString("focus", mcp.Description("Optional focus area (e.g. 'concurrency', 'auth', 'secret handling').")),
 		mcp.WithString("model", mcp.Description("Optional GLM model override; omitted ⇒ resolved via the model/effort SSOT (ResolveAgentModelEffort).")),
+		projectRootOption(),
 		mcp.WithOutputSchema[ReviewOutput](),
 	), handleGLMAudit)
 
@@ -372,6 +378,10 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		mcp.WithString("focus", mcp.Description("Optional focus area (e.g. 'concurrency', 'auth', 'secret handling').")),
 		mcp.WithObject("gates", mcp.Description("Optional per-auditor gate override (keys: claude/codex/glm; values: off|advisory|required). Defaults: claude+codex required, glm advisory.")),
 		mcp.WithString("session_id", mcp.Description("Optional session id for per-session convergence state persistence (.moai/state/audit-multi/<session>.json). Empty ⇒ persistence no-op.")),
+		// Pass-through semantics: this fan-out handed its backends no root
+		// before the parameter existed, so an absent parameter must keep
+		// handing them none rather than substituting a default.
+		projectRootPassthroughOption(),
 	), handleAuditMulti)
 }
 
@@ -522,8 +532,12 @@ func handleGoalArm(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolRes
 }
 
 // handleSpecProgress wraps spec.ListDocs (listdocs.go:36) — the SPEC scanner.
-func handleSpecProgress(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	records, err := spec.ListDocs(resolveProjectDir())
+func handleSpecProgress(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	root, err := resolveToolProjectRoot(req)
+	if err != nil {
+		return toolErr("spec_progress", err), nil
+	}
+	records, err := spec.ListDocs(root)
 	if err != nil {
 		return toolErr("spec_progress", err), nil
 	}
@@ -579,22 +593,30 @@ func handleVerifyTrend(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToo
 
 // handleSpecAudit wraps spec.Audit (audit.go:156).
 func handleSpecAudit(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	root, err := resolveToolProjectRoot(req)
+	if err != nil {
+		return toolErr("spec_audit", err), nil
+	}
 	opts := spec.AuditOptions{
-		BaseDir:              resolveProjectDir(),
+		BaseDir:              root,
 		FilterSpec:           req.GetString("filter_spec", ""),
 		FilterEra:            req.GetString("filter_era", ""),
 		IncludeGrandfathered: req.GetBool("include_grandfathered", false),
 	}
-	result, err := spec.Audit(opts)
-	if err != nil {
-		return toolErr("spec_audit", err), nil
+	result, auditErr := spec.Audit(opts)
+	if auditErr != nil {
+		return toolErr("spec_audit", auditErr), nil
 	}
 	return toolJSON("spec_audit", result), nil
 }
 
 // handleSpecDrift wraps spec.Audit (audit.go:156), filtered to modern-era drift.
-func handleSpecDrift(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	result, err := spec.Audit(spec.AuditOptions{BaseDir: resolveProjectDir()})
+func handleSpecDrift(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	root, err := resolveToolProjectRoot(req)
+	if err != nil {
+		return toolErr("spec_drift", err), nil
+	}
+	result, err := spec.Audit(spec.AuditOptions{BaseDir: root})
 	if err != nil {
 		return toolErr("spec_drift", err), nil
 	}

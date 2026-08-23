@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -31,6 +32,23 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// newTemplateSyncDeployer builds the deployer the template-sync path uses.
+//
+// It is a package-level variable so a test can substitute a double and drive
+// the mirror-notice wiring — the real fallback needs a symlink syscall to fail,
+// and the seams for that are unexported in internal/template.
+//
+// The default MUST stay the production deployer AND MUST satisfy
+// template.ResultDeployer. A default that reports no result would leave the
+// mirror notice permanently unreachable in production while every
+// injected-double test stayed green, which is the one failure this seam could
+// introduce; TestSeamDefaultIsTheProductionDeployer and
+// TestSeamDefaultSatisfiesResultDeployer guard both halves.
+var newTemplateSyncDeployer = func(embedded fs.FS) template.Deployer {
+	renderer := template.NewRenderer(embedded)
+	return template.NewDeployerWithRendererAndForceUpdate(embedded, renderer, true)
+}
+
 // runTemplateSync synchronizes embedded templates with the project directory.
 // It performs a quick version comparison first - if the project's template version
 // matches the package version, the sync is skipped for performance (70-80% faster).
@@ -49,6 +67,9 @@ func runTemplateSync(cmd *cobra.Command) error {
 // runTemplateSyncWithReporter synchronizes templates with progress reporting.
 func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressReporter, skipConfirm bool) error {
 	out := cmd.OutOrStdout()
+	// The mirror notice is a warning, so it gets its own stderr writer rather
+	// than riding `out` — which is stdout here (internal/cli/CLAUDE.md:14).
+	errOut := cmd.ErrOrStderr()
 	th := resolveTheme()
 	ctx := cmd.Context()
 
@@ -122,12 +143,9 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 		reporter.StepComplete("Manifest loaded")
 	}
 
-	// Create renderer for template variable substitution
-	renderer := template.NewRenderer(embedded)
-
 	// Create deployer with renderer and force update enabled for template sync
 	// This ensures template files are rendered (.tmpl -> actual file) and updated even if they exist
-	deployer := template.NewDeployerWithRendererAndForceUpdate(embedded, renderer, true)
+	deployer := newTemplateSyncDeployer(embedded)
 
 	// t40 defect 2: AnalyzeFiles skips IsMoaiManaged paths, so analysis.Files
 	// carries only the merged/added files. Count the managed re-deployments
@@ -320,7 +338,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 					template.WithHookOptIn(readHookOptInEnabled(projectRoot)),
 				)
 
-				if deployErr := deployer.Deploy(ctx, projectRoot, mgr, tmplCtx); deployErr != nil {
+				if deployErr := deployWithMirrorNotice(ctx, deployer, projectRoot, mgr, tmplCtx, errOut); deployErr != nil {
 					pl.Fail(fmt.Sprintf("Deployment failed: %v", deployErr))
 					return fmt.Errorf("deploy templates: %w", deployErr)
 				}

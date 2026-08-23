@@ -17,99 +17,60 @@ where Bash may be restricted. Use the Bash CLI only when the MCP tool is absent
 from the agent's `tools:` list, or when orchestrating from the main session and
 the CLI form reads more naturally inline.
 
-## Tool catalogue (21 tools)
+## The `project_root` input — name your own tree
 
-### SPEC lifecycle
+Five tools accept an optional `project_root` string: `spec_progress`,
+`spec_audit`, `spec_drift`, `codex_audit`, and `audit_multi`. It names the tree
+the call should act on.
 
-| Tool | Purpose | Consumer | CLI equivalent |
-|------|---------|----------|----------------|
-| `mcp__moai__spec_progress` | List SPEC docs + frontmatter | manager-spec, manager-docs | `moai spec list` |
-| `mcp__moai__spec_audit` | SPEC lifecycle audit (era + drift) | manager-spec, manager-docs, plan-auditor, super-advisor | `moai spec audit` |
-| `mcp__moai__spec_drift` | Modern-era V3R6 drift findings | manager-spec, plan-auditor | `moai spec audit` (drift view) |
+[HARD] **An agent working inside a worktree MUST pass it**, and the value is its
+own `git rev-parse --show-toplevel`. This is not a convenience. The server cannot
+work the answer out for itself: it is a long-lived subprocess, so its working
+directory cannot follow a worktree switch, and the environment variable it falls
+back on names the PROJECT — the primary checkout — even for a session working in
+a worktree. Omit the parameter from a worktree and the call acts on the primary
+checkout instead, which means a SPEC that exists only on the card's branch is not
+in the catalogue the auditor reads. It is not reported missing; it is simply
+absent.
 
-Reach for these in **plan-phase** (manager-spec authoring a new SPEC, checking era
-classification + drift) and **sync-phase** (manager-docs verifying lifecycle
-closure). `spec_progress` enumerates existing SPECs + frontmatter; `spec_audit`
-classifies era and detects drift across the catalog; `spec_drift` is the focused
-modern-era V3R6 drift slice. plan-auditor uses `spec_audit`/`spec_drift` for
-plan-phase skeptical review.
+The caller is the only party that holds the answer, which is why it is an input
+rather than something inferred.
 
-### Verification snapshots
+| Situation | What to pass | What happens |
+|---|---|---|
+| Session in a worktree | `project_root: <git rev-parse --show-toplevel>` | the call acts on that tree |
+| Session in the primary checkout | nothing | resolves exactly as it always has |
+| Path that is not a MoAI project root | — | the call is REJECTED with an error naming the path |
 
-| Tool | Purpose | Consumer | CLI equivalent |
-|------|---------|----------|----------------|
-| `mcp__moai__verify_snapshot` | Read/record per-key verification snapshot | manager-develop | `moai verify check` |
-| `mcp__moai__verify_trend` | Per-key verification check history | manager-develop, sync-auditor, super-advisor | `moai verify check` |
+The rejection is deliberate and is not a rough edge. A silent fallback to the
+default would send a caller who mistyped its own worktree path back to acting on
+the primary checkout — the exact failure the parameter exists to prevent —
+while reporting success.
 
-Used by **manager-develop** during run-phase self-verification (§E), and by
-sync-auditor / super-advisor for trend review. `verify_snapshot` reads or records
-the per-key snapshot keyed by HEAD digest; `verify_trend` surfaces the check
-history to judge convergence over time. The orchestrator's attributable diff-check
-consults the current snapshot key before re-executing tests.
+An accepted path is **canonicalized** before use — symlinks are resolved, so the
+call acts on the real directory rather than on whichever spelling reached it, and
+a later containment check cannot be walked through by pointing a link at a tree
+outside the boundary. A path that cannot be canonicalized is rejected on the same
+terms as any other unusable one.
 
-### Goal + session (autonomous loop)
+For `audit_multi` the root reaches BOTH backends of the fan-out: codex receives
+it as the working directory it reviews in, and the GLM path uses it to collect
+the diff it sends to z.ai. Passing it is what keeps the two secondary opinions
+about the same tree.
 
-| Tool | Purpose | Consumer | CLI equivalent |
-|------|---------|----------|----------------|
-| `mcp__moai__goal_arm` | Arm a condition-declared goal | **orchestrator main session ONLY** — wired to NO agent (arming an autonomous loop is an orchestrator concern) | `moai goal arm` / `/moai goal` |
-| `mcp__moai__goal_status` | Read armed-goal state | manager-develop, manager-lead | `moai goal status` |
-| `mcp__moai__session_list` | List active moai sessions | manager-lead | `moai session list` |
+## Tool families (21 tools)
 
-`goal_arm` is orchestrator-only and arms an autonomous loop — never inside an
-agent (preserves the flat-hierarchy arming surface). `goal_status` lets
-manager-develop / manager-lead read the armed condition's progress; `session_list`
-lets manager-lead detect concurrent sessions on the same checkout for race
-mitigation before fan-out.
+| Family | Tools | Wired consumers |
+|---|---|---|
+| SPEC lifecycle | `spec_progress`, `spec_audit`, `spec_drift` | manager-spec, manager-docs, plan-auditor, super-advisor |
+| Verification snapshots | `verify_snapshot`, `verify_trend` | manager-develop, sync-auditor, super-advisor |
+| Goal + session | `goal_arm`, `goal_status`, `session_list` | orchestrator only / manager-develop, manager-lead |
+| Cross-model audit | `audit_multi`, `codex_audit`, `glm_audit`, `audit_cache` | plan-auditor, sync-auditor |
+| Codex delegation | `codex_task`, `codex_setup`, `codex_job_{status,result,cancel}` | super-advisor |
+| GLM delegation | `glm_task`, `glm_job_{status,result,cancel}` | super-advisor |
 
-### Cross-model audit (second opinion)
-
-| Tool | Purpose | Consumer | CLI equivalent |
-|------|---------|----------|----------------|
-| `mcp__moai__audit_multi` | Multi-auditor convergence (claude + codex + glm) | plan-auditor, sync-auditor | — (MCP-only convergence entry) |
-| `mcp__moai__codex_audit` | codex backend single audit (native/adversarial) | plan-auditor, sync-auditor | — |
-| `mcp__moai__glm_audit` | GLM (z.ai) backend single audit | plan-auditor, sync-auditor | — |
-| `mcp__moai__audit_cache` | plan-audit PASS cache (compute_hash/lookup/store, process-shared) | sync-auditor | `moai audit cache` (none — MCP-only) |
-
-Single-backend audit mode is selected per the project's `audit_model`:
-`codex+glm` (default, converge via `audit_multi`) | `glm` | `codex` | `none`
-(Claude-only, no backend call). All backends are fail-open: an unavailable
-backend returns `inconclusive`, never a Go error.
-
-### Codex delegation (background jobs)
-
-| Tool | Purpose | Consumer | CLI equivalent |
-|------|---------|----------|----------------|
-| `mcp__moai__codex_task` | Delegate a coding/investigation task to codex (sync or background) | super-advisor | `moai codex task` |
-| `mcp__moai__codex_setup` | Probe local codex install (LookPath + version + auth) | super-advisor | `moai codex setup` |
-| `mcp__moai__codex_job_status` | Read a background codex job's status/record | super-advisor | `moai codex job status` |
-| `mcp__moai__codex_job_result` | Read a background codex job's output | super-advisor | `moai codex job result` |
-| `mcp__moai__codex_job_cancel` | Stop a running background codex job | super-advisor | `moai codex job cancel` |
-
-The codex delegation family is wired into `super-advisor` because the on-demand
-high-reasoning consultation agent is the natural consumer of background
-cross-model delegation: it arms a codex task via `codex_task`, polls completion
-via `codex_job_status`/`codex_job_result`, and cancels via `codex_job_cancel`.
-`codex_setup` probes whether codex is available before delegating. codex is
-OPTIONAL: a missing or unavailable codex yields a fail-open `inconclusive`, never
-a hard error.
-
-### GLM delegation (background jobs)
-
-| Tool | Purpose | Consumer | CLI equivalent |
-|------|---------|----------|----------------|
-| `mcp__moai__glm_task` | Delegate a task (arbitrary prompt) to GLM (z.ai) (sync or background) | super-advisor | — (no `moai glm task` CLI exists) |
-| `mcp__moai__glm_job_status` | Read a background GLM job's status/record | super-advisor | — |
-| `mcp__moai__glm_job_result` | Read a background GLM job's output | super-advisor | — |
-| `mcp__moai__glm_job_cancel` | Stop a running background GLM job | super-advisor | — |
-
-The GLM delegation family mirrors the codex delegation family against the z.ai
-HTTP backend and is wired into `super-advisor` the same way: it arms a GLM task
-via `glm_task` (sync returns the completed text, background returns a job id),
-polls completion via `glm_job_status`/`glm_job_result`, and cancels via
-`glm_job_cancel`. There is no `codex_setup` counterpart — availability is
-learned from `glm_task` itself, which reports a structured failed result when
-the key is missing or z.ai is unreachable. GLM is OPTIONAL: a missing or
-unavailable GLM yields a fail-open result, never a hard error.
+Per-tool purpose, consumer, and CLI equivalent: `moai-mcp-tools-catalogue.md`. Both codex and GLM
+are OPTIONAL and fail open — an unavailable backend returns `inconclusive`, never a hard error.
 
 ## Unwired-by-design
 

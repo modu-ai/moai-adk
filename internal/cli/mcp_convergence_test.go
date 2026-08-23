@@ -261,15 +261,16 @@ type recordingCaller struct {
 }
 
 type recordedCall struct {
-	Backend string
-	Target  string
-	Focus   string
+	Backend     string
+	Target      string
+	Focus       string
+	ProjectRoot string
 	// NOTE: no ClaudeVerdict field — the backendCaller signature forbids it.
 }
 
-func (r *recordingCaller) call(_ context.Context, backend, target, focus string) ReviewOutput {
+func (r *recordingCaller) call(_ context.Context, backend, target, focus, projectRoot string) ReviewOutput {
 	r.mu.Lock()
-	r.calls = append(r.calls, recordedCall{Backend: backend, Target: target, Focus: focus})
+	r.calls = append(r.calls, recordedCall{Backend: backend, Target: target, Focus: focus, ProjectRoot: projectRoot})
 	r.mu.Unlock()
 	// All secondaries PASS by default; individual tests override.
 	return ReviewOutput{Verdict: "pass", Summary: backend + ":pass", Findings: []Finding{}, NextSteps: []string{}}
@@ -361,7 +362,7 @@ func TestRunMultiAudit_ParallelFanOut_AC_AMM_002(t *testing.T) {
 		inflight int
 		max      int
 	}{}
-	parallelFn := func(_ context.Context, backend, _, _ string) ReviewOutput {
+	parallelFn := func(_ context.Context, backend, _, _, _ string) ReviewOutput {
 		parallel.mu.Lock()
 		parallel.inflight++
 		if parallel.inflight > parallel.max {
@@ -457,7 +458,7 @@ func TestPersistConvergenceResult_WritesStateFile_DQ1(t *testing.T) {
 		ResidualRiskNote:   "",
 		FailOpenBackends:   []string{},
 	}
-	if err := persistConvergenceResult(r, "sess-123"); err != nil {
+	if err := persistConvergenceResult(r, "sess-123", ""); err != nil {
 		t.Fatalf("persistConvergenceResult: %v", err)
 	}
 	path := filepath.Join(tmp, "audit-multi", "sess-123.json")
@@ -484,7 +485,7 @@ func TestPersistConvergenceResult_FailOpenOnDiskError(t *testing.T) {
 	t.Cleanup(func() { convergenceStateDir = orig })
 
 	r := ConvergenceResult{OverallVerdict: "pass"}
-	err := persistConvergenceResult(r, "sess-ro")
+	err := persistConvergenceResult(r, "sess-ro", "")
 	if err == nil {
 		// Some platforms (root, certain filesystems) permit writes inside a 0555
 		// dir; skip rather than fail in that case.
@@ -599,7 +600,7 @@ func TestPerformCodexAudit_ReusesExistingCodexHandler_NoReimpl_AP_AMM_1(t *testi
 	codexSession = &fakeCodexSession{lines: lines}
 	t.Cleanup(func() { codexLookPath, codexSession = prevLook, prevSess })
 
-	out := performCodexAudit(context.Background(), "uncommittedChanges", "concurrency")
+	out := performCodexAudit(context.Background(), "uncommittedChanges", "concurrency", "")
 	if out.Verdict != "pass" {
 		t.Errorf("performCodexAudit verdict = %q, want pass (must pass through codex result)", out.Verdict)
 	}
@@ -614,7 +615,7 @@ func TestPerformCodexAudit_FailOpenWhenCodexMissing_AC_AMM_004(t *testing.T) {
 	codexLookPath = func(string) (string, error) { return "", os.ErrNotExist }
 	t.Cleanup(func() { codexLookPath = prevLook })
 
-	out := performCodexAudit(context.Background(), "uncommittedChanges", "")
+	out := performCodexAudit(context.Background(), "uncommittedChanges", "", "")
 	if out.Verdict != VerdictInconclusive {
 		t.Errorf("performCodexAudit missing-binary verdict = %q, want %q (fail-open inherited)", out.Verdict, VerdictInconclusive)
 	}
@@ -626,7 +627,9 @@ func TestPerformGLMAudit_ReusesExistingGLMHandler_NoReimpl_AP_AMM_1(t *testing.T
 	stub := &stubGLMDoer{body: glmMessagesResp(t, ReviewOutput{Verdict: "fail", Summary: "glm:bad"})}
 	withGLMSeams(t, "test-glm-key", stub)
 
-	out := performGLMAudit(context.Background(), "auth")
+	// A tree with a real change: GLM cannot read a tree, so the audit collects
+	// the diff and only calls z.ai once it has one (card t178).
+	out := performGLMAudit(context.Background(), codexTargetUncommitted, "auth", gitTreeWithChange(t))
 	if out.Verdict != "fail" {
 		t.Errorf("performGLMAudit verdict = %q, want fail (must pass through glm result)", out.Verdict)
 	}
@@ -636,7 +639,7 @@ func TestPerformGLMAudit_ReusesExistingGLMHandler_NoReimpl_AP_AMM_1(t *testing.T
 // single-backend glm_audit handler has).
 func TestPerformGLMAudit_FailOpenWhenKeyMissing_AC_AMM_004(t *testing.T) {
 	withGLMSeams(t, "", nil) // empty key
-	out := performGLMAudit(context.Background(), "")
+	out := performGLMAudit(context.Background(), codexTargetUncommitted, "", gitTreeWithChange(t))
 	if out.Verdict != VerdictInconclusive {
 		t.Errorf("performGLMAudit missing-key verdict = %q, want %q (fail-open inherited)", out.Verdict, VerdictInconclusive)
 	}
@@ -646,7 +649,7 @@ func TestPerformGLMAudit_FailOpenWhenKeyMissing_AC_AMM_004(t *testing.T) {
 // fails open (inconclusive) for any unknown backend name — never a hard error.
 func TestDefaultBackendCaller_RoutesAndFailsOpenOnUnknown(t *testing.T) {
 	t.Run("unknown backend fails open to inconclusive", func(t *testing.T) {
-		out := defaultBackendCaller(context.Background(), "grok", "uncommittedChanges", "")
+		out := defaultBackendCaller(context.Background(), "grok", "uncommittedChanges", "", "")
 		if out.Verdict != VerdictInconclusive {
 			t.Errorf("unknown backend verdict = %q, want %q", out.Verdict, VerdictInconclusive)
 		}
@@ -655,14 +658,14 @@ func TestDefaultBackendCaller_RoutesAndFailsOpenOnUnknown(t *testing.T) {
 		prevLook := codexLookPath
 		codexLookPath = func(string) (string, error) { return "", os.ErrNotExist }
 		t.Cleanup(func() { codexLookPath = prevLook })
-		out := defaultBackendCaller(context.Background(), BackendCodex, "uncommittedChanges", "")
+		out := defaultBackendCaller(context.Background(), BackendCodex, "uncommittedChanges", "", "")
 		if out.Verdict != VerdictInconclusive {
 			t.Errorf("codex route verdict = %q, want inconclusive (binary missing)", out.Verdict)
 		}
 	})
 	t.Run("glm routes through performGLMAudit (missing key ⇒ inconclusive)", func(t *testing.T) {
 		withGLMSeams(t, "", nil)
-		out := defaultBackendCaller(context.Background(), BackendGLM, "uncommittedChanges", "")
+		out := defaultBackendCaller(context.Background(), BackendGLM, "uncommittedChanges", "", "")
 		if out.Verdict != VerdictInconclusive {
 			t.Errorf("glm route verdict = %q, want inconclusive (key missing)", out.Verdict)
 		}

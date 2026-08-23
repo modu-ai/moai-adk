@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 570" width="1200" height="570"
+     role="img" aria-labelledby="journey-absorbed-title journey-absorbed-desc">
+  <title id="journey-absorbed-title">신규 사용자 온보딩 여정</title>
+  <desc id="journey-absorbed-desc">여섯 단계의 온보딩 여정에서 만족도는 이메일 인증 단계에서 5점 만점에 2점으로 가장 낮게 떨어지며, 이 지점이 이탈이 집중되는 구간이다.</desc>
+
+  <defs>
+    <marker id="ja-arrow" markerUnits="userSpaceOnUse"
+            markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+      <path d="M 0 0 L 10 4 L 0 8 z" fill="#6B6359"/>
+    </marker>
+  </defs>
+
+  <!-- canvas -->
+  <rect x="0" y="0" width="1200" height="570" fill="#FAF9F5"/>
+
+  <!-- header -->
+  <text x="60" y="44" font-family="'JetBrains Mono', ui-monospace, monospace"
+        font-size="11" letter-spacing="0.18em" fill="#6B6359">USER JOURNEY</text>
+  <text x="60" y="86" font-family="MaruBuri, 'Noto Serif KR', Georgia, serif"
+        font-size="34" font-weight="600" fill="#141413">신규 사용자 온보딩</text>
+
+  <!-- section bands (painted first: containers) -->
+  <rect x="60" y="124" width="516" height="32" rx="8" fill="#F3EFE6"/>
+  <rect x="624" y="124" width="328" height="32" rx="8" fill="#F3EFE6"/>
+  <rect x="1000" y="124" width="140" height="32" rx="8" fill="#F3EFE6"/>
+  <text x="318" y="144" font-family="'JetBrains Mono', ui-monospace, monospace"
+        font-size="11" letter-spacing="0.16em" text-anchor="middle" fill="#6B6359">가입</text>
+  <text x="788" y="144" font-family="'JetBrains Mono', ui-monospace, monospace"
+        font-size="11" letter-spacing="0.16em" text-anchor="middle" fill="#6B6359">첫 사용</text>
+  <text x="1070" y="144" font-family="'JetBrains Mono', ui-monospace, monospace"
+        font-size="11" letter-spacing="0.16em" text-anchor="middle" fill="#6B6359">정착</text>
+
+  <!-- connectors (painted before nodes, so nodes cover the tails) -->
+  <path d="M 200 232 H 238" stroke="#6B6359" stroke-width="1" fill="none" marker-end="url(#ja-arrow)"/>
+  <path d="M 388 232 H 426" stroke="#6B6359" stroke-width="1" fill="none" marker-end="url(#ja-arrow)"/>
+  <path d="M 576 232 H 614" stroke="#6B6359" stroke-width="1" fill="none" marker-end="url(#ja-arrow)"/>
+  <path d="M 764 232 H 802" stroke="#6B6359" stroke-width="1" fill="none" marker-end="url(#ja-arrow)"/>
+  <path d="M 952 232 H 990" stroke="#6B6359" stroke-width="1" fill="none" marker-end="url(#ja-arrow)"/>
+
+  <!-- focal eyebrow, above its card and clear of the band -->
+  <text x="506" y="178" font-family="'JetBrains Mono', ui-monospace, monospace"
+        font-size="10" letter-spacing="0.18em" text-anchor="middle" fill="#B85C3E">FOCAL</text>
+
+  <!-- stage cards -->
+  <rect x="60" y="186" width="140" height="92" rx="12" fill="#FAF9F5" stroke="#D9CDBE" stroke-width="1"/>
+  <rect x="248" y="186" width="140" height="92" rx="12" fill="#FAF9F5" stroke="#D9CDBE" stroke-width="1"/>
+  <rect x="436" y="186" width="140" height="92" rx="12" fill="#FBE9DF" stroke="#D97757" stroke-width="1.6"/>
+  <rect x="624" y="186" width="140" height="92" rx="12" fill="#FAF9F5" stroke="#D9CDBE" stroke-width="1"/>
+  <rect x="812" y="186" width="140" height="92" rx="12" fill="#FAF9F5" stroke="#D9CDBE" stroke-width="1"/>
+  <rect x="1000" y="186" width="140" height="92" rx="12" fill="#FAF9F5" stroke="#D9CDBE" stroke-width="1"/>
+
+  <!-- step numbers (mono: technical, not a name) -->
+  <text x="74" y="208" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="10" fill="#6B6359">01</text>
+  <text x="262" y="208" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="10" fill="#6B6359">02</text>
+  <text x="450" y="208" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="10" fill="#B85C3E">03</text>
+  <text x="638" y="208" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="10" fill="#6B6359">04</text>
+  <text x="826" y="208" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="10" fill="#6B6359">05</text>
+  <text x="1014" y="208" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="10" fill="#6B6359">06</text>
+
+  <!-- stage names (CJK-first sans, every line inside the 8-character budget) -->
+  <g font-family="Pretendard, 'Noto Sans KR', 'Noto Sans JP', 'Noto Sans SC', 'Apple SD Gothic Neo', 'Hiragino Sans', 'Microsoft YaHei', system-ui, sans-serif"
+     font-size="14" text-anchor="middle" fill="#141413">
+    <text x="130" y="237">랜딩 방문</text>
+    <text x="318" y="237">계정 생성</text>
+    <text x="506" y="237">이메일 인증</text>
+    <text x="694" y="237">프로젝트 생성</text>
+    <text x="882" y="237">템플릿 배포</text>
+    <text x="1070" y="227">두 번째</text>
+    <text x="1070" y="247">세션 복귀</text>
+  </g>
+
+  <!-- satisfaction track -->
+  <text x="60" y="300" font-family="'JetBrains Mono', ui-monospace, monospace"
+        font-size="11" letter-spacing="0.16em" fill="#6B6359">SATISFACTION 1-5</text>
+  <rect x="108" y="330" width="44" height="110" rx="4" fill="#D9CDBE"/>
+  <rect x="296" y="374" width="44" height="66" rx="4" fill="#D9CDBE"/>
+  <rect x="484" y="396" width="44" height="44" rx="4" fill="#D97757"/>
+  <rect x="672" y="352" width="44" height="88" rx="4" fill="#D9CDBE"/>
+  <rect x="860" y="330" width="44" height="110" rx="4" fill="#D9CDBE"/>
+  <rect x="1048" y="374" width="44" height="66" rx="4" fill="#D9CDBE"/>
+  <g font-family="'JetBrains Mono', ui-monospace, monospace" font-size="11" text-anchor="middle" fill="#6B6359">
+    <text x="130" y="322">5</text>
+    <text x="318" y="366">3</text>
+    <text x="506" y="388" fill="#B85C3E">2</text>
+    <text x="694" y="344">4</text>
+    <text x="882" y="322">5</text>
+    <text x="1070" y="366">3</text>
+  </g>
+  <line x1="60" y1="440" x2="1140" y2="440" stroke="#D9CDBE" stroke-width="1"/>
+
+  <!-- legend: its own strip, below everything, never inside the diagram area -->
+  <line x1="60" y1="478" x2="1140" y2="478" stroke="#D9CDBE" stroke-width="0.8"/>
+  <rect x="60" y="491" width="10" height="10" rx="2" fill="#D97757"/>
+  <text x="78" y="500" font-family="Pretendard, 'Noto Sans KR', system-ui, sans-serif"
+        font-size="12" fill="#6B6359">이탈이 집중되는 지점</text>
+  <rect x="240" y="491" width="10" height="10" rx="2" fill="#D9CDBE"/>
+  <text x="258" y="500" font-family="Pretendard, 'Noto Sans KR', system-ui, sans-serif"
+        font-size="12" fill="#6B6359">단계별 만족도</text>
+</svg>

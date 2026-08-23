@@ -34,12 +34,12 @@ type recordingCallerMulti struct {
 }
 
 type call struct {
-	backend, target, focus string
+	backend, target, focus, projectRoot string
 }
 
-func (r *recordingCallerMulti) call(ctx context.Context, backend, target, focus string) ReviewOutput {
+func (r *recordingCallerMulti) call(ctx context.Context, backend, target, focus, projectRoot string) ReviewOutput {
 	r.mu.Lock()
-	r.calls = append(r.calls, call{backend: backend, target: target, focus: focus})
+	r.calls = append(r.calls, call{backend: backend, target: target, focus: focus, projectRoot: projectRoot})
 	r.mu.Unlock()
 	if r.verdictBy == nil {
 		return ReviewOutput{Verdict: "pass", Summary: backend + ":pass", Findings: []Finding{}, NextSteps: []string{}}

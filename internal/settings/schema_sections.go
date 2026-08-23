@@ -332,6 +332,12 @@ func seamSectionFields() []FieldDef {
 		// console renders it from this FieldDef via schemaform.go; the seam writer
 		// (yamlpatch) upserts the nested mapping on first edit.
 		s(SectionWorkflow, "workflow", TypeBool, "workflow", "branch_guard", "enabled"),
+		// SPEC-TODO-ENABLE-FLAG-001 REQ-5 (backlog-queue guidance gate). Same
+		// shape as branch_guard above and for the same reason: the distributed
+		// template ships no todo block, so the seam writer upserts the nested
+		// mapping on first edit. The polarity is the opposite though — this key
+		// is default-ON, so the console's "absent" rendering means enabled.
+		s(SectionWorkflow, "workflow", TypeBool, "workflow", "todo", "enabled"),
 		// SPEC-MOAI-MCP-SERVER-001 M4 (REQ-MCP-015 / AC-MCP-021): the audit
 		// selection surfaced in the web console. These are PersistSeam fields
 		// patched via yamlpatch (arbitrary-depth upsert — the doc example is a
@@ -394,6 +400,11 @@ func seamSectionFields() []FieldDef {
 
 		// feedback.
 		s(SectionFeedback, "feedback", TypeText, "feedback", "repository"),
+		// auto_submit — the consent toggle that decides whether the feedback
+		// workflow may submit without asking each time. It is a decision about
+		// what leaves the machine, so it is surfaced in the console rather than
+		// living only in the section file.
+		s(SectionFeedback, "feedback", TypeBool, "feedback", "auto_submit"),
 
 		// observability.
 		s(SectionObservability, "observability", TypeBool, "observability", "enabled"),

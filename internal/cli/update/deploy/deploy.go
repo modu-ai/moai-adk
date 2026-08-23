@@ -9,6 +9,12 @@
 // step that runs BEFORE template deployment. It only removes MoAI-managed
 // paths; user-owned namespace preservation is governed by the plan package's
 // IsUserOwnedNamespace predicate at the orchestration layer, NOT here.
+//
+// Symlink awareness (SPEC-CLI-CLEAN-SYMLINK-001): clean-set entries are
+// classified with os.Lstat semantics. Any symlink — live or dangling —
+// enters a link-dedicated branch BEFORE the IsDir classification and is
+// removed as a link (never followed, backed up, or walked through), with a
+// progress line naming the link path and its form.
 package deploy
 
 import (
@@ -119,24 +125,40 @@ func CleanMoaiManagedPaths(projectRoot string, out io.Writer, tmplFS fs.FS) erro
 				return fmt.Errorf("glob %s: %w", t.DisplayPath, err)
 			}
 			backedUp := 0
+			// REQ-CSL-005: a link removed under the glob gets its own
+			// progress line naming the matched path — the aggregate line
+			// below names only the pattern.
+			type linkLine struct{ path, msg string }
+			var links []linkLine
 			for _, match := range matches {
 				rel, relErr := filepath.Rel(projectRoot, match)
 				if relErr != nil {
 					pl.Fail(fmt.Sprintf("Failed to remove %s: %v", t.DisplayPath, relErr))
 					return fmt.Errorf("rel %s: %w", match, relErr)
 				}
-				n, rmErr := backupThenRemove(match, rel, backupBase, tmplFS)
+				n, note, rmErr := backupThenRemove(match, rel, backupBase, tmplFS)
 				if rmErr != nil {
 					pl.Fail(fmt.Sprintf("Failed to remove %s: %v", t.DisplayPath, rmErr))
 					return fmt.Errorf("remove %s: %w", match, rmErr)
 				}
 				backedUp += n
+				if note != "" {
+					links = append(links, linkLine{rel, removedMsg(rel, n, note)})
+				}
 			}
-			pl.Done(removedMsg(t.DisplayPath, backedUp))
+			pl.Done(removedMsg(t.DisplayPath, backedUp, ""))
+			for _, ln := range links {
+				lp := tui.ProgressLine(out, fmt.Sprintf("Removing %s...", ln.path), nil)
+				lp.Done(ln.msg)
+			}
 			continue
 		}
 
-		if _, err := os.Stat(t.FullPath); err != nil {
+		// REQ-CSL-002: Lstat (not Stat) — a dangling link exists even though
+		// its target does not, so it must fall through to backupThenRemove's
+		// link branch instead of being reported "not found" and left in place
+		// for deployment's MkdirAll to trip over (the shipped Run D defect).
+		if _, err := os.Lstat(t.FullPath); err != nil {
 			if os.IsNotExist(err) {
 				// Use Done with a "skipped" marker — semantically a successful
 				// no-op (target already absent). The leading symbol shifts from
@@ -154,12 +176,12 @@ func CleanMoaiManagedPaths(projectRoot string, out io.Writer, tmplFS fs.FS) erro
 			pl.Fail(fmt.Sprintf("Failed to remove %s: %v", t.DisplayPath, relErr))
 			return fmt.Errorf("rel %s: %w", t.FullPath, relErr)
 		}
-		backedUp, err := backupThenRemove(t.FullPath, rel, backupBase, tmplFS)
+		backedUp, note, err := backupThenRemove(t.FullPath, rel, backupBase, tmplFS)
 		if err != nil {
 			pl.Fail(fmt.Sprintf("Failed to remove %s: %v", t.DisplayPath, err))
 			return fmt.Errorf("remove %s: %w", t.FullPath, err)
 		}
-		pl.Done(removedMsg(t.DisplayPath, backedUp))
+		pl.Done(removedMsg(t.DisplayPath, backedUp, note))
 	}
 
 	// Clean .moai/config/ entirely - backup was already done by the Backup step.
@@ -173,13 +195,13 @@ func CleanMoaiManagedPaths(projectRoot string, out io.Writer, tmplFS fs.FS) erro
 
 	// Card t111: files the template does not carry (e.g. a user's
 	// astgrep-rules/ tree) reach the pre-clean backup here before the wipe.
-	configBackedUp, err := backupThenRemove(configDir,
+	configBackedUp, configNote, err := backupThenRemove(configDir,
 		filepath.Join(defs.MoAIDir, defs.ConfigSubdir), backupBase, tmplFS)
 	if err != nil {
 		plConfig.Fail(fmt.Sprintf("Failed to remove %s: %v", configDisplayPath, err))
 		return fmt.Errorf("remove %s: %w", configDisplayPath, err)
 	}
-	plConfig.Done(removedMsg(configDisplayPath, configBackedUp))
+	plConfig.Done(removedMsg(configDisplayPath, configBackedUp, configNote))
 
 	// Migrate legacy .moai/memory/ to .moai/state/.
 	// Prior to v2.x, state files (checkpoints, coverage, diagnostics) lived under
@@ -343,24 +365,49 @@ func copyTree(src, dst string) error {
 	})
 }
 
-// removedMsg renders the per-target removal result, naming the unmanaged
-// file count only when the backup actually carried something — a count of
-// zero would be noise on every clean upgrade.
-func removedMsg(displayPath string, backedUp int) string {
+// removedMsg renders the per-target removal result. For symlink removals the
+// disposition note (path + "symlink" token — plan.md §D-7 stable tokens)
+// replaces the unmanaged-file count, keeping the message one greppable line
+// per link (REQ-CSL-005). For real entries the count is named only when the
+// backup actually carried something — a count of zero would be noise on
+// every clean upgrade.
+func removedMsg(displayPath string, backedUp int, note string) string {
+	if note != "" {
+		return fmt.Sprintf("Removed %s (%s)", displayPath, note)
+	}
 	if backedUp == 0 {
 		return fmt.Sprintf("Removed %s", displayPath)
 	}
 	return fmt.Sprintf("Removed %s (backed up %d unmanaged file(s))", displayPath, backedUp)
 }
 
+// Symlink disposition notes (SPEC-CLI-CLEAN-SYMLINK-001 plan §D-7: every
+// link removal's progress line carries the link path plus a "symlink" token
+// so dispositions stay greppable — REQ-CSL-005).
+const (
+	noteDanglingSymlink = "dangling symlink"
+	noteDirSymlink      = "directory symlink, target untouched"
+	noteFileSymlink     = "file symlink"
+	noteFileSymlinkBak  = "file symlink, target bytes backed up"
+)
+
 // backupThenRemove backs up every regular file under diskPath that tmplFS
 // does not carry at the same relative path, then removes diskPath, and
-// returns how many files the backup carried.
+// returns how many files the backup carried plus a non-empty disposition
+// note when the entry was a symlink.
 //
 // The abort ordering is the contract: backup FIRST, removal SECOND, and a
 // backup failure returns before os.RemoveAll runs. Paths that do not exist
 // are a successful no-op (the caller's not-found skip and the config root's
 // historic IsNotExist tolerance both land here).
+//
+// Symlink classification (REQ-CSL-001): the entry is statted with os.Lstat
+// so the link ITSELF is classified, and any link — live or dangling —
+// entering removeSymlink BEFORE the IsDir classification below. Under the
+// previous os.Stat semantics links were absorbed into the file/directory
+// branches: a live directory link was silently replaced, and a dangling link
+// survived as a "not found" no-op until deployment's MkdirAll failed EEXIST
+// (the shipped Run D defect).
 //
 // A FILE target (settings.json) is backed up unless the template carries the
 // exact path; a DIRECTORY target is walked and compared against the template
@@ -368,34 +415,80 @@ func removedMsg(displayPath string, backedUp int) string {
 // regular files (symlinks, fifos) are skipped by the copy — the same rule
 // copyTree applies: a preservation copy must not follow a link out of the
 // backup tree.
-func backupThenRemove(diskPath, relTarget, backupBase string, tmplFS fs.FS) (int, error) {
-	info, err := os.Stat(diskPath)
+func backupThenRemove(diskPath, relTarget, backupBase string, tmplFS fs.FS) (int, string, error) {
+	// @MX:NOTE: [AUTO] Lstat + ModeSymlink BEFORE IsDir is the load-bearing
+	// ordering — os.Stat semantics absorb symlinks into the file/directory
+	// branches and hid the Run D dangling-link defect
+	// (SPEC-CLI-CLEAN-SYMLINK-001 REQ-CSL-001).
+	info, err := os.Lstat(diskPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return 0, nil
+			return 0, "", nil
 		}
-		return 0, fmt.Errorf("stat %s: %w", relTarget, err)
+		return 0, "", fmt.Errorf("stat %s: %w", relTarget, err)
+	}
+
+	if info.Mode()&fs.ModeSymlink != 0 {
+		return removeSymlink(diskPath, relTarget, backupBase, tmplFS)
 	}
 
 	if !info.IsDir() {
 		if templateCarries(tmplFS, relTarget) {
-			return 0, os.RemoveAll(diskPath)
+			return 0, "", os.RemoveAll(diskPath)
 		}
 		if err := copyRegularFile(diskPath, filepath.Join(backupBase, relTarget)); err != nil {
-			return 0, fmt.Errorf("back up %s: %w", relTarget, err)
+			return 0, "", fmt.Errorf("back up %s: %w", relTarget, err)
 		}
-		return 1, os.RemoveAll(diskPath)
+		return 1, "", os.RemoveAll(diskPath)
 	}
 
 	managed, err := templateManagedPaths(tmplFS, relTarget)
 	if err != nil {
-		return 0, fmt.Errorf("collect template paths under %s: %w", relTarget, err)
+		return 0, "", fmt.Errorf("collect template paths under %s: %w", relTarget, err)
 	}
 	backedUp, err := backupUnmanagedTree(diskPath, relTarget, managed, backupBase)
 	if err != nil {
-		return 0, fmt.Errorf("back up %s: %w", relTarget, err)
+		return 0, "", fmt.Errorf("back up %s: %w", relTarget, err)
 	}
-	return backedUp, os.RemoveAll(diskPath)
+	return backedUp, "", os.RemoveAll(diskPath)
+}
+
+// removeSymlink applies the link-dedicated dispositions
+// (SPEC-CLI-CLEAN-SYMLINK-001 §B). It runs only after Lstat confirmed the
+// entry is a symlink; the form-classification Stat deliberately follows the
+// link, because reading the target's metadata is the classification — no
+// disposition walks, backs up, or writes through a directory link
+// (REQ-CSL-003), and a removal always takes the link itself, never the
+// target.
+func removeSymlink(diskPath, relTarget, backupBase string, tmplFS fs.FS) (int, string, error) {
+	target, err := os.Stat(diskPath)
+	switch {
+	case err == nil && target.IsDir():
+		// FX-1 live directory link: remove the link only. The target is
+		// never read or backed up (WalkDir-skip semantics preserved — zero
+		// backups) and deployment recreates a real directory at the root.
+		return 0, noteDirSymlink, os.RemoveAll(diskPath)
+	case err == nil:
+		// FX-2 live file link: the real-file handling applies unchanged —
+		// the bytes read THROUGH the link reach the pre-clean backup unless
+		// the template carries the exact path — plus the link-naming note
+		// (REQ-CSL-004).
+		if templateCarries(tmplFS, relTarget) {
+			return 0, noteFileSymlink, os.RemoveAll(diskPath)
+		}
+		if err := copyRegularFile(diskPath, filepath.Join(backupBase, relTarget)); err != nil {
+			return 0, "", fmt.Errorf("back up %s: %w", relTarget, err)
+		}
+		return 1, noteFileSymlinkBak, os.RemoveAll(diskPath)
+	case os.IsNotExist(err):
+		// FX-3 dangling link: no data-loss surface (the target is absent).
+		// Removing the link unblocks deployment's MkdirAll, which would
+		// otherwise fail EEXIST on every run until the user removed the
+		// link by hand.
+		return 0, noteDanglingSymlink, os.RemoveAll(diskPath)
+	default:
+		return 0, "", fmt.Errorf("stat symlink target %s: %w", relTarget, err)
+	}
 }
 
 // templateManagedPaths returns the set of slash-separated file paths tmplFS

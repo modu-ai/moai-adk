@@ -12,15 +12,17 @@ llm:
   # top-column name "max" is still READ as an alias for "high", but is never
   # written back.
   #
-  # Under a GLM backend (team_mode: glm/cg), z.ai exposes only a 3-state
-  # reasoning control (no "medium" level). The agent effort from the profile
-  # column above collapses onto it:
-  #   effort low          -> thinking off (fastest, no reasoning)
-  #   effort medium/high  -> reasoning_effort=high
+  # Under a GLM backend (team_mode: glm/cg), z.ai exposes a 3-level
+  # reasoning_effort control (low/high/max; GLM-5.3 reasons ALWAYS — thinking
+  # cannot be disabled). The agent effort from the profile column above
+  # collapses onto it:
+  #   effort low          -> reasoning_effort=low (thinking enabled)
+  #   effort medium/high  -> reasoning_effort=max
   #   effort xhigh/max    -> reasoning_effort=max
-  # So under GLM, profile "medium" and "high" converge (both reach
-  # reasoning_effort=high); the code-producing run-phase agent runs at
-  # reasoning_effort=max regardless (coding-task recommendation).
+  # So under GLM, every profile column's efforts above "low" converge on
+  # reasoning_effort=max; only "low" stays at the low level. The
+  # code-producing run-phase agent runs at reasoning_effort=max regardless
+  # (coding-task recommendation).
   profile: "medium"
 
   # Legacy performance tier (read-time alias only — `profile` supersedes it).
@@ -185,16 +187,22 @@ llm:
     # asks for it fails — so the control is a single 3-level reasoning_effort:
     #
     #   low     thinking=enabled, reasoning_effort=low    ← Claude low
-    #   high    thinking=enabled, reasoning_effort=high   ← Claude medium/high
-    #   max     thinking=enabled, reasoning_effort=max    ← Claude xhigh/max
+    #   high    thinking=enabled, reasoning_effort=high   ← legal wire value; no
+    #                                                      Claude effort maps here
+    #   max     thinking=enabled, reasoning_effort=max    ← Claude medium/high/
+    #                                                      xhigh/max (omit-default)
     #
-    # Collapse table (5 Claude levels → 3 GLM levels):
+    # Collapse table (5 Claude levels → 2 reachable GLM levels):
     #   low      → low
-    #   medium   → high
-    #   high     → high
+    #   medium   → max
+    #   high     → max
     #   xhigh    → max
     #   max      → max
     #   (unrecognized → max; totality clause — never under-reason)
+    #
+    # The `high` level stays a legal wire value and a selectable stored state
+    # (settings widget), but no Claude effort collapses to it — every effort
+    # above low converges on max.
     #
     # Coding-max override (z.ai "reasoning_effort: max for coding tasks"):
     #   manager-develop forces max regardless of its collapse result.
@@ -202,8 +210,12 @@ llm:
     # manager-git occupies the low tier (its effort is low across all profile
     # columns → CollapseClaudeEffortToGLM("low") = low).
     #
-    # Wire state: the overlay is implemented and wired; live validation of z.ai
-    # wire-effectiveness is pending.
+    # Wire state: the overlay is implemented and wired. Measured against the
+    # z.ai Anthropic-compat shim: the Anthropic `thinking` parameter is honored
+    # (depth scales with the budget); a top-level z.ai-style reasoning_effort
+    # field is ignored — the env reaches z.ai through the thinking-budget
+    # mapping, not a native reasoning_effort passthrough. This block is
+    # documentation-only; no code reads it at runtime.
 
     # Optional: override the statusline context window gauge per GLM model.
     # Claude Code reports context_window_size based on the

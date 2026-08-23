@@ -1,0 +1,14 @@
+{
+  "session_id": "01a02551-5668-76a2-ba66-58ae219cb7b0",
+  "turn_id": "01a02551-6362-7da3-be74-a24686e46bc8",
+  "transcript_path": "<scratch>/rollout-2026-08-22T02-14-42-01a02551-5668-76a2-ba66-58ae219cb7b0.jsonl",
+  "cwd": "/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/c4f62a74-c1bb-46af-82d0-18f2e78ece9f/scratchpad/t91/proj",
+  "hook_event_name": "PreToolUse",
+  "model": "gpt-5.6-sol",
+  "permission_mode": "bypassPermissions",
+  "tool_name": "collaborationwait_agent",
+  "tool_input": {
+    "timeout_ms": 120000
+  },
+  "tool_use_id": "call_33WkSk44eEYtls0BhFdxBDU4"
+}

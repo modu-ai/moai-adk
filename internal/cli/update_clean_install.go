@@ -53,7 +53,19 @@ type CleanReinstallOptions struct {
 	DryRun bool
 
 	// Out: progress / diagnostic writer. nil defaults to os.Stderr.
+	//
+	// Note that the nil default does not describe production: both production
+	// call sites in update.go inject cmd.OutOrStdout(), so in a real run this
+	// writer is stdout.
 	Out io.Writer
+
+	// ErrOut: warning writer. nil defaults to os.Stderr.
+	//
+	// Separate from Out precisely because Out carries stdout in production
+	// (see above) and internal/cli/CLAUDE.md:14 assigns warnings to stderr.
+	// Putting the skill-mirror notice on Out would emit a warning on stdout on
+	// every fallback run.
+	ErrOut io.Writer
 
 	// Deployer: optional injected template deployer. When nil, the orchestrator
 	// constructs the default deployer via template.NewDeployerWithRendererAndForceUpdate
@@ -138,6 +150,10 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 	out := opts.Out
 	if out == nil {
 		out = os.Stderr
+	}
+	errOut := opts.ErrOut
+	if errOut == nil {
+		errOut = os.Stderr
 	}
 
 	if projectRoot == "" {
@@ -436,7 +452,7 @@ func runCleanReinstall(ctx context.Context, projectRoot string, opts CleanReinst
 		template.WithHookOptIn(readHookOptInEnabled(projectRoot)),
 	)
 
-	if deployErr := deployer.Deploy(ctx, projectRoot, mgr, tmplCtx); deployErr != nil {
+	if deployErr := deployWithMirrorNotice(ctx, deployer, projectRoot, mgr, tmplCtx, errOut); deployErr != nil {
 		return result, recovery.fail("step 5: reinstall templates", deployErr)
 	}
 	_, _ = fmt.Fprintln(out, "[clean-reinstall] Embedded templates reinstalled")

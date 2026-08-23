@@ -1,0 +1,46 @@
+--- FAIL: TestInit_FallbackPathPersistsAuditBlock (0.01s)
+    initializer_audit_wiring_test.go:48: workflow.yaml missing "audit:"; got:
+        workflow:
+          auto_clear: true
+          plan_tokens: 30000
+          run_tokens: 180000
+          sync_tokens: 40000
+    initializer_audit_wiring_test.go:48: workflow.yaml missing "model: claude"; got:
+        workflow:
+          auto_clear: true
+          plan_tokens: 30000
+          run_tokens: 180000
+          sync_tokens: 40000
+    initializer_audit_wiring_test.go:48: workflow.yaml missing "claude: required"; got:
+        workflow:
+          auto_clear: true
+          plan_tokens: 30000
+          run_tokens: 180000
+          sync_tokens: 40000
+    initializer_audit_wiring_test.go:48: workflow.yaml missing "codex: advisory"; got:
+        workflow:
+          auto_clear: true
+          plan_tokens: 30000
+          run_tokens: 180000
+          sync_tokens: 40000
+    initializer_audit_wiring_test.go:48: workflow.yaml missing "glm: off"; got:
+        workflow:
+          auto_clear: true
+          plan_tokens: 30000
+          run_tokens: 180000
+          sync_tokens: 40000
+    initializer_audit_wiring_test.go:48: workflow.yaml missing "review_gate:"; got:
+        workflow:
+          auto_clear: true
+          plan_tokens: 30000
+          run_tokens: 180000
+          sync_tokens: 40000
+    initializer_audit_wiring_test.go:48: workflow.yaml missing "enabled: true"; got:
+        workflow:
+          auto_clear: true
+          plan_tokens: 30000
+          run_tokens: 180000
+          sync_tokens: 40000
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/core/project	0.556s
+FAIL

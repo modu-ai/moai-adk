@@ -90,6 +90,18 @@ flowchart TD
 
 `/moai feedback`이 이슈를 생성하는 대상 저장소는 `.moai/config/sections/feedback.yaml`의 `feedback.repository` 값으로 설정됩니다. 기본값은 `modu-ai/moai-adk` (MoAI-ADK 도구 저장소 자체)이며, fork를 유지보수하는 사용자는 이 값을 자신의 fork 저장소로 변경해 피드백을 리다이렉트할 수 있습니다.
 
+### 제출 전 확인
+
+`/moai feedback`은 이슈를 만들기 전에 올라갈 내용을 먼저 보여줍니다. 제목, 본문 전체, 그리고 가려낸 값(시크릿, 토큰, 홈 디렉터리 절대 경로)의 요약을 함께 보여준 뒤 진행할지 묻습니다. 이 질문을 할지 말지는 `.moai/config/sections/feedback.yaml`의 `feedback.auto_submit` 값이 결정합니다. 배포 기본값 `false`는 매번 묻고, `true`는 묻지 않고 바로 제출합니다.
+
+```yaml
+feedback:
+    repository: modu-ai/moai-adk
+    auto_submit: false
+```
+
+`moai init` 설치 마법사에서도 이 값을 묻고, 나중에 웹 콘솔의 Feedback 섹션에서 바꿀 수 있습니다. `true`로 두면 질문만 건너뛸 뿐 값 가리기는 그대로 동작하며, 보안 취약점 제보로 판단된 내용은 여전히 공개 이슈 대신 비공개 advisory 경로로 안내됩니다.
+
 ## 피드백 유형
 
 ### 버그 리포트

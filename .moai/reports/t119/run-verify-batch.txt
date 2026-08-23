@@ -1,0 +1,7 @@
+ok  	github.com/modu-ai/moai-adk/internal/cli	569.642s
+ok  	github.com/modu-ai/moai-adk/internal/kanban	28.490s
+TEST_EXIT=0
+VET_EXIT=0
+WINVET_EXIT=0
+0 issues.
+LINT_EXIT=0

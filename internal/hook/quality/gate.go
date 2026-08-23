@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -102,6 +103,27 @@ type gateStep struct {
 	// When non-empty, the step is skipped if no staged file has one of these extensions.
 	// Future heavy language-specific linters can opt-in using this pattern.
 	changedExts []string
+	// sourceExts lists the extensions that give this step something to check.
+	// When the project tree holds none of them, the step is skipped with a
+	// hint instead of run.
+	//
+	// This exists for tools that treat an empty source set as a usage error
+	// rather than a vacuous pass. mypy is the case: `mypy .` on a directory
+	// with no .py files prints "There are no .py[i] files in directory" and
+	// exits 2, so a freshly scaffolded project — a pyproject.toml and nothing
+	// else yet — failed its first gate for having no code. pytest already
+	// treats its own empty-suite exit as a pass (see runStep); this is the
+	// same judgement moved one step earlier, to the point where the tool has
+	// nothing to look at.
+	//
+	// Skipping BEFORE running, rather than forgiving an exit code after, is
+	// deliberate: mypy's exit 2 also covers a genuinely broken config, and
+	// forgiving the code would hide that. Absence of sources is checked
+	// directly instead.
+	//
+	// Distinct from changedExts, which asks what is staged for THIS commit;
+	// this asks whether the project has any such source at all.
+	sourceExts []string
 }
 
 // toolchains defines quality gate steps per language.
@@ -151,6 +173,10 @@ var toolchains = []langToolchain{
 			{name: "mypy", binary: "mypy", args: []string{"."}, optional: true,
 				configFiles: []string{"mypy.ini", ".mypy.ini", "pyproject.toml", "setup.cfg"},
 				changedExts: []string{".py"},
+				// ruff needs no counterpart: `ruff check .` on a source-free
+				// tree reports "All checks passed!" and exits 0. mypy is the
+				// one Python step that treats no sources as an error.
+				sourceExts: []string{".py", ".pyi"},
 			},
 		},
 		testStep: &gateStep{name: "pytest", binary: "pytest", args: nil, optional: true},
@@ -769,6 +795,21 @@ func (g *QualityGate) executeStep(ctx context.Context, step gateStep, timeout ti
 		}
 	}
 
+	// Skip when the project holds no source this step could check. A scaffold
+	// that has declared its language but not written code yet must not fail
+	// its first gate for having no code.
+	if len(step.sourceExts) > 0 {
+		dir := resolveQualityProjectDir(*g.config, "QualityGate.executeStep.srcfilter")
+		if found, determined := projectHasSourceFile(dir, step.sourceExts); determined && !found {
+			slog.Warn("no sources for step: treating as skip",
+				"step", step.name,
+				"extensions", strings.Join(step.sourceExts, ","),
+				"hint", "add sources, or set gate.disabled_steps in .moai/config/sections/gate.yaml",
+			)
+			return true, ""
+		}
+	}
+
 	return g.runStep(ctx, step.name, timeout, step.binary, step.args...)
 }
 
@@ -785,6 +826,89 @@ func (g *QualityGate) cachedStagedFiles(ctx context.Context, dir string) []strin
 		return nil
 	}
 	return g.stagedCache
+}
+
+// sourceScanEntryCap bounds projectHasSourceFile's walk. A source-free tree is
+// established by exhausting the walk, so on a very large repository that answer
+// could cost a full traversal. Past the cap the scan gives up and reports
+// undetermined, which runs the step — the conservative direction, and the same
+// one taken when the directory cannot be read at all.
+const sourceScanEntryCap = 20000
+
+// sourceScanSkipDirs are directory names never worth descending into when
+// asking whether a project has sources of its own: dependency trees, build
+// output, and caches. A .py under node_modules or .venv is somebody else's.
+var sourceScanSkipDirs = map[string]struct{}{
+	".git": {}, ".hg": {}, ".svn": {},
+	"node_modules": {}, "vendor": {},
+	".venv": {}, "venv": {}, "site-packages": {}, "__pycache__": {},
+	".tox": {}, ".nox": {}, ".mypy_cache": {}, ".ruff_cache": {}, ".pytest_cache": {},
+	"dist": {}, "build": {}, "target": {}, ".next": {}, ".output": {},
+}
+
+// projectHasSourceFile reports whether dir's tree holds a file with one of the
+// given extensions, stopping at the first match.
+//
+// The second return says whether the question was answered at all. An empty
+// dir, an unreadable tree, or a walk that outgrows sourceScanEntryCap answers
+// false — the caller then runs the step rather than skipping it, so an
+// uncertain scan never suppresses a check.
+func projectHasSourceFile(dir string, exts []string) (found bool, determined bool) {
+	if dir == "" || len(exts) == 0 {
+		return false, false
+	}
+
+	visited := 0
+	errStop := errors.New("stop")
+	errBudget := errors.New("budget")
+
+	walkErr := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			// The root failing is the whole question failing — a missing or
+			// unreadable project directory must answer undetermined, so the
+			// caller runs the step rather than skipping it.
+			if path == dir {
+				return err
+			}
+			// A permission hole somewhere below is skipped instead: it must
+			// not decide the whole answer.
+			if d != nil && d.IsDir() {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		visited++
+		if visited > sourceScanEntryCap {
+			return errBudget
+		}
+		if d.IsDir() {
+			if path == dir {
+				return nil
+			}
+			if _, skip := sourceScanSkipDirs[d.Name()]; skip {
+				return fs.SkipDir
+			}
+			return nil
+		}
+		ext := filepath.Ext(d.Name())
+		for _, want := range exts {
+			if strings.EqualFold(ext, want) {
+				found = true
+				return errStop
+			}
+		}
+		return nil
+	})
+
+	switch {
+	case errors.Is(walkErr, errStop):
+		return true, true
+	case walkErr == nil:
+		return false, true
+	default:
+		// errBudget, or the root itself being unreadable.
+		return false, false
+	}
 }
 
 // hasStagedExt returns true if any file in the staged list has an extension in exts.

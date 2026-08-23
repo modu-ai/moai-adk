@@ -50,10 +50,11 @@ func sectionCommentLines(s string) []string {
 }
 
 // TestWriteSectionViaSeamRejectsM3ReclassifiedSections는 SPEC-WEBCONF-SIMPLIFY-001
-// M3가 RouteExcluded로 재분류한 7개 전 seam 섹션에 대한 WriteSectionViaSeam 호출이
+// M3가 RouteExcluded로 재분류한 6개 전 seam 섹션에 대한 WriteSectionViaSeam 호출이
 // 전부 오류로 거부되고, 디스크의 섹션 파일이 바이트 단위로 무변경임을 검증한다
 // (REQ-WC-003 — config keys persist, web write path removed). workflow는 Issue 3에서
-// RouteSeam으로 복구되어 이 거부 목록에서 제외되었다 (별도 round-trip 테스트가
+// RouteSeam으로 복구되어, feedback은 SPEC-FEEDBACK-AUTO-SUBMIT-001 M7에서
+// RouteSeam으로 재개방되어 이 거부 목록에서 제외되었다 (별도 round-trip 테스트가
 // 성공 케이스를 담당한다).
 func TestWriteSectionViaSeamRejectsM3ReclassifiedSections(t *testing.T) {
 	t.Parallel()
@@ -64,7 +65,6 @@ func TestWriteSectionViaSeamRejectsM3ReclassifiedSections(t *testing.T) {
 	}{
 		{"harness", yamlpatch.KeyEdit{Path: []string{"harness", "default_profile"}, Value: "strict"}},
 		{"ralph", yamlpatch.KeyEdit{Path: []string{"ralph", "loop", "max_iterations"}, Value: "20"}},
-		{"feedback", yamlpatch.KeyEdit{Path: []string{"feedback", "repository"}, Value: "example-org/fork"}},
 		{"observability", yamlpatch.KeyEdit{Path: []string{"observability", "retention_days"}, Value: "60"}},
 		{"security", yamlpatch.KeyEdit{Path: []string{"security", "permission", "strict_mode"}, Value: "true"}},
 		{"handoff", yamlpatch.KeyEdit{Path: []string{"handoff", "mode"}, Value: "auto"}},
@@ -152,10 +152,11 @@ func TestWriteSectionViaSeamRejectsNonSeamSections(t *testing.T) {
 		"tool-policy", "lsp", "mx",
 		"constitution", "context", "design", "interview",
 		"research", "db",
-		// SPEC-WEBCONF-SIMPLIFY-001 M3: 7 former seam sections reclassified to
+		// SPEC-WEBCONF-SIMPLIFY-001 M3: 6 former seam sections reclassified to
 		// RouteExcluded (tabs removed, web write path gone). workflow restored
-		// to RouteSeam in Issue 3 — NOT in this rejection list.
-		"harness", "ralph", "feedback", "observability", "security", "handoff", "cache",
+		// to RouteSeam in Issue 3 and feedback reopened in M7 — NEITHER is in
+		// this rejection list.
+		"harness", "ralph", "observability", "security", "handoff", "cache",
 		"nonexistent",
 	} {
 		err := WriteSectionViaSeam(root, section, []yamlpatch.KeyEdit{

@@ -19,6 +19,11 @@ type Renderer struct {
 	mutedStyle    lipgloss.Style
 	segmentConfig map[string]bool
 	theme         Theme
+	// todoEnabled mirrors workflow.todo.enabled (SPEC-TODO-ENABLE-FLAG-001
+	// REQ-2 surface 2). nil means the key was absent, which reads as enabled —
+	// the same absent-is-on rule the config side enforces, carried here as a
+	// pointer so a zero-valued Renderer cannot silently suppress the segment.
+	todoEnabled *bool
 }
 
 // NewRenderer creates a Renderer with the specified theme, color mode, and
@@ -79,6 +84,22 @@ func filterEmpty(sections []string) []string {
 		}
 	}
 	return filtered
+}
+
+// SetTodoEnabled records the workflow.todo.enabled value for this renderer.
+// A nil argument means the key was absent, which is the enabled reading.
+//
+// It is a setter rather than a NewRenderer parameter so the existing
+// three-argument constructor keeps compiling for its callers; the backlog
+// gate is the only thing it feeds.
+func (r *Renderer) SetTodoEnabled(enabled *bool) {
+	r.todoEnabled = enabled
+}
+
+// isTodoEnabled reports whether the todo guidance surfaces are active for this
+// renderer. Absent (nil) reads as enabled — see SetTodoEnabled.
+func (r *Renderer) isTodoEnabled() bool {
+	return r.todoEnabled == nil || *r.todoEnabled
 }
 
 // isSegmentEnabled checks whether a segment should be rendered based on config.
@@ -185,7 +206,14 @@ func (r *Renderer) renderSessionLine(data *StatusData) string {
 	// todo queue. It deliberately gives ground on the symbol-first rationale
 	// above (words excluded for 16-language shipping) because TODO reads the
 	// same way in every supported language.
-	if r.isSegmentEnabled(SegmentBacklog) && data.Backlog.Available {
+	//
+	// Two independent switches reach this segment and neither overrides the
+	// other: statusline.yaml's `backlog: false` and workflow.todo.enabled
+	// (SPEC-TODO-ENABLE-FLAG-001 REQ-2 surface 2). Either one off means off.
+	// The join is here, at render, rather than in collection — suppressing the
+	// data would blur into the Backlog.Available == false path and make an
+	// intentionally-hidden segment indistinguishable from an unreadable queue.
+	if r.isSegmentEnabled(SegmentBacklog) && r.isTodoEnabled() && data.Backlog.Available {
 		segs = append(segs, fmt.Sprintf("🔄 TODO: %d/%d", data.Backlog.Picked, data.Backlog.Queued))
 	}
 

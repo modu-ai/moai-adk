@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -84,6 +86,41 @@ func withGLMSeams(t *testing.T, key string, doer glmHTTPDoer) {
 	})
 }
 
+// newGLMReviewTree builds the tree the t178 contract reviews: a real git repo
+// that is a MoAI project root (.moai directory, so project_root validation
+// accepts it). dirty=true leaves exactly one uncommitted change in it, so
+// collectReviewDiff has material to carry; dirty=false leaves it committed and
+// clean, so the diff is genuinely empty. The dirty change introduces the
+// "unreviewed" token, which a test can assert travelled inside the request body.
+func newGLMReviewTree(t *testing.T, dirty bool) string {
+	t.Helper()
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".moai"), 0o755); err != nil {
+		t.Fatalf("mkdir .moai: %v", err)
+	}
+	code := filepath.Join(root, "code.go")
+	if err := os.WriteFile(code, []byte("package p\n\nfunc A() {}\n"), 0o644); err != nil {
+		t.Fatalf("write code.go: %v", err)
+	}
+	initGitRepoFixture(t, root) // commit the clean state on main
+	if dirty {
+		if err := os.WriteFile(code, []byte("package p\n\nfunc A() { panic(\"unreviewed\") }\n"), 0o644); err != nil {
+			t.Fatalf("modify code.go: %v", err)
+		}
+	}
+	return root
+}
+
+// glmAuditReq builds a CallToolRequest naming the tree to review via
+// project_root (SPEC-MCP-WORKTREE-ROOT-001 — the caller supplies its own tree).
+func glmAuditReq(root string) mcp.CallToolRequest {
+	return mcp.CallToolRequest{
+		Params: mcp.CallToolParams{Arguments: map[string]any{
+			projectRootArg: root,
+		}},
+	}
+}
+
 func TestGLMAudit_FailOpenOnMissingKey(t *testing.T) {
 	stub := &stubGLMDoer{body: glmMessagesResp(t, ReviewOutput{Verdict: "pass"})}
 	withGLMSeams(t, "", stub) // empty key ⇒ missing/unauthenticated
@@ -102,6 +139,10 @@ func TestGLMAudit_FailOpenOnMissingKey(t *testing.T) {
 }
 
 func TestGLMAudit_StubReturnsVerdict(t *testing.T) {
+	// t178 contract: GLM has no filesystem, so the handler first collects the
+	// change from the caller-named tree as a diff and carries it in the request.
+	// Diff material present ⇒ the normal path runs: exactly one z.ai call whose
+	// stubbed verdict surfaces as the structured result.
 	want := ReviewOutput{
 		Verdict:   "pass",
 		Summary:   "no blocking findings",
@@ -110,8 +151,9 @@ func TestGLMAudit_StubReturnsVerdict(t *testing.T) {
 	}
 	stub := &stubGLMDoer{body: glmMessagesResp(t, want)}
 	withGLMSeams(t, "test-glm-key", stub)
+	root := newGLMReviewTree(t, true) // one uncommitted change to review
 
-	res, err := handleGLMAudit(context.Background(), mcp.CallToolRequest{})
+	res, err := handleGLMAudit(context.Background(), glmAuditReq(root))
 	if err != nil {
 		t.Fatalf("handler error: %v", err)
 	}
@@ -144,15 +186,22 @@ func TestGLMAudit_StubReturnsVerdict(t *testing.T) {
 	if !strings.Contains(stub.gotURL, "/v1/messages") {
 		t.Errorf("request URL %q is not the Anthropic /v1/messages path", stub.gotURL)
 	}
+	// t178: the code under review must TRAVEL in the request body — a URL that
+	// is right while the body carries no diff is exactly the defect t178 fixed.
+	if !strings.Contains(stub.gotBody, "unreviewed") {
+		t.Errorf("request body does not carry the review diff (want the uncommitted change inside it)")
+	}
 }
 
 func TestGLMAudit_HitsZaiEndpointDirectly(t *testing.T) {
 	// NOT the z.ai MCP server (api.z.ai/api/mcp/...), NOT any gateway — the
-	// Anthropic-compatible api.z.ai/api/anthropic/v1/messages surface.
+	// Anthropic-compatible api.z.ai/api/anthropic/v1/messages surface. Reaches
+	// z.ai via the t178 path: a dirty named tree supplies the diff.
 	stub := &stubGLMDoer{body: glmMessagesResp(t, ReviewOutput{Verdict: "pass"})}
 	withGLMSeams(t, "k", stub)
+	root := newGLMReviewTree(t, true)
 
-	_, _ = handleGLMAudit(context.Background(), mcp.CallToolRequest{})
+	_, _ = handleGLMAudit(context.Background(), glmAuditReq(root))
 	if !strings.HasPrefix(stub.gotURL, "https://api.z.ai/api/anthropic/v1/messages") {
 		t.Errorf("URL = %q, want prefix https://api.z.ai/api/anthropic/v1/messages", stub.gotURL)
 	}
@@ -161,11 +210,59 @@ func TestGLMAudit_HitsZaiEndpointDirectly(t *testing.T) {
 	}
 }
 
+func TestGLMAudit_NoDiffFailsOpenInconclusive(t *testing.T) {
+	// t178 contract, the other arm: a backend given nothing does not report that
+	// it has nothing — it invents something to report. So no diff ⇒ NO z.ai call
+	// at all; the handler fails open to inconclusive before the HTTP seam. The
+	// stub carries a pass verdict precisely so a real call would be detectable.
+	t.Run("clean tree yields an empty diff", func(t *testing.T) {
+		stub := &stubGLMDoer{body: glmMessagesResp(t, ReviewOutput{Verdict: "pass"})}
+		withGLMSeams(t, "k", stub)
+		root := newGLMReviewTree(t, false) // committed clean — nothing to review
+
+		res, _ := handleGLMAudit(context.Background(), glmAuditReq(root))
+		got := decodeReview(t, res)
+		if got.Verdict != VerdictInconclusive {
+			t.Errorf("verdict = %q, want %q (empty diff must fail open)", got.Verdict, VerdictInconclusive)
+		}
+		if stub.gotURL != "" {
+			t.Errorf("empty diff must not reach z.ai; hit %q", stub.gotURL)
+		}
+	})
+	t.Run("non-git root cannot produce a diff", func(t *testing.T) {
+		// .moai present (project_root validation accepts it) but no git
+		// metadata: collectReviewDiff errors, and the error is the same
+		// fail-open arm — never a hard error, never a z.ai call.
+		root := t.TempDir()
+		if err := os.MkdirAll(filepath.Join(root, ".moai"), 0o755); err != nil {
+			t.Fatalf("mkdir .moai: %v", err)
+		}
+		stub := &stubGLMDoer{body: glmMessagesResp(t, ReviewOutput{Verdict: "pass"})}
+		withGLMSeams(t, "k", stub)
+
+		res, _ := handleGLMAudit(context.Background(), glmAuditReq(root))
+		got := decodeReview(t, res)
+		if got.Verdict != VerdictInconclusive {
+			t.Errorf("verdict = %q, want %q (unreadable diff must fail open)", got.Verdict, VerdictInconclusive)
+		}
+		if stub.gotURL != "" {
+			t.Errorf("an unreadable diff must not reach z.ai; hit %q", stub.gotURL)
+		}
+	})
+}
+
+// The three fail-open tests below supply a dirty tree (real diff material) so
+// each reaches the arm it names. Since t178 the handler short-circuits to
+// inconclusive BEFORE the HTTP seam when no diff can be produced — against a
+// clean tree these tests would pass vacuously on the empty-diff arm and never
+// exercise the transport/malformed/401 paths they exist to pin.
+
 func TestGLMAudit_FailOpenOnHTTPError(t *testing.T) {
 	stub := &stubGLMDoer{err: errBoom}
 	withGLMSeams(t, "k", stub)
+	root := newGLMReviewTree(t, true)
 
-	res, _ := handleGLMAudit(context.Background(), mcp.CallToolRequest{})
+	res, _ := handleGLMAudit(context.Background(), glmAuditReq(root))
 	if res.IsError {
 		t.Fatalf("transport error must fail-open to a structured result, not IsError")
 	}
@@ -178,8 +275,9 @@ func TestGLMAudit_FailOpenOnHTTPError(t *testing.T) {
 func TestGLMAudit_FailOpenOnMalformedResponse(t *testing.T) {
 	stub := &stubGLMDoer{body: "<<<not-json>>>"}
 	withGLMSeams(t, "k", stub)
+	root := newGLMReviewTree(t, true)
 
-	res, _ := handleGLMAudit(context.Background(), mcp.CallToolRequest{})
+	res, _ := handleGLMAudit(context.Background(), glmAuditReq(root))
 	got := decodeReview(t, res)
 	if got.Verdict != VerdictInconclusive {
 		t.Errorf("verdict = %q, want %q (malformed ⇒ fail-open)", got.Verdict, VerdictInconclusive)
@@ -191,8 +289,9 @@ func TestGLMAudit_FailOpenOnUnauthenticatedStatus(t *testing.T) {
 	// auditor ⇒ VerdictInconclusive ⇒ claude fallback, NOT a hard block.
 	stub := &stubGLMDoer{status: http.StatusUnauthorized, body: "{}"}
 	withGLMSeams(t, "k", stub)
+	root := newGLMReviewTree(t, true)
 
-	res, _ := handleGLMAudit(context.Background(), mcp.CallToolRequest{})
+	res, _ := handleGLMAudit(context.Background(), glmAuditReq(root))
 	got := decodeReview(t, res)
 	if got.Verdict != VerdictInconclusive {
 		t.Errorf("verdict = %q, want %q on 401 (unauthenticated fail-open)", got.Verdict, VerdictInconclusive)

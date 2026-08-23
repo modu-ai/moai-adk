@@ -25,6 +25,8 @@ func TestPage3QuestionsStructure(t *testing.T) {
 	want := []entry{
 		{"project_mode", QuestionTypeSelect, true, false},
 		{"worktree_auto_create", QuestionTypeConfirm, false, false},
+		{"todo_enabled", QuestionTypeConfirm, false, false},
+		{"feedback_auto_submit", QuestionTypeConfirm, false, false},
 		{"audit_model", QuestionTypeSelect, true, false},
 		{"audit_gate_claude", QuestionTypeSelect, true, false},
 		{"audit_gate_codex", QuestionTypeSelect, true, false},
@@ -261,9 +263,9 @@ func TestTotalVisibleQuestions_Page3AlwaysCounted(t *testing.T) {
 	// DesignEnabled reveals the nested claude_design_enabled.
 	res := &WizardResult{DesignEnabled: true}
 	got := TotalVisibleQuestions(all, res)
-	// Page 1 (3) + Page 2 (2) + Quality & Workflow (8) + Autonomy (1) = 14.
-	if got != 14 {
-		t.Errorf("TotalVisibleQuestions = %d, want 14 (3 Basic + 2 Model & Report + 8 Quality & Workflow + 1 Autonomy)", got)
+	// Page 1 (3) + Page 2 (2) + Quality & Workflow (10) + Autonomy (1) = 16.
+	if got != 16 {
+		t.Errorf("TotalVisibleQuestions = %d, want 16 (3 Basic + 2 Model & Report + 10 Quality & Workflow + 1 Autonomy)", got)
 	}
 	// Quality & Workflow page membership (M4 audit + worktree + Issue-3 confirm).
 	n := 0
@@ -272,7 +274,7 @@ func TestTotalVisibleQuestions_Page3AlwaysCounted(t *testing.T) {
 			n++
 		}
 	}
-	if n != 8 {
-		t.Errorf("visible Quality & Workflow questions = %d, want 8", n)
+	if n != 10 {
+		t.Errorf("visible Quality & Workflow questions = %d, want 10", n)
 	}
 }

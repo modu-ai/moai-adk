@@ -177,6 +177,14 @@ Single-backend audit mode (per the project's `audit_model`):
 
 All backends are fail-open: when a backend is unavailable, its tool returns `inconclusive` (never a Go error), so a missing codex/glm never blocks the audit.
 
+### [HARD] Name your own tree
+
+When this audit runs inside a worktree, EVERY `mcp__moai__*` call above — and `mcp__moai__spec_audit` / `mcp__moai__spec_drift` besides — MUST carry `project_root` set to this session's own `git rev-parse --show-toplevel`.
+
+Omit it and the call acts on the primary checkout instead. The SPEC under audit typically exists only on the card's branch, so it is not in the catalogue the tool reads — and its absence is not reported. The audit returns cleanly, having read a tree that does not contain the thing it was asked to judge. Auditing the wrong tree and finding nothing wrong is the failure mode this parameter exists to prevent, and it is silent by construction.
+
+Run the command; do not assume the path. A mistyped path is rejected with an error naming it, never silently replaced by the default. Full contract: `.claude/rules/moai/core/moai-mcp-tools.md` § The `project_root` input.
+
 ## Verification Execution Mandate
 
 [ZONE:Evolvable] [HARD] Read-only verification during audit follows the SSOT tool-selection and batching rules: `.claude/rules/moai/core/agent-common-protocol.md` § Tool Selection by Task (prefer the Grep / Glob / Read tools over their Bash equivalents) and § Parallel Execution (independent read-only verifications MUST be issued as a multi-tool batch within a single response turn; serial across-turns issuance multiplies round-trip latency). Reserve Bash for compound shell pipelines, CLI tools with no native equivalent (`git`, `gh`, `jq`), and cases needing shell variable expansion. Origin: an earlier plan-auditor latency meta-analysis (53 tool calls × ~5s avg = 4m57s wall-time) targeting ~1m30s via native-tool preference + batching.

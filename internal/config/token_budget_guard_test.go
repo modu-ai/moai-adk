@@ -63,9 +63,55 @@ func TestAlwaysLoadedTokenBudget(t *testing.T) {
 	if err != nil {
 		t.Fatalf("measureAlwaysLoaded: %v", err)
 	}
+	// Emit the achieved figure on the PASSING path too: every ratchet criterion in
+	// SPEC-AGENTS-MD-CANON-001 quotes this line from `go test -v`, and a guard that
+	// prints only on failure makes those criteria unsatisfiable.
+	t.Logf("always-loaded surface = %d tokens (budget %d, headroom %d, %d entries)",
+		total, AlwaysLoadedTokenBudget, AlwaysLoadedTokenBudget-total, len(surface))
+
 	if total > AlwaysLoadedTokenBudget {
 		t.Errorf("always-loaded surface = %d tokens, exceeds budget %d (overflow %d); surface has %d entries — trim always-loaded rules or raise AlwaysLoadedTokenBudget with justification",
 			total, AlwaysLoadedTokenBudget, total-AlwaysLoadedTokenBudget, len(surface))
+	}
+}
+
+// TestCodexContractByteCeiling is the Codex-cap byte guard on the real tree: the
+// root AGENTS.md and its template mirror must each stay at or below
+// CodexContractByteCeiling. It FAILS the build on breach rather than warning —
+// codex truncates the overflow silently, so nothing else will ever signal it.
+// The failure names the measured byte figure and the offending file.
+func TestCodexContractByteCeiling(t *testing.T) {
+	root, ok := findRepoRoot(mustGetwd(t))
+	if !ok {
+		t.Skip("repo root (go.mod) not found; skipping Codex contract byte guard")
+	}
+	if _, err := os.Stat(filepath.Join(root, "AGENTS.md")); err != nil {
+		t.Skip("AGENTS.md not found at repo root; skipping (not the real repo tree)")
+	}
+
+	breaches, err := MeasureContractBytes(root)
+	if err != nil {
+		t.Fatalf("MeasureContractBytes: %v", err)
+	}
+	// Emit the measured figures on the passing path too, so a ratchet criterion
+	// can quote them from `go test -v` without re-deriving them.
+	docs, err := contractDocuments(root)
+	if err != nil {
+		t.Fatalf("contractDocuments: %v", err)
+	}
+	for _, p := range docs {
+		if fi, statErr := os.Stat(p); statErr == nil {
+			rel, relErr := filepath.Rel(root, p)
+			if relErr != nil {
+				rel = p
+			}
+			t.Logf("contract document %s = %d bytes (ceiling %d, headroom %d)",
+				rel, fi.Size(), CodexContractByteCeiling, CodexContractByteCeiling-int(fi.Size()))
+		}
+	}
+	for _, b := range breaches {
+		t.Errorf("%s = %d bytes, exceeds the Codex contract ceiling %d (overflow %d) — codex truncates the tail SILENTLY, so trim the contract layer; raising the ceiling is not a substitute",
+			b.Path, b.Bytes, CodexContractByteCeiling, b.Overflow)
 	}
 }
 
@@ -82,6 +128,51 @@ func TestAlwaysLoadedTokenBudget_OverBudgetFails(t *testing.T) {
 	}{
 		{name: "over-budget", fileSize: AlwaysLoadedTokenBudget*4 + 4096, want: "fail"},
 		{name: "under-budget", fileSize: 1024, want: "pass"},
+	}
+	// Codex-cap dimension, same table shape and the same repo-root helpers — a
+	// parallel harness would be the second measurement path REQ-AMC-008 forbids.
+	contractTests := []struct {
+		name       string
+		agentsSize int
+		mirrorSize int
+		wantPaths  int // expected breach count
+	}{
+		{name: "contract-at-ceiling", agentsSize: CodexContractByteCeiling, mirrorSize: CodexContractByteCeiling, wantPaths: 0},
+		{name: "contract-one-byte-over", agentsSize: CodexContractByteCeiling + 1, mirrorSize: 1024, wantPaths: 1},
+		{name: "mirror-over-live-under", agentsSize: 1024, mirrorSize: CodexContractByteCeiling + 1, wantPaths: 1},
+		{name: "both-over", agentsSize: CodexContractByteCeiling + 1, mirrorSize: CodexContractByteCeiling + 1, wantPaths: 2},
+	}
+	for _, tt := range contractTests {
+		t.Run(tt.name, func(t *testing.T) {
+			root := t.TempDir()
+			mirrorDir := filepath.Join(root, "internal", "template", "templates")
+			if err := os.MkdirAll(mirrorDir, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			// The enumeration helper walks the rules tree, so the fixture needs it
+			// to exist — contractDocuments reuses that helper by design.
+			if err := os.MkdirAll(filepath.Join(root, ".claude", "rules", "moai", "core"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), []byte(strings.Repeat("a", tt.agentsSize)), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(mirrorDir, "AGENTS.md"), []byte(strings.Repeat("m", tt.mirrorSize)), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			breaches, err := MeasureContractBytes(root)
+			if err != nil {
+				t.Fatalf("MeasureContractBytes: %v", err)
+			}
+			if len(breaches) != tt.wantPaths {
+				t.Errorf("breaches = %d, want %d (%+v)", len(breaches), tt.wantPaths, breaches)
+			}
+			for _, b := range breaches {
+				if b.Path == "" || b.Bytes <= CodexContractByteCeiling || b.Overflow != b.Bytes-CodexContractByteCeiling {
+					t.Errorf("breach must name the file and the measured figure: %+v", b)
+				}
+			}
+		})
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -126,9 +217,9 @@ func TestAlwaysLoadedSurfaceEnumeration(t *testing.T) {
 	}
 
 	wantRuleCount := countNoPathsRuleFiles(t, root)
-	wantTotal := wantRuleCount + 3 // + CLAUDE.md + moai.md + MEMORY.md fixed slots
+	wantTotal := wantRuleCount + 4 // + CLAUDE.md + AGENTS.md + moai.md + MEMORY.md fixed slots
 	if len(surface) != wantTotal {
-		t.Errorf("surface has %d entries, want %d (= %d no-paths: rules + 3 fixed surfaces)", len(surface), wantTotal, wantRuleCount)
+		t.Errorf("surface has %d entries, want %d (= %d no-paths: rules + 4 fixed surfaces)", len(surface), wantTotal, wantRuleCount)
 	}
 
 	// AC-TEF-004: a known paths:-scoped rule (languages/go.md carries a paths:
@@ -138,6 +229,22 @@ func TestAlwaysLoadedSurfaceEnumeration(t *testing.T) {
 		if p == scoped {
 			t.Errorf("paths:-scoped file %s must be excluded from the always-loaded surface", scoped)
 		}
+	}
+
+	// AC-AMC-017: the enumeration MUST contain the root AGENTS.md. It is an
+	// @-import of CLAUDE.md and therefore always-loaded; an enumeration that omits
+	// it scores the relocation of clauses INTO AGENTS.md as a reduction while the
+	// always-loaded context is unchanged (REQ-AMC-013).
+	agents := filepath.Join(root, "AGENTS.md")
+	found := false
+	for _, p := range surface {
+		if p == agents {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("always-loaded surface omits %s; the Codex contract layer must be enumerated (REQ-AMC-008)", agents)
 	}
 }
 
@@ -181,7 +288,7 @@ func TestHasPathsRestriction(t *testing.T) {
 func TestMeasureAlwaysLoaded_WithMemory(t *testing.T) {
 	root := t.TempDir()
 	// Fixed surfaces.
-	writeFile(t, filepath.Join(root, "CLAUDE.md"), strings.Repeat("a", 400))                                // 100 tokens
+	writeFile(t, filepath.Join(root, "CLAUDE.md"), strings.Repeat("a", 400))                                   // 100 tokens
 	writeFile(t, filepath.Join(root, ".claude", "output-styles", "moai", "moai.md"), strings.Repeat("b", 800)) // 200 tokens
 	// MEMORY.md with a body far exceeding the 25KB byte cap → head-capped.
 	writeFile(t, filepath.Join(root, "MEMORY.md"), strings.Repeat("m", 40*1024))
@@ -193,9 +300,10 @@ func TestMeasureAlwaysLoaded_WithMemory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("measureAlwaysLoaded: %v", err)
 	}
-	// Enumeration: 1 no-paths: rule + 3 fixed slots = 4.
-	if len(surface) != 4 {
-		t.Errorf("surface len = %d, want 4 (1 no-paths: rule + 3 fixed)", len(surface))
+	// Enumeration: 1 no-paths: rule + 4 fixed slots = 5. AGENTS.md is absent from this
+	// temp tree and contributes 0 tokens (hermetic), but is still enumerated.
+	if len(surface) != 5 {
+		t.Errorf("surface len = %d, want 5 (1 no-paths: rule + 4 fixed)", len(surface))
 	}
 	// MEMORY.md contributes head-capped tokens (25KB/4 = 6400), NOT the full 40KB.
 	memHeadTokens := memoryHeadByteCap / 4

@@ -252,4 +252,10 @@ func init() {
 	// SPEC-GOAL-HTML-WIRING-001 M3: register the `moai plan` CLI parent + the
 	// `render-html` subcommand (Surface 2 production caller for planhtml.RenderPlanHTML).
 	rootCmd.AddCommand(newPlanCmd())
+
+	// SPEC-FEEDBACK-AUTO-SUBMIT-001 M5: register the `moai feedback` parent —
+	// the scrubber the feedback skill pipes its report through before
+	// submission, plus the retry-queue verbs. The verdict rides the stdout
+	// JSON; the exit code signals tool failure only.
+	rootCmd.AddCommand(newFeedbackCmd())
 }

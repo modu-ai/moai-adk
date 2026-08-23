@@ -2,12 +2,14 @@ package project
 
 // SPEC-AUTONOMY-TIERS-001 M9 — init applies the tier bundle (end-to-end wiring).
 //
-// Gap 1 closure: applyAutonomyTierFromWizard (init.go) captures the effective
-// tier into opts.AutonomyTier, but the init deployment path never CONSUMED it —
-// no permission bundle (defaultMode + deny/ask) was written, so selecting a tier
-// had NO effect on the deployed permissions. ApplyAutonomyTierBundle wires
-// opts.AutonomyTier into the deployed settings at init time, REUSING the existing
-// core (no gating/rendering logic is duplicated):
+// Gap 1 closure: applyAutonomyTierFromWizard (init_autonomy_wizard.go, called
+// from runInit in init.go — wired by SPEC-INIT-WIZARD-REPAIR-001) captures the
+// effective tier into opts.AutonomyTier. The init deployment path originally
+// never CONSUMED it — no permission bundle (defaultMode + deny/ask) was
+// written, so selecting a tier had NO effect on the deployed permissions.
+// ApplyAutonomyTierBundle wires opts.AutonomyTier into the deployed settings at
+// init time (runInit invokes it right after the initializer returns), REUSING
+// the existing core (no gating/rendering logic is duplicated):
 //
 //   - config.ResolveEffectiveTier + config.EffectiveTierWithGates (M1/M2 gating)
 //   - config.TierDefaultMode (M1 mode-token → knob mapping)
