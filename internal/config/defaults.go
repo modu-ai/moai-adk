@@ -211,6 +211,12 @@ const (
 	// own repo; fork maintainers override via .moai/config/sections/feedback.yaml.
 	DefaultFeedbackRepository = "modu-ai/moai-adk"
 
+	// DefaultFeedbackAutoSubmit is the compiled default for
+	// FeedbackConfig.AutoSubmit. The feedback workflow submits to a public
+	// issue tracker, so unattended submission is opt-in: the default is false,
+	// which keeps the pre-submit confirmation gate mandatory.
+	DefaultFeedbackAutoSubmit = false
+
 	// DefaultHandoffMode is the compiled default for HandoffConfig.Mode.
 	// SPEC-HANDOFF-AUTORESUME-001: auto-resume is opt-in — the default is
 	// "manual" (pure no-op), preserving the unchanged baseline UX.
@@ -451,6 +457,7 @@ func NewDefaultConfig() *Config {
 func NewDefaultFeedbackConfig() FeedbackConfig {
 	return FeedbackConfig{
 		Repository: DefaultFeedbackRepository,
+		AutoSubmit: DefaultFeedbackAutoSubmit,
 	}
 }
 

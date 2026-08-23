@@ -17,7 +17,67 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Cycle: TDD (RED → GREEN → REFACTOR). 워크트리 `.claude/worktrees/t170`, 브랜치 `WT-auto-feedback`, base `3210da7d3`.
+
+### M1 — 설정 데이터 모델
+
+Pre-flight: `grep -rn "auto_submit\|AutoSubmit" --include='*.go' internal/ | grep -v _test` → **0건**
+(편집 전 트리에 이 키가 없다는 근거).
+
+RED (`go test ./internal/config/ -run 'TestFeedbackAutoSubmit' -v`, 편집 전 트리):
+
+```
+# github.com/modu-ai/moai-adk/internal/config [github.com/modu-ai/moai-adk/internal/config.test]
+internal/config/feedback_auto_submit_test.go:36:16: cfg.FeedbackAutoSubmit undefined (type *Config has no field or method FeedbackAutoSubmit)
+internal/config/feedback_auto_submit_test.go:50:16: cfg.FeedbackAutoSubmit undefined (type *Config has no field or method FeedbackAutoSubmit)
+internal/config/feedback_auto_submit_test.go:64:5: undefined: DefaultFeedbackAutoSubmit
+internal/config/feedback_auto_submit_test.go:65:61: undefined: DefaultFeedbackAutoSubmit
+internal/config/feedback_auto_submit_test.go:67:42: fc.AutoSubmit undefined (type FeedbackConfig has no field or method AutoSubmit)
+internal/config/feedback_auto_submit_test.go:67:56: undefined: DefaultFeedbackAutoSubmit
+internal/config/feedback_auto_submit_test.go:68:73: fc.AutoSubmit undefined (type FeedbackConfig has no field or method AutoSubmit)
+internal/config/feedback_auto_submit_test.go:68:85: undefined: DefaultFeedbackAutoSubmit
+FAIL	github.com/modu-ai/moai-adk/internal/config [build failed]
+```
+
+GREEN (같은 명령, 구현 후):
+
+```
+=== RUN   TestFeedbackAutoSubmitKeyResolution
+=== PAUSE TestFeedbackAutoSubmitKeyResolution
+=== RUN   TestFeedbackAutoSubmitCompiledDefault
+=== PAUSE TestFeedbackAutoSubmitCompiledDefault
+=== CONT  TestFeedbackAutoSubmitKeyResolution
+=== CONT  TestFeedbackAutoSubmitCompiledDefault
+--- PASS: TestFeedbackAutoSubmitCompiledDefault (0.00s)
+--- PASS: TestFeedbackAutoSubmitKeyResolution (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/config	0.383s
+```
+
+패키지 트리 전체 (`go test ./internal/config/...`):
+
+```
+ok  	github.com/modu-ai/moai-adk/internal/config	3.935s
+ok  	github.com/modu-ai/moai-adk/internal/config/atomicfile	0.642s
+ok  	github.com/modu-ai/moai-adk/internal/config/toolpolicy	(cached)
+```
+
+`go vet ./internal/config/...` · `GOOS=windows go vet ./internal/config/...` 둘 다 무출력(통과).
+
+납품물:
+- `internal/config/types.go` — `FeedbackConfig.AutoSubmit bool` + `yaml:"auto_submit"`.
+- `internal/config/defaults.go` — `DefaultFeedbackAutoSubmit = false` 상수 + `NewDefaultFeedbackConfig()`에서 대입.
+- `internal/config/feedback_accessors.go` — `(*Config).FeedbackAutoSubmit() bool`.
+- `internal/config/feedback_auto_submit_test.go` — AC-F-001 단언 2종.
+
+설계 판단: 접근자에 fallback 분기를 두지 않았다. `FeedbackRepository()`의 빈 문자열 fallback은
+"명시된 빈 값"과 "부재"가 구별되지 않는 문자열 키라서 필요하지만, bool 키는 loader가
+`NewDefaultFeedbackConfig()`로 wrapper를 seed한 뒤 디코드하는 부분 오버라이드 계약(`loader.go`)이
+부재를 이미 컴파일 기본값으로 해석한다. 분기를 추가하면 `false` 명시와 부재가 같은 코드 경로로
+합쳐져 죽은 조건이 된다. 테스트가 그 계약을 하드코딩된 구조체가 아니라 `Loader.Load()`로
+관측하는 이유가 이것이다.
+
+AC-F-001 판정: **PASS** — `go test ./internal/config/ -run 'TestFeedbackAutoSubmit' -v` 가 위 GREEN 블록을 출력.
 
 ## §E.3 Run-phase Audit-Ready Signal
 

@@ -1356,6 +1356,12 @@ type FeedbackConfig struct {
 	// Repository is the "owner/repo" GitHub slug the feedback workflow targets.
 	// Default DefaultFeedbackRepository (the remote MoAI-ADK tool repo).
 	Repository string `yaml:"repository"`
+
+	// AutoSubmit reports whether the feedback workflow may create the issue
+	// without the pre-submit confirmation gate. Default
+	// DefaultFeedbackAutoSubmit (false) — the gate is mandatory unless the
+	// project opts out.
+	AutoSubmit bool `yaml:"auto_submit"`
 }
 
 // feedbackFileWrapper handles the feedback.yaml section file.
