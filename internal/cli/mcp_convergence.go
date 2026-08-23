@@ -364,7 +364,7 @@ func defaultBackendCaller(ctx context.Context, backend, target, focus string) Re
 	case BackendCodex:
 		return performCodexAudit(ctx, target, focus)
 	case BackendGLM:
-		return performGLMAudit(ctx, focus)
+		return performGLMAudit(ctx, target, focus, "")
 	default:
 		// Unknown backend — fail-open to inconclusive (never a hard error).
 		return inconclusiveReview("unknown backend: " + backend)
@@ -399,12 +399,35 @@ func performCodexAudit(ctx context.Context, target, focus string) ReviewOutput {
 // performGLMAudit wraps the existing GLM handler path (key load + model resolve
 // + callGLMAudit). Reuses (does NOT fork) mcp_glm.go: glmKeyLoader,
 // resolveGLMAuditModel, callGLMAudit, glmInconclusive.
-func performGLMAudit(ctx context.Context, focus string) ReviewOutput {
+//
+// It now also collects the change under review. codex is a subprocess inside the
+// tree and reads it for itself; GLM is an HTTPS call to z.ai with no filesystem,
+// so the only code it can review is the code this function puts in the request.
+// Until it did, GLM was reviewing nothing and saying so with confidence — one
+// live run returned a `fail` citing a repository whitelist this codebase does
+// not contain (card t178).
+//
+// projectRoot names the tree to read the change from; empty falls back to the
+// resolver the rest of this package uses. When no diff can be produced the
+// result is inconclusive and z.ai is NOT called: the fail-open direction here
+// points at "could not tell", never at a verdict about unseen code.
+func performGLMAudit(ctx context.Context, target, focus, projectRoot string) ReviewOutput {
 	key := glmKeyLoader()
 	if key == "" {
 		return glmInconclusive("GLM API key not configured (~/.moai/.env.glm)")
 	}
-	return callGLMAudit(ctx, key, resolveGLMAuditModel(), focus, nil)
+	root := strings.TrimSpace(projectRoot)
+	if root == "" {
+		root = resolveProjectDir()
+	}
+	diff, err := collectReviewDiff(root, target)
+	if err != nil {
+		return glmInconclusive("no reviewable change: " + err.Error())
+	}
+	if strings.TrimSpace(diff) == "" {
+		return glmInconclusive("no reviewable change: target " + target + " produced an empty diff")
+	}
+	return callGLMAudit(ctx, key, resolveGLMAuditModel(), focus, diff, nil)
 }
 
 // runMultiAudit is the fan-out entry point invoked by the `audit_multi` MCP tool

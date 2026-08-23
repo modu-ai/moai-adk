@@ -1105,13 +1105,36 @@ func codexThreadIDOf(params json.RawMessage) string {
 // injection+secret change ("- [P1] ..." bullets ⇒ fail).
 var codexFindingBullet = regexp.MustCompile(`(?m)^\s*[-*]\s+\[[A-Za-z]+\d+\]`)
 
+// codexStatedVerdict matches a verdict codex states in its own words, which is
+// what the ADVERSARIAL path produces: a leading line reading "Verdict: fail —
+// merge blocked." The bullet heuristic above was measured against REVIEW-mode
+// output only, and adversarial prose carries none of those bullets — so a
+// merge-blocking review was synthesized as a pass, and a required gate inverted
+// with nothing in the result saying so (card t178).
+//
+// The match is deliberately narrow: the label must open a line (optionally
+// wrapped in markdown emphasis) and name the verdict on that same line. "I could
+// not reach a verdict on the caching layer" is prose about a verdict, not a
+// verdict, and must not be read as one.
+var codexStatedVerdict = regexp.MustCompile(`(?mi)^[\s>#]*[*_]{0,2}verdict[*_]{0,2}\s*[:\-–—]+[*_]{0,2}\s*[*_]{0,2}(pass|fail)\b`)
+
 // synthesizeReviewOutput maps codex's review prose into the review-output
 // schema. codex does NOT return a structured verdict enum — it returns free-form
-// prose whose presence of severity-tagged finding bullets (codex's own format)
-// signals a failure; a clean review (no finding bullets) is a pass. The summary
-// carries the verbatim review text so the operator sees codex's own words.
+// prose, and the two review paths express their verdict differently: review mode
+// emits severity-tagged finding bullets ("- [P1] ..."), adversarial mode states
+// the verdict in a line of its own. Both are read here.
+//
+// The two signals combine fail-biased: a stated "pass" does NOT clear finding
+// bullets. When codex contradicts itself the safe reading is the blocking one —
+// the alternative launders a review carrying findings into a clean verdict,
+// which is the one direction this synthesis must never err in. The summary
+// carries the verbatim review text either way, so the operator sees codex's own
+// words rather than only this function's reading of them.
 func synthesizeReviewOutput(reviewText string) ReviewOutput {
 	verdict := "pass"
+	if m := codexStatedVerdict.FindStringSubmatch(reviewText); m != nil {
+		verdict = strings.ToLower(m[1])
+	}
 	if codexFindingBullet.MatchString(reviewText) {
 		verdict = "fail"
 	}

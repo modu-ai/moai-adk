@@ -626,7 +626,9 @@ func TestPerformGLMAudit_ReusesExistingGLMHandler_NoReimpl_AP_AMM_1(t *testing.T
 	stub := &stubGLMDoer{body: glmMessagesResp(t, ReviewOutput{Verdict: "fail", Summary: "glm:bad"})}
 	withGLMSeams(t, "test-glm-key", stub)
 
-	out := performGLMAudit(context.Background(), "auth")
+	// A tree with a real change: GLM cannot read a tree, so the audit collects
+	// the diff and only calls z.ai once it has one (card t178).
+	out := performGLMAudit(context.Background(), codexTargetUncommitted, "auth", gitTreeWithChange(t))
 	if out.Verdict != "fail" {
 		t.Errorf("performGLMAudit verdict = %q, want fail (must pass through glm result)", out.Verdict)
 	}
@@ -636,7 +638,7 @@ func TestPerformGLMAudit_ReusesExistingGLMHandler_NoReimpl_AP_AMM_1(t *testing.T
 // single-backend glm_audit handler has).
 func TestPerformGLMAudit_FailOpenWhenKeyMissing_AC_AMM_004(t *testing.T) {
 	withGLMSeams(t, "", nil) // empty key
-	out := performGLMAudit(context.Background(), "")
+	out := performGLMAudit(context.Background(), codexTargetUncommitted, "", gitTreeWithChange(t))
 	if out.Verdict != VerdictInconclusive {
 		t.Errorf("performGLMAudit missing-key verdict = %q, want %q (fail-open inherited)", out.Verdict, VerdictInconclusive)
 	}

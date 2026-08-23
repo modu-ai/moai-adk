@@ -353,6 +353,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 	add("glm_audit", mcp.NewTool(
 		"glm_audit",
 		mcp.WithDescription("Run a GLM (z.ai) code review. Calls the z.ai Anthropic-compatible endpoint directly and returns a review-output schema (verdict/summary/findings/next_steps). GLM is OPTIONAL; a missing/unauthenticated/erroring GLM yields verdict 'inconclusive' (fail-open → fall back to the active auditor)."),
+		mcp.WithString("target", mcp.Enum(codexTargetUncommitted, codexTargetBaseBranch), mcp.Description("What GLM reviews: 'uncommittedChanges' (default) or 'baseBranch'. The named change is collected as a diff and sent in the request — GLM has no filesystem, so a target that yields no diff returns 'inconclusive' rather than a verdict.")),
 		mcp.WithString("focus", mcp.Description("Optional focus area (e.g. 'concurrency', 'auth', 'secret handling').")),
 		mcp.WithString("model", mcp.Description("Optional GLM model override; omitted ⇒ resolved via the model/effort SSOT (ResolveAgentModelEffort).")),
 		mcp.WithOutputSchema[ReviewOutput](),
