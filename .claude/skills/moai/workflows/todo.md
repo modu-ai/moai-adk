@@ -147,11 +147,55 @@ reordering, and no cover for a card that turns out to need a decision the
 authorization never covered. See `kanban-dispatch.md` § Entry into the board is
 an operator act.
 
+A workflow that ends by asking whether to start the card it just issued is the
+same thing in a narrower form: the branch the operator chooses IS the pick,
+made at the moment the card appears instead of at the next `moai todo next`.
+What makes it a pick rather than a preselect is that the question is genuinely
+open — starting is one branch among the others, chosen by the operator, and no
+branch is taken on their behalf when they do not answer. A workflow that starts
+work without that answer has preselected, whatever it calls the step.
+
 Once picked:
 
 1. Record it with `moai todo next <n> --spec <SPEC-ID>` (one locked write).
 2. Dispatch to the `plan` session per `kanban-dispatch.md` — the card enters
    the `plan` column, and SPEC authoring happens there, not here.
+
+## Standing sources
+
+A standing source is a workflow the operator authorized once to issue a card
+when it finishes, rather than being asked for that card every time. The
+authorization is still the operator's and still comes first; what the standing
+source changes is *when* they give it, not *who* gives it. A card issued this
+way is the workflow carrying out an instruction already on the record — never a
+tool deciding on its own that work exists.
+
+`/moai project` is the only standing source. Five properties are what separate
+it from invention, and all five bind:
+
+- **One card per run.** Not one per document, per feature, or per finding.
+- **Derived, never invented.** The text comes from that run's own
+  `.moai/project/harness-spec.yaml` — its `goal`, bounded by its `scope` — so
+  the card restates what the operator said in the interview. A run with
+  nothing to derive from issues nothing; an empty result is reported, not
+  filled in.
+- **Marked at the front.** The text carries the `[PROJECT] ` prefix, so the
+  queue shows at a glance which cards a workflow issued and which a person
+  typed. The prefix is the card's provenance — the record carries no other.
+- **The issued id is reported.** The completion report names it (`t<n>`), so
+  the card is visible in the same breath as its creation.
+- **Starting it is a separate pick.** The card is queued, not started. Whether
+  work begins is asked in the same completion question, and that answer is the
+  pick (§ Picking the next card).
+
+Re-running the workflow does not stack duplicates: before adding, read the
+queue (`moai todo list --json`) and skip the add when a queued card already
+carries the same `[PROJECT] ` text, reporting the existing id instead of
+issuing a second one.
+
+Nothing else is a standing source. TODO comments, open issues, audit findings,
+and report milestones stay outside: they are surfaced to the operator, who asks
+for a card when they want one.
 
 ## Outside Kanban Mode
 
@@ -169,8 +213,10 @@ Say this plainly when it applies rather than implying a board exists.
   in this file.
 - **Not a source of truth for work in flight.** Once a card has a SPEC, the SPEC
   artifacts are authoritative; the backlog item is only a pointer to it.
-- **Never auto-populated.** The queue is not filled from TODO comments, open
-  issues, or audit findings on the tool's initiative. An operator adds items.
+- **Never auto-populated on the tool's initiative.** The queue is not filled
+  from TODO comments, open issues, or audit findings because a tool noticed
+  them. An operator adds items — directly, or through a standing source they
+  authorized in advance (§ Standing sources). Nothing else adds.
 
 ## Cross-references
 
