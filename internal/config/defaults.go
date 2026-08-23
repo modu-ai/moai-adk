@@ -211,6 +211,12 @@ const (
 	// own repo; fork maintainers override via .moai/config/sections/feedback.yaml.
 	DefaultFeedbackRepository = "modu-ai/moai-adk"
 
+	// DefaultFeedbackAutoSubmit is the compiled default for
+	// FeedbackConfig.AutoSubmit. The feedback workflow submits to a public
+	// issue tracker, so unattended submission is opt-in: the default is false,
+	// which keeps the pre-submit confirmation gate mandatory.
+	DefaultFeedbackAutoSubmit = false
+
 	// DefaultHandoffMode is the compiled default for HandoffConfig.Mode.
 	// SPEC-HANDOFF-AUTORESUME-001: auto-resume is opt-in — the default is
 	// "manual" (pure no-op), preserving the unchanged baseline UX.
@@ -451,6 +457,7 @@ func NewDefaultConfig() *Config {
 func NewDefaultFeedbackConfig() FeedbackConfig {
 	return FeedbackConfig{
 		Repository: DefaultFeedbackRepository,
+		AutoSubmit: DefaultFeedbackAutoSubmit,
 	}
 }
 
@@ -739,6 +746,12 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 			SessionNamePattern: "moai-{ProjectName}-{SPEC-ID}",
 			TmuxPreferred:      true,
 		},
+		// SPEC-TODO-ENABLE-FLAG-001 REQ-1: Todo is left at its zero value on
+		// purpose — Enabled stays nil, which TodoEnabled reads as ENABLED.
+		// Writing a &true here would work but would hide the load-bearing
+		// fact that ABSENT and TRUE are the same answer, and that only a
+		// literal `enabled: false` turns the guidance off.
+		Todo: WorkflowTodoConfig{},
 		// SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001 REQ-1/REQ-4: the guard ships
 		// default-OFF (opt-in). Distributed users get an inert guard; the
 		// maintainer of a shared multi-session checkout opts in via local

@@ -117,6 +117,14 @@ var translations = map[string]map[string]QuestionTranslation{
 			Title:       "워크트리 자동 생성을 활성화할까요?",
 			Description: "활성화하면 moai init / moai profile / moai web이 자동으로 워크트리에 진입합니다. 기본은 비활성화입니다(솔로 개발자 권장).",
 		},
+		"todo_enabled": {
+			Title:       "백로그 큐(todo)를 사용할까요?",
+			Description: "사용하지 않으면 백로그 안내가 먼저 뜨지 않습니다 — 세션 시작 시 대기 카드 요약도, 상태줄 TODO 표시도 없습니다. `moai todo` 명령과 직접 부른 `/moai todo` 는 어느 쪽이든 그대로 동작합니다.",
+		},
+		"feedback_auto_submit": {
+			Title:       "확인 절차 없이 피드백을 제출할까요?",
+			Description: "끄면(기본값) 피드백 워크플로가 마스킹된 제목과 본문을 보여주고 공개 이슈를 열기 전에 한 번 묻습니다. 켜면 그 확인 단계를 건너뜁니다.",
+		},
 		"autonomy_tier": {
 			Title:       "자율성 등급 선택",
 			Description: "프롬프트 없이 세션이 몇 턴까지 실행될지 제어합니다. 'semi-auto'가 권장 기본값입니다.",
@@ -259,6 +267,14 @@ var translations = map[string]map[string]QuestionTranslation{
 			Title:       "ワークツリー自動作成を有効にしますか?",
 			Description: "有効にすると、moai init / moai profile / moai web が自動的にワークツリーに入ります。既定は無効です(ソロ開発者推奨)。",
 		},
+		"todo_enabled": {
+			Title:       "バックログキュー(todo)を使いますか?",
+			Description: "無効にすると、バックログの案内が出なくなります — セッション開始時の待機カード要約も、ステータスラインの TODO 表示もありません。`moai todo` コマンドと明示的な `/moai todo` はどちらの設定でもそのまま動きます。",
+		},
+		"feedback_auto_submit": {
+			Title:       "確認なしでフィードバックを送信しますか?",
+			Description: "無効(既定)の場合、フィードバックワークフローはマスク済みのタイトルと本文を表示し、公開 issue を作成する前に一度確認します。有効にするとその確認を省略します。",
+		},
 		"autonomy_tier": {
 			Title:       "自律レベルを選択",
 			Description: "プロンプトなしでセッションが何ターン実行するかを制御します。'semi-auto' が推奨デフォルトです。",
@@ -400,6 +416,14 @@ var translations = map[string]map[string]QuestionTranslation{
 		"worktree_auto_create": {
 			Title:       "是否启用工作树自动创建?",
 			Description: "启用后,moai init / moai profile / moai web 会自动进入工作树。默认关闭(推荐单人开发者)。",
+		},
+		"todo_enabled": {
+			Title:       "是否使用待办队列(todo)?",
+			Description: "关闭后将不再主动提示待办内容 — 会话开始时不显示等待卡片数量,状态栏也不显示 TODO。无论开关如何,`moai todo` 命令和显式调用的 `/moai todo` 都照常工作。",
+		},
+		"feedback_auto_submit": {
+			Title:       "是否跳过确认直接提交反馈?",
+			Description: "关闭时(默认),反馈流程会先展示脱敏后的标题与正文,并在创建公开 issue 前询问一次。开启后将跳过该确认步骤。",
 		},
 		"autonomy_tier": {
 			Title:       "选择自主等级",

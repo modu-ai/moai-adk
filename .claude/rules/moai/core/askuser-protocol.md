@@ -86,27 +86,32 @@ Each option description MUST include:
 
 ## Recommendation Placement Principles
 
-The `(Recommended)` / `(권장)` label MUST be grounded in the statistically-majority rational default the user has actually been observed to select — never a policy default the system wants to push. Five principles bind its placement; the reasoning, the evidence base, and the worked detail live in `askuser-protocol-reference.md` § Recommendation Placement Principles.
+The `(Recommended)` / `(권장)` label is grounded in the statistically-majority rational default the
+user has actually been observed to select — never a policy default the system wants to push. Five
+principles bind its placement; reasoning, evidence base, and worked detail live in
+`askuser-protocol-reference.md` § Recommendation Placement Principles.
 
-1. **Emission timing.** Ask when the decision is genuinely uncertain (estimated p ≈ 0.5, where information gain peaks). When the outcome is nearly certain, auto-resolve to the majority option and omit the question.
-2. **Question ordering.** Within one call, order questions by descending information gain — the highest-gain question first.
-3. **Recommended option = observed majority.** Where observations are insufficient (cold start), fall back to the static default AND disclose that in the option description ("based on static default, N observations needed for personalization", or its `conversation_language` equivalent). An undisclosed cold-start recommendation is an unobserved-recommendation claim (`verification-claim-integrity.md` §1.1 surface 3).
-4. **Precondition statement.** The recommended option's `description` MUST state the condition under which the recommendation holds ("Recommended when <precondition>"), so the user can reject it immediately when the precondition does not apply.
-5. **Adaptive strength.** High estimated proficiency → weak recommendation (disclose the inferred preference, omit the label). Low proficiency → strong recommendation (label + transparent rationale). Proficiency unknown (early sessions) → neutral: place no inferred-preference label at all.
-
----
+1. **Emission timing.** Ask when the decision is genuinely uncertain (p ≈ 0.5, where information
+   gain peaks). When the outcome is nearly certain, auto-resolve to the majority option and omit
+   the question.
+2. **Question ordering.** Within one call, order questions by descending information gain.
+3. **Recommended option = observed majority.** On cold start, fall back to the static default AND
+   disclose that in the description; an undisclosed cold-start recommendation is an
+   unobserved-recommendation claim (`verification-claim-integrity.md` §1.1 surface 3).
+4. **Precondition statement.** The recommended option's `description` states the condition under
+   which the recommendation holds, so the user can reject it immediately when it does not apply.
+5. **Adaptive strength.** High estimated proficiency → weak recommendation (disclose the inferred
+   preference, omit the label). Low proficiency → label plus transparent rationale. Proficiency
+   unknown → no inferred-preference label at all.
 
 ## Preview Field Standards
 
-The `preview` field renders a monospace block beside the option list, switching the TUI to a side-by-side layout. It **complements** `description` and never replaces it: `description` is always required. Full usage catalogue, format guidance, and a worked example: `askuser-protocol-reference.md` § Preview Field Standards.
-
-- **Use it** when options differ structurally or quantitatively and benefit from visual comparison (SPEC selection, migration strategies, tier envelopes, architecture variants); prefer a consistent key set across all options so deltas scan vertically
-- **Skip it** when labels and descriptions already suffice — yes/no confirmations, permission grants, continue/abort gates
-- [HARD] **Single-select only.** `preview` is silently dropped when `multiSelect: true`. If multi-select is required, put the content in richer `description` text instead
-- **Keep it short.** The preview pane does not scroll; content past roughly 12 lines is truncated with no way to reach it
-- **Bias prevention is inherited.** The recommendation signal is carried *only* by the `(Recommended)` / `(권장)` label; preview content stays neutral and factual
-
----
+The `preview` field renders a monospace block beside the option list; it **complements**
+`description` and never replaces it. [HARD] Single-select only — it is silently dropped when
+`multiSelect: true`. Keep it under roughly 12 lines: the pane does not scroll. The recommendation
+signal stays on the `(Recommended)` / `(권장)` label; preview content stays neutral and factual.
+When to use it, when to skip it, and a worked example: `askuser-protocol-reference.md`
+§ Preview Field Standards.
 
 ## Report-Before-Ask Gate
 
@@ -220,13 +225,11 @@ Trigger detected
 
 ## Blind Spot Pass
 
-The **Blind Spot Pass** is an OPTIONAL pre-plan Discovery technique for surfacing the user's **unknown-unknowns**: read-only reconnaissance by `Agent(Explore)`, with findings surfaced to the user through the orchestrator's `AskUserQuestion` channel.
-
-- **When**: the user is working in an **unfamiliar** domain (new subsystem, unfamiliar design/library territory) AND the orchestrator suspects unknown-unknowns — SHOULD run **before plan-phase entry**, before authoring the SPEC. The trigger is a judgment call, NOT an automatic gate; in a familiar domain with no suspected unknown-unknowns, the pass is skipped with no forced overhead.
-- **Mechanism**: (1) spawn `Agent(Explore)` in **read-only** mode to scan the relevant domain (subsystem, library surface, integration points); (2) surface the likely unknown-unknowns through a single `AskUserQuestion` round so the user can react before the plan is authored.
-- **Subagent boundary (preserved)**: `Agent(Explore)` — and any subagent — **does not prompt the user** directly; findings surface only through the orchestrator's channel. A subagent that lacks input returns a blocker report; it never asks the user.
-
----
+An OPTIONAL pre-plan Discovery technique for surfacing the user's **unknown-unknowns**: read-only
+`Agent(Explore)` reconnaissance of an unfamiliar domain, with findings surfaced through the
+orchestrator's own `AskUserQuestion` channel — the subagent never prompts the user. The trigger is
+a judgment call, not an automatic gate; in a familiar domain the pass is skipped with no forced
+overhead. Mechanism and timing: `askuser-protocol-reference.md` § Blind Spot Pass.
 
 ## Free-form Circumvention Prohibition
 

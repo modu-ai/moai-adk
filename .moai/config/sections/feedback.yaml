@@ -4,3 +4,10 @@ feedback:
     # requests about the MoAI-ADK tool itself, NOT the user's own project.
     # Fork maintainers override this to redirect feedback to their own fork.
     repository: modu-ai/moai-adk
+
+    # Whether the /moai feedback workflow may create the issue without asking
+    # first. Default false: before anything leaves the machine the workflow
+    # shows the masked title, the masked body in full, and a summary of what
+    # was masked, then waits for an explicit choice. Set this to true only if
+    # that per-submission confirmation is not wanted.
+    auto_submit: false

@@ -41,8 +41,11 @@ no animation, no scripting, no external asset at view time.
 ## Step 0 — Decide whether this is an SVG job
 
 This skill is **additive to the mermaid pipeline, never a replacement for it**.
-Nothing here migrates, rewrites, or deprecates an existing mermaid diagram, and
-no diagram should ever exist in both forms — that is dual maintenance, and it is
+Nothing here migrates, rewrites, or deprecates an existing mermaid diagram on
+its own (the sole exception: a caller-invoked import through the opt-in importer
+references in the bundled-references table, where the one-home rule below
+governs and the source is replaced outright in the same change), and no diagram
+should ever exist in both forms — that is dual maintenance, and it is
 the one failure this section exists to prevent.
 
 Route the request before drawing anything:
@@ -86,8 +89,9 @@ not run. Say which step was skipped and why.
 Six steps, in order. Steps 1 through 3 finish before a single SVG element is
 written; that ordering is the whole method.
 
-1. **Frame.** Write down the message the diagram must land, the target medium
-   (slide, README hero, email, print), the canvas size, and the label language.
+1. **Frame.** Write down the message the diagram must land, then set the four
+   output dials below. They change the deliverable, the canvas, the density, and
+   the wording, so they are decided before an archetype is picked, not after.
 2. **Pick an archetype.** Architecture stack, left-to-right flow, side-by-side
    comparison, or hierarchy tree. Skeletons are in `references/archetypes.md`.
 3. **Run the numeric layout pass.** Produce the box table and pass every
@@ -98,6 +102,30 @@ written; that ordering is the whole method.
    every warning.
 6. **Render and verify** with `scripts/render.mjs`. Confirm the reported PNG
    dimensions match the requested 2x target, then look at the PNG.
+
+### The four output dials
+
+| Dial | Values | Default |
+|------|--------|---------|
+| **format** | `svg` · `svg+png` | `svg+png` |
+| **size** | `doc-inline` (1200 wide) · `slide-16x9` (1600x900) · `social-og` (1200x630) · `print-a4-landscape` (1754x1240) · `fit` (the archetype's own preset) | `doc-inline` |
+| **detail** | `faithful` (<=24 nodes, banded) · `balanced` (<=12) · `simplified` (<=7) | `balanced` |
+| **audience** | `engineer` · `mixed` · `executive` | `mixed` |
+
+Every dial has a default, because a dial without one turns a four-part contract
+into four questions on every invocation. State the four settled values beside the
+deliverable so a later regeneration reproduces the same artifact. `size` sets the
+type ramp as well as the `viewBox`, and `audience` governs wording rather than
+node count — both are detailed in `references/archetypes.md`.
+
+### Complexity budget
+
+**Every type has a node ceiling, and exceeding it means split or simplify —
+never shrink the boxes.** The ceiling is the `detail` dial's: 12 nodes at
+`balanced`, 7 at `simplified`, 24 at `faithful` and only inside labelled bands.
+In every mode: at most 12 connectors and at most 2 `accent` elements. `faithful`
+exempts the node count and nothing else. Per-archetype ceilings are in
+`references/archetypes.md`.
 
 ## The numeric layout pass
 
@@ -180,6 +208,27 @@ Two things are forbidden here because both hide the problem instead of solving
 it: truncating a label after the fact, and shrinking the font size for one
 language only. Rewrite the label.
 
+## Accessible SVG output
+
+An SVG has no accessible name of its own. Without one it is announced as an
+unlabelled graphic, and none of the `<text>` inside it is read — so an
+unlabelled diagram is not a degraded diagram, it is an absent one. Every SVG
+this skill emits carries four things:
+
+- `role="img"` on the root `<svg>`.
+- `aria-labelledby` naming the `<title>` and `<desc>` ids.
+- `<title>` as the **first** child, before `<defs>`, holding the diagram's name.
+- `<desc>` describing the *content* — what a reader takes away — never narrating
+  the geometry box by box.
+
+IDs are **prefixed per diagram** (`<slug>-title`, `<slug>-desc`): bare `title` /
+`desc` collide when two diagrams are inlined into one page, and the second is
+then announced with the first one's name. A genuinely decorative graphic carries
+`aria-hidden="true"` and no title instead — a diagram never is.
+
+`check-svg.mjs` enforces this as errors `SVG060`-`SVG064`. The copyable skeleton
+and the two-direction fixture check are in `references/authoring.md` section 8.
+
 ## Linting the source
 
 ```bash
@@ -197,7 +246,9 @@ duplicate `id`; a local reference (`url(#id)`, `href="#id"`) with no matching
 `id`; a `<marker>` missing required geometry; a `<marker>` that leans on the
 implicit `markerUnits` default, which rescales arrowheads with stroke width and
 is the usual cause of arrowheads that look right in one diagram and wrong in the
-next.
+next; a missing piece of the accessible-SVG contract (`SVG060`-`SVG064`) — no
+`role`, no `aria-labelledby`, a `<title>` that is not the first child, a missing
+`<desc>`, or a bare `title` / `desc` id.
 
 **Warnings — heuristic, triage individually.** Estimated text overflow of its
 container rect; a pill too narrow for its label once the round-cap inset is
@@ -240,15 +291,27 @@ the SVG alone and state the limitation.
 |------|----------|
 | `references/archetypes.md` | The four archetype skeletons with their canvas presets, grid parameters, and per-archetype containment rules |
 | `references/authoring.md` | Full geometry and connector formula set, the icon set, palette and type scale, and the manual no-Node checklist |
+| `references/import-drawio.md` | Opt-in migration path for an existing draw.io source: decode the container (four shapes) first, then IR to a numeric-layout re-author, with one-home replacement in the same change |
+| `references/import-mermaid.md` | Opt-in migration path for an existing mermaid source: IR to a numeric-layout re-author, with one-home replacement in the same change |
 | `references/sketch.md` | Opt-in hand-drawn preset layered over the same computed layout |
 
 | Script | Purpose |
 |--------|---------|
 | `scripts/check-svg.mjs` | Deterministic source lint, errors and warnings, `file:line:column` diagnostics |
 | `scripts/render.mjs` | Headless-Chromium 2x PNG render with browser disclosure and PNG header verification |
+| `scripts/test-check-svg.mjs` | Runs every fixture through the lint and asserts each one's exact diagnostic code set; exits non-zero on the first mismatch |
+| `scripts/fixtures/` | 42 SVGs pinning the lint in both directions — the accessible-name contract (`a11y-present.svg` must lint clean, `a11y-missing.svg` must fail) and the connector-geometry checks, each fixture declaring the codes it must produce |
 
-Both scripts run on the Node 18 standard library alone. There is no package to
+Every script runs on the Node 18 standard library alone. There is no package to
 install and no browser bundled.
+
+## Attribution
+
+The six connector rules, the complexity budget, the accessible-SVG contract, the
+four output dials, the slop-symptom list, and the semantic-role skin with its
+inversion rule were adapted from `cathrynlavery/diagram-design` v2.6.1 (MIT) —
+restated rather than copied, because that skill permits external font loading and
+HTML output variants which this one forbids.
 
 ## Relationship to the report renderer
 
@@ -283,6 +346,28 @@ skill produced — and neither replaces the other.
   that was never run.
 - Lint errors were downgraded to warnings to get to a render.
 - A `<marker>` has no explicit `markerUnits`.
+
+### Slop symptoms — fourteen things to look for in the rendered image
+
+These are the marks of a generated-looking schematic. Each is something to check
+against the picture, not a matter of taste.
+
+| # | Symptom in the output |
+|---|---|
+| 1 | Dark ground with cyan or purple glow strokes |
+| 2 | The mono family carrying a human-readable name (mono is for ports, paths, types) |
+| 3 | Every node the same width and fill, so nothing reads as more important |
+| 4 | A legend inside the diagram area, overlapping nodes |
+| 5 | A connector label with no mask, the stroke running through the glyphs |
+| 6 | Vertical `writing-mode` text on a connector |
+| 7 | Three summary cards of exactly equal width |
+| 8 | A `filter` or drop shadow on any element |
+| 9 | `rx` above 12 on a card or above 8 on a chip |
+| 10 | `accent` on three or more nodes, leaving no focal point |
+| 11 | Spacing and routing carried over from a mermaid render |
+| 12 | Any breach of the six connector rules of `authoring.md` section 2.5 — a diagonal between boxes sharing neither axis, a mask touching its stroke, a mask clipped by a later node, two connectors on one path, two on one attach point, an undashed transit behind a non-endpoint box. Three of the six are machine-checked by `check-svg.mjs`, each within a stated bound: C2 as `SVG070` (clearance under 6 units) and `SVG073` (over 10), but only for a mask lying within 16 units of a connector, so a label placed further out — archetype A2's branch labels among them — is not checked; C6 as `SVG071`; C4 as `SVG072`, but on **arrival** points only, so crowding on the departure side, and any connector carrying neither `marker-end` nor `marker-start`, go unreported. C1, C3, and C5 stay eye-only. `SVG074` is not one of these checks but their coverage note: it warns once per file that a `transform` — transitively, so one wrapping `<g>` carries everything inside it — kept N of M candidates out of the geometry checks, leaving them unverified. |
+| 13 | A gradient fill standing in for a hierarchy decision |
+| 14 | An emoji or pictograph used as an icon instead of an icon-set path |
 <!-- moai:evolvable-end -->
 
 <!-- moai:evolvable-start id="verification" -->
@@ -290,10 +375,15 @@ skill produced — and neither replaces the other.
 
 - [ ] Routing table consulted and the SVG choice has an unopposed reason.
 - [ ] No mermaid version of this diagram remains alongside the SVG.
+- [ ] Four output dials stated: format, size, detail, audience.
+- [ ] Node count within the `detail` ceiling; connectors <= 12; `accent` on <= 2.
 - [ ] Box table complete before authoring; every coordinate traces to it.
 - [ ] All containment checks pass for boxes and for children inside boxes.
 - [ ] Centers, baselines, and connector endpoints are derived, not hand-tuned.
 - [ ] Font stack is CJK-first; every line fits its computed capacity.
+- [ ] All six connector rules hold (`references/authoring.md` section 2.5).
+- [ ] Accessible contract present: `role`, `aria-labelledby`, `<title>` first,
+      `<desc>` describing the content, IDs prefixed per diagram.
 - [ ] `check-svg.mjs` reports zero errors; each warning triaged and recorded.
 - [ ] `render.mjs` verified the PNG header against the 2x target.
 - [ ] Browser executable and version disclosed with the PNG.

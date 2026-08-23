@@ -18,3 +18,14 @@ func (c *Config) FeedbackRepository() string {
 	}
 	return c.Feedback.Repository
 }
+
+// FeedbackAutoSubmit reports whether the feedback workflow may submit without
+// the pre-submit confirmation gate.
+//
+// Resolution: the loaded Feedback.AutoSubmit value. An absent auto_submit: key
+// keeps the compiled default (DefaultFeedbackAutoSubmit, false) because the
+// loader seeds the section wrapper with NewDefaultFeedbackConfig() before
+// decoding — the partial-override contract.
+func (c *Config) FeedbackAutoSubmit() bool {
+	return c.Feedback.AutoSubmit
+}

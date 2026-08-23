@@ -1,0 +1,14 @@
+<!-- expect: -->
+<!-- Path reader: the connector is authored in relative form with an implicit repeated coordinate pair (l 40 0 40 0). Parsed and compliant, so nothing is reported. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="400" height="200"
+     role="img" aria-labelledby="path-relative-form-title path-relative-form-desc">
+  <title id="path-relative-form-title">Relative run</title>
+  <desc id="path-relative-form-desc">A connector authored with relative commands crosses the canvas.</desc>
+  <defs>
+    <marker id="path-relative-form-arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+      <path d="M 0 0 L 10 4 L 0 8 z" fill="#6B6359"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="400" height="200" fill="#FAF9F5"/>
+  <path d="m 60 150 h 100 l 40 0 40 0" stroke="#6B6359" stroke-width="1" fill="none" marker-end="url(#path-relative-form-arrow)"/>
+</svg>

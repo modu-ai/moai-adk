@@ -1,0 +1,52 @@
+2026/08/22 08:11:45 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t174/internal/cli/.moai/config/sections
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.2   go 1.26.4   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+2026/08/22 08:11:45 INFO SUNSET_CONFIG_DORMANT_NOTICE spec="SPEC-V3R2-MIG-003 REQ-018" yaml_path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunInit_WizardAutonomyTierAppliesBundle1673059278/002/tier-proj/.moai/config/sections/sunset.yaml advice="SunsetConfig has no runtime hot path; activation requires a new SPEC"
+--- FAIL: TestRunInit_WizardAutonomyTierAppliesBundle (0.47s)
+    init_autonomy_wiring_test.go:141: USER permissions.defaultMode = "default", want "auto" (tier automatic)
+2026/08/22 08:11:46 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t174/internal/cli/.moai/config/sections
+--- FAIL: TestRunInit_FlagAutonomyTierNonInteractive (0.30s)
+    init_autonomy_wiring_test.go:166: USER permissions.defaultMode = "", want "auto" (flag automatic, non-interactive)
+2026/08/22 08:11:46 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t174/internal/cli/.moai/config/sections
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.2   go 1.26.4   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+2026/08/22 08:11:46 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t174/internal/cli/.moai/config/sections
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.2   go 1.26.4   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+2026/08/22 08:11:46 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t174/internal/cli/.moai/config/sections
+--- FAIL: TestRunInit_FlagFullyAutonomousWithoutProofDowngrades (0.33s)
+    init_autonomy_wiring_test.go:227: USER permissions.defaultMode = "", want "auto" (downgraded to automatic)
+    init_autonomy_wiring_test.go:232: downgrade advisory log missing (open /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunInit_FlagFullyAutonomousWithoutProofDowngrades1137710869/002/tier-proj/.moai/logs/autonomy-downgrade.log: no such file or directory): /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunInit_FlagFullyAutonomousWithoutProofDowngrades1137710869/002/tier-proj/.moai/logs/autonomy-downgrade.log
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	2.481s
+FAIL

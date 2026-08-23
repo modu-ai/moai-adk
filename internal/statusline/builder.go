@@ -62,6 +62,12 @@ type Options struct {
 	// SegmentConfig maps segment keys to enabled state.
 	// When nil or empty, all segments are displayed (backward compatible).
 	SegmentConfig map[string]bool
+
+	// TodoEnabled carries workflow.todo.enabled to the backlog segment gate
+	// (SPEC-TODO-ENABLE-FLAG-001 REQ-2). nil means the key was absent, which
+	// reads as enabled — so a caller that does not set this field gets the
+	// pre-flag behavior unchanged.
+	TodoEnabled *bool
 }
 
 // New creates a new Builder with the given options.
@@ -119,11 +125,14 @@ func New(opts Options) Builder {
 		// If home dir not found, continue without usage provider
 	}
 
+	renderer := NewRenderer(opts.ThemeName, opts.NoColor, opts.SegmentConfig)
+	renderer.SetTodoEnabled(opts.TodoEnabled)
+
 	return &defaultBuilder{
 		gitProvider:    gitProvider,
 		updateProvider: updateProvider,
 		usageProvider:  usageProvider,
-		renderer:       NewRenderer(opts.ThemeName, opts.NoColor, opts.SegmentConfig),
+		renderer:       renderer,
 		mode:           mode,
 		homeDir:        homeDir, // Store homeDir for model cache (M2)
 	}

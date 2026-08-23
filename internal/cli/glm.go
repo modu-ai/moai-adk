@@ -383,12 +383,15 @@ func setGLMEnv(glmConfig *GLMConfigFromYAML, apiKey string) {
 // (The settings.local.json twin of this wire point, injectGLMEnvForTeam, was
 // removed with its dead caller enableTeamMode in #1531.)
 //
-// UNVERIFIED delivery (AC-MTP-032b run-phase empirical gate): whether z.ai
-// consumes ANTHROPIC_REASONING_EFFORT through the Anthropic-compat shim (Branch A
-// passthrough) or requires the reasoning_effort field in the request body (making
-// this env inert) is a run-phase empirical determination that needs a live z.ai
-// session. This is the safe-default Branch-B explicit write; it does NOT assert
-// the value actually reaches z.ai as reasoning-control.
+// Delivery status MEASURED (t175, .moai/reports/t175/measurements.md §3 —
+// closes the AC-MTP-032b residual of SPEC-MODEL-TIER-PLANTYPE-001): the z.ai
+// Anthropic-compat shim honors the Anthropic `thinking` parameter (thinking
+// blocks returned; depth scales with the budget) and silently IGNORES a
+// top-level z.ai-style `reasoning_effort` field, so the effective wire channel
+// is the thinking-budget mapping Claude Code derives from this env var, not a
+// z.ai-native reasoning_effort passthrough. The live session's thinking-block
+// responses are indirect end-to-end evidence the chain is live; delivered spend
+// per level remains unquantified (measurements §6).
 func glmReasoningEnvVars() map[string]string {
 	state := template.SessionGLMReasoningState()
 	out := make(map[string]string, 1)
@@ -400,8 +403,9 @@ func glmReasoningEnvVars() map[string]string {
 
 // glmReasoningEnvVarsForEffort returns the MAIN-SESSION reasoning-control env
 // injection derived from the web-set effort preference. It is the prefs-driven
-// counterpart to glmReasoningEnvVars() (which derives the hardcoded coding-max
-// session default, used for sub-agents and the empty-effort fallback). When
+// counterpart to glmReasoningEnvVars() (which derives the hardcoded max session
+// default — SPEC-GLM-EFFORT-MAX-001 — used for sub-agents and the empty-effort
+// fallback). When
 // effort is non-empty it collapses the Claude effort onto z.ai's reasoning
 // control via SessionGLMReasoningStateForEffort; when empty it falls back to the
 // session default (glmReasoningEnvVars). Thinking-off states emit no
@@ -411,10 +415,11 @@ func glmReasoningEnvVars() map[string]string {
 // empty); this helper is ADDITIVE and is consumed only by the main-session
 // launch path.
 //
-// UNVERIFIED delivery (AC-MTP-032b run-phase empirical gate): whether z.ai
-// consumes ANTHROPIC_REASONING_EFFORT through the Anthropic-compat shim is a
-// run-phase empirical determination that needs a live z.ai session. This writes
-// the CORRECT env per the shim contract; z.ai honoring it is residual risk.
+// Delivery status MEASURED (t175, .moai/reports/t175/measurements.md §3 —
+// closes the AC-MTP-032b residual of SPEC-MODEL-TIER-PLANTYPE-001): the z.ai
+// shim honors the Anthropic `thinking` parameter and ignores a top-level
+// z.ai-style `reasoning_effort` field, so this env reaches z.ai through the
+// thinking-budget mapping, not a native reasoning_effort passthrough.
 func glmReasoningEnvVarsForEffort(effort string) map[string]string {
 	state := template.SessionGLMReasoningStateForEffort(effort)
 	out := make(map[string]string, 1)

@@ -90,6 +90,18 @@ Your written feedback is never lost due to a `gh` failure — the local draft fi
 
 The repository where `/moai feedback` creates issues is configured via the `feedback.repository` value in `.moai/config/sections/feedback.yaml`. The default is `modu-ai/moai-adk` (the MoAI-ADK tool repository itself), and users maintaining a fork can redirect feedback by changing this value to their fork repository.
 
+### Confirming Before Submission
+
+Before an issue is created, `/moai feedback` shows what would be posted — the title, the body in full, and a summary of any values it masked (secrets, tokens, absolute home paths) — and asks whether to go ahead. The `feedback.auto_submit` value in `.moai/config/sections/feedback.yaml` controls that question: the shipped default `false` asks every time, and `true` submits without asking.
+
+```yaml
+feedback:
+    repository: modu-ai/moai-adk
+    auto_submit: false
+```
+
+`moai init` also asks for this value in the setup wizard, and it can be changed later from the web console's Feedback section. Setting it to `true` skips only the question — masking still runs, and a report that reads as a security-vulnerability disclosure is still refused and routed to the private advisory path instead of a public issue.
+
 ## Feedback Types
 
 ### Bug Report

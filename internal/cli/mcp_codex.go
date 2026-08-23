@@ -715,6 +715,15 @@ func (h *codexSessionHandle) runTurn(ctx context.Context, method string, params 
 //
 // The caller passes the FINAL review/turn method; the handshake is owned by
 // openCodexSession.
+//
+// codexReviewRPC is the injectable seam over it, wired to runCodexReviewRPC in
+// production. Both codex AUDIT paths — handleCodexAudit here and
+// performCodexAudit in mcp_convergence.go — dispatch through it, so a test can
+// assert what the params map actually carries with no live backend
+// (SPEC-MCP-WORKTREE-ROOT-001 AC-1b). The Stop-hook review gate keeps calling
+// runCodexReviewRPC directly: it is not an audit path and is out of scope here.
+var codexReviewRPC = runCodexReviewRPC
+
 func runCodexReviewRPC(ctx context.Context, binaryPath, method string, params map[string]any) (ReviewOutput, error) {
 	sess, err := openCodexSession(ctx, binaryPath, params)
 	if err != nil {
@@ -1105,13 +1114,38 @@ func codexThreadIDOf(params json.RawMessage) string {
 // injection+secret change ("- [P1] ..." bullets ⇒ fail).
 var codexFindingBullet = regexp.MustCompile(`(?m)^\s*[-*]\s+\[[A-Za-z]+\d+\]`)
 
+// codexStatedVerdict matches a verdict codex states in its own words, which is
+// what the ADVERSARIAL path produces: a leading line reading "Verdict: fail —
+// merge blocked." The bullet heuristic above was measured against REVIEW-mode
+// output only, and adversarial prose carries none of those bullets — so a
+// merge-blocking review was synthesized as a pass, and a required gate inverted
+// with nothing in the result saying so (card t178).
+//
+// The match is deliberately narrow: the label must open a line (optionally
+// wrapped in markdown emphasis) and name the verdict on that same line. "I could
+// not reach a verdict on the caching layer" is prose about a verdict, not a
+// verdict, and must not be read as one. All three schema verdicts are captured
+// (card t186): a stated inconclusive is codex saying it could not tell, and
+// reading that as the default pass launders uncertainty into a clean verdict.
+var codexStatedVerdict = regexp.MustCompile(`(?mi)^[\s>#]*[*_]{0,2}verdict[*_]{0,2}\s*[:\-–—]+[*_]{0,2}\s*[*_]{0,2}(pass|fail|inconclusive)\b`)
+
 // synthesizeReviewOutput maps codex's review prose into the review-output
 // schema. codex does NOT return a structured verdict enum — it returns free-form
-// prose whose presence of severity-tagged finding bullets (codex's own format)
-// signals a failure; a clean review (no finding bullets) is a pass. The summary
-// carries the verbatim review text so the operator sees codex's own words.
+// prose, and the two review paths express their verdict differently: review mode
+// emits severity-tagged finding bullets ("- [P1] ..."), adversarial mode states
+// the verdict in a line of its own. Both are read here.
+//
+// The two signals combine fail-biased: a stated "pass" does NOT clear finding
+// bullets, and neither does a stated "inconclusive" — concrete findings outrank
+// a stated inability to judge. A stated inconclusive with no bullets is kept as
+// inconclusive: uncertainty is never laundered into the clean verdict (t186).
+// The summary carries the verbatim review text either way, so the operator sees
+// codex's own words rather than only this function's reading of them.
 func synthesizeReviewOutput(reviewText string) ReviewOutput {
 	verdict := "pass"
+	if m := codexStatedVerdict.FindStringSubmatch(reviewText); m != nil {
+		verdict = strings.ToLower(m[1])
+	}
 	if codexFindingBullet.MatchString(reviewText) {
 		verdict = "fail"
 	}
@@ -1156,6 +1190,18 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	model := req.GetString("model", "")
 	token := extractProgressToken(req)
 
+	// SPEC-MCP-WORKTREE-ROOT-001 REQ-1/REQ-3: the caller may name the tree codex
+	// should review. Absent ⇒ resolveProjectDir(), exactly as before. An unusable
+	// path is REJECTED here rather than replaced by the default — a fallback would
+	// review the primary checkout while reporting success, which is the defect the
+	// parameter exists to fix. The rejection is a tool error, not the fail-open
+	// inconclusive verdict: fail-open covers an absent or broken codex, not a
+	// caller input the caller can correct.
+	root, rootErr := resolveToolProjectRoot(req)
+	if rootErr != nil {
+		return toolErr("codex_audit", rootErr), nil
+	}
+
 	notifyMCPProgress(ctx, token, 0, "codex 감사 시작 — 모드: "+mode+", target: "+target)
 	binaryPath, err := codexLookPath(codexBinaryName)
 	if err != nil {
@@ -1167,7 +1213,7 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	params := map[string]any{
 		"target": target,
 		"model":  model,
-		"cwd":    resolveProjectDir(),
+		"cwd":    root,
 	}
 	if mode == codexModeAdversarial {
 		method = codexMethodTurnStart
@@ -1178,7 +1224,7 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	}
 
 	notifyMCPProgress(ctx, token, 0.2, "codex에 리뷰 요청 전송 중... (수분 소요 가능)")
-	out, _ := runCodexReviewRPC(ctx, binaryPath, method, params) // fail-open inside
+	out, _ := codexReviewRPC(ctx, binaryPath, method, params) // fail-open inside
 	notifyMCPProgress(ctx, token, 0.9, "codex 응답 수신 — 결과 조립 중...")
 	return codexReviewToolResult(out), nil
 }

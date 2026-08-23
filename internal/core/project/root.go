@@ -22,6 +22,19 @@ func FindProjectRoot() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("get working directory: %w", err)
 	}
+	return FindProjectRootFrom(dir)
+}
+
+// FindProjectRootFrom is FindProjectRoot with the starting directory supplied
+// rather than read from the process, so the traversal — home guard included —
+// can be exercised over a fully-owned directory tree instead of whatever the
+// machine happens to have above the working directory.
+//
+// FindProjectRoot is a thin wrapper over this function, so production and
+// tests traverse the same code path; the home boundary itself is still
+// resolved through paths.Home() on both, never supplied by the caller.
+func FindProjectRootFrom(start string) (string, error) {
+	dir := start
 
 	// Normalize to resolve symlinks (macOS /private/var) and Windows 8.3 short paths.
 	if resolved, err := filepath.EvalSymlinks(dir); err == nil {

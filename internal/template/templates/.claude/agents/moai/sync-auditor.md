@@ -156,6 +156,12 @@ Single-backend audit mode (per the project's `audit_model`):
 
 All backends are fail-open: when a backend is unavailable, its tool returns `inconclusive` (never a Go error), so a missing codex/glm never blocks the audit.
 
+### [HARD] Name your own tree
+
+When this audit runs inside a worktree, EVERY `mcp__moai__*` call above MUST carry `project_root` set to this session's own `git rev-parse --show-toplevel`.
+
+Omit it and the call acts on the primary checkout instead — the code under review is on the card's branch, so the backend reviews a diff that is not the one being judged. It returns a clean verdict about the wrong tree, and nothing in the result says which tree it read. Run the command; do not assume the path. A mistyped path is rejected with an error naming it, never silently replaced by the default. Full contract: `.claude/rules/moai/core/moai-mcp-tools.md` § The `project_root` input.
+
 ## Conditional Skill Loading
 
 Static `skills:` preload is kept to a minimum (token diet — progressive disclosure covers the rest); load the following skills on demand with the `Skill` tool:

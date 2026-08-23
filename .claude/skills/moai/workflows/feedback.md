@@ -77,6 +77,65 @@ No drafted feedback is discarded on a `gh` failure; the local draft is the recov
 
 ---
 
+## Phase 1.5: Pre-Submission Scrub and Confirmation Gate
+
+### Step 1: Route the report through the scrubber
+
+[HARD] Before any submission step, the drafted title AND the drafted body MUST be routed through the scrubber in one invocation:
+
+```bash
+printf '%s' "<body>" | moai feedback scrub --title "<title>"
+```
+
+- The body arrives on stdin; the title is passed with `--title` on that same invocation. Scrubbing the body alone leaves the title untouched, and the title is a separate free-text input to the submission command — an unscrubbed title carries credentials into a public channel that no later step inspects.
+- stdout is a single JSON object carrying `verdict`, `title`, `body`, `findings`, and `reason`. Each `findings` entry carries `kind`, `where` (`title` or `body`), and `count` — never the original value.
+- Only the returned masked `title` and masked `body` are submitted. The originals are not submitted.
+
+[HARD] This masking is the ONE explicit exception to the verbatim-preservation rule stated under Issue Language Policy below ("Body content: User-provided text preserved verbatim"). The body is preserved verbatim EXCEPT for the scrubber's masking substitutions; nothing else rewrites it.
+
+### Step 2: Fail-closed conditions
+
+[HARD] Three conditions each stop the submission:
+
+1. When the scrubber exits with a non-zero exit code, the workflow MUST NOT submit.
+2. When `verdict` is anything other than `ok`, the workflow MUST NOT submit — including the case where the `verdict` field is absent and the case where stdout cannot be parsed as JSON. An absent `verdict` is not an `ok` verdict.
+3. When the scrubber has not returned within 60 seconds, the workflow MUST abort the call and MUST NOT submit.
+
+On a `blocked` verdict, report `reason` to the user in `conversation_language` and route them to the private security-advisory path named in that reason instead of opening a public issue.
+
+### Step 3: Confirmation gate
+
+[HARD] When the resolved `feedback.auto_submit` configuration value is `false` (the shipped default), run ONE AskUserQuestion round before submission. Skip this round only when `auto_submit` is `true`.
+
+The question body carries all three of:
+
+- the masked `title`;
+- the masked `body` in full, not an excerpt;
+- a findings summary listing, per `kind`, the count and its `where` location — without it the user cannot see that the title was altered.
+
+[HARD] Render every option label and the findings summary in the user's `conversation_language`. The English labels in the table below are the reference set, not literals to copy into a localized session.
+
+| Option | Label (English reference) | Effect |
+|---|---|---|
+| 1 | Do not submit (Recommended) | No submission. Offer the local draft path instead. |
+| 2 | Submit as shown | Submit the masked title and masked body unchanged. |
+| 3 | Edit, then submit | Take the edited text through the round's "Other" option, route it through the scrubber again, and re-run this gate. |
+
+`(Recommended)` is carried by the first option only. Option 3 re-scrubs safely because the pipeline is idempotent — scrubbing already-masked text returns the same text.
+
+### Step 4: Submit, then queue on submission failure
+
+[HARD] The two failure classes do NOT share a path:
+
+- A failure **before** the submission attempt — a non-zero `gh auth status`, or a rate-limit signal — stays on the existing draft path described under "gh Availability and Failure Fallback" above. That draft holds the pre-scrub original, is a local artifact only, and is never re-sent.
+- A failure **of** the submission attempt itself — a non-zero exit from the issue-creation command — is queued: pipe the scrubber's JSON result to `moai feedback queue enqueue`, which records it under `.moai/state/feedback/queue.json`. List queued entries with `moai feedback queue list`, and remove one after a successful re-send with `moai feedback queue resolve <id>`.
+
+[HARD] The re-send path MUST route a queued entry through the scrubber again immediately before re-sending it. The queue is an ordinary file, so a queued entry is not by itself evidence that its text was ever scrubbed; re-scrubbing costs nothing because the pipeline is idempotent.
+
+[HARD] A queued entry MUST NOT be read from the local draft path. The draft holds pre-scrub original text, and re-sending it would publish exactly what the scrubber exists to mask.
+
+---
+
 ## Phase 2: GitHub Issue Creation
 
 [HARD] Create the GitHub issue orchestrator-direct via the `gh` CLI with collected feedback details (no subagent spawn — issue creation has no retained-agent owner per `.claude/rules/moai/workflow/archived-agent-rejection.md` §C).
@@ -116,6 +175,8 @@ Language examples:
 ### Issue Creation Command
 
 The orchestrator executes directly: `gh issue create --repo <resolved-target>`, where `<resolved-target>` is the resolved feedback target repository (config `feedback.repository`, default `modu-ai/moai-adk`).
+
+[HARD] The title and body handed to this command are the masked `title` and masked `body` returned by Phase 1.5 Step 1 — never the originals collected in Phase 1.
 
 Issue body uses a consistent template in the user's conversation_language, including:
 

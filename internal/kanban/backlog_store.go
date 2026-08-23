@@ -44,6 +44,8 @@ const legacyBacklogLockFileName = "backlog.json.lock"
 // backlogVersion is the record schema version. The schema is ADDITIVE within
 // version 1: `last_seq` was appended as a top-level field with no version
 // bump, and no per-item field may ever be added (spec.md §E out-of-scope).
+// `findings` follows the same precedent — a second top-level field, no
+// version bump, and the five-field per-item contract untouched.
 const backlogVersion = 1
 
 // BacklogState is a queue item's lifecycle state.
@@ -69,13 +71,158 @@ type BacklogItem struct {
 	State   BacklogState `json:"state"`
 }
 
+// Relation values a finding may carry. The first two are MECHANICAL — the
+// analyser measures them from card text alone; the last four are SEMANTIC —
+// only a reader who understands what the cards mean can judge them, so they
+// arrive through `todo relate`.
+const (
+	// BacklogRelationDuplicateForced records a card admitted despite an exact
+	// text collision (`add --force`), so a forced duplicate leaves a trace.
+	BacklogRelationDuplicateForced = "duplicate-forced"
+	// BacklogRelationNearDuplicate records a measured text similarity at or
+	// above the near-duplicate threshold.
+	BacklogRelationNearDuplicate = "near-duplicate"
+	// BacklogRelationContains records that one card's scope covers another's.
+	BacklogRelationContains = "contains"
+	// BacklogRelationAbsorbs records that one card could subsume another.
+	// Recording it is ALL it does: folding one card into another is the act
+	// the queue doctrine forbids by name, so it stays the operator's.
+	BacklogRelationAbsorbs = "absorbs"
+	// BacklogRelationReplaces records that one card supersedes another.
+	BacklogRelationReplaces = "replaces"
+	// BacklogRelationConflicts records that two cards pull against each
+	// other. No resolution is proposed — both may be legitimate.
+	BacklogRelationConflicts = "conflicts"
+)
+
+// Source values a finding may carry.
+const (
+	// BacklogSourceMechanical marks a finding the text analyser produced.
+	BacklogSourceMechanical = "mechanical"
+	// BacklogSourceAgent marks a finding written through `todo relate`.
+	BacklogSourceAgent = "agent"
+)
+
+// BacklogSemanticRelations lists the four relations `todo relate` accepts.
+// The two mechanical relations are deliberately absent: a caller must not be
+// able to record a measurement it did not take.
+var BacklogSemanticRelations = []string{
+	BacklogRelationContains,
+	BacklogRelationAbsorbs,
+	BacklogRelationReplaces,
+	BacklogRelationConflicts,
+}
+
+// BacklogFinding is one recorded relation between two cards.
+//
+// A finding is a RECORD and nothing else: no code path writes a card field as
+// a consequence of one. That is a structural property rather than a
+// convention — folding, reordering, dropping, and editing a card in response
+// to a finding would each require code that does not exist, so none of them
+// can happen by accident.
+type BacklogFinding struct {
+	SubjectID string  `json:"subject_id"`
+	RelatedID string  `json:"related_id"`
+	Relation  string  `json:"relation"`
+	Source    string  `json:"source"`
+	Score     float64 `json:"score"`
+	Note      string  `json:"note"`
+	At        string  `json:"at"`
+}
+
+// Names reports whether the finding refers to id in either position.
+func (f BacklogFinding) Names(id string) bool {
+	return f.SubjectID == id || f.RelatedID == id
+}
+
+// SamePairAs reports whether two findings refer to the same UNORDERED pair.
+// The comparison is unordered because a relation between two cards is a
+// property of the pair, not of the direction it happened to be written in —
+// an agent recording {b, a} answers a mechanical finding about {a, b}.
+func (f BacklogFinding) SamePairAs(other BacklogFinding) bool {
+	return (f.SubjectID == other.SubjectID && f.RelatedID == other.RelatedID) ||
+		(f.SubjectID == other.RelatedID && f.RelatedID == other.SubjectID)
+}
+
 // BacklogRecord is the backlog file's document shape. LastSeq is the
 // persisted id high-water mark — additive top-level, absent in files that
-// predate the field (derived from max present id on load).
+// predate the field (derived from max present id on load). Findings is the
+// second additive top-level field, following the same precedent: absent in
+// older files, and always rendered as an array — never null, never an
+// omitted key — so a reader never has to tell "no findings" apart from "no
+// such feature".
 type BacklogRecord struct {
-	Version int           `json:"version"`
-	LastSeq int           `json:"last_seq"`
-	Items   []BacklogItem `json:"items"`
+	Version  int              `json:"version"`
+	LastSeq  int              `json:"last_seq"`
+	Items    []BacklogItem    `json:"items"`
+	Findings []BacklogFinding `json:"findings"`
+}
+
+// HasFindingTuple reports whether a finding carrying the same
+// {subject, related, relation, source} tuple is already recorded. The
+// timestamp and the note are deliberately outside the key: re-running the
+// analyser must not stack a second copy of a relation it already recorded,
+// or the operator's listing fills with duplicates of one measurement and
+// stops being read.
+func (r *BacklogRecord) HasFindingTuple(f BacklogFinding) bool {
+	for _, existing := range r.Findings {
+		if existing.SubjectID == f.SubjectID && existing.RelatedID == f.RelatedID &&
+			existing.Relation == f.Relation && existing.Source == f.Source {
+			return true
+		}
+	}
+	return false
+}
+
+// AppendFindingOnce records f unless its tuple is already present, reporting
+// whether it was appended.
+func (r *BacklogRecord) AppendFindingOnce(f BacklogFinding) bool {
+	if r.HasFindingTuple(f) {
+		return false
+	}
+	r.Findings = append(r.Findings, f)
+	return true
+}
+
+// FindingsNaming returns the findings referring to id, each paired with its
+// 1-based index in the record — the index `todo unrelate` addresses.
+func (r *BacklogRecord) FindingsNaming(id string) (findings []BacklogFinding, indexes []int) {
+	for i, f := range r.Findings {
+		if f.Names(id) {
+			findings = append(findings, f)
+			indexes = append(indexes, i+1)
+		}
+	}
+	return findings, indexes
+}
+
+// RemoveFindingsNaming drops every finding referring to id and returns how
+// many were dropped. Called when a card leaves the queue: a finding that
+// outlives its subject points at nothing, and the listing would render a
+// relation to a card the operator can no longer see.
+func (r *BacklogRecord) RemoveFindingsNaming(id string) int {
+	kept := make([]BacklogFinding, 0, len(r.Findings))
+	for _, f := range r.Findings {
+		if !f.Names(id) {
+			kept = append(kept, f)
+		}
+	}
+	removed := len(r.Findings) - len(kept)
+	r.Findings = kept
+	return removed
+}
+
+// HasAgentFindingForPair reports whether any agent-sourced finding names the
+// same unordered pair as f. It is the predicate behind the `machine-only`
+// mark: the mark records the ABSENCE of an agent-sourced record for the
+// pair, never that any review took place.
+func (r *BacklogRecord) HasAgentFindingForPair(f BacklogFinding) bool {
+	for _, existing := range r.Findings {
+		if existing.Source == BacklogSourceAgent && existing.SamePairAs(f) {
+			return true
+		}
+	}
+	return false
 }
 
 // BacklogStore guards one backlog file. Load is lock-free; every mutation
@@ -163,7 +310,11 @@ func (s *BacklogStore) load() (*BacklogRecord, error) {
 	raw, err := atomicfile.ReadFile(s.path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return &BacklogRecord{Version: backlogVersion, Items: []BacklogItem{}}, nil
+			return &BacklogRecord{
+				Version:  backlogVersion,
+				Items:    []BacklogItem{},
+				Findings: []BacklogFinding{},
+			}, nil
 		}
 		return nil, fmt.Errorf("load backlog %s: %w", s.path, err)
 	}
@@ -329,6 +480,9 @@ func normalizeBacklogRecord(rec *BacklogRecord) {
 	}
 	if rec.Items == nil {
 		rec.Items = []BacklogItem{}
+	}
+	if rec.Findings == nil {
+		rec.Findings = []BacklogFinding{}
 	}
 	if max := maxPresentBacklogSeq(rec.Items); max > rec.LastSeq {
 		rec.LastSeq = max

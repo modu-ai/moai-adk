@@ -189,6 +189,19 @@ secret-*.*
 !.claude/skills/*/modules/*token*.md
 
 # ===========================================
+# Skill Mirror (build product, not source)
+# ===========================================
+# The skill catalog is deployed to .claude/skills/ and exposed a second time
+# under .agents/skills/ so agent runtimes that scan that path can see it. The
+# mirror is regenerated on every deploy, and on a checkout without symlink
+# support each entry materializes as a plain text file — neither belongs in
+# version control.
+#
+# Only the generated entries are ignored. The .agents/ root itself is NOT:
+# entries you create there, and source files placed there later, stay tracked.
+.agents/skills/moai*
+
+# ===========================================
 # Local-Only Files (never sync via git pull)
 # ===========================================
 .moai/status_line.sh

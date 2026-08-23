@@ -382,6 +382,11 @@ type WorkflowConfig struct {
 	LoopPrevention LoopPreventionConfig   `yaml:"loop_prevention"`
 	TokenBudget    TokenBudgetConfig      `yaml:"token_budget"`
 	Worktree       WorkflowWorktreeConfig `yaml:"worktree"`
+	// Todo gates the runtime todo/backlog guidance surfaces
+	// (SPEC-TODO-ENABLE-FLAG-001 REQ-1). Read through TodoEnabled, never
+	// directly: the pointer inside distinguishes "key absent" (= enabled)
+	// from "explicitly disabled", which a plain bool cannot express.
+	Todo WorkflowTodoConfig `yaml:"todo"`
 	// SessionWorktree gates the automatic worktree isolation for
 	// moai init / moai profile / moai web (SPEC-SESSION-WORKTREE-001 REQ-SW-001 /
 	// REQ-SW-002). Default false: the feature ships INERT (byte-identical
@@ -540,17 +545,33 @@ type TokenBudgetConfig struct {
 // WorkflowWorktreeConfig mirrors workflow.worktree.* — worktree automation settings.
 // Distinct from GitStrategyConfig.WorktreeRoot (different key domain, no conflict).
 //
-// Reader status (SPEC-CONFIG-KEY-HONESTY-001 M5): AutoCreate is read once by
+// Reader status (SPEC-CONFIG-KEY-HONESTY-001 M5, updated by
+// SPEC-INIT-WIZARD-REPAIR-001 REQ-009): AutoCreate is read once by
 // internal/cli/worktree_advisory.go only to select advisory wording — it does
-// not gate worktree creation. AutoCleanup and AutoMerge have no production
-// reader (declared but not read). SessionNamePattern has no production reader
-// (no code builds a session name from it).
+// not gate worktree creation. AutoCleanup is read by the two auto-cleanup
+// paths (internal/cli/session_worktree.go cleanupSessionWorktree and
+// session_worktree_prmerge.go prMergeCleanup), gating worktree removal.
+// AutoMerge has no production reader (declared but not read).
+// SessionNamePattern has no production reader (no code builds a session name
+// from it).
 type WorkflowWorktreeConfig struct {
 	AutoCleanup        bool   `yaml:"auto_cleanup"`
 	AutoCreate         bool   `yaml:"auto_create"`
 	AutoMerge          bool   `yaml:"auto_merge"`
 	SessionNamePattern string `yaml:"session_name_pattern"`
 	TmuxPreferred      bool   `yaml:"tmux_preferred"`
+}
+
+// WorkflowTodoConfig mirrors workflow.todo.* — the backlog-queue guidance gate
+// (SPEC-TODO-ENABLE-FLAG-001 REQ-1). The distributed template ships without
+// this block, so ABSENT must read as ENABLED; a plain bool cannot tell that
+// apart from an explicit `enabled: false`, which is why Enabled is a pointer.
+// Read it through Config.TodoEnabled rather than dereferencing here.
+//
+// What the flag turns off is the GUIDANCE, never the feature: `moai todo` stays
+// registered and every verb keeps working regardless of this value (REQ-3).
+type WorkflowTodoConfig struct {
+	Enabled *bool `yaml:"enabled"`
 }
 
 // BranchGuardConfig mirrors workflow.branch_guard.* — the Main-Checkout
@@ -1335,6 +1356,12 @@ type FeedbackConfig struct {
 	// Repository is the "owner/repo" GitHub slug the feedback workflow targets.
 	// Default DefaultFeedbackRepository (the remote MoAI-ADK tool repo).
 	Repository string `yaml:"repository"`
+
+	// AutoSubmit reports whether the feedback workflow may create the issue
+	// without the pre-submit confirmation gate. Default
+	// DefaultFeedbackAutoSubmit (false) — the gate is mandatory unless the
+	// project opts out.
+	AutoSubmit bool `yaml:"auto_submit"`
 }
 
 // feedbackFileWrapper handles the feedback.yaml section file.

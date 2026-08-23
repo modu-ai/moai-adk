@@ -179,22 +179,47 @@ func handleGLMAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 		model = resolveGLMAuditModel() // SSOT (REQ-MCP-013)
 	}
 	focus := req.GetString("focus", "")
+	target := req.GetString("target", codexTargetUncommitted)
 	token := extractProgressToken(req)
 
-	notifyMCPProgress(ctx, token, 0, "glm 감사 시작 — z.ai 요청 준비 중...")
-	out := callGLMAudit(ctx, key, model, focus, token)
+	notifyMCPProgress(ctx, token, 0, "glm 감사 시작 — 리뷰 대상 diff 수집 중...")
+	// GLM cannot read the tree, so the change has to be collected here and
+	// carried in the request. No diff ⇒ no review: fail open to inconclusive
+	// rather than ask z.ai for a verdict on code it will never see (card t178).
+	//
+	// The tree comes from resolveToolProjectRoot — the same caller-named-root
+	// contract codex_audit has (SPEC-MCP-WORKTREE-ROOT-001): a worktree session
+	// MUST be able to name its own tree, because the server's own resolution
+	// names the primary checkout. Absent ⇒ resolveProjectDir(), exactly what
+	// this call did before the parameter existed. An unusable path is a tool
+	// error, not the fail-open verdict — fail-open covers a broken GLM, not a
+	// caller input the caller can correct.
+	root, rootErr := resolveToolProjectRoot(req)
+	if rootErr != nil {
+		return toolErr("glm_audit", rootErr), nil
+	}
+	diff, err := collectReviewDiff(root, target)
+	if err != nil {
+		return reviewToolResult(glmInconclusive("no reviewable change: " + err.Error())), nil
+	}
+	if strings.TrimSpace(diff) == "" {
+		return reviewToolResult(glmInconclusive("no reviewable change: target " + target + " produced an empty diff")), nil
+	}
+
+	notifyMCPProgress(ctx, token, 0.05, "glm 감사 — z.ai 요청 준비 중...")
+	out := callGLMAudit(ctx, key, model, focus, diff, token)
 	return reviewToolResult(out), nil
 }
 
 // callGLMAudit posts the audit prompt to z.ai and parses the response into a
 // ReviewOutput. Every error path fails open to a VerdictInconclusive — the
 // caller always receives a usable structured result.
-func callGLMAudit(ctx context.Context, key, model, focus string, token mcp.ProgressToken) ReviewOutput {
+func callGLMAudit(ctx context.Context, key, model, focus, diff string, token mcp.ProgressToken) ReviewOutput {
 	body, err := json.Marshal(glmMessagesRequest{
 		Model:     model,
 		MaxTokens: glmAuditMaxTokens,
 		System:    glmAuditSystemPrompt(),
-		Messages:  []glmMessage{{Role: "user", Content: glmAuditUserPrompt(focus)}},
+		Messages:  []glmMessage{{Role: "user", Content: glmAuditUserPrompt(focus, diff)}},
 	})
 	if err != nil {
 		return glmInconclusive("cannot build z.ai request: " + err.Error())
@@ -309,13 +334,24 @@ func glmAuditSystemPrompt() string {
 
 // glmAuditUserPrompt builds the per-audit user turn. An optional focus narrows
 // the review scope (e.g. "concurrency", "auth", "secret handling").
-func glmAuditUserPrompt(focus string) string {
+//
+// diff is the change under review, and it is NOT optional in practice: GLM is an
+// HTTPS call with no filesystem, so a prompt without it asks the model to review
+// code it has no way to see, and the model answers anyway (card t178). Callers
+// fail open to inconclusive before reaching here when no diff could be produced;
+// the closing instruction below is the second line of defence for the case where
+// one arrives empty regardless.
+func glmAuditUserPrompt(focus, diff string) string {
 	prompt := "Review the proposed change for security flaws (injection, auth " +
 		"bypass, secret leakage), correctness bugs (edge cases, error handling, " +
 		"concurrency), and scope creep. Return the ReviewOutput JSON."
 	if strings.TrimSpace(focus) != "" {
 		prompt += " Focus area: " + strings.TrimSpace(focus) + "."
 	}
+	prompt += "\n\nGround every finding in the diff below — cite the file and line " +
+		"it appears at. Report nothing you cannot point to in this diff; if it " +
+		"does not let you judge, return verdict 'inconclusive'.\n\n" +
+		"--- BEGIN DIFF ---\n" + diff + "\n--- END DIFF ---\n"
 	return prompt
 }
 

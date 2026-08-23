@@ -98,12 +98,20 @@ func runStatusline(cmd *cobra.Command, _ []string) error {
 	// Mode is fixed to ModeDefault: the `mode:` config surface was removed
 	// (SLR-1 — mode=full was inert), but the Builder Config Mode field is
 	// preserved as part of the Builder API (HARD-1) and fed ModeDefault.
+	// workflow.todo.enabled gates the backlog segment alongside the
+	// statusline.yaml `segments.backlog` key (SPEC-TODO-ENABLE-FLAG-001
+	// REQ-2). Either switch off means the segment is off; neither overrides
+	// the other. TodoEnabledForRoot fails open, so an unreadable config keeps
+	// the segment rather than hiding it for an invisible reason.
+	todoEnabled := config.TodoEnabledForRoot(projectRoot)
+
 	opts := statusline.Options{
 		Mode:          statusline.ModeDefault,
 		NoColor:       os.Getenv("NO_COLOR") != "" || os.Getenv(config.EnvNoColor) != "",
 		RootDir:       projectRoot,
 		SegmentConfig: segmentConfig,
 		ThemeName:     themeName,
+		TodoEnabled:   &todoEnabled,
 	}
 
 	// Create builder and render

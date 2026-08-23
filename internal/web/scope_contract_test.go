@@ -36,9 +36,15 @@ func TestScopeContractEditableSections(t *testing.T) {
 	if got := settings.RouteForSection("workflow"); got != settings.RouteSeam {
 		t.Errorf("section %q: route = %d, want RouteSeam (Issue 3 restored)", "workflow", got)
 	}
+	// feedback reopened to RouteSeam (SPEC-FEEDBACK-AUTO-SUBMIT-001 M7 — the
+	// auto_submit consent toggle needs a web write path; this reverses the
+	// SPEC-WEBCONF-SIMPLIFY-001 M3 reclassification for feedback only).
+	if got := settings.RouteForSection("feedback"); got != settings.RouteSeam {
+		t.Errorf("section %q: route = %d, want RouteSeam (M7 reopened)", "feedback", got)
+	}
 	for _, name := range []string{
 		"harness", "ralph",
-		"feedback", "observability", "security",
+		"observability", "security",
 		"handoff", "cache",
 	} {
 		if got := settings.RouteForSection(name); got != settings.RouteExcluded {
@@ -74,9 +80,10 @@ func TestScopeContractExclusions(t *testing.T) {
 		"tool-policy", "lsp", "mx",
 		"constitution", "context", "design", "interview",
 		"db", "research",
-		// SPEC-WEBCONF-SIMPLIFY-001 M3: 7 former seam sections reclassified.
-		// workflow restored to RouteSeam in Issue 3 — NOT in this list.
-		"harness", "ralph", "feedback", "observability", "security", "handoff", "cache",
+		// SPEC-WEBCONF-SIMPLIFY-001 M3: 6 former seam sections still reclassified.
+		// workflow restored to RouteSeam in Issue 3, feedback reopened in
+		// SPEC-FEEDBACK-AUTO-SUBMIT-001 M7 — NEITHER is in this list.
+		"harness", "ralph", "observability", "security", "handoff", "cache",
 	}
 	for _, name := range excluded {
 		if got := settings.RouteForSection(name); got != settings.RouteExcluded {

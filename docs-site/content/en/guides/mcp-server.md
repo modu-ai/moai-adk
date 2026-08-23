@@ -93,6 +93,26 @@ The distribution default activates only the `moai` server. Four external servers
 
 Users never hand-edit `.mcp.json`. The `moai mcp add|remove|list` CLI manages the file, and this CLI operates through an atomic-RWM seam (flock file locking + compare-retry + backup-before-write + idempotent-skip). Even if two sessions edit simultaneously, one side's change does not overwrite the other.
 
+## The `project_root` input — the caller names its own tree
+
+Five tools accept an optional `project_root` string: `spec_progress`, `spec_audit`, `spec_drift`, `codex_audit`, and `audit_multi`. It names the tree the call should act on, and the value to pass is the caller's own `git rev-parse --show-toplevel`.
+
+An agent working inside a worktree must pass it. This is not a convenience. The server has no way to work the answer out for itself: it is a long-lived subprocess, so its working directory cannot follow a worktree switch, and the environment variable it falls back on names the **project** root — the primary checkout — even for a session working in a worktree. Omit it from a worktree and the call acts on the primary checkout instead, which means a SPEC that exists only on the card's branch is not in the catalog the auditor reads. It is not reported missing. It is simply absent.
+
+The caller is the only party that holds the answer. That is why it is an input rather than something inferred.
+
+| Situation | What to pass | What happens |
+|-----------|--------------|--------------|
+| Session in a worktree | `project_root: <git rev-parse --show-toplevel>` | the call acts on that tree |
+| Session in the primary checkout | nothing | resolves exactly as it always has |
+| Path that is not a MoAI project root | — | the call is **rejected** with an error naming the path |
+
+The rejection is deliberate, not a rough edge. A silent fallback to the default would send a caller who mistyped its own worktree path back to auditing the primary checkout while reporting success — the exact failure the parameter exists to prevent.
+
+For `audit_multi` the root reaches **both** backends of the fan-out: codex receives it as the directory it reviews in, and the GLM path uses it to collect the diff it sends to z.ai. Passing it is what keeps the two secondary opinions about the same tree — without it they can review different ones.
+
+Version caveat: a server that is already running keeps the old behavior until it restarts, even after the binary underneath it is replaced — a subprocess does not reload itself. What a caller can check is whether `project_root` appears in the `ListTools` response.
+
 ## 21-tool catalog
 
 The 21 tools exposed by `moai mcp-server` divide into six groups. At call time they all carry the `mcp__moai__` prefix.

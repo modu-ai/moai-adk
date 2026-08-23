@@ -55,6 +55,14 @@ func newInitTestCmd() *cobra.Command {
 	cmd.Flags().Bool("medium-alias", false, "")
 	cmd.Flags().Bool("low", false, "")
 	cmd.Flags().String("plan-type", "", "")
+	// SPEC-INIT-WIZARD-REPAIR-001: mirror the four SPEC-WT-DOC-001 workflow
+	// toggle flags and the SPEC-AUTONOMY-TIERS-001 tier selector, matching the
+	// production initCmd registration.
+	cmd.Flags().Bool("branch-guard", false, "")
+	cmd.Flags().Bool("worktree-auto-create", false, "")
+	cmd.Flags().Bool("worktree-auto-merge", false, "")
+	cmd.Flags().Bool("worktree-auto-cleanup", false, "")
+	cmd.Flags().String("autonomy-tier", "", "")
 	return cmd
 }
 

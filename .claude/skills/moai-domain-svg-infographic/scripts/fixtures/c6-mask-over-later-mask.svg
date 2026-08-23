@@ -1,0 +1,18 @@
+<!-- expect: -->
+<!-- C6: two connector-label masks partially overlap each other. C6 constrains overlap with a node, so mask-over-mask is outside it. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="400" height="200"
+     role="img" aria-labelledby="c6-mask-over-later-mask-title c6-mask-over-later-mask-desc">
+  <title id="c6-mask-over-later-mask-title">Publish step</title>
+  <desc id="c6-mask-over-later-mask-desc">A connector label sits near a painted region of the diagram.</desc>
+  <defs>
+    <marker id="c6-mask-over-later-mask-arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+      <path d="M 0 0 L 10 4 L 0 8 z" fill="#6B6359"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="400" height="200" fill="#FAF9F5"/>
+  <path d="M 40 170 H 360" stroke="#6B6359" stroke-width="1" fill="none" marker-end="url(#c6-mask-over-later-mask-arrow)"/>
+  <rect x="150" y="90" width="90" height="20" fill="#FFFFFF"/>
+  <text x="195" y="104" font-size="11" text-anchor="middle" fill="#141413">publish</text>
+  <rect x="200" y="100" width="90" height="20" fill="#FFFFFF"/>
+  <text x="245" y="114" font-size="11" text-anchor="middle" fill="#141413">retry</text>
+</svg>

@@ -94,6 +94,18 @@ Issue 标题确定后,在创建 Issue 前用 `gh issue list --repo <目标仓库
 
 `/moai feedback` 创建 Issue 的目标仓库由 `.moai/config/sections/feedback.yaml` 的 `feedback.repository` 值设定。默认值为 `modu-ai/moai-adk`(MoAI-ADK 工具仓库本身),维护 fork 的用户可将该值改为自己的 fork 仓库以重定向反馈。
 
+### 提交前确认
+
+`/moai feedback` 在创建 Issue 之前会先展示将要发布的内容 — 标题、完整正文,以及已遮蔽值(密钥、令牌、主目录绝对路径)的摘要 — 然后询问是否继续。是否询问由 `.moai/config/sections/feedback.yaml` 的 `feedback.auto_submit` 值决定:发行默认值 `false` 每次都会询问,`true` 则不询问直接提交。
+
+```yaml
+feedback:
+    repository: modu-ai/moai-adk
+    auto_submit: false
+```
+
+`moai init` 的安装向导也会询问该值,之后可在 Web 控制台的 Feedback 部分修改。设为 `true` 只会跳过询问,遮蔽处理照常运行;被判定为安全漏洞报告的内容仍会被拒绝,并引导至非公开的 advisory 途径而非公开 Issue。
+
 ## 反馈类型
 
 ### Bug 报告

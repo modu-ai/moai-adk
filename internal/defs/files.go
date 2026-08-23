@@ -29,4 +29,5 @@ const (
 	LSPYAML         = "lsp.yaml"
 	DesignYAML      = "design.yaml"
 	ReportYAML      = "report.yaml"
+	FeedbackYAML    = "feedback.yaml"
 )

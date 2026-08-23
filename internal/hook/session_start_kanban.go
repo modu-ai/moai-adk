@@ -177,7 +177,14 @@ func kanbanLeadNotice(runID, root, lang string) string {
 	if spec := os.Getenv(config.EnvMoaiKanbanSpec); spec != "" {
 		context = append(context, fmt.Sprintf(m.specLine, spec))
 	}
-	context = append(context, fmt.Sprintf(m.backlogSummary, queuedBacklogCount(root)))
+	// The queue summary is guidance, so it answers to workflow.todo.enabled
+	// (SPEC-TODO-ENABLE-FLAG-001 REQ-2 surface 1). An operator who turned the
+	// backlog off is not told how many cards are waiting in it, in any locale.
+	// The queue itself is untouched and `moai todo` keeps working (REQ-3) —
+	// what disappears is the standing-context line, not the feature.
+	if config.TodoEnabledForRoot(root) {
+		context = append(context, fmt.Sprintf(m.backlogSummary, queuedBacklogCount(root)))
+	}
 	blocks = append(blocks, strings.Join(context, "\n"))
 
 	return strings.Join(blocks, "\n\n") + "\n"

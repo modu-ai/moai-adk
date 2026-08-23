@@ -22,11 +22,13 @@ func seedTypedFixtures(t *testing.T, root string, names ...string) {
 }
 
 // m3ReclassifiedSeamSections는 SPEC-WEBCONF-SIMPLIFY-001 M3가 RouteExcluded로
-// 재분류한 8개 전 seam 섹션이다. 이 섹션들의 PersistSeam FieldDef 정의는 잔존하며
+// 재분류한 전 seam 섹션 중 지금도 RouteExcluded인 것들이다 (feedback은
+// SPEC-FEEDBACK-AUTO-SUBMIT-001 M7에서 RouteSeam으로 재개방되어 빠졌다 — 면제
+// 목록에 남겨두면 재개방된 섹션의 라우트 불변식이 검사되지 않는다). 이 섹션들의 PersistSeam FieldDef 정의는 잔존하며
 // (config keys persist), WriteSectionViaSeam이 이제 쓰기를 거부한다 (web write
 // path removed). 구조 불변식 검증에서 이 섹션들을 엄격 RouteSeam 체크에서 제외한다.
 var m3ReclassifiedSeamSections = map[string]bool{
-	"workflow": true, "harness": true, "ralph": true, "feedback": true,
+	"workflow": true, "harness": true, "ralph": true,
 	"observability": true, "security": true, "handoff": true, "cache": true,
 }
 
@@ -458,6 +460,7 @@ func TestSchemaCurrentValuesReadsAllSections(t *testing.T) {
 		"ralph.lint_as_instruction":                    "true",
 		"ralph.warn_as_instruction":                    "false",
 		"feedback.repository":                          "modu-ai/moai-adk",
+		"feedback.auto_submit":                         "false",
 		"observability.retention_days":                 "30",
 		"security.permission.strict_mode":              "false",
 		"git_strategy.mode":                            "team",
