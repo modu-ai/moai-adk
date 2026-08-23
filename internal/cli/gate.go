@@ -140,6 +140,10 @@ func mapConfigGateToQuality(g config.GateConfig) *quality.GateConfig {
 		VetTimeout:  g.VetTimeoutDuration(),
 		LintTimeout: g.LintTimeoutDuration(),
 		TestTimeout: g.TestTimeoutDuration(),
+
+		TypecheckEnabled: g.Typecheck.Enabled,
+		TypecheckCommand: g.Typecheck.Command,
+		TypecheckTimeout: g.TypecheckTimeoutDuration(),
 	}
 	// Map gate.disabled_steps through verbatim (issue #1265): the runner reads
 	// FALSE as "skip this step", so normalising values here would silently stop

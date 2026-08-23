@@ -131,13 +131,16 @@ func workflowHasAuditBlock(content string) bool {
 }
 
 // insertAuditBlockUnderWorkflow inserts a new audit block right after the
-// `workflow:` line, preserving every surrounding line. opts carries the values
-// to seed the inserted block with.
+// `workflow:` line, preserving every surrounding line and matching the
+// existing children's indentation (workflowChildIndent — sibling keys of one
+// mapping must share indentation, and the shipped template indents at 4
+// spaces where a hardcoded 2-space insert would re-parent every later
+// workflow child). opts carries the values to seed the inserted block with.
 func insertAuditBlockUnderWorkflow(content string, opts InitOptions) string {
 	lines := splitLines(content)
 	for i, line := range lines {
 		if strings.TrimSpace(line) == "workflow:" {
-			block := buildAuditBlockLines(opts, "  ")
+			block := buildAuditBlockLines(opts, workflowChildIndent(content))
 			rest := append([]string{}, lines[i+1:]...)
 			out := append(append([]string{}, lines[:i+1]...), block...)
 			out = append(out, rest...)
@@ -198,15 +201,17 @@ func patchAuditLeaves(content string, opts InitOptions) string {
 }
 
 // insertCodexReviewGateBlock inserts a `codex.review_gate.enabled: true` block
-// right after the `workflow:` line when it does not yet exist.
+// right after the `workflow:` line when it does not yet exist, matching the
+// existing children's indentation (workflowChildIndent).
 func insertCodexReviewGateBlock(content string) string {
+	indent := workflowChildIndent(content)
 	lines := splitLines(content)
 	for i, line := range lines {
 		if strings.TrimSpace(line) == "workflow:" {
 			block := []string{
-				"  codex:",
-				"    review_gate:",
-				"      enabled: true",
+				indent + "codex:",
+				indent + indent + "review_gate:",
+				indent + indent + indent + "enabled: true",
 			}
 			rest := append([]string{}, lines[i+1:]...)
 			out := append(append([]string{}, lines[:i+1]...), block...)

@@ -124,8 +124,12 @@ logs/*
 # Cross-tool artifacts (Codex CLI — local-only, not distributed)
 # ===========================================
 .codex/
+# Template-distributed Codex agent artifacts ARE committed (SPEC-CODEX-DUAL-AGENTS-001);
+# re-include the template subtree excluded by the bare .codex/ rule above.
+!internal/template/templates/.codex/
 .agents/
-AGENTS.md
+# AGENTS.md is NOT ignored: the root file is this repository's tracked contract
+# document, and the template mirror ships it to users.
 
 # ===========================================
 # Secrets and Credentials (CRITICAL)

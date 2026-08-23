@@ -42,8 +42,8 @@ type destructiveSite struct {
 // key identifies a registry row independently of its count and assignment.
 func (s destructiveSite) key() string { return s.File + " " + s.Function }
 
-// destructiveTargetRegistry is the registry itself: 11 (file, function) rows
-// covering 18 call sites, matching the source scan the drift guard performs.
+// destructiveTargetRegistry is the registry itself: 12 (file, function) rows
+// covering 22 call sites, matching the source scan the drift guard performs.
 //
 // Rows carry either a Protection or an Exemption, never both and never neither.
 // The exempt rows rest on two materially different grounds — same-call rewind
@@ -64,6 +64,19 @@ var destructiveTargetRegistry = []destructiveSite{
 			".claude/skills/moai* glob matching a user-authored moai-prefixed skill — now " +
 			"lands in the pre-clean backup too, so nothing under a managed root leaves " +
 			"without either a redeploy or a copy behind.",
+	},
+	{
+		File: "internal/cli/update/deploy/deploy.go", Function: "removeSymlink", Sites: 4,
+		Protection: "SPEC-CLI-CLEAN-SYMLINK-001 (REQ-CSL-002..004): all four sites remove a " +
+			"symbolic link ENTRY, and os.RemoveAll never follows a symlink, so the target " +
+			"tree is structurally out of reach. The live-file-link branch additionally copies " +
+			"the target bytes (read through the link) into the pre-clean backup BEFORE the " +
+			"removal and aborts on copy failure — the same backup-first ordering as " +
+			"backupThenRemove. The dangling branch has no target to lose; the live-directory " +
+			"branch removes the link only and never reads, walks, or backs up through it " +
+			"(REQ-CSL-003). The link itself is user state the run deliberately withdraws — " +
+			"a lead-ratified disposition (plan.md D-5) surfaced by a progress line naming " +
+			"the path and form, not by a backup.",
 	},
 	{
 		File: "internal/cli/update/deploy/deploy.go", Function: "MigrateLegacyMemoryDir", Sites: 2,

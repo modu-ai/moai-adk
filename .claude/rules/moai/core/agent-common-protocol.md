@@ -32,15 +32,14 @@ The MoAI orchestrator collects all user preferences before delegating to subagen
 
 ### Hook Invocation Surface
 
-The orchestrator interacts with three hook scripts that mechanically enforce orchestrator-discipline obligations (exit-code semantics: stdout JSON is honored only on exit 0 — on exit 2 it is discarded and only stderr is surfaced):
-
-| Hook script | Trigger | Exit-code semantics |
-|-------------|---------|---------------------|
-| `.claude/hooks/moai/status-transition-ownership.sh` | PostToolUse on Write/Edit of `.moai/specs/SPEC-*/{spec,plan,acceptance}.md` body | exit 0 always (advisory; audit-logged to `.moai/logs/status-transition-audit.log`; exit-2 blocking reserved for future enforcement) |
-| `.claude/hooks/moai/sync-phase-quality-gate.sh` | Stop hook on sync-phase commit completion | exit 0 always; failing check emits advisory `systemMessage`; blocking mode (opt-in `MOAI_SYNC_GATE_BLOCKING=1`) emits stdout JSON `{"decision":"block"}` |
-| `.claude/hooks/moai/team-ac-verify.sh` | TaskCompleted in team mode (dormant — harness `thorough` + team prerequisites) | exit 0 always; rejection via stdout JSON `{"continue":false,"stopReason":...,"ledger_note":...}` (`decision` NOT valid for TaskCompleted) |
-
-Full per-row owning-policy detail and the hook subagent-boundary acceptance criterion (grep verifying no hook invokes AskUserQuestion): `agent-common-protocol-reference.md` § Hook Invocation Surface detail.
+Three hook scripts mechanically enforce orchestrator-discipline obligations:
+`status-transition-ownership.sh` (PostToolUse on SPEC-artifact writes, advisory),
+`sync-phase-quality-gate.sh` (Stop hook on sync-phase commit, advisory unless
+`MOAI_SYNC_GATE_BLOCKING=1`), and `team-ac-verify.sh` (TaskCompleted in team mode, dormant). All
+three exit 0 always and signal through stdout JSON — exit-code semantics: stdout JSON is honored
+only on exit 0; on exit 2 it is discarded and only stderr is surfaced. Per-row triggers, JSON
+shapes, owning policy, and the subagent-boundary acceptance criterion:
+`agent-common-protocol-reference.md` § Hook Invocation Surface detail.
 
 #### Orchestrator translation responsibility
 
@@ -84,16 +83,27 @@ On receiving a blocker report, the orchestrator:
 
 ### Ledger Closure
 
-The **ledger-closure invariant** (grounded in `github.com/wquguru/harness-books` book1 ch04 "账本闭环"): an aborted `Agent()` delegation MUST NOT leave a **dangling tool_use** — an open promise with no matching result — in the orchestrator's own context. This is the in-session interrupt analogue of the model-API rule that every `tool_use` receives a `tool_result` (persistence-layer analogue: `session-handoff.md` Block 3-4 preconditions).
+The **ledger-closure invariant**: an aborted `Agent()` delegation leaves no **dangling tool_use** —
+an open promise with no matching result — in the orchestrator's own context. This is the in-session
+interrupt analogue of the model-API rule that every `tool_use` receives a `tool_result`.
 
-[ZONE:Evolvable] [HARD] The orchestrator MUST close the ledger on any aborted delegation. Four clauses bind this obligation (full clause bodies + grounding: `agent-common-protocol-reference.md` § Ledger Closure clause bodies):
+[ZONE:Evolvable] [HARD] The orchestrator MUST close the ledger on any aborted delegation. Four
+clauses bind it (bodies + grounding: `agent-common-protocol-reference.md` § Ledger Closure clause
+bodies):
 
-- **(a) Synthetic result on aborted Agent() delegation** — on abort (user interrupt, parent-abort propagation, or timeout), emit a short prose **synthetic ledger-closing artifact** (what was delegated, that it did not return, abort reason) into the orchestrator's own context before the next delegation. A blocker report is a *return*, not an *abort* — this clause covers only no-return-at-all.
-- **(b) team-ac-verify.sh reject-path `ledger_note`** — on a TaskCompleted rejection, inject the hook's `ledger_note` as the ledger-closing artifact for that task.
-- **(c) TeammateIdle exit-2 task closure** — a task rejected by TeammateIdle MUST NOT be left open without a reassignment owner (re-assign via new teammate, refined re-delegation, or close-as-obsolete with a synthetic closing note).
-- **(d) Truthfulness** — the artifact MUST be a real summary, not a fabricated "success" (`verification-claim-integrity.md` §1.1 surface 1).
+- **(a) Synthetic result on aborted `Agent()` delegation** — on abort (user interrupt, parent-abort
+  propagation, or timeout), emit a short prose synthetic ledger-closing artifact naming what was
+  delegated, that it did not return, and the abort reason, before the next delegation. A blocker
+  report is a *return*, not an *abort*; this clause covers no-return-at-all.
+- **(b) `team-ac-verify.sh` reject-path `ledger_note`** — on a TaskCompleted rejection, inject the
+  hook's `ledger_note` as that task's ledger-closing artifact.
+- **(c) TeammateIdle exit-2 task closure** — a rejected task is never left open without a
+  reassignment owner (new teammate, refined re-delegation, or close-as-obsolete with a closing note).
+- **(d) Truthfulness** — the artifact is a real summary, never a fabricated "success"
+  (`verification-claim-integrity.md` §1.1 surface 1).
 
-**Scope-boundary note.** Ledger Closure is a sibling of (not nested in) Hook Invocation Surface under the User Interaction Boundary H2.
+**Scope-boundary note.** Ledger Closure is a sibling of (not nested in) Hook Invocation Surface
+under the User Interaction Boundary H2.
 
 ## Language Handling
 
@@ -127,11 +137,13 @@ The reviewer mode operates as a fresh-judgment auditor:
 
 ## MCP Fallback Strategy
 
-[ZONE:Evolvable] [HARD] Maintain effectiveness without MCP servers.
+[ZONE:Evolvable] [HARD] Maintain effectiveness without MCP servers. Where one is unavailable, use
+WebSearch for targeted queries, WebFetch to verify each URL and read the official documentation,
+then continue — architecture and analysis quality must not depend on MCP availability.
 
-MoAI does not provision MCP servers; use WebSearch and WebFetch to look up library documentation and established best-practice patterns: (1) WebSearch with targeted queries → (2) WebFetch to verify each URL and read the official documentation → (3) deliver established best-practice patterns → (4) continue work — architecture/analysis quality must not depend on MCP availability.
-
-GLM-backend routing: when the session runs on the GLM backend (`moai glm` or the GLM teammate panes of `moai cg`), web search / web fetch / image read route to the z.ai MCP tools instead of the built-in `WebSearch` / `WebFetch` / `Read`. HARD routing table: `.claude/rules/moai/core/glm-web-tooling.md`.
+GLM-backend routing: under `moai glm` or the GLM teammate panes of `moai cg`, web search, web
+fetch, and image read route to the z.ai MCP tools instead of the built-ins. HARD routing table:
+`.claude/rules/moai/core/glm-web-tooling.md`.
 
 ## CLAUDE.md Reference
 
@@ -154,14 +166,19 @@ A PreToolUse hook observes every spawn and records the outcome to `.moai/logs/ag
 
 ## Background Agent Execution
 
-[ZONE:Evolvable] [HARD] As of Claude Code v2.1.198, subagents run in the background by **default**; the runtime chooses foreground only when it needs the result. The default changes *where* a subagent runs, not *what* it may do — a background subagent still surfaces every permission prompt in the main session (since v2.1.186 the prompt names the asking subagent). MoAI aligns with this default and does not set the `background:` frontmatter field. (Runtime-history rationale: `agent-common-protocol-reference.md` § Background Agent Execution rationale.)
+[ZONE:Evolvable] [HARD] Since Claude Code v2.1.198 subagents run in the background by **default**;
+the runtime chooses foreground only when it needs the result. The default changes *where* a
+subagent runs, not *what* it may do — a background subagent still surfaces every permission prompt
+in the main session. MoAI aligns with the default and does not set the `background:` frontmatter
+field.
 
-The retained safeguard is **concurrency, not backgrounding** — it targets the actual hazard, a file-write race between agents:
-
-- **Read-only tasks** (research, analysis, review): safe in the background; while one is in flight the orchestrator continues independent read-only work
-- **Write tasks**: the runtime chooses foreground or background; the permission prompt surfaces either way — do not force the mode via `background:`
-- **Concurrency**: never run two write-capable agents at once; orchestrator work concurrent with a write-capable agent stays read-only
-- **Pre-approved writes**: add path patterns to settings.json `permissions.allow` to reduce prompts
+The retained safeguard is **concurrency, not backgrounding**, because the actual hazard is a
+file-write race: never run two write-capable agents at once, and keep orchestrator work concurrent
+with a write-capable agent read-only. Read-only tasks are safe in the background while the
+orchestrator continues other read-only work; for write tasks, let the runtime choose the mode rather
+than forcing it. Pre-approved write paths in settings.json `permissions.allow` reduce prompts.
+Runtime-history rationale: `agent-common-protocol-reference.md` § Background Agent Execution
+rationale.
 
 ## Tool Usage Guidelines
 
@@ -209,18 +226,20 @@ When a tool call fails:
 
 ### Super-Advisor Escalation (E1-E4)
 
-When recovery via the 3-retry ceiling is insufficient OR a higher-reasoning consultation is warranted, the orchestrator escalates to the **super-advisor** agent. super-advisor returns **non-binding prescriptions**; the orchestrator remains the decision owner. DISTINCT from auditor verdicts — `plan-auditor` / `sync-auditor` own binding PASS/FAIL judgment; "should this PASS?" → an auditor, "what should I do here?" → super-advisor.
+When the 3-retry ceiling is insufficient OR a higher-reasoning consultation is warranted, the
+orchestrator escalates to **super-advisor**, which returns **non-binding prescriptions** — the
+orchestrator remains the decision owner. DISTINCT from auditor verdicts: `plan-auditor` /
+`sync-auditor` own binding PASS/FAIL ("should this PASS?"); super-advisor answers "what should I do
+here?".
 
-Entry conditions (exhaustive):
-
-| Trigger | Condition | Example |
-|---------|-----------|---------|
-| **E1 — bug-deadlock** | 3+ consecutive same-diagnostic failures | same failing test retried 3 times with the same root-cause hypothesis |
-| **E2 — architecture/design decision point** | A spec-body or plan-body decision with ≥2 viable options, neither obviously correct | "write-through or write-behind?" at L-plan boundary |
-| **E3 — second-opinion request** | Orchestrator uncertainty: < 80% confidence in the next delegation step | ambiguous blocker-report; re-spawn vs user-escalation |
-| **E4 — loop-deadlock** | `/moai loop` or `/moai fix` ceiling-exit per the loop-verdict contract | auto-fix iterations exhausted without green CI |
-
-On trigger: spawn `Agent(general-purpose)` with the super-advisor role profile (Opus + xhigh at max/medium tier; Sonnet + xhigh at low tier — GLM-backed sessions fall back to the session model), receive the prescription, then re-seed the executor or escalate to the user via `AskUserQuestion`. Agent file: `.claude/agents/moai/super-advisor.md`.
+Four entry conditions, exhaustive: **E1** bug-deadlock (3+ consecutive same-diagnostic failures),
+**E2** architecture/design decision point (≥2 viable options, neither obviously correct), **E3**
+second-opinion request (orchestrator confidence below 80% in the next delegation step), **E4**
+loop-deadlock (`/moai loop` or `/moai fix` ceiling-exit). On trigger: spawn
+`Agent(general-purpose)` with the super-advisor role profile, receive the prescription, then
+re-seed the executor or escalate to the user via `AskUserQuestion`. Worked examples and the
+model-tier profile: `agent-common-protocol-reference.md` § Super-Advisor Escalation. Agent file:
+`.claude/agents/moai/super-advisor.md`.
 
 ## Parallel Execution
 
@@ -242,16 +261,20 @@ Three obligations from that file bind here and are restated so they hold without
 
 ### Attributable diff-check doctrinal switch
 
-Default-inversion switch in how the orchestrator COMPOSES the canonical batch: consult the shared diagnostic snapshot via `moai verify check --key-current` (keyed by HEAD SHA) BEFORE re-executing; on all-three attribution match, consume the attributable §E evidence for that dimension INSTEAD of re-executing the corresponding command. This is a composition-time doctrinal switch binding the orchestrator's batch-composition discipline, not a runtime hook. (Full mechanism + fallback contract: `agent-common-protocol-reference.md` § Attributable diff-check detail; pattern file `.claude/rules/moai/workflow/verification-batch-pattern.md`.)
+A default-inversion in how the orchestrator COMPOSES the canonical batch: consult the shared
+diagnostic snapshot via `moai verify check --key-current` (keyed by HEAD SHA) BEFORE re-executing.
 
-**All-three attribution match → CONSUMES the attributable §E evidence (no re-execution) [DEFAULT].** When ALL THREE hold for a verification dimension:
-1. **Snapshot key match** — the §E-cited HEAD SHA equals the current `moai verify check --key-current` key
-2. **Command match** — the §E-cited command matches the snapshot's recorded command
-3. **Output match** — the §E-cited observed output matches the snapshot's recorded output
+**All-three attribution match → CONSUME the attributable §E evidence, do not re-execute [DEFAULT].**
+The three conditions: the §E-cited HEAD SHA equals the current snapshot key; the §E-cited command
+matches the snapshot's recorded command; the §E-cited output matches the snapshot's recorded output.
+The batch then records the snapshot key plus the cited §E evidence path as its baseline-attribution
+(VCI §2) and marks the dimension PASS-attributed rather than PASS-reexecuted.
 
-the batch records the snapshot key + cited §E evidence path as its baseline-attribution per VCI §2 and DOES NOT re-execute that dimension (marked PASS-attributed, not PASS-reexecuted).
-
-**Any mismatch → fallback to re-execution.** On ANY of `snapshot_key_drift` (HEAD SHA changed) / `command_drift` / `missing_section_e` (§E evidence missing or citing no observable output) / `output_drift`, the batch SHALL re-execute the affected dimension — any-mismatch → re-execute, never silent skip. The fallback is logged with the mismatch reason; the VCI §1.1 invariant holds on every path.
+**Any mismatch → re-execute that dimension.** On `snapshot_key_drift`, `command_drift`,
+`missing_section_e`, or `output_drift`, the batch re-executes and logs the mismatch reason — any
+mismatch means re-execute, never silent skip. The VCI §1.1 invariant holds on every path. Full
+mechanism and fallback contract: `agent-common-protocol-reference.md` § Attributable diff-check
+detail; pattern file `.claude/rules/moai/workflow/verification-batch-pattern.md`.
 
 ### Pre-Spawn Sync Check (Multi-Session Race Mitigation)
 

@@ -24,6 +24,9 @@ build: templ-generate ## Build the binary
 	@go run ./internal/template/scripts/gen-catalog-hashes.go --all
 	go build $(LDFLAGS) -o bin/$(BINARY_NAME) ./cmd/moai
 
+agents-emit: ## Regenerate the .codex/agents/moai TOMLs from the neutral .md layer
+	AGENTEMIT_UPDATE=1 go test ./internal/template/agentemit/... -run TestGoldenCommittedArtifactsMatchEmission
+
 release-local: build ## Create a local release for development updates
 	@echo "Creating local release: $(VERSION)"
 	@mkdir -p $(LOCAL_RELEASE_DIR)

@@ -22,6 +22,11 @@
 // Diagnostic tiers:
 //   error    deterministic and structural; always fix before rendering
 //   warning  heuristic (character-advance estimation); confirm against the PNG
+//
+// The error tier covers document structure (SVG001-SVG050) and the
+// accessible-SVG contract (SVG060-SVG064: role, aria-labelledby, <title> first,
+// <desc> present, ids prefixed per diagram). Fixtures exercising the contract in
+// both directions live in fixtures/a11y-present.svg and fixtures/a11y-missing.svg.
 
 import { readFileSync } from 'node:fs';
 
@@ -401,6 +406,82 @@ function lint(src, opts) {
       );
     }
   });
+
+
+  // SVG060 / SVG061 / SVG062 / SVG063 / SVG064 - the accessible-SVG contract.
+  // An SVG carries no accessible name of its own: without these four pieces the
+  // diagram is announced as an unlabelled graphic and none of its <text> is read.
+  if (svg.attrs['aria-hidden'] === 'true') {
+    // Decorative graphic: hidden from assistive technology by contract, so an
+    // accessible name would only add noise. Nothing further to assert.
+  } else {
+    const role = svg.attrs.role;
+    if (role === undefined) {
+      report(
+        ERROR,
+        'SVG060',
+        svg.offset,
+        'root <svg> has no role; an informative diagram needs role="img" (a decorative graphic needs aria-hidden="true" instead)',
+      );
+    } else if (role !== 'img') {
+      report(ERROR, 'SVG060', svg.offset, `root <svg> has role="${role}"; a diagram is a figure and needs role="img"`);
+    }
+
+    const titleEl = svg.children.find((c) => c.name === 'title');
+    const descEl = svg.children.find((c) => c.name === 'desc');
+
+    if (titleEl === undefined) {
+      report(ERROR, 'SVG062', svg.offset, 'root <svg> has no <title>; the diagram has no accessible name');
+    } else if (svg.children[0] !== titleEl) {
+      report(
+        ERROR,
+        'SVG062',
+        titleEl.offset,
+        `<title> must be the first child of <svg>, but <${svg.children[0].name}> precedes it; a later <title> may be ignored`,
+      );
+    }
+
+    if (descEl === undefined) {
+      report(ERROR, 'SVG063', svg.offset, 'root <svg> has no <desc>; state in one sentence what the diagram shows');
+    }
+
+    const labelledBy = svg.attrs['aria-labelledby'];
+    const refs = labelledBy === undefined ? [] : labelledBy.trim().split(/\s+/).filter(Boolean);
+    if (refs.length === 0) {
+      report(
+        ERROR,
+        'SVG061',
+        svg.offset,
+        'root <svg> has no aria-labelledby naming the <title> and <desc> ids; role="img" alone resolves no name',
+      );
+    } else {
+      for (const ref of refs) {
+        if (!ids.has(ref)) {
+          report(ERROR, 'SVG061', svg.offset, `aria-labelledby names "${ref}" but no element declares that id`);
+        }
+      }
+    }
+
+    for (const [el, tag] of [[titleEl, 'title'], [descEl, 'desc']]) {
+      if (el === undefined) continue;
+      const id = el.attrs.id;
+      if (id === undefined) {
+        report(ERROR, 'SVG064', el.offset, `<${tag}> has no id, so aria-labelledby cannot name it`);
+        continue;
+      }
+      if (id === tag) {
+        report(
+          ERROR,
+          'SVG064',
+          el.offset,
+          `<${tag}> uses the bare id "${tag}"; prefix it per diagram (<slug>-${tag}) so two inlined diagrams cannot collide`,
+        );
+      }
+      if (refs.length > 0 && !refs.includes(id)) {
+        report(ERROR, 'SVG061', el.offset, `<${tag} id="${id}"> is not named by aria-labelledby`);
+      }
+    }
+  }
 
   // SVG030 / SVG031 - heuristic text fit against the nearest preceding rect.
   walk(svg, (el) => {

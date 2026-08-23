@@ -1,0 +1,9 @@
+{
+  "session_id": "01a0254f-ab27-7501-99a1-412debbaad39",
+  "transcript_path": "<scratch>/rollout-2026-08-22T02-12-53-01a0254f-ab27-7501-99a1-412debbaad39.jsonl",
+  "cwd": "/private/tmp/claude-501/-Users-goos-MoAI-moai-adk-go/c4f62a74-c1bb-46af-82d0-18f2e78ece9f/scratchpad/t91/proj",
+  "hook_event_name": "SessionStart",
+  "model": "gpt-5.6-sol",
+  "permission_mode": "bypassPermissions",
+  "source": "startup"
+}

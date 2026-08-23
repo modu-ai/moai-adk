@@ -31,6 +31,66 @@ import (
 // 진행하며, 그 착지 전까지의 임시 상향으로 75,000 → 76,000으로 올린다.
 const AlwaysLoadedTokenBudget = 76000
 
+// CodexContractByteCeiling는 루트 AGENTS.md(코덱스 계약층)에 허용되는 바이트 상한이다.
+// codex는 프로젝트 지시문을 바이트 상한 아래에서 읽고 초과분을 **조용히** 잘라낸다 —
+// 문장 중간에서 잘린 규칙은 없는 규칙보다 나쁘다. 완전해 보이기 때문이다.
+//
+// 도출 근거: 신뢰 등록 전(untrusted) 첫 세션의 실효 상한 32,768 B 에서 개인 전역
+// ~/.codex/AGENTS.md 층과 향후 성장을 위한 예비 8,192 B 를 뺀 24,576 B. 상한을 넘기면
+// 가드가 실패한다(경고가 아니다): 잘림 자체가 무신호이므로 이 가드가 유일한 신호다.
+const CodexContractByteCeiling = 24576
+
+// ContractByteBreach는 계약 문서 하나의 상한 위반 측정치다.
+type ContractByteBreach struct {
+	Path     string // 위반 파일 경로
+	Bytes    int    // 실측 바이트
+	Overflow int    // 상한 초과분
+}
+
+// contractDocuments는 바이트 상한이 걸리는 계약 문서 경로를 반환한다: always-loaded 열거
+// (alwaysLoadedSurface)가 내놓는 루트 AGENTS.md 와 그 템플릿 미러. 두 번째 측정 경로를
+// 만들지 않기 위해 규칙 트리를 다시 글로브하지 않고 열거 헬퍼를 재사용한다 —
+// 미러가 상한을 넘으면 사용자 머신에서 잘리므로 라이브 파일 크기와 무관하게 함께 묶인다.
+func contractDocuments(repoRoot string) ([]string, error) {
+	surface, err := alwaysLoadedSurface(repoRoot)
+	if err != nil {
+		return nil, err
+	}
+	agents := filepath.Join(repoRoot, "AGENTS.md")
+	var docs []string
+	for _, p := range surface {
+		if p == agents {
+			docs = append(docs, p)
+		}
+	}
+	if len(docs) == 0 {
+		return nil, nil // 열거에 AGENTS.md 가 없다 — AC-AMC-017 이 잡는 조건이다
+	}
+	docs = append(docs, filepath.Join(repoRoot, "internal", "template", "templates", "AGENTS.md"))
+	return docs, nil
+}
+
+// MeasureContractBytes는 계약 문서들의 바이트 상한 위반을 측정해 반환한다. 위반이 없으면
+// 빈 슬라이스다. 디스크에 없는 파일은 건너뛴다(hermetic: 아직 미러가 없는 트리에서도
+// baseline 이 흔들리지 않는다).
+func MeasureContractBytes(repoRoot string) ([]ContractByteBreach, error) {
+	docs, err := contractDocuments(repoRoot)
+	if err != nil {
+		return nil, err
+	}
+	var breaches []ContractByteBreach
+	for _, p := range docs {
+		fi, statErr := os.Stat(p)
+		if statErr != nil {
+			continue // 없는 파일 → 측정 대상 아님
+		}
+		if n := int(fi.Size()); n > CodexContractByteCeiling {
+			breaches = append(breaches, ContractByteBreach{Path: p, Bytes: n, Overflow: n - CodexContractByteCeiling})
+		}
+	}
+	return breaches, nil
+}
+
 // memoryHeadLineCap / memoryHeadByteCap는 가드가 측정하는 MEMORY.md head 범위를 제한한다.
 // Claude Code auto-memory 로더 상한(첫 200줄 또는 25KB 중 먼저 도달하는 쪽)과 일치한다.
 const (
@@ -100,10 +160,16 @@ func hasPathsRestriction(path string) bool {
 }
 
 // alwaysLoadedSurface는 repoRoot 기준 always-loaded 컨텍스트 표면을 나열한다: frontmatter에
-// `paths:` 제한이 없는 모든 .claude/rules/moai/**/*.md 파일(정렬), 이어서 3개의 고정 표면
-// 슬롯(CLAUDE.md, .claude/output-styles/moai/moai.md, MEMORY.md). 3개 고정 슬롯은 디스크에
-// 파일이 없어도 항상 목록에 포함된다 — 없는 파일은 측정 시 0 토큰으로 계산한다(hermetic:
-// machine-specific auto-memory 사본이 아니라 repo-relative MEMORY.md만 측정).
+// `paths:` 제한이 없는 모든 .claude/rules/moai/**/*.md 파일(정렬), 이어서 4개의 고정 표면
+// 슬롯(CLAUDE.md, AGENTS.md, .claude/output-styles/moai/moai.md, MEMORY.md). 4개 고정 슬롯은
+// 디스크에 파일이 없어도 항상 목록에 포함된다 — 없는 파일은 측정 시 0 토큰으로 계산한다
+// (hermetic: machine-specific auto-memory 사본이 아니라 repo-relative MEMORY.md만 측정).
+//
+// AGENTS.md 슬롯(SPEC-AGENTS-MD-CANON-001 REQ-AMC-008): 루트 AGENTS.md는 CLAUDE.md의
+// `@`-import이므로 존재하는 순간부터 always-loaded다. 이 슬롯이 없으면 규칙 파일에서
+// AGENTS.md로 옮긴 조항이 always-loaded 컨텍스트에는 그대로 남은 채 측정에서만 사라져,
+// 일어나지 않은 감축이 다이어트로 기록된다. hermetic 처리를 그대로 쓰므로 AGENTS.md가 없는
+// 트리의 baseline은 영향을 받지 않는다.
 func alwaysLoadedSurface(repoRoot string) ([]string, error) {
 	rulesDir := filepath.Join(repoRoot, ".claude", "rules", "moai")
 	var ruleFiles []string
@@ -124,9 +190,11 @@ func alwaysLoadedSurface(repoRoot string) ([]string, error) {
 	}
 	sort.Strings(ruleFiles)
 
-	// 3개 고정 표면 슬롯을 항상 고정 순서로 추가한다.
+	// 4개 고정 표면 슬롯을 항상 고정 순서로 추가한다. AGENTS.md는 CLAUDE.md의 `@`-import라
+	// 바로 뒤에 둔다.
 	fixed := []string{
 		filepath.Join(repoRoot, "CLAUDE.md"),
+		filepath.Join(repoRoot, "AGENTS.md"),
 		filepath.Join(repoRoot, ".claude", "output-styles", "moai", "moai.md"),
 		filepath.Join(repoRoot, "MEMORY.md"),
 	}

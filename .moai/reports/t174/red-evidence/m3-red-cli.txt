@@ -1,0 +1,1250 @@
+2026/08/22 10:20:58 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t174/internal/cli/.moai/config/sections
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.2   go 1.26.4   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+2026/08/22 10:20:59 INFO SUNSET_CONFIG_DORMANT_NOTICE spec="SPEC-V3R2-MIG-003 REQ-018" yaml_path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunInit_WizardAuditSelectionPersists2426015732/002/tier-proj/.moai/config/sections/sunset.yaml advice="SunsetConfig has no runtime hot path; activation requires a new SPEC"
+--- FAIL: TestRunInit_WizardAuditSelectionPersists (0.43s)
+    init_audit_wiring_test.go:56: deployed workflow.yaml missing "audit:"; got:
+        workflow:
+            # Optional default mode for /moai run and /moai design.
+            # Values: autopilot | loop | team. Empty/absent = harness-based auto-selection.
+            # Precedence: CLI --mode flag > this field > harness auto.
+            # @MX:WARN - Default mode field is utility-skill-only consumer. @MX:REASON - Field is read by run skill dispatcher; changing semantics without updating dispatcher breaks behavior contract.
+            default_mode: ""
+            # agentic_loop: pipeline-level completion-loop iteration ceiling, loaded by
+            # internal/config AgenticLoopConfig (types.go) with default from
+            # DefaultAgenticLoopMaxIterations (defaults.go); also prose-read by the
+            # orchestrator for the moai.md Agentic Completion Loop termination clause.
+            # DISTINCT from loop_prevention.max_iterations (per-operation diagnostic
+            # fix-loop bound) — separate blocks, separate semantics.
+            agentic_loop:
+                max_iterations: 10
+            auto_clear:
+                after_plan: true
+                after_run: false
+                enabled: true
+                token_threshold: 150000
+            execution_mode: auto
+            # Iteration-ceiling precedence: CLI --max flag > ralph.yaml loop.max_iterations
+            # > workflow.yaml loop_prevention.max_iterations (this block — the lowest-
+            # precedence documented ceiling surface for the diagnostic fix-loop). The
+            # memory-safe 50-iteration checkpoint (loop workflow Step 2) is an orthogonal
+            # memory-pressure safeguard, not a fourth ceiling.
+            loop_prevention:
+                failure_pattern_detection: true
+                max_iterations: 100
+                max_retries_per_operation: 3
+            # Worktree automation settings (per the canonical worktree contract).
+            # Values mirror internal/config/defaults.go (WorkflowWorktreeConfig): all
+            # three auto-* toggles default false — the EnterWorktree-first policy.
+            # auto_create: read once (internal/cli/worktree_advisory.go) only to select
+            # advisory wording; it does not gate worktree creation.
+            # auto_merge / auto_cleanup: declared but not read — no code path consumes
+            # them (reserved). Kept aligned with defaults.go so the shipped file does
+            # not state the opposite of the recorded policy.
+            worktree:
+                auto_create: false
+                auto_merge: false
+                auto_cleanup: false
+                tmux_preferred: true
+                # session_name_pattern: declared but not read — no code builds a session
+                # name from this value (reserved). Retained as a placeholder only.
+                session_name_pattern: "moai-{ProjectName}-{SPEC-ID}"
+                # Sparse checkout paths for large monorepos (Claude Code v2.1.76+)
+                # Uncomment and customize to speed up worktree creation
+                # sparse_paths:
+                #     - "src/"
+                #     - "tests/"
+                #     - "config/"
+            token_budget:
+                plan: 30000
+                run: 180000
+                sync: 40000
+            # codex.review_gate: opt-in Stop-hook gate that asks the codex reviewer to
+            # look at your uncommitted changes at turn-end and keeps the turn going when
+            # the review comes back failing. Requires the optional `codex` binary.
+            # Ships OFF: set enabled to true to turn it on. While it is off the hook
+            # short-circuits in shell and costs nothing per turn.
+            codex:
+                review_gate:
+                    enabled: false
+            # multi.review_gate: opt-in Stop-hook gate for the multi-model review path.
+            # It reads the most recent convergence result of the configured review
+            # backends and keeps the turn going only when a required backend failed;
+            # disagreement between advisory-only backends never blocks. Ships OFF: set
+            # enabled to true to turn it on. While it is off the hook short-circuits in
+            # shell and costs nothing per turn.
+            multi:
+                review_gate:
+                    enabled: false
+            # workflow_agents: dynamic-workflow purpose taxonomy -> {model, effort}
+            # DEFAULTS. This block is the SSOT for workflow agent() model/effort
+            # defaults; per-script literals in .claude/workflows/*.js override it.
+            # Values are validated against the closed sets: model in
+            # {inherit, sonnet, opus}, effort in {low, medium, high, xhigh, max}.
+            workflow_agents:
+                read-only-extract: { model: sonnet, effort: low }
+                mechanical-transform: { model: opus, effort: low }
+                synthesize: { model: opus, effort: low }
+                research: { model: opus, effort: medium }
+                verify-judge: { model: opus, effort: medium }
+                implement: { model: opus, effort: medium }
+                design-architecture: { model: opus, effort: high }
+            # model_routing: LEGACY flat block (Tier x Phase -> {model, effort}).
+            # DEPRECATED — retained as a `medium` profile alias for one backward-compat
+            # cycle. Values mirror the
+            # `medium` profile below. New code reads `model_routing_profiles` via
+            # RouteModelFor(specTier, phase, perfTier); this flat key is NOT read by
+            # the 3-arg accessor. Existing external readers continue to work.
+            # Key format: <TIER>-<phase> where Tier in {S, M, L} and Phase in
+            # {plan, run, sync, mx}. Closed sets: model in
+            # {inherit, sonnet, opus, glm, fable}, effort in {low, medium, high, xhigh, max}.
+            model_routing:
+                S-plan: { model: opus, effort: low }
+                S-run: { model: opus, effort: medium }
+                S-sync: { model: opus, effort: low }
+                S-mx: { model: sonnet, effort: low }
+                M-plan: { model: opus, effort: medium }
+                M-run: { model: opus, effort: medium }
+                M-sync: { model: opus, effort: low }
+                M-mx: { model: sonnet, effort: low }
+                L-plan: { model: opus, effort: high }
+                L-run: { model: opus, effort: medium }
+                L-sync: { model: opus, effort: medium }
+                L-mx: { model: sonnet, effort: low }
+            # model_routing_profiles: No-Haiku 3-tier policy — perfTier -> (Tier x Phase) -> {model, effort}.
+            # 3 perfTiers (high/medium/low) × 12 cells (S/M/L × plan/run/sync/mx) = 36
+            # entries. The orchestrator consults RouteModelFor(specTier, phase,
+            # perfTier) at spawn time. `medium` is the default performance tier
+            # (populated by `moai init --model-policy`). Closed sets: model in
+            # {inherit, sonnet, opus, glm, fable}, effort in {low, medium, high, xhigh, max}.
+            model_routing_profiles:
+                high:
+                    S-plan: { model: opus, effort: medium }
+                    S-run: { model: opus, effort: high }
+                    S-sync: { model: opus, effort: low }
+                    S-mx: { model: sonnet, effort: low }
+                    M-plan: { model: opus, effort: high }
+                    M-run: { model: opus, effort: high }
+                    M-sync: { model: opus, effort: medium }
+                    M-mx: { model: sonnet, effort: low }
+                    L-plan: { model: opus, effort: high }
+                    L-run: { model: opus, effort: max }
+                    L-sync: { model: opus, effort: medium }
+                    L-mx: { model: sonnet, effort: low }
+                medium:
+                    S-plan: { model: opus, effort: low }
+                    S-run: { model: opus, effort: medium }
+                    S-sync: { model: opus, effort: low }
+                    S-mx: { model: sonnet, effort: low }
+                    M-plan: { model: opus, effort: medium }
+                    M-run: { model: opus, effort: medium }
+                    M-sync: { model: opus, effort: low }
+                    M-mx: { model: sonnet, effort: low }
+                    L-plan: { model: opus, effort: high }
+                    L-run: { model: opus, effort: medium }
+                    L-sync: { model: opus, effort: medium }
+                    L-mx: { model: sonnet, effort: low }
+                low:
+                    S-plan: { model: opus, effort: low }
+                    S-run: { model: opus, effort: low }
+                    S-sync: { model: sonnet, effort: low }
+                    S-mx: { model: sonnet, effort: low }
+                    M-plan: { model: opus, effort: low }
+                    M-run: { model: opus, effort: low }
+                    M-sync: { model: sonnet, effort: low }
+                    M-mx: { model: sonnet, effort: low }
+                    L-plan: { model: opus, effort: low }
+                    L-run: { model: opus, effort: medium }
+                    L-sync: { model: sonnet, effort: low }
+                    L-mx: { model: sonnet, effort: low }
+    init_audit_wiring_test.go:56: deployed workflow.yaml missing "model: claude"; got:
+        workflow:
+            # Optional default mode for /moai run and /moai design.
+            # Values: autopilot | loop | team. Empty/absent = harness-based auto-selection.
+            # Precedence: CLI --mode flag > this field > harness auto.
+            # @MX:WARN - Default mode field is utility-skill-only consumer. @MX:REASON - Field is read by run skill dispatcher; changing semantics without updating dispatcher breaks behavior contract.
+            default_mode: ""
+            # agentic_loop: pipeline-level completion-loop iteration ceiling, loaded by
+            # internal/config AgenticLoopConfig (types.go) with default from
+            # DefaultAgenticLoopMaxIterations (defaults.go); also prose-read by the
+            # orchestrator for the moai.md Agentic Completion Loop termination clause.
+            # DISTINCT from loop_prevention.max_iterations (per-operation diagnostic
+            # fix-loop bound) — separate blocks, separate semantics.
+            agentic_loop:
+                max_iterations: 10
+            auto_clear:
+                after_plan: true
+                after_run: false
+                enabled: true
+                token_threshold: 150000
+            execution_mode: auto
+            # Iteration-ceiling precedence: CLI --max flag > ralph.yaml loop.max_iterations
+            # > workflow.yaml loop_prevention.max_iterations (this block — the lowest-
+            # precedence documented ceiling surface for the diagnostic fix-loop). The
+            # memory-safe 50-iteration checkpoint (loop workflow Step 2) is an orthogonal
+            # memory-pressure safeguard, not a fourth ceiling.
+            loop_prevention:
+                failure_pattern_detection: true
+                max_iterations: 100
+                max_retries_per_operation: 3
+            # Worktree automation settings (per the canonical worktree contract).
+            # Values mirror internal/config/defaults.go (WorkflowWorktreeConfig): all
+            # three auto-* toggles default false — the EnterWorktree-first policy.
+            # auto_create: read once (internal/cli/worktree_advisory.go) only to select
+            # advisory wording; it does not gate worktree creation.
+            # auto_merge / auto_cleanup: declared but not read — no code path consumes
+            # them (reserved). Kept aligned with defaults.go so the shipped file does
+            # not state the opposite of the recorded policy.
+            worktree:
+                auto_create: false
+                auto_merge: false
+                auto_cleanup: false
+                tmux_preferred: true
+                # session_name_pattern: declared but not read — no code builds a session
+                # name from this value (reserved). Retained as a placeholder only.
+                session_name_pattern: "moai-{ProjectName}-{SPEC-ID}"
+                # Sparse checkout paths for large monorepos (Claude Code v2.1.76+)
+                # Uncomment and customize to speed up worktree creation
+                # sparse_paths:
+                #     - "src/"
+                #     - "tests/"
+                #     - "config/"
+            token_budget:
+                plan: 30000
+                run: 180000
+                sync: 40000
+            # codex.review_gate: opt-in Stop-hook gate that asks the codex reviewer to
+            # look at your uncommitted changes at turn-end and keeps the turn going when
+            # the review comes back failing. Requires the optional `codex` binary.
+            # Ships OFF: set enabled to true to turn it on. While it is off the hook
+            # short-circuits in shell and costs nothing per turn.
+            codex:
+                review_gate:
+                    enabled: false
+            # multi.review_gate: opt-in Stop-hook gate for the multi-model review path.
+            # It reads the most recent convergence result of the configured review
+            # backends and keeps the turn going only when a required backend failed;
+            # disagreement between advisory-only backends never blocks. Ships OFF: set
+            # enabled to true to turn it on. While it is off the hook short-circuits in
+            # shell and costs nothing per turn.
+            multi:
+                review_gate:
+                    enabled: false
+            # workflow_agents: dynamic-workflow purpose taxonomy -> {model, effort}
+            # DEFAULTS. This block is the SSOT for workflow agent() model/effort
+            # defaults; per-script literals in .claude/workflows/*.js override it.
+            # Values are validated against the closed sets: model in
+            # {inherit, sonnet, opus}, effort in {low, medium, high, xhigh, max}.
+            workflow_agents:
+                read-only-extract: { model: sonnet, effort: low }
+                mechanical-transform: { model: opus, effort: low }
+                synthesize: { model: opus, effort: low }
+                research: { model: opus, effort: medium }
+                verify-judge: { model: opus, effort: medium }
+                implement: { model: opus, effort: medium }
+                design-architecture: { model: opus, effort: high }
+            # model_routing: LEGACY flat block (Tier x Phase -> {model, effort}).
+            # DEPRECATED — retained as a `medium` profile alias for one backward-compat
+            # cycle. Values mirror the
+            # `medium` profile below. New code reads `model_routing_profiles` via
+            # RouteModelFor(specTier, phase, perfTier); this flat key is NOT read by
+            # the 3-arg accessor. Existing external readers continue to work.
+            # Key format: <TIER>-<phase> where Tier in {S, M, L} and Phase in
+            # {plan, run, sync, mx}. Closed sets: model in
+            # {inherit, sonnet, opus, glm, fable}, effort in {low, medium, high, xhigh, max}.
+            model_routing:
+                S-plan: { model: opus, effort: low }
+                S-run: { model: opus, effort: medium }
+                S-sync: { model: opus, effort: low }
+                S-mx: { model: sonnet, effort: low }
+                M-plan: { model: opus, effort: medium }
+                M-run: { model: opus, effort: medium }
+                M-sync: { model: opus, effort: low }
+                M-mx: { model: sonnet, effort: low }
+                L-plan: { model: opus, effort: high }
+                L-run: { model: opus, effort: medium }
+                L-sync: { model: opus, effort: medium }
+                L-mx: { model: sonnet, effort: low }
+            # model_routing_profiles: No-Haiku 3-tier policy — perfTier -> (Tier x Phase) -> {model, effort}.
+            # 3 perfTiers (high/medium/low) × 12 cells (S/M/L × plan/run/sync/mx) = 36
+            # entries. The orchestrator consults RouteModelFor(specTier, phase,
+            # perfTier) at spawn time. `medium` is the default performance tier
+            # (populated by `moai init --model-policy`). Closed sets: model in
+            # {inherit, sonnet, opus, glm, fable}, effort in {low, medium, high, xhigh, max}.
+            model_routing_profiles:
+                high:
+                    S-plan: { model: opus, effort: medium }
+                    S-run: { model: opus, effort: high }
+                    S-sync: { model: opus, effort: low }
+                    S-mx: { model: sonnet, effort: low }
+                    M-plan: { model: opus, effort: high }
+                    M-run: { model: opus, effort: high }
+                    M-sync: { model: opus, effort: medium }
+                    M-mx: { model: sonnet, effort: low }
+                    L-plan: { model: opus, effort: high }
+                    L-run: { model: opus, effort: max }
+                    L-sync: { model: opus, effort: medium }
+                    L-mx: { model: sonnet, effort: low }
+                medium:
+                    S-plan: { model: opus, effort: low }
+                    S-run: { model: opus, effort: medium }
+                    S-sync: { model: opus, effort: low }
+                    S-mx: { model: sonnet, effort: low }
+                    M-plan: { model: opus, effort: medium }
+                    M-run: { model: opus, effort: medium }
+                    M-sync: { model: opus, effort: low }
+                    M-mx: { model: sonnet, effort: low }
+                    L-plan: { model: opus, effort: high }
+                    L-run: { model: opus, effort: medium }
+                    L-sync: { model: opus, effort: medium }
+                    L-mx: { model: sonnet, effort: low }
+                low:
+                    S-plan: { model: opus, effort: low }
+                    S-run: { model: opus, effort: low }
+                    S-sync: { model: sonnet, effort: low }
+                    S-mx: { model: sonnet, effort: low }
+                    M-plan: { model: opus, effort: low }
+                    M-run: { model: opus, effort: low }
+                    M-sync: { model: sonnet, effort: low }
+                    M-mx: { model: sonnet, effort: low }
+                    L-plan: { model: opus, effort: low }
+                    L-run: { model: opus, effort: medium }
+                    L-sync: { model: sonnet, effort: low }
+                    L-mx: { model: sonnet, effort: low }
+    init_audit_wiring_test.go:56: deployed workflow.yaml missing "claude: required"; got:
+        workflow:
+            # Optional default mode for /moai run and /moai design.
+            # Values: autopilot | loop | team. Empty/absent = harness-based auto-selection.
+            # Precedence: CLI --mode flag > this field > harness auto.
+            # @MX:WARN - Default mode field is utility-skill-only consumer. @MX:REASON - Field is read by run skill dispatcher; changing semantics without updating dispatcher breaks behavior contract.
+            default_mode: ""
+            # agentic_loop: pipeline-level completion-loop iteration ceiling, loaded by
+            # internal/config AgenticLoopConfig (types.go) with default from
+            # DefaultAgenticLoopMaxIterations (defaults.go); also prose-read by the
+            # orchestrator for the moai.md Agentic Completion Loop termination clause.
+            # DISTINCT from loop_prevention.max_iterations (per-operation diagnostic
+            # fix-loop bound) — separate blocks, separate semantics.
+            agentic_loop:
+                max_iterations: 10
+            auto_clear:
+                after_plan: true
+                after_run: false
+                enabled: true
+                token_threshold: 150000
+            execution_mode: auto
+            # Iteration-ceiling precedence: CLI --max flag > ralph.yaml loop.max_iterations
+            # > workflow.yaml loop_prevention.max_iterations (this block — the lowest-
+            # precedence documented ceiling surface for the diagnostic fix-loop). The
+            # memory-safe 50-iteration checkpoint (loop workflow Step 2) is an orthogonal
+            # memory-pressure safeguard, not a fourth ceiling.
+            loop_prevention:
+                failure_pattern_detection: true
+                max_iterations: 100
+                max_retries_per_operation: 3
+            # Worktree automation settings (per the canonical worktree contract).
+            # Values mirror internal/config/defaults.go (WorkflowWorktreeConfig): all
+            # three auto-* toggles default false — the EnterWorktree-first policy.
+            # auto_create: read once (internal/cli/worktree_advisory.go) only to select
+            # advisory wording; it does not gate worktree creation.
+            # auto_merge / auto_cleanup: declared but not read — no code path consumes
+            # them (reserved). Kept aligned with defaults.go so the shipped file does
+            # not state the opposite of the recorded policy.
+            worktree:
+                auto_create: false
+                auto_merge: false
+                auto_cleanup: false
+                tmux_preferred: true
+                # session_name_pattern: declared but not read — no code builds a session
+                # name from this value (reserved). Retained as a placeholder only.
+                session_name_pattern: "moai-{ProjectName}-{SPEC-ID}"
+                # Sparse checkout paths for large monorepos (Claude Code v2.1.76+)
+                # Uncomment and customize to speed up worktree creation
+                # sparse_paths:
+                #     - "src/"
+                #     - "tests/"
+                #     - "config/"
+            token_budget:
+                plan: 30000
+                run: 180000
+                sync: 40000
+            # codex.review_gate: opt-in Stop-hook gate that asks the codex reviewer to
+            # look at your uncommitted changes at turn-end and keeps the turn going when
+            # the review comes back failing. Requires the optional `codex` binary.
+            # Ships OFF: set enabled to true to turn it on. While it is off the hook
+            # short-circuits in shell and costs nothing per turn.
+            codex:
+                review_gate:
+                    enabled: false
+            # multi.review_gate: opt-in Stop-hook gate for the multi-model review path.
+            # It reads the most recent convergence result of the configured review
+            # backends and keeps the turn going only when a required backend failed;
+            # disagreement between advisory-only backends never blocks. Ships OFF: set
+            # enabled to true to turn it on. While it is off the hook short-circuits in
+            # shell and costs nothing per turn.
+            multi:
+                review_gate:
+                    enabled: false
+            # workflow_agents: dynamic-workflow purpose taxonomy -> {model, effort}
+            # DEFAULTS. This block is the SSOT for workflow agent() model/effort
+            # defaults; per-script literals in .claude/workflows/*.js override it.
+            # Values are validated against the closed sets: model in
+            # {inherit, sonnet, opus}, effort in {low, medium, high, xhigh, max}.
+            workflow_agents:
+                read-only-extract: { model: sonnet, effort: low }
+                mechanical-transform: { model: opus, effort: low }
+                synthesize: { model: opus, effort: low }
+                research: { model: opus, effort: medium }
+                verify-judge: { model: opus, effort: medium }
+                implement: { model: opus, effort: medium }
+                design-architecture: { model: opus, effort: high }
+            # model_routing: LEGACY flat block (Tier x Phase -> {model, effort}).
+            # DEPRECATED — retained as a `medium` profile alias for one backward-compat
+            # cycle. Values mirror the
+            # `medium` profile below. New code reads `model_routing_profiles` via
+            # RouteModelFor(specTier, phase, perfTier); this flat key is NOT read by
+            # the 3-arg accessor. Existing external readers continue to work.
+            # Key format: <TIER>-<phase> where Tier in {S, M, L} and Phase in
+            # {plan, run, sync, mx}. Closed sets: model in
+            # {inherit, sonnet, opus, glm, fable}, effort in {low, medium, high, xhigh, max}.
+            model_routing:
+                S-plan: { model: opus, effort: low }
+                S-run: { model: opus, effort: medium }
+                S-sync: { model: opus, effort: low }
+                S-mx: { model: sonnet, effort: low }
+                M-plan: { model: opus, effort: medium }
+                M-run: { model: opus, effort: medium }
+                M-sync: { model: opus, effort: low }
+                M-mx: { model: sonnet, effort: low }
+                L-plan: { model: opus, effort: high }
+                L-run: { model: opus, effort: medium }
+                L-sync: { model: opus, effort: medium }
+                L-mx: { model: sonnet, effort: low }
+            # model_routing_profiles: No-Haiku 3-tier policy — perfTier -> (Tier x Phase) -> {model, effort}.
+            # 3 perfTiers (high/medium/low) × 12 cells (S/M/L × plan/run/sync/mx) = 36
+            # entries. The orchestrator consults RouteModelFor(specTier, phase,
+            # perfTier) at spawn time. `medium` is the default performance tier
+            # (populated by `moai init --model-policy`). Closed sets: model in
+            # {inherit, sonnet, opus, glm, fable}, effort in {low, medium, high, xhigh, max}.
+            model_routing_profiles:
+                high:
+                    S-plan: { model: opus, effort: medium }
+                    S-run: { model: opus, effort: high }
+                    S-sync: { model: opus, effort: low }
+                    S-mx: { model: sonnet, effort: low }
+                    M-plan: { model: opus, effort: high }
+                    M-run: { model: opus, effort: high }
+                    M-sync: { model: opus, effort: medium }
+                    M-mx: { model: sonnet, effort: low }
+                    L-plan: { model: opus, effort: high }
+                    L-run: { model: opus, effort: max }
+                    L-sync: { model: opus, effort: medium }
+                    L-mx: { model: sonnet, effort: low }
+                medium:
+                    S-plan: { model: opus, effort: low }
+                    S-run: { model: opus, effort: medium }
+                    S-sync: { model: opus, effort: low }
+                    S-mx: { model: sonnet, effort: low }
+                    M-plan: { model: opus, effort: medium }
+                    M-run: { model: opus, effort: medium }
+                    M-sync: { model: opus, effort: low }
+                    M-mx: { model: sonnet, effort: low }
+                    L-plan: { model: opus, effort: high }
+                    L-run: { model: opus, effort: medium }
+                    L-sync: { model: opus, effort: medium }
+                    L-mx: { model: sonnet, effort: low }
+                low:
+                    S-plan: { model: opus, effort: low }
+                    S-run: { model: opus, effort: low }
+                    S-sync: { model: sonnet, effort: low }
+                    S-mx: { model: sonnet, effort: low }
+                    M-plan: { model: opus, effort: low }
+                    M-run: { model: opus, effort: low }
+                    M-sync: { model: sonnet, effort: low }
+                    M-mx: { model: sonnet, effort: low }
+                    L-plan: { model: opus, effort: low }
+                    L-run: { model: opus, effort: medium }
+                    L-sync: { model: sonnet, effort: low }
+                    L-mx: { model: sonnet, effort: low }
+    init_audit_wiring_test.go:56: deployed workflow.yaml missing "codex: advisory"; got:
+        workflow:
+            # Optional default mode for /moai run and /moai design.
+            # Values: autopilot | loop | team. Empty/absent = harness-based auto-selection.
+            # Precedence: CLI --mode flag > this field > harness auto.
+            # @MX:WARN - Default mode field is utility-skill-only consumer. @MX:REASON - Field is read by run skill dispatcher; changing semantics without updating dispatcher breaks behavior contract.
+            default_mode: ""
+            # agentic_loop: pipeline-level completion-loop iteration ceiling, loaded by
+            # internal/config AgenticLoopConfig (types.go) with default from
+            # DefaultAgenticLoopMaxIterations (defaults.go); also prose-read by the
+            # orchestrator for the moai.md Agentic Completion Loop termination clause.
+            # DISTINCT from loop_prevention.max_iterations (per-operation diagnostic
+            # fix-loop bound) — separate blocks, separate semantics.
+            agentic_loop:
+                max_iterations: 10
+            auto_clear:
+                after_plan: true
+                after_run: false
+                enabled: true
+                token_threshold: 150000
+            execution_mode: auto
+            # Iteration-ceiling precedence: CLI --max flag > ralph.yaml loop.max_iterations
+            # > workflow.yaml loop_prevention.max_iterations (this block — the lowest-
+            # precedence documented ceiling surface for the diagnostic fix-loop). The
+            # memory-safe 50-iteration checkpoint (loop workflow Step 2) is an orthogonal
+            # memory-pressure safeguard, not a fourth ceiling.
+            loop_prevention:
+                failure_pattern_detection: true
+                max_iterations: 100
+                max_retries_per_operation: 3
+            # Worktree automation settings (per the canonical worktree contract).
+            # Values mirror internal/config/defaults.go (WorkflowWorktreeConfig): all
+            # three auto-* toggles default false — the EnterWorktree-first policy.
+            # auto_create: read once (internal/cli/worktree_advisory.go) only to select
+            # advisory wording; it does not gate worktree creation.
+            # auto_merge / auto_cleanup: declared but not read — no code path consumes
+            # them (reserved). Kept aligned with defaults.go so the shipped file does
+            # not state the opposite of the recorded policy.
+            worktree:
+                auto_create: false
+                auto_merge: false
+                auto_cleanup: false
+                tmux_preferred: true
+                # session_name_pattern: declared but not read — no code builds a session
+                # name from this value (reserved). Retained as a placeholder only.
+                session_name_pattern: "moai-{ProjectName}-{SPEC-ID}"
+                # Sparse checkout paths for large monorepos (Claude Code v2.1.76+)
+                # Uncomment and customize to speed up worktree creation
+                # sparse_paths:
+                #     - "src/"
+                #     - "tests/"
+                #     - "config/"
+            token_budget:
+                plan: 30000
+                run: 180000
+                sync: 40000
+            # codex.review_gate: opt-in Stop-hook gate that asks the codex reviewer to
+            # look at your uncommitted changes at turn-end and keeps the turn going when
+            # the review comes back failing. Requires the optional `codex` binary.
+            # Ships OFF: set enabled to true to turn it on. While it is off the hook
+            # short-circuits in shell and costs nothing per turn.
+            codex:
+                review_gate:
+                    enabled: false
+            # multi.review_gate: opt-in Stop-hook gate for the multi-model review path.
+            # It reads the most recent convergence result of the configured review
+            # backends and keeps the turn going only when a required backend failed;
+            # disagreement between advisory-only backends never blocks. Ships OFF: set
+            # enabled to true to turn it on. While it is off the hook short-circuits in
+            # shell and costs nothing per turn.
+            multi:
+                review_gate:
+                    enabled: false
+            # workflow_agents: dynamic-workflow purpose taxonomy -> {model, effort}
+            # DEFAULTS. This block is the SSOT for workflow agent() model/effort
+            # defaults; per-script literals in .claude/workflows/*.js override it.
+            # Values are validated against the closed sets: model in
+            # {inherit, sonnet, opus}, effort in {low, medium, high, xhigh, max}.
+            workflow_agents:
+                read-only-extract: { model: sonnet, effort: low }
+                mechanical-transform: { model: opus, effort: low }
+                synthesize: { model: opus, effort: low }
+                research: { model: opus, effort: medium }
+                verify-judge: { model: opus, effort: medium }
+                implement: { model: opus, effort: medium }
+                design-architecture: { model: opus, effort: high }
+            # model_routing: LEGACY flat block (Tier x Phase -> {model, effort}).
+            # DEPRECATED — retained as a `medium` profile alias for one backward-compat
+            # cycle. Values mirror the
+            # `medium` profile below. New code reads `model_routing_profiles` via
+            # RouteModelFor(specTier, phase, perfTier); this flat key is NOT read by
+            # the 3-arg accessor. Existing external readers continue to work.
+            # Key format: <TIER>-<phase> where Tier in {S, M, L} and Phase in
+            # {plan, run, sync, mx}. Closed sets: model in
+            # {inherit, sonnet, opus, glm, fable}, effort in {low, medium, high, xhigh, max}.
+            model_routing:
+                S-plan: { model: opus, effort: low }
+                S-run: { model: opus, effort: medium }
+                S-sync: { model: opus, effort: low }
+                S-mx: { model: sonnet, effort: low }
+                M-plan: { model: opus, effort: medium }
+                M-run: { model: opus, effort: medium }
+                M-sync: { model: opus, effort: low }
+                M-mx: { model: sonnet, effort: low }
+                L-plan: { model: opus, effort: high }
+                L-run: { model: opus, effort: medium }
+                L-sync: { model: opus, effort: medium }
+                L-mx: { model: sonnet, effort: low }
+            # model_routing_profiles: No-Haiku 3-tier policy — perfTier -> (Tier x Phase) -> {model, effort}.
+            # 3 perfTiers (high/medium/low) × 12 cells (S/M/L × plan/run/sync/mx) = 36
+            # entries. The orchestrator consults RouteModelFor(specTier, phase,
+            # perfTier) at spawn time. `medium` is the default performance tier
+            # (populated by `moai init --model-policy`). Closed sets: model in
+            # {inherit, sonnet, opus, glm, fable}, effort in {low, medium, high, xhigh, max}.
+            model_routing_profiles:
+                high:
+                    S-plan: { model: opus, effort: medium }
+                    S-run: { model: opus, effort: high }
+                    S-sync: { model: opus, effort: low }
+                    S-mx: { model: sonnet, effort: low }
+                    M-plan: { model: opus, effort: high }
+                    M-run: { model: opus, effort: high }
+                    M-sync: { model: opus, effort: medium }
+                    M-mx: { model: sonnet, effort: low }
+                    L-plan: { model: opus, effort: high }
+                    L-run: { model: opus, effort: max }
+                    L-sync: { model: opus, effort: medium }
+                    L-mx: { model: sonnet, effort: low }
+                medium:
+                    S-plan: { model: opus, effort: low }
+                    S-run: { model: opus, effort: medium }
+                    S-sync: { model: opus, effort: low }
+                    S-mx: { model: sonnet, effort: low }
+                    M-plan: { model: opus, effort: medium }
+                    M-run: { model: opus, effort: medium }
+                    M-sync: { model: opus, effort: low }
+                    M-mx: { model: sonnet, effort: low }
+                    L-plan: { model: opus, effort: high }
+                    L-run: { model: opus, effort: medium }
+                    L-sync: { model: opus, effort: medium }
+                    L-mx: { model: sonnet, effort: low }
+                low:
+                    S-plan: { model: opus, effort: low }
+                    S-run: { model: opus, effort: low }
+                    S-sync: { model: sonnet, effort: low }
+                    S-mx: { model: sonnet, effort: low }
+                    M-plan: { model: opus, effort: low }
+                    M-run: { model: opus, effort: low }
+                    M-sync: { model: sonnet, effort: low }
+                    M-mx: { model: sonnet, effort: low }
+                    L-plan: { model: opus, effort: low }
+                    L-run: { model: opus, effort: medium }
+                    L-sync: { model: sonnet, effort: low }
+                    L-mx: { model: sonnet, effort: low }
+    init_audit_wiring_test.go:56: deployed workflow.yaml missing "glm: off"; got:
+        workflow:
+            # Optional default mode for /moai run and /moai design.
+            # Values: autopilot | loop | team. Empty/absent = harness-based auto-selection.
+            # Precedence: CLI --mode flag > this field > harness auto.
+            # @MX:WARN - Default mode field is utility-skill-only consumer. @MX:REASON - Field is read by run skill dispatcher; changing semantics without updating dispatcher breaks behavior contract.
+            default_mode: ""
+            # agentic_loop: pipeline-level completion-loop iteration ceiling, loaded by
+            # internal/config AgenticLoopConfig (types.go) with default from
+            # DefaultAgenticLoopMaxIterations (defaults.go); also prose-read by the
+            # orchestrator for the moai.md Agentic Completion Loop termination clause.
+            # DISTINCT from loop_prevention.max_iterations (per-operation diagnostic
+            # fix-loop bound) — separate blocks, separate semantics.
+            agentic_loop:
+                max_iterations: 10
+            auto_clear:
+                after_plan: true
+                after_run: false
+                enabled: true
+                token_threshold: 150000
+            execution_mode: auto
+            # Iteration-ceiling precedence: CLI --max flag > ralph.yaml loop.max_iterations
+            # > workflow.yaml loop_prevention.max_iterations (this block — the lowest-
+            # precedence documented ceiling surface for the diagnostic fix-loop). The
+            # memory-safe 50-iteration checkpoint (loop workflow Step 2) is an orthogonal
+            # memory-pressure safeguard, not a fourth ceiling.
+            loop_prevention:
+                failure_pattern_detection: true
+                max_iterations: 100
+                max_retries_per_operation: 3
+            # Worktree automation settings (per the canonical worktree contract).
+            # Values mirror internal/config/defaults.go (WorkflowWorktreeConfig): all
+            # three auto-* toggles default false — the EnterWorktree-first policy.
+            # auto_create: read once (internal/cli/worktree_advisory.go) only to select
+            # advisory wording; it does not gate worktree creation.
+            # auto_merge / auto_cleanup: declared but not read — no code path consumes
+            # them (reserved). Kept aligned with defaults.go so the shipped file does
+            # not state the opposite of the recorded policy.
+            worktree:
+                auto_create: false
+                auto_merge: false
+                auto_cleanup: false
+                tmux_preferred: true
+                # session_name_pattern: declared but not read — no code builds a session
+                # name from this value (reserved). Retained as a placeholder only.
+                session_name_pattern: "moai-{ProjectName}-{SPEC-ID}"
+                # Sparse checkout paths for large monorepos (Claude Code v2.1.76+)
+                # Uncomment and customize to speed up worktree creation
+                # sparse_paths:
+                #     - "src/"
+                #     - "tests/"
+                #     - "config/"
+            token_budget:
+                plan: 30000
+                run: 180000
+                sync: 40000
+            # codex.review_gate: opt-in Stop-hook gate that asks the codex reviewer to
+            # look at your uncommitted changes at turn-end and keeps the turn going when
+            # the review comes back failing. Requires the optional `codex` binary.
+            # Ships OFF: set enabled to true to turn it on. While it is off the hook
+            # short-circuits in shell and costs nothing per turn.
+            codex:
+                review_gate:
+                    enabled: false
+            # multi.review_gate: opt-in Stop-hook gate for the multi-model review path.
+            # It reads the most recent convergence result of the configured review
+            # backends and keeps the turn going only when a required backend failed;
+            # disagreement between advisory-only backends never blocks. Ships OFF: set
+            # enabled to true to turn it on. While it is off the hook short-circuits in
+            # shell and costs nothing per turn.
+            multi:
+                review_gate:
+                    enabled: false
+            # workflow_agents: dynamic-workflow purpose taxonomy -> {model, effort}
+            # DEFAULTS. This block is the SSOT for workflow agent() model/effort
+            # defaults; per-script literals in .claude/workflows/*.js override it.
+            # Values are validated against the closed sets: model in
+            # {inherit, sonnet, opus}, effort in {low, medium, high, xhigh, max}.
+            workflow_agents:
+                read-only-extract: { model: sonnet, effort: low }
+                mechanical-transform: { model: opus, effort: low }
+                synthesize: { model: opus, effort: low }
+                research: { model: opus, effort: medium }
+                verify-judge: { model: opus, effort: medium }
+                implement: { model: opus, effort: medium }
+                design-architecture: { model: opus, effort: high }
+            # model_routing: LEGACY flat block (Tier x Phase -> {model, effort}).
+            # DEPRECATED — retained as a `medium` profile alias for one backward-compat
+            # cycle. Values mirror the
+            # `medium` profile below. New code reads `model_routing_profiles` via
+            # RouteModelFor(specTier, phase, perfTier); this flat key is NOT read by
+            # the 3-arg accessor. Existing external readers continue to work.
+            # Key format: <TIER>-<phase> where Tier in {S, M, L} and Phase in
+            # {plan, run, sync, mx}. Closed sets: model in
+            # {inherit, sonnet, opus, glm, fable}, effort in {low, medium, high, xhigh, max}.
+            model_routing:
+                S-plan: { model: opus, effort: low }
+                S-run: { model: opus, effort: medium }
+                S-sync: { model: opus, effort: low }
+                S-mx: { model: sonnet, effort: low }
+                M-plan: { model: opus, effort: medium }
+                M-run: { model: opus, effort: medium }
+                M-sync: { model: opus, effort: low }
+                M-mx: { model: sonnet, effort: low }
+                L-plan: { model: opus, effort: high }
+                L-run: { model: opus, effort: medium }
+                L-sync: { model: opus, effort: medium }
+                L-mx: { model: sonnet, effort: low }
+            # model_routing_profiles: No-Haiku 3-tier policy — perfTier -> (Tier x Phase) -> {model, effort}.
+            # 3 perfTiers (high/medium/low) × 12 cells (S/M/L × plan/run/sync/mx) = 36
+            # entries. The orchestrator consults RouteModelFor(specTier, phase,
+            # perfTier) at spawn time. `medium` is the default performance tier
+            # (populated by `moai init --model-policy`). Closed sets: model in
+            # {inherit, sonnet, opus, glm, fable}, effort in {low, medium, high, xhigh, max}.
+            model_routing_profiles:
+                high:
+                    S-plan: { model: opus, effort: medium }
+                    S-run: { model: opus, effort: high }
+                    S-sync: { model: opus, effort: low }
+                    S-mx: { model: sonnet, effort: low }
+                    M-plan: { model: opus, effort: high }
+                    M-run: { model: opus, effort: high }
+                    M-sync: { model: opus, effort: medium }
+                    M-mx: { model: sonnet, effort: low }
+                    L-plan: { model: opus, effort: high }
+                    L-run: { model: opus, effort: max }
+                    L-sync: { model: opus, effort: medium }
+                    L-mx: { model: sonnet, effort: low }
+                medium:
+                    S-plan: { model: opus, effort: low }
+                    S-run: { model: opus, effort: medium }
+                    S-sync: { model: opus, effort: low }
+                    S-mx: { model: sonnet, effort: low }
+                    M-plan: { model: opus, effort: medium }
+                    M-run: { model: opus, effort: medium }
+                    M-sync: { model: opus, effort: low }
+                    M-mx: { model: sonnet, effort: low }
+                    L-plan: { model: opus, effort: high }
+                    L-run: { model: opus, effort: medium }
+                    L-sync: { model: opus, effort: medium }
+                    L-mx: { model: sonnet, effort: low }
+                low:
+                    S-plan: { model: opus, effort: low }
+                    S-run: { model: opus, effort: low }
+                    S-sync: { model: sonnet, effort: low }
+                    S-mx: { model: sonnet, effort: low }
+                    M-plan: { model: opus, effort: low }
+                    M-run: { model: opus, effort: low }
+                    M-sync: { model: sonnet, effort: low }
+                    M-mx: { model: sonnet, effort: low }
+                    L-plan: { model: opus, effort: low }
+                    L-run: { model: opus, effort: medium }
+                    L-sync: { model: sonnet, effort: low }
+                    L-mx: { model: sonnet, effort: low }
+    init_audit_wiring_test.go:67: audit must parse as workflow.audit.model=claude; got:
+        workflow:
+            # Optional default mode for /moai run and /moai design.
+            # Values: autopilot | loop | team. Empty/absent = harness-based auto-selection.
+            # Precedence: CLI --mode flag > this field > harness auto.
+            # @MX:WARN - Default mode field is utility-skill-only consumer. @MX:REASON - Field is read by run skill dispatcher; changing semantics without updating dispatcher breaks behavior contract.
+            default_mode: ""
+            # agentic_loop: pipeline-level completion-loop iteration ceiling, loaded by
+            # internal/config AgenticLoopConfig (types.go) with default from
+            # DefaultAgenticLoopMaxIterations (defaults.go); also prose-read by the
+            # orchestrator for the moai.md Agentic Completion Loop termination clause.
+            # DISTINCT from loop_prevention.max_iterations (per-operation diagnostic
+            # fix-loop bound) — separate blocks, separate semantics.
+            agentic_loop:
+                max_iterations: 10
+            auto_clear:
+                after_plan: true
+                after_run: false
+                enabled: true
+                token_threshold: 150000
+            execution_mode: auto
+            # Iteration-ceiling precedence: CLI --max flag > ralph.yaml loop.max_iterations
+            # > workflow.yaml loop_prevention.max_iterations (this block — the lowest-
+            # precedence documented ceiling surface for the diagnostic fix-loop). The
+            # memory-safe 50-iteration checkpoint (loop workflow Step 2) is an orthogonal
+            # memory-pressure safeguard, not a fourth ceiling.
+            loop_prevention:
+                failure_pattern_detection: true
+                max_iterations: 100
+                max_retries_per_operation: 3
+            # Worktree automation settings (per the canonical worktree contract).
+            # Values mirror internal/config/defaults.go (WorkflowWorktreeConfig): all
+            # three auto-* toggles default false — the EnterWorktree-first policy.
+            # auto_create: read once (internal/cli/worktree_advisory.go) only to select
+            # advisory wording; it does not gate worktree creation.
+            # auto_merge / auto_cleanup: declared but not read — no code path consumes
+            # them (reserved). Kept aligned with defaults.go so the shipped file does
+            # not state the opposite of the recorded policy.
+            worktree:
+                auto_create: false
+                auto_merge: false
+                auto_cleanup: false
+                tmux_preferred: true
+                # session_name_pattern: declared but not read — no code builds a session
+                # name from this value (reserved). Retained as a placeholder only.
+                session_name_pattern: "moai-{ProjectName}-{SPEC-ID}"
+                # Sparse checkout paths for large monorepos (Claude Code v2.1.76+)
+                # Uncomment and customize to speed up worktree creation
+                # sparse_paths:
+                #     - "src/"
+                #     - "tests/"
+                #     - "config/"
+            token_budget:
+                plan: 30000
+                run: 180000
+                sync: 40000
+            # codex.review_gate: opt-in Stop-hook gate that asks the codex reviewer to
+            # look at your uncommitted changes at turn-end and keeps the turn going when
+            # the review comes back failing. Requires the optional `codex` binary.
+            # Ships OFF: set enabled to true to turn it on. While it is off the hook
+            # short-circuits in shell and costs nothing per turn.
+            codex:
+                review_gate:
+                    enabled: false
+            # multi.review_gate: opt-in Stop-hook gate for the multi-model review path.
+            # It reads the most recent convergence result of the configured review
+            # backends and keeps the turn going only when a required backend failed;
+            # disagreement between advisory-only backends never blocks. Ships OFF: set
+            # enabled to true to turn it on. While it is off the hook short-circuits in
+            # shell and costs nothing per turn.
+            multi:
+                review_gate:
+                    enabled: false
+            # workflow_agents: dynamic-workflow purpose taxonomy -> {model, effort}
+            # DEFAULTS. This block is the SSOT for workflow agent() model/effort
+            # defaults; per-script literals in .claude/workflows/*.js override it.
+            # Values are validated against the closed sets: model in
+            # {inherit, sonnet, opus}, effort in {low, medium, high, xhigh, max}.
+            workflow_agents:
+                read-only-extract: { model: sonnet, effort: low }
+                mechanical-transform: { model: opus, effort: low }
+                synthesize: { model: opus, effort: low }
+                research: { model: opus, effort: medium }
+                verify-judge: { model: opus, effort: medium }
+                implement: { model: opus, effort: medium }
+                design-architecture: { model: opus, effort: high }
+            # model_routing: LEGACY flat block (Tier x Phase -> {model, effort}).
+            # DEPRECATED — retained as a `medium` profile alias for one backward-compat
+            # cycle. Values mirror the
+            # `medium` profile below. New code reads `model_routing_profiles` via
+            # RouteModelFor(specTier, phase, perfTier); this flat key is NOT read by
+            # the 3-arg accessor. Existing external readers continue to work.
+            # Key format: <TIER>-<phase> where Tier in {S, M, L} and Phase in
+            # {plan, run, sync, mx}. Closed sets: model in
+            # {inherit, sonnet, opus, glm, fable}, effort in {low, medium, high, xhigh, max}.
+            model_routing:
+                S-plan: { model: opus, effort: low }
+                S-run: { model: opus, effort: medium }
+                S-sync: { model: opus, effort: low }
+                S-mx: { model: sonnet, effort: low }
+                M-plan: { model: opus, effort: medium }
+                M-run: { model: opus, effort: medium }
+                M-sync: { model: opus, effort: low }
+                M-mx: { model: sonnet, effort: low }
+                L-plan: { model: opus, effort: high }
+                L-run: { model: opus, effort: medium }
+                L-sync: { model: opus, effort: medium }
+                L-mx: { model: sonnet, effort: low }
+            # model_routing_profiles: No-Haiku 3-tier policy — perfTier -> (Tier x Phase) -> {model, effort}.
+            # 3 perfTiers (high/medium/low) × 12 cells (S/M/L × plan/run/sync/mx) = 36
+            # entries. The orchestrator consults RouteModelFor(specTier, phase,
+            # perfTier) at spawn time. `medium` is the default performance tier
+            # (populated by `moai init --model-policy`). Closed sets: model in
+            # {inherit, sonnet, opus, glm, fable}, effort in {low, medium, high, xhigh, max}.
+            model_routing_profiles:
+                high:
+                    S-plan: { model: opus, effort: medium }
+                    S-run: { model: opus, effort: high }
+                    S-sync: { model: opus, effort: low }
+                    S-mx: { model: sonnet, effort: low }
+                    M-plan: { model: opus, effort: high }
+                    M-run: { model: opus, effort: high }
+                    M-sync: { model: opus, effort: medium }
+                    M-mx: { model: sonnet, effort: low }
+                    L-plan: { model: opus, effort: high }
+                    L-run: { model: opus, effort: max }
+                    L-sync: { model: opus, effort: medium }
+                    L-mx: { model: sonnet, effort: low }
+                medium:
+                    S-plan: { model: opus, effort: low }
+                    S-run: { model: opus, effort: medium }
+                    S-sync: { model: opus, effort: low }
+                    S-mx: { model: sonnet, effort: low }
+                    M-plan: { model: opus, effort: medium }
+                    M-run: { model: opus, effort: medium }
+                    M-sync: { model: opus, effort: low }
+                    M-mx: { model: sonnet, effort: low }
+                    L-plan: { model: opus, effort: high }
+                    L-run: { model: opus, effort: medium }
+                    L-sync: { model: opus, effort: medium }
+                    L-mx: { model: sonnet, effort: low }
+                low:
+                    S-plan: { model: opus, effort: low }
+                    S-run: { model: opus, effort: low }
+                    S-sync: { model: sonnet, effort: low }
+                    S-mx: { model: sonnet, effort: low }
+                    M-plan: { model: opus, effort: low }
+                    M-run: { model: opus, effort: low }
+                    M-sync: { model: sonnet, effort: low }
+                    M-mx: { model: sonnet, effort: low }
+                    L-plan: { model: opus, effort: low }
+                    L-run: { model: opus, effort: medium }
+                    L-sync: { model: sonnet, effort: low }
+                    L-mx: { model: sonnet, effort: low }
+    init_audit_wiring_test.go:70: gates must parse as workflow.audit.gates.claude=required; got:
+        workflow:
+            # Optional default mode for /moai run and /moai design.
+            # Values: autopilot | loop | team. Empty/absent = harness-based auto-selection.
+            # Precedence: CLI --mode flag > this field > harness auto.
+            # @MX:WARN - Default mode field is utility-skill-only consumer. @MX:REASON - Field is read by run skill dispatcher; changing semantics without updating dispatcher breaks behavior contract.
+            default_mode: ""
+            # agentic_loop: pipeline-level completion-loop iteration ceiling, loaded by
+            # internal/config AgenticLoopConfig (types.go) with default from
+            # DefaultAgenticLoopMaxIterations (defaults.go); also prose-read by the
+            # orchestrator for the moai.md Agentic Completion Loop termination clause.
+            # DISTINCT from loop_prevention.max_iterations (per-operation diagnostic
+            # fix-loop bound) — separate blocks, separate semantics.
+            agentic_loop:
+                max_iterations: 10
+            auto_clear:
+                after_plan: true
+                after_run: false
+                enabled: true
+                token_threshold: 150000
+            execution_mode: auto
+            # Iteration-ceiling precedence: CLI --max flag > ralph.yaml loop.max_iterations
+            # > workflow.yaml loop_prevention.max_iterations (this block — the lowest-
+            # precedence documented ceiling surface for the diagnostic fix-loop). The
+            # memory-safe 50-iteration checkpoint (loop workflow Step 2) is an orthogonal
+            # memory-pressure safeguard, not a fourth ceiling.
+            loop_prevention:
+                failure_pattern_detection: true
+                max_iterations: 100
+                max_retries_per_operation: 3
+            # Worktree automation settings (per the canonical worktree contract).
+            # Values mirror internal/config/defaults.go (WorkflowWorktreeConfig): all
+            # three auto-* toggles default false — the EnterWorktree-first policy.
+            # auto_create: read once (internal/cli/worktree_advisory.go) only to select
+            # advisory wording; it does not gate worktree creation.
+            # auto_merge / auto_cleanup: declared but not read — no code path consumes
+            # them (reserved). Kept aligned with defaults.go so the shipped file does
+            # not state the opposite of the recorded policy.
+            worktree:
+                auto_create: false
+                auto_merge: false
+                auto_cleanup: false
+                tmux_preferred: true
+                # session_name_pattern: declared but not read — no code builds a session
+                # name from this value (reserved). Retained as a placeholder only.
+                session_name_pattern: "moai-{ProjectName}-{SPEC-ID}"
+                # Sparse checkout paths for large monorepos (Claude Code v2.1.76+)
+                # Uncomment and customize to speed up worktree creation
+                # sparse_paths:
+                #     - "src/"
+                #     - "tests/"
+                #     - "config/"
+            token_budget:
+                plan: 30000
+                run: 180000
+                sync: 40000
+            # codex.review_gate: opt-in Stop-hook gate that asks the codex reviewer to
+            # look at your uncommitted changes at turn-end and keeps the turn going when
+            # the review comes back failing. Requires the optional `codex` binary.
+            # Ships OFF: set enabled to true to turn it on. While it is off the hook
+            # short-circuits in shell and costs nothing per turn.
+            codex:
+                review_gate:
+                    enabled: false
+            # multi.review_gate: opt-in Stop-hook gate for the multi-model review path.
+            # It reads the most recent convergence result of the configured review
+            # backends and keeps the turn going only when a required backend failed;
+            # disagreement between advisory-only backends never blocks. Ships OFF: set
+            # enabled to true to turn it on. While it is off the hook short-circuits in
+            # shell and costs nothing per turn.
+            multi:
+                review_gate:
+                    enabled: false
+            # workflow_agents: dynamic-workflow purpose taxonomy -> {model, effort}
+            # DEFAULTS. This block is the SSOT for workflow agent() model/effort
+            # defaults; per-script literals in .claude/workflows/*.js override it.
+            # Values are validated against the closed sets: model in
+            # {inherit, sonnet, opus}, effort in {low, medium, high, xhigh, max}.
+            workflow_agents:
+                read-only-extract: { model: sonnet, effort: low }
+                mechanical-transform: { model: opus, effort: low }
+                synthesize: { model: opus, effort: low }
+                research: { model: opus, effort: medium }
+                verify-judge: { model: opus, effort: medium }
+                implement: { model: opus, effort: medium }
+                design-architecture: { model: opus, effort: high }
+            # model_routing: LEGACY flat block (Tier x Phase -> {model, effort}).
+            # DEPRECATED — retained as a `medium` profile alias for one backward-compat
+            # cycle. Values mirror the
+            # `medium` profile below. New code reads `model_routing_profiles` via
+            # RouteModelFor(specTier, phase, perfTier); this flat key is NOT read by
+            # the 3-arg accessor. Existing external readers continue to work.
+            # Key format: <TIER>-<phase> where Tier in {S, M, L} and Phase in
+            # {plan, run, sync, mx}. Closed sets: model in
+            # {inherit, sonnet, opus, glm, fable}, effort in {low, medium, high, xhigh, max}.
+            model_routing:
+                S-plan: { model: opus, effort: low }
+                S-run: { model: opus, effort: medium }
+                S-sync: { model: opus, effort: low }
+                S-mx: { model: sonnet, effort: low }
+                M-plan: { model: opus, effort: medium }
+                M-run: { model: opus, effort: medium }
+                M-sync: { model: opus, effort: low }
+                M-mx: { model: sonnet, effort: low }
+                L-plan: { model: opus, effort: high }
+                L-run: { model: opus, effort: medium }
+                L-sync: { model: opus, effort: medium }
+                L-mx: { model: sonnet, effort: low }
+            # model_routing_profiles: No-Haiku 3-tier policy — perfTier -> (Tier x Phase) -> {model, effort}.
+            # 3 perfTiers (high/medium/low) × 12 cells (S/M/L × plan/run/sync/mx) = 36
+            # entries. The orchestrator consults RouteModelFor(specTier, phase,
+            # perfTier) at spawn time. `medium` is the default performance tier
+            # (populated by `moai init --model-policy`). Closed sets: model in
+            # {inherit, sonnet, opus, glm, fable}, effort in {low, medium, high, xhigh, max}.
+            model_routing_profiles:
+                high:
+                    S-plan: { model: opus, effort: medium }
+                    S-run: { model: opus, effort: high }
+                    S-sync: { model: opus, effort: low }
+                    S-mx: { model: sonnet, effort: low }
+                    M-plan: { model: opus, effort: high }
+                    M-run: { model: opus, effort: high }
+                    M-sync: { model: opus, effort: medium }
+                    M-mx: { model: sonnet, effort: low }
+                    L-plan: { model: opus, effort: high }
+                    L-run: { model: opus, effort: max }
+                    L-sync: { model: opus, effort: medium }
+                    L-mx: { model: sonnet, effort: low }
+                medium:
+                    S-plan: { model: opus, effort: low }
+                    S-run: { model: opus, effort: medium }
+                    S-sync: { model: opus, effort: low }
+                    S-mx: { model: sonnet, effort: low }
+                    M-plan: { model: opus, effort: medium }
+                    M-run: { model: opus, effort: medium }
+                    M-sync: { model: opus, effort: low }
+                    M-mx: { model: sonnet, effort: low }
+                    L-plan: { model: opus, effort: high }
+                    L-run: { model: opus, effort: medium }
+                    L-sync: { model: opus, effort: medium }
+                    L-mx: { model: sonnet, effort: low }
+                low:
+                    S-plan: { model: opus, effort: low }
+                    S-run: { model: opus, effort: low }
+                    S-sync: { model: sonnet, effort: low }
+                    S-mx: { model: sonnet, effort: low }
+                    M-plan: { model: opus, effort: low }
+                    M-run: { model: opus, effort: low }
+                    M-sync: { model: sonnet, effort: low }
+                    M-mx: { model: sonnet, effort: low }
+                    L-plan: { model: opus, effort: low }
+                    L-run: { model: opus, effort: medium }
+                    L-sync: { model: sonnet, effort: low }
+                    L-mx: { model: sonnet, effort: low }
+    init_audit_wiring_test.go:87: codex.review_gate.enabled must parse true; got:
+        workflow:
+            # Optional default mode for /moai run and /moai design.
+            # Values: autopilot | loop | team. Empty/absent = harness-based auto-selection.
+            # Precedence: CLI --mode flag > this field > harness auto.
+            # @MX:WARN - Default mode field is utility-skill-only consumer. @MX:REASON - Field is read by run skill dispatcher; changing semantics without updating dispatcher breaks behavior contract.
+            default_mode: ""
+            # agentic_loop: pipeline-level completion-loop iteration ceiling, loaded by
+            # internal/config AgenticLoopConfig (types.go) with default from
+            # DefaultAgenticLoopMaxIterations (defaults.go); also prose-read by the
+            # orchestrator for the moai.md Agentic Completion Loop termination clause.
+            # DISTINCT from loop_prevention.max_iterations (per-operation diagnostic
+            # fix-loop bound) — separate blocks, separate semantics.
+            agentic_loop:
+                max_iterations: 10
+            auto_clear:
+                after_plan: true
+                after_run: false
+                enabled: true
+                token_threshold: 150000
+            execution_mode: auto
+            # Iteration-ceiling precedence: CLI --max flag > ralph.yaml loop.max_iterations
+            # > workflow.yaml loop_prevention.max_iterations (this block — the lowest-
+            # precedence documented ceiling surface for the diagnostic fix-loop). The
+            # memory-safe 50-iteration checkpoint (loop workflow Step 2) is an orthogonal
+            # memory-pressure safeguard, not a fourth ceiling.
+            loop_prevention:
+                failure_pattern_detection: true
+                max_iterations: 100
+                max_retries_per_operation: 3
+            # Worktree automation settings (per the canonical worktree contract).
+            # Values mirror internal/config/defaults.go (WorkflowWorktreeConfig): all
+            # three auto-* toggles default false — the EnterWorktree-first policy.
+            # auto_create: read once (internal/cli/worktree_advisory.go) only to select
+            # advisory wording; it does not gate worktree creation.
+            # auto_merge / auto_cleanup: declared but not read — no code path consumes
+            # them (reserved). Kept aligned with defaults.go so the shipped file does
+            # not state the opposite of the recorded policy.
+            worktree:
+                auto_create: false
+                auto_merge: false
+                auto_cleanup: false
+                tmux_preferred: true
+                # session_name_pattern: declared but not read — no code builds a session
+                # name from this value (reserved). Retained as a placeholder only.
+                session_name_pattern: "moai-{ProjectName}-{SPEC-ID}"
+                # Sparse checkout paths for large monorepos (Claude Code v2.1.76+)
+                # Uncomment and customize to speed up worktree creation
+                # sparse_paths:
+                #     - "src/"
+                #     - "tests/"
+                #     - "config/"
+            token_budget:
+                plan: 30000
+                run: 180000
+                sync: 40000
+            # codex.review_gate: opt-in Stop-hook gate that asks the codex reviewer to
+            # look at your uncommitted changes at turn-end and keeps the turn going when
+            # the review comes back failing. Requires the optional `codex` binary.
+            # Ships OFF: set enabled to true to turn it on. While it is off the hook
+            # short-circuits in shell and costs nothing per turn.
+            codex:
+                review_gate:
+                    enabled: false
+            # multi.review_gate: opt-in Stop-hook gate for the multi-model review path.
+            # It reads the most recent convergence result of the configured review
+            # backends and keeps the turn going only when a required backend failed;
+            # disagreement between advisory-only backends never blocks. Ships OFF: set
+            # enabled to true to turn it on. While it is off the hook short-circuits in
+            # shell and costs nothing per turn.
+            multi:
+                review_gate:
+                    enabled: false
+            # workflow_agents: dynamic-workflow purpose taxonomy -> {model, effort}
+            # DEFAULTS. This block is the SSOT for workflow agent() model/effort
+            # defaults; per-script literals in .claude/workflows/*.js override it.
+            # Values are validated against the closed sets: model in
+            # {inherit, sonnet, opus}, effort in {low, medium, high, xhigh, max}.
+            workflow_agents:
+                read-only-extract: { model: sonnet, effort: low }
+                mechanical-transform: { model: opus, effort: low }
+                synthesize: { model: opus, effort: low }
+                research: { model: opus, effort: medium }
+                verify-judge: { model: opus, effort: medium }
+                implement: { model: opus, effort: medium }
+                design-architecture: { model: opus, effort: high }
+            # model_routing: LEGACY flat block (Tier x Phase -> {model, effort}).
+            # DEPRECATED — retained as a `medium` profile alias for one backward-compat
+            # cycle. Values mirror the
+            # `medium` profile below. New code reads `model_routing_profiles` via
+            # RouteModelFor(specTier, phase, perfTier); this flat key is NOT read by
+            # the 3-arg accessor. Existing external readers continue to work.
+            # Key format: <TIER>-<phase> where Tier in {S, M, L} and Phase in
+            # {plan, run, sync, mx}. Closed sets: model in
+            # {inherit, sonnet, opus, glm, fable}, effort in {low, medium, high, xhigh, max}.
+            model_routing:
+                S-plan: { model: opus, effort: low }
+                S-run: { model: opus, effort: medium }
+                S-sync: { model: opus, effort: low }
+                S-mx: { model: sonnet, effort: low }
+                M-plan: { model: opus, effort: medium }
+                M-run: { model: opus, effort: medium }
+                M-sync: { model: opus, effort: low }
+                M-mx: { model: sonnet, effort: low }
+                L-plan: { model: opus, effort: high }
+                L-run: { model: opus, effort: medium }
+                L-sync: { model: opus, effort: medium }
+                L-mx: { model: sonnet, effort: low }
+            # model_routing_profiles: No-Haiku 3-tier policy — perfTier -> (Tier x Phase) -> {model, effort}.
+            # 3 perfTiers (high/medium/low) × 12 cells (S/M/L × plan/run/sync/mx) = 36
+            # entries. The orchestrator consults RouteModelFor(specTier, phase,
+            # perfTier) at spawn time. `medium` is the default performance tier
+            # (populated by `moai init --model-policy`). Closed sets: model in
+            # {inherit, sonnet, opus, glm, fable}, effort in {low, medium, high, xhigh, max}.
+            model_routing_profiles:
+                high:
+                    S-plan: { model: opus, effort: medium }
+                    S-run: { model: opus, effort: high }
+                    S-sync: { model: opus, effort: low }
+                    S-mx: { model: sonnet, effort: low }
+                    M-plan: { model: opus, effort: high }
+                    M-run: { model: opus, effort: high }
+                    M-sync: { model: opus, effort: medium }
+                    M-mx: { model: sonnet, effort: low }
+                    L-plan: { model: opus, effort: high }
+                    L-run: { model: opus, effort: max }
+                    L-sync: { model: opus, effort: medium }
+                    L-mx: { model: sonnet, effort: low }
+                medium:
+                    S-plan: { model: opus, effort: low }
+                    S-run: { model: opus, effort: medium }
+                    S-sync: { model: opus, effort: low }
+                    S-mx: { model: sonnet, effort: low }
+                    M-plan: { model: opus, effort: medium }
+                    M-run: { model: opus, effort: medium }
+                    M-sync: { model: opus, effort: low }
+                    M-mx: { model: sonnet, effort: low }
+                    L-plan: { model: opus, effort: high }
+                    L-run: { model: opus, effort: medium }
+                    L-sync: { model: opus, effort: medium }
+                    L-mx: { model: sonnet, effort: low }
+                low:
+                    S-plan: { model: opus, effort: low }
+                    S-run: { model: opus, effort: low }
+                    S-sync: { model: sonnet, effort: low }
+                    S-mx: { model: sonnet, effort: low }
+                    M-plan: { model: opus, effort: low }
+                    M-run: { model: opus, effort: low }
+                    M-sync: { model: sonnet, effort: low }
+                    M-mx: { model: sonnet, effort: low }
+                    L-plan: { model: opus, effort: low }
+                    L-run: { model: opus, effort: medium }
+                    L-sync: { model: sonnet, effort: low }
+                    L-mx: { model: sonnet, effort: low }
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.502s
+FAIL

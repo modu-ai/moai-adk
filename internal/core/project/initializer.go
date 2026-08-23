@@ -14,6 +14,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/manifest"
+	"github.com/modu-ai/moai-adk/internal/mirrornotice"
 	"github.com/modu-ai/moai-adk/internal/runtime/gobin"
 	"github.com/modu-ai/moai-adk/internal/shell"
 	"github.com/modu-ai/moai-adk/internal/template"
@@ -53,9 +54,12 @@ type InitOptions struct {
 	DesignEnabled             bool   // design.enabled (B8); default true
 	ClaudeDesignEnabled       bool   // design.claude_design.enabled (B8); default true
 
-	// Worktree advisory. Mirrors the
-	// wizard.WorktreeAutoCreate selection; persisted to
-	// workflow.worktree.auto_create at init.
+	// Worktree advisory. Mirrors the wizard.WorktreeAutoCreate selection when
+	// the flag is absent (REQ-005 precedence). Persisted to
+	// workflow.worktree.auto_create at init ONLY when the WorktreeAutoCreateSet
+	// tracker fired (an explicit --worktree-auto-create flag,
+	// SPEC-INIT-WIZARD-REPAIR-001 REQ-006) — the wizard advisory alone is
+	// informational and leaves the deployed template default untouched.
 	WorktreeAutoCreate bool // workflow.worktree.auto_create
 
 	// TodoEnabled mirrors wizard.WizardResult.TodoEnabled and persists to
@@ -255,6 +259,40 @@ func (i *projectInitializer) Init(ctx context.Context, opts InitOptions) (*InitR
 		i.logger.Warn("page-3 config write failed", "error", err)
 	}
 
+	// Step 3e (SPEC-INIT-WIZARD-REPAIR-001 REQ-006): persist the tracker-gated
+	// workflow toggle selections into workflow.yaml. Like Step 3d this runs on
+	// BOTH the deployer and the fallback path: on the deployer path it patches
+	// the freshly deployed template with the explicitly-flagged values, and on
+	// the fallback path it creates the minimal block. With every *Set tracker
+	// false the call is a no-op leaving the deployed file byte-identical
+	// (distributed-default preservation).
+	// @MX:SPEC: SPEC-INIT-WIZARD-REPAIR-001
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	toggleSectionsDir := filepath.Clean(filepath.Join(opts.ProjectRoot, defs.MoAIDir, defs.SectionsSubdir))
+	if err := WriteWorkflowTogglesYAML(toggleSectionsDir, opts, result); err != nil {
+		result.Warnings = append(result.Warnings, fmt.Sprintf("workflow toggles: %s", err))
+		i.logger.Warn("workflow toggles write failed", "error", err)
+	}
+
+	// Step 3f (SPEC-INIT-WIZARD-REPAIR-001 REQ-008 / SPEC-MOAI-MCP-SERVER-001
+	// M4 REQ-MCP-015): persist the audit + codex review-gate selection into
+	// workflow.yaml immediately after Step 3d, on BOTH the deployer and the
+	// fallback path (the function carries its own fresh-file branch for the
+	// latter). AuditConfigSet=false leaves the deployed file byte-identical
+	// (C6 opt-in-default-off) — this invocation is the link that was missing,
+	// making the contract comments at initializer.go Step 3d and
+	// applyWizardPage3ToOpts true as written.
+	// @MX:SPEC: SPEC-INIT-WIZARD-REPAIR-001
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	if err := writeWorkflowAuditYAML(toggleSectionsDir, opts, result); err != nil {
+		result.Warnings = append(result.Warnings, fmt.Sprintf("workflow audit: %s", err))
+		i.logger.Warn("workflow audit write failed", "error", err)
+	}
+
 	// Step 4: Create CLAUDE.md
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -359,6 +397,24 @@ func (i *projectInitializer) deployTemplates(ctx context.Context, opts InitOptio
 		template.WithSmartPATH(template.BuildSmartPATH()),
 		template.WithVersion(version.GetVersion()),
 	)
+
+	// The deployer reports its skill-mirror outcome by return value and never
+	// prints, so surfacing a copy fallback is this caller's job. The result
+	// extension is optional by design (a Deployer that predates it keeps
+	// compiling), hence the type assertion rather than a wider interface.
+	//
+	// The notice goes into result.Warnings, which internal/cli/init.go already
+	// renders to stderr in its summary panel — no new display surface is added.
+	if rd, ok := i.deployer.(template.ResultDeployer); ok {
+		res, err := rd.DeployWithResult(ctx, opts.ProjectRoot, i.manifestMgr, tmplCtx)
+		// The result is populated even when deployment errors, so read the
+		// notice before deciding whether to abort.
+		result.Warnings = append(result.Warnings, mirrornotice.Lines(res)...)
+		if err != nil {
+			return fmt.Errorf("deploy templates: %w", err)
+		}
+		return nil
+	}
 
 	if err := i.deployer.Deploy(ctx, opts.ProjectRoot, i.manifestMgr, tmplCtx); err != nil {
 		return fmt.Errorf("deploy templates: %w", err)

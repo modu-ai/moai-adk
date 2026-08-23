@@ -55,6 +55,24 @@ type Deployer interface {
 	ListTemplates() []string
 }
 
+// ResultDeployer is the optional extension a Deployer implements when it can
+// report the observable outcome of a run (skill mirror modes and warnings) to
+// its caller. It is a separate interface rather than a method on Deployer so
+// that existing Deployer implementations keep compiling unchanged.
+//
+// Callers use it as: if rd, ok := dep.(ResultDeployer); ok { … }
+type ResultDeployer interface {
+	Deployer
+
+	// DeployWithResult behaves exactly like Deploy and additionally returns the
+	// run's DeployResult. The result is non-nil whenever deployment ran, even
+	// when an error is returned.
+	DeployWithResult(ctx context.Context, projectRoot string, m manifest.Manager, tmplCtx *TemplateContext) (*DeployResult, error)
+}
+
+// Compile-time assertion: the concrete deployer satisfies both interfaces.
+var _ ResultDeployer = (*deployer)(nil)
+
 // deployer is the concrete implementation of Deployer.
 type deployer struct {
 	fsys        fs.FS
@@ -68,29 +86,48 @@ type deployer struct {
 	// @MX:NOTE: [AUTO] renderCache — REQ-PERF-006-A single-render optimization
 	// @MX:REASON: ValidateAll renders all .tmpl files; Deploy reuses cached results instead of re-rendering (baseline 2N renders → N)
 	renderCache map[string][]byte
+
+	// skillMirrorDisabled turns off .agents/skills mirror creation. The zero
+	// value keeps mirroring ON; WithSkillMirror(false) is the seam that lets a
+	// test deploy the same tree with and without the mirror in one process.
+	skillMirrorDisabled bool
+	// symlinkFn and mirrorCopyFn are test seams for the two mirror syscalls.
+	// nil means "use the real one" (see skill_mirror.go).
+	symlinkFn    func(oldname, newname string) error
+	mirrorCopyFn func(srcDir, dstDir string) error
+}
+
+// applyOptions applies construction options to the deployer.
+func (d *deployer) applyOptions(opts []DeployerOption) *deployer {
+	for _, opt := range opts {
+		if opt != nil {
+			opt(d)
+		}
+	}
+	return d
 }
 
 // NewDeployer creates a Deployer backed by the given filesystem.
 // In production the fs.FS comes from go:embed; in tests use testing/fstest.MapFS.
-func NewDeployer(fsys fs.FS) Deployer {
-	return &deployer{fsys: fsys}
+func NewDeployer(fsys fs.FS, opts ...DeployerOption) Deployer {
+	return (&deployer{fsys: fsys}).applyOptions(opts)
 }
 
 // NewDeployerWithRenderer creates a Deployer that renders .tmpl files using the given Renderer.
-func NewDeployerWithRenderer(fsys fs.FS, renderer Renderer) Deployer {
-	return &deployer{fsys: fsys, renderer: renderer, forceUpdate: false}
+func NewDeployerWithRenderer(fsys fs.FS, renderer Renderer, opts ...DeployerOption) Deployer {
+	return (&deployer{fsys: fsys, renderer: renderer, forceUpdate: false}).applyOptions(opts)
 }
 
 // NewDeployerWithForceUpdate creates a Deployer that forces overwrite of existing files.
 // This is used for template updates where template files should replace existing versions.
-func NewDeployerWithForceUpdate(fsys fs.FS, forceUpdate bool) Deployer {
-	return &deployer{fsys: fsys, forceUpdate: forceUpdate}
+func NewDeployerWithForceUpdate(fsys fs.FS, forceUpdate bool, opts ...DeployerOption) Deployer {
+	return (&deployer{fsys: fsys, forceUpdate: forceUpdate}).applyOptions(opts)
 }
 
 // NewDeployerWithRendererAndForceUpdate creates a Deployer that renders .tmpl files
 // and forces overwrite of existing files. Used for template updates with rendering.
-func NewDeployerWithRendererAndForceUpdate(fsys fs.FS, renderer Renderer, forceUpdate bool) Deployer {
-	return &deployer{fsys: fsys, renderer: renderer, forceUpdate: forceUpdate}
+func NewDeployerWithRendererAndForceUpdate(fsys fs.FS, renderer Renderer, forceUpdate bool, opts ...DeployerOption) Deployer {
+	return (&deployer{fsys: fsys, renderer: renderer, forceUpdate: forceUpdate}).applyOptions(opts)
 }
 
 // @MX:NOTE: [AUTO] Checks context cancellation for per-file abort capability. Files with .tmpl suffix are rendered via Renderer and saved without the suffix.
@@ -98,7 +135,26 @@ func NewDeployerWithRendererAndForceUpdate(fsys fs.FS, renderer Renderer, forceU
 // Files ending in .tmpl are rendered using the Renderer (if configured) and
 // saved without the .tmpl suffix.
 func (d *deployer) Deploy(ctx context.Context, projectRoot string, m manifest.Manager, tmplCtx *TemplateContext) error {
+	_, err := d.DeployWithResult(ctx, projectRoot, m, tmplCtx)
+	return err
+}
+
+// DeployWithResult is Deploy plus the observable outcome of the run: which
+// skills were mirrored, how, and with what warnings. Deploy discards it.
+//
+// Callers that want to surface the mirror mode to the user type-assert the
+// Deployer to ResultDeployer and call this instead — the deployer itself never
+// prints (the package has no printer layer, by design).
+func (d *deployer) DeployWithResult(ctx context.Context, projectRoot string, m manifest.Manager, tmplCtx *TemplateContext) (*DeployResult, error) {
 	projectRoot = filepath.Clean(projectRoot)
+
+	result := &DeployResult{}
+	// deployedSkills accumulates, in walk order, the skill directory names this
+	// run wrote under .claude/skills/. Deriving the mirror set from the walk
+	// (rather than from a constant or the catalog) is what keeps a slim
+	// deployment from producing links to skills it never installed.
+	var deployedSkills []string
+	seenSkills := make(map[string]struct{})
 
 	var deployErr error
 	walkErr := fs.WalkDir(d.fsys, ".", func(path string, entry fs.DirEntry, err error) error {
@@ -158,6 +214,15 @@ func (d *deployer) Deploy(ctx context.Context, projectRoot string, m manifest.Ma
 			destRelPath = path
 		}
 
+		// Record the skill this file belongs to, before any skip branch: a
+		// re-deploy whose files all already exist still owes its mirror.
+		if skill, ok := skillNameFromDeployPath(destRelPath); ok {
+			if _, seen := seenSkills[skill]; !seen {
+				seenSkills[skill] = struct{}{}
+				deployedSkills = append(deployedSkills, skill)
+			}
+		}
+
 		// Compute destination path
 		destPath := filepath.Join(projectRoot, filepath.FromSlash(destRelPath))
 
@@ -212,9 +277,21 @@ func (d *deployer) Deploy(ctx context.Context, projectRoot string, m manifest.Ma
 	})
 
 	if walkErr != nil {
-		return walkErr
+		return result, walkErr
 	}
-	return deployErr
+	if deployErr != nil {
+		return result, deployErr
+	}
+
+	// Mirror creation is the last step and is fail-open: its outcome lands in
+	// the result, never in the returned error. Mirror entries are deliberately
+	// NOT registered with the manifest manager (hashing a directory symlink
+	// fails EISDIR, and the canonical files are already tracked).
+	if !d.skillMirrorDisabled {
+		result.SkillMirrors = d.mirrorSkills(projectRoot, deployedSkills)
+	}
+
+	return result, nil
 }
 
 // ExtractTemplate returns the content of a single named template.

@@ -545,11 +545,15 @@ type TokenBudgetConfig struct {
 // WorkflowWorktreeConfig mirrors workflow.worktree.* — worktree automation settings.
 // Distinct from GitStrategyConfig.WorktreeRoot (different key domain, no conflict).
 //
-// Reader status (SPEC-CONFIG-KEY-HONESTY-001 M5): AutoCreate is read once by
+// Reader status (SPEC-CONFIG-KEY-HONESTY-001 M5, updated by
+// SPEC-INIT-WIZARD-REPAIR-001 REQ-009): AutoCreate is read once by
 // internal/cli/worktree_advisory.go only to select advisory wording — it does
-// not gate worktree creation. AutoCleanup and AutoMerge have no production
-// reader (declared but not read). SessionNamePattern has no production reader
-// (no code builds a session name from it).
+// not gate worktree creation. AutoCleanup is read by the two auto-cleanup
+// paths (internal/cli/session_worktree.go cleanupSessionWorktree and
+// session_worktree_prmerge.go prMergeCleanup), gating worktree removal.
+// AutoMerge has no production reader (declared but not read).
+// SessionNamePattern has no production reader (no code builds a session name
+// from it).
 type WorkflowWorktreeConfig struct {
 	AutoCleanup        bool   `yaml:"auto_cleanup"`
 	AutoCreate         bool   `yaml:"auto_create"`
@@ -755,6 +759,19 @@ type GateConfig struct {
 	// issue #1265 this field did not exist, so the runner's knob was documented
 	// but unreachable from any config file.
 	DisabledSteps map[string]bool `yaml:"disabled_steps"`
+	// Typecheck configures the type-check axis.
+	Typecheck GateTypecheck `yaml:"typecheck"`
+}
+
+// GateTypecheck configures the gate's type-check axis.
+type GateTypecheck struct {
+	// Enabled controls whether the typecheck axis runs. Default true.
+	Enabled bool `yaml:"enabled"`
+	// Command overrides the language default and enables the axis for ANY
+	// language. Split on whitespace and executed directly, so shell
+	// metacharacters are NOT interpreted — put a pipeline or a redirect in a
+	// script and name the script here.
+	Command string `yaml:"command"`
 }
 
 // AstGrepGateConfig holds configuration for ast-grep quality gate scanning.
@@ -771,9 +788,10 @@ type AstGrepGateConfig struct {
 
 // GateTimeouts holds per-step timeout configuration in seconds.
 type GateTimeouts struct {
-	Vet  int `yaml:"vet"`
-	Lint int `yaml:"lint"`
-	Test int `yaml:"test"`
+	Vet       int `yaml:"vet"`
+	Lint      int `yaml:"lint"`
+	Test      int `yaml:"test"`
+	Typecheck int `yaml:"typecheck"`
 }
 
 // VetTimeoutDuration converts the Vet timeout to time.Duration.
@@ -801,6 +819,16 @@ func (g *GateConfig) TestTimeoutDuration() time.Duration {
 		return 120 * time.Second
 	}
 	return time.Duration(g.Timeouts.Test) * time.Second
+}
+
+// TypecheckTimeoutDuration converts the Typecheck timeout to time.Duration.
+// Returns 300s when the value is zero or negative — a type-check over a large
+// monorepo routinely outlasts the test budget, so it gets its own.
+func (g *GateConfig) TypecheckTimeoutDuration() time.Duration {
+	if g.Timeouts.Typecheck <= 0 {
+		return 300 * time.Second
+	}
+	return time.Duration(g.Timeouts.Typecheck) * time.Second
 }
 
 // SunsetConfig defines the Build-to-Delete framework configuration.
@@ -1192,10 +1220,10 @@ type DesignEvaluator struct {
 
 // DesignEvolution holds evolution and self-learning settings.
 type DesignEvolution struct {
-	ArchiveAfterEvolve      bool                     `yaml:"archive_after_evolve"`
-	AutoEvolveThreshold     int                      `yaml:"auto_evolve_threshold"`
-	CooldownHours           int                      `yaml:"cooldown_hours"`
-	GraduationCriteria      DesignGraduationCriteria `yaml:"graduation_criteria"`
+	ArchiveAfterEvolve  bool                     `yaml:"archive_after_evolve"`
+	AutoEvolveThreshold int                      `yaml:"auto_evolve_threshold"`
+	CooldownHours       int                      `yaml:"cooldown_hours"`
+	GraduationCriteria  DesignGraduationCriteria `yaml:"graduation_criteria"`
 	// MaxActiveLearnings is declared but NOT read by any production code path.
 	// The actual ceiling on active learnings is enforced by two independent
 	// hardcoded constants: internal/evolution/types.go MaxActiveLearnings (= 50)
@@ -1203,9 +1231,9 @@ type DesignEvolution struct {
 	// Wiring this config field to those sites is out of scope (a refactor beyond
 	// SPEC-CONFIG-KEY-HONESTY-001). Treat this field as documentation of the
 	// intended value, not the lever.
-	MaxActiveLearnings      int                      `yaml:"max_active_learnings"`
-	MaxEvolutionRatePerWeek int                      `yaml:"max_evolution_rate_per_week"`
-	RequireApproval         bool                     `yaml:"require_approval"`
+	MaxActiveLearnings      int  `yaml:"max_active_learnings"`
+	MaxEvolutionRatePerWeek int  `yaml:"max_evolution_rate_per_week"`
+	RequireApproval         bool `yaml:"require_approval"`
 }
 
 // DesignGraduationCriteria holds graduation thresholds for learnings.
