@@ -715,6 +715,15 @@ func (h *codexSessionHandle) runTurn(ctx context.Context, method string, params 
 //
 // The caller passes the FINAL review/turn method; the handshake is owned by
 // openCodexSession.
+//
+// codexReviewRPC is the injectable seam over it, wired to runCodexReviewRPC in
+// production. Both codex AUDIT paths — handleCodexAudit here and
+// performCodexAudit in mcp_convergence.go — dispatch through it, so a test can
+// assert what the params map actually carries with no live backend
+// (SPEC-MCP-WORKTREE-ROOT-001 AC-1b). The Stop-hook review gate keeps calling
+// runCodexReviewRPC directly: it is not an audit path and is out of scope here.
+var codexReviewRPC = runCodexReviewRPC
+
 func runCodexReviewRPC(ctx context.Context, binaryPath, method string, params map[string]any) (ReviewOutput, error) {
 	sess, err := openCodexSession(ctx, binaryPath, params)
 	if err != nil {
@@ -1156,6 +1165,18 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	model := req.GetString("model", "")
 	token := extractProgressToken(req)
 
+	// SPEC-MCP-WORKTREE-ROOT-001 REQ-1/REQ-3: the caller may name the tree codex
+	// should review. Absent ⇒ resolveProjectDir(), exactly as before. An unusable
+	// path is REJECTED here rather than replaced by the default — a fallback would
+	// review the primary checkout while reporting success, which is the defect the
+	// parameter exists to fix. The rejection is a tool error, not the fail-open
+	// inconclusive verdict: fail-open covers an absent or broken codex, not a
+	// caller input the caller can correct.
+	root, rootErr := resolveToolProjectRoot(req)
+	if rootErr != nil {
+		return toolErr("codex_audit", rootErr), nil
+	}
+
 	notifyMCPProgress(ctx, token, 0, "codex 감사 시작 — 모드: "+mode+", target: "+target)
 	binaryPath, err := codexLookPath(codexBinaryName)
 	if err != nil {
@@ -1167,7 +1188,7 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	params := map[string]any{
 		"target": target,
 		"model":  model,
-		"cwd":    resolveProjectDir(),
+		"cwd":    root,
 	}
 	if mode == codexModeAdversarial {
 		method = codexMethodTurnStart
@@ -1178,7 +1199,7 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	}
 
 	notifyMCPProgress(ctx, token, 0.2, "codex에 리뷰 요청 전송 중... (수분 소요 가능)")
-	out, _ := runCodexReviewRPC(ctx, binaryPath, method, params) // fail-open inside
+	out, _ := codexReviewRPC(ctx, binaryPath, method, params) // fail-open inside
 	notifyMCPProgress(ctx, token, 0.9, "codex 응답 수신 — 결과 조립 중...")
 	return codexReviewToolResult(out), nil
 }

@@ -60,9 +60,23 @@ func handleAuditMulti(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	// invent a session id — it threads whatever the caller supplied (the
 	// orchestrator resolves the authoritative id). An empty SessionID makes
 	// persistence a no-op, which is fail-open safe.
+	// SPEC-MCP-WORKTREE-ROOT-001 REQ-1/REQ-3: the caller may name the tree the
+	// backends should read. Absent ⇒ empty ⇒ each backend resolves exactly as it
+	// did before the parameter existed. An unusable path is REJECTED rather than
+	// replaced by the default: a fallback would fan out over the primary checkout
+	// while reporting success, which is the defect this parameter exists to fix.
+	// This is the one hard-error path in a handler that is otherwise fail-open —
+	// fail-open covers an absent or broken BACKEND, not a caller input the caller
+	// can correct, and swallowing a mistyped path would make the mistake invisible.
+	projectRoot, rootErr := resolveOptionalToolProjectRoot(req)
+	if rootErr != nil {
+		return toolErr(auditMultiToolName, rootErr), nil
+	}
+
 	cfg := MultiAuditConfig{
-		Gates:     gates,
-		SessionID: req.GetString("session_id", ""),
+		Gates:       gates,
+		SessionID:   req.GetString("session_id", ""),
+		ProjectRoot: projectRoot,
 	}
 
 	token := extractProgressToken(req)

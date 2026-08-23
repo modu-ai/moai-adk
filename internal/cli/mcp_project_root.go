@@ -61,7 +61,31 @@ func resolveToolProjectRoot(req mcp.CallToolRequest) (string, error) {
 	if raw == "" {
 		return resolveProjectDir(), nil
 	}
+	return validateProjectRoot(raw)
+}
 
+// resolveOptionalToolProjectRoot is the pass-through variant, for a surface that
+// carries NO root today rather than carrying the wrong one.
+//
+// The distinction is what keeps REQ-2 literally true on both codex paths.
+// `codex_audit` already hands codex a `cwd` (resolveProjectDir()), so an absent
+// parameter there must keep handing it that same value — resolveToolProjectRoot's
+// fallback. `audit_multi`'s fan-out hands codex no `cwd` at all, so an absent
+// parameter there must keep handing it none: substituting a default would change
+// what an existing caller's backend receives, which is the one thing REQ-2
+// forbids. Validation and rejection are identical; only the absent case differs.
+func resolveOptionalToolProjectRoot(req mcp.CallToolRequest) (string, error) {
+	raw := strings.TrimSpace(req.GetString(projectRootArg, ""))
+	if raw == "" {
+		return "", nil
+	}
+	return validateProjectRoot(raw)
+}
+
+// validateProjectRoot turns a caller-supplied path into an absolute project
+// root, or rejects it. Shared by both resolvers so the two cannot drift into
+// accepting different things.
+func validateProjectRoot(raw string) (string, error) {
 	abs, err := filepath.Abs(raw)
 	if err != nil {
 		return "", fmt.Errorf("project_root %q cannot be resolved to an absolute path: %w", raw, err)
