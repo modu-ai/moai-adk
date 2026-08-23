@@ -18,3 +18,4 @@ draft: false
 
 - [自主 CI/CD](./ci-autonomy) —— 从 pre-push 钩子到 auto-fix 循环的 8-Tier 质量自动化
 - [GitHub 集成](./github-integration) —— 用 `moai github` 子命令解析 issue 并关联到 SPEC 文档
+- [Claude 云端会话](./claude-cloud) —— 把 `moai` 二进制文件装到云端会话 VM 上的 setup script 配方

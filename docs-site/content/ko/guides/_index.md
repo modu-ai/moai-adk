@@ -30,3 +30,4 @@ SPEC(요구사항 정의 문서)과 잇는 가벼운 워크플로우를 다룹�
 
 - [자율 CI/CD](./ci-autonomy) — pre-push 훅부터 auto-fix 루프까지, 8-Tier 품질 자동화
 - [GitHub 연동](./github-integration) — `moai github` 서브커맨드로 이슈를 파싱하고 SPEC 문서와 연결
+- [Claude 클라우드 세션](./claude-cloud) — 클라우드 세션 VM에 `moai` 바이너리를 얹는 setup script 레시피

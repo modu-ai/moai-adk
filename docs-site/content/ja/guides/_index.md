@@ -18,3 +18,4 @@ MoAI-ADK の運用に役立つガイドドキュメントを集めました。�
 
 - [自律 CI/CD](./ci-autonomy) — pre-push フックから auto-fix ループまで、8-Tier 品質自動化
 - [GitHub 連携](./github-integration) — `moai github` サブコマンドで Issue をパースし SPEC ドキュメントと連携
+- [Claude クラウドセッション](./claude-cloud) — クラウドセッションの VM に `moai` バイナリを載せる setup script レシピ
