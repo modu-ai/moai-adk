@@ -70,7 +70,6 @@ func TestWebRendersSchemaFieldSet(t *testing.T) {
 		settings.SectionWorkflow:      true,
 		settings.SectionHarness:       true,
 		settings.SectionRalph:         true,
-		settings.SectionFeedback:      true,
 		settings.SectionObservability: true,
 		settings.SectionSecurity:      true,
 		settings.SectionMx:            true,

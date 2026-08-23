@@ -107,6 +107,9 @@ func TestSchemaSectionsRenderSmoke(t *testing.T) {
 		"llm.glm.models.high",
 		"workflow.worktree.auto_create",
 		"git_strategy.mode",
+		// feedback reopened (SPEC-FEEDBACK-AUTO-SUBMIT-001 M7).
+		"feedback.repository",
+		"feedback.auto_submit",
 	} {
 		if !strings.Contains(body, `name="`+name+`"`) {
 			t.Errorf("rendered page missing form control %q (surviving section)", name)
@@ -116,8 +119,10 @@ func TestSchemaSectionsRenderSmoke(t *testing.T) {
 	// 제외군 + removed 섹션 폼 컨트롤 0 (AC-WC11-018 렌더 half + reclassified).
 	for _, prefix := range []string{
 		"state.", "system.", "sunset.", "tool-policy.", "lsp.", "mx.", "constitution.", "context.", "interview.",
-		// SPEC-WEBCONF-SIMPLIFY-001 M3: 7 former seam sections removed from UI.
-		"harness.", "ralph.", "feedback.", "observability.", "security.", "handoff.", "cacheStrategy.",
+		// SPEC-WEBCONF-SIMPLIFY-001 M3: 6 former seam sections still removed from
+		// the UI. feedback left this group in SPEC-FEEDBACK-AUTO-SUBMIT-001 M7 —
+		// its panel renders again, so its controls are asserted present below.
+		"harness.", "ralph.", "observability.", "security.", "handoff.", "cacheStrategy.",
 	} {
 		if strings.Contains(body, `name="`+prefix) {
 			t.Errorf("excluded/removed section control rendered: name=%q...", prefix)

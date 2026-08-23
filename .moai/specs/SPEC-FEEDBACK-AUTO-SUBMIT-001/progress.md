@@ -757,6 +757,135 @@ plan.md §B Known Issues 3 이 지키라고 한 두 고정(`DefaultQuestions` 5�
 2. **쓰기는 `yamlpatch` 로 upsert 한다.** 배포되는 `feedback.yaml` 은 `repository` 키만 담고 `auto_submit` 이 없다(그 추가는 M8 소관). 키가 이미 있어야 동작하는 패치 헬퍼를 쓰면 **정확히 문제가 되는 경로에서 조용한 no-op** 이 된다. `yamlpatch` 는 중첩 매핑을 upsert 하면서 주석과 키 순서를 보존하고, 테스트가 그 보존을 단언한다.
 3. **게이트 라벨 예시는 두 사본 모두 영어다.** design.md §7 의 한국어 표는 "의미를 적은 것이지 리터럴이 아니다"이고, D11 은 템플릿 미러 예시를 영어로 요구한다. 두 사본을 동일하게 유지해야 드리프트가 늘지 않으므로 소스도 영어로 쓰고, "이 라벨을 로케일 세션에 그대로 복사하지 말라"는 지시를 [HARD] 로 함께 실었다.
 
+### M7 — 웹 콘솔 노출
+
+착수 HEAD `38705eb85`, base `3210da7d3`, 브랜치 `WT-auto-feedback`, 워크트리 `.claude/worktrees/t170`.
+
+#### 결정 D5 반전을 명시적으로 기록한다
+
+`feedback` 섹션의 `RouteExcluded` 고정은 **낡은 테스트가 아니라 기록된 결정**이다 — SPEC-WEBCONF-SIMPLIFY-001 M3 이 이 섹션의 탭과 웹 쓰기 경로를 의도적으로 제거했고, 두 테스트가 그것을 고정하고 있었다. 이번 편집이 정당한 유일한 근거는 `spec.md` §D 결정 D5 가 그 결정을 **선택지 A로 명시적으로 뒤집었다**는 사실이며(REQ-12), 반전은 커밋 본문에 이름과 함께 남긴다(plan.md AP-9).
+
+**고정 테스트는 카드가 지목한 2건이 아니라 6건이었다.** 카드는 `sectionroute_test.go:27` 과 `scope_contract_test.go:79` 를 지목했는데, 실측해 보니 같은 결정을 고정하는 지점이 4곳 더 있었다. 넷 다 M3 재분류 목록을 그대로 복사한 형태이므로 같은 반전의 기계적 귀결이며, 범위 확장이 아니다:
+
+| 파일 | 지점 | 편집 |
+|---|---|---|
+| `internal/settings/sectionroute_test.go` | `:27` 외 3함수 | `feedback` → `RouteSeam`, `SeamSections` 2개, `ExcludedSections` 18 → 17 |
+| `internal/web/scope_contract_test.go` | `:79` 외 1함수 | 제외 목록 → seam 단언으로 이동 |
+| `internal/settings/sectionwrite_test.go` | `:67`, `:158` | seam 쓰기 거부 목록 2곳에서 제거 |
+| `internal/web/tab_layout_test.go` | `:18` | `wantTabOrder` 에 `feedback` 12번째 추가 |
+| `internal/web/schema_sections_test.go` | `:112`, `:119` | 렌더 금지 접두사 목록 → 렌더 필수 목록으로 이동 |
+| `internal/web/schema_render_test.go` | `:73` | `m3RemovedSections` 면제에서 제거 |
+
+마지막 둘과 `schema_sections_test.go:29` 의 `m3ReclassifiedSeamSections` 는 **면제 목록**이다 — `feedback` 을 남겨두면 재개방된 섹션의 라우트·렌더 불변식이 조용히 검사되지 않으므로 함께 제거했다.
+
+#### 형제 SPEC 공유 파일 확인
+
+`SPEC-TODO-ENABLE-FLAG-001` 이 먼저 착지했는지 base 에서 확인했다: `ExcludedSections()` 에 `feedback` 이 그대로 남아 있었고(RED 출력 `RouteForSection("feedback") = 0`), 중복 제거는 발생하지 않았다. 공유 파일(`i18n.js`, `schema_sections.go`)에는 **신규 항목만 덧붙였고** 기존 항목의 위치·서식은 건드리지 않았다(plan.md AP-10).
+
+#### RED — 구현 전 실패 관측
+
+두 패키지 모두 구현 이전 트리에서 새 기대 방향으로 실패함을 먼저 확인했다.
+
+```
+$ go test ./internal/settings/ -run 'TestRouteForSectionTable|TestSeamSectionsMatchesRoutes|TestExcludedSectionsAllRejected|TestFeedbackAutoSubmitFieldRegistered|TestFeedbackSectionSeamWritable'
+--- FAIL: TestRouteForSectionTable (0.00s)
+    sectionroute_test.go:49: RouteForSection("feedback") = 0, want 2
+--- FAIL: TestSeamSectionsMatchesRoutes (0.00s)
+    sectionroute_test.go:62: SeamSections() length = 1, want 2 (workflow + feedback)
+--- FAIL: TestFeedbackAutoSubmitFieldRegistered (0.00s)
+    feedback_autosubmit_test.go:26: SectionFields(SectionFeedback) has no feedback.auto_submit field
+--- FAIL: TestExcludedSectionsAllRejected (0.00s)
+    sectionroute_test.go:94: ExcludedSections() length = 18, want 17 (19 M3 - workflow - feedback)
+--- FAIL: TestFeedbackSectionSeamWritable (0.00s)
+    feedback_autosubmit_test.go:56: ApplySchemaEdits(feedback.auto_submit): settings: unknown schema field "feedback.auto_submit"
+FAIL	github.com/modu-ai/moai-adk/internal/settings	0.428s
+
+$ go test ./internal/web/ -run 'TestScopeContractEditableSections|TestScopeContractExclusions|TestFeedbackPanelRendered|TestFeedbackAutoSubmitI18nKeysInAllLocales|TestFeedbackPanelFieldsWired'
+--- FAIL: TestFeedbackPanelRendered (0.01s)
+    feedback_panel_test.go:26: rendered console missing "data-tab=\"feedback\""
+    feedback_panel_test.go:26: rendered console missing "data-panel=\"feedback\""
+    feedback_panel_test.go:26: rendered console missing "name=\"feedback.repository\""
+    feedback_panel_test.go:26: rendered console missing "name=\"feedback.auto_submit\""
+    feedback_panel_test.go:26: rendered console missing "name=\"feedback.auto_submit__present\""
+--- FAIL: TestFeedbackAutoSubmitI18nKeysInAllLocales (0.00s)
+    feedback_panel_test.go:39: i18n.js missing feedback key "f.feedback.auto_submit.title" in all 4 locales
+    feedback_panel_test.go:39: i18n.js missing feedback key "f.feedback.auto_submit.desc" in all 4 locales
+--- FAIL: TestFeedbackPanelFieldsWired (0.00s)
+    feedback_panel_test.go:49: schemaPanelMeta(feedback).ID = "", want "feedback"
+    feedback_panel_test.go:53: SectionFields(SectionFeedback) = 1 fields, want >= 2 (repository + auto_submit)
+--- FAIL: TestScopeContractEditableSections (0.00s)
+    scope_contract_test.go:43: section "feedback": route = 0, want RouteSeam (M7 reopened)
+FAIL	github.com/modu-ai/moai-adk/internal/web	0.462s
+```
+
+#### GREEN — AC-F-023 웹 절반 판정
+
+**PASS.** AC-F-023 은 웹 절반(스키마·라우트·i18n)과 템플릿 절반(미러·인벤토리·`make build`·중립성)으로 나뉘며, M7 은 **웹 절반만** 진다. 템플릿 절반은 M8 소관이므로 이 판정은 그 부분을 주장하지 않는다.
+
+acceptance.md 가 지정한 5개 선택자를 `-v` 로 돌려 각각 `=== RUN` 이 찍히는지 확인했다(0개 실행 통과 방지 — §D.3):
+
+```
+$ go test -count=1 ./internal/settings/ ./internal/web/ -run 'TestSchemaCurrentValuesReadsAllSections|TestI18nKeySetParity|TestRouteForSectionTable|TestExcludedSectionsAllRejected|TestScopeContract|TestFeedbackPanelRendered|TestFeedbackAutoSubmitFieldRegistered|TestFeedbackSectionSeamWritable|TestFeedbackAutoSubmitI18nKeysInAllLocales|TestFeedbackPanelFieldsWired' -v
+=== RUN   TestFeedbackAutoSubmitFieldRegistered
+=== RUN   TestFeedbackSectionSeamWritable
+=== RUN   TestSchemaCurrentValuesReadsAllSections
+=== RUN   TestRouteForSectionTable
+=== RUN   TestExcludedSectionsAllRejected
+--- PASS: TestRouteForSectionTable (0.00s)
+--- PASS: TestExcludedSectionsAllRejected (0.00s)
+--- PASS: TestFeedbackAutoSubmitFieldRegistered (0.00s)
+--- PASS: TestFeedbackSectionSeamWritable (0.00s)
+--- PASS: TestSchemaCurrentValuesReadsAllSections (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/settings	0.219s
+=== RUN   TestFeedbackPanelRendered
+--- PASS: TestFeedbackPanelRendered (0.01s)
+=== RUN   TestFeedbackAutoSubmitI18nKeysInAllLocales
+--- PASS: TestFeedbackAutoSubmitI18nKeysInAllLocales (0.00s)
+=== RUN   TestFeedbackPanelFieldsWired
+--- PASS: TestFeedbackPanelFieldsWired (0.00s)
+=== RUN   TestI18nKeySetParity
+--- PASS: TestI18nKeySetParity (0.05s)
+=== RUN   TestScopeContractEditableSections
+=== RUN   TestScopeContractExclusions
+--- PASS: TestScopeContractEditableSections (0.00s)
+--- PASS: TestScopeContractExclusions (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/web	0.455s
+```
+
+**섹션이 실제로 폼에 도달했다는 관측**은 주장이 아니라 두 지점의 렌더 단언이다: `TestFeedbackPanelRendered` 가 `data-tab="feedback"` · `data-panel="feedback"` · `name="feedback.auto_submit"` · `name="feedback.auto_submit__present"`(bool 의 unchecked↔미제출 구분 동반 필드)를 렌더된 HTML 에서 찾고, `internal/web/schema_sections_test.go` 의 렌더 스모크가 `feedback.` 접두사를 **금지 목록에서 필수 목록으로** 옮겼다. i18n 은 `TestFeedbackAutoSubmitI18nKeysInAllLocales`(신규 2키) + 기존 `TestI18nKeySetParity`(스키마 전 필드 4로케일 전수)가 함께 본다.
+
+#### 전 패키지 회귀 + 빌드
+
+```
+$ go test -count=1 ./internal/settings/... ./internal/web/...
+ok  	github.com/modu-ai/moai-adk/internal/settings	1.018s
+ok  	github.com/modu-ai/moai-adk/internal/settings/agentfm	0.347s
+ok  	github.com/modu-ai/moai-adk/internal/settings/yamlpatch	0.692s
+ok  	github.com/modu-ai/moai-adk/internal/web	2.899s
+
+$ go vet ./internal/settings/... ./internal/web/...                  → exit 0 (무출력)
+$ GOOS=windows go vet ./internal/settings/... ./internal/web/...      → exit 0 (무출력)
+```
+
+**M6 이 기록한 `TestConstitutionCrossReference` FAIL 은 M7 소관이 아니며 이 결과에 섞이지 않았다** — `internal/cli/agentlint` 패키지 소속이라 위 두 패키지 스코프 밖이고, base 에서도 붉다(원인: 커밋 `243eb07ef` 가 `moai-constitution.md` 에서 `agent-authoring.md` 인용을 제거).
+
+#### 납품물
+
+- `internal/settings/schema_sections.go` — `feedback.auto_submit` (TypeBool, seam) 1필드 추가. 기존 `feedback.repository` 줄은 그대로.
+- `internal/settings/sectionroute.go` — `sectionRoutes` 에 `"feedback": RouteSeam` 추가, `SeamSections()` → `{workflow, feedback}`, `ExcludedSections()` 에서 `feedback` 제거(18 → 17).
+- `internal/web/schemaform.go` — `consoleTabs()` 12번째 탭(기존 순서 무변경, 말미 추가) + `schemaSectionMetas()` 패널 메타. 아이콘은 기존 `messages-square` 케이스 재사용(신규 SVG 케이스 없음), 라벨은 기존 `sec.feedback.title`/`.desc` 키 재사용(신규 `sec.*` 키 0).
+- `internal/web/assets/i18n.js` — `f.feedback.auto_submit.title`/`.desc` 를 en/ko/ja/zh **4로케일 전부**에 추가(각 로케일 `f.feedback.repository.*` 바로 뒤). 기존 항목은 무편집.
+- 신규 테스트 2파일 — `internal/settings/feedback_autosubmit_test.go`(필드 등록 + seam 왕복) · `internal/web/feedback_panel_test.go`(패널 렌더 + 4로케일 + 배선).
+- 고정 테스트 6파일 갱신 — 위 표.
+
+`.templ` 편집은 없다. `root.templ` 의 패널 루프가 `consoleTabs()` 를 순회하며 미지정 탭을 `default:` 분기에서 `fieldsetSchemaSection` 으로 그리므로, 탭 등록만으로 렌더가 따라온다.
+
+#### 설계 판단 2건
+
+1. **탭을 말미에 붙인다.** 기존 11개 순서를 건드리지 않아 `wantTabOrder` 편집이 1줄로 끝나고, 형제 SPEC 과의 충돌 표면도 최소가 된다(AP-10).
+2. **`sec.feedback.desc` 는 손대지 않는다.** 지금 값은 "피드백 워크플로우 대상 저장소"라 필드가 둘이 된 지금은 좁지만, 카드의 [HARD] 는 공유 파일에 **신규 항목만** 추가하라고 했다. 기존 4줄을 고치는 대신 Go 쪽 패널 `Desc` 베이스라인 문구를 두 필드를 포괄하도록 썼다. 좁아진 i18n 설명 4줄은 아래 잔여 위험에 남긴다.
+
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
