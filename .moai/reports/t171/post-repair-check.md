@@ -53,11 +53,19 @@ one direction, is attributable to that SPEC and to nothing else.
 
 **Behaviour**, same server, same environment, three calls:
 
-| Call | `total_specs` | Contains the worktree-only SPEC |
+| Call | `total_specs` | `modern_era_clean` |
 |---|---|---|
-| `spec_audit` with no `project_root` | **627** | no |
-| `spec_audit` with `project_root: <worktree>` | **628** | yes |
+| `spec_audit` with no `project_root` | **627** | 349 |
+| `spec_audit` with `project_root: <worktree>` | **628** | 350 |
 | `spec_audit` with `project_root: <worktree>/no-such-tree` | — | rejected: `spec_audit: project_root "…/no-such-tree" does not exist`, `isError: true` |
+
+The counts are the measurement; the SPEC's own ID appears in **neither** result,
+and that is expected rather than a gap. `spec_audit` reports drift findings, and
+a clean SPEC produces none — so the worktree-only SPEC is present in the
+catalogue and silent in the output, which is exactly why the count is the
+discriminator and a name search is not. An earlier draft of this table claimed a
+"contains the SPEC" column; it asserted an observation that was never made, and
+the sync audit was right to flag it (F-5).
 
 The `+1` is the SPEC that exists only in the worktree, and the direction is the
 one the repair predicts. The no-parameter call reads the primary checkout —

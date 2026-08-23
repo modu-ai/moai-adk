@@ -131,8 +131,8 @@ func TestResolveToolProjectRoot_RejectsAnUnusableRoot(t *testing.T) {
 	noMoai := t.TempDir()
 
 	for name, path := range map[string]string{
-		"nonexistent":   missing,
-		"file-not-dir":  file,
+		"nonexistent":      missing,
+		"file-not-dir":     file,
 		"dir-without-moai": noMoai,
 	} {
 		got, err := resolveToolProjectRoot(newToolRequest(map[string]any{"project_root": path}))
@@ -163,7 +163,82 @@ func TestSpecAudit_RejectedProjectRootDoesNotAuditTheDefault(t *testing.T) {
 	}
 }
 
+// The other two SPEC tools, exercised rather than schema-asserted.
+//
+// The sync audit found spec_progress and spec_drift resting on read-the-diff
+// assurance: their declaration was checked, their parameter-PRESENT behaviour
+// never was — not by a test and not by the live probe, which called only
+// spec_audit. AC-1a names spec_audit, so this was not an AC miss; it was two of
+// five in-scope tools nobody had watched work. The risk was low precisely
+// because all three share resolveToolProjectRoot — but "it shares a covered
+// helper" is an argument, not an observation.
+func TestSpecProgress_ProjectRootRedirectsTheScanner(t *testing.T) {
+	root := newProbeProject(t, "SPEC-PROBESCAN-905")
+
+	withParam := callSpecToolJSON(t, handleSpecProgress, map[string]any{"project_root": root})
+	if !strings.Contains(withParam, "SPEC-PROBESCAN-905") {
+		t.Errorf("spec_progress rooted at the named tree did not list its only SPEC; got=%s", withParam)
+	}
+
+	// The absent direction, for the same reason AC-1a demands it: a
+	// present-only assertion passes just as well if the parameter is ignored
+	// and the default tree happens to hold the SPEC.
+	without := callSpecToolJSON(t, handleSpecProgress, map[string]any{})
+	if strings.Contains(without, "SPEC-PROBESCAN-905") {
+		t.Errorf("spec_progress without project_root listed a SPEC that exists only in the probe tree; got=%s", without)
+	}
+}
+
+func TestSpecDrift_ProjectRootRedirectsTheCatalogue(t *testing.T) {
+	// Two SPECs rather than one, so the count that proves the redirect is a
+	// number the ambient tree is unlikely to match by coincidence.
+	root := newProbeProject(t, "SPEC-PROBEDRIFT-906")
+	addProbeSpec(t, root, "SPEC-PROBEDRIFT-907")
+
+	withParam := callSpecToolJSON(t, handleSpecDrift, map[string]any{"project_root": root})
+	if !strings.Contains(withParam, `"total_specs":2`) {
+		t.Errorf("spec_drift rooted at the named tree did not audit its two SPECs; got=%s", withParam)
+	}
+
+	without := callSpecToolJSON(t, handleSpecDrift, map[string]any{})
+	if strings.Contains(without, `"total_specs":2`) {
+		t.Errorf("spec_drift without project_root reported the probe tree's count, so the parameter was not what redirected it; got=%s", without)
+	}
+}
+
 // --- helpers -------------------------------------------------------------
+
+// addProbeSpec writes one more minimal SPEC into an existing probe tree.
+func addProbeSpec(t *testing.T, root, specID string) {
+	t.Helper()
+	specDir := filepath.Join(root, ".moai", "specs", specID)
+	if err := os.MkdirAll(specDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	body := "---\nid: " + specID + "\ntitle: \"probe\"\nversion: \"0.1.0\"\n" +
+		"status: draft\ncreated: 2026-08-23\nupdated: 2026-08-23\nauthor: t\n" +
+		"priority: P3\nphase: \"v3.1.3\"\nmodule: \"internal/cli\"\n" +
+		"lifecycle: exploratory\ntags: \"probe\"\n---\n\n# " + specID + "\n"
+	if err := os.WriteFile(filepath.Join(specDir, "spec.md"), []byte(body), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+}
+
+// callSpecToolJSON invokes any SPEC-tool handler directly and returns its
+// rendered content as one string.
+func callSpecToolJSON(
+	t *testing.T,
+	handler func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error),
+	args map[string]any,
+) string {
+	t.Helper()
+	res, err := handler(context.Background(), newToolRequest(args))
+	if err != nil {
+		t.Fatalf("handler returned a hard error: %v", err)
+	}
+	b, _ := json.Marshal(res)
+	return string(b)
+}
 
 func newToolRequest(args map[string]any) mcp.CallToolRequest {
 	req := mcp.CallToolRequest{}

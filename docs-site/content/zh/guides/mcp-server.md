@@ -93,6 +93,26 @@ flowchart TD
 
 用户不直接手编 `.mcp.json`。`moai mcp add|remove|list` CLI 管理该文件，且此 CLI 通过 atomic-RWM seam（flock 文件锁 + compare-retry + 备份后写入 + idempotent-skip）运作。即使两个会话同时编辑，也不会让一边的变更覆盖另一边。
 
+## `project_root` 输入——由调用方指名自己的树
+
+五个工具接受可选的字符串 `project_root`：`spec_progress`、`spec_audit`、`spec_drift`、`codex_audit`、`audit_multi`。它指明这次调用应当作用的树，要传的值就是调用方自己的 `git rev-parse --show-toplevel`。
+
+在 worktree 里工作的智能体必须传它。这不是图方便的功能。服务器没有办法自行推出答案：它是一个长寿的子进程，工作目录跟不上 worktree 的切换，而它退而依赖的环境变量指向的是**项目**根目录——也就是 primary 检出——即便会话正在 worktree 中工作也是如此。在 worktree 里省掉它，调用就会作用到 primary 检出上，于是只存在于卡片分支上的 SPEC 不会进入审计者读取的目录。它也不会被报告为缺失。它只是不存在。
+
+握有答案的只有调用方。这正是它作为输入、而非由服务器推断的原因。
+
+| 情形 | 传什么 | 结果 |
+|------|--------|------|
+| worktree 中的会话 | `project_root: <git rev-parse --show-toplevel>` | 调用作用于该树 |
+| primary 检出中的会话 | 不传 | 与以往完全一致地解析 |
+| 并非 MoAI 项目根的路径 | — | 调用被**拒绝**，错误信息中写明该路径 |
+
+拒绝是刻意的设计，而不是毛边。若悄悄回退到默认值，就会把打错自己 worktree 路径的调用方送回去审计 primary 检出，还告诉它成功了——正是这个参数要防止的那种失败。
+
+在 `audit_multi` 中，根只被转发给 fan-out 的 codex 后端。GLM 后端是发往 z.ai 的 HTTP 调用，根本没有可以绑定根的工作目录，因此不接收根——GLM 的判定不针对任何一棵树。
+
+版本提醒：已经在运行的服务器，即使替换了其下的二进制，在重启前仍保持旧行为——子进程不会自行重新加载。调用方可以检查的是 `ListTools` 的响应中是否出现 `project_root`。
+
 ## 21-工具目录
 
 `moai mcp-server` 暴露的 21 个工具分为六组。调用时都带 `mcp__moai__` 前缀。

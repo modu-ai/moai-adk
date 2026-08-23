@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Summary
+
+An MCP caller can now name the tree it means.
+
+Five MCP tools — `spec_progress`, `spec_audit`, `spec_drift`, `codex_audit`, and `audit_multi` — accept an optional `project_root`. An agent working inside a worktree passes its own `git rev-parse --show-toplevel`; a session in the primary checkout passes nothing and gets exactly what it got before.
+
+The parameter exists because the server cannot work the answer out. It is a long-lived subprocess, so its working directory cannot follow a worktree switch, and the environment variable it falls back on names the project — the primary checkout — even for a session working in a worktree. The observable consequence was that an audit issued from a worktree audited the primary checkout: a SPEC that existed only on the card's branch was not in the catalogue the auditor read, and it was not reported missing. It was simply absent. Measured across four live servers in two repositories, every one whose working directory was a worktree carried the primary checkout in that variable.
+
+One operational caveat decides whether a reader actually gets the fix. A running MCP server keeps the old behaviour after the binary underneath it is replaced — a subprocess does not reload itself — so the parameter arrives when the binary is installed and the server restarts. A caller can check for `project_root` in the `ListTools` response.
+
+### Added
+
+- **An optional `project_root` on `spec_progress`, `spec_audit`, `spec_drift`, `codex_audit`, and `audit_multi`** ([SPEC-MCP-WORKTREE-ROOT-001](.moai/specs/SPEC-MCP-WORKTREE-ROOT-001/spec.md)). It names the tree the call acts on, and its value is the caller's own `git rev-parse --show-toplevel`. An agent working inside a worktree is required to pass it; omitting it from a worktree leaves the call acting on the primary checkout, which is the failure the parameter exists to prevent. Absent or empty, behaviour is unchanged — an unaware caller sees exactly what it saw before.
+- For `audit_multi` the root is forwarded to the codex backend of the fan-out. The GLM backend is an HTTP call to z.ai with no working directory to bind a root to, so it takes no root and its verdict is not about any tree. The two tool descriptions differ accordingly: the four tools that fall back to the session's own resolution say so, and `audit_multi`, whose absent case supplies no root at all, does not.
+
+### Fixed
+
+- A path that is not a usable MoAI project root is **rejected with an error naming it**, never silently replaced by the default. A silent fallback would send a caller who mistyped its own worktree path back to auditing the primary checkout while reporting success.
+
 ## [3.1.2] - 2026-08-21
 
 ### Summary
