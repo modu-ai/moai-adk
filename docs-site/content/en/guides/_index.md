@@ -19,3 +19,4 @@ parses issues with the `moai github` subcommand and links them to SPECs.
 
 - [Autonomous CI/CD](./ci-autonomy) — 8-Tier quality automation, from the pre-push hook to the auto-fix loop
 - [GitHub Integration](./github-integration) — parse issues with the `moai github` subcommand and link them to SPEC documents
+- [Claude Cloud Sessions](./claude-cloud) — the setup-script recipe that puts the `moai` binary on a cloud session's VM
