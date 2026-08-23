@@ -1,0 +1,15 @@
+github.com/modu-ai/moai-adk/internal/cli/todo_analysis.go:37:			appendAnalyzedCard			100.0%
+github.com/modu-ai/moai-adk/internal/cli/todo_analysis.go:90:			todoCardText				75.0%
+github.com/modu-ai/moai-adk/internal/cli/todo_analysis.go:109:			newTodoAnalyzeCmd			80.0%
+github.com/modu-ai/moai-adk/internal/cli/todo_analysis.go:139:			analyzeQueue				82.4%
+github.com/modu-ai/moai-adk/internal/cli/todo_analysis.go:188:			todoFindingLine				92.3%
+github.com/modu-ai/moai-adk/internal/cli/todo_relate.go:33:			newTodoRelateCmd			100.0%
+github.com/modu-ai/moai-adk/internal/cli/todo_relate.go:57:			runTodoRelate				100.0%
+github.com/modu-ai/moai-adk/internal/cli/todo_relate.go:99:			newTodoUnrelateCmd			100.0%
+github.com/modu-ai/moai-adk/internal/cli/todo_relate.go:135:			isSemanticRelation			100.0%
+github.com/modu-ai/moai-adk/internal/cli/todo_relate.go:145:			todoCardExists				100.0%
+github.com/modu-ai/moai-adk/internal/cli/todo_why.go:20:			newTodoWhyCmd				85.7%
+github.com/modu-ai/moai-adk/internal/kanban/backlog_analysis.go:71:		NormalizeCardText		100.0%
+github.com/modu-ai/moai-adk/internal/kanban/backlog_analysis.go:86:		TokenSetJaccard			90.9%
+github.com/modu-ai/moai-adk/internal/kanban/backlog_analysis.go:105:		tokenSet			100.0%
+github.com/modu-ai/moai-adk/internal/kanban/backlog_analysis.go:135:		ClassifyCardText		100.0%
