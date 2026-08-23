@@ -23,10 +23,19 @@
 //   error    deterministic and structural; always fix before rendering
 //   warning  heuristic (character-advance estimation); confirm against the PNG
 //
-// The error tier covers document structure (SVG001-SVG050) and the
+// The error tier covers document structure (SVG001-SVG050), the
 // accessible-SVG contract (SVG060-SVG064: role, aria-labelledby, <title> first,
-// <desc> present, ids prefixed per diagram). Fixtures exercising the contract in
-// both directions live in fixtures/a11y-present.svg and fixtures/a11y-missing.svg.
+// <desc> present, ids prefixed per diagram), and connector geometry
+// (SVG070-SVG072). The SVG07x tier mechanises three of the six connector rules
+// in references/authoring.md section 2.5: SVG070 and SVG073 for a label mask
+// clearing its own stroke by less than 6 or more than 10 units, and only for a
+// mask within 16 units of a connector; SVG071 for a mask partially overlapping a
+// later-painted rect; SVG072 for two connector ARRIVAL points closer than the
+// edge floor (12 units, 8 on an edge under 120) -- departure points, and
+// connectors carrying neither marker, are never compared. SVG074 warns once per
+// file when a transform kept elements out of these checks. Fixtures for every
+// code, and the runner asserting their exact code sets, live in fixtures/ and
+// test-check-svg.mjs.
 
 import { readFileSync } from 'node:fs';
 

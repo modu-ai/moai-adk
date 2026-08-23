@@ -294,9 +294,10 @@ the SVG alone and state the limitation.
 |--------|---------|
 | `scripts/check-svg.mjs` | Deterministic source lint, errors and warnings, `file:line:column` diagnostics |
 | `scripts/render.mjs` | Headless-Chromium 2x PNG render with browser disclosure and PNG header verification |
-| `scripts/fixtures/` | Two SVGs that exercise the accessible-name check in both directions — `a11y-present.svg` must lint clean, `a11y-missing.svg` must fail |
+| `scripts/test-check-svg.mjs` | Runs every fixture through the lint and asserts each one's exact diagnostic code set; exits non-zero on the first mismatch |
+| `scripts/fixtures/` | 42 SVGs pinning the lint in both directions — the accessible-name contract (`a11y-present.svg` must lint clean, `a11y-missing.svg` must fail) and the connector-geometry checks, each fixture declaring the codes it must produce |
 
-Both scripts run on the Node 18 standard library alone. There is no package to
+Every script runs on the Node 18 standard library alone. There is no package to
 install and no browser bundled.
 
 ## Attribution
@@ -359,7 +360,7 @@ against the picture, not a matter of taste.
 | 9 | `rx` above 12 on a card or above 8 on a chip |
 | 10 | `accent` on three or more nodes, leaving no focal point |
 | 11 | Spacing and routing carried over from a mermaid render |
-| 12 | Any breach of the six connector rules of `authoring.md` section 2.5 — a diagonal between boxes sharing neither axis, a mask touching its stroke, a mask clipped by a later node, two connectors on one path, two on one attach point, an undashed transit behind a non-endpoint box |
+| 12 | Any breach of the six connector rules of `authoring.md` section 2.5 — a diagonal between boxes sharing neither axis, a mask touching its stroke, a mask clipped by a later node, two connectors on one path, two on one attach point, an undashed transit behind a non-endpoint box. Three of the six are machine-checked by `check-svg.mjs`, each within a stated bound: C2 as `SVG070` (clearance under 6 units) and `SVG073` (over 10), but only for a mask lying within 16 units of a connector, so a label placed further out — archetype A2's branch labels among them — is not checked; C6 as `SVG071`; C4 as `SVG072`, but on **arrival** points only, so crowding on the departure side, and any connector carrying neither `marker-end` nor `marker-start`, go unreported. C1, C3, and C5 stay eye-only. |
 | 13 | A gradient fill standing in for a hierarchy decision |
 | 14 | An emoji or pictograph used as an icon instead of an icon-set path |
 <!-- moai:evolvable-end -->

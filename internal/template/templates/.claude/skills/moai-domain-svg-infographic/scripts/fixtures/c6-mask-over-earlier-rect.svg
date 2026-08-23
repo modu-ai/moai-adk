@@ -1,0 +1,17 @@
+<!-- expect: -->
+<!-- C6: the mask partially overlaps a band painted BEFORE it (200-320 x, 80-140 y). Containers are painted first, so the label sits on top and reads normally. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="400" height="200"
+     role="img" aria-labelledby="c6-mask-over-earlier-rect-title c6-mask-over-earlier-rect-desc">
+  <title id="c6-mask-over-earlier-rect-title">Publish step</title>
+  <desc id="c6-mask-over-earlier-rect-desc">A connector label sits near a painted region of the diagram.</desc>
+  <defs>
+    <marker id="c6-mask-over-earlier-rect-arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+      <path d="M 0 0 L 10 4 L 0 8 z" fill="#6B6359"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="400" height="200" fill="#FAF9F5"/>
+  <path d="M 40 170 H 360" stroke="#6B6359" stroke-width="1" fill="none" marker-end="url(#c6-mask-over-earlier-rect-arrow)"/>
+  <rect x="200" y="80" width="120" height="60" fill="#EFE9E0"/>
+  <rect x="150" y="90" width="90" height="20" fill="#FFFFFF"/>
+  <text x="195" y="104" font-size="11" text-anchor="middle" fill="#141413">publish</text>
+</svg>

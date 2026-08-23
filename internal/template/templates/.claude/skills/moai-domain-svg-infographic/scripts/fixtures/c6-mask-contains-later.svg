@@ -1,0 +1,17 @@
+<!-- expect: SVG071 -->
+<!-- C6: the mask fully contains a rect painted later (180-200 x, 95-105 y) - partial in effect, since the later paint clips the label from within. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="400" height="200"
+     role="img" aria-labelledby="c6-mask-contains-later-title c6-mask-contains-later-desc">
+  <title id="c6-mask-contains-later-title">Publish step</title>
+  <desc id="c6-mask-contains-later-desc">A connector label sits near a painted region of the diagram.</desc>
+  <defs>
+    <marker id="c6-mask-contains-later-arrow" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+      <path d="M 0 0 L 10 4 L 0 8 z" fill="#6B6359"/>
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="400" height="200" fill="#FAF9F5"/>
+  <path d="M 40 170 H 360" stroke="#6B6359" stroke-width="1" fill="none" marker-end="url(#c6-mask-contains-later-arrow)"/>
+  <rect x="150" y="90" width="90" height="20" fill="#FFFFFF"/>
+  <text x="195" y="104" font-size="11" text-anchor="middle" fill="#141413">publish</text>
+  <rect x="180" y="95" width="20" height="10" fill="#D97757"/>
+</svg>

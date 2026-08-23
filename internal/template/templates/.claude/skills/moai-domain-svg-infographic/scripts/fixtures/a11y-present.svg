@@ -1,3 +1,4 @@
+<!-- expect: -->
 <!-- Fixture: carries the full accessible-SVG contract. check-svg.mjs must exit 0. -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="400" height="200"
      role="img" aria-labelledby="a11y-present-title a11y-present-desc">

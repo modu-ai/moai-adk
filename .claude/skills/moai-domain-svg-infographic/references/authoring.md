@@ -177,6 +177,13 @@ vertical segment at x = Sx, mask width mw:
 A label whose mask edge lands within 6 units of the stroke hides the connection
 it names. If 6 feels cramped for the label size, take 8 or 10 — never less.
 
+Machine-checked as `SVG070` (clearance under 6 units, a mask that touches or
+crosses the stroke being the zero case) and `SVG073` (clearance over 10, a
+warning). The check associates a mask to a connector only within **16 units**, so
+a label placed further from its stroke than that — archetype A2's branch labels,
+which sit about 99 units off their connector, among them — associates to none and
+is not checked at all.
+
 **C3 — No two connectors share a path; separation is ≥ 12 units.**
 Two connectors may not run co-linear for any segment, and two parallel runs stay
 `≥ 12` apart along their whole length, not merely at their endpoints. Where two
@@ -204,6 +211,13 @@ edge). If the even spread cannot hold the floor, the edge carries too many
 connectors — re-route some to another edge or split the node. Connectors leaving
 a fanned edge route orthogonally from their own attach point; they never merge
 into a shared stroke near the box.
+
+Machine-checked as `SVG072`, on **arrival** points only — an endpoint at which a
+`marker-end` or `marker-start` resolves — with this rule's own floor: 12 units, 8
+on an edge under 120. Two connectors *departing* one point are the deliberate
+fan-out of §2.3 and are not reported, so genuine crowding on the departure side
+goes uncaught; a connector carrying neither marker has no arrival point and is
+never compared.
 
 **C5 — A connector does not pass behind a box that is neither its source nor its
 destination — except where that box is geometrically unavoidable.**
@@ -237,6 +251,11 @@ label entering B's left edge: maskX + maskW <= B.left - 4
 A mask fully inside a node is a badge chip and is fine. A mask over a band or
 zone container is fine too, because containers are painted first. Only the
 partial overlap with a later-painted node fails.
+
+Machine-checked as `SVG071`, deliberately wider than this rule as written: the
+check counts any later-painted `<rect>` that is not itself a label mask,
+decorative dividers and rules included, because a label clipped by one renders as
+a fragment whatever that rect means. Fully inside and fully outside stay silent.
 
 **Paint order, since three of the six depend on it:** containers and bands
 first, then connectors, then connector labels, then nodes, then node text.
@@ -549,9 +568,13 @@ Both directions are worth running, because a check that only ever passes proves
 nothing:
 
 ```bash
-node scripts/check-svg.mjs scripts/fixtures/a11y-present.svg   # expect exit 0
-node scripts/check-svg.mjs scripts/fixtures/a11y-missing.svg   # expect exit 1
+node scripts/test-check-svg.mjs   # every fixture, exact code set asserted
 ```
+
+The runner replaces running the two fixtures by hand: it lints all 42 fixtures —
+the accessible-contract pair and the connector-geometry set — and compares each
+one's diagnostics against the exact code set that fixture declares, so a check
+that stops firing fails just as loudly as one that fires wrongly.
 
 The checker sees structure, not usefulness: a `<desc>` reading "diagram"
 satisfies it and tells a reader nothing. Absence is mechanical; vacuity is
