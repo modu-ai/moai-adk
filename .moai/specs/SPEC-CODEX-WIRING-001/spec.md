@@ -2,7 +2,7 @@
 id: SPEC-CODEX-WIRING-001
 title: "Codex Dual Harness M4 — wiring generator: moai init --agent claude|codex|both, .codex/hooks.json + config.toml, trust guidance, doctor"
 version: "0.3.1"
-status: draft
+status: in-progress
 created: 2026-08-23
 updated: 2026-08-24
 author: manager-spec
