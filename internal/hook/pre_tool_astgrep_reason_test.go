@@ -2,26 +2,30 @@ package hook
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
-	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/hook/quality"
 )
 
-// TestPreTool_AstGrepSkipReasonSurfaces drives the ast-grep skip reason across
-// all three frames — RunAstGrepGateV2 → QualityGate.Run → preToolHandler.Handle
-// — and asserts it arrives on the hook's structured output.
+// TestGateRun_AstGrepSkipReasonSurfaces drives the ast-grep skip reason across
+// the two frames that carry it — RunAstGrepGateV2 → QualityGate.Run — and
+// asserts it survives to Run's pass-path output.
 //
-// Repairing astgrep_gate.go alone leaves the reason inert: QualityGate.Run and
-// the PreToolUse handler both discarded the string on the pass path. This test
-// is what makes the propagation, not merely the final assignment, load-bearing.
+// Repairing astgrep_gate.go alone leaves the reason inert: Run discarded the
+// string on the pass path. This test is what makes the propagation, not merely
+// the final assignment, load-bearing.
 //
-// The emission channel is HookOutput.SystemMessage rather than slog because
-// the `moai hook` path installs a discarding handler, so a log record here
-// would be silent by construction.
+// The consumer of that output is `moai gate` (internal/cli/gate.go runGate),
+// which prints a non-empty pass-path output to stderr so the git pre-commit
+// hook surfaces it. There used to be a third frame — preToolHandler.Handle,
+// which ran the whole gate inline on a git commit and forwarded the notice on
+// HookOutput.SystemMessage. That frame is gone: the gate no longer runs inside
+// the PreToolUse hook's 10s budget (see pre_tool_commit_gate_test.go for why),
+// so the assertions below stop at Run. Nothing about the propagation itself
+// changed; only the surface that consumed it did.
 //
 // Project fixture, gate by gate:
 //   - build.zig selects the Zig toolchain, whose entry has no vet or lint
@@ -29,21 +33,10 @@ import (
 //   - no ast-grep-ignore anywhere, so the suppression sweep cannot deny first.
 //   - SkipTests, so the test step after the ast-grep step never runs.
 //   - t.Setenv PATH strips sg, which is the condition under test.
-//   - t.Setenv pins MOAI_AUTONOMY_TIER to semi-auto. The commit-gate branch
-//     hosting the ast-grep step is tier-gated OFF at automatic /
-//     fully-autonomous (SPEC-STOPCHAIN-TRIM-001 REQ-005), and the kanban
-//     launcher exports the tier into companion sessions — so the ambient
-//     value is not neutral on a developer machine the way it is on CI,
-//     where the key is unset and AutonomyTier fails safe to semi-auto.
 //
 // Non-parallel: t.Setenv is incompatible with t.Parallel().
-func TestPreTool_AstGrepSkipReasonSurfaces(t *testing.T) {
+func TestGateRun_AstGrepSkipReasonSurfaces(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
-	// Without this pin the tier branch in pre_tool.go skips the whole
-	// commit-gate block whenever the test runs inside a kanban companion
-	// session (MOAI_AUTONOMY_TIER is exported there), and no notice — not
-	// even an empty one — can reach the handler's output.
-	t.Setenv(config.EnvAutonomyTier, config.AutonomyTierSemiAuto)
 
 	projectDir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(projectDir, "build.zig"), []byte("// zig build marker\n"), 0o644); err != nil {
@@ -55,50 +48,31 @@ func TestPreTool_AstGrepSkipReasonSurfaces(t *testing.T) {
 
 	// Constructed explicitly rather than inherited from ambient project config,
 	// so the test's outcome does not depend on the host's gate.yaml.
-	cfg := newTestConfig()
-	cfg.Gate.Enabled = true
-	cfg.Gate.SkipTests = true
-	cfg.Gate.AstGrepGate.Enabled = true
-	cfg.Gate.AstGrepGate.RulesDir = ".moai/config/astgrep-rules"
-
-	handler := &preToolHandler{
-		cfg:        &mockConfigProvider{cfg: cfg},
-		policy:     DefaultSecurityPolicy(),
-		projectDir: projectDir,
+	gcfg := quality.DefaultGateConfig()
+	gcfg.Enabled = true
+	gcfg.SkipTests = true
+	gcfg.ProjectDir = projectDir
+	gcfg.AstGrepGate = &quality.AstGrepGateConfig{
+		Enabled:  true,
+		RulesDir: ".moai/config/astgrep-rules",
 	}
 
-	toolInput, err := json.Marshal(map[string]string{"command": `git commit -m "x"`})
-	if err != nil {
-		t.Fatalf("marshal tool input: %v", err)
+	passed, got := quality.NewQualityGate(gcfg).Run(context.Background())
+
+	// 1. an absent optional scanner must never block.
+	if !passed {
+		t.Fatalf("the gate failed when sg is merely absent; an optional scanner's absence is a skip, not a failure. output: %s", got)
 	}
 
-	out, err := handler.Handle(context.Background(), &HookInput{
-		SessionID:     "sess-astgrep-skip",
-		HookEventName: "PreToolUse",
-		ToolName:      "Bash",
-		ToolInput:     toolInput,
-	})
-	if err != nil {
-		t.Fatalf("Handle: %v", err)
-	}
-	if out == nil {
-		t.Fatal("Handle returned a nil output")
-	}
-
-	// 1. the reason reaches the handler's structured output at all.
-	if out.SystemMessage == "" {
-		t.Fatal("SystemMessage is empty: the ast-grep skip reason was dropped somewhere in the three-frame chain")
-	}
-
-	// 2. an absent optional scanner must never block a commit.
-	if out.HookSpecificOutput != nil && out.HookSpecificOutput.PermissionDecision == DecisionDeny {
-		t.Errorf("permissionDecision: want anything but deny when sg is absent, got %q", out.HookSpecificOutput.PermissionDecision)
+	// 2. the reason reaches Run's output at all.
+	if got == "" {
+		t.Fatal("Run's output is empty: the ast-grep skip reason was dropped between the gate step and Run")
 	}
 
 	// 3. the string that arrived is the one the gate step produced — the same
-	//    reason traversed all three frames rather than being re-invented at the
-	//    handler. Recomputed against the same fixture under the same stripped
-	//    PATH, so the comparison is against the live gate, not a literal.
+	//    reason traversed both frames rather than being re-invented at Run.
+	//    Recomputed against the same fixture under the same stripped PATH, so
+	//    the comparison is against the live gate, not a literal.
 	_, want := quality.RunAstGrepGateV2(context.Background(), projectDir, &quality.AstGrepGateConfig{
 		Enabled:  true,
 		RulesDir: ".moai/config/astgrep-rules",
@@ -106,7 +80,10 @@ func TestPreTool_AstGrepSkipReasonSurfaces(t *testing.T) {
 	if want == "" {
 		t.Fatal("the gate step produced an empty reason; the end-to-end comparison has nothing to compare against")
 	}
-	if out.SystemMessage != want {
-		t.Errorf("SystemMessage: want the gate step's reason %q, got %q", want, out.SystemMessage)
+	//    Containment rather than equality: Run concatenates the notices of every
+	//    step that skipped, so the ast-grep reason arrives alongside others
+	//    (the typecheck step's, for a language with no default command).
+	if !strings.Contains(got, want) {
+		t.Errorf("Run output does not carry the gate step's reason.\nwant substring: %q\ngot: %q", want, got)
 	}
 }
