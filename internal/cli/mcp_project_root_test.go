@@ -39,7 +39,15 @@ func newProbeProject(t *testing.T, specID string) string {
 	if err := os.WriteFile(filepath.Join(specDir, "spec.md"), []byte(body), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
-	return root
+	// Return the CANONICAL path. validateProjectRoot resolves symlinks, and
+	// t.TempDir() hands back a symlinked path on macOS (/var → /private/var), so
+	// a test comparing a handler's answer against this value would otherwise be
+	// comparing two spellings of one directory and failing on the spelling.
+	canonical, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		t.Fatalf("EvalSymlinks(%q): %v", root, err)
+	}
+	return canonical
 }
 
 // AC-REQ-1a (schema half): each in-scope SPEC tool declares the optional input.
@@ -257,4 +265,56 @@ func callSpecAuditJSON(t *testing.T, args map[string]any) string {
 	}
 	b, _ := json.Marshal(res)
 	return string(b)
+}
+
+// AC-t183 (boundary canonicalization): a project_root reached through a symlink
+// resolves to the real directory, not to the symlink path.
+//
+// filepath.Abs does not resolve symlinks, so before this the helper returned the
+// symlink path verbatim. Harmless while nothing compares the result against
+// another path — and exactly the hole a future containment constraint (compare
+// the resolved root against the repository's git common dir) would be walked
+// through, because the two sides would be spelled differently for the same
+// directory. Canonicalizing here is what keeps such a comparison meaningful
+// rather than decorative.
+func TestValidateProjectRoot_ResolvesSymlinkedRoot(t *testing.T) {
+	real := newProbeProject(t, "SPEC-PROBELINK-906")
+	realCanonical, err := filepath.EvalSymlinks(real)
+	if err != nil {
+		t.Fatalf("EvalSymlinks(real): %v", err)
+	}
+
+	link := filepath.Join(t.TempDir(), "linked-root")
+	if err := os.Symlink(real, link); err != nil {
+		t.Skipf("symlinks unavailable on this platform: %v", err)
+	}
+
+	got, err := resolveToolProjectRoot(newToolRequest(map[string]any{"project_root": link}))
+	if err != nil {
+		t.Fatalf("unexpected rejection of a symlinked root: %v", err)
+	}
+	if got != realCanonical {
+		t.Errorf("root=%q, want the canonical target %q (symlink was %q)", got, realCanonical, link)
+	}
+}
+
+// A symlink whose target does not exist is rejected, and the error names the
+// path the caller actually supplied — not the resolved one it never typed.
+func TestValidateProjectRoot_RejectsBrokenSymlink(t *testing.T) {
+	dir := t.TempDir()
+	link := filepath.Join(dir, "dangling")
+	if err := os.Symlink(filepath.Join(dir, "no-such-target"), link); err != nil {
+		t.Skipf("symlinks unavailable on this platform: %v", err)
+	}
+
+	got, err := resolveToolProjectRoot(newToolRequest(map[string]any{"project_root": link}))
+	if err == nil {
+		t.Fatalf("expected rejection of a broken symlink, got root=%q", got)
+	}
+	if !strings.Contains(err.Error(), link) {
+		t.Errorf("error does not name the supplied path %q: %v", link, err)
+	}
+	if got != "" {
+		t.Errorf("rejected root must be empty, got %q", got)
+	}
 }

@@ -43,7 +43,8 @@ const projectRootArg = "project_root"
 const projectRootDescCommon = "Optional project or worktree root to act on. Supply your own " +
 	"`git rev-parse --show-toplevel`. In a worktree session you MUST pass it: the server's own resolution names " +
 	"the PRIMARY checkout, so omitting it acts on the wrong tree. An unusable path is rejected, never silently " +
-	"replaced by a default. "
+	"replaced by a default, and an accepted path is canonicalized — symlinks resolved — so the call acts on the " +
+	"real directory rather than on the spelling that reached it. "
 
 // projectRootDesc describes the parameter on a tool whose absent case falls back
 // to resolveProjectDir() — the tools that already resolved a root before this
@@ -105,9 +106,9 @@ func resolveOptionalToolProjectRoot(req mcp.CallToolRequest) (string, error) {
 	return validateProjectRoot(raw)
 }
 
-// validateProjectRoot turns a caller-supplied path into an absolute project
-// root, or rejects it. Shared by both resolvers so the two cannot drift into
-// accepting different things.
+// validateProjectRoot turns a caller-supplied path into an absolute,
+// symlink-free project root, or rejects it. Shared by both resolvers so the two
+// cannot drift into accepting different things.
 func validateProjectRoot(raw string) (string, error) {
 	abs, err := filepath.Abs(raw)
 	if err != nil {
@@ -122,11 +123,29 @@ func validateProjectRoot(raw string) (string, error) {
 		return "", fmt.Errorf("project_root %q is not a directory", raw)
 	}
 
-	moaiDir := filepath.Join(abs, ".moai")
+	// filepath.Abs does not resolve symlinks, so canonicalize before returning.
+	// Nothing compares this result against another path TODAY, which is why the
+	// omission was harmless; it stops being harmless the moment a containment
+	// constraint is added (the audit's suggested "the root must sit under this
+	// repository's git common dir"), because a symlinked spelling and its target
+	// are two different strings for one directory and the comparison would then
+	// turn on the spelling. Canonicalizing here is what keeps such a boundary
+	// load-bearing rather than decorative.
+	//
+	// A canonicalization failure is a REJECTION, not a fallback to the
+	// uncanonicalized path — same reasoning as the rejections above: returning a
+	// path the caller cannot be told is non-canonical reintroduces "it
+	// succeeded, on something other than what you named".
+	canonical, err := filepath.EvalSymlinks(abs)
+	if err != nil {
+		return "", fmt.Errorf("project_root %q cannot be canonicalized: %w", raw, err)
+	}
+
+	moaiDir := filepath.Join(canonical, ".moai")
 	moaiInfo, err := os.Stat(moaiDir)
 	if err != nil || !moaiInfo.IsDir() {
 		return "", fmt.Errorf("project_root %q has no .moai directory, so it is not a MoAI project root", raw)
 	}
 
-	return abs, nil
+	return canonical, nil
 }
