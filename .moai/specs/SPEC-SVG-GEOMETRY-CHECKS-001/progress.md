@@ -251,6 +251,233 @@ appear only in `check-svg.mjs`.
   emitting three notes would still produce the single code `SVG074` and pass the runner; only
   AC-SGC-011's human read of the message catches that.
 
+### M2 — geometry engine and the five diagnostics (GREEN)
+
+Baseline for every measurement below: this run, this tree, branch `WT-verify-geometry`, HEAD
+`a4e3c8a33` (the M1 commit) before the M2 commit. Node `v22.14.0`.
+
+**Files touched.** `scripts/check-svg.mjs` only (609 → 1020 lines) plus this `progress.md` block.
+No fixture, no runner, no `render.mjs`, no `SKILL.md`, no `references/`, no template mirror — the
+`git status --short` below is the evidence.
+
+**Claim 1 — RED → GREEN.** The runner went from `26/42, rc=1` to `42/42, rc=0` with no fixture edit.
+
+RED, verbatim, captured before any edit (16 must-flag fixtures reporting `got {}`; tail shown):
+
+```
+$ node $S/scripts/test-check-svg.mjs
+...
+FAIL  c2-mask-at-11.svg  expected {SVG073} but got {}
+FAIL  c2-mask-too-close-hop.svg  expected {SVG070} but got {}
+FAIL  c2-mask-too-close.svg  expected {SVG070} but got {}
+FAIL  c2-mask-too-far.svg  expected {SVG073} but got {}
+FAIL  c2-mask-touching.svg  expected {SVG070} but got {}
+FAIL  c4-attach-coincident.svg  expected {SVG072} but got {}
+FAIL  c4-attach-crowded.svg  expected {SVG072} but got {}
+FAIL  c4-attach-short-edge-bad.svg  expected {SVG072} but got {}
+FAIL  c4-closed-both-markers.svg  expected {SVG072} but got {}
+FAIL  c4-edge-exactly-120.svg  expected {SVG072} but got {}
+FAIL  c4-marker-pair-emits.svg  expected {SVG072} but got {}
+FAIL  c6-mask-contains-later.svg  expected {SVG071} but got {}
+FAIL  c6-mask-partial.svg  expected {SVG071} but got {}
+FAIL  chip-in-window.svg  expected {SVG073} but got {}
+FAIL  transform-skipped.svg  expected {SVG074} but got {}
+FAIL  transform-wrapper.svg  expected {SVG074} but got {}
+26/42 fixtures matched
+rc=1
+```
+
+GREEN, verbatim, after the engine landed:
+
+```
+$ node $S/scripts/test-check-svg.mjs
+PASS  a11y-missing.svg  {SVG060, SVG061, SVG062, SVG063}
+PASS  a11y-present.svg  {}
+PASS  attach-endpoint-11-off.svg  {}
+PASS  attach-projection-outside-span.svg  {}
+PASS  badge-chip-near-connector.svg  {}
+PASS  c2-mask-at-10.svg  {}
+PASS  c2-mask-at-11.svg  {SVG073}
+PASS  c2-mask-at-6.svg  {}
+PASS  c2-mask-clear.svg  {}
+PASS  c2-mask-outer-elbow-corner-at-6.svg  {}
+PASS  c2-mask-too-close-hop.svg  {SVG070}
+PASS  c2-mask-too-close.svg  {SVG070}
+PASS  c2-mask-too-far.svg  {SVG073}
+PASS  c2-mask-touching.svg  {SVG070}
+PASS  c4-attach-at-12.svg  {}
+PASS  c4-attach-at-8.svg  {}
+PASS  c4-attach-coincident.svg  {SVG072}
+PASS  c4-attach-crowded.svg  {SVG072}
+PASS  c4-attach-short-edge-bad.svg  {SVG072}
+PASS  c4-attach-short-edge-ok.svg  {}
+PASS  c4-attach-spread.svg  {}
+PASS  c4-closed-both-markers.svg  {SVG072}
+PASS  c4-edge-exactly-120.svg  {SVG072}
+PASS  c4-fanout-shared-origin.svg  {}
+PASS  c4-marker-pair-emits.svg  {SVG072}
+PASS  c4-markerless-pair.svg  {}
+PASS  c4-tree-stem.svg  {}
+PASS  c6-mask-contains-later.svg  {SVG071}
+PASS  c6-mask-inside.svg  {}
+PASS  c6-mask-outside.svg  {}
+PASS  c6-mask-over-earlier-rect.svg  {}
+PASS  c6-mask-over-later-mask.svg  {}
+PASS  c6-mask-partial.svg  {SVG071}
+PASS  chip-in-window.svg  {SVG073}
+PASS  defs-marker-noise.svg  {}
+PASS  legend-chip-near-connector.svg  {}
+PASS  mask-no-adjacent-text.svg  {}
+PASS  no-transform.svg  {}
+PASS  path-cubic-unreadable.svg  {}
+PASS  path-relative-form.svg  {}
+PASS  transform-skipped.svg  {SVG074}
+PASS  transform-wrapper.svg  {SVG074}
+42/42 fixtures matched
+rc=0
+```
+
+**Claim 2 — existing behaviour unchanged.** `a11y-present.svg` still exits 0 clean;
+`a11y-missing.svg` still exits 1 with the same four codes.
+
+```
+$ node $S/scripts/check-svg.mjs $F/a11y-present.svg; echo "rc=$?"
+0 errors, 0 warnings
+rc=0
+$ node $S/scripts/check-svg.mjs $F/a11y-missing.svg --json | grep '"code"'
+      "code": "SVG060",
+      "code": "SVG062",
+      "code": "SVG063",
+      "code": "SVG061",
+$ node $S/scripts/check-svg.mjs $F/a11y-missing.svg > /dev/null; echo "rc=$?"
+rc=1
+```
+
+**Claim 3 — `--strict` is respected (REQ-SGC-007).** A warning-only fixture exits 0 by default and
+1 under `--strict`.
+
+```
+$ node $S/scripts/check-svg.mjs $F/c2-mask-too-far.svg; echo "rc=$?"
+...:14:3  warning  SVG073  label mask stands 16.0 units off its connector; C2 keeps it within 10
+0 errors, 1 warning
+rc=0
+$ node $S/scripts/check-svg.mjs $F/c2-mask-too-far.svg --strict; echo "rc=$?"
+... same line ...
+rc=1
+$ node $S/scripts/check-svg.mjs $F/transform-wrapper.svg --strict > /dev/null; echo "rc=$?"
+rc=1
+```
+
+The last line is constraint K6 realised: a transformed diagram now fails `--strict` where it
+previously passed.
+
+**Claim 4 — the runner can still fail (AC-SGC-002).** A scratch copy of `scripts/` outside the
+repository, with one expectation header mutated, fails that fixture and exits 1.
+
+```
+$ sed -i '' '1s|.*|<!-- expect: SVG099 -->|' $SCRATCH/mut/fixtures/c2-mask-too-close.svg
+$ node $SCRATCH/mut/test-check-svg.mjs
+FAIL  c2-mask-too-close.svg  expected {SVG099} but got {SVG070}
+41/42 fixtures matched
+rc=1
+```
+
+The scratch copies were removed afterwards; the working tree is clean apart from the untracked
+report directory:
+
+```
+$ git status --short
+ M .claude/skills/moai-domain-svg-infographic/scripts/check-svg.mjs
+?? .moai/reports/t166/
+```
+
+**Claim 5 — the ruling fixtures, each quoted.**
+
+- `c2-mask-outer-elbow-corner-at-6` → `0 errors, 0 warnings`. Load-bearing: a scratch copy with the
+  `Q` subdivision replaced by the control point reports
+  `error SVG070 label mask clears its connector by 3.5 units`, which is the ≈3.54 figure `plan.md`
+  §C predicts. The subdivision is what keeps this compliant diagram silent.
+- `c4-fanout-shared-origin` → `0 errors, 0 warnings`; `c4-tree-stem` → `0 errors, 0 warnings`.
+  Arrival-only binding: three connectors leave one identical point in each, and only arrivals are
+  grouped. The twin `c4-marker-pair-emits` → `{SVG072}` against `c4-markerless-pair` → `{}` proves
+  the silence is the marker rule and not a dead check.
+- `c6-mask-over-later-mask` → `0 errors, 0 warnings` — mask-over-mask is excluded from `SVG071`'s
+  later-rect set.
+- `chip-in-window` → `warning SVG073 label mask stands 13.0 units off its connector` — K3's
+  accepted bounded exception, emitted exactly as `acceptance.md` §D.9 declares.
+
+**Claim 6 — `SVG074` count semantics (AC-SGC-011's message criterion).**
+
+```
+$ node $S/scripts/check-svg.mjs $F/transform-wrapper.svg
+...:3:1  warning  SVG074  6 of 6 candidate elements carry a transform and were skipped; their geometry is unverified
+$ node $S/scripts/check-svg.mjs $F/transform-skipped.svg
+...:3:1  warning  SVG074  3 of 4 candidate elements carry a transform and were skipped; their geometry is unverified
+```
+
+One note per file in both cases, at the root `<svg>` offset (line 3, column 1). The wrapper reports
+the transitively-excluded population (6 of 6), not the single element carrying the attribute.
+
+**Claim 7 — single measurement path (REQ-SGC-008 / AC-SGC-012).** `check-svg.mjs` still carries
+exactly one import, `node:fs`; no second parser, no manifest, no lockfile, no `node_modules` were
+added.
+
+```
+$ grep -n '^import' $S/scripts/check-svg.mjs
+31:import { readFileSync } from 'node:fs';
+$ wc -l $S/scripts/check-svg.mjs
+    1020
+```
+
+**Deviation, declared rather than buried — the attach-target standoff.** `spec.md` §B D2 excludes a
+rect from the mask-candidate set when it is "an attach target of any connector endpoint", and
+`plan.md` §B4 illustrates that clause at the `markerLen = 10` standoff. Implemented literally at 10,
+`attach-endpoint-11-off.svg` fails: its node box sits 11 units from two connector endpoints, is
+therefore not an attach target, becomes a mask candidate, associates at 11 units — inside the
+16-unit window — and is warned `SVG073`. Measured, in a scratch copy with the standoff set to
+`MARKER_LEN`:
+
+```
+FAIL  attach-endpoint-11-off.svg  expected {} but got {SVG073}
+41/42 fixtures matched
+```
+
+That is a node box reported as a label mask on clean geometry — the false-positive class K3 names as
+a defect. The engine therefore runs D2's attach test at `MASK_WINDOW` (16) instead, keeping
+REQ-SGC-012's projection-in-span requirement intact and leaving REQ-SGC-012's own `markerLen`
+standoff for `SVG072` binding untouched at 10. The fixture is not edited. The accepted cost is a
+narrow false negative in D3's posture: a genuine label mask sitting within 16 units of a connector
+endpoint is not checked.
+
+**Gaps (explicitly NOT observed at M2).**
+
+- No documentation surface was touched — `check-svg.mjs`'s header comment still describes only the
+  SVG001-SVG064 tiers, and `SKILL.md` / `authoring.md` carry no SVG07x annotation. That is M3 scope
+  (REQ-SGC-016), so AC-SGC-013 is unverified here.
+- No template mirror, no `make build`, no `diff -rq` parity, no neutrality grep — M3 scope, so
+  AC-SGC-014 / AC-SGC-015 / AC-SGC-016 are unverified here.
+- No Go test of any kind was run; `go test ./...` is prohibited on this machine.
+- AC-SGC-004's clean-fixture loop was not run as its own named command with the `CLEAN_N` count
+  assertion. The runner asserts the same fixtures' exact code sets, which is the stricter check, but
+  the AC's literal command form is not evidenced here.
+- Not pushed, no PR opened, per the delegation.
+
+**Residual risk.**
+
+- The attach-standoff deviation above changes the mask-candidate set for every diagram, not only the
+  fixture that forced it. Its false-negative reach is bounded by the 16-unit window, but no fixture
+  pins a genuine label mask inside that window near an endpoint, so the boundary is argued rather
+  than measured.
+- `SVG071` compares axis-aligned rect extents only. A rect with `rx` rounding, or a mask overlapping
+  a non-`<rect>` shape painted later, is outside what the check sees — the wider-than-C6 posture of
+  §B D8 is about which rects are in scope, not about non-rect shapes.
+- The `A` command is a straight pass-through, so a large-radius arc's true sweep is never measured;
+  a mask inside such an arc's bulge would be measured against the chord. The documented idiom is
+  `rHop = 5`, where the error is under a unit, but nothing enforces that radius.
+- The candidate population feeding `SVG074`'s denominator is `<path>` / `<rect>` / `<text>` outside
+  non-rendered subtrees. A diagram whose geometry is carried by `<circle>` or `<line>` would report a
+  denominator that understates what went unverified.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
