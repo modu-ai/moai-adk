@@ -747,6 +747,13 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		BranchGuard: BranchGuardConfig{
 			Enabled: false,
 		},
+		// The release-integration holder guard ships inert for the same
+		// reason: a single-developer repository has no integration window to
+		// serialize. Template neutrality: no `enabled: true` anywhere under
+		// internal/template/templates/.
+		IntegrationLock: IntegrationLockConfig{
+			Enabled: false,
+		},
 		// The agent-model guard ships with its BLOCKING layer off. Observation
 		// and advisory always run; a maintainer opts into denial via local
 		// config. Template neutrality: no `enabled: true` anywhere under

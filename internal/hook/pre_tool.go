@@ -501,6 +501,24 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 		}
 	}
 
+	// Release-integration holder guard (card t194). Sits directly after the
+	// branch-state guard because the two answer adjacent questions — that one
+	// asks "may this tree change branch at all", this one asks "is this
+	// session the lane that announced the integration window". Gated by
+	// Workflow.IntegrationLock.Enabled (default false): on the disabled path
+	// the lock record is never read. Fails OPEN on every uncertainty; a deny
+	// requires positive evidence that a DIFFERENT, LIVE session holds it.
+	if input.ToolName == "Bash" && len(input.ToolInput) > 0 && h.integrationLockEnabled() {
+		if decision, reason := checkIntegrationLock(input, h.projectRoot()); decision == DecisionDeny {
+			slog.Warn("integration lock denied",
+				"tool_name", input.ToolName,
+				"session_id", input.SessionID,
+				"reason", reason,
+			)
+			return NewDenyOutput(reason), nil
+		}
+	}
+
 	// Handle Write and Edit tools
 	if (input.ToolName == "Write" || input.ToolName == "Edit") && len(input.ToolInput) > 0 {
 		// Harness-learner FROZEN zone guard (Vision §3.4, W3 first implementer).
@@ -679,6 +697,23 @@ func (h *preToolHandler) branchGuardEnabled() bool {
 		return false
 	}
 	return cfg.Workflow.BranchGuard.Enabled
+}
+
+// integrationLockEnabled reports whether the release-integration holder guard
+// is opted in via Workflow.IntegrationLock.Enabled (card t194). Defensive in
+// the same shape as branchGuardEnabled: a nil ConfigProvider or nil Config
+// returns false, so a misconfigured hook is inert rather than accidentally
+// denying. Read at the call site so the record read stays entirely off the
+// disabled path.
+func (h *preToolHandler) integrationLockEnabled() bool {
+	if h.cfg == nil {
+		return false
+	}
+	cfg := h.cfg.Get()
+	if cfg == nil {
+		return false
+	}
+	return cfg.Workflow.IntegrationLock.Enabled
 }
 
 // loadGateConfig reads gate configuration from the config provider.
