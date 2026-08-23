@@ -52,6 +52,25 @@ records the operator's intent; it does not curate it.
 The queue is never mutated through any other surface. A missing backlog file is
 an empty queue, never an error; a malformed file is reported and left untouched.
 
+### What the analyser may do
+
+Analysis runs automatically and records — on every `add`, and across the whole
+queue on `analyze`. A record changes no card: not its text, not its position,
+not its state.
+
+The analysis performs exactly one transformation: it **refuses the admission**
+of a card whose normalized text is identical to a card already queued or
+picked. A refusal touches no existing card and leaves the queue file
+byte-identical — it creates nothing rather than folding anything, and the
+operator sees an error instead of an id. `--force` admits the card anyway and
+records that it was forced.
+
+[HARD] Analysis never folds one card into another, never reorders the queue,
+never drops a card, and never edits one. The four semantic relations —
+`contains`, `absorbs`, `replaces`, `conflicts` — cause nothing but a record.
+Acting on a record is the operator's act, performed through `drop`, `edit`, or
+`move`, exactly as the clause above requires.
+
 ## Reading the records
 
 `moai todo list --json` emits the file's records:
