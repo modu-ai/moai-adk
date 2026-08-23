@@ -204,6 +204,19 @@ func (s *Server) listenerAddr() string {
 // serves until ctx is cancelled or a SIGINT/SIGTERM arrives. On signal it drains
 // in-flight requests for up to shutdownDrain and returns nil (REQ-WC-003).
 func (s *Server) ListenAndServe(ctx context.Context) error {
+	// Signal-aware context: cancel on SIGINT/SIGTERM (REQ-WC-003).
+	//
+	// Registration MUST precede the bind. A caller learns the server is up by
+	// observing the listener address, so anything that signals on that
+	// observation races a registration performed afterwards — and until
+	// signal.NotifyContext runs, SIGTERM keeps its default disposition and
+	// kills the process outright. Binding first left exactly that window open
+	// (widened by the browser auto-open that used to sit between the two), and
+	// the self-SIGTERM shutdown test fell into it on Linux: the process died
+	// with "signal: terminated" and no test-failure line at all.
+	sigCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
+	defer stop() // also releases the registration on the bind-failure return below
+
 	if err := s.bind(); err != nil {
 		return err
 	}
@@ -221,10 +234,6 @@ func (s *Server) ListenAndServe(ctx context.Context) error {
 	if !s.cfg.NoOpen {
 		s.tryOpenBrowser()
 	}
-
-	// Signal-aware context: cancel on SIGINT/SIGTERM (REQ-WC-003).
-	sigCtx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
-	defer stop()
 
 	// 페이지 내 종료 버튼(/__shutdown__)을 기존 signal drain 경로에 연결한다.
 	// handleShutdown 이 고루틴에서 이 cancel 함수를 호출하면 select 의
