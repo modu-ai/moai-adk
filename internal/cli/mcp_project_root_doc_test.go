@@ -1,8 +1,9 @@
 // mcp_project_root_doc_test.go — t192 (#e2e F-1): the rule file that tells
 // agents which MCP tools accept `project_root` drifted from the server, naming
 // five tools while six declare the input (`glm_audit` was missing). The
-// omission mattered: glm_audit is exactly where a GLM backend is told which
-// tree to read, so a reader learned no way to point it at a worktree.
+// omission mattered: glm_audit is where the server is told which tree to DIFF
+// before sending that diff to z.ai — GLM itself has no filesystem — so a
+// reader working in a worktree learned no way to have its tree reviewed.
 //
 // A doc claim about a machine-readable surface should be checked against that
 // surface rather than re-read by hand, which is what this test does — for the
@@ -11,7 +12,6 @@ package cli
 
 import (
 	"context"
-	"encoding/json"
 	"os"
 	"regexp"
 	"sort"
@@ -105,13 +105,12 @@ func toolsDeclaringProjectRoot(t *testing.T) []string {
 		t.Fatalf("ListTools: %v", err)
 	}
 
+	// The declaration is the properties key, not the text of the schema: a
+	// description mentioning project_root would otherwise read as a
+	// declaration and fail the doc for a tool that does not take the input.
 	var names []string
 	for _, tool := range res.Tools {
-		b, err := json.Marshal(tool.InputSchema)
-		if err != nil {
-			t.Fatalf("marshal %s schema: %v", tool.Name, err)
-		}
-		if strings.Contains(string(b), projectRootArg) {
+		if _, declared := tool.InputSchema.Properties[projectRootArg]; declared {
 			names = append(names, tool.Name)
 		}
 	}
