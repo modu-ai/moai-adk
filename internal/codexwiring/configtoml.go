@@ -149,6 +149,56 @@ func tablePresent(body string, re *regexp.Regexp) bool {
 	return false
 }
 
+// MCPTableStatus reports what a config.toml carries for the
+// [mcp_servers.moai] surface — the doctor's read-only view (the writer never
+// repairs a user-owned table; divergence is REPORTED, REQ-CW-005).
+type MCPTableStatus struct {
+	// Present reports whether a [mcp_servers.moai] table header exists.
+	Present bool
+	// Canonical reports whether the table carries exactly the canonical
+	// command/args/approval assignments.
+	Canonical bool
+}
+
+// canonicalMCPAssignments are the three assignments EnsureMCPTable writes.
+var canonicalMCPAssignments = []string{
+	"command = \"" + mcpServerCommandValue + "\"",
+	"args = [\"" + mcpServerArgValue + "\"]",
+	"default_tools_approval_mode = \"" + mcpApprovalMode + "\"",
+}
+
+// InspectMCPTable reads the [mcp_servers.moai] table status of a config.toml
+// body: whether the table is present and whether its assignment lines match
+// the canonical shape. A present-but-non-canonical table is user-owned drift
+// the doctor reports; the writer leaves it byte-invariant.
+func InspectMCPTable(content []byte) MCPTableStatus {
+	lines := splitLines(string(content))
+	status := MCPTableStatus{}
+	for i, line := range lines {
+		if !mcpMoaiTableRe.MatchString(line) {
+			continue
+		}
+		status.Present = true
+		status.Canonical = true
+		seen := 0
+		for j := i + 1; j < len(lines); j++ {
+			if anyTableRe.MatchString(lines[j]) {
+				break
+			}
+			for _, want := range canonicalMCPAssignments {
+				if strings.TrimSpace(lines[j]) == want {
+					seen++
+				}
+			}
+		}
+		if seen != len(canonicalMCPAssignments) {
+			status.Canonical = false
+		}
+		return status
+	}
+	return status
+}
+
 // splitLines splits body into trimmed-of-newline lines. A trailing newline
 // yields no extra empty element.
 func splitLines(body string) []string {

@@ -35,8 +35,9 @@
 │    warn    BODP Config       .moai/branches/ not found — BODP audit trail disabled                                                                   │
 │    warn    Telemetry Config  .moai/config/sections/telemetry.yaml not found — telemetry uses defaults                                                │
 │    warn    Glamour Cache     glamour not integrated                                                                                                  │
-│    1 ok, 8 warn, 0 fail                                                                                                                              │
+│    ok      Codex Wiring      not wired (claude-only project) — skipped                                                                               │
+│    2 ok, 8 warn, 0 fail                                                                                                                              │
 │                                                                                                                                                      │
-│  [Pass 13]  [Warn 11]  [Fail 0]                                                                                                                      │
+│  [Pass 14]  [Warn 11]  [Fail 0]                                                                                                                      │
 │                                                                                                                                                      │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
