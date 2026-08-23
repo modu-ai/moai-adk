@@ -42,7 +42,9 @@ $ go test ./internal/template/ -run EmbeddedLLM
 | `internal/template/templates/.codex/agents/moai/*.toml` | `make agents-emit` 재생성 (4개) |
 | `internal/config/testdata/shipped_key_inventory.yaml` | `llm.profiles.{high,medium,low}.manager-lead.{model,effort}` 6키 등록 (W/reader) |
 | `internal/web/assets/i18n.js` | `agentdesc.manager-lead` ko/ja/zh 3로케일 |
-| 테스트 6개 파일 | 아래 §2.4 |
+| `internal/cli/profile_setup_translations.go` | 프로파일 선택 라벨 3종 × 4로케일 = 12개 문자열 (아래 §2.6) |
+| `internal/cli/wizard/{questions,translations}.go` | init 위저드 티어 설명 3종 × 4로케일 (같은 산문, 테스트 미커버) |
+| 테스트 7개 파일 | 아래 §2.4 · §2.6 |
 | `internal/template/catalog.yaml` | `make build` 재생성 |
 
 `GroupLead` 를 새로 만든 이유: 기존 7개 그룹 중 `manager-lead` 의 형태(high/high/medium)와 맞는 것이 없다. 그룹은 해소에 쓰이지 않는 표시·오버라이드 게이트지만, 없으면 `AgentGroup()` 이 실패해 웹 설정에서 이 에이전트만 오버라이드가 조용히 무시된다.
@@ -82,6 +84,33 @@ low     manager-spec opus/medium · plan-auditor opus/medium · sync-auditor opu
 
 `TestDefaultProfileMatrix_Monotone`(각 행 high ≥ medium ≥ low)은 수정 없이 통과 — 새 값이 12행 모두 단조다.
 
+### 2.6 CI가 잡은 두 표면 — 내 로컬 검증 범위가 좁았다
+
+첫 push 후 CI `Test (ubuntu-latest)` 가 실패했다. 원인은 코드가 아니라 **내가 고른 검증 범위**다: `./internal/cli/agentlint/...` 는 돌렸지만 `./internal/cli/` 자체를 돌리지 않아, 그 패키지의 두 소비자를 놓쳤다.
+
+```
+--- FAIL: TestResolveModelProfileReport_MaxClaude
+    model_test.go:30: manager-develop high: got opus/medium, want opus/max
+    model_test.go:36: expected 11 agents, got 12
+--- FAIL: TestModelPolicyLabels_AgreeWithProfileMatrix  (high/medium/low × en·ko·ja·zh)
+    label "High - Opus 5 (max~low) ..." should state the matrix opus effort span (high~medium)
+    label ... mentions docs=false but manager-docs on sonnet=true
+```
+
+두 번째가 특히 중요하다 — `TestModelPolicyLabels_AgreeWithProfileMatrix` 는 프로파일 선택 UI의 **산문 라벨을 매트릭스에서 파생해 검증한다**. opus effort 폭(`(hi~lo)`), sonnet effort, 그리고 `docs` / `e2e` 가 그 컬럼에서 실제로 sonnet 행인지까지 문자열 포함으로 대조한다. 즉 셀을 바꾸면 사용자가 읽는 문장도 함께 바꿔야 하고, 그 등식은 기계로 강제돼 있다.
+
+새 라벨(4로케일 동일한 기술 문자열):
+
+| 컬럼 | 이전 | 이후 |
+|---|---|---|
+| high | `Opus 5 (max~low) + Sonnet (low, single-shot rows only)` | `Opus 5 (high~medium) + Sonnet (low, docs/single-shot rows)` |
+| medium | `Opus 5 (high~low) + Sonnet (low, single-shot rows only)` | `Opus 5 (high~low) + Sonnet (low, docs/single-shot rows)` |
+| low | `Opus 5 (medium~low) + Sonnet (low, docs/e2e/single-shot rows)` | `Opus 5 (high~low) + Sonnet (low, docs/e2e/single-shot rows)` |
+
+`internal/cli/wizard` 의 init 티어 설명도 같은 산문을 들고 있으나 이 테스트가 커버하지 않는다 — 스테일로 남으면 위저드만 `max~low` 라고 말하게 되므로 4로케일 모두 함께 갱신했다.
+
+**교훈(기록용):** "affected packages" 를 서브패키지 단위로 좁게 고른 것이 실패의 직접 원인이다. 매트릭스처럼 fan-in 이 넓은 SSOT 를 건드릴 때는 소비자를 grep 으로 먼저 열거해야 한다.
+
 ### 2.5 명령 출력
 
 ```
@@ -100,6 +129,15 @@ ok  internal/web                  7.7s
 ok  internal/settings             3.2s
 ok  internal/settings/agentfm     3.5s
 ok  internal/settings/yamlpatch   3.2s
+
+# §2.6 수정 후 추가 실행
+$ go test ./internal/cli/ -count=1 -timeout 900s
+ok  internal/cli                397.4s
+$ go test ./internal/cli/wizard/ ./internal/cli/agentlint/ -count=1
+ok  internal/cli/wizard           3.2s
+ok  internal/cli/agentlint        0.9s
+$ golangci-lint run ./internal/cli/...
+0 issues.
 ```
 
 ## 3. Baseline-attribution
