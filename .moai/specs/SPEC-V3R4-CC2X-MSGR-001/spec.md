@@ -1,5 +1,5 @@
 ---
-id: SPEC-V3R4-CC2X-ADOPT-002-MSGR-001
+id: SPEC-V3R4-CC2X-MSGR-001
 title: "CC 2.1.238/239 Messaging Doctrine Refresh — Windows Availability + Send-Result Outcomes (cross-session-messaging.md, kanban-dispatch.md)"
 version: 0.1.0
 status: draft
@@ -12,10 +12,11 @@ module: template
 lifecycle: spec-anchored
 era: V3R6
 tier: S
+tags: "release-update, cross-session-messaging, windows, doctrine, template"
 parent: SPEC-V3R4-CC2X-ADOPT-002
 ---
 
-# SPEC-V3R4-CC2X-ADOPT-002-MSGR-001 (STUB)
+# SPEC-V3R4-CC2X-MSGR-001 (STUB)
 
 Empty stub created by the 2026-08-23 `/harness:release-update` sweep (Phase 5
 Option C). Scope, evidence, and tier tables live in the umbrella research:
@@ -28,3 +29,9 @@ surface (refused / inbox-drop sender reporting, CC 2.1.238) and
 Windows" claim) — template source (`internal/template/templates/`) + local
 mirrors. Verify the Windows feature-floor set (umbrella Open Question 2) before
 finalizing wording. Plan/run/sync bodies not yet authored.
+
+### Out of Scope
+
+- docs-site 4-locale OS-availability bullet — already corrected in PR #1598 (this sweep); docs-site is not template-managed.
+- The UTF-8 BOM `.md` fix (CC 2.1.239) — template tree measured clean this sweep (343 files, 0 BOM); no work item.
+- CC 2.1.238/239 Tier-3 items (Remote Control, cloud sessions, TUI polish) — no MoAI surface.
