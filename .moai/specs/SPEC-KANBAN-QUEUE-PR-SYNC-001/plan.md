@@ -46,8 +46,10 @@ Every milestone's exit is a command whose output is cited, per
 ### M1 — The doctrine change (REQ-3)
 
 Highest reversibility risk: it is a [HARD] behavioural rule on the lead and a
-new naming obligation on every PR. It goes first so the decision is reviewed
-before any code is written to serve it.
+naming obligation on every card-delivering PR. It goes first so the decision is
+reviewed before any code is written to serve it. Note when writing the clause
+that **M6** makes it codification rather than imposition — 8 of 15 merged PR
+titles already carry the token, and most of the remainder deliver no card.
 
 - Add the pre-dispatch PR cross-check to `kanban-dispatch.md`, sited next to
   § Entry into the board is an operator act.
@@ -71,9 +73,11 @@ reviewer may want to revisit.
 
 ### M3 — The read surface (REQ-2)
 
-- New `moai todo pr [<id>]` verb with `--json`.
-- One `gh pr list --state open --json number,title,body,state` call; feed the
-  resolver; render.
+- New `moai todo pr [<id>]` verb with `--json`. The dedicated-verb choice is
+  settled by **M5** (0.878s per `gh pr list`), so do not reopen it as a
+  `todo list` column during implementation.
+- Exactly one `gh pr list --state open --json number,title,body,state` call per
+  invocation; feed the resolver; render. No per-card query.
 - Fail-open wrapper around the `gh` call.
 - Exit: byte-identity assertion on `backlog.json` (AC-004); fail-open test with
   `gh` forced absent via `PATH`.

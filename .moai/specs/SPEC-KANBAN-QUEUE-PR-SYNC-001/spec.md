@@ -1,7 +1,7 @@
 ---
 id: SPEC-KANBAN-QUEUE-PR-SYNC-001
 title: Read-only card-to-PR link surface for the kanban backlog queue
-version: 0.1.0
+version: 0.1.1
 status: draft
 created: 2026-08-24
 updated: 2026-08-24
@@ -18,6 +18,11 @@ tier: M
 
 - 2026-08-24 — v0.1.0 — plan-phase authoring. Grounded in the t210 measurement
   record `.moai/reports/t210/measurement.md` (M1..M4). `status: draft`.
+- 2026-08-24 — v0.1.1 — M5 (`gh` latency 0.878s) and M6 (merged-title convention
+  already emergent) landed in the measurement record. REQ-2.5's surface choice
+  is now evidence-backed rather than judgement-backed; REQ-3.2 gains the
+  codification argument; the latency exclusion is rewritten from "unmeasured" to
+  "optimization out of scope".
 
 ## A. Context
 
@@ -189,6 +194,13 @@ M2 title carrier from 64% recall to 100%, which turns REQ-1's resolver from a
 heuristic into an exact lookup — the fix for ambiguous parsing is a naming
 convention, not a smarter parser.
 
+The clause is cheap to adopt because it **codifies existing practice rather than
+imposing a new burden**. Per **M6**, 8 of 15 merged PR titles already carry a
+card token, and most of the 7 that do not deliver no card at all — `release:
+v3.1.3`, the v3.1.3 batch PR, and three `chore(release-update)` entries. Among
+merged PRs that deliver a single card, the title token is close to universal.
+The rule therefore names a convention contributors already mostly follow.
+
 **REQ-3.3** — The doctrine shall state explicitly that REQ-3.2 does not
 contradict the existing [HARD] rule that a card worktree's **branch** name must
 exclude the card id. The branch carries a descriptive slug for human
@@ -202,8 +214,9 @@ per the Template-First rule, subject to the template neutrality catalogue.
 
 ## E. Non-functional constraints
 
-- **NFR-1** — The separate verb's wall-time is bounded by one `gh pr list`
-  invocation; no per-card network call.
+- **NFR-1** — The separate verb's wall-time is bounded by **one** `gh pr list`
+  invocation — measured at 0.878s (**M5**) — with no per-card network call. A
+  per-card query would multiply that figure by the queue length.
 - **NFR-2** — No new third-party dependency. The existing `gh` invocation path
   (`internal/github/gh.go`) is reused.
 - **NFR-3** — The resolver is a pure function of (card id set, PR record set),
@@ -220,10 +233,12 @@ per the Template-First rule, subject to the template neutrality catalogue.
 
 ### Out of Scope — merged and closed pull requests
 
-- Only `--state open` PRs are linked. **M2** measured open PRs only; the
-  measurement record's gaps section states that a card whose PR has already
-  merged (the t199 case) is a different query whose carrier statistics are
-  unmeasured. Deferred to a follow-up SPEC that first measures the closed set.
+- Only `--state open` PRs are linked. **M2** scored the open set; **M6** sampled
+  15 merged PRs for the title-convention argument but did not score the merged
+  side for precision the way M2 scores the open side, and the measurement
+  record's remaining-gaps section says so explicitly. A card whose PR has
+  already merged (the t199 case) is a different query. Deferred to a follow-up
+  SPEC that first scores the closed set.
 
 ### Out of Scope — non-GitHub forges
 
@@ -235,11 +250,13 @@ per the Template-First rule, subject to the template neutrality catalogue.
 - The 11 currently-open PRs are not retitled. REQ-3.2 binds pull requests opened
   after the doctrine change lands.
 
-### Out of Scope — latency budgeting
+### Out of Scope — latency optimization
 
-- `gh` latency was not measured (measurement record, gaps). REQ-2.5's
-  separate-verb choice removes the need for a latency budget on the hot path;
-  no budget is specified here.
+- `gh` latency is now measured (**M5**: 0.878s, essentially all round-trip), and
+  that measurement is what settles REQ-2.5. What stays out of scope is making
+  that query *faster* — no caching layer, no background prefetch, no persisted
+  link index. The cost is paid, visibly, only by the operator who invokes the
+  verb.
 
 ## G. Cross-references
 

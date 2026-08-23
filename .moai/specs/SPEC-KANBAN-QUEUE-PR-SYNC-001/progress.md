@@ -10,8 +10,10 @@
   BOOTSTRAP-001, RENAME-001, TODO-CLI-001, WORKTREE-001).
 - Requirements written in GEARS notation; exclusions section carries five
   `### Out of Scope — <topic>` H3 sub-headings with `-` bullets.
-- Evidence base: `.moai/reports/t210/measurement.md` (M1..M4), cited by section
-  throughout `spec.md`.
+- Evidence base: `.moai/reports/t210/measurement.md` (M1..M6), cited by section
+  throughout `spec.md`. M5 (`gh` latency 0.878s) grounds REQ-2.5's surface
+  choice; M6 (8/15 merged titles already carry a card token) grounds REQ-3.2's
+  adoption-cost argument.
 - `status: draft`. Awaiting plan-audit and Implementation Kickoff Approval.
 
 ## §E.2 Run-phase Evidence
