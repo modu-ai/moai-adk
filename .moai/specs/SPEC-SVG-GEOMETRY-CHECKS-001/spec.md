@@ -2,9 +2,9 @@
 id: SPEC-SVG-GEOMETRY-CHECKS-001
 title: "SVG connector-geometry checks in check-svg.mjs with bipolar self-test"
 version: "0.3.0"
-status: draft
+status: completed
 created: 2026-08-22
-updated: 2026-08-22
+updated: 2026-08-23
 author: manager-spec
 priority: P2
 phase: "v3.1.3 target"

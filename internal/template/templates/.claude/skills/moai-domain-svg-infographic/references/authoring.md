@@ -260,6 +260,13 @@ a fragment whatever that rect means. Fully inside and fully outside stay silent.
 **Paint order, since three of the six depend on it:** containers and bands
 first, then connectors, then connector labels, then nodes, then node text.
 
+**`SVG074` is a coverage note, not a rule breach.** The three checks above read
+coordinates straight from the attributes, so an element carrying a `transform` is
+excluded rather than guessed at. `SVG074` warns once per file to say how much of
+the candidate population that was — transitively, so a single wrapping
+`<g transform>` takes everything inside it out of the count. It reports what went
+unverified; it says nothing about whether the geometry is wrong.
+
 ---
 
 ## 3. Palette and type scale
