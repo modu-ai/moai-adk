@@ -62,6 +62,13 @@ type InitOptions struct {
 	// informational and leaves the deployed template default untouched.
 	WorktreeAutoCreate bool // workflow.worktree.auto_create
 
+	// TodoEnabled mirrors wizard.WizardResult.TodoEnabled and persists to
+	// workflow.todo.enabled at init. nil means the question was never asked
+	// (--non-interactive), and an unasked question writes nothing: the config
+	// gate is default-ON, so absence already carries the right answer and
+	// emitting a key would be noise at best and an inversion at worst.
+	TodoEnabled *bool // workflow.todo.enabled
+
 	// SPEC-WT-DOC-001 workflow toggle opt-in surface. The *Set trackers are
 	// false on the zero value so a non-interactive / flag-absent init leaves the
 	// deployed template default untouched (distributed default-off). An explicit

@@ -739,6 +739,12 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 			SessionNamePattern: "moai-{ProjectName}-{SPEC-ID}",
 			TmuxPreferred:      true,
 		},
+		// SPEC-TODO-ENABLE-FLAG-001 REQ-1: Todo is left at its zero value on
+		// purpose — Enabled stays nil, which TodoEnabled reads as ENABLED.
+		// Writing a &true here would work but would hide the load-bearing
+		// fact that ABSENT and TRUE are the same answer, and that only a
+		// literal `enabled: false` turns the guidance off.
+		Todo: WorkflowTodoConfig{},
 		// SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001 REQ-1/REQ-4: the guard ships
 		// default-OFF (opt-in). Distributed users get an inert guard; the
 		// maintainer of a shared multi-session checkout opts in via local

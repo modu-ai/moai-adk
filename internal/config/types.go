@@ -382,6 +382,11 @@ type WorkflowConfig struct {
 	LoopPrevention LoopPreventionConfig   `yaml:"loop_prevention"`
 	TokenBudget    TokenBudgetConfig      `yaml:"token_budget"`
 	Worktree       WorkflowWorktreeConfig `yaml:"worktree"`
+	// Todo gates the runtime todo/backlog guidance surfaces
+	// (SPEC-TODO-ENABLE-FLAG-001 REQ-1). Read through TodoEnabled, never
+	// directly: the pointer inside distinguishes "key absent" (= enabled)
+	// from "explicitly disabled", which a plain bool cannot express.
+	Todo WorkflowTodoConfig `yaml:"todo"`
 	// SessionWorktree gates the automatic worktree isolation for
 	// moai init / moai profile / moai web (SPEC-SESSION-WORKTREE-001 REQ-SW-001 /
 	// REQ-SW-002). Default false: the feature ships INERT (byte-identical
@@ -555,6 +560,18 @@ type WorkflowWorktreeConfig struct {
 	AutoMerge          bool   `yaml:"auto_merge"`
 	SessionNamePattern string `yaml:"session_name_pattern"`
 	TmuxPreferred      bool   `yaml:"tmux_preferred"`
+}
+
+// WorkflowTodoConfig mirrors workflow.todo.* — the backlog-queue guidance gate
+// (SPEC-TODO-ENABLE-FLAG-001 REQ-1). The distributed template ships without
+// this block, so ABSENT must read as ENABLED; a plain bool cannot tell that
+// apart from an explicit `enabled: false`, which is why Enabled is a pointer.
+// Read it through Config.TodoEnabled rather than dereferencing here.
+//
+// What the flag turns off is the GUIDANCE, never the feature: `moai todo` stays
+// registered and every verb keeps working regardless of this value (REQ-3).
+type WorkflowTodoConfig struct {
+	Enabled *bool `yaml:"enabled"`
 }
 
 // BranchGuardConfig mirrors workflow.branch_guard.* — the Main-Checkout
