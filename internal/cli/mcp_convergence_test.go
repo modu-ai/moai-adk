@@ -458,7 +458,7 @@ func TestPersistConvergenceResult_WritesStateFile_DQ1(t *testing.T) {
 		ResidualRiskNote:   "",
 		FailOpenBackends:   []string{},
 	}
-	if err := persistConvergenceResult(r, "sess-123"); err != nil {
+	if err := persistConvergenceResult(r, "sess-123", ""); err != nil {
 		t.Fatalf("persistConvergenceResult: %v", err)
 	}
 	path := filepath.Join(tmp, "audit-multi", "sess-123.json")
@@ -485,7 +485,7 @@ func TestPersistConvergenceResult_FailOpenOnDiskError(t *testing.T) {
 	t.Cleanup(func() { convergenceStateDir = orig })
 
 	r := ConvergenceResult{OverallVerdict: "pass"}
-	err := persistConvergenceResult(r, "sess-ro")
+	err := persistConvergenceResult(r, "sess-ro", "")
 	if err == nil {
 		// Some platforms (root, certain filesystems) permit writes inside a 0555
 		// dir; skip rather than fail in that case.
