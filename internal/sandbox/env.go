@@ -37,6 +37,20 @@ var defaultDenyList = []string{
 	"GH_TOKEN",
 }
 
+// DefaultEnvDenyList returns the built-in environment-variable name vocabulary
+// as a copy, so a consumer outside this package can reuse the vocabulary
+// without being able to mutate it.
+//
+// The list is shared rather than duplicated: internal/feedback masks the values
+// of these variables when scrubbing a feedback report, and a second copy of the
+// names would let the two surfaces drift apart. Callers extend it additively
+// (security.yaml sandbox.env_scrub_extra), never replace it.
+func DefaultEnvDenyList() []string {
+	out := make([]string, len(defaultDenyList))
+	copy(out, defaultDenyList)
+	return out
+}
+
 // ScrubEnv removes sensitive environment variables from parent and returns a
 // filtered copy. Variables in the passthrough list are preserved even if they
 // match the denylist.

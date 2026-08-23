@@ -79,6 +79,138 @@ ok  	github.com/modu-ai/moai-adk/internal/config/toolpolicy	(cached)
 
 AC-F-001 판정: **PASS** — `go test ./internal/config/ -run 'TestFeedbackAutoSubmit' -v` 가 위 GREEN 블록을 출력.
 
+### M2 — 스크러버 타입 계약 + 마스킹 변환
+
+Pre-flight (편집 전 트리 `95fc239e3` 대상, 세 건 모두 **0**):
+
+```
+$ git ls-tree -r 95fc239e3 --name-only -- internal/feedback | wc -l
+       0
+$ git grep -c "DefaultEnvDenyList" 95fc239e3 -- '*.go' | wc -l
+       0
+$ git grep -c "func Scrub(" 95fc239e3 -- '*.go' | wc -l
+       0
+```
+
+`internal/feedback` 패키지 자체가 없었고, `DefaultEnvDenyList` 접근자도 `Scrub` 함수도 부재였다는 근거.
+
+RED (`go test ./internal/feedback/ -run '<M2 9종>' -v`, 테스트만 있고 구현 없는 트리):
+
+```
+# github.com/modu-ai/moai-adk/internal/feedback [github.com/modu-ai/moai-adk/internal/feedback.test]
+internal/feedback/scrub_test.go:52:20: undefined: Options
+internal/feedback/scrub_test.go:53:9: undefined: Options
+internal/feedback/scrub_test.go:59:21: undefined: Result
+internal/feedback/scrub_test.go:59:50: undefined: Finding
+internal/feedback/scrub_test.go:65:9: undefined: Finding
+internal/feedback/scrub_test.go:73:14: undefined: Scrub
+internal/feedback/scrub_test.go:73:20: undefined: Input
+internal/feedback/scrub_test.go:97:15: undefined: Scrub
+internal/feedback/scrub_test.go:97:21: undefined: Input
+internal/feedback/scrub_test.go:104:28: undefined: KindSecret
+internal/feedback/scrub_test.go:104:28: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/feedback [build failed]
+FAIL
+```
+
+GREEN — AC별 명령을 각각 1회씩 실행해 관측한 결과:
+
+```
+$ go test ./internal/feedback/ -run 'TestFindingsCarryNoRawValue' -v
+--- PASS: TestFindingsCarryNoRawValue (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/feedback	0.555s
+
+$ go test ./internal/feedback/ -run 'TestScrubMasksGitHubToken' -v
+--- PASS: TestScrubMasksGitHubToken (0.00s)
+    --- PASS: TestScrubMasksGitHubToken/body (0.00s)
+    --- PASS: TestScrubMasksGitHubToken/title (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/feedback	0.715s
+
+$ go test ./internal/feedback/ -run 'TestScrubMasksGoogleAPIKey' -v
+--- PASS: TestScrubMasksGoogleAPIKey (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/feedback	0.661s
+
+$ go test ./internal/feedback/ -run 'TestScrubBenignBodyUntouchedAndAllowed' -v
+--- PASS: TestScrubBenignBodyUntouchedAndAllowed (0.00s)
+    --- PASS: TestScrubBenignBodyUntouchedAndAllowed/benign_prose (0.00s)
+    --- PASS: TestScrubBenignBodyUntouchedAndAllowed/lowercase_prose_run (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/feedback	0.719s
+
+$ go test ./internal/feedback/ -run 'TestMaskOutputShapeMatchesExistingMasker' -v
+--- PASS: TestMaskOutputShapeMatchesExistingMasker (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/feedback	0.761s
+
+$ go test ./internal/feedback/ -run 'TestScrubCollapsesHomePath' -v
+--- PASS: TestScrubCollapsesHomePath (0.00s)
+    --- PASS: TestScrubCollapsesHomePath/first_home (0.00s)
+    --- PASS: TestScrubCollapsesHomePath/second_home (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/feedback	0.801s
+
+$ go test ./internal/feedback/ -run 'TestScrubMasksEnvValues' -v
+--- PASS: TestScrubMasksEnvValues (0.00s)
+    --- PASS: TestScrubMasksEnvValues/process_environment (0.00s)
+    --- PASS: TestScrubMasksEnvValues/default_deny_list (0.00s)
+    --- PASS: TestScrubMasksEnvValues/env_scrub_extra (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/feedback	0.628s
+
+$ go test ./internal/feedback/ -run 'TestScrubIsIdempotent' -v
+--- PASS: TestScrubIsIdempotent (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/feedback	0.613s
+
+$ go test ./internal/feedback/ -run 'TestScrubMasksPrivateKeyBlockEntirely' -v
+--- PASS: TestScrubMasksPrivateKeyBlockEntirely (0.00s)
+    --- PASS: TestScrubMasksPrivateKeyBlockEntirely/with_terminator (0.00s)
+    --- PASS: TestScrubMasksPrivateKeyBlockEntirely/truncated_block (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/feedback	0.588s
+```
+
+AC-F-008 네 번째 케이스의 반증 장치 (`TestRewritePatternsAreCaseSensitive`) — 이 케이스가 **무언가를 관측한다**는 근거. 재작성 패턴 전부가 `(?i)` 없이 컴파일되고 그 산문에 매치하지 않으면서, **같은 패턴에 `(?i)`를 붙이면 매치한다**는 것을 같은 테스트가 확인한다:
+
+```
+$ go test ./internal/feedback/ -run 'TestRewritePatternsAreCaseSensitive' -v
+--- PASS: TestRewritePatternsAreCaseSensitive (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/feedback	0.787s
+```
+
+패키지 트리 전체 (`go test ./internal/feedback/... ./internal/sandbox/...`):
+
+```
+ok  	github.com/modu-ai/moai-adk/internal/feedback	1.009s
+ok  	github.com/modu-ai/moai-adk/internal/sandbox	0.527s
+```
+
+`go vet ./internal/feedback/... ./internal/sandbox/...` · `GOOS=windows go vet ./internal/feedback/... ./internal/sandbox/...` 둘 다 무출력, exit 0.
+`go test -race ./internal/feedback/` → `ok ... 2.133s`.
+`golangci-lint run --timeout=3m ./internal/feedback/... ./internal/sandbox/...` → `0 issues.`
+
+납품물:
+- `internal/feedback/scrub.go` — `Input`/`Finding`(`Where` 포함)/`Result`/`Options` 타입 계약 + `Scrub()` + 파이프라인 순서 고정 + 분류 seam(placeholder, M3 소관).
+- `internal/feedback/patterns.go` — 정책 객체 통째 재사용 + `AIza` 합집합 + 치환 span 규칙(마커 앵커 → 종료자까지/입력 끝까지, `(?i)` 제거 재컴파일).
+- `internal/feedback/env.go` — 이름 어휘 기반 값 마스킹 + `env_scrub_extra` 확장.
+- `internal/feedback/paths.go` — `paths.Home()` 기반 홈 축약 + `.moai/` 마커 상향 탐색.
+- `internal/sandbox/env.go` — `DefaultEnvDenyList()` 신설(사본 반환). 이 SPEC이 `internal/feedback` 밖을 편집하는 유일한 지점.
+- 테스트 4종 파일: `internal/feedback/scrub_test.go`, `internal/feedback/paths_test.go`, `internal/sandbox/env_denylist_test.go`.
+
+설계 판단 5건:
+
+1. **채택한 마스커는 `github.MaskSecret`이다.** 후보 3종 중 `maskAPIKey`(`internal/cli/glm.go`)와 `maskPartial`(`internal/cli/glm_tools.go`)은 **unexported**라 `internal/feedback`에서 호출할 수 없고, `internal/cli`를 import하면 M5에서 역방향 순환이 된다. AC-F-009가 "형태 문자열 하드코딩 금지"를 요구하므로 테스트가 직접 호출할 수 있어야 한다는 제약과 합쳐지면 선택지는 하나뿐이다. 네 번째 형태는 만들지 않았다(AP-5).
+2. **재작성 경로는 정책 패턴을 `(?i)` 없이 재컴파일한다 — 전량이다.** "대소문자 민감 패턴만" 골라내려면 어떤 패턴이 민감한지 판정하는 규칙이 필요한데, 글자를 포함한 패턴은 전부 `(?i)`의 영향을 받으므로 그 판정은 결국 "글자를 포함하는가"와 같다. 전량 제거가 같은 결과를 더 단순하게 낸다. 실제 자격증명은 발급 시스템이 정한 표준 대소문자로 나오므로 탐지력 손실이 없다.
+3. **블록 종료자는 span 규칙이지 탐지 패턴이 아니다.** `-----BEGIN`/`-----END` 마커를 `patterns.go`에 상수로 둔 것은 **이미 정책이 적중시킨 매치의 치환 범위를 늘리기 위해서**이며, 새 탐지 패턴을 추가하는 것이 아니다(AP-4 위반 아님). 종료자가 없는 잘린 키는 더 안전한 경우가 아니라 더 위험한 경우이므로 입력 끝까지 마스킹한다.
+4. **샌드박스의 `AWS_` 접두사 규칙은 의도적으로 채택하지 않았다.** 자식 프로세스에서 `AWS_REGION`을 떼는 것은 무해하지만, 텍스트 재작성기에서는 본문에 등장한 `us-east-1`을 가려 산문을 훼손한다. 접두사가 비밀이 아닌 변수까지 덮으므로 과잉 마스킹이다. 이름 어휘(deny list ∪ `env_scrub_extra`)만 쓴다.
+5. **env 값 마스킹에 최소 길이 8자 하한을 두었다.** 8자 미만 값은 자격증명일 확률이 낮고 평범한 단어일 확률이 높아, 마스킹하면 사용자가 제출하려던 보고서가 갈가리 찢긴다. 8자 미만 시크릿에 대한 이론적 미탐과 산문 파괴를 맞바꾼 판단이며 상수로 노출했다.
+
+AC-F-005 판정: **PASS** — `go test ./internal/feedback/ -run 'TestFindingsCarryNoRawValue' -v` 가 위 블록을 출력.
+AC-F-006 판정: **PASS** — `go test ./internal/feedback/ -run 'TestScrubMasksGitHubToken' -v` 가 위 블록을 출력.
+AC-F-007 판정: **PASS** — `go test ./internal/feedback/ -run 'TestScrubMasksGoogleAPIKey' -v` 가 위 블록을 출력.
+AC-F-008 판정: **PASS** — `go test ./internal/feedback/ -run 'TestScrubBenignBodyUntouchedAndAllowed' -v` 가 위 블록을 출력.
+AC-F-009 판정: **PASS** — `go test ./internal/feedback/ -run 'TestMaskOutputShapeMatchesExistingMasker' -v` 가 위 블록을 출력.
+AC-F-010 판정: **PASS** — `go test ./internal/feedback/ -run 'TestScrubCollapsesHomePath' -v` 가 위 블록을 출력.
+AC-F-011 판정: **PASS** — `go test ./internal/feedback/ -run 'TestScrubMasksEnvValues' -v` 가 위 블록을 출력.
+AC-F-014 판정: **PASS** — `go test ./internal/feedback/ -run 'TestScrubIsIdempotent' -v` 가 위 블록을 출력.
+AC-F-024 판정: **PASS** — `go test ./internal/feedback/ -run 'TestScrubMasksPrivateKeyBlockEntirely' -v` 가 위 블록을 출력.
+
+미검증(M2 시점): `Result.Verdict`는 placeholder 분류기가 항상 `ok`를 낸다 — AC-F-012·F-013은 M3 소관이며 M2는 그 순서만 고정했다. `ResolveProjectRoot`·`Options.ProjectRoot`는 M4(로그·큐)가 소비하기 전까지 프로덕션 호출자가 없다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
