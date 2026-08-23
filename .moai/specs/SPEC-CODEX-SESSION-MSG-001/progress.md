@@ -223,7 +223,7 @@ gaps_carried:
 
 ```yaml
 sync_complete_at: 2026-08-23
-sync_commit_sha: pending-backfill-SPEC-CODEX-SESSION-MSG-001   # 커밋은 자기 SHA를 알 수 없음 — D3 면제에 따라 후속 커밋에서 백필
+sync_commit_sha: 3cc284b63   # 커밋은 자기 SHA를 알 수 없음 — D3 면제에 따라 후속 커밋에서 백필(본 행)
 sync_status: complete
 changelog_entry_position: CHANGELOG.md [Unreleased] > ### Added 첫 엔트리
 frontmatter_status_transitions:
