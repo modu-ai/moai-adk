@@ -3,7 +3,8 @@
 ## §A Context
 
 Consumer: `internal/web`. Producers touched: `internal/kanban`, `internal/cli`,
-`internal/statusline`. One doctrine rule and its template mirror.
+`internal/statusline`. Two doctrine mirror pairs (four files: the context-window-management
+rule and its `-detail.md` companion, each with its template mirror).
 
 Tier **L**, justified in §B.
 
@@ -19,9 +20,9 @@ The operator read the scope as L, and the measurement agrees. Against the Tier e
 |---|---|
 | Packages touched | 4 (`internal/web`, `internal/kanban`, `internal/cli`, `internal/statusline`) |
 | Milestones | 6, each independently shippable |
-| Files | > 10 — 3 Go producers + web viewmodel/templ/handler/i18n + 2 rule copies + ≥ 5 test files asserting the old context path |
+| Files | > 10 — 3 Go producers + web viewmodel/templ/handler/route/nav/icon/i18n + 4 rule copies + ≥ 5 test files asserting the old context path |
 | Cross-cutting schema change | 2 — `kanban.Record` field additions, and a state-file path relocation with a documented external consumer |
-| Consumers outside this repo's code | 1 — the doctrine rule read by agents and the orchestrator |
+| Consumers outside this repo's code | 2 — the doctrine rule and its detail companion, read by agents and the orchestrator |
 
 Any one of the last two alone would push past M. The context-usage relocation in particular
 carries a documented read procedure in an always-loaded rule; that is not an M-sized change.
@@ -46,11 +47,12 @@ side. I recommend against that here, with one carve-out.
    (record the lane number and card id) and a consumer obligation (perform the join). Written
    in two documents it drifts; §A.5 keeps it in one.
 
-**Carve-out — M3 may be promoted to a sibling.** The context-usage relocation is the one piece
-with consumers beyond this console: the doctrine rule, the statusline itself, and twelve
-docs-site pages. If the doctrine edit turns out to require re-deriving the Detection
-Heuristics read procedure rather than re-pointing it, M3 is a SPEC of its own and this one
-depends on it. That call is an open decision (§G-2), not a silent one.
+**Carve-out considered and closed — M3 stays here.** The context-usage relocation is the one
+piece with consumers beyond this console: two doctrine files and their mirrors, the statusline
+itself, and twelve docs-site pages. The carve-out was conditional on a compat window making it
+release-spanning lifecycle work; resolved decision G-3 chose a hard cut, so it is a single
+in-tree change with every consumer enumerated (spec.md §C.3) and testable here. Resolved
+decision G-2 (§G) — no longer open.
 
 ## §D Milestones
 
@@ -69,6 +71,8 @@ reopens exactly that. A separate `Lane int` keeps the drop-unknown guard intact 
 and lane number observably distinct — the same reasoning `RoleDeclaration` already applies to
 `Role` versus `Label` (`role.go:47-52`).
 
+The type is `Lane int` with `0` meaning "not a lane", not `*int` — resolved decision G-6 (§G).
+
 Ships alone: additive fields with no writer are inert.
 
 ### M2 — Launcher threads model, effort, lane, and card id (producer)
@@ -78,7 +82,9 @@ Widen `recordKanbanSession` (`internal/cli/kanban.go:472`) past its current
 224/237/250/264). Model and effort resolve from the existing `internal/config/profile.go`
 `ModelEffort` / `EffectiveProfile` surface at launch.
 
-Card id has no producer today — see §G-1; M2 cannot close until that decision lands.
+Card id is derived at launch from the basename of `git rev-parse --show-toplevel`, with an
+explicit environment-variable override consulted first, and left empty when neither yields a
+value — resolved decision G-1 (§G). No new on-disk producer.
 
 Ships alone: records gain fields no reader yet displays.
 
@@ -87,22 +93,46 @@ Ships alone: records gain fields no reader yet displays.
 `.moai/state/context-usage.json` → `.moai/state/context-usage/<session-id>.json`, plus one
 **exported** reader in `internal/statusline` (REQ-WC15-021) so no second copy of the schema
 appears (REQ-WC15-022). Treat §C.3 of spec.md as the checklist, not as a rename: writer, reader,
-struct, call site, five-plus test assertions, the doctrine rule, its template mirror plus
-`make build`, twelve docs-site pages, and `.moai/README.md`.
+struct, call site, five-plus test assertions, the `internal/cli/tokens.go` duplicate reader and
+its `tokens_test.go` fixture, **two** doctrine mirror pairs (the main rule and its
+`-detail.md` companion, four files) plus `make build`, twelve docs-site pages, and the
+`drift_cache.go:24` comment. `.moai/README.md` needs no change (its mention is generic).
+
+**Hard cut, no dual-write window** — resolved decision G-3 (§G). **M3 stays inside this SPEC**
+rather than being promoted to a sibling — resolved decision G-2 (§G), which follows from G-3.
 
 The single-slot validation (`isFreshForSession`, the `writer_pid` discriminator, the
 same-payload check) exists because one file served N sessions. With the session id in the path
 most of it becomes unreachable; delete what the split makes dead rather than leaving it as
 decoration.
 
-Ships alone; it is also the milestone most likely to become a sibling SPEC (§G-2).
+Ships alone.
 
-### M4 — Relocate queue-root resolution (producer refactor, no behaviour change)
+### M4 — Relocate queue-root resolution, splitting resolution from adoption (producer refactor)
 
 Move `resolveTodoQueueRoot` (`internal/cli/todo.go:66`) and its `fallbackTodoQueueRoot` /
 `adoptLocalTodoQueue` support into `internal/kanban`, exported. `internal/cli/todo.go`
 delegates. `internal/kanban` is the natural home — `BacklogPathForRoot` and
 `QueuedBacklogCountForRoot` already live there and already take a root.
+
+**This is not a literal move.** The relocation must split the resolution from the adoption side
+effect, and a run that performs the literal move fails AC-WC15-031c and AC-WC15-032. Verified
+in this tree: `resolveTodoQueueRoot` → on a git-unresolvable context → `fallbackTodoQueueRoot`
+(`:89-102`) → `adoptLocalTodoQueue` (`:115-139`), which performs `os.MkdirAll` (`:124`),
+`os.Rename` (`:128`), and `os.WriteFile` (`:139`). The git-resolvable path is pure; the write
+lives exactly on the fail-open branch a console cannot exclude, so a console launched in a
+non-git directory would migrate the operator's backlog while rendering a page — breaking
+REQ-WC15-002.
+
+The shape M4 must produce: **two** exported entry points, not one.
+
+- a **pure resolver** — resolves the primary checkout, falls back to the home-based root, and
+  performs no `MkdirAll`, `Rename`, or `WriteFile` on any branch. This is what `internal/web`
+  imports.
+- an **adopt-then-resolve** entry point that calls the pure resolver and then performs the
+  adoption. This is what `internal/cli/todo.go` calls, so `moai todo`'s behaviour is unchanged.
+
+The adoption logic itself moves verbatim; only its call site is narrowed.
 
 The point is that one resolution exists, not that the console gets a copy: the measured
 failure (30 queued cards on the primary, "queue is empty" from a worktree, 2026-08-17) is what
@@ -119,10 +149,20 @@ the `ChainRoles` iteration rather than inside it (lanes are not chain roles). Ke
 
 Depends on M1, M2, M3.
 
-### M6 — Console consumer: todo section
+### M6 — Console consumer: `/todo` route
 
-Read-only backlog section: `NewBacklogStore(BacklogPathForRoot(root)).Load()` with the M4 root,
-wired to the existing `kanban` refresh area. Four-locale i18n for every new string.
+Read-only backlog section at its **own top-level route** `/todo` with a sixth nav entry —
+resolved decision G-4 (§G). `NewBacklogStore(BacklogPathForRoot(root)).Load()` with M4's **pure**
+resolver, all three `BacklogState` values listed with a state badge (resolved decision G-5).
+
+Wired to the **existing** `kanban` refresh area — the section carries `data-live="kanban"` and
+no event name is added. The reasoning, and why a seventh event would be worse rather than
+merely unnecessary, is spec.md §C.6; the pin is AC-WC15-034's `watchMap`/`EVENTS`
+unchanged-diff half.
+
+The route's own surface (spec.md §C.6): `app.go` `routes()`, `shell.templ` `rail()` sixth
+`navRow`, `icons.templ` `iconAt` `todo` case, `screens.go` `Area`, and `nav.todo` in four
+locales. `templ generate` regenerates `shell_templ.go` and `icons_templ.go`.
 
 Depends on M4 only — **not** on M1-M3. M6 can ship before M5 if the producer work stalls.
 
@@ -152,54 +192,95 @@ M4 ──> M6
 - **Running the full Go suite locally.** Target the affected packages and read CI for the
   full-suite verdict.
 
-## §G Open decisions — handed back, not resolved
+## §G Resolved decisions
 
-**G-1. Where does the card id come from?** No per-lane card id exists on disk (`MOAI_KANBAN_ID`
-is the *run* id, `envkeys.go:167-173`). Three candidates:
+All six decisions previously handed back here are **resolved**, and every clarification marker
+this section once carried has been deleted rather than annotated. Each entry records the answer,
+the reasoning, and what was rejected, so a later reader inherits the decision rather than the
+question.
 
-- (a) a new env var set by the lead at dispatch, read at launch — explicit, but a new producer
-  surface and a new way to be absent;
-- (b) the lead writes it into the record after launch — accurate, dependent on lead discipline,
-  and the record goes stale silently when the lead forgets;
-- (c) derive from the worktree directory name, since the dispatch format already fixes
-  `wt: .claude/worktrees/<card-id>` and `git rev-parse --show-toplevel` is already available —
-  zero new producer surface, but it silently yields nothing for a lane that is not in a card
-  worktree.
+**G-1. Card-id producer → derive from the worktree path, with an environment-variable
+override.** The dispatch format fixes `wt: .claude/worktrees/<card-id>` and the kanban-dispatch
+protocol requires that the worktree directory keep the card id, so the value already exists at
+the one place every card-carrying lane stands, and `git rev-parse --show-toplevel` already
+reaches it. Zero new on-disk producer surface. A lane outside a card worktree yields nothing —
+but such a lane is already a dispatch violation, and the empty field renders through the
+existing "not recorded" honesty path (REQ-WC15-012 shape) rather than as a guess.
+*Rejected:* a launch-time env var as the **sole** source — factory routes a card whole to a
+free lane *after* launch, so process env cannot carry a per-card value without relaunching a
+lane per card; it survives only as the override, which costs no schema change. *Rejected:* the
+lead writing it into the record after launch — accurate while the lead is disciplined, silently
+stale the first time it is not. Lands in REQ-WC15-042 and M2.
 
-  My lean is (c) with (a) as an override. Operator call.
-  [NEEDS CLARIFICATION: card-id producer — env var, lead-written, or worktree-derived]
+**G-2. M3 stays inside this SPEC.** This follows from G-3 rather than standing on its own: the
+§C carve-out promoted M3 to a sibling only if the compat window made it release-spanning
+lifecycle work. A hard cut is a single in-tree change whose every consumer is enumerated
+(spec.md §C.3, after the D6 correction) and testable here. Splitting it out would leave a SPEC
+whose acceptance is the weak "the path moved and round-trips" shape — the same failure mode §C
+reason 1 already names, and the one D2 caught this SPEC committing once.
 
-**G-2. Is M3 a sibling SPEC?** §C carve-out. Cheap to decide before run-phase, expensive after.
-[NEEDS CLARIFICATION: promote the context-usage split to a sibling SPEC]
+**G-3. Hard cut for the context-usage path — no dual-write window.** Four reasons, in the order
+that decided it: (i) every reader is in-tree and now fully enumerated — no plugin, no external
+API, no persisted consumer reads this path; (ii) the file is render-ephemeral session telemetry
+regenerated on every statusline render, so a cut loses at most one render's snapshot and there
+is no durable data to migrate; (iii) dual-write would keep the last-writer-wins single slot
+alive, which is precisely the trap spec.md §A.3 documents with a live observation (session
+`368a2bd9…` at 260,000 tokens replaced by session `e463a3c9…` at 0) — a compat window whose
+purpose is to preserve a known defect; (iv) dual-write contradicts REQ-WC15-024's own
+instruction to drop the single-slot validation steps, keeping `isFreshForSession` and the
+`writer_pid` discriminator alive as decoration. Lands in M3, AC-WC15-020, AC-WC15-024.
 
-**G-3. Compatibility window for the context-usage path.** Dual-write both the old single slot
-and the new per-session file for one release, or cut hard? Dual-write keeps any unmigrated
-reader working and keeps the last-writer-wins slot alive as a trap; a hard cut is cleaner and
-breaks a reader nobody has enumerated outside §C.3.
-[NEEDS CLARIFICATION: dual-write window vs hard cut for context-usage]
+**G-4. The todo section gets its own `/todo` route and nav entry, not a panel on `/kanban`.**
+This decision goes **against** the plan-auditor's recommendation, and the cost the auditor named
+is accepted rather than avoided — it is in scope, enumerated in spec.md §C.6, and pinned by
+AC-WC15-035: one route, a sixth nav row, an `iconAt` case, an `Area` value, and `nav.todo` in
+four locales. The queue is an operator surface in its own right and is addressable and
+shareable as a URL, which a panel is not.
 
-**G-4. Where does the todo section live?** Its own `/todo` route and nav entry (shareable,
-one more nav item), or a panel on `/kanban` (fewer top-level items, the queue seen beside the
-board it feeds). Nav currently carries five entries (`i18n.js` `nav.overview` … `nav.settings`).
-[NEEDS CLARIFICATION: /todo route vs panel on /kanban]
+The auditor's concrete objection — that a separate route "requires an event-vocabulary change
+that §D Out of Scope explicitly forbids" — does **not** hold against the tree, and this was
+measured rather than argued. The backlog file lives at `.moai/state/kanban/backlog.json`, inside
+the directory `watchMap["kanban"]` already watches (`events.go:30`), and `refresh(area)` gates on
+a `data-live` DOM marker rather than on the route — so the existing event covers `/todo` with no
+producer change. Adding a seventh event name would be worse than unnecessary: it would have to
+watch the same directory, and `eventFor` (`events.go:171-183`) resolves ties by *longest* watch
+path, so two equal-length entries fall back to map iteration order — the exact nondeterminism
+the file's header comment records as a fixed bug. The §D exclusion therefore stands on evidence,
+and no AC contradicts it; AC-WC15-034 asserts the unchanged `watchMap`/`EVENTS` diff as the pin.
 
-**G-5. Does the todo section show dropped cards?** `BacklogState` has three values. Showing only
-`queued` is the operator's working view; showing all three is the audit view.
-[NEEDS CLARIFICATION: todo section state filter]
+One residual limitation is recorded rather than fixed (spec.md §C.6): a console served from a
+linked worktree watches that worktree's state directory while resolving the backlog to the
+primary checkout, so it will not receive a live event for a primary-checkout queue change.
+Correct on load and on any other `kanban` event, stale in between. Widening the watched paths is
+a producer change this SPEC declines (§D).
 
-**G-6. Lane number field type.** `Lane int` with 0 meaning "not a lane", or `*int` so
-"not recorded" stays distinct from lane 0. `VerifyRung` already chose the pointer for exactly
-this reason (`record.go:76-88`). Lane numbering starts at 1, so `int` may be sufficient —
-but the precedent argues the other way.
-[NEEDS CLARIFICATION: Lane int vs *int]
+**G-5. The todo section shows all three states, each with a state badge.** The audit view rather
+than the working view: the kanban lead's card cross-check consumes `picked` and `dropped` as an
+audit trail, and a `queued`-only list cannot answer "where did card X go". A filter is a later
+addition over a complete list, never the reverse. Lands in REQ-WC15-030 and AC-WC15-030, whose
+assertion now includes the badge — the badge is part of the resolution, so leaving it
+unasserted would have left half the decision unobserved.
 
-## §H Deferred Tier-L artifacts
+**G-6. `Lane int`, with `0` meaning "not a lane" — not `*int`.** Factory lanes number from 1
+(`lane-1..N`), so 0 is unreachable by legitimate data and the pointer would defend a state that
+cannot occur while adding a nil check at every reader. The `VerifyRung` precedent does not
+transfer: there a *recorded-empty* rung is a reachable state distinct from an absent one
+(`record.go:76-88`), which is what earns the pointer. Here absent → 0 → the "not recorded"
+marker REQ-WC15-051 already requires, so the honest rendering is preserved without the
+indirection. Lands in REQ-WC15-040 and M1.
 
-`research.md` is present. `design.md` is **not** written: its content — the schema shape, the
-join topology, the split's blast radius — is carried by spec.md §A / §C and this plan's
-§D / §G, and a separate design document would restate them. If the plan-auditor requires the
-Tier-L artifact set literally, that is a gap to close before run-phase entry, not an omission
-by oversight.
+## §H Tier-L artifact set
+
+Complete: `spec.md`, `plan.md`, `acceptance.md`, `research.md`, `design.md`.
+
+`design.md` **is written**. An earlier draft of this plan argued it would only restate spec.md
+§A/§C and this plan's §D/§G; the plan-auditor accepted that rationale for the schema and
+join-topology content and rejected it for the cross-cutting decisions, and the evidence it was
+right is that two acceptance criteria (AC-020/024 and AC-030) had silently hard-coded one branch
+of a decision that had no home to be recorded in. `design.md` is scoped to exactly that gap —
+the resolved G-1/G-3/G-4/G-6 decisions and their consequences, the M3 migration sequence, and
+the M4 resolution/adoption split — and deliberately does **not** restate the schema shape or the
+join topology, which spec.md §A/§C already carries.
 
 ## §I Cross-references
 
@@ -207,5 +288,6 @@ by oversight.
   investigation. §1-§6 largely shipped; check claims against code.
 - `.moai/reports/webredesign/moai-web-redesign-brief.md` — visual constraints.
 - `SPEC-KANBAN-TODO-CLI-001` — owner of the backlog store.
-- `.claude/rules/moai/workflow/context-window-management.md` § Detection Heuristics — the
-  consumer contract M3 must move.
+- `.claude/rules/moai/workflow/context-window-management.md` § Detection Heuristics and
+  `context-window-management-detail.md` — the consumer contract M3 must move, both mirrored
+  under `internal/template/templates/`.

@@ -157,47 +157,65 @@ keeps estimation and keeps the honesty flag.
   context-usage record, and the console shall consume that exported reader.
 - **REQ-WC15-022** — The implementation shall not define a second declaration of the
   context-usage record schema outside `internal/statusline`.
-- **REQ-WC15-025** — The pre-existing duplicate declaration in `internal/cli/tokens.go`
-  (`tokensContextSnapshotFilename`, `tokensContextSnapshot`) shall be removed and that call
-  site migrated onto the exported reader of REQ-WC15-021, in the same milestone that moves the
-  path. Verification: after the change, `grep -rn '"context-usage' internal/` returns the
-  statusline declaration and no other, and `moai tokens` still emits a context snapshot for a
-  session that has one. Rationale: this reader shares no constant with the statusline, so the
-  path move breaks it with no compile error and no runtime error — the snapshot simply stops
-  appearing.
 - **REQ-WC15-023** — **When** no readable per-session context-usage record exists for a
   session, the console shall render that session's context percentage as "not recorded" and
   shall not fall back to another session's record.
 - **REQ-WC15-024** — **Where** the per-session context-usage path is adopted, the consumer
-  doctrine at `.claude/rules/moai/workflow/context-window-management.md` § Detection
-  Heuristics shall be updated to name the new path and to drop the single-slot validation
-  steps the split makes unreachable, and its template mirror at
-  `internal/template/templates/.claude/rules/moai/workflow/context-window-management.md`
-  shall be updated in the same change.
+  doctrine shall be updated to name the new path and to drop the single-slot validation steps
+  the split makes unreachable, across **both mirror pairs** — the main rule
+  `.claude/rules/moai/workflow/context-window-management.md` **and its detail companion
+  `context-window-management-detail.md`**, each with its
+  `internal/template/templates/…` mirror — all four files updated in the same change.
+- **REQ-WC15-025** — The pre-existing duplicate declaration in `internal/cli/tokens.go`
+  (`tokensContextSnapshotFilename` line 30, `tokensContextSnapshot` line 79) shall be removed
+  and that call site migrated onto the exported reader of REQ-WC15-021, in the same milestone
+  that moves the path. Rationale: this reader shares no constant with the statusline, so the
+  path move breaks it with no compile error and no runtime error — `readTokensContextSnapshot`
+  (tokens.go:393-397) returns nil on any read error, so the snapshot simply stops appearing.
+  (Verification recipe moved to AC-WC15-025 per D11.)
 
 ### B.2 Axis 2 — todo queue section
 
-- **REQ-WC15-030** — The console shall present a section listing the backlog queue's items
-  with, per item, its id, its text, its state, and its SPEC id where one is attached.
+- **REQ-WC15-030** — The console shall present, at its own top-level route `/todo` carrying a
+  nav entry, a section listing the backlog queue's items with, per item, its id, its text, its
+  state rendered as an explicit state badge, and its SPEC id where one is attached. All three
+  `BacklogState` values (`queued`, `picked`, `dropped`) shall be listed; none shall be filtered
+  out. (Route rather than a `/kanban` panel — resolved decision G-4, plan.md §G.)
 - **REQ-WC15-031** — The console shall resolve the backlog queue root through the same
   primary-checkout resolution `moai todo` uses, relocated into a package both `internal/cli`
   and `internal/web` import, with `internal/cli/todo.go` delegating to that relocated
-  resolution rather than retaining its own copy.
+  resolution rather than retaining its own copy. The relocation shall **split resolution from
+  adoption**: the exported entry point the console consumes shall perform no filesystem
+  mutation on any branch, and the queue-adoption side effect currently reached through
+  `fallbackTodoQueueRoot` → `adoptLocalTodoQueue` (`internal/cli/todo.go:115-139`:
+  `os.MkdirAll` :124, `os.Rename` :128, `os.WriteFile` :139) shall remain reachable only from
+  the `moai todo` command path.
 - **REQ-WC15-032** — The console shall not call any mutating backlog operation and shall not
   acquire the backlog lock.
 - **REQ-WC15-033** — **When** the backlog queue file is absent, empty, or unreadable, the
   console shall render an empty-state for the section and shall not return an error response.
-- **REQ-WC15-034** — **When** a `kanban` live-refresh event fires, the todo section shall be
-  re-fetched through the existing refresh path.
+- **REQ-WC15-034** — **When** the **existing** `kanban` live-refresh event fires, the `/todo`
+  route's section shall be re-fetched through the existing refresh path, by carrying the
+  existing `data-live="kanban"` marker; no new event name shall be added to the event
+  vocabulary. Grounding (§C.6): the backlog file lives at `.moai/state/kanban/backlog.json`,
+  which `watchMap["kanban"]` (`internal/web/events.go:30`) already watches, and `refresh(area)`
+  keys on a DOM marker rather than on the route, so the existing event already covers this
+  route with no producer-side change.
 
 ### B.3 Axis 3 — per-lane factory progress
 
 - **REQ-WC15-040** — A factory lane's `kanban.Record` shall carry the lane's number as data
-  distinct from its role value.
+  distinct from its role value, as a non-pointer integer in which the zero value means
+  "not a lane". (Resolved decision G-6, plan.md §G; factory lanes number from 1, so 0 is
+  unreachable by legitimate data.)
 - **REQ-WC15-041** — **When** a lane label carrying a lane number is recorded, the record
   writer shall preserve the lane number and shall not discard it as an unrecognised role.
 - **REQ-WC15-042** — A `kanban.Record` shall carry the card identifier the session is working,
   as a field distinct from the SPEC identifier, populated for cards that never acquire a SPEC.
+  The launcher shall derive that identifier from the **basename of the session's worktree root**
+  (`git rev-parse --show-toplevel`), and shall prefer an explicit environment-variable override
+  when one is set. **When** neither source yields a value, the field shall be left empty rather
+  than guessed. (Resolved decision G-1, plan.md §G.)
 - **REQ-WC15-043** — The console shall resolve each registered factory lane to its session by
   joining the factory registry's recorded PID to the active-sessions registry entry bearing
   that PID, and shall not introduce a new state file for that join.
@@ -245,19 +263,27 @@ of it.
 | `internal/statusline/context_usage.go` | writer path (line 134), `readContextUsage` (line 186), `contextUsageRecord` (line 56) — reader must be exported per REQ-WC15-021; `isFreshForSession` / `sameSemanticPayload` / `isRealSessionID` validation written for a single slot becomes partly unreachable |
 | `internal/statusline/builder.go:157` | call site of the persistence step |
 | `internal/cli/tokens.go` | **a second, independent reader** — `tokensContextSnapshotFilename = "context-usage.json"` (line 30) is its own hardcoded filename constant, and `tokensContextSnapshot` (line 79) its own duplicate of the record schema. It embeds the snapshot into `moai tokens` output. Because it neither imports the statusline reader nor shares the constant, the split breaks it **silently**: the file simply stops being found and the snapshot silently drops out of the output. Exporting one reader (REQ-WC15-021) is not enough — this call site must be migrated onto it, and REQ-WC15-022's single-declaration rule applied to `tokensContextSnapshot` as well |
+| `internal/cli/tokens_test.go:283` | the migrated reader's own test — carries a literal snapshot fixture with `"raw_pct"`; moves with REQ-WC15-025 |
 | `internal/statusline/{builder,context_usage}_test.go` | assert the literal path `.moai/state/context-usage.json` in at least five places |
 | `.claude/rules/moai/workflow/context-window-management.md` | § Detection Heuristics names the file as the authoritative snapshot and specifies session-id match, `writer_pid` discriminator, and freshness check — a read procedure built around the single-slot shape (line 100) |
 | `internal/template/templates/.claude/rules/moai/workflow/context-window-management.md` | Template-First mirror of the above |
+| **`.claude/rules/moai/workflow/context-window-management-detail.md`** | **the detail companion the main rule points at — carries the snapshot field list and the validity-guard read procedure. Verified present in this tree by `grep -rln "state/context-usage.json" .claude internal/template/templates`, which returns exactly four files: this pair and the pair above. Omitting it leaves the procedure the main rule defers to stale** |
+| **`internal/template/templates/.claude/rules/moai/workflow/context-window-management-detail.md`** | **Template-First mirror of the detail companion** |
+| `internal/spec/drift_cache.go:24` | a comment naming `context-usage.json` as a sibling state file — NOTE-level; fold into M3's comment sweep, no behaviour depends on it |
 | docs-site | `content/{en,ko,ja,zh}/advanced/statusline.md`, `advanced/token-budget.md`, `cli-reference/tokens.md` reference the path — 12 files, four locales |
-| `.moai/README.md` | references the path |
+| `.moai/README.md` and its template mirror | **no change required.** Both carry only the generic row `\| state/ \| Runtime state snapshots, e.g. context-usage (gitignored — regenerated) \|` — a category mention with no filename, which stays true after the split. Listed here so a future reader does not re-derive the question |
 
 ### C.4 Template-First
 
 Go source under `internal/web`, `internal/kanban`, `internal/cli`, and `internal/statusline`
 has **no** mirror under `internal/template/templates/` (that tree carries only `.claude/`,
 `.moai/`, and root config), so the Template-First rule does **not** apply to the code changes.
-It applies to exactly one artifact in this SPEC: the doctrine-rule edit of REQ-WC15-024, whose
-mirror must be updated and followed by `make build`.
+It applies to exactly **two mirror pairs** in this SPEC — four files — both belonging to the
+REQ-WC15-024 doctrine edit: the main rule `context-window-management.md` and its detail
+companion `context-window-management-detail.md`, each with its
+`internal/template/templates/.claude/rules/moai/workflow/…` mirror. All four must be updated in
+the same change and followed by `make build`. `.moai/README.md` is **not** among them (§C.3
+last row: its mention is generic and requires no change).
 
 ### C.5 Existing view constraint
 
@@ -265,6 +291,46 @@ mirror must be updated and followed by `make build`.
 iterates. Factory lanes are not chain roles (`role.go:42` states lanes never occupy the
 three-role chain), so lane presentation is an addition beside that iteration, not a widening
 of it.
+
+### C.6 What the `/todo` route decision brought into scope
+
+Resolved decision G-4 chose a top-level `/todo` route over a panel on `/kanban`. That choice
+has a cost, and the cost is **in scope** rather than avoided. Every place the sixth nav entry
+and the new route are declared, verified in this tree:
+
+| Surface | Change |
+|---|---|
+| `internal/web/app.go:152-192` `routes()` | one `mux.HandleFunc("/todo", …)` beside the five existing page routes |
+| `internal/web/shell.templ` `rail()` (~line 130-134) | a sixth `@navRow(vm, "todo", "Todo", "/todo")` after `settings`; regenerated `shell_templ.go` |
+| `internal/web/icons.templ` `iconAt` switch (~line 70-78) | a `case "todo":` — `navRow` calls `@iconAt(id, 16)` with the nav id, so a missing case yields a blank glyph; regenerated `icons_templ.go` |
+| `internal/web/assets/i18n.js` | `nav.todo` in all four locale maps (`en` ~line 30, `ko` ~649, `ja` ~1270, `zh` ~1891) — covered by REQ-WC15-050 |
+| `internal/web/screens.go:23` | the `Area: area` value `"todo"`, which drives `aria-current` on the rail |
+
+**The event vocabulary does NOT change, and this is a measurement, not a preference.** The
+auditor predicted a route would force a vocabulary change; the tree says otherwise, on two
+counts:
+
+1. **The existing event already covers it.** `watchMap["kanban"]` watches `.moai/state/kanban`
+   (`events.go:30`) and the backlog file is `.moai/state/kanban/backlog.json` — inside it. On
+   the client, `refresh(area)` gates on `document.querySelector('[data-live="' + area + '"]')`
+   (`app.js` `hasArea`) and then re-fetches `window.location.href`, so the marker is bound to a
+   DOM region, not to a route. A `/todo` page carrying `data-live="kanban"` is refreshed by the
+   existing event with zero producer-side change.
+2. **A new event name would be actively harmful.** It would have to watch the same directory,
+   `.moai/state/kanban`. `eventFor` (`events.go:171-183`) attributes a change to the *longest*
+   registered watch path; two entries of identical length tie, and the winner falls back to map
+   iteration order — precisely the nondeterminism the file's header comment (`events.go:6-9`)
+   records as a fixed bug. Adding `todo` would reintroduce it.
+
+So the vocabulary exclusion in §D stands on evidence rather than on convenience, and no AC
+below depends on a vocabulary change. What the route *did* pull into scope is the table above.
+
+One residual limitation, recorded rather than fixed: `Hub.Watch(root, …)` watches the **served**
+project root, while REQ-WC15-031 resolves the backlog to the **primary checkout**. A console
+served from a linked worktree therefore renders the primary's queue correctly but will not
+receive a live event when that queue changes; the 30s fallback poll is not engaged either,
+since SSE is healthy. The section is correct on load and on any other `kanban` event, and stale
+in between. Widening the watch set is a producer change this SPEC does not take — see §D.
 
 ## §D Exclusions
 
@@ -276,6 +342,12 @@ Explicitly out of scope. Each may be taken up separately.
   polling is SSE's degraded mode.
 - Adding an htmx SSE extension or migrating to `hx-ext="sse"`.
 - Changing the event vocabulary, the 250ms debounce, the 25s keepalive, or the 30s poll period.
+  This exclusion **survives** the G-4 route decision, on the §C.6 measurement: the `/todo` route
+  reuses the existing `kanban` event, so REQ-WC15-034 and AC-WC15-034 do not contradict this
+  line. What the route decision *did* bring into scope — the route, the sixth nav entry, the
+  icon case, and four-locale i18n — is enumerated in §C.6 and is **not** excluded here.
+- Widening `watchMap`'s watched **paths** so a worktree-served console receives live events for
+  the primary checkout's queue (§C.6 residual limitation). Separate producer change.
 
 ### Out of Scope — write paths
 
