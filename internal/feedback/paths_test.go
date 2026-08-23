@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/defs"
 )
 
 func TestResolveProjectRootFindsMarker(t *testing.T) {
@@ -43,7 +45,41 @@ func TestResolveProjectRootReportsAbsence(t *testing.T) {
 	// require an unmounted volume to guarantee; instead assert the contract at
 	// the point that matters: an unreadable start reports absence rather than
 	// guessing a root.
-	if root, ok := ResolveProjectRoot(filepath.Join(t.TempDir(), "does", "not", "exist")); ok {
+	//
+	// The walk is upward, so the assertion only holds where no ancestor of the
+	// temp directory carries a marker. That is true of a POSIX CI runner and
+	// false of the Windows one, whose temp lives under a home directory that
+	// holds a .moai — there the walk finds a real marker and reporting it is
+	// correct behaviour, not the guess this test is about. Probe first and skip
+	// rather than assert a contract the environment has taken out of scope.
+	start := filepath.Join(t.TempDir(), "does", "not", "exist")
+	if marker, found := markerAbove(t, start); found {
+		t.Skipf("an ancestor of the temp tree carries a marker (%s) — upward absence is unobservable here", marker)
+	}
+
+	if root, ok := ResolveProjectRoot(start); ok {
 		t.Fatalf("expected absence for a non-existent start, got %q", root)
+	}
+}
+
+// markerAbove reports whether any ancestor of start carries the project marker,
+// walking the same direction ResolveProjectRoot does. It names the directory it
+// found so a skip says which ancestor took the assertion out of scope.
+func markerAbove(t *testing.T, start string) (string, bool) {
+	t.Helper()
+
+	dir := start
+	if abs, err := filepath.Abs(dir); err == nil {
+		dir = abs
+	}
+	for {
+		if info, err := os.Stat(filepath.Join(dir, defs.MoAIDir)); err == nil && info.IsDir() {
+			return dir, true
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return "", false
+		}
+		dir = parent
 	}
 }
