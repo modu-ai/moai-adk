@@ -47,6 +47,12 @@ default would send a caller who mistyped its own worktree path back to acting on
 the primary checkout — the exact failure the parameter exists to prevent —
 while reporting success.
 
+An accepted path is **canonicalized** before use — symlinks are resolved, so the
+call acts on the real directory rather than on whichever spelling reached it, and
+a later containment check cannot be walked through by pointing a link at a tree
+outside the boundary. A path that cannot be canonicalized is rejected on the same
+terms as any other unusable one.
+
 For `audit_multi` the root reaches BOTH backends of the fan-out: codex receives
 it as the working directory it reviews in, and the GLM path uses it to collect
 the diff it sends to z.ai. Passing it is what keeps the two secondary opinions
