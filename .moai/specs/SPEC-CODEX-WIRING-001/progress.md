@@ -164,8 +164,8 @@ m1_commit_sha: 90439c59c
 m2_commit_sha: 30c1387c4
 m3_commit_sha: 20ec045c3
 m4_commit_sha: 09d34fcc0
-m5_commit_sha: pending-backfill-this-commit
-run_commit_sha: pending-backfill-m5
+m5_commit_sha: fdf2a0b96
+run_commit_sha: fdf2a0b96
 ac_total: 14
 ac_pass_count: 13
 ac_fail_count: 0
@@ -190,7 +190,7 @@ scratch_e2e_root: /tmp/cw-e2e.hhJW53  # transient by design; verbatim outputs qu
 ```yaml
 sync_status: complete
 sync_complete_at: 2026-08-24
-sync_commit_sha: "pending-backfill-SPEC-CODEX-WIRING-001"  # D3 exemption — backfilled in a follow-up commit after the sync commit lands
+sync_commit_sha: "de5d4a2de"  # D3 exemption — backfilled in a follow-up commit after the sync commit lands
 b12_self_test_a_changelog_pre_emission_grep: 0  # grep -c 'SPEC-CODEX-WIRING-001' CHANGELOG.md before emission — no duplicate
 b12_self_test_b_ac_count: 14  # distinct AC IDs in acceptance.md == CHANGELOG entry scope (13 MUST PASS + AC-CW-014 SHOULD delegated to sync, discharged here)
 b12_self_test_c_path_verification: pass  # ls-verified: internal/codexwiring, README.md/.ko/.ja/.zh, CHANGELOG.md
