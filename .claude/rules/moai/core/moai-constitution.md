@@ -58,8 +58,9 @@ Anthropic's official prompt guidelines. The binding points:
   keep a minimum of `high` for intelligence-sensitive work, and step down only for speed-critical
   or simple tasks — routed by role, not by agent name.
 
-Rationale, the per-agent effort-calibration matrix pointer, and the model-id table:
-`moai-constitution-detail.md` § Opus 5 / 4.8 Prompt Philosophy.
+Per-agent effort calibration: `agent-authoring.md` § Effort-Level Calibration Matrix.
+Rationale and the model-id table: `moai-constitution-detail.md` § Opus 5 / 4.8 Prompt
+Philosophy.
 
 ## Output Format
 
