@@ -211,6 +211,95 @@ AC-F-024 판정: **PASS** — `go test ./internal/feedback/ -run 'TestScrubMasks
 
 미검증(M2 시점): `Result.Verdict`는 placeholder 분류기가 항상 `ok`를 낸다 — AC-F-012·F-013은 M3 소관이며 M2는 그 순서만 고정했다. `ResolveProjectRoot`·`Options.ProjectRoot`는 M4(로그·큐)가 소비하기 전까지 프로덕션 호출자가 없다.
 
+### M3 — 취약점 분류기
+
+Pre-flight (편집 전 트리 `e51475068` 대상):
+
+```
+$ git ls-tree -r e51475068 --name-only -- internal/feedback/classify.go | wc -l
+       0
+```
+
+`classify.go` 자체가 없었고, 분류 seam 은 `scrub.go` 안에 항상 `ok` 를 돌려주는 placeholder(`@MX:TODO` 표시)로만 있었다는 근거. AC-F-012 의 grep 토큰(`security/advisories/new`)은 그 파일이 부재였으므로 base 에서 **0** 이다 — 산문에 이미 있는 단어를 세는 공허한 검사가 아니다.
+
+RED (`go test ./internal/feedback/ -run 'TestClassify' -v`, 테스트만 있고 구현 없는 트리):
+
+```
+# github.com/modu-ai/moai-adk/internal/feedback [github.com/modu-ai/moai-adk/internal/feedback.test]
+internal/feedback/classify_test.go:48:37: undefined: advisoriesURL
+internal/feedback/classify_test.go:92:71: too many arguments in call to classify
+	have (Input, Options)
+	want (Input)
+internal/feedback/classify_test.go:127:54: too many arguments in call to classify
+	have (Input, Options)
+	want (Input)
+FAIL	github.com/modu-ai/moai-adk/internal/feedback [build failed]
+FAIL
+```
+
+GREEN — AC별 명령을 각각 1회씩 실행해 관측한 결과:
+
+```
+$ go test ./internal/feedback/ -run 'TestClassifyBlocksVulnerabilityReport' -v
+--- PASS: TestClassifyBlocksVulnerabilityReport (0.00s)
+    --- PASS: TestClassifyBlocksVulnerabilityReport/advisory_identifier (0.00s)
+    --- PASS: TestClassifyBlocksVulnerabilityReport/vulnerability_vocabulary (0.00s)
+    --- PASS: TestClassifyBlocksVulnerabilityReport/key-file_mention_plus_vocabulary (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/feedback	0.835s
+
+$ go test ./internal/feedback/ -run 'TestClassifyReadsPreMaskBody' -v
+--- PASS: TestClassifyReadsPreMaskBody (0.01s)
+ok  	github.com/modu-ai/moai-adk/internal/feedback	0.682s
+
+$ go test ./internal/feedback/ -run 'TestClassifyDoesNotBlockOrdinaryReports' -v
+--- PASS: TestClassifyDoesNotBlockOrdinaryReports (0.00s)
+    --- PASS: TestClassifyDoesNotBlockOrdinaryReports/single_path_mention (0.00s)
+    --- PASS: TestClassifyDoesNotBlockOrdinaryReports/ordinary_bug_report (0.00s)
+    --- PASS: TestClassifyDoesNotBlockOrdinaryReports/prose_about_a_token_prefix (0.00s)
+    --- PASS: TestClassifyDoesNotBlockOrdinaryReports/single_vocabulary_term (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/feedback	0.464s
+
+$ go test ./internal/feedback/ -run 'TestScrubBenignBodyUntouchedAndAllowed' -v
+--- PASS: TestScrubBenignBodyUntouchedAndAllowed (0.00s)
+    --- PASS: TestScrubBenignBodyUntouchedAndAllowed/benign_prose (0.00s)
+    --- PASS: TestScrubBenignBodyUntouchedAndAllowed/lowercase_prose_run (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/feedback	0.648s
+
+$ grep -c 'security/advisories/new' internal/feedback/classify.go
+1
+```
+
+패키지 트리 전체 (`go test -count=1 ./internal/feedback/... ./internal/sandbox/...`):
+
+```
+ok  	github.com/modu-ai/moai-adk/internal/feedback	1.130s
+ok  	github.com/modu-ai/moai-adk/internal/sandbox	0.638s
+```
+
+`go vet ./internal/feedback/... ./internal/sandbox/...` · `GOOS=windows go vet ./internal/feedback/... ./internal/sandbox/...` 둘 다 무출력, exit 0.
+`go test -race ./internal/feedback/` → `ok ... 2.131s`.
+`golangci-lint run --timeout=3m ./internal/feedback/... ./internal/sandbox/...` → `0 issues.`
+`gofmt -l internal/feedback/` → 무출력.
+
+AC-F-008 판정: **PASS** — `go test ./internal/feedback/ -run 'TestScrubBenignBodyUntouchedAndAllowed' -v` 가 위 블록을 출력.
+AC-F-012 판정: **PASS** — `go test ./internal/feedback/ -run 'TestClassifyBlocksVulnerabilityReport' -v` 가 위 블록을 출력.
+AC-F-013 판정: **PASS** — `go test ./internal/feedback/ -run 'TestClassifyReadsPreMaskBody' -v` 가 위 블록을 출력.
+
+납품물:
+- `internal/feedback/classify.go` — 신호 3종(시크릿 패턴 적중 / 시크릿 보유 파일 부류 언급 / 취약점 어휘·식별자) + 임계값 판정 + `SECURITY.md` 인용 거부 메시지. 어휘·가중치·URL 전부 패키지 상수·패키지 var.
+- `internal/feedback/classify_test.go` — 차단 3케이스(AC-F-012) + **오탐 대조 4케이스**(축퇴 배제) + 순서 가드(AC-F-013).
+- `internal/feedback/scrub.go` — placeholder 를 실제 분류기로 교체(`classify(in, opt)`) + `@MX:TODO` 제거. 파이프라인 순서는 M2 가 고정한 그대로.
+
+설계 판단 5건:
+
+1. **파일 부류 신호는 정책의 `DenyPatterns` 를 통째로 재사용한다.** 패턴 문자열을 골라 복사하면 AP-4 와 같은 형태의 사본이 생기고, 어느 패턴이 "키 파일 부류"인지 판정하는 규칙이 결국 그 사본이 된다. 정책 전체가 이미 "절대 쓰면 안 되는 파일" 집합이므로 그대로 쓴다. `internal/hook` 은 편집하지 않았다(AP-13).
+2. **정책 패턴은 산문 전체가 아니라 경로꼴 토큰에만 적용한다.** `\.pem$` · `\.ssh/.*` 는 **파일 경로**로 앵커된 패턴이라 문단 전체에 돌리면 원래 물음과 다른 물음에 답한다. 텍스트에서 경로꼴 토큰을 뽑아 토큰 단위로 매치한다.
+3. **파일 부류 점수는 매치한 패턴 수가 아니라 서로 다른 토큰 수다.** 홈 아래 SSH 개인키 경로 하나가 정책 패턴 두 개(`\.ssh/.*`, `id_rsa.*`)를 동시에 만족하므로, 패턴 단위로 세면 언급 한 건이 혼자 임계값에 닿는다 — "신호 2·3이 조합된다"는 설계와 어긋난다.
+4. **신호 1은 재작성 패턴(대소문자 민감)으로 본다.** 탐지기 형태(`(?i)`)로 보면 키 모양을 우연히 갖춘 소문자 산문이 차단되는데, 그 차단 뒤에는 자격증명이 없다 — 근거 없는 오탐이다. M2 의 재작성 패턴을 그대로 재사용한다.
+5. **어휘는 영어 전용이며, 이는 누락이 아니라 알려진 한계다.** 신호 1·2 는 언어 독립이라 최고 위험 입력을 덮고, 16개 언어를 고정 목록으로 덮는다는 주장은 지킬 수 없다. 소스 주석과 보고서 잔여 위험에 명시했다.
+
+미검증(M3 시점): 임계값 2 는 이 SPEC 이 처음 정한 값이라 실사용 오탐률 근거가 없다. `Options.ProjectRoot` 는 여전히 M4(로그·큐) 소비 전까지 프로덕션 호출자가 없다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

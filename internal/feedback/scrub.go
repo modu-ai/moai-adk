@@ -107,7 +107,7 @@ type Options struct {
 // unchanged. The retry queue re-scrubs what it dequeues, and the confirmation
 // gate re-scrubs a user-edited body, so both depend on that property.
 func Scrub(in Input, opt Options) (Result, error) {
-	verdict, reason := classify(in)
+	verdict, reason := classify(in, opt)
 
 	patterns := rewritePatterns(opt.Policy)
 	envValues := envMaskValues(environOf(opt), opt.EnvScrubExtra)
@@ -150,16 +150,4 @@ func transform(s, where string, patterns []rewritePattern, envValues []string, h
 	}
 
 	return out, findings
-}
-
-// @MX:TODO: [AUTO] placeholder classifier — the vulnerability signals live in classify.go
-//
-// classify is the pre-mask classification seam. It exists here so that the
-// pipeline ordering above is fixed by the code that owns the pipeline, not by
-// the classifier that will later fill it in. The signal set (secret-pattern
-// hit, key-file path mention, vulnerability vocabulary) and the SECURITY.md
-// routing message are a separate deliverable; until then every input that
-// survives the scrub is submittable.
-func classify(Input) (verdict, reason string) {
-	return VerdictOK, ""
 }
