@@ -1,5 +1,40 @@
 # Progress — SPEC-CODEX-WIRING-001
 
+## §F Phase 4 Mode Selection
+
+- Kickoff: Implementation Kickoff Approval **통과 (2026-08-24, 운영자 게이트 — 리드 배차
+  "t88 run 진입 승인됨")**. Phase 1 verdict: review-3 PASS 0.86 (skip 조건 3종 모두 만족하나
+  delta 감사로 최신판정 존재).
+
+Input parameters:
+- tier: M
+- scope: 신규 패키지 internal/codexwiring(+테스트) + internal/cli 4파일 배선 + annotation 4줄 —
+  약 10-14 파일
+- domain count: 3 (Go CLI internals / 산출물 렌더링·병합 엔진 / MCP 서버 등록 annotation)
+- file language mix: Go ~95% (산출물 검증 명령은 shell/python 일회성)
+- concurrency benefit: LOW — 코딩 중심 구현, M1→M2→M3→M4→M5 데이터 계약 의존 사슬
+- Agent Teams prereqs: 미요청 (명시적 --team 없음)
+
+Mode evaluation table:
+| Mode | 선택 | 근거 |
+|---|---|---|
+| direct | 아니오 | 신규 패키지 + 다중 파일 구현 — 자격 없음 |
+| serial | **선택** | 코딩 중심(Anthropic coding-task 병렬성 주의), 마일스톤 순차 의존 |
+| fanout | 아니오 | 단일 도메인 Go 구현, 연구 팬아웃 이점 없음, 쓰기 에이전트 동시 실행 금지 |
+| sweep | 아니오 | ~30 파일 미만, 기계적 단일 변환 아님 |
+
+Decision: serial
+
+Justification: Tier M 코딩 중심 구현으로 마일스톤 간 데이터 계약(생성기 코어 → 플래그 배선 →
+런타임 seam → doctor → 검증)이 순차 의존한다. 경계 케이스 없음(domain 3은 문턱이나 concurrency
+benefit LOW가 tie-breaker로 serial 확정). 단일 manager-develop(cycle_type=tdd)에게 마일스톤
+순차 위임, 마일스톤별 커밋.
+
+Boundary Case: 없음.
+
+통합 경로(리드 지시 2026-08-24): v3.1.3 배포가 t204 게이트 보류 중이므로 본 카드 산출물은
+**main으로 가는 카드 PR로만 정리 — release 브랜치 통합 없음**.
+
 ## §E.1 Plan-phase Audit-Ready Signal
 
 - plan_status: audit-ready
