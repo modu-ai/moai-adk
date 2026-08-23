@@ -2,7 +2,7 @@
 id: SPEC-CODEX-SESSION-MSG-001
 title: "Codex-Claude 세션 간 양방향 메시징 — moai MCP 브로커 + A2A 정합 엔벨로프"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-08-23
 updated: 2026-08-23
 author: manager-spec

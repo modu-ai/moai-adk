@@ -22,7 +22,49 @@ design_decision: "axis-(ii) A2A-aligned semantics over MCP broker + file store (
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — 데이터 모델 + 파일 스토어 (2026-08-23)
+
+TDD RED-GREEN-REFACTOR. 모든 명령은 본 워크트리 `WT-codex-session-msg` 에서 실행 (baseline HEAD `854e2c21b` + M1 파일 — 커밋 전 작업 트리; M1 커밋 SHA는 §E.6 리드 보고에 기록).
+
+**§E.8 TDD RED 증거 (GREEN 이전 축어 출력 — 핵심 동작별 첫 테스트)**
+
+| 동작 | 테스트 | RED 축어 출력 (발췌) |
+|---|---|---|
+| envelope 검증 | `TestEnvelopeA2AAlignment` | `--- FAIL: TestEnvelopeA2AAlignment ... validation_rejects_invalid_messages/empty_messageId: expected validation error containing "messageId", got nil` (+19 subtest FAIL — 정렬 subtest는 타입만으로 PASS, 검증 subtest 전부 FAIL) |
+| 등록 멱등 | `TestRegisterIdempotent` | `--- FAIL: TestRegisterIdempotent ... agent_test.go:26: first register returned empty agentId` |
+| 하트비트 온/오프라인 | `TestHeartbeatOnlineOffline` | `--- FAIL: TestHeartbeatOnlineOffline ... agent_test.go:129: agent  not listed (got 0 agents)` |
+| send/poll/ack 클레임 의미론 | `TestSendPollAck` | `--- FAIL: TestSendPollAck ... store_test.go:39: send returned empty messageId` |
+| 클레임 TTL 환원 | `TestClaimExpiryReturn` | `--- FAIL: TestClaimExpiryReturn ... store_test.go:204: first poll delivered 0 messages, want 1` |
+| 메시지 TTL 삭제 | `TestMessageExpirySweep` | `--- FAIL: TestMessageExpirySweep ... store_test.go:260: poll A expiredCount = 0, want 1 / claim before expiry failed: []` |
+| 동시성 보존 | `TestConcurrentSendPoll` | `--- FAIL: TestConcurrentSendPoll ... received 0 messages, want 100 (loss or duplication)` |
+
+**AC 이항 검증 매트릭스 (M1 소관 7항)**
+
+| AC | Status | Verification Command | Actual Output |
+|----|--------|---------------------|---------------|
+| AC-CSM-001 | PASS | `go test ./internal/sessionmsg/ -run TestEnvelopeA2AAlignment -v` | `PASS — ok github.com/modu-ai/moai-adk/internal/sessionmsg 0.182s` (전 subtest PASS: camelCase 코어 키 6개 + Part kind 판별자 + raw/url 기각 + 크기/부분수 상한) |
+| AC-CSM-002 | PASS | `go test ./internal/sessionmsg/ -run TestRegisterIdempotent -v` | `PASS — ok ... 0.192s` (kind+name 재등록 → 동일 agentId + 하트비트 갱신 + `agents/<agentId>.json` 존재 단언) |
+| AC-CSM-003 | PASS | `go test ./internal/sessionmsg/ -run TestSendPollAck -v` | `PASS — ok ... 0.196s` (send→pending 파일, poll→claimed 이동·반환, ack_ids→claimed 삭제, 미등록 수신자→`UnknownAgentError`+known 목록) |
+| AC-CSM-004 | PASS | `go test ./internal/sessionmsg/ -run TestClaimExpiryReturn -v` | `PASS — ok ... 0.202s` (ClaimedAt=현재-11분 → 다음 poll 동일 messageId 재클레임, ClaimedAt 갱신 단언) |
+| AC-CSM-005 | PASS | `go test ./internal/sessionmsg/ -run TestMessageExpirySweep -v` | `PASS — ok ... 0.215s` (pending·claimed 양측 TTL 초과 삭제 + `ExpiredCount` 보고) |
+| AC-CSM-006 | PASS | `go test -race ./internal/sessionmsg/ -run TestConcurrentSendPoll -v` | `--- PASS: TestConcurrentSendPoll (0.12s) — ok ... 1.542s` (10 sender×10 msg + 2 poller → 100 유일 배달, 경쟁 보고 0건) |
+| AC-CSM-014 | PASS | `go test ./internal/sessionmsg/ -run TestHeartbeatOnlineOffline -v` | `PASS — ok ... 0.197s` (가짜 시계 31분 경과→`online:false`; register·poll·send(sender) 각각 `online:true` 복귀) |
+
+**품질 게이트 (M1)**
+
+| 항목 | 명령 | 축어 출력 |
+|---|---|---|
+| E2 빌드 | `go build ./... && GOOS=windows GOARCH=amd64 go build ./...` | `E2_FINAL_OK` (exit 0 양측) |
+| E3 커버리지 | `go test -coverprofile=/tmp/smsg_cover2.out ./internal/sessionmsg/` | `ok github.com/modu-ai/moai-adk/internal/sessionmsg 0.484s coverage: 86.9% of statements` (≥85% 목표 충족; 잔여 미커버는 fault-injection I/O 오류 분기) |
+| E4 경계 grep | `grep -rn 'AskUserQuestion\|mcp__askuser' internal/sessionmsg/ \| grep -v _test` | 0행 (exit 1 — 매치 없음) |
+| E5 린트 | `golangci-lint run --timeout=2m ./internal/sessionmsg/... ./internal/config/...` | `0 issues.` |
+| AC-CSM-010 (M1 소관 부분) | `grep -c "DefaultSessionMsg" internal/config/defaults.go` | `12` (≥5; 선언 6 + 주석 인용 6 — `var` 형태 전부) |
+| AC-CSM-008 (M1 소관 부분) | `grep -rn "exec.Command\|codex-jobs\|app-server\|net.Listen\|http.Listen" internal/sessionmsg/ \| grep -v _test` | 0행 (위임 토큰 부재; `internal/cli/mcp_session_msg.go`는 M2에서 동일 grep 적용) |
+| config 패키지 회귀 | `go test ./internal/config/` | `ok github.com/modu-ai/moai-adk/internal/config 1.455s` |
+
+**M1 산출물**: `internal/sessionmsg/{envelope,agent,store,lock,lock_unix,lock_windows}.go` + 테스트 4파일 (envelope/agent/store/edge) + `internal/config/defaults.go` 임계값 6 `var` (지정 5종 + REQ-CSM-005 부분 수 상한 `DefaultSessionMsgMaxParts` 8). 잠금 패턴은 `internal/session`에서 복제(원본 무변경 — §D PRESERVE 3), 쓰기는 전부 `internal/atomicfile` 경유. 테스트 전부 `t.TempDir()` 격리 (§D PRESERVE 7 — `.moai/state/**` 무훼손).
+
+Gaps: `lock_windows.go`는 darwin 개발 머신에서 실행 검증 불가 — `GOOS=windows GOARCH=amd64 go build` 컴파일 게이트만 통과 (교차 컴파일이 테스트를 컴파일하지 않는 한계는 `GOOS=windows go vet ./...` 로 CI에서 보완 필요 — 메모리 feedback_cross_platform_test_compile 선례). 인/아웃 프로세스 혼합 경쟁(실제 다중 프로세스 flock 경합)은 M1 테스트가 단일 프로세스라 교차 프로세스 경로는 NB-flock 로직 검증만 (TestWithAgentLockTimeout·TestAgentLockAcquireRelease).
 
 ## §F Phase 4 Mode Selection
 
