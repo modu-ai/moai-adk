@@ -16,7 +16,7 @@ Iteration 2 was dispatched with an instruction to move the vocabulary change **i
 
 That inference was wrong, and measurement rather than argument is what withdrew it:
 
-1. **The existing event already covers the route.** `watchMap["kanban"]` watches `.moai/state/kanban` (`internal/web/events.go:29`), and the backlog file is `.moai/state/kanban/backlog.json` — inside it.
+1. **The existing event already covers the route.** `watchMap["kanban"]` watches `.moai/state/kanban` (`internal/web/events.go:30`), and the backlog file is `.moai/state/kanban/backlog.json` — inside it.
 
 2. **The refresh marker binds a region, not a route.** `refresh(area)` gates on `document.querySelector('[data-live="' + area + '"]')` and then re-fetches `window.location.href`. A `/todo` page carrying `data-live="kanban"` is refreshed by the existing event with no producer change.
 
