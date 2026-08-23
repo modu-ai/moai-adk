@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -444,17 +445,38 @@ func runtimeIsWindowsForTodo() bool {
 	return os.PathSeparator == '\\'
 }
 
-// TestTodoCmd_NoAskUserQuestion — AC-TODO-014: the todo command surface
-// carries zero interactive-prompt references (static guard, the
-// TestNew_NoAskUserQuestion idiom scoped to todo.go), with a negative
-// control proving the guard detects an introduced reference.
+// TestTodoCmd_NoAskUserQuestion — AC-TODO-014 / AC-TA-013: the todo command
+// surface carries zero interactive-prompt references (static guard, the
+// TestNew_NoAskUserQuestion idiom scoped to the todo sources), with a
+// negative control proving the guard detects an introduced reference.
+//
+// The guard reads EVERY non-test todo*.go, not just todo.go. Scoped to one
+// file it would have gone on passing while a prompt landed in a verb added
+// later — the failure mode a growing command surface makes likelier with
+// each new file.
 func TestTodoCmd_NoAskUserQuestion(t *testing.T) {
-	data, err := os.ReadFile("todo.go")
+	sources, err := filepath.Glob("todo*.go")
 	if err != nil {
-		t.Fatalf("read todo.go: %v", err)
+		t.Fatalf("glob todo sources: %v", err)
 	}
-	if reason, bad := todoPromptGuard(string(data)); bad {
-		t.Errorf("todo.go must stay prompt-free: %s", reason)
+	scanned := 0
+	for _, name := range sources {
+		if strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		data, err := os.ReadFile(name)
+		if err != nil {
+			t.Fatalf("read %s: %v", name, err)
+		}
+		scanned++
+		if reason, bad := todoPromptGuard(string(data)); bad {
+			t.Errorf("%s must stay prompt-free: %s", name, reason)
+		}
+	}
+	// Positive control on the scan itself: a glob that matched nothing
+	// would report every file clean without reading one.
+	if scanned < 2 {
+		t.Errorf("guard scanned %d todo sources, want the whole surface", scanned)
 	}
 
 	// Negative control: the guard must flag a synthetic violation.

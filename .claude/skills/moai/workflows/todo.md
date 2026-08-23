@@ -42,6 +42,11 @@ When the operator says `/moai todo "<description>"`, run
 
 | `moai todo drop <n> "<reason>" [--expect <prefix>]` | Move the addressed **queued** card to `dropped` under the lock, prefixing its text with `[DROPPED — <reason>] `. The card stays in the file — `done` removes a finished card, `drop` keeps a discarded one visible with its reason — and it is no longer a pick candidate. A picked card is unpicked first, so nothing `undrop` cannot restore is ever taken. |
 | `moai todo undrop <n> [--expect <prefix>]` | Return the addressed dropped card to `queued`, stripping the marker. The state is the authority, so a card marked dropped by hand (no marker in its text) undrops with its text untouched. `drop` + `undrop` returns the queue file to the same bytes. |
+| `moai todo add "<text>" --force` | Admit a card the analyser reads as an exact duplicate. The card is appended verbatim and the queue records that the duplicate was forced, so the collision stays visible instead of being argued about later. |
+| `moai todo analyze` | Re-read the whole queue and record what the analyser finds. Appends, removes, reorders, and edits nothing. Re-running records nothing new — the same relation is never stacked twice. |
+| `moai todo relate <a> <b> --relation (contains\|absorbs\|replaces\|conflicts) [--note <text>]` | Record one relation between two existing cards. The verb writes a record and touches neither card; `absorbs` does not absorb. |
+| `moai todo unrelate <index>` | Remove the addressed record. The index is the one `why` prints. No card changes. |
+| `moai todo why <n>` | Print every record naming the card, or an explicit no-findings line. A card the queue knows nothing about says so rather than printing nothing. |
 
 [HARD] `edit`, `move`, `drop`, and `undrop` are operator acts, exactly like
 `add` and the pick. Correct a card's wording, move it, or discard it because
@@ -87,6 +92,17 @@ Acting on a record is the operator's act, performed through `drop`, `edit`, or
       "spec_id": null,
       "state": "queued"
     }
+  ],
+  "findings": [
+    {
+      "subject_id": "t2",
+      "related_id": "t1",
+      "relation": "near-duplicate",
+      "source": "mechanical",
+      "score": 0.83,
+      "note": "",
+      "at": "<RFC3339 timestamp>"
+    }
   ]
 }
 ```
@@ -95,6 +111,15 @@ Acting on a record is the operator's act, performed through `drop`, `edit`, or
   persisted high-water mark that guarantees it).
 - `spec_id` — filled in when the item is picked; until then it is `null`, which
   is what distinguishes a backlog item from a card already on the board.
+- `findings` — the records the analysis layer keeps ABOUT pairs of cards; a
+  relation belongs to the pair rather than to either card, which is why it
+  lives here and not in an item. Always an array: a file written before the
+  field loads with an empty one, so "no findings" never has to be told apart
+  from "no such feature". `source` is `mechanical` (measured text similarity)
+  or `agent` (a judgement written through `relate`), and a mechanical finding
+  with no agent finding on the same pair renders marked `machine-only` — which
+  records that nothing agent-sourced was written, never that anyone reviewed
+  it. A finding leaves the file when its card does.
 - `state` — `queued` | `picked` | `dropped`. A picked item stays in the file so
   the operator can see what is in flight; it is removed when its card reaches
   `done`. A dropped item stays too, carrying its `[DROPPED — <reason>] ` marker

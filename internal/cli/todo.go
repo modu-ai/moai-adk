@@ -29,7 +29,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 
@@ -199,13 +198,14 @@ needs the explicit add verb — the price of keeping typos loud.`,
 			if len(args) == 0 {
 				return runTodoList(cmd, false)
 			}
-			return runTodoAddAppend(cmd, strings.Join(args, " "))
+			return runTodoAddAppend(cmd, strings.Join(args, " "), false)
 		},
 		GroupID: "tools",
 	}
 	cmd.AddCommand(newTodoAddCmd(), newTodoListCmd(), newTodoDoneCmd(), newTodoNextCmd(),
 		newTodoUnpickCmd(), newTodoEditCmd(), newTodoMoveCmd(),
-		newTodoDropCmd(), newTodoUndropCmd())
+		newTodoDropCmd(), newTodoUndropCmd(),
+		newTodoAnalyzeCmd(), newTodoRelateCmd(), newTodoUnrelateCmd(), newTodoWhyCmd())
 	return cmd
 }
 
@@ -214,6 +214,7 @@ needs the explicit add verb — the price of keeping typos loud.`,
 // folds the pick into the same locked write.
 func newTodoAddCmd() *cobra.Command {
 	var pick bool
+	var force bool
 	cmd := &cobra.Command{
 		Use:   "add <text>",
 		Short: "Append a card to the backlog queue",
@@ -224,13 +225,15 @@ func newTodoAddCmd() *cobra.Command {
 				return fmt.Errorf("todo add: text must be non-empty")
 			}
 			if pick {
-				return runTodoAddPick(cmd, newTodoStore(), text)
+				return runTodoAddPick(cmd, newTodoStore(), text, force)
 			}
-			return runTodoAddAppend(cmd, text)
+			return runTodoAddAppend(cmd, text, force)
 		},
 	}
 	cmd.Flags().BoolVar(&pick, "pick", false,
 		"Append AND mark picked as one locked write, printing the issued id")
+	cmd.Flags().BoolVar(&force, "force", false,
+		"Admit a card the analyser reads as an exact duplicate, recording that it was forced")
 	return cmd
 }
 
@@ -238,12 +241,17 @@ func newTodoAddCmd() *cobra.Command {
 // parent's natural-language fallthrough (t69): non-empty guard, locked
 // append, "<id> <position>" stdout line. `--pick` stays add-only — the
 // fallthrough path has no flags.
-func runTodoAddAppend(cmd *cobra.Command, text string) error {
+func runTodoAddAppend(cmd *cobra.Command, text string, force bool) error {
 	if strings.TrimSpace(text) == "" {
 		return fmt.Errorf("todo add: text must be non-empty")
 	}
-	store := newTodoStore()
-	item, pos, err := store.Add(text)
+	var item kanban.BacklogItem
+	var pos int
+	err := newTodoStore().Mutate(func(rec *kanban.BacklogRecord) error {
+		var mutErr error
+		item, pos, mutErr = appendAnalyzedCard(rec, text, kanban.BacklogStateQueued, force)
+		return mutErr
+	})
 	if err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
 		return err
@@ -261,18 +269,12 @@ func runTodoAddAppend(cmd *cobra.Command, text string) error {
 // race that mis-picked t67 on 2026-08-16. The confirmation prints the
 // issued id and the card text prefix; the caller never has to guess what
 // `--pick` just picked.
-func runTodoAddPick(cmd *cobra.Command, store *kanban.BacklogStore, text string) error {
+func runTodoAddPick(cmd *cobra.Command, store *kanban.BacklogStore, text string, force bool) error {
 	var item kanban.BacklogItem
 	err := store.Mutate(func(rec *kanban.BacklogRecord) error {
-		rec.LastSeq++
-		item = kanban.BacklogItem{
-			ID:      fmt.Sprintf("t%d", rec.LastSeq),
-			Text:    text,
-			AddedAt: time.Now().UTC().Format(time.RFC3339),
-			State:   kanban.BacklogStatePicked,
-		}
-		rec.Items = append(rec.Items, item)
-		return nil
+		var mutErr error
+		item, _, mutErr = appendAnalyzedCard(rec, text, kanban.BacklogStatePicked, force)
+		return mutErr
 	})
 	if err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
@@ -307,6 +309,12 @@ func runTodoList(cmd *cobra.Command, jsonOutput bool) error {
 	}
 	for _, it := range rec.Items {
 		_, _ = fmt.Fprintf(out, "%s\t%s\t%s\n", it.ID, it.State, it.Text)
+		for _, f := range rec.Findings {
+			if !f.Names(it.ID) {
+				continue
+			}
+			_, _ = fmt.Fprintln(out, todoFindingLine(rec, it.ID, f))
+		}
 	}
 	return nil
 }

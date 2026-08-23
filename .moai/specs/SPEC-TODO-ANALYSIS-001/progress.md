@@ -52,11 +52,92 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+M1(독트린)·M2(스키마)는 `e04801047`·`2c63f2ac1` 로 이미 착지했다. 이번 run 은 M3(기계 분석기 + `add` 통합)·M4(에이전트 동사 + 가시성)·M5(스킬 표면 갱신 + 미러 + `make build`) 를 냈다.
+
+### 착지한 코드
+
+| 마일스톤 | 파일 | 내용 |
+|---|---|---|
+| M3 | `internal/kanban/backlog_analysis.go` (신규) | `NormalizeCardText`(NFC→trim→공백축약→case-fold) · `TokenSetJaccard` · `ClassifyCardText` · `BacklogNearDuplicateThreshold = 0.80`. 저장소 비의존 순수 함수 |
+| M3 | `internal/cli/todo_analysis.go` (신규) | `appendAnalyzedCard` — 분석·판정·append 가 **한 `Mutate` 콜백 안**. 거절은 콜백 error 반환(파일 불변). `analyze` 동사. `todoFindingLine` |
+| M3 | `internal/cli/todo.go` | `add --force`, `add`/`add --pick` 를 분석 경유 append 로 교체, `list` 에 소견 줄 렌더, 신규 4동사 등록 |
+| M4 | `internal/cli/todo_relate.go` (신규) | `relate` / `unrelate`. 콜백이 `rec.Items` 를 **존재 확인용 읽기로만** 참조 — 카드 쓰기 경로가 코드에 없다 |
+| M4 | `internal/cli/todo_why.go` (신규) | `why <n>`, 무소견 시 명시 문구 |
+| M4 | `internal/cli/todo_test.go` | `todoPromptGuard` 스캔 범위를 `todo.go` 하나 → `todo*.go` 비테스트 전부(glob). 스캔 파일 수 ≥ 2 양성 대조 추가 |
+| M5 | `.claude/skills/moai/workflows/todo.md` + 템플릿 미러 | 명령 표에 `--force`/`analyze`/`relate`/`unrelate`/`why` 5행, `--json` 레코드 예시에 `findings` 배열 + 필드 설명 |
+
+### 실행한 명령과 관측 출력
+
+| 명령 | 관측 |
+|---|---|
+| `go test ./internal/cli/ ./internal/kanban/ -count=1 -timeout 900s` | `ok internal/cli 569.642s` / `ok internal/kanban 28.490s`, `TEST_EXIT=0` |
+| `go vet ./...` | `VET_EXIT=0` |
+| `GOOS=windows go vet ./internal/cli/... ./internal/kanban/...` | `WINVET_EXIT=0` (컴파일만 증명 — Windows 동작 근거 아님) |
+| `golangci-lint run ./internal/cli/... ./internal/kanban/...` | `0 issues.`, `LINT_EXIT=0` |
+| `MOAI_TEMPLATE_LEAK_STRICT=1 go test ./internal/template/...` | `ok internal/template 40.827s` |
+| `make build` | `catalog.yaml updated successfully (12899 bytes)` → `bin/moai` |
+| `diff` 미러 대조 | `todo.md` 쌍 · `kanban-dispatch.md` 쌍 각각 바이트 동일 |
+
+증거 파일(추적됨): `.moai/reports/t119/run-verify-batch.txt`, `.moai/reports/t119/run-coverage-new-files.txt`. (`.moai/state/` 는 gitignore 대상이라 감사 시점에 해소되지 않는다 — 그래서 리포트로 옮겼다.)
+
+### 커버리지 (신규 코드)
+
+`go tool cover -func` 함수 평균 — 신규 CLI 3파일 **92.3%** (11 함수), 신규 kanban 1파일 **97.7%** (4 함수). 둘 다 §D 의 85% 문턱 위.
+
+### 빌드된 바이너리로 확인한 실제 동작
+
+임시 git 저장소(`mktemp -d` + `CLAUDE_PROJECT_DIR`)에서 `bin/moai` 로 직접 실행해 관측한 것:
+
+- 정확 중복 `add` → exit 1, stderr 가 `t1 already holds this card ("Rework the auth middleware error paths")`.
+- `list` 가 카드 아래 들여쓴 소견 줄을 렌더: `↳ near-duplicate t2 (mechanical, score 0.83, machine-only) — moai todo drop t1 | moai todo edit t1 "<text>"`.
+- `relate t1 t2 --relation replaces` 후 같은 줄에서 `machine-only` 가 사라지고, `unrelate 2` 후 다시 붙는다(무순서 쌍 비교).
+- `why t3`(소견 없음) → `t3: no findings`.
+- `analyze` 연속 2회 → 둘 다 `analyzed 3 pairs, recorded 0 findings` (이미 `add` 가 기록한 소견이 튜플 중복으로 걸러짐).
+
+### 계획 대비 벗어난 점
+
+- **점수 렌더 조건화** (계획에 없던 판단): 에이전트 소견은 측정값이 없는데 `score 0.00` 으로 렌더돼, 측정된 비유사도처럼 읽혔다. `source == mechanical` 일 때만 점수를 찍도록 좁혔다.
+- **`add --pick` 도 분석을 탄다**: 계획 §E M3 는 `runTodoAddAppend` / `runTodoAddPick` 를 함께 적었고, 그대로 두 경로 모두 `appendAnalyzedCard` 를 쓴다. `--pick` 전용 AC 는 없다(미검증 아님 — 같은 함수를 공유하므로 `add` 의 AC 가 그 경로의 판정 로직을 덮지만, `--pick` **호출 경로 자체**의 회귀 테스트는 없다).
+- **M5 의 "미러 parity" 는 M1 이 이미 만족**했고, 이번에 추가한 스킬 표면 갱신분도 같은 파일 쌍에 함께 복사했다. Go 코드는 템플릿 미러 대상이 아니다.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+### AC PASS/FAIL 행렬
+
+각 PASS 는 위 전량 통과(`TEST_EXIT=0`)에 귀속된다. 테스트가 없는 두 건(AC-TA-014, AC-TA-013 의 `--help` 부분은 테스트가 있고 미러 부분은 `diff`)은 명령 출력에 귀속했다.
+
+| AC | 판정 | 귀속 |
+|---|---|---|
+| AC-TA-001 정확 중복 거절 + 파일 불변 | PASS | `TestTodoAddRefusesExactDuplicate` (sha256 전후 대조) |
+| AC-TA-002 `--force` 기록 | PASS | `TestTodoAddForceAdmitsAndRecords` |
+| AC-TA-003 근접 중복 양성+음성 | PASS | `TestTodoAddNearDuplicateRecordsOnly` |
+| AC-TA-004 `relate`/`unrelate` 양방향 | PASS | `TestTodoRelateAndUnrelateTouchNoCard` (items 바이트 동일 2회, 생존 소견 지목) |
+| AC-TA-005 네 관계가 큐를 안 바꿈 | PASS | `TestSemanticRelationsChangeNothing` (`relate` 없이는 Given 구성 불가) |
+| AC-TA-006 순서 불변 | PASS | `TestTodoAnalysisNeverReordersQueue` |
+| AC-TA-007 읽기 멱등 | PASS | `TestTodoListJSONIsIdempotent` |
+| AC-TA-008 `done` 소견 회수 | PASS | `TestTodoDoneReclaimsFindings` (M2 착지분) |
+| AC-TA-009 `list` 소견 + 다음 행동 | PASS | `TestTodoListShowsFindingAndNextStep` |
+| AC-TA-010 무소견 명시 | PASS | `TestTodoWhySaysNothingFound` |
+| AC-TA-011 `machine-only` 양방향 | PASS | `TestMachineOnlyMarkAppearsAndClears` (역방향 `relate` 로 무순서 비교 검증) |
+| AC-TA-012 구 스키마 왕복 + 5필드 | PASS | `TestTodoLegacyRecordRoundTrips` (M2 착지분) |
+| AC-TA-013 신규 동사 headless | PASS | `TestTodoNewVerbsAreHeadless` (stdin 닫고 6동사, `--help` 4동사 양성 대조) + `TestTodoCmd_NoAskUserQuestion` (glob 범위 + 합성 위반 음성 대조) |
+| AC-TA-014 독트린 미러 | PASS | `diff -q` 두 쌍 무출력; 경계 절 grep(`records\|never folds`) 양쪽 12히트; 기존 [HARD] 금지 4구절(inferred priority / tidy-up / fold one card into another / looks stale) 양쪽 전부 잔존 — `fold one card into another` 는 줄바꿈에 걸쳐 있어 `never to` 를 뺀 구절로 대조 |
+| AC-TA-015 에이전트 없이 작동 | PASS | `TestTodoExactRefusalWorksWithoutAgent` |
+| AC-TA-016 `analyze` 멱등 | PASS | `TestTodoAnalyzeRerunIsIdempotent` (첫 실행 길이 > 0 양성 대조 포함) |
+
+### 미검증 (Gaps)
+
+- **실제 운영자 큐의 sha256 이 작업 전후로 달라졌다.** 전 `f42517a2…` → 후 `e5a2ca84…`. 이 SPEC 의 코드가 건드린 것이 아님을 두 가지로 확인했다: 파일에 `findings` 키가 없고(이 기능이 한 번도 쓴 적 없음), 늘어난 항목은 리드가 이번 세션에 추가한 `t177`·`t178` 이다. 그래도 **"작업 전후 동일"이라는 DoD 문구 자체는 만족하지 못했다** — 다른 세션이 같은 큐에 쓰는 팩토리 환경에서 그 문구는 원래 성립할 수 없다. 이 SPEC 이 큐를 손상시키지 않았다는 주장은 위 두 관측에 귀속되며, sha256 동일성에는 귀속되지 않는다.
+- **`add --pick` 경로의 회귀 테스트 없음** — 판정 로직은 `add` 와 같은 함수를 공유하지만 그 호출 경로를 지나는 테스트가 없다.
+- **임계값 0.80 을 실제 큐에서 재측정하지 않았다.** `plan.md §D.2` 는 실제 큐에 `analyze` 를 돌려 소견 건수가 카드 수의 20% 를 넘는지 보라고 했는데, 운영자 큐에서 `analyze` 를 돌리는 것은 라이브 큐 쓰기라 하지 않았다. 임계값은 초기값 그대로다.
+- **Windows 동작 미검증** — `GOOS=windows go vet` 은 컴파일만 증명한다.
+- **전체 스위트(`go test ./...`) 미실행** — 로컬 금지 규율에 따라 대상 2패키지 + `internal/template` 만 돌렸다. 전 패키지 판정은 CI 몫이다.
+
+### 잔여 위험
+
+- `AC-TA-003` 픽스처의 Jaccard 0.833 은 임계 0.80 대비 여유 0.033 이다. 정규화에 다섯 번째 단계가 들어가면 이 픽스처가 임계를 넘나든다 — `TestNormalizeCardText` 가 파이프라인 길이를 못박아 그 변경을 붉게 만든다.
+- `analyze` 는 O(n²) 쌍 비교다. 현재 큐 규모(수십 장)에서는 무시할 수 있으나 수천 장에서는 다르다.
+- 소견은 카드가 `done` 될 때만 회수된다. `drop` 된 카드의 소견은 남는다(카드가 파일에 남으므로 가리키는 대상은 있다) — 의도한 동작이지만 소견 목록이 길어지는 경로다.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
