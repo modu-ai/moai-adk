@@ -9,7 +9,7 @@
 | 전제 | 근거 절 |
 |------|---------|
 | Codex CLI 0.147.0 네이티브 세션 메시징 부재 | §0, §3 |
-| `codex mcp add moai -- moai mcp-server` 수동 등록 → 21도구 인식 → `session_list` 실호출 성공, CODEX_HOME 격리 | §2.6 (t91 §5) |
+| `codex mcp add moai -- moai mcp-server` 수동 등록 → 21도구 인식 → `spec_progress` 실호출 성공, CODEX_HOME 격리 (iter-2 D4 정정: 최초 `session_list`로 오기 — 감사 원문 :94의 실호출 도구는 `spec_progress`) | §2.6 (t91 §5) |
 | 비대화형 `codex exec` + 무승인정책 MCP 호출 → `"user cancelled MCP tool call"` 실패 | §2.6, §3 gap 6 |
 | Codex 세션 moai 훅 미발화(hooks.json 생성기 부재) | §3 gap 1 |
 | 테스트 위생: CODEX_HOME 격리, 0.147.0 버전 고정 | §4 |
