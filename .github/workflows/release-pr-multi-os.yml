@@ -151,9 +151,69 @@ jobs:
       # run whose only other change was test-portability skips. The ceiling is
       # the job's own timeout-minutes; this value exists to stop a package from
       # being killed just under it.
+      # --- t169 diagnostic (windows only, temporary) ------------------------
+      # internal/hook and internal/cli tests have failed intermittently on the
+      # windows leg because a `.moai/state` directory exists in an ANCESTOR of
+      # the workspace, so the upward marker walk resolves outside the repo.
+      # These two steps establish WHO creates it: the pre step shows the state
+      # before any test runs, the post step (always()) shows it after. If the
+      # pre step already lists a `.moai` and the post step does not differ, the
+      # creator is the runner image or an earlier job step, not the test suite.
+      # Remove both steps once the creator is identified.
+      - name: 'Diagnose ancestor .moai (pre-test)'
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          function Show($label, $path) {
+            Write-Host "=== $label : $path"
+            if (Test-Path -LiteralPath $path) {
+              Get-ChildItem -LiteralPath $path -Force -Recurse -Depth 2 -ErrorAction SilentlyContinue |
+                Select-Object -First 60 |
+                ForEach-Object { Write-Host "    $($_.FullName)" }
+            } else {
+              Write-Host "    <absent>"
+            }
+          }
+          Show 'USERPROFILE' "$env:USERPROFILE\.moai"
+          Show 'TEMP'        "$env:TEMP\.moai"
+          # Workspace ancestors: the walk that actually escapes the repo.
+          $d = Get-Item -LiteralPath $PWD.Path
+          while ($null -ne $d) {
+            Show "ANCESTOR" (Join-Path $d.FullName '.moai')
+            $d = $d.Parent
+          }
+      # ---------------------------------------------------------------------
+
       - name: Run tests with race detector
         shell: bash
         run: go test -race -timeout 25m ./...
+
+      # --- t169 diagnostic (windows only, temporary) ------------------------
+      # always(): the failing run is the one worth reading, so this must not be
+      # skipped when the test step above fails.
+      - name: 'Diagnose ancestor .moai (post-test)'
+        if: always() && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          function Show($label, $path) {
+            Write-Host "=== $label : $path"
+            if (Test-Path -LiteralPath $path) {
+              Get-ChildItem -LiteralPath $path -Force -Recurse -Depth 2 -ErrorAction SilentlyContinue |
+                Select-Object -First 60 |
+                ForEach-Object { Write-Host "    $($_.FullName)" }
+            } else {
+              Write-Host "    <absent>"
+            }
+          }
+          Show 'USERPROFILE' "$env:USERPROFILE\.moai"
+          Show 'TEMP'        "$env:TEMP\.moai"
+          $d = Get-Item -LiteralPath $PWD.Path
+          while ($null -ne $d) {
+            Show "ANCESTOR" (Join-Path $d.FullName '.moai')
+            $d = $d.Parent
+          }
+      # ---------------------------------------------------------------------
+
 
   # ---------------------------------------------------------------------------
   # Summary gate: ensures all OS legs passed (or were skipped for non-release
