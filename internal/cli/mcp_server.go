@@ -85,6 +85,12 @@ provision the entry (M4).`,
 // until the stdio stream closes). REQ-MCP-001. ServeStdio owns its context
 // internally (derived from os signals); there is no ctx to thread here.
 func runMCPServer() error {
+	// Stamp this process's build identity so `moai doctor` can detect a host
+	// still talking to a previously-installed build (mcp_server_runtime.go).
+	// Best-effort by contract: a failed stamp never blocks serving.
+	if recordPath, err := writeMCPServerRuntimeRecord(resolveProjectDir()); err == nil {
+		defer removeMCPServerRuntimeRecord(recordPath)
+	}
 	s := newMoaiMCPServer()
 	// ServeStdio blocks until the stdin stream closes; the goal.go blocking-RunE
 	// pattern. opts remain extensible (error logger, etc.) without API churn.
@@ -98,13 +104,34 @@ func runMCPServer() error {
 // REQ-C-2) from `.moai/config/sections/mcp.yaml` (default all-enabled) and a
 // disabled tool is not registered at all, so it never appears in tools/list.
 func newMoaiMCPServer() *server.MCPServer {
+	// The advertised version carries the FULL build stamp (semver + commit +
+	// build date), not the bare semver. A host that reconnects after a
+	// reinstall shows the same semver either way, so the commit is the only
+	// field that makes a version skew visible in the `initialize` result.
 	s := server.NewMCPServer(
 		moaiMCPServerName,
-		version.GetVersion(),
+		version.GetFullVersion(),
 		server.WithToolCapabilities(true),
+		server.WithInstructions(moaiMCPServerInstructions()),
 	)
 	registerMoaiMCPTools(s, resolveProjectDir())
 	return s
+}
+
+// moaiMCPServerInstructions returns the server `instructions` string sent in
+// the `initialize` result. It names the running build so an operator reading
+// the host's MCP panel can compare it against `moai version` without calling
+// a tool, and states the restart requirement explicitly — a rebuilt binary
+// does not replace an already-spawned server process.
+func moaiMCPServerInstructions() string {
+	return fmt.Sprintf(
+		"moai self-hosted MCP server, build %s (pid %d). "+
+			"This process was spawned by the host and keeps running the build it started with: "+
+			"after reinstalling the moai binary, reconnect the server so the host respawns it, "+
+			"otherwise newly added tools stay absent from tools/list. "+
+			"Run `moai doctor` to compare the running server against the installed binary.",
+		version.GetFullVersion(), os.Getpid(),
+	)
 }
 
 // registerMoaiMCPTools registers the M1 core read/status/audit tool surface
