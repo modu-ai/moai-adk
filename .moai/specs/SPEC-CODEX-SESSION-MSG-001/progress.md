@@ -221,4 +221,25 @@ gaps_carried:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-23
+sync_commit_sha: pending-backfill-SPEC-CODEX-SESSION-MSG-001   # 커밋은 자기 SHA를 알 수 없음 — D3 면제에 따라 후속 커밋에서 백필
+sync_status: complete
+changelog_entry_position: CHANGELOG.md [Unreleased] > ### Added 첫 엔트리
+frontmatter_status_transitions:
+  spec_md: in-progress -> completed (sync 커밋에서 단일 전환 — 3-phase close)
+  completed_transition: complete   # plan->run->sync 동일 커밋으로 폐쇄; updated: 2026-08-23 유지(동일일)
+docs_changed:
+  - CHANGELOG.md   # [Unreleased] > Added 엔트리 1건 (SPEC-CODEX-SESSION-MSG-001)
+docs_decision: "README 4-locale · docs-site 무변경 — 본 기능은 운영자/에이전트 대면 표면이며 사용자 대면 문서 페이지가 없음; CHANGELOG가 사용자 표면 (CODEX-SKILLS 선례와 동일 구조)"
+open_items_carried:
+  - CLAUDE.md §4 'existing 21 MCP tools' 표기 정오후보 (§E.3 gaps_carried 승계 — 본 sync 범위 밖)
+  - codex 0.147 approval_policy=never로는 MCP 호출 불가 (user cancelled) — 제품 갭 잔존 (§E.3 승계)
+  - lock_windows.go 런타임 실행검증은 CI windows 매트릭스 몫 (§E.3 승계)
+b12_self_test:
+  a: pre-emission grep 'SPEC-CODEX-SESSION-MSG-001' CHANGELOG.md = 0 (커밋 전 축어)
+  b: AC 카운트 산문 미기재 (지시 — 카운트 생략 채택; acceptance.md AC-CSM-001..015 그리드는 §E.2 매트릭스와 정합)
+  c: 인용 경로 전부 ls 검증 (internal/sessionmsg/, internal/cli/mcp_session_msg.go, internal/cli/mcp_server.go, internal/mcp/catalog.go, .claude/rules/moai/workflow/cross-session-messaging.md, .claude/rules/moai/core/moai-mcp-tools.md)
+```
+
+본 신호 블록이 sync-phase 종결 신호의 전부다 (별도 후속 신호 섹션은 폐지됨 — 본 블록에 통합).
