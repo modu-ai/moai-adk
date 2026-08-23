@@ -131,6 +131,22 @@ func withRadio(f FieldDef, keyPrefix string, values []string, emptyLabel, emptyK
 	return f
 }
 
+// withOptionDesc attaches a per-option description key to every option, which
+// is the sole opt-in for the stacked radio layout (schemaRadioRow branches on
+// OptionDesc presence) and renders an always-visible line under each label.
+//
+// descPrefix MUST NOT contain the substring ".opt." — applyI18n resolves any
+// such key against the ENGLISH dictionary regardless of locale (the G1-2
+// decision that keeps enum LABELS untranslated), which would silently freeze
+// these descriptions to English in every locale. ".option." is safe: the
+// character after "opt" is "i", so the guard does not match.
+func withOptionDesc(f FieldDef, descPrefix string) FieldDef {
+	for i := range f.Options {
+		f.Options[i].OptionDesc = descPrefix + f.Options[i].Value
+	}
+	return f
+}
+
 // ─── git-strategy (REQ-WC11-010 — typed dirty-flag Save) ────────────────────
 
 // gitStrategyFields는 웹 편집 노출 대상 git-strategy 필드를 반환한다: mode
@@ -347,14 +363,23 @@ func seamSectionFields() []FieldDef {
 		// per-auditor strictness. Typed as text (the enum is validated at the M3
 		// config-read layer, activeAuditBackend); the wizard offers the validated
 		// select for the primary path.
-		closedSeam(SectionWorkflow, "workflow", "f.workflow.audit.model.opt.",
+		// The audit enum LABELS stay English by design (applyI18n's ".opt."
+		// guard). What each value DOES is carried by per-option descriptions
+		// instead, whose keys avoid that substring so they follow the locale.
+		// The three gates share one description set — the values mean the same
+		// thing whichever backend the gate fronts.
+		withOptionDesc(closedSeam(SectionWorkflow, "workflow", "f.workflow.audit.model.opt.",
 			config.ValidAuditModels(), "", "", "workflow", "audit", "model"),
-		closedSeam(SectionWorkflow, "workflow", "f.workflow.audit.gate.opt.",
+			"f.workflow.audit.model.option."),
+		withOptionDesc(closedSeam(SectionWorkflow, "workflow", "f.workflow.audit.gate.opt.",
 			config.ValidAuditGates(), "", "", "workflow", "audit", "gates", "claude"),
-		closedSeam(SectionWorkflow, "workflow", "f.workflow.audit.gate.opt.",
+			"f.workflow.audit.gate.option."),
+		withOptionDesc(closedSeam(SectionWorkflow, "workflow", "f.workflow.audit.gate.opt.",
 			config.ValidAuditGates(), "", "", "workflow", "audit", "gates", "codex"),
-		closedSeam(SectionWorkflow, "workflow", "f.workflow.audit.gate.opt.",
+			"f.workflow.audit.gate.option."),
+		withOptionDesc(closedSeam(SectionWorkflow, "workflow", "f.workflow.audit.gate.opt.",
 			config.ValidAuditGates(), "", "", "workflow", "audit", "gates", "glm"),
+			"f.workflow.audit.gate.option."),
 		// SPEC-MCP-CONSOLE-001 M3 (REQ-C-6 / AC-C-009): codex opt-in toggles written
 		// through the SAME seam the fail-closed readers consume. The path
 		// workflow.codex.review_gate.enabled / workflow.codex.task.allow_write in
