@@ -65,6 +65,28 @@ $ go build ./...   # clean
 $ make build       # templates re-embedded; catalog.yaml unchanged
 ```
 
+## Defect found in this card's own work (caught by CI, fixed)
+
+The first push broke `Constitution Check`. The documentation section added to `zone-registry.md` carried a yaml-tagged example fence, and the loader (`extractYAMLFence`) takes the **first** yaml-tagged fence in the document as the entry list — so the example became the registry:
+
+```
+Registry load error ".claude/rules/moai/core/zone-registry.md":
+  YAML parsing error: yaml: unmarshal errors: line 2: cannot unmarshal !!map into []constitution.rawEntry
+```
+
+Retagging the fence `text` was not sufficient: the explanatory sentence spelled the fence marker out literally in prose, and `strings.Index(content, "```yaml")` matched that too, producing a second, different parse error (`line 5: mapping values are not allowed in this context`). Both are now avoided by never writing the literal marker in this file.
+
+`TestShippedRegistriesLoad` (`internal/constitution/shipped_registry_test.go`) was added so this cannot recur silently: it loads both shipped registries — local and template mirror — and fails on a parse error. Nothing previously covered the real files; the CI job that noticed is `continue-on-error: true`, i.e. advisory, so a red run there does not block a merge.
+
+After the fix, both CI steps reproduce locally:
+
+```
+$ ./bin/moai constitution list --format json | ... len(entries)
+entries: 101          # identical to the base registry at 28bde4022
+$ ./bin/moai constitution list --zone frozen | tail -1
+Total 57 entries
+```
+
 ## Baseline attribution
 
 All figures measured in `.claude/worktrees/t201` at base `28bde4022`, this run. The 65-error figure quoted in the issue's repro is from the downstream mo.ai.kr checkout and is not this tree's baseline.
