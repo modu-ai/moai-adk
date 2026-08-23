@@ -49,6 +49,32 @@ tooling the doctrine relies on; the two are sequenced, not merged.
   (the latter belongs to the sibling SPEC).
 - Record the AC-013 zero baseline on both `todo.md` copies before M4.
 
+## C.1 Budget note for the run phase — READ THIS BEFORE ADDING A REQUIREMENT
+
+[HARD] **This SPEC sits at exactly 16 of 16 leaf requirements.** D14's pressure
+was absorbed to the last slot rather than relieved, and there is no headroom.
+
+**If run-phase discovers it needs one more requirement, the answer is a tier-up
+or a further split — never a relaxed budget.** `spec-workflow.md` § SPEC
+Complexity Tier is explicit that exceeding a ceiling "is a signal to tier up or
+to split the SPEC, not to relax the budget", and the same pressure has already
+been resolved once on this SPEC by splitting.
+
+This is a live risk, not a theoretical one. Two known candidates would each
+become that seventeenth requirement:
+
+- **A normative template-mirror requirement** (audit N1's structurally-correct
+  route). AC-013 currently maps to the Template-First constraint in §D below
+  rather than to a REQ, and `acceptance.md` §D.2 says so explicitly. Promoting
+  it to a requirement is the better structure and breaches the ceiling.
+- **A normative one-query bound** (audit N2). NFR-1 is currently a
+  non-functional constraint covered by AC-014; an implementer may reasonably
+  argue it belongs in §D as a requirement.
+
+Either promotion is legitimate on its merits. Neither may be made by quietly
+writing a seventeenth `**REQ-N.M**` heading. Return a blocker, and let the
+tier-up or split decision be made deliberately.
+
 ## D. Constraints
 
 - [HARD] Zero writes anywhere under `.moai/state/kanban/`. This is the

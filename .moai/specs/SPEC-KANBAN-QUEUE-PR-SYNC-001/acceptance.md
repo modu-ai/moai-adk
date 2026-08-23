@@ -1,6 +1,6 @@
 # Acceptance Criteria — SPEC-KANBAN-QUEUE-PR-SYNC-001
 
-13 acceptance criteria (Tier M ceiling: 16).
+14 acceptance criteria (Tier M ceiling: 16).
 
 Every criterion is verified by a command that observes something. Per this
 project's standing rule, a grep-based criterion is admissible only when it
@@ -40,7 +40,8 @@ values**, not re-fetched at test time — the live PR set changes.
 | AC-010 | REQ-2.6 | behavioural | must |
 | AC-011 | REQ-1.9 | behavioural (with controls) | **must — anti-vacuous** |
 | AC-012 | REQ-1.10 | behavioural | must |
-| AC-013 | mirror parity (plan.md M4) | mechanical grep + reviewer judgement | must |
+| AC-013 | `plan.md` §D Template-First constraint (no REQ — see D.2) | mechanical grep + reviewer judgement | must |
+| AC-014 | NFR-1, NFR-2 | behavioural (subprocess census) | **must — protects the design ruling** |
 
 ---
 
@@ -260,16 +261,48 @@ the SPEC does not claim it does.
 > `kanban-dispatch.md` mirror criterion moved with the doctrine changes to
 > `SPEC-KANBAN-PR-CARD-TRACEABILITY-001`.
 
+### AC-014 — exactly one `gh` process, regardless of queue length
+
+**This criterion protects REQ-2.5's design ruling. Without it, the ruling's own
+justification is unenforced.**
+
+**Given** a queue fixture containing **at least three** cards — the count must
+exceed one, or the assertion cannot distinguish a single batched query from a
+per-card loop
+**And** an injected command executor that records every subprocess invocation
+with its argv
+**When** `moai todo pr` is invoked over that queue
+**Then** exactly **one** `gh` process was spawned,
+**And** its argv is a single `gh pr list --state open …` (not a per-card
+`gh pr view`),
+**And** the count is one for a 3-card fixture and one for a 10-card fixture —
+asserted at two queue lengths, so the criterion observes invariance rather than
+a coincidence,
+**And** the landed check spawned only `git` processes, never `gh` (NFR-2 — the
+landed path is local and does not consume the network budget).
+
+Verify: `go test ./internal/cli/... -run TestTodoPR_ExactlyOneGhInvocation -v`
+
+> Added per audit N2. None of the four NFRs previously had a criterion, and
+> NFR-1 is the sole justification for the dedicated-verb ruling in REQ-2.5: an
+> implementation issuing one `gh` query per card satisfies all thirteen other
+> criteria while costing 0.878s × queue length — passing the SPEC while
+> defeating the thing the SPEC exists to protect. NFR-3 (no new dependency) and
+> NFR-4 (purity) need no criterion: the first is observable in `go.mod`, the
+> second is structurally implied by the fixture-driven tests in AC-001 through
+> AC-003.
+
 ---
 
 ## D.1 Severity
 
-All 13 criteria are `must`. There are no `should`-severity criteria.
+All 14 criteria are `must`. There are no `should`-severity criteria.
 
-Two are called out above as carrying extra weight, for different reasons:
-AC-004 is **load-bearing** (it is what enforces the §B read-only ruling), and
+Three are called out above as carrying extra weight, for different reasons:
+AC-004 is **load-bearing** (it is what enforces the §B read-only ruling),
 AC-011 is **anti-vacuous** (its failure mode is a silent empty result that would
-otherwise pass).
+otherwise pass), and AC-014 **protects the design ruling** (without it, REQ-2.5's
+justification is unenforced and a per-card implementation passes).
 
 ## D.2 Traceability
 
@@ -291,11 +324,30 @@ otherwise pass).
 | REQ-2.4 | AC-009 |
 | REQ-2.5 | AC-009 |
 | REQ-2.6 | AC-010 |
+| NFR-1 | AC-014 |
+| NFR-2 | AC-014 |
 
-Every one of the 16 leaf requirements has at least one criterion, and every
-criterion exercises at least one requirement. The two mappings the audit found
-non-functional (REQ-1.3 via AC-002, REQ-1.4 / REQ-1.6 via AC-003) are repaired
-by the D4 fixture rebuild above.
+Non-requirement obligations, mapped explicitly so no criterion is orphaned:
+
+| Obligation | Carried by | AC |
+|---|---|---|
+| Template-First mirror of `todo.md` | `plan.md` §D constraint + M4 exit | AC-013 |
+
+**Every one of the 16 leaf requirements has at least one criterion.** Thirteen
+of the fourteen criteria exercise a requirement or an NFR; **AC-013 exercises
+neither** — the `todo.md` mirror obligation is carried by the Template-First
+constraint in `plan.md` §D, not by any REQ in `spec.md` §D, and the row above
+records that rather than implying a requirement that does not exist.
+
+> Restated per audit N1. The prior sentence claimed "every criterion exercises
+> at least one requirement", which was false for AC-013 — an unobserved claim
+> the document made about its own contents. The structurally better fix is a
+> normative template-mirror requirement, but the SPEC sits at exactly 16/16 and
+> that route breaches the Tier M ceiling; it is recorded as a follow-up in
+> `spec.md` §H rather than taken here.
+
+The two mappings the audit found non-functional (REQ-1.3 via AC-002,
+REQ-1.4 / REQ-1.6 via AC-003) are repaired by the D4 fixture rebuild above.
 
 ## D.3 Quality gates
 
@@ -308,9 +360,12 @@ by the D4 fixture rebuild above.
 
 ## D.4 Definition of Done
 
-- All 13 criteria pass with cited command output.
+- All 14 criteria pass with cited command output.
 - AC-004's recursive-digest assertion is present in the committed test file, not
   performed by hand.
+- AC-014's subprocess census runs at two queue lengths (≥3 and 10); a
+  single-card fixture is rejected, because it cannot distinguish one batched
+  query from a per-card loop.
 - AC-011's positive control, negative control, and `-E` tripwire are all three
   present; a landed-check test suite without the positive control is rejected.
 - AC-013 recorded its zero-baseline grep result on both files before M4 landed,

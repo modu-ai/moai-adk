@@ -1,7 +1,7 @@
 ---
 id: SPEC-KANBAN-PR-CARD-TRACEABILITY-001
 title: "Pre-dispatch PR cross-check and the PR-title card-id convention"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-08-24
 updated: 2026-08-24
@@ -21,6 +21,13 @@ tier: S
   (`.moai/reports/t210/verdict.md`): that SPEC carried 19 leaf requirements
   against a Tier M ceiling of 16, and its four doctrine requirements are
   code-free and land on a different schedule from the tooling.
+- 2026-08-24 — v0.1.1 — audit iteration 2 PASS (0.775 against the Tier S
+  threshold of 0.75); `.moai/reports/t210/verdict-2.md`. Lead-verified repairs:
+  N3 (REQ-005 restored — the template-mirror obligation did not survive the
+  split into the requirement layer, leaving AC-004 orphaned) and N4 (a judgement
+  removed from AC-003's `**Mechanical.**` block, where it was a relapse of the
+  very defect the split-AC pattern exists to prevent). 5 requirements against a
+  Tier S ceiling of 8.
 
 ## A. Context
 
@@ -52,7 +59,7 @@ interval implicit inside one milestone sequence.
 
 ## B. Requirements
 
-4 leaf requirements (Tier S ceiling: 8).
+5 leaf requirements (Tier S ceiling: 8).
 
 **REQ-001** — **When** the lead is about to dispatch a card out of `backlog`,
 `.claude/rules/moai/workflow/kanban-dispatch.md` shall require the lead to read
@@ -82,6 +89,16 @@ or a `chore(release-update)` PR delivers no card and carries no obligation.
 contradict the existing [HARD] rule that a card worktree's **branch** name must
 exclude the card id, and shall name the four traceability carriers so a reader
 sees the division rather than a conflict.
+
+**REQ-005** — Every doctrine change this SPEC makes to
+`.claude/rules/moai/workflow/kanban-dispatch.md` shall be mirrored into
+`internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md` per
+the Template-First rule, subject to the template neutrality catalogue.
+
+Restored per audit N3. This requirement existed in the pre-split SPEC (as
+REQ-3.4) and did not survive the split into the requirement layer, which left
+AC-004 exercising no requirement. Tier S is at 5 of a ceiling of 8, so unlike
+the sibling SPEC's N1 there is no budget obstacle to stating it normatively.
 
 ## C. Why these two clauses, and why they are cheap
 
@@ -172,19 +189,25 @@ $ grep -c 'PR title MUST carry the delivering card id' .claude/rules/moai/workfl
 0
 ```
 
-**Mechanical.** After M1 that grep returns at least 1, and the same section
-names all four traceability carriers:
+**Mechanical.** After M1 that grep returns at least 1:
 
 ```
 grep -c 'PR title MUST carry the delivering card id' .claude/rules/moai/workflow/kanban-dispatch.md
 ```
+
+> Per audit N4, the clause *"and the same section names all four traceability
+> carriers"* was removed from this Mechanical block. The shown grep covers only
+> the first clause, so the four-carrier claim was a judgement wearing a
+> mechanical label — a relapse of the exact defect this SPEC's split-AC pattern
+> exists to prevent. Nothing is lost: the claim is stated correctly in the
+> judgement half below.
 
 **Reviewer judgement (recorded as such).** A reviewer confirms the section
 explicitly states the non-contradiction against the branch-name exclusion rule,
 names the branch slug and the three existing carriers, and scopes the obligation
 to card-delivering pull requests only (REQ-003, REQ-004).
 
-### AC-004 — template mirror parity
+### AC-004 — template mirror parity (REQ-005)
 
 **Given** the doctrine edits in `.claude/rules/moai/workflow/kanban-dispatch.md`
 **When** the mirror at
@@ -196,6 +219,20 @@ mirror,
 **And** `make build` has been run.
 
 Both mirror targets were confirmed present during the t210 audit.
+
+### Traceability
+
+| REQ | AC |
+|---|---|
+| REQ-001 | AC-001 |
+| REQ-002 | AC-002 |
+| REQ-003 | AC-003 |
+| REQ-004 | AC-003 (judgement half) |
+| REQ-005 | AC-004 |
+
+Every requirement has a criterion and every criterion exercises a requirement.
+AC-004's mapping to REQ-005 is what audit N3 restored — before the restoration
+it exercised nothing.
 
 ## E. Exclusions
 

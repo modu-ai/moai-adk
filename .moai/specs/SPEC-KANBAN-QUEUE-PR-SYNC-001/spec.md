@@ -1,7 +1,7 @@
 ---
 id: SPEC-KANBAN-QUEUE-PR-SYNC-001
 title: "Read-only card-to-PR link surface for the kanban backlog queue"
-version: "0.2.0"
+version: "0.2.1"
 status: draft
 created: 2026-08-24
 updated: 2026-08-24
@@ -27,6 +27,14 @@ tier: M
   second, separately-scoped question; REQ-1.5's over-generalized ban narrowed),
   D14 (the former REQ-3 lifted into `SPEC-KANBAN-PR-CARD-TRACEABILITY-001`),
   D3, D5, D6, D7, D9, D10, D11, D12, D13, D15.
+- 2026-08-24 — v0.2.1 — audit iteration 2 PASS (0.801 against the Tier M
+  threshold of 0.80); `.moai/reports/t210/verdict-2.md`. Lead-verified repairs
+  applied without a further audit round (the Tier M iteration ceiling is
+  reached): N2 (AC-014 added — none of the four NFRs previously had a criterion,
+  and NFR-1 is the sole justification for REQ-2.5), N1 (`acceptance.md` §D.2's
+  self-claim restated honestly; AC-013 mapped to the `plan.md` §D Template-First
+  constraint). N5-N9 are recorded as run-phase debt in `progress.md`. Requirement
+  count unchanged at 16/16.
 
 ## A. Context
 

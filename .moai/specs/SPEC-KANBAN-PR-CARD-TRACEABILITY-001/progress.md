@@ -39,12 +39,30 @@ No collision in `.moai/specs/`.
 
 ```
 $ grep -cE '^\*\*REQ-[0-9]{3}\*\*' .moai/specs/SPEC-KANBAN-PR-CARD-TRACEABILITY-001/spec.md
-4
+5
 $ grep -cE '^### AC-[0-9]{3}' .moai/specs/SPEC-KANBAN-PR-CARD-TRACEABILITY-001/spec.md
 4
 ```
 
-4 leaf requirements and 4 acceptance criteria against a Tier S ceiling of 8 each.
+5 leaf requirements and 4 acceptance criteria against a Tier S ceiling of 8 each.
+
+### Audit iteration 2 — PASS (0.775 against the Tier S threshold of 0.75)
+
+`.moai/reports/t210/verdict-2.md`. Two blocking findings, both lead-verified
+rather than sent through a third round (the iteration ceiling is reached):
+
+- **N3 — the split dropped a requirement.** The pre-split SPEC's REQ-3.4 (the
+  template-mirror obligation) did not survive into this SPEC's requirement
+  layer, which left AC-004 exercising nothing. Restored as **REQ-005**, with
+  AC-004 mapped to it and a traceability table added. Tier S is at 5 of 8, so
+  there was no budget obstacle — unlike the sibling, where the structurally
+  correct fix for N1 would have breached 16/16.
+- **N4 — a judgement inside a `**Mechanical.**` block.** AC-003's mechanical
+  half asserted *"and the same section names all four traceability carriers"*
+  while showing a grep covering only the first clause. Removed; the claim was
+  already stated correctly in the judgement half, so nothing was lost. It was
+  flagged blocking because it is a relapse of the D12 defect inside D12's own
+  remedy — the reason this SPEC uses the split-AC pattern at all.
 
 ### Lint — verbatim
 

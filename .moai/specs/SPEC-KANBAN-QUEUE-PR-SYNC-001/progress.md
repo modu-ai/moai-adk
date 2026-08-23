@@ -31,7 +31,7 @@ threshold 0.80) on must-pass MP-3. The score was never the binding part.
 $ grep -cE '^\*\*REQ-[0-9]+\.[0-9]+\*\*' .moai/specs/SPEC-KANBAN-QUEUE-PR-SYNC-001/spec.md
 16
 $ grep -cE '^### AC-[0-9]{3}' .moai/specs/SPEC-KANBAN-QUEUE-PR-SYNC-001/acceptance.md
-13
+14
 ```
 
 Arithmetic: 19 − 4 (the doctrine requirements leaving for the sibling) = 15;
@@ -39,6 +39,11 @@ Arithmetic: 19 − 4 (the doctrine requirements leaving for the sibling) = 15;
 former REQ-2.6 (human render) and REQ-2.7 (JSON form) into a single REQ-2.6,
 since they are one requirement about one surface = **16**. At the Tier M
 ceiling, not over it, and reached by consolidating rather than relaxing.
+
+Iteration 2 added AC-014 (14 criteria, ceiling 16) and **changed no requirement
+count** — the SPEC remains at 16/16. `plan.md` §C.1 records that there is no
+headroom, and that a seventeenth requirement means a tier-up or a further split,
+never a relaxed budget.
 
 ### Lint — verbatim (D1 closure)
 
@@ -92,6 +97,55 @@ $ grep -c 'moai todo pr' .claude/skills/moai/workflows/todo.md
 $ grep -c 'moai todo pr' internal/template/templates/.claude/skills/moai/workflows/todo.md
 0
 ```
+
+### Audit iteration 2 — PASS, and the four lead-verified repairs
+
+`.moai/reports/t210/verdict-2.md` returned **PASS** on both SPECs: 0.801 against
+the Tier M threshold of 0.80 here, 0.775 against 0.75 on the sibling. Neither
+margin is comfortable and the Tier M iteration ceiling (2) is reached, so the
+four blocking findings were repaired and **verified by the lead** rather than
+sent through a third audit round.
+
+| Finding | Disposition |
+|---|---|
+| N2 — no NFR had any criterion; NFR-1 is the sole justification for REQ-2.5's dedicated-verb ruling | Fixed. **AC-014** added: exactly one `gh` process regardless of queue length, asserted at two queue lengths (≥3 and 10) so the census observes invariance rather than a coincidence. NFR-2 rides the same assertion (landed check spawns `git`, never `gh`). Without it, a per-card implementation passed all 13 other criteria while costing 0.878s × queue length — passing the SPEC while defeating what the SPEC protects. |
+| N1 — `acceptance.md` §D.2 claimed "every criterion exercises at least one requirement" while AC-013 appeared nowhere in the table | Fixed via route (b). The claim is restated honestly, AC-013 has a row mapping it to the Template-First constraint in `plan.md` §D, and the text records that the obligation is carried by a plan constraint rather than a requirement. Route (a) — a normative mirror requirement — is structurally better but breaches 16/16; it is logged as a follow-up in `spec.md` §H and in `plan.md` §C.1. |
+| N3 — the split dropped the template-mirror requirement, orphaning the sibling's AC-004 | Fixed in `SPEC-KANBAN-PR-CARD-TRACEABILITY-001`: REQ-005 restored, AC-004 mapped to it, and a traceability table added. Tier S is at 5 of 8, so no budget obstacle. |
+| N4 — a judgement sat inside AC-003's `**Mechanical.**` block in the doctrine SPEC | Fixed. The eight words were deleted; the four-carrier claim was already stated correctly in the judgement half, so nothing was lost. Flagged blocking because it was a relapse of D12 inside D12's own remedy. |
+
+### Run-phase debt (N5-N9 — recorded, not fixed)
+
+Carried forward deliberately. None is blocking; each is a real observation.
+
+- **N5 — the fixture block in `acceptance.md` is an unmarked excerpt.** The
+  header says the fixtures were re-measured with a `gh … -q` command that emits
+  one line per open PR unconditionally; the block carries 5 lines where the
+  12-PR set would give 12. No AC fixture is refuted — t188, t201, and t200 were
+  re-verified against current data — and 5 PRs suffice for every criterion, so
+  this is a labelling defect rather than a correctness one.
+- **N6 — AC-011 and AC-012 impose opposite observability demands on the same
+  value.** AC-011 needs the underlying query's non-empty commit set observed;
+  AC-012 forbids a public accessor returning one. Both are satisfiable — the
+  test observes the git-query helper one layer below the resolver's public
+  surface — but neither the SPEC nor `plan.md` M2 says so, and M2's "returning a
+  boolean and nothing else" reads as closing the door AC-011 needs. **Run-phase
+  should resolve this by testing the helper layer, not by weakening AC-011 to a
+  boolean check or adding the accessor AC-012 forbids.**
+- **N7 — a card that both carries an open PR and is already landed reports
+  `linked` only.** REQ-1.9 runs the landed query only while no open PR carries
+  the token, and REQ-1.7 permits exactly one outcome kind, so the landed fact is
+  masked. This may be the right design (one question, one answer), but §F does
+  not name it as a boundary. **This is one of the two candidates that would
+  become a seventeenth requirement — see `plan.md` §C.1.**
+- **N8 — AC-012's API-surface half carries no verb and is not labelled a
+  judgement.** It is mechanizable by reflection over the exported record's
+  fields; it should either name that mechanism or match the judgement-labelling
+  pattern AC-013 and the doctrine SPEC's AC-001/AC-002 use.
+- **N9 — two requirement-id schemes ship on one card.** This SPEC uses
+  `REQ-1.1`-style ids; the sibling uses canonical `REQ-001`. Grep tooling keying
+  on `REQ-[0-9]{3}` matches one and not the other. `moai spec lint` returns `[]`
+  on both, so nothing mechanical breaks. Renumbering touches 16 headings, 16
+  traceability rows, and every back-reference — deferrable, and deferred.
 
 ### Gaps
 
