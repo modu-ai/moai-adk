@@ -102,6 +102,27 @@ TDD RED-GREEN-REFACTOR. baseline HEAD `7cd610c0f` (M1 커밋) + M2 작업 트리
 
 Gaps (M2): 실주행 MCP 서버(t184 재시작 스큐 포함) 검증은 M4 e2e 소관 — 본 단계는 단위+가드+in-process ListTools 실측까지. `data` 인자의 MCP 와이어 전달(map→RawMessage 재인코딩)은 wiring 테스트가 직접 인자 주입으로만 검증 — 실제 호스트(Codex/Claude) 직렬화 경로는 M4.
 
+### M3 — 교리 전문화 + Template-First (2026-08-23, 리드 승인 후 진행)
+
+문서 전용 마일스톤 — Go 코드 변경 없음. **TDD/RED 비적용 명시**: 문서 마일스톤이라 RED-GREEN 사이클이 성립하지 않는다(패블리케이팅할 실패-선언 테스트가 없음) — RED 증거를 조작하지 않고 이 문장으로 갈음한다. 이항 판정은 AC grep으로 성립.
+
+**AC 이항 검증 매트릭스 (M3 소관)**
+
+| AC | Status | Verification Command | Actual Output |
+|----|--------|---------------------|---------------|
+| AC-CSM-011 | PASS | `grep -c "Codex" .claude/rules/moai/workflow/cross-session-messaging.md` + 동일 grep 미러 | 본품 `5` / 미러 `5` (≥3 양측; base-0에서 5로) |
+| AC-CSM-012 | PASS | `grep -c "session_msg" internal/mcp/catalog.go` = `4` (M2 인용, 무변경) && `grep -n "session_msg" .claude/rules/moai/core/moai-mcp-tools.md` ≥1행 + 미러 && `grep -c "재시작\|restart"` 양측 ≥1 | catalog.go `4` · 본품 118-121행 4개 도구행 + 미러 `4` · restart 단어 본품 `1`/미러 `1` |
+
+**PRESERVE #6 증명 (기존 조항 바이트 동일)**: `git diff` 제거 라인 전량 = 2줄 — ① `moai-mcp-tools.md` 헤더 `21 tools`→`25 tools` (카탈로그 갱신 위임의 본질적 일부), ② `cross-session-messaging.md` 버전 푸터 `1.2.0`→`1.3.0` (섹션 추가에 따른 버전 승격 — 조항이 아닌 메타데이터). 이 외 모든 기존 바이트 무변경 (확장 절 순수 추가).
+
+**Template-First + 중립성**: 본품과 미러 동일 커밋 편집 + `make build` exit 0 (`catalog.yaml updated successfully (12899 bytes)` — 재생성 결과 바이트 동일, `git diff --name-only internal/template/catalog.yaml` = 0행, parity 위험 없음). 미러 중립성 grep `SPEC-CODEX-SESSION-MSG-001\|t187\|REQ-CSM` → 0행. 본품 SPEC 교차참조 1회(Origin 각주) — 미러에는 부재.
+
+**rule-authoring (b)+(c) duty** (커밋 바디에 동일 문구 탑재):
+- `cross-session-messaging.md` +1,842B (16,672→18,514; 미러 +1,779B): Codex 피어와 한 번도 메시지하지 않는 세션도 매 턴 + 매 `/clear`마다 이 확장을 다시 지불한다. 정당화: 브로커는 Codex 유일 경로이고 규율 조항은 사용 순간부터 구속되는데, 확장 절은 새 법이 아니라 이미 적재된 조항명의 재해석 표 — 신규 개념 부담 없이 기존 조항에 대한 표 매핑으로 지불을 최소화했다.
+- `moai-mcp-tools.md` +1,380B (7,357→8,737; 본품·미러 동일): 브로커를 쓰지 않는 세션도 4개 카탈로그 행 + 재시작 문장을 지불한다. 정당화: 이 카탈로그는 에이전트가 MCP-vs-CLI 우선경로를 판정하는 유일한 지도 — 지도에 없는 도구는 라우팅 불가능하다. 재시작 문장은 "새 도구가 안 보인다" 디버깅 실패 재발(AP-5, t184 스큐)을 차단하는 1문장 보험이다.
+
+Gaps (M3): CLAUDE.md §4 "existing 21 MCP tools" 표기는 본 마일스톤 범위 밖(본품 카탈로그 규칙만 위임됨) — sync-phase 정오후보로 기록. t192 5-tools 텍스트는 본 트리에 부재(리드 실측 76b2c4ece 기준) — 수정 대상 없음.
+
 ## §F Phase 4 Mode Selection
 
 Implementation Kickoff Approval: **통과 (운영자 승인 2026-08-23, 리드 경유 — 진행 모드: 반자율, 각 마일스톤 경계 리드 보고·승인, goal 엔진 무장 없음)**.
