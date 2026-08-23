@@ -95,7 +95,7 @@ Users never hand-edit `.mcp.json`. The `moai mcp add|remove|list` CLI manages th
 
 ## The `project_root` input — the caller names its own tree
 
-Five tools accept an optional `project_root` string: `spec_progress`, `spec_audit`, `spec_drift`, `codex_audit`, and `audit_multi`. It names the tree the call should act on, and the value to pass is the caller's own `git rev-parse --show-toplevel`.
+Six tools accept an optional `project_root` string: `spec_progress`, `spec_audit`, `spec_drift`, `codex_audit`, `glm_audit`, and `audit_multi`. It names the tree the call should act on, and the value to pass is the caller's own `git rev-parse --show-toplevel`.
 
 An agent working inside a worktree must pass it. This is not a convenience. The server has no way to work the answer out for itself: it is a long-lived subprocess, so its working directory cannot follow a worktree switch, and the environment variable it falls back on names the **project** root — the primary checkout — even for a session working in a worktree. Omit it from a worktree and the call acts on the primary checkout instead, which means a SPEC that exists only on the card's branch is not in the catalog the auditor reads. It is not reported missing. It is simply absent.
 
