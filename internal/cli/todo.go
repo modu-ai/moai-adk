@@ -344,6 +344,10 @@ func newTodoDoneCmd() *cobra.Command {
 				for i, it := range rec.Items {
 					if it.ID == id {
 						rec.Items = append(rec.Items[:i], rec.Items[i+1:]...)
+						// A finding outliving its subject points at a card
+						// the operator can no longer see, so the card and
+						// every finding naming it leave together.
+						rec.RemoveFindingsNaming(id)
 						return nil
 					}
 				}
