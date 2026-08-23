@@ -16,6 +16,11 @@
 > `mcp_servers`(Go 코드) 0 — 전부 채택. `/hooks` 단독은 기존 문구 충돌로 채택 제외(히트수는
 > 범위 의존 — 귀속 명령 `grep -rn 're-approve\|/hooks' internal/cli/*.go | grep -v _test | wc -l`
 > → 10, 글롭형·비재귀; 재귀 범위를 넓히면 수치가 달라진다).
+> **v0.3.0 추가 실측(2026-08-24, rebase 후 트리 @ 915c310de)**: `statusLineAllowlist` 0 ·
+> `17827`(README.md·README.ko.md·README.en.md·README.ja.md·README.zh.md·docs-site/content) 0 —
+> 채택. `status_line` 단독은 internal/ Go 46hit(Claude statusline 코드 충돌)으로 채택 제외 —
+> 저장소 코드 토큰은 `statusLineAllowlist`를 쓰고, `status_line` grep은 스크래치 산출물
+> 파일 대상으로만 사용한다.
 > 스크래치 e2e는 전부 `$(mktemp -d)` 하부 + 필요시 `CODEX_HOME=$(mktemp -d)` 격리.
 
 ### M1/M2 — 플래그·생성
@@ -112,6 +117,25 @@ event·key·content_length와 함께 append되고; (c) payload `hook_event_name`
 정보성 스킵 상태로 표시되고 doctor는 계속된다(advisory·fail-open). *And When*
 `git diff -- internal/template/templates/.codex/`를 실행하면, *Then* 변경이 없다(M5 무변경).
 
+### M1 — statusline (v0.3.0)
+
+**AC-CW-013** (MUST, REQ-CW-013) — *Given* 스크래치 디렉터리, *When*
+`moai init proj --agent codex --non-interactive`를 실행하면, *Then* `proj/.codex/config.toml`이
+TOML로 파싱되고 `tui.status_line` 값이 정확히 기본 구성 5종이다(판정:
+`python3 -c "import tomllib;c=tomllib.load(open('proj/.codex/config.toml','rb'));print(c['tui']['status_line']==['model-with-reasoning','context-remaining','git-branch','current-dir','thread-id'])"`
+→ True). *And Given* 사용자가 `[tui]`에 `status_line = ["model"]`을 사전 설정한 config.toml,
+*When* `--agent codex` 배선을 실행하면, *Then* 그 라인은 바이트 불변이다(사용자 소유 키 우선 —
+`grep -c 'status_line = \["model"\]' …/config.toml` = 1 유지). *And Given* 회귀 가드, *When*
+`go test ./internal/codexwiring/ -run StatusLine`을 실행하면, *Then* (a) 기본 구성이 5개
+정식 토큰과 정확히 일치하고, (b) 기본 구성 ⊆ `statusLineAllowlist`(발행 원천 상수), (c) 기본
+구성에 파싱 별칭 6종(session-id·context-usage·model-name·project·project-root·status·approval)이
+0건이다(정식 토큰만 발행).
+
+**AC-CW-014** (SHOULD, REQ-CW-014) — *Given* sync-phase 문서 갱신, *When*
+`grep -rn '17827' README.md README.ko.md README.en.md README.ja.md README.zh.md docs-site/content/ko/`
+를 실행하면, *Then* openai/codex#17827 미해소로 MoAI 고유 statusline 항목(goal·todo·SPEC) 노출이
+불가함을 언급하는 히트 ≥ 1(토큰 base-0: 2026-08-24 실측 0hit). 미달 시 사유와 함께 부채 기록.
+
 ## §B. Edge cases (negative tests, MUST)
 
 - **파손된 사용자 hooks.json**(JSON 파싱 불가) → 생성기는 파일을 수정하지 않고 진단 경고 후
@@ -127,7 +151,8 @@ event·key·content_length와 함께 append되고; (c) payload `hook_event_name`
 
 ## §C. Definition of Done
 
-- AC-CW-001..012 전부 MUST 통과(12/12) — §E.2에 명령 원문·출력과 함께 기록.
+- AC-CW-001..014 전부 판정 완료(MUST 13 통과 + SHOULD 1 판정) — §E.2에 명령 원문·출력과 함께
+  기록. AC-CW-014(SHOULD)는 sync-phase 산출물이므로 run 종료 시점에는 위임 상태로 기록 가능.
 - `go test ./internal/codexwiring/... -cover` ≥ 85% · `golangci-lint run` 해당 패키지 0 error.
 - PRESERVE 목록(plan §D) 위반 0 — 특히 `internal/codexadapter`·`.codex/agents/**`·
   기존 init 플래그 무변경.
@@ -151,3 +176,5 @@ event·key·content_length와 함께 append되고; (c) payload `hook_event_name`
 | AC-CW-010 | REQ-CW-011 | annotation 가드 |
 | AC-CW-011 | REQ-CW-007 | 런타임 매핑·기록·거부·패스스루 |
 | AC-CW-012 | REQ-CW-010 · REQ-CW-012 | doctor 진단 + M5 무변경 |
+| AC-CW-013 | REQ-CW-013 | status_line 산출 + create-if-absent + 정식 토큰 가드 |
+| AC-CW-014 | REQ-CW-014 | 한계 문서화(base-0 토큰, SHOULD) |

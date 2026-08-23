@@ -16,6 +16,10 @@
   단 정확성은 공짜가 아니다 — base 실태 유효 불일치 4도구(실효 승인 집합 10)를 M2가 수정한
   뒤에야 병합 순서 독립으로 성립(base 6 → t187 병합 후 9). 유효값 기준 annotation
   가드 테스트가 그 불변식의 기계화다.
+- **v0.3.0 statusline 범위(운영자 지시 2026-08-24)**: config.toml에 `[tui] status_line`
+  기본 5종을 create-if-absent로 함께 발행(spec §A.6 사실 기준 — 정식 토큰 29종 + 별칭 6종,
+  카드 제안의 "context"/"cwd"/"session-id"는 정식 토큰 context-remaining/current-dir/thread-id로
+  확정). command-backed 미지원(#17827) 한계 문서화는 sync-phase(SHOULD, REQ-CW-014).
 
 ## §B. Known issues carried into this plan
 
@@ -53,14 +57,27 @@
 - **D3 `--agent` 의미론**: claude(기본)=오늘과 동일(+.mcp.json 기본 provisioning),
   codex=.mcp.json provisioning 스킵 + Codex 배선, both=양쪽. 플래그가 wizard 답변에 우선.
   이 결정은 플래그 파싱 한 곳에 고립시켜 되돌림 비용을 1줄로 유지한다.
+- **D4 `[tui]` status_line 데이터 계약 (v0.3.0)**: 기본 배열
+  `["model-with-reasoning", "context-remaining", "git-branch", "current-dir", "thread-id"]`
+  (정식 토큰만 — 별칭 금지). 병합 규칙 3분기: (i) `[tui]` 부재 → 파일 말미 신규 테이블 섹션
+  append, (ii) `[tui]` 있음·`status_line` 부재 → 그 섹션 헤더 직후 키 삽입, (iii) 키 존재 →
+  바이트 불변(사용자 소유). 허용목록 상수 `statusLineAllowlist`(29 정식 토큰)이 발행·검증의
+  단일 원천이고 기본 구성 ⊆ 허용목록 + 별칭 0건을 회귀 테스트로 고정한다. Codex 기본값
+  3종의 상위집합 구성 — 기존 Codex 사용자에게 최소 놀라움.
 
 ### M1 — 생성기 코어 (internal/codexwiring, 데이터 계약 구현)
 
 - 패키지 신설: hooks.json 렌더러(EventTable 유도·결정론적 키 순서), 병합 엔진(D2),
   ValidateConfig 선검증 게이트(위반 시 미기록·중단), config.toml 테이블 렌더러(손레nder링,
   create-if-absent), 신뢰 사이드카(`.moai/state/codex-wiring.json`, sha256 기록).
+- **[v0.3.0] config.toml 렌더러에 `[tui]` status_line 처리 추가(D4)**: 허용목록 상수
+  `statusLineAllowlist`(29 정식 토큰) + 기본 구성 상수 + 병합 3분기(신규 섹션 append /
+  섹션 내 키 삽입 / 존재 시 불변).
 - 단위 테스트: 화이트리스트 음성 샘플(version 키 등), 병합 보존, 멱등성(2회 렌더 바이트 동일),
   SessionEnd 타임아웃 상한, 결정론(키 순서·무타임스탬프).
+- **[v0.3.0] status_line 회귀 테스트**(AC-CW-013 회귀 팔 — `-run StatusLine`): (a) 기본
+  구성이 5 정식 토큰과 정확 일치, (b) 기본 구성 ⊆ `statusLineAllowlist`, (c) 기본 구성에
+  파싱 별칭 6종 0건, (d) 병합 3분기 각각의 바이트 판정.
 
 ### M2 — `--agent` 플래그 + init/update 배선 + annotation 4도구 수정
 
@@ -99,11 +116,14 @@
 
 ### M5 — 검증/e2e + 인수 정리
 
-- acceptance.md AC 전량 실행(스크래치 init 시나리오 포함), 커버리지 측정
-  (`go test ./internal/codexwiring/... -cover` ≥85%), `GOOS=windows GOARCH=amd64 go vet ./internal/...`
+- acceptance.md AC 전량 실행(스크래치 init 시나리오 포함 — AC-CW-013의 tomllib 판정 포함),
+  커버리지 측정(`go test ./internal/codexwiring/... -cover` ≥85%),
+  `GOOS=windows GOARCH=amd64 go vet ./internal/...`
   (크로스컴파일 게이트 — 로컬 전체 스위트 금지 규율 준수, affected-package만).
 - annotation 가드 테스트(REQ-CW-011)의 배치는 **M2로 확정**했다(review-1 D1 — 4도구 수정과
   같은 마일스톤에서 가드가 녹색 판정을 즉시 증명한다). M5는 재검증만 담당.
+- **[v0.3.0] AC-CW-014(SHOULD) 한계 문서화는 sync-phase 산출물** — run-phase에서 작성하지
+  않고 sync 위임 사항으로 progress.md §E.2에 기록한다.
 
 ### PRESERVE 목록 (변경 금지 — 감사·카드 지정)
 
@@ -122,7 +142,7 @@
 
 ## §E. Self-verification (run-phase가 §E.2/§E.3에 기록할 목록)
 
-- AC 12/12 MUST 결과 + 명령 원문.
+- AC 14/14 결과(MUST 13 + SHOULD 1) + 명령 원문. AC-CW-014는 sync-phase 위임 상태를 기록.
 - `go test ./internal/codexwiring/ ./internal/cli/ -cover` 수치.
 - `golangci-lint run` + `GOOS=windows GOARCH=amd64 go vet ./internal/...` 결과.
 - 스크래치 e2e: init(--agent codex) → 재실행 no-diff → 사용자 엔트리 보존 → doctor 표시.
@@ -141,7 +161,7 @@
 
 ## §G. Cross-references
 
-- spec.md §A(측정 전제)·§D(REQ-CW-001..012) — 본 계획의 요구 원천.
+- spec.md §A(측정 전제 — §A.6 statusline 포함)·§D(REQ-CW-001..014) — 본 계획의 요구 원천.
 - acceptance.md — AC 매트릭스·엣지·DoD.
 - hns-moaiadk-patterns (Template-First·add-a-hook·CLI 아키텍처).
 - 3-phase close 계획: **단일 sync 커밋**이 `implemented → completed` 전이를 carrying

@@ -1,10 +1,10 @@
 ---
 id: SPEC-CODEX-WIRING-001
 title: "Codex Dual Harness M4 — wiring generator: moai init --agent claude|codex|both, .codex/hooks.json + config.toml, trust guidance, doctor"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-08-23
-updated: 2026-08-23
+updated: 2026-08-24
 author: manager-spec
 priority: P1
 phase: "v3.1.4 target"
@@ -12,7 +12,7 @@ module: internal/cli
 lifecycle: spec-anchored
 era: V3R6
 tier: M
-tags: "codex, dual-harness, wiring, hooks-json, mcp_servers, approval-mode, trust, init-flag"
+tags: "codex, dual-harness, wiring, hooks-json, mcp_servers, approval-mode, trust, init-flag, statusline"
 depends_on: [SPEC-CODEX-HOOK-ADAPTER-001]
 related_specs: [SPEC-CODEX-DUAL-AGENTS-001, SPEC-CODEX-SKILLS-CANONICAL-001, SPEC-CODEX-SESSION-MSG-001]
 ---
@@ -25,6 +25,7 @@ related_specs: [SPEC-CODEX-DUAL-AGENTS-001, SPEC-CODEX-SKILLS-CANONICAL-001, SPE
 |---|---|---|
 | 0.1.0 | 2026-08-23 | 최초 작성 (plan-phase, card t88 / M4). 구 M4 블로커("프로젝트 hooks.json 미발화") 전제를 운영자 실측 정정(§A.3)으로 폐기하고 재설계 |
 | 0.2.0 | 2026-08-23 | plan-audit review-1(D1 차단 + D2-D6 경미) 적용. D1: §A.4의 "21도구 전부 명시 선언" 주장이 오측이었음을 정정 — 명시 15/21·미선언 6·유효 불일치 4·실효 승인 집합 10으로 교체, REQ-CW-011/AC-CW-010을 유효값 기준선으로 재정의, 4도구 annotation 수정을 plan M2에 명시 + PRESERVE 예외 축소. D2: /hooks 히트수 범위 한정 재기술. D3: §G 격리 주석. D5: 시험명 REQ→AC 이동 |
+| 0.3.0 | 2026-08-24 | 운영자 지시 statusline 범위 추가(카드 t88 본문 개정 2026-08-24). §A.6 사실 기준 신설(공식 문서·소스 확정 — 정식 식별자 29종 + 별칭 6종), REQ-CW-013(status_line create-if-absent 배선)·REQ-CW-014(한계 문서화, SHOULD) 신설, REQ-CW-005 MoAI 관리 범위에 tui.status_line 확정 기재, AC 12→14(MUST 13 + SHOULD 1). Tier M REQ/AC 상한 16 이내 |
 
 ## §A. 측정 전제 (Verified baseline)
 
@@ -124,6 +125,39 @@ t187 병합 후 25도구 트리 9개(병합 순서 독립). 불변식의 기계�
   상한 3**) + 공식 문서가 언급하는 부가 키들(statusMessage 등). t83 측정 화이트리스트
   `{type, command, timeout}`의 부분집합만 emit하면 양쪽 모두 만족한다.
 
+### §A.6 statusline 사실 기준 (운영자 지시 2026-08-24, 공식 문서·소스 확정)
+
+카드 t88 본문에 운영자 지시로 추가된 statusline 범위의 조사 확정물(2026-08-24 fetch):
+
+- **명령형 statusline 미지원**: openai/codex#17827(OPEN) — Claude의 `status_line.sh` 같은
+  command-backed statusline은 Codex에 없다. 내장 식별자 배열 구성만 가능하므로 MoAI 고유
+  정보(goal·todo·SPEC 상태) 노출은 이 이슈 해소 전 불가하다(REQ-CW-014가 문서화).
+- **공식 문서** (`learn.chatgpt.com/docs/developer-commands` `/statusline` 절): "The footer
+  status line updates immediately and persists to `tui.status_line` in `config.toml`.
+  Available status-line items include model, model+reasoning, context stats, rate limits,
+  git branch, token counters, session id, current directory/project root, and Codex version."
+- **Config 레퍼런스** (`learn.chatgpt.com/docs/config-file/config-reference.md`):
+  `tui.status_line` 타입 `array<string> | null` — "Ordered list of TUI footer status-line
+  item identifiers. `null` disables the status line."
+- **샘플 설정** (`learn.chatgpt.com/docs/config-file/config-sample.md`): 미설정 시 Codex 기본값
+  `["model-with-reasoning", "context-remaining", "current-dir"]`.
+- **식별자 원천** (소스 `openai/codex` `codex-rs/tui/src/bottom_pane/status_line_setup.rs`,
+  main @ 2026-08-24): `StatusLineItem` enum(`serialize_all = "kebab_case"`) — **정식 토큰 29종**:
+  model, model-with-reasoning, reasoning, current-dir, project-name, hostname, git-branch,
+  pull-request-number, branch-changes, run-state, permissions, approval-mode,
+  context-remaining, context-used, five-hour-limit, weekly-limit, codex-version,
+  context-window-size, used-tokens, total-input-tokens, total-output-tokens,
+  thread-credits, estimated-thread-cost, thread-id, fast-mode, raw-output, thread-title,
+  workspace-headline, task-progress. **파싱 전용 별칭 6종**(구값 호환 — 발행에 쓰지 않는다):
+  model-name→model, project·project-root→project-name, status→run-state,
+  approval→approval-mode, context-usage→context-used, session-id→thread-id.
+- **카드 제안 5종의 정식 토큰 확정**: `model-with-reasoning` · `context-remaining`(카드의
+  "context" — Claude statusline CW% 게이지에 대응하는 컨텍스트 게이지, used% = 100 − remaining%) ·
+  `git-branch` · `current-dir`(카드의 "cwd") · `thread-id`(카드의 "session-id"의 정식 토큰).
+  Codex 자체 기본값 3종의 상위집합에 git-branch·thread-id를 더한 구성.
+- **업스트림 증가 대응**: 허용목록은 본 저장소의 고정 상수로 유지한다(블라인드 업스트림 추적
+  없음 — 검증 가능성 우선). 식별자 추가는 문서 갱신 시점의 명시적 판단이다.
+
 ## §B. User Story
 
 > Codex(데스크톱 앱·CLI)에서 moai-adk를 쓰는 사용자로서, `moai init --agent codex` 한 번으로
@@ -144,6 +178,9 @@ t187 병합 후 25도구 트리 9개(병합 순서 독립). 불변식의 기계�
 4. 신뢰 안내 — 생성 시점 stdout 안내 + 내용 변경 재생성 시 `/hooks` 재신뢰 안내 + 신뢰 사이드카.
 5. `moai doctor` "Codex Wiring" 진단 — 존재·ValidateConfig·해시 divergence·PATH 해석·테이블 존재.
 6. annotation 정합성 가드 테스트(WriteCapable ↔ ReadOnlyHint) — t187 정합성의 기계화.
+7. `.codex/config.toml` `[tui]` `status_line` 기본 구성(운영자 지시 2026-08-24) — 정식 식별자
+   5종 create-if-absent 배선 + 고정 허용목록 회귀 테스트. command-backed 미지원 한계(#17827)의
+   문서화(SHOULD, REQ-CW-014).
 
 ### Out of Scope — 플러그인 패키징 (M6/t90)
 
@@ -228,6 +265,9 @@ annotation이 담당한다(§A.4).
 append), 그 외 모든 엔트리·이벤트 키·description은 바이트 보존한다. config.toml에서 MoAI 관리
 범위는 `[mcp_servers.moai]` 테이블뿐이다. **이미 존재하는 `[mcp_servers.moai]` 테이블은 덮어쓰지
 않는다** — 사용자 소유 판정이며, 정본과의 불일치는 doctor가 보고한다(REQ-CW-010).
+**v0.3.0 확장**: `[tui]` 테이블의 `status_line` 키가 MoAI 관리 create-if-absent 대상에
+추가된다(REQ-CW-013) — 이미 존재하는 키는 사용자 소유로 바이트 불변이며, `[tui]`의 다른
+키·다른 테이블 전부는 기존대로 무결정·보존이다.
 
 ### REQ-CW-006 — 멱등성
 
@@ -292,15 +332,38 @@ catalog-read 도구의 annotation 누락(유효 false)과 catalog-write 도구�
 산출물(hooks.json·config.toml)에 에이전트 정의를 중복 수록하지 않는다 — 에이전트 TOML은
 M5(agentemit + 템플릿 순회 배포)의 단일 소유면이다.
 
+### REQ-CW-013 — config.toml status_line 기본 구성
+
+**`--agent codex` 또는 `--agent both`가 주어진 경우** 생성기는 `<project>/.codex/config.toml`의
+`[tui]` 테이블에 `status_line` 키를 기본 구성 배열
+`["model-with-reasoning", "context-remaining", "git-branch", "current-dir", "thread-id"]`로
+create-if-absent 발행한다. **`status_line` 키가 이미 존재하는 경우** 생성기는 그 키를 바이트
+불변으로 남긴다(사용자 소유 — REQ-CW-005 병합 모델의 v0.3.0 확장). `[tui]` 테이블이 없으면
+파일 말미에 신규 테이블 섹션으로, 테이블은 있으나 키가 없으면 그 섹션 안에 키를 삽입한다.
+발행 토큰은 정식(canonical) 토큰만 사용하며(§A.6 — 파싱 전용 별칭은 발행하지 않는다), 생성기는
+발행·검증에 고정 허용목록 상수(`statusLineAllowlist`)를 사용하고 **기본 구성 ⊆ 허용목록**
+동치를 회귀 테스트로 고정한다. Codex는 command-backed statusline을 지원하지 않는다
+(openai/codex#17827 OPEN) — 내장 식별자 배열 구성이 이 REQ의 전부이며, 그 한계는 REQ-CW-014가
+문서화한다.
+
+### REQ-CW-014 — statusline 한계 문서화 (SHOULD)
+
+배선 문서(README Codex 관련 절·docs-site)는 MoAI 고유 정보(goal·todo·SPEC 상태)의 statusline
+노출이 openai/codex#17827 해소 전 불가함을 명시한다. 문서화는 sync-phase 산출물이며 본 REQ의
+검증은 AC-CW-014(SHOULD)로 한다 — 미달 시 사유와 함께 부채 기록.
+
 ## §E. Acceptance Criteria
 
-Given-When-Then 시나리오 12건(AC-CW-001..012)은 `acceptance.md` §A 매트릭스에 실행 가능한
-명령과 함께 명세된다. grep 계열 AC의 토큰은 사전구현 트리에서 0반환을 실측 기록했다
-(2026-08-23, 본 트리 — `default_tools_approval_mode`·`checkCodexWiring`·`"Codex Wiring"`·
-`/hooks to re-trust`·`codex /hooks` 전부 0hit). `/hooks` 단독 토큰은 기존 문구와 충돌해
-채택 제외 — 히트수는 범위 의존적이라 명령으로 귀속한다:
-`grep -rn 're-approve\|/hooks' internal/cli/*.go | grep -v _test | wc -l` → **10**
-(글롭형·비재귀, internal/cli 최상위 .go 한정; 재귀 범위를 넓히면 수치가 달라진다).
+Given-When-Then 시나리오 14건(AC-CW-001..014 — MUST 13 + SHOULD 1)은 `acceptance.md` §A
+매트릭스에 실행 가능한 명령과 함께 명세된다. grep 계열 AC의 토큰은 사전구현 트리에서 0반환을
+실측 기록했다(2026-08-23, 본 트리 — `default_tools_approval_mode`·`checkCodexWiring`·
+`"Codex Wiring"`·`/hooks to re-trust`·`codex /hooks` 전부 0hit. 2026-08-24 v0.3.0 추가 —
+`statusLineAllowlist` 0hit, `17827`(README 5종·docs-site/content) 0hit). 채택 제외 토큰 2종:
+`/hooks` 단독(기존 문구 충돌 — 히트수는 범위 의존적이라 명령으로 귀속한다:
+`grep -rn 're-approve\|/hooks' internal/cli/*.go | grep -v _test | wc -l` → **10**, 글롭형·
+비재귀, internal/cli 최상위 .go 한정; 재귀 범위를 넓히면 수치가 달라진다)와 `status_line`
+단독(internal/ Go 46hit — Claude statusline 코드와 충돌; 스크래치 산출물 파일 대상 grep으로만
+사용하고 저장소 코드 토큰은 `statusLineAllowlist`로 대체).
 
 ## §F. Constraints (non-functional)
 
@@ -351,3 +414,8 @@ Given-When-Then 시나리오 12건(AC-CW-001..012)은 `acceptance.md` §A 매트
 - M3 실측: `.moai/reports/t83/precondition-measurement{,-round3}.md` + `probe/` (release/v3.1.3 수록)
 - CLI·템플릿 아키텍처: `.claude/skills/hns-moaiadk-patterns` (Template-First, add-a-hook)
 - Codex 공식 문서(§D의 URL 목록은 §A.4/§A.5에 인용 위치별 기재)
+- statusline(v0.3.0): `learn.chatgpt.com/docs/developer-commands` `/statusline` 절 ·
+  `learn.chatgpt.com/docs/config-file/config-reference.md`(tui.status_line) ·
+  `learn.chatgpt.com/docs/config-file/config-sample.md`(기본값) ·
+  소스 `openai/codex` `codex-rs/tui/src/bottom_pane/status_line_setup.rs`(식별자 원천) ·
+  openai/codex#17827(command-backed 미지원) — §A.6 원문 인용
