@@ -239,7 +239,7 @@ m1_to_mN_commit_strategy: 3 commits (M1-M2 / M3 / M4-M6), 각 커밋 빌드 통�
 
 ```yaml
 sync_complete_at: 2026-08-23
-sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash; the lead backfills
+sync_commit_sha: 0a3def8fe
 sync_status: complete-with-carried-gap
 b12_self_test_a: pass    # grep -c 'SPEC-TODO-ENABLE-FLAG-001' CHANGELOG.md → 0 (no prior entry, emission proceeds)
 b12_self_test_b: pass    # 11 distinct AC ids in acceptance.md; §E.2 M7 matrix carries 11 rows
