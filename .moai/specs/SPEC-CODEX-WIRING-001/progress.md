@@ -187,4 +187,29 @@ scratch_e2e_root: /tmp/cw-e2e.hhJW53  # transient by design; verbatim outputs qu
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: complete
+sync_complete_at: 2026-08-24
+sync_commit_sha: "pending-backfill-SPEC-CODEX-WIRING-001"  # D3 exemption — backfilled in a follow-up commit after the sync commit lands
+b12_self_test_a_changelog_pre_emission_grep: 0  # grep -c 'SPEC-CODEX-WIRING-001' CHANGELOG.md before emission — no duplicate
+b12_self_test_b_ac_count: 14  # distinct AC IDs in acceptance.md == CHANGELOG entry scope (13 MUST PASS + AC-CW-014 SHOULD delegated to sync, discharged here)
+b12_self_test_c_path_verification: pass  # ls-verified: internal/codexwiring, README.md/.ko/.ja/.zh, CHANGELOG.md
+ac_cw014_grep_17827_hits: 4  # README.md 1 + README.ko.md 1 + README.ja.md 1 + README.zh.md 1; docs-site intentionally untouched (later card)
+changelog_entry_position: "[Unreleased] > Added, first entry"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (single sync commit, 3-phase close merged; spec.md is the only artifact of the four carrying a frontmatter block)"
+  plan_acceptance_progress_md: "no frontmatter block — n/a"
+status_transition_commit_strategy: single sync commit carries plan->run->sync close; no separate Mx chore commit; no §E.5 section
+canary_compliance_check:
+  applicable: false  # SPEC defines no forward-looking policy canaried by its own sync tests
+evidence_paths:
+  - CHANGELOG.md  # [Unreleased] Added, SPEC-CODEX-WIRING-001 entry
+  - README.ko.md  # canonical: Codex statusline limitation sentence (AC-CW-014)
+  - README.md
+  - README.ja.md
+  - README.zh.md
+  - .moai/specs/SPEC-CODEX-WIRING-001/spec.md  # frontmatter status close
+  - .moai/specs/SPEC-CODEX-WIRING-001/progress.md  # this section
+code_changes_in_sync_phase: 0  # internal/ untouched; docs + SPEC artifacts only
+```
+
