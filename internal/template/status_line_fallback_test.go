@@ -154,7 +154,7 @@ func TestStatusLineEveryExecGuarded(t *testing.T) {
 		}
 		// The PATH exec (`exec moai statusline`) is guarded by the preceding
 		// `command -v moai` test; every other exec must be inside a `[ -f ]` if-block.
-		if trimmed == `exec moai statusline < "$temp_file"` {
+		if trimmed == `exec moai statusline` {
 			continue // guarded by `command -v moai &> /dev/null`
 		}
 		// Look back for the nearest guarding `[ -f "..." ]` within the if-block.
