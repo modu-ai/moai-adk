@@ -71,7 +71,19 @@ $ grep -n "config/sections\|auto_submit" README.md
 
 ### 2.6 close 후 상태
 
-커밋 직후 `git status --porcelain` 무출력, `moai spec audit --json` 재실행 결과는 아래 §3 에 귀속과 함께 적는다.
+sync 커밋 `1f798f211` 직후:
+
+```
+$ git status --porcelain
+(무출력)
+
+$ moai spec audit --json
+total_specs: 640, grandfathered: 278, modern_era_clean: 361
+MUST-FIX: 1건 → SPEC-CODEX-SKILLS-CANONICAL-001 (close 전과 동일 — 선재, 타 SPEC)
+SPEC-FEEDBACK-AUTO-SUBMIT-001 의 drift finding: 0건
+```
+
+drift 델타 = 0. close 가 새 drift 를 만들지 않았고, 카탈로그 전체 MUST-FIX 수도 1 에서 변하지 않았다.
 
 ## 3. Baseline-attribution (baseline 귀속)
 

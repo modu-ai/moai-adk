@@ -1218,7 +1218,7 @@ AC-F-023 은 유일하게 두 마일스톤이 절반씩 지며, 각 마일스톤
 
 ```yaml
 sync_complete_at: 2026-08-23
-sync_commit_sha: pending-backfill-SPEC-FEEDBACK-AUTO-SUBMIT-001   # 커밋은 자기 해시를 알 수 없다 — 후속 커밋에서 백필
+sync_commit_sha: 1f798f211        # 후속 백필 커밋에서 기입(커밋은 자기 해시를 알 수 없다)
 sync_status: complete-pending-integration
 sync_base_sha: cdff7f315          # run-phase HEAD(M9 기록 커밋)
 branch: WT-auto-feedback
@@ -1255,7 +1255,7 @@ integration_status: held-by-lead             # 큐: lane-8(t183→t189) → lane
 ### 검증 기록 (관측한 것)
 
 - **close 전 `moai spec audit --json`** (워크트리 cwd): `total_specs: 640`, MUST-FIX **1건** — `SPEC-CODEX-SKILLS-CANONICAL-001` 의 `SyncStatusDrift`(타 SPEC, 선재). 이 SPEC 의 drift finding **0건**.
-- **close 후 `moai spec audit --json`**: 아래 "close 후 관측" 참조.
+- **close 후 `moai spec audit --json`** (sync 커밋 `1f798f211` 시점): `total_specs: 640`, MUST-FIX 여전히 **1건**이며 그 1건은 close 전과 동일한 `SPEC-CODEX-SKILLS-CANONICAL-001`. 이 SPEC 의 drift finding **0건 → 0건**. 즉 close 가 만든 drift 델타는 0이다.
 - `go test ./internal/config/... ./internal/template/...` → 전부 `ok` (config 9.752s / template 52.516s). 문서·CHANGELOG 전용 변경이 이 두 패키지를 움직이지 않음을 확인.
 - **4로케일 패리티**: `moai-feedback.md` 4개 로케일 각각 `auto_submit` 2히트 · `^### ` 헤딩 14개로 동일. 새 절(`제출 전 확인` / `Confirming Before Submission` / 일·중 대응절)은 4로케일 모두 존재.
 - **README 무변경 근거**: `grep -n feedback README.md README.ko.md README.ja.md README.zh.md` → 4파일 각각 3곳(커맨드 나열 2 + 이슈 링크 1)뿐이고 설정 키를 열거하는 문단이 없다. `README.md:574` 의 `.moai/config/sections/` 표는 "편집하게 되는" 6개 + v3.1.1 추가 4개만 싣고 `feedback.yaml` 을 포함하지 않는다. 따라서 이 SPEC 이 README 에 만드는 부채는 없다.
@@ -1269,5 +1269,5 @@ integration_status: held-by-lead             # 큐: lane-8(t183→t189) → lane
 
 ### 잔여 위험 (sync 시점에 새로 생긴 것)
 
-- `sync_commit_sha` 가 플레이스홀더로 남는다. 백필 커밋 전까지 이 값은 감사관에게 "sync 는 끝났으나 해시는 미기입" 상태로 읽혀야 한다. 형제 SPEC 사례(`SPEC-CODEX-SKILLS-CANONICAL-001`)에서 보듯, `status` 가 `completed` 에 도달하지 못한 채 플레이스홀더만 남으면 `SyncStatusDrift` MUST-FIX 가 뜬다 — 이 SPEC 은 같은 커밋에서 `completed` 까지 올려 그 형태를 피했다.
+- `sync_commit_sha` 는 sync 커밋 다음의 백필 커밋에서 기입됐다(`1f798f211`). 형제 SPEC 사례(`SPEC-CODEX-SKILLS-CANONICAL-001`)에서 보듯 `status` 가 `completed` 에 도달하지 못한 채 플레이스홀더만 남으면 `SyncStatusDrift` MUST-FIX 가 뜨는데, 이 SPEC 은 sync 커밋에서 `completed` 까지 올려 그 형태를 애초에 피했다. 남은 위험은 백필 커밋이 통합 과정에서 떨어져 나가는 경우뿐이며, 그때 값은 다시 미기입 상태가 된다.
 - §E.3 의 누적 잔여 위험 28건은 sync 로 해소되지 않았다. 특히 **20번**(`feedback.auto_submit` 을 Go 코드가 읽지 않는다)은 CHANGELOG 문구가 "convention, not sandbox" 로 정직하게 반영됐을 뿐 기술적으로 달라진 것이 없다.
