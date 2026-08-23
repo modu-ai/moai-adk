@@ -65,6 +65,7 @@ results.
 | `focus` | string | no | Optional focus area forwarded to the secondary backends (e.g. `concurrency`, `auth`). |
 | `gates` | object | no | Per-auditor gate map (`claude`/`codex`/`glm` ∈ `off`/`advisory`/`required`). When omitted, distributed defaults apply: claude required, codex required, glm advisory. |
 | `session_id` | string | no | When set, the result is persisted to `.moai/state/audit-multi/<session>.json` so the multi-review-gate Stop hook reads the most recent result rather than re-invoking convergence. |
+| `project_root` | string | no *(REQUIRED in a worktree)* | The tree the backends should read — this session's own `git rev-parse --show-toplevel`. Omitted from a worktree, the fan-out reads the PRIMARY checkout instead, so the backends review a diff that is not the one under audit and nothing in the result says so. Omit it only in the primary checkout. An unusable path is rejected with an error naming it, never silently replaced. |
 
 ### Output shape
 
@@ -123,8 +124,10 @@ The secondary backends (codex, GLM) are SUPER-REVIEWS: uncorrelated second
 opinions. Their value collapses to a re-sample of Claude's reasoning the moment
 they see Claude's analysis. The convergence engine enforces this structurally —
 the `claude_verdict` is consumed ONLY by the synthesis step, and the secondary
-backends receive `(target, focus)` alone — but the auditor must not undermine
-the invariant by pasting Claude's reasoning into the `focus` field either.
+backends receive `(target, focus, project_root)` — a scope, an area name, and a
+directory, carrying no analysis between them — but the auditor must not
+undermine the invariant by pasting Claude's reasoning into the `focus` field
+either.
 
 Concretely:
 

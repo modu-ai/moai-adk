@@ -338,6 +338,12 @@ func describeDisagreement(vs []PerBackendVerdict) string {
 type MultiAuditConfig struct {
 	Gates     config.AuditGates
 	SessionID string // for .moai/state/audit-multi/<session>.json (DQ-1)
+
+	// ProjectRoot names the tree the secondary backends should read
+	// (SPEC-MCP-WORKTREE-ROOT-001). Empty ⇒ each backend keeps whatever it
+	// resolved before this parameter existed, so an unaware caller sees no
+	// change. Validated by the handler, never here.
+	ProjectRoot string
 }
 
 // backendCallFn is the injectable seam for the secondary-backend invocation.
@@ -345,12 +351,20 @@ type MultiAuditConfig struct {
 // paths from mcp_codex.go / mcp_glm.go); tests swap it to record calls,
 // simulate slow backends, or fail-open specific backends.
 //
-// INDEPENDENCE-INVARIANT (REQ-AMM-003 / C4 — load-bearing): the signature takes
-// (ctx, backend, target, focus) and NOTHING ELSE. claude_verdict is structurally
-// forbidden from reaching a secondary backend — it is consumed ONLY by converge.
-// A future edit that tried to thread claude_verdict in would not compile against
-// this signature.
-type backendCallFn func(ctx context.Context, backend, target, focus string) ReviewOutput
+// INDEPENDENCE-INVARIANT (REQ-AMM-003 / C4 — load-bearing): the signature carries
+// NO verdict of any kind. claude_verdict is structurally forbidden from reaching a
+// secondary backend — it is consumed ONLY by converge, and a future edit that tried
+// to thread it in would not compile against this signature.
+//
+// The parameter list is (ctx, backend, target, focus, projectRoot). projectRoot was
+// added by SPEC-MCP-WORKTREE-ROOT-001 so a caller inside a worktree can say which
+// tree the backends should read; it names a directory, carries no analysis, and so
+// leaves the independence guarantee intact. The invariant is stated as "no verdict
+// crosses this seam" rather than "nothing else crosses it", because the latter
+// wording stopped being true when this parameter landed — and a comment left
+// asserting a guarantee the signature no longer expresses is how a real invariant
+// stops being enforced without anyone noticing.
+type backendCallFn func(ctx context.Context, backend, target, focus, projectRoot string) ReviewOutput
 
 // backendCall is the package-level seam (the type is backendCallFn). Tests swap
 // it with t.Cleanup.
@@ -359,12 +373,18 @@ var backendCall backendCallFn = defaultBackendCaller
 // defaultBackendCaller routes to the existing single-backend handlers. It reuses
 // (does NOT re-implement) the codex binary shellout from mcp_codex.go and the
 // GLM z.ai API call from mcp_glm.go (C1 — additive to MOAI-MCP-SERVER).
-func defaultBackendCaller(ctx context.Context, backend, target, focus string) ReviewOutput {
+func defaultBackendCaller(ctx context.Context, backend, target, focus, projectRoot string) ReviewOutput {
 	switch backend {
 	case BackendCodex:
-		return performCodexAudit(ctx, target, focus)
+		return performCodexAudit(ctx, target, focus, projectRoot)
 	case BackendGLM:
-		return performGLMAudit(ctx, target, focus, "")
+		// Both sides of this seam changed at once, and the merge is what makes
+		// them work: the GLM path gained a projectRoot so it can collect a real
+		// diff to review, and this seam gained one so the caller can say which
+		// tree that is. Passing "" here would leave GLM resolving its own root
+		// while codex used the caller's — the two backends reviewing different
+		// trees, which is the failure the parameter exists to prevent.
+		return performGLMAudit(ctx, target, focus, projectRoot)
 	default:
 		// Unknown backend — fail-open to inconclusive (never a hard error).
 		return inconclusiveReview("unknown backend: " + backend)
@@ -379,7 +399,14 @@ func defaultBackendCaller(ctx context.Context, backend, target, focus string) Re
 //
 // Reuses (does NOT fork) mcp_codex.go: codexLookPath, runCodexReviewRPC,
 // codexAdversarialReviewPrompt, inconclusiveReview.
-func performCodexAudit(ctx context.Context, target, focus string) ReviewOutput {
+// projectRoot (SPEC-MCP-WORKTREE-ROOT-001 REQ-1 / AC-1b) names the tree codex
+// should read. This path carried NO `cwd` at all before — unlike the
+// single-backend handler at mcp_codex.go, which has always passed one — so the
+// repair ADDS the key rather than redirecting it, and the two codex paths were
+// divergent until now. The key is written only when a root was actually named:
+// substituting a default for an absent parameter would change what an existing
+// caller's backend receives, which REQ-2 forbids.
+func performCodexAudit(ctx context.Context, target, focus, projectRoot string) ReviewOutput {
 	binaryPath, err := codexLookPath(codexBinaryName)
 	if err != nil {
 		return inconclusiveReview("codex binary not found in PATH")
@@ -392,7 +419,10 @@ func performCodexAudit(ctx context.Context, target, focus string) ReviewOutput {
 	if strings.TrimSpace(focus) != "" {
 		params["focus"] = focus
 	}
-	out, _ := runCodexReviewRPC(ctx, binaryPath, codexMethodTurnStart, params) // fail-open inside
+	if root := strings.TrimSpace(projectRoot); root != "" {
+		params["cwd"] = root
+	}
+	out, _ := codexReviewRPC(ctx, binaryPath, codexMethodTurnStart, params) // fail-open inside
 	return out
 }
 
@@ -434,8 +464,8 @@ func performGLMAudit(ctx context.Context, target, focus, projectRoot string) Rev
 // (M3) and read by the multi-review-gate Stop hook (M5). It:
 //  1. DQ-2: refuses if claude_verdict is absent (the always-available anchor).
 //  2. Fans out across the active secondary backends (codex, glm) in parallel
-//     via errgroup — each goroutine receives (target, focus) and NEVER the
-//     claude verdict (super-review independence).
+//     via errgroup — each goroutine receives (target, focus, cfg.ProjectRoot)
+//     and NEVER the claude verdict (super-review independence).
 //  3. Assembles per_backend_verdicts (claude anchor + secondary results).
 //  4. converge()s them into a ConvergenceResult.
 //  5. DQ-1: persists the result to .moai/state/audit-multi/<session>.json.
@@ -500,12 +530,14 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 			continue // gate off ⇒ backend NOT invoked (AC-AMM-014)
 		}
 		eg.Go(func() error {
-			// The secondary backend receives (target, focus) ONLY — claude_verdict
-			// is structurally excluded by the backendCaller signature. Any error
-			// inside defaultBackendCaller is already fail-opened to a
+			// The secondary backend receives (target, focus, projectRoot) — no
+			// verdict of any kind. claude_verdict stays structurally excluded by
+			// the backendCaller signature; projectRoot names a directory and
+			// carries no analysis, so the independence guarantee is unchanged.
+			// Any error inside defaultBackendCaller is already fail-opened to a
 			// VerdictInconclusive ReviewOutput, so this never returns a hard error.
 			notifyMCPProgress(gctx, token, 0.3, s.name+" 백엔드 리뷰 실행 중...")
-			out := backendCall(gctx, s.name, target, focus)
+			out := backendCall(gctx, s.name, target, focus, cfg.ProjectRoot)
 			notifyMCPProgress(gctx, token, 0.7, s.name+" 백엔드 응답 수신")
 			mu.Lock()
 			parts = append(parts, secondaryResult{backend: s.name, gate: s.gate, out: out})
