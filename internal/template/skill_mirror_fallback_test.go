@@ -136,8 +136,13 @@ func TestSkillMirror_LinkIsRelativeAndResolves(t *testing.T) {
 		if err != nil {
 			t.Fatalf("readlink %q: %v", mirrorPath, err)
 		}
+		// The body is written with forward slashes, but Readlink returns the
+		// spelling the OS stored: Windows normalizes a relative reparse-point
+		// target to backslashes. The criterion is that the body is RELATIVE, so
+		// compare separator-independently rather than assert one platform's
+		// spelling of the same relative path.
 		want := "../../.claude/skills/" + skill
-		if target != want {
+		if got := filepath.ToSlash(target); got != want {
 			t.Errorf("link body for %q = %q, want %q (an absolute path breaks when the project is moved)", skill, target, want)
 		}
 		resolved, err := filepath.EvalSymlinks(mirrorPath)
@@ -284,7 +289,9 @@ func TestSkillMirror_PreoccupiedTargets(t *testing.T) {
 	if err != nil {
 		t.Fatalf("readlink alpha: %v", err)
 	}
-	if alphaTarget != "../../.claude/skills/moai-alpha" {
+	// filepath.ToSlash for the same reason as AC-CSC-004 above: Windows returns
+	// the relative body with backslashes.
+	if filepath.ToSlash(alphaTarget) != "../../.claude/skills/moai-alpha" {
 		t.Errorf("alpha link body changed: %q", alphaTarget)
 	}
 
@@ -293,7 +300,7 @@ func TestSkillMirror_PreoccupiedTargets(t *testing.T) {
 	if err != nil {
 		t.Fatalf("readlink beta: %v", err)
 	}
-	if betaTarget != "../../.claude/skills/moai-beta" {
+	if filepath.ToSlash(betaTarget) != "../../.claude/skills/moai-beta" {
 		t.Errorf("stale beta link was not replaced: %q", betaTarget)
 	}
 

@@ -236,9 +236,8 @@ func TestCodexAudit_RejectsAnUnusableProjectRoot(t *testing.T) {
 	if !res.IsError {
 		t.Error("result is not an error; an unusable project_root must be rejected")
 	}
-	b, _ := json.Marshal(res)
-	if !strings.Contains(string(b), missing) {
-		t.Errorf("error does not name the offending path %q; got=%s", missing, b)
+	if got := resultTextOf(res); !strings.Contains(got, quotedPath(missing)) {
+		t.Errorf("error does not name the offending path %q; got=%s", missing, got)
 	}
 	if n := cap.count(); n != 0 {
 		t.Errorf("codex was invoked %d times despite a rejected project_root; want 0", n)
@@ -305,9 +304,8 @@ func TestAuditMulti_RejectsAnUnusableProjectRoot(t *testing.T) {
 	if !res.IsError {
 		t.Error("result is not an error; an unusable project_root must be rejected")
 	}
-	b, _ := json.Marshal(res)
-	if !strings.Contains(string(b), missing) {
-		t.Errorf("error does not name the offending path %q; got=%s", missing, b)
+	if got := resultTextOf(res); !strings.Contains(got, quotedPath(missing)) {
+		t.Errorf("error does not name the offending path %q; got=%s", missing, got)
 	}
 	if n := cap.count(); n != 0 {
 		t.Errorf("a backend ran %d times despite a rejected project_root; want 0", n)

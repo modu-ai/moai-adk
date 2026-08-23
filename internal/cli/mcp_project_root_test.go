@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -148,7 +149,7 @@ func TestResolveToolProjectRoot_RejectsAnUnusableRoot(t *testing.T) {
 			t.Errorf("%s: expected rejection, got root=%q", name, got)
 			continue
 		}
-		if !strings.Contains(err.Error(), path) {
+		if !strings.Contains(err.Error(), quotedPath(path)) {
 			t.Errorf("%s: error does not name the offending path %q: %v", name, path, err)
 		}
 		if got != "" {
@@ -162,8 +163,12 @@ func TestResolveToolProjectRoot_RejectsAnUnusableRoot(t *testing.T) {
 // where a caller actually observes it.
 func TestSpecAudit_RejectedProjectRootDoesNotAuditTheDefault(t *testing.T) {
 	missing := filepath.Join(t.TempDir(), "absent")
-	got := callSpecAuditJSON(t, map[string]any{"project_root": missing})
-	if !strings.Contains(got, missing) {
+	res, err := handleSpecAudit(context.Background(), newToolRequest(map[string]any{"project_root": missing}))
+	if err != nil {
+		t.Fatalf("handleSpecAudit returned a hard error: %v", err)
+	}
+	got := resultTextOf(res)
+	if !strings.Contains(got, quotedPath(missing)) {
 		t.Errorf("handler did not surface the offending path; got=%s", got)
 	}
 	if strings.Contains(got, "total_specs") {
@@ -215,6 +220,32 @@ func TestSpecDrift_ProjectRootRedirectsTheCatalogue(t *testing.T) {
 }
 
 // --- helpers -------------------------------------------------------------
+
+// resultTextOf renders a tool result's TEXT content as one string.
+//
+// An assertion about a rejected path must match the message a caller reads, not
+// its JSON transport encoding. The two differ on Windows: validateProjectRoot
+// formats the offending path with %q, which escapes each separator once, and
+// json.Marshal escapes them again — so a needle built from the raw path is
+// absent from both spellings even when the message names the path correctly.
+func resultTextOf(res *mcp.CallToolResult) string {
+	if res == nil {
+		return ""
+	}
+	var sb strings.Builder
+	for _, c := range res.Content {
+		if tc, ok := c.(mcp.TextContent); ok {
+			sb.WriteString(tc.Text)
+		}
+	}
+	return sb.String()
+}
+
+// quotedPath is the needle a %q-formatted message actually contains on every
+// platform: on POSIX the path in quotes, on Windows the same with each
+// backslash escaped. Comparing against the raw path is a POSIX-only assumption
+// that happens to hold because POSIX paths carry nothing %q escapes.
+func quotedPath(p string) string { return strconv.Quote(p) }
 
 // addProbeSpec writes one more minimal SPEC into an existing probe tree.
 func addProbeSpec(t *testing.T, root, specID string) {
@@ -311,7 +342,7 @@ func TestValidateProjectRoot_RejectsBrokenSymlink(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected rejection of a broken symlink, got root=%q", got)
 	}
-	if !strings.Contains(err.Error(), link) {
+	if !strings.Contains(err.Error(), quotedPath(link)) {
 		t.Errorf("error does not name the supplied path %q: %v", link, err)
 	}
 	if got != "" {
