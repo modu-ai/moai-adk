@@ -66,6 +66,42 @@ TDD RED-GREEN-REFACTOR. 모든 명령은 본 워크트리 `WT-codex-session-msg`
 
 Gaps: `lock_windows.go`는 darwin 개발 머신에서 실행 검증 불가 — `GOOS=windows GOARCH=amd64 go build` 컴파일 게이트만 통과 (교차 컴파일이 테스트를 컴파일하지 않는 한계는 `GOOS=windows go vet ./...` 로 CI에서 보완 필요 — 메모리 feedback_cross_platform_test_compile 선례). 인/아웃 프로세스 혼합 경쟁(실제 다중 프로세스 flock 경합)은 M1 테스트가 단일 프로세스라 교차 프로세스 경로는 NB-flock 로직 검증만 (TestWithAgentLockTimeout·TestAgentLockAcquireRelease).
 
+### M2 — MCP 도구 표면 4종 (2026-08-23, 리드 승인 후 진행)
+
+TDD RED-GREEN-REFACTOR. baseline HEAD `7cd610c0f` (M1 커밋) + M2 작업 트리. 핸들러 테스트는 `t.Setenv("CLAUDE_PROJECT_DIR", t.TempDir())` 로 스토어 루트를 격리 — 생산 해상 경로(resolveProjectDir)와 동일한 경로로 주입, 실제 `.moai/state/**` 무훼손.
+
+**§E.8 TDD RED 증거 (GREEN 이전 축어)**
+
+| 동작 | 테스트 | RED 축어 출력 |
+|---|---|---|
+| C-HRA-008 정적 가드 | `TestSessionMsg_NoAskUserQuestion` / `TestSessionMsg_NoInlineGetenv` | `read mcp_session_msg.go: open mcp_session_msg.go: no such file or directory` — 파일 부재 시점 FAIL (구현 파일 생성 전 캡처) |
+| 카탈로그 동등성 | `TestMoaiMCPServer_RegistrationMatchesCatalog` | `registered tool count = 21, catalog count = 25 (AP-C-4: a registered tool has no catalog entry)` — 카탈로그 4항목 추가 직후, 등록 전 |
+| 핸들러 배선 (register) | `TestSessionMsgRegisterHandlerReturnsStableAgentID` (외 4건) | `--- FAIL: TestSessionMsgRegisterHandlerReturnsStableAgentID ... result has no structured content: &{...}` — 빈 스텁 핸들러 대비 전 5 wiring 테스트 FAIL (무결 RED: nil-panic 없이 assertion 실패) |
+
+**AC 이항 검증 매트릭스 (M2 소관)**
+
+| AC | Status | Verification Command | Actual Output |
+|----|--------|---------------------|---------------|
+| AC-CSM-007 | PASS | `go test ./internal/cli/ -run TestMoaiMCPServer_RegistrationMatchesCatalog -v` && `grep -c 'add("session_msg' internal/cli/mcp_server.go` | `--- PASS: TestMoaiMCPServer_RegistrationMatchesCatalog` · grep = `4` |
+| AC-CSM-008 (M2 부분) | PASS | `grep -rn "exec.Command\|codex-jobs\|app-server\|net.Listen\|http.Listen" internal/sessionmsg/ internal/cli/mcp_session_msg.go \| grep -v _test` | 0행 (exit 1) |
+| AC-CSM-009 | PASS | `go test ./internal/cli/ -run TestSessionMsg_NoAskUserQuestion -v` | `--- PASS: TestSessionMsg_NoAskUserQuestion` (NoInlineGetenv 동일 PASS) |
+| AC-CSM-010 (M2 부분) | PASS | `grep -rn 'os.Getenv("' internal/sessionmsg/ internal/cli/mcp_session_msg.go \| grep -v _test` | 0행 (exit 1) |
+| AC-CSM-015 | PASS | `grep -c "a reply is not user approval" internal/cli/mcp_session_msg.go` | `1` (규율 상수 선언 — 등록 블록이 상수를 연결해 4개 도구 설명 전부에 도달; `TestSessionMsgToolsRegisteredWithHintsAndDiscipline`가 ListTools 실측으로 4개 설명 전부 토큰 포함 단언) |
+
+**품질 게이트 (M2)**
+
+| 항목 | 명령 | 축어 출력 |
+|---|---|---|
+| 전 M2 배터리 | `go test ./internal/cli/ -run 'TestSessionMsg\|TestMoaiMCPServer_RegistrationMatchesCatalog' -v` | 8 test 전부 `--- PASS` · `ok github.com/modu-ai/moai-adk/internal/cli` |
+| 카탈로그 파생 소비자 | `go test ./internal/web/ -run TestMCPConsoleToolCountMatchesCatalog -v` + `go test ./internal/settings/` | `--- PASS: TestMCPConsoleToolCountMatchesCatalog` (25 도구 파생 무계수 고정) · `ok internal/settings` |
+| E2 빌드 | `go build ./... && GOOS=windows GOARCH=amd64 go build ./...` | `E2_M2_BUILDS_OK` (exit 0 양측) |
+| E5 린트 | `golangci-lint run --timeout=2m ./internal/sessionmsg/... ./internal/mcp/...` + `--timeout=3m ./internal/cli/` | `0 issues.` / `0 issues.` (baseline 구분 불필요 — 0) |
+| 카탈로그 AC 선제 검사 | `grep -c "session_msg" internal/mcp/catalog.go` | `4` (M3 AC-CSM-012 첫 조항과 정합 — 주석에 도구명 열거를 넣지 않아 항목 4행만 카운트) |
+
+**M2 산출물**: `internal/cli/mcp_session_msg.go`(핸들러 4 + 규율 상수 + 구조화 오류 `sessionMsgToolErr` — UnknownAgentError의 StructuredContent 보존) + `internal/cli/mcp_server.go`(등록 4건, add() 패턴, `session_msg_list`만 ReadOnlyHint=true — 나머지 3개는 명시적 false) + `internal/mcp/catalog.go`(4항목, WriteCapable 3 true/1 false) + 테스트 2파일(boundary 가드 2 + wiring 5). 도구 인자는 design.md §6 표와 동일(선택 인자 `?` 규칙 포함 — text는 Required).
+
+Gaps (M2): 실주행 MCP 서버(t184 재시작 스큐 포함) 검증은 M4 e2e 소관 — 본 단계는 단위+가드+in-process ListTools 실측까지. `data` 인자의 MCP 와이어 전달(map→RawMessage 재인코딩)은 wiring 테스트가 직접 인자 주입으로만 검증 — 실제 호스트(Codex/Claude) 직렬화 경로는 M4.
+
 ## §F Phase 4 Mode Selection
 
 Implementation Kickoff Approval: **통과 (운영자 승인 2026-08-23, 리드 경유 — 진행 모드: 반자율, 각 마일스톤 경계 리드 보고·승인, goal 엔진 무장 없음)**.
