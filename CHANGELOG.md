@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Summary
+
+The backlog queue can be switched off, and the honest boundary of "off" is narrower than the phrase suggests.
+
+`workflow.todo.enabled` defaults to on, and the shipped config carries no such block — absence means on, deliberately, so no existing project changes behaviour and nothing needs migrating. Setting it to `false` stops three things: the backlog summary printed at session start, the TODO segment on the statusline, and the skill routing that sends phrasing like "add this to the backlog" to the todo workflow without the feature being named.
+
+It does not remove the feature. `/moai todo` still works when invoked by name, the `moai todo` command stays registered, and both the always-loaded kanban rule and the skill listing still mention todo — so an operator who turns this off will keep seeing `/moai todo` in the skill list. That is the intended boundary, not an oversight: rules load by path and skill listings by metadata, and neither is gated by a config value. A queue that disappeared from the guidance while its command and its queue file stayed behind would be harder to diagnose than one that stays visible.
+
+### Added
+
+- `workflow.todo.enabled` in `workflow.yaml`. Set it to `false` to suppress the three surfaces above; absent or `true` behaves exactly as before, and a value that does not parse as a boolean reads as on.
+- `moai init` asks about it in the interactive wizard, under Quality & Workflow, defaulting to yes, in all four wizard languages. A non-interactive run is unaffected — the question is never asked, and nothing is written.
+- The web settings console exposes the same toggle.
+
 ## [3.1.2] - 2026-08-21
 
 ### Summary

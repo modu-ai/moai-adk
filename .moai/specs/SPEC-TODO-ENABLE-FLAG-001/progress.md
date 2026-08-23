@@ -237,4 +237,50 @@ m1_to_mN_commit_strategy: 3 commits (M1-M2 / M3 / M4-M6), 각 커밋 빌드 통�
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-23
+sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash; the lead backfills
+sync_status: complete-with-carried-gap
+b12_self_test_a: pass    # grep -c 'SPEC-TODO-ENABLE-FLAG-001' CHANGELOG.md → 0 (no prior entry, emission proceeds)
+b12_self_test_b: pass    # 11 distinct AC ids in acceptance.md; §E.2 M7 matrix carries 11 rows
+b12_self_test_c: pass    # no file paths claimed in the CHANGELOG entry — it names config keys and surfaces only
+changelog_entry_position: "[Unreleased]"   # created this section; it was empty in this tree
+frontmatter_status_transitions:
+  spec_md: in-progress → completed (updated: 2026-08-22 → 2026-08-23)
+  plan_md: n/a         # no YAML frontmatter — markdown-header convention
+  acceptance_md: n/a   # no YAML frontmatter
+  progress_md: n/a     # no YAML frontmatter
+canary_compliance_check: n/a   # this SPEC defines no forward-looking policy that its own sync tests
+```
+
+### Carried-forward gap — AC-T-011 remains partial
+
+`AC-T-011` closed **partial** in run-phase and closes partial here. The sibling
+`SPEC-FEEDBACK-AUTO-SUBMIT-001` has not landed, so the two-questions-coexisting
+tree does not exist and the shared-file conflict re-run cannot be observed. This
+is the correct state under §E.1 resolution rule 1: this SPEC landed first and is
+therefore not the conflict-resolution owner. The second SPEC to land re-runs
+AC-T-011 in full.
+
+### Sync-phase verification observed
+
+```
+git merge-base --is-ancestor 73af5b73c HEAD; echo $?   → 0
+grep -c 'SPEC-TODO-ENABLE-FLAG-001' CHANGELOG.md        → 0 (before emission)
+frontmatter completed-status grep over the 4 artifacts        → 1 hit (spec.md only)
+go build ./...                                          → exit 0
+```
+
+Not observed (gaps): the test suite was not re-run this phase — there are no code
+changes in the sync commit, and `go test ./internal/hook/...` is specifically
+withheld because it rewrites perf fixtures belonging to another SPEC. The
+run-phase evidence in §E.2 stands as the functional attribution; nothing in this
+commit could invalidate it.
+
+### Scope of what shipped, restated
+
+The flag suppresses three runtime surfaces (SessionStart backlog summary,
+statusline TODO segment, inferred skill routing). The always-loaded kanban rule
+and the skill-listing metadata are out of scope and still load. "todo guidance is
+fully off" is false for this change, and the CHANGELOG entry says so in the body
+rather than implying otherwise.

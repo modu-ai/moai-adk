@@ -2,9 +2,9 @@
 id: SPEC-TODO-ENABLE-FLAG-001
 title: "todo 기본 사용 설정 — workflow.todo.enabled 와 런타임 안내 표면 억제"
 version: "0.3.0"
-status: in-progress
+status: completed
 created: 2026-08-22
-updated: 2026-08-22
+updated: 2026-08-23
 author: manager-spec
 priority: High
 phase: "v3.1.3"
