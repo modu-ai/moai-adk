@@ -243,7 +243,7 @@ func newConstitutionValidateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "validate",
 		Short: "Validate zone registry against source files for drift and invariant violations",
-		Long:  "Checks that every registry entry's clause exists in the source file, validates zone_class enum, canary_gate invariants, and reports drift. Exit codes: 0=ok, 1=drift/errors, 2=fatal (missing source file).",
+		Long:  "Checks that every registry entry's clause exists in the source file, validates zone_class enum, canary_gate invariants, and reports drift. Entries whose clause begins with a [SUPERSEDED …] retirement marker are counted and skipped, so a clause can be retired without deleting its audit record; --strict checks them verbatim like any other entry. Exit codes: 0=ok, 1=drift/errors, 2=fatal (missing source file).",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			cwd, err := os.Getwd()
 			if err != nil {
@@ -257,7 +257,7 @@ func newConstitutionValidateCmd() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().BoolVar(&strictFlag, "strict", false, "Strict mode (enforces all checks)")
+	cmd.Flags().BoolVar(&strictFlag, "strict", false, "Strict mode (enforces all checks, including on [SUPERSEDED …] retired entries)")
 	cmd.Flags().BoolVar(&failOnWarningFlag, "fail-on-warning", false, "Treat warnings as errors (implies --strict)")
 	cmd.Flags().StringVar(&formatFlag, "format", "text", "Output format (text|json)")
 
@@ -339,6 +339,7 @@ func renderValidateJSON(w io.Writer, result constitution.ValidationResult) error
 		DriftCount        int         `json:"drift_count"`
 		MissingCount      int         `json:"missing_count"`
 		UnregisteredCount int         `json:"unregistered_count"`
+		RetiredCount      int         `json:"retired_count"`
 		Entries           []jsonEntry `json:"entries"`
 		Warnings          []string    `json:"warnings,omitempty"`
 		Skipped           bool        `json:"skipped,omitempty"`
@@ -360,6 +361,7 @@ func renderValidateJSON(w io.Writer, result constitution.ValidationResult) error
 		DriftCount:        result.DriftCount,
 		MissingCount:      result.MissingCount,
 		UnregisteredCount: result.UnregisteredCount,
+		RetiredCount:      result.RetiredCount,
 		Entries:           entries,
 		Warnings:          result.Warnings,
 		Skipped:           result.Skipped,
@@ -382,6 +384,7 @@ func renderValidateText(w io.Writer, result constitution.ValidationResult) {
 
 	if result.Status == constitution.ValidateStatusOK {
 		_, _ = fmt.Fprintf(w, "constitution validate: OK — no drift or violations detected (%d entries checked)\n", 0)
+		renderRetiredNote(w, result)
 		return
 	}
 
@@ -392,6 +395,17 @@ func renderValidateText(w io.Writer, result constitution.ValidationResult) {
 			_, _ = fmt.Fprintf(w, "    detail: %s\n", e.Detail)
 		}
 	}
+	renderRetiredNote(w, result)
+}
+
+// renderRetiredNote reports entries skipped for carrying the [SUPERSEDED …]
+// retirement marker, so a retired clause stays visible instead of disappearing
+// from the report along with its check.
+func renderRetiredNote(w io.Writer, result constitution.ValidationResult) {
+	if result.RetiredCount == 0 {
+		return
+	}
+	_, _ = fmt.Fprintf(w, "\n  %d retired entry/entries skipped ([SUPERSEDED …] marker); re-check them with --strict\n", result.RetiredCount)
 }
 
 // renderConstitutionTable outputs entries in table format.
