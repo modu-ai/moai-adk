@@ -19,6 +19,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/cli/update/deploy"
 	"github.com/modu-ai/moai-adk/internal/cli/wizard"
+	"github.com/modu-ai/moai-adk/internal/codexwiring"
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/core/project"
 	"github.com/modu-ai/moai-adk/internal/foundation"
@@ -123,6 +124,52 @@ func init() {
 	// names all 3 tiers so the selector OFFERS them (does not pre-pick
 	// fully-autonomous).
 	initCmd.Flags().String("autonomy-tier", "", "Autonomy tier: semi-auto, automatic, or fully-autonomous (default: semi-auto)")
+
+	// SPEC-CODEX-WIRING-001 (REQ-CW-001): the agent-harness selector. Closed
+	// set {claude, codex, both} validated fail-loud in validateInitFlags;
+	// help names all three values. Default claude = flag-absent behavior
+	// byte-identical to today (AC-CW-004).
+	initCmd.Flags().String("agent", "", "Agent harness to wire: claude, codex, or both (default: claude; codex skips .mcp.json provisioning and wires the .codex/ hook layer + MCP config)")
+}
+
+// agentWiring is the SPEC-CODEX-WIRING-001 harness selection. The D3
+// semantics (claude = today, codex = skip .mcp.json + wire Codex, both = wire
+// both sides; flag beats the wizard answer) are resolved in ONE place —
+// resolveAgentWiring — so the decision stays a one-line reversible delta.
+type agentWiring string
+
+const (
+	agentWiringClaude agentWiring = "claude"
+	agentWiringCodex  agentWiring = "codex"
+	agentWiringBoth   agentWiring = "both"
+)
+
+// resolveAgentWiring resolves the --agent selection, defaulting to claude.
+// An empty or unrecognized value falls back to claude rather than erroring
+// here — invalid values are rejected earlier, fail-loud, by
+// validateInitFlags.
+func resolveAgentWiring(cmd *cobra.Command) agentWiring {
+	switch agentWiring(getStringFlag(cmd, "agent")) {
+	case agentWiringCodex, agentWiringBoth:
+		return agentWiring(getStringFlag(cmd, "agent"))
+	default:
+		return agentWiringClaude
+	}
+}
+
+// wireCodexUnlessClaude wires the Codex side (.codex/hooks.json +
+// .codex/config.toml) for --agent codex|both, adjacent to the .mcp.json
+// provisioning call in the runInit tail. Best-effort (spec §F): a wiring
+// failure — including the REQ-CW-003 validation refusal, whose hard part
+// (no violating bytes on disk) is already guaranteed by the codexwiring
+// package — warns and init continues.
+func wireCodexUnlessClaude(cmd *cobra.Command, projectRoot string) {
+	if resolveAgentWiring(cmd) == agentWiringClaude {
+		return
+	}
+	if _, err := codexwiring.Wire(projectRoot, cmd.OutOrStdout(), cmd.ErrOrStderr()); err != nil {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "warning: Codex wiring failed: %v\n", err)
+	}
 }
 
 // getStringFlag retrieves a string flag value from the command.
@@ -340,6 +387,17 @@ func validateInitFlags(cmd *cobra.Command, _ []string) error {
 	if autonomyTier != "" {
 		if _, err := config.ValidateAutonomyTierSelection(autonomyTier); err != nil {
 			return fmt.Errorf("invalid --autonomy-tier value: %w", err)
+		}
+	}
+
+	// SPEC-CODEX-WIRING-001 (REQ-CW-001): validate the --agent closed set
+	// fail-loud, naming the valid values (autonomy-tier closed-set pattern).
+	agent := getStringFlag(cmd, "agent")
+	if agent != "" {
+		switch agentWiring(agent) {
+		case agentWiringClaude, agentWiringCodex, agentWiringBoth:
+		default:
+			return fmt.Errorf("invalid --agent value %q: must be one of: claude, codex, both", agent)
 		}
 	}
 
@@ -847,7 +905,24 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// SPEC-MCP-DEFAULT-ON-001 (default-on, REQ-A-3): turn the wizard's
 	// mcp_provision answer into the single neutral .mcp.json entry. Default is
 	// provision (true); an explicit decline is honored silently.
-	provisionMCPEntryUnlessDeclined(cmd.OutOrStdout(), cmd.ErrOrStderr(), opts.ProjectRoot, !opts.MCPProvision)
+	// SPEC-CODEX-WIRING-001 D3 stacks on top: --agent codex treats the
+	// provisioning as declined (the user declared their harness is Codex —
+	// the flag beats the wizard answer), --agent both forces it on.
+	mcpDeclined := !opts.MCPProvision
+	switch resolveAgentWiring(cmd) {
+	case agentWiringCodex:
+		mcpDeclined = true
+	case agentWiringBoth:
+		mcpDeclined = false
+	}
+	provisionMCPEntryUnlessDeclined(cmd.OutOrStdout(), cmd.ErrOrStderr(), opts.ProjectRoot, mcpDeclined)
+
+	// SPEC-CODEX-WIRING-001 (REQ-CW-002/004/008/013): wire the Codex side for
+	// --agent codex|both — hooks.json (EventTable-derived, whitelist-gated),
+	// config.toml (mcp_servers.moai + tui.status_line), trust sidecar, and
+	// the Codex trust guidance. Adjacent to the .mcp.json provisioning call
+	// so both harness sides of the init tail read as one unit.
+	wireCodexUnlessClaude(cmd, opts.ProjectRoot)
 
 	// Deferred self-update notice (REQ-TUX2-002): non-blocking stderr notice
 	// with the `moai update` hint; a failed or in-flight check never affects

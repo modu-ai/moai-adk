@@ -557,6 +557,12 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		_, _ = fmt.Fprintln(out, tui.CheckLine("warn", "Evolution dir", "scaffold failed", err.Error(), &th))
 	}
 
+	// SPEC-CODEX-WIRING-001 (REQ-CW-009): refresh the Codex wiring in projects
+	// that already carry it — file existence is the standing opt-in, so a
+	// claude-only project gets nothing created. A content-changing refresh
+	// prints the re-trust guidance (REQ-CW-008) inside the helper.
+	refreshCodexWiringBestEffort(out, cmd.ErrOrStderr())
+
 	// Sync profile preferences to project config (after template deployment)
 	profileName := profile.GetCurrentName()
 	prefs, err := profile.ReadPreferences(profileName)
