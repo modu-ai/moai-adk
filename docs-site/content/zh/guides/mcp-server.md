@@ -95,7 +95,7 @@ flowchart TD
 
 ## `project_root` 输入——由调用方指名自己的树
 
-五个工具接受可选的字符串 `project_root`：`spec_progress`、`spec_audit`、`spec_drift`、`codex_audit`、`audit_multi`。它指明这次调用应当作用的树，要传的值就是调用方自己的 `git rev-parse --show-toplevel`。
+六个工具接受可选的字符串 `project_root`：`spec_progress`、`spec_audit`、`spec_drift`、`codex_audit`、`glm_audit`、`audit_multi`。它指明这次调用应当作用的树，要传的值就是调用方自己的 `git rev-parse --show-toplevel`。
 
 在 worktree 里工作的智能体必须传它。这不是图方便的功能。服务器没有办法自行推出答案：它是一个长寿的子进程，工作目录跟不上 worktree 的切换，而它退而依赖的环境变量指向的是**项目**根目录——也就是 primary 检出——即便会话正在 worktree 中工作也是如此。在 worktree 里省掉它，调用就会作用到 primary 检出上，于是只存在于卡片分支上的 SPEC 不会进入审计者读取的目录。它也不会被报告为缺失。它只是不存在。
 
