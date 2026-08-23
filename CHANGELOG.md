@@ -166,6 +166,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reasoning directive z.ai prefixes the response with thinking content blocks whose payload lives
   in `thinking`, not `text` — the blind `Content[0]` read failed open to `inconclusive` while a
   complete review sat in the next block.
+- A Kanban or Factory **lead session now appears in the session list under its own name** rather than an unrelated SPEC heading ([#1596](https://github.com/modu-ai/moai-adk/issues/1596)). A session's name and its title are two separate registrations: `--name` (already injected) made the lead addressable, which is why messaging and delegation always worked, but nothing ever set a title — so the `UserPromptSubmit` title policy filled the slot from the most recently modified `spec.md`, and a lead was listed as `SPEC-…: <heading>`. The launcher now publishes the lead's resolved name — the operator's own when they supplied one, the bare or bumped role otherwise — and the hook titles the session with it, above the SPEC branch and below the first-wins guard, so a later `/rename` still wins. The title registers on the first prompt, not at launch, and the bootstrap notice says so in all four locales. Companion and lane sessions are unchanged.
 
 ## [3.1.3] - 2026-08-24
 

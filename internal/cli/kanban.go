@@ -648,13 +648,38 @@ func leadNameArgs(args []string) []string {
 // The bumped value must reach the backend argv: the session name is the address
 // the operator and the peers dispatch to, so a name resolved but not injected
 // leaves everyone addressing a session that answers to something else.
-func appendLeadName(args []string, root string, notes io.Writer) []string {
+func appendLeadName(args []string, root string, notes io.Writer) ([]string, string) {
 	nameArgs := leadNameArgs(args)
 	if len(nameArgs) == 0 {
-		return args
+		// The operator named the session themselves; that name is already in
+		// argv and is the one peers address. Report it so the title registered
+		// downstream is the name the session actually answers to, rather than
+		// the role moai would have chosen.
+		name, _ := parseNamedLabel(args, func(string) bool { return true })
+		return args, name
 	}
 	nameArgs[1] = resolveLeadName(root, nameArgs[1], notes)
-	return append(args, nameArgs...)
+	return append(args, nameArgs...), nameArgs[1]
+}
+
+// exportLeadSessionName publishes the lead's resolved session name to the child
+// session's environment and returns the restore func its callers defer.
+//
+// The name and the TITLE are two separate registrations in Claude Code: `--name`
+// makes the session addressable, and a title has to be set on its own or a
+// generated one takes the slot (issue #1596). Only the launcher knows the
+// resolved name and only a hook can set a title, so the value crosses that gap
+// through the environment the child already inherits.
+//
+// An empty name is a no-op that still returns a usable restore func, so a caller
+// can defer the result unconditionally.
+func exportLeadSessionName(name string) func() {
+	if name == "" {
+		return func() {}
+	}
+	restore := captureEnvState(config.EnvMoaiKanbanLeadName)
+	_ = os.Setenv(config.EnvMoaiKanbanLeadName, name)
+	return restore
 }
 
 // rejectKanbanOnCG returns the sentinel-bearing error when a kanban token

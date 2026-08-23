@@ -222,7 +222,9 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		leadLabel, _ := parseLeadLabel(filteredArgs)
 		defer enterFactoryLeadMode(entry.FactoryWorkers, leadLabel)()
 		defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
-		filteredArgs = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
+		var leadName string
+		filteredArgs, leadName = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
+		defer exportLeadSessionName(leadName)()
 		settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
@@ -249,7 +251,9 @@ func runGLM(cmd *cobra.Command, args []string) error {
 			defer enterKanbanMode(entry.Spec, leadLabel)()
 			defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
 			// See cc.go: glm mirrors the lead branch exactly.
-			filteredArgs = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
+			var leadName string
+			filteredArgs, leadName = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
+			defer exportLeadSessionName(leadName)()
 			settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 			if len(settingsFlag) > 0 {
 				filteredArgs = append(filteredArgs, settingsFlag...)
