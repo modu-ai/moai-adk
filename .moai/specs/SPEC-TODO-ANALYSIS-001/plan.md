@@ -101,7 +101,7 @@
 
 - 새 파일 `internal/cli/todo_relate.go`: `relate` / `unrelate`. `relate` 는 두 id 존재 확인 + 소견 append 만, `unrelate` 는 지목된 소견 1건 remove 만; 카드 필드 쓰기 경로가 **코드에 존재하지 않는다** (AC-TA-004 가 두 동사를 한 픽스처에서 양방향으로 잡고, AC-TA-005 가 네 관계 전부를 잡는다).
 - `internal/cli/todo_why.go` 또는 기존 파일 확장: `why <n>`.
-- `runTodoList` 에 소견 줄 렌더 + `unreviewed` 표시(쌍은 **무순서** 비교 — REQ-TA-013) + `--json` 에 `findings` 포함.
+- `runTodoList` 에 소견 줄 렌더 + `machine-only` 표시(쌍은 **무순서** 비교 — REQ-TA-013) + `--json` 에 `findings` 포함.
 - `internal/cli/todo_test.go` 의 기존 `todoPromptGuard` 스캔 대상을 `todo.go` 하나에서 **`internal/cli/todo*.go` 비테스트 파일 전부**로 넓힌다(음성 대조는 그대로). AC-TA-013 이 요구하는 것은 가드의 신설이 아니라 범위 확장이다.
 
 산출: AC-TA-004, AC-TA-005, AC-TA-007, AC-TA-009 ~ AC-TA-011, AC-TA-013.

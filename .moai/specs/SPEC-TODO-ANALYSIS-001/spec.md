@@ -98,9 +98,13 @@ tier: M
 | 계층 | 주체 | 능력 | 사람이 CLI를 직접 쓸 때 |
 |---|---|---|---|
 | L1 기계 | Go CLI, 락 안 | 정규화 텍스트 비교뿐. 결정적, 모델 없음 | **작동한다** |
-| L2 의미 | `manager-lead` 가 `relate` 로 기록 | 네 관계 판정 | **작동하지 않는다** |
+| L2 의미 | `relate` 를 호출하는 누구나 — 관행상 `manager-lead` (REQ-TA-008 은 행위자를 제약하지 않는다) | 네 관계 판정 | **작동하지 않는다** |
 
-L2가 없는 호출에서도 큐가 "분석 완료"로 보이면 안 된다. 그래서 기계 소견은 에이전트 검토 전까지 `unreviewed` 로 표시된다(REQ-TA-013) — 분석되지 않은 큐가 깨끗한 큐로 위장하지 못하게 하는 것이, L2 부재를 다루는 유일한 정직한 방법이다.
+L2가 없는 호출에서도 큐가 "분석 완료"로 보이면 안 된다. 그래서 같은 쌍에 `source: agent` 소견이 하나도 없는 기계 소견은 `machine-only` 로 표시된다(REQ-TA-013).
+
+**이 표식이 추적하는 것은 검토가 아니라 에이전트 출처 기록의 유무다.** 표식 이름을 그 의미에 맞춘 이유가 이것이다. REQ-TA-008 은 `relate` 에 행위자 제약을 두지 않는다 — `manager-lead` 든 다른 레인이든 스크립트든, `source: agent` 소견을 쓸 수 있는 자는 누구나 표식을 끈다. CLI 는 자기를 누가 호출했는지 강제할 수 없고(§B.1 의 정확 중복 거절이 부딪힌 것과 같은 한계다), 그래서 "검토됐다"를 증명하는 표식은 이 계층에서 만들 수 없다. 만들 수 있는 것은 "기계 소견만 있고 에이전트는 아무것도 기록하지 않았다"는 사실의 표시뿐이며, `machine-only` 는 정확히 그것만 말한다.
+
+그 축소된 형태로도 표식은 제 몫을 한다. 막으려던 실패는 **분석되지 않은 큐가 깨끗한 큐로 위장하는 것**이고, 그 위장은 에이전트가 아무 기록도 남기지 않았을 때 일어난다 — 표식은 바로 그 경우를 잡는다. 잡지 못하는 것은 에이전트가 기록은 남겼으나 그 판단이 부실한 경우이고, 그것은 표식이 아니라 소견 본문을 읽어야 알 수 있다. 표식은 **읽을 것이 있는지**를 말하지, 읽은 것이 옳은지를 말하지 않는다.
 
 ### B.4 네 관계가 각각 무엇을 일으키는가
 
@@ -140,7 +144,7 @@ L2가 없는 호출에서도 큐가 "분석 완료"로 보이면 안 된다. 그
 
 - **REQ-TA-011** (Event-driven) **When** `moai todo list` runs and findings exist, the command **shall** print one indented finding line beneath each card named by a finding, carrying the relation, the counterpart id, the source, and the literal operator command that would act on it.
 - **REQ-TA-012** (Event-driven) **When** `moai todo why <n>` runs, the command **shall** print every finding naming card `<n>`, and **shall** print an explicit no-findings line when none exist; **when** `moai todo list --json` runs, the command **shall** emit the `findings` array alongside `items`.
-- **REQ-TA-013** (State-driven) **While** a card carries a `source: mechanical` finding with no `source: agent` finding naming the same pair — pairs are compared **unordered**, so `{a, b}` and `{b, a}` are the same pair — `moai todo list` **shall** mark that finding `unreviewed`.
+- **REQ-TA-013** (State-driven) **While** a card carries a `source: mechanical` finding with no `source: agent` finding naming the same pair — pairs are compared **unordered**, so `{a, b}` and `{b, a}` are the same pair — `moai todo list` **shall** mark that finding `machine-only`; the mark records the ABSENCE of an agent-sourced finding for the pair, not that any review took place.
 
 ### C.5 독트린 개정
 
@@ -166,7 +170,7 @@ Tier M — 전체 AC 목록과 각 AC를 붉게 만드는 잘못된 구현은 `a
 ### Out of Scope — 의미 기반 중복 탐지의 CLI 구현
 
 - CLI는 임베딩·모델 호출·외부 API를 쓰지 않는다. 기계 계층은 정규화 텍스트 비교로 한정한다.
-- 텍스트가 다른 의미상 중복(`"Fix the auth bug"` vs `"Repair broken login"`)은 L2 에이전트만 판정하며, 에이전트 없는 호출에서는 탐지되지 않는다 — 그 사실은 `unreviewed` 표시로 드러난다.
+- 텍스트가 다른 의미상 중복(`"Fix the auth bug"` vs `"Repair broken login"`)은 L2 에이전트만 판정하며, 에이전트 없는 호출에서는 탐지되지 않는다 — 그 사실은 `machine-only` 표시로 드러난다. 에이전트 없는 호출은 `source: agent` 소견을 만들지 않으므로 표식이 그대로 남는다.
 
 ### Out of Scope — 큐 스키마 재설계
 
