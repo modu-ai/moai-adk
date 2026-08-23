@@ -1,0 +1,332 @@
+---
+id: SPEC-CODEX-WIRING-001
+title: "Codex Dual Harness M4 — wiring generator: moai init --agent claude|codex|both, .codex/hooks.json + config.toml, trust guidance, doctor"
+version: "0.1.0"
+status: draft
+created: 2026-08-23
+updated: 2026-08-23
+author: manager-spec
+priority: P1
+phase: "v3.1.4 target"
+module: internal/cli
+lifecycle: spec-anchored
+era: V3R6
+tier: M
+tags: "codex, dual-harness, wiring, hooks-json, mcp_servers, approval-mode, trust, init-flag"
+depends_on: [SPEC-CODEX-HOOK-ADAPTER-001]
+related_specs: [SPEC-CODEX-DUAL-AGENTS-001, SPEC-CODEX-SKILLS-CANONICAL-001, SPEC-CODEX-SESSION-MSG-001]
+---
+
+# SPEC-CODEX-WIRING-001 — Codex Dual Harness M4 배선 생성기
+
+## HISTORY
+
+| 버전 | 날짜 | 변경 |
+|---|---|---|
+| 0.1.0 | 2026-08-23 | 최초 작성 (plan-phase, card t88 / M4). 구 M4 블로커("프로젝트 hooks.json 미발화") 전제를 운영자 실측 정정(§A.3)으로 폐기하고 재설계 |
+
+## §A. 측정 전제 (Verified baseline)
+
+> 근거 문서: `.moai/reports/t88/codex-support-audit.md` (전수 조사, release/v3.1.3 트리 기준) ·
+> `.moai/reports/t88/moai-desktop-compat-20260823.html` (운영자 검증 정정, 2026-08-23) ·
+> `.moai/reports/t83/precondition-measurement{,-round3}.md` (codex-cli 0.147.0 실측, release/v3.1.3 수록).
+
+### §A.1 현재 트리(origin/main) 상태 — 듀얼 하네스 코드는 전무
+
+본 SPEC의 작성 기준 트리(WT-codex-wiring @ 76b2c4ece = origin/main tip)에는 Codex 듀얼 하네스
+코어가 **하나도 없다** — `internal/codexadapter` · `internal/template/templates/.codex/` ·
+`AGENTS.md` 템플릿 · 스킬 미러 전부가 미병합 release batch PR #1602(release/v3.1.3)에 실려 있다
+(`git ls-tree origin/main internal/ | grep codex` → 0건; `origin/release/v3.1.3` → hit).
+따라서 본 SPEC의 run-phase 베이스는 **PR #1602 병합 후(또는 그 위로의 리베이스)** 여야 한다(§G).
+
+반면 배선 그 자체는 어느 브랜치에도 없다 — 감사 확정(§2.1/§2.4/§2.6): init 플래그 목록
+(`internal/cli/init.go:72-125`)에 `--agent` 부재, `.codex/hooks.json` 생성 코드 경로 0개,
+`mcp_servers.moai` 등록 코드 경로 0개, `internal/codexadapter`는 프로덕션 호출자 0개인 라이브러리.
+
+### §A.2 소비할 어댑터 표면 (M3가 남긴 것, release/v3.1.3 수록)
+
+| 표면 | 제공 | 본 SPEC의 소비 |
+|---|---|---|
+| `EventTable` / `Resolve` | 11 이벤트 표(6개 adapted: PreToolUse·PostToolUse·SessionStart·SessionEnd·Stop·UserPromptSubmit)와 이벤트명→dispatcher 인자 매핑 | 생성기가 어느 이벤트에 어떤 command를 emit할지의 **단일 데이터 원천** |
+| `ValidateConfig` | 측정된 키 화이트리스트 검증(최상위 `{description, hooks}`, 진입 `{matcher, hooks}`, 훅 `{type, command, timeout}`) | 생성기의 **매 쓰기 전 선검증** — 잘못된 키는 Codex에서 파일 전체를 무음 사망시킴(t83 Finding D) |
+| `MapOutput` | `continue:false`→`decision:block`(이유 기본문구 치환), `systemMessage`→UserPromptSubmit `additionalContext` 라우팅, 그 외 패스스루 | 런타임 `--harness codex` 모드의 출력 래핑 |
+| `RecordDiscards` | 전달 불가 메시지의 관측 기록(내용 길이만, `.moai/logs/codex-adapter.jsonl`) | 런타임 모드가 호출 — M3 REQ-3 의무("무음 금지")의 활성화 |
+| `ClassifyStderr` | 이벤트별 stderr 의미(차단 사유 vs 연속 프롬프트) | 런타임 모드의 stderr 패스스루 근거 |
+
+M3 SPEC(§B Out of Scope)은 명시적으로 남겨둔 것이 이 배선이다: "This SPEC ships the constraint
+validator (REQ-5) but does not build the thing that writes a Codex hooks file" — 본 SPEC이 그
+첫 프로덕션 호출자가 된다.
+
+### §A.3 구 블로커 폐기 — 운영자 실측 정정 (2026-08-23)
+
+t83 실측(codex-cli 0.147.0 셸 CLI)은 "프로젝트 `<proj>/.codex/hooks.json` 미발화, 무음"을
+M4의 선결 블로커로 남겼다(§F Blocker Candidate). **이 전제는 폐기됐다** — 데스크톱 호환
+보고서 "핵심 갱신" 절(운영자 검증, 원문 인용):
+
+> "구 M4 블로커 서술 폐기. 'Codex가 프로젝트 .codex/hooks.json을 발화하지 않는다'는 종전 전제는
+> 낡았다: 현재 공식 문서는 프로젝트 훅을 지원하고 0.149.0-alpha에서 격리 프로젝트 훅이 실제 발화했다.
+> 남은 차단은 Codex가 아니라 MoAI의 훅 생성·배선 부재(M4/t88)다."
+
+측정 조합: Codex 앱 26.818.32112(내장 codex 0.149.0-alpha.4.1) + 셸 CLI 0.147.0 + moai
+v3.1.3-rc.0. 운영 권장 사역(같은 절): "MCP 등록 시 `default_tools_approval_mode = "writes"`
+(쓰기 6종 … 만 승인받기). 프로젝트 config·훅은 신뢰된 프로젝트에서만 로드되며 해시 변동 시 재승인 필요."
+
+### §A.4 t187 정합성 — `writes` 승인 모드는 **capability 기반** (리드 지정 정합성 검증)
+
+질문: `default_tools_approval_mode = "writes"`는 capability 분류(신규 쓰기 도구 자동 포함)인가,
+아니면 도구명 열거인가? **답: capability 기반.** 공식 문서 원문 인용(2026-08-23 fetch, §D URL 목록):
+
+> "The `writes` mode prompts for tools that aren't marked read-only."
+> — Codex MCP 문서 (`learn.chatgpt.com/codex/extend/mcp`)
+
+즉 `writes`는 도구별 **read-only 표식(MCP ReadOnlyHint annotation)** 에 기반하며, 도구명 열거
+메커니즘은 별도의 `enabled_tools`/`disabled_tools` 목록이다. 실측 정합:
+
+- moai MCP 서버는 **모든 도구에 ReadOnlyHint annotation을 명시 선언**한다 — base 트리 21도구
+  (`internal/cli/mcp_server.go` 전 구간 `mcp.WithReadOnlyHintAnnotation(true/false)`), 쓰기 6종
+  (goal_arm·verify_snapshot·codex_task·codex_job_cancel·glm_task·glm_job_cancel)이 false.
+- t187(PR #1606, 미병합)은 4도구를 추가하며 catalog 21→25, WriteCapable 6→9 — 신규 3쓰기 도구
+  (session_msg_register·send·poll)에 annotation false, session_msg_list에 true를 **명시 선언**한다
+  (`origin/WT-codex-session-msg:internal/cli/mcp_server.go` diff에서 확인).
+
+**정합성 입장(본 SPEC이 채택하는 결론)**: 카드의 6도구 열거는 **문서(작성 시점 쓰기 집합의 나열)이지
+구성이 아니다**. config.toml에는 **도구명 열거를 일절 넣지 않는다**. 그 결과 t187의 병합 순서와
+무관하게 정확히 동작한다 — 21도구 트리에서는 6개가 승인 대상, 25도구 트리에서는 9개가 승인 대상.
+`writes`가 정직하게 성립하는 실제 불변식은 **서버 annotation의 정확성**이며, 이를 기계화하는
+가드 테스트가 REQ-CW-011이다. `moai-mcp-tools.md`의 25도구 기술과도 모순 없다 — 능력 분류는
+annotation에 살고 열거형 config에는 살지 않는다.
+
+### §A.5 신뢰(trust) 모델 — 공식 문서 확정 사실
+
+공식 hooks 문서(`learn.chatgpt.com/docs/hooks`, 2026-08-23 fetch) 원문 인용:
+
+- 레이어 병합: "If more than one hook source exists, Codex loads all matching hooks" —
+  전역+프로젝트 레이어는 **병합되어 둘 다 실행**되므로, 생성기는 사용자 훅을 절대 덮어쓰지 않아야 한다.
+- 신뢰: "Before a non-managed command hook can run, Codex requires you to review and trust the
+  exact hook definition." 신뢰는 **훅 정의의 해시**에 기록되고, 변경된 훅은 "marked for review and
+  skipped until trusted" — 즉 `moai update`가 hooks.json을 다시 쓰면 내용 해시가 바뀌어
+  **조용히 실행 정지**한다. `/hooks` 명령으로 "review new or changed hooks, trust hooks" 가능.
+- 프로젝트 레이어: "load only when the project `.codex/` layer is trusted".
+- hooks.json 4개 위치: `~/.codex/hooks.json` · `~/.codex/config.toml`(inline) ·
+  `<repo>/.codex/hooks.json` · `<repo>/.codex/config.toml`. 본 SPEC의 배포 대상은 **프로젝트 레이어**.
+- handler 스키마: `type`(command만 실행)·`command`·`timeout`(초, 기본 600; **SessionEnd는 기본 1,
+  상한 3**) + 공식 문서가 언급하는 부가 키들(statusMessage 등). t83 측정 화이트리스트
+  `{type, command, timeout}`의 부분집합만 emit하면 양쪽 모두 만족한다.
+
+## §B. User Story
+
+> Codex(데스크톱 앱·CLI)에서 moai-adk를 쓰는 사용자로서, `moai init --agent codex` 한 번으로
+> 훅 계층(브랜치 가드·위험 패턴·stop 체인)과 MCP 25도구가 내 프로젝트에 배선되기를 원한다.
+> 수동 `codex mcp add`나 손수 쓴 hooks.json 없이. 그리고 moai가 훅을 다시 썼을 때
+> "왜 갑자기 훅이 안 돌지?"가 아니라 "다시 승인하라는 안내"를 받고 싶다.
+
+## §C. Scope Summary
+
+**In Scope (요약)**
+
+1. `moai init --agent claude|codex|both` 플래그 — 폐쇄집합 검증, 기본 `claude`(플래그 부재 =
+   오늘과 동일한 동작, backward compat).
+2. 신규 패키지 `internal/codexwiring` — `.codex/hooks.json` 생성기(EventTable 유도, 병합 보존,
+   ValidateConfig 선검증, 멱등) + `.codex/config.toml` `[mcp_servers.moai]` 테이블 등록.
+3. 런타임 seam: `moai hook <arg> --harness codex` — dispatcher 출력을 codexadapter로 래핑
+   (MapOutput·RecordDiscards·이벤트 일관성 검증). codexadapter의 **첫 프로덕션 호출자**.
+4. 신뢰 안내 — 생성 시점 stdout 안내 + 내용 변경 재생성 시 `/hooks` 재신뢰 안내 + 신뢰 사이드카.
+5. `moai doctor` "Codex Wiring" 진단 — 존재·ValidateConfig·해시 divergence·PATH 해석·테이블 존재.
+6. annotation 정합성 가드 테스트(WriteCapable ↔ ReadOnlyHint) — t187 정합성의 기계화.
+
+### Out of Scope — 플러그인 패키징 (M6/t90)
+
+- `.codex-plugin/plugin.json` 패키징, 스킬+MCP 번들 — M6/t90 소관, 수요 게이트 상태.
+- M0 반증(`plugin_hooks` removed)으로 재범위 예정인 영역을 본 SPEC이 선행하지 않는다.
+
+### Out of Scope — 에이전트 TOML 재생성 (M5/t89)
+
+- `.codex/agents/moai/*.toml` 11종의 생성·수정·재발행 — agentemit(make agents-emit)과 템플릿
+  순회 배포가 이미 소유. 본 SPEC은 이 파일들을 **건드리지 않는다**(REQ-CW-012). 정합성(존재 확인,
+  산출물과의 무충돌)만 담당.
+
+### Out of Scope — Claude 사이드 변경
+
+- `.claude/` 템플릿·hook 래퍼·settings.json 구조 변경 — 전부 무변경. Claude 사이드에서 유일한
+  변경은 `--agent` 값이 `.mcp.json` provisioning 호출을 게이팅하는 플래그 배관뿐이다(REQ-CW-001).
+- 템플릿 신규 추가 없음 — hooks.json/config.toml은 **코드가 생성하는 사용자 프로젝트 파일**이다
+  (.mcp.json provisioning과 동일한 분류; Template-First 대상 아님). 구현 중 template 변경이
+  생기는 경우에만 run-phase에서 Template-First + `make build` 적용.
+
+### Out of Scope — Codex 내부 신뢰 저장소 판독
+
+- Codex가 신뢰 해시를 어디에 어떤 형태로 저장하는지는 비문서화면이다. doctor는 그 저장소를
+  읽지 않고, **사이드카 대비 divergence**(마지막 생성 내용의 sha256 vs 현재 파일)로 간접 검증한다.
+
+### Out of Scope — 미측정 이벤트·미측정 config 키
+
+- EventTable의 미적응 5이벤트(compact·post-compact·permission-request·subagent-start·
+  subagent-stop)는 emit하지 않는다(M3의 측정 범위 결정 존중).
+- `features.hooks` 등 측정되지 않은 config.toml 키를 능동 주입하지 않는다(§H Risks 참조).
+
+## §D. Requirements (GEARS)
+
+> 표기는 GEARS. `주어진 선택자`는 capability gate(`Where`), `~할 때`는 이벤트(`When`),
+> `~인 동안`은 상태(`While`)이며 수식 어순으로 자유 결합한다.
+
+### REQ-CW-001 — init 플래그와 폐쇄집합
+
+`moai init` 명령은 `--agent` 문자열 플래그를 제공하고, 그 값은 폐쇄집합
+`{claude, codex, both}`로 제한하며, 기본값은 `claude`이다. `moai init`은 집합 외 값을
+플래그 검증 단계에서 0이 아닌 exit code와 유효값을 나열하는 진단으로 fail-loud 거부한다.
+
+**플래그 부재 하에서** `moai init`은 오늘의 동작과 동일하게 수행한다 — 동일한 템플릿 배포,
+동일한 `.mcp.json` 기본 provisioning(`provisionMCPEntryUnlessDeclined` 경로), `.codex/hooks.json`
+및 `.codex/config.toml` 미생성. `--agent claude`는 플래그 부재와 동일하게 동작한다.
+
+**`--agent codex`가 주어진 경우** `moai init`은 Claude 측 `.mcp.json` provisioning을 수행하지
+않는다(사용자가 자신의 하네스가 Codex라고 선언했음을 존중; 플래그가 wizard 답변에 우선).
+**`--agent both`가 주어진 경우** 양쪽 provisioning을 모두 수행한다.
+
+### REQ-CW-002 — hooks.json 생성 (어댑터 유도)
+
+**`--agent codex` 또는 `--agent both`가 주어진 경우** 생성기는 `<project>/.codex/hooks.json`에
+`internal/codexadapter`의 `EventTable` 중 `Adapted`인 행 전부(6 이벤트)를 배선한다 — 이벤트 키는
+Codex 설정 키 문법(PascalCase)으로, 각 handler의 command는 `moai hook <dispatcher-arg> --harness codex`
+형태로, handler의 `type`은 `"command"`로 emit한다. 생성기는 이벤트 집합을 자체 열거하지 않고
+`EventTable`을 읽어 유도한다(신규 이벤트 적응 시 배선이 자동 따라온다).
+
+생성기는 `timeout`을 이벤트별로 emit하되 **SessionEnd의 timeout은 3 이하**로 제한한다(공식 문서의
+SessionEnd 상한). 그 외 이벤트의 기본 timeout은 테이블 상수로 정의한다.
+
+### REQ-CW-003 — 화이트리스트 선검증 (무음 사망 방지)
+
+**생성기가 hooks.json을 쓰기 직전마다** 렌더된 바이트를 `codexadapter.ValidateConfig`로 검증하고,
+위반이 1건이라도 있으면 **그 파일을 쓰지 않고** 진단과 함께 중단한다. Codex는 잘못된 최상위 키
+하나로 파일 전체를 조용히 무력화하므로(t83 Finding D), 검증 통과 바이트만 디스크에 도달한다.
+
+### REQ-CW-004 — config.toml MCP 등록 (열거 없는 writes)
+
+**`--agent codex` 또는 `--agent both`가 주어진 경우** 생성기는 `<project>/.codex/config.toml`에
+`[mcp_servers.moai]` 테이블을 확보한다 — `command = "moai"`, `args = ["mcp-server"]`(Claude 측
+`.mcp.json` provisioning이 쓰는 것과 동일한 상수·PATH 해석, 절대경로 없음),
+`default_tools_approval_mode = "writes"`. 생성기는 이 목적을 위해 도구명 열거
+(`enabled_tools`/`disabled_tools`)를 config에 남기지 않는다 — 승인 정책은 서버의 read-only
+annotation이 담당한다(§A.4).
+
+### REQ-CW-005 — 사용자 산출물 보존 (병합, 무분쇄)
+
+**`.codex/hooks.json` 또는 `.codex/config.toml`이 이미 존재하는 경우** 생성기는 MoAI 관리
+엔트리만 갱신하고 그 외 모든 내용을 보존한다 — hooks.json에서 MoAI 관리 엔트리는 command가
+`moai hook `으로 시작하는 handler들이며(갱신 시 낡은 MoAI handler들을 제거한 뒤 현재 표를
+append), 그 외 모든 엔트리·이벤트 키·description은 바이트 보존한다. config.toml에서 MoAI 관리
+범위는 `[mcp_servers.moai]` 테이블뿐이다. **이미 존재하는 `[mcp_servers.moai]` 테이블은 덮어쓰지
+않는다** — 사용자 소유 판정이며, 정본과의 불일치는 doctor가 보고한다(REQ-CW-010).
+
+### REQ-CW-006 — 멱등성
+
+**입력이 변하지 않은 채 생성이 재실행되는 경우** 산출 파일들은 바이트 동일이다 — 고정 키 순서,
+타임스탬프 없음, 절대경로 없음, 실행 시점 환경값 없음(agentemit의 결정론 규칙과 같은 기준).
+
+### REQ-CW-007 — 런타임 `--harness codex` 모드 (어댑터 활성화)
+
+`moai hook` dispatcher는 `<dispatcher-arg>` 부속명령에 `--harness codex` 모드를 제공하고,
+**그 모드로 실행되는 경우** dispatcher 출력을 `codexadapter.MapOutput`으로 재작성하고
+(`continue:false`→`decision:block`, UserPromptSubmit `systemMessage`→`additionalContext`),
+전달 불가 메시지를 `RecordDiscards`로 `.moai/logs/codex-adapter.jsonl`에 기록하며, exit code와
+stderr는 변경 없이 통과시킨다(M3 REQ-2/3/4 의무의 런타임 활성화).
+
+**`--harness codex` 모드에서 payload를 읽는 경우** dispatcher는 payload의 `hook_event_name`이
+`codexadapter.Resolve`로 해당 부속명령의 dispatcher 인자에 정확히 매핑되는지 검증하고,
+불일치 시 0이 아닌 exit와 진단으로 거부한다(생성 시점 표와 런타임 표의 어긋남 방지).
+
+`internal/hook/` 하위 기존 파일은 수정하지 않는다(M3 REQ-7 정신 — seam은 dispatcher 앞뒤에
+살고 결정 로직 안에 들어가지 않는다).
+
+### REQ-CW-008 — 신뢰 안내 (생성 시점 + 변경 시점)
+
+**생성기가 hooks.json을 처음 만드는 경우** stdout에 Codex 신뢰 흐름 안내를 출력한다 — 프로젝트
+`.codex/` 레이어 신뢰와 `/hooks` 검토·승인 절차를 이름한다. **재생성이 hooks.json 내용을 변경하는
+경우** 안내에 변경된 훅이 재신뢰 전까지 실행 정지함을 명시하고 `/hooks to re-trust` 지시를
+포함한다(§A.5 신뢰 모델 — 해시 변경 = 조용한 정지).
+
+생성기는 마지막 생성 내용의 sha256을 신뢰 사이드카(`.moai/state/codex-wiring.json`)에 기록하여,
+doctor의 divergence 판정과 재생성 전후 비교의 기준을 제공한다.
+
+### REQ-CW-009 — update 갱신 규칙 (존재 = opt-in)
+
+**`moai update`가 실행되는 경우** updater는 이미 존재하는 배선 파일만 갱신한다 — hooks.json이나
+config.toml의 moai 테이블이 없는 프로젝트(`--agent claude`/플래그 부재 init)에는 배선을
+**만들지 않는다**. 파일 존재가 사용자의 opt-in 지속 표식이다. 갱신 결과 hooks.json 내용이
+변하는 경우 REQ-CW-008의 재신뢰 안내를 출력하고, 무변경인 경우 안내를 출력하지 않는다.
+
+### REQ-CW-010 — doctor "Codex Wiring" 진단
+
+`moai doctor`는 "Codex Wiring" 진단 항목을 제공하고, 배선 활성 프로젝트(파일 존재)에서 다음을
+검증한다: hooks.json 존재·`ValidateConfig` 통과, 사이드카 해시 대비 현재 파일 divergence
+(divergence 시 `/hooks to re-trust` 안내), `moai` 바이너리 PATH 해석, config.toml의
+`[mcp_servers.moai]` 테이블 존재·정본 일치. 배선 비활성 프로젝트에서는 정보성 스킵 상태를
+보고한다. 진단은 advisory(비게이팅)이며 실패 시에도 doctor 나머지를 중단하지 않는다
+(`checkBinaryFreshness`의 t184 선례와 같은 형태).
+
+### REQ-CW-011 — annotation 정합성 가드 (t187 정합성의 기계화)
+
+**moai MCP 서버가 도구를 등록하는 경우** catalog(`internal/mcp` `WriteCapable`)의 분류와
+등록 시 선언한 read-only annotation이 일치해야 하며, 이를 주장하는 가드 테스트
+(`TestMoaiMCPServer_AnnotationsMatchCatalog`)가 변경 세트에 포함된다 — `writes` 승인 모드의
+정확성이 annotation 정확성에 의존하기 때문이다(§A.4). 신규 도구 추가 시 annotation 누락·거짓
+선언이 가드에서 실패한다.
+
+### REQ-CW-012 — M5 산출물 무변경
+
+배선 생성기와 doctor의 Codex 점검은 `.codex/agents/**` 을 생성·수정·삭제하지 않으며, 생성
+산출물(hooks.json·config.toml)에 에이전트 정의를 중복 수록하지 않는다 — 에이전트 TOML은
+M5(agentemit + 템플릿 순회 배포)의 단일 소유면이다.
+
+## §E. Acceptance Criteria
+
+Given-When-Then 시나리오 12건(AC-CW-001..012)은 `acceptance.md` §A 매트릭스에 실행 가능한
+명령과 함께 명세된다. grep 계열 AC의 토큰은 사전구현 트리에서 0반환을 실측 기록했다
+(2026-08-23, 본 트리 — `default_tools_approval_mode`·`checkCodexWiring`·`"Codex Wiring"`·
+`/hooks to re-trust` 전부 0hit; `/hooks` 단독은 10hit로 채택 제외).
+
+## §F. Constraints (non-functional)
+
+- **C-HRA-008**: CLI 경로에서 AskUserQuestion 금지 — 모든 상호작용은 플래그·positional·구조화
+  stderr 오류로만.
+- **§14 하드코딩 금지**: 환경변수명은 `internal/config/envkeys.go` 상수, 임계값·문구 상수는
+  패키지 상수로. 테스트의 Codex 격리는 `CODEX_HOME`(scratch) 위생을 따른다(t83 방법론).
+- **크로스플랫폼**: 산출 파일은 JSON/TOML 텍스트(플랫폼 중립). 생성기·런타임은
+  darwin/linux/windows에서 컴파일·동작(`GOOS=windows` vet 게이트). PATH 해석 `moai` 명령의
+  Windows 실행 세부는 run-phase 검증 항목(§H).
+- **16언어 템플릿 중립성**: template 반입 물질에는 SPEC-ID·내부 날짜·SHA 불포함(본 SPEC은
+  template 추가를 예상하지 않는다 — §C Out of Scope).
+- **무음 실패 금지**: Codex의 실패 양상은 조용하다(파일 무력화·해시 정지). 본 SPEC의 모든
+  경로(생성·재생성·doctor)는 상태를 기계적으로 관측 가능하게 남긴다(사이드카·ValidateConfig·
+  divergence 보고).
+- **best-effort 배선**: 배선 실패는 init을 실패시키지 않는다 — `.mcp.json` provisioning과
+  동일한 경고-후-계행 원칙(단, REQ-CW-003의 "쓰기 거부"는 보존: 검증 실패 파일은 디스크에
+  남지 않는다).
+
+## §G. Dependencies
+
+| 대상 | 유형 | 내용 |
+|---|---|---|
+| SPEC-CODEX-HOOK-ADAPTER-001 (M3, release PR #1602) | **강함 (depends_on)** | `internal/codexadapter` 전체 표면을 소비. run-phase 베이스에 PR #1602 병합 필수 — 미병합 시 `go build` 자체가 불가(패키지 부재) |
+| SPEC-CODEX-DUAL-AGENTS-001 (M5, 동일 PR) | 참조 (related) | `.codex/agents/moai/*.toml` 배포면 — 본 SPEC은 무변경(REQ-CW-012) |
+| SPEC-CODEX-SKILLS-CANONICAL-001 (M1, 동일 PR) | 참조 (related) | `.agents/skills` 미러 — 본 SPEC과 무관하나 같은 배포 체인 |
+| SPEC-CODEX-SESSION-MSG-001 (t187, PR #1606 미병합) | 정합성 (related) | §A.4 — `writes` capability 기반 판정으로 병합 순서 독립. annotation 가드(REQ-CW-011)가 양 트리에서 성립 |
+
+## §H. Risks
+
+| 위험 | 완화 |
+|---|---|
+| `features.hooks` config 키의 기본값 미확정 — 특정 빌드에서 기본 off라면 hooks.json이 로드 자체가 안 될 수 있음 | 측정되지 않은 키 주입 금지 원칙 유지(§C). run-phase 검증 항목 #1: 격리 CODEX_HOME에서 프로젝트 훅 로드 재확인(운영자 실측 0.149.0-alpha는 default로 발화 관측). 필요 시 후속 SPEC에서 managed 키 추가 |
+| Codex 신뢰 저장소 비문서화 — 사이드카 divergence가 실제 신뢰 상태와 어긋날 수 있음 | doctor 안내문을 단정("정지됨")이 아니라 조치 지시("/hooks 확인")로 서술. 재생성 시점 안내(REQ-CW-008)가 1차 방어 |
+| Windows에서 PATH 해석 `moai`(및 `.exe` 해석) 미검증 | 산출물은 텍스트라 위험은 런타임 실행 한정. run-phase: `GOOS=windows` vet + 문서화된 수동 확인. 필요 시 wrapper 파일 폴백(skill_mirror 선례)을 후속 카드로 |
+| t83 측정(0.147.0)과 운영자 실측(0.149.0-alpha)의 버전 혼재 | hooks.json 스키마는 두 버전 모두에서 동작 관측(0hit 키 없이 최소 집합 emit). doctor가 ValidateConfig으로 상시 검증 |
+| config.toml 텍스트 레벨 테이블 편집의 파싱 경계(인라인 테이블·코멘트 변형) | 생성기는 create-if-absent + 테이블 미수정 원칙(REQ-CW-005)으로 편집 경로를 최소화. 갱신은 doctor의 drift 보고로 대체 |
+
+## §I. Cross-References
+
+- 감사 원본: `.moai/reports/t88/codex-support-audit.md` (§2.1 init 플래그, §2.4 어댑터, §2.5 M5,
+  §2.6 MCP 부재, §3 갭 1-5)
+- 운영자 정정: `.moai/reports/t88/moai-desktop-compat-20260823.html` "핵심 갱신" 절
+- M3 실측: `.moai/reports/t83/precondition-measurement{,-round3}.md` + `probe/` (release/v3.1.3 수록)
+- CLI·템플릿 아키텍처: `.claude/skills/hns-moaiadk-patterns` (Template-First, add-a-hook)
+- Codex 공식 문서(§D의 URL 목록은 §A.4/§A.5에 인용 위치별 기재)
