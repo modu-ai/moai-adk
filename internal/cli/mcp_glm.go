@@ -186,7 +186,19 @@ func handleGLMAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 	// GLM cannot read the tree, so the change has to be collected here and
 	// carried in the request. No diff ⇒ no review: fail open to inconclusive
 	// rather than ask z.ai for a verdict on code it will never see (card t178).
-	diff, err := collectReviewDiff(resolveProjectDir(), target)
+	//
+	// The tree comes from resolveToolProjectRoot — the same caller-named-root
+	// contract codex_audit has (SPEC-MCP-WORKTREE-ROOT-001): a worktree session
+	// MUST be able to name its own tree, because the server's own resolution
+	// names the primary checkout. Absent ⇒ resolveProjectDir(), exactly what
+	// this call did before the parameter existed. An unusable path is a tool
+	// error, not the fail-open verdict — fail-open covers a broken GLM, not a
+	// caller input the caller can correct.
+	root, rootErr := resolveToolProjectRoot(req)
+	if rootErr != nil {
+		return toolErr("glm_audit", rootErr), nil
+	}
+	diff, err := collectReviewDiff(root, target)
 	if err != nil {
 		return reviewToolResult(glmInconclusive("no reviewable change: " + err.Error())), nil
 	}

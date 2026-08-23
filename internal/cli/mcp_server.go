@@ -360,6 +360,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		mcp.WithString("target", mcp.Enum(codexTargetUncommitted, codexTargetBaseBranch), mcp.Description("What GLM reviews: 'uncommittedChanges' (default) or 'baseBranch'. The named change is collected as a diff and sent in the request — GLM has no filesystem, so a target that yields no diff returns 'inconclusive' rather than a verdict.")),
 		mcp.WithString("focus", mcp.Description("Optional focus area (e.g. 'concurrency', 'auth', 'secret handling').")),
 		mcp.WithString("model", mcp.Description("Optional GLM model override; omitted ⇒ resolved via the model/effort SSOT (ResolveAgentModelEffort).")),
+		projectRootOption(),
 		mcp.WithOutputSchema[ReviewOutput](),
 	), handleGLMAudit)
 
