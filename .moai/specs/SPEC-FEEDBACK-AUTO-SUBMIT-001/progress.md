@@ -527,6 +527,236 @@ AC-F-004 판정: **PASS** — `go test ./internal/cli/ -run 'TestFeedbackScrubTo
 
 미검증(M5 시점): `--root` 미지정 폴백은 단위 테스트(`resolveFeedbackRoot("", nested)`)와 앰비언트 실행으로만 관측했고, 스모크의 산출물 검증은 명시 `--root` 로 했다. `moai feedback` 을 실제로 호출하는 프로덕션 소비자는 아직 없다 — 스킬 본문(M6)이 그 소비자다. `queue` 동사는 재전송을 **수행하지 않는다**(적재/조회/제거만); 재전송 자체는 스킬 본문의 `gh issue create` 재실행이다.
 
+### M6 — 스킬 본문 + 마법사 질문
+
+착수 HEAD `d2063308b`, base `3210da7d3`, 브랜치 `WT-auto-feedback`, 워크트리 `.claude/worktrees/t170`.
+
+#### 부채 해소 — AC-F-019 토큰 2건 재작성 (판정보다 먼저)
+
+plan.md §F 의 `[HARD] M6 착수 시 먼저 처리할 부채` 2건을 구현 전에 처리했다. base 실측은 소스(`.claude/skills/moai/workflows/feedback.md`)와 템플릿 미러 양쪽에 대해 `git show 3210da7d3:<path>` 로 각각 수행했다.
+
+```
+$ git show 3210da7d3:.claude/skills/moai/workflows/feedback.md > base_src.md
+$ git show 3210da7d3:internal/template/templates/.claude/skills/moai/workflows/feedback.md > base_tpl.md
+
+$ grep -c -- '--title' base_src.md base_tpl.md                                   # 구 ②
+base_tpl.md:0
+base_src.md:0
+$ grep -cE 'moai feedback scrub[^\n]*--title' base_src.md base_tpl.md            # 신 ②
+base_tpl.md:0
+base_src.md:0
+$ grep -c 'MUST NOT submit' base_src.md base_tpl.md                              # 신 ③-a
+base_tpl.md:0
+base_src.md:0
+$ grep -c '60 seconds' base_src.md base_tpl.md                                   # 신 ③-b
+base_tpl.md:0
+base_src.md:0
+```
+
+**부채 1 — ②의 앵커 부재.** 구 토큰 `grep -c -- '--title'` 는 base 에서 **0/0** 을 반환한다. 즉 "base 0" 이라는 채택 조건 자체는 만족하지만 **의도한 것을 관측하지 못한다**: 파일 어디의 `--title` 이든 잡으므로, 본문만 스크럽하고 `gh issue create ... --title "<제목>"` 만 쓰는 구현이 통과한다 — 스크러버가 제목을 못 받은 채로. 스크러버 호출과 **동일 줄**을 요구하는 `grep -cE 'moai feedback scrub[^\n]*--title'` 로 교체했다(base **0/0**). 이 토큰은 제목이 실제로 스크러버 입력으로 들어가는 줄이 존재해야만 통과한다.
+
+**부채 2 — ③의 한국어 리터럴.** 보조 검사 `grep -n '종료 코드\|verdict\|60초'` 는 **영어 전용 표면**(템플릿 미러)을 한국어 토큰으로 겨냥한다 — 통과시키려면 배포 템플릿의 언어 규칙을 어겨야 하는 자기모순이다. 형제 SPEC `SPEC-TODO-ENABLE-FLAG-001`(acceptance.md `N1`)이 같은 형태를 한국어 리터럴 제거 + 행동 관측 위임으로 해소한 선례를 따라, 영어 토큰 2종으로 교체했다: `grep -c 'MUST NOT submit'` >= **3**(세 조항이 각각 금지를 명시했는지를 **건수**로 센다 — 한 문장만 쓴 본문은 3에 못 미쳐 FAIL 한다)과 `grep -c '60 seconds'` >= 1. 둘 다 base **0/0**. 세 축의 행동 관측은 AC-F-004(도구 실패 → exit ≠ 0)와 AC-F-003(`verdict` 계약)이 이미 지고 있다.
+
+acceptance.md 의 AC-F-019 토큰 목록과 실측표를 위 내용으로 갱신했다. **이는 "manager-spec 이 acceptance.md 를 소유한다"는 경계의 승인된 예외다** — plan.md §F 가 이 재작성을 M6 에 명시적으로 배정했다(`[HARD] M6 착수 시 먼저 처리할 부채`). 부채 문단 자체는 지우지 않고 처리 결과를 덧붙였다.
+
+#### RED
+
+마법사 두 축 모두 구현 심볼 부재로 build failed 상태를 먼저 관측했다.
+
+```
+$ go test ./internal/cli/wizard/ -run 'TestFeedbackAutoSubmit' -v
+# github.com/modu-ai/moai-adk/internal/cli/wizard [github.com/modu-ai/moai-adk/internal/cli/wizard.test]
+internal/cli/wizard/feedback_auto_submit_test.go:38:7: r.FeedbackAutoSubmit undefined (type *WizardResult has no field or method FeedbackAutoSubmit)
+internal/cli/wizard/feedback_auto_submit_test.go:41:8: r.FeedbackAutoSubmit undefined (type *WizardResult has no field or method FeedbackAutoSubmit)
+internal/cli/wizard/feedback_auto_submit_test.go:47:8: r2.FeedbackAutoSubmit undefined (type *WizardResult has no field or method FeedbackAutoSubmit)
+internal/cli/wizard/feedback_auto_submit_test.go:50:10: r2.FeedbackAutoSubmit undefined (type *WizardResult has no field or method FeedbackAutoSubmit)
+internal/cli/wizard/feedback_auto_submit_test.go:56:8: r3.FeedbackAutoSubmit undefined (type *WizardResult has no field or method FeedbackAutoSubmit)
+FAIL	github.com/modu-ai/moai-adk/internal/cli/wizard [build failed]
+FAIL
+
+$ go test ./internal/core/project/ -run 'TestWritePhase1ConfigsPersistsFeedbackAutoSubmit|TestWritePhase1ConfigsSkipsFeedbackWhenUnanswered|TestWritePhase1ConfigsFeedbackNoFile' -v
+# github.com/modu-ai/moai-adk/internal/core/project [github.com/modu-ai/moai-adk/internal/core/project.test]
+internal/core/project/initializer_feedback_test.go:34:50: undefined: defs.FeedbackYAML
+internal/core/project/initializer_feedback_test.go:42:3: unknown field FeedbackAutoSubmit in struct literal of type InitOptions
+internal/core/project/initializer_feedback_test.go:79:50: undefined: defs.FeedbackYAML
+internal/core/project/initializer_feedback_test.go:108:3: unknown field FeedbackAutoSubmit in struct literal of type InitOptions
+internal/core/project/initializer_feedback_test.go:114:55: undefined: defs.FeedbackYAML
+FAIL	github.com/modu-ai/moai-adk/internal/core/project [build failed]
+FAIL
+```
+
+#### GREEN — AC별 판정
+
+**AC-F-002 — 확인 게이트 존재 (편집 전 FAIL / 편집 후 PASS 양쪽 관측)**
+
+편집 전(base `3210da7d3`), 소스 사본:
+
+```
+$ grep -n 'AskUserQuestion\|gh issue create\|auto_submit' base_src.md
+52:[HARD] Collect the feedback fields — type, title, and description — in ONE AskUserQuestion round …
+84:Inputs for the `gh issue create` invocation:
+118:The orchestrator executes directly: `gh issue create --repo <resolved-target>` …
+156:Use AskUserQuestion after successful submission:
+178:- Phase 1: MoAI orchestrator (AskUserQuestion for feedback collection)
+```
+
+`auto_submit` 은 **0건**이고 `gh issue create`(:84) 앞의 AskUserQuestion(:52)은 필드 수집 라운드다 — 조건부 게이트가 아니다. **편집 전 FAIL 관측 완료.**
+
+편집 후:
+
+```
+$ grep -n 'AskUserQuestion\|gh issue create\|auto_submit' .claude/skills/moai/workflows/feedback.md
+52:[HARD] Collect the feedback fields — type, title, and description — in ONE AskUserQuestion round …
+108:[HARD] When the resolved `feedback.auto_submit` configuration value is `false` (the shipped default), run ONE AskUserQuestion round before submission. Skip this round only when `auto_submit` is `true`.
+143:Inputs for the `gh issue create` invocation:
+177:The orchestrator executes directly: `gh issue create --repo <resolved-target>` …
+217:Use AskUserQuestion after successful submission:
+239:- Phase 1: MoAI orchestrator (AskUserQuestion for feedback collection)
+```
+
+`auto_submit` 조건부 AskUserQuestion 이 `:108` — 첫 `gh issue create`(`:143`)보다 앞이다. 판정: **PASS**.
+
+**AC-F-019 — 스킬 [HARD] 조항 (두 사본 각각 전수)**
+
+재작성된 7개 관측을 사본별로 돌린 결과(`SRC`=소스, `TPL`=템플릿 미러):
+
+| 관측 | 토큰 | SRC | TPL | 하한 | 판정 |
+|---|---|---|---|---|---|
+| ① 스크러버 경유 | `moai feedback scrub` | 1 | 1 | 1 | PASS |
+| ② 제목 전달(동일 줄 앵커) | `moai feedback scrub[^\n]*--title` | 1 | 1 | 1 | PASS |
+| ③ fail-closed 조항 | `verdict` | 3 | 3 | 1 | PASS |
+| ③-a 3문장 금지 절 | `MUST NOT submit` | 3 | 3 | 3 | PASS |
+| ③-b 타임아웃 문장 | `60 seconds` | 1 | 1 | 1 | PASS |
+| ④ 실패 부류 분기 | `queue.json` | 1 | 1 | 1 | PASS |
+| ⑤ 게이트 라벨 언어 | `label[^*]*conversation_language\|conversation_language[^*]*label` | 1 | 1 | 1 | PASS |
+
+verbatim 예외 문장이 ①과 같은 절 범위에 있음(두 사본 동일 줄 번호):
+
+```
+$ grep -n 'moai feedback scrub\|ONE explicit exception\|### Step 1: Route' <각 사본>
+82:### Step 1: Route the report through the scrubber
+87:printf '%s' "<body>" | moai feedback scrub --title "<title>"
+94:[HARD] This masking is the ONE explicit exception to the verbatim-preservation rule stated under Issue Language Policy below …
+```
+
+두 사본 드리프트는 확대되지 않았다(기존 1줄 그대로):
+
+```
+$ diff .claude/skills/moai/workflows/feedback.md internal/template/templates/.claude/skills/moai/workflows/feedback.md
+245d244
+< Last Updated: 2026-02-07
+```
+
+템플릿 중립성:
+
+```
+$ grep -rnE 'SPEC-[A-Z]|REQ-[A-Z0-9]|AC-[A-Z]|CLAUDE\.local' internal/template/templates/.claude/skills/moai/workflows/feedback.md
+(무출력)
+$ MOAI_TEMPLATE_LEAK_STRICT=1 go test ./internal/template/ -run 'Leak|Neutral|Internal' -v   → ok … 1.146s
+```
+
+판정: **PASS**.
+
+**AC-F-020 · AC-F-021 — 마법사 질문 + 개수 고정 + 번역 완전성**
+
+```
+$ go test ./internal/cli/wizard/ -run 'TestFeedbackAutoSubmitQuestion|TestSaveBoolAnswerFeedbackAutoSubmit|TestFeedbackAutoSubmitTranslationsExist|TestQuestionOrder|TestReconfigureQuestions|TestWizardQuestionTranslationCompleteness' -v
+=== RUN   TestFeedbackAutoSubmitQuestion
+--- PASS: TestFeedbackAutoSubmitQuestion (0.00s)
+=== RUN   TestSaveBoolAnswerFeedbackAutoSubmit
+--- PASS: TestSaveBoolAnswerFeedbackAutoSubmit (0.00s)
+=== RUN   TestFeedbackAutoSubmitTranslationsExist
+--- PASS: TestFeedbackAutoSubmitTranslationsExist (0.00s)
+=== RUN   TestQuestionOrder
+--- PASS: TestQuestionOrder (0.00s)
+=== RUN   TestReconfigureQuestionsOrder
+--- PASS: TestReconfigureQuestionsOrder (0.00s)
+=== RUN   TestWizardQuestionTranslationCompleteness
+--- PASS: TestWizardQuestionTranslationCompleteness (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	0.471s
+```
+
+`-run` 선택자 실재 확인(판정보다 먼저):
+
+```
+$ grep -c 'func TestQuestionOrder\|func TestReconfigureQuestionsOrder\|func TestWizardQuestionTranslationCompleteness' internal/cli/wizard/questions_test.go internal/cli/wizard/translations_completeness_test.go
+internal/cli/wizard/translations_completeness_test.go:1
+internal/cli/wizard/questions_test.go:2
+```
+
+판정: AC-F-020 **PASS**, AC-F-021 **PASS**.
+
+**AC-F-022 — 답변이 실제로 파일에 기록됨**
+
+```
+$ go test ./internal/core/project/ -run 'TestWritePhase1ConfigsPersistsFeedbackAutoSubmit|TestWritePhase1ConfigsSkipsFeedbackWhenUnanswered|TestWritePhase1ConfigsFeedbackNoFile' -v
+--- PASS: TestWritePhase1ConfigsSkipsFeedbackWhenUnanswered (0.00s)
+--- PASS: TestWritePhase1ConfigsFeedbackNoFile (0.01s)
+--- PASS: TestWritePhase1ConfigsPersistsFeedbackAutoSubmit (0.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/core/project	0.418s
+```
+
+첫 테스트는 grep 이 아니라 **실제 로더**(`config.NewLoader().Load(...)` → `cfg.FeedbackAutoSubmit()`)로 되읽어 판정한다 — 런타임 표면이 답을 보는지가 AC 의 요지이기 때문이다. 판정: **PASS**.
+
+#### 회귀 + 정적 검사
+
+```
+$ go test -timeout 900s ./internal/cli/wizard/... ./internal/core/project/... ./internal/defs/...
+ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	3.264s
+ok  	github.com/modu-ai/moai-adk/internal/core/project	1.245s
+ok  	github.com/modu-ai/moai-adk/internal/defs	0.547s
+
+$ go test -timeout 900s ./internal/cli/...        → 전부 ok, 단 1건:
+--- FAIL: TestConstitutionCrossReference (0.00s)
+    agent_lint_test.go:1249: moai-constitution.md should cross-reference agent-authoring.md for effort matrix
+FAIL	github.com/modu-ai/moai-adk/internal/cli/agentlint	0.443s
+
+$ go test -timeout 900s ./internal/template/...   → 전부 ok
+$ go build ./...                                  → exit 0
+$ go vet ./internal/cli/... ./internal/core/project/... ./internal/defs/...              → exit 0
+$ GOOS=windows go vet ./internal/cli/... ./internal/core/project/... ./internal/defs/... → exit 0
+$ golangci-lint run --timeout=3m ./internal/cli/wizard/... ./internal/core/project/... ./internal/defs/... → 0 issues.
+$ make build                                      → exit 0 (catalog.yaml 재생성 + bin/moai 재빌드)
+$ gofmt -l <M6 편집 파일>                          → 무출력
+```
+
+**FAIL 1건은 M6 소관이 아니다.** `TestConstitutionCrossReference` 는 `.claude/rules/moai/core/moai-constitution.md` 에 `agent-authoring.md` 인용을 요구하는데, 그 줄은 커밋 `243eb07ef`(별도 카드, 이미 `release/v3.1.3` 에 착지)가 제거했다. base `3210da7d3` 에서도 붉으며 M5 보고서가 같은 FAIL 을 이미 기록했다.
+
+#### 개수 고정 테스트 4건 갱신 (질문 1개 추가의 기계적 귀결)
+
+`feedback_auto_submit` 이 Page-3 에 들어가면서 페이지 인원수를 고정한 기존 테스트 4건이 붉어졌고, 숫자/멤버십만 최소 편집했다(기존 항목 재배치·재서식 없음 — plan.md AP-10):
+
+- `wizard_test.go:659` `TestStepperTotal_DynamicDenominator` — 16 → 17
+- `expansion_test.go:39` `TestPage3QuestionsStructure` — want 목록에 `feedback_auto_submit` 1줄 추가(위치: `todo_enabled` 다음)
+- `expansion_test.go:267,277` `TestTotalVisibleQuestions_Page3AlwaysCounted` — 15 → 16, Quality & Workflow 9 → 10
+- `restructure_test.go:84` `TestInitPages_Membership` — 멤버십 목록에 `feedback_auto_submit` 추가
+
+plan.md §B Known Issues 3 이 지키라고 한 두 고정(`DefaultQuestions` 5개 / `ReconfigureQuestions` 12개)은 **건드리지 않았고 그대로 초록이다** — 신규 질문은 `Page3Questions` 에만 들어갔다(AP-2 회피).
+
+#### 납품물
+
+스킬 2사본(동일 내용, 기존 1줄 드리프트 유지):
+- `.claude/skills/moai/workflows/feedback.md` + `internal/template/templates/.claude/skills/moai/workflows/feedback.md` — 신규 `## Phase 1.5: Pre-Submission Scrub and Confirmation Gate` 4스텝(스크러버 경유 + verbatim 예외 / fail-closed 3문장 / 3옵션 확인 게이트 / 제출·큐잉 분기 + 재전송 전 재스크럽), 그리고 `Issue Creation Command` 에 "마스킹된 값만 넘긴다" [HARD] 1줄.
+
+마법사 살아 있는 경로(AP-1 회피 — `init_autonomy_wizard.go` 계열은 손대지 않았다):
+- `internal/cli/wizard/questions.go` — `Page3Questions` "Quality & Workflow" 에 `feedback_auto_submit` (Confirm, Default `"false"`)
+- `internal/cli/wizard/types.go` — `WizardResult.FeedbackAutoSubmit *bool`
+- `internal/cli/wizard/wizard.go` — `saveBoolAnswer` 분기
+- `internal/cli/wizard/translations.go` — ko/ja/zh 3로케일
+- `internal/cli/init.go` — `applyWizardPage3ToOpts` 에서 `opts.FeedbackAutoSubmit = result.FeedbackAutoSubmit`
+- `internal/core/project/initializer.go` — `InitOptions.FeedbackAutoSubmit *bool`
+- `internal/core/project/initializer_expansion.go` — `writeFeedbackAutoSubmitYAML` + `WritePhase1Configs` 호출
+- `internal/defs/files.go` — `FeedbackYAML` 상수 1줄 추가
+- 신규 테스트 2파일 — `internal/cli/wizard/feedback_auto_submit_test.go`(3종 세트) · `internal/core/project/initializer_feedback_test.go`(3종)
+
+#### 설계 판단 3건
+
+1. **`*bool` 을 쓴다(형제 `todo_enabled` 선례).** `worktree_auto_create` 는 `bool` + 별도 `*Set` 추적 필드 방식인데, 포인터 하나면 "물었는가"와 "답이 무엇인가"를 동시에 담아 필드가 하나 줄어든다. `--non-interactive` 는 nil 이고, nil 이면 배포된 `feedback.yaml` 을 **바이트 단위로 그대로 둔다** — 기본값 `false` 를 굳이 다시 적어 모든 프로젝트 설정에 줄을 하나 늘릴 이유가 없다.
+2. **쓰기는 `yamlpatch` 로 upsert 한다.** 배포되는 `feedback.yaml` 은 `repository` 키만 담고 `auto_submit` 이 없다(그 추가는 M8 소관). 키가 이미 있어야 동작하는 패치 헬퍼를 쓰면 **정확히 문제가 되는 경로에서 조용한 no-op** 이 된다. `yamlpatch` 는 중첩 매핑을 upsert 하면서 주석과 키 순서를 보존하고, 테스트가 그 보존을 단언한다.
+3. **게이트 라벨 예시는 두 사본 모두 영어다.** design.md §7 의 한국어 표는 "의미를 적은 것이지 리터럴이 아니다"이고, D11 은 템플릿 미러 예시를 영어로 요구한다. 두 사본을 동일하게 유지해야 드리프트가 늘지 않으므로 소스도 영어로 쓰고, "이 라벨을 로케일 세션에 그대로 복사하지 말라"는 지시를 [HARD] 로 함께 실었다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

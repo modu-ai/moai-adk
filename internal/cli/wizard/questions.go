@@ -384,6 +384,17 @@ func Page3Questions(projectRoot string) []Question {
 			Description: "When disabled, MoAI stops volunteering backlog guidance — no queue summary at session start, no TODO segment in the statusline. The `moai todo` command and an explicit `/moai todo` keep working either way.",
 			Default:     "true",
 		},
+		// Feedback pre-submission gate (feedback.auto_submit). Mirrors the
+		// config default (false) so the wizard ships the cautious side: the
+		// confirmation gate runs unless the user opts out of it here.
+		{
+			ID:          "feedback_auto_submit",
+			Group:       "Quality & Workflow",
+			Type:        QuestionTypeConfirm,
+			Title:       "Submit feedback without a confirmation gate?",
+			Description: "When disabled (the default), the feedback workflow shows the masked title and body and asks before opening a public issue. Enabling it skips that confirmation.",
+			Default:     "false",
+		},
 		// SPEC-MOAI-MCP-SERVER-001 M4 (REQ-MCP-015 / AC-MCP-020) — audit +
 		// MCP opt-in selection. Reuses the M3 typed-config enum vocabulary.
 		{

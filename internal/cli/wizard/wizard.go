@@ -468,6 +468,10 @@ func saveBoolAnswer(id string, value bool, result *WizardResult) {
 		// Recorded as an explicit answer either way: reaching this branch means
 		// the question was asked, which is precisely what nil does not mean.
 		result.TodoEnabled = &value
+	case "feedback_auto_submit":
+		// Pointer for the same reason as todo_enabled: reaching this branch
+		// means the question was asked, which nil does not mean.
+		result.FeedbackAutoSubmit = &value
 	}
 }
 

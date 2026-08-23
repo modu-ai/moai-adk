@@ -69,6 +69,13 @@ type InitOptions struct {
 	// emitting a key would be noise at best and an inversion at worst.
 	TodoEnabled *bool // workflow.todo.enabled
 
+	// FeedbackAutoSubmit mirrors wizard.WizardResult.FeedbackAutoSubmit and
+	// persists to feedback.auto_submit at init. nil means the question was
+	// never asked (--non-interactive), and an unasked question writes nothing:
+	// the shipped default is false, so absence already carries the cautious
+	// answer and emitting the key would only add noise.
+	FeedbackAutoSubmit *bool // feedback.auto_submit
+
 	// SPEC-WT-DOC-001 workflow toggle opt-in surface. The *Set trackers are
 	// false on the zero value so a non-interactive / flag-absent init leaves the
 	// deployed template default untouched (distributed default-off). An explicit

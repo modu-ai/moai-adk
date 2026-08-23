@@ -61,6 +61,12 @@ type WizardResult struct {
 	// nothing rather than falling through a zero value into `enabled: false`.
 	TodoEnabled *bool // workflow.todo.enabled
 
+	// FeedbackAutoSubmit is the feedback.auto_submit answer. Like TodoEnabled
+	// it is a pointer so that "never asked" (--non-interactive) stays
+	// distinguishable from an explicit "no": an unasked question writes
+	// nothing rather than restating the shipped default in every project.
+	FeedbackAutoSubmit *bool // feedback.auto_submit
+
 	// AutonomyTier (SPEC-AUTONOMY-TIERS-001 M7): the interactive autonomy-tier
 	// selection. Reuses the config.AutonomyTier* enum. Empty when the wizard did
 	// not collect a selection (--non-interactive → downstream resolves semi-auto).
