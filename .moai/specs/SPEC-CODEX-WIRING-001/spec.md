@@ -1,7 +1,7 @@
 ---
 id: SPEC-CODEX-WIRING-001
 title: "Codex Dual Harness M4 — wiring generator: moai init --agent claude|codex|both, .codex/hooks.json + config.toml, trust guidance, doctor"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-08-23
 updated: 2026-08-23
@@ -24,6 +24,7 @@ related_specs: [SPEC-CODEX-DUAL-AGENTS-001, SPEC-CODEX-SKILLS-CANONICAL-001, SPE
 | 버전 | 날짜 | 변경 |
 |---|---|---|
 | 0.1.0 | 2026-08-23 | 최초 작성 (plan-phase, card t88 / M4). 구 M4 블로커("프로젝트 hooks.json 미발화") 전제를 운영자 실측 정정(§A.3)으로 폐기하고 재설계 |
+| 0.2.0 | 2026-08-23 | plan-audit review-1(D1 차단 + D2-D6 경미) 적용. D1: §A.4의 "21도구 전부 명시 선언" 주장이 오측이었음을 정정 — 명시 15/21·미선언 6·유효 불일치 4·실효 승인 집합 10으로 교체, REQ-CW-011/AC-CW-010을 유효값 기준선으로 재정의, 4도구 annotation 수정을 plan M2에 명시 + PRESERVE 예외 축소. D2: /hooks 히트수 범위 한정 재기술. D3: §G 격리 주석. D5: 시험명 REQ→AC 이동 |
 
 ## §A. 측정 전제 (Verified baseline)
 
@@ -80,21 +81,31 @@ v3.1.3-rc.0. 운영 권장 사역(같은 절): "MCP 등록 시 `default_tools_ap
 > — Codex MCP 문서 (`learn.chatgpt.com/codex/extend/mcp`)
 
 즉 `writes`는 도구별 **read-only 표식(MCP ReadOnlyHint annotation)** 에 기반하며, 도구명 열거
-메커니즘은 별도의 `enabled_tools`/`disabled_tools` 목록이다. 실측 정합:
+메커니즘은 별도의 `enabled_tools`/`disabled_tools` 목록이다. 서버 실태(2026-08-23 실측 — plan-audit
+review-1의 기계 집계를 본 SPEC 작성자가 등록 블록별 awk 매핑으로 재확인):
 
-- moai MCP 서버는 **모든 도구에 ReadOnlyHint annotation을 명시 선언**한다 — base 트리 21도구
-  (`internal/cli/mcp_server.go` 전 구간 `mcp.WithReadOnlyHintAnnotation(true/false)`), 쓰기 6종
-  (goal_arm·verify_snapshot·codex_task·codex_job_cancel·glm_task·glm_job_cancel)이 false.
+- moai MCP 서버의 **명시 선언은 15/21** — true 11 + false 4. false 4종은
+  codex_task·codex_job_cancel·glm_task·glm_job_cancel.
+- **6종은 선언 부재**(goal_arm·verify_snapshot·audit_cache·codex_audit·glm_audit·audit_multi)
+  — `mcp.NewTool`의 기본 시딩(false)에 맡겨져 있다. goal_arm·verify_snapshot은 catalog가 WRITE라
+  유효값이 우연히 일치하지만, **audit_cache·codex_audit·glm_audit·audit_multi의 4종은 catalog
+  분류가 READ인데 유효 hint가 false인 유효 불일치**다.
+- 따라서 capability 기반 `writes` 하부의 base 트리 **실효 승인 집합은 6이 아니라 10**이다
+  (catalog 쓰기 6 + 미선언 READ 4). 이 4종의 annotation 추가(`true`)는 plan M2가 수행하고
+  유효값 기준선 가드(REQ-CW-011)가 닫는다.
 - t187(PR #1606, 미병합)은 4도구를 추가하며 catalog 21→25, WriteCapable 6→9 — 신규 3쓰기 도구
   (session_msg_register·send·poll)에 annotation false, session_msg_list에 true를 **명시 선언**한다
   (`origin/WT-codex-session-msg:internal/cli/mcp_server.go` diff에서 확인).
 
 **정합성 입장(본 SPEC이 채택하는 결론)**: 카드의 6도구 열거는 **문서(작성 시점 쓰기 집합의 나열)이지
-구성이 아니다**. config.toml에는 **도구명 열거를 일절 넣지 않는다**. 그 결과 t187의 병합 순서와
-무관하게 정확히 동작한다 — 21도구 트리에서는 6개가 승인 대상, 25도구 트리에서는 9개가 승인 대상.
-`writes`가 정직하게 성립하는 실제 불변식은 **서버 annotation의 정확성**이며, 이를 기계화하는
-가드 테스트가 REQ-CW-011이다. `moai-mcp-tools.md`의 25도구 기술과도 모순 없다 — 능력 분류는
-annotation에 살고 열거형 config에는 살지 않는다.
+구성이 아니다**. config.toml에는 **도구명 열거를 일절 넣지 않는다**. 다만 "capability 기반이므로
+자동으로 정확하다"는 결론은 공짜가 아니다 — 그 정확성은 **유효 annotation 값이 catalog 분류와
+일치한다**는 불변식 위에 서고, base 트리는 지금 그 불변식을 4도구에서 위반 중이다. M2의 4종
+수정(READ 도구에 `WithReadOnlyHintAnnotation(true)` 1줄씩 — Claude 측에서는 advisory라 행동 변화
+없음)이 불변식을 복원하고, 그 후 승인 집합은 catalog 진실과 일치한다: base 21도구 트리 6개,
+t187 병합 후 25도구 트리 9개(병합 순서 독립). 불변식의 기계화가 REQ-CW-011의 **유효값 기준선**
+가드이고, `moai-mcp-tools.md`의 25도구 기술과도 모순 없다 — 능력 분류는 annotation에 살고
+열거형 config에는 살지 않는다.
 
 ### §A.5 신뢰(trust) 모델 — 공식 문서 확정 사실
 
@@ -264,13 +275,16 @@ config.toml의 moai 테이블이 없는 프로젝트(`--agent claude`/플래그 
 보고한다. 진단은 advisory(비게이팅)이며 실패 시에도 doctor 나머지를 중단하지 않는다
 (`checkBinaryFreshness`의 t184 선례와 같은 형태).
 
-### REQ-CW-011 — annotation 정합성 가드 (t187 정합성의 기계화)
+### REQ-CW-011 — annotation 유효값 정합성 가드 (t187 정합성의 기계화)
 
-**moai MCP 서버가 도구를 등록하는 경우** catalog(`internal/mcp` `WriteCapable`)의 분류와
-등록 시 선언한 read-only annotation이 일치해야 하며, 이를 주장하는 가드 테스트
-(`TestMoaiMCPServer_AnnotationsMatchCatalog`)가 변경 세트에 포함된다 — `writes` 승인 모드의
-정확성이 annotation 정확성에 의존하기 때문이다(§A.4). 신규 도구 추가 시 annotation 누락·거짓
-선언이 가드에서 실패한다.
+**moai MCP 서버가 도구를 등록하는 경우** 각 도구의 **유효** read-only 값 — 선언된 annotation
+값, 선언이 없으면 기본 false — 이 catalog(`internal/mcp`의 `WriteCapable`) 분류와 일치해야 한다
+(유효 read-only ⟺ `WriteCapable=false` 도구별 동치). 이 동치를 주장하는 가드 테스트가 변경
+세트에 포함된다 — `writes` 승인 모드의 승인 집합은 유효 annotation에 의존하므로(§A.4),
+catalog-read 도구의 annotation 누락(유효 false)과 catalog-write 도구의 read-only 선언이 모두
+가드에서 실패한다. 기준선은 **유효값**이지 선언의 존재가 아니어서, base 트리가 이미 지닌
+선언-부재 상태(goal_arm·verify_snapshot 등)를 선행 수정 없이도 통과할 수 있고 catalog 진실과의
+어긋남만을 잡는다.
 
 ### REQ-CW-012 — M5 산출물 무변경
 
@@ -283,7 +297,10 @@ M5(agentemit + 템플릿 순회 배포)의 단일 소유면이다.
 Given-When-Then 시나리오 12건(AC-CW-001..012)은 `acceptance.md` §A 매트릭스에 실행 가능한
 명령과 함께 명세된다. grep 계열 AC의 토큰은 사전구현 트리에서 0반환을 실측 기록했다
 (2026-08-23, 본 트리 — `default_tools_approval_mode`·`checkCodexWiring`·`"Codex Wiring"`·
-`/hooks to re-trust` 전부 0hit; `/hooks` 단독은 10hit로 채택 제외).
+`/hooks to re-trust`·`codex /hooks` 전부 0hit). `/hooks` 단독 토큰은 기존 문구와 충돌해
+채택 제외 — 히트수는 범위 의존적이라 명령으로 귀속한다:
+`grep -rn 're-approve\|/hooks' internal/cli/*.go | grep -v _test | wc -l` → **10**
+(글롭형·비재귀, internal/cli 최상위 .go 한정; 재귀 범위를 넓히면 수치가 달라진다).
 
 ## §F. Constraints (non-functional)
 
@@ -311,6 +328,10 @@ Given-When-Then 시나리오 12건(AC-CW-001..012)은 `acceptance.md` §A 매트
 | SPEC-CODEX-DUAL-AGENTS-001 (M5, 동일 PR) | 참조 (related) | `.codex/agents/moai/*.toml` 배포면 — 본 SPEC은 무변경(REQ-CW-012) |
 | SPEC-CODEX-SKILLS-CANONICAL-001 (M1, 동일 PR) | 참조 (related) | `.agents/skills` 미러 — 본 SPEC과 무관하나 같은 배포 체인 |
 | SPEC-CODEX-SESSION-MSG-001 (t187, PR #1606 미병합) | 정합성 (related) | §A.4 — `writes` capability 기반 판정으로 병합 순서 독립. annotation 가드(REQ-CW-011)가 양 트리에서 성립 |
+
+> **브랜치 격리 주석 (plan-audit review-1 D3)**: 위 4개 SPEC 디렉터리는 이 글라 branches의
+> `.moai/specs/`에 없다 — #1602(release batch)·#1606(t187) 미병합 산출물이므로. 조치 불요:
+> 병합 시점에 자동 해소되며, 리드가 run batch 진입 전 #1602 상태를 재확인한다(plan §C #1).
 
 ## §H. Risks
 

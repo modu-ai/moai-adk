@@ -12,8 +12,10 @@
   전무하다 — `internal/codexadapter`·`.codex` 템플릿 전부가 미병합 PR #1602(release/v3.1.3)에
   있다. run-phase는 #1602 병합 후 베이스에서 시작해야 한다(§C Pre-flight #1).
 - 구 블로커(프로젝트 hooks.json 미발화)는 운영자 실측으로 폐기(spec §A.3). 남은 차단은 배선 부재뿐.
-- t187 정합성 결론(spec §A.4): `writes`는 capability 기반 → config에 도구명 열거 없음,
-  병합 순서 독립, annotation 가드 테스트가 불변식.
+- t187 정합성 결론(spec §A.4): `writes`는 capability 기반 → config에 도구명 열거 없음.
+  단 정확성은 공짜가 아니다 — base 실태 유효 불일치 4도구(실효 승인 집합 10)를 M2가 수정한
+  뒤에야 병합 순서 독립으로 성립(base 6 → t187 병합 후 9). 유효값 기준 annotation
+  가드 테스트가 그 불변식의 기계화다.
 
 ## §B. Known issues carried into this plan
 
@@ -33,6 +35,9 @@
 3. `go test ./internal/codexadapter/...` 전량 통과(M3 인수 상태 확인).
 4. `.moai/reports/t83/precondition-measurement-round3.md` §4(화이트리스트 근거)의 행 번호가
    run-base와 일치하는지 육안 확인 — 인용이 아니라 원칙(최상위 {description, hooks})만 가져간다.
+   **[review-1 D4 주석]** 이 파일들은 이 워크트리에 없다(release/v3.1.3 수록, #1602 미병합).
+   run-base에서 #1602가 병합돼 있으면 읽힌다; 그 전에는 감사 보고서 `.moai/reports/t88/codex-support-audit.md`
+   §2.4의 인용(화이트리스트 3계층)이 대리 근거다. 조치 불요.
 5. 검증 환경: 격리 `CODEX_HOME` 확보(t83 위생). 실제 `~/.codex/` mtime 무변경 전후 확인.
 
 ## §D. Milestones
@@ -57,7 +62,7 @@
 - 단위 테스트: 화이트리스트 음성 샘플(version 키 등), 병합 보존, 멱등성(2회 렌더 바이트 동일),
   SessionEnd 타임아웃 상한, 결정론(키 순서·무타임스탬프).
 
-### M2 — `--agent` 플래그 + init/update 배선
+### M2 — `--agent` 플래그 + init/update 배선 + annotation 4도구 수정
 
 - `internal/cli/init.go`: 플래그 등록(`init_workflow_flags.go`의 opt-in tracker 패턴과
   `autonomy-tier`의 폐쇄집합 fail-loud 패턴 준용), `validateInitFlags` 검증, runInit 꼬리의
@@ -65,6 +70,16 @@
 - `.mcp.json` 게이팅(D3): `--agent codex`에서 declined 취급.
 - `moai update`: 배선 파일 존재 시에만 갱신(REQ-CW-009), 내용 변경 시 재신뢰 안내.
 - 안내 문구 상수화: 최초 신뢰 안내 + `/hooks to re-trust`(AC-CW-008 토큰).
+- **[review-1 D1] annotation 4도구 수정**: `internal/cli/mcp_server.go`의
+  audit_cache·codex_audit·glm_audit·audit_multi 등록에 `mcp.WithReadOnlyHintAnnotation(true)`
+  1줄씩 추가(계 4줄). **근거** — base 실측 명시 선언 15/21·미선언 6·유효 불일치 4(spec §A.4):
+  이 4종은 catalog 분류 READ인데 유효 hint가 false여서 `writes` 승인 모드의 실효 승인 집합을
+  6이 아니라 10으로 만든다. 수정은 annotation 가드(REQ-CW-011)의 존재 이유를 닫는 최소
+  델타이고(4개 1줄 추가적 편집), Claude 쪽에서 annotation은 advisory라 행동 변화가 없다.
+  수정 후 승인 집합은 catalog 진실과 일치(base 6 → t187 병합 후 9, 병합 순서 독립).
+- **annotation 가드 테스트**(REQ-CW-011·AC-CW-010, `TestMoaiMCPServer_AnnotationsMatchCatalog`)
+  도 M2에 함께 추가 — catalog와 mcp_server.go가 같은 패키지고 4도구 수정의 녹색 판정이
+  곧 가드의 첫 인수 증거다.
 
 ### M3 — 런타임 `--harness codex` 모드
 
@@ -87,13 +102,19 @@
 - acceptance.md AC 전량 실행(스크래치 init 시나리오 포함), 커버리지 측정
   (`go test ./internal/codexwiring/... -cover` ≥85%), `GOOS=windows GOARCH=amd64 go vet ./internal/...`
   (크로스컴파일 게이트 — 로컬 전체 스위트 금지 규율 준수, affected-package만).
-- annotation 가드 테스트(REQ-CW-011)를 M5가 아니라 **M2와 함께** 추가할 수도 있다 — catalog와
-  mcp_server.go가 같은 패키지라 즉시 가능. 구현자 재량(AC-CW-012는 마일스톤 소속을 묻지 않음).
+- annotation 가드 테스트(REQ-CW-011)의 배치는 **M2로 확정**했다(review-1 D1 — 4도구 수정과
+  같은 마일스톤에서 가드가 녹색 판정을 즉시 증명한다). M5는 재검증만 담당.
 
 ### PRESERVE 목록 (변경 금지 — 감사·카드 지정)
 
-- `internal/cli/mcp_server.go`의 codex_task/codex_job_* · glm_* 핸들러·등록 전체 — 무변경
-  (annotation 가드 테스트 추가만 허용, 선언 자체는 무수정).
+- `internal/cli/mcp_server.go`의 codex_task/codex_job_* · glm_* 핸들러·등록 전체 — 무변경.
+  **[review-1 D1 협정 예외]** 예외는 정확히 2종: (1) M2의 annotation 4도구 수정
+  (audit_cache·codex_audit·glm_audit·audit_multi 각 1줄 `WithReadOnlyHintAnnotation(true)`
+  추가 — M2 항목의 근거 참조), (2) annotation 가드 테스트 파일 추가(신규 _test.go).
+  그 외 어떤 mcp_server.go 편집도 금지 — codex_task·glm 패밀리의 로직·파라미터·handler는
+  여전히 무변경이다. 이 예외가 없으면 가드의 존재 이유(REQ-CW-011)를 이 SPEC 안에서
+  해소할 수 없어 구조적 교착이 된다(plan-audit review-1 D1 지적 — 구 문구 "선언 자체는
+  무수정"이 수정을 구조적으로 봉쇄했음을 정정한다).
 - `internal/template/templates/.codex/agents/**` (M5 agentemit 산출물) — 재생성·수정 금지.
 - `internal/codexadapter` 공개면 — 소비만, 수정 금지(M3 인수물).
 - 기존 init 플래그 전량·플래그 부재 시 동작 — 바이트 수준 동일성(AC-CW-004).

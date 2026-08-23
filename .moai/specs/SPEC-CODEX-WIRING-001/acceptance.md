@@ -12,8 +12,10 @@
 
 > grep 계열 토큰의 base-0 실측(2026-08-23, 본 트리 origin/main @ 76b2c4ece):
 > `default_tools_approval_mode` 0 · `Flags().String("agent"` 0 · `checkCodexWiring` 0 ·
-> `package codexwiring` 0 · `"Codex Wiring"` 0 · `/hooks to re-trust` 0 ·
-> `mcp_servers`(Go 코드) 0 — 전부 채택. `/hooks` 단독은 10hit으로 채택 제외.
+> `package codexwiring` 0 · `"Codex Wiring"` 0 · `/hooks to re-trust` 0 · `codex /hooks` 0 ·
+> `mcp_servers`(Go 코드) 0 — 전부 채택. `/hooks` 단독은 기존 문구 충돌로 채택 제외(히트수는
+> 범위 의존 — 귀속 명령 `grep -rn 're-approve\|/hooks' internal/cli/*.go | grep -v _test | wc -l`
+> → 10, 글롭형·비재귀; 재귀 범위를 넓히면 수치가 달라진다).
 > 스크래치 e2e는 전부 `$(mktemp -d)` 하부 + 필요시 `CODEX_HOME=$(mktemp -d)` 격리.
 
 ### M1/M2 — 플래그·생성
@@ -28,8 +30,9 @@
 `moai init proj --agent codex --non-interactive`를 실행하면, *Then* `proj/.codex/hooks.json`이
 존재하고: (a) 이벤트 키 집합이 정확히 `{PreToolUse, PostToolUse, SessionStart, SessionEnd, Stop,
 UserPromptSubmit}` (jq: `jq -r '.hooks | keys_unsorted | sort | join(",")'` 비교);
-(b) 모든 handler command가 `moai hook `로 시작하고 `--harness codex`를 포함
-(`grep -c -- '--harness codex' proj/.codex/hooks.json` = handler 총수); (c) 최상위 키가
+(b) 모든 handler command가 `moai hook `로 시작하고 `--harness codex`를 포함 —
+`grep -c -- '--harness codex' proj/.codex/hooks.json` 값이 handler 총수
+`jq '[.hooks[][].hooks[]] | length' proj/.codex/hooks.json` 값과 같다(예: 6); (c) 최상위 키가
 `{description, hooks}`의 부분집합(`grep -c '"version"' proj/.codex/hooks.json` = 0);
 (d) SessionEnd handler의 timeout ≤ 3.
 
@@ -66,10 +69,12 @@ proj/.codex/config.toml` = 0), 파일이 TOML로 파싱된다
 ### M2 — 안내·update·가드
 
 **AC-CW-008** (MUST, REQ-CW-008) — *Given* 신규 프로젝트, *When* `--agent codex` init를
-실행하면, *Then* stdout/stderr에 Codex 신뢰 흐름 안내(`codex /hooks` 토큰 포함)가 출력된다.
-*And Given* 배선 후 사용자가 MoAI handler 하나를 제거한 hooks.json, *When* 갱신 경로가 재생성하여
-내용을 복원하면, *Then* 재신뢰 안내(`/hooks to re-trust` 토큰)가 출력된다. *And Given* 무변경
-재생성, *Then* 재신뢰 안내는 출력되지 않는다.
+실행하면, *Then* stdout/stderr에 Codex 신뢰 흐름 안내가 출력된다(실행 명령:
+`moai init <dir> --agent codex --non-interactive 2>&1 | grep -c -- 'codex /hooks'` ≥ 1 —
+토큰 base-0 실측이라 관측은 구현분에 귀속). *And Given* 배선 후 사용자가 MoAI handler 하나를
+제거한 hooks.json, *When* 갱신 경로가 재생성하여 내용을 복원하면, *Then* 재신뢰 안내가 출력된다
+(`… 2>&1 | grep -c -- '/hooks to re-trust'` ≥ 1). *And Given* 무변경
+재생성, *Then* 재신뢰 안내는 출력되지 않는다(같은 grep = 0).
 
 **AC-CW-009** (MUST, REQ-CW-009) — *Given* AC-CW-004의 claude 초기화 프로젝트, *When*
 `moai update`를 실행하면, *Then* `.codex/hooks.json`·`.codex/config.toml`이 여전히 부재하다
@@ -78,9 +83,15 @@ proj/.codex/config.toml` = 0), 파일이 TOML로 파싱된다
 
 **AC-CW-010** (MUST, REQ-CW-011) — *Given* run 베이스 트리, *When*
 `go test ./internal/cli/ -run TestMoaiMCPServer_AnnotationsMatchCatalog`를 실행하면, *Then*
-테스트가 통과한다 — catalog의 `WriteCapable` 분류와 등록 시 `WithReadOnlyHintAnnotation`
-선언이 도구별 일치함을 주장. 음성 주장 포함: WriteCapable=false 도구가 readOnlyHint=false를
-선언하면 실패(가드의 실제 이빨).
+테스트가 통과한다 — 비교 기준선은 **유효 read-only 값**(선언된 annotation 값, 선언 부재 시
+기본 false)과 catalog `WriteCapable`의 도구별 동치이지 선언의 존재가 아니다(spec.md REQ-CW-011).
+이 기준선에서 base 트리는 4도구(audit_cache·codex_audit·glm_audit·audit_multi — catalog READ,
+유효 false)에서 실패하며, 이 4개 등록에 `WithReadOnlyHintAnnotation(true)`를 추가하는 것이
+가드를 녹색으로 만드는 최소 델타다(plan M2가 수행, PRESERVE 예외로 허용된 유일한
+mcp_server.go 편집). 음성 주장 포함: catalog-read 도구의 annotation 누락(유효 false)과
+catalog-write 도구의 read-only 선언이 모두 가드에서 실패한다(가드의 실제 이빨).
+선언-부재-허용 주장: catalog-write 도구의 선언 부재(유효 false, 예 — goal_arm·verify_snapshot)는
+선언을 강제하지 않는 한 통과해야 한다.
 
 ### M3 — 런타임 어댑터
 
