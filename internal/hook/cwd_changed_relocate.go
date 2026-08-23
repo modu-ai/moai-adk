@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/modu-ai/moai-adk/internal/paths"
 	"github.com/modu-ai/moai-adk/internal/session"
 )
 
@@ -65,9 +66,37 @@ func relocateSessionCwd(input *HookInput, newCwd string) {
 }
 
 // findRegistryUpward walks from dir toward the filesystem root and reports
-// the first <dir>/.moai/state/active-sessions.json that exists.
+// the first <dir>/.moai/state/active-sessions.json that exists, stopping at
+// the user's home directory.
+//
+// The home boundary is the one project.FindProjectRoot already enforces:
+// ~/.moai is global state, not a project. Without it a session working
+// outside any checkout climbs past $HOME and relocates its entry into the
+// global registry — a write to shared state on behalf of a project that was
+// never found.
 func findRegistryUpward(dir string) (string, bool) {
+	home, _ := paths.Home()
+	return findRegistryUpwardFrom(dir, home)
+}
+
+// findRegistryUpwardFrom is findRegistryUpward with the home boundary supplied
+// rather than read from the environment, so the walk can be exercised over a
+// directory tree the test fully owns. Both paths are symlink-resolved before
+// comparison (macOS /private/var, Windows 8.3 short paths), matching the
+// normalization project.FindProjectRoot performs.
+func findRegistryUpwardFrom(dir, homeDir string) (string, bool) {
+	if dir == "" {
+		return "", false
+	}
+	dir = resolveSymlinks(dir)
+	homeDir = resolveSymlinks(homeDir)
+
 	for {
+		// Stop at the home directory — ~/.moai/state is global state, never a
+		// project registry.
+		if homeDir != "" && dir == homeDir {
+			return "", false
+		}
 		candidate := filepath.Join(dir, session.DefaultRegistryPath)
 		if _, err := os.Stat(candidate); err == nil {
 			return candidate, true
@@ -78,4 +107,16 @@ func findRegistryUpward(dir string) (string, bool) {
 		}
 		dir = parent
 	}
+}
+
+// resolveSymlinks returns path with symlinks resolved, or path unchanged when
+// it cannot be resolved (a directory that does not exist, for instance).
+func resolveSymlinks(path string) string {
+	if path == "" {
+		return ""
+	}
+	if resolved, err := filepath.EvalSymlinks(path); err == nil {
+		return resolved
+	}
+	return path
 }
