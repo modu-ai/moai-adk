@@ -131,10 +131,21 @@ func wireProject(projectRoot string, out, warn io.Writer) (Result, error) {
 	}
 
 	// Trust sidecar: record the generated content hash so doctor can detect
-	// divergence and regenerations can detect change (REQ-CW-008). Written
-	// only in a run that generated hooks.json — a hash of content we did not
-	// generate would be a false baseline.
-	if res.HooksWritten {
+	// divergence and regenerations can detect change (REQ-CW-008). Written in
+	// a run that generated hooks.json, OR when the baseline was lost (e.g. a
+	// force-reinit resets .moai/state while an unchanged hooks.json survives)
+	// and the on-disk hooks still byte-match the render — the current file IS
+	// the last generated content, verified, so re-recording restores the
+	// divergence signal instead of silently degrading to "no baseline".
+	sidecarNeeded := res.HooksWritten
+	if !sidecarNeeded && !res.HooksSkipped && len(rendered) > 0 {
+		if _, present, serr := LoadSidecar(projectRoot); serr == nil && !present {
+			if onDisk, rerr := os.ReadFile(hooksPath); rerr == nil && bytesEqual(onDisk, rendered) {
+				sidecarNeeded = true
+			}
+		}
+	}
+	if sidecarNeeded {
 		finalHooks, err := os.ReadFile(hooksPath)
 		if err != nil {
 			warnf(warn, "re-read %s for sidecar: %v", HooksRelPath, err)

@@ -71,3 +71,37 @@ func TestWireWritesSidecarOnlyOnHooksWrite(t *testing.T) {
 		t.Errorf("unchanged regeneration rewrote the sidecar:\nbefore %q\nafter  %q", before, after)
 	}
 }
+
+// TestWireReestablishesMissingSidecar verifies the self-healing baseline: a
+// lost sidecar (e.g. a force-reinit resets .moai/state while hooks.json is
+// unchanged, so no hooks write happens) is re-recorded on the next pass when
+// the on-disk hooks still byte-match the render — otherwise doctor's
+// divergence detection silently degrades to "no baseline".
+func TestWireReestablishesMissingSidecar(t *testing.T) {
+	root, _, _, _ := wireFresh(t)
+	sidecarPath := filepath.Join(root, SidecarPath)
+	if err := os.Remove(sidecarPath); err != nil {
+		t.Fatal(err)
+	}
+
+	var out, warn bytes.Buffer
+	res, err := Wire(root, &out, &warn)
+	if err != nil {
+		t.Fatalf("Wire(sidecar-missing): %v", err)
+	}
+	if res.HooksWritten {
+		t.Errorf("unchanged hooks must not be rewritten (only the sidecar re-establishes)")
+	}
+	doc, present, err := LoadSidecar(root)
+	if err != nil || !present {
+		t.Fatalf("sidecar not re-established (present=%v err=%v)", present, err)
+	}
+	raw, rerr := os.ReadFile(filepath.Join(root, HooksRelPath))
+	if rerr != nil {
+		t.Fatal(rerr)
+	}
+	sum := sha256.Sum256(raw)
+	if doc.HooksSHA256 != hex.EncodeToString(sum[:]) {
+		t.Errorf("re-established sidecar hash does not match the on-disk hooks.json")
+	}
+}

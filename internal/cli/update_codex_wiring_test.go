@@ -66,3 +66,27 @@ func TestRunUpdate_CallsCodexWiringRefresh(t *testing.T) {
 		t.Error("runUpdate must call refreshCodexWiringBestEffort in its post-sync phase — without it a wired project's hooks.json goes stale (REQ-CW-009)")
 	}
 }
+
+// TestRunUpdate_CodexRefreshRunsEvenWhenSyncSkips verifies placement: the
+// refresh must run BEFORE the `if syncSkipped` early return, because an
+// "Up to date · Skipping sync" update still owes a wired project its
+// regeneration pass (AC-CW-008 clause 2 names the update path as the
+// restore route; the wiring refresh does not depend on template redeploy).
+func TestRunUpdate_CodexRefreshRunsEvenWhenSyncSkips(t *testing.T) {
+	src, err := os.ReadFile("update.go")
+	if err != nil {
+		t.Fatalf("read update.go: %v", err)
+	}
+	body := string(src)
+	callIdx := strings.Index(body, "refreshCodexWiringBestEffort(")
+	if callIdx < 0 {
+		t.Fatal("refreshCodexWiringBestEffort not called in runUpdate (see TestRunUpdate_CallsCodexWiringRefresh)")
+	}
+	skipIdx := strings.Index(body, "if syncSkipped {")
+	if skipIdx < 0 {
+		t.Fatal("syncSkipped early-return block not found in update.go — test premise stale")
+	}
+	if callIdx > skipIdx {
+		t.Error("refreshCodexWiringBestEffort sits AFTER the syncSkipped early return — an 'Up to date' update skips the wiring refresh entirely; move it before the early return")
+	}
+}

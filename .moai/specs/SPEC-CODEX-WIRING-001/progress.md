@@ -61,11 +61,129 @@ Boundary Case: 없음.
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run-phase executed 2026-08-24, serial mode, manager-develop (cycle_type=tdd), worktree t88 @ branch WT-codex-wiring.
+
+### RED evidence (TDD invariant i — verbatim pre-GREEN output)
+
+- **M1 codexwiring core** — first test run against an empty package:
+
+  ```
+  # github.com/modu-ai/moai-adk/internal/codexwiring [github.com/modu-ai/moai-adk/internal/codexwiring.test]
+  internal/codexwiring/wire_test.go:17:69: undefined: Result
+  internal/codexwiring/configtoml_test.go:13:9: undefined: EnsureMCPTable
+  internal/codexwiring/hooks_test.go:33:19: undefined: RenderHooks
+  ...
+  FAIL	github.com/modu-ai/moai-adk/internal/codexwiring [build failed]
+  ```
+
+- **M2 annotation guard** — `go test ./internal/cli/ -run 'TestMoaiMCPServer_AnnotationsMatchCatalog' -count=1` BEFORE the 4 annotation lines (proving the base-tree 4-tool gap is real):
+
+  ```
+  --- FAIL: TestMoaiMCPServer_AnnotationsMatchCatalog (0.00s)
+      mcp_annotation_guard_test.go:84: tool "audit_cache": effective read-only=false but catalog WriteCapable=false (REQ-CW-011 equivalence: effective read-only ⟺ WriteCapable=false)
+      mcp_annotation_guard_test.go:84: tool "codex_audit": effective read-only=false but catalog WriteCapable=false
+      mcp_annotation_guard_test.go:84: tool "glm_audit": effective read-only=false but catalog WriteCapable=false
+      mcp_annotation_guard_test.go:84: tool "audit_multi": effective read-only=false but catalog WriteCapable=false
+      mcp_annotation_guard_test.go:90: 4 tool(s) violate the effective-annotation ⟺ catalog equivalence: [audit_cache audit_multi codex_audit glm_audit]
+  FAIL
+  ```
+
+  Post-fix GREEN: `--- PASS: TestMoaiMCPServer_AnnotationsMatchCatalog`.
+
+- **M2 --agent flag** — `undefined: resolveAgentWiring / agentWiringCodex / agentWiringBoth / agentWiringClaude` (build failed) before implementation; all 6 tests GREEN after.
+- **M2 update wiring** — `undefined: refreshCodexWiringBestEffortAt` (build failed); GREEN after.
+- **M3 harness mode** — all 10 tests FAIL before implementation (flag absent); GREEN after (one intermediate fix: tests use `ParseFlags` to trigger cobra's persistent-flag merge, mirroring the real invocation).
+- **M4 doctor** — build failed (`checkCodexWiring`/`codexWiringLookPath` undefined); 7 tests GREEN after.
+
+### AC binary matrix (E1)
+
+All commands run 2026-08-24 against the final tree (M5 head, pre-M5-commit). Scratch e2e root: `/tmp/cw-e2e.hhJW53` (binary built `go build -o $SCRATCH/bin/moai ./cmd/moai`; invocations via a HOME-isolating wrapper so the real `~/.claude` was never touched; every project dir under the scratch root). `moai` below = the scratch binary.
+
+| AC | Status | Command (verbatim) | Observed output |
+|---|---|---|---|
+| AC-CW-001 | PASS | `moai init --help \| grep -c -- '--agent'` / `moai init /tmp/cw-e2e.hhJW53/work/cw-invalid --agent gemini --non-interactive` | `1`; exit `1`, stderr `Invalid --agent value "gemini": must be one of: claude, codex, both.` |
+| AC-CW-002 | PASS | jq event keys / handler count / harness grep / version grep / SessionEnd timeout over `proj/.codex/hooks.json` after `moai init proj --agent codex --non-interactive --no-hooks` | keys `PostToolUse,PreToolUse,SessionEnd,SessionStart,Stop,UserPromptSubmit`; HANDLERS=6, HARNESS=6, VERSION_KEY=0, SESSIONEND_TIMEOUT=3 |
+| AC-CW-003 | PASS | `grep -c 'default_tools_approval_mode' proj/.codex/config.toml`; `grep -cE 'enabled_tools\|disabled_tools' …`; `python3 -c "import tomllib;tomllib.load(open(…,'rb'))"` | `1`; `0`; exit 0 (`TOML_OK`) |
+| AC-CW-004 | PASS | flag-absent `moai init proj2 --non-interactive --no-hooks` → `test ! -f proj2/.codex/hooks.json` ×2 + `jq -r '.mcpServers.moai.command' proj2/.mcp.json` | NO_HOOKS + NO_CONFIG; `moai` |
+| AC-CW-005 | PASS | `moai init proj3 --agent both --non-interactive --no-hooks` → file existence + `.mcp.json` entry | `.codex/hooks.json` + `.codex/config.toml` exist; `MCP3=moai` |
+| AC-CW-006 | PASS | `shasum -a 256` hooks.json + config.toml before/after re-run (`moai init proj --agent codex … --force`) | `SHA_IDENTICAL` (empty diff) |
+| AC-CW-007 | PASS | pre-seeded user hooks entry + `[mcp_servers.other]` + user-modified `[mcp_servers.moai]` + user `status_line = ["model"]` → `--agent codex` wire → greps | OWN_HOOK=1; OTHER_TABLE=1; USER_MOAI_TABLE_KEPT=1; canonical approval NOT injected (=0 — user table byte-invariant); USER_STATUSLINE_KEPT=1 |
+| AC-CW-008 | PASS | clause 1: `grep -c 'codex /hooks'` on init stdout → `1`. clause 2: tamper Stop→`user-removed`, `moai update --yes --templates-only` → `grep -c '/hooks to re-trust'` = `1`, `moai hook stop --harness codex` restored = `1`. clause 3: no-change rerun → re-trust grep = `0` | all three clauses observed |
+| AC-CW-009 | PASS | `moai update --yes --templates-only` in proj2 (claude) → still no `.codex/*` wiring (NO_HOOKS/NO_CONFIG); in proj (wired) → `shasum` diff empty | `CLAUDE_NO_HOOKS`,`CLAUDE_NO_CONFIG`; `HOOKS_UNCHANGED` |
+| AC-CW-010 | PASS | `go test ./internal/cli/ -run 'TestMoaiMCPServer_AnnotationsMatchCatalog' -count=1` | `ok github.com/modu-ai/moai-adk/internal/cli` (guard GREEN post-fix; RED evidence above proves the teeth) |
+| AC-CW-011 | PASS | `go test ./internal/cli/ -run 'HarnessCodex' -count=1` | `ok … 0.858s` — 10 tests covering (a) block substitution + default reason, (b) discard record event/key/content_length, (c) mismatch + unadapted rejection, (d) exit-code-2 ExitCoder passthrough |
+| AC-CW-012 | PASS | `moai doctor` in proj → `grep -c 'Codex Wiring'` = `3` (≥1); tampered → warn row `hooks.json differs from the last generated content (sidecar hash mismatch) — run codex /hooks to re-trust the changed hooks` (`/hooks to re-trust` grep = 1 in PLAIN doctor); proj2 → `ok not wired (claude-only project) — skipped`, doctor exit 0 `Fail 0`; `git diff -- internal/template/templates/.codex/` empty | all four clauses observed |
+| AC-CW-013 | PASS | `python3 -c "import tomllib;c=tomllib.load(...);print(c['tui']['status_line']==['model-with-reasoning','context-remaining','git-branch','current-dir','thread-id'])"` → `True`; user `status_line = ["model"]` byte-kept (=1); `go test ./internal/codexwiring/ -run StatusLine` → ok (9 tests: canonical five, ⊆ allowlist, 7 aliases 0hit, allowlist=29 canonical, 3 merge branches, nested-table precision, idempotency) | all observed |
+| AC-CW-014 | DELEGATED-TO-SYNC | SHOULD — README/docs-site mention of openai/codex#17827 is sync-phase output (plan M5 `[v0.3.0]` note; REQ-CW-014). Run-phase did NOT edit README/docs-site. Base-0 token state: `17827` grep 0hit (acceptance.md §A). | delegation recorded, not executed |
+
+### E2 builds
+
+- `go build ./...` → exit 0 (`BUILD_OK`)
+- `GOOS=windows GOARCH=amd64 go vet ./internal/...` → exit 0 (`WINVET_EXIT=0`, no output)
+
+### E3 coverage
+
+- `go test ./internal/codexwiring/ -count=1 -cover` → `ok github.com/modu-ai/moai-adk/internal/codexwiring 0.511s coverage: 87.2% of statements` (≥ 85% DoD)
+
+### E4 subagent boundary grep
+
+- `grep -rn 'AskUserQuestion' internal/codexwiring/ internal/cli/doctor_codex.go 2>/dev/null | grep -v _test` → 0 matches (no output)
+
+### E5 lint
+
+- `golangci-lint run ./internal/codexwiring/...` → `0 issues.`
+- `golangci-lint run ./internal/cli/...` → `0 issues.` (full package — NEW-vs-baseline separation moot: zero total)
+
+### E6 commits (branch WT-codex-wiring, NOT pushed — B9-modified: main protected, no push/PR/branch ops)
+
+- M1 `90439c59c` feat: codexwiring generator core (+ spec.md `draft → in-progress` on this commit)
+- M2 `30c1387c4` feat: --agent flag + annotation 4-tool fix + guard
+- M3 `20ec045c3` feat: --harness codex runtime mode
+- M4 `09d34fcc0` feat: doctor Codex Wiring diagnostic
+- M5 (this commit) feat: acceptance verification + e2e + placement/self-heal fixes
+
+### Run-phase discovered defects fixed in-place (both within SPEC scope)
+
+1. **Update refresh skipped on "Up to date" updates** — the initial placement of `refreshCodexWiringBestEffort` sat AFTER the `syncSkipped` early return, so an up-to-date update never refreshed the wiring (AC-CW-008 clause 2 failed e2e: re-trust count 0). Fixed by moving the call BEFORE the early return (the refresh does not depend on template redeploy); regression test `TestRunUpdate_CodexRefreshRunsEvenWhenSyncSkips` (RED→GREEN) pins the placement.
+2. **Sidecar baseline silently lost** — a force-reinit resets `.moai/state` while an unchanged hooks.json survives, and the sidecar write was gated on HooksWritten only → doctor's divergence detection degraded to "no baseline" (observed live in the scratch e2e). Fixed with self-healing: when the sidecar is absent but the on-disk hooks byte-match the render, the baseline is re-recorded. Regression test `TestWireReestablishesMissingSidecar` (RED→GREEN).
+
+### PRESERVE verification (plan §D)
+
+- `git diff -- internal/template/templates/.codex/` → empty; `git diff --stat internal/template/templates/` → empty (no template additions; Template-First not triggered)
+- `git diff --stat internal/codexadapter/` → empty (adapter consumed, never modified)
+- `git diff 78c21b526 --stat -- internal/cli/mcp_server.go` → `14 insertions(+)`, 0 deletions — exactly the 4 `WithReadOnlyHintAnnotation(true)` lines + their comments (review-1 D1 PRESERVE exception); codex_task/codex_job_*/glm_* handler logic untouched
+- existing init flags + flag-absent behavior: covered by `TestRunInit_AgentAbsentLeavesNoCodexFiles` + the full `TestRunInit` regression sweep (ok)
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_status: complete
+run_complete_at: 2026-08-24
+m1_to_mN_commit_strategy: one-commit-per-milestone (M1..M5, Conventional Commits, SPEC-ID scope)
+m1_commit_sha: 90439c59c
+m2_commit_sha: 30c1387c4
+m3_commit_sha: 20ec045c3
+m4_commit_sha: 09d34fcc0
+m5_commit_sha: pending-backfill-this-commit
+run_commit_sha: pending-backfill-m5
+ac_total: 14
+ac_pass_count: 13
+ac_fail_count: 0
+ac_delegated_should: 1  # AC-CW-014 → sync-phase (by design, not a failure)
+preserve_list_post_run_count: 0  # violations; templates+adapter empty diff, mcp_server.go = 14 pure insertions
+new_warnings_or_lints_introduced: 0  # golangci-lint: 0 issues on both changed packages
+coverage_codexwiring: 87.2%  # go test ./internal/codexwiring/... -cover, threshold 85
+cross_platform_build:
+  darwin_arm64_go_build: exit-0
+  windows_amd64_go_vet: exit-0
+boundary_grep_askuserquestion: 0
+l44_pre_commit_fetch: not-executed  # no push performed (B9-modified: main protected; branch left unpushed for the card PR flow)
+l44_post_push_fetch: not-executed
+total_run_phase_files: 16  # 7 codexwiring source+test, init.go, update.go, update_codex_wiring.go(+test), hook.go, hook_harness_codex.go(+test), doctor.go, doctor_codex.go(+test), mcp_server.go, init_agent_flag_test.go, mcp_annotation_guard_test.go, 3 doctor goldens
+evidence_paths:
+  - .moai/specs/SPEC-CODEX-WIRING-001/progress.md
+scratch_e2e_root: /tmp/cw-e2e.hhJW53  # transient by design; verbatim outputs quoted in §E.2
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

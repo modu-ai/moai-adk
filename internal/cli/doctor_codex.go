@@ -70,7 +70,10 @@ func checkCodexWiring(root string, verbose bool) DiagnosticCheck {
 		} else if present {
 			sum := sha256.Sum256(hooksRaw)
 			if sidecar.HooksSHA256 != hex.EncodeToString(sum[:]) {
-				problems = append(problems, "hooks.json differs from the last generated content (sidecar hash mismatch)")
+				// The directive rides IN the message (not Detail) so a plain
+				// `moai doctor` surfaces it — Detail only renders under
+				// --verbose (AC-CW-012 clause 2's plain-doctor reading).
+				problems = append(problems, "hooks.json differs from the last generated content (sidecar hash mismatch) — "+reTrustAdvice)
 				advice = append(advice, reTrustAdvice)
 			}
 		} else if verbose {
