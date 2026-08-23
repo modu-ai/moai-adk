@@ -571,7 +571,7 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	// block the flow (fail-open). The convergence result is valid regardless of
 	// whether the state file landed.
 	if cfg.SessionID != "" {
-		_ = persistConvergenceResult(result, cfg.SessionID)
+		_ = persistConvergenceResult(result, cfg.SessionID, cfg.ProjectRoot)
 	}
 	return result
 }
@@ -588,11 +588,19 @@ func gateOr(g, dflt string) string {
 // ─── DQ-1: state-file persistence ───
 
 // persistConvergenceResult writes the ConvergenceResult to
-// <convergenceStateDir>/audit-multi/<sessionID>.json. Creates the directory if
-// needed. Returns any disk error so the caller can log it; the caller MUST
-// continue with the in-memory result regardless (fail-open).
-func persistConvergenceResult(r ConvergenceResult, sessionID string) error {
-	dir := filepath.Join(convergenceStateDir, "audit-multi")
+// <state dir>/audit-multi/<sessionID>.json. Creates the directory if needed.
+// Returns any disk error so the caller can log it; the caller MUST continue
+// with the in-memory result regardless (fail-open).
+//
+// projectRoot names the tree the audit was run against. It is honored because
+// the reader side already is: loadConvergenceResult takes the caller's own
+// projectDir (multi_review_gate.go), so a run inside a worktree that wrote to
+// the primary checkout's .moai/state left its verdict where that worktree's
+// gate never looks — and mixed several worktrees' verdicts into one directory.
+// Empty ⇒ the package-level convergenceStateDir, so an unaware caller and the
+// existing tests that override that variable see no change.
+func persistConvergenceResult(r ConvergenceResult, sessionID, projectRoot string) error {
+	dir := filepath.Join(convergenceStateDirFor(projectRoot), "audit-multi")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("convergence state dir: %w", err)
 	}
@@ -605,6 +613,16 @@ func persistConvergenceResult(r ConvergenceResult, sessionID string) error {
 		return fmt.Errorf("convergence state write: %w", err)
 	}
 	return nil
+}
+
+// convergenceStateDirFor returns the .moai/state directory the convergence
+// result belongs under: the named project root when the caller supplied one,
+// otherwise the process-wide convergenceStateDir resolved at package load.
+func convergenceStateDirFor(projectRoot string) string {
+	if root := strings.TrimSpace(projectRoot); root != "" {
+		return filepath.Join(root, ".moai", "state")
+	}
+	return convergenceStateDir
 }
 
 // defaultConvergenceStateDir resolves the project root via the existing
