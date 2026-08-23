@@ -83,7 +83,7 @@ SessionStart 通知がコピーすべき3つのコマンドを正確に出力し
 
 クロスセッションメッセージングはすべての環境で使える機能ではありません。カンバンモードはリードとコンパニオンがこのチャネルだけで接続されるため、チャネルがなければモード自体が成立しません。開始前に以下の制約を確認してください。
 
-{{< icon warning warn >}} **OS**: macOS と Linux（WSL 2 内の Linux を含む）でのみ使用できます。ネイティブ Windows では Claude Code はクロスセッションメッセージングを提供しません。
+{{< icon warning warn >}} **OS**: macOS・Linux（WSL 2 内の Linux を含む）・Windows で使用できます。Windows 対応は Claude Code v2.1.239 から追加されたため、Windows では v2.1.239 以降が必要です。
 {{< icon warning warn >}} **プロバイダー**: Amazon Bedrock、Claude Platform on AWS、Agent Platform on Google Cloud、Microsoft Foundry では使用できません。
 {{< icon warning warn >}} **バージョン**: Claude Code v2.1.224 以降が必要です。マシン間会話を先に開始するには v2.1.225 以降、@メンションと /config 行の表示には v2.1.232 以降です。
 {{< icon warning warn >}} **フラグ**: `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`、`DISABLE_TELEMETRY`、`DO_NOT_TRACK`、`DISABLE_GROWTHBOOK` のいずれか一つでも機能フラグ評価を無効にすると、メッセージングは警告なくオフになります。

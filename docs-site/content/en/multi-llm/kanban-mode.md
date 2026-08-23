@@ -96,9 +96,9 @@ connects the lead and companions through this channel alone, so where the
 channel is absent the mode itself cannot form. Check these constraints
 before you start.
 
-{{< icon warning warn >}} **Operating system**: available on macOS and Linux (including Linux
-inside WSL 2) only. Claude Code does not provide cross-session messaging
-on native Windows.
+{{< icon warning warn >}} **Operating system**: available on macOS, Linux (including Linux inside
+WSL 2), and Windows. Windows support arrived in Claude Code v2.1.239, so
+on Windows you need v2.1.239 or later.
 {{< icon warning warn >}} **Providers**: unavailable on Amazon Bedrock, Claude Platform on AWS,
 Agent Platform on Google Cloud, and Microsoft Foundry.
 {{< icon warning warn >}} **Versions**: requires Claude Code v2.1.224 or later. Initiating a

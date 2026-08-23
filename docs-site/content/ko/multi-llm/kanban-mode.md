@@ -95,9 +95,9 @@ SessionStart 알림이 복사할 세 개의 명령을 정확히 출력합니다.
 모드는 리드와 컴파니언이 오직 이 채널로 이어지므로, 채널이 없으면 모드
 자체가 성립하지 않습니다. 시작하기 전에 아래 제약을 확인하세요.
 
-{{< icon warning warn >}} **운영체제**: macOS와 Linux(WSL 2 안의 Linux 포함)에서만 사용할 수
-있습니다. 네이티브 Windows에서는 Claude Code가 교차 세션 메시징을
-제공하지 않습니다.
+{{< icon warning warn >}} **운영체제**: macOS, Linux(WSL 2 안의 Linux 포함), Windows에서 사용할
+수 있습니다. Windows 지원은 Claude Code v2.1.239부터 추가됐으므로
+Windows에서는 v2.1.239 이상이 필요합니다.
 {{< icon warning warn >}} **제공업체**: Amazon Bedrock, Claude Platform on AWS, Agent Platform
 on Google Cloud, Microsoft Foundry에서는 사용할 수 없습니다.
 {{< icon warning warn >}} **버전**: Claude Code v2.1.224 이상이 필요합니다. 기기 간 대화를
