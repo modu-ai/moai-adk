@@ -588,4 +588,35 @@ _<pending run-phase>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_commit_sha: pending-backfill-synccommit (D3 self-reference exemption — the sync commit cannot know its own SHA; the real SHA is backfilled in the immediately following backfill commit `chore(SPEC-ZONE-REGISTRY-RESYNC-001): backfill sync_commit_sha`)
+sync_complete_at: 2026-08-25
+sync_status: completed (3-phase close — the `implemented → completed` frontmatter transition rides this same sync commit, per spec-frontmatter-schema.md § Status Transition Ownership Matrix)
+changelog_entry_position: CHANGELOG.md `[Unreleased]` → `### Fixed` — top entry, references 14 AC counted against acceptance.md
+frontmatter_status_transitions:
+  spec.md: in-progress → completed (single sync commit; `updated:` refreshed to 2026-08-25)
+  plan.md: none (no frontmatter block)
+  acceptance.md: none (no frontmatter block)
+  progress.md: none (no frontmatter block)
+
+**What the sync commit contains** (branch `WT-zone-registry-drift`, PR #1646 — repo is PR-mandatory, push only, no merge):
+
+1. `CHANGELOG.md` — `[Unreleased]` → `### Fixed` entry: fresh `moai init` projects no longer fail `moai constitution validate` / `moai doctor` on a drifted zone registry (67-error clause drift → 0; anchor resolution guarded; 4 retired entries clause-exempt per option C).
+2. `progress.md` §E.4 — this section.
+3. `spec.md` frontmatter ONLY — `status: in-progress → completed`, `updated: 2026-08-25`. No spec/plan/acceptance body content touched.
+4. README / docs-site: **no change** — verified `grep -rn 'constitution' README*.md` yields only a docs-site link line (README.md:695 Core Concepts row); the READMEs make no behavioral claim this SPEC changed.
+
+**b12_self_test**:
+- a (pre-emission grep): `grep -c 'SPEC-ZONE-REGISTRY-RESYNC-001' CHANGELOG.md` → `0` before emission (no duplicate entry from parallel sessions).
+- b (AC count match): acceptance.md distinct AC tokens = **14** (AC-ZRR-001..014); CHANGELOG entry states "14 acceptance criteria, counted against acceptance.md" — match.
+- c (file path verification): all paths named in the CHANGELOG entry verified present — `internal/constitution/registry_sync_test.go`, both zone-registry.md mirrors, `.github/workflows/ci.yml` constitution-check job.
+
+**Sanity check on documented tree**: `go test ./internal/constitution/ -run RegistrySync -count=1` → `ok … 0.353s` (green on the tree this section documents, HEAD pre-sync).
+
+### Sync reviewer pointers (MANDATORY reads before verdict)
+
+- **CONST-V3R2-004 habitat ruling (semantic axis — machine checks pass either way; acceptance.md §213 assigns this axis to sync review)**: the clause now lives at `.claude/rules/moai/development/coding-standards.md` `#language-policy`. A near-identical literal also exists in `NOTICE.md` (the template-derived copy). M1 chose `coding-standards.md#language-policy` and recorded the near-miss rejection in §E.2. The sync reviewer MUST confirm which of the two habitats is the doctrinal source of truth for this clause — the registry pin is only correct if `coding-standards.md#language-policy` is the doctrine (an entry pointing at NOTICE.md would still pass every mechanical check; this is exactly the "올바른 문장을 골랐는가" axis).
+- **Plan-phase debt ② (evaluated-entry double count, plan.md §H)**: sync-auditor must check from §E.2 citations that the clause-check count and anchor-check count are TWO numbers (clause 97 vs anchor 101 under option C) — they are deliberately not one number.
+- **Process debt, sync-review scope**: M1 was executed by zrr-spec-amend before manager-develop delegation (§F M1 수행 출처 공개) — ownership violation accepted as content, debt retained for this review's judgment.
+- **§E.3 run-phase Audit-Ready Signal body is `_<pending run-phase>_`** — the heading exists (restored; parser-load-bearing) but the run-phase signal body was never populated by manager-develop. Run-phase evidence lives in §E.2 (complete: M1/M2/M3 + R1-CI observation + interleave incident record). Reviewer should treat §E.2 as the evidence surface; the empty §E.3 body is a recorded gap, not hidden one.
+
+🗿 MoAI

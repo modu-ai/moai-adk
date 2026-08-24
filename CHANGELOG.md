@@ -57,6 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **[SPEC-ZONE-REGISTRY-RESYNC-001](.moai/specs/SPEC-ZONE-REGISTRY-RESYNC-001/spec.md)** — sync-phase close (3-phase plan→run→sync). **Fresh `moai init` projects no longer fail `moai constitution validate` / `moai doctor` on a drifted zone registry.** The registry's clause/anchor data was resynced to the verbatim single-line spans actually present in the cited sources (clause 73 + anchor 18 + file re-point 4; 67-error clause drift → 0), the 4 `[SUPERSEDED …]` retired entries are clause-exempt by design (option C) while keeping their anchor checks, and a new blocking guard test (`internal/constitution/registry_sync_test.go` — validate + anchor six-step slug + literal grep-F checks, run against both the local and template mirrors) rides the ordinary `go test ./...` CI job so the registry cannot silently drift again; the `constitution-check` CI job gained a secondary `validate` step, and the template registry was re-embedded via `make build`. 14 acceptance criteria, counted against `acceptance.md`.
 - **The PR-merge sweep read "gh could not answer" as "not merged".** `gh pr view` errors on the
   ordinary case of a merged PR whose head branch was deleted on the remote, and the sweep collapsed
   that error, an absent PR, and malformed JSON into one empty string it treated as a negative — the
