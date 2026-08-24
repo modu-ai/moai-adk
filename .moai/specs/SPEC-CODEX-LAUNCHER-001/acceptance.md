@@ -17,15 +17,26 @@
 
 ## AC-CL-003 — `--spawn` 패리티 (REQ-CL-003)
 
-- **Given** tmux 부재를 흉내 낸 환경
-- **When** `moai codex --spawn` 을 실행하면
-- **Then** `moai cc --spawn` 이 같은 조건에서 내는 것과 동일한 계열의 진단으로 실패하고, codex 바이너리는 exec 되지 않는다.
+- **Given** tmux 존재를 흉내 낸 스텁 spawn seam
+- **When** `moai codex cli --spawn` 과 `moai codex app --spawn` 을 각각 실행하면
+- **Then** 둘 다 `spawnLaunch` 를 정확히 1회 호출하고, 그 인자에 각각 `cli` / `app` 이 보존되며, 현재 프로세스는 exec 으로 교체되지 않는다 (성공 경로 — 실패만 시험하면 아무것도 못 띄우는 구현이 통과한다).
+- **And Given** tmux 부재를 흉내 낸 환경
+- **Then** 둘 다 `moai cc --spawn` 과 동일 계열의 진단으로 실패하고 exec 은 0회다.
+- **And** 맨몸 / `status` 에 `--spawn` 을 주면 거부한다 — 리드아웃은 새 창에서 띄울 대상이 아니다.
 
-## AC-CL-004 — 리드아웃 행 집합 (REQ-CL-004)
+## AC-CL-004 — 리드아웃이 실제 값을 보고한다 (REQ-CL-004)
 
-- **Given** 스텁 프로브가 설치됨/버전/auth 를 공급하는 상태
-- **When** `moai codex status` 를 실행하면
-- **Then** 출력에 바이너리 경로 · 버전 · CODEX_HOME · auth · 배선 상태 다섯 항목이 각각 한 행 이상으로 존재한다 (행 라벨 grep 5건 전부 히트).
+라벨 존재가 아니라 **값** 을 판정한다. 다음 상태 행렬을 스텁으로 구성하고 각 칸의 보고값을 확인한다:
+
+| 배선 상태 (fixture) | 기대 보고 |
+|---|---|
+| `.codex/` 없음 | `not wired` + `moai init --agent codex` |
+| hooks.json + config.toml 정상 | `wired` |
+| hooks.json 이 화이트리스트 위반 키 보유 | `invalid` (건강 상태로 보고하지 않는다) |
+| config.toml 은 있고 hooks.json 없음 | `partial` — 어느 쪽이 없는지 명시 |
+
+- **And** 바이너리 경로 · 버전 행은 스텁이 공급한 값과 문자열 일치한다 (라벨만 있고 값이 비어도 통과하는 grep 판정을 쓰지 않는다).
+- **And** 화이트리스트 판정은 `codexadapter.ValidateConfig` 를 호출해 얻는다 (AC-CL-007 이 재구현 부재를 강제).
 
 ## AC-CL-005 — CODEX_HOME 해석과 출처 표시 (REQ-CL-005)
 
@@ -43,33 +54,57 @@
 
 ## AC-CL-007 — 분류 구현 단일성 (REQ-CL-007, REQ-CL-010)
 
-- **When** `grep -rn "login status" internal/ --include="*.go" | grep -v _test` 를 실행하면
-- **Then** 히트는 `classifyCodexAuth` 한 곳뿐이다 (신규 런처 코드에 두 번째 분류 경로가 없다).
+텍스트 중복 부재만으로는 "공유 프로브를 실제로 쓴다" 를 증명하지 못한다. 호출로 판정한다:
+
+- **Given** `ProbeCodexSetup` 과 `codexadapter.ValidateConfig` 각각의 호출 횟수를 세는 seam
+- **When** 리드아웃을 1회 조립하면
+- **Then** 두 함수의 호출 횟수가 각각 ≥1 이다 (런처가 자체 분류·자체 검증을 하지 않았다는 실행 증거).
+- **And** `grep -rn "login status" internal/ --include="*.go" | grep -v _test` 의 히트는 공유 분류기 한 곳뿐이다.
 - **And** `internal/web` 에는 auth 분류 로직이 여전히 0건이다.
+- **And** `git diff` 에 `codexCommandRunner` 인터페이스 선언의 변경이 없다 (REQ-CL-010 후단).
 
-## AC-CL-008 — stderr 로 나오는 상태 문구를 분류한다 (REQ-CL-008) [핵심]
+## AC-CL-008 — auth 분류 2단 사다리 (REQ-CL-008) [핵심]
 
-- **Given** stdout 은 비우고 stderr 에만 `Logged in using ChatGPT` 를 쓰는 스텁 러너
+**1단 (파일):**
+
+- **Given** 임시 CODEX_HOME 에 `auth.json` 을 두고 `auth_mode` 를 `chatgpt` / `apikey` / (알 수 없는 값) 로 각각 채운 fixture
+- **When** 분류하면
+- **Then** 각각 `chatgpt` / `apiKey` / `unknown` 이다. 알 수 없는 값은 추측하지 않는다.
+- **And** 어떤 경우에도 토큰 값(`tokens.*`)이나 API 키 값이 읽히거나 출력에 나타나지 않는다 (출력 전문을 키 문자열로 grep → 0건).
+
+**2단 (하강):**
+
+- **Given** `auth.json` 이 없고, stdout 은 비우고 stderr 에만 `Logged in using ChatGPT` 를 쓰는 스텁
 - **When** `ProbeCodexSetup` 을 호출하면
 - **Then** `AuthProvider == "chatgpt"` 이다.
-- **기준선 근거**: 이 시험은 수정 전 트리에서 반드시 실패해야 한다 (현행은 `unknown`). 실패를 먼저 관측한 뒤 수정한다.
+- **기준선 근거**: 이 절은 수정 전 트리에서 반드시 실패해야 한다 (현행은 `unknown` — M-2 실측). 실패를 먼저 관측한 뒤 수정한다.
 
-## AC-CL-009 — 비영 rc 라도 출력이 있으면 분류를 시도한다 (REQ-CL-008)
+## AC-CL-009 — 오류 문구를 인증 성공으로 읽지 않는다 (REQ-CL-009) [핵심]
 
-- **Given** rc 1 과 함께 `Logged in using ChatGPT` 를 stderr 로 내는 스텁
-- **When** 분류하면
-- **Then** `chatgpt` 로 분류된다 (rc 만으로 조기 `unknown` 하강하지 않는다).
+부분 일치의 오분류를 막는 음성 시험이다. `auth.json` 부재 상태에서, 아래 각 출력을 스텁으로 공급한다:
+
+| 스텁 출력 (rc) | 기대 |
+|---|---|
+| `error: API key missing` (rc 1) | `unknown` — `apiKey` 아님 |
+| `provider configuration unreadable` (rc 1) | `unknown` — `provider` 아님 |
+| `failed to reach ChatGPT backend` (rc 1) | `unknown` — `chatgpt` 아님 |
+| `Logged in using ChatGPT` (rc 0) | `chatgpt` |
+| `Logged in using ChatGPT` (rc 1) | `chatgpt` — 긍정 행이 있으므로 rc 만으로 버리지 않는다 |
+| 두 스트림 모두 비어 있음 (rc 0) | `unknown` |
+
+- **근거**: 현행 분류기(`mcp_codex.go:1331`)는 부분 일치라 위 1~3행을 각각 `apiKey` / `provider` / `chatgpt` 로 잘못 분류한다. 앵커된 긍정 행 매칭이 이 여섯 칸을 동시에 만족시키는 유일한 형태다.
 
 ## AC-CL-010 — 판정 불가는 조치와 함께 보고 (REQ-CL-009)
 
-- **Given** 두 스트림 모두 비어 있는 스텁
-- **When** `moai codex status` 를 실행하면
+- **Given** `auth.json` 부재 + 두 스트림 모두 비어 있는 스텁
+- **When** 맨몸 `moai codex` 를 실행하면
 - **Then** auth 행은 `unknown` 이고, 출력에 `codex login status` 문자열이 포함되며, 로그아웃 단정 문구는 없다.
 
-## AC-CL-011 — `--version` 경로 무회귀 (REQ-CL-008)
+## AC-CL-011 — 공유 러너 무회귀 (REQ-CL-010)
 
-- **When** 기존 codex 관련 시험을 실행하면 (`go test ./internal/cli/... -run Codex`)
-- **Then** 전부 통과한다 — 러너 인터페이스에 메서드를 추가했을 뿐 `run` 의 계약은 바뀌지 않았다.
+- **When** 기존 codex 관련 시험을 실행하면 (`go test ./internal/cli/... -run Codex -timeout 600s`)
+- **Then** 전부 통과한다.
+- **And** `codexCommandRunner` 인터페이스 선언과 그 세 구현체(`realCodexRunner` / `fakeCodexRunner` / `stubCodexRunner`) 어느 것도 이 SPEC 의 diff 에 나타나지 않는다 — 새 seam 은 별도 변수이므로 (M-7, plan §C.2).
 
 ## AC-CL-012 — 데스크톱 앱 위임 (REQ-CL-011)
 
@@ -86,14 +121,17 @@
 
 ## AC-CL-014 — 쓰기 없음 (REQ-CL-013)
 
-- **Given** 임시 프로젝트 루트 + 임시 CODEX_HOME 의 파일 목록·mtime 스냅샷
+- **Given** 세 트리의 파일 목록·mtime 스냅샷 — 임시 프로젝트 루트, 임시 CODEX_HOME, **그리고 임시 Claude 프로필 디렉터리**(REQ-CL-013 이 명시적으로 보호하는 세 번째 대상)
 - **When** 네 형태(맨몸 / `status` / `cli` / `app`)를 (exec 스텁 상태로) 각각 실행한 뒤 다시 스냅샷하면
-- **Then** 두 스냅샷이 동일하다 (`.claude/settings.local.json` 포함 무변경, CODEX_HOME 하위 신규 파일 0).
+- **Then** 세 스냅샷 모두 동일하다 (`.claude/settings.local.json` 무변경, CODEX_HOME 하위 신규 파일 0, 프로필 상태 무변경).
 
 ## AC-CL-015 — 중립성 (REQ-CL-014)
 
 - **When** 템플릿 중립성 가드를 실행하면 (`MOAI_TEMPLATE_LEAK_STRICT=1 go test ./internal/template/...`)
-- **Then** 통과한다. 도움말 문안에 SPEC ID · 카드 id · 내부 날짜 · 커밋 SHA 가 없다.
+- **Then** 통과한다.
+- **And Given** 템플릿 가드는 `internal/cli` 를 보지 않으므로 도움말은 따로 판정한다
+- **When** `internal/cli` 에서 `codexCmd` 의 생성된 도움말 문자열(`Long` + 예시)을 직접 취해 검사하면
+- **Then** SPEC ID(`SPEC-`) · 카드 id(`t197`) · 내부 날짜 · 커밋 SHA 패턴이 각각 0건이다.
 
 ## AC-CL-016 — 게이트 (전 REQ)
 

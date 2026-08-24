@@ -1,7 +1,7 @@
 ---
 id: SPEC-CODEX-LAUNCHER-001
 title: "Codex 전용 런처 — moai codex: 배선·CODEX_HOME·auth 상태 확인과 앱/CLI 기동"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-08-24
 updated: 2026-08-24
@@ -25,15 +25,20 @@ related_specs: [SPEC-CODEX-DUAL-AGENTS-001, SPEC-CODEX-SKILLS-CANONICAL-001, SPE
 |---|---|---|
 | 0.1.0 | 2026-08-24 | 최초 작성 (plan-phase, 카드 t197). 리드 배차 시 추가된 운영자 기준 3항(런처 동사 / auth 상태 노출 / t88 M4 정합) 반영 |
 | 0.2.0 | 2026-08-24 | 맨몸 `moai codex` 의미 확정 — 리드 판정 (b) "리드아웃 + 명시 기동". REQ-CL-002 재기술, AC-CL-002 조건절 해소, plan §B 결정 기록으로 전환 |
+| 0.3.0 | 2026-08-24 | 교차모델 감사(codex 백엔드) 지적 4건 반영. auth 분류를 `auth_mode` 파일 1순위 + 앵커된 긍정 행 2순위의 2단 사다리로 재설계(REQ-CL-008/009 재기술) — 부분 일치가 오류 문구를 인증 성공으로 읽는 결함을 설계 단계에서 제거. 공유 러너 인터페이스 확장 철회(REQ-CL-010 후단) — 구현체 수 측정이 틀렸음이 드러남(M-7). AC 5건을 명목 커버리지에서 행동 판정으로 교체. 근거 문서를 축약 없는 실측본으로 재작성 |
 
 ## §A. 측정 전제 (Verified baseline)
 
-> 근거: `.moai/reports/t197/measurement.md` (worktree `WT-codex-launcher` @ `9280c96b3`, 2026-08-24 실측).
+> 근거: `.moai/reports/t197/measurement.md` (worktree `WT-codex-launcher` @ `a547e3888`, 부모 `9280c96b3`, 2026-08-24 실측 — 명령·종료코드·출력 축약 없이 수록).
 > t88 (M4) 산출물 `7b217da7c` 가 이 트리의 조상임을 확인했다.
 
 ### §A.1 `moai codex` 는 없다 (카드 전제 성립)
 
 빌드한 바이너리의 `--help` 에 LAUNCH COMMANDS 는 `cc` / `glm` / `cg` 셋뿐이고, `codex` 를 `Use:` 로 갖는 최상위 커맨드는 0건이다 (`codex-review-gate` 는 `moai hook` 하위 커맨드). Codex 사용자는 moai 가 깐 배선이 실제로 살아 있는지 확인할 진입점이 없다.
+
+### §A.2a 구조화된 auth 원천이 존재한다
+
+`codex doctor` 는 auth 를 구조화해 알고 있고 (`stored auth mode: chatgpt`), 그 원천은 `<CODEX_HOME>/auth.json` 의 `auth_mode` 필드다. doctor 자체는 이 머신에서 **46초** 걸려 런처가 부를 수 없지만 (롤아웃 31,525개 스캔), 파일은 즉시 읽힌다. 산문 파싱보다 이쪽이 1순위다.
 
 ### §A.2 auth 상태가 항상 `unknown` — 원인은 스트림 오독
 
@@ -75,7 +80,7 @@ t88 (M4) 이 Codex 쪽 배선을 깔았지만, 그 배선을 **확인하고 그 
 
 - `moai codex` 최상위 커맨드 (LAUNCH COMMANDS 그룹, `cc` / `glm` / `cg` 의 형제)
 - 준비 상태 리드아웃: 바이너리 · 버전 · `CODEX_HOME` · auth · 프로젝트 배선 (`.codex/*`)
-- auth 분류의 스트림 오독 수정 (§A.2) — 프로브를 공유하는 세 표면 전부에 반영
+- auth 분류 재설계 (§A.2 스트림 오독 + 부분 일치 오분류) — 프로브를 공유하는 세 표면 전부에 반영
 - Codex CLI / 데스크톱 앱 기동 위임
 - `--spawn` (tmux 새 창) 패리티
 
@@ -104,9 +109,9 @@ t88 (M4) 이 Codex 쪽 배선을 깔았지만, 그 배선을 **확인하고 그 
 
 ### D.3 auth 상태 (§A.2 결함 수정)
 
-- **REQ-CL-008** — The auth classifier shall read the combined stdout and stderr of `codex login status`, so a codex build that writes the status line to stderr classifies correctly instead of degrading to `unknown`.
-- **REQ-CL-009** — Where the classification still cannot be determined, the system shall report `unknown` together with the action `codex login status` rather than asserting a logged-out state — an unreadable probe is a gap, never a verdict.
-- **REQ-CL-010** — The stream-reading correction shall apply to every consumer of the shared probe (the `codex_setup` MCP tool, the web console Codex card, and this launcher), with no second classification path introduced.
+- **REQ-CL-008** — The auth classifier shall determine the provider from the `auth_mode` field of `<CODEX_HOME>/auth.json`, and where that file is absent or unreadable shall fall back to the combined stdout and stderr of `codex login status`. It shall read no credential value from that file — only `auth_mode` and whether an API-key field is populated.
+- **REQ-CL-009** — When classifying from command output, the system shall take the provider only from an affirmative status line, and shall classify a non-zero exit only when such a line is present; where no affirmative line is found the system shall report `unknown` together with the action `codex login status`. A provider name appearing inside an error diagnostic shall never be read as a successful classification — an unreadable probe is a gap, never a verdict.
+- **REQ-CL-010** — The classification correction shall apply to every consumer of the shared probe (the `codex_setup` MCP tool, the web console Codex card, and this launcher), with no second classification path introduced and no change to the shared `codexCommandRunner` interface.
 
 ### D.4 기동 위임
 
