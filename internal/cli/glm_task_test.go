@@ -400,9 +400,20 @@ func TestGLMTask_BackgroundLifecycle(t *testing.T) {
 	for time.Now().Before(deadline) {
 		rec, err := reg.load(jobID)
 		if err == nil && rec.Status == glmJobStatusCompleted && rec.Output == "background done" {
-			if _, live := glmLiveJobs.Load(jobID); live {
-				t.Error("live-map entry must be gone after the job ended")
-			}
+			// The live-map entry is cleared, but not yet. runGLMBackgroundJob
+			// writes the terminal record in its body and clears the entry from
+			// a deferred call, so a reader that polls the registry observes
+			// `completed` strictly BEFORE the entry disappears — the ordering
+			// is guaranteed the wrong way round for an instantaneous check.
+			// That gap is nanoseconds wide, which is why asserting on it
+			// passed for so long and then failed under -race, where the
+			// scheduler widens it.
+			//
+			// The producer's ordering is not the defect: the deferred delete is
+			// what makes the entry go on EVERY exit path, so a terminal record
+			// is never left addressable by the cancel path. Inverting it to
+			// satisfy this assertion would trade a guarantee for a convenience.
+			waitForGLMJobToStop(t, jobID)
 			return
 		}
 		time.Sleep(5 * time.Millisecond)
