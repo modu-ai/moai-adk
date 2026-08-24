@@ -180,6 +180,7 @@ func TestIsRetiredClause(t *testing.T) {
 		{"unrelated bracket", "[HARD] text", false},
 		{"longer word starting with the marker is not a marker", "[SUPERSEDEDLY] text", false},
 		{"unterminated marker", "[SUPERSEDED text", false},
+		{"a later bracket does not close the marker", "[SUPERSEDED live [HARD]", false},
 		{"empty", "", false},
 	}
 	for _, tc := range cases {

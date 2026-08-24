@@ -39,5 +39,9 @@ func IsRetiredClause(clause string) bool {
 	if rest == "" || (rest[0] != ']' && rest[0] != ' ') {
 		return false
 	}
-	return strings.Contains(rest, "]")
+	// The marker's OWN bracket has to close. A later bracket belonging to
+	// something else does not: "[SUPERSEDED live [HARD]" ends in ']', but that
+	// one closes "[HARD" and leaves the marker open.
+	closing := strings.IndexByte(rest, ']')
+	return closing >= 0 && !strings.Contains(rest[:closing], "[")
 }
