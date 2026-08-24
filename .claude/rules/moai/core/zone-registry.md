@@ -108,7 +108,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/development/coding-standards.md
   anchor: "#language-policy"
-  clause: "All instruction documents must be in English:"
+  clause: "All instruction documents must be in Englishx:"
   canary_gate: true
 
 - id: CONST-V3R2-005
