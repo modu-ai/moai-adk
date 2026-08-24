@@ -52,6 +52,14 @@ type Edge struct {
 	Source string `json:"source"`
 	Target string `json:"target"`
 	Line   int    `json:"line,omitempty"`
+
+	// Grade is the resolution grade used to derive a code-derived edge
+	// (full | name-based). Empty on doc-derived edges.
+	Grade string `json:"grade,omitempty"`
+	// DisagreesWith marks a doc/code layer disagreement on the same
+	// relationship (REQ-GF-015): the value names the other layer's claim.
+	// Both edges stay in the artifact — never a silent pick.
+	DisagreesWith string `json:"disagrees_with,omitempty"`
 }
 
 // codemapsDepRelPath is the /moai codemaps dep-graph output (read-only seed;

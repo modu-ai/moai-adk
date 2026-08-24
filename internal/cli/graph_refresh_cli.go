@@ -17,15 +17,16 @@ type edgesRefreshStats struct {
 
 // refreshEdgesArtifact brings the derived edges layer back in sync with its
 // sources: refresh the mx-index first (it is both a source and the mx-spec
-// edge extractor's input), then rebuild and re-stamp. Mechanical only — no
-// LLM, no network (REQ-GF-007).
+// edge extractor's input — and its inventory IS the described-source state
+// the code-derived layers consume), then rebuild (doc + code layers) and
+// re-stamp. Mechanical only — no LLM, no network (REQ-GF-007).
 func refreshEdgesArtifact(projectRoot, edgesFile string) (edgesRefreshStats, error) {
 	start := time.Now()
 
 	if _, err := mx.RefreshIndex(filepath.Join(projectRoot, ".moai", "state"), projectRoot, nil); err != nil {
 		return edgesRefreshStats{}, fmt.Errorf("refresh mx-index: %w", err)
 	}
-	edges, err := graph.Build(projectRoot)
+	edges, _, err := graph.BuildWithCodeLayers(projectRoot)
 	if err != nil {
 		return edgesRefreshStats{}, fmt.Errorf("rebuild edges: %w", err)
 	}

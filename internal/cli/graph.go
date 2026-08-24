@@ -286,7 +286,7 @@ Examples:
 				return err
 			}
 
-			edges, err := graph.Build(projectRoot)
+			edges, matrix, err := graph.BuildWithCodeLayers(projectRoot)
 			if err != nil {
 				return fmt.Errorf("build graph: %w", err)
 			}
@@ -318,10 +318,14 @@ Examples:
 				counts[e.Kind]++
 			}
 			_, _ = fmt.Fprintf(out, "OK: wrote %d edges to %s\n", len(edges), target)
-			for _, kind := range []string{graph.KindImport, graph.KindMXSpec, graph.KindSpecDepends, graph.KindReportMilestone, graph.KindMilestoneCard} {
+			for _, kind := range []string{graph.KindImport, graph.KindMXSpec, graph.KindSpecDepends, graph.KindReportMilestone, graph.KindMilestoneCard, graph.KindCodeCall, graph.KindCodeImport} {
 				if c := counts[kind]; c > 0 {
 					_, _ = fmt.Fprintf(out, "  %s: %d\n", kind, c)
 				}
+			}
+			// REQ-GF-016: grade-matrix defect verdict — reported, never silent.
+			for _, defect := range graph.ValidateGradeMatrix(matrix) {
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "%s\n", defect)
 			}
 			return nil
 		},
