@@ -189,8 +189,58 @@ templ Kanban(vm ShellVM, k KanbanVM) {
 					}
 				}
 			</div>
-			@noteBanner("info", "Stage is estimated from heartbeat. Model, effort and context usage are not recorded yet, so they are left blank — they fill in once kanban.Record is extended.", "")
-		</section>
+			@noteBanner("info", "Stage is estimated from the heartbeat. A blank model, effort or context cell means this session has no telemetry record yet.", "kanban.note")
+			<div class="panel__head" style="border-bottom-color:var(--line)">
+				<h2 class="panel__title" data-i18n="kanban.lanes">Factory lanes</h2>
+				<span class="panel__meta">{ itoa(len(k.Lanes)) }</span>
+			</div>
+			if len(k.Lanes) == 0 {
+				<p class="banner" role="note">
+					@iconAt("note", 14)
+					<span data-i18n="kanban.noLanes">No factory lane is registered.</span>
+				</p>
+			} else {
+				<div class="roles">
+					for _, l := range k.Lanes {
+						<article class={ "role", templ.KV("role--idle", l.Unresolved) } data-lane={ itoa(l.Lane) }>
+							<header class="role__h">
+								<span class="role__n">
+									<span class="panel__meta" data-i18n="kanban.lane">Lane</span>
+									<span class="mono">{ itoa(l.Lane) }</span>
+								</span>
+								if !l.Unresolved {
+									@stageMark(l.Stage, l.StageEstimated)
+								}
+							</header>
+							<div class="role__b">
+								if l.Unresolved {
+									@laneUnresolved(l.UnresolvedReason)
+								} else {
+									@stateMark(l.State, stateLabel(l.State))
+									<span class="role__s">{ l.Session }</span>
+									<div class="role__kv">
+										<span data-i18n="kanban.laneCard">Card</span>
+										if l.CardID != "" {
+											<span class="mono">{ l.CardID }</span>
+										} else {
+											@missing()
+										}
+										<span data-i18n="kanban.laneSpec">SPEC</span>
+										if l.SpecID != "" {
+											<span class="mono">{ l.SpecID }</span>
+										} else {
+											@missing()
+										}
+										<span data-i18n="kanban.backend">Backend</span>
+										@backendBadge(l.Backend)
+									</div>
+								}
+							</div>
+						</article>
+					}
+				</div>
+			}
+</section>
 		<section data-live="spec">
 			<div class="panel__head" style="border-bottom-color:var(--line)">
 				<h2 class="panel__title" data-i18n="kanban.viewB">SPEC pipeline</h2>
