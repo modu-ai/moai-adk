@@ -65,7 +65,17 @@ func newTempFilesSince(before, after []string) []string {
 	return added
 }
 
-const goPayloadContent = "package main\n\nfunc main() {\n\tprintln(\"hello\")\n}\n"
+// goPayloadContent is the clean .go payload the coverage criteria above and
+// below are measured with.
+//
+// It carries `const`, which is a go pre-filter token (M2 derives it from
+// sec-hardcoded-api-key's `const $NAME = "sk-$$$REST"`). That is load-bearing
+// for the CONTROL arms only: a control asserting "a covered language still
+// scans" must use a payload that survives every skip the gate applies, and once
+// M2 landed a token-free payload is skipped by the pre-filter rather than by
+// the coverage check the control is observing. The payload remains clean — it
+// trips no rule — so no recorded decision changes.
+const goPayloadContent = "package main\n\nconst greeting = \"hello\"\n\nfunc main() {\n\tprintln(greeting)\n}\n"
 
 // TestScanWriteContentNoConfigNoScan closes AC-SSS-002: a project root with no
 // resolvable ast-grep configuration dispatches no scan at all.

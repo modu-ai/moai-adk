@@ -199,6 +199,171 @@ of its languages, so the risk is bounded to configurations unlike the shipped on
 per-manager cache assumes the hook process is short-lived; a long-lived process editing its own
 rules mid-run would keep the stale set.
 
+### M2 — A1: the literal pre-filter derived from the error-severity rules
+
+Baseline attribution for every row below: measured in this run, against this tree, with the
+pre-M2 tree at `dad1f5bb4` on branch `WT-security-scan-surface`. Redirected output is under
+`.moai/state/verify/t217/`.
+
+**RED evidence.** The extractor was written before its tests, so RED was demonstrated by removing
+the implementation and running the M2 tests against the tree without it — the pre-implementation
+state each acceptance criterion records as "does not compile. RED." This is a genuine measurement
+of these tests against a tree lacking the unit, not a strict test-first ordering; it is recorded
+as such rather than claimed as test-first.
+
+`.moai/state/verify/t217/red-security.txt` — `go test ./internal/hook/security/ -run 'TestPrefilter' -count=1`:
+
+```
+internal/hook/security/prefilter_test.go:18:38: undefined: PrefilterSet
+internal/hook/security/prefilter_test.go:25:9: undefined: DerivePrefilters
+internal/hook/security/prefilter_test.go:83:15: undefined: deriveRuleTokens
+internal/hook/security/prefilter_test.go:237:11: undefined: derivePrefilters
+FAIL	github.com/modu-ai/moai-adk/internal/hook/security [build failed]
+exit=1
+```
+
+`.moai/state/verify/t217/red-hook.txt` — `go test ./internal/hook/ -run 'TestScanWriteContentPrefilterSkip|TestScanWriteContentUnderivableEscalates|TestScanWriteContentDifferential' -count=1`:
+
+```
+internal/hook/pre_tool.go:697:14: undefined: security.DerivePrefilters
+internal/hook/pre_tool_scan_differential_test.go:271:25: undefined: security.DerivePrefilters
+FAIL	github.com/modu-ai/moai-adk/internal/hook [build failed]
+exit=1
+```
+
+| AC | Status | Verification command | Actual output |
+|---|---|---|---|
+| AC-SSS-001 (assertion ii) | PASS | `go test ./internal/hook/ -run TestScanWriteContentDifferential -count=1 -v` | `--- PASS: TestScanWriteContentDifferential (0.46s)` with `assertion (ii): 5 denying fixtures, none skippable by the pre-filter`. PASS (not SKIP) is what proves assertion (i) also ran — the corpus-validity gate `t.Skip`s instead of passing when no fixture denies. The recorded corpus rows, `wantDeny` values, and assertion (i) are unmodified; M2 appended assertion (ii) only |
+| AC-SSS-008 | PASS | `go test ./internal/hook/security/ -run TestPrefilterDerivationSeverityScope -count=1 -v` | `--- PASS: TestPrefilterDerivationSeverityScope (0.05s)`, logging `non-error-only tokens excluded: 10`. Both halves asserted: no token contributed **only** by a non-error rule reaches the set (the exclusion set is computed from the ruleset, not hardcoded, so a token shared with an error rule is not falsely flagged), and every derivable error-severity rule contributes at least one token. The `10` is the count of genuinely warning-only tokens — without it the exclusion would observe nothing, so the test fails if it reaches 0 |
+| AC-SSS-009 | PASS | `go test ./internal/hook/security/ -run TestPrefilterKindPlusRegexAlternation -count=1 -v` | `--- PASS: TestPrefilterKindPlusRegexAlternation (0.02s)` — `sec-hardcoded-credential` derives exactly `{AIza, AKIA, ghp_, sk-, xox}` in **all four** covered languages (go's `kind: interpreted_string_literal` + js/ts/python's `kind: string`), none marked underivable. The test also asserts all four documents were found, so a ruleset that stopped shipping one language fails rather than silently observing three |
+| AC-SSS-010 (derivation) | PASS | `go test ./internal/hook/security/ -run TestPrefilterUnderivableShapes -count=1 -v` | `--- PASS` all 7 arms: the three the criterion names (`regex with no literal anchor`, `any with one tokenless branch`, `inside composite`) plus `kind alone`, `regex with an inline case-insensitive flag`, `regex whose leading literal is optional`, and a control proving a recognized shape in the same position IS derivable. Each arm additionally asserts `CanSkip` returns false for that language |
+| AC-SSS-010 (end-to-end) | PASS | `go test ./internal/hook/ -run TestScanWriteContentUnderivableEscalates -count=1 -v` | `--- PASS` both arms: a javascript ruleset carrying one derivable rule **and** one `kind:`-only rule records **1** `ScanFile` call for a payload with no dangerous construct (fail-open escalation); the same payload against the same ruleset **minus** the underivable rule records **0**. The pair is what shows the 1 is the underivability escalating, not the language never being skippable |
+| AC-SSS-011 | PASS | `go test ./internal/hook/ -run TestScanWriteContentPrefilterSkip -count=1 -v` | `--- PASS` both arms: a `.js` payload carrying none of the javascript tokens records **0** `ScanFile` calls and decision allow; the control — same language, same ruleset, a payload carrying `cp.exec` — records **1**. Pre-implementation measurement was 1 for the skip arm |
+
+**Derived token sets (shipped ruleset, this tree).** Measured via `DerivePrefilters` against a
+temp project root carrying `internal/template/templates/.moai/config/astgrep-rules/`:
+
+```
+go         derivable=true  ["AIza" "AKIA" "SignedString" "const" "exec.Command" "ghp_" "md5.New" "sk-" "template.HTML" "xox"]
+python     derivable=true  ["AIza" "AKIA" "ghp_" "os.system" "sk-" "subprocess.Popen" "subprocess.call" "subprocess.run" "xox"]
+javascript derivable=true  ["AIza" "AKIA" "child_process.exec" "cp.exec" "ghp_" "sk-" "xox"]
+typescript derivable=true  ["AIza" "AKIA" "child_process.exec" "cp.exec" "ghp_" "sk-" "xox"]
+```
+
+Enumerated **rule by rule**, not sampled, reading each rule file whole rather than through a
+bounded grep window: go carries 6 error rules (`sec-hardcoded-credential`, `sec-weak-hash-md5`,
+`sec-command-injection-shell`, `sec-hardcoded-api-key`, `sec-hardcoded-jwt-signing-key`,
+`sec-template-injection-html`); python 2 (`sec-hardcoded-credential`,
+`sec-command-injection-shell` — whose `any:` has **four** branches, all four present above);
+javascript and typescript 2 each (`sec-hardcoded-credential`, `sec-command-injection-exec` —
+`any:` with **two** branches, both present). Every other rule in the shipped set is
+`warning`-severity and contributes nothing.
+
+**Divergence from `spec.md` §C.3's go enumeration (recorded, not silently absorbed).** §C.3 lists
+go's `go-error-ignored-blank` (`,` `=`) and `go-defer-in-loop` (`for` `defer`) as error-severity
+contributors. In this tree both rules are `severity: warning` (they were demoted in M0/M1 with the
+reason recorded inline in `go/error-handling.yml` and `go/concurrency.yml`: error severity on the
+pre-write gate refuses ordinary Go edits). So go carries 6 error rules here, not 8, and its token
+set does not include those four tokens. The consequence is that go's measured skip rate would now
+be **higher** than §C.3's 0.9%, not lower — the direction that makes A1 less degenerate for Go, not
+more. No re-measurement of §C.3's rates is claimed.
+
+**Deliverables.**
+
+- `internal/hook/security/prefilter.go` (new) — `Prefilter` / `PrefilterSet` / `CanSkip`,
+  `DerivePrefilters(configPath)` (I/O wrapper over the already-resolved config path the caller
+  holds), and the pure `derivePrefilters(docs)` + `deriveRuleTokens(node)` extractors implementing
+  `spec.md` §C.2 row for row: `pattern:` (longest identifier chain of the literal runs), `all:`
+  (union — a conjunction, so any derivable conjunct's tokens are mandatory), `any:` (union, and
+  underivable if **any** branch is tokenless), `regex:` with a top-level alternation (union of the
+  per-branch mandatory literal prefixes), `regex:` without one (its mandatory literal prefix),
+  `kind:` + `regex:` (tokens from the regex conjunct), and underivable for `kind:` alone,
+  `inside:` / `has:` / `follows:` / any unrecognized key, an inline `(?i)`/`(?s)`/`(?m)` flag, an
+  optional or quantified leading literal, and a pattern that is entirely metavariables.
+- `internal/hook/pre_tool.go` — the M2 slot filled: `security.DerivePrefilters(coverage.ConfigPath).CanSkip(language, content)`
+  after the covered-language check and before the temp file. The commented slot is gone.
+- `internal/hook/security/prefilter_test.go` (new) — the four criterion tests plus a row-by-row
+  extraction table over `regexTokens` / `patternToken` / the composites, a fail-open suite over the
+  I/O paths, and a property arm asserting each admitted regex token really is a substring of a
+  string the expression matches.
+- `internal/hook/pre_tool_scan_prefilter_test.go` (new) — the two end-to-end criterion tests, each
+  with a control arm.
+- `internal/hook/pre_tool_scan_differential_test.go` — assertion (ii) appended. Corpus rows,
+  `wantDeny` values, the corpus-validity gate, and assertion (i) unchanged.
+- `internal/hook/pre_tool_scan_config_test.go` — **one constant changed**: `goPayloadContent` now
+  carries `const`, a go pre-filter token. Three M1 controls assert "a covered language still
+  scans"; once the pre-filter is live a token-free payload is skipped by the pre-filter rather than
+  reaching the coverage check those controls observe, so they measured 0 instead of 1. The payload
+  remains clean and no recorded decision changed. Observed before the fix:
+  `TestScanWriteContentNoConfigNoTempFile/control` , `TestScanWriteContentUncoveredLanguage/control_sample.go`,
+  `TestScanWriteContentCoveredLanguageFollowsConfig/shipped_ruleset_scans_go` — each
+  `expected 1 ScanFile call, got 0`.
+
+**Cross-cutting verification.**
+
+| Check | Command | Result |
+|---|---|---|
+| Build | `go build ./...` | exit 0 |
+| Cross-platform build | `GOOS=windows GOARCH=amd64 go build ./...` | exit 0 |
+| Vet | `go vet ./internal/hook/...` | exit 0, no output |
+| Tests (hook tree) | `go test ./internal/hook/... -count=1 -timeout 900s` | all 11 packages `ok` (`internal/hook` 153s). A later re-run of the same batch saw one unrelated failure — see the flake row below |
+| Tests (`internal/hook` re-run) | `go test ./internal/hook/ -count=1 -timeout 900s` | `ok  github.com/modu-ai/moai-adk/internal/hook  121.013s`, exit 0 |
+| Lint | `golangci-lint run ./internal/hook/... --timeout=5m` | `0 issues.` |
+| gofmt (M2 files) | `gofmt -l` over the six touched files | only `pre_tool_scan_config_test.go`, which was **already** unformatted at `HEAD` (verified by running `gofmt -l` on `git show HEAD:` output). Not introduced here and not fixed here — out of M2 scope |
+| Coverage `internal/hook/security` | `go test ./internal/hook/security/ -count=1 -cover` | **90.2%**, against M1's recorded 90.3% — a 0.1 pp dip. `prefilter.go`'s remaining uncovered statements are I/O and malformed-node error branches |
+| Coverage `internal/hook` | `go test ./internal/hook/ -count=1 -cover` | **84.8%**, unchanged from M1's 84.8%. Below the 85% target; the shortfall is pre-existing |
+| Subagent boundary | `grep -rn 'AskUserQuestion\|mcp__askuser'` over the three new/changed M2 source files | exit 1, no matches |
+
+**Observed flake (unrelated to M2).** One run of the full hook-tree batch failed
+`TestSessionStart_DeferredScanJoinsWithinBound/slow_scan_drops_advisory` with
+`Handle blocked 1.22377525s; expected return near the 250ms bound`. It is a wall-clock-bound
+assertion in `session_start_parallel_test.go`, a file M2 does not touch, on a code path M2 does not
+touch; it passed 3/3 in isolation (`-count=3`) and the `internal/hook` package passed clean on
+re-run. Recorded as an observation, not repaired — repairing it would be out of scope.
+
+**Scope.** M3 (the PostToolUse guardian merge) and M4 (template mirroring / PR) are untouched. No
+`.claude/` file and no template file is in this diff; the shipped ruleset under
+`internal/template/templates/.moai/config/astgrep-rules/` is **read** by the tests, never modified.
+
+**Gaps (explicitly NOT observed).**
+
+- `go test ./internal/cli/...` was NOT run. Plan §D names it alongside the hook suite; the M2
+  dispatch scoped verification to `./internal/hook/...`. M2 adds one exported function and changes
+  no existing signature, and `go build ./...` (which compiles `internal/cli`) is green — but the
+  cli **tests** were not executed in this run. CI on the pull request is the verdict.
+- The full repository suite was not run locally (`plan.md` §D).
+- AC-SSS-012 through AC-SSS-016 belong to M3-M4 and are not claimed.
+- No latency figure is claimed. The skip is measured as a `ScanFile` count, never as elapsed time.
+- `spec.md` §C.3's measured skip rates (go 0.9% / js 96.3% / py 85.7%) were NOT re-measured
+  against this tree's token sets. The severity divergence noted above means go's real rate here is
+  higher than 0.9%; the figure stands as the plan-time measurement it was recorded as.
+
+**Residual risk.**
+
+- **The extractor is the soundness-critical unit and it guards a deny.** Its correctness rests on
+  every admitted token being mandatory. Three things bound that: the underivable-escalates
+  fallback, the extraction-table tests (including the property arm that checks each admitted regex
+  token against strings the expression actually matches), and the differential test's assertion
+  (ii). None of the three is a proof.
+- **`pattern:` tokens assume a match reproduces the pattern's literal text.** ast-grep matches
+  ASTs, not text, so source written with unusual whitespace inside an identifier chain
+  (`exec . Command(...)` — legal Go, rejected by gofmt) would not contain the token `exec.Command`
+  and could be skipped. `spec.md` §C.2 asserts this reproduction property as the basis for the
+  `pattern:` row; the risk is inherited from that decision, not introduced here.
+- **The regex analyzer is hand-written, not `regexp/syntax`-backed.** It is deliberately
+  conservative — every construct it does not model returns "" or underivable — but a construct it
+  mis-models as literal would yield a token that never appears in real code, and a token that never
+  appears is a token that always permits a skip. The metacharacter set is handled explicitly and
+  the property arm samples the shipped shapes; unusual regexes outside the shipped ruleset are
+  untested.
+- **No caching.** `DerivePrefilters` re-reads and re-parses the rule files on every
+  `scanWriteContent` call. The hook process is short-lived (one Write per invocation), so this is
+  one parse per invocation — but a long-lived caller would pay it per call.
+- **A language whose rules are all `warning`-severity is derivable with an empty token set, so it
+  is always skipped.** That is correct for the deny (nothing can deny), and the only thing lost is
+  the warning-count `slog.Info` line — which B-4 records as discarded on the `moai hook` path. If a
+  future change makes warnings observable on this gate, this decision must be revisited.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

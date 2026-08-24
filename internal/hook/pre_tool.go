@@ -687,8 +687,20 @@ func (h *preToolHandler) scanWriteContent(ctx context.Context, toolInput json.Ra
 		return "", ""
 	}
 
-	// (M2 slot: the literal pre-filter derived from the error-severity rules
-	// belongs here — after the covered-language check, before the temp file.)
+	// The literal pre-filter (SPEC-SEC-SCAN-SURFACE-001 M2): the gate's only
+	// observable output is the deny, and a deny needs an error-severity
+	// finding, so a payload carrying none of the mandatory literal tokens of
+	// this language's error-severity rules cannot produce one. Every
+	// uncertainty — an unreadable ruleset, an unrecognized rule shape, a
+	// language whose derivation is incomplete — answers false here and
+	// escalates to the scan.
+	if security.DerivePrefilters(coverage.ConfigPath).CanSkip(language, content) {
+		slog.Debug("no error-severity rule can match this payload; skipping security scan",
+			"file_path", filePath,
+			"language", language,
+		)
+		return "", ""
+	}
 
 	// Create temporary file with the content
 	tmpFile, err := os.CreateTemp("", "moai-security-scan-*"+ext)
