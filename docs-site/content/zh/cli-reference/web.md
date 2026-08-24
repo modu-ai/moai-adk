@@ -42,7 +42,7 @@ moai web --no-reuse      # 端口被占用时不回收而是失败
 
 ## 路由
 
-控制台提供以下路径。四个界面是只读的，会以 405 拒绝 GET 以外的方法。
+控制台提供以下路径。五个只读界面会以 405 拒绝 GET 以外的方法。
 
 | 路径 | 方法 | 作用 |
 |------|------|------|
@@ -51,6 +51,7 @@ moai web --no-reuse      # 端口被占用时不回收而是失败
 | `/specs` | GET | SPEC 目录。`?q=` 搜索、`?status=` 筛选、`?id=` 打开详情 |
 | `/monitor` | GET | 会话・目标・验证・史诗 |
 | `/settings` | GET | 设置九个标签页。`?tab=` 指定标签页，`?profile=` 指定编辑对象配置文件 |
+| `/todo` | GET | 待办队列的只读视图 — 三种状态（`queued`、`picked`、`dropped`）的卡片全部列出 |
 | `/events` | GET | SSE 流 — 只推送更新信号 |
 | `/save` | POST | 保存设置 |
 | `/profile/create` · `/profile/rename` · `/profile/delete` | POST | 配置文件生命周期 |

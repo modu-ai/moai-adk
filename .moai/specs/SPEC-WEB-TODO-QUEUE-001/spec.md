@@ -2,7 +2,7 @@
 id: SPEC-WEB-TODO-QUEUE-001
 title: "Backlog queue-root resolution split and a read-only /todo console route"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-08-24
 updated: 2026-08-24
 author: manager-spec

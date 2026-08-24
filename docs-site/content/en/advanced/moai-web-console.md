@@ -2,19 +2,19 @@
 title: MoAI Web Console
 weight: 85
 draft: false
-description: "The local operations console — five areas (Overview, Kanban, Specs, Monitor, Settings), live updates, read-only observation, settings editing."
+description: "The local operations console — six areas (Overview, Kanban, Specs, Monitor, Settings, Todo), live updates, read-only observation, settings editing."
 ---
 # MoAI Web Console
 
 **MoAI Web Console** is the local operations screen you open with `moai web`. It shows the project's SPEC catalog, the Kanban chain, sessions and goals, and verification history in one place, and lets you edit settings from the same screen. The browser connects to `127.0.0.1` only, and there is no database and no login.
 
 {{< callout type="info" >}}
-**In one line:** the console is an operations shell that groups four observation areas and one settings area behind a left rail. The observation areas only read; the settings area uses the same validation and persistence layer as the terminal wizard.
+**In one line:** the console is an operations shell that groups five observation areas and one settings area behind a left rail. The observation areas only read; the settings area uses the same validation and persistence layer as the terminal wizard.
 {{< /callout >}}
 
 ## The operations shell — left rail and appbar
 
-The screen has three parts. The **rail** on the left stacks the five areas vertically, the **appbar** across the top carries the current title and status, and the rest is the **body**. The rail and the appbar stay in place whichever area you are in.
+The screen has three parts. The **rail** on the left stacks the six areas vertically, the **appbar** across the top carries the current title and status, and the rest is the **body**. The rail and the appbar stay in place whichever area you are in.
 
 | Area | Route | What it does |
 |------|-------|--------------|
@@ -23,17 +23,18 @@ The screen has three parts. The **rail** on the left stacks the five areas verti
 | Specs | `/specs` | SPEC catalog search, filters and detail, close debt and MUST-FIX drift |
 | Monitor | `/monitor` | Sessions, goals, verification and epics in four panels |
 | Settings | `/settings` | Profile preferences and project sections (11 tabs) |
+| Todo | `/todo` | The backlog queue, read-only — every card in all three states |
 
-What sits at the right of the appbar depends on the area. The four observation areas show a **live indicator**; the settings area shows a **save cluster** (the change count and the save button). The context chips (`lang` · `model` · `effort` · `dev`) render in the settings area only — they exist so you can confirm the key values of the profile you are editing before you save.
+What sits at the right of the appbar depends on the area. The five observation areas show a **live indicator**; the settings area shows a **save cluster** (the change count and the save button). The context chips (`lang` · `model` · `effort` · `dev`) render in the settings area only — they exist so you can confirm the key values of the profile you are editing before you save.
 
 The foot of the rail gathers the profile button, the project name, the interface-language picker and the shutdown button. Pressing the profile button opens a popover where switching, creating, renaming and deleting all happen in one place. It is the same popover from every screen, so the console has exactly one surface for handling profiles.
 
 ```mermaid
 flowchart TD
-    Rail["Left rail<br/>Overview · Kanban · Specs · Monitor · Settings"]
+    Rail["Left rail<br/>Overview · Kanban · Specs · Monitor · Settings · Todo"]
     Top["Appbar<br/>title · live indicator / save cluster"]
     Body["Body<br/>per-area screen"]
-    Read["Read-only areas<br/>Overview · Kanban · Specs · Monitor"]
+    Read["Read-only areas<br/>Overview · Kanban · Specs · Monitor · Todo"]
     Write["Settings area<br/>through the validation · persistence layer"]
     Files["Project files<br/>state and settings under .moai/"]
 
@@ -81,6 +82,14 @@ The list has columns for ID, title, status, Tier, era, updated date and drift. S
 | Goals | The armed goal's condition, turns taken, whether it has stalled, and the verdict |
 | Verification | A per-key recent-history sparkline and whether it passed |
 | Epics | Per-epic progress as computed by `moai epic status` |
+
+## Todo — the backlog queue, read-only
+
+The backlog queue `moai todo` writes gets its own address. The screen lists **every card in all three states** — `queued`, `picked`, `dropped` — with its id, text, state badge and the SPEC id it produced, if it has one. Nothing is filtered out, because the question this screen answers is "where did that card go", and a queued-only working view cannot answer it.
+
+It only reads. Adding, picking and dropping stay with `moai todo`; the console never writes to the queue and never takes its lock. Opening the page in a linked worktree shows the **primary checkout's** queue, not an empty one — the queue is one channel per repository, and the header carries the directory it resolved to so you can see which file you are looking at.
+
+An absent, empty or unreadable queue file renders an empty-state line at 200, not an error page.
 
 ## Live updates — send a signal, then re-fetch
 
