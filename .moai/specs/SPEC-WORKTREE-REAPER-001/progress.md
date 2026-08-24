@@ -382,7 +382,7 @@ evidence_dir: .moai/state/verify/t209/
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-08-24
-sync_commit_sha: pending-backfill-t209
+sync_commit_sha: 3b64581101fb345f222545ac29b87e927b5b07f9
 changelog_entry_position: "CHANGELOG.md [Unreleased] — Added 1, Changed 2, Fixed 4"
 docs_locales_synced: [en, ko, ja, zh]   # 8 files: cli-reference/worktree.md + worktree/guide.md per locale
 frontmatter_status_transitions:
@@ -520,11 +520,11 @@ measurement.
 
 ### Gaps — what was explicitly NOT observed
 
-1. **`sync_commit_sha` is a placeholder.** A commit cannot name its own hash, so
-   the field carries `pending-backfill-t209` and the real SHA is backfilled in a
-   follow-up commit by the phase owner (the SHA-placeholder backfill exemption
-   in `spec-frontmatter-schema.md`). Until that lands, era classification reads
-   this SPEC through H-4 on a non-SHA value.
+1. ~~**`sync_commit_sha` is a placeholder.**~~ **CLOSED by backfill.** The sync
+   commit `3b64581101fb345f222545ac29b87e927b5b07f9` could not name its own
+   hash, so the field carried `pending-backfill-t209` until this follow-up
+   commit wrote the observed value (the SHA-placeholder backfill exemption in
+   `spec-frontmatter-schema.md`). Era classification now reads a real SHA.
 2. **The full test suite was not run locally** — repo rule (`CLAUDE.local.md`
    §4/§6). `go build ./...`, `go vet ./...`, and the two packages this SPEC
    changed were run; CI owns the full-suite verdict against the PR head.
