@@ -319,10 +319,27 @@ func (p *SecurityPolicy) MergeExtraPatterns(extra *security.ExtraSecurityConfig)
 // It enforces security policies by checking tool names against blocklists
 // and scanning tool input for dangerous patterns (REQ-HOOK-031, REQ-HOOK-032).
 // Optionally integrates with SecurityScanner for AST-based security scanning.
+// SecurityScanFacade is the narrow view of the security scanner that the
+// PreToolUse write-path gate consumes. Narrowing the handler field from the
+// concrete *security.SecurityScanner to this interface is what makes the
+// write-path cost measurable: a counting fake can stand in for the scanner, and
+// ScanFile is the single route from this path to an `sg` spawn, so a ScanFile
+// call count of zero proves a spawn count of zero.
+//
+// ScanFile takes an ALREADY-RESOLVED rules-config path (never a project dir):
+// the caller resolves the configuration exactly once per invocation and the
+// scanner performs no second resolution on this path.
+type SecurityScanFacade interface {
+	IsAvailable() bool
+	ScanFile(ctx context.Context, filePath string, configPath string) (*security.ScanResult, error)
+	ShouldAlert(result *security.ScanResult) bool
+	GetReport(result *security.ScanResult, filePath string) string
+}
+
 type preToolHandler struct {
 	cfg     ConfigProvider
 	policy  *SecurityPolicy
-	scanner *security.SecurityScanner
+	scanner SecurityScanFacade
 	// projectDir is the resolved project root. Tests may set it directly; the
 	// production constructors leave it empty and let projectRoot resolve it.
 	projectDir string
@@ -351,12 +368,17 @@ func NewPreToolHandlerWithScanner(cfg ConfigProvider, policy *SecurityPolicy, sc
 		scanner = nil
 	}
 
-	return &preToolHandler{
+	h := &preToolHandler{
 		cfg:                 cfg,
 		policy:              policy,
-		scanner:             scanner,
 		projectRootResolver: projectRootResolver{caller: "NewPreToolHandlerWithScanner"},
 	}
+	// Assign through the interface only when the concrete pointer is non-nil, so
+	// a nil *SecurityScanner never becomes a non-nil interface value.
+	if scanner != nil {
+		h.scanner = scanner
+	}
+	return h
 }
 
 // projectRoot returns the project root, resolving it on first use.

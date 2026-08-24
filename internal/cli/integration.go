@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/spf13/cobra"
@@ -64,7 +65,13 @@ func integrationLockRoot() string {
 }
 
 // integrationSessionID resolves the caller's own session id: the --session
-// flag wins, then the side-channel file the SessionStart hook writes.
+// flag wins, then the per-process env var Claude Code stamps into every
+// subprocess, then the side-channel file the SessionStart hook writes.
+//
+// The env var precedes the file because the file is one slot per project and
+// names whichever session started last — a lock taken under a foreign id is
+// held by nobody who can release it. The file remains the degraded path for
+// runtimes that do not stamp the var.
 //
 // An empty result is returned as such rather than substituted with a
 // placeholder. A lock whose holder is a made-up identity cannot be released by
@@ -73,6 +80,9 @@ func integrationLockRoot() string {
 func integrationSessionID(explicit string) string {
 	if s := strings.TrimSpace(explicit); s != "" {
 		return s
+	}
+	if id := strings.TrimSpace(os.Getenv(config.EnvClaudeCodeSessionID)); id != "" {
+		return id
 	}
 	data, err := os.ReadFile(filepath.Join(integrationLockRoot(), session.CurrentSideChannelFile))
 	if err != nil {

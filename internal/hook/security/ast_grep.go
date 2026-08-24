@@ -1,8 +1,10 @@
 package security
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -133,9 +135,20 @@ func (s *astGrepScanner) Scan(ctx context.Context, filePath string, configPath s
 	}
 	args = append(args, filePath)
 
-	// Execute ast-grep scan (REQ-HOOK-121)
+	// Execute ast-grep scan (REQ-HOOK-121).
+	//
+	// stdout and stderr are collected SEPARATELY and never merged. `sg scan
+	// --json` writes its findings to stdout but writes a human-readable banner
+	// ("Error: N error(s) found in code.") to stderr whenever an error-severity
+	// finding exists, and exits 1. Merging the two streams corrupts the JSON
+	// body, so json.Unmarshal fails and every error-severity finding is silently
+	// dropped — the gate can then warn but can never deny.
 	cmd := exec.CommandContext(ctx, "sg", args...)
-	output, err := cmd.CombinedOutput()
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	output := stdout.Bytes()
 
 	result.Duration = time.Since(start)
 	result.Scanned = true
@@ -147,13 +160,14 @@ func (s *astGrepScanner) Scan(ctx context.Context, filePath string, configPath s
 
 	// Parse output
 	if err != nil {
-		// ast-grep returns non-zero exit code when findings exist
-		// Try to parse the output anyway
-		exitErr, ok := err.(*exec.ExitError)
-		if !ok || exitErr.ExitCode() > 1 {
+		// ast-grep exits 1 when findings exist; anything above that is a real
+		// failure (bad config, unreadable file, missing language support).
+		var exitErr *exec.ExitError
+		if !errors.As(err, &exitErr) || exitErr.ExitCode() > 1 {
 			// Real error, not just findings
-			result.Error = err.Error()
-			// Try regex fallback (REQ-HOOK-122)
+			result.Error = scanErrorMessage(err, stderr.String())
+			// Try regex fallback on stdout (REQ-HOOK-122) — ast-grep's text
+			// output mode writes findings there.
 			result.Findings = parseASTGrepRegex(string(output))
 		}
 	}
@@ -173,6 +187,17 @@ func (s *astGrepScanner) Scan(ctx context.Context, filePath string, configPath s
 	result.ErrorCount, result.WarningCount, result.InfoCount = result.CountBySeverity()
 
 	return result, nil
+}
+
+// scanErrorMessage composes the diagnostic recorded on ScanResult.Error,
+// appending ast-grep's own stderr when it produced any. The exit status alone
+// ("exit status 2") names no cause; the stderr line does.
+func scanErrorMessage(err error, stderr string) string {
+	msg := err.Error()
+	if trimmed := strings.TrimSpace(stderr); trimmed != "" {
+		msg = msg + ": " + trimmed
+	}
+	return msg
 }
 
 // @MX:WARN: [AUTO] Parallel file scan using goroutines — bounded by semaphore (SPEC-UTIL-002).
