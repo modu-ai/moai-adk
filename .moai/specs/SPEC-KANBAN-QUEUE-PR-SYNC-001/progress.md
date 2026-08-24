@@ -164,11 +164,285 @@ Approval. Sequenced after `SPEC-KANBAN-PR-CARD-TRACEABILITY-001`.
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Card t210. Worktree `.claude/worktrees/t210`, branch `WT-queue-pr-sync`.
+Four milestones, in `plan.md` §F order. Every exit below is a command that was
+run in this tree; nothing is relayed from the plan phase.
+
+### Files
+
+| File | Milestone | Carries |
+|---|---|---|
+| `internal/kanban/prlink.go` (new) | M1 | the pure resolver, the four outcome kinds, the two-question split |
+| `internal/kanban/prlink_landed.go` (new) | M2 | `LandedGrepArgs`, `GitLandedQuerier`, the engine-flag constant |
+| `internal/kanban/prlink_test.go` (new) | M1 | AC-001, AC-002, AC-003, AC-006, AC-007, AC-008, AC-012 (structural half) |
+| `internal/kanban/prlink_landed_test.go` (new) | M2 | AC-011 (three controls), AC-012 (behavioural half) |
+| `internal/cli/todo_pr.go` (new) | M3 | the `moai todo pr [<id>]` verb, the single `gh` query, the fail-open wrapper |
+| `internal/cli/todo_pr_test.go` (new) | M3 | AC-004, AC-005, AC-009, AC-010, AC-014 |
+| `internal/cli/todo.go` (edit) | M3 | one line — the subverb registration |
+| `.claude/skills/moai/workflows/todo.md` (edit) | M4 | the `moai todo pr` command-table row |
+| `internal/template/templates/.claude/skills/moai/workflows/todo.md` (edit) | M4 | the same row, mirrored |
+
+### Pre-flight — the AC-013 zero baseline, observed BEFORE M4
+
+`plan.md` §C requires this recorded before the mirror lands, and
+`acceptance.md` requires the criterion be rejected without it. Observed in this
+worktree at HEAD `985343fad`, before any edit to either file:
+
+```
+$ grep -c 'moai todo pr' .claude/skills/moai/workflows/todo.md
+0
+$ grep -c 'moai todo pr' internal/template/templates/.claude/skills/moai/workflows/todo.md
+0
+```
+
+Both zero. The criterion is therefore non-vacuous: the post-M4 greps observe
+something that did not exist.
+
+Also confirmed pre-flight, against `plan.md` §C:
+
+- `internal/github/gh.go` exposes `PRView`, `PRChecks`, `PRCreate`, `PRMerge` —
+  **no PR-list call carrying title and body**. The query is new, and it is
+  written in `internal/cli/todo_pr.go` rather than added to `gh.go`, because it
+  needs the injectable process seam the subprocess census counts through.
+- `internal/cli/todo_why.go` is the read-only subverb pattern followed.
+- `kanban.BacklogStore.Load()` is the lock-free read path used; `Mutate` (the
+  locking path) is never called.
+- Both mirror targets exist and were byte-identical before the edit.
+
+### M1 — the resolver (REQ-1.1..REQ-1.8)
+
+```
+$ go test ./internal/kanban/ -run 'TestResolve_' -count=1
+ok  	github.com/modu-ai/moai-adk/internal/kanban	0.379s
+```
+
+Covering AC-001 (`t200` → linked/exact/#1612), AC-002 (`t188` → linked/inferred/
+#1601), AC-003 (`t201` → ambiguous/{1611,1612}, no confidence label), AC-006
+(every one of #1600's nine commit tokens resolves to neither `linked` nor
+`ambiguous`, and none is attributed to #1600), AC-007 (four kinds, pairwise
+distinct), AC-008 (`t20` does not match `t200`).
+
+Fixtures are transcribed from `acceptance.md`'s pinned block and are not
+re-fetched — `plan.md` §G's first anti-pattern.
+
+### M2 — the landed check and its controls (REQ-1.9, REQ-1.10)
+
+```
+$ go test ./internal/kanban/ -run 'TestLanded' -count=1 -v
+=== RUN   TestLandedCheck_Controls
+--- PASS: TestLandedCheck_Controls (0.28s)
+=== RUN   TestLandedCheck_BooleanOnly
+--- PASS: TestLandedCheck_BooleanOnly (0.18s)
+=== RUN   TestLandedGrepArgs_RefusesNonToken
+--- PASS: TestLandedGrepArgs_RefusesNonToken (0.00s)
+=== RUN   TestLandedQuerier_NoRunnerErrors
+--- PASS: TestLandedQuerier_NoRunnerErrors (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/kanban	0.845s
+```
+
+**AC-011's positive control is cited, not asserted.** `TestLandedCheck_Controls`
+fails with `positive control: query returned an EMPTY commit set` if the query
+returns nothing for `t199` — so an `-E` regression cannot pass as a clean run.
+The tripwire is built from the implementation's own argv (`LandedGrepArgs`),
+not from a transcription of it, and it additionally runs the same query under
+`-E` and fails if the implementation's result matches that empty one.
+
+REQ-1.10 is enforced structurally: `LandedQuerier.Landed` returns `(bool, error)`
+and nothing else, and `TestResolve_LandedCarriesNoCommit` enumerates every field
+of `PRLinkOutcome` by reflection, failing if a field is ever added. The
+behavioural half runs against a repository whose newest matching commit is a
+report commit that merely mentions the card — the exact mis-attribution §C.2
+describes.
+
+### M3 — the read surface (REQ-2.1..REQ-2.6)
+
+```
+$ go test ./internal/cli/ -run 'TestTodoPR_|TestTodoList_NoSubprocess' -count=1
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.807s
+```
+
+- **AC-004** digests the whole `.moai/state/kanban/` tree (every path + its
+  SHA-256) across four paths — linked/ambiguous, `--json`, landed, and
+  fail-open — and additionally asserts `backlog.json`'s mtime is unmoved.
+  One repair was made to the criterion's *test*, not to the criterion: the
+  first draft asserted "no lock artifact exists", which fails on a queue whose
+  seeding took the lock legitimately. The lock file's presence proves nothing;
+  what proves the read verb did not lock is that **its mtime never moves**, and
+  that is what the committed test asserts.
+- **AC-005** asserts exit 0, a blank-but-present link column on every row, a
+  `note:` on stderr with no `Error:`, and that the landed check still reports
+  `landed` with `gh` absent. Both halves run — absent binary and non-zero exit.
+- **AC-009** asserts zero subprocesses for `list`, `list --json`, and the bare
+  `moai todo`, and additionally asserts `todo list --pr` is **rejected**, so the
+  claim cannot silently narrow to a no-flag-only one if a flag is added later.
+- **AC-010** exercises one of each of exact / inferred / ambiguous / landed
+  through `--json` and through the human render.
+- **AC-014** counts `gh` processes at queue lengths **3 and 10** — invariance,
+  not a coincidence — asserts the argv is a single `pr list --state open …`
+  rather than a per-card `pr view`, and asserts the landed path spawned only
+  `git`.
+
+### M4 — the mirror
+
+```
+$ grep -c 'moai todo pr' .claude/skills/moai/workflows/todo.md
+1
+$ grep -c 'moai todo pr' internal/template/templates/.claude/skills/moai/workflows/todo.md
+1
+$ MOAI_TEMPLATE_LEAK_STRICT=1 go test ./internal/template/... -count=1
+ok  	github.com/modu-ai/moai-adk/internal/template	22.700s
+ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	0.807s
+?   	github.com/modu-ai/moai-adk/internal/template/scripts	[no test files]
+$ make build
+… catalog.yaml updated successfully (12899 bytes)
+go build -ldflags "…" -o bin/moai ./cmd/moai
+```
+
+Both files were byte-identical before the edit and the same row was written to
+both, so the mirror is in parity. The row names no SPEC ID, no report path, no
+date, and no commit SHA; it says "the integration branch's history" rather than
+naming a branch, keeping it neutral for the 16-language distribution.
+
+**AC-013's reviewer-judgement half is recorded as a judgement, not reported as
+a mechanical pass.** The author's own reading is that the row describes the
+verb's four outcomes, its confidence labels, its one-query cost, and its
+fail-open behaviour accurately, and carries no internal-only content. No
+command verifies that, and this report does not claim one does — an independent
+reviewer's confirmation is still outstanding.
+
+### Quality gates
+
+```
+$ go vet ./internal/kanban/ ./internal/cli/
+(no output, exit 0)
+
+$ golangci-lint run ./internal/kanban/... ./internal/cli/...
+0 issues.
+
+$ go test ./internal/kanban/ -count=1 -cover
+ok  	github.com/modu-ai/moai-adk/internal/kanban	12.148s	coverage: 85.9% of statements
+
+$ go test ./internal/cli/ -count=1 -timeout 900s
+ok  	github.com/modu-ai/moai-adk/internal/cli	436.677s
+```
+
+Per-function coverage of the new code:
+
+```
+$ go tool cover -func=<profile> | grep prlink
+prlink.go:106:  cardTokenPattern   83.3%
+prlink.go:140:  ResolveCardPRLink  100.0%
+prlink.go:190:  linkedOutcome      100.0%
+prlink.go:200:  ambiguousOutcome   100.0%
+prlink_landed.go:39:  LandedGrepArgs 100.0%
+prlink_landed.go:68:  Landed         100.0%
+```
+
+`cardTokenPattern`'s uncovered branch is the `regexp.Compile` error return,
+which a `QuoteMeta`-escaped, already-validated token cannot reach. It is
+defensive, and left in rather than removed.
+
+The full-suite verdict is CI's, per the standing rule; the two affected
+packages were run locally and are green.
+
+### One implementation decision, stated because a reviewer may want it back
+
+Two open pull requests carrying the SAME card id in their **titles** is
+unmeasured — it does not occur in the measured set. REQ-1.2 describes the
+single-title case; REQ-1.6 forbids collapsing an ambiguous outcome to one
+candidate. The implementation treats a two-title hit as `ambiguous` with both
+candidates enumerated, rather than picking one as `exact`. This adds no
+requirement; it is how an unmeasured edge is resolved inside REQ-1.6's rule.
+`TestResolve_TwoTitlesAreAmbiguousNotExact` pins it, so a reviewer who prefers
+the other reading changes one test and one branch.
+
+### The 16/16 budget held — no seventeenth requirement was written
+
+`plan.md` §C.1 names two candidates that would each become a seventeenth
+requirement (a normative template-mirror REQ, and a normative one-query bound)
+and requires a blocker rather than a quiet addition. Neither was needed:
+AC-013 continues to map to the `plan.md` §D Template-First constraint, and
+AC-014 continues to carry NFR-1. **No blocker is returned, and the requirement
+count is unchanged.**
+
+```
+$ grep -cE '^\*\*REQ-[0-9]+\.[0-9]+\*\*' .moai/specs/SPEC-KANBAN-QUEUE-PR-SYNC-001/spec.md
+16
+```
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+### Claim
+
+All 14 acceptance criteria are implemented and pass. The mechanical half of
+every criterion was run in this tree; AC-013's reviewer-judgement half is
+recorded as an outstanding judgement rather than claimed.
+
+### Evidence
+
+| AC | Verifying command | Result |
+|---|---|---|
+| AC-001 | `go test ./internal/kanban/ -run TestResolve_ExactFromTitle` | pass |
+| AC-002 | `go test ./internal/kanban/ -run TestResolve_InferredFromSingleBody` | pass |
+| AC-003 | `go test ./internal/kanban/ -run TestResolve_AmbiguousNotCollapsed` | pass |
+| AC-004 | `go test ./internal/cli/ -run TestTodoPR_QueueDirUnchanged` | pass (4 sub-paths) |
+| AC-005 | `go test ./internal/cli/ -run 'TestTodoPR_FailOpenNoGh\|TestTodoPR_FailOpenGhNonZero'` | pass |
+| AC-006 | `go test ./internal/kanban/ -run TestResolve_IgnoresCommitTokensForAttribution` | pass |
+| AC-007 | `go test ./internal/kanban/ -run TestResolve_FourOutcomeKindsDistinct` | pass |
+| AC-008 | `go test ./internal/kanban/ -run TestResolve_WholeTokenOnly` | pass |
+| AC-009 | `go test ./internal/cli/ -run TestTodoList_NoSubprocess` | pass |
+| AC-010 | `go test ./internal/cli/ -run TestTodoPR_RendersOutcomeAndConfidence` | pass |
+| AC-011 | `go test ./internal/kanban/ -run TestLandedCheck_Controls -v` | pass, positive control non-empty |
+| AC-012 | `go test ./internal/kanban/ -run 'TestLandedCheck_BooleanOnly\|TestResolve_LandedCarriesNoCommit'` | pass |
+| AC-013 | the two greps above (0 → 1 on both files) + the neutrality suite | mechanical pass; judgement outstanding |
+| AC-014 | `go test ./internal/cli/ -run TestTodoPR_ExactlyOneGhInvocation` | pass at 3 and 10 cards |
+
+### Baseline-attribution
+
+Measured against HEAD `985343fad` in `.claude/worktrees/t210` on branch
+`WT-queue-pr-sync`, with the working tree carrying only this card's changes.
+The AC-013 zero baselines were taken on that same tree before the M4 edit; the
+post-M4 greps were taken after it. No figure is carried over from the plan
+phase or from another tree.
+
+### Gaps
+
+- **The full test suite was not run locally.** Two affected packages were
+  (`internal/kanban`, `internal/cli`); the whole-repository verdict is CI's on
+  the pull-request head, per the standing rule.
+- **AC-013's reviewer-judgement half is unverified.** No independent reviewer
+  has confirmed the mirrored row's accuracy; the author's reading is recorded
+  above as a judgement.
+- **The verb has not been exercised against live GitHub.** Every `gh` and `git`
+  interaction in the suite goes through an injected process seam. That is
+  deliberate — a live query makes the suite non-deterministic — but it means
+  the real `gh pr list --json number,title,body,state` payload shape is
+  verified against a transcription of a measured payload, not against a fresh
+  response.
+- **Merged-PR attribution remains unscored**, as `spec.md` §F excludes.
+- **N5-N9 run-phase debt** recorded during audit iteration 2 is unchanged by
+  this run; none of it blocked implementation.
+
+### Residual-risk
+
+- The injected process seam is package-level. A future code path that shells
+  out without routing through `todoRunCommand` would be invisible to the
+  AC-009 and AC-014 censuses. The seam is placed at the whole-surface level
+  precisely to make that regression catchable, but nothing enforces its use.
+- The `-E` tripwire skips itself on a git build that accepts `\b` under `-E`
+  (`t.Skipf`). On such a build the engine-flag guard degrades to the argv
+  assertion alone. The argv assertion still runs, so the flag cannot be
+  silently removed; only the behavioural discrimination is lost.
+- The landed check reports `landed` for a card whose id is merely *mentioned*
+  by a landed commit. That is REQ-1.9's specified behaviour and REQ-1.10 is why
+  the answer is a boolean — but an operator reading `landed` still has to look
+  before concluding the work is done.
+- A card carrying BOTH an open PR and a landed commit reports `linked` only:
+  REQ-1.9 asks the landed question exclusively when no PR carries the token, so
+  the landed fact is masked. This is audit finding N7, unresolved by design —
+  resolving it is the seventeenth requirement `plan.md` §C.1 forbids adding
+  quietly.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

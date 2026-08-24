@@ -2,7 +2,7 @@
 id: SPEC-KANBAN-QUEUE-PR-SYNC-001
 title: "Read-only card-to-PR link surface for the kanban backlog queue"
 version: "0.2.1"
-status: draft
+status: in-progress
 created: 2026-08-24
 updated: 2026-08-24
 author: manager-spec
