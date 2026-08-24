@@ -51,7 +51,7 @@ against GitHub's own renderer (`gh api markdown -f mode=gfm`) on this file's rea
 header + delimiter + row, GFM unescapes `\|` inside table cells for **both**
 positions:
 
-```
+```text
 source:   grep -rn "exec.Command\|codex-jobs\|..." ... \| grep -v _test
 rendered: grep -rn "exec.Command|codex-jobs|..."  ...  | grep -v _test
 ```
@@ -63,12 +63,14 @@ breaks — BRE `grep` receives a literal `|`.
 **The consequence is worse than a broken command: the ACs were vacuous.**
 Control measurement on `internal/cli/`, a directory with 67 genuine matches:
 
-| form | result |
-|---|---|
-| source BRE `"a\|b"` | 67 |
-| rendered BRE `"a\|b"` → `"a|b"` | **0** |
-| source ERE `-E "a\|b"` | **0** |
-| rendered ERE `-E "a|b"` | 67 |
+```text
+form                                          matches
+--------------------------------------------  -------
+source   BRE   grep    "a\|b"                      67
+rendered BRE   grep    "a|b"      (GFM unescaped)    0
+source   ERE   grep -E "a\|b"                        0
+rendered ERE   grep -E "a|b"      (GFM unescaped)   67
+```
 
 AC-CSM-008 and AC-CSM-010 assert *absence* (0 rows), so the broken form returns 0
 and passes silently — a forbidden token could be added and the AC would still
@@ -82,7 +84,7 @@ alternation became two `&&`-joined invocations for the same reason.
 
 **Mutant test (t241).** A forbidden token was appended to `store.go`:
 
-```
+```text
 old rendered BRE form : 0   ← would have passed
 new -e form           : 1   ← fails, correctly
 ```
@@ -125,7 +127,7 @@ quoted command/output in `progress.md`). No item was checked to tidy the list.
 
 ## Verification on the final tree
 
-```
+```text
 go build ./...                                              exit 0
 go vet ./internal/sessionmsg/ ./internal/cli/               exit 0
 GOOS=windows go vet ./internal/sessionmsg/                  exit 0
@@ -170,3 +172,45 @@ the authority for the full suite.
    untouched for scope discipline. Recorded here as a follow-up candidate: the
    defect class is identical and their recorded 0-hit results are equally
    unfalsifiable when read from the rendered page.
+
+---
+
+## Round 2 — review of `6a99ef262`
+
+The re-review produced three new findings, all on artifacts this card itself
+added. All three were verified against the tree and accepted.
+
+**N1 (Major) — the t238 reports leaked what D1 had just removed.** Measured: 13
+occurrences of an absolute worktree path, hostname, or pid across
+`code-fixes.md` and `doc-fixes.md`. The lane reports quote the pre-fix values as
+"before" evidence, which is a real reason to name them — but the point of D1 is
+that no committed artifact carries workstation identity, and quoting it back is
+still carrying it. Redacted to the same placeholders (`<repo>/…`, `<pid>`,
+`<host>`), with a redaction notice at the top of each report so the edit to
+verbatim command output is disclosed rather than silent. `cr-response.md` was
+already clean (0 occurrences).
+
+**N2 (Minor) — markdown lint.** 27 opening fences across the three reports were
+unlabeled; each is command output, so each is now `text`. One substantive item
+hid inside this "cosmetic" finding: the four-row comparison table in this file
+carried raw `|` characters inside inline code, which GFM reads as cell
+separators — the table rendered with the wrong column count. Rewritten as a
+code block, which removes the escaping hazard rather than working around it.
+Verified via `gh api markdown -f mode=gfm`: every table in all three reports now
+renders with a consistent cell count (verdict table 18 rows × 4 cells).
+
+**N3 (Minor) — a contradiction this card introduced.** Adding the §3.1 role
+divergence note left §7 still saying the `message` block "maps directly" to A2A
+`Message`. A future implementer following §7 would emit `"user"`/`"agent"` where
+A2A requires `"ROLE_USER"`/`"ROLE_AGENT"`. §7 now states the required conversion
+at the boundary and points at the §3.1 footnote.
+
+### Round-2 gap
+
+CodeRabbit's combined status on `6a99ef262` reads `state=success` with
+description `Review rate limited`, NOT `Review completed`. Per the repo's
+CodeRabbit rule that is a gap, not a pass — the status prints identically either
+way. It is recorded as a gap despite a `Merge Risk: 🟡 Moderate · up to 6a99e`
+line existing whose prefix does match the head, and despite the review having
+demonstrably analyzed the new files: the two signals disagree, and the rule's
+first condition is the one that failed.

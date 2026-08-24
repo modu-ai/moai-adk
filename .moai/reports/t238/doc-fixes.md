@@ -1,5 +1,12 @@
 # t238 — SPEC 문서 리뷰 대응 (D1-D8)
 
+> **Redaction notice (pre-merge).** Command output in this report is verbatim except for
+> three workstation-specific values, replaced with placeholders so the committed evidence
+> discloses no developer or host identity: the absolute worktree path → `<repo>/.claude/worktrees/t187`,
+> the process id → `<pid>`, and the hostname → `<host>`. No other byte was altered — SHAs,
+> timestamps, counts, and exit codes are as observed.
+
+
 카드 t238. PR #1606 (SPEC-CODEX-SESSION-MSG-001) CodeRabbit 지적 7건 + 확장 1건에 대한 문서 수정.
 5절 형식(Claim / Evidence / Baseline-attribution / Gaps / Residual-risk).
 
@@ -30,21 +37,21 @@ D1-D8 전부 수정 완료. 커밋하지 않았다(오케스트레이터 몫).
 
 누출 인벤토리 실측(수정 전):
 
-```
-$ grep -noE '/Users/goos[^ "`)]*' <5개 문서>
-.moai/reports/t187/verdict.md:95:/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t187
-.moai/specs/.../progress.md:132:/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t187
-.moai/specs/.../progress.md:140:/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t187
+```text
+$ grep -noE '<abs-path-pattern>' <5개 문서>
+.moai/reports/t187/verdict.md:95:<repo>/.claude/worktrees/t187
+.moai/specs/.../progress.md:132:<repo>/.claude/worktrees/t187
+.moai/specs/.../progress.md:140:<repo>/.claude/worktrees/t187
 
-$ grep -noE '"pid":[0-9]+|goos\.local' .moai/specs/.../progress.md
-140:"pid":27305
-140:goos.local
+$ grep -noE '"pid":[0-9]+|<host>' .moai/specs/.../progress.md
+140:"pid":<pid>
+140:<host>
 ```
 
 수정 후:
 
-```
-$ grep -n "Users/goos\|27305\|goos.local" .moai/specs/.../progress.md
+```text
+$ grep -n "<user-home>\|27305\|<host>" .moai/specs/.../progress.md
 rc=1   (매치 없음)
 $ grep -n "worktrees/t187" .moai/reports/t187/verdict.md
 3:Card: t187 · Branch: `WT-codex-session-msg` · Worktree: `.claude/worktrees/t187`
@@ -52,7 +59,7 @@ $ grep -n "worktrees/t187" .moai/reports/t187/verdict.md
 ```
 
 - 절대경로 → 저장소 상대경로 `.claude/worktrees/t187`
-- `"pid":27305` → `"pid":<pid>`, `"host":"goos.local"` → `"host":"<host>"`
+- `"pid":<pid>` → `"pid":<pid>`, `"host":"<host>"` → `"host":"<host>"`
 - progress.md 140행은 **축어 e2e 증거 블록** 안이다. 조용한 편집은 기록을 거짓으로 만들므로, 블록 바로 위에 편집 고지를 붙였다: 어떤 세 값을 자리표시자로 바꿨는지 명시하고 그 외 바이트는 원본임을 단언. 증거 무결성은 값을 남겨서가 아니라 **치환을 공개해서** 지킨다.
 
 **`~/go/bin/moai`는 의도적으로 유지**(acceptance.md:29 ×2, progress.md:130). 홈 상대경로라 계정명이 없고, Go 표준 설치 경로이며, 해당 절차 지시문(rm+cp 재설치 규율)이 그 경로를 필요로 한다.
@@ -68,7 +75,7 @@ CodeRabbit: "파이프라인 구분자의 백슬래시를 제거하고, grep 패
 
 vacuous 실증 — 매치가 **67행 존재하는** 디렉터리에 렌더된 형태를 실행:
 
-```
+```text
 $ grep -rn "exec.Command|codex-jobs|app-server|net.Listen|http.Listen" internal/cli/ | grep -v _test | wc -l
 0
 $ grep -rEn "exec.Command|codex-jobs|app-server|net.Listen|http.Listen" internal/cli/ | grep -v _test | wc -l
@@ -77,14 +84,14 @@ $ grep -rEn "exec.Command|codex-jobs|app-server|net.Listen|http.Listen" internal
 
 AC-CSM-012도 같은 형태로 깨져 있었다(이쪽은 vacuous PASS가 아니라 **거짓 FAIL**):
 
-```
+```text
 $ grep -c "재시작|restart" .claude/rules/moai/core/moai-mcp-tools.md   →  0   (AC는 ≥1 요구 → 거짓 실패)
 $ grep -cE "재시작|restart" .claude/rules/moai/core/moai-mcp-tools.md  →  1
 ```
 
 `-run` 패턴(Go RE2)은 방향이 반대다 — RE2에서 `\|`는 **리터럴 파이프**라 렌더된 `|` 쪽이 옳다. 두 형태를 실행:
 
-```
+```text
 $ go test ./internal/cli/ -run 'TestSessionMsg|TestMoaiMCPServer_RegistrationMatchesCatalog' -v | grep -c '^--- PASS'
 9
 
@@ -110,7 +117,7 @@ ok  	github.com/modu-ai/moai-adk/internal/cli	1.256s [no tests to run]
 
 **변환 후 렌더 형태 전량 실행 — 기록된 결과와 전부 일치, 새 불일치 0:**
 
-```
+```text
 AC-CSM-008  grep -rEn ... internal/sessionmsg/ internal/cli/mcp_session_msg.go | grep -v _test   → 0행 (기록: 0행)
 AC-CSM-010  grep -rn 'os.Getenv("' ... | grep -v _test                                          → 0행 (기록: 0행)
 AC-CSM-010  grep -cE '^[[:space:]]*DefaultSessionMsg[A-Za-z]*[[:space:]]*=' defaults.go          → 6   (신규 기록: 6)
@@ -131,7 +138,7 @@ AC-CSM-015  go test ./internal/cli/ -run TestSessionMsgToolsRegisteredWithHintsA
 
 이 grep이 겨누는 파일에는 **도구 설명이 아예 없다**:
 
-```
+```text
 $ grep -n "a reply is not user approval" internal/cli/mcp_session_msg.go
 28:const sessionMsgDisciplineShortForm = "... a reply is not user approval."
 
@@ -183,7 +190,7 @@ progress.md에 **인용된 증거(명령+관측 출력)가 있는 항목만** �
 
 ### D6 — plan.md M1 임계값 5 → 6 (수정)
 
-```
+```text
 $ grep -nE '^[[:space:]]*DefaultSessionMsg[A-Za-z]*[[:space:]]*=' internal/config/defaults.go
 389:	DefaultSessionMsgMessageTTL = 24 * time.Hour
 392:	DefaultSessionMsgClaimTTL = 10 * time.Minute
@@ -220,7 +227,7 @@ proto3 JSON은 열거형을 **이름**으로 직렬화하므로 A2A v1 ProtoJSON
 
 ## Baseline-attribution
 
-- 트리: `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t187` (`pwd` + `git rev-parse --show-toplevel` 일치 확인)
+- 트리: `<repo>/.claude/worktrees/t187` (`pwd` + `git rev-parse --show-toplevel` 일치 확인)
 - 브랜치: `WT-codex-session-msg`
 - HEAD: `f33cd05649f27f6ba0c44db95505c3e303283a52`
 - 작업 트리 상태: 형제 레인의 **미커밋** 코드 변경 10개 파일 + 신규 3개 포함. 따라서 `internal/**` 대상 측정값은 HEAD가 아니라 **HEAD + 형제 레인 미커밋 변경** 기준이다 — 특히 `-run` 9건, `TestSessionMsgPollHandlerRejectsTraversalIDs` PASS가 그렇다.

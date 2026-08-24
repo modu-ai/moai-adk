@@ -163,7 +163,7 @@ type AgentRecord struct { // A2A AgentCard 참조 형상 (REQ-CSM-003)
 
 ## §7. A2A HTTP 이식 경로 (가시성 유지 — 축 (ii) 채택 조건)
 
-나중에 크로스 머신이 필요해지면: (1) 엔벨로프 `message` 블록은 A2A `Message` JSON으로 그대로 매핑(필드명 동일), (2) `agents/*.json`의 AgentCard 하위 집합은 well-known AgentCard로 승격 가능, (3) 바뀌는 것은 `Delivery` 계층(파일 사서함 → HTTP 송신)과 발견(폴 → well-known URL)뿐이다. 이 경로는 코드가 아니라 이 문서와 카탈로그 규칙 문서에 기록으로 유지한다 — 이 SPEC은 전송 이식을 구현하지 않는다(spec.md §C 비범위).
+나중에 크로스 머신이 필요해지면: (1) 엔벨로프 `message` 블록은 A2A `Message` JSON으로 매핑된다 — **필드명은 그대로이나 `role` 값은 그대로가 아니다**: §3.1 각주대로 본 브로커의 `"user"`/`"agent"`를 A2A ProtoJSON의 `"ROLE_USER"`/`"ROLE_AGENT"`로 경계에서 변환해야 하며, 무변환 전달은 A2A가 거부하는 값을 낸다. (2) `agents/*.json`의 AgentCard 하위 집합은 well-known AgentCard로 승격 가능, (3) 바뀌는 것은 `Delivery` 계층(파일 사서함 → HTTP 송신)과 발견(폴 → well-known URL)뿐이다. 이 경로는 코드가 아니라 이 문서와 카탈로그 규칙 문서에 기록으로 유지한다 — 이 SPEC은 전송 이식을 구현하지 않는다(spec.md §C 비범위).
 
 ## §8. 교리 전문화 매핑 (M3, REQ-CSM-014)
 

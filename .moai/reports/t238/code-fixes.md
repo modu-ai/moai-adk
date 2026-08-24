@@ -1,14 +1,21 @@
 # t238 — CodeRabbit code findings C1-C9 (PR #1606, SPEC-CODEX-SESSION-MSG-001)
 
+> **Redaction notice (pre-merge).** Command output in this report is verbatim except for
+> three workstation-specific values, replaced with placeholders so the committed evidence
+> discloses no developer or host identity: the absolute worktree path → `<repo>/.claude/worktrees/t187`,
+> the process id → `<pid>`, and the hostname → `<host>`. No other byte was altered — SHAs,
+> timestamps, counts, and exit codes are as observed.
+
+
 **Baseline-attribution (global).** All measurements were taken in the worktree
-`/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t187`, branch
+`<repo>/.claude/worktrees/t187`, branch
 `WT-codex-session-msg`, base commit `f33cd05649f27f6ba0c44db95505c3e303283a52`.
 Confirmed at session start:
 
-```
+```text
 $ pwd && git rev-parse --show-toplevel && git rev-parse HEAD && git branch --show-current
-/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t187
-/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t187
+<repo>/.claude/worktrees/t187
+<repo>/.claude/worktrees/t187
 f33cd05649f27f6ba0c44db95505c3e303283a52
 WT-codex-session-msg
 ```
@@ -38,7 +45,7 @@ Added:
 
 ## Verification (mandated batch)
 
-```
+```text
 $ go build ./...
 exit=0
 
@@ -59,7 +66,7 @@ exit=0
 
 Re-run in full after the C9 addendum landed, on the final tree:
 
-```
+```text
 $ gofmt -l internal/sessionmsg/ internal/cli/mcp_session_msg_test.go
 (no output)
 
@@ -83,7 +90,7 @@ exit=0
 
 Additional (not mandated, cheap, and relevant because the lock implementation changed):
 
-```
+```text
 $ go test ./internal/sessionmsg/ -race -count=1 -timeout 300s
 ok  	github.com/modu-ai/moai-adk/internal/sessionmsg	1.827s
 exit=0
@@ -135,7 +142,7 @@ entry points, and points at `ids.go`.
 **Evidence — RED on pre-fix code.** The three validation call blocks were
 temporarily stripped from `store.go` and the suite re-run:
 
-```
+```text
 $ go test ./internal/sessionmsg/ -count=1 -run 'TestPollRejectsTraversalAckIDs|TestPollRejectsMalformedAgentID|TestSendRejectsMalformedAgentIDs'
 --- FAIL: TestPollRejectsTraversalAckIDs (0.00s)
     ids_test.go:43: Poll accepted traversal ack id "../../../../victim" (result {Messages:[] Remaining:0 ExpiredCount:0 AckedCount:1})
@@ -150,7 +157,7 @@ FAIL
 
 At the tool surface, same strip:
 
-```
+```text
 $ go test ./internal/cli/ -run 'TestSessionMsgPollHandlerRejectsTraversalIDs' -count=1
 --- FAIL: TestSessionMsgPollHandlerRejectsTraversalIDs (0.00s)
     mcp_session_msg_test.go:282: traversal ack_ids entry "../../../../../../victim" accepted: map[ackedCount:1 expiredCount:0 messages:[] remaining:0]
@@ -202,7 +209,7 @@ is closed is now released.
 **Evidence — RED on pre-fix code.** The three lines were temporarily reverted
 (`&agentLock{}`, `if l.fd == 0`, `l.fd = 0`):
 
-```
+```text
 $ go test ./internal/sessionmsg/ -count=1 -run TestAgentLockReleasesDescriptorZero -v
 === RUN   TestAgentLockReleasesDescriptorZero
     lock_unix_fd_test.go:62: second acquire after releasing fd 0 failed — the flock leaked: sessionmsg lock flock /var/folders/.../fdzero.lock: resource temporarily unavailable
@@ -213,7 +220,7 @@ FAIL
 Same symptom as the orchestrator's probe. Post-fix the test PASSES and does not
 skip:
 
-```
+```text
 $ go test ./internal/sessionmsg/ -count=1 -run TestAgentLockReleasesDescriptorZero -v
 === RUN   TestAgentLockReleasesDescriptorZero
 --- PASS: TestAgentLockReleasesDescriptorZero (0.00s)
@@ -272,7 +279,7 @@ error through a named return without overwriting a non-nil error from `fn()`.
 
 **Evidence.**
 
-```
+```text
 $ GOOS=windows go vet ./internal/sessionmsg/
 exit=0
 ```
@@ -294,7 +301,7 @@ the existing text-part check.
 
 **Evidence — RED on pre-fix code.** The check was temporarily removed:
 
-```
+```text
 $ go test ./internal/sessionmsg/ -count=1 -run 'TestEnvelopeA2AAlignment/validation_rejects_invalid_messages/data_part_carrying_text_payload' -v
     envelope_test.go:256: expected validation error containing "must not carry a text payload", got nil
 --- FAIL: TestEnvelopeA2AAlignment/validation_rejects_invalid_messages/data_part_carrying_text_payload
@@ -321,7 +328,7 @@ delivered twice, none unknown.
 **Evidence — mutation check.** This is new coverage of already-correct
 behaviour, so there is no pre-fix RED; instead the ceiling was mutated to 1000:
 
-```
+```text
 $ go test ./internal/sessionmsg/ -count=1 -run TestPollBatchCeiling
 --- FAIL: TestPollBatchCeiling (0.02s)
     store_test.go:432: first poll claimed 19 messages, want exactly the ceiling 16
@@ -348,7 +355,7 @@ exactly, on both polls, plus the no-duplicate-delivery invariant.
 **Evidence — mutation check.** `mcp.Required()` was dropped from `agent_id` in
 `internal/cli/mcp_server.go`:
 
-```
+```text
 $ go test ./internal/cli/ -run 'TestSessionMsgToolsRegisteredWithHintsAndDiscipline' -count=1
 --- FAIL: TestSessionMsgToolsRegisteredWithHintsAndDiscipline (0.00s)
     mcp_session_msg_test.go:371: session_msg_poll inputSchema does not mark "agent_id" required (got required=[])
@@ -372,7 +379,7 @@ required.
 **Other locales checked, not touched.** All three parallel strings were read and
 are already grammatical possessives in their own languages:
 
-```
+```text
 $ grep -n "session_msg_poll.enabled.desc" internal/web/assets/i18n.js
 627:    ... "Claim the messages waiting in this agent's inbox.",
 818:    ... "이 에이전트의 받은 편지함에 쌓인 메시지를 가져옵니다.",
@@ -410,7 +417,7 @@ validation hunk; lines 27-28 still read `RoleUser Role = "user"` /
 
 **Evidence — GREEN, and no skip:**
 
-```
+```text
 $ go test ./internal/sessionmsg/ -count=1 -timeout 300s -run 'TestEnvelopeA2AAlignment/role_serializes' -v
 === RUN   TestEnvelopeA2AAlignment/role_serializes_as_the_lowercase_short_form
 === RUN   TestEnvelopeA2AAlignment/role_serializes_as_the_lowercase_short_form/agent_role
@@ -430,7 +437,7 @@ Mutant 1 — the constants flipped to the A2A ProtoJSON enum names (the exact
 change CodeRabbit's design.md:58 finding describes as the conformant
 alternative):
 
-```
+```text
 $ go test ./internal/sessionmsg/ -count=1 -run 'TestEnvelopeA2AAlignment/role_serializes'
 --- FAIL: .../agent_role (0.00s)
     envelope_test.go:120: envelope JSON does not carry "role":"agent": {"message":{"messageId":"msg-role","role":"ROLE_AGENT",...}}
@@ -445,7 +452,7 @@ Mutant 2 — the two values swapped (`RoleUser = "agent"`, `RoleAgent = "user"`)
 This is the subtler one: both values stay lowercase and both stay inside the
 accepted set, so `Message.Validate` still passes every existing test:
 
-```
+```text
 $ go test ./internal/sessionmsg/ -count=1 -run 'TestEnvelopeA2AAlignment/role_serializes'
 --- FAIL: .../agent_role (0.00s)
     envelope_test.go:120: envelope JSON does not carry "role":"agent": {"message":{...,"role":"user",...}}
