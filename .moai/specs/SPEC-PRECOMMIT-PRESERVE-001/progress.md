@@ -184,22 +184,128 @@ warning-writer split and its two caller lines. `lastProvenanceErr` records a fai
 rather than discarding it, so M2 has the seam REQ-PCP-010 sub-case (b) needs; M1 does not fail the
 caller on it.
 
+### M2 — disclosure: backup and notice
+
+**Tree**: worktree `.claude/worktrees/t230`, branch `WT-precommit-preserve`, implementation commit
+`d5c706e25` (parent `f71f63d1b`, the M1 commit). Evidence files under `.moai/state/verify/t230/`.
+
+**Diff surface**: `internal/cli/hook_install_precommit.go` (backup + notice + warning writer +
+precedence), the new `internal/cli/hook_install_precommit_disclosure_test.go`, signature updates in
+`hook_install_precommit_test.go` / `hook_install_precommit_attribution_test.go`, and exactly one line
+at each caller: `update_template_sync.go:575` gains `, errOut`; `init.go:898` gains
+`, cmd.ErrOrStderr()`. Nothing else in either caller moved. `preCommitHookContent` and its template
+twin are untouched — scope gate `cmp` rc 0 both before the work and after the last mutant revert
+(`POST-MUTANT-CMP-RC0`).
+
+**Pre-flight** (plan.md §C, verbatim, `@f71f63d1b`): `git rev-parse --short HEAD` → `f71f63d1b` /
+`WT-precommit-preserve`; call sites `update_template_sync.go:575` (passes `out`) and
+`init.go:898` (passes `cmd.ErrOrStderr()`), resolved by symbol;
+`git show v3.1.2:…/.git_hooks/pre-commit | cmp - <same path>` → rc 0; baseline
+`go test ./internal/cli/ -run TestPreCommit -count=1` → `ok … 12.987s`; lint baseline
+`golangci-lint run --timeout=2m ./internal/cli/...` → `0 issues.`.
+
+**What M2 delivers**: on a `user-modified` verdict, the pre-run bytes are copied to
+`.git/hooks/pre-commit.bak.<20060102T150405Z>` (colon-free UTC, Windows-filename-safe) **before**
+the replacement write, via `O_EXCL` so an occupied name is never clobbered (REQ-PCP-003/009).
+`installPreCommitHookOptional` gains a warning writer and emits a two-element notice — the backup
+path and the fact of replacement — on it (REQ-PCP-004); both callers bind it to the command's
+stderr. Failure precedence (REQ-PCP-010): a failed backup write returns the
+`errPreCommitBackupFailed` sentinel, which the wrapper turns into a warning while the hook stays
+byte-identical to pre-run (no replacement); a failed post-write provenance write warns and keeps the
+replacement. The backup-succeeded/write-failed edge (§D.1) names the orphan backup on the warning
+writer instead of printing a false replacement notice.
+
+| AC | Test | Result | Failing input observed red |
+|---|---|---|---|
+| AC-PCP-003 | `TestPreCommitModifiedHookIsBackedUp` | PASS | pre-edit tree: `found 0: []` — today's installer writes no backup (`m2-preedit-red-ac003-ac004ii.txt`) |
+| AC-PCP-004 (i) | `TestPreCommitBackupNoticeContent` (exact-output) | PASS | headline silent mutant: warning writer empty (`mutant-m2-silent.txt`) |
+| AC-PCP-004 (ii) | `TestPreCommitWarningWriterWiring` — AST wiring test, 3 sub-cases incl. no-other-call-sites | PASS | unchanged callers: `expected 4 arguments … got 3` at BOTH sites, observed before the one-line caller edits (`m2-preedit-red-ac003-ac004ii.txt`) |
+| AC-PCP-006 | `TestPreCommitNoSilentReplacement` (one case, both artifacts) | PASS | notice line deleted, backup retained (`mutant-m2-silent.txt`) |
+| AC-PCP-007 | `TestPreCommitBackupOutputNotBareSuccess` (clauses i+ii) | PASS | same silent mutant — clause (i) empty writer, clause (ii) names nothing (`mutant-m2-silent.txt`) |
+| AC-PCP-008 | `TestPreCommitInstall_PreservesForeignHook` extended with `assertNoBackup` | PASS | marker-less hooks routed into the backup path → `expected no backup file, found […pre-commit.bak…]` (`mutant-m2-ac008-markerless-backup.txt`) |
+| AC-PCP-009 | `TestPreCommitBackupNoClobber` (same-second collision via `now` seam) | PASS | fixed-filename clobbering backup → `expected two distinct backups, found 0` (`mutant-m2-ac009-fixed-name.txt`) |
+| AC-PCP-010 (a) | `TestPreCommitSupportWriteFailureNonFatal/a_…` | PASS | warn-then-overwrite-anyway mutant (warning + normal return preserved): fails **specifically the POST-STATE clause** — `hook was replaced despite the failed backup (3245 bytes, want the unchanged 78-byte pre-run body)`; sub-case (b) still PASSED under the mutant, confirming (a)'s post-state is the only clause that reaches it (`mutant-m2-ac010a-overwrite-anyway.txt`) |
+| AC-PCP-010 (b) | `TestPreCommitSupportWriteFailureNonFatal/b_…` (dir-at-record-path, cross-platform) | PASS | covered by the (a) mutant run's contrast; construction: hook replaced, warning present, run 2 takes no backup and emits no replacement notice |
+| AC-PCP-013 | `TestPreCommitTemplateMatchesConstant` | PASS, **not SKIP** (`-v` inspected) | one-sided `preCommitHookContent` edit → `template len: 3245, constant len: 3292` (`mutant-m2-ac013-constant-edit.txt`); reverted, cmp re-verified rc 0 |
+
+**How the (a) fixture separates the two writes.** The hooks dir is chmod 0500 while the existing
+hook file is 0755: creating a NEW file (the backup) needs dir-write permission and fails, while
+truncating the EXISTING hook file needs only file-write permission and succeeds. The mutant red
+proves the hook write was physically possible and only the precedence clause prevented it — the
+fixture does not pass "by accident of the directory being unwritable".
+
+**Clause (ii) is a Go test, not a grep.** `TestPreCommitWarningWriterWiring` parses both caller
+files with go/ast, finds every `installPreCommitHookOptional` call, asserts the warning-writer
+argument directly (`cmd.ErrOrStderr()` at init) or resolves it (`errOut` at update, whose single
+assignment inside the enclosing function must be `cmd.ErrOrStderr()`; `out` likewise
+`cmd.OutOrStdout()` — enclosing-function scoping, because a second unrelated `out :=` lives in a
+later function in the same file), and asserts no third call site exists in the package. A
+`no_other_call_sites` sub-test scans every non-test `.go` file in `internal/cli`.
+
+**Quality gates** (all `@d5c706e25`, this tree, this run):
+- `go test ./internal/cli/ -run TestPreCommit -count=1 -v` → **35 PASS, 0 FAIL, 0 SKIP**, `ok …
+  16.651s` (final rerun `m2-ac-green.txt`); `TestPreCommitTemplateMatchesConstant` PASS, not SKIP.
+- `go test ./internal/cli/ -count=1` (full package) → `ok … 552.193s` (`m2-cli-full.txt`).
+- `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0 (`BUILDS-RC0`).
+- `go vet ./internal/cli/...` → exit 0; `golangci-lint run --timeout=2m ./internal/cli/...` →
+  `0 issues.` — one NEW errcheck finding (`f.Close` unchecked in the backup error path) surfaced
+  during the run and was fixed (`_ = f.Close()`); the re-measure matches the pre-edit baseline of 0.
+- Coverage, `-run TestPreCommit -cover`: package 6.7% under the filter (the package is dominated by
+  untested-at-this-filter CLI surfaces; the changed file is the lens that matters):
+  `InstallPreCommitHook` 89.7%, `backupPreCommitHook` 82.4% (uncovered: O_EXCL write/close
+  disk-error branches), `installPreCommitHookOptional` 92.9%, `classifyPreCommitHook` 100%,
+  `writePreCommitProvenance` 100% (`m2-coverage.txt`).
+- Scope gate (plan.md §F end-of-M2): `cmp` rc 0 pre-edit, rc 0 post-mutant-revert, and the tree at
+  `d5c706e25` differs from `f71f63d1b` in installer logic, tests, and two one-line caller edits only.
+
+**Mutant discipline**: every implementation mutant was applied on top of `d5c706e25`, observed red
+against its named criterion, then reverted with `git restore` — after each revert `git status
+--short` showed only this progress.md and HEAD stayed `d5c706e25`. The pre-edit reds (AC-003,
+AC-004 ii) were observed at `f71f63d1b` before any source edit.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
-run_phase: M1 only (M2 pending)
-run_commit_sha: <M1-COMMIT-SHA>
-run_status: M1 complete
-ac_pass_count: 4          # AC-PCP-014, -001, -002, -005 (M1's four)
+run_phase: complete (M1 + M2; M3 trimmed at v0.4.0)
+run_complete_at: 2026-08-25
+m1_commit_sha: f71f63d1b        # the three-way classifier (§E.2 M1)
+run_commit_sha: d5c706e25       # M2 implementation + tests (evidence commit follows)
+run_status: run complete
+ac_pass_count: 12               # all 12 AC green: M1's 4 (014, 001, 002, 005) + M2's 8 (003, 004, 006, 007, 008, 009, 010, 013)
 ac_fail_count: 0
-ac_pending_count: 8       # M2's: -003, -004, -006, -007, -008, -009, -010, -013
-mutants_observed_red: 6   # two-way; two-way vs AC-002; empty-stub; write-once; silent-unknown; body-edit; bad-tag
+ac_pending_count: 0
+mutants_observed_red: 14        # M1: 7 (two-way x2, empty-stub, write-once, silent-unknown, body-edit, bad-tag); M2: 7 (silent headline, marker-less backup, fixed-name, overwrite-anyway, one-sided constant, + the pre-edit-tree red for AC-003 and AC-004(ii))
 skipped_subcases: 0
-hook_body_touched: false  # preCommitHookContent and its template twin byte-identical
-callers_touched: false    # the §C.4 warning-writer lines belong to M2
-new_warnings_or_lints_introduced: none
+hook_body_touched: false        # preCommitHookContent and its template twin byte-identical (scope gate rc 0)
+callers_touched: true           # exactly the one §C.4-permitted line each, AST-asserted
+new_warnings_or_lints_introduced: none   # one transient errcheck finding fixed before the implementation commit
+cross_platform_build:
+  native: exit 0
+  windows_amd64: exit 0
+total_run_phase_files: 6        # hook_install_precommit.go + 3 test files + 2 callers (one line each)
+m1_to_mN_commit_strategy: per-milestone commits on WT-precommit-preserve (M1 f71f63d1b, M2 d5c706e25)
 ```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+Recorded by the orchestrator at M2 spawn (2026-08-25). M1 ran serially in the prior session
+(9f833cc0) without a §F log; recorded here at the first orchestrator-side run-phase spawn of this
+session so the decision is auditable from M2 onward.
+
+- **Input parameters**: tier M · scope 2 source files + 1-2 test files (installer + two one-line
+  caller edits) · single domain (Go CLI) · language mix 100% Go · concurrency benefit LOW
+  (coding-heavy, per Anthropic's coding-task parallelism caveat) · Agent Teams prereqs not met
+  (no operator `--team` request)
+- **Mode evaluation**: `direct` — no (Tier M Go implementation is manager-develop's domain);
+  `fanout` — no (single-domain coding work, no research fan-out); `sweep` — no (2 files, not a
+  high-volume mechanical transform); `agent-team` — no (explicit-request-only, none given);
+  `serial` — **selected**
+- **Decision**: serial
+- **Justification**: One implementation surface (`hook_install_precommit.go`) plus two one-line
+  caller edits — a single sequential manager-develop delegation carries the whole milestone; there
+  is nothing genuinely parallel to fan out, and coding-heavy work stays sequential per the
+  Anthropic multi-agent caveat.
