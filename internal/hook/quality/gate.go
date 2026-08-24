@@ -132,12 +132,17 @@ var toolchains = []langToolchain{
 	// Go: go.mod
 	{
 		markerFiles: []string{"go.mod"},
-		vetSteps:    []gateStep{{name: "go vet", binary: "go", args: []string{"vet", "./..."}}},
+		// sourceExts: a module with a go.mod but not one .go file yet is a
+		// scaffold, and `go vet ./...` / `go test ./...` exit non-zero there
+		// ("matched no packages"). Skipping keeps a first commit from being
+		// blocked for having no code — the same policy the Python steps carry.
+		vetSteps: []gateStep{{name: "go vet", binary: "go", args: []string{"vet", "./..."}, sourceExts: []string{".go"}}},
 		lintSteps: []gateStep{{
 			name: "golangci-lint", binary: "golangci-lint", args: []string{"run"}, optional: true,
 			configFiles: []string{".golangci.yml", ".golangci.yaml", ".golangci.toml", ".golangci.json"},
+			sourceExts:  []string{".go"},
 		}},
-		testStep: &gateStep{name: "go test", binary: "go", args: []string{"test", "./..."}},
+		testStep: &gateStep{name: "go test", binary: "go", args: []string{"test", "./..."}, sourceExts: []string{".go"}},
 	},
 	// Node.js (TypeScript/JavaScript): package.json
 	//
@@ -983,6 +988,15 @@ func (g *QualityGate) runStep(ctx context.Context, stepName string, timeout time
 	defer cancel()
 
 	cmd := exec.CommandContext(stepCtx, name, args...)
+	// Every step's arguments are cwd-relative ("./...", ".", a bare "test").
+	// Without an explicit Dir the child inherits the calling process's cwd,
+	// which is the project root only by coincidence — so a gate configured for
+	// one directory would grade another. Under `go test` that coincidence
+	// breaks: the cwd is the package under test, so a "go test ./..." step
+	// re-executes the suite that invoked it.
+	if dir := resolveQualityProjectDir(*g.config, "QualityGate.runStep"); dir != "" {
+		cmd.Dir = dir
+	}
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr

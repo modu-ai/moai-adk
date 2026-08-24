@@ -148,7 +148,26 @@ func countCommandTree(c *cobra.Command) int {
 //
 // t.TempDir() is unavailable in TestMain (no *testing.T), so the directory is
 // created and removed manually.
+// profileBaseDirEnv carries the sandbox path from a test process to any test
+// binary it re-executes. Several tests in this package spawn os.Args[0] as a
+// helper subprocess (exitcode_guard_test.go, todo_test.go,
+// launch_session_pid_exec_posix_test.go), every one of them with
+// append(os.Environ(), …) — so the child picks this up with no per-call-site
+// wiring, and future helpers do too.
+const profileBaseDirEnv = "MOAI_CLI_TEST_PROFILE_BASE"
+
 func sandboxProfileBaseDir() func() {
+	// A re-executed child adopts the parent's sandbox and removes nothing: the
+	// helper bodies end in os.Exit, which returns through neither m.Run() nor
+	// the restore call after it, so anything a child created for itself would
+	// outlive every process that knew about it. Ownership stays with the
+	// process that minted the directory.
+	if inherited := os.Getenv(profileBaseDirEnv); inherited != "" {
+		orig := profile.BaseDirOverride
+		profile.BaseDirOverride = inherited
+		return func() { profile.BaseDirOverride = orig }
+	}
+
 	dir, err := os.MkdirTemp("", "moai-cli-profiles-")
 	if err != nil {
 		// Fall back to a path under the OS temp dir rather than silently
@@ -158,8 +177,10 @@ func sandboxProfileBaseDir() func() {
 	}
 	orig := profile.BaseDirOverride
 	profile.BaseDirOverride = dir
+	_ = os.Setenv(profileBaseDirEnv, dir)
 	return func() {
 		profile.BaseDirOverride = orig
+		_ = os.Unsetenv(profileBaseDirEnv)
 		_ = os.RemoveAll(dir)
 	}
 }
