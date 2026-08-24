@@ -141,7 +141,7 @@ func TestEnterSessionWorktree_AlreadyInWorktreeSkips(t *testing.T) {
 	addCalled := false
 	swapSessionWorktreeSeams(t, swSeams{
 		inWt: func() bool { return true },
-		add: func(string, string) (string, error) { addCalled = true; return "", nil },
+		add:  func(string, string) (string, error) { addCalled = true; return "", nil },
 	})
 	var out bytes.Buffer
 	got := enterSessionWorktree(nil, "init", &out)
@@ -226,6 +226,7 @@ func TestSessionWorktreeBranchName_Shape(t *testing.T) {
 // TestSessionWorktreeBranchName_RandomFallback verifies the 6-byte random hex
 // fallback when no session id is available (REQ-SW-007 EC-4).
 func TestSessionWorktreeBranchName_RandomFallback(t *testing.T) {
+	scrubSessionIDEnv(t) // the runtime stamps a real id into this process; this case is the no-id path
 	swapSessionWorktreeSeams(t, swSeams{
 		short: func() string { return resolveSessionShortReal() },
 	})
@@ -335,7 +336,7 @@ func TestCleanupSessionWorktree_DefaultManualPersists(t *testing.T) {
 func TestCleanupSessionWorktree_CleanExitRemoves(t *testing.T) {
 	var removedPath string
 	swapSessionWorktreeSeams(t, swSeams{
-		remove: func(p string) error { removedPath = p; return nil },
+		remove:     func(p string) error { removedPath = p; return nil },
 		statusPorc: func(string) (string, error) { return "", nil }, // clean
 	})
 	var out bytes.Buffer
@@ -406,7 +407,7 @@ func TestCleanupSessionWorktree_DirtyPreserves(t *testing.T) {
 func TestCleanupSessionWorktree_DirtyCheckErrorPreserves(t *testing.T) {
 	removeCalled := false
 	swapSessionWorktreeSeams(t, swSeams{
-		remove: func(string) error { removeCalled = true; return nil },
+		remove:     func(string) error { removeCalled = true; return nil },
 		statusPorc: func(string) (string, error) { return "", errFakeNotGitRepo },
 	})
 	var out bytes.Buffer
@@ -447,6 +448,7 @@ func TestCleanupSessionWorktree_NoticeDistinguishableFromPRMerge(t *testing.T) {
 // project dir pointed at by $CLAUDE_PROJECT_DIR and asserts the first-8 chars
 // of the session UUID are returned.
 func TestResolveSessionShortReal_SideChannelAvailable(t *testing.T) {
+	scrubSessionIDEnv(t) // the runtime stamps a real id into this process; the fixture is the sidecar
 	tmp := t.TempDir()
 	t.Setenv("CLAUDE_PROJECT_DIR", tmp)
 	sidecarDir := filepath.Join(tmp, ".moai", "state")
@@ -467,6 +469,7 @@ func TestResolveSessionShortReal_SideChannelAvailable(t *testing.T) {
 // TestResolveSessionShortReal_ShortSessionID covers the <8-char branch: a
 // session id shorter than 8 chars is returned verbatim (not truncated).
 func TestResolveSessionShortReal_ShortSessionID(t *testing.T) {
+	scrubSessionIDEnv(t) // the runtime stamps a real id into this process; the fixture is the sidecar
 	tmp := t.TempDir()
 	t.Setenv("CLAUDE_PROJECT_DIR", tmp)
 	sidecarDir := filepath.Join(tmp, ".moai", "state")
@@ -485,6 +488,7 @@ func TestResolveSessionShortReal_ShortSessionID(t *testing.T) {
 // fallback: when no side-channel file exists, resolveSessionShortReal returns a
 // 12-hex-char (6-byte) random segment.
 func TestResolveSessionShortReal_NoSideChannelFallsBack(t *testing.T) {
+	scrubSessionIDEnv(t) // the runtime stamps a real id into this process; this case is the no-id path
 	tmp := t.TempDir()
 	t.Setenv("CLAUDE_PROJECT_DIR", tmp) // no sidecar file present
 	got := resolveSessionShortReal()
@@ -658,7 +662,10 @@ func TestEnterSessionWorktree_AlreadyInWorktreeSkip_Falsification(t *testing.T) 
 		inWt:      func() bool { return false },
 		short:     func() string { return "abcdef12" },
 		commonDir: func() (string, error) { return "/repo/.git", nil },
-		add:       func(string, string) (string, error) { addCallsB++; return "/repo/.claude/worktrees/WT-abcdef12-web", nil },
+		add: func(string, string) (string, error) {
+			addCallsB++
+			return "/repo/.claude/worktrees/WT-abcdef12-web", nil
+		},
 		configSet: func(string, string, string) error { return nil },
 	})
 	var outB bytes.Buffer
@@ -669,4 +676,3 @@ func TestEnterSessionWorktree_AlreadyInWorktreeSkip_Falsification(t *testing.T) 
 		t.Fatalf("falsification B (inWt=false): add MUST be called exactly once, got %d calls", addCallsB)
 	}
 }
-

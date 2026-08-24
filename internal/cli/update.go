@@ -496,6 +496,16 @@ func runUpdate(cmd *cobra.Command, _ []string) error {
 		return err
 	}
 
+	// SPEC-CODEX-WIRING-001 (REQ-CW-009): refresh the Codex wiring in projects
+	// that already carry it — file existence is the standing opt-in, so a
+	// claude-only project gets nothing created. Deliberately BEFORE the
+	// syncSkipped early return below: an "Up to date · Skipping sync" update
+	// still owes a wired project its regeneration pass (AC-CW-008 clause 2),
+	// and the wiring refresh does not depend on template redeploy. A
+	// content-changing refresh prints the re-trust guidance (REQ-CW-008)
+	// inside the helper.
+	refreshCodexWiringBestEffort(out, cmd.ErrOrStderr())
+
 	// SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001 REQ-UAC-004: when the template sync
 	// branch short-circuits (version match + !forceUpdate, or user cancelled
 	// merge), the legacy-skill archive check MUST also be short-circuited.

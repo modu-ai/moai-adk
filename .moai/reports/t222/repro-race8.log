@@ -1,0 +1,18 @@
+=== RUN   TestReadCardStatus_DoesNotSearchBranchSet
+--- PASS: TestReadCardStatus_DoesNotSearchBranchSet (2.18s)
+=== RUN   TestReadCardStatus_DoesNotSearchBranchSet
+--- PASS: TestReadCardStatus_DoesNotSearchBranchSet (2.62s)
+=== RUN   TestReadCardStatus_DoesNotSearchBranchSet
+--- PASS: TestReadCardStatus_DoesNotSearchBranchSet (2.10s)
+=== RUN   TestReadCardStatus_DoesNotSearchBranchSet
+--- PASS: TestReadCardStatus_DoesNotSearchBranchSet (2.00s)
+=== RUN   TestReadCardStatus_DoesNotSearchBranchSet
+--- PASS: TestReadCardStatus_DoesNotSearchBranchSet (1.91s)
+=== RUN   TestReadCardStatus_DoesNotSearchBranchSet
+--- PASS: TestReadCardStatus_DoesNotSearchBranchSet (1.54s)
+=== RUN   TestReadCardStatus_DoesNotSearchBranchSet
+--- PASS: TestReadCardStatus_DoesNotSearchBranchSet (2.09s)
+=== RUN   TestReadCardStatus_DoesNotSearchBranchSet
+--- PASS: TestReadCardStatus_DoesNotSearchBranchSet (2.47s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/kanban	297.556s

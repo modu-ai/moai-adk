@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **[SPEC-CODEX-WIRING-001](.moai/specs/SPEC-CODEX-WIRING-001/spec.md)** — sync-phase close (3-phase plan→run→sync). **`moai init --agent claude|codex|both` selects the harness at init time; a new `internal/codexwiring` package generates `.codex/hooks.json` and the `config.toml` wiring (trust guidance, `mcp_servers`, approval mode); `moai hook --harness codex` runs hooks in Codex runtime mode; and `moai doctor` gains a "Codex Wiring" diagnostic** that detects wiring divergence and self-heals a lost sidecar baseline. Run-phase commits: M1 `90439c59c` → M2 `30c1387c4` → M3 `20ec045c3` → M4 `09d34fcc0` → M5 `fdf2a0b96`. 14 acceptance criteria, counted against `acceptance.md`.
+  - The default `tui.status_line` ships `model-with-reasoning`, `context-remaining`, `git-branch`, `current-dir`, and `thread-id`. Codex supports only built-in identifier arrays — no command-backed statusline — so MoAI-specific statusline items (goal/todo/SPEC state) are impossible until openai/codex#17827 resolves; this limitation is documented in all four READMEs (AC-CW-014, SHOULD — discharged in this sync phase).
+  - An MCP annotation defect surfaced in plan audit is fixed alongside: the 4 audit-family tools (`audit_cache`, `codex_audit`, `glm_audit`, `audit_multi`) lacked the read-only hint their catalog classification declares; they are now correctly read-only-hinted, and the effective approval set drops from 10 to 6 on the base tree.
+  - Run-phase e2e discovered two placement defects, both fixed in place with RED→GREEN regression tests: the update-path wiring refresh sat after the `syncSkipped` early return (an "Up to date" update never refreshed wiring), and a force-reinit silently lost the doctor's sidecar baseline (now re-recorded on disk-match).
+  - PRESERVE clean: template tree and `internal/codexadapter/` empty diff; `internal/cli/mcp_server.go` took exactly 14 pure insertions (the 4 annotation lines + comments). Coverage 87.2% (`internal/codexwiring`, threshold 85), `golangci-lint` 0 issues, windows-amd64 `go vet` exit-0. This sync commit carries the README 4-locale statusline-limitation sentence, the `spec.md` frontmatter close (the only one of the four artifacts carrying a frontmatter block), the `progress.md` §E.4 signal, and this entry. 🗿 MoAI
+
 ## [3.1.3] - 2026-08-24
 
 ### Summary

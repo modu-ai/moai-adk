@@ -30,6 +30,16 @@ func specFixtureRepo(t *testing.T) string {
 	mustGit(t, root, "init", "-b", "main")
 	mustGit(t, root, "config", "user.email", "m2-test@example.com")
 	mustGit(t, root, "config", "user.name", "M2 Test")
+	// Every `git commit` otherwise spawns `git maintenance run --auto
+	// --no-quiet --detach` — a DETACHED process that outlives the commit the
+	// test waited on and keeps touching .git while t.TempDir's RemoveAll is
+	// deleting it (measured 2026-08-24: 4 spawns per fixture repo, git 2.50.1;
+	// 0 with these two settings). CI observed the resulting cleanup failure as
+	// `unlinkat .../001/.git/objects: directory not empty`. This is not the
+	// gc.auto loose-object threshold: `maintenance run --auto` detaches first
+	// and decides afterwards, so the object count never gates the spawn.
+	mustGit(t, root, "config", "gc.auto", "0")
+	mustGit(t, root, "config", "maintenance.auto", "false")
 
 	// Primary copy (on main): completed.
 	writeSpecMD(t, root, "SPEC-NAV-X", StatusCompleted)

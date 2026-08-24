@@ -70,6 +70,17 @@
 //     saw, inflating only the numerator). AssertPaired interleaves the two
 //     and is the preferred entry point; Assert's precomputed refUnit is the
 //     legacy form.
+//   - Divide PER ROUND, not median by median. Pairing the sampling and then
+//     computing median(fn)/median(ref) throws the pairing away: the two
+//     medians are independent order statistics, and a load STEP that the two
+//     series cross one round apart — which the alternating ref-first/fn-first
+//     order produces at the crossing — can put them on opposite sides of the
+//     step. Byte-identical functions then report the step's magnitude as code
+//     cost (CI: 2.32x / 2.72x / 4.64x on this package's own self-test before
+//     #1591; 1.82x on TestBranchGuard_Latency, 2026-08-24). AssertPaired
+//     enforces the median of the per-round ratios instead; both terms of each
+//     ratio are measured microseconds apart, so a step cancels inside the
+//     term. Pinned by TestCalibratedRatioSurvivesOffsetLoadStep.
 //   - Give both sides the SAME sample count. A 10-sample reference median
 //     under a 100-sample measured median makes the denominator the noisiest
 //     term in the ratio.
@@ -167,7 +178,18 @@ func Median(ref func(), warmup, n int) time.Duration {
 // fn runs on the calling goroutine and may call t.Fatalf directly to fail
 // on functional errors (wrong decision, write error) inside the loop.
 func Assert(t *testing.T, b Bound, refUnit time.Duration, fn func()) {
-	report(t, b, refUnit, measure(fn, b.Iterations, b.Warmup))
+	st := measure(fn, b.Iterations, b.Warmup)
+	report(t, b, refUnit, ratioOfMedians(refUnit, st), st)
+}
+
+// ratioOfMedians is the unpaired calibrated figure Assert can offer: it has
+// only one reference number to divide by. Returns 0 (calibrated arm disabled)
+// when the reference did not measure.
+func ratioOfMedians(refUnit time.Duration, st Stats) float64 {
+	if refUnit <= 0 {
+		return 0
+	}
+	return float64(st.Median) / float64(refUnit)
 }
 
 // AssertPaired prices the reference and the measured operation TOGETHER —
@@ -191,25 +213,27 @@ func Assert(t *testing.T, b Bound, refUnit time.Duration, fn func()) {
 //
 // b.Warmup rounds of BOTH functions run first and are discarded.
 func AssertPaired(t *testing.T, b Bound, ref, fn func()) {
-	refSt, st := measurePaired(ref, fn, b.Iterations, b.Warmup)
-	report(t, b, refSt.Median, st)
+	refSt, st, paired := measurePaired(ref, fn, b.Iterations, b.Warmup)
+	report(t, b, refSt.Median, paired, st)
 }
 
 // report logs the measured distribution beside the reference unit and raises
-// one t.Errorf per violated bound.
-func report(t *testing.T, b Bound, refUnit time.Duration, st Stats) {
-	ratio := math.Inf(1)
-	if refUnit > 0 {
-		ratio = float64(st.Median) / float64(refUnit)
+// one t.Errorf per violated bound. ratio is the calibrated figure the bound is
+// enforced against: for AssertPaired the per-round paired ratio, for Assert
+// the ratio of medians (0 disables the calibrated arm).
+func report(t *testing.T, b Bound, refUnit time.Duration, ratio float64, st Stats) {
+	shown := math.Inf(1)
+	if ratio > 0 {
+		shown = ratio
 	}
 	line := fmt.Sprintf("%s: n=%d median=%v p95=%v worst=%v avg=%v | refUnit=%v ratio=%.2fx (maxUnits=%.2fx, steadyCeiling=%v, budget=%v)",
 		b.Name, st.N, st.Median.Round(time.Microsecond), st.P95.Round(time.Microsecond),
 		st.Worst.Round(time.Microsecond), st.Avg.Round(time.Microsecond),
-		refUnit.Round(time.Microsecond), ratio, b.MaxUnits, b.SteadyCeiling, b.Budget)
+		refUnit.Round(time.Microsecond), shown, b.MaxUnits, b.SteadyCeiling, b.Budget)
 	t.Log(line)
 	publish(line)
 
-	for _, err := range Check(b, refUnit, st) {
+	for _, err := range CheckRatio(b, ratio, st) {
 		t.Errorf("%s: %v", b.Name, err)
 	}
 }
@@ -244,6 +268,25 @@ func publish(line string) {
 // returns one error per violated bound. Pure: callers can unit-test the
 // bound logic without running anything.
 func Check(b Bound, refUnit time.Duration, st Stats) []error {
+	return CheckRatio(b, ratioOfMedians(refUnit, st), st)
+}
+
+// CheckRatio is Check with the calibrated ratio supplied directly rather than
+// derived from a single reference median. AssertPaired uses it to enforce the
+// bound against the PAIRED ratio — the median of the per-round fn/ref ratios —
+// which the ratio of medians cannot express.
+//
+// Why the distinction is load-bearing: paired sampling collects one reference
+// sample beside every measured sample precisely so a load excursion lands on
+// both sides of the ratio. Dividing median(fn) by median(ref) then throws that
+// pairing away — the two medians are two independent order statistics, and a
+// load STEP that both series cross one round apart (which the alternating
+// ref-first/fn-first order produces at the crossing) can put them on opposite
+// sides of the step. The per-round ratio cannot: both of its terms are measured
+// microseconds apart, so a step cancels inside each term.
+//
+// A ratio <= 0 disables the calibrated arm (an unmeasurable reference).
+func CheckRatio(b Bound, ratio float64, st Stats) []error {
 	var errs []error
 	if st.P95 > b.SteadyCeiling {
 		errs = append(errs, fmt.Errorf("p95 latency %v exceeds steady-state ceiling %v — "+
@@ -255,14 +298,11 @@ func Check(b Bound, refUnit time.Duration, st Stats) []error {
 			"a single invocation consuming the whole budget stalls the caller",
 			st.Worst, b.Budget))
 	}
-	if b.MaxUnits > 0 && refUnit > 0 {
-		ratio := float64(st.Median) / float64(refUnit)
-		if ratio > b.MaxUnits {
-			errs = append(errs, fmt.Errorf("median latency %v is %.2fx the reference unit %v, above the %.2fx calibrated bound — "+
-				"the operation now costs more machine-cost units than its design (e.g. an added subprocess or per-write fsync); "+
-				"this is a code regression, not machine load (load inflates the reference equally)",
-				st.Median, ratio, refUnit, b.MaxUnits))
-		}
+	if b.MaxUnits > 0 && ratio > 0 && ratio > b.MaxUnits {
+		errs = append(errs, fmt.Errorf("measured latency is %.2fx the reference unit (median %v), above the %.2fx calibrated bound — "+
+			"the operation now costs more machine-cost units than its design (e.g. an added subprocess or per-write fsync); "+
+			"this is a code regression, not machine load (load inflates the reference equally)",
+			ratio, st.Median, b.MaxUnits))
 	}
 	return errs
 }
@@ -283,23 +323,46 @@ func measure(fn func(), iterations, warmup int) Stats {
 // measurePaired runs ref and fn alternately for iterations rounds (after
 // warmup rounds of both, discarded) and summarizes each side separately. Odd
 // rounds run fn first so neither side always follows the other.
-func measurePaired(ref, fn func(), iterations, warmup int) (refSt, st Stats) {
+//
+// The third return is the PAIRED ratio: the median of the per-round fn/ref
+// ratios, each computed from two samples measured microseconds apart. It is
+// the figure the calibrated bound is enforced against (see CheckRatio) —
+// dividing the two medians instead discards the pairing this loop exists to
+// create. It is 0 when no round produced a usable reference sample.
+func measurePaired(ref, fn func(), iterations, warmup int) (refSt, st Stats, paired float64) {
 	for range warmup {
 		ref()
 		fn()
 	}
 	refSamples := make([]time.Duration, 0, iterations)
 	samples := make([]time.Duration, 0, iterations)
+	ratios := make([]float64, 0, iterations)
 	for i := range iterations {
+		var r, f time.Duration
 		if i%2 == 0 {
-			refSamples = append(refSamples, timeOne(ref))
-			samples = append(samples, timeOne(fn))
-			continue
+			r = timeOne(ref)
+			f = timeOne(fn)
+		} else {
+			f = timeOne(fn)
+			r = timeOne(ref)
 		}
-		samples = append(samples, timeOne(fn))
-		refSamples = append(refSamples, timeOne(ref))
+		refSamples = append(refSamples, r)
+		samples = append(samples, f)
+		if r > 0 {
+			ratios = append(ratios, float64(f)/float64(r))
+		}
 	}
-	return summarize(refSamples), summarize(samples)
+	return summarize(refSamples), summarize(samples), medianFloat(ratios)
+}
+
+// medianFloat returns the median of xs, or 0 for an empty slice.
+func medianFloat(xs []float64) float64 {
+	if len(xs) == 0 {
+		return 0
+	}
+	sorted := slices.Clone(xs)
+	slices.Sort(sorted)
+	return sorted[len(sorted)/2]
 }
 
 // timeOne runs fn once on the calling goroutine and returns its duration.
