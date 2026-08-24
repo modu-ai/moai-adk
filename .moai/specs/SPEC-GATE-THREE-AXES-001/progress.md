@@ -163,7 +163,7 @@ Nothing needing a SPEC change. Two observations worth carrying forward:
 run_milestone: M1
 run_status: complete-with-debt      # AC-GTA-006's named fixture is unreachable locally
 run_complete_at: 2026-08-25
-run_commit_sha: pending-backfill-m1 # a commit cannot carry its own hash; backfilled next commit
+run_commit_sha: 3c441782b           # M1; backfilled in the follow-up commit
 run_base_sha: 5ee95c5e8
 run_branch: WT-gate-three-axes
 run_worktree: .claude/worktrees/t235
