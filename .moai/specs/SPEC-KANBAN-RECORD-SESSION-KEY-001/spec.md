@@ -2,7 +2,7 @@
 id: SPEC-KANBAN-RECORD-SESSION-KEY-001
 title: "Key the kanban record by the session it describes, and record that session's lane and card"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-08-24
 updated: 2026-08-24
 author: manager-spec
