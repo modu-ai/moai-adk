@@ -1,153 +1,167 @@
 # SPEC-WEB-CONSOLE-015 — Research
 
-Ground truth measured in worktree `.claude/worktrees/t207` at base commit `28bde4022`. Every
-row was read from the file named, not inferred.
+The measurement record for what this SPEC still asserts after the three-way carve-out. Everything
+below was measured in worktree `.claude/worktrees/t207` at `dfbf828a6`, in the run that authored
+version 0.2.0. Facts belonging to the sibling SPECs are not repeated here; each of them carries its
+own record.
 
 ## §1 Live-refresh transport — already complete
 
 | Fact | Location |
 |---|---|
-| `Hub`, `Publish`, `ServeEvents` | `internal/web/events.go:42`, `:58`, `:70` |
-| `text/event-stream` header | `internal/web/events.go:81` |
-| 25s keepalive ticker | `internal/web/events.go:95`, `:108` |
 | 250ms debounce constant | `internal/web/events.go:22` |
-| `Hub.Watch` over fsnotify | `internal/web/events.go:117` |
-| Watch skips absent dirs (fail-open) | `internal/web/events.go:130` |
-| Watch errors are non-fatal, browser falls back | `internal/web/events.go:163` |
-| Watch is wired at server start | `internal/web/server.go:251` |
-| `/events` route | `internal/web/app.go:162` |
-| `EVENTS` list, `POLL_MS = 30000` | `internal/web/assets/app.js` (~line 636) |
-| `connect()` opens `new EventSource("/events")` | `internal/web/assets/app.js` |
-| `es.onerror` → `startPolling()` at `failures >= 3` | `internal/web/assets/app.js` |
-| `ready` listener → `stopPolling()` | `internal/web/assets/app.js` |
-| Events carry no payload; each triggers `refresh(area)` re-fetch | `internal/web/assets/app.js` |
-| htmx 2.0.4 core has no SSE extension — documented reason for hand-wired `EventSource` | `internal/web/assets/app.js:626-627` |
+| `text/event-stream` header | `internal/web/events.go:81` |
+| 25s keepalive ticker | `internal/web/events.go:95` |
+| `POLL_MS = 30000` | `internal/web/assets/app.js:638` |
+| `startPolling()` definition | `internal/web/assets/app.js:700` |
+| `new EventSource("/events")` | `internal/web/assets/app.js:721` |
+| `startPolling()` called at `failures >= 3` | `internal/web/assets/app.js:743` |
 
-Conclusion: the card's "SSE vs polling — pick one" framing does not describe this tree.
 Polling is the degraded mode of SSE, reachable only from `es.onerror` or a missing
-`window.EventSource`.
+`window.EventSource`. The card's "SSE vs polling — pick one" framing does not describe this tree.
 
-## §2 Session telemetry gaps
+## §2 The three placeholder cells and the marker that already renders them
 
-`internal/web/viewmodel_ops.go:250-256` — three literal placeholders with comments naming the
-prerequisite ("3단계"): `Model: ""`, `Effort: ""`, `ContextPct: -1`.
+`internal/web/viewmodel_ops.go:250-256` — `RoleVM` is built with `Model: ""`, `Effort: ""`,
+`ContextPct: -1`, each with a comment naming the prerequisite.
 
-`internal/kanban/record.go:55-99` — `Record` fields: `SessionID`, `SpecID`,
-`Role` (`omitempty`), `Backend`, `EnteredAt`, `DeepScanDir`, `VerifyRung` (`*Rung`,
-`omitempty`), `VerifyReentries`.
+`internal/web/screens.templ:165-175` — the model and effort cells already branch:
+`if r.Model != "" { … } else { @missing() }`, and the same for effort.
+`internal/web/widgets.templ:122-124` — `templ missing()` renders `—` with
+`title="not recorded anywhere yet"` and an aria-label.
 
-`internal/kanban/record.go:45` — `@MX:ANCHOR` warning that the launcher, the orchestrator, and
-the sync-phase dedup gate all bind to these JSON keys; a renamed key breaks unseen readers.
+Consequence for version 0.1.0's REQ/AC-WC15-012: the "not recorded" marker it required is
+implemented, wired, and rendering for every row today, because `viewmodel_ops.go:253` hardcodes the
+empty string. Its second clause asserted "no empty `<td>`"; measured,
+`grep -c "<td" internal/web/screens.templ` returns **0** — the view is `div`/`span`-based and emits
+no table cell under any implementation. Both halves of the criterion were unobservable, which is
+why it was deleted rather than reworded.
 
-`internal/kanban/record.go:116-130` — `WithRole` lowercases and trims, accepts `RoleLead`,
-`RoleLane`, or a companion role, and **silently discards** anything else.
+## §3 The note banner
 
-`internal/cli/kanban.go:472` — `recordKanbanSession(specID, backend, role string)`; calls
-`kanban.WriteBestEffort(projectRoot, kanban.NewRecord(...).WithRole(role))`. Eight callers:
-`internal/cli/cc.go:161,175,192,208` and `internal/cli/glm.go:224,237,250,264`.
+`internal/web/screens.templ:192`:
 
-Model / effort producers that exist but are not threaded in: `internal/config/profile.go:73-76`
-(`ModelEffort{Model, Effort}`, `EffectiveProfile`) and `internal/settings/agentfm`
-(`AgentInfo{... Model, Effort ...}`).
+```
+@noteBanner("info", "Stage is estimated from heartbeat. Model, effort and context usage are not
+recorded yet, so they are left blank — they fill in once kanban.Record is extended.", "")
+```
 
-## §3 Context-usage single-slot hazard
+`internal/web/widgets.templ:40-52` — `templ noteBanner(kind, text, key string)` emits
+`<span data-i18n={ key }>` only when `key != ""`, otherwise a bare `<span>`. The call above passes
+`""`, so this string is untranslated in a view whose other strings carry keys.
 
-`internal/statusline/context_usage.go:134` — the write path is
-`filepath.Join(stateDir, "context-usage.json")`, one file per project root.
+## §4 Lanes are invisible, and the console knows nothing about the factory
 
-`internal/statusline/context_usage.go:56-65` — `contextUsageRecord` is **unexported**, carrying
-`schema_version`, `session_id`, `writer_pid`, `captured_at`, `context_window_size`,
-`tokens_used`, `raw_pct`, `stage`, `band`.
+```
+$ grep -rn "Factory\|factory" internal/web --include='*.go' --include='*.templ' | grep -v _test
+(no output)
 
-`internal/statusline/context_usage.go:186` — `readContextUsage` is **unexported**. Any
-non-statusline reader therefore needs either an exported reader or a duplicated struct;
-the SPEC requires the former (REQ-WC15-021/022).
+$ grep -rn "\"lane\"\|RoleLane" internal/web --include='*.go' --include='*.templ'
+(no output)
+```
 
-Single-slot support functions that the split makes partly unreachable:
-`sameSemanticPayload` (`:203`), `isRealSessionID` (`:216`), `isFreshForSession` (`:236`),
-`contextUsageFresh` (`:255`).
+`internal/web/viewmodel_ops.go:46` — `ChainRoles = []string{"lead", "plan", "run", "sync"}`; the
+view iterates only these.
 
-Observed race (prior investigation, `.moai/reports/webredesign/moai-web-menu-spec.md` §4.6):
-read A showed session `368a2bd9…` at 260,000 tokens; read B showed session `e463a3c9…` at 0.
-Last writer wins.
+`internal/kanban/factory_slots.go` — `FactoryWorkerEntry` at `:37` (`PID`, `RegisteredAt`),
+`FactoryRegistryPath` at `:47`, `LoadFactoryRegistry` at `:55` (fail-open),
+`PruneFactoryDeadClaims` at `:84` (a separate call). Liveness only — no card, no spec, no stage.
 
-Consumers of the path, enumerated by grep across the tree:
+`internal/web/viewmodel_ops.go:409-435` — `loadSessions` reads `active-sessions.json` once per
+render, unmarshals into `[]session.Entry`, and maps each to
+`SessionVM{ID: shortID(...), SpecID, State, Heartbeat, Cwd}` — **`PID` is dropped**, and `ID` is
+shortened. The full session id survives only as the `byID` map key.
 
-- `internal/statusline/builder.go:157` (call site) and `context_usage.go` (writer/reader)
-- `internal/statusline/builder_test.go:1819,1857,1860`,
-  `internal/statusline/context_usage_test.go:16,19,52,86,347`
-- `.claude/rules/moai/workflow/context-window-management.md:100` — names the file as the
-  authoritative snapshot and defines the read procedure (session-id match, `writer_pid`
-  discriminator, freshness check)
-- `internal/template/templates/.claude/rules/moai/workflow/context-window-management.md`
-  — confirmed present, the Template-First mirror
-- docs-site: `content/{en,ko,ja,zh}/advanced/statusline.md`, `.../advanced/token-budget.md`,
-  `.../cli-reference/tokens.md` — 12 files
-- `.moai/README.md`
+`internal/web/viewmodel_ops.go:266-275` — `estimateStage` maps `StateLive → StageActive` (estimated),
+`StateStale → StageWait` (estimated), default → `StageBlocked` (not estimated, with the comment
+"세션 없음은 추정이 아니라 사실이다"). `RoleVM.StageEstimated` (`:92`) carries the flag.
 
-## §4 Backlog queue
+## §5 The record is not keyed by the session it describes — observed
 
-`internal/kanban/backlog_store.go` — `BacklogItem{ID, Text, AddedAt, SpecID *string, State}`
-at `:66-71`; `BacklogState` ∈ `queued|picked|dropped` at `:51-60`; `BacklogFinding` at `:123`;
-`BacklogRecord{Version, LastSeq, Items, Findings}` at `:154`. Exported and read-safe:
-`NewBacklogStore` (`:240`), `BacklogPathForRoot` (`:249`), `QueuedBacklogCountForRoot` (`:277`),
-`Load` (`:299`). Mutating: `Mutate` (`:341`), `Add` (`:387`), `acquireLock` (`:419`).
+Three live sessions in the primary checkout's registry:
 
-`internal/cli/todo.go:66` — `resolveTodoQueueRoot()` is unexported. It resolves through
-`gitcore.ResolveGitDirs(base).CommonDir`'s parent — the primary checkout from any worktree —
-with a home-based fallback (`fallbackTodoQueueRoot`, `adoptLocalTodoQueue`) when git cannot
-answer. Its comment records the measured failure: 30 queued cards on the primary, "queue is
-empty" from a linked worktree, 2026-08-17.
+```
+$ python3 -c "…" .moai/state/active-sessions.json
+2beac221-1716-459d-9dc0-8e8c5951b8b3  pid 15207  cwd …/.claude/worktrees/t219
+c15d8434-be5f-4276-9e62-4758c1156368  pid 51045  cwd …/.claude/worktrees/t210
+3db058e1-2692-44f5-9e0d-45b543bb3c1f  pid 36912  cwd …/.claude/worktrees/t207
+```
 
-`internal/web` contains no reference to the backlog. Confirmed by grep.
+None of the three has a kanban record:
 
-`SPEC-KANBAN-TODO-CLI-001` frontmatter reads `status: in-progress`, `module: internal/kanban`,
-`tier: M` — it owns this store.
+```
+$ ls .moai/state/kanban/{2beac221…,c15d8434…,3db058e1…}.json
+ls: …/2beac221-….json: No such file or directory
+ls: …/3db058e1-….json: No such file or directory
+ls: …/c15d8434-….json: No such file or directory
+```
 
-## §5 Factory lanes
+The one record that names a live session names the **lead**, and carries a lane's role:
 
-`internal/kanban/factory_slots.go` — `FactoryWorkerEntry{PID int, RegisteredAt string}` at
-`:37`; `FactoryRegistryPath` (`:47`), `LoadFactoryRegistry` (`:55`, fail-open),
-`PruneFactoryDeadClaims` (`:84`), `FactoryFreeSlots` (`:99`). Liveness only — no card, no spec,
-no stage.
+```
+$ cat .moai/state/kanban/d281730e-a47e-4f82-878e-5fd0ddc4dcb9.json
+{ "session_id": "d281730e-…", "spec_id": "", "role": "lane", "backend": "claude",
+  "entered_at": "2026-08-23T17:47:22Z", "deepscan_dir": "", "verify_reentries": 0 }
+```
 
-`internal/session/registry.go:86-95` — `Entry{SessionID, SpecID, Phase, StartedAt,
-LastHeartbeat, PID, Host, CWD}`, schema frozen per REQ-COORD-002 / REQ-COORD-024. `PID` is
-present, so the `workers.json → registry → Record` join closes on existing data.
+So `workers.json[lane].PID → active-sessions.session_id → record` resolves to nothing, or to
+another session's record. Version 0.1.0 §A.5's "closes on today's data" is withdrawn on this
+evidence. **Not observed:** whether the deployed chain view visibly mis-attributes a row — the
+console was not started, so §5 proves the on-disk join is broken and says nothing about the render.
 
-`internal/kanban/role.go:42` — `RoleLane = "lane"`, a bare constant with no lane number, and
-deliberately not a `CompanionRoles` member.
+## §6 The single-slot telemetry file — observed twice, minutes apart
 
-`internal/config/envkeys.go:167-173` — `EnvMoaiKanbanID` is the **run** identifier
-(e.g. `tk4ntu`), lead-owned, generated once per run. Set at `internal/cli/factory.go:255` and
-`internal/cli/kanban.go:173`. It is not a card id, and no per-lane card id exists on disk.
+```
+$ cat .moai/state/context-usage.json
+{ "schema_version": 1, "session_id": "d281730e-a47e-4f82-878e-5fd0ddc4dcb9",
+  "writer_pid": 58721, "captured_at": "2026-08-24T13:22:50…", "context_window_size": 1000000,
+  "tokens_used": 600000, "raw_pct": 60, "stage": "soft", "band": "large" }
+```
 
-`internal/web/viewmodel_ops.go:46` — `ChainRoles = []string{"lead","plan","run","sync"}`; the
-view iterates only these, so lanes are invisible today.
+A reading of the same file minutes earlier (recorded in the dispatch that commissioned this
+revision) held `writer_pid 41575, raw_pct 55` for the same session id. One slot, rewritten by
+whichever session renders; the other three live sessions are unreadable by construction. This is
+the observation the dependency on `SPEC-SESSION-TELEMETRY-001` rests on — an observation in this
+run, not a citation of the earlier investigation's May reading.
 
-`internal/web/viewmodel_ops.go` `estimateStage` — maps `StateLive → StageActive` (estimated),
-`StateStale → StageWait` (estimated), default → `StageBlocked` (not estimated, "세션 없음은
-추정이 아니라 사실이다"). `RoleVM.StageEstimated` carries the honesty flag.
+## §7 Read-only baseline for `internal/web`
 
-## §6 Template-First applicability
+```
+$ grep -rnE 'os\.(WriteFile|MkdirAll|Rename|Create)\(|WriteBestEffort\(|acquireLock\(|SaveFactoryRegistry\(|\.Mutate\(' \
+    internal/web --include='*.go' | grep -v '_test\.go'
+internal/web/profile_crud.go:38:	return os.MkdirAll(dir, 0o755)
+internal/web/profile_crud.go:64:	return os.Rename(src, dst)
+```
 
-`internal/template/templates/` contains `.claude/`, `.moai/`, `.codex/`, `.git_hooks/`,
-`.github/`, `AGENTS.md`, `CLAUDE.md`, and root config — **no** `internal/`. Confirmed by `ls`.
-So the Go changes carry no mirror obligation; only the doctrine-rule edit does, and its mirror
-is confirmed present.
+Both derive their paths from `profile.GetProfileDir` (`profile_crud.go:33-64`) — the Claude profile
+directory — and neither from the project state directory. Version 0.1.0's AC-WC15-002 asserted this
+grep "returns zero", which is false as literally commanded; the corrected criterion asserts an
+exhaustive inventory of exactly these two lines instead.
 
-## §7 Web routes and i18n
+```
+$ grep -rn "internal/statusline" internal/web --include='*.go'
+rc=1   (no output)
 
-Routes at `internal/web/app.go:157-192`: `/` (overview), `/kanban`, `/monitor`, `/settings`,
-`/events`, `/save`, `/specs`, plus profile/GLM-key/shutdown/static.
+$ grep -rn "context-usage\|ContextUsage" internal/web --include='*.go' --include='*.templ'
+internal/web/viewmodel_ops.go:255:	ContextPct: -1, // 3단계: context-usage/<session-id>.json 분리 후
+```
 
-`internal/web/assets/i18n.js` — 2,508 lines, four locale maps opening at `en:27`, `ko:646`,
-`ja:1267`, `zh:1888`. Nav keys `nav.overview` / `nav.kanban` / `nav.specs` / `nav.monitor` /
-`nav.settings` exist in each. Governance is enforced by
-`internal/web/i18n_governance_test.go` and `i18n_untranslated_allowlist_test.go`.
+The console has no telemetry reader and no copy of the record's schema today — the baseline for
+AC-WC15-021a.
 
-## §8 Not consulted
+## §8 The launcher does not know the session's model — carried, not re-measured
 
-The two screenshots attached to card t207 were not opened. `current-01~03.png` referenced by
-the prior investigation's §9 was likewise not opened. Nothing in this SPEC derives from image
-content.
+The measurement that closed audit finding F1 (`internal/cli/cc.go:36` is a help string, and
+`internal/cli/glm.go:350-353` sets a four-slot map rather than one model) was taken by the split
+design and is cited in spec.md §A.2 rather than re-run here, because the conclusion it supports —
+that the producer is not the launcher — belongs to `SPEC-SESSION-TELEMETRY-001`. This SPEC asserts
+only that its own producer is elsewhere.
+
+## §9 Not consulted, not observed
+
+- The two screenshots attached to card t207 were not opened. Nothing here derives from image
+  content.
+- `moai web` was not started. Every claim about the current render is derived from source, not from
+  a running console (see §5).
+- The GLM backend's statusline payload was not observed; whichever way that measurement falls, it
+  belongs to `SPEC-SESSION-TELEMETRY-001`.
