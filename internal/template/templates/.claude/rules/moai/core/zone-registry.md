@@ -83,8 +83,8 @@ moai constitution list --format json
   zone: Frozen
   zone_class: frozen-canonical
   file: .claude/rules/moai/workflow/spec-workflow.md
-  anchor: "#phase-overview"
-  clause: "SPEC+EARS format"
+  anchor: "#plan-phase"
+  clause: "Create comprehensive specification using EARS format."
   canary_gate: true
 
 - id: CONST-V3R2-002
@@ -92,15 +92,15 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/core/moai-constitution.md
   anchor: "#quality-gates"
-  clause: "TRUST 5"
+  clause: "All code changes must pass TRUST 5 validation"
   canary_gate: true
 
 - id: CONST-V3R2-003
   zone: Frozen
   zone_class: frozen-canonical
   file: .claude/rules/moai/workflow/mx-tag-protocol.md
-  anchor: "#mx-tag-types"
-  clause: "@MX TAG protocol"
+  anchor: "#scope"
+  clause: "This rule applies to all agents working with source code in the supported programming languages"
   canary_gate: true
 
 - id: CONST-V3R2-004
@@ -108,7 +108,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/development/coding-standards.md
   anchor: "#language-policy"
-  clause: "16-language neutrality"
+  clause: "All instruction documents must be in English:"
   canary_gate: true
 
 - id: CONST-V3R2-005
@@ -116,7 +116,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/development/coding-standards.md
   anchor: "#thin-command-pattern"
-  clause: "Template-First discipline"
+  clause: "All slash command files MUST be thin routing wrappers (under 20 LOC body)."
   canary_gate: true
 
 - id: CONST-V3R2-006
@@ -124,7 +124,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/core/agent-common-protocol.md
   anchor: "#user-interaction-boundary"
-  clause: "AskUserQuestion monopoly"
+  clause: "`AskUserQuestion` is the **only** user-facing question channel"
   canary_gate: true
 
 - id: CONST-V3R2-007
@@ -132,7 +132,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: CLAUDE.md
   anchor: "#1-core-identity"
-  clause: "Claude Code substrate"
+  clause: "MoAI is the Strategic Orchestrator for Claude Code."
   canary_gate: true
 
 # ============================================================
@@ -141,33 +141,33 @@ moai constitution list --format json
 - id: CONST-V3R2-008
   zone: Evolvable
   zone_class: evolvable-tuning
-  file: CLAUDE.md
-  anchor: "#1-hard-rules"
-  clause: "Language-Aware Responses: All user-facing responses MUST be in user's conversation_language"
+  file: .claude/rules/moai/core/moai-constitution.md
+  anchor: "#response-language"
+  clause: "All user-facing responses MUST be in the user's conversation_language."
   canary_gate: false
 
 - id: CONST-V3R2-009
   zone: Evolvable
   zone_class: evolvable-tuning
-  file: CLAUDE.md
-  anchor: "#1-hard-rules"
-  clause: "Parallel Execution: Execute all independent tool calls in parallel when no dependencies exist"
+  file: .claude/rules/moai/core/moai-constitution.md
+  anchor: "#parallel-execution"
+  clause: "Execute all independent tool calls in parallel when no dependencies exist."
   canary_gate: false
 
 - id: CONST-V3R2-010
   zone: Evolvable
   zone_class: evolvable-tuning
-  file: CLAUDE.md
-  anchor: "#1-hard-rules"
-  clause: "User Response Format: Use plain Markdown for all user-facing responses (XML tags are reserved for internal agent-to-agent data transfer)"
+  file: .claude/rules/moai/core/moai-constitution.md
+  anchor: "#output-format"
+  clause: "XML tags are reserved for agent-to-agent data transfer"
   canary_gate: false
 
 - id: CONST-V3R2-011
   zone: Evolvable
   zone_class: evolvable-tuning
-  file: CLAUDE.md
-  anchor: "#1-hard-rules"
-  clause: "Markdown Output: Use Markdown for all user-facing communication"
+  file: .claude/rules/moai/core/moai-constitution.md
+  anchor: "#output-format"
+  clause: "Use Markdown for all user-facing communication"
   canary_gate: false
 
 - id: CONST-V3R2-012
@@ -175,7 +175,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: CLAUDE.md
   anchor: "#8-user-interaction-architecture"
-  clause: "AskUserQuestion-Only Interaction: ALL questions directed at the user MUST go through AskUserQuestion"
+  clause: "Every question directed at the user MUST be asked via AskUserQuestion."
   canary_gate: true
 
 - id: CONST-V3R2-013
@@ -183,7 +183,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: CLAUDE.md
   anchor: "#7-safe-development-protocol"
-  clause: "Context-First Discovery: Conduct Socratic interview via AskUserQuestion when context is insufficient before executing non-trivial tasks"
+  clause: "When intent is unclear, conduct a Socratic interview before execution"
   canary_gate: false
 
 - id: CONST-V3R2-014
@@ -191,7 +191,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: CLAUDE.md
   anchor: "#7-safe-development-protocol"
-  clause: "Approach-First Development: Explain approach and get approval before writing code"
+  clause: "Before non-trivial code, explain the approach + which files change + why; get user approval"
   canary_gate: false
 
 - id: CONST-V3R2-015
@@ -199,7 +199,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: CLAUDE.md
   anchor: "#7-safe-development-protocol"
-  clause: "Multi-File Decomposition: Split work when modifying 3+ files"
+  clause: "When modifying 3+ files, split into logical units (TodoList), execute file-by-file, analyze dependencies before parallel execution, report progress per unit"
   canary_gate: false
 
 - id: CONST-V3R2-016
@@ -207,7 +207,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: CLAUDE.md
   anchor: "#7-safe-development-protocol"
-  clause: "Post-Implementation Review: List potential issues and suggest tests after coding"
+  clause: "After coding, provide potential-issue list (edge cases, error/concurrency scenarios), suggested test cases, known limitations/assumptions, additional-validation recommendations"
   canary_gate: false
 
 - id: CONST-V3R2-017
@@ -215,7 +215,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: CLAUDE.md
   anchor: "#7-safe-development-protocol"
-  clause: "Reproduction-First Bug Fix: Write reproduction test before fixing bugs"
+  clause: "Write a failing reproduction test first; confirm it fails; challenge the diagnosed root cause once"
   canary_gate: false
 
 - id: CONST-V3R2-018
@@ -223,7 +223,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: CLAUDE.md
   anchor: "#8-user-interaction-architecture"
-  clause: "Every question directed at the user MUST be asked via AskUserQuestion. Free-form prose questions in regular response text are prohibited."
+  clause: "Every question directed at the user MUST be asked via AskUserQuestion. Free-form prose questions in response text are prohibited."
   canary_gate: true
 
 - id: CONST-V3R2-019
@@ -231,7 +231,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: CLAUDE.md
   anchor: "#8-user-interaction-architecture"
-  clause: "Deferred Tool Preload Requirement: AskUserQuestion is a deferred tool — its schema is NOT loaded at session start"
+  clause: "`AskUserQuestion`, `TaskCreate`, `TaskUpdate`, `TaskList`, `TaskGet` are **deferred tools** — schemas NOT loaded at session start"
   canary_gate: true
 
 # ============================================================
@@ -242,7 +242,7 @@ moai constitution list --format json
   zone_class: frozen-safety
   file: CLAUDE.md
   anchor: "#14-parallel-execution-safeguards"
-  clause: "As of CC v2.1.198 subagents run in the background by default; permission prompts surface in the main session naming the asking subagent (v2.1.186). MoAI aligns with the runtime default rather than forcing foreground for write-capable agents, and does not set the background frontmatter field. The retained safeguard is concurrency, not backgrounding."
+  clause: "subagents run in the background by default (the runtime chooses foreground only when it needs the result; every permission prompt still surfaces in the main session); MoAI does not set `background:` — the retained safeguard is concurrency, not backgrounding"
   canary_gate: false
 
 - id: CONST-V3R2-021
@@ -285,7 +285,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/core/moai-constitution.md
   anchor: "#moai-orchestrator"
-  clause: "All user-facing questions MUST go through AskUserQuestion — no free-form prose questions in response text"
+  clause: "AskUserQuestion is the sole user-facing question channel"
   canary_gate: true
 
 - id: CONST-V3R2-026
@@ -293,7 +293,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/core/moai-constitution.md
   anchor: "#moai-orchestrator"
-  clause: "AskUserQuestion is used ONLY by MoAI orchestrator; subagents must never prompt users"
+  clause: "used ONLY by the MoAI orchestrator (subagents must never prompt users)"
   canary_gate: true
 
 - id: CONST-V3R2-027
@@ -301,23 +301,23 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/core/moai-constitution.md
   anchor: "#moai-orchestrator"
-  clause: "AskUserQuestion is a deferred tool — invoke ToolSearch(query: select:AskUserQuestion) immediately before each AskUserQuestion call"
+  clause: "Canonical reference: `.claude/rules/moai/core/askuser-protocol.md` § Channel Monopoly / § ToolSearch Preload Procedure / § Socratic Interview Structure / § Option Description Standards"
   canary_gate: true
 
 - id: CONST-V3R2-028
   zone: Evolvable
   zone_class: evolvable-tuning
   file: .claude/rules/moai/core/moai-constitution.md
-  anchor: "#opus-47-prompt-philosophy"
-  clause: "Principle 4 — Fewer subagents spawned by default: Opus 4.7+ / 4.8 does not auto-spawn subagents."
+  anchor: "#opus-5-48-prompt-philosophy"
+  clause: "Principle 4 — fewer subagents by default**: 4.7+ does not auto-spawn"
   canary_gate: false
 
 - id: CONST-V3R2-029
   zone: Evolvable
   zone_class: evolvable-tuning
   file: .claude/rules/moai/core/moai-constitution.md
-  anchor: "#opus-47-prompt-philosophy"
-  clause: "Principle 5 — Fewer tool calls by default, more reasoning: Opus 4.7+ / 4.8 prefers reasoning over tool invocation."
+  anchor: "#opus-5-48-prompt-philosophy"
+  clause: "Principle 5 — fewer tool calls by default**: specify when and why each"
   canary_gate: false
 
 - id: CONST-V3R2-030
@@ -325,7 +325,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/core/moai-constitution.md
   anchor: "#agent-core-behaviors"
-  clause: "Surface Assumptions: Before implementing anything non-trivial, list assumptions explicitly and wait for user confirmation."
+  clause: "Before implementing anything non-trivial, list assumptions explicitly and wait for user confirmation"
   canary_gate: false
 
 - id: CONST-V3R2-031
@@ -333,7 +333,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/core/moai-constitution.md
   anchor: "#agent-core-behaviors"
-  clause: "Manage Confusion Actively: When encountering inconsistencies, STOP and surface the confusion before proceeding."
+  clause: "When encountering inconsistencies, conflicting requirements, or unclear specifications, STOP and surface the confusion before proceeding"
   canary_gate: false
 
 - id: CONST-V3R2-032
@@ -341,7 +341,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/core/moai-constitution.md
   anchor: "#agent-core-behaviors"
-  clause: "Push Back When Warranted: Point out issues directly when an approach has clear problems."
+  clause: "Point out issues directly when an approach has clear problems. Sycophancy is a failure mode."
   canary_gate: false
 
 - id: CONST-V3R2-033
@@ -349,7 +349,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/core/moai-constitution.md
   anchor: "#agent-core-behaviors"
-  clause: "Enforce Simplicity: Actively resist overcomplexity."
+  clause: "Actively resist overcomplexity. The natural tendency of code generation is toward over-engineering. Resist it."
   canary_gate: false
 
 - id: CONST-V3R2-034
@@ -357,7 +357,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/core/moai-constitution.md
   anchor: "#agent-core-behaviors"
-  clause: "Maintain Scope Discipline: Touch only what you were asked to touch."
+  clause: "Touch only what you were asked to touch. Drive-by refactors create noise and risk regressions."
   canary_gate: false
 
 - id: CONST-V3R2-035
@@ -365,7 +365,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/core/moai-constitution.md
   anchor: "#agent-core-behaviors"
-  clause: "Verify, Don't Assume: Every task requires evidence of completion."
+  clause: "Every task requires evidence of completion."
   canary_gate: false
 
 # ============================================================
@@ -384,7 +384,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/core/agent-common-protocol.md
   anchor: "#user-interaction-boundary"
-  clause: "The orchestrator MUST preload AskUserQuestion via ToolSearch(query: select:AskUserQuestion) before each call"
+  clause: "Preload `AskUserQuestion` via `ToolSearch(query:"
   canary_gate: true
 
 - id: CONST-V3R2-038
@@ -392,7 +392,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/core/agent-common-protocol.md
   anchor: "#user-interaction-boundary"
-  clause: "All user-facing questions MUST go through AskUserQuestion — free-form prose questions in response text are prohibited"
+  clause: "AskUserQuestion is reserved exclusively for the MoAI orchestrator"
   canary_gate: true
 
 - id: CONST-V3R2-039
@@ -432,7 +432,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/core/agent-common-protocol.md
   anchor: "#agent-invocation-pattern"
-  clause: "Agents are invoked through MoAI's natural language delegation pattern."
+  clause: "Agents are invoked through MoAI's natural language delegation pattern"
   canary_gate: false
 
 - id: CONST-V3R2-044
@@ -440,7 +440,7 @@ moai constitution list --format json
   zone_class: frozen-safety
   file: .claude/rules/moai/core/agent-common-protocol.md
   anchor: "#background-agent-execution"
-  clause: "Background subagents MAY perform Write/Edit; permission prompts surface in the main session and name the asking subagent (v2.1.186+). The retained safeguard is concurrency, not backgrounding: MoAI runs no two write-capable agents concurrently, and orchestrator work concurrent with a write-capable agent is read-only."
+  clause: "The retained safeguard is **concurrency, not backgrounding**"
   canary_gate: false
 
 - id: CONST-V3R2-045
@@ -464,7 +464,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/core/agent-common-protocol.md
   anchor: "#skeptical-evaluation-stance"
-  clause: "Skeptical Evaluation Stance: reviewer operates as fresh-judgment auditor — treat claims as suspect until evidence shown, demand reproducible verification, reject when must-pass criteria fail."
+  clause: "The reviewer mode operates as a fresh-judgment auditor"
   canary_gate: false
 
 # ============================================================
@@ -563,7 +563,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/design/constitution.md
   anchor: "#31-brand-context-constitutional-parent"
-  clause: "[HARD] moai-domain-copywriting MUST adhere to brand voice, tone, and terminology from brand-voice.md [RETIRED — do not revive without a new SPEC; skill absent from current catalog, clause preserved as FROZEN-zone mirror source]"
+  clause: "moai-domain-copywriting MUST adhere to brand voice, tone, and terminology from brand-voice.md"
   canary_gate: true
 
 - id: CONST-V3R2-063
@@ -571,7 +571,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/design/constitution.md
   anchor: "#31-brand-context-constitutional-parent"
-  clause: "[HARD] moai-domain-brand-design MUST use brand color palette, typography, and visual language from visual-identity.md [RETIRED — do not revive without a new SPEC; skill absent from current catalog, clause preserved as FROZEN-zone mirror source]"
+  clause: "moai-domain-brand-design MUST use brand color palette, typography, and visual language from visual-identity.md"
   canary_gate: true
 
 - id: CONST-V3R2-064
@@ -579,7 +579,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/design/constitution.md
   anchor: "#31-brand-context-constitutional-parent"
-  clause: "[HARD] [ARCHIVED] expert-frontend MUST implement design tokens derived from brand context (archived name — resolves to Agent(general-purpose) with frontend whitelist per archived-agent-rejection.md §C; see design/constitution.md carve-out note)"
+  clause: "expert-frontend MUST implement design tokens derived from brand context"
   canary_gate: true
 
 - id: CONST-V3R2-065
@@ -595,7 +595,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/design/constitution.md
   anchor: "#32-design-brief-execution-scope"
-  clause: "[HARD] /moai design MUST auto-load human-authored design documents when present and not _TBD_ (RETIRED route — /moai design is no longer a routed subcommand; design-language routes to /moai plan; historical mirror of the design/constitution.md FROZEN clause, see that file's retirement banner)"
+  clause: "MUST auto-load human-authored design documents (research.md, system.md, spec.md) when present and not _TBD_"
   canary_gate: true
 
 - id: CONST-V3R2-067
@@ -611,7 +611,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/design/constitution.md
   anchor: "#32-design-brief-execution-scope"
-  clause: "[HARD] moai-workflow-design continues to write machine-generated artifacts to .moai/design/"
+  clause: "`moai-workflow-design` continues to write machine-generated artifacts to `.moai/design/`"
   canary_gate: true
 
 - id: CONST-V3R2-069
@@ -619,7 +619,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/design/constitution.md
   anchor: "#32-design-brief-execution-scope"
-  clause: "[HARD] Reserved file paths (canonical list): tokens.json, components.json, assets/, import-warnings.json, brief/BRIEF-*.md"
+  clause: "Reserved file paths (canonical list): `tokens.json`, `components.json`, `assets/`, `import-warnings.json`, `brief/BRIEF-*.md`"
   canary_gate: true
 
 - id: CONST-V3R2-070
@@ -627,7 +627,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/design/constitution.md
   anchor: "#32-design-brief-execution-scope"
-  clause: "[HARD] Token budget for auto-loading is bounded by design_docs.token_budget; when absent, MUST default to 20000"
+  clause: "Token budget for auto-loading is bounded by `.moai/config/sections/design.yaml` `design_docs.token_budget`; when the key is absent, the system MUST default to 20000"
   canary_gate: true
 
 - id: CONST-V3R2-071
@@ -643,7 +643,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/design/constitution.md
   anchor: "#33-relationship"
-  clause: "Brand (.moai/project/brand/) = WHO the brand is; Design (.moai/design/) = WHAT each iteration produces; brand constraints win on conflict."
+  clause: "When both are present, brand constraints win on conflict."
   canary_gate: true
 
 # ============================================================
@@ -656,7 +656,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/workflow/session-handoff.md
   anchor: "#when-to-generate-5-triggers"
-  clause: "[HARD] The orchestrator MUST emit a paste-ready resume message when ANY of the 5 trigger conditions activate (model-specific context threshold per context-window-management.md § Context Window Targets / SPEC phase complete / user session-end request / PR creation success with pending SPECs / multi-milestone checkpoint)"
+  clause: "The orchestrator MUST emit a paste-ready resume message when ANY of these conditions activate"
   canary_gate: false
 
 - id: CONST-V3R2-151
@@ -664,7 +664,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/workflow/session-handoff.md
   anchor: "#canonical-format-verbatim-spec"
-  clause: "[HARD] Resume message MUST follow the exact 6-block structure (Block 1 ultrathink + SPEC-ID + phase, Block 2 applied lessons, Block 3 separator + 전제 검증/Preconditions header, Block 4 numbered preconditions, Block 5 separator + 실행/run, Block 6 separator + 머지 후/after-merge)"
+  clause: "Resume message MUST follow this exact 6-block structure, **bounded by cut-line markers**"
   canary_gate: false
 
 - id: CONST-V3R2-152
@@ -672,7 +672,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/workflow/session-handoff.md
   anchor: "#auto-memory-integration-mandatory"
-  clause: "[HARD] When generating a resume message, the orchestrator MUST also persist it to a memory project entry (project_<wave>_<spec>_<status>.md), include verbatim under '## 다음 세션 시작점 (paste-ready resume message)' heading, update MEMORY.md index, and mark superseded entries with [SUPERSEDED by <new-file>] prefix"
+  clause: "Save the message to a memory project entry. Filename pattern: `project_<epic>_<spec>_<status>.md`"
   canary_gate: false
 
 - id: CONST-V3R2-153
@@ -680,7 +680,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/workflow/session-handoff.md
   anchor: "#canonical-format-verbatim-spec"
-  clause: "[HARD] Resume message fenced text block MUST be bounded by cut-line markers: top marker '✂──── 여기부터 복사 ────✂' before Block 1 (or Block 0 if L3 worktree), bottom marker '✂──── 여기까지 복사 ────✂' after Block 6. ✂ symbol (U+2702 BLACK SCISSORS) and ─ (U+2500) preserved verbatim across all locales; only the marker text translates per conversation_language. Markers sit inside the fenced block alongside content so they are copied verbatim with the message, providing an unambiguous copy boundary in long terminal scrollback."
+  clause: "`✂` symbol (U+2702 BLACK SCISSORS) is **preserved verbatim across all locales** — never translate or substitute"
   canary_gate: false
 
 # ============================================================
@@ -692,7 +692,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/core/askuser-protocol.md
   anchor: "#orchestratorsubagent-boundary"
-  clause: "Subagents MUST NOT invoke AskUserQuestion"
+  clause: "Subagents MUST NOT invoke `AskUserQuestion`"
   canary_gate: true
 
 - id: CONST-V3R5-002
@@ -716,71 +716,71 @@ moai constitution list --format json
   zone: Frozen
   zone_class: frozen-canonical
   file: .claude/rules/moai/workflow/ci-autofix-protocol.md
-  anchor: "#ci-auto-fix-loop-entry-condition"
-  clause: "The CI auto-fix loop MUST be entered ONLY when the orchestrator hands off a failing required check"
+  anchor: "#entry-condition"
+  clause: "The CI auto-fix loop MUST be entered ONLY when the orchestrator hands off"
   canary_gate: true
 
 - id: CONST-V3R5-005
   zone: Frozen
   zone_class: frozen-canonical
   file: .claude/rules/moai/workflow/ci-autofix-protocol.md
-  anchor: "#iteration-limit"
-  clause: "The auto-fix loop MUST attempt at most **3 iterations**. The iteration counter is persisted in `.moai/state/ci-autofix-<PR>.json`"
+  anchor: "#iteration-cap"
+  clause: "The auto-fix loop MUST attempt at most **3 iterations**"
   canary_gate: true
 
 - id: CONST-V3R5-006
   zone: Frozen
   zone_class: frozen-canonical
   file: .claude/rules/moai/workflow/ci-autofix-protocol.md
-  anchor: "#iteration-limit"
-  clause: "The AskUserQuestion at iteration > 3 MUST be a blocking call with no silent timeout"
+  anchor: "#iteration-cap"
+  clause: "The AskUserQuestion at iteration > 3 MUST be a blocking call"
   canary_gate: true
 
 - id: CONST-V3R5-007
   zone: Frozen
   zone_class: frozen-canonical
   file: .claude/rules/moai/workflow/ci-autofix-protocol.md
-  anchor: "#commit-strategy"
-  clause: "Every auto-fix patch MUST be applied as a **new commit** on the PR branch. Do not force-push."
+  anchor: "#patch-commit-rule-no-force-push"
+  clause: "Every auto-fix patch MUST be applied as a **new commit** on the PR branch"
   canary_gate: true
 
 - id: CONST-V3R5-008
   zone: Frozen
   zone_class: frozen-canonical
   file: .claude/rules/moai/workflow/ci-autofix-protocol.md
-  anchor: "#user-interaction-channel"
-  clause: "AskUserQuestion is the **exclusive user interaction channel** for the auto-fix loop"
+  anchor: "#askuserquestion-boundary"
+  clause: "AskUserQuestion is the **exclusive user interaction channel**"
   canary_gate: true
 
 - id: CONST-V3R5-009
   zone: Frozen
   zone_class: frozen-canonical
   file: .claude/rules/moai/workflow/ci-autofix-protocol.md
-  anchor: "#user-interaction-channel"
-  clause: 'The orchestrator MUST preload AskUserQuestion via `ToolSearch(query: "select:AskUserQuestion")` before every AskUserQuestion call'
+  anchor: "#askuserquestion-boundary"
+  clause: "The orchestrator MUST preload AskUserQuestion via"
   canary_gate: true
 
 - id: CONST-V3R5-010
   zone: Frozen
   zone_class: frozen-canonical
   file: .claude/rules/moai/workflow/ci-autofix-protocol.md
-  anchor: "#semantic-failure-handling"
-  clause: "Semantic failures (data race, deadlock, panic, test assertion failure) MUST NOT be automatically patched"
+  anchor: "#semantic-failure-no-auto-patch"
+  clause: "Semantic failures (data race, deadlock, panic, test assertion failure) MUST"
   canary_gate: true
 
 - id: CONST-V3R5-011
   zone: Frozen
   zone_class: frozen-safety
   file: .claude/rules/moai/workflow/ci-autofix-protocol.md
-  anchor: "#protected-files"
-  clause: "The auto-fix loop MUST NOT modify `.env`, `.env.*`, credentials files, API key files, or any file matching common secrets patterns"
+  anchor: "#secrets-and-credentials-protection"
+  clause: "The auto-fix loop MUST NOT modify `.env`, `.env.*`, credentials files"
   canary_gate: true
 
 - id: CONST-V3R5-012
   zone: Frozen
   zone_class: frozen-canonical
   file: .claude/rules/moai/workflow/ci-autofix-protocol.md
-  anchor: "#audit-log"
+  anchor: "#audit-log-requirement"
   clause: "Every auto-fix iteration MUST be logged to"
   canary_gate: true
 
@@ -788,8 +788,8 @@ moai constitution list --format json
   zone: Frozen
   zone_class: frozen-canonical
   file: .claude/rules/moai/workflow/ci-autofix-protocol.md
-  anchor: "#protected-files"
-  clause: "The auto-fix loop MUST NOT modify CI watch infrastructure scripts or workflow definitions"
+  anchor: "#ci-infrastructure-preservation"
+  clause: "The auto-fix loop MUST NOT modify CI watch infrastructure scripts or"
   canary_gate: true
 
 # --- context-window-management.md (5 entries: V3R5-022..026) ---
@@ -798,7 +798,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/workflow/context-window-management.md
   anchor: "#context-window-targets"
-  clause: "Operational threshold is model-specific: 1M context (Opus 5 / Opus 4.8 / GLM-5.3) = 50%, 256K context (Fable) = 90%, 200K context (Sonnet/Haiku) = 90%"
+  clause: "Operational threshold is **model-specific**. Larger windows tolerate higher percentage utilization before stall risk dominates"
   canary_gate: false
 
 - id: CONST-V3R5-023
@@ -806,7 +806,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/workflow/context-window-management.md
   anchor: "#user-responsibilities"
-  clause: "When usage crosses the model-specific threshold, user MUST save in-flight state, run /clear, then paste resume message"
+  clause: "When usage crosses the model-specific threshold:"
   canary_gate: false
 
 - id: CONST-V3R5-024
@@ -814,7 +814,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/workflow/context-window-management.md
   anchor: "#user-responsibilities"
-  clause: "When usage crosses 95% on any model, the next action MUST be /clear — no further large work in current session"
+  clause: "The next action MUST be `/clear` — no further large work in the current session"
   canary_gate: false
 
 - id: CONST-V3R5-025
@@ -822,7 +822,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/workflow/context-window-management.md
   anchor: "#orchestrator-responsibilities"
-  clause: "Pre-clear announcement: When orchestrator detects context approaching model-specific threshold, it MUST stop large tool calls, persist progress, emit resume message, and recommend /clear"
+  clause: "Pre-clear announcement: When the orchestrator detects accumulated context (input + output) approaching the model-specific threshold"
   canary_gate: false
 
 - id: CONST-V3R5-026
@@ -830,7 +830,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/workflow/context-window-management.md
   anchor: "#orchestrator-responsibilities"
-  clause: "Resume message format must include all fields so next session is self-sufficient"
+  clause: "Resume message format: include all of the following so the next session is self-sufficient"
   canary_gate: false
 
 # --- spec-workflow.md (2 new entries: V3R5-027..028; CONST-V3R2-001 covers the third) ---
@@ -839,7 +839,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/workflow/spec-workflow.md
   anchor: "#spec-phase-discipline"
-  clause: "Step ordering: Step 1 (plan) MUST execute in main checkout. NO L2/L3 worktree at this step"
+  clause: "Step 1 (plan) MUST execute in main checkout on BOTH routes. NO L2/L3 worktree at this step"
   canary_gate: true
 
 - id: CONST-V3R5-028
@@ -847,7 +847,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/workflow/spec-workflow.md
   anchor: "#spec-phase-discipline"
-  clause: "Step ordering rules: Step 2 run, Step 3 sync, and Step 4 cleanup sequencing constraints"
+  clause: "Step 4 (cleanup) applies to **Route B only**. It MUST happen ONLY after BOTH run AND sync PRs are merged"
   canary_gate: true
 
 # --- worktree-state-guard.md (1 entry: V3R5-029) ---
@@ -856,7 +856,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/workflow/worktree-state-guard.md
   anchor: "#escalation-path"
-  clause: "AskUserQuestion is invoked by the orchestrator only. The Go CLI returns exit codes and JSON; the orchestrator translates these into user-facing prompts"
+  clause: "AskUserQuestion is invoked by the **orchestrator only**."
   canary_gate: true
 
 # --- branch-origin-protocol.md (1 entry: V3R5-035) ---
@@ -866,7 +866,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/development/branch-origin-protocol.md
   anchor: "#hard-rules"
-  clause: "Skill body BODP gate MUST follow the askuser-protocol Socratic structure: (권장) first, ≤4 options, conversation_language match, Other auto-appended"
+  clause: "Skill body BODP gate MUST follow the askuser-protocol Socratic structure: `(권장)` first, ≤4 options, conversation_language match"
   canary_gate: true
 
 # --- agent-authoring.md (1 entry: V3R5-037) ---
@@ -875,7 +875,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/development/agent-authoring.md
   anchor: "#frontmatter-format-rules"
-  clause: "Field format constraints: tools Comma-separated string ONLY. YAML arrays NOT supported for tools/disallowedTools"
+  clause: "Comma-separated string ONLY (`tools: Read, Write, Edit`). YAML arrays NOT supported"
   canary_gate: false
 
 # --- skill-authoring.md (1 entry: V3R5-038) ---
@@ -884,7 +884,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/development/skill-authoring.md
   anchor: "#key-format-rules"
-  clause: "allowed-tools format: Comma-separated string ONLY. Space-separated values are PROHIBITED"
+  clause: "allowed-tools format: [ZONE:Evolvable] [HARD] Comma-separated string ONLY. Space-separated values are PROHIBITED"
   canary_gate: false
 
 # --- session-handoff.md supplementary (1 entry: V3R5-039; covers worktree-anchored resume) ---
@@ -893,7 +893,7 @@ moai constitution list --format json
   zone_class: evolvable-tuning
   file: .claude/rules/moai/workflow/session-handoff.md
   anchor: "#worktree-anchored-resume-pattern"
-  clause: "When the work happened inside a worktree, the resume message MUST prepend Block 0 (cwd anchoring) before the standard 6-block structure"
+  clause: "When the work happened inside a worktree, the resume message MUST prepend **Block 0 (cwd anchoring)** before the standard 6-block structure"
   canary_gate: false
 
 # --- glm-web-tooling.md (2 entries: V3R5-040 mandate + V3R5-041 prohibition) ---
@@ -902,7 +902,7 @@ moai constitution list --format json
   zone_class: frozen-safety
   file: .claude/rules/moai/core/glm-web-tooling.md
   anchor: "#hard-routing-table"
-  clause: "While a session is GLM-backed, MoAI agents and the orchestrator SHALL route web search to mcp__web_search_prime__webSearchPrime, web fetch to mcp__web_reader__webReader, and image reading to a mcp__zai-mcp-server__* vision tool instead of the built-in WebSearch / WebFetch / Read-on-image"
+  clause: "They SHALL route web search to `mcp__web_search_prime__webSearchPrime`, web fetch to `mcp__web_reader__webReader`, and image reading to a `mcp__zai-mcp-server__*` vision tool"
   canary_gate: true
 
 - id: CONST-V3R5-041
@@ -910,7 +910,7 @@ moai constitution list --format json
   zone_class: frozen-safety
   file: .claude/rules/moai/core/glm-web-tooling.md
   anchor: "#hard-routing-table"
-  clause: "While a session is GLM-backed, MoAI agents and the orchestrator SHALL NOT invoke the built-in WebSearch or WebFetch, nor Read on an image file, because those route through the 529-prone api.z.ai/api/anthropic gateway and the base64->422 image path; the moai cg leader pane (Claude backend) is exempt"
+  clause: "While a session is GLM-backed, the built-in `WebSearch` / `WebFetch` tools and `Read`-on-an-image-file are **PROHIBITED** because they route through the 529-prone `api.z.ai/api/anthropic` gateway and the base64→422 image path"
   canary_gate: true
 
 # ============================================================
@@ -923,6 +923,6 @@ moai constitution list --format json
   zone_class: frozen-safety
   file: .claude/rules/moai/workflow/runtime-recovery-doctrine.md
   anchor: "#4-anti-death-spiral-hook-carve-out-documentation-only-policy"
-  clause: "Recovery-Signal Carve-Out: while a turn is itself a recovery signal (recovering from a compact, prompt_too_long, max_output_tokens, media_size, or compact-failure), Stop/PostToolUse hooks SHOULD exit 0 rather than exit 2, so that recovery turns are NOT placed into the error → stop-hook-blocks → retry → error death-spiral; documentation-only policy guidance (current hooks do not parse stopReason; mechanical enforcement deferred to a future recovery-signal SPEC)"
+  clause: "Stop/PostToolUse hooks SHOULD exit 0 (allow the turn to end / the tool call to proceed) rather than exit 2 (block), so that recovery turns are NOT placed into the `error → stop-hook-blocks → retry → error` loop"
   canary_gate: true
 ```

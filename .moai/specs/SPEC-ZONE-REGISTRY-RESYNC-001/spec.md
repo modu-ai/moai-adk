@@ -2,7 +2,7 @@
 id: SPEC-ZONE-REGISTRY-RESYNC-001
 title: "zone-registry clause/anchor 재동기화 + 재발 차단 가드"
 version: "0.5.0"
-status: draft
+status: in-progress
 created: 2026-08-24
 updated: 2026-08-25
 author: manager-spec
