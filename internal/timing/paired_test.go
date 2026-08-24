@@ -10,7 +10,7 @@ import (
 // samples, so the denominator is no noisier than the numerator.
 func TestMeasurePairedEqualSampleCounts(t *testing.T) {
 	// Deliberately NOT parallel — measuring test; see the note on cpuUnit.
-	refSt, st := measurePaired(func() { cpuUnit(200_000) }, func() { cpuUnit(200_000) }, 20, 2)
+	refSt, st, _ := measurePaired(func() { cpuUnit(200_000) }, func() { cpuUnit(200_000) }, 20, 2)
 	if refSt.N != 20 || st.N != 20 {
 		t.Fatalf("sample counts = ref %d / measured %d; want 20 / 20", refSt.N, st.N)
 	}
@@ -21,7 +21,7 @@ func TestMeasurePairedEqualSampleCounts(t *testing.T) {
 func TestMeasurePairedDiscardsWarmupOnBothSides(t *testing.T) {
 	t.Parallel()
 	refCalls, fnCalls := 0, 0
-	refSt, st := measurePaired(func() { refCalls++ }, func() { fnCalls++ }, 10, 4)
+	refSt, st, _ := measurePaired(func() { refCalls++ }, func() { fnCalls++ }, 10, 4)
 	if refCalls != 14 || fnCalls != 14 {
 		t.Fatalf("invocations = ref %d / fn %d; want 14 / 14 (10 measured + 4 warmup)", refCalls, fnCalls)
 	}
