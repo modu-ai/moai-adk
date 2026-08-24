@@ -29,6 +29,14 @@
 
 set -uo pipefail
 
+# Everything below is relative to this root. It defaults to the working
+# directory (run from the repository root), and the self-test overrides it with
+# a throwaway copy so that driving faults through the gate never touches a
+# tracked file. Two concurrent self-test runs in the shared tree used to
+# clobber each other's backups; a per-run root removes the shared state rather
+# than sequencing access to it.
+cd "${MOAI_CITATION_ROOT:-.}" || { echo "FATAL: cannot enter ${MOAI_CITATION_ROOT:-.}"; exit 2; }
+
 TRANSCRIPT=.moai/reports/t197/probe-output.txt
 MANIFEST=.moai/reports/t197/citation-manifest.txt
 SPEC_L=.moai/specs/SPEC-CODEX-LAUNCHER-001
