@@ -73,11 +73,13 @@ resolvers and the GLM audit request body; the web console typed edit path for th
 new fields (the existing Audit panel); the template's empty-default sub-keys; this
 project's local pin values in workflow.yaml.
 
-**Design shape (single audit block)**: the pin JOINS the existing
-`workflow.audit` block — the block that already carries the active audit_model
-token and per-auditor gates. There is no second audit structure anywhere; the
-llm-side section proposed in revision 1.0.0 is dead (gitignore + update-wipe,
-plan-audit MF1) and is not partially retained.
+**Design shape (single audit block)**: the pin EXTENDS `AuditConfig` — the
+struct behind the `workflow.audit` block. No `audit:` block exists in either
+the local or the template workflow.yaml today (grep-verified: 0 matches in
+both); M1 CREATES the template block with empty pin sub-keys and M5 CREATES the
+local block with the pinned values. There is no second audit structure
+anywhere; the llm-side section proposed in revision 1.0.0 is dead (gitignore +
+update-wipe, plan-audit MF1) and is not partially retained.
 
 ## §D Requirements (GEARS)
 

@@ -14,13 +14,16 @@ config-read assertions never substitute for them
 
 ### AC-AMP-001 — AuditConfig extension lands with a REAL drift guard (REQ-AMP-001) [MUST]
 - **Given** the tree with M1 applied, **When** a workflow.yaml fixture containing a
-  populated `audit.codex`/`audit.glm` block is loaded AND the config symmetry
-  suite runs, **Then** the loader returns the pinned `{model, effort}` pairs
-  verbatim AND the `AuditConfig` symmetry case added to
-  `internal/config/audit_struct_yaml_symmetry_test.go` (new — the pre-existing 7
-  cases do not cover AuditConfig) passes; removing either new struct field or
-  either new yaml key makes that case FAIL (the MF3 requirement: the cited guard
-  must actually exercise the new schema).
+  populated `audit.codex`/`audit.glm` block is loaded AND the dedicated
+  `AuditConfig` round-trip unit test runs (N2 mechanism: e.g.
+  `TestAuditConfigYAMLRoundTrip` in `internal/config/audit_models_test.go` —
+  marshal a fully-populated AuditConfig → unmarshal → field-for-field equality;
+  chosen over a symmetryCases extension because `checkSymmetry` navigates one
+  level and cannot reach the nested `workflow.audit` block), **Then** the loader
+  returns the pinned `{model, effort}` pairs verbatim AND the round-trip test
+  passes; removing either new struct field or either new yaml key makes that
+  test FAIL (the MF3 requirement: the cited guard must actually exercise the
+  new schema).
 
 ### AC-AMP-002 — codex pin reaches both transmission seams, audit path only (REQ-AMP-002, REQ-AMP-008) [MUST]
 - **Given** a project dir whose workflow.yaml sets
@@ -121,9 +124,10 @@ config-read assertions never substitute for them
 
 ## §D.2 Edge cases
 
-- workflow.yaml exists but is unparseable → existing error path unchanged (the
-  new helper returns the zero AuditConfig only on ABSENT file; a parse failure
-  propagates per the config package's load contract).
+- workflow.yaml exists but fails to load (unparseable / unreadable) → the
+  resolver treats the load error as an ABSENT pin and fails open to the legacy
+  SSOT path — never a hard error (N3); the helper returns the zero AuditConfig
+  on an absent file by the same rule.
 - `audit.codex.effort` set with empty model → the pin is treated as absent
   (model is the gate; effort alone pins nothing).
 - `audit.glm.model` set to a non-GLM id → sent verbatim; z.ai 4xx degrades via

@@ -27,7 +27,7 @@ Measured baseline (this tree, branch WT-audit-model-pin):
 | `internal/settings/schema_sections.go:371-375` | Existing typed fields `workflow.audit.model` / `workflow.audit.gate.*` — the pattern the 4 new fields extend |
 | `internal/web/schemaform.go:52` | Dedicated **Audit panel** (`ID: "audit"`) already exists; `isAuditFieldName` (`:164-166`) routes `workflow.audit.*`-prefixed fields onto it automatically |
 | `internal/web/assets/i18n.js` | Single 4-locale dictionary (en/ko/ja/zh); governed by `i18n_untranslated_allowlist_test.go` |
-| `.moai/config/sections/workflow.yaml` | Tracked, already carries the `audit:` block — the pin lands here (M5) |
+| `.moai/config/sections/workflow.yaml` | Tracked; the `AuditConfig` struct exists (`types.go:486`) but NEITHER the local nor the template workflow.yaml carries ANY `audit:` block today (grep "audit" = 0 matches in both) — the block is CREATED by M1 (template) and M5 (local) |
 
 ## §B Known Issues
 
@@ -86,14 +86,23 @@ Data model first — everything downstream keys on it.
   `loadWorkflowAuditSection(projectDir)`-shaped helper following the
   `loadLLMSectionOnly` (`internal/cli/glm.go:624`) pattern — reads
   `.moai/config/sections/workflow.yaml`, unmarshals the `workflow:` wrapper,
-  returns `config.AuditConfig`; absent file → zero value (no error).
-- `internal/config/audit_struct_yaml_symmetry_test.go`: ADD an `AuditConfig`
-  symmetry case covering the new sub-keys (verified: the existing 7 cases exclude
-  it — MF3). This is the guard AC-AMP-001 cites; it must FAIL if a struct field
-  loses its yaml key or vice versa.
-- `internal/template/templates/.moai/config/sections/workflow.yaml`: add empty
-  `codex:{model: "", effort: ""}` / `glm:{model: "", effort: ""}` sub-keys under
-  the existing `audit:` block + a precedence/vocabulary comment.
+  returns `config.AuditConfig`; absent file → zero value (no error). A workflow
+  SECTION LOAD ERROR is treated as an absent pin — the resolver fails open to the
+  legacy SSOT path, never to a hard error (N3).
+- M1 guard (N2 — named mechanism): a DEDICATED `AuditConfig` round-trip unit
+  test in `internal/config` (e.g. `TestAuditConfigYAMLRoundTrip` in
+  `audit_models_test.go`): marshal a fully-populated `AuditConfig` (model token +
+  gates + codex/glm pins) → unmarshal → assert field-for-field equality, and
+  assert that dropping either new yaml key or struct field breaks the round-trip.
+  The symmetryCases-extension route is INFEASIBLE as stated: `checkSymmetry`
+  navigates ONE level (`rawRoot[yamlTopKey]`), so a nested `workflow.audit` case
+  would need a key-path extension, and an `AuditConfig`-tagged case would
+  require the template block to carry `model`+`gates` as well (4 struct tags vs
+  2 yaml keys). The dedicated test is what AC-AMP-001 cites.
+- `internal/template/templates/.moai/config/sections/workflow.yaml`: CREATE the
+  `audit:` block carrying empty `codex:{model: "", effort: ""}` /
+  `glm:{model: "", effort: ""}` sub-keys + a precedence/vocabulary comment (no
+  `audit:` block exists in either yaml today — N1).
 - `make build` (catalog hashes) at milestone close.
 
 ### M2 — Codex AUDIT-scoped resolver precedence + task isolation (Priority High)
@@ -166,11 +175,11 @@ Data model first — everything downstream keys on it.
 - Round-trip test: save via typed path → reload → values persist.
 
 ### M5 — Local pin + live delivery proof (Priority High — gate)
-- Edit THIS project's TRACKED `.moai/config/sections/workflow.yaml`: under the
-  existing `audit:` block set `codex: {model: gpt-5.6-sol, effort: high}` and
-  `glm: {model: glm-5.3, effort: max}`. Committed with the SPEC's code (both the
-  local edit and the template empty defaults are tracked files — the MF1
-  durability requirement).
+- Edit THIS project's TRACKED `.moai/config/sections/workflow.yaml`: CREATE the
+  `audit:` block and set `codex: {model: gpt-5.6-sol, effort: high}` and
+  `glm: {model: glm-5.3, effort: max}` (no `audit:` block exists in the local
+  file today — N1). Committed with the SPEC's code (both the local edit and the
+  template empty defaults are tracked files — the MF1 durability requirement).
 - Live GLM differential per AC-AMP-006 (numeric rule: S(max) ≥ 2.0 ×
   max(S(low), 1) on the SAME fixed diff); evidence under
   `.moai/state/verify/<session>/` with the SKIP marker protocol when
