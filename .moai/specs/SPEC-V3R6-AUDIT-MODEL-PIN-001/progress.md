@@ -406,6 +406,77 @@ threshold is judged by CI's coverage job).
 
 **E8 (RED evidence):** verbatim pre-GREEN failing outputs recorded for M1/M2/M3/M4 in their sections above.
 
+### M6 — sync-audit MUST-FIX round (F1/F2/F4)
+
+Sync-audit round-1 FAIL (harmonic ≈71.2) traced two MUST-FIX regressions the
+milestone-filtered `-run` sweeps had hidden — the process gap itself is
+recorded here: **affected-package verification must be UNFILTERED**
+(CLAUDE.local.md §4); every §E.2 command above M6 that carries a `-run`
+filter is superseded by the unfiltered runs below.
+
+**F1 — parseGLMReview first-TEXT-block scan too strict (mcp_glm.go).**
+RED (lane + here, deterministic):
+
+```
+$ go test ./internal/cli/ -run 'TestParseGLMReview_StripsMarkdownFence' -count=1
+    mcp_glm_parse_test.go:46: parseGLMReview verdict = "inconclusive" (summary="glm unavailable: z.ai response carried no text content"); want pass — markdown fence not stripped
+FAIL
+```
+
+Fix: the scan accepts `Type == "" || Type == "text"` (empty type = text-block
+convention, production-envelope fixture); thinking-block skip semantics kept.
+
+```
+$ go test ./internal/cli/ -run 'TestParseGLMReview|TestGLMAuditParse' -count=1
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.796s
+```
+
+**F2 — template pin-only audit block silently dropped the wizard's audit
+selection (initializer_audit.go patchAuditLeaves had no insertion
+fallback).** RED (unit regression authored first, template-shaped fixture —
+audit block with ONLY the pin sub-keys):
+
+```
+$ go test ./internal/core/project/ -run 'TestWriteWorkflowAuditYAML_InsertsMissingLeaves' -count=1
+    initializer_audit_test.go:270: workflow.yaml missing wizard selection "model: claude" (insertion fallback did not fire); got: workflow:
+    (×4: model/claude/codex/glm leaves all missing)
+FAIL
+```
+
+Fix route (lead's preference): **insertion fallback in patchAuditLeaves** —
+new `insertAuditLeaf(content, path, value)` walks the frame stack to the
+deepest EXISTING ancestor of the dotted path, derives the child-indent step
+from the document, and inserts the missing tail at the end of the ancestor's
+subtree (never a duplicate mapping key, never re-parenting siblings). Fixes
+the class for ANY template shape; template left untouched (no `make build`
+needed). The previously-failing wizard test is the regression proof:
+
+```
+$ go test ./internal/core/project/ -count=1
+ok  	github.com/modu-ai/moai-adk/internal/core/project	1.563s
+$ go test ./internal/cli/ -run 'TestRunInit_WizardAuditSelectionPersists' -count=1
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.242s
+```
+
+**F4 — stale comment (mcp_convergence.go performCodexAudit)** corrected to
+name the `codexReviewRPC` seam → `runCodexAuditReviewRPC` (pin-aware;
+audit_multi IS an audit entry point).
+
+**Unfiltered verification (the new §E evidence):**
+
+```
+$ go vet ./internal/cli/... ./internal/core/...
+exit 0
+$ go test ./internal/config/ ./internal/web/ ./internal/core/... -count=1
+ok  	github.com/modu-ai/moai-adk/internal/config	2.851s
+ok  	github.com/modu-ai/moai-adk/internal/web	3.471s
+ok  	github.com/modu-ai/moai-adk/internal/core/git	53.264s
+ok  	github.com/modu-ai/moai-adk/internal/core/project	2.611s
+ok  	github.com/modu-ai/moai-adk/internal/core/quality	1.804s
+$ go test ./internal/cli/ -count=1 -timeout 900s
+ok  	github.com/modu-ai/moai-adk/internal/cli	293.649s   (exit 0 — the auditor's FAIL reproduced pre-fix; green post-fix)
+```
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
@@ -448,10 +519,6 @@ m1_to_mN_commit_strategy: per-milestone conventional commits (M1..M5), no push
   numeric tables above preserve the load-bearing figures in the tracked
   record.
 
-## §E.3 Run-phase Audit-Ready Signal
-
-_<pending run-phase completion>_
-
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ```yaml
@@ -483,7 +550,7 @@ docs_site_scope_decision: minimal-4-locale-addition   # config-sections.md enume
 
 - `sync_commit_sha` is a pending-backfill placeholder per the D3 exemption — resolves only after the commit lands (lead's post-merge step).
 - Version-sync (verify §6) not re-run: no version display was touched by this sync (CHANGELOG `[Unreleased]` carries no stamp by dispatch instruction).
-- A duplicate placeholder `## §E.3 Run-phase Audit-Ready Signal` heading (`_<pending run-phase completion>_`) sits directly above this §E.4 block — a run-phase artifact left in place (manager-develop's surface, not edited here); harmless to era classification (both §E.3 headings match the same marker).
+- The duplicate placeholder `## §E.3 Run-phase Audit-Ready Signal` heading formerly above this §E.4 block was REMOVED in the CR round-1 response (CodeRabbit MD024; lane edit 2026-08-24) — the completed run-phase §E.3 record above remains the single anchor.
 
 ### §E.5 — Sync-audit round 1 fix verification (unfiltered, lane-measured 2026-08-24)
 
