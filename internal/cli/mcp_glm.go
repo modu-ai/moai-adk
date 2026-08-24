@@ -77,19 +77,6 @@ const (
 	// glmAuditHTTPTimeout is the per-call HTTP ceiling. Bounded so a hung z.ai
 	// connection cannot stall the MCP tool indefinitely (fail-open on timeout).
 	glmAuditHTTPTimeout = 120 * time.Second
-
-	// Per-effort thinking budgets for the audit path's reasoning directive
-	// (SPEC-V3R6-AUDIT-MODEL-PIN-001 M3). These carry the pinned z.ai
-	// reasoning STATE on hypothesis A's delivery field — the Anthropic-style
-	// thinking object, whose depth control is budget_tokens (the object has no
-	// effort-name slot). All budgets stay below glmAuditMaxTokens (4096), the
-	// Anthropic thinking constraint budget_tokens < max_tokens. The max:low
-	// ratio (3:1) is what the M5 live differential measures (AC-AMP-006's
-	// numeric rule needs ≥ 2.0); whether z.ai honors this field at all is the
-	// live gate's question, not an assumption.
-	glmAuditThinkingBudgetLow  = 1024
-	glmAuditThinkingBudgetHigh = 2048
-	glmAuditThinkingBudgetMax  = 3072
 )
 
 // glmHTTPDoer abstracts the POST so tests inject a canned response without any
@@ -113,41 +100,34 @@ var projectDirResolver = resolveProjectDir
 // glmMessagesRequest is the Anthropic-compatible Messages API request body
 // posted to z.ai.
 type glmMessagesRequest struct {
-	Model     string                `json:"model"`
-	MaxTokens int                   `json:"max_tokens"`
-	System    string                `json:"system"`
-	Messages  []glmMessage          `json:"messages"`
-	Thinking  *glmThinkingDirective `json:"thinking,omitempty"`
+	Model string `json:"model"`
+	// ReasoningEffort is the audit path's reasoning directive
+	// (SPEC-V3R6-AUDIT-MODEL-PIN-001 REQ-AMP-007): the top-level z.ai
+	// reasoning_effort control — the delivery field SELECTED BY LIVE EVIDENCE
+	// (AC-AMP-006's first differential ran hypothesis A, the Anthropic-style
+	// thinking object, and measured budget_tokens IGNORED — output tokens
+	// 3667 vs 3480 under budgets 3072 vs 1024, ratio 1.02; evidence
+	// .moai/state/verify/t225/ac-amp-006-glm-differential-attempt1.md). The
+	// state name is transmitted VERBATIM; empty omits the field.
+	ReasoningEffort string       `json:"reasoning_effort,omitempty"`
+	MaxTokens       int          `json:"max_tokens"`
+	System          string       `json:"system"`
+	Messages        []glmMessage `json:"messages"`
 }
 
-// glmThinkingDirective is the audit path's reasoning directive
-// (SPEC-V3R6-AUDIT-MODEL-PIN-001 REQ-AMP-007): the Anthropic-style thinking
-// object (hypothesis A). glm-5.3 reasons always — the toggle is invariantly
-// enabled; budget_tokens is the depth control that differentiates the pinned
-// z.ai reasoning states. A nil Thinking omits the field entirely (absent pin,
-// empty effort, or an effort outside the single-reading valid set).
-type glmThinkingDirective struct {
-	Type         string `json:"type"`
-	BudgetTokens int    `json:"budget_tokens"`
-}
-
-// glmAuditThinkingDirective maps a pinned z.ai reasoning state onto the
-// delivery field, implementing REQ-AMP-006's single-reading rule: the valid
-// set is EXACTLY {low, high, max} (template.GLMState* — the z.ai state names,
-// stored and transmitted verbatim); any other non-empty value returns nil —
-// the reasoning directive is omitted while the model pin still applies. NO
-// effort collapse runs on this path (CollapseClaudeEffortToGLM is the
-// vocabulary reference only, not a runtime dependency here).
-func glmAuditThinkingDirective(effort string) *glmThinkingDirective {
+// glmAuditReasoningEffort validates the pinned effort under REQ-AMP-006's
+// single-reading rule: the valid set is EXACTLY {low, high, max}
+// (template.GLMState* — the z.ai state names, stored and transmitted
+// verbatim); any other non-empty value returns "" — the reasoning directive
+// is omitted while the model pin still applies. NO effort collapse runs on
+// this path (CollapseClaudeEffortToGLM is the vocabulary reference only, not
+// a runtime dependency here).
+func glmAuditReasoningEffort(effort string) string {
 	switch effort {
-	case template.GLMStateLow:
-		return &glmThinkingDirective{Type: template.GLMThinkingEnabledVal, BudgetTokens: glmAuditThinkingBudgetLow}
-	case template.GLMStateHigh:
-		return &glmThinkingDirective{Type: template.GLMThinkingEnabledVal, BudgetTokens: glmAuditThinkingBudgetHigh}
-	case template.GLMStateMax:
-		return &glmThinkingDirective{Type: template.GLMThinkingEnabledVal, BudgetTokens: glmAuditThinkingBudgetMax}
+	case template.GLMStateLow, template.GLMStateHigh, template.GLMStateMax:
+		return effort
 	default:
-		return nil
+		return ""
 	}
 }
 
@@ -282,11 +262,11 @@ func handleGLMAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 // is arbitrated by the AC-AMP-006 live differential, not assumed.
 func callGLMAudit(ctx context.Context, key, model, effort, focus, diff string, token mcp.ProgressToken) ReviewOutput {
 	body, err := json.Marshal(glmMessagesRequest{
-		Model:     model,
-		MaxTokens: glmAuditMaxTokens,
-		System:    glmAuditSystemPrompt(),
-		Messages:  []glmMessage{{Role: "user", Content: glmAuditUserPrompt(focus, diff)}},
-		Thinking:  glmAuditThinkingDirective(effort),
+		Model:           model,
+		ReasoningEffort: glmAuditReasoningEffort(effort),
+		MaxTokens:       glmAuditMaxTokens,
+		System:          glmAuditSystemPrompt(),
+		Messages:        []glmMessage{{Role: "user", Content: glmAuditUserPrompt(focus, diff)}},
 	})
 	if err != nil {
 		return glmInconclusive("cannot build z.ai request: " + err.Error())
@@ -323,21 +303,33 @@ func callGLMAudit(ctx context.Context, key, model, effort, focus, diff string, t
 }
 
 // parseGLMReview extracts the ReviewOutput the GLM model emitted in its first
-// text content block. The audit prompt constrains the model to JSON; a malformed
-// or empty-verdict response fails open to VerdictInconclusive (never a hard error).
+// TEXT content block — not the first block: under a delivered reasoning
+// directive z.ai prefixes the response with thinking content blocks (whose
+// payload lives in `thinking`, not `text`), and reading Content[0] blindly
+// failed open to inconclusive while a full review sat in the next block
+// (live-gate finding, SPEC-V3R6-AUDIT-MODEL-PIN-001 M5). The audit prompt
+// constrains the model to JSON; a malformed or empty-verdict response fails
+// open to VerdictInconclusive (never a hard error).
 func parseGLMReview(raw []byte) ReviewOutput {
 	var env glmMessagesResponse
 	if err := json.Unmarshal(raw, &env); err != nil {
 		return glmInconclusive("malformed z.ai response: " + err.Error())
 	}
-	if len(env.Content) == 0 || env.Content[0].Text == "" {
-		return glmInconclusive("z.ai response carried no content")
+	text := ""
+	for i := range env.Content {
+		if env.Content[i].Type == "text" && env.Content[i].Text != "" {
+			text = env.Content[i].Text
+			break
+		}
+	}
+	if text == "" {
+		return glmInconclusive("z.ai response carried no text content")
 	}
 	var out ReviewOutput
 	// z.ai occasionally wraps the JSON in a markdown code fence despite the
 	// prompt's "no code fences" constraint; strip fences + surrounding prose so
 	// the Unmarshal sees a bare object.
-	jsonBody := extractJSONObject(env.Content[0].Text)
+	jsonBody := extractJSONObject(text)
 	if err := json.Unmarshal([]byte(jsonBody), &out); err != nil {
 		return glmInconclusive("z.ai content was not a ReviewOutput JSON: " + err.Error())
 	}

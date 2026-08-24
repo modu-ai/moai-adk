@@ -53,24 +53,43 @@ func decodeGLMRequestBody(t *testing.T, body string) map[string]any {
 	return m
 }
 
-// thinkingDirective returns the request's thinking object, if present.
-func thinkingDirective(t *testing.T, body map[string]any) map[string]any {
-	t.Helper()
-	raw, ok := body["thinking"]
-	if !ok || raw == nil {
-		return nil
+// parseGLMReview regression (live-gate finding, AC-AMP-006 first run): when
+// the reasoning directive is delivered, z.ai returns a LEADING thinking
+// content block before the text block. The pre-SPEC parser read Content[0]
+// blindly — for a thinking block (whose payload lives in `thinking`, not
+// `text`) it saw an empty Text and failed open to inconclusive even though a
+// full review sat in the next block. The parser must select the first TEXT
+// block, not the first block.
+func TestGLMAuditParse_SkipsLeadingThinkingBlock(t *testing.T) {
+	review := ReviewOutput{Verdict: "pass", Summary: "clean"}
+	text, err := json.Marshal(review)
+	if err != nil {
+		t.Fatal(err)
 	}
-	m, ok := raw.(map[string]any)
-	if !ok {
-		t.Fatalf("thinking field is %T, want an object", raw)
+	envelope := map[string]any{
+		"content": []map[string]any{
+			{"type": "thinking", "thinking": "Let me analyze this diff carefully..."},
+			{"type": "text", "text": string(text)},
+		},
 	}
-	return m
+	raw, err := json.Marshal(envelope)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	out := parseGLMReview(raw)
+	if out.Verdict != "pass" {
+		t.Errorf("parseGLMReview verdict = %q (summary: %q) — a leading thinking block must not eclipse the text payload", out.Verdict, out.Summary)
+	}
 }
 
 // AC-AMP-004 positive arm — a populated audit.glm pin reaches the outbound
 // request body: model carries the pinned id and the reasoning directive is set
-// to max on the delivery field (hypothesis A: the Anthropic-style thinking
-// object, the field the M5 live gate arbitrates).
+// to max on the delivery field SELECTED BY THE LIVE EVIDENCE (AC-AMP-006 ran
+// the differential on hypothesis A — the Anthropic-style thinking object — and
+// measured budget_tokens IGNORED, output 3667 vs 3480, ratio 1.02; the field
+// switched to hypothesis B: the top-level z.ai reasoning_effort, carried
+// verbatim).
 func TestGLMAuditPin_ReachesRequestBody(t *testing.T) {
 	root := newGLMReviewTree(t, true)
 	writeCodexWorkflowYAML(t, root, auditGLMPinYAML("glm-5.3", template.GLMStateMax))
@@ -86,15 +105,13 @@ func TestGLMAuditPin_ReachesRequestBody(t *testing.T) {
 	if got, _ := body["model"].(string); got != "glm-5.3" {
 		t.Errorf("request model = %q, want the pinned %q", got, "glm-5.3")
 	}
-	th := thinkingDirective(t, body)
-	if th == nil {
-		t.Fatal("request carries no thinking directive for a valid pinned effort (max)")
+	if got, _ := body["reasoning_effort"].(string); got != template.GLMStateMax {
+		t.Errorf("reasoning_effort = %q, want the pinned state %q transmitted verbatim", got, template.GLMStateMax)
 	}
-	if got, _ := th["type"].(string); got != template.GLMThinkingEnabledVal {
-		t.Errorf("thinking.type = %q, want %q", got, template.GLMThinkingEnabledVal)
-	}
-	if budget, _ := th["budget_tokens"].(float64); int(budget) != glmAuditThinkingBudgetMax {
-		t.Errorf("thinking.budget_tokens = %v, want %d (the max-state budget)", budget, glmAuditThinkingBudgetMax)
+	// Hypothesis A's field is retired: the live gate measured budget_tokens
+	// ignored, so a stale thinking object must not ride the request.
+	if _, ok := body["thinking"]; ok {
+		t.Error("request still carries a thinking object — hypothesis A was rejected by the live differential (budget_tokens ignored)")
 	}
 }
 
@@ -116,8 +133,8 @@ func TestGLMAuditPin_InvalidEffortOmitsReasoningDirective(t *testing.T) {
 	if got, _ := body["model"].(string); got != "glm-5.3" {
 		t.Errorf("request model = %q, want the pinned %q (the model pin survives an invalid effort)", got, "glm-5.3")
 	}
-	if th := thinkingDirective(t, body); th != nil {
-		t.Errorf("thinking directive must be omitted for invalid effort medium, got %v", th)
+	if _, ok := body["reasoning_effort"]; ok {
+		t.Error("reasoning_effort must be omitted for invalid effort medium (single-reading rule)")
 	}
 }
 
@@ -135,8 +152,8 @@ func TestGLMAuditPin_AbsentPinBodyUnchanged(t *testing.T) {
 	}
 
 	body := decodeGLMRequestBody(t, stub.gotBody)
-	if th := thinkingDirective(t, body); th != nil {
-		t.Errorf("no thinking directive may appear without a pin, got %v", th)
+	if _, ok := body["reasoning_effort"]; ok {
+		t.Error("no reasoning_effort may appear without a pin")
 	}
 	if got, _ := body["model"].(string); got != glmAuditDefaultModel {
 		t.Errorf("request model = %q, want the legacy default %q (byte-identical legacy shape)", got, glmAuditDefaultModel)
@@ -202,7 +219,7 @@ func TestGLMAuditPin_ExplicitModelParamOverridesPin(t *testing.T) {
 	if got, _ := body["model"].(string); got != "glm-4.6" {
 		t.Errorf("request model = %q, want the explicit override %q", got, "glm-4.6")
 	}
-	if th := thinkingDirective(t, body); th == nil {
-		t.Error("the pinned effort (max) must still deliver the reasoning directive under an explicit model override")
+	if got, _ := body["reasoning_effort"].(string); got != template.GLMStateMax {
+		t.Errorf("reasoning_effort = %q, want the pinned %q (the pinned effort survives an explicit model override)", got, template.GLMStateMax)
 	}
 }

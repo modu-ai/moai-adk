@@ -12,6 +12,18 @@ workflow:
         after_run: false
         enabled: true
         token_threshold: 150000
+    # audit pins (SPEC-V3R6-AUDIT-MODEL-PIN-001): project-committed model+effort
+    # for the cross-model audit backends — audit entry points only (codex_audit /
+    # glm_audit / audit_multi), never codex_task / glm_task. Precedence per
+    # backend: this pin > llm.yaml sync-auditor SSOT cell > empty. codex effort
+    # vocabulary low|medium|high|xhigh|max; glm effort = z.ai states low|high|max.
+    audit:
+        codex:
+            model: gpt-5.6-sol
+            effort: high
+        glm:
+            model: glm-5.3
+            effort: max
     default_mode: ""
     execution_mode: auto
     # context_folding: manager-lead's per-milestone Context-Folding trigger policy
