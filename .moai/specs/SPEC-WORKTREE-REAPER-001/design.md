@@ -72,11 +72,12 @@ reasons, in order of weight:
    destroys no commit, and the branch itself is never deleted by either sweep.
 2. **The proposed extra guard is the same call** — audit finding D2's remedy
    rests on a misreading, resolved by measurement (§A.5).
-3. **The dirty guard is what bounds the class, and it covers untracked files.**
-   `worktreeIsDirty` reads `git status --porcelain`, which lists untracked
-   entries as `??`. This is why `WT-worktree-reaper` survives today. And where
-   that guard is too permissive, git's own removal check is stricter still
-   (§A.6).
+3. **The dirty guard is what bounds the class, and it covers tracked and
+   untracked files.** `worktreeIsDirty` reads `git status --porcelain`, which
+   lists untracked entries as `??`. This is why `WT-worktree-reaper` survives
+   today. For that class git independently re-checks at removal time and
+   refuses, so the guard has a backstop. **For gitignored content it does not**
+   — §A.6, corrected.
 
 ### A.5 — Audit finding D2: the finding stands, the prescribed remedy does not
 
@@ -111,32 +112,121 @@ the question the first already answered. The genuinely additional guard in
 `staleKeepReason` is `worktreeHasLocalChanges`, and `prMergeCleanup` already runs
 its equivalent. **REQ-WR-018's accept-the-class decision stands unchanged.**
 
-### A.6 — EC-9 measured: git's removal check is stricter than the dirty guard
+### A.6 — EC-9 re-measured: git does NOT backstop the dirty guard for ignored content
 
-v0.1.0 left this open in both directions because it could not be measured. It
-now is. Evidence: `.moai/reports/t209/ec9-measurement.md` §Q1.
-
-`git status --porcelain` omits **gitignored** files, so a tree whose only content
-is ignored (build output, a local `.env`) reads clean to `worktreeIsDirty`.
-Measured, with a committed `.gitignore` and one ignored file present:
+**This section states a result that reverses what v0.2.0 of this SPEC claimed.**
+v0.2.0 recorded that non-forced `git worktree remove` refuses a tree holding only
+gitignored files, and built a requirement, a criterion and two edge cases on it.
+Iteration-2 plan-audit failed to reproduce it and was right. Corrected record:
+`.moai/reports/t209/ec9-measurement.md` **v2** (v1 is superseded in place and
+must not be re-derived from).
 
 ```
-git status --porcelain | wc -l   → 0        # the dirty guard sees a CLEAN tree
-git worktree remove <tree>       → fatal: '<tree>' contains modified or untracked
-                                    files, use --force to delete it   (exit 128)
-cat <tree>/build/artifact.bin    → precious # the file survived
+git status --porcelain | wc -l              → 0     # the dirty guard sees CLEAN
+git status --porcelain --ignored | wc -l    → 1
+git worktree remove <tree> ; echo $?        → 0     # REMOVED
+ls <tree>                                   → No such file or directory
 ```
 
-**The hazard closes in the safe direction**: git's own removal check counts
-ignored files where `git status --porcelain` does not, so the ignored-only tree
-is **preserved** even though this SPEC's dirty guard would have let it through.
-EC-9 is asserted rather than left open, and AC-WR-007 verifies it rather than
-merely establishing it.
+**`git status --porcelain` and `git worktree remove` agree in disregarding
+ignored files.** There is no third backstop layer. §A.4's accept-the-class
+decision is backstopped at **two** layers, not three: committed work (impossible
+— an ancestor of base holds none) and tracked-or-untracked work (the dirty
+guard, itself backstopped by git's own check). Ignored content has **no**
+protection at all today.
 
-That is the last of the three ways the zero-unique-commit class could have lost
-work — committed work (impossible: ancestor of base), tracked-or-untracked work
-(the dirty guard), ignored work (git's own check) — so §A.4's accept decision is
-now backstopped at every layer rather than at two.
+**Why v1 measured the opposite, and why the reason is itself a finding.** The v1
+fixture lived inside this live t209 worktree, and MoAI's statusline writes state
+files into whatever tree a session occupies. Between v1's `git status` and its
+`git worktree remove`, `.moai/state/config-cache.json` and
+`.moai/state/context-usage.json` appeared in the scratch worktree — **untracked**
+there, because the scratch repo carried no `.gitignore` for them. v1 measured an
+untracked-file refusal and credited it to the ignored file. `.gitignore`
+placement and branch topology were both tested and rejected as explanations; the
+variable is elapsed time inside a live session's tree.
+
+Two lessons this SPEC adopts:
+
+1. **A measurement taken inside a live session's worktree is not isolated.** Any
+   remaining worktree-disposal measurement — including AC-WR-025's — is run from
+   outside every tree a session occupies.
+2. **The gap between checking and acting is a race, and the sweep has it too**
+   (§B.11).
+
+**Scope correction, so the hazard is not overstated.** Destruction of ignored
+content is a **pre-existing** property of the shipped sweep, not one M1
+introduces: `prMergeCleanup` already removes merged, porcelain-clean trees today
+— that is how worktree t208 was removed during the investigation. What M1 changes
+is the *rate*, by making ~98 currently-preserved trees removable at once. That
+distinction sets the priority (it is an M1 precondition because M1 amplifies it),
+not the blame.
+
+### A.7 — UNRESOLVED: the ignored-content policy, and the measurement that decides it
+
+**This is the one decision this SPEC deliberately does not make at plan-phase.**
+It is recorded here as an open fork with a fixed decision rule and a named
+measurement, rather than guessed — twice now, a policy built on an unmeasured
+premise about ignored files has had to be withdrawn.
+
+**The hypothesis that could invalidate M1.** `.moai/state/` is gitignored in this
+repository, verified:
+
+```
+git check-ignore -v .moai/state/config-cache.json
+→ .gitignore:284:.moai/state/    .moai/state/config-cache.json
+```
+
+MoAI writes into that directory in every tree a session occupies — this worktree
+carries `!! .moai/state/config-cache.json` and `!! .moai/state/context-usage.json`
+right now (`git status --porcelain --ignored` → 7 entries, 5 of them `!!`). So
+"this tree holds ignored content" is plausibly true of **every worktree that has
+ever hosted a session**, before Go build output is even considered.
+
+If that holds, a policy of "preserve on any ignored content" preserves nearly the
+whole population, and **M2's guard undoes M1's unblocking of the ~98 merged
+trees** — the SPEC would ship a repair that cancels itself.
+
+**This is a hypothesis, not a finding.** It could not be measured from here: the
+worktree-isolation guard refuses `cd` and `git -C` into sibling trees, so only
+this tree is observable.
+
+**The deciding measurement (AC-WR-025), run from outside any worktree:**
+
+```
+git status --porcelain --ignored   # per tree, over all registered worktrees
+```
+recording, for each tree that M1 would newly unblock (merged, porcelain-clean,
+unanchored), whether it carries any `!!` entry — and if so, whether every such
+entry lies under a regenerable path.
+
+**The decision rule, fixed now:**
+
+| Measured outcome | Policy |
+|---|---|
+| P1 preserves **≤ half** the trees M1 unblocks | **P1 — preserve on any ignored content.** Simplest, safest, and its cost is bounded. |
+| P1 preserves **more than half** | P1 is too blunt — it would cancel M1. Choose between **P2** and **P3** below. |
+
+- **P2 — classify by path.** Treat a declared set of regenerable paths
+  (`.moai/state/`, build output) as destroyable and preserve on anything else,
+  so a local `.env` is protected while a statusline cache is not. Cost: the
+  allowlist is a new thing to maintain and is wrong by default for any project
+  MoAI has not seen.
+- **P3 — accept the loss explicitly.** Keep today's behaviour, document that
+  ignored content in a merged clean worktree is destroyed, and say so in the
+  removal notice. Cost: honest, and matches git's own default, but a local
+  `.env` is genuinely unrecoverable.
+
+**What is NOT deferred:** the fork, the candidate policies, the rule that selects
+between them, and the measurement that feeds it are all fixed here. Only the
+measured input is outstanding. A run-phase implementer therefore has a procedure,
+not a judgement call.
+
+**Consequence for the probe.** `git status --porcelain --ignored` is the
+implementation of P1 and the classifier for P2; under **P3 it is not needed at
+all**. So this SPEC does not assert the probe is required — its necessity is
+contingent on a fork that is open. (v2 of the measurement record calls the probe
+"still the right mechanism"; that is true under P1 and P2 and false under P3, and
+is flagged in the return report rather than adopted silently.)
 
 ## §B — D2: which signal is authoritative for "a live session is in this tree" (M2)
 
@@ -237,50 +327,77 @@ authority over another process's lock — a distinct escalation, held out in
 *anchor* verdict; REQ-WR-021 is what stops that verdict implying a removal that
 cannot happen.
 
-### B.6a — The same symptom now has two causes, and they must stay attributable
+### B.6a — The refusal class, re-derived over what actually refuses
 
-The EC-9 measurement (§A.6) produced a second condition with the identical
-shape: a tree that is selected for removal on every sweep and refused by git
-every time, with nothing in the sweep clearing the condition. Two distinct
-causes, one indistinguishable symptom:
+v0.2.0 defined this class as `{locked, ignored-content}` on the strength of the
+v1 EC-9 measurement. That measurement is withdrawn (§A.6), and with it the second
+member. The class is re-derived here from what was actually observed to refuse.
 
-| Cause | Detectable before attempting removal? | git's refusal |
-|---|---|---|
-| Locked tree (dead or live PID) | **Yes** — the lock line is already in the porcelain output the sweep parses | `cannot remove a locked working tree` |
-| Ignored-only content | **Not by the current dirty guard** — `git status --porcelain` omits ignored files | `contains modified or untracked files` |
+| Candidate condition | `git status --porcelain` sees it | Non-forced `git worktree remove` | Live here? |
+|---|---|---|---|
+| Locked worktree | no | **refuses**, exit 128 | **yes** — 5 trees |
+| Untracked non-ignored file | **yes** (`??`) | refuses, exit 128 | yes — already the dirty guard's job |
+| Ignored-only content | no | **removes, exit 0** | yes — and it is *not* a refusal (§A.7) |
+| Populated submodule | no (0 lines) | **refuses**, exit 128, not curable by `--force` | **no** — `.gitmodules` absent |
+| Missing worktree directory | n/a | removes, exit 0 | n/a |
 
-That asymmetry is the whole design question: one cause is free to pre-detect,
-the other costs an extra probe.
+**In this repository the refusal class reduces to locked trees** — exactly the
+v0.1.0 scope, before the generalisation the withdrawn measurement motivated.
+Reverting outright was considered and rejected for one reason: the class is
+demonstrably **not closed** (the submodule row was found by an auditor testing
+beyond the SPEC's set, and found a real member the SPEC had missed).
 
-**Decision: pre-detect both; preserve quietly with a cause-naming notice; never
-attempt a removal that is known to fail.** For the ignored-only case the probe is
-`git status --porcelain --ignored` on the candidate. Consistency with the
-dead-lock decision is the reason: having decided that a permanently recurring
-`cleanup failed` notice is the wrong observable for one cause, emitting it
-forever for the other would be arbitrary.
+**Decision: define REQ-WR-021 over the observable, not over an enumeration.** A
+requirement that lists members claims completeness it cannot have; the next
+unlisted member then falls silently outside it, which is exactly what happened.
+So: *when non-forced removal refuses, preserve and name the cause; where the
+condition is already visible in data the sweep holds, pre-detect it.*
 
-Cost is bounded: the extra probe runs only for candidates that already passed the
-merge check, the dirty guard, and the anchor guard — a small set in steady state,
-and a one-off ~98 in the first repaired sweep.
+- **Pre-detection set: `{lock line}`.** Free — the lock line is already in the
+  porcelain output the sweep parses. It is stated as non-exhaustive.
+- **Everything else falls through to fail-open.** git refuses, the sweep emits a
+  non-blocking cause-naming notice, nothing is lost. Correct, merely noisier.
+- **Submodules: out of scope with a measured reason** (`spec.md` §G) rather than
+  in the pre-detection set — no live instance, and the fall-through path already
+  handles them safely.
 
-**Rejected alternative — attempt the removal and let git refuse, with distinct
-notice text.** Cheaper by one git call, and the notice text does distinguish the
-causes. Rejected because the observable is a `failed` notice on every
-`moai session list`, forever, for a tree that is behaving correctly. A permanent
-error-shaped message for a non-error state trains readers to ignore the channel
-that also carries real failures.
+**What survives from the v0.2.0 reasoning.** The argument that a permanently
+recurring, cause-ambiguous notice is a bad observable was sound and is kept — it
+is now REQ-WR-023, widened from "distinguish these two causes" to "every preserve
+notice names its cause", which is useful regardless of how many refusal causes
+exist. The rejected alternatives recorded at v0.2.0 (attempt-and-fail with
+distinct text; widening the shared `worktreeIsDirty`) are retained below because
+both were rejected on grounds the correction does not touch.
 
-**Rejected alternative — add `--ignored` to `worktreeIsDirty`.** This would make
-the shared helper agree with git's own check, which is attractive. Rejected
-because `worktreeIsDirty` is shared with the M4 session-exit path, and widening
-what it calls "dirty" changes that path's behaviour in a way this SPEC has not
-analysed. The probe is therefore added in the PR-merge path only, leaving the
-shared helper's semantics untouched (REQ-WR-017 continues to mean what it meant).
+**Retained rejection — widening `worktreeIsDirty` to `--ignored`.** Still
+rejected, and now for a sharper reason: it is shared with the M4 session-exit
+path, and under §A.7 it would silently impose policy P1 on that path too, before
+the measurement that decides whether P1 is even viable.
 
-REQ-WR-021 is generalised to the refusal class rather than to locks alone, and
-REQ-WR-023 requires the preserve notice to name which cause applied — without it
-the two conditions are indistinguishable in the output, which is the state this
-section exists to prevent.
+**Retained rejection — attempt-and-fail with distinct notice text.** For the
+locked case, pre-detection remains preferable: the condition never clears, so
+attempting produces an error-shaped notice forever for a correctly-behaving tree.
+
+### B.11 — The check→act race, and why its benignity is class-dependent
+
+`prMergeCleanup` re-reads `worktreeIsDirty` immediately before removal (the EC-11
+position inherited from SPEC-SESSION-WORKTREE-001) precisely to narrow the window
+between observing a tree and acting on it. **Narrow is not closed.**
+
+The v1 EC-9 fixture is a live demonstration: MoAI's statusline wrote two
+untracked files into the tree *between* the fixture's `git status` and its `git
+worktree remove`. A sweep candidate can go dirty the same way.
+
+**Why the race is benign — and the limit of that.** For tracked or untracked
+content it is benign because git performs its own check at removal time: a tree
+that goes dirty after the guard passes is refused by git, so the race turns a
+would-be removal into a preserved tree plus a notice. The failure direction is
+safe.
+
+That protection is **class-specific**. Ignored content gets no second
+observation, because neither the guard nor git looks at it (§A.6) — so for that
+class there is no race protection, and there is nothing to make benign. Which is
+another way of stating why §A.7's fork has to be settled rather than assumed.
 
 ### B.7 — Union, not replacement
 
@@ -313,13 +430,25 @@ understated it: it is produced by code in the package under repair.
 only into `prMergeCleanup`, which leaves the blind guard on the surface with the
 wider blast radius:
 
-| Consumer | Population swept | Anchor source today |
-|---|---|---|
-| `prMergeCleanup` (`internal/cli`) | `WT-*` branches only | `LiveAnchoredSessions` (blind) |
-| `cleanStaleWorktrees` (`internal/cli/worktree`) | **every registered worktree** (provider is `git worktree list --porcelain`) | `LiveAnchoredSessions` (blind) |
+| Consumer | Population swept | Other guards | Anchor source today |
+|---|---|---|---|
+| `prMergeCleanup` (`internal/cli`) | `WT-*` branches only | dirty guard | `LiveAnchoredSessions` (blind) |
+| `cleanStaleWorktrees` (`clean.go:163`) | **every registered worktree** | dirty guard + merge check | `LiveAnchoredSessions` (blind) |
+| `--merged-only` path (`clean.go:95`) | **every registered worktree** | **none** — no dirty guard | `LiveAnchoredSessions` (blind) |
 
-Placing the decision in `internal/session` fixes both call sites with one diff
-(REQ-WR-019, AC-WR-015). Both consumers already fetch porcelain output — the
+**Three, not two.** v0.2.0 named the first two. Verified:
+`grep -n 'LiveAnchoredSessions' internal/cli/worktree/clean.go` → `95:`, `163:`.
+The third is the most exposed of all: its own in-code comment records that
+"`--merged-only` has no dirty guard of its own, so this is the only protection
+between the sweep and a live lane's tree" — so there the blind guard is not one
+layer among several, it is the entire protection. v0.2.0's `research.md` §F had
+excluded `--merged-only` on the reason that it lacks the dirty/anchor pairing,
+which on reflection is an argument for including it: the SPEC's own framing —
+"repairing only the automatic sweep leaves the blind guard on the surface that
+can remove more" — applies verbatim.
+
+Placing the decision in `internal/session` fixes all three call sites with one
+diff (REQ-WR-019, AC-WR-015, AC-WR-026). Both consumers already fetch porcelain output — the
 lock map is built from data each sweep already has, with no additional git
 invocation.
 

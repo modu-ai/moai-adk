@@ -45,6 +45,28 @@ git worktree list --porcelain | grep -c '^locked'
 
 The last command establishes the lock-line fixture is still shaped as measured.
 
+### [HARD] C.1 — M1 precondition gate (AC-WR-025)
+
+**M1 does not land until this measurement is taken and `design.md` §A.7's fork is
+closed.** Run it from the primary checkout, **outside every worktree a session
+occupies** — the v1 EC-9 failure established that a measurement taken inside a
+live session's tree is not isolated (`design.md` §A.6).
+
+```bash
+# per registered worktree, cross-referenced against the M1-unblocked set
+git -C <tree> status --porcelain --ignored | grep -c '^!!'
+```
+
+Record how many M1-unblocked trees (merged AND porcelain-clean AND unanchored)
+carry ignored content, and how many carry ignored content outside regenerable
+paths. `design.md` §A.7's table then selects policy P1, P2, or P3.
+
+Why it gates M1 rather than M2: `.moai/state/` is gitignored
+(`git check-ignore -v .moai/state/config-cache.json` → `.gitignore:284`) and MoAI
+writes into it in every tree a session occupies, so "holds ignored content" may
+be true of essentially the whole population. If it is, a preserve-on-ignored
+policy cancels M1's unblocking of the ~98 merged trees.
+
 ## §D — Constraints
 
 Carried from `spec.md` §E as the implementation contract:
@@ -108,11 +130,11 @@ M1 and M2 are otherwise independent. M3 depends on M2 for the anchor column.
 
 The fourth new test pins the removal class M1 reaches: a zero-unique-commit
 branch is removable when clean and preserved when it carries untracked files.
-`design.md` §A.4 carries the accept decision, §A.5 records that audit finding
-D2's remedy was resolved against by measurement, and §A.6 records the EC-9
-result — git's own removal check counts gitignored files where
-`git status --porcelain` does not, so the ignored-only tree is preserved. That
-outcome is now **asserted** by EC-9, not left open.
+`design.md` §A.4 carries the accept decision and §A.5 records that audit finding
+D2's remedy was resolved against by measurement. **§A.6 now carries a corrected
+EC-9**: git does *not* check ignored content at removal time — the ignored-only
+tree is removed, exit 0, content destroyed. The v0.2.0 claim of a third backstop
+layer is withdrawn; there are two.
 
 Files: `internal/cli/session_worktree_prmerge.go` + its two test files.
 
@@ -133,24 +155,30 @@ Files: `internal/cli/session_worktree_prmerge.go` + its two test files.
    to capture the `locked` line, stripping git's own `locked ` prefix and
    mapping a bare `locked` line to an empty reason (`design.md` §B.3).
 4. Wire `prMergeCleanup` to the shared decision; emit a source-naming preserve
-   notice (REQ-WR-011). Pre-detect the **refusal class** and never attempt a
-   removal git will refuse (REQ-WR-021): a locked tree from the porcelain lock
-   line already parsed in step 3, and an ignored-content tree from one
-   `git status --porcelain --ignored` probe on a candidate that has already
-   passed the merge, dirty, and anchor guards. The two preserve notices must
-   carry distinct cause text (REQ-WR-023). Do **not** change `worktreeIsDirty` —
-   it is shared with the M4 session-exit path (`design.md` §B.6a).
+   notice (REQ-WR-011). Pre-detect the **refusal class** from the porcelain lock
+   line already parsed in step 3, and never attempt a removal known to fail
+   (REQ-WR-021). Every preserve notice carries a cause-specific token
+   (REQ-WR-023). Do **not** change `worktreeIsDirty` — it is shared with the M4
+   session-exit path (`design.md` §B.6a).
+5. Wire the `--merged-only` path (`internal/cli/worktree/clean.go:95`) to the
+   same decision — the third consumer, and the one with no dirty guard of its
+   own (REQ-WR-019, AC-WR-026).
+6. **Ignored-content handling is NOT implemented in M2.** It is governed by
+   `design.md` §A.7's open fork and gated on the AC-WR-025 measurement
+   (REQ-WR-024). Implementing a probe before that measurement risks shipping
+   policy P1 into a population where it cancels M1.
 5. Wire `cleanStaleWorktrees` to the same decision, replacing its direct
    `LiveAnchoredSessions` call, and give it a lock-aware keep-reason
    (REQ-WR-019).
-6. Add `TestLockAnchor_LivePidAnchored`, `…_DeadPidNotAnchored`,
+7. Add `TestLockAnchor_LivePidAnchored`, `…_DeadPidNotAnchored`,
    `…_IndeterminateIsAnchored`, `…_DeadLockRemovalIsInert`,
    `TestAnchorDecision_RegistryOnlyPathStillAnchors` (`internal/session`);
    `TestParseWorktreeList_CapturesLockReason`,
    `TestPRMergeCleanup_PorcelainFailureRemovesNothing`,
    `TestPRMergeCleanup_T207SamplePreservedByLock`,
-   `TestPRMergeCleanup_RefusalClassPreDetected` (`internal/cli`);
-   `TestCleanStale_LockAnchoredWorktreeKept` (`internal/cli/worktree`).
+   `TestPRMergeCleanup_RefusalClassNamesCause` (`internal/cli`);
+   `TestCleanStale_LockAnchoredWorktreeKept`,
+   `TestCleanMergedOnly_LockAnchoredWorktreeKept` (`internal/cli/worktree`).
 
 Files: `internal/session/anchor.go` (+ a new `anchor_lock.go` for the parser and
 decision, keeping them unit-testable), `internal/session/anchor_pid_unix.go`,
@@ -195,11 +223,16 @@ Files: `internal/cli/worktree/clean.go` + tests,
   (REQ-WR-020) lives exactly here.
 - **Unlocking, or passing `--force` to `git worktree remove`.** Out of scope;
   the refusal class is inert by decision (REQ-WR-021).
-- **Attempting a removal git is known to refuse.** Both refusal causes recur
-  forever with nothing clearing them, so an attempt-and-fail design emits a
-  permanent `cleanup failed` notice for a correctly-behaving tree.
-- **Giving the two refusal causes the same notice text.** REQ-WR-023; an
-  identical message makes one uninvestigable symptom out of two fixable states.
+- **Attempting a removal git is known to refuse.** A locked tree's condition
+  never clears, so an attempt-and-fail design emits a permanent `cleanup failed`
+  notice for a correctly-behaving tree.
+- **Emitting a preserve notice that does not name its cause.** REQ-WR-023; two
+  trees preserved for different reasons must be distinguishable from the output.
+- **Implementing an ignored-content probe before AC-WR-025 is measured.** That
+  ships policy P1 by default into a population where it may cancel M1
+  (`design.md` §A.7).
+- **Treating REQ-WR-021's pre-detection set as exhaustive.** It is not — the
+  submodule case is a measured member outside it (EC-12).
 - **Building a parallel inventory command.** `design.md` §C selected extension.
 - **A second test-injection mechanism.** Extend `swapPRMergeSeams` /
   `swapSessionWorktreeSeams`.
@@ -212,9 +245,9 @@ Files: `internal/cli/worktree/clean.go` + tests,
 
 ## §H — Cross-references
 
-- `spec.md` — 23 requirements, constraints, out of scope
+- `spec.md` — 24 requirements, constraints, out of scope
 - `design.md` — D1 seam signature, D2 fail-closed table + probe seam + dead-lock policy, D3 the reworked M3 option set, §D the corrected ordering caveat
-- `acceptance.md` — 24 criteria, the falsifiable command form, per-criterion pre-implementation baselines
+- `acceptance.md` — 26 criteria, the falsifiable command form, per-criterion pre-implementation baselines
 - `research.md` — the two-sweep survey, seam/test conventions, platform probes
 - `.moai/reports/t209/investigation.md` — the original measured survey
 - `.moai/reports/t209/plan-audit.md` — iteration-1 audit

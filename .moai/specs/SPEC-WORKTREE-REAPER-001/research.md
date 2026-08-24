@@ -9,6 +9,13 @@ carries the code-level findings the design decisions rest on.
 ## §A — There are TWO worktree sweeps, and they share one blind dependency
 
 The single most consequential finding, and the one v0.1.0 of this SPEC missed.
+(v0.2.0 then found two of the three; v0.3.0 names all three.)
+
+> **v0.3.0 correction:** there are **three** consumers, not two. The
+> `--merged-only` path (`clean.go:95`) was missed below and is the most exposed
+> of the three — it has no dirty guard, so its blind anchor call is the only
+> protection between it and a live lane's tree. It sweeps the same full
+> population as `cleanStaleWorktrees`.
 
 | | `prMergeCleanup` | `cleanStaleWorktrees` |
 |---|---|---|
@@ -142,26 +149,26 @@ locks on the five live trees are written by Claude Code at `EnterWorktree`.
 `WT-<session>-<subcommand>` trees with a plain `git worktree add` — inside the
 swept prefix set, and unlocked. That is the residual REQ-WR-020 records.
 
-### D.4a — git's removal check is stricter than `git status --porcelain`
+### D.4a — git does NOT check ignored content at removal time
 
-Measured in a scratch repository (`.moai/reports/t209/ec9-measurement.md` §Q1):
-with a committed `.gitignore` and one ignored file present in a linked worktree,
-`git status --porcelain` returns **0** lines while `git worktree remove` exits
-**128** with `contains modified or untracked files, use --force to delete it`,
-and the ignored file survives.
+**Corrects a claim this file carried at v0.2.0.** Measured
+(`.moai/reports/t209/ec9-measurement.md` **v2** §Q1): with a committed
+`.gitignore` and one ignored file in a linked worktree, `git status --porcelain`
+returns 0 **and** `git worktree remove` returns **exit 0**, deleting the tree and
+the ignored file. The v2 record explains why v1 measured a refusal: the fixture
+lived inside a live session's worktree and MoAI's statusline wrote two
+*untracked* files into it between the two commands.
 
-So the two checks disagree about what counts as content: `git status
---porcelain` omits gitignored entries, `git worktree remove` counts them. Every
-guard in this SPEC built on the former is therefore backstopped by the latter —
-which is why EC-9 closes in the safe direction and why `design.md` §A.4's
-accept-the-class decision holds at all three layers (committed work, tracked or
-untracked work, ignored work).
+So the two checks agree in disregarding ignored files. `git worktree remove` does
+independently refuse on **tracked or untracked** content — which is why the
+sweep's check→act race is benign for that class (`design.md` §B.11) — but there
+is no equivalent for ignored content, and the dirty guard is the last line for it.
 
-The second-order finding is what drove REQ-WR-021's generalisation: the
-ignored-only tree is selected on every sweep and refused every time, with
-nothing clearing the condition — the identical permanent-recurring shape as the
-locked tree in §D.4. Two causes, one symptom, one of them not detectable by the
-guard that would have to catch it.
+Beyond the locked tree (§D.4), one further refusal condition was measured by the
+iteration-2 audit and is recorded so it need not be re-measured: a **populated
+submodule** makes non-forced removal exit 128 with a clean porcelain, and is not
+curable by `--force`. `.gitmodules` is absent here, so it has no live instance.
+A **missing worktree directory** is not a refusal — removal succeeds, exit 0.
 
 ### D.4 — git refuses to remove a locked tree
 
@@ -192,6 +199,11 @@ a general hazard for SPEC authoring in this repository, not specific to t209.
   the L2 root. Every disposal path in scope is L1.
 - **`git worktree prune`** — `--dry-run` reports 0 prunable entries; there are no
   stale administrative directories. The 155 entries are all real trees on disk.
-- **`--merged-only`** (the other `clean` mode) — removes merged worktrees without
-  the dirty/anchor pairing that `--stale` applies. Not extended by this SPEC and
-  not used as prior art; noted so a future reader does not confuse the two modes.
+- ~~**`--merged-only`**~~ — **this exclusion was wrong and is withdrawn at
+  v0.3.0.** It was excluded on the reason that it "removes merged worktrees
+  without the dirty/anchor pairing that `--stale` applies", which is an argument
+  for *including* it: with no dirty guard, its blind `LiveAnchoredSessions` call
+  (`clean.go:95`) is the sole protection between that sweep and a live lane's
+  tree. It is now the third consumer named by REQ-WR-019 and exercised by
+  AC-WR-026. See §A, whose two-sweep table is correspondingly a three-sweep
+  table.

@@ -1,8 +1,7 @@
 # acceptance.md — SPEC-WORKTREE-REAPER-001
 
-24 acceptance criteria: M1 seven (AC-WR-001…007), M2 nine (AC-WR-008…016),
-M3 four (AC-WR-017…020), refusal-class one (AC-WR-024), cross-cutting three
-(AC-WR-021…023).
+26 acceptance criteria: M1 seven (AC-WR-001…007), M2 twelve (AC-WR-008…016 plus
+AC-WR-024…026), M3 four (AC-WR-017…020), cross-cutting three (AC-WR-021…023).
 
 ---
 
@@ -46,7 +45,7 @@ $ grep -rn "func TestPRMergeCleanup_GhNoAnswerConsultsGitFallback\|func TestPRMe
 \|func TestPRMergeCleanup_UndeterminedMergePreserves\|func TestPRMergeCleanup_ZeroUniqueCommitPreserved\
 \|func TestParseWorktreeList_CapturesLockReason\|func TestLockAnchor_\|func TestAnchorDecision_\
 \|func TestPRMergeCleanup_PorcelainFailureRemovesNothing\|func TestPRMergeCleanup_T207SamplePreservedByLock\
-\|func TestCleanStale_" internal/
+\|func TestPRMergeCleanup_RefusalClassNamesCause\|func TestCleanMergedOnly_\|func TestCleanStale_" internal/
 → 7 matches, ALL of them pre-existing TestCleanStale_* tests with different suffixes
   (KeepsAnchoredWorktree, KeepsDirtyWorktree, KeepsUnmergedWorktree, PreviewsByDefault,
    RemovesWithYes, SkipsProtectedAndDetached, RejectsMergedOnlyCombination).
@@ -340,6 +339,83 @@ Expected: `1` and `1`. **Pre-impl observed: `0` and `1`** (the second is the
 existing fail-open guard: the sweep must still not abort its caller).
 **Covers:** REQ-WR-008, REQ-WR-016.
 
+### AC-WR-024 — a refusal-class tree is pre-detected, and its notice names the cause
+
+**Given** a merged, porcelain-clean, registry-unanchored candidate carrying a
+lock whose PID the probe confirms dead,
+**When** `prMergeCleanup` runs,
+**Then** no removal is attempted, the tree is preserved, and the preserve notice
+**contains the cause-specific token `locked`** — not merely a string that differs
+from some other notice.
+
+```
+go test ./internal/cli/ -run '^TestPRMergeCleanup_RefusalClassNamesCause$' -v -count=1 2>&1 \
+  | grep -c '^--- PASS: TestPRMergeCleanup_RefusalClassNamesCause'
+```
+Expected: `1`. **Pre-impl observed: `0`** (no such test; and today the candidate
+reaches `git worktree remove` and produces the `cannot remove a locked working
+tree` failure notice observed for t212 in `.moai/reports/t209/investigation.md`).
+**Covers:** REQ-WR-021, REQ-WR-023.
+
+Rebuilt at v0.3.0 on two counts. Its v0.2.0 second fixture — an ignored-only tree
+as a second *refusal* cause — models a condition measured not to exist (EC-9), so
+it is gone. And its declared assertion was string **inequality**, which any two
+distinct literals satisfy including ones that name nothing; REQ-WR-023 requires
+the notice to *name* the cause, so the assertion is now a positive token match.
+
+### AC-WR-025 — the ignored-content prevalence measurement (M1 precondition)
+
+**Given** the repository's registered worktrees,
+**When** the measurement below is run **from outside every worktree a session
+occupies** — a constraint the v1 EC-9 failure established (`design.md` §A.6),
+**Then** its result is recorded and `design.md` §A.7's decision rule selects the
+ignored-content policy.
+
+```
+# from the primary checkout, for each registered worktree path:
+git -C <tree> status --porcelain --ignored | grep -c '^!!'
+# cross-referenced against the M1-unblocked set (merged AND porcelain-clean
+# AND unanchored), recording per tree: any ignored entry? all under a
+# regenerable path?
+```
+Expected observation: a count of M1-unblocked trees that carry ignored content,
+and of those, how many carry ignored content **outside** regenerable paths.
+Decision: `design.md` §A.7 — P1 if ignored content is present in at most half the
+unblocked set, otherwise choose P2 or P3.
+
+**Pre-impl observed: not run — and not runnable from here.** The
+worktree-isolation guard refuses `cd` and `git -C` into sibling trees, so this
+session observes only its own tree (`git status --porcelain --ignored` → 7
+entries, 5 of them `!!`, including `.moai/state/config-cache.json` and
+`.moai/state/context-usage.json`). That single data point is consistent with the
+hypothesis and does not test it.
+
+[HARD] **This is a gate on M1, not a report.** M1 does not land before this
+measurement is taken and §A.7's fork closed. If ignored content proves near
+universal, policy P1 preserves nearly the whole population and M2's guard cancels
+M1's unblocking of the ~98 merged trees.
+**Covers:** REQ-WR-024.
+
+### AC-WR-026 — the `--merged-only` sweep gains the same anchor decision
+
+**Given** a merged worktree carrying a lock naming a live PID and **no** registry
+entry,
+**When** the `--merged-only` path runs,
+**Then** it is reported as kept and not removed.
+
+```
+go test ./internal/cli/worktree/ -run '^TestCleanMergedOnly_LockAnchoredWorktreeKept$' -v -count=1 2>&1 \
+  | grep -c '^--- PASS: TestCleanMergedOnly_LockAnchoredWorktreeKept'
+```
+Expected: `1`. **Pre-impl observed: `0`.**
+**Covers:** REQ-WR-019.
+
+This is the third consumer, unnamed until v0.3.0 and the most exposed of the
+three: `internal/cli/worktree/clean.go:95`, whose own comment records that
+`--merged-only` "has no dirty guard of its own, so this is the only protection
+between the sweep and a live lane's tree". Verified:
+`grep -n 'LiveAnchoredSessions' internal/cli/worktree/clean.go` → `95:`, `163:`.
+
 ---
 
 ## §C — M3: non-`WT-*` coverage via `worktree clean --stale`
@@ -416,31 +492,6 @@ unanchored `-run 'NoAskUserQuestion'` matches every existing guard and would
 bind nothing about this change. Measured:
 `grep -rn 'func Test.*NoAskUserQuestion' internal/cli/ | wc -l` → **31**.
 **Covers:** subagent-boundary craft constraint (not a REQ).
-
-### AC-WR-024 — refusal-class trees are pre-detected, and the two causes are distinguishable
-
-**Given** two merged, unanchored-by-registry candidates: (a) a tree carrying a
-lock, and (b) a tree whose working copy is clean to `git status --porcelain` but
-carries a gitignored file,
-**When** `prMergeCleanup` runs,
-**Then** neither produces a removal attempt, both are preserved, and their
-preserve notices name **different** causes — so a reader can tell a locked tree
-from an ignored-content tree without inspecting the tree.
-
-```
-go test ./internal/cli/ -run '^TestPRMergeCleanup_RefusalClassPreDetected$' -v -count=1 2>&1 \
-  | grep -c '^--- PASS: TestPRMergeCleanup_RefusalClassPreDetected'
-```
-Expected: `1`. **Pre-impl observed: `0`** (no such test exists; and today neither
-condition is pre-detected — case (a) reaches `git worktree remove` and produces
-the `cannot remove a locked working tree` failure notice observed for t212 in
-`.moai/reports/t209/investigation.md`).
-**Covers:** REQ-WR-021, REQ-WR-023.
-
-The assertion that matters is the *inequality* of the two notice strings. Both
-conditions recur on every sweep with nothing clearing them, so an identical
-message would make a permanent, uninvestigable symptom out of two separately
-fixable states.
 
 ---
 
@@ -530,22 +581,25 @@ sweeps under the blind guard). Evidence is persisted under
 | EC-5 | the same PID locks two worktrees | both anchored |
 | EC-6 | lock present **and** tree dirty | dirty guard fires first; preserved either way |
 | EC-7 | `origin/main` ref absent (fresh clone) | git-merged seam errors → undetermined → preserved (AC-WR-004) |
-| EC-8 | branch with **zero commits of its own** | git reports it merged (it is an ancestor of the base). Clean ⇒ removable and nothing is lost; dirty/untracked ⇒ preserved (AC-WR-007). This is the class M1 newly reaches — see `design.md` §A.4 |
-| EC-9 | tree whose only content is **gitignored** files | **Preserved.** Measured (`.moai/reports/t209/ec9-measurement.md` §Q1): `git status --porcelain` returns 0 lines, so the dirty guard reads the tree as clean, but non-forced `git worktree remove` exits 128 with `contains modified or untracked files` and the file survives. git's own check is stricter than the dirty guard. Pre-detected per REQ-WR-021 rather than attempted-and-refused (AC-WR-024) |
+| EC-8 | branch with **zero commits of its own** | git reports it merged (it is an ancestor of the base). Clean ⇒ removable, and nothing **committed, tracked, or untracked** is lost; dirty/untracked ⇒ preserved (AC-WR-007). **Ignored content is NOT protected** — see EC-9. This is the class M1 newly reaches (`design.md` §A.4) |
+| EC-9 | tree whose only content is **gitignored** files | **Removed today, and the ignored content is destroyed.** Measured (`.moai/reports/t209/ec9-measurement.md` **v2** §Q1 — v1 claimed the opposite and was wrong): `git status --porcelain` → 0, `git status --porcelain --ignored` → 1, `git worktree remove` → **exit 0**, tree gone. `git status --porcelain` and `git worktree remove` agree in disregarding ignored files, so the dirty guard has no backstop for this class. Whether the sweep preserves such a tree is the **open decision** at `design.md` §A.7, gated on AC-WR-025 |
 | EC-10 | `origin/main` **stale** (never fetched by the sweep) | a behind ref yields fewer ancestors, hence fewer removals — the safe direction. The one exception is a force-pushed / rewritten `origin/main`, where a branch could appear merged that is not. The sweep does not fetch; this is recorded as a bounded residual, not a claim of safety |
-| EC-11 | a **locked** tree and an **ignored-only** tree both reach the removal step | Both are refusal-class (REQ-WR-021) and both are pre-detected, so neither produces a removal attempt. Their preserve notices must name different causes (REQ-WR-023) — an identical message for two conditions is the failure this edge case exists to prevent (AC-WR-024) |
+| EC-11 | several trees are preserved for **different** reasons in one sweep | Each preserve notice carries a cause-specific token (REQ-WR-023): refusal-class, dirty, anchored-by-lock, anchored-by-registry, undetermined-merge. Re-derived at v0.3.0: the v0.2.0 form paired a locked tree with an ignored-only tree as two refusal causes, but the second was measured not to be a refusal at all (EC-9) |
+| EC-12 | populated **submodule** in a merged clean tree | Non-forced `git worktree remove` refuses (exit 128, `working trees containing submodules cannot be moved or removed`, not curable by `--force`) with a clean porcelain — a real member of REQ-WR-021's class that the pre-detection set does not cover. Falls through to fail-open: git refuses, a cause-naming notice is emitted, nothing is lost. No live instance here (`.gitmodules` absent) — held out of scope with that reason |
+| EC-13 | a candidate goes **dirty between the guard and the removal** | For tracked or untracked content the race is benign because git re-checks at removal time and refuses — a preserved tree plus a notice. For ignored content there is no second observation and therefore no protection (`design.md` §B.11). The v1 EC-9 fixture is a live instance: the statusline wrote two untracked files into the window |
 
 ## §F — Definition of Done
 
-- [ ] All 24 criteria run with the exact commands above; each `grep -c` output
+- [ ] All 26 criteria run with the exact commands above; each `grep -c` output
       cited verbatim
 - [ ] Every new-test criterion moved from its recorded pre-impl `0` to `1`
 - [ ] AC-WR-023(a) executed; (b) executed only with explicit operator
       authorisation and an enumerated expected-removal set
 - [ ] `.claude/worktrees/t207` on disk; `WT-lint-heading` untouched; no tree
       backing an open PR removed
-- [ ] Every requirement REQ-WR-001…022 named by at least one `Covers:` line
-- [ ] The lock-based anchor decision reached **both** consumers (AC-WR-015)
+- [ ] Every requirement REQ-WR-001…024 named by at least one `Covers:` line
+- [ ] The lock-based anchor decision reached **all three** consumers (AC-WR-015, AC-WR-026)
+- [ ] AC-WR-025 run from outside every worktree, and `design.md` §A.7's fork closed, BEFORE M1 lands
 - [ ] `design.md` §C decision honoured: `clean --stale` extended, no parallel
       inventory surface added
 - [ ] English code, comments, godoc; `t.TempDir()` isolation; existing
