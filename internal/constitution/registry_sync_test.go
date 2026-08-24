@@ -3,6 +3,7 @@ package constitution_test
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 	"unicode"
@@ -275,31 +276,30 @@ func TestRegistrySyncMirrorsIdentical(t *testing.T) {
 	t.Logf("mirrors byte-identical: %d bytes", len(local))
 }
 
-// R1 mutation fixture (guard-failure-scenario.md §1): one character inserted
-// mid-span inside the quoted clause value of CONST-V3R2-004 — the smallest
-// edit a real rules edit could make, never touching the YAML key or quoting.
-// If that entry's clause is ever reworded, update both constants in the same
-// change.
-const (
-	r1ClauseOriginal = `clause: "All instruction documents must be in English:"`
-	r1ClauseMutated  = `clause: "All instruction documents must be in Englishx:"`
-)
-
 // writeMutatedRegistryCopy copies the real registry into a temp dir with the
-// R1 single-character clause mutation applied, and returns the copy's path.
+// R1 scenario mutation applied (guard-failure-scenario.md §1): one character
+// inserted mid-span inside the quoted clause value of CONST-V3R2-004 — the
+// smallest edit a real rules edit could make, never touching the YAML key or
+// quoting. The clause text is read from the registry at run time, so the
+// fixture tracks the entry through future rewordings and does not collide
+// with a scratch mutation left on the tree.
 func writeMutatedRegistryCopy(t *testing.T, srcRegistry string) string {
 	t.Helper()
 	data, err := os.ReadFile(srcRegistry)
 	if err != nil {
 		t.Fatalf("read registry for mutation copy: %v", err)
 	}
-	if !strings.Contains(string(data), r1ClauseOriginal) {
-		t.Fatalf("R1 mutation fixture drifted: %q not found in %s — update r1ClauseOriginal/r1ClauseMutated with the registry in the same change", r1ClauseOriginal, srcRegistry)
+	re := regexp.MustCompile(`(- id: CONST-V3R2-004\n(?:  [a-z_]+: [^\n]*\n)*?  clause: ")([^"\n]+)(")`)
+	m := re.FindStringSubmatch(string(data))
+	if m == nil {
+		t.Fatalf("R1 mutation fixture drifted: no single-line double-quoted clause found for CONST-V3R2-004 in %s", srcRegistry)
 	}
+	clause := m[2]
+	mutatedClause := clause[:len(clause)/2] + "x" + clause[len(clause)/2:]
 	dir := t.TempDir()
 	regPath := filepath.Join(dir, "zone-registry.md")
-	mutated := strings.Replace(string(data), r1ClauseOriginal, r1ClauseMutated, 1)
-	if err := os.WriteFile(regPath, []byte(mutated), 0o600); err != nil {
+	out := strings.Replace(string(data), m[0], m[1]+mutatedClause+m[3], 1)
+	if err := os.WriteFile(regPath, []byte(out), 0o600); err != nil {
 		t.Fatalf("write mutated registry copy: %v", err)
 	}
 	return regPath
