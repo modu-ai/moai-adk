@@ -1,7 +1,12 @@
 # acceptance.md — SPEC-WORKTREE-REAPER-001
 
-26 acceptance criteria: M1 seven (AC-WR-001…007), M2 twelve (AC-WR-008…016 plus
-AC-WR-024…026), M3 four (AC-WR-017…020), cross-cutting three (AC-WR-021…023).
+27 acceptance criteria: M1 seven (AC-WR-001…007), M2 thirteen (AC-WR-008…016 plus
+AC-WR-024, AC-WR-024b, AC-WR-025, AC-WR-026), M3 four (AC-WR-017…020),
+cross-cutting three (AC-WR-021…023).
+
+(`AC-WR-024b` uses the acceptance-criteria sub-ID convention — a trailing
+lowercase suffix pairing a sub-criterion with `AC-WR-024`, both covering
+REQ-WR-021's two limbs.)
 
 ---
 
@@ -45,7 +50,9 @@ $ grep -rn "func TestPRMergeCleanup_GhNoAnswerConsultsGitFallback\|func TestPRMe
 \|func TestPRMergeCleanup_UndeterminedMergePreserves\|func TestPRMergeCleanup_ZeroUniqueCommitPreserved\
 \|func TestParseWorktreeList_CapturesLockReason\|func TestLockAnchor_\|func TestAnchorDecision_\
 \|func TestPRMergeCleanup_PorcelainFailureRemovesNothing\|func TestPRMergeCleanup_T207SamplePreservedByLock\
-\|func TestPRMergeCleanup_RefusalClassNamesCause\|func TestCleanMergedOnly_\|func TestCleanStale_" internal/
+\|func TestPRMergeCleanup_RefusalClassNamesCause\
+\|func TestPRMergeCleanup_RefusalFallThroughNamesCauseAndContinues\
+\|func TestCleanMergedOnly_\|func TestCleanStale_" internal/
 → 7 matches, ALL of them pre-existing TestCleanStale_* tests with different suffixes
   (KeepsAnchoredWorktree, KeepsDirtyWorktree, KeepsUnmergedWorktree, PreviewsByDefault,
    RemovesWithYes, SkipsProtectedAndDetached, RejectsMergedOnlyCombination).
@@ -121,7 +128,7 @@ go test ./internal/cli/ -run '^TestPRMergeCleanup_UndeterminedMergePreserves$' -
   | grep -c '^--- PASS: TestPRMergeCleanup_UndeterminedMergePreserves'
 ```
 Expected: `1`. **Pre-impl observed: `0`**.
-**Covers:** REQ-WR-003, REQ-WR-017.
+**Covers:** REQ-WR-003, REQ-WR-017, REQ-WR-023.
 
 ### AC-WR-005 — gh-absent path: fallback is the sole source, notice fires once
 
@@ -168,8 +175,10 @@ tree carries an untracked file,
 go test ./internal/cli/ -run '^TestPRMergeCleanup_ZeroUniqueCommitPreserved$' -v -count=1 2>&1 \
   | grep -c '^--- PASS: TestPRMergeCleanup_ZeroUniqueCommitPreserved'
 ```
-Expected: `1`. **Pre-impl observed: `0`**.
-**Covers:** REQ-WR-018, REQ-WR-017.
+Expected: `1`. **Pre-impl observed: `0`**. Variant (b) additionally asserts the
+preserve notice carries the **dirty** cause token (REQ-WR-023) — it is the one
+of the five cause tokens no other criterion exercises.
+**Covers:** REQ-WR-018, REQ-WR-017, REQ-WR-023.
 
 This is the criterion that pins the removal class M1 newly reaches. Live
 instance of the class on this tree: `WT-worktree-reaper`, this SPEC's own
@@ -276,7 +285,7 @@ go test ./internal/session/ -run '^TestAnchorDecision_RegistryOnlyPathStillAncho
 Expected: `1` and `1`. **Pre-impl observed: `1` and `0`** (the first is the
 existing t73 guard, which must stay green — that is what proves the registry
 source was retained rather than replaced).
-**Covers:** REQ-WR-009, REQ-WR-010, REQ-WR-011, REQ-WR-020.
+**Covers:** REQ-WR-009, REQ-WR-010, REQ-WR-011, REQ-WR-020, REQ-WR-023.
 
 The no-lock fixture is exactly the unlocked-anchor shape REQ-WR-020 records: the lock source has *no opinion*, not a negative, and the tree survives only because the registry happened to see it. The criterion pins the union's behaviour; it does not establish that the registry is reliable — measured, it is 1-of-5 — which is why REQ-WR-020 is a recorded residual rather than a closed case.
 
@@ -294,7 +303,7 @@ go test ./internal/cli/ -run '^TestPRMergeCleanup_T207SamplePreservedByLock$' -v
   | grep -c '^--- PASS: TestPRMergeCleanup_T207SamplePreservedByLock'
 ```
 Expected: `1`. **Pre-impl observed: `0`**.
-**Covers:** REQ-WR-006, REQ-WR-007, REQ-WR-011.
+**Covers:** REQ-WR-006, REQ-WR-007, REQ-WR-011, REQ-WR-023.
 
 **Mandatory sample criterion.** The empty registry is what makes it exercise
 the lock guard: t207 is the one tree the registry can see, so a criterion that
@@ -321,7 +330,7 @@ Expected: `1` and `1`. **Pre-impl observed: `0` and `1`**.
 This is the criterion that makes the repair reach the consumer with the wider
 blast radius: `cleanStaleWorktrees` sweeps **all** registered trees (its
 provider is `git worktree list --porcelain`), not just `WT-*`, and consumes the
-same blind `LiveAnchoredSessions` today (`internal/cli/worktree/clean.go:162`).
+same blind `LiveAnchoredSessions` today (`internal/cli/worktree/clean.go:163`).
 
 ### AC-WR-016 — a porcelain parse failure removes nothing
 
@@ -362,6 +371,41 @@ as a second *refusal* cause — models a condition measured not to exist (EC-9),
 it is gone. And its declared assertion was string **inequality**, which any two
 distinct literals satisfy including ones that name nothing; REQ-WR-023 requires
 the notice to *name* the cause, so the assertion is now a positive token match.
+
+### AC-WR-024b — the refusal fall-through preserves, names the cause, and does not abort
+
+**Given** two merged, clean, unanchored candidates in one sweep, the **first**
+of which is NOT in the pre-detection set but whose removal git refuses (the
+removal seam returns a refusal error),
+**When** `prMergeCleanup` runs,
+**Then** the first is preserved with a notice carrying a cause-specific token
+drawn from git's refusal, the sweep **continues to the second candidate** and
+processes it, and the caller is not aborted.
+
+```
+go test ./internal/cli/ -run '^TestPRMergeCleanup_RefusalFallThroughNamesCauseAndContinues$' -v -count=1 2>&1 \
+  | grep -c '^--- PASS: TestPRMergeCleanup_RefusalFallThroughNamesCauseAndContinues'
+go test ./internal/cli/ -run '^TestPRMergeCleanup_RemovalFailureFailOpen$' -v -count=1 2>&1 \
+  | grep -c '^--- PASS: TestPRMergeCleanup_RemovalFailureFailOpen'
+```
+Expected: `1` and `1`. **Pre-impl observed: `0` and `1`.**
+**Covers:** REQ-WR-021, REQ-WR-016, REQ-WR-023.
+
+**Why this criterion is required rather than optional.** REQ-WR-021 was
+re-derived at v0.3.0 over the *observable* — "when non-forced removal refuses,
+preserve and name the cause" — with pre-detection as a narrower, explicitly
+**non-exhaustive** optimisation on top. Both other covering criteria (AC-WR-012,
+AC-WR-024) exercise only the pre-detection limb, which left the defining limb
+untested. A requirement defined over a deliberately open set needs its
+fall-through exercised *more* than an enumerated one, not less — it is the path
+every unlisted member takes, and EC-12's submodule case leans on it in prose
+with nothing executing it.
+
+The existing `TestPRMergeCleanup_RemovalFailureFailOpen` is cited as the
+regression anchor and asserts only that a `PR-merge cleanup failed` notice
+appears. It does not assert a cause-specific token, and it uses a single
+candidate so it cannot observe that the sweep continues. Those two gaps are what
+the new test adds.
 
 ### AC-WR-025 — the ignored-content prevalence measurement (M1 precondition)
 
@@ -590,7 +634,7 @@ sweeps under the blind guard). Evidence is persisted under
 
 ## §F — Definition of Done
 
-- [ ] All 26 criteria run with the exact commands above; each `grep -c` output
+- [ ] All 27 criteria run with the exact commands above; each `grep -c` output
       cited verbatim
 - [ ] Every new-test criterion moved from its recorded pre-impl `0` to `1`
 - [ ] AC-WR-023(a) executed; (b) executed only with explicit operator

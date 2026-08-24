@@ -27,7 +27,7 @@ the ordering caveat restated (§F preamble).
 | B2 | `ghPRViewStateReal` (:230) | `""` overloaded across three distinct causes | REQ-WR-001 |
 | B3 | `prMergeCleanup` anchor guard (:168) | registry-only; names 1 of 5 measured live anchors | REQ-WR-006/009 |
 | B4 | `parseWorktreeList` (:82) | discards the `locked` line, so the authoritative signal never reaches the guard | REQ-WR-006 |
-| B5 | `cleanStaleWorktrees` (`worktree/clean.go:162`) | consumes the same blind guard, over **all** registered trees | REQ-WR-019 |
+| B5 | `cleanStaleWorktrees` (`worktree/clean.go:163`) | consumes the same blind guard, over **all** registered trees | REQ-WR-019 |
 | B6 | `newCleanCmd` (`worktree/clean.go:34`) | `--base` defaults to local `main`, diverging from `prMergeCleanup`'s `origin/main` | REQ-WR-022 |
 | B7 | `newCleanCmd` flag set | no machine-readable output | REQ-WR-012 |
 | B8 | `isProcessAlive` (`session/anchor_pid_*.go`) | bare `bool` cannot express an undetermined probe | REQ-WR-008 |
@@ -114,6 +114,11 @@ M1 and M2 are otherwise independent. M3 depends on M2 for the anchor column.
 
 *Priority: High.*
 
+[HARD] **Blocked on §C.1 (AC-WR-025) — do not start until the `design.md` §A.7
+fork is closed.** M1 is what makes ~98 merged trees removable in one sweep; if
+ignored content proves near-universal, the policy that fork selects determines
+whether those removals destroy anything.
+
 1. Change `sessionWorktreeGhPRViewState` to `func(branch string) (string, bool)`;
    `ghPRViewStateReal` returns `("", false)` on non-zero exit or unparseable
    JSON, `(state, true)` otherwise.
@@ -138,7 +143,7 @@ layer is withdrawn; there are two.
 
 Files: `internal/cli/session_worktree_prmerge.go` + its two test files.
 
-### M2 — anchor-guard repair, shared by both consumers
+### M2 — anchor-guard repair, shared by all three consumers
 
 *Priority: High. Safety-critical.*
 
@@ -160,23 +165,24 @@ Files: `internal/cli/session_worktree_prmerge.go` + its two test files.
    (REQ-WR-021). Every preserve notice carries a cause-specific token
    (REQ-WR-023). Do **not** change `worktreeIsDirty` — it is shared with the M4
    session-exit path (`design.md` §B.6a).
-5. Wire the `--merged-only` path (`internal/cli/worktree/clean.go:95`) to the
+5. Wire `cleanStaleWorktrees` (`internal/cli/worktree/clean.go:163`) to the same
+   decision, replacing its direct `LiveAnchoredSessions` call, and give it a
+   lock-aware keep-reason (REQ-WR-019).
+6. Wire the `--merged-only` path (`internal/cli/worktree/clean.go:95`) to the
    same decision — the third consumer, and the one with no dirty guard of its
    own (REQ-WR-019, AC-WR-026).
-6. **Ignored-content handling is NOT implemented in M2.** It is governed by
+7. **Ignored-content handling is NOT implemented in M2.** It is governed by
    `design.md` §A.7's open fork and gated on the AC-WR-025 measurement
-   (REQ-WR-024). Implementing a probe before that measurement risks shipping
-   policy P1 into a population where it cancels M1.
-5. Wire `cleanStaleWorktrees` to the same decision, replacing its direct
-   `LiveAnchoredSessions` call, and give it a lock-aware keep-reason
-   (REQ-WR-019).
-7. Add `TestLockAnchor_LivePidAnchored`, `…_DeadPidNotAnchored`,
+   (REQ-WR-024). Implementing a probe before that measurement ships policy P1 by
+   default into a population where it may cancel M1.
+8. Add `TestLockAnchor_LivePidAnchored`, `…_DeadPidNotAnchored`,
    `…_IndeterminateIsAnchored`, `…_DeadLockRemovalIsInert`,
    `TestAnchorDecision_RegistryOnlyPathStillAnchors` (`internal/session`);
    `TestParseWorktreeList_CapturesLockReason`,
    `TestPRMergeCleanup_PorcelainFailureRemovesNothing`,
    `TestPRMergeCleanup_T207SamplePreservedByLock`,
-   `TestPRMergeCleanup_RefusalClassNamesCause` (`internal/cli`);
+   `TestPRMergeCleanup_RefusalClassNamesCause`,
+   `TestPRMergeCleanup_RefusalFallThroughNamesCauseAndContinues` (`internal/cli`);
    `TestCleanStale_LockAnchoredWorktreeKept`,
    `TestCleanMergedOnly_LockAnchoredWorktreeKept` (`internal/cli/worktree`).
 
@@ -247,7 +253,7 @@ Files: `internal/cli/worktree/clean.go` + tests,
 
 - `spec.md` — 24 requirements, constraints, out of scope
 - `design.md` — D1 seam signature, D2 fail-closed table + probe seam + dead-lock policy, D3 the reworked M3 option set, §D the corrected ordering caveat
-- `acceptance.md` — 26 criteria, the falsifiable command form, per-criterion pre-implementation baselines
+- `acceptance.md` — 27 criteria, the falsifiable command form, per-criterion pre-implementation baselines
 - `research.md` — the two-sweep survey, seam/test conventions, platform probes
 - `.moai/reports/t209/investigation.md` — the original measured survey
 - `.moai/reports/t209/plan-audit.md` — iteration-1 audit

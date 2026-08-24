@@ -205,5 +205,5 @@ a general hazard for SPEC authoring in this repository, not specific to t209.
   for *including* it: with no dirty guard, its blind `LiveAnchoredSessions` call
   (`clean.go:95`) is the sole protection between that sweep and a live lane's
   tree. It is now the third consumer named by REQ-WR-019 and exercised by
-  AC-WR-026. See §A, whose two-sweep table is correspondingly a three-sweep
-  table.
+  AC-WR-026. See the v0.3.0 correction note directly above §A's table, which
+  records the third consumer that the two-column table below it does not carry.

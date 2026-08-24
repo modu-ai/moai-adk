@@ -199,22 +199,58 @@ recording, for each tree that M1 would newly unblock (merged, porcelain-clean,
 unanchored), whether it carries any `!!` entry — and if so, whether every such
 entry lies under a regenerable path.
 
-**The decision rule, fixed now:**
+**The candidate policies:**
 
-| Measured outcome | Policy |
-|---|---|
-| P1 preserves **≤ half** the trees M1 unblocks | **P1 — preserve on any ignored content.** Simplest, safest, and its cost is bounded. |
-| P1 preserves **more than half** | P1 is too blunt — it would cancel M1. Choose between **P2** and **P3** below. |
-
-- **P2 — classify by path.** Treat a declared set of regenerable paths
-  (`.moai/state/`, build output) as destroyable and preserve on anything else,
-  so a local `.env` is protected while a statusline cache is not. Cost: the
-  allowlist is a new thing to maintain and is wrong by default for any project
-  MoAI has not seen.
+- **P1 — preserve on any ignored content.** Simplest and safest; cost is bounded
+  only if the condition is rare.
+- **P2 — classify by path.** Treat an enumerated set of regenerable paths as
+  destroyable and preserve on anything else, so a local `.env` is protected
+  while a statusline cache is not. Cost: an allowlist to maintain.
 - **P3 — accept the loss explicitly.** Keep today's behaviour, document that
-  ignored content in a merged clean worktree is destroyed, and say so in the
-  removal notice. Cost: honest, and matches git's own default, but a local
-  `.env` is genuinely unrecoverable.
+  ignored content in a merged clean worktree is destroyed, and name it in the
+  removal notice. Cost: honest and matching git's own default, but a local
+  `.env` is unrecoverable.
+
+**The decision rule, fixed now — two sequential questions, both answered by
+AC-WR-025's own output.** No branch of this rule terminates in a judgement call.
+
+**Q1 — would P1 preserve more than half the trees M1 unblocks?**
+
+| Answer | Policy |
+|---|---|
+| **No** | **P1.** The condition is rare enough that blanket preservation costs little and M1 still delivers. Stop here. |
+| **Yes** | P1 would cancel M1 — it is too blunt. Proceed to Q2. |
+
+**Q2 — among the M1-unblocked trees, is there at least one carrying ignored
+content OUTSIDE the regenerable set?**
+
+| Answer | Policy | Why this is decisive, not a preference |
+|---|---|---|
+| **No — every ignored entry is regenerable** | **P3.** | P2 and P3 would behave **identically** on the measured population: P2 classifies every observed entry as regenerable and destroys it, which is what P3 does. P2's allowlist would then protect nothing that exists, so it is unearned complexity — Simplicity ladder step 1, "does this need to be built at all?". |
+| **Yes — at least one tree carries irreplaceable ignored content** | **P2.** | There is a measured population that P3 destroys irrecoverably and P2 preserves exactly. The allowlist earns its complexity by protecting a set that was observed, not imagined. |
+
+**Why Q2 is a measurement and not a preference.** AC-WR-025 already collects the
+discriminating datum ("and if so, whether every such entry lies under a
+regenerable path"); until v0.3.1 no rule consumed it, which left the P2/P3 branch
+terminating in "choose between P2 and P3" — a preference wearing a procedure's
+clothes, and precisely the failure this section exists to avoid. The rule above
+consumes it.
+
+**Two sub-rules that keep Q2 from smuggling a judgement back in:**
+
+1. **The regenerable set is enumerated FROM the measurement, not invented ahead
+   of it.** AC-WR-025 records the actual ignored paths observed across the
+   unblocked trees. The regenerable set is drawn from that concrete list
+   (`.moai/state/`, build-output directories), so the classification is applied
+   to paths in hand rather than to a hypothetical allowlist.
+2. **Unclassifiable ⇒ irreplaceable.** Any observed ignored path the operator
+   cannot confidently classify counts as irreplaceable, which routes Q2 to
+   **P2**. This is fail-closed, consistent with every other guard in this SPEC
+   (`design.md` §B.4), and it means uncertainty selects the preserving policy
+   rather than being resolved by taste.
+
+[HARD] **This rule lands before the fork is closed, not merely before M1.** A
+gate whose final branch is a judgement call shows green while deciding nothing.
 
 **What is NOT deferred:** the fork, the candidate policies, the rule that selects
 between them, and the measurement that feeds it are all fixed here. Only the
@@ -522,7 +558,7 @@ code. The three measured gaps that extension closes:
 |---|---|---|
 | No machine-readable output | flag set is `--merged-only`, `--stale`, `--yes`, `--base` — no `--json` | REQ-WR-012 |
 | Base defaults to **local** `main` | `cmd.Flags().String("base", "main", …)`; `prMergeCleanup` compares against `origin/main` — the two sweeps can disagree | REQ-WR-022 |
-| Same blind anchor source | `clean.go:162` calls `LiveAnchoredSessions` | REQ-WR-019 |
+| Same blind anchor source | `clean.go:163` calls `LiveAnchoredSessions` | REQ-WR-019 |
 
 **Tool or documented procedure?** The card asks explicitly. The answer is
 **both, split by what each is good at** — but the tool half is now *extension*

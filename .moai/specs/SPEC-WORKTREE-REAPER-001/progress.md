@@ -2,7 +2,7 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-**v0.3.0 (post-audit-iteration-2 correction), 2026-08-24**
+**v0.3.1 (post-audit-iteration-3 gate closure), 2026-08-24**
 
 - Tier: L. Artifacts: `spec.md`, `plan.md`, `acceptance.md`, `design.md`,
   `research.md`, `progress.md` — the full Tier L set (`research.md` added at
@@ -10,12 +10,14 @@
 - Requirements: **24** (REQ-WR-001 … REQ-WR-024), GEARS notation, no gaps or
   duplicates. IDs 001-017 keep their v0.1.0 numbering; 018-024 are amendment
   additions placed in their owning milestone.
-- Acceptance criteria: **26**. Every criterion carries a `Covers:` line and a
+- Acceptance criteria: **27**. Every criterion carries a `Covers:` line and a
   recorded pre-implementation observation; 24/24 requirements covered.
-- Audit iteration 2 verdict: FAIL 0.84 (threshold 0.85), trajectory 0.55 → 0.84,
-  no regressions, 18 of 19 iteration-1 findings closed, and **all 23 recorded
-  `Pre-impl observed:` values independently reproduced**. Report:
-  `.moai/reports/t209/plan-audit-iter2.md`.
+- Audit trajectory: iter-1 FAIL 0.55 → iter-2 FAIL 0.84 → **iter-3 PASS 0.875**
+  (threshold 0.85), zero regressions across all three, D1 re-verified at
+  iteration 3 across 29 distinct test names with 0 discrepancies. Reports:
+  `.moai/reports/t209/plan-audit{,-iter2,-iter3}.md`. v0.3.1 closes the two
+  remaining blocking findings (F1 decision-rule decisiveness, F2 the fail-open
+  criterion) plus residue.
 - Audit iteration 1 verdict: FAIL 0.55 (Testability 0.30, Traceability 0.55);
   all seven must-pass criteria passed. Report:
   `.moai/reports/t209/plan-audit.md`.
@@ -35,14 +37,19 @@ go test ./internal/cli/ -run '^TestDoesNotExistAtAll$' -v -count=1 \
 All criteria now use the second-form-falsifiable command. `acceptance.md` §0
 carries the baseline and the mechanical proof that no new test name exists yet.
 
-**Design decisions resolved at plan-phase** (no `[NEEDS CLARIFICATION]` markers
-remain):
+**Design decisions resolved at plan-phase** — all except the §A.7
+ignored-content fork, which is deliberately open and gated on a measurement (see
+the OPEN DECISION block below). No `[NEEDS CLARIFICATION]` markers are used: the
+fork is settled by measurement rather than by preference, and every branch of
+its decision rule now terminates in a measured answer (`design.md` §A.7, Q1/Q2):
 
 - D1 — merge seam becomes `(string, bool)` (`design.md` §A.1).
 - D2 — the zero-unique-commit removal class is **accepted**, bounded by the
   existing dirty guard, not excluded by a redundant predicate (§A.4).
-- D3 — the anchor decision lives in `internal/session` and reaches **both**
-  consumers, `prMergeCleanup` and `cleanStaleWorktrees` (§B.9).
+- D3 — the anchor decision lives in `internal/session` and reaches **all three**
+  blind consumers: `prMergeCleanup`, `cleanStaleWorktrees`
+  (`internal/cli/worktree/clean.go:163`), and the `--merged-only` path
+  (`clean.go:95`, the one with no dirty guard of its own) — §B.9.
 - D4 — the M3 deliverable is an **extension of `moai worktree clean --stale`**
   (option O3-d), reversing v0.1.0's parallel-inventory decision (§C.4).
 - D5 — the liveness probe becomes `(alive, determined)` with a per-platform
@@ -82,7 +89,11 @@ hosted a session. If so, a preserve-on-ignored policy cancels M1's unblocking of
 the ~98 merged trees. Candidate policies P1 (preserve on any ignored content),
 P2 (classify regenerable vs irreplaceable by path), P3 (accept the loss
 explicitly) and the rule selecting between them are all fixed at plan-phase;
-only the measured input is outstanding.
+only the measured input is outstanding. The rule is two sequential questions,
+**both answered by AC-WR-025's own output** — Q1 decides P1-vs-rest on
+prevalence, Q2 decides P2-vs-P3 on whether any observed ignored path lies
+outside the regenerable set, with unclassifiable paths counting as
+irreplaceable (fail-closed). No branch terminates in a judgement call.
 
 **Third blind consumer named.** REQ-WR-019 now covers all three
 `LiveAnchoredSessions` call sites; the `--merged-only` path
