@@ -44,7 +44,9 @@ related_specs: [SPEC-CODEX-WIRING-001, SPEC-CODEX-DUAL-AGENTS-001]
 
 ### §B.1 생성기는 이미 있다
 
-`moai init --agent claude|codex|both` 가 `.codex/hooks.json` · `.codex/config.toml` 을 만든다 (전사본 L234-236, L211-214). 에이전트 TOML 11종은 템플릿에 있다 (L216-232). 이 SPEC 은 그 생성기를 **부를** 뿐이다.
+`moai init` 이 `codexwiring.Wire(projectRoot, …)` 를 부르고 (`internal/cli/init.go:170` — 전사본 L303-305), `Wire` 가 두 경로를 조립해 (L292-295) 각각 `writeAtomic` 으로 **쓴다** (L297-301). 즉 배선 파일을 만드는 주체는 이 SPEC 이 아니라 그 생성기다. 경로 상수 `HooksRelPath` · `ConfigRelPath` 는 `codexwiring` 이 소유하고 (L211-214), `--agent` 가 받는 값은 `claude, codex, both` 다 (L234-236). 에이전트 TOML 11종은 템플릿에 있다 (L216-232). 이 SPEC 은 그 생성기를 **부를** 뿐이다.
+
+> 인용 규율: 위 세 줄 범위는 각각 **그 주장을 보여주는** 명령의 출력이다 — 경로 상수 선언(L211-214)은 "생성한다" 의 근거가 아니어서 쓰기 호출(L297-301)을 따로 측정해 붙였다 (`probe-addendum.sh`).
 
 ### §B.2 이 저장소 자체가 미배선이다
 

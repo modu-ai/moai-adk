@@ -276,3 +276,41 @@ rc=0
 
 ### probe result
 PROBE OK: every command exited as expected
+
+### ADDENDUM A — claims whose cited range did not show them (iter7 F1)
+
+## A-1 branch name of the measured tree
+$ git rev-parse --abbrev-ref HEAD
+WT-codex-launcher
+rc=0
+
+## A-2 the generator writes both wiring files
+$ grep -n "func Wire(" internal/codexwiring/wire.go
+43:func Wire(projectRoot string, out, warn io.Writer) (Result, error) {
+rc=0
+
+$ grep -nE "(hooksPath|cfgPath) := filepath.Join\(projectRoot, (Hooks|Config)RelPath\)" internal/codexwiring/wire.go
+62:	hooksPath := filepath.Join(projectRoot, HooksRelPath)
+111:	cfgPath := filepath.Join(projectRoot, ConfigRelPath)
+rc=0
+
+$ grep -nE "writeAtomic\((hooksPath|cfgPath), " internal/codexwiring/wire.go
+101:			if err := writeAtomic(hooksPath, rendered); err != nil {
+119:			if err := writeAtomic(cfgPath, cfgNext); err != nil {
+125:			if err := writeAtomic(cfgPath, cfgNext); err != nil {
+rc=0
+
+$ grep -n "codexwiring.Wire(projectRoot" internal/cli/init.go
+170:	if _, err := codexwiring.Wire(projectRoot, cmd.OutOrStdout(), cmd.ErrOrStderr()); err != nil {
+rc=0
+
+## A-3 ChatGPT credential keys present in a real auth.json (shape only, no values)
+$ sed -n "150,166p" .moai/reports/t197/probe-output.txt | grep -E "id_token|access_token|refresh_token|account_id"
+  "id_token": "str",
+  "access_token": "str",
+  "refresh_token": "str",
+  "account_id": "str"
+rc=0
+
+### addendum result
+ADDENDUM OK: every command exited as expected

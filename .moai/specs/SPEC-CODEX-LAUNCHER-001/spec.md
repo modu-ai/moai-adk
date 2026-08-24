@@ -33,7 +33,11 @@ related_specs: [SPEC-CODEX-DUAL-AGENTS-001, SPEC-CODEX-SKILLS-CANONICAL-001, SPE
 
 ## §A. 측정 전제 (Verified baseline)
 
-> 근거: `.moai/reports/t197/` — 자기완결 측정 스크립트 `probe.sh`, 그 1회 실행 무편집 전사본 `probe-output.txt` (**측정 대상 트리 `1ed61e4ac`** — 전사본 L24-26 이 스스로 찍은 값), 그리고 전사본의 줄 범위를 인용하며 해석하는 `measurement.md`. 미관측 항목은 그 문서 말미에 명시돼 있다. 인용 정합은 `citation-sweep.sh` 로 확인한다.
+> 근거: `.moai/reports/t197/` — 자기완결 측정 스크립트 `probe.sh`, 그 1회 실행 무편집 전사본 `probe-output.txt` (**측정 대상 트리 `1ed61e4ac`** — 전사본 L24-26 이 스스로 찍은 값), 그리고 전사본의 줄 범위를 인용하며 해석하는 `measurement.md`. 미관측 항목은 그 문서 말미에 명시돼 있다.
+>
+> 인용은 `citation-sweep.sh` 가 **판정한다** — 통과면 rc 0, 드리프트면 rc 1. 다섯 가지를 본다: 산문의 커밋 핀이 전사본이 스스로 찍은 핀과 같은가, 인용한 줄 범위가 전사본 길이 안에 있는가, 그 인용이 `citation-manifest.txt` 의 행에 묶여 있는가, **그 줄 범위가 실제로 그 주장의 근거를 담고 있는가**, 그리고 더 이상 인용되지 않는 manifest 행이 남아 있지 않은가. 네 번째가 핵심이다 — 줄 번호는 맞는데 그 줄이 주장과 무관한 형태를 잡는다.
+> 산문이 그 근거의 **올바른 해석인지** 는 판정하지 않는다. 그건 사람이 읽는다.
+> 이 게이트 자체는 `gate-selftest.sh` 가 검증한다 — 다섯 검사마다 통과해서는 안 되는 입력을 하나씩 주입해 실제로 rc 1 을 관측하고, 건드린 파일을 바이트 동일로 되돌린다.
 > t88 (M4) 산출물 `7b217da7c` 가 이 트리의 조상임을 확인했다.
 
 ### §A.1 `moai codex` 는 없다 (카드 전제 성립)

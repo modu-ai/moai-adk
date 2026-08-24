@@ -4,7 +4,8 @@
 
 | 항목 | 결과 | 근거 |
 |---|---|---|
-| 측정 대상 트리 | `1ed61e4ac` (브랜치 `WT-codex-launcher`) | 전사본 L24-26 |
+| 측정 대상 트리 | `1ed61e4ac` | 전사본 L24-26 |
+| 측정 대상 브랜치 | `WT-codex-launcher` | 전사본 L283-285 |
 | t88 M4 포함 | 포함 (`7b217da7c` 조상) | `git merge-base --is-ancestor` rc 0 |
 | `moai codex` 부재 | 확인 | `.moai/reports/t197/measurement.md` M-1 |
 | auth `unknown` 재현 | 재현 + 원인 확정 | 같은 문서 M-2 |
@@ -172,11 +173,11 @@ func readCodexAuthFile(codexHome string) (provider string, ok bool, err error)
 
 `(4)` 에 `err` 를 붙인 것은 AC 와 시그니처가 어긋나 있었기 때문이다 — 앞선 안의 AC 는 "반환된 오류의 `Error()`" 를 검사하는데 시그니처에는 오류도 경로도 없어 **작성 불가능한 AC** 였다. 오류 문안(경로·사유만, 본문 미포함) 판정은 경로를 아는 `(5)` 의 계약으로 옮긴다.
 
-**프로덕션 결합 경로도 한 번은 실제로 시험한다.** `defaultLoginStatusRunner` 를 **fixture 실행 파일** — `testdata/` 에 커밋된, stdout 을 비우고 stderr 로 한 줄만 쓰는 스크립트 — 에 대고 돌려 두 스트림이 실제로 분리 수집되는지 본다. 세 가지를 지킨다:
+**프로덕션 결합 경로도 실제로 시험한다.** `defaultLoginStatusRunner` 를 **fixture 실행 파일 3종** — `testdata/` 에 커밋된 stderr 전용 / stdout 전용 / 양쪽 스크립트 — 에 대고 돌려 두 스트림이 실제로 분리 수집되는지, 그리고 결합 결과가 세 칸 모두에서 그 줄들을 담는지 본다 (한 축만 두면 한쪽 스트림을 버리는 구현과 올바른 구현이 구별되지 않는다 — AC-CL-008). 세 가지를 지킨다:
 
 - fixture 는 `exec` 로 **직접** 실행한다. 셸을 경유하지 않으므로 인자 해석·인용 문제가 없다.
 - 자기 자신을 재실행하는 헬퍼 프로세스 방식은 쓰지 않는다 — `go test` 에서 자기 바이너리를 다시 부르면 수트가 재귀 실행된다.
-- Windows 에서는 이 한 건만 skip 한다. 나머지 순수 함수 시험((2)(3)(4))은 전 플랫폼에서 돈다.
+- Windows 에서는 이 세 칸만 skip 한다. 나머지 순수 함수 시험((2)(3)(4))은 전 플랫폼에서 돈다 — GOOS skip 은 이 셋뿐이며 그 개수를 AC-CL-014 가 센다.
 
 `classifyCodexAuth` 는 (5) → (1)+(2)+(3) 순으로 부르는 얇은 조립부가 되고, `codexCommandRunner` 인터페이스와 그 세 구현체는 무변경 → `--version` 경로도 무변경.
 
