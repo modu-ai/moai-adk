@@ -388,3 +388,78 @@ func TestConcurrentSendPoll(t *testing.T) {
 		t.Fatalf("%d unique messages, want %d", len(uniq), total)
 	}
 }
+
+// TestPollBatchCeiling pins config.DefaultSessionMsgPollBatch as the
+// per-poll claim ceiling (REQ-CSM-006): one poll claims exactly the ceiling
+// and reports the rest as Remaining; the next poll drains the remainder.
+//
+// Mutant this test catches that a shallower one would not: an implementation
+// that claims everything and merely REPORTS Remaining correctly (or reports
+// 0) passes any assertion made only on len(res.Messages) <= batch or only on
+// Remaining. Both the claimed count AND the exact Remaining are pinned on
+// both polls, and the second poll's batch is checked for the exact overflow.
+func TestPollBatchCeiling(t *testing.T) {
+	root := t.TempDir()
+	clk := &FakeClock{Current: time.Date(2026, 8, 24, 9, 0, 0, 0, time.UTC)}
+	s := NewStore(root, clk)
+
+	sender, err := s.Register(KindClaude, "sender", "")
+	if err != nil {
+		t.Fatalf("register sender: %v", err)
+	}
+	receiver, err := s.Register(KindCodex, "receiver", "")
+	if err != nil {
+		t.Fatalf("register receiver: %v", err)
+	}
+
+	batch := config.DefaultSessionMsgPollBatch
+	overflow := 3
+	total := batch + overflow
+	sent := make(map[string]bool, total)
+	for i := 0; i < total; i++ {
+		id, err := s.Send(sender.AgentID, receiver.AgentID, fmt.Sprintf("m%d", i), nil, "", "")
+		if err != nil {
+			t.Fatalf("send %d: %v", i, err)
+		}
+		sent[id] = true
+	}
+
+	first, err := s.Poll(receiver.AgentID, nil)
+	if err != nil {
+		t.Fatalf("first poll: %v", err)
+	}
+	if len(first.Messages) != batch {
+		t.Errorf("first poll claimed %d messages, want exactly the ceiling %d", len(first.Messages), batch)
+	}
+	if first.Remaining != overflow {
+		t.Errorf("first poll Remaining = %d, want %d", first.Remaining, overflow)
+	}
+
+	// Everything claimed must actually have left pending: the second poll
+	// sees only the overflow.
+	second, err := s.Poll(receiver.AgentID, nil)
+	if err != nil {
+		t.Fatalf("second poll: %v", err)
+	}
+	if len(second.Messages) != overflow {
+		t.Errorf("second poll claimed %d messages, want the %d-message overflow", len(second.Messages), overflow)
+	}
+	if second.Remaining != 0 {
+		t.Errorf("second poll Remaining = %d, want 0", second.Remaining)
+	}
+
+	seen := map[string]bool{}
+	for _, env := range append(append([]Envelope{}, first.Messages...), second.Messages...) {
+		id := env.Message.MessageID
+		if seen[id] {
+			t.Errorf("message %s delivered twice across the two polls", id)
+		}
+		seen[id] = true
+		if !sent[id] {
+			t.Errorf("polled unknown messageId %s", id)
+		}
+	}
+	if len(seen) != total {
+		t.Errorf("drained %d distinct messages, want %d", len(seen), total)
+	}
+}

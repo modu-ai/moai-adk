@@ -76,6 +76,72 @@ func TestEnvelopeA2AAlignment(t *testing.T) {
 		}
 	})
 
+	// The broker DELIBERATELY diverges from A2A v1 ProtoJSON here. proto3
+	// JSON renders an enum as its NAME, so an A2A-conformant encoder emits
+	// "ROLE_USER" / "ROLE_AGENT"; this broker emits the lowercase short forms
+	// "user" / "agent" instead. That divergence is an on-disk contract, so it
+	// is pinned mechanically rather than left to the constants' declaration
+	// site — nothing else asserts the SERIALIZED value, and a silent edit to
+	// either constant would re-address every envelope already on disk without
+	// failing a single test.
+	t.Run("role serializes as the lowercase short form", func(t *testing.T) {
+		cases := []struct {
+			name string
+			role Role
+			want string
+		}{
+			{"agent role", RoleAgent, "agent"},
+			{"user role", RoleUser, "user"},
+		}
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				env := Envelope{
+					Message: Message{
+						MessageID: "msg-role",
+						Role:      tc.role,
+						Parts:     []Part{{Kind: PartKindText, Text: "x"}},
+					},
+					Delivery: Delivery{
+						SenderID:   "claude-abcd1234",
+						SenderKind: KindClaude,
+						SentAt:     now,
+						ExpiresAt:  now.Add(time.Hour),
+					},
+				}
+				data, err := json.Marshal(env)
+				if err != nil {
+					t.Fatalf("marshal envelope: %v", err)
+				}
+
+				// Byte-level: the exact on-disk pair, not a decoded
+				// equivalent. A decoded check would still pass if the JSON
+				// name drifted while the Go constant kept its value.
+				if !strings.Contains(string(data), `"role":"`+tc.want+`"`) {
+					t.Errorf("envelope JSON does not carry \"role\":%q: %s", tc.want, data)
+				}
+
+				// Decoded: pins the value itself, so a key rename elsewhere
+				// cannot make the substring check vacuously pass.
+				var raw map[string]any
+				if err := json.Unmarshal(data, &raw); err != nil {
+					t.Fatalf("unmarshal envelope: %v", err)
+				}
+				msg, ok := raw["message"].(map[string]any)
+				if !ok {
+					t.Fatalf("envelope JSON has no message object: %s", data)
+				}
+				if msg["role"] != tc.want {
+					t.Errorf("serialized role = %#v, want %q (A2A ProtoJSON would say %q — the divergence is deliberate)", msg["role"], tc.want, "ROLE_"+strings.ToUpper(tc.want))
+				}
+				// The A2A ProtoJSON enum-NAME form must NOT appear: emitting
+				// it would be a silent on-disk contract change.
+				if protoJSON := "ROLE_" + strings.ToUpper(tc.want); strings.Contains(string(data), protoJSON) {
+					t.Errorf("envelope JSON carries the A2A ProtoJSON enum name %q; the broker's on-disk contract is the lowercase short form: %s", protoJSON, data)
+				}
+			})
+		}
+	})
+
 	t.Run("delivery keys are camelCase broker names", func(t *testing.T) {
 		env := Envelope{
 			Message: Message{
@@ -232,6 +298,19 @@ func TestEnvelopeA2AAlignment(t *testing.T) {
 					m.Parts = []Part{{Kind: PartKindText, Text: "x", Data: json.RawMessage(`{"a":1}`)}}
 				},
 				wantSub: "text",
+			},
+			{
+				// Reciprocal of the case above. Without it a data part
+				// carrying text validates and serializes BOTH payload
+				// fields, leaving the kind discriminator ambiguous to every
+				// reader. wantSub pins the data-part message specifically —
+				// the bare substring "text" would also match the text-part
+				// error, so it could not tell the two branches apart.
+				name: "data part carrying text payload",
+				mutate: func(m *Message) {
+					m.Parts = []Part{{Kind: PartKindData, Text: "x", Data: json.RawMessage(`{"a":1}`)}}
+				},
+				wantSub: "must not carry a text payload",
 			},
 		}
 		for _, tc := range cases {

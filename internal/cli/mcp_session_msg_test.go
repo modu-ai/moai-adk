@@ -8,6 +8,8 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -237,6 +239,61 @@ func TestSessionMsgPollHandlerUnknownAgent(t *testing.T) {
 	}
 }
 
+// Path-safety boundary at the TOOL surface: a caller-supplied ack_ids entry
+// or agent_id carrying traversal segments is a structured tool error and
+// deletes nothing outside the broker state root.
+//
+// Mutant this test catches that a shallower one would not: an implementation
+// that rejects the traversal id but only AFTER the sweep/delete loop still
+// returns IsError while the victim file is already gone. The victim's
+// survival is asserted alongside IsError, so the ordering is pinned too.
+func TestSessionMsgPollHandlerRejectsTraversalIDs(t *testing.T) {
+	projectDir := sessionMsgTestEnv(t)
+
+	receiverRes := sessionMsgRegisterCall(t, "codex", "receiver")
+	receiverID, _ := sessionMsgStructuredMap(t, receiverRes)["agentId"].(string)
+	if receiverID == "" {
+		t.Fatal("register produced no agentId")
+	}
+
+	// A file outside the broker state root but inside the temp project.
+	victim := filepath.Join(projectDir, "victim.json")
+	if err := os.WriteFile(victim, []byte(`{"secret":true}`), 0o600); err != nil {
+		t.Fatalf("seed victim: %v", err)
+	}
+
+	poll := func(args map[string]any) *mcp.CallToolResult {
+		t.Helper()
+		req := mcp.CallToolRequest{}
+		req.Params.Name = "session_msg_poll"
+		req.Params.Arguments = args
+		res, err := handleSessionMsgPoll(context.Background(), req)
+		if err != nil {
+			t.Fatalf("poll handler Go error: %v", err)
+		}
+		return res
+	}
+
+	// claimed dir is <projectDir>/.moai/state/session-msg/mailbox/<id>/claimed
+	// — six levels below projectDir.
+	traversal := filepath.Join("..", "..", "..", "..", "..", "..", "victim")
+	res := poll(map[string]any{"agent_id": receiverID, "ack_ids": []any{traversal}})
+	if !res.IsError {
+		t.Errorf("traversal ack_ids entry %q accepted: %+v", traversal, res.StructuredContent)
+	}
+	if _, err := os.Stat(victim); err != nil {
+		t.Fatalf("file outside the broker state root was deleted via ack_ids: %v", err)
+	}
+
+	// The same enforcement on agent_id, which names the mailbox directory.
+	if res := poll(map[string]any{"agent_id": "../../../../../../victim"}); !res.IsError {
+		t.Errorf("traversal agent_id accepted: %+v", res.StructuredContent)
+	}
+	if res := poll(map[string]any{"agent_id": "codex-.."}); !res.IsError {
+		t.Errorf("agent_id containing .. accepted: %+v", res.StructuredContent)
+	}
+}
+
 // AC-CSM-007 (GWT §F): all four tools registered with the design.md §6 arg
 // contract; ONLY session_msg_list carries the read-only hint; every
 // description carries the discipline short-form token (AC-CSM-015 surface).
@@ -261,6 +318,16 @@ func TestSessionMsgToolsRegisteredWithHintsAndDiscipline(t *testing.T) {
 		"session_msg_register": {"kind", "name"},
 		"session_msg_send":     {"from_agent_id", "to_agent_id", "text"},
 		"session_msg_poll":     {"agent_id", "ack_ids"},
+	}
+	// The REQUIRED subset of the above. Asserting only Properties would let a
+	// dropped mcp.Required() through silently: the property still appears in
+	// the schema, so the caller-contract regression (an optional
+	// from_agent_id / agent_id / kind) would be invisible.
+	// ack_ids is deliberately absent — it is genuinely optional.
+	wantRequired := map[string][]string{
+		"session_msg_register": {"kind", "name"},
+		"session_msg_send":     {"from_agent_id", "to_agent_id", "text"},
+		"session_msg_poll":     {"agent_id"},
 	}
 	found := map[string]bool{}
 	for _, tool := range res.Tools {
@@ -291,6 +358,21 @@ func TestSessionMsgToolsRegisteredWithHintsAndDiscipline(t *testing.T) {
 				if !strings.Contains(props, `"`+want+`"`) {
 					t.Errorf("%s inputSchema missing property %q", tool.Name, want)
 				}
+			}
+		}
+
+		if wants, ok := wantRequired[tool.Name]; ok {
+			required := map[string]bool{}
+			for _, r := range tool.InputSchema.Required {
+				required[r] = true
+			}
+			for _, want := range wants {
+				if !required[want] {
+					t.Errorf("%s inputSchema does not mark %q required (got required=%v)", tool.Name, want, tool.InputSchema.Required)
+				}
+			}
+			if tool.Name == "session_msg_poll" && required["ack_ids"] {
+				t.Errorf("session_msg_poll marks ack_ids required; it is optional")
 			}
 		}
 	}

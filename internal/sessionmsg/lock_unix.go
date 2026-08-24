@@ -19,9 +19,16 @@ type agentLock struct {
 	fd int
 }
 
+// unacquiredFD is the sentinel for "this lock holds no descriptor". It must
+// NOT be 0: fd 0 is a perfectly valid descriptor the kernel hands out
+// whenever stdin is closed, and using it as the sentinel made release() a
+// silent no-op in exactly that case — leaking the flock for the process
+// lifetime (the next acquire then failed with EWOULDBLOCK).
+const unacquiredFD = -1
+
 // newAgentLock returns a fresh agentLock instance.
 func newAgentLock() *agentLock {
-	return &agentLock{}
+	return &agentLock{fd: unacquiredFD}
 }
 
 // acquire opens the lock companion file at lockPath and applies a
@@ -50,11 +57,11 @@ func (l *agentLock) release() error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
-	if l.fd == 0 {
+	if l.fd < 0 {
 		return nil
 	}
 	err := unix.Close(l.fd) // close releases the flock
-	l.fd = 0
+	l.fd = unacquiredFD
 	return err
 }
 

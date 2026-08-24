@@ -87,7 +87,13 @@ func (l *agentLock) release() error {
 	var overlapped windows.Overlapped
 	unlockErr := windows.UnlockFileEx(l.handle, 0, maxLen, maxLen, &overlapped)
 	closeErr := windows.CloseHandle(l.handle)
-	l.handle = windows.InvalidHandle
+	// CloseHandle leaves the handle OPEN when it fails, so dropping our only
+	// reference to it would leak the handle irrecoverably. Invalidate the
+	// field only on a successful close; on failure keep the handle so a
+	// later release() can retry it.
+	if closeErr == nil {
+		l.handle = windows.InvalidHandle
+	}
 	if unlockErr != nil {
 		return unlockErr
 	}

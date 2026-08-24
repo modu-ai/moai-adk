@@ -91,8 +91,10 @@ type PollResult struct {
 	AckedCount   int
 }
 
-// State-layout path helpers (design.md §2). agentId ("<kind>-<hex8>") and
-// broker-minted messageIds are filename-safe by construction.
+// State-layout path helpers (design.md §2). Every id these helpers join into
+// a path is filename-safe because the shape is ENFORCED at the public entry
+// points (Send/Poll call requireAgentID / requireMessageIDs before any path
+// is built) — not merely assumed from how the broker mints ids. See ids.go.
 func (s *Store) agentsDir() string           { return filepath.Join(s.root, "agents") }
 func (s *Store) agentPath(id string) string  { return filepath.Join(s.root, "agents", id+".json") }
 func (s *Store) mailboxDir(id string) string { return filepath.Join(s.root, "mailbox", id) }
@@ -197,6 +199,15 @@ func (s *Store) unknownAgentError(agentID, role string) error {
 // @MX:ANCHOR: [AUTO] broker send — validated atomic enqueue into recipient pending
 // @MX:REASON: fan_in >= 3 (M2 session_msg_send handler, e2e both directions, concurrency test). Envelope layout or validation changes here alter every receiver's on-disk contract.
 func (s *Store) Send(fromAgentID, toAgentID, text string, data json.RawMessage, contextID, taskID string) (string, error) {
+	// Shape enforcement BEFORE any path construction (ids.go): both ids are
+	// caller-supplied and are joined into state paths below.
+	if err := requireAgentID("from_agent_id", fromAgentID); err != nil {
+		return "", err
+	}
+	if err := requireAgentID("to_agent_id", toAgentID); err != nil {
+		return "", err
+	}
+
 	sender, err := s.readAgent(fromAgentID)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -268,6 +279,17 @@ func (s *Store) Send(fromAgentID, toAgentID, text string, data json.RawMessage, 
 // @MX:ANCHOR: [AUTO] broker poll — lazy sweep + atomic batch claim + ack deletion
 // @MX:REASON: fan_in >= 3 (M2 session_msg_poll handler, e2e receive path on both session kinds, concurrency test). Claim/sweep semantics define the broker's at-least-once delivery contract.
 func (s *Store) Poll(agentID string, ackIDs []string) (PollResult, error) {
+	// Shape enforcement BEFORE any path construction (ids.go). ack_ids are
+	// caller-supplied and are joined into claimed/ and pending/ delete
+	// targets below; a malformed entry rejects the whole call so no mutation
+	// happens on a partially-valid batch.
+	if err := requireAgentID("agent_id", agentID); err != nil {
+		return PollResult{}, err
+	}
+	if err := requireMessageIDs("ack_ids", ackIDs); err != nil {
+		return PollResult{}, err
+	}
+
 	if _, err := s.readAgent(agentID); err != nil {
 		if os.IsNotExist(err) {
 			return PollResult{}, s.unknownAgentError(agentID, "agent")

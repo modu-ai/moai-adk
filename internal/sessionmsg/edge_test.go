@@ -82,8 +82,10 @@ func TestAckPendingMessage(t *testing.T) {
 		t.Errorf("poll after pending ack delivered wrong batch: %+v", res.Messages)
 	}
 
-	// Acking an unknown id is tolerated (nothing to delete).
-	res2, err := s.Poll(receiver.AgentID, []string{"msg-doesnotexist"})
+	// Acking an unknown id is tolerated (nothing to delete). The id must
+	// still be WELL-FORMED — a malformed one is rejected outright (ids.go);
+	// this fixture is a valid msg-<hex16> that was simply never minted.
+	res2, err := s.Poll(receiver.AgentID, []string{"msg-0123456789abcdef"})
 	if err != nil {
 		t.Fatalf("poll with unknown ack: %v", err)
 	}

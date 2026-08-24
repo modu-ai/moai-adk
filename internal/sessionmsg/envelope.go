@@ -115,6 +115,12 @@ func (m *Message) Validate() error {
 			if !json.Valid(p.Data) {
 				return fmt.Errorf("sessionmsg: message validation: part[%d] kind %q carries invalid JSON data", i, p.Kind)
 			}
+			// Reciprocal of the text-part check above: a data part carrying
+			// text would serialize BOTH payload fields, leaving the kind
+			// discriminator ambiguous to every reader.
+			if p.Text != "" {
+				return fmt.Errorf("sessionmsg: message validation: part[%d] kind %q must not carry a text payload", i, p.Kind)
+			}
 		default:
 			return fmt.Errorf("sessionmsg: message validation: part[%d] has unsupported kind %q (want %q or %q; A2A raw|url excluded)", i, p.Kind, PartKindText, PartKindData)
 		}

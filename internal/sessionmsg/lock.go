@@ -66,14 +66,20 @@ var inProcessMutexes sync.Map // map[string]*sync.Mutex
 // lockTimeout, then returns ErrLockTimeout. fn MUST NOT acquire another
 // agent lock (no nesting — callers sequence lock scopes instead, which keeps
 // the lock graph acyclic by construction).
-func (s *Store) withAgentLock(lockName string, fn func() error) error {
+func (s *Store) withAgentLock(lockName string, fn func() error) (err error) {
 	lockPath := s.lockPath(lockName)
 	if err := os.MkdirAll(filepath.Dir(lockPath), 0o755); err != nil {
 		return fmt.Errorf("sessionmsg: mkdir locks: %w", err)
 	}
 
 	// In-process mutex: serializes same-process contenders deterministically.
-	absLockPath, _ := filepath.Abs(lockPath)
+	// A failed Abs falls back to the path as given rather than the empty
+	// string — an empty key would silently collapse every distinct lock onto
+	// one shared mutex for the process lifetime.
+	absLockPath, absErr := filepath.Abs(lockPath)
+	if absErr != nil {
+		absLockPath = lockPath
+	}
 	v, _ := inProcessMutexes.LoadOrStore(absLockPath, &sync.Mutex{})
 	ipm := v.(*sync.Mutex)
 	ipm.Lock()
@@ -95,7 +101,14 @@ func (s *Store) withAgentLock(lockName string, fn func() error) error {
 		}
 		time.Sleep(lockRetryDelay(attempt, time.Until(deadline)))
 	}
-	defer func() { _ = lock.release() }()
+	// A release failure is surfaced, not swallowed — but it must never mask
+	// the outcome of fn(), which is the caller's real result. Only a clean fn
+	// lets the release error become the returned error.
+	defer func() {
+		if relErr := lock.release(); relErr != nil && err == nil {
+			err = fmt.Errorf("sessionmsg: release lock %s: %w", lockPath, relErr)
+		}
+	}()
 
 	return fn()
 }

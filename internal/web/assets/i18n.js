@@ -624,7 +624,7 @@ window.MOAI_I18N = {
     "f.mcp.tools.session_msg_send.enabled.title": "Session message send",
     "f.mcp.tools.session_msg_send.enabled.desc": "Deliver a message to a registered peer session.",
     "f.mcp.tools.session_msg_poll.enabled.title": "Session message poll",
-    "f.mcp.tools.session_msg_poll.enabled.desc": "Claim the messages waiting in this agent inbox.",
+    "f.mcp.tools.session_msg_poll.enabled.desc": "Claim the messages waiting in this agent's inbox.",
     "sec.mcp.codex.title": "Codex authentication",
     "f.mcp.codex.binary": "Binary",
     "f.mcp.codex.version": "Version",
