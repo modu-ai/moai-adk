@@ -1,10 +1,10 @@
 ---
 id: SPEC-CODEX-VERDICT-SYNTH-001
 title: "인수 기준 — 미인식 서식이 통과로 떨어지지 않는다"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-08-24
-updated: 2026-08-24
+updated: 2026-08-25
 author: manager-spec
 priority: P1
 phase: "v3.1.4 target"
@@ -52,6 +52,37 @@ AC-CVS-001 은 **서식 목록이 아니라 속성**을 건다. 이유를 여기
 | C7 | 빈 문자열 | 응답 없음 |
 | C8 | 점수 표기 `FAIL 0.75 / 1.00` + 차단 2건 | 실측표 2행 — AC-CVS-002 가 `fail` 로 별도 고정 |
 
+## §B-2 [HARD] 조합 corpus — AC-CVS-006 의 증인
+
+AC-CVS-006 도 §B 와 같은 이유로 **속성형**이다. 다만 §B 의 corpus 가 *서식* 을 증언한다면, 여기서는 **신호 집합의 조합** 을 증언한다.
+
+규칙은 spec.md §A.5 의 **P-CONS** 다 — 채택값은 신호 **집합의 최댓값**이며, 순위는 `fail` > `inconclusive` > `pass`. 집합에는 순서가 없으므로 이 규칙은 신호가 몇 개로 늘든 그대로다.
+
+**쌍을 열거하는 AC 로 쓰면 안 된다.** "명시 × 점수" 쌍만 거는 AC 는 그 쌍만 특수 분기로 처리한 구현에 통과당하고, 넷째 신호가 오는 날 같은 자리가 다시 뚫린다 — 오늘 이 저장소에서 반복적으로 겪은, 구멍을 막으면 한 겹 옆으로 옮겨 가는 바로 그 모양이다.
+
+판별 기준은 §B 와 동일하다: **행을 하나 더 넣는 일이, 또는 신호를 넷째로 늘리는 일이 단언문 수정을 요구하면 그 AC 는 틀렸다.** 테이블 구동으로 쓰고 단언은 하나만 둔다.
+
+### 조합 구성 원칙
+
+- 각 행은 `(리뷰 본문, 그 본문이 산출하는 신호 집합, 기대 채택값)` 이다. 기대값은 언제나 집합의 최댓값이며 손으로 예외를 두지 않는다.
+- **같은 집합을 다른 텍스트 순서로 담은 행을 최소 한 쌍 포함한다** — 순서 의존 구현을 가르는 유일한 증인이다.
+- **`stated × scored` 가 아닌 쌍과 3-신호 행을 포함한다** — 쌍 특수화 구현을 가르는 증인이다.
+- **신호가 갈리지 않는 행을 포함한다** — 무조건 보수적으로 답하는 구현을 가르는 증인이다.
+- 넷째 신호가 생기면 행만 추가한다. 단언문도, 이 원칙 목록도 바뀌지 않는다.
+
+### 조합 corpus 구성원 (초기 8행)
+
+| # | 리뷰 본문이 담는 것 | 신호 집합 | 기대 채택값 | 이 행이 증언하는 것 |
+|---|---|---|---|---|
+| K1 | `Verdict: fail` → `PASS 0.95 / 1.00` | {fail, pass} | `fail` | 기본 세탁 반례 (mutant e) |
+| K2 | `PASS 0.95 / 1.00` → `Verdict: fail` (K1 과 **같은 집합, 순서만 반대**) | {fail, pass} | `fail` | **순서 무관** (mutant f) |
+| K3 | `Verdict: pass` → `FAIL 0.20 / 1.00` | {pass, fail} | `fail` | 반대 방향 세탁 |
+| K4 | `Verdict: inconclusive` → `PASS 0.95 / 1.00` | {inconclusive, pass} | `inconclusive` | 순위 중간값 (`pass` 아님) |
+| K5 | `PASS 0.95 / 1.00` + `- [P1] path traversal at fs.go:44` | {pass, fail} | `fail` | **`stated × scored` 가 아닌 쌍** (mutant g) |
+| K6 | `Verdict: pass` + `INCONCLUSIVE 0.50 / 1.00` + `- [P2] weak hash at auth.go:88` | {pass, inconclusive, fail} | `fail` | **3-신호** (mutant g) |
+| K7 | `INCONCLUSIVE 0.50 / 1.00` → `Verdict: pass` (K4 와 값 구성 동일, 담는 신호만 뒤바꿈) | {inconclusive, pass} | `inconclusive` | 순서 무관 (두 번째 증인) |
+| K8 | `Verdict: pass` → `PASS 0.99 / 1.00` (**갈리지 않음**) | {pass} | `pass` | 과잉 보수 방지 |
+
 ## §C 인수 기준
 
 ### AC-CVS-001 — 미인식 서식은 하나도 pass 가 아니다 (REQ-CVS-001) [중심 AC · 속성형]
@@ -63,7 +94,7 @@ AC-CVS-001 은 **서식 목록이 아니라 속성**을 건다. 이유를 여기
 corpus 를 순회하며 동일한 단언을 적용한다. 구성원을 추가해도 단언문은 바뀌지 않는다.
 
 > **죽이는 mutant (a)**: 점수 표기 정규식을 하나 추가했으나 `verdict := "pass"` fall-through 를 남긴 구현. **AC-CVS-002 만으로는 이 mutant 가 통과한다** — 점수 표기는 읽으니까. 이 AC 가 없으면 구조적 원인(G3)이 그대로 남는다.
-> **죽이는 mutant**: `verdict := "pass"` 를 유지한 현재 구현. 사전구현 트리에서 이 AC 는 **C1·C5·C7 에서 실패해야 한다**(실측표 4·5행 근거).
+> **죽이는 mutant**: `verdict := "pass"` 를 유지한 현재 구현. 사전구현 트리에서 이 AC 는 **corpus 8건 전부(C1~C8)에서 실패해야 한다** — 감사 iter1 이 현재 트리에서 측정한 결과 C1~C8 이 **모두 `pass` 로 합성된다**(C8 은 AC-CVS-002 가 `fail` 로 추가 고정). RED 기대를 일부(C1·C5·C7)로만 적으면 DoD 의 독립성 검사가 실제보다 약해진다.
 
 ### AC-CVS-002 — 점수 표기는 fail 로 읽힌다 (REQ-CVS-002)
 
@@ -79,7 +110,7 @@ corpus 를 순회하며 동일한 단언을 적용한다. 구성원을 추가해
 > **죽이는 mutant**: 모든 것을 `inconclusive` 로 떨어뜨려 AC-CVS-001 만 만족시키는 구현 — 이 AC 의 `fail` 단언이 잡는다. 두 AC 가 서로를 구속한다.
 > **죽이는 mutant**: 점수 표기 정규식을 `(?i)(pass|fail)\s+[\d.]+` 처럼 느슨하게 잡아 산문을 판정으로 읽는 구현.
 
-### AC-CVS-003 — native 무불릿 정상 리뷰는 pass 로 보존 (REQ-CVS-004) [게이트 보호]
+### AC-CVS-003 — native 무불릿 정상 리뷰는 pass 로 보존 (REQ-CVS-004) [보고 정확성]
 
 **Given** 리뷰 본문이 `The change introduces no blocking issues.` 이고 불릿도 판정 라벨도 없을 때
 **When** `codexMethodReviewStart`(native review) 모드로 호출하면
@@ -87,8 +118,8 @@ corpus 를 순회하며 동일한 단언을 적용한다. 구성원을 추가해
 
 빈 문자열 입력에 대해서도 native 모드에서는 `"pass"` 를 유지한다.
 
-> **죽이는 mutant (b)**: 기본값을 **양쪽 모드 모두** `inconclusive` 로 뒤집은 구현. 이 mutant 는 `HandleCodexReviewGate` 의 clean-pass 를 깨뜨려 정상 변경을 차단하므로, 이 AC 가 없으면 회귀가 조용히 착지한다.
-> **주의**: C7(빈 문자열)은 adversarial 에서 `pass` 아님(AC-CVS-001), native 에서 `pass`(이 AC) — 같은 입력이 모드에 따라 갈린다는 사실 자체가 모드 구분이 실제로 배선됐다는 증거다.
+> **죽이는 mutant (b)**: 기본값을 **양쪽 모드 모두** `inconclusive` 로 뒤집은 구현. 이 mutant 의 해악은 **차단이 아니라 보고 손실**이다 — 게이트는 `fail` 접두사에서만 차단하므로(`isBlockVerdict`, `codex_review_gate.go:116-117`; 종단 `return allow, nil // pass / inconclusive ⇒ ALLOW`, `:109`) 정상 변경이 막히지는 않는다. 대신 codex 가 실제로 "차단 사유 없음" 을 말한 경우가 **판정을 못 낸 경우와 구분되지 않게 되고**, 수렴 계층의 fail-open 폴백(required 전부 inconclusive → claude 판정, `mcp_convergence.go:126-129`)과 뒤섞이며, 기존 테스트가 고정한 `pass` 계약(`codex_review_rpc_test.go:119`)이 깨진다.
+> **모드 배선 증인은 C5 로 한다 (도달 가능한 입력)**: C5(산문 1줄)가 adversarial 에서 `pass` 아님(AC-CVS-001), native 에서 `pass`(이 AC) — 같은 입력이 모드에 따라 갈린다는 것이 모드 구분이 실제로 배선됐다는 증거다. C7(빈 문자열)도 같은 대비를 보이지만 **프로덕션에서는 도달하지 않는다** — `runTurn` 이 빈 리뷰 텍스트를 합성기 호출 이전에 `inconclusive` 로 단락시킨다(`mcp_codex.go:702-703`). C7 의 native `pass` 핀은 기존 테스트 보존용으로 유지하되, 배선 증인으로는 쓰지 않는다.
 
 ### AC-CVS-004 — 신호가 갈리면 보수 채택 + 기록 (REQ-CVS-003)
 
@@ -122,6 +153,24 @@ corpus 를 순회하며 동일한 단언을 적용한다. 구성원을 추가해
 > **죽이는 mutant**: 기존 테스트를 삭제하거나 기대값을 새 동작에 맞춰 고쳐 회귀를 은폐하는 구현.
 > **죽이는 mutant**: 모드 fall-through 변경이 `codex_task` 의 출력 경로까지 흘러들어 텍스트가 바뀌는 구현.
 
+### AC-CVS-006 — 채택값은 신호 **집합**의 최댓값이다 (spec.md §A.5 P-CONS) [속성형 · M2 가드]
+
+**Given** 조합 corpus(§B-2)의 각 행이 규정하는 리뷰 본문
+**When** `synthesizeReviewOutput` 을 호출하면
+**Then** 채택된 `Verdict` 는 그 행의 기대값과 같다. 기대값은 예외 없이 **그 본문이 산출하는 신호 집합의 가장 보수적인 원소**이며, 보수 순위는 `fail` > `inconclusive` > `pass` 다.
+
+조합 corpus 를 순회하며 **단 하나의 단언**을 적용한다 — 행을 추가해도, 신호가 넷째로 늘어도, 단언문은 바뀌지 않는다.
+
+이 AC 는 채택값만 단언하며 내부 구현 형태에 관해 아무것도 요구하지 않는다 — 순위 테이블이든 대입 순서이든 조건 분기이든, 결과가 P-CONS 를 만족하면 통과한다.
+
+> **죽이는 mutant (e)** [D1 이 지목한 것]: M2 를 **가장 자연스러운 방식으로** 쓴 구현 — `codexScoredVerdict` 를 기존 대입 열에 한 줄 더 얹는 형태. plan.md §C.1 의 신호 순서(`stated` → `scored` → `bullet`) 아래에서 나중 대입이 앞선 보수적 값을 덮으므로 K1 이 **`pass`** 로 합성된다. 이 AC 가 없으면 그 구현이 **AC-CVS-001~005 를 전부 초록으로 통과한 채** 착지하며, 이 SPEC 이 없애려던 §0 위반을 이 SPEC 이 새로 만들어 낸다.
+> **죽이는 mutant (f)** [순서 의존]: 신호를 텍스트 등장 순서나 검사 순서에 따라 다르게 처리하는 구현. **K1 과 K2 는 같은 신호 집합을 서로 다른 텍스트 순서로 담고 있으므로 반드시 같은 값을 내야 한다** — 순서에 민감한 구현은 여기서 갈라진다.
+> **죽이는 mutant (g)** [쌍 특수화]: `stated × scored` 조합만 특수 분기로 처리한 구현. 오늘의 세 신호에서는 옳게 동작하지만 넷째 신호가 오는 날 틀린다. **K5(`scored × bullet`)와 K6(3-신호)이 잡는다** — 쌍을 열거하는 AC 로는 잡히지 않는 mutant 다.
+> **죽이는 mutant**: 보수 순위를 `pass` > `inconclusive` 로 잘못 매긴 구현 — K4 가 잡는다.
+> **죽이는 mutant**: 무조건 `fail` 을 내는 과잉 보수 구현 — K8(신호가 갈리지 않는 행)이 잡는다.
+> **[중요] 이 AC 는 RED 로 시작하지 않는다.** 현재 트리에는 세 번째 신호가 없어 K1 은 오늘 이미 `fail` 을 낸다(감사 iter1 측정: `3sig label-fail+score-PASS -> fail`). **M2 착지 직후 회귀를 잡는 가드 AC** 이지 사전구현 결함 검출 AC 가 아니며, 이 사실을 감춘 채 "RED 에서 실패한다" 고 적으면 관측하지 않은 것을 주장하게 된다.
+> **[중요] 이 AC 는 RED 로 시작하지 않는다.** 현재 트리에는 세 번째 신호가 없어 첫 번째 Given 은 오늘 이미 `fail` 을 낸다(감사 iter1 측정: `3sig label-fail+score-PASS -> fail`). **M2 착지 직후 회귀를 잡는 가드 AC** 이지 사전구현 결함 검출 AC 가 아니며, 이 사실을 감춘 채 "RED 에서 실패한다" 고 적으면 관측하지 않은 것을 주장하게 된다.
+
 ## §D 품질 게이트
 
 | 항목 | 기준 |
@@ -133,8 +182,12 @@ corpus 를 순회하며 동일한 단언을 적용한다. 구성원을 추가해
 
 ## §E Definition of Done
 
-- [ ] AC-CVS-001 ~ AC-CVS-005 전부 통과
+- [ ] AC-CVS-001 ~ AC-CVS-006 전부 통과
 - [ ] **AC-CVS-001 이 AC-CVS-002 와 독립적으로** 사전구현 트리에서 실패했음을 RED 출력으로 기록 — 둘이 같은 mutant 만 잡으면 mutant (a) 가 빠져나간다
+- [ ] AC-CVS-001 의 RED 를 **C1~C8 전부**에 대해 기록 (일부만 적으면 위 독립성 검사가 실제보다 약해진다)
+- [ ] **AC-CVS-006 이 M2 착지 직후 초록임을 별도로 확인** — M2 를 대입 한 줄 추가로 구현했다면 여기서 붉어진다. AC-CVS-006 은 가드 AC 이므로 RED 기대를 기록하지 않는다
+- [ ] AC-CVS-006 의 단언문이 **조합 corpus 를 순회하는 단일 단언**임을 코드로 확인 — 행 추가나 넷째 신호 도입이 단언문 수정을 요구하지 않아야 한다(§B-2 판별 기준)
+- [ ] K1/K2 쌍이 **같은 값**을 내는지 확인 (순서 무관 증인) · K5·K6 이 **`stated × scored` 특수화 구현을 실제로 가르는지** 확인
 - [ ] AC-CVS-001 의 단언문이 corpus 를 순회하는 형태임을 코드로 확인 (구성원 추가가 단언문 수정을 요구하지 않음)
 - [ ] `TestSynthesizeReviewOutput_FindingBulletsMapToFail` 삭제되지 않음
 - [ ] §D 품질 게이트 전량 통과 출력이 progress.md §E.2 에 인용됨

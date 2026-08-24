@@ -1,10 +1,10 @@
 ---
 id: SPEC-CODEX-VERDICT-SYNTH-001
 title: "codex verdict 합성 — 모르는 서식을 통과로 읽지 않는다"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-08-24
-updated: 2026-08-24
+updated: 2026-08-25
 author: manager-spec
 priority: P1
 phase: "v3.1.4 target"
@@ -18,6 +18,7 @@ tags: "codex, audit-multi, verdict, version-drift, fail-open"
 
 ## HISTORY
 
+- 2026-08-25 · v0.4.0 · manager-spec · plan-audit iter1 (PASS-WITH-DEBT 0.7625) 수리. **D1** — 보수 채택 강등의 전제가 2신호 구현에만 성립함을 §A.5 에 명시하고, 보수 규칙을 **P-CONS**(신호 **집합**의 최댓값, `fail` > `inconclusive` > `pass`)라는 명명된 속성으로 SPEC 본문에 두어 **AC-CVS-006** 으로 고정(요구사항 아닌 AC 로). P-CONS 는 **순서가 아니라 집합 연산으로** 서술돼 넷째 신호가 와도 규칙이 변하지 않으며, AC 는 쌍 열거가 아니라 **조합 corpus(§B-2) 순회 단일 단언**으로 쓴다. **D2** — §A.6 의 게이트 차단 논거가 측정상 거짓임을 확인해 **보고 정확성 논거**로 교체(`isBlockVerdict` 는 `fail` 접두사에서만 차단). **D3** — AC-CVS-001 의 RED 기대를 C1·C5·C7 → **C1~C8 전부**로 정정. **D9** — 스테일 인용 2건 정정(`mcp_codex.go:1152`→`1155`, `mcp_convergence.go:368`→`367`). 부수: **D4** 개방 항목을 실측으로 종결(`review-output.schema.json` 은 저장소에 존재하지 않음).
 - 2026-08-24 · v0.3.0 · manager-spec · 리드 판정 반영. **Tier M → S** 축소 · 근거를 `.moai/reports/t229/premise-revision.md` 의 7행 실측표로 교체 · §A.2 를 프로세스 랙에서 **바이너리 랙**으로 정정(프로세스 랙 가설 철회) · 보수 채택 순서(구 REQ-CVS-002)를 결함 목록에서 제거해 유지보수 메모로 강등 · AC 를 서식 열거형에서 **속성형** 으로 전환 · 후속 카드 t248 명시.
 - 2026-08-24 · v0.2.0 · manager-spec · 리드 정정 4건 반영. 세션 영속화 요구사항 제거(관측으로 강등) · t234/t246 카드 id 명시 · 버전 드리프트 내성을 지배 원칙으로 승격.
 - 2026-08-24 · v0.1.0 · manager-spec · 최초 작성. 카드 t229 (Class B).
@@ -85,13 +86,27 @@ $ git rev-list --count a1b1ca696..origin/main                  # 259
 
 한 버전의 출력 관례로 눈금을 맞춘 판별기를 서식 계약이 없는 응답에 적용하고 있다. t178·t186 은 서식을 **하나 더 알게** 했을 뿐, 모르는 서식이 통과로 떨어지는 구조(`verdict := "pass"`, `mcp_codex.go:1145`)는 그대로다.
 
-### A.5 결함이 아닌 사항 — 보수 채택의 구현 형태 (유지보수 메모)
+### A.5 보수 채택의 구현 형태 — 현재는 결함이 아니나, M2 이후 구속력이 생긴다
 
-보수 채택이 명시적 순위 테이블이 아니라 대입 순서로 구현돼 있다(`mcp_codex.go:1144-1156`). 이것은 **결함이 아니다** — 실측표 7행 어디에도 현재 조합이 잘못된 값을 낸 반례가 없고, 현 구현은 이미 fail 편향으로 올바르게 동작한다. 신호가 셋 이상으로 늘어날 때 취약해질 수 있다는 **유지보수성 지적**으로만 남기며, 이 SPEC 의 요구사항으로 두지 않는다.
+보수 채택이 명시적 순위 테이블이 아니라 대입 순서로 구현돼 있다(`mcp_codex.go:1144-1156`). **현재 트리에서 이것은 결함이 아니다** — 실측표 7행 어디에도 현재 조합이 잘못된 값을 낸 반례가 없다. 신호가 둘뿐이고, `codexStatedVerdict` 는 `pass` 기본값 위에 대입하며 `codexFindingBullet` 은 `fail` 만 대입하므로, 어떤 대입도 보수적인 값을 관대한 값으로 덮을 수 없다.
+
+**그러나 이 성질은 M2 가 착지하는 순간 구속력을 갖는다.** M2 는 세 번째 신호 `codexScoredVerdict` 를 추가하는데, 이 신호는 pass / fail / inconclusive **어느 값이든** 대입할 수 있다. 대입 순서 의미론 아래에서는 나중 대입이 앞선 보수적 값을 덮는다 — `Verdict: fail` 과 `PASS 0.95 / 1.00` 을 함께 담은 본문이 `pass` 로 합성되며, 이는 이 SPEC 이 없애려는 §0 위반을 이 SPEC 이 다시 만들어 내는 형태다. 실측표가 이 반례를 담지 못한 이유는 단순하다 — **세 번째 신호가 아직 없다.**
+
+따라서 이 SPEC 은 순위 테이블을 **요구사항으로 두지 않되**(구현 형태는 자유), 아래 **P-CONS** 를 SPEC 본문의 명명된 속성으로 두고 **AC-CVS-006 으로 고정한다**.
+
+#### P-CONS — 보수 채택 속성 (명명된 규칙)
+
+> 리뷰 본문 하나가 산출하는 판정 신호들의 **집합** S 에 대해, 채택된 verdict 는 **S 의 원소 중 가장 보수적인 것**이다. 보수 순위는 **`fail` > `inconclusive` > `pass`**.
+
+이것은 구현 힌트가 아니라 **규칙 그 자체**다. `verdictRank` / `moreConservative` 는 이 규칙을 구현하는 한 가지 방법일 뿐이며, 다른 방법을 택해도 규칙은 그대로 적용된다.
+
+P-CONS 는 **집합 연산으로 서술돼 있고, 그 점이 핵심이다.** "나중 신호가 앞선 신호를 덮지 않는다" 같은 **순서에 관한 규칙으로 쓰면 안 된다** — 그 형태는 신호가 셋인 동안만 유효하고 넷째가 들어오는 순간 다시 뚫린다. 집합의 최댓값에는 순서가 없으므로, 신호가 몇 개로 늘든 규칙은 변하지 않는다. 신호를 추가하는 일이 규칙 문장을 고치게 만든다면 그 서술은 틀린 것이다.
 
 ### A.6 모드 구분이 필요한 이유 [HARD]
 
-관대 기본값을 무조건 없애면 **정상 통과 경로가 깨진다**. native review-mode(`review/start`)의 무불릿 응답은 codex 가 실제로 "차단 사유 없음" 을 말한 것이고, Stop 훅 게이트 `HandleCodexReviewGate`(`internal/cli/codex_review_gate.go:66`)의 clean-pass 가 여기에 걸려 있다(실측표 6행 = 보존 대상). adversarial-mode(`turn/start`)의 미인식 서식은 반대로 **아무것도 관측되지 않은 상태**다.
+관대 기본값을 양쪽 모드에서 무조건 없애면 **관측된 판정을 관측되지 않은 것으로 오보하게 된다**. native review-mode(`review/start`)의 무불릿 응답은 codex 가 실제로 "차단 사유 없음" 을 말한 것이다(실측표 6행 = 보존 대상). 그것을 `inconclusive` 로 보고하면 **codex 가 판정을 내리지 못한 경우와 구분되지 않고**, 수렴 계층에서 fail-open 경로(required 전부 inconclusive → claude 판정으로 폴백, `mcp_convergence.go:126-129`)와 뒤섞인다. adversarial-mode(`turn/start`)의 미인식 서식은 반대로 진짜 **아무것도 관측되지 않은 상태**이므로 `inconclusive` 가 정확한 보고다.
+
+**주의 — 게이트 차단 논거는 성립하지 않는다.** 이 트리에서 확인한 바, Stop 훅 게이트는 `fail` 접두사에서만 차단한다(`isBlockVerdict`, `codex_review_gate.go:116-117`)이고 종단은 `return allow, nil // pass / inconclusive ⇒ ALLOW`(`codex_review_gate.go:109`)다. 즉 native 기본값을 `inconclusive` 로 뒤집어도 **정상 변경이 차단되지는 않는다**. 보존해야 할 이유는 차단 여부가 아니라 **보고의 정확성**이다. 반대 방향으로도 과장하지 않는다 — `fail` 은 여전히 차단하므로 게이트가 판정값과 무관한 것은 아니다.
 
 seam 은 이미 존재한다. `synthesizeReviewOutput` 의 유일한 프로덕션 호출자는 `runTurn`(`mcp_codex.go:680`)이고, 그 시그니처가 이미 `method` 를 받는다. `codexMethodReviewStart` = native, `codexMethodTurnStart` = adversarial.
 
@@ -127,11 +142,13 @@ The system shall keep synthesizing `pass` for a bullet-less clean review on the 
 
 구체적 형태는 acceptance.md §B 가 정의한다. corpus 에 케이스를 하나 더 넣는 일이 단언문 수정을 요구하면 그 AC 는 속성형이 아니다.
 
+같은 이유로 **AC-CVS-006(다중 신호 충돌 해소)도 구현 형태와 독립이어야 한다** — 순위 테이블이든 대입 순서든 조건문이든, 채택값이 보수적이면 통과하고 아니면 실패해야 한다. 특정 내부 구조를 단언하는 AC 는 그 구조를 강제할 뿐 성질을 보장하지 못한다.
+
 ---
 
 ## §D 후속 카드와의 순서 — t234 (= GitHub #1632)
 
-**이 SPEC 이 먼저 착지한다.** 리드가 t234 를 이 카드가 끝날 때까지 보류하기로 결정했고, 이 SPEC 은 `Findings: []Finding{}` 하드코딩(`mcp_codex.go:1152`)을 **그대로 둔다**.
+**이 SPEC 이 먼저 착지한다.** 리드가 t234 를 이 카드가 끝날 때까지 보류하기로 결정했고, 이 SPEC 은 `Findings: []Finding{}` 하드코딩(`mcp_codex.go:1155`)을 **그대로 둔다**.
 
 t234 는 이 SPEC 이 손대는 것과 **같은 함수** `synthesizeReviewOutput` 을 Findings 추출 축에서 다시 고친다. 이 사실을 SPEC 본문에 산문으로 적어 두는 이유는, 코드 주석은 리팩터링에서 사라질 수 있고 그러면 다음 편집자가 두 축이 한 함수에서 만난다는 것을 알 길이 없어지기 때문이다.
 
@@ -170,7 +187,7 @@ t234 착수자에게 남기는 메모: 이 SPEC 이 `synthesizeReviewOutput` 의
 - 언어: Go. 대상 패키지 `internal/cli`. 방법론: TDD.
 - 검증: `go test ./internal/cli/... -timeout 600s`. **`go test ./...` 금지** (저장소 규율).
 - fail-open 불변식 유지: 어떤 경로도 hard error 를 반환하지 않는다.
-- 독립성 불변식 유지: `backendCallFn` 시그니처에 verdict 를 실어 보내지 않는다(`mcp_convergence.go:368`).
+- 독립성 불변식 유지: `backendCallFn` 시그니처에 verdict 를 실어 보내지 않는다(`mcp_convergence.go:367`).
 - **검증은 `go test` 로 한다.** MCP 라이브 프로브를 근거로 쓰지 않는다 — §A.2 의 바이너리 랙이 그 경로를 신뢰할 수 없게 만든다.
 
 ---
