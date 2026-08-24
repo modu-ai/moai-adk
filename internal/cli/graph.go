@@ -34,6 +34,7 @@ func newGraphCmd() *cobra.Command {
 	cmd.AddCommand(newGraphBuildCmd())
 	cmd.AddCommand(newGraphQueryCmd())
 	cmd.AddCommand(newGraphCheckCmd())
+	cmd.AddCommand(newGraphStampCmd())
 	return cmd
 }
 

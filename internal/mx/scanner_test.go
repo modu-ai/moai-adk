@@ -384,7 +384,7 @@ func TestParseTag(t *testing.T) {
 	scanner := NewScanner()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tag, err := scanner.parseTag("/test/file.go", 1, tt.content)
+			tag, err := scanner.parseTag("/test/file.go", 1, tt.content, "// @MX: "+tt.content)
 
 			if tt.expectError {
 				if err == nil {

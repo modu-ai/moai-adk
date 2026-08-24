@@ -209,6 +209,58 @@ func TestRefreshIndex_PicksUpNewFiles(t *testing.T) {
 	}
 }
 
+// AC-GF-013 — mx-index hash anchoring: lines inserted above a tag leave the
+// tag line's content (and its ContentHash) identical, so the refreshed index
+// resolves the same tag by (file, hash) at its NEW line — the anchor holds
+// across drift while Line is convenience data.
+func TestRefreshIndex_TagHashSurvivesLineDrift(t *testing.T) {
+	root, stateDir := newRefreshFixture(t)
+	initialScan(t, root, stateDir)
+
+	mgr := NewManager(stateDir)
+	before, err := mgr.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var beforeTag Tag
+	for _, tag := range before.Tags {
+		if filepath.Base(tag.File) == "a.go" {
+			beforeTag = tag
+		}
+	}
+	if beforeTag.ContentHash == "" {
+		t.Fatal("scanner must stamp ContentHash on every tag (REQ-GF-011)")
+	}
+
+	// Insert 5 lines above the tag (content untouched).
+	shifted := "package a\n\n\n\n\n\n// @MX:NOTE: [AUTO] alpha note\nfunc F() {}\n"
+	if err := os.WriteFile(filepath.Join(root, "internal", "a", "a.go"), []byte(shifted), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := RefreshIndex(stateDir, root, nil); err != nil {
+		t.Fatal(err)
+	}
+	after, err := mgr.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tag := range after.Tags {
+		if filepath.Base(tag.File) == "a.go" {
+			if tag.ContentHash != beforeTag.ContentHash {
+				t.Errorf("hash anchor moved with drift: before %s after %s — anchor must be content-derived",
+					beforeTag.ContentHash, tag.ContentHash)
+			}
+			if tag.Line != beforeTag.Line+4 {
+				t.Errorf("convenience line must track the physical line: before %d after %d (want +4)",
+					beforeTag.Line, tag.Line)
+			}
+			return
+		}
+	}
+	t.Fatal("drifted file's tag vanished from the refreshed index")
+}
+
 // Removed-file cleanup: a vanished file's tags drop out of the refreshed index.
 func TestRefreshIndex_DropsVanishedFiles(t *testing.T) {
 	root, stateDir := newRefreshFixture(t)

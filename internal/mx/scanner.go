@@ -113,7 +113,7 @@ func (s *Scanner) ScanFile(filePath string) ([]Tag, error) {
 		}
 
 		// Parse the tag
-		tag, err := s.parseTag(filePath, lineNum, tagContent)
+		tag, err := s.parseTag(filePath, lineNum, tagContent, line)
 		if err != nil {
 			// A recognized sub-line (CEILING/UPGRADE/REASON/...) is not a tag.
 			// Skip it WITHOUT recording a parse error, but still pair an
@@ -353,8 +353,10 @@ func extractTagContent(line, commentPrefix string) (string, bool) {
 }
 
 // parseTag parses a tag content string into a Tag struct.
-// Expected format: "KIND: body text" or "ANCHOR:anchor-id: body text"
-func (s *Scanner) parseTag(filePath string, lineNum int, content string) (Tag, error) {
+// Expected format: "KIND: body text" or "ANCHOR:anchor-id: body text".
+// rawLine is the verbatim source line, hashed into the tag's ContentHash
+// anchor (REQ-GF-011).
+func (s *Scanner) parseTag(filePath string, lineNum int, content string, rawLine string) (Tag, error) {
 	// Split by first colon to get kind
 	parts := strings.SplitN(content, ":", 2)
 	if len(parts) < 2 {
@@ -396,14 +398,25 @@ func (s *Scanner) parseTag(filePath string, lineNum int, content string) (Tag, e
 	}
 
 	return Tag{
-		Kind:       kind,
-		File:       filePath,
-		Line:       lineNum,
-		Body:       body,
-		AnchorID:   anchorID,
-		CreatedBy:  "scanner", // TODO: Detect if human-created
-		LastSeenAt: time.Now(),
+		Kind:         kind,
+		File:         filePath,
+		Line:         lineNum,
+		Body:         body,
+		AnchorID:     anchorID,
+		ContentHash:  hashTagLine(rawLine),
+		CreatedBy:    "scanner", // TODO: Detect if human-created
+		LastSeenAt:   time.Now(),
 	}, nil
+}
+
+// hashTagLine hashes the raw source line a tag sits on (trimmed): the tag's
+// content-hash anchor (REQ-GF-011). Lines inserted above the tag leave the
+// line's content — and therefore the hash — identical, so tag lookups
+// anchored by (file, ContentHash) survive line drift while Line stays
+// convenience data.
+func hashTagLine(rawLine string) string {
+	sum := sha256.Sum256([]byte(strings.TrimSpace(rawLine)))
+	return hex.EncodeToString(sum[:])
 }
 
 // extractReason extracts the reason text from a @MX:REASON line.
