@@ -253,6 +253,7 @@ than summarised:
 | at `3f8067fb2` (M2) | `internal/cli` alone, `-timeout 600s` | **ok, 383.405s** |
 | at `aa14918d7` (M3) | all of `./internal/cli/... ./internal/session/...`, `-timeout 600s` | FAIL 601.548s — `panic: test timed out`, **0** `--- FAIL` lines |
 | at `aa14918d7` (M3) | `internal/cli` alone, `-timeout 900s` | FAIL 909.905s — timeout panic, **1** `--- FAIL` |
+| at `aa14918d7` (M3) | `internal/cli` alone, uncontended, `-timeout 1800s` | **ok, 768.952s** — 0 `--- FAIL`, 0 timeout panics, `exit=0` |
 
 The single `--- FAIL` is `TestHookWorktreeCreate_EchoesCreatedPath`:
 
@@ -268,6 +269,12 @@ Re-run in isolation at the same HEAD:
 go test ./internal/cli/ -run '^TestHookWorktreeCreate_EchoesCreatedPath$' -v -count=1
 → --- PASS: TestHookWorktreeCreate_EchoesCreatedPath (4.16s)
 ```
+
+A fourth run, once the machine was uncontended, closed the question directly:
+**`ok  github.com/modu-ai/moai-adk/internal/cli  768.952s`**, exit 0, zero
+`--- FAIL` lines and zero timeout panics — the same tree, the same HEAD, the
+same command, differing only in load. `TestHookWorktreeCreate_EchoesCreatedPath`
+passed in that run.
 
 **4.16s passing alone against 19.53s deadline-exceeded under load.** The test
 shells out to a real `git worktree add` under a context deadline, in a
@@ -340,15 +347,14 @@ evidence_dir: .moai/state/verify/t209/
    the gap does not change the implementation — but it is still a gap.
 5. **The full test suite was not run locally** (repo rule). `go build ./...`,
    `go vet`, and the affected packages were run; CI owns the full-suite verdict.
-6. **`internal/cli` has no clean green at the FINAL HEAD.** It is green at
-   `3f8067fb2` (M2) and every one of its 32 acceptance criteria is green
-   individually at `aa14918d7`, but the whole-package run at the final HEAD hit
-   the wall-clock ceiling twice under load. The one `--- FAIL` was reproduced as
-   passing in isolation and lies outside this diff, so the evidence points to
-   contention — but "the package passes at `aa14918d7`" is an inference from
-   parts, not an observation, and is recorded as a gap rather than claimed.
-   CI's clean-environment run against the PR head is the stronger evidence and
-   is the intended resolution.
+6. ~~**`internal/cli` has no clean green at the FINAL HEAD.**~~ **CLOSED by
+   measurement.** Recorded here rather than deleted, because the closure is the
+   point: the claim was withheld while it rested on an inference from parts (32
+   criteria green individually, plus one `--- FAIL` reproduced as passing in
+   isolation), and released only once the whole package was observed green at
+   `aa14918d7` in an uncontended run — `ok … 768.952s`, exit 0, zero `--- FAIL`,
+   zero timeout panics. CI's clean-environment run against the PR head remains
+   the stronger evidence and is still the binding verdict.
 
 ### Residual risk — what could still be wrong despite the above
 
