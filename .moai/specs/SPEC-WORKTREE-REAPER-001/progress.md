@@ -834,3 +834,98 @@ point in time.
   How many trees in this repository hold only regenerable ignored content — and
   are therefore still removable — was not counted; the sibling-worktree
   inspection that would count it is refused by the isolation guard.
+
+## §E.6 Post-audit repair, iteration 2 (finding N1)
+
+### Claim
+
+`moai worktree clean --merged-only` — the third removal path, and the one the
+shared ignored-content decision's own doc comment already claimed to cover —
+now consults that decision. A merged, unanchored worktree holding irreplaceable
+gitignored content is preserved on all three paths, not two.
+
+### Evidence
+
+RED, at `96a26b0f8` with the new tests and no guard:
+
+```
+--- FAIL: TestCleanMergedOnly_KeepsIrreplaceableIgnoredContent (0.00s)
+    clean_ignored_content_test.go:168: a tree holding irreplaceable ignored content was removed: [/wt/merged-memory]
+--- FAIL: TestCleanMergedOnly_UnreadableIgnoredStatusPreserves (0.00s)
+    clean_ignored_content_test.go:199: an unreadable ignored status must preserve; removed [/wt/merged-unreadable]
+FAIL	github.com/modu-ai/moai-adk/internal/cli/worktree	0.839s
+```
+
+The third case of the battery — `RemovesWhenIgnoredContentIsRegenerable` —
+passed in the RED run by design. It is the anti-immortality control: 156 of 156
+trees in this repository hold ignored content (`design.md` §A.7), so a guard
+that preserved on the blunt predicate would make the whole population immortal.
+It must pass before and after.
+
+GREEN, after factoring the predicate into `ignoredContentVerdict` and calling it
+from `cleanMergedWorktrees`:
+
+```
+$ go test -count=1 -run 'TestCleanMergedOnly|TestCleanStale' ./internal/cli/worktree/
+ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	0.470s
+
+$ go build ./...                          → exit 0 (no output)
+$ go vet ./...                            → exit 0 (no output)
+$ gofmt -l internal/cli/worktree/         → no output
+$ go test -count=1 ./internal/cli/worktree/... ./internal/session/...
+ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	5.589s
+ok  	github.com/modu-ai/moai-adk/internal/session	8.484s
+```
+
+One pre-existing test moved as a consequence, and the movement is recorded
+rather than tidied away. `TestRunClean_MergedOnly` drives fixture paths that do
+not exist on disk, so the new guard read an unrunnable `git status --porcelain
+--ignored` and failed closed — the correct behaviour, observed as a failure:
+
+```
+subcommands_test.go:681: output should contain 'Removing merged worktree', got
+  "  Keeping /repo-feature [feature]: cause=ignored-check-failed; could not read ignored content: exit status 128\n"
+```
+
+The fixture now stubs the ignored read clean, because that test asserts the
+removal path; the fail-closed branch is bound by
+`TestCleanMergedOnly_UnreadableIgnoredStatusPreserves` instead. Production
+behaviour was not relaxed to make a test pass.
+
+### Baseline-attribution
+
+Measured in this tree, branch `WT-worktree-reaper`, RED at `96a26b0f8` and GREEN
+at the commit this section accompanies. The audit input is
+`.moai/reports/t209/sync-audit-iter2.md` (FAIL 0.844, threshold 0.85; Security
+0.82 tripping the must-pass firewall on N1 alone).
+
+The doc comment at `internal/session/ignored_content.go:50` — "three removal
+paths consult it" — was false when written and is true now. That is the whole of
+N1: the gap predated this SPEC, the *claim* did not.
+
+### Gaps — what was explicitly NOT observed
+
+1. **`internal/cli` was not re-run**, and this change does not touch it. Its
+   green is the attributed prior measurement from §E.2 (`ok … 768.952s`, exit 0,
+   at `aa14918d7`).
+2. **The full suite was not run locally** — repo rule. CI owns that verdict
+   against the PR head, which is still outstanding: the branch is unpushed.
+3. **No sweep was run against a real repository.** All three paths remain bound
+   by stubbed-git fixtures; `clean` prunes shared worktree administrative state,
+   so running it is not authorised here.
+4. **`golangci-lint` was not run** — outside the authorised command set.
+5. **The audit's optional findings N2 and F5–F12 are untouched**, deliberately.
+   N2 (`TrimLeft(…, "*+ ")` corrupting a legal branch name beginning with `+`,
+   and the `(`-skip dropping a legal `(paren` name) has zero measured exposure
+   here but is a real narrowing that `git for-each-ref` would remove.
+
+### Residual risk
+
+- **The check→act race is unchanged and now spans one more predicate.** Every
+  path classifies before it removes, so the ignored-content read on the merged
+  sweep inherits the same window the other two have.
+- **The guard's blast radius on the merged path is uncounted**, for the same
+  positional reason recorded in §E.5.
+- **One evaluation now decides three paths.** That is the point of the share,
+  and it is also the concentration: an error in `IrreplaceableIgnoredEntries` is
+  now wrong in three places at once rather than one.
