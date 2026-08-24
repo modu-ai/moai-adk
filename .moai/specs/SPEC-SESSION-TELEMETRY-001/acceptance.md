@@ -21,10 +21,19 @@ presupposition.
 **AC-ST-002** (REQ-ST-002) — Given a render input whose payload `session_id` is `S` and a
 `.moai/state/current-session-id.txt` containing a **different** id `T`, When the builder
 completes, Then the written file is `…/context-usage/S.json` and no file named for `T` exists;
-and When `grep -rn 'CurrentSideChannelFile\|current-session-id' internal/statusline/` is run,
-Then it returns zero hits. Baseline: the same grep returns zero on the pre-change tree, so the
-grep half asserts preservation — the load-bearing half is the two-id fixture, which cannot pass
-before the change because the pre-change writer produces one path regardless of either id.
+and When
+`grep -rn 'CurrentSideChannelFile\|current-session-id' internal/statusline/ | grep -v '_test\.go'`
+is run, Then it returns zero hits. Baseline: the same command returns zero on the pre-change tree,
+so the grep half asserts preservation — the load-bearing half is the two-id fixture, which cannot
+pass before the change because the pre-change writer produces one path regardless of either id.
+
+The grep is scoped to non-test source deliberately. Unscoped, the two halves are **mutually
+unsatisfiable**: the fixture the first half mandates must create
+`.moai/state/current-session-id.txt`, and creating it necessarily spells its name, so an unscoped
+grep can never return zero while that fixture lives in this package. Version 0.1.0 stated it
+unscoped and the run reported the conflict rather than silently dropping either half. What the
+criterion is actually for is that the *writer* never consults the sidecar; the fixture is what
+proves the key comes from the payload instead, so both survive once the scope says so.
 
 **AC-ST-003** (REQ-ST-004) — Given a render input whose `model.display_name` is `Opus 5 (1M
 context)` and an environment in which `ANTHROPIC_DEFAULT_OPUS_MODEL` names a z.ai model, When
