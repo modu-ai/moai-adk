@@ -44,8 +44,16 @@ func (h *postToolGuardianHandler) AlwaysRun() bool {
 // Handle scans the written content and returns the guardian advisory, or nil
 // when there is nothing to say. Every path is fail-open: a payload the scanner
 // cannot read yields a silent nil, never an error.
-func (h *postToolGuardianHandler) Handle(_ context.Context, input *HookInput) (*HookOutput, error) {
+//
+// The dispatch context carries the registry's hook deadline. An already-expired
+// context yields a silent nil rather than a scan, so the guardian cannot run on
+// past the budget the registry allotted it; that is the same fail-open shape as
+// an unreadable payload, and never an error.
+func (h *postToolGuardianHandler) Handle(ctx context.Context, input *HookInput) (*HookOutput, error) {
 	if input == nil {
+		return nil, nil
+	}
+	if ctx != nil && ctx.Err() != nil {
 		return nil, nil
 	}
 	switch input.ToolName {

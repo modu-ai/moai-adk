@@ -146,7 +146,7 @@ func (r *registry) Dispatch(ctx context.Context, event EventType, input *HookInp
 				"handler_index", i,
 				"reason", reason,
 			)
-			r.runAlwaysRunTail(ctx, handlers[i+1:], input, output)
+			r.runAlwaysRunTail(ctx, event, handlers[i+1:], input, output)
 			return output, nil
 		}
 
@@ -157,7 +157,7 @@ func (r *registry) Dispatch(ctx context.Context, event EventType, input *HookInp
 				"event", string(event),
 				"handler_index", i,
 			)
-			r.runAlwaysRunTail(ctx, handlers[i+1:], input, output)
+			r.runAlwaysRunTail(ctx, event, handlers[i+1:], input, output)
 			return output, nil
 		}
 
@@ -183,19 +183,32 @@ type alwaysRunHandler interface {
 // returned. The short-circuit verdict itself is preserved: mergeHandlerOutput
 // keeps the first explicit halt and resolves permission decisions by a
 // deny > ask > allow ladder, so an advisory tail cannot downgrade a block.
+//
 // Failures are logged and swallowed — a tail handler must never turn a decided
-// dispatch into an error.
-func (r *registry) runAlwaysRunTail(ctx context.Context, remaining []Handler, input *HookInput, decided *HookOutput) {
+// dispatch into an error. Swallowed is not silent: the failure is logged at the
+// same level the main dispatch loop uses and written to the trace, so a
+// guardian that fails on this path is visible in production rather than only in
+// debug logs. Every tail execution — success or failure — gets a trace entry,
+// giving the tail parity with the main loop.
+func (r *registry) runAlwaysRunTail(ctx context.Context, event EventType, remaining []Handler, input *HookInput, decided *HookOutput) {
 	for _, h := range remaining {
 		ar, ok := h.(alwaysRunHandler)
 		if !ok || !ar.AlwaysRun() {
 			continue
 		}
+		start := time.Now()
 		out, err := h.Handle(ctx, input)
+		elapsed := time.Since(start)
 		if err != nil {
-			slog.Debug("always-run handler failed after short-circuit", "error", err.Error())
+			slog.Error("always-run handler failed after short-circuit",
+				"event", string(event),
+				"handler", fmt.Sprintf("%T", h),
+				"error", err.Error(),
+			)
+			r.writeTrace(input, event, h, elapsed, nil, err)
 			continue
 		}
+		r.writeTrace(input, event, h, elapsed, out, nil)
 		mergeHandlerOutput(decided, out)
 	}
 }

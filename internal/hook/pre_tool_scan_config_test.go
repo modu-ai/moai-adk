@@ -135,10 +135,18 @@ func TestScanWriteContentNoConfigNoTempFile(t *testing.T) {
 
 // countingRuleManager decorates a RuleManager, counting the resolutions each
 // side of the boundary performs.
+//
+// Scope limit: the counters see only calls that CROSS the decorator boundary.
+// ResolveCoverage on the real ruleManager calls its own FindRulesConfig method
+// directly (internal/hook/security/coverage.go), so a resolution performed
+// inside ResolveCoverage never increments findCalls. findCalls is therefore a
+// count of direct FindRulesConfig calls by the decorator's caller, NOT a total
+// resolution count — which is exactly what TestConfigResolvedByCallerNotScanner
+// needs, since it asks who initiates resolution rather than how many happen.
 type countingRuleManager struct {
-	inner            security.RuleManager
-	findCalls        int
-	resolveCovCalls  int
+	inner           security.RuleManager
+	findCalls       int
+	resolveCovCalls int
 }
 
 func (c *countingRuleManager) FindRulesConfig(projectDir string) string {

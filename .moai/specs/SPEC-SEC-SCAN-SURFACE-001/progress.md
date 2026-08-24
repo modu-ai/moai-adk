@@ -600,7 +600,7 @@ and are not staged. `git status --porcelain` is empty apart from this milestone'
 
 ```yaml
 run_complete_at: 2026-08-24T13:59:00Z
-run_commit_sha: pending-backfill-m4   # this commit cannot name its own hash; backfilled in a follow-up
+run_commit_sha: efbb21196             # the M4 commit that produced the evidence above; backfilled by the review-remediation commit, since a commit cannot name its own hash
 run_status: complete-except-pr        # M1-M4 steps 1-3 landed; M4 step 4 (pull request) is the orchestrator's
 ac_pass_count: 15                     # AC-SSS-001 .. AC-SSS-015
 ac_fail_count: 0
@@ -610,10 +610,10 @@ preserve_list_post_run_detail:
   - "internal/hook/security/guardian.go § HandleSecurityScan — present (grep -c 'func HandleSecurityScan' = 1); the advisory contract is preserved and now shared via ScanBufferAdvisory"
   - ".claude/rules/moai/core/verification-claim-integrity.md — untouched by this branch (empty git diff over the path)"
 l44_pre_commit_fetch: "git merge-base origin/main HEAD = a9eb896ce; HEAD re-read immediately before commit"
-l44_post_push_fetch: not-applicable   # no push performed — step 4 excluded from this delegation
-new_warnings_or_lints_introduced: 0   # go vet clean on darwin, windows, and linux; golangci-lint not run (Gap)
+l44_post_push_fetch: "pushed at the review-remediation step; branch WT-security-scan-surface -> PR #1643, head efbb21196 == remote tip == PR headRefOid (verified by ls-remote and gh pr view)"   # the authoring-time "no push performed" was true of the M4 delegation only
+new_warnings_or_lints_introduced: 0   # go vet clean on darwin, windows, and linux. The authoring-time "golangci-lint not run (Gap)" is CLOSED: the orchestrator ran `golangci-lint run ./internal/hook/... ./internal/cli/... --timeout=10m` at the M4 gate and observed `0 issues.` — evidence `.moai/state/verify/t217/orch-m4-lint.log`
 cross_platform_build:
-  darwin_arm64_build: "go build ./... → exit 0"
+  darwin_arm64_build: "`go env GOOS GOARCH` → darwin arm64 (this host), so the bare `go build ./...` → exit 0 above IS the darwin/arm64 build; no cross-compile env was needed for this row"
   darwin_vet: "go vet ./internal/hook/... ./internal/cli/... ./internal/template/... → exit 0"
   windows_amd64_vet: "GOOS=windows GOARCH=amd64 go vet (same packages) → exit 0"
   linux_amd64_vet: "GOOS=linux GOARCH=amd64 go vet (same packages) → exit 0"
