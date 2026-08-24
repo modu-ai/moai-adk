@@ -1,7 +1,7 @@
 ---
 id: SPEC-SEC-SCAN-SURFACE-001
 title: Security scan surface — cheap pre-write ast-grep gate + PostToolUse guardian merge
-version: 0.2.0
+version: 0.3.0
 status: draft
 created: 2026-08-24
 updated: 2026-08-24
@@ -16,6 +16,7 @@ tier: M
 
 ## HISTORY
 
+- 2026-08-24 — v0.3.0 — Audit iteration 2 (PASS 0.925) remediation. Measurement script corrected to enumerate every error-severity rule per language: python gained 2 missing `any:` branches and go gained 7 tokens, moving the measured rates from go 1.2% / py 92.9% to go 0.9% / py 85.7% (both deflating; js unchanged at 96.3%). §C.2 underivable row extended to cover regex inline flags and optional or quantified leading literals (E2). Pair check re-pointed at the deployed ↔ template axis; the template-neutrality row marked UNVERIFIED rather than measured.
 - 2026-08-24 — v0.2.0 — Audit iteration 1 (FAIL 0.65) remediation. `tags` corrected to the
   canonical comma-separated string (D1). §C.2 extraction rules extended to cover the shipped
   ruleset's dominant `kind:` + `regex:` shape and regex top-level alternation, with the
@@ -61,7 +62,7 @@ All on worktree `.claude/worktrees/t217`, tree `c4e90cd58`, branch `security-sca
 | Pre-write config resolutions today | `grep -rn "FindRulesConfig" internal/` (non-test) | exactly **one** on the pre-write path, at `scanner.go:84` inside `ScanFile` |
 | Single-file scan has no injection seam | `grep -n "scanFunc" internal/hook/security/ast_grep.go` | referenced only at `:199-200`, inside `ScanMultiple`; single-file `Scan` execs `sg` directly at `:137` |
 | Handler scanner field is concrete | `grep -n "scanner \*security.SecurityScanner" internal/hook/pre_tool.go` | `pre_tool.go:325` — a struct pointer, so no stub can be injected at the handler level without a type change |
-| Pre-filter skip rate | `python3 .moai/reports/t217/skiprate.py .` | `go files=2438 wouldSKIP=30 rate=1.2%` · `js files=81 wouldSKIP=78 rate=96.3%` · `py files=14 wouldSKIP=13 rate=92.9%` |
+| Pre-filter skip rate | `python3 .moai/reports/t217/skiprate.py .` | `go files=2438 wouldSKIP=22 rate=0.9%` · `js files=81 wouldSKIP=78 rate=96.3%` · `py files=14 wouldSKIP=12 rate=85.7%` |
 
 ### §A.2 Two premises of the card were found to be inaccurate
 
@@ -220,6 +221,7 @@ each with the reason it is sound:
 | `regex:` without alternation | The mandatory literal prefix | The prefix must appear in any match |
 | `kind:` **and** `regex:` together | Tokens from the `regex:` conjunct | `kind` narrows and never widens the match set, so the regex's tokens remain mandatory. This is an `all:`-shaped conjunction |
 | `kind:` alone, `inside:`, `has:`, `follows:`, a `regex:` with no literal anchor, a pattern that is entirely metavariables | **Underivable** — marks the whole language underivable | Unknown is never treated as absent |
+| `regex:` carrying an inline flag (`(?i)`, `(?s)`, `(?m)`), or whose leading literal is optional or quantified (`a?`, `a*`, `(foo)?`) | **Underivable** | A case-insensitive match makes a case-sensitive literal token non-mandatory; an optional or quantified leading literal can be absent from a match entirely. Neither form appears in the shipped ruleset (`(?i)` returns zero hits repo-wide), so this row is a soundness closure, not machinery to build |
 
 Underivability is per-language and total: one underivable rule forces unconditional escalation
 for its language (REQ-SSS-009).
@@ -245,22 +247,29 @@ the resolution.
 The v0.1.0 draft asserted that "the saving for the other three covered languages is larger" than
 for Go. That was an unverified premise. It is now measured.
 
-Token sets derived by the §C.2 rules from the shipped ruleset's error-severity rules:
+Token sets derived by the §C.2 rules from the shipped ruleset's error-severity rules. Every
+error-severity rule is enumerated, not sampled: a token set is a union and the pre-filter skips
+only when **none** of its tokens is present, so an omitted token inflates the reported saving.
+Each language's set was audited rule-by-rule against the rule files.
 
-- **go** (8 error rules) — `go-error-ignored-blank`'s pattern `$_, $ERR = $FUNC($$$ARGS)`
-  contributes `,` and `=`. Adding the other seven rules' tokens can only lower the skip rate, so
-  these two bound it.
-- **javascript / typescript** (2 error rules) — `child_process.exec`, `cp.exec`, plus the five
-  credential prefixes.
-- **python** (2 error rules) — `subprocess.call`, `os.system`, plus the five credential prefixes.
+- **go** (8 error rules) — `,` and `=` (`go-error-ignored-blank`), `for` and `defer`
+  (`go-defer-in-loop`), `const` (`sec-hardcoded-api-key`), `SignedString`, `exec.Command`,
+  `template.HTML`, `md5.New`, plus the five credential prefixes. The first rule's `,` and `=`
+  dominate — they appear in nearly every Go file — so the go rate is bounded above by that one
+  rule; the remaining seven rules' tokens lower it further.
+- **javascript / typescript** (2 error rules) — `child_process.exec` and `cp.exec` (both branches
+  of the `any:`), plus the five credential prefixes. Audited: the `any:` has exactly two branches
+  and both are present.
+- **python** (2 error rules) — `subprocess.call`, `subprocess.run`, `subprocess.Popen`,
+  `os.system` (**all four** branches of the `any:`), plus the five credential prefixes.
 
 Command: `python3 .moai/reports/t217/skiprate.py .` (script committed alongside this SPEC),
 worktree `c4e90cd58`. Observed:
 
 ```
-go files=2438 wouldSKIP=30 rate=1.2%
+go files=2438 wouldSKIP=22 rate=0.9%
 js files=81  wouldSKIP=78 rate=96.3%
-py files=14  wouldSKIP=13 rate=92.9%
+py files=14  wouldSKIP=12 rate=85.7%
 ```
 
 **Reading of the measurement.** The saving is real for javascript, typescript, and python, and
@@ -270,17 +279,27 @@ every Go file. So A1 saves most in the language where the gate has least to chec
 nothing in the language where it checks most.
 
 **Why A1 is kept rather than cut.** MoAI-ADK ships to sixteen languages on equal terms
-(`CLAUDE.local.md` §15). Deciding A1's fate from the 1.2% figure would be deciding it from the
-fact that this particular repository is written in Go, and would deny a 93-96% saving to every
-JavaScript, TypeScript, and Python project the tool ships to. The mechanism is data-driven, so
-the rate self-adjusts as a language's ruleset grows. Item A1 is therefore retained, with its Go
-degeneracy stated as a measured fact rather than hidden.
+(`CLAUDE.local.md` §15). Deciding A1's fate from the 0.9% figure would be deciding it from the
+fact that this particular repository is written in Go, and would withhold from JavaScript,
+TypeScript, and Python projects a saving that measured 85.7-96.3% on the sample available here.
+The mechanism is data-driven, so the rate self-adjusts as a language's ruleset grows. Item A1 is
+therefore retained, with its Go degeneracy stated as a measured fact rather than hidden.
 
 **Gaps in this measurement.** It counts *files present in this repository*, not Writes — the
 distribution of what a session actually writes is not observed. The javascript (81) and python
-(14) populations are small and skewed toward tooling scripts. A project whose source genuinely
-uses `child_process.exec` or `os.system` throughout would skip far less. The figure is a
-directional measurement, not a guarantee.
+(14) populations are small and skewed toward tooling scripts, so the 85.7-96.3% figures describe
+**this sample**, not a rate any project should be told to expect: a project whose source
+genuinely uses `child_process.exec`, `subprocess.run`, or `os.system` throughout would skip far
+less. Treat the numbers as evidence that the saving is real and materially larger outside Go —
+which is all the decision requires — not as a projection.
+
+**Measurement provenance.** The v0.2.0 figures (go 1.2%, py 92.9%) were produced by a script
+whose python token set omitted two of the four `any:` branches (`subprocess.run`,
+`subprocess.Popen`), and whose go set carried only the first rule's two tokens. Both omissions
+inflated the reported saving. The plan audit caught the python one; the go one was found while
+fixing it. Both are corrected above, and the script now enumerates every error-severity rule per
+language, with the enumeration written into its docstring so the next reader can check it against
+the rule files.
 
 **Residual risk.** The pre-filter's soundness rests on the extractor, which is the most
 defect-prone unit in this SPEC and guards a deny. Three things bound it: the underivable ⇒

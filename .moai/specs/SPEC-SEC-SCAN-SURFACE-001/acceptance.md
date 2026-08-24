@@ -157,7 +157,7 @@ When it is scanned,
 Then the fake records **0** `ScanFile` calls and the decision is allow.
 Command: `go test ./internal/hook/ -run TestScanWriteContentPrefilterSkip -count=1 -v`.
 Pre-implementation measurement: **1**. The language is javascript rather than go deliberately —
-`spec.md` §C.3 measured the Go skip rate at 1.2% against javascript's 96.3%, so a Go-based
+`spec.md` §C.3 measured the Go skip rate at 0.9% against javascript's 96.3%, so a Go-based
 version of this criterion would be asserting the thing that measurement says will not happen.
 
 ---
@@ -205,7 +205,7 @@ Commands and their pre-implementation measurements:
 |---|---|---|
 | `jq '[.hooks.PostToolUse[] \| select(.matcher=="Write\|Edit\|MultiEdit") \| .hooks[].args[-1]] \| map(select(test("handle-security-scan"))) \| length' .claude/settings.json` | `0` | `1` |
 | `go test ./internal/template/ -run TestRenderedSettingsHasNoSecurityScanPostToolEntry -count=1 -v` | pass | the rendered output contains 1 such entry (the `.tmpl` is Go-templated and is **not** valid JSON, so it is asserted through a render, never through `jq`) |
-| `printf '{}' \| ./bin/moai hook security-scan; echo "exit=$?"` | `exit=0` | `exit=0` — a behaviour-preservation check for REQ-SSS-013, labelled as such |
+| `printf '{}' \| ~/go/bin/moai hook security-scan; echo "exit=$?"` | `exit=0` | `exit=0` — a behaviour-preservation check for REQ-SSS-013, labelled as such |
 
 ---
 
@@ -225,15 +225,19 @@ Commands and their pre-implementation measurements:
 | Command | PASS | Measured today |
 |---|---|---|
 | `git diff --name-only <merge-base>...HEAD` — the mirror and pair audit reads this list, **scoped to the diff** | every `.claude/` entry paired | this SPEC changes `settings.json` only; it touches no hook wrapper |
-| `for f in internal/template/templates/.claude/hooks/moai/*.tmpl; do b=${f%.tmpl}; [ -f "$b" ] && { diff -q "$b" "$f" >/dev/null \|\| echo "DRIFT $b"; }; done` | prints nothing | prints nothing (**0** lines). Without the `[ -f "$b" ]` guard the same loop prints **31** lines, because 31 of 35 `.tmpl` files legitimately have no `.sh` sibling inside `templates/`. The guard is the canonical form from `CLAUDE.local.md` §2.3 |
-| `MOAI_TEMPLATE_LEAK_STRICT=1 go test ./internal/template/ -count=1` | pass | pass |
+| `bash .moai/reports/t217/driftcheck.sh pairaxis` — the **deployed ↔ template** axis REQ-SSS-015 and `spec.md` §D speak to, restricted to wrappers this SPEC's diff changes | prints nothing for every wrapper in the diff | prints **1** line repo-wide (`handle-pre-tool.sh`), pre-existing and out of scope — see the note below. This SPEC's diff contains no wrapper, so its scoped result is **0** |
+| `bash .moai/reports/t217/driftcheck.sh guarded` — the templates-internal axis, retained as a secondary check | prints nothing | prints nothing (**0** lines). The `unguarded` mode of the same script prints **31** lines, because 31 of 35 `.tmpl` files legitimately have no `.sh` sibling inside `templates/`; the guard is the canonical form from `CLAUDE.local.md` §2.3 |
+| `MOAI_TEMPLATE_LEAK_STRICT=1 go test ./internal/template/ -count=1` | pass | **UNVERIFIED** — the run exceeded 120 s and returned empty output at authoring time. This row's "today" value is a Gap, not a Claim (`verification-claim-integrity.md` §2); it must be measured with an explicit longer timeout before M4 cites it |
 | `gh pr view --json title,body --jq '.title, (.body \| split("\n")[0])'` | title and first body line each name this a change to the **security scan surface**, neither presents it as a performance improvement (REQ-SSS-016) | no PR exists until M4 |
 
 Note on scope: a repository-wide `.sh` ↔ `.sh.tmpl` byte-equality sweep is **not** a valid gate.
 `.claude/hooks/moai/handle-pre-tool.sh` already differs from its template in comments today, for
 a legitimate reason (template neutrality strips the SPEC ID the deployed copy carries) —
-`spec.md` §D records this as out of scope. The pair check above is therefore scoped to wrappers
-this SPEC's diff changes, of which there are currently none.
+`spec.md` §D records this as out of scope. Both pair checks above are therefore scoped to
+wrappers this SPEC's diff changes, of which there are currently none. The `pairaxis` mode is the
+primary check because it runs the axis the requirement actually speaks to (deployed `.sh` ↔
+template `.sh.tmpl`); the templates-internal `guarded` mode compares only the 4 of 35 `.tmpl`
+files that happen to have a sibling inside `templates/` and is retained as a secondary signal.
 
 ---
 
@@ -261,7 +265,7 @@ this SPEC's diff changes, of which there are currently none.
   Claim 1 establishes zero firings **on this machine only**; distributed-user behaviour is
   outside the observation window and is not claimed in either direction.
 - No criterion asserts that item A1 reduces scans for Go payloads. `spec.md` §C.3 measured that
-  rate at 1.2% and states why.
+  rate at 0.9% and states why.
 - Three criteria (AC-SSS-007, and the third row of AC-SSS-015) have a PASS value equal to today's
   value. They are **behaviour-preservation** criteria — the change is what could break them — and
   are labelled as such rather than presented as change detection.
