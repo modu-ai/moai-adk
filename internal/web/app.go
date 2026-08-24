@@ -157,6 +157,10 @@ func (a *app) routes() http.Handler {
 	mux.HandleFunc("/", a.handleOverview)
 	mux.HandleFunc("/kanban", a.handleKanban)
 	mux.HandleFunc("/monitor", a.handleMonitor)
+	// SPEC-WEB-TODO-QUEUE-001 M2 (REQ-WTQ-002): /todo 는 백로그 큐를 읽기 전용으로
+	// 보여준다. 큐에 대한 쓰기·id 발급은 `moai todo` 소관이고 이 라우트는 읽기만
+	// 한다 — 다른 모니터링 라우트와 같이 GET 이외 메서드는 405 다.
+	mux.HandleFunc("/todo", a.handleTodo)
 	mux.HandleFunc("/settings", a.handleIndex)
 	// SSE — 값을 나르지 않고 "이 영역이 바뀌었다"는 신호만 흘린다.
 	mux.HandleFunc("/events", a.hub.ServeEvents)
