@@ -245,8 +245,16 @@ M1 은 독립적으로 가치가 있다 (`moai web` · MCP 도구의 오표시�
 ```
 go build ./...
 go vet ./...
-go test ./internal/cli/... -run 'Codex' -timeout 600s
+GOOS=windows go vet ./...
+GOOS=windows go test -c ./internal/cli/          # AC-CL-014 — vet 보다 강하다
 golangci-lint run
+go test ./internal/cli/ -v -timeout 1200s        # 이 SPEC 이 시험을 추가한 패키지 전체
+go test -json ./internal/cli/... -run Codex -timeout 1200s   # AC-CL-015 회귀 축 (skip 0 · 이름 목록 대조)
+go test -coverprofile=... ./internal/cli/ && go tool cover -func=...   # AC-CL-015 순수 함수 3개 100%
 ```
 
-`internal/cli` 전체 스위트는 로컬 하한 600s (메모리 규율) — 타깃 실행 후 push 하고 전체 판정은 CI 로 넘긴다.
+**이름 정규식만으로 판정하지 않는다.** `-run Codex` 는 AC-CL-015 의 **회귀 축** — 기존 Codex 시험이 여전히 통과하는지 — 에만 쓴다. 이 SPEC 이 **추가한** 시험의 실행은 패키지 전체 실행으로 관측한다: 이름 정규식은 시험 함수 이름에서 `Codex` 를 뺀 구현에서 한 케이스도 실행하지 않고 rc 0 을 내며, 그것은 부재로 인한 0 을 성공으로 읽는 형태다. (AC-CL-015 의 순수 함수 100% 커버리지 단언이 같은 방향에서 한 겹 더 막지만, 실행 여부는 패키지 실행으로 직접 본다.)
+
+**타임아웃 하한 1200s.** `internal/cli` 는 단독 실측 336초이고 이 SPEC 이 시험을 얹는다. 같은 날 다른 레인 실측이 546~866초였으므로 600s 는 통과하는 트리에서도 FAIL 을 낼 수 있다. 실측값을 §E 에 기록하고, 1200s 로도 모자라면 그 자리에서 상향해 기록한다.
+
+전 패키지 판정은 CI 몫이다 — 로컬은 영향 패키지만 돌리고 push 한다.
