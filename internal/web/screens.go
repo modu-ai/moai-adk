@@ -152,7 +152,7 @@ func (a *app) handleTodo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	vm := a.shellVM(r, "todo", "Todo", "backlog queue")
-	a.renderPage(w, Todo(vm))
+	a.renderPage(w, Todo(vm, a.buildTodo()))
 }
 
 func (a *app) handleMonitor(w http.ResponseWriter, r *http.Request) {

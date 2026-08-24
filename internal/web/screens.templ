@@ -236,15 +236,53 @@ templ Kanban(vm ShellVM, k KanbanVM) {
 // .moai/state/kanban/backlog.json 이라 이미 watchMap["kanban"] 이 보는
 // 디렉터리 안에 있고, 클라이언트의 refresh() 는 라우트가 아니라 이 마커를 보고
 // 갱신하기 때문이다(REQ-WTQ-007).
-templ Todo(vm ShellVM) {
+templ Todo(vm ShellVM, q TodoVM) {
 	@Shell(vm) {
 		<section data-live="kanban">
 			<div class="panel__head" style="border-bottom-color:var(--line)">
 				<h2 class="panel__title" data-i18n="todo.title">Backlog queue</h2>
+				<span class="panel__meta" data-i18n="todo.count">Cards</span>
+				<span class="mono">{ itoa(len(q.Items)) }</span>
+				<span class="panel__meta mono" style="margin-left:auto" title={ q.Root }>{ q.Root }</span>
 			</div>
-			<p class="panel__meta" data-todo-empty data-i18n="todo.empty">The backlog queue is empty.</p>
+			if len(q.Items) == 0 {
+				<p class="panel__meta" data-todo-empty data-i18n="todo.empty">The backlog queue is empty.</p>
+			} else {
+				// 세 상태를 모두 싣는다(결정 G-5). queued 만 보여주는 작업 화면으로는
+				// "그 카드 어디로 갔나"에 답할 수 없어서, 감사 화면 쪽을 골랐다.
+				<div class="tbl">
+					<div class="tr tr--head" style="grid-template-columns:70px minmax(0,1fr) 90px 210px">
+						<span data-i18n="todo.id">ID</span>
+						<span data-i18n="todo.text">Card</span>
+						<span data-i18n="todo.state">State</span>
+						<span>SPEC</span>
+					</div>
+					for _, it := range q.Items {
+						<div class="tr" data-todo-row style="grid-template-columns:70px minmax(0,1fr) 90px 210px">
+							<span class="mono">{ it.ID }</span>
+							<span>{ it.Text }</span>
+							<span>@todoStateBadge(it.State)</span>
+							if it.SpecID != "" {
+								<span class="mono panel__meta">{ it.SpecID }</span>
+							} else {
+								<span>@missing()</span>
+							}
+						</div>
+					}
+				</div>
+			}
 		</section>
 	}
+}
+
+// todoStateBadge 는 항목의 상태를 뱃지로 명시한다. 결정 G-5 의 나머지 절반이다 —
+// 감사 화면이라면 카드가 어느 상태인지 말해야 하고, 그러지 않으면 완전한 목록도
+// 그냥 구분 없는 목록일 뿐이다.
+templ todoStateBadge(state string) {
+	<span
+		class={ "badge", templ.KV("badge--outline", state == "queued"), templ.KV("badge--strong", state == "picked"), templ.KV("badge--danger", state == "dropped") }
+		data-todo-state={ state }
+	>{ state }</span>
 }
 
 /* ── SPEC 목록 + 슬라이드 패널 ─────────────────────────── */
