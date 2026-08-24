@@ -1,7 +1,7 @@
 ---
 id: SPEC-WORKTREE-REAPER-001
 title: "Worktree reaper repair: merge-detection no-answer handling, lock-based anchor guard shared by both sweep consumers, and non-WT coverage via worktree clean --stale"
-version: "0.3.1"
+version: "0.4.0"
 status: draft
 created: 2026-08-24
 updated: 2026-08-24
@@ -20,6 +20,7 @@ tier: L
 - **2026-08-24** — plan-phase v0.2.0 amendment after plan-audit iteration 1 returned FAIL 0.55 (all seven must-pass criteria passed; the failure was rubric-driven — Testability 0.30, Traceability 0.55). Five substantive changes, none cosmetic: **(1)** the criterion set was rebuilt so it can fail — the v0.1.0 form `go test -run <NewTest>` expecting "exit 0" was measured to pass on the pre-implementation tree, because Go exits 0 with `[no tests to run]` when `-run` matches nothing, and v0.1.0 additionally asserted the opposite as fact (an unobserved verification claim). **(2)** REQ-WR-018 added for the removal class M1 newly reaches — a branch with zero commits of its own is reported merged by `git branch --merged`, which v0.1.0 never analysed. **(3)** REQ-WR-019 added: the lock-based anchor decision moves to `internal/session` so it reaches **both** consumers, including `cleanStaleWorktrees`, which sweeps every registered tree rather than only `WT-*`. **(4)** the M3 decision was retaken against a complete option set — `moai worktree clean --stale` already enumerates all trees, previews by default, and gates removal behind `--yes`, so the v0.1.0 decision to build a parallel inventory surface was made against an incomplete option set and is reversed (REQ-WR-012/022). **(5)** the M2/M1 ordering caveat was restated: locked anchors are already protected by git's non-forced removal, and the residual is the *unlocked* anchor produced by this package's own materialiser (REQ-WR-020). Requirements 17 → 22, criteria 18 → 23. **A follow-up measurement round then settled the two questions this amendment left open** (`.moai/reports/t209/ec9-measurement.md`): `git branch --merged` was confirmed equivalent to zero-unique-commits in both directions, upholding REQ-WR-018's accept-the-class decision against audit finding D2's prescribed remedy (`design.md` §A.5); and EC-9 was measured to close in the safe direction — git's own removal check counts gitignored files where `git status --porcelain` does not (§A.6). The second result exposed a shared symptom between the ignored-only tree and the confirmed-dead-lock tree, generalising REQ-WR-021 from locks to the whole refusal class and adding REQ-WR-023 for notice attributability. Final counts: **23 requirements, 24 criteria**.
 - **2026-08-24** — plan-phase v0.3.0 after plan-audit iteration 2 returned FAIL 0.84 (threshold 0.85; trajectory 0.55 → 0.84, no regressions, 18 of 19 iteration-1 findings fully closed, and all 23 recorded `Pre-impl observed:` values independently reproduced). The blocking finding is that **the EC-9 measurement folded in at v0.2.0 does not reproduce**. The corrected record (`.moai/reports/t209/ec9-measurement.md` v2) shows non-forced `git worktree remove` **succeeds** on a tree holding only gitignored files — exit 0, content destroyed; the v1 refusal was an untracked-file refusal produced by MoAI's own statusline writing into a fixture that lived inside a live session's worktree. Consequences folded in here: **(1)** the `--ignored` probe survives **under policies P1 and P2** with its rationale **inverted** — it is not a courtesy avoiding a doomed removal, it is the only thing between the sweep and destruction of ignored content; under P3 it is not needed at all, so its necessity is contingent on the open §A.7 fork and this SPEC does not assert it is required (REQ-WR-024); **(2)** REQ-WR-021 is re-derived over what actually refuses, and is defined by observed behaviour rather than an enumeration the SPEC cannot close (submodules held out of scope with a measured reason); **(3)** REQ-WR-019 now names **three** blind `LiveAnchoredSessions` consumers — the `--merged-only` path at `internal/cli/worktree/clean.go:95` was unnamed, and its own comment records it has no dirty guard, making the blind anchor check its sole protection; **(4)** an **unresolved design fork** is recorded rather than decided (`design.md` §A.7): `.moai/state/` is gitignored and MoAI writes into it in every tree a session occupies, so "preserve on any ignored content" may preserve nearly the whole population and undo M1 — the deciding measurement is a named M1 precondition (AC-WR-025), not a footnote; **(5)** AC-WR-024 rebuilt to assert cause-naming rather than string inequality. Requirements 23 → 24, criteria 24 → 26.
 - **2026-08-24** — plan-phase v0.3.1 after plan-audit iteration 3 returned **PASS 0.875** (threshold 0.85; trajectory 0.55 → 0.84 → 0.875, D1-D19 and N1-N7 all closed, zero regressions, D1 re-verified across 29 distinct test names with 0 discrepancies). Two blocking findings inside gates the SPEC itself declares, plus residue. **F1** — §A.7's decision rule was decisive for P1-vs-rest but its second branch terminated in "choose between P2 and P3", a preference wearing a procedure's clothes; AC-WR-025 already collected the discriminating datum and no rule consumed it. A second question (Q2) now consumes it, with two sub-rules preventing a judgement from re-entering: the regenerable set is enumerated *from* the measurement rather than invented ahead of it, and an unclassifiable path counts as irreplaceable (fail-closed). **F2** — REQ-WR-021's defining limb (the fail-open fall-through, where every member outside the deliberately non-exhaustive pre-detection set lands) had no criterion; both covering criteria exercised only pre-detection. AC-WR-024b added. Residue: `clean.go:162` → `:163` at five sites (measured: 162 is a bare `continue`), REQ-WR-023 cited by five criteria instead of one with the dirty-cause token added to AC-WR-007(b), `progress.md`'s stale "both consumers", `research.md` §F's claim about a table change it did not make, `plan.md` M2 step renumbering, the M1 gate restated at the head of §F M1, and the HISTORY outlier that asserted the probe survives unconditionally. Requirements 24 (unchanged), criteria 26 → 27.
+- **2026-08-24** — plan-phase v0.4.0. **The `design.md` §A.7 fork is CLOSED by measurement**, run by the lead from the primary checkout — the one position neither this session nor the auditor could occupy, since the worktree guard refuses `cd` and `git -C` into sibling trees. Result: **156 of 156** worktrees carry gitignored content (0 command failures), 153 with entries outside `.moai/`. The blunt "holds ignored content" predicate is therefore **measured-and-fatal**, not degraded: with zero discriminating power it would make every tree in the repository permanently immortal, not merely re-block M1's ~99. §A.7's Q1 eliminates P1; Q2's input — the intersection of the 5 `.claude/agent-memory/` trees with the ~99 M1-unblocked set — is **unmeasured**, and resolves to **P2** through the v0.3.1 fail-closed sub-rule, identically whether that intersection is 0 or 5. REQ-WR-024 restated to name P2 and its regenerable allowlist, enumerated from the observed paths (runtime state, runtime-managed config, build output, test residue). `.claude/agent-memory/` classified irreplaceable **on the regenerability axis rather than the value axis** — nothing regenerates it, which is a property of the category and not of any file's content; the content inspection establishes that the value is real and branch-independent but the classification does not rest on it. REQ-WR-025 added recording that P2 is a stopgap and drain-then-dispose is the correct fix. Two §G entries added: the agent-memory drain defect (with this card's own audit-written memory as the concrete instance) and the contaminated-measurement trap the `RelocateSession` card inherits. Requirements 24 → 25, criteria 27 → 28.
 
 ## §B — Problem
 
@@ -126,8 +127,8 @@ widening any surface's authority to delete.
 
 ## §D — Requirements (GEARS)
 
-24 requirements. IDs 001-017 retain their v0.1.0 numbering so existing
-traceability holds; 018-024 are amendment additions, each placed in the
+25 requirements. IDs 001-017 retain their v0.1.0 numbering so existing
+traceability holds; 018-025 are amendment additions, each placed in the
 milestone it belongs to rather than appended at the end.
 
 ### D.1 — M1: merge-detection repair
@@ -238,27 +239,35 @@ milestone it belongs to rather than appended at the end.
   state, or ignored content — so two trees preserved for different reasons are
   distinguishable in the sweep's output without inspecting the trees.
 - **REQ-WR-024** (Event-driven) — When a merged, clean, unanchored worktree
-  holds gitignored content, the sweep's handling shall be governed by the
-  ignored-content policy selected per `design.md` §A.7. **That policy is an
-  open decision at plan-phase**, and the measurement that decides it
-  (AC-WR-025) is a precondition on M1, not a footnote.
+  holds gitignored content, the sweep shall preserve the worktree **unless every
+  ignored entry lies under a path in the regenerable allowlist**, and shall name
+  ignored content as the preserve cause. Any ignored path not in the allowlist —
+  including one the operator cannot confidently classify — shall preserve the
+  tree.
 
-  *The fork's decision rule is decisive at every branch.* `design.md` §A.7 poses
-  two sequential questions, both answered by AC-WR-025's own output: Q1 selects
-  P1-vs-rest on prevalence; Q2 selects P2-vs-P3 on whether any observed ignored
-  path lies outside the regenerable set — zero such paths means P2 and P3 behave
-  identically on the measured population, so P2's allowlist is unearned
-  complexity and P3 wins; one or more means P2 protects a set that was measured
-  rather than imagined. Unclassifiable paths count as irreplaceable, so
-  uncertainty selects the preserving policy.
+  *Policy P2, selected by measurement.* The `design.md` §A.7 fork is **closed**.
+  The lead ran the deciding measurement from the primary checkout: **156 of 156**
+  worktrees carry ignored content, so the blunt "holds ignored content" predicate
+  has zero discriminating power — it would make every tree in the repository
+  permanently immortal, not merely re-block M1's ~99. §A.7's Q1 therefore
+  eliminates P1, and Q2 resolves to P2 through the fail-closed sub-rule.
 
-  *Why this is a requirement and not a note.* Measured, non-forced `git worktree
-  remove` destroys ignored content without refusing, and `git status
-  --porcelain` does not see it — so **nothing** currently protects it. This is
-  a pre-existing property of the shipped sweep, not one M1 introduces; what M1
-  does is raise the rate, by making ~98 preserved trees removable at once. The
-  candidate policies and the rule that selects between them are fixed in
-  `design.md` §A.7; only the measured input is deferred.
+  *The regenerable allowlist*, enumerated from the paths actually observed
+  (`design.md` §A.7.3): runtime state (`.moai/state/**`, `.moai/logs`),
+  runtime-managed config (`.claude/settings.local.json{,.lock}` — machine-local
+  by `CLAUDE.local.md` §2 [HARD]), build output (`bin`, `docs-site/public`,
+  `.ruff_cache`), and test residue (`internal/cli/.moai`).
+
+  *The one irreplaceable category observed is `.claude/agent-memory/`* (5 trees).
+  Nothing regenerates it — no build, no runtime, no session replay — and that is
+  a property of the category, independent of any particular file's content. This
+  card's own audit wrote such a memory: a cross-cutting lesson on acceptance-
+  criterion falsifiability whose value does not depend on its branch merging.
+
+- **REQ-WR-025** (Unwanted) — The sweep shall not be read as establishing
+  preserve-forever as the permanent answer for worktree-local agent memory. P2
+  is a stopgap that preserves trees because the memory has nowhere else to live;
+  the correct fix is drain-then-dispose, held out of scope in §G.
 
 ### D.3 — M3: non-`WT-*` coverage
 
@@ -387,12 +396,40 @@ against the real tree in AC-WR-023.
   enumeration, so a later submodule adoption does not silently fall outside a
   requirement that claimed to be exhaustive.
 
+### Out of Scope — draining worktree-local agent memory
+
+- `.claude/agent-memory/` is **per-project**, and a worktree is its own project
+  root — so memory a subagent writes inside a worktree never reaches the primary
+  checkout and dies with the tree. Concrete instance: this card's own plan-audit
+  wrote `feedback_go_test_run_nonexistent_passes.md` into
+  `.claude/worktrees/t209/.claude/agent-memory/plan-auditor/`, a cross-cutting
+  lesson on acceptance-criterion falsifiability that the reaper would have
+  destroyed and that no drain path exists for. The file even links
+  `[[card-premise-needs-investigation]]`, a memory living outside the tree, so
+  the worktree copy is already orphaned from the index it references.
+- REQ-WR-024's P2 preserves such trees, which is a **stopgap, not the answer**
+  (REQ-WR-025). The correct long-term fix is **drain-then-dispose**: move
+  worktree-local agent memory into the primary checkout's store at session end
+  or at disposal time, after which the tree is freely removable and P2's
+  irreplaceable category empties on its own.
+- Building that drain path is a separate card. This SPEC only declines to
+  destroy the memory in the meantime.
+
 ### Out of Scope — the registry's relocation defect
 
 - Fixing why `RelocateSession` / the `CwdChanged` hook is not relocating 4 of 5
   lanes. A separate card. This SPEC routes around it by reading the
   authoritative signal, and keeps the registry as a supplementary source so the
   fix composes rather than conflicts.
+- [HARD] **That card inherits the contaminated-measurement trap.** Any
+  worktree-disposal or worktree-state measurement taken **inside** a tree a
+  session occupies is invalid: the session mutates the tree asynchronously
+  between observation and action. The worked example is this SPEC's own v1 EC-9
+  error — MoAI's statusline wrote two untracked files into a fixture between its
+  `git status` and its `git worktree remove`, producing a refusal that was
+  credited to the wrong cause and stood as a recorded finding for a full audit
+  iteration (`design.md` §A.6). Measure from the primary checkout, outside every
+  session-occupied tree, as the lead did for §A.7.
 
 ### Out of Scope — closing the unlocked-anchor case
 

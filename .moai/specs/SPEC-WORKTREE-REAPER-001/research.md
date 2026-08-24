@@ -192,6 +192,37 @@ satisfied by a tree in which the test does not exist. The falsifiable form, and
 its verification in both directions, is recorded in `acceptance.md` §0. This is
 a general hazard for SPEC authoring in this repository, not specific to t209.
 
+## §E.1 — Ignored content is universal across worktrees (measured)
+
+Run by the lead from the primary checkout, 2026-08-24 — the only position from
+which sibling trees are reachable:
+
+```
+worktrees measured 156 | failures 0 | carrying ignored content 156 (100%)
+   …with entries outside .moai/ 153
+```
+
+By category: `.moai/state/config-cache.json` (156), `.moai/logs` (156),
+`.claude/settings.local.json` (148), `.moai/state/context-usage.json` (135),
+`bin` (64), `internal/cli/.moai` (42), `.claude/settings.local.json.lock` (38),
+`.moai/state/github` (32), `.ruff_cache` (19), `docs-site/public` (12),
+`.claude/agent-memory` (5).
+
+All but the last are machine-regenerable — runtime state, runtime-managed config
+(`.claude/settings.local.json` is machine-local by `CLAUDE.local.md` §2 [HARD]),
+build output, and test residue from the isolation-leak family. `.claude/agent-memory/`
+is the sole irreplaceable category: nothing regenerates it, which is a property
+of the category rather than of any file's content.
+
+**Second-order finding, out of scope but load-bearing for a future card:**
+`.claude/agent-memory/` is per-project and a worktree is its own project root, so
+memory a subagent writes inside a worktree never reaches the primary checkout.
+This card's own plan-audit wrote one there
+(`feedback_go_test_run_nonexistent_passes.md`, the D1 lesson generalised), and it
+links `[[card-premise-needs-investigation]]` — a memory living outside the tree,
+so the worktree copy is already orphaned from the index it cites. No drain path
+exists (`spec.md` §G).
+
 ## §F — What was surveyed and found NOT to apply
 
 - **L2 worktree tooling** (`moai worktree done`, `~/.moai/worktrees/`, the L2

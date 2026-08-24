@@ -1,8 +1,8 @@
 # acceptance.md — SPEC-WORKTREE-REAPER-001
 
-27 acceptance criteria: M1 seven (AC-WR-001…007), M2 thirteen (AC-WR-008…016 plus
-AC-WR-024, AC-WR-024b, AC-WR-025, AC-WR-026), M3 four (AC-WR-017…020),
-cross-cutting three (AC-WR-021…023).
+28 acceptance criteria: M1 seven (AC-WR-001…007), M2 fourteen (AC-WR-008…016 plus
+AC-WR-024, AC-WR-024b, AC-WR-025, AC-WR-025b, AC-WR-026), M3 four
+(AC-WR-017…020), cross-cutting three (AC-WR-021…023).
 
 (`AC-WR-024b` uses the acceptance-criteria sub-ID convention — a trailing
 lowercase suffix pairing a sub-criterion with `AC-WR-024`, both covering
@@ -52,6 +52,7 @@ $ grep -rn "func TestPRMergeCleanup_GhNoAnswerConsultsGitFallback\|func TestPRMe
 \|func TestPRMergeCleanup_PorcelainFailureRemovesNothing\|func TestPRMergeCleanup_T207SamplePreservedByLock\
 \|func TestPRMergeCleanup_RefusalClassNamesCause\
 \|func TestPRMergeCleanup_RefusalFallThroughNamesCauseAndContinues\
+\|func TestPRMergeCleanup_IgnoredContentPolicyP2\
 \|func TestCleanMergedOnly_\|func TestCleanStale_" internal/
 → 7 matches, ALL of them pre-existing TestCleanStale_* tests with different suffixes
   (KeepsAnchoredWorktree, KeepsDirtyWorktree, KeepsUnmergedWorktree, PreviewsByDefault,
@@ -407,38 +408,66 @@ appears. It does not assert a cause-specific token, and it uses a single
 candidate so it cannot observe that the sweep continues. Those two gaps are what
 the new test adds.
 
-### AC-WR-025 — the ignored-content prevalence measurement (M1 precondition)
+### AC-WR-025 — the ignored-content prevalence measurement (CLOSED)
 
 **Given** the repository's registered worktrees,
-**When** the measurement below is run **from outside every worktree a session
-occupies** — a constraint the v1 EC-9 failure established (`design.md` §A.6),
-**Then** its result is recorded and `design.md` §A.7's decision rule selects the
-ignored-content policy.
+**When** the measurement is run **from outside every worktree a session
+occupies**,
+**Then** its result selects the ignored-content policy via `design.md` §A.7.
+
+**Status: RUN and CLOSED.** Executed by the lead from the primary checkout —
+the only position from which sibling trees are reachable, the worktree guard
+refusing `cd` and `git -C` from inside any tree.
 
 ```
-# from the primary checkout, for each registered worktree path:
-git -C <tree> status --porcelain --ignored | grep -c '^!!'
-# cross-referenced against the M1-unblocked set (merged AND porcelain-clean
-# AND unanchored), recording per tree: any ignored entry? all under a
-# regenerable path?
+worktrees measured                 156        failures (rc≠0)   0
+carrying ignored content           156        ← 100%
+   …with entries outside .moai/    153
 ```
-Expected observation: a count of M1-unblocked trees that carry ignored content,
-and of those, how many carry ignored content **outside** regenerable paths.
-Decision: `design.md` §A.7 — P1 if ignored content is present in at most half the
-unblocked set, otherwise choose P2 or P3.
 
-**Pre-impl observed: not run — and not runnable from here.** The
-worktree-isolation guard refuses `cd` and `git -C` into sibling trees, so this
-session observes only its own tree (`git status --porcelain --ignored` → 7
-entries, 5 of them `!!`, including `.moai/state/config-cache.json` and
-`.moai/state/context-usage.json`). That single data point is consistent with the
-hypothesis and does not test it.
+**Outcome: policy P2.** Q1 — P1 would preserve 100% of M1-unblocked trees, far
+past the half threshold, so P1 is eliminated. Q2 — the agent-memory ∩
+M1-unblocked intersection is **unmeasured**, so the fail-closed sub-rule
+("unclassifiable ⇒ irreplaceable") answers yes; the answer is P2 whether that
+intersection is 0 or 5.
 
-[HARD] **This is a gate on M1, not a report.** M1 does not land before this
-measurement is taken and §A.7's fork closed. If ignored content proves near
-universal, policy P1 preserves nearly the whole population and M2's guard cancels
-M1's unblocking of the ~98 merged trees.
+**Pre-impl observed: n/a — this is a measurement, not a discriminator.** It has
+no pre- and post-implementation states; it ran once and its result is recorded
+above and in `design.md` §A.7.1.
 **Covers:** REQ-WR-024.
+
+[HARD] **This gate is now CLOSED, not deferred.** M1's §C.1 blocker is
+discharged. A reader must not go looking for an open question here.
+
+### AC-WR-025b — P2 preserves on irreplaceable ignored content and removes otherwise
+
+**Given** two merged, clean, unanchored candidates: (a) one whose ignored
+entries are entirely within the regenerable allowlist (`.moai/state/`,
+`.claude/settings.local.json`, `bin`), and (b) one that additionally carries
+`.claude/agent-memory/`,
+**When** `prMergeCleanup` runs,
+**Then** (a) is removed and (b) is preserved with a notice naming ignored
+content as the cause; **and** a third candidate carrying an ignored path in
+neither category is preserved (unclassifiable ⇒ irreplaceable).
+
+```
+go test ./internal/cli/ -run '^TestPRMergeCleanup_IgnoredContentPolicyP2$' -v -count=1 2>&1 \
+  | grep -c '^--- PASS: TestPRMergeCleanup_IgnoredContentPolicyP2'
+```
+Expected: `1`. **Pre-impl observed: `0`** (no such test; and today no ignored
+check exists at all — an ignored-only tree is removed and its content destroyed,
+EC-9).
+**Covers:** REQ-WR-024, REQ-WR-023, REQ-WR-025.
+
+REQ-WR-025 (P2 is a stopgap, not the permanent answer) is covered here by the
+in-code requirement that the preserve branch carry an `@MX:NOTE` naming
+drain-then-dispose as the correct fix and pointing at `spec.md` §G — asserted by
+the same test via a source-level check, so the stopgap status is recorded where
+the next implementer will actually read it rather than only in the SPEC.
+
+The third fixture is the load-bearing one: it pins the fail-closed direction, so
+a future path nobody classified preserves the tree instead of silently joining
+the allowlist by omission.
 
 ### AC-WR-026 — the `--merged-only` sweep gains the same anchor decision
 
@@ -626,7 +655,7 @@ sweeps under the blind guard). Evidence is persisted under
 | EC-6 | lock present **and** tree dirty | dirty guard fires first; preserved either way |
 | EC-7 | `origin/main` ref absent (fresh clone) | git-merged seam errors → undetermined → preserved (AC-WR-004) |
 | EC-8 | branch with **zero commits of its own** | git reports it merged (it is an ancestor of the base). Clean ⇒ removable, and nothing **committed, tracked, or untracked** is lost; dirty/untracked ⇒ preserved (AC-WR-007). **Ignored content is NOT protected** — see EC-9. This is the class M1 newly reaches (`design.md` §A.4) |
-| EC-9 | tree whose only content is **gitignored** files | **Removed today, and the ignored content is destroyed.** Measured (`.moai/reports/t209/ec9-measurement.md` **v2** §Q1 — v1 claimed the opposite and was wrong): `git status --porcelain` → 0, `git status --porcelain --ignored` → 1, `git worktree remove` → **exit 0**, tree gone. `git status --porcelain` and `git worktree remove` agree in disregarding ignored files, so the dirty guard has no backstop for this class. Whether the sweep preserves such a tree is the **open decision** at `design.md` §A.7, gated on AC-WR-025 |
+| EC-9 | tree whose only content is **gitignored** files | **Removed today, and the ignored content is destroyed.** Measured (`.moai/reports/t209/ec9-measurement.md` **v2** §Q1 — v1 claimed the opposite and was wrong): `git status --porcelain` → 0, `git status --porcelain --ignored` → 1, `git worktree remove` → **exit 0**, tree gone. `git status --porcelain` and `git worktree remove` agree in disregarding ignored files, so the dirty guard has no backstop for this class. Under policy P2 (`design.md` §A.7, fork **closed**) the sweep preserves such a tree unless every ignored entry is in the regenerable allowlist — AC-WR-025b |
 | EC-10 | `origin/main` **stale** (never fetched by the sweep) | a behind ref yields fewer ancestors, hence fewer removals — the safe direction. The one exception is a force-pushed / rewritten `origin/main`, where a branch could appear merged that is not. The sweep does not fetch; this is recorded as a bounded residual, not a claim of safety |
 | EC-11 | several trees are preserved for **different** reasons in one sweep | Each preserve notice carries a cause-specific token (REQ-WR-023): refusal-class, dirty, anchored-by-lock, anchored-by-registry, undetermined-merge. Re-derived at v0.3.0: the v0.2.0 form paired a locked tree with an ignored-only tree as two refusal causes, but the second was measured not to be a refusal at all (EC-9) |
 | EC-12 | populated **submodule** in a merged clean tree | Non-forced `git worktree remove` refuses (exit 128, `working trees containing submodules cannot be moved or removed`, not curable by `--force`) with a clean porcelain — a real member of REQ-WR-021's class that the pre-detection set does not cover. Falls through to fail-open: git refuses, a cause-naming notice is emitted, nothing is lost. No live instance here (`.gitmodules` absent) — held out of scope with that reason |
@@ -634,16 +663,16 @@ sweeps under the blind guard). Evidence is persisted under
 
 ## §F — Definition of Done
 
-- [ ] All 27 criteria run with the exact commands above; each `grep -c` output
+- [ ] All 28 criteria run with the exact commands above; each `grep -c` output
       cited verbatim
 - [ ] Every new-test criterion moved from its recorded pre-impl `0` to `1`
 - [ ] AC-WR-023(a) executed; (b) executed only with explicit operator
       authorisation and an enumerated expected-removal set
 - [ ] `.claude/worktrees/t207` on disk; `WT-lint-heading` untouched; no tree
       backing an open PR removed
-- [ ] Every requirement REQ-WR-001…024 named by at least one `Covers:` line
+- [ ] Every requirement REQ-WR-001…025 named by at least one `Covers:` line
 - [ ] The lock-based anchor decision reached **all three** consumers (AC-WR-015, AC-WR-026)
-- [ ] AC-WR-025 run from outside every worktree, and `design.md` §A.7's fork closed, BEFORE M1 lands
+- [x] AC-WR-025 run from outside every worktree; `design.md` §A.7's fork CLOSED (P2) — the M1 gate is discharged
 - [ ] `design.md` §C decision honoured: `clean --stale` extended, no parallel
       inventory surface added
 - [ ] English code, comments, godoc; `t.TempDir()` isolation; existing

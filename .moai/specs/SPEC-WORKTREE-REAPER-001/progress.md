@@ -2,15 +2,15 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-**v0.3.1 (post-audit-iteration-3 gate closure), 2026-08-24**
+**v0.4.0 (§A.7 fork closed by measurement), 2026-08-24**
 
 - Tier: L. Artifacts: `spec.md`, `plan.md`, `acceptance.md`, `design.md`,
   `research.md`, `progress.md` — the full Tier L set (`research.md` added at
   v0.2.0; its absence was audit finding D16).
-- Requirements: **24** (REQ-WR-001 … REQ-WR-024), GEARS notation, no gaps or
-  duplicates. IDs 001-017 keep their v0.1.0 numbering; 018-024 are amendment
+- Requirements: **25** (REQ-WR-001 … REQ-WR-025), GEARS notation, no gaps or
+  duplicates. IDs 001-017 keep their v0.1.0 numbering; 018-025 are amendment
   additions placed in their owning milestone.
-- Acceptance criteria: **27**. Every criterion carries a `Covers:` line and a
+- Acceptance criteria: **28**. Every criterion carries a `Covers:` line and a
   recorded pre-implementation observation; 24/24 requirements covered.
 - Audit trajectory: iter-1 FAIL 0.55 → iter-2 FAIL 0.84 → **iter-3 PASS 0.875**
   (threshold 0.85), zero regressions across all three, D1 re-verified at
@@ -37,11 +37,12 @@ go test ./internal/cli/ -run '^TestDoesNotExistAtAll$' -v -count=1 \
 All criteria now use the second-form-falsifiable command. `acceptance.md` §0
 carries the baseline and the mechanical proof that no new test name exists yet.
 
-**Design decisions resolved at plan-phase** — all except the §A.7
-ignored-content fork, which is deliberately open and gated on a measurement (see
-the OPEN DECISION block below). No `[NEEDS CLARIFICATION]` markers are used: the
-fork is settled by measurement rather than by preference, and every branch of
-its decision rule now terminates in a measured answer (`design.md` §A.7, Q1/Q2):
+**Design decisions resolved at plan-phase — all of them.** The §A.7
+ignored-content fork was the last open one and is now **closed** by the lead's
+measurement (see the block below). No `[NEEDS CLARIFICATION]` markers were ever
+used: the fork was settled by measurement rather than by preference, and every
+branch of its decision rule terminates in a measured answer or in the
+fail-closed sub-rule (`design.md` §A.7, Q1/Q2):
 
 - D1 — merge seam becomes `(string, bool)` (`design.md` §A.1).
 - D2 — the zero-unique-commit removal class is **accepted**, bounded by the
@@ -78,22 +79,46 @@ its decision rule now terminates in a measured answer (`design.md` §A.7, Q1/Q2)
   policy; AC-WR-024 rebuilt to assert cause-naming rather than string
   inequality; EC-8/9/11 corrected and EC-12/13 added.
 
-**[HARD] OPEN DECISION — gated on a measurement, not deferred by omission.**
-`design.md` §A.7 records the ignored-content policy as an unresolved fork with a
-**fixed decision rule** and a **named measurement** (AC-WR-025), which is a
-[HARD] precondition on M1 (`plan.md` §C.1). The hypothesis: `.moai/state/` is
-gitignored (`git check-ignore -v .moai/state/config-cache.json` →
-`.gitignore:284`) and MoAI writes into it in every tree a session occupies, so
-"holds ignored content" may be true of essentially every worktree that has ever
-hosted a session. If so, a preserve-on-ignored policy cancels M1's unblocking of
-the ~98 merged trees. Candidate policies P1 (preserve on any ignored content),
-P2 (classify regenerable vs irreplaceable by path), P3 (accept the loss
-explicitly) and the rule selecting between them are all fixed at plan-phase;
-only the measured input is outstanding. The rule is two sequential questions,
-**both answered by AC-WR-025's own output** — Q1 decides P1-vs-rest on
-prevalence, Q2 decides P2-vs-P3 on whether any observed ignored path lies
-outside the regenerable set, with unclassifiable paths counting as
-irreplaceable (fail-closed). No branch terminates in a judgement call.
+**[HARD] THE §A.7 FORK IS CLOSED — resolved to policy P2.** The deciding
+measurement was run by the lead from the primary checkout, the one position
+neither this session nor the auditor could occupy (the worktree guard refuses
+`cd` and `git -C` into sibling trees).
+
+```
+worktrees measured                 156        failures (rc≠0)   0
+carrying ignored content           156        ← 100%
+   …with entries outside .moai/    153
+```
+
+**The predicate is measured-and-fatal, not degraded.** At 156/156, "holds
+ignored content" has zero discriminating power: it would not merely re-block
+M1's ~99 merged trees, it would make every tree in the repository permanently
+immortal. Q1 eliminates P1. Q2's input — the intersection of the 5
+`.claude/agent-memory/` trees with the ~99 M1-unblocked set — is **unmeasured**,
+and the v0.3.1 fail-closed sub-rule resolves it to **P2** identically whether
+that intersection is 0 or 5. The rule reached an answer through its own fallback
+on an input nobody had when it was written, which is what it was built for.
+
+Do NOT read "153 with entries outside `.moai/`" as 153 irreplaceable trees:
+`.claude/settings.local.json` (148), `bin` (64), `.ruff_cache` (19) and
+`docs-site/public` (12) are all outside `.moai/` and all regenerable.
+
+**`.claude/agent-memory/` classified irreplaceable — on the REGENERABILITY axis,
+not the value axis.** Nothing regenerates agent memory: no build, no runtime, no
+session replay. That is a property of the category, true regardless of what any
+particular file holds — which matters because grounding the classification on
+content value would make it contingent on inspecting all 5 trees and every
+future tree. Content was inspected and the value is real and branch-independent
+(this card's own audit wrote a cross-cutting lesson on acceptance-criterion
+falsifiability), but the classification does not rest on it.
+
+**Cost, as a bound:** P2 preserves at most 5 of 156 trees, ~1GB of 30G. What it
+costs M1 specifically is **between 0 and 5 trees** — the unmeasured intersection
+again. "Blocks nothing M1 needs" would overstate the measurement.
+
+**P2 is a stopgap** (REQ-WR-025). It preserves trees because worktree-local
+agent memory has nowhere else to live; drain-then-dispose is the correct fix and
+is a separate card (`spec.md` §G).
 
 **Third blind consumer named.** REQ-WR-019 now covers all three
 `LiveAnchoredSessions` call sites; the `--merged-only` path

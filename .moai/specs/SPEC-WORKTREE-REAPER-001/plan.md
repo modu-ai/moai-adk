@@ -45,27 +45,33 @@ git worktree list --porcelain | grep -c '^locked'
 
 The last command establishes the lock-line fixture is still shaped as measured.
 
-### [HARD] C.1 — M1 precondition gate (AC-WR-025)
+### [HARD] C.1 — M1 precondition gate (AC-WR-025) — **CLOSED**
 
-**M1 does not land until this measurement is taken and `design.md` §A.7's fork is
-closed.** Run it from the primary checkout, **outside every worktree a session
-occupies** — the v1 EC-9 failure established that a measurement taken inside a
-live session's tree is not isolated (`design.md` §A.6).
+**The measurement ran and the gate is discharged.** It was executed by the lead
+from the primary checkout — the only position from which sibling trees are
+reachable, the worktree guard refusing `cd` and `git -C` from inside any tree,
+and the position the v1 EC-9 failure established as mandatory (`design.md`
+§A.6).
 
 ```bash
-# per registered worktree, cross-referenced against the M1-unblocked set
+# per registered worktree, from the primary checkout
 git -C <tree> status --porcelain --ignored | grep -c '^!!'
 ```
 
-Record how many M1-unblocked trees (merged AND porcelain-clean AND unanchored)
-carry ignored content, and how many carry ignored content outside regenerable
-paths. `design.md` §A.7's table then selects policy P1, P2, or P3.
+```
+worktrees measured                 156        failures (rc≠0)   0
+carrying ignored content           156        ← 100%
+   …with entries outside .moai/    153
+```
 
-Why it gates M1 rather than M2: `.moai/state/` is gitignored
-(`git check-ignore -v .moai/state/config-cache.json` → `.gitignore:284`) and MoAI
-writes into it in every tree a session occupies, so "holds ignored content" may
-be true of essentially the whole population. If it is, a preserve-on-ignored
-policy cancels M1's unblocking of the ~98 merged trees.
+**Outcome: policy P2** — allowlist the regenerable categories, preserve on
+anything else. The blunt predicate was not merely degraded but dead: at 156/156
+it has zero discriminating power and would make every tree in the repository
+permanently immortal. `design.md` §A.7 carries the full application of the
+decision rule, the allowlist, and the `.claude/agent-memory/` classification.
+
+**M1 is unblocked**, subject to implementing REQ-WR-024's P2 check (AC-WR-025b)
+alongside it — the gate closed on a policy, not on permission to skip one.
 
 ## §D — Constraints
 
@@ -114,10 +120,11 @@ M1 and M2 are otherwise independent. M3 depends on M2 for the anchor column.
 
 *Priority: High.*
 
-[HARD] **Blocked on §C.1 (AC-WR-025) — do not start until the `design.md` §A.7
-fork is closed.** M1 is what makes ~98 merged trees removable in one sweep; if
-ignored content proves near-universal, the policy that fork selects determines
-whether those removals destroy anything.
+[HARD] **§C.1's gate is CLOSED** — the measurement ran, the §A.7 fork resolved to
+policy **P2**, and M1 is unblocked. The condition it guarded was real: ignored
+content proved universal (156/156), so M1's ~98 removals would have destroyed
+ignored content in every one of them. M1 therefore lands **with** REQ-WR-024's
+P2 check, not before it.
 
 1. Change `sessionWorktreeGhPRViewState` to `func(branch string) (string, bool)`;
    `ghPRViewStateReal` returns `("", false)` on non-zero exit or unparseable
@@ -171,10 +178,14 @@ Files: `internal/cli/session_worktree_prmerge.go` + its two test files.
 6. Wire the `--merged-only` path (`internal/cli/worktree/clean.go:95`) to the
    same decision — the third consumer, and the one with no dirty guard of its
    own (REQ-WR-019, AC-WR-026).
-7. **Ignored-content handling is NOT implemented in M2.** It is governed by
-   `design.md` §A.7's open fork and gated on the AC-WR-025 measurement
-   (REQ-WR-024). Implementing a probe before that measurement ships policy P1 by
-   default into a population where it may cancel M1.
+7. **Implement the P2 ignored-content check** (REQ-WR-024, AC-WR-025b): probe
+   `git status --porcelain --ignored` on a candidate that has already passed the
+   merge, dirty, and anchor guards; preserve unless every `!!` entry lies under
+   an allowlisted regenerable path; name ignored content as the preserve cause.
+   Unclassifiable path ⇒ preserve. Carry an `@MX:NOTE` on the preserve branch
+   recording that P2 is a stopgap and drain-then-dispose is the fix
+   (REQ-WR-025). The allowlist is `design.md` §A.7.3, enumerated from measured
+   paths — do not extend it by omission.
 8. Add `TestLockAnchor_LivePidAnchored`, `…_DeadPidNotAnchored`,
    `…_IndeterminateIsAnchored`, `…_DeadLockRemovalIsInert`,
    `TestAnchorDecision_RegistryOnlyPathStillAnchors` (`internal/session`);
@@ -234,9 +245,12 @@ Files: `internal/cli/worktree/clean.go` + tests,
   notice for a correctly-behaving tree.
 - **Emitting a preserve notice that does not name its cause.** REQ-WR-023; two
   trees preserved for different reasons must be distinguishable from the output.
-- **Implementing an ignored-content probe before AC-WR-025 is measured.** That
-  ships policy P1 by default into a population where it may cancel M1
-  (`design.md` §A.7).
+- **Extending the regenerable allowlist by omission.** It is enumerated from
+  measured paths (`design.md` §A.7.3); an unclassified path must preserve the
+  tree, not fall through to removal.
+- **Reading P2 as the permanent answer.** REQ-WR-025 — it preserves trees only
+  because worktree-local agent memory has nowhere else to live;
+  drain-then-dispose is the fix, held out of scope in `spec.md` §G.
 - **Treating REQ-WR-021's pre-detection set as exhaustive.** It is not — the
   submodule case is a measured member outside it (EC-12).
 - **Building a parallel inventory command.** `design.md` §C selected extension.
@@ -251,9 +265,9 @@ Files: `internal/cli/worktree/clean.go` + tests,
 
 ## §H — Cross-references
 
-- `spec.md` — 24 requirements, constraints, out of scope
+- `spec.md` — 25 requirements, constraints, out of scope
 - `design.md` — D1 seam signature, D2 fail-closed table + probe seam + dead-lock policy, D3 the reworked M3 option set, §D the corrected ordering caveat
-- `acceptance.md` — 27 criteria, the falsifiable command form, per-criterion pre-implementation baselines
+- `acceptance.md` — 28 criteria, the falsifiable command form, per-criterion pre-implementation baselines
 - `research.md` — the two-sweep survey, seam/test conventions, platform probes
 - `.moai/reports/t209/investigation.md` — the original measured survey
 - `.moai/reports/t209/plan-audit.md` — iteration-1 audit

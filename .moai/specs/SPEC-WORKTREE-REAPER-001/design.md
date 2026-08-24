@@ -161,108 +161,122 @@ is the *rate*, by making ~98 currently-preserved trees removable at once. That
 distinction sets the priority (it is an M1 precondition because M1 amplifies it),
 not the blame.
 
-### A.7 — UNRESOLVED: the ignored-content policy, and the measurement that decides it
+### A.7 — RESOLVED: the ignored-content policy is P2 (allowlist regenerable, preserve the rest)
 
-**This is the one decision this SPEC deliberately does not make at plan-phase.**
-It is recorded here as an open fork with a fixed decision rule and a named
-measurement, rather than guessed — twice now, a policy built on an unmeasured
-premise about ignored files has had to be withdrawn.
+**Status: closed.** The deciding measurement was run by the lead from the primary
+checkout — the one position neither this session nor the auditor could occupy,
+since the worktree-isolation guard refuses `cd` and `git -C` into sibling trees.
+The rule below was fixed at v0.3.1 *before* the input arrived; this section
+records the input and the answer it produced, not a re-derivation.
 
-**The hypothesis that could invalidate M1.** `.moai/state/` is gitignored in this
-repository, verified:
-
-```
-git check-ignore -v .moai/state/config-cache.json
-→ .gitignore:284:.moai/state/    .moai/state/config-cache.json
-```
-
-MoAI writes into that directory in every tree a session occupies — this worktree
-carries `!! .moai/state/config-cache.json` and `!! .moai/state/context-usage.json`
-right now (`git status --porcelain --ignored` → 7 entries, 5 of them `!!`). So
-"this tree holds ignored content" is plausibly true of **every worktree that has
-ever hosted a session**, before Go build output is even considered.
-
-If that holds, a policy of "preserve on any ignored content" preserves nearly the
-whole population, and **M2's guard undoes M1's unblocking of the ~98 merged
-trees** — the SPEC would ship a repair that cancels itself.
-
-**This is a hypothesis, not a finding.** It could not be measured from here: the
-worktree-isolation guard refuses `cd` and `git -C` into sibling trees, so only
-this tree is observable.
-
-**The deciding measurement (AC-WR-025), run from outside any worktree:**
+#### A.7.1 — The measurement
 
 ```
-git status --porcelain --ignored   # per tree, over all registered worktrees
+worktrees measured                 156        failures (rc≠0)   0
+carrying ignored content           156        ← 100%
+   …with entries outside .moai/    153
 ```
-recording, for each tree that M1 would newly unblock (merged, porcelain-clean,
-unanchored), whether it carries any `!!` entry — and if so, whether every such
-entry lies under a regenerable path.
 
-**The candidate policies:**
+Categories observed, by tree count: `.moai/state/config-cache.json` (156),
+`.moai/logs` (156), `.claude/settings.local.json` (148),
+`.moai/state/context-usage.json` (135), `bin` (64), `internal/cli/.moai` (42),
+`.claude/settings.local.json.lock` (38), `.moai/state/github` (32),
+`.ruff_cache` (19), `docs-site/public` (12), `.claude/agent-memory` (5).
 
-- **P1 — preserve on any ignored content.** Simplest and safest; cost is bounded
-  only if the condition is rare.
-- **P2 — classify by path.** Treat an enumerated set of regenerable paths as
-  destroyable and preserve on anything else, so a local `.env` is protected
-  while a statusline cache is not. Cost: an allowlist to maintain.
-- **P3 — accept the loss explicitly.** Keep today's behaviour, document that
-  ignored content in a merged clean worktree is destroyed, and name it in the
-  removal notice. Cost: honest and matching git's own default, but a local
-  `.env` is unrecoverable.
+**The blunt predicate is not merely degraded — it is dead.** "Holds ignored
+content" is true of **156 of 156**. It has *zero* discriminating power: as a
+preservation signal it does not re-block M1's ~99 merged trees, it makes every
+tree in the repository permanently immortal, forever, including trees no session
+will ever touch again. This is recorded as **measured-and-fatal**, not as a risk
+that materialised partway.
 
-**The decision rule, fixed now — two sequential questions, both answered by
-AC-WR-025's own output.** No branch of this rule terminates in a judgement call.
+[HARD] **Do not read "153 with entries outside `.moai/`" as 153 irreplaceable
+trees.** Most out-of-`.moai/` categories are regenerable —
+`.claude/settings.local.json` (148), `bin` (64), `.ruff_cache` (19),
+`docs-site/public` (12). Outside-`.moai/` and irreplaceable are different axes,
+and only the second one the rule consumes.
 
-**Q1 — would P1 preserve more than half the trees M1 unblocks?**
+#### A.7.2 — Applying the v0.3.1 rule
 
-| Answer | Policy |
-|---|---|
-| **No** | **P1.** The condition is rare enough that blanket preservation costs little and M1 still delivers. Stop here. |
-| **Yes** | P1 would cancel M1 — it is too blunt. Proceed to Q2. |
+**Q1 — would P1 preserve more than half the M1-unblocked trees?** **Yes** — it
+preserves 100% of them. P1 is eliminated. Proceed to Q2.
 
-**Q2 — among the M1-unblocked trees, is there at least one carrying ignored
-content OUTSIDE the regenerable set?**
+**Q2 — is there ≥1 M1-unblocked tree carrying ignored content outside the
+regenerable set?** **Answered by the fail-closed sub-rule, not by a direct
+measurement.** The rule asks about the *intersection* of two sets; we know 5
+trees carry `.claude/agent-memory/` and that ~99 trees are M1-unblocked, and
+**nobody has measured the intersection**. Under the v0.3.1 sub-rule
+"unclassifiable ⇒ irreplaceable", the answer is **yes** — and it is yes whether
+the true intersection is 0 or 5, so the policy does not change when someone
+measures it.
 
-| Answer | Policy | Why this is decisive, not a preference |
+**Selected policy: P2** — enumerate the regenerable categories, preserve on
+anything outside them.
+
+That the rule reached an answer through its own fallback, on an input nobody had
+when the rule was written, is the property the rule was built for. It is recorded
+here rather than smoothed over: Q2's input is **partially unmeasured**, and this
+section must not be read as though the intersection were known.
+
+#### A.7.3 — The regenerable allowlist, enumerated from the measurement
+
+Per the v0.3.1 sub-rule, the set is drawn from the paths actually observed, not
+invented ahead of them:
+
+| Category | Observed paths | Why regenerable |
 |---|---|---|
-| **No — every ignored entry is regenerable** | **P3.** | P2 and P3 would behave **identically** on the measured population: P2 classifies every observed entry as regenerable and destroys it, which is what P3 does. P2's allowlist would then protect nothing that exists, so it is unearned complexity — Simplicity ladder step 1, "does this need to be built at all?". |
-| **Yes — at least one tree carries irreplaceable ignored content** | **P2.** | There is a measured population that P3 destroys irrecoverably and P2 preserves exactly. The allowlist earns its complexity by protecting a set that was observed, not imagined. |
+| Runtime state | `.moai/state/**`, `.moai/logs`, `.moai/state/github` | Rewritten by the next session touch; the statusline recreates `config-cache.json` / `context-usage.json` on render |
+| Runtime-managed config | `.claude/settings.local.json`, `.claude/settings.local.json.lock` | Machine-local and runtime-managed by definition (`CLAUDE.local.md` §2 [HARD]) — never templated, regenerated by `moai glm` / `cc` / `cg` and the SessionStart hook |
+| Build output | `bin`, `docs-site/public`, `.ruff_cache` | Reproduced by `make build` / `hugo` / a re-run |
+| Test residue | `internal/cli/.moai` (42 trees) | Artefacts of the test-isolation leak family; reproduced by re-running the suite |
 
-**Why Q2 is a measurement and not a preference.** AC-WR-025 already collects the
-discriminating datum ("and if so, whether every such entry lies under a
-regenerable path"); until v0.3.1 no rule consumed it, which left the P2/P3 branch
-terminating in "choose between P2 and P3" — a preference wearing a procedure's
-clothes, and precisely the failure this section exists to avoid. The rule above
-consumes it.
+**Everything not in this table is irreplaceable and preserves the tree.**
 
-**Two sub-rules that keep Q2 from smuggling a judgement back in:**
+#### A.7.4 — `.claude/agent-memory/` is irreplaceable — and the axis matters
 
-1. **The regenerable set is enumerated FROM the measurement, not invented ahead
-   of it.** AC-WR-025 records the actual ignored paths observed across the
-   unblocked trees. The regenerable set is drawn from that concrete list
-   (`.moai/state/`, build-output directories), so the classification is applied
-   to paths in hand rather than to a hypothetical allowlist.
-2. **Unclassifiable ⇒ irreplaceable.** Any observed ignored path the operator
-   cannot confidently classify counts as irreplaceable, which routes Q2 to
-   **P2**. This is fail-closed, consistent with every other guard in this SPEC
-   (`design.md` §B.4), and it means uncertainty selects the preserving policy
-   rather than being resolved by taste.
+Decided on inspected content, not inferred. This tree's
+`.claude/agent-memory/plan-auditor/` holds one file written by the plan-auditor
+**during this card's own audit**: `feedback_go_test_run_nonexistent_passes.md`,
+recording that `go test -run <not-yet-existing-test>` exits 0 with
+`[no tests to run]` and is therefore non-falsifiable — the D1 finding,
+generalised into a durable rule with two admissible criterion forms.
 
-[HARD] **This rule lands before the fork is closed, not merely before M1.** A
-gate whose final branch is a judgement call shows green while deciding nothing.
+Two framings were offered and both are wrong:
 
-**What is NOT deferred:** the fork, the candidate policies, the rule that selects
-between them, and the measurement that feeds it are all fixed here. Only the
-measured input is outstanding. A run-phase implementer therefore has a procedure,
-not a judgement call.
+- **"Preservation reason"** — no. Holding a ~200MB checkout hostage to 1.8KB of
+  text is a bad trade, and it would make those trees immortal for exactly the
+  reason the blunt predicate would make all 156 immortal.
+- **"A merged branch's agent-memory is worthless"** — no, demonstrably. This
+  memory has nothing to do with `WT-worktree-reaper`'s code. It is a
+  cross-cutting lesson about acceptance criteria that applies to every future
+  audit in the repository. Its value is entirely independent of whether its
+  branch merged. (It even links `[[card-premise-needs-investigation]]`, a memory
+  living outside this tree — so the worktree copy is already orphaned from the
+  index it references.)
 
-**Consequence for the probe.** `git status --porcelain --ignored` is the
-implementation of P1 and the classifier for P2; under **P3 it is not needed at
-all**. So this SPEC does not assert the probe is required — its necessity is
-contingent on a fork that is open. (v2 of the measurement record calls the probe
-"still the right mechanism"; that is true under P1 and P2 and false under P3, and
-is flagged in the return report rather than adopted silently.)
+**Classification: irreplaceable.** But on the *regenerability* axis, not the
+*value* axis — the distinction is load-bearing. Nothing regenerates agent memory:
+no build, no runtime, no session replay. That is a property of the **category**,
+true of every `.claude/agent-memory/` directory regardless of what any particular
+one contains. Grounding the classification on content value would make it
+contingent on inspecting all five trees, and every future tree — not viable, and
+not what the rule asks. The content inspection above establishes that the value
+is real and branch-independent; the *classification* stands on regenerability
+alone and does not depend on it.
+
+**Cost, stated as a bound rather than a figure.** P2 preserves at most 5 of 156
+trees — roughly 1GB of the 30G, an upper bound since not every such tree is a
+removal candidate. What it costs *M1* specifically is **between 0 and 5 trees**,
+because the agent-memory ∩ M1-unblocked intersection is the unmeasured quantity
+from Q2. "Blocks nothing M1 needs" would overstate what was measured.
+
+#### A.7.5 — P2 is a stopgap, and the SPEC says so
+
+P2 preserves trees to avoid destroying memory that has nowhere else to live. The
+correct long-term fix is **drain-then-dispose**: move worktree-local agent memory
+to the primary checkout's store, then dispose of the tree freely. That is a
+separate card (`spec.md` §G) — this SPEC must not be read as establishing
+preserve-forever as the permanent answer.
 
 ## §B — D2: which signal is authoritative for "a live session is in this tree" (M2)
 
