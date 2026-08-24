@@ -16,6 +16,18 @@ const (
 	DefaultDocumentation            = "en"
 	DefaultErrorMessages            = "en"
 
+	// Graph-freshness gate thresholds (graph layer drift): reasoned defaults,
+	// recalibratable via gate.yaml. The codemaps line reflects how many
+	// described-source files must drift before the curated docs are judged
+	// wrong enough to demand regeneration; the mx line reds on any inventoried
+	// content drift (the index is cheap to rescan).
+	DefaultGraphFreshnessCodemapsChangedFiles = 40
+	DefaultGraphFreshnessMXIndexChangedFiles  = 1
+	// DefaultGraphFreshnessUpdateBudgetMS bounds a query-time refresh's
+	// measured cost before a warning fires. A hypothesis until measured on
+	// this repository (never a foreign figure); overrun warns, never blocks.
+	DefaultGraphFreshnessUpdateBudgetMS = 2000
+
 	DefaultTestCoverageTarget    = 85
 	DefaultMaxTransformationSize = "small"
 	DefaultMinCoveragePerCommit  = 80
@@ -555,6 +567,17 @@ func NewDefaultGateConfig() GateConfig {
 			Enabled:      true,
 			BlockOnError: false,
 			WarnOnlyMode: true,
+		},
+		// The graph-freshness step mirrors the ast-grep posture: ON and
+		// advisory by default. Thresholds are reasoned defaults, calibrated
+		// from this repository's own history (never foreign figures); the
+		// update budget bounds query-time refresh cost and only warns.
+		GraphFreshness: GraphFreshnessGateConfig{
+			Enabled:              true,
+			Blocking:             false,
+			CodemapsChangedFiles: DefaultGraphFreshnessCodemapsChangedFiles,
+			MXIndexChangedFiles:  DefaultGraphFreshnessMXIndexChangedFiles,
+			UpdateBudgetMS:       DefaultGraphFreshnessUpdateBudgetMS,
 		},
 	}
 }

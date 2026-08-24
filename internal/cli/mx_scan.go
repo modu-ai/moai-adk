@@ -88,6 +88,10 @@ Examples:
 				SchemaVersion: mx.SchemaVersion,
 				Tags:          tags,
 				ScannedAt:     time.Now(),
+				// REQ-GF-003: provenance (tree, commit-or-dirty, per-file
+				// inventory) is stamped on every write — an index without it
+				// is freshness-unjudgeable.
+				Provenance: mx.StampMXScan(projectRoot, s.ScanInventory(scanRoot)),
 			}
 			if err := mgr.Write(sidecar); err != nil {
 				return fmt.Errorf("write sidecar: %w", err)

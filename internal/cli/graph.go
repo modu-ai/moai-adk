@@ -32,6 +32,7 @@ func newGraphCmd() *cobra.Command {
 	}
 	cmd.AddCommand(newGraphBuildCmd())
 	cmd.AddCommand(newGraphQueryCmd())
+	cmd.AddCommand(newGraphCheckCmd())
 	return cmd
 }
 
@@ -274,6 +275,13 @@ Examples:
 			}
 			if err := graph.WriteJSONL(target, edges); err != nil {
 				return fmt.Errorf("write edges: %w", err)
+			}
+
+			// REQ-GF-003: stamp the source-set fingerprints next to the
+			// artifact so its staleness is judgeable without a rebuild.
+			metaPath := filepath.Join(filepath.Dir(target), graph.MetaFileName)
+			if err := graph.WriteEdgesMeta(metaPath, projectRoot, graph.SourceFingerprintsForEdges(projectRoot)); err != nil {
+				return fmt.Errorf("write edges meta: %w", err)
 			}
 
 			out := cmd.OutOrStdout()

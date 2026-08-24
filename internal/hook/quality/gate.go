@@ -14,6 +14,9 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/graph"
 )
 
 // GateConfig holds configuration for the QualityGate.
@@ -55,6 +58,37 @@ type GateConfig struct {
 	TypecheckCommand string
 	// TypecheckTimeout is the maximum duration allowed for the typecheck step.
 	TypecheckTimeout time.Duration
+	// GraphFreshness configures the graph-layer drift gate step. When nil,
+	// the step is skipped WITH an explicit notice (never silence).
+	GraphFreshness *GraphFreshnessConfig
+}
+
+// GraphFreshnessConfig configures the graph-freshness step of the quality
+// gate: per-layer staleness thresholds plus the blocking posture. Advisory by
+// default — pre-commit is the wrong place to force a codemaps regeneration,
+// so the default reports the verdict without blocking.
+type GraphFreshnessConfig struct {
+	// Enabled turns the step on. Disabled still emits an explicit skip notice.
+	Enabled bool
+	// Blocking fails the gate when the check reds; the advisory default emits
+	// the verdict as a notice instead.
+	Blocking bool
+	// CodemapsChangedFiles thresholds the codemaps layer (>= is stale).
+	CodemapsChangedFiles int
+	// MXIndexChangedFiles thresholds the mx-index layer (>= is stale).
+	MXIndexChangedFiles int
+}
+
+// DefaultGraphFreshnessConfig mirrors the config-package defaults so the
+// PreToolUse path and the standalone CLI agree without sharing a type. The
+// threshold VALUES are single-sourced from the config package constants.
+func DefaultGraphFreshnessConfig() *GraphFreshnessConfig {
+	return &GraphFreshnessConfig{
+		Enabled:              true,
+		Blocking:             false,
+		CodemapsChangedFiles: config.DefaultGraphFreshnessCodemapsChangedFiles,
+		MXIndexChangedFiles:  config.DefaultGraphFreshnessMXIndexChangedFiles,
+	}
 }
 
 // DefaultGateConfig returns a GateConfig with production-safe defaults.
@@ -66,6 +100,7 @@ func DefaultGateConfig() *GateConfig {
 		LintTimeout: 60 * time.Second,
 		TestTimeout: 120 * time.Second,
 		AstGrepGate: DefaultAstGrepGateConfig(),
+		GraphFreshness: DefaultGraphFreshnessConfig(),
 		// The axis ships on: a project with no type-check surface reports the
 		// skip and passes, so enabling it by default costs nothing while
 		// closing the hole for every project that does have one.
@@ -324,10 +359,23 @@ func (g *QualityGate) Run(ctx context.Context) (bool, string) {
 		return true, ""
 	}
 
+	// Step 0: graph-freshness drift gate (advisory by default). Runs BEFORE
+	// language detection: the graph layers are language-independent artifacts,
+	// and every posture emits an explicit notice — enabled-fresh,
+	// enabled-stale, disabled, and unconfigured are four distinguishable
+	// outcomes; silence is the defect this step exists to prevent
+	// (REQ-GF-005).
+	gfNotice, gfBlocked, gfBlockReason := g.runGraphFreshnessStep()
+	if gfBlocked {
+		return false, gfBlockReason
+	}
+
 	tc := g.detectToolchain()
 	if tc == nil {
-		// No recognized language — pass silently.
-		return true, ""
+		// No recognized language — pass, carrying the graph-freshness notice
+		// (the step ran before detection; dropping its notice here is the
+		// silence REQ-GF-005 forbids).
+		return true, gfNotice
 	}
 
 	// Step 1: vet steps
@@ -343,7 +391,8 @@ func (g *QualityGate) Run(ctx context.Context) (bool, string) {
 	// passReason carries a passing step's notice out to Run's caller. Dropping
 	// it here is what left an absent ast-grep scanner indistinguishable from a
 	// clean scan: the step reported the skip and this frame threw it away.
-	passReason := vetReason
+	// The graph-freshness notice (step 0) leads: it is the outermost wrap.
+	passReason := appendReason(gfNotice, vetReason)
 
 	// Step 1.5: typecheck axis.
 	//
@@ -1122,4 +1171,47 @@ func fileExists(path string) bool {
 		return false
 	}
 	return !info.IsDir()
+}
+
+// runGraphFreshnessStep executes the graph-freshness drift gate step
+// (REQ-GF-005). It returns the notice every posture must emit — never silence
+// — plus a blocked/blockReason pair used only when the step is configured
+// blocking and the check reds.
+func (g *QualityGate) runGraphFreshnessStep() (notice string, blocked bool, blockReason string) {
+	if g.config.GraphFreshness == nil {
+		// Unconfigured: absent from every production path (DefaultGateConfig
+		// and both config mappings always populate it). Preserve the
+		// pre-existing silent-pass contract for unknown projects rather than
+		// emit noise no consumer configured.
+		return "", false, ""
+	}
+	gf := g.config.GraphFreshness
+	if !gf.Enabled {
+		return "graph-freshness: step disabled in gate config (explicit skip notice)", false, ""
+	}
+
+	projectDir := resolveQualityProjectDir(*g.config, "QualityGate.Run.graphFreshness")
+	res, err := graph.CheckFreshness(projectDir, graph.Thresholds{
+		CodemapsChangedFiles: gf.CodemapsChangedFiles,
+		MXIndexChangedFiles:  gf.MXIndexChangedFiles,
+	})
+	if err != nil {
+		notice = fmt.Sprintf("graph-freshness: system error: %v", err)
+		if gf.Blocking {
+			return "", true, notice
+		}
+		return notice + " (advisory)", false, ""
+	}
+	if res.Failed() {
+		var offending []string
+		for _, l := range res.OffendingLayers() {
+			offending = append(offending, fmt.Sprintf("%s=%s(value=%d threshold=%d)", l.Layer, l.Verdict, l.Value, l.Threshold))
+		}
+		notice = "graph-freshness: " + strings.Join(offending, ", ")
+		if gf.Blocking {
+			return "", true, notice
+		}
+		return notice + " (advisory)", false, ""
+	}
+	return "graph-freshness: all layers fresh", false, ""
 }

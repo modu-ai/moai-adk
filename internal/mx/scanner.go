@@ -2,6 +2,9 @@ package mx
 
 import (
 	"bufio"
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -17,6 +20,7 @@ type Scanner struct {
 	anchorIDs      map[string]string // AnchorID -> file:line (for duplicate detection)
 	warnings       []string          // Scanner warnings
 	errors         []string          // Scanner errors
+	fileHashes     map[string]string // absolute path -> sha256(content) of files actually read (REQ-GF-003 scan inventory)
 }
 
 // errSubLineKind is the sentinel returned by parseTag when the parsed kind is a
@@ -55,24 +59,32 @@ func (s *Scanner) SetIgnorePatterns(patterns []string) {
 	s.ignorePatterns = patterns
 }
 
-// ScanFile scans a single file for @MX tags.
+// ScanFile scans a single file for @MX tags. The file's content hash is
+// recorded in the scanner's inventory (REQ-GF-003): one read covers both the
+// tag pass and the provenance inventory, so the index can later be
+// freshness-judged and refreshed per changed file.
 func (s *Scanner) ScanFile(filePath string) ([]Tag, error) {
-	file, err := os.Open(filePath)
+	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("open file: %w", err)
 	}
-	defer func() { _ = file.Close() }()
 
 	// Get comment prefix for this file extension
 	ext := strings.ToLower(filepath.Ext(filePath))
 	prefix := GetCommentPrefix(ext)
 	if prefix == "" {
-		// Unsupported language - skip
+		// Unsupported language - skip (not read, not inventoried)
 		return nil, nil
 	}
 
+	if s.fileHashes == nil {
+		s.fileHashes = make(map[string]string)
+	}
+	sum := sha256.Sum256(data)
+	s.fileHashes[filePath] = hex.EncodeToString(sum[:])
+
 	var tags []Tag
-	scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(bytes.NewReader(data))
 	lineNum := 0
 
 	var pendingWarnTag *Tag // Track WARN tag that needs REASON
@@ -243,8 +255,11 @@ func (s *Scanner) ScanFile(filePath string) ([]Tag, error) {
 	return tags, nil
 }
 
-// ScanDir recursively scans a directory for @MX tags.
+// ScanDir recursively scans a directory for @MX tags. The per-file content
+// inventory of files actually read is reset per call and exposed via
+// ScanInventory for provenance stamping.
 func (s *Scanner) ScanDir(rootDir string) ([]Tag, error) {
+	s.fileHashes = make(map[string]string)
 	var allTags []Tag
 
 	err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
@@ -299,6 +314,22 @@ func (s *Scanner) GetWarnings() []string {
 // GetErrors returns all scanner errors.
 func (s *Scanner) GetErrors() []string {
 	return s.errors
+}
+
+// ScanInventory returns the scan-root-relative path → content sha256 map for
+// every file the last ScanDir actually read. Empty before the first scan or
+// when nothing was read. Paths use forward slashes so the inventory is
+// platform-stable in the sidecar.
+func (s *Scanner) ScanInventory(rootDir string) map[string]string {
+	out := make(map[string]string, len(s.fileHashes))
+	for abs, sum := range s.fileHashes {
+		rel, err := filepath.Rel(rootDir, abs)
+		if err != nil || strings.HasPrefix(rel, "..") {
+			continue
+		}
+		out[filepath.ToSlash(rel)] = sum
+	}
+	return out
 }
 
 // extractTagContent extracts the @MX tag content from a line.
