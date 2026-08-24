@@ -24,6 +24,20 @@ const retirementMarkerPrefix = "[SUPERSEDED"
 // IsRetiredClause reports whether a registry clause carries the retirement
 // marker — a leading "[SUPERSEDED" (optionally followed by a reason, e.g.
 // "[SUPERSEDED by CONST-V3R6-001]"). Leading whitespace is ignored.
+//
+// The marker must be a COMPLETE token: the prefix has to end at the bracket or
+// at a space, and the bracket has to close. A bare prefix match would classify
+// "[SUPERSEDEDLY] …" and an unterminated "[SUPERSEDED …" as retired, and a
+// retired entry skips drift, canary-gate, and source-file validation — so a
+// live or malformed clause would silently switch its own checks off.
 func IsRetiredClause(clause string) bool {
-	return strings.HasPrefix(strings.TrimSpace(clause), retirementMarkerPrefix)
+	trimmed := strings.TrimSpace(clause)
+	if !strings.HasPrefix(trimmed, retirementMarkerPrefix) {
+		return false
+	}
+	rest := trimmed[len(retirementMarkerPrefix):]
+	if rest == "" || (rest[0] != ']' && rest[0] != ' ') {
+		return false
+	}
+	return strings.Contains(rest, "]")
 }

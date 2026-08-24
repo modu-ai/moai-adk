@@ -178,6 +178,8 @@ func TestIsRetiredClause(t *testing.T) {
 		{"lowercase is not a marker", "[superseded] text", false},
 		{"mid-clause mention is not a marker", "mark superseded entries with [SUPERSEDED by <file>] prefix", false},
 		{"unrelated bracket", "[HARD] text", false},
+		{"longer word starting with the marker is not a marker", "[SUPERSEDEDLY] text", false},
+		{"unterminated marker", "[SUPERSEDED text", false},
 		{"empty", "", false},
 	}
 	for _, tc := range cases {

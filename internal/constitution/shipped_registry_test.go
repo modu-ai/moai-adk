@@ -29,8 +29,11 @@ func TestShippedRegistriesLoad(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
+			// Fatal, not Skip: a deleted or renamed registry is exactly the
+			// failure this test claims to guard, and skipping would report
+			// green for it.
 			if _, err := os.Stat(path); err != nil {
-				t.Skipf("registry not present at %s: %v", path, err)
+				t.Fatalf("registry not present at %s: %v", path, err)
 			}
 
 			reg, err := constitution.LoadRegistry(path, repoRoot)
