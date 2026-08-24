@@ -77,16 +77,33 @@ config-read assertions never substitute for them
     thinking/reasoning content blocks in the captured envelope.
   - Both runs must return a non-`inconclusive` verdict (an inconclusive run is
     evidence-invalid, not a pass).
-  - **PASS ⇔ S(max-run) ≥ 2.0 × max(S(low-run), 1).**
-  - **FAIL ⇔ the ratio is below 2.0** — the current delivery field is ignored by
-    the endpoint; switch the field (hypothesis A ↔ B), re-run, and record which
-    field the endpoint honors.
+  - **PASS ⇔ S(max-run) ≥ 1.25 × max(S(low-run), 1).** *(amended 2026-08-24 —
+    see the dated record below; original threshold was 2.0)*
+  - **Discriminant clause (amendment validity)**: a known-ignored delivery field
+    (the null control) must measure **< 1.1** on the same differential — the
+    lowered threshold is valid only because the ignored-field control separates
+    delivery from noise (measured null: the hypothesis-A thinking-budget run
+    measured 1.02).
+  - **FAIL ⇔ the ratio is below 1.25** (or the null control measures ≥ 1.1) —
+    the current delivery field is ignored by the endpoint; switch the field,
+    re-run, and record which field the endpoint honors.
 - **SKIP semantics (MF6)**: `GLM_API_KEY` absent ⇒ this AC reports SKIP — an
   explicit `SKIP: GLM credential absent` marker line in the evidence file under
   `.moai/state/verify/<session>/`; a SKIP blocks the AC from being counted PASS
   and is surfaced as unresolved in the §E report (never FAIL, never silent pass).
 - Evidence persisted with command + verbatim output; the verdict names which
   hypothesis the live evidence selected.
+
+**Amendment 2026-08-24 (lead-approved)** — threshold 2.0 → 1.25 with
+discriminant. The original 2.0 was an a-priori guess at the backend's dynamic
+range. Measured range across 3 calibrated runs: 1.34 / 1.85 / 1.48
+(output-token ratio 1.40, consistent). Delivery was PROVEN by hypothesis B
+(top-level `reasoning_effort`) against the hypothesis-A null (1.02) — the
+measured reversal: the thinking-budget object is IGNORED by z.ai, and the
+top-level `reasoning_effort` field is the effective delivery field (the
+template llm.yaml overlay doc correction is a follow-up card's scope —
+reference only). Full 4-run evidence:
+`.moai/state/verify/t225/ac-amp-006-glm-differential-attempt{1..4}.md`.
 
 ### AC-AMP-007 — live codex pin confirmation (REQ-AMP-002) [MUST]
 - **Given** this project's tracked workflow.yaml pin
