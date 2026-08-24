@@ -57,6 +57,7 @@ var claudeCodePassthroughTokens = []string{
 	"$ACTION",
 	"$AUTONOMY_TIER_DORMANT",
 	"$INPUT",
+	"$MOAI_BIN",
 	"$PROJECT_ROOT",
 	"$SESSION_ID",
 	"$STATE_FILE",
