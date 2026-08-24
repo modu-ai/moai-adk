@@ -47,8 +47,13 @@ var RegenerableIgnoredPaths = []string{
 // means every ignored entry is regenerable and the tree is safe to remove.
 //
 // @MX:ANCHOR: [AUTO] the sole ignored-content predicate behind every sweep
-// @MX:REASON: three removal paths consult it; an entry it fails to classify as
-// irreplaceable is deleted with the worktree and cannot be recovered.
+// @MX:REASON: all three SWEEPS consult it — prMergeCleanup, `worktree clean
+// --stale`, and `worktree clean --merged-only`; an entry it fails to classify
+// as irreplaceable is deleted with the worktree and cannot be recovered.
+// `worktree done` and `worktree remove` are deliberately outside it: each acts
+// on one named target the operator chose, not on a population it enumerated.
+// `done --auto` is the weakest of that exclusion — it runs unattended after a
+// PR merge — and is left to a follow-up card rather than widened here.
 func IrreplaceableIgnoredEntries(porcelain string) []string {
 	var irreplaceable []string
 	for _, line := range strings.Split(porcelain, "\n") {
