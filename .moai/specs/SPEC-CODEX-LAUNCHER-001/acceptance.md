@@ -11,8 +11,14 @@
 ## AC-CL-002 — 동사 라우팅 (REQ-CL-002)
 
 - **Given** 등록된 `codex` 커맨드
-- **When** 맨몸 / `status` / `cli` / `app` 각각을 스텁 exec seam 으로 호출하면
-- **Then** 맨몸과 `status` 는 exec 을 **0회** 수행하고 리드아웃만 내며, `cli` 는 `codex` 를, `app` 은 `codex app` 을 각각 정확히 1회 exec 한다.
+exec seam 은 호출 횟수뿐 아니라 **argv 전체와 cwd** 를 포착한다 — 명령 이름만 맞고 인자나 실행 위치가 틀린 구현이 통과하지 못하게.
+
+- **When** 맨몸 / `status` / `cli` / `app` 각각을 호출하면
+- **Then** 맨몸과 `status` 는 exec **0회**, `cli` 와 `app` 은 각 1회다.
+- **And** `cli` 의 포착된 cwd 는 **호출자의 프로젝트 루트** 와 일치한다 (worktree 에서 부르면 그 worktree — 다른 트리에서 codex 가 뜨면 세션이 엉뚱한 코드를 본다).
+- **And** `app` 의 포착 argv 는 정확히 `[codex, app]` 이다.
+- **And Given** `moai codex cli -- --model o3 "a b" '$x' --flag=v` 처럼 `--` 뒤에 공백·인용·`$`·`=` 를 포함한 인자를 주면
+- **Then** 포착 argv 의 `codex` 뒤 꼬리가 이 토큰들과 **정확히 일치** 한다 (개수·순서·문자 모두; 셸 재해석이나 재인용으로 변형되지 않는다).
 - **근거**: 맨몸의 의미는 리드 판정으로 (b) "리드아웃 + 명시 기동" 으로 확정됐다 (plan §B).
 
 ## AC-CL-003 — `--spawn` 패리티 (REQ-CL-003)
@@ -56,43 +62,70 @@
 
 텍스트 중복 부재만으로는 "공유 프로브를 실제로 쓴다" 를 증명하지 못한다. 호출로 판정한다:
 
-- **Given** `ProbeCodexSetup` 과 `codexadapter.ValidateConfig` 각각의 호출 횟수를 세는 seam
+호출 횟수 `≥1` 은 "불렀다" 만 증명하고 "그 값을 썼다" 는 증명하지 못한다 — 공유 함수를 부른 뒤 결과를 버리고 자체 분류를 하는 구현도 통과한다. **sentinel 전파** 로 판정한다:
+
+- **Given** 공유 프로브가 실제 값과 구별되는 sentinel 을 돌려주도록 스텁 (버전 `SENTINEL-VER-9x9`, 바이너리 경로 `/sentinel/path/codex`, auth `sentinel-provider`)
 - **When** 리드아웃을 1회 조립하면
-- **Then** 두 함수의 호출 횟수가 각각 ≥1 이다 (런처가 자체 분류·자체 검증을 하지 않았다는 실행 증거).
+- **Then** 세 sentinel 값이 **모두** 최종 출력 문자열에 그대로 나타난다 (하나라도 빠지면 그 항목은 공유 프로브가 아닌 다른 경로에서 왔다는 뜻).
+- **And Given** `codexadapter.ValidateConfig` 가 sentinel 위반을 돌려주도록 스텁
+- **Then** 배선 행이 그 위반을 반영한다 (호출만 하고 자체 검증 결과를 쓰지 않았다면 실패한다).
+- **And** 두 함수의 호출 횟수는 각각 ≥1 이다.
 - **And** `grep -rn "login status" internal/ --include="*.go" | grep -v _test` 의 히트는 공유 분류기 한 곳뿐이다.
 - **And** `internal/web` 에는 auth 분류 로직이 여전히 0건이다.
 - **And** `git diff` 에 `codexCommandRunner` 인터페이스 선언의 변경이 없다 (REQ-CL-010 후단).
 
 ## AC-CL-008 — auth 분류 2단 사다리 (REQ-CL-008) [핵심]
 
-**1단 (파일):**
+**1단 — 순수 파일 판정 `classifyCodexAuthFile(raw []byte)` 을 직접 시험한다** (디스크 접근 없음). fixture 행렬:
 
-- **Given** 임시 CODEX_HOME 에 `auth.json` 을 두고 `auth_mode` 를 `chatgpt` / `apikey` / (알 수 없는 값) 로 각각 채운 fixture
-- **When** 분류하면
-- **Then** 각각 `chatgpt` / `apiKey` / `unknown` 이다. 알 수 없는 값은 추측하지 않는다.
-- **And** 어떤 경우에도 토큰 값(`tokens.*`)이나 API 키 값이 읽히거나 출력에 나타나지 않는다 (출력 전문을 키 문자열로 grep → 0건).
+| `auth.json` 내용 | 기대 `(provider, ok)` |
+|---|---|
+| `auth_mode=chatgpt` + `tokens` 객체 존재 | `("chatgpt", true)` |
+| `auth_mode=chatgpt` + `tokens` 없음 | `("", false)` — 하강 |
+| `auth_mode=chatgpt` + `tokens: null` | `("", false)` — 하강 |
+| `auth_mode=apikey` + `OPENAI_API_KEY` 채워짐 | `("apiKey", true)` |
+| `auth_mode=apikey` + `OPENAI_API_KEY: null` | `("", false)` — 하강 |
+| `auth_mode=apikey` + `OPENAI_API_KEY: ""` | `("", false)` — 하강 |
+| `auth_mode=totally-new-mode` | `("", false)` — 추측하지 않는다 |
+| `{` (파싱 실패) | `("", false)` — 하강 |
+| 빈 바이트 | `("", false)` — 하강 |
 
-**2단 (하강):**
+**비밀값 규율 — 타입으로 판정한다** (출력 grep 은 직접 누출만 잡으므로 보조 수단):
 
-- **Given** `auth.json` 이 없고, stdout 은 비우고 stderr 에만 `Logged in using ChatGPT` 를 쓰는 스텁
+- **When** 역직렬화 대상 구조체의 필드 집합을 리플렉션으로 열거하면
+- **Then** 토큰 계열 필드(`id_token` / `access_token` / `refresh_token`)에 대응하는 필드가 **하나도 없다**.
+- **And Given** 파싱이 실패하도록 만든 fixture 에 가짜 토큰 문자열을 심고
+- **When** 반환된 오류의 `Error()` 전문을 검사하면
+- **Then** 그 문자열이 포함되지 않는다 (오류는 경로와 사유만 싣는다).
+
+**2단 — 순수 파서 `parseCodexAuthLine(combined, exitCode)` 을 직접 시험한다** (프로세스 없음). 표는 AC-CL-009.
+
+**통합 1건** — 두 단이 실제로 이어지는지:
+
+- **Given** `auth.json` 부재 + `codexLoginStatusRunner` 가 stdout 을 비우고 stderr 로만 `Logged in using ChatGPT` (rc 0) 를 돌려주도록 스텁
 - **When** `ProbeCodexSetup` 을 호출하면
 - **Then** `AuthProvider == "chatgpt"` 이다.
 - **기준선 근거**: 이 절은 수정 전 트리에서 반드시 실패해야 한다 (현행은 `unknown` — M-2 실측). 실패를 먼저 관측한 뒤 수정한다.
 
 ## AC-CL-009 — 오류 문구를 인증 성공으로 읽지 않는다 (REQ-CL-009) [핵심]
 
-부분 일치의 오분류를 막는 음성 시험이다. `auth.json` 부재 상태에서, 아래 각 출력을 스텁으로 공급한다:
+순수 파서 `parseCodexAuthLine(combined, exitCode)` 을 직접 시험한다. 각 행이 하나의 케이스다:
 
-| 스텁 출력 (rc) | 기대 |
-|---|---|
-| `error: API key missing` (rc 1) | `unknown` — `apiKey` 아님 |
-| `provider configuration unreadable` (rc 1) | `unknown` — `provider` 아님 |
-| `failed to reach ChatGPT backend` (rc 1) | `unknown` — `chatgpt` 아님 |
-| `Logged in using ChatGPT` (rc 0) | `chatgpt` |
-| `Logged in using ChatGPT` (rc 1) | `chatgpt` — 긍정 행이 있으므로 rc 만으로 버리지 않는다 |
-| 두 스트림 모두 비어 있음 (rc 0) | `unknown` |
+| 입력 (rc) | 기대 | 무엇을 막는가 |
+|---|---|---|
+| `Logged in using ChatGPT` (0) | `chatgpt` | — (긍정 기준선) |
+| `Logged in using API key` (0) | `apiKey` | — (긍정 기준선) |
+| `Logged in using ChatGPT` (1) | `chatgpt` | rc 만으로 버리지 않는다 |
+| `error: API key missing` (1) | `unknown` | 부분 일치 |
+| `provider configuration unreadable` (1) | `unknown` | 부분 일치 |
+| `failed to reach ChatGPT backend` (1) | `unknown` | 부분 일치 |
+| **`Logged in state unavailable: API key missing`** (1) | **`unknown`** | **앵커만 거는 안이 뚫리는 지점** — 이 행은 `logged in` 으로 시작한다 |
+| `Logged in using ChatGPT (session expired)` (1) | `unknown` | 전체 행 문법 불일치 — 추측하지 않는다 |
+| `Logged in using Acme SSO` (0) | `unknown` | 문법에 없는 새 provider 는 추측하지 않는다 |
+| `warning: cache stale\nLogged in using ChatGPT` (0) | `chatgpt` | 잡음 행이 섞여도 긍정 행은 찾는다 |
+| 빈 입력 (0) | `unknown` | — |
 
-- **근거**: 현행 분류기(`mcp_codex.go:1331`)는 부분 일치라 위 1~3행을 각각 `apiKey` / `provider` / `chatgpt` 로 잘못 분류한다. 앵커된 긍정 행 매칭이 이 여섯 칸을 동시에 만족시키는 유일한 형태다.
+- **근거**: 현행 분류기(`mcp_codex.go:1332-1338`)는 부분 일치라 4~6행을 각각 `apiKey` / `provider` / `chatgpt` 로 잘못 분류한다. 7행은 `^logged in` **앵커만** 거는 중간안도 뚫린다는 것을 고정한다 — 전체 행 문법 + 캡처값 매핑만이 11칸을 동시에 만족시킨다.
 
 ## AC-CL-010 — 판정 불가는 조치와 함께 보고 (REQ-CL-009)
 
@@ -104,7 +137,8 @@
 
 - **When** 기존 codex 관련 시험을 실행하면 (`go test ./internal/cli/... -run Codex -timeout 600s`)
 - **Then** 전부 통과한다.
-- **And** `codexCommandRunner` 인터페이스 선언과 그 세 구현체(`realCodexRunner` / `fakeCodexRunner` / `stubCodexRunner`) 어느 것도 이 SPEC 의 diff 에 나타나지 않는다 — 새 seam 은 별도 변수이므로 (M-7, plan §C.2).
+- **And** `codexCommandRunner` 인터페이스 선언과 그 세 구현체(`realCodexRunner` / `fakeCodexRunner` / `stubCodexRunner`) 어느 것도 이 SPEC 의 diff 에 나타나지 않는다 — 새 seam 은 별도 변수 + 순수 함수 둘이므로 (M-7, plan §C.2).
+- **And** 순수 함수 두 개(`parseCodexAuthLine` / `classifyCodexAuthFile`)는 시험에서 프로세스를 띄우지 않고 직접 호출된다 — 시험 파일에 이 둘의 직접 호출이 각각 ≥1건 존재한다.
 
 ## AC-CL-012 — 데스크톱 앱 위임 (REQ-CL-011)
 

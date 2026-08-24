@@ -1,7 +1,7 @@
 ---
 id: SPEC-CODEX-LAUNCHER-001
 title: "Codex 전용 런처 — moai codex: 배선·CODEX_HOME·auth 상태 확인과 앱/CLI 기동"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-08-24
 updated: 2026-08-24
@@ -25,11 +25,12 @@ related_specs: [SPEC-CODEX-DUAL-AGENTS-001, SPEC-CODEX-SKILLS-CANONICAL-001, SPE
 |---|---|---|
 | 0.1.0 | 2026-08-24 | 최초 작성 (plan-phase, 카드 t197). 리드 배차 시 추가된 운영자 기준 3항(런처 동사 / auth 상태 노출 / t88 M4 정합) 반영 |
 | 0.2.0 | 2026-08-24 | 맨몸 `moai codex` 의미 확정 — 리드 판정 (b) "리드아웃 + 명시 기동". REQ-CL-002 재기술, AC-CL-002 조건절 해소, plan §B 결정 기록으로 전환 |
-| 0.3.0 | 2026-08-24 | 교차모델 감사(codex 백엔드) 지적 4건 반영. auth 분류를 `auth_mode` 파일 1순위 + 앵커된 긍정 행 2순위의 2단 사다리로 재설계(REQ-CL-008/009 재기술) — 부분 일치가 오류 문구를 인증 성공으로 읽는 결함을 설계 단계에서 제거. 공유 러너 인터페이스 확장 철회(REQ-CL-010 후단) — 구현체 수 측정이 틀렸음이 드러남(M-7). AC 5건을 명목 커버리지에서 행동 판정으로 교체. 근거 문서를 축약 없는 실측본으로 재작성 |
+| 0.3.0 | 2026-08-24 | 교차모델 감사 1차(codex 백엔드) 지적 4건 반영. auth 분류를 `auth_mode` 파일 1순위 + 앵커된 긍정 행 2순위의 2단 사다리로 재설계(REQ-CL-008/009 재기술) — 부분 일치가 오류 문구를 인증 성공으로 읽는 결함을 설계 단계에서 제거. 공유 러너 인터페이스 확장 철회(REQ-CL-010 후단) — 구현체 수 측정이 틀렸음이 드러남(M-7). AC 5건을 명목 커버리지에서 행동 판정으로 교체. 근거 문서를 축약 없는 실측본으로 재작성 |
+| 0.4.0 | 2026-08-24 | 교차모델 감사 2차 지적 5건 반영. (1) `^logged in` 앵커도 뚫린다는 반례(`Logged in state unavailable: API key missing`)를 받아 전체 행 문법 + 캡처값 매핑으로 교체(REQ-CL-009). (2) 파일 1단에 모드별 최소 구조 조건 추가 — 자격 재료 없는 stale 파일은 하강(REQ-CL-008), 비밀값 규율을 출력 grep 에서 타입(비밀 필드 없는 구조체)으로 격상. (3) seam 을 3분해 — 최종 provider 만 반환하는 단일 seam 으로는 stdout/stderr/rc 주입 지점이 없어 핵심 회귀 시험이 명목화됨. (4) AC-CL-002 에 cwd·argv 전달 판정, AC-CL-007 에 sentinel 전파 판정 추가. (5) 근거 문서 재작성 + 에이전트 TOML 수를 12→**11** 로 정정(`ls | wc -l` 이 별칭 긴 형식의 `total` 행을 함께 셌다) |
 
 ## §A. 측정 전제 (Verified baseline)
 
-> 근거: `.moai/reports/t197/measurement.md` (worktree `WT-codex-launcher` @ `a547e3888`, 부모 `9280c96b3`, 2026-08-24 실측 — 명령·종료코드·출력 축약 없이 수록).
+> 근거: `.moai/reports/t197/measurement.md` (worktree `WT-codex-launcher` @ `746177017`, 분기 지점 `9280c96b3`, 2026-08-24 실측 — 각 항목이 명령·rc·출력 전문으로 기록돼 있고, 미관측 항목은 말미에 명시돼 있다).
 > t88 (M4) 산출물 `7b217da7c` 가 이 트리의 조상임을 확인했다.
 
 ### §A.1 `moai codex` 는 없다 (카드 전제 성립)
@@ -39,6 +40,8 @@ related_specs: [SPEC-CODEX-DUAL-AGENTS-001, SPEC-CODEX-SKILLS-CANONICAL-001, SPE
 ### §A.2a 구조화된 auth 원천이 존재한다
 
 `codex doctor` 는 auth 를 구조화해 알고 있고 (`stored auth mode: chatgpt`), 그 원천은 `<CODEX_HOME>/auth.json` 의 `auth_mode` 필드다. doctor 자체는 이 머신에서 **46초** 걸려 런처가 부를 수 없지만 (롤아웃 31,525개 스캔), 파일은 즉시 읽힌다. 산문 파싱보다 이쪽이 1순위다.
+
+다만 이 머신에서 관측한 조합은 `auth_mode=chatgpt` 하나뿐이다 — `apikey` / `provider` 모드의 실제 파일 형태는 미관측이므로, 설계는 알려지지 않은 값을 추측하지 않고 명령 프로브로 하강한다.
 
 ### §A.2 auth 상태가 항상 `unknown` — 원인은 스트림 오독
 
@@ -56,7 +59,7 @@ related_specs: [SPEC-CODEX-DUAL-AGENTS-001, SPEC-CODEX-SKILLS-CANONICAL-001, SPE
 |---|---|
 | 생성기 | `moai init --agent claude\|codex\|both` (`internal/cli/init.go:393-400`) |
 | 산출물 | `.codex/hooks.json`, `.codex/config.toml` (`internal/codexwiring/codexwiring.go:29,31`), 신뢰 사이드카 |
-| 에이전트 | `.codex/agents/moai/*.toml` 12종 (템플릿) |
+| 에이전트 | `.codex/agents/moai/*.toml` 11종 (템플릿) |
 | 진단 | `moai doctor` 의 `Codex Wiring` 체크 (`internal/cli/doctor_codex.go`) |
 | 런타임 | `moai hook --harness codex` (`internal/cli/hook_harness_codex.go`) |
 
@@ -109,8 +112,8 @@ t88 (M4) 이 Codex 쪽 배선을 깔았지만, 그 배선을 **확인하고 그 
 
 ### D.3 auth 상태 (§A.2 결함 수정)
 
-- **REQ-CL-008** — The auth classifier shall determine the provider from the `auth_mode` field of `<CODEX_HOME>/auth.json`, and where that file is absent or unreadable shall fall back to the combined stdout and stderr of `codex login status`. It shall read no credential value from that file — only `auth_mode` and whether an API-key field is populated.
-- **REQ-CL-009** — When classifying from command output, the system shall take the provider only from an affirmative status line, and shall classify a non-zero exit only when such a line is present; where no affirmative line is found the system shall report `unknown` together with the action `codex login status`. A provider name appearing inside an error diagnostic shall never be read as a successful classification — an unreadable probe is a gap, never a verdict.
+- **REQ-CL-008** — The auth classifier shall determine the provider from `<CODEX_HOME>/auth.json` only when the file's `auth_mode` is a known value AND the credential material that mode implies is present; in every other case — an unknown mode, a mode whose credential material is absent, an unparseable file, or no file at all — it shall fall back to the command probe rather than report a provider. It shall deserialize into a structure carrying no credential field, so no token value is read, logged, or wrapped into an error.
+- **REQ-CL-009** — When classifying from command output, the system shall accept a provider only from a status line matching a fixed whole-line grammar, mapping the captured provider term and nothing else; a line that merely contains a provider term shall never classify, whatever it starts with. It shall classify a non-zero exit only when such a line is present, and shall otherwise report `unknown` together with the action `codex login status` — an unreadable probe is a gap, never a verdict.
 - **REQ-CL-010** — The classification correction shall apply to every consumer of the shared probe (the `codex_setup` MCP tool, the web console Codex card, and this launcher), with no second classification path introduced and no change to the shared `codexCommandRunner` interface.
 
 ### D.4 기동 위임
