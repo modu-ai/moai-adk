@@ -20,10 +20,11 @@ Card: t230 · Tier M · Class C · branch `WT-precommit-preserve`
   over a one-entry previous-digest corpus (rejected on the cheap form's own terms at v0.3.0, and it
   likewise re-opens no decision if later adopted); back-up-and-overwrite over preserve, with the
   silence prohibition (REQ-PCP-006) written so no policy choice can trade it away; and, new at
-  v0.3.0, **Decision 3 — release composition**: M1+M2 ship with the hook body unchanged, M3 follows
-  in a later release, bound mechanically by REQ-PCP-015 / AC-PCP-015. All with rejected alternatives
-  stated (spec.md §A.5).
-- **Counts**: 15 REQ, 15 AC — within the Tier M ceiling of 16/16, with no requirement dropped to
+  v0.3.0, **Decision 3 — release composition** [RETIRED at v0.4.0 with the milestone it sequenced;
+  see the trim record below]: M1+M2 ship with the hook body unchanged, M3 follows in a later
+  release, bound mechanically by REQ-PCP-015 / AC-PCP-015. All with rejected alternatives stated
+  (spec.md §A.5).
+- **Counts (v0.3.0, superseded by the v0.4.0 trim below)**: 15 REQ, 15 AC — within the Tier M ceiling of 16/16, with no requirement dropped to
   stay under it. **Falsifiability split (restated at v0.3.0, previously overstated as 11/3)**: ten
   criteria fail against the untouched tree; five are falsifiable only against a named implementation
   mutant — the four behaviour-preserving ones (AC-PCP-008, -012, -013, -015) plus AC-PCP-002, whose
@@ -41,7 +42,44 @@ Card: t230 · Tier M · Class C · branch `WT-precommit-preserve`
   REQ-PCP-004 (D2 writer bindings), and REQ-PCP-010 (D1 precedence). Re-audit pending (iteration 2
   of the Tier M ceiling of 2).
 
-_<pending plan-audit iteration 2>_
+- **Plan-audit iteration 2** (`.moai/reports/t230/plan-audit-2.md`): PASS-WITH-DEBT, 0.8875 against
+  the Tier M threshold 0.80, audited at `7b2f42be0`. All three iteration-1 blocking defects (D1-D3)
+  confirmed closed. Seven NEW defects: N1-N4 blocking, N5-N7 optional. Verdict on fitness: **M1 and
+  M2 fit to enter run-phase; M3 not**.
+- **v0.4.0 — scope reduction, not a remediation.** N1 (a release constraint checked at end-of-M2
+  where it is green by construction), N2 ("the last released hook body" carrying three referents),
+  and N3 (an unresolved yield rule against card t237) share one cause: M3 changes the distributed
+  hook body, which forced this SPEC to reason about release composition — a thing this SPEC has no
+  mechanism to enforce. Measured in this worktree at `e7fdd4a47`:
+  `grep -rn 'git_hooks/pre-commit' .github/workflows/ scripts/` → exit 1, 0 hits, so no release
+  tooling reads the pre-commit template at all. (The looser `grep -rn 'git_hooks' …` returns 2 hits,
+  both naming `.git_hooks/pre-push` — `scripts/grep-no-release-automation.sh:12` and
+  `scripts/ci-mirror/prepush_e2e_test.sh:25` — a different hook, and neither an enforcement of hook
+  body composition.) The three
+  were dissolved rather than patched, by moving the `pre-commit.local` extension point (REQ-PCP-011,
+  REQ-PCP-012) and the composition binding (REQ-PCP-015) to a successor card. N4 was re-evaluated on
+  its own terms **after** the trim and survived it — the no-record legacy population is M1's
+  concern, not M3's — and is closed by AC-PCP-005 sub-case (c), whose fixture is the `v3.1.2` blob
+  read from git rather than the incoming constant. N5 (Go test made the deciding check for
+  AC-PCP-004 clause (ii)), N6 (self-counting numeral dropped), N7 (REQ-PCP-010 rephrased onto the
+  installer; REQ-PCP-015's half dissolved with the requirement) all closed. None declined.
+- **Counts after the trim**: **12 REQ, 12 AC**, 1:1, within the Tier M ceiling of 16/16. Identifiers
+  are NOT renumbered — 001-010, 013, 014, with gaps at 011/012/015 — because the two audit reports
+  cite the original numbers and silently re-pointing them would falsify the audit trail.
+  **Falsifiability split**: nine criteria fail against the untouched tree; three are falsifiable only
+  against a named implementation mutant (AC-PCP-008, AC-PCP-013 behaviour-preserving, plus
+  AC-PCP-002 whose Given is unconstructible where no sidecar exists).
+- **The core mutant re-checked after the AC set changed** (the card's headline case: overwrites
+  correctly, backs up correctly, prints nothing): still defeated, and by the same three criteria —
+  AC-PCP-004 clause (i), AC-PCP-006, AC-PCP-007 clause (i) — none of which was removed or weakened.
+  AC-PCP-004 lost one asserted string (`pre-commit.local`) and retains two; a notice naming a
+  facility this SPEC no longer ships would be a false instruction, so dropping it removes an
+  assertion that would otherwise have been wrong rather than one that was load-bearing.
+- **What the trim leaves unguarded, and what now guards it**: REQ-PCP-015 was also the only
+  mechanical check that the hook body stayed byte-identical. Its replacement is not prose — it is
+  AC-PCP-005 sub-case (c) (a legacy fixture read from `git show v3.1.2:…`, which goes red the moment
+  the body changes) plus AC-PCP-013 (parity, PASS required and SKIP rejected). Both sit inside the
+  test suite rather than at a release boundary nothing reads.
 
 ## §E.2 Run-phase Evidence
 

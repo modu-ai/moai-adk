@@ -1,7 +1,7 @@
 ---
 id: SPEC-PRECOMMIT-PRESERVE-001
 title: "Pre-commit hook install must never silently discard a local patch"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-08-24
 updated: 2026-08-24
@@ -25,6 +25,7 @@ tags: "hooks, cli, pre-commit, data-loss, provenance, install-safety"
 | 2026-08-24 | 0.1.0 | Initial plan-phase authoring from card t230. Requirement C closed as non-applicable by measurement (§A.4). |
 | 2026-08-24 | 0.2.0 | Retracted a false "stale line numbers" claim (§A.2); all citations now SHA-anchored. Three-way comparison raised to REQ-PCP-014; silence prohibition restated as a policy-independent invariant (REQ-PCP-006). |
 | 2026-08-24 | 0.3.0 | Plan-audit iteration 1 remediation (`.moai/reports/t230/plan-audit.md`, PASS-WITH-DEBT 0.875). D1 closed: REQ-PCP-010 now states the backup-failure precedence explicitly and separates it from the provenance-failure case. D2 closed: REQ-PCP-004's "on stderr" reconciled with the installer's single-writer signature by adding a warning writer and permitting the two-line caller change (plan.md §A). D3 closed: the one-entry previous-digest corpus is evaluated and rejected on its own terms (§A.5), the release composition is decided (§A.5 Decision 3 — the hook-body change ships after the classifier), and REQ-PCP-015/AC-PCP-015 bind that composition mechanically. D4 (sweep-pattern semantics, §A.4), D5 (backup-succeeded/write-failed edge row), D6 (AC-PCP-002 falsification label), D7 (`Where` → `When` on four requirements) also closed. 14 REQ/AC → 15. |
+| 2026-08-24 | 0.4.0 | Scope reduction after plan-audit iteration 2 (`.moai/reports/t230/plan-audit-2.md`, PASS-WITH-DEBT 0.8875). The `pre-commit.local` extension point (REQ-PCP-011, REQ-PCP-012) and the release-composition binding (REQ-PCP-015) are **removed from this SPEC and moved to a successor card** — see §D Out of Scope → the `pre-commit.local` extension point. Reason: all four of the iteration-2 blocking defects (N1 unenforceable release constraint, N2 three-referent "last released hook body", N3 unresolved t237 collision, N4 unmeasured first-upgrade population) exist only because M3 changes the hook body, which forces this SPEC to reason about release composition. Removing M3 dissolves N1-N3 outright; N4 survives on its own terms and is closed here by AC-PCP-005 sub-case (c). The auditor found M1 and M2 fit to enter run-phase as they stand. Minors N5 (AC-PCP-004 clause (ii) Decides), N6 (§A.4 self-counting numeral) and N7 (non-agent subject) also closed. 15 REQ/AC → 12. **Identifiers are not renumbered**: REQ/AC-PCP-011, -012 and -015 are retired, leaving gaps, because renumbering would invalidate every citation in the two audit reports and in this HISTORY. |
 
 ## §A.0 Citation convention
 
@@ -82,7 +83,8 @@ this worktree at `294b4b6ab`. Nothing drifted. The symbol `installPreCommitHookO
 both.
 
 **Two SHAs appear in this document, and both are current.** The table above was measured at
-`294b4b6ab`; measurements added at v0.3.0 (§A.5 Decision 3, REQ-PCP-004, §C.4) name `7b2f42be0`.
+`294b4b6ab`; measurements added at v0.3.0 (§A.5 Decision 1's release-magnitude table, REQ-PCP-004,
+§C.4) name `7b2f42be0`.
 The difference between those two commits is the four SPEC files in this directory and nothing else,
 so every source-file value reproduces identically at either — the anchor is the symbol, per §A.0.
 
@@ -134,10 +136,13 @@ grep -rEn 'exec [0-9][0-9]*[<>]' --include='*.sh' --include='*.tmpl' --include='
 **What the pattern means.** `exec [0-9][0-9]*[<>]` matches a **file-descriptor redirection** —
 `exec` followed by *one or more* digits naming a descriptor, then `<` or `>`. The digits are not
 optional. A reader repeating this sweep with the looser `exec [0-9]*[<>]` (zero or more digits)
-gets 6 hits in this tree, all of them prose or comments about `printf … | exec <bin>` command
-replacement in `handle-stop-goal.sh`, its `.tmpl` twin, `stop_goal_single_exec_test.go`, and two
-report/spec files. None is a redirection, and none contradicts the closure below; the looser glob
-simply matches a different construct that shares the word `exec`.
+gets a handful of hits in this tree — every one of them prose or comments about
+`printf … | exec <bin>` command replacement in `handle-stop-goal.sh`, its `.tmpl` twin,
+`stop_goal_single_exec_test.go`, and the report/SPEC files that discuss this very sweep. None is a
+redirection, and none contradicts the closure below; the looser glob simply matches a different
+construct that shares the word `exec`. **No count is recorded for the loose pattern on purpose**:
+this paragraph is itself one of its matches, so any numeral written here drifts on the next edit of
+this file. The load-bearing figure is the strict pattern's `0`.
 
 The condition does not hold. There is no upstream occurrence to sweep, so this SPEC authors no
 requirement against it. Recorded as a measured closure so a later reader does not re-open it.
@@ -146,8 +151,12 @@ sweep is cheap to repeat.
 
 ### §A.5 Decisions
 
-Three decisions. Each states its rejected alternatives so a reader can disagree with any one of
-them independently.
+Two decisions. Each states its rejected alternatives so a reader can disagree with either one
+independently. A third decision — the release composition that sequenced the hook-body change after
+the classifier — was recorded here at v0.3.0 and is **retired at v0.4.0**: with the body change moved
+to a successor card (§D Out of Scope), this SPEC changes no hook bytes and has no composition to
+decide. Its substance is not lost; it is carried into the successor card as the constraint that card
+must satisfy, and the arithmetic behind it survives in Decision 1's magnitude table above.
 
 #### Decision 1 — how `recorded` is stored: a digest sidecar
 
@@ -182,14 +191,18 @@ Measured in this worktree at `7b2f42be0`:
 | `v3.0.1` installer constant vs HEAD constant | `sed -n '/preCommitHookContent = /,/^\`/p'` on each, piped to `shasum -a 256` | `f79adf7f…` vs `3442efc9…` — **differ** |
 
 So the population splits cleanly. A user whose hook came from `v3.1.0`-`v3.1.2` has `installed`
-byte-equal to the current `incoming`; if the classifier ships in a release that does **not** touch
-the hook body, that user hits AC-PCP-005 sub-case (b) — no backup, no notice, silent and correct —
-and is stamped for every release thereafter. A user on `v3.0.x` or earlier has a genuinely different
-body and takes one unnecessary backup plus one notice, once. If instead REQ-PCP-011 (which changes
-the body *by construction*) ships in the same release, `installed != incoming` holds for **every**
-user without exception, and the design's own alarm-fatigue failure (§A.3) is reproduced in full by
-the release that introduces the design. That is not a residual risk to note — it is a release-
-composition decision, taken below as Decision 3.
+byte-equal to the current `incoming`, so that user hits AC-PCP-005 sub-case (b) — no backup, no
+notice, silent and correct — and is stamped for every release thereafter. **This SPEC leaves the
+hook body untouched** (§C.1), which is what makes that sub-case reachable, and AC-PCP-005 sub-case
+(c) measures it against the actual `v3.1.2` shipped bytes rather than a synthetic fixture. A user on
+`v3.0.x` or earlier has a genuinely different body and takes one unnecessary backup plus one notice,
+once.
+
+Any *later* change to the hook body inherits this arithmetic and must not be folded into the
+classifier's own release: a body change shipping alongside the classifier makes
+`installed != incoming` true for **every** user without exception, reproducing the alarm-fatigue
+failure §A.3 exists to prevent. That constraint now belongs to the successor card that carries the
+extension point (§D Out of Scope), not to this SPEC, which has no body change to sequence.
 
 **Can it drift or be deleted?** Yes: a user can delete it, and a hook restored from a backup by hand
 will not match it. Both land in the same place — a mismatch, or an absence — and both are treated as
@@ -213,19 +226,18 @@ per-clone storage, no growth. It is rejected here for three measured reasons, an
 because adopting it later re-opens no decision (it is simply an additional source of a `recorded`
 value; the §A.3 classifier contract is unchanged).
 
-1. **At the release it would first ship in, it is a no-op.** Decision 3 lands the classifier in a
-   release whose hook body is unchanged, so the "previous shipped body" and the incoming body are
-   the *same bytes* (measured above: `v3.1.0` through `v3.1.2` and HEAD are byte-identical). A
-   constant equal to `sha256(incoming)` decides nothing that comparing against `incoming` does not
-   already decide.
-2. **Its only real coverage is version-skippers at the later release.** It starts mattering at the
-   REQ-PCP-011 release, and only for a user who skipped the classifier release entirely — everyone
-   who took that release already carries a record. That is a strictly smaller population than the
-   one Decision 3 covers, bought at ongoing cost.
+1. **At the release it would first ship in, it is a no-op.** This SPEC lands the classifier with
+   the hook body unchanged, so the "previous shipped body" and the incoming body are the *same
+   bytes* (measured above: `v3.1.0` through `v3.1.2` and HEAD are byte-identical). A constant equal
+   to `sha256(incoming)` decides nothing that comparing against `incoming` does not already decide.
+2. **Its only real coverage is version-skippers at some future body-changing release.** It starts
+   mattering only when the hook body next changes, and only for a user who skipped the classifier
+   release entirely — everyone who took that release already carries a record. That is a strictly
+   smaller population than the one the sidecar covers, bought at ongoing cost.
 3. **The ongoing cost lands on the exact seam this SPEC already avoided.** The digest must be
    updated in the same commit as any hook-body change, making a third member of the
-   constant/template paired edit (§C.1) — the same pair that collides with card t237 (§C.2), and the
-   same maintenance coupling that got the in-body version stamp rejected two rows above. Its failure
+   constant/template paired edit (§C.1) — the same pair card t237 edits (§C.2), and the same
+   maintenance coupling that got the in-body version stamp rejected two rows above. Its failure
    mode is benign (a stale digest degrades to today's noise, never to a missed detection), but it is
    silent, and it recurs on every future body change rather than once.
 
@@ -252,37 +264,13 @@ goal. The card's goal is that overwriting is never silent — and that goal is R
 binds regardless of which option is in force, so a later reader who prefers (b) may take it without
 weakening anything.
 
-The notice accompanying a backup points at `.git/hooks/pre-commit.local` (REQ-PCP-011) as the
-durable home for the checks the user had patched in — that extension point is what makes (a)
-survivable rather than merely recoverable.
-
-#### Decision 3 — release composition: the classifier ships before the hook-body change
-
-The magnitude measurement above forces a choice `plan.md §F` previously left open (it stated two
-resolutions and picked neither). The choice is taken here.
-
-| Option | First-upgrade false alarms | Consequence |
-|---|---|---|
-| (a) M1+M2 ship first, body **unchanged**; M3 follows in a later release — **chosen** | only `v3.0.x`-and-earlier installs | `v3.1.0`-`v3.1.2` users are silent and correct, and are stamped; the M3 body change then lands against an installed base that has records, so it too is silent |
-| (b) M1+M2+M3 ship together | **every** user, without exception | the alarm-fatigue outcome §A.3 exists to prevent, delivered by the release that introduces the prevention |
-| (c) M3 ships first, M1+M2 later | none at the M1+M2 release | rejected: it ships a hook-body change through the *unprotected* installer, so the one cohort with patched hooks loses them silently in that release — paying with the card's own failure mode to buy quieter output later |
-
-Concretely: REQ-PCP-001 through REQ-PCP-010 and REQ-PCP-014 target `v3.1.4` and leave
-`preCommitHookContent` byte-identical to `v3.1.2`; REQ-PCP-011 and REQ-PCP-012 target the following
-release. REQ-PCP-013 (constant/template parity) is a standing invariant and binds in **both**
-releases — it is not deferred; it simply has nothing to enforce until the body changes. REQ-PCP-015
-binds the composition mechanically so it is checked rather than remembered, and AC-PCP-015 is the
-check. The SPEC's `phase:` frontmatter names `v3.1.4` because that is where its core lands; the M3
-deferral is recorded here rather than by splitting the SPEC.
-
-**The accepted wart.** In the `v3.1.4` release the notice names `.git/hooks/pre-commit.local`
-(REQ-PCP-004) while the installed hook does not yet consult it — the facility arrives one release
-later. This is accepted rather than papered over: the notice's reader is someone whose patch was
-just replaced, whose immediate action is to recover it from the backup (which exists now) and stage
-it in `pre-commit.local` (which begins running at the next update). A file created early is inert,
-not wrong. The alternative — a two-phase notice text whose content depends on which release it ships
-in — makes REQ-PCP-004 release-dependent, and buys one release of precision with a permanently more
-complicated requirement.
+The notice accompanying a backup names the backup file, which is what makes (a) recoverable: the
+user's patch is on disk under a path they were just told about. A *durable* home for those checks —
+a `pre-commit.local` extension point the hook consults on every run, so the patch survives the next
+update too — was scoped into this SPEC and has been moved to a successor card (§D Out of Scope).
+Until it lands, recovery is manual re-application from the backup. That is a real limitation, and it
+is stated rather than papered over; it does not weaken (a), because REQ-PCP-006 already guarantees
+the user learns of the replacement at the moment it happens.
 
 ## §B Requirements (GEARS)
 
@@ -314,9 +302,15 @@ complicated requirement.
 - **REQ-PCP-003** — When the installed hook is classified user-modified, the installer shall copy it
   to `.git/hooks/pre-commit.bak.<UTC-timestamp>` before writing the new content.
 - **REQ-PCP-004** — When a backup is written, the installer shall emit a notice — naming the backup
-  path, stating that the hook was replaced, and naming `.git/hooks/pre-commit.local` as the place to
-  re-apply local checks — on a **warning writer distinct from its progress writer**, and both
-  callers shall bind that warning writer to the command's stderr.
+  path and stating that the hook was replaced — on a **warning writer distinct from its progress
+  writer**, and both callers shall bind that warning writer to the command's stderr.
+
+  The notice names the backup and nothing else. It **shall not** direct the user to
+  `.git/hooks/pre-commit.local`: this SPEC no longer delivers that extension point (§D Out of
+  Scope), and an instruction to stage recovered checks in a file the installed hook never reads is
+  worse than no instruction — it reads as a supported recovery path and silently is not one. When
+  the successor card lands the extension point, extending this notice to name it is a one-line
+  change to this requirement, made in the release that makes it true.
 
   The two-writer split is not decoration. `installPreCommitHookOptional(projectRoot string, skip
   bool, out io.Writer)` (`internal/cli/hook_install_precommit.go:166 @7b2f42be0`) has exactly one
@@ -341,9 +335,9 @@ complicated requirement.
 - **REQ-PCP-008** — When the installed hook does not carry the MoAI marker, the installer shall
   return `ErrUserHookExists` without writing a backup and without modifying the hook, exactly as
   today.
-- **REQ-PCP-010** — Failure of a supporting write shall never fail `moai init` or `moai update`, and
-  the two supporting writes have **different precedence** because they happen on different sides of
-  the hook write:
+- **REQ-PCP-010** — When a supporting write fails, the installer shall not fail `moai init` or
+  `moai update`; and the two supporting writes have **different precedence**, because they happen on
+  different sides of the hook write:
   - **When the backup write fails** — which is *before* the hook write — the installer shall report
     a warning, shall **not overwrite the hook**, and shall not fail the caller. The user's bytes
     stay on disk; nothing is lost.
@@ -363,20 +357,14 @@ complicated requirement.
 - **REQ-PCP-013** — `preCommitHookContent` and
   `internal/template/templates/.git_hooks/pre-commit` shall remain byte-identical.
 
-### Local extension point
+12 requirements — within the Tier M ceiling of 16.
 
-- **REQ-PCP-011** — When the pre-commit hook runs and `.git/hooks/pre-commit.local` exists and is
-  executable, the hook shall execute it as its final step and shall exit with that script's status.
-- **REQ-PCP-012** — When the pre-commit hook runs and `.git/hooks/pre-commit.local` is absent or not
-  executable, the hook shall behave as it does today.
-
-### Release composition
-
-- **REQ-PCP-015** — The release that first ships REQ-PCP-001 through REQ-PCP-010 and REQ-PCP-014
-  shall leave `preCommitHookContent` byte-identical to the most recently released hook body, and
-  REQ-PCP-011's hook-body change shall ship in a later release (§A.5 Decision 3).
-
-15 requirements — within the Tier M ceiling of 16.
+**Retired identifiers.** REQ-PCP-011 and REQ-PCP-012 (the `pre-commit.local` extension point) and
+REQ-PCP-015 (the release-composition binding) were removed at v0.4.0 and moved to a successor card
+(§D Out of Scope). The remaining requirements keep their original numbers, so the sequence reads
+001-010, 013, 014 with three gaps. Renumbering was rejected: every citation in
+`.moai/reports/t230/plan-audit.md` and `plan-audit-2.md`, and in this document's own HISTORY, is
+written against the original numbers, and silently re-pointing them would make the audit trail lie.
 
 ## §C Constraints
 
@@ -385,19 +373,27 @@ complicated requirement.
 `preCommitHookContent` (`internal/cli/hook_install_precommit.go:26 @294b4b6ab`, symbol anchor:
 the `preCommitHookContent` const) and `internal/template/templates/.git_hooks/pre-commit` are
 enforced byte-identical by `TestPreCommitTemplateMatchesConstant`
-(`internal/cli/hook_install_precommit_test.go:38 @294b4b6ab`, verified present). REQ-PCP-011 changes
-the hook body and therefore requires both edits in the same commit, followed by `make build`.
+(`internal/cli/hook_install_precommit_test.go:38 @294b4b6ab`, verified present).
 
-REQ-PCP-001 through REQ-PCP-010 and REQ-PCP-014 touch installer logic only and leave the hook body
-untouched — a deliberate consequence of choosing the sidecar over an in-body stamp (§A.5).
+**This SPEC changes neither.** Every requirement here touches installer logic only and leaves the
+hook body untouched — a deliberate consequence of choosing the sidecar over an in-body stamp (§A.5),
+and, since v0.4.0, of moving the one body-changing requirement to a successor card (§D Out of
+Scope). REQ-PCP-013 therefore has nothing to enforce within this SPEC's diff; it is retained as the
+standing invariant that catches a one-sided edit, and AC-PCP-013's rejection of a SKIP result is
+what keeps it from passing vacuously. A change to `preCommitHookContent` appearing during run-phase
+is a scope violation, not an implementation detail (plan.md §D).
 
-### §C.2 Collision with card t237
+### §C.2 Card t237 — no collision remains
 
-Card t237 (issue #1641) edits the same constant/template pair on the module-root `go vet` axis. Only
-REQ-PCP-011 collides. Run-phase should land REQ-PCP-011 as its own commit, last, so a rebase against
-t237 touches one commit rather than the whole SPEC. §A.5 Decision 3 makes this stronger than a
-sequencing preference: REQ-PCP-011 ships in a *later release* than the rest, so the collision window
-is a separate release cycle rather than a separate commit within one.
+Card t237 (issue #1641) edits `preCommitHookContent` and its template twin on the module-root
+`go vet` axis. At v0.3.0 this SPEC collided with it through REQ-PCP-011, and the audit's N3 asked
+which card yields. **The question is now moot**: with the extension point moved to a successor card
+(§D Out of Scope), this SPEC touches neither file (§C.1), so the two diffs are disjoint and either
+may land first in any order.
+
+The collision travels with the extension point. The successor card inherits it, and inherits the
+mitigation with it: land the paired edit as its own commit so a rebase against t237 touches one
+commit rather than a whole SPEC.
 
 ### §C.3 Non-interactive
 
@@ -415,6 +411,29 @@ gate, not the ordering relative to `installPrePushHookOptional`, not the existin
 and belongs to its own card.
 
 ## §D Out of Scope
+
+### Out of Scope — the `pre-commit.local` extension point (moved to a successor card)
+
+- **What moved**: a `.git/hooks/pre-commit.local` delegation — the installed hook executing that
+  script as its final step and exiting with its status when it exists and is executable, and
+  behaving exactly as today when it does not. Authored here at v0.2.0-v0.3.0 as REQ-PCP-011 and
+  REQ-PCP-012, with AC-PCP-011 and AC-PCP-012; removed at v0.4.0.
+- **Where it went**: a successor card, not the bin. It is the facility that makes a replaced patch
+  *durable* rather than merely recoverable, and the card that carries it depends on this SPEC
+  landing first, so that provenance records already exist when the body change ships.
+- **Why it left**: it is the only requirement in this SPEC that changes the distributed hook body,
+  and that single fact generated every blocking defect of plan-audit iteration 2 — a release
+  constraint (REQ-PCP-015) checked where it cannot fail, a phrase with three referents, an
+  unresolved collision with card t237, and an unmeasured first-upgrade population. Splitting it out
+  dissolves the first three and leaves the fourth answerable on its own terms (AC-PCP-005 sub-case
+  (c)).
+- **The trap the successor card must not walk into**: a hook-body change and a provenance classifier
+  in the same release make `installed != incoming` true for **every** installed base without
+  exception, so every user takes a backup and a notice on first upgrade — the alarm fatigue §A.3
+  exists to prevent, delivered by the mechanism meant to prevent it. The successor card ships after
+  the classifier release, against an installed base that already carries records.
+- Also not authored here: the notice's pointer to `pre-commit.local` (REQ-PCP-004 states why naming
+  a facility that does not yet exist is worse than naming nothing).
 
 ### Out of Scope — the `exec` redirection sweep (card requirement C)
 
@@ -461,8 +480,10 @@ and belongs to its own card.
 | REQ-PCP-008 | AC-PCP-008 |
 | REQ-PCP-009 | AC-PCP-009 |
 | REQ-PCP-010 | AC-PCP-010 |
-| REQ-PCP-011 | AC-PCP-011 |
-| REQ-PCP-012 | AC-PCP-012 |
 | REQ-PCP-013 | AC-PCP-013 |
 | REQ-PCP-014 | AC-PCP-014 |
-| REQ-PCP-015 | AC-PCP-015 |
+
+12 requirements, 12 acceptance criteria, 1:1. REQ/AC-PCP-011, -012 and -015 are retired together
+(§B, §D Out of Scope) — a requirement and its criterion always leave as a pair, so the parity holds
+across the trim. AC-PCP-005 carries three sub-cases rather than a fourth criterion, which is why
+closing the audit's N4 changes no count.

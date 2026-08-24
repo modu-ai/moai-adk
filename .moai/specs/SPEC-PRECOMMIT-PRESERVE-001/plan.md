@@ -3,6 +3,12 @@
 Milestones are ordered by decision-reversibility: the attribution design (M1) is the decision most
 likely to change under review, so it leads. Mechanical work sits at the bottom.
 
+**Scope at v0.4.0: M1 and M2 only.** A third milestone — the `pre-commit.local` extension point —
+was planned here and has moved to a successor card (spec.md §D Out of Scope). It was the only
+milestone that changed the distributed hook body, and every blocking defect of plan-audit
+iteration 2 followed from that one fact. What remains touches installer logic and tests, and
+nothing else.
+
 ## §A Context
 
 `internal/cli/hook_install_precommit.go` (179 lines `@294b4b6ab`) is the implementation surface. Two
@@ -42,10 +48,13 @@ writer. spec.md §C.4 carries the same permission; anything wider is out of scop
    edit, so a later failure is attributable.
 3. `grep -n 'installPreCommitHookOptional' internal/cli/update_template_sync.go internal/cli/init.go`
    — re-confirm the call sites have not drifted again.
-4. Check whether card t237 has landed on `origin/main`; if it has, rebase before starting M3.
-5. `git show v3.1.2:internal/template/templates/.git_hooks/pre-commit | cmp - internal/template/templates/.git_hooks/pre-commit`
-   — record the AC-PCP-015 baseline (identical, rc 0) before any edit, so a later divergence is
-   attributable to this SPEC rather than assumed.
+4. `git show v3.1.2:internal/template/templates/.git_hooks/pre-commit | cmp - internal/template/templates/.git_hooks/pre-commit`
+   — record the AC-PCP-005 sub-case (c) fixture baseline (identical, rc 0) before any edit, so a
+   later divergence is attributable rather than assumed. This is also the fixture the sub-case reads
+   from git at test time; confirming it resolves here catches a shallow clone or a missing tag
+   before it presents as a test failure.
+   (Card t237 edits the constant/template pair this SPEC does not touch, so no rebase check against
+   it is needed — spec.md §C.2.)
 
 ## §D Constraints
 
@@ -53,12 +62,11 @@ writer. spec.md §C.4 carries the same permission; anything wider is out of scop
 - M1/M2 must not touch `preCommitHookContent` or its template twin. If a change there appears
   necessary during M1 or M2, the sidecar decision (spec.md §A.5, Decision 1) has been abandoned —
   stop and re-open that decision rather than absorbing the edit quietly.
-- `make build` after M3 only.
+- `make build` is not expected at any point: no template or embedded content changes.
 - Caller edits are limited to the single-line warning-writer argument at each of the two call sites
   (§A). A caller change beyond that is a scope violation, not an implementation detail.
-- **M3 does not ship in the same release as M1/M2** (spec.md §A.5 Decision 3, REQ-PCP-015). If the
-  release plan changes, re-open Decision 3 rather than absorbing the change silently — the
-  first-upgrade false-alarm rate is the thing being traded.
+- The hook body stays byte-identical throughout. AC-PCP-005 sub-case (c) and AC-PCP-013 observe it;
+  if either goes red, an edit has reached the constant or the template and the run has left scope.
 
 ## §E Self-Verification
 
@@ -89,44 +97,25 @@ two-way implementation must be observed failing it before the milestone is accep
 ### M2 — disclosure: backup and notice
 
 Delivers REQ-PCP-003, REQ-PCP-004, REQ-PCP-006, REQ-PCP-007, REQ-PCP-009, REQ-PCP-010, and confirms
-REQ-PCP-008.
+REQ-PCP-008 and REQ-PCP-013. (REQ-PCP-013 was M3's at v0.3.0; with M3 gone it is confirmed here,
+where its guard is what proves the hook body went untouched.)
 
 - On `user-modified`, copy to `.git/hooks/pre-commit.bak.<UTC RFC3339-ish timestamp>` before
   writing; pick a distinct path if occupied.
 - Emit the notice from `installPreCommitHookOptional` on its new warning writer (stderr at both call
-  sites, §A), naming the backup path, the replacement, and `pre-commit.local`.
+  sites, §A), naming the backup path and the replacement — **and nothing else**. It must not name
+  `pre-commit.local`; that facility left this SPEC at v0.4.0 (REQ-PCP-004).
 - **Backup failure and sidecar failure differ in precedence** (REQ-PCP-010): a failed backup warns
   and **leaves the hook untouched**; a failed sidecar write, which happens after the hook write,
   warns and leaves the replacement in place. Neither fails the caller. Getting this backwards — warn
   and overwrite anyway on a failed backup — destroys the patch this SPEC exists to protect;
   AC-PCP-010(a)'s post-state assertion is the check.
-- Tests: AC-PCP-003, AC-PCP-004, AC-PCP-006, AC-PCP-007, AC-PCP-008, AC-PCP-009, AC-PCP-010.
-- Release gate at the end of M2: AC-PCP-015 — confirm the hook body is still byte-identical to
-  `v3.1.2` before the classifier release ships. This is the milestone at which the release becomes
-  shippable, so it is where the composition is checked.
-
-### M3 — the local extension point (paired edit; collision-prone — land last)
-
-Delivers REQ-PCP-011, REQ-PCP-012, REQ-PCP-013.
-
-- Append the `pre-commit.local` delegation as the hook's final step, before `exit 0`, propagating
-  its exit status.
-- Edit **both** `preCommitHookContent` and
-  `internal/template/templates/.git_hooks/pre-commit`, then `make build`.
-- Land as its own commit, last (§C.2 — card t237 edits the same pair).
-- Tests: AC-PCP-011, AC-PCP-012, AC-PCP-013.
-
-**Release ordering — resolved.** Version 0.2.0 of this plan stated two conflicting resolutions and
-chose neither. spec.md §A.5 Decision 3 chooses: M1+M2 ship in `v3.1.4` with the hook body
-byte-identical to `v3.1.2`; M3 ships in the following release. The reason is measured — the body has
-not changed since `883d53852` (2026-07-28), so `v3.1.0` through `v3.1.2` and HEAD are byte-identical,
-and landing M3 alongside the classifier would make `installed != incoming` true for every user
-without exception. Splitting keeps that population silent and correct, and stamps it, so M3's body
-change is silent too when it lands.
-
-The accepted consequence is that `v3.1.4`'s notice names `pre-commit.local` one release before the
-hook consults it. spec.md §A.5 Decision 3 states why that is preferable to a release-dependent
-notice text. M3's milestone content above is unchanged; only its release target moves.
+- Tests: AC-PCP-003, AC-PCP-004, AC-PCP-006, AC-PCP-007, AC-PCP-008, AC-PCP-009, AC-PCP-010,
+  AC-PCP-013.
+- Scope gate at the end of M2: re-run
+  `git show v3.1.2:internal/template/templates/.git_hooks/pre-commit | cmp - internal/template/templates/.git_hooks/pre-commit`
+  and confirm rc 0. M2 is the last milestone, so this is the last chance to catch a hook-body edit
+  that crept in — the property AC-PCP-005 sub-case (c) and AC-PCP-013 assert.
 
 ## §G Anti-Patterns
 
@@ -148,8 +137,13 @@ notice text. M3's milestone content above is unchanged; only its release target 
   so a scripted `moai update >/dev/null` swallows the data-loss notice entirely — the card's own
   failure mode, reintroduced through the stream choice. AC-PCP-004 clause (ii) checks the call
   sites, not just the installer.
-- **Folding M3 into the M1/M2 release.** Makes `installed != incoming` true for 100% of users on the
-  release that introduces the classifier. REQ-PCP-015 / AC-PCP-015 exist to catch this.
+- **Absorbing the extension point back into this SPEC.** Appending the `pre-commit.local`
+  delegation "while we are in here" restores every defect the v0.4.0 trim removed, and makes
+  `installed != incoming` true for 100% of users on the release that introduces the classifier. It
+  belongs to the successor card (spec.md §D Out of Scope). AC-PCP-005 sub-case (c) and AC-PCP-013
+  are what notice.
+- **Naming `pre-commit.local` in the backup notice.** The facility does not exist yet; a notice that
+  names it hands the user a recovery path that silently does nothing (REQ-PCP-004).
 - **Widening to pre-push.** Out of scope; keeps the diff attributable.
 
 ## §H Cross-References
@@ -158,5 +152,7 @@ notice text. M3's milestone content above is unchanged; only its release target 
 - `TestPreCommitTemplateMatchesConstant` — `internal/cli/hook_install_precommit_test.go:38
   @294b4b6ab`; note its `t.Skipf` branch at `:45 @294b4b6ab` (AC-PCP-013's mutant)
 - `internal/template/templates/.git_hooks/pre-commit` — the template twin
-- Card t237 / issue #1641 — collides on M3's file pair
+- Card t237 / issue #1641 — edits the constant/template pair; no longer collides (spec.md §C.2)
+- Successor card — the `pre-commit.local` extension point, split out at v0.4.0 (spec.md §D Out of
+  Scope); depends on this SPEC landing first so provenance records exist when the body changes
 - Card t235 / issue #1639 — the gate-serialization axis, out of scope here

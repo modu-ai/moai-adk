@@ -83,15 +83,26 @@ content.
 **Given** the AC-PCP-003 scenario,
 **When** `installPreCommitHookOptional` runs against **two** captured writers — the progress writer
 and the warning writer,
-**Then** (i) the **warning** writer's captured output contains **all three** of: the backup file's
-path, a statement that the hook was replaced, and the string `pre-commit.local`; **and** (ii) both
-call sites bind the warning-writer parameter to the command's stderr.
+**Then** (i) the **warning** writer's captured output contains **both** of: the backup file's path,
+and a statement that the hook was replaced; **and** (ii) both call sites bind the warning-writer
+parameter to the command's stderr.
+
+The notice asserts these two elements and no third. It must **not** name `pre-commit.local`: that
+extension point left this SPEC at v0.4.0 (spec.md §D Out of Scope), so a notice naming it would
+point the user at a file the installed hook never reads. A test asserting the string
+`pre-commit.local` here would therefore lock in a false instruction.
 
 - **Decides**: `go test ./internal/cli/ -run TestPreCommitBackupNoticeContent -count=1` for clause
-  (i); for clause (ii), a static call-site check —
-  `grep -n 'installPreCommitHookOptional(' internal/cli/update_template_sync.go internal/cli/init.go`
-  showing an `ErrOrStderr`-derived writer in the warning-writer position at each site (a Go test
-  asserting the same is equally acceptable).
+  (i); for clause (ii), **a Go test is the deciding check** — one that invokes each call site (or
+  asserts its wiring) and confirms the warning-writer argument resolves to the command's
+  `ErrOrStderr`. A grep is *not* sufficient on its own: under the correct implementation the update
+  call site reads `installPreCommitHookOptional(projectRoot, getBoolFlag(cmd, "no-hooks"), out,
+  errOut)` — the line contains `errOut`, and the `cmd.ErrOrStderr()` derivation lives two lines away
+  at `update_template_sync.go:72 @7b2f42be0`. A checker grepping the call line for `ErrOrStderr`
+  finds nothing even when the wiring is right, and a checker grepping for `errOut` cannot tell the
+  right variable from an identically-named wrong one. Where a grep is used as a cheap smoke check,
+  it must cover the derivation too (`grep -n 'errOut :=' internal/cli/update_template_sync.go`
+  alongside the call-site line) — but the Go test is what decides.
 - **Baseline**: the only output is `  Pre-commit hook installed (.git/hooks/pre-commit)`
   (`internal/cli/hook_install_precommit.go:172 @294b4b6ab`) — it contains none of the three, and no
   warning writer exists. Clause (ii) baseline: `update_template_sync.go:575 @7b2f42be0` passes
@@ -110,16 +121,37 @@ call sites bind the warning-writer parameter to the command's stderr.
 
 **Given** a marker-bearing hook and no `.moai-pre-commit.sha256`:
 **(a)** content differing from the incoming content → **Then** a backup is taken and a notice
-emitted; **(b)** content identical to the incoming content → **Then** no backup is taken.
+emitted; **(b)** content identical to the incoming content → **Then** no backup is taken;
+**(c)** content that is the **`v3.1.2` released hook body read from git** — not a synthetic fixture,
+not the incoming constant — → **Then** no backup is taken, no notice is emitted, and the provenance
+record is written.
 
-- **Decides**: `go test ./internal/cli/ -run TestPreCommitLegacyNoRecord -count=1` (both sub-cases)
-- **Baseline**: test absent; today both sub-cases overwrite silently.
-- **Mutant**: treats a missing record as "unmodified" and stays silent. Passes sub-case (b) and
-  violates REQ-PCP-006 for the entire pre-upgrade population — the migration case, which is every
-  existing installation. Defeated only because sub-case (a) is mandatory; (b) alone is not
-  acceptable evidence.
+Sub-case (c) is the real installed base, and it exists because nothing else measures it. Sub-case
+(b) builds its fixture from the incoming content, so it passes by construction whatever the shipped
+bytes happen to be; it proves the code path, not the population. (c) fixes the fixture to bytes
+that actually shipped — every `v3.1.0`-`v3.1.2` install carries them — and so it is also what keeps
+this SPEC honest about leaving the hook body untouched (spec.md §C.1): the day someone changes
+`preCommitHookContent`, (c) goes red and says so, in the place where the consequence lands.
+
+- **Decides**: `go test ./internal/cli/ -run TestPreCommitLegacyNoRecord -count=1` (all three
+  sub-cases). Sub-case (c)'s fixture is obtained from git rather than hand-copied —
+  `git show v3.1.2:internal/template/templates/.git_hooks/pre-commit` — so it cannot silently drift
+  into a copy of the current constant. A test that cannot reach git (shallow clone, no tags) must
+  **skip loudly**, never pass quietly; a skipped (c) is a gap, not a pass.
+- **Baseline**: test absent; today all three sub-cases overwrite silently. The `v3.1.2` blob is
+  byte-identical to the current template at `7b2f42be0`
+  (`git show v3.1.2:internal/template/templates/.git_hooks/pre-commit | cmp - <same path>` → rc 0),
+  which is exactly why (c) passes on the correct implementation and is not a burden.
+- **Mutant**: treats a missing record as "unmodified" and stays silent. Passes sub-cases (b) and
+  (c) and violates REQ-PCP-006 for the entire pre-upgrade population — the migration case, which is
+  every existing installation. Defeated only because sub-case (a) is mandatory; (b) and (c) alone
+  are not acceptable evidence. A second mutant, which (c) exists for: an implementation correct on
+  synthetic fixtures, shipped in a tree whose hook body has quietly changed — (b) still passes,
+  (c) goes red and names the real regression.
 - **Failing input**: sub-case (a) run against a "silent when unknown" implementation. Must be
-  observed red.
+  observed red. For sub-case (c), a tree with any edit to `preCommitHookContent` / the template
+  twin — it must be observed red there before (c) is accepted, since a criterion that has only ever
+  been green proves nothing.
 
 ### AC-PCP-006 — no silent replacement, whatever the policy (REQ-PCP-006)
 
@@ -222,33 +254,6 @@ and emits no notice (the record self-heals via REQ-PCP-005).
   `moai update`. For sub-case (b), an implementation that skips the hook write when the provenance
   write is going to fail (over-applying (a)'s precedence to the wrong side of the write).
 
-### AC-PCP-011 — the local hook runs and its status propagates (REQ-PCP-011)
-
-**Given** an executable `.git/hooks/pre-commit.local` that exits `3`,
-**When** the installed pre-commit hook runs with nothing staged,
-**Then** the hook exits `3`.
-
-- **Decides**: a shell-driven test invoking the installed hook, plus
-  `grep -c 'pre-commit\.local' internal/template/templates/.git_hooks/pre-commit`
-- **Baseline**: grep → `0` `@294b4b6ab`; the hook ends at `exit 0` with no delegation
-- **Mutant**: executes `pre-commit.local` but discards its status and exits `0` regardless. Passes
-  any criterion asserting only that the script *ran*. Defeated by asserting the specific non-zero
-  status — which is why the criterion names `3` rather than "non-zero success/failure".
-- **Failing input**: today's hook at `294b4b6ab`, which exits `0`. Must be observed red.
-
-### AC-PCP-012 — absent local hook preserves today's behaviour (REQ-PCP-012) — behaviour-preserving
-
-**Given** no `.git/hooks/pre-commit.local`, and separately one present but not executable,
-**When** the hook runs with nothing staged and `moai` absent from PATH,
-**Then** it exits `0` in both sub-cases.
-
-- **Decides**: a shell-driven test invoking the installed hook in both sub-cases
-- **Baseline**: exits `0` — **behaviour-preserving**
-- **Mutant**: a hook that never delegates at all. Passes trivially and violates REQ-PCP-011.
-  Defeated by AC-PCP-011.
-- **Failing input** (implementation mutation): an unguarded invocation under `set -eu`, which aborts
-  non-zero when the file is missing. Must be observed red — this is the realistic regression.
-
 ### AC-PCP-013 — constant/template parity holds (REQ-PCP-013) — behaviour-preserving
 
 **Given** the tree after implementation,
@@ -263,6 +268,10 @@ and emits no notice (the record self-heals via REQ-PCP-005).
   entirely unverified. This is a live hazard, not a hypothetical. Defeated by requiring PASS and
   rejecting SKIP.
 - **Failing input**: editing `preCommitHookContent` without the template twin. Must be observed red.
+- **Note (v0.4.0)**: this SPEC changes neither the constant nor the template (spec.md §C.1), so this
+  criterion has nothing of its own to prove — it guards the invariant while the classifier lands.
+  Paired with AC-PCP-005 sub-case (c), which fails when the body changes at all, the two together
+  are what make "the hook body is untouched" a checked property rather than an intention.
 
 ### AC-PCP-014 — attribution is three-way, not two-way (REQ-PCP-014)
 
@@ -281,41 +290,6 @@ classified user-modified.
   luck) and **fails the first**, which is precisely why the first case is mandatory. Any
   single-case version of this criterion is satisfiable by a two-way design and must be rejected.
 - **Failing input**: the two-way implementation, run against case one. Must be observed red.
-
-### AC-PCP-015 — the classifier release does not change the hook body (REQ-PCP-015)
-
-**Given** the release candidate that first carries REQ-PCP-001 through REQ-PCP-010 and REQ-PCP-014,
-**When** its distributed hook body is compared against the most recently released one,
-**Then** (i) `git show <last-released-tag>:internal/template/templates/.git_hooks/pre-commit | cmp -
-internal/template/templates/.git_hooks/pre-commit` reports identical (rc 0), **and** (ii)
-`grep -c 'pre-commit\.local' internal/template/templates/.git_hooks/pre-commit` → `0`, **and**
-(iii) `TestPreCommitTemplateMatchesConstant` PASSes (AC-PCP-013), which transitively binds
-`preCommitHookContent` to the same bytes.
-
-This is also the criterion that covers the **first-upgrade path with an unmodified legacy hook**,
-which nothing covered before: when (i) holds, a `v3.1.0`-`v3.1.2` user's installed hook equals the
-incoming content, so that user's first upgrade runs AC-PCP-005 sub-case (b) — silent, no backup.
-Sub-case (b) is satisfiable precisely *because* this criterion holds; if REQ-PCP-011 shipped in the
-same release it would be unsatisfiable for every user.
-
-- **Decides**: the compound check above, run against the release candidate.
-- **Baseline** (`@7b2f42be0`, the pre-implementation tree): (i)
-  `git show v3.1.2:internal/template/templates/.git_hooks/pre-commit | cmp - <same path>` → rc 0,
-  identical; (ii) grep → `0`; (iii) test present and passing at
-  `internal/cli/hook_install_precommit_test.go:38 @294b4b6ab`. All three hold — **behaviour-
-  preserving by construction**: the criterion's job is to keep holding while M1/M2 land, and to go
-  red the moment M3's body change is folded into the same release.
-- **Mutant**: adding the `pre-commit.local` delegation to `preCommitHookContent` only, leaving the
-  template untouched. Clause (i) compares the *template*, so it passes while the shipped binary's
-  hook body has in fact changed. Defeated by clause (iii) — `TestPreCommitTemplateMatchesConstant`
-  fails on any one-sided edit — which is why this criterion asserts parity rather than trusting the
-  template alone. A second mutant: re-pointing `<last-released-tag>` at the current release after
-  landing M3, making the comparison trivially true. Defeated by naming the tag as *the last release
-  whose hook body predates this SPEC* (`v3.1.2` at authoring time) rather than "the latest tag".
-- **Failing input**: the tree with M3 applied — both the constant and the template carrying the
-  `pre-commit.local` delegation. Clauses (i) and (ii) must both be observed red against it before
-  this criterion is accepted; a criterion that has only ever been green here proves nothing about
-  the release composition it exists to bind.
 
 ## §D.1 Edge cases
 
@@ -336,17 +310,21 @@ same release it would be unsatisfiable for every user.
 - `go vet ./internal/cli/...` clean
 - `go test ./internal/cli/... -count=1` passing
 - `go test ./internal/template/... -count=1` passing
-- `make build` after any change to `preCommitHookContent` or the template twin
+- `make build` is **not** expected: this SPEC changes neither `preCommitHookContent` nor the
+  template twin (spec.md §C.1). A run-phase in which `make build` becomes necessary has left scope —
+  stop and re-open the sidecar decision (spec.md §A.5 Decision 1) rather than absorbing the edit
 
 ## §D.3 Definition of Done
 
-- All 15 AC pass; the 4 that show no change from baseline (AC-PCP-008, -012, -013, -015) are
+- All 12 AC pass; the 2 that show no change from baseline (AC-PCP-008, -013) are
   behaviour-preserving and are falsifiable only against a named implementation mutant — as is
-  AC-PCP-002, whose Given is unconstructible on the untouched tree.
+  AC-PCP-002, whose Given is unconstructible on the untouched tree. The other 9 fail against the
+  untouched tree. (At v0.3.0 this read 15 AC with 5 mutant-only; AC-PCP-011, -012 and -015 left with
+  the extension point — spec.md §D Out of Scope.)
 - **Every criterion has been observed failing against its stated failing input** before being
   accepted. A criterion that has only ever been green is not evidence.
 - No prompt is introduced on any path (§C.3 of spec.md).
-- REQ-PCP-011's paired edit lands as its own final commit (§C.2) **and in a later release than the
-  rest of this SPEC** (§A.5 Decision 3). AC-PCP-015 is checked against the release candidate before
-  the classifier release ships; a release candidate that fails it is not shippable.
+- `preCommitHookContent` and `internal/template/templates/.git_hooks/pre-commit` are byte-identical
+  to their pre-implementation state — this SPEC's diff touches installer logic and tests only
+  (spec.md §C.1). AC-PCP-005 sub-case (c) and AC-PCP-013 are the two checks that observe it.
 - `~/go/bin/moai spec lint .moai/specs/SPEC-PRECOMMIT-PRESERVE-001/spec.md` clean.
