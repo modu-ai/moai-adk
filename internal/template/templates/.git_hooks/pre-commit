@@ -30,31 +30,80 @@ if [ -n "$STAGED_GO" ]; then
         fi
     fi
 
-    # go vet on the affected packages. Skipped when go is not on PATH (non-Go environment).
+    # go vet on the affected packages, run from each package's own Go module root.
+    # Skipped when go is not on PATH (non-Go environment).
+    #
+    # Why per-module: 'go vet ./pkg' executed from a repo root that holds no
+    # go.mod fails with "cannot find main module" — so in a monorepo whose Go
+    # module lives in a subdirectory, every commit touching a .go file was
+    # blocked regardless of code quality, and the message below misreported
+    # that as a vet finding. Grouping staged files by module root and running
+    # 'go vet' inside each one fixes it.
+    #
+    # A staged file whose module root cannot be determined falls back to the
+    # repo root, so the worst case is the previous behaviour and never less
+    # coverage.
     if command -v go >/dev/null 2>&1; then
-        PKGS="$(
+        # Optional Go build tags (.moai/config/build-tags, first non-comment
+        # non-blank line) so projects requiring non-default tags (e.g. goolm)
+        # are vetted under them. Read from the repo root, before any cd.
+        BT_TAGS=""
+        if [ -f .moai/config/build-tags ]; then
+            _bt_line="$(sed -e 's/#.*//' .moai/config/build-tags | awk 'NF{print; exit}')" || true
+            [ -n "$_bt_line" ] && BT_TAGS="-tags=$_bt_line"
+        fi
+
+        # Nearest enclosing directory holding a go.mod, walking upward from "$1".
+        # Prints "." when only the repo root has one; returns 1 when none does.
+        _moai_module_root() {
+            _d="$1"
+            while [ -n "$_d" ] && [ "$_d" != "." ] && [ "$_d" != "/" ]; do
+                if [ -f "$_d/go.mod" ]; then
+                    printf '%s\n' "$_d"
+                    return 0
+                fi
+                _d="$(dirname "$_d")"
+            done
+            if [ -f ./go.mod ]; then
+                printf '.\n'
+                return 0
+            fi
+            return 1
+        }
+
+        MODROOTS="$(
             printf '%s\n' "$STAGED_GO" | while IFS= read -r f; do
                 [ -n "$f" ] || continue
-                printf './%s\n' "$(dirname "$f")"
+                _mr="$(_moai_module_root "$(dirname "$f")")" || _mr="."
+                printf '%s\n' "$_mr"
             done | sort -u
         )"
-        if [ -n "$PKGS" ]; then
-            # Optional Go build tags (.moai/config/build-tags, first non-comment
-            # non-blank line) so projects requiring non-default tags (e.g. goolm)
-            # are vetted under them.
-            BT_TAGS=""
-            if [ -f .moai/config/build-tags ]; then
-                _bt_line="$(sed -e 's/#.*//' .moai/config/build-tags | awk 'NF{print; exit}')" || true
-                [ -n "$_bt_line" ] && BT_TAGS="-tags=$_bt_line"
-            fi
+
+        for _mr in $MODROOTS; do
+            PKGS="$(
+                printf '%s\n' "$STAGED_GO" | while IFS= read -r f; do
+                    [ -n "$f" ] || continue
+                    _d="$(dirname "$f")"
+                    _m="$(_moai_module_root "$_d")" || _m="."
+                    [ "$_m" = "$_mr" ] || continue
+                    if [ "$_mr" = "." ]; then
+                        printf './%s\n' "$_d"
+                    elif [ "$_d" = "$_mr" ]; then
+                        printf '.\n'
+                    else
+                        printf './%s\n' "${_d#"$_mr"/}"
+                    fi
+                done | sort -u
+            )"
+            [ -n "$PKGS" ] || continue
             # shellcheck disable=SC2086
-            if ! go vet $BT_TAGS $PKGS >/dev/null 2>&1; then
-                printf '\n[pre-commit] FAILED: go vet reported issues in the staged packages.\n' >&2
-                printf '[pre-commit] Hint: run go vet on the affected packages, fix, then re-commit.\n' >&2
+            if ! ( cd "$_mr" && go vet $BT_TAGS $PKGS >/dev/null 2>&1 ); then
+                printf '\n[pre-commit] FAILED: go vet reported issues in the staged packages (module root: %s).\n' "$_mr" >&2
+                printf '[pre-commit] Hint: cd %s && go vet %s\n' "$_mr" "$(printf '%s' "$PKGS" | tr '\n' ' ')" >&2
                 printf '[pre-commit] Override: SKIP_MOAI_PRECOMMIT=1 git commit\n' >&2
                 exit 1
             fi
-        fi
+        done
     fi
 fi
 
