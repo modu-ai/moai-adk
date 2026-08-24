@@ -25,8 +25,11 @@ import (
 // temp+rename + silent-fail pattern (REQ-THRESHOLD-009); no new writer
 // mechanism is introduced.
 
-// contextUsageSchemaVersion is the on-disk schema version of context-usage.json.
-const contextUsageSchemaVersion = 1
+// contextUsageSchemaVersion is the on-disk schema version of a session
+// telemetry record. Bumped to 2 by SPEC-SESSION-TELEMETRY-001: the payload
+// gained the session's model and effort. A reader tolerates records at the
+// previous version — the two fields are simply absent (REQ-ST-003).
+const contextUsageSchemaVersion = 2
 
 // templateSourceEmbedPath is the path-component marker for the moai-adk-go
 // template embed source tree. The //go:embed all:templates directive in
@@ -75,6 +78,17 @@ type SessionTelemetryRecord struct {
 	RawPct            float64 `json:"raw_pct"`
 	Stage             string  `json:"stage"`
 	Band              string  `json:"band"`
+
+	// Model is the model this session actually runs — the backend-resolved
+	// display name (D-5), so a GLM-backed session records the z.ai model
+	// rather than the Claude display name the runtime supplied. Effort is the
+	// session's effort level as the runtime delivered it.
+	//
+	// Both are omitted when the render payload did not supply them, or when
+	// the record predates schema version 2. A reader presents an empty value
+	// as "not recorded" and never infers a substitute (REQ-ST-003).
+	Model  string `json:"model,omitempty"`
+	Effort string `json:"effort,omitempty"`
 }
 
 // String renders the handoff stage as its on-disk / doctrine label.
@@ -137,7 +151,7 @@ func isTemplateSourceDir(dir string) bool {
 // resolved (projDir == ""), or projDir resolves into the template embed source
 // tree (isTemplateSourceDir — prevents //go:embed all:templates from leaking a
 // runtime artifact into the distributed binary).
-func writeContextUsage(projDir, sessionID string, writerPID int, mem MemoryData, stage handoffStage) {
+func writeContextUsage(projDir, sessionID string, writerPID int, mem MemoryData, stage handoffStage, model, effort string) {
 	if !mem.Available || mem.ContextWindowSize <= 0 || projDir == "" || isTemplateSourceDir(projDir) {
 		return
 	}
@@ -145,7 +159,7 @@ func writeContextUsage(projDir, sessionID string, writerPID int, mem MemoryData,
 	stateDir := filepath.Join(projDir, ".moai", "state")
 	path := SessionTelemetryPath(stateDir, sessionID)
 
-	next := buildContextUsageRecord(sessionID, writerPID, mem, stage)
+	next := buildContextUsageRecord(sessionID, writerPID, mem, stage, model, effort)
 
 	// Write-if-changed throttle (REQ-THRESHOLD-012): skip when the semantic
 	// payload is byte-equal to the on-disk record, so render-rate invocations
@@ -177,7 +191,7 @@ func writeContextUsage(projDir, sessionID string, writerPID int, mem MemoryData,
 // buildContextUsageRecord assembles the on-disk record from the current usage
 // snapshot. raw_pct is the raw context-window usage (tokens / window), NOT the
 // auto-compact-scaled TokenBudget percentage.
-func buildContextUsageRecord(sessionID string, writerPID int, mem MemoryData, stage handoffStage) *SessionTelemetryRecord {
+func buildContextUsageRecord(sessionID string, writerPID int, mem MemoryData, stage handoffStage, model, effort string) *SessionTelemetryRecord {
 	rawPct := float64(mem.TokensUsed) * 100.0 / float64(mem.ContextWindowSize)
 	return &SessionTelemetryRecord{
 		SchemaVersion:     contextUsageSchemaVersion,
@@ -189,6 +203,8 @@ func buildContextUsageRecord(sessionID string, writerPID int, mem MemoryData, st
 		RawPct:            rawPct,
 		Stage:             stage.String(),
 		Band:              bandLabel(mem.ContextWindowSize),
+		Model:             model,
+		Effort:            effort,
 	}
 }
 
@@ -208,15 +224,26 @@ func ReadSessionTelemetry(path string) (*SessionTelemetryRecord, error) {
 }
 
 // sameSemanticPayload reports whether two records carry the same throttle-
-// relevant payload: session_id, stage, context_window_size, and the
-// integer-rounded raw_pct. captured_at AND writer_pid are deliberately
-// EXCLUDED — captured_at is expected to change, and writer_pid is
-// render-ephemeral (including it would defeat the throttle, design §D.3).
+// relevant payload: session_id, stage, context_window_size, the
+// integer-rounded raw_pct, and the session's model and effort. captured_at AND
+// writer_pid are deliberately EXCLUDED — captured_at is expected to change, and
+// writer_pid is render-ephemeral (including it would defeat the throttle,
+// design §D.3).
+//
+// Model and effort are INCLUDED deliberately (plan.md §F item 1, measured):
+// they change rarely within a session, so they do not defeat the throttle, and
+// including them is what makes a mid-session model or effort switch reach disk
+// on the very next render. Excluding them would leave the record holding a
+// value that is present and wrong until an unrelated context value moved —
+// a state a reader cannot distinguish from a current one, and which
+// REQ-ST-003's "not recorded" path does not cover.
 func sameSemanticPayload(a, b *SessionTelemetryRecord) bool {
 	return a.SessionID == b.SessionID &&
 		a.Stage == b.Stage &&
 		a.ContextWindowSize == b.ContextWindowSize &&
-		int(a.RawPct) == int(b.RawPct)
+		int(a.RawPct) == int(b.RawPct) &&
+		a.Model == b.Model &&
+		a.Effort == b.Effort
 }
 
 // resolveProjectDir resolves the project directory that anchors

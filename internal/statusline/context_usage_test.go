@@ -36,7 +36,7 @@ func TestMain(m *testing.M) {
 // AC-THRESHOLD-007 static assertion: writeContextUsage takes NO HandoffConfig /
 // cfg parameter — the state-file write is a pure function of usage, never gated
 // by Mode/Guide. A compile error here means REQ-THRESHOLD-007 was violated.
-var _ func(string, string, int, MemoryData, handoffStage) = writeContextUsage
+var _ func(string, string, int, MemoryData, handoffStage, string, string) = writeContextUsage
 
 // readRecord is a test helper that reads + parses the on-disk record.
 func readRecord(t *testing.T, path string) *SessionTelemetryRecord {
@@ -62,7 +62,7 @@ func TestWriteContextUsage_ConfigIndependent(t *testing.T) {
 
 	proj := t.TempDir()
 	m := MemoryData{ContextWindowSize: 256_000, TokensUsed: 230_400, Available: true}
-	writeContextUsage(proj, "sess-1", 4242, m, handoffStageSoft)
+	writeContextUsage(proj, "sess-1", 4242, m, handoffStageSoft, "", "")
 
 	rec := readRecord(t, usagePath(proj, "sess-1"))
 	if rec.SessionID != "sess-1" {
@@ -81,7 +81,7 @@ func TestWriteContextUsage_Atomic(t *testing.T) {
 
 	proj := t.TempDir()
 	m := MemoryData{ContextWindowSize: 1_000_000, TokensUsed: 500_000, Available: true}
-	writeContextUsage(proj, "sess-atomic", 100, m, handoffStageSoft)
+	writeContextUsage(proj, "sess-atomic", 100, m, handoffStageSoft, "", "")
 
 	path := usagePath(proj, "sess-atomic")
 	if _, err := os.Stat(path); err != nil {
@@ -104,18 +104,18 @@ func TestWriteContextUsage_SilentFail(t *testing.T) {
 	m := MemoryData{ContextWindowSize: 256_000, TokensUsed: 230_400, Available: true}
 
 	// (a) empty projDir → skip.
-	writeContextUsage("", "s", 1, m, handoffStageSoft)
+	writeContextUsage("", "s", 1, m, handoffStageSoft, "", "")
 
 	// (b) Memory.Available == false → skip (no source signal).
 	proj := t.TempDir()
-	writeContextUsage(proj, "s", 1, MemoryData{Available: false}, handoffStageNone)
+	writeContextUsage(proj, "s", 1, MemoryData{Available: false}, handoffStageNone, "", "")
 	if _, err := os.Stat(usagePath(proj, "s")); !os.IsNotExist(err) {
 		t.Errorf("no file expected when Memory.Available == false")
 	}
 
 	// (c) non-positive window → skip (avoids div-by-zero).
 	proj2 := t.TempDir()
-	writeContextUsage(proj2, "s", 1, MemoryData{ContextWindowSize: 0, Available: true}, handoffStageNone)
+	writeContextUsage(proj2, "s", 1, MemoryData{ContextWindowSize: 0, Available: true}, handoffStageNone, "", "")
 	if _, err := os.Stat(usagePath(proj2, "s")); !os.IsNotExist(err) {
 		t.Errorf("no file expected when ContextWindowSize <= 0")
 	}
@@ -126,7 +126,7 @@ func TestWriteContextUsage_SilentFail(t *testing.T) {
 		t.Fatal(err)
 	}
 	blocked := filepath.Join(fileParent, "sub") // fileParent is a file, so MkdirAll fails
-	writeContextUsage(blocked, "s", 1, m, handoffStageSoft)
+	writeContextUsage(blocked, "s", 1, m, handoffStageSoft, "", "")
 	// No panic reaching here == pass; nothing to assert on the blocked path.
 }
 
@@ -137,7 +137,7 @@ func TestContextUsage_Schema(t *testing.T) {
 
 	proj := t.TempDir()
 	m := MemoryData{ContextWindowSize: 256_000, TokensUsed: 245_760, Available: true}
-	writeContextUsage(proj, "sess-schema", 7777, m, handoffStageHard)
+	writeContextUsage(proj, "sess-schema", 7777, m, handoffStageHard, "", "")
 
 	raw, err := os.ReadFile(usagePath(proj, "sess-schema"))
 	if err != nil {
@@ -185,7 +185,7 @@ func TestWriteContextUsage_ThrottleSkipUnchanged(t *testing.T) {
 	path := usagePath(proj, "sess-throttle")
 	m := MemoryData{ContextWindowSize: 256_000, TokensUsed: 230_400, Available: true} // 90%
 
-	writeContextUsage(proj, "sess-throttle", 11, m, handoffStageSoft)
+	writeContextUsage(proj, "sess-throttle", 11, m, handoffStageSoft, "", "")
 
 	// Force an old mtime so a skip (no rewrite) is detectable.
 	old := time.Now().Add(-2 * time.Hour)
@@ -194,7 +194,7 @@ func TestWriteContextUsage_ThrottleSkipUnchanged(t *testing.T) {
 	}
 
 	// Same semantic payload → skip (mtime must stay old).
-	writeContextUsage(proj, "sess-throttle", 22, m, handoffStageSoft) // writer_pid differs (22) — still throttled
+	writeContextUsage(proj, "sess-throttle", 22, m, handoffStageSoft, "", "") // writer_pid differs (22) — still throttled
 	st1, err := os.Stat(path)
 	if err != nil {
 		t.Fatal(err)
@@ -205,7 +205,7 @@ func TestWriteContextUsage_ThrottleSkipUnchanged(t *testing.T) {
 
 	// Changed payload (different tokens → different int raw_pct) → write occurs.
 	m2 := MemoryData{ContextWindowSize: 256_000, TokensUsed: 200_000, Available: true} // ~78%
-	writeContextUsage(proj, "sess-throttle", 11, m2, handoffStageNone)
+	writeContextUsage(proj, "sess-throttle", 11, m2, handoffStageNone, "", "")
 	st2, err := os.Stat(path)
 	if err != nil {
 		t.Fatal(err)
@@ -237,7 +237,7 @@ func TestReadContextUsage_Corrupt(t *testing.T) {
 	// A corrupt on-disk record must NOT block a subsequent write (throttle
 	// read fails → write proceeds).
 	m := MemoryData{ContextWindowSize: 256_000, TokensUsed: 230_400, Available: true}
-	writeContextUsage(proj, "sess-recover", 9, m, handoffStageSoft)
+	writeContextUsage(proj, "sess-recover", 9, m, handoffStageSoft, "", "")
 	rec := readRecord(t, path)
 	if rec.SessionID != "sess-recover" {
 		t.Errorf("write must overwrite a corrupt record; session_id = %q", rec.SessionID)
@@ -279,7 +279,7 @@ func TestWriteContextUsage_TemplateSourceGuard(t *testing.T) {
 	if err := os.MkdirAll(templatesDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	writeContextUsage(templatesDir, "sess-guard", 1, m, handoffStageSoft)
+	writeContextUsage(templatesDir, "sess-guard", 1, m, handoffStageSoft, "", "")
 	if _, err := os.Stat(usagePath(templatesDir, "sess-guard")); !os.IsNotExist(err) {
 		t.Errorf("(a) no file expected inside templates source dir, got: %v", err)
 	}
@@ -289,7 +289,7 @@ func TestWriteContextUsage_TemplateSourceGuard(t *testing.T) {
 	if err := os.MkdirAll(deep, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	writeContextUsage(deep, "sess-guard", 1, m, handoffStageSoft)
+	writeContextUsage(deep, "sess-guard", 1, m, handoffStageSoft, "", "")
 	if _, err := os.Stat(usagePath(deep, "sess-guard")); !os.IsNotExist(err) {
 		t.Errorf("(b) no file expected inside templates source subdir, got: %v", err)
 	}
@@ -302,7 +302,7 @@ func TestWriteContextUsage_TemplateSourceGuard_InertForNormalDir(t *testing.T) {
 
 	proj := t.TempDir()
 	m := MemoryData{ContextWindowSize: 256_000, TokensUsed: 230_400, Available: true}
-	writeContextUsage(proj, "sess-normal", 1, m, handoffStageSoft)
+	writeContextUsage(proj, "sess-normal", 1, m, handoffStageSoft, "", "")
 	if _, err := os.Stat(usagePath(proj, "sess-normal")); err != nil {
 		t.Fatalf("file expected for normal dir (guard must be inert), got: %v", err)
 	}
@@ -323,7 +323,7 @@ func TestWriteContextUsage_TemplateSourceGuard_SubstringNoMatch(t *testing.T) {
 	if err := os.MkdirAll(fused, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	writeContextUsage(fused, "sess-fused", 1, m, handoffStageSoft)
+	writeContextUsage(fused, "sess-fused", 1, m, handoffStageSoft, "", "")
 	if _, err := os.Stat(usagePath(fused, "sess-fused")); err != nil {
 		t.Errorf("(a) file expected for substring-only dir, got: %v", err)
 	}
@@ -333,7 +333,7 @@ func TestWriteContextUsage_TemplateSourceGuard_SubstringNoMatch(t *testing.T) {
 	if err := os.MkdirAll(barDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	writeContextUsage(barDir, "sess-bar", 1, m, handoffStageSoft)
+	writeContextUsage(barDir, "sess-bar", 1, m, handoffStageSoft, "", "")
 	if _, err := os.Stat(usagePath(barDir, "sess-bar")); err != nil {
 		t.Errorf("(b) file expected for _bar suffix dir, got: %v", err)
 	}
