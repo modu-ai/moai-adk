@@ -2,7 +2,7 @@
 id: SPEC-KANBAN-PR-CARD-TRACEABILITY-001
 title: "Pre-dispatch PR cross-check and the PR-title card-id convention"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-08-24
 updated: 2026-08-24
 author: manager-spec
@@ -123,7 +123,10 @@ not a smarter parser.**
 carries a descriptive slug (`WT-branch-naming`, not `WT-t0`) so a reader of
 `git branch` learns what changed. That rule assigns traceability to three
 carriers: the dispatch `card:` field, the commit message, and the evidence path.
-REQ-003 adds a fourth — the PR title — and it is the only machine-readable one.
+REQ-003 adds a fourth — the PR title — and it is the only one a resolver can
+read off the pull-request surface itself. The dispatch `card:` field is
+machine-readable too, but it lives in a session message rather than on the
+pull request, so nothing reading a pull request can reach it.
 Branch names are for humans scanning a list; PR titles are for a resolver. There
 is no conflict, but a reader meeting both [HARD] clauses cold will suspect one,
 so the doctrine says so outright.

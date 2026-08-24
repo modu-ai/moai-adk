@@ -1,5 +1,5 @@
 ---
-description: "Detail companion for kanban-dispatch.md — terminology, board table, card classes, dispatch-cycle naming, sync-gate review-lens table, /clear message structure, isolation rationale, verification-load incident record, sub-agent-first design intent, manager-lead working mode, per-card fan-out, Factory in-lane 3-stage"
+description: "Detail companion for kanban-dispatch.md — terminology, board table, card classes, dispatch-cycle naming, sync-gate review-lens table, /clear message structure, isolation rationale, verification-load incident record, sub-agent-first design intent, manager-lead working mode, per-card fan-out, Factory in-lane 3-stage, pre-dispatch cross-check rationale, PR-title carrier measurements"
 paths: "**/kanban-dispatch*.md,**/.claude/agents/moai/manager-lead.md,**/.claude/skills/moai/workflows/todo.md"
 ---
 
@@ -202,3 +202,33 @@ Sessions share one machine as surely as they share one checkout, and verificatio
 The never-spawn-background-load rule (normative statement lives in the stub) comes from the same incident's second cause: a verification recipe started eight spin loops to test behaviour under CPU contention and placed its kill line *after* the long test command. The agent finished before reaching it, and twelve spinners ran orphaned for thirty-seven minutes.
 
 The same day supplied the reason contention and flakiness feed each other: a failing test left an unbounded spin-loop goroutine running, which burned a core for the remainder of that package's run and slowed every test after it. Load makes tests fail; failing tests can generate load.
+
+## The pre-dispatch cross-check
+
+The stub's two [HARD] clauses are the rule; this section is why each is worded the way it is.
+
+**The failure was not a misread — it was that nothing required looking.** Several cards sat `queued` while each already carried an open pull request, and one sat `queued` while its fix was already an ancestor of the integration branch. The second was discovered only after a lane had started work on it, which cost the whole lane — the only sub-case in the record with a quantified cost. A lead with perfect tooling available would still have dispatched blind, because reading was optional.
+
+**Why "reports, never vetoes" is a separate clause with its own criterion.** The obligation to look and the prohibition on acting are different rules, and the second is the fragile one. The operator has already picked the card; a lead that then withholds the dispatch because it found an open pull request has overridden an operator act rather than informing one — the same de-facto-authority hazard the read-only ruling on the queue tooling exists to prevent.
+
+The hazard is invisible after the fact. A clause requiring the lead to read and report, and a clause authorizing the lead to refuse, produce identical transcripts up to the moment the card does not move; nothing downstream distinguishes "the operator withdrew it" from "the lead declined to send it". No mechanical check can separate the two readings, so the wording is the only control there is — which is why the literal `confirms or withdraws` is pinned by its own acceptance criterion rather than folded into the obligation clause.
+
+**The tooling is a convenience, not the obligation.** `moai todo pr <id>` answers both halves in one read, but the clause is satisfiable by hand (`gh pr list`, then `git log` against the integration branch) and was written to be: the doctrine landed before the tooling, and the interval between them is a real operating condition rather than a paper one.
+
+## The PR-title carrier
+
+**Why the id leaves the branch name and lands on the PR title.** Neither name can serve both readers. The branch name is read by a human scanning `git branch` or a pull-request list, who learns nothing from an opaque card id and everything from a descriptive slug. The PR title is read by a resolver mapping pull requests back to cards, which needs a token it can match exactly. The branch-name rule and the title rule therefore assign different jobs to different names, and a reader meeting both [HARD] clauses cold will suspect a contradiction where there is none — which is why the stub states the non-contradiction outright instead of leaving it to be inferred.
+
+**The carrier measurements.** Scanning a set of open pull requests for card tokens, three carriers behave differently:
+
+| carrier | recall | precision | verdict |
+|---|---|---|---|
+| PR title | ~64% | every token present named the delivering card | precise, incomplete |
+| PR body | complete | poor — one pull request carried five tokens for one card | complete, noisy |
+| commit messages | high, and **wrong** on the worst case | worst of the three | unusable for attribution |
+
+The commit carrier deserves its own note, because it is the one the isolation rule already makes [HARD]. A branch that merges the integration branch inherits every other card's commits, so its token set scales with integration rather than with the card: in the measured worst case a pull request carried a dozen-plus card tokens and its own delivering card was **not among them**. Being mandated as a traceability carrier does not make it a usable attribution index.
+
+**The fix for ambiguous parsing is a naming convention, not a smarter parser.** The title carrier is already the precise one — where a token is present, it names the delivering card. It is incomplete only because nothing required it. Requiring it is what turns a resolver from a heuristic into a lookup, and no amount of parser sophistication substitutes for the missing token.
+
+**Why a token in a batch pull request's title would be worse than none.** A release or batch pull request delivers no single card. A card token in such a title would name a card the pull request does not deliver, and a resolver reading titles would attribute confidently and wrongly — a silent error, where the absent token merely leaves the card unresolved and visible as such. The scope restriction is therefore load-bearing, not politeness.

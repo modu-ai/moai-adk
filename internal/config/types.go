@@ -407,6 +407,13 @@ type WorkflowConfig struct {
 	// Sibling of BranchGuard — same opt-in shape, same default-OFF neutrality.
 	AgentModelGuard AgentModelGuardConfig `yaml:"agent_model_guard"`
 
+	// IntegrationLock gates the PreToolUse release-integration holder guard
+	// (card t194). Default false: a single-developer repository has no
+	// integration window to serialize, so the guard ships INERT and the
+	// maintainer of a multi-lane batch opts in via local config. Sibling of
+	// BranchGuard — same opt-in shape, same default-OFF neutrality.
+	IntegrationLock IntegrationLockConfig `yaml:"integration_lock"`
+
 	// Codex gates the codex audit backend + the Stop-hook review gate
 	// (SPEC-MOAI-MCP-SERVER-001 M2). The ReviewGate sub-block is the opt-in
 	// toggle for `moai hook codex-review-gate` — it ships default-OFF (C6);
@@ -582,6 +589,17 @@ type WorkflowTodoConfig struct {
 // config; the exemption logic (MOAI_BRANCH_GUARD_EXEMPT + manager-git identity)
 // remains unchanged and is consulted only on the enabled path (REQ-6).
 type BranchGuardConfig struct {
+	Enabled bool `yaml:"enabled"`
+}
+
+// IntegrationLockConfig mirrors workflow.integration_lock.* — the opt-in gate
+// for the PreToolUse release-integration holder guard (card t194). When
+// Enabled is false (the distributed default) the guard returns the allow
+// fall-through WITHOUT reading the lock record, so a project that never runs a
+// multi-lane batch pays nothing. The record itself, and the
+// `moai integration` CLI that writes it, are unaffected by this flag: only the
+// DENY layer is gated, exactly as BranchGuard gates only its deny.
+type IntegrationLockConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 

@@ -3,41 +3,41 @@
 # This script forwards stdin JSON to the moai statusline command.
 # Paths are configured during project initialization.
 
-# Create temp file to store stdin
-temp_file=$(mktemp)
-trap 'rm -f "$temp_file"' EXIT
-
-# Read stdin into temp file
-cat > "$temp_file"
-
-# Load GLM environment variables if configured (for Agent Teams tmux mode)
+# Load GLM environment variables if configured (for Agent Teams tmux mode).
+# Sourced with stdin closed so the env file can never consume the JSON that the
+# exec'd `moai statusline` still has to read.
 if [ -f "$HOME/.moai/.env.glm" ]; then
 	# shellcheck disable=SC1091
-	source "$HOME/.moai/.env.glm"
+	source "$HOME/.moai/.env.glm" </dev/null
 fi
 
-# Try moai command in PATH first.
-# Note: `exec` replaces the shell process, so any code after exec is unreachable.
+# stdin is handed straight to the exec'd process — this script creates no
+# temporary file and therefore needs no cleanup.
+#
+# Do NOT reintroduce a `mktemp` buffer here: `exec` replaces the shell process,
+# so an `trap ... EXIT` cleanup never fires and every render leaks one temp file
+# into the system temp directory (observed: ~120 files/minute, 418k accumulated).
+#
 # Vertical padding is controlled via settings.json `statusLine.padding: N` (M1: REQ-SLV-002).
 if command -v moai &> /dev/null; then
-	exec moai statusline < "$temp_file"
+	exec moai statusline
 fi
 {{if .ResolvedMoaiPath}}
 # Try the installed binary's own resolved path (captured at init/update time).
 # Resolves the binary even when it is not on PATH (e.g. an installer location
 # whose directory was not propagated to an already-running process).
 if [ -f "{{posixPath .ResolvedMoaiPath}}" ]; then
-	exec "{{posixPath .ResolvedMoaiPath}}" statusline < "$temp_file"
+	exec "{{posixPath .ResolvedMoaiPath}}" statusline
 fi
 {{end}}
 # Try the Go bin directory ($HOME-relative for portability).
 if [ -f "$HOME/go/bin/moai" ]; then
-	exec "$HOME/go/bin/moai" statusline < "$temp_file"
+	exec "$HOME/go/bin/moai" statusline
 fi
 
 # Try user local bin directory.
 if [ -f "$HOME/.local/bin/moai" ]; then
-	exec "$HOME/.local/bin/moai" statusline < "$temp_file"
+	exec "$HOME/.local/bin/moai" statusline
 fi
 
 # Not found - exit silently (Claude Code handles missing statusline gracefully)
