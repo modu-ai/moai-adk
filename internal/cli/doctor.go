@@ -198,6 +198,9 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		{"BODP Config", func(v bool) DiagnosticCheck { return checkBODPConfig(cwd, v) }},
 		{"Telemetry Config", func(v bool) DiagnosticCheck { return checkTelemetryConfig(cwd, v) }},
 		{"Glamour Cache", checkGlamourCache},
+		// SPEC-CODEX-WIRING-001 REQ-CW-010: advisory Codex-wiring check —
+		// informational skip in claude-only projects, never gates doctor.
+		{"Codex Wiring", func(v bool) DiagnosticCheck { return checkCodexWiring(cwd, v) }},
 	}
 
 	run := func(title string, items []checkFunc) []DiagnosticCheck {

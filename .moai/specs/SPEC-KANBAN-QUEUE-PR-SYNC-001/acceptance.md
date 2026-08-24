@@ -20,6 +20,16 @@ $ gh pr list --state open --limit 40 --json number,title,body \
 1600|TITLE:|BODY:t184
 ```
 
+**This block is an EXCERPT, and the omission is deliberate.** The command emits
+one line per open pull request; the five rows above are the pull requests whose
+token carriage the criteria below actually exercise, and the remaining rows
+carried no token relevant to any criterion. Nothing was dropped to make a
+carrier look better than it measured: the precision and recall figures in
+`spec.md` §C.1 are computed over the FULL result set (11 open pull requests at
+measurement time), not over these five. The open set has grown since — 15 at the
+time of the run-phase — which is exactly why the fixtures are pinned from this
+block rather than re-fetched.
+
 The v0.1.1 fixtures for AC-002 and AC-003 were refuted by this data (audit D4)
 and are rebuilt below. Per `plan.md` §B the fixture set is **pinned from these
 values**, not re-fetched at test time — the live PR set changes.

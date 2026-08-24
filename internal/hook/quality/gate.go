@@ -984,7 +984,23 @@ func (g *QualityGate) anyConfigFileExists(configFiles []string) bool {
 // runStep executes a single quality gate command with the given timeout.
 // Returns (true, "") on success, (false, errorMessage) on failure or timeout.
 func (g *QualityGate) runStep(ctx context.Context, stepName string, timeout time.Duration, name string, args ...string) (bool, string) {
-	stepCtx, cancel := context.WithTimeout(ctx, timeout)
+	// Which budget can kill this step is decided BEFORE it starts, by comparing
+	// the caller's remaining time (the hook dispatcher's, when the gate runs
+	// from a hook) with the step's own. Deciding afterwards from ctx.Err() would
+	// misattribute the narrow case where the step deadline fires first and the
+	// parent deadline passes while the process is still shutting down — both
+	// contexts then read DeadlineExceeded.
+	// Both budgets are compared as absolute instants derived from one clock
+	// read: a duration comparison would drift by whatever elapses between the
+	// two reads, which is exactly the margin the comparison is deciding.
+	startedAt := time.Now()
+	stepDeadline := startedAt.Add(timeout)
+	parentBudget, parentBinds := time.Duration(0), false
+	if deadline, ok := ctx.Deadline(); ok && !deadline.After(stepDeadline) {
+		parentBudget, parentBinds = deadline.Sub(startedAt), true
+	}
+
+	stepCtx, cancel := context.WithDeadline(ctx, stepDeadline)
 	defer cancel()
 
 	cmd := exec.CommandContext(stepCtx, name, args...)
@@ -1024,8 +1040,16 @@ func (g *QualityGate) runStep(ctx context.Context, stepName string, timeout time
 
 	// Distinguish timeout from other failures (REQ-GATE-009).
 	if stepCtx.Err() == context.DeadlineExceeded {
-		msg := fmt.Sprintf("quality gate timed out: %s exceeded %s", stepName, timeout)
-		return false, msg
+		// A parent cancellation propagates to stepCtx, so DeadlineExceeded here
+		// says nothing about WHICH budget ran out. Blaming the step's own budget
+		// unconditionally produced impossible reasons — a 30s dispatcher budget
+		// expiring mid-`go test` reported "go test exceeded 2m0s" (card t218).
+		if parentBinds {
+			return false, fmt.Sprintf(
+				"quality gate timed out: the overall gate budget ran out while running %s (%s of it remained when the step started; the step's own %s budget was not exceeded)",
+				stepName, parentBudget.Round(time.Millisecond), timeout)
+		}
+		return false, fmt.Sprintf("quality gate timed out: %s exceeded %s", stepName, timeout)
 	}
 
 	// Fix 2: when a NuGet restore failure (cross-platform TFM mismatch) is detected in the dotnet step,

@@ -206,6 +206,11 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		mcp.WithString("hash", mcp.Description("Plan-artifact hash (for op=lookup, op=store).")),
 		mcp.WithString("auditor_version", mcp.Description("Auditor identifier (for op=store).")),
 		mcp.WithString("report_path", mcp.Description("Audit report path (for op=store).")),
+		// SPEC-CODEX-WIRING-001 (REQ-CW-011 / spec §A.4): audit_cache is a
+		// catalog-READ tool; declaring read-only keeps its effective annotation
+		// equal to the catalog classification so the capability-based `writes`
+		// approval mode does not prompt for it.
+		mcp.WithReadOnlyHintAnnotation(true),
 	), handleAuditCache)
 
 	// --- M2 codex backend (design.md §3 M2) ---
@@ -224,6 +229,9 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		mcp.WithString("model", mcp.Description("Optional model override (resolved via the model/effort SSOT in M3).")),
 		projectRootOption(),
 		mcp.WithOutputSchema[ReviewOutput](),
+		// SPEC-CODEX-WIRING-001 (REQ-CW-011 / spec §A.4): catalog-READ tool —
+		// see the audit_cache note.
+		mcp.WithReadOnlyHintAnnotation(true),
 	), handleCodexAudit)
 
 	// codex_setup → Go probe (REQ-MCP-007 / AC-MCP-008): exec.LookPath("codex")
@@ -362,6 +370,9 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		mcp.WithString("model", mcp.Description("Optional GLM model override; omitted ⇒ resolved via the model/effort SSOT (ResolveAgentModelEffort).")),
 		projectRootOption(),
 		mcp.WithOutputSchema[ReviewOutput](),
+		// SPEC-CODEX-WIRING-001 (REQ-CW-011 / spec §A.4): catalog-READ tool —
+		// see the audit_cache note.
+		mcp.WithReadOnlyHintAnnotation(true),
 	), handleGLMAudit)
 
 	// audit_multi → SPEC-AUDIT-MULTI-MODEL-001 multi-auditor convergence
@@ -382,6 +393,9 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		// before the parameter existed, so an absent parameter must keep
 		// handing them none rather than substituting a default.
 		projectRootPassthroughOption(),
+		// SPEC-CODEX-WIRING-001 (REQ-CW-011 / spec §A.4): catalog-READ tool —
+		// see the audit_cache note.
+		mcp.WithReadOnlyHintAnnotation(true),
 	), handleAuditMulti)
 }
 

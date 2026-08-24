@@ -37,6 +37,13 @@ var hookCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(hookCmd)
 
+	// SPEC-CODEX-WIRING-001 (REQ-CW-007): the --harness flag selects the
+	// runtime harness mode on every dispatcher subcommand. codex wraps the
+	// dispatcher's output through the codex adapter (MapOutput,
+	// RecordDiscards, payload event cross-check); empty/claude is today's
+	// behavior byte-for-byte.
+	hookCmd.PersistentFlags().String("harness", "", "Harness mode: claude (default) or codex (adapts dispatcher output through the codex hook adapter)")
+
 	// Register all hook subcommands
 	hookSubcommands := []struct {
 		use   string
@@ -277,6 +284,21 @@ func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 		input.HookEventName = string(event)
 	}
 
+	// SPEC-CODEX-WIRING-001 (REQ-CW-007): the --harness codex runtime mode.
+	// Invalid values fail loud BEFORE any dispatch work; codex mode then
+	// cross-checks the payload's hook_event_name against this subcommand via
+	// codexadapter.Resolve — a mismatch is the generated table and the runtime
+	// command disagreeing, and is refused with a diagnostic (nonzero exit).
+	harnessCodex, herr := harnessModeIsCodex(cmd)
+	if herr != nil {
+		return herr
+	}
+	if harnessCodex {
+		if verr := validateCodexHarnessEvent(event, input); verr != nil {
+			return verr
+		}
+	}
+
 	// SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001 REQ-HOI-002: HOI master toggle gates
 	// TaskCreated + Notification dispatch at the central dispatcher (defense-
 	// in-depth — runtime gate even if settings.json is hand-edited). The 3
@@ -317,7 +339,16 @@ func runHookEvent(cmd *cobra.Command, event hook.EventType) error {
 		return fmt.Errorf("dispatch hook: %w", err)
 	}
 
-	if err := writeHookOutput(event, input, output); err != nil {
+	// SPEC-CODEX-WIRING-001 (REQ-CW-007): in codex mode the output is mapped
+	// through the codex adapter (continue:false→decision:block, systemMessage
+	// routing, undeliverables recorded) instead of the raw protocol write.
+	// The exit-2 branch below runs UNCHANGED on both paths — exit code and
+	// stderr pass through.
+	if harnessCodex {
+		if err := writeHookOutputCodex(event, output); err != nil {
+			return err
+		}
+	} else if err := writeHookOutput(event, input, output); err != nil {
 		return err
 	}
 

@@ -137,6 +137,7 @@ func TestIntegrationAcquire_ForceReportsWhatItDisplaced(t *testing.T) {
 // holder is made up can be neither released by its holder nor recognized by
 // the guard.
 func TestIntegrationAcquire_RefusesWithoutASessionID(t *testing.T) {
+	scrubSessionIDEnv(t) // the runtime stamps a real id into this process; this case is the no-id path
 	_, err := runIntegration(t, t.TempDir(), "acquire")
 	if err == nil {
 		t.Fatal("acquire invented a holder identity")
