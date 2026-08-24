@@ -46,7 +46,7 @@ func TestResolveGLMAuditModel_UnreadableLLMYAML(t *testing.T) {
 	projectDirResolver = func() string { return root }
 	t.Cleanup(func() { projectDirResolver = old })
 
-	if got := resolveGLMAuditModelEffort().Model; got != config.DefaultGLMHigh {
+	if got := resolveGLMAuditModelEffort("").Model; got != config.DefaultGLMHigh {
 		t.Errorf("unreadable llm.yaml: resolveGLMAuditModelEffort().Model = %q, want %q", got, config.DefaultGLMHigh)
 	}
 }
@@ -78,7 +78,7 @@ func TestResolveGLMAuditModel_NonGLMSession(t *testing.T) {
 	projectDirResolver = func() string { return root }
 	t.Cleanup(func() { projectDirResolver = old })
 
-	if got := resolveGLMAuditModelEffort().Model; got != config.DefaultGLMHigh {
+	if got := resolveGLMAuditModelEffort("").Model; got != config.DefaultGLMHigh {
 		t.Errorf("non-GLM session: resolveGLMAuditModelEffort().Model = %q, want %q", got, config.DefaultGLMHigh)
 	}
 }

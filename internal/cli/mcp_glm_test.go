@@ -335,7 +335,7 @@ func TestResolveGLMAuditModel_SSOT(t *testing.T) {
 	projectDirResolver = func() string { return "" } // no sections dir available
 	t.Cleanup(func() { projectDirResolver = old })
 
-	me := resolveGLMAuditModelEffort()
+	me := resolveGLMAuditModelEffort("") // "": fall back to the projectDirResolver seam (the fallback path under test)
 	if me.Model == "" {
 		t.Fatal("resolveGLMAuditModelEffort returned an empty model for a missing llm.yaml (want the GLM default)")
 	}

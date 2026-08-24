@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -83,83 +82,86 @@ func TestGLMAuditParse_SkipsLeadingThinkingBlock(t *testing.T) {
 	}
 }
 
-// AC-AMP-004 positive arm — a populated audit.glm pin reaches the outbound
-// request body: model carries the pinned id and the reasoning directive is set
-// to max on the delivery field SELECTED BY THE LIVE EVIDENCE (AC-AMP-006 ran
-// the differential on hypothesis A — the Anthropic-style thinking object — and
-// measured budget_tokens IGNORED, output 3667 vs 3480, ratio 1.02; the field
-// switched to hypothesis B: the top-level z.ai reasoning_effort, carried
-// verbatim).
-func TestGLMAuditPin_ReachesRequestBody(t *testing.T) {
-	root := newGLMReviewTree(t, true)
-	writeCodexWorkflowYAML(t, root, auditGLMPinYAML("glm-5.3", template.GLMStateMax))
-	withCodexProjectDir(t, root)
-	stub := &stubGLMDoer{body: glmMessagesResp(t, ReviewOutput{Verdict: "pass"})}
-	withGLMSeams(t, "test-key", stub)
-
-	if _, err := handleGLMAudit(context.Background(), glmAuditReq(root)); err != nil {
-		t.Fatalf("handleGLMAudit: %v", err)
+// TestGLMAuditPin_RequestBody is the AC-AMP-004 table: every pin state's
+// outbound request body, seam-captured through stubGLMDoer. The delivery field
+// is the one SELECTED BY THE LIVE EVIDENCE (AC-AMP-006: hypothesis A's
+// thinking budget measured a true null, 1.02; hypothesis B — the top-level
+// z.ai reasoning_effort, carried verbatim — is the honored field).
+func TestGLMAuditPin_RequestBody(t *testing.T) {
+	cases := []struct {
+		name string
+		// pinYAML: the workflow.yaml audit.glm body ("" = no file at all).
+		pinYAML string
+		// wantModel: the model the body must carry.
+		wantModel string
+		// wantEffort: the reasoning_effort the body must carry ("" = the
+		// field must be ABSENT).
+		wantEffort string
+	}{
+		{
+			name:       "valid max pin reaches both fields",
+			pinYAML:    auditGLMPinYAML("glm-5.3", template.GLMStateMax),
+			wantModel:  "glm-5.3",
+			wantEffort: template.GLMStateMax,
+		},
+		{
+			name:       "valid high pin transmitted verbatim",
+			pinYAML:    auditGLMPinYAML("glm-5.3", template.GLMStateHigh),
+			wantModel:  "glm-5.3",
+			wantEffort: template.GLMStateHigh,
+		},
+		{
+			name:       "invalid effort (Claude-only medium) omits directive, model pin survives",
+			pinYAML:    auditGLMPinYAML("glm-5.3", "medium"),
+			wantModel:  "glm-5.3",
+			wantEffort: "",
+		},
+		{
+			name:       "populated model + empty effort omits directive, model still pinned",
+			pinYAML:    auditGLMPinYAML("glm-5.3", ""),
+			wantModel:  "glm-5.3",
+			wantEffort: "",
+		},
+		{
+			name:       "absent pin leaves body unchanged (legacy default model, no reasoning)",
+			pinYAML:    "",
+			wantModel:  glmAuditDefaultModel,
+			wantEffort: "",
+		},
 	}
 
-	body := decodeGLMRequestBody(t, stub.gotBody)
-	if got, _ := body["model"].(string); got != "glm-5.3" {
-		t.Errorf("request model = %q, want the pinned %q", got, "glm-5.3")
-	}
-	if got, _ := body["reasoning_effort"].(string); got != template.GLMStateMax {
-		t.Errorf("reasoning_effort = %q, want the pinned state %q transmitted verbatim", got, template.GLMStateMax)
-	}
-	// Hypothesis A's field is retired: the live gate measured budget_tokens
-	// ignored, so a stale thinking object must not ride the request.
-	if _, ok := body["thinking"]; ok {
-		t.Error("request still carries a thinking object — hypothesis A was rejected by the live differential (budget_tokens ignored)")
-	}
-}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			root := newGLMReviewTree(t, true)
+			if tc.pinYAML != "" {
+				writeCodexWorkflowYAML(t, root, tc.pinYAML)
+			}
+			withCodexProjectDir(t, root)
+			stub := &stubGLMDoer{body: glmMessagesResp(t, ReviewOutput{Verdict: "pass"})}
+			withGLMSeams(t, "test-key", stub)
 
-// AC-AMP-004 second arm (REQ-AMP-006 single-reading rule) — a Claude-only
-// vocabulary value (`medium`) is INVALID on this path: the reasoning directive
-// is omitted while the model pin still applies.
-func TestGLMAuditPin_InvalidEffortOmitsReasoningDirective(t *testing.T) {
-	root := newGLMReviewTree(t, true)
-	writeCodexWorkflowYAML(t, root, auditGLMPinYAML("glm-5.3", "medium"))
-	withCodexProjectDir(t, root)
-	stub := &stubGLMDoer{body: glmMessagesResp(t, ReviewOutput{Verdict: "pass"})}
-	withGLMSeams(t, "test-key", stub)
+			if _, err := handleGLMAudit(context.Background(), glmAuditReq(root)); err != nil {
+				t.Fatalf("handleGLMAudit: %v", err)
+			}
 
-	if _, err := handleGLMAudit(context.Background(), glmAuditReq(root)); err != nil {
-		t.Fatalf("handleGLMAudit: %v", err)
-	}
-
-	body := decodeGLMRequestBody(t, stub.gotBody)
-	if got, _ := body["model"].(string); got != "glm-5.3" {
-		t.Errorf("request model = %q, want the pinned %q (the model pin survives an invalid effort)", got, "glm-5.3")
-	}
-	if _, ok := body["reasoning_effort"]; ok {
-		t.Error("reasoning_effort must be omitted for invalid effort medium (single-reading rule)")
-	}
-}
-
-// AC-AMP-004 third arm — no pin sub-keys: the body contains no reasoning field
-// and the model resolves exactly as before (legacy SSOT → GLM default when no
-// llm.yaml exists).
-func TestGLMAuditPin_AbsentPinBodyUnchanged(t *testing.T) {
-	root := newGLMReviewTree(t, true) // no workflow.yaml → no pin
-	withCodexProjectDir(t, root)
-	stub := &stubGLMDoer{body: glmMessagesResp(t, ReviewOutput{Verdict: "pass"})}
-	withGLMSeams(t, "test-key", stub)
-
-	if _, err := handleGLMAudit(context.Background(), glmAuditReq(root)); err != nil {
-		t.Fatalf("handleGLMAudit: %v", err)
-	}
-
-	body := decodeGLMRequestBody(t, stub.gotBody)
-	if _, ok := body["reasoning_effort"]; ok {
-		t.Error("no reasoning_effort may appear without a pin")
-	}
-	if got, _ := body["model"].(string); got != glmAuditDefaultModel {
-		t.Errorf("request model = %q, want the legacy default %q (byte-identical legacy shape)", got, glmAuditDefaultModel)
-	}
-	if strings.Contains(stub.gotBody, "reasoning") {
-		t.Errorf("absent pin must leave the body free of reasoning fields:\n%s", stub.gotBody)
+			body := decodeGLMRequestBody(t, stub.gotBody)
+			if got, _ := body["model"].(string); got != tc.wantModel {
+				t.Errorf("request model = %q, want %q", got, tc.wantModel)
+			}
+			if tc.wantEffort == "" {
+				if _, ok := body["reasoning_effort"]; ok {
+					t.Errorf("reasoning_effort must be ABSENT in this state; body: %s", stub.gotBody)
+				}
+			} else if got, _ := body["reasoning_effort"].(string); got != tc.wantEffort {
+				t.Errorf("reasoning_effort = %q, want the pinned state %q transmitted verbatim", got, tc.wantEffort)
+			}
+			// Hypothesis A's field is retired: the live gate measured
+			// budget_tokens ignored, so a stale thinking object must not ride
+			// the request in ANY state.
+			if _, ok := body["thinking"]; ok {
+				t.Error("request still carries a thinking object — hypothesis A was rejected by the live differential (budget_tokens ignored)")
+			}
+		})
 	}
 }
 
@@ -176,10 +178,12 @@ func TestGLMAuditPin_TaskResolutionUnaffected(t *testing.T) {
 		t.Errorf("resolveGLMTaskModel = %q, want the SSOT cell glm-4.6 (the audit pin must not leak into glm_task)", got)
 	}
 
-	// The pin DOES apply on the audit resolver under the same config.
-	me := resolveGLMAuditModelEffort()
+	// The pin DOES apply on the audit resolver under the same config. CR #8:
+	// the caller names the reviewed tree explicitly; the same root resolves
+	// the pin the audit reads.
+	me := resolveGLMAuditModelEffort(root)
 	if me.Model != "glm-5.3" || me.Effort != template.GLMStateMax {
-		t.Errorf("resolveGLMAuditModelEffort = %+v, want {glm-5.3 max} (the pin outranks the SSOT cell on the audit path)", me)
+		t.Errorf("resolveGLMAuditModelEffort(root) = %+v, want {glm-5.3 max} (the pin outranks the SSOT cell on the audit path)", me)
 	}
 }
 
@@ -192,9 +196,9 @@ func TestGLMAuditPin_BypassesSessionBackendCheck(t *testing.T) {
 	writeCodexWorkflowYAML(t, root, auditGLMPinYAML("glm-4.6", template.GLMStateLow))
 	withCodexProjectDir(t, root)
 
-	me := resolveGLMAuditModelEffort()
+	me := resolveGLMAuditModelEffort(root)
 	if me.Model != "glm-4.6" || me.Effort != template.GLMStateLow {
-		t.Errorf("resolveGLMAuditModelEffort = %+v, want {glm-4.6 low} (a pin resolves without a GLM session marker)", me)
+		t.Errorf("resolveGLMAuditModelEffort(root) = %+v, want {glm-4.6 low} (a pin resolves without a GLM session marker)", me)
 	}
 }
 

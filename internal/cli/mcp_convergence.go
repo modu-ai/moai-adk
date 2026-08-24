@@ -460,7 +460,7 @@ func performGLMAudit(ctx context.Context, target, focus, projectRoot string) Rev
 	if strings.TrimSpace(diff) == "" {
 		return glmInconclusive("no reviewable change: target " + target + " produced an empty diff")
 	}
-	me := resolveGLMAuditModelEffort() // pin > SSOT (SPEC-V3R6-AUDIT-MODEL-PIN-001 REQ-AMP-003)
+	me := resolveGLMAuditModelEffort(root) // pin > SSOT, from the SAME tree as the diff (CR #8)
 	return callGLMAudit(ctx, key, me.Model, me.Effort, focus, diff, nil)
 }
 

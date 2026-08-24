@@ -228,13 +228,14 @@ func TestAuditPinLive_GLMDifferential(t *testing.T) {
 
 	run := func(label string) (ReviewOutput, string) {
 		tee.raw = &rawMax
+		runRoot := repoRoot
 		if label == template.GLMStateLow {
 			tee.raw = &rawLow
-		}
-		if label == template.GLMStateLow {
+			runRoot = lowRoot
 			projectDirResolver = func() string { return lowRoot }
 		}
-		me := resolveGLMAuditModelEffort()
+		// CR #8: the reviewed tree names the pin tree explicitly.
+		me := resolveGLMAuditModelEffort(runRoot)
 		t.Logf("%s run: pin resolved to {%s %s}", label, me.Model, me.Effort)
 		if me.Effort != label {
 			t.Fatalf("%s run: resolver effort = %q — the pin is not being read", label, me.Effort)
@@ -274,7 +275,7 @@ func TestAuditPinLive_GLMDifferential(t *testing.T) {
 	fmt.Fprintf(&b, "- captured_at: %s\n", time.Now().Format(time.RFC3339))
 	fmt.Fprintf(&b, "- command: MOAI_AUDIT_PIN_LIVE=1 go test ./internal/cli/ -run TestAuditPinLive_GLMDifferential -count=1 -v\n")
 	fmt.Fprintf(&b, "- delivery field under test: hypothesis B — glmMessagesRequest.ReasoningEffort (top-level reasoning_effort, state names verbatim; hypothesis A was rejected by attempt 1 — budget_tokens ignored, ratio 1.02)\n")
-	fmt.Fprintf(&b, "- fixed diff: identical embedded literal both runs (~19-line cache.go TTL diff)\n")
+	fmt.Fprintf(&b, "- fixed diff: identical both runs — git diff %s..HEAD -- %s (%d bytes)\n", auditPinDiffBase, auditPinDiffPath, len(diff))
 	fmt.Fprintf(&b, "- run max:  pin {glm-5.3 %s} → verdict %q — S = %d\n", template.GLMStateMax, outMax.Verdict, sMax)
 	fmt.Fprintf(&b, "- run low:  pin {glm-5.3 %s} → verdict %q — S = %d\n", template.GLMStateLow, outLow.Verdict, sLow)
 	fmt.Fprintf(&b, "- rule: PASS ⇔ S(max) ≥ 2.0 × max(S(low), 1) → ratio = %.2f\n", ratio)
@@ -334,8 +335,10 @@ func TestAuditPinLive_CodexPinConfirmation(t *testing.T) {
 				sent = append(sent, strings.TrimPrefix(line, "--> "))
 			}
 		}
+		// Inside the guard (CR #5): a nil runner must skip the transcript
+		// write rather than panic the whole package binary.
+		probeWriteTranscript(t, "ac-amp-007-codex-transcript.ndjson", *tapPtr)
 	}
-	probeWriteTranscript(t, "ac-amp-007-codex-transcript.ndjson", *tapPtr)
 
 	threadHas := false
 	turnModel, turnEffort := false, false

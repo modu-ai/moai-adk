@@ -162,8 +162,19 @@ type glmMessagesResponse struct {
 //
 // It NEVER reads agent frontmatter or llm.agent_overrides directly (REQ-MCP-013
 // / AC-MCP-015), and glm_task never calls it (REQ-AMP-008).
-func resolveGLMAuditModelEffort() config.ModelEffort {
-	if pin := workflowAuditPins(projectDirResolver()).GLM; pin.Model != "" {
+//
+// projectRoot names the tree being reviewed (the project_root doctrine,
+// .claude/rules/moai/core/moai-mcp-tools.md): a worktree session MUST pass its
+// own root, because projectDirResolver() names the primary checkout and would
+// read the pin from a DIFFERENT tree than the diff under review — the same
+// caller-named-root contract the codex counterpart honors via params["cwd"].
+// Empty falls back to projectDirResolver() (the pre-CR behavior).
+func resolveGLMAuditModelEffort(projectRoot string) config.ModelEffort {
+	root := strings.TrimSpace(projectRoot)
+	if root == "" {
+		root = projectDirResolver()
+	}
+	if pin := workflowAuditPins(root).GLM; pin.Model != "" {
 		return pin
 	}
 	return config.ModelEffort{Model: resolveGLMModelForAgent(glmAuditAgentKey)}
@@ -215,10 +226,6 @@ func handleGLMAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 		return reviewToolResult(glmInconclusive("GLM API key not configured (~/.moai/.env.glm)")), nil
 	}
 
-	me := resolveGLMAuditModelEffort() // pin > SSOT (REQ-AMP-003)
-	if explicit := req.GetString("model", ""); strings.TrimSpace(explicit) != "" {
-		me.Model = strings.TrimSpace(explicit) // explicit caller model outranks the pin
-	}
 	focus := req.GetString("focus", "")
 	target := req.GetString("target", codexTargetUncommitted)
 	token := extractProgressToken(req)
@@ -238,6 +245,14 @@ func handleGLMAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 	root, rootErr := resolveToolProjectRoot(req)
 	if rootErr != nil {
 		return toolErr("glm_audit", rootErr), nil
+	}
+	// Resolved BELOW the root (CR #8): the pin must come from the SAME tree as
+	// the diff under review — a worktree session names its own root, and
+	// resolving through projectDirResolver() here could read a different
+	// tree's workflow.yaml.
+	me := resolveGLMAuditModelEffort(root) // pin > SSOT (REQ-AMP-003)
+	if explicit := req.GetString("model", ""); strings.TrimSpace(explicit) != "" {
+		me.Model = strings.TrimSpace(explicit) // explicit caller model outranks the pin
 	}
 	diff, err := collectReviewDiff(root, target)
 	if err != nil {
