@@ -89,6 +89,18 @@ exec seam 은 호출 횟수뿐 아니라 **argv 전체와 cwd** 를 포착한다
 | `{"auth_mode":"totally-new-mode","tokens":{"access_token":"x"}}` | `("", false)` — 추측하지 않는다 |
 | `{` (파싱 실패) | `("", false)` + `err != nil` |
 | 빈 바이트 | `("", false)` |
+| **`{"auth_mode":"chatgpt","tokens":{ }}`** (공백 하나) | **`("", false)`** — 원문 문자열 비교판이 뚫리는 지점 |
+| `{"auth_mode":"chatgpt","tokens":[]}` | `("", false)` — 객체가 아니다 |
+| `{"auth_mode":"chatgpt","tokens":"x"}` | `("", false)` — 객체가 아니다 |
+| `{"auth_mode":"chatgpt","tokens":{"access_token":false}}` | `("", false)` — 문자열이 아니다 |
+| `{"auth_mode":"chatgpt","tokens":{"access_token":0}}` | `("", false)` — 문자열이 아니다 |
+| `{"auth_mode":"chatgpt","tokens":{"access_token":"   "}}` | `("", false)` — 공백뿐 |
+| **`{"auth_mode":"apikey","OPENAI_API_KEY":false}`** | **`("", false)`** — 문자열이 아니다 |
+| `{"auth_mode":"apikey","OPENAI_API_KEY":0}` | `("", false)` |
+| `{"auth_mode":"apikey","OPENAI_API_KEY":[]}` | `("", false)` |
+| `{"auth_mode":"apikey","OPENAI_API_KEY":{}}` | `("", false)` |
+
+굵은 두 행이 판정 방식을 가른다: 원문 바이트를 문자열과 비교하는 구현은 `{ }` 와 `false` 를 "비어 있지 않음" 으로 읽는다. **자격 재료는 비어 있지 않은 JSON 문자열이어야 하고, 다른 JSON 타입은 전부 부재** 라는 규칙만이 이 표 전체를 만족시킨다.
 
 **비밀값 규율 — 값을 보존하지 않는 타입으로 판정한다.**
 
@@ -175,33 +187,48 @@ exec seam 은 호출 횟수뿐 아니라 **argv 전체와 cwd** 를 포착한다
 
 ## AC-CL-015 — 미배선 프로젝트 초기화 제안 (REQ-CL-015)
 
-초기화 실행은 기존 생성기 호출 여부로 판정한다 — 런처가 자체 생성 로직을 갖지 않는다.
+**배선 판정은 디렉터리 존재가 아니라 파일 집합으로 한다.** 디렉터리만 보는 구현은 빈 `.codex/` 를 배선으로 읽고 훅 0개 상태로 기동한다. 배선 상태 fixture 5종을 각각 `cli` 로 실행한다 (생성기 호출을 세는 seam 사용):
 
-- **Given** `.codex/` 가 없는 임시 프로젝트 루트 + 생성기 호출을 세는 seam
-- **When** `cli` 또는 `app` 을 실행하되 **초기화를 수락하지 않으면**
-- **Then** 생성기 호출 0회, 프로젝트 트리 스냅샷 무변경, 그리고 기동도 일어나지 않는다 (미배선 프로젝트로 들어가지 않는다).
-- **And When** 초기화를 수락하면
-- **Then** 생성기가 `--agent codex` 경로로 정확히 1회 호출된다.
-- **And Given** 이미 `.codex/hooks.json` + `.codex/config.toml` 이 있는 프로젝트
-- **When** `cli` / `app` 을 실행하면
-- **Then** 제안 없이 바로 기동하고 생성기 호출은 0회다.
-- **And** 맨몸 / `status` 는 어느 상태에서도 제안하지 않고 생성기 호출 0회다 — 읽기는 쓰지 않는다.
+| `.codex/` 상태 | 배선 판정 | 제안 |
+|---|---|---|
+| 디렉터리 없음 | 미배선 | 제안 |
+| **디렉터리는 있고 비어 있음** | **미배선** | **제안** |
+| `hooks.json` 만 있음 | 미배선(부분) | 제안 |
+| `config.toml` 만 있음 | 미배선(부분) | 제안 |
+| 둘 다 있음 | 배선됨 | 제안 없음, 바로 기동, 생성기 호출 0회 |
+
+- **When** 제안이 뜬 상태에서 **초기화를 수락하지 않으면**
+- **Then** 생성기 호출 0회, 프로젝트 트리 스냅샷 무변경, 기동도 일어나지 않는다 (미배선 프로젝트로 들어가지 않는다).
+- **And When** 수락하면
+- **Then** 생성기가 `--agent codex` 인자로 정확히 1회 호출된다 — 호출 seam 은 인자까지 포착한다.
+- **And** 맨몸 / `status` 는 위 5종 어느 상태에서도 제안하지 않고 생성기 호출 0회다 — 읽기는 쓰지 않는다.
 - **And** 런처 코드에 배선 파일을 직접 쓰는 경로가 없다 (`.codex/hooks.json` / `.codex/config.toml` 쓰기 호출 grep 0건).
 
 ## AC-CL-016 — 지시 계약 확보 (REQ-CL-016)
 
-초기화가 만든 상태를 파일 내용으로 판정한다. 네 fixture 를 각각 초기화한다:
+**import 줄의 형태를 먼저 고정한다** — 무엇을 세는지 정하지 않으면 "1건" 을 판정할 수 없다. `CLAUDE.md` 는 `@AGENTS.md` 한 줄로 `AGENTS.md` 를 가리키며, 판정 대상은 그 줄이다 (이 저장소의 `CLAUDE.md` 가 쓰는 형태와 동일).
+
+초기화가 만든 상태를 파일 내용으로 판정한다. 다섯 fixture 를 각각 초기화한다:
 
 | 프로젝트 초기 상태 | 초기화 후 기대 |
 |---|---|
-| `AGENTS.md` 없음 · `CLAUDE.md` 없음 | 둘 다 생성, `CLAUDE.md` 가 `AGENTS.md` 를 import 하는 줄을 담는다 |
-| `AGENTS.md` 있음 · `CLAUDE.md` 없음 | `AGENTS.md` 내용 **바이트 무변경**, `CLAUDE.md` 생성 + import 줄 |
-| `AGENTS.md` 없음 · `CLAUDE.md` 있음 (사용자 내용 포함) | 기존 `CLAUDE.md` 내용 보존 + import 줄만 추가, `AGENTS.md` 생성 |
-| 둘 다 있고 import 줄도 이미 있음 | 두 파일 모두 바이트 무변경, import 줄 중복 0건 |
+| `AGENTS.md` 없음 · `CLAUDE.md` 없음 | 둘 다 생성, `CLAUDE.md` 가 `@AGENTS.md` 줄을 담는다 |
+| `AGENTS.md` 있음 · `CLAUDE.md` 없음 | `AGENTS.md` **바이트 무변경**, `CLAUDE.md` 생성 + `@AGENTS.md` 줄 |
+| `AGENTS.md` 없음 · `CLAUDE.md` 있음 (사용자 내용 포함) | 기존 `CLAUDE.md` 내용 보존 + `@AGENTS.md` 줄만 추가, `AGENTS.md` 생성 |
+| **둘 다 있는데 `@AGENTS.md` 줄이 없음** | **두 파일 내용 보존 + `CLAUDE.md` 에 그 줄만 추가** |
+| 둘 다 있고 `@AGENTS.md` 줄도 있음 | 두 파일 모두 바이트 무변경 |
 
-- **And Given** 프로젝트에 로컬 전용 지시 파일이 함께 있으면
-- **Then** 그 내용도 계약에 반영되고, 원본 파일 자체는 바이트 무변경이다.
-- **And** 어느 fixture 에서도 import 줄은 정확히 1건이다 (재실행 멱등).
+**멱등은 두 번 돌려서 판정한다** (한 번 돌리고 줄 수를 세는 것은 멱등의 판정이 아니다):
+
+- **When** 각 fixture 에 초기화를 **연속 2회** 실행하면
+- **Then** 1회 후와 2회 후의 두 파일이 **바이트 동일** 하고, `@AGENTS.md` 줄 수는 두 시점 모두 정확히 1이다.
+
+**로컬 전용 지시 파일**: 프로젝트 루트의 `CLAUDE.local.md` 를 가리킨다 (커밋되지 않는 개인 지시 파일).
+
+- **Given** `CLAUDE.local.md` 가 있는 fixture
+- **When** 초기화하면
+- **Then** `CLAUDE.local.md` 자체는 바이트 무변경이고, 두 하네스 모두가 그 내용에 도달한다 — `AGENTS.md` 또는 `CLAUDE.md` 중 **정확히 한 곳** 에서 이 파일을 가리키는 줄이 1건 존재하고, 다른 한 곳은 그 파일을 import 체인으로 도달한다 (두 곳에서 각각 가리키면 같은 내용이 두 번 로드된다).
+- **And** `CLAUDE.local.md` 가 없는 fixture 에서는 그 파일을 가리키는 줄이 0건이다 — 없는 파일을 가리키지 않는다.
 
 ---
 

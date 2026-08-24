@@ -1,7 +1,7 @@
 ---
 id: SPEC-CODEX-LAUNCHER-001
 title: "Codex 전용 런처 — moai codex: 배선·CODEX_HOME·auth 상태 확인과 앱/CLI 기동"
-version: "0.5.0"
+version: "0.6.0"
 status: draft
 created: 2026-08-24
 updated: 2026-08-24
@@ -28,6 +28,7 @@ related_specs: [SPEC-CODEX-DUAL-AGENTS-001, SPEC-CODEX-SKILLS-CANONICAL-001, SPE
 | 0.3.0 | 2026-08-24 | 교차모델 감사 1차(codex 백엔드) 지적 4건 반영. auth 분류를 `auth_mode` 파일 1순위 + 앵커된 긍정 행 2순위의 2단 사다리로 재설계(REQ-CL-008/009 재기술) — 부분 일치가 오류 문구를 인증 성공으로 읽는 결함을 설계 단계에서 제거. 공유 러너 인터페이스 확장 철회(REQ-CL-010 후단) — 구현체 수 측정이 틀렸음이 드러남(M-7). AC 5건을 명목 커버리지에서 행동 판정으로 교체. 근거 문서를 축약 없는 실측본으로 재작성 |
 | 0.4.0 | 2026-08-24 | 교차모델 감사 2차 지적 5건 반영. (1) `^logged in` 앵커도 뚫린다는 반례(`Logged in state unavailable: API key missing`)를 받아 전체 행 문법 + 캡처값 매핑으로 교체(REQ-CL-009). (2) 파일 1단에 모드별 최소 구조 조건 추가 — 자격 재료 없는 stale 파일은 하강(REQ-CL-008), 비밀값 규율을 출력 grep 에서 타입(비밀 필드 없는 구조체)으로 격상. (3) seam 을 3분해 — 최종 provider 만 반환하는 단일 seam 으로는 stdout/stderr/rc 주입 지점이 없어 핵심 회귀 시험이 명목화됨. (4) AC-CL-002 에 cwd·argv 전달 판정, AC-CL-007 에 sentinel 전파 판정 추가. (5) 근거 문서 재작성 + 에이전트 TOML 수를 12→**11** 로 정정(`ls | wc -l` 이 별칭 긴 형식의 `total` 행을 함께 셌다) |
 | 0.5.0 | 2026-08-24 | 3차 감사 지적 5건 반영 + 운영자 신규 요구 접기. (1) 파일 1단이 `tokens:{}` 를 통과하던 구멍 폐쇄 — '존재' 가 아니라 '비어 있지 않은 값' 요구(REQ-CL-008). (2) 비밀값 규율을 실제로 타입에 걸었다 — 앞선 안은 `APIKey string` 으로 키 전문을 역직렬화하면서 '비밀 필드 없음' 이라 선언했다. (3) 실행 seam 이 결합된 바이트를 반환해 프로덕션 stderr 결함이 회귀 시험을 우회하던 문제 — 두 스트림을 분리 반환하고 결합 규칙 자체를 시험 대상으로. (4) 작성 불가능했던 AC 해소 — `classifyCodexAuthFile` 에 `err` 추가, 오류 문안 판정은 경로를 아는 층으로 이동. (5) 근거 문서를 전사(transcript) 방식으로 전환 — 스크립트와 그 출력을 커밋하고 문서는 줄 범위를 인용한다. 신규: 미배선 프로젝트 초기화 제안 + `AGENTS.md`↔`CLAUDE.md` 지시 계약(REQ-CL-015/016). AC 2건 통합(공유 러너 무회귀→게이트, 앱 위임→동사 라우팅)으로 Tier M 상한 16/16 유지 |
+| 0.6.0 | 2026-08-24 | 최종 확인 감사 지적 3건 반영. (1) `nonEmpty` 판정을 원문 바이트 비교에서 **JSON 타입** 판정으로 교체 — 감사 실측이 `{ }`·`false`·`0`·`[]` 가 전부 '비어 있지 않음' 으로 통과함을 보였다. 자격 재료는 비어 있지 않은 JSON 문자열이어야 하고 다른 타입은 전부 부재(REQ-CL-008), AC 표에 12행 추가. (2) 근거 스크립트를 자기완결로 — 측정 대상 바이너리와 doctor JSON 을 스스로 만들고, 선행 조건 실패 시 중단하며, 인용하는 모든 수치를 전사본 안에서 잡는다. 'read-only' 주장 철회(빌드 + codex 의 PATH 별칭 시도는 실제 변경). (3) 배선 판정을 디렉터리 존재에서 **파일 집합** 으로 — 빈 `.codex/`·한쪽 파일만 있는 상태를 미배선으로 판정(REQ-CL-006/015), AC 에 5종 상태 행렬. 지시 계약은 import 줄 형태(`@AGENTS.md`)를 고정하고 멱등을 2회 실행 바이트 비교로 판정하며 로컬 지시 파일을 `CLAUDE.local.md` 로 명명(REQ-CL-016) |
 
 ## §A. 측정 전제 (Verified baseline)
 
@@ -109,12 +110,12 @@ t88 (M4) 이 Codex 쪽 배선을 깔았지만, 그 배선을 **확인하고 그 
 
 - **REQ-CL-004** — The readiness readout shall report, as discrete rows: codex binary path, codex version, resolved `CODEX_HOME`, auth provider, and project wiring state (`.codex/hooks.json` + `.codex/config.toml` presence and whitelist validity).
 - **REQ-CL-005** — The system shall resolve `CODEX_HOME` from the `CODEX_HOME` environment variable, falling back to `~/.codex`, and shall report which of the two supplied the value.
-- **REQ-CL-006** — Where the project carries no `.codex/` wiring, the readout shall report it as an informational state (not an error) and name `moai init --agent codex` as the action, mirroring the fail-open stance of the `moai doctor` Codex Wiring check.
+- **REQ-CL-006** — Where the project's `.codex/` wiring is incomplete — the directory absent, present but empty, or missing either generated file — the readout shall report it as an informational state (not an error) and name `moai init --agent codex` as the action, mirroring the fail-open stance of the `moai doctor` Codex Wiring check.
 - **REQ-CL-007** — The readiness readout shall consume the existing `ProbeCodexSetup` / `codexwiring` surfaces and shall not fork a second auth-classification or wiring-validation implementation.
 
 ### D.3 auth 상태 (§A.2 결함 수정)
 
-- **REQ-CL-008** — The auth classifier shall determine the provider from `<CODEX_HOME>/auth.json` only when the file's `auth_mode` is a known value AND the credential material that mode implies is present as a non-empty value; a present-but-empty container shall count as absent. In every other case — an unknown mode, empty or missing credential material, an unparseable file, or no file at all — it shall fall back to the command probe rather than report a provider. It shall deserialize through types that record only whether each credential field was non-empty, never the value itself, so no credential is retained, logged, or wrapped into an error.
+- **REQ-CL-008** — The auth classifier shall determine the provider from `<CODEX_HOME>/auth.json` only when the file's `auth_mode` is a known value AND the credential material that mode implies is present as a non-empty JSON string; any other JSON type — a boolean, a number, an array, an object, or null — shall count as absent, as shall an empty or whitespace-only string and a container holding no such value. In every other case — an unknown mode, empty or missing credential material, an unparseable file, or no file at all — it shall fall back to the command probe rather than report a provider. It shall deserialize through types that record only whether each credential field was non-empty, never the value itself, so no credential is retained, logged, or wrapped into an error.
 - **REQ-CL-009** — When classifying from command output, the system shall accept a provider only from a status line matching a fixed whole-line grammar, mapping the captured provider term and nothing else; a line that merely contains a provider term shall never classify, whatever it starts with. It shall classify a non-zero exit only when such a line is present, and shall otherwise report `unknown` together with the action `codex login status` — an unreadable probe is a gap, never a verdict.
 - **REQ-CL-010** — The classification correction shall apply to every consumer of the shared probe (the `codex_setup` MCP tool, the web console Codex card, and this launcher), with no second classification path introduced and no change to the shared `codexCommandRunner` interface.
 
@@ -126,8 +127,8 @@ t88 (M4) 이 Codex 쪽 배선을 깔았지만, 그 배선을 **확인하고 그 
 
 ### D.5 미배선 프로젝트 초기화
 
-- **REQ-CL-015** — Where a launch verb runs in a project that carries no `.codex/` wiring, the system shall offer to initialize it through the existing `moai init --agent codex` generator rather than launching into an unwired project, and shall not write anything until the operator accepts. The readout form shall keep reporting the unwired state without offering to change it — reading state never mutates it.
-- **REQ-CL-016** — When initialization runs, it shall ensure the project carries the agent-instruction contract this repository uses: an `AGENTS.md` that Codex reads, imported by `CLAUDE.md` so both harnesses resolve one source. Where the project already has either file, the system shall preserve its content and add only the missing link; where a local, uncommitted instruction file exists alongside it, that file shall be carried into the contract too. The intent is that a project driven from Codex resolves the same instructions it resolves from Claude.
+- **REQ-CL-015** — Where a launch verb runs in a project whose `.codex/` wiring is incomplete by the same test REQ-CL-006 applies — an absent directory, an empty one, or either generated file missing — the system shall offer to initialize it through the existing `moai init --agent codex` generator rather than launching into an unwired project, and shall not write anything until the operator accepts. The readout form shall keep reporting the unwired state without offering to change it — reading state never mutates it.
+- **REQ-CL-016** — When initialization runs, it shall ensure the project carries the agent-instruction contract this repository uses: an `AGENTS.md` that Codex reads, imported by `CLAUDE.md` through a single `@AGENTS.md` line so both harnesses resolve one source; re-running initialization shall leave both files byte-identical. Where the project already has either file, the system shall preserve its content and add only the missing link; where a local, uncommitted instruction file exists alongside it, that file shall be carried into the contract too. The intent is that a project driven from Codex resolves the same instructions it resolves from Claude.
 
 ### D.6 배포 표면
 

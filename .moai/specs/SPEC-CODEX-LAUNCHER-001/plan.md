@@ -82,26 +82,59 @@ Logged in state unavailable: API key missing   →  (앵커 통과) → "api key
 
 **비밀값 규율은 grep 이 아니라 타입으로 건다 — 그리고 그 타입은 값을 보존하지 않는다.** 앞선 안은 "비밀 필드 없는 구조체" 라 선언해 놓고 `APIKey string` 으로 **키 전문을 역직렬화** 했다. 문자열로 받는 순간 그 값은 메모리에 존재하고 오류·로그 경로로 샐 수 있다. `json.RawMessage` 도 원문을 보존하므로 같은 문제다.
 
-값을 보존하지 않는 타입을 쓴다:
+값을 보존하지 않는 타입을 쓰되, **원문 바이트를 문자열로 비교하지 않는다.** 감사가 이 함정을 실측으로 보여줬다 — 원문 비교판(`s != "{}" && s != "null" && …`)은 `{ }`(공백 하나), `false`, `0`, `[]` 를 전부 "비어 있지 않음" 으로 통과시킨다:
+
+```
+'{}'  -> False      '{ }' -> True   ← 같은 뜻인데 갈린다
+'null'-> False      'false'-> True  ← 타입이 아예 다른데 통과
+'""'  -> False      '0'   -> True
+                    '[]'  -> True
+```
+
+원문이 아니라 **타입** 으로 판정한다. 자격 재료는 "비어 있지 않은 JSON 문자열" 이어야 하고, 다른 JSON 타입은 전부 부재로 친다:
 
 ```go
-// nonEmpty 는 "비어 있지 않은 값이 있었다" 는 사실만 남기고 값은 버린다.
-type nonEmpty bool
+// nonEmptyString 은 "비어 있지 않은 문자열이 있었다" 는 사실만 남기고 값은 버린다.
+// 문자열이 아닌 어떤 JSON 타입(null/false/0/[]/{})도 부재로 판정된다.
+type nonEmptyString bool
 
-func (n *nonEmpty) UnmarshalJSON(b []byte) error {
-    s := strings.TrimSpace(string(b))
-    *n = nonEmpty(s != "" && s != "null" && s != `""` && s != "{}")
-    return nil   // b 는 여기서 끝난다 — 어디에도 저장하지 않는다
+func (n *nonEmptyString) UnmarshalJSON(b []byte) error {
+    var s string
+    if err := json.Unmarshal(b, &s); err != nil {
+        *n = false            // 문자열이 아니면 자격 재료가 아니다
+        return nil            // 파일 전체를 깨뜨리지 않고 이 필드만 부재 처리
+    }
+    *n = nonEmptyString(strings.TrimSpace(s) != "")
+    return nil                // s 는 여기서 끝난다 — 어디에도 저장하지 않는다
+}
+
+// tokenSet 은 각 항목이 비어 있지 않은 문자열인지만 센다. 객체가 아니면 0.
+type tokenSet struct{ nonEmptyCount int }
+
+func (t *tokenSet) UnmarshalJSON(b []byte) error {
+    var m map[string]nonEmptyString
+    if err := json.Unmarshal(b, &m); err != nil {
+        t.nonEmptyCount = 0   // 객체가 아니면(배열·문자열·null) 자격 재료 없음
+        return nil
+    }
+    for _, v := range m {
+        if bool(v) {
+            t.nonEmptyCount++
+        }
+    }
+    return nil
 }
 
 type codexAuthFile struct {
-    AuthMode string   `json:"auth_mode"`   // 열거값이며 비밀이 아니다
-    APIKey   nonEmpty `json:"OPENAI_API_KEY"`
-    Tokens   tokenSet `json:"tokens"`      // 아래 — 값 없이 "비지 않은 항목 수" 만
+    AuthMode string         `json:"auth_mode"`   // 열거값이며 비밀이 아니다
+    APIKey   nonEmptyString `json:"OPENAI_API_KEY"`
+    Tokens   tokenSet       `json:"tokens"`
 }
 ```
 
-`tokenSet` 도 같은 방식으로 각 항목의 비어있지 않음만 세고 값은 버린다. 결과적으로 이 타입 집합에는 `string` / `[]byte` / `json.RawMessage` 형태의 자격 필드가 **하나도 없다** — AC-CL-008 이 리플렉션으로 그 부재를 판정한다. 오류를 감쌀 때도 원본 JSON 본문을 넣지 않는다 (경로와 사유만).
+판정: `apikey` 는 `APIKey == true`, `chatgpt` 는 `Tokens.nonEmptyCount >= 1` 일 때만 확정하고, 나머지는 전부 하강.
+
+결과적으로 이 타입 집합에는 `auth_mode` 하나를 빼면 `string` / `[]byte` / `json.RawMessage` 형태의 필드가 **하나도 없다** — AC-CL-008 이 리플렉션으로 (중첩 타입까지 재귀해) 그 부재를 판정한다. 오류를 감쌀 때도 원본 JSON 본문을 넣지 않는다 (경로와 사유만).
 
 **seam — 인터페이스를 넓히지 않되, 시험이 닿을 수 있는 층에 둔다.** 최초안은 `codexCommandRunner` 에 `runCombined` 를 추가하는 것이었고, 그 근거로 "구현체는 프로덕션 1 + 시험 1" 이라 적었다. 실측 결과 **틀렸다** (M-7): 시험 더블이 둘(`fakeCodexRunner`, `stubCodexRunner`)이라 넓히면 둘 다 깨진다.
 
