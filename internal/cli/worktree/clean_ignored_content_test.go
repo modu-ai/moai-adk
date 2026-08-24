@@ -218,3 +218,52 @@ func TestCleanMergedOnly_RemovesWhenIgnoredContentIsRegenerable(t *testing.T) {
 		t.Fatalf("a tree whose ignored content is entirely regenerable must be removed; removed %v", *removed)
 	}
 }
+
+// --- PR #1638 review, outside-diff finding OD-1 -----------------------------
+//
+// The --stale sweep classifies the whole population, THEN removes. A tree
+// cleared in the first pass can acquire irreplaceable ignored content before
+// its turn comes in the second — a session writing `.claude/agent-memory/`
+// while the sweep is mid-run. Nothing downstream refuses on ignored files, so
+// the stale verdict would be the only thing consulted and the loss is silent.
+
+// TestCleanStale_RechecksIgnoredContentBeforeRemoval simulates the race: the
+// tree reads clean at classification and irreplaceable at removal time. The
+// second read must win.
+func TestCleanStale_RechecksIgnoredContentBeforeRemoval(t *testing.T) {
+	removed := staleTestEnv(t,
+		[]git.Worktree{{Path: "/wt/race", Branch: "feat/race"}},
+		map[string]string{},
+		map[string]bool{"feat/race": true},
+	)
+
+	var ignoredReads int
+	origGitCmd := gitWorktreeCmd
+	gitWorktreeCmd = func(args ...string) (string, error) {
+		for _, a := range args {
+			if a == "--ignored" {
+				ignoredReads++
+				if ignoredReads == 1 {
+					return "", nil // classification: nothing irreplaceable yet
+				}
+				return "!! .claude/agent-memory/\n", nil // it appeared mid-sweep
+			}
+		}
+		return origGitCmd(args...)
+	}
+	t.Cleanup(func() { gitWorktreeCmd = origGitCmd })
+
+	out, err := runStaleClean(t, map[string]string{"stale": "true", "yes": "true"})
+	if err != nil {
+		t.Fatalf("runClean error: %v", err)
+	}
+	if ignoredReads < 2 {
+		t.Fatalf("the guard must be re-read immediately before removal; it ran %d time(s)", ignoredReads)
+	}
+	if len(*removed) != 0 {
+		t.Fatalf("content that appeared after classification must still preserve the tree; removed %v", *removed)
+	}
+	if !strings.Contains(out, "cause="+causeIgnoredContent) {
+		t.Errorf("the notice must name the cause, got:\n%s", out)
+	}
+}

@@ -134,6 +134,12 @@ func cleanMergedWorktrees(cmd *cobra.Command, base string) error {
 			// in disregarding ignored files (design.md A.6), so a tree
 			// holding only `.claude/agent-memory/` is destroyed exit 0 with
 			// nothing in the output to read afterwards.
+			//
+			// Its POSITION is load-bearing: this sweep classifies and acts one
+			// tree at a time, so reading here is already reading immediately
+			// before the removal below. Do not hoist it into a classification
+			// pass — that is exactly the staleness the --stale limb has to
+			// re-read around.
 			if _, reason := ignoredContentVerdict(wt.Path); reason != "" {
 				_, _ = fmt.Fprintf(out, "  Keeping %s [%s]: %s\n", wt.Path, wt.Branch, reason)
 				continue
@@ -256,6 +262,18 @@ func cleanStaleWorktrees(cmd *cobra.Command, base string, apply bool) error {
 
 	var removed int
 	for _, c := range removable {
+		// Re-read the ignored-content predicate immediately before removing.
+		// Classification happens for the whole population first, so a tree
+		// cleared early can acquire irreplaceable ignored content — a session
+		// writing `.claude/agent-memory/` — before its turn comes. Ignored
+		// files trigger no refusal from non-forced `git worktree remove`, so
+		// the stale verdict would be the only thing consulted, and the loss is
+		// silent. The window is narrowed to the gap between this read and the
+		// removal, not closed.
+		if _, reason := ignoredContentVerdict(c.Path); reason != "" {
+			_, _ = fmt.Fprintf(out, "  Keeping %s [%s]: %s (observed at removal time)\n", c.Path, c.Branch, reason)
+			continue
+		}
 		_, _ = fmt.Fprintf(out, "  Removing stale worktree: %s [%s]\n", c.Path, c.Branch)
 		if err := WorktreeProvider.Remove(c.Path, false); err != nil {
 			_, _ = fmt.Fprintf(out, "  Warning: could not remove %s: %v\n", c.Path, err)
