@@ -1,7 +1,7 @@
 ---
 id: SPEC-ZONE-REGISTRY-RESYNC-001
 title: "zone-registry clause/anchor 재동기화 + 재발 차단 가드"
-version: "0.4.0"
+version: "0.5.0"
 status: draft
 created: 2026-08-24
 updated: 2026-08-25
@@ -26,6 +26,7 @@ related_specs: [SPEC-V3R6-ZONE-REGISTRY-PACKAGING-001, SPEC-V3R5-CONSTITUTION-DU
 | 0.2.0 | 2026-08-24 | manager-spec | 범위 확장 승인 반영 — anchor 탐지·수리를 정식 축으로 승격(죽은 `SentinelAnchorNotFound` 완결), slug 규칙을 요구사항화, 마일스톤 순서를 의존성으로 고정 |
 | 0.3.0 | 2026-08-25 | manager-spec | plan-audit iter1(FAIL 0.75) 반영 — 자기참조 `file:` / 빈 clause / `\|\| true` / 부분 순회 mutant 4종을 AC 로 승격, 이중 트리 파일 수 오기 정정, paths-filter 구속 추가 |
 | 0.4.0 | 2026-08-25 | manager-spec | plan-audit iter2(PASS-WITH-DEBT 0.925) 부채 #1 마감 — 빈 clause 금지를 **유일 적중** 요구로 강화(공백 한 칸·짧은 토큰 우회 차단), REQ 번호를 전역 오름차순으로 재배치(구 015 slug 규칙 → **012**, 구 012/013/014 → 013/014/015), §D8 인용 정정, 잔여 부채 2건(`CONST-V3R2-004` 근접 오답 / 평가 수 이중 카운트)을 §H 에 판정자와 함께 기록 |
+| 0.5.0 | 2026-08-25 | manager-spec | §1.2 충돌 C안 확정(트리 9ba1e308d 3측정 근거 — progress.md §F) — REQ-ZRR-001 은퇴 carve-out, AC-ZRR-002/003 GREEN 101→97(비은퇴), plan M1 종료조건 동기화 |
 
 ## 1. 문제 — 측정된 형태
 
@@ -75,9 +76,15 @@ exit=1
 |---|---|---|
 | A | AC 를 "은퇴 엔트리를 제외한 97건"으로 축소 | 은퇴 4건의 `file:`/`anchor:` 가 영구히 검증 밖에 남는다(anchor 는 지금 통과하지만 다음 편집에서 깨져도 아무도 모른다) |
 | B | 은퇴 엔트리도 verbatim 을 요구 | #1611 의 전제와 정면 충돌. 사라진 원문을 인용하라는 요구가 된다 |
-| C | 은퇴 엔트리는 clause 검사에서 빼되 **anchor 검사는 유지** | 계약이 갈라져 구현이 복잡해지지만, 두 근거를 모두 존중한다 |
+| **C (채택)** | 은퇴 엔트리는 clause 검사에서 빼되 **anchor 검사는 유지** | 계약이 갈라져 구현이 복잡해지지만, 두 근거를 모두 존중한다 |
 
-C 가 유력해 보이나 근거를 더 재야 한다 — 은퇴 엔트리의 `anchor:` 가 무엇을 가리켜야 하는지(사라진 절인가, 그 절을 대체한 절인가)가 아직 측정되지 않았다.
+**결정 기록 (v0.5.0, 2026-08-25) — C안 채택.** 아래 세 측정(트리 `9ba1e308d`)이 미환이던 근거를 닫는다:
+
+1. 은퇴 4건(`CONST-V3R2-021..024`)의 `anchor:` 는 전부 `#14-parallel-execution-safeguards` 이며 이 heading 은 로컬·템플릿 양쪽 CLAUDE.md 에서 모두 해석된다(두 파일 바이트 동일, `## 14. Parallel Execution Safeguards` 위치 양쪽 153행).
+2. 은퇴 마커 `[SUPERSEDED by worktree-opt-in policy — see CLAUDE.md §14 + worktree-integration.md § Terminology Glossary]` 의 지시 대상은 **살아 있다** — CLAUDE.md §14 본문이 worktree-opt-in 포인터를 실은 후계 교리다. 즉 은퇴 엔트리의 anchor 는 사라진 절이 아니라 **후계 절을 가리키는 포인터**고, anchor 검사는 그 마커의 안내가 계속 해석 가능한지를 검증한다.
+3. 같은 트리의 신규 분석(`.moai/reports/t232/analyze.py`): 엔트리 101건 기준 clause 실패 68 — 그중 은퇴 4. anchor 실패 17 — 그중 은퇴 0.
+
+확정된 계약: **은퇴 4건은 clause verbatim 요구에서 면제된다** — 그 `clause:` 는 은퇴한 교리의 불변 감사 기록이므로, 원문이 정의상 소멸했음에도 verbatim 을 요구하는 B안은 측정상 불가능하고, 문서에 은퇴 교리를 되살려 인용을 만드는 식의 충족은 감사 기록을 위조한다. **단 anchor 해석에는 면제되지 않는다**(REQ-ZRR-002 / AC-ZRR-004 — 101/101 그대로). anchor 까지 제외하는 A안은 §14 가 개명되어 마커 포인터가 죽어도 무신호로 놓치는, 은퇴 마커에 남은 유일한 기계 검사를 포기하는 길이다. #1611 의 `--strict` 경로도 은퇴 엔트리를 재검사한다(`internal/constitution/validator.go:214` `retired := !opts.Strict && IsRetiredClause(entry.Clause)`) — 비-strict skip 은 검증 면제가 아니라 편의 선택이며, C안은 그 분할을 계약으로 옮긴 것이다.
 
 사용자가 받는 레지스트리는 템플릿과 **바이트 동일**하다.
 
@@ -170,7 +177,7 @@ $ grep -c "constitution validate" Makefile .github/workflows/*.yml
 
 ### 데이터 수리
 
-- **REQ-ZRR-001** (Ubiquitous) — The zone registry shall carry, for every entry, a `clause:` value that is a contiguous single-line verbatim span occurring **exactly once** in the file named by that entry's `file:`, in both the local rules tree and the shipped template tree.
+- **REQ-ZRR-001** (Ubiquitous) — The zone registry shall carry, for every non-retired entry, a `clause:` value that is a contiguous single-line verbatim span occurring **exactly once** in the file named by that entry's `file:`, in both the local rules tree and the shipped template tree. Entries whose `clause:` carries a `[SUPERSEDED …]` retirement marker are exempt from this verbatim requirement — the clause is an immutable audit record of retired doctrine (§1.2 C안, v0.5.0) — and remain subject to REQ-ZRR-002 anchor resolution.
 - **REQ-ZRR-002** (Ubiquitous) — The zone registry shall carry, for every entry, an `anchor:` value that resolves to a heading present in the file named by that entry's `file:`.
 - **REQ-ZRR-003** (Event-driven) — **When** the doctrine cited by an entry has moved to a different file, the entry shall be re-pointed by correcting `file:` and `anchor:`, not by rewording `clause:` into a summary.
 

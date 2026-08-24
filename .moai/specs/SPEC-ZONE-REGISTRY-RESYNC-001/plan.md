@@ -45,6 +45,8 @@
 | `diff -q` 로컬 vs 템플릿 레지스트리 | 동일 |
 | `go test ./internal/constitution/...` | ok |
 
+**v0.5.0 재측정 (트리 `9ba1e308d`, C안 확정 시점)** — clause 실패 `68`(은퇴 4 포함) / anchor 실패 `17`(은퇴 0)(출처: `progress.md` §F 가 인용한 같은 트리의 `analyze.py` 측정) / `diff -q` 미러 동일 / `go test ./internal/constitution/...` → `ok  github.com/modu-ai/moai-adk/internal/constitution  1.724s` rc=0(본 커밋 시점 실행). 이 시점부터 clause 집계 기준은 **비은퇴 97** 이다(`spec.md` §1.2 v0.5.0).
+
 ## §D 구속 조건 (재논의 금지)
 
 - **D1 — 매처는 불변.** `validator.go` 의 `normalizeWhitespace` / `stripCodeFences` / `Validate` DRIFT 블록에 손대지 않는다. 통과시키는 방향은 오직 데이터 쪽이다.
@@ -90,7 +92,7 @@ M1 이 붉은 신호 없이 진행되는 것을 막기 위해, M1 은 §C 사전
   2. 그래도 유일해지지 않으면 **최소 길이 하한 20자**를 적용해 다시 고른다(현 clause 길이 중앙값 93자, 20자 미만은 3건뿐이므로 이 하한은 사실상 짧은 라벨만 걸러낸다).
   3. 두 단계로도 유일 적중이 불가능한 엔트리가 남으면, 그 사실과 시도한 구간을 `progress.md` §E.2 에 적는다 — 조용히 짧은 clause 로 되돌아가지 않는다.
 
-**M1 종료 조건**: 리터럴 체크 101/101 (두 트리 각각), anchor 해석 101/101, 엔트리 집합 diff 0. 전부 기존 분석 스크립트로 측정하며, 이 시점에는 아직 가드가 없다.
+**M1 종료 조건**: 리터럴 체크 **97/97 비은퇴** (두 트리 각각; 은퇴 4건 clause 는 `[SUPERSEDED …]` 감사 기록으로 불변·면제 — `spec.md` §1.2 v0.5.0), anchor 해석 101/101, 엔트리 집합 diff 0. 전부 기존 분석 스크립트로 측정하며, 이 시점에는 아직 가드가 없다.
 
 ### M2 — 가드 착지
 
