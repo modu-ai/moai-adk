@@ -42,7 +42,7 @@ related_specs: [SPEC-CODEX-DUAL-AGENTS-001, SPEC-CODEX-SKILLS-CANONICAL-001, SPE
 
 ### §A.2a 구조화된 auth 원천이 존재한다
 
-`codex doctor` 는 auth 를 구조화해 알고 있고 (`stored auth mode: chatgpt`), 그 원천은 `<CODEX_HOME>/auth.json` 의 `auth_mode` 필드다. doctor 자체는 이 머신에서 **십수 초 단위** (측정마다 17~46초로 갈린다 — 캐시 상태 의존) 걸려 런처의 대화형 리드아웃에 쓸 수 없지만, 파일은 즉시 읽힌다. 산문 파싱보다 이쪽이 1순위다.
+`codex doctor` 는 auth 를 구조화해 알고 있고 (`stored auth mode: chatgpt`), 그 원천은 `<CODEX_HOME>/auth.json` 의 `auth_mode` 필드다. doctor 자체는 커밋된 전사본에서 **31초** 걸려 런처의 대화형 리드아웃에 쓸 수 없지만, 파일은 즉시 읽힌다. 산문 파싱보다 이쪽이 1순위다.
 
 다만 이 머신에서 관측한 조합은 `auth_mode=chatgpt` 하나뿐이다 — `apikey` / `provider` 모드의 실제 파일 형태는 미관측이므로, 설계는 알려지지 않은 값을 추측하지 않고 명령 프로브로 하강한다.
 
@@ -111,7 +111,7 @@ t88 (M4) 이 Codex 쪽 배선을 깔았지만, 그 배선을 **확인하고 그 
 
 - **REQ-CL-004** — The readiness readout shall report, as discrete rows: codex binary path, codex version, resolved `CODEX_HOME`, auth provider, and project wiring state (`.codex/hooks.json` + `.codex/config.toml` presence and whitelist validity).
 - **REQ-CL-005** — The system shall resolve `CODEX_HOME` from the `CODEX_HOME` environment variable, falling back to `~/.codex`, and shall report which of the two supplied the value.
-- **REQ-CL-006** — Where the project's `.codex/` wiring is incomplete — the directory absent, present but empty, or missing either generated file — the readout shall report it as an informational state (not an error) and name `moai init --agent codex` as the action, mirroring the fail-open stance of the `moai doctor` Codex Wiring check. This test is the single definition of wiring completeness; `SPEC-CODEX-INIT-001` consumes it rather than restating it.
+- **REQ-CL-006** — Where the project's `.codex/` wiring is incomplete — the directory absent, present but empty, or missing either generated file — the readout shall report it as an informational state (not an error) and name `moai init --agent codex` as the action, mirroring the fail-open stance of the `moai doctor` Codex Wiring check. The action shall accompany every incomplete state, not only an absent directory, and shall be absent when the wiring is complete. This test is the single definition of wiring completeness; `SPEC-CODEX-INIT-001` consumes it rather than restating it.
 - **REQ-CL-007** — The readiness readout shall consume the existing `ProbeCodexSetup` / `codexwiring` surfaces and shall not fork a second auth-classification or wiring-validation implementation.
 
 ### D.3 auth 상태 (§A.2 결함 수정)

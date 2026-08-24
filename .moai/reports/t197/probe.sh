@@ -17,19 +17,38 @@
 
 set -uo pipefail
 
-WORK="$(mktemp -d)"
+WORK="$(mktemp -d)" || { echo "FATAL: mktemp -d failed" >&2; exit 1; }
+[ -n "$WORK" ] && [ -d "$WORK" ] || { echo "FATAL: mktemp -d gave no usable dir" >&2; exit 1; }
 trap 'rm -rf "$WORK"' EXIT
 MOAI="$WORK/moai"
 DOCTOR_JSON="$WORK/doctor.json"
 
+FAILURES=0
+
 fail() { echo "PREREQUISITE FAILED: $*" >&2; exit 1; }
 
-run() {
+# run <command>            — command must succeed (rc 0)
+# run_rc <expected> <cmd>  — command must exit with <expected>
+#
+# Both print the command, its output, and its OWN rc. An unexpected rc is
+# recorded and reported at the end, so a failed measurement can never hide
+# behind a green transcript.
+run_rc() {
+  local expected="$1"; shift
   echo "\$ $1"
   eval "$1"
-  echo "rc=$?"
+  local rc=$?
+  echo "rc=$rc"
+  if [ "$rc" != "$expected" ]; then
+    echo "UNEXPECTED: rc=$rc, expected $expected" >&2
+    echo "UNEXPECTED: rc=$rc, expected $expected"
+    FAILURES=$((FAILURES + 1))
+  fi
   echo
+  return 0
 }
+
+run() { run_rc 0 "$1"; }
 
 echo "### 0. environment + prerequisites"
 run 'echo "bash=${BASH_VERSION}"'
@@ -50,7 +69,7 @@ run 'git status --short'
 run 'git merge-base --is-ancestor 7b217da7c HEAD'
 
 echo "### M-1 no moai codex"
-run '"$MOAI" --help 2>&1 | grep -ci "codex"; ( exit ${PIPESTATUS[1]} )'
+run_rc 1 '"$MOAI" --help 2>&1 | grep -ci "codex"; ( exit ${PIPESTATUS[1]} )'   # rc 1 = no match, which IS the finding
 run '"$MOAI" --help 2>&1 | sed -n "/LAUNCH COMMANDS/,/PROJECT COMMANDS/p" | sed "s/ *$//"; ( exit ${PIPESTATUS[0]} )'
 run 'grep -rn "Use: *\"codex" internal/cli/*.go'
 
@@ -79,10 +98,10 @@ run 'find internal/template/templates/.codex/agents/moai -name "*.toml" -type f 
 run 'grep -n "must be one of: claude, codex, both" internal/cli/init.go'
 run 'grep -n "func checkCodexWiring" internal/cli/doctor_codex.go'
 run 'grep -n "codexHarnessFlagValue = " internal/cli/hook_harness_codex.go'
-run 'ls -a .codex'
+run_rc 1 'ls -a .codex'   # rc 1 = no wiring in this repo, which IS the finding
 
 echo "### M-5 CODEX_HOME readers"
-run 'grep -rn "CODEX_HOME" internal/ --include="*.go"'
+run_rc 1 'grep -rn "CODEX_HOME" internal/ --include="*.go"'   # rc 1 = zero matches, which IS the finding
 
 echo "### M-6 launcher convergence"
 run 'grep -n "func unifiedLaunch\|func unifiedLaunchDefault" internal/cli/launcher.go'
@@ -91,3 +110,10 @@ run 'grep -n "func spawnLaunch" internal/cli/spawn.go'
 
 echo "### M-7 runner implementations"
 run 'grep -rn ") run(" internal/cli/*.go internal/cli/*_test.go | grep -v glm | sort -u; ( exit ${PIPESTATUS[0]} )'
+
+echo "### probe result"
+if [ "$FAILURES" -ne 0 ]; then
+  echo "PROBE FAILED: $FAILURES command(s) exited unexpectedly — this transcript is NOT a valid baseline"
+  exit 1
+fi
+echo "PROBE OK: every command exited as expected"

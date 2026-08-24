@@ -38,7 +38,7 @@
 
 **(1) 산문 파싱을 1순위에서 내린다.** 최초안은 "합친 스트림에서 `Logged in using ChatGPT` 를 부분 일치" 였는데, 현행 분류기(`mcp_codex.go:1331`)의 부분 일치는 **오류 문구에도 걸린다** — `API key missing` 은 `api key` 를 포함하므로 `apiKey` 로, `provider configuration unreadable` 은 `provider` 로 분류된다. 여기에 "rc 비영이어도 출력이 있으면 분류" 를 얹으면 **오류를 인증 성공으로 읽는다**. REQ-CL-009 의 "판정 불가는 gap 이지 판정이 아니다" 와 정면으로 어긋난다.
 
-**(2) 구조화된 원천이 존재한다** (M-2b 실측). `codex doctor` 가 `stored auth mode: chatgpt` 를 알고 있고 그 원천은 `<CODEX_HOME>/auth.json` 의 `auth_mode` 필드다. doctor 자체는 십수 초 단위라(측정마다 17~46초, 캐시 의존) 런처가 부를 수 없지만, 파일은 즉시 읽힌다.
+**(2) 구조화된 원천이 존재한다** (M-2b 실측). `codex doctor` 가 `stored auth mode: chatgpt` 를 알고 있고 그 원천은 `<CODEX_HOME>/auth.json` 의 `auth_mode` 필드다. doctor 자체는 전사본 실측 31초라 런처가 부를 수 없지만, 파일은 즉시 읽힌다.
 
 따라서 **2단 사다리**로 간다:
 

@@ -17,17 +17,19 @@ rc=0
 
 # generate the doctor JSON this probe reads (timed, rc captured)
 $ START=$(date +%s); codex doctor --json > "$DOCTOR_JSON" 2>/dev/null; DRC=$?; END=$(date +%s); echo "codex doctor --json: rc=$DRC elapsed=$((END-START))s"; ( exit $DRC )
-codex doctor --json: rc=0 elapsed=17s
+codex doctor --json: rc=0 elapsed=31s
 rc=0
 
 ### baseline
 $ git rev-parse --short HEAD
-01f5c531b
+82c46c24c
 rc=0
 
 $ git status --short
  M .moai/reports/t197/probe-output.txt
  M .moai/reports/t197/probe.sh
+ M .moai/specs/SPEC-CODEX-LAUNCHER-001/acceptance.md
+ M .moai/specs/SPEC-CODEX-LAUNCHER-001/spec.md
 rc=0
 
 $ git merge-base --is-ancestor 7b217da7c HEAD
@@ -274,3 +276,5 @@ internal/cli/mcp_codex.go:273:func (realCodexRunner) run(ctx context.Context, bi
 internal/cli/mcp_codex_test.go:40:func (f *fakeCodexRunner) run(_ context.Context, binaryPath string, args []string, stdin string) (string, error) {
 rc=0
 
+### probe result
+PROBE OK: every command exited as expected
