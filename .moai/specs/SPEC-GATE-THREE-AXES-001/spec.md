@@ -73,7 +73,9 @@ When a step is executed, the quality gate shall record in the summary the wall-c
 While a step is not executed, the quality gate shall record in the summary the observed reason it was not executed, distinguishing each of the five paths by which the gate skips a step: (a) the step is turned off by configuration; (b) the step is optional and its binary is absent from PATH; (c) none of the step's named config files exist; (d) no staged file matches the step's declared extensions; (e) the project holds no source file of the step's declared source extensions.
 
 **REQ-GTA-004** (capability gate)
-Where a step's command is resolved to a substitute before execution, the quality gate shall name in the summary the command that was actually executed rather than the step as configured.
+Where a step's command is resolved to a substitute before execution, the quality gate shall name in the summary the command that was actually executed rather than the step as configured. "The command that was actually executed" means the full command line — the step's binary together with its arguments, as handed to the process launcher — and not the step's display label, which is a separate value that coincides with the command line only by accident.
+
+> Two fields, not one. A step's **label** is its identity: it names which step a summary line is about, it is the key `gate.disabled_steps` is written against, and REQ-GTA-001's per-step listing is stated in terms of it. A step's **command** is what ran. REQ-GTA-004 binds the command field only. Wherever the summary reports a command — this requirement is the only place it does — it reports the executed command line.
 
 **REQ-GTA-005** (Ubiquitous)
 `moai gate` shall emit the execution summary on a passing run, so that a passing run is never indistinguishable from a run that did nothing.

@@ -39,7 +39,7 @@ Two standing rules govern this file:
 
 **Verifies**: REQ-GTA-003.
 
-**Given** five fixtures, one per skip path that `executeStep` can take (`internal/hook/quality/gate.go:778-815`):
+**Given** five fixtures, one per skip path that `executeStep` can take (`internal/hook/quality/gate.go:778-816`):
 
 | # | Skip path | Fixture |
 |---|-----------|---------|
@@ -60,25 +60,32 @@ Two standing rules govern this file:
 
 **Fixture (d) caveat (load-bearing)**: the `changedExts` path skips **only when the staged-file lookup succeeded** — `gate.go:796-800` runs the step conservatively when `staged` is nil, which is what happens outside a git repository or when the lookup fails. A fixture built in a bare `t.TempDir()` therefore executes the step instead of skipping it, and fixture (d) tests nothing. The fixture must be an initialized git repository with at least one staged file.
 
-### AC-GTA-004 — a resolved command is reported as resolved
+**Guard-ordering caveat (load-bearing, applies to all five)**: the five paths are **sequential guards, not independent branches** — (a) at `gate.go:778`, (b) at `:782`, (c) at `:787`, (d) at `:793`, (e) at `:806`, first match wins and returns. Each fixture's step must therefore clear every preceding guard to reach the path it targets: a fixture for (c) needs a step that is either not `optional` or whose binary is present, and one for (e) must clear (a) through (d) in turn. The overlap is real rather than theoretical — 25 steps in the toolchain table declare `optional:` and 11 declare `configFiles:` — so a fixture can silently exercise an earlier path than intended and pass while testing the wrong thing. This is the same failure shape as the fixture (d) caveat above and the polarity warning: the fixture stays green, and the path it was written for goes unverified.
+
+### AC-GTA-004 — the executed command line is reported, not the step's label
 
 **Verifies**: REQ-GTA-004.
 
-`resolveNodeTestStep` (`internal/hook/quality/gate.go:676-699`) has **three** branches, not two, so each fixture below names its exact `package.json` script content and the branch it lands in. A fixture specified only as "declares `scripts.test`" is underdetermined: `"test": "vitest"` is a natural choice that lands in tier (ii), not tier (iii), because `nodeScriptWatchProne` (`gate.go:752-771`) treats a bare `vitest` first token as watch-prone.
+**The assertion binds to argv — `step.binary` plus `step.args` as handed to `runStep` — and explicitly NOT to `gateStep.name`.** The two are different values and coincide on only one of the three branches. `executeStep` ends with `return g.runStep(ctx, step.name, timeout, step.binary, step.args...)` (`gate.go:818`): the label travels as `runStep`'s `stepName` parameter and is used only in reason strings, while `binary` and `args` become the `exec.CommandContext(stepCtx, name, args...)` invocation at `gate.go:1006`. An implementation reporting `name` under-reports what ran.
 
-| Fixture | `package.json` scripts | Branch | Expected command in the summary |
-|---------|------------------------|--------|----------------------------------|
-| A | `"test:run": "vitest run"` | tier (i) — `scripts["test:run"]` non-empty (`gate.go:683-689`) | `npm run test:run` |
-| B | `"test": "vitest"`, no `test:run` | tier (ii) — `nodeNonWatchFlag` returns `--run` (`gate.go:690-696`, via `gate.go:733-737`) | `npm test --run` |
-| C | `"test": "echo ok"`, no `test:run` | tier (iii) — not watch-prone, so `nodeNonWatchFlag` returns `""` and the step passes through unchanged (`gate.go:697`) | `npm test` (the unresolved step name, `nodeTestStepName` at `gate.go:648`) |
+Under-reporting here is not a cosmetic gap. Tiers (ii) and (iii) both pass `--passWithNoTests`, which makes an empty suite report success — so whether that flag was on the command line decides what a "pass" on that summary line even means. A summary reading `npm test` while `npm test -- --passWithNoTests` actually ran is output whose content is not the execution result: the card's named axis-1 mutant, at smaller scale, inside the criterion meant to close it.
+
+`resolveNodeTestStep` (`internal/hook/quality/gate.go:676-699`) has **three** branches, not two, so each fixture names its exact `package.json` script content and the branch it lands in. A fixture specified only as "declares `scripts.test`" is underdetermined: `"test": "vitest"` is a natural choice that lands in tier (ii), not tier (iii), because `nodeScriptWatchProne` (`gate.go:752-771`) treats a bare `vitest` first token as watch-prone.
+
+| Fixture | `package.json` scripts | Branch | `gateStep.name` (**not** asserted) | Expected argv in the summary (**asserted**) |
+|---------|------------------------|--------|-------------------------------------|----------------------------------------------|
+| A | `"test:run": "vitest run"` | tier (i) — `scripts["test:run"]` non-empty (`gate.go:684-689`) | `npm run test:run` | `npm run test:run` — `binary: "npm"`, `args: ["run", "test:run"]` (`gate.go:687-688`). The only branch where label and argv coincide. |
+| B | `"test": "vitest"`, no `test:run` | tier (ii) — `nodeNonWatchFlag` returns `--run` (`gate.go:691-696`, via `:733-737`) | `npm test --run` | `npm test -- --passWithNoTests --run` — `args: append([]string{"test", "--", "--passWithNoTests"}, flag)` (`gate.go:694-695`) |
+| C | `"test": "echo ok"`, no `test:run` | tier (iii) — not watch-prone, so `nodeNonWatchFlag` returns `""` and the step passes through unchanged (`gate.go:698`) | `npm test` (`nodeTestStepName`, `gate.go:648`) | `npm test -- --passWithNoTests` — the unchanged toolchain step's `args` (`gate.go:166`) |
 
 **When** the gate reaches a verdict against each,
-**Then** each summary names that fixture's expected command from the table.
+**Then** each summary reports that fixture's expected argv from the final column.
 
-**Mutant A**: always printing the configured step name. **Killed** by fixtures A and B, which both resolve away from `npm test`.
+**Mutant A**: always printing the configured step name. **Killed** by fixtures A and B, which both resolve away from the configured step.
 **Mutant B**: hardcoding `npm run test:run` for every Node run. **Killed** by fixtures B and C.
-**Mutant C**: reporting *any* substitution as `npm run test:run` — collapsing tiers (i) and (ii). **Killed** by fixture B, which must name `npm test --run`.
-**RED**: pre-implementation, no command is named for any of the three.
+**Mutant C**: reporting *any* substitution as `npm run test:run` — collapsing tiers (i) and (ii). **Killed** by fixture B.
+**Mutant D**: reporting `gateStep.name` instead of argv. This passes fixture A, where the two coincide, and silently drops `-- --passWithNoTests` on both others. **Killed** by fixtures B and C, whose expected values differ from their labels — which is why the label column above is carried in the table and marked as not asserted, rather than omitted.
+**RED**: pre-implementation, no command is reported for any of the three.
 
 ### AC-GTA-005 — `moai gate` emits the summary on a pass
 
