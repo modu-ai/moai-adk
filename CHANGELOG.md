@@ -59,6 +59,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   liveness probe all report the tree as anchored. All three sweeps that shared the blind guard now
   share this one — the PR-merge sweep, `worktree clean --stale`, and the `--merged-only` path, where
   it is the only thing standing between the sweep and a live session's tree.
+- **An unreadable worktree porcelain silently disarmed both `worktree clean` sweeps.** When
+  `git worktree list --porcelain` failed, the lock reader returned an empty map that the callers
+  could not distinguish from "no tree is locked", so every tree fell back to the session registry
+  alone — the source measured to name 1 of 5 live anchors — and the run looked exactly like a
+  healthy one. With `--yes` that removed a lock-anchored tree and killed a live session's shell.
+  Both sweeps now fail closed as the PR-merge sweep already did: `--merged-only` removes nothing and
+  emits `cause=lock-source-unreadable`, `--stale` keeps every tree with that cause as its keep
+  reason, and `--stale --json` reports `anchored: "undetermined"` rather than `"no"`.
 - **A locked worktree is recognised before removal is attempted**, instead of producing an
   error-shaped failure notice on every sweep for a tree that is behaving correctly. The sweep still
   never unlocks a worktree and never passes `--force`, and a refusal it did not anticipate remains a

@@ -93,7 +93,15 @@ func cleanMergedWorktrees(cmd *cobra.Command, base string) error {
 		return fmt.Errorf("list worktrees: %w", err)
 	}
 
-	locks := worktreeLockStates()
+	locks, lockErr := worktreeLockStates()
+	if lockErr != nil {
+		// Fail-closed: --merged-only has no dirty guard, so the anchor
+		// decision is its ONLY protection. Without its authoritative source
+		// there is nothing left standing between the sweep and a live
+		// session's tree.
+		_, _ = fmt.Fprintln(out, lockSourceUnreadableNotice(lockErr))
+		return nil
+	}
 
 	var removed int
 	for _, wt := range worktrees {
@@ -190,7 +198,10 @@ func cleanStaleWorktrees(cmd *cobra.Command, base string, apply bool) error {
 		return fmt.Errorf("list worktrees: %w", err)
 	}
 
-	candidates := classifyStaleWorktrees(worktrees, base)
+	candidates, lockErr := classifyStaleWorktrees(worktrees, base)
+	if lockErr != nil {
+		_, _ = fmt.Fprintln(out, lockSourceUnreadableNotice(lockErr))
+	}
 
 	var removable []staleCandidate
 	var kept []staleCandidate
@@ -241,9 +252,9 @@ func cleanStaleWorktrees(cmd *cobra.Command, base string, apply bool) error {
 // Protected trees — the main checkout and the worktree this command runs in —
 // are absent from the result entirely, not reported as kept: they are outside
 // the sweep's universe rather than candidates it declined.
-func classifyStaleWorktrees(worktrees []git.Worktree, base string) []staleCandidate {
+func classifyStaleWorktrees(worktrees []git.Worktree, base string) ([]staleCandidate, error) {
 	protected := protectedWorktreePaths()
-	locks := worktreeLockStates()
+	locks, lockErr := worktreeLockStates()
 
 	var candidates []staleCandidate
 	for _, wt := range worktrees {
@@ -253,6 +264,15 @@ func classifyStaleWorktrees(worktrees []git.Worktree, base string) []staleCandid
 		c := staleCandidate{
 			Path: wt.Path, Branch: wt.Branch,
 			Dirty: staleStateNotChecked, Merged: staleStateNotChecked, Anchored: staleStateNo,
+		}
+		if lockErr != nil {
+			// The authoritative anchor source could not be read. An
+			// unobserved anchor is UNDETERMINED, never a negative
+			// (REQ-WR-017), so every tree is kept and says so.
+			c.Anchored = staleStateUndetermined
+			c.KeepReason = fmt.Sprintf("cause=%s; could not read the worktree lock state: %v", causeLockSourceUnreadable, lockErr)
+			candidates = append(candidates, c)
+			continue
 		}
 		anchor := session.AnchorDecision(wt.Path, locks[filepath.Clean(wt.Path)], time.Now())
 		if anchor.Anchored {
@@ -274,7 +294,7 @@ func classifyStaleWorktrees(worktrees []git.Worktree, base string) []staleCandid
 
 		candidates = append(candidates, c)
 	}
-	return candidates
+	return candidates, lockErr
 }
 
 // isBaseBranch reports whether a worktree's LOCAL branch is the base branch.
@@ -313,7 +333,11 @@ func reportStaleWorktrees(cmd *cobra.Command, base string) error {
 	if err != nil {
 		return fmt.Errorf("list worktrees: %w", err)
 	}
-	candidates := classifyStaleWorktrees(worktrees, base)
+	// The lock-read error is carried by every record's keep_reason (and by
+	// anchored="undetermined"), so the inventory reports the degraded run
+	// rather than failing — a report that cannot be read tells the operator
+	// less than one that says what it could not determine.
+	candidates, _ := classifyStaleWorktrees(worktrees, base)
 	if candidates == nil {
 		candidates = []staleCandidate{}
 	}
@@ -367,19 +391,38 @@ func worktreeHasLocalChanges(path string) (bool, error) {
 // (SPEC-WORKTREE-REAPER-001 REQ-WR-006); the git.WorktreeManager listing does
 // not carry it, so it is read straight from the porcelain.
 //
-// Fail-open on the READ, fail-closed on the DECISION: an unreadable porcelain
-// yields an empty map, so every tree falls back to the registry source alone —
-// the pre-repair behaviour — rather than wedging the sweep.
-func worktreeLockStates() map[string]session.LockInfo {
+// Fail-closed on the READ as well as on the DECISION: the error is RETURNED,
+// never swallowed. Dropping the authoritative source silently does not leave
+// the decision unchanged — it hands it to the registry alone, the source
+// measured to name 1 of 5 live anchors (REQ-WR-010), while the output looks
+// exactly like a healthy run. prMergeCleanup already aborts and preserves on
+// this failure (AC-WR-016); both `clean` sweeps now agree with it.
+//
+// @MX:ANCHOR: [AUTO] the authoritative anchor source for both clean sweeps
+// @MX:REASON: every caller decides whether to delete directories on what this
+// returns; an empty map meaning "unreadable" rather than "unlocked" is
+// indistinguishable at the call site, which is how the fail-open arose.
+func worktreeLockStates() (map[string]session.LockInfo, error) {
 	porcelain, err := gitWorktreeCmd("worktree", "list", "--porcelain")
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	locks := make(map[string]session.LockInfo)
 	for path, info := range session.ParseWorktreeLocks(porcelain) {
 		locks[filepath.Clean(path)] = info
 	}
-	return locks
+	return locks, nil
+}
+
+// causeLockSourceUnreadable is the cause token for a lock source that could
+// not be read at all — distinct from a tree that was read and found unlocked.
+const causeLockSourceUnreadable = "lock-source-unreadable"
+
+// lockSourceUnreadableNotice renders the degraded-run notice. It follows the
+// PR-merge sweep's `cause=` vocabulary (REQ-WR-023) so a reader grepping one
+// sweep's output finds the same token in the other's.
+func lockSourceUnreadableNotice(err error) string {
+	return fmt.Sprintf("moai: worktree clean degraded (cause=%s; git worktree list --porcelain failed: %v): no worktree removed", causeLockSourceUnreadable, err)
 }
 
 // protectedWorktreePaths returns the worktree paths the --stale sweep must
