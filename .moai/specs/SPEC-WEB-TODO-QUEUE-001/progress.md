@@ -131,7 +131,7 @@ Run-phase findings reported to the orchestrator (not acted on):
 
 ```yaml
 sync_complete_at: 2026-08-24
-sync_commit_sha: pending-backfill-SPEC-WEB-TODO-QUEUE-001
+sync_commit_sha: f1e71db4b
 sync_status: complete
 b12_self_test_a: "grep -c 'SPEC-WEB-TODO-QUEUE-001' CHANGELOG.md → 0 (pipeline rc 1, a genuine zero-match; no duplicate, emission permitted)"
 b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l → 11; the CHANGELOG entry states 11"
