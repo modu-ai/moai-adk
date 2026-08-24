@@ -1062,6 +1062,18 @@ func (g *QualityGate) runStep(ctx context.Context, stepName string, timeout time
 	}()
 
 	cmd := exec.CommandContext(stepCtx, name, args...)
+	// The deadline alone reaches only the direct child, and the buffers below
+	// mean os/exec copies the child's output through OS pipes that a surviving
+	// descendant keeps open — so Wait blocks past the deadline that was meant
+	// to bound it. WaitDelay bounds that wait; the process group is what
+	// actually ends the descendant. See step_process_group.go: either mechanism
+	// alone leaves the other failure standing.
+	isolateProcessGroup(cmd)
+	cmd.WaitDelay = stepWaitGrace
+	cmd.Cancel = func() error {
+		terminateProcessGroup(cmd.Process.Pid)
+		return cmd.Process.Kill()
+	}
 	// Every step's arguments are cwd-relative ("./...", ".", a bare "test").
 	// Without an explicit Dir the child inherits the calling process's cwd,
 	// which is the project root only by coincidence — so a gate configured for
@@ -1074,6 +1086,16 @@ func (g *QualityGate) runStep(ctx context.Context, stepName string, timeout time
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
+
+	// The deadline is not the only exit that can leave descendants behind: a
+	// step whose direct child exits promptly while a grandchild keeps running
+	// never reaches Cancel at all. The group is swept on every exit from here,
+	// so the step's tree does not outlive the step.
+	defer func() {
+		if cmd.Process != nil {
+			terminateProcessGroup(cmd.Process.Pid)
+		}
+	}()
 
 	err := cmd.Run()
 	if err == nil {
@@ -1102,12 +1124,27 @@ func (g *QualityGate) runStep(ctx context.Context, stepName string, timeout time
 		// says nothing about WHICH budget ran out. Blaming the step's own budget
 		// unconditionally produced impossible reasons — a 30s dispatcher budget
 		// expiring mid-`go test` reported "go test exceeded 2m0s" (card t218).
+		// What happened to the step's descendants is appended, never
+		// substituted: the existing attribution text is what card t218's two
+		// regression tests read, and AC-GTA-010 forbids disturbing them.
 		if parentBinds {
 			return false, fmt.Sprintf(
-				"quality gate timed out: the overall gate budget ran out while running %s (%s of it remained when the step started; the step's own %s budget was not exceeded)",
-				stepName, parentBudget.Round(time.Millisecond), timeout)
+				"quality gate timed out: the overall gate budget ran out while running %s (%s of it remained when the step started; the step's own %s budget was not exceeded); %s",
+				stepName, parentBudget.Round(time.Millisecond), timeout, descendantTerminationNote)
 		}
-		return false, fmt.Sprintf("quality gate timed out: %s exceeded %s", stepName, timeout)
+		return false, fmt.Sprintf("quality gate timed out: %s exceeded %s; %s",
+			stepName, timeout, descendantTerminationNote)
+	}
+
+	// The step's own process finished, but something it started kept the
+	// output stream open past the grace period, so Wait gave up on the pipes.
+	// The captured output is therefore incomplete and the verdict cannot rest
+	// on it — reporting a pass here would restore the silence this SPEC exists
+	// to remove.
+	if errors.Is(err, exec.ErrWaitDelay) {
+		return false, fmt.Sprintf(
+			"quality gate could not read %s to completion: a process it started still held its output stream %s after it exited; %s",
+			stepName, stepWaitGrace, descendantTerminationNote)
 	}
 
 	// Fix 2: when a NuGet restore failure (cross-platform TFM mismatch) is detected in the dotnet step,

@@ -157,6 +157,132 @@ Nothing needing a SPEC change. Two observations worth carrying forward:
 1. **The ast-grep axis is not a summary row.** REQ-GTA-001 binds "each configured step", and ast-grep is not a `gateStep` in any toolchain table — it is a separate gate whose notice travels the `passReason` path. It is therefore reported as a notice above the summary rather than as a fifth row. Consistent with the requirement as written; recorded because a reader counting steps may expect otherwise.
 2. **"Executed" includes a step that failed to launch.** `markExecuted` fires from a `defer` in `runStep`, so a step whose binary is missing is still reported as executed with its command line. This matches REQ-GTA-004's own definition — the command "as handed to the process launcher" — and is what lets AC-GTA-004's Node fixtures assert the argv on a machine without `npm`. It is a deliberate reading, not an oversight.
 
+---
+
+## §E.2 Run-phase Evidence — Milestone M2
+
+Milestone **M2** (axis 2 — a step's timeout terminates the step). Every command below was run in `.claude/worktrees/t235` on branch `WT-gate-three-axes`, against the working tree stacked on **ba22f41cf**. M3 is untouched.
+
+### Deliverables
+
+| File | State | Lines |
+|------|-------|-------|
+| `internal/hook/quality/gate.go` | modified | +40 / −3 |
+| `internal/hook/quality/step_process_group.go` | new | 27 |
+| `internal/hook/quality/step_process_group_unix.go` | new (`//go:build !windows`) | 34 |
+| `internal/hook/quality/step_process_group_windows.go` | new (`//go:build windows`) | 20 |
+| `internal/hook/quality/gate_step_termination_test.go` | new | 174 |
+| `internal/hook/quality/gate_step_termination_unix_test.go` | new (`//go:build !windows`) | 47 |
+
+`git status --short` at close lists exactly these six paths and nothing else. `internal/cli` is unmodified, as M2 expected.
+
+### RED evidence — observed before any implementation existed
+
+Both criteria were written and observed failing against the pre-implementation tree, with only the two constants (`stepWaitGrace`, `descendantTerminationNote`) added so the tests would compile. `runStep` was untouched at that point: no `WaitDelay`, no `Setpgid`, no group signal.
+
+AC-GTA-008, observed in isolation per the criterion's mandatory RED-isolation clause — a narrowing `-test.run` plus an explicit `-test.timeout`, never inside a package run:
+
+```
+$ go test -count=1 -run '^TestRunStep_ReturnsWithinGraceWhenADescendantHoldsTheStream$' -timeout 20s ./internal/hook/quality/
+panic: test timed out after 20s
+	running tests:
+		TestRunStep_ReturnsWithinGraceWhenADescendantHoldsTheStream (20s)
+...
+goroutine 7 [chan receive]:
+os/exec.(*Cmd).awaitGoroutines(0x7400a433e680, 0x0)
+	.../src/os/exec/exec.go:981 +0x14c
+os/exec.(*Cmd).Wait(0x7400a433e680)
+	.../src/os/exec/exec.go:948 +0x140
+rc=1
+```
+
+That stack is the defect `spec.md` §A.2 describes, reproduced rather than assumed: the step's own 2s deadline came and went, the direct child had already exited, and `Wait` stayed blocked in `awaitGoroutines` — the pipe-copying goroutines — because the grandchild still held the write end. It blocked for the full 20s until the test binary's own alarm fired.
+
+AC-GTA-009, same isolation:
+
+```
+$ go test -count=1 -run '^TestRunStep_TerminatesTheStepsDescendant$' -timeout 20s ./internal/hook/quality/
+panic: test timed out after 20s
+	running tests:
+		TestRunStep_TerminatesTheStepsDescendant (20s)
+rc=1
+```
+
+AC-GTA-010 has no RED — it is a preservation criterion. Its expected values were **measured on the pre-change tree** rather than asserted from the new code: `TestRunStep_WithinDeadlineOutputAndCwdAreUnchanged` was run and passed against the untouched `runStep` (`rc=0`, `--- PASS … (0.01s)`) before any of the M2 edits landed, which is what makes "byte-identical to the pre-change tree's" an observation instead of a claim.
+
+### AC matrix
+
+| AC | Status | Verification command | Actual output |
+|----|--------|----------------------|---------------|
+| AC-GTA-008 (Unix half) | PASS | `go test -count=1 -run '^TestRunStep_ReturnsWithinGraceWhenADescendantHoldsTheStream$' -timeout 60s -v ./internal/hook/quality/` | `--- PASS: TestRunStep_ReturnsWithinGraceWhenADescendantHoldsTheStream (2.45s)` — returned in 2.45s against the T+G = 4s bound |
+| AC-GTA-008 (Windows half) | **GAP** | not runnable here | see § What was NOT observed |
+| AC-GTA-009 | PASS | `go test -count=1 -run '^TestRunStep_TerminatesTheStepsDescendant$' -timeout 60s -v ./internal/hook/quality/` | `--- PASS: TestRunStep_TerminatesTheStepsDescendant (2.57s)` |
+| AC-GTA-010 (first half — attribution) | PASS | `go test -count=1 -run '^TestRunStep_(ParentDeadlineIsNotBlamedOnTheStep\|StepDeadlineStillBlamesTheStep)$' -timeout 120s -v ./internal/hook/quality/` | `--- PASS: TestRunStep_ParentDeadlineIsNotBlamedOnTheStep (0.10s)` / `--- PASS: TestRunStep_StepDeadlineStillBlamesTheStep (0.10s)` |
+| AC-GTA-010 (diff constraint) | PASS | `git diff 294b4b6ab -- internal/hook/quality/gate_timeout_attribution_test.go \| wc -c` | `0` — the protected file is byte-identical to the tree the SPEC cites; not one line was added, modified, or deleted |
+| AC-GTA-010 (second half — happy path) | PASS | `go test -count=1 -run '^TestRunStep_WithinDeadlineOutputAndCwdAreUnchanged$' -timeout 60s -v ./internal/hook/quality/` | `--- PASS (0.01s)` — same message and same `cwd=` as the pre-change measurement |
+
+The two t218 regression tests stayed green without being touched because both assert with `strings.Contains`, not equality: the descendant note is **appended** to the existing reason rather than replacing it. That property was checked in the source before the edit, not assumed from the instruction.
+
+### Mutation evidence
+
+Each criterion was held against the mutant its own text names, and the mutant was actually built and run.
+
+| Mutant | Applied as | Result |
+|--------|-----------|--------|
+| AC-GTA-009's named mutant — *bounding `Wait` alone* | `Setpgid = false` + the group signal removed; `WaitDelay` left in place | **AC-GTA-008 PASSED (2.33s), AC-GTA-009 FAILED**: `descendant 18108 is still alive 2s after the step returned`. The separation the SPEC insists on is empirically load-bearing: a `WaitDelay`-only implementation satisfies AC-GTA-008 in full while leaving the orphan running. |
+| The converse — *group signal alone, no `WaitDelay`* | `cmd.WaitDelay = 0`; process group left in place | **AC-GTA-008 FAILED** — hung to the 20s alarm, the RED shape again. Neither mechanism substitutes for the other, in either direction. |
+| AC-GTA-010 Mutant B — *reordered stream concatenation* | `stdout.String() + stderr.String()` | **FAILED**: `got "…\n\nstdout-line cwd=…\nstderr-line"` vs `want "…\n\nstderr-line\nstdout-line cwd=…"` |
+| AC-GTA-010 Mutant B — *working directory detached* | `cmd.Dir = os.TempDir()` | **FAILED**: `got "…cwd=/var/folders/kt/…/T"` vs `want "…cwd=…/internal/hook/quality"` |
+| AC-GTA-010 Mutant A — *editing the two test bodies to agree* | not applicable | Structurally excluded by the 0-byte diff above rather than by a test run. |
+| AC-GTA-008 Mutant A — *raising T so the descendant finishes first* | not applicable | Structurally excluded: the assertion bound is `T + stepWaitGrace` and the descendant sleeps 30s, so no value of T rescues it. |
+
+Every mutant was reverted immediately after its run; the tree at commit time carries none of them.
+
+### Suite, vet, lint
+
+| Check | Command | Result |
+|-------|---------|--------|
+| affected package | `go test -count=1 -timeout 900s ./internal/hook/quality/...` | `ok  github.com/modu-ai/moai-adk/internal/hook/quality  49.976s`, rc=0 — see the contention note below for a later re-run |
+| vet | `go vet ./internal/hook/quality/...` | rc=0, no output |
+| lint | `golangci-lint run --timeout=5m ./internal/hook/quality/...` | `0 issues.`, rc=0 (one `errcheck` finding on an unchecked `fmt.Fprintf` in the fixture was fixed first) |
+| cross-compile | `GOOS=windows go vet ./...` / `GOOS=linux go vet ./...` | both rc=0 — **compilation evidence only**, no behavioural claim rests on it |
+| fixture hygiene | `pgrep -fl 'TestHelperOrphanChild'` | rc=1, no match — no fixture process leaked, including after the two RED runs that died to the test alarm and therefore skipped `t.Cleanup` |
+| `internal/cli` gate subset | `go test -count=1 -run 'Gate' -timeout 600s ./internal/cli/` | `ok  github.com/modu-ai/moai-adk/internal/cli  156.895s`, rc=0 |
+| `internal/cli` whole package | `go test -count=1 -timeout 1200s ./internal/cli/...` | **inconclusive** — see the contention note below |
+
+### Contention note — two measurements this machine could not make cleanly
+
+Four other worktree lanes were running `go test ./internal/cli/...` against this same machine while these checks ran; `uptime` read a load average of **46.07**. Two results are attributable to that load rather than to the tree, and both are reported as gaps, not as passes:
+
+1. **`internal/cli` whole-package: `FAIL … 1201.914s`.** No individual `--- FAIL` appears anywhere in the log — the package exhausted its 20-minute wall clock, and the test running at the alarm had been going 4 seconds. Every sub-package (`agentlint`, `harness`, `pr`, `worktree`, …) reported `ok`. The single known-good range for this package is 287-866s; four concurrent runs of it is the difference. M2 modifies no file under `internal/cli`, and the gate-related subset of that package passes in 156.895s (row above). Re-running it now would have added a fifth concurrent run of the same package, which the milestone's own load discipline forbids, so it was not re-run. **The verdict for this package is CI's.**
+   Worth recording separately: the backgrounded wrapper around that run reported `exit code 0` while its body read `FAIL`. The verdict here is read from the `FAIL` line, never from the wrapper's status.
+2. **A later `./internal/hook/quality/...` re-run failed on an M1 test, not an M2 one.** `--- FAIL: TestSummaryDurationIsMeasuredNotConstant (3.09s)` — `step that returned immediately reported 1.820353667s, at or above the 1.2s the other step slept`. That criterion (AC-GTA-002) asserts a two-sided duration bound, so under enough load a process spawn alone crosses the lower fixture's ceiling: the test is measuring the machine. On the same tree, isolated, it passes 3/3 (`go test -count=3 -run '^TestSummaryDurationIsMeasuredNotConstant$'` → three `--- PASS`, 2.25s / 1.64s / 1.70s), and the same package passed whole at `49.976s` earlier in this milestone before the other lanes started. Nothing in M2 touches the duration measurement. Flagged for the lead as an M1 test that is contention-sensitive by construction.
+
+### Fixture hygiene
+
+The orphan fixture starts two processes per test and every one is bounded twice: the grandchild carries its own `-test.timeout=60s` (an external bound that holds even when the test binary panics and `t.Cleanup` never runs), and the test registers a `t.Cleanup` kill. No trailing `kill` line exists anywhere in the fixture — every early return would skip it. No background load is spawned by any recipe here. Both re-executions of the test binary narrow with `-test.run`, so neither can re-enter the suite.
+
+### What was NOT observed
+
+- **Windows behaviour, in full.** `GOOS=windows go vet ./...` says the platform file compiles and nothing more. The Windows half of AC-GTA-008 — that `WaitDelay` bounds the return there, and that the reason states descendants may have survived — is **a gap, not a pass**, until the CI Windows matrix run is read. AC-GTA-008's own Mutant C ("a Windows build that compiles but never applies the bound") is by construction not killable from this machine.
+- **Linux behaviour.** Same standing as Windows: compilation only. The Unix implementation is exercised on darwin/arm64 alone.
+- **The full suite.** `go test ./...` was not run and is prohibited here. The full-suite verdict is CI's, against the pull-request head.
+- **A Windows job object.** Out of scope per `plan.md` §A.2; the Windows reason therefore reports that descendants may have survived rather than implying they were killed.
+- **A clean `internal/cli` whole-package run.** Not obtained on this machine — see the contention note above. Only the gate-related subset was measured cleanly.
+- **M3 territory.** No lock was added. `internal/cli/gate.go` is unmodified.
+- **The lint axis (card t233 / issue #1631).** Untouched, per `spec.md` §D.
+
+### Where the SPEC and the source disagreed
+
+One place, and it changes an implementation detail rather than the SPEC.
+
+**The deadline is not the only exit that leaves a descendant behind.** REQ-GTA-009 and AC-GTA-009 are both phrased around "when the step's deadline expires", but the fixture the SPEC itself specifies in §D.2 — a child that spawns a grandchild and *exits* — never reaches the deadline at all: the direct child is gone in milliseconds, so `exec`'s cancellation path, and with it `cmd.Cancel`, never runs. Implementing the group signal only in `Cancel` would have passed AC-GTA-008 and left AC-GTA-009's orphan alive. The group is therefore swept on **every** exit from `runStep` (a `defer`), and additionally in `Cancel` for the case where the child really does outlive its deadline. This satisfies REQ-GTA-009's stated case and the case its own fixture actually produces; it does not widen the blast radius, because the group is created per step at spawn and so contains only that step's descendants.
+
+Two smaller notes:
+
+1. **`WaitDelay` fires on a path the timeout branch does not cover.** When the child exits cleanly but a descendant holds the pipes, `cmd.Run` returns `exec.ErrWaitDelay` and `stepCtx.Err()` is nil — so the existing `DeadlineExceeded` branch never sees it. A dedicated branch reports it as a failure: the captured output is provably incomplete, and passing on truncated output would restore exactly the silence axis 1 was written to remove.
+2. **The grace budget is a constant, not a config key.** `stepWaitGrace = 2s` in `step_process_group.go`, per `plan.md` §A.4's proposal — a safety bound rather than a policy. No `gate.yaml` key was added, so no template mirror was needed in M2.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
