@@ -258,6 +258,29 @@ $ go vet ./internal/constitution/... → rc=0 · $ golangci-lint run ./internal/
 $ gofmt -l registry_sync_test.go → (빈, 정돈됨 — canary_test.go·validator.go의 기존 비정돈은 무변경 파일)
 ```
 
+#### M2 보강 커밋 (동시 세션, 사후 검증됨) — 최종 가드 = `0b04f3412`
+
+D10 증거 커밋(`adde4cfc9`) 이후 같은 워크트리의 병렬 세션이 가드를 2 커밋으로 보강했다(검증기·레지스트리 데이터 무변경, `registry_sync_test.go` 단일 파일):
+
+- `ca7d966fd` — ① 리터럴 체크에 버킷 카운터(once/zero/multi/retired_exempt/self_reference) + 버킷 단언·통과 출력 보고(AC-ZRR-002/003 의 측정 형태를 통과 출력에 상시 탑재) ② 테스트 선두의 직접 환경검사(`os.Getenv(MOAI_CONSTITUTION_SKIP_VALIDATE)`) — `Validate` 의 Skipped 반환 상류 제거 시에도 우회 상태에서 실패 ③ skip-env 양방향 서브테스트 2종(`t.Setenv`, 클린 트리·변이 트리 모두 `Skipped=true`핀) — **위 R5/R5b 수동 관측이 상시 테스트로 기계화됨** ④ R1 변이 픽스처 헬퍼(`t.TempDir` 사본 — 레포 무변이)
+- `0b04f3412` — R1 픽스처를 상수 고정에서 런타임 레지스트리 유도(regexp)로 변경 — 재워딩·스크래치 변이 상태와 무관하게 동작
+
+주: 위 D10 인용의 `registry_sync_test.go:89/133/160/181` 줄번호는 `49630cba2` 시점 파일 기준이다(보강 이후 124/133→206/207/217/276 등으로 이동). 인용은 그 트리에서 실행된 관측의 기록 그대로다.
+
+**추가 관측 (계획 외, 기록 가치)**: 보강 세션의 스크래치 R1 변이가 트리에 남아 있던 ~40초 창에 본 세션이 풀 스위트를 돌려 가드가 그 **실시간 변이**를 잡는 것을 관측했다(`[DRIFT] CONST-V3R2-004 … Englishx:` + 미러 불일치 34957 vs 34956 — 병렬 세션이 즉시 복원). 로컬 환경에서 의도치 않은 붉은 신호가 실제 붉은 트리를 정확히 지목한 사례.
+
+**최종 상태 검증 (HEAD `0b04f3412`, 트리 클린·병렬 세션 정지 확인 후)**:
+```
+$ go test -count=1 ./internal/constitution/...            → ok, rc=0
+$ go test -count=1 -v … -run RegistrySync                 → rc=0; [local]/[template] 각각
+    evaluated: clause-checks=97 retired-skip=4 anchor-checks=101 of 101 entries
+    clause literal buckets: once=97 zero=0 multi=0 retired_exempt=4 self_reference=0
+    mirrors byte-identical: 34956 bytes
+$ gofmt -l (신규 파일) → 빈 · golangci-lint → 0 issues · go vet → ok
+$ GOOS=windows GOARCH=amd64 go vet ./internal/constitution/... → ok (테스트 windows 컴파일)
+$ go build ./... · GOOS=windows GOARCH=amd64 go build ./...  → rc=0 / rc=0
+```
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
