@@ -1462,6 +1462,14 @@ func newBranchGuardRepoFixture(t *testing.T) string {
 	run("config", "user.email", "branch-guard-test@example.com")
 	run("config", "user.name", "Branch Guard Test")
 	run("config", "core.hooksPath", "/dev/null")
+	// The seed commit below otherwise spawns `git maintenance run --auto
+	// --no-quiet --detach` — a detached process still burning CPU while
+	// TestBranchGuard_Latency measures. A load STEP inside a paired
+	// measurement is exactly what moves the calibrated ratio (see
+	// internal/timing, TestCalibratedRatioSurvivesOffsetLoadStep), and this
+	// fixture supplies one to its own measurement.
+	run("config", "gc.auto", "0")
+	run("config", "maintenance.auto", "false")
 	if err := os.WriteFile(filepath.Join(repo, "SEED"), []byte("seed\n"), 0o644); err != nil {
 		t.Fatalf("write seed: %v", err)
 	}
