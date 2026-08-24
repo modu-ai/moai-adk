@@ -375,9 +375,10 @@ $ grep -cE '^\*\*REQ-[0-9]+\.[0-9]+\*\*' .moai/specs/SPEC-KANBAN-QUEUE-PR-SYNC-0
 
 ### Claim
 
-All 14 acceptance criteria are implemented and pass. The mechanical half of
-every criterion was run in this tree; AC-013's reviewer-judgement half is
-recorded as an outstanding judgement rather than claimed.
+**Every mechanical check passes; AC-013 is not fully satisfied.** All 14
+criteria are implemented, and the mechanical half of each was run in this tree.
+AC-013's reviewer-judgement half is OUTSTANDING — the criterion is therefore
+partially, not wholly, discharged, and this report does not claim otherwise.
 
 ### Evidence
 
@@ -395,7 +396,7 @@ recorded as an outstanding judgement rather than claimed.
 | AC-010 | `go test ./internal/cli/ -run TestTodoPR_RendersOutcomeAndConfidence` | pass |
 | AC-011 | `go test ./internal/kanban/ -run TestLandedCheck_Controls -v` | pass, positive control non-empty |
 | AC-012 | `go test ./internal/kanban/ -run 'TestLandedCheck_BooleanOnly\|TestResolve_LandedCarriesNoCommit'` | pass |
-| AC-013 | the two greps above (0 → 1 on both files) + the neutrality suite | mechanical pass; judgement outstanding |
+| AC-013 | the two greps above (0 → 1 on both files) + the neutrality suite | mechanical pass; **judgement outstanding — criterion not fully discharged** |
 | AC-014 | `go test ./internal/cli/ -run TestTodoPR_ExactlyOneGhInvocation` | pass at 3 and 10 cards |
 
 ### Baseline-attribution

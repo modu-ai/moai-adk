@@ -30,6 +30,12 @@ import (
 func landedRepo(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
+	// Config isolation, portably: GIT_CONFIG_GLOBAL points at a path INSIDE the
+	// fixture (an absent file reads as empty config on every platform), and the
+	// system layer is switched off by flag rather than by pointing it at a
+	// device node. `/dev/null` works on Unix and does not exist on native
+	// Windows, where it would leave the developer's real config in play.
+	gitCfg := filepath.Join(dir, "gitconfig")
 	run := func(args ...string) string {
 		t.Helper()
 		cmd := exec.Command("git", args...)
@@ -37,7 +43,7 @@ func landedRepo(t *testing.T) string {
 		cmd.Env = append(cmd.Environ(),
 			"GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@example.com",
 			"GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@example.com",
-			"GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null",
+			"GIT_CONFIG_GLOBAL="+gitCfg, "GIT_CONFIG_NOSYSTEM=1",
 		)
 		out, err := cmd.CombinedOutput()
 		if err != nil {

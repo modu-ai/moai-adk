@@ -418,6 +418,49 @@ func TestTodoPR_SingleCardArgument(t *testing.T) {
 	}
 }
 
+// A saturated open-PR page is reported, not hidden. A pull request beyond the
+// ceiling is invisible to the resolver, so its card reports `no-link` or
+// `landed` — wrong, and silent. Paging is not the fix: a second page is a
+// second `gh` process, which AC-014 forbids.
+func TestTodoPR_SaturatedPageIsReported(t *testing.T) {
+	_, store := todoFixture(t)
+	seedQueue(t, store, "a card")
+
+	// Exactly `todoPROpenPRLimit` records back from one query.
+	recs := make([]string, 0, todoPROpenPRLimit)
+	for i := range todoPROpenPRLimit {
+		recs = append(recs, fmt.Sprintf(
+			`{"number":%d,"title":"chore: filler","body":"","state":"OPEN"}`, 9000+i))
+	}
+	spy := installSpy(t, &spyRunner{prJSON: "[" + strings.Join(recs, ",") + "]"})
+
+	_, errOut, err := runTodo(t, "pr")
+	if err != nil {
+		t.Fatalf("todo pr: %v", err)
+	}
+	if !strings.Contains(errOut, "ceiling") {
+		t.Errorf("stderr = %q, want a saturation note", errOut)
+	}
+	if got := spy.countOf("gh"); got != 1 {
+		t.Errorf("%d gh processes on the saturated path, want 1 — saturation is reported, never paged around", got)
+	}
+}
+
+// An unsaturated page says nothing — the note must not fire on every run.
+func TestTodoPR_UnsaturatedPageIsSilent(t *testing.T) {
+	_, store := todoFixture(t)
+	seedQueue(t, store, "a card")
+	installSpy(t, &spyRunner{prJSON: pinnedPRJSON})
+
+	_, errOut, err := runTodo(t, "pr")
+	if err != nil {
+		t.Fatalf("todo pr: %v", err)
+	}
+	if strings.Contains(errOut, "ceiling") {
+		t.Errorf("stderr = %q; the saturation note fired on a 4-record page", errOut)
+	}
+}
+
 func nonEmptyLines(s string) []string {
 	var out []string
 	for _, ln := range strings.Split(s, "\n") {

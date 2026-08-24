@@ -16,19 +16,34 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/spf13/cobra"
 )
 
 // todoPROpenPRLimit bounds the open-PR page the single query fetches. One
-// query, one page — a paging loop would reintroduce the per-call cost the
-// dedicated-verb ruling exists to avoid.
-const todoPROpenPRLimit = "100"
+// query, one page — a paging loop would spawn one `gh` process per page, which
+// is exactly the per-invocation cost the dedicated-verb ruling exists to avoid
+// and which the subprocess census forbids.
+//
+// The limit is therefore a real ceiling rather than a formality: a card whose
+// pull request sits beyond it would resolve as `no-link` or `landed`, silently
+// and wrongly. `fetchOpenPRs` reports saturation instead of hiding it — see
+// there.
+const todoPROpenPRLimit = 100
+
+// todoPRSubprocessTimeout bounds every subprocess this verb spawns. `gh` talks
+// to the network and `git log` walks history; neither is guaranteed to return,
+// and a read-only status verb that hangs is worse than one that degrades — the
+// fail-open path already renders a useful queue without either answer.
+const todoPRSubprocessTimeout = 30 * time.Second
 
 // todoRunCommand is the process seam every subprocess in the todo surface
 // goes through. It exists so the subprocess-census tests can COUNT
@@ -40,7 +55,12 @@ const todoPROpenPRLimit = "100"
 // the census is there to catch, and it would be invisible to a seam only the
 // routed path knows about.
 var todoRunCommand kanban.CommandRunner = func(name string, args ...string) (string, error) {
-	out, err := exec.Command(name, args...).Output()
+	ctx, cancel := context.WithTimeout(context.Background(), todoPRSubprocessTimeout)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, name, args...).Output()
+	if ctx.Err() != nil {
+		return "", fmt.Errorf("%s timed out after %s: %w", name, todoPRSubprocessTimeout, ctx.Err())
+	}
 	return string(out), err
 }
 
@@ -93,7 +113,16 @@ func runTodoPR(cmd *cobra.Command, only string, jsonOutput bool) error {
 		return err
 	}
 
-	prs, ghErr := fetchOpenPRs()
+	prs, saturated, ghErr := fetchOpenPRs()
+	if saturated {
+		// The page filled exactly. A pull request past the ceiling is invisible
+		// to the resolver, and its card would report `no-link` or `landed` —
+		// wrong, and silent. Saying so is the whole mitigation: paging would
+		// spawn a second `gh` process, which the one-query bound forbids.
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
+			"note: the open pull-request query returned its %d-record ceiling; a card whose pull request sits beyond it is reported as if it had none\n",
+			todoPROpenPRLimit)
+	}
 	if ghErr != nil {
 		// Fail-open (REQ-2.3): the note names what degraded, so an empty link
 		// column is never mistaken for "no card has a pull request".
@@ -164,17 +193,21 @@ func formatPRLinks(prs []int) string {
 // fetchOpenPRs issues THE single network query — one `gh pr list` for the
 // whole invocation, never one per card (NFR-1). Any failure is returned for
 // the caller to note; no error path here aborts the render.
-func fetchOpenPRs() ([]kanban.PRRecord, error) {
+//
+// The second return value reports SATURATION: the record count came back equal
+// to the requested ceiling, so there may be open pull requests the resolver
+// never saw. It is reported rather than paged around, because a second page
+// means a second `gh` process.
+func fetchOpenPRs() (prs []kanban.PRRecord, saturated bool, err error) {
 	out, err := todoRunCommand("gh", "pr", "list",
 		"--state", "open",
-		"--limit", todoPROpenPRLimit,
+		"--limit", strconv.Itoa(todoPROpenPRLimit),
 		"--json", "number,title,body,state")
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	var prs []kanban.PRRecord
 	if err := json.Unmarshal([]byte(strings.TrimSpace(out)), &prs); err != nil {
-		return nil, fmt.Errorf("parsing gh pr list output: %w", err)
+		return nil, false, fmt.Errorf("parsing gh pr list output: %w", err)
 	}
-	return prs, nil
+	return prs, len(prs) >= todoPROpenPRLimit, nil
 }
