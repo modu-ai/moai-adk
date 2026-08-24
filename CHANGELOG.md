@@ -14,6 +14,85 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - An MCP annotation defect surfaced in plan audit is fixed alongside: the 4 audit-family tools (`audit_cache`, `codex_audit`, `glm_audit`, `audit_multi`) lacked the read-only hint their catalog classification declares; they are now correctly read-only-hinted, and the effective approval set drops from 10 to 6 on the base tree.
   - Run-phase e2e discovered two placement defects, both fixed in place with RED→GREEN regression tests: the update-path wiring refresh sat after the `syncSkipped` early return (an "Up to date" update never refreshed wiring), and a force-reinit silently lost the doctor's sidecar baseline (now re-recorded on disk-match).
   - PRESERVE clean: template tree and `internal/codexadapter/` empty diff; `internal/cli/mcp_server.go` took exactly 14 pure insertions (the 4 annotation lines + comments). Coverage 87.2% (`internal/codexwiring`, threshold 85), `golangci-lint` 0 issues, windows-amd64 `go vet` exit-0. This sync commit carries the README 4-locale statusline-limitation sentence, the `spec.md` frontmatter close (the only one of the four artifacts carrying a frontmatter block), the `progress.md` §E.4 signal, and this entry. 🗿 MoAI
+- **`moai worktree clean --stale --json`** reports every non-protected registered worktree — path,
+  branch, keep reason, and the four predicates behind that reason (dirty, merge, anchor, and
+  ignored content) — and removes
+  nothing. It overrides `--yes` rather than combining with it: an inventory that could delete on a
+  stray flag is not an inventory. The report and the sweep run the same classification, so the
+  report can never describe a tree the sweep would treat differently. It also reaches the worktrees
+  the PR-merge sweep cannot see at all — that sweep matches a branch prefix, while this one
+  enumerates by checkout.
+
+### Changed
+
+- **The `--merged-only` and `--stale` base branch now defaults to `origin/main`, not the local
+  `main`.** A local `main` behind the remote reports fewer branches as merged, so the two worktree
+  sweeps disagreed about the same tree; the base is now the reference the PR-merge sweep already
+  compared against. The "checked out on the base branch" guard compared a local branch name against
+  the base literally, which the new default would have silently disabled — a second worktree sitting
+  on `main` would then have been judged by the merge predicate, which reports `main` as merged into
+  `origin/main`. That comparison now also matches the base's trailing segment, and errs toward
+  keeping.
+- **Every preserve notice from the PR-merge sweep names its cause** — `cause=dirty`,
+  `cause=anchored-by-lock`, `cause=anchored-by-registry`, `cause=refusal-class`,
+  `cause=undetermined-merge`, `cause=ignored-content`, and the check-failure variants — so two
+  worktrees preserved for different reasons are distinguishable from the sweep's output without
+  inspecting the trees.
+
+### Fixed
+
+- **The PR-merge sweep read "gh could not answer" as "not merged".** `gh pr view` errors on the
+  ordinary case of a merged PR whose head branch was deleted on the remote, and the sweep collapsed
+  that error, an absent PR, and malformed JSON into one empty string it treated as a negative — the
+  worktree was preserved, permanently, on every future sweep. Merge detection now carries three
+  outcomes (merged / not merged / no answer), and only the no-answer case consults `git branch
+  --merged origin/main`. A determinate `OPEN`, `CLOSED`, or `DRAFT` ends the decision without the
+  fallback, so neither source overrides the other: `gh` sees squash merges the git fallback cannot,
+  and the git fallback sees deleted-branch merges `gh` cannot. When neither can decide, the worktree
+  is preserved and the notice says which state was undetermined. The fallback's parser now strips
+  git's `+` linked-worktree marker as well as the `*` current-branch one, and skips the
+  `(HEAD detached at ...)` / `(no branch)` lines: `+` decorates precisely the branches this sweep
+  evaluates — every candidate is checked out in a linked worktree — so stripping only `*` left the
+  fallback unable to report any live worktree's branch as merged, and the deleted-branch case above
+  still reached the preserve path.
+- **The session-anchor guard was blind to most live sessions, and git's worktree lock was what
+  actually protected them.** The guard read the session registry alone, whose `cwd` is corrected
+  only when the relocation hook fires — measured naming 1 of 5 live anchors, against 5 of 5 named by
+  the git worktree lock reason. The decision now lives in `internal/session`, reads the lock reason
+  from `git worktree list --porcelain` as its primary source, probes any process id that reason
+  names for liveness, and unions the result with the registry, which is retained as a supplementary
+  input. It fails closed: an unparseable lock line, a lock naming no process id, and an undetermined
+  liveness probe all report the tree as anchored. All three sweeps that shared the blind guard now
+  share this one — the PR-merge sweep, `worktree clean --stale`, and the `--merged-only` path, where
+  it is the only thing standing between the sweep and a live session's tree.
+- **`worktree clean --stale --yes` and `worktree clean --merged-only` destroyed gitignored content that nothing regenerates.** Their
+  cleanliness check ran `git status --porcelain` without `--ignored`, and a non-forced
+  `git worktree remove` disregards ignored files too — so a merged, clean, unanchored tree whose
+  only remaining content was `.claude/agent-memory/` reported `dirty=no` and was deleted, exit 0,
+  with nothing in the output to read afterwards. `--merged-only` was the more exposed of the two,
+  carrying no dirty guard at all. The ignored-content guard built for the PR-merge sweep now covers
+  both, and all three removal paths share ONE decision — allowlist included — in `internal/session`,
+  rather than a second copy free to drift. `--stale --json` gains a fourth predicate, `ignored`, so
+  the inventory and the sweep stay the same evaluation.
+- **An unreadable worktree porcelain silently disarmed both `worktree clean` sweeps.** When
+  `git worktree list --porcelain` failed, the lock reader returned an empty map that the callers
+  could not distinguish from "no tree is locked", so every tree fell back to the session registry
+  alone — the source measured to name 1 of 5 live anchors — and the run looked exactly like a
+  healthy one. With `--yes` that removed a lock-anchored tree and killed a live session's shell.
+  Both sweeps now fail closed as the PR-merge sweep already did: `--merged-only` removes nothing and
+  emits `cause=lock-source-unreadable`, `--stale` keeps every tree with that cause as its keep
+  reason, and `--stale --json` reports `anchored: "undetermined"` rather than `"no"`.
+- **A locked worktree is recognised before removal is attempted**, instead of producing an
+  error-shaped failure notice on every sweep for a tree that is behaving correctly. The sweep still
+  never unlocks a worktree and never passes `--force`, and a refusal it did not anticipate remains a
+  non-blocking notice carrying git's own message as the cause.
+- **A merged, clean, unanchored worktree holding gitignored content is preserved** unless every
+  ignored entry falls under a short allowlist of regenerable paths — runtime state, runtime-managed
+  local config, build output, test residue. `git status --porcelain` and non-forced `git worktree
+  remove` agree in disregarding ignored files, so for that class of content nothing else stood
+  between the sweep and its destruction; worktree-local agent memory is written per project root and
+  has no path back to the primary checkout. Preserving those trees is a stopgap, not the answer —
+  draining them is, and is not part of this change.
 
 ## [3.1.3] - 2026-08-24
 

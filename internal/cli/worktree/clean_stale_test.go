@@ -111,7 +111,10 @@ func TestCleanStale_KeepsUnmergedWorktree(t *testing.T) {
 	if len(*removed) != 0 {
 		t.Fatalf("unmerged worktree was removed: %v", *removed)
 	}
-	if !strings.Contains(out, "commits not in main") {
+	// The base ref moved from the local `main` to `origin/main`
+	// (SPEC-WORKTREE-REAPER-001 REQ-WR-022), so the keep reason names the ref
+	// actually compared against.
+	if !strings.Contains(out, "commits not in origin/main") {
 		t.Errorf("expected a keep reason naming unmerged commits, got:\n%s", out)
 	}
 }
