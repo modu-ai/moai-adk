@@ -48,8 +48,10 @@ func readRecord(t *testing.T, path string) *SessionTelemetryRecord {
 	return rec
 }
 
-func usagePath(projDir string) string {
-	return filepath.Join(projDir, ".moai", "state", "context-usage.json")
+// usagePath is the on-disk record path for one session under projDir. It
+// mirrors what the writer does rather than re-spelling the layout.
+func usagePath(projDir, sessionID string) string {
+	return SessionTelemetryPath(filepath.Join(projDir, ".moai", "state"), sessionID)
 }
 
 // TestWriteContextUsage_ConfigIndependent — AC-THRESHOLD-007.
@@ -62,7 +64,7 @@ func TestWriteContextUsage_ConfigIndependent(t *testing.T) {
 	m := MemoryData{ContextWindowSize: 256_000, TokensUsed: 230_400, Available: true}
 	writeContextUsage(proj, "sess-1", 4242, m, handoffStageSoft)
 
-	rec := readRecord(t, usagePath(proj))
+	rec := readRecord(t, usagePath(proj, "sess-1"))
 	if rec.SessionID != "sess-1" {
 		t.Errorf("session_id = %q, want sess-1", rec.SessionID)
 	}
@@ -81,9 +83,9 @@ func TestWriteContextUsage_Atomic(t *testing.T) {
 	m := MemoryData{ContextWindowSize: 1_000_000, TokensUsed: 500_000, Available: true}
 	writeContextUsage(proj, "sess-atomic", 100, m, handoffStageSoft)
 
-	path := usagePath(proj)
+	path := usagePath(proj, "sess-atomic")
 	if _, err := os.Stat(path); err != nil {
-		t.Fatalf("context-usage.json not created: %v", err)
+		t.Fatalf("session telemetry record not created: %v", err)
 	}
 	// Valid JSON (ReadSessionTelemetry parses it).
 	_ = readRecord(t, path)
@@ -107,14 +109,14 @@ func TestWriteContextUsage_SilentFail(t *testing.T) {
 	// (b) Memory.Available == false → skip (no source signal).
 	proj := t.TempDir()
 	writeContextUsage(proj, "s", 1, MemoryData{Available: false}, handoffStageNone)
-	if _, err := os.Stat(usagePath(proj)); !os.IsNotExist(err) {
+	if _, err := os.Stat(usagePath(proj, "s")); !os.IsNotExist(err) {
 		t.Errorf("no file expected when Memory.Available == false")
 	}
 
 	// (c) non-positive window → skip (avoids div-by-zero).
 	proj2 := t.TempDir()
 	writeContextUsage(proj2, "s", 1, MemoryData{ContextWindowSize: 0, Available: true}, handoffStageNone)
-	if _, err := os.Stat(usagePath(proj2)); !os.IsNotExist(err) {
+	if _, err := os.Stat(usagePath(proj2, "s")); !os.IsNotExist(err) {
 		t.Errorf("no file expected when ContextWindowSize <= 0")
 	}
 
@@ -137,7 +139,7 @@ func TestContextUsage_Schema(t *testing.T) {
 	m := MemoryData{ContextWindowSize: 256_000, TokensUsed: 245_760, Available: true}
 	writeContextUsage(proj, "sess-schema", 7777, m, handoffStageHard)
 
-	raw, err := os.ReadFile(usagePath(proj))
+	raw, err := os.ReadFile(usagePath(proj, "sess-schema"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,7 +156,7 @@ func TestContextUsage_Schema(t *testing.T) {
 		}
 	}
 
-	rec := readRecord(t, usagePath(proj))
+	rec := readRecord(t, usagePath(proj, "sess-schema"))
 	if rec.SchemaVersion != contextUsageSchemaVersion {
 		t.Errorf("schema_version = %d, want %d", rec.SchemaVersion, contextUsageSchemaVersion)
 	}
@@ -180,7 +182,7 @@ func TestWriteContextUsage_ThrottleSkipUnchanged(t *testing.T) {
 	t.Parallel()
 
 	proj := t.TempDir()
-	path := usagePath(proj)
+	path := usagePath(proj, "sess-throttle")
 	m := MemoryData{ContextWindowSize: 256_000, TokensUsed: 230_400, Available: true} // 90%
 
 	writeContextUsage(proj, "sess-throttle", 11, m, handoffStageSoft)
@@ -213,128 +215,6 @@ func TestWriteContextUsage_ThrottleSkipUnchanged(t *testing.T) {
 	}
 }
 
-// TestSessionGuard_MismatchStale — AC-THRESHOLD-013.
-// A record stamped with session_id A is stale for a reader in session B, and
-// valid for a reader in session A. writer_pid is irrelevant on the UUID path.
-func TestSessionGuard_MismatchStale(t *testing.T) {
-	t.Parallel()
-
-	rec := &SessionTelemetryRecord{
-		SessionID:  "sess-A",
-		WriterPID:  1001,
-		CapturedAt: time.Now().Format(time.RFC3339Nano),
-	}
-	if isFreshForSession(rec, "sess-B", 1001) {
-		t.Errorf("session_id mismatch (A vs B) must be stale")
-	}
-	if !isFreshForSession(rec, "sess-A", 1001) {
-		t.Errorf("session_id match (A) must be valid")
-	}
-	// UUID path ignores writer_pid: mismatched writer, same UUID → still valid.
-	if !isFreshForSession(rec, "sess-A", 9999) {
-		t.Errorf("UUID path must ignore writer_pid (same UUID → valid)")
-	}
-}
-
-// TestFallbackUUID_FreshnessValidation — AC-THRESHOLD-014.
-// With no real UUID on either side (empty session_id), validity is decided by
-// captured_at freshness (with a matching single-session writer_pid). A mixed
-// UUID-vs-empty pair is conservatively stale. The write still happens when the
-// session_id is empty (primary path survives for the common single-session case).
-func TestFallbackUUID_FreshnessValidation(t *testing.T) {
-	t.Parallel()
-
-	// (a) write still occurs with an empty session_id.
-	proj := t.TempDir()
-	m := MemoryData{ContextWindowSize: 200_000, TokensUsed: 180_000, Available: true}
-	writeContextUsage(proj, "", 5150, m, handoffStageSoft)
-	if _, err := os.Stat(usagePath(proj)); err != nil {
-		t.Fatalf("empty session_id must still write the record: %v", err)
-	}
-
-	const pid = 5150
-	fresh := &SessionTelemetryRecord{SessionID: "", WriterPID: pid, CapturedAt: time.Now().Format(time.RFC3339Nano)}
-	expired := &SessionTelemetryRecord{SessionID: "", WriterPID: pid, CapturedAt: time.Now().Add(-13 * time.Hour).Format(time.RFC3339Nano)}
-
-	// (b) both empty + fresh + matching writer → valid (single-session survives).
-	if !isFreshForSession(fresh, "", pid) {
-		t.Errorf("empty/empty + fresh + same writer must be valid")
-	}
-	// captured_at expired → stale.
-	if isFreshForSession(expired, "", pid) {
-		t.Errorf("empty/empty + expired must be stale")
-	}
-	// mixed: record UUID vs empty current → conservatively stale.
-	uuidRec := &SessionTelemetryRecord{SessionID: "sess-X", WriterPID: pid, CapturedAt: time.Now().Format(time.RFC3339Nano)}
-	if isFreshForSession(uuidRec, "", pid) {
-		t.Errorf("UUID-vs-empty mix must be conservatively stale")
-	}
-	// mixed the other way: empty record vs UUID current → conservatively stale.
-	if isFreshForSession(fresh, "sess-X", pid) {
-		t.Errorf("empty-vs-UUID mix must be conservatively stale")
-	}
-}
-
-// TestConcurrentEmptyID_WriterPIDGuard — AC-THRESHOLD-018.
-// Two concurrent empty-session_id records distinguished only by writer_pid: a
-// reader with curWriterID matching recA reads recA as its own (valid) but reads
-// recB (different writer) as stale — closing the cross-read hole that captured_at
-// freshness alone would leave open. table: writer_pid match/mismatch × fresh/stale.
-func TestConcurrentEmptyID_WriterPIDGuard(t *testing.T) {
-	t.Parallel()
-
-	now := time.Now().Format(time.RFC3339Nano)
-	stale := time.Now().Add(-13 * time.Hour).Format(time.RFC3339Nano)
-
-	tests := []struct {
-		name       string
-		recPID     int
-		recCapture string
-		curPID     int
-		want       bool
-	}{
-		{"match+fresh → valid", 1001, now, 1001, true},
-		{"mismatch+fresh → stale (cross-read blocked)", 1002, now, 1001, false},
-		{"match+stale → stale (expired)", 1001, stale, 1001, false},
-		{"mismatch+stale → stale", 1002, stale, 1001, false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			rec := &SessionTelemetryRecord{SessionID: "", WriterPID: tt.recPID, CapturedAt: tt.recCapture}
-			if got := isFreshForSession(rec, "", tt.curPID); got != tt.want {
-				t.Errorf("isFreshForSession(empty, pid=%d) = %v, want %v", tt.curPID, got, tt.want)
-			}
-		})
-	}
-
-	// UUID path stays independent of writer_pid even when writer_pid differs.
-	uuid := &SessionTelemetryRecord{SessionID: "sess-U", WriterPID: 1002, CapturedAt: now}
-	if !isFreshForSession(uuid, "sess-U", 1001) {
-		t.Errorf("UUID match must remain valid regardless of writer_pid (AC-013 preserved)")
-	}
-}
-
-// TestIsFreshForSession_NilRecord — nil record is never fresh.
-func TestIsFreshForSession_NilRecord(t *testing.T) {
-	t.Parallel()
-	if isFreshForSession(nil, "", 1) {
-		t.Errorf("nil record must be stale")
-	}
-}
-
-// TestContextUsageFresh_Unparseable — a malformed captured_at is not fresh
-// (conservative → heuristics fallback).
-func TestContextUsageFresh_Unparseable(t *testing.T) {
-	t.Parallel()
-	if contextUsageFresh("not-a-timestamp") {
-		t.Errorf("unparseable captured_at must be treated as not fresh")
-	}
-	if !contextUsageFresh(time.Now().Format(time.RFC3339Nano)) {
-		t.Errorf("a just-now timestamp must be fresh")
-	}
-}
-
 // TestReadContextUsage_Corrupt — corrupt JSON surfaces an error so the caller
 // falls back (throttle → write, reader → heuristics).
 func TestReadContextUsage_Corrupt(t *testing.T) {
@@ -344,7 +224,10 @@ func TestReadContextUsage_Corrupt(t *testing.T) {
 	if err := os.MkdirAll(stateDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	path := filepath.Join(stateDir, "context-usage.json")
+	path := usagePath(proj, "sess-recover")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(path, []byte("{not json"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -397,7 +280,7 @@ func TestWriteContextUsage_TemplateSourceGuard(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeContextUsage(templatesDir, "sess-guard", 1, m, handoffStageSoft)
-	if _, err := os.Stat(usagePath(templatesDir)); !os.IsNotExist(err) {
+	if _, err := os.Stat(usagePath(templatesDir, "sess-guard")); !os.IsNotExist(err) {
 		t.Errorf("(a) no file expected inside templates source dir, got: %v", err)
 	}
 
@@ -407,7 +290,7 @@ func TestWriteContextUsage_TemplateSourceGuard(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeContextUsage(deep, "sess-guard", 1, m, handoffStageSoft)
-	if _, err := os.Stat(usagePath(deep)); !os.IsNotExist(err) {
+	if _, err := os.Stat(usagePath(deep, "sess-guard")); !os.IsNotExist(err) {
 		t.Errorf("(b) no file expected inside templates source subdir, got: %v", err)
 	}
 }
@@ -420,7 +303,7 @@ func TestWriteContextUsage_TemplateSourceGuard_InertForNormalDir(t *testing.T) {
 	proj := t.TempDir()
 	m := MemoryData{ContextWindowSize: 256_000, TokensUsed: 230_400, Available: true}
 	writeContextUsage(proj, "sess-normal", 1, m, handoffStageSoft)
-	if _, err := os.Stat(usagePath(proj)); err != nil {
+	if _, err := os.Stat(usagePath(proj, "sess-normal")); err != nil {
 		t.Fatalf("file expected for normal dir (guard must be inert), got: %v", err)
 	}
 }
@@ -441,7 +324,7 @@ func TestWriteContextUsage_TemplateSourceGuard_SubstringNoMatch(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeContextUsage(fused, "sess-fused", 1, m, handoffStageSoft)
-	if _, err := os.Stat(usagePath(fused)); err != nil {
+	if _, err := os.Stat(usagePath(fused, "sess-fused")); err != nil {
 		t.Errorf("(a) file expected for substring-only dir, got: %v", err)
 	}
 
@@ -451,7 +334,7 @@ func TestWriteContextUsage_TemplateSourceGuard_SubstringNoMatch(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeContextUsage(barDir, "sess-bar", 1, m, handoffStageSoft)
-	if _, err := os.Stat(usagePath(barDir)); err != nil {
+	if _, err := os.Stat(usagePath(barDir, "sess-bar")); err != nil {
 		t.Errorf("(b) file expected for _bar suffix dir, got: %v", err)
 	}
 }

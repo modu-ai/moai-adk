@@ -14,9 +14,10 @@ import (
 //
 // On every statusline render, builder.Build writes an authoritative snapshot of
 // the raw context-window usage (+ handoff stage) to
-// <projectDir>/.moai/state/context-usage.json. The Detection Heuristics doctrine
-// (D4) reads this file FIRST and falls back to the byte / system-reminder
-// heuristics only when it is absent, stale, or unparseable.
+// <projectDir>/.moai/state/context-usage/<session-id>.json — one record per
+// session (SPEC-SESSION-TELEMETRY-001 REQ-ST-001). The Detection Heuristics
+// doctrine (D4) reads the current session's record FIRST and falls back to the
+// byte / system-reminder heuristics only when it is absent or unparseable.
 //
 // The write is a pure function of context usage — it is NEVER gated by
 // HandoffConfig (REQ-THRESHOLD-007), keeping the state-file authoritative
@@ -27,19 +28,11 @@ import (
 // contextUsageSchemaVersion is the on-disk schema version of context-usage.json.
 const contextUsageSchemaVersion = 1
 
-// contextUsageFreshWindow bounds how long an empty-session_id record stays valid
-// for the freshness fallback (REQ-THRESHOLD-014). It is intentionally
-// session-scoped (generous, not seconds) to absorb the write-if-changed
-// throttle plateau, where captured_at is not refreshed while usage plateaus
-// (design §D.3 caveat). A named constant keeps this reader threshold out of
-// inline literals (§14 hardcoding-prevention).
-const contextUsageFreshWindow = 12 * time.Hour
-
 // templateSourceEmbedPath is the path-component marker for the moai-adk-go
 // template embed source tree. The //go:embed all:templates directive in
 // internal/template/embed.go compiles this tree (including dot-prefixed dirs
 // like .moai/) into the distributed binary, so writeContextUsage MUST NOT
-// write context-usage.json here — otherwise a runtime artifact leaks into the
+// write a telemetry record here — otherwise a runtime artifact leaks into the
 // binary on make build. Built from filepath.Separator (not a bare "/" literal)
 // so the guard is cross-platform (§14 hardcoding-prevention).
 const templateSourceEmbedPath = "internal" + string(filepath.Separator) + "template" + string(filepath.Separator) + "templates"
@@ -49,16 +42,22 @@ const templateSourceEmbedPath = "internal" + string(filepath.Separator) + "templ
 // the path helper share one spelling (§14 hardcoding-prevention).
 const contextUsageDirName = "context-usage"
 
-// SessionTelemetryPath returns the on-disk path of the session telemetry
-// record inside stateDir (the project's .moai/state directory). It is the one
-// place the record's location is spelled, so a cross-package consumer never
-// reconstructs the filename itself.
-func SessionTelemetryPath(stateDir string) string {
-	return filepath.Join(stateDir, contextUsageDirName+".json")
+// SessionTelemetryPath returns the on-disk path of one session's telemetry
+// record: <stateDir>/context-usage/<sessionID>.json. It is the one place the
+// record's location is spelled, so a cross-package consumer never reconstructs
+// it. stateDir is the project's .moai/state directory.
+//
+// The record is keyed by the identifier the session runtime delivered to the
+// render (REQ-ST-002) — never by the project-wide
+// .moai/state/current-session-id.txt sidecar, which carries the same
+// last-writer-wins shape the per-session split exists to remove.
+func SessionTelemetryPath(stateDir, sessionID string) string {
+	return filepath.Join(stateDir, contextUsageDirName, sessionID+".json")
 }
 
-// SessionTelemetryRecord is the on-disk schema for
-// <projectDir>/.moai/state/context-usage.json (REQ-THRESHOLD-010).
+// SessionTelemetryRecord is the on-disk schema for one session's record at
+// <projectDir>/.moai/state/context-usage/<session-id>.json (REQ-THRESHOLD-010,
+// SPEC-SESSION-TELEMETRY-001 REQ-ST-001).
 //
 // writer_pid is the writing process identity — the discriminator that
 // distinguishes concurrent empty-session_id writers sharing one file
@@ -126,8 +125,8 @@ func isTemplateSourceDir(dir string) bool {
 		strings.Contains(abs, marker+sep)
 }
 
-// writeContextUsage persists the current context-usage snapshot to
-// <projDir>/.moai/state/context-usage.json using the atomic temp-file +
+// writeContextUsage persists the current session's telemetry snapshot to
+// <projDir>/.moai/state/context-usage/<sessionID>.json using the atomic temp-file +
 // rename pattern of WriteModelCache (MkdirAll + write-temp + rename). It is
 // best-effort: any failure is silently ignored so the statusline render is
 // never disrupted (REQ-THRESHOLD-009). The signature carries NO HandoffConfig —
@@ -144,7 +143,7 @@ func writeContextUsage(projDir, sessionID string, writerPID int, mem MemoryData,
 	}
 
 	stateDir := filepath.Join(projDir, ".moai", "state")
-	path := SessionTelemetryPath(stateDir)
+	path := SessionTelemetryPath(stateDir, sessionID)
 
 	next := buildContextUsageRecord(sessionID, writerPID, mem, stage)
 
@@ -156,7 +155,7 @@ func writeContextUsage(projDir, sessionID string, writerPID int, mem MemoryData,
 		return
 	}
 
-	if err := os.MkdirAll(stateDir, 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return // best-effort, silent
 	}
 
@@ -193,7 +192,7 @@ func buildContextUsageRecord(sessionID string, writerPID int, mem MemoryData, st
 	}
 }
 
-// ReadSessionTelemetry reads and parses context-usage.json. Returns (nil, err) on
+// ReadSessionTelemetry reads and parses one session telemetry record. Returns (nil, err) on
 // any failure (file missing, unparseable) so the caller falls back to a write
 // (throttle) or to heuristics (reader).
 func ReadSessionTelemetry(path string) (*SessionTelemetryRecord, error) {
@@ -220,61 +219,8 @@ func sameSemanticPayload(a, b *SessionTelemetryRecord) bool {
 		int(a.RawPct) == int(b.RawPct)
 }
 
-// isRealSessionID reports whether s is a real session UUID (as opposed to an
-// empty value or an environment-fallback sentinel carrying no real UUID). The
-// Claude Code stdin session_id is either a compact UUID token or empty; the
-// environment-fallback sentinel is a prose "not-available" string containing
-// whitespace, so any whitespace-bearing value is treated as "no real UUID"
-// per REQ-THRESHOLD-014.
-func isRealSessionID(s string) bool {
-	if s == "" {
-		return false
-	}
-	return !strings.ContainsAny(s, " \t")
-}
-
-// isFreshForSession reports whether the on-disk record is the CURRENT session's
-// own authoritative snapshot (i.e., a reader may trust it rather than falling
-// back to heuristics). It encodes the session_id guard (REQ-THRESHOLD-013), the
-// fallback-UUID freshness path (REQ-THRESHOLD-014), and the empty-id writer_pid
-// discriminator (REQ-THRESHOLD-018):
-//
-//   - real UUID on either side → valid iff BOTH sides carry the same UUID
-//     (last-writer-wins guard; writer_pid is not consulted). A mixed
-//     UUID-vs-empty pair is conservatively stale.
-//   - empty session_id on BOTH sides → valid iff captured_at is within the
-//     freshness window AND rec.writer_pid == curWriterID. The writer_pid match
-//     stops a concurrent same-checkout empty-id session (session B) from reading
-//     another session's (session A) fresh snapshot as its own.
-func isFreshForSession(rec *SessionTelemetryRecord, curSession string, curWriterID int) bool {
-	if rec == nil {
-		return false
-	}
-	recReal := isRealSessionID(rec.SessionID)
-	curReal := isRealSessionID(curSession)
-	if recReal || curReal {
-		// UUID path: at least one side has a real UUID — both must match.
-		return recReal && curReal && rec.SessionID == curSession
-	}
-	// Both sides lack a real UUID: freshness AND writer_pid discriminator.
-	if rec.WriterPID != curWriterID {
-		return false
-	}
-	return contextUsageFresh(rec.CapturedAt)
-}
-
-// contextUsageFresh reports whether captured_at is within the freshness window.
-// An unparseable timestamp is treated as not fresh (conservative → heuristics).
-func contextUsageFresh(capturedAt string) bool {
-	t, err := time.Parse(time.RFC3339Nano, capturedAt)
-	if err != nil {
-		return false
-	}
-	return time.Since(t) < contextUsageFreshWindow
-}
-
 // resolveProjectDir resolves the project directory that anchors
-// <projDir>/.moai/state/context-usage.json, following the stdin workspace
+// the per-session telemetry record, following the stdin workspace
 // chain and falling back to the process CWD (design §D.2). Returns "" only when
 // no directory can be resolved (write is then skipped).
 func resolveProjectDir(input *StdinData) string {

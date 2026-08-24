@@ -320,7 +320,7 @@ func runTokensRecord(opts tokensRecordOpts) (*TokensRecord, error) {
 		Models:        agg.Models,
 		Messages:      agg.Messages,
 		SkippedLines:  agg.Skipped,
-		Context:       readTokensContextSnapshot(stateDir),
+		Context:       readTokensContextSnapshot(stateDir, sessionID),
 	}
 
 	data, err := json.Marshal(rec)
@@ -372,13 +372,15 @@ func resolveTokensStateDir() (string, error) {
 	return fallback, nil
 }
 
-// readTokensContextSnapshot embeds the statusline session telemetry record
-// when it exists and parses; any failure yields nil (fail-open, never blocks
-// the accounting record). The record is read through the statusline package's
-// single exported reader (SPEC-SESSION-TELEMETRY-001 REQ-ST-006) rather than
-// through a second declaration of the same schema.
-func readTokensContextSnapshot(stateDir string) *statusline.SessionTelemetryRecord {
-	rec, err := statusline.ReadSessionTelemetry(statusline.SessionTelemetryPath(stateDir))
+// readTokensContextSnapshot embeds the telemetry record of the session being
+// accounted for when it exists and parses; any failure yields nil (fail-open,
+// never blocks the accounting record). The record is read through the
+// statusline package's single exported reader (SPEC-SESSION-TELEMETRY-001
+// REQ-ST-006) rather than through a second declaration of the same schema, and
+// is addressed per session (REQ-ST-001) — an empty sessionID therefore yields
+// nil rather than another session's record.
+func readTokensContextSnapshot(stateDir, sessionID string) *statusline.SessionTelemetryRecord {
+	rec, err := statusline.ReadSessionTelemetry(statusline.SessionTelemetryPath(stateDir, sessionID))
 	if err != nil {
 		return nil
 	}

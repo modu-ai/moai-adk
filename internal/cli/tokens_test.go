@@ -280,8 +280,15 @@ func TestRunTokensRecordContextSnapshot(t *testing.T) {
 	if err := os.MkdirAll(stateDir, 0o755); err != nil {
 		t.Fatalf("mkdir state: %v", err)
 	}
-	snap := `{"schema_version":1,"session_id":"ctx-session","writer_pid":42,"captured_at":"2026-08-17T00:00:00Z","context_window_size":1000000,"tokens_used":500000,"raw_pct":50.0,"stage":"soft","band":"large"}`
-	if err := os.WriteFile(filepath.Join(stateDir, "context-usage.json"), []byte(snap), 0o644); err != nil {
+	// The record is addressed per session (SPEC-SESSION-TELEMETRY-001
+	// REQ-ST-001): it lives under state/context-usage/ named for the session
+	// being accounted for, which here is the transcript fixture's own id.
+	snap := `{"schema_version":1,"session_id":"` + fixtureSessionID + `","writer_pid":42,"captured_at":"2026-08-17T00:00:00Z","context_window_size":1000000,"tokens_used":500000,"raw_pct":50.0,"stage":"soft","band":"large"}`
+	snapPath := filepath.Join(stateDir, "context-usage", fixtureSessionID+".json")
+	if err := os.MkdirAll(filepath.Dir(snapPath), 0o755); err != nil {
+		t.Fatalf("mkdir context-usage: %v", err)
+	}
+	if err := os.WriteFile(snapPath, []byte(snap), 0o644); err != nil {
 		t.Fatalf("write context fixture: %v", err)
 	}
 
@@ -292,7 +299,7 @@ func TestRunTokensRecordContextSnapshot(t *testing.T) {
 	if rec.Context == nil {
 		t.Fatalf("record.context is nil, want embedded snapshot")
 	}
-	if rec.Context.SessionID != "ctx-session" ||
+	if rec.Context.SessionID != fixtureSessionID ||
 		rec.Context.ContextWindowSize != 1000000 ||
 		rec.Context.TokensUsed != 500000 ||
 		rec.Context.Stage != "soft" ||
