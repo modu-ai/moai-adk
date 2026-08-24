@@ -877,16 +877,17 @@ func TestRenderDefaultV3_Line3(t *testing.T) {
 	}
 	// Layout v3 CH3 (2026-05-22 fix, 2026-08-18 merge, 2026-08-20 pair
 	// reassignment): combined repo+branch segment, "📡 owner/name, issues/PRs
-	// | 🅱️ branch +N" (pipe separator, repo prefix required). dirty =
+	// | 🅱️ branch ↑A ↓B +N" (pipe separator, repo prefix required). dirty =
 	// Staged(3) + Modified(2) + Untracked(1) = 6; the forge counts ride the
-	// repo part where ahead/behind used to.
-	if !strings.Contains(l3, "📡 modu-ai/moai-adk, 4/2 | 🅱️ feat/auth +6") {
+	// repo part, and Ahead=2 / Behind=1 ride the branch as arrows.
+	if !strings.Contains(l3, "📡 modu-ai/moai-adk, 4/2 | 🅱️ feat/auth ↑2 ↓1 +6") {
 		t.Errorf("default L3 must contain combined repo_branch segment with pipe separator, got: %q", l3)
 	}
-	// Ahead=2 / Behind=1 are still carried on GitStatusData but must not reach
-	// the line in any form.
-	if strings.Contains(l3, "2/1") || strings.Contains(l3, "↑") || strings.Contains(l3, "↓") {
-		t.Errorf("ahead/behind must not render on L3, got: %q", l3)
+	// Ahead/behind is back on the branch as arrows (operator request), but the
+	// slash pair still belongs to the forge counts alone — a second number pair
+	// is the misread the arrow form exists to avoid.
+	if strings.Contains(l3, "2/1") {
+		t.Errorf("ahead/behind must not render as a slash pair on L3, got: %q", l3)
 	}
 	if strings.Contains(l3, "📦") || strings.Contains(l3, "🔨") {
 		t.Errorf("default L3 must not contain legacy 📦/🔨 prefix, got: %q", l3)

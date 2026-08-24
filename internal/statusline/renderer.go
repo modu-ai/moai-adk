@@ -542,16 +542,17 @@ func (r *Renderer) isPREnabled() bool {
 //
 // Only one number/number pair may appear on the line: two of them side by
 // side is what produced the 2026-08-18 misread of the branch's "59/0" as
-// issues over pull requests. The pair therefore carries the counts an
-// operator actually reads off a status bar, and ahead/behind is not rendered
-// anywhere — the data is still collected on GitStatusData, it simply has no
-// slot on the bar.
+// issues over pull requests. The slash pair therefore belongs to the forge
+// counts alone. Ahead/behind returns to the branch in its original arrow form
+// (↑N ↓N) — arrows are not a slash pair, so the counts are readable again
+// without reintroducing the ambiguity the removal was protecting against.
 //
 // Behavior:
-//   - Workspace.Repo present + Branch present: "📡 owner/name, issues/PRs | 🅱️ branch +N"
+//   - Workspace.Repo present + Branch present: "📡 owner/name, issues/PRs | 🅱️ branch ↑A ↓B +N"
 //   - forge pair: see renderForgePair (zeros shown; unknown is "-/-"; gated segment omits it)
-//   - Workspace.Repo nil or incomplete:        "🅱️ branch +N" (forge half withheld, branch kept)
+//   - Workspace.Repo nil or incomplete:        "🅱️ branch ↑A ↓B +N" (forge half withheld, branch kept)
 //   - Branch empty:                            "" (empty — no git context)
+//   - Ahead / Behind == 0:                      the corresponding arrow omitted
 //   - Dirty (Modified + Staged + Untracked) == 0: " +N" portion omitted
 //   - Worktree active:                          "[WT] " prefix prepended to branch
 //
@@ -564,7 +565,8 @@ func (r *Renderer) isPREnabled() bool {
 // @MX:NOTE: [AUTO] layout v3 CH3 — the sole renderer of the repo+branch line.
 // @MX:NOTE: [AUTO] Hide the FORGE half when remote repo info is missing (per user request 2026-05-22 — written when this segment carried repo identity alone).
 // @MX:NOTE: [AUTO] 2026-08-18 merge — GitHub counts moved here from renderSessionLine; ahead/behind demoted from ↑N/↓N arrows on the branch to an always-on "a/b" pair on the repo.
-// @MX:NOTE: [AUTO] 2026-08-20 — the slash pair now carries open issues / open PRs; ahead/behind is no longer rendered (operator decision, tradeoff accepted).
+// @MX:NOTE: [AUTO] 2026-08-20 — the slash pair carries open issues / open PRs.
+// @MX:NOTE: [AUTO] ahead/behind restored on the branch as ↑N ↓N (arrows, not a slash pair) per operator request — the counts had been collected but rendered nowhere.
 func (r *Renderer) renderRepoBranchSegment(data *StatusData) string {
 	if data == nil || !data.Git.Available || data.Git.Branch == "" {
 		return ""
@@ -579,7 +581,20 @@ func (r *Renderer) renderRepoBranchSegment(data *StatusData) string {
 	}
 	branch = "🅱️ " + branch
 
-	// Dirty count (omitted when 0)
+	// Ahead/behind: commits this branch holds that its upstream does not, and the
+	// reverse. Rendered as arrows rather than a slash pair — the line already
+	// carries one "N/N" (the forge counts), and a second one is what produced the
+	// misread that took these counts off the bar. Each arrow is omitted at zero, so
+	// a synced branch stays quiet.
+	if data.Git.Ahead > 0 {
+		branch += fmt.Sprintf(" ↑%d", data.Git.Ahead)
+	}
+	if data.Git.Behind > 0 {
+		branch += fmt.Sprintf(" ↓%d", data.Git.Behind)
+	}
+
+	// Dirty count (omitted when 0). Follows the arrows: committed history first,
+	// then uncommitted work.
 	dirty := data.Git.Modified + data.Git.Staged + data.Git.Untracked
 	if dirty > 0 {
 		branch += fmt.Sprintf(" +%d", dirty)

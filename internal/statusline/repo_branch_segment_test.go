@@ -1,6 +1,10 @@
 package statusline
 
-import "testing"
+import (
+	"regexp"
+	"strings"
+	"testing"
+)
 
 // The branch half of the L3 repo+branch segment comes from local git and is
 // available inside any repository. The forge half (📡 owner/name) comes from the
@@ -102,6 +106,90 @@ func TestRenderRepoBranchSegment_DirtyCountSumsAllThreeCategories(t *testing.T) 
 	}}
 	if got := newTestRenderer().renderRepoBranchSegment(d); got != "🅱️ main +10" {
 		t.Errorf("dirty sum = %q, want %q", got, "🅱️ main +10")
+	}
+}
+
+// Ahead/behind — how many commits the local branch holds that the remote does
+// not, and vice versa — is collected on GitStatusData and was rendered on the
+// branch as ↑N/↓N until a layout change moved it to a slash pair on the repo,
+// and a later one reassigned that pair to open issues / open PRs, leaving the
+// counts collected but rendered nowhere.
+//
+// The constraint that removal was protecting is real and is preserved here: only
+// ONE number/number pair may appear on the line, because two slash pairs side by
+// side were misread. Arrows are not a slash pair, so ↑3 ↓1 restores the counts
+// without reintroducing the ambiguity.
+
+// TestRenderRepoBranchSegment_AheadBehindRendersAsArrows pins the restored form.
+func TestRenderRepoBranchSegment_AheadBehindRendersAsArrows(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name          string
+		ahead, behind int
+		want          string
+	}{
+		{"ahead only", 3, 0, "🅱️ main ↑3"},
+		{"behind only", 0, 259, "🅱️ main ↓259"},
+		{"both", 1, 259, "🅱️ main ↑1 ↓259"},
+		{"synced — no arrows", 0, 0, "🅱️ main"},
+	}
+	for _, tc := range cases {
+		d := &StatusData{Git: GitStatusData{
+			Branch:    "main",
+			Available: true,
+			Ahead:     tc.ahead,
+			Behind:    tc.behind,
+		}}
+		if got := newTestRenderer().renderRepoBranchSegment(d); got != tc.want {
+			t.Errorf("%s = %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}
+
+// TestRenderRepoBranchSegment_ArrowsPrecedeDirtyCount pins the ordering: the
+// arrows describe committed history, the "+N" tail describes uncommitted work, and
+// they read left to right in that order.
+func TestRenderRepoBranchSegment_ArrowsPrecedeDirtyCount(t *testing.T) {
+	t.Parallel()
+
+	d := repoBranchFixture() // 7 modified + 21 untracked
+	d.Git.Ahead = 1
+	d.Git.Behind = 259
+
+	const want = "🅱️ main ↑1 ↓259 +28"
+	if got := newTestRenderer().renderRepoBranchSegment(d); got != want {
+		t.Errorf("no repo = %q, want %q", got, want)
+	}
+
+	d.Workspace = WorkspaceData{Repo: &RepoInfo{Host: "github.com", Owner: "modu-ai", Name: "moai-adk"}}
+	d.GitHub = GitHubCounts{OpenIssues: 9, OpenPRs: 4, Available: true}
+	const wantFull = "📡 modu-ai/moai-adk, 9/4 | 🅱️ main ↑1 ↓259 +28"
+	if got := newTestRenderer().renderRepoBranchSegment(d); got != wantFull {
+		t.Errorf("with repo = %q, want %q", got, wantFull)
+	}
+}
+
+// TestRenderRepoBranchSegment_OnlyOneSlashPair is the guard for the constraint the
+// earlier removal was protecting: the forge counts are the line's only "N/N", so
+// restoring ahead/behind must not add a second one.
+func TestRenderRepoBranchSegment_OnlyOneSlashPair(t *testing.T) {
+	t.Parallel()
+
+	d := repoBranchFixture()
+	d.Git.Ahead = 59
+	d.Git.Behind = 0
+	d.Workspace = WorkspaceData{Repo: &RepoInfo{Host: "github.com", Owner: "modu-ai", Name: "moai-adk"}}
+	d.GitHub = GitHubCounts{OpenIssues: 9, OpenPRs: 4, Available: true}
+
+	got := newTestRenderer().renderRepoBranchSegment(d)
+	// The owner/name slash is not a number pair; only "N/N" reads as counts.
+	pairs := regexp.MustCompile(`\d+/\d+`).FindAllString(got, -1)
+	if len(pairs) != 1 {
+		t.Errorf("segment %q carries number pairs %v, want exactly 1 (the forge counts)", got, pairs)
+	}
+	if strings.Contains(got, "59/0") {
+		t.Errorf("segment %q renders ahead/behind as a slash pair — the misread this guards against", got)
 	}
 }
 
