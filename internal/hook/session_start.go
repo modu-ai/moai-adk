@@ -319,6 +319,14 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		}
 	}
 
+	// SPEC-KANBAN-RECORD-SESSION-KEY-001: write THIS session's kanban record,
+	// keyed by the identifier its own runtime delivered. The launcher used to
+	// write it and could not key it correctly — it runs before the session it
+	// launches exists (see session_start_record.go). Non-kanban sessions get
+	// no record and nothing happens here; every failure is discarded, so the
+	// call returns nothing and the session start cannot gate on it.
+	writeKanbanSessionRecord(input, resolveWorktreeRepoRoot)
+
 	// SPEC-STEERING-ALIGN-GUARDRAIL-HOOK-001: GLM 가드레일 리마인더 주입.
 	// GLM 백엔드 세션(PROCESS env ANTHROPIC_BASE_URL이 z.ai 포함)일 때만 z.ai MCP
 	// 라우팅 요약을 AdditionalContext에 추가한다. 비-GLM 세션은 빈 문자열을
