@@ -1211,6 +1211,23 @@ var codexFindingBullet = regexp.MustCompile(`(?m)^\s*[-*]\s+\[[A-Za-z]+\d+\]`)
 // reading that as the default pass launders uncertainty into a clean verdict.
 var codexStatedVerdict = regexp.MustCompile(`(?mi)^[\s>#]*[*_]{0,2}verdict[*_]{0,2}\s*[:\-–—]+[*_]{0,2}\s*[*_]{0,2}(pass|fail|inconclusive)\b`)
 
+// codexScoredVerdict matches the OTHER way codex states a verdict in its own
+// words: a score line — "FAIL 0.75 / 1.00" — opening the response. Card t229
+// found that form synthesizing as a pass, because neither the bullet heuristic
+// nor the label regex above reads it.
+//
+// It is a separate recognizer rather than a widening of codexStatedVerdict on
+// purpose. That regex keeps a deliberately narrow contract — the label opens a
+// line and names the verdict on it — and folding a second, differently shaped
+// form into it would cost that narrowness for both.
+//
+// The contract here is narrow for its own reason: PASS and FAIL are ordinary
+// English words. Requiring the line head, an uppercase verdict word, and a
+// score in 0..1 keeps "the suite reported PASS 12 times before the regression"
+// prose about a test run rather than a verdict about the change — a loose
+// recognizer would not close the hole, it would widen it.
+var codexScoredVerdict = regexp.MustCompile(`(?m)^[\s>#*_]*(PASS|FAIL|INCONCLUSIVE)\b[ \t]+[01]\.\d+\b`)
+
 // codexVerdictSignal is one verdict reading taken from a review body, kept
 // alongside the name of the signal that produced it. The name exists so a
 // divergence can be described in the operator's terms rather than as two bare
@@ -1228,6 +1245,9 @@ func codexVerdictSignalsOf(reviewText string) []codexVerdictSignal {
 	var signals []codexVerdictSignal
 	if m := codexStatedVerdict.FindStringSubmatch(reviewText); m != nil {
 		signals = append(signals, codexVerdictSignal{"stated verdict label", strings.ToLower(m[1])})
+	}
+	if m := codexScoredVerdict.FindStringSubmatch(reviewText); m != nil {
+		signals = append(signals, codexVerdictSignal{"scored verdict line", strings.ToLower(m[1])})
 	}
 	if codexFindingBullet.MatchString(reviewText) {
 		signals = append(signals, codexVerdictSignal{"severity-tagged finding bullet", "fail"})
