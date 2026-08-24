@@ -38,11 +38,11 @@
 판정 명령: `moai constitution validate; echo exit=$?` 및 `moai constitution validate 2>&1 | grep -c DRIFT`
 **RED**: `exit=1`, DRIFT `67`. (전문: `.moai/reports/t232/validate-repro.txt`)
 
-### AC-ZRR-002 — 로컬 트리에서 101/101 clause 가 리터럴로 발견된다 (독립 체크)
+### AC-ZRR-002 — 로컬 트리에서 live 97/97 clause 가 리터럴로 발견된다 (독립 체크)
 
 - **Given** 수리된 로컬 레지스트리와 로컬 규칙 트리가 있고,
 - **When** 각 엔트리의 `clause:` 값을 그 엔트리의 `file:` 에 대고 `grep -F -q --` 로 찾으면,
-- **Then** 101건 전부가 적중한다(적중 실패 0건).
+- **Then** live(비은퇴) 97건 전부가 적중한다(적중 실패 0건). 은퇴 4건(`[SUPERSEDED …]` 마커)은 clause 에서 면제되며 다섯째 버킷 `은퇴 clause 면제`로 보고한다(§1.2 C안) — 그 anchor 는 AC-ZRR-004 의 101/101 에 포함된다.
 - **And** 어떤 엔트리의 `clause:` 도 빈 문자열이 아니며, **각 clause 는 자기 `file:` 안에서 정확히 1회 적중한다**(측정: 현재 적중 25건 중 24건이 1회 적중 — 진짜 verbatim 인용은 유일하다). 0회는 미적중이고, 2회 이상은 clause 가 지나치게 짧다는 신호이므로 둘 다 실패로 센다.
 - **And** 어떤 엔트리의 `file:` 도 **레지스트리 파일 자신**(`.claude/rules/moai/core/zone-registry.md`)이 아니다 — 자기참조는 clause 를 정의상 적중시키고(측정: `grep -F -c -- '16-language neutrality' <registry>` → `1`) 레지스트리의 heading 50개가 anchor 까지 해석시켜, 수리를 한 줄도 하지 않고 이 AC 를 통과시킨다.
 - **And** `file:` 값이 바뀐 엔트리의 목록(구 → 신)을 `progress.md` §E.2 에 인용하고, sync-phase 리뷰가 각 이동의 타당성을 판정한다.
@@ -55,11 +55,11 @@ boolean 이 아니라 횟수를 세는 이유: "빈 문자열 아님"만 요구�
 
 > 이 AC는 검증기보다 엄격하다: 정규화가 없으므로 clause 는 **한 줄 안에 연속으로 존재하는 구간**이어야 한다. 현재 검증기는 통과하지만 이 체크는 실패하는 엔트리가 8건 있다(`CONST-V3R5-004/005/006/007/008/010/011/013`) — 이들도 GREEN 대상이다.
 
-### AC-ZRR-003 — 템플릿 트리에서도 101/101 이 리터럴로 발견된다
+### AC-ZRR-003 — 템플릿 트리에서도 live 97/97 이 리터럴로 발견된다
 
 - **Given** 수리된 템플릿 레지스트리(`internal/template/templates/.claude/rules/moai/core/zone-registry.md`)가 있고,
 - **When** 각 엔트리의 `clause:` 를 `internal/template/templates/<file>` 에 대고 `grep -F -q --` 로 찾으면,
-- **Then** 101건 전부가 적중한다.
+- **Then** live(비은퇴) 97건 전부가 적중한다 — 은퇴 4건은 clause 에서 면제(§1.2 C안), anchor 는 AC-ZRR-004 의 101/101 에 포함.
 - **And** 각 clause 가 템플릿 트리의 자기 `file:` 안에서 **정확히 1회 적중한다**(0회 = 미적중, 2회 이상 = 지나치게 짧음, 둘 다 실패).
 - **And** AC-ZRR-002 의 나머지 부가 조건(자기참조 `file:` 금지 / `file:` 변경 목록 인용)이 템플릿 미러에도 동일하게 적용된다 — 두 미러는 바이트 동일하므로 이 mutant 들은 양쪽을 한 번에 통과시킨다.
 
