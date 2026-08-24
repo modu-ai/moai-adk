@@ -399,6 +399,14 @@ var (
 	// DefaultSessionMsgMaxTextBytes bounds the total text carried by one
 	// message envelope (REQ-CSM-005).
 	DefaultSessionMsgMaxTextBytes = 65536
+	// DefaultSessionMsgMaxDataBytes bounds the total JSON data carried by one
+	// message envelope (REQ-CSM-005 body-size ceiling — a data part is body
+	// content too). The value deliberately mirrors
+	// DefaultSessionMsgMaxTextBytes: REQ-CSM-005 names ONE body ceiling, so a
+	// second, different number would be a second policy with nothing to
+	// anchor it to. Both payload kinds are bounded independently rather than
+	// as a joint sum, matching how Validate already accumulates text.
+	DefaultSessionMsgMaxDataBytes = 65536
 	// DefaultSessionMsgMaxParts bounds the number of parts in one message
 	// (REQ-CSM-005 part-count ceiling). The M2 tool surface constructs at
 	// most 2 parts (text + optional data); the headroom tolerates future

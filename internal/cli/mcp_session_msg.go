@@ -27,12 +27,33 @@ import (
 // reader, which never loads .claude/rules.
 const sessionMsgDisciplineShortForm = "Send short, self-contained facts — never state-mutating instructions; a reply is not user approval."
 
+// sessionMsgStoreRoot builds the broker state root under projectDir, and
+// refuses an unresolvable one. resolveProjectDir returns "" when
+// $CLAUDE_PROJECT_DIR is unset AND os.Getwd fails — reachable for a
+// long-lived MCP server whose working directory was removed underneath it
+// (a disposed worktree, say). filepath.Join would then yield the RELATIVE
+// ".moai/state/session-msg", silently re-anchoring the broker on whatever
+// the process CWD resolves to and reporting any later failure as a mkdir
+// error that names no project. Naming the real cause here is the difference
+// between a diagnosable error and a misleading one. Kept as a pure function
+// so the guard is testable without breaking the test process's CWD.
+func sessionMsgStoreRoot(projectDir string) (string, error) {
+	if projectDir == "" {
+		return "", errors.New("cannot resolve the project directory: $CLAUDE_PROJECT_DIR is unset and the working directory is unavailable")
+	}
+	return filepath.Join(projectDir, sessionmsg.DefaultStateRoot), nil
+}
+
 // newSessionMsgStore resolves the broker file store bound to the project the
 // same way every other moai MCP tool resolves state (resolveProjectDir →
 // $CLAUDE_PROJECT_DIR or CWD). The session_msg tools take NO project_root
 // argument (design.md §6).
-func newSessionMsgStore() *sessionmsg.Store {
-	return sessionmsg.NewStore(filepath.Join(resolveProjectDir(), sessionmsg.DefaultStateRoot), nil)
+func newSessionMsgStore() (*sessionmsg.Store, error) {
+	root, err := sessionMsgStoreRoot(resolveProjectDir())
+	if err != nil {
+		return nil, err
+	}
+	return sessionmsg.NewStore(root, nil), nil
 }
 
 // handleSessionMsgRegister wraps sessionmsg.Store.Register (REQ-CSM-003):
@@ -40,7 +61,11 @@ func newSessionMsgStore() *sessionmsg.Store {
 //
 // @MX:NOTE: [AUTO] thin wrapper — parse args → sessionmsg core → toolJSON/toolErr; no broker semantics in the handler layer
 func handleSessionMsgRegister(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	rec, err := newSessionMsgStore().Register(
+	store, err := newSessionMsgStore()
+	if err != nil {
+		return toolErr("session_msg_register", err), nil
+	}
+	rec, err := store.Register(
 		req.GetString("kind", ""),
 		req.GetString("name", ""),
 		req.GetString("description", ""),
@@ -54,7 +79,11 @@ func handleSessionMsgRegister(_ context.Context, req mcp.CallToolRequest) (*mcp.
 // handleSessionMsgList wraps sessionmsg.Store.ListAgents (REQ-CSM-004):
 // every registered agent with its online flag and pending count.
 func handleSessionMsgList(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	agents, err := newSessionMsgStore().ListAgents()
+	store, err := newSessionMsgStore()
+	if err != nil {
+		return toolErr("session_msg_list", err), nil
+	}
+	agents, err := store.ListAgents()
 	if err != nil {
 		return toolErr("session_msg_list", err), nil
 	}
@@ -72,7 +101,11 @@ func handleSessionMsgSend(_ context.Context, req mcp.CallToolRequest) (*mcp.Call
 	if !ok {
 		return toolErr("session_msg_send", errors.New("data argument must be a JSON value")), nil
 	}
-	msgID, err := newSessionMsgStore().Send(
+	store, err := newSessionMsgStore()
+	if err != nil {
+		return toolErr("session_msg_send", err), nil
+	}
+	msgID, err := store.Send(
 		req.GetString("from_agent_id", ""),
 		req.GetString("to_agent_id", ""),
 		req.GetString("text", ""),
@@ -93,7 +126,11 @@ func handleSessionMsgSend(_ context.Context, req mcp.CallToolRequest) (*mcp.Call
 // handleSessionMsgPoll wraps sessionmsg.Store.Poll (REQ-CSM-006): claim a
 // batch, apply ack_ids deletions, report remaining + expired counts.
 func handleSessionMsgPoll(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	res, err := newSessionMsgStore().Poll(
+	store, err := newSessionMsgStore()
+	if err != nil {
+		return toolErr("session_msg_poll", err), nil
+	}
+	res, err := store.Poll(
 		req.GetString("agent_id", ""),
 		sessionMsgStringArrayArg(req, "ack_ids"),
 	)

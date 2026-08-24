@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -194,7 +196,10 @@ func (s *Store) unknownAgentError(agentID, role string) error {
 // envelope is written atomically to the recipient's
 // mailbox/<agentId>/pending/<messageId>.json under the recipient's advisory
 // lock. The sender's heartbeat is refreshed after the mailbox scope ends
-// (REQ-CSM-004) — locks are never nested.
+// (REQ-CSM-004) — locks are never nested, and the refresh is BEST-EFFORT: by
+// the time it runs the envelope is already delivered, so a heartbeat write
+// failure must not take the messageId away from the caller (a caller that
+// retried on such an error would double-send). See Poll for the same rule.
 //
 // @MX:ANCHOR: [AUTO] broker send — validated atomic enqueue into recipient pending
 // @MX:REASON: fan_in >= 3 (M2 session_msg_send handler, e2e both directions, concurrency test). Envelope layout or validation changes here alter every receiver's on-disk contract.
@@ -210,13 +215,13 @@ func (s *Store) Send(fromAgentID, toAgentID, text string, data json.RawMessage, 
 
 	sender, err := s.readAgent(fromAgentID)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			return "", s.unknownAgentError(fromAgentID, "sender")
 		}
 		return "", err
 	}
 	if _, err := s.readAgent(toAgentID); err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			return "", s.unknownAgentError(toAgentID, "receiver")
 		}
 		return "", err
@@ -263,9 +268,12 @@ func (s *Store) Send(fromAgentID, toAgentID, text string, data json.RawMessage, 
 
 	// Sender-side heartbeat refresh, sequenced after the mailbox scope so no
 	// lock ever nests inside another (design.md §5.2 deadlock avoidance).
-	if err := s.heartbeat(fromAgentID); err != nil {
-		return "", err
-	}
+	// Best-effort by design: the message IS delivered at this point, and the
+	// only consequence of a failed refresh is a stale lastHeartbeat — which
+	// ListAgents recomputes from the record on every call and which the next
+	// successful Send/Poll repairs. Reporting it as a Send failure would cost
+	// the caller the id of a message that was actually written.
+	_ = s.heartbeat(fromAgentID)
 	return msgID, nil
 }
 
@@ -291,7 +299,7 @@ func (s *Store) Poll(agentID string, ackIDs []string) (PollResult, error) {
 	}
 
 	if _, err := s.readAgent(agentID); err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			return PollResult{}, s.unknownAgentError(agentID, "agent")
 		}
 		return PollResult{}, err
@@ -364,11 +372,24 @@ func (s *Store) Poll(agentID string, ackIDs []string) (PollResult, error) {
 			}
 		}
 
-		// Claim: move up to the batch ceiling from pending to claimed.
+		// Claim: move up to the batch ceiling from pending to claimed, oldest
+		// first. listEnvelopes returns os.ReadDir's lexical order, and message
+		// filenames are msg-<random hex>, so without this sort a mailbox
+		// deeper than the batch ceiling would hand back a RANDOM subset rather
+		// than the oldest one. REQ-CSM-006 fixes the ceiling but says nothing
+		// about ordering; FIFO by sentAt is the reading that makes the ceiling
+		// a delivery delay instead of a lottery. MessageID breaks ties so two
+		// envelopes stamped in the same clock tick still claim deterministically.
 		live, err := listEnvelopes(pendingDir)
 		if err != nil {
 			return err
 		}
+		sort.Slice(live, func(i, j int) bool {
+			if !live[i].Delivery.SentAt.Equal(live[j].Delivery.SentAt) {
+				return live[i].Delivery.SentAt.Before(live[j].Delivery.SentAt)
+			}
+			return live[i].Message.MessageID < live[j].Message.MessageID
+		})
 		batch := config.DefaultSessionMsgPollBatch
 		if batch <= 0 {
 			batch = 1
@@ -397,9 +418,11 @@ func (s *Store) Poll(agentID string, ackIDs []string) (PollResult, error) {
 	}
 
 	// Heartbeat refresh, sequenced after the mailbox scope (no nested locks).
-	if err := s.heartbeat(agentID); err != nil {
-		return PollResult{}, err
-	}
+	// Best-effort by design: the pending→claimed move is already committed to
+	// disk with its ClaimedAt stamp, so returning an empty PollResult here
+	// would hide real messages from the receiver until the claim TTL redeems
+	// them. A stale lastHeartbeat self-heals on the next call.
+	_ = s.heartbeat(agentID)
 	return result, nil
 }
 
@@ -408,7 +431,7 @@ func (s *Store) Poll(agentID string, ackIDs []string) (PollResult, error) {
 func listEnvelopes(dir string) ([]Envelope, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("sessionmsg: read %s: %w", dir, err)
@@ -433,7 +456,7 @@ func listEnvelopes(dir string) ([]Envelope, error) {
 
 // removeIfExists removes path, tolerating an already-absent file.
 func removeIfExists(path string) error {
-	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+	if err := os.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return fmt.Errorf("sessionmsg: remove %s: %w", path, err)
 	}
 	return nil
@@ -445,7 +468,7 @@ func removeFirstOf(paths ...string) (bool, error) {
 	for _, p := range paths {
 		if err := os.Remove(p); err == nil {
 			return true, nil
-		} else if !os.IsNotExist(err) {
+		} else if !errors.Is(err, fs.ErrNotExist) {
 			return false, fmt.Errorf("sessionmsg: remove %s: %w", p, err)
 		}
 	}

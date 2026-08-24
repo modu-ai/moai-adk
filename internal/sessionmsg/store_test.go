@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sync"
@@ -73,7 +74,7 @@ func TestSendPollAck(t *testing.T) {
 	if _, err := os.Stat(claimedPath); err != nil {
 		t.Fatalf("claimed envelope file missing after poll: %v", err)
 	}
-	if _, err := os.Stat(pendingPath); !os.IsNotExist(err) {
+	if _, err := os.Stat(pendingPath); !errors.Is(err, fs.ErrNotExist) {
 		t.Errorf("pending file still present after claim (err=%v)", err)
 	}
 
@@ -85,7 +86,7 @@ func TestSendPollAck(t *testing.T) {
 	if res2.AckedCount != 1 {
 		t.Errorf("ack count = %d, want 1", res2.AckedCount)
 	}
-	if _, err := os.Stat(claimedPath); !os.IsNotExist(err) {
+	if _, err := os.Stat(claimedPath); !errors.Is(err, fs.ErrNotExist) {
 		t.Errorf("claimed file still present after ack (err=%v)", err)
 	}
 	if len(res2.Messages) != 0 {
@@ -154,14 +155,20 @@ func TestSendPollAck(t *testing.T) {
 	}
 
 	// Oversize text is rejected at validation (threshold override proves the
-	// bound is live, not vestigial).
-	origMax := config.DefaultSessionMsgMaxTextBytes
-	config.DefaultSessionMsgMaxTextBytes = 8
-	_, err = s.Send(sender.AgentID, receiver.AgentID, "123456789", nil, "", "")
-	config.DefaultSessionMsgMaxTextBytes = origMax
-	if err == nil {
-		t.Error("oversize text accepted")
-	}
+	// bound is live, not vestigial). The override lives in a closure with a
+	// deferred restore: an inline restore is skipped by any early t.Fatal
+	// (which runs deferred functions but not the following statements), and
+	// the shortened ceiling would then leak into every later test in the
+	// package. The closure also restores immediately rather than at test end,
+	// so the assertions below still run against the production ceiling.
+	func() {
+		origMax := config.DefaultSessionMsgMaxTextBytes
+		defer func() { config.DefaultSessionMsgMaxTextBytes = origMax }()
+		config.DefaultSessionMsgMaxTextBytes = 8
+		if _, err := s.Send(sender.AgentID, receiver.AgentID, "123456789", nil, "", ""); err == nil {
+			t.Error("oversize text accepted")
+		}
+	}()
 
 	// Neither text nor data yields no parts → rejected.
 	if _, err := s.Send(sender.AgentID, receiver.AgentID, "", nil, "", ""); err == nil {
@@ -259,7 +266,7 @@ func TestMessageExpirySweep(t *testing.T) {
 	if res.ExpiredCount != 1 {
 		t.Errorf("poll A expiredCount = %d, want 1", res.ExpiredCount)
 	}
-	if _, err := os.Stat(filepath.Join(root, "mailbox", receiver.AgentID, "pending", msgID1+".json")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(root, "mailbox", receiver.AgentID, "pending", msgID1+".json")); !errors.Is(err, fs.ErrNotExist) {
 		t.Errorf("expired pending file not deleted (err=%v)", err)
 	}
 
@@ -287,7 +294,7 @@ func TestMessageExpirySweep(t *testing.T) {
 	if res3.ExpiredCount != 1 {
 		t.Errorf("poll B expiredCount = %d, want 1 (this call's deletions only)", res3.ExpiredCount)
 	}
-	if _, err := os.Stat(filepath.Join(root, "mailbox", receiver.AgentID, "claimed", msgID2+".json")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(root, "mailbox", receiver.AgentID, "claimed", msgID2+".json")); !errors.Is(err, fs.ErrNotExist) {
 		t.Errorf("expired claimed file not deleted (err=%v)", err)
 	}
 }

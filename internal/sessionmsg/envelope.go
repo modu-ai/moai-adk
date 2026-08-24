@@ -82,8 +82,11 @@ type Envelope struct {
 // Validate checks the A2A-aligned constraints on m (REQ-CSM-002):
 // non-empty messageId, known role, at least one and at most
 // config.DefaultSessionMsgMaxParts parts, part kinds restricted to text|data
-// with a consistent payload, and total text within
-// config.DefaultSessionMsgMaxTextBytes.
+// with a consistent payload, total text within
+// config.DefaultSessionMsgMaxTextBytes, and total data within
+// config.DefaultSessionMsgMaxDataBytes. Both payload kinds are body content
+// under the REQ-CSM-005 body-size ceiling, so both are bounded — an unbounded
+// data part would otherwise validate and be persisted at any size.
 func (m *Message) Validate() error {
 	if m.MessageID == "" {
 		return errors.New("sessionmsg: message validation: messageId is empty")
@@ -98,6 +101,7 @@ func (m *Message) Validate() error {
 		return fmt.Errorf("sessionmsg: message validation: %d parts exceeds ceiling %d", len(m.Parts), config.DefaultSessionMsgMaxParts)
 	}
 	totalText := 0
+	totalData := 0
 	for i, p := range m.Parts {
 		switch p.Kind {
 		case PartKindText:
@@ -121,12 +125,16 @@ func (m *Message) Validate() error {
 			if p.Text != "" {
 				return fmt.Errorf("sessionmsg: message validation: part[%d] kind %q must not carry a text payload", i, p.Kind)
 			}
+			totalData += len(p.Data)
 		default:
 			return fmt.Errorf("sessionmsg: message validation: part[%d] has unsupported kind %q (want %q or %q; A2A raw|url excluded)", i, p.Kind, PartKindText, PartKindData)
 		}
 	}
 	if totalText > config.DefaultSessionMsgMaxTextBytes {
 		return fmt.Errorf("sessionmsg: message validation: text size %d exceeds ceiling %d", totalText, config.DefaultSessionMsgMaxTextBytes)
+	}
+	if totalData > config.DefaultSessionMsgMaxDataBytes {
+		return fmt.Errorf("sessionmsg: message validation: data size %d exceeds ceiling %d", totalData, config.DefaultSessionMsgMaxDataBytes)
 	}
 	return nil
 }

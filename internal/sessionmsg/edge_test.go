@@ -3,6 +3,7 @@ package sessionmsg
 import (
 	"encoding/json"
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -43,7 +44,7 @@ func TestHeartbeatIdempotentOnMissing(t *testing.T) {
 	if err := s.heartbeat("claude-00000000"); err != nil {
 		t.Fatalf("heartbeat on missing agent: %v", err)
 	}
-	if _, err := os.Stat(filepath.Join(s.root, "agents", "claude-00000000.json")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(s.root, "agents", "claude-00000000.json")); !errors.Is(err, fs.ErrNotExist) {
 		t.Errorf("heartbeat on missing agent created a record (err=%v)", err)
 	}
 }

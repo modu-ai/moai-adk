@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -181,7 +182,7 @@ func (s *Store) heartbeat(agentID string) error {
 	return s.withAgentLock(agentID, func() error {
 		rec, err := s.readAgent(agentID)
 		if err != nil {
-			if os.IsNotExist(err) {
+			if errors.Is(err, fs.ErrNotExist) {
 				return nil
 			}
 			return err
@@ -197,7 +198,7 @@ func (s *Store) heartbeat(agentID string) error {
 func (s *Store) readAllAgents() ([]AgentRecord, error) {
 	entries, err := os.ReadDir(s.agentsDir())
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, fs.ErrNotExist) {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("sessionmsg: read agents dir: %w", err)
@@ -220,8 +221,8 @@ func (s *Store) readAllAgents() ([]AgentRecord, error) {
 	return records, nil
 }
 
-// readAgent loads one agent record. A missing file returns the raw
-// os.IsNotExist-able error for the caller to classify.
+// readAgent loads one agent record. A missing file returns the raw error with
+// its fs.ErrNotExist chain intact, for the caller to classify with errors.Is.
 func (s *Store) readAgent(agentID string) (AgentRecord, error) {
 	data, err := atomicfile.ReadFile(s.agentPath(agentID))
 	if err != nil {

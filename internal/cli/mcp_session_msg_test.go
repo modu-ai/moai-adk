@@ -117,7 +117,11 @@ func TestSessionMsgListHandlerReportsAgents(t *testing.T) {
 	kinds := map[string]bool{}
 	for _, a := range agents {
 		am, _ := a.(map[string]any)
-		kinds[am["kind"].(string)] = true
+		kind, ok := am["kind"].(string)
+		if !ok {
+			t.Fatalf("agent entry has no string kind: %+v", am)
+		}
+		kinds[kind] = true
 		if online, _ := am["online"].(bool); !online {
 			t.Errorf("freshly registered agent reported offline: %+v", am)
 		}
