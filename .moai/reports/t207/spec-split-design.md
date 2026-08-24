@@ -397,3 +397,123 @@ GLM 세션에서는 그 자리에 넣을 값이 애초에 없고(`ANTHROPIC_DEFA
 GLM 백엔드 세션의 페이로드는 관측하지 못했다(현재 이 머신에 GLM 세션 없음). `effort` 가 GLM
 경유에서도 오는지는 **미관측**이며, 안 오면 GLM 세션의 effort 셀만 미기록이 된다 — A-002 의
 빈 경로로 정상 처리되므로 설계는 성립한다. A 의 plan 확인 항목에 넣는다.
+
+---
+
+## 부록 2 — 세션 id 세 값의 정체, 그리고 그것이 드러낸 조인 결함 (리드 지시 선행 측정)
+
+**결론 먼저.** 세 값은 **세 개의 id 체계가 아니라 한 체계(Claude Code 의 `session_id`)를 담은 세
+개의 슬롯**이다. 그런데 그 확인 과정에서 **A-001 보다 더 아래를 때리는 결함**이 나왔다:
+`kanban.Record` 는 그 세션 자신의 id 로 키잉되지 않는다. C 의 조인이 오늘 데이터 위에서 닫히지
+않는다.
+
+### 2-1. 세 값이 왜 다른가
+
+| 슬롯 | 값 | 무엇을 담는가 |
+|---|---|---|
+| statusline 페이로드 `session_id` | `d281730e` (lead) | **렌더한 세션 자신의 id.** 구조상 항상 정확 |
+| `moai session current` | `3db058e1` (**t207 = 저**) | `.moai/state/current-session-id.txt` — **프로젝트당 파일 하나**, SessionStart 가 마지막에 쓴 세션이 이긴다 |
+| `.moai/state/goal/<id>.json` | `20d94c75` | **goal 을 arm 한 시점의 세션 id.** 그 뒤 `/clear` 로 세션이 바뀌면 파일명은 옛 id 그대로 남는다 |
+
+두 계층 모두 **같은 출처**에서 id 를 받는다 — SessionStart 훅은 `input.SessionID`
+(`internal/hook/session_start.go:299-314`), statusline 은 stdin 페이로드의 같은 필드. 새 id 를
+발급하는 계층은 없다.
+
+리드가 `moai session current` 로 받은 `3db058e1` 이 **제 세션 id** 인 것이 그 증거다: 사이드카는
+12:23 에 제 SessionStart 가 마지막으로 썼다.
+
+```
+$ cat .moai/state/current-session-id.txt      → 3db058e1-…   (12:23 작성 = t207 세션)
+internal/session/registry.go:52   const CurrentSideChannelFile = ".moai/state/current-session-id.txt"
+```
+
+**즉 사이드카는 context-usage.json 과 정확히 같은 결함 계열이다** — 단일 슬롯, 마지막 기록자 승리.
+A 가 고치는 그 형태가 세션 id 표면에도 하나 더 있다. **A 의 범위는 아니다**(A 는 페이로드 id 로
+키잉하며 사이드카를 읽지 않는다). 별도 카드 후보로 남긴다: 다중 세션에서 `moai session current`
+가 남의 id 를 답하면 핸드오프의 `source_session_id` 귀속이 틀어진다.
+
+### 2-2. 그런데 `kanban.Record` 는 그 세션의 id 로 키잉되지 않는다 — **C 블로킹**
+
+```
+internal/cli/kanban.go:472-478        recordKanbanSession → resolveLaunchSessionID("")
+internal/cli/launcher_blockcap_infinite.go:126-134   resolveLaunchSessionID → resolveCurrentSessionID()
+                                                     → 위의 단일 슬롯 사이드카
+```
+
+런처(`moai cc` / `moai glm`)는 **새 claude 세션이 생기기 전에** 돈다. 그 시점에 사이드카가 담고
+있는 것은 **런처를 띄운 부모 세션의 id**다. 그러므로 레코드는 태어날 세션이 아니라 **띄운
+세션의 id 로 파일명이 붙는다.**
+
+실측이 이것을 그대로 보여준다:
+
+```
+$ python3 …  .moai/state/active-sessions.json   (살아 있는 세션 3개, CC 실제 id)
+2beac221…  pid 15207  cwd …/worktrees/t219
+c15d8434…  pid 51045  cwd …/worktrees/t210
+3db058e1…  pid 36912  cwd …/worktrees/t207
+
+$ ls .moai/state/kanban/{2beac221…,c15d8434…,3db058e1…}.json
+No such file or directory   ×3      ← 살아 있는 세 세션 모두 **자기 레코드가 없다**
+
+$ cat .moai/state/kanban/d281730e-….json      ← 유일하게 맞은 id = 리드
+{ "session_id": "d281730e-…", "role": "lane", "backend": "claude",
+  "entered_at": "2026-08-23T17:47:22Z" }
+```
+
+마지막 줄이 결정적이다. `d281730e` 는 **리드 세션**인데 그 레코드의 `role` 은 **`lane`** 이다.
+리드가 레인을 띄울 때, 런처가 레인의 레코드를 **리드의 id 로** 찍은 것이다. 한 번의 실수가 양쪽을
+동시에 망친다 — 레인은 자기 레코드가 없고, 리드의 id 에는 레인 레코드가 붙는다.
+
+**따라서 다음이 오늘 데이터 위에서 닫히지 않는다:**
+
+- REQ-WC15-043 의 레인 조인 `workers.json[lane].PID → active-sessions.session_id → kanban.Record`
+  — 세션 등록부는 CC 실제 id 를 담고 레코드는 부모 id 로 파일명이 붙으므로, 조회는 **빈손이거나
+  남의 레코드**를 집는다. 스펙 §A.5 는 이 체인이 "오늘 데이터로 닫힌다"고 적었는데, 측정하면
+  **키가 어긋나 있다**.
+- C-007/C-008 의 레코드 ↔ 텔레메트리 스냅샷 조인 — 스냅샷은 CC 실제 id 로 키잉되고 레코드는
+  아니므로 같은 이유로 어긋난다.
+- 이미 배포된 체인 뷰의 행 귀속도 같은 이유로 어긋나 있을 것이다(콘솔 관측은 하지 않았다).
+
+### 2-3. 제안 — **SPEC D 를 하나 더 세운다** (리드 비준 필요)
+
+**D-6. `SPEC-KANBAN-RECORD-SESSION-KEY-001` (신규, Tier M), C 의 선행 조건.**
+
+고치는 자리는 런처가 아니다 — 런처는 자식의 id 를 **알 수 없다**(자식이 아직 없다). 자식의 id 를
+아는 첫 지점은 그 세션의 **SessionStart 훅**이고, 그 훅은 이미 `input.SessionID` 를 받으며 런처가
+export 한 `MOAI_KANBAN_*` 환경변수도 그 프로세스 환경에 있다. 즉 **레코드 쓰기를 런처에서
+SessionStart 로 옮기면** 키가 자동으로 맞고, C 가 필요로 하던 lane 번호·card id 도 같은 환경에서
+같이 실린다.
+
+- 범위: `internal/cli/kanban.go`(+`cc.go`/`glm.go` 호출부), `internal/hook/session_start.go`,
+  `internal/kanban/record.go`, 테스트 — 6-8 파일, Tier M.
+- 강한 acceptance 가 나온다: "레인 세션의 레코드가 **그 세션 자신의** id 로 존재하고 `role` 이
+  그 세션의 역할과 일치한다" — 오늘 트리에서 **측정 가능하게 거짓**이므로 baseline 이 선다.
+- C 는 순수 소비자 SPEC 이 된다(M1/M2 의 생산자 몫이 D 로 이동). plan.md §C 이유 1("생산자만
+  떼면 acceptance 가 약해진다")은 여기 적용되지 않는다 — D 의 acceptance 는 왕복 테스트가 아니라
+  **어긋난 귀속의 교정**이고, 오늘 거짓인 명제를 참으로 만드는 것이라 관측이 성립한다.
+
+의존 그래프가 이렇게 된다:
+
+```
+A ─┐
+D ─┴──► C        B (독립)
+```
+
+A 와 D 와 B 는 서로 독립이라 순서는 자유롭고, C 만 A·D 뒤에 온다.
+
+### 2-4. A-001 은 어떻게 쓰는가 (측정 결과 반영)
+
+- **정본 id = statusline 페이로드의 `session_id`** — CC 가 그 세션에 준 값이며, 구조상 렌더한
+  세션 자신의 것이다. A 는 이 값으로 파일을 키잉한다.
+- **사이드카는 읽지 않는다.** A 는 `moai session current` 에 의존하지 않는다 — 그 표면의 단일 슬롯
+  결함을 A 가 상속하지 않기 위해서다.
+- **소비자가 id 를 얻는 경로는 세션 등록부**(`active-sessions.json`, SessionStart 가 같은 CC id 로
+  기록)다. `kanban.Record` 경유는 **D 착지 전까지 쓸 수 없다** — 그것이 §2-2 의 내용이다.
+- 그러므로 A-001 에는 "세션 자신에게 전달된 식별자로 키잉한다"는 문장이 들어가고, 그 값의 출처가
+  런처가 아니라 세션 런타임임을 명시한다.
+
+### 잔여 Gap
+
+콘솔이 실제로 잘못된 행을 그리는지는 **관측하지 않았다**(`moai web` 미기동). §2-2 는 온디스크
+데이터로 조인이 어긋난다는 것까지만 증명하며, 렌더 결과는 추론이다. D 의 plan 에서 확인 항목으로
+둔다.
