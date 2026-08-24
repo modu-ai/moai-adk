@@ -28,6 +28,11 @@ type swSeams struct {
 	configSet  func(dir, key, value string) error
 	remove     func(wtPath string) error
 	statusPorc func(wtPath string) (string, error)
+	// ignoredPorc is the SPEC-WORKTREE-REAPER-001 M2 ignored-content seam
+	// (`git status --porcelain --ignored`). It is separate from statusPorc
+	// because the dirty check is shared with the session-exit path and must
+	// not inherit this SPEC's ignored-content policy (design.md §B.6a).
+	ignoredPorc func(wtPath string) (string, error)
 }
 
 // swapSessionWorktreeSeams replaces the seams and registers restoration.
@@ -36,9 +41,10 @@ func swapSessionWorktreeSeams(t *testing.T, s swSeams) {
 	orig := swSeams{
 		add: sessionWorktreeGitWorktreeAdd, inWt: sessionWorktreeInGitWorktree,
 		short: sessionWorktreeResolveSessionShort, commonDir: sessionWorktreeGitCommonDir,
-		configSet:  sessionWorktreeGitConfigSet,
-		remove:     sessionWorktreeGitWorktreeRemove,
-		statusPorc: sessionWorktreeGitStatusPorcelain,
+		configSet:   sessionWorktreeGitConfigSet,
+		remove:      sessionWorktreeGitWorktreeRemove,
+		statusPorc:  sessionWorktreeGitStatusPorcelain,
+		ignoredPorc: sessionWorktreeGitStatusIgnored,
 	}
 	if s.add != nil {
 		sessionWorktreeGitWorktreeAdd = s.add
@@ -61,6 +67,9 @@ func swapSessionWorktreeSeams(t *testing.T, s swSeams) {
 	if s.statusPorc != nil {
 		sessionWorktreeGitStatusPorcelain = s.statusPorc
 	}
+	if s.ignoredPorc != nil {
+		sessionWorktreeGitStatusIgnored = s.ignoredPorc
+	}
 	t.Cleanup(func() {
 		sessionWorktreeGitWorktreeAdd = orig.add
 		sessionWorktreeInGitWorktree = orig.inWt
@@ -69,6 +78,7 @@ func swapSessionWorktreeSeams(t *testing.T, s swSeams) {
 		sessionWorktreeGitConfigSet = orig.configSet
 		sessionWorktreeGitWorktreeRemove = orig.remove
 		sessionWorktreeGitStatusPorcelain = orig.statusPorc
+		sessionWorktreeGitStatusIgnored = orig.ignoredPorc
 	})
 }
 
@@ -141,7 +151,7 @@ func TestEnterSessionWorktree_AlreadyInWorktreeSkips(t *testing.T) {
 	addCalled := false
 	swapSessionWorktreeSeams(t, swSeams{
 		inWt: func() bool { return true },
-		add: func(string, string) (string, error) { addCalled = true; return "", nil },
+		add:  func(string, string) (string, error) { addCalled = true; return "", nil },
 	})
 	var out bytes.Buffer
 	got := enterSessionWorktree(nil, "init", &out)
@@ -335,7 +345,7 @@ func TestCleanupSessionWorktree_DefaultManualPersists(t *testing.T) {
 func TestCleanupSessionWorktree_CleanExitRemoves(t *testing.T) {
 	var removedPath string
 	swapSessionWorktreeSeams(t, swSeams{
-		remove: func(p string) error { removedPath = p; return nil },
+		remove:     func(p string) error { removedPath = p; return nil },
 		statusPorc: func(string) (string, error) { return "", nil }, // clean
 	})
 	var out bytes.Buffer
@@ -406,7 +416,7 @@ func TestCleanupSessionWorktree_DirtyPreserves(t *testing.T) {
 func TestCleanupSessionWorktree_DirtyCheckErrorPreserves(t *testing.T) {
 	removeCalled := false
 	swapSessionWorktreeSeams(t, swSeams{
-		remove: func(string) error { removeCalled = true; return nil },
+		remove:     func(string) error { removeCalled = true; return nil },
 		statusPorc: func(string) (string, error) { return "", errFakeNotGitRepo },
 	})
 	var out bytes.Buffer
@@ -658,7 +668,10 @@ func TestEnterSessionWorktree_AlreadyInWorktreeSkip_Falsification(t *testing.T) 
 		inWt:      func() bool { return false },
 		short:     func() string { return "abcdef12" },
 		commonDir: func() (string, error) { return "/repo/.git", nil },
-		add:       func(string, string) (string, error) { addCallsB++; return "/repo/.claude/worktrees/WT-abcdef12-web", nil },
+		add: func(string, string) (string, error) {
+			addCallsB++
+			return "/repo/.claude/worktrees/WT-abcdef12-web", nil
+		},
 		configSet: func(string, string, string) error { return nil },
 	})
 	var outB bytes.Buffer
@@ -669,4 +682,3 @@ func TestEnterSessionWorktree_AlreadyInWorktreeSkip_Falsification(t *testing.T) 
 		t.Fatalf("falsification B (inWt=false): add MUST be called exactly once, got %d calls", addCallsB)
 	}
 }
-

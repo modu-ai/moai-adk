@@ -63,8 +63,9 @@ func TestPRMergeCleanup_AnchoredSessionSkipsRemoval(t *testing.T) {
 		ghPRState:  func(string) string { return "MERGED" },
 	})
 	swapSessionWorktreeSeams(t, swSeams{
-		remove:     func(string) error { removeCalled = true; return nil },
-		statusPorc: func(string) (string, error) { return "", nil },
+		remove:      func(string) error { removeCalled = true; return nil },
+		statusPorc:  func(string) (string, error) { return "", nil },
+		ignoredPorc: func(string) (string, error) { return "", nil },
 	})
 
 	var out bytes.Buffer

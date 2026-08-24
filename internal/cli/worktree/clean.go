@@ -78,6 +78,8 @@ func cleanMergedWorktrees(cmd *cobra.Command, base string) error {
 		return fmt.Errorf("list worktrees: %w", err)
 	}
 
+	locks := worktreeLockStates()
+
 	var removed int
 	for _, wt := range worktrees {
 		if wt.Branch == "" || wt.Branch == base {
@@ -91,9 +93,11 @@ func cleanMergedWorktrees(cmd *cobra.Command, base string) error {
 		if merged {
 			// Anchor guard (t73): --merged-only has no dirty guard of its
 			// own, so this is the only protection between the sweep and a
-			// live lane's tree.
-			if anchored := session.LiveAnchoredSessions(wt.Path, time.Now()); len(anchored) > 0 {
-				_, _ = fmt.Fprintf(out, "  Keeping %s [%s]: live session(s) anchored\n", wt.Path, wt.Branch)
+			// live lane's tree. It consumes the SHARED lock-∪-registry
+			// decision (REQ-WR-019): the registry alone was measured to name
+			// 1 of 5 live anchors.
+			if v := session.AnchorDecision(wt.Path, locks[filepath.Clean(wt.Path)], time.Now()); v.Anchored {
+				_, _ = fmt.Fprintf(out, "  Keeping %s [%s]: live session(s) anchored — %s (source: %s)\n", wt.Path, wt.Branch, v.Detail, v.Source)
 				continue
 			}
 			_, _ = fmt.Fprintf(out, "  Removing merged worktree: %s [%s]\n", wt.Path, wt.Branch)
@@ -151,18 +155,21 @@ func cleanStaleWorktrees(cmd *cobra.Command, base string, apply bool) error {
 	}
 
 	protected := protectedWorktreePaths()
+	locks := worktreeLockStates()
 
 	var candidates []staleCandidate
 	for _, wt := range worktrees {
 		c := staleCandidate{path: wt.Path, branch: wt.Branch}
+		anchor := session.AnchorDecision(wt.Path, locks[filepath.Clean(wt.Path)], time.Now())
 
 		switch {
 		case protected[filepath.Clean(wt.Path)]:
 			// Main checkout or the worktree this command is running in.
 			continue
-		case len(session.LiveAnchoredSessions(wt.Path, time.Now())) > 0:
+		case anchor.Anchored:
 			// Anchor guard (t73): a live session's shell dies with its tree.
-			c.keepReason = "live session anchored in this worktree"
+			// The decision is the SHARED lock-∪-registry one (REQ-WR-019).
+			c.keepReason = fmt.Sprintf("live session anchored in this worktree — %s (source: %s)", anchor.Detail, anchor.Source)
 		case wt.Branch == "":
 			c.keepReason = "detached HEAD (no branch to compare against base)"
 		case wt.Branch == base:
@@ -245,6 +252,26 @@ func worktreeHasLocalChanges(path string) (bool, error) {
 		return false, err
 	}
 	return strings.TrimSpace(out) != "", nil
+}
+
+// worktreeLockStates reads the git worktree lock state for every registered
+// worktree, keyed by cleaned path. The lock is the authoritative anchor source
+// (SPEC-WORKTREE-REAPER-001 REQ-WR-006); the git.WorktreeManager listing does
+// not carry it, so it is read straight from the porcelain.
+//
+// Fail-open on the READ, fail-closed on the DECISION: an unreadable porcelain
+// yields an empty map, so every tree falls back to the registry source alone —
+// the pre-repair behaviour — rather than wedging the sweep.
+func worktreeLockStates() map[string]session.LockInfo {
+	porcelain, err := gitWorktreeCmd("worktree", "list", "--porcelain")
+	if err != nil {
+		return nil
+	}
+	locks := make(map[string]session.LockInfo)
+	for path, info := range session.ParseWorktreeLocks(porcelain) {
+		locks[filepath.Clean(path)] = info
+	}
+	return locks
 }
 
 // protectedWorktreePaths returns the worktree paths the --stale sweep must

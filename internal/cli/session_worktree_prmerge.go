@@ -65,20 +65,36 @@ var (
 	// NOT appear in this list because their commits are not ancestors of
 	// origin/main.
 	sessionWorktreeGitBranchMerged = gitBranchMergedReal
+
+	// sessionWorktreeGitStatusIgnored runs `git -C <path> status --porcelain
+	// --ignored` and returns its raw stdout. It is DISTINCT from the M4
+	// dirty-check seam (sessionWorktreeGitStatusPorcelain) on purpose: that one
+	// is shared with the session-exit path, and widening it to --ignored would
+	// silently impose this SPEC's ignored-content policy on that path too
+	// (design.md §B.6a, retained rejection).
+	sessionWorktreeGitStatusIgnored = gitStatusIgnoredReal
 )
 
-// wtEntry is a parsed (path, branch) pair from `git worktree list --porcelain`.
+// wtEntry is a parsed worktree record from `git worktree list --porcelain`.
 // A detached-HEAD worktree carries an empty branch.
+//
+// lock carries the git worktree lock state (SPEC-WORKTREE-REAPER-001
+// REQ-WR-006). It is the AUTHORITATIVE anchor source: the porcelain already
+// reports it, so capturing it here costs one parser case and makes both the
+// anchor decision and the refusal-class pre-detection free of extra git calls.
 type wtEntry struct {
 	path   string
 	branch string
+	lock   session.LockInfo
 }
 
 // parseWorktreeList parses the `git worktree list --porcelain` output into
-// (path, branch) pairs. Each worktree entry begins with a `worktree <path>`
-// line and carries at most one `branch refs/heads/<name>` line; detached
-// entries have `detached` instead and yield an empty branch. Entries are
-// separated by blank lines.
+// worktree records. Each worktree entry begins with a `worktree <path>` line
+// and carries at most one `branch refs/heads/<name>` line; detached entries
+// have `detached` instead and yield an empty branch. A locked worktree carries
+// a `locked <reason>` line, or a bare `locked` line when it was locked with no
+// reason — `locked ` is git's own prefix and is NOT part of the stored reason
+// (design.md §B.3). Entries are separated by blank lines.
 func parseWorktreeList(porcelain string) []wtEntry {
 	var entries []wtEntry
 	var cur wtEntry
@@ -106,6 +122,10 @@ func parseWorktreeList(porcelain string) []wtEntry {
 			cur.branch = strings.TrimPrefix(ref, "refs/heads/")
 		case line == "detached":
 			cur.branch = ""
+		case line == "locked":
+			cur.lock = session.LockInfo{Locked: true}
+		case strings.HasPrefix(line, "locked "):
+			cur.lock = session.LockInfo{Locked: true, Reason: strings.TrimPrefix(line, "locked ")}
 		}
 	}
 	flush()
@@ -154,31 +174,130 @@ func prMergeCleanup(cfg *config.Config, out io.Writer) {
 		// Reuses M4's worktreeIsDirty so one helper backs both call sites.
 		dirty, derr := worktreeIsDirty(e.path)
 		if derr != nil {
-			_, _ = fmt.Fprintf(out, "moai: PR-merge cleanup skipped (dirty-check failed: %v): worktree %s preserved\n", derr, e.path)
+			_, _ = fmt.Fprintf(out, "moai: PR-merge cleanup skipped (cause=dirty-check-failed; dirty-check failed: %v): worktree %s preserved\n", derr, e.path)
 			continue
 		}
 		if dirty {
-			_, _ = fmt.Fprintf(out, "moai: PR-merge cleanup skipped (uncommitted changes): worktree %s preserved (dispose manually via 'moai worktree remove' or 'git worktree remove')\n", e.path)
+			_, _ = fmt.Fprintf(out, "moai: PR-merge cleanup skipped (cause=dirty; uncommitted changes): worktree %s preserved (dispose manually via 'moai worktree remove' or 'git worktree remove')\n", e.path)
 			continue
 		}
 		// t73 anchor guard: never remove a worktree a live session is
 		// anchored in — the anchored session's shell dies with the tree
 		// (Claude Code blocks all its Bash once the tree is gone). Same
 		// immediately-before-removal position as the dirty guard (EC-11).
-		if anchored := session.LiveAnchoredSessions(e.path, time.Now()); len(anchored) > 0 {
-			_, _ = fmt.Fprintf(out, "moai: PR-merge cleanup skipped (live session anchored, %d): worktree %s preserved\n", len(anchored), e.path)
+		//
+		// The decision is the SHARED lock-∪-registry one (REQ-WR-009/019); the
+		// registry alone was measured to name 1 of 5 live anchors.
+		if v := session.AnchorDecision(e.path, e.lock, time.Now()); v.Anchored {
+			_, _ = fmt.Fprintf(out, "moai: PR-merge cleanup skipped (cause=anchored-by-%s; live session anchored — %s): worktree %s preserved\n", v.Source, v.Detail, e.path)
+			continue
+		}
+		// REQ-WR-021 pre-detection: a locked tree is refused by non-forced
+		// `git worktree remove` whatever the lock's pid liveness, and the
+		// condition never clears — so attempting it would emit an error-shaped
+		// notice forever for a correctly-behaving tree. The sweep never
+		// unlocks and never passes --force.
+		if session.LockRefusesRemoval(e.lock) {
+			_, _ = fmt.Fprintf(out, "moai: PR-merge cleanup skipped (cause=refusal-class; locked worktree — git refuses non-forced removal): worktree %s preserved\n", e.path)
+			continue
+		}
+		if !ignoredContentAllowsRemoval(e.path, out) {
 			continue
 		}
 		// Remove + unset safe.directory (R5, reused from M7). A removal failure
 		// is non-blocking: the worktree is left on disk and the sweep
-		// continues with the next candidate.
+		// continues with the next candidate. This is REQ-WR-021's DEFINING
+		// limb — every refusal cause outside the pre-detection set (a populated
+		// submodule, EC-12) lands here, and git's own message is the cause token.
 		if rerr := sessionWorktreeGitWorktreeRemove(e.path); rerr != nil {
-			_, _ = fmt.Fprintf(out, "moai: PR-merge cleanup failed (%v): worktree %s left on disk\n", rerr, e.path)
+			_, _ = fmt.Fprintf(out, "moai: PR-merge cleanup failed (cause=refusal-class; %v): worktree %s left on disk\n", rerr, e.path)
 			continue
 		}
 		_ = sessionWorktreeGitSafeDirUnset(e.path)
 		_, _ = fmt.Fprintf(out, "moai: %s [WT] worktree %s (branch %s merged)\n", PRMergeCleanupNoticePrefix, e.path, e.branch)
 	}
+}
+
+// regenerableIgnoredPaths is the allowlist of gitignored paths whose loss
+// costs nothing, enumerated FROM the measurement rather than invented ahead of
+// it (design.md §A.7.3): runtime state, runtime-managed config, build output,
+// and test residue. Every ignored path outside this list — including one
+// nobody has classified — preserves the worktree (REQ-WR-024, fail-closed).
+//
+// [HARD] Do not extend this list by omission. A path is added here only after
+// it is observed AND shown to be reproduced by a build, a runtime write, or a
+// re-run.
+var regenerableIgnoredPaths = []string{
+	".moai/state",
+	".moai/logs",
+	".claude/settings.local.json",
+	".claude/settings.local.json.lock",
+	"bin",
+	"docs-site/public",
+	".ruff_cache",
+	"internal/cli/.moai",
+}
+
+// ignoredContentAllowsRemoval reports whether a candidate that has already
+// passed the merge, dirty, anchor, and refusal guards may be removed, given
+// what gitignored content it holds (REQ-WR-024, policy P2).
+//
+// Why this guard exists at all: `git status --porcelain` and `git worktree
+// remove` AGREE in disregarding ignored files (design.md §A.6, measured), so
+// the dirty guard has no backstop for this class — an ignored-only tree is
+// removed, exit 0, and its content is destroyed. This is the only thing
+// between the sweep and that loss.
+//
+// @MX:NOTE: [AUTO] P2 (preserve on non-allowlisted ignored content) is a
+// STOPGAP, not the permanent answer — REQ-WR-025. drain-then-dispose is the fix.
+// @MX:REASON: it preserves worktrees only because worktree-local agent memory
+// has nowhere else to live. The correct fix is drain-then-dispose: move that
+// memory into the primary checkout's store, then dispose of the tree freely.
+// Held out of scope in spec.md §G. Do not read this branch as establishing
+// preserve-forever.
+func ignoredContentAllowsRemoval(wtPath string, out io.Writer) bool {
+	porcelain, err := sessionWorktreeGitStatusIgnored(wtPath)
+	if err != nil {
+		// Fail-closed on the guard: an unreadable ignored-status is an
+		// undetermined answer, and undetermined preserves.
+		_, _ = fmt.Fprintf(out, "moai: PR-merge cleanup skipped (cause=ignored-check-failed; ignored-content check failed: %v): worktree %s preserved\n", err, wtPath)
+		return false
+	}
+	if irreplaceable := irreplaceableIgnoredEntries(porcelain); len(irreplaceable) > 0 {
+		_, _ = fmt.Fprintf(out, "moai: PR-merge cleanup skipped (cause=ignored-content; irreplaceable gitignored content: %s): worktree %s preserved\n", strings.Join(irreplaceable, ", "), wtPath)
+		return false
+	}
+	return true
+}
+
+// irreplaceableIgnoredEntries returns the `git status --porcelain --ignored`
+// entries that are NOT covered by regenerableIgnoredPaths. An empty result
+// means every ignored entry is regenerable and the tree is safe to remove.
+func irreplaceableIgnoredEntries(porcelain string) []string {
+	var irreplaceable []string
+	for _, line := range strings.Split(porcelain, "\n") {
+		if !strings.HasPrefix(line, "!! ") {
+			continue
+		}
+		entry := strings.Trim(strings.TrimSpace(strings.TrimPrefix(line, "!! ")), "\"")
+		entry = strings.TrimSuffix(entry, "/")
+		if entry == "" || isRegenerableIgnoredPath(entry) {
+			continue
+		}
+		irreplaceable = append(irreplaceable, entry)
+	}
+	return irreplaceable
+}
+
+// isRegenerableIgnoredPath reports whether entry is at or below an allowlisted
+// regenerable path.
+func isRegenerableIgnoredPath(entry string) bool {
+	for _, p := range regenerableIgnoredPaths {
+		if entry == p || strings.HasPrefix(entry, p+"/") {
+			return true
+		}
+	}
+	return false
 }
 
 // branchMergedForCleanup decides whether a branch is a cleanup candidate per
@@ -245,6 +364,17 @@ func parseGhPRStateJSON(payload string) string {
 		return ""
 	}
 	return v.State
+}
+
+// gitStatusIgnoredReal runs `git -C <wtPath> status --porcelain --ignored` and
+// returns its stdout. Ignored entries are the `!! ` lines; tracked/untracked
+// entries also appear but are the dirty guard's business, not this one's.
+func gitStatusIgnoredReal(wtPath string) (string, error) {
+	out, err := exec.Command("git", "-C", wtPath, "status", "--porcelain", "--ignored").Output()
+	if err != nil {
+		return "", err
+	}
+	return string(out), nil
 }
 
 // gitBranchMergedReal runs `git branch --merged origin/main` and returns the

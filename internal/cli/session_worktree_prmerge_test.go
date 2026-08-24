@@ -124,8 +124,9 @@ func TestPRMergeCleanup_GhPresentMergedRemoves(t *testing.T) {
 	})
 	// remove + statusPorc reuse the M4 seams (clean worktree).
 	swapSessionWorktreeSeams(t, swSeams{
-		remove:     func(p string) error { removedPath = p; return nil },
-		statusPorc: func(string) (string, error) { return "", nil },
+		remove:      func(p string) error { removedPath = p; return nil },
+		statusPorc:  func(string) (string, error) { return "", nil },
+		ignoredPorc: func(string) (string, error) { return "", nil },
 	})
 	var out bytes.Buffer
 	prMergeCleanup(worktreeCfg(true), &out)
@@ -155,8 +156,9 @@ func TestPRMergeCleanup_GhPresentOpenDoesNotRemove(t *testing.T) {
 		ghPRState:  func(string) string { return "OPEN" },
 	})
 	swapSessionWorktreeSeams(t, swSeams{
-		remove:     func(string) error { removeCalled = true; return nil },
-		statusPorc: func(string) (string, error) { return "", nil },
+		remove:      func(string) error { removeCalled = true; return nil },
+		statusPorc:  func(string) (string, error) { return "", nil },
+		ignoredPorc: func(string) (string, error) { return "", nil },
 	})
 	var out bytes.Buffer
 	prMergeCleanup(worktreeCfg(true), &out)
@@ -184,8 +186,9 @@ func TestPRMergeCleanup_GhPresentSeesSquashMerge(t *testing.T) {
 		// taken so this seam is irrelevant here.
 	})
 	swapSessionWorktreeSeams(t, swSeams{
-		remove:     func(p string) error { removedPath = p; return nil },
-		statusPorc: func(string) (string, error) { return "", nil },
+		remove:      func(p string) error { removedPath = p; return nil },
+		statusPorc:  func(string) (string, error) { return "", nil },
+		ignoredPorc: func(string) (string, error) { return "", nil },
 	})
 	var out bytes.Buffer
 	prMergeCleanup(worktreeCfg(true), &out)
@@ -210,8 +213,9 @@ func TestPRMergeCleanup_GhAbsentBranchMergedRemoves(t *testing.T) {
 		branchMerged: func() ([]string, error) { return []string{"main", wtBranch}, nil },
 	})
 	swapSessionWorktreeSeams(t, swSeams{
-		remove:     func(p string) error { removedPath = p; return nil },
-		statusPorc: func(string) (string, error) { return "", nil },
+		remove:      func(p string) error { removedPath = p; return nil },
+		statusPorc:  func(string) (string, error) { return "", nil },
+		ignoredPorc: func(string) (string, error) { return "", nil },
 	})
 	var out bytes.Buffer
 	prMergeCleanup(worktreeCfg(true), &out)
@@ -238,8 +242,9 @@ func TestPRMergeCleanup_SquashBlindFallbackPreserves(t *testing.T) {
 		branchMerged: func() ([]string, error) { return []string{"main"}, nil }, // WT branch absent (squash-merge blind)
 	})
 	swapSessionWorktreeSeams(t, swSeams{
-		remove:     func(string) error { removeCalled = true; return nil },
-		statusPorc: func(string) (string, error) { return "", nil },
+		remove:      func(string) error { removeCalled = true; return nil },
+		statusPorc:  func(string) (string, error) { return "", nil },
+		ignoredPorc: func(string) (string, error) { return "", nil },
 	})
 	var out bytes.Buffer
 	prMergeCleanup(worktreeCfg(true), &out)
@@ -256,7 +261,7 @@ func TestPRMergeCleanup_SquashBlindFallbackPreserves(t *testing.T) {
 // absent, even with zero candidates.
 func TestPRMergeCleanup_GhAbsentEmitsBlindnessNoticeOnce(t *testing.T) {
 	swapPRMergeSeams(t, prMergeSeams{
-		wtList: func() (string, error) { return wtListPorcelainPrimary(), nil }, // no WT- worktrees
+		wtList:       func() (string, error) { return wtListPorcelainPrimary(), nil }, // no WT- worktrees
 		ghLookPath:   func() bool { return false },
 		branchMerged: func() ([]string, error) { return []string{"main"}, nil },
 	})
@@ -365,8 +370,9 @@ func TestPRMergeCleanup_OnlyWTBranchesConsidered(t *testing.T) {
 		},
 	})
 	swapSessionWorktreeSeams(t, swSeams{
-		remove:     func(string) error { return nil },
-		statusPorc: func(string) (string, error) { return "", nil },
+		remove:      func(string) error { return nil },
+		statusPorc:  func(string) (string, error) { return "", nil },
+		ignoredPorc: func(string) (string, error) { return "", nil },
 	})
 	var out bytes.Buffer
 	prMergeCleanup(worktreeCfg(true), &out)
@@ -406,8 +412,9 @@ func TestPRMergeCleanup_RemovalFailureFailOpen(t *testing.T) {
 		ghPRState:  func(string) string { return "MERGED" },
 	})
 	swapSessionWorktreeSeams(t, swSeams{
-		remove: func(string) error { return fakeErr("fake-remove-failure") },
-		statusPorc: func(string) (string, error) { return "", nil },
+		remove:      func(string) error { return fakeErr("fake-remove-failure") },
+		statusPorc:  func(string) (string, error) { return "", nil },
+		ignoredPorc: func(string) (string, error) { return "", nil },
 	})
 	var out bytes.Buffer
 	prMergeCleanup(worktreeCfg(true), &out)
@@ -430,8 +437,9 @@ func TestPRMergeCleanup_FallbackBranchMergedErrorPreserves(t *testing.T) {
 		branchMerged: func() ([]string, error) { return nil, errFakeNotGitRepo },
 	})
 	swapSessionWorktreeSeams(t, swSeams{
-		remove:     func(string) error { removeCalled = true; return nil },
-		statusPorc: func(string) (string, error) { return "", nil },
+		remove:      func(string) error { removeCalled = true; return nil },
+		statusPorc:  func(string) (string, error) { return "", nil },
+		ignoredPorc: func(string) (string, error) { return "", nil },
 	})
 	var out bytes.Buffer
 	prMergeCleanup(worktreeCfg(true), &out)
