@@ -15,7 +15,7 @@ Every anchor the lead flagged was re-verified by command in this tree. Where a f
 | Anchor | Report (at `294b4b6ab`) | This tree (`baa100ce5`) | Command evidence |
 |---|---|---|---|
 | codemaps last regeneration | 2026-08-12 (mtime) | commit `6da952899` 2026-08-12 (git date; mtime unusable — see below) | `git log -1 --date=short -- .moai/project/codemaps/` |
-| Drift since codemaps date | 713 commits | **740 commits** on origin/main since 2026-08-12 (738 measured at review time — `--since` counts shift with history; see spec.md §A provenance note) | `git rev-list --count --since=2026-08-12 origin/main` |
+| Drift since codemaps date | 713 commits | **740 commits** on origin/main since 2026-08-12 (738 measured at review time against a different ref — the report's figure was origin/main at report time, the review's was 294b4b6ab; see spec.md §A provenance note) | `git rev-list --count --since=2026-08-12 origin/main` |
 | mx-index provenance | (not examined) | **absent** — top-level keys are `schema_version`, `tags`, `scanned_at` only; no commit SHA | python3 read of primary checkout's `.moai/state/mx-index.json` |
 | mx-index in a fresh worktree | (not examined) | **does not exist** (untracked runtime artifact) | `ls .moai/state/mx-index.json` → No such file |
 | edges.jsonl in a fresh worktree | (not examined) | **does not exist**; `git ls-files .moai/project/graph/` → empty (untracked derived artifact) | `ls`, `git ls-files` |
