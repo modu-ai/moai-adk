@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/hook/quality"
@@ -340,10 +341,27 @@ type preToolHandler struct {
 	cfg     ConfigProvider
 	policy  *SecurityPolicy
 	scanner SecurityScanFacade
+	// rules resolves the ast-grep rules configuration and its covered-language
+	// set for the write-path gate. Tests may set it directly; production leaves
+	// it nil and lets ruleManager construct it on first use.
+	rules     security.RuleManager
+	rulesOnce sync.Once
 	// projectDir is the resolved project root. Tests may set it directly; the
 	// production constructors leave it empty and let projectRoot resolve it.
 	projectDir string
 	projectRootResolver
+}
+
+// ruleManager returns the handler's RuleManager, constructing the default one
+// on first use. The manager caches its derivation for its own lifetime, so the
+// short-lived hook process resolves the configuration once per invocation.
+func (h *preToolHandler) ruleManager() security.RuleManager {
+	h.rulesOnce.Do(func() {
+		if h.rules == nil {
+			h.rules = security.NewRuleManager()
+		}
+	})
+	return h.rules
 }
 
 // NewPreToolHandler creates a new PreToolUse event handler with the given security policy.
@@ -641,6 +659,49 @@ func (h *preToolHandler) scanWriteContent(ctx context.Context, toolInput json.Ra
 		return "", ""
 	}
 
+	// Resolve the rules configuration ONCE, here in the caller. Everything
+	// below this point is ordered cheapest-first, and every skip returns before
+	// the temp file is created: a skipped payload costs neither a file write nor
+	// an `sg` spawn.
+	coverage := h.ruleManager().ResolveCoverage(h.projectRoot())
+
+	// No configuration resolves, so no rule can produce a finding. Scanning
+	// would spawn `sg` only to be told there is no project configuration.
+	if coverage.ConfigPath == "" {
+		slog.Debug("no ast-grep rules configuration resolved; skipping security scan",
+			"file_path", filePath,
+		)
+		return "", ""
+	}
+
+	// The configuration declares no rule for this file's language. Skipped only
+	// when the derived set is authoritative — an unreadable, unwalkable, or
+	// empty derivation escalates below rather than skipping, because absence of
+	// evidence is not evidence of absence.
+	language := security.GetLanguageForExtension(ext)
+	if coverage.Known && !coverage.Covers(language) {
+		slog.Debug("no rules for this language in the resolved configuration; skipping security scan",
+			"file_path", filePath,
+			"language", language,
+		)
+		return "", ""
+	}
+
+	// The literal pre-filter (SPEC-SEC-SCAN-SURFACE-001 M2): the gate's only
+	// observable output is the deny, and a deny needs an error-severity
+	// finding, so a payload carrying none of the mandatory literal tokens of
+	// this language's error-severity rules cannot produce one. Every
+	// uncertainty — an unreadable ruleset, an unrecognized rule shape, a
+	// language whose derivation is incomplete — answers false here and
+	// escalates to the scan.
+	if security.DerivePrefilters(coverage.ConfigPath).CanSkip(language, content) {
+		slog.Debug("no error-severity rule can match this payload; skipping security scan",
+			"file_path", filePath,
+			"language", language,
+		)
+		return "", ""
+	}
+
 	// Create temporary file with the content
 	tmpFile, err := os.CreateTemp("", "moai-security-scan-*"+ext)
 	if err != nil {
@@ -657,7 +718,7 @@ func (h *preToolHandler) scanWriteContent(ctx context.Context, toolInput json.Ra
 	_ = tmpFile.Close() // Close before scanning
 
 	// Scan the temporary file
-	result, err := h.scanner.ScanFile(ctx, tmpFile.Name(), h.projectRoot())
+	result, err := h.scanner.ScanFile(ctx, tmpFile.Name(), coverage.ConfigPath)
 	if err != nil {
 		slog.Warn("security scan failed", "error", err)
 		return "", ""

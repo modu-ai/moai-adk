@@ -204,12 +204,19 @@ func TestClosedSetRejectsOutOfSetValue(t *testing.T) {
 // enumeration omitted: `user_name` (a person's display name) and
 // `security.sandbox.docker_image` (any image reference). Neither has a closed
 // domain, so converting them would be dishonest in the other direction.
+//
+// `workflow.audit.codex.model` (SPEC-V3R6-AUDIT-MODEL-PIN-001 M4) joins them:
+// the codex-servable family is an OPEN prefix set (gpt-*, o1/o3/o4-*, codex-*),
+// not an enumerable closed set — new codex model ids appear upstream and a pin
+// like gpt-5.6-sol cannot be pre-listed. The servability filter at the resolver
+// (codexServableModel) is the validation point, not the widget.
 var freeTextWhitelist = map[string]bool{
 	"user_name":                     true,
 	"feedback.repository":           true,
 	"observability.report_dir":      true,
 	"observability.trace_dir":       true,
 	"security.sandbox.docker_image": true,
+	"workflow.audit.codex.model":    true,
 }
 
 // m4PendingFreeText held the GLM model tier fields while their conversion was

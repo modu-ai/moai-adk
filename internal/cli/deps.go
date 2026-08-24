@@ -242,6 +242,12 @@ func InitDependencies() {
 	secPolicy.MergeExtraPatterns(security.LoadExtraSecurityConfig(cwd))
 	deps.HookRegistry.Register(hook.NewPreToolHandlerWithScanner(deps.Config, secPolicy, securityScanner))
 	deps.HookRegistry.Register(hook.NewPostToolHandlerWithMxValidatorAndTimeout(diagnosticsCollector, astAnalyzer, cwd, 500*time.Millisecond))
+	// The regex security guardian runs in this process alongside the post-tool
+	// handler; the registry accumulates its additionalContext next to the
+	// post-tool handler's systemMessage, so neither advisory is dropped. It
+	// replaces the separate handle-security-scan.sh PostToolUse entry — the
+	// `moai hook security-scan` subcommand it fronted stays registered.
+	deps.HookRegistry.Register(hook.NewPostToolGuardianHandler())
 	deps.HookRegistry.Register(hook.NewCompactHandler())
 	deps.HookRegistry.Register(hook.NewPostToolUseFailureHandler())
 	deps.HookRegistry.Register(hook.NewNotificationHandlerWithConfig(deps.Config))

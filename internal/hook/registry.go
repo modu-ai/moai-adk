@@ -146,6 +146,7 @@ func (r *registry) Dispatch(ctx context.Context, event EventType, input *HookInp
 				"handler_index", i,
 				"reason", reason,
 			)
+			r.runAlwaysRunTail(ctx, event, handlers[i+1:], input, output)
 			return output, nil
 		}
 
@@ -156,6 +157,7 @@ func (r *registry) Dispatch(ctx context.Context, event EventType, input *HookInp
 				"event", string(event),
 				"handler_index", i,
 			)
+			r.runAlwaysRunTail(ctx, event, handlers[i+1:], input, output)
 			return output, nil
 		}
 
@@ -165,6 +167,50 @@ func (r *registry) Dispatch(ctx context.Context, event EventType, input *HookInp
 	}
 
 	return merged, nil
+}
+
+// alwaysRunHandler marks a handler that must still run when a preceding handler
+// short-circuits Dispatch — with a block decision or with exit code 2. Only
+// handlers whose omission would be a silent safety loss opt in; the security
+// guardian does, so a future PostToolUse handler that blocks cannot mute the
+// scan without anyone noticing.
+type alwaysRunHandler interface {
+	AlwaysRun() bool
+}
+
+// runAlwaysRunTail executes the opt-in always-run handlers remaining after a
+// short-circuit and folds their non-blocking fields into the output being
+// returned. The short-circuit verdict itself is preserved: mergeHandlerOutput
+// keeps the first explicit halt and resolves permission decisions by a
+// deny > ask > allow ladder, so an advisory tail cannot downgrade a block.
+//
+// Failures are logged and swallowed — a tail handler must never turn a decided
+// dispatch into an error. Swallowed is not silent: the failure is logged at the
+// same level the main dispatch loop uses and written to the trace, so a
+// guardian that fails on this path is visible in production rather than only in
+// debug logs. Every tail execution — success or failure — gets a trace entry,
+// giving the tail parity with the main loop.
+func (r *registry) runAlwaysRunTail(ctx context.Context, event EventType, remaining []Handler, input *HookInput, decided *HookOutput) {
+	for _, h := range remaining {
+		ar, ok := h.(alwaysRunHandler)
+		if !ok || !ar.AlwaysRun() {
+			continue
+		}
+		start := time.Now()
+		out, err := h.Handle(ctx, input)
+		elapsed := time.Since(start)
+		if err != nil {
+			slog.Error("always-run handler failed after short-circuit",
+				"event", string(event),
+				"handler", fmt.Sprintf("%T", h),
+				"error", err.Error(),
+			)
+			r.writeTrace(input, event, h, elapsed, nil, err)
+			continue
+		}
+		r.writeTrace(input, event, h, elapsed, out, nil)
+		mergeHandlerOutput(decided, out)
+	}
 }
 
 // mergeHandlerOutput folds a non-blocking handler output into merged, per

@@ -176,6 +176,29 @@ workflow:
 
 브랜치를 바꿔야 하는 작업은 막는 대신 워크트리로 옮기는 것이 정석입니다. 자세한 절차는 [moai worktree](/ko/cli-reference/worktree/) 를 참조하세요.
 
+## workflow.yaml — audit
+
+크로스모델 감사 백엔드(`codex_audit` · `glm_audit` · `audit_multi`)가 실제로 어떤 모델과 effort로 돌지 지정합니다. 백엔드마다 `{model, effort}` 쌍 하나이고, 배포 기본값은 전부 비어 있습니다.
+
+```yaml
+workflow:
+    audit:
+        codex:
+            model: ""   # 예: gpt-5.6-sol — codex가 서빙할 수 있는 모델 id
+            effort: ""  # 예: high — low | medium | high | xhigh | max
+        glm:
+            model: ""   # 예: glm-5.3
+            effort: ""  # 예: max — low | high | max (z.ai reasoning 상태 이름)
+```
+
+| 키 | 설명 |
+|----|------|
+| `audit.codex.{model, effort}` | codex 감사가 세션 열기와 리뷰 턴에 실어 보내는 쌍. model이 비었거나 codex가 서빙할 수 없는 id면 핀을 버리고 기존 SSOT 해석으로 되돌아갑니다 |
+| `audit.glm.{model, effort}` | GLM 감사가 z.ai 요청에 실어 보내는 쌍. effort는 z.ai reasoning 상태 이름 `low` · `high` · `max`만 받으며, 그 외 값을 적으면 reasoning 지시어를 빼고 모델 핀만 적용합니다 |
+| 두 쌍 모두 비었을 때 | 이 키가 생기기 전과 동일하게 해석합니다. 핀을 적은 적 없는 프로젝트는 아무 것도 바뀌지 않습니다 |
+
+핀은 감사 진입점에만 적용됩니다. `codex_task` · `glm_task` 같은 작업 위임 경로의 모델 해석은 영향을 받지 않으며, 웹 콘솔의 Audit 패널에서 같은 필드를 직접 편집할 수도 있습니다.
+
 ## crosssession.yaml — 세션 간 메시지
 
 내 다른 Claude Code 세션이 보내는 메시지를 이 세션이 어떻게 다룰지 정합니다. `moai cc` · `moai glm` · `moai cg` 런처가 실행 시점에 이 값을 임시 `--settings` 파일로 옮겨 담고, 웹 콘솔은 설정 seam을 통해 이 파일을 편집합니다. 런처를 거치지 않고 맨손으로 `claude`를 실행한 세션은 이 파일을 읽지 않습니다.
