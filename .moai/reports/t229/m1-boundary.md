@@ -64,9 +64,29 @@ T229-M1 | K8 adopted=pass         want=pass         GREEN
 | 정적 분석 | `go vet ./internal/cli/` | **rc=0** |
 | 대상 테스트 | `go test ./internal/cli/ -run 'TestSynthesizeReviewOutput\|Fallthrough\|Verdict\|Blind' -count=1 -timeout 1200s` | **ok 36.937s** |
 | M1 경계 실측 | `go test ./internal/cli/ -run TestT229PostM1State -v -count=1` | **ok 1.119s** (위 표) |
-| **전 패키지 스위트** | `go test ./internal/cli/ -count=1 -timeout 1200s` | **미완 — 백그라운드 실행 중 마감** |
+| **전 패키지 스위트** | `go test ./internal/cli/ -count=1 -timeout 1200s` | **FAIL @ 1032.479s** (아래) |
 
-[HARD] **전 패키지 스위트 결과는 관측하지 못했다.** 통과로 기록하지 않는다 — 관측하지 않은 검증 주장이 된다. 다음 세션의 첫 작업은 이 스위트를 다시 돌려 결과를 확인하는 것이다.
+### [HARD] 전 패키지 스위트 — FAIL 이고, 래퍼는 그것을 숨겼다
+
+마감 직전에 결과가 도착했다. 백그라운드 래퍼는 **`[exited with code 0]`** 을 보고했으나 출력 본문은 `FAIL github.com/modu-ai/moai-adk/internal/cli 1032.479s` 다. **래퍼의 종료 코드를 스위트 판정으로 읽으면 안 된다** — 이 저장소에 이미 기록된 함정(`feedback_bg_exitcode_direct_verify`)이 그대로 재현됐다.
+
+**실패한 테스트 이름은 확보하지 못했다.** 출력 파일이 마지막 10줄만 남기고 잘려 `--- FAIL:` 행이 사라졌다. 따라서 원인을 **주장하지 않는다.**
+
+확인한 것과 확인하지 못한 것을 갈라 적는다:
+
+| 항목 | 상태 |
+|---|---|
+| 이 run 의 시작 시각 | 04:02 — **`mcp_convergence_test.go` 픽스처 수정 이전** |
+| 그 픽스처 테스트(`TestPerformCodexAudit_ReusesExistingCodexHandler_NoReimpl_AP_AMM_1`) | 현재 트리에서 **PASS** (단독 실측) |
+| `TestResolveRulesDir` (출력 꼬리에 이름이 보였던 것) | 현재 트리에서 **PASS** (단독 실측) |
+| 실패 테스트 정체 | **미확인** |
+| 픽스처 수정 후 스위트 상태 | **미검증** |
+
+가장 그럴듯한 설명은 픽스처 테스트가 그 run 시점에 붉었고 이후 수정됐다는 것이다 — M1 이 fall-through 를 바꾸면서 `"codex:ok, no findings"` 본문이 `pass` → `inconclusive` 로 갈렸을 것이기 때문이다. **그러나 관측하지 않았으므로 확정하지 않는다.**
+
+부수 관측: 1032초는 이 패키지의 평소 범위(약 300~540초)를 크게 넘는다. 같은 시각 백그라운드 run 이 여럿 돌고 있었으므로 **머신 부하 아티팩트**로 보이며, 코드 지연 신호로 읽지 말 것.
+
+[HARD] **다음 세션의 첫 작업**: 깨끗한 상태에서 `go test ./internal/cli/ -count=1 -timeout 1200s` 를 **다시 돌리고, 래퍼 종료 코드가 아니라 출력 본문의 `ok`/`FAIL` 행을 읽어** 판정할 것. 붉으면 `--- FAIL:` 행에서 이름을 확보한 뒤 M2 착수 전에 해소한다.
 
 미측정 항목(마감으로 생략): 커버리지(`go test -cover`), `golangci-lint`, `GOOS=windows go vet`.
 
