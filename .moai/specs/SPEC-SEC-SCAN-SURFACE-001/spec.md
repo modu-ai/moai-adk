@@ -2,7 +2,7 @@
 id: SPEC-SEC-SCAN-SURFACE-001
 title: Security scan surface — cheap pre-write ast-grep gate + PostToolUse guardian merge
 version: 0.3.0
-status: draft
+status: in-progress
 created: 2026-08-24
 updated: 2026-08-24
 author: manager-spec
