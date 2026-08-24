@@ -16,7 +16,7 @@
 | AC-ZRR-004 | REQ-ZRR-002, 003, 009 | anchor 해석 84/101 (실패 17, §2.2 slug 규칙 기준) | 101/101 |
 | AC-ZRR-005 | REQ-ZRR-004, 006 | 매처 3함수 현행 | 바이트 불변 + 기존 테스트 통과 |
 | AC-ZRR-006 | REQ-ZRR-005 | 101 엔트리 / ID·zone·zone_class·canary_gate 집합 X | 동일 집합 (diff 0) |
-| AC-ZRR-007 | REQ-ZRR-007, 008, 011 | 가드 부재 (`constitution validate` 배선 0건) | 변이에서 붉음(로컬 + CI job 결론) + 초록, 평가 엔트리 수 101×2 |
+| AC-ZRR-007 | REQ-ZRR-007, 008, 011 | 가드 부재 (`constitution validate` 배선 0건) | 변이에서 붉음(로컬 + CI job 결론) + 초록, 평가 엔트리 수 clause 97 / anchor 101, 두 미러 각각 분리 보고 |
 | AC-ZRR-008 | REQ-ZRR-011 | 유일한 constitution job 이 continue-on-error | 차단 job **그리고** 억제 없는 스텝 |
 | AC-ZRR-009 | REQ-ZRR-008 | 템플릿 미러 검증 0건 | 템플릿 변이도 검출 |
 | AC-ZRR-010 | REQ-ZRR-010 | SKIP=1 이면 Skipped/OK 반환 | SKIP=1 이어도 실패 |
@@ -83,13 +83,13 @@ boolean 이 아니라 횟수를 세는 이유: "빈 문자열 아님"만 요구�
 
 ### AC-ZRR-005 — 매처가 불변이다
 
-- **Given** base 커밋 `294b4b6ab` 의 `internal/constitution/validator.go` 가 있고,
-- **When** 변경 후 `git diff 294b4b6ab..HEAD -- internal/constitution/validator.go` 를 보면,
+- **Given** base 커밋 `1ae6e5c36` 의 `internal/constitution/validator.go` 가 있고,
+- **When** 변경 후 `git diff 1ae6e5c36..HEAD -- internal/constitution/validator.go` 를 보면,
 - **Then** `normalizeWhitespace`, `stripCodeFences`, 그리고 `Validate` 의 DRIFT 판정 블록(clause 부분문자열 검사)에 **변경 라인이 0** 이다.
 - **And** `go test ./internal/constitution/...` 이 통과한다.
 - **And** 변경 diff 전체에 clause 길이 임계, 파일 제외 목록, 토큰 중첩/fuzzy 매칭, 새 환경변수 우회가 **도입되지 않는다**.
 
-판정: 위 diff 라인 수 + `go test ./internal/constitution/... 2>&1 | tail -1`
+판정: 위 diff 라인 수 + `go test ./internal/constitution/... 2>&1 | tail -1` — baseline 을 v0.5.0 에서 `294b4b6ab`(#1611 이전 — retired 전처리 +17라인 포함)에서 `1ae6e5c36`(#1611 통합 후)로 재고정했다 (plan-audit iter3 C3).
 **RED**: diff 0 라인(변경 전이므로 자명), `ok github.com/modu-ai/moai-adk/internal/constitution` — 기존 테스트는 **지금 통과한다**. 즉 이 AC의 GREEN 조건은 "새로 통과시키기"가 아니라 "깨뜨리지 않기"다.
 
 ### AC-ZRR-006 — 엔트리 집합이 보존된다
@@ -107,8 +107,8 @@ boolean 이 아니라 횟수를 세는 이유: "빈 문자열 아님"만 요구�
 이 AC는 "가드가 통과한다"가 아니다. **알려진 불량 입력에서 붉어지는 것을 보았고, 수리된 트리에서 초록인 것도 보았다** — 두 관측이 함께여야 충족된다. 통과만 본 가드는 자기가 무엇을 막는지 증명하지 못한다.
 
 - **Given** 수리와 가드가 착지한 트리에서 가드가 통과하는 것을 확인했고,
-- **And** 그 통과 출력이 **가드가 평가한 엔트리 수를 보고하며 그 값이 `101` 이다 — 두 미러 각각에 대해**(이 단언이 없으면 가드 쪽 부분 순회·조기 반환·제외 목록이 전부 살아남는다),
-- **When** **명시된 엔트리 `CONST-V3R2-004` 1건과 무작위로 고른 1건**의 `clause:` 값에 문자 하나를 넣어 일부러 깨뜨린 뒤 가드 명령을 실행하면(대상을 고정하는 이유: "임의의 한 엔트리"는 실행마다 다른 것을 골라도 둘 다 충족으로 읽혀 재현 가능한 판정이 아니다),
+- **And** 그 통과 출력이 **가드가 평가한 엔트리 수를 보고하며 그 값이 **clause 97 / anchor 101** 이다 — 두 미러 각각, 두 수를 분리 보고**(이 단언이 없으면 가드 쪽 부분 순회·조기 반환·제외 목록이 전부 살아남는다),
+- **When** **명시된 엔트리 `CONST-V3R2-004` 1건과 무작위로 고른 비은퇴 1건(은퇴 엔트리는 clause 면제 집합이라 변이가 관측되지 않는다 — `.moai/reports/t232/guard-failure-scenario.md` §1)**의 `clause:` 값에 문자 하나를 넣어 일부러 깨뜨린 뒤 가드 명령을 실행하면(대상을 고정하는 이유: "임의의 한 엔트리"는 실행마다 다른 것을 골라도 둘 다 충족으로 읽혀 재현 가능한 판정이 아니다),
 - **Then** 가드가 **0이 아닌 종료 코드**로 실패하고, 실패 메시지가 그 엔트리의 ID를 지목한다.
 - **And** 그 실패 출력(종료 코드 + 실패 엔트리 ID 를 포함한 실제 출력)이 `progress.md` §E.2 에 **그대로 인용**된다.
 - **And** anchor 값으로도 같은 변이를 1회 수행해 같은 결과를 관측한다.
@@ -142,6 +142,7 @@ boolean 이 아니라 횟수를 세는 이유: "빈 문자열 아님"만 요구�
 - **Given** 깨진 엔트리가 하나 있는 트리와 착지한 가드가 있고,
 - **When** `MOAI_CONSTITUTION_SKIP_VALIDATE=1` 을 환경에 둔 채 가드를 실행하면,
 - **Then** 가드가 여전히 실패한다(검증이 건너뛰어졌다는 사실 자체를 실패로 취급한다).
+- **And** 깨끗한 트리(변이 없음)에서 `MOAI_CONSTITUTION_SKIP_VALIDATE=1` 을 건 상태로 가드를 돌리면 가드는 "검증 건너뜀" 을 이유로 실패한다 — 이 관측이 없으면 변이 주입 관측만으로 skip-성공-무시 구현과 구별되지 않는다 (plan-audit iter3 C5).
 
 **RED**: `Validate` 는 이 환경변수가 `1` 이면 `ValidationResult{Status: Skipped, Skipped: true}` 를 반환하고 에러를 내지 않는다(`internal/constitution/validator.go` `Validate` 도입부). 그 반환을 그대로 성공으로 읽는 가드는 CI 환경변수 한 줄로 무력화된다.
 

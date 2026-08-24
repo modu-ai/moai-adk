@@ -70,7 +70,7 @@ exit=1
 
 측정 결과 은퇴 4건은 **전부 clause 실패**다(`clause_ok=False`, anchor 는 4건 모두 통과). 즉 두 계약이 같은 4건에 대해 반대를 말한다 — AC 는 고치라 하고, #1611 은 고칠 수 없는 것이라고 한다.
 
-가능한 해소는 셋이며, **이 SPEC 은 아직 고르지 않았다**:
+가능한 해소는 셋이었고, v0.5.0 에서 **C안으로 확정했다**(아래 결정 기록):
 
 | 안 | 내용 | 대가 |
 |---|---|---|
@@ -82,7 +82,7 @@ exit=1
 
 1. 은퇴 4건(`CONST-V3R2-021..024`)의 `anchor:` 는 전부 `#14-parallel-execution-safeguards` 이며 이 heading 은 로컬·템플릿 양쪽 CLAUDE.md 에서 모두 해석된다(두 파일 바이트 동일, `## 14. Parallel Execution Safeguards` 위치 양쪽 153행).
 2. 은퇴 마커 `[SUPERSEDED by worktree-opt-in policy — see CLAUDE.md §14 + worktree-integration.md § Terminology Glossary]` 의 지시 대상은 **살아 있다** — CLAUDE.md §14 본문이 worktree-opt-in 포인터를 실은 후계 교리다. 즉 은퇴 엔트리의 anchor 는 사라진 절이 아니라 **후계 절을 가리키는 포인터**고, anchor 검사는 그 마커의 안내가 계속 해석 가능한지를 검증한다.
-3. 같은 트리의 신규 분석(`.moai/reports/t232/analyze.py`): 엔트리 101건 기준 clause 실패 68 — 그중 은퇴 4. anchor 실패 17 — 그중 은퇴 0.
+3. 같은 트리의 신규 분석: 총계(clause 실패 68 / anchor 실패 17, 엔트리 101건 기준)는 `.moai/reports/t232/analyze.py` 가 냈고, 은퇴·비은퇴 분리(clause 실패 중 은퇴 4 / anchor 실패 중 은퇴 0)는 `retired-vs-ac.py`(입력 `analysis-postmerge.json`)이 냈다.
 
 확정된 계약: **은퇴 4건은 clause verbatim 요구에서 면제된다** — 그 `clause:` 는 은퇴한 교리의 불변 감사 기록이므로, 원문이 정의상 소멸했음에도 verbatim 을 요구하는 B안은 측정상 불가능하고, 문서에 은퇴 교리를 되살려 인용을 만드는 식의 충족은 감사 기록을 위조한다. **단 anchor 해석에는 면제되지 않는다**(REQ-ZRR-002 / AC-ZRR-004 — 101/101 그대로). anchor 까지 제외하는 A안은 §14 가 개명되어 마커 포인터가 죽어도 무신호로 놓치는, 은퇴 마커에 남은 유일한 기계 검사를 포기하는 길이다. #1611 의 `--strict` 경로도 은퇴 엔트리를 재검사한다(`internal/constitution/validator.go:214` `retired := !opts.Strict && IsRetiredClause(entry.Clause)`) — 비-strict skip 은 검증 면제가 아니라 편의 선택이며, C안은 그 분할을 계약으로 옮긴 것이다. 이에 따라 clause 수리 범위는 비은퇴 실패 **64건**이다(§1.1 의 68건에서 은퇴 4건을 뺀 값).
 

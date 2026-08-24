@@ -45,7 +45,7 @@
 | `diff -q` 로컬 vs 템플릿 레지스트리 | 동일 |
 | `go test ./internal/constitution/...` | ok |
 
-**v0.5.0 재측정 (트리 `9ba1e308d`, C안 확정 시점)** — clause 실패 `68`(은퇴 4 포함) / anchor 실패 `17`(은퇴 0)(출처: `progress.md` §F 가 인용한 같은 트리의 `analyze.py` 측정) / `diff -q` 미러 동일 / `go test ./internal/constitution/...` → `ok  github.com/modu-ai/moai-adk/internal/constitution  1.724s` rc=0(본 커밋 시점 실행). 이 시점부터 clause 집계 기준은 **비은퇴 97** 이다(`spec.md` §1.2 v0.5.0).
+**v0.5.0 재측정 (트리 `9ba1e308d`, C안 확정 시점)** — clause 실패 `68`(은퇴 4 포함) / anchor 실패 `17`(은퇴 0)(출처: `progress.md` §F 인용 — 총계는 같은 트리의 `analyze.py`, 은퇴 분리는 `retired-vs-ac.py`(입력 `analysis-postmerge.json`)) / `diff -q` 미러 동일 / `go test ./internal/constitution/...` → `ok  github.com/modu-ai/moai-adk/internal/constitution  1.724s` rc=0(본 커밋 시점 실행). 이 시점부터 clause 집계 기준은 **비은퇴 97** 이다(`spec.md` §1.2 v0.5.0).
 
 ## §D 구속 조건 (재논의 금지)
 
@@ -105,7 +105,7 @@ M1 이 붉은 신호 없이 진행되는 것을 막기 위해, M1 은 §C 사전
   - `result.Skipped == true` 면 **실패**시킨다 (D7 / AC-ZRR-010)
   - `result.DriftCount != 0` 이면 실패, 실패한 엔트리 ID를 전부 출력
   - 같은 테스트 안에서 **anchor 해석**을 검사한다 — 각 엔트리의 `file:` 을 읽어 §D8 의 6단계 규칙으로 heading slug 집합을 만들고 `anchor:` 를 대조. slug 규칙은 코드에 그대로 적고, "이 규칙 아래에서 착지 시점 17건이 실패했다"를 주석으로 남긴다(REQ-ZRR-012). 검증기 코드는 건드리지 않으므로 D1 유지
-  - 같은 테스트 안에서 **리터럴 체크**를 검사한다 — 정규화 없이 `strings.Contains(rawFileContent, clause)` (= `grep -F` 등가). 이것이 AC-ZRR-002/003 의 기계화이며 검증기보다 엄격하다
+  - 같은 테스트 안에서 **리터럴 체크**를 검사한다 — 정규화 없이 엔트리별 `strings.Count(rawFileContent, clause)` 를 세어 1회 적중 / 0회 / 2회 이상 / 은퇴 면제 4건의 버킷을 출력한다(빈 clause 도 0회 버킷에서 실패). 이것이 AC-ZRR-002/003 의 기계화이며 검증기보다 엄격하다 — 판정은 boolean 이 아니라 횟수다
 - CI 배선: 이 테스트는 이미 차단 경로인 `go test ./...` job 에서 돌아간다 → AC-ZRR-008 충족
 - 추가로 `.github/workflows/ci.yml` 의 `constitution-check` job 에 `constitution validate` 스텝을 넣되, **그 job 은 `continue-on-error: true` 이므로 보조 신호로만 취급**한다(가드 판정은 Go 테스트가 진다). 이 사실을 스텝 주석에 적는다.
 
@@ -119,11 +119,14 @@ M1 이 붉은 신호 없이 진행되는 것을 막기 위해, M1 은 §C 사전
 **M2 종료 조건 (붉은 것을 먼저 본다 — D10)**:
 
 1. 깨끗한 트리에서 가드 통과를 확인한다
-2. 임의의 한 엔트리 `clause:` 를 일부러 깨뜨리고 가드를 돌려 **실패를 관측**한다 — 실제 출력(종료 코드 + 실패 엔트리 ID)을 `progress.md` §E.2 에 그대로 인용한다
+2. 명시 엔트리 `CONST-V3R2-004` 와 무작위 **비은퇴** 1건의 `clause:` 를 각각 일부러 깨뜨려 가드를 돌려 실패를 관측한다 — 실제 출력(종료 코드 + 실패 엔트리 ID)을 `progress.md` §E.2 에 그대로 인용한다
 3. anchor 로도 같은 변이를 1회 수행한다
 4. 템플릿 미러 쪽으로도 같은 변이를 1회 수행한다
-5. `MOAI_CONSTITUTION_SKIP_VALIDATE=1` 을 건 상태에서 변이 주입 가드가 **여전히 실패**하는지 확인한다
+5. `MOAI_CONSTITUTION_SKIP_VALIDATE=1` 을 건 상태에서 변이 주입 가드가 **여전히 실패**하는지 확인한다 — 그리고 **깨끗한 트리(변이 없음)** 에서도 `MOAI_CONSTITUTION_SKIP_VALIDATE=1` 을 건 채 가드를 돌려 "검증 건너뜀" 을 이유로 실패하는지 확인한다(AC-ZRR-010, plan-audit iter3 C5)
 6. 변이를 전부 되돌리고 다시 통과를 확인한다
+7. 변이 주입 CI 관측 — R1 스크래치 커밋을 PR 에 올려 가드 job 의 결론이 `fail` 인 것을 `gh pr checks` 로 인용한다 (`.moai/reports/t232/guard-failure-scenario.md` §3)
+
+변이 판정의 정본은 `guard-failure-scenario.md` §1–§3 이다 (AC-ZRR-007 준거).
 
 ### M3 — 미러·임베드·최종 검증
 
@@ -163,7 +166,7 @@ M1 이 붉은 신호 없이 진행되는 것을 막기 위해, M1 은 §C 사전
 
 - **의미 정합성은 기계로 못 잡는다.** "verbatim 이고 anchor 가 해석된다"가 "맞는 문장을 골랐다"를 함의하지 않는다. anchor 를 항상-해석되는 값으로 치환하는 mutant(AC-ZRR-004 행)는 기계 판정을 빠져나간다. 이 축은 sync-phase 사람 리뷰가 진다 — 리뷰어에게 "레지스트리 diff 전체를 읽고, 각 clause 가 그 anchor 절 안에 있는지" 를 명시적으로 요청할 것.
 - **근접 오답 재지목 1건 — `CONST-V3R2-004`.** 깨진 clause 68건 중 **정확히 이 하나**가 다른 이중 트리 파일 `.claude/rules/moai/NOTICE.md` 안에 리터럴로 존재한다(clause 값 `16-language neutrality`). 이 엔트리를 `NOTICE.md` 로 옮기면 AC-ZRR-002/003 을 **기계적으로 통과한다**. 방어는 새 `file:` 변경 목록이며, **이 엔트리가 `NOTICE.md` 로 이동한 채 그 목록에 나타나면 sync 리뷰어는 거부한다** — 이 교리의 서식지는 `coding-standards.md` `#language-policy` 다. 위 항목의 "레지스트리 diff 전수 읽기" 요청에 **이 엔트리를 이름으로 붙여** 전달할 것. 판정자: sync-phase 사람 리뷰어(기계 판정 없음).
-- **"평가 엔트리 수 101" 은 로드 수와 검사 수를 구분하지 못한다.** 레지스트리를 101건 파싱하기만 해도 그 수를 보고할 수 있다. 따라서 manager-develop 은 카운터를 **엔트리별 clause 검사 완료 시점과 anchor 검사 완료 시점에 각각** 증가시키고, §E.2 에 **두 개의 수**(clause 검사 101 / anchor 검사 101)를 따로 인용한다. sync-auditor 는 인용된 출력에 수가 하나가 아니라 **둘**인지 확인한다. 판정자: sync-auditor.
+- **"평가 엔트리 수 101" 은 로드 수와 검사 수를 구분하지 못한다.** 레지스트리를 101건 파싱하기만 해도 그 수를 보고할 수 있다. 따라서 manager-develop 은 카운터를 **엔트리별 clause 검사 완료 시점과 anchor 검사 완료 시점에 각각** 증가시키고, §E.2 에 **두 개의 수**(clause 검사 97 / anchor 검사 101)를 따로 인용한다. sync-auditor 는 인용된 출력에 수가 하나가 아니라 **둘**인지 확인한다. 판정자: sync-auditor.
 - **규칙 본문 오염 경로.** D5 를 어기고 문서를 고쳐 인용을 만드는 우회는 AC 로 완전히 막히지 않는다. 방어는 PR diff 관찰(규칙 문서 변경 라인 0)이며, 이는 사람/리뷰 판정이다.
 - **가드의 anchor 해석기는 재구현이다.** slug 규칙이 렌더러와 다르면 오탐/누락이 생긴다. 17이라는 RED 수치도 이 재구현 기준이다.
 - **스냅샷 수리라는 성격.** 이 SPEC 이 고치는 것은 오늘의 101건이고, 가드가 지키는 것은 내일의 편집이다. 가드가 없으면 이 수리는 몇 달 뒤 같은 상태로 돌아온다 — 그래서 M1 이 첫 마일스톤이다.
