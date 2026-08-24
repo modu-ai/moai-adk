@@ -434,14 +434,37 @@ func gitBranchMergedReal() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	return parseGitBranchMergedOutput(string(out)), nil
+}
+
+// parseGitBranchMergedOutput turns `git branch --merged <base>` stdout into
+// the branch names it names.
+//
+// git decorates the listing with TWO markers, not one: `*` for the branch
+// checked out in THIS worktree, and `+` for a branch checked out in a LINKED
+// worktree. Stripping only `*` was measured on this repository to leave 119 of
+// 149 entries `+`-prefixed and therefore unmatchable — and `+` is the marker
+// every candidate this sweep evaluates carries, since a candidate is by
+// definition checked out in a linked worktree. The fallback could not report a
+// single live worktree's branch as merged (SPEC-WORKTREE-REAPER-001 F1).
+//
+// Non-branch lines — `(HEAD detached at <sha>)`, `(no branch)` — are skipped
+// rather than admitted as branch names: nothing can be merged into a base
+// under a name git invented for the absence of one.
+//
+// @MX:ANCHOR: [AUTO] the sole parser behind the gh-no-answer merge fallback
+// @MX:REASON: REQ-WR-002 routes every undetermined gh answer through this
+// function; a name it fails to recognise is silently read as NOT MERGED, which
+// preserves forever and is invisible in the sweep's output.
+func parseGitBranchMergedOutput(out string) []string {
 	var branches []string
-	for _, line := range strings.Split(string(out), "\n") {
-		// `git branch` prefixes the current branch with `*`; strip it. Also
-		// strip leading/trailing whitespace.
-		line = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(line), "*"))
-		if line != "" {
-			branches = append(branches, line)
+	for _, line := range strings.Split(out, "\n") {
+		// Strip both decoration markers plus the padding git aligns with.
+		line = strings.TrimSpace(strings.TrimLeft(strings.TrimSpace(line), "*+ "))
+		if line == "" || strings.HasPrefix(line, "(") {
+			continue
 		}
+		branches = append(branches, line)
 	}
-	return branches, nil
+	return branches
 }

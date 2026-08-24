@@ -43,7 +43,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   --merged origin/main`. A determinate `OPEN`, `CLOSED`, or `DRAFT` ends the decision without the
   fallback, so neither source overrides the other: `gh` sees squash merges the git fallback cannot,
   and the git fallback sees deleted-branch merges `gh` cannot. When neither can decide, the worktree
-  is preserved and the notice says which state was undetermined.
+  is preserved and the notice says which state was undetermined. The fallback's parser now strips
+  git's `+` linked-worktree marker as well as the `*` current-branch one, and skips the
+  `(HEAD detached at ...)` / `(no branch)` lines: `+` decorates precisely the branches this sweep
+  evaluates — every candidate is checked out in a linked worktree — so stripping only `*` left the
+  fallback unable to report any live worktree's branch as merged, and the deleted-branch case above
+  still reached the preserve path.
 - **The session-anchor guard was blind to most live sessions, and git's worktree lock was what
   actually protected them.** The guard read the session registry alone, whose `cwd` is corrected
   only when the relocation hook fires — measured naming 1 of 5 live anchors, against 5 of 5 named by
