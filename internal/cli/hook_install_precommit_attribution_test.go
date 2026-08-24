@@ -162,8 +162,8 @@ func TestPreCommitVersionBumpIsSilent(t *testing.T) {
 	root := newPreCommitTestRepo(t)
 	installWithContent(t, root, previousPreCommitHookContent)
 
-	var buf bytes.Buffer
-	installPreCommitHookOptional(root, false, &buf)
+	var out, warn bytes.Buffer
+	installPreCommitHookOptional(root, false, &out, &warn)
 
 	if got := readHook(t, root); got != preCommitHookContent {
 		t.Errorf("hook was not replaced: got %d bytes, want the incoming content (%d bytes)", len(got), len(preCommitHookContent))
@@ -171,8 +171,11 @@ func TestPreCommitVersionBumpIsSilent(t *testing.T) {
 	assertNoBackup(t, root)
 
 	const wantLine = "  Pre-commit hook installed (.git/hooks/pre-commit)\n"
-	if buf.String() != wantLine {
-		t.Errorf("output = %q, want exactly %q (a version bump produces no backup notice)", buf.String(), wantLine)
+	if out.String() != wantLine {
+		t.Errorf("output = %q, want exactly %q (a version bump produces no backup notice)", out.String(), wantLine)
+	}
+	if warn.Len() != 0 {
+		t.Errorf("a version bump produces no notice on the warning writer either, got: %q", warn.String())
 	}
 	if got, want := readRecord(t, root), digestOf(preCommitHookContent); got != want {
 		t.Errorf("record = %q, want %q", got, want)
