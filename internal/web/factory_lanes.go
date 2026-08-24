@@ -29,6 +29,7 @@ const (
 	LaneUnresolvedNoSession = "no-session" // the pid is in no session entry
 	LaneUnresolvedAmbiguous = "ambiguous"  // the pid does not identify one session
 	LaneUnresolvedNoRecord  = "no-record"  // the session resolved but wrote no record
+	LaneUnresolvedLaneClash = "lane-clash" // the record names a different lane than the registry
 )
 
 // LaneVM is one registered factory lane. A lane is always PRESENT once
@@ -133,11 +134,15 @@ func resolveLane(
 	}
 	stage, estimated := estimateStage(vm)
 
-	// The record's own lane number is presented where it carries one; the
-	// label's number stays the row identity because an unresolved lane has no
-	// record to read it from.
-	if rec.Lane > 0 {
-		row.Lane = rec.Lane
+	// The registry label's number IS the row identity and is never overwritten:
+	// a record whose own lane number disagrees with it is evidence the join
+	// landed on the wrong session, which REQ-WC15-047 renders unresolved rather
+	// than presenting. Overwriting instead would let one bad join relabel a row
+	// — two lanes could then render the same number while the registered lane
+	// vanished from the page, which is the misattribution this section exists to
+	// keep off the screen.
+	if rec.Lane > 0 && rec.Lane != lane {
+		return unresolvedLane(row, LaneUnresolvedLaneClash)
 	}
 	row.Session = vm.ID
 	row.CardID = rec.CardID

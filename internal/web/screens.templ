@@ -332,6 +332,7 @@ templ todoStateBadge(state string) {
 	<span
 		class={ "badge", templ.KV("badge--outline", state == "queued"), templ.KV("badge--strong", state == "picked"), templ.KV("badge--danger", state == "dropped") }
 		data-todo-state={ state }
+		data-i18n={ "todo.state." + state }
 	>{ state }</span>
 }
 

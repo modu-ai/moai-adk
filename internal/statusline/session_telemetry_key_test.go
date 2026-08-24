@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"testing"
 )
@@ -66,10 +67,14 @@ func TestHostileKeyIsRefused(t *testing.T) {
 			// (c) the render still completes with its statusline line.
 			buildForSession(t, proj, tc.key)
 
+			// Compared by content, not by length: a refusal that both removed and
+			// added one file leaves the count unchanged, and the count is what a
+			// length check reads. Both snapshots are sorted, so a slice equality
+			// is exact and names the offending path when it fails.
 			after := snapshotTree(t, root)
-			if len(after) != len(before) {
-				t.Errorf("key %q created %d file(s): %v — a refused key must create none",
-					tc.key, len(after)-len(before), after)
+			if !slices.Equal(after, before) {
+				t.Errorf("key %q changed the tree — a refused key must leave it untouched\nbefore: %v\nafter:  %v",
+					tc.key, before, after)
 			}
 
 			// (b) nothing inside the per-session directory either.

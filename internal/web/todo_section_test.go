@@ -91,7 +91,15 @@ func TestTodoSectionListsAllThreeStates(t *testing.T) {
 		if !strings.Contains(body, `data-todo-state="`+state+`"`) {
 			t.Errorf("no state badge for %q", state)
 		}
-		if !strings.Contains(body, `data-todo-state="`+state+`">`+state+`<`) {
+		// Asserted as two properties of the badge rather than as one adjacency:
+		// the element now also carries data-i18n, so a literal `…state="x">x<`
+		// match would fail on attribute order rather than on behaviour. What must
+		// hold is that the badge renders the state as its text AND names its
+		// translation key — the label is user-visible (REQ-WTQ-008).
+		if !strings.Contains(body, `data-i18n="todo.state.`+state+`"`) {
+			t.Errorf("the %q badge carries no translation key", state)
+		}
+		if !strings.Contains(body, `>`+state+`</span>`) {
 			t.Errorf("the %q badge does not render its state as its text", state)
 		}
 	}
@@ -258,7 +266,8 @@ func TestConsoleRoutesLeaveBacklogUntouched(t *testing.T) {
 }
 
 // gitInit turns dir into a committed repository. User- and system-level git
-// config are pointed at /dev/null so a host's global config cannot leak in.
+// config are pointed at os.DevNull so a host's global config cannot leak in
+// on any platform (the literal /dev/null neutralises nothing on Windows).
 func gitInit(t *testing.T, dir string) {
 	t.Helper()
 	runGit(t, dir, "init", "-q")
@@ -271,7 +280,7 @@ func runGit(t *testing.T, dir string, args ...string) {
 	t.Helper()
 	full := append([]string{"-C", dir}, args...)
 	cmd := exec.Command("git", full...)
-	cmd.Env = append(os.Environ(), "GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null")
+	cmd.Env = append(os.Environ(), "GIT_CONFIG_GLOBAL="+os.DevNull, "GIT_CONFIG_SYSTEM="+os.DevNull)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("git %v: %v\n%s", full, err, out)
 	}

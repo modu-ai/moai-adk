@@ -35,7 +35,7 @@ func runTodoRootGit(t *testing.T, dir string, args ...string) {
 	full := append([]string{"-C", dir}, args...)
 	cmd := exec.Command("git", full...)
 	cmd.Env = append(os.Environ(),
-		"GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null")
+		"GIT_CONFIG_GLOBAL="+os.DevNull, "GIT_CONFIG_SYSTEM="+os.DevNull)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("git %v: %v\n%s", full, err, out)
 	}
@@ -182,10 +182,13 @@ func TestResolveTodoQueueRoot_PopulatedFallbackWins(t *testing.T) {
 	seedLocalQueue(t, dir, 2)
 
 	fallbackRoot := filepath.Join(home, ".moai", "todo", TodoQueueProjectKey(dir))
-	if err := os.MkdirAll(fallbackRoot, 0o755); err != nil {
+	// Seeded through BacklogPathForRoot, the path every consumer resolves: a
+	// queue seeded anywhere else is one the resolvers cannot see.
+	fallbackQueue := BacklogPathForRoot(fallbackRoot)
+	if err := os.MkdirAll(filepath.Dir(fallbackQueue), 0o755); err != nil {
 		t.Fatalf("mkdir fallback root: %v", err)
 	}
-	if err := os.WriteFile(filepath.Join(fallbackRoot, "backlog.json"),
+	if err := os.WriteFile(fallbackQueue,
 		[]byte(`{"version":1,"last_seq":0,"items":[]}`), 0o600); err != nil {
 		t.Fatalf("seed fallback queue: %v", err)
 	}
@@ -231,7 +234,7 @@ func TestResolveTodoQueueRootAdopting_AdoptsLocalQueue(t *testing.T) {
 	if _, err := os.Stat(local); !os.IsNotExist(err) {
 		t.Fatalf("local queue still at %q after adoption (stat err = %v)", local, err)
 	}
-	rec, err := NewBacklogStore(filepath.Join(root, "backlog.json")).Load()
+	rec, err := NewBacklogStore(BacklogPathForRoot(root)).Load()
 	if err != nil {
 		t.Fatalf("load adopted queue: %v", err)
 	}

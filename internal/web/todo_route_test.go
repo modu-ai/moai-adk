@@ -45,12 +45,43 @@ func TestTodoRouteServesPage(t *testing.T) {
 func TestTodoRouteRejectsNonGET(t *testing.T) {
 	a := newTestApp(t)
 
-	req := httptest.NewRequest(http.MethodPost, "/todo", nil)
-	rec := httptest.NewRecorder()
-	a.routes().ServeHTTP(rec, req)
+	// Two layers refuse a non-GET request, and this names which does what rather
+	// than accepting either code for any method. An earlier form checked POST
+	// alone and accepted "405 or 403", which proves neither layer — 403 is also
+	// what a request that never reached the method gate returns.
 
-	if rec.Code != http.StatusMethodNotAllowed && rec.Code != http.StatusForbidden {
-		t.Fatalf("POST /todo status = %d, want 405 (or 403 from the host gate)", rec.Code)
+	// POST/PUT/PATCH are stopped FIRST by the CSRF guard (hostCheckMiddleware,
+	// app.go), which refuses before routing and is the stronger protection.
+	for _, method := range []string{http.MethodPost, http.MethodPut, http.MethodPatch} {
+		req := httptest.NewRequest(method, "/todo", nil)
+		rec := httptest.NewRecorder()
+		a.routes().ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusForbidden {
+			t.Errorf("%s /todo with no same-origin header: status = %d, want %d from the CSRF guard",
+				method, rec.Code, http.StatusForbidden)
+		}
+	}
+
+	// With that guard satisfied, the route's own read-only gate must still refuse
+	// them, with the header naming what is allowed. This is the half the earlier
+	// form could not reach. DELETE is outside the guard's switch, so it arrives
+	// here either way.
+	for _, method := range []string{
+		http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete,
+	} {
+		req := httptest.NewRequest(method, "/todo", nil)
+		req.Host = "127.0.0.1:8080"
+		req.Header.Set("Sec-Fetch-Site", "same-origin")
+		rec := httptest.NewRecorder()
+		a.routes().ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusMethodNotAllowed {
+			t.Errorf("%s /todo status = %d, want %d", method, rec.Code, http.StatusMethodNotAllowed)
+		}
+		if got := rec.Header().Get("Allow"); got != http.MethodGet {
+			t.Errorf("%s /todo Allow header = %q, want %q", method, got, http.MethodGet)
+		}
 	}
 }
 

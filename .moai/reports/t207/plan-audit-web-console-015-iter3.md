@@ -22,7 +22,7 @@ knowing that.
 
 | Item | Value |
 |---|---|
-| Worktree | `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t207` |
+| Worktree | `<worktree>` |
 | Branch | `WT-web-live-todo` |
 | HEAD at audit time | `aa4d7176d` |
 | SPEC version audited | `0.2.0` |
@@ -231,10 +231,10 @@ where a vacuous-selector shape was plausible; it is clean.
 
 ```
 active sessions: 4
-  e46fcfef-1f5c-4f9c-beff-2ada72e26eb5  pid 51045  /Users/goos/MoAI/moai-adk-go
-  34740be0-dab0-402a-a976-4894b693a155  pid 31329  /Users/goos/moai/moai-adk-go
-  55cdc796-5aa2-491b-91fb-bc274904684b  pid 87705  /Users/goos/moai/moai-adk-go
-  e995be8e-015a-4391-9091-301d8a85f962  pid 10793  /Users/goos/moai/moai-adk-go
+  e46fcfef-1f5c-4f9c-beff-2ada72e26eb5  pid 51045  <project-root>
+  34740be0-dab0-402a-a976-4894b693a155  pid 31329  <other-checkout>
+  55cdc796-5aa2-491b-91fb-bc274904684b  pid 87705  <other-checkout>
+  e995be8e-015a-4391-9091-301d8a85f962  pid 10793  <other-checkout>
 
 kanban record files: 84
   record keyed by 34740be0 : True

@@ -80,10 +80,10 @@ type SessionVM struct {
 	Heartbeat string
 	Cwd       string
 
-	// PID 는 레지스트리 항목의 프로세스 식별자다. 화면에 그리지 않는다 —
-	// 팩토리 레인 join 이 이 값으로 세션을 찾기 때문에 들고 있는다.
-	// active-sessions.json 을 한 번만 읽는다는 규율을 지키려면 여기 실어
-	// 나르는 편이 두 번째 읽기를 추가하는 것보다 낫다.
+	// PID is the registry entry's process identifier. It is never rendered; it is
+	// carried because the factory-lane join finds a session by it. Carrying it
+	// here is what keeps the discipline of reading active-sessions.json exactly
+	// once, which a second read would break.
 	PID int
 }
 
@@ -91,9 +91,9 @@ type RoleVM struct {
 	Role           string
 	Session        string
 	Backend        string
-	Model          string // 세션 텔레메트리 기록의 값. 빈 문자열 = 기록 없음
-	Effort         string // 위와 같다
-	ContextPct     int    // -1 = 기록 없음. 0 은 "0%로 기록됨"이라는 다른 사실이다
+	Model          string // from the session's telemetry record; "" = not recorded
+	Effort         string // as above
+	ContextPct     int    // -1 = not recorded; 0 means "recorded as 0%", a different fact
 	State          string
 	Stage          string
 	StageEstimated bool
@@ -132,9 +132,10 @@ type KanbanVM struct {
 	Columns  []PipeColumnVM
 	Total    int
 
-	// Lanes 는 팩토리 레인이다. Roles 옆에 따로 선다 — 레인은 체인 역할이
-	// 아니고, ChainRoles 를 넓히면 모든 체인 소비자가 가변 길이 역할 목록을
-	// 방어해야 한다. 등록된 레인이 없으면 빈 목록이고, 화면은 그 사실을 그린다.
+	// Lanes are the factory lanes. They stand beside Roles rather than inside it:
+	// a lane is not a chain role, and widening ChainRoles would make every chain
+	// consumer defend against a variable-length role list. No registered lane
+	// yields an empty list, and the view draws that fact.
 	Lanes []LaneVM
 }
 
@@ -235,13 +236,32 @@ func processAlive(pid int) bool {
 // 화면은 그 칸을 미기동으로 정직하게 그린다 — 그럴듯한 값을 채우지 않는다.
 func roleOf(r KanbanRecord) string { return strings.ToLower(strings.TrimSpace(r.Role)) }
 
-// readTelemetry 는 한 세션의 텔레메트리 기록을 SPEC-SESSION-TELEMETRY-001 이
-// 내보낸 단 하나의 리더로 읽는다. 경로도 그 SPEC 의 헬퍼가 만든다 — 이 패키지는
-// 기록의 위치도 스키마도 다시 적지 않는다. 하나의 디스크 형식을 두 곳에서
-// 선언하면 형식이 갈라진다.
+// chainRoleRecords keeps only the records whose role is one of the four fixed
+// chain roles. A factory lane's record carries role "lane", which is not a chain
+// role: buildChain treats any record as proof the chain is present but renders
+// only ChainRoles, so passing one through makes a lanes-only project render an
+// idle chain it does not have.
+func chainRoleRecords(records []KanbanRecord) []KanbanRecord {
+	isChainRole := make(map[string]bool, len(ChainRoles))
+	for _, role := range ChainRoles {
+		isChainRole[role] = true
+	}
+	out := make([]KanbanRecord, 0, len(records))
+	for _, r := range records {
+		if isChainRole[roleOf(r)] {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// readTelemetry reads one session's telemetry record through the single reader
+// SPEC-SESSION-TELEMETRY-001 exports, and builds the path with that SPEC's own
+// helper: this package restates neither the record's location nor its schema,
+// because one on-disk format declared in two places is a format that forks.
 //
-// 읽을 수 없으면 nil 이다. 기록 없음과 값 0 은 다른 사실이고, 화면은 그 차이를
-// 그린다.
+// Unreadable yields nil. "No record" and "the value is zero" are different
+// facts, and the view draws the difference.
 func readTelemetry(root, sessionID string) *statusline.SessionTelemetryRecord {
 	path := statusline.SessionTelemetryPath(filepath.Join(root, ".moai", "state"), sessionID)
 	if path == "" {
@@ -254,7 +274,7 @@ func readTelemetry(root, sessionID string) *statusline.SessionTelemetryRecord {
 	return rec
 }
 
-// telemetryCells 는 한 세션의 모델 · effort · 컨텍스트 백분율을 돌려준다.
+// telemetryCells returns one session's model, effort and context percentage.
 // 기록이 없으면 빈 문자열과 -1 — 화면이 "기록 없음"으로 그리는 값이다.
 // 기록이 있어도 model/effort 가 비어 있으면(의존 SPEC 이전에 쓰인 기록) 그
 // 칸만 기록 없음으로 남는다. 그럴듯한 대체값을 채우지 않는다.
@@ -719,7 +739,14 @@ func (a *app) buildKanban(now time.Time) (KanbanVM, error) {
 	}
 	_, byID := loadSessions(root, now)
 	records := loadKanbanRecords(root)
-	chain := buildChain(root, records, byID, chainCardID(records))
+	// The chain is built from chain-role records only. buildChain reads
+	// `len(records) > 0` as proof a chain exists but renders only ChainRoles, so
+	// feeding it a factory lane's record makes a project that runs lanes and no
+	// chain report a present chain stopped at an idle `lead` — a confident wrong
+	// answer on a supported configuration. loadFactoryLanes still receives the
+	// complete set; it is the half that needs the lane records.
+	chainRecords := chainRoleRecords(records)
+	chain := buildChain(root, chainRecords, byID, chainCardID(chainRecords))
 
 	return KanbanVM{
 		CardID:   chain.CardID,

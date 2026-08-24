@@ -13,7 +13,7 @@ Reasoning context ignored per M1 Context Isolation. The three artifacts, the rat
 to locate the findings routed here (F3, F6, F11, F13) and the defect shapes to test for — never as
 grounds for accepting a claim.
 
-Audit tree: `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t207`, HEAD `ee039da30`.
+Audit tree: `<worktree>`, HEAD `ee039da30`.
 The SPEC attributes its baselines to `dfbf828a6`. That commit exists in this tree and
 `git diff --stat dfbf828a6..HEAD -- internal/cli/todo.go internal/web internal/kanban/backlog_store.go`
 prints nothing, so every baseline it states is measurable unchanged at HEAD. All re-measurements
@@ -343,7 +343,7 @@ one-to-one onto REQ-WTQ-001…008 and B-010…B-020 onto the eleven criteria.
 ## Baseline-attribution
 
 Every measurement above was taken in this run, in
-`/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t207` at HEAD `ee039da30`, with the commands quoted
+`<worktree>` at HEAD `ee039da30`, with the commands quoted
 verbatim beside their output. The SPEC's own attribution commit `dfbf828a6` was verified to exist
 (`git cat-file -t dfbf828a6` → `commit`) and to be identical to HEAD across every cited source file
 (`git diff --stat dfbf828a6..HEAD -- internal/cli/todo.go internal/web internal/kanban/backlog_store.go`

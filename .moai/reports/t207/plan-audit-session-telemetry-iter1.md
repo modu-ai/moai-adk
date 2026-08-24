@@ -11,7 +11,7 @@ itself. Reasoning context from the SPEC author was not supplied and would have b
 The three context documents named in the assignment (`spec-split-design.md`,
 `plan-audit-iter2-independent.md`, `SPEC-WEB-CONSOLE-015/`) were read as context, not audited.
 
-Audit tree: `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t207`, `HEAD = ee039da30`.
+Audit tree: `<worktree>`, `HEAD = ee039da30`.
 The SPEC attributes every baseline to `dfbf828a6`. That commit is one behind `HEAD`, and the
 single intervening commit (`ee039da30 plan(t207): split SPEC-WEB-CONSOLE-015 into four SPECs`)
 touches no file this SPEC measures — verified:
@@ -248,7 +248,7 @@ ceilings of 25 and 25 applied independently. Both well inside.
 ### Baseline-attribution
 
 Every figure above was measured in this run, in the worktree
-`/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t207`, at `HEAD = ee039da30`, with the
+`<worktree>`, at `HEAD = ee039da30`, with the
 `dfbf828a6..HEAD` diff over `internal docs-site .claude` empty (shown at the top of this report).
 Nothing is carried from the parent SPEC's audit reports, from `spec-split-design.md`, or from the
 SPEC's own citations — where a figure agrees with one of those, it agrees because it was re-run.

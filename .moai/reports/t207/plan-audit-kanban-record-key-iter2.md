@@ -11,7 +11,7 @@ Reasoning context ignored per M1 Context Isolation. This audit reads only the th
 at version 0.2.0, the code and live state they cite, the two sibling SPECs named for boundary
 checking, and the iteration-1 report as the delta baseline. Nothing was repaired or edited.
 
-Audited tree: `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t207`, HEAD **`00f207ad9`**, branch
+Audited tree: `<worktree>`, HEAD **`00f207ad9`**, branch
 `WT-web-live-todo`. The SPEC attributes its own re-measurement to `3c3a6fbf8`, the immediate parent
 of the revision commit:
 
@@ -23,7 +23,7 @@ ee039da30 plan(t207): split SPEC-WEB-CONSOLE-015 into four SPECs      <- iterati
 dfbf828a6 plan(t207): measure the session-id slots and find the kanban record key defect (t207)
 ```
 
-Runtime state (`.moai/state/**`) is read under the **project root** `/Users/goos/MoAI/moai-adk-go/`,
+Runtime state (`.moai/state/**`) is read under the **project root** `<project-root>/`,
 which is what version 0.2.0 now correctly states. Verified: this worktree carries no
 `.moai/state/kanban/` at all (`ls .moai/state/` -> `.gitkeep`, `config-cache.json`,
 `context-usage.json`).
@@ -148,9 +148,9 @@ Checked against the brief's three questions:
 
 1. **Is the anti-guess clause now reachable?** Yes, and its reachability is demonstrated on live
    data rather than argued. Measured in this tree, `git rev-parse --show-toplevel` ->
-   `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t207`, parent `…/.claude/worktrees` -> passes,
+   `<worktree>`, parent `…/.claude/worktrees` -> passes,
    yields `t207`. The live session `e46fcfef-1f5c-4f9c-beff-2ada72e26eb5` stands in the primary
-   checkout (`cwd` per `active-sessions.json`), parent `/Users/goos/MoAI` -> **fails the test, field
+   checkout (`cwd` per `active-sessions.json`), parent `<checkouts-parent>` -> **fails the test, field
    left empty**. The empty branch is entered by a session that exists right now.
 2. **Is the containment test applicable by an implementation?** Yes. It is a structural test on one
    path component (`filepath.Base(filepath.Dir(root)) == "worktrees"`), needs no queue read, and the
@@ -383,8 +383,8 @@ it does not:
 
 ```
 $ python3 -c "import json; [print(e['pid'], e['session_id'], e['cwd'], e['started_at']) for e in json.load(open('.moai/state/active-sessions.json'))]"
-51045 5d3be9b8-be19-42ab-8be1-7cb40b29c456 /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t210 2026-08-24T08:36:43.405154Z
-51045 e46fcfef-1f5c-4f9c-beff-2ada72e26eb5 /Users/goos/MoAI/moai-adk-go                        2026-08-24T09:02:55.161312Z
+51045 5d3be9b8-be19-42ab-8be1-7cb40b29c456 <project-root>/.claude/worktrees/t210 2026-08-24T08:36:43.405154Z
+51045 e46fcfef-1f5c-4f9c-beff-2ada72e26eb5 <project-root>                        2026-08-24T09:02:55.161312Z
 
 $ ps -p 51045 -o pid,command
 51045 claude … --name lane-9 --settings /var/…/moai-kanban-51045-….json
@@ -446,12 +446,12 @@ enumeration against the band finds a mismatch.
 ### F-6 (optional) — a live `cwd` is quoted in a spelling the file does not contain
 
 `spec.md` §A.5, `acceptance.md` AC-KRS-005(c), and `plan.md` §F all present
-`/Users/goos/moai/moai-adk-go` as session `e46fcfef…`'s "`cwd` in `active-sessions.json`". The file
-records `/Users/goos/MoAI/moai-adk-go`:
+`<other-checkout>` as session `e46fcfef…`'s "`cwd` in `active-sessions.json`". The file
+records `<project-root>`:
 
 ```
-$ python3 -c "…" active-sessions.json   ->   e46fcfef-… cwd /Users/goos/MoAI/moai-adk-go
-$ ls -di /Users/goos/MoAI/moai-adk-go /Users/goos/moai/moai-adk-go
+$ python3 -c "…" active-sessions.json   ->   e46fcfef-… cwd <project-root>
+$ ls -di <project-root> <other-checkout>
 253706617 …/MoAI/moai-adk-go
 253706617 …/moai/moai-adk-go            <- same inode: case-insensitive filesystem, one directory
 ```
@@ -596,8 +596,8 @@ disagree by one. — Severity: **minor** — Class: **optional** — Required fi
 (working estimate 6-8)".
 
 F6. `CWD-QUOTED-IN-A-SPELLING-THE-FILE-LACKS` — `spec.md` §A.5, `acceptance.md` AC-KRS-005(c),
-`plan.md` §F — `/Users/goos/moai/moai-adk-go` presented as the registry's recorded `cwd`; the file
-records `/Users/goos/MoAI/moai-adk-go`. Same inode on this case-insensitive filesystem, so no
+`plan.md` §F — `<other-checkout>` presented as the registry's recorded `cwd`; the file
+records `<project-root>`. Same inode on this case-insensitive filesystem, so no
 conclusion changes. — Severity: **minor** — Class: **optional** — Required fix: quote the recorded
 spelling.
 

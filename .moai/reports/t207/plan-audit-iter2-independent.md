@@ -720,7 +720,7 @@ and `i18n_untranslated_allowlist_test.go` both exist.
 
 ### Baseline-attribution
 Every command above was run **in this run**, in this tree
-(`/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t207`), on branch `WT-web-live-todo` at HEAD
+(`<worktree>`), on branch `WT-web-live-todo` at HEAD
 `cf131b20a`, working tree clean. The `git diff --stat 28bde4022..HEAD` output establishes that no Go
 source changed between the SPEC's own stated measurement base (`28bde4022`, `research.md:3`) and this
 HEAD, so the SPEC's baselines and mine are attributable to the same code. No figure was carried over

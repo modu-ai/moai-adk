@@ -10,7 +10,7 @@ Reasoning context ignored per M1 Context Isolation. The audit reads only the thr
 the code they cite, the two sibling SPECs named for boundary checking, and the live on-disk state.
 Nothing was repaired or edited.
 
-Audited tree: `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t207`, HEAD `ee039da30`, branch
+Audited tree: `<worktree>`, HEAD `ee039da30`, branch
 `WT-web-live-todo`. The SPEC's own measurements are attributed to `dfbf828a6`, which is an ancestor
 commit in this tree (`git log --oneline -1 dfbf828a6` →
 `dfbf828a6 plan(t207): measure the session-id slots and find the kanban record key defect (t207)`).
@@ -104,10 +104,10 @@ citations verify. §A.1 is sound.
 The SPEC's three cited live sessions are **gone**. Re-measured:
 
 ```
-$ python3 -c "…"  /Users/goos/MoAI/moai-adk-go/.moai/state/active-sessions.json
+$ python3 -c "…"  <project-root>/.moai/state/active-sessions.json
 f85c1634-c55d-4ba9-9c72-94c1a67c85ee  pid 51045  cwd …/worktrees/t210  started 04:35:38Z
 33468939-9717-4f5d-8d77-1582255bbc41  pid 34699  cwd …/worktrees/t209  started 04:36:01Z
-2e3ace62-e8cf-4dfb-9742-fb4ba42750d6  pid 83078  cwd /Users/goos/moai/moai-adk-go  started 04:43:03.966Z
+2e3ace62-e8cf-4dfb-9742-fb4ba42750d6  pid 83078  cwd <other-checkout>  started 04:43:03.966Z
 ```
 
 None of `2beac221…`, `c15d8434…`, `3db058e1…` appears; `ls .moai/state/kanban/3db058e1*.json` →
@@ -237,7 +237,7 @@ session is working** … otherwise from the basename of the session's worktree r
 source yields a value, the field shall be left empty rather than guessed." The basename source
 always yields a value for any session inside a git checkout, so the empty branch is unreachable
 except when git itself fails. Measured — one of the three live sessions right now
-(`2e3ace62…`, `active-sessions.json`) has `cwd: /Users/goos/moai/moai-adk-go`, a primary checkout,
+(`2e3ace62…`, `active-sessions.json`) has `cwd: <other-checkout>`, a primary checkout,
 not `.claude/worktrees/<card-id>`; its basename is `moai-adk-go`, which is not a card identifier.
 `acceptance.md` §E blesses this — "The basename is recorded as-is; the field says what the session
 was standing in" — but that is a *different field* from the one REQ-KRS-005 names, and the consumer
@@ -459,9 +459,9 @@ honest about what *was* observed.
   this audit; the verdict is single-auditor.
 - **`git rev-parse --show-toplevel` from the primary checkout was not run** (the worktree guard
   refuses cross-tree git). D3's `moai-adk-go` basename is derived from the recorded
-  `cwd: /Users/goos/moai/moai-adk-go` in the session registry plus path arithmetic, not from
+  `cwd: <other-checkout>` in the session registry plus path arithmetic, not from
   executing the command there. In this worktree the command was run and returns
-  `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t207`, basename `t207`, confirming the
+  `<worktree>`, basename `t207`, confirming the
   card-worktree half of the derivation.
 
 Every checklist group (Groups 1-8) was executed; no criterion was left unevaluated. The audit is

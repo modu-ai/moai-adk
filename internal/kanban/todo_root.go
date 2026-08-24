@@ -82,7 +82,13 @@ func ResolveTodoQueueRootAdopting(base string) string {
 		return root
 	}
 	adoptLocalTodoQueue(base, root)
-	return root
+	// Adoption is best-effort, so it can leave the fallback root empty while the
+	// project-local queue still holds the operator's cards. Resolving through the
+	// pure resolver afterwards is what keeps this path and the console's agreeing
+	// in that case too (REQ-WTQ-005): a successful adoption makes the fallback
+	// root the populated one and it wins, and a failed adoption reads through to
+	// the local queue rather than reporting it empty.
+	return fallbackTodoQueueRoot(base)
 }
 
 // primaryCheckoutRoot resolves base to the repository's primary checkout,
@@ -130,7 +136,7 @@ func fallbackTodoQueueRoot(base string) string {
 	// The mirror of adoptLocalTodoQueue's early returns: a populated fallback
 	// wins (it was adopted on an earlier run), and with no local file there is
 	// nothing to read through to.
-	if _, err := os.Stat(filepath.Join(root, "backlog.json")); err == nil {
+	if _, err := os.Stat(BacklogPathForRoot(root)); err == nil {
 		return root
 	}
 	if _, err := os.Stat(BacklogPathForRoot(base)); err != nil {
@@ -152,14 +158,18 @@ func fallbackTodoQueueRoot(base string) string {
 // downgrade-era snapshot the populated fallback deliberately ignores).
 func adoptLocalTodoQueue(base, fallbackRoot string) {
 	local := BacklogPathForRoot(base)
-	target := filepath.Join(fallbackRoot, "backlog.json")
+	// BacklogPathForRoot, not a bare join: every consumer resolves the store
+	// through it (internal/cli/todo.go, internal/web/todo_queue_read.go), so a
+	// target built any other way is a path nothing reads — the queue would be
+	// moved out of the operator's sight rather than migrated.
+	target := BacklogPathForRoot(fallbackRoot)
 	if _, err := os.Stat(target); err == nil {
 		return
 	}
 	if _, err := os.Stat(local); err != nil {
 		return
 	}
-	if err := os.MkdirAll(fallbackRoot, 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 		return
 	}
 	// Same-volume rename is atomic and leaves no duplicate behind.
