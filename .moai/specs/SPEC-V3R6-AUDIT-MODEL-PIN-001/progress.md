@@ -552,7 +552,7 @@ docs_site_scope_decision: minimal-4-locale-addition   # config-sections.md enume
 - Version-sync (verify §6) not re-run: no version display was touched by this sync (CHANGELOG `[Unreleased]` carries no stamp by dispatch instruction).
 - The duplicate placeholder `## §E.3 Run-phase Audit-Ready Signal` heading formerly above this §E.4 block was REMOVED in the CR round-1 response (CodeRabbit MD024; lane edit 2026-08-24) — the completed run-phase §E.3 record above remains the single anchor.
 
-### §E.5 — Sync-audit round 1 fix verification (unfiltered, lane-measured 2026-08-24)
+### §J — Sync-audit round 1 fix verification (unfiltered, lane-measured 2026-08-24)
 
 Sync-audit review-1 (FAIL: F1 parser regression, F2 init-wizard leaf drop, F4 stale comment) fixed in the working tree; evidence below measured by the LANE against the fix tree (this section records the unfiltered-suite discipline the audit demanded — all runs `-count=1`, no `-run` filters):
 

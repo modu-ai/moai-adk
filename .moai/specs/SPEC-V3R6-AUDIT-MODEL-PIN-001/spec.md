@@ -212,7 +212,10 @@ update-wipe, plan-audit MF1) and is not partially retained.
   workflow.yaml load contract.
 - `internal/template/glm_effort_overlay.go:129` — z.ai reasoning-state vocabulary
   reference (REQ-AMP-006).
-- Template llm.yaml GLM overlay note — prior measurement that the z.ai
-  Anthropic-compat shim honors the Anthropic `thinking` parameter and ignores a
-  top-level `reasoning_effort` field; the live AC re-verifies this for the audit
-  path specifically.
+- Template llm.yaml GLM overlay note — CORRECTED by the live differential
+  (acceptance.md AC-AMP-006 amendment record, 2026-08-24): the overlay note's
+  prior claim (Anthropic `thinking` honored, top-level `reasoning_effort`
+  ignored) is REVERSED on the audit path — the thinking-budget object measured
+  a true null (1.02) and the top-level `reasoning_effort` field is the
+  effective delivery field. The template llm.yaml overlay-doc correction itself
+  remains a separate follow-up card (reference-only).

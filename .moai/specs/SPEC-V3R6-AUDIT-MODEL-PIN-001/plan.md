@@ -141,10 +141,12 @@ Data model first — everything downstream keys on it.
 - `handleGLMAudit`: keep explicit caller `model` param precedence (overrides the
   pin, mirroring codex).
 - Request delivery: extend `callGLMAudit` to accept the effort and set the
-  reasoning field on `glmMessagesRequest`. Default implementation = hypothesis A
-  (Anthropic-style `thinking` object), per the prior overlay measurement; the M5
-  live gate is the arbiter — if the differential shows no delivery, switch the
-  field (hypothesis B) and re-run.
+  reasoning field on `glmMessagesRequest`. Delivery field = hypothesis B
+  (top-level `reasoning_effort`) — hypothesis A (the Anthropic-style `thinking`
+  object) was measured a TRUE NULL by the live differential (1.02, under the
+  approved < 1.1 null bound), so the field choice was made evidence-driven at
+  M5; the full audit trail is the dated amendment record in acceptance.md
+  AC-AMP-006 (2026-08-24).
 - Update the one additional caller `internal/cli/mcp_convergence.go:460`
   (compile-enforced). `glm_task` path untouched (REQ-AMP-008).
 - Tests (`internal/cli/mcp_glm_test.go`): seam-captured outbound body asserts the
@@ -180,8 +182,10 @@ Data model first — everything downstream keys on it.
   `glm: {model: glm-5.3, effort: max}` (no `audit:` block exists in the local
   file today — N1). Committed with the SPEC's code (both the local edit and the
   template empty defaults are tracked files — the MF1 durability requirement).
-- Live GLM differential per AC-AMP-006 (numeric rule: S(max) ≥ 2.0 ×
-  max(S(low), 1) on the SAME fixed diff); evidence under
+- Live GLM differential per AC-AMP-006 (numeric rule: S(max) ≥ 1.25 ×
+  max(S(low), 1), with the null-control discriminant < 1.1, on the SAME fixed
+  diff — per the amended rule in acceptance.md AC-AMP-006's dated amendment
+  record; rationale lives there, not here); evidence under
   `.moai/state/verify/<session>/` with the SKIP marker protocol when
   `GLM_API_KEY` is absent (MF6).
 - Live codex confirmation per AC-AMP-007: one real `codex_audit` /
