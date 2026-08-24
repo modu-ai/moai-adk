@@ -23,6 +23,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/modu-ai/moai-adk/internal/spec"
+	"github.com/modu-ai/moai-adk/internal/statusline"
 	"github.com/modu-ai/moai-adk/internal/verify"
 )
 
@@ -90,9 +91,9 @@ type RoleVM struct {
 	Role           string
 	Session        string
 	Backend        string
-	Model          string // 미기록 — 3단계에서 채워진다
-	Effort         string // 미기록 — 3단계
-	ContextPct     int    // -1 = 기록 없음
+	Model          string // 세션 텔레메트리 기록의 값. 빈 문자열 = 기록 없음
+	Effort         string // 위와 같다
+	ContextPct     int    // -1 = 기록 없음. 0 은 "0%로 기록됨"이라는 다른 사실이다
 	State          string
 	Stage          string
 	StageEstimated bool
@@ -234,8 +235,43 @@ func processAlive(pid int) bool {
 // 화면은 그 칸을 미기동으로 정직하게 그린다 — 그럴듯한 값을 채우지 않는다.
 func roleOf(r KanbanRecord) string { return strings.ToLower(strings.TrimSpace(r.Role)) }
 
+// readTelemetry 는 한 세션의 텔레메트리 기록을 SPEC-SESSION-TELEMETRY-001 이
+// 내보낸 단 하나의 리더로 읽는다. 경로도 그 SPEC 의 헬퍼가 만든다 — 이 패키지는
+// 기록의 위치도 스키마도 다시 적지 않는다. 하나의 디스크 형식을 두 곳에서
+// 선언하면 형식이 갈라진다.
+//
+// 읽을 수 없으면 nil 이다. 기록 없음과 값 0 은 다른 사실이고, 화면은 그 차이를
+// 그린다.
+func readTelemetry(root, sessionID string) *statusline.SessionTelemetryRecord {
+	path := statusline.SessionTelemetryPath(filepath.Join(root, ".moai", "state"), sessionID)
+	if path == "" {
+		return nil
+	}
+	rec, err := statusline.ReadSessionTelemetry(path)
+	if err != nil {
+		return nil
+	}
+	return rec
+}
+
+// telemetryCells 는 한 세션의 모델 · effort · 컨텍스트 백분율을 돌려준다.
+// 기록이 없으면 빈 문자열과 -1 — 화면이 "기록 없음"으로 그리는 값이다.
+// 기록이 있어도 model/effort 가 비어 있으면(의존 SPEC 이전에 쓰인 기록) 그
+// 칸만 기록 없음으로 남는다. 그럴듯한 대체값을 채우지 않는다.
+func telemetryCells(rec *statusline.SessionTelemetryRecord) (model, effort string, pct int) {
+	if rec == nil {
+		return "", "", -1
+	}
+	pct = -1
+	if rec.ContextWindowSize > 0 {
+		pct = clampPct(int(rec.RawPct))
+	}
+	return rec.Model, rec.Effort, pct
+}
+
 // buildChain 은 칸반 세션 기록과 활성 세션을 역할 5칸에 배치한다.
-func buildChain(records []KanbanRecord, sessions map[string]SessionVM, cardID string) ChainVM {
+// root 는 세션별 텔레메트리 기록을 찾는 데만 쓴다.
+func buildChain(root string, records []KanbanRecord, sessions map[string]SessionVM, cardID string) ChainVM {
 	byRole := map[string]KanbanRecord{}
 	for _, r := range records {
 		if role := roleOf(r); role != "" {
@@ -257,13 +293,14 @@ func buildChain(records []KanbanRecord, sessions map[string]SessionVM, cardID st
 			s.State = StateStale
 		}
 		stage, estimated := estimateStage(s)
+		model, effort, pct := telemetryCells(readTelemetry(root, rec.SessionID))
 		out.Roles = append(out.Roles, RoleVM{
 			Role:           role,
 			Session:        rec.SessionID,
 			Backend:        rec.Backend,
-			Model:          "", // 3단계: Record 에 모델 스냅샷이 추가되면 채운다
-			Effort:         "", // 3단계
-			ContextPct:     -1, // 3단계: context-usage/<session-id>.json 분리 후
+			Model:          model,
+			Effort:         effort,
+			ContextPct:     pct,
 			State:          s.State,
 			Stage:          stage,
 			StageEstimated: estimated,
@@ -616,7 +653,7 @@ func (a *app) buildOverview(now time.Time) (OverviewVM, error) {
 			{Label: "session", Value: itoa(live) + "/" + itoa(len(sessions)), Note: "PID confirmed / registry", NoteKey: "statNote.pid-confirmed-registry"},
 			{Label: "verify", Value: lastVerify, Note: itoa(verifyKeys) + " keys", NoteKey: "statNote.keys", NoteParams: itoa(verifyKeys)},
 		},
-		Chain:    buildChain(records, byID, chainCardID(records)),
+		Chain:    buildChain(root, records, byID, chainCardID(records)),
 		Sessions: sessions,
 	}
 	if len(inProgress) > maxOverviewRows {
@@ -682,7 +719,7 @@ func (a *app) buildKanban(now time.Time) (KanbanVM, error) {
 	}
 	_, byID := loadSessions(root, now)
 	records := loadKanbanRecords(root)
-	chain := buildChain(records, byID, chainCardID(records))
+	chain := buildChain(root, records, byID, chainCardID(records))
 
 	return KanbanVM{
 		CardID:   chain.CardID,
