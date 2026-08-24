@@ -1,6 +1,7 @@
 package hook
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -220,6 +221,85 @@ func TestCardIdentifierFromADeepCwdInsideACardWorktree(t *testing.T) {
 	}
 	if rec.CardID != "t207" {
 		t.Fatalf("card_id = %q, want t207", rec.CardID)
+	}
+}
+
+// AC-KRS-009: the consumer-facing closure. The chain
+// workers.json[lane-N].PID -> active-sessions entry -> session_id ->
+// kanban record now resolves to a record that BELONGS to that session and
+// carries that lane's number.
+//
+// The first two hops are the consumer's and are resolved here by hand; the
+// THIRD hop is what this SPEC repairs, and it is what returned nothing before
+// (the record was filed under the launching session's identifier).
+func TestFactoryLaneJoinClosesOnTheThirdHop(t *testing.T) {
+	const laneSession = "J-12345678-1234-1234-1234-123456789abc"
+	const lanePID = 424242
+
+	root := t.TempDir()
+
+	// Hop 1: the factory registry entry for lane-5.
+	reg := map[string]kanban.FactoryWorkerEntry{
+		kanban.FactoryLaneLabel(5): {PID: lanePID, RegisteredAt: "2026-08-24T09:22:12Z"},
+	}
+	regPath := kanban.FactoryRegistryPath(root)
+	if err := os.MkdirAll(filepath.Dir(regPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := kanban.SaveFactoryRegistry(regPath, reg); err != nil {
+		t.Fatalf("SaveFactoryRegistry: %v", err)
+	}
+
+	// Hop 2: the active-sessions entry bearing that PID.
+	entries := []session.Entry{{SessionID: laneSession, PID: lanePID, CWD: root}}
+	encoded, err := json.Marshal(entries)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".moai", "state", "active-sessions.json"), encoded, 0o600); err != nil {
+		t.Fatalf("seed registry: %v", err)
+	}
+
+	// Hop 3: the lane session writes its own record at SessionStart.
+	scrubKanbanEnv(t)
+	t.Setenv(config.EnvMoaiFactoryWorker, kanban.FactoryLaneLabel(5))
+	t.Setenv(config.EnvMoaiFactoryWorkers, "8")
+	t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
+	writeKanbanSessionRecord(&HookInput{SessionID: laneSession, ProjectDir: root, CWD: root, Source: "startup"})
+
+	// Resolve the chain the consumer walks.
+	loaded := kanban.LoadFactoryRegistry(regPath)
+	laneEntry, ok := loaded[kanban.FactoryLaneLabel(5)]
+	if !ok {
+		t.Fatalf("lane-5 absent from the factory registry")
+	}
+	raw, err := os.ReadFile(filepath.Join(root, ".moai", "state", "active-sessions.json"))
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	var back []session.Entry
+	if err := json.Unmarshal(raw, &back); err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+	var resolved string
+	for _, e := range back {
+		if e.PID == laneEntry.PID {
+			resolved = e.SessionID
+		}
+	}
+	if resolved == "" {
+		t.Fatalf("no active session carries PID %d", laneEntry.PID)
+	}
+
+	rec, err := kanban.Read(root, resolved)
+	if err != nil {
+		t.Fatalf("third hop returned nothing: %v", err)
+	}
+	if rec.SessionID != resolved {
+		t.Fatalf("record session_id = %q, want %q", rec.SessionID, resolved)
+	}
+	if rec.Lane != 5 {
+		t.Fatalf("record lane = %d, want 5", rec.Lane)
 	}
 }
 
