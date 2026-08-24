@@ -31,5 +31,6 @@
 
 ## Residual
 
+- **Cross-card lineage (lead note 2026-08-24)**: Major #8 is the same defect family as lane-2's t229 finding ("MCP server pins its root to the session's first tree", card **t246**) — audits/pin resolution reading a tree OTHER than the one under review. The `projectRoot` threading here (5 call sites) is a direct precedent t246's investigation can cite.
 - Moderate → re-review needed on the new head after this push (all 8 accepted fixes + 2 evidence-grounded rejections); if it stays Moderate on non-blocking residue, the lead requests operator override.
 - Follow-up card candidates recorded: llm.yaml user-modification preservation on `moai update` (B-plan, lead queued); template overlay-doc correction (§H reversal); Loader-API unification (#9 rejection rationale).
