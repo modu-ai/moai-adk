@@ -25,21 +25,20 @@ import (
 // rules call for, verified rule-by-rule with `sg scan` directly (see the
 // corpus-validity gate at the bottom of this file).
 //
-// BLOCKER, measured on this tree: none of these fixtures actually denies. The
-// deny never reaches scanWriteContent because astGrepScanner.Scan collects the
-// subprocess output with exec.Cmd.CombinedOutput. `sg scan --json` exits 1 and
-// prints "Error: N error(s) found in code." on stderr whenever an
-// error-severity finding exists, so the merged stream is not valid JSON,
-// json.Unmarshal fails, and the regex fallback (which parses ast-grep's TEXT
-// format) finds nothing in JSON output. Warnings are unaffected: they exit 0
-// with an empty stderr, so their JSON parses and WarningCount is populated.
-// Net effect on the pre-implementation tree: the pre-write gate can warn but
-// can never deny.
+// HISTORY: when this corpus was first recorded, none of these fixtures denied.
+// astGrepScanner.Scan collected the subprocess output with
+// exec.Cmd.CombinedOutput, and `sg scan --json` exits 1 and prints
+// "Error: N error(s) found in code." on stderr whenever an error-severity
+// finding exists — so the merged stream was not valid JSON, json.Unmarshal
+// failed, and the regex fallback (which parses ast-grep's TEXT format) found
+// nothing in JSON output. Warnings were unaffected: they exit 0 with an empty
+// stderr, so their JSON parsed and WarningCount was populated. The gate could
+// warn but could never deny. The scanner now collects stdout and stderr
+// separately, and the corpus-validity gate below is met, so the assertions run.
 //
-// Because of that, the corpus-validity gate cannot be met here and the
-// assertions below are skipped rather than run against a corpus that observes
-// nothing. Once the collection defect is resolved, the skip lifts on its own
-// and this becomes the invariant test the SPEC describes.
+// The corpus-validity gate is retained: it turns any future regression of the
+// collection path back into a loud, self-explaining skip rather than a corpus
+// that silently observes nothing.
 
 // scanCorpusFixture is one recorded row of the differential corpus.
 type scanCorpusFixture struct {
