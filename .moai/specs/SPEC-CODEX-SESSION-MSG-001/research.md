@@ -29,7 +29,7 @@
 | codex_task 경계 | `internal/cli/codex_task.go`·`mcp_codex.go`·`codex_jobs.go`(잡 레코드 `.moai/state/codex-jobs/`, SPEC-CODEX-PHASE2-001 REQ-CX2-003) | 위임(서브프로세스 잡)과 메시징(살아 있는 세션)의 구분 선례 — §4 비교표와 spec.md §F.1의 근거 |
 | C-HRA-008 가드 선례 | `internal/cli/mcp_boundary_test.go` — `TestMCP_NoAskUserQuestion`·`TestMCP_NoInlineGetenv`(정적 grep 가드) | 신규 소스 `mcp_session_msg.go`·`internal/sessionmsg/`에 동일 패턴 |
 | 임계값 원천 | `internal/config/defaults.go:293-327` — `DefaultCodexReviewGateTimeout` 등 `var` 선언 패턴(테스트 대체 가능) | 세션 메시징 TTL류도 같은 형태로 |
-| 부재 확인 | `grep -rn "session_msg\|session-msg" internal/ .moai/specs/` → 구현 0건 / SPEC 충돌 0건 (2026-08-23) | 신규 네임스페이스 무충돌 |
+| 부재 확인 | `grep -rn -e "session_msg" -e "session-msg" internal/ .moai/specs/` → 구현 0건 / SPEC 충돌 0건 (2026-08-23) | 신규 네임스페이스 무충돌 |
 
 ## §3. A2A 프로토콜 실측 기록 (운영자 질의 '구글 A2A' — 페치 후 판정)
 

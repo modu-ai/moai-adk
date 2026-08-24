@@ -107,9 +107,9 @@ tier: L
 
 ### D.2 배달 의미론 (M1)
 
-**REQ-CSM-005** (Event-driven) **When** 등록된 발신자가 `session_msg_send`로 등록된 수신자에게 메시지를 보내면, 브로커는 송수신자 등록·본문 크기 상한·부분 수 상한을 검증한 뒤 엔벨로프를 수신자 사서함 `mailbox/<agentId>/pending/<messageId>.json`에 원자적으로 적재하고 `messageId`를 반환해야 한다. 수신자가 등록되어 있지 않으면 브로커는 알려진 에이전트 목록을 포함한 구조화 오류를 반환해야 한다.
+**REQ-CSM-005** (Event-driven) **When** 등록된 발신자가 `session_msg_send`로 등록된 수신자에게 메시지를 보내면, 브로커는 **양측 `agentId`가 브로커 발급 형태(`<kind>-<hex8>`)인지 먼저 검증하고**(형태를 벗어난 값은 경로 구성 이전에 거부 — 외부에서 온 식별자가 상태 루트 밖을 가리키지 못하게 하는 조건), 이어 송수신자 등록·본문 크기 상한(텍스트·`data` 양쪽)·부분 수 상한을 검증한 뒤 엔벨로프를 수신자 사서함 `mailbox/<agentId>/pending/<messageId>.json`에 원자적으로 적재하고 `messageId`를 반환해야 한다. 수신자가 등록되어 있지 않으면 브로커는 알려진 에이전트 목록을 포함한 구조화 오류를 반환해야 한다.
 
-**REQ-CSM-006** (Event-driven) **When** 등록된 에이전트가 `session_msg_poll`을 호출하면, 브로커는 배치 상한(defaults.go)까지 pending 메시지를 claimed 상태로 원자적으로 클레임(pending→claimed 이동)하여 반환하고, 하트비트를 갱신하고, 선택 인자 `ack_ids`에 담긴 메시지를 claimed에서 삭제하며, 만료된 메시지 수와 잔여 pending 수를 함께 반환해야 한다.
+**REQ-CSM-006** (Event-driven) **When** 등록된 에이전트가 `session_msg_poll`을 호출하면, 브로커는 **`agent_id`와 `ack_ids`의 모든 항목이 발급 형태(`<kind>-<hex8>` / `msg-<hex16>`)인지 경로 구성·상태 변경 이전에 전량 검증하고**(한 항목이라도 어긋나면 호출 전체를 거부한다 — 부분 ack이 발생하지 않는 조건), 배치 상한(defaults.go)까지 pending 메시지를 claimed 상태로 원자적으로 클레임(pending→claimed 이동)하여 반환하고, 하트비트를 갱신하고, 선택 인자 `ack_ids`에 담긴 메시지를 claimed에서 삭제하며, 만료된 메시지 수와 잔여 pending 수를 함께 반환해야 한다.
 
 **REQ-CSM-007** (State-driven) **While** claimed 메시지가 확인(ack) 없이 클레임 TTL(defaults.go)을 넘겼으면, 브로커는 다음 스윕에서 그 메시지를 pending으로 환원해야 한다 — 수신 세션이 도중에 죽어도(P4: Codex에는 정리 훅이 없다) 메시지가 소실되지 않는다.
 

@@ -322,3 +322,69 @@ at that moment. **That is a hypothesis, not a demonstration.** The failure was
 not reproduced, and a not-reproduced concurrency failure is not a fixed one.
 Recorded here so a later recurrence is read against this note rather than as a
 first sighting.
+
+---
+
+## Round 5 — the Merge Risk rationale, item by item
+
+The review of `03324ad21` produced **zero new inline findings**, but the grade
+held at `🟡 Moderate · up to 03324` (comment body updated 19:15:19Z, after the
+round-4 push, so it is a judgement on this head). Auto-merge caps at `low`, so
+the gate will not merge on its own. The risk summary names three drivers; each
+was measured rather than argued.
+
+**"Malformed ack_ids can partially acknowledge messages" — DISPROVEN.**
+`Poll` calls `requireAgentID` and `requireMessageIDs` on the whole batch BEFORE
+`withAgentLock` and before any path is built, so one bad entry rejects the call
+with nothing mutated. Proven with a probe that acks a valid id and a traversal
+id in the same batch, valid one FIRST:
+
+```text
+Poll err=sessionmsg: ack_ids: malformed messageId "../../../etc/passwd" (want msg-<hex16>) ackedCount=0
+no partial ack: claimed file survived
+```
+
+Had validation been lazy, the valid id would have been deleted before the
+second entry was rejected. It was not. The rationale describes the pre-fix
+state.
+
+**"The specification does not yet require path-safe file identifiers" — VALID,
+now fixed.** The code enforced the id shape from round 1, but no requirement
+said so, leaving the enforcement unanchored. REQ-CSM-005 and REQ-CSM-006 now
+require the shape check before path construction, and REQ-CSM-006 states the
+whole-call rejection explicitly as the condition under which partial ack cannot
+occur. REQ-CSM-005 also now names the `data` ceiling alongside the text one.
+
+**"Committed validation evidence contains checks that can report success
+incorrectly" — VALID, now closed.** This is the vacuous-check class, and one
+instance was still open: `research.md`'s absence check carried a table-cell
+`\|` alternation. Converted to repeated `-e`, verified through the GFM API.
+
+A finding inside that finding: `spec.md`'s equivalent line looked identical but
+needed NO change. Measured, the escape survives in a paragraph and is stripped
+only inside a table cell:
+
+```text
+paragraph : grep -rn "session_msg\|session-msg" internal/        (escape kept — BRE works)
+table cell: grep -rn "session_msg|session-msg" internal/ ...     (escape stripped — BRE breaks)
+```
+
+An earlier probe of the same row appeared to contradict this; it had been
+sliced without its header and delimiter rows, so it never parsed as a table.
+The corrected probe confirms the split. Only the table instance was a defect,
+so only it was changed — `spec.md` was left alone rather than "fixed" into
+sameness.
+
+### Round-5 gap — two transient failures, neither reproduced
+
+The partial-ack probe hung for 3 minutes on its first run and was killed; a
+20-second-timeout rerun was killed at 80 seconds. It then passed twice in
+0.13s. Earlier in the session a `-race` run failed once and passed 15 times
+after.
+
+`uptime` during this window read `load averages: 13.46 18.09 25.83`. Several
+factory lanes were building and committing concurrently, and `go test`
+timeouts measure wall-clock, so heavy contention is a sufficient explanation
+for both. **That is a hypothesis supported by the load figure, not a
+demonstration** — neither failure was reproduced, and neither output was
+captured. Recorded so a recurrence is read against this note.
