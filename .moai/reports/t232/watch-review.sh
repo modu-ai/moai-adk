@@ -20,6 +20,9 @@ set -o pipefail
 REPO="${1:?repo required, e.g. modu-ai/moai-adk}"
 SHA="${2:?head sha required}"
 TIMEOUT="${3:-1800}"
+# Guard the arithmetic below: an attacker-controlled or malformed arg would otherwise
+# reach $(( )) as an array-subscript expansion (iter3 out-of-scope finding, fixed on adoption).
+[[ "$TIMEOUT" =~ ^[0-9]+$ ]] || { echo "watch-review.sh: TIMEOUT must be a non-negative integer, got: $TIMEOUT" >&2; exit 5; }
 INTERVAL=60
 
 deadline=$(( SECONDS + TIMEOUT ))

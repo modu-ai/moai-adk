@@ -37,10 +37,14 @@ Fixing the named target matters because "mutate any one entry" is not a reproduc
 two runs picking different entries would both read as satisfied while testing different things.
 Adding the random one matters because a guard could special-case the named entry.
 
+**The random draw is constrained to non-retired entries (iter3 D2).** A retired entry's clause
+is exempt under option C, so a clause mutation landing there is unobservable *by design* — the
+run would fail through no fault of the guard. Draw R2 from the 97 clause-checked entries.
+
 | Run | Target | Field | Mutation |
 |---|---|---|---|
 | R1 | `CONST-V3R2-004` | `clause:` | insert one character mid-span (e.g. `language` → `languagex`) |
-| R2 | random entry, ID recorded at run time | `clause:` | same, one character |
+| R2 | random **non-retired** entry, ID recorded at run time | `clause:` | same, one character |
 | R3 | `CONST-V3R2-004` | `anchor:` | change the slug to one that resolves to no heading |
 | R4 | `CONST-V3R2-004` in the **template** mirror only | `clause:` | one character |
 
@@ -127,5 +131,7 @@ numbers move:
 - **P4**: the guard's passing output must report the evaluated-entry count as **clause 97 /
   anchor 101**, per mirror, separately. The two counts differing IS the option-C contract; quote
   both (this also sharpens remaining-debt ② — the sync-auditor checks §E.2 quotes both numbers).
-- **R1–R4 stand unchanged**: `CONST-V3R2-004` is a non-retired entry, so every mutation stays
-  inside the checked set and the scenario's validity is unaffected.
+- **R1/R3/R4 stand unchanged**: `CONST-V3R2-004` is a non-retired entry, so those mutations stay
+  inside the checked set. **R2 is narrowed (iter3 D2)**: the random draw must come from the 97
+  non-retired entries — a retired draw would place the mutation in the clause-exempt set and the
+  run could not go red for any implementation.
