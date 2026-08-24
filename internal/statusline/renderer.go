@@ -553,7 +553,6 @@ func (r *Renderer) isPREnabled() bool {
 //   - Workspace.Repo nil or incomplete:        "" (segment hidden — no git remote context)
 //   - Branch empty:                            "" (empty — no git context)
 //   - Dirty (Modified + Staged + Untracked) == 0: " +N" portion omitted
-//   - Worktree active:                          "[WT] " prefix prepended to branch
 //
 // @MX:NOTE: [AUTO] layout v3 CH3 — the sole renderer of the repo+branch line.
 // @MX:NOTE: [AUTO] Hide entire segment when git is uninitialized or remote repo info is missing (per user request 2026-05-22).
@@ -573,14 +572,10 @@ func (r *Renderer) renderRepoBranchSegment(data *StatusData) string {
 		return ""
 	}
 
-	// Worktree marker rides between the branch glyph and the branch name
-	// (operator request 2026-08-18): "🅱️ [WT] release/v3.1.1", not a leading
-	// prefix that separates the glyph from the branch it marks.
-	branch := data.Git.Branch
-	if r.isSegmentEnabled(SegmentWorktree) && data.Worktree != "" {
-		branch = "[WT] " + branch
-	}
-	branch = "🅱️ " + branch
+	// The "[WT] " branch prefix was retired (operator decision 2026-08-24,
+	// superseding the 2026-08-18 request): worktree identity rides the
+	// WT-<slug> branch-name convention instead of a statusline marker.
+	branch := "🅱️ " + data.Git.Branch
 
 	// Dirty count (omitted when 0)
 	dirty := data.Git.Modified + data.Git.Staged + data.Git.Untracked
