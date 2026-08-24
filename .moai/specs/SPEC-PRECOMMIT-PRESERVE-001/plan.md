@@ -5,16 +5,21 @@ likely to change under review, so it leads. Mechanical work sits at the bottom.
 
 ## §A Context
 
-`internal/cli/hook_install_precommit.go` (179 lines at `294b4b6ab`) is the whole surface. Two
-callers: `internal/cli/update_template_sync.go:575` and `internal/cli/init.go:898`, both gated by
-`--no-hooks`. Neither caller changes in this SPEC.
+`internal/cli/hook_install_precommit.go` (179 lines `@294b4b6ab`) is the whole surface. Two callers,
+both invoking `installPreCommitHookOptional` and both gated by `--no-hooks`:
+`internal/cli/update_template_sync.go:575 @294b4b6ab` and `internal/cli/init.go:898 @294b4b6ab`.
+Neither caller changes in this SPEC.
 
 ## §B Known Issues carried in
 
-- The card's line numbers (`:557`, `:773`) are stale; the correct call sites are recorded in
-  spec.md §A.2. Do not re-derive from the card.
-- The card's "distributed original 6,454 B" is a downstream-checkout figure; this tree's template is
-  3,245 B. Neither number is load-bearing for the fix.
+- **Line numbers are per-tree, not absolute.** Card t230 cites `init.go:773`, correct on the primary
+  checkout `@a1b1ca696`; this worktree `@294b4b6ab` puts the same call at `:898`. Both are right.
+  Version 0.1.0 of this SPEC wrongly called the card stale — see spec.md §A.0 and §A.2. Resolve by
+  symbol (`installPreCommitHookOptional`), never by line number alone, and cite the SHA when
+  recording one.
+- The card's "distributed original 6,454 B" is a figure from the downstream `mo.ai.kr` checkout;
+  this tree's template is 3,245 B `@294b4b6ab`. Different trees, not a contradiction. Neither number
+  is load-bearing for the fix.
 
 ## §C Pre-flight
 
@@ -38,21 +43,26 @@ callers: `internal/cli/update_template_sync.go:575` and `internal/cli/init.go:89
 After each milestone: `go vet ./internal/cli/...` and `go test ./internal/cli/... -count=1`. Cite
 the verbatim output in `progress.md §E.2`, not a summary.
 
+Additionally, per criterion delivered: **observe it failing against its stated failing input before
+accepting it green.** acceptance.md names the input for every criterion. A green-only check has not
+been shown to observe anything; record the red run's output alongside the green one.
+
 ## §F Milestones
 
-### M1 — attribution: the provenance sidecar (highest change likelihood)
+### M1 — attribution: the three-way classifier (highest change likelihood)
 
-The decision under review. Delivers REQ-PCP-001, REQ-PCP-002, REQ-PCP-005.
+The decision under review. Delivers REQ-PCP-014, REQ-PCP-001, REQ-PCP-002, REQ-PCP-005.
 
 - Write `.git/hooks/.moai-pre-commit.sha256` after every successful hook write.
 - On install with a marker-bearing hook present, classify the file as `unmodified` /
   `user-modified` / `undecidable-legacy` per the spec.md §A.5 table.
 - No backup and no notice yet — this milestone only decides, so the classifier can be reviewed and
   argued with before any behaviour hangs off it.
-- Tests: AC-PCP-001, AC-PCP-002, AC-PCP-005.
+- Tests: AC-PCP-014, AC-PCP-001, AC-PCP-002, AC-PCP-005.
 
 Reviewer's question for this milestone: does a routine version bump land in the silent row? If it
-does not, everything downstream is noise.
+does not, everything downstream is noise. AC-PCP-014 case one is the check that answers it, and the
+two-way implementation must be observed failing it before the milestone is accepted.
 
 ### M2 — disclosure: backup and notice
 
@@ -83,9 +93,12 @@ use — an acceptable intermediate state within one SPEC, not an acceptable ship
 
 ## §G Anti-Patterns
 
-- **Byte comparison as attribution.** Comparing the installed hook against the content about to be
-  written and calling any difference a user patch. This is the defect spec.md §A.3 exists to
-  prevent; it produces a warning on every version bump.
+- **Two-way comparison as attribution.** Comparing the installed hook against the content about to
+  be written and calling any difference a user patch. Forbidden by REQ-PCP-014; it produces a
+  warning on every version bump. AC-PCP-014 exists to fail exactly this implementation.
+- **Asserting file state instead of output.** Tests that check only the post-run hook and backup
+  bytes admit the card's headline mutant — a correct, recoverable, entirely silent overwrite.
+  AC-PCP-004/006/007 assert the notice text itself; do not weaken them to file-state checks.
 - **Preserve-instead-of-overwrite.** Rejected in spec.md §A.5 Decision 2. Silently freezing a
   project on an old hook is the same failure in the other direction.
 - **Interactive confirmation.** Hangs `moai update` in CI.
@@ -96,7 +109,8 @@ use — an acceptable intermediate state within one SPEC, not an acceptable ship
 ## §H Cross-References
 
 - `internal/cli/hook_install_precommit.go` — the whole implementation surface
-- `internal/cli/hook_install_precommit_test.go:38` — `TestPreCommitTemplateMatchesConstant`
+- `TestPreCommitTemplateMatchesConstant` — `internal/cli/hook_install_precommit_test.go:38
+  @294b4b6ab`; note its `t.Skipf` branch at `:45 @294b4b6ab` (AC-PCP-013's mutant)
 - `internal/template/templates/.git_hooks/pre-commit` — the template twin
 - Card t237 / issue #1641 — collides on M3's file pair
 - Card t235 / issue #1639 — the gate-serialization axis, out of scope here
