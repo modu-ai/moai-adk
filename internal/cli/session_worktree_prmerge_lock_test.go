@@ -69,7 +69,7 @@ func TestPRMergeCleanup_T207SamplePreservedByLock(t *testing.T) {
 		// gh gives NO answer and git does not list the branch as merged, so the
 		// merge decision comes from neither — but the lock guard is what this
 		// criterion pins, so the branch is made a candidate via the git fallback.
-		ghPRState:    func(string) string { return "MERGED" },
+		ghPRState:    func(string) (string, bool) { return "MERGED", true },
 		branchMerged: func() ([]string, error) { return []string{"main"}, nil },
 	})
 	swapSessionWorktreeSeams(t, swSeams{
@@ -99,7 +99,7 @@ func TestPRMergeCleanup_PorcelainFailureRemovesNothing(t *testing.T) {
 	swapPRMergeSeams(t, prMergeSeams{
 		wtList:     func() (string, error) { return "", errFakeNotGitRepo },
 		ghLookPath: func() bool { return true },
-		ghPRState:  func(string) string { return "MERGED" },
+		ghPRState:  func(string) (string, bool) { return "MERGED", true },
 	})
 	swapSessionWorktreeSeams(t, swSeams{
 		remove:      func(string) error { removeCalled = true; return nil },
@@ -140,7 +140,7 @@ func TestPRMergeCleanup_RefusalClassNamesCause(t *testing.T) {
 			return wtListPorcelainPrimary() + "\n" + wtListLockedEntry(tree, branch, reason), nil
 		},
 		ghLookPath: func() bool { return true },
-		ghPRState:  func(string) string { return "MERGED" },
+		ghPRState:  func(string) (string, bool) { return "MERGED", true },
 	})
 	swapSessionWorktreeSeams(t, swSeams{
 		remove:      func(string) error { removeCalled = true; return nil },
@@ -180,7 +180,7 @@ func TestPRMergeCleanup_RefusalFallThroughNamesCauseAndContinues(t *testing.T) {
 				wtListEntry(second, "WT-plain"), nil
 		},
 		ghLookPath: func() bool { return true },
-		ghPRState:  func(string) string { return "MERGED" },
+		ghPRState:  func(string) (string, bool) { return "MERGED", true },
 	})
 	swapSessionWorktreeSeams(t, swSeams{
 		remove: func(p string) error {
@@ -237,7 +237,7 @@ func TestPRMergeCleanup_IgnoredContentPolicyP2(t *testing.T) {
 				wtListEntry(unclassifiable, "WT-unclassified"), nil
 		},
 		ghLookPath: func() bool { return true },
-		ghPRState:  func(string) string { return "MERGED" },
+		ghPRState:  func(string) (string, bool) { return "MERGED", true },
 	})
 	swapSessionWorktreeSeams(t, swSeams{
 		remove:      func(p string) error { removed = append(removed, p); return nil },

@@ -52,11 +52,17 @@ var (
 	sessionWorktreeGhLookPath = ghLookPathReal
 
 	// sessionWorktreeGhPRViewState runs `gh pr view <branch> --json state` and
-	// returns the parsed `state` field (e.g. "MERGED", "OPEN", "CLOSED"). An
-	// empty string means gh could not resolve the branch to a PR (no PR, or
-	// gh error) — the worktree is NOT a cleanup candidate in that case. The
-	// primary path sees squash merges (state == "MERGED") where the fallback
-	// does not (AC-SW-023 primary-path correctness).
+	// returns the parsed `state` field (e.g. "MERGED", "OPEN", "CLOSED") plus
+	// whether gh produced a USABLE answer at all (SPEC-WORKTREE-REAPER-001
+	// REQ-WR-001, design.md §A.1).
+	//
+	// The bare-string form this replaces overloaded "" across three distinct
+	// situations — gh errored, no PR exists, the JSON was malformed — none of
+	// which mean "not merged", and all of which the caller silently read as
+	// one. The second return value is that missing bit: ok=false means NO
+	// ANSWER, and routes the decision to the git fallback instead of ending
+	// it. The primary path sees squash merges (state == "MERGED") where the
+	// fallback does not (AC-SW-023 primary-path correctness).
 	sessionWorktreeGhPRViewState = ghPRViewStateReal
 
 	// sessionWorktreeGitBranchMerged runs `git branch --merged origin/main` and
@@ -167,7 +173,13 @@ func prMergeCleanup(cfg *config.Config, out io.Writer) {
 		if !strings.HasPrefix(e.branch, SessionWorktreeBranchPrefix) {
 			continue
 		}
-		if !branchMergedForCleanup(e.branch, ghAvailable) {
+		switch branchMergedForCleanup(e.branch, ghAvailable) {
+		case mergeStateMerged:
+			// A candidate — fall through to the guards below.
+		case mergeStateUndetermined:
+			_, _ = fmt.Fprintf(out, "moai: PR-merge cleanup skipped (cause=undetermined-merge; no source could determine the merge state of branch %s): worktree %s preserved\n", e.branch, e.path)
+			continue
+		default:
 			continue
 		}
 		// REQ-SW-024 / EC-11 dirty guard: re-check immediately before removal.
@@ -300,27 +312,58 @@ func isRegenerableIgnoredPath(entry string) bool {
 	return false
 }
 
-// branchMergedForCleanup decides whether a branch is a cleanup candidate per
-// REQ-SW-023. Primary path (gh available): state == "MERGED". Fallback path
-// (gh absent): branch appears in `git branch --merged origin/main`. The
-// fallback is squash-merge blind — squash-merged branches are NOT listed, so
-// the worktree is preserved (documented via the on-entry blindness notice).
-func branchMergedForCleanup(branch string, ghAvailable bool) bool {
+// mergeState is the three-valued merge outcome (REQ-WR-001). The third value
+// is the point: "gh gave no answer" is not "not merged", and collapsing the two
+// is what made the git fallback unreachable while gh was installed.
+type mergeState int
+
+const (
+	// mergeStateNotMerged is a DETERMINATE negative: a source actually said so.
+	mergeStateNotMerged mergeState = iota
+	// mergeStateMerged is a determinate positive.
+	mergeStateMerged
+	// mergeStateUndetermined means no source produced a usable answer. The
+	// sweep preserves and says so (REQ-WR-003) — absence of a merge signal is
+	// not evidence of an unmerged branch, nor of a merged one.
+	mergeStateUndetermined
+)
+
+// branchMergedForCleanup resolves a branch's merge state per design.md §A.2:
+//
+//	gh absent          → git branch --merged is the sole source
+//	gh answers MERGED  → merged
+//	gh answers OPEN/…  → not merged, and git is NOT consulted (REQ-WR-004)
+//	gh gives no answer → git branch --merged decides (REQ-WR-002)
+//	git query errors   → undetermined → preserve + notice (REQ-WR-003)
+//
+// git FILLS A HOLE, it never contradicts: gh sees squash merges git cannot, so
+// letting a squash-blind git negative override a determinate gh MERGED would
+// re-introduce the blindness the primary path exists to remove.
+func branchMergedForCleanup(branch string, ghAvailable bool) mergeState {
 	if ghAvailable {
-		return sessionWorktreeGhPRViewState(branch) == "MERGED"
+		if state, ok := sessionWorktreeGhPRViewState(branch); ok {
+			if state == "MERGED" {
+				return mergeStateMerged
+			}
+			return mergeStateNotMerged
+		}
 	}
 	merged, err := sessionWorktreeGitBranchMerged()
 	if err != nil {
-		// Fail-open: a --merged query failure means we cannot confirm merge
-		// state → preserve (do not risk removing an unmerged worktree).
-		return false
+		// Both sources silent: undetermined, never a negative.
+		return mergeStateUndetermined
 	}
 	for _, b := range merged {
 		if b == branch {
-			return true
+			// REQ-WR-018: this includes a branch with ZERO commits of its own,
+			// which is an ancestor of the base and therefore holds no committed
+			// work the base lacks. The class is accepted rather than excluded;
+			// its boundary is the dirty guard, not a second unique-commit
+			// predicate (design.md §A.4/§A.5 — that predicate is the same call).
+			return mergeStateMerged
 		}
 	}
-	return false
+	return mergeStateNotMerged
 }
 
 // --- real implementations (overridable in tests via the seams above) ---
@@ -342,16 +385,21 @@ func ghLookPathReal() bool {
 	return err == nil
 }
 
-// ghPRViewStateReal runs `gh pr view <branch> --json state` and returns the
-// parsed `state` field. An empty string is returned when gh errors, when the
-// branch has no PR, or when the JSON is malformed — the caller treats empty as
-// "not MERGED" (not a cleanup candidate).
-func ghPRViewStateReal(branch string) string {
+// ghPRViewStateReal runs `gh pr view <branch> --json state` and reports the
+// parsed `state` field plus whether gh produced a usable answer. A non-zero
+// exit (gh error, or no PR for the branch), malformed JSON, and an empty
+// `state` field all yield ("", false) — NO ANSWER, which routes the decision to
+// the git fallback rather than ending it (REQ-WR-001/002).
+func ghPRViewStateReal(branch string) (string, bool) {
 	out, err := exec.Command("gh", "pr", "view", branch, "--json", "state").Output()
 	if err != nil {
-		return ""
+		return "", false
 	}
-	return parseGhPRStateJSON(string(out))
+	state := parseGhPRStateJSON(string(out))
+	if state == "" {
+		return "", false
+	}
+	return state, true
 }
 
 // parseGhPRStateJSON extracts the `state` field from a `gh pr view --json

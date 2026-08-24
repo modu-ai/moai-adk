@@ -60,7 +60,7 @@ func TestPRMergeCleanup_AnchoredSessionSkipsRemoval(t *testing.T) {
 			return wtListPorcelainPrimary() + wtListEntry(tree, wtBranch), nil
 		},
 		ghLookPath: func() bool { return true },
-		ghPRState:  func(string) string { return "MERGED" },
+		ghPRState:  func(string) (string, bool) { return "MERGED", true },
 	})
 	swapSessionWorktreeSeams(t, swSeams{
 		remove:      func(string) error { removeCalled = true; return nil },

@@ -28,7 +28,7 @@ import (
 type prMergeSeams struct {
 	wtList       func() (string, error)
 	ghLookPath   func() bool
-	ghPRState    func(branch string) string
+	ghPRState    func(branch string) (string, bool)
 	branchMerged func() ([]string, error)
 }
 
@@ -120,7 +120,7 @@ func TestPRMergeCleanup_GhPresentMergedRemoves(t *testing.T) {
 			return wtListPorcelainPrimary() + wtListEntry(wtPath, wtBranch), nil
 		},
 		ghLookPath: func() bool { return true },
-		ghPRState:  func(b string) string { return "MERGED" },
+		ghPRState:  func(b string) (string, bool) { return "MERGED", true },
 	})
 	// remove + statusPorc reuse the M4 seams (clean worktree).
 	swapSessionWorktreeSeams(t, swSeams{
@@ -153,7 +153,7 @@ func TestPRMergeCleanup_GhPresentOpenDoesNotRemove(t *testing.T) {
 			return wtListPorcelainPrimary() + wtListEntry("/repo/.claude/worktrees/WT-abcdef12-web", "WT-abcdef12-web"), nil
 		},
 		ghLookPath: func() bool { return true },
-		ghPRState:  func(string) string { return "OPEN" },
+		ghPRState:  func(string) (string, bool) { return "OPEN", true },
 	})
 	swapSessionWorktreeSeams(t, swSeams{
 		remove:      func(string) error { removeCalled = true; return nil },
@@ -181,7 +181,7 @@ func TestPRMergeCleanup_GhPresentSeesSquashMerge(t *testing.T) {
 			return wtListPorcelainPrimary() + wtListEntry(wtPath, "WT-squash01-init"), nil
 		},
 		ghLookPath: func() bool { return true },
-		ghPRState:  func(string) string { return "MERGED" }, // gh sees the squash merge
+		ghPRState:  func(string) (string, bool) { return "MERGED", true }, // gh sees the squash merge
 		// branchMerged would NOT list a squash-merged branch, but gh path is
 		// taken so this seam is irrelevant here.
 	})
@@ -285,7 +285,7 @@ func TestPRMergeCleanup_DirtyPreserves(t *testing.T) {
 			return wtListPorcelainPrimary() + wtListEntry(wtPath, "WT-dirty01-init"), nil
 		},
 		ghLookPath: func() bool { return true },
-		ghPRState:  func(string) string { return "MERGED" },
+		ghPRState:  func(string) (string, bool) { return "MERGED", true },
 	})
 	swapSessionWorktreeSeams(t, swSeams{
 		remove: func(string) error { removeCalled = true; return nil },
@@ -319,7 +319,7 @@ func TestPRMergeCleanup_DirtyCheckErrorPreserves(t *testing.T) {
 			return wtListPorcelainPrimary() + wtListEntry(wtPath, "WT-errstat-init"), nil
 		},
 		ghLookPath: func() bool { return true },
-		ghPRState:  func(string) string { return "MERGED" },
+		ghPRState:  func(string) (string, bool) { return "MERGED", true },
 	})
 	swapSessionWorktreeSeams(t, swSeams{
 		remove: func(string) error { removeCalled = true; return nil },
@@ -364,9 +364,9 @@ func TestPRMergeCleanup_OnlyWTBranchesConsidered(t *testing.T) {
 				wtListEntry("/repo/.claude/worktrees/WT-abcd1234-web", "WT-abcd1234-web"), nil
 		},
 		ghLookPath: func() bool { return true },
-		ghPRState: func(string) string {
+		ghPRState: func(string) (string, bool) {
 			stateCalls++
-			return "MERGED"
+			return "MERGED", true
 		},
 	})
 	swapSessionWorktreeSeams(t, swSeams{
@@ -392,7 +392,7 @@ func TestPRMergeCleanup_DetachedWorktreeIgnored(t *testing.T) {
 			return "worktree /repo/.claude/worktrees/detached\nHEAD 2222222222222222222222222222222222222222\ndetached\n", nil
 		},
 		ghLookPath: func() bool { return true },
-		ghPRState:  func(string) string { stateCalled = true; return "MERGED" },
+		ghPRState:  func(string) (string, bool) { stateCalled = true; return "MERGED", true },
 	})
 	var out bytes.Buffer
 	prMergeCleanup(worktreeCfg(true), &out)
@@ -409,7 +409,7 @@ func TestPRMergeCleanup_RemovalFailureFailOpen(t *testing.T) {
 			return wtListPorcelainPrimary() + wtListEntry("/repo/.claude/worktrees/WT-rmfail-web", "WT-rmfail-web"), nil
 		},
 		ghLookPath: func() bool { return true },
-		ghPRState:  func(string) string { return "MERGED" },
+		ghPRState:  func(string) (string, bool) { return "MERGED", true },
 	})
 	swapSessionWorktreeSeams(t, swSeams{
 		remove:      func(string) error { return fakeErr("fake-remove-failure") },

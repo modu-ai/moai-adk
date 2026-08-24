@@ -120,8 +120,16 @@ workflow:
     worktree:
         # 2026-05-22: auto_create false (user policy feedback_worktree_autonomous 정렬).
         # L1 worktree는 Claude Code runtime autonomous — MoAI orchestrator는 자동 생성 안함.
-        # auto_merge/auto_cleanup 유지 (사용자 수동 worktree 생성 시에만 자동 머지/정리).
-        auto_cleanup: true
+        # auto_merge 유지 (사용자 수동 worktree 생성 시에만 자동 머지).
+        #
+        # auto_cleanup: true → false (SPEC-WORKTREE-REAPER-001 M1 착지 조건).
+        # M1이 gh no-answer 경로에서 git fallback을 되살리면서, 이 저장소의
+        # 병합된 워크트리 ~98개가 `moai session list` 한 번에 제거 대상이 된다.
+        # 그 일괄 삭제는 SPEC §G에서 범위 밖으로 선언돼 있으므로, 첫 스윕은
+        # `moai session list`의 부수효과가 아니라 의도된 행위여야 한다.
+        # 재활성화는 제거 예정 트리를 먼저 열거한 뒤 운영자가 판단할 것
+        # (acceptance.md AC-WR-023(b)).
+        auto_cleanup: false
         auto_create: false
         auto_merge: true
         session_name_pattern: moai-{ProjectName}-{SPEC-ID}
