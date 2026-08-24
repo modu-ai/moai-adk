@@ -550,26 +550,23 @@ func (r *Renderer) isPREnabled() bool {
 // Behavior:
 //   - Workspace.Repo present + Branch present: "📡 owner/name, issues/PRs | 🅱️ branch +N"
 //   - forge pair: see renderForgePair (zeros shown; unknown is "-/-"; gated segment omits it)
-//   - Workspace.Repo nil or incomplete:        "" (segment hidden — no git remote context)
+//   - Workspace.Repo nil or incomplete:        "🅱️ branch +N" (forge half withheld, branch kept)
 //   - Branch empty:                            "" (empty — no git context)
 //   - Dirty (Modified + Staged + Untracked) == 0: " +N" portion omitted
 //   - Worktree active:                          "[WT] " prefix prepended to branch
 //
+// The two halves have different availability. The branch comes from local git and
+// exists inside any repository; the forge identity comes from the optional
+// workspace.repo sub-object on Claude Code's stdin, absent both on payloads that
+// omit it and on checkouts with no configured remote. They are therefore rendered
+// independently: a missing forge half withholds only itself.
+//
 // @MX:NOTE: [AUTO] layout v3 CH3 — the sole renderer of the repo+branch line.
-// @MX:NOTE: [AUTO] Hide entire segment when git is uninitialized or remote repo info is missing (per user request 2026-05-22).
+// @MX:NOTE: [AUTO] Hide the FORGE half when remote repo info is missing (per user request 2026-05-22 — written when this segment carried repo identity alone).
 // @MX:NOTE: [AUTO] 2026-08-18 merge — GitHub counts moved here from renderSessionLine; ahead/behind demoted from ↑N/↓N arrows on the branch to an always-on "a/b" pair on the repo.
 // @MX:NOTE: [AUTO] 2026-08-20 — the slash pair now carries open issues / open PRs; ahead/behind is no longer rendered (operator decision, tradeoff accepted).
 func (r *Renderer) renderRepoBranchSegment(data *StatusData) string {
 	if data == nil || !data.Git.Available || data.Git.Branch == "" {
-		return ""
-	}
-
-	// Hide segment when repo info is missing (git uninitialized or remote not configured).
-	if data.Workspace.Repo == nil {
-		return ""
-	}
-	repo := data.Workspace.Repo
-	if repo.Owner == "" || repo.Name == "" {
 		return ""
 	}
 
@@ -584,14 +581,20 @@ func (r *Renderer) renderRepoBranchSegment(data *StatusData) string {
 
 	// Dirty count (omitted when 0)
 	dirty := data.Git.Modified + data.Git.Staged + data.Git.Untracked
-	var dirtySuffix string
 	if dirty > 0 {
-		dirtySuffix = fmt.Sprintf(" +%d", dirty)
+		branch += fmt.Sprintf(" +%d", dirty)
+	}
+
+	// Withhold the forge half when repo info is missing (no remote configured, or
+	// a stdin payload that carries no workspace.repo). The branch stands alone.
+	repo := data.Workspace.Repo
+	if repo == nil || repo.Owner == "" || repo.Name == "" {
+		return branch
 	}
 
 	repoPart := fmt.Sprintf("📡 %s/%s", repo.Owner, repo.Name) + r.renderForgePair(data)
 
-	return repoPart + " | " + branch + dirtySuffix
+	return repoPart + " | " + branch
 }
 
 // renderForgePair renders the repo segment's slash pair — open issues over
