@@ -348,3 +348,52 @@ $ grep -rn '"raw_pct"' internal/ | sed 's/:.*//' | sort | uniq -c
 A 는 Tier L 이라 research/design 을 새로 쓴다. (3) A 와 C 를 다른 라운드에 태우면 콘솔의
 텔레메트리 셀은 A 착지 후 C 착지 전까지 계속 "미기록"으로 보인다 — 기능 퇴행은 아니나 관측자에게는
 "고쳐지지 않은 것"으로 보인다.
+
+---
+
+## 부록 — effort 런타임 관측 (리드 [HARD] 지시, 본문 작성 전 선행 측정)
+
+**결론: Claude Code 는 `effort` 를 실제로 보낸다.** A-002 의 "없으면 비운다"는 예외 경로로
+남고, REQ 문장은 "가용할 때 기록"이 아니라 **"기록한다"**로 쓸 수 있다.
+
+측정 방법: 이 머신의 statusline 래퍼(`.moai/status_line.sh` — gitignore 대상 런타임 생성물)에
+stdin 을 스크래치패드로 복사하는 한 줄을 **일시 삽입**하고, 렌더 1회를 받은 뒤 원본으로
+복원했다. 워크트리본과 primary 본 두 벌 모두 백업→패치→복원했고, 복원 후 `diff -q` 두 건이
+공집합임을 확인했다(`RESTORED both`). 설정 파일은 건드리지 않았다.
+
+관측된 페이로드(2026-08-24 13:02, Claude Code **2.1.241**, 세션 `d281730e…` = `lead`):
+
+```json
+{
+  "session_id": "d281730e-a47e-4f82-878e-5fd0ddc4dcb9",
+  "effort":  { "level": "medium" },
+  "model":   { "id": "claude-opus-5[1m]", "display_name": "Opus 5 (1M context)" },
+  "version": "2.1.241",
+  "context_window": { "used_percentage": 54, "context_window_size": 1000000 }
+}
+```
+
+세 값 모두 **한 페이로드 안에 세션 단위로** 들어온다 — `session_id`(A-001 의 경로 키),
+`effort.level`, `model`. §2 의 생산자 재지목이 런타임 관측으로 확인됐다.
+
+참고로 `~/.moai/cache/statusline_debug.log` 의 2026-05-20 기록(CC 2.1.145)에도
+`"effort": {"level": "xhigh"}` 가 있다 — 세 달 전 버전에서도 보내고 있었다는 역사적 데이터
+포인트이나, 위 판단의 근거는 이번 실행의 관측이다.
+
+### D-5 — 모델 값으로 무엇을 기록하는가 (신규, 비준 필요)
+
+관측이 새 갈래를 하나 드러냈다: 페이로드는 `id`(`claude-opus-5[1m]`)와
+`display_name`(`Opus 5 (1M context)`)을 **둘 다** 보낸다.
+
+**제안: GLM 해석을 거친 `display_name` 한 값만 기록한다.** `resolveGLMModelName`
+(`metrics.go:197`)이 이미 `display_name` 을 입력으로 받아 GLM 환경에서 z.ai 모델명으로 바꾸므로,
+그 함수의 출력이 곧 "이 세션이 실제로 도는 모델"이다. *기각:* `id` 기록 — Claude 형태의 식별자라
+GLM 세션에서는 그 자리에 넣을 값이 애초에 없고(`ANTHROPIC_DEFAULT_*_MODEL` 로 들어온 이름이
+실체다), `[1m]` 접미도 따로 벗겨야 한다. *기각:* 두 값 모두 기록 — 콘솔 셀 하나에 값 둘은
+소비자가 다시 고르게 만든다.
+
+### 잔여 Gap
+
+GLM 백엔드 세션의 페이로드는 관측하지 못했다(현재 이 머신에 GLM 세션 없음). `effort` 가 GLM
+경유에서도 오는지는 **미관측**이며, 안 오면 GLM 세션의 effort 셀만 미기록이 된다 — A-002 의
+빈 경로로 정상 처리되므로 설계는 성립한다. A 의 plan 확인 항목에 넣는다.
