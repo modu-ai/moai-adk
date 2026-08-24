@@ -78,6 +78,12 @@ type SessionVM struct {
 	State     string
 	Heartbeat string
 	Cwd       string
+
+	// PID 는 레지스트리 항목의 프로세스 식별자다. 화면에 그리지 않는다 —
+	// 팩토리 레인 join 이 이 값으로 세션을 찾기 때문에 들고 있는다.
+	// active-sessions.json 을 한 번만 읽는다는 규율을 지키려면 여기 실어
+	// 나르는 편이 두 번째 읽기를 추가하는 것보다 낫다.
+	PID int
 }
 
 type RoleVM struct {
@@ -124,6 +130,11 @@ type KanbanVM struct {
 	Roles    []RoleVM
 	Columns  []PipeColumnVM
 	Total    int
+
+	// Lanes 는 팩토리 레인이다. Roles 옆에 따로 선다 — 레인은 체인 역할이
+	// 아니고, ChainRoles 를 넓히면 모든 체인 소비자가 가변 길이 역할 목록을
+	// 방어해야 한다. 등록된 레인이 없으면 빈 목록이고, 화면은 그 사실을 그린다.
+	Lanes []LaneVM
 }
 
 type FilterVM struct {
@@ -427,6 +438,7 @@ func loadSessions(root string, now time.Time) ([]SessionVM, map[string]SessionVM
 			State:     sessionState(e.LastHeartbeat, e.PID, now),
 			Heartbeat: humanSince(e.LastHeartbeat, now),
 			Cwd:       e.CWD,
+			PID:       e.PID,
 		}
 		out = append(out, vm)
 		byID[e.SessionID] = vm
@@ -678,6 +690,7 @@ func (a *app) buildKanban(now time.Time) (KanbanVM, error) {
 		Roles:    chain.Roles,
 		Columns:  pipelineColumns(rows),
 		Total:    len(rows),
+		Lanes:    loadFactoryLanes(root, byID, records),
 	}, nil
 }
 
