@@ -110,3 +110,21 @@ agent's to edit.
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §G Sync-phase follow-up — one ownership correction owed
+
+`f276b9742` rescoped **AC-ST-002**'s grep half to non-test source, closing the run's Finding 1
+(the criterion's two halves were mutually unsatisfiable: the fixture it mandates must create the
+sidecar file, and creating it spells the name the unscoped grep forbids).
+
+The correction itself is ratified and its intent is preserved — the writer still may not consult
+the sidecar, and the fixture still proves the key comes from the payload. What is owed is the
+**ownership path**: `acceptance.md` body content belongs to `manager-spec`
+(`spec-frontmatter-schema.md` § Forbidden ownership crossings), and that edit was applied
+orchestrator-direct under time pressure rather than through a re-delegation.
+
+**Sync-phase obligation**: re-delegate the edit to `manager-spec` so the change carries its proper
+owner, or record an explicit operator-approved deviation naming this line. Nothing about the
+criterion's content is expected to change; this is about who authored it.
+
+Raised by the lead on reading this run's evidence, 2026-08-24.
