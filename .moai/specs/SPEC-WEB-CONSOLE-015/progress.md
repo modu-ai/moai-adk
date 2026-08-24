@@ -109,7 +109,7 @@ m1_to_mN_commit_strategy: one commit per milestone (b35a3d098, e78080458, f80bad
 
 ```yaml
 sync_complete_at: 2026-08-24
-sync_commit_sha: pending-backfill-SPEC-WEB-CONSOLE-015
+sync_commit_sha: f9e267e80
 sync_status: complete
 b12_self_test_a: "grep -c 'SPEC-WEB-CONSOLE-015' CHANGELOG.md → 0 (rc 1, a genuine zero-match; no duplicate, emission permitted)"
 b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+[a-z]?' acceptance.md | sort -u → 15 tokens, of which AC-WC15-012 occurs once and only as the record of its own deletion (acceptance.md:7). 14 live criteria, matching the §E.2 matrix and the declared budget; the CHANGELOG entry states 14"
