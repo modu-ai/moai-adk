@@ -37,8 +37,9 @@ hitting a ceiling. If scope grows past that, the answer is to cut scope, not to 
 |---|---|---|
 | `internal/kanban/todo_root.go` (new) | M1 | the relocated resolution: pure resolver + adopt-then-resolve entry point |
 | `internal/kanban/todo_root_test.go` (new) | M1 | branch coverage incl. the fallback and read-through branches |
+| `internal/kanban/todo_root.go` — home-injection seam | M1 | **the relocation's one non-verbatim part.** The current fallback reads the home directory through `userHomeDirFn` (`internal/cli/todo.go:93`), a package-level seam in `internal/cli` that nine non-test files there share, so it cannot travel with the code. `internal/kanban` needs an equivalent injection point of its own, or AC-WTQ-006 and AC-WTQ-007 — both of which require a controlled fallback root — have no way to control it |
 | `internal/cli/todo.go` | M1 | delete the local resolution, delegate |
-| `internal/cli/todo_test.go` | M1 | existing adoption tests re-pointed at the command-path entry point |
+| `internal/cli/todo_queue_root_test.go` | M1 | the existing resolution and adoption tests (`TestResolveTodoQueueRoot_*`, `TestTodoQueue_FallbackAdoptsExistingLocalQueue`, `TestTodoQueue_WorktreeSeesPrimaryQueue`) re-pointed at the command-path entry point |
 | `internal/web/app.go` | M2 | one page route |
 | `internal/web/shell.templ` (+ `shell_templ.go`) | M2 | sixth `navRow` |
 | `internal/web/icons.templ` (+ `icons_templ.go`) | M2 | `case "todo"` |
@@ -72,7 +73,12 @@ M1 must produce is **two** exported entry points, not one:
 - an **adopt-then-resolve** entry point — the one `internal/cli/todo.go` calls. It invokes the pure
   resolver and then performs the adoption, so `moai todo`'s behaviour is unchanged.
 
-The adoption logic itself moves **verbatim**; only its call site narrows. AC-WTQ-008 is the pin
+The adoption logic itself moves **verbatim** — with one exception the §C table names: its home
+directory arrives through `userHomeDirFn`, a seam that belongs to `internal/cli` and stays there,
+so `internal/kanban` establishes its own. The logic is verbatim; its seam is not, and a run that
+reads "verbatim" as covering the seam leaves the fallback root uncontrollable in tests.
+
+Beyond that, only the call site narrows. AC-WTQ-008 is the pin
 that the behaviour did not drift while the call site did.
 
 **Read-through (decision D-2, §F).** The pure resolver additionally returns the **project-local**

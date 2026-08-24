@@ -57,10 +57,18 @@ filename is a constant — so no such refusal exists to preserve; all three halv
 ## §B One reader
 
 **AC-ST-005** (REQ-ST-005) — Given the merged tree, When
-`grep -rEc '^func Read[A-Za-z]*ContextUsage' internal/statusline/*.go` is summed, Then the count
-is **exactly 1**. Baseline: the same command returns **0** on the pre-change tree —
-`readContextUsage` (`context_usage.go:186`) is unexported and no exported sibling exists — so
-the criterion is new information rather than a restatement of the status quo.
+`grep -rEc '^func ReadSessionTelemetry\(' internal/statusline/*.go` is summed, Then the count is
+**exactly 1**; and When `grep -rEn '^func [A-Z][A-Za-z]*\(.*\) \(?\*?SessionTelemetryRecord'
+internal/statusline/*.go` is run, Then it returns that same one line and no other. Baseline: both
+commands return **0** on the pre-change tree — `readContextUsage` (`context_usage.go:186`) is
+unexported, the record type is unexported, and no exported sibling exists — so the criterion is
+new information rather than a restatement of the status quo.
+
+The identifier is pinned deliberately, not incidentally: spec.md §C.2b fixes the exported reader
+as `ReadSessionTelemetry` and the record type as `SessionTelemetryRecord`, so this criterion
+matches a name the SPEC itself commits to. The second half is what makes it a count of readers
+rather than a spelling check — a second exported function returning the record type fails it
+whatever it is called.
 
 **AC-ST-006** (REQ-ST-005) — Given the merged tree, When `grep -rn '"raw_pct"' internal/` is run
 — scope pinned to `internal/`, **including** `_test.go` files — Then every hit lies inside

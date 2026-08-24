@@ -181,6 +181,16 @@ because the doctrine (4 files) and the published documentation (12 files) alread
 name, and renaming it would move two things in one sweep. Ratified as D-1; consequences in
 `design.md` §1.1.
 
+### C.2b The exported reader's identifier is fixed deliberately
+
+The console imports this reader, so the record type it returns is exported as
+`SessionTelemetryRecord` and the reader as `ReadSessionTelemetry`. Both names are named here
+rather than left to the implementation, because AC-ST-005 counts the exported reader by matching
+its identifier: an unpinned criterion would either pass on a second reader with a different name
+or fail a correct implementation that chose one. D-1 widened the type name to session-telemetry
+vocabulary but described it in its unexported form; the exported form is what a cross-package
+consumer can name, and that is the refinement recorded here.
+
 ### C.3 Template-First
 
 Go source under `internal/statusline`, `internal/cli`, and `internal/spec` has no mirror under

@@ -144,10 +144,23 @@ it resolves the unfavourable way; both change what the run must do next.
 1. **Does the widened payload degrade the write throttle?** `sameSemanticPayload`
    (`context_usage.go:203`) skips a write when the new record is semantically equal to the one on
    disk. Adding model and effort to the compared payload could, in principle, turn every render
-   into a write. **Unmeasured.** The hypothesis is that it does not: both values are stable for a
-   session's lifetime, so they are constant contributors to the comparison. Measure it in M3 by
-   counting writes across N renders with unchanged context values; if the count rises, exclude the
-   two new fields from the throttle comparison rather than from the record.
+   into a write. **Unmeasured.** The hypothesis is that it does not: both values change rarely
+   within a session, so they are near-constant contributors to the comparison. They are not
+   *fixed*, though — `.claude/rules/moai/workflow/cache-aware-execution.md` directive 10 records
+   that model and effort are switchable mid-session — and that is what makes the fallback carry a
+   cost of its own. Measure in M3 by counting writes across N renders with unchanged context
+   values.
+
+   **Both outcomes have a consequence; neither is free.** If the count rises, the fallback is to
+   exclude the two new fields from the throttle comparison rather than from the record — but then
+   a mid-session model or effort change is not persisted until an unrelated context value moves,
+   so the record holds a value that is **present and wrong**. That state is worse than absence,
+   because REQ-ST-003's "not recorded" path does not cover it: a reader cannot tell a stale value
+   from a current one. So excluding the fields is only acceptable together with something that
+   makes a changed value reach disk — comparing the two fields for inequality alone (not for
+   throttle-payload equality), or forcing a write when either differs from the record on disk.
+   Whichever the run picks, the run states it, because the choice is invisible in the output and
+   only shows up as a wrong value much later.
 2. **Does a GLM-backed session's payload carry `effort` at all?** **Unobserved** — no GLM session
    was running on this machine when the payload was captured, so the observation covers the
    Claude backend only. If GLM omits it, that session's effort is reported as not recorded through

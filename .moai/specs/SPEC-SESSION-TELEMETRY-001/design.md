@@ -32,8 +32,12 @@ its own consumers and costs sixteen files.
   mismatch as an oversight. A rename is available later as its own change, with its own sweep.
 - Because the payload widens, `contextUsageSchemaVersion` (`context_usage.go:27`) is bumped and
   the reader must tolerate records at the previous version — §3.
-- The values are stable for a session's lifetime, which is why they are expected not to disturb
-  the write throttle. Expected, not measured: `plan.md` §F item 1.
+- The values are **usually** stable within a session, but they are not fixed at its start: this
+  repository's own always-loaded doctrine records that model and effort are switchable mid-session
+  (`.claude/rules/moai/workflow/cache-aware-execution.md` directive 10). So they change rarely
+  rather than never, and both directions of that have a consequence the run must weigh — the
+  write throttle, and the staleness the throttle's fallback would introduce. `plan.md` §F item 1
+  carries both.
 
 **Rejected.** *(a) Keeping model and effort on `kanban.Record`, written by the launcher.*
 Measured impossible on both backends: `moai cc` never parses or sets a model, and `moai glm`

@@ -12,20 +12,36 @@ Eleven criteria, one or more per requirement, every requirement covered.
 **AC-WTQ-001** (REQ-WTQ-001) — Given the merged tree, When
 
 ```bash
-grep -rnE 'Mutate\(|acquireLock' internal/web --include='*.go' \
+grep -rnE 'Mutate\(|acquireLock|os\.WriteFile|os\.MkdirAll|os\.Rename' internal/web --include='*.go' \
   | grep -v '_test\.go' | grep -vE '^[^:]+:[0-9]+:[[:space:]]*//' | wc -l
 ```
 
-is run, Then the count is `0`; and Given a project root holding a backlog file and its lock file,
-When every console route is exercised in one test run, Then the backlog file's bytes are identical
-before and after and the lock file's modification time is unchanged.
+is run, Then its output is **exactly the two pre-existing lines below and nothing else**; and Given
+a project root holding a backlog file and its lock file, When every console route is exercised in
+one test run, Then the backlog file's bytes are identical before and after and the lock file's
+modification time is unchanged.
 
-Baseline: the same command on the pre-change tree prints `0`, so the grep half asserts
-**preservation** and fails only if a write is introduced. The unqualified form of this scan
-(`grep -rnE 'Mutate\(|acquireLock|os\.WriteFile' internal/web`) prints `23` in this tree — every
-hit a `_test.go` file or an anti-pattern comment — which is why the executable form above is
-scoped to production Go with comment lines excluded rather than left as prose about `.moai/state`
-paths. The runtime half is the non-vacuous half: it observes behaviour a grep cannot.
+Baseline, measured verbatim in this tree:
+
+```
+internal/web/profile_crud.go:38:	return os.MkdirAll(dir, 0o755)
+internal/web/profile_crud.go:64:	return os.Rename(src, dst)
+```
+
+The assertion is an **exhaustive inventory**, not a zero-hit count: any write call this SPEC
+introduces anywhere in non-test console code appears as a third line and fails the check, whatever
+path it targets. That is what lets the pattern cover all three write primitives §A.2 names as the
+hazard this SPEC contains (`os.MkdirAll`, `os.Rename`, `os.WriteFile` at `internal/cli/todo.go:124`,
+`:128`, `:139`) instead of the narrower pair a zero-hit form would have forced.
+
+The two allowlisted lines are read once, as a declared reading step: `internal/web/profile_crud.go`
+resolves both paths from the Claude profile directory, not from the project state directory, so
+neither is a backlog write. Re-perform that reading only if the inventory changes.
+
+Unfiltered, the same scan prints `23` — every additional hit a `_test.go` file or a comment naming
+the anti-pattern — which is why the executable form is scoped to production Go with comment lines
+excluded rather than left as prose about `.moai/state` paths. The runtime half is the non-vacuous
+half: it observes behaviour a grep cannot.
 
 ## §B Route, navigation, and content
 
