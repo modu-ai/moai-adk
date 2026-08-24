@@ -281,6 +281,98 @@ $ GOOS=windows GOARCH=amd64 go vet ./internal/constitution/... → ok (테스트
 $ go build ./... · GOOS=windows GOARCH=amd64 go build ./...  → rc=0 / rc=0
 ```
 
+### M3 — 미러·임베드·최종 검증 — 2026-08-25
+
+기준: 병렬 세션 커밋 포함 브랜치 선두부(`9a1fbfdd2` — 조정자 M2 재검증 → `5e5cff235` — SplitSeq 채택). SplitSeq 리팩터링(`range strings.SplitSeq`, LSP 권고 2루프)은 본 세션이 편집했고 병렬 세션이 동일 내용을 `5e5cff235`로 커밋(편집 후 검증: `go test -count=1 ./internal/constitution/ -run RegistrySync` → `ok … 0.683s`, gofmt 빈).
+
+#### 1. 미러 바이트 동일 + 임베드
+
+```
+$ diff -q .claude/rules/moai/core/zone-registry.md internal/template/templates/.claude/rules/moai/core/zone-registry.md ; echo rc=$?
+(출력 없음) rc=0
+$ cmp <local> <template> ; echo rc=$?
+rc=0                                    # cmp 바이트 단위 동일
+$ make build ; echo rc=$?
+… catalog.yaml updated successfully (12899 bytes) …
+rc=0                                    # //go:embed 재임베드 완료
+$ git status --porcelain                # 빌드 직후
+(출력 없음 — 빌드가 만든 미커밋 변경 0; bin/moai는 gitignored: git check-ignore bin/moai → rc=0)
+# catalog.yaml 이 zone-registry를 추적하지 않음을 확인(grep -c 'zone-registry' internal/template/catalog.yaml → 0) — 레지스트리 수리는 카탈로그 재생성을 유발하지 않음(재생성 결과도 바이트 동일)
+```
+
+#### 2. 템플릿 중립성 3-grep (엄격 패턴 — acceptance.md §AC-ZRR-012; 느슨한 `SPEC-…-\d`는 산문 토큰 `SPEC-ID` 오탐이므로 기각)
+
+```
+$ grep -cE 'SPEC(-[A-Z][A-Z0-9]*)+-[0-9]{3}' internal/template/templates/.claude/rules/moai/core/zone-registry.md        → 0
+$ grep -cE '20[0-9]{2}-[0-9]{2}-[0-9]{2}' internal/template/templates/.claude/rules/moai/core/zone-registry.md            → 0
+$ grep -cE '\b[0-9a-f]{40}\b' internal/template/templates/.claude/rules/moai/core/zone-registry.md                        → 0
+# M1 이 재지정 대상으로 새로 적중시키게 된 템플릿 moai-constitution.md 도 동일 3-grep → 0/0/0
+```
+
+#### 3. fresh-init 증명 (AC-ZRR-001/015) — 새 바이너리(`./bin/moai`, v3.1.2 / commit `9a1fbfdd2` 스탬프), 리포 밖 스크래치
+
+```
+$ mkdir -p /tmp/t232-m3-*/proj && ./bin/moai init --root /tmp/t232-m3-*/proj --non-interactive --language go
+init-rc=0     # 주: 원본 재현(findings.md)과 동일 플래그. --root 는 기존 디렉터리 필요 — 미생성 시
+              # "Initialization failed: validate project: invalid project root path"(detector.go validateRoot).
+              # 1차 시도가 이것으로 실패해 mkdir 후 재시도했다(발견한 플래그 요구사항 — gap 항목에도 기록).
+
+$ (cd /tmp/t232-m3-*/proj && <worktree>/bin/moai constitution validate) ; echo rc=$?
+constitution validate: OK — no drift or violations detected (0 entries checked)
+
+  4 retired entry/entries skipped ([SUPERSEDED …] marker); re-check them with --strict
+rc=0                                   # AC-ZRR-001 GREEN: exit 0, DRIFT 0회(전문 위 — "(0 entries checked)"는 M1 §E.2 기록된 하드코딩 리터럴)
+
+$ (cd /tmp/t232-m3-*/proj && <worktree>/bin/moai doctor) ; echo rc=$?
+    ok      Constitution Registry  registry OK — 101 entries (57 Frozen, 44 Evolvable)
+   …
+   Pass 23    Warn 2    Fail 0
+rc=0                                   # AC-ZRR-013 GREEN — RED(§1 재현)은 fail … Pass 22 Warn 2 Fail 1 이었음
+```
+경고 2건(`Telemetry Config` 기본값 부재, `Glamour Cache` 미통합)은 fresh 프로젝트의 원래 상태로 본 카드와 무관 — 수정 대상 아님(그대로 보고).
+
+#### 4. 패키지 테스트 (영향 패키지 한정 — 전체 스위트는 CI)
+
+```
+$ go test -count=1 ./internal/constitution/... ./internal/template/...
+ok  	github.com/modu-ai/moai-adk/internal/template	30.026s        (+ agentemit ok, scripts [no test files])
+# internal/constitution: 아래 §5 상황 기록
+```
+
+#### 5. 최종 가드 판정과 스크래치 커밋 상황 (정직한 기록)
+
+검증 도중 병렬 세션이 **CI 결론 관측용 스크래치 커밋** `a1f6622ee`(가드 변이 시나리오 §3 — 고의 R1 변이, "revert after observation" 계약)을 브랜치 선두에 올렸다. 이 커밋 아래에서 로컬 트리 가드는 **올바르게 붉다**:
+
+```
+--- FAIL: TestRegistrySyncGuard (0.20s)
+    --- FAIL: TestRegistrySyncGuard/local (0.11s)
+        registry_sync_test.go:125: validate [local mirror]: [DRIFT] CONST-V3R2-004 @ .claude/rules/moai/development/coding-standards.md #language-policy — clause "All instruction documents must be in Englishx:" not found in source "…"
+--- FAIL: TestRegistrySyncMirrorsIdentical (0.00s)
+        registry_sync_test.go:274: registry mirrors are not byte-identical (34957 vs 34956 bytes) — repair one mirror only and the parity is gone (AC-ZRR-011)
+```
+
+즉 M3 시점의 "브랜치 선두 가드 붉음"은 결함이 아니라 스크래치 변이에 대한 가드의 정상 반응이며, 스크래치 revert 후 초록으로 돌아온다(시나리오 문서 계약대로). 스크래치 커밋의 push·CI 관측·revert는 PR 시점 소관(AC-ZRR-007 CI 축) — 본 M3 커밋은 스크래치를 포함하지 않고 위에 쌓인다. 스크래치 직전 커밋(`5e5cff235` — 본 카드 최종 데이터 상태)에서의 가드 통과는 M2 §E.2 최종 검증 블록 및 SplitSeq 검증(`ok … 0.683s`)이 이미 인용한다.
+
+#### 6. AC 최종 상태 (M3 종료 시점)
+
+| AC | 상태 |
+|---|---|
+| AC-ZRR-001 (fresh-init validate exit 0) | **GREEN** (§3) |
+| AC-ZRR-002/003 (양 트리 리터럴 97/97) | **GREEN** (M1 §E.2 + M2 가드 상시화) |
+| AC-ZRR-004 (anchor 101/101) | **GREEN** (M1 §E.2 + M2 가드) |
+| AC-ZRR-005 (매처 불변) | **GREEN** (validator.go 무변경 — 커밋 전수 확인) |
+| AC-ZRR-006 (엔트리 보존) | **GREEN** (M1 §E.2 §7) |
+| AC-ZRR-007 (변이 관측) | **GREEN(로컬 축)** — CI 축(`gh pr checks` 결론)은 PR 시점 잔여: 스크래치 `a1f6622ee` 가 그 관측을 위해 대기 중 |
+| AC-ZRR-008 (차단 경로) | **GREEN** (M2 — go test ./... 잡 + D6 주석) |
+| AC-ZRR-009 (템플릿 커버) | **GREEN** (M2 R4) |
+| AC-ZRR-010 (skip 불허) | **GREEN** (M2 R5/R5b + 상시 서브테스트) |
+| AC-ZRR-011 (미러 동일 + 임베드) | **GREEN** (§1 — 가드 상시 테스트 포함) |
+| AC-ZRR-012 (중립성 비회귀) | **GREEN** (§2 — 0/0/0) |
+| AC-ZRR-013 (doctor Fail 0) | **GREEN** (§3) |
+| AC-ZRR-014 (slug 규칙 코드 선언) | **GREEN** (M2 headingSlug + REQ-ZRR-012 주석) |
+
+잔여: AC-ZRR-007 CI 축(PR 시점), `--strict` 재감사(설계상 은퇴 4 verbatim 실패 — 감사 목록록으로만 의미).
+
 ### M2 — 가드 완성 트리에서의 독립 재관측 — 2026-08-25
 
 측정 트리: `WT-zone-registry-drift` @ `0b04f3412`(변이 관측·E항목 전부). 사전 점검(§C)만 `2cd846377`에서 측정.
