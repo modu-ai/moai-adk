@@ -44,18 +44,23 @@ ack는 claimed 파일 삭제다(보관 아님 — 단순성 사다리). `.moai/s
 
 | A2A 객체 | 이 설계에서 | 비고 |
 |----------|------------|------|
-| **Message** 코어 필드 | **정합 (필드명·카디널리티)** — `messageId`(필수), `contextId`·`taskId`(선택), `role`(필수, "user"\|"agent"), `parts`(필수), `metadata`(선택) | camelCase JSON 키(proto3 JSON 명명; research.md §3.3 고지) |
+| **Message** 코어 필드 | **정합 (필드명·카디널리티)** — `messageId`(필수), `contextId`·`taskId`(선택), `role`(필수, "user"\|"agent" — **값은 의도적 이탈**, 아래 각주), `parts`(필수), `metadata`(선택) | camelCase JSON 키(proto3 JSON 명명; research.md §3.3 고지) |
 | **Part** | 부분 정합 — `kind: "text" \| "data"` 판별자 + `text`/`data`/`metadata` | `raw`·`url`·`filename`·`media_type`은 v1 제외(의도적) |
 | **AgentCard** | 참조 형상 — `name`, `description`, `version`, `capabilities.messaging` 하위 집합 + 브로커 필드(`agentId`, `kind`, `cwd`, `pid`, `host`, 하트비트) | `security_schemes`·`signatures`·`skills`·`supported_interfaces` 제외 |
 | **Task/TaskState** | 참조 형상으로만 — 엔벨로프가 `taskId`를 운반할 수 있으나 상태기계는 관리하지 않는다 | 수명주기 관리는 명시적 비범위(spec.md §C) |
 | **Artifact** | 미반영 | 필요시 후속 |
 
-정합은 테스트로 고정한다: `TestEnvelopeA2AAlignment`가 JSON 직렬 결과 키 존재(`messageId` 등 6개)와 Part 판별자를 단언(AC-CSM-001) — 명명 표류(R2)를 기계적으로 봉쇄.
+**`role` 값의 의도적 이탈 (A2A 상호운용 주의)**: proto3 JSON은 열거형을 **이름**으로 직렬화하므로 A2A v1 ProtoJSON의 `role`은 `"ROLE_USER"` / `"ROLE_AGENT"`다. 본 브로커는 온디스크 값으로 소문자 단축형 `"user"` / `"agent"`를 쓴다 — 필드명·카디널리티는 정합이지만 **값은 정합이 아니다**. 따라서 외부 A2A 구현과 엔벨로프를 주고받으려면 경계에서 명시적 변환(`"user" ↔ "ROLE_USER"`, `"agent" ↔ "ROLE_AGENT"`)을 넣어야 한다. 값을 바꾸는 것은 이미 디스크에 있는 모든 엔벨로프를 재주소화하는 온디스크 계약 변경이라 본 SPEC 범위 밖이며, 대신 이탈을 명시하는 쪽을 택했다.
+
+정합은 테스트로 고정한다: `TestEnvelopeA2AAlignment`가 JSON 직렬 결과 키 존재(`messageId` 등 6개)와 Part 판별자를 단언(AC-CSM-001) — 명명 표류(R2)를 기계적으로 봉쇄. 위 이탈도 같은 테스트의 `role serializes as the lowercase short form` 서브테스트가 `"user"` / `"agent"` 직렬 값을 고정해, 값이 조용히 바뀌는 것을 기계적으로 막는다.
 
 ### §3.2 Go 타입 (구현 스케치)
 
 ```go
-type Role string // "user" | "agent" — A2A Role enum(ROLE_USER/ROLE_AGENT)의 JSON 형태
+type Role string // "user" | "agent" — 본 브로커의 온디스크 값. A2A ProtoJSON은 열거형을
+                // 이름으로 직렬화하므로 A2A v1은 "ROLE_USER"/"ROLE_AGENT"를 낸다.
+                // 즉 아래 소문자 단축형은 그 열거형의 JSON 형태가 아니라 의도적 이탈이며,
+                // A2A 상호운용 시 명시적 변환이 필요하다(§3.1 각주).
 
 type Part struct {
     Kind     string          `json:"kind"`               // "text" | "data"

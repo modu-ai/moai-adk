@@ -50,7 +50,7 @@ acceptance.md §F의 AC 이항 검증 매트릭스 + manager-develop §E 표준(
 
 ### M1 — 데이터 모델 + 파일 스토어 (사이클: tdd)
 
-`internal/sessionmsg/` 패키지. envelope.go(Message/Part/Delivery/Envelope + 검증) → agent.go(등록 멱등·하트비트·조회) → store.go(send/poll/ack + 지연 스윕: 클레임 TTL 환원·메시지 TTL 삭제) → lock.go(에이전트별 자문적 록, 플랫폼 분리). defaults.go에 임계값 5개(`DefaultSessionMsgMessageTTL` 24h, `DefaultSessionMsgClaimTTL` 10m, `DefaultSessionMsgAgentOfflineMinutes` 30, `DefaultSessionMsgPollBatch` 16, `DefaultSessionMsgMaxTextBytes` 65536).
+`internal/sessionmsg/` 패키지. envelope.go(Message/Part/Delivery/Envelope + 검증) → agent.go(등록 멱등·하트비트·조회) → store.go(send/poll/ack + 지연 스윕: 클레임 TTL 환원·메시지 TTL 삭제) → lock.go(에이전트별 자문적 록, 플랫폼 분리). defaults.go에 임계값 6개(`DefaultSessionMsgMessageTTL` 24h, `DefaultSessionMsgClaimTTL` 10m, `DefaultSessionMsgAgentOfflineMinutes` 30, `DefaultSessionMsgPollBatch` 16, `DefaultSessionMsgMaxTextBytes` 65536, `DefaultSessionMsgMaxParts` 8 — 마지막 항목은 REQ-CSM-005의 부분 수 상한).
 커밋: `feat(SPEC-CODEX-SESSION-MSG-001): M1 session message envelope + file store`
 AC 연결: AC-CSM-001..006, AC-CSM-014 (하트비트·온라인/오프라인).
 

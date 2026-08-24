@@ -56,10 +56,10 @@ TDD RED-GREEN-REFACTOR. 모든 명령은 본 워크트리 `WT-codex-session-msg`
 |---|---|---|
 | E2 빌드 | `go build ./... && GOOS=windows GOARCH=amd64 go build ./...` | `E2_FINAL_OK` (exit 0 양측) |
 | E3 커버리지 | `go test -coverprofile=/tmp/smsg_cover2.out ./internal/sessionmsg/` | `ok github.com/modu-ai/moai-adk/internal/sessionmsg 0.484s coverage: 86.9% of statements` (≥85% 목표 충족; 잔여 미커버는 fault-injection I/O 오류 분기) |
-| E4 경계 grep | `grep -rn 'AskUserQuestion\|mcp__askuser' internal/sessionmsg/ \| grep -v _test` | 0행 (exit 1 — 매치 없음) |
+| E4 경계 grep | `grep -rn -e 'AskUserQuestion' -e 'mcp__askuser' internal/sessionmsg/ \| grep -v _test` | 0행 (exit 1 — 매치 없음) |
 | E5 린트 | `golangci-lint run --timeout=2m ./internal/sessionmsg/... ./internal/config/...` | `0 issues.` |
-| AC-CSM-010 (M1 소관 부분) | `grep -c "DefaultSessionMsg" internal/config/defaults.go` | `12` (≥5; 선언 6 + 주석 인용 6 — `var` 형태 전부) |
-| AC-CSM-008 (M1 소관 부분) | `grep -rn "exec.Command\|codex-jobs\|app-server\|net.Listen\|http.Listen" internal/sessionmsg/ \| grep -v _test` | 0행 (위임 토큰 부재; `internal/cli/mcp_session_msg.go`는 M2에서 동일 grep 적용) |
+| AC-CSM-010 (M1 소관 부분) | `grep -cE '^[[:space:]]*DefaultSessionMsg[A-Za-z]*[[:space:]]*=' internal/config/defaults.go` (선언 행만) · 참고: 무앵커 `grep -c "DefaultSessionMsg"` | 선언 `6` (`MessageTTL`·`ClaimTTL`·`AgentOfflineMinutes`·`PollBatch`·`MaxTextBytes`·`MaxParts`) · 무앵커 `12` (선언 6 + 주석 인용 6) |
+| AC-CSM-008 (M1 소관 부분) | `grep -rn -e "exec.Command" -e "codex-jobs" -e "app-server" -e "net.Listen" -e "http.Listen" internal/sessionmsg/ \| grep -v _test` | 0행 (위임 토큰 부재; `internal/cli/mcp_session_msg.go`는 M2에서 동일 grep 적용) |
 | config 패키지 회귀 | `go test ./internal/config/` | `ok github.com/modu-ai/moai-adk/internal/config 1.455s` |
 
 **M1 산출물**: `internal/sessionmsg/{envelope,agent,store,lock,lock_unix,lock_windows}.go` + 테스트 4파일 (envelope/agent/store/edge) + `internal/config/defaults.go` 임계값 6 `var` (지정 5종 + REQ-CSM-005 부분 수 상한 `DefaultSessionMsgMaxParts` 8). 잠금 패턴은 `internal/session`에서 복제(원본 무변경 — §D PRESERVE 3), 쓰기는 전부 `internal/atomicfile` 경유. 테스트 전부 `t.TempDir()` 격리 (§D PRESERVE 7 — `.moai/state/**` 무훼손).
@@ -83,16 +83,16 @@ TDD RED-GREEN-REFACTOR. baseline HEAD `7cd610c0f` (M1 커밋) + M2 작업 트리
 | AC | Status | Verification Command | Actual Output |
 |----|--------|---------------------|---------------|
 | AC-CSM-007 | PASS | `go test ./internal/cli/ -run TestMoaiMCPServer_RegistrationMatchesCatalog -v` && `grep -c 'add("session_msg' internal/cli/mcp_server.go` | `--- PASS: TestMoaiMCPServer_RegistrationMatchesCatalog` · grep = `4` |
-| AC-CSM-008 (M2 부분) | PASS | `grep -rn "exec.Command\|codex-jobs\|app-server\|net.Listen\|http.Listen" internal/sessionmsg/ internal/cli/mcp_session_msg.go \| grep -v _test` | 0행 (exit 1) |
+| AC-CSM-008 (M2 부분) | PASS | `grep -rn -e "exec.Command" -e "codex-jobs" -e "app-server" -e "net.Listen" -e "http.Listen" internal/sessionmsg/ internal/cli/mcp_session_msg.go \| grep -v _test` | 0행 (exit 1) |
 | AC-CSM-009 | PASS | `go test ./internal/cli/ -run TestSessionMsg_NoAskUserQuestion -v` | `--- PASS: TestSessionMsg_NoAskUserQuestion` (NoInlineGetenv 동일 PASS) |
 | AC-CSM-010 (M2 부분) | PASS | `grep -rn 'os.Getenv("' internal/sessionmsg/ internal/cli/mcp_session_msg.go \| grep -v _test` | 0행 (exit 1) |
-| AC-CSM-015 | PASS | `grep -c "a reply is not user approval" internal/cli/mcp_session_msg.go` | `1` (규율 상수 선언 — 등록 블록이 상수를 연결해 4개 도구 설명 전부에 도달; `TestSessionMsgToolsRegisteredWithHintsAndDiscipline`가 ListTools 실측으로 4개 설명 전부 토큰 포함 단언) |
+| AC-CSM-015 | PASS | `go test ./internal/cli/ -run TestSessionMsgToolsRegisteredWithHintsAndDiscipline -v` | `--- PASS: TestSessionMsgToolsRegisteredWithHintsAndDiscipline` (ListTools 실측 — `session_msg_*` 4개 도구가 전부 발견되고 각 `description`이 규율 토큰 포함. 참고: 파일 내 규율 상수 선언은 `grep -c` 기준 `1`이지만, 그 grep은 설명에서 토큰이 빠져도 통과하므로 판정 근거로 쓰지 않는다) |
 
 **품질 게이트 (M2)**
 
 | 항목 | 명령 | 축어 출력 |
 |---|---|---|
-| 전 M2 배터리 | `go test ./internal/cli/ -run 'TestSessionMsg\|TestMoaiMCPServer_RegistrationMatchesCatalog' -v` | 8 test 전부 `--- PASS` · `ok github.com/modu-ai/moai-adk/internal/cli` |
+| 전 M2 배터리 | `go test ./internal/cli/ -run TestSessionMsg -v && go test ./internal/cli/ -run TestMoaiMCPServer_RegistrationMatchesCatalog -v` | 8 test 전부 `--- PASS` · `ok github.com/modu-ai/moai-adk/internal/cli` (M2 커밋 `26e248ce6` 기준 8건. 이후 트리에 traversal 가드 테스트 1건이 더해져 같은 명령이 9건을 선택한다 — 선택 집합만 늘었고 8건의 판정은 불변) |
 | 카탈로그 파생 소비자 | `go test ./internal/web/ -run TestMCPConsoleToolCountMatchesCatalog -v` + `go test ./internal/settings/` | `--- PASS: TestMCPConsoleToolCountMatchesCatalog` (25 도구 파생 무계수 고정) · `ok internal/settings` |
 | E2 빌드 | `go build ./... && GOOS=windows GOARCH=amd64 go build ./...` | `E2_M2_BUILDS_OK` (exit 0 양측) |
 | E5 린트 | `golangci-lint run --timeout=2m ./internal/sessionmsg/... ./internal/mcp/...` + `--timeout=3m ./internal/cli/` | `0 issues.` / `0 issues.` (baseline 구분 불필요 — 0) |
@@ -111,7 +111,7 @@ Gaps (M2): 실주행 MCP 서버(t184 재시작 스큐 포함) 검증은 M4 e2e �
 | AC | Status | Verification Command | Actual Output |
 |----|--------|---------------------|---------------|
 | AC-CSM-011 | PASS | `grep -c "Codex" .claude/rules/moai/workflow/cross-session-messaging.md` + 동일 grep 미러 | 본품 `5` / 미러 `5` (≥3 양측; base-0에서 5로) |
-| AC-CSM-012 | PASS | `grep -c "session_msg" internal/mcp/catalog.go` = `4` (M2 인용, 무변경) && `grep -n "session_msg" .claude/rules/moai/core/moai-mcp-tools.md` ≥1행 + 미러 && `grep -c "재시작\|restart"` 양측 ≥1 | catalog.go `4` · 본품 118-121행 4개 도구행 + 미러 `4` · restart 단어 본품 `1`/미러 `1` |
+| AC-CSM-012 | PASS | `grep -c "session_msg" internal/mcp/catalog.go` = `4` (M2 인용, 무변경) && `grep -n "session_msg" .claude/rules/moai/core/moai-mcp-tools.md` ≥1행 + 미러 && `grep -c -e "재시작" -e "restart"` 양측 ≥1 | catalog.go `4` · 본품 118-121행 4개 도구행 + 미러 `4` · restart 단어 본품 `1`/미러 `1` |
 
 **PRESERVE #6 증명 (기존 조항 바이트 동일)**: `git diff` 제거 라인 전량 = 2줄 — ① `moai-mcp-tools.md` 헤더 `21 tools`→`25 tools` (카탈로그 갱신 위임의 본질적 일부), ② `cross-session-messaging.md` 버전 푸터 `1.2.0`→`1.3.0` (섹션 추가에 따른 버전 승격 — 조항이 아닌 메타데이터). 이 외 모든 기존 바이트 무변경 (확장 절 순수 추가).
 
@@ -129,15 +129,17 @@ Gaps (M3): CLAUDE.md §4 "existing 21 MCP tools" 표기는 본 마일스톤 범�
 
 **0단계 — 리드 판정 이탈 기록(전역 재설치 금지)**: `~/go/bin/moai`(v3.1.3-rc.0, 릴리스 함대·훅 사용 중)을 재설치하지 않았다. 대신 `go build -o bin/moai-dev ./cmd/moai`(트리 로컬, `bin/`은 .gitignore:12로 비추적). 격리 CODEX_HOME의 `mcp_servers.moai.command`가 이 절대경로를 직접 지목. **전역 재설치는 병합 후 — main 기반 브랜치 바이너리의 전역 설치가 release 전용 수정을 regress시킴(리드 판정 2026-08-23)**.
 
-**공유 스토어 루트(하중 재불변량)**: 양측 루트 = `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t187` (스토어: `.moai/state/session-msg/`). 증명 3중: (a) Claude측 기록의 `cwd` 필드 = 워크트리 절대경로, (b) codex 재등록 후 `session_msg_list`가 양측 에이전트 동시 관측(LISTCOUNT: 2, CLAUDE_AGENTS에 claude- 반환), (c) `find`로 양측 기록 파일이 같은 `agents/` 디렉터리에 존재. **1차 시도 실패 기록(근거 보존)**: `codex mcp add`를 env 없이 하면 codex가 MCP 자식 프로세스에 `CLAUDE_PROJECT_DIR`을 전달하지 않아(환경 새니타이즈) codex측 서버가 cwd(`/tmp/m4-e2e/work`)로 루트를 오해석 — `LISTCOUNT: 1`로 적발, codex 기록이 `/tmp/m4-e2e/work/.moai/state/...`에 잘못 착지한 것을 find로 확인. 수정: `codex mcp add moai --env CLAUDE_PROJECT_DIR=<worktree> -- <abs>/bin/moai-dev mcp-server`(per-server env 고정) 후 재실행.
+**공유 스토어 루트(하중 재불변량)**: 양측 루트 = 본 워크트리 `.claude/worktrees/t187`(이하 `<worktree>` — 기록 시 절대경로를 저장소 상대경로로 치환) (스토어: `.moai/state/session-msg/`). 증명 3중: (a) Claude측 기록의 `cwd` 필드 = 워크트리 절대경로, (b) codex 재등록 후 `session_msg_list`가 양측 에이전트 동시 관측(LISTCOUNT: 2, CLAUDE_AGENTS에 claude- 반환), (c) `find`로 양측 기록 파일이 같은 `agents/` 디렉터리에 존재. **1차 시도 실패 기록(근거 보존)**: `codex mcp add`를 env 없이 하면 codex가 MCP 자식 프로세스에 `CLAUDE_PROJECT_DIR`을 전달하지 않아(환경 새니타이즈) codex측 서버가 cwd(`/tmp/m4-e2e/work`)로 루트를 오해석 — `LISTCOUNT: 1`로 적발, codex 기록이 `/tmp/m4-e2e/work/.moai/state/...`에 잘못 착지한 것을 find로 확인. 수정: `codex mcp add moai --env CLAUDE_PROJECT_DIR=<worktree> -- <abs>/bin/moai-dev mcp-server`(per-server env 고정) 후 재실행.
 
 **승인 정책(P3 실측 재확인)**: 시도 1 `-c approval_policy="never" -s read-only` → MCP 호출 2회 모두 `user cancelled MCP tool call`로 취소(감사 §2.6 그대로 재현). 시도 2 `--dangerously-bypass-approvals-and-sandbox` → 완주. 채택: 후자(프롬프트는 MCP 도구 호출만 지시, 셸 명령 없음, `timeout` + 격리 CODEX_HOME + 스크래치 cwd로 외부 구속).
 
 **3-7단계 축어 증거** (도구 응답의 structuredContent/최종 보고 축어):
 
+> **축어 블록 편집 고지(병합 전 비식별화)**: 아래 블록은 관측 당시 출력 그대로이되, 개발 머신 고유값 세 개만 자리표시자로 치환했다 — `cwd`의 절대경로 → `<worktree>`(본 워크트리 `.claude/worktrees/t187`), `pid` 실제값 → `<pid>`, `host` 실제 호스트명 → `<host>`. 그 외 어떤 바이트도 바꾸지 않았다(agentId·messageId·타임스탬프·본문 전부 원본).
+
 ```
 # 3) Claude측 등록 (드라이버 → bin/moai-dev mcp-server, tools/call session_msg_register)
-{"content":[{"type":"text","text":"session_msg_register: ok"}],"structuredContent":{"agentId":"claude-ed1c3afc","kind":"claude","name":"claude-e2e","description":"M4 e2e Claude-side actor","version":"1","capabilities":{"messaging":true},"cwd":"/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t187","pid":27305,"host":"goos.local","registeredAt":"2026-08-23T12:03:18.377971Z","lastHeartbeat":"2026-08-23T12:03:18.377971Z"}}
+{"content":[{"type":"text","text":"session_msg_register: ok"}],"structuredContent":{"agentId":"claude-ed1c3afc","kind":"claude","name":"claude-e2e","description":"M4 e2e Claude-side actor","version":"1","capabilities":{"messaging":true},"cwd":"<worktree>","pid":<pid>,"host":"<host>","registeredAt":"2026-08-23T12:03:18.377971Z","lastHeartbeat":"2026-08-23T12:03:18.377971Z"}}
 → agentId A = claude-ed1c3afc
 
 # 4) Codex측 등록 + 발견 (codex exec, 신규 세션)

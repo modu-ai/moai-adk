@@ -92,7 +92,7 @@ second one. Post-rebase conflict-marker count is 0.
 ## Baseline-attribution
 
 Every figure above was measured in this run, in this tree
-(`/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t187`), after the rebase onto
+(`.claude/worktrees/t187`), after the rebase onto
 `28bde4022` and after both fixes. The failing-side output is quoted from the CI
 jobs themselves (run `32638957965`, jobs `97192976870` and `97192976830`) read via
 `gh run view --job <id> --log`, not from a local pre-fix reconstruction — the local
