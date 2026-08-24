@@ -118,7 +118,7 @@ moai glm -f lane-3            # …GLM バックエンドのレーンも同じ�
 
 ### ボードを目で見る
 
-`moai web` はローカル・コンソールを立ち上げる。カンバン画面でカンバン・チェーンと SPEC パイプラインを一緒に眺め、Overview・Specs・Monitor・Settings 画面も併せ持つ。
+`moai web` はローカル・コンソールを立ち上げる。カンバン画面でカンバン・チェーンと SPEC パイプラインを一緒に眺め、Overview・Specs・Monitor・Settings・Todo 画面も併せ持つ。
 
 <p align="center">
   <img src="./assets/images/moai-web-overview.png" alt="moai web コンソール Overview 画面 — SPEC 集計、進行中 SPEC 一覧、セッション・レジストリ" width="90%">
@@ -399,7 +399,7 @@ AI エージェント同士がコンテキスト・不変条件・危険区域�
   <img src="./assets/images/moai-web-settings.png" alt="moai web コンソール設定画面 — プロファイルバーと 11 個の設定タブ" width="90%">
 </p>
 
-`moai web` がローカルホスト限定のコンソールを開く。画面は Overview・Kanban・Specs・Monitor・Settings の 5 つで、設定画面は Identity・Language・LLM・3rd Party LLM・Workflow・Git & Worktree・Audit・Agents・Report・MCP・Cross-Session の 11 タブに分かれる。プロファイルの作成・改名・削除も同じ画面で行う。
+`moai web` がローカルホスト限定のコンソールを開く。画面は Overview・Kanban・Specs・Monitor・Settings・Todo の 6 つで、設定画面は Identity・Language・LLM・3rd Party LLM・Workflow・Git & Worktree・Audit・Agents・Report・MCP・Cross-Session の 11 タブに分かれる。プロファイルの作成・改名・削除も同じ画面で行う。
 
 ### ref / domain スキル
 
@@ -728,7 +728,7 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて G
 | `moai memory <doctor\|archive>` | エージェント・メモリの点検と古い項目の保管 |
 | `moai tokens record` | プール別トークン使用の台帳記録 |
 | `moai clean [--home]` | 古い実行成果物の整理。`--home` を付けると `~/.moai` を許可リストの範囲で片付ける。既定は dry-run で、`--force` を与えて初めて実際に消す |
-| `moai web` | Web コンソール — 5 画面 (Overview · Kanban · Specs · Monitor · Settings)、11 タブ設定 |
+| `moai web` | Web コンソール — 6 画面 (Overview · Kanban · Specs · Monitor · Settings · Todo)、11 タブ設定 |
 
 > 全 49 コマンド: [CLI リファレンス](https://adk.mo.ai.kr/ja/cli-reference)
 

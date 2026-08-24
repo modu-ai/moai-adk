@@ -199,6 +199,30 @@ const (
 	// SessionStart hook to surface the address in the lead notice.
 	EnvMoaiKanbanLeadAddr = "MOAI_KANBAN_LEAD_ADDR"
 
+	// EnvMoaiKanbanBackend names the backend the launcher opened the session
+	// on: kanban.BackendClaude or kanban.BackendGLM.
+	//
+	// It exists because the backend is the one launch fact a session cannot
+	// observe for itself. Before this key the value reached the kanban record
+	// only as a literal argument at the launcher's call sites, which is fine
+	// while the launcher writes the record and impossible once the session
+	// does. It is deliberately carried rather than inferred: ANTHROPIC_BASE_URL
+	// is set by the GLM path but is settable by anyone, so deriving the backend
+	// from it would be a guess dressed as a measurement
+	// (SPEC-KANBAN-RECORD-SESSION-KEY-001 REQ-KRS-006).
+	EnvMoaiKanbanBackend = "MOAI_KANBAN_BACKEND"
+
+	// EnvMoaiKanbanCard names the queue card the session is working, and is
+	// the EXPLICIT OVERRIDE of the card identifier a session otherwise derives
+	// from its own worktree root. It is read by the session, not required of
+	// the launcher: an operator or a lead that knows the card exports it into
+	// the launch environment, and the launcher passes the environment through
+	// unchanged.
+	//
+	// An empty value is treated as unset, so an empty export never blanks a
+	// derivable value (REQ-KRS-005).
+	EnvMoaiKanbanCard = "MOAI_KANBAN_CARD"
+
 	// EnvMoaiFactoryWorkers carries the Factory Mode signal and the run's
 	// worker count from the launcher entry point to the block-cap inject and
 	// the SessionStart hook. It is set on BOTH the factory lead and every

@@ -38,39 +38,44 @@ authoritative snapshot the statusline writes each render, and falls back to the
 byte / system-reminder heuristics only when that snapshot is absent, stale, or
 unparseable.
 
-### 1. Authoritative snapshot — `.moai/state/context-usage.json`
+### 1. Authoritative snapshot — `.moai/state/context-usage/<session-id>.json`
 
 The statusline persists a best-effort snapshot of raw context usage to
-`<projectDir>/.moai/state/context-usage.json` on every render. When present and
-valid, this file is the authoritative signal — prefer it over the estimation
-heuristics below. Its fields:
+`<projectDir>/.moai/state/context-usage/<session-id>.json` on every render —
+one record per session, named for the session that wrote it. When present and
+parseable, that record is the authoritative signal — prefer it over the
+estimation heuristics below. Its fields:
 
 - `raw_pct` — raw context-window usage (tokens ÷ window); the direct handoff signal
 - `stage` — the two-stage handoff classification: `none` / `soft` / `hard`
-- `session_id` / `writer_pid` / `captured_at` — validity-guard inputs (see §2)
+- `model` / `effort` — the model the session actually runs (backend-resolved) and
+  its effort level. Either key is absent when the render payload did not supply
+  it, or when the record predates the schema version that added them; an absent
+  value means NOT RECORDED and is never substituted with a guess
+- `session_id` / `writer_pid` / `captured_at` — supporting provenance
 - `context_window_size` / `tokens_used` / `band` — supporting context
 
 Read `stage` and `raw_pct` directly rather than re-deriving usage from proxies.
 
-### 2. Validity guard (do not resume another session's snapshot)
+### 2. Reading the right record
 
-Trust the snapshot only when it belongs to the current session:
+Read the record named for the current session. Because the path carries the
+session identity, a record read at that path belongs to that session by
+construction — the cross-session validity checks a single shared slot required
+(session-id equality, and a `writer_pid` discriminator for concurrent
+same-checkout writers) no longer apply and are not performed.
 
-- **Real session id on both sides**: valid only when the record's `session_id`
-  equals the current session id (last-writer-wins). A differing id → treat as
-  stale and fall back to the heuristics (avoids resuming another session's usage).
-- **No real session id (empty) on both sides**: validate by `captured_at`
-  freshness (a generous, session-scoped window) instead of id equality, so the
-  common single-session case still uses the snapshot. When two same-checkout
-  sessions both lack a real id and share one file, the `writer_pid` discriminator
-  distinguishes them; a reader that cannot supply its own writer identity treats
-  a concurrent same-checkout case conservatively and falls back to the heuristics.
-- **Mixed (one real id, one empty), unparseable, or absent**: fall back to the
-  heuristics.
+The session's own identifier comes from the runtime; a consumer that needs to
+look one up reads the session registry at `.moai/state/active-sessions.json`.
+Do NOT source it from `.moai/state/current-session-id.txt` — that is a single
+project-wide slot rewritten by whichever session started last.
 
-### 3. Fallback heuristics (snapshot absent, stale, or unparseable)
+Records for dead sessions are not reaped. A record whose session is no longer
+live is stale by age, not by identity, and is simply not read.
 
-When the snapshot cannot be trusted, estimate context usage from four signals:
+### 3. Fallback heuristics (record absent or unparseable)
+
+When the record cannot be read, estimate context usage from four signals:
 
 - Cumulative output bytes since session start (rough proxy)
 - System reminder volume per turn (rule-file injections inflate input)

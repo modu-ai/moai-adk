@@ -123,13 +123,13 @@ func TestResolveTodoQueueRoot_FallbackNoGit(t *testing.T) {
 	t.Cleanup(func() { userHomeDirFn = orig })
 
 	got := resolveTodoQueueRoot()
-	want := filepath.Join(home, ".moai", "todo", todoQueueProjectKey(dir))
+	want := filepath.Join(home, ".moai", "todo", kanban.TodoQueueProjectKey(dir))
 	if got != want {
 		t.Fatalf("fallback queue root = %q, want %q", got, want)
 	}
 
 	// The key is base name + 8 hex digest chars — readable and collision-safe.
-	key := todoQueueProjectKey(dir)
+	key := kanban.TodoQueueProjectKey(dir)
 	base := filepath.Base(dir)
 	if !strings.HasPrefix(key, base+"-") {
 		t.Fatalf("project key %q lacks base+%q prefix", key, base)
@@ -140,7 +140,7 @@ func TestResolveTodoQueueRoot_FallbackNoGit(t *testing.T) {
 
 	// Two distinct directories must not share a key.
 	other := t.TempDir()
-	if todoQueueProjectKey(dir) == todoQueueProjectKey(other) {
+	if kanban.TodoQueueProjectKey(dir) == kanban.TodoQueueProjectKey(other) {
 		t.Fatalf("distinct directories %q and %q share a project key", dir, other)
 	}
 }
@@ -175,12 +175,12 @@ func TestTodoQueue_FallbackAdoptsExistingLocalQueue(t *testing.T) {
 
 	// First fallback-resolution run: the root computation itself adopts.
 	root := resolveTodoQueueRoot()
-	want := filepath.Join(home, ".moai", "todo", todoQueueProjectKey(dir))
+	want := filepath.Join(home, ".moai", "todo", kanban.TodoQueueProjectKey(dir))
 	if root != want {
 		t.Fatalf("fallback queue root = %q, want %q", root, want)
 	}
 
-	rec, err := kanban.NewBacklogStore(filepath.Join(root, "backlog.json")).Load()
+	rec, err := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root)).Load()
 	if err != nil {
 		t.Fatalf("load adopted queue: %v", err)
 	}
@@ -204,7 +204,7 @@ func TestTodoQueue_FallbackAdoptsExistingLocalQueue(t *testing.T) {
 	if again := resolveTodoQueueRoot(); again != want {
 		t.Fatalf("second fallback resolution = %q, want %q", again, want)
 	}
-	rec2, err := kanban.NewBacklogStore(filepath.Join(root, "backlog.json")).Load()
+	rec2, err := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root)).Load()
 	if err != nil {
 		t.Fatalf("reload adopted queue: %v", err)
 	}

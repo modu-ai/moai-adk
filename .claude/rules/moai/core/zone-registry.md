@@ -36,6 +36,27 @@ CanaryGate defaults (plan.md §7 OQ6 decision):
 - Frozen → `canary_gate: true`
 - Evolvable → `canary_gate: false`
 
+## Retiring an Entry
+
+A clause that is no longer in force is **retired, not deleted** — deleting it destroys the record that the clause once existed and was withdrawn.
+
+To retire an entry, prefix its `clause` with a `[SUPERSEDED …]` marker naming what replaced it:
+
+```text
+clause: "[SUPERSEDED by <replacement>] <the original clause text>"
+```
+
+(The fence above is deliberately tagged `text`, not `yaml`. The registry loader reads the **first** yaml-tagged fence in this file as the entry list, so a yaml-tagged example placed before `## Entries` would be parsed as the registry and fail to load — and so would that fence marker written out literally in prose.)
+
+`moai constitution validate` then counts the entry as retired and skips its drift, canary-gate, and source-file checks — the source text is gone by definition, so those checks could only ever fail. The entry still appears in `moai constitution list`, and the retired total is reported (`retired_count` in JSON output).
+
+Two boundaries:
+
+- The marker is a **prefix**, not a substring. A live clause that merely mentions `[SUPERSEDED …]` in its own text stays fully checked.
+- `canary_gate: false` is **not** a retirement marker — it is the documented default for every Evolvable entry. A retired Frozen entry may carry `canary_gate: false` because it is retired, not the other way round.
+
+`moai constitution validate --strict` ignores the marker and checks retired entries verbatim, for auditing what they still hold.
+
 ## Usage Guide
 
 ```bash

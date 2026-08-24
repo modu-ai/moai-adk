@@ -118,7 +118,7 @@ Full glossary with definitions and examples: [Kanban board terms](https://adk.mo
 
 ### Watching the board
 
-`moai web` serves a local console. The Kanban screen shows the kanban chain alongside the SPEC pipeline, plus Overview, Specs, Monitor, and Settings screens.
+`moai web` serves a local console. The Kanban screen shows the kanban chain alongside the SPEC pipeline, plus Overview, Specs, Monitor, Settings, and Todo screens.
 
 <p align="center">
   <img src="./assets/images/moai-web-overview.png" alt="moai web console — Overview screen with SPEC counts, in-progress SPECs, and session registry" width="90%">
@@ -399,7 +399,7 @@ Korean, Japanese, Chinese, and English docs are maintained in the same PR. Trans
   <img src="./assets/images/moai-web-settings.png" alt="moai web console — Settings screen with profile bar and 11 setting tabs" width="90%">
 </p>
 
-`moai web` opens a console bound to localhost. Five screens — Overview, Kanban, Specs, Monitor, Settings; the settings screen splits into eleven tabs: Identity, Language, LLM, 3rd Party LLM, Workflow, Git & Worktree, Audit, Agents, Report, MCP, Cross-Session. Profile create/rename/delete lives on the same screen.
+`moai web` opens a console bound to localhost. Six screens — Overview, Kanban, Specs, Monitor, Settings, Todo; the settings screen splits into eleven tabs: Identity, Language, LLM, 3rd Party LLM, Workflow, Git & Worktree, Audit, Agents, Report, MCP, Cross-Session. Profile create/rename/delete lives on the same screen.
 
 ### ref / domain skills
 
@@ -728,7 +728,7 @@ The [adk.mo.ai.kr](https://adk.mo.ai.kr) online documentation is organized into 
 | `moai memory <doctor\|archive>` | Agent memory checks and archiving of stale entries |
 | `moai tokens record` | Per-pool token usage ledger records |
 | `moai clean [--home]` | Clear leftovers from past runs. With `--home` it sweeps `~/.moai` inside the allowlist. Dry run by default; `--force` to actually delete |
-| `moai web` | Web console — 5 screens (Overview · Kanban · Specs · Monitor · Settings), 11-tab settings |
+| `moai web` | Web console — 6 screens (Overview · Kanban · Specs · Monitor · Settings · Todo), 11-tab settings |
 
 > All 49 commands: [CLI reference](https://adk.mo.ai.kr/en/cli-reference)
 
