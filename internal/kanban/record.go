@@ -97,6 +97,28 @@ type Record struct {
 
 	// VerifyReentries counts verify re-entries consumed so far.
 	VerifyReentries int `json:"verify_reentries"`
+
+	// Lane is a factory lane's number, and 0 means "not a lane". Lanes number
+	// from 1, so the zero value is unreachable by legitimate data and carries
+	// the distinction a pointer would otherwise be needed for.
+	//
+	// It is data BESIDE Role, never a role value: Role stays "lane" for every
+	// lane, and the number is what makes N lanes distinguishable. It
+	// deliberately does not travel through WithRole, whose drop-unknown guard
+	// exists so a consumer never has to defend against arbitrary launch-label
+	// text (SPEC-KANBAN-RECORD-SESSION-KEY-001 REQ-KRS-004).
+	Lane int `json:"lane,omitempty"`
+
+	// CardID is the queue card the session is working, distinct from SpecID
+	// because Class A and Class B cards never acquire a SPEC identifier.
+	//
+	// Empty means "not recorded" and is the correct answer rather than a
+	// degraded one: the value is taken from an explicit launch override, and
+	// otherwise from the session's worktree-root basename ONLY where that
+	// root's parent directory is named `worktrees`. Outside a card worktree
+	// the basename is a checkout name, not a card, so the field is left empty
+	// rather than guessed (REQ-KRS-005).
+	CardID string `json:"card_id,omitempty"`
 }
 
 // NewRecord builds a record for a session entering Kanban Mode, stamping
@@ -125,6 +147,37 @@ func (r *Record) WithRole(role string) *Record {
 	role = strings.ToLower(strings.TrimSpace(role))
 	if role == RoleLead || role == RoleLane || isCompanionRole(role) {
 		r.Role = role
+	}
+	return r
+}
+
+// WithLane returns rec carrying a factory lane's number. A non-positive
+// number is ignored rather than stored: lanes number from 1, so 0 stays the
+// "not a lane" signal instead of being overwritten by an unparsed label.
+//
+// This is deliberately NOT part of WithRole. Widening the role setter to
+// pattern-match a `lane-<n>` label would reopen exactly what its drop-unknown
+// guard closes — arbitrary launch-label text reaching the role field.
+func (r *Record) WithLane(lane int) *Record {
+	if r == nil {
+		return nil
+	}
+	if lane > 0 {
+		r.Lane = lane
+	}
+	return r
+}
+
+// WithCard returns rec carrying the queue card identifier the session is
+// working. An empty value leaves the field unset — "not recorded" is the
+// correct reading, and a consumer must render it as that rather than guessing
+// a card.
+func (r *Record) WithCard(cardID string) *Record {
+	if r == nil {
+		return nil
+	}
+	if cardID = strings.TrimSpace(cardID); cardID != "" {
+		r.CardID = cardID
 	}
 	return r
 }

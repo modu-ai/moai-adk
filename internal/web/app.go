@@ -157,6 +157,10 @@ func (a *app) routes() http.Handler {
 	mux.HandleFunc("/", a.handleOverview)
 	mux.HandleFunc("/kanban", a.handleKanban)
 	mux.HandleFunc("/monitor", a.handleMonitor)
+	// SPEC-WEB-TODO-QUEUE-001 M2 (REQ-WTQ-002): /todo renders the backlog queue
+	// read-only. Writes and id issuance belong to `moai todo`; this route only
+	// reads, and like the other monitoring routes it answers 405 to non-GET.
+	mux.HandleFunc("/todo", a.handleTodo)
 	mux.HandleFunc("/settings", a.handleIndex)
 	// SSE — 값을 나르지 않고 "이 영역이 바뀌었다"는 신호만 흘린다.
 	mux.HandleFunc("/events", a.hub.ServeEvents)

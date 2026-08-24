@@ -97,7 +97,7 @@ go test ./... > /tmp/moai-verify/1-go-test.log 2>&1; echo "exit=$?"; tail -50 /t
 
 ファイルリダイレクト契約が`/tmp`に書き込んだ証拠はOSによって定期的に削除されます(macOSリブート、Linux tmpfsリマウント、systemd-tmpfiles)。引用されたパスがもはやファイルとして存在しない場合、監査時に証拠に到達できません。
 
-永続化の義務はこの問題を解決します。検証証拠は`.moai/state/verify/<session>/`配下に永続化されなければなりません。このディレクトリは`context-usage.json`や`active-sessions.json`と同じgitignoredランタイム状態領域です。
+永続化の義務はこの問題を解決します。検証証拠は`.moai/state/verify/<session>/`配下に永続化されなければなりません。このディレクトリは`context-usage/`や`active-sessions.json`と同じgitignoredランタイム状態領域です。
 
 正確な永続化メカニズム(直接書き込みまたは`/tmp`書き込み後コピー)は実装の詳細です。契約は義務を述べます: 証拠は`/tmp`クリア後も監査時に到達可能な引用可能なパスに残らなければなりません。
 

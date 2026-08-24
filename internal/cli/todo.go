@@ -23,133 +23,45 @@
 package cli
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
 
-	gitcore "github.com/modu-ai/moai-adk/internal/core/git"
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
+
+// init wires internal/cli's existing userHomeDirFn test-injection seam
+// through to kanban.HomeDirFn, the equivalent seam the relocated queue-root
+// resolution owns (SPEC-WEB-TODO-QUEUE-001 M1). The closure closes over the
+// package-level var by reference, so a test that reassigns userHomeDirFn at
+// runtime is still observed by the resolution — the same pattern glm.go uses
+// for glmcred.HomeDirFn.
+func init() {
+	kanban.HomeDirFn = func() (string, error) { return userHomeDirFn() }
+}
 
 // todoBacklogPath returns the backlog file location under root — the same
 // .moai/state/kanban/backlog.json the todo skill and the dispatch protocol
 // name (REQ-TODO-001). The root itself is resolved by resolveTodoQueueRoot.
 func todoBacklogPath(root string) string {
-	return filepath.Join(root, ".moai", "state", "kanban", "backlog.json")
+	return kanban.BacklogPathForRoot(root)
 }
 
-// resolveTodoQueueRoot returns the directory the backlog queue hangs from:
-// the PRIMARY checkout of the repository the launch context sits in, or a
-// home-based fallback when git cannot answer.
+// resolveTodoQueueRoot returns the directory the backlog queue hangs from
+// for the `moai todo` command path: the PRIMARY checkout of the repository
+// the launch context sits in, or a home-based fallback when git cannot
+// answer — adopting a pre-existing project-local queue on that fallback
+// branch, exactly as before.
 //
-// The queue is the delegation channel between sessions — the lead, the
-// foreman loop, and the operator's picks all read and write one queue. A
-// linked worktree holding its own .moai/state would fork that channel: an
-// `add` from inside a card worktree lands in a queue file the primary
-// checkout never sees (measured 2026-08-17: 30 queued cards on the
-// primary, "queue is empty" from a linked worktree). The primary is
-// therefore resolved through the repository itself: git's common directory
-// is shared by every checkout and its parent IS the primary checkout's
-// root, from any worktree and from the primary alike (internal/core/git
-// checkout.go) — the same discrimination branch_guard.go applies, with no
-// file moving.
-//
-// Fail-open direction: an unresolvable git context (no git binary, not a
-// repository) keeps the queue usable via the home-based fallback rather
-// than erroring — a project without git metadata still gets exactly one
-// queue, keyed under ~/.moai/todo/ so two such projects cannot collide.
+// The resolution itself lives in internal/kanban since
+// SPEC-WEB-TODO-QUEUE-001 M1, so the command layer and the web console share
+// ONE resolution (a second implementation is a second chance to fork the
+// queue). The command path takes the ADOPTING entry point; the console takes
+// the pure one, which never writes.
 func resolveTodoQueueRoot() string {
-	base := resolveProjectDir()
-	if dirs, err := gitcore.ResolveGitDirs(base); err == nil && dirs.CommonDir != "" {
-		return filepath.Dir(dirs.CommonDir)
-	}
-	return fallbackTodoQueueRoot(base)
-}
-
-// fallbackTodoQueueRoot returns the home-based queue root for a launch
-// context git could not resolve to a primary checkout. userHomeDirFn is the
-// package's existing test-injection seam, so tests override the home
-// lookup instead of mutating the real HOME.
-//
-// The directory is named for the command that owns the queue (`moai todo` —
-// no `moai kanban` command exists), deliberately NOT "kanban": the
-// .moai/state/kanban/ directory also holds per-session kanban records
-// (<uuid>.json) owned by internal/kanban, and a "kanban" fallback name would
-// read as moving those too — a scope this queue never touches.
-//
-// Before the fallback's queue is created, adoptLocalTodoQueue carries an
-// existing project-local queue over (adopt-not-shadow): the fallback's first
-// run must present the cards the project already has, never an empty queue
-// shadowing them.
-func fallbackTodoQueueRoot(base string) string {
-	if base == "" {
-		base = "."
-	}
-	home, err := userHomeDirFn()
-	if err != nil {
-		// No home resolvable either: keep the queue inside the project
-		// directory rather than failing the command outright.
-		return filepath.Join(base, ".moai", "state", "kanban")
-	}
-	root := filepath.Join(home, ".moai", "todo", todoQueueProjectKey(base))
-	adoptLocalTodoQueue(base, root)
-	return root
-}
-
-// adoptLocalTodoQueue moves a pre-existing project-local queue into a fresh
-// fallback root, so the fallback's first run adopts the project's cards
-// instead of shadowing them behind an empty queue (the lossless-migration
-// requirement: item count and states must survive the cutover).
-//
-// Best-effort throughout — a failure leaves the local queue exactly where it
-// was and the fallback simply starts empty THIS run; the data is never
-// destroyed, so a later run can adopt it again once the obstruction clears.
-// When the fallback already has a queue file the local one is left untouched
-// (adopted on an earlier run; a local file reappearing after that is a
-// downgrade-era snapshot the populated fallback deliberately ignores).
-func adoptLocalTodoQueue(base, fallbackRoot string) {
-	local := todoBacklogPath(base)
-	target := filepath.Join(fallbackRoot, "backlog.json")
-	if _, err := os.Stat(target); err == nil {
-		return
-	}
-	if _, err := os.Stat(local); err != nil {
-		return
-	}
-	if err := os.MkdirAll(fallbackRoot, 0o755); err != nil {
-		return
-	}
-	// Same-volume rename is atomic and leaves no duplicate behind.
-	if err := os.Rename(local, target); err == nil {
-		return
-	}
-	// Cross-volume (EXDEV) or rename-refusing filesystem: copy the bytes and
-	// KEEP the original — deletion is the one outcome the lossless
-	// requirement forbids, and a leftover original is inert (the populated
-	// fallback wins on every later run).
-	data, err := os.ReadFile(local)
-	if err != nil {
-		return
-	}
-	_ = os.WriteFile(target, data, 0o600)
-}
-
-// todoQueueProjectKey derives the fallback queue's directory name from the
-// launch directory: a readable base name plus a short digest of the
-// absolute path. Two distinct projects sharing a base name still occupy
-// two keys, and the mapping is deterministic across runs.
-func todoQueueProjectKey(base string) string {
-	abs, err := filepath.Abs(base)
-	if err != nil {
-		abs = filepath.Clean(base)
-	}
-	sum := sha256.Sum256([]byte(abs))
-	return fmt.Sprintf("%s-%x", filepath.Base(abs), sum[:4])
+	return kanban.ResolveTodoQueueRootAdopting(resolveProjectDir())
 }
 
 // newTodoStore is the single constructor every todo verb goes through, so

@@ -119,8 +119,26 @@ templ gauge(label string, pct int) {
 }
 
 // missing — 그럴듯한 값을 채우지 않는다. 왜 없는지는 title 에 남긴다.
+//
+// title 은 "기록이 없다"는 사실만 말한다. 어떤 생산자가 이 값을 써야 한다는
+// 주장은 하지 않는다 — 종전 문구가 지목하던 생산자는 실제 생산자가 아니었다.
+// data-i18n-title 이 있어 이 안내도 나머지 화면과 같은 언어로 나온다.
 templ missing() {
-	<span class="missing" title="not recorded anywhere yet (kanban.Record extension required)" aria-label="not recorded">—</span>
+	<span class="missing" title="not recorded — this session has no record carrying this value yet" data-i18n-title="mark.notRecorded" aria-label="not recorded">—</span>
+}
+
+// laneUnresolved — 레인 하나를 세션에 붙일 수 없을 때의 표시. 이유를 함께
+// 적는다: 세션이 없어서인지, 프로세스 식별자가 한 세션을 가리키지 못해서인지,
+// 세션은 찾았으나 기록이 없어서인지는 읽는 사람에게 서로 다른 사실이다.
+//
+// 완결된 오답이 빈칸보다 나쁘기 때문에 존재하는 표시다 — 붙일 수 없으면
+// 다른 레인의 기록을 그리는 대신 붙일 수 없다고 말한다.
+templ laneUnresolved(reason string) {
+	<span class="warn lane-unresolved" data-lane-unresolved={ reason }>
+		@iconAt("alert", 13)
+		<span data-i18n="kanban.laneUnresolved">Unresolved — no record can be attributed to this lane</span>
+		<span class="panel__meta" data-i18n={ "kanban.laneUnresolved." + reason }>{ reason }</span>
+	</span>
 }
 
 templ badge(kind, text string) {

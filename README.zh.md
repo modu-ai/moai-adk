@@ -118,7 +118,7 @@ moai glm -f lane-3            # ……GLM 后端上的一条泳道
 
 ### 用眼睛看板
 
-`moai web` 会启动一个本地控制台。看板画面把看板链条和 SPEC 流水线放在一起，还附带 Overview、Specs、Monitor、Settings 画面。
+`moai web` 会启动一个本地控制台。看板画面把看板链条和 SPEC 流水线放在一起，还附带 Overview、Specs、Monitor、Settings、Todo 画面。
 
 <p align="center">
   <img src="./assets/images/moai-web-overview.png" alt="moai web 控制台 Overview 画面 —— SPEC 汇总、进行中的 SPEC 列表、会话注册表" width="90%">
@@ -399,7 +399,7 @@ TRUST 5（Tested · Readable · Unified · Secured · Trackable）作用于每�
   <img src="./assets/images/moai-web-settings.png" alt="moai web 控制台设置画面 —— 档案栏和 11 个设置标签页" width="90%">
 </p>
 
-`moai web` 打开一个只监听本地主机的控制台。画面共五个 —— Overview、Kanban、Specs、Monitor、Settings；设置画面分成十一个标签页：Identity、Language、LLM、3rd Party LLM、Workflow、Git & Worktree、Audit、Agents、Report、MCP、Cross-Session。档案的创建、改名、删除也在同一画面完成。
+`moai web` 打开一个只监听本地主机的控制台。画面共六个 —— Overview、Kanban、Specs、Monitor、Settings、Todo；设置画面分成十一个标签页：Identity、Language、LLM、3rd Party LLM、Workflow、Git & Worktree、Audit、Agents、Report、MCP、Cross-Session。档案的创建、改名、删除也在同一画面完成。
 
 ### ref / domain 技能
 
@@ -728,7 +728,7 @@ Claude 的每一档通过 `ANTHROPIC_DEFAULT_*_MODEL` 环境变量映射到 GLM 
 | `moai memory <doctor\|archive>` | 智能体记忆体检与旧条目归档 |
 | `moai tokens record` | 按池记录 token 使用台账 |
 | `moai clean [--home]` | 清理旧的运行产物。加上 `--home` 就在允许清单范围内清理 `~/.moai`。默认是 dry-run，要加 `--force` 才真正删除 |
-| `moai web` | 网页控制台 —— 5 个画面（Overview · Kanban · Specs · Monitor · Settings）、11 标签页设置 |
+| `moai web` | 网页控制台 —— 6 个画面（Overview · Kanban · Specs · Monitor · Settings · Todo）、11 标签页设置 |
 
 > 全部 49 个命令：[CLI 参考](https://adk.mo.ai.kr/zh/cli-reference)
 

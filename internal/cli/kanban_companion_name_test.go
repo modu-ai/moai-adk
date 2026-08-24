@@ -139,14 +139,8 @@ func TestEnterKanbanCompanionModeDoesNotPublishRunID(t *testing.T) {
 	}
 }
 
-// TestCompanionRoleBareLabel: the role the session record carries is read back
-// from a bare label unchanged.
-func TestCompanionRoleBareLabel(t *testing.T) {
-	t.Parallel()
-	if got := companionRole("plan"); got != "plan" {
-		t.Errorf("companionRole(plan) = %q, want plan", got)
-	}
-	if got := companionRole("plan-2"); got != "plan" {
-		t.Errorf("companionRole(plan-2) = %q, want plan", got)
-	}
-}
+// The companion role a record carries is no longer parsed here. The launcher
+// stopped writing the record (SPEC-KANBAN-RECORD-SESSION-KEY-001 REQ-KRS-002),
+// so the label-to-role parse moved to the session that writes it:
+// internal/hook kanbanRoleFromEnv, covered by
+// TestCompanionLabelResolvesToItsBareRole there.

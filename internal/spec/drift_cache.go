@@ -21,7 +21,7 @@ import (
 // even degrade — drift detection.
 
 // driftCacheFilename is the cache file stored under the project's .moai/state/
-// runtime-state directory (gitignored; the same family as context-usage.json
+// runtime-state directory (gitignored; the same family as context-usage/
 // and active-sessions.json).
 const driftCacheFilename = "drift-cache.json"
 

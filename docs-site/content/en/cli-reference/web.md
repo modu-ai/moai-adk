@@ -42,7 +42,7 @@ If opening the browser fails, the server stays up regardless. Open the address p
 
 ## Routes
 
-The console serves the following paths. The four screens are read-only and refuse any method other than GET with a 405.
+The console serves the following paths. The five read-only screens refuse any method other than GET with a 405.
 
 | Path | Method | What it does |
 |------|--------|--------------|
@@ -51,6 +51,7 @@ The console serves the following paths. The four screens are read-only and refus
 | `/specs` | GET | SPEC catalog. `?q=` searches, `?status=` filters, `?id=` opens the detail |
 | `/monitor` | GET | Sessions, goals, verification, epics |
 | `/settings` | GET | The nine settings tabs. `?tab=` selects the tab, `?profile=` the profile being edited |
+| `/todo` | GET | The backlog queue, read-only — every card in all three states (`queued` · `picked` · `dropped`) |
 | `/events` | GET | SSE stream — carries refresh signals only |
 | `/save` | POST | Save settings |
 | `/profile/create` · `/profile/rename` · `/profile/delete` | POST | Profile lifecycle |

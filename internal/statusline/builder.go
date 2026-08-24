@@ -165,7 +165,17 @@ func (b *defaultBuilder) Build(ctx context.Context, r io.Reader) (string, error)
 	if input != nil {
 		sessionID = input.SessionID
 	}
-	writeContextUsage(resolveProjectDir(input), sessionID, os.Getpid(), data.Memory, handoffGuideStage(data))
+	// The model and effort ride the same record (SPEC-SESSION-TELEMETRY-001
+	// D-1): this is the one place the session id, the collected data, and both
+	// values are simultaneously in scope. data.Metrics.Model is already the
+	// backend-resolved name (resolveGLMModelName, metrics.go) — the value the
+	// session actually runs (REQ-ST-004). An absent effort stays empty and is
+	// omitted from the record rather than defaulted (REQ-ST-003).
+	var effort string
+	if data.Effort != nil {
+		effort = data.Effort.Level
+	}
+	writeContextUsage(resolveProjectDir(input), sessionID, os.Getpid(), data.Memory, handoffGuideStage(data), data.Metrics.Model, effort)
 
 	// Renderer directly supports v3 modes, pass mode as-is (Phase 4, REQ-V3-LAYOUT-001~003)
 	result := b.renderer.Render(data, mode)

@@ -160,7 +160,7 @@ One caveat. GLM-5.3 is a genuine 1M-context model, but Claude Code reports `cont
 
 ## The context-usage snapshot — for the next session
 
-The statusline also records its observation to `.moai/state/context-usage.json` on every render. The next session's start reads this snapshot as grounds for how full the window was just before. `raw_pct` (raw usage) and `stage` (none/soft/hard) are the key fields; `session_id`, `writer_pid`, and `captured_at` ride along so the writing session can be told apart.
+The statusline also records its observation to `.moai/state/context-usage/<session-id>.json` on every render — one record per session, named for the session that wrote it, so two sessions in the same project never overwrite each other. The next session's start reads its own record as grounds for how full the window was just before. `raw_pct` (raw usage) and `stage` (none/soft/hard) are the key fields; the model the session actually runs and its effort level ride along, as do `session_id`, `writer_pid`, and `captured_at`.
 
 Why does the session need distinguishing? When several sessions share one working directory, one session must not inherit another's usage and misjudge the window as full. So the identity of the session that wrote the record is checked, and records that mismatch or are stale are ignored, falling back to raw observation. The goal is to act conservatively, not to draw false confidence from a value that is not yours.
 
