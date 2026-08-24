@@ -65,10 +65,34 @@ func TestChainIsAbsentWhenOnlyFactoryLanesHaveRecords(t *testing.T) {
 		t.Error("a lanes-only project has no chain; Present must be false")
 	}
 
-	// And the mixed case still finds the chain it does have.
+	// And the mixed case still finds the chain it does have — carried through
+	// buildChain, not stopped at the filter. A correct filter feeding a consumer
+	// that then reads it wrongly is exactly the shape this test exists to catch,
+	// so asserting only chainRoleRecords' output would leave that half unproven.
 	mixed := append(records, KanbanRecord{SessionID: "s3", Role: "run"})
 	keptMixed := chainRoleRecords(mixed)
 	if len(keptMixed) != 1 || strings.ToLower(keptMixed[0].Role) != "run" {
 		t.Fatalf("chainRoleRecords(mixed) = %+v, want exactly the run record", keptMixed)
+	}
+
+	mixedChain := buildChain(t.TempDir(), keptMixed,
+		map[string]SessionVM{"s3": {ID: "s3", State: StateLive}}, "")
+	if !mixedChain.Present {
+		t.Error("a project with one chain-role record HAS a chain; Present must be true")
+	}
+	var runRole *RoleVM
+	for i := range mixedChain.Roles {
+		if mixedChain.Roles[i].Role == "run" {
+			runRole = &mixedChain.Roles[i]
+		}
+	}
+	if runRole == nil {
+		t.Fatalf("the chain does not carry a run role: %+v", mixedChain.Roles)
+	}
+	if runRole.Session != "s3" {
+		t.Errorf("run role session = %q, want the record's session s3", runRole.Session)
+	}
+	if mixedChain.IdleRole == "run" {
+		t.Error("run has a record and a live session; it must not be reported idle")
 	}
 }

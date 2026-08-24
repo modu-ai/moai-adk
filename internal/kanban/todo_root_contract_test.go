@@ -24,9 +24,11 @@ func TestAdoptionLandsWhereConsumersRead(t *testing.T) {
 		t.Fatalf("the queue is not readable where every consumer looks: %s (%v)",
 			BacklogPathForRoot(root), err)
 	}
-	if _, err := os.Stat(filepath.Join(root, "backlog.json")); err == nil {
-		t.Errorf("a queue was left at the bare-join path %s, which no consumer reads",
-			filepath.Join(root, "backlog.json"))
+	// bare-join-intentional: this asserts the old path is EMPTY, so it must name
+	// it. The convention guard skips lines carrying this marker.
+	stale := filepath.Join(root, "backlog.json") // bare-join-intentional
+	if _, err := os.Stat(stale); err == nil {
+		t.Errorf("a queue was left at the bare-join path %s, which no consumer reads", stale)
 	}
 }
 

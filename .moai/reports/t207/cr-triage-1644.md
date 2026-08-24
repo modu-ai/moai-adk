@@ -13,7 +13,7 @@ measured, and it is correct.
 
 But every one of the 29 inline comments carries `commit_id == 035c4ab00`:
 
-```
+```bash
 $ gh api "repos/modu-ai/moai-adk/pulls/1644/comments" --paginate --jq '[.[] | .commit_id] | unique'
 ["035c4ab004eb52334c7378be892904a04906ac61"]
 ```
@@ -37,7 +37,7 @@ wrong path (`:133`).
 A throwaway test seeded a project-local queue at the consumer path, called
 `ResolveTodoQueueRootAdopting`, and then looked for the queue where consumers read:
 
-```
+```text
 resolved root = …/001/.moai/todo/002-3cd2aa91
 CONSUMER READ PATH MISSING: …/002-3cd2aa91/.moai/state/kanban/backlog.json (no such file or directory)
 ADOPTION WROTE HERE INSTEAD:  …/002-3cd2aa91/backlog.json

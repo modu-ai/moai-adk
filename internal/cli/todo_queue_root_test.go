@@ -180,7 +180,7 @@ func TestTodoQueue_FallbackAdoptsExistingLocalQueue(t *testing.T) {
 		t.Fatalf("fallback queue root = %q, want %q", root, want)
 	}
 
-	rec, err := kanban.NewBacklogStore(filepath.Join(root, "backlog.json")).Load()
+	rec, err := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root)).Load()
 	if err != nil {
 		t.Fatalf("load adopted queue: %v", err)
 	}
@@ -204,7 +204,7 @@ func TestTodoQueue_FallbackAdoptsExistingLocalQueue(t *testing.T) {
 	if again := resolveTodoQueueRoot(); again != want {
 		t.Fatalf("second fallback resolution = %q, want %q", again, want)
 	}
-	rec2, err := kanban.NewBacklogStore(filepath.Join(root, "backlog.json")).Load()
+	rec2, err := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root)).Load()
 	if err != nil {
 		t.Fatalf("reload adopted queue: %v", err)
 	}
