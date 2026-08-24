@@ -16,6 +16,16 @@
 - **잔여 부채 2건 — 수정 대상 아님, 판정자 지정됨** (`plan.md` §H): ① `CONST-V3R2-004` 근접 오답(`NOTICE.md` 로 이동 시 기계 통과 — sync 리뷰어가 이름으로 거부) ② 평가 엔트리 수 이중 카운트(clause/anchor 각각 101 — sync-auditor 가 §E.2 인용에서 수가 둘인지 확인)
 - status: draft — run-phase 판단 대기 (kanban lead)
 
+## §F Phase 4 Mode Selection
+
+- 입력: tier M · 스코프 ~20파일 (레지스트리 2 미러 편집 + 인용 대상 17 문서 읽기 + `registry_sync_test.go` 신규 + `ci.yml`) · 도메인 1 (constitution registry) · 언어 혼합 markdown+Go · 동시성 이득 LOW (coding-heavy, M1→M2→M3 의존성 고정)
+- direct: 미선택 — 다중 파일·의미 있는 변경
+- serial: **선택** — coding-heavy 순차 작업 (Anthropic coding-task parallelism caveat), 마일스톤 순서가 의존성으로 고정 (`plan.md` §F)
+- fanout: 미선택 — 단일 도메인, 쓰기 경합 위험
+- sweep: 미선택 — 비기계적 변환, 파일 수 미달
+- 경계 사례: 없음
+- **§1.2 충돌 판정: C안** (은퇴 엔트리 clause 면제 · anchor 검사 유지). 근거 3측정 @ 트리 `9ba1e308d`: ① 은퇴 4건(`CONST-V3R2-021..024`) anchor `#14-parallel-execution-safeguards` 가 로컬·템플릿 CLAUDE.md 양측 모두 해석됨(두 파일 바이트 동일, §14 = 153행) ② `[SUPERSEDED … see CLAUDE.md §14 …]` 마커가 가리키는 후계 교리(worktree-opt-in 포인터)가 §14 본문에 생존 — anchor 는 사라진 절이 아니라 **후계 절의 포인터**라 anchor 검사가 마커 안내의 유효성을 검증함 ③ 신규 분석(`analyze.py`): clause 실패 68건 중 은퇴 4, anchor 실패 17건 중 은퇴 0. B안은 측정상 불가능(인용 원문이 정의상 소멸), A안은 §14 개명 시 마커 포인터 사망을 무신호로 놓침. #1611 의 `--strict` 재검사 설계(`validator.go:214`)와 동형. 정본 반영: spec.md v0.5.0 (manager-spec 위임)
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_

@@ -112,3 +112,20 @@ Recorded so they are not discovered as surprises:
 R1 → R2 → R3 → R4 locally, each with its own revert and re-green, then the single CI push for R1.
 Running them together would leave the guard's per-entry reporting untested — several simultaneous
 failures cannot show that the guard names the right entry.
+
+---
+
+## 6. Option-C adjustment (2026-08-25, tree `9ba1e308d`)
+
+The SPEC §1.2 conflict is resolved as **option C** (retired entries: clause check exempt, anchor
+check retained). Mutation targets and observation format are unchanged; only the precondition
+numbers move:
+
+- **P2**: the expected clause hit-count becomes **97/97 exactly-once for non-retired entries**
+  (the 4 `[SUPERSEDED …]` entries are exempt from the clause check — their clause is an immutable
+  audit record). Anchor resolution remains 101/101.
+- **P4**: the guard's passing output must report the evaluated-entry count as **clause 97 /
+  anchor 101**, per mirror, separately. The two counts differing IS the option-C contract; quote
+  both (this also sharpens remaining-debt ② — the sync-auditor checks §E.2 quotes both numbers).
+- **R1–R4 stand unchanged**: `CONST-V3R2-004` is a non-retired entry, so every mutation stays
+  inside the checked set and the scenario's validity is unaffected.
