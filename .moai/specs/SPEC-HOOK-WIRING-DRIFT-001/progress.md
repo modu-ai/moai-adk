@@ -269,9 +269,142 @@ step. M3 is the milestone that carries a template-managed surface.
   5.68 s whole-check-list run, which is dominated by the pre-existing checks, but
   it is not free.
 
+### M4 — MX index build moves to `moai mx query`; the hook-side scan is deleted
+
+> Continuity note: the delegated run was stopped at the shutdown boundary, at the
+> point where it had finished implementation and tests and was about to run the
+> verification suites. The orchestrator ran the verification, performed the
+> end-to-end cold-path observation, and wrote this section. Implementation and
+> test authorship are the delegate's; every measurement below is the
+> orchestrator's own, re-run against the tree as it stands.
+
+#### Claim
+
+`moai mx query` builds the sidecar index on demand instead of failing with
+`SidecarUnavailable`, and the hook-side cold-start scan — which in 153 measured
+worktrees had produced its artifact zero times — is deleted along with the
+comment that claimed a fire-and-forget goroutine survives process exit.
+
+#### Evidence
+
+**1. The cold-start scan and its plumbing are gone.**
+
+```
+$ grep -c 'runMXColdStartScan\|mxScanNeeded' internal/hook/session_start.go
+0
+```
+
+**2. The false comment is gone.** It claimed the deferred goroutine "continues to
+completion in the background (durable side effects still land)" — true for a
+long-lived process, false for a CLI that exits on return, and contradicted by the
+accurate comment at the scan's own definition:
+
+```
+$ grep -n 'durable side effects still land' internal/hook/session_start.go
+$ echo rc=$?
+rc=1
+```
+
+**3. AC-HWD-012 end-to-end, on a genuinely cold tree, with a tree-built binary.**
+The recorded gap on this criterion was that its baseline came from the installed
+v3.1.2 binary rather than one built here. Re-measured: `make build` (stamped
+`Commit=1e75032b3`), index moved aside so the cold path is real, then
+
+```
+$ ls .moai/state/mx-index.json
+ls: .moai/state/mx-index.json: No such file or directory
+
+$ ./bin/moai mx query --kind DEBT
+[
+ {
+  "kind": "DEBT",
+  "file": ".../internal/cli/mcp_server.go",
+  "line": 649,
+  "body": "single-process in-memory cache only",
+  ...
+$ echo rc=$?
+rc=0
+
+$ ls -la .moai/state/mx-index.json
+-rw-r--r--@ 1 goos staff 378793 Aug 25 04:14 .moai/state/mx-index.json
+```
+
+The query answered **and** left the index behind. Before M4 this exact invocation
+returned `SidecarUnavailable: sidecar index does not exist — run 'moai mx scan'`
+and wrote nothing.
+
+**4. Package suites green.**
+
+```
+$ go test -count=1 ./internal/hook/
+ok  	github.com/modu-ai/moai-adk/internal/hook	233.864s
+
+$ go test -count=1 -run 'TestMXIndex|TestBuildMXIndex|TestMXQuery' ./internal/cli/
+ok  	github.com/modu-ai/moai-adk/internal/cli	3.142s
+
+$ go test -count=1 -run 'MX|Mx' ./internal/hook/
+ok  	github.com/modu-ai/moai-adk/internal/hook	5.253s
+```
+
+**5. Static verification.**
+
+```
+$ go build ./...                    → exit 0 (no output)
+$ go vet ./...                      → exit 0 (no output)
+$ GOOS=windows go vet ./...         → exit 0 (no output)
+$ gofmt -l <the five touched files> → no output
+$ golangci-lint run --timeout=5m ./internal/cli/... ./internal/hook/...
+0 issues.
+```
+
+#### Baseline-attribution
+
+Measured in this tree (`.claude/worktrees/t216`), branch `WT-hook-wiring-drift`,
+at base commit `1e75032b3` plus the uncommitted M4 change set. `bin/moai` rebuilt
+from this tree for item 3.
+
+**Template-First does not apply to M4**, as it did not to M2: the change set is
+Go source and tests only (`internal/cli/`, `internal/hook/`), touching nothing
+under `.claude/`, `.moai/`, or `.agency/`. M3 is the milestone that carries a
+template-managed surface.
+
+#### Gaps — what was explicitly NOT observed
+
+1. **The full `internal/cli` suite was NOT re-run after M4.** M2's run
+   (`ok … 1057.604s`, zero FAIL) predates the M4 change set; only the targeted
+   MX tests were run here. CI owns the full-suite verdict against the PR head,
+   and the branch is unpushed as of that measurement.
+2. **The delegate's pre-implementation mutant record and its RED-before-inversion
+   capture were not returned** — the run was stopped before it reported. The
+   AC-HWD-013(c) inversion is in the tree and green, but the *observed passing
+   output before the inversion*, which the lead's condition asked for, exists
+   only in the stopped agent's transcript. **This is the one condition of the
+   four that is not discharged in the record**, and it is the reason M4 should
+   not be called closed without the next session either recovering that capture
+   or re-establishing it.
+3. **The stale-index path was not exercised.** Item 3 covers the absent-index
+   case; a present-but-older-than-7-days index taking the same rebuild path is
+   untested here.
+4. **`internal/hook/file_changed.go:110-118` was deliberately left alone.** It
+   carries the identical die-at-exit defect on the incremental path; it is a §G
+   follow-up with no card, and M4 was scoped away from it.
+
+#### Residual risk
+
+- **The cost moved rather than vanished.** A cold `mx query` now pays the
+  ~300 ms scan that the hook used to attempt and lose. That is the intended
+  trade — the wait is attributable to the process that needs the index — but it
+  is a new latency on a command that previously failed fast.
+- **The 7-day freshness window is unchanged.** A 6-day-old index still passes as
+  fresh and is served to `mx query` as authoritative; the d3 report records
+  764 missing tags on a fresh worktree at the last measurement of that window.
+  Whatever M4 fixed about cold start, staleness inside the window is untouched.
+- **One consumer, one path.** `mx query` is the sole reader; if a second consumer
+  appears it will need the same on-demand build, and nothing yet factors that out.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+_<pending run-phase — M2 and M4 complete; M3 and M1 not started>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
