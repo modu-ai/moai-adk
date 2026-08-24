@@ -288,7 +288,27 @@ m1_to_mN_commit_strategy: per-milestone commits on WT-precommit-preserve (M1 f71
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-25
+sync_commit_sha: pending-backfill-SPEC-PRECOMMIT-PRESERVE-001   # backfilled with the real sync-commit SHA in the immediately following commit
+sync_status: sync complete (3-phase close plan→run→sync carried on the sync commit)
+changelog_entry_position: CHANGELOG.md [Unreleased] → Added, top entry
+frontmatter_status_transitions:
+  spec_md: in-progress -> completed   # 3-phase close merged into the sync commit
+  plan_md: none (no frontmatter block)
+  acceptance_md: none (no frontmatter block)
+  progress_md: none (no frontmatter block)
+b12_self_test_a:
+  pre_emission_grep: "grep -c 'SPEC-PRECOMMIT-PRESERVE-001' CHANGELOG.md -> 0 pre-edit, 1 post-edit"
+b12_self_test_b:
+  ac_count_source: acceptance.md heading count (`grep -c '^### AC-'` -> 12)
+b12_self_test_c:
+  file_paths_verified: true   # every path named in the CHANGELOG entry exists in this tree
+d3_release_composition:
+  hook_body_vs_origin_main: "git diff --stat origin/main HEAD -- internal/template/templates/.git_hooks/pre-commit -> empty (equivalent to cmp rc 0; the literal cmp pipeline was refused by the worktree guard and replaced with the read-only diff)"
+readme_assessment: "no README (en/ko/ja/zh) mentions pre-commit hook install behavior — nothing stale, no change made"
+docs_site_follow_up: "none identified — pre-commit install behavior is not documented on adk.mo.ai.kr; if a future page documents it, the backup/notice behavior must be included"
+```
 
 ## §F Phase 4 Mode Selection
 

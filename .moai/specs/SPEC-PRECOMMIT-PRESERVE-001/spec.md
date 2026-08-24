@@ -2,7 +2,7 @@
 id: SPEC-PRECOMMIT-PRESERVE-001
 title: "Pre-commit hook install must never silently discard a local patch"
 version: "0.5.0"
-status: in-progress
+status: completed
 created: 2026-08-24
 updated: 2026-08-25
 author: manager-spec (card t230)
