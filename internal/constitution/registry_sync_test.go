@@ -346,7 +346,7 @@ func anchorResolves(raw, anchor string) bool {
 		return false
 	}
 	inFence := false
-	for _, ln := range strings.Split(raw, "\n") {
+	for ln := range strings.SplitSeq(raw, "\n") {
 		if strings.HasPrefix(strings.TrimSpace(ln), "```") {
 			inFence = !inFence
 			continue
@@ -370,7 +370,7 @@ func literalHitCount(raw, clause string) int {
 		return 0
 	}
 	n := 0
-	for _, ln := range strings.Split(raw, "\n") {
+	for ln := range strings.SplitSeq(raw, "\n") {
 		if strings.Contains(ln, clause) {
 			n++
 		}
