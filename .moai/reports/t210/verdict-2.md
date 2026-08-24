@@ -2,6 +2,16 @@
 
 Iteration: **2/2** (Tier M ceiling — final iteration)
 
+> **Read this verdict as AUDIT-TIME, pinned to `22c3df39e`.** Both PASS scores,
+> and the four surviving blocking findings N1-N4, describe the artifacts as they
+> stood at that commit. **N1-N4 were repaired afterwards, outside this audit**,
+> in `985343fad` — this report was NOT re-run against the repaired artifacts and
+> its scores were not recomputed. The post-audit disposition of each finding is
+> recorded in each SPEC's `progress.md` §E.1, which is the current-state surface;
+> this file is the record of what was judged, not of what is now true. Nothing
+> below is edited to match the repairs, because a verdict rewritten to agree with
+> later work stops being evidence of what was actually observed.
+
 | SPEC | Tier | Threshold | Score | Verdict |
 |---|---|---|---|---|
 | `SPEC-KANBAN-QUEUE-PR-SYNC-001` | M | 0.80 | **0.801** | **PASS (marginal)** |
@@ -341,6 +351,10 @@ progress.
 
 **Both SPECs are fit to enter run-phase, and I would not describe either margin as
 comfortable.**
+
+> Audit-time, per the header note: the four items listed below as remaining were
+> repaired in `985343fad` after this verdict was written. The list is preserved
+> as issued rather than struck through — what it records is what the audit found.
 
 The eighteen iteration-1 findings were addressed substantively rather than
 cosmetically. Three repairs are better than the fixes I prescribed: the D2/D16

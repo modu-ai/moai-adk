@@ -197,9 +197,16 @@ formerly REQ-3 now live in `SPEC-KANBAN-PR-CARD-TRACEABILITY-001`.
 
 **REQ-1.1** — The resolver shall accept a card id, the open pull-request set,
 and the landed-commit history, and shall return exactly one outcome record per
-card carrying the outcome kind, the PR number(s) where one applies, the PR
-state where one applies, and a confidence label drawn from the closed set
+card carrying the outcome kind, and — **each only where it applies** — the PR
+number(s), the PR state, and a confidence label drawn from the closed set
 `exact | inferred`.
+
+The per-field applicability is part of the contract rather than an omission:
+the confidence label answers "which carrier resolved this link?", so it is
+present on a `linked` outcome and absent from the other three. An `ambiguous`
+outcome deliberately carries none — labelling an unresolved outcome with a
+confidence is the collapse REQ-1.6 forbids, wearing a different name. AC-003
+and AC-010 assert exactly this shape.
 
 **REQ-1.2** — **While** the PR title contains the card id token, the resolver
 shall return a `linked` outcome with confidence `exact`.

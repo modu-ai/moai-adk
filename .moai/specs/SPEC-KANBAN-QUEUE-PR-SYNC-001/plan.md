@@ -136,7 +136,11 @@ that catches it.
   invocation. No per-card network query.
 - Fail-open wrapper around the `gh` call; the landed path stays live when `gh`
   is absent.
-- Exit: AC-004 (recursive directory digest), AC-005, AC-009, AC-010 green.
+- Exit: AC-004 (recursive directory digest), AC-005, AC-009, AC-010, **AC-014**
+  green. AC-014 is the one that makes this milestone's own ruling enforceable:
+  without it, an implementation issuing one `gh` query per card passes every
+  other criterion on this list while costing 0.878s per card — the exact
+  design the dedicated-verb decision exists to prevent.
 
 ### M4 — Mechanical wiring and the mirror
 
@@ -169,6 +173,6 @@ that catches it.
 ## H. Cross-references
 
 - `spec.md` §B (the read-only ruling), §C (the two questions and their carriers)
-- `acceptance.md` (the 13 criteria and the pinned fixture block)
+- `acceptance.md` (the 14 criteria and the pinned fixture block)
 - `SPEC-KANBAN-PR-CARD-TRACEABILITY-001` (the sibling doctrine SPEC, lands first)
 - `.moai/reports/t210/measurement.md`, `.moai/reports/t210/verdict.md`

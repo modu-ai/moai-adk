@@ -157,10 +157,16 @@ Carried forward deliberately. None is blocking; each is a real observation.
 - Merged-PR attribution precision remains unscored (§F). Only the landed
   question is covered.
 
-### Signal
+### Signal (plan-phase, historical)
 
-`status: draft`. Awaiting audit iteration 2 of 2, then Implementation Kickoff
-Approval. Sequenced after `SPEC-KANBAN-PR-CARD-TRACEABILITY-001`.
+As written at the close of the plan phase: `status: draft`, awaiting audit
+iteration 2 of 2, then Implementation Kickoff Approval. Sequenced after
+`SPEC-KANBAN-PR-CARD-TRACEABILITY-001`.
+
+**Superseded by §E.2 / §E.3 below.** Iteration 2 returned PASS, Implementation
+Kickoff Approval was granted, and the run phase is complete; the SPEC is
+`in-progress`. The block is kept as the plan-phase record rather than updated
+in place.
 
 ## §E.2 Run-phase Evidence
 
