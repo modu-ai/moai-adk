@@ -1,7 +1,7 @@
 ---
 id: SPEC-CODEX-LAUNCHER-001
 title: "Codex 전용 런처 — moai codex: 배선·CODEX_HOME·auth 상태 확인과 앱/CLI 기동"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-08-24
 updated: 2026-08-24
@@ -24,6 +24,7 @@ related_specs: [SPEC-CODEX-DUAL-AGENTS-001, SPEC-CODEX-SKILLS-CANONICAL-001, SPE
 | 버전 | 날짜 | 변경 |
 |---|---|---|
 | 0.1.0 | 2026-08-24 | 최초 작성 (plan-phase, 카드 t197). 리드 배차 시 추가된 운영자 기준 3항(런처 동사 / auth 상태 노출 / t88 M4 정합) 반영 |
+| 0.2.0 | 2026-08-24 | 맨몸 `moai codex` 의미 확정 — 리드 판정 (b) "리드아웃 + 명시 기동". REQ-CL-002 재기술, AC-CL-002 조건절 해소, plan §B 결정 기록으로 전환 |
 
 ## §A. 측정 전제 (Verified baseline)
 
@@ -91,7 +92,7 @@ t88 (M4) 이 Codex 쪽 배선을 깔았지만, 그 배선을 **확인하고 그 
 ### D.1 커맨드 표면
 
 - **REQ-CL-001** — The system shall provide a top-level `moai codex` command registered in the `launch` command group, so it appears alongside `cc` / `glm` / `cg` in `moai --help`.
-- **REQ-CL-002** — The `moai codex` command shall expose the verbs `status` (readiness readout only), `app` (desktop app), and a bare form that launches the Codex CLI in the current project directory.
+- **REQ-CL-002** — The bare `moai codex` command shall print the readiness readout and exec nothing; launching shall require an explicit verb — `cli` (Codex CLI in the current project directory) or `app` (desktop app). `status` shall be accepted as an explicit alias of the bare readout form.
 - **REQ-CL-003** — Where the operator passes `--spawn`, the system shall run the launch in a new tmux window instead of replacing the current process, matching the `moai cc --spawn` contract, and shall fail with the same diagnostic when tmux is absent.
 
 ### D.2 준비 상태 리드아웃
@@ -110,7 +111,7 @@ t88 (M4) 이 Codex 쪽 배선을 깔았지만, 그 배선을 **확인하고 그 
 ### D.4 기동 위임
 
 - **REQ-CL-011** — The `app` verb shall delegate to `codex app` rather than reimplementing desktop-app discovery or installation.
-- **REQ-CL-012** — Where the codex binary is absent from PATH, every verb shall fail with a single diagnostic naming the install action, and shall not exec anything.
+- **REQ-CL-012** — Where the codex binary is absent from PATH, the launch verbs (`cli`, `app`) shall fail with a single diagnostic naming the install action and shall exec nothing; the readout form shall still succeed, reporting the binary row as not found — a diagnostic that refuses to run when the thing it diagnoses is missing is useless exactly when it is needed.
 - **REQ-CL-013** — The system shall not mutate `.claude/settings.local.json`, Claude profile state, or any file under `CODEX_HOME` on any verb — the launcher reads state and execs; it does not write.
 
 ### D.5 배포 표면
@@ -125,4 +126,4 @@ t88 (M4) 이 Codex 쪽 배선을 깔았지만, 그 배선을 **확인하고 그 
 
 ## §F. 성공 판정
 
-`moai codex status` 가 로그인된 머신에서 `auth: chatgpt` 를 보고하고 (현행은 `unknown`), 배선 없는 프로젝트에서 오류 없이 `wiring: not wired` + 조치 문구를 보고하며, `moai codex` 가 프로젝트 디렉터리에서 Codex CLI 를 띄운다.
+맨몸 `moai codex` 가 로그인된 머신에서 `auth: chatgpt` 를 보고하고 (현행은 `unknown`), 배선 없는 프로젝트에서 오류 없이 `wiring: not wired` + 조치 문구를 보고하며 아무것도 exec 하지 않는다. 기동은 `moai codex cli` 가 프로젝트 디렉터리에서 Codex CLI 를, `moai codex app` 이 데스크톱 앱을 띄운다.

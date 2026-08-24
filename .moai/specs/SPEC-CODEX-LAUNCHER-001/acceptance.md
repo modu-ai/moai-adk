@@ -11,9 +11,9 @@
 ## AC-CL-002 — 동사 라우팅 (REQ-CL-002)
 
 - **Given** 등록된 `codex` 커맨드
-- **When** `status` / `app` / 맨몸 각각을 스텁 exec seam 으로 호출하면
-- **Then** `status` 는 exec 을 0회 수행하고 리드아웃만 내며, `app` 은 `codex app` 인자로 정확히 1회 exec 하고, 맨몸은 §B 확정 결과에 따른 동작을 한다.
-- **평가 조건**: 맨몸 동작의 기대값은 plan §B 결정 (a)/(b) 확정 후 확정된다. 확정 전에는 이 절의 세 번째 절만 미정이며 앞의 둘은 확정 기준이다.
+- **When** 맨몸 / `status` / `cli` / `app` 각각을 스텁 exec seam 으로 호출하면
+- **Then** 맨몸과 `status` 는 exec 을 **0회** 수행하고 리드아웃만 내며, `cli` 는 `codex` 를, `app` 은 `codex app` 을 각각 정확히 1회 exec 한다.
+- **근거**: 맨몸의 의미는 리드 판정으로 (b) "리드아웃 + 명시 기동" 으로 확정됐다 (plan §B).
 
 ## AC-CL-003 — `--spawn` 패리티 (REQ-CL-003)
 
@@ -80,13 +80,14 @@
 ## AC-CL-013 — codex 부재 시 exec 없음 (REQ-CL-012)
 
 - **Given** `codexLookPath` 가 실패하도록 스텁된 상태
-- **When** 세 동사 각각을 실행하면
-- **Then** 모두 비영 rc 로 종료하고, exec 호출 횟수는 0 이며, 진단은 설치 조치를 명명한다.
+- **When** `cli` / `app` 을 실행하면
+- **Then** 둘 다 비영 rc 로 종료하고, exec 호출 횟수는 0 이며, 진단은 설치 조치를 명명한다.
+- **And** 맨몸 / `status` 는 rc 0 으로 리드아웃을 내되 바이너리 행을 `not found` 로 적는다 — 진단 명령을 못 쓰게 만드는 것은 REQ-CL-006 의 fail-open 취지에 어긋난다.
 
 ## AC-CL-014 — 쓰기 없음 (REQ-CL-013)
 
 - **Given** 임시 프로젝트 루트 + 임시 CODEX_HOME 의 파일 목록·mtime 스냅샷
-- **When** 세 동사를 (exec 스텁 상태로) 각각 실행한 뒤 다시 스냅샷하면
+- **When** 네 형태(맨몸 / `status` / `cli` / `app`)를 (exec 스텁 상태로) 각각 실행한 뒤 다시 스냅샷하면
 - **Then** 두 스냅샷이 동일하다 (`.claude/settings.local.json` 포함 무변경, CODEX_HOME 하위 신규 파일 0).
 
 ## AC-CL-015 — 중립성 (REQ-CL-014)

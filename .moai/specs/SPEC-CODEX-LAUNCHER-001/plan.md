@@ -10,15 +10,14 @@
 | auth `unknown` 재현 | 재현 + 원인 확정 | 같은 문서 M-2 |
 | 빌드 | green | `go build ./cmd/moai` rc 0 |
 
-## §B. 열린 결정 1건
+## §B. 결정 기록 — 맨몸 `moai codex` 의 의미 (해소됨)
 
-[NEEDS CLARIFICATION: 맨몸 `moai codex` 의 의미]
-두 해석이 모두 방어 가능하며, Implementation Kickoff Approval 에서 운영자가 정한다.
+두 해석이 모두 방어 가능했다:
 
-- **(a) 기동** — `moai cc` 가 claude 를 띄우듯 맨몸 `moai codex` 가 Codex CLI 를 띄우고, 준비 상태는 기동 직전 stderr 한 블록으로 흘린다. "moai cc 수준의 완성도" 라는 운영자 기준과 런처 패밀리 대칭에 부합. 본 SPEC 의 REQ-CL-002 는 현재 이 안으로 기술돼 있다.
-- **(b) 확인** — 맨몸은 리드아웃만 출력하고 기동은 `moai codex cli` / `moai codex app` 으로 명시. 카드 원문("설정 상태 확인 + 앱/CLI 기동 **안내**")에 더 가깝고, 실수로 세션을 교체할 위험이 없다.
+- **(a) 기동** — `moai cc` 가 claude 를 띄우듯 맨몸이 Codex CLI 를 띄우고, 준비 상태는 기동 직전 stderr 한 블록으로 흘린다. 런처 패밀리 대칭에 부합.
+- **(b) 리드아웃 + 명시 기동** — 맨몸은 리드아웃만, 기동은 `moai codex cli` / `moai codex app` 으로 명시. 카드 원문("설정 상태 확인 + 앱/CLI 기동 **안내**")에 더 가깝고, 실수로 세션이 교체될 위험이 없다.
 
-(a) 로 확정되면 REQ 수정 없음. (b) 로 확정되면 REQ-CL-002 한 줄과 관련 AC 2건만 바뀐다 — 나머지 설계는 두 안에서 동일하다.
+**판정: (b)** — 리드 판정 (2026-08-24). REQ-CL-002 를 그 방향으로 재기술하고 AC-CL-002 의 조건절을 해소했다. 파생 결과 하나: 맨몸이 진단 표면이 되므로 codex 바이너리가 없어도 리드아웃은 성공해야 한다 (REQ-CL-012 를 launch 동사에만 적용하도록 좁힘, AC-CL-013 에 대응 절 추가).
 
 ## §C. 설계
 
@@ -76,9 +75,10 @@ harness   moai hook --harness codex
 
 ### C.5 기동
 
-- 맨몸 (또는 `cli`): `exec` 로 `codex` 를 프로젝트 루트에서 교체 실행. `--` 뒤 인자는 그대로 전달.
+- 맨몸 / `status`: 리드아웃만. exec 0회.
+- `cli`: `exec` 로 `codex` 를 프로젝트 루트에서 교체 실행. `--` 뒤 인자는 그대로 전달.
 - `app`: `codex app` 위임.
-- 어느 경로든 codex 바이너리 미해결 시 exec 전에 단일 진단으로 종료 (REQ-CL-012).
+- 두 launch 동사는 codex 바이너리 미해결 시 exec 전에 단일 진단으로 종료 (REQ-CL-012). 리드아웃은 이 경우에도 rc 0 으로 나온다.
 
 ## §D. 마일스톤
 
@@ -96,7 +96,7 @@ M1 은 독립적으로 가치가 있다 (`moai web` · MCP 도구의 오표시�
 | 위험 | 완화 |
 |---|---|
 | codex 버전에 따라 `login status` 문구/스트림이 다시 바뀐다 | 결합 스트림을 읽으므로 스트림 이동에 둔감. 문구 변화는 `unknown` + 조치 안내로 안전 하강 (REQ-CL-009) |
-| 스텁 러너 인터페이스 변경이 기존 codex 시험을 깬다 | 새 메서드는 추가만 — 기존 `run` 계약 무변경, 스텁 기본 동작을 위임으로 |
+| 스텁 러너 인터페이스 변경이 기존 codex 시험을 깬다 | 폭발 반경 실측: 인터페이스 구현체는 프로덕션 `realCodexRunner` 1개 + 시험 `fakeCodexRunner` 1개뿐이고 (`grep -rn "codexCommandRunner\b" internal/`), 후자를 쓰는 호출 지점이 9곳이다. 추가할 메서드는 1개, 고칠 타입은 1개. 새 메서드는 추가만 — 기존 `run` 계약 무변경, 스텁 기본 동작은 `run` 위임이라 9개 호출 지점은 무변경 |
 | exec 교체가 칸반/팩토리 세션의 훅 환경을 끌고 들어간다 | 이번 범위에서 `-k` / `-f` 를 다루지 않는다 (§C 제외). 환경 주입 없음 |
 | CI 러너에 codex 바이너리가 없다 | 모든 시험이 `codexLookPath` / 러너 스텁 seam 을 통과하도록 작성 — 실 바이너리 의존 0 (SPEC-CODEX-SKILLS-CANONICAL-001 이 세운 선례) |
 
