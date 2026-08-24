@@ -1,7 +1,7 @@
 ---
 id: SPEC-KANBAN-RECORD-SESSION-KEY-001
 title: "Key the kanban record by the session it describes, and record that session's lane and card"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-08-24
 updated: 2026-08-24
@@ -22,12 +22,20 @@ related_specs: [SPEC-WEB-CONSOLE-015, SPEC-SESSION-TELEMETRY-001]
 
 | Version | Date | Change |
 |---|---|---|
+| 0.2.0 | 2026-08-24 | Iteration-2 revision closing the plan-phase audit FAIL at 0.750 (`.moai/reports/t207/plan-audit-kanban-record-key-iter1.md`). Every measurement re-taken at `3c3a6fbf8`; the record directory is re-attributed to the project root, mutable file counts are replaced by the property they stood for, the card-identifier derivation gains a worktree-containment test so its anti-guess clause is reachable, sibling citations are retargeted to REQ ids, and the backend claim is scoped to the command that supports it. |
 | 0.1.0 | 2026-08-24 | Initial draft. Split from SPEC-WEB-CONSOLE-015 per the ratified split design (`.moai/reports/t207/spec-split-design.md` Appendix 2, decision D-6), which measured that the record is keyed by the launching session's identifier and therefore that the parent's lane join does not close. |
 
 ## §A Background
 
-Ground truth measured in worktree `.claude/worktrees/t207` at `dfbf828a6`. Every claim names the
-command that produced it; nothing below is carried over from the split design's citations.
+Ground truth re-measured in worktree `.claude/worktrees/t207` at `3c3a6fbf8` (version 0.1.0 measured
+at `dfbf828a6`; every citation below was re-run there, not carried over). Two scoping facts version
+0.1.0 left implicit:
+
+- **Source paths** are relative to the worktree root, `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t207`.
+- **Runtime state paths are not.** `.moai/state/` belongs to the **project root**: this worktree
+  carries no `.moai/state/kanban/` at all (`ls .moai/state/` returns `.gitkeep`,
+  `config-cache.json`, `context-usage.json` and nothing else). Every `.moai/state/…` path below is
+  therefore read under `/Users/goos/MoAI/moai-adk-go/`.
 
 ### A.1 The record is keyed by the wrong session — the chain
 
@@ -51,22 +59,39 @@ role written into it is the **child's** role.
 
 ### A.2 The consequence, measured on this machine today
 
+Re-measured 2026-08-24 under `/Users/goos/MoAI/moai-adk-go/`. Version 0.1.0 cited three session
+identifiers that no longer exist — those sessions ended — so the rows below are a fresh instance of
+the same shape rather than the same rows.
+
 | Claim | Evidence |
 |---|---|
-| Three sessions are live and registered | `.moai/state/active-sessions.json` holds `2beac221…` (pid 15207, cwd `…/worktrees/t219`), `c15d8434…` (pid 51045, `…/t210`), `3db058e1…` (pid 36912, `…/t207`) |
-| None of the three has a record of its own | `ls .moai/state/kanban/{2beac221…,c15d8434…,3db058e1…}.json` → `No such file or directory` ×3 |
-| A record exists under a fourth identifier, and it describes a different session than it names | `cat .moai/state/kanban/d281730e-a47e-4f82-878e-5fd0ddc4dcb9.json` → `{"session_id":"d281730e-…","spec_id":"","role":"lane","backend":"claude","entered_at":"2026-08-23T17:47:22Z","deepscan_dir":"","verify_reentries":0}`. `d281730e…` is a **lead** session; the record's `role` reads `lane` |
-| The single slot presently names this session | `cat .moai/state/current-session-id.txt` → `3db058e1-…`, whose SessionStart wrote it last |
+| Two sessions are live and registered | `.moai/state/active-sessions.json` holds `5d3be9b8-be19-42ab-8be1-7cb40b29c456` (cwd `…/.claude/worktrees/t210`) and `e46fcfef-1f5c-4f9c-beff-2ada72e26eb5` (cwd `/Users/goos/moai/moai-adk-go`) |
+| Neither has a record of its own | `ls .moai/state/kanban/5d3be9b8-….json .moai/state/kanban/e46fcfef-….json` → `No such file or directory` ×2 |
+| A record exists under an identifier the registry does not carry, and it names a role its session did not have | `cat .moai/state/kanban/d281730e-a47e-4f82-878e-5fd0ddc4dcb9.json` → `{"session_id":"d281730e-…","spec_id":"","role":"lane","backend":"claude","entered_at":"2026-08-23T17:47:22Z","deepscan_dir":"","verify_reentries":0}`. `d281730e…` is a **lead** session; the record's `role` reads `lane` |
+| The single slot presently names the live session that has no record | `cat .moai/state/current-session-id.txt` → `e46fcfef-…`, whose SessionStart wrote it last. Every record a launcher writes between now and the next SessionStart is filed under `e46fcfef…`, whatever session it launches |
 
 One mistake breaks both ends at once: the lane has no record, and the lead's identifier carries a
 lane's record. There is no reading of this data under which a consumer recovers the truth, because
 the file name and the file's contents describe different sessions and nothing on disk says so.
 
+The identifiers above will age out as version 0.1.0's did. What does not age out is the property
+they demonstrate, and that property is what this SPEC is written against: **a registered session has
+no record under its own identifier, and a record's key names the session that launched it rather
+than the one it describes.**
+
 ### A.3 What this blocks
 
-`SPEC-WEB-CONSOLE-015` §A.5 asserts that
+`SPEC-WEB-CONSOLE-015` **REQ-WC15-043** resolves each registered factory lane to a session by
+joining the factory registry's recorded process identifier to the active-sessions entry carrying it,
+and thence to that session's record; **REQ-WC15-044** presents the lane number and card identifier
+that join is supposed to deliver. Version 0.1.0 of that SPEC **asserted** the chain
 `workers.json[lane-N].PID → active-sessions entry → session_id → kanban.Record` "is a join that
-closes on today's data with no new state file". The first two hops hold — `FactoryWorkerEntry.PID`
+closes on today's data with no new state file". That assertion has since been **withdrawn there**,
+and this section is the measurement the withdrawal rests on. (Sibling citations in this SPEC name
+REQ ids rather than section numbers: the parent was rewritten and its sections moved; its REQ ids
+did not.)
+
+The first two hops hold — `FactoryWorkerEntry.PID`
 (`internal/kanban/factory_slots.go:38`) and `Entry.PID` (`internal/session/registry.go:92`) both
 exist and the registry carries the runtime identifier. The **third hop is where it breaks**: the
 registry's identifier is the session's own, the record's is its parent's, so the lookup returns
@@ -77,7 +102,7 @@ rows or no rows.
 
 | Missing | Evidence |
 |---|---|
-| **The lane number.** `internal/kanban/role.go:42` defines `RoleLane = "lane"` as a bare constant, so every factory lane writes the same value and N lanes are mutually indistinguishable. Measured: `grep -h '"role"' .moai/state/kanban/*.json \| sort \| uniq -c` over the 84 record files returns **34** `"role": "lane"` rows and no lane number anywhere — `grep -l '"lane"\s*:' .moai/state/kanban/*.json` returns **0** files |
+| **The lane number.** `internal/kanban/role.go:42` defines `RoleLane = "lane"` as a bare constant, so every factory lane writes the same value and N lanes are mutually indistinguishable. The property, which does not move: **no record file carries a lane number, and every lane writes the same role value.** Measured 2026-08-24 under `/Users/goos/MoAI/moai-adk-go/.moai/state/kanban/`, whose file set grows while this SPEC is open — `grep -h '"role"' *.json \| sort \| uniq -c` returns **34** `"role": "lane"` rows, and `grep -l '"lane"[[:space:]]*:' *.json` returns **0** files |
 | **The card identifier.** `Record.SpecID` (`record.go:61`) is a SPEC identifier; Class A and Class B cards never acquire one. `MOAI_KANBAN_ID` is not a substitute — `internal/config/envkeys.go:167-173` documents it as the **run** identifier, generated once per run at `internal/cli/kanban.go:173` and `internal/cli/factory.go:255` |
 | **The role, when the label is a lane label.** `WithRole` (`record.go:116-130`) admits only `RoleLead`, `RoleLane`, and the companion roles, and silently drops anything else — so a `lane-3` value passed through it would vanish without an error |
 
@@ -96,23 +121,37 @@ descendant of that process — already reads them:
 | Role — factory lead | **Yes** | `MOAI_FACTORY_WORKERS` set at `internal/cli/factory.go:253`, read at `internal/hook/session_start_factory.go:51` |
 | Role — factory lane, **and its lane number** | **Yes** | `MOAI_FACTORY_WORKER` carries the `lane-<n>` label; set at `internal/cli/factory.go:289`, read at `session_start_factory.go:48` |
 | SPEC identifier | **Partly** | `MOAI_KANBAN_SPEC` is set only inside `enterKanbanMode` (`kanban.go:174-176`, the kanban lead). `enterKanbanCompanionMode` (`kanban.go:305-322`) and `enterFactoryWorkerMode` (`factory.go:283-298`) set no SPEC variable |
-| **Backend** | **No** | `grep -rn "BackendGLM\|BackendClaude" internal/ \| grep -v _test` shows the value exists only as a literal argument at the eight `recordKanbanSession` call sites (`cc.go:161,175,192,208`, `glm.go:224,237,250,264`). No environment key names it: `grep -rn 'BACKEND' internal/config/envkeys.go` returns nothing |
+| **Backend** | **No** | The record's backend reaches the write only as a literal argument at the eight `recordKanbanSession` call sites: `grep -rn 'BackendGLM\|BackendClaude' internal/cli/cc.go internal/cli/glm.go` returns `cc.go:161,175,192,208` and `glm.go:224,237,250,264` — eight lines, every one of them that argument. (A tree-wide grep additionally returns the constant declarations and their doc comment at `record.go:23,24,75`, plus nine hits on an unrelated same-named constant pair in `internal/cli/mcp_convergence.go`. Neither set is the record's backend, which is why the claim is scoped to the two launcher files rather than to the tree.) No environment key names it: `grep -rn 'BACKEND' internal/config/envkeys.go` returns nothing, `rc=1` |
 | **Card identifier** | **No** | No environment key exists for it (same grep), and no per-lane card identifier exists on disk anywhere |
 
 So role and lane number are already there; **backend, SPEC identifier for companions and lanes, and
 the card-identifier override are not**, and carrying them is part of this SPEC rather than an
-assumption it rests on (REQ-KRS-006). The card identifier itself is otherwise derivable inside the
-session — the dispatch protocol fixes a card's worktree at `.claude/worktrees/<card-id>`, so the
-basename of `git rev-parse --show-toplevel` is the card identifier wherever a card-carrying session
-stands. Measured here: that command returns
-`/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t207`, basename `t207`, which is this card.
+assumption it rests on (REQ-KRS-006).
+
+The card identifier is otherwise derivable inside the session, but **only where the session stands
+in a card worktree**, and that condition is load-bearing rather than incidental. The dispatch
+protocol fixes a card's worktree directory at `.claude/worktrees/<card-id>`, so the basename of
+`git rev-parse --show-toplevel` is the card identifier **when that root's parent directory is named
+`worktrees`**, and is not a card identifier otherwise. Both cases are live right now:
+
+| Session's worktree root | Parent directory | Basename | A card identifier? |
+|---|---|---|---|
+| `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t207` — what `git rev-parse --show-toplevel` returns in this tree | `…/.claude/worktrees` | `t207` | **Yes**, this card |
+| `/Users/goos/moai/moai-adk-go` — session `e46fcfef…`, its `cwd` in `active-sessions.json` | `/Users/goos/moai` | `moai-adk-go` | **No**, a checkout name |
+
+An unconditional basename would file `moai-adk-go` as this second session's card identifier, and the
+consumer — `SPEC-WEB-CONSOLE-015` REQ-WC15-044, which asks for a card identifier — would render it
+as one. The containment test is what separates the two cases, and REQ-KRS-005 carries it.
 
 ### A.6 Why the schema may only grow
 
 `internal/kanban/record.go:45` carries an `@MX:ANCHOR` whose stated reason is that the launcher,
 the orchestrator, and the sync-phase dedup gate all bind to these JSON keys, so a renamed key
 breaks readers the package cannot see. Every field this SPEC adds is therefore additive and
-`omitempty`, and the 84 existing record files stay readable.
+`omitempty`, and **every record file already on disk stays readable** — stated as that property
+rather than as a file count, because the directory is live state that grows while this SPEC is open
+(79 files carried a `session_id` when this was measured on 2026-08-24; the count moves, the
+obligation does not).
 
 ## §B Requirements (GEARS)
 
@@ -128,17 +167,23 @@ breaks readers the package cannot see. Every field this SPEC adds is therefore a
 
 ### B.2 Lane and card identity
 
-- **REQ-KRS-004** — **Where** a session is a factory lane, its record shall carry the lane's number
+- **REQ-KRS-004** — **While** a session is a factory lane, its record shall carry the lane's number
   as data distinct from the role value, as a non-pointer integer whose zero value means "not a
   lane".
 - **REQ-KRS-005** — A record shall carry the card identifier the session is working, as a field
   distinct from the SPEC identifier and populated for cards that never acquire a SPEC. The value
   shall be taken from an explicit override where one is supplied, and otherwise from the basename
-  of the session's worktree root. **When** neither source yields a value, the field shall be left
-  empty rather than guessed.
+  of the session's worktree root **only where that root's parent directory is named `worktrees`**.
+  **When** neither source yields a value — an absent override together with a worktree root that
+  fails that containment test, or no resolvable worktree root at all — the field shall be left empty
+  rather than guessed.
 - **REQ-KRS-006** — Every launch fact a record carries that the launched session cannot observe for
   itself — the backend it runs on, the SPEC the launch targets, and the card-identifier override
-  where one is supplied — shall be conveyed to that session through its launch environment.
+  where one is supplied — shall be observable by that session at its own start. The means is
+  **deliberately constrained** rather than left to the implementation: the fact shall be conveyed by
+  the launcher through the launch environment, and shall not be inferred from any other signal the
+  session can see. (The rejected inference, and why it is a guess rather than a measurement, is
+  recorded in `plan.md` §F.)
 
 ### B.3 Compatibility and failure
 
@@ -182,12 +227,23 @@ are a separate surface and are not changed by this SPEC.
 
 ### C.4 The existing record files
 
-The 84 files under `.moai/state/kanban/` are left exactly as they are. They are neither migrated
-nor deleted: the directory is gitignored runtime state, each file is a few hundred bytes, and the
-misattributed ones cannot be repaired — the parent identifier they are named for does not encode
-which child they described, so a migration would have to guess. They age out as their sessions do,
-and REQ-KRS-007 keeps them readable in the meantime. Introducing a reaper is a separate change with
-its own liveness question.
+Every file already under `.moai/state/kanban/` is left exactly as it is — neither migrated,
+repaired, nor deleted. The commitment is stated as that property and not as a count, because the
+directory is live runtime state that grows while this SPEC is open: 79 record files carried a
+`session_id` when this was measured on 2026-08-24, and one of them had been created that same
+afternoon. A count quoted here would be a different number by the time anyone checked it, and a
+reviewer could not tell drift from a violation.
+
+The misattributed files cannot be repaired in any case: the parent identifier a file is named for
+does not encode which child it described, so a migration would have to guess. They are gitignored
+runtime state, each a few hundred bytes; they age out as their sessions do, and REQ-KRS-007 keeps
+them readable in the meantime. Introducing a reaper is a separate change with its own liveness
+question.
+
+One measurement note, carried into `acceptance.md`: `.moai/state/kanban/*.json` is **not** a record
+glob. `backlog.json` and `leads.json` sit in the same directory and carry no `session_id`
+(`grep -L '"session_id"' .moai/state/kanban/*.json` returns exactly those two), so any evidence
+about records excludes them.
 
 ## §D Exclusions
 
@@ -219,8 +275,9 @@ Explicitly out of scope. Each may be taken up separately.
 
 ### Out of Scope — migrating the existing record files
 
-- Migrating, repairing, or deleting the 84 files already under `.moai/state/kanban/`. The
-  disposition chosen is to leave them (§C.4); a reaper or a migration is a separate change.
+- Migrating, repairing, or deleting any file already under `.moai/state/kanban/`. The disposition
+  chosen is to leave every one of them untouched (§C.4); a reaper or a migration is a separate
+  change.
 
 ### Out of Scope — the role vocabulary
 
