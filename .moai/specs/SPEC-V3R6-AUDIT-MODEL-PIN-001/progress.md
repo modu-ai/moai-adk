@@ -200,6 +200,65 @@ glm-4.6 under a glm-5.3 pin),
 
 **AC trace:** AC-AMP-004 — PASS (all three arms + task isolation).
 
+### M4 — Web typed edit path: existing Audit panel
+
+**RED evidence (E8):**
+
+```
+$ go test ./internal/settings/ -run TestAuditPinFields -count=1
+    audit_pin_fields_test.go:62: field "workflow.audit.codex.model" missing from the schema (the audit pin must be web-editable)
+FAIL	github.com/modu-ai/moai-adk/internal/settings	0.670s
+```
+
+**GREEN + verification:**
+
+```
+$ go vet ./internal/settings/... ./internal/web/...
+exit 0
+$ go test ./internal/settings/ -count=1
+ok  	github.com/modu-ai/moai-adk/internal/settings	0.530s
+$ go test ./internal/web/ -count=1        (incl. i18n_untranslated_allowlist + tab layout governance)
+ok  	github.com/modu-ai/moai-adk/internal/web	3.820s
+```
+
+**Mechanism:**
+
+- `internal/settings/schema_sections.go`: 4 new fields after the audit gates —
+  `workflow.audit.codex.model` (TypeText), `workflow.audit.codex.effort`
+  (select, v4EffortValues 5-level Claude vocabulary),
+  `workflow.audit.glm.model` (select, config.ValidGLMModels SSOT),
+  `workflow.audit.glm.effort` (select, template.GLMReasoningStateNames —
+  EXACTLY {max, high, low}). All three selects carry `withEmptySubmits` +
+  emptyLabelUnset/"opt.unset" (clearing a pin persists "" → resolver falls
+  back, §D.2). StoreOnly stays FALSE on the effort fields (runtime-applied,
+  contrast with the stored-only llm tier efforts, REQ-WCR-033) — asserted by
+  test.
+- Panel routing: the `workflow.audit.` prefix means `isAuditFieldName`
+  (schemaform.go:164-166) routes all four onto the EXISTING Audit panel
+  (schemaform.go:52) — verified by the passing TestTabLayout; no schemaform
+  registry change needed.
+- **fieldsets.templ regen NOT needed** (cited finding): `grep -n "audit"
+  internal/web/fieldsets.templ` = 0 matches — the Audit panel renders FieldDefs
+  through the shared generic schema renderer (schemaSelectRow/schemaTextRow),
+  so the new typed fields render with no templ change.
+- `internal/web/assets/i18n.js`: 20 new keys × 4 locales (en/ko/ja/zh) — 8
+  title/desc + 12 option labels. Effort descs mark them runtime-applied; glm
+  effort desc states the single-reading rule (other values omit the reasoning
+  directive). Governance green (i18n_untranslated_allowlist_test).
+- `internal/web/widget_policy_test.go`: `workflow.audit.codex.model` added to
+  the AC-WCR-023 freeTextWhitelist — the codex-servable family is an OPEN
+  prefix set (gpt-*/o*/codex-*), not an enumerable closed set; the servability
+  filter at the resolver is the validation point, not the widget.
+
+**Changed files (M4):** `internal/settings/schema_sections.go`,
+`internal/settings/audit_pin_fields_test.go` (NEW — 2 tests),
+`internal/web/assets/i18n.js` (+80 lines), `internal/web/widget_policy_test.go`
+(whitelist entry + rationale).
+
+**AC trace:** AC-AMP-008 — PASS (typed-path round-trip incl. empty-value
+clear; closed sets; 4-locale keys; runtime-applied labeling). SHOULD-severity
+AC satisfied.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase completion>_
