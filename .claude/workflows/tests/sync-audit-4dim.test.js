@@ -17,7 +17,16 @@
 //   uses import/require). The production sync-audit-4dim.js contains NO eval / new Function /
 //   Math.random / Date.now — the verdict path is deterministic and resume-cache safe.
 //
-// Run: `node --test .claude/workflows/sync-audit-4dim.test.js`
+// Run: `node --test .claude/workflows/tests/sync-audit-4dim.test.js`
+//
+// STATUS 2026-08-24: this test does not currently run to completion. The
+// sentinel pair it extracts — `// === VERDICT PURE FUNCTIONS START/END ===` —
+// is no longer present anywhere in sync-audit-4dim.js, so the extraction
+// assertion fails before any subtest executes. The condition predates this
+// file's move out of the scanned workflow directory and is unrelated to it:
+// either the sentinels are restored around the verdict block in the workflow,
+// or this harness is retired. Left in place pending that decision rather than
+// deleted, so the intent and the 15 subtests are not lost.
 //
 // DEV-ONLY — not mirrored to internal/template/templates/.claude/workflows/ (tests are not a
 // distributed template asset).
@@ -29,7 +38,11 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const workflowSrc = fs.readFileSync(path.join(__dirname, 'sync-audit-4dim.js'), 'utf8')
+// The workflow under test is the parent directory: .claude/workflows/ is a
+// registry the runtime scans, and every .js directly inside it must parse as a
+// workflow. This test is not one, so it lives one level down; the scanner does
+// not recurse (verified 2026-08-24).
+const workflowSrc = fs.readFileSync(path.join(__dirname, '..', 'sync-audit-4dim.js'), 'utf8')
 
 // --- extract the pure-verdict block between sentinel comments -----------------------------
 const START = '// === VERDICT PURE FUNCTIONS START ==='

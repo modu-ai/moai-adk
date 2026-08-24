@@ -146,19 +146,55 @@ func (idx *fanInIndex) fanIn(funcName, currentFile string) int {
 	return total
 }
 
+// isIdentByte reports whether c can appear inside an ASCII identifier token.
+// The class deliberately mirrors the one behind Go's regexp \b, which is
+// ASCII-only, so tokenizing on it reproduces \bNAME\b exactly for the names this
+// index counts. See TestBuildFanInIndex_ASCIIBoundarySemantics.
+func isIdentByte(c byte) bool {
+	return c == '_' ||
+		(c >= 'a' && c <= 'z') ||
+		(c >= 'A' && c <= 'Z') ||
+		(c >= '0' && c <= '9')
+}
+
+// countIdentOccurrences records, for every wanted name, how many times it appears
+// in data as a complete identifier token, attributing the counts to path.
+//
+// One pass over the bytes serves every name at once. That is the whole point: the
+// previous strategy ran one full byte scan per candidate name, so a file with F
+// exported functions missing ANCHOR cost F scans of every source in the project.
+func countIdentOccurrences(data []byte, want map[string]struct{}, path string, idx *fanInIndex) {
+	for i, n := 0, len(data); i < n; {
+		if !isIdentByte(data[i]) {
+			i++
+			continue
+		}
+		j := i
+		for j < n && isIdentByte(data[j]) {
+			j++
+		}
+		tok := data[i:j]
+		if _, ok := want[string(tok)]; ok {
+			idx.counts[string(tok)][path]++
+		}
+		i = j
+	}
+}
+
 // buildFanInIndex walks the project once, counting word-boundary occurrences
 // of ALL candidate function names in a single traversal (REQ-PERF-002-A).
 // ctx.Done() is checked inside the WalkDir callback (REQ-PERF-002-B).
+//
+// Cost is O(project bytes) and independent of how many names are being counted.
 func (v *mxValidator) buildFanInIndex(ctx context.Context, funcNames []string) *fanInIndex {
 	idx := &fanInIndex{counts: make(map[string]map[string]int, len(funcNames))}
 	if v.projectRoot == "" || len(funcNames) == 0 {
 		return idx
 	}
 
-	// Compile patterns for all candidate names
-	patterns := make(map[string]*regexp.Regexp, len(funcNames))
+	want := make(map[string]struct{}, len(funcNames))
 	for _, name := range funcNames {
-		patterns[name] = regexp.MustCompile(`\b` + regexp.QuoteMeta(name) + `\b`)
+		want[name] = struct{}{}
 		idx.counts[name] = make(map[string]int)
 	}
 
@@ -197,12 +233,7 @@ func (v *mxValidator) buildFanInIndex(ctx context.Context, funcNames []string) *
 			return nil
 		}
 
-		for name, re := range patterns {
-			c := len(re.FindAllIndex(data, -1))
-			if c > 0 {
-				idx.counts[name][path] = c
-			}
-		}
+		countIdentOccurrences(data, want, path, idx)
 		return nil
 	})
 
