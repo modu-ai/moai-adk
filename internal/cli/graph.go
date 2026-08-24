@@ -257,6 +257,7 @@ Examples:
 func newGraphBuildCmd() *cobra.Command {
 	var outPath string
 	var rootArg string
+	var allDisagreements bool
 
 	cmd := &cobra.Command{
 		Use:   "build",
@@ -286,7 +287,11 @@ Examples:
 				return err
 			}
 
-			edges, matrix, err := graph.BuildWithCodeLayers(projectRoot)
+			mode := graph.DisagreementRefuteOnly
+			if allDisagreements {
+				mode = graph.DisagreementAll
+			}
+			edges, matrix, err := graph.BuildWithCodeLayersMode(projectRoot, mode)
 			if err != nil {
 				return fmt.Errorf("build graph: %w", err)
 			}
@@ -333,6 +338,8 @@ Examples:
 
 	cmd.Flags().StringVar(&outPath, "out", "", "output path (defaults to <root>/.moai/project/graph/edges.jsonl)")
 	cmd.Flags().StringVar(&rootArg, "root", "", "project root (defaults to the auto-detected project root)")
+	cmd.Flags().BoolVar(&allDisagreements, "all-disagreements", false,
+		"also mark the suppressed direction: local code-import dependencies the doc layer does not record (revival path for the default's code-found/doc-silent suppression)")
 
 	return cmd
 }

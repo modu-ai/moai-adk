@@ -114,7 +114,18 @@ func docCodeFixture(t *testing.T) string {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(root, "internal", "demo", "demo.go"),
-		[]byte("package demo\n\n// @MX:NOTE: [AUTO] demo\n// @MX:SPEC:SPEC-X-001\nfunc Demo() { Hidden() }\n\nfunc Hidden() {}\n"), 0o644); err != nil {
+		[]byte("package demo\n\nimport (\n\t\"example.com/proj/internal/undoc\"\n\t\"fmt\"\n)\n\n// @MX:NOTE: [AUTO] demo\n// @MX:SPEC:SPEC-X-001\nfunc Demo() { Hidden(); undoc.Use(); fmt.Println(1) }\n\nfunc Hidden() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// go.mod makes the internal import LOCAL (module-path normalization) —
+	// the import the doc layer never records, i.e. the suppressed direction.
+	if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte("module example.com/proj\n\ngo 1.26\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "internal", "undoc"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "internal", "undoc", "undoc.go"), []byte("package undoc\n\nfunc Use() {}\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	return root
@@ -160,6 +171,56 @@ func TestBuild_CodeLayersAreAdditive(t *testing.T) {
 		// The fixture's demo.go carries calls (mx fixture has none beyond
 		// package decl), so code-import from go imports is the expected floor.
 		t.Errorf("expected code-derived kinds in the build output; kinds=%v", kinds)
+	}
+}
+
+// Revival path (lead ruling): the suppressed code-found/doc-silent direction
+// stays RETRIEVABLE — DisagreementAll marks it with an explicit [revived]
+// tag, and the default mode's genuine refutation markers are unaffected.
+func TestBuild_DisagreementAllRevivesSuppressedDirection(t *testing.T) {
+	root := docCodeFixture(t) // doc has internal/alpha→internal/beta; demo.go imports nothing internal
+
+	refuteEdges, _, err := BuildWithCodeLayersMode(root, DisagreementRefuteOnly)
+	if err != nil {
+		t.Fatal(err)
+	}
+	allEdges, _, err := BuildWithCodeLayersMode(root, DisagreementAll)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	revived := 0
+	for _, e := range allEdges {
+		if e.DisagreesWith != "" && strings.Contains(e.DisagreesWith, "[revived]") {
+			revived++
+			if e.Kind != KindCodeImport {
+				t.Errorf("[revived] marker on a non-code-import edge: %+v", e)
+			}
+		}
+	}
+	if revived == 0 {
+		t.Error("DisagreementAll must revive at least one suppressed code-import marker")
+	}
+	for _, e := range refuteEdges {
+		if strings.Contains(e.DisagreesWith, "[revived]") {
+			t.Error("default mode must not emit the revived marker")
+		}
+	}
+
+	// Doc-relationship preservation holds in BOTH modes.
+	for _, want := range refuteEdges {
+		if want.Kind != KindImport {
+			continue
+		}
+		found := false
+		for _, got := range allEdges {
+			if got.Kind == want.Kind && got.Source == want.Source && got.Target == want.Target {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("doc edge lost under DisagreementAll: %+v", want)
+		}
 	}
 }
 

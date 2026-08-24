@@ -70,6 +70,27 @@ func mapSymbolEdges(calls []symbol.CallEdge, imports []symbol.ImportEdge) []Edge
 // relationship is EXPOSED via the disagrees_with marker — never a silent
 // pick (REQ-GF-015).
 func BuildWithCodeLayers(projectRoot string) ([]Edge, map[string]string, error) {
+	return BuildWithCodeLayersMode(projectRoot, DisagreementRefuteOnly)
+}
+
+// DisagreementMode selects which disagreement directions the build marks.
+type DisagreementMode int
+
+const (
+	// DisagreementRefuteOnly marks doc-explicit claims the code layer refutes
+	// (the default). Code-found/doc-silent is the curated summary's normal
+	// state — suppressed, but RETRIEVABLE via DisagreementAll (a decided-not-
+	// to-report signal must never harden into cannot-be-reported).
+	DisagreementRefuteOnly DisagreementMode = iota
+	// DisagreementAll ALSO marks the suppressed direction: local code-import
+	// dependencies the doc layer does not record.
+	DisagreementAll
+)
+
+// BuildWithCodeLayersMode is BuildWithCodeLayers with the disagreement mode
+// selected (revival path for the suppressed code-found/doc-silent direction;
+// wired to `moai graph build --all-disagreements`).
+func BuildWithCodeLayersMode(projectRoot string, mode DisagreementMode) ([]Edge, map[string]string, error) {
 	docEdges, err := Build(projectRoot)
 	if err != nil {
 		return nil, nil, err
@@ -80,7 +101,7 @@ func BuildWithCodeLayers(projectRoot string) ([]Edge, map[string]string, error) 
 		return docEdges, GradeMatrix(), nil
 	}
 	codeEdges := mapSymbolEdges(calls, imports)
-	markImportDisagreements(docEdges, imports)
+	markImportDisagreements(docEdges, codeEdges, imports, mode)
 
 	all := make([]Edge, 0, len(docEdges)+len(codeEdges))
 	all = append(all, docEdges...)
@@ -93,11 +114,12 @@ func BuildWithCodeLayers(projectRoot string) ([]Edge, map[string]string, error) 
 //
 // Disagreement is asymmetric by domain: the doc graph is a curated summary,
 // so a dependency the code layer finds and the doc layer simply does not
-// mention is the summary's normal state, not a contradiction — no marker.
-// A marker fires only when the DOC layer explicitly claims a dependency and
-// the code layer scanned that source package without finding it: two claims
-// about the same relationship, in opposite directions.
-func markImportDisagreements(docEdges []Edge, imports []symbol.ImportEdge) {
+// mention is the summary's normal state, not a contradiction — no marker in
+// the default mode. A marker fires when the DOC layer explicitly claims a
+// dependency and the code layer scanned that source package without finding
+// it: two claims about the same relationship, in opposite directions. The
+// DisagreementAll mode revives the suppressed direction on the code edges.
+func markImportDisagreements(docEdges, codeEdges []Edge, imports []symbol.ImportEdge, mode DisagreementMode) {
 	// scannedPkgs: packages whose files the code layer actually scanned.
 	scannedPkgs := map[string]bool{}
 	// codeImplied: package → local-package dependencies the code layer found.
@@ -110,6 +132,12 @@ func markImportDisagreements(docEdges []Edge, imports []symbol.ImportEdge) {
 		if imp.Local {
 			codeImplied[pkg+"\x00"+imp.Module] = true
 			localDomain[imp.Module] = true
+		}
+	}
+	docImports := map[string]bool{}
+	for _, e := range docEdges {
+		if e.Kind == KindImport {
+			docImports[e.Source+"\x00"+e.Target] = true
 		}
 	}
 
@@ -129,4 +157,31 @@ func markImportDisagreements(docEdges []Edge, imports []symbol.ImportEdge) {
 			e.DisagreesWith = KindCodeImport + " (code layer scanned " + e.Source + " and found no import of " + e.Target + ")"
 		}
 	}
+
+	if mode == DisagreementAll {
+		for i := range codeEdges {
+			e := &codeEdges[i]
+			if e.Kind != KindCodeImport {
+				continue
+			}
+			if !symbolImportLocal(imports, e.Source, e.Target) {
+				continue
+			}
+			pkg := filepath.ToSlash(filepath.Dir(e.Source))
+			if !docImports[pkg+"\x00"+e.Target] {
+				e.DisagreesWith = KindImport + " [revived] (doc layer does not record this dependency)"
+			}
+		}
+	}
+}
+
+// symbolImportLocal reports whether a local import edge (file→module) exists
+// in the seam's extraction — the marker revival path's locality gate.
+func symbolImportLocal(imports []symbol.ImportEdge, file, module string) bool {
+	for _, imp := range imports {
+		if imp.File == file && imp.Module == module && imp.Local {
+			return true
+		}
+	}
+	return false
 }
