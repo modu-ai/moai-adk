@@ -1,7 +1,12 @@
 ---
 id: go-error-ignored-blank
 language: go
-severity: error
+# warning, not error: this is a style rule, not a security rule. The pre-write
+# scan gate translates error severity directly into a refused write, and
+# `_ = foo()` is a routine Go idiom, so error severity here would refuse
+# ordinary edits across a codebase. The rule keeps reporting on the warning
+# path.
+severity: warning
 message: The returned error is discarded with _. Handle it or mark the intentional ignore with a comment.
 note: Ignoring an error can cause data corruption or silent failures. At
   minimum, log the error or add a // nolint:errcheck comment.

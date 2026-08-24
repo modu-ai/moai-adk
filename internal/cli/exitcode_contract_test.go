@@ -11,9 +11,36 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/constitution"
 	"github.com/modu-ai/moai-adk/internal/spec"
 )
+
+// TestExitCodeContract_DoctorFailingChecks verifies #1593: a doctor run whose
+// summary prints `Fail N` (N > 0) exits 1 via the ExitCoder boundary, while a
+// run carrying only OK/Warn checks exits 0 (a warning is advisory).
+func TestExitCodeContract_DoctorFailingChecks(t *testing.T) {
+	clean := []DiagnosticCheck{
+		{Name: "A", Status: uikit.CheckOK},
+		{Name: "B", Status: uikit.CheckWarn},
+	}
+	if got := countFailedChecks(clean); got != 0 {
+		t.Fatalf("countFailedChecks(OK+Warn) = %d, want 0", got)
+	}
+	if err := doctorExitStatus(countFailedChecks(clean)); err != nil {
+		t.Fatalf("warn-only doctor run returned %v, want nil (exit 0)", err)
+	}
+
+	failing := append(clean, DiagnosticCheck{Name: "C", Status: uikit.CheckFail})
+	if got := countFailedChecks(failing); got != 1 {
+		t.Fatalf("countFailedChecks(with 1 Fail) = %d, want 1", got)
+	}
+	err := doctorExitStatus(countFailedChecks(failing))
+	assertExitCode(t, err, 1)
+	if !strings.Contains(err.Error(), "1 check(s) failed") {
+		t.Errorf("error message = %q, want it to name the failing-check count", err.Error())
+	}
+}
 
 // assertExitCode fails the test if err does not carry the expected exit code via
 // the ExitCoder boundary (cmd/moai/main.go errors.As mapping).

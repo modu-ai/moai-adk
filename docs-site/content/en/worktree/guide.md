@@ -267,7 +267,8 @@ moai worktree clean [options]
 - `--merged-only`: remove only Worktrees whose branch is merged into base
 - `--stale`: sweep up abandoned Worktrees with nothing to lose (preview by default)
 - `--yes`: actually remove instead of previewing with `--stale`
-- `--base BRANCH`: base branch used to judge `--merged-only` and `--stale` (default: `main`)
+- `--json`: with `--stale`, report every non-protected Worktree with its keep reason and its four predicates — dirty, merge, anchor, and ignored-content state — as JSON. Removes nothing, and overrides `--yes`
+- `--base BRANCH`: base branch used to judge `--merged-only` and `--stale` (default: `origin/main`)
 
 `--stale` and `--merged-only` cannot be combined.
 

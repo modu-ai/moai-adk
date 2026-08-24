@@ -131,9 +131,9 @@ func TestCheckSteadyAndBudgetArms(t *testing.T) {
 func TestMeasureCalibratedRatioHealthy(t *testing.T) {
 	// Deliberately NOT parallel — measuring test; see the note on cpuUnit.
 	unit := func() { cpuUnit(5_000_000) }
-	refSt, st := measurePaired(unit, unit, 30, 3)
+	refSt, st, paired := measurePaired(unit, unit, 30, 3)
 	b := Bound{Budget: 30 * time.Second, SteadyCeiling: 10 * time.Second, MaxUnits: 2.0, Name: "cpu-1x"}
-	if errs := Check(b, refSt.Median, st); len(errs) != 0 {
+	if errs := CheckRatio(b, paired, st); len(errs) != 0 {
 		t.Errorf("healthy 1x ratio tripped a bound (ref=%v median=%v): %v", refSt.Median, st.Median, errs)
 	}
 }
@@ -151,9 +151,9 @@ func TestMeasureCalibratedRatioHealthy(t *testing.T) {
 // both halves of the ratio under the same load.
 func TestMeasureCalibratedRatioTripsAt4x(t *testing.T) {
 	// Deliberately NOT parallel — measuring test; see the note on cpuUnit.
-	refSt, st := measurePaired(func() { cpuUnit(2_000_000) }, func() { cpuUnit(8_000_000) }, 30, 3)
+	refSt, st, paired := measurePaired(func() { cpuUnit(2_000_000) }, func() { cpuUnit(8_000_000) }, 30, 3)
 	b := Bound{Budget: time.Hour, SteadyCeiling: time.Hour, MaxUnits: 1.5, Name: "cpu-4x"}
-	errs := Check(b, refSt.Median, st)
+	errs := CheckRatio(b, paired, st)
 	if len(errs) != 1 || !strings.Contains(errs[0].Error(), "calibrated bound") {
 		t.Fatalf("4x cost growth not caught by the calibrated arm (ref=%v median=%v): %v", refSt.Median, st.Median, errs)
 	}

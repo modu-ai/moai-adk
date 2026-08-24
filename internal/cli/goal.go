@@ -170,7 +170,14 @@ func resolveArmSessionID(sessionFlag string) (id, warn string) {
 	if sessionFlag != "" {
 		return sessionFlag, ""
 	}
-	if uuid, _, ok := resolveCurrentSessionID(); ok {
+	if uuid, source, ok := resolveCurrentSessionID(); ok {
+		// An id resolved from the per-process env var names THIS session by
+		// construction, so the multi-session guard below does not apply to it:
+		// concurrency cannot make it foreign. Only the side-channel path needs
+		// the guard.
+		if sessionIDSourceIsAuthoritative(source) {
+			return uuid, ""
+		}
 		// Multi-session guard. The side-channel file
 		// (.moai/state/current-session-id.txt) is per-project and unconditionally
 		// overwritten on every SessionStart (internal/hook/session_start.go), so

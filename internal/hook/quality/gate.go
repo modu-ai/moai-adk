@@ -132,12 +132,17 @@ var toolchains = []langToolchain{
 	// Go: go.mod
 	{
 		markerFiles: []string{"go.mod"},
-		vetSteps:    []gateStep{{name: "go vet", binary: "go", args: []string{"vet", "./..."}}},
+		// sourceExts: a module with a go.mod but not one .go file yet is a
+		// scaffold, and `go vet ./...` / `go test ./...` exit non-zero there
+		// ("matched no packages"). Skipping keeps a first commit from being
+		// blocked for having no code — the same policy the Python steps carry.
+		vetSteps: []gateStep{{name: "go vet", binary: "go", args: []string{"vet", "./..."}, sourceExts: []string{".go"}}},
 		lintSteps: []gateStep{{
 			name: "golangci-lint", binary: "golangci-lint", args: []string{"run"}, optional: true,
 			configFiles: []string{".golangci.yml", ".golangci.yaml", ".golangci.toml", ".golangci.json"},
+			sourceExts:  []string{".go"},
 		}},
-		testStep: &gateStep{name: "go test", binary: "go", args: []string{"test", "./..."}},
+		testStep: &gateStep{name: "go test", binary: "go", args: []string{"test", "./..."}, sourceExts: []string{".go"}},
 	},
 	// Node.js (TypeScript/JavaScript): package.json
 	//
@@ -979,10 +984,35 @@ func (g *QualityGate) anyConfigFileExists(configFiles []string) bool {
 // runStep executes a single quality gate command with the given timeout.
 // Returns (true, "") on success, (false, errorMessage) on failure or timeout.
 func (g *QualityGate) runStep(ctx context.Context, stepName string, timeout time.Duration, name string, args ...string) (bool, string) {
-	stepCtx, cancel := context.WithTimeout(ctx, timeout)
+	// Which budget can kill this step is decided BEFORE it starts, by comparing
+	// the caller's remaining time (the hook dispatcher's, when the gate runs
+	// from a hook) with the step's own. Deciding afterwards from ctx.Err() would
+	// misattribute the narrow case where the step deadline fires first and the
+	// parent deadline passes while the process is still shutting down — both
+	// contexts then read DeadlineExceeded.
+	// Both budgets are compared as absolute instants derived from one clock
+	// read: a duration comparison would drift by whatever elapses between the
+	// two reads, which is exactly the margin the comparison is deciding.
+	startedAt := time.Now()
+	stepDeadline := startedAt.Add(timeout)
+	parentBudget, parentBinds := time.Duration(0), false
+	if deadline, ok := ctx.Deadline(); ok && !deadline.After(stepDeadline) {
+		parentBudget, parentBinds = deadline.Sub(startedAt), true
+	}
+
+	stepCtx, cancel := context.WithDeadline(ctx, stepDeadline)
 	defer cancel()
 
 	cmd := exec.CommandContext(stepCtx, name, args...)
+	// Every step's arguments are cwd-relative ("./...", ".", a bare "test").
+	// Without an explicit Dir the child inherits the calling process's cwd,
+	// which is the project root only by coincidence — so a gate configured for
+	// one directory would grade another. Under `go test` that coincidence
+	// breaks: the cwd is the package under test, so a "go test ./..." step
+	// re-executes the suite that invoked it.
+	if dir := resolveQualityProjectDir(*g.config, "QualityGate.runStep"); dir != "" {
+		cmd.Dir = dir
+	}
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -1010,8 +1040,16 @@ func (g *QualityGate) runStep(ctx context.Context, stepName string, timeout time
 
 	// Distinguish timeout from other failures (REQ-GATE-009).
 	if stepCtx.Err() == context.DeadlineExceeded {
-		msg := fmt.Sprintf("quality gate timed out: %s exceeded %s", stepName, timeout)
-		return false, msg
+		// A parent cancellation propagates to stepCtx, so DeadlineExceeded here
+		// says nothing about WHICH budget ran out. Blaming the step's own budget
+		// unconditionally produced impossible reasons — a 30s dispatcher budget
+		// expiring mid-`go test` reported "go test exceeded 2m0s" (card t218).
+		if parentBinds {
+			return false, fmt.Sprintf(
+				"quality gate timed out: the overall gate budget ran out while running %s (%s of it remained when the step started; the step's own %s budget was not exceeded)",
+				stepName, parentBudget.Round(time.Millisecond), timeout)
+		}
+		return false, fmt.Sprintf("quality gate timed out: %s exceeded %s", stepName, timeout)
 	}
 
 	// Fix 2: when a NuGet restore failure (cross-platform TFM mismatch) is detected in the dotnet step,

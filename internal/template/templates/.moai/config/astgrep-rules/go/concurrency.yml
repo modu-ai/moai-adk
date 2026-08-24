@@ -10,7 +10,11 @@ rule:
 ---
 id: go-defer-in-loop
 language: go
-severity: error
+# warning, not error: this is a resource-hygiene rule, not a security rule. The
+# pre-write scan gate translates error severity directly into a refused write,
+# which is too strong for a pattern that is often deliberate. The rule keeps
+# reporting on the warning path.
+severity: warning
 message: defer inside a loop holds the file/resource open until the loop's enclosing function returns.
 note: defer inside a loop does not run until the function returns. Extract the
   loop body into a separate function or close explicitly.

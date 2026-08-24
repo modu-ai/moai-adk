@@ -313,6 +313,15 @@ const (
 	// EnvClaudeProjectDir is the project root directory set by Claude Code.
 	EnvClaudeProjectDir = "CLAUDE_PROJECT_DIR"
 
+	// EnvClaudeCodeSessionID is the session UUID Claude Code stamps into the
+	// environment of every subprocess it spawns (Bash tool, hooks, stdio MCP
+	// servers), matching the session_id it passes to hooks on stdin. It is
+	// per-process and therefore the AUTHORITATIVE source of "which session am
+	// I?" — unlike the per-project side-channel file
+	// (session.CurrentSideChannelFile), which holds a single slot and is
+	// overwritten by whichever session started most recently.
+	EnvClaudeCodeSessionID = "CLAUDE_CODE_SESSION_ID"
+
 	// EnvClaudeConfigDir is the Claude Code configuration directory.
 	EnvClaudeConfigDir = "CLAUDE_CONFIG_DIR"
 

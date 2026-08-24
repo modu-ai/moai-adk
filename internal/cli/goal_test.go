@@ -109,6 +109,7 @@ func TestGoalArmEvalLinkage(t *testing.T) {
 // (AC-GLE-037): given a resolvable real session id, arm writes <id>.json and
 // does NOT silently fall back to a pid-<n>.json file.
 func TestGoalArmResolvesSessionId(t *testing.T) {
+	scrubSessionIDEnv(t) // the runtime stamps a real id into this process; the fixture is the sidecar
 	root := t.TempDir()
 	t.Setenv("CLAUDE_PROJECT_DIR", root)
 
@@ -321,6 +322,7 @@ func TestGoalStatusAllEmpty(t *testing.T) {
 // TestGoalArmNoSessionIdWarns covers the documented degrade: no resolvable
 // session id → WriterPidKey fallback WITH a surfaced warning (never silent).
 func TestGoalArmNoSessionIdWarns(t *testing.T) {
+	scrubSessionIDEnv(t) // the runtime stamps a real id into this process; this case is the no-id path
 	root := t.TempDir()
 	t.Setenv("CLAUDE_PROJECT_DIR", root)
 	// No side-channel file → resolveCurrentSessionID returns ok=false.

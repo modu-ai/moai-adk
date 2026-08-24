@@ -160,6 +160,25 @@ func TestProfileFormNestingDetectorIsFalsifiable(t *testing.T) {
 	}
 }
 
+// sandboxProfileBaseForTest narrows the package-wide profile sandbox
+// (TestMain's sandboxProfileBaseDir, main_test.go) to a directory owned by one
+// test.
+//
+// WHY THE PACKAGE-WIDE SANDBOX IS NOT ENOUGH. TestMain runs ONCE per test
+// binary, but `-count=N` runs the suite N times inside that one binary. Every
+// iteration therefore shares the same base directory, so a test that CREATES
+// profile directories leaves them behind for the next iteration. TestProfileRename
+// renames scratch -> scratch2 and asserts a 200: on iteration 2 the handler
+// finds scratch2 already there and refuses with 400 — 9 failures in 10, while
+// `-count=1` stays green. The package sandbox protects $HOME; this one gives
+// each iteration a clean slate.
+func sandboxProfileBaseForTest(t *testing.T) {
+	t.Helper()
+	orig := profile.BaseDirOverride
+	profile.BaseDirOverride = t.TempDir()
+	t.Cleanup(func() { profile.BaseDirOverride = orig })
+}
+
 // seedProfile creates a profile directory under the sandboxed profile base.
 func seedProfile(t *testing.T, name string) string {
 	t.Helper()
@@ -187,6 +206,12 @@ func postProfileForm(a *app, path string, form url.Values) *httptest.ResponseRec
 
 // TestProfileRename verifies AC-WCR-042: exactly one of the five cases succeeds.
 func TestProfileRename(t *testing.T) {
+	// Per-iteration base: the subtests below create profile directories, and a
+	// base shared across `-count` iterations turns them into cross-iteration
+	// state. Installed on the parent rather than per subtest because the
+	// subtests are serial and BaseDirOverride is a package global.
+	sandboxProfileBaseForTest(t)
+
 	t.Run("ok", func(t *testing.T) {
 		a := newTestApp(t)
 		seedProfile(t, "scratch")

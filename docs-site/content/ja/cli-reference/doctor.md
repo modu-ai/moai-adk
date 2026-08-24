@@ -50,6 +50,17 @@ moai doctor [OPTIONS]
 
 この推定値は `moai clean --home` が使うのと**同じスキャナ**を呼ぶので、doctor が言う数字と clean が実際に削除する一覧がずれることはありません。詳細は [ホームディレクトリ衛生](/ja/advanced/home-hygiene) にあります。
 
+## 終了コード
+
+スクリプトや CI ラッパーが `moai doctor` を呼ぶとき読むのは、要約の行ではなく終了コードです。
+
+| 終了コード | 意味 |
+|------------|------|
+| `0` | Fail 項目なし。Warn は勧告なので終了コードを変えません |
+| `1` | 一件以上が Fail。要約の `Fail N` がそのまま反映されます |
+
+Constitution Registry の項目は、レジストリが解析できるかを見るだけでなく、`moai constitution validate` と**同じドリフト検証**を実行します。したがって同じチェックアウトで doctor が ok と言い、validate が失敗する、ということは起こりません。`MOAI_CONSTITUTION_SKIP_VALIDATE=1` で迂回すると、doctor は構造検査の判定に戻ります。
+
 ## 例
 
 ```bash

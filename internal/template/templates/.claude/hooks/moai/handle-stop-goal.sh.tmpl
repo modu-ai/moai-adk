@@ -58,22 +58,38 @@ if [ -z "$SESSION_ID" ] || [ ! -f "$STATE_FILE" ]; then
     exit 0
 fi
 
-# A goal IS armed — proceed to the 3-tier moai-binary resolution, replaying
-# the captured stdin so the evaluator sees the full Stop payload.
-# Try moai command in PATH
-if command -v moai &> /dev/null; then
-    printf '%s' "$INPUT" | exec moai hook stop-goal 2>>"$MOAI_HOOK_STDERR_LOG"
-fi
-
-# Try default ~/go/bin/moai
-if [ -f "$HOME/go/bin/moai" ]; then
-    printf '%s' "$INPUT" | exec "$HOME/go/bin/moai" hook stop-goal 2>>"$MOAI_HOOK_STDERR_LOG"
-fi
-
-# Try ~/.local/bin/moai (Linux install location)
-if [ -f "$HOME/.local/bin/moai" ]; then
-    printf '%s' "$INPUT" | exec "$HOME/.local/bin/moai" hook stop-goal 2>>"$MOAI_HOOK_STDERR_LOG"
+# A goal IS armed — resolve the moai binary across the same 3 tiers, then feed
+# it the captured stdin exactly ONCE.
+#
+# Resolution happens BEFORE the invocation rather than each tier ending in its
+# own `printf '%s' "$INPUT" | exec <bin> …`: on the right-hand side of a
+# pipeline, `exec` replaces the pipeline's SUBSHELL, not this wrapper. A
+# per-tier exec therefore left the wrapper alive to fall through to the next
+# `if`, firing the evaluator again for every tier whose binary existed — and
+# $HOME/go/bin/moai is the standard Go install location, so a second firing was
+# the norm. That double-emitted the Stop JSON from one hook entry, double-
+# incremented turns_used (exhausting the ceiling in half the intended turns),
+# and ran every mechanical condition twice. Guarded by
+# TestStopGoalWrapperFiresEvaluatorExactlyOnce (internal/hook).
+MOAI_BIN=""
+if command -v moai > /dev/null 2>&1; then
+    MOAI_BIN="$(command -v moai)"
+elif [ -f "$HOME/go/bin/moai" ]; then
+    # Default Go install location.
+    MOAI_BIN="$HOME/go/bin/moai"
+elif [ -f "$HOME/.local/bin/moai" ]; then
+    # Linux install location.
+    MOAI_BIN="$HOME/.local/bin/moai"
 fi
 
 # Not found - exit silently (Claude Code handles missing hooks gracefully)
+if [ -z "$MOAI_BIN" ]; then
+    exit 0
+fi
+
+printf '%s' "$INPUT" | "$MOAI_BIN" hook stop-goal 2>>"$MOAI_HOOK_STDERR_LOG"
+
+# Always exit 0: the block decision rides the JSON on stdout, which Claude Code
+# honors only on exit 0 (exit 2 discards stdout). The evaluator itself never
+# exits non-zero, so this preserves the wrapper's existing contract.
 exit 0

@@ -50,6 +50,17 @@ moai doctor [OPTIONS]
 
 这个估算调用的是与 `moai clean --home` **同一个扫描器**,所以 doctor 报出的数字和 clean 实际删除的清单不会脱节。详见 [主目录卫生](/zh/advanced/home-hygiene)。
 
+## 退出码
+
+脚本和 CI 包装器调用 `moai doctor` 时，读的是退出码，而不是摘要那一行。
+
+| 退出码 | 含义 |
+|--------|------|
+| `0` | 没有 Fail 项。Warn 属于劝告，不改变退出码 |
+| `1` | 有一项以上 Fail —— 摘要里的 `Fail N` 原样体现 |
+
+Constitution Registry 这一项不只确认注册表能否解析，它跑的是与 `moai constitution validate` **相同的漂移校验**。所以在同一个检出里，doctor 说 ok 而 validate 失败的情况不会出现。用 `MOAI_CONSTITUTION_SKIP_VALIDATE=1` 绕过时，doctor 回到它自己的结构检查判定。
+
 ## 示例
 
 ```bash

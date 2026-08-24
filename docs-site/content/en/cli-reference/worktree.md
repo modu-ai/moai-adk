@@ -74,7 +74,7 @@ The argument is a **file-system path**, not a branch name.
 ## moai worktree clean
 
 ```bash
-moai worktree clean [--merged-only | --stale] [--yes] [--base <branch>]
+moai worktree clean [--merged-only | --stale] [--yes] [--json] [--base <branch>]
 ```
 
 Run without flags, it only prunes stale worktree references.
@@ -84,7 +84,8 @@ Run without flags, it only prunes stale worktree references.
 | `--merged-only` | Remove only worktrees whose branch is merged into base |
 | `--stale` | Sweep up abandoned worktrees with nothing to lose (preview by default) |
 | `--yes` | Actually remove instead of previewing with `--stale` |
-| `--base <branch>` | Base branch used to judge `--merged-only` and `--stale` (default: `main`) |
+| `--json` | With `--stale`: report every non-protected worktree with its keep reason and its four predicates — dirty, merge, anchor, and ignored-content state — as JSON. Removes nothing, and overrides `--yes` |
+| `--base <branch>` | Base branch used to judge `--merged-only` and `--stale` (default: `origin/main`) |
 
 `--stale` and `--merged-only` cannot be combined.
 

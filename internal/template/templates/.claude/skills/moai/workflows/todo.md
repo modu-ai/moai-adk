@@ -47,6 +47,7 @@ When the operator says `/moai todo "<description>"`, run
 | `moai todo relate <a> <b> --relation (contains\|absorbs\|replaces\|conflicts) [--note <text>]` | Record one relation between two existing cards. The verb writes a record and touches neither card; `absorbs` does not absorb. |
 | `moai todo unrelate <index>` | Remove the addressed record. The index is the one `why` prints. No card changes. |
 | `moai todo why <n>` | Print every record naming the card, or an explicit no-findings line. A card the queue knows nothing about says so rather than printing nothing. |
+| `moai todo pr [<id>]` | Report each card's open pull request or landed state — read-only, and it writes nothing. Four outcomes: `linked` (one open PR carries the card id; confidence `exact` from the PR title, `inferred` from a single PR body), `ambiguous` (several PR bodies carry it — every candidate is listed and none is chosen), `landed` (no open PR, but the integration branch's history names the card), and `no-link`. One `gh` query per invocation, never one per card, which is why the link is a separate verb rather than a column on `list`: the queue's cheapest read stays free of the network. When `gh` is absent, unauthenticated, or offline the link column renders empty, the degradation is noted on stderr, and the exit code stays 0 — the landed check is local git and keeps running. |
 
 [HARD] `edit`, `move`, `drop`, and `undrop` are operator acts, exactly like
 `add` and the pick. Correct a card's wording, move it, or discard it because
