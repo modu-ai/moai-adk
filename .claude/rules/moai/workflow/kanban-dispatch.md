@@ -170,7 +170,7 @@ The **worktree directory keeps the card id** (`.claude/worktrees/<card-id>`). On
 
 A lane that reports a branch name without also reporting its card id has not reported the card. Merges reference the `WT-` name; the lead maps it back through the `card:` field it dispatched.
 
-[HARD] **A card-delivering pull request's PR title MUST carry the delivering card id** — and this does not contradict the branch-name rule above: the branch name is read by a human scanning `git branch` and wants a slug; the PR title is read by a machine and wants the id. Traceability therefore rests on **four** carriers rather than the three above — the dispatch `card:` field, the commit message, the evidence path, and the PR title, the only machine-readable one.
+[HARD] **A card-delivering pull request's PR title MUST carry the delivering card id** — and this does not contradict the branch-name rule above: the branch name is read by a human scanning `git branch` and wants a slug; the PR title is read by a machine and wants the id. Traceability therefore rests on **four** carriers rather than the three above — the dispatch `card:` field, the commit message, the evidence path, and the PR title — the only one a resolver can read off the pull-request surface itself, where the dispatch `card:` field (also machine-readable) does not reach.
 
 The obligation binds card-delivering pull requests only; a release, batch, or maintenance pull request delivers no card and carries none. It binds pull requests opened after it lands — nothing is retitled. Rationale and the carrier measurements: `kanban-dispatch-detail.md` § The PR-title carrier.
 
