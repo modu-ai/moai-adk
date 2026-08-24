@@ -5,10 +5,24 @@ likely to change under review, so it leads. Mechanical work sits at the bottom.
 
 ## §A Context
 
-`internal/cli/hook_install_precommit.go` (179 lines `@294b4b6ab`) is the whole surface. Two callers,
-both invoking `installPreCommitHookOptional` and both gated by `--no-hooks`:
+`internal/cli/hook_install_precommit.go` (179 lines `@294b4b6ab`) is the implementation surface. Two
+callers, both invoking `installPreCommitHookOptional` and both gated by `--no-hooks`:
 `internal/cli/update_template_sync.go:575 @294b4b6ab` and `internal/cli/init.go:898 @294b4b6ab`.
-Neither caller changes in this SPEC.
+
+**Each caller changes by exactly one line, and no more.** Version 0.2.0 of this plan said "neither
+caller changes", which made REQ-PCP-004 ("on stderr") unsatisfiable: the installer has a single
+writer, and the `moai update` caller binds it to **stdout** (`out := cmd.OutOrStdout()` at
+`update_template_sync.go:69 @7b2f42be0`, inside `runTemplateSyncWithReporter`; a second,
+unrelated `out := cmd.OutOrStdout()` at `:604` belongs to a later function and is not this one), while `moai init` binds it to stderr
+(`init.go:898 @7b2f42be0`). Leaving that contradiction for run-phase would have driven the cheapest
+repair — weakening AC-PCP-004 to capture `os.Stderr` — which is exactly the criterion erosion this
+SPEC exists to prevent.
+
+The permitted change is: add a warning-writer parameter to `installPreCommitHookOptional`, and pass
+the stderr writer each caller already holds — `errOut` (`update_template_sync.go:72 @7b2f42be0`) and
+`cmd.ErrOrStderr()` (`init.go:898 @7b2f42be0`). Nothing else in either caller moves: not the
+`--no-hooks` gate, not the ordering against `installPrePushHookOptional`, not the existing progress
+writer. spec.md §C.4 carries the same permission; anything wider is out of scope.
 
 ## §B Known Issues carried in
 
@@ -29,6 +43,9 @@ Neither caller changes in this SPEC.
 3. `grep -n 'installPreCommitHookOptional' internal/cli/update_template_sync.go internal/cli/init.go`
    — re-confirm the call sites have not drifted again.
 4. Check whether card t237 has landed on `origin/main`; if it has, rebase before starting M3.
+5. `git show v3.1.2:internal/template/templates/.git_hooks/pre-commit | cmp - internal/template/templates/.git_hooks/pre-commit`
+   — record the AC-PCP-015 baseline (identical, rc 0) before any edit, so a later divergence is
+   attributable to this SPEC rather than assumed.
 
 ## §D Constraints
 
@@ -37,6 +54,11 @@ Neither caller changes in this SPEC.
   necessary during M1 or M2, the sidecar decision (spec.md §A.5, Decision 1) has been abandoned —
   stop and re-open that decision rather than absorbing the edit quietly.
 - `make build` after M3 only.
+- Caller edits are limited to the single-line warning-writer argument at each of the two call sites
+  (§A). A caller change beyond that is a scope violation, not an implementation detail.
+- **M3 does not ship in the same release as M1/M2** (spec.md §A.5 Decision 3, REQ-PCP-015). If the
+  release plan changes, re-open Decision 3 rather than absorbing the change silently — the
+  first-upgrade false-alarm rate is the thing being traded.
 
 ## §E Self-Verification
 
@@ -71,10 +93,17 @@ REQ-PCP-008.
 
 - On `user-modified`, copy to `.git/hooks/pre-commit.bak.<UTC RFC3339-ish timestamp>` before
   writing; pick a distinct path if occupied.
-- Emit the stderr notice from `installPreCommitHookOptional`, naming the backup path, the
-  replacement, and `pre-commit.local`.
-- Backup and sidecar write failures degrade to a warning; the caller is never failed.
+- Emit the notice from `installPreCommitHookOptional` on its new warning writer (stderr at both call
+  sites, §A), naming the backup path, the replacement, and `pre-commit.local`.
+- **Backup failure and sidecar failure differ in precedence** (REQ-PCP-010): a failed backup warns
+  and **leaves the hook untouched**; a failed sidecar write, which happens after the hook write,
+  warns and leaves the replacement in place. Neither fails the caller. Getting this backwards — warn
+  and overwrite anyway on a failed backup — destroys the patch this SPEC exists to protect;
+  AC-PCP-010(a)'s post-state assertion is the check.
 - Tests: AC-PCP-003, AC-PCP-004, AC-PCP-006, AC-PCP-007, AC-PCP-008, AC-PCP-009, AC-PCP-010.
+- Release gate at the end of M2: AC-PCP-015 — confirm the hook body is still byte-identical to
+  `v3.1.2` before the classifier release ships. This is the milestone at which the release becomes
+  shippable, so it is where the composition is checked.
 
 ### M3 — the local extension point (paired edit; collision-prone — land last)
 
@@ -87,9 +116,17 @@ Delivers REQ-PCP-011, REQ-PCP-012, REQ-PCP-013.
 - Land as its own commit, last (§C.2 — card t237 edits the same pair).
 - Tests: AC-PCP-011, AC-PCP-012, AC-PCP-013.
 
-Note the ordering consequence: M2's notice points users at `pre-commit.local`, which does not exist
-until M3. Either land M3 before the SPEC closes, or the notice names a facility the user cannot yet
-use — an acceptable intermediate state within one SPEC, not an acceptable shipping state.
+**Release ordering — resolved.** Version 0.2.0 of this plan stated two conflicting resolutions and
+chose neither. spec.md §A.5 Decision 3 chooses: M1+M2 ship in `v3.1.4` with the hook body
+byte-identical to `v3.1.2`; M3 ships in the following release. The reason is measured — the body has
+not changed since `883d53852` (2026-07-28), so `v3.1.0` through `v3.1.2` and HEAD are byte-identical,
+and landing M3 alongside the classifier would make `installed != incoming` true for every user
+without exception. Splitting keeps that population silent and correct, and stamps it, so M3's body
+change is silent too when it lands.
+
+The accepted consequence is that `v3.1.4`'s notice names `pre-commit.local` one release before the
+hook consults it. spec.md §A.5 Decision 3 states why that is preferable to a release-dependent
+notice text. M3's milestone content above is unchanged; only its release target moves.
 
 ## §G Anti-Patterns
 
@@ -104,6 +141,15 @@ use — an acceptable intermediate state within one SPEC, not an acceptable ship
 - **Interactive confirmation.** Hangs `moai update` in CI.
 - **One-sided template edit.** Editing the constant without the template (or vice versa) fails
   `TestPreCommitTemplateMatchesConstant` — but only if the test runs; do not skip `internal/cli`.
+- **Warn-and-overwrite-anyway on a failed backup.** Satisfies "warn, do not fail the caller" while
+  destroying the user's patch with no recoverable backup. REQ-PCP-010 sub-case (a) forbids it and
+  AC-PCP-010(a)'s post-state assertion is the only criterion that reaches it.
+- **Routing the backup notice to the progress writer.** Under `moai update` that writer is stdout,
+  so a scripted `moai update >/dev/null` swallows the data-loss notice entirely — the card's own
+  failure mode, reintroduced through the stream choice. AC-PCP-004 clause (ii) checks the call
+  sites, not just the installer.
+- **Folding M3 into the M1/M2 release.** Makes `installed != incoming` true for 100% of users on the
+  release that introduces the classifier. REQ-PCP-015 / AC-PCP-015 exist to catch this.
 - **Widening to pre-push.** Out of scope; keeps the diff attributable.
 
 ## §H Cross-References

@@ -43,7 +43,7 @@ written by *that* run.
   substituted.
 - **Failing input**: a stub that creates `.moai-pre-commit.sha256` empty. Must be observed red.
 
-### AC-PCP-002 — a version bump stays silent (REQ-PCP-002)
+### AC-PCP-002 — a version bump stays silent (REQ-PCP-002) — implementation-mutant-falsifiable only
 
 **Given** an installed hook whose bytes match the recorded digest,
 **When** the installer runs with a **different** `preCommitHookContent`,
@@ -56,8 +56,14 @@ contains no backup notice.
 - **Mutant**: an implementation that never notifies under any circumstance. Passes trivially and
   violates REQ-PCP-006. Defeated by AC-PCP-003/004/006, which demand a notice in the sibling case —
   this criterion is only sound *paired with* them.
-- **Failing input**: an implementation that backs up whenever `installed != incoming` (the naive
-  two-way design). Must be observed red — this is the noise regression the design exists to prevent.
+- **Failing input** (implementation mutation, not a tree mutation): an implementation that backs up
+  whenever `installed != incoming` (the naive two-way design). Must be observed red — this is the
+  noise regression the design exists to prevent.
+- **Falsification class**: this criterion's Given ("bytes match the recorded digest") is
+  unconstructible on the untouched tree, because no sidecar mechanism exists there — it goes red at
+  setup rather than by observing today's behaviour. It is therefore falsifiable **only** against a
+  named implementation mutant, the same class as the three criteria labelled behaviour-preserving,
+  and must not be counted as evidence about the pre-implementation tree.
 
 ### AC-PCP-003 — a modified hook is backed up before replacement (REQ-PCP-003)
 
@@ -72,20 +78,33 @@ content.
   REQ-PCP-002 by making every version bump noisy. Defeated by AC-PCP-002.
 - **Failing input**: today's installer at `294b4b6ab` — no backup is written at all.
 
-### AC-PCP-004 — the backup is disclosed on stderr (REQ-PCP-004)
+### AC-PCP-004 — the backup is disclosed, and it reaches stderr (REQ-PCP-004)
 
 **Given** the AC-PCP-003 scenario,
-**When** `installPreCommitHookOptional` runs against a captured writer,
-**Then** the captured output contains **all three** of: the backup file's path, a statement that the
-hook was replaced, and the string `pre-commit.local`.
+**When** `installPreCommitHookOptional` runs against **two** captured writers — the progress writer
+and the warning writer,
+**Then** (i) the **warning** writer's captured output contains **all three** of: the backup file's
+path, a statement that the hook was replaced, and the string `pre-commit.local`; **and** (ii) both
+call sites bind the warning-writer parameter to the command's stderr.
 
-- **Decides**: `go test ./internal/cli/ -run TestPreCommitBackupNoticeContent -count=1`
+- **Decides**: `go test ./internal/cli/ -run TestPreCommitBackupNoticeContent -count=1` for clause
+  (i); for clause (ii), a static call-site check —
+  `grep -n 'installPreCommitHookOptional(' internal/cli/update_template_sync.go internal/cli/init.go`
+  showing an `ErrOrStderr`-derived writer in the warning-writer position at each site (a Go test
+  asserting the same is equally acceptable).
 - **Baseline**: the only output is `  Pre-commit hook installed (.git/hooks/pre-commit)`
-  (`internal/cli/hook_install_precommit.go:172 @294b4b6ab`) — it contains none of the three.
+  (`internal/cli/hook_install_precommit.go:172 @294b4b6ab`) — it contains none of the three, and no
+  warning writer exists. Clause (ii) baseline: `update_template_sync.go:575 @7b2f42be0` passes
+  `out` (bound to `cmd.OutOrStdout()` at `:69`), i.e. **stdout**.
 - **Mutant**: prints the notice but never writes the backup — all disclosure, no artifact. Passes,
   and violates REQ-PCP-003. Defeated by AC-PCP-003 and, in a single case, by AC-PCP-006.
+  A second mutant, which clause (ii) exists for: adds the warning-writer parameter but wires the
+  `moai update` call site to the existing `out`. Clause (i) passes — the notice lands on *a*
+  captured writer — while the notice is silently on stdout and a scripted
+  `moai update >/dev/null` swallows it. Only clause (ii) catches this.
 - **Failing input**: the **card's headline mutant** — an implementation that backs up and overwrites
-  correctly but prints nothing. Must be observed red here; this is the criterion that catches it.
+  correctly but prints nothing. Must be observed red here against clause (i). Clause (ii) must be
+  observed red against `update_template_sync.go` at `7b2f42be0` unchanged.
 
 ### AC-PCP-005 — a legacy install with no record degrades safely (REQ-PCP-005)
 
@@ -122,17 +141,21 @@ satisfies this criterion.
 ### AC-PCP-007 — the success line is never the whole story (REQ-PCP-007)
 
 **Given** the AC-PCP-003 scenario,
-**When** `installPreCommitHookOptional` runs,
-**Then** the captured output both (i) differs from the bare success line and (ii) contains the
-backup path.
+**When** `installPreCommitHookOptional` runs against both captured writers,
+**Then** (i) the warning writer's captured output is non-empty and (ii) contains the backup path —
+so the run's total output is never the bare success line alone.
 
 - **Decides**: `go test ./internal/cli/ -run TestPreCommitBackupOutputNotBareSuccess -count=1`
-- **Baseline**: the captured output **is** exactly
-  `  Pre-commit hook installed (.git/hooks/pre-commit)\n`.
-- **Mutant**: appends a blank line or trailing whitespace to the success line. Output now differs
-  from the bare line, so a pure inequality check passes while the user learns nothing. Defeated by
-  clause (ii) — inequality alone is not an acceptable implementation of this criterion.
-- **Failing input**: the whitespace-padded success line. Must be observed red against clause (ii).
+- **Baseline**: the run's entire output **is** exactly
+  `  Pre-commit hook installed (.git/hooks/pre-commit)\n`, on the single writer that exists at
+  `294b4b6ab`; there is no warning writer, so clause (i) is red at baseline.
+- **Mutant**: appends a blank line or trailing whitespace to the success line. Under the original
+  single-writer wording a pure inequality check passed while the user learned nothing; under the
+  two-writer wording the padded run leaves the warning writer empty, so clause (i) now catches it
+  directly. Clause (ii) additionally defeats a mutant that writes a blank or generic line to the
+  warning writer — non-empty output that names nothing is not disclosure.
+- **Failing input**: the whitespace-padded success line, with the warning writer empty. Must be
+  observed red against clause (i).
 
 ### AC-PCP-008 — marker-absent behaviour is unchanged (REQ-PCP-008) — behaviour-preserving
 
@@ -165,20 +188,39 @@ exists.
 - **Failing input**: a fixed-filename backup implementation (`pre-commit.bak`, no timestamp). Must
   be observed red.
 
-### AC-PCP-010 — backup failure does not fail update/init (REQ-PCP-010)
+### AC-PCP-010 — a failed supporting write is non-fatal, and never costs the user bytes (REQ-PCP-010)
 
-**Given** a hooks directory in which the backup write cannot succeed,
-**When** `installPreCommitHookOptional` runs,
-**Then** it returns normally, emits a warning naming the failure, and does not panic or abort the
-caller.
+Two sub-cases, both mandatory. They differ in post-state because the two supporting writes sit on
+opposite sides of the hook write.
 
-- **Decides**: `go test ./internal/cli/ -run TestPreCommitBackupFailureNonFatal -count=1`
-- **Baseline**: no backup is attempted, so no failure mode exists to be non-fatal.
-- **Mutant**: never attempts a backup at all — cannot fail, so passes. Violates REQ-PCP-003.
-  Defeated by AC-PCP-003. A second mutant: swallows the failure with no warning, which the "emits a
-  warning" clause defeats.
-- **Failing input**: an implementation that returns the backup error to the caller and aborts
-  `moai update`. Must be observed red.
+**(a) Backup write fails.** **Given** a user-modified hook and a hooks directory in which the backup
+write cannot succeed, **When** `installPreCommitHookOptional` runs, **Then** it returns normally,
+emits a warning naming the failure, does not panic or abort the caller, **and the installed hook's
+bytes are byte-identical to their pre-run value** — no replacement occurred.
+
+**(b) Provenance write fails after a successful hook write.** **Given** a run in which the hook write
+succeeds but `.git/hooks/.moai-pre-commit.sha256` cannot be written, **When**
+`installPreCommitHookOptional` runs, **Then** it returns normally, emits a warning, does not abort
+the caller, **and the hook IS replaced** — and a second run with the same content takes no backup
+and emits no notice (the record self-heals via REQ-PCP-005).
+
+- **Decides**: `go test ./internal/cli/ -run TestPreCommitSupportWriteFailureNonFatal -count=1`
+  (both sub-cases)
+- **Baseline**: neither a backup nor a provenance write is attempted at `294b4b6ab`, so no failure
+  mode exists to be non-fatal, and no post-state distinction exists to assert.
+- **Mutant**: **backup fails → warn → overwrite anyway.** This is the destroying implementation: it
+  returns normally, emits a warning, does not abort the caller — satisfying every clause of the
+  criterion as originally written — while destroying the user's patch with no recoverable backup,
+  violating REQ-PCP-006. It is defeated **only** by sub-case (a)'s post-state assertion; no other
+  criterion in this set reaches it, because AC-PCP-006's Given is the AC-PCP-003 scenario, in which
+  the backup succeeds. A second mutant: never attempts a backup at all — cannot fail, so passes;
+  violates REQ-PCP-003 and is defeated by AC-PCP-003. A third: swallows the failure with no warning,
+  defeated by the "emits a warning" clause.
+- **Failing input**: for sub-case (a), the warn-then-overwrite-anyway implementation — must be
+  observed red against the post-state clause specifically, not merely against "returns normally".
+  Also red-check an implementation that returns the backup error to the caller and aborts
+  `moai update`. For sub-case (b), an implementation that skips the hook write when the provenance
+  write is going to fail (over-applying (a)'s precedence to the wrong side of the write).
 
 ### AC-PCP-011 — the local hook runs and its status propagates (REQ-PCP-011)
 
@@ -240,6 +282,41 @@ classified user-modified.
   single-case version of this criterion is satisfiable by a two-way design and must be rejected.
 - **Failing input**: the two-way implementation, run against case one. Must be observed red.
 
+### AC-PCP-015 — the classifier release does not change the hook body (REQ-PCP-015)
+
+**Given** the release candidate that first carries REQ-PCP-001 through REQ-PCP-010 and REQ-PCP-014,
+**When** its distributed hook body is compared against the most recently released one,
+**Then** (i) `git show <last-released-tag>:internal/template/templates/.git_hooks/pre-commit | cmp -
+internal/template/templates/.git_hooks/pre-commit` reports identical (rc 0), **and** (ii)
+`grep -c 'pre-commit\.local' internal/template/templates/.git_hooks/pre-commit` → `0`, **and**
+(iii) `TestPreCommitTemplateMatchesConstant` PASSes (AC-PCP-013), which transitively binds
+`preCommitHookContent` to the same bytes.
+
+This is also the criterion that covers the **first-upgrade path with an unmodified legacy hook**,
+which nothing covered before: when (i) holds, a `v3.1.0`-`v3.1.2` user's installed hook equals the
+incoming content, so that user's first upgrade runs AC-PCP-005 sub-case (b) — silent, no backup.
+Sub-case (b) is satisfiable precisely *because* this criterion holds; if REQ-PCP-011 shipped in the
+same release it would be unsatisfiable for every user.
+
+- **Decides**: the compound check above, run against the release candidate.
+- **Baseline** (`@7b2f42be0`, the pre-implementation tree): (i)
+  `git show v3.1.2:internal/template/templates/.git_hooks/pre-commit | cmp - <same path>` → rc 0,
+  identical; (ii) grep → `0`; (iii) test present and passing at
+  `internal/cli/hook_install_precommit_test.go:38 @294b4b6ab`. All three hold — **behaviour-
+  preserving by construction**: the criterion's job is to keep holding while M1/M2 land, and to go
+  red the moment M3's body change is folded into the same release.
+- **Mutant**: adding the `pre-commit.local` delegation to `preCommitHookContent` only, leaving the
+  template untouched. Clause (i) compares the *template*, so it passes while the shipped binary's
+  hook body has in fact changed. Defeated by clause (iii) — `TestPreCommitTemplateMatchesConstant`
+  fails on any one-sided edit — which is why this criterion asserts parity rather than trusting the
+  template alone. A second mutant: re-pointing `<last-released-tag>` at the current release after
+  landing M3, making the comparison trivially true. Defeated by naming the tag as *the last release
+  whose hook body predates this SPEC* (`v3.1.2` at authoring time) rather than "the latest tag".
+- **Failing input**: the tree with M3 applied — both the constant and the template carrying the
+  `pre-commit.local` delegation. Clauses (i) and (ii) must both be observed red against it before
+  this criterion is accepted; a criterion that has only ever been green here proves nothing about
+  the release composition it exists to bind.
+
 ## §D.1 Edge cases
 
 | Case | Expected |
@@ -250,6 +327,9 @@ classified user-modified.
 | Installed hook unreadable | existing `read existing hook` error path, unchanged |
 | Two backups needed within the same timestamp granularity | AC-PCP-009 governs; distinct paths required |
 | Hook restored by hand from a `.bak` file | record mismatches → classified user-modified → backed up again. Noisy but safe; the correct direction of error |
+| Backup write fails on a user-modified hook | REQ-PCP-010 sub-case (a): warn, **do not replace**, do not fail the caller. AC-PCP-010(a) asserts the unchanged post-state |
+| Backup succeeds, then the hook write fails | no replacement occurred, so **no replacement notice** — the REQ-PCP-004 notice states the hook "was replaced", which would be false. Report the write failure as a warning (REQ-PCP-010's non-fatal path) and name the orphan `pre-commit.bak.<ts>` left beside the unchanged hook, so the artifact is explained rather than mysterious |
+| Provenance write fails after a successful hook write | REQ-PCP-010 sub-case (b): warn, keep the replacement. Self-heals on the next run via the REQ-PCP-005 legacy path |
 
 ## §D.2 Quality gates
 
@@ -260,9 +340,13 @@ classified user-modified.
 
 ## §D.3 Definition of Done
 
-- All 14 AC pass; the 3 behaviour-preserving ones show no change from baseline.
+- All 15 AC pass; the 4 that show no change from baseline (AC-PCP-008, -012, -013, -015) are
+  behaviour-preserving and are falsifiable only against a named implementation mutant — as is
+  AC-PCP-002, whose Given is unconstructible on the untouched tree.
 - **Every criterion has been observed failing against its stated failing input** before being
   accepted. A criterion that has only ever been green is not evidence.
 - No prompt is introduced on any path (§C.3 of spec.md).
-- REQ-PCP-011's paired edit lands as its own final commit (§C.2).
+- REQ-PCP-011's paired edit lands as its own final commit (§C.2) **and in a later release than the
+  rest of this SPEC** (§A.5 Decision 3). AC-PCP-015 is checked against the release candidate before
+  the classifier release ships; a release candidate that fails it is not shippable.
 - `~/go/bin/moai spec lint .moai/specs/SPEC-PRECOMMIT-PRESERVE-001/spec.md` clean.
