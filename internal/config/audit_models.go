@@ -53,12 +53,27 @@ type AuditGates struct {
 	GLM string `yaml:"glm,omitempty" json:"glm,omitempty"`
 }
 
-// AuditConfig is the workflow.audit block: the active audit_model plus the
-// per-auditor gates. Loaded from workflow.yaml; defaults live in
-// NewDefaultWorkflowConfig.
+// AuditConfig is the workflow.audit block: the active audit_model, the
+// per-auditor gates, and the per-backend {model, effort} pins. Loaded from
+// workflow.yaml; defaults live in NewDefaultWorkflowConfig.
 type AuditConfig struct {
 	// Model is the active audit_model token (claude|codex|glm|multi).
 	Model string `yaml:"model,omitempty" json:"model,omitempty"`
 	// Gates carries the per-auditor gate tokens.
 	Gates AuditGates `yaml:"gates,omitempty" json:"gates,omitempty"`
+	// Codex pins the codex audit backend's {model, effort}
+	// (SPEC-V3R6-AUDIT-MODEL-PIN-001 REQ-AMP-001/002). Precedence at the
+	// audit entry points: this pin > SSOT sync-auditor cell > empty. An empty
+	// Model is NO pin (effort alone pins nothing — the model is the gate), and
+	// the empty fallback resolves exactly as before this SPEC (REQ-AMP-004).
+	// Effort uses the codex/Claude vocabulary (low|medium|high|xhigh|max).
+	// Distributed default and Go default stay EMPTY (REQ-AMP-005 neutrality).
+	Codex ModelEffort `yaml:"codex,omitempty" json:"codex,omitempty"`
+	// GLM pins the GLM audit backend's {model, effort} (REQ-AMP-001/003).
+	// Same pin semantics as Codex (empty model = no pin). Effort uses the
+	// z.ai reasoning-state vocabulary {low, high, max} VERBATIM, single
+	// reading (REQ-AMP-006): any other non-empty value omits the reasoning
+	// directive while the model pin still applies. No effort collapse runs on
+	// this path — CollapseClaudeEffortToGLM is the vocabulary reference only.
+	GLM ModelEffort `yaml:"glm,omitempty" json:"glm,omitempty"`
 }

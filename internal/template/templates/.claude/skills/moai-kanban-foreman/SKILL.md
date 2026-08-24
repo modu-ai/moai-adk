@@ -139,7 +139,8 @@ not something this loop can do for itself.
    Route the spawn to the agent the card's work matches under the standard
    delegation rules; where no specialist matches, a general-purpose spawn
    with a domain whitelist. The worker prompt carries the block plus these
-   standing orders: rename the worktree branch to `WT-<card-id>` first;
+   standing orders: rename the worktree branch to `WT-<slug>` (a
+   descriptive slug, never the card id) first;
    implement the card; verify lane-locally; write the evidence file with
    decisions, verbatim output tails of the checks run, explicit gaps, and
    residual risk; commit by explicit pathspec; never push.

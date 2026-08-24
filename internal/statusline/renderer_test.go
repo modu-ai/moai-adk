@@ -1174,40 +1174,36 @@ func TestRenderUsageBarWithReset(t *testing.T) {
 	}
 }
 
-// TestRenderDirGitLine_WorktreeIndicator verifies that the "[WT] " prefix appears in
-// the branch segment when a worktree is active and SegmentWorktree is enabled.
-// REQ-CC297-003: worktree prefix shown in branch segment when worktree is active.
-// The legacy 🌿 emoji was replaced with the textual "[WT] " marker for clarity.
+// TestRenderDirGitLine_WorktreeIndicator verifies that the "[WT] " branch prefix
+// stays RETIRED in every state (operator decision 2026-08-24, superseding the
+// 2026-08-18 request and REQ-CC297-003): worktree identity rides the WT-<slug>
+// branch-name convention instead of a statusline marker. The branch itself must
+// still render.
 func TestRenderDirGitLine_WorktreeIndicator(t *testing.T) {
 	tests := []struct {
 		name           string
 		worktree       string
 		segmentEnabled bool
-		wantWT         bool
 	}{
 		{
-			name:           "worktree present and segment enabled: shows [WT]",
+			name:           "worktree present and segment enabled: no [WT], branch renders",
 			worktree:       "/repo/.claude/worktrees/abc123",
 			segmentEnabled: true,
-			wantWT:         true,
 		},
 		{
-			name:           "worktree present but segment disabled: no [WT]",
+			name:           "worktree present but segment disabled: no [WT], branch renders",
 			worktree:       "/repo/.claude/worktrees/abc123",
 			segmentEnabled: false,
-			wantWT:         false,
 		},
 		{
-			name:           "no worktree with segment enabled: no [WT]",
+			name:           "no worktree with segment enabled: no [WT], branch renders",
 			worktree:       "",
 			segmentEnabled: true,
-			wantWT:         false,
 		},
 		{
-			name:           "no worktree and segment disabled: no [WT]",
+			name:           "no worktree and segment disabled: no [WT], branch renders",
 			worktree:       "",
 			segmentEnabled: false,
-			wantWT:         false,
 		},
 	}
 
@@ -1233,11 +1229,13 @@ func TestRenderDirGitLine_WorktreeIndicator(t *testing.T) {
 			if strings.Contains(got, "🌿") {
 				t.Errorf("legacy 🌿 emoji must not appear, got %q", got)
 			}
-			if tt.wantWT && !strings.Contains(got, "[WT] ") {
-				t.Errorf("expected [WT] prefix when worktree is active, got %q", got)
+			// The retired [WT] marker must never appear, in any state.
+			if strings.Contains(got, "[WT]") {
+				t.Errorf("[WT] marker is retired and must not appear, got %q", got)
 			}
-			if !tt.wantWT && strings.Contains(got, "[WT]") {
-				t.Errorf("unexpected [WT] prefix when worktree is inactive, got %q", got)
+			// The branch itself still renders.
+			if !strings.Contains(got, "feat/test") {
+				t.Errorf("branch name must still render, got %q", got)
 			}
 		})
 	}

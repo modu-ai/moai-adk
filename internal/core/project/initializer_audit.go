@@ -175,29 +175,138 @@ func buildAuditBlockLines(opts InitOptions, prefix string) []string {
 }
 
 // patchAuditLeaves rewrites each set audit leaf in place via the depth-aware
-// path patcher. Leaves that are unset (empty) on opts are left untouched.
+// path patcher; a leaf the document does not carry is INSERTED into the
+// existing audit block at its correct nesting instead of being dropped (the
+// F2 regression: the distributed template's audit block ships with only the
+// codex/glm pin sub-keys, and silently losing the wizard's audit selection
+// broke SPEC-INIT-WIZARD-REPAIR-001 AC-009). Leaves that are unset (empty) on
+// opts are left untouched.
 func patchAuditLeaves(content string, opts InitOptions) string {
 	if opts.AuditModel != "" {
 		if patched, ok := patchYAMLPathValue(content, "workflow.audit.model", opts.AuditModel); ok {
 			content = patched
+		} else {
+			content = insertAuditLeaf(content, "workflow.audit.model", opts.AuditModel)
 		}
 	}
 	if opts.AuditGateClaude != "" {
 		if patched, ok := patchYAMLPathValue(content, "workflow.audit.gates.claude", opts.AuditGateClaude); ok {
 			content = patched
+		} else {
+			content = insertAuditLeaf(content, "workflow.audit.gates.claude", opts.AuditGateClaude)
 		}
 	}
 	if opts.AuditGateCodex != "" {
 		if patched, ok := patchYAMLPathValue(content, "workflow.audit.gates.codex", opts.AuditGateCodex); ok {
 			content = patched
+		} else {
+			content = insertAuditLeaf(content, "workflow.audit.gates.codex", opts.AuditGateCodex)
 		}
 	}
 	if opts.AuditGateGLM != "" {
 		if patched, ok := patchYAMLPathValue(content, "workflow.audit.gates.glm", opts.AuditGateGLM); ok {
 			content = patched
+		} else {
+			content = insertAuditLeaf(content, "workflow.audit.gates.glm", opts.AuditGateGLM)
 		}
 	}
 	return content
+}
+
+// insertAuditLeaf inserts a dotted audit leaf path (workflow.audit.model,
+// workflow.audit.gates.<backend>) that patchYAMLPathValue could not find, at
+// the end of the DEEPEST EXISTING ancestor's subtree and at the document's own
+// child-indent step — so the new leaf lands as a properly nested child, never
+// as a duplicate mapping key and never re-parenting existing siblings.
+//
+// The stack walk mirrors patchYAMLPathValue's semantics (blank / comment /
+// sequence lines carry no mapping key; a key with an empty inline value opens
+// a nested mapping). When no part of the path exists the content is returned
+// unchanged — the caller's insert-the-whole-block branch owns that case.
+func insertAuditLeaf(content, path, value string) string {
+	if content == "" || path == "" {
+		return content
+	}
+	segments := strings.Split(path, ".")
+	lines := splitLines(content)
+
+	// Locate the deepest existing prefix of the path.
+	var stack []yamlFrame
+	deepest := 0
+	ancestorIdx, ancestorIndent := -1, -1
+	for i, line := range lines {
+		trimmed := trimLeadingSpaces(line)
+		if trimmed == "" || trimmed[0] == '#' || trimmed[0] == '-' {
+			continue
+		}
+		colon := strings.IndexByte(trimmed, ':')
+		if colon <= 0 {
+			continue
+		}
+		key := trimmed[:colon]
+		indent := len(line) - len(trimmed)
+
+		for len(stack) > 0 && stack[len(stack)-1].indent >= indent {
+			stack = stack[:len(stack)-1]
+		}
+		if len(stack) >= len(segments) {
+			continue
+		}
+		if yamlPathMatches(stack, key, segments[:len(stack)+1]) {
+			deepest = len(stack) + 1
+			ancestorIdx, ancestorIndent = i, indent
+		}
+		if strings.TrimSpace(trimmed[colon+1:]) == "" {
+			stack = append(stack, yamlFrame{indent: indent, key: key})
+		}
+	}
+	if ancestorIdx < 0 || deepest >= len(segments) {
+		return content // nothing to insert under, or the leaf already exists
+	}
+
+	// End of the ancestor's subtree = last non-blank non-comment line that is
+	// indented deeper than the ancestor (a line at <= ancestor indent ends it).
+	end := ancestorIdx
+	for j := ancestorIdx + 1; j < len(lines); j++ {
+		trimmed := trimLeadingSpaces(lines[j])
+		if trimmed == "" || trimmed[0] == '#' {
+			continue
+		}
+		if len(lines[j])-len(trimmed) <= ancestorIndent {
+			break
+		}
+		end = j
+	}
+
+	// Child-indent step sampled from the ancestor's first child; default 2.
+	step := 2
+	for j := ancestorIdx + 1; j < len(lines); j++ {
+		trimmed := trimLeadingSpaces(lines[j])
+		if trimmed == "" || trimmed[0] == '#' {
+			continue
+		}
+		childIndent := len(lines[j]) - len(trimmed)
+		if childIndent > ancestorIndent {
+			step = childIndent - ancestorIndent
+		}
+		break
+	}
+
+	// Build the missing tail of the path as nested mapping lines.
+	var block []string
+	rem := segments[deepest:]
+	for j, seg := range rem {
+		pad := strings.Repeat(" ", ancestorIndent+step*(j+1))
+		if j == len(rem)-1 {
+			block = append(block, pad+seg+": "+value)
+		} else {
+			block = append(block, pad+seg+":")
+		}
+	}
+
+	out := append(append([]string{}, lines[:end+1]...), block...)
+	out = append(out, lines[end+1:]...)
+	return joinYAMLLines(out, strings.HasSuffix(content, "\n"))
 }
 
 // insertCodexReviewGateBlock inserts a `codex.review_gate.enabled: true` block

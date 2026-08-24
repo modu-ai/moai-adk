@@ -176,6 +176,29 @@ workflow:
 
 ブランチを変える必要のある作業は、拒否させるのではなくワークツリーに移すのが定石です。手順は [moai worktree](/ja/cli-reference/worktree/) を参照してください。
 
+## workflow.yaml — audit
+
+クロスモデル監査バックエンド（`codex_audit` · `glm_audit` · `audit_multi`）が実際にどのモデルと effort で動くかを指定します。バックエンドごとに `{model, effort}` の 1 組で、配布時の既定値はすべて空です。
+
+```yaml
+workflow:
+    audit:
+        codex:
+            model: ""   # 例: gpt-5.6-sol — codex が提供できるモデル id
+            effort: ""  # 例: high — low | medium | high | xhigh | max
+        glm:
+            model: ""   # 例: glm-5.3
+            effort: ""  # 例: max — low | high | max（z.ai の reasoning 状態名）
+```
+
+| キー | 説明 |
+|------|------|
+| `audit.codex.{model, effort}` | codex 監査がセッション開始とレビューターンに載せる 1 組。model が空か、codex が提供できない id ならピンを捨てて、既存の SSOT 解決に戻ります |
+| `audit.glm.{model, effort}` | GLM 監査が z.ai リクエストに載せる 1 組。effort は z.ai の reasoning 状態名 `low` · `high` · `max` のみを受け付けます。それ以外の値では reasoning 指示を外し、モデルのピンだけを適用します |
+| 両方の組が空 | このキーが存在する前とまったく同じ解決をします。ピンを書いたことのないプロジェクトは何も変わりません |
+
+ピンが適用されるのは監査の入口だけです。タスク委任経路（`codex_task` · `glm_task`）のモデル解決には影響せず、同じフィールドはウェブコンソールの Audit パネルでも編集できます。
+
 ## crosssession.yaml — セッション間メッセージ
 
 自分の他の Claude Code セッションから届くメッセージを、このセッションがどう扱うかを決めます。`moai cc` · `moai glm` · `moai cg` のランチャーが起動時にこれらの値を一時的な `--settings` ファイルへ移し、ウェブコンソールは設定 seam を通じてこのファイルを編集します。ランチャーを経由せず素の `claude` で起動したセッションは、このファイルを読みません。

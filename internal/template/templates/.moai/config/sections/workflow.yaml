@@ -53,6 +53,24 @@ workflow:
         plan: 30000
         run: 180000
         sync: 40000
+    # audit: cross-model audit backend model+effort pinning. Applies ONLY at
+    # the audit entry points (codex_audit / glm_audit / audit_multi) — never
+    # to codex_task / glm_task delegation. Precedence: this pin > the llm.yaml
+    # sync-auditor SSOT cell > empty (legacy behavior). An EMPTY model is no
+    # pin (effort alone pins nothing). On the codex side an unservable model
+    # id falls back to the SSOT path; the GLM side sends a non-empty pin
+    # verbatim (a wrong id degrades via the z.ai fail-open to inconclusive,
+    # never a hard error). codex effort vocabulary: low|medium|high|xhigh|max.
+    # glm effort vocabulary (z.ai reasoning states, verbatim): low|high|max —
+    # any other non-empty value omits the reasoning directive while the model
+    # pin still applies. Values ship EMPTY; set them per project.
+    audit:
+        codex:
+            model: ""
+            effort: ""
+        glm:
+            model: ""
+            effort: ""
     # codex.review_gate: opt-in Stop-hook gate that asks the codex reviewer to
     # look at your uncommitted changes at turn-end and keeps the turn going when
     # the review comes back failing. Requires the optional `codex` binary.

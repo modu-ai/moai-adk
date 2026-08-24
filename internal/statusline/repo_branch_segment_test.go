@@ -210,22 +210,23 @@ func TestRenderRepoBranchSegment_NoGitContextStaysEmpty(t *testing.T) {
 	}
 }
 
-// TestRenderRepoBranchSegment_WorktreeMarkerRidesTheBranch pins that the [WT]
-// marker stays attached to the branch when the forge half is absent — the
-// worktree case is precisely where workspace.repo is most often missing.
-func TestRenderRepoBranchSegment_WorktreeMarkerRidesTheBranch(t *testing.T) {
+// TestRenderRepoBranchSegment_WorktreeSessionKeepsItsBranch covers the case the
+// branch-survival fix matters most for: a worktree session, where workspace.repo
+// is most often absent from the payload. The branch reads as the WT-<slug>
+// convention alone — the "[WT] " marker was retired, and this stays green either
+// way because it asserts the branch is present rather than how it is decorated.
+func TestRenderRepoBranchSegment_WorktreeSessionKeepsItsBranch(t *testing.T) {
 	t.Parallel()
 
 	d := &StatusData{
-		Git:      GitStatusData{Branch: "WT-mx-fanin-perf", Available: true, Modified: 1},
+		Git:      GitStatusData{Branch: "WT-mx-fanin-perf", Available: true, Modified: 1, Ahead: 6},
 		Worktree: "/Users/x/proj/.claude/worktrees/perf",
 	}
-	if got := newTestRenderer().renderRepoBranchSegment(d); got != "🅱️ [WT] WT-mx-fanin-perf +1" {
-		t.Errorf("worktree, no repo = %q", got)
+	const want = "🅱️ WT-mx-fanin-perf ↑6 +1"
+	if got := newTestRenderer().renderRepoBranchSegment(d); got != want {
+		t.Errorf("worktree, no repo = %q, want %q", got, want)
 	}
-
-	off := NewRenderer("default", true, map[string]bool{SegmentWorktree: false})
-	if got := off.renderRepoBranchSegment(d); got != "🅱️ WT-mx-fanin-perf +1" {
-		t.Errorf("worktree segment off = %q", got)
+	if got := NewRenderer("default", true, map[string]bool{SegmentWorktree: false}).renderRepoBranchSegment(d); got != want {
+		t.Errorf("worktree segment off = %q, want %q (the segment toggle no longer decorates the branch)", got, want)
 	}
 }
