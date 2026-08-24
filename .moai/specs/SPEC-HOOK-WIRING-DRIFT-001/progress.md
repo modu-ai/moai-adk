@@ -200,6 +200,30 @@ $ git diff internal/cli/testdata/doctor-nocolor.golden
 (The golden fixture has no `.claude/settings.json`, so the check reports
 `not checked` there — the fail-open path, exercised incidentally.)
 
+**9. The whole `internal/cli` package is green at the M2 tree.**
+
+```
+$ go test -count=1 -timeout 1200s ./internal/cli/
+ok  	github.com/modu-ai/moai-adk/internal/cli	1057.604s
+
+$ grep -cE '^--- FAIL' <log>
+0
+```
+
+Two notes on this measurement, both of which would have made it wrong if left
+unstated:
+
+- **1057 s exceeds the 546-866 s band the dispatch cited**, which is why the
+  `-timeout 1200s` floor is not optional here — the 600 s figure that
+  `CLAUDE.local.md` §6 warns about would have failed a passing tree, and even
+  866 s would have. The excess is machine load, not a slower suite: the run
+  overlapped a `golangci-lint` pass and a second worktree's activity.
+- **The command reported `exit 1` while the package passed.** The wrapper ended
+  in `grep -cE '^--- FAIL'`, which exits 1 when it matches nothing, and that
+  became the compound command's status. The suite verdict is the `ok …` line and
+  the zero count, not the wrapper's exit code — the same shape as the recorded
+  hazard where a pipeline's status is read from the wrong end.
+
 #### Baseline-attribution
 
 Measured in this tree (`.claude/worktrees/t216`), branch `WT-hook-wiring-drift`,
