@@ -877,16 +877,17 @@ func TestRenderDefaultV3_Line3(t *testing.T) {
 	}
 	// Layout v3 CH3 (2026-05-22 fix, 2026-08-18 merge, 2026-08-20 pair
 	// reassignment): combined repo+branch segment, "📡 owner/name, issues/PRs
-	// | 🅱️ branch +N" (pipe separator, repo prefix required). dirty =
+	// | 🅱️ branch ↑A ↓B +N" (pipe separator, repo prefix required). dirty =
 	// Staged(3) + Modified(2) + Untracked(1) = 6; the forge counts ride the
-	// repo part where ahead/behind used to.
-	if !strings.Contains(l3, "📡 modu-ai/moai-adk, 4/2 | 🅱️ feat/auth +6") {
+	// repo part, and Ahead=2 / Behind=1 ride the branch as arrows.
+	if !strings.Contains(l3, "📡 modu-ai/moai-adk, 4/2 | 🅱️ feat/auth ↑2 ↓1 +6") {
 		t.Errorf("default L3 must contain combined repo_branch segment with pipe separator, got: %q", l3)
 	}
-	// Ahead=2 / Behind=1 are still carried on GitStatusData but must not reach
-	// the line in any form.
-	if strings.Contains(l3, "2/1") || strings.Contains(l3, "↑") || strings.Contains(l3, "↓") {
-		t.Errorf("ahead/behind must not render on L3, got: %q", l3)
+	// Ahead/behind is back on the branch as arrows (operator request), but the
+	// slash pair still belongs to the forge counts alone — a second number pair
+	// is the misread the arrow form exists to avoid.
+	if strings.Contains(l3, "2/1") {
+		t.Errorf("ahead/behind must not render as a slash pair on L3, got: %q", l3)
 	}
 	if strings.Contains(l3, "📦") || strings.Contains(l3, "🔨") {
 		t.Errorf("default L3 must not contain legacy 📦/🔨 prefix, got: %q", l3)
@@ -1173,40 +1174,36 @@ func TestRenderUsageBarWithReset(t *testing.T) {
 	}
 }
 
-// TestRenderDirGitLine_WorktreeIndicator verifies that the "[WT] " prefix appears in
-// the branch segment when a worktree is active and SegmentWorktree is enabled.
-// REQ-CC297-003: worktree prefix shown in branch segment when worktree is active.
-// The legacy 🌿 emoji was replaced with the textual "[WT] " marker for clarity.
+// TestRenderDirGitLine_WorktreeIndicator verifies that the "[WT] " branch prefix
+// stays RETIRED in every state (operator decision 2026-08-24, superseding the
+// 2026-08-18 request and REQ-CC297-003): worktree identity rides the WT-<slug>
+// branch-name convention instead of a statusline marker. The branch itself must
+// still render.
 func TestRenderDirGitLine_WorktreeIndicator(t *testing.T) {
 	tests := []struct {
 		name           string
 		worktree       string
 		segmentEnabled bool
-		wantWT         bool
 	}{
 		{
-			name:           "worktree present and segment enabled: shows [WT]",
+			name:           "worktree present and segment enabled: no [WT], branch renders",
 			worktree:       "/repo/.claude/worktrees/abc123",
 			segmentEnabled: true,
-			wantWT:         true,
 		},
 		{
-			name:           "worktree present but segment disabled: no [WT]",
+			name:           "worktree present but segment disabled: no [WT], branch renders",
 			worktree:       "/repo/.claude/worktrees/abc123",
 			segmentEnabled: false,
-			wantWT:         false,
 		},
 		{
-			name:           "no worktree with segment enabled: no [WT]",
+			name:           "no worktree with segment enabled: no [WT], branch renders",
 			worktree:       "",
 			segmentEnabled: true,
-			wantWT:         false,
 		},
 		{
-			name:           "no worktree and segment disabled: no [WT]",
+			name:           "no worktree and segment disabled: no [WT], branch renders",
 			worktree:       "",
 			segmentEnabled: false,
-			wantWT:         false,
 		},
 	}
 
@@ -1232,11 +1229,13 @@ func TestRenderDirGitLine_WorktreeIndicator(t *testing.T) {
 			if strings.Contains(got, "🌿") {
 				t.Errorf("legacy 🌿 emoji must not appear, got %q", got)
 			}
-			if tt.wantWT && !strings.Contains(got, "[WT] ") {
-				t.Errorf("expected [WT] prefix when worktree is active, got %q", got)
+			// The retired [WT] marker must never appear, in any state.
+			if strings.Contains(got, "[WT]") {
+				t.Errorf("[WT] marker is retired and must not appear, got %q", got)
 			}
-			if !tt.wantWT && strings.Contains(got, "[WT]") {
-				t.Errorf("unexpected [WT] prefix when worktree is inactive, got %q", got)
+			// The branch itself still renders.
+			if !strings.Contains(got, "feat/test") {
+				t.Errorf("branch name must still render, got %q", got)
 			}
 		})
 	}

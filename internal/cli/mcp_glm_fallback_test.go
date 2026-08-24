@@ -8,7 +8,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/config"
 )
 
-// resolveGLMAuditModel has three fallback returns — an unreadable llm.yaml, an
+// resolveGLMAuditModelEffort has three fallback returns — an unreadable llm.yaml, an
 // unmapped SSOT lookup, and a non-GLM session whose resolved id is a Claude
 // model z.ai cannot serve. All three hand back the same constant, so the value
 // of that constant is the whole contract.
@@ -46,8 +46,8 @@ func TestResolveGLMAuditModel_UnreadableLLMYAML(t *testing.T) {
 	projectDirResolver = func() string { return root }
 	t.Cleanup(func() { projectDirResolver = old })
 
-	if got := resolveGLMAuditModel(); got != config.DefaultGLMHigh {
-		t.Errorf("unreadable llm.yaml: resolveGLMAuditModel() = %q, want %q", got, config.DefaultGLMHigh)
+	if got := resolveGLMAuditModelEffort("").Model; got != config.DefaultGLMHigh {
+		t.Errorf("unreadable llm.yaml: resolveGLMAuditModelEffort().Model = %q, want %q", got, config.DefaultGLMHigh)
 	}
 }
 
@@ -78,7 +78,7 @@ func TestResolveGLMAuditModel_NonGLMSession(t *testing.T) {
 	projectDirResolver = func() string { return root }
 	t.Cleanup(func() { projectDirResolver = old })
 
-	if got := resolveGLMAuditModel(); got != config.DefaultGLMHigh {
-		t.Errorf("non-GLM session: resolveGLMAuditModel() = %q, want %q", got, config.DefaultGLMHigh)
+	if got := resolveGLMAuditModelEffort("").Model; got != config.DefaultGLMHigh {
+		t.Errorf("non-GLM session: resolveGLMAuditModelEffort().Model = %q, want %q", got, config.DefaultGLMHigh)
 	}
 }

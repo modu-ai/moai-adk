@@ -209,16 +209,15 @@ func TestRender_ForgePairIsIssuesOverPRs(t *testing.T) {
 	}
 
 	seg := newTestRenderer().renderRepoBranchSegment(data)
-	if want := "📡 modu-ai/moai-adk, 1/1 | 🅱️ main"; seg != want {
+	if want := "📡 modu-ai/moai-adk, 1/1 | 🅱️ main ↑59 ↓7"; seg != want {
 		t.Errorf("repo segment = %q, want %q", seg, want)
 	}
 
-	// Ahead/behind must not reach the bar in any form — not as the pair it
-	// used to be, and not as the ↑N/↓N arrows it was before that.
-	for _, gone := range []string{"59", "7", "↑", "↓"} {
-		if strings.Contains(seg, gone) {
-			t.Errorf("ahead/behind leaked into the segment as %q: %q", gone, seg)
-		}
+	// Ahead/behind is back on the branch (operator request) in the ↑N/↓N arrow
+	// form it carried before the pair. What must NOT return is the slash-pair
+	// spelling: "59/0" beside "1/1" is the misread this whole test guards.
+	if strings.Contains(seg, "59/7") || strings.Contains(seg, "59/0") {
+		t.Errorf("ahead/behind rendered as a slash pair: %q", seg)
 	}
 
 	// Exactly one number/number pair on the line. (owner/name is not a number
@@ -231,7 +230,7 @@ func TestRender_ForgePairIsIssuesOverPRs(t *testing.T) {
 	// full render.
 	data.Git.Modified = 3
 	full := newTestRenderer().Render(data, ModeDefault)
-	if want := "📡 modu-ai/moai-adk, 1/1 | 🅱️ main +3"; !strings.Contains(full, want) {
+	if want := "📡 modu-ai/moai-adk, 1/1 | 🅱️ main ↑59 ↓7 +3"; !strings.Contains(full, want) {
 		t.Errorf("full render must contain %q, got %q", want, full)
 	}
 }

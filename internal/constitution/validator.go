@@ -113,6 +113,11 @@ type ValidationResult struct {
 	// UnregisteredCount is the number of ZONE_UNREGISTERED entries.
 	UnregisteredCount int `json:"unregistered_count"`
 
+	// RetiredCount is the number of entries skipped because their clause carries
+	// the [SUPERSEDED …] retirement marker. Always 0 under --strict, which checks
+	// retired entries verbatim like any other.
+	RetiredCount int `json:"retired_count"`
+
 	// Entries is the list of error/warning items.
 	Entries []ValidationEntry `json:"entries"`
 
@@ -201,6 +206,13 @@ func Validate(opts ValidateOptions) (ValidationResult, error) {
 	sourceCache := make(map[string]string)
 
 	for _, entry := range reg.Entries {
+		// 0. Retirement marker — a [SUPERSEDED …] clause is an audit record of a
+		// withdrawn clause, not a live one. Its source text is gone by definition,
+		// so the drift, canary, and source-existence checks below cannot be
+		// satisfied and are skipped. --strict ignores the marker and checks the
+		// entry verbatim, so a maintainer can audit what the retired entries hold.
+		retired := !opts.Strict && IsRetiredClause(entry.Clause)
+
 		// 1. INVALID_ZONE_CLASS check
 		if entry.ZoneClass != "" && !validZoneClasses[entry.ZoneClass] {
 			result.Entries = append(result.Entries, ValidationEntry{
@@ -209,6 +221,11 @@ func Validate(opts ValidateOptions) (ValidationResult, error) {
 				SentinelKey: SentinelInvalidZoneClass,
 				Detail:      fmt.Sprintf("zone_class %q is not one of the 4 allowed values", entry.ZoneClass),
 			})
+		}
+
+		if retired {
+			result.RetiredCount++
+			continue
 		}
 
 		// 2. FROZEN_WITHOUT_CANARY check

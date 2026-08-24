@@ -19,6 +19,11 @@ type ScannerConfig struct {
 	// ProjectDir is the project root directory.
 	// Used for rule config discovery.
 	ProjectDir string
+
+	// Rules overrides the RuleManager the scanner uses. Left nil, the default
+	// manager is constructed. It exists so a test can observe how many
+	// configuration resolutions the scanner performs on its own account.
+	Rules RuleManager
 }
 
 // DefaultScannerConfig returns the default scanner configuration.
@@ -56,9 +61,14 @@ func NewSecurityScannerWithConfig(config *ScannerConfig) *SecurityScanner {
 		config.Timeout = DefaultScanTimeout
 	}
 
+	rules := config.Rules
+	if rules == nil {
+		rules = NewRuleManager()
+	}
+
 	return &SecurityScanner{
 		astGrep:  NewASTGrepScanner(),
-		rules:    NewRuleManager(),
+		rules:    rules,
 		reporter: NewFindingReporter(),
 		config:   config,
 	}
@@ -71,17 +81,21 @@ func (s *SecurityScanner) IsAvailable() bool {
 
 // ScanFile scans a single file for security issues.
 // Implements REQ-HOOK-101, REQ-HOOK-120.
-func (s *SecurityScanner) ScanFile(ctx context.Context, filePath string, projectDir string) (*ScanResult, error) {
+//
+// configPath is an ALREADY-RESOLVED rules-config path, never a project
+// directory: the caller resolves the configuration exactly once per invocation
+// and hands the result here, so this path performs no resolution of its own.
+// An empty configPath falls back to the scanner's own configured path, and an
+// empty result there leaves ast-grep to its own discovery.
+func (s *SecurityScanner) ScanFile(ctx context.Context, filePath string, configPath string) (*ScanResult, error) {
 	// Check if file extension is supported (REQ-HOOK-141)
 	ext := filepath.Ext(filePath)
 	if !IsSupportedExtension(ext) {
 		return &ScanResult{Scanned: false}, nil
 	}
 
-	// Determine config path
-	configPath := s.config.ConfigPath
-	if configPath == "" && projectDir != "" {
-		configPath = s.rules.FindRulesConfig(projectDir)
+	if configPath == "" {
+		configPath = s.config.ConfigPath
 	}
 
 	// Apply timeout (REQ-HOOK-120)

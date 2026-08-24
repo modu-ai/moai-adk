@@ -207,6 +207,11 @@ func codexSSOTModelEffort(projectDir string) config.ModelEffort {
 // explicit caller-supplied `model` wins over the SSOT-resolved value and is sent
 // verbatim — the caller opted into it deliberately, so the servability filter
 // (which exists to protect callers who did NOT choose) does not apply.
+//
+// LEGACY-ONLY: this is the shared body the task path and the Stop-hook review
+// gate resolve through. The audit pin is deliberately NOT read here
+// (SPEC-V3R6-AUDIT-MODEL-PIN-001 REQ-AMP-008 / plan.md §G AP-1) — a config-file
+// pin is persistent project state and must not leak into delegation tasks.
 func resolveCodexModelEffort(params map[string]any) config.ModelEffort {
 	cwd, _ := params["cwd"].(string)
 	me := codexSSOTModelEffort(cwd)
@@ -214,6 +219,30 @@ func resolveCodexModelEffort(params map[string]any) config.ModelEffort {
 		me.Model = strings.TrimSpace(explicit)
 	}
 	return me
+}
+
+// resolveCodexAuditModelEffort is the AUDIT-scoped resolution
+// (SPEC-V3R6-AUDIT-MODEL-PIN-001 REQ-AMP-002): the workflow.audit.codex pin
+// outranks the SSOT sync-auditor cell; everything else falls through to the
+// legacy resolveCodexModelEffort unchanged (REQ-AMP-004).
+//
+// Pin rules: the pin applies only when its Model is non-empty AND
+// codexServable (an unservable pin falls back to the SSOT path — never break
+// the review gate); an explicit caller `model` argument still outranks the
+// pinned model, mirroring the legacy precedence (the paired pin effort stays).
+// An effort with an empty model pins nothing (the model is the gate).
+func resolveCodexAuditModelEffort(params map[string]any) config.ModelEffort {
+	cwd, _ := params["cwd"].(string)
+	if strings.TrimSpace(cwd) == "" {
+		cwd = projectDirResolver()
+	}
+	if pin := workflowAuditPins(cwd).Codex; pin.Model != "" && codexServableModel(pin.Model) {
+		if explicit, ok := params["model"].(string); ok && strings.TrimSpace(explicit) != "" {
+			pin.Model = strings.TrimSpace(explicit)
+		}
+		return pin
+	}
+	return resolveCodexModelEffort(params)
 }
 
 // VerdictInconclusive is the fail-open verdict value. It rides the same
@@ -493,6 +522,24 @@ type codexSessionHandle struct {
 	// job record while the turn is still running and therefore still
 	// cancellable (plan.md §D M2).
 	onTurnStarted func(turnID string)
+
+	// resolveME is the {model, effort} resolver this session's turns resolve
+	// through (SPEC-V3R6-AUDIT-MODEL-PIN-001 M2). It is set at open time from
+	// the injected resolver: the AUDIT flow passes the pin-aware
+	// resolveCodexAuditModelEffort; every other caller (codex_task, the
+	// Stop-hook review gate) passes nil and resolves through the legacy
+	// SSOT-only resolveCodexModelEffort (REQ-AMP-008 isolation). nil here
+	// means legacy — see effortResolver.
+	resolveME func(params map[string]any) config.ModelEffort
+}
+
+// effortResolver returns the session's {model, effort} resolver, defaulting to
+// the legacy SSOT-only resolution when none was injected.
+func (h *codexSessionHandle) effortResolver() func(map[string]any) config.ModelEffort {
+	if h != nil && h.resolveME != nil {
+		return h.resolveME
+	}
+	return resolveCodexModelEffort
 }
 
 // codexSessionError carries the fail-open summary text alongside the underlying
@@ -534,6 +581,19 @@ func openCodexSession(ctx context.Context, binaryPath string, params map[string]
 // When it is set, thread/resume re-opens that thread instead, so no new thread
 // is started and the recorded id is the one every turn addresses.
 func openCodexSessionOn(ctx context.Context, binaryPath string, params map[string]any, resumeThreadID string) (*codexSessionHandle, error) {
+	return openCodexSessionResolved(ctx, binaryPath, params, resumeThreadID, nil)
+}
+
+// openCodexSessionResolved is openCodexSessionOn with an INJECTED {model,
+// effort} resolver (SPEC-V3R6-AUDIT-MODEL-PIN-001 M2). A nil resolver means the
+// legacy SSOT-only resolveCodexModelEffort; the audit flow injects the pin-aware
+// resolveCodexAuditModelEffort. This is the seam that keeps the pin
+// audit-entry-only: codex_task and the review gate keep calling
+// openCodexSessionOn, which resolves exactly as before this SPEC (REQ-AMP-008).
+func openCodexSessionResolved(ctx context.Context, binaryPath string, params map[string]any, resumeThreadID string, resolve func(map[string]any) config.ModelEffort) (*codexSessionHandle, error) {
+	if resolve == nil {
+		resolve = resolveCodexModelEffort
+	}
 	conn, err := codexSession.start(ctx, binaryPath, []string{codexAppServerSubcmd})
 	if err != nil {
 		return nil, &codexSessionError{summary: "codex session start failed: " + err.Error(), cause: err}
@@ -562,7 +622,7 @@ func openCodexSessionOn(ctx context.Context, binaryPath string, params map[strin
 	if cwd, ok := params["cwd"].(string); ok && cwd != "" {
 		threadParams["cwd"] = cwd
 	}
-	if me := resolveCodexModelEffort(params); me.Model != "" {
+	if me := resolve(params); me.Model != "" {
 		threadParams["model"] = me.Model
 	}
 	if err := writeCodexRequest(conn, threadIDReq, threadMethod, threadParams); err != nil {
@@ -578,7 +638,7 @@ func openCodexSessionOn(ctx context.Context, binaryPath string, params map[strin
 			errors.New("codex "+threadMethod+": no thread id in result"))
 	}
 
-	return &codexSessionHandle{conn: conn, threadID: threadID, nextID: threadIDReq + 1}, nil
+	return &codexSessionHandle{conn: conn, threadID: threadID, nextID: threadIDReq + 1, resolveME: resolve}, nil
 }
 
 // close tears the session's subprocess down (stdin close, bounded wait, kill).
@@ -679,7 +739,7 @@ func (h *codexSessionHandle) sendTurnInterrupt(threadID, turnID string) error {
 // (the error arm in awaitCodexResponse surfaces a JSON-RPC rejection verbatim).
 func (h *codexSessionHandle) runTurn(ctx context.Context, method string, params map[string]any) (ReviewOutput, error) {
 	id := h.allocID()
-	finalParams := buildCodexReviewParams(method, params, h.threadID)
+	finalParams := buildCodexReviewParams(method, params, h.threadID, h.effortResolver())
 	if err := writeCodexRequest(h.conn, id, method, finalParams); err != nil {
 		return inconclusiveReview("codex " + method + " write failed: " + err.Error()), err
 	}
@@ -716,16 +776,35 @@ func (h *codexSessionHandle) runTurn(ctx context.Context, method string, params 
 // The caller passes the FINAL review/turn method; the handshake is owned by
 // openCodexSession.
 //
-// codexReviewRPC is the injectable seam over it, wired to runCodexReviewRPC in
-// production. Both codex AUDIT paths — handleCodexAudit here and
-// performCodexAudit in mcp_convergence.go — dispatch through it, so a test can
-// assert what the params map actually carries with no live backend
+// codexReviewRPC is the injectable seam over it, wired to
+// runCodexAuditReviewRPC in production — the AUDIT-scoped variant that
+// resolves {model, effort} through the pin-aware
+// resolveCodexAuditModelEffort (SPEC-V3R6-AUDIT-MODEL-PIN-001 M2). Both codex
+// AUDIT paths — handleCodexAudit here and performCodexAudit in
+// mcp_convergence.go — dispatch through it, so a test can assert what the
+// params map actually carries with no live backend
 // (SPEC-MCP-WORKTREE-ROOT-001 AC-1b). The Stop-hook review gate keeps calling
-// runCodexReviewRPC directly: it is not an audit path and is out of scope here.
-var codexReviewRPC = runCodexReviewRPC
+// the legacy runCodexReviewRPC directly: it is not an audit path and the pin
+// does not apply to it (REQ-AMP-008).
+var codexReviewRPC = runCodexAuditReviewRPC
 
+// runCodexReviewRPC is the LEGACY single-turn driver: SSOT-only model/effort
+// resolution, no audit pin. Serves the Stop-hook review gate and the
+// seam-captured legacy tests.
 func runCodexReviewRPC(ctx context.Context, binaryPath, method string, params map[string]any) (ReviewOutput, error) {
-	sess, err := openCodexSession(ctx, binaryPath, params)
+	return runCodexReviewRPCResolved(ctx, binaryPath, method, params, nil)
+}
+
+// runCodexAuditReviewRPC is the AUDIT single-turn driver: identical to
+// runCodexReviewRPC except the {model, effort} resolution reads the
+// workflow.audit.codex pin first (REQ-AMP-002), falling back to the legacy
+// SSOT path when the pin is absent/empty/unservable (REQ-AMP-004).
+func runCodexAuditReviewRPC(ctx context.Context, binaryPath, method string, params map[string]any) (ReviewOutput, error) {
+	return runCodexReviewRPCResolved(ctx, binaryPath, method, params, resolveCodexAuditModelEffort)
+}
+
+func runCodexReviewRPCResolved(ctx context.Context, binaryPath, method string, params map[string]any, resolve func(map[string]any) config.ModelEffort) (ReviewOutput, error) {
+	sess, err := openCodexSessionResolved(ctx, binaryPath, params, "", resolve)
 	if err != nil {
 		var sErr *codexSessionError
 		if errors.As(err, &sErr) {
@@ -826,7 +905,10 @@ func extractThreadID(result json.RawMessage) string {
 // Before M1 this function built a fresh map that dropped the caller's `model`
 // entirely, so the `model` parameter advertised by codex_audit never reached
 // codex (spec.md §A.3 G3 — a live defect, not a missing feature).
-func buildCodexReviewParams(method string, params map[string]any, threadID string) map[string]any {
+func buildCodexReviewParams(method string, params map[string]any, threadID string, resolve func(map[string]any) config.ModelEffort) map[string]any {
+	if resolve == nil {
+		resolve = resolveCodexModelEffort
+	}
 	out := map[string]any{"threadId": threadID}
 	switch method {
 	case codexMethodReviewStart:
@@ -837,7 +919,7 @@ func buildCodexReviewParams(method string, params map[string]any, threadID strin
 			prompt = codexAdversarialReviewPrompt("")
 		}
 		out["input"] = []map[string]any{{"type": "text", "text": prompt}}
-		me := resolveCodexModelEffort(params)
+		me := resolve(params)
 		if me.Model != "" {
 			out["model"] = me.Model
 		}

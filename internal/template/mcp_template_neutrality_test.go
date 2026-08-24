@@ -8,10 +8,10 @@
 // SPEC-ID/commit-SHA/date leak) do not specifically frame for an MCP package
 // list:
 //
-//   - the active mcpServers map carries EXACTLY 1 default-on entry (`moai`)
-//     after the SPEC-MCP-DEFAULT-ON-001 inversion; context7, chrome-devtools,
-//     playwright, and ast-grep stay documented-but-disabled, activated via
-//     `moai mcp add`, NEVER in the distributed default;
+//   - the active mcpServers map carries EXACTLY the 2 default-on entries
+//     (`moai`, `context7`); chrome-devtools, playwright, and ast-grep stay
+//     documented-but-disabled, activated via `moai mcp add`, NEVER in the
+//     distributed default;
 //   - no `$comment` JSONC form appears (standard JSON only);
 //   - no entry carries a resolved secret (every env value is a ${VAR} literal);
 //   - no SPEC-ID, commit SHA, macOS-bias absolute path, CLAUDE.local.md
@@ -32,12 +32,18 @@ import (
 )
 
 // mcpAllowedActiveKeys is the exact set of active mcpServers keys permitted in
-// the distributed default. After SPEC-MCP-DEFAULT-ON-001, the sole default-on
-// entry is `moai`; context7, chrome-devtools, playwright, and ast-grep stay
-// documented-but-disabled (omitted from the active map, activated via
-// `moai mcp add ...`).
+// the distributed default: the self-hosted `moai` stdio server and `context7`.
+// chrome-devtools, playwright, and ast-grep stay documented-but-disabled
+// (omitted from the active map, activated via `moai mcp add ...`).
+//
+// `context7` was added to the default because the shipped guidance already
+// assumes it — the agent selection tree routes external doc research to
+// "WebSearch+Context7" — so leaving it unwired advertised a capability users did
+// not have. It costs a session-start `npx -y` fetch-and-launch; a project that
+// does not consult library docs drops it with `moai mcp remove context7`.
 var mcpAllowedActiveKeys = map[string]struct{}{
-	"moai": {},
+	"moai":     {},
+	"context7": {},
 }
 
 // mcpForbiddenTokenRes are the leak-class regexes the broader neutrality / leak
@@ -72,7 +78,7 @@ func TestMCPNeutralityTemplateShape(t *testing.T) {
 		}
 	}
 
-	// AC-TMC-001 (amended): structural shape — exactly the 1 default-on active entry.
+	// AC-TMC-001 (amended): structural shape — exactly the 2 default-on active entries.
 	var doc struct {
 		Schema         string         `json:"$schema"`
 		McpServers     map[string]any `json:"mcpServers"`
@@ -81,17 +87,38 @@ func TestMCPNeutralityTemplateShape(t *testing.T) {
 	if err := json.Unmarshal(data, &doc); err != nil {
 		t.Fatalf("template .mcp.json is not valid JSON: %v", err)
 	}
-	if len(doc.McpServers) != 1 {
-		t.Errorf("template .mcp.json mcpServers count = %d, want exactly 1 (moai)", len(doc.McpServers))
+	if len(doc.McpServers) != len(mcpAllowedActiveKeys) {
+		t.Errorf("template .mcp.json mcpServers count = %d, want exactly %d (moai, context7)", len(doc.McpServers), len(mcpAllowedActiveKeys))
 	}
 	for k := range doc.McpServers {
 		if _, ok := mcpAllowedActiveKeys[k]; !ok {
-			t.Errorf("template .mcp.json carries non-default-on entry %q (only moai is permitted in the distributed default)", k)
+			t.Errorf("template .mcp.json carries non-default-on entry %q (only moai and context7 are permitted in the distributed default)", k)
 		}
 	}
-	for _, required := range []string{"moai"} {
+	for _, required := range []string{"moai", "context7"} {
 		if _, ok := doc.McpServers[required]; !ok {
 			t.Errorf("template .mcp.json is missing required default-on entry %q", required)
+		}
+	}
+
+	// Platform neutrality: the distributed file is deployed unchanged to Windows,
+	// macOS, and Linux, so no entry may name a launcher that exists on only some
+	// of them. An absolute POSIX shell path is the specific shape that shipped
+	// here before — "/bin/bash", "-l", "-c", "exec npx …" — which starts nothing
+	// at all on Windows. Name the program and let PATH resolve it, exactly as the
+	// runtime-generated entries in internal/cli/glm_tools.go do.
+	for name, entry := range doc.McpServers {
+		m, ok := entry.(map[string]any)
+		if !ok {
+			continue // shape error already reported by the secret-hygiene walk below
+		}
+		cmd, _ := m["command"].(string)
+		if strings.HasPrefix(cmd, "/") || strings.Contains(cmd, `\`) {
+			t.Errorf("entry %q command = %q is an absolute path — name the program and let PATH resolve it", name, cmd)
+		}
+		switch cmd {
+		case "bash", "sh", "zsh", "cmd", "cmd.exe", "powershell", "pwsh":
+			t.Errorf("entry %q command = %q wraps the server in a platform-specific shell — invoke the program directly", name, cmd)
 		}
 	}
 
