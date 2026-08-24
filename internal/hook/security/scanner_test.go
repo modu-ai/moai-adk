@@ -54,7 +54,7 @@ password = "secret123"  # potential issue
 		_ = os.WriteFile(testFile, []byte(content), 0644)
 
 		ctx := context.Background()
-		result, err := scanner.ScanFile(ctx, testFile, tmpDir)
+		result, err := scanner.ScanFile(ctx, testFile, "")
 
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -73,7 +73,7 @@ password = "secret123"  # potential issue
 		_ = os.WriteFile(testFile, []byte("hello world"), 0644)
 
 		ctx := context.Background()
-		result, err := scanner.ScanFile(ctx, testFile, tmpDir)
+		result, err := scanner.ScanFile(ctx, testFile, "")
 
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -97,7 +97,7 @@ password = "secret123"  # potential issue
 		defer cancel()
 		time.Sleep(1 * time.Millisecond)
 
-		_, err := scanner.ScanFile(ctx, testFile, tmpDir)
+		_, err := scanner.ScanFile(ctx, testFile, "")
 		if err == nil {
 			t.Error("expected timeout error")
 		}
@@ -238,7 +238,7 @@ API_KEY = "sk-12345678901234567890"
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
-		result, err := scanner.ScanFile(ctx, testFile, tmpDir)
+		result, err := scanner.ScanFile(ctx, testFile, "")
 		if err != nil {
 			t.Fatalf("scan failed: %v", err)
 		}

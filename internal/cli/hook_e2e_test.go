@@ -429,10 +429,13 @@ func TestHookDepsWiring_HandlerCounts(t *testing.T) {
 		t.Errorf("event %q: got %d handlers, want 1", hook.EventPreToolUse, len(preToolHandlers))
 	}
 
-	// PostToolUse should have exactly 1 handler.
+	// PostToolUse should have exactly 2 handlers: the post-tool handler
+	// (metrics, LSP diagnostics, MX validation) and the in-process security
+	// guardian, which replaced the separate handle-security-scan.sh entry.
 	postToolHandlers := deps.HookRegistry.Handlers(hook.EventPostToolUse)
-	if len(postToolHandlers) != 1 {
-		t.Errorf("event %q: got %d handlers, want 1", hook.EventPostToolUse, len(postToolHandlers))
+	if len(postToolHandlers) != 2 {
+		t.Errorf("event %q: got %d handlers, want 2 (post-tool + security guardian)",
+			hook.EventPostToolUse, len(postToolHandlers))
 	}
 }
 

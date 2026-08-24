@@ -11,6 +11,7 @@ import (
 // ruleManager implements RuleManager interface.
 type ruleManager struct {
 	defaultRules []string
+	coverageState
 }
 
 // NewRuleManager creates a new RuleManager instance.

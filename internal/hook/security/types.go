@@ -94,6 +94,12 @@ type RuleManager interface {
 	// Implements REQ-HOOK-110.
 	FindRulesConfig(projectDir string) string
 
+	// ResolveCoverage resolves the rules configuration for projectDir and
+	// derives the set of languages it declares at least one rule for. The
+	// three states of the returned value, and the fail-open contract binding
+	// its consumers, are documented on LanguageCoverage.
+	ResolveCoverage(projectDir string) LanguageCoverage
+
 	// LoadRules loads rules from a configuration file.
 	// Implements REQ-HOOK-110, REQ-HOOK-112.
 	LoadRules(configPath string) ([]string, error)
