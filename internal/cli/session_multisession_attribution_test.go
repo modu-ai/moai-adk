@@ -27,6 +27,7 @@ import (
 // The test is serial (not t.Parallel): withTempRegistry mutates the process
 // cwd, and the registry read path is cwd-relative.
 func TestResolveArmSessionID_MultiSessionWarns(t *testing.T) {
+	scrubSessionIDEnv(t)       // the runtime stamps a real id into this process; the fixture is the sidecar
 	dir := withTempRegistry(t) // chdir to tempdir + mkdir .moai/state (serial).
 
 	// Use the canonical (symlink-resolved on macOS) cwd as CLAUDE_PROJECT_DIR so
@@ -72,6 +73,7 @@ func TestResolveArmSessionID_MultiSessionWarns(t *testing.T) {
 // returns the side-channel id with NO warning (single-session behavior is
 // unchanged by the fix).
 func TestResolveArmSessionID_SingleSessionNoWarn(t *testing.T) {
+	scrubSessionIDEnv(t) // the runtime stamps a real id into this process; the fixture is the sidecar
 	dir := withTempRegistry(t)
 	cwd, err := os.Getwd()
 	if err != nil {

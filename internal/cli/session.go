@@ -11,6 +11,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/session"
 )
 
@@ -210,16 +211,31 @@ func newSessionPurgeCmd() *cobra.Command {
 const CanonicalFallbackSessionID = "source_session_id: <not-available — environment-fallback, next session will backfill via /moai session register on activation>"
 
 // resolveCurrentSessionID resolves this orchestrator's own session UUID.
-// It consults the side-channel file written by the SessionStart hook
-// (M3 additionalContext injection, session.CurrentSideChannelFile) first,
-// then falls back to the canonical environment-fallback string (REQ-RDP-006)
-// when no source is available.
+//
+// Stage 0 is the process environment: Claude Code stamps
+// CLAUDE_CODE_SESSION_ID into every subprocess it spawns, matching the
+// session_id it hands hooks on stdin. That value travels with the process,
+// so it names THIS session and no other — it is the authoritative source.
+//
+// Stage 1 is the side-channel file written by the SessionStart hook. It is a
+// single slot per project, unconditionally overwritten on every SessionStart,
+// so under two or more concurrent sessions it holds whichever session started
+// most recently — possibly a foreign one. It is kept only as the degraded
+// path for runtimes that do not stamp the env var (and for a session resumed
+// where the env is absent); its answer is not a function of the asking
+// session, so it is consulted only when Stage 0 is empty.
+//
+// Stage 2 is the canonical environment-fallback string (REQ-RDP-006).
 //
 // Returns (uuid, source, ok). When ok is false, uuid is the canonical
 // fallback string and source is "fallback".
 //
 // SPEC-V3R6-SESSION-ID-ATTRIBUTION-REPAIR-001 REQ-RDP-001/002/003/006.
 func resolveCurrentSessionID() (uuid, source string, ok bool) {
+	// Stage 0: per-process env var stamped by the Claude Code runtime.
+	if id := strings.TrimSpace(os.Getenv(config.EnvClaudeCodeSessionID)); id != "" {
+		return id, "env:" + config.EnvClaudeCodeSessionID, true
+	}
 	// Stage 1: side-channel file written by the SessionStart hook (M3).
 	if projectDir := resolveProjectDir(); projectDir != "" {
 		sidecar := filepath.Join(projectDir, session.CurrentSideChannelFile)
@@ -229,10 +245,16 @@ func resolveCurrentSessionID() (uuid, source string, ok bool) {
 			}
 		}
 	}
-	// Stage 2 (future): env var if the runtime ever exposes session.id.
-	// Today the runtime does NOT expose it (research.md §E root blocker),
-	// so we fall straight to the canonical fallback.
+	// Stage 2: canonical fallback.
 	return CanonicalFallbackSessionID, "fallback", false
+}
+
+// sessionIDSourceIsAuthoritative reports whether a source string returned by
+// resolveCurrentSessionID names the per-process env var. Only that source is
+// a function of the asking session; the side-channel file is not, and callers
+// that guard against foreign-id attribution key on this.
+func sessionIDSourceIsAuthoritative(source string) bool {
+	return source == "env:"+config.EnvClaudeCodeSessionID
 }
 
 // resolveProjectDir returns the project root using $CLAUDE_PROJECT_DIR
@@ -264,12 +286,19 @@ func newSessionCurrentCmd() *cobra.Command {
 		Short: "Print this orchestrator's own session UUID (P2 read path)",
 		Long: `Print this orchestrator's own session UUID.
 
-Resolves the UUID from the side-channel file written by the SessionStart
-hook (.moai/state/current-session-id.txt). When the runtime does not
-expose session.id to the CLI subprocess (the default today — the root
-blocker per research.md §E), the command emits the canonical fallback
-string instead of an opaque error. The fallback is graceful degradation,
-NOT a failure (exit 0).
+Resolves the UUID from CLAUDE_CODE_SESSION_ID, the per-process variable
+Claude Code stamps into every subprocess it spawns. That value travels
+with the process, so it names THIS session even when several sessions
+share one checkout.
+
+When the variable is absent, the command falls back to the side-channel
+file written by the SessionStart hook
+(.moai/state/current-session-id.txt). That file is one slot per project,
+overwritten on every SessionStart, so with concurrent sessions it holds
+whichever started most recently — read it as a degraded answer, not an
+authoritative one. With neither source available the command emits the
+canonical fallback string instead of an opaque error. The fallback is
+graceful degradation, NOT a failure (exit 0).
 
 Use --show-fallback to print ONLY the canonical fallback string (for
 paste-ready resume template emission when the orchestrator knows it has
@@ -379,6 +408,8 @@ REQ-WPR-001/002).`,
 				"entry_count":           entryCount,
 				"root_cause_candidates": candidates,
 				"side_channel_file":     session.CurrentSideChannelFile,
+				"session_id_env":        config.EnvClaudeCodeSessionID,
+				"session_id_env_set":    os.Getenv(config.EnvClaudeCodeSessionID) != "",
 			}
 			if queryErr != nil {
 				payload["query_error"] = queryErr.Error()
@@ -400,7 +431,12 @@ REQ-WPR-001/002).`,
 			for i, c := range candidates {
 				_, _ = fmt.Fprintf(out, "  %d. %s\n", i+1, c)
 			}
-			_, _ = fmt.Fprintf(out, "side-channel: %s (moai session current reads this; written by SessionStart hook)\n", session.CurrentSideChannelFile)
+			if os.Getenv(config.EnvClaudeCodeSessionID) != "" {
+				_, _ = fmt.Fprintf(out, "session id: %s is set (authoritative, per-process)\n", config.EnvClaudeCodeSessionID)
+			} else {
+				_, _ = fmt.Fprintf(out, "session id: %s is NOT set; falling back to the shared side-channel slot\n", config.EnvClaudeCodeSessionID)
+			}
+			_, _ = fmt.Fprintf(out, "side-channel: %s (degraded fallback; one slot per project, last SessionStart wins)\n", session.CurrentSideChannelFile)
 			return nil
 		},
 	}
