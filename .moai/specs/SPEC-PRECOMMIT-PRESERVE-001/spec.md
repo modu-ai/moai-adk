@@ -1,10 +1,10 @@
 ---
 id: SPEC-PRECOMMIT-PRESERVE-001
 title: "Pre-commit hook install must never silently discard a local patch"
-version: "0.4.0"
+version: "0.5.0"
 status: draft
 created: 2026-08-24
-updated: 2026-08-24
+updated: 2026-08-25
 author: manager-spec (card t230)
 priority: P2
 tier: M
@@ -25,6 +25,7 @@ tags: "hooks, cli, pre-commit, data-loss, provenance, install-safety"
 | 2026-08-24 | 0.1.0 | Initial plan-phase authoring from card t230. Requirement C closed as non-applicable by measurement (§A.4). |
 | 2026-08-24 | 0.2.0 | Retracted a false "stale line numbers" claim (§A.2); all citations now SHA-anchored. Three-way comparison raised to REQ-PCP-014; silence prohibition restated as a policy-independent invariant (REQ-PCP-006). |
 | 2026-08-24 | 0.3.0 | Plan-audit iteration 1 remediation (`.moai/reports/t230/plan-audit.md`, PASS-WITH-DEBT 0.875). D1 closed: REQ-PCP-010 now states the backup-failure precedence explicitly and separates it from the provenance-failure case. D2 closed: REQ-PCP-004's "on stderr" reconciled with the installer's single-writer signature by adding a warning writer and permitting the two-line caller change (plan.md §A). D3 closed: the one-entry previous-digest corpus is evaluated and rejected on its own terms (§A.5), the release composition is decided (§A.5 Decision 3 — the hook-body change ships after the classifier), and REQ-PCP-015/AC-PCP-015 bind that composition mechanically. D4 (sweep-pattern semantics, §A.4), D5 (backup-succeeded/write-failed edge row), D6 (AC-PCP-002 falsification label), D7 (`Where` → `When` on four requirements) also closed. 14 REQ/AC → 15. |
+| 2026-08-25 | 0.5.0 | Plan-audit iteration 3 remediation (`.moai/reports/t230/plan-audit-3.md`, PASS-WITH-DEBT 0.8875, flat). **D1 closed**: the release-composition constraint is restored as §A.5 Decision 3 and re-scoped from "the successor card" to **any** hook-body change competing for the classifier's release, naming card t237/#1641 (re-measured this round: issue open, verified patch on `t312-precommit-vet @ b6f478b1a`); §C.2's "moot / any order" is corrected to hold on the merge-conflict axis only; the constraint's three red-moments are named, one of them a DoD item (acceptance.md §D.3) that is not green by construction, and the release-candidate moment is routed outward rather than faked as an internal criterion. **D2 closed**: AC-PCP-005's Decides now runs `-v` with the run's skip status inspected, and its Then clause fails on a skipped sub-case (c) — the treatment AC-PCP-013 already used. **D3 closed**: acceptance.md §D.4 states sub-case (c)'s pin rule and the re-pin obligation on a legitimate body change, separating the REQ-PCP-005 check from the body-stability guard (which stays with plan.md §F's M2 scope gate and AC-PCP-013). **D5 closed** (the edge-case citation now names the creating call). D4 declined — a third notice element weakens a notice whose strength is its size, and REQ-PCP-006's disclosure floor holds without it. D6 needs no action. 12 REQ / 12 AC unchanged. |
 | 2026-08-24 | 0.4.0 | Scope reduction after plan-audit iteration 2 (`.moai/reports/t230/plan-audit-2.md`, PASS-WITH-DEBT 0.8875). The `pre-commit.local` extension point (REQ-PCP-011, REQ-PCP-012) and the release-composition binding (REQ-PCP-015) are **removed from this SPEC and moved to a successor card** — see §D Out of Scope → the `pre-commit.local` extension point. Reason: all four of the iteration-2 blocking defects (N1 unenforceable release constraint, N2 three-referent "last released hook body", N3 unresolved t237 collision, N4 unmeasured first-upgrade population) exist only because M3 changes the hook body, which forces this SPEC to reason about release composition. Removing M3 dissolves N1-N3 outright; N4 survives on its own terms and is closed here by AC-PCP-005 sub-case (c). The auditor found M1 and M2 fit to enter run-phase as they stand. Minors N5 (AC-PCP-004 clause (ii) Decides), N6 (§A.4 self-counting numeral) and N7 (non-agent subject) also closed. 15 REQ/AC → 12. **Identifiers are not renumbered**: REQ/AC-PCP-011, -012 and -015 are retired, leaving gaps, because renumbering would invalidate every citation in the two audit reports and in this HISTORY. |
 
 ## §A.0 Citation convention
@@ -151,12 +152,14 @@ sweep is cheap to repeat.
 
 ### §A.5 Decisions
 
-Two decisions. Each states its rejected alternatives so a reader can disagree with either one
-independently. A third decision — the release composition that sequenced the hook-body change after
-the classifier — was recorded here at v0.3.0 and is **retired at v0.4.0**: with the body change moved
-to a successor card (§D Out of Scope), this SPEC changes no hook bytes and has no composition to
-decide. Its substance is not lost; it is carried into the successor card as the constraint that card
-must satisfy, and the arithmetic behind it survives in Decision 1's magnitude table above.
+Three decisions. Each states its rejected alternatives so a reader can disagree with any one of
+them independently. Decision 3 — the release composition — was recorded at v0.3.0, retired at v0.4.0
+on the reasoning that a SPEC changing no hook bytes has no composition to decide, and **restored at
+v0.5.0** on measurement: the hazard is not owned by whoever changes the body, it is owned by the
+release that first ships the classifier, and card t237/#1641 is open and carries a verified
+body-changing patch (§C.2). What was correctly retired at v0.4.0 was the *mechanical binding*
+(REQ-PCP-015/AC-PCP-015), which sat where it could not fail; the decision itself is restated below
+together with the moments at which it can.
 
 #### Decision 1 — how `recorded` is stored: a digest sidecar
 
@@ -198,11 +201,13 @@ hook body untouched** (§C.1), which is what makes that sub-case reachable, and 
 `v3.0.x` or earlier has a genuinely different body and takes one unnecessary backup plus one notice,
 once.
 
-Any *later* change to the hook body inherits this arithmetic and must not be folded into the
-classifier's own release: a body change shipping alongside the classifier makes
-`installed != incoming` true for **every** user without exception, reproducing the alarm-fatigue
-failure §A.3 exists to prevent. That constraint now belongs to the successor card that carries the
-extension point (§D Out of Scope), not to this SPEC, which has no body change to sequence.
+Any change to the hook body inherits this arithmetic and must not be folded into the classifier's
+own release: a body change shipping alongside the classifier makes `installed != incoming` true for
+**every** user without exception, reproducing the alarm-fatigue failure §A.3 exists to prevent. The
+constraint binds the **release**, not a card, so it binds every hook-body change competing for that
+release — card t237/#1641 (open, with a verified patch on `t312-precommit-vet @ b6f478b1a`) exactly
+as much as the successor card that carries the extension point (§D Out of Scope). Decision 3 below
+states it, names the moments at which it can go red, and says what happens if it is overridden.
 
 **Can it drift or be deleted?** Yes: a user can delete it, and a hook restored from a backup by hand
 will not match it. Both land in the same place — a mismatch, or an absence — and both are treated as
@@ -271,6 +276,43 @@ update too — was scoped into this SPEC and has been moved to a successor card 
 Until it lands, recovery is manual re-application from the backup. That is a real limitation, and it
 is stated rather than papered over; it does not weaken (a), because REQ-PCP-006 already guarantees
 the user learns of the replacement at the moment it happens.
+
+#### Decision 3 — the classifier's release carries no hook-body change (restored at v0.5.0)
+
+**The decision**: the release that first ships the classifier ships the hook body byte-identical to
+`v3.1.2`. Every hook-body change — card t237/#1641, the successor card carrying the extension point,
+or any other — ships in a **later** release.
+
+**Why the constraint outlived the requirement that carried it.** Decision 1's magnitude table does
+not care which card edits the body; it cares what is in the release. A body change composed into the
+classifier's own release makes `installed != incoming` for the entire no-record installed base, so
+REQ-PCP-005 classifies 100% of it as user-modified and every user takes one backup and one notice on
+first upgrade — the alarm fatigue §A.3 exists to prevent, delivered by the mechanism meant to prevent
+it. Landing t237 *before* the classifier's release is the same failure with an extra edge: `v3.1.2`
+bytes would then differ from the incoming body, so AC-PCP-005 sub-case (c) would assert the wrong
+outcome (acceptance.md §D.4 states what must happen instead).
+
+**Where it can go red, and what makes it red.** Stated explicitly, because the v0.3.0 binding
+(REQ-PCP-015/AC-PCP-015) failed exactly here — it was checked at end-of-M2, where it could not fail.
+
+| Moment | Check | Red when | Inside this SPEC's lifecycle |
+|---|---|---|---|
+| End of M2 — run-phase scope gate (plan.md §F) | `git show v3.1.2:internal/template/templates/.git_hooks/pre-commit \| cmp - internal/template/templates/.git_hooks/pre-commit` → rc 0 | **this SPEC's own diff** touched the body | yes, but green by construction while the branch stays in scope — which is why it is a scope gate and not the composition check |
+| Sync-phase, after this SPEC's branch merges into the release line (acceptance.md §D.3) | the same `cmp`, run against the **integration ref** rather than the working tree | a sibling merge — t237 or any other — has already put a body change on the release line | yes, and **not** green by construction: it reads the integration ref, so another card's merge flips it |
+| Release-candidate cut | the same `cmp` against the candidate tag | the composed release carries a body change | **no** — this moment is after this SPEC closes, so it is routed outward as a release-checklist item rather than dressed up as an internal criterion |
+
+**If the constraint is overridden.** A maintainer may compose them together anyway; this SPEC has no
+authority over a release. That is an accept-the-noise decision, and it is not free: it must be
+recorded in the release notes as a one-time backup-and-notice for the entire installed base, and
+AC-PCP-005 sub-case (c) must be re-pinned per acceptance.md §D.4 **before** the release is cut,
+because an unpinned (c) then asserts the wrong outcome and reads as a false regression.
+
+**Rejected alternative — re-bind this with a requirement inside this SPEC.** Tried at v0.3.0
+(REQ-PCP-015) and it failed: the only moments a requirement of this SPEC can be checked lie inside
+this SPEC's own diff, where the constraint is green by construction. Inventing a second such check
+would reproduce the defect rather than close it. The composition is therefore carried by this
+decision plus a named check at each moment above — one of them a DoD item, one of them explicitly
+outward — and the requirement count stays at 12.
 
 ## §B Requirements (GEARS)
 
@@ -383,17 +425,25 @@ standing invariant that catches a one-sided edit, and AC-PCP-013's rejection of 
 what keeps it from passing vacuously. A change to `preCommitHookContent` appearing during run-phase
 is a scope violation, not an implementation detail (plan.md §D).
 
-### §C.2 Card t237 — no collision remains
+### §C.2 Card t237 — the merge conflict is dissolved, the release order is not
 
 Card t237 (issue #1641) edits `preCommitHookContent` and its template twin on the module-root
-`go vet` axis. At v0.3.0 this SPEC collided with it through REQ-PCP-011, and the audit's N3 asked
-which card yields. **The question is now moot**: with the extension point moved to a successor card
-(§D Out of Scope), this SPEC touches neither file (§C.1), so the two diffs are disjoint and either
-may land first in any order.
+`go vet` axis. Measured at v0.5.0: the issue is **open**, and it records a verified patch on branch
+`t312-precommit-vet @ b6f478b1a`, so the body change is neither hypothetical nor far off. At v0.3.0
+this SPEC collided with it through REQ-PCP-011, and the audit's N3 asked which card yields. The
+answer splits by axis, and v0.4.0's "moot / either may land first in any order" was true of only one
+of them:
 
-The collision travels with the extension point. The successor card inherits it, and inherits the
-mitigation with it: land the paired edit as its own commit so a rebase against t237 touches one
-commit rather than a whole SPEC.
+- **Merge-conflict axis — dissolved.** With the extension point moved to a successor card (§D Out of
+  Scope), this SPEC touches neither file (§C.1), so the two diffs are disjoint and merge cleanly in
+  either order.
+- **Release-order axis — open, and bound by §A.5 Decision 3.** Disjoint diffs still compose into one
+  release, and a release carrying both makes `installed != incoming` for every user. The classifier
+  ships first; t237 ships in a later release. Neither "same release" nor "t237 first" is available.
+
+The paired-edit collision itself travels with the extension point: the successor card inherits it,
+and inherits the mitigation with it — land the paired edit as its own commit so a rebase against t237
+touches one commit rather than a whole SPEC.
 
 ### §C.3 Non-interactive
 
@@ -427,11 +477,13 @@ and belongs to its own card.
   unresolved collision with card t237, and an unmeasured first-upgrade population. Splitting it out
   dissolves the first three and leaves the fourth answerable on its own terms (AC-PCP-005 sub-case
   (c)).
-- **The trap the successor card must not walk into**: a hook-body change and a provenance classifier
+- **The trap no body-changing card may walk into**: a hook-body change and a provenance classifier
   in the same release make `installed != incoming` true for **every** installed base without
   exception, so every user takes a backup and a notice on first upgrade — the alarm fatigue §A.3
-  exists to prevent, delivered by the mechanism meant to prevent it. The successor card ships after
-  the classifier release, against an installed base that already carries records.
+  exists to prevent, delivered by the mechanism meant to prevent it. This binds the release rather
+  than this card, so it binds card t237/#1641 identically (§C.2); the constraint, its red-moments,
+  and its override cost are stated once in §A.5 Decision 3. The successor card ships after the
+  classifier release, against an installed base that already carries records.
 - Also not authored here: the notice's pointer to `pre-commit.local` (REQ-PCP-004 states why naming
   a facility that does not yet exist is worse than naming nothing).
 

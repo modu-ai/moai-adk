@@ -80,6 +80,44 @@ Card: t230 · Tier M · Class C · branch `WT-precommit-preserve`
   AC-PCP-005 sub-case (c) (a legacy fixture read from `git show v3.1.2:…`, which goes red the moment
   the body changes) plus AC-PCP-013 (parity, PASS required and SKIP rejected). Both sit inside the
   test suite rather than at a release boundary nothing reads.
+- **Plan-audit iteration 3 (`plan-audit-3.md`, PASS-WITH-DEBT 0.8875, flat) — D1-D3 closed at
+  v0.5.0.** Each finding was re-measured in this tree before being accepted; none was taken on the
+  auditor's word.
+  - **D1 (critical)** — re-measured: `gh issue view 1641` → **OPEN**, editing `preCommitHookContent`
+    and the template twin, verified patch on `t312-precommit-vet @ b6f478b1a`. The auditor is right
+    that the v0.4.0 trim narrowed the composition constraint onto "the successor card" while the
+    card about to change the body is t237. Closed by restoring **§A.5 Decision 3**, re-scoped to bind
+    the *release* rather than a card, with three named red-moments: the M2 scope gate (green by
+    construction — labelled as such, not counted), a **sync-phase DoD item read against the
+    integration ref** (acceptance.md §D.3 — flips when a sibling merge lands a body change, so it can
+    genuinely fail), and the release-candidate cut, which lies **outside** this SPEC's lifecycle and
+    is therefore routed outward as a release-checklist item rather than re-created as an internal
+    check. That last point is deliberate: iteration 2's N1 was a constraint checked where it could
+    not fail, and inventing a second such check would have repeated it. Override path stated with its
+    cost (release-note disclosure + a §D.4 re-pin before the cut). No new requirement: 12 REQ / 12 AC
+    unchanged.
+  - **D2 (major)** — re-measured rather than assumed: a probe package containing a single `t.Skip`
+    test returns `--- SKIP` / `ok` / **exit 0** under `go test … -count=1 -v`, so the old Decides
+    genuinely could not distinguish "(c) passed" from "(c) never ran". Closed with the AC-PCP-013
+    treatment — `-v` plus the run's skip status inspected, a Then clause that fails on a skipped
+    sub-case, and a third named mutant (a (c) that skips whenever the tag lookup fails). CI exposure
+    re-measured: `fetch-depth: 0` at `.github/workflows/ci.yml:119,219,316,343,398,455` — six
+    occurrences, so tags resolve in CI and the exposure is forks, tarballs and shallow clones.
+  - **D3 (major)** — closed by the re-pin route (the first of the auditor's two options), recorded as
+    **acceptance.md §D.4**: (c) pins to the most recent released tag whose hook body is byte-identical
+    to the incoming body (`v3.1.2` here, re-verified rc 0 this round), the body-changing card re-pins
+    it in the same commit, deletion is prohibited, and the interim expectation flip (a `v3.1.2`-era
+    hook becoming a genuine backup-and-notice case) is stated. The body-stability signal is
+    explicitly relocated to where it can still fail — plan.md §F's M2 scope gate and AC-PCP-013 — so
+    the two entangled signals are separable.
+  - **D5 (minor)** — closed: the `.git/hooks/` edge row now cites the creating call
+    (`os.MkdirAll(hookDir, …)` in `InstallPreCommitHook`, `hook_install_precommit.go:132 @294b4b6ab`,
+    re-verified) instead of the path assignment at `:131`.
+  - **D4 (minor) — declined.** A third notice element ("this will recur on the next update") is
+    defensible, but the notice's strength is its size, and REQ-PCP-006's disclosure floor holds
+    without it; the auditor states the decline is equally defensible. **D6 (minor)** — no action
+    required by its own terms; the numbering gaps stay accounted for in spec.md §B.
+  - `~/go/bin/moai spec lint …/spec.md` → `✓ No findings` after the edits.
 
 ## §E.2 Run-phase Evidence
 

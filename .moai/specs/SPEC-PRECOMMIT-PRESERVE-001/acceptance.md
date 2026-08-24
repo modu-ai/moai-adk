@@ -122,22 +122,33 @@ point the user at a file the installed hook never reads. A test asserting the st
 **Given** a marker-bearing hook and no `.moai-pre-commit.sha256`:
 **(a)** content differing from the incoming content → **Then** a backup is taken and a notice
 emitted; **(b)** content identical to the incoming content → **Then** no backup is taken;
-**(c)** content that is the **`v3.1.2` released hook body read from git** — not a synthetic fixture,
-not the incoming constant — → **Then** no backup is taken, no notice is emitted, and the provenance
-record is written.
+**(c)** content that is the **pinned released hook body read from git** — `v3.1.2` at this version,
+per §D.4; not a synthetic fixture, not the incoming constant — → **Then** no backup is taken, no
+notice is emitted, and the provenance record is written; **and** all three sub-cases report PASS and
+**not** SKIP. A run in which (c) skipped fails this criterion.
 
 Sub-case (c) is the real installed base, and it exists because nothing else measures it. Sub-case
 (b) builds its fixture from the incoming content, so it passes by construction whatever the shipped
-bytes happen to be; it proves the code path, not the population. (c) fixes the fixture to bytes
-that actually shipped — every `v3.1.0`-`v3.1.2` install carries them — and so it is also what keeps
-this SPEC honest about leaving the hook body untouched (spec.md §C.1): the day someone changes
-`preCommitHookContent`, (c) goes red and says so, in the place where the consequence lands.
+bytes happen to be; it proves the code path, not the population. (c) fixes the fixture to bytes that
+actually shipped — every `v3.1.0`-`v3.1.2` install carries them.
 
-- **Decides**: `go test ./internal/cli/ -run TestPreCommitLegacyNoRecord -count=1` (all three
-  sub-cases). Sub-case (c)'s fixture is obtained from git rather than hand-copied —
-  `git show v3.1.2:internal/template/templates/.git_hooks/pre-commit` — so it cannot silently drift
-  into a copy of the current constant. A test that cannot reach git (shallow clone, no tags) must
-  **skip loudly**, never pass quietly; a skipped (c) is a gap, not a pass.
+**What (c) is, and what it is not.** (c) is a REQ-PCP-005 check against the real population; that is
+its whole job. While the pin holds it *also* goes red on any edit to `preCommitHookContent`, which is
+a useful side effect but is **not** the body-stability guard — that guard is plan.md §F's end-of-M2
+scope gate and AC-PCP-013, which is why a legitimate body change does not leave the invariant
+unwatched when (c) is re-pinned. Keeping the two signals distinct is what §D.4 exists for: on a
+legitimate body change, (c) is re-pinned, never deleted.
+
+- **Decides**: `go test ./internal/cli/ -run TestPreCommitLegacyNoRecord -count=1 -v`, with the
+  run's skip status inspected (all three sub-cases). The plain command exits **0** on a `t.Skip`, so
+  it returns the same verdict for "(c) passed" and "(c) never ran" — the skip status is the part
+  that decides, exactly as in AC-PCP-013. Sub-case (c)'s fixture is obtained from git rather than
+  hand-copied — `git show v3.1.2:internal/template/templates/.git_hooks/pre-commit` — so it cannot
+  silently drift into a copy of the current constant. A test that cannot reach git (shallow clone,
+  no tags, a tarball checkout) must **skip loudly**, never pass quietly; a skipped (c) is a gap, not
+  a pass, and this criterion is red until it runs. Measured mitigation, not a substitute: this
+  repo's CI Test jobs use `fetch-depth: 0` (`.github/workflows/ci.yml:119,219,316,343,398,455`), so
+  tags resolve there; forks, tarballs and shallow clones are the exposure.
 - **Baseline**: test absent; today all three sub-cases overwrite silently. The `v3.1.2` blob is
   byte-identical to the current template at `7b2f42be0`
   (`git show v3.1.2:internal/template/templates/.git_hooks/pre-commit | cmp - <same path>` → rc 0),
@@ -147,11 +158,15 @@ this SPEC honest about leaving the hook body untouched (spec.md §C.1): the day 
   every existing installation. Defeated only because sub-case (a) is mandatory; (b) and (c) alone
   are not acceptable evidence. A second mutant, which (c) exists for: an implementation correct on
   synthetic fixtures, shipped in a tree whose hook body has quietly changed — (b) still passes,
-  (c) goes red and names the real regression.
+  (c) goes red and names the real regression. A third mutant, which the skip-status clause exists
+  for: a (c) written to `t.Skip` when the tag lookup fails for any reason — the suite is green, the
+  population is unmeasured, and the criterion reads as satisfied.
 - **Failing input**: sub-case (a) run against a "silent when unknown" implementation. Must be
   observed red. For sub-case (c), a tree with any edit to `preCommitHookContent` / the template
   twin — it must be observed red there before (c) is accepted, since a criterion that has only ever
-  been green proves nothing.
+  been green proves nothing. For the skip clause, a run whose tag lookup cannot resolve (verifiable
+  with a shallow clone, or by pointing the fixture at a tag that does not exist) — the criterion
+  must be observed red there, not green.
 
 ### AC-PCP-006 — no silent replacement, whatever the policy (REQ-PCP-006)
 
@@ -295,7 +310,7 @@ classified user-modified.
 
 | Case | Expected |
 |---|---|
-| `.git/hooks/` absent | created, as today (`internal/cli/hook_install_precommit.go:131 @294b4b6ab`) |
+| `.git/hooks/` absent | created, as today — the `os.MkdirAll(hookDir, …)` call in `InstallPreCommitHook` (`internal/cli/hook_install_precommit.go:132 @294b4b6ab`) |
 | `skip=true` | no-op — no write, no backup, no provenance record |
 | Record present but malformed or unreadable | treated as absent → REQ-PCP-005 legacy path |
 | Installed hook unreadable | existing `read existing hook` error path, unchanged |
@@ -328,3 +343,47 @@ classified user-modified.
   to their pre-implementation state — this SPEC's diff touches installer logic and tests only
   (spec.md §C.1). AC-PCP-005 sub-case (c) and AC-PCP-013 are the two checks that observe it.
 - `~/go/bin/moai spec lint .moai/specs/SPEC-PRECOMMIT-PRESERVE-001/spec.md` clean.
+- **Release composition (spec.md §A.5 Decision 3), checked at sync-phase against the integration
+  ref — not against this branch's working tree**: after this SPEC's branch merges into the release
+  line, `git show <integration-ref>:internal/template/templates/.git_hooks/pre-commit | cmp -
+  <(git show v3.1.2:internal/template/templates/.git_hooks/pre-commit)` → rc 0. **Red when** a
+  sibling merge — card t237/#1641 or any other body-changing card — has already put a hook-body
+  change on the release line this SPEC is about to ship in; that composition makes
+  `installed != incoming` for the entire installed base and fires a backup and a notice for every
+  user on first upgrade. This item reads the integration ref rather than this SPEC's diff, which is
+  what makes it capable of failing — the end-of-M2 gate (plan.md §F) cannot fail for this reason,
+  and the v0.3.0 attempt to bind the composition there is why it was retired. On red: the classifier
+  ships first and the body change moves to a later release, or the override is taken with the cost
+  §A.5 Decision 3 states (release-note disclosure plus a §D.4 re-pin **before** the cut). The
+  release-candidate re-check is deliberately **outside** this SPEC — see §D.4.
+
+## §D.4 Sub-case (c)'s pin, and what a legitimate body change does to it
+
+AC-PCP-005 sub-case (c) is pinned to a released tag, and the pin is a rule rather than a constant:
+
+> **(c) pins to the most recent released tag whose hook body is byte-identical to the incoming
+> body.** At v0.5.0 that tag is `v3.1.2`, verified: `git show
+> v3.1.2:internal/template/templates/.git_hooks/pre-commit | cmp -
+> internal/template/templates/.git_hooks/pre-commit` → rc 0.
+
+The rule matters because the hook body will legitimately change one day — card t237/#1641 or the
+successor card carrying the extension point. On that day, three things are true at once, and stating
+them here is what stops the criterion from being deleted under deadline pressure:
+
+1. **(c) is not deleted.** It is the only criterion measuring REQ-PCP-005 against the real installed
+   population; deleting it removes the measurement, not the noise.
+2. **(c) is re-pinned by the card that changes the body**, in the same commit as the body change, to
+   whichever tag then satisfies the rule above. Until a release carrying the new body exists, no tag
+   satisfies it: in that window a `v3.1.2`-era hook is genuinely user-different from the incoming
+   body, so its correct behaviour is backup **and** notice — the shape of sub-case (a), not (c) — and
+   the body-changing card states that flip in its own acceptance criteria rather than leaving (c)
+   asserting the opposite.
+3. **The body-stability signal does not move with the pin.** It stays where it can still fail:
+   plan.md §F's end-of-M2 scope gate and AC-PCP-013's PASS-not-SKIP requirement. That separation is
+   the point — (c) proves a requirement, the gate guards the scope, and neither inherits the other's
+   failure mode.
+
+The release-candidate re-check of §A.5 Decision 3 lives here too, and it is stated as **outside this
+SPEC's lifecycle**: the cut happens after this SPEC closes, so it is a release-checklist item for
+whoever cuts the release, not a criterion this SPEC can observe. Recording it as an internal check
+would be green by construction — the defect the retired AC-PCP-015 had.

@@ -53,8 +53,11 @@ writer. spec.md §C.4 carries the same permission; anything wider is out of scop
    later divergence is attributable rather than assumed. This is also the fixture the sub-case reads
    from git at test time; confirming it resolves here catches a shallow clone or a missing tag
    before it presents as a test failure.
-   (Card t237 edits the constant/template pair this SPEC does not touch, so no rebase check against
-   it is needed — spec.md §C.2.)
+   (Card t237 edits the constant/template pair this SPEC does not touch, so no **rebase** check
+   against it is needed — spec.md §C.2. Its **release-order** constraint is a different question and
+   is live: spec.md §A.5 Decision 3, checked at sync-phase against the integration ref per
+   acceptance.md §D.3. If this baseline is anything but rc 0, a body change has already reached the
+   tree the work starts from — stop and read Decision 3 before implementing.)
 
 ## §D Constraints
 
@@ -67,6 +70,12 @@ writer. spec.md §C.4 carries the same permission; anything wider is out of scop
   (§A). A caller change beyond that is a scope violation, not an implementation detail.
 - The hook body stays byte-identical throughout. AC-PCP-005 sub-case (c) and AC-PCP-013 observe it;
   if either goes red, an edit has reached the constant or the template and the run has left scope.
+- **Release composition is a constraint on this SPEC's release, not on this SPEC's diff** (spec.md
+  §A.5 Decision 3). Nothing in M1 or M2 can violate it and nothing here can check it: the run-phase
+  gates below read the working tree, where the constraint is green by construction. It is checked at
+  sync-phase against the integration ref (acceptance.md §D.3) and again, outside this SPEC, at the
+  release-candidate cut (acceptance.md §D.4). Recorded here so a run-phase reader does not mistake
+  the M2 scope gate for the composition check.
 
 ## §E Self-Verification
 
@@ -152,7 +161,9 @@ where its guard is what proves the hook body went untouched.)
 - `TestPreCommitTemplateMatchesConstant` — `internal/cli/hook_install_precommit_test.go:38
   @294b4b6ab`; note its `t.Skipf` branch at `:45 @294b4b6ab` (AC-PCP-013's mutant)
 - `internal/template/templates/.git_hooks/pre-commit` — the template twin
-- Card t237 / issue #1641 — edits the constant/template pair; no longer collides (spec.md §C.2)
+- Card t237 / issue #1641 — edits the constant/template pair; open, with a verified patch on
+  `t312-precommit-vet @ b6f478b1a`. No merge collision with this SPEC (spec.md §C.2), but bound by
+  the release-order constraint of spec.md §A.5 Decision 3
 - Successor card — the `pre-commit.local` extension point, split out at v0.4.0 (spec.md §D Out of
   Scope); depends on this SPEC landing first so provenance records exist when the body changes
 - Card t235 / issue #1639 — the gate-serialization axis, out of scope here
