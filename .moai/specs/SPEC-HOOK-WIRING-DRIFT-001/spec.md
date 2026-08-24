@@ -1,7 +1,7 @@
 ---
 id: SPEC-HOOK-WIRING-DRIFT-001
 title: "Hook wiring drift — close the local drift, make it detectable, record the dispositions, stop the MX dead work"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-08-24
 updated: 2026-08-24
@@ -20,6 +20,7 @@ tier: M
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 0.2.0 | 2026-08-24 | manager-spec | Audit iteration 1 amendment. plan-audit returned **FAIL 0.807** (Clarity 0.75 / Completeness 0.90 / Testability 0.75 / Traceability 0.85; threshold 0.85) with all 7 must-pass criteria PASS — score-driven, not gate-driven. The auditor independently re-ran nine `Pre-impl observed:` values and all matched exactly; what did not hold was **mutation adequacy**. It constructed four passing mutants, including one against the criterion v0.1.0 declared mutant-proof. Fixes: **M-1** (relocate-and-rename defeated AC-HWD-013's three single-file greps) forced package-scoped greps, the `spawnDeferredAdvisoryScans` arity check promoted from prose into the Then clause, and a behavioural no-index-written assertion; **M-2** (a hardcoded expected-entry list passed AC-HWD-005 + AC-HWD-006 without ever rendering the template) forced the new mechanism-binding AC-HWD-017 and an injectable template source; **M-3** (a diagnostic writing `.moai/logs/doctor-drift.log` passed AC-HWD-007 while violating REQ-HWD-004's "any other file on disk") forced REQ-HWD-004 to narrow to the project root and AC-HWD-007 to widen to `git status --porcelain` + gitignored-path snapshots; **M-4** (`git rm --cached`, or truncation to 0 bytes, passed AC-HWD-011's `ls` inventory) forced git-state assertions and retracted a false "none constructible" claim. Also: the three deferred baselines were measured (`0`, `0`, exit `0`) restoring §C-5; the M3 correction was extended to the two remaining "dormant" surfaces including an always-loaded one; the two constraint-only criteria were promoted to REQ-HWD-013/014; and AC-HWD-001/002 were retired into AC-HWD-003 to stay at the Tier M 16-criterion ceiling. |
 | 0.1.0 | 2026-08-24 | manager-spec | Initial draft, Tier M / Class C. Authored from the three plan-phase investigation reports (`.moai/reports/t216/d1-chain-event.md`, `d2-unwired-scripts.md`, `d3-mx-cold-start.md`), NOT from card t216 — see §A.2 for the five card premises the measurement disproved and how the scope was reframed as a result. |
 
 ---
@@ -39,6 +40,7 @@ persisted in this tree:
 | D-1 | the `chain-event.sh` wiring drift and the `moai update` path | `.moai/reports/t216/d1-chain-event.md` |
 | D-2 | the 11 present-but-unwired hook scripts | `.moai/reports/t216/d2-unwired-scripts.md` |
 | D-3 | the MX cold-start scan | `.moai/reports/t216/d3-mx-cold-start.md` |
+| audit | plan-audit iteration 1, whose four constructed mutants drove v0.2.0 | `.moai/reports/t216/plan-audit.md` |
 
 Those three reports are the source of every claim below; each carries the
 file:line citations. This SPEC delivers four milestones drawn from what was
@@ -134,17 +136,27 @@ hook-side scan.
   drift in **both** directions, naming the affected script for each divergent
   entry.
 
-- **REQ-HWD-004** (Unwanted) — The hook-wiring diagnostic shall not modify
-  `.claude/settings.json` or any other file on disk: after it runs, every file
-  under `.claude/` shall be byte-identical and mtime-unchanged.
+- **REQ-HWD-004** (Unwanted) — The hook-wiring diagnostic shall not create,
+  modify, or delete any file **under the project root**: after it runs, the
+  worktree's `git status --porcelain` output and the name/size/mtime listing of
+  the gitignored `.moai/logs/` and `.moai/state/` paths shall both be unchanged.
 
+  > **Why "under the project root" and not "on disk"** (audit D7 / mutant M-3):
+  > v0.1.0 said "any other file on disk" while its criterion observed only
+  > `.claude/`, so a diagnostic writing `.moai/logs/doctor-drift.log` — a
+  > realistic implementation choice, not a contrived one — satisfied every
+  > assertion while violating the requirement as written. The requirement is now
+  > scoped to what a criterion can actually observe, and the residual gap it
+  > leaves (a write outside the project root, e.g. under `~/.moai/`) is recorded
+  > in acceptance.md §D.6 rather than papered over by an unobservable clause.
+  >
   > Why this is a requirement and not a description of one: a diagnostic that
   > silently repaired the drift would become the same class of defect this card
   > exists to close — a change nobody asked for and nobody can see. The
   > repair-vs-report question is settled in §C-2 and is not the diagnostic's to
   > reopen at runtime.
 
-- **REQ-HWD-005** (Event-detected) — When the settings template cannot be
+- **REQ-HWD-005** (Event-driven) — When the settings template cannot be
   rendered, or the project's `.claude/settings.json` is absent or unparseable,
   the diagnostic shall report a warn status naming the cause and the `moai
   doctor` run shall complete with its baseline exit status.
@@ -169,7 +181,7 @@ hook-side scan.
 
 ### M4 — stop the MX dead work
 
-- **REQ-HWD-009** (Event-detected) — When `moai mx query` detects that the
+- **REQ-HWD-009** (Event-driven) — When `moai mx query` detects that the
   sidecar index is absent, empty, corrupt, or older than the freshness threshold,
   it shall build the index in-process and then serve the query.
 
@@ -180,6 +192,34 @@ hook-side scan.
 - **REQ-HWD-011** (Unwanted) — No comment in `internal/hook/session_start.go`
   shall assert that a fire-and-forget goroutine spawned in the hook process
   survives that process's exit.
+
+### M3 (continued) — cross-surface consistency and the two [HARD] constraints
+
+- **REQ-HWD-012** (Ubiquitous) — Every rule surface that describes
+  `team-ac-verify.sh`'s registration state shall carry the same corrected
+  reading: that it is not registered in any settings surface, so no configuration
+  flag activates it. The surfaces are `hook-independence.md`,
+  `agent-common-protocol.md` (always-loaded),
+  `agent-common-protocol-reference.md`, and their template twins.
+
+  > Added in audit iteration 1 (D6). Correcting one surface while two others —
+  > one of them always-loaded — keep the "dormant" wording leaves three surfaces
+  > disagreeing, and an unscheduled contradiction is worse than the original
+  > error. This is a **factual correction, not a decision**: whether team mode
+  > should fire the hook remains §G-3.
+
+- **REQ-HWD-013** (Ubiquitous) — Every template-managed file this SPEC edits
+  shall be edited at its `internal/template/templates/` source first and mirrored
+  afterwards, and the two copies shall be byte-identical at closure.
+
+- **REQ-HWD-014** (Unwanted) — No file this SPEC writes under
+  `internal/template/templates/` shall contain a SPEC ID, a REQ token, an
+  internal card number, an internal date, or a commit SHA.
+
+  > REQ-HWD-013 and REQ-HWD-014 promote §C-1 and §C-4 into the requirement layer
+  > (audit D12). They were already [HARD] constraints with criteria attached
+  > (AC-HWD-015, AC-HWD-016); promoting them removes the two requirement-orphaned
+  > criteria the auditor deducted Traceability for, and changes no obligation.
 
 ---
 
@@ -210,13 +250,22 @@ hook-side scan.
    `internal/template/templates/**` and must therefore be free of SPEC IDs, REQ
    tokens, internal card numbers (`t242`/`t243`/`t244`), internal dates, and
    commit SHAs. The `open-question` disposition rows in the **template** name the
-   pending decision without naming the card; the card numbers live in **§G of
-   this SPEC only**.
+   pending decision without naming the card; card numbers appear in this SPEC's
+   own artifacts (§G, frontmatter `tags`, plan.md, progress.md) and **never in
+   `internal/template/templates/**`**.
 
 5. **Every criterion is falsifiable and pre-measured.** Each entry in
-   `acceptance.md` carries a `Pre-impl observed:` value measured on this tree at
-   HEAD `950cb4399`, and a mutant note. A criterion whose command already passes
-   before implementation observes nothing and is rejected.
+   `acceptance.md` carries a `Pre-impl observed:` value measured on this tree —
+   tagged `@950cb4399` where unchanged since authoring, `@4842760a7` where
+   re-measured in audit iteration 1 — plus a mutant note. A criterion whose
+   command already passes before implementation observes nothing and is rejected.
+
+   > **No deferral class exists, and none is needed.** v0.1.0 deferred three
+   > baselines to run time in violation of this clause (audit D4). All three are
+   > now measured: AC-HWD-010's `statusLine` grep → `0`; AC-HWD-016's neutrality
+   > grep → `0`; AC-HWD-008's doctor baseline → exit `0`, obtained by running the
+   > `make build` that §C-6 and plan.md §C already required. The clause stays
+   > absolute.
 
 6. **Verification is scoped to the change.** Affected packages only
    (`internal/cli`, `internal/hook`, `internal/template`), then push and read CI
@@ -231,6 +280,10 @@ hook-side scan.
 | `.claude/settings.json` | **local, git-tracked** (its template counterpart `settings.json.tmpl` is already correct and is **not** edited by this SPEC) | edit + commit the local file directly |
 | `internal/template/templates/.claude/rules/moai/development/hook-independence.md` | **template source** | edit here **first** |
 | `.claude/rules/moai/development/hook-independence.md` | **template-managed mirror** (currently byte-identical to its twin; lives inside a `CleanMoaiManagedPaths` root, so an unmirrored local edit is transient) | mirror after `make build` |
+| `internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md` | **template source** (REQ-HWD-012; the mirror is **always-loaded**, which is why this surface cannot be left uncorrected) | edit here **first** |
+| `.claude/rules/moai/core/agent-common-protocol.md` | **template-managed mirror**, always-loaded | mirror after `make build` |
+| `internal/template/templates/.claude/rules/moai/core/agent-common-protocol-reference.md` | **template source** (REQ-HWD-012) | edit here **first** |
+| `.claude/rules/moai/core/agent-common-protocol-reference.md` | **template-managed mirror** | mirror after `make build` |
 | `internal/cli/doctor.go` | Go source | direct |
 | `internal/cli/mx_query.go` | Go source | direct |
 | `internal/hook/session_start.go` | Go source | direct |
@@ -306,7 +359,10 @@ of its 4 call sites); `internal/cli/chain.go` exposes only `status`, `lineage`,
 `back`, `list`, `prune`. `.moai/state/chain/events.jsonl` has never existed.
 `internal/chain/node.go:27` documents `EventCompletionEdge` as produced by the
 SubagentStop hook. **SPEC-CHAIN-CORE-001's owner decides** whether Phase 1
-intended this. Until then the entry M1 delivers is parity, not function.
+intended this. That SPEC carries `status: completed`, so the decision lands as an
+**amendment** to it (`completed → in-progress` per the frontmatter schema),
+carried by card t242 — not as work inside a live phase. Until then the entry M1
+delivers is parity, not function.
 
 **G-2 — `handle-session-start-navigator.sh` regression → card t243.** Added to
 the template only, by `2c87d195f` (SessionStart, timeout 5); removed by
@@ -317,7 +373,9 @@ still executes the script directly and asserts AC-PN-009/010/012 — green
 criteria for a delivery mechanism that is gone. Note also that
 `.moai/project/navigator/navigator.md` does not exist in this tree, so a restored
 wiring would fail open at the script's first `[ ! -r "$NAV_FILE" ]` guard.
-**SPEC-PROJECT-NAVIGATOR-001's owner decides** restore-or-retire.
+**SPEC-PROJECT-NAVIGATOR-001's owner decides** restore-or-retire. That SPEC is
+also `status: completed`, so the same amendment path applies, carried by card
+t243.
 
 **G-3 — `team-ac-verify.sh` wiring → card t244.** It has **never** appeared in
 any settings surface in the entire history (pickaxe empty across

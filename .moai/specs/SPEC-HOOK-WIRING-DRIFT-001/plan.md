@@ -22,10 +22,18 @@ fully determined by the template, so there is nothing to decide.
 | 3 | **M3** — disposition taxonomy in the rule surface | The five-class taxonomy is naming that downstream readers will inherit; it ships to 16-language distribution |
 | 4 | **M1** — the settings.json parity commit | Mechanical. Every byte is dictated by the rendered template |
 
-**One ordering dependency crosses this:** AC-HWD-003's parity test cannot be
-green until M1 lands. Land the test **red** with M2 (it is the same
-render-and-compare machinery the diagnostic needs), then M1 turns it green. Do
-not weaken the test to make it pass early.
+**Two ordering consequences cross this.**
+
+1. **AC-HWD-003's parity test cannot be green until M1 lands.** Land the test
+   **red** with M2 (it is the same render-and-compare machinery the diagnostic
+   needs), then M1 turns it green. Do not weaken the test to make it pass early.
+2. **Every M2 failing input is built from the rendered template, never by copying
+   the project** (audit D3). At M2 time the project's `settings.json` is still
+   drifting — `grep -c 'chain-event.sh' .claude/settings.json` → `0` — so there is
+   no `chain-event.sh` entry to remove and no drift-free copy to take. The three
+   fixtures (drift-free, template-only, project-only) and how each is produced are
+   specified in acceptance.md §M2's construction note; build them from the render
+   and the ordering is a non-issue.
 
 ---
 
@@ -122,6 +130,22 @@ DiagnosticCheck` to `internal/cli/doctor.go`, registered in the check list besid
 both can import — rather than writing the comparison twice. Two copies of a
 comparison drift, and a drifted drift-detector is a poor joke.
 
+**[HARD] The template source is an injectable parameter** (audit D2 / mutant
+M-2, and the fresh attempt (ii) recorded under AC-HWD-017). The check MUST take
+its template source — an `fs.FS`, or the rendered bytes — as a parameter rather
+than reaching for the embedded FS internally, and production MUST pass
+`template.EmbeddedTemplates()` through that same seam. Two reasons, and the
+second is the load-bearing one:
+
+- Without the seam, AC-HWD-017 cannot feed a fixture template and the
+  render-vs-hardcode distinction is unobservable by any criterion. A hardcoded
+  expected-entry list would then pass every M2 criterion — and it rots against the
+  template, re-creating the exact drift class this SPEC exists to close.
+- Putting the seam on the **check** rather than only on the helper is what closes
+  the one-level-up variant: a correct shared helper plus a check that ignores it
+  and consults a hardcoded list. AC-HWD-017 observes the **check's own returned
+  message**, so the check must consume what it is handed.
+
 **Failure modes (REQ-HWD-005).** Render error, missing settings file, unparseable
 JSON → `CheckWarn` naming the cause; the doctor run's exit status is unchanged.
 
@@ -157,11 +181,28 @@ catch.
 **M4b — remove the hook-side scan.** From `internal/hook/session_start.go`:
 delete `runMXColdStartScan` (~line 1536), `mxIndexNeedsRebuild` (~1499), the
 gate call at ~228, the `mxScanNeeded` parameter threaded through
-`spawnDeferredAdvisoryScans` (~560-573), and the inline test-branch call at
-~272. Retire — do not skip — any test asserting the scan's presence. The
-`mxIndexScanTimeout` / `mxIndexFreshnessThreshold` constants move to wherever the
-freshness decision now lives (M4a) rather than being deleted outright; the 7-day
-threshold's semantics are explicitly out of scope.
+`spawnDeferredAdvisoryScans` (~554-560, taking its arity **5 → 4**), and the
+inline test-branch call at ~272. The `mxIndexScanTimeout` /
+`mxIndexFreshnessThreshold` constants move to wherever the freshness decision now
+lives (M4a) rather than being deleted outright; the 7-day threshold's semantics
+are explicitly out of scope.
+
+**The removal must be observed behaviourally, not lexically** (audit D1 / mutant
+M-1). Deleting the identifiers is not the same as removing the scan: relocating
+them to a sibling file in the same package and renaming them passes any
+single-file grep while the scan still fires. AC-HWD-013 therefore binds three
+things — package-scoped absence, the `spawnDeferredAdvisoryScans` arity, and a
+behavioural assertion — and M4b must satisfy all three.
+
+The five existing MX tests are **inverted or retired in the same change, never
+skipped**:
+
+| Test | Disposition |
+|---|---|
+| `TestSessionStartMXColdStartIntegration` (`session_start_mx_test.go:159`) | **Invert.** It currently asserts the index IS created and passes — measured: `MX index built via cold-start scan … tags=1`, `--- PASS`. After M4b it asserts the index is **not** created. This inverted test is AC-HWD-013 (c) |
+| `TestSessionStartMXFreshIndexNoRebuild` (`:184`) | Retire — its subject (no churn on a fresh index) ceases to exist on this path |
+| `TestRunMXColdStartScan_*` (`:83`, `:121`, `:135`) | Move with the logic to M4a's consumer-side build, keeping the fail-open and timeout coverage, or retire if M4a's build path is covered by AC-HWD-012's three inputs |
+| `TestMXIndexNeedsRebuild_*` (`:26`, `:35`, `:53`, `:71`) | Move with the freshness decision to M4a — absent / fresh / stale / corrupt are exactly AC-HWD-012's cases |
 
 **M4c — correct the false comment.** `session_start.go:251-254` asserts *"The
 goroutine continues to completion in the background (durable side effects still
@@ -200,12 +241,27 @@ Plus the two corrections (REQ-HWD-007): 33 hook entries across 20 events, with
 the 34th `"type": "command"` occurrence being `statusLine` and not a hook; and
 `handle-agent-hook.sh`'s frontmatter registration.
 
-Also correct the existing `team-ac-verify.sh` wording. The current text —
-"dormant … activates only under harness `thorough` + team mode prerequisites" —
-reads as *registered but gated*, and the wiring says otherwise: it has never
-appeared in any settings surface, so flipping `team.enabled: true` activates
-nothing. Restate it as *not registered — activation decision pending*, matching
-the language already used for the worktree hooks.
+**The `team-ac-verify.sh` wording correction spans four files, not one**
+(REQ-HWD-012, audit D6). The current text — "dormant … activates only under
+harness `thorough` + team mode prerequisites" — reads as *registered but gated*,
+and the wiring says otherwise: it has never appeared in any settings surface, so
+flipping `team.enabled: true` activates nothing. Restate it as *not registered —
+activation decision pending*, matching the language already used for the worktree
+hooks, in **every** surface that carries it:
+
+| File | Occurrence | Note |
+|---|---|---|
+| `.claude/rules/moai/development/hook-independence.md` + template twin | the dormant-surfaces block | 7 mentions of the script; the primary M3 target |
+| `.claude/rules/moai/core/agent-common-protocol.md` + template twin | `:38` — *"`team-ac-verify.sh` (TaskCompleted in team mode, dormant)"* | **always-loaded** — leaving this one wrong means the wrong reading is in every session's context |
+| `.claude/rules/moai/core/agent-common-protocol-reference.md` + template twin | `:291` — *"TaskCompleted in team mode (dormant — harness `thorough` + team prerequisites)"* | spec.md §G-3 cites this very line as evidence of the misleading wording |
+
+Template-First applies to all three pairs; AC-HWD-015 asserts mirror identity for
+each. Correcting one surface and leaving two — one of them always-loaded — would
+leave three surfaces disagreeing, which is worse than the single original error.
+
+This is a **factual correction, not a decision**: whether team mode should fire
+the hook is §G-3 / card t244 and stays untouched. Say what the wiring is; do not
+say what it ought to be.
 
 **Neutrality.** The `open-question` rows name the pending decision and **not**
 the card. `t242`/`t243`/`t244` appear only in `spec.md` §G.
@@ -215,7 +271,9 @@ distributed act, and two of them are pinned by `retired_wrappers_test.go` and
 `m002_settings_cleanup_test.go`, with an m002 migration that strips their entries
 from *user* settings on upgrade.
 
-Files: the template rule file, its mirror.
+Files: three template rule files and their three mirrors —
+`hook-independence.md`, `agent-common-protocol.md`,
+`agent-common-protocol-reference.md`.
 
 ---
 
@@ -265,6 +323,14 @@ Files: `.claude/settings.json`.
   answering one here steals that SPEC's requirements.
 - **Marking a new gate PASS without an observed failure.** t197 spent seven audit
   rounds for want of this.
+- **Putting a mitigation in `Mutant:` prose instead of in the Then clause.** Prose
+  mitigations are not gates, and they read as gates. Audit iteration 1 defeated
+  two criteria whose stated defence lived only in prose — and one of the mutants
+  renamed the very symbol that prose relied on.
+- **Claiming a criterion is mutant-proof without recording the attempts.** v0.1.0
+  asserted "none constructible" for AC-HWD-011 and the auditor produced two
+  mutants immediately. An overclaimed note is worse than a known-weak criterion,
+  because it stops the next reader from strengthening it.
 
 ---
 
@@ -277,3 +343,5 @@ Files: `.claude/settings.json`.
   mutant analysis, and gate-correction obligation
 - `.moai/reports/t216/{d1-chain-event,d2-unwired-scripts,d3-mx-cold-start}.md` —
   the option tables and per-script evidence, referenced rather than duplicated
+- `.moai/reports/t216/plan-audit.md` — audit iteration 1: the four mutants
+  (M-1 … M-4) and the thirteen findings that produced v0.2.0
