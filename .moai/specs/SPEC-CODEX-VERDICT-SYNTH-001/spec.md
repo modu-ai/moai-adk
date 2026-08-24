@@ -2,7 +2,7 @@
 id: SPEC-CODEX-VERDICT-SYNTH-001
 title: "codex verdict 합성 — 모르는 서식을 통과로 읽지 않는다"
 version: "0.5.0"
-status: draft
+status: in-progress
 created: 2026-08-24
 updated: 2026-08-25
 author: manager-spec

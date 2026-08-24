@@ -21,11 +21,61 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+- 브랜치 `WT-audit-verdict-converge` · 마감 트리 `1e1edf6b4` (클린) · base `origin/main` @ `294b4b6ab`
+- 방법론 TDD · 마일스톤 M1~M4 전부 착지
+
+| 마일스톤 | 커밋 | 내용 |
+|---|---|---|
+| M1 | `55b2ca3e1` | 모드 seam(`synthesizeReviewOutput(reviewText, method)`) + 신호 수집·집합 최댓값 채택 구조 |
+| M2 | `d68b6ea7c` | `codexScoredVerdict` 점수 표기 인식기 |
+| M3 | `a84b25917` | `SynthesisNote` 불일치 기록 + `converge()` 반영 |
+| M4 | `1e1edf6b4` | 회귀 고정 3건 (`codex_verdict_regression_test.go`) |
+
+### 품질 게이트 (plan.md §E 전량)
+
+```
+$ go test ./internal/cli/ -count=1 -timeout 1200s
+ok  	github.com/modu-ai/moai-adk/internal/cli	510.756s
+
+$ go vet ./internal/cli/...
+(출력 없음, rc=0)
+
+$ GOOS=windows go vet ./internal/cli/...
+(출력 없음, rc=0)
+```
+
+판정은 출력 본문의 `ok` 행으로 했다 — 백그라운드 래퍼 종료코드는 근거로 쓰지 않았다. 증거: `.moai/state/verify/t229-m4/{pkg-cli,vet-darwin,vet-windows}.log`
+
+### DoD 211 — mutant (e) 독립성 실측
+
+`adoptConservativeVerdict` 를 대입 열 의미론으로 바꿔 심은 뒤 t229 관련 테스트 17건 실행:
+
+```
+--- FAIL: TestSynthesizeReviewOutput_AdoptsMostConservativeSignal   (AC-CVS-006)
+  K1 adopted "pass", want "fail" / K2 adopted "pass", want "fail"
+  K4 adopted "pass", want "inconclusive"
+나머지 16건 전부 PASS (AC-CVS-001~005 담당 테스트 포함)
+```
+
+AC-CVS-006 만 죽는다 — 이 AC 가 없었다면 mutant (e) 가 초록으로 착지했을 것이라는 D1 의 경고가 관측으로 섰다. 원복 후 해시 `0750534e…` 일치 확인. 증거: `.moai/state/verify/t229-m4/mutant-e.log` · 상세 `.moai/reports/t229/m4-close.md`
+
+### 부수 관측
+
+`SignalOrderDoesNotMatter` 는 mutant (e) 를 잡지 못한다 — K1·K2 는 신호 **수집** 순서가 같아 대입 열 아래에서도 같은 값을 낸다. 이 증인이 겨냥한 것은 mutant (f)(텍스트 등장 순서 의존)이며, 두 증인이 서로 다른 변종을 담당한다.
+
+### 미관측 (Gaps)
+
+커버리지 수치 · `golangci-lint` · 라이브 codex 프로브(SPEC §A.2 가 금지) · mutant (g) 쌍 특수화(오늘 검출 불가가 확정 사실) · CI 매트릭스 판정. 전 패키지 판정은 PR 의 CI 가 낸다.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+- AC-CVS-001 ~ AC-CVS-006 **6건 전부 PASS** (증인 매핑: `.moai/reports/t229/m4-close.md` §5)
+- RED 기록: C1~C8 8/8 (`baseline-rebased.md`) · K3·K7 부분 RED 와 M2 가 뒤집은 관측 (`m1-boundary.md`)
+- K3·K7 기대값을 관측 동작에 맞춰 낮추지 않았다 — corpus 의 기대값은 P-CONS 에서 도출된 그대로다
+- `TestSynthesizeReviewOutput_FindingBulletsMapToFail` 삭제되지 않았고 native 모드 명시 호출로 확장됐다 (`codex_review_rpc_test.go:122`)
+- AC-CVS-001·006 단언문 모두 corpus 순회 단일 단언 — 행 추가가 단언문 수정을 요구하지 않는다
+- 잔여 위험 3건(넷째 신호 · t234 seam 충돌 · 스위트 510초 비용): `m4-close.md` §7
+- sync-audit 대기
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
