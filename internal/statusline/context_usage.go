@@ -51,9 +51,9 @@ const contextUsageDirName = "context-usage"
 // it. stateDir is the project's .moai/state directory.
 //
 // The record is keyed by the identifier the session runtime delivered to the
-// render (REQ-ST-002) — never by the project-wide
-// .moai/state/current-session-id.txt sidecar, which carries the same
-// last-writer-wins shape the per-session split exists to remove.
+// render (REQ-ST-002) — never by any project-wide single-slot identifier file,
+// which would carry the same last-writer-wins shape the per-session split
+// exists to remove.
 // The key is a path component arriving from outside the process, so a value
 // that would resolve outside the per-session directory is REFUSED rather than
 // sanitised: rewriting "../escape" into "escape" produces a file that looks
