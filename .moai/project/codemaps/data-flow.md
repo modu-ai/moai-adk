@@ -222,6 +222,40 @@ flowchart TD
 
 ---
 
+## 7. 그래프 신선도 (moai graph check / query-time refresh)
+
+```mermaid
+flowchart TD
+    A["moai graph check"]
+    B["codemaps<br/>endpoint git-diff"]
+    C["mx-index<br/>inventory hash-diff"]
+    D["edges.jsonl<br/>source fingerprint"]
+    E["verdict fresh/stale/absent<br/>exit 0/1/2"]
+    F["moai mx/graph query"]
+    G["stale 판정 시<br/>changed-files-only refresh"]
+    H["provenance 재스탬프<br/>tree root + commit"]
+
+    A --> B
+    A --> C
+    A --> D
+    B --> E
+    C --> E
+    D --> E
+    F --> G
+    G --> H
+```
+
+**흐름**:
+1. `moai graph check` 3개 게이트 레이어(codemaps / mx-index / edges.jsonl)의 신선도를 수치로 보고
+2. codemaps: 스탬프된 생성 커밋 대비 described-source 파일의 endpoint diff (revert된 churn은 0으로 계산)
+3. mx-index: 스캔 인벤토리의 per-file content hash 대비 드리프트 수
+4. edges.jsonl: 4개 소스 세트(codemaps/mx-index/specs/reports) fingerprint 불일치 수
+5. mtime은 어떤 레이어에서도 신선도 신호로 쓰지 않음 (fresh worktree checkout이 모든 mtime을 초기화)
+6. `moai mx query` / `moai graph query`는 답변 전 stale 레이어를 changed-files-only로 갱신 (LLM/네트워크 없음)
+7. provenance 블록이 트리 루트 + 커밋(dirty면 fingerprint)을 기록 — 잘못된 트리의 인덱스는 절대 증분 신뢰하지 않음
+
+---
+
 ## 주요 인터페이스 계약
 
 ### Handler (Hook System)

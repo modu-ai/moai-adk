@@ -346,6 +346,77 @@ func TestCheckFreshness_DirtyGenerationAnchor(t *testing.T) {
 	}
 }
 
+// EdgesSourcesMoved probe — the cheap rebuild-free staleness signal the
+// query paths consult (REQ-GF-007). No meta ⇒ moved; fresh meta ⇒ not moved;
+// a moved source ⇒ moved.
+func TestEdgesSourcesMoved_ProbeStates(t *testing.T) {
+	root := newCheckFixture(t)
+	head := gitFix(t, root, "rev-parse", "HEAD")
+
+	if !EdgesSourcesMoved(root) {
+		t.Error("no meta sidecar must probe as moved (unjudgeable artifact)")
+	}
+
+	writeCodemapsProvenance(t, root, head)
+	writeSyncedMXIndex(t, root)
+	writeSyncedEdgesMeta(t, root)
+	if EdgesSourcesMoved(root) {
+		t.Error("in-sync meta must probe as not moved")
+	}
+
+	// Move a source the meta covers: edit the codemaps directory content.
+	if err := os.WriteFile(filepath.Join(root, ".moai", "project", "codemaps", "dependencies.md"),
+		[]byte("# moved\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if !EdgesSourcesMoved(root) {
+		t.Error("a moved codemaps source must probe as moved")
+	}
+}
+
+// MXIndexNeedsRefresh probe — absent ⇒ refresh (scan sources unindexed);
+// pre-provenance ⇒ NOT refreshed (legacy contract); drift / wrong-tree ⇒
+// refresh; in-sync ⇒ not.
+func TestMXIndexNeedsRefresh_ProbeStates(t *testing.T) {
+	root := newCheckFixture(t)
+	head := gitFix(t, root, "rev-parse", "HEAD")
+
+	if !MXIndexNeedsRefresh(root) {
+		t.Error("absent sidecar must need refresh (scan sources unindexed)")
+	}
+
+	// Pre-provenance sidecar: the legacy answering contract — never refreshed.
+	stateDir := filepath.Join(root, ".moai", "state")
+	mgr := mx.NewManager(stateDir)
+	if err := mgr.Write(&mx.Sidecar{SchemaVersion: mx.SchemaVersion}); err != nil {
+		t.Fatal(err)
+	}
+	if MXIndexNeedsRefresh(root) {
+		t.Error("pre-provenance sidecar must NOT be refreshed (legacy contract)")
+	}
+
+	// In-sync provenance: not needed.
+	writeSyncedMXIndex(t, root)
+	if MXIndexNeedsRefresh(root) {
+		t.Error("in-sync index must not need refresh")
+	}
+
+	// Content drift in an inventoried file: needed.
+	if err := os.WriteFile(filepath.Join(root, "internal", "alpha", "alpha.go"),
+		[]byte("package changed\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if !MXIndexNeedsRefresh(root) {
+		t.Error("inventory drift must need refresh")
+	}
+
+	// Wrong-tree anchor: needed (wrong-tree defect family).
+	writeMXIndexProvenance(t, root, "/some/other/tree", head)
+	if !MXIndexNeedsRefresh(root) {
+		t.Error("wrong-tree index must need refresh")
+	}
+}
+
 // Wrong-tree mx-index (provenance tree_root names a different tree) is stale,
 // never fresh — the CR #8/t246 wrong-tree defect family.
 func TestCheckFreshness_WrongTreeIndex(t *testing.T) {

@@ -45,6 +45,7 @@ graph TD
         session["internal/session"]
         lsp["internal/lsp"]
         mx["internal/mx"]
+        graph["internal/graph<br/>(edges + freshness)"]
     end
     
     cmd --> cli
@@ -57,11 +58,14 @@ graph TD
     cli --> loop
     cli --> coreGit
     cli --> coreProject
+    cli --> graph
     
     config --> models
     template --> manifest
     spec --> constitution
     hook --> config
+    hook --> graph
+    graph --> mx
     workflow --> coreGit
     loop --> config
     harness --> config
@@ -108,6 +112,7 @@ graph TD
 | `internal/tokenusage` | 토큰 사용량 계수 (statusline 연동) |
 | `internal/verify` | 검증 서브시스템 |
 | `internal/settings` | settings.json / settings.local.json 헬퍼 |
+| `internal/graph` | 코드베이스 엣지 산출물(edges.jsonl) + 3-레이어 신선도 게이트(`moai graph check`)·쿼리 시점 갱신·인용 앵커 |
 
 > 이 패키지들은 `merge`/`manifest`/`session` 등 기존 인프라와 협력합니다. `goal`은 self-contained (의존성 없음), `lockfile`은 `session`이, `atomicfile`은 `merge`/`manifest`가 사용합니다.
 
