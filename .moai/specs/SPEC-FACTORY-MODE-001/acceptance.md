@@ -280,6 +280,8 @@ grep -c -- '--max-duration 14400' .claude/skills/moai/workflows/factory.md      
 
 - **AC-FM-023a (state record)** — Given `moai cc --factory SPEC-PLACEHOLDER`, When the launcher runs against a `t.TempDir()` project root, Then a record exists at `.moai/state/factory/<session>.json` carrying `session_id`, `spec_id`, `backend`, `entered_at`, and `verify_rung`; and when the state directory is made unwritable, Then the launch still succeeds (fail-open).
 
+  > **Record half SUPERSEDED** by `SPEC-KANBAN-RECORD-SESSION-KEY-001` REQ-KRS-002/003 (commit `19da7c6d9`, card t207). That SPEC measured that the launcher runs *before* the session it launches exists, so the identifier it keys a record by is not the launched session's — it is whichever session's SessionStart last wrote the single-slot side-channel file. The write therefore moved into the launched session's own SessionStart hook, and the launcher writes no record at all. `TestCC_KanbanWritesStateRecord` now asserts that absence; the session-side write is covered in `internal/hook`. **The fail-open half above is unchanged and still binding** — an unwritable state directory must not block a launch. Recorded here rather than left silent so a later reader finds why this criterion's first half no longer describes the tree.
+
 - **AC-FM-023b (env constants declared)** — Given the completed change set, When `internal/config/envkeys.go` is read, Then it declares both constants:
 
 ```bash
