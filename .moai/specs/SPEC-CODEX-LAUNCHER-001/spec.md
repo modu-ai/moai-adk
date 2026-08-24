@@ -1,10 +1,10 @@
 ---
 id: SPEC-CODEX-LAUNCHER-001
 title: "Codex 전용 런처 — moai codex: 배선·CODEX_HOME·auth 상태 확인과 앱/CLI 기동"
-version: "0.7.0"
+version: "0.8.1"
 status: draft
 created: 2026-08-24
-updated: 2026-08-24
+updated: 2026-08-25
 author: manager-spec
 priority: P1
 phase: "v3.2 target"
@@ -30,6 +30,8 @@ related_specs: [SPEC-CODEX-DUAL-AGENTS-001, SPEC-CODEX-SKILLS-CANONICAL-001, SPE
 | 0.5.0 | 2026-08-24 | 3차 감사 지적 5건 반영 + 운영자 신규 요구 접기. (1) 파일 1단이 `tokens:{}` 를 통과하던 구멍 폐쇄 — '존재' 가 아니라 '비어 있지 않은 값' 요구(REQ-CL-008). (2) 비밀값 규율을 실제로 타입에 걸었다 — 앞선 안은 `APIKey string` 으로 키 전문을 역직렬화하면서 '비밀 필드 없음' 이라 선언했다. (3) 실행 seam 이 결합된 바이트를 반환해 프로덕션 stderr 결함이 회귀 시험을 우회하던 문제 — 두 스트림을 분리 반환하고 결합 규칙 자체를 시험 대상으로. (4) 작성 불가능했던 AC 해소 — `classifyCodexAuthFile` 에 `err` 추가, 오류 문안 판정은 경로를 아는 층으로 이동. (5) 근거 문서를 전사(transcript) 방식으로 전환 — 스크립트와 그 출력을 커밋하고 문서는 줄 범위를 인용한다. 신규: 미배선 프로젝트 초기화 제안 + `AGENTS.md`↔`CLAUDE.md` 지시 계약(REQ-CL-015/016). AC 2건 통합(공유 러너 무회귀→게이트, 앱 위임→동사 라우팅)으로 Tier M 상한 16/16 유지 |
 | 0.6.0 | 2026-08-24 | 최종 확인 감사 지적 3건 반영. (1) `nonEmpty` 판정을 원문 바이트 비교에서 **JSON 타입** 판정으로 교체 — 감사 실측이 `{ }`·`false`·`0`·`[]` 가 전부 '비어 있지 않음' 으로 통과함을 보였다. 자격 재료는 비어 있지 않은 JSON 문자열이어야 하고 다른 타입은 전부 부재(REQ-CL-008), AC 표에 12행 추가. (2) 근거 스크립트를 자기완결로 — 측정 대상 바이너리와 doctor JSON 을 스스로 만들고, 선행 조건 실패 시 중단하며, 인용하는 모든 수치를 전사본 안에서 잡는다. 'read-only' 주장 철회(빌드 + codex 의 PATH 별칭 시도는 실제 변경). (3) 배선 판정을 디렉터리 존재에서 **파일 집합** 으로 — 빈 `.codex/`·한쪽 파일만 있는 상태를 미배선으로 판정(REQ-CL-006/015), AC 에 5종 상태 행렬. 지시 계약은 import 줄 형태(`@AGENTS.md`)를 고정하고 멱등을 2회 실행 바이트 비교로 판정하며 로컬 지시 파일을 `CLAUDE.local.md` 로 명명(REQ-CL-016) |
 | 0.7.0 | 2026-08-24 | 범위 조정 — 운영자 판정. 초기화 요구(구 REQ-CL-015/016 + AC)를 `SPEC-CODEX-INIT-001` 로 분리하고 14 REQ 로 복귀. 풀린 예산으로: 상한 맞추려 통합했던 AC 2건 복원(공유 러너 무회귀·앱 위임), REQ-CL-011 명시 참조 회복(14/14 전수), 4차 감사 커버리지 지적 중 런처 소속 흡수 — `tokens` **키 의미 검증**(무관 키·계정 메타데이터는 자격 재료 아님, 원시 타입 거부만으로는 `{"irrelevant":"x"}` 가 통과)과 리드아웃 배선 6상태 행렬. 산문-전사본 드리프트 정정(낡은 핀 `6bfb076bc`, 46초·롤아웃 31,525 잔존 수치) |
+| 0.8.0 | 2026-08-25 | 크로스 플랫폼 모순 해소 — 감사 지적 D3 (must-pass MP-6). `plan.md` §C.5 가 `cli` 를 프로세스 **교체** (`syscall.Exec`, unix 전용) 로 규정했는데 AC-CL-014 는 OS 빌드 태그 0건 + `GOOS=windows` 컴파일 통과를 함께 요구했다 — 양립 불가. **교체를 버리고 전 플랫폼 공통 `os/exec` + 종료코드 전파** 로 통일한다 (운영자 판정). REQ 는 손대지 않았다 — REQ-CL-002/012/013 의 "exec" 는 기동의 일반적 의미이며 어느 REQ 도 교체를 요구하지 않는다. 교체가 주던 네 성질의 대체물을 §C.5 표로 명시: 종료코드는 전파, 시그널은 부모가 중계, 트리 깊이 +1(무해), 대화형 stdio 는 부모 자신의 `os.Stdin`/`os.Stdout`/`os.Stderr` **값 항등** 전달. tty 왕복은 CI 에서 관측 불가하므로 단언하지 않고 명시적 Gap 으로 기록했다(측정 결과가 깨지면 빌드 태그 문제가 운영자에게 되돌아온다). AC-CL-014 는 약화되지 않았다 — 태그 0건 단언을 유지하면서 `syscall` import·교체 계열 식별자 0건을 **추가** 했다 |
+| 0.8.1 | 2026-08-25 | REQ-CL-003 의 남은 교체 서술 정정 — "instead of replacing the current process" → "instead of in the current terminal". 요구 자체(tmux 새 창 / `moai cc --spawn` 패리티 / tmux 부재 시 동일 진단)는 무변경이고, 사라진 전제만 걷어냈다. 0.8.0 이 REQ 를 손대지 않는 범위로 진행됐기 때문에 이 한 구절이 유일하게 남아 있었다 |
 
 ## §A. 측정 전제 (Verified baseline)
 
@@ -109,7 +111,7 @@ t88 (M4) 이 Codex 쪽 배선을 깔았지만, 그 배선을 **확인하고 그 
 
 - **REQ-CL-001** — The system shall provide a top-level `moai codex` command registered in the `launch` command group, so it appears alongside `cc` / `glm` / `cg` in `moai --help`.
 - **REQ-CL-002** — The bare `moai codex` command shall print the readiness readout and exec nothing; launching shall require an explicit verb — `cli` (Codex CLI in the current project directory) or `app` (desktop app). `status` shall be accepted as an explicit alias of the bare readout form.
-- **REQ-CL-003** — Where the operator passes `--spawn`, the system shall run the launch in a new tmux window instead of replacing the current process, matching the `moai cc --spawn` contract, and shall fail with the same diagnostic when tmux is absent.
+- **REQ-CL-003** — Where the operator passes `--spawn`, the system shall run the launch in a new tmux window instead of in the current terminal, matching the `moai cc --spawn` contract, and shall fail with the same diagnostic when tmux is absent.
 
 ### D.2 준비 상태 리드아웃
 
