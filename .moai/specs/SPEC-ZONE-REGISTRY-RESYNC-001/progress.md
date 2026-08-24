@@ -281,7 +281,189 @@ $ GOOS=windows GOARCH=amd64 go vet ./internal/constitution/... → ok (테스트
 $ go build ./... · GOOS=windows GOARCH=amd64 go build ./...  → rc=0 / rc=0
 ```
 
-## §E.3 Run-phase Audit-Ready Signal
+### M2 — 가드 완성 트리에서의 독립 재관측 — 2026-08-25
+
+측정 트리: `WT-zone-registry-drift` @ `0b04f3412`(변이 관측·E항목 전부). 사전 점검(§C)만 `2cd846377`에서 측정.
+
+**수행 출처 공개 (프로세스 부채, M1 과 동일 형태)**: 위 섹션(가드 착지, 트리 `49630cba2`)과 이어지는 `adde4cfc9`의 D10 관측은 **동시 작성자**(같은 워크트리의 병렬 세션)가 수행했다 — manager-develop 위임 프롬프트 수신 시점엔 해당 커밋이 존재하지 않았고, SPEC 산출물 읽기 도중 디스크에 나타났다. 위임받은 manager-develop 은 착지물을 plan.md §F M2 고정 설계와 항목별 대조해 버킷 카운팅(설계 5항)과 SKIP 가드 조항·t.Setenv 양방향 서브테스트(설계 7항)의 누락을 확인, 보완 커밋 `ca7d966fd`·`0b04f3412`로 가드를 완성했다. 본 섹션은 **완성된 가드**(버킷 라인·skip 가드 조항 포함)에 대해 R1-R4·SKIP 양방향을 독립적으로 재실행한 관측이다(R2 추첨도 독립: `CONST-V3R2-061`, 상대 관측은 `CONST-V3R2-056` — 서로 다른 무작위 대상에서 동일 결론은 가드가 특정 엔트리를 특수취급하지 않는다는 부가 근거). R1-CI 관측(시나리오 §3)은 push·PR 생성 후 별도 항으로 추가 기록된다. 병렬 세션의 자발 실행은 소유권 위반 부채로 남긴다 — sync 리뷰 판정 대상(M1 §F 공개와 동일 취급).
+
+#### 1. 사전 점검 (Section C) — 트리 `2cd846377`
+
+```
+$ git branch --show-current && git rev-parse --short HEAD
+WT-zone-registry-drift
+2cd846377
+(git status --porcelain → 빈 출력)
+
+$ go test -count=1 ./internal/constitution/...
+ok  	github.com/modu-ai/moai-adk/internal/constitution	0.498s   (rc=0)
+
+$ go run ./cmd/moai constitution validate; echo exit=$?
+constitution validate: OK — no drift or violations detected (0 entries checked)
+
+  4 retired entry/entries skipped ([SUPERSEDED …] marker); re-check them with --strict
+exit=0
+
+$ diff -q .claude/rules/moai/core/zone-registry.md internal/template/templates/.claude/rules/moai/core/zone-registry.md
+(출력 없음, rc=0)   grep -c '^- id: CONST-' → 양쪽 101
+
+$ golangci-lint run --timeout=2m ./internal/constitution/...
+0 issues.  (rc=0)
+```
+
+#### 2. 깨끗한 트리 통과 — 이중 카운트 + 버킷 라인 (종료조건 1)
+
+```
+$ go test -count=1 -v -run 'TestRegistrySync' ./internal/constitution/   # 트리 0b04f3412
+=== RUN   TestRegistrySyncGuard/local
+    registry_sync_test.go:206: [local mirror] evaluated: clause-checks=97 retired-skip=4 anchor-checks=101 of 101 entries
+    registry_sync_test.go:216: [local mirror] clause literal buckets: once=97 zero=0 multi=0 retired_exempt=4 self_reference=0
+=== RUN   TestRegistrySyncGuard/template
+    registry_sync_test.go:206: [template mirror] evaluated: clause-checks=97 retired-skip=4 anchor-checks=101 of 101 entries
+    registry_sync_test.go:216: [template mirror] clause literal buckets: once=97 zero=0 multi=0 retired_exempt=4 self_reference=0
+=== RUN   TestRegistrySyncGuard/skip-env_clean_tree_fails
+    (PASS — SKIP 방향 관측은 아래 4항)
+=== RUN   TestRegistrySyncGuard/skip-env_mutated_tree_still_fails
+    (PASS — SKIP 방향 관측은 아래 4항)
+--- PASS: TestRegistrySyncGuard (0.21s)
+=== RUN   TestRegistrySyncMirrorsIdentical
+    registry_sync_test.go:275: mirrors byte-identical: 34956 bytes
+--- PASS: TestRegistrySyncMirrorsIdentical (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/constitution	0.665s  (rc=0)
+```
+
+평가 수 분리 인용(§H 잔여위험 ②): **clause 검사 97 / anchor 검사 101, 미러별 분리** — 두 수가 다른 것이 option-C 계약이며 버킷 라인(`once=97 … retired_exempt=4`)이 이를 뒷받침한다.
+
+#### 3. 변이 관측 R1-R4 (종료조건 2-5; 정본 `guard-failure-scenario.md` §1-§3)
+
+각 실행은 **단일 변이만**在工作 트리에 둔 채 `go test -count=1 -run 'TestRegistrySync' ./internal/constitution/` 을 돌리고, 관측 직후 `git restore` 로 되돌린 뒤 재초록과 `git status --porcelain` 빈 출력을 확인했다(§5 순서 규율: R1→R2→R3→R4, 각자 revert+re-green).
+
+**R1 — `CONST-V3R2-004` clause 1글자 삽입(로컬)**: `All instruction documents must be in English:` → `…Englishx:`(인용부 안, mid-span)
+
+```
+$ sed -i '' 's/…English:/…Englishx:/' .claude/rules/moai/core/zone-registry.md
+$ go test -count=1 -run 'TestRegistrySync' ./internal/constitution/ ; echo exit=$?
+WARN: validation skipped (MOAI_CONSTITUTION_SKIP_VALIDATE=1)      ← skip 서브테스트의 Validate WARN (정상)
+WARN: validation skipped (MOAI_CONSTITUTION_SKIP_VALIDATE=1)
+--- FAIL: TestRegistrySyncGuard (0.22s)
+    --- FAIL: TestRegistrySyncGuard/local (0.10s)
+        registry_sync_test.go:125: validate [local mirror]: [DRIFT] CONST-V3R2-004 @ .claude/rules/moai/development/coding-standards.md #language-policy — clause "All instruction documents must be in Englishx:" not found in source ".claude/rules/moai/development/coding-standards.md"
+        registry_sync_test.go:127: validate [local mirror]: drift/errors found (drift_count=1)
+--- FAIL: TestRegistrySyncMirrorsIdentical (0.00s)
+    registry_sync_test.go:274: registry mirrors are not byte-identical (34957 vs 34956 bytes) — repair one mirror only and the parity is gone (AC-ZRR-011)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.506s
+FAIL
+exit=1
+```
+→ exit 1 + `CONST-V3R2-004` ID 지목 ✓. revert 후 재초록 `ok 0.409s` + porcelain 빈 ✓.
+
+**R2 — 무작위 비은퇴 1건 clause 1글자 삽입(로컬)**: 추첨 `CONST-V3R2-061`(비은퇴 97 중 run-time 추첨, clause 길이 77자), `load brand context` → `load brandx context`
+
+```
+$ go test -count=1 -run 'TestRegistrySync' ./internal/constitution/ ; echo exit=$?
+--- FAIL: TestRegistrySyncGuard (0.17s)
+    --- FAIL: TestRegistrySyncGuard/local (0.08s)
+        registry_sync_test.go:125: validate [local mirror]: [DRIFT] CONST-V3R2-061 @ .claude/rules/moai/design/constitution.md #31-brand-context-constitutional-parent — clause "[HARD] manager-spec MUST load brandx context before generating BRIEF documents" not found in source ".claude/rules/moai/design/constitution.md"
+        registry_sync_test.go:127: validate [local mirror]: drift/errors found (drift_count=1)
+--- FAIL: TestRegistrySyncMirrorsIdentical (0.00s)
+    (동일 byte-parity 실패 — 34957 vs 34956)
+FAIL	…	0.429s
+exit=1
+```
+→ exit 1 + `CONST-V3R2-061` ID 지목 ✓. revert 후 재초록 `ok 0.420s` ✓.
+
+**R3 — `CONST-V3R2-004` anchor 미해석 slug(로컬)**: `#language-policy` → `#language-policy-zzz-no-such-heading`
+
+```
+$ go test -count=1 -run 'TestRegistrySync' ./internal/constitution/ ; echo exit=$?
+--- FAIL: TestRegistrySyncGuard (0.12s)
+    --- FAIL: TestRegistrySyncGuard/local (0.06s)
+        registry_sync_test.go:171: [local mirror] CONST-V3R2-004: anchor "#language-policy-zzz-no-such-heading" resolves to no heading in .claude/rules/moai/development/coding-standards.md (six-step slug rule, REQ-ZRR-002/012)
+        registry_sync_test.go:207: [local mirror] evaluated: clause-checks=97 retired-skip=4 anchor-checks=101 of 101 entries
+        registry_sync_test.go:217: [local mirror] clause literal buckets: once=97 zero=0 multi=0 retired_exempt=4 self_reference=0
+--- FAIL: TestRegistrySyncMirrorsIdentical (0.00s)
+    (동일 byte-parity 실패 — 34976 vs 34956)
+FAIL	…	0.333s
+exit=1
+```
+→ exit 1 + anchor 미해석 지목 ✓. anchor 실패는 Fatalf 가 아니라 Errorf 로 기록되므로 전 순회 카운터(97/101)가 실패 출력 안에 함께 찍힌다 — 부분 순회가 아님의 증거. revert 후 재초록 `ok 0.515s` ✓.
+
+**R4 — `CONST-V3R2-004` clause 1글자 삽입(템플릿 미러만)**: 로컬은 무변경
+
+```
+$ sed -i '' 's/…English:/…Englishx:/' internal/template/templates/.claude/rules/moai/core/zone-registry.md
+$ go test -count=1 -run 'TestRegistrySync' ./internal/constitution/ ; echo exit=$?
+--- FAIL: TestRegistrySyncGuard (0.14s)
+    --- FAIL: TestRegistrySyncGuard/template (0.07s)
+        registry_sync_test.go:125: validate [template mirror]: [DRIFT] CONST-V3R2-004 @ .claude/rules/moai/development/coding-standards.md #language-policy — clause "All instruction documents must be in Englishx:" not found in source ".claude/rules/moai/development/coding-standards.md"
+        registry_sync_test.go:127: validate [template mirror]: drift/errors found (drift_count=1)
+--- FAIL: TestRegistrySyncMirrorsIdentical (0.00s)
+    registry_sync_test.go:274: registry mirrors are not byte-identical (34956 vs 34957 bytes) — repair one mirror only and the parity is gone (AC-ZRR-011)
+FAIL	…	0.379s
+exit=1
+```
+→ exit 1 + **`[template mirror]` 표면이 지목**(local 서브테스트는 통과 — 템플릿 검증이 독립 표면임을 증명) ✓. revert 후 재초록 `ok 0.452s` ✓.
+
+#### 4. SKIP 환경변수 양방향 (종료조건 6; AC-ZRR-010 / plan-audit iter3 C5)
+
+**4a. 변이 트리 + SKIP=1** (R1 변이를 다시 적용한 뒤):
+
+```
+$ MOAI_CONSTITUTION_SKIP_VALIDATE=1 go test -count=1 -run 'TestRegistrySync' ./internal/constitution/ ; echo exit=$?
+--- FAIL: TestRegistrySyncGuard (0.00s)
+    registry_sync_test.go:106: validation skipped: MOAI_CONSTITUTION_SKIP_VALIDATE=1 present in the test environment — the registry-sync guard must fail rather than pass (REQ-ZRR-010 / AC-ZRR-010)
+--- FAIL: TestRegistrySyncMirrorsIdentical (0.00s)
+    (byte-parity 실패 — 변이가 여전히 있으므로 정상)
+FAIL	…	0.240s
+exit=1
+```
+
+**4b. 깨끗한 트리 + SKIP=1** (변이 없음):
+
+```
+$ MOAI_CONSTITUTION_SKIP_VALIDATE=1 go test -count=1 -run 'TestRegistrySync' ./internal/constitution/ ; echo exit=$?
+--- FAIL: TestRegistrySyncGuard (0.00s)
+    registry_sync_test.go:106: validation skipped: MOAI_CONSTITUTION_SKIP_VALIDATE=1 present in the test environment — the registry-sync guard must fail rather than pass (REQ-ZRR-010 / AC-ZRR-010)
+FAIL	…	0.245s
+exit=1
+```
+
+→ 양방향 모두 exit 1 + 명시적 "validation skipped" fatal(테 시작 가드 조항, `os.Getenv` 직접 검사 — `registry_sync_test.go:106`) ✓. 검증 건너뜀을 이유로 **실패**하며 결코 통과하지 않는다. 변이 제거 후 재초록 `ok 0.386s` + porcelain 빈 ✓(종료조건 7).
+
+#### 5. 자가 검증 E1-E5 — 트리 `0b04f3412`
+
+```
+E1a  $ git diff 1ae6e5c36..HEAD -- internal/constitution/validator.go | wc -l
+     0                                                    ← 매처 불변 (AC-ZRR-005)
+E1b  $ diff -q <local registry> <template registry>; echo $?
+     (출력 없음) diff-rc=0                                ← 미러 바이트 동일 (AC-ZRR-011 유지;
+                                                            make build 재임베드는 M3 소관 — 명시적 deferral)
+E2a  $ go build ./...                                      → rc=0
+E2b  $ GOOS=windows GOARCH=amd64 go build ./...            → rc=0
+E2c  $ GOOS=windows GOARCH=amd64 go vet ./internal/constitution/...  → rc=0   ← _test.go 윈도우 컴파일 (B1)
+E3   $ go test -cover ./internal/constitution/...
+     ok  …  0.764s  coverage: 85.8% of statements
+E4   $ grep -rn 'AskUserQuestion' internal/constitution/ | grep -v _test.go | wc -l
+     1   ← 전부 주석: amendment.go:183 "(AskUserQuestion is orchestrator-only, …)" — #851 시절 문서화 주석,
+          본 SPEC diff 0라인 (git diff 1ae6e5c36..HEAD -- amendment.go → 0). 코드 위반 0.
+E5   $ golangci-lint run --timeout=2m ./internal/constitution/...
+     0 issues.                                            ← 신규 이슈 0 (baseline 0 유지)
+```
+
+#### 6. 가드 구현 관찰 (판정 외)
+
+- REQ-ZRR-012 주석의 측정 트리 표기는 `294b4b6ab`(acceptance RED 기준)가 아니라 "tree e0afbb53c era"로 적혀 있다 — e0afbb53c 에서도 anchor 실패 17이 실측됐으므로(§E.2 M1 1항) 사실 관계는 정확하고, 취지("이 규칙 아래에서 착지 시점 17건이 실패했다" + 규칙 6단계 명시)는 AC-ZRR-014 를 만족한다. 동시 작성자 커밋의 표기로 그대로 둔다.
+- 리터럴 체크는 발생 횟수가 아니라 **적중 라인 수**(`grep -F -c` 동등)를 센다 — M1 측정과 동일 체계이며 acceptance AC-ZRR-002 판정 규격(`grep -F -c`)과 일치한다.
+- R1/R4 같은 clause 변이에서 DRIFT Fatalf 가 literal 체크보다 먼저 서브테스트를 종료시키므로 버킷 라인은 R3(에러가 Errorf 로 기록되는 anchor 변이) 출력에서 관측된다 — 두 층(validator / 독립 literal)이 각각 단독으로 변이를 잡을 수 있는 구조는 유지된다.
+
+#### 7. 커밋
+
+- `49630cba2` — 가드 본체 + CI 보조 스텝 (동시 작성자; 위 공개 참조)
+- `ca7d966fd` — 버킷 카운팅·버킷 라인 + SKIP 가드 조항·t.Setenv 양방향 서브테스트 + go.mod 워크업 루트 해석 (manager-develop)
+- `0b04f3412` — R1 fixture 런타임 파생화 (스크래치 변이 상태에서 fixture 실패 잡음 제거)
+
 
 _<pending run-phase>_
 
