@@ -1,17 +1,31 @@
 package cli
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // moaiPreCommitMarker is the identifier written near the top of the pre-commit
 // hook file. Its presence signals that the hook was installed by MoAI-ADK and
 // can be safely overwritten on subsequent installs.
 const moaiPreCommitMarker = "# MoAI-ADK pre-commit hook"
+
+// moaiPreCommitProvenanceName is the sidecar recording the SHA-256 of the hook
+// content this tool last wrote. It lives beside the hook in .git/hooks/, so it
+// shares the hook's lifetime exactly: wiping .git/hooks/ takes both.
+//
+// The record is the third operand of the attribution in REQ-PCP-014. Without
+// it only "installed" and "incoming" exist, and those two cannot separate "the
+// user changed it" from "we changed it" — a routine version bump then reads as
+// a user patch for every user on every release.
+const moaiPreCommitProvenanceName = ".moai-pre-commit.sha256"
 
 // preCommitHookContent is the canonical content of the pre-commit hook. It
 // runs the fast subset (gofmt -l + go vet on staged Go files) followed by the
@@ -98,16 +112,82 @@ fi
 exit 0
 `
 
+// preCommitClass is the attribution verdict for an existing marker-bearing hook.
+type preCommitClass int
+
+const (
+	// preCommitUnmodified: the hook is as MoAI last wrote it. Any difference
+	// against the incoming content is an upstream version bump, so the
+	// overwrite is quiet (REQ-PCP-002).
+	preCommitUnmodified preCommitClass = iota
+	// preCommitUserModified: the hook was edited after MoAI wrote it. This is
+	// the loss-bearing case; M2 hangs the backup and the notice off it.
+	preCommitUserModified
+)
+
+func (c preCommitClass) String() string {
+	if c == preCommitUserModified {
+		return "user-modified"
+	}
+	return "unmodified"
+}
+
+// preCommitBasis names which operands produced the verdict — the third label of
+// the spec's three-way classification, kept separate from the verdict because
+// "undecidable-legacy" describes how the answer was reached, not what it was.
+type preCommitBasis int
+
+const (
+	// preCommitBasisRecord: a usable provenance record existed, so the verdict
+	// comes from installed-vs-recorded — the three-way comparison.
+	preCommitBasisRecord preCommitBasis = iota
+	// preCommitBasisUndecidableLegacy: no usable record existed, so attribution
+	// was impossible and the verdict falls back to installed-vs-incoming, with
+	// any difference read as a user edit (REQ-PCP-005). Deliberately the noisy
+	// direction: a hand-patched legacy hook is the most likely thing to be
+	// found without a record.
+	preCommitBasisUndecidableLegacy
+)
+
+func (b preCommitBasis) String() string {
+	if b == preCommitBasisUndecidableLegacy {
+		return "undecidable-legacy"
+	}
+	return "record"
+}
+
+// preCommitAttribution is one classification of an existing marker-bearing hook.
+type preCommitAttribution struct {
+	Class preCommitClass
+	Basis preCommitBasis
+}
+
 // PreCommitInstaller installs the MoAI-ADK pre-commit git hook. It mirrors
 // PrePushInstaller's marker-based semantics for the commit tier.
 type PreCommitInstaller struct {
 	// repoRoot is the root of the git repository.
 	repoRoot string
+
+	// content is the hook body this installer writes — the "incoming" operand
+	// of the attribution. Defaults to preCommitHookContent; overridden in tests
+	// to construct a version bump without editing the shipped constant.
+	content string
+
+	// lastAttribution is the classification of the most recent install run
+	// against an existing marker-bearing hook, or nil when the run classified
+	// nothing (no existing hook, a non-MoAI hook, or skip=true).
+	lastAttribution *preCommitAttribution
+
+	// lastProvenanceErr holds a provenance-write failure from the most recent
+	// run. The write happens after a hook write that already succeeded, so it
+	// must not fail the caller (REQ-PCP-010); it is recorded rather than
+	// discarded so M2 can warn about it.
+	lastProvenanceErr error
 }
 
 // NewPreCommitInstaller creates a PreCommitInstaller for the given repository root.
 func NewPreCommitInstaller(repoRoot string) *PreCommitInstaller {
-	return &PreCommitInstaller{repoRoot: repoRoot}
+	return &PreCommitInstaller{repoRoot: repoRoot, content: preCommitHookContent}
 }
 
 // InstallPreCommitHook writes the pre-commit hook to .git/hooks/pre-commit with
@@ -124,6 +204,9 @@ func NewPreCommitInstaller(repoRoot string) *PreCommitInstaller {
 // declared intent is achieved by making a real hook exist and run the fast
 // subset at commit time; a runtime severity dial is a separate follow-up.
 func (p *PreCommitInstaller) InstallPreCommitHook(skip bool) error {
+	p.lastAttribution = nil
+	p.lastProvenanceErr = nil
+
 	if skip {
 		return nil
 	}
@@ -145,14 +228,86 @@ func (p *PreCommitInstaller) InstallPreCommitHook(skip bool) error {
 		if !hasMarker {
 			return ErrUserHookExists
 		}
-		// MoAI hook found — overwrite.
+		// MoAI hook found — classify it before overwriting. The verdict is
+		// recorded, not acted on: M1 decides, M2 hangs the backup and the
+		// notice off the decision.
+		installed, err := os.ReadFile(hookPath)
+		if err != nil {
+			return fmt.Errorf("read existing hook: %w", err)
+		}
+		attribution := classifyPreCommitHook(installed, readPreCommitProvenance(hookDir), []byte(p.content))
+		p.lastAttribution = &attribution
 	}
 
-	if err := os.WriteFile(hookPath, []byte(preCommitHookContent), 0o755); err != nil {
+	if err := os.WriteFile(hookPath, []byte(p.content), 0o755); err != nil {
 		return fmt.Errorf("write pre-commit hook: %w", err)
 	}
 
+	// Record what was just written, so the next run can attribute a difference
+	// (REQ-PCP-001). A failure here follows a hook write that already
+	// succeeded, so it must not fail the caller (REQ-PCP-010): the missing
+	// record self-heals on the next run, which finds installed == incoming and
+	// re-stamps.
+	p.lastProvenanceErr = writePreCommitProvenance(hookDir, p.content)
+
 	return nil
+}
+
+// classifyPreCommitHook decides whether an existing marker-bearing hook was
+// edited by the user, from three operands: the installed bytes, the digest this
+// tool last recorded writing (empty when absent or unusable), and the incoming
+// bytes.
+//
+// A two-way comparison of installed against incoming cannot make this call: an
+// upstream version bump produces the same signal as a user patch, so a two-way
+// design warns every user on every release that touches the hook (REQ-PCP-014).
+func classifyPreCommitHook(installed []byte, recordedDigest string, incoming []byte) preCommitAttribution {
+	if recordedDigest == "" {
+		// No usable record: attribution is impossible, so fall back to
+		// installed-vs-incoming and read any difference as a user edit.
+		if bytes.Equal(installed, incoming) {
+			return preCommitAttribution{Class: preCommitUnmodified, Basis: preCommitBasisUndecidableLegacy}
+		}
+		return preCommitAttribution{Class: preCommitUserModified, Basis: preCommitBasisUndecidableLegacy}
+	}
+
+	if digestOfBytes(installed) == recordedDigest {
+		return preCommitAttribution{Class: preCommitUnmodified, Basis: preCommitBasisRecord}
+	}
+	return preCommitAttribution{Class: preCommitUserModified, Basis: preCommitBasisRecord}
+}
+
+// readPreCommitProvenance returns the recorded digest, or "" when no usable
+// record exists. A missing, unreadable or malformed record is treated as
+// absent, which routes the caller to the deliberately noisy legacy path
+// (REQ-PCP-005).
+func readPreCommitProvenance(hookDir string) string {
+	raw, err := os.ReadFile(filepath.Join(hookDir, moaiPreCommitProvenanceName))
+	if err != nil {
+		return ""
+	}
+	digest := strings.TrimSpace(string(raw))
+	if len(digest) != hex.EncodedLen(sha256.Size) {
+		return ""
+	}
+	if _, err := hex.DecodeString(digest); err != nil {
+		return ""
+	}
+	return digest
+}
+
+// writePreCommitProvenance records the digest of the content just written.
+func writePreCommitProvenance(hookDir, content string) error {
+	path := filepath.Join(hookDir, moaiPreCommitProvenanceName)
+	if err := os.WriteFile(path, []byte(digestOfBytes([]byte(content))+"\n"), 0o644); err != nil {
+		return fmt.Errorf("write pre-commit provenance record: %w", err)
+	}
+	return nil
+}
+
+func digestOfBytes(b []byte) string {
+	sum := sha256.Sum256(b)
+	return hex.EncodeToString(sum[:])
 }
 
 // installPreCommitHookOptional installs the pre-commit hook into projectRoot's

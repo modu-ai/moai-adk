@@ -121,11 +121,84 @@ Card: t230 · Tier M · Class C · branch `WT-precommit-preserve`
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — the three-way classifier
+
+**Tree**: worktree `.claude/worktrees/t230`, branch `WT-precommit-preserve`, parent `969290823`.
+Evidence files under `.moai/state/verify/t230/`.
+
+**Diff surface**: `internal/cli/hook_install_precommit.go` (installer logic) and the new
+`internal/cli/hook_install_precommit_attribution_test.go`. `preCommitHookContent` and
+`internal/template/templates/.git_hooks/pre-commit` are untouched (spec.md §C.1); no caller changed
+(the warning writer of §C.4 belongs to M2, which is where the notice it carries lands).
+
+**Pre-flight** (plan.md §C): call sites unchanged at `update_template_sync.go:575` /
+`init.go:898`; `git show v3.1.2:…/.git_hooks/pre-commit | cmp - <same path>` → rc 0
+(`preflight` recorded in `.moai/state/verify/t230/v312-hook.txt`);
+`go test ./internal/cli/ -run TestPreCommit -count=1` → `ok … 46.621s` before any edit;
+`grep -c 'sha256' internal/cli/hook_install_precommit.go` → `0` and
+`grep -c 'pre-commit\.bak' …` → `0`, the AC baselines.
+
+**What M1 delivers**: `classifyPreCommitHook` compares three operands — installed bytes, the digest
+recorded in `.git/hooks/.moai-pre-commit.sha256`, and the incoming content — and returns a verdict
+(`unmodified` / `user-modified`) plus the basis that produced it (`record` /
+`undecidable-legacy`). The record is written after every successful hook write. The verdict is
+recorded on the installer and **not acted on**: M1 decides, M2 hangs the backup and the notice off
+the decision.
+
+| AC | Test | Result | Failing input observed red |
+|---|---|---|---|
+| AC-PCP-014 | `TestPreCommitThreeWayAttribution` (2 cases) | PASS | two-way implementation → case one FAIL, case two PASS *by luck* (`mutant-a-twoway.txt`) |
+| AC-PCP-001 | `TestPreCommitProvenanceRecorded` (2 runs) | PASS | empty-sidecar stub (`mutant-b2-empty-stub.txt`); write-once-never-refresh mutant (`mutant-b-write-once.txt`) |
+| AC-PCP-002 | `TestPreCommitVersionBumpIsSilent` | PASS | naive two-way design (`mutant-a-twoway-ac002.txt`) |
+| AC-PCP-005 | `TestPreCommitLegacyNoRecord` (a/b/c) | PASS, 0 SKIP | (a) silent-when-unknown mutant (`mutant-c-silent-unknown.txt`); (c) hook-body edit (`mutant-d-body-edit.txt`); skip clause (`mutant-e-bad-tag-fatal.txt` FAIL vs `mutant-e2-skip-reads-green.txt` exit 0) |
+
+**Mutant results, in the terms the criteria set.**
+
+- **The two-way implementation fails exactly where AC-PCP-014 says it must.** Case one (record
+  matches installed, incoming differs) went `{class:user-modified basis:record}` against
+  `{class:unmodified …}` — a routine version bump misread as a user patch — while case two passed.
+  This is the criterion's whole point: a single-case version of it is satisfiable by the design it
+  exists to reject.
+- **AC-PCP-002 needed strengthening to be falsifiable at M1.** Under the two-way mutant the
+  original file-and-output assertions passed, because M1 takes no backup and prints no notice under
+  *any* classification. A second arm was added that runs the same Given through the direct
+  installer and asserts the verdict; the mutant then fails it
+  (`hook_install_precommit_attribution_test.go:187`). Without that arm the criterion observed
+  nothing about the noise regression it is named for.
+- **AC-PCP-005's sub-case (a) is load-bearing, as written.** The silent-when-unknown mutant passed
+  (b) *and* (c) and was caught only by (a).
+- **Sub-case (c) discriminates from (b), as claimed.** A one-line edit to `preCommitHookContent`
+  left (b) green and turned (c) red — (b) builds its fixture from the incoming content, so it
+  proves the code path, not the population.
+- **The skip clause is enforced by `t.Fatalf`, not `t.Skip`.** With the pin aimed at a
+  non-existent tag the criterion FAILs (exit 1). The `t.Skip` variant of the same failure exits
+  **0** with the parent reporting `--- PASS` and the package `ok` — audit finding D2 reproduced
+  verbatim, and the reason a skip is treated as a gap here rather than a pass.
+
+**Quality gates**: `go build ./...` exit 0; `go vet ./internal/cli/...` exit 0;
+`go test ./internal/cli/ -run TestPreCommit -count=1 -v` → all PASS, **0 SKIP**, including
+`TestPreCommitTemplateMatchesConstant` (PASS, not SKIP — the paired-edit guard actually ran).
+
+**Deliberately not delivered in M1** (M2's, per plan.md §F): the backup file, the notice, the
+warning-writer split and its two caller lines. `lastProvenanceErr` records a failed sidecar write
+rather than discarding it, so M2 has the seam REQ-PCP-010 sub-case (b) needs; M1 does not fail the
+caller on it.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_phase: M1 only (M2 pending)
+run_commit_sha: <M1-COMMIT-SHA>
+run_status: M1 complete
+ac_pass_count: 4          # AC-PCP-014, -001, -002, -005 (M1's four)
+ac_fail_count: 0
+ac_pending_count: 8       # M2's: -003, -004, -006, -007, -008, -009, -010, -013
+mutants_observed_red: 6   # two-way; two-way vs AC-002; empty-stub; write-once; silent-unknown; body-edit; bad-tag
+skipped_subcases: 0
+hook_body_touched: false  # preCommitHookContent and its template twin byte-identical
+callers_touched: false    # the §C.4 warning-writer lines belong to M2
+new_warnings_or_lints_introduced: none
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
