@@ -76,6 +76,63 @@ exit 0
 **AC trace:** AC-AMP-001 (round-trip guard + loader verbatim pins) — PASS at
 M1 scope; AC-AMP-005 template half — PASS (empty defaults + leak-strict green).
 
+### M2 — Codex audit-scoped resolver precedence + task isolation
+
+**RED evidence (E8)** — `internal/cli/mcp_codex_audit_pin_test.go` authored
+BEFORE the resolver/seam change; verbatim failing output:
+
+```
+$ go test ./internal/cli/ -run TestCodexAuditPin -count=1
+internal/cli/mcp_codex_audit_pin_test.go:135:15: undefined: runCodexAuditReviewRPC
+internal/cli/mcp_codex_audit_pin_test.go:163:15: undefined: runCodexAuditReviewRPC
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+```
+
+**GREEN + verification:**
+
+```
+$ go test ./internal/cli/ -run "TestCodexAuditPin|TestCodexSession|TestMCPAudit|TestLoadWorkflowAuditSection" -count=1
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.569s
+$ go vet ./internal/cli/
+exit 0
+$ go test ./internal/cli/ -run "TestCodex|TestMCP|TestGLM|TestMultiAudit|TestConvergence|TestAudit" -count=1
+ok  	github.com/modu-ai/moai-adk/internal/cli	9.770s
+```
+
+**Mechanism (design decision D2 — injected resolver, not shared-body read):**
+
+- `resolveCodexAuditModelEffort` (mcp_codex.go) — pin-first: `workflowAuditPins`
+  .Codex applies only when Model non-empty AND `codexServableModel` holds;
+  explicit caller `model` still outranks the pinned model; everything else
+  falls through to the untouched legacy `resolveCodexModelEffort`.
+- `openCodexSessionResolved` (new core) accepts the injected resolver;
+  `openCodexSessionOn` keeps its signature and passes nil — **codex_task.go is
+  UNTOUCHED by M2** (isolation is structural: the task path cannot see the pin).
+- `codexSessionHandle.resolveME` carries the resolver to
+  `buildCodexReviewParams` (4th param) so BOTH seams resolve through it:
+  `thread/start` model + `turn/start` model+effort.
+- `runCodexReviewRPCResolved` core; `runCodexReviewRPC` (legacy, gate +
+  existing tests) and `runCodexAuditReviewRPC` (pin-aware) variants;
+  `var codexReviewRPC = runCodexAuditReviewRPC` — both audit callers
+  (handleCodexAudit mcp_codex.go:1227, performCodexAudit mcp_convergence.go:425)
+  get the pin; the Stop-hook review gate keeps the legacy resolution.
+
+**Changed files (M2):** `internal/cli/mcp_codex.go` (resolver + seams),
+`internal/cli/mcp_codex_audit_pin_test.go` (NEW — 6 tests).
+
+**Test inventory (mcp_codex_audit_pin_test.go):**
+`TestCodexAuditPin_ReachesTransmittedParams` (AC-AMP-002 positive: both seams
+carry gpt-5.6-sol/high), `TestCodexAuditPin_TaskTurnCarriesNoPin` (MF2/REQ-AMP-008
+negative: pin present + codex_task turn → SSOT pair, no pin),
+`TestCodexAuditPin_UnservableFallsBackToSSOT` (AC-AMP-003 state c),
+`TestCodexAuditPin_EffortAlonePinsNothing` (§D.2 edge),
+`TestCodexAuditPin_ExplicitModelOverridesPin`, `TestCodexAuditPin_AbsentPinEqualsLegacyResolution`
+(AC-AMP-003 states a/b, C7 anchor; the unmodified TestCodexSession_* /
+TestMCPAudit_NoDirectFrontmatterRead suite stayed green in the same run).
+
+**AC trace:** AC-AMP-002 — PASS (both arms incl. MF2 regression);
+AC-AMP-003 — PASS (states a/b/c + anchors green).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase completion>_
