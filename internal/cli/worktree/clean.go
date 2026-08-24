@@ -5,6 +5,7 @@ package worktree
 // @MX:NOTE: [AUTO] --stale flag sweeps abandoned worktrees that hold nothing to lose
 
 import (
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/core/git"
 	"github.com/modu-ai/moai-adk/internal/session"
 )
 
@@ -32,7 +34,12 @@ never deleted. --stale previews by default; pass --yes to actually remove.`,
 	cmd.Flags().Bool("merged-only", false, "Only remove worktrees whose branches are merged into base")
 	cmd.Flags().Bool("stale", false, "Remove abandoned worktrees that are clean and hold no unique commits (preview unless --yes)")
 	cmd.Flags().Bool("yes", false, "Actually perform the --stale removals instead of previewing them")
-	cmd.Flags().String("base", "main", "Base branch for --merged-only and --stale checks")
+	cmd.Flags().Bool("json", false, "Report every non-protected worktree and its state as JSON; removes nothing")
+	// The base default is origin/main, not the local `main`: a local main that
+	// is behind the remote reports fewer branches as merged, so the two sweeps
+	// in this repository would otherwise disagree about the same worktree.
+	// prMergeCleanup compares against origin/main (REQ-WR-022).
+	cmd.Flags().String("base", "origin/main", "Base branch for --merged-only and --stale checks")
 	return cmd
 }
 
@@ -53,6 +60,14 @@ func runClean(cmd *cobra.Command, _ []string) error {
 	if stale {
 		base, _ := cmd.Flags().GetString("base")
 		apply, _ := cmd.Flags().GetBool("yes")
+		asJSON, _ := cmd.Flags().GetBool("json")
+		if asJSON {
+			// REQ-WR-013: the reporting path removes nothing. --json is a
+			// report, so it overrides --yes rather than combining with it —
+			// an inventory that could delete on a stray flag is not an
+			// inventory.
+			return reportStaleWorktrees(cmd, base)
+		}
 		return cleanStaleWorktrees(cmd, base, apply)
 	}
 
@@ -82,7 +97,7 @@ func cleanMergedWorktrees(cmd *cobra.Command, base string) error {
 
 	var removed int
 	for _, wt := range worktrees {
-		if wt.Branch == "" || wt.Branch == base {
+		if wt.Branch == "" || isBaseBranch(wt.Branch, base) {
 			continue
 		}
 		merged, err := WorktreeProvider.IsBranchMerged(wt.Branch, base)
@@ -117,14 +132,35 @@ func cleanMergedWorktrees(cmd *cobra.Command, base string) error {
 	return nil
 }
 
-// staleCandidate is one worktree the --stale sweep classified.
+// staleCandidate is one worktree the --stale sweep classified. It is also the
+// JSON record `clean --stale --json` emits (REQ-WR-012), so the inventory and
+// the sweep can never disagree: they are the same evaluation, rendered twice.
 type staleCandidate struct {
-	path   string
-	branch string
-	// keepReason is empty when the worktree is safe to remove; otherwise it
+	Path   string `json:"path"`
+	Branch string `json:"branch"`
+	// KeepReason is empty when the worktree is safe to remove; otherwise it
 	// states why the sweep is keeping it.
-	keepReason string
+	KeepReason string `json:"keep_reason"`
+	// Dirty, Merged, and Anchored carry the three predicates behind
+	// KeepReason. Each is one of the staleState* values below — including
+	// "not-checked", which is deliberately distinct from "undetermined":
+	// the first means the sweep short-circuited before asking, the second
+	// means it asked and could not tell.
+	Dirty  string `json:"dirty"`
+	Merged string `json:"merged"`
+	// Anchored is "no" when no source claimed an anchor, otherwise the name
+	// of the source that did ("lock" or "registry").
+	Anchored string `json:"anchored"`
 }
+
+// The tri-state (plus not-checked) vocabulary the JSON record uses. An
+// unobserved predicate is never reported as a negative.
+const (
+	staleStateYes          = "yes"
+	staleStateNo           = "no"
+	staleStateUndetermined = "undetermined"
+	staleStateNotChecked   = "not-checked"
+)
 
 // cleanStaleWorktrees sweeps abandoned worktrees that hold nothing to lose.
 //
@@ -154,37 +190,12 @@ func cleanStaleWorktrees(cmd *cobra.Command, base string, apply bool) error {
 		return fmt.Errorf("list worktrees: %w", err)
 	}
 
-	protected := protectedWorktreePaths()
-	locks := worktreeLockStates()
-
-	var candidates []staleCandidate
-	for _, wt := range worktrees {
-		c := staleCandidate{path: wt.Path, branch: wt.Branch}
-		anchor := session.AnchorDecision(wt.Path, locks[filepath.Clean(wt.Path)], time.Now())
-
-		switch {
-		case protected[filepath.Clean(wt.Path)]:
-			// Main checkout or the worktree this command is running in.
-			continue
-		case anchor.Anchored:
-			// Anchor guard (t73): a live session's shell dies with its tree.
-			// The decision is the SHARED lock-∪-registry one (REQ-WR-019).
-			c.keepReason = fmt.Sprintf("live session anchored in this worktree — %s (source: %s)", anchor.Detail, anchor.Source)
-		case wt.Branch == "":
-			c.keepReason = "detached HEAD (no branch to compare against base)"
-		case wt.Branch == base:
-			c.keepReason = "checked out on the base branch"
-		default:
-			c.keepReason = staleKeepReason(wt.Path, wt.Branch, base)
-		}
-
-		candidates = append(candidates, c)
-	}
+	candidates := classifyStaleWorktrees(worktrees, base)
 
 	var removable []staleCandidate
 	var kept []staleCandidate
 	for _, c := range candidates {
-		if c.keepReason == "" {
+		if c.KeepReason == "" {
 			removable = append(removable, c)
 		} else {
 			kept = append(kept, c)
@@ -192,7 +203,7 @@ func cleanStaleWorktrees(cmd *cobra.Command, base string, apply bool) error {
 	}
 
 	for _, c := range kept {
-		_, _ = fmt.Fprintf(out, "  Keeping %s [%s]: %s\n", c.path, c.branch, c.keepReason)
+		_, _ = fmt.Fprintf(out, "  Keeping %s [%s]: %s\n", c.Path, c.Branch, c.KeepReason)
 	}
 
 	if len(removable) == 0 {
@@ -203,7 +214,7 @@ func cleanStaleWorktrees(cmd *cobra.Command, base string, apply bool) error {
 	if !apply {
 		_, _ = fmt.Fprintf(out, "\nWould remove %d stale worktree(s):\n", len(removable))
 		for _, c := range removable {
-			_, _ = fmt.Fprintf(out, "  %s [%s]\n", c.path, c.branch)
+			_, _ = fmt.Fprintf(out, "  %s [%s]\n", c.Path, c.Branch)
 		}
 		_, _ = fmt.Fprintln(out, "\nThis was a preview. Re-run with --yes to remove them.")
 		return nil
@@ -211,9 +222,9 @@ func cleanStaleWorktrees(cmd *cobra.Command, base string, apply bool) error {
 
 	var removed int
 	for _, c := range removable {
-		_, _ = fmt.Fprintf(out, "  Removing stale worktree: %s [%s]\n", c.path, c.branch)
-		if err := WorktreeProvider.Remove(c.path, false); err != nil {
-			_, _ = fmt.Fprintf(out, "  Warning: could not remove %s: %v\n", c.path, err)
+		_, _ = fmt.Fprintf(out, "  Removing stale worktree: %s [%s]\n", c.Path, c.Branch)
+		if err := WorktreeProvider.Remove(c.Path, false); err != nil {
+			_, _ = fmt.Fprintf(out, "  Warning: could not remove %s: %v\n", c.Path, err)
 			continue
 		}
 		removed++
@@ -222,24 +233,121 @@ func cleanStaleWorktrees(cmd *cobra.Command, base string, apply bool) error {
 	return nil
 }
 
+// classifyStaleWorktrees evaluates every non-protected worktree once. It is
+// the SINGLE evaluation behind both the human sweep and the `--json`
+// inventory (REQ-WR-012), so the inventory can never describe a tree the sweep
+// would treat differently.
+//
+// Protected trees — the main checkout and the worktree this command runs in —
+// are absent from the result entirely, not reported as kept: they are outside
+// the sweep's universe rather than candidates it declined.
+func classifyStaleWorktrees(worktrees []git.Worktree, base string) []staleCandidate {
+	protected := protectedWorktreePaths()
+	locks := worktreeLockStates()
+
+	var candidates []staleCandidate
+	for _, wt := range worktrees {
+		if protected[filepath.Clean(wt.Path)] {
+			continue
+		}
+		c := staleCandidate{
+			Path: wt.Path, Branch: wt.Branch,
+			Dirty: staleStateNotChecked, Merged: staleStateNotChecked, Anchored: staleStateNo,
+		}
+		anchor := session.AnchorDecision(wt.Path, locks[filepath.Clean(wt.Path)], time.Now())
+		if anchor.Anchored {
+			c.Anchored = string(anchor.Source)
+		}
+
+		switch {
+		case anchor.Anchored:
+			// Anchor guard (t73): a live session's shell dies with its tree.
+			// The decision is the SHARED lock-∪-registry one (REQ-WR-019).
+			c.KeepReason = fmt.Sprintf("live session anchored in this worktree — %s (source: %s)", anchor.Detail, anchor.Source)
+		case wt.Branch == "":
+			c.KeepReason = "detached HEAD (no branch to compare against base)"
+		case isBaseBranch(wt.Branch, base):
+			c.KeepReason = "checked out on the base branch"
+		default:
+			c.KeepReason = staleKeepReason(&c, wt.Path, wt.Branch, base)
+		}
+
+		candidates = append(candidates, c)
+	}
+	return candidates
+}
+
+// isBaseBranch reports whether a worktree's LOCAL branch is the base branch.
+//
+// The base is a remote-tracking ref by default (`origin/main`, REQ-WR-022)
+// while a worktree checks out a LOCAL branch (`main`), so a literal comparison
+// stops recognising the base checkout the moment the default changed — and a
+// second worktree sitting on `main` would then be evaluated by the merge
+// predicate, which reports `main` as merged into `origin/main` and makes it
+// removable. Comparing the trailing segment as well keeps that guard standing.
+//
+// The comparison errs toward KEEPING: a local branch that merely shares its
+// name with the base's trailing segment is treated as the base and preserved.
+func isBaseBranch(branch, base string) bool {
+	if branch == "" {
+		return false
+	}
+	if branch == base {
+		return true
+	}
+	if i := strings.LastIndex(base, "/"); i >= 0 {
+		return branch == base[i+1:]
+	}
+	return false
+}
+
+// reportStaleWorktrees emits the machine-readable inventory (REQ-WR-012) and
+// removes nothing (REQ-WR-013). It covers EVERY non-protected registered
+// worktree — worktree-ness is a checkout property, not a branch-name one — so
+// the report reaches trees no branch-name glob would find.
+func reportStaleWorktrees(cmd *cobra.Command, base string) error {
+	if err := WorktreeProvider.Prune(); err != nil {
+		return fmt.Errorf("prune worktrees: %w", err)
+	}
+	worktrees, err := WorktreeProvider.List()
+	if err != nil {
+		return fmt.Errorf("list worktrees: %w", err)
+	}
+	candidates := classifyStaleWorktrees(worktrees, base)
+	if candidates == nil {
+		candidates = []staleCandidate{}
+	}
+	enc := json.NewEncoder(cmd.OutOrStdout())
+	enc.SetIndent("", "  ")
+	return enc.Encode(candidates)
+}
+
 // staleKeepReason returns the reason a worktree must be kept, or "" when both
-// safety conditions hold and it is safe to remove.
-func staleKeepReason(path, branch, base string) string {
+// safety conditions hold and it is safe to remove. It records each predicate's
+// observed value on c as it goes, so an unobserved predicate is reported as
+// undetermined rather than silently as a negative.
+func staleKeepReason(c *staleCandidate, path, branch, base string) string {
 	dirty, err := worktreeHasLocalChanges(path)
 	if err != nil {
+		c.Dirty = staleStateUndetermined
 		return fmt.Sprintf("could not read working tree state: %v", err)
 	}
+	c.Dirty = staleStateNo
 	if dirty {
+		c.Dirty = staleStateYes
 		return "uncommitted or untracked changes"
 	}
 
 	merged, err := WorktreeProvider.IsBranchMerged(branch, base)
 	if err != nil {
+		c.Merged = staleStateUndetermined
 		return fmt.Sprintf("could not compare against %s: %v", base, err)
 	}
+	c.Merged = staleStateNo
 	if !merged {
 		return fmt.Sprintf("branch has commits not in %s", base)
 	}
+	c.Merged = staleStateYes
 	return ""
 }
 

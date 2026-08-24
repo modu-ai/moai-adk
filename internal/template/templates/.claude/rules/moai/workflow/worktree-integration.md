@@ -66,6 +66,31 @@ The rename is also a disposal-path switch, and that is deliberate:
 
 Either way the unpushed-branch rule above still governs timing — the sweep's merged-branch condition is the same "after the remote merge" boundary. The lane-side procedure that consumes `WT-` branches lives in `kanban-dispatch.md` § Integration into the release branch is self-served.
 
+## Disposing a Worktree the Automatic Sweep Does Not Reach
+
+Automatic disposal covers one shape only: the PR-merge auto-cleanup sweep enumerates `git worktree list` and treats a tree as a candidate solely when its branch carries the launcher's `WT-` prefix. Every other registered worktree — one named after the change it makes, one entered by hand, one whose branch was renamed — falls outside that sweep and stays on disk until someone disposes of it. That is the safe direction (nothing is removed unasked), but it is not a disposal plan.
+
+**Worktree-ness is a property of the checkout, not of the branch name.** A branch-name glob finds only the trees named a particular way; `git worktree list` finds all of them. Any inventory of what is actually on disk therefore starts from the listing, never from a name pattern.
+
+The shipped inventory is the `--stale` sweep's own evaluation, rendered as data:
+
+```bash
+moai worktree clean --stale --json
+```
+
+It emits one object per non-protected registered worktree, carrying the path, the branch, the keep-reason, and the three predicates behind that reason — dirty state, merge state, anchor state. It removes nothing: `--json` is a report, and it overrides `--yes` rather than combining with it. A predicate the sweep short-circuited before asking reads `not-checked`, which is deliberately distinct from `undetermined` — the latter means it asked and could not tell. Neither is a negative.
+
+Read the report, then dispose of what it shows as removable:
+
+```bash
+moai worktree clean --stale        # preview: names the trees it would remove
+moai worktree clean --stale --yes  # perform the removals
+```
+
+Both paths honour the same guards: a dirty tree, an unmerged branch, a tree anchoring a live session, and a tree whose state could not be read are each kept and reported with the reason. Branches are never deleted — the commits stay reachable by branch name after the directory is gone. The merge comparison is against `origin/main` by default, the same ref the automatic sweep uses, so the two cannot reach opposite conclusions about the same tree; `--base` overrides it.
+
+For a tree outside the sweep entirely, the manual path is unchanged: `git worktree unlock <path>` when a dead session's lock is still on it, then `git worktree remove <path>`. The unpushed-branch rule above governs the timing in every case.
+
 ## Claude Code 2.1.50+ Worktree Features
 
 ### `claude --worktree` (`-w`) Flag
