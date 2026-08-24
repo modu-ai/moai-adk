@@ -438,9 +438,190 @@ exit=1
 - **A user project that has not re-run `moai update` keeps the old settings entry**, so the guardian runs twice for a while: once in-process and once via the wrapper. Both paths are advisory and produce identical text, so the visible effect is a duplicated advisory, not a wrong one.
 - **AC-SSS-013's byte-identity holds by construction only as long as both surfaces keep calling `ScanBufferAdvisory`.** A future edit that re-inlines the banner on either side would restore the drift the extraction removed; the test catches it, which is why it compares raw strings rather than asserting a substring.
 
+### M4 — Distribution and disclosure (steps 1-3; the pull request is excluded)
+
+Baseline attribution for every row below: measured in this run, against this tree, at HEAD
+`6a56ae86a` on branch `WT-security-scan-surface`, merge base `a9eb896ce`. Redirected output is
+under `.moai/state/verify/t217/`. M4 step 4 (opening the pull request) is **not** performed here
+and is the orchestrator's to dispatch; AC-SSS-016's fifth row is therefore still open.
+
+**Step 1 — mirror and pair verification, scoped to the diff.**
+
+The audit reads `git diff --name-only a9eb896ce..HEAD` and is scoped to that list, never to the
+repository (`plan.md` §F M4.1, `spec.md` §D).
+
+```
+$ git diff --name-only a9eb896ce..HEAD -- .claude/
+.claude/settings.json
+
+$ git diff --name-only a9eb896ce..HEAD -- internal/template/templates/.claude/
+internal/template/templates/.claude/settings.json.tmpl
+
+$ git diff --name-only a9eb896ce..HEAD -- '.claude/hooks/**' 'internal/template/templates/.claude/hooks/**'
+(no output)
+```
+
+One `.claude/` path changed and its template mirror changed in the same branch — the mirror
+obligation is satisfied. No hook wrapper appears in the diff, so the `.sh` / `.sh.tmpl` pair
+obligation is vacuously satisfied rather than assumed: the pair check has nothing in scope to
+check. No mirror was missing, so none was added.
+
+**Step 1 — the two `driftcheck.sh` axes.**
+
+```
+$ bash .moai/reports/t217/driftcheck.sh pairaxis          → 1 line, exit 0
+DRIFT .claude/hooks/moai/handle-pre-tool.sh
+
+$ bash .moai/reports/t217/driftcheck.sh guarded            → 0 lines
+(no output)
+```
+
+The single `pairaxis` line is the pre-existing, out-of-scope drift `acceptance.md` AC-SSS-016
+predicted and `spec.md` §D records: `handle-pre-tool.sh` legitimately differs from its template in
+comments. That it is pre-existing is measured, not assumed —
+`git diff --stat a9eb896ce..HEAD -- .claude/hooks/moai/handle-pre-tool.sh internal/template/templates/.claude/hooks/moai/handle-pre-tool.sh.tmpl`
+returns empty output, so this branch did not touch either file. **Scoped to this SPEC's diff, both
+axes return 0.** Evidence: `.moai/state/verify/t217/driftcheck-pairaxis.txt`,
+`.moai/state/verify/t217/driftcheck-guarded.txt`.
+
+Two measurement notes, so a later reader does not mis-read the raw numbers: the `guarded` mode
+exits 1 while printing nothing, because its last `[ -f "$b" ]` test is false — the check result is
+the empty output, not the exit code. The `unguarded` mode prints 31 lines, which is the documented
+false-positive count (31 of 35 `.tmpl` files have no `.sh` sibling inside `templates/`); it is
+recorded for context only and is not a gate.
+
+**Step 2 — `make build`.**
+
+```
+$ make build   → exit 0
+catalog.yaml updated successfully (12899 bytes)
+go build -ldflags "... -X ...version.Version=v3.1.2 -X ...version.Commit=6a56ae86a
+  -X ...version.Date=2026-08-24T13:50:49Z" -o bin/moai ./cmd/moai
+
+$ ./bin/moai version
+ v3.1.2   6a56ae86a   built 2026-08-24T13:50:49Z
+```
+
+The binary rebuilt and reports this tree's HEAD, so the re-embed is attributable to this commit
+rather than to a stale artifact. `make build` regenerated `internal/template/catalog.yaml` and its
+agent hashes, and the result is byte-identical to the committed file —
+`git status --porcelain internal/template/` returns empty. **No version-controlled artifact
+changed**, so the M4 commit carries no re-embedded template file. Evidence:
+`.moai/state/verify/t217/make-build.txt`.
+
+**Step 3 — template neutrality self-check over the changed template file.**
+
+The changed template surface is exactly one file, `internal/template/templates/.claude/settings.json.tmpl`,
+and its diff is a **pure deletion** — the `handle-security-scan.sh` PostToolUse entry removed by M3,
+with no line added. A deletion cannot introduce forbidden content, but the five checks were run
+against the post-change file rather than inferred from that reasoning:
+
+| Item | Pattern | Count |
+|---|---|---|
+| C1 SPEC ID | `SPEC-[A-Z0-9]+-` | `0` |
+| C2 REQ / AC token | `REQ-[A-Z]{2,}-[0-9]{3}\|AC-[A-Z]{2,}-[0-9]{3}` | `0` |
+| C3 audit citation | `Audit [0-9]\|Finding A[0-9]\|spec\.md` | `0` |
+| C4 date / short-sha | `20[2-9][0-9]-[01][0-9]-[0-3][0-9]\|[0-9a-f]{7,8}` | `0` |
+| C5 maintainer path | `CLAUDE\.local\|/Users/goos\|\.moai/backups` | `0` |
+
+Each row is `grep -cE '<pattern>' internal/template/templates/.claude/settings.json.tmpl`,
+which printed `0` and exited 1 (no match) on all five. The counts are read from `grep -c` directly
+rather than through a pipe, so a `0` here is an observation and not a swallowed failure.
+
+**The previously-UNVERIFIED template-leak row is now measured.**
+
+```
+$ MOAI_TEMPLATE_LEAK_STRICT=1 go test ./internal/template/ -count=1 -timeout 900s   → exit 0
+ok  	github.com/modu-ai/moai-adk/internal/template	28.425s
+```
+
+The authoring-time Gap was a measurement failure, not a test failure: the run exceeded a 120 s
+Bash-call budget and returned empty output, which is silence rather than a verdict. Re-run with an
+explicit `-timeout 900s` and a 900 s call budget, the test completes in **28.4 s** and passes. The
+`acceptance.md` AC-SSS-016 row has been updated from `UNVERIFIED` to the measured result. Evidence:
+`.moai/state/verify/t217/template-leak-strict.txt`.
+
+| AC | Status | Verification command | Actual output |
+|---|---|---|---|
+| AC-SSS-016 (mirror + pair, diff-scoped) | PASS | `git diff --name-only a9eb896ce..HEAD -- .claude/` and the mirror / wrapper variants above | one `.claude/` path (`settings.json`), its mirror (`settings.json.tmpl`) changed in the same branch, zero hook wrappers in the diff |
+| AC-SSS-016 (`pairaxis`) | PASS | `bash .moai/reports/t217/driftcheck.sh pairaxis` | `DRIFT .claude/hooks/moai/handle-pre-tool.sh` — 1 line repo-wide, **0 lines scoped to this diff**, and measured pre-existing (the branch touches neither file) |
+| AC-SSS-016 (`guarded`) | PASS | `bash .moai/reports/t217/driftcheck.sh guarded` | no output (0 lines) |
+| AC-SSS-016 (template leak, strict) | PASS | `MOAI_TEMPLATE_LEAK_STRICT=1 go test ./internal/template/ -count=1 -timeout 900s` | `ok github.com/modu-ai/moai-adk/internal/template 28.425s`, exit 0 — the authoring-time Gap is closed |
+| AC-SSS-016 (PR declaration) | **OPEN** | `gh pr view --json title,body ...` | not measured — M4 step 4 is excluded from this delegation. No pull request exists on this branch |
+| AC-SSS-001 (unchanged, re-run) | PASS | `go test ./internal/hook/ -run TestScanWriteContentDifferential -count=1 -v -timeout 900s` | `--- PASS: TestScanWriteContentDifferential (0.09s)`, with `assertion (ii): 5 denying fixtures, none skippable by the pre-filter` logged and five `security scan blocked write operation` lines from assertion (i)'s corpus loop. `grep -c 'assertion'` returns 1 — assertion (i) carries no log line by construction; it is the loop that precedes (ii) in the same function, and (ii) is only reached if (i) ran. The M0 file was not edited |
+
+**Suite results (this tree, after `make build`).**
+
+- `go build ./...` → exit 0. `.moai/state/verify/t217/go-build.txt`
+- `go vet ./internal/hook/... ./internal/cli/... ./internal/template/...` → exit 0. `.moai/state/verify/t217/go-vet.txt`
+- `GOOS=windows GOARCH=amd64 go vet` (same packages) → exit 0. `.moai/state/verify/t217/vet-windows.txt`
+- `GOOS=linux GOARCH=amd64 go vet` (same packages) → exit 0. `.moai/state/verify/t217/vet-linux.txt`
+- `go test ./internal/template/... -count=1 -timeout 900s` → exit 0, all packages `ok` (`internal/template` 25.533s). `.moai/state/verify/t217/template-test.txt`
+- `go test ./internal/hook/... -count=1 -timeout 900s` → exit 0, all 11 packages `ok` (`internal/hook` 49.970s). `.moai/state/verify/t217/hook-test.txt`
+
+**Working-tree hygiene.** `go test ./internal/hook/...` regenerates
+`.moai/specs/SPEC-HOOK-PRETOOL-PERF-001/{baseline,postchange}.md` — those files carry benchmark
+timings that the `internal/hook/perf` suite rewrites on every run. They belong to a different,
+already-closed SPEC and are outside this SPEC's scope, so they were restored with `git restore`
+and are not staged. `git status --porcelain` is empty apart from this milestone's own edits.
+
+**Gaps — what was NOT observed.**
+
+- **AC-SSS-016's fifth row (the PR title / first-body-sentence security-surface declaration,
+  REQ-SSS-016) is NOT measured.** No pull request exists on this branch. AC-SSS-016 is therefore
+  **not fully PASS**: four of its five rows are measured PASS and the fifth is open pending M4
+  step 4. It is recorded here as open rather than claimed.
+- No push was performed, so nothing on this branch is on the remote. `l44_post_push_fetch` below
+  is recorded as not-applicable, not as a clean result.
+- `golangci-lint` was not run in this milestone (unchanged from M3).
+- The full repository suite was not run locally (`plan.md` §D). CI on the pull request is the verdict.
+- `GOOS=windows` / `GOOS=linux` `go vet` proves the packages **compile** cross-platform; it does
+  not prove runtime behaviour on those platforms. No cross-platform runtime claim is made.
+- The neutrality self-check covers the one changed template file. It is not a repository-wide
+  neutrality sweep, and none is claimed.
+- The rebuilt `bin/moai` was **not** installed to `~/go/bin/moai`. Nothing in M4 was verified
+  through the installed binary.
+
+**Residual risk.**
+
+- **The pre-existing `handle-pre-tool.sh` pair drift stays unresolved.** It is out of scope by
+  `spec.md` §D, and scoping the gate to the diff is what keeps this SPEC from being blocked by it —
+  but a future SPEC that does touch that wrapper inherits the drift, and the diff-scoped gate will
+  then correctly refuse to ignore it.
+- **The template-leak test's cost is close to a default Bash budget.** It passes in ~28 s on an
+  unloaded machine, but the authoring-time run exceeded 120 s under load. A future run on a loaded
+  machine can time out again and produce the same silence-mistaken-for-failure; the explicit
+  `-timeout 900s` and the redirected evidence file are the mitigation, not a fix for the cost.
+- **A user project that has not re-run `moai update` keeps the old settings entry** (unchanged from
+  M3): the guardian runs twice for a while, once in-process and once via the wrapper. Both paths
+  are advisory and produce identical text.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-08-24T13:59:00Z
+run_commit_sha: pending-backfill-m4   # this commit cannot name its own hash; backfilled in a follow-up
+run_status: complete-except-pr        # M1-M4 steps 1-3 landed; M4 step 4 (pull request) is the orchestrator's
+ac_pass_count: 15                     # AC-SSS-001 .. AC-SSS-015
+ac_fail_count: 0
+ac_open_count: 1                      # AC-SSS-016 — 4 of 5 rows PASS, the PR-declaration row open pending M4 step 4
+preserve_list_post_run_count: 2       # plan.md §A PRESERVE items, both intact
+preserve_list_post_run_detail:
+  - "internal/hook/security/guardian.go § HandleSecurityScan — present (grep -c 'func HandleSecurityScan' = 1); the advisory contract is preserved and now shared via ScanBufferAdvisory"
+  - ".claude/rules/moai/core/verification-claim-integrity.md — untouched by this branch (empty git diff over the path)"
+l44_pre_commit_fetch: "git merge-base origin/main HEAD = a9eb896ce; HEAD re-read immediately before commit"
+l44_post_push_fetch: not-applicable   # no push performed — step 4 excluded from this delegation
+new_warnings_or_lints_introduced: 0   # go vet clean on darwin, windows, and linux; golangci-lint not run (Gap)
+cross_platform_build:
+  darwin_arm64_build: "go build ./... → exit 0"
+  darwin_vet: "go vet ./internal/hook/... ./internal/cli/... ./internal/template/... → exit 0"
+  windows_amd64_vet: "GOOS=windows GOARCH=amd64 go vet (same packages) → exit 0"
+  linux_amd64_vet: "GOOS=linux GOARCH=amd64 go vet (same packages) → exit 0"
+  note: "vet proves cross-platform compilation, including test files; it does not prove runtime behaviour on those platforms"
+total_run_phase_files: 23             # git diff --name-status a9eb896ce..HEAD, before the M4 commit
+m1_to_mN_commit_strategy: "one commit per milestone on WT-security-scan-surface: M1 dad1f5bb4, M2 7d4805049, M3 6a56ae86a, M4 this commit. No squash, no amend, no force-push."
+evidence_dir: .moai/state/verify/t217/
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
