@@ -256,15 +256,27 @@ hooks, in **every** surface that carries it:
 | `.claude/rules/moai/core/agent-common-protocol-reference.md` + template twin | `:291` — *"TaskCompleted in team mode (dormant — harness `thorough` + team prerequisites)"* | spec.md §G-3 cites this very line as evidence of the misleading wording |
 
 Template-First applies to all three pairs; AC-HWD-015 asserts mirror identity for
-each. Correcting one surface and leaving two — one of them always-loaded — would
-leave three surfaces disagreeing, which is worse than the single original error.
+each, and AC-HWD-018 binds the corrected reading across all **six** surfaces
+(three files + three twins). Correcting one surface and leaving two — one of them
+always-loaded — would leave three surfaces disagreeing, which is worse than the
+single original error.
+
+**[HARD] The edit is line-specific.** `hook-independence.md` carries five
+occurrences of "dormant" and **only two are wrong**: `:87` and the `:89-93` caveat
+block, which carry the registered-but-gated reading. `:96`, `:106`, and `:107` use
+the word correctly about *other* surfaces — the worktree lifecycle wrappers and
+the `moai hook spec-status` subcommand — and those statements are accurate. A
+sweep over the word would corrupt three correct statements to fix two wrong ones.
 
 This is a **factual correction, not a decision**: whether team mode should fire
 the hook is §G-3 / card t244 and stays untouched. Say what the wiring is; do not
 say what it ought to be.
 
 **Neutrality.** The `open-question` rows name the pending decision and **not**
-the card. `t242`/`t243`/`t244` appear only in `spec.md` §G.
+the card. `t242`/`t243`/`t244` appear in this SPEC's own artifacts (spec.md §G,
+frontmatter `tags`, this file, progress.md) and **never in
+`internal/template/templates/**`** — matching the corrected §C-4 phrasing
+(audit D11 in spec.md, N6 here).
 
 **No deletions** (REQ-HWD-008). All 11 have template twins; removing one is a
 distributed act, and two of them are pinned by `retired_wrappers_test.go` and
@@ -329,8 +341,20 @@ Files: `.claude/settings.json`.
   renamed the very symbol that prose relied on.
 - **Claiming a criterion is mutant-proof without recording the attempts.** v0.1.0
   asserted "none constructible" for AC-HWD-011 and the auditor produced two
-  mutants immediately. An overclaimed note is worse than a known-weak criterion,
-  because it stops the next reader from strengthening it.
+  mutants immediately. v0.2.0 then asserted that AC-009 + AC-010 closed the
+  `hook-independence.md` "dormant" case, and they did not (audit N2). An
+  overclaimed note is worse than a known-weak criterion, because it stops the next
+  reader from strengthening it. Three instances across two iterations — this is
+  the failure mode of this document, not an incident.
+- **Re-attacking only the criteria a revision rewrote.** v0.2.0 applied the
+  fresh-mutant discipline to rewritten criteria only, so AC-HWD-009 went
+  unattacked through two iterations — and it was the one the auditor defeated.
+  An unattacked criterion is a known gap, not a passing one.
+- **Widening an observable without checking it is still satisfiable.** Closing
+  AC-007's false-pass hole in v0.2.0 created a false-fail blocker: `moai doctor`'s
+  own first-run cache write made the criterion impossible to satisfy by any
+  implementation. Every widened assertion gets one run against the real tool
+  before it ships.
 
 ---
 
@@ -345,3 +369,7 @@ Files: `.claude/settings.json`.
   the option tables and per-script evidence, referenced rather than duplicated
 - `.moai/reports/t216/plan-audit.md` — audit iteration 1: the four mutants
   (M-1 … M-4) and the thirteen findings that produced v0.2.0
+- `.moai/reports/t216/plan-audit-iter2.md` — audit iteration 2 (PASS 0.862,
+  terminal): the Tier M threshold correction, the three executed mutants
+  (N1-M unsatisfiability, N2-M six-vs-four surfaces, N3-M blanket line), and the
+  seven findings that produced v0.3.0

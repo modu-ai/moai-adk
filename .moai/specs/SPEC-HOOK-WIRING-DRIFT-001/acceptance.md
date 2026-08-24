@@ -3,17 +3,25 @@
 Every criterion carries four things beyond its Given-When-Then:
 
 - **`Pre-impl observed:`** — the value the criterion's command actually printed,
-  before any implementation. Values re-measured in audit iteration 1 are tagged
-  `@4842760a7`; values unchanged since authoring are tagged `@950cb4399`. **No
-  criterion defers its baseline** (spec.md §C-5 is absolute; the three former
-  deferrals were measured and are recorded below).
+  before any implementation, tagged with the HEAD it was measured at:
+  `@950cb4399` (authoring), `@4842760a7` (audit iteration 1), `@6331d505c` (audit
+  iteration 2). **No criterion defers its baseline** (spec.md §C-5 is absolute;
+  the three former deferrals were measured in iteration 1 and re-verified by the
+  auditor in iteration 2).
 - **`Mutant:`** — an implementation attempted that would pass the criterion while
   violating its requirement. Where one is constructible the criterion is shallow
   and was rewritten; where none is, the *attempted* mutants are named with why
   each fails. "None constructible" is never asserted without the attempts.
-- **`Fresh mutant attempt (iter 1):`** — on every criterion rewritten in this
-  iteration, a **new** mutant attacked against the **new** text. A rewrite that
-  was not re-attacked has not been shown to be deeper.
+- **`Fresh mutant attempt (iter N):`** — a **new** mutant attacked against the
+  **new** text, recorded per revision. A rewrite that was not re-attacked has not
+  been shown to be deeper.
+
+  > **Scope correction, iteration 2.** v0.2.0 applied this discipline only to
+  > criteria it *rewrote*. AC-HWD-009 was therefore never re-attacked, and it was
+  > the criterion the auditor defeated (N3). The discipline now reads: a
+  > criterion carries a fresh attempt when it is rewritten **or** when a revision
+  > changes something it depends on — and an unattacked criterion is a known gap,
+  > not a passing one.
 - **`Harness correction:`** — for every new check or gate, the input constructed
   to make it fail and the failure that must be **observed**. A gate seen only
   passing has not been shown to be a gate.
@@ -148,6 +156,18 @@ makes chain completion edges record.
 >    **add** an entry the template does not carry. The live project's unscoped
 >    synchronous `status-transition-ownership.sh` entry is a real specimen to copy
 >    the shape from, but the fixture is still built from the render.
+> 4. **[HARD] Warm every fixture before snapshotting it** — run `bin/moai doctor`
+>    **once** against the fixture and discard that run's output, then take the
+>    AC-HWD-007 pre-run snapshot. This step exists because `moai doctor` writes
+>    `.moai/state/config-cache.json` on its **first** run in any project, as
+>    pre-existing machinery unrelated to the hook-wiring check. Without warming,
+>    AC-HWD-007's snapshot (iii) changes on the measured run no matter how the
+>    check is implemented, and a correct implementation cannot pass. Measured
+>    here: on a fresh fixture `find .moai/state -type f` → 0 files; after run 1 →
+>    `.moai/state/config-cache.json`; run 2 leaves it byte- and mtime-identical
+>    (`8334 1787583098` both times); a third run over a `.moai/state` +
+>    `.moai/logs` listing showed no delta at all. Warming is therefore sufficient,
+>    not merely a mitigation.
 
 ### AC-HWD-005 — the diagnostic reports a template-only entry (missing registration)
 
@@ -200,9 +220,18 @@ template-only.
 
 - `Pre-impl observed:` neither the check nor a shared keyed-entry helper exists —
   `grep -c 'Hook Wiring' internal/cli/doctor.go` → **`0`** and
-  `grep -rl 'HookEntryParity' internal/` → rc=1, no match `@4842760a7`. The
-  fixture name is confirmed absent from the tree:
-  `grep -rl 'zz-fixture-only' .` → rc=1, no match.
+  `grep -rl 'HookEntryParity' internal/` → rc=1, no match, re-confirmed
+  `@6331d505c`. The fixture name is confirmed absent from **source**:
+  `grep -rl 'zz-fixture-only' internal/ .claude/hooks/` → **rc=1, no match**
+  `@6331d505c`.
+  **Corrected scope** (audit N5): v0.2.0 recorded the unscoped
+  `grep -rl 'zz-fixture-only' .` → rc=1, and **writing this criterion invalidated
+  it** — the command now returns rc=0 and names `acceptance.md` and the audit
+  report, because the string is in SPEC prose. The property that matters is that
+  no *script* by that name exists, so the command is scoped to where a script
+  could live. Same defect class as iteration 1's D10: a cited command whose output
+  no longer reproduces is an unattributed baseline, even when the conclusion is
+  sound.
 - `Mutant:` this criterion **is** the closure of mutant M-2 (a hardcoded
   expected-entry list, which passes AC-HWD-005 and AC-HWD-006 while never
   rendering the template, and rots against the template into the very drift class
@@ -227,21 +256,36 @@ template-only.
 
 ### AC-HWD-007 — the diagnostic changes nothing under the project root
 
-**Given** a recorded pre-run snapshot consisting of (i) whole-worktree
-`git status --porcelain`, (ii) `sha256` and `mtime` of `.claude/settings.json`,
-and (iii) a listing of name+size+mtime for every file under `.moai/logs/` and
-`.moai/state/` (the two gitignored paths a diagnostic would most plausibly write
-to, which `git status --porcelain` cannot see),
+**Given** a fixture **warmed** per step 4 of the construction note (one discarded
+`bin/moai doctor` run), and then a recorded pre-run snapshot consisting of
+(i) whole-worktree `git status --porcelain`, (ii) `sha256` and `mtime` of
+`.claude/settings.json`, and (iii) a listing of name+size+mtime for every file
+under `.moai/logs/` and `.moai/state/` — the two gitignored paths a diagnostic
+would most plausibly write to, which `git status --porcelain` cannot see —
+**excluding `.moai/state/config-cache.json`**,
 **When** `bin/moai doctor` runs — both against the drift-free fixture and against
 a drifting one —
 **Then** all three snapshots are unchanged.
 
-- `Pre-impl observed:` `@4842760a7` — `sha256(.claude/settings.json)` =
-  `57fc6d11506a4cfd198dc4de1ecea27baa23bea9087a862adaa90e5008a7324e`
-  (exact match with the v0.1.0 measurement); `git status --porcelain` → one line,
-  `?? .moai/reports/t216/plan-audit.md`, and running `bin/moai doctor` left it
-  unchanged. No diagnostic exists yet, so this criterion records the invariant the
-  new check must preserve.
+> **Why `config-cache.json` is excluded, and why the exclusion is narrow.**
+> REQ-HWD-004 constrains **the diagnostic**; this criterion observes **the whole
+> doctor run**, which also carries pre-existing machinery. `config-cache.json` is
+> that machinery's first-run write and belongs to no part of this SPEC's change.
+> The exclusion is one named file, not a directory — a check writing any *other*
+> file under `.moai/state/` still fails, which is the mutant the clause exists to
+> catch. Warming makes the exclusion belt-and-braces rather than load-bearing:
+> after warming, that file is stable across further runs, so the criterion would
+> hold even without naming it. Both are stated so the boundary is explicit.
+
+- `Pre-impl observed:` `@6331d505c` — `sha256(.claude/settings.json)` =
+  `57fc6d11506a4cfd198dc4de1ecea27baa23bea9087a862adaa90e5008a7324e` (unchanged
+  across all three iterations). Fixture behaviour measured this iteration on a
+  fresh fixture: `find .moai/state -type f | wc -l` → **0** before any run;
+  after `bin/moai doctor` run 1 (`rc=0`) → `.moai/state/config-cache.json`; run 2
+  leaves it identical (`stat` → `8334 1787583098` both times); run 3 over a
+  combined `.moai/state` + `.moai/logs` listing → **no delta**. No diagnostic
+  exists yet, so this criterion records the invariant the new check must preserve,
+  and the warmed-fixture baseline it must be measured against.
 - `Mutant:` a check that repairs the drift and then reports "no drift" passes
   AC-HWD-005 on its **first** run and fails it on the second — closed by the
   harness correction below, and by asserting `mtime` as well as bytes (a repair
@@ -249,13 +293,34 @@ a drifting one —
 - `Fresh mutant attempt (iter 1):` **three attempted; two fail, one is an
   acknowledged boundary.** (i) *Write a drift report to
   `.moai/logs/doctor-drift.log`* — this was audit mutant M-3, which defeated the
-  v0.1.0 `.claude/`-only observable; it now **fails** on snapshot (iii). (ii)
-  *Write a cache under `.moai/state/`* — **fails** on snapshot (iii). (iii)
-  *Write outside the project root, e.g. `~/.moai/cache/`* — **passes**, and is not
-  observed by any criterion. That is a deliberate boundary, not an oversight:
-  REQ-HWD-004 was narrowed in this iteration to "under the project root" so the
-  requirement and its observable agree (audit D7), and the out-of-tree case is
-  recorded as residual risk in §D.6 rather than papered over.
+  v0.1.0 `.claude/`-only observable; it **fails** on snapshot (iii). (ii)
+  *Write a cache under `.moai/state/`* — **fails** on snapshot (iii), except for
+  the one named exclusion. (iii) *Write outside the project root, e.g.
+  `~/.moai/cache/`* — **passes**, and is not observed by any criterion. That is a
+  deliberate boundary, not an oversight: REQ-HWD-004 was narrowed in iteration 1
+  to "under the project root" so the requirement and its observable agree (audit
+  D7), and the out-of-tree case is recorded as residual risk in §D.6 rather than
+  papered over. Iteration 2 ruled this narrowing legitimate scoping rather than a
+  shrunk requirement, on the ground that it *added* coverage of the motivating
+  mutant (i) that v0.1.0 let through.
+- `Fresh mutant attempt (iter 2):` **the criterion was rewritten because it was
+  not defeated by a mutant but by the tool itself, and the fix was re-attacked.**
+  The audit demonstrated that v0.2.0's clause was **unsatisfiable**: `moai doctor`
+  writes `.moai/state/config-cache.json` on first run, so snapshot (iii) changed
+  against the freshly-built fixture regardless of implementation — a correct
+  implementation could not pass, and the failure would have presented in the run
+  phase as the diagnostic misbehaving. **Reproduced independently here** on a
+  fresh fixture: 0 files under `.moai/state` before, `config-cache.json` after
+  run 1 (`rc=0`). Note the irony the audit pinned: fresh-mutant attempt (ii)
+  above designs the clause to catch "a cache under `.moai/state/`", and doctor's
+  own baseline behaviour *is* that write. Three attacks on the **new** text:
+  (a) *a check that writes `config-cache.json` itself to hide behind the
+  exclusion* — the file is written by config machinery before the check runs and
+  is byte-stable afterwards (measured: `8334 1787583098` identical across runs
+  2 and 3), so a check mutating it changes size or mtime → **fails**;
+  (b) *a check that writes any other file under `.moai/state/`* → **fails**, the
+  exclusion is one named file, not the directory; (c) *a check that repairs the
+  drift on run 1* → **fails** the twice-run harness correction, unchanged.
 - `Harness correction:` [HARD] run the diagnostic **twice in a row** against the
   same drifting fixture and record that the second run reports the same drift as
   the first. A self-repairing check is detectable only by the second run.
@@ -288,33 +353,81 @@ JSON, and a second fixture where the file is absent,
 
 **Given** `.claude/rules/moai/development/hook-independence.md` and its template
 twin,
-**When** each of the 11 script names is grepped,
-**Then** each appears at least once, on a line carrying one of the five
-disposition classes.
+**When** each of the 11 script names is looked up,
+**Then** each has **its own row** — a line naming **that script and no other** of
+the 11 — and that row carries **exactly one** of the five disposition classes,
+**and that class is the one expected for that script** per the mapping below.
 
-Names: `chain-event.sh`, `handle-agent-hook.sh`, `handle-elicitation.sh`,
-`handle-elicitation-result.sh`, `handle-notification.sh`,
-`handle-session-start-compact.sh`, `handle-session-start-navigator.sh`,
-`handle-task-created.sh`, `handle-worktree-create.sh`,
-`handle-worktree-remove.sh`, `team-ac-verify.sh`.
+| Script | Expected class |
+|---|---|
+| `chain-event.sh` | `reachable-via-template-settings` |
+| `handle-agent-hook.sh` | `reachable-via-agent-frontmatter` |
+| `handle-session-start-compact.sh` | `reachable-via-in-binary-registry` |
+| `handle-elicitation.sh` | `dead-by-decision` |
+| `handle-elicitation-result.sh` | `dead-by-decision` |
+| `handle-notification.sh` | `dead-by-decision` |
+| `handle-task-created.sh` | `dead-by-decision` |
+| `handle-worktree-create.sh` | `dead-by-decision` |
+| `handle-worktree-remove.sh` | `dead-by-decision` |
+| `handle-session-start-navigator.sh` | `open-question` |
+| `team-ac-verify.sh` | `open-question` |
 
-- `Pre-impl observed:` `@4842760a7`, measured name-by-name over the rule file —
+The mapping is not new judgment — it is plan.md §F M3's disposition table, moved
+into the criterion so the gate can decide it. Sole-name matching treats a name
+that is a substring of another (`handle-elicitation` inside
+`handle-elicitation-result`) as the same script, not a second one.
+
+- `Pre-impl observed:` `@6331d505c`, re-measured name-by-name over the rule file
+  as **matching-line counts with the lines named**, since `grep -c` counts lines
+  and several of these names share one:
   `chain-event` **0**, `handle-agent-hook` **0**, `handle-session-start-compact`
-  **0**, `handle-session-start-navigator` **0**, `handle-elicitation` 2 (the count
-  includes `handle-elicitation-result` as a substring),
-  `handle-elicitation-result` 1, `handle-notification` 1, `handle-task-created` 1,
-  `handle-worktree-create` 1, `handle-worktree-remove` 1, `team-ac-verify` **7**.
-  **Correct split: 7 present, 4 absent.** (v0.1.0 said "the three newly-classified
+  **0**, `handle-session-start-navigator` **0** (absent);
+  `handle-elicitation` **1** (line 102), `handle-elicitation-result` **1** (102),
+  `handle-task-created` **1** (102), `handle-notification` **1** (101),
+  `handle-worktree-create` **1** (105), `handle-worktree-remove` **1** (105),
+  `team-ac-verify` **7** (33, 69, 71, 79, 89, 90, 97). **Split: 7 present,
+  4 absent.**
+  Two corrections carried here. (a) v0.1.0 said "the three newly-classified
   names" and then listed four, and omitted `team-ac-verify.sh` from the present
-  set — audit D8. Corrected here: **four** newly-classified names, and
-  `team-ac-verify.sh` is present at 7 occurrences but with wording this SPEC also
-  corrects, see AC-HWD-018.)
-- `Mutant:` listing all 11 under a single blanket heading ("dormant") satisfies a
-  name-presence grep while erasing the distinction the investigation established —
-  that 2 are reachable and 2 are open questions. Closed by requiring a disposition
-  class per name, drawn from the five-class set, **on the same line**.
-- `Harness correction:` n/a — a documentation-content criterion, verified by
-  reading the rendered rows.
+  set — audit D8; corrected in v0.2.0 to **four** newly-classified names.
+  (b) v0.2.0 recorded `handle-elicitation` as **2**, "the count includes
+  `handle-elicitation-result` as a substring" — **that value does not reproduce
+  and the explanation was a misdiagnosis** (audit N4). The measured value is
+  **1**: `grep -c` counts matching *lines*, not occurrences, so two names on one
+  line inflate nothing. The real effect runs the other way — three of the 11
+  names share line 102 and two more share line 105, so per-name line counts
+  **understate** how crowded the file is. That crowding is not a footnote: it is
+  the file's existing authoring style, which is precisely why the blanket-line
+  mutant below is a realistic authoring shortcut rather than a contrived attack.
+- `Mutant:` **v0.2.0's Then clause was defeated** (audit N3, constructed and
+  executed by the auditor): "each appears at least once, on a line carrying one of
+  the five disposition classes" is satisfied by **a single line carrying all 11
+  names and one class** — 11 distinct names present, one disposition-class line,
+  criterion passes while assigning `dead-by-decision` to `chain-event.sh`
+  (reachable), to `handle-agent-hook.sh` (reachable — §A.2's own correction), and
+  to both open questions. The "per name" mitigation lived in this `Mutant:` prose
+  and not in the Then clause — the same shape as iteration 1's D1 and D2, and it
+  survived because AC-HWD-009 was not rewritten in iteration 1 and so was never
+  re-attacked.
+- `Fresh mutant attempt (iter 2):` **two constructed and executed against the new
+  text; both fail it, both pass the old one.** Fixtures were built and both clause
+  forms evaluated mechanically.
+  **(A) blanket line** — all 11 names on one `dead-by-decision` row.
+  OLD clause → `PASS`; NEW clause → `FAIL ('chain-event.sh: no sole-name row')`.
+  **(B) eleven sole-name rows, every one classed `dead-by-decision`** — the mutant
+  that matters, because it satisfies the audit's *literally prescribed* fix ("one
+  row per name … carrying exactly one of the five classes"): measured against that
+  prescribed wording it returns **`PASS`**. OLD clause → `PASS`; NEW clause →
+  `FAIL ('chain-event.sh: wrong class, expected reachable-via-template-settings')`.
+  **This is why the rewrite goes beyond the prescription**: per-name rows alone
+  bind structure, not content, and a uniformly-misclassed table is exactly the
+  error the investigation's whole disposition analysis exists to prevent. Binding
+  the expected class per name is what closes it.
+- `Harness correction:` [HARD] before PASS, evaluate the criterion against fixture
+  (B) above — eleven sole-name rows, all classed `dead-by-decision` — and record
+  the observed failure naming the first mis-classed script. A disposition
+  criterion seen only against the correct table has not been shown to check the
+  classes.
 
 ### AC-HWD-010 — the two audit corrections are recorded
 
@@ -338,31 +451,63 @@ Names: `chain-event.sh`, `handle-agent-hook.sh`, `handle-elicitation.sh`,
 
 ### AC-HWD-018 — the `team-ac-verify.sh` correction is consistent across every surface that states it
 
-**Given** the four surfaces that describe `team-ac-verify.sh`'s registration
-state — `.claude/rules/moai/core/agent-common-protocol.md` (**always-loaded**),
-`.claude/rules/moai/core/agent-common-protocol-reference.md`, and their two
-template twins under `internal/template/templates/` —
+**Given** all **six** surfaces REQ-HWD-012 names — three files plus their three
+template twins under `internal/template/templates/`:
+`.claude/rules/moai/development/hook-independence.md`,
+`.claude/rules/moai/core/agent-common-protocol.md` (**always-loaded**), and
+`.claude/rules/moai/core/agent-common-protocol-reference.md` —
 **When** each is read after M3,
-**Then** none of the four describes it as "dormant" in the registered-but-gated
-sense, and each carries the corrected reading — that it is **not registered in
-any settings surface**, so no configuration flag activates it — on the same line
-as the script name.
+**Then** none of the six describes `team-ac-verify.sh` as "dormant" in the
+registered-but-gated sense, and each carries the corrected reading — that it is
+**not registered in any settings surface**, so no configuration flag activates it
+— on the same line as the script name.
 
-- `Pre-impl observed:` `@4842760a7` — `grep -c 'dormant'` → **1** in each of the
-  four files. The two live lines:
+> **[HARD] The edit is line-specific, not a blanket removal.**
+> `hook-independence.md` carries **five** occurrences of "dormant" and only two
+> are wrong. Correct `:87` (*"10s (TaskCompleted) — **dormant / not wired**"*) and
+> the `:89-93` caveat block (*"Row (g) caveat — `team-ac-verify.sh` is dormant …
+> forward-looking (activates only under harness `thorough` + team mode
+> prerequisites)"*), which is the registered-but-gated reading the wiring
+> contradicts. **Leave `:96`, `:106`, and `:107` alone** — they use "dormant"
+> correctly, about *other* surfaces (the worktree lifecycle wrappers and the
+> `moai hook spec-status` subcommand), and those readings are accurate. A
+> `sed`-style sweep over the word would corrupt three correct statements to fix
+> two wrong ones.
+
+- `Pre-impl observed:` `@6331d505c` — `grep -c 'dormant'`: **1** in
+  `agent-common-protocol.md`, **1** in `agent-common-protocol-reference.md`, **1**
+  in each of their two template twins, and **5** in `hook-independence.md` (lines
+  87, 89, 96, 106, 107) with **5** in its twin. The wrong lines, verbatim:
   `agent-common-protocol.md:38` — *"`team-ac-verify.sh` (TaskCompleted in team
   mode, dormant)"*; `agent-common-protocol-reference.md:291` — *"TaskCompleted in
-  team mode (dormant — harness `thorough` + team prerequisites)"*. Both read as
-  *registered but gated*, which the wiring contradicts.
+  team mode (dormant — harness `thorough` + team prerequisites)"*;
+  `hook-independence.md:87` and its `:89-93` caveat. All read as *registered but
+  gated*, which the wiring contradicts. The correct survivors are `:96`, `:106`,
+  `:107`.
 - `Mutant:` deleting the word "dormant" everywhere without stating the correct
   reading passes a count-only check while leaving the reader with no description
   at all. Closed by requiring the **corrected phrase on the same line**, not the
   absence of the old one.
-- `Fresh mutant attempt (iter 1):` **one attempted, fails.** *Correct all four
-  files but leave `hook-independence.md` on the old wording* — this inverts the
-  audit's D6 finding, and fails AC-HWD-009 + AC-HWD-010, which bind the same
-  correction in `hook-independence.md`. The two criteria are mutually closing:
-  neither surface can be corrected alone.
+- `Fresh mutant attempt (iter 1):` **RETRACTED — the claim was false.** v0.2.0
+  recorded: *"(i) Correct all four files but leave `hook-independence.md` on the
+  old wording — fails AC-HWD-009 + AC-HWD-010, which bind the same correction in
+  `hook-independence.md`."* **Neither criterion binds that wording** (audit N2):
+  AC-HWD-009 binds disposition classes, AC-HWD-010 binds the 33-entry and
+  agent-frontmatter statements, and neither touches "dormant". So the mutant —
+  correct the four, add a disposition row to satisfy AC-009, leave lines 87-93
+  untouched — passed all 16 criteria while violating REQ-HWD-012 on 2 of its 6
+  named surfaces, one of them distributed to 16 languages. This is the same
+  overclaim class as v0.1.0's "none constructible" (audit D5): an unverified
+  closure recorded as a closure. Recording the retraction rather than quietly
+  editing it, because the pattern is the finding.
+- `Fresh mutant attempt (iter 2):` **two attempted against the six-surface text,
+  both fail.** (i) *The N2 mutant above* — correct four surfaces, leave
+  `hook-independence.md:87` and `:89-93` — now **fails**, because those two
+  surfaces are inside the Given. (ii) *Correct all six by deleting every
+  occurrence of "dormant" in `hook-independence.md`* — **fails** the Then's
+  "carries the corrected reading" clause for the two target lines, and separately
+  destroys three accurate statements at `:96`, `:106`, `:107`, which is why the
+  [HARD] caution above is part of the criterion rather than a note beside it.
 - `Harness correction:` n/a — documentation content. Note that this criterion is
   a **factual correction, not a decision**: whether team mode should fire the hook
   remains §G-3 / card t244 and is untouched.
@@ -592,12 +737,23 @@ goroutine spawned in the hook process continues after the process returns.
 2. **AC-HWD-012's baseline was measured with the installed v3.1.2 binary**, not
    one built from this tree. The code path (`internal/cli/mx_query.go:97-103`) is
    unchanged at this HEAD, but the re-run on `bin/moai` was not performed.
-3. **No mutant was implemented.** Every mutant in this file — original and fresh —
-   is constructed by reading the criteria against the code. None was compiled or
-   run. Mutant (i) under AC-HWD-013's fresh attempt in particular reasons from Go
-   package scoping and the observed call sites at
-   `session_start_mx_test.go:83,121,135,159`, not from a build.
-4. **AC-HWD-009's substring counts are imprecise.** `handle-elicitation` counts 2
-   because `handle-elicitation-result` contains it. The present/absent split
-   (7 / 4) is unaffected, but the per-name integers are substring counts, not
-   distinct-mention counts.
+3. **Most mutants were reasoned, not implemented — but not all.** Mutants in this
+   file are generally constructed by reading the criteria against the code, with
+   nothing compiled. Mutant (i) under AC-HWD-013's fresh attempt in particular
+   reasons from Go package scoping and the **tests** asserting the scan's presence
+   at `session_start_mx_test.go:83,121,135,159` (those four lines are `func Test…`
+   declarations; the `runMXColdStartScan` call sites are 90/129/148 — corrected
+   per audit N7), not from a build. **Three exceptions were executed rather than
+   reasoned**: AC-HWD-013 (c)'s behavioural baseline (the integration test was
+   run), AC-HWD-009's two iteration-2 mutants (fixtures built and both clause
+   forms evaluated mechanically), and AC-HWD-007's unsatisfiability (a fixture
+   project was built and `bin/moai doctor` run against it three times).
+4. **AC-HWD-009's per-name integers are line counts, and they understate.**
+   v0.2.0 claimed `handle-elicitation` counts **2** "because
+   `handle-elicitation-result` contains it" — **both the value and the reasoning
+   were wrong** (audit N4). Measured: **1**. `grep -c` counts matching *lines*,
+   not occurrences, so two names sharing a line inflate nothing. The real
+   distortion runs the opposite way: three of the 11 names share line 102 and two
+   more share line 105, so per-name line counts understate the file's crowding.
+   The present/absent split (7 / 4) is unaffected and was re-verified name-by-name
+   with line numbers.

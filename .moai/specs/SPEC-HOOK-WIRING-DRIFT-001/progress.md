@@ -4,7 +4,7 @@
 
 ```yaml
 plan_status: audit-ready
-plan_version: 0.2.0
+plan_version: 0.3.0
 plan_complete_at: 2026-08-24
 tier: M
 artifacts: [spec.md, plan.md, acceptance.md, progress.md]
@@ -12,7 +12,7 @@ requirements: 14
 acceptance_criteria: 16
 milestones: [M1, M2, M3, M4]
 authored_at_head: 950cb4399
-amended_at_head: 4842760a7
+amended_at_head: 6331d505c
 audit_iterations:
   - iteration: 1
     verdict: FAIL
@@ -23,6 +23,21 @@ audit_iterations:
     findings_blocking: 7
     disposition: all 7 blocking fixed, 4 optional fixed, 0 declined
     report: .moai/reports/t216/plan-audit.md
+  - iteration: 2
+    verdict: PASS
+    score: 0.862
+    threshold: 0.80
+    threshold_note: >-
+      iteration 1 scored against 0.85 (Tier L); the Tier M SSOT value is 0.80,
+      so v0.1.0's 0.807 was already a PASS. Recorded by the auditor against its
+      own prior instance.
+    must_pass: 7/7
+    mutants_constructed: 3
+    mutants_executed: 2
+    findings_blocking: 3
+    disposition: all 3 blocking fixed, 4 minor/optional fixed, 0 declined
+    report: .moai/reports/t216/plan-audit-iter2.md
+    terminal: true
 authored_in_worktree: .claude/worktrees/t216
 branch: WT-hook-wiring-drift
 card: t216
