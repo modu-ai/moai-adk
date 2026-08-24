@@ -984,6 +984,14 @@ func (g *QualityGate) anyConfigFileExists(configFiles []string) bool {
 // runStep executes a single quality gate command with the given timeout.
 // Returns (true, "") on success, (false, errorMessage) on failure or timeout.
 func (g *QualityGate) runStep(ctx context.Context, stepName string, timeout time.Duration, name string, args ...string) (bool, string) {
+	// The caller's own deadline (the hook dispatcher's, when the gate runs from
+	// a hook) is recorded before the step starts, so a kill can be attributed to
+	// whichever budget actually ran out — see the DeadlineExceeded branch below.
+	parentBudget, parentBounded := time.Duration(0), false
+	if deadline, ok := ctx.Deadline(); ok {
+		parentBudget, parentBounded = time.Until(deadline), true
+	}
+
 	stepCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
@@ -1024,8 +1032,16 @@ func (g *QualityGate) runStep(ctx context.Context, stepName string, timeout time
 
 	// Distinguish timeout from other failures (REQ-GATE-009).
 	if stepCtx.Err() == context.DeadlineExceeded {
-		msg := fmt.Sprintf("quality gate timed out: %s exceeded %s", stepName, timeout)
-		return false, msg
+		// A parent cancellation propagates to stepCtx, so DeadlineExceeded here
+		// says nothing about WHICH budget ran out. Blaming the step's own budget
+		// unconditionally produced impossible reasons — a 30s dispatcher budget
+		// expiring mid-`go test` reported "go test exceeded 2m0s" (card t218).
+		if parentBounded && ctx.Err() == context.DeadlineExceeded {
+			return false, fmt.Sprintf(
+				"quality gate timed out: the overall gate budget ran out while running %s (%s of it remained when the step started; the step's own %s budget was not exceeded)",
+				stepName, parentBudget.Round(time.Millisecond), timeout)
+		}
+		return false, fmt.Sprintf("quality gate timed out: %s exceeded %s", stepName, timeout)
 	}
 
 	// Fix 2: when a NuGet restore failure (cross-platform TFM mismatch) is detected in the dotnet step,
