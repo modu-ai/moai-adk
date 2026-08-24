@@ -48,6 +48,21 @@ func Helper(s string, n int) (string, error) {
 	return root
 }
 
+// F1 regression (sync-audit MUST-FIX): a `..` escape attempt in the
+// LLM-facing file parameter is REJECTED — never resolved outside the root.
+func TestFileAPI_RejectsPathEscape(t *testing.T) {
+	root := codeQueryFixture(t)
+	for _, escape := range []string{
+		"../../../etc/secrets/creds.go",
+		"internal/chain/../../../../etc/passwd",
+		"..",
+	} {
+		if _, err := FileAPI(root, escape); err == nil {
+			t.Errorf("FileAPI(%q) escaped the project root without error", escape)
+		}
+	}
+}
+
 // AC-GF-020 — file_api answers exported signatures only: Helper's full
 // signature with parameter names, no function bodies anywhere.
 func TestFileAPI_SignaturesOnly(t *testing.T) {

@@ -19,8 +19,9 @@ the CLI form reads more naturally inline.
 
 ## The `project_root` input — name your own tree
 
-Six tools accept an optional `project_root` string: `spec_progress`,
-`spec_audit`, `spec_drift`, `codex_audit`, `glm_audit`, and `audit_multi`. It names the tree
+Nine tools accept an optional `project_root` string: `spec_progress`,
+`spec_audit`, `spec_drift`, `codex_audit`, `glm_audit`, `audit_multi`,
+`graph_file_api`, `graph_find_code`, and `graph_trace_calls`. It names the tree
 the call should act on.
 
 [HARD] **An agent working inside a worktree MUST pass it**, and the value is its

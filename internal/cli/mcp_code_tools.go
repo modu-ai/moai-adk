@@ -44,7 +44,7 @@ func handleGraphFindCode(ctx context.Context, req mcp.CallToolRequest) (*mcp.Cal
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 	return jsonToolResult(map[string]interface{}{
-		"matches":   matches,
+		"matches":    matches,
 		"provenance": prov,
 	})
 }
@@ -61,9 +61,9 @@ func handleGraphTraceCalls(ctx context.Context, req mcp.CallToolRequest) (*mcp.C
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 	return jsonToolResult(map[string]interface{}{
-		"symbol":    symbol,
-		"callers":   callers,
-		"callees":   callees,
+		"symbol":     symbol,
+		"callers":    callers,
+		"callees":    callees,
 		"provenance": graph.AnswerProvenance(root),
 	})
 }

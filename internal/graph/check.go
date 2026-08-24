@@ -30,11 +30,11 @@ const (
 // Metric kind tokens — the report names the metric each layer used, so a
 // reader can tell an endpoint git diff from a fingerprint comparison.
 const (
-	MetricDescribedSourceDiff = "described-source-diff"
+	MetricDescribedSourceDiff  = "described-source-diff"
 	MetricInventoryContentDiff = "inventory-content-diff"
-	MetricSourceFingerprint   = "source-fingerprint-mismatch"
-	MetricGenerationFP        = "generation-fingerprint-mismatch"
-	MetricWrongTree           = "wrong-tree-anchor"
+	MetricSourceFingerprint    = "source-fingerprint-mismatch"
+	MetricGenerationFP         = "generation-fingerprint-mismatch"
+	MetricWrongTree            = "wrong-tree-anchor"
 )
 
 // Thresholds are the per-layer red lines (acceptance.md §D.7). The edges layer

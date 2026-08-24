@@ -1,7 +1,9 @@
 # M5 Baseline — Grep/Read tool-use counts (AC-GF-022)
 
-- **Measurement date**: 2026-08-25 (BEFORE any M5 implementation commit — the
-  first M5 commit postdates this file).
+- **Measurement date**: 2026-08-25 (authored before the M5 implementation
+  within the working session; committed together with it in the same commit
+  — `7f2e9e77d` — so ordering rests on the authoring session record, NOT on
+  git history, which cannot prove it for a same-commit pair).
 - **Measuring session**: the t250 run-phase delegation session (this agent's
   session; `CLAUDE_SESSION_ID` is not exported to agent environments — recorded
   as a gap below).

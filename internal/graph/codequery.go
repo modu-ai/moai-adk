@@ -35,6 +35,12 @@ type FileAPIResult struct {
 // (the kind field distinguishes) since their export notions differ.
 func FileAPI(projectRoot, relPath string) (FileAPIResult, error) {
 	abs := filepath.Join(projectRoot, filepath.FromSlash(relPath))
+	// Trust boundary: relPath arrives from an LLM-facing MCP tool parameter.
+	// A `..` component would escape the project root after Join — reject any
+	// path that does not resolve to inside projectRoot (audit F1).
+	if rel, err := filepath.Rel(projectRoot, abs); err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return FileAPIResult{}, fmt.Errorf("graph: file path escapes the project root: %s", relPath)
+	}
 	lang := astx.DetectLanguage(abs)
 	res := FileAPIResult{File: filepath.ToSlash(relPath)}
 	if lang == "" {
