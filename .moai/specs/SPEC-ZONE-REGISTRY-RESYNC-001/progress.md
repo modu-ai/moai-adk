@@ -165,6 +165,99 @@ $ diff -q <local registry> <template registry>        → 출력 없음(바이�
 - **동시 작성자 관찰**: M1 수행 중(04:51–04:52) 같은 워크트리의 `.moai/reports/t232/guard-failure-scenario.md`·`watch-review.sh` 가 plan-audit iter3 응답(미커밋, `plan-audit-iter3.md` 미추적 파일 수반)으로 편집됐다. M1 기록면(레지스트리 2 미러·progress.md §E.2)과 분리돼 M1 커밋에 포함하지 않았다(명시적 pathspec 스테이징). 내용은 option-C 와 정합(변이 시나리오 R2 를 비은퇴 97 로 한정).
 - `moai constitution validate --json` 플래그는 이 트리에 없음(unknown flag) — 판정은 텍스트 출력 + exit 코드로 인용.
 
+### M2 — 가드 착지 — 2026-08-25
+
+가드 커밋: `49630cba2` (`internal/constitution/registry_sync_test.go` 신규 + `.github/workflows/ci.yml` validate 스텝). 검증기 코드는 무변경(D1 — `SentinelAnchorNotFound` 배선은 설계표대로 후속 후보로 유지, 테스트 측 해석기로 동등 커버리지 확보).
+
+가드 구성(`TestRegistrySyncGuard`, 미러별 서브테스트 local·template): ① 생산 `Validate` 호출 — `Skipped==true`면 실패(REQ-ZRR-010), `DriftCount!=0`면 실패 엔트리 ID 전량 출력 ② anchor 해석(6단계 slug 규칙을 코드로 선언 + REQ-ZRR-012 주석 — "이 규칙 아래 착지 시점 17건 실패", 트리 `e0afbb53c` 시대) 전 101엔트리 ③ 리터럴 체크(`literalHitCount` = `grep -F -c` 등가, 정확히 1회 적중, 비은퇴 97 — 검증기보다 엄격) ④ D13 자기참조 금지 ⑤ 평가 수 단언(clause 97 / retired-skip 4 / anchor 101, 미러별 분리 보고 — P4/AC-ZRR-007 부분 순회 mutant 방어) + `TestRegistrySyncMirrorsIdentical`(AC-ZRR-011 바이트 동일).
+
+**slug 재구현 교차검증**: 동일 트리에서 Go 인터프리터 anchor-checks 101/101 통과 ↔ `analyze.py` `anchor_fail=0` — 두 독립 구현이 일치(plan §H "재구현이다" 잔여위험의 관측된 근거).
+
+#### D10 — 붉은 것을 먼저 봤다 (변이 시나리오 `guard-failure-scenario.md` R1–R4 + SKIP, 각run 개별 복원·재초록)
+
+전제 P1–P4 충족: 변이 직전 `git status --porcelain` 빈 출력 / M1 착지 완료 / 가드 통과 / 통과 출력의 평가 수 보고(아래 6번 인용). 모든 실행 `go test -count=1 ./internal/constitution/ -run RegistrySync`(캐시 무효화).
+
+**1) 깨끗한 트리 통과 (P3·P4)**:
+```
+$ go test -count=1 -v ./internal/constitution/ -run RegistrySync ; echo rc=$?
+    registry_sync_test.go:160: [local mirror] evaluated: clause-checks=97 retired-skip=4 anchor-checks=101 of 101 entries
+    registry_sync_test.go:160: [template mirror] evaluated: clause-checks=97 retired-skip=4 anchor-checks=101 of 101 entries
+    registry_sync_test.go:181: mirrors byte-identical: 34956 bytes
+--- PASS: TestRegistrySyncGuard / TestRegistrySyncMirrorsIdentical
+ok  	github.com/modu-ai/moai-adk/internal/constitution	0.548s
+rc=0
+```
+
+**2) R1 — `CONST-V3R2-004` clause 1문자 변이**(`English:` → `Englishx:`, 인용값 내부):
+```
+rc=1
+        registry_sync_test.go:89: validate [local mirror]: [DRIFT] CONST-V3R2-004 @ .claude/rules/moai/development/coding-standards.md #language-policy — clause "All instruction documents must be in Englishx:" not found in source ".claude/rules/moai/development/coding-standards.md"
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.455s
+```
+→ 복원 후 재초록 rc=0, `git status --porcelain` 빈 출력.
+
+**R2 — 무작위 비은퇴 추첨 1건** (시나리오 R2, 추첨 시점 기록): **`CONST-V3R2-056`** (clause 길이 39, file design/constitution.md, `[FROZEN] GAN Loop contract (Section 11)`). 1문자 변이(`Section 11x`):
+```
+rc=1
+        registry_sync_test.go:89: validate [local mirror]: [DRIFT] CONST-V3R2-056 @ .claude/rules/moai/design/constitution.md #2-frozen-vs-evolvable-zones — clause "[FROZEN] GAN Loop contract (Section 11x)" not found in source ".claude/rules/moai/design/constitution.md"
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.438s
+```
+→ 복원 후 재초록 rc=0, status 빈 출력.
+
+**3) R3 — `CONST-V3R2-004` anchor 변이**(`#language-policy` → `#language-policy-x`, 어느 heading에도 해석 안 됨):
+```
+rc=1
+        registry_sync_test.go:133: [local mirror] CONST-V3R2-004: anchor "#language-policy-x" resolves to no heading in .claude/rules/moai/development/coding-standards.md (six-step slug rule, REQ-ZRR-002/012)
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.900s
+```
+주: 이 실패는 **검증기가 볼 수 없는 축**이다 — `Validate`는 anchor를 검사하지 않아 DRIFT 없이 통과했고, 테스트 측 해석기(line 133)가 잡았다. anchor 검사 배선의 존재 증명.
+
+**4) R4 — 템플릿 미러만 변이** (동일 clause 1문자, local 무변):
+```
+rc=1
+        registry_sync_test.go:89: validate [template mirror]: [DRIFT] CONST-V3R2-004 @ .claude/rules/moai/development/coding-standards.md #language-policy — clause "All instruction documents must be in Englishx:" not found in source ".claude/rules/moai/development/coding-standards.md"
+        registry_sync_test.go:91: validate [template mirror]: drift/errors found (drift_count=1)
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.942s
+```
+실패 2행 전부 `[template mirror]` 지목, `[local mirror]` 실패 **0건**(`grep -c 'local mirror'` → 0) — 템플릿 면이 실패 표면임이 출력 자체로 구분됨(AC-ZRR-009).
+
+**5) SKIP=1 + 주입 변이** (`MOAI_CONSTITUTION_SKIP_VALIDATE=1 go test …`, R1 변이 재주입 상태):
+```
+rc=1
+WARN: validation skipped (MOAI_CONSTITUTION_SKIP_VALIDATE=1)          ← 서브테스트당 1회씩 2회 출력
+        registry_sync_test.go:85: validation was bypassed (MOAI_CONSTITUTION_SKIP_VALIDATE=1): the guard must not report success when validation was skipped (REQ-ZRR-010 / D7)
+FAIL	github.com/modu-ai/moai-adk/internal/constitution	0.371s
+```
+**정직한 의미론 관측**: `Validate` 진입부(validator.go:175)가 SKIP을 먼저 반환하므로, 가드의 실패 사유는 **변이 탐지가 아니라 '우회됨' 자체**다(line 85가 drift 판정보다 먼저 발화). 덧붙인 관측(시나리오 문서에 없는 것 — R5b로 기록): **깨끗한 트리 + SKIP=1만으로도 rc=1**(양 미러 동일 line 85) — REQ-ZRR-010의 계약("SKIP=1이어도 실패")을 변이 없이도 만족.
+
+**6) 전 변이 복원 후 재초록 + 잔여물 검사**:
+```
+$ go test -count=1 -v ./internal/constitution/ -run RegistrySync ; echo rc=$?
+    registry_sync_test.go:160: [local mirror] evaluated: clause-checks=97 retired-skip=4 anchor-checks=101 of 101 entries
+    registry_sync_test.go:160: [template mirror] evaluated: clause-checks=97 retired-skip=4 anchor-checks=101 of 101 entries
+    registry_sync_test.go:181: mirrors byte-identical: 34956 bytes
+ok  	github.com/modu-ai/moai-adk/internal/constitution	0.426s
+rc=0
+$ git status --porcelain
+(빈 출력 — 변이 잔여물 0)
+```
+
+시나리오 문서 정합: R1–R4 를 문서 그대로 실행(R2는 비은퇴 97에서 추첨해 `CONST-V3R2-056` 기록), 추가로 R5b(클린+SKIP) 관측을 덧붙였다. **CI job 결론 관측(시나리오 §3, scratch commit push + `gh pr checks`)은 M2 로컬 관측에含되지 않는다** — PR 시점(M3/PR 생성 후) 소관이며, 그 전까지 AC-ZRR-007 의 CI 축은 미충족으로 남는다.
+
+#### CI 배선 (D6)
+
+`constitution-check` 잡에 `moai constitution validate` 스텝 추가(빌드 후) + 스텝 주석: "this job is continue-on-error: true, so this step is a SECONDARY signal only — the blocking guard is TestRegistrySyncGuard … rides the ordinary go test ./... job". 차단 판정은 `go test ./...` 잡에서 도는 본 Go 테스트(AC-ZRR-008).
+
+#### 부수 검증 (커밋 `49630cba2` 트리)
+
+```
+$ go build ./... → rc=0 · $ GOOS=windows GOARCH=amd64 go build ./... → rc=0
+$ GOOS=windows GOARCH=amd64 go vet ./internal/constitution/... → rc=0   (테스트 파일 windows 컴파일 게이트)
+$ go test -count=1 -cover ./internal/constitution/ → ok, coverage: 85.8% of statements
+$ go vet ./internal/constitution/... → rc=0 · $ golangci-lint run ./internal/constitution/... → 0 issues
+$ gofmt -l registry_sync_test.go → (빈, 정돈됨 — canary_test.go·validator.go의 기존 비정돈은 무변경 파일)
+```
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
