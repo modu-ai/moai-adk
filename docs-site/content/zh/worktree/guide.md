@@ -256,7 +256,8 @@ moai worktree clean [options]
 - `--merged-only`: 只移除分支已合并进 base 的 Worktree
 - `--stale`: 清扫没有任何东西可失去的废弃 Worktree (默认只预览)
 - `--yes`: 不再预览,真正执行 `--stale` 的移除
-- `--base BRANCH`: 判定 `--merged-only` 与 `--stale` 所用的 base 分支 (默认值: `main`)
+- `--json`: 与 `--stale` 搭配时，以 JSON 输出所有非保护 Worktree 及其保留理由、dirty、合并与锚定状态。不会移除任何东西，并且优先于 `--yes`
+- `--base BRANCH`: 判定 `--merged-only` 与 `--stale` 所用的 base 分支 (默认值: `origin/main`)
 
 `--stale` 与 `--merged-only` 不能一起使用。
 

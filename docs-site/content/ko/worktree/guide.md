@@ -414,7 +414,8 @@ moai worktree clean [options]
 - `--merged-only`: 브랜치가 base에 병합된 Worktree만 제거
 - `--stale`: 잃을 것이 없는 방치된 Worktree를 쓸어 담기 (기본은 미리보기)
 - `--yes`: `--stale` 미리보기 대신 실제 제거 수행
-- `--base BRANCH`: `--merged-only` · `--stale` 판정에 쓸 base 브랜치 (기본값: `main`)
+- `--json`: `--stale` 과 함께 쓰면, 보호 대상이 아닌 모든 Worktree를 유지 사유·dirty·병합·앵커 상태와 함께 JSON 으로 출력. 아무것도 제거하지 않으며 `--yes` 보다 우선합니다
+- `--base BRANCH`: `--merged-only` · `--stale` 판정에 쓸 base 브랜치 (기본값: `origin/main`)
 
 `--stale` 과 `--merged-only` 는 함께 쓸 수 없습니다.
 

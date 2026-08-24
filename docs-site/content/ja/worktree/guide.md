@@ -260,7 +260,8 @@ moai worktree clean [options]
 - `--merged-only`: ブランチが base へマージされた Worktree のみ削除
 - `--stale`: 失うもののない放置された Worktree をまとめて整理 (デフォルトはプレビュー)
 - `--yes`: `--stale` のプレビューではなく実際の削除を実行
-- `--base BRANCH`: `--merged-only` · `--stale` の判定に使う base ブランチ (デフォルト値: `main`)
+- `--json`: `--stale` と併用すると、保護対象外のすべての Worktree を、保持理由・dirty・マージ・アンカーの状態とともに JSON で出力。何も削除せず、`--yes` より優先されます
+- `--base BRANCH`: `--merged-only` · `--stale` の判定に使う base ブランチ (デフォルト値: `origin/main`)
 
 `--stale` と `--merged-only` は同時に使えません。
 

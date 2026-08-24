@@ -379,4 +379,193 @@ evidence_dir: .moai/state/verify/t209/
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-08-24
+sync_commit_sha: pending-backfill-t209
+changelog_entry_position: "CHANGELOG.md [Unreleased] — Added 1, Changed 2, Fixed 4"
+docs_locales_synced: [en, ko, ja, zh]   # 8 files: cli-reference/worktree.md + worktree/guide.md per locale
+frontmatter_status_transitions:
+  spec.md: draft -> completed
+  plan.md: n/a (no frontmatter block)
+  acceptance.md: n/a (no frontmatter block)
+  progress.md: n/a (no frontmatter block)
+b12_self_test_a: "grep -c 'WORKTREE-REAPER' CHANGELOG.md -> 0 (pre-emission, no duplicate)"
+b12_self_test_b: "grep -oE 'AC-WR-[0-9]+[a-z]?' acceptance.md | sort -u | wc -l -> 28 (matches the 28 declared)"
+b12_self_test_c: "ls of every path named in the CHANGELOG entry -> all present"
+```
+
+### Claim
+
+The sync phase closed SPEC-WORKTREE-REAPER-001: the `[Unreleased]` CHANGELOG
+section carries the three milestones' user-visible surface, the four-locale
+`moai worktree` CLI reference was corrected where M3 made it false, and
+`spec.md` moved to `status: completed`. The tree builds, vets clean, and the two
+packages this SPEC changed pass.
+
+### Evidence
+
+Commands run in this tree, at `c738b6e53`, with their verbatim output. Exit
+codes are read from the command itself, never from the tail of a pipeline.
+
+```
+$ go build ./... > .moai/state/verify/t209/sync-build.log 2>&1; echo "build_exit=$?"
+build_exit=0
+$ wc -c .moai/state/verify/t209/sync-build.log
+       0 .moai/state/verify/t209/sync-build.log
+
+$ go vet ./... > .moai/state/verify/t209/sync-vet.log 2>&1; echo "vet_exit=$?"
+vet_exit=0
+$ wc -c .moai/state/verify/t209/sync-vet.log
+       0 .moai/state/verify/t209/sync-vet.log
+
+$ go test -count=1 ./internal/session/... ./internal/cli/worktree/... \
+    > .moai/state/verify/t209/sync-tests.log 2>&1; echo "exit=$?"
+exit=0
+$ cat .moai/state/verify/t209/sync-tests.log
+ok  	github.com/modu-ai/moai-adk/internal/session	31.405s
+ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	21.518s
+```
+
+B12 CHANGELOG-emission self-tests, run before the append:
+
+```
+$ grep -c 'WORKTREE-REAPER' CHANGELOG.md
+0
+$ grep -oE 'AC-WR-[0-9]+[a-z]?' .moai/specs/SPEC-WORKTREE-REAPER-001/acceptance.md | sort -u | wc -l
+      28
+$ ls internal/session/anchor_lock.go internal/cli/worktree/clean.go internal/cli/session_worktree_prmerge.go
+internal/cli/session_worktree_prmerge.go
+internal/cli/worktree/clean.go
+internal/session/anchor_lock.go
+```
+
+The AC count is 28, not the 26 a naive `AC-([A-Z0-9]+-)*[0-9]+` sweep returns:
+that pattern truncates the two sub-ID criteria (`AC-WR-024b`, `AC-WR-025b`) onto
+their parents. 28 matches `acceptance.md`'s own opening line and `§E.1`.
+
+Cause tokens claimed in the CHANGELOG were read out of the source rather than
+recalled:
+
+```
+$ grep -o 'cause=[a-z-]*' internal/cli/session_worktree_prmerge.go | sort -u
+cause=anchored-by-
+cause=dirty
+cause=dirty-check-failed
+cause=ignored-check-failed
+cause=ignored-content
+cause=refusal-class
+cause=undetermined-merge
+```
+
+`cause=anchored-by-` is a format prefix (`cause=anchored-by-%s`) completed at
+runtime by the anchor source, `lock` or `registry` — both spellings named in the
+CHANGELOG exist only through that verb.
+
+docs-site finding and the edit it forced:
+
+```
+$ grep -n -e '--base' -e '--json' docs-site/content/en/cli-reference/worktree.md
+45:| `--base <branch>` | Base branch (default: `main`) |
+87:| `--base <branch>` | Base branch used to judge `--merged-only` and `--stale` (default: `main`) |
+```
+
+Line 87 belonged to `worktree clean` and became false at M3; line 45 belongs to
+`worktree sync`, whose base default is still the local `main`
+(`internal/cli/worktree/sync.go:28`) and which was therefore left untouched.
+
+A second page carried the same false default. Sweeping the `worktree/` guide,
+FAQ, and examples pages for the changed flags found `worktree/guide.md`
+documenting the clean `--base` default as `main` in all four locales as well
+(en:270, ko:417, ja:263, zh:259 pre-edit); the FAQ and examples pages name the
+flags only in command lines, which stay correct. Eight files were therefore
+corrected, not four: in each, the clean `--base` default now reads
+`origin/main`, a `--json` entry was added beside `--yes`, and the
+`cli-reference` usage line carries `[--json]`.
+
+```
+$ git diff --stat -- docs-site
+ docs-site/content/en/cli-reference/worktree.md | 5 +++--
+ docs-site/content/en/worktree/guide.md         | 3 ++-
+ docs-site/content/ja/cli-reference/worktree.md | 5 +++--
+ docs-site/content/ja/worktree/guide.md         | 3 ++-
+ docs-site/content/ko/cli-reference/worktree.md | 5 +++--
+ docs-site/content/ko/worktree/guide.md         | 3 ++-
+ docs-site/content/zh/cli-reference/worktree.md | 5 +++--
+ docs-site/content/zh/worktree/guide.md         | 3 ++-
+ 8 files changed, 20 insertions(+), 12 deletions(-)
+```
+
+The post-edit sweep confirms no clean `--base` row still reads `main`: all eight
+matches for the `--merged-only` + `--stale` base row now carry `origin/main`.
+
+### Baseline-attribution
+
+Every figure above was measured in this run, in the worktree
+`/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t209`, on branch
+`WT-worktree-reaper`, at `git rev-parse --short HEAD` = `c738b6e53` — the run
+phase's last commit, which is the tree the sync commit is built on. The build
+and vet logs are zero bytes, which is what their exit-0 claim rests on; the test
+log is quoted whole. Nothing here is carried over from another package, another
+tree, or another point in time.
+
+One figure IS carried over, and is labelled as such: `internal/cli`'s package
+suite was **not** re-run in this phase. Its green is the prior attributed
+measurement recorded in `§E.2` — `ok  github.com/modu-ai/moai-adk/internal/cli
+768.952s`, exit 0, zero `--- FAIL`, zero timeout panics, observed at
+`aa14918d7` in an uncontended run. The sync commit touches no Go source, so that
+attribution still describes the code under test; it does not describe this tree
+at this instant, and is cited as prior evidence rather than as a fresh
+measurement.
+
+### Gaps — what was explicitly NOT observed
+
+1. **`sync_commit_sha` is a placeholder.** A commit cannot name its own hash, so
+   the field carries `pending-backfill-t209` and the real SHA is backfilled in a
+   follow-up commit by the phase owner (the SHA-placeholder backfill exemption
+   in `spec-frontmatter-schema.md`). Until that lands, era classification reads
+   this SPEC through H-4 on a non-SHA value.
+2. **The full test suite was not run locally** — repo rule (`CLAUDE.local.md`
+   §4/§6). `go build ./...`, `go vet ./...`, and the two packages this SPEC
+   changed were run; CI owns the full-suite verdict against the PR head.
+3. **`internal/cli` was not re-run in this phase** (see the attribution note
+   above). The sync commit changes no Go file, so nothing in it can move that
+   package — but the package was not observed at the sync HEAD.
+4. **The docs-site build was not run.** The edits are table rows, list items,
+   and one fenced usage line per page; no shortcode, front matter, or menu entry
+   was touched. Hugo was not invoked to confirm it.
+5. **The `--json` inventory was still not run against this repository.** `§E.3`
+   gap 2 stands unchanged: `clean` prunes before listing, which mutates shared
+   worktree administrative state, and no operator authorisation exists for that.
+   The behaviour remains covered by unit tests only.
+6. **Only `spec.md` carries a frontmatter block.** `plan.md`, `acceptance.md`,
+   and `progress.md` open with an H1 and have no YAML block, so the close
+   transition was applied to `spec.md` alone. No frontmatter was synthesised into
+   the other three — inserting one would be a body modification, which sync
+   phase does not own.
+7. **`status` moved `draft → completed` in one step.** The run phase never
+   performed `draft → in-progress`, so the intermediate states were never
+   recorded in the artifact; the git history carries them
+   (`3f8067fb2` / `81d8ae9a9` / `aa14918d7`) but the frontmatter does not.
+
+### Residual risk — what could still be wrong despite the above
+
+- **The CHANGELOG describes behaviour, and behaviour was verified by unit tests,
+  not by a live sweep.** The `--json` inventory, the ignored-content guard, and
+  the refusal-class pre-detection are each asserted by tests over injected
+  seams; none was observed acting on this repository's 148 registered trees.
+- **The docs correction was driven by a flag-token grep, not by reading the
+  pages.** `--base`, `--merged-only`, `--stale`, and `--json` were swept across
+  the four locales' `cli-reference/` and `worktree/` trees, and the second false
+  page surfaced only because of that sweep — the first pass had stopped at the
+  CLI reference. A prose sentence describing base-branch behaviour without
+  naming a flag would still have been missed by the same method.
+- **`auto_cleanup: false` is repo-local and deliberately absent from the
+  CHANGELOG.** A reader of the release notes learns the sweep was repaired
+  without learning that this repository has it switched off; that is correct for
+  a distributed changelog and wrong for anyone reasoning about this tree from
+  the changelog alone.
+- **The `§E.2` carry-over is the one attribution a later reader could misread.**
+  It is labelled prior evidence here, but a summary that quotes "internal/cli
+  green" without its `aa14918d7` anchor would convert a correct citation into an
+  unattributed claim.

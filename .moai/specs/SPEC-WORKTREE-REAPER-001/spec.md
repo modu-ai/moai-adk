@@ -2,7 +2,7 @@
 id: SPEC-WORKTREE-REAPER-001
 title: "Worktree reaper repair: merge-detection no-answer handling, lock-based anchor guard shared by both sweep consumers, and non-WT coverage via worktree clean --stale"
 version: "0.4.0"
-status: draft
+status: completed
 created: 2026-08-24
 updated: 2026-08-24
 author: manager-spec

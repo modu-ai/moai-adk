@@ -74,7 +74,7 @@ moai worktree remove <path>
 ## moai worktree clean
 
 ```bash
-moai worktree clean [--merged-only | --stale] [--yes] [--base <branch>]
+moai worktree clean [--merged-only | --stale] [--yes] [--json] [--base <branch>]
 ```
 
 不带标志运行时,只 prune stale 的工作树引用。
@@ -84,7 +84,8 @@ moai worktree clean [--merged-only | --stale] [--yes] [--base <branch>]
 | `--merged-only` | 只移除分支已合并进基础分支的工作树 |
 | `--stale` | 清扫没有任何东西可失去的废弃工作树 (默认只预览) |
 | `--yes` | 不再预览,真正执行 `--stale` 的移除 |
-| `--base <branch>` | 判定 `--merged-only` 与 `--stale` 所依据的基础分支 (默认: `main`) |
+| `--json` | 与 `--stale` 搭配：以 JSON 输出所有非保护工作树及其保留理由、dirty、合并与锚定状态。不会移除任何东西，并且优先于 `--yes` |
+| `--base <branch>` | 判定 `--merged-only` 与 `--stale` 所依据的基础分支 (默认: `origin/main`) |
 
 `--stale` 与 `--merged-only` 不能一起使用。
 
