@@ -410,7 +410,7 @@ threshold is judged by CI's coverage job).
 
 ```yaml
 run_complete_at: 2026-08-24
-run_commit_sha: pending-backfill-m5   # backfilled in the M5 follow-up commit
+run_commit_sha: "a7c5c3833"   # backfilled (M5 commit) — placeholder-per-D3 pattern
 run_status: complete-with-one-unresolved-ac
 ac_pass_count: 7
 ac_fail_count: 1
