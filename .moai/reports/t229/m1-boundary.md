@@ -1,6 +1,69 @@
-# t229 — M1 경계 상태 (세션 마감 시점)
+# t229 — 마감 시점 상태 (M1~M3 착지)
 
-운영자 마감 지시로 **M1 까지만** 착지시키고 세션을 종료한다. M2 는 착수하지 않았다.
+> **[정정] 이 문서의 제목과 아래 §M1 절은 M1 경계에서 작성됐고, 그 시점 서술은 이미 낡았다.** 마감 지시가 도착한 뒤에도 구현 에이전트에게 halt 가 제때 닿지 않아 **M2·M3 가 이어서 착지했다.** 최종 상태는 이 절이 기준이며, 아래 M1 서술은 **그 시점의 기록으로만** 읽을 것.
+
+## 최종 상태 (세션 종료 시점)
+
+| 항목 | 값 |
+|---|---|
+| head | `a84b25917` · push 완료 (`0 0`) |
+| 트리 | 클린 |
+| 착지 마일스톤 | **M1 · M2 · M3** |
+| 미착수 | **M4** (회귀 고정) |
+
+| 커밋 | 내용 |
+|---|---|
+| `55b2ca3e1` | **M1** — 모드 seam + 집합 최댓값 채택 구조 |
+| `d68b6ea7c` | **M2** — 점수 표기 인식기 (`codexScoredVerdict`) |
+| `a84b25917` | **M3** — 신호 불일치 기록 (`SynthesisNote` + `converge` 반영) |
+
+### [HARD] K3·K7 이 M2 에서 뒤집혔다 — 이 카드의 핵심 주장이 관측됐다
+
+착수 전과 M1 경계에서 붉었던 두 행이 M2 착지 후 초록이다. 예측한 메커니즘 그대로다:
+
+| 행 | 신호 집합 (M2 후) | 채택값 |
+|---|---|---|
+| K3 `Verdict: pass` + `FAIL 0.20 / 1.00` | {pass, fail} | **`fail`** |
+| K7 `INCONCLUSIVE 0.50 / 1.00` + `Verdict: pass` | {inconclusive, pass} | **`inconclusive`** |
+
+근거 — 커밋된 테스트가 두 행을 이름으로 담고 있다: `codex_verdict_scored_test.go:55` "K3 stated pass then scored fail", `:59` "K7 scored inconclusive then stated pass". 실행:
+
+```
+--- PASS: TestSynthesizeReviewOutput_ScoredVerdictIsRead
+--- PASS: TestSynthesizeReviewOutput_ScoredVerdictDoesNotMatchProse
+--- PASS: TestSynthesizeReviewOutput_AdoptsMostConservativeSignal
+--- PASS: TestSynthesizeReviewOutput_SignalOrderDoesNotMatter
+ok  internal/cli  1.372s
+```
+
+`SignalOrderDoesNotMatter` 통과는 **순서 무관 집합 연산**이 기계적으로 확인됐다는 뜻이고, `ScoredVerdictDoesNotMatchProse` 통과는 **좁은 계약이 실제로 산문을 걸러낸다**는 뜻이다("PASS/FAIL 은 평범한 영어 단어"라는 판단이 관측으로 섰다).
+
+### 마감 시점 검증 — 관측한 것만
+
+| 검증 | 결과 |
+|---|---|
+| `go vet ./internal/cli/` (at `a84b25917`) | **rc=0** |
+| M1~M3 대상 테스트 (`Divergence\|Synthesis\|ScoredVerdict\|MostConservative\|SignalOrder\|NativeClean\|ModeSplits\|UnknownMethod\|Converge\|PerBackend`) | **ok 1.331s** |
+| **전 패키지 스위트** | **미검증** — 아래 §스위트 절 참조 |
+
+[HARD] **전 패키지 스위트는 `a84b25917` 에 대해 한 번도 돌지 않았다.** 유일하게 완주한 run 은 M1 이전 트리에 대한 것이고 FAIL 이었다(아래). 다음 세션의 첫 작업은 이것이다.
+
+미측정(마감으로 생략): 커버리지 · `golangci-lint` · `GOOS=windows go vet`.
+
+### 남은 일
+
+| # | 항목 |
+|---|---|
+| 1 | **전 패키지 스위트 재실행** — 래퍼 종료코드가 아니라 출력 본문의 `ok`/`FAIL` 행 판독 |
+| 2 | **M4** — 회귀 고정 (기존 테스트 native 명시 호출 확장, 라이브 프로브 픽스처, `codex_task` 출력 불변) |
+| 3 | sync-audit → 리드 판정 |
+| 4 | 착지 후 리드에게 t234 (= #1632) 착수 가능 신호 |
+
+---
+
+## (이하: M1 경계 시점의 기록)
+
+운영자 마감 지시로 **M1 까지만** 착지시키고 세션을 종료한다는 전제로 작성됐다. 그 전제는 위 정정대로 유지되지 않았다.
 
 | 항목 | 값 |
 |---|---|
