@@ -12,7 +12,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/hook/quality"
 	"github.com/modu-ai/moai-adk/internal/hook/security"
@@ -434,35 +433,35 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 			return NewDenyOutput(reason), nil
 		}
 
-		// Quality gate for git commit commands (REQ-GATE-001).
-		// Executes before security pattern checks so the gate cannot be bypassed.
+		// The vet+lint+test quality gate does NOT run here. It used to: a git
+		// commit command ran the full gate inline and denied the tool call on
+		// failure. The gate's own step ceilings are 30s/60s/120s while the
+		// settings.json entry for this hook allows 10s, so on any repository
+		// large enough to need the gate, Claude Code killed the hook first —
+		// measured at 30,033 / 30,016 / 30,020 ms against this repository,
+		// each ending in a deny whose reason named a budget that had not
+		// tripped. A gate that cannot finish inside its budget has produced no
+		// evidence and must not deny on that basis.
 		//
-		// @MX:WARN: [AUTO] tier-aware commit gate — K-6 deny-before-tier ordering invariant
-		// @MX:REASON: [AUTO] SPEC-STOPCHAIN-TRIM-001 REQ-005 + REQ-007; the destructive-pattern denylist (checkBashCommand below) runs UNCONDITIONALLY after this block regardless of tier. Editing this branch to widen the tier predicate OR moving checkBashCommand after a tier-early-return would let an unattended fully-autonomous session bypass a deny — the load-bearing safety invariant of the autonomy tier.
+		// The gate is not lost, it is where it belongs: the git pre-commit
+		// hook installed by `moai init` / `moai update` shells out to
+		// `moai gate` (internal/cli/hook_install_precommit.go), which runs the
+		// same 16-language gate with no 10s ceiling, aborts the commit cleanly
+		// instead of denying a tool call, and carries a documented
+		// SKIP_MOAI_PRECOMMIT bypass. The comments there already called this
+		// the "relocated heavy quality gate"; the PreToolUse copy was the half
+		// of the relocation that never left.
 		//
-		// SPEC-STOPCHAIN-TRIM-001 REQ-005 (A11): the synchronous vet+lint+test
-		// commit gate is tier-aware. At MOAI_AUTONOMY_TIER ∈ {automatic,
-		// fully-autonomous} the gate is OFF — the commit proceeds without the
-		// verification tax (the user approved unattended operation at
-		// Implementation Kickoff). At semi-auto (or unset) the gate retains its
-		// full behavior. K-6 / AP-1: the destructive-pattern denylist
-		// (checkBashCommand below) runs UNCONDITIONALLY after this block
-		// regardless of tier — the tier branch relaxes ONLY this verification
-		// gate, never a deny. config.AutonomyTier() fails safe to semi-auto on
-		// unset/empty/invalid (REQ-003 backward compat), so a session that does
-		// not opt in keeps the gate ON.
-		if quality.IsGitCommit(command) && !config.IsAutonomyTierCommitGateOff(config.AutonomyTier()) {
-			gate := quality.NewQualityGate(h.loadGateConfig())
-			passed, output := gate.Run(ctx)
-			if !passed {
-				slog.Warn("quality gate blocked git commit",
-					"reason_summary", firstLine(output),
-				)
-				return NewDenyOutput(output), nil
-			}
-			gateNotice = output
-		}
-
+		// SPEC-STOPCHAIN-TRIM-001 REQ-005 made this gate tier-aware
+		// (MOAI_AUTONOMY_TIER ∈ {automatic, fully-autonomous} turned it off).
+		// That requirement's intent — a commit at semi-auto is verified before
+		// it happens — is served by the pre-commit hook, which is unconditional
+		// and does not consult the tier. The predicate itself
+		// (config.IsAutonomyTierCommitGateOff) is unchanged and still read by
+		// its other callers.
+		//
+		// @MX:ANCHOR: [AUTO] the destructive-pattern denylist below runs UNCONDITIONALLY on every Bash command
+		// @MX:REASON: [AUTO] SPEC-STOPCHAIN-TRIM-001 K-6 / AP-1. The invariant was "no tier branch may return before checkBashCommand"; with the tier-aware gate gone there is no early return left to introduce one behind. Re-adding any conditional return above this line reopens that bypass.
 		decision, reason := h.checkBashCommand(input.ToolInput)
 		if decision != "" {
 			slog.Warn("bash command security check",
