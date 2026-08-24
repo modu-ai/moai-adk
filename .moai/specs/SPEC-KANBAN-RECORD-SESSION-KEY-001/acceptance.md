@@ -38,7 +38,11 @@ No such file or directory        ×2     ← both live, registered sessions; nei
 $ cat .moai/state/kanban/d281730e-a47e-4f82-878e-5fd0ddc4dcb9.json
 { "session_id": "d281730e-…", "spec_id": "", "role": "lane", "backend": "claude",
   "entered_at": "2026-08-23T17:47:22Z", "deepscan_dir": "", "verify_reentries": 0 }
-                                        ← d281730e… is a LEAD session; its record's role reads "lane"
+                     ← a record under an identifier the registry carries no entry for.
+                        (That this session was a lead comes from its own statusline payload,
+                         session_name: "lead", captured 2026-08-24 — an attributed side
+                         observation, not re-derivable from the tree. The baseline below rests
+                         on the registered-session-has-no-record property instead.)
 
 $ cat .moai/state/current-session-id.txt
 e46fcfef-1f5c-4f9c-beff-2ada72e26eb5    ← the slot names a session that has no record of its own
@@ -187,6 +191,22 @@ writer-produced bytes so key order and indentation match the marshaller's own ou
 hand-indented fixture would fail a correct implementation for reasons the requirement does not care
 about.
 
+Baseline, measured: neither key exists in the struct today —
+
+```
+$ grep -n 'Lane\|Card' internal/kanban/record.go
+119:// the kanban roles (lead + the three companions) plus RoleLane, which a
+126:	if role == RoleLead || role == RoleLane || isCompanionRole(role) {
+```
+
+Both hits are the role setter — `:119` its doc comment, `:126` the known-set check — and neither is
+a struct field. So half **(b)** is trivially true before the change: the keys cannot appear because
+they do not exist. What it buys after the change is narrow and worth stating plainly, since a
+criterion whose pass carries no information is the defect shape this document was revised to remove:
+it observes that `omitempty` is actually set on both new fields, which is the difference between a
+non-lane record staying byte-compatible with a pre-change reader and gaining two zero-valued keys it
+never had. Half **(a)** is the half that cannot pass pre-change at all.
+
 **AC-KRS-008** (REQ-KRS-008) — Given a session start whose launch environment carries the facts a
 record needs, and whose state directory cannot be written — made unwritable for the duration of the
 fixture — When the session starts, Then (a) the **session-start record-write path is reached** and
@@ -219,7 +239,12 @@ measured above (`5d3be9b8…`, `e46fcfef…`) have no record file, so the resolu
 one of them, and the records that do exist belong to sessions absent from the registry. This is the
 criterion that discharges the claim `SPEC-WEB-CONSOLE-015` made in its version 0.1.0 — that the join
 "closes on today's data" — and which that SPEC has since withdrawn: it does not close, and this
-criterion is what makes it close. The consumer requirements it unblocks are REQ-WC15-043 (the join)
+criterion is what repairs **the third hop** of it. It does not make the whole chain sound on its
+own: a process identifier is not unique in the registry (`Registry.Register`,
+`internal/session/registry.go:166-199`, deduplicates by session id alone), so two entries can carry
+one live PID and the second hop can still be ambiguous. That ambiguity is the consumer's to handle
+and `SPEC-WEB-CONSOLE-015` REQ-WC15-047 already requires it. The consumer requirements this
+criterion unblocks are REQ-WC15-043 (the join)
 and REQ-WC15-044 (the lane number and card identifier the join delivers).
 
 ## §D Traceability

@@ -42,7 +42,7 @@ launcher's write in the same change. Read both with care; there is no mechanical
 | Signal | Measurement |
 |---|---|
 | Packages touched | 4 (`internal/kanban`, `internal/config`, `internal/hook`, `internal/cli`) |
-| Files | 6-8 — enumerated in §C; an enumeration, not a measured diff |
+| Files | 6-9 (working estimate 6-8) — enumerated in §C; an enumeration, not a measured diff |
 | Schema change | additive only (`Record` gains two `omitempty` fields; spec.md §A.6) |
 | Always-loaded doctrine touched | none |
 | Published documentation touched | none |

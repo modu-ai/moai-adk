@@ -67,7 +67,7 @@ the same shape rather than the same rows.
 |---|---|
 | Two sessions are live and registered | `.moai/state/active-sessions.json` holds `5d3be9b8-be19-42ab-8be1-7cb40b29c456` (cwd `…/.claude/worktrees/t210`) and `e46fcfef-1f5c-4f9c-beff-2ada72e26eb5` (cwd `/Users/goos/moai/moai-adk-go`) |
 | Neither has a record of its own | `ls .moai/state/kanban/5d3be9b8-….json .moai/state/kanban/e46fcfef-….json` → `No such file or directory` ×2 |
-| A record exists under an identifier the registry does not carry, and it names a role its session did not have | `cat .moai/state/kanban/d281730e-a47e-4f82-878e-5fd0ddc4dcb9.json` → `{"session_id":"d281730e-…","spec_id":"","role":"lane","backend":"claude","entered_at":"2026-08-23T17:47:22Z","deepscan_dir":"","verify_reentries":0}`. `d281730e…` is a **lead** session; the record's `role` reads `lane` |
+| A record exists under an identifier the registry does not carry, and it names a role its session did not have | `cat .moai/state/kanban/d281730e-a47e-4f82-878e-5fd0ddc4dcb9.json` → `{"session_id":"d281730e-…","spec_id":"","role":"lane","backend":"claude","entered_at":"2026-08-23T17:47:22Z","deepscan_dir":"","verify_reentries":0}`. the record's `role` reads `lane` while the registry carries no entry for that identifier at all. That the session was a **lead** is a side observation, attributed to its own statusline payload (`session_name: "lead"`, captured 2026-08-24) rather than to any file in the tree, and it is not re-derivable from a command here — nothing in this SPEC rests on it. The load-bearing half is the one that is: a record exists under an identifier no registered session carries |
 | The single slot presently names the live session that has no record | `cat .moai/state/current-session-id.txt` → `e46fcfef-…`, whose SessionStart wrote it last. Every record a launcher writes between now and the next SessionStart is filed under `e46fcfef…`, whatever session it launches |
 
 One mistake breaks both ends at once: the lane has no record, and the lead's identifier carries a
@@ -91,9 +91,16 @@ and this section is the measurement the withdrawal rests on. (Sibling citations 
 REQ ids rather than section numbers: the parent was rewritten and its sections moved; its REQ ids
 did not.)
 
-The first two hops hold — `FactoryWorkerEntry.PID`
-(`internal/kanban/factory_slots.go:38`) and `Entry.PID` (`internal/session/registry.go:92`) both
-exist and the registry carries the runtime identifier. The **third hop is where it breaks**: the
+Both PID fields exist — `FactoryWorkerEntry.PID` (`internal/kanban/factory_slots.go:38`) and
+`Entry.PID` (`internal/session/registry.go:92`) — and the registry carries the runtime identifier.
+That is what is measured here, and it is less than saying the first two hops *hold*: a process
+identifier is not unique in the registry, because `Registry.Register`
+(`internal/session/registry.go:166-199`) deduplicates by session id alone, so two entries can carry
+one live PID. That collision is the registry-side instance of the same shape
+`SPEC-WEB-CONSOLE-015` **REQ-WC15-047** already covers on the `workers.json` side, and it belongs
+to that consumer rather than to this SPEC: nothing here changes how sessions register.
+
+The **third hop is the one this SPEC repairs**, and it is where the join breaks outright: the
 registry's identifier is the session's own, the record's is its parent's, so the lookup returns
 either nothing or another session's record. Every view built on that join renders misattributed
 rows or no rows.
@@ -208,7 +215,7 @@ obligation does not).
 | `internal/hook/session_start.go` (+ its kanban/factory siblings) | the record write, keyed by `input.SessionID` |
 | package tests in `internal/kanban`, `internal/cli`, `internal/hook` | fixtures asserting the launcher-written record move to the session-written one |
 
-Six to eight files across three packages, no always-loaded doctrine, no published documentation:
+Six to nine files across four packages, no always-loaded doctrine, no published documentation:
 Tier M.
 
 ### C.2 Fail-open is preserved verbatim
