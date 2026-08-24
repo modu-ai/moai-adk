@@ -30,6 +30,10 @@ Five columns, fixed and ordered: `backlog → plan → run → sync → done`. `
 
 [HARD] **The lead may attach a finding; it may not act on one.** Analysis runs automatically and records a relation between two cards — a near-duplicate the machine measured on `add` or `analyze`, or a `contains` / `absorbs` / `replaces` / `conflicts` the lead judged and wrote with `moai todo relate`. The record is evidence the operator reads, never a mandate: the lead never folds the related card away, never reorders the queue around it, and never drops or edits it. Analysis changes exactly one thing on its own authority — it refuses the admission of a card whose normalized text is identical to one already queued or picked, which creates no card and leaves the queue file byte-identical. Everything a finding suggests beyond that refusal is the operator's act.
 
+[HARD] **The pre-dispatch PR cross-check.** Before dispatching a card out of `backlog`, the lead reads that card's pull-request and landed state and reports what it read in the same turn. `moai todo pr <id>` answers both; by hand it is `gh pr list` plus a `git log` against the integration branch. An unchecked card is a gap, not a clean card (§ Completion is read, never trusted).
+
+[HARD] **The cross-check reports; it never vetoes.** Where the card carries an open pull request or is already landed, the lead surfaces that and the operator **confirms or withdraws** it. The lead never withholds a picked card on its own authority — promotion is the operator's act, always. Why the wording is the only available control, and the incident it closes: `kanban-dispatch-detail.md` § The pre-dispatch cross-check.
+
 ## Report milestones ↔ queue cards
 
 [HARD] **A milestone-bearing report under `.moai/reports/` carries a `## Card Cross-Check` section** — one table row per milestone, a `card` column holding the delivering card id or an explicit new-card marker. A mapping claim is verified against the queue (`moai todo`), never remembered. Before the lead turns a report into card requests, the request message states the full comparison — `N milestones → N cards` — naming every milestone with no card in the live queue. Detail: `kanban-dispatch-detail.md` § Report milestones ↔ queue cards.
@@ -165,6 +169,10 @@ The **worktree directory keeps the card id** (`.claude/worktrees/<card-id>`). On
 - The evidence path keeps the card id (`.moai/reports/<card-id>/verdict.md`).
 
 A lane that reports a branch name without also reporting its card id has not reported the card. Merges reference the `WT-` name; the lead maps it back through the `card:` field it dispatched.
+
+[HARD] **A card-delivering pull request's PR title MUST carry the delivering card id** — and this does not contradict the branch-name rule above: the branch name is read by a human scanning `git branch` and wants a slug; the PR title is read by a machine and wants the id. Traceability therefore rests on **four** carriers rather than the three above — the dispatch `card:` field, the commit message, the evidence path, and the PR title — the only one a resolver can read off the pull-request surface itself, where the dispatch `card:` field (also machine-readable) does not reach.
+
+The obligation binds card-delivering pull requests only; a release, batch, or maintenance pull request delivers no card and carries none. It binds pull requests opened after it lands — nothing is retitled. Rationale and the carrier measurements: `kanban-dispatch-detail.md` § The PR-title carrier.
 
 The lead dispatches this rather than assuming it: each instruction names the worktree and says to drive it with `git -C <path>` rather than `cd` — a `cd` inside a compound command lasts for that invocation only, so the next command silently reads the wrong tree. A companion reporting it worked in the shared checkout is a fault to report, not a detail to tidy up (rationale: `kanban-dispatch-detail.md` § Isolation rationale).
 
