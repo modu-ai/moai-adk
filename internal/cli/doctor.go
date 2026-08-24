@@ -44,8 +44,9 @@ var doctorCmd = &cobra.Command{
 	Use:     "doctor",
 	Short:   "Run system diagnostics",
 	GroupID: "project",
-	Long:    "Run comprehensive system health checks including Claude Code configuration, dependency verification, and environment diagnostics.",
-	RunE:    runDoctor,
+	Long: "Run comprehensive system health checks including Claude Code configuration, dependency verification, and environment diagnostics.\n\n" +
+		"Exit codes: 0=no failing checks (warnings are advisory and do not fail the run), 1=one or more checks reported Fail.",
+	RunE: runDoctor,
 }
 
 func init() {
@@ -97,12 +98,7 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	// Render per-section pass/fail tables + counts + summary (REQ-TUX4-002).
 	_, _ = fmt.Fprintln(out, renderDoctorGroups(out, groups, verbose, th))
 
-	failCount := 0
-	for _, c := range allChecks {
-		if c.Status == uikit.CheckFail {
-			failCount++
-		}
-	}
+	failCount := countFailedChecks(allChecks)
 
 	if fix && failCount > 0 {
 		var fixes []string
@@ -122,7 +118,33 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 		_, _ = fmt.Fprintf(out, "\nDiagnostics exported to %s\n", exportPath)
 	}
 
-	return nil
+	return doctorExitStatus(failCount)
+}
+
+// countFailedChecks counts the checks whose verdict is Fail — the same number
+// the rendered summary prints as `Fail N`.
+func countFailedChecks(checks []DiagnosticCheck) int {
+	n := 0
+	for _, c := range checks {
+		if c.Status == uikit.CheckFail {
+			n++
+		}
+	}
+	return n
+}
+
+// doctorExitStatus maps a doctor run's failing-check count onto the process
+// exit code (#1593). A run that printed `Fail N` (N > 0) MUST NOT exit 0 —
+// callers (scripts, hooks, CI wrappers) read the exit code, not the summary
+// line. Warn-only runs stay exit 0: a warning is advisory, not a failure.
+func doctorExitStatus(failCount int) error {
+	if failCount == 0 {
+		return nil
+	}
+	return &exitCodeError{
+		code: 1,
+		msg:  fmt.Sprintf("doctor: %d check(s) failed", failCount),
+	}
 }
 
 // checkStatusToTUI converts a uikit.CheckStatus to the tui.CheckLine status string.
@@ -608,11 +630,13 @@ func parseMCPJSON(path string) map[string]struct{} {
 const constitutionStrictEnvKey = "MOAI_CONSTITUTION_STRICT"
 
 // checkConstitution checks the zone registry status.
-// - registry file not found: Warn (optional feature)
-// - load error (duplicate ID, invalid YAML, etc.): Fail
-// - zero Frozen entries: Warn
-// - orphan warnings present + strictMode: Fail; otherwise Warn
-// - normal/OK: OK
+//   - registry file not found: Warn (optional feature)
+//   - load error (duplicate ID, invalid YAML, etc.): Fail
+//   - zero Frozen entries: Warn
+//   - orphan warnings present + strictMode: Fail; otherwise Warn
+//   - registry-vs-source validation errors (same check as `moai constitution
+//     validate`): Fail
+//   - normal/OK: OK
 func checkConstitution(projectDir, registryPath string, verbose, strictMode bool) DiagnosticCheck {
 	check := DiagnosticCheck{Name: "Constitution Registry"}
 
@@ -649,6 +673,15 @@ func checkConstitution(projectDir, registryPath string, verbose, strictMode bool
 		return check
 	}
 
+	// Registry-source drift check (#1594). Loading the registry proves it
+	// parses; it says nothing about whether the clauses still exist in their
+	// source files. Doctor runs the same constitution.Validate that
+	// `moai constitution validate` runs, so a check that a registry "is OK"
+	// cannot disagree with the dedicated command against the same checkout.
+	if vcheck, drifted := validateConstitutionRegistry(projectDir, registryPath, len(reg.Entries), verbose); drifted {
+		return vcheck
+	}
+
 	// Check Frozen entry count
 	frozen := reg.FilterByZone(constitution.ZoneFrozen)
 	if len(frozen) == 0 {
@@ -672,6 +705,48 @@ func checkConstitution(projectDir, registryPath string, verbose, strictMode bool
 	check.Message = fmt.Sprintf("registry OK — %d entries (%d Frozen, %d Evolvable)",
 		len(reg.Entries), len(frozen), len(reg.Entries)-len(frozen))
 	return check
+}
+
+// validateConstitutionRegistry runs the same drift validation as
+// `moai constitution validate` against the registry doctor just loaded.
+// It returns (check, true) when validation found errors — the caller surfaces
+// that check as the Constitution Registry verdict — and (zero, false) when the
+// registry validates clean or the validation was bypassed
+// (MOAI_CONSTITUTION_SKIP_VALIDATE=1), in which case doctor falls through to
+// its own structural verdict.
+func validateConstitutionRegistry(projectDir, registryPath string, entryCount int, verbose bool) (DiagnosticCheck, bool) {
+	check := DiagnosticCheck{Name: "Constitution Registry"}
+
+	result, err := constitution.Validate(constitution.ValidateOptions{
+		RegistryPath: registryPath,
+		ProjectDir:   projectDir,
+	})
+	if result.Skipped {
+		return DiagnosticCheck{}, false
+	}
+	if err == nil && result.Status != constitution.ValidateStatusDrift {
+		return DiagnosticCheck{}, false
+	}
+
+	check.Status = uikit.CheckFail
+	if len(result.Entries) == 0 {
+		// Validation could not complete (e.g. an unreadable source file).
+		// Report the error rather than a misleading error count of zero.
+		check.Message = fmt.Sprintf("registry validate error: %v", err)
+		return check, true
+	}
+
+	check.Message = fmt.Sprintf(
+		"registry loads (%d entries) but validate found %d error(s) — run `moai constitution validate`",
+		entryCount, len(result.Entries))
+	if verbose {
+		details := make([]string, 0, len(result.Entries))
+		for _, e := range result.Entries {
+			details = append(details, fmt.Sprintf("%s [%s] %s", e.ID, e.SentinelKey, e.Detail))
+		}
+		check.Detail = strings.Join(details, "\n")
+	}
+	return check, true
 }
 
 // checkHooksConfig verifies the Claude Code hooks configuration exists.
