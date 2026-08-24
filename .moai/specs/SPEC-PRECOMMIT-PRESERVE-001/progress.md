@@ -225,7 +225,7 @@ writer instead of printing a false replacement notice.
 | AC-PCP-008 | `TestPreCommitInstall_PreservesForeignHook` extended with `assertNoBackup` | PASS | marker-less hooks routed into the backup path → `expected no backup file, found […pre-commit.bak…]` (`mutant-m2-ac008-markerless-backup.txt`) |
 | AC-PCP-009 | `TestPreCommitBackupNoClobber` (same-second collision via `now` seam) | PASS | fixed-filename clobbering backup → `expected two distinct backups, found 0` (`mutant-m2-ac009-fixed-name.txt`) |
 | AC-PCP-010 (a) | `TestPreCommitSupportWriteFailureNonFatal/a_…` | PASS | warn-then-overwrite-anyway mutant (warning + normal return preserved): fails **specifically the POST-STATE clause** — `hook was replaced despite the failed backup (3245 bytes, want the unchanged 78-byte pre-run body)`; sub-case (b) still PASSED under the mutant, confirming (a)'s post-state is the only clause that reaches it (`mutant-m2-ac010a-overwrite-anyway.txt`) |
-| AC-PCP-010 (b) | `TestPreCommitSupportWriteFailureNonFatal/b_…` (dir-at-record-path, cross-platform) | PASS | covered by the (a) mutant run's contrast; construction: hook replaced, warning present, run 2 takes no backup and emits no replacement notice |
+| AC-PCP-010 (b) | `TestPreCommitSupportWriteFailureNonFatal/b_…` (dir-at-record-path, cross-platform) | PASS | precedence-reordering mutant (provenance written first, hook write skipped on its failure — (a)'s precedence over-applied to the wrong side): `the hook must BE replaced when only the post-write provenance write fails; got 78 bytes`, sub-case (a) still PASS under it (`mutant-m2-ac010b-skip-hook-write.txt`) |
 | AC-PCP-013 | `TestPreCommitTemplateMatchesConstant` | PASS, **not SKIP** (`-v` inspected) | one-sided `preCommitHookContent` edit → `template len: 3245, constant len: 3292` (`mutant-m2-ac013-constant-edit.txt`); reverted, cmp re-verified rc 0 |
 
 **How the (a) fixture separates the two writes.** The hooks dir is chmod 0500 while the existing
@@ -274,7 +274,7 @@ run_status: run complete
 ac_pass_count: 12               # all 12 AC green: M1's 4 (014, 001, 002, 005) + M2's 8 (003, 004, 006, 007, 008, 009, 010, 013)
 ac_fail_count: 0
 ac_pending_count: 0
-mutants_observed_red: 14        # M1: 7 (two-way x2, empty-stub, write-once, silent-unknown, body-edit, bad-tag); M2: 7 (silent headline, marker-less backup, fixed-name, overwrite-anyway, one-sided constant, + the pre-edit-tree red for AC-003 and AC-004(ii))
+mutants_observed_red: 15        # M1: 7 (two-way x2, empty-stub, write-once, silent-unknown, body-edit, bad-tag); M2: 8 (silent headline, marker-less backup, fixed-name, overwrite-anyway, precedence-reordering, one-sided constant, + the pre-edit-tree red for AC-003 and AC-004(ii))
 skipped_subcases: 0
 hook_body_touched: false        # preCommitHookContent and its template twin byte-identical (scope gate rc 0)
 callers_touched: true           # exactly the one §C.4-permitted line each, AST-asserted
