@@ -298,6 +298,12 @@ type QualityGate struct {
 	stagedCache      []string
 	stagedCacheReady bool // true when the query is complete (even if result is nil)
 	stagedCacheNil   bool // true when nil was returned (conservative fallback)
+
+	// summary accumulates one record per configured step for the run in
+	// progress. Nil outside Run — executeStep and runStep are also called
+	// directly, and a nil summary makes every observation a no-op rather than
+	// a panic.
+	summary *runSummary
 }
 
 // NewQualityGate creates a QualityGate with the given configuration.
@@ -330,12 +336,30 @@ func (g *QualityGate) Run(ctx context.Context) (bool, string) {
 		return true, ""
 	}
 
+	// Seed one record per configured step BEFORE anything runs, so a step the
+	// run never reaches is reportable as such. Populating the summary as steps
+	// complete instead would leave an aborted run silent about everything after
+	// the failure — which is indistinguishable from those steps having passed.
+	g.summary = newRunSummary()
+	for _, step := range tc.vetSteps {
+		g.summary.seed(step.name)
+	}
+	if g.config.TypecheckEnabled {
+		g.summary.seed(typecheckStepName)
+	}
+	for _, step := range tc.lintSteps {
+		g.summary.seed(step.name)
+	}
+	if tc.testStep != nil {
+		g.summary.seed(tc.testStep.name)
+	}
+
 	// Step 1: vet steps
 	var vetReason string
 	for _, step := range tc.vetSteps {
 		ok, out := g.executeStep(ctx, step, g.config.VetTimeout)
 		if !ok {
-			return false, out
+			return false, g.withSummary(out)
 		}
 		vetReason = appendReason(vetReason, out)
 	}
@@ -357,10 +381,11 @@ func (g *QualityGate) Run(ctx context.Context) (bool, string) {
 		case ok:
 			passed, out := g.executeStep(ctx, step, g.config.TypecheckTimeout)
 			if !passed {
-				return false, out
+				return false, g.withSummary(out)
 			}
 			passReason = appendReason(passReason, out)
 		default:
+			g.summary.markSkipped(typecheckStepName, condenseSkipReason(typecheckStepName, reason))
 			passReason = appendReason(passReason, reason)
 		}
 	}
@@ -369,7 +394,7 @@ func (g *QualityGate) Run(ctx context.Context) (bool, string) {
 	for _, step := range tc.lintSteps {
 		ok, out := g.executeStep(ctx, step, g.config.LintTimeout)
 		if !ok {
-			return false, out
+			return false, g.withSummary(out)
 		}
 		passReason = appendReason(passReason, out)
 	}
@@ -381,12 +406,15 @@ func (g *QualityGate) Run(ctx context.Context) (bool, string) {
 		projectDir := resolveQualityProjectDir(*g.config, "QualityGate.Run.astgrep")
 		ok, out := RunAstGrepGateV2(ctx, projectDir, g.config.AstGrepGate)
 		if !ok {
-			return false, out
+			return false, g.withSummary(out)
 		}
 		passReason = appendReason(passReason, out)
 	}
 
 	// Step 3: test step (skippable)
+	if tc.testStep != nil && g.config.SkipTests {
+		g.summary.markSkipped(tc.testStep.name, reasonSkipTests)
+	}
 	if !g.config.SkipTests && tc.testStep != nil {
 		// The Node test step is resolved to a self-terminating (run-form)
 		// command right before execution, reading the project's package.json
@@ -394,12 +422,28 @@ func (g *QualityGate) Run(ctx context.Context) (bool, string) {
 		// Every other toolchain's step passes through unchanged.
 		// REQ-HCWA-007: route cwd resolution through resolveQualityProjectDir.
 		testStep := resolveNodeTestStep(*tc.testStep, resolveQualityProjectDir(*g.config, "QualityGate.Run.nodeTestStep"))
-		if ok, out := g.executeStep(ctx, testStep, g.config.TestTimeout); !ok {
-			return false, out
+		// The resolved step reaches executeStep under its own name, so the
+		// seeded row follows it; otherwise the run would report the configured
+		// step as never reached and the resolved one as an extra.
+		g.summary.relabel(tc.testStep.name, testStep.name)
+		ok, out := g.executeStep(ctx, testStep, g.config.TestTimeout)
+		if !ok {
+			return false, g.withSummary(out)
 		}
+		// The test step's pass-side value used to be discarded outright — the
+		// one axis whose notice never reached the caller at all.
+		passReason = appendReason(passReason, out)
 	}
 
-	return true, passReason
+	return true, g.withSummary(passReason)
+}
+
+// withSummary stacks the run's execution summary beneath whatever the run
+// already had to say. Both the pass path and every failure path go through
+// here: a run that aborts still owes the caller an account of which steps it
+// reached, and which it did not.
+func (g *QualityGate) withSummary(out string) string {
+	return joinBlocks(out, g.summary.render())
 }
 
 // detectToolchain finds the matching toolchain by checking marker files in ProjectDir.
@@ -776,15 +820,18 @@ func nodeScriptWatchProne(script string) bool {
 func (g *QualityGate) executeStep(ctx context.Context, step gateStep, timeout time.Duration) (bool, string) {
 	// Fix 3: explicitly disable via DisabledSteps configuration
 	if disabled, ok := g.config.DisabledSteps[step.name]; ok && !disabled {
+		g.summary.markDisabled(step.name, reasonDisabledByConfig)
 		return true, ""
 	}
 
 	if step.optional {
 		if _, err := exec.LookPath(step.binary); err != nil {
+			g.summary.markSkipped(step.name, fmt.Sprintf(reasonOptionalBinaryAbsentFmt, step.binary))
 			return true, ""
 		}
 	}
 	if len(step.configFiles) > 0 && !g.anyConfigFileExists(step.configFiles) {
+		g.summary.markSkipped(step.name, fmt.Sprintf(reasonConfigFilesAbsentFmt, strings.Join(step.configFiles, ", ")))
 		return true, ""
 	}
 
@@ -796,6 +843,7 @@ func (g *QualityGate) executeStep(ctx context.Context, step gateStep, timeout ti
 		staged := g.cachedStagedFiles(ctx, dir)
 		// If staged is nil, cannot determine — run step conservatively
 		if staged != nil && !hasStagedExt(staged, step.changedExts) {
+			g.summary.markSkipped(step.name, fmt.Sprintf(reasonNoStagedMatchFmt, strings.Join(step.changedExts, ", ")))
 			return true, ""
 		}
 	}
@@ -811,6 +859,7 @@ func (g *QualityGate) executeStep(ctx context.Context, step gateStep, timeout ti
 				"extensions", strings.Join(step.sourceExts, ","),
 				"hint", "add sources, or set gate.disabled_steps in .moai/config/sections/gate.yaml",
 			)
+			g.summary.markSkipped(step.name, fmt.Sprintf(reasonNoProjectSourceFmt, strings.Join(step.sourceExts, ", ")))
 			return true, ""
 		}
 	}
@@ -1002,6 +1051,15 @@ func (g *QualityGate) runStep(ctx context.Context, stepName string, timeout time
 
 	stepCtx, cancel := context.WithDeadline(ctx, stepDeadline)
 	defer cancel()
+
+	// The step's outcome is recorded on every exit from here, not only the
+	// happy one: a step that failed, timed out, or could not be launched was
+	// still executed, and the command line below is still what the gate handed
+	// to the launcher. Recording only on success is how the pass path came to
+	// report nothing at all.
+	defer func() {
+		g.summary.markExecuted(stepName, commandLine(name, args...), time.Since(startedAt))
+	}()
 
 	cmd := exec.CommandContext(stepCtx, name, args...)
 	// Every step's arguments are cwd-relative ("./...", ".", a bare "test").
