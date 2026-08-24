@@ -364,6 +364,80 @@ re-run. Recorded as an observation, not repaired — repairing it would be out o
   the warning-count `slog.Info` line — which B-4 records as discarded on the `moai hook` path. If a
   future change makes warnings observable on this gate, this decision must be revisited.
 
+### M3 — B: fold the PostToolUse guardian into the post-tool handler
+
+Baseline attribution for every row below: measured in this run, against this tree, with the pre-M3
+tree at `7d4805049` on branch `WT-security-scan-surface`. Redirected output is under
+`.moai/state/verify/t217/`.
+
+**RED evidence.** The three merge tests and the render test were written before any implementation
+and run against the untouched tree.
+
+`.moai/state/verify/t217/red-hook.txt` — `go test ./internal/hook/ -run 'TestPostToolGuardianMergeKeepsBothAdvisories|TestMergedGuardianTextMatchesStandalone|TestMergedGuardianNeverBlocks' -count=1`:
+
+```
+internal/hook/post_tool_guardian_test.go:66:16: undefined: NewPostToolGuardianHandler
+internal/hook/post_tool_guardian_test.go:96:16: undefined: NewPostToolGuardianHandler
+internal/hook/post_tool_guardian_test.go:118:14: undefined: NewPostToolGuardianHandler
+internal/hook/post_tool_guardian_test.go:143:16: undefined: NewPostToolGuardianHandler
+FAIL	github.com/modu-ai/moai-adk/internal/hook [build failed]
+exit=1
+```
+
+`.moai/state/verify/t217/red-template.txt` — `go test ./internal/template/ -run TestRenderedSettingsHasNoSecurityScanPostToolEntry -count=1 -v`:
+
+```
+    settings_security_scan_entry_test.go:52: rendered settings still registers handle-security-scan on Write|Edit|MultiEdit (1 arg matches)
+--- FAIL: TestRenderedSettingsHasNoSecurityScanPostToolEntry (0.00s)
+    --- FAIL: TestRenderedSettingsHasNoSecurityScanPostToolEntry/darwin (0.00s)
+    --- FAIL: TestRenderedSettingsHasNoSecurityScanPostToolEntry/linux (0.00s)
+    --- FAIL: TestRenderedSettingsHasNoSecurityScanPostToolEntry/windows (0.00s)
+exit=1
+```
+
+| AC | Status | Verification command | Actual output |
+|---|---|---|---|
+| AC-SSS-012 | PASS | `go test ./internal/hook/ -run TestPostToolGuardianMergeKeepsBothAdvisories -count=1 -v` | `--- PASS: TestPostToolGuardianMergeKeepsBothAdvisories (0.00s)` with both arms passing: `both_advisories_survive_the_merge` and `a_preceding_block_does_not_short-circuit_the_guardian`. The first arm asserts all four halves the criterion names — `systemMessage` equals the post-tool stub text exactly, `additionalContext` is non-empty and carries the `hardcoded-secret` finding, and neither field contains the other's content. The second arm registers a handler ahead of the guardian that returns `decision: block` (the dispatch log line `handler blocked action ... reason="blocked by an earlier handler"` records that the short-circuit really fired) and still observes a non-empty `additionalContext`, which is only reachable if the guardian's scan ran |
+| AC-SSS-013 | PASS | `go test ./internal/hook/ -run TestMergedGuardianTextMatchesStandalone -count=1 -v` | `--- PASS: TestMergedGuardianTextMatchesStandalone (0.00s)`. The test compares the handler's `additionalContext` against the `additionalContext` `security.HandleSecurityScan` writes to stdout for the same payload, with `!=` on the raw strings — byte-identity is measured, not assumed. It is also structural: both surfaces now call the single producer `security.ScanBufferAdvisory`, so the banner and finding format cannot drift between them |
+| AC-SSS-014 | PASS | `go test ./internal/hook/ -run TestMergedGuardianNeverBlocks -count=1 -v` | `--- PASS` all three arms (`critical_finding`, `clean_payload`, `empty_content`): nil error, `Decision` empty, `Continue` nil, `ExitCode` 0, `hookSpecificOutput.permissionDecision` empty and `hookSpecificOutput.decision` nil. The `critical_finding` arm is the load-bearing one — its payload trips the `hardcoded-secret` class, whose severity is `critical`, so the "even a critical finding does not block" half is actually observed rather than vacuously true on a clean buffer |
+| AC-SSS-015 (settings.json) | PASS | `jq '[.hooks.PostToolUse[] \| select(.matcher=="Write\|Edit\|MultiEdit") \| .hooks[].args[-1]] \| map(select(test("handle-security-scan"))) \| length' .claude/settings.json` | `0` (measured `1` on the pre-M3 tree) |
+| AC-SSS-015 (template) | PASS | `go test ./internal/template/ -run TestRenderedSettingsHasNoSecurityScanPostToolEntry -count=1 -v` | `--- PASS` for `darwin`, `linux`, and `windows`. The `.tmpl` is Go-templated and is not valid JSON, so the assertion runs against the rendered output, never against the raw file |
+| AC-SSS-015 (subcommand retained) | PASS | `printf '{}' \| go run ./cmd/moai hook security-scan; echo "exit=$?"` | `exit=0` with empty stdout — the REQ-SSS-013 behaviour-preservation check. Run through `go run` against this tree rather than the installed `~/go/bin/moai`, so the result is attributable to this tree; re-installing the binary belongs to M4 |
+| AC-SSS-001 (unchanged) | PASS | `go test ./internal/hook/ -run TestScanWriteContentDifferential -count=1 -v` | `--- PASS: TestScanWriteContentDifferential (5.28s)` with `assertion (ii): 5 denying fixtures, none skippable by the pre-filter`. The M0 file was not edited in M3; `grep -c SKIP` over the verbose output returns `0`, so both assertions ran rather than one being skipped |
+
+**Deliverables.**
+
+- `internal/hook/post_tool_guardian.go` (new) — `postToolGuardianHandler`, registered on `EventPostToolUse`. Gated to `Write` / `Edit` / `MultiEdit`, fail-open on every path (a payload it cannot read yields a silent nil, never an error), and it carries its advisory on `hookSpecificOutput.additionalContext` so `mergeHandlerOutput` accumulates it beside the post-tool handler's `systemMessage`.
+- `internal/hook/security/guardian.go` — two exported seams, both extracted from code `HandleSecurityScan` already ran rather than newly written: `ScanBufferAdvisory` (the single producer of the advisory text; `HandleSecurityScan` now calls it) and `ExtractToolInputContent` (the MultiEdit-aware extraction, now callable on an already-unwrapped `tool_input`; `extractWrittenContent` unwraps then delegates to it).
+- `internal/hook/registry.go` — `alwaysRunHandler` marker interface plus `runAlwaysRunTail`, called on both short-circuit paths (`isBlockDecision` and `ExitCode == 2`). This is what makes the reachability invariant real rather than a registration-order convention: registering the guardian first would satisfy "nothing precedes it" today, but AC-SSS-012 asks for the guardian to survive a handler registered *before* it, which registration order cannot deliver.
+- `internal/cli/deps.go` — the guardian registered alongside the post-tool handler.
+- `.claude/settings.json` + `internal/template/templates/.claude/settings.json.tmpl` — the `handle-security-scan.sh` entry removed from the `Write|Edit|MultiEdit` matcher on both surfaces, in this commit. The `handle-security-scan.sh` / `.sh.tmpl` wrapper pair is untouched (both files still present), because the subcommand it fronts is retained and a user project whose settings still name it must not hit the missing-hook log path.
+- `internal/hook/post_tool_guardian_test.go`, `internal/template/settings_security_scan_entry_test.go` (new tests).
+- `internal/cli/hook_e2e_test.go` — `TestHookDepsWiring_HandlerCounts` updated from `want 1` to `want 2` PostToolUse handlers. That assertion is the wiring guard for the deps.go registration, so M3 necessarily moves it; it was left as a real assertion on an exact count rather than relaxed to a lower bound.
+
+**Suite results.**
+
+- `go test ./internal/hook/... -count=1 -timeout 3600s` → exit 0, all 12 packages `ok` (`internal/hook` itself 144.994s). `.moai/state/verify/t217/test-hook-retry.txt`.
+- `go test ./internal/cli/... -count=1 -timeout 1800s` → exit 0, all 17 packages `ok` (`internal/cli` itself 341.320s). `.moai/state/verify/t217/test-cli-retry.txt`.
+- `go build ./...` → exit 0. `go vet ./internal/hook/... ./internal/cli/...` → exit 0.
+
+**Gaps — what was NOT observed.**
+
+- **The first `./internal/hook/...` run failed on a timeout, and that failure was environmental.** `go test ./internal/hook/... -count=1 -timeout 900s` panicked with `test timed out after 15m0s`, naming `TestScanWriteContentUnreadableConfigEscalates` as the running test. Measured cause: the machine was carrying load average **90.59** from parallel lanes at the time. Run alone, that test passes in **328.49s** (`.moai/state/verify/t217/isolated-unreadable.txt`), and the whole package then completes in 144.994s. The test is an M1/M2 deliverable that M3 does not touch, and nothing in the M3 diff runs on its path. The cost is real regardless of who owns it: three `sg`-spawning subtests take over five minutes together on a loaded machine, close enough to CI's budget to be worth watching.
+- **The first `./internal/cli/...` run failed on `TestHookDepsWiring_HandlerCounts` (`got 2 handlers, want 1`)** — the expected consequence of registering a second PostToolUse handler. The assertion was updated and the whole suite re-run green; the first run is recorded at `.moai/state/verify/t217/test-cli.txt`.
+- The full repository suite was not run locally (`plan.md` §D). CI on the pull request is the verdict.
+- `golangci-lint` was not run in this milestone.
+- M4 was not performed: no `make build` re-embed, no repository-wide mirror sweep, no template neutrality check, no pull request. AC-SSS-016 is not claimed.
+- No latency or cost figure is claimed for the merge. The saving is one subprocess spawn per Write/Edit/MultiEdit event; it was not measured, and no acceptance criterion asks for it.
+- The guardian was not exercised end-to-end through a real Claude Code PostToolUse invocation — only through the registry and the handler directly.
+
+**Residual risk.**
+
+- **`runAlwaysRunTail` changes `Dispatch` for every event, not just PostToolUse.** The blast radius is bounded by the marker: only handlers implementing `AlwaysRun() bool` run past a short-circuit, and the guardian is the only one in-tree. The decided verdict is preserved because `mergeHandlerOutput` keeps the first explicit halt and resolves permission decisions on a deny > ask > allow ladder, so an advisory tail cannot downgrade a block. A future handler that opts into the marker *and* returns a decision would break that reasoning.
+- **The guardian now shares the post-tool handler's process and its hook timeout.** `ScanBuffer` is pure regex over a bounded buffer, so this is cheap — but it is no longer isolated in its own async subprocess, and a pathological payload that made the regex engine slow would consume the post-tool handler's budget instead of its own.
+- **A user project that has not re-run `moai update` keeps the old settings entry**, so the guardian runs twice for a while: once in-process and once via the wrapper. Both paths are advisory and produce identical text, so the visible effect is a duplicated advisory, not a wrong one.
+- **AC-SSS-013's byte-identity holds by construction only as long as both surfaces keep calling `ScanBufferAdvisory`.** A future edit that re-inlines the banner on either side would restore the drift the extraction removed; the test catches it, which is why it compares raw strings rather than asserting a substring.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
