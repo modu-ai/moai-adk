@@ -121,10 +121,11 @@ and every recorded `wantDeny` value are byte-unchanged from `294b4b6ab`; and
 `git diff --stat 294b4b6ab -- internal/hook/ ':(exclude)internal/hook/astgrep_corpus_pin_test.go'`
 is empty, so every pre-existing file under the tree is unmodified.
 
-> The baseline is the pinned SHA, not `origin/main`. Against the branch name this criterion reports
-> `18 files changed, 23 insertions(+), 2825 deletions(-)` on the untouched tree — `origin/main` is
-> ten commits ahead of `294b4b6ab` — so it would be red for upstream's content rather than for
-> anything this SPEC did or failed to do.
+> The baseline is the pinned SHA, not `origin/main`. Against the branch name this criterion reported
+> `18 files changed, 23 insertions(+), 2825 deletions(-)` on the untouched tree, measured when
+> `origin/main` was `f7eec06c7` — ten commits ahead of `294b4b6ab`. That figure is itself a
+> moving-ref observation and will differ later; the point it records is the shape, not the number.
+> It would go red for upstream's content rather than for anything this SPEC did or failed to do.
 
 > A test rather than a reviewer's `git diff`, because with the validity gate silent (§A.7) editing
 > a `wantDeny` column is a live way to turn red green, and that edit is invisible at close.

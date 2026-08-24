@@ -285,8 +285,10 @@ git diff --stat 294b4b6ab -- internal/hook/ ':(exclude)internal/hook/astgrep_cor
 ```
 
 > **The baseline is the pinned SHA, never the branch name.** `origin/main` moves: measured on this
-> tree, `git rev-list --count --left-right origin/main...HEAD` → `10 0`, and the same command
-> written against `origin/main` reports `18 files changed, 23 insertions(+), 2825 deletions(-)`
+> tree when `origin/main` was `f7eec06c7`, `git rev-list --count --left-right origin/main...HEAD`
+> → `10 0`, and the same command written against `origin/main` reported
+> `18 files changed, 23 insertions(+), 2825 deletions(-)` (both figures are themselves moving-ref
+> observations and will differ later — the shape is the point, not the number)
 > before any work exists. A PRESERVE proof stated against a moving ref is false on arrival and
 > gets worse with every upstream commit. If this branch is later rebased, re-measure §H and
 > re-pin this SHA — the baseline follows the tree the evidence was taken on, not the branch tip.

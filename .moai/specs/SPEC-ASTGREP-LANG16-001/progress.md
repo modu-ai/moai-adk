@@ -15,8 +15,9 @@ acceptance_criteria: 19
 milestones: 3
 scope: contract (M1-M3)
 successor: SPEC-ASTGREP-BREADTH-001
-audit_iteration: 3 revisions (FAIL 0.68 -> 0.69 -> 0.71 -> propagation pass)
-spec_version: 0.6.0
+audit_iteration: 5 audits (0.68 -> 0.69 -> 0.71 -> 0.84 -> PASS 0.88)
+spec_version: 0.7.0
+plan_status: audit-passed; open minor findings N5, N6 (see plan-audit-iter5.md)
 ```
 
 Plan-phase basis: `.moai/reports/t228/plan-measurements.md` (M1-M4; M5 superseded — the
