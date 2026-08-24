@@ -7,7 +7,7 @@ created: 2026-08-24
 updated: 2026-08-24
 author: manager-spec
 priority: P2
-phase: "v3.1.3 target"
+phase: "v3.1.4 target"
 module: ".claude/settings.json, internal/cli/doctor.go, internal/cli/mx_query.go, internal/hook/session_start.go, .claude/rules/moai/development/hook-independence.md"
 lifecycle: spec-anchored
 tags: "hooks, settings, wiring-drift, doctor, diagnostics, mx-index, dead-work, card-t216"
