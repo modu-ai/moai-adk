@@ -3,51 +3,34 @@
 # This script forwards stdin JSON to the moai statusline command.
 # Paths are configured during project initialization.
 
-# Debug: stdin JSON을 로그 파일에 저장 (확인 후 DEBUG_STATUSLINE=1 해제)
-DEBUG_LOG="$HOME/.moai/cache/statusline_debug.log"
-
-# Create temp file to store stdin
-temp_file=$(mktemp)
-trap 'rm -f "$temp_file"' EXIT
-
-# Read stdin into temp file
-cat > "$temp_file"
-
-# Debug logging — OFF by default (M1 hotfix: SPEC-V3R5-STATUSLINE-V2145-001 REQ-SLV-001).
-# Enable explicitly with: export DEBUG_STATUSLINE=1
-if [ "${DEBUG_STATUSLINE:-0}" = "1" ]; then
-	mkdir -p "$(dirname "$DEBUG_LOG")"
-	{
-		echo "=== $(date '+%Y-%m-%d %H:%M:%S') ==="
-		echo "--- stdin JSON ---"
-		python3 -m json.tool < "$temp_file" 2>/dev/null || cat "$temp_file"
-		echo ""
-	} >> "$DEBUG_LOG" 2>/dev/null
-	# 로그 파일 100KB 초과 시 자동 정리
-	if [ -f "$DEBUG_LOG" ] && [ "$(wc -c < "$DEBUG_LOG")" -gt 102400 ]; then
-		tail -c 51200 "$DEBUG_LOG" > "${DEBUG_LOG}.tmp" && mv "${DEBUG_LOG}.tmp" "$DEBUG_LOG"
-	fi
-fi
-
-# Load GLM environment variables if configured (for Agent Teams tmux mode)
+# Load GLM environment variables if configured (for Agent Teams tmux mode).
+# Sourced with stdin closed so the env file can never consume the JSON that the
+# exec'd `moai statusline` still has to read.
 if [ -f "$HOME/.moai/.env.glm" ]; then
 	# shellcheck disable=SC1091
-	source "$HOME/.moai/.env.glm"
+	source "$HOME/.moai/.env.glm" </dev/null
 fi
 
-# Try moai command in PATH first
+# stdin is handed straight to the exec'd process — this script creates no
+# temporary file and therefore needs no cleanup.
+#
+# Do NOT reintroduce a `mktemp` buffer here: `exec` replaces the shell process,
+# so a `trap ... EXIT` cleanup never fires and every render leaks one temp file
+# into the system temp directory (observed: ~120 files/minute, 418k accumulated).
+#
+# Vertical padding is controlled via settings.json `statusLine.padding: N` (M1: REQ-SLV-002).
 if command -v moai &> /dev/null; then
-	exec moai statusline < "$temp_file"
+	exec moai statusline
 fi
 
-# Try detected Go bin path from initialization
+# Try the Go bin directory ($HOME-relative for portability).
 if [ -f "$HOME/go/bin/moai" ]; then
-	exec "$HOME/go/bin/moai" statusline < "$temp_file"
+	exec "$HOME/go/bin/moai" statusline
 fi
 
-# Try user local bin directory
+# Try user local bin directory.
 if [ -f "$HOME/.local/bin/moai" ]; then
-	exec "$HOME/.local/bin/moai" statusline < "$temp_file"
+	exec "$HOME/.local/bin/moai" statusline
 fi
 
 # Not found - exit silently (Claude Code handles missing statusline gracefully)
