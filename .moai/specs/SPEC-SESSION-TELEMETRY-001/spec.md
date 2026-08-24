@@ -2,7 +2,7 @@
 id: SPEC-SESSION-TELEMETRY-001
 title: "Per-session statusline telemetry — split the single-slot snapshot and record the session's model and effort"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-08-24
 updated: 2026-08-24
 author: manager-spec

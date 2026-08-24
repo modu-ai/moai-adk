@@ -109,22 +109,106 @@ agent's to edit.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-24
+sync_commit_sha: pending-backfill-SPEC-SESSION-TELEMETRY-001
+sync_status: complete
+b12_self_test_a: "grep -c 'SPEC-SESSION-TELEMETRY-001' CHANGELOG.md → 0 (no duplicate; emission permitted)"
+b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l → 11; the CHANGELOG entry states 11"
+b12_self_test_c: "every path named in the CHANGELOG entry verified present with ls before commit"
+changelog_entry_position: "[Unreleased] → ### Changed, appended last"
+frontmatter_status_transitions:
+  spec.md: "in-progress → completed (updated: refreshed)"
+  plan.md: "n/a — carries no frontmatter block"
+  acceptance.md: "n/a — carries no frontmatter block"
+  design.md: "n/a — carries no frontmatter block"
+  research.md: "n/a — carries no frontmatter block"
+  progress.md: "n/a — carries no frontmatter block"
+canary_compliance_check: "n/a — this SPEC defines no forward-looking policy that its own sync tests"
+```
 
-## §G Sync-phase follow-up — one ownership correction owed
+### Coverage regression — NOT measured, and what was measured instead
+
+**Claim withheld.** No coverage-regression figure exists for this SPEC. The pre-change package
+rate for `internal/statusline` was never measured on this tree, so no delta can be stated, and
+none is stated. This is a **gap**, not a pass.
+
+**What the lead substituted, and why.** Measuring the pre-change rate requires a second checkout
+of the base commit in its own worktree — the run-phase edits are spread across seven commits on
+this branch and cannot be selectively reverted in place. The lead judged that cost above the
+benefit for a change whose new surface is four small functions, and directed a per-function
+coverage read instead.
+
+**What was measured** (this sync, worktree `t207`, HEAD `e6b01f9b2`):
+
+```
+go test -coverprofile=/tmp/st.cov ./internal/statusline/
+  → ok  github.com/modu-ai/moai-adk/internal/statusline  25.123s  coverage: 90.5% of statements
+
+go tool cover -func=/tmp/st.cov | grep context_usage.go
+  SessionTelemetryPath      100.0%
+  usableSessionKey          100.0%
+  buildContextUsageRecord   100.0%
+  ReadSessionTelemetry      100.0%
+  ...
+  writeContextUsage          80.0%
+  isTemplateSourceDir        88.9%
+  resolveProjectDir          87.5%
+```
+
+Every function this SPEC **adds** — `SessionTelemetryPath`, `usableSessionKey`,
+`buildContextUsageRecord`, `ReadSessionTelemetry` — is at 100.0%, above the 90.5% package rate.
+Stated precisely, because the aggregate would hide it: `writeContextUsage` (80.0%),
+`isTemplateSourceDir` (88.9%) and `resolveProjectDir` (87.5%) sit **below** the package rate.
+All three pre-date this SPEC; `writeContextUsage` is modified by it, the other two are untouched.
+Whether this SPEC moved `writeContextUsage`'s own figure is unknown for the same reason the
+package delta is unknown.
+
+### GLM-backend `effort` — still unobserved
+
+`plan.md` §F.2 asked whether a GLM-backed session's payload carries `effort`. Run-phase recorded
+`env | grep -c ANTHROPIC_DEFAULT → 0`: no GLM session ran on this machine during the run, and no
+render payload from one was capturable. **Nothing changed at sync.** The answer remains
+unobserved, and nothing about it is inferred from the Claude-backend path (which is observed:
+`effort` present and round-tripped). Carried forward as an open measurement, not as a defect.
+
+### Docs-site consistency — verified, unchanged
+
+The twelve pages were written during run-phase M6; sync verified rather than rewrote them.
+
+| Command | Observed |
+|---|---|
+| `grep -rln "context-usage.json" docs-site/content \| wc -l` | `0` (pipeline rc 1 — a genuine zero-match, not a swallowed failure) |
+| `grep -rln "context-usage/" docs-site/content \| wc -l` | `12` |
+| per locale | `3 en / 3 ja / 3 ko / 3 zh` |
+
+Spot-read of the three `en` pages: each describes the per-session record, its key, and the
+`model` / `effort` fields as implemented. No page describes superseded behaviour. **No docs-site
+file was modified by this sync commit.**
+
+## §G Ownership correction — DISCHARGED
 
 `f276b9742` rescoped **AC-ST-002**'s grep half to non-test source, closing the run's Finding 1
 (the criterion's two halves were mutually unsatisfiable: the fixture it mandates must create the
-sidecar file, and creating it spells the name the unscoped grep forbids).
+sidecar file, and creating it spells the name the unscoped grep forbids). The correction's
+content was ratified; what was owed was the **ownership path** — `acceptance.md` body content
+belongs to `manager-spec` (`spec-frontmatter-schema.md` § Forbidden ownership crossings), and
+that edit had been applied orchestrator-direct under time pressure rather than through a
+re-delegation.
 
-The correction itself is ratified and its intent is preserved — the writer still may not consult
-the sidecar, and the fixture still proves the key comes from the payload. What is owed is the
-**ownership path**: `acceptance.md` body content belongs to `manager-spec`
-(`spec-frontmatter-schema.md` § Forbidden ownership crossings), and that edit was applied
-orchestrator-direct under time pressure rather than through a re-delegation.
+**Discharged.** The edit was re-delegated and re-authored by `manager-spec` in commit
+**`e6b01f9b2`** — `docs(SPEC-SESSION-TELEMETRY-001): re-author AC-ST-002 under its owner (t207)`,
+touching `acceptance.md` alone (15 insertions, 9 deletions). Observed:
 
-**Sync-phase obligation**: re-delegate the edit to `manager-spec` so the change carries its proper
-owner, or record an explicit operator-approved deviation naming this line. Nothing about the
-criterion's content is expected to change; this is about who authored it.
+```
+git show --stat e6b01f9b2
+  e6b01f9b20a076adca75293d44d8204a755c5527
+  docs(SPEC-SESSION-TELEMETRY-001): re-author AC-ST-002 under its owner (t207)
+  .../specs/SPEC-SESSION-TELEMETRY-001/acceptance.md | 24 ++++++++++++++--------
+  1 file changed, 15 insertions(+), 9 deletions(-)
+```
 
-Raised by the lead on reading this run's evidence, 2026-08-24.
+The ratified substance survives unchanged, and the re-authoring added what the hasty version
+could not: at the baseline commit BOTH the scoped and the unscoped grep return zero, because the
+fixture that spells the sidecar's name does not exist there yet — which explains the defect
+rather than only recording it. Nothing is owed at sync; this section is closed.
