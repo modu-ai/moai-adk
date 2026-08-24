@@ -63,3 +63,55 @@ Decision: serial
 M1 의 첫 `manager-develop` 위임이 사전 점검 단계에서 **중단** 됐다 — 반환값 없음, 사유는 계정 사용량 한도(작업 내용과 무관). 관측: 중단 직후 `git status --short` 에 그 위임이 만든 변경 0건, `internal/cli/` 에 신규 파일 0건, HEAD 무변동(`92987e653`). 즉 **아무것도 쓰지 않았고 재작업 대상도 없다.**
 
 이 항목을 남기는 이유: 중단은 blocker report 와 다르다. blocker 는 돌아온 것이고 중단은 돌아오지 않은 것이라, 기록이 없으면 다음 읽는 사람이 "M1 이 한 번 돌았는데 결과가 없다" 로 읽는다.
+
+---
+
+## M1 — auth 2단 사다리: **미완결** (세션 마감 시점 상태)
+
+리드의 마감 지시로 GREEN 도중 위임을 정지시켰다. 억지로 완성하지 않고 상태를 그대로 적는다. **아래 근거는 전부 내가(오케스트레이터) 직접 실행해 관측한 것** 이다 — 정지된 위임의 자기보고가 아니다.
+
+핀: `fd92ecf58` + 아래 미커밋 변경. 트리: `internal/cli/mcp_codex.go` 수정 1건, 신규 시험 1건, testdata fixture 3건.
+
+### 어디까지 됐나
+
+설계(plan §C.2)의 5개 seam 이 전부 들어갔다 — `classifyCodexAuthFile`(순수 파일 판정) · `readCodexAuthFile`(경로를 아는 유일한 층) · `codexLoginStatusRunner`(stdout/stderr/exitCode **분리** 반환) · `combineCodexStreams` · `parseCodexAuthLine`(전체 행 문법). `classifyCodexAuth` 는 얇은 조립부로 재작성됐다. 신규 시험 13개 함수 / 74 서브테스트.
+
+### 관측한 것
+
+| 항목 | 명령 | 관측 |
+|---|---|---|
+| 빌드 | `go build ./...` | rc 0 |
+| vet | `go vet ./internal/cli/` | rc 0 |
+| 크로스 플랫폼 vet | `GOOS=windows go vet ./internal/cli/` | rc 0 |
+| 포맷 | `gofmt -l <두 파일>` | 출력 없음 |
+| OS 빌드 태그 0건 (AC-CL-014) | `grep -c 'go:build' codex_auth_ladder_test.go` | `0` |
+| `syscall` import 0건 (AC-CL-014) | `grep -c '"syscall"' <두 파일>` | 각 `0` |
+| 신규 시험 | `go test ./internal/cli/ -v -run '<13개 이름 정규식>' -timeout 540s` | **74 RUN / 73 PASS / 1 FAIL**, 8.857s |
+
+### 미해결 결함 1건 — 기존 시험 `TestClassifyCodexAuth_Branches` 가 깨진다
+
+```
+mcp_codex_test.go:475: classifyCodexAuth("Auth mode: API key (sk-...)") = "chatgpt", want "apiKey"
+mcp_codex_test.go:475: classifyCodexAuth("Configured custom provider 'foo'") = "chatgpt", want "provider"
+mcp_codex_test.go:475: classifyCodexAuth("") = "chatgpt", want "unknown"
+mcp_codex_test.go:475: classifyCodexAuth("something unrecognized") = "chatgpt", want "unknown"
+mcp_codex_test.go:482: classifyCodexAuth on runner error = "chatgpt", want "unknown"
+```
+
+원인은 **두 개** 이고 둘 다 실재한다:
+
+1. **그 시험은 이 SPEC 이 의도적으로 폐기한 계약을 인코딩한다.** `"Auth mode: API key (sk-...)"` → `apiKey` 는 부분 일치 시절의 기대값이고, 전체 행 문법은 이것을 `unknown` 으로 내리는 것이 **맞다**(REQ-CL-009 · AC-CL-009). 시험을 새 계약으로 갱신해야 한다 — AC-CL-015 가 함수 **삭제·개명** 0건을 요구하므로 제자리 수정이다.
+2. **더 나쁜 쪽 — 그 시험은 `CODEX_HOME` 을 격리하지 않는다.** 옛 seam(`codexRunner`)만 스텁하므로 새 1단이 개발자의 **실제 `~/.codex/auth.json`**(이 머신은 `auth_mode=chatgpt`)을 읽고 단락한다. 그래서 빈 입력에도 `chatgpt` 가 나온다 — 다섯 줄이 전부 `chatgpt` 인 것이 그 증거다. 계약을 갱신해도 격리 없이는 **머신 상태에 의존하는 시험** 으로 남는다. 다음 세션은 둘 다 고쳐야 한다.
+
+### 이 관측 자체가 이 라운드 규칙의 사례다
+
+처음엔 좁은 이름 정규식(`-run 'TestCodex(Auth|LoginStatus|...)'`)으로 돌려 **rc 0** 을 받았다. 그 정규식이 깨지는 시험을 고르지 않았을 뿐이다. 13개 함수 이름을 명시하고 `-v` 로 서브테스트 수를 세고 나서야 FAIL 이 드러났다. **이름 정규식의 rc 0 은 "통과" 가 아니라 "그 정규식이 고른 것들이 통과" 다** — plan §F 를 패키지 전체 실행으로 바꾼 이유가 같은 자리에서 한 번 더 확인됐다.
+
+### 하지 않은 것 (Gaps)
+
+- **RED 선행 출력 미보존.** 정지된 위임이 "RED-2 captured" 라고 했으나 progress.md 에 옮기기 전에 죽었다. 즉 **이 문서에 RED 근거는 없다.** AC-CL-008 의 통합 케이스가 수정 전 트리에서 실패해야 한다는 요구는 다음 세션에서 재관측해야 한다 (`git stash` 없이 `git show fd92ecf58:internal/cli/mcp_codex.go` 로 이전 판을 되살려 확인하는 편이 안전하다 — stash 는 저장소 전역이라 다른 레인 것을 삼킨다).
+- **커버리지 미측정** — 순수 함수 3종 100% (AC-CL-015) 미확인.
+- **lint 미실행** — `golangci-lint run` 안 돌렸다.
+- **패키지 전체 실행 시간 미측정** — 신규 시험만 8.857초로 쟀을 뿐, `internal/cli` 전체(단독 336초 기준선)에 얹은 뒤의 값은 **미측정** 이다. 따라서 **180칸 봉쇄 행렬(INIT AC-CI-011)의 실행 시간도 미측정** — 그 SPEC 은 착수조차 하지 않았다.
+- **부채 D2** — 거부된 `auth.json` → 명령 프로브 하강. 구현은 들어갔고 `TestClassifyCodexAuth_RejectedAuthFileFallsBackToProbe`(3 서브테스트: 빈 토큰 객체 / 미지 모드 / 파싱 실패)가 통과하는 것을 관측했다. **닫힌 것으로 본다** — 다만 그 시험이 AC 문면에 편입되지는 않았으므로 AC 자체의 구멍은 남는다.
+- **부채 D4 · D5 · D6 · D7 · D8** — 손대지 않았다. M1 범위 밖이다.
