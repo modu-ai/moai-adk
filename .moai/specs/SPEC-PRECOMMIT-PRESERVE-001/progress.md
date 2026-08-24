@@ -290,7 +290,7 @@ m1_to_mN_commit_strategy: per-milestone commits on WT-precommit-preserve (M1 f71
 
 ```yaml
 sync_complete_at: 2026-08-25
-sync_commit_sha: pending-backfill-SPEC-PRECOMMIT-PRESERVE-001   # backfilled with the real sync-commit SHA in the immediately following commit
+sync_commit_sha: cd90ec40b   # backfilled in the commit following the sync commit (amended SHA; placeholder-exemption applies)
 sync_status: sync complete (3-phase close plan→run→sync carried on the sync commit)
 changelog_entry_position: CHANGELOG.md [Unreleased] → Added, top entry
 frontmatter_status_transitions:
