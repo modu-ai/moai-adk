@@ -34,7 +34,6 @@ func TestCalibratedRatioSurvivesOffsetLoadStep(t *testing.T) {
 	// crossAt is the round at which fn crosses the step; ref crosses one round
 	// later. Sweeping across the median exercises the knife edge.
 	for _, crossAt := range []int{40, 48, 49, 50, 51, 60} {
-		refS := make([]time.Duration, 0, n)
 		fnS := make([]time.Duration, 0, n)
 		ratios := make([]float64, 0, n)
 		for i := range n {
@@ -45,7 +44,6 @@ func TestCalibratedRatioSurvivesOffsetLoadStep(t *testing.T) {
 			if i >= crossAt+1 {
 				r = high
 			}
-			refS = append(refS, r)
 			fnS = append(fnS, f)
 			ratios = append(ratios, float64(f)/float64(r))
 		}
