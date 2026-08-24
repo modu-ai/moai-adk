@@ -44,6 +44,21 @@ Run-phase base: `f276b9742`.
 | AC-WTQ-010 | PASS | `go test -run TestTodoSectionCarriesExistingKanbanMarker ./internal/web/`; `git diff f276b9742..HEAD -- internal/web/events.go internal/web/assets/app.js` | PASS (the section sits inside `data-live="kanban"`); the diff is **empty** — `watchMap` still 6 entries, `EVENTS` still `["spec","session","goal","verify","kanban","config"]` |
 | AC-WTQ-011 | PASS | `grep -c '"nav\.todo"' internal/web/assets/i18n.js`; `go test -run TestI18n ./internal/web/` | `4` (baseline `0`); `ok github.com/modu-ai/moai-adk/internal/web` — no allowlist entry added |
 
+### Storage-migration read seam (for whoever migrates the queue)
+
+The backlog queue's storage is under operator review (JSON file today; a sqlite
+store under `~/.moai` keyed by repo root was being considered, undecided at the
+time of writing). The console's read path is isolated in **one function**:
+`readTodoQueue` in `internal/web/todo_queue_read.go` — the only file in
+`internal/web` that names a backlog-store symbol
+(`kanban.ResolveTodoQueueRoot`, `kanban.NewBacklogStore`,
+`kanban.BacklogPathForRoot`, `kanban.BacklogItem`). `buildTodo`
+(`internal/web/todo_view.go`) calls it and touches no store symbol itself, and
+`TestBacklogReadSeamIsSingleFile` (`internal/web/todo_queue_read_test.go`)
+asserts the single-file property mechanically. A storage change lands in that
+one function. No interface, factory, or plugin point was introduced, and no
+sqlite code was written.
+
 ### E2 — cross-platform build
 
 `go build ./...` → exit 0. `GOOS=windows GOARCH=amd64 go build ./...` → exit 0.
