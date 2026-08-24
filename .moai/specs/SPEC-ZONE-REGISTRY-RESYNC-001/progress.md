@@ -584,7 +584,12 @@ $ gh api repos/modu-ai/moai-adk/actions/jobs/97578539943/logs | grep -A2 TestReg
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+- run_status: **complete** — M1(데이터 수리) / M2(가드 착지) / M3(미러·임베드·최종 검증) 전 마일스톤 종료. 전문 근거는 §E.2 (M1/M2/M3 + 8항 R1-CI + 9항 interleave)
+- run commits: M1 `2319df7ac` (레지스트리 2 미러 수리) · M2 `49630cba2` + `adde4cfc9` (가드 신규·CI 배선 + D10 증거; 병렬 세션 보강 `ca7d966fd`/`0b04f3412`, SplitSeq 채택 `5e5cff235`) · M3 `a74362427` (미러·임베드·fresh-init 증거)
+- AC outcome: **14/14 GREEN** — 로컬 축 13종(§E.2 M1–M3 매트릭스) + AC-ZRR-007 CI 축은 §E.2 8항 관측으로 마감
+- R1-CI 관측: `Test (ubuntu-latest)` **FAILURE** @ head `a1f6622ee` (run `32773274873`, PR 1646) → 스크래치 revert `58178f9ec` — §E.2 8항 verbatim 인용
+- final green guard 측정 트리: `0b04f3412` (M2 최종 검증 — 패키지 풀스위트 ok + 미러별 clause 97 / anchor 101 카운트·버킷 보고) 및 `5e5cff235` 내용(SplitSeq 후 `-run RegistrySync` ok — 실행은 `9a1fbfdd2`+동일 편집 워킹트리). 이후 트리(`58178f9ec`~)의 레지스트리·가드 내용과 동일
+- interleave 사고(한 줄 교차참조): §E.2 9항 — `83bd473ed` 오-revert → `74455ca1d` 재적용 + `58178f9ec` 스크래치 revert (forward-only 복구, force-push 없음)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
