@@ -111,7 +111,7 @@ agent's to edit.
 
 ```yaml
 sync_complete_at: 2026-08-24
-sync_commit_sha: pending-backfill-SPEC-SESSION-TELEMETRY-001
+sync_commit_sha: aee917474
 sync_status: complete
 b12_self_test_a: "grep -c 'SPEC-SESSION-TELEMETRY-001' CHANGELOG.md → 0 (no duplicate; emission permitted)"
 b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l → 11; the CHANGELOG entry states 11"
