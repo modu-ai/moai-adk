@@ -10,9 +10,9 @@
 
 | AC | 요구사항 | RED (현재 트리) | GREEN (목표) |
 |---|---|---|---|
-| AC-ZRR-001 | REQ-ZRR-014 | validate exit 1 / 67 errors | exit 0 / 0 errors |
-| AC-ZRR-002 | REQ-ZRR-001, 003, 005 | 로컬 리터럴 적중 25/101 · 빈 clause 0 · 자기참조 `file:` 0 | 101/101 · 0 · 0 |
-| AC-ZRR-003 | REQ-ZRR-001, 003, 012 | 템플릿 리터럴 적중 25/101 (부가 3조건 동일) | 101/101 |
+| AC-ZRR-001 | REQ-ZRR-015 | validate exit 1 / 67 errors | exit 0 / 0 errors |
+| AC-ZRR-002 | REQ-ZRR-001, 003, 005 | 로컬 **1회 적중 24** / 0회 76 / 2회 이상 1 / 자기참조 0 | 101 / 0 / 0 / 0 |
+| AC-ZRR-003 | REQ-ZRR-001, 003, 013 | 템플릿 **1회 적중 24** / 2회 이상 1 (부가 조건 동일) | 101 / 0 |
 | AC-ZRR-004 | REQ-ZRR-002, 003, 009 | anchor 해석 84/101 (실패 17, §2.2 slug 규칙 기준) | 101/101 |
 | AC-ZRR-005 | REQ-ZRR-004, 006 | 매처 3함수 현행 | 바이트 불변 + 기존 테스트 통과 |
 | AC-ZRR-006 | REQ-ZRR-005 | 101 엔트리 / ID·zone·zone_class·canary_gate 집합 X | 동일 집합 (diff 0) |
@@ -20,10 +20,10 @@
 | AC-ZRR-008 | REQ-ZRR-011 | 유일한 constitution job 이 continue-on-error | 차단 job **그리고** 억제 없는 스텝 |
 | AC-ZRR-009 | REQ-ZRR-008 | 템플릿 미러 검증 0건 | 템플릿 변이도 검출 |
 | AC-ZRR-010 | REQ-ZRR-010 | SKIP=1 이면 Skipped/OK 반환 | SKIP=1 이어도 실패 |
-| AC-ZRR-011 | REQ-ZRR-012 | 미러 바이트 동일 (유지 대상) | 수리 후에도 동일 + embed 클린 |
-| AC-ZRR-012 | REQ-ZRR-013 | 템플릿 레지스트리 SPEC-ID 0 / 날짜 0 / SHA 0 | 0 유지 (변이 주입 시 CI 실패) |
-| AC-ZRR-013 | REQ-ZRR-014 | doctor Fail 1 | Fail 0 |
-| AC-ZRR-014 | REQ-ZRR-015 | heading slug 헬퍼 부재 (재사용 가능 0건) | 규칙 6단계가 코드+주석에 선언 |
+| AC-ZRR-011 | REQ-ZRR-013 | 미러 바이트 동일 (유지 대상) | 수리 후에도 동일 + embed 클린 |
+| AC-ZRR-012 | REQ-ZRR-014 | 템플릿 레지스트리 SPEC-ID 0 / 날짜 0 / SHA 0 | 0 유지 (변이 주입 시 CI 실패) |
+| AC-ZRR-013 | REQ-ZRR-015 | doctor Fail 1 | Fail 0 |
+| AC-ZRR-014 | REQ-ZRR-012 | heading slug 헬퍼 부재 (재사용 가능 0건) | 규칙 6단계가 코드+주석에 선언 |
 
 ---
 
@@ -43,12 +43,15 @@
 - **Given** 수리된 로컬 레지스트리와 로컬 규칙 트리가 있고,
 - **When** 각 엔트리의 `clause:` 값을 그 엔트리의 `file:` 에 대고 `grep -F -q --` 로 찾으면,
 - **Then** 101건 전부가 적중한다(적중 실패 0건).
-- **And** 어떤 엔트리의 `clause:` 도 **빈 문자열이 아니다**. 빈 clause 는 적중이 아니라 **실패**로 센다 — 빈 문자열은 모든 파일에 적중하고(`grep -F -q -- ''` → rc `0`), `Validate` 도 `normalizedClause != ""` 가드로 조용히 건너뛴다.
+- **And** 어떤 엔트리의 `clause:` 도 빈 문자열이 아니며, **각 clause 는 자기 `file:` 안에서 정확히 1회 적중한다**(측정: 현재 적중 25건 중 24건이 1회 적중 — 진짜 verbatim 인용은 유일하다). 0회는 미적중이고, 2회 이상은 clause 가 지나치게 짧다는 신호이므로 둘 다 실패로 센다.
 - **And** 어떤 엔트리의 `file:` 도 **레지스트리 파일 자신**(`.claude/rules/moai/core/zone-registry.md`)이 아니다 — 자기참조는 clause 를 정의상 적중시키고(측정: `grep -F -c -- '16-language neutrality' <registry>` → `1`) 레지스트리의 heading 50개가 anchor 까지 해석시켜, 수리를 한 줄도 하지 않고 이 AC 를 통과시킨다.
 - **And** `file:` 값이 바뀐 엔트리의 목록(구 → 신)을 `progress.md` §E.2 에 인용하고, sync-phase 리뷰가 각 이동의 타당성을 판정한다.
 
-판정: 레지스트리를 파싱해 엔트리별 `grep -F` 를 돌리고 적중 수 + 빈 clause 수 + 자기참조 `file:` 수를 출력하는 체크(구현은 run-phase 소관; `internal/constitution` 의 매칭 코드를 호출하지 않는다).
-**RED**: 적중 `25 of 101`, 빈 clause `0`, 자기참조 `file:` `0`. 적중값이 0이 아닌 25인 것이 이 체크가 실제로 무언가를 관측한다는 증거다. 뒤의 두 값은 **비회귀 축**이다 — 지금 0이며 수리 후에도 0이어야 한다.
+판정: 레지스트리를 파싱해 엔트리별 `grep -F -c` 를 돌리고 **적중 횟수 자체**(boolean 아님)를 집계하는 체크 — 1회 적중 수 / 0회 수 / 2회 이상 수 / 자기참조 `file:` 수를 출력한다. 구현은 run-phase 소관이며 `internal/constitution` 의 매칭 코드를 호출하지 않는다.
+
+**RED (`294b4b6ab`)**: 1회 적중 `24`, 0회 `76`, 2회 이상 `1`(`CONST-V3R2-002` = `TRUST 5`, 3회), 자기참조 `file:` `0`. **GREEN 은 1회 적중 101 / 0회 0 / 2회 이상 0 / 자기참조 0.**
+
+boolean 이 아니라 횟수를 세는 이유: "빈 문자열 아님"만 요구하면 공백 한 칸이나 아주 짧은 흔한 토큰이 한 글자 차이로 금지를 비껴가면서 같은 거짓 GREEN 에 도달한다. 유일 적중은 그 우회로를 통째로 닫는다 — 진짜 verbatim 인용은 자기 파일 안에서 유일하기 때문이다(clause 길이 중앙값 93자; 20자 미만은 3건뿐이고 그중 하나가 위 3회 적중 엔트리다).
 
 > 이 AC는 검증기보다 엄격하다: 정규화가 없으므로 clause 는 **한 줄 안에 연속으로 존재하는 구간**이어야 한다. 현재 검증기는 통과하지만 이 체크는 실패하는 엔트리가 8건 있다(`CONST-V3R5-004/005/006/007/008/010/011/013`) — 이들도 GREEN 대상이다.
 
@@ -57,9 +60,10 @@
 - **Given** 수리된 템플릿 레지스트리(`internal/template/templates/.claude/rules/moai/core/zone-registry.md`)가 있고,
 - **When** 각 엔트리의 `clause:` 를 `internal/template/templates/<file>` 에 대고 `grep -F -q --` 로 찾으면,
 - **Then** 101건 전부가 적중한다.
-- **And** AC-ZRR-002 의 세 부가 조건(빈 clause 금지 / 자기참조 `file:` 금지 / `file:` 변경 목록 인용)이 템플릿 미러에도 동일하게 적용된다 — 두 미러는 바이트 동일하므로 두 mutant 는 양쪽을 한 번에 통과시킨다.
+- **And** 각 clause 가 템플릿 트리의 자기 `file:` 안에서 **정확히 1회 적중한다**(0회 = 미적중, 2회 이상 = 지나치게 짧음, 둘 다 실패).
+- **And** AC-ZRR-002 의 나머지 부가 조건(자기참조 `file:` 금지 / `file:` 변경 목록 인용)이 템플릿 미러에도 동일하게 적용된다 — 두 미러는 바이트 동일하므로 이 mutant 들은 양쪽을 한 번에 통과시킨다.
 
-**RED**: `25 of 101`. AC-ZRR-002 와 별개 판정이다 — 인용 대상 17개 파일 중 **2개 파일**이 두 트리에서 다르고 그 2개가 3개 엔트리를 물고 있으므로(`spec.md` §5), 로컬만 맞춘 수리는 여기서 걸린다.
+**RED**: 1회 적중 `24 of 101`(2회 이상 1건 = `CONST-V3R2-002`). AC-ZRR-002 와 별개 판정이다 — 인용 대상 17개 파일 중 **2개 파일**이 두 트리에서 다르고 그 2개가 3개 엔트리를 물고 있으므로(`spec.md` §5), 로컬만 맞춘 수리는 여기서 걸린다.
 
 ### AC-ZRR-004 — anchor 101/101 이 heading 으로 해석된다
 
@@ -199,10 +203,10 @@
 | REQ-ZRR-009 | 004, 007 |
 | REQ-ZRR-010 | 010 |
 | REQ-ZRR-011 | 007, 008 |
-| REQ-ZRR-012 | 011 |
-| REQ-ZRR-013 | 012 |
-| REQ-ZRR-014 | 001, 013 |
-| REQ-ZRR-015 | 014 |
+| REQ-ZRR-013 | 011 |
+| REQ-ZRR-014 | 012 |
+| REQ-ZRR-015 | 001, 013 |
+| REQ-ZRR-012 | 014 |
 
 ## §D.4 간접 검증 항목
 

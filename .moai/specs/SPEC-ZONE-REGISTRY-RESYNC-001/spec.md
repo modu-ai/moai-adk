@@ -1,7 +1,7 @@
 ---
 id: SPEC-ZONE-REGISTRY-RESYNC-001
 title: "zone-registry clause/anchor 재동기화 + 재발 차단 가드"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-08-24
 updated: 2026-08-25
@@ -25,6 +25,7 @@ related_specs: [SPEC-V3R6-ZONE-REGISTRY-PACKAGING-001, SPEC-V3R5-CONSTITUTION-DU
 | 0.1.0 | 2026-08-24 | manager-spec | 최초 작성 — clause 재동기화 + 가드, anchor 는 보조 축 |
 | 0.2.0 | 2026-08-24 | manager-spec | 범위 확장 승인 반영 — anchor 탐지·수리를 정식 축으로 승격(죽은 `SentinelAnchorNotFound` 완결), slug 규칙을 요구사항화, 마일스톤 순서를 의존성으로 고정 |
 | 0.3.0 | 2026-08-25 | manager-spec | plan-audit iter1(FAIL 0.75) 반영 — 자기참조 `file:` / 빈 clause / `\|\| true` / 부분 순회 mutant 4종을 AC 로 승격, 이중 트리 파일 수 오기 정정, paths-filter 구속 추가 |
+| 0.4.0 | 2026-08-25 | manager-spec | plan-audit iter2(PASS-WITH-DEBT 0.925) 부채 #1 마감 — 빈 clause 금지를 **유일 적중** 요구로 강화(공백 한 칸·짧은 토큰 우회 차단), REQ 번호를 전역 오름차순으로 재배치(구 015 slug 규칙 → **012**, 구 012/013/014 → 013/014/015), §D8 인용 정정, 잔여 부채 2건(`CONST-V3R2-004` 근접 오답 / 평가 수 이중 카운트)을 §H 에 판정자와 함께 기록 |
 
 ## 1. 문제 — 측정된 형태
 
@@ -137,7 +138,7 @@ $ grep -c "constitution validate" Makefile .github/workflows/*.yml
 
 ### 데이터 수리
 
-- **REQ-ZRR-001** (Ubiquitous) — The zone registry shall carry, for every entry, a `clause:` value that is a contiguous single-line verbatim span of the file named by that entry's `file:`, in both the local rules tree and the shipped template tree.
+- **REQ-ZRR-001** (Ubiquitous) — The zone registry shall carry, for every entry, a `clause:` value that is a contiguous single-line verbatim span occurring **exactly once** in the file named by that entry's `file:`, in both the local rules tree and the shipped template tree.
 - **REQ-ZRR-002** (Ubiquitous) — The zone registry shall carry, for every entry, an `anchor:` value that resolves to a heading present in the file named by that entry's `file:`.
 - **REQ-ZRR-003** (Event-driven) — **When** the doctrine cited by an entry has moved to a different file, the entry shall be re-pointed by correcting `file:` and `anchor:`, not by rewording `clause:` into a summary.
 
@@ -154,13 +155,13 @@ $ grep -c "constitution validate" Makefile .github/workflows/*.yml
 - **REQ-ZRR-009** (Ubiquitous) — The guard shall verify anchor resolution in addition to clause verbatim-ness, completing the check already named by the unwired `SentinelAnchorNotFound` sentinel.
 - **REQ-ZRR-010** (Unwanted) — The guard shall not report success when validation was bypassed; **when** `MOAI_CONSTITUTION_SKIP_VALIDATE=1` is present in its environment, the guard shall fail rather than pass.
 - **REQ-ZRR-011** (Unwanted) — The guard shall not run only in a `continue-on-error: true` CI job, and the step that runs it shall not be wrapped in `|| true`, a step-level `continue-on-error`, or any other exit-code suppression.
-- **REQ-ZRR-015** (Ubiquitous) — The guard shall declare, in code, the heading-to-slug rule it applies (the six steps in §2.2), with a comment naming it as the rule the anchor failure count was measured under.
+- **REQ-ZRR-012** (Ubiquitous) — The guard shall declare, in code, the heading-to-slug rule it applies (the six steps in §2.2), with a comment naming it as the rule the anchor failure count was measured under.
 
 ### 배포 규율
 
-- **REQ-ZRR-012** (Ubiquitous) — The local registry and the template registry shall remain byte-identical, and the binary shall be re-embedded via `make build` in the same change.
-- **REQ-ZRR-013** (Unwanted) — The template registry shall not carry SPEC IDs, internal dates, or commit SHAs.
-- **REQ-ZRR-014** (Event-driven) — **When** `moai constitution validate` runs in a freshly initialized project built from this change, it shall exit 0, and `moai doctor` shall report no Constitution Registry failure.
+- **REQ-ZRR-013** (Ubiquitous) — The local registry and the template registry shall remain byte-identical, and the binary shall be re-embedded via `make build` in the same change.
+- **REQ-ZRR-014** (Unwanted) — The template registry shall not carry SPEC IDs, internal dates, or commit SHAs.
+- **REQ-ZRR-015** (Event-driven) — **When** `moai constitution validate` runs in a freshly initialized project built from this change, it shall exit 0, and `moai doctor` shall report no Constitution Registry failure.
 
 ## 5. 알려진 구속 조건 — 두 트리에서 동시에 verbatim 이어야 한다
 
@@ -195,7 +196,7 @@ $ grep -c "constitution validate" Makefile .github/workflows/*.yml
 ## 7. 미검증 항목 (Gaps)
 
 - **개별 67건의 "올바른 인용문"은 아직 정해지지 않았다.** 이 SPEC 은 계약(단일 행 verbatim, anchor 해석 가능)만 정한다. 어떤 문장을 뽑을지는 run-phase 판단이며, 그 판단의 검증은 AC-ZRR-002/003/004 가 기계적으로 한다.
-- **slug 규칙은 선택된 것이지 검증된 것이 아니다.** §2.2 의 6단계 규칙은 `analyze.py` 가 쓴 규칙이며, Claude Code / markdown 렌더러의 실제 anchor 해석과 바이트 단위로 같은지는 확인하지 않았다. 17이라는 수치는 **이 규칙 아래에서만** 참이다 — 그래서 REQ-ZRR-015 가 규칙을 코드에 명시하도록 요구한다. 규칙이 바뀌면 건수도 바뀐다는 사실 자체를 문서화하는 것이 여기서의 방어다.
+- **slug 규칙은 선택된 것이지 검증된 것이 아니다.** §2.2 의 6단계 규칙은 `analyze.py` 가 쓴 규칙이며, Claude Code / markdown 렌더러의 실제 anchor 해석과 바이트 단위로 같은지는 확인하지 않았다. 17이라는 수치는 **이 규칙 아래에서만** 참이다 — 그래서 REQ-ZRR-012 가 규칙을 코드에 명시하도록 요구한다. 규칙이 바뀌면 건수도 바뀐다는 사실 자체를 문서화하는 것이 여기서의 방어다.
 - **fresh-init 재현은 1회 측정**이다(스크래치 프로젝트 1개, `--language go`). 다른 언어 옵션에서 레지스트리가 달리 배포되는지는 확인하지 않았다.
 - **~~3건 이중 트리 제약(§5)의 해소 가능성 미확인~~ → 닫힘.** plan-audit iter1 이 두 파일을 전수 diff 한 결과 발산은 총 4줄(`coding-standards.md` 1 + `skill-authoring.md` 3)이고 전부 영향 엔트리의 인용 대상 절 밖이다 — 공통 구간 존재가 확인됐다(§5 참조). run-phase 는 이 조사를 반복하지 않는다.
 - **slug 규칙이 렌더러의 실제 anchor 해석과 같은지도 감사에서 확인되지 않았다.** plan-audit iter1 이 이 항목을 자기 gap 으로 명시했다 — 17이라는 수치는 여전히 `analyze.py` 재구현 기준이다.
