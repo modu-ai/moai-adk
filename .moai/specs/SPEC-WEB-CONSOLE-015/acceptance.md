@@ -50,7 +50,9 @@ is a human reading, declared as one, and is re-performed only if the inventory c
 **AC-WC15-021a** (REQ-WC15-021) — Given the merged tree, When `internal/web` non-test Go source is
 grepped for a declaration of the telemetry record's fields and for a reader of its file, Then the
 count is **zero**; and When it is grepped for the reader symbol `SPEC-SESSION-TELEMETRY-001`
-exports, Then the count is **≥ 1**. Baseline, measured: `grep -rn "internal/statusline"
+exports — `ReadSessionTelemetry`, pinned as an exported identifier by that SPEC's §C.2b — Then the
+count is **≥ 1**, and When `internal/web` is grepped for `SessionTelemetryRecord`, Then any hit is a
+use of the sibling's exported type rather than a local declaration of it. Baseline, measured: `grep -rn "internal/statusline"
 internal/web --include='*.go'` returns rc=1 with no output, and
 `grep -rn "context-usage\|ContextUsage" internal/web` returns exactly one line —
 `viewmodel_ops.go:255`, the placeholder comment this SPEC removes. So the "≥ 1" half is new
@@ -101,12 +103,27 @@ observing nothing.
 
 **AC-WC15-046** (REQ-WC15-046) — Given a project root with no factory registry file, and
 separately one whose registry file is malformed JSON, When the kanban page is requested, Then in
-both cases the response status is 200 and the factory section renders zero lanes.
+both cases the response status is 200 **and the factory section is present in the markup, rendering
+zero lanes**. Baseline: as AC-WC15-043b — the pre-change console has no factory section at all, so
+the status-200 half passes today (the page never reads the registry) while the section-present half
+cannot. Stating both is what separates "the page still loads" from "the section handled the failure";
+the first is preserved, the second is new.
 
-**AC-WC15-047** (REQ-WC15-047) — Given a registry in which `lane-1` and `lane-5` both carry PID
-`P`, an active-sessions entry with PID `P`, and a record for that session, When the factory
-section is rendered, Then **neither** row carries that record's card identifier or SPEC
-identifier, and **both** rows carry the unresolved marker. Baseline: as AC-WC15-043b — no lane
+**AC-WC15-047** (REQ-WC15-047) — Both sides of the join, because either can be non-unique.
+
+*Factory-registry side.* Given a registry in which `lane-1` and `lane-5` both carry PID `P`, an
+active-sessions entry with PID `P`, and a record for that session, When the factory section is
+rendered, Then **neither** row carries that record's card identifier or SPEC identifier, and
+**both** rows carry the unresolved marker.
+
+*Session-registry side.* Given a registry in which only `lane-1` carries PID `P`, but
+`.moai/state/active-sessions.json` holds **two** entries bearing PID `P` (with different session
+identifiers), When the factory section is rendered, Then the `lane-1` row carries the unresolved
+marker and neither session's record values. This half exists because the session registry does not
+enforce PID uniqueness: `Registry.Register` (`internal/session/registry.go:166-199`) deduplicates by
+session identifier alone, so a stale entry retaining a reused PID is reachable without any factory
+registry duplication at all. An implementation that guards only the factory-registry side passes the
+first half and fails this one. Baseline: as AC-WC15-043b — no lane
 rows exist pre-change, so this behaviour cannot pass on the untouched tree. Without this
 criterion the natural map-lookup implementation attributes one session to both lanes silently,
 which is the reachable hazard REQ-WC15-047 names.
@@ -137,10 +154,34 @@ the second, When the console renders the chain, Then both rows render, the pre-c
 the "not recorded" marker for each field its record and snapshot do not carry, and no request
 returns an error status.
 
-**AC-WC15-052** (REQ-WC15-052) — Given the merged tree, When `internal/web/screens.templ` is
-grepped for `are not recorded yet` and for `kanban.Record is extended`, Then both return **zero**;
-and When the note-banner call in the kanban section is read, Then its third argument is a non-empty
-translation key; and When that key is looked up, Then it is present in all four locale maps.
+Baseline: on the pre-change tree every row shows the marker for all three telemetry fields
+unconditionally — `viewmodel_ops.go:253-255` hard-codes them — so a *pre-change* row showing the
+marker is the status quo and observes nothing on its own. What is new is the **contrast within one
+render**: the post-change row must show real values from its snapshot while the pre-change row shows
+the marker. A render in which both rows show the marker satisfies the sentence above read loosely
+and fails this criterion, which is the reading that matters.
+
+**AC-WC15-052** (REQ-WC15-052) — Four parts, and the positive parts are what make the criterion
+observe something: the two greps below are satisfied by deleting the strings outright, which the
+requirement forbids.
+
+*Removal.* Given the merged tree, When `internal/web/screens.templ` and
+`internal/web/widgets.templ` are grepped for `are not recorded yet`, for
+`kanban.Record is extended`, and for `kanban.Record extension required`, Then all three return
+**zero** across both files.
+
+*Survival.* When the kanban section is rendered, Then a note banner is **present**, and When the
+not-recorded marker is rendered, Then it carries **non-empty** hover text. A rendered page carrying
+neither fails this half.
+
+*Translation.* When the note-banner call and the marker are read, Then each carries a non-empty
+translation key, and When those keys are looked up, Then each is present in all four locale maps.
+
+*Content.* When the two strings' English text is read, Then neither names `kanban.Record` — or any
+other producer — as the source of the telemetry values, and each states that a blank cell means the
+session has no telemetry record yet. This half is a declared human reading, not a grep: what makes
+the replacement correct is a claim about meaning, and asserting it mechanically would only re-check
+the strings the removal half already covers.
 Baseline, measured: `screens.templ:192` currently reads
 
 ```

@@ -109,28 +109,49 @@ the view surfaces through `RoleVM.StageEstimated`. This SPEC keeps estimation an
 `internal/session/registry.go` entries carry `PID`. So the shape of the join is
 `workers.json[lane-N].PID → active-sessions entry → session_id → kanban record`.
 
-Version 0.1.0 §A.5 asserted this "closes on today's data with no new state file". **That claim is
-withdrawn.** The record is not keyed by the session it describes: the launcher writes it before
-the launched session exists, keyed from a single-slot side-channel file, so records are filed
-under the *launching* session's id. Observed in this tree today:
+Version 0.1.0 §A.5 asserted this "closes on today's data with no new state file". **The first half
+of that claim is withdrawn; the second half survives** — nothing in this SPEC introduces a state
+file.
+
+The withdrawal is narrower and sharper than "the join returns nothing", and the difference matters
+because the wrong version of it is falsifiable by a single counter-example. The record is **not
+reliably** keyed by the session it describes: the launcher writes it before the launched session
+exists, keyed from a single-slot side-channel file, so the key is whichever session's SessionStart
+wrote that slot most recently. Sometimes that is the launched session; usually it is not. A lookup
+therefore returns **nothing, the right record, or another session's record, with nothing on disk
+distinguishing the second case from the third.**
+
+Measured in this tree, with two lanes registered three minutes apart:
 
 ```
-$ python3 -c "…"  .moai/state/active-sessions.json      (three live sessions)
-2beac221…  pid 15207  cwd …/worktrees/t219
-c15d8434…  pid 51045  cwd …/worktrees/t210
-3db058e1…  pid 36912  cwd …/worktrees/t207
+$ cat .moai/state/factory/workers.json
+lane-5:  pid 87705, registered_at 2026-08-24T09:22:12Z
+lane-10: pid 10793, registered_at 2026-08-24T09:25:29Z
 
-$ ls .moai/state/kanban/{2beac221…,c15d8434…,3db058e1…}.json
-No such file or directory   ×3          ← none of the three live sessions has a record
+$ .moai/state/active-sessions.json → record present?
+55cdc796…  pid 87705  record: YES     ← lane-5's session
+e995be8e…  pid 10793  record: no      ← lane-10's session
+34740be0…  pid 31329  record: YES
+e46fcfef…  pid 51045  record: no
 
-$ cat .moai/state/kanban/d281730e-….json
-{ "session_id": "d281730e-…", "spec_id": "", "role": "lane", "backend": "claude",
-  "entered_at": "2026-08-23T17:47:22Z", … }   ← the LEAD session's id, carrying a lane's role
+$ cat .moai/state/kanban/55cdc796-….json     ← reached by joining lane-5
+{ "session_id": "55cdc796-…", "role": "lane", "backend": "glm",
+  "entered_at": "2026-08-24T09:25:29Z", … }  ← lane-TEN's registration instant
+
+$ cat .moai/state/kanban/34740be0-….json
+{ "entered_at": "2026-08-24T09:22:12Z", … }  ← lane-FIVE's registration instant
 ```
 
-The join therefore comes up empty-handed or holding another session's record until
-`SPEC-KANBAN-RECORD-SESSION-KEY-001` lands. The "no new state file" half of the old claim
-survives: nothing in this SPEC introduces one.
+For `lane-5` the join **completes** — and returns a record describing a different lane, identifiable
+only because the two `entered_at` values are each other's registration instants. That is the failure
+this SPEC's consumer must survive, and it is worse than an empty lookup: an empty lookup renders as
+"unresolved", while a completed lookup renders a confident wrong row. `lane-10` shows the empty case
+in the same measurement.
+
+The identifiers above are live and will age out. What does not age out is the property: **the record's
+key is not a function of the session it describes**, so a consumer cannot tell a correct hit from an
+incorrect one. `SPEC-KANBAN-RECORD-SESSION-KEY-001` is what makes the key a function of that session;
+until it lands, this SPEC's rows are unreliable rather than absent.
 
 ### A.5 Dependencies
 
@@ -170,7 +191,9 @@ producer.
 
 - **REQ-WC15-043** — The console shall resolve each registered factory lane to a session by
   joining the factory registry's recorded process identifier to the active-sessions entry
-  carrying that identifier, and shall introduce no new state file for that join. **When** a
+  uniquely carrying that identifier (REQ-WC15-047 governs the non-unique cases, which are
+  reachable on both sides of the join), and shall introduce no new state file for that join.
+  **When** a
   registered lane resolves to no session, or the resolved session has no record, the console
   shall still present that lane, carrying its lane number and an explicit unresolved marker.
 - **REQ-WC15-044** — The console shall present, for each registered factory lane, the lane
@@ -181,9 +204,13 @@ producer.
 - **REQ-WC15-046** — **When** the factory registry is absent or unreadable, the console shall
   present the factory section as carrying no registered lanes and shall not return an error
   response.
-- **REQ-WC15-047** — **When** two or more registered lanes carry the same process identifier, the
-  console shall attribute the resolved session's record to none of them and shall present each
-  affected lane with an explicit unresolved marker.
+- **REQ-WC15-047** — **When** a process identifier does not resolve to exactly one session — because
+  two or more registered lanes carry it, or because the active-sessions registry carries more than
+  one entry bearing it — the console shall attribute a record to none of the affected lanes and
+  shall present each with an explicit unresolved marker. Both sides of the join are covered because
+  neither is unique by construction: lanes may share a stale identifier in the factory registry, and
+  the session registry deduplicates by session identifier alone, so two of its entries may carry one
+  live process identifier.
 
 ### B.3 Cross-cutting
 
@@ -192,9 +219,13 @@ producer.
 - **REQ-WC15-051** — **When** a record or a telemetry snapshot written by a build predating this
   SPEC's dependencies is read, the console shall treat the absent fields as "not recorded", shall
   render the row, and shall not fail.
-- **REQ-WC15-052** — The kanban view's note banner shall state neither that model, effort, and
-  context usage are unrecorded nor that the kanban record is their producer, and shall carry a
-  translation key like every other user-visible string in the view.
+- **REQ-WC15-052** — Every user-visible explanatory string in the kanban view that today describes
+  the telemetry cells as unrecorded — the section's note banner and the not-recorded marker's
+  hover text — shall, after this change, state what a not-recorded cell now means (that this
+  session has no telemetry record yet, not that the values are unrecordable) and shall name no
+  producer that is not one. Each shall carry a translation key, like every other user-visible
+  string in the view. Removing such a string rather than correcting it does not satisfy this
+  requirement: the explanation is what stops a reader misreading an honest blank as a bug.
 
 ## §C Constraints
 
@@ -229,6 +260,7 @@ stale duplicate process identifier is reachable at render time.
 | `internal/web/viewmodel_ops.go:46` `ChainRoles` and the view model beside it | a lane collection is added **beside** the chain-role iteration, not by widening it — lanes are not chain roles |
 | `internal/web/screens.templ` kanban section | the lane section is added; the generated `screens_templ.go` follows |
 | `internal/web/screens.templ:192` note banner | its text no longer asserts the values are unrecorded and no longer names the kanban record as their producer; its empty third argument becomes a translation key (REQ-WC15-052) |
+| `internal/web/widgets.templ:122` `@missing()` hover text | `title="not recorded anywhere yet (kanban.Record extension required)"` names the same producer §A.2 measures as false, so it is falsified by this change exactly as the banner is (REQ-WC15-052). It is also hard-coded English with no translation key |
 | `internal/web/widgets.templ` | the unresolved-lane marker, if `@missing()` (`:122-124`) is not reused verbatim |
 | `internal/web/assets/i18n.js` | every new key in the `en` / `ko` / `ja` / `zh` maps (REQ-WC15-050) |
 

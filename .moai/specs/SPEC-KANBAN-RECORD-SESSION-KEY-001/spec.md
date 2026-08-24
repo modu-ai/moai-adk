@@ -54,7 +54,14 @@ like this:
 Two independent faults compose. The slot is single, so the last session to start wins it. And the
 launcher runs **before the session it launches exists**, so at that instant the slot cannot hold
 the child's identifier under any circumstances — it holds the identifier of the session that ran
-the launcher. The record is therefore filed under the **parent's** identifier, always, and the
+the launcher. The record is therefore filed under **whichever session wrote that slot last** — in
+practice the launching session, and never the launched one by design. It is not *always* the
+parent's identifier: measured on this machine, two of four live sessions carry a record under their
+own identifier, because the slot happened to hold it when some launcher ran. That is coincidence,
+not correctness, and it is the worse case rather than the better one — a consumer that finds a
+record cannot tell whether it describes the session it asked about. (One measured instance: lane-5's
+session carries a record whose `entered_at` is lane-10's registration instant, and lane-10's session
+carries none.) The key is not a function of the session the record describes, and the
 role written into it is the **child's** role.
 
 ### A.2 The consequence, measured on this machine today
@@ -74,10 +81,18 @@ One mistake breaks both ends at once: the lane has no record, and the lead's ide
 lane's record. There is no reading of this data under which a consumer recovers the truth, because
 the file name and the file's contents describe different sessions and nothing on disk says so.
 
-The identifiers above will age out as version 0.1.0's did. What does not age out is the property
-they demonstrate, and that property is what this SPEC is written against: **a registered session has
-no record under its own identifier, and a record's key names the session that launched it rather
-than the one it describes.**
+The identifiers above will age out as version 0.1.0's did — and the population they describe drifts
+faster than that. A later measurement on the same machine found four live sessions of which **two
+did** carry a record under their own identifier, so the strongest phrasing this evidence supports is
+NOT "a registered session has no record of its own". Stating it that way would make the SPEC
+falsifiable by one lucky session, and it was: lane-5's session had a record, whose `entered_at`
+(`09:25:29Z`) is lane-10's registration instant rather than its own (`09:22:12Z`).
+
+What does not drift is the property this SPEC is written against: **a record's key is not a function
+of the session the record describes.** It is a function of which session's SessionStart last wrote
+the single slot, which sometimes coincides with the launched session and usually does not. The
+coincidence is the dangerous case, not the reassuring one — a lookup that returns a record gives a
+consumer no way to tell whether the record is about the session it asked for.
 
 ### A.3 What this blocks
 
