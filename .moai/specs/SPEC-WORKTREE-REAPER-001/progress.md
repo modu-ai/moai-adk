@@ -569,3 +569,268 @@ measurement.
   It is labelled prior evidence here, but a summary that quotes "internal/cli
   green" without its `aa14918d7` anchor would convert a correct citation into an
   unattributed claim.
+
+## §E.5 Post-audit repair
+
+Four blocking findings from the sync-phase audit (`.moai/reports/t209/sync-audit.md`,
+FAIL 0.778, Functionality 0.72) were repaired test-first. F5–F12 are optional and
+were NOT touched.
+
+### Claim
+
+- **F1 (Critical) closed.** The gh-no-answer merge fallback can now recognise a
+  branch checked out in a linked worktree — the entire population the sweep
+  evaluates. The parser strips git's `+` marker as well as `*`, and skips the
+  `(HEAD detached at …)` / `(no branch)` lines. It is bound by a parser-level
+  battery plus one decision-level criterion that routes the seam through the
+  real parser, closing the test-seam blind spot that let the defect ship green.
+- **F2 (High) closed.** `worktreeLockStates` returns `(map, error)`; both
+  `clean` sweeps fail closed on an unreadable porcelain, matching
+  `prMergeCleanup` / AC-WR-016. `--merged-only` removes nothing and emits
+  `cause=lock-source-unreadable`; `--stale` keeps every tree with that cause;
+  `--stale --json` reports `anchored: "undetermined"` rather than `"no"`.
+- **F3 (High) closed.** The ignored-content decision — allowlist included —
+  moved to `internal/session` and now covers `clean --stale`, so a merged,
+  clean, unanchored tree holding only `.claude/agent-memory/` is preserved
+  instead of destroyed. `--stale --json` gains a fourth predicate, `ignored`.
+  The rule doc and its template mirror were updated to match.
+- **F4 (Medium) closed.** `isBaseBranch` has a table test plus a sweep-level
+  case; a mutation check proves the test binds the trailing-segment guard.
+
+Four commits, each naming `t209`:
+
+```
+2045acc92 fix(worktree): share the ignored-content guard with clean --stale (t209)
+90fc07845 fix(worktree): fail closed when the lock source is unreadable (t209)
+dcdab7220 test(worktree): bind the trailing-segment base guard (t209)
+69e415311 fix(cli): strip git's linked-worktree marker in the merge fallback (t209)
+```
+
+### Evidence
+
+Every fix was driven RED → GREEN. Verbatim, in order.
+
+**F1 — RED** (`go test -count=1 -run 'TestParseGitBranchMergedOutput|TestBranchMergedForCleanup_LinkedWorktreeMarker' ./internal/cli/`):
+
+```
+--- FAIL: TestParseGitBranchMergedOutput (0.00s)
+    --- FAIL: TestParseGitBranchMergedOutput/linked-worktree_marker_is_stripped (0.00s)
+        session_worktree_branchmerged_test.go:58: parseGitBranchMergedOutput("+ WT-agent-toml-dual\n") = []string{"+ WT-agent-toml-dual"}, want []string{"WT-agent-toml-dual"}
+    --- FAIL: TestParseGitBranchMergedOutput/mixed_markers_in_one_listing (0.00s)
+        session_worktree_branchmerged_test.go:58: parseGitBranchMergedOutput("* main\n+ WT-worktree-reaper\n  WT-docs-redesign\n") = []string{"main", "+ WT-worktree-reaper", "WT-docs-redesign"}, want []string{"main", "WT-worktree-reaper", "WT-docs-redesign"}
+    --- FAIL: TestParseGitBranchMergedOutput/detached_entries_are_not_branch_names (0.00s)
+        session_worktree_branchmerged_test.go:58: parseGitBranchMergedOutput("* (HEAD detached at 301841e0f)\n+ (no branch)\n  WT-real\n") = []string{"(HEAD detached at 301841e0f)", "+ (no branch)", "WT-real"}, want []string{"WT-real"}
+--- FAIL: TestBranchMergedForCleanup_LinkedWorktreeMarker (0.00s)
+    session_worktree_branchmerged_test.go:77: a branch checked out in a linked worktree must be recognised as merged; got 0
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.854s
+```
+
+**F1 — GREEN** (same command, after the parser fix):
+
+```
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.541s
+```
+
+**F1 — real-data replay.** The audit's measurement reproduced in this tree, then
+re-run against the corrected logic:
+
+```
+$ git branch --merged origin/main > /tmp/t209_merged.txt; wc -l < /tmp/t209_merged.txt
+     149
+$ grep -c '^+' /tmp/t209_merged.txt
+119
+old parser entries: 149
+old parser still '+' prefixed: 119
+new parser entries: 149
+new parser still '+' prefixed: 0
+sample new: WT-agent-toml-dual
+```
+
+**F2 — RED** (`go test -count=1 -run 'UnreadableLockSource|JSONReportsUndeterminedAnchor' ./internal/cli/worktree/`):
+
+```
+--- FAIL: TestCleanStale_UnreadableLockSourceRemovesNothing (0.00s)
+    clean_lock_unreadable_test.go:57: an unreadable lock source must remove nothing; removed [/wt/lock-unreadable]
+--- FAIL: TestCleanMergedOnly_UnreadableLockSourceRemovesNothing (0.00s)
+    clean_lock_unreadable_test.go:75: an unreadable lock source must remove nothing; removed [/wt/merged-lock-unreadable]
+--- FAIL: TestCleanStale_JSONReportsUndeterminedAnchor (0.00s)
+    clean_lock_unreadable_test.go:104: an unreadable lock source must report anchored="undetermined", got "no"
+    clean_lock_unreadable_test.go:107: keep_reason must name the cause, got ""
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/worktree	0.553s
+```
+
+The RED output is itself the harm statement: the fixture's tree was removed.
+
+**F2 — GREEN** (same command, `-v`):
+
+```
+=== RUN   TestCleanStale_UnreadableLockSourceRemovesNothing
+--- PASS: TestCleanStale_UnreadableLockSourceRemovesNothing (0.00s)
+=== RUN   TestCleanMergedOnly_UnreadableLockSourceRemovesNothing
+--- PASS: TestCleanMergedOnly_UnreadableLockSourceRemovesNothing (0.00s)
+=== RUN   TestCleanStale_JSONReportsUndeterminedAnchor
+--- PASS: TestCleanStale_JSONReportsUndeterminedAnchor (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	0.327s
+```
+
+**F3 — RED** (`go test -count=1 -run 'IrreplaceableIgnoredContent|RemovesWhenIgnoredContentIsRegenerable|UnreadableIgnoredStatusPreserves|JSONReportsIgnoredPredicate' ./internal/cli/worktree/`):
+
+```
+--- FAIL: TestCleanStale_KeepsIrreplaceableIgnoredContent (0.00s)
+    clean_ignored_content_test.go:65: a tree holding irreplaceable ignored content was removed: [/wt/memory]
+--- FAIL: TestCleanStale_UnreadableIgnoredStatusPreserves (0.00s)
+    clean_ignored_content_test.go:117: an unreadable ignored status must preserve; removed [/wt/unreadable]
+--- FAIL: TestCleanStale_JSONReportsIgnoredPredicate (0.00s)
+    clean_ignored_content_test.go:142: a tree holding irreplaceable ignored content must report ignored="yes", got "not-checked"
+    clean_ignored_content_test.go:145: the record must carry a keep_reason
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/worktree	0.659s
+```
+
+The fourth case in that battery — `RemovesWhenIgnoredContentIsRegenerable` —
+passed on the pre-repair tree, and is deliberate: it is the anti-immortality
+control, and it must still pass after the guard exists.
+
+**F3 — GREEN** (same command):
+
+```
+ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	0.566s
+```
+
+Shared predicate, bound in its new home
+(`go test -count=1 -run 'TestIrreplaceableIgnoredEntries|TestIsRegenerableIgnoredPath' ./internal/session/`):
+
+```
+ok  	github.com/modu-ai/moai-adk/internal/session	0.721s
+```
+
+Rule-doc mirror parity after the four-predicate edit:
+
+```
+$ diff -q .claude/rules/moai/workflow/worktree-integration.md internal/template/templates/.claude/rules/moai/workflow/worktree-integration.md && echo MIRROR_IDENTICAL
+MIRROR_IDENTICAL
+```
+
+**F4 — the test passed on first run**, because the predicate was already correct
+(the audit confirmed `isBaseBranch("feature/main","origin/main")` → `false`); the
+finding was that nothing bound it. A mutation check supplies the RED evidence —
+with the trailing-segment branch deleted from `isBaseBranch`:
+
+```
+--- FAIL: TestIsBaseBranch (0.00s)
+    --- FAIL: TestIsBaseBranch/local_main_against_the_remote-tracking_base (0.00s)
+        clean_base_branch_test.go:42: isBaseBranch("main", "origin/main") = false, want true
+    --- FAIL: TestIsBaseBranch/a_different_remote's_main_still_matches_on_the_trailing_segment (0.00s)
+        clean_base_branch_test.go:42: isBaseBranch("main", "upstream/main") = false, want true
+--- FAIL: TestCleanStale_KeepsWorktreeOnBaseBranch (0.00s)
+    clean_base_branch_test.go:64: a worktree on the base branch was removed: [/wt/second-main]
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/worktree	0.509s
+```
+
+**F4 — GREEN** (source restored, same command):
+
+```
+ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	0.324s
+```
+
+**Verification gate**, run at `2045acc92`:
+
+```
+$ go build ./... > .moai/state/verify/t209/f-repair-build.log 2>&1; echo "build_exit=$?"
+build_exit=0
+$ wc -c .moai/state/verify/t209/f-repair-build.log
+       0 .moai/state/verify/t209/f-repair-build.log
+$ go vet ./... > .moai/state/verify/t209/f-repair-vet.log 2>&1; echo "vet_exit=$?"
+vet_exit=0
+$ wc -c .moai/state/verify/t209/f-repair-vet.log
+       0 .moai/state/verify/t209/f-repair-vet.log
+$ GOOS=windows go vet ./... > .moai/state/verify/t209/f-repair-vet-windows.log 2>&1; echo "windows_vet_exit=$?"
+windows_vet_exit=0
+$ wc -c .moai/state/verify/t209/f-repair-vet-windows.log
+       0 .moai/state/verify/t209/f-repair-vet-windows.log
+$ go test -count=1 ./internal/session/... ./internal/cli/worktree/... > .moai/state/verify/t209/f-repair-pkgtests.log 2>&1; echo "pkg_exit=$?"
+pkg_exit=0
+$ cat .moai/state/verify/t209/f-repair-pkgtests.log
+ok  	github.com/modu-ai/moai-adk/internal/session	9.846s
+ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	7.399s
+$ go test -count=1 -run 'TestParseGitBranchMergedOutput|TestBranchMergedForCleanup_LinkedWorktreeMarker|TestPRMergeCleanup' ./internal/cli/ > .moai/state/verify/t209/f-repair-cli-targeted.log 2>&1; echo "cli_targeted_exit=$?"
+cli_targeted_exit=0
+$ cat .moai/state/verify/t209/f-repair-cli-targeted.log
+ok  	github.com/modu-ai/moai-adk/internal/cli	2.147s
+```
+
+Template neutrality / leak guard over the mirrored rule doc:
+
+```
+$ go test -count=1 -run 'Leak|Neutral|Mirror|Parity' ./internal/template/
+ok  	github.com/modu-ai/moai-adk/internal/template	7.730s
+```
+
+### Baseline-attribution
+
+Every figure above was measured in this run, in the worktree
+`/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t209`, on branch
+`WT-worktree-reaper`. The RED runs were measured at the tree state immediately
+before each fix (starting from `301841e0f`, the HEAD the audit judged); the
+GREEN runs and the verification gate were measured at `2045acc92`, the last
+repair commit. The build and both vet logs are zero bytes, which is what their
+exit-0 claims rest on; the test logs are quoted whole. The `git branch --merged
+origin/main` replay was run against this repository's live worktree population
+at this instant, and reproduces the audit's own 149 / 119 figures exactly.
+Nothing here is carried over from another package, another tree, or another
+point in time.
+
+### Gaps — what was explicitly NOT observed
+
+1. **The `internal/cli` package suite was not run in full.** The repo rule
+   forbids a local full suite, and the package alone runs ~13 minutes. Targeted
+   runs of the tests this repair touches (`TestParseGitBranchMergedOutput`,
+   `TestBranchMergedForCleanup_LinkedWorktreeMarker`, `TestPRMergeCleanup*`,
+   plus a broader `-run 'Worktree|Anchor|Ignored|Merged'` sweep) were run and
+   are green. CI owns the full-suite verdict against the PR head; the branch is
+   unpushed, so that verdict is outstanding.
+2. **The 28-criterion AC battery was not re-executed** — same reason, and the
+   same gap the audit itself recorded. F1's fix changes an implementation the
+   AC battery only reached through a swapped seam, so no criterion's expected
+   value moved; that is a reading, not a measurement.
+3. **`clean --stale` was never executed against a real repository.** All four
+   repairs are bound by fixtures with stubbed git. Running the real command
+   would prune shared worktree records, which the dispatch prohibits.
+4. **`golangci-lint` was not run** — outside the authorised command set. Only
+   `go vet` was observed.
+5. **Windows behaviour is unobserved.** `GOOS=windows go vet ./...` exits 0,
+   which proves compilation and nothing about runtime.
+6. **F5–F12 were not addressed.** They are optional and explicitly out of
+   scope, including F5 (`.moai/state` allowlisting covers this SPEC's own
+   audit-evidence store) — which means the allowlist this repair SHARED still
+   carries the classification the audit flagged, now in one place rather than
+   two.
+7. **One unrelated flake was observed and not root-caused.** In a contended
+   run, `TestHookWorktreeCreate_EchoesCreatedPath` failed with `git worktree:
+   (git killed: context deadline exceeded)` while the `internal/session` and
+   `internal/cli/worktree` suites were still finishing. It passed in isolation
+   (3.195s) and passed on re-run of the same targeted set (12.953s, against the
+   65.752s contended run). It creates a real worktree in a repository holding
+   150+ of them; nothing in this repair touches worktree creation.
+
+### Residual risk — what could still be wrong despite the above
+
+- **F1's end-to-end path is still unmeasured.** The parser is now correct
+  against real stdout and the decision-level test binds the fallback, but no
+  test drives `gitBranchMergedReal` against a live `git branch --merged` — the
+  seam that made the original defect invisible is narrowed, not removed.
+- **The shared ignored-content decision now has two callers and one allowlist.**
+  That is the point of the lift, and it also means an over-broad entry (F5)
+  now misclassifies for both sweeps at once rather than one.
+- **`clean --stale`'s check→act race is unchanged.** Classification of every
+  tree completes before any removal begins, so tree N's ignored-content and
+  anchor state were both read before trees 1..N-1 were removed. The new guard
+  inherits that window rather than closing it.
+- **The rule doc now describes a guard whose blast radius is unmeasured here.**
+  How many trees in this repository hold only regenerable ignored content — and
+  are therefore still removable — was not counted; the sibling-worktree
+  inspection that would count it is refused by the isolation guard.
