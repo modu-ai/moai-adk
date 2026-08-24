@@ -70,7 +70,7 @@ The quality gate shall produce, for every run that reaches a verdict, an executi
 When a step is executed, the quality gate shall record in the summary the wall-clock duration measured for that step's own execution.
 
 **REQ-GTA-003** (state-driven)
-While a step is not executed, the quality gate shall record in the summary the observed reason it was not executed, distinguishing a configuration-disabled step from one skipped because its tool, its config file, or its source files were absent.
+While a step is not executed, the quality gate shall record in the summary the observed reason it was not executed, distinguishing each of the five paths by which the gate skips a step: (a) the step is turned off by configuration; (b) the step is optional and its binary is absent from PATH; (c) none of the step's named config files exist; (d) no staged file matches the step's declared extensions; (e) the project holds no source file of the step's declared source extensions.
 
 **REQ-GTA-004** (capability gate)
 Where a step's command is resolved to a substitute before execution, the quality gate shall name in the summary the command that was actually executed rather than the step as configured.
@@ -145,10 +145,27 @@ Enumerated in `acceptance.md`, together with the mutant analysis required for ea
 
 ## §E Traceability
 
-| Axis | REQs | ACs | Milestone |
-|------|------|-----|-----------|
-| 1 — report what ran | REQ-GTA-001 … 007 (7) | AC-GTA-001 … 007 (7) | M1 |
-| 2 — enforce the timeout | REQ-GTA-008 … 011 (4) | AC-GTA-008 … 010 (3) | M2 |
-| 3 — serialize manual runs | REQ-GTA-012 … 016 (5) | AC-GTA-011 … 016 (6) | M3 |
+Per-requirement, not per-range. Two axes are non-1:1 (axis 2 is 4 REQs → 3 ACs, axis 3 is 5 REQs → 6 ACs), so a range-level table would leave a run-phase reader to re-derive which criterion discharges which requirement. Each AC additionally carries a `Verifies:` line naming the same mapping from the other side.
+
+| REQ | Discharged by | Axis | Milestone |
+|-----|---------------|------|-----------|
+| REQ-GTA-001 | AC-GTA-001 | 1 | M1 |
+| REQ-GTA-002 | AC-GTA-002 | 1 | M1 |
+| REQ-GTA-003 | AC-GTA-003 (five fixtures, one per skip path) | 1 | M1 |
+| REQ-GTA-004 | AC-GTA-004 (three fixtures, one per resolution tier) | 1 | M1 |
+| REQ-GTA-005 | AC-GTA-005 | 1 | M1 |
+| REQ-GTA-006 | AC-GTA-006 | 1 | M1 |
+| REQ-GTA-007 | AC-GTA-007 | 1 | M1 |
+| REQ-GTA-008 | AC-GTA-008 | 2 | M2 |
+| REQ-GTA-009 | AC-GTA-009 (group-signal branch) + AC-GTA-008 Windows half (report branch) | 2 | M2 |
+| REQ-GTA-010 | AC-GTA-010, first half | 2 | M2 |
+| REQ-GTA-011 | AC-GTA-010, second half | 2 | M2 |
+| REQ-GTA-012 | AC-GTA-011 (non-overlap conjunct) + AC-GTA-012 (notice conjunct) | 3 | M3 |
+| REQ-GTA-013 | AC-GTA-013 | 3 | M3 |
+| REQ-GTA-014 | AC-GTA-014 | 3 | M3 |
+| REQ-GTA-015 | AC-GTA-015 ("shall not fail") + AC-GTA-013's upper bound ("shall not block without bound") | 3 | M3 |
+| REQ-GTA-016 | AC-GTA-016 | 3 | M3 |
+
+No requirement is uncovered and no criterion is orphaned. AC-GTA-010 is the one genuine merge; its two halves stay separable so a failure attributes to REQ-GTA-010 or REQ-GTA-011 rather than to the pair.
 
 Tier M budget: 16 requirements and 16 acceptance criteria. This SPEC carries exactly 16 of each — at the ceiling, not over it. Two requirements are stated as GEARS compound clauses (REQ-GTA-009, REQ-GTA-012) rather than split, which is what keeps the count at budget without dropping any obligation.

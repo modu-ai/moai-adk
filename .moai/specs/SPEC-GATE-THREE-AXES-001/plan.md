@@ -49,7 +49,7 @@ The card's premise that `internal/kanban/board_lock.go` consumes `internal/lockf
 | API | `Lock` / `Unlock` only (`internal/lockfile/lockfile_unix.go:23-30`) | acquire with a contention sentinel, `Release` |
 | Contention | `syscall.Flock(fd, LOCK_EX)` — **blocking**, no `LOCK_NB` | `LOCK_EX\|LOCK_NB`, returns `ErrSpecCloseLockHeld` immediately (`internal/spec/lock_unix.go:36-38`) |
 | Windows | in-process mutex, documented as offering **no** cross-process protection | atomic `O_CREATE\|O_EXCL`, genuinely cross-process (`internal/spec/lock_windows.go:80-102`) |
-| Holder identity | none | PID recorded in the artifact |
+| Holder identity | none | Windows impl only (`lock_windows.go:86` writes `pid=%d`); the Unix path opens `O_CREAT\|O_RDWR` and flocks, recording nothing (`lock_unix.go:31-40`). `board_lock.go` layers identity on **both** platforms via `BoardLockOwner{PID, CreatedAt}` (`board_lock.go:50-53`) |
 
 A bounded wait cannot be built on a blocking primitive without a goroutine and a channel race around a syscall that has no cancellation — and on Windows it would serialize nothing at all across processes, which is precisely where two `moai gate` shells collide. The try-semantics substrate gives a bounded wait its natural form: attempt, sleep briefly, attempt again, until the budget expires.
 
@@ -74,8 +74,10 @@ Ordered so the self-contained change lands first and each execution-model change
 Satisfies REQ-GTA-001 … REQ-GTA-007. Verified by AC-GTA-001 … AC-GTA-007.
 
 1. Introduce the per-step record and the accumulator in `Run` (A.1), seeded from the toolchain before the first step executes.
-2. Return the observed facts from `runStep` — replacing the `(true, "")` collapse at `gate.go:1020-1022` — and thread them through `executeStep`. Each of `executeStep`'s five early-return skip paths (`gate.go:777-816`) must report *which* skip it took, per REQ-GTA-003.
-3. Record the resolved command for the substituted Node test step (`gate.go:676-700`), per REQ-GTA-004.
+2. Return the observed facts from `runStep` — replacing the `(true, "")` collapse at `gate.go:1020-1022` — and thread them through `executeStep`. Each of `executeStep`'s five early-return skip paths must report *which* skip it took, per REQ-GTA-003, which now enumerates all five: `DisabledSteps` (`gate.go:778-780`), optional-binary `LookPath` (`:782-786`), `configFiles` absent (`:787-789`), `changedExts` no staged match (`:793-801`), `sourceExts` no source (`:806-816`).
+
+   The `changedExts` path is conditional in a way the fixture must respect: it skips only when the staged-file lookup succeeded, and runs the step conservatively when `staged` is nil (`gate.go:796-800`) — which is what happens outside a git repository. Its fixture is therefore an initialized repository with at least one staged non-matching file, not a bare `t.TempDir()`. Carried in AC-GTA-003 as the fixture (d) caveat.
+3. Record the resolved command for the Node test step (`gate.go:676-699`), per REQ-GTA-004. That resolution has **three** tiers, not two — `test:run` substitution, `nodeNonWatchFlag` flag-appending (`gate.go:729-744`, keyed on `nodeScriptWatchProne` at `:752-771`), and the unchanged fallback — and the summary must name whichever form actually ran. AC-GTA-004 carries one fixture per tier with its exact `package.json` content.
 4. Fix the dropped test-step pass value at `gate.go:397-399`.
 5. Render the summary into `Run`'s existing string return, folding in — not replacing — the existing notice text (REQ-GTA-006).
 6. `internal/cli/gate.go:79-81` already prints a non-empty pass-path output, so no CLI change is expected. Confirm rather than assume.
