@@ -222,25 +222,53 @@ by branch name. The measured incident counts ("five cards", "one card") were
 deliberately written as "cards sat queued" and "one sat queued", because a
 count is a fact about this repository's history and not about a user's project.
 
-### Always-loaded budget — measured, and worth the lead's attention
+### Always-loaded budget — measured, and the stub/companion split
 
-`kanban-dispatch.md` is always-loaded, so the clauses cost every session.
+`kanban-dispatch.md` is always-loaded, so every clause costs every session. The
+file is already a stub + lazy-companion pair, and the lead ruled that the new
+doctrine follow the same convention: the binding [HARD] clauses stay in the
+stub, the rationale moves to `kanban-dispatch-detail.md` (`paths:`-scoped, so it
+is NOT always-loaded).
+
+What stayed in the stub: the cross-check obligation, the report-never-veto
+clause with its literal `confirms or withdraws`, the PR-title requirement with
+its one-line non-contradiction, the four carriers, and the scope restriction.
+Every acceptance criterion still greps against the stub.
+
+What moved to the companion: the incident narrative, the reasoning for why the
+veto reading is invisible after the fact, the "neither name can serve both
+readers" argument, the carrier precision/recall table, the inherited-commit
+worst case, and why a card token in a batch pull-request title is worse than
+none.
+
+Measured before and after the split, on this tree:
 
 ```
 $ go test ./internal/config/ -run TokenBudget -count=1 -v
-    token_budget_guard_test.go:69: always-loaded surface = 68091 tokens
-        (budget 76000, headroom 7909, 18 entries)
---- PASS: TestAlwaysLoadedTokenBudget (0.02s)
+# before the trim
+    token_budget_guard_test.go:69: always-loaded surface = 68091 tokens (budget 76000, headroom 7909, 18 entries)
+# after the trim
+    token_budget_guard_test.go:69: always-loaded surface = 67698 tokens (budget 76000, headroom 8302, 18 entries)
 ```
 
-The guard passes with 7,909 tokens of headroom. The file grew 27,777 → 30,943
-bytes (+3,166, 19 inserted lines), and the mirror grew identically.
+| | bytes | tokens | delta vs `origin/main` |
+|---|---|---|---|
+| `origin/main` baseline | 27,777 | 67,300 (surface) | — |
+| first draft | 30,943 | 68,091 | +3,166 B / +791 tok |
+| after the stub/companion split | 29,368 | 67,698 | **+1,591 B / +398 tok** |
 
-**Flag, not a blocker:** a separate card carries an always-loaded ratchet whose
-target is materially tighter than the live 76,000 budget. This card's +3,166
-bytes consume headroom that ratchet is counting on. Nothing here is over any
-enforced budget, and the two changes have not met in one tree — the lead owns
-the integration-order call.
+The cost is halved and the rationale is preserved rather than deleted — the
+companion grew by the text the stub gave up, and the companion is not
+always-loaded.
+
+**Measurement provenance (the lead asked for the command, not the number).**
+The figure is `internal/config` `measureAlwaysLoaded`, whose surface is: every
+`.claude/rules/moai/**/*.md` whose frontmatter carries NO `paths:` key, sorted,
+plus four fixed slots (`CLAUDE.md`, `AGENTS.md`,
+`.claude/output-styles/moai/moai.md`, `MEMORY.md`); `MEMORY.md` is measured as
+its load head only (first 200 newlines or 25 KiB, whichever comes first) and is
+absent in this tree, so it contributes 0. Tokens are `len(bytes) / 4`. The
+enumeration is 18 entries; the per-file breakdown is in the completion report.
 
 ## §E.3 Run-phase Audit-Ready Signal
 

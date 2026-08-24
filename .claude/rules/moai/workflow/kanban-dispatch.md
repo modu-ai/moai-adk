@@ -30,11 +30,9 @@ Five columns, fixed and ordered: `backlog → plan → run → sync → done`. `
 
 [HARD] **The lead may attach a finding; it may not act on one.** Analysis runs automatically and records a relation between two cards — a near-duplicate the machine measured on `add` or `analyze`, or a `contains` / `absorbs` / `replaces` / `conflicts` the lead judged and wrote with `moai todo relate`. The record is evidence the operator reads, never a mandate: the lead never folds the related card away, never reorders the queue around it, and never drops or edits it. Analysis changes exactly one thing on its own authority — it refuses the admission of a card whose normalized text is identical to one already queued or picked, which creates no card and leaves the queue file byte-identical. Everything a finding suggests beyond that refusal is the operator's act.
 
-[HARD] **The pre-dispatch PR cross-check.** Before dispatching a card out of `backlog`, the lead reads that card's pull-request and landed state and reports what it read in the same turn — the open pull request that already carries the card, or the fact that its work is already in the integration branch. `moai todo pr <id>` answers both in one read; by hand it is a `gh pr list` plus a `git log` against the integration branch. What is reported is what was read, per § Completion is read, never trusted: an unchecked card is a gap, not a clean card.
+[HARD] **The pre-dispatch PR cross-check.** Before dispatching a card out of `backlog`, the lead reads that card's pull-request and landed state and reports what it read in the same turn. `moai todo pr <id>` answers both; by hand it is `gh pr list` plus a `git log` against the integration branch. An unchecked card is a gap, not a clean card (§ Completion is read, never trusted).
 
-[HARD] **The cross-check reports; it never vetoes.** Where a card turns out to carry an open pull request, or to be already landed, the lead surfaces that to the operator and the operator **confirms or withdraws** the card. The lead does not withhold the dispatch on its own authority. The operator has already picked this card, and promotion is the operator's act, always — a lead that refuses a picked card because it found something has overridden an operator act rather than informing one. Hand the decision back; the check produces evidence, never authority.
-
-The failure this closes was not a lead that looked and misread. It was that nothing required looking: cards sat queued while each already carried an open pull request, and one sat queued while its fix was already an ancestor of the integration branch — discovered only after a lane had started, which cost the whole lane.
+[HARD] **The cross-check reports; it never vetoes.** Where the card carries an open pull request or is already landed, the lead surfaces that and the operator **confirms or withdraws** it. The lead never withholds a picked card on its own authority — promotion is the operator's act, always. Why the wording is the only available control, and the incident it closes: `kanban-dispatch-detail.md` § The pre-dispatch cross-check.
 
 ## Report milestones ↔ queue cards
 
@@ -172,18 +170,9 @@ The **worktree directory keeps the card id** (`.claude/worktrees/<card-id>`). On
 
 A lane that reports a branch name without also reporting its card id has not reported the card. Merges reference the `WT-` name; the lead maps it back through the `card:` field it dispatched.
 
-[HARD] **A card-delivering pull request's PR title MUST carry the delivering card id — and this does not contradict the branch-name rule above.** The two clauses give different jobs to different names, so a reader meeting both cold should not suspect a conflict: the branch name is read by a human scanning `git branch`, and wants a descriptive slug; the PR title is read by a machine resolving cards to pull requests, and wants the id. Neither name can serve both readers, which is why the id leaves one and lands on the other.
+[HARD] **A card-delivering pull request's PR title MUST carry the delivering card id** — and this does not contradict the branch-name rule above: the branch name is read by a human scanning `git branch` and wants a slug; the PR title is read by a machine and wants the id. Traceability therefore rests on **four** carriers rather than the three above — the dispatch `card:` field, the commit message, the evidence path, and the PR title, the only machine-readable one.
 
-Traceability therefore rests on **four** carriers rather than the three above, and the PR title is the only machine-readable one:
-
-- the dispatch's `card:` field — the address the lead sent;
-- the card id in every commit message on the branch — `git log` recovers the card without the branch name;
-- the card id in the evidence path;
-- the card id in the **PR title** of the pull request that delivers the card.
-
-The obligation binds card-delivering pull requests only. A release pull request, a batch pull request rolling several cards up, and a maintenance pull request that delivers no card carry no card id and no obligation — a card token in such a title would name a card the pull request does not deliver, which is worse than no token. The clause binds pull requests opened after it lands; open and already-merged pull requests are not retitled.
-
-The fix for ambiguous card-to-pull-request parsing is a naming convention, not a smarter parser. The title carrier is the precise one — where a token is present it names the delivering card — and it is incomplete only because nothing required it. Requiring it is what makes the resolver a lookup rather than a heuristic.
+The obligation binds card-delivering pull requests only; a release, batch, or maintenance pull request delivers no card and carries none. It binds pull requests opened after it lands — nothing is retitled. Rationale and the carrier measurements: `kanban-dispatch-detail.md` § The PR-title carrier.
 
 The lead dispatches this rather than assuming it: each instruction names the worktree and says to drive it with `git -C <path>` rather than `cd` — a `cd` inside a compound command lasts for that invocation only, so the next command silently reads the wrong tree. A companion reporting it worked in the shared checkout is a fault to report, not a detail to tidy up (rationale: `kanban-dispatch-detail.md` § Isolation rationale).
 
