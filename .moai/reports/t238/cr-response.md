@@ -214,3 +214,111 @@ way. It is recorded as a gap despite a `Merge Risk: 🟡 Moderate · up to 6a99e
 line existing whose prefix does match the head, and despite the review having
 demonstrably analyzed the new files: the two signals disagree, and the rule's
 first condition is the one that failed.
+
+---
+
+## Round 3 — review of `3486bd616`
+
+The gate condition that failed in round 2 is now met: CodeRabbit's combined
+status on `3486bd616` reads `state=success` with description `Review completed`,
+and the `Merge Risk: 🟡 Moderate · up to 3486b` prefix matches the head. Both
+conditions of the repo's CodeRabbit rule hold for the first time on this PR.
+
+One new finding, accepted.
+
+**N4 (Minor) — the redaction notice over-claimed.** The notice added in round 2
+said command output was verbatim "except for three values" and that "no other
+byte was altered". That is false: some quoted blocks also abbreviate a long
+argument or path for width — the SPEC directory shown as `.moai/specs/.../`, the
+multi-file `grep` argument list shown as `<5개 문서>`, per-run `t.TempDir()` roots
+shown as `/var/folders/.../`, and long subtest paths shown as `--- PASS: .../`.
+An evidence notice that overstates its own fidelity is the same defect class as
+an unobserved claim, so it is worth fixing rather than waving through as
+cosmetic.
+
+Fixed at the root where possible and by disclosure where not:
+
+- `.moai/specs/.../progress.md` was restored to the full
+  `.moai/specs/SPEC-CODEX-SESSION-MSG-001/progress.md` (4 occurrences). That
+  path carries no workstation identity, so abbreviating it bought nothing.
+- The remaining elisions are genuinely width-driven, so each report's notice now
+  states its scope explicitly: the workstation substitutions are what the notice
+  covers, and the `...` elisions are of an INVOCATION or a PATH, never of a
+  result. No PASS/FAIL verdict, count, line number, or error string was
+  shortened anywhere.
+
+---
+
+## Round 4 — the 2026-08-23 batch, never addressed
+
+Triage of all 34 inline comments by timestamp showed the card's original scope
+(17 comments, 2026-08-24 13:06) was only part of the picture: a batch of **13
+from 2026-08-23 was still open**, verified one by one against the current tree.
+Eight were code, five were documents; one was rejected.
+
+### Three substantive defects, each reproduced before acceptance
+
+**K1 — `Poll` discarded a committed claim.** After the mailbox lock released,
+a heartbeat write failure returned `PollResult{}, err` — but the pending→claimed
+move was already on disk with its `ClaimedAt` stamp. The caller got an empty
+result and an error while real messages sat invisible until the 10-minute claim
+TTL redeemed them. `Send` had the same shape: the envelope was written, yet the
+caller got `("", err)` and a retry would double-send. The heartbeat is a
+best-effort side effect, not part of the claim transaction; both now return the
+committed result and let a stale `lastHeartbeat` self-heal on the next call.
+
+**K2 — claim order was effectively random.** `listEnvelopes` reads with
+`os.ReadDir`, i.e. lexical filename order, and filenames are
+`msg-<random hex16>`. With `DefaultSessionMsgPollBatch = 16`, a mailbox holding
+more than 16 pending messages returned a random subset rather than the oldest.
+Now sorted by `SentAt` with a `MessageID` tiebreak before the ceiling applies.
+REQ-CSM-006 specifies the ceiling but is silent on ordering, so FIFO is a
+defensible interpretation rather than a stated requirement — recorded as such.
+
+**K3 — `data` parts had no size ceiling.** Text was bounded at 65536 bytes;
+`len(p.Data)` was never checked, so an arbitrarily large payload validated and
+persisted. This is in scope where the separately-rejected pending-depth cap was
+not: REQ-CSM-005 already requires the broker to validate a body-size ceiling, so
+this is an unimplemented part of an existing requirement, not new policy.
+
+Also fixed: `os.IsNotExist` → `errors.Is(err, fs.ErrNotExist)` at 13 sites
+(the old form does not unwrap), a package global mutated without `defer`
+restore, an unchecked type assertion that would panic and abort a whole package
+run, and missing handler coverage for the optional `data` argument.
+
+### Two findings where following the review would have made things worse
+
+**"Change the catalogue count from 21 to 25."** Counted directly: the families
+table lists exactly 21 tools, the session-messaging subsection adds 4, total 25
+— matching both the document header and `catalog.go`. Changing 21 to 25 would
+make the heading wrong about the table it labels. The number was right; the
+label was ambiguous, so only the label changed.
+
+**"Copy the provenance line into the template mirror."** Rejected. That line
+carries a SPEC ID, and SPEC IDs are a forbidden content class in
+`internal/template/templates/**` (C1). The mirror's omission is deliberate
+neutralization, not drift. Side observation worth recording: the leak guard's
+pattern matches specific prefixes (`SPEC-V3R6-` and siblings) and would NOT have
+caught `SPEC-CODEX-SESSION-MSG-001` — the doctrine is broader than its guard.
+
+Documents: `research.md`'s comparison table had 3 cells in two rows against a
+4-column header (axis and content were merged); split so all five rows carry 4.
+`spec.md` REQ-CSM-008 claimed the lazy sweep runs "at any broker call" while
+only `Poll` sweeps — reworded to name `Poll` as the sweep point and to state the
+consequence honestly (a non-polling receiver's expired files persist until its
+next poll, which is a delay bounded by that poll, not indefinite retention).
+
+### Round-4 gap — one unreproduced failure
+
+The first `go test ./internal/sessionmsg/ -race` run after the lane finished
+reported FAIL, and its output was NOT captured. Fifteen subsequent runs (one
+`-count=10` and five separate processes) all passed, and `go vet`, which
+compiles tests, is clean.
+
+The timeline offers an explanation: that run started BEFORE the lane's idle
+signal, so it likely observed a half-written tree mid-edit — the lane's own
+report carries RED evidence for exactly the tests that would have been failing
+at that moment. **That is a hypothesis, not a demonstration.** The failure was
+not reproduced, and a not-reproduced concurrency failure is not a fixed one.
+Recorded here so a later recurrence is read against this note rather than as a
+first sighting.

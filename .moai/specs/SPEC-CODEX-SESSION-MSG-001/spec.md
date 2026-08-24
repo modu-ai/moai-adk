@@ -113,7 +113,7 @@ tier: L
 
 **REQ-CSM-007** (State-driven) **While** claimed 메시지가 확인(ack) 없이 클레임 TTL(defaults.go)을 넘겼으면, 브로커는 다음 스윕에서 그 메시지를 pending으로 환원해야 한다 — 수신 세션이 도중에 죽어도(P4: Codex에는 정리 훅이 없다) 메시지가 소실되지 않는다.
 
-**REQ-CSM-008** (State-driven) **While** pending 또는 claimed 메시지의 수명이 메시지 TTL(defaults.go)을 넘겼으면, 브로커는 그것을 삭제해야 한다(지연 스윕 — 임의의 브로커 호출 시점에 정리).
+**REQ-CSM-008** (State-driven) **While** pending 또는 claimed 메시지의 수명이 메시지 TTL(defaults.go)을 넘겼으면, 브로커는 그것을 삭제해야 한다(지연 스윕). **스윕 지점은 `session_msg_poll`이다** — `send`는 새 엔벨로프를 적재하고 발신자 하트비트만 갱신하며 수신자 사서함을 스윕하지 않는다. 따라서 폴하지 않는 수신자의 만료분은 그 사서함을 다시 폴할 때까지 남는다(무기한 방치가 아니라 **다음 폴까지 지연**이며, 사서함 소유자만이 그 지연의 당사자다).
 
 **REQ-CSM-009** (Ubiquitous) 브로커의 모든 상태 전이는 에이전트별 자문적 록(`internal/session`의 록 패턴 참조)과 `internal/atomicfile` 쓰기로 수행해야 하고, 서로 다른 세션에서 온 동시 `send`·`poll`·`ack` 하에서도 메시지가 분실·중복 손상되지 않아야 한다.
 

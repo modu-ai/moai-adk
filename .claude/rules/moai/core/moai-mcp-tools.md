@@ -58,7 +58,7 @@ it as the working directory it reviews in, and the GLM path uses it to collect
 the diff it sends to z.ai. Passing it is what keeps the two secondary opinions
 about the same tree.
 
-## Tool families (21 tools)
+## Tool families (21 of the 25 tools; the session-messaging family follows below)
 
 | Family | Tools | Wired consumers |
 |---|---|---|

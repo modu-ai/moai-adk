@@ -3,8 +3,12 @@
 > **Redaction notice (pre-merge).** Command output in this report is verbatim except for
 > three workstation-specific values, replaced with placeholders so the committed evidence
 > discloses no developer or host identity: the absolute worktree path → `<repo>/.claude/worktrees/t187`,
-> the process id → `<pid>`, and the hostname → `<host>`. No other byte was altered — SHAs,
-> timestamps, counts, and exit codes are as observed.
+> the process id → `<pid>`, and the hostname → `<host>`. Every observed VALUE — SHAs,
+> timestamps, counts, line numbers, and exit codes — is as measured.
+> Scope note: this notice covers the workstation-value substitutions only. Some command
+> lines in this report additionally abbreviate a long argument for width (e.g. the file
+> list of a multi-file `grep` shown as `<5개 문서>`, and the absolute-path regex shown as
+> `<abs-path-pattern>`); those are elisions of the INVOCATION, never of a result.
 
 
 카드 t238. PR #1606 (SPEC-CODEX-SESSION-MSG-001) CodeRabbit 지적 7건 + 확장 1건에 대한 문서 수정.
@@ -40,10 +44,10 @@ D1-D8 전부 수정 완료. 커밋하지 않았다(오케스트레이터 몫).
 ```text
 $ grep -noE '<abs-path-pattern>' <5개 문서>
 .moai/reports/t187/verdict.md:95:<repo>/.claude/worktrees/t187
-.moai/specs/.../progress.md:132:<repo>/.claude/worktrees/t187
-.moai/specs/.../progress.md:140:<repo>/.claude/worktrees/t187
+.moai/specs/SPEC-CODEX-SESSION-MSG-001/progress.md:132:<repo>/.claude/worktrees/t187
+.moai/specs/SPEC-CODEX-SESSION-MSG-001/progress.md:140:<repo>/.claude/worktrees/t187
 
-$ grep -noE '"pid":[0-9]+|<host>' .moai/specs/.../progress.md
+$ grep -noE '"pid":[0-9]+|<host>' .moai/specs/SPEC-CODEX-SESSION-MSG-001/progress.md
 140:"pid":<pid>
 140:<host>
 ```
@@ -51,7 +55,7 @@ $ grep -noE '"pid":[0-9]+|<host>' .moai/specs/.../progress.md
 수정 후:
 
 ```text
-$ grep -n "<user-home>\|27305\|<host>" .moai/specs/.../progress.md
+$ grep -n "<user-home>\|27305\|<host>" .moai/specs/SPEC-CODEX-SESSION-MSG-001/progress.md
 rc=1   (매치 없음)
 $ grep -n "worktrees/t187" .moai/reports/t187/verdict.md
 3:Card: t187 · Branch: `WT-codex-session-msg` · Worktree: `.claude/worktrees/t187`

@@ -3,8 +3,13 @@
 > **Redaction notice (pre-merge).** Command output in this report is verbatim except for
 > three workstation-specific values, replaced with placeholders so the committed evidence
 > discloses no developer or host identity: the absolute worktree path → `<repo>/.claude/worktrees/t187`,
-> the process id → `<pid>`, and the hostname → `<host>`. No other byte was altered — SHAs,
-> timestamps, counts, and exit codes are as observed.
+> the process id → `<pid>`, and the hostname → `<host>`. Every observed VALUE — SHAs,
+> timestamps, counts, line numbers, and exit codes — is as measured.
+> Scope note: this notice covers the workstation-value substitutions only. Some quoted
+> output additionally elides a long path segment for width, shown as `...` (per-run
+> `t.TempDir()` roots such as `/var/folders/.../001/victim.json`, and long subtest paths
+> such as `--- PASS: .../user_role`). Those are elisions of a PATH, never of a result:
+> no PASS/FAIL verdict, count, or error string was shortened.
 
 
 **Baseline-attribution (global).** All measurements were taken in the worktree
