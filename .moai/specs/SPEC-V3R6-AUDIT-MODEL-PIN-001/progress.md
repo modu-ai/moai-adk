@@ -454,4 +454,33 @@ _<pending run-phase completion>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-24
+sync_commit_sha: "pending-backfill-sync"   # D3 self-reference exemption — a commit cannot know its own SHA; backfilled after the PR merges (lead owns the implemented → completed transition + this backfill)
+sync_status: implemented-pending-merge
+b12_self_test_a: pass   # grep -c 'SPEC-V3R6-AUDIT-MODEL-PIN-001' CHANGELOG.md → 0 (pre-emission, rc=1) — no duplicate entry
+b12_self_test_b: pass   # acceptance.md §D distinct AC count = 8 (AC-AMP-001..008, §D.1 severity table rows); the grep's 9th token AC-MTP-032 is the AC-AMP-006 heading's "closes AC-MTP-032b" cross-reference, not a §D AC
+b12_self_test_c: pass   # every CHANGELOG-claimed surface verified on disk (4x docs-site/content/{ko,en,ja,zh}/advanced/config-sections.md, internal/cli/mcp_glm.go, internal/template/templates/.moai/config/sections/workflow.yaml, .moai/config/sections/workflow.yaml)
+changelog_entry_position: "[Unreleased] — first entries (Added x2 + Fixed x1); no version stamp"
+frontmatter_status_transitions:
+  in_progress_to_implemented: this-sync-commit   # spec.md frontmatter status: only (updated: already 2026-08-24 from the AC amendment)
+  implemented_to_completed: deferred-post-merge   # lead-owned, after PR merge
+docs_site_scope_decision: minimal-4-locale-addition   # config-sections.md enumerates workflow.yaml keys (## workflow.yaml — branch_guard pre-existing) → audit block is a legitimate minimal mention; new ## workflow.yaml — audit section x4 locales, +1 H2 each (parity 9/9/9/9)
+```
+
+**Sync-phase verification (command + rc + verbatim tail, this tree @ pre-commit HEAD dc14a5e24 + the working-tree edits above):**
+
+- `go vet ./internal/config/ ./internal/cli/ ./internal/web/` → **rc=0**, no output.
+- `moai spec lint .moai/specs/SPEC-V3R6-AUDIT-MODEL-PIN-001/spec.md` → **rc=0**, tail verbatim:
+  `✓ No findings — all SPEC documents are valid`
+- `hugo -s docs-site --minify --gc` → **rc=0**, tail verbatim: `Cleaned      │   0 │   0 │   0 │   0` / `Total in 10808 ms`; `grep -ci 'WARN\|ERROR'` over the build log → **0** (rc=1, no matches); `test -f docs-site/public/sitemap.xml` → **rc=0**.
+- URL blacklist (edited pages): `grep -rn 'docs\.moai-ai\.dev\|adk\.moai\.com\|adk\.moai\.kr' <4x config-sections.md>` → **rc=1** (no matches; only adk.mo.ai.kr is valid).
+- Mermaid direction: `grep -rn 'flowchart LR\|graph LR\|flowchart RL\|graph RL' docs-site/content/` → **rc=1** (no matches; no diagrams added).
+- 4-locale section parity (edited pages): `grep -rc '^#\{2,\} '` → ko=9, en=9, ja=9, zh=9 (each +1 for the new audit H2 — balanced).
+- Body-emoji (edited pages): `grep -rnP '[\x{1F300}-\x{1FAFF}...]' <4x config-sections.md>` → **rc=1** (no matches).
+
+**Residual-risk / Gaps (VCI §3.4-3.5):**
+
+- `sync_commit_sha` is a pending-backfill placeholder per the D3 exemption — resolves only after the commit lands (lead's post-merge step).
+- Version-sync (verify §6) not re-run: no version display was touched by this sync (CHANGELOG `[Unreleased]` carries no stamp by dispatch instruction).
+- A duplicate placeholder `## §E.3 Run-phase Audit-Ready Signal` heading (`_<pending run-phase completion>_`) sits directly above this §E.4 block — a run-phase artifact left in place (manager-develop's surface, not edited here); harmless to era classification (both §E.3 headings match the same marker).

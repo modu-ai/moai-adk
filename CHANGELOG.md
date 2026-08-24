@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Audit-backend model+effort pinning via `workflow.audit`.** The cross-model audit backends
+  (`codex_audit`, `glm_audit`, `audit_multi`) never controlled what they ran on: the codex leg
+  resolved the SSOT sync-auditor cell, dropped it at the codex-servability prefix filter, and
+  shipped no model — leaving `~/.codex/config.toml` to decide; the GLM leg resolved a model id but
+  had no field to carry an effort. `workflow.audit.codex` and `workflow.audit.glm` now take
+  `{model, effort}` pairs (pin > SSOT cell > legacy fallback), reaching both codex transmission
+  seams (`thread/start` model, `turn/start` model+effort) and the z.ai request body — where live
+  measurement selected the top-level `reasoning_effort` field as the one the endpoint honors (the
+  thinking-budget object measured a true null). The pin is audit-scoped — `codex_task` and
+  `glm_task` resolutions are unchanged — and the template ships empty defaults, so a project that
+  never writes a pin sees nothing. GLM effort accepts exactly the z.ai state names `low`/`high`/
+  `max`; any other value drops the reasoning directive while the model pin still applies.
+- **The web console's Audit panel exposes the four pin fields** with typed inputs, a glm-effort
+  select limited to `{low, high, max}`, runtime-applied help text, and labels in all four console
+  locales.
+
+### Fixed
+
+- **`parseGLMReview` reads the first TEXT content block, not `Content[0]`.** Under a delivered
+  reasoning directive z.ai prefixes the response with thinking content blocks whose payload lives
+  in `thinking`, not `text` — the blind `Content[0]` read failed open to `inconclusive` while a
+  complete review sat in the next block.
+
 ## [3.1.3] - 2026-08-24
 
 ### Summary

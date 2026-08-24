@@ -2,7 +2,7 @@
 id: SPEC-V3R6-AUDIT-MODEL-PIN-001
 title: "Pin cross-model audit backend model+effort via the workflow.audit config block"
 version: 1.1.0
-status: in-progress
+status: implemented
 created: 2026-08-24
 updated: 2026-08-24
 author: manager-spec

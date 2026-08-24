@@ -176,6 +176,29 @@ workflow:
 
 Work that needs a different branch belongs in a worktree rather than behind a refusal. For the procedure see [moai worktree](/en/cli-reference/worktree/).
 
+## workflow.yaml — audit
+
+Pins which model and effort the cross-model audit backends (`codex_audit`, `glm_audit`, `audit_multi`) actually run on. Each backend takes one `{model, effort}` pair, and the distributed defaults are empty.
+
+```yaml
+workflow:
+    audit:
+        codex:
+            model: ""   # e.g. gpt-5.6-sol — a codex-servable model id
+            effort: ""  # e.g. high — low | medium | high | xhigh | max
+        glm:
+            model: ""   # e.g. glm-5.3
+            effort: ""  # e.g. max — low | high | max (z.ai reasoning-state names)
+```
+
+| Key | Description |
+|-----|-------------|
+| `audit.codex.{model, effort}` | The pair the codex audit carries on session start and review turns. An empty model, or one codex cannot serve, discards the pin and falls back to the existing SSOT resolution |
+| `audit.glm.{model, effort}` | The pair the GLM audit carries on the z.ai request. Effort accepts only the z.ai reasoning-state names `low`, `high`, `max`; any other value drops the reasoning directive while the model pin still applies |
+| Both pairs empty | The resolvers behave exactly as before this key existed — a project that never writes a pin changes nothing |
+
+The pin applies to the audit entry points only. Model resolution on the task-delegation paths (`codex_task`, `glm_task`) is unaffected, and the same fields are editable in the web console's Audit panel.
+
 ## crosssession.yaml — cross-session messaging
 
 Decides how this session treats messages from your other Claude Code sessions. The `moai cc` · `moai glm` · `moai cg` launchers translate these values into a transient `--settings` file at launch, and the web console edits this file through the settings seam. A session launched without the launcher — a bare `claude` command — does not read this file.
