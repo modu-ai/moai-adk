@@ -21,9 +21,13 @@ func TestLauncherWritesNoKanbanRecord(t *testing.T) {
 		t.Fatalf("MkdirAll: %v", err)
 	}
 	// A pre-existing record, so "no addition" is distinguishable from "no
-	// directory at all".
-	existing := kanban.NewRecord("pre-existing", "", kanban.BackendClaude).WithRole(kanban.RoleLead)
-	if err := kanban.Write(root, existing); err != nil {
+	// directory at all". Seeded as bytes rather than through the package
+	// writer: AC-KRS-003(a) greps internal/cli for a record write and requires
+	// zero hits, and a test that called the writer would be one.
+	if err := os.WriteFile(filepath.Join(recordDir, "pre-existing.json"),
+		[]byte(`{"session_id":"pre-existing","spec_id":"","role":"lead","backend":"claude",`+
+			`"entered_at":"2026-08-23T17:47:22Z","deepscan_dir":"","verify_reentries":0}`+"\n"),
+		0o600); err != nil {
 		t.Fatalf("seed: %v", err)
 	}
 	// The single slot holds an identifier the pre-change writer would have

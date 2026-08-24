@@ -463,7 +463,8 @@ func captureEnvState(key string) func() {
 // launcher cannot key a record correctly under any implementation: the
 // identifier it would need belongs to a process that does not exist yet, so
 // the pre-change write landed under whichever session last wrote the
-// project-wide .moai/state/current-session-id.txt slot — in practice the
+// project-wide single-identifier sidecar slot (card t221's surface, untouched
+// by this change) — in practice the
 // LAUNCHING session, and never the launched one by design. The record is now
 // written by the session's own SessionStart, the first actor that holds the
 // described session's identifier (SPEC-KANBAN-RECORD-SESSION-KEY-001
