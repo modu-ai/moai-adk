@@ -550,12 +550,39 @@ E5   $ golangci-lint run --timeout=2m ./internal/constitution/...
 - 리터럴 체크는 발생 횟수가 아니라 **적중 라인 수**(`grep -F -c` 동등)를 센다 — M1 측정과 동일 체계이며 acceptance AC-ZRR-002 판정 규격(`grep -F -c`)과 일치한다.
 - R1/R4 같은 clause 변이에서 DRIFT Fatalf 가 literal 체크보다 먼저 서브테스트를 종료시키므로 버킷 라인은 R3(에러가 Errorf 로 기록되는 anchor 변이) 출력에서 관측된다 — 두 층(validator / 독립 literal)이 각각 단독으로 변이를 잡을 수 있는 구조는 유지된다.
 
-#### 7. 커밋
+#### 7. 커밋 (M2 범위)
 
 - `49630cba2` — 가드 본체 + CI 보조 스텝 (동시 작성자; 위 공개 참조)
 - `ca7d966fd` — 버킷 카운팅·버킷 라인 + SKIP 가드 조항·t.Setenv 양방향 서브테스트 + go.mod 워크업 루트 해석 (manager-develop)
 - `0b04f3412` — R1 fixture 런타임 파생화 (스크래치 변이 상태에서 fixture 실패 잡음 제거)
+- `9a1fbfdd2` — 본 §E.2 재관측 기록 (결함 동반: §E.3 헤딩을 실수로 삭제 — 아래 9항에서 복원)
+- `5e5cff235` — SplitSeq 채택 (동시 작성자 편집, manager-develop 검증 후 수용: go 1.26.4, 테스트·vet 통과)
+- PR #1646 생성 (`gh pr create`, base main) — M1+M2 요약 + 증거 경로
 
+#### 8. R1-CI 관측 — CI 잡 결론 (종료조건 8; 시나리오 §3, 로컬 관측과 불가 대체)
+
+PR #1646 헤드를 스크래치 변이 커밋 `a1f6622ee`(R1: CONST-V3R2-004 clause `English`→`Englishx`, 로컬 레지스트리만)로 밀어 관측했다(관측 직후 되돌림 — 최종 헤드에 변이 없음, 아래 9항).
+
+```
+$ gh pr checks 1646 --json name,state --jq '.[] | select(.name == "Test (ubuntu-latest)")'
+{"name":"Test (ubuntu-latest)","state":"FAILURE"}
+
+$ gh api repos/modu-ai/moai-adk/actions/jobs/97578539943/logs | grep -A2 TestRegistrySync   # run 32773274873, head a1f6622ee
+--- FAIL: TestRegistrySyncGuard (0.50s)
+    --- FAIL: TestRegistrySyncGuard/local (0.22s)
+        registry_sync_test.go:125: validate [local mirror]: [DRIFT] CONST-V3R2-004 @ .claude/rules/moai/development/coding-standards.md #language-policy — clause "All instruction documents must be in Englishx:" not found in source ".claude/rules/moai/development/coding-standards.md"
+--- FAIL: TestRegistrySyncMirrorsIdentical (0.00s)
+  (실패 스텝: "Run tests with coverage (fast — no race detector)" = go test ./… 차단 경로)
+```
+
+- 해당 push 에서 FAILURE 는 `Test (ubuntu-latest)` 유일(나머지 pass/skip) — `|| true`·스텝 억제가 없는 차단 경로에서 잡 결론 자체가 fail 임이 관측됐다(AC-ZRR-007 CI 축 + AC-ZRR-008). 이 관측으로 M3 섹션 6항 AC-ZRR-007 의 "CI 축 PR 시점 잔여"가 마감된다.
+- 되돌림: 최종 PR 헤드 `58178f9ec` — `git diff 5e5cff235..58178f9ec -- .claude/rules/moai/core/zone-registry.md` → 0라인(변이 잔존 없음), 로컬 가드 재초록 `ok 0.353s`.
+
+#### 9. 병렬 세션 interleave 사고 + 복구 (정직한 기록)
+
+관측 대기 중 동시 세션이 스크래치 위에 M3 증거 커밋 `a74362427`(progress.md +92줄)을 로컬에 올렸고, 이를 모르던 manager-develop 의 `git revert HEAD`가 **스크래치가 아니라 M3 커밋을 되돌려 푸시**했다(`83bd473ed`). 순간적 상태: ① M3 증거 삭제 ② 스크래치 변이가 PR 헤드에 잔존. 즉시 forward-only 복구(force-push 없음): `74455ca1d`(revert-of-revert — M3 증거 복원) + `58178f9ec`(스크래치 revert — 변이 제거) 푸시, PR 헤드 `58178f9ec` 확인. 브랜치 히스토리에 scratch→M3→revert→reapply→revert-scratch 5커밋이 남는다(최종 트리는 정상). 같은 시점에 `9a1fbfdd2`에서 §E.3 헤딩이 실수 삭제된 것도 발견·복원했다(본 커밋) — §E.3 헤딩은 era 분류가 문자열 매칭하는 parser-load-bearing 토큰이다(`spec-frontmatter-schema.md` § progress.md Section Map).
+
+## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
 
