@@ -9,6 +9,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`moai graph check` measures, per layer, how far the graph surfaces have drifted behind the
+  code they describe — and fails on it.** Three layers are gated, each by its own metric:
+  codemaps by a described-source diff against the stamped generation commit (an endpoint diff,
+  so churn that reverts counts zero), the @MX index by an inventory content diff, and
+  edges.jsonl by source-fingerprint mismatch. Every generated artifact now carries a provenance
+  block naming the tree root and commit (or dirty content fingerprint) it describes; an
+  artifact without one reports `absent` — unjudgeable, never silently fresh — and absent is a
+  distinct, failing verdict, because a fresh worktree holds none of these untracked artifacts
+  at all. No filesystem mtime is read anywhere: a fresh checkout resets every mtime, which an
+  mtime metric would misread as freshly regenerated. Exit codes are a contract — 0 all fresh,
+  1 stale or absent, 2 system error — consumed by a new advisory step in the pre-commit quality
+  gate (every posture emits a distinguishable notice: fresh, stale, disabled, unconfigured;
+  blocking is opt-in) and by a new `graph-freshness` CI job that bootstraps the untracked
+  layers to the PR head before running the check. Thresholds live in gate.yaml
+  `graph_freshness` (40 described files / 1 index file by default, calibrated from this
+  repository's own churn history). `moai graph stamp codemaps` records the codemaps provenance
+  anchor as the last step of a regeneration, and this change regenerates the repository's own
+  codemaps to current HEAD and stamps them — the first state the gate judges is fresh.
+- **`moai graph build` derives code-level edges on top of the document-level ones.** Call and
+  import edges are extracted from the source tree through the existing tree-sitter substrate,
+  now consumed outside the navigator for the first time via a dedicated `internal/graph/symbol`
+  seam that pulls no navigator-tier dependency. The layers are additive — every document edge
+  survives unchanged — and import targets are normalized to repository-local package paths
+  (the go.mod module prefix stripped) so code imports and the codemaps import graph speak the
+  same package domain. A 16-language grade matrix publishes, as data, how each language's
+  calls were resolved (name-based for the six languages with call captures today, `none` for
+  the rest — no empty cells, and a build reports any that appear). Where the two layers
+  disagree about the same relationship, neither edge is dropped: the doc edge stays with a
+  `disagrees_with` marker naming the code layer's contrary observation, and
+  `--all-disagreements` revives the suppressed direction — code-found/doc-silent local imports
+  — so a decided-not-to-report signal stays retrievable instead of hardening into
+  cannot-be-reported.
+- **Three code-query MCP tools: `graph_find_code`, `graph_trace_calls`, `graph_file_api`** (the
+  self-hosted server grows from 21 to 24 tools, all read-only-hinted). Signature-level answers
+  from the code-derived layer — a file's exported declarations with full signatures and no
+  bodies, a symbol's call sites with their resolution grades, a call-graph traversal in both
+  directions — and every answer names the tree root and commit it was computed from, so a
+  worktree session cannot mistake the primary checkout's answer for its own.
+- **Citations anchor by content, not line number.** The canonical citation form is a verbatim
+  excerpt plus the hash of the cited region, with the line number carried as convenience only,
+  and @MX tags now stamp the hash of their own source line — a lookup keyed by file and hash
+  still resolves after lines are inserted above it, and the same citation resolves in two
+  trees that carry the region at different physical lines. A line-anchored resolver returns
+  the same number in both trees and points at the wrong place in one of them.
+
 - **[SPEC-CODEX-WIRING-001](.moai/specs/SPEC-CODEX-WIRING-001/spec.md)** — sync-phase close (3-phase plan→run→sync). **`moai init --agent claude|codex|both` selects the harness at init time; a new `internal/codexwiring` package generates `.codex/hooks.json` and the `config.toml` wiring (trust guidance, `mcp_servers`, approval mode); `moai hook --harness codex` runs hooks in Codex runtime mode; and `moai doctor` gains a "Codex Wiring" diagnostic** that detects wiring divergence and self-heals a lost sidecar baseline. Run-phase commits: M1 `90439c59c` → M2 `30c1387c4` → M3 `20ec045c3` → M4 `09d34fcc0` → M5 `fdf2a0b96`. 14 acceptance criteria, counted against `acceptance.md`.
   - The default `tui.status_line` ships `model-with-reasoning`, `context-remaining`, `git-branch`, `current-dir`, and `thread-id`. Codex supports only built-in identifier arrays — no command-backed statusline — so MoAI-specific statusline items (goal/todo/SPEC state) are impossible until openai/codex#17827 resolves; this limitation is documented in all four READMEs (AC-CW-014, SHOULD — discharged in this sync phase).
   - An MCP annotation defect surfaced in plan audit is fixed alongside: the 4 audit-family tools (`audit_cache`, `codex_audit`, `glm_audit`, `audit_multi`) lacked the read-only hint their catalog classification declares; they are now correctly read-only-hinted, and the effective approval set drops from 10 to 6 on the base tree.
@@ -93,6 +138,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Documentation changed in four files, one per locale.** `advanced/moai-web-console.md` stated that model, effort and context "are not recorded yet, so they are left blank", in the chain-board paragraph and again as a principle — falsified by this change, and corrected in `en` / `ko` / `ja` / `zh` to say a blank cell means the session has no record carrying that value. The same page listed the chain board and the SPEC pipeline and did not mention the lane list at all, so one paragraph per locale was added, naming the row's fields, the unresolved marker and its reason, and the no-lane case. Left unchanged: the `cli-reference/web.md` route-table line and the README sentence, both one-line summaries that name no cell and no banner — a summary an added section does not falsify. Nothing else describes this screen's contents, and writing a page this SPEC did not require would be a worse outcome than the silence.
   - This sync commit carries the frontmatter `in-progress → implemented → completed` transition on `spec.md` (the only one of the four artifacts carrying a frontmatter block; `design.md` and `research.md` are retained reference material outside the Tier M set and were not touched), the `progress.md` §E.4 audit-ready signal including the three carried gaps, the four documentation corrections above, and this entry — zero Go changes (sync touches markdown only). The branch is unpushed, so no CI verdict exists yet. `sync_commit_sha` is a `pending-backfill-SPEC-WEB-CONSOLE-015` placeholder (self-referential-hazard workaround per `spec-frontmatter-schema.md` § SHA placeholder backfill exemption), backfilled in a follow-up commit. 🗿 MoAI
 
+- **`moai graph query` and `moai mx query` refresh stale mechanical layers before answering,
+  and every answer names its tree.** The refresh is content-hash driven — every walked file is
+  hashed, only files whose hash moved are re-parsed — so uncommitted working-tree edits are
+  reflected in the answer without a rescan. The cache is anchored per tree: an index whose
+  provenance names a different tree root is never trusted incrementally and forces a full
+  rescan, so two worktrees of one repository never share refresh state — the wrong-tree-answer
+  defect family this round produced twice. A measured-cost budget (gate.yaml
+  `update_budget_ms`, default 2000ms) warns on overrun and never blocks the answer. `moai mx
+  scan` stamps the same provenance on every write, and the curated codemaps layer is
+  deliberately never auto-rewritten at query time — its staleness is exactly the drift gate's
+  signal.
 - **The `--merged-only` and `--stale` base branch now defaults to `origin/main`, not the local
   `main`.** A local `main` behind the remote reports fewer branches as merged, so the two worktree
   sweeps disagreed about the same tree; the base is now the reference the PR-merge sweep already

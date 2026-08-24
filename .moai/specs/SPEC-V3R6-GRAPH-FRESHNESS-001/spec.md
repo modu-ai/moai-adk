@@ -2,7 +2,7 @@
 id: SPEC-V3R6-GRAPH-FRESHNESS-001
 title: "Graph layer freshness: per-layer drift gate, query-time refresh, content-addressed citations, AST symbol layer, MCP code queries"
 version: "1.1.0"
-status: in-progress
+status: implemented
 created: 2026-08-25
 updated: 2026-08-25
 author: manager-spec

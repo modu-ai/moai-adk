@@ -231,4 +231,44 @@ m5_measurement:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- sync_status: complete
+- sync_complete_at: 2026-08-25
+- sync_commit_sha: pending-backfill — the single sync commit on WT-graph-freshness cannot
+  contain its own SHA (D3 placeholder-backfill exemption); the integrating lead backfills
+- changelog_entry_position: `CHANGELOG.md` `## [Unreleased]` → `### Added` (4 entries: the
+  `moai graph check` drift-gate family + gate step + CI job + `graph stamp`; code-derived edge
+  layers; the 3 MCP code-query tools; content-addressed citations) and `### Changed`
+  (query-time refresh + per-tree anchoring + provenance on answers)
+- docs_site_sync: `docs-site/content/{ko,en,ja,zh}/cli-reference/graph.md` — `moai graph
+  check` + `moai graph stamp codemaps` sections, the build code-layers sentence, the query
+  refresh sentence; ko canonical → en/ja/zh in the same commit. No MCP tool-catalog page
+  exists on docs-site, so the 3 MCP tools carry no docs-site entry (minimal-addition rule)
+- frontmatter_status_transitions:
+  - spec.md: in-progress → implemented (this sync commit); `completed` rides the lead-side
+    close after branch integration (t82 sibling convention)
+  - plan.md / acceptance.md: no frontmatter status block — status carried on spec.md only
+- b12_self_tests:
+  - a) pre-emission `grep -c 'SPEC-V3R6-GRAPH-FRESHNESS-001' CHANGELOG.md` → `0` (rc=1) —
+    no duplicate entry
+  - b) acceptance.md distinct AC tokens → `22`; the CHANGELOG entries cite no AC counts
+    (nothing to mismatch)
+  - c) claimed paths verified by ls — `internal/graph/` (check/citation/codequery/symbol.go/
+    meta.go), `internal/graph/symbol/`, `internal/navigator/astx/queries/`, `internal/cli/`
+    (graph_check/graph_stamp/graph_refresh_cli/mcp_code_tools.go),
+    `.moai/project/codemaps/` — all present
+- sync_verification:
+  - `go vet ./internal/graph/... ./internal/mx/ ./internal/cli/` → rc=0, no output
+  - `moai spec lint .moai/specs/SPEC-V3R6-GRAPH-FRESHNESS-001/spec.md` → `✓ No findings —
+    all SPEC documents are valid`, rc=0
+  - docs-site: URL-blacklist / Mermaid-LR / body-emoji greps over the 4 changed pages →
+    0 matches each (rc=1); `hugo -s docs-site --minify --gc` → rc=0, `Total in 4969 ms`,
+    0 warn/error lines in the build log; rendered
+    `public/{ko,en,ja,zh}/cli-reference/graph/index.html` each carry the new sections
+- open_followups:
+  - `sync_commit_sha` backfill (this commit's SHA) once the lead integrates the branch
+  - graph-freshness CI job lands bootstrap-only; enabling it as a required check is an
+    operator decision (day-one posture: codemaps regenerated in this PR)
+  - `/moai codemaps` skill-side adoption of the citation canon rides the next regeneration
+    (§E.2 gap)
+  - AC-GF-022 per-task baseline gap stands as recorded in §E.2/§E.3 — the CHANGELOG makes no
+    measured-reduction claim
