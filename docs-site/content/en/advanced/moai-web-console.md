@@ -59,7 +59,9 @@ Below them, the **Kanban chain bar** shows in one line how far the current card 
 
 The Kanban area stacks two boards of different character.
 
-The **chain session board** lays the five roles out as cards and records each one's session id, backend, model, effort level, context usage and last heartbeat. The stage state is **estimated** from the heartbeat, so it carries an estimation mark; model, effort and context are not recorded yet, so they are left blank — not filling them in is the discipline.
+The **chain session board** lays the five roles out as cards and records each one's session id, backend, model, effort level, context usage and last heartbeat. The stage state is **estimated** from the heartbeat, so it carries an estimation mark; model, effort and context come from that session's own telemetry record, and a cell left blank means the session has no record carrying that value yet — not filling it in is the discipline.
+
+Beside the chain board, the **factory lanes** list gives one row per registered lane, with its session, card, SPEC and backend. A lane whose process id resolves to no session — or to more than one, on either registry — is marked **unresolved** and carries no values at all: a lookup that completes on the wrong session renders another lane's record as if it were this one's, which is worse than an empty row. When no lane is registered, the list says so.
 
 The **SPEC pipeline** lays SPECs out in four columns by status (`draft` · `in-progress` · `implemented` · `completed`). `superseded`, `archived` and `rejected` never reach this board; you see them through the filter in the Specs area.
 
@@ -116,7 +118,7 @@ One discipline shows up all over the screen.
 
 - **Session liveness** is raised to active only where the process was confirmed alive. A registry entry can outlive its process, so anything unconfirmed is marked stale.
 - **Stage state** is estimated from the heartbeat, and the fact that it is an estimate is written alongside it.
-- **Unrecorded values** (per-role model, effort and context usage) are left blank rather than filled in with something plausible.
+- **Values with no record** (per-role model, effort and context usage) are left blank rather than filled in with something plausible, and a factory lane that cannot be attributed to exactly one session is marked unresolved rather than shown carrying another lane's record.
 - **Empty lists** are not left empty; they say so. An empty panel otherwise reads as "not read yet".
 
 ## Settings — same checks, same files

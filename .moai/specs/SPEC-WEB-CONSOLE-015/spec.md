@@ -2,7 +2,7 @@
 id: SPEC-WEB-CONSOLE-015
 title: "moai web console — session telemetry cells and per-lane factory progress (consumer)"
 version: "0.3.0"
-status: in-progress
+status: completed
 created: 2026-08-24
 updated: 2026-08-24
 author: manager-spec

@@ -107,4 +107,72 @@ m1_to_mN_commit_strategy: one commit per milestone (b35a3d098, e78080458, f80bad
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-24
+sync_commit_sha: pending-backfill-SPEC-WEB-CONSOLE-015
+sync_status: complete
+b12_self_test_a: "grep -c 'SPEC-WEB-CONSOLE-015' CHANGELOG.md → 0 (rc 1, a genuine zero-match; no duplicate, emission permitted)"
+b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+[a-z]?' acceptance.md | sort -u → 15 tokens, of which AC-WC15-012 occurs once and only as the record of its own deletion (acceptance.md:7). 14 live criteria, matching the §E.2 matrix and the declared budget; the CHANGELOG entry states 14"
+b12_self_test_c: "every path named in the CHANGELOG entry verified present with ls before commit (14 paths, all present)"
+changelog_entry_position: "[Unreleased] → ### Changed, appended immediately after the SPEC-KANBAN-RECORD-SESSION-KEY-001 entry — the fourth and last of the four siblings synced on this branch"
+frontmatter_status_transitions:
+  spec.md: "in-progress → implemented → completed (updated: already 2026-08-24, the sync date — unchanged)"
+  plan.md: "n/a — carries no frontmatter block"
+  acceptance.md: "n/a — carries no frontmatter block"
+  progress.md: "n/a — carries no frontmatter block"
+  design.md: "not touched — retained reference material outside the Tier M artifact set"
+  research.md: "not touched — same; it already carries the note that spec.md supersedes it where they disagree"
+canary_compliance_check: "n/a — this SPEC defines no forward-looking policy that its own sync tests"
+```
+
+### Gaps carried forward from run-phase — still NOT observed at sync
+
+The run-phase record (§E.2 § Gaps) framed these correctly; they are carried in that framing rather
+than softened. None of the three was closed by sync, which touches markdown only.
+
+- **Coverage regression vs the pre-change tree was NOT measured.** The post-change rate is 66.8%
+  of statements for `internal/web`; the pre-change rate was never taken. What was measured instead,
+  at `f80bad4d0`: every function this SPEC adds sits well above the package rate —
+  `loadFactoryLanes` 100%, `resolveLane` 95.8%, `unresolvedLane` 100%, `readTelemetry` 85.7%,
+  `telemetryCells` 100%, `buildChain` 94.7%. **Why the substitution**: measuring the pre-change
+  rate requires a second worktree checkout of `40f064c6d`, and the lead judged that cost above the
+  benefit here and did not require it. The per-function figures bound the regression; they are not
+  the measurement the Definition of Done asks for. This is a **gap, not a pass**.
+- **The browser-side render is NOT observed.** Every render assertion reads the server's markup;
+  nothing covers `applyI18n` resolving `data-i18n-title` in a live browser. The `mark.notRecorded`
+  hover text and the four-locale key resolution are verified as data and as markup, never as
+  rendered DOM.
+- **The join is NOT observed against live production state.** Every fixture is a `t.TempDir()`
+  synthetic tree; `spec.md` §A.4's live measurement — the lane whose join completes and returns
+  another lane's record — was not re-taken after the change.
+
+### Documentation review — what was searched, found and changed
+
+**Changed: four files, one per locale.** Two sentences on the console guide page were falsified by
+this change and were corrected; one paragraph was added because the page's inventory of what the
+Kanban screen shows was now incomplete.
+
+Searched — `docs-site/content/{en,ko,ja,zh}/` and the four READMEs — for any description of the
+Kanban screen's cells or of the note banner: `kanban`, `not recorded yet`, `left blank`,
+`Unrecorded values`, `kanban.Record`, and the four-locale equivalents (`기록되지`, `아직 기록`,
+`記録されていない`, `未被记录`), plus `model` / `effort` / `context` / `lane` on the two pages that
+describe the console (`advanced/moai-web-console.md`, `cli-reference/web.md`).
+
+| Where | Finding | Action |
+|---|---|---|
+| `advanced/moai-web-console.md` § Kanban, chain-board paragraph (all 4 locales) | "model, effort and context are not recorded yet, so they are left blank" — falsified: the cells now carry the session's telemetry values | corrected; a blank cell now stated as "this session has no record carrying that value yet" |
+| same page, § "Never write down what it does not know", the *Unrecorded values* bullet (all 4 locales) | same falsified premise, restated as a principle | corrected to "values with no record", extended with the unresolved-lane rule |
+| same page, § Kanban (all 4 locales) | the page listed the chain board and the SPEC pipeline; the factory-lane list was absent | one paragraph added per locale, naming the row's fields, the unresolved marker and its reason, and the no-lane case |
+| `cli-reference/web.md:50` route table, "Chain session board plus the SPEC pipeline" | a one-line route summary, not an enumeration — not falsified by an added section | unchanged |
+| README (all 4), "The Kanban screen shows the kanban chain alongside the SPEC pipeline" | same: a summary that names no cell and no banner | unchanged |
+
+The four locale files were edited in the same change and by the same substitution, so the
+section-count parity the docs-site i18n rule requires is preserved (each file gained exactly one
+paragraph, at the same position). No template mirror exists for `docs-site/`, so `make build` was
+not run and no `catalog.yaml` regeneration applies.
+
+No page anywhere described the falsified strings themselves (`grep -rn 'not recorded yet|left
+blank|Unrecorded values'` over `docs-site/content` and the four READMEs returned only the two
+English lines corrected above; their three locale twins were found through the per-locale phrase
+search). Writing a page this SPEC did not require would be a worse outcome than the silence it
+would fill, so nothing else was added.
