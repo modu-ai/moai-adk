@@ -155,11 +155,221 @@ an intentional, tested invariant (`design.md` §D).
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Card: t209. Branch `WT-worktree-reaper`, worktree
+`/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t209`. Base `origin/main` =
+`cd0cee1b8`; plan-phase HEAD at run entry `ed002d089`.
+
+Milestone order **M2 → M1 → M3**, per the operator-approved Implementation
+Kickoff. The rationale is `plan.md` §F's ordering caveat: M1 does not create the
+data-loss path, it **amplifies** it (occasionally one tree at a time becomes
+roughly 98 in a single sweep), and the unlocked anchor is the residual — so the
+guard stands before the amplifier.
+
+### Commits
+
+| Milestone | SHA | Subject |
+|---|---|---|
+| M2 | `3f8067fb2` | lock-aware anchor guard across all three sweeps |
+| M1 | `81d8ae9a9` | three-valued merge detection |
+| M3 | `aa14918d7` | `clean --stale` inventory + `origin/main` base |
+
+### Files changed
+
+- **New**: `internal/session/anchor_lock.go` (+ test),
+  `internal/cli/session_worktree_prmerge_lock_test.go`,
+  `internal/cli/session_worktree_prmerge_merge_test.go`,
+  `internal/cli/worktree/clean_json_test.go`.
+- **Modified**: `internal/session/anchor_pid_{unix,windows}.go`,
+  `internal/cli/session_worktree_prmerge.go`, `internal/cli/worktree/clean.go`,
+  four existing test files, `.claude/rules/moai/workflow/worktree-integration.md`
+  (+ its template mirror), `.moai/config/sections/workflow.yaml`.
+
+### Two decisions taken during run, both outside what the SPEC anticipated
+
+**1. `auto_cleanup` set to `false` in this repository (M1 landing condition).**
+`plan.md` §F requires M1 to land either with the toggle off or with an
+enumerated expected-removal set. Measured at run time: this repository had
+`workflow.worktree.auto_cleanup: true`
+(`.moai/config/sections/workflow.yaml:124`), so the caveat was live rather than
+hypothetical. The first option was taken — it is reversible, and it keeps the
+first repaired sweep a deliberate act rather than a side effect of `moai session
+list`. Re-enabling is an operator decision downstream of AC-WR-023(b).
+
+**2. `isBaseBranch` added (M3).** Changing the `--stale` base default from
+`main` to `origin/main` (REQ-WR-022) silently disabled the "checked out on the
+base branch" guard, which compared a LOCAL branch name against a
+remote-tracking ref literally. A second worktree sitting on `main` would then
+have been judged by the merge predicate — which reports `main` as merged into
+`origin/main` — and become removable. Caught by the pre-existing
+`TestCleanStale_SkipsProtectedAndDetached`, which failed with
+`protected/detached/base worktrees were removed: [/wt/on-base]`. The comparison
+now also matches the base's trailing segment and errs toward keeping. **This
+hazard is not named anywhere in `spec.md`, `design.md`, or `acceptance.md`.**
+
+### One test expectation legitimately moved
+
+`TestCleanStale_KeepsUnmergedWorktree` asserted the keep reason contained
+`commits not in main`. With REQ-WR-022's base default the sweep now compares
+against — and names — `origin/main`. The assertion was updated to
+`commits not in origin/main`: the expectation moved because the SPEC mandated
+the behaviour change, not to accommodate the implementation.
+
+### Acceptance battery
+
+All 32 test-shaped criteria run in the exact `acceptance.md` §0 form
+(`go test <pkg> -run '^<Test>$' -v -count=1 2>&1 | grep -c '^--- PASS: <Test>'`).
+Script: `.moai/state/verify/t209/ac-battery.sh`; verbatim output:
+`.moai/state/verify/t209/ac-results.txt`.
+
+**Every criterion returned `1`.** Every criterion whose recorded
+pre-implementation baseline was `0` moved to `1`; every criterion recorded at
+`1` (the existing M8 regression anchors) stayed at `1` across the seam-signature
+change.
+
+### AC-WR-022 — build / vet / cross-compile gate
+
+```
+go build ./...                                              → exit 0
+go vet ./internal/cli/... ./internal/session/...             → exit 0
+GOOS=windows go vet ./internal/cli/... ./internal/session/... → exit 0
+MOAI_TEMPLATE_LEAK_STRICT=1 go test ./internal/template/...   → ok (62.352s)
+```
+
+### Package suites — and an honest account of what the `internal/cli` run shows
+
+```
+go test ./internal/session/...      → ok   18.151s
+go test ./internal/cli/worktree/... → ok   18.228s
+go test ./internal/cli/             → see below
+```
+
+Every `internal/cli` sibling package (`harness`, `update/*`, `wizard`, `pr`,
+`printer`, `specid`, `taskledger`, `uikit`, `agentlint`, `preference`) reported
+`ok`. `internal/cli` itself is the exception and needs stating precisely rather
+than summarised:
+
+| Run | Scope | Result |
+|---|---|---|
+| at `3f8067fb2` (M2) | `internal/cli` alone, `-timeout 600s` | **ok, 383.405s** |
+| at `aa14918d7` (M3) | all of `./internal/cli/... ./internal/session/...`, `-timeout 600s` | FAIL 601.548s — `panic: test timed out`, **0** `--- FAIL` lines |
+| at `aa14918d7` (M3) | `internal/cli` alone, `-timeout 900s` | FAIL 909.905s — timeout panic, **1** `--- FAIL` |
+
+The single `--- FAIL` is `TestHookWorktreeCreate_EchoesCreatedPath`:
+
+```
+hook_worktree_create_test.go:75: RunE returned error: dispatch hook: … 
+  add worktree with new branch "worktree-e2e-probe": git worktree: 
+  Preparing worktree (new branch 'worktree-e2e-probe') (git killed: context deadline exceeded)
+```
+
+Re-run in isolation at the same HEAD:
+
+```
+go test ./internal/cli/ -run '^TestHookWorktreeCreate_EchoesCreatedPath$' -v -count=1
+→ --- PASS: TestHookWorktreeCreate_EchoesCreatedPath (4.16s)
+```
+
+**4.16s passing alone against 19.53s deadline-exceeded under load.** The test
+shells out to a real `git worktree add` under a context deadline, in a
+repository carrying 148 registered worktrees, on a loaded machine. It exercises
+the WorktreeCreate hook — a path this SPEC does not touch (the diff reaches
+`session_worktree_prmerge.go`, `worktree/clean.go`, and `internal/session`
+only). Classified as **load-induced, not a regression**, on that evidence.
+
+The 383s → >900s spread across two runs of the same package on the same tree is
+the same cause: contention, not code. The package's wall-clock is measuring the
+machine.
+
+[HARD] A background-wrapper `exit=0` was reported for the 909s run while the log
+said `FAIL`. The verdict here is read from the log, not from the wrapper's exit
+code.
+
+`GOOS=windows go vet` proves cross-platform **compilation only**. It is not
+evidence of Windows behaviour, which matters here because the Windows liveness
+probe cannot assert death and returns `(true, true)` unconditionally
+(`design.md` §B.5) — deliberately, since reporting otherwise would widen removal
+on the one platform with no real probe.
+
+### AC-WR-023(a) — inert-sweep check, executed
+
+```
+go build -o ./bin/moai ./cmd/moai                                → exit 0
+./bin/moai session list --json > .moai/state/verify/t209/sweep-a.log   → exit 0
+grep -c 'PR-merge cleanup' .moai/state/verify/t209/sweep-a.log   → 0
+git worktree list --porcelain | grep -c '^worktree '             → 148
+git worktree list --porcelain | grep -c 't207'                   → 2
+```
+
+The repaired sweep removed nothing and emitted no notice; the registered
+worktree population is intact and t207 is still on it. The tree-local binary was
+used deliberately — the installed `~/go/bin/moai` predates the change.
+
+**AC-WR-023(b) was NOT executed.** It performs the mass removal `spec.md` §G
+declares out of scope and is gated on explicit operator authorisation plus a
+pre-enumerated `expected-removals.txt`. Neither exists.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_status: audit-ready
+run_complete_at: 2026-08-24
+milestones_complete: [M2, M1, M3]
+commits: [3f8067fb2, 81d8ae9a9, aa14918d7]
+criteria_passing: 32/32 test-shaped (AC-WR-001..021, 024, 024b, 025b, 026)
+criteria_measurement_only: [AC-WR-025]
+criteria_gated: [AC-WR-023b]
+evidence_dir: .moai/state/verify/t209/
+```
+
+### Gaps — what was explicitly NOT observed
+
+1. **Windows runtime behaviour.** Only compilation was verified. The two-valued
+   probe's Windows arm is asserted by construction, not by execution.
+2. **The real `clean --stale --json` inventory was not run against this
+   repository.** `clean` calls `WorktreeProvider.Prune()` before listing, which
+   mutates the shared repository's worktree administrative state; with 148
+   registered trees and no operator authorisation, that was left undone. The
+   behaviour is covered by unit tests only.
+3. **`t207`'s directory was not stat-ed.** The worktree-isolation guard refuses
+   `cd` and `git -C` into a sibling tree, so its presence is evidenced from
+   `git worktree list` (shared across the repository) rather than from a
+   filesystem check. Same positional limit that made AC-WR-025 a lead-run
+   measurement.
+4. **The agent-memory ∩ M1-unblocked intersection remains unmeasured**, exactly
+   as `design.md` §A.7.2 Q2 records. P2 is the answer whether it is 0 or 5, so
+   the gap does not change the implementation — but it is still a gap.
+5. **The full test suite was not run locally** (repo rule). `go build ./...`,
+   `go vet`, and the affected packages were run; CI owns the full-suite verdict.
+6. **`internal/cli` has no clean green at the FINAL HEAD.** It is green at
+   `3f8067fb2` (M2) and every one of its 32 acceptance criteria is green
+   individually at `aa14918d7`, but the whole-package run at the final HEAD hit
+   the wall-clock ceiling twice under load. The one `--- FAIL` was reproduced as
+   passing in isolation and lies outside this diff, so the evidence points to
+   contention — but "the package passes at `aa14918d7`" is an inference from
+   parts, not an observation, and is recorded as a gap rather than claimed.
+   CI's clean-environment run against the PR head is the stronger evidence and
+   is the intended resolution.
+
+### Residual risk — what could still be wrong despite the above
+
+- **P2's allowlist is enumerated from one measurement.** A regenerable path that
+  did not appear in those 156 trees preserves a tree it need not. That is the
+  fail-closed direction and is intended, but it means the sweep will be more
+  conservative than necessary until the list is extended deliberately.
+- **The unlocked anchor (REQ-WR-020) is untouched by M2.** A `WT-*` tree
+  materialised by this package's own code carries no lock and is guarded by the
+  registry alone — the source measured at 1-of-5. Bounded by `auto_cleanup`
+  being off, which is now also true in this repository.
+- **The check→act race (EC-13) is narrowed, not closed**, and has no protection
+  at all for ignored content: there is no second observation before removal.
+- **Branch-naming convention change, notified mid-run by the lead.** Card
+  worktree branches now carry a bare slug rather than the `WT-` prefix, so
+  `prMergeCleanup` — which matches the prefix and only the prefix — will not
+  see them. The direction is safe (they are preserved, never swept), and M3's
+  `clean --stale --json` is the intended coverage for that population precisely
+  because it enumerates by checkout rather than by branch name. No code change
+  was made for this; it is recorded so the next reader does not mistake the
+  prefix filter for full coverage.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
