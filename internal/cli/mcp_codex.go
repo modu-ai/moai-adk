@@ -258,6 +258,16 @@ type ReviewOutput struct {
 	Summary   string    `json:"summary"`
 	Findings  []Finding `json:"findings"`
 	NextSteps []string  `json:"next_steps"`
+
+	// SynthesisNote records that the verdict signals inside ONE backend's review
+	// body disagreed, and which way they were resolved. Empty whenever they
+	// agreed — a note present on every review would mark nothing.
+	//
+	// It is additive and omitempty, so no existing consumer's JSON changes. The
+	// reason it exists at all is that the adopted value alone cannot be told
+	// apart from a verdict the review stated plainly, which leaves the next
+	// person diagnosing an incident nothing to read.
+	SynthesisNote string `json:"synthesis_note,omitempty"`
 }
 
 // Finding is a single review finding (§G.4).
@@ -1334,16 +1344,36 @@ func codexUnrecognizedVerdict(method string) string {
 // this same function. The (reviewText, method) signature is load-bearing —
 // reverting it removes the mode distinction and reinstates the lenient default.
 func synthesizeReviewOutput(reviewText, method string) ReviewOutput {
-	verdict := adoptConservativeVerdict(codexVerdictSignalsOf(reviewText))
+	signals := codexVerdictSignalsOf(reviewText)
+	verdict := adoptConservativeVerdict(signals)
 	if verdict == "" {
 		verdict = codexUnrecognizedVerdict(method)
 	}
 	return ReviewOutput{
-		Verdict:   verdict,
-		Summary:   strings.TrimSpace(reviewText),
-		Findings:  []Finding{},
-		NextSteps: []string{},
+		Verdict:       verdict,
+		Summary:       strings.TrimSpace(reviewText),
+		Findings:      []Finding{},
+		NextSteps:     []string{},
+		SynthesisNote: describeSignalDivergence(signals, verdict),
 	}
+}
+
+// describeSignalDivergence names every signal and the value adopted, but ONLY
+// when the signals actually disagreed. Agreement is the ordinary case and
+// deserves no note; annotating it would dilute the ones that matter.
+func describeSignalDivergence(signals []codexVerdictSignal, adopted string) string {
+	distinct := map[string]bool{}
+	for _, s := range signals {
+		distinct[s.verdict] = true
+	}
+	if len(distinct) < 2 {
+		return ""
+	}
+	parts := make([]string, 0, len(signals))
+	for _, s := range signals {
+		parts = append(parts, s.source+"="+s.verdict)
+	}
+	return "codex signals diverged: " + strings.Join(parts, ", ") + "; adopted " + adopted
 }
 
 // codexAdversarialReviewPrompt builds the adversarial-review prompt text the
