@@ -120,4 +120,55 @@ m1_to_mN_commit_strategy: one commit per milestone plus four follow-up commits (
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-24
+sync_commit_sha: pending-backfill-SPEC-KANBAN-RECORD-SESSION-KEY-001
+sync_status: complete
+b12_self_test_a: "grep -c 'SPEC-KANBAN-RECORD-SESSION-KEY-001' CHANGELOG.md → 0 (rc 1, a genuine zero-match; no duplicate, emission permitted)"
+b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l → 9; the CHANGELOG entry states 9"
+b12_self_test_c: "every path named in the CHANGELOG entry verified present with ls before commit (13 paths, all present)"
+changelog_entry_position: "[Unreleased] → ### Changed, appended immediately after the SPEC-WEB-TODO-QUEUE-001 entry"
+frontmatter_status_transitions:
+  spec.md: "in-progress → implemented → completed (updated: already 2026-08-24, the sync date — unchanged)"
+  plan.md: "n/a — carries no frontmatter block"
+  acceptance.md: "n/a — carries no frontmatter block"
+  progress.md: "n/a — carries no frontmatter block"
+canary_compliance_check: "n/a — this SPEC defines no forward-looking policy that its own sync tests"
+```
+
+### Cross-SPEC effect — AC-FM-023a's record half is superseded
+
+Recorded here, in the SPEC that caused it, so a later reader of *this* SPEC finds the effect
+without having to discover it from the other side.
+
+| What | Detail |
+|---|---|
+| Affected criterion | `SPEC-FACTORY-MODE-001` **AC-FM-023a (state record)** |
+| What it pinned | that `moai cc --factory` leaves a record written by the **launcher**, plus a fail-open half |
+| Why it no longer holds | REQ-KRS-002/003 removed the launcher-side write. The launcher runs before the session it launches exists, so the identifier it keyed on was not the launched session's; the write moved into that session's own SessionStart hook |
+| How it was handled | **superseded, not deleted.** `TestCC_KanbanWritesStateRecord` now asserts the record's ABSENCE at the launcher; the session-side write is covered in `internal/hook`. Run-phase commit `19da7c6d9` |
+| The fail-open half | **unchanged and still binding** — an unwritable state directory must not block a launch. The same test still exercises it |
+| The annotation | a supersede note was added to `SPEC-FACTORY-MODE-001/acceptance.md` in `1d8b56426`, on the operator's ruling. That SPEC was not otherwise edited, and sync did not touch it |
+| One removal, not a supersede | `TestCompanionRoleBareLabel` was removed with its function; its coverage is restated in `internal/hook` |
+
+### Documentation review — what was searched, found and changed
+
+**Changed: nothing.** That is the finding, not a skipped step.
+
+Searched — `.claude/rules/`, its `internal/template/templates/` mirror, `docs-site/content/{en,ko,ja,zh}/`,
+and the four READMEs — for any description of the record's writer or of its fields:
+`kanban.Record`, `state/kanban`, `kanban/<session`, `current-session-id`, the record's JSON key
+names (`session_id`, `entered_at`, `deepscan_dir`, `verify_reentries`, `role`), and the phrase
+"launcher writes".
+
+| Hit | Why it is not this record |
+|---|---|
+| `docs-site/content/<loc>/utility-commands/moai-todo.md` and three template skill bodies naming `.moai/state/kanban/backlog.json` | the backlog **queue**, a different file in the same directory |
+| `docs-site/content/<loc>/advanced/moai-web-console.md` state-directory table row `kanban → .moai/state/kanban` | names the directory, not the record's writer or its schema |
+| `context-window-management-detail.md` and `goal-directive-detail.md` (both mirror pairs) on `.moai/state/current-session-id.txt` | the goal-arm side channel — a different consumer of the same file, unchanged by this SPEC |
+| `docs-site/content/<loc>/advanced/kanban-mode.md` 13-field table carrying `entered_at` | the Origin-Trail Chain's `WorktreeNode`, not `kanban.Record` |
+| `docs-site/content/en/multi-llm/kanban-mode.md:114` "the launcher writes a transient settings file" | the cross-session inbound `--settings` file |
+
+No published page and no doctrine file describes the kanban session record at all, so no mirror
+pair was touched and `make build` was not run. Writing a page this SPEC did not require would be a
+worse outcome than the silence it would fill.
