@@ -588,7 +588,7 @@ _<pending run-phase>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-sync_commit_sha: pending-backfill-synccommit (D3 self-reference exemption — the sync commit cannot know its own SHA; the real SHA is backfilled in the immediately following backfill commit `chore(SPEC-ZONE-REGISTRY-RESYNC-001): backfill sync_commit_sha`)
+sync_commit_sha: a35ff0c6022ee69290d3230a4f0c2bb4f1a254c5 (backfilled per D3 self-reference exemption — the sync commit cannot know its own SHA; backfilled in the immediately following commit `chore(SPEC-ZONE-REGISTRY-RESYNC-001): backfill sync_commit_sha`)
 sync_complete_at: 2026-08-25
 sync_status: completed (3-phase close — the `implemented → completed` frontmatter transition rides this same sync commit, per spec-frontmatter-schema.md § Status Transition Ownership Matrix)
 changelog_entry_position: CHANGELOG.md `[Unreleased]` → `### Fixed` — top entry, references 14 AC counted against acceptance.md
