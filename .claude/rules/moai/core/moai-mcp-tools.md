@@ -1,6 +1,6 @@
 # moai-mcp Tool Catalogue
 
-> Single source of truth for the 21 tools exposed by the self-hosted `moai` MCP
+> Single source of truth for the 25 tools exposed by the self-hosted `moai` MCP
 > server (`.mcp.json` → `{command: "moai", args: ["mcp-server"]}`). Each tool is
 > prefixed `mcp__moai__` at the call site. This rule tells agents and the
 > orchestrator WHEN to prefer an MCP tool over its CLI/slash equivalent.
@@ -58,7 +58,7 @@ it as the working directory it reviews in, and the GLM path uses it to collect
 the diff it sends to z.ai. Passing it is what keeps the two secondary opinions
 about the same tree.
 
-## Tool families (21 tools)
+## Tool families (21 of the 25 tools; the session-messaging family follows below)
 
 | Family | Tools | Wired consumers |
 |---|---|---|
@@ -71,6 +71,17 @@ about the same tree.
 
 Per-tool purpose, consumer, and CLI equivalent: `moai-mcp-tools-catalogue.md`. Both codex and GLM
 are OPTIONAL and fail open — an unavailable backend returns `inconclusive`, never a hard error.
+
+### Session messaging broker (Claude ↔ Codex)
+
+| Tool | Purpose | Consumer | CLI equivalent |
+|------|---------|----------|----------------|
+| `mcp__moai__session_msg_register` | Register this session (kind: claude or codex, plus name) in the local message broker; idempotent — same kind+name returns the same agentId | Any Claude or Codex agent session | — |
+| `mcp__moai__session_msg_list` | List registered broker agents (agentId, name, kind, online, pending count) — the family's only read-only tool | Any Claude or Codex agent session | — |
+| `mcp__moai__session_msg_send` | Send a short, self-contained fact message to another registered agent's mailbox | Any Claude or Codex agent session | — |
+| `mcp__moai__session_msg_poll` | Claim pending messages from this agent's mailbox (at-least-once) and optionally ack processed ids | Any Claude or Codex agent session | — |
+
+Reach any session kind symmetrically: a Codex session has no native peer-messaging runtime, so the broker is its only path, while claude↔claude keeps the native runtime as the recommended route. Delivery is poll-based — a send is a record, not a delivery guarantee. Newly added tools become visible only after the session restarts its MCP server (a long-lived server does not see tools added after it started), so the restart is procedure step zero whenever a new tool seems missing.
 
 ## Unwired-by-design
 
