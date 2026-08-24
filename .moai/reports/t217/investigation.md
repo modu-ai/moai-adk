@@ -44,7 +44,38 @@ BranchGuard deny 사유는 151개 파일에 남아 있다. 따라서 보안 스�
 
 ---
 
-## Claim 2 — 기전은 살아 있다. 0건은 "고장"이 아니라 "안 걸렸다"
+## Claim 2 — [정정 2026-08-24, run-phase M0] 기전은 **살아 있지 않다**. 0건은 구조적이다
+
+> **이 절의 원래 주장은 틀렸다.** 아래 원문은 `sg` 를 CLI 로 직접 돌린 한 겹만 쟀고,
+> Go 파이프라인 전체를 재지 않았다. run-phase M0 의 12개 픽스처 전수 재생이
+> 4개 커버 언어의 deny 케이스 전부를 `decision=allow` 로 관측하면서 드러났다.
+>
+> **실제 기전**: error 심각도가 있으면 `sg` 는 rc=1 로 끝나고 배너를 **stderr** 에 쓴다.
+> `ast_grep.go:138` 이 `cmd.CombinedOutput()` 으로 두 스트림을 합치므로 JSON 파싱이 깨지고,
+> 폴백 `parseASTGrepRegex` 는 ast-grep 의 **텍스트** 형식을 기대해 JSON 본문에서 아무것도
+>못 찾는다. → `ErrorCount 0` → `ShouldAlert` false → **deny 없음**.
+> warning 은 rc=0 에 stderr 가 비어 파싱이 성공하므로 영향 없다. 즉 **경고는 되고 차단은 절대 안 된다.**
+>
+> ```
+> $ sg scan --json -c <sgconfig> /tmp/moai-t217-probe.go >out.json 2>err.txt ; echo rc=$?
+> rc=1
+> $ cat err.txt
+> Error: 1 error(s) found in code.
+> $ cat out.json err.txt > combined.txt && python3 -c "import json;json.load(open('combined.txt'))"
+> combined FAILS to parse: Extra data: line 51 column 1 (char 1110)
+> ```
+>
+> **Claim 1 에 미치는 영향**: 트랜스크립트 0건은 "능력이 있는데 안 걸렸다"가 아니라
+> **"발화할 수 없다"** 로 읽어야 한다. 0 은 우연이 아니라 구조적이다. 아래 원문의
+> "고장이 아니라 안 걸린 것"이라는 결론은 철회한다.
+>
+> **처리**: 운영자 판정(2026-08-24) — 수집 결함은 **별도 카드로 먼저** 고치고, t217 은
+> 그 수정이 착지한 트리 위에서 진행한다. 한 번도 발화한 적 없는 deny 를 살리는 것은
+> 동작 변경이므로 그 카드가 자기 위험 논거를 가져야 한다.
+
+### (원문 — 반증됨, 기록 보존)
+
+`sg` **CLI 한 겹**은 error 심각도 findings 를 낸다. 아래는 그 사실에 한해서만 참이다.
 
 **Evidence** — 로컬 룰셋으로 error 심각도 findings 가 실제로 나온다.
 
