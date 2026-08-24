@@ -4,7 +4,7 @@
 
 | 항목 | 결과 | 근거 |
 |---|---|---|
-| 트리 | `WT-codex-launcher` (분기 지점 `9280c96b3`) | `git branch --show-current` |
+| 트리 | `WT-codex-launcher` (분기 지점 `9280c96b3`) | 전사본 L24-31 |
 | t88 M4 포함 | 포함 (`7b217da7c` 조상) | `git merge-base --is-ancestor` rc 0 |
 | `moai codex` 부재 | 확인 | `.moai/reports/t197/measurement.md` M-1 |
 | auth `unknown` 재현 | 재현 + 원인 확정 | 같은 문서 M-2 |
@@ -28,7 +28,6 @@
 | `internal/cli/codex_launcher.go` | 신규 | `codexCmd` 코브라 정의 (`GroupID: "launch"`), 세 동사 라우팅, `--spawn` 처리 |
 | `internal/cli/codex_readiness.go` | 신규 | 리드아웃 조립 — `ProbeCodexSetup` + `codexwiring` + `CODEX_HOME` 해석을 한 구조체로 |
 | `internal/cli/mcp_codex.go` | 수정 | auth 분류 재설계 — 3-seam 분해 (§C.2) |
-| `internal/cli/codex_init.go` | 신규 | 미배선 시 초기화 제안 + 기존 생성기 호출 + 지시 계약 확보 (§C.6) |
 | `internal/cli/codex_launcher_test.go` 외 | 신규 | 아래 §D 시험 |
 
 `unifiedLaunch` 는 건드리지 않는다 — Claude 전용 경로이고 (§A.6) codex 는 별도 exec 이다. 공유하는 것은 `spawnLaunch` 하나다.
@@ -39,7 +38,7 @@
 
 **(1) 산문 파싱을 1순위에서 내린다.** 최초안은 "합친 스트림에서 `Logged in using ChatGPT` 를 부분 일치" 였는데, 현행 분류기(`mcp_codex.go:1331`)의 부분 일치는 **오류 문구에도 걸린다** — `API key missing` 은 `api key` 를 포함하므로 `apiKey` 로, `provider configuration unreadable` 은 `provider` 로 분류된다. 여기에 "rc 비영이어도 출력이 있으면 분류" 를 얹으면 **오류를 인증 성공으로 읽는다**. REQ-CL-009 의 "판정 불가는 gap 이지 판정이 아니다" 와 정면으로 어긋난다.
 
-**(2) 구조화된 원천이 존재한다** (M-2b 실측). `codex doctor` 가 `stored auth mode: chatgpt` 를 알고 있고 그 원천은 `<CODEX_HOME>/auth.json` 의 `auth_mode` 필드다. doctor 자체는 46초라 런처가 부를 수 없지만(실측), 파일은 즉시 읽힌다.
+**(2) 구조화된 원천이 존재한다** (M-2b 실측). `codex doctor` 가 `stored auth mode: chatgpt` 를 알고 있고 그 원천은 `<CODEX_HOME>/auth.json` 의 `auth_mode` 필드다. doctor 자체는 십수 초 단위라(측정마다 17~46초, 캐시 의존) 런처가 부를 수 없지만, 파일은 즉시 읽힌다.
 
 따라서 **2단 사다리**로 간다:
 
@@ -69,7 +68,9 @@ Logged in state unavailable: API key missing   →  (앵커 통과) → "api key
 
 | 파일 상태 | 판정 |
 |---|---|
-| `auth_mode=chatgpt` + `tokens` 중 값이 비지 않은 항목 ≥1 | `chatgpt` |
+| `auth_mode=chatgpt` + `tokens` 중 **인정된 키**(`access_token`/`id_token`/`refresh_token`)의 값이 비지 않은 것 ≥1 | `chatgpt` |
+| `auth_mode=chatgpt` + `tokens` 에 무관한 키만 (`{"irrelevant":"x"}`) | 하강 — 키를 안 보는 구현이 뚫리는 지점 |
+| `auth_mode=chatgpt` + `tokens` 에 `account_id` 만 | 하강 — 계정 메타데이터는 자격 재료가 아니다 |
 | `auth_mode=chatgpt` + `tokens` 가 `{}` | 하강 |
 | `auth_mode=chatgpt` + `tokens` 값이 전부 `null` 또는 `""` | 하강 |
 | `auth_mode=chatgpt` + `tokens` 없음 / `null` | 하강 |
@@ -108,18 +109,24 @@ func (n *nonEmptyString) UnmarshalJSON(b []byte) error {
     return nil                // s 는 여기서 끝난다 — 어디에도 저장하지 않는다
 }
 
-// tokenSet 은 각 항목이 비어 있지 않은 문자열인지만 센다. 객체가 아니면 0.
-type tokenSet struct{ nonEmptyCount int }
+// chatgptCredentialKeys 는 로그인 자격을 실제로 담는 키다. account_id 같은
+// 계정 메타데이터는 여기 없다 — 그것만 있는 파일은 로그인 상태가 아니다.
+var chatgptCredentialKeys = map[string]bool{
+    "access_token": true, "id_token": true, "refresh_token": true,
+}
+
+// tokenSet 은 인정된 키 중 값이 비어 있지 않은 문자열인 것만 센다. 객체가 아니면 0.
+type tokenSet struct{ credentialCount int }
 
 func (t *tokenSet) UnmarshalJSON(b []byte) error {
     var m map[string]nonEmptyString
     if err := json.Unmarshal(b, &m); err != nil {
-        t.nonEmptyCount = 0   // 객체가 아니면(배열·문자열·null) 자격 재료 없음
+        t.credentialCount = 0   // 객체가 아니면(배열·문자열·불리언·수·null) 자격 재료 없음
         return nil
     }
-    for _, v := range m {
-        if bool(v) {
-            t.nonEmptyCount++
+    for k, v := range m {
+        if chatgptCredentialKeys[k] && bool(v) {
+            t.credentialCount++   // 키를 안 보면 {"irrelevant":"x"} 가 인증으로 통과한다
         }
     }
     return nil
@@ -132,7 +139,7 @@ type codexAuthFile struct {
 }
 ```
 
-판정: `apikey` 는 `APIKey == true`, `chatgpt` 는 `Tokens.nonEmptyCount >= 1` 일 때만 확정하고, 나머지는 전부 하강.
+판정: `apikey` 는 `APIKey == true`, `chatgpt` 는 `Tokens.credentialCount >= 1` 일 때만 확정하고, 나머지는 전부 하강.
 
 결과적으로 이 타입 집합에는 `auth_mode` 하나를 빼면 `string` / `[]byte` / `json.RawMessage` 형태의 필드가 **하나도 없다** — AC-CL-008 이 리플렉션으로 (중첩 타입까지 재귀해) 그 부재를 판정한다. 오류를 감쌀 때도 원본 JSON 본문을 넣지 않는다 (경로와 사유만).
 
@@ -202,23 +209,6 @@ harness   moai hook --harness codex
 - `app`: `codex app` 위임.
 - 두 launch 동사는 codex 바이너리 미해결 시 exec 전에 단일 진단으로 종료 (REQ-CL-012). 리드아웃은 이 경우에도 rc 0 으로 나온다.
 
-### C.6 미배선 초기화 + 지시 계약
-
-**런처는 생성기를 부를 뿐 생성 로직을 갖지 않는다.** `.codex/hooks.json` / `.codex/config.toml` 을 무엇으로 채울지는 SPEC-CODEX-WIRING-001 이 이미 정했고, 여기서 두 번째 구현을 만들면 두 판본이 갈라진다. 런처가 하는 일은 셋뿐이다: 배선 부재 판정 → 제안 → 수락 시 `moai init --agent codex` 경로 호출.
-
-수락 전에는 아무것도 쓰지 않는다. 거절하면 기동도 하지 않는다 — 미배선 프로젝트로 들어가면 훅이 하나도 안 붙은 채 세션이 열리고, 그게 조용히 잘못된 상태다. 맨몸 / `status` 는 어느 상태에서도 제안하지 않는다 (읽기는 쓰지 않는다).
-
-**지시 계약**: Codex 는 `AGENTS.md` 를 읽고 Claude 는 `CLAUDE.md` 를 읽는다. 두 하네스가 같은 지시를 보게 하려면 원본을 하나로 두고 나머지가 그것을 가리켜야 한다 — 이 저장소가 t82 에서 택한 구조 그대로다. 초기화가 확보하는 상태:
-
-| 프로젝트 상태 | 하는 일 |
-|---|---|
-| 둘 다 없음 | 둘 다 만들고 `CLAUDE.md` 에 import 줄 |
-| `AGENTS.md` 만 있음 | 원본 **무변경**, `CLAUDE.md` 만 만들어 import |
-| `CLAUDE.md` 만 있음 | 기존 내용 보존 + import 줄만 추가, `AGENTS.md` 생성 |
-| 둘 다 있고 import 줄도 있음 | 무변경 (멱등) |
-
-로컬 전용 지시 파일이 함께 있으면 그 내용도 계약에 반영한다. 원칙은 하나: **기존 사용자 내용은 보존하고 없는 연결만 채운다.** 재실행해도 import 줄은 1건을 넘지 않는다.
-
 ## §D. 마일스톤
 
 | M | 내용 | 산출 |
@@ -226,10 +216,9 @@ harness   moai hook --harness codex
 | M1 | auth 분류 2단 사다리 + 회귀 시험 | 3-seam 분해(`codexLoginStatusRunner` / `parseCodexAuthLine` / `classifyCodexAuthFile`), `classifyCodexAuth` 는 얇은 조립부로 (`codexCommandRunner` 무변경) |
 | M2 | CODEX_HOME 해석 + 리드아웃 조립 | `codex_readiness.go` + 단위 시험 |
 | M3 | 커맨드 표면 + 동사 라우팅 + `--spawn` | `codex_launcher.go` + 등록 시험 |
-| M4 | 미배선 초기화 + 지시 계약 | `codex_init.go` — 생성기 호출 위임 + `AGENTS.md`↔`CLAUDE.md` 계약, 멱등 |
-| M5 | 도움말·예시 문안 + 중립성 통과 | help 텍스트, 필요 시 템플릿 문서 |
+| M4 | 도움말·예시 문안 + 중립성 통과 | help 텍스트, 필요 시 템플릿 문서 |
 
-M1 은 독립적으로 가치가 있다 (`moai web` · MCP 도구의 오표시가 그 자체로 해소된다). M2→M3 는 순차, M4 는 M3 이후 (기동 경로가 있어야 그 앞에 제안을 붙일 수 있다), M5 는 마지막.
+M1 은 독립적으로 가치가 있다 (`moai web` · MCP 도구의 오표시가 그 자체로 해소된다). M2→M3 는 순차, M4 는 마지막. 미배선 초기화는 `SPEC-CODEX-INIT-001` 로 분리됐고 그쪽 M1 이 여기 M3(기동 경로)에 의존한다.
 
 ## §E. 위험
 

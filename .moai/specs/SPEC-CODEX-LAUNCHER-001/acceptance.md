@@ -36,9 +36,14 @@ exec seam 은 호출 횟수뿐 아니라 **argv 전체와 cwd** 를 포착한다
 | 배선 상태 (fixture) | 기대 보고 |
 |---|---|
 | `.codex/` 없음 | `not wired` + `moai init --agent codex` |
-| hooks.json + config.toml 정상 | `wired` |
-| hooks.json 이 화이트리스트 위반 키 보유 | `invalid` (건강 상태로 보고하지 않는다) |
-| config.toml 은 있고 hooks.json 없음 | `partial` — 어느 쪽이 없는지 명시 |
+| **`.codex/` 는 있고 비어 있음** | **`not wired`** — 디렉터리 존재만 보는 구현이 떨어지는 행 |
+| `hooks.json` 만 있음 | `partial` — 어느 쪽이 없는지 명시 |
+| `config.toml` 만 있음 | `partial` — 어느 쪽이 없는지 명시 |
+| 둘 다 정상 | `wired` |
+| 둘 다 있고 `hooks.json` 이 화이트리스트 위반 키 보유 | `invalid` (건강 상태로 보고하지 않는다) |
+
+- **And** 맨몸과 `status` 두 형태가 여섯 행에서 **같은 값** 을 보고한다 (형태에 따라 판정이 갈리지 않는다).
+- **And** 이 판정은 `SPEC-CODEX-INIT-001` 이 소비하는 단일 정의다 — 그 SPEC 은 자체 파일 검사를 하지 않는다 (AC-CI-002).
 
 - **And** 바이너리 경로 · 버전 행은 스텁이 공급한 값과 문자열 일치한다 (라벨만 있고 값이 비어도 통과하는 grep 판정을 쓰지 않는다).
 - **And** 화이트리스트 판정은 `codexadapter.ValidateConfig` 를 호출해 얻는다 (AC-CL-007 이 재구현 부재를 강제).
@@ -95,12 +100,22 @@ exec seam 은 호출 횟수뿐 아니라 **argv 전체와 cwd** 를 포착한다
 | `{"auth_mode":"chatgpt","tokens":{"access_token":false}}` | `("", false)` — 문자열이 아니다 |
 | `{"auth_mode":"chatgpt","tokens":{"access_token":0}}` | `("", false)` — 문자열이 아니다 |
 | `{"auth_mode":"chatgpt","tokens":{"access_token":"   "}}` | `("", false)` — 공백뿐 |
+| **`{"auth_mode":"chatgpt","tokens":{"irrelevant":"x"}}`** | **`("", false)`** — 무관한 키는 자격 재료가 아니다 |
+| `{"auth_mode":"chatgpt","tokens":{"account_id":"x"}}` | `("", false)` — 계정 메타데이터만으로는 로그인이 아니다 |
+| `{"auth_mode":"chatgpt","tokens":false}` | `("", false)` |
+| `{"auth_mode":"chatgpt","tokens":0}` | `("", false)` |
 | **`{"auth_mode":"apikey","OPENAI_API_KEY":false}`** | **`("", false)`** — 문자열이 아니다 |
 | `{"auth_mode":"apikey","OPENAI_API_KEY":0}` | `("", false)` |
 | `{"auth_mode":"apikey","OPENAI_API_KEY":[]}` | `("", false)` |
 | `{"auth_mode":"apikey","OPENAI_API_KEY":{}}` | `("", false)` |
 
-굵은 두 행이 판정 방식을 가른다: 원문 바이트를 문자열과 비교하는 구현은 `{ }` 와 `false` 를 "비어 있지 않음" 으로 읽는다. **자격 재료는 비어 있지 않은 JSON 문자열이어야 하고, 다른 JSON 타입은 전부 부재** 라는 규칙만이 이 표 전체를 만족시킨다.
+굵은 세 행이 세 층위를 가른다:
+
+1. `{ }` — 원문 바이트를 문자열과 비교하는 구현이 뚫린다.
+2. `false` — JSON 타입을 안 보는 구현이 뚫린다.
+3. `{"irrelevant":"x"}` — **타입은 보는데 키를 안 보는** 구현이 뚫린다. 값이 비지 않은 문자열이기만 하면 세어버리므로, 무관한 메타데이터가 ChatGPT 인증으로 통과한다.
+
+세 층위를 동시에 만족시키는 규칙은 하나뿐이다: **자격 재료는 인정된 키 집합에 속하는, 비어 있지 않은 JSON 문자열이어야 한다.** ChatGPT 모드가 인정하는 키는 로그인 자격을 실제로 담는 것들(`access_token` / `id_token` / `refresh_token`)이고, `account_id` 같은 계정 메타데이터는 자격 재료가 아니다.
 
 **비밀값 규율 — 값을 보존하지 않는 타입으로 판정한다.**
 
@@ -176,59 +191,27 @@ exec seam 은 호출 횟수뿐 아니라 **argv 전체와 cwd** 를 포착한다
 - **When** `internal/cli` 에서 `codexCmd` 의 생성된 도움말 문자열(`Long` + 예시)을 직접 취해 검사하면
 - **Then** SPEC ID(`SPEC-`) · 카드 id(`t197`) · 내부 날짜 · 커밋 SHA 패턴이 각각 0건이다.
 
-## AC-CL-014 — 게이트 + 공유 러너 무회귀 (전 REQ, REQ-CL-010)
+## AC-CL-014 — 게이트 (전 REQ)
 
 - **When** `go build ./...` · `go vet ./...` · `GOOS=windows go vet ./...` · `golangci-lint run` 을 실행하면
 - **Then** 전부 rc 0 이다.
-- **And When** 기존 codex 관련 시험을 실행하면 (`go test ./internal/cli/... -run Codex -timeout 600s`)
+
+
+## AC-CL-015 — 공유 러너 무회귀 (REQ-CL-010)
+
+- **When** 기존 codex 관련 시험을 실행하면 (`go test ./internal/cli/... -run Codex -timeout 600s`)
 - **Then** 전부 통과한다.
 - **And** `codexCommandRunner` 인터페이스 선언과 그 세 구현체(`realCodexRunner` / `fakeCodexRunner` / `stubCodexRunner`) 어느 것도 이 SPEC 의 diff 에 나타나지 않는다 — 새 seam 은 별도 변수 + 순수 함수들이므로 (M-7, plan §C.2).
 - **And** 순수 함수 세 개(`combineCodexStreams` / `parseCodexAuthLine` / `classifyCodexAuthFile`)는 시험에서 프로세스를 띄우지 않고 직접 호출된다 — 시험 파일에 각각 ≥1건의 직접 호출이 존재한다.
+- **And** `--version` 조회 경로는 기존 `codexCommandRunner.run` 을 그대로 쓴다 (호출 seam 으로 확인).
 
-## AC-CL-015 — 미배선 프로젝트 초기화 제안 (REQ-CL-015)
+## AC-CL-016 — 데스크톱 앱 위임 (REQ-CL-011)
 
-**배선 판정은 디렉터리 존재가 아니라 파일 집합으로 한다.** 디렉터리만 보는 구현은 빈 `.codex/` 를 배선으로 읽고 훅 0개 상태로 기동한다. 배선 상태 fixture 5종을 각각 `cli` 로 실행한다 (생성기 호출을 세는 seam 사용):
-
-| `.codex/` 상태 | 배선 판정 | 제안 |
-|---|---|---|
-| 디렉터리 없음 | 미배선 | 제안 |
-| **디렉터리는 있고 비어 있음** | **미배선** | **제안** |
-| `hooks.json` 만 있음 | 미배선(부분) | 제안 |
-| `config.toml` 만 있음 | 미배선(부분) | 제안 |
-| 둘 다 있음 | 배선됨 | 제안 없음, 바로 기동, 생성기 호출 0회 |
-
-- **When** 제안이 뜬 상태에서 **초기화를 수락하지 않으면**
-- **Then** 생성기 호출 0회, 프로젝트 트리 스냅샷 무변경, 기동도 일어나지 않는다 (미배선 프로젝트로 들어가지 않는다).
-- **And When** 수락하면
-- **Then** 생성기가 `--agent codex` 인자로 정확히 1회 호출된다 — 호출 seam 은 인자까지 포착한다.
-- **And** 맨몸 / `status` 는 위 5종 어느 상태에서도 제안하지 않고 생성기 호출 0회다 — 읽기는 쓰지 않는다.
-- **And** 런처 코드에 배선 파일을 직접 쓰는 경로가 없다 (`.codex/hooks.json` / `.codex/config.toml` 쓰기 호출 grep 0건).
-
-## AC-CL-016 — 지시 계약 확보 (REQ-CL-016)
-
-**import 줄의 형태를 먼저 고정한다** — 무엇을 세는지 정하지 않으면 "1건" 을 판정할 수 없다. `CLAUDE.md` 는 `@AGENTS.md` 한 줄로 `AGENTS.md` 를 가리키며, 판정 대상은 그 줄이다 (이 저장소의 `CLAUDE.md` 가 쓰는 형태와 동일).
-
-초기화가 만든 상태를 파일 내용으로 판정한다. 다섯 fixture 를 각각 초기화한다:
-
-| 프로젝트 초기 상태 | 초기화 후 기대 |
-|---|---|
-| `AGENTS.md` 없음 · `CLAUDE.md` 없음 | 둘 다 생성, `CLAUDE.md` 가 `@AGENTS.md` 줄을 담는다 |
-| `AGENTS.md` 있음 · `CLAUDE.md` 없음 | `AGENTS.md` **바이트 무변경**, `CLAUDE.md` 생성 + `@AGENTS.md` 줄 |
-| `AGENTS.md` 없음 · `CLAUDE.md` 있음 (사용자 내용 포함) | 기존 `CLAUDE.md` 내용 보존 + `@AGENTS.md` 줄만 추가, `AGENTS.md` 생성 |
-| **둘 다 있는데 `@AGENTS.md` 줄이 없음** | **두 파일 내용 보존 + `CLAUDE.md` 에 그 줄만 추가** |
-| 둘 다 있고 `@AGENTS.md` 줄도 있음 | 두 파일 모두 바이트 무변경 |
-
-**멱등은 두 번 돌려서 판정한다** (한 번 돌리고 줄 수를 세는 것은 멱등의 판정이 아니다):
-
-- **When** 각 fixture 에 초기화를 **연속 2회** 실행하면
-- **Then** 1회 후와 2회 후의 두 파일이 **바이트 동일** 하고, `@AGENTS.md` 줄 수는 두 시점 모두 정확히 1이다.
-
-**로컬 전용 지시 파일**: 프로젝트 루트의 `CLAUDE.local.md` 를 가리킨다 (커밋되지 않는 개인 지시 파일).
-
-- **Given** `CLAUDE.local.md` 가 있는 fixture
-- **When** 초기화하면
-- **Then** `CLAUDE.local.md` 자체는 바이트 무변경이고, 두 하네스 모두가 그 내용에 도달한다 — `AGENTS.md` 또는 `CLAUDE.md` 중 **정확히 한 곳** 에서 이 파일을 가리키는 줄이 1건 존재하고, 다른 한 곳은 그 파일을 import 체인으로 도달한다 (두 곳에서 각각 가리키면 같은 내용이 두 번 로드된다).
-- **And** `CLAUDE.local.md` 가 없는 fixture 에서는 그 파일을 가리키는 줄이 0건이다 — 없는 파일을 가리키지 않는다.
+- **Given** exec seam 스텁
+- **When** `moai codex app` 을 실행하면
+- **Then** 포착 argv 가 정확히 `[codex, app]` 이다 — 앱을 직접 찾아 띄우려는 시도가 없다.
+- **And** 이 SPEC 이 추가하는 코드에 앱 번들 경로 탐색·설치 시도가 0건이다 (`/Applications` · `open -a` · 설치 관리자 호출 grep 각 0건).
+- **And** codex 가 앱을 못 찾을 때의 처리(설치 관리자 안내 등)는 codex 의 출력을 그대로 통과시키고 재해석하지 않는다.
 
 ---
 
