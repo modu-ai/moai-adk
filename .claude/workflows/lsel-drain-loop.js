@@ -14,6 +14,20 @@
 // does NOT apply anything (M3). Proposal drafting from clusters.json is an
 // on-demand model-mediated step, not a scheduled one.
 
+// The runtime requires `export const meta` to be the FIRST statement in the
+// script; a file in this directory without it is skipped at scan time with a
+// warning, which is how this recipe went unregistered despite AC-LSEL-007
+// recording it as registered. Keep meta first — comments above it are fine,
+// executable statements are not.
+export const meta = {
+	name: 'lsel-drain-loop',
+	description: 'Read-only LSEL drain trigger: advisory backlog check, mechanical drain, candidate count',
+	whenToUse: 'Scheduled via /loop on an interval. Read-only — never commits, pushes, or enters run-phase.',
+	phases: [
+		{ title: 'Drain', detail: 'backlog check + mechanical inbox drain, then report candidate count' },
+	],
+}
+
 // cadence-bridge invariant: this recipe is READ-ONLY. No commit, no push, no
 // run-phase entry. If a future edit adds a write, it violates the bridge.
 const INBOX = ".moai/lessons-inbox.jsonl";
