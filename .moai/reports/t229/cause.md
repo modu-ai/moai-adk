@@ -4,7 +4,7 @@
 |---|---|
 | 카드 | t229 (Class B — 재현됨, 원인 미확정 상태로 착수) |
 | 워크트리 | `.claude/worktrees/t229` · 브랜치 `WT-audit-verdict-converge` |
-| 측정 트리 | `worktree-t229` 생성 시점 base = `origin/main` |
+| 측정 트리 | `294b4b6ab` (worktree base = `origin/main`) — 아래 모든 `file:line` 은 이 트리 기준 |
 | 측정 일자 | 2026-08-24 |
 | codex 버전 | `codex-cli 0.149.0` (`/Users/goos/.local/bin/codex`) |
 
@@ -29,20 +29,20 @@
 `ReviewOutput.Verdict`를 만드는 곳은 코드 전체에서 한 군데다.
 
 ```
-internal/cli/mcp_codex.go:1113  func synthesizeReviewOutput(reviewText string) ReviewOutput
+internal/cli/mcp_codex.go:1144  func synthesizeReviewOutput(reviewText string) ReviewOutput
 ```
 
-호출자는 `mcp_codex.go:705`의 `runTurn` 하나뿐이고(`codex_review_rpc_test.go:122`은 테스트), codex 응답에서 뽑아 쓰는 것은 **본문 텍스트뿐**이다(`bestCodexReviewText`, `mcp_codex.go:1065`). 함수 주석도 이를 명시한다 — *"codex does NOT return a structured verdict enum — it returns free-form prose"*.
+호출자는 `mcp_codex.go:705`의 `runTurn` 하나뿐이고(`codex_review_rpc_test.go:122`은 테스트), codex 응답에서 뽑아 쓰는 것은 **본문 텍스트뿐**이다(`bestCodexReviewText`, `mcp_codex.go:1074`). 함수 주석도 이를 명시한다 — *"codex does NOT return a structured verdict enum — it returns free-form prose"*.
 
 즉 필드와 본문은 서로 다른 두 출처가 아니라, **본문 하나에서 파생된 값과 그 원본**이다. 둘이 어긋난다는 것은 파생이 틀렸다는 뜻이다.
 
 ## F2 — 합성 규칙은 정규식 1개 + 관대한 기본값
 
 ```go
-// mcp_codex.go:1102
+// mcp_codex.go:1115
 var codexFindingBullet = regexp.MustCompile(`(?m)^\s*[-*]\s+\[[A-Za-z]+\d+\]`)
 
-// mcp_codex.go:1113
+// mcp_codex.go:1144
 func synthesizeReviewOutput(reviewText string) ReviewOutput {
     verdict := "pass"
     if codexFindingBullet.MatchString(reviewText) {
@@ -54,20 +54,21 @@ func synthesizeReviewOutput(reviewText string) ReviewOutput {
 
 - 판정 근거는 `- [P1]` 꼴 심각도 태그 불릿의 **존재 여부** 단 하나.
 - 안 맞으면 `pass`. **증거 부재가 통과 근거로 쓰인다** — 관측 없는 통과 주장의 코드판이다.
-- 주석은 이 정규식이 **codex-cli 0.146.1의 review-mode 출력**으로 검증됐다고 적는다. 설치본은 **0.149.0**.
+- 주석(`mcp_codex.go:1111-1112`)은 이 정규식이 **codex-cli 0.146.1의 review-mode 출력**으로 검증됐다고 적는다. 설치본은 **0.149.0**.
 
 기존 테스트(`codex_review_rpc_test.go:114` `TestSynthesizeReviewOutput_FindingBulletsMapToFail`)가 다루는 입력은 `- [P1]` / `- [P2]` / 산문 1줄 / 빈 문자열 **4건뿐**이다. 다른 서식은 한 건도 없다.
 
 ## F3 — 그런데 audit_multi는 review-mode를 절대 쓰지 않는다
 
 ```go
-// mcp_convergence.go:382  performCodexAudit
+// mcp_convergence.go:409  performCodexAudit(ctx, target, focus, projectRoot string)
 params := map[string]any{ "target": target, "model": "",
     "prompt": codexAdversarialReviewPrompt(focus) }
-out, _ := runCodexReviewRPC(ctx, binaryPath, codexMethodTurnStart, params)
+...
+out, _ := codexReviewRPC(ctx, binaryPath, codexMethodTurnStart, params)
 ```
 
-`audit_multi` 경로는 항상 **adversarial 모드**(`turn/start` + 자유형 프롬프트)다. 그리고 그 프롬프트(`mcp_codex.go:1129`)는 출력 **서식을 전혀 지정하지 않는다** — "Report concrete findings with severity, file/line, confidence, and a recommendation."
+`audit_multi` 경로는 항상 **adversarial 모드**(`turn/start` + 자유형 프롬프트)다. 그리고 그 프롬프트(`mcp_codex.go:1163`)는 출력 **서식을 전혀 지정하지 않는다** — "Report concrete findings with severity, file/line, confidence, and a recommendation."
 
 **review-mode 불릿 관례로 눈금을 맞춘 정규식을, 서식이 자유로운 adversarial 산문에 적용하고 있다.** 이것이 불일치가 이 경로에서만 반복되는 이유다.
 
@@ -92,7 +93,7 @@ codex가 **명시적으로 통과를 거부**한 응답이 `pass`로 합성됐�
 ## F6 — Findings는 항상 비어 있다 (교차 축, #1632)
 
 ```go
-// mcp_codex.go:1121
+// mcp_codex.go:1155
 Findings:  []Finding{},
 ```
 
@@ -115,11 +116,17 @@ Findings:  []Finding{},
 | 그중 `pass` 필드 + FAIL 본문 | **2건** (`verdict-iter3.md`, `verdict-init-2.md`) |
 | 산문으로만 증언된 추가 1건 | iter2 (`verdict-iter3.md:33`) — 별도 판정서 없음 |
 
-상태파일 0건의 뜻은 **이 저장소 이력에서 `audit_multi`가 `session_id`를 넘긴 적이 한 번도 없다**는 것이다(`mcp_convergence.go:518` — 빈 세션 id면 영속화가 no-op). 따라서 t197 레인이 손으로 표를 적어 두지 않았다면 이 불일치는 **아무 흔적도 남기지 않았다**. 소급 스캔이 "3회"에서 멈춘 것은 그 이상이 없어서가 아니라 **볼 수 있는 기록이 거기까지**이기 때문이다.
+상태파일 0건의 뜻은 **이 저장소 이력에서 `audit_multi`가 `session_id`를 넘긴 적이 한 번도 없다**는 것이다(`mcp_convergence.go:573` — 빈 세션 id면 영속화가 no-op). 따라서 t197 레인이 손으로 표를 적어 두지 않았다면 이 불일치는 **아무 흔적도 남기지 않았다**. 소급 스캔이 "3회"에서 멈춘 것은 그 이상이 없어서가 아니라 **볼 수 있는 기록이 거기까지**이기 때문이다.
 
-## F9 — 범위 밖 관측 (보고만): codex 백엔드가 워크트리를 무시한다
+## F9 — 범위 밖 관측 (카드 t246): 감사 대상 트리가 호출자의 트리와 다르다
 
-라이브 프로브는 `.claude/worktrees/t229`에서 실행했고 그 트리에 `probe_vuln.go`를 두었는데, codex는 **primary 체크아웃**의 미커밋 변경(`internal/statusline/renderer.go`)을 리뷰했고 프로브 파일을 보지 못했다. 워크트리 안에서 audit을 돌리면 **다른 트리를 감사한다**. 별도 카드감.
+**최초 서술 정정.** 처음에는 "codex 백엔드가 워크트리를 무시한다 — `cwd`를 안 넘긴다"로 적었으나, 그 판단은 **stale 트리**(primary 체크아웃의 오래된 로컬 main)를 읽은 결과였다. 현재 main(`294b4b6ab`)에서는 `performCodexAudit`이 `projectRoot` 파라미터를 받아 `params["cwd"]`로 넘긴다 — `SPEC-MCP-WORKTREE-ROOT-001` REQ-1/AC-1b가 이미 그 절반을 닫았다. **"키가 없다"는 주장은 철회한다.**
+
+남는 관측은 이것이다: 라이브 프로브를 `.claude/worktrees/t229`에서 실행했는데 codex는 **primary 체크아웃**의 미커밋 변경(`internal/statusline/renderer.go`)을 리뷰했고, 그 트리에 둔 프로브 파일을 보지 못했다. `resolveProjectDir()`(`internal/cli/session.go:264`)이 `CLAUDE_PROJECT_DIR` 또는 **MCP 서버 프로세스 자신의 CWD**에서 루트를 푸는데, 세션이 중간에 워크트리로 옮겨가도 MCP 서버는 재기동되지 않으므로 그 값은 세션 최초의 primary 체크아웃에 고정된다. 즉 결함의 소재는 **키 전달**이 아니라 **루트 해소**다.
+
+한 가지 더: 이 프로브는 **설치본 `moai` 바이너리**(현재 트리보다 오래된 빌드)의 MCP 서버를 통해 돌았다. 따라서 위 관측이 **현재 main에서도 그대로 재현되는지는 확인하지 않았다** — 재현 확인은 t246 소관이다.
+
+리드가 이 관측으로 **카드 t246**을 등록했다. 이 카드 범위 밖.
 
 ---
 
@@ -134,4 +141,10 @@ Findings:  []Finding{},
 3. **adversarial 경로에서 verdict 단어도 불릿도 없으면 `inconclusive`** — `pass` 기본값 제거. 단, **native review-mode의 무불릿 = 정상 통과** 경로는 건드리면 안 된다(codex review 게이트의 clean-pass가 여기 걸림). 모드별로 갈라야 한다.
 4. **수렴 엔진이 합성 근거를 본다** — 필드-본문 불일치가 `disagreement_flag` + `residual_risk_note`로 드러나야 한다. 조용히 지나가면 안 된다.
 
-부수 의무 1건: `session_id`를 실제로 넘겨 `ConvergenceResult`를 영속화해야 F8의 소급 불가 상태가 반복되지 않는다.
+이를 관통하는 원칙 한 줄(리드 확정): **판정 불가를 통과로 읽지 않는다.** 정규식 눈금이 특정 CLI 버전 출력에 묶여 있는 것이 이 결함의 구조적 원인이므로, 수정안은 서식 드리프트에 견뎌야 한다 — 아는 서식이 하나도 안 맞으면 조용히 `pass`로 떨어지는 대신 `inconclusive`로 떨어진다.
+
+### 범위 밖 (기록만)
+
+- **F6 / `Findings` 하드코딩 빈 슬라이스** — 카드 **t234**(= 이슈 #1632)의 축. 리드가 t229 착지까지 t234 배차를 보류했다. 같은 함수(`synthesizeReviewOutput`)를 뒤이어 만지므로 SPEC 본문에 명시.
+- **F8 / `session_id` 미전달로 `ConvergenceResult`가 한 번도 영속된 적 없음** — 별개 결함 신호. 후속 카드 여부는 리드 판단. **이 SPEC 범위에 넣지 않는다.**
+- **F9 / 감사 대상 트리 불일치** — 카드 **t246**.
