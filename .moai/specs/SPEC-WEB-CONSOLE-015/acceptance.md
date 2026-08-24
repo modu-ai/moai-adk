@@ -6,7 +6,7 @@ stated, so a zero-hit result counts as evidence rather than as a vacuous pass �
 already passes on the untouched tree observes nothing and is a defect, which is why version 0.1.0's
 AC-WC15-012 was deleted rather than reworded.
 
-Baselines below were measured in this worktree at `dfbf828a6` and are quoted as observed.
+Baselines below were measured in this worktree and are quoted as observed; each was re-measured at `1cee5d29f` and reproduced unchanged (the paths they read were untouched between the two commits).
 
 ## §A Framing
 
@@ -114,9 +114,21 @@ which is the reachable hazard REQ-WC15-047 names.
 ## §D Cross-cutting
 
 **AC-WC15-050** (REQ-WC15-050) — Given the merged tree, When the existing i18n governance test in
-`internal/web/i18n_governance_test.go` runs, Then it passes with **no allowlist entry added**, and
-every key this SPEC introduces is present in the `en`, `ko`, `ja`, and `zh` maps of
-`internal/web/assets/i18n.js`.
+`internal/web/i18n_governance_test.go` runs, Then it passes with **no allowlist entry added**; and
+When the set of keys this SPEC introduces is enumerated from the diff and each is looked up in the
+`en`, `ko`, `ja`, and `zh` maps of `internal/web/assets/i18n.js`, Then that set is **non-empty** and
+every member resolves in all four maps.
+
+Baseline, measured: the governance test passes on the untouched tree —
+`go test ./internal/web/ -run TestI18n -count=1` → `ok github.com/modu-ai/moai-adk/internal/web`.
+So the first half asserts **preservation** and observes nothing on its own; it fails only if this
+SPEC's new strings are added to one map and not the others, or if an allowlist entry is used to
+paper over that. The non-empty requirement in the second half is what stops the criterion passing
+vacuously: this SPEC necessarily introduces user-visible strings (the lane section's column labels,
+the unresolved-lane marker, and the replacement note banner of REQ-WC15-052, whose current third
+argument is the empty key), so an empty set means those strings were hard-coded in English rather
+than translated — the defect the requirement exists to catch, and the one the pre-change tree
+already exhibits at `screens.templ:192`.
 
 **AC-WC15-051** (REQ-WC15-051) — Given a records directory holding one record written by a build
 predating this SPEC's dependencies (generated in the test by marshalling the pre-change struct,

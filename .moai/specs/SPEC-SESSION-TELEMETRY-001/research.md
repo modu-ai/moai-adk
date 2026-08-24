@@ -82,8 +82,10 @@ $ sed -n '70,73p;92p' internal/config/profile.go
 
 `moai cc` parses no model. `moai glm` populates four slots and cannot know which one the session
 will run in. `EffectiveProfile` returns a profile name in a different vocabulary from a model
-name. The parent SPEC's REQ-WC15-011 was unimplementable on both backends — the finding the
-split acted on.
+name. The parent SPEC's REQ-WC15-011 **as it stood in that SPEC's version 0.1.0** was
+unimplementable on both backends — the finding the split acted on. The requirement no longer
+exists: `SPEC-WEB-CONSOLE-015` 0.2.0 removed it rather than reworded it, so the identifier
+resolves to nothing in the current tree and is cited here as history, not as a live reference.
 
 ## §4 The statusline does hold all three values
 
