@@ -33,7 +33,7 @@ related_specs: [SPEC-CODEX-DUAL-AGENTS-001, SPEC-CODEX-SKILLS-CANONICAL-001, SPE
 
 ## §A. 측정 전제 (Verified baseline)
 
-> 근거: `.moai/reports/t197/` — 자기완결 측정 스크립트 `probe.sh`, 그 1회 실행 무편집 전사본 `probe-output.txt` (기준 커밋 `01f5c531b`), 그리고 전사본의 줄 범위를 인용하며 해석하는 `measurement.md`. 미관측 항목은 그 문서 말미에 명시돼 있다.
+> 근거: `.moai/reports/t197/` — 자기완결 측정 스크립트 `probe.sh`, 그 1회 실행 무편집 전사본 `probe-output.txt` (**측정 대상 트리 `1ed61e4ac`** — 전사본 L24-26 이 스스로 찍은 값), 그리고 전사본의 줄 범위를 인용하며 해석하는 `measurement.md`. 미관측 항목은 그 문서 말미에 명시돼 있다. 인용 정합은 `citation-sweep.sh` 로 확인한다.
 > t88 (M4) 산출물 `7b217da7c` 가 이 트리의 조상임을 확인했다.
 
 ### §A.1 `moai codex` 는 없다 (카드 전제 성립)
@@ -42,7 +42,7 @@ related_specs: [SPEC-CODEX-DUAL-AGENTS-001, SPEC-CODEX-SKILLS-CANONICAL-001, SPE
 
 ### §A.2a 구조화된 auth 원천이 존재한다
 
-`codex doctor` 는 auth 를 구조화해 알고 있고 (`stored auth mode: chatgpt`), 그 원천은 `<CODEX_HOME>/auth.json` 의 `auth_mode` 필드다. doctor 자체는 커밋된 전사본에서 **31초** 걸려 런처의 대화형 리드아웃에 쓸 수 없지만, 파일은 즉시 읽힌다. 산문 파싱보다 이쪽이 1순위다.
+`codex doctor` 는 auth 를 구조화해 알고 있고 (`stored auth mode: chatgpt`), 그 원천은 `<CODEX_HOME>/auth.json` 의 `auth_mode` 필드다. doctor 자체는 커밋된 전사본에서 **67초** 걸려 런처의 대화형 리드아웃에 쓸 수 없지만, 파일은 즉시 읽힌다. 산문 파싱보다 이쪽이 1순위다.
 
 다만 이 머신에서 관측한 조합은 `auth_mode=chatgpt` 하나뿐이다 — `apikey` / `provider` 모드의 실제 파일 형태는 미관측이므로, 설계는 알려지지 않은 값을 추측하지 않고 명령 프로브로 하강한다.
 

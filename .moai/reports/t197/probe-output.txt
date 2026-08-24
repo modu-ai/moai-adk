@@ -17,19 +17,17 @@ rc=0
 
 # generate the doctor JSON this probe reads (timed, rc captured)
 $ START=$(date +%s); codex doctor --json > "$DOCTOR_JSON" 2>/dev/null; DRC=$?; END=$(date +%s); echo "codex doctor --json: rc=$DRC elapsed=$((END-START))s"; ( exit $DRC )
-codex doctor --json: rc=0 elapsed=31s
+codex doctor --json: rc=0 elapsed=67s
 rc=0
 
 ### baseline
 $ git rev-parse --short HEAD
-82c46c24c
+1ed61e4ac
 rc=0
 
 $ git status --short
  M .moai/reports/t197/probe-output.txt
- M .moai/reports/t197/probe.sh
- M .moai/specs/SPEC-CODEX-LAUNCHER-001/acceptance.md
- M .moai/specs/SPEC-CODEX-LAUNCHER-001/spec.md
+?? .moai/reports/t197/citation-sweep.sh
 rc=0
 
 $ git merge-base --is-ancestor 7b217da7c HEAD
