@@ -73,6 +73,62 @@ func TestSeamCarriesNoNavigatorTierDeps(t *testing.T) {
 	}
 }
 
+// Module normalization: a go.mod-bearing tree localizes internal imports and
+// marks them Local; external imports and absent-module trees pass through.
+func TestExtract_ModuleNormalization(t *testing.T) {
+	root := seamFixture(t)
+	if err := os.WriteFile(filepath.Join(root, "go.mod"), []byte("module example.com/proj\n\ngo 1.26\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "internal", "wire", "imp.go"),
+		[]byte("package wire\n\nimport (\n\t\"example.com/proj/internal/other\"\n\t\"fmt\"\n)\n\nfunc D() { other.X(); fmt.Println(1) }\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "internal", "other"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "internal", "other", "other.go"), []byte("package other\n\nfunc X() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, imports, _, err := Extract(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sawLocal, sawExternal := false, false
+	for _, imp := range imports {
+		if imp.File != "internal/wire/imp.go" {
+			continue
+		}
+		switch imp.Module {
+		case "internal/other":
+			if !imp.Local {
+				t.Error("module-prefixed import must be Local")
+			}
+			sawLocal = true
+		case "fmt":
+			if imp.Local {
+				t.Error("stdlib import must not be Local")
+			}
+			sawExternal = true
+		}
+	}
+	if !sawLocal || !sawExternal {
+		t.Errorf("localization split not observed: local=%v external=%v imports=%v", sawLocal, sawExternal, imports)
+	}
+
+	// localizeModule unit split: prefix absent → pass-through, not local.
+	if m, isLocal := localizeModule("github.com/x/y", ""); isLocal || m != "github.com/x/y" {
+		t.Errorf("empty module prefix must pass through: %q %v", m, isLocal)
+	}
+	if _, isLocal := localizeModule("example.com/proj/internal/z", "example.com/proj"); !isLocal {
+		t.Error("prefixed module must localize")
+	}
+	if m, isLocal := localizeModule("example.com/projish", "example.com/proj"); isLocal || m != "example.com/projish" {
+		t.Errorf("partial-prefix must not localize: %q %v", m, isLocal)
+	}
+}
+
 // Matrix validation on the seam's own output.
 func TestMatrix_NoEmptyCells(t *testing.T) {
 	m := GradeMatrix()
