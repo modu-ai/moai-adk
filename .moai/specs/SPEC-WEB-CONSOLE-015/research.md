@@ -1,4 +1,10 @@
-# SPEC-WEB-CONSOLE-015 — Research
+# SPEC-WEB-CONSOLE-015 — Research (reference material)
+
+> **Not part of the required artifact set.** Reclassified from Tier L to Tier M in version 0.3.0;
+> Tier M carries three artifacts. Retained rather than discarded because the measurements it records
+> were paid for and remain the provenance for spec.md's claims. Note that its measurements predate
+> the §A.4 correction in 0.3.0 — where the two disagree about how consistently a record is keyed to
+> the wrong session, spec.md §A.4 is the current statement.
 
 The measurement record for what this SPEC still asserts after the three-way carve-out. Everything
 below was measured in worktree `.claude/worktrees/t207` at `dfbf828a6`, in the run that authored

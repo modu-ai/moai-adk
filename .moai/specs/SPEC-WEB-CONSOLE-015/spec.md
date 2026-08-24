@@ -1,7 +1,7 @@
 ---
 id: SPEC-WEB-CONSOLE-015
 title: "moai web console — session telemetry cells and per-lane factory progress (consumer)"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-08-24
 updated: 2026-08-24
@@ -12,7 +12,7 @@ module: internal/web
 lifecycle: spec-anchored
 tags: web-console, kanban, factory, telemetry
 era: V3R6
-tier: L
+tier: M
 depends_on: [SPEC-SESSION-TELEMETRY-001, SPEC-KANBAN-RECORD-SESSION-KEY-001]
 related_specs: [SPEC-WEB-TODO-QUEUE-001, SPEC-WEB-CONSOLE-REDESIGN-001, SPEC-FACTORY-WORKER-FANOUT-001]
 ---
@@ -23,8 +23,9 @@ related_specs: [SPEC-WEB-TODO-QUEUE-001, SPEC-WEB-CONSOLE-REDESIGN-001, SPEC-FAC
 
 | Version | Date | Change |
 |---|---|---|
-| 0.1.0 | 2026-08-24 | Initial draft from operator card t207 (three axes), plus the iteration-2 revision landing decisions G-1..G-6. |
+| 0.3.0 | 2026-08-24 | Iteration-3 audit repairs (`.moai/reports/t207/plan-audit-web-console-015-iter3.md`, seven blocking findings, all pre-run) plus the operator-ruled reclassification to Tier M. The measurement supporting M was already recorded in `plan.md` §B at 0.2.0 and is unchanged; what resolved it is that both dependency SPECs passed their own audits (0.91 / 0.857), which is the condition that section named. `design.md` and `research.md` leave the required artifact set and are retained as reference material. §A.4 withdraws the categorical claim that a record is always keyed by the launching session: measured, the join completes for some lanes and returns another lane's record. |
 | 0.2.0 | 2026-08-24 | Three-way carve-out. Session telemetry (the context-usage path split, the exported reader, `moai tokens`, the doctrine and docs-site sweeps, and the model/effort producer) moved to `SPEC-SESSION-TELEMETRY-001`; the kanban record's session key, lane number, and card identifier moved to `SPEC-KANBAN-RECORD-SESSION-KEY-001`; the `/todo` route and queue-root resolution moved to `SPEC-WEB-TODO-QUEUE-001`. What remains is consumer-only. REQ/AC-WC15-012 deleted outright (it observed nothing). Surviving requirement ids keep their numbers so the two audit iterations stay traceable; the sequence is therefore gapped. |
+| 0.1.0 | 2026-08-24 | Initial draft from operator card t207 (three axes), plus the iteration-2 revision landing decisions G-1..G-6. |
 
 ## §A Background
 

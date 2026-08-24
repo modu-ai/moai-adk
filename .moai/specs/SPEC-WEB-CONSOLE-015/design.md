@@ -1,4 +1,10 @@
-# SPEC-WEB-CONSOLE-015 — Design
+# SPEC-WEB-CONSOLE-015 — Design (reference material)
+
+> **Not part of the required artifact set.** This SPEC was reclassified from Tier L to Tier M in
+> version 0.3.0, and Tier M carries three artifacts (spec / plan / acceptance). This document is
+> retained rather than discarded because it is current and its content is not duplicated elsewhere
+> — it is reference material for a reader who wants the decisions behind the requirements, and it
+> is not audited as part of the Tier M artifact set.
 
 Deliberately thin. This document carries only what spec.md and plan.md do not: the decisions this
 SPEC still owns after the three-way carve-out, and their consequences.

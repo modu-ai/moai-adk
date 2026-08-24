@@ -13,11 +13,11 @@ Milestones are ordered by **decision reversibility**: M1 fixes the view-model sh
 policy, which are expensive to unwind once tests and templates bind to them; M3 is
 follow-the-shape work.
 
-## §B Tier — declared L, and the honest measurement says it is near the M/L boundary
+## §B Tier — reclassified to M on the measurement below
 
-The frontmatter keeps `tier: L`, carried over from version 0.1.0. Measured against what actually
-remains, that is generous, and the reclassification is flagged rather than taken here — the
-operator holds it.
+The frontmatter now reads `tier: M`. Version 0.2.0 kept `tier: L` carried over from 0.1.0 and
+flagged the reclassification for the operator rather than taking it; the operator ruled M in
+version 0.3.0, on the measurement this section already carried.
 
 | Signal | Version 0.1.0 | This revision |
 |---|---|---|
@@ -36,11 +36,12 @@ Tier-M-shaped diff.
 
 **What argues for M:** one package, no schema change, no doctrine surface, seven files.
 
-A Tier M reclassification is defensible and would drop `design.md` and `research.md` from the
-required artifact set and the audit threshold from 0.85 to 0.80. Both files exist and are current,
-so reclassifying costs nothing already spent. **Recommendation: reclassify to M** if the operator
-agrees the dependency risk is carried by the dependency SPECs' own audits rather than by this
-one's tier.
+**How it resolved.** The dependency risk is carried by the dependency SPECs' own audits rather than
+by this SPEC's tier — `SPEC-SESSION-TELEMETRY-001` passed at 0.91 and
+`SPEC-KANBAN-RECORD-SESSION-KEY-001` at 0.857 — which is the condition this section named. Every
+other signal is M-shaped. The reclassification drops `design.md` and `research.md` from the required
+artifact set; both are **retained as reference material** rather than discarded (they are current and
+were paid for), and each says so in its own opening. The audit threshold moves from 0.85 to 0.80.
 
 ## §C Milestones
 
