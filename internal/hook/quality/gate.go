@@ -990,13 +990,17 @@ func (g *QualityGate) runStep(ctx context.Context, stepName string, timeout time
 	// misattribute the narrow case where the step deadline fires first and the
 	// parent deadline passes while the process is still shutting down — both
 	// contexts then read DeadlineExceeded.
+	// Both budgets are compared as absolute instants derived from one clock
+	// read: a duration comparison would drift by whatever elapses between the
+	// two reads, which is exactly the margin the comparison is deciding.
+	startedAt := time.Now()
+	stepDeadline := startedAt.Add(timeout)
 	parentBudget, parentBinds := time.Duration(0), false
-	if deadline, ok := ctx.Deadline(); ok {
-		parentBudget = time.Until(deadline)
-		parentBinds = parentBudget <= timeout
+	if deadline, ok := ctx.Deadline(); ok && !deadline.After(stepDeadline) {
+		parentBudget, parentBinds = deadline.Sub(startedAt), true
 	}
 
-	stepCtx, cancel := context.WithTimeout(ctx, timeout)
+	stepCtx, cancel := context.WithDeadline(ctx, stepDeadline)
 	defer cancel()
 
 	cmd := exec.CommandContext(stepCtx, name, args...)
