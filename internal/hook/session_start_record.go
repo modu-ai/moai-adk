@@ -41,10 +41,6 @@ const worktreeRootDirName = "worktrees"
 // writeKanbanSessionRecord records this session's kanban identity under its
 // OWN identifier, or does nothing at all.
 //
-// toplevel resolves the worktree root of a directory; production passes
-// resolveWorktreeRepoRoot and tests inject a stub, so the card derivation is
-// exercised without a git fixture.
-//
 // Four gates precede the write, each of them a case where the correct answer
 // is no record rather than a guessed one:
 //
@@ -59,7 +55,7 @@ const worktreeRootDirName = "worktrees"
 //   - A record already present for this identifier, for the same reason the
 //     re-entry gate exists: the write is additive to the session's start, not
 //     to its progress.
-func writeKanbanSessionRecord(input *HookInput, toplevel func(string) (string, error)) {
+func writeKanbanSessionRecord(input *HookInput) {
 	if input == nil || input.SessionID == "" {
 		return
 	}
@@ -93,7 +89,7 @@ func writeKanbanSessionRecord(input *HookInput, toplevel func(string) (string, e
 		input.SessionID,
 		os.Getenv(config.EnvMoaiKanbanSpec),
 		os.Getenv(config.EnvMoaiKanbanBackend),
-	).WithRole(role).WithLane(lane).WithCard(resolveSessionCardID(dir, toplevel))
+	).WithRole(role).WithLane(lane).WithCard(resolveSessionCardID(dir))
 
 	kanban.WriteBestEffort(root, rec)
 }
@@ -135,26 +131,26 @@ func kanbanRoleFromEnv() (role string, lane int, ok bool) {
 }
 
 // resolveSessionCardID returns the queue card this session is working: the
-// explicit override where one is supplied, and otherwise the basename of the
-// session's worktree root — but only where that root passes the containment
-// test. An empty override is treated as unset so it never blanks a derivable
-// value (REQ-KRS-005, acceptance.md §E).
-func resolveSessionCardID(dir string, toplevel func(string) (string, error)) string {
+// explicit override where one is supplied, and otherwise the card worktree
+// this session stands in. An empty override is treated as unset so it never
+// blanks a derivable value (REQ-KRS-005, acceptance.md §E).
+func resolveSessionCardID(dir string) string {
 	if override := strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanCard)); override != "" {
 		return override
 	}
-	if dir == "" || toplevel == nil {
-		return ""
-	}
-	root, err := toplevel(dir)
-	if err != nil {
-		return ""
-	}
-	return cardIDFromWorktreeRoot(root)
+	return cardIDFromPath(dir)
 }
 
-// cardIDFromWorktreeRoot returns root's basename ONLY where root's parent
-// directory is named "worktrees", and "" otherwise.
+// cardIDFromPath walks dir upward and returns the first ancestor whose PARENT
+// directory is named "worktrees" — the card worktree this session stands in —
+// or "" when there is none.
+//
+// The walk is what makes a session whose cwd sits DEEP inside a card worktree
+// resolve the same card as one standing at its root, and it is deliberately
+// pure path arithmetic: `git rev-parse --show-toplevel` names the same
+// directory but costs a subprocess on a hook that runs under a 5s budget.
+// Measured on this tree, resolving it that way pushed SessionStart's
+// synchronous return from under 500ms to 650-890ms for every kanban session.
 //
 // The containment test is what makes the "left empty rather than guessed"
 // clause reachable. Without it the derivation always yields something inside
@@ -163,17 +159,22 @@ func resolveSessionCardID(dir string, toplevel func(string) (string, error)) str
 // render it as one. The test constrains where the value may come from, not
 // whether the card exists — a card worktree whose directory name is not a real
 // card id still records that name.
-func cardIDFromWorktreeRoot(root string) string {
-	if strings.TrimSpace(root) == "" {
+func cardIDFromPath(dir string) string {
+	if strings.TrimSpace(dir) == "" {
 		return ""
 	}
-	root = filepath.Clean(root)
-	if filepath.Base(filepath.Dir(root)) != worktreeRootDirName {
-		return ""
+	for dir = filepath.Clean(dir); ; {
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return ""
+		}
+		if filepath.Base(parent) == worktreeRootDirName {
+			base := filepath.Base(dir)
+			if base == "." || base == string(filepath.Separator) {
+				return ""
+			}
+			return base
+		}
+		dir = parent
 	}
-	base := filepath.Base(root)
-	if base == "." || base == string(filepath.Separator) {
-		return ""
-	}
-	return base
 }

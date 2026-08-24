@@ -1,9 +1,7 @@
 package hook
 
 import (
-	"errors"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -37,15 +35,6 @@ func scrubKanbanEnv(t *testing.T) {
 	}
 }
 
-// stubToplevel returns a worktree-root resolver that always answers root.
-func stubToplevel(root string) func(string) (string, error) {
-	return func(string) (string, error) { return root, nil }
-}
-
-func failingToplevel() func(string) (string, error) {
-	return func(string) (string, error) { return "", errors.New("not a repository") }
-}
-
 // AC-KRS-001 / AC-KRS-002: the record is keyed by the identifier the session's
 // own runtime delivered, even when the project-wide single slot holds a
 // different one. The pre-change writer produced the slot's identifier by
@@ -73,7 +62,7 @@ func TestRecordIsKeyedByTheRuntimeSessionIDNotTheSidecar(t *testing.T) {
 		ProjectDir: root,
 		CWD:        root,
 		Source:     "startup",
-	}, failingToplevel())
+	})
 
 	rec, err := kanban.Read(root, own)
 	if err != nil {
@@ -106,7 +95,7 @@ func TestFactoryLaneRecordsItsNumberAndLeadRecordsZero(t *testing.T) {
 		t.Setenv(config.EnvMoaiFactoryWorkers, "4")
 		t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendGLM)
 
-		writeKanbanSessionRecord(&HookInput{SessionID: "lane-sess", ProjectDir: root, CWD: root}, failingToplevel())
+		writeKanbanSessionRecord(&HookInput{SessionID: "lane-sess", ProjectDir: root, CWD: root})
 
 		rec, err := kanban.Read(root, "lane-sess")
 		if err != nil {
@@ -129,7 +118,7 @@ func TestFactoryLaneRecordsItsNumberAndLeadRecordsZero(t *testing.T) {
 		t.Setenv(config.EnvMoaiKanban, "1")
 		t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
 
-		writeKanbanSessionRecord(&HookInput{SessionID: "lead-sess", ProjectDir: root, CWD: root}, failingToplevel())
+		writeKanbanSessionRecord(&HookInput{SessionID: "lead-sess", ProjectDir: root, CWD: root})
 
 		rec, err := kanban.Read(root, "lead-sess")
 		if err != nil {
@@ -156,7 +145,7 @@ func TestCardIdentifierDerivation(t *testing.T) {
 		t.Setenv(config.EnvMoaiKanban, "1")
 		t.Setenv(config.EnvMoaiKanbanCard, "")
 
-		writeKanbanSessionRecord(&HookInput{SessionID: "a", ProjectDir: root, CWD: root}, stubToplevel(cardWorktree))
+		writeKanbanSessionRecord(&HookInput{SessionID: "a", ProjectDir: root, CWD: cardWorktree})
 
 		rec, err := kanban.Read(root, "a")
 		if err != nil {
@@ -173,7 +162,7 @@ func TestCardIdentifierDerivation(t *testing.T) {
 		t.Setenv(config.EnvMoaiKanban, "1")
 		t.Setenv(config.EnvMoaiKanbanCard, "t999")
 
-		writeKanbanSessionRecord(&HookInput{SessionID: "b", ProjectDir: root, CWD: root}, stubToplevel(cardWorktree))
+		writeKanbanSessionRecord(&HookInput{SessionID: "b", ProjectDir: root, CWD: cardWorktree})
 
 		rec, err := kanban.Read(root, "b")
 		if err != nil {
@@ -190,7 +179,7 @@ func TestCardIdentifierDerivation(t *testing.T) {
 		t.Setenv(config.EnvMoaiKanban, "1")
 		t.Setenv(config.EnvMoaiKanbanCard, "")
 
-		writeKanbanSessionRecord(&HookInput{SessionID: "c", ProjectDir: root, CWD: root}, stubToplevel(primaryCheckout))
+		writeKanbanSessionRecord(&HookInput{SessionID: "c", ProjectDir: root, CWD: primaryCheckout})
 
 		raw, err := os.ReadFile(kanban.RecordPath(root, "c"))
 		if err != nil {
@@ -209,26 +198,21 @@ func TestCardIdentifierDerivation(t *testing.T) {
 	})
 }
 
-// The same derivation against a REAL git worktree root rather than a stub, so
-// the production resolver (resolveWorktreeRepoRoot) is exercised end to end.
-func TestCardIdentifierFromARealGitWorktreeRoot(t *testing.T) {
-	if _, err := exec.LookPath("git"); err != nil {
-		t.Skip("git not on PATH")
-	}
+// A session whose cwd sits DEEP inside a card worktree resolves the same card
+// as one standing at its root — the reason the derivation walks upward instead
+// of testing the cwd's own parent.
+func TestCardIdentifierFromADeepCwdInsideACardWorktree(t *testing.T) {
 	scrubKanbanEnv(t)
 	t.Setenv(config.EnvMoaiKanban, "1")
 
 	base := t.TempDir()
-	card := filepath.Join(base, ".claude", "worktrees", "t207")
-	if err := os.MkdirAll(card, 0o755); err != nil {
+	deep := filepath.Join(base, ".claude", "worktrees", "t207", "internal", "hook")
+	if err := os.MkdirAll(deep, 0o755); err != nil {
 		t.Fatalf("MkdirAll: %v", err)
-	}
-	if out, err := exec.Command("git", "-C", card, "init", "-q").CombinedOutput(); err != nil {
-		t.Skipf("git init unavailable: %v (%s)", err, out)
 	}
 
 	root := t.TempDir()
-	writeKanbanSessionRecord(&HookInput{SessionID: "real-wt", ProjectDir: root, CWD: card}, resolveWorktreeRepoRoot)
+	writeKanbanSessionRecord(&HookInput{SessionID: "real-wt", ProjectDir: root, CWD: deep})
 
 	rec, err := kanban.Read(root, "real-wt")
 	if err != nil {
@@ -260,20 +244,26 @@ func TestCompanionLabelResolvesToItsBareRole(t *testing.T) {
 	}
 }
 
-// The containment test itself, exercised directly over both live shapes.
-func TestCardIDFromWorktreeRootRequiresAWorktreesParent(t *testing.T) {
+// The containment test itself, exercised directly over both live shapes plus
+// the boundary cases the walk must not mistake for a card.
+func TestCardIDFromPathRequiresAWorktreesParent(t *testing.T) {
 	t.Parallel()
 
 	cases := map[string]string{
-		"/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t207": "t207",
-		"/Users/goos/moai/moai-adk-go":                        "",
-		"/Users/goos/.moai/worktrees/card-wtiso":              "card-wtiso",
-		"/":                                                   "",
-		"":                                                    "",
+		// L1 card worktree (the shape the dispatch protocol fixes) and L2.
+		"/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t207":              "t207",
+		"/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t207/internal/cli": "t207",
+		"/Users/goos/.moai/worktrees/card-wtiso":                           "card-wtiso",
+		// A primary checkout — the live case that must NOT yield a card.
+		"/Users/goos/moai/moai-adk-go": "",
+		// The container directory itself is not a card.
+		"/Users/goos/MoAI/moai-adk-go/.claude/worktrees": "",
+		"/": "",
+		"":  "",
 	}
-	for root, want := range cases {
-		if got := cardIDFromWorktreeRoot(root); got != want {
-			t.Fatalf("cardIDFromWorktreeRoot(%q) = %q, want %q", root, got, want)
+	for dir, want := range cases {
+		if got := cardIDFromPath(dir); got != want {
+			t.Fatalf("cardIDFromPath(%q) = %q, want %q", dir, got, want)
 		}
 	}
 }
@@ -288,7 +278,7 @@ func TestNonKanbanSessionWritesNoRecord(t *testing.T) {
 	t.Setenv(config.EnvMoaiFactoryWorker, "")
 	t.Setenv(config.EnvMoaiFactoryWorkers, "")
 
-	writeKanbanSessionRecord(&HookInput{SessionID: "plain", ProjectDir: root, CWD: root}, failingToplevel())
+	writeKanbanSessionRecord(&HookInput{SessionID: "plain", ProjectDir: root, CWD: root})
 
 	if _, err := os.Stat(kanban.RecordPath(root, "plain")); err == nil {
 		t.Fatalf("a record was written for a non-kanban session")
@@ -306,7 +296,7 @@ func TestReEntrySourcesDoNotWriteOrOverwrite(t *testing.T) {
 			t.Setenv(config.EnvMoaiKanban, "1")
 			t.Setenv(config.EnvMoaiKanbanBackend, kanban.BackendClaude)
 
-			writeKanbanSessionRecord(&HookInput{SessionID: "s", ProjectDir: root, CWD: root, Source: source}, failingToplevel())
+			writeKanbanSessionRecord(&HookInput{SessionID: "s", ProjectDir: root, CWD: root, Source: source})
 
 			if _, err := os.Stat(kanban.RecordPath(root, "s")); err == nil {
 				t.Fatalf("source %q wrote a record", source)
@@ -328,7 +318,7 @@ func TestExistingRecordIsNotClobbered(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 
-	writeKanbanSessionRecord(&HookInput{SessionID: "s", ProjectDir: root, CWD: root, Source: "startup"}, failingToplevel())
+	writeKanbanSessionRecord(&HookInput{SessionID: "s", ProjectDir: root, CWD: root, Source: "startup"})
 
 	rec, err := kanban.Read(root, "s")
 	if err != nil {
@@ -365,7 +355,7 @@ func TestRecordWriteFailsOpenOnUnwritableStateDirectory(t *testing.T) {
 
 	// The path is reached (the environment marks a kanban session) and the
 	// write attempt fails inside WriteBestEffort, which discards the error.
-	writeKanbanSessionRecord(&HookInput{SessionID: "unwritable", ProjectDir: root, CWD: root, Source: "startup"}, failingToplevel())
+	writeKanbanSessionRecord(&HookInput{SessionID: "unwritable", ProjectDir: root, CWD: root, Source: "startup"})
 
 	if _, err := os.Stat(kanban.RecordPath(root, "unwritable")); err == nil {
 		t.Fatalf("a record exists though the state directory was unwritable")
