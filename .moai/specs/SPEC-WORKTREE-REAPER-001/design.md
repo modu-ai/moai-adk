@@ -355,7 +355,7 @@ Measured:
 | unix | `EPERM` | `(true, true)` — exists, other owner |
 | unix | `ESRCH` | `(false, true)` — positively dead |
 | unix | any other errno | `(false, false)` — **undetermined** ⇒ anchored |
-| windows | always | `(true, true)` — cannot assert dead, so never widens removal |
+| windows | always | `(false, false)` — nothing is observed, so the result is undetermined; the guard preserves on undetermined, so removal is never widened, and the notice does not claim a liveness nobody measured |
 
 The existing `isProcessAlive` remains for `LiveAnchoredSessions`; the new
 two-valued form wraps the same syscall rather than duplicating it. The

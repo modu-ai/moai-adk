@@ -15,7 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Run-phase e2e discovered two placement defects, both fixed in place with RED→GREEN regression tests: the update-path wiring refresh sat after the `syncSkipped` early return (an "Up to date" update never refreshed wiring), and a force-reinit silently lost the doctor's sidecar baseline (now re-recorded on disk-match).
   - PRESERVE clean: template tree and `internal/codexadapter/` empty diff; `internal/cli/mcp_server.go` took exactly 14 pure insertions (the 4 annotation lines + comments). Coverage 87.2% (`internal/codexwiring`, threshold 85), `golangci-lint` 0 issues, windows-amd64 `go vet` exit-0. This sync commit carries the README 4-locale statusline-limitation sentence, the `spec.md` frontmatter close (the only one of the four artifacts carrying a frontmatter block), the `progress.md` §E.4 signal, and this entry. 🗿 MoAI
 - **`moai worktree clean --stale --json`** reports every non-protected registered worktree — path,
-  branch, keep reason, and the dirty, merge, and anchor states behind that reason — and removes
+  branch, keep reason, and the four predicates behind that reason (dirty, merge, anchor, and
+  ignored content) — and removes
   nothing. It overrides `--yes` rather than combining with it: an inventory that could delete on a
   stray flag is not an inventory. The report and the sweep run the same classification, so the
   report can never describe a tree the sweep would treat differently. It also reaches the worktrees

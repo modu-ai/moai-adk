@@ -11,7 +11,23 @@
   duplicates. IDs 001-017 keep their v0.1.0 numbering; 018-025 are amendment
   additions placed in their owning milestone.
 - Acceptance criteria: **28**. Every criterion carries a `Covers:` line and a
-  recorded pre-implementation observation; 24/24 requirements covered.
+  recorded pre-implementation observation; **25/25** requirements covered —
+  measured, not carried over (`grep -o 'REQ-WR-[0-9]*' acceptance.md | sort -u
+  | wc -l` → 25). The earlier "24/24" was the v0.3.1 figure, stale from before
+  REQ-WR-025 was added at v0.4.0.
+- **Criterion count vs the §E.1 figure — a recorded discrepancy, not a
+  reconciliation.** This line counts **28** criteria, measured:
+  `grep -o 'AC-WR-[0-9]*[a-z]\?' acceptance.md | sort -u | wc -l` → 28. §E.1's
+  `criteria_passing` field reads `32/32 test-shaped`, but the ID list it
+  enumerates — `AC-WR-001..021, 024, 024b, 025b, 026` — contains **25** IDs,
+  and its `criteria_gated: [AC-WR-023b]` names an ID that does not exist in
+  `acceptance.md` (the criterion is AC-WR-023, whose §E.1 write-up splits it
+  into limbs (a) and (b)). The `32` is therefore unattributed: it does not
+  reproduce from the ID set, and no counting rule in the file yields it. It is
+  left as written rather than adjusted to a number that would look tidy without
+  having been measured; what IS measured is the 28 above and the 25 enumerated.
+  Reconciling §E.1's field is a follow-up, and until then the field should not
+  be cited as a coverage figure.
 - Audit trajectory: iter-1 FAIL 0.55 → iter-2 FAIL 0.84 → **iter-3 PASS 0.875**
   (threshold 0.85), zero regressions across all three, D1 re-verified at
   iteration 3 across 29 distinct test names with 0 discrepancies. Reports:

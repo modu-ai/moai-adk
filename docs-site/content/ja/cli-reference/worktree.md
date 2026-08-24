@@ -84,7 +84,7 @@ moai worktree clean [--merged-only | --stale] [--yes] [--json] [--base <branch>]
 | `--merged-only` | ブランチがベースへマージ済みのワークツリーのみ削除 |
 | `--stale` | 失うもののない放置されたワークツリーをまとめて整理 (デフォルトはプレビュー) |
 | `--yes` | `--stale` のプレビューではなく実際の削除を実行 |
-| `--json` | `--stale` と併用: 保護対象外のすべてのワークツリーを、保持理由・dirty・マージ・アンカーの状態とともに JSON で出力。何も削除せず、`--yes` より優先されます |
+| `--json` | `--stale` と併用: 保護対象外のすべてのワークツリーを、保持理由と四つの判定（dirty・マージ・アンカー・無視されたコンテンツ）とともに JSON で出力。何も削除せず、`--yes` より優先されます |
 | `--base <branch>` | `--merged-only` · `--stale` の判定基準ブランチ (デフォルト: `origin/main`) |
 
 `--stale` と `--merged-only` は同時に使えません。

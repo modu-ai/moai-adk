@@ -84,7 +84,7 @@ Run without flags, it only prunes stale worktree references.
 | `--merged-only` | Remove only worktrees whose branch is merged into base |
 | `--stale` | Sweep up abandoned worktrees with nothing to lose (preview by default) |
 | `--yes` | Actually remove instead of previewing with `--stale` |
-| `--json` | With `--stale`: report every non-protected worktree with its keep reason, dirty, merge, and anchor state as JSON. Removes nothing, and overrides `--yes` |
+| `--json` | With `--stale`: report every non-protected worktree with its keep reason and its four predicates — dirty, merge, anchor, and ignored-content state — as JSON. Removes nothing, and overrides `--yes` |
 | `--base <branch>` | Base branch used to judge `--merged-only` and `--stale` (default: `origin/main`) |
 
 `--stale` and `--merged-only` cannot be combined.

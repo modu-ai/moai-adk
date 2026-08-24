@@ -66,9 +66,12 @@ func TestPRMergeCleanup_T207SamplePreservedByLock(t *testing.T) {
 			return wtListPorcelainPrimary() + "\n" + wtListLockedEntry(tree, branch, reason), nil
 		},
 		ghLookPath: func() bool { return true },
-		// gh gives NO answer and git does not list the branch as merged, so the
-		// merge decision comes from neither — but the lock guard is what this
-		// criterion pins, so the branch is made a candidate via the git fallback.
+		// The branch is made a candidate through the gh path, determinately:
+		// `MERGED` ends the merge decision and the git fallback is never
+		// consulted (the `branchMerged` stub below is deliberately inert, so a
+		// regression that reintroduced the fallback would not be masked by it).
+		// The merge decision is not what this criterion pins — the lock guard
+		// downstream of it is.
 		ghPRState:    func(string) (string, bool) { return "MERGED", true },
 		branchMerged: func() ([]string, error) { return []string{"main"}, nil },
 	})

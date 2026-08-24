@@ -99,7 +99,11 @@ func cleanMergedWorktrees(cmd *cobra.Command, base string) error {
 		// decision is its ONLY protection. Without its authoritative source
 		// there is nothing left standing between the sweep and a live
 		// session's tree.
-		_, _ = fmt.Fprintln(out, lockSourceUnreadableNotice(lockErr))
+		//
+		// stderr, not stdout: this is a warning about a degraded run, and
+		// stdout is reserved for machine-readable output (internal/cli
+		// CLAUDE.md) — a caller parsing it must not receive an error line.
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), lockSourceUnreadableNotice(lockErr))
 		return nil
 	}
 
@@ -217,7 +221,9 @@ func cleanStaleWorktrees(cmd *cobra.Command, base string, apply bool) error {
 
 	candidates, lockErr := classifyStaleWorktrees(worktrees, base)
 	if lockErr != nil {
-		_, _ = fmt.Fprintln(out, lockSourceUnreadableNotice(lockErr))
+		// stderr for the same reason as the --merged-only limb: a warning
+		// about a degraded run is not part of the sweep's output.
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), lockSourceUnreadableNotice(lockErr))
 	}
 
 	var removable []staleCandidate
@@ -458,7 +464,7 @@ func worktreeHasLocalChanges(path string) (bool, error) {
 func worktreeLockStates() (map[string]session.LockInfo, error) {
 	porcelain, err := gitWorktreeCmd("worktree", "list", "--porcelain")
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("read worktree lock state: %w", err)
 	}
 	locks := make(map[string]session.LockInfo)
 	for path, info := range session.ParseWorktreeLocks(porcelain) {

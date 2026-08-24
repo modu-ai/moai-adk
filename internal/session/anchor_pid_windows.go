@@ -18,10 +18,16 @@ func isProcessAlive(pid int) bool {
 
 // probeProcessLiveness is the two-valued liveness probe backing the shared
 // anchor decision (SPEC-WORKTREE-REAPER-001 REQ-WR-008, design.md §B.5).
-// Windows cannot assert death here — the underlying probe is unconditionally
-// conservative — so it reports (true, true): existing, definitively. Reporting
-// (false, ...) would widen removal on the one platform with no real probe.
+// Windows has no probe here at all — nothing about the process is observed —
+// so it reports the result as UNDETERMINED rather than as definitively alive.
+//
+// The guard's outcome is identical either way: lockAnchorVerdict treats
+// undetermined as anchored, so the tree is preserved on both spellings. What
+// changes is truthfulness. `determined=true` asserts a fact the platform did
+// not measure, and the notice downstream then reads "locked by live pid N" for
+// a pid nothing ever checked. `(false, false)` keeps the fail-closed direction
+// and makes the notice say what was actually known.
 func probeProcessLiveness(pid int) (alive bool, determined bool) {
 	_ = pid
-	return true, true
+	return false, false
 }
