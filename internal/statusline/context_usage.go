@@ -54,8 +54,30 @@ const contextUsageDirName = "context-usage"
 // render (REQ-ST-002) — never by the project-wide
 // .moai/state/current-session-id.txt sidecar, which carries the same
 // last-writer-wins shape the per-session split exists to remove.
+// The key is a path component arriving from outside the process, so a value
+// that would resolve outside the per-session directory is REFUSED rather than
+// sanitised: rewriting "../escape" into "escape" produces a file that looks
+// legitimate and belongs to no session (REQ-ST-007). A refused key yields "",
+// and the caller writes nothing while its render still completes.
 func SessionTelemetryPath(stateDir, sessionID string) string {
+	if !usableSessionKey(sessionID) {
+		return ""
+	}
 	return filepath.Join(stateDir, contextUsageDirName, sessionID+".json")
+}
+
+// usableSessionKey reports whether sessionID is a single, ordinary filename
+// component. Both separators are rejected on every platform: a backslash is a
+// separator on Windows, and a key carrying one is hostile wherever it is read.
+func usableSessionKey(sessionID string) bool {
+	switch sessionID {
+	case "", ".", "..":
+		return false
+	}
+	if strings.ContainsAny(sessionID, `/\`) || strings.ContainsRune(sessionID, filepath.Separator) {
+		return false
+	}
+	return !filepath.IsAbs(sessionID)
 }
 
 // SessionTelemetryRecord is the on-disk schema for one session's record at
@@ -158,6 +180,9 @@ func writeContextUsage(projDir, sessionID string, writerPID int, mem MemoryData,
 
 	stateDir := filepath.Join(projDir, ".moai", "state")
 	path := SessionTelemetryPath(stateDir, sessionID)
+	if path == "" {
+		return // key refused (REQ-ST-007); the render still completes
+	}
 
 	next := buildContextUsageRecord(sessionID, writerPID, mem, stage, model, effort)
 
