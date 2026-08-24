@@ -78,7 +78,7 @@ lsp:
         - "CMakeLists.txt"
         - "compile_commands.json"
         - "Makefile"
-      install_hint: "Install via LLVM distribution (brew install llvm / apt install clangd)"
+      install_hint: "Install clangd from an LLVM distribution (brew install llvm | apt install clangd | winget install LLVM.LLVM)"
       file_extensions:
         - ".cpp"
         - ".cc"
@@ -295,7 +295,7 @@ lsp:
         - "Package.swift"
         - "*.xcodeproj"
         - "*.xcworkspace"
-      install_hint: "Install Xcode Command Line Tools (includes sourcekit-lsp)"
+      install_hint: "Install the Swift toolchain — it ships sourcekit-lsp (macOS: Xcode Command Line Tools | Linux/Windows: swift.org/install)"
       file_extensions:
         - ".swift"
       license_concern: "open"
