@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -136,6 +137,32 @@ Examples:
 			}
 			if err != nil {
 				return fmt.Errorf("load edges: %w", err)
+			}
+
+			// REQ-GF-007: refresh the mechanical input layers before
+			// answering. edges.jsonl is derived: it is stale exactly when a
+			// source fingerprint moved OR its mx-index source layer itself
+			// drifted (the index FILE hash cannot see scan-source edits until
+			// the index is rewritten — the inventory drift probe can).
+			// The curated codemaps layer is NEVER auto-rewritten here — its
+			// staleness is the M1 gate's signal (spec.md §B.2).
+			if refreshNeeded := graph.EdgesSourcesMoved(projectRoot) || graph.MXIndexNeedsRefresh(projectRoot); refreshNeeded {
+				if stats, rErr := refreshEdgesArtifact(projectRoot, edgesFile); rErr != nil {
+					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "graph refresh failed (answering from the existing artifact): %v\n", rErr)
+				} else if over := graphRefreshOverrun(projectRoot, stats.duration); over > 0 {
+					_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
+						"graph refresh cost %s exceeded the %dms update budget by %.0fms (warning only, answer follows)\n",
+						stats.duration.Round(time.Millisecond), graphRefreshBudgetMS(projectRoot), over.Seconds()*1000)
+				}
+				edges, err = graph.LoadJSONL(edgesFile)
+				if err != nil {
+					return fmt.Errorf("reload refreshed edges: %w", err)
+				}
+			}
+			// REQ-GF-008: every query answer names the tree root and commit
+			// (or dirty fingerprint) it was computed from.
+			if pv, ok := graph.ReadEdgesMeta(filepath.Join(filepath.Dir(edgesFile), graph.MetaFileName)); ok {
+				_, _ = fmt.Fprintln(cmd.ErrOrStderr(), pv.Describe())
 			}
 
 			out := cmd.OutOrStdout()

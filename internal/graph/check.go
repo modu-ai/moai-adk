@@ -190,22 +190,10 @@ func checkCodemaps(projectRoot string, th Thresholds) LayerReport {
 func checkMXIndex(projectRoot string, th Thresholds) LayerReport {
 	rep := LayerReport{Layer: LayerMXIndex, Metric: MetricInventoryContentDiff, Threshold: th.MXIndexChangedFiles}
 
-	sidecarPath := filepath.Join(projectRoot, ".moai", "state", mx.SidecarFileName)
-	data, err := os.ReadFile(sidecarPath)
-	if err != nil {
+	sidecar, ok := loadMXSidecarForCheck(projectRoot)
+	if !ok {
 		rep.Verdict = VerdictAbsent
-		rep.Reason = "mx-index absent (untracked runtime artifact — fresh worktree state)"
-		return rep
-	}
-	var sidecar mx.Sidecar
-	if err := json.Unmarshal(data, &sidecar); err != nil {
-		rep.Verdict = VerdictAbsent
-		rep.Reason = "mx-index unparseable"
-		return rep
-	}
-	if sidecar.Provenance == nil {
-		rep.Verdict = VerdictAbsent
-		rep.Reason = "no provenance block — freshness-unjudgeable, not fresh"
+		rep.Reason = sidecarAbsentReason
 		return rep
 	}
 	pv := sidecar.Provenance
@@ -218,25 +206,7 @@ func checkMXIndex(projectRoot string, th Thresholds) LayerReport {
 		return rep
 	}
 
-	mismatch := 0
-	paths := make([]string, 0, len(pv.FileInventory))
-	for rel := range pv.FileInventory {
-		paths = append(paths, rel)
-	}
-	sort.Strings(paths)
-	var missing, changed []string
-	for _, rel := range paths {
-		sum, err := mx.HashFile(filepath.Join(projectRoot, filepath.FromSlash(rel)))
-		if err != nil {
-			mismatch++
-			missing = append(missing, rel)
-			continue
-		}
-		if sum != pv.FileInventory[rel] {
-			mismatch++
-			changed = append(changed, rel)
-		}
-	}
+	mismatch, missing, changed := MXIndexDrift(projectRoot, pv.FileInventory)
 	rep.Value = mismatch
 	if mismatch >= th.MXIndexChangedFiles {
 		rep.Verdict = VerdictStale
@@ -249,6 +219,82 @@ func checkMXIndex(projectRoot string, th Thresholds) LayerReport {
 		rep.Verdict = VerdictFresh
 	}
 	return rep
+}
+
+// sidecarAbsentReason distinguishes the three unjudgeable mx-index states.
+var sidecarAbsentReason = "mx-index absent (untracked runtime artifact — fresh worktree state)"
+
+// loadMXSidecarForCheck loads the sidecar and reports whether it carries a
+// provenance block (the freshness-judgeable precondition).
+func loadMXSidecarForCheck(projectRoot string) (*mx.Sidecar, bool) {
+	sidecarPath := filepath.Join(projectRoot, ".moai", "state", mx.SidecarFileName)
+	data, err := os.ReadFile(sidecarPath)
+	if err != nil {
+		return nil, false
+	}
+	var sidecar mx.Sidecar
+	if err := json.Unmarshal(data, &sidecar); err != nil {
+		return nil, false
+	}
+	if sidecar.Provenance == nil {
+		return nil, false
+	}
+	return &sidecar, true
+}
+
+// MXIndexDrift counts inventoried files whose current content hash differs
+// (vanished files count), returning (mismatch, missing, changed). Shared by
+// the check and the query-path refresh trigger: a moved scan source must
+// refresh the derived edges layer even though the mx-index FILE itself has
+// not been rewritten yet.
+func MXIndexDrift(projectRoot string, inventory map[string]string) (mismatch int, missing, changed []string) {
+	paths := make([]string, 0, len(inventory))
+	for rel := range inventory {
+		paths = append(paths, rel)
+	}
+	sort.Strings(paths)
+	for _, rel := range paths {
+		sum, err := mx.HashFile(filepath.Join(projectRoot, filepath.FromSlash(rel)))
+		if err != nil {
+			mismatch++
+			missing = append(missing, rel)
+			continue
+		}
+		if sum != inventory[rel] {
+			mismatch++
+			changed = append(changed, rel)
+		}
+	}
+	return mismatch, missing, changed
+}
+
+// MXIndexNeedsRefresh reports whether the mx-index layer needs a refresh
+// before a consumer answers from it: any inventoried content drift, a
+// wrong-tree anchor (answering from another tree's index is the wrong-tree
+// defect family), or NO sidecar at all — an absent index means the tree's
+// scan sources have never been indexed, so the edges layer's mx-spec input is
+// unindexed too. A sidecar WITHOUT a provenance block is deliberately NOT
+// refreshed: it is unjudgeable rather than stale, and pre-provenance indexes
+// keep answering exactly as they did before this SPEC.
+func MXIndexNeedsRefresh(projectRoot string) bool {
+	sidecarPath := filepath.Join(projectRoot, ".moai", "state", mx.SidecarFileName)
+	data, err := os.ReadFile(sidecarPath)
+	if err != nil {
+		return true // absent sidecar: scan sources unindexed
+	}
+	var sidecar mx.Sidecar
+	if err := json.Unmarshal(data, &sidecar); err != nil {
+		return true // corrupt: unjudgeable, rescan is the only repair
+	}
+	pv := sidecar.Provenance
+	if pv == nil {
+		return false // pre-provenance index: answer as-is (legacy contract)
+	}
+	if pv.TreeRoot != "" && pv.TreeRoot != projectRoot {
+		return true
+	}
+	mismatch, _, _ := MXIndexDrift(projectRoot, pv.FileInventory)
+	return mismatch >= DefaultThresholds().MXIndexChangedFiles
 }
 
 // checkEdges: recompute the four source-set fingerprints and compare against

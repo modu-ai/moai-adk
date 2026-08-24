@@ -94,6 +94,29 @@ func writeMetaFile(metaPath string, meta edgesMeta) error {
 	return nil
 }
 
+// EdgesSourcesMoved reports whether the edges artifact's source fingerprints
+// no longer match the tree's current source sets — the cheap, rebuild-free
+// staleness probe the query paths consult before refreshing (REQ-GF-007).
+// No provenance sidecar ⇒ moved (the artifact cannot be judged fresh).
+func EdgesSourcesMoved(projectRoot string) bool {
+	pv, ok := ReadEdgesMeta(filepath.Join(projectRoot, ".moai", "project", "graph", MetaFileName))
+	if !ok {
+		return true
+	}
+	current := SourceFingerprintsForEdges(projectRoot)
+	for name, stamped := range pv.SourceFingerprints {
+		if cur, exists := current[name]; !exists || cur != stamped {
+			return true
+		}
+	}
+	for name := range current {
+		if _, stamped := pv.SourceFingerprints[name]; !stamped {
+			return true // a source appeared after the build
+		}
+	}
+	return false
+}
+
 // ReadEdgesMeta loads the edges provenance sidecar. ok=false when the file is
 // absent or unparseable — the caller maps that to the absent verdict.
 func ReadEdgesMeta(metaPath string) (*mx.Provenance, bool) {
