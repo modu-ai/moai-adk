@@ -9,7 +9,10 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/defs"
@@ -218,4 +221,93 @@ func TestWriteWorkflowAuditYAML_SetTrackerSkipsUnset(t *testing.T) {
 	if !bytes.Equal(got, []byte(before)) {
 		t.Errorf("AuditConfigSet=false must leave workflow.yaml byte-identical; got: %s", got)
 	}
+}
+
+// TestWriteWorkflowAuditYAML_InsertsMissingLeavesIntoPinOnlyAuditBlock is the
+// SPEC-V3R6-AUDIT-MODEL-PIN-001 F2 regression: the distributed template's
+// audit block now ships with ONLY the codex/glm pin sub-keys (no model, no
+// gates), so workflowHasAuditBlock routes writeWorkflowAuditYAML to the patch
+// path — and the wizard's audit selection MUST still land. Without an
+// insertion fallback in patchAuditLeaves the leaves are silently dropped
+// (SPEC-INIT-WIZARD-REPAIR-001 AC-009 broken).
+func TestWriteWorkflowAuditYAML_InsertsMissingLeavesIntoPinOnlyAuditBlock(t *testing.T) {
+	t.Parallel()
+	root, sectionsDir := setupSectionsDir(t)
+
+	// The NEW template shape: audit carries only the pin sub-keys.
+	before := "workflow:\n" +
+		"    default_mode: \"\"\n" +
+		"    audit:\n" +
+		"        codex:\n" +
+		"            model: \"\"\n" +
+		"            effort: \"\"\n" +
+		"        glm:\n" +
+		"            model: \"\"\n" +
+		"            effort: \"\"\n" +
+		"    token_budget:\n" +
+		"        plan: 30000\n"
+	if err := os.WriteFile(filepath.Join(sectionsDir, defs.WorkflowYAML), []byte(before), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	opts := InitOptions{
+		ProjectRoot:       root,
+		AuditConfigSet:    true,
+		AuditModel:        config.AuditModelClaude,
+		AuditGateClaude:   config.AuditGateRequired,
+		AuditGateCodex:    config.AuditGateAdvisory,
+		AuditGateGLM:      config.AuditGateOff,
+		CodexAuditEnabled: true,
+	}
+	if err := writeWorkflowAuditYAML(sectionsDir, opts, &InitResult{}); err != nil {
+		t.Fatalf("writeWorkflowAuditYAML: %v", err)
+	}
+
+	got, _ := os.ReadFile(filepath.Join(sectionsDir, defs.WorkflowYAML))
+	s := string(got)
+	for _, want := range []string{"model: claude", "claude: required", "codex: advisory", "glm: off"} {
+		if !strings.Contains(s, want) {
+			t.Errorf("workflow.yaml missing wizard selection %q (insertion fallback did not fire); got: %s", want, s)
+		}
+	}
+	// Exactly ONE audit block — insertion must nest, not duplicate.
+	if c := strings.Count(s, "audit:"); c != 1 {
+		t.Errorf("workflow.yaml has %d `audit:` blocks, want 1; got: %s", c, s)
+	}
+	// The pre-existing pin sub-keys survive untouched.
+	if !strings.Contains(s, `effort: ""`) {
+		t.Errorf("workflow.yaml lost the pin sub-keys; got: %s", s)
+	}
+
+	// Structural guard: the inserted leaves land at the right NESTING (a
+	// mis-indented insert would re-parent siblings). Parse and assert paths.
+	wf := parseWorkflowYAMLForTest(t, s)
+	audit, _ := wf["audit"].(map[string]any)
+	if audit == nil || audit["model"] != "claude" {
+		t.Errorf("workflow.audit.model must parse as claude; got: %s", s)
+	}
+	gates, _ := audit["gates"].(map[string]any)
+	if gates == nil || gates["claude"] != "required" || gates["codex"] != "advisory" || gates["glm"] != "off" {
+		t.Errorf("workflow.audit.gates must parse with all three wizard gates; got: %s", s)
+	}
+	codexPin, _ := audit["codex"].(map[string]any)
+	if codexPin == nil || codexPin["model"] != "" {
+		t.Errorf("workflow.audit.codex pin block must survive as a map; got: %s", s)
+	}
+	if tb, _ := wf["token_budget"].(map[string]any); tb == nil || tb["plan"] != 30000 {
+		t.Errorf("workflow.token_budget must stay a direct workflow child; got: %s", s)
+	}
+}
+
+// parseWorkflowYAMLForTest parses a workflow.yaml body into its top-level
+// mapping (test-only; fails the test on a parse error).
+func parseWorkflowYAMLForTest(t *testing.T, s string) map[string]any {
+	t.Helper()
+	var wf struct {
+		Workflow map[string]any `yaml:"workflow"`
+	}
+	if err := yaml.Unmarshal([]byte(s), &wf); err != nil {
+		t.Fatalf("parse workflow.yaml: %v\n%s", err, s)
+	}
+	return wf.Workflow
 }

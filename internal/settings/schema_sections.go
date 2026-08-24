@@ -380,6 +380,25 @@ func seamSectionFields() []FieldDef {
 		withOptionDesc(closedSeam(SectionWorkflow, "workflow", "f.workflow.audit.gate.opt.",
 			config.ValidAuditGates(), "", "", "workflow", "audit", "gates", "glm"),
 			"f.workflow.audit.gate.option."),
+		// SPEC-V3R6-AUDIT-MODEL-PIN-001 M4 (REQ-AMP-009 / AC-AMP-008): the
+		// per-backend {model, effort} pins, editable on the SAME Audit panel
+		// (the workflow.audit. prefix routes them there via isAuditFieldName)
+		// and persisted through the same workflow.yaml seam the audit
+		// resolvers read. codex.model is free-form text (a codex-servable id,
+		// e.g. gpt-*); the three selects are closed sets from the SSOT
+		// accessors (v4 effort vocabulary / ValidGLMModels /
+		// GLMReasoningStateNames — the z.ai state names, single reading).
+		// Empty = no pin: the resolver falls back to the SSOT sync-auditor
+		// cell (hence withEmptySubmits — clearing a pin must persist "").
+		// Unlike the llm tier effort map (stored-only, REQ-WCR-033), these
+		// efforts ARE runtime-applied — they ride the audit request builders.
+		s(SectionWorkflow, "workflow", TypeText, "workflow", "audit", "codex", "model"),
+		withEmptySubmits(withSelect(s(SectionWorkflow, "workflow", TypeSelect, "workflow", "audit", "codex", "effort"),
+			"f.workflow.audit.codex.effort.opt.", v4EffortValues(), emptyLabelUnset, "opt.unset")),
+		withEmptySubmits(withSelect(s(SectionWorkflow, "workflow", TypeSelect, "workflow", "audit", "glm", "model"),
+			"f.workflow.audit.glm.model.opt.", config.ValidGLMModels(), emptyLabelUnset, "opt.unset")),
+		withEmptySubmits(withSelect(s(SectionWorkflow, "workflow", TypeSelect, "workflow", "audit", "glm", "effort"),
+			"f.workflow.audit.glm.effort.opt.", template.GLMReasoningStateNames(), emptyLabelUnset, "opt.unset")),
 		// SPEC-MCP-CONSOLE-001 M3 (REQ-C-6 / AC-C-009): codex opt-in toggles written
 		// through the SAME seam the fail-closed readers consume. The path
 		// workflow.codex.review_gate.enabled / workflow.codex.task.allow_write in

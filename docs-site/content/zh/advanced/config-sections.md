@@ -176,6 +176,29 @@ workflow:
 
 需要切换分支的工作，正统做法是移到工作树而不是让它被拒绝。具体步骤请参阅 [moai worktree](/zh/cli-reference/worktree/)。
 
+## workflow.yaml — audit
+
+指定跨模型审计后端（`codex_audit` · `glm_audit` · `audit_multi`）实际以哪个模型和 effort 运行。每个后端取一组 `{model, effort}`，发布默认值全部为空。
+
+```yaml
+workflow:
+    audit:
+        codex:
+            model: ""   # 如 gpt-5.6-sol — codex 可提供的模型 id
+            effort: ""  # 如 high — low | medium | high | xhigh | max
+        glm:
+            model: ""   # 如 glm-5.3
+            effort: ""  # 如 max — low | high | max（z.ai 的 reasoning 状态名）
+```
+
+| 键 | 说明 |
+|----|------|
+| `audit.codex.{model, effort}` | codex 审计在会话开启与评审轮次上携带的一组。model 为空或 codex 无法提供时，丢弃该固定值并回到原有 SSOT 解析 |
+| `audit.glm.{model, effort}` | GLM 审计在 z.ai 请求上携带的一组。effort 只接受 z.ai 的 reasoning 状态名 `low` · `high` · `max`；其他值会去掉 reasoning 指令，仅应用模型固定值 |
+| 两组均为空 | 解析行为与该键出现之前完全一致 — 从未写入固定值的项目不会有任何变化 |
+
+固定值只作用于审计入口。任务委派路径（`codex_task` · `glm_task`）的模型解析不受影响，同样的字段也可以在网页控制台的 Audit 面板中直接编辑。
+
 ## crosssession.yaml — 会话间消息
 
 决定本会话如何对待来自你其他 Claude Code 会话的消息。`moai cc` · `moai glm` · `moai cg` 启动器会在启动时把这些取值写入一个临时的 `--settings` 文件，Web 控制台则通过设置 seam 编辑本文件。不经启动器、直接用 `claude` 起的会话不会读取本文件。

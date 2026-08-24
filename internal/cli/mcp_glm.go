@@ -93,17 +93,42 @@ var glmHTTPClient glmHTTPDoer = &http.Client{Timeout: glmAuditHTTPTimeout}
 // missing vs present key without touching ~/.moai/.env.glm or the env).
 var glmKeyLoader = loadGLMKey
 
-// projectDirResolver is the project-root seam used by resolveGLMAuditModel to
+// projectDirResolver is the project-root seam used by the GLM audit resolver to
 // locate .moai/config/sections/llm.yaml. Wraps resolveProjectDir for testability.
 var projectDirResolver = resolveProjectDir
 
 // glmMessagesRequest is the Anthropic-compatible Messages API request body
 // posted to z.ai.
 type glmMessagesRequest struct {
-	Model     string       `json:"model"`
-	MaxTokens int          `json:"max_tokens"`
-	System    string       `json:"system"`
-	Messages  []glmMessage `json:"messages"`
+	Model string `json:"model"`
+	// ReasoningEffort is the audit path's reasoning directive
+	// (SPEC-V3R6-AUDIT-MODEL-PIN-001 REQ-AMP-007): the top-level z.ai
+	// reasoning_effort control — the delivery field SELECTED BY LIVE EVIDENCE
+	// (AC-AMP-006's first differential ran hypothesis A, the Anthropic-style
+	// thinking object, and measured budget_tokens IGNORED — output tokens
+	// 3667 vs 3480 under budgets 3072 vs 1024, ratio 1.02; evidence
+	// .moai/state/verify/t225/ac-amp-006-glm-differential-attempt1.md). The
+	// state name is transmitted VERBATIM; empty omits the field.
+	ReasoningEffort string       `json:"reasoning_effort,omitempty"`
+	MaxTokens       int          `json:"max_tokens"`
+	System          string       `json:"system"`
+	Messages        []glmMessage `json:"messages"`
+}
+
+// glmAuditReasoningEffort validates the pinned effort under REQ-AMP-006's
+// single-reading rule: the valid set is EXACTLY {low, high, max}
+// (template.GLMState* — the z.ai state names, stored and transmitted
+// verbatim); any other non-empty value returns "" — the reasoning directive
+// is omitted while the model pin still applies. NO effort collapse runs on
+// this path (CollapseClaudeEffortToGLM is the vocabulary reference only, not
+// a runtime dependency here).
+func glmAuditReasoningEffort(effort string) string {
+	switch effort {
+	case template.GLMStateLow, template.GLMStateHigh, template.GLMStateMax:
+		return effort
+	default:
+		return ""
+	}
 }
 
 type glmMessage struct {
@@ -121,16 +146,43 @@ type glmMessagesResponse struct {
 	} `json:"content"`
 }
 
-// resolveGLMAuditModel resolves the GLM audit model id via the model/effort
-// SSOT (template.ResolveAgentModelEffort, REQ-MCP-013 / AC-MCP-015) ONLY. It
-// NEVER reads agent frontmatter or llm.agent_overrides directly.
-func resolveGLMAuditModel() string {
-	return resolveGLMModelForAgent(glmAuditAgentKey)
+// resolveGLMAuditModelEffort resolves the GLM audit {model, effort} pair
+// (SPEC-V3R6-AUDIT-MODEL-PIN-001 REQ-AMP-003). Precedence:
+//
+//  1. The workflow.audit.glm pin — a non-empty pin model returns the pair
+//     VERBATIM, bypassing the IsGLMBackend session check: a pin is
+//     by-construction a GLM id, and a wrong id degrades via the existing
+//     z.ai-4xx fail-open to VerdictInconclusive (design decision D3), never a
+//     hard error. Effort rides the pin only when the model is pinned (the
+//     model is the gate — effort alone pins nothing).
+//  2. Otherwise the legacy SSOT resolution: the sync-auditor cell through
+//     resolveGLMModelForAgent, with an EMPTY effort (the pre-SPEC body carried
+//     no reasoning field, and the SSOT effort is Claude-vocabulary — never
+//     transmittable under the single-reading rule).
+//
+// It NEVER reads agent frontmatter or llm.agent_overrides directly (REQ-MCP-013
+// / AC-MCP-015), and glm_task never calls it (REQ-AMP-008).
+//
+// projectRoot names the tree being reviewed (the project_root doctrine,
+// .claude/rules/moai/core/moai-mcp-tools.md): a worktree session MUST pass its
+// own root, because projectDirResolver() names the primary checkout and would
+// read the pin from a DIFFERENT tree than the diff under review — the same
+// caller-named-root contract the codex counterpart honors via params["cwd"].
+// Empty falls back to projectDirResolver() (the pre-CR behavior).
+func resolveGLMAuditModelEffort(projectRoot string) config.ModelEffort {
+	root := strings.TrimSpace(projectRoot)
+	if root == "" {
+		root = projectDirResolver()
+	}
+	if pin := workflowAuditPins(root).GLM; pin.Model != "" {
+		return pin
+	}
+	return config.ModelEffort{Model: resolveGLMModelForAgent(glmAuditAgentKey)}
 }
 
 // resolveGLMModelForAgent resolves a GLM model id for the given profile-matrix
 // agent key via the model/effort SSOT (template.ResolveAgentModelEffort). It is
-// the shared body behind resolveGLMAuditModel and the glm_task resolver: the
+// the shared body behind the GLM audit resolver and the glm_task resolver: the
 // audit path keys on the auditor-shaped cell, the task path on its consumer
 // (super-advisor), and the resolution rule is otherwise identical.
 //
@@ -174,10 +226,6 @@ func handleGLMAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 		return reviewToolResult(glmInconclusive("GLM API key not configured (~/.moai/.env.glm)")), nil
 	}
 
-	model := req.GetString("model", "")
-	if model == "" {
-		model = resolveGLMAuditModel() // SSOT (REQ-MCP-013)
-	}
 	focus := req.GetString("focus", "")
 	target := req.GetString("target", codexTargetUncommitted)
 	token := extractProgressToken(req)
@@ -198,6 +246,14 @@ func handleGLMAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 	if rootErr != nil {
 		return toolErr("glm_audit", rootErr), nil
 	}
+	// Resolved BELOW the root (CR #8): the pin must come from the SAME tree as
+	// the diff under review — a worktree session names its own root, and
+	// resolving through projectDirResolver() here could read a different
+	// tree's workflow.yaml.
+	me := resolveGLMAuditModelEffort(root) // pin > SSOT (REQ-AMP-003)
+	if explicit := req.GetString("model", ""); strings.TrimSpace(explicit) != "" {
+		me.Model = strings.TrimSpace(explicit) // explicit caller model outranks the pin
+	}
 	diff, err := collectReviewDiff(root, target)
 	if err != nil {
 		return reviewToolResult(glmInconclusive("no reviewable change: " + err.Error())), nil
@@ -207,19 +263,25 @@ func handleGLMAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 	}
 
 	notifyMCPProgress(ctx, token, 0.05, "glm 감사 — z.ai 요청 준비 중...")
-	out := callGLMAudit(ctx, key, model, focus, diff, token)
+	out := callGLMAudit(ctx, key, me.Model, me.Effort, focus, diff, token)
 	return reviewToolResult(out), nil
 }
 
 // callGLMAudit posts the audit prompt to z.ai and parses the response into a
 // ReviewOutput. Every error path fails open to a VerdictInconclusive — the
 // caller always receives a usable structured result.
-func callGLMAudit(ctx context.Context, key, model, focus, diff string, token mcp.ProgressToken) ReviewOutput {
+//
+// effort is the pinned z.ai reasoning state (low|high|max, single reading per
+// REQ-AMP-006); an invalid/empty value omits the reasoning directive while the
+// model still applies. Whether the delivered field is honored by the endpoint
+// is arbitrated by the AC-AMP-006 live differential, not assumed.
+func callGLMAudit(ctx context.Context, key, model, effort, focus, diff string, token mcp.ProgressToken) ReviewOutput {
 	body, err := json.Marshal(glmMessagesRequest{
-		Model:     model,
-		MaxTokens: glmAuditMaxTokens,
-		System:    glmAuditSystemPrompt(),
-		Messages:  []glmMessage{{Role: "user", Content: glmAuditUserPrompt(focus, diff)}},
+		Model:           model,
+		ReasoningEffort: glmAuditReasoningEffort(effort),
+		MaxTokens:       glmAuditMaxTokens,
+		System:          glmAuditSystemPrompt(),
+		Messages:        []glmMessage{{Role: "user", Content: glmAuditUserPrompt(focus, diff)}},
 	})
 	if err != nil {
 		return glmInconclusive("cannot build z.ai request: " + err.Error())
@@ -256,21 +318,38 @@ func callGLMAudit(ctx context.Context, key, model, focus, diff string, token mcp
 }
 
 // parseGLMReview extracts the ReviewOutput the GLM model emitted in its first
-// text content block. The audit prompt constrains the model to JSON; a malformed
-// or empty-verdict response fails open to VerdictInconclusive (never a hard error).
+// TEXT content block — not the first block: under a delivered reasoning
+// directive z.ai prefixes the response with thinking content blocks (whose
+// payload lives in `thinking`, not `text`), and reading Content[0] blindly
+// failed open to inconclusive while a full review sat in the next block
+// (live-gate finding, SPEC-V3R6-AUDIT-MODEL-PIN-001 M5). The audit prompt
+// constrains the model to JSON; a malformed or empty-verdict response fails
+// open to VerdictInconclusive (never a hard error).
 func parseGLMReview(raw []byte) ReviewOutput {
 	var env glmMessagesResponse
 	if err := json.Unmarshal(raw, &env); err != nil {
 		return glmInconclusive("malformed z.ai response: " + err.Error())
 	}
-	if len(env.Content) == 0 || env.Content[0].Text == "" {
-		return glmInconclusive("z.ai response carried no content")
+	text := ""
+	for i := range env.Content {
+		// An empty Type is a text block too: the Anthropic-compatible shapes
+		// this parser sees include envelopes whose text blocks carry NO type
+		// field at all (TestParseGLMReview_StripsMarkdownFence's
+		// production-envelope fixture). Thinking/reasoning blocks DO carry a
+		// type, so the skip semantics hold.
+		if (env.Content[i].Type == "" || env.Content[i].Type == "text") && env.Content[i].Text != "" {
+			text = env.Content[i].Text
+			break
+		}
+	}
+	if text == "" {
+		return glmInconclusive("z.ai response carried no text content")
 	}
 	var out ReviewOutput
 	// z.ai occasionally wraps the JSON in a markdown code fence despite the
 	// prompt's "no code fences" constraint; strip fences + surrounding prose so
 	// the Unmarshal sees a bare object.
-	jsonBody := extractJSONObject(env.Content[0].Text)
+	jsonBody := extractJSONObject(text)
 	if err := json.Unmarshal([]byte(jsonBody), &out); err != nil {
 		return glmInconclusive("z.ai content was not a ReviewOutput JSON: " + err.Error())
 	}
