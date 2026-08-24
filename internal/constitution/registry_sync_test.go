@@ -45,6 +45,10 @@ const (
 	// wantRetiredExempt pins the number of [SUPERSEDED …] clause-exempt
 	// entries under option C (spec.md §1.2 v0.5.0).
 	wantRetiredExempt = 4
+	// skipValidateEnv is the documented validation bypass. The guard treats
+	// its presence as a FAILURE (REQ-ZRR-010 / D7) — never as "skip the
+	// checks and pass".
+	skipValidateEnv = "MOAI_CONSTITUTION_SKIP_VALIDATE"
 )
 
 // registrySyncMirror describes one registry surface under test.
@@ -54,8 +58,30 @@ type registrySyncMirror struct {
 	projectDir string // ProjectDir that resolves each entry's file: path
 }
 
-func registrySyncMirrors() []registrySyncMirror {
-	repoRoot := filepath.Join("..", "..")
+// repoRootForSync locates the repository root by walking up from the test
+// working directory (the package dir) until go.mod is found — robust to the
+// package moving within the tree, unlike a fixed "..", ".." join.
+func repoRootForSync(t *testing.T) string {
+	t.Helper()
+	dir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("os.Getwd: %v", err)
+	}
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			t.Fatalf("go.mod not found walking up from %s", dir)
+		}
+		dir = parent
+	}
+}
+
+func registrySyncMirrors(t *testing.T) []registrySyncMirror {
+	t.Helper()
+	repoRoot := repoRootForSync(t)
 	return []registrySyncMirror{
 		{
 			name:       "local",
@@ -71,7 +97,16 @@ func registrySyncMirrors() []registrySyncMirror {
 }
 
 func TestRegistrySyncGuard(t *testing.T) {
-	for _, m := range registrySyncMirrors() {
+	// REQ-ZRR-010 / D7 — guard clause FIRST: a bypassed validation is itself a
+	// failure. Even if Validate's own Skipped return were removed upstream,
+	// this direct environment check keeps the guard from passing under
+	// MOAI_CONSTITUTION_SKIP_VALIDATE=1.
+	if os.Getenv(skipValidateEnv) == "1" {
+		t.Fatalf("validation skipped: %s=1 present in the test environment — the registry-sync guard must fail rather than pass (REQ-ZRR-010 / AC-ZRR-010)", skipValidateEnv)
+	}
+
+	mirrors := registrySyncMirrors(t)
+	for _, m := range mirrors {
 		t.Run(m.name, func(t *testing.T) {
 			// --- 1. Production validator over this mirror (REQ-ZRR-008) ---
 			result, err := constitution.Validate(constitution.ValidateOptions{
@@ -109,11 +144,13 @@ func TestRegistrySyncGuard(t *testing.T) {
 			sourceCache := make(map[string]string)
 
 			clauseChecked, retiredSkipped, anchorChecked := 0, 0, 0
+			hitOnce, hitZero, hitMulti, selfReference := 0, 0, 0, 0
 			for _, entry := range reg.Entries {
 				// D13 — self-referential file: would satisfy its own clause by
 				// definition and resolve anchors against the registry's ~50
 				// headings, passing the guard with zero repair.
 				if filepath.Clean(entry.File) == filepath.Clean(registryRel) {
+					selfReference++
 					t.Errorf("[%s mirror] %s: file: points at the registry itself (D13): %s", m.name, entry.ID, entry.File)
 				}
 
@@ -139,7 +176,16 @@ func TestRegistrySyncGuard(t *testing.T) {
 					retiredSkipped++
 					continue
 				}
-				if n := literalHitCount(raw, entry.Clause); n != 1 {
+				n := literalHitCount(raw, entry.Clause)
+				switch n {
+				case 1:
+					hitOnce++
+				case 0:
+					hitZero++
+				default:
+					hitMulti++
+				}
+				if n != 1 {
 					t.Errorf("[%s mirror] %s: clause hits %d lines in %s, want exactly 1 (verbatim single-line span, AC-ZRR-002/003): %q", m.name, entry.ID, n, entry.File, truncateFor(entry.Clause, 60))
 				}
 				clauseChecked++
@@ -158,15 +204,63 @@ func TestRegistrySyncGuard(t *testing.T) {
 			// P4 (guard-failure-scenario.md): the passing output reports the two
 			// counts separately per mirror — clause 97 / anchor 101.
 			t.Logf("[%s mirror] evaluated: clause-checks=%d retired-skip=%d anchor-checks=%d of %d entries", m.name, clauseChecked, retiredSkipped, anchorChecked, len(reg.Entries))
+
+			// Bucket assertion (plan.md §F M2 literal check): once=97 zero=0
+			// multi=0 retired_exempt=4 self_reference=0 per mirror. The
+			// per-entry errors above already name offenders; these pins carry
+			// the measured shape into the passing output too, so a summary
+			// reader sees the same buckets M1 measured.
+			if hitZero != 0 || hitMulti != 0 || selfReference != 0 {
+				t.Errorf("[%s mirror] literal buckets must be zero=0 multi=0 self_reference=0, got zero=%d multi=%d self_reference=%d", m.name, hitZero, hitMulti, selfReference)
+			}
+			t.Logf("[%s mirror] clause literal buckets: once=%d zero=%d multi=%d retired_exempt=%d self_reference=%d", m.name, hitOnce, hitZero, hitMulti, retiredSkipped, selfReference)
 		})
 	}
+
+	// --- SKIP-env discipline (AC-ZRR-010, BOTH directions) ---
+	// The mirror subtests above fatal on Validate's Skipped return; these
+	// subtests pin that the Skipped return actually happens in both tree
+	// states. The clean direction catches an implementation that ignores the
+	// bypass entirely; the mutated direction catches "skip, then pass because
+	// the tree happens to be clean" — both must end in the guard's explicit
+	// skip failure, never a pass.
+	t.Run("skip-env clean tree fails", func(t *testing.T) {
+		t.Setenv(skipValidateEnv, "1")
+		m := mirrors[0]
+		result, err := constitution.Validate(constitution.ValidateOptions{
+			RegistryPath: m.registry,
+			ProjectDir:   m.projectDir,
+		})
+		if err != nil {
+			t.Fatalf("Validate(clean tree, SKIP=1): %v", err)
+		}
+		if !result.Skipped {
+			t.Fatalf("clean tree + SKIP=1: Validate did not report Skipped — the guard would PASS on a bypassed validation (REQ-ZRR-010 / AC-ZRR-010)")
+		}
+		t.Logf("clean tree + SKIP=1 → Validate Skipped=true — the guard fails on this, never passes")
+	})
+	t.Run("skip-env mutated tree still fails", func(t *testing.T) {
+		t.Setenv(skipValidateEnv, "1")
+		regPath := writeMutatedRegistryCopy(t, mirrors[0].registry)
+		result, err := constitution.Validate(constitution.ValidateOptions{
+			RegistryPath: regPath,
+			ProjectDir:   filepath.Dir(regPath),
+		})
+		if err != nil {
+			t.Fatalf("Validate(mutated tree, SKIP=1): %v", err)
+		}
+		if !result.Skipped {
+			t.Fatalf("mutated tree + SKIP=1: Validate did not report Skipped — the guard could still evaluate (or wave through) a broken tree under a bypass (REQ-ZRR-010 / AC-ZRR-010)")
+		}
+		t.Logf("mutated tree + SKIP=1 → Validate Skipped=true — the guard still fails, never passes")
+	})
 }
 
 // TestRegistrySyncMirrorsIdentical pins AC-ZRR-011: the local registry and the
 // template registry are byte-identical, so every user `moai init` receives the
 // same catalog this repository validates locally.
 func TestRegistrySyncMirrorsIdentical(t *testing.T) {
-	ms := registrySyncMirrors()
+	ms := registrySyncMirrors(t)
 	local, err := os.ReadFile(ms[0].registry)
 	if err != nil {
 		t.Fatalf("read local mirror: %v", err)
@@ -179,6 +273,36 @@ func TestRegistrySyncMirrorsIdentical(t *testing.T) {
 		t.Fatalf("registry mirrors are not byte-identical (%d vs %d bytes) — repair one mirror only and the parity is gone (AC-ZRR-011)", len(local), len(template))
 	}
 	t.Logf("mirrors byte-identical: %d bytes", len(local))
+}
+
+// R1 mutation fixture (guard-failure-scenario.md §1): one character inserted
+// mid-span inside the quoted clause value of CONST-V3R2-004 — the smallest
+// edit a real rules edit could make, never touching the YAML key or quoting.
+// If that entry's clause is ever reworded, update both constants in the same
+// change.
+const (
+	r1ClauseOriginal = `clause: "All instruction documents must be in English:"`
+	r1ClauseMutated  = `clause: "All instruction documents must be in Englishx:"`
+)
+
+// writeMutatedRegistryCopy copies the real registry into a temp dir with the
+// R1 single-character clause mutation applied, and returns the copy's path.
+func writeMutatedRegistryCopy(t *testing.T, srcRegistry string) string {
+	t.Helper()
+	data, err := os.ReadFile(srcRegistry)
+	if err != nil {
+		t.Fatalf("read registry for mutation copy: %v", err)
+	}
+	if !strings.Contains(string(data), r1ClauseOriginal) {
+		t.Fatalf("R1 mutation fixture drifted: %q not found in %s — update r1ClauseOriginal/r1ClauseMutated with the registry in the same change", r1ClauseOriginal, srcRegistry)
+	}
+	dir := t.TempDir()
+	regPath := filepath.Join(dir, "zone-registry.md")
+	mutated := strings.Replace(string(data), r1ClauseOriginal, r1ClauseMutated, 1)
+	if err := os.WriteFile(regPath, []byte(mutated), 0o600); err != nil {
+		t.Fatalf("write mutated registry copy: %v", err)
+	}
+	return regPath
 }
 
 // headingSlug implements the six-step heading-to-slug rule declared by
