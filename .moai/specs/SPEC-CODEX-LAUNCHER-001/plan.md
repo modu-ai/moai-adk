@@ -17,7 +17,7 @@
 - **(a) 기동** — `moai cc` 가 claude 를 띄우듯 맨몸이 Codex CLI 를 띄우고, 준비 상태는 기동 직전 stderr 한 블록으로 흘린다. 런처 패밀리 대칭에 부합.
 - **(b) 리드아웃 + 명시 기동** — 맨몸은 리드아웃만, 기동은 `moai codex cli` / `moai codex app` 으로 명시. 카드 원문("설정 상태 확인 + 앱/CLI 기동 **안내**")에 더 가깝고, 실수로 세션이 교체될 위험이 없다.
 
-**판정: (b)** — 리드 판정 (2026-08-24). REQ-CL-002 를 그 방향으로 재기술하고 AC-CL-002 의 조건절을 해소했다. 파생 결과 하나: 맨몸이 진단 표면이 되므로 codex 바이너리가 없어도 리드아웃은 성공해야 한다 (REQ-CL-012 를 launch 동사에만 적용하도록 좁힘, AC-CL-013 에 대응 절 추가).
+**판정: (b)** — 리드 판정 (2026-08-24). REQ-CL-002 를 그 방향으로 재기술하고 AC-CL-002 의 조건절을 해소했다. 파생 결과 하나: 맨몸이 진단 표면이 되므로 codex 바이너리가 없어도 리드아웃은 성공해야 한다 (REQ-CL-012 를 launch 동사에만 적용하도록 좁힘, AC-CL-011 에 대응 절 추가).
 
 ## §C. 설계
 
@@ -28,6 +28,7 @@
 | `internal/cli/codex_launcher.go` | 신규 | `codexCmd` 코브라 정의 (`GroupID: "launch"`), 세 동사 라우팅, `--spawn` 처리 |
 | `internal/cli/codex_readiness.go` | 신규 | 리드아웃 조립 — `ProbeCodexSetup` + `codexwiring` + `CODEX_HOME` 해석을 한 구조체로 |
 | `internal/cli/mcp_codex.go` | 수정 | auth 분류 재설계 — 3-seam 분해 (§C.2) |
+| `internal/cli/codex_init.go` | 신규 | 미배선 시 초기화 제안 + 기존 생성기 호출 + 지시 계약 확보 (§C.6) |
 | `internal/cli/codex_launcher_test.go` 외 | 신규 | 아래 §D 시험 |
 
 `unifiedLaunch` 는 건드리지 않는다 — Claude 전용 경로이고 (§A.6) codex 는 별도 exec 이다. 공유하는 것은 `spawnLaunch` 하나다.
@@ -64,47 +65,80 @@ Logged in state unavailable: API key missing   →  (앵커 통과) → "api key
 
 **1단도 값만 보지 않는다 — 최소 구조 조건을 함께 본다.** `auth_mode` 만 읽으면 stale·불완전한 파일이 긍정 provider 를 만든다:
 
+"존재" 가 아니라 **비어 있지 않은 값** 을 요구한다 — 객체가 있는 것과 자격 재료가 있는 것은 다르다:
+
 | 파일 상태 | 판정 |
 |---|---|
-| `auth_mode=chatgpt` + `tokens` 존재 | `chatgpt` |
-| `auth_mode=chatgpt` + `tokens` 없음/null | 1단 실패 → 2단 하강 |
-| `auth_mode=apikey` + API 키 필드 채워짐 | `apiKey` |
-| `auth_mode=apikey` + 키 필드 null/빈 값 | 1단 실패 → 2단 하강 |
-| 알 수 없는 `auth_mode` 값 | 1단 실패 → 2단 하강 |
-| 파일 없음 / 파싱 실패 | 1단 실패 → 2단 하강 |
+| `auth_mode=chatgpt` + `tokens` 중 값이 비지 않은 항목 ≥1 | `chatgpt` |
+| `auth_mode=chatgpt` + `tokens` 가 `{}` | 하강 |
+| `auth_mode=chatgpt` + `tokens` 값이 전부 `null` 또는 `""` | 하강 |
+| `auth_mode=chatgpt` + `tokens` 없음 / `null` | 하강 |
+| `auth_mode=apikey` + 키 필드가 비지 않음 | `apiKey` |
+| `auth_mode=apikey` + 키 필드 `null` / `""` | 하강 |
+| 알 수 없는 `auth_mode` 값 | 하강 |
+| 파일 없음 / 파싱 실패 | 하강 |
 
 1단 실패는 오류가 아니라 하강이다.
 
-**비밀값 규율은 grep 이 아니라 타입으로 건다.** 출력에서 키 문자열을 찾는 검사는 직접 누출만 잡고 오류 메시지·로그 경로를 통제하지 못한다. 대신 역직렬화 대상을 비밀 필드가 **없는** 최소 구조체로 고정한다:
+**비밀값 규율은 grep 이 아니라 타입으로 건다 — 그리고 그 타입은 값을 보존하지 않는다.** 앞선 안은 "비밀 필드 없는 구조체" 라 선언해 놓고 `APIKey string` 으로 **키 전문을 역직렬화** 했다. 문자열로 받는 순간 그 값은 메모리에 존재하고 오류·로그 경로로 샐 수 있다. `json.RawMessage` 도 원문을 보존하므로 같은 문제다.
+
+값을 보존하지 않는 타입을 쓴다:
 
 ```go
+// nonEmpty 는 "비어 있지 않은 값이 있었다" 는 사실만 남기고 값은 버린다.
+type nonEmpty bool
+
+func (n *nonEmpty) UnmarshalJSON(b []byte) error {
+    s := strings.TrimSpace(string(b))
+    *n = nonEmpty(s != "" && s != "null" && s != `""` && s != "{}")
+    return nil   // b 는 여기서 끝난다 — 어디에도 저장하지 않는다
+}
+
 type codexAuthFile struct {
-    AuthMode string `json:"auth_mode"`
-    APIKey   string `json:"OPENAI_API_KEY"` // 존재 여부 판정에만 쓰고 값은 어디에도 싣지 않는다
+    AuthMode string   `json:"auth_mode"`   // 열거값이며 비밀이 아니다
+    APIKey   nonEmpty `json:"OPENAI_API_KEY"`
+    Tokens   tokenSet `json:"tokens"`      // 아래 — 값 없이 "비지 않은 항목 수" 만
 }
 ```
 
-`tokens` 는 필드가 없으므로 구조체에 들어오지 않는다. `tokens` 의 존재 여부만 필요할 때는 `json.RawMessage` 길이로 판정하고 내용은 보지 않는다. 오류를 감쌀 때 원본 JSON 본문을 오류 문자열에 넣지 않는다 (경로와 사유만).
+`tokenSet` 도 같은 방식으로 각 항목의 비어있지 않음만 세고 값은 버린다. 결과적으로 이 타입 집합에는 `string` / `[]byte` / `json.RawMessage` 형태의 자격 필드가 **하나도 없다** — AC-CL-008 이 리플렉션으로 그 부재를 판정한다. 오류를 감쌀 때도 원본 JSON 본문을 넣지 않는다 (경로와 사유만).
 
 **seam — 인터페이스를 넓히지 않되, 시험이 닿을 수 있는 층에 둔다.** 최초안은 `codexCommandRunner` 에 `runCombined` 를 추가하는 것이었고, 그 근거로 "구현체는 프로덕션 1 + 시험 1" 이라 적었다. 실측 결과 **틀렸다** (M-7): 시험 더블이 둘(`fakeCodexRunner`, `stubCodexRunner`)이라 넓히면 둘 다 깨진다.
 
 두 번째 안(`codexAuthProbe` 가 최종 provider 만 반환)도 **틀렸다** — 그러면 시험이 stdout/stderr/rc 를 주입할 지점이 없어져, 최종값을 스텁하면 분류기를 건너뛰고 기존 러너를 스텁하면 stderr 경로에 닿지 못한다. 핵심 회귀 시험이 명목 시험으로 퇴행한다.
 
-셋으로 나눈다:
+세 번째 안(`codexLoginStatusRunner` 가 **이미 결합된** `combined []byte` 를 반환)도 **틀렸다** — 스텁이 결합된 바이트를 돌려주면 "stdout 은 비고 stderr 에만 있다" 는 상태를 표현할 수 없고, 프로덕션이 여전히 stderr 를 버려도 시험은 전부 통과한다. **이 SPEC 이 고치려는 결함이 정확히 회귀 시험을 우회한다.**
+
+두 스트림을 **분리해서** 넘긴다:
 
 ```go
-// (1) 저수준 실행 seam — 시험이 stdout/stderr/rc 를 여기서 주입한다.
+// (1) 저수준 실행 seam — 두 스트림을 나눠 반환한다. 시험이 여기서 "stdout 비고 stderr 만" 을 표현한다.
 var codexLoginStatusRunner = defaultLoginStatusRunner
-    // func(ctx, binaryPath) (combined []byte, exitCode int, err error)
+    // func(ctx, binaryPath) (stdout, stderr []byte, exitCode int, err error)
 
-// (2) 순수 파서 — 프로세스도 파일도 만지지 않는다. 단위 시험의 주 대상.
+// (2) 순수 결합 — 프로덕션의 결합 규칙 자체가 시험 대상이 된다.
+func combineCodexStreams(stdout, stderr []byte) []byte
+
+// (3) 순수 파서 — 프로세스도 파일도 만지지 않는다.
 func parseCodexAuthLine(combined []byte, exitCode int) string
 
-// (3) 순수 파일 판정 — 바이트를 받아 판정한다. 디스크 접근은 호출자 몫.
-func classifyCodexAuthFile(raw []byte) (provider string, ok bool)
+// (4) 순수 파일 판정 — 바이트를 받아 판정한다. 디스크 접근은 호출자 몫.
+//     err 는 파싱 실패 사유이며, ok=false 와 함께 반환된다 (판정은 하강).
+func classifyCodexAuthFile(raw []byte) (provider string, ok bool, err error)
+
+// (5) 파일 읽기 조립부 — 경로를 아는 유일한 층. 오류 문안 시험의 대상.
+func readCodexAuthFile(codexHome string) (provider string, ok bool, err error)
 ```
 
-`classifyCodexAuth` 는 (3) → (1)+(2) 순으로 부르는 얇은 조립부가 되고, `codexCommandRunner` 인터페이스와 그 세 구현체는 무변경 → `--version` 경로도 무변경.
+`(4)` 에 `err` 를 붙인 것은 AC 와 시그니처가 어긋나 있었기 때문이다 — 앞선 안의 AC 는 "반환된 오류의 `Error()`" 를 검사하는데 시그니처에는 오류도 경로도 없어 **작성 불가능한 AC** 였다. 오류 문안(경로·사유만, 본문 미포함) 판정은 경로를 아는 `(5)` 의 계약으로 옮긴다.
+
+**프로덕션 결합 경로도 한 번은 실제로 시험한다.** `defaultLoginStatusRunner` 를 **fixture 실행 파일** — `testdata/` 에 커밋된, stdout 을 비우고 stderr 로 한 줄만 쓰는 스크립트 — 에 대고 돌려 두 스트림이 실제로 분리 수집되는지 본다. 세 가지를 지킨다:
+
+- fixture 는 `exec` 로 **직접** 실행한다. 셸을 경유하지 않으므로 인자 해석·인용 문제가 없다.
+- 자기 자신을 재실행하는 헬퍼 프로세스 방식은 쓰지 않는다 — `go test` 에서 자기 바이너리를 다시 부르면 수트가 재귀 실행된다.
+- Windows 에서는 이 한 건만 skip 한다. 나머지 순수 함수 시험((2)(3)(4))은 전 플랫폼에서 돈다.
+
+`classifyCodexAuth` 는 (5) → (1)+(2)+(3) 순으로 부르는 얇은 조립부가 되고, `codexCommandRunner` 인터페이스와 그 세 구현체는 무변경 → `--version` 경로도 무변경.
 
 ### C.3 CODEX_HOME 해석
 
@@ -135,6 +169,23 @@ harness   moai hook --harness codex
 - `app`: `codex app` 위임.
 - 두 launch 동사는 codex 바이너리 미해결 시 exec 전에 단일 진단으로 종료 (REQ-CL-012). 리드아웃은 이 경우에도 rc 0 으로 나온다.
 
+### C.6 미배선 초기화 + 지시 계약
+
+**런처는 생성기를 부를 뿐 생성 로직을 갖지 않는다.** `.codex/hooks.json` / `.codex/config.toml` 을 무엇으로 채울지는 SPEC-CODEX-WIRING-001 이 이미 정했고, 여기서 두 번째 구현을 만들면 두 판본이 갈라진다. 런처가 하는 일은 셋뿐이다: 배선 부재 판정 → 제안 → 수락 시 `moai init --agent codex` 경로 호출.
+
+수락 전에는 아무것도 쓰지 않는다. 거절하면 기동도 하지 않는다 — 미배선 프로젝트로 들어가면 훅이 하나도 안 붙은 채 세션이 열리고, 그게 조용히 잘못된 상태다. 맨몸 / `status` 는 어느 상태에서도 제안하지 않는다 (읽기는 쓰지 않는다).
+
+**지시 계약**: Codex 는 `AGENTS.md` 를 읽고 Claude 는 `CLAUDE.md` 를 읽는다. 두 하네스가 같은 지시를 보게 하려면 원본을 하나로 두고 나머지가 그것을 가리켜야 한다 — 이 저장소가 t82 에서 택한 구조 그대로다. 초기화가 확보하는 상태:
+
+| 프로젝트 상태 | 하는 일 |
+|---|---|
+| 둘 다 없음 | 둘 다 만들고 `CLAUDE.md` 에 import 줄 |
+| `AGENTS.md` 만 있음 | 원본 **무변경**, `CLAUDE.md` 만 만들어 import |
+| `CLAUDE.md` 만 있음 | 기존 내용 보존 + import 줄만 추가, `AGENTS.md` 생성 |
+| 둘 다 있고 import 줄도 있음 | 무변경 (멱등) |
+
+로컬 전용 지시 파일이 함께 있으면 그 내용도 계약에 반영한다. 원칙은 하나: **기존 사용자 내용은 보존하고 없는 연결만 채운다.** 재실행해도 import 줄은 1건을 넘지 않는다.
+
 ## §D. 마일스톤
 
 | M | 내용 | 산출 |
@@ -142,9 +193,10 @@ harness   moai hook --harness codex
 | M1 | auth 분류 2단 사다리 + 회귀 시험 | 3-seam 분해(`codexLoginStatusRunner` / `parseCodexAuthLine` / `classifyCodexAuthFile`), `classifyCodexAuth` 는 얇은 조립부로 (`codexCommandRunner` 무변경) |
 | M2 | CODEX_HOME 해석 + 리드아웃 조립 | `codex_readiness.go` + 단위 시험 |
 | M3 | 커맨드 표면 + 동사 라우팅 + `--spawn` | `codex_launcher.go` + 등록 시험 |
-| M4 | 도움말·예시 문안 + 중립성 통과 | help 텍스트, 필요 시 템플릿 문서 |
+| M4 | 미배선 초기화 + 지시 계약 | `codex_init.go` — 생성기 호출 위임 + `AGENTS.md`↔`CLAUDE.md` 계약, 멱등 |
+| M5 | 도움말·예시 문안 + 중립성 통과 | help 텍스트, 필요 시 템플릿 문서 |
 
-M1 은 독립적으로 가치가 있다 (`moai web` · MCP 도구의 오표시가 그 자체로 해소된다). M2→M3 는 순차, M4 는 M3 이후.
+M1 은 독립적으로 가치가 있다 (`moai web` · MCP 도구의 오표시가 그 자체로 해소된다). M2→M3 는 순차, M4 는 M3 이후 (기동 경로가 있어야 그 앞에 제안을 붙일 수 있다), M5 는 마지막.
 
 ## §E. 위험
 

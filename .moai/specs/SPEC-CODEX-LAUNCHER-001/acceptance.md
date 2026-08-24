@@ -10,13 +10,12 @@
 
 ## AC-CL-002 — 동사 라우팅 (REQ-CL-002)
 
-- **Given** 등록된 `codex` 커맨드
 exec seam 은 호출 횟수뿐 아니라 **argv 전체와 cwd** 를 포착한다 — 명령 이름만 맞고 인자나 실행 위치가 틀린 구현이 통과하지 못하게.
 
 - **When** 맨몸 / `status` / `cli` / `app` 각각을 호출하면
 - **Then** 맨몸과 `status` 는 exec **0회**, `cli` 와 `app` 은 각 1회다.
 - **And** `cli` 의 포착된 cwd 는 **호출자의 프로젝트 루트** 와 일치한다 (worktree 에서 부르면 그 worktree — 다른 트리에서 codex 가 뜨면 세션이 엉뚱한 코드를 본다).
-- **And** `app` 의 포착 argv 는 정확히 `[codex, app]` 이다.
+- **And** `app` 의 포착 argv 는 정확히 `[codex, app]` 이다 — 앱 경로 탐색·설치 시도 코드는 실행되지 않는다 (`/Applications` 류 하드코딩 grep 0건).
 - **And Given** `moai codex cli -- --model o3 "a b" '$x' --flag=v` 처럼 `--` 뒤에 공백·인용·`$`·`=` 를 포함한 인자를 주면
 - **Then** 포착 argv 의 `codex` 뒤 꼬리가 이 토큰들과 **정확히 일치** 한다 (개수·순서·문자 모두; 셸 재해석이나 재인용으로 변형되지 않는다).
 - **근거**: 맨몸의 의미는 리드 판정으로 (b) "리드아웃 + 명시 기동" 으로 확정됐다 (plan §B).
@@ -60,9 +59,7 @@ exec seam 은 호출 횟수뿐 아니라 **argv 전체와 cwd** 를 포착한다
 
 ## AC-CL-007 — 분류 구현 단일성 (REQ-CL-007, REQ-CL-010)
 
-텍스트 중복 부재만으로는 "공유 프로브를 실제로 쓴다" 를 증명하지 못한다. 호출로 판정한다:
-
-호출 횟수 `≥1` 은 "불렀다" 만 증명하고 "그 값을 썼다" 는 증명하지 못한다 — 공유 함수를 부른 뒤 결과를 버리고 자체 분류를 하는 구현도 통과한다. **sentinel 전파** 로 판정한다:
+텍스트 중복 부재만으로는 "공유 프로브를 실제로 쓴다" 를 증명하지 못한다. 그렇다고 호출 횟수 `≥1` 로도 부족하다 — "불렀다" 만 증명하고 "그 값을 썼다" 는 증명하지 못한다 — 공유 함수를 부른 뒤 결과를 버리고 자체 분류를 하는 구현도 통과한다. **sentinel 전파** 로 판정한다:
 
 - **Given** 공유 프로브가 실제 값과 구별되는 sentinel 을 돌려주도록 스텁 (버전 `SENTINEL-VER-9x9`, 바이너리 경로 `/sentinel/path/codex`, auth `sentinel-provider`)
 - **When** 리드아웃을 1회 조립하면
@@ -76,33 +73,44 @@ exec seam 은 호출 횟수뿐 아니라 **argv 전체와 cwd** 를 포착한다
 
 ## AC-CL-008 — auth 분류 2단 사다리 (REQ-CL-008) [핵심]
 
-**1단 — 순수 파일 판정 `classifyCodexAuthFile(raw []byte)` 을 직접 시험한다** (디스크 접근 없음). fixture 행렬:
+**1단 — 순수 파일 판정 `classifyCodexAuthFile(raw []byte) (provider, ok, err)` 을 직접 시험한다** (디스크 접근 없음). 판정 기준은 **비어 있지 않은 값** 이지 객체의 존재가 아니다:
 
 | `auth.json` 내용 | 기대 `(provider, ok)` |
 |---|---|
-| `auth_mode=chatgpt` + `tokens` 객체 존재 | `("chatgpt", true)` |
-| `auth_mode=chatgpt` + `tokens` 없음 | `("", false)` — 하강 |
-| `auth_mode=chatgpt` + `tokens: null` | `("", false)` — 하강 |
-| `auth_mode=apikey` + `OPENAI_API_KEY` 채워짐 | `("apiKey", true)` |
-| `auth_mode=apikey` + `OPENAI_API_KEY: null` | `("", false)` — 하강 |
-| `auth_mode=apikey` + `OPENAI_API_KEY: ""` | `("", false)` — 하강 |
-| `auth_mode=totally-new-mode` | `("", false)` — 추측하지 않는다 |
-| `{` (파싱 실패) | `("", false)` — 하강 |
-| 빈 바이트 | `("", false)` — 하강 |
+| `{"auth_mode":"chatgpt","tokens":{"access_token":"x"}}` | `("chatgpt", true)` |
+| **`{"auth_mode":"chatgpt","tokens":{}}`** | **`("", false)`** — 빈 객체는 자격 재료가 아니다 |
+| `{"auth_mode":"chatgpt","tokens":{"access_token":null,"id_token":null}}` | `("", false)` |
+| `{"auth_mode":"chatgpt","tokens":{"access_token":"","id_token":""}}` | `("", false)` |
+| `{"auth_mode":"chatgpt"}` (tokens 없음) | `("", false)` |
+| `{"auth_mode":"chatgpt","tokens":null}` | `("", false)` |
+| `{"auth_mode":"apikey","OPENAI_API_KEY":"x"}` | `("apiKey", true)` |
+| `{"auth_mode":"apikey","OPENAI_API_KEY":null}` | `("", false)` |
+| `{"auth_mode":"apikey","OPENAI_API_KEY":""}` | `("", false)` |
+| `{"auth_mode":"totally-new-mode","tokens":{"access_token":"x"}}` | `("", false)` — 추측하지 않는다 |
+| `{` (파싱 실패) | `("", false)` + `err != nil` |
+| 빈 바이트 | `("", false)` |
 
-**비밀값 규율 — 타입으로 판정한다** (출력 grep 은 직접 누출만 잡으므로 보조 수단):
+**비밀값 규율 — 값을 보존하지 않는 타입으로 판정한다.**
 
-- **When** 역직렬화 대상 구조체의 필드 집합을 리플렉션으로 열거하면
-- **Then** 토큰 계열 필드(`id_token` / `access_token` / `refresh_token`)에 대응하는 필드가 **하나도 없다**.
-- **And Given** 파싱이 실패하도록 만든 fixture 에 가짜 토큰 문자열을 심고
+- **When** 역직렬화 대상 타입 집합(`codexAuthFile` 및 그 중첩 타입)의 필드를 리플렉션으로 열거하면
+- **Then** `auth_mode` 를 받는 필드 하나를 제외하고, `string` · `[]byte` · `json.RawMessage` 타입의 필드가 **하나도 없다** — 자격 재료는 값이 아니라 "비어 있지 않음" 이라는 bool 로만 남는다.
+- **And Given** 가짜 토큰 문자열 `SENTINEL-TOKEN-9x9` 를 심은 fixture 를 `readCodexAuthFile` (경로를 아는 유일한 층) 에 먹이고, 그 파일을 파싱 실패하도록 만들면
 - **When** 반환된 오류의 `Error()` 전문을 검사하면
-- **Then** 그 문자열이 포함되지 않는다 (오류는 경로와 사유만 싣는다).
+- **Then** `SENTINEL-TOKEN-9x9` 가 포함되지 않는다 (오류는 경로와 사유만 싣는다).
 
 **2단 — 순수 파서 `parseCodexAuthLine(combined, exitCode)` 을 직접 시험한다** (프로세스 없음). 표는 AC-CL-009.
 
-**통합 1건** — 두 단이 실제로 이어지는지:
+**결합 규칙 — 프로덕션 경로를 실제로 시험한다** (이 SPEC 이 고치려는 결함이 여기 있으므로 스텁으로 대신하지 않는다):
 
-- **Given** `auth.json` 부재 + `codexLoginStatusRunner` 가 stdout 을 비우고 stderr 로만 `Logged in using ChatGPT` (rc 0) 를 돌려주도록 스텁
+- **Given** `testdata/` 에 커밋된 fixture 실행 파일 — stdout 은 비우고 stderr 로만 `Logged in using ChatGPT` 를 쓴다 (셸 경유 없이 `exec` 로 직접 실행)
+- **When** `defaultLoginStatusRunner` 를 그 파일에 대고 호출하면
+- **Then** 반환된 `stdout` 은 0바이트, `stderr` 는 그 한 줄이다 — 두 스트림이 분리 수집된다.
+- **And** `combineCodexStreams(stdout, stderr)` 의 결과가 그 줄을 담는다.
+- **플랫폼**: 이 절만 Windows 에서 skip. 순수 함수 시험은 전 플랫폼.
+
+**통합 1건** — 사다리가 실제로 이어지는지:
+
+- **Given** `auth.json` 부재 + `codexLoginStatusRunner` 가 `stdout=[]`, `stderr=[Logged in using ChatGPT]`, `exitCode=0` 을 돌려주도록 스텁
 - **When** `ProbeCodexSetup` 을 호출하면
 - **Then** `AuthProvider == "chatgpt"` 이다.
 - **기준선 근거**: 이 절은 수정 전 트리에서 반드시 실패해야 한다 (현행은 `unknown` — M-2 실측). 실패를 먼저 관측한 뒤 수정한다.
@@ -133,33 +141,22 @@ exec seam 은 호출 횟수뿐 아니라 **argv 전체와 cwd** 를 포착한다
 - **When** 맨몸 `moai codex` 를 실행하면
 - **Then** auth 행은 `unknown` 이고, 출력에 `codex login status` 문자열이 포함되며, 로그아웃 단정 문구는 없다.
 
-## AC-CL-011 — 공유 러너 무회귀 (REQ-CL-010)
-
-- **When** 기존 codex 관련 시험을 실행하면 (`go test ./internal/cli/... -run Codex -timeout 600s`)
-- **Then** 전부 통과한다.
-- **And** `codexCommandRunner` 인터페이스 선언과 그 세 구현체(`realCodexRunner` / `fakeCodexRunner` / `stubCodexRunner`) 어느 것도 이 SPEC 의 diff 에 나타나지 않는다 — 새 seam 은 별도 변수 + 순수 함수 둘이므로 (M-7, plan §C.2).
-- **And** 순수 함수 두 개(`parseCodexAuthLine` / `classifyCodexAuthFile`)는 시험에서 프로세스를 띄우지 않고 직접 호출된다 — 시험 파일에 이 둘의 직접 호출이 각각 ≥1건 존재한다.
-
-## AC-CL-012 — 데스크톱 앱 위임 (REQ-CL-011)
-
-- **Given** exec seam 스텁
-- **When** `moai codex app` 을 실행하면
-- **Then** 정확히 `codex app` 이 호출되고, 앱 경로 탐색이나 설치 시도 코드는 실행되지 않는다 (`grep` 으로 `/Applications` 류 하드코딩 0건).
-
-## AC-CL-013 — codex 부재 시 exec 없음 (REQ-CL-012)
+## AC-CL-011 — codex 부재 시 exec 없음 (REQ-CL-012)
 
 - **Given** `codexLookPath` 가 실패하도록 스텁된 상태
 - **When** `cli` / `app` 을 실행하면
 - **Then** 둘 다 비영 rc 로 종료하고, exec 호출 횟수는 0 이며, 진단은 설치 조치를 명명한다.
 - **And** 맨몸 / `status` 는 rc 0 으로 리드아웃을 내되 바이너리 행을 `not found` 로 적는다 — 진단 명령을 못 쓰게 만드는 것은 REQ-CL-006 의 fail-open 취지에 어긋난다.
 
-## AC-CL-014 — 쓰기 없음 (REQ-CL-013)
+## AC-CL-012 — 쓰기 없음 (REQ-CL-013)
+
+범위: 초기화를 수락하지 않은 모든 경로. 수락된 초기화의 쓰기는 AC-CL-015 가 판정한다.
 
 - **Given** 세 트리의 파일 목록·mtime 스냅샷 — 임시 프로젝트 루트, 임시 CODEX_HOME, **그리고 임시 Claude 프로필 디렉터리**(REQ-CL-013 이 명시적으로 보호하는 세 번째 대상)
 - **When** 네 형태(맨몸 / `status` / `cli` / `app`)를 (exec 스텁 상태로) 각각 실행한 뒤 다시 스냅샷하면
 - **Then** 세 스냅샷 모두 동일하다 (`.claude/settings.local.json` 무변경, CODEX_HOME 하위 신규 파일 0, 프로필 상태 무변경).
 
-## AC-CL-015 — 중립성 (REQ-CL-014)
+## AC-CL-013 — 중립성 (REQ-CL-014)
 
 - **When** 템플릿 중립성 가드를 실행하면 (`MOAI_TEMPLATE_LEAK_STRICT=1 go test ./internal/template/...`)
 - **Then** 통과한다.
@@ -167,10 +164,44 @@ exec seam 은 호출 횟수뿐 아니라 **argv 전체와 cwd** 를 포착한다
 - **When** `internal/cli` 에서 `codexCmd` 의 생성된 도움말 문자열(`Long` + 예시)을 직접 취해 검사하면
 - **Then** SPEC ID(`SPEC-`) · 카드 id(`t197`) · 내부 날짜 · 커밋 SHA 패턴이 각각 0건이다.
 
-## AC-CL-016 — 게이트 (전 REQ)
+## AC-CL-014 — 게이트 + 공유 러너 무회귀 (전 REQ, REQ-CL-010)
 
 - **When** `go build ./...` · `go vet ./...` · `GOOS=windows go vet ./...` · `golangci-lint run` 을 실행하면
 - **Then** 전부 rc 0 이다.
+- **And When** 기존 codex 관련 시험을 실행하면 (`go test ./internal/cli/... -run Codex -timeout 600s`)
+- **Then** 전부 통과한다.
+- **And** `codexCommandRunner` 인터페이스 선언과 그 세 구현체(`realCodexRunner` / `fakeCodexRunner` / `stubCodexRunner`) 어느 것도 이 SPEC 의 diff 에 나타나지 않는다 — 새 seam 은 별도 변수 + 순수 함수들이므로 (M-7, plan §C.2).
+- **And** 순수 함수 세 개(`combineCodexStreams` / `parseCodexAuthLine` / `classifyCodexAuthFile`)는 시험에서 프로세스를 띄우지 않고 직접 호출된다 — 시험 파일에 각각 ≥1건의 직접 호출이 존재한다.
+
+## AC-CL-015 — 미배선 프로젝트 초기화 제안 (REQ-CL-015)
+
+초기화 실행은 기존 생성기 호출 여부로 판정한다 — 런처가 자체 생성 로직을 갖지 않는다.
+
+- **Given** `.codex/` 가 없는 임시 프로젝트 루트 + 생성기 호출을 세는 seam
+- **When** `cli` 또는 `app` 을 실행하되 **초기화를 수락하지 않으면**
+- **Then** 생성기 호출 0회, 프로젝트 트리 스냅샷 무변경, 그리고 기동도 일어나지 않는다 (미배선 프로젝트로 들어가지 않는다).
+- **And When** 초기화를 수락하면
+- **Then** 생성기가 `--agent codex` 경로로 정확히 1회 호출된다.
+- **And Given** 이미 `.codex/hooks.json` + `.codex/config.toml` 이 있는 프로젝트
+- **When** `cli` / `app` 을 실행하면
+- **Then** 제안 없이 바로 기동하고 생성기 호출은 0회다.
+- **And** 맨몸 / `status` 는 어느 상태에서도 제안하지 않고 생성기 호출 0회다 — 읽기는 쓰지 않는다.
+- **And** 런처 코드에 배선 파일을 직접 쓰는 경로가 없다 (`.codex/hooks.json` / `.codex/config.toml` 쓰기 호출 grep 0건).
+
+## AC-CL-016 — 지시 계약 확보 (REQ-CL-016)
+
+초기화가 만든 상태를 파일 내용으로 판정한다. 네 fixture 를 각각 초기화한다:
+
+| 프로젝트 초기 상태 | 초기화 후 기대 |
+|---|---|
+| `AGENTS.md` 없음 · `CLAUDE.md` 없음 | 둘 다 생성, `CLAUDE.md` 가 `AGENTS.md` 를 import 하는 줄을 담는다 |
+| `AGENTS.md` 있음 · `CLAUDE.md` 없음 | `AGENTS.md` 내용 **바이트 무변경**, `CLAUDE.md` 생성 + import 줄 |
+| `AGENTS.md` 없음 · `CLAUDE.md` 있음 (사용자 내용 포함) | 기존 `CLAUDE.md` 내용 보존 + import 줄만 추가, `AGENTS.md` 생성 |
+| 둘 다 있고 import 줄도 이미 있음 | 두 파일 모두 바이트 무변경, import 줄 중복 0건 |
+
+- **And Given** 프로젝트에 로컬 전용 지시 파일이 함께 있으면
+- **Then** 그 내용도 계약에 반영되고, 원본 파일 자체는 바이트 무변경이다.
+- **And** 어느 fixture 에서도 import 줄은 정확히 1건이다 (재실행 멱등).
 
 ---
 

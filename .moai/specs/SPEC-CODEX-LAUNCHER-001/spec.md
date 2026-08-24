@@ -1,7 +1,7 @@
 ---
 id: SPEC-CODEX-LAUNCHER-001
 title: "Codex 전용 런처 — moai codex: 배선·CODEX_HOME·auth 상태 확인과 앱/CLI 기동"
-version: "0.4.0"
+version: "0.5.0"
 status: draft
 created: 2026-08-24
 updated: 2026-08-24
@@ -27,10 +27,11 @@ related_specs: [SPEC-CODEX-DUAL-AGENTS-001, SPEC-CODEX-SKILLS-CANONICAL-001, SPE
 | 0.2.0 | 2026-08-24 | 맨몸 `moai codex` 의미 확정 — 리드 판정 (b) "리드아웃 + 명시 기동". REQ-CL-002 재기술, AC-CL-002 조건절 해소, plan §B 결정 기록으로 전환 |
 | 0.3.0 | 2026-08-24 | 교차모델 감사 1차(codex 백엔드) 지적 4건 반영. auth 분류를 `auth_mode` 파일 1순위 + 앵커된 긍정 행 2순위의 2단 사다리로 재설계(REQ-CL-008/009 재기술) — 부분 일치가 오류 문구를 인증 성공으로 읽는 결함을 설계 단계에서 제거. 공유 러너 인터페이스 확장 철회(REQ-CL-010 후단) — 구현체 수 측정이 틀렸음이 드러남(M-7). AC 5건을 명목 커버리지에서 행동 판정으로 교체. 근거 문서를 축약 없는 실측본으로 재작성 |
 | 0.4.0 | 2026-08-24 | 교차모델 감사 2차 지적 5건 반영. (1) `^logged in` 앵커도 뚫린다는 반례(`Logged in state unavailable: API key missing`)를 받아 전체 행 문법 + 캡처값 매핑으로 교체(REQ-CL-009). (2) 파일 1단에 모드별 최소 구조 조건 추가 — 자격 재료 없는 stale 파일은 하강(REQ-CL-008), 비밀값 규율을 출력 grep 에서 타입(비밀 필드 없는 구조체)으로 격상. (3) seam 을 3분해 — 최종 provider 만 반환하는 단일 seam 으로는 stdout/stderr/rc 주입 지점이 없어 핵심 회귀 시험이 명목화됨. (4) AC-CL-002 에 cwd·argv 전달 판정, AC-CL-007 에 sentinel 전파 판정 추가. (5) 근거 문서 재작성 + 에이전트 TOML 수를 12→**11** 로 정정(`ls | wc -l` 이 별칭 긴 형식의 `total` 행을 함께 셌다) |
+| 0.5.0 | 2026-08-24 | 3차 감사 지적 5건 반영 + 운영자 신규 요구 접기. (1) 파일 1단이 `tokens:{}` 를 통과하던 구멍 폐쇄 — '존재' 가 아니라 '비어 있지 않은 값' 요구(REQ-CL-008). (2) 비밀값 규율을 실제로 타입에 걸었다 — 앞선 안은 `APIKey string` 으로 키 전문을 역직렬화하면서 '비밀 필드 없음' 이라 선언했다. (3) 실행 seam 이 결합된 바이트를 반환해 프로덕션 stderr 결함이 회귀 시험을 우회하던 문제 — 두 스트림을 분리 반환하고 결합 규칙 자체를 시험 대상으로. (4) 작성 불가능했던 AC 해소 — `classifyCodexAuthFile` 에 `err` 추가, 오류 문안 판정은 경로를 아는 층으로 이동. (5) 근거 문서를 전사(transcript) 방식으로 전환 — 스크립트와 그 출력을 커밋하고 문서는 줄 범위를 인용한다. 신규: 미배선 프로젝트 초기화 제안 + `AGENTS.md`↔`CLAUDE.md` 지시 계약(REQ-CL-015/016). AC 2건 통합(공유 러너 무회귀→게이트, 앱 위임→동사 라우팅)으로 Tier M 상한 16/16 유지 |
 
 ## §A. 측정 전제 (Verified baseline)
 
-> 근거: `.moai/reports/t197/measurement.md` (worktree `WT-codex-launcher` @ `746177017`, 분기 지점 `9280c96b3`, 2026-08-24 실측 — 각 항목이 명령·rc·출력 전문으로 기록돼 있고, 미관측 항목은 말미에 명시돼 있다).
+> 근거: `.moai/reports/t197/` — 측정 스크립트 `probe.sh`, 그 1회 실행 전사본 `probe-output.txt` (기준 커밋 `6bfb076bc`), 그리고 전사본의 줄 범위를 인용하며 해석하는 `measurement.md`. 미관측 항목은 그 문서 말미에 명시돼 있다.
 > t88 (M4) 산출물 `7b217da7c` 가 이 트리의 조상임을 확인했다.
 
 ### §A.1 `moai codex` 는 없다 (카드 전제 성립)
@@ -86,11 +87,12 @@ t88 (M4) 이 Codex 쪽 배선을 깔았지만, 그 배선을 **확인하고 그 
 - auth 분류 재설계 (§A.2 스트림 오독 + 부분 일치 오분류) — 프로브를 공유하는 세 표면 전부에 반영
 - Codex CLI / 데스크톱 앱 기동 위임
 - `--spawn` (tmux 새 창) 패리티
+- 미배선 프로젝트에서 기동 시 초기화 제안 — 기존 `moai init --agent codex` 생성기 호출 + `AGENTS.md` ↔ `CLAUDE.md` 지시 계약 확보
 
 ### Out of Scope (제외)
 
 - `codex doctor` 가 이미 하는 진단의 재구현 (위임한다)
-- `.codex/` 배선 생성·수리 — 생성은 `moai init --agent`, 표류 보고는 `moai doctor` 소관 (SPEC-CODEX-WIRING-001)
+- 배선 **생성 로직** 의 재구현 — 런처는 기존 `moai init --agent codex` 생성기를 **호출** 할 뿐이고, 무엇을 어떻게 까는지는 SPEC-CODEX-WIRING-001 소관이다. 이미 깔린 배선의 표류 수리도 `moai doctor` 몫으로 남는다
 - Codex 쪽 로그인 수행 (`codex login` 위임; moai 는 자격 증명을 만들거나 옮기지 않는다)
 - Kanban / Factory 진입 토큰 (`-k` / `-f`) — Claude 세션 모델 전제이므로 이번 범위 밖
 - `moai cg` 형 하이브리드 (Claude 리드 + Codex 팀메이트)
@@ -112,7 +114,7 @@ t88 (M4) 이 Codex 쪽 배선을 깔았지만, 그 배선을 **확인하고 그 
 
 ### D.3 auth 상태 (§A.2 결함 수정)
 
-- **REQ-CL-008** — The auth classifier shall determine the provider from `<CODEX_HOME>/auth.json` only when the file's `auth_mode` is a known value AND the credential material that mode implies is present; in every other case — an unknown mode, a mode whose credential material is absent, an unparseable file, or no file at all — it shall fall back to the command probe rather than report a provider. It shall deserialize into a structure carrying no credential field, so no token value is read, logged, or wrapped into an error.
+- **REQ-CL-008** — The auth classifier shall determine the provider from `<CODEX_HOME>/auth.json` only when the file's `auth_mode` is a known value AND the credential material that mode implies is present as a non-empty value; a present-but-empty container shall count as absent. In every other case — an unknown mode, empty or missing credential material, an unparseable file, or no file at all — it shall fall back to the command probe rather than report a provider. It shall deserialize through types that record only whether each credential field was non-empty, never the value itself, so no credential is retained, logged, or wrapped into an error.
 - **REQ-CL-009** — When classifying from command output, the system shall accept a provider only from a status line matching a fixed whole-line grammar, mapping the captured provider term and nothing else; a line that merely contains a provider term shall never classify, whatever it starts with. It shall classify a non-zero exit only when such a line is present, and shall otherwise report `unknown` together with the action `codex login status` — an unreadable probe is a gap, never a verdict.
 - **REQ-CL-010** — The classification correction shall apply to every consumer of the shared probe (the `codex_setup` MCP tool, the web console Codex card, and this launcher), with no second classification path introduced and no change to the shared `codexCommandRunner` interface.
 
@@ -122,7 +124,12 @@ t88 (M4) 이 Codex 쪽 배선을 깔았지만, 그 배선을 **확인하고 그 
 - **REQ-CL-012** — Where the codex binary is absent from PATH, the launch verbs (`cli`, `app`) shall fail with a single diagnostic naming the install action and shall exec nothing; the readout form shall still succeed, reporting the binary row as not found — a diagnostic that refuses to run when the thing it diagnoses is missing is useless exactly when it is needed.
 - **REQ-CL-013** — The system shall not mutate `.claude/settings.local.json`, Claude profile state, or any file under `CODEX_HOME` on any verb — the launcher reads state and execs; it does not write.
 
-### D.5 배포 표면
+### D.5 미배선 프로젝트 초기화
+
+- **REQ-CL-015** — Where a launch verb runs in a project that carries no `.codex/` wiring, the system shall offer to initialize it through the existing `moai init --agent codex` generator rather than launching into an unwired project, and shall not write anything until the operator accepts. The readout form shall keep reporting the unwired state without offering to change it — reading state never mutates it.
+- **REQ-CL-016** — When initialization runs, it shall ensure the project carries the agent-instruction contract this repository uses: an `AGENTS.md` that Codex reads, imported by `CLAUDE.md` so both harnesses resolve one source. Where the project already has either file, the system shall preserve its content and add only the missing link; where a local, uncommitted instruction file exists alongside it, that file shall be carried into the contract too. The intent is that a project driven from Codex resolves the same instructions it resolves from Claude.
+
+### D.6 배포 표면
 
 - **REQ-CL-014** — Help text, examples, and any template-side documentation shall stay language-neutral and free of internal identifiers, satisfying the template neutrality guard.
 
