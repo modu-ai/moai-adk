@@ -145,3 +145,76 @@ func TestCleanStale_JSONReportsIgnoredPredicate(t *testing.T) {
 		t.Error("the record must carry a keep_reason")
 	}
 }
+
+// --- post-audit iteration 2, finding N1 -------------------------------------
+//
+// `clean --merged-only` is the THIRD removal path, and it was left out of the
+// share. It carries neither a dirty guard nor the ignored-content guard, so a
+// merged, unanchored tree holding only `.claude/agent-memory/` is destroyed
+// exit 0 — the same harm the --stale limb above was just repaired for, on a
+// path the shared decision's own doc comment already claimed to cover.
+
+// TestCleanMergedOnly_KeepsIrreplaceableIgnoredContent is the N1 limb: the
+// merged sweep must consult the SAME decision the other two consult.
+func TestCleanMergedOnly_KeepsIrreplaceableIgnoredContent(t *testing.T) {
+	removed := ignoredStaleEnv(t, "/wt/merged-memory", "feat/merged-memory",
+		"!! .claude/agent-memory/\n")
+
+	out, err := runStaleClean(t, map[string]string{"merged-only": "true"})
+	if err != nil {
+		t.Fatalf("runClean must stay non-blocking, got error: %v", err)
+	}
+	if len(*removed) != 0 {
+		t.Fatalf("a tree holding irreplaceable ignored content was removed: %v", *removed)
+	}
+	if !strings.Contains(out, "cause="+causeIgnoredContent) {
+		t.Errorf("the notice must name the cause, got:\n%s", out)
+	}
+}
+
+// TestCleanMergedOnly_UnreadableIgnoredStatusPreserves keeps the fail-closed
+// direction: a status that could not be read is not a negative.
+func TestCleanMergedOnly_UnreadableIgnoredStatusPreserves(t *testing.T) {
+	removed := staleTestEnv(t,
+		[]git.Worktree{{Path: "/wt/merged-unreadable", Branch: "feat/merged-unreadable"}},
+		map[string]string{},
+		map[string]bool{"feat/merged-unreadable": true},
+	)
+	origGitCmd := gitWorktreeCmd
+	gitWorktreeCmd = func(args ...string) (string, error) {
+		for _, a := range args {
+			if a == "--ignored" {
+				return "", errIgnoredStatusUnreadableFixture
+			}
+		}
+		return origGitCmd(args...)
+	}
+	t.Cleanup(func() { gitWorktreeCmd = origGitCmd })
+
+	out, err := runStaleClean(t, map[string]string{"merged-only": "true"})
+	if err != nil {
+		t.Fatalf("runClean must stay non-blocking, got error: %v", err)
+	}
+	if len(*removed) != 0 {
+		t.Fatalf("an unreadable ignored status must preserve; removed %v", *removed)
+	}
+	if !strings.Contains(out, "cause="+causeIgnoredCheckFailed) {
+		t.Errorf("the notice must name the cause, got:\n%s", out)
+	}
+}
+
+// TestCleanMergedOnly_RemovesWhenIgnoredContentIsRegenerable is the
+// anti-immortality control: 156 of 156 trees in this repository hold ignored
+// content (design.md §A.7), so a blunt "holds ignored content" predicate would
+// preserve everything forever. Only the irreplaceable class preserves.
+func TestCleanMergedOnly_RemovesWhenIgnoredContentIsRegenerable(t *testing.T) {
+	removed := ignoredStaleEnv(t, "/wt/merged-regen", "feat/merged-regen",
+		"!! .moai/state/\n!! bin/\n")
+
+	if _, err := runStaleClean(t, map[string]string{"merged-only": "true"}); err != nil {
+		t.Fatalf("runClean error: %v", err)
+	}
+	if len(*removed) != 1 || (*removed)[0] != "/wt/merged-regen" {
+		t.Fatalf("a tree whose ignored content is entirely regenerable must be removed; removed %v", *removed)
+	}
+}

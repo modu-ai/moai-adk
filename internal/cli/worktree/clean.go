@@ -123,6 +123,17 @@ func cleanMergedWorktrees(cmd *cobra.Command, base string) error {
 				_, _ = fmt.Fprintf(out, "  Keeping %s [%s]: live session(s) anchored — %s (source: %s)\n", wt.Path, wt.Branch, v.Detail, v.Source)
 				continue
 			}
+			// Ignored-content guard (REQ-WR-024), the SAME decision the other
+			// two sweeps consult. --merged-only has no dirty guard, and a
+			// dirty guard would not have covered this class anyway: `git
+			// status --porcelain` and non-forced `git worktree remove` AGREE
+			// in disregarding ignored files (design.md A.6), so a tree
+			// holding only `.claude/agent-memory/` is destroyed exit 0 with
+			// nothing in the output to read afterwards.
+			if _, reason := ignoredContentVerdict(wt.Path); reason != "" {
+				_, _ = fmt.Fprintf(out, "  Keeping %s [%s]: %s\n", wt.Path, wt.Branch, reason)
+				continue
+			}
 			_, _ = fmt.Fprintf(out, "  Removing merged worktree: %s [%s]\n", wt.Path, wt.Branch)
 			if err := WorktreeProvider.Remove(wt.Path, false); err != nil {
 				_, _ = fmt.Fprintf(out, "  Warning: could not remove %s: %v\n", wt.Path, err)
@@ -386,17 +397,28 @@ func staleKeepReason(c *staleCandidate, path, branch, base string) string {
 	// `.claude/agent-memory/` reports dirty=no and is destroyed by --yes with
 	// exit 0. The decision is the SHARED one the PR-merge sweep uses
 	// (internal/session), not a second allowlist.
+	state, reason := ignoredContentVerdict(path)
+	c.Ignored = state
+	return reason
+}
+
+// ignoredContentVerdict is the ignored-content guard (REQ-WR-024) as ONE
+// evaluation, so every sweep that removes a worktree reaches the same answer.
+// It returns the tree's predicate state and, when the tree must be kept, the
+// cause-bearing reason; an empty reason means removable.
+//
+// It fails closed: a status that could not be read is undetermined, never a
+// negative, because a negative here destroys content that `git status
+// --porcelain` and non-forced `git worktree remove` both disregard.
+func ignoredContentVerdict(path string) (state string, keepReason string) {
 	porcelain, err := gitWorktreeCmd("-C", path, "status", "--porcelain", "--ignored")
 	if err != nil {
-		c.Ignored = staleStateUndetermined
-		return fmt.Sprintf("cause=%s; could not read ignored content: %v", causeIgnoredCheckFailed, err)
+		return staleStateUndetermined, fmt.Sprintf("cause=%s; could not read ignored content: %v", causeIgnoredCheckFailed, err)
 	}
 	if irreplaceable := session.IrreplaceableIgnoredEntries(porcelain); len(irreplaceable) > 0 {
-		c.Ignored = staleStateYes
-		return fmt.Sprintf("cause=%s; irreplaceable gitignored content: %s", causeIgnoredContent, strings.Join(irreplaceable, ", "))
+		return staleStateYes, fmt.Sprintf("cause=%s; irreplaceable gitignored content: %s", causeIgnoredContent, strings.Join(irreplaceable, ", "))
 	}
-	c.Ignored = staleStateNo
-	return ""
+	return staleStateNo, ""
 }
 
 // Cause tokens for the ignored-content guard, matching the PR-merge sweep's
