@@ -2,7 +2,7 @@
 id: SPEC-KANBAN-PR-CARD-TRACEABILITY-001
 title: "Pre-dispatch PR cross-check and the PR-title card-id convention"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-08-24
 updated: 2026-08-24
 author: manager-spec
