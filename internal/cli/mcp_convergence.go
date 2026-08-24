@@ -428,7 +428,7 @@ func performCodexAudit(ctx context.Context, target, focus, projectRoot string) R
 
 // performGLMAudit wraps the existing GLM handler path (key load + model resolve
 // + callGLMAudit). Reuses (does NOT fork) mcp_glm.go: glmKeyLoader,
-// resolveGLMAuditModel, callGLMAudit, glmInconclusive.
+// resolveGLMAuditModelEffort, callGLMAudit, glmInconclusive.
 //
 // It now also collects the change under review. codex is a subprocess inside the
 // tree and reads it for itself; GLM is an HTTPS call to z.ai with no filesystem,
@@ -457,7 +457,8 @@ func performGLMAudit(ctx context.Context, target, focus, projectRoot string) Rev
 	if strings.TrimSpace(diff) == "" {
 		return glmInconclusive("no reviewable change: target " + target + " produced an empty diff")
 	}
-	return callGLMAudit(ctx, key, resolveGLMAuditModel(), focus, diff, nil)
+	me := resolveGLMAuditModelEffort() // pin > SSOT (SPEC-V3R6-AUDIT-MODEL-PIN-001 REQ-AMP-003)
+	return callGLMAudit(ctx, key, me.Model, me.Effort, focus, diff, nil)
 }
 
 // runMultiAudit is the fan-out entry point invoked by the `audit_multi` MCP tool

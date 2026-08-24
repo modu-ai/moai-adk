@@ -133,6 +133,73 @@ TestMCPAudit_NoDirectFrontmatterRead suite stayed green in the same run).
 **AC trace:** AC-AMP-002 — PASS (both arms incl. MF2 regression);
 AC-AMP-003 — PASS (states a/b/c + anchors green).
 
+### M3 — GLM model+effort resolution and wire delivery
+
+**RED evidence (E8)** — `internal/cli/mcp_glm_audit_pin_test.go` authored
+BEFORE the resolver/wire change; verbatim failing output:
+
+```
+$ go test ./internal/cli/ -run TestGLMAuditPin -count=1
+internal/cli/mcp_glm_audit_pin_test.go:97:83: undefined: glmAuditThinkingBudgetMax
+internal/cli/mcp_glm_audit_pin_test.go:163:8: undefined: resolveGLMAuditModelEffort
+internal/cli/mcp_glm_audit_pin_test.go:178:8: undefined: resolveGLMAuditModelEffort
+FAIL	github.com/modu-ai/moai-adk/internal/cli [build failed]
+```
+
+**GREEN + verification:**
+
+```
+$ go test ./internal/cli/ -run "TestGLM|TestResolveGLMAuditModel" -count=1
+ok  	github.com/modu-ai/moai-adk/internal/cli	24.199s
+$ go vet ./internal/cli/
+exit 0
+$ go test ./internal/cli/ -run "TestCodex|TestMCP|TestGLM|TestMultiAudit|TestConvergence|TestAudit" -count=1
+ok  	github.com/modu-ai/moai-adk/internal/cli	48.958s
+```
+
+**Mechanism:**
+
+- `resolveGLMAuditModelEffort()` (mcp_glm.go) replaces `resolveGLMAuditModel`:
+  pin-first (workflow.audit.glm, non-empty model → pair verbatim, bypassing
+  the IsGLMBackend session check per design decision D3 — a wrong id degrades
+  via the existing z.ai-4xx fail-open); fallback = legacy
+  `resolveGLMModelForAgent(glmAuditAgentKey)` model with EMPTY effort.
+- `handleGLMAudit`: explicit caller `model` outranks the pinned model; the
+  pinned effort survives an explicit model override.
+- Wire delivery (hypothesis A — the field the M5 live gate arbitrates):
+  `glmMessagesRequest.Thinking *glmThinkingDirective` (json `thinking,omitempty`)
+  carrying `{"type":"enabled","budget_tokens":B}`; per-state budgets
+  1024/2048/3072 (all < glmAuditMaxTokens 4096; max:low = 3:1 vs the ≥ 2.0
+  numeric rule).
+- Single-reading rule (REQ-AMP-006): `glmAuditThinkingDirective(effort)`
+  accepts EXACTLY {low, high, max} (template.GLMState*), verbatim; any other
+  non-empty value → nil directive (omitted) while the model pin still applies;
+  NO CollapseClaudeEffortToGLM on this path.
+- `callGLMAudit(ctx, key, model, effort, focus, diff, token)` — signature
+  extended; both callers updated: handleGLMAudit and performGLMAudit
+  (mcp_convergence.go:460 — the audit_multi GLM leg, now pin-aware).
+  `glm_task` path untouched (REQ-AMP-008).
+- Two pre-existing tests updated to the new resolver surface
+  (TestResolveGLMAuditModel_SSOT, mcp_glm_fallback_test.go x2 — same fallback
+  semantics asserted through `.Model`).
+
+**Changed files (M3):** `internal/cli/mcp_glm.go` (resolver + request body +
+directive builder + budgets), `internal/cli/mcp_convergence.go` (performGLMAudit
+caller), `internal/cli/mcp_glm_audit_pin_test.go` (NEW — 6 tests),
+`internal/cli/mcp_glm_test.go` + `internal/cli/mcp_glm_fallback_test.go`
+(resolver rename, semantics unchanged).
+
+**Test inventory:** `TestGLMAuditPin_ReachesRequestBody` (AC-AMP-004 positive:
+model + thinking{enabled,3072} on the captured body),
+`TestGLMAuditPin_InvalidEffortOmitsReasoningDirective` (medium → model only),
+`TestGLMAuditPin_AbsentPinBodyUnchanged` (no reasoning field, legacy model),
+`TestGLMAuditPin_TaskResolutionUnaffected` (REQ-AMP-008: glm_task → SSOT
+glm-4.6 under a glm-5.3 pin),
+`TestGLMAuditPin_BypassesSessionBackendCheck` (D3),
+`TestGLMAuditPin_ExplicitModelParamOverridesPin`.
+
+**AC trace:** AC-AMP-004 — PASS (all three arms + task isolation).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase completion>_

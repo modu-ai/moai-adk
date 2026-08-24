@@ -77,6 +77,19 @@ const (
 	// glmAuditHTTPTimeout is the per-call HTTP ceiling. Bounded so a hung z.ai
 	// connection cannot stall the MCP tool indefinitely (fail-open on timeout).
 	glmAuditHTTPTimeout = 120 * time.Second
+
+	// Per-effort thinking budgets for the audit path's reasoning directive
+	// (SPEC-V3R6-AUDIT-MODEL-PIN-001 M3). These carry the pinned z.ai
+	// reasoning STATE on hypothesis A's delivery field — the Anthropic-style
+	// thinking object, whose depth control is budget_tokens (the object has no
+	// effort-name slot). All budgets stay below glmAuditMaxTokens (4096), the
+	// Anthropic thinking constraint budget_tokens < max_tokens. The max:low
+	// ratio (3:1) is what the M5 live differential measures (AC-AMP-006's
+	// numeric rule needs ≥ 2.0); whether z.ai honors this field at all is the
+	// live gate's question, not an assumption.
+	glmAuditThinkingBudgetLow  = 1024
+	glmAuditThinkingBudgetHigh = 2048
+	glmAuditThinkingBudgetMax  = 3072
 )
 
 // glmHTTPDoer abstracts the POST so tests inject a canned response without any
@@ -93,17 +106,49 @@ var glmHTTPClient glmHTTPDoer = &http.Client{Timeout: glmAuditHTTPTimeout}
 // missing vs present key without touching ~/.moai/.env.glm or the env).
 var glmKeyLoader = loadGLMKey
 
-// projectDirResolver is the project-root seam used by resolveGLMAuditModel to
+// projectDirResolver is the project-root seam used by the GLM audit resolver to
 // locate .moai/config/sections/llm.yaml. Wraps resolveProjectDir for testability.
 var projectDirResolver = resolveProjectDir
 
 // glmMessagesRequest is the Anthropic-compatible Messages API request body
 // posted to z.ai.
 type glmMessagesRequest struct {
-	Model     string       `json:"model"`
-	MaxTokens int          `json:"max_tokens"`
-	System    string       `json:"system"`
-	Messages  []glmMessage `json:"messages"`
+	Model     string                `json:"model"`
+	MaxTokens int                   `json:"max_tokens"`
+	System    string                `json:"system"`
+	Messages  []glmMessage          `json:"messages"`
+	Thinking  *glmThinkingDirective `json:"thinking,omitempty"`
+}
+
+// glmThinkingDirective is the audit path's reasoning directive
+// (SPEC-V3R6-AUDIT-MODEL-PIN-001 REQ-AMP-007): the Anthropic-style thinking
+// object (hypothesis A). glm-5.3 reasons always — the toggle is invariantly
+// enabled; budget_tokens is the depth control that differentiates the pinned
+// z.ai reasoning states. A nil Thinking omits the field entirely (absent pin,
+// empty effort, or an effort outside the single-reading valid set).
+type glmThinkingDirective struct {
+	Type         string `json:"type"`
+	BudgetTokens int    `json:"budget_tokens"`
+}
+
+// glmAuditThinkingDirective maps a pinned z.ai reasoning state onto the
+// delivery field, implementing REQ-AMP-006's single-reading rule: the valid
+// set is EXACTLY {low, high, max} (template.GLMState* — the z.ai state names,
+// stored and transmitted verbatim); any other non-empty value returns nil —
+// the reasoning directive is omitted while the model pin still applies. NO
+// effort collapse runs on this path (CollapseClaudeEffortToGLM is the
+// vocabulary reference only, not a runtime dependency here).
+func glmAuditThinkingDirective(effort string) *glmThinkingDirective {
+	switch effort {
+	case template.GLMStateLow:
+		return &glmThinkingDirective{Type: template.GLMThinkingEnabledVal, BudgetTokens: glmAuditThinkingBudgetLow}
+	case template.GLMStateHigh:
+		return &glmThinkingDirective{Type: template.GLMThinkingEnabledVal, BudgetTokens: glmAuditThinkingBudgetHigh}
+	case template.GLMStateMax:
+		return &glmThinkingDirective{Type: template.GLMThinkingEnabledVal, BudgetTokens: glmAuditThinkingBudgetMax}
+	default:
+		return nil
+	}
 }
 
 type glmMessage struct {
@@ -121,16 +166,32 @@ type glmMessagesResponse struct {
 	} `json:"content"`
 }
 
-// resolveGLMAuditModel resolves the GLM audit model id via the model/effort
-// SSOT (template.ResolveAgentModelEffort, REQ-MCP-013 / AC-MCP-015) ONLY. It
-// NEVER reads agent frontmatter or llm.agent_overrides directly.
-func resolveGLMAuditModel() string {
-	return resolveGLMModelForAgent(glmAuditAgentKey)
+// resolveGLMAuditModelEffort resolves the GLM audit {model, effort} pair
+// (SPEC-V3R6-AUDIT-MODEL-PIN-001 REQ-AMP-003). Precedence:
+//
+//  1. The workflow.audit.glm pin — a non-empty pin model returns the pair
+//     VERBATIM, bypassing the IsGLMBackend session check: a pin is
+//     by-construction a GLM id, and a wrong id degrades via the existing
+//     z.ai-4xx fail-open to VerdictInconclusive (design decision D3), never a
+//     hard error. Effort rides the pin only when the model is pinned (the
+//     model is the gate — effort alone pins nothing).
+//  2. Otherwise the legacy SSOT resolution: the sync-auditor cell through
+//     resolveGLMModelForAgent, with an EMPTY effort (the pre-SPEC body carried
+//     no reasoning field, and the SSOT effort is Claude-vocabulary — never
+//     transmittable under the single-reading rule).
+//
+// It NEVER reads agent frontmatter or llm.agent_overrides directly (REQ-MCP-013
+// / AC-MCP-015), and glm_task never calls it (REQ-AMP-008).
+func resolveGLMAuditModelEffort() config.ModelEffort {
+	if pin := workflowAuditPins(projectDirResolver()).GLM; pin.Model != "" {
+		return pin
+	}
+	return config.ModelEffort{Model: resolveGLMModelForAgent(glmAuditAgentKey)}
 }
 
 // resolveGLMModelForAgent resolves a GLM model id for the given profile-matrix
 // agent key via the model/effort SSOT (template.ResolveAgentModelEffort). It is
-// the shared body behind resolveGLMAuditModel and the glm_task resolver: the
+// the shared body behind the GLM audit resolver and the glm_task resolver: the
 // audit path keys on the auditor-shaped cell, the task path on its consumer
 // (super-advisor), and the resolution rule is otherwise identical.
 //
@@ -174,9 +235,9 @@ func handleGLMAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 		return reviewToolResult(glmInconclusive("GLM API key not configured (~/.moai/.env.glm)")), nil
 	}
 
-	model := req.GetString("model", "")
-	if model == "" {
-		model = resolveGLMAuditModel() // SSOT (REQ-MCP-013)
+	me := resolveGLMAuditModelEffort() // pin > SSOT (REQ-AMP-003)
+	if explicit := req.GetString("model", ""); strings.TrimSpace(explicit) != "" {
+		me.Model = strings.TrimSpace(explicit) // explicit caller model outranks the pin
 	}
 	focus := req.GetString("focus", "")
 	target := req.GetString("target", codexTargetUncommitted)
@@ -207,19 +268,25 @@ func handleGLMAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTool
 	}
 
 	notifyMCPProgress(ctx, token, 0.05, "glm 감사 — z.ai 요청 준비 중...")
-	out := callGLMAudit(ctx, key, model, focus, diff, token)
+	out := callGLMAudit(ctx, key, me.Model, me.Effort, focus, diff, token)
 	return reviewToolResult(out), nil
 }
 
 // callGLMAudit posts the audit prompt to z.ai and parses the response into a
 // ReviewOutput. Every error path fails open to a VerdictInconclusive — the
 // caller always receives a usable structured result.
-func callGLMAudit(ctx context.Context, key, model, focus, diff string, token mcp.ProgressToken) ReviewOutput {
+//
+// effort is the pinned z.ai reasoning state (low|high|max, single reading per
+// REQ-AMP-006); an invalid/empty value omits the reasoning directive while the
+// model still applies. Whether the delivered field is honored by the endpoint
+// is arbitrated by the AC-AMP-006 live differential, not assumed.
+func callGLMAudit(ctx context.Context, key, model, effort, focus, diff string, token mcp.ProgressToken) ReviewOutput {
 	body, err := json.Marshal(glmMessagesRequest{
 		Model:     model,
 		MaxTokens: glmAuditMaxTokens,
 		System:    glmAuditSystemPrompt(),
 		Messages:  []glmMessage{{Role: "user", Content: glmAuditUserPrompt(focus, diff)}},
+		Thinking:  glmAuditThinkingDirective(effort),
 	})
 	if err != nil {
 		return glmInconclusive("cannot build z.ai request: " + err.Error())
