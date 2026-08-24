@@ -236,6 +236,7 @@ func TestSessionWorktreeBranchName_Shape(t *testing.T) {
 // TestSessionWorktreeBranchName_RandomFallback verifies the 6-byte random hex
 // fallback when no session id is available (REQ-SW-007 EC-4).
 func TestSessionWorktreeBranchName_RandomFallback(t *testing.T) {
+	scrubSessionIDEnv(t) // the runtime stamps a real id into this process; this case is the no-id path
 	swapSessionWorktreeSeams(t, swSeams{
 		short: func() string { return resolveSessionShortReal() },
 	})
@@ -457,6 +458,7 @@ func TestCleanupSessionWorktree_NoticeDistinguishableFromPRMerge(t *testing.T) {
 // project dir pointed at by $CLAUDE_PROJECT_DIR and asserts the first-8 chars
 // of the session UUID are returned.
 func TestResolveSessionShortReal_SideChannelAvailable(t *testing.T) {
+	scrubSessionIDEnv(t) // the runtime stamps a real id into this process; the fixture is the sidecar
 	tmp := t.TempDir()
 	t.Setenv("CLAUDE_PROJECT_DIR", tmp)
 	sidecarDir := filepath.Join(tmp, ".moai", "state")
@@ -477,6 +479,7 @@ func TestResolveSessionShortReal_SideChannelAvailable(t *testing.T) {
 // TestResolveSessionShortReal_ShortSessionID covers the <8-char branch: a
 // session id shorter than 8 chars is returned verbatim (not truncated).
 func TestResolveSessionShortReal_ShortSessionID(t *testing.T) {
+	scrubSessionIDEnv(t) // the runtime stamps a real id into this process; the fixture is the sidecar
 	tmp := t.TempDir()
 	t.Setenv("CLAUDE_PROJECT_DIR", tmp)
 	sidecarDir := filepath.Join(tmp, ".moai", "state")
@@ -495,6 +498,7 @@ func TestResolveSessionShortReal_ShortSessionID(t *testing.T) {
 // fallback: when no side-channel file exists, resolveSessionShortReal returns a
 // 12-hex-char (6-byte) random segment.
 func TestResolveSessionShortReal_NoSideChannelFallsBack(t *testing.T) {
+	scrubSessionIDEnv(t) // the runtime stamps a real id into this process; this case is the no-id path
 	tmp := t.TempDir()
 	t.Setenv("CLAUDE_PROJECT_DIR", tmp) // no sidecar file present
 	got := resolveSessionShortReal()

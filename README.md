@@ -326,6 +326,8 @@ Natural language and 16 subcommands feed the same pipeline. `/moai plan`, `/moai
 
 All backends are fail-open — GLM (`~/.moai/.env.glm`) and codex (`~/.codex/auth.json`) are optional; an unavailable backend returns `inconclusive`, never a hard error.
 
+In the dual harness (`moai init --agent codex|both`), Codex supports only built-in identifier arrays for its status line (`tui.status_line`), so MoAI-specific items (goal, todo, SPEC state) cannot be displayed — a limitation until openai/codex#17827 lands command-backed status lines.
+
 > Details: [MCP Server Guide](https://adk.mo.ai.kr/en/guides/mcp-server) · [Claude Code MCP](https://adk.mo.ai.kr/en/claude-code/extensibility/mcp)
 
 ### Goal engine — an autonomous loop with real boundaries

@@ -1,0 +1,95 @@
+panic: test timed out after 3m20s
+	running tests:
+		TestReadCardStatus_DoesNotSearchBranchSet (2s)
+
+goroutine 338 [running]:
+testing.(*M).startAlarm.func1()
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2802 +0x498
+created by time.goFunc
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/time/sleep.go:215 +0x44
+
+goroutine 1 [chan receive]:
+testing.(*T).Run(0xc000386488, {0x100e4c839, 0x29}, 0x10104e7a8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2109 +0x7dc
+testing.runTests.func1(0xc000386488)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x78
+testing.tRunner(0xc000386488, 0xc00002bab8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x168
+testing.runTests({0x100e454e3, 0x1b}, {0x100e4d6b6, 0x2b}, 0xc000128018, {0x1010918a0, 0xaa, 0xaa}, {0xc000110940?, 0xc0001362c0?, ...})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a4
+testing.(*M).Run(0xc000116460)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb3c
+main.main()
+	_testmain.go:384 +0x104
+
+goroutine 288 [syscall]:
+syscall.syscalln(0x100cbf720, {0xc0000c98d8, 0x6, 0x6})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/sys_darwin.go:38 +0x20
+syscall.syscall6(0x100cbf720, 0x2e2c, 0xc0000c99a8, 0x0, 0xc0000fa480, 0x0, 0x0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/syscall/syscall_darwin.go:388 +0xb4
+syscall.wait4(0x2e2c, 0xc0000c99a8, 0x0, 0xc0000fa480)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/syscall/zsyscall_darwin_arm64.go:44 +0x60
+syscall.Wait4(0x2e2c, 0xc0000c9a00, 0x0, 0xc0000fa480)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/syscall/syscall_bsd.go:144 +0x48
+os.(*Process).pidWait.func1(...)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/os/exec_unix.go:64
+os.ignoringEINTR2[...](...)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/os/file_posix.go:266
+os.(*Process).pidWait(0xc0000e4240)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/os/exec_unix.go:63 +0xe8
+os.(*Process).wait(0xc0000e4240)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/os/exec_unix.go:28 +0x44
+os.(*Process).Wait(...)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/os/exec.go:346
+os/exec.(*Cmd).Wait(0xc000138340)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/os/exec/exec.go:930 +0x74
+os/exec.(*Cmd).Run(0xc000138340)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/os/exec/exec.go:632 +0x58
+os/exec.(*Cmd).CombinedOutput(0xc000138340)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/os/exec/exec.go:1047 +0x1fc
+github.com/modu-ai/moai-adk/internal/kanban.mustGit(0xc0003866c8, {0xc00043caf0, 0x70}, {0xc0001ee5d0, 0x3, 0x3})
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t222/internal/kanban/status_read_test.go:87 +0xac
+github.com/modu-ai/moai-adk/internal/kanban.specFixtureRepo(0xc0003866c8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t222/internal/kanban/status_read_test.go:30 +0x174
+github.com/modu-ai/moai-adk/internal/kanban.TestReadCardStatus_DoesNotSearchBranchSet(0xc0003866c8)
+	/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t222/internal/kanban/status_read_test.go:281 +0x30
+testing.tRunner(0xc0003866c8, 0x10104e7a8)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x168
+created by testing.(*T).Run in goroutine 1
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7c0
+
+goroutine 353 [IO wait]:
+internal/poll.runtime_pollWait(0x130376200, 0x72)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/netpoll.go:351 +0xa0
+internal/poll.(*pollDesc).wait(0xc0003313a0, 0x72, 0x1)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/internal/poll/fd_poll_runtime.go:84 +0xb8
+internal/poll.(*pollDesc).waitRead(...)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/internal/poll/fd_poll_runtime.go:89
+internal/poll.(*FD).Read(0xc000331380, {0xc000400a00, 0x200, 0x200})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/internal/poll/fd_unix.go:165 +0x34c
+os.(*File).read(...)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/os/file_posix.go:29
+os.(*File).Read(0xc000002310, {0xc000400a00, 0x200, 0x200})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/os/file.go:144 +0xb0
+bytes.(*Buffer).ReadFrom(0xc0001ee8a0, {0x1010518f8, 0xc000002310})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/bytes/buffer.go:229 +0xf0
+io.copyBuffer({0x101051b00, 0xc0001ee8a0}, {0x1010518f8, 0xc000002310}, {0x0, 0x0, 0x0})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/io/io.go:415 +0x1c0
+io.Copy(...)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/io/io.go:388
+os.genericWriteTo(0xc000002310, {0x101051b00, 0xc0001ee8a0})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/os/file.go:295 +0x50
+os.(*File).WriteTo(0xc000002310, {0x101051b00, 0xc0001ee8a0})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/os/file.go:273 +0x90
+io.copyBuffer({0x101051b00, 0xc0001ee8a0}, {0x101051a00, 0xc000002310}, {0x0, 0x0, 0x0})
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/io/io.go:411 +0xac
+io.Copy(...)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/io/io.go:388
+os/exec.(*Cmd).writerDescriptor.func1()
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/os/exec/exec.go:602 +0x5c
+os/exec.(*Cmd).Start.func2(0xc0001301e0)
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/os/exec/exec.go:757 +0x3c
+created by os/exec.(*Cmd).Start in goroutine 288
+	/Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/os/exec/exec.go:756 +0xb20
+FAIL	github.com/modu-ai/moai-adk/internal/kanban	200.707s
+FAIL

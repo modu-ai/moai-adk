@@ -40,6 +40,7 @@ func TestSessionCurrentListedInHelp(t *testing.T) {
 // `current` subcommand emits the canonical fallback string (REQ-RDP-006)
 // and exits 0 (graceful degradation, NOT an error).
 func TestSessionCurrentFallbackWhenNoSideChannel(t *testing.T) {
+	scrubSessionIDEnv(t) // the runtime stamps a real id into this process; the fixture is the sidecar
 	dir := withTempRegistry(t)
 	// Point CLAUDE_PROJECT_DIR at the temp dir so resolveProjectDir finds it
 	// and the side-channel lookup hits the temp tree (where the file is absent).
@@ -58,6 +59,7 @@ func TestSessionCurrentFallbackWhenNoSideChannel(t *testing.T) {
 // TestSessionCurrentJSONFallback verifies the --json path carries the
 // canonical fallback + availability flag.
 func TestSessionCurrentJSONFallback(t *testing.T) {
+	scrubSessionIDEnv(t) // the runtime stamps a real id into this process; the fixture is the sidecar
 	dir := withTempRegistry(t)
 	t.Setenv("CLAUDE_PROJECT_DIR", dir)
 
@@ -107,6 +109,7 @@ func TestSessionCurrentShowFallbackFlag(t *testing.T) {
 // makes the UUID available. This test simulates the side-channel file's
 // presence (M3 will write it for real).
 func TestSessionCurrentReadsSideChannel(t *testing.T) {
+	scrubSessionIDEnv(t) // the runtime stamps a real id into this process; the fixture is the sidecar
 	dir := withTempRegistry(t)
 	t.Setenv("CLAUDE_PROJECT_DIR", dir)
 

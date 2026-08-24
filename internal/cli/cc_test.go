@@ -288,7 +288,11 @@ func TestCharacterize_CC_LaunchError(t *testing.T) {
 // enables Kanban Mode, reports no SPEC identifier (REQ-FM-005: absence means
 // the chain heads at plan-phase), and strips the token from the forwarded args.
 func TestParseKanbanFlag_LongFormWithoutSpec(t *testing.T) {
-	p, err := parseKanbanFlag([]string{"--kanban", "-b"}); if err != nil { t.Fatal(err) }; spec, enabled, rest := p.Spec, p.KanbanEnabled, p.Rest
+	p, err := parseKanbanFlag([]string{"--kanban", "-b"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	spec, enabled, rest := p.Spec, p.KanbanEnabled, p.Rest
 	if !enabled {
 		t.Error("--kanban must enable Kanban Mode")
 	}
@@ -304,7 +308,11 @@ func TestParseKanbanFlag_LongFormWithoutSpec(t *testing.T) {
 // SPEC-PLACEHOLDER` yields the identifier, enables the mode, and removes both
 // tokens from the forwarded args.
 func TestParseKanbanFlag_ShortFormWithSpec(t *testing.T) {
-	p, err := parseKanbanFlag([]string{"-k", "SPEC-PLACEHOLDER", "--print"}); if err != nil { t.Fatal(err) }; spec, enabled, rest := p.Spec, p.KanbanEnabled, p.Rest
+	p, err := parseKanbanFlag([]string{"-k", "SPEC-PLACEHOLDER", "--print"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	spec, enabled, rest := p.Spec, p.KanbanEnabled, p.Rest
 	if !enabled {
 		t.Error("AC-FM-002: -k must enable Kanban Mode")
 	}
@@ -320,7 +328,11 @@ func TestParseKanbanFlag_ShortFormWithSpec(t *testing.T) {
 // or after the -- pass-through marker belongs to the child process, not to
 // this parser. Mirrors stripSpawnFlag's boundary discipline exactly.
 func TestParseKanbanFlag_PassThroughBoundary(t *testing.T) {
-	p, err := parseKanbanFlag([]string{"--", "--kanban"}); if err != nil { t.Fatal(err) }; spec, enabled, rest := p.Spec, p.KanbanEnabled, p.Rest
+	p, err := parseKanbanFlag([]string{"--", "--kanban"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	spec, enabled, rest := p.Spec, p.KanbanEnabled, p.Rest
 	if enabled {
 		t.Error("AC-FM-003: --kanban after -- must NOT enable Kanban Mode")
 	}
@@ -335,7 +347,11 @@ func TestParseKanbanFlag_PassThroughBoundary(t *testing.T) {
 // TestParseKanbanFlag_SpecIsNotStolenFromAFlag guards the optional-positional
 // parse: a following flag token is a separate argument, never the SPEC value.
 func TestParseKanbanFlag_SpecIsNotStolenFromAFlag(t *testing.T) {
-	p, err := parseKanbanFlag([]string{"--kanban", "--print"}); if err != nil { t.Fatal(err) }; spec, enabled, rest := p.Spec, p.KanbanEnabled, p.Rest
+	p, err := parseKanbanFlag([]string{"--kanban", "--print"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	spec, enabled, rest := p.Spec, p.KanbanEnabled, p.Rest
 	if !enabled {
 		t.Error("--kanban must enable Kanban Mode")
 	}
@@ -395,6 +411,7 @@ func TestCC_KanbanFlagStrippedBeforeLaunch(t *testing.T) {
 // session-keyed record under .moai/state/kanban/, and a state directory that
 // cannot be written never blocks the launch (fail-open).
 func TestCC_KanbanWritesStateRecord(t *testing.T) {
+	scrubSessionIDEnv(t) // the runtime stamps a real id into this process; the fixture is the sidecar
 	tmp := t.TempDir()
 	sessionID := "kanban-record-session"
 	sidecar := filepath.Join(tmp, session.CurrentSideChannelFile)

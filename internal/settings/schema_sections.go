@@ -504,12 +504,18 @@ func reportFields() []FieldDef {
 	// Attach per-option description keys — the ONLY opt-in for the vertical
 	// stacked radio layout (schemaRadioRow branches on OptionDesc presence).
 	// Underscored slug ("html_md") avoids a literal '+' in the dot-path i18n key.
+	// The segment is ".option.", NOT the ".opt." used by the LABEL keys above:
+	// applyI18n resolves any key containing ".opt." against the ENGLISH
+	// dictionary (the G1-2 decision that keeps enum LABELS untranslated), which
+	// would freeze these descriptions to English in every locale while their
+	// ko/ja/zh entries sat unused in i18n.js. Guarded by
+	// TestEveryOptionDescKeyAvoidsOptGuard.
 	for i, opt := range f.Options {
 		switch opt.Value {
 		case "html+md":
-			f.Options[i].OptionDesc = "f.report.format.opt.html_md.desc"
+			f.Options[i].OptionDesc = "f.report.format.option.html_md.desc"
 		case "md":
-			f.Options[i].OptionDesc = "f.report.format.opt.md.desc"
+			f.Options[i].OptionDesc = "f.report.format.option.md.desc"
 		}
 	}
 	return []FieldDef{f}
