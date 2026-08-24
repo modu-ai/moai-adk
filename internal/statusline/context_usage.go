@@ -44,7 +44,20 @@ const contextUsageFreshWindow = 12 * time.Hour
 // so the guard is cross-platform (§14 hardcoding-prevention).
 const templateSourceEmbedPath = "internal" + string(filepath.Separator) + "template" + string(filepath.Separator) + "templates"
 
-// contextUsageRecord is the on-disk schema for
+// contextUsageDirName is the on-disk directory that holds the per-session
+// telemetry records. Kept as a named constant so the writer, the reader, and
+// the path helper share one spelling (§14 hardcoding-prevention).
+const contextUsageDirName = "context-usage"
+
+// SessionTelemetryPath returns the on-disk path of the session telemetry
+// record inside stateDir (the project's .moai/state directory). It is the one
+// place the record's location is spelled, so a cross-package consumer never
+// reconstructs the filename itself.
+func SessionTelemetryPath(stateDir string) string {
+	return filepath.Join(stateDir, contextUsageDirName+".json")
+}
+
+// SessionTelemetryRecord is the on-disk schema for
 // <projectDir>/.moai/state/context-usage.json (REQ-THRESHOLD-010).
 //
 // writer_pid is the writing process identity — the discriminator that
@@ -53,7 +66,7 @@ const templateSourceEmbedPath = "internal" + string(filepath.Separator) + "templ
 // throttle payload (sameSemanticPayload) because it is render-ephemeral
 // (statusline renders through a fresh process per invocation); including it
 // would defeat the throttle by forcing a write on every render.
-type contextUsageRecord struct {
+type SessionTelemetryRecord struct {
 	SchemaVersion     int     `json:"schema_version"`
 	SessionID         string  `json:"session_id"`
 	WriterPID         int     `json:"writer_pid"`
@@ -131,14 +144,14 @@ func writeContextUsage(projDir, sessionID string, writerPID int, mem MemoryData,
 	}
 
 	stateDir := filepath.Join(projDir, ".moai", "state")
-	path := filepath.Join(stateDir, "context-usage.json")
+	path := SessionTelemetryPath(stateDir)
 
 	next := buildContextUsageRecord(sessionID, writerPID, mem, stage)
 
 	// Write-if-changed throttle (REQ-THRESHOLD-012): skip when the semantic
 	// payload is byte-equal to the on-disk record, so render-rate invocations
 	// do not churn the disk.
-	if existing, err := readContextUsage(path); err == nil && existing != nil &&
+	if existing, err := ReadSessionTelemetry(path); err == nil && existing != nil &&
 		sameSemanticPayload(existing, next) {
 		return
 	}
@@ -165,9 +178,9 @@ func writeContextUsage(projDir, sessionID string, writerPID int, mem MemoryData,
 // buildContextUsageRecord assembles the on-disk record from the current usage
 // snapshot. raw_pct is the raw context-window usage (tokens / window), NOT the
 // auto-compact-scaled TokenBudget percentage.
-func buildContextUsageRecord(sessionID string, writerPID int, mem MemoryData, stage handoffStage) *contextUsageRecord {
+func buildContextUsageRecord(sessionID string, writerPID int, mem MemoryData, stage handoffStage) *SessionTelemetryRecord {
 	rawPct := float64(mem.TokensUsed) * 100.0 / float64(mem.ContextWindowSize)
-	return &contextUsageRecord{
+	return &SessionTelemetryRecord{
 		SchemaVersion:     contextUsageSchemaVersion,
 		SessionID:         sessionID,
 		WriterPID:         writerPID,
@@ -180,15 +193,15 @@ func buildContextUsageRecord(sessionID string, writerPID int, mem MemoryData, st
 	}
 }
 
-// readContextUsage reads and parses context-usage.json. Returns (nil, err) on
+// ReadSessionTelemetry reads and parses context-usage.json. Returns (nil, err) on
 // any failure (file missing, unparseable) so the caller falls back to a write
 // (throttle) or to heuristics (reader).
-func readContextUsage(path string) (*contextUsageRecord, error) {
+func ReadSessionTelemetry(path string) (*SessionTelemetryRecord, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
-	var rec contextUsageRecord
+	var rec SessionTelemetryRecord
 	if err := json.Unmarshal(data, &rec); err != nil {
 		return nil, err
 	}
@@ -200,7 +213,7 @@ func readContextUsage(path string) (*contextUsageRecord, error) {
 // integer-rounded raw_pct. captured_at AND writer_pid are deliberately
 // EXCLUDED — captured_at is expected to change, and writer_pid is
 // render-ephemeral (including it would defeat the throttle, design §D.3).
-func sameSemanticPayload(a, b *contextUsageRecord) bool {
+func sameSemanticPayload(a, b *SessionTelemetryRecord) bool {
 	return a.SessionID == b.SessionID &&
 		a.Stage == b.Stage &&
 		a.ContextWindowSize == b.ContextWindowSize &&
@@ -233,7 +246,7 @@ func isRealSessionID(s string) bool {
 //     freshness window AND rec.writer_pid == curWriterID. The writer_pid match
 //     stops a concurrent same-checkout empty-id session (session B) from reading
 //     another session's (session A) fresh snapshot as its own.
-func isFreshForSession(rec *contextUsageRecord, curSession string, curWriterID int) bool {
+func isFreshForSession(rec *SessionTelemetryRecord, curSession string, curWriterID int) bool {
 	if rec == nil {
 		return false
 	}

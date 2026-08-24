@@ -39,11 +39,11 @@ func TestMain(m *testing.M) {
 var _ func(string, string, int, MemoryData, handoffStage) = writeContextUsage
 
 // readRecord is a test helper that reads + parses the on-disk record.
-func readRecord(t *testing.T, path string) *contextUsageRecord {
+func readRecord(t *testing.T, path string) *SessionTelemetryRecord {
 	t.Helper()
-	rec, err := readContextUsage(path)
+	rec, err := ReadSessionTelemetry(path)
 	if err != nil {
-		t.Fatalf("readContextUsage(%q) error: %v", path, err)
+		t.Fatalf("ReadSessionTelemetry(%q) error: %v", path, err)
 	}
 	return rec
 }
@@ -85,7 +85,7 @@ func TestWriteContextUsage_Atomic(t *testing.T) {
 	if _, err := os.Stat(path); err != nil {
 		t.Fatalf("context-usage.json not created: %v", err)
 	}
-	// Valid JSON (readContextUsage parses it).
+	// Valid JSON (ReadSessionTelemetry parses it).
 	_ = readRecord(t, path)
 	// No leftover temp file.
 	if _, err := os.Stat(path + ".tmp"); !os.IsNotExist(err) {
@@ -219,7 +219,7 @@ func TestWriteContextUsage_ThrottleSkipUnchanged(t *testing.T) {
 func TestSessionGuard_MismatchStale(t *testing.T) {
 	t.Parallel()
 
-	rec := &contextUsageRecord{
+	rec := &SessionTelemetryRecord{
 		SessionID:  "sess-A",
 		WriterPID:  1001,
 		CapturedAt: time.Now().Format(time.RFC3339Nano),
@@ -253,8 +253,8 @@ func TestFallbackUUID_FreshnessValidation(t *testing.T) {
 	}
 
 	const pid = 5150
-	fresh := &contextUsageRecord{SessionID: "", WriterPID: pid, CapturedAt: time.Now().Format(time.RFC3339Nano)}
-	expired := &contextUsageRecord{SessionID: "", WriterPID: pid, CapturedAt: time.Now().Add(-13 * time.Hour).Format(time.RFC3339Nano)}
+	fresh := &SessionTelemetryRecord{SessionID: "", WriterPID: pid, CapturedAt: time.Now().Format(time.RFC3339Nano)}
+	expired := &SessionTelemetryRecord{SessionID: "", WriterPID: pid, CapturedAt: time.Now().Add(-13 * time.Hour).Format(time.RFC3339Nano)}
 
 	// (b) both empty + fresh + matching writer → valid (single-session survives).
 	if !isFreshForSession(fresh, "", pid) {
@@ -265,7 +265,7 @@ func TestFallbackUUID_FreshnessValidation(t *testing.T) {
 		t.Errorf("empty/empty + expired must be stale")
 	}
 	// mixed: record UUID vs empty current → conservatively stale.
-	uuidRec := &contextUsageRecord{SessionID: "sess-X", WriterPID: pid, CapturedAt: time.Now().Format(time.RFC3339Nano)}
+	uuidRec := &SessionTelemetryRecord{SessionID: "sess-X", WriterPID: pid, CapturedAt: time.Now().Format(time.RFC3339Nano)}
 	if isFreshForSession(uuidRec, "", pid) {
 		t.Errorf("UUID-vs-empty mix must be conservatively stale")
 	}
@@ -301,7 +301,7 @@ func TestConcurrentEmptyID_WriterPIDGuard(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			rec := &contextUsageRecord{SessionID: "", WriterPID: tt.recPID, CapturedAt: tt.recCapture}
+			rec := &SessionTelemetryRecord{SessionID: "", WriterPID: tt.recPID, CapturedAt: tt.recCapture}
 			if got := isFreshForSession(rec, "", tt.curPID); got != tt.want {
 				t.Errorf("isFreshForSession(empty, pid=%d) = %v, want %v", tt.curPID, got, tt.want)
 			}
@@ -309,7 +309,7 @@ func TestConcurrentEmptyID_WriterPIDGuard(t *testing.T) {
 	}
 
 	// UUID path stays independent of writer_pid even when writer_pid differs.
-	uuid := &contextUsageRecord{SessionID: "sess-U", WriterPID: 1002, CapturedAt: now}
+	uuid := &SessionTelemetryRecord{SessionID: "sess-U", WriterPID: 1002, CapturedAt: now}
 	if !isFreshForSession(uuid, "sess-U", 1001) {
 		t.Errorf("UUID match must remain valid regardless of writer_pid (AC-013 preserved)")
 	}
@@ -348,7 +348,7 @@ func TestReadContextUsage_Corrupt(t *testing.T) {
 	if err := os.WriteFile(path, []byte("{not json"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := readContextUsage(path); err == nil {
+	if _, err := ReadSessionTelemetry(path); err == nil {
 		t.Errorf("corrupt JSON must return an error")
 	}
 	// A corrupt on-disk record must NOT block a subsequent write (throttle
@@ -486,3 +486,10 @@ func TestIsTemplateSourceDir(t *testing.T) {
 		})
 	}
 }
+
+// TestSessionTelemetryReaderIsExported — SPEC-SESSION-TELEMETRY-001 AC-ST-005.
+// The package exports exactly one reader for the session telemetry record, named
+// ReadSessionTelemetry and returning the exported SessionTelemetryRecord, so a
+// cross-package consumer can name both. A compile error here means the reader is
+// still unexported or carries a different identifier than the SPEC pins.
+var _ func(string) (*SessionTelemetryRecord, error) = ReadSessionTelemetry

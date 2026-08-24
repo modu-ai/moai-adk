@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/cli/printer"
+	"github.com/modu-ai/moai-adk/internal/statusline"
 	"github.com/spf13/cobra"
 )
 
@@ -24,10 +25,6 @@ const tokensSchemaVersion = 1
 
 // tokensLedgerFilename is the append-only ledger file inside the state dir.
 const tokensLedgerFilename = "token-accounting.jsonl"
-
-// tokensContextSnapshotFilename is the statusline-persisted context snapshot
-// (internal/statusline/context_usage.go) embedded into each record when present.
-const tokensContextSnapshotFilename = "context-usage.json"
 
 // tokenUsageTotals is one per-origin token bucket of a pool or model.
 type tokenUsageTotals struct {
@@ -76,32 +73,20 @@ type tokensMessages struct {
 	Sidechain int64 `json:"sidechain"`
 }
 
-// tokensContextSnapshot is the subset of the statusline context-usage.json
-// record embedded in each ledger record (context-pressure axis).
-type tokensContextSnapshot struct {
-	SessionID         string  `json:"session_id"`
-	CapturedAt        string  `json:"captured_at"`
-	ContextWindowSize int     `json:"context_window_size"`
-	TokensUsed        int     `json:"tokens_used"`
-	RawPct            float64 `json:"raw_pct"`
-	Stage             string  `json:"stage"`
-	Band              string  `json:"band"`
-}
-
 // TokensRecord is one ledger line of per-pool token accounting (schema v1).
 type TokensRecord struct {
-	SchemaVersion int                           `json:"schema_version"`
-	RecordedAt    string                        `json:"recorded_at"`
-	SessionID     string                        `json:"session_id"`
-	Card          string                        `json:"card"`
-	Role          string                        `json:"role"`
-	Cwd           string                        `json:"cwd"`
-	Transcript    string                        `json:"transcript"`
-	Pools         map[string]*tokensOriginSplit `json:"pools"`
-	Models        map[string]*tokensOriginSplit `json:"models"`
-	Messages      tokensMessages                `json:"messages"`
-	SkippedLines  int                           `json:"skipped_lines"`
-	Context       *tokensContextSnapshot        `json:"context,omitempty"`
+	SchemaVersion int                                `json:"schema_version"`
+	RecordedAt    string                             `json:"recorded_at"`
+	SessionID     string                             `json:"session_id"`
+	Card          string                             `json:"card"`
+	Role          string                             `json:"role"`
+	Cwd           string                             `json:"cwd"`
+	Transcript    string                             `json:"transcript"`
+	Pools         map[string]*tokensOriginSplit      `json:"pools"`
+	Models        map[string]*tokensOriginSplit      `json:"models"`
+	Messages      tokensMessages                     `json:"messages"`
+	SkippedLines  int                                `json:"skipped_lines"`
+	Context       *statusline.SessionTelemetryRecord `json:"context,omitempty"`
 }
 
 // transcriptLine mirrors the countable fields of one CC transcript JSONL line.
@@ -387,19 +372,17 @@ func resolveTokensStateDir() (string, error) {
 	return fallback, nil
 }
 
-// readTokensContextSnapshot embeds the statusline context snapshot when the
-// file exists and parses; any failure yields nil (fail-open, never blocks
-// the accounting record).
-func readTokensContextSnapshot(stateDir string) *tokensContextSnapshot {
-	data, err := os.ReadFile(filepath.Join(stateDir, tokensContextSnapshotFilename))
+// readTokensContextSnapshot embeds the statusline session telemetry record
+// when it exists and parses; any failure yields nil (fail-open, never blocks
+// the accounting record). The record is read through the statusline package's
+// single exported reader (SPEC-SESSION-TELEMETRY-001 REQ-ST-006) rather than
+// through a second declaration of the same schema.
+func readTokensContextSnapshot(stateDir string) *statusline.SessionTelemetryRecord {
+	rec, err := statusline.ReadSessionTelemetry(statusline.SessionTelemetryPath(stateDir))
 	if err != nil {
 		return nil
 	}
-	var snap tokensContextSnapshot
-	if json.Unmarshal(data, &snap) != nil {
-		return nil
-	}
-	return &snap
+	return rec
 }
 
 // newTokensCmd creates the root of the tokens command tree.

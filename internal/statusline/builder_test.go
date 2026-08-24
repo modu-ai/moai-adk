@@ -1859,7 +1859,7 @@ func TestBuild_WritesContextUsageWithSessionID(t *testing.T) {
 	if err != nil {
 		t.Fatalf("context-usage.json not written by Build: %v", err)
 	}
-	var rec contextUsageRecord
+	var rec SessionTelemetryRecord
 	if err := json.Unmarshal(data, &rec); err != nil {
 		t.Fatalf("unparseable record: %v", err)
 	}
