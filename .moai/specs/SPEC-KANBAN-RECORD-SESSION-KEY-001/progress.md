@@ -122,7 +122,7 @@ m1_to_mN_commit_strategy: one commit per milestone plus four follow-up commits (
 
 ```yaml
 sync_complete_at: 2026-08-24
-sync_commit_sha: pending-backfill-SPEC-KANBAN-RECORD-SESSION-KEY-001
+sync_commit_sha: ef803077e
 sync_status: complete
 b12_self_test_a: "grep -c 'SPEC-KANBAN-RECORD-SESSION-KEY-001' CHANGELOG.md → 0 (rc 1, a genuine zero-match; no duplicate, emission permitted)"
 b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l → 9; the CHANGELOG entry states 9"
