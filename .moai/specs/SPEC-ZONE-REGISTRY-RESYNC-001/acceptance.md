@@ -11,13 +11,13 @@
 | AC | 요구사항 | RED (현재 트리) | GREEN (목표) |
 |---|---|---|---|
 | AC-ZRR-001 | REQ-ZRR-014 | validate exit 1 / 67 errors | exit 0 / 0 errors |
-| AC-ZRR-002 | REQ-ZRR-001 | 로컬 리터럴 적중 25/101 | 101/101 |
-| AC-ZRR-003 | REQ-ZRR-001, 012 | 템플릿 리터럴 적중 25/101 | 101/101 |
+| AC-ZRR-002 | REQ-ZRR-001, 003, 005 | 로컬 리터럴 적중 25/101 · 빈 clause 0 · 자기참조 `file:` 0 | 101/101 · 0 · 0 |
+| AC-ZRR-003 | REQ-ZRR-001, 003, 012 | 템플릿 리터럴 적중 25/101 (부가 3조건 동일) | 101/101 |
 | AC-ZRR-004 | REQ-ZRR-002, 003, 009 | anchor 해석 84/101 (실패 17, §2.2 slug 규칙 기준) | 101/101 |
 | AC-ZRR-005 | REQ-ZRR-004, 006 | 매처 3함수 현행 | 바이트 불변 + 기존 테스트 통과 |
 | AC-ZRR-006 | REQ-ZRR-005 | 101 엔트리 / ID·zone·zone_class·canary_gate 집합 X | 동일 집합 (diff 0) |
-| AC-ZRR-007 | REQ-ZRR-007 | 가드 부재 (`constitution validate` 배선 0건) | 변이에서 붉음 + 수리 트리에서 초록, **둘 다 관측** |
-| AC-ZRR-008 | REQ-ZRR-011 | 유일한 constitution job 이 continue-on-error | 차단 경로에서 실행 |
+| AC-ZRR-007 | REQ-ZRR-007, 008, 011 | 가드 부재 (`constitution validate` 배선 0건) | 변이에서 붉음(로컬 + CI job 결론) + 초록, 평가 엔트리 수 101×2 |
+| AC-ZRR-008 | REQ-ZRR-011 | 유일한 constitution job 이 continue-on-error | 차단 job **그리고** 억제 없는 스텝 |
 | AC-ZRR-009 | REQ-ZRR-008 | 템플릿 미러 검증 0건 | 템플릿 변이도 검출 |
 | AC-ZRR-010 | REQ-ZRR-010 | SKIP=1 이면 Skipped/OK 반환 | SKIP=1 이어도 실패 |
 | AC-ZRR-011 | REQ-ZRR-012 | 미러 바이트 동일 (유지 대상) | 수리 후에도 동일 + embed 클린 |
@@ -43,9 +43,12 @@
 - **Given** 수리된 로컬 레지스트리와 로컬 규칙 트리가 있고,
 - **When** 각 엔트리의 `clause:` 값을 그 엔트리의 `file:` 에 대고 `grep -F -q --` 로 찾으면,
 - **Then** 101건 전부가 적중한다(적중 실패 0건).
+- **And** 어떤 엔트리의 `clause:` 도 **빈 문자열이 아니다**. 빈 clause 는 적중이 아니라 **실패**로 센다 — 빈 문자열은 모든 파일에 적중하고(`grep -F -q -- ''` → rc `0`), `Validate` 도 `normalizedClause != ""` 가드로 조용히 건너뛴다.
+- **And** 어떤 엔트리의 `file:` 도 **레지스트리 파일 자신**(`.claude/rules/moai/core/zone-registry.md`)이 아니다 — 자기참조는 clause 를 정의상 적중시키고(측정: `grep -F -c -- '16-language neutrality' <registry>` → `1`) 레지스트리의 heading 50개가 anchor 까지 해석시켜, 수리를 한 줄도 하지 않고 이 AC 를 통과시킨다.
+- **And** `file:` 값이 바뀐 엔트리의 목록(구 → 신)을 `progress.md` §E.2 에 인용하고, sync-phase 리뷰가 각 이동의 타당성을 판정한다.
 
-판정: 레지스트리를 파싱해 엔트리별 `grep -F` 를 돌리고 적중 수를 출력하는 체크(구현은 run-phase 소관; `internal/constitution` 의 매칭 코드를 호출하지 않는다).
-**RED**: `25 of 101`. 이 값이 0이 아닌 25인 것이 이 체크가 실제로 무언가를 관측한다는 증거다.
+판정: 레지스트리를 파싱해 엔트리별 `grep -F` 를 돌리고 적중 수 + 빈 clause 수 + 자기참조 `file:` 수를 출력하는 체크(구현은 run-phase 소관; `internal/constitution` 의 매칭 코드를 호출하지 않는다).
+**RED**: 적중 `25 of 101`, 빈 clause `0`, 자기참조 `file:` `0`. 적중값이 0이 아닌 25인 것이 이 체크가 실제로 무언가를 관측한다는 증거다. 뒤의 두 값은 **비회귀 축**이다 — 지금 0이며 수리 후에도 0이어야 한다.
 
 > 이 AC는 검증기보다 엄격하다: 정규화가 없으므로 clause 는 **한 줄 안에 연속으로 존재하는 구간**이어야 한다. 현재 검증기는 통과하지만 이 체크는 실패하는 엔트리가 8건 있다(`CONST-V3R5-004/005/006/007/008/010/011/013`) — 이들도 GREEN 대상이다.
 
@@ -54,8 +57,9 @@
 - **Given** 수리된 템플릿 레지스트리(`internal/template/templates/.claude/rules/moai/core/zone-registry.md`)가 있고,
 - **When** 각 엔트리의 `clause:` 를 `internal/template/templates/<file>` 에 대고 `grep -F -q --` 로 찾으면,
 - **Then** 101건 전부가 적중한다.
+- **And** AC-ZRR-002 의 세 부가 조건(빈 clause 금지 / 자기참조 `file:` 금지 / `file:` 변경 목록 인용)이 템플릿 미러에도 동일하게 적용된다 — 두 미러는 바이트 동일하므로 두 mutant 는 양쪽을 한 번에 통과시킨다.
 
-**RED**: `25 of 101`. AC-ZRR-002 와 별개 판정이다 — 인용 대상 17개 파일 중 3개가 두 트리에서 다르므로(`spec.md` §5), 로컬만 맞춘 수리는 여기서 걸린다.
+**RED**: `25 of 101`. AC-ZRR-002 와 별개 판정이다 — 인용 대상 17개 파일 중 **2개 파일**이 두 트리에서 다르고 그 2개가 3개 엔트리를 물고 있으므로(`spec.md` §5), 로컬만 맞춘 수리는 여기서 걸린다.
 
 ### AC-ZRR-004 — anchor 101/101 이 heading 으로 해석된다
 
@@ -96,10 +100,12 @@
 이 AC는 "가드가 통과한다"가 아니다. **알려진 불량 입력에서 붉어지는 것을 보았고, 수리된 트리에서 초록인 것도 보았다** — 두 관측이 함께여야 충족된다. 통과만 본 가드는 자기가 무엇을 막는지 증명하지 못한다.
 
 - **Given** 수리와 가드가 착지한 트리에서 가드가 통과하는 것을 확인했고,
-- **When** 임의의 한 엔트리의 `clause:` 값에 문자 하나를 넣어 일부러 깨뜨린 뒤 가드 명령을 실행하면,
+- **And** 그 통과 출력이 **가드가 평가한 엔트리 수를 보고하며 그 값이 `101` 이다 — 두 미러 각각에 대해**(이 단언이 없으면 가드 쪽 부분 순회·조기 반환·제외 목록이 전부 살아남는다),
+- **When** **명시된 엔트리 `CONST-V3R2-004` 1건과 무작위로 고른 1건**의 `clause:` 값에 문자 하나를 넣어 일부러 깨뜨린 뒤 가드 명령을 실행하면(대상을 고정하는 이유: "임의의 한 엔트리"는 실행마다 다른 것을 골라도 둘 다 충족으로 읽혀 재현 가능한 판정이 아니다),
 - **Then** 가드가 **0이 아닌 종료 코드**로 실패하고, 실패 메시지가 그 엔트리의 ID를 지목한다.
 - **And** 그 실패 출력(종료 코드 + 실패 엔트리 ID 를 포함한 실제 출력)이 `progress.md` §E.2 에 **그대로 인용**된다.
 - **And** anchor 값으로도 같은 변이를 1회 수행해 같은 결과를 관측한다.
+- **And** 변이를 담은 커밋을 푸시해 **해당 CI job 이 실제로 `fail` 로 결론나는 것**을 `gh pr checks` 출력으로 관측하고 인용한다 — 로컬 종료 코드만으로는 `|| true` 로 감싼 스텝을 구분하지 못한다.
 - **And** 변이를 전부 되돌린 뒤 가드가 다시 통과하는 것을 확인한다.
 
 **RED**: 현재 트리에는 가드가 없다 — `grep -c "constitution validate" Makefile .github/workflows/*.yml` 이 `0` 을 반환하고(전체 트리 grep 기준, 템플릿 포함), 어떤 Go 테스트도 `Validate` 를 프로젝트 레지스트리에 대고 호출하지 않는다. 지금 clause 를 깨뜨려도 CI 는 초록이다.
@@ -109,11 +115,12 @@
 ### AC-ZRR-008 — 가드가 차단 경로에 있다 (권고 아님)
 
 - **Given** 가드가 배선된 CI 설정이 있고,
-- **When** 가드를 실행하는 job/step 의 정의를 읽으면,
-- **Then** 그 job 이 `continue-on-error: true` 가 **아니거나**, 가드가 이미 차단 경로인 기존 테스트 job(`go test ./...`)에서 실행된다.
+- **When** 가드를 실행하는 job **과 스텝**의 정의를 읽으면,
+- **Then** 그 job 이 `continue-on-error: true` 가 **아니고**, 가드가 차단 경로에서 실행된다(기존 테스트 job `go test ./...` 이 그 경로다).
+- **And** 가드를 실행하는 **스텝**이 `|| true`, 스텝 단위 `continue-on-error`, 그 밖의 어떤 종료 코드 억제로도 감싸이지 않았다 — job 단위 조건만 걸면 `go test ./... || true` 를 차단 job 안에 넣은 구현이 이 AC 를 문자 그대로 만족한다.
 
-판정: 가드를 실행하는 job 이름을 명시하고 그 job 의 `continue-on-error` 값을 출력.
-**RED**: 현존하는 유일한 constitution job(`.github/workflows/ci.yml:445-451`)은 `continue-on-error: true` 다. **이 job 에 `validate` 를 한 줄 추가하는 구현은 이 AC를 만족하지 못한다.**
+판정: 가드를 실행하는 job 이름 + 그 job 의 `continue-on-error` 값 + 그 스텝의 `run:` 본문과 스텝 단위 `continue-on-error` 를 함께 출력.
+**RED**: 현존하는 유일한 constitution job(`.github/workflows/ci.yml:445-451`)은 `continue-on-error: true` 다. **이 job 에 `validate` 를 한 줄 추가하는 구현은 이 AC를 만족하지 못한다.** 억제 래핑 여부는 AC-ZRR-007 의 CI job 결론 관측이 함께 판정한다.
 
 ### AC-ZRR-009 — 가드가 템플릿 미러도 본다
 
@@ -165,7 +172,7 @@
 - **Then** `spec.md` §2.2 의 6단계 규칙이 코드로 그대로 구현돼 있고, "이 규칙 아래에서 착지 시점 17건이 실패했다"는 취지의 주석이 그 옆에 있다.
 - **And** 그 해석기로 측정한 결과가 AC-ZRR-004 와 같은 수치를 낸다.
 
-**RED**: 리포에 재사용 가능한 heading slug 헬퍼가 **없다** — `i18nSlug`(`internal/web/render_helpers.go`), `slugify`(`internal/cli/preference/filestore.go`), `projectSlug`(`internal/hook/session_end.go`) 셋 다 경로·i18n 키를 slug 화하며 heading 을 다루지 않는다. 즉 규칙은 새로 선언될 수밖에 없고, 선언 없이 구현하면 그 수치가 무엇을 뜻하는지 아무도 재현할 수 없다.
+**RED**: 리포에 재사용 가능한 heading slug 헬퍼가 **없다**. `grep -rn "func.*[Ss]lug" --include="*.go" internal/` 이 반환하는 5개 — `i18nSlug`(`internal/web/render_helpers.go:19`), `memoryProjectSlug`(`internal/cli/memory.go:44`), `memorySlug`(`internal/cli/preference/cmd.go:159`), `slugify`(`internal/cli/preference/filestore.go:505`), `projectSlug`(`internal/hook/session_end.go:234`) — **전부 경로 또는 i18n 키를 slug 화하며, heading 을 다루는 것은 0개**다. 즉 규칙은 새로 선언될 수밖에 없고, 선언 없이 구현하면 그 수치가 무엇을 뜻하는지 아무도 재현할 수 없다.
 
 ---
 
@@ -183,15 +190,15 @@
 |---|---|
 | REQ-ZRR-001 | 002, 003 |
 | REQ-ZRR-002 | 004 |
-| REQ-ZRR-003 | 004 |
+| REQ-ZRR-003 | 002, 003, 004 |
 | REQ-ZRR-004 | 005 |
-| REQ-ZRR-005 | 006 |
+| REQ-ZRR-005 | 002, 006 |
 | REQ-ZRR-006 | 005, 010 |
 | REQ-ZRR-007 | 007 |
-| REQ-ZRR-008 | 009 |
+| REQ-ZRR-008 | 007, 009 |
 | REQ-ZRR-009 | 004, 007 |
 | REQ-ZRR-010 | 010 |
-| REQ-ZRR-011 | 008 |
+| REQ-ZRR-011 | 007, 008 |
 | REQ-ZRR-012 | 011 |
 | REQ-ZRR-013 | 012 |
 | REQ-ZRR-014 | 001, 013 |

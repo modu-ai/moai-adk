@@ -9,7 +9,9 @@
 - 마일스톤 순서 구속: M1 수리 → M2 가드 → M3 검증 (의존성, 권고 아님 — `plan.md` §F)
 - 근거 보고서: `.moai/reports/t232/findings.md` + `validate-repro.txt` + `analysis-repro.json`
 - RED 기준값이 모든 AC에 명시됨 (`acceptance.md` §D 매트릭스), 측정 트리 `294b4b6ab`
-- status: draft — plan-audit 대기
+- plan-audit iter1: **FAIL 0.75** (Tier M 임계 0.80; must-pass 7/7 PASS, 4개 차원 전부 0.75). 보고서: `.moai/reports/t232/plan-audit-iter1.md`
+- iter1 반영 (v0.3.0): blocking 6건(D-1 자기참조 `file:` / D-2 빈 clause / D-3 `|| true` / D-4+D-8 평가 엔트리 수·변이 대상 고정 / D-9 paths-filter / D-5 파일 수 오기) + optional 4건(D-6 HISTORY / D-7 REQ-015 분리·재배치 / D-10 slug 열거 5개 / D-11 §7 갱신) 전부 적용. 새 AC·티어 변경 없음 — 기존 AC 의 Then 절 강화로 흡수
+- status: draft — plan-audit iter2(델타 한정) 대기
 
 ## §E.2 Run-phase Evidence
 

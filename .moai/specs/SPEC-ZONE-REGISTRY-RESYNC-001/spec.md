@@ -1,10 +1,10 @@
 ---
 id: SPEC-ZONE-REGISTRY-RESYNC-001
 title: "zone-registry clause/anchor 재동기화 + 재발 차단 가드"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-08-24
-updated: 2026-08-24
+updated: 2026-08-25
 author: manager-spec
 priority: P1
 phase: "v3.1.3 target"
@@ -17,6 +17,14 @@ related_specs: [SPEC-V3R6-ZONE-REGISTRY-PACKAGING-001, SPEC-V3R5-CONSTITUTION-DU
 ---
 
 # SPEC: zone-registry clause/anchor 재동기화 + 재발 차단 가드
+
+## HISTORY
+
+| Version | Date | Author | Description |
+|---------|------|--------|-------------|
+| 0.1.0 | 2026-08-24 | manager-spec | 최초 작성 — clause 재동기화 + 가드, anchor 는 보조 축 |
+| 0.2.0 | 2026-08-24 | manager-spec | 범위 확장 승인 반영 — anchor 탐지·수리를 정식 축으로 승격(죽은 `SentinelAnchorNotFound` 완결), slug 규칙을 요구사항화, 마일스톤 순서를 의존성으로 고정 |
+| 0.3.0 | 2026-08-25 | manager-spec | plan-audit iter1(FAIL 0.75) 반영 — 자기참조 `file:` / 빈 clause / `\|\| true` / 부분 순회 mutant 4종을 AC 로 승격, 이중 트리 파일 수 오기 정정, paths-filter 구속 추가 |
 
 ## 1. 문제 — 측정된 형태
 
@@ -144,9 +152,9 @@ $ grep -c "constitution validate" Makefile .github/workflows/*.yml
 - **REQ-ZRR-007** (Event-driven) — **When** an edit to the rules tree or to the registry breaks any entry's clause or anchor, the guard shall fail the pull request containing that edit.
 - **REQ-ZRR-008** (Ubiquitous) — The guard shall evaluate both registry mirrors: the local `.claude/rules/moai/core/zone-registry.md` against the local rules tree, and `internal/template/templates/.claude/rules/moai/core/zone-registry.md` against the template rules tree.
 - **REQ-ZRR-009** (Ubiquitous) — The guard shall verify anchor resolution in addition to clause verbatim-ness, completing the check already named by the unwired `SentinelAnchorNotFound` sentinel.
-- **REQ-ZRR-015** (Ubiquitous) — The guard shall declare the heading-to-slug rule it applies (the six steps in §2.2), in code and in a comment naming it as the rule the anchor failure count is measured under; **when** the rule is changed, the change shall be treated as a requirement change, not an implementation detail.
 - **REQ-ZRR-010** (Unwanted) — The guard shall not report success when validation was bypassed; **when** `MOAI_CONSTITUTION_SKIP_VALIDATE=1` is present in its environment, the guard shall fail rather than pass.
-- **REQ-ZRR-011** (Unwanted) — The guard shall not run only in a `continue-on-error: true` CI job.
+- **REQ-ZRR-011** (Unwanted) — The guard shall not run only in a `continue-on-error: true` CI job, and the step that runs it shall not be wrapped in `|| true`, a step-level `continue-on-error`, or any other exit-code suppression.
+- **REQ-ZRR-015** (Ubiquitous) — The guard shall declare, in code, the heading-to-slug rule it applies (the six steps in §2.2), with a comment naming it as the rule the anchor failure count was measured under.
 
 ### 배포 규율
 
@@ -156,14 +164,16 @@ $ grep -c "constitution validate" Makefile .github/workflows/*.yml
 
 ## 5. 알려진 구속 조건 — 두 트리에서 동시에 verbatim 이어야 한다
 
-레지스트리는 두 트리에 바이트 동일하게 배포되는데, 인용 대상 파일 17개 중 **3개가 로컬과 템플릿에서 서로 다르다**(측정: `.moai/reports/t232/divergence.py`).
+레지스트리는 두 트리에 바이트 동일하게 배포되는데, 인용 대상 파일 17개 중 **2개 파일이 로컬과 템플릿에서 서로 다르고, 그 2개가 3개 엔트리를 물고 있다**(측정: `.moai/reports/t232/divergence.py`).
 
 | 파일 | 영향 엔트리 |
 |---|---|
 | `.claude/rules/moai/development/coding-standards.md` | `CONST-V3R2-004`, `CONST-V3R2-005` |
 | `.claude/rules/moai/development/skill-authoring.md` | `CONST-V3R5-038` |
 
-이 3건의 clause 는 **두 판본 모두에 존재하는 텍스트 구간**에서 골라야 한다. 공통 구간이 없으면 그것은 clause 선택 문제가 아니라 미러 드리프트 결함이며, 우회(엔트리 제외·매처 완화)가 아니라 blocker 로 올려야 한다. 나머지 14개 파일(엔트리 98건)은 두 트리에서 동일하므로 이 제약을 받지 않는다.
+이 3개 엔트리의 clause 는 **두 판본 모두에 존재하는 텍스트 구간**에서 골라야 한다. 공통 구간이 없으면 그것은 clause 선택 문제가 아니라 미러 드리프트 결함이며, 우회(엔트리 제외·매처 완화)가 아니라 blocker 로 올려야 한다. 나머지 15개 파일(엔트리 98건)은 두 트리에서 동일하므로 이 제약을 받지 않는다.
+
+**실측 결과 공통 구간은 존재한다**(plan-audit iter1 이 두 파일을 전수 diff): 발산은 `coding-standards.md` 1줄(`git commit --no-verify` 불릿) + `skill-authoring.md` 3줄(SPEC-ID 중립화) = 총 4줄이고, 셋 다 영향 엔트리가 가리키는 절(`#language-policy` / `#thin-command-pattern` / `#key-format-rules`)과 무관하다. 즉 blocker 로 올라올 가능성은 사실상 없다 — run-phase 는 이 조사를 반복하지 않는다.
 
 ## 6. 범위 밖 (Non-goals)
 
@@ -187,4 +197,5 @@ $ grep -c "constitution validate" Makefile .github/workflows/*.yml
 - **개별 67건의 "올바른 인용문"은 아직 정해지지 않았다.** 이 SPEC 은 계약(단일 행 verbatim, anchor 해석 가능)만 정한다. 어떤 문장을 뽑을지는 run-phase 판단이며, 그 판단의 검증은 AC-ZRR-002/003/004 가 기계적으로 한다.
 - **slug 규칙은 선택된 것이지 검증된 것이 아니다.** §2.2 의 6단계 규칙은 `analyze.py` 가 쓴 규칙이며, Claude Code / markdown 렌더러의 실제 anchor 해석과 바이트 단위로 같은지는 확인하지 않았다. 17이라는 수치는 **이 규칙 아래에서만** 참이다 — 그래서 REQ-ZRR-015 가 규칙을 코드에 명시하도록 요구한다. 규칙이 바뀌면 건수도 바뀐다는 사실 자체를 문서화하는 것이 여기서의 방어다.
 - **fresh-init 재현은 1회 측정**이다(스크래치 프로젝트 1개, `--language go`). 다른 언어 옵션에서 레지스트리가 달리 배포되는지는 확인하지 않았다.
-- **3건 이중 트리 제약(§5)의 해소 가능성은 확인되지 않았다.** 두 판본에 공통 구간이 실제로 존재하는지 세 엔트리 각각에 대해 아직 읽지 않았다.
+- **~~3건 이중 트리 제약(§5)의 해소 가능성 미확인~~ → 닫힘.** plan-audit iter1 이 두 파일을 전수 diff 한 결과 발산은 총 4줄(`coding-standards.md` 1 + `skill-authoring.md` 3)이고 전부 영향 엔트리의 인용 대상 절 밖이다 — 공통 구간 존재가 확인됐다(§5 참조). run-phase 는 이 조사를 반복하지 않는다.
+- **slug 규칙이 렌더러의 실제 anchor 해석과 같은지도 감사에서 확인되지 않았다.** plan-audit iter1 이 이 항목을 자기 gap 으로 명시했다 — 17이라는 수치는 여전히 `analyze.py` 재구현 기준이다.
