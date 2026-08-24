@@ -157,8 +157,14 @@ type staleCandidate struct {
 	Dirty  string `json:"dirty"`
 	Merged string `json:"merged"`
 	// Anchored is "no" when no source claimed an anchor, otherwise the name
-	// of the source that did ("lock" or "registry").
+	// of the source that did ("lock" or "registry"), or "undetermined" when
+	// the authoritative lock source could not be read at all.
 	Anchored string `json:"anchored"`
+	// Ignored is the fourth predicate (REQ-WR-024): "yes" when the tree holds
+	// gitignored content outside the regenerable allowlist — the class no
+	// other guard can see, because `git status --porcelain` and non-forced
+	// `git worktree remove` both disregard ignored files.
+	Ignored string `json:"ignored"`
 }
 
 // The tri-state (plus not-checked) vocabulary the JSON record uses. An
@@ -263,7 +269,8 @@ func classifyStaleWorktrees(worktrees []git.Worktree, base string) ([]staleCandi
 		}
 		c := staleCandidate{
 			Path: wt.Path, Branch: wt.Branch,
-			Dirty: staleStateNotChecked, Merged: staleStateNotChecked, Anchored: staleStateNo,
+			Dirty: staleStateNotChecked, Merged: staleStateNotChecked,
+			Anchored: staleStateNo, Ignored: staleStateNotChecked,
 		}
 		if lockErr != nil {
 			// The authoritative anchor source could not be read. An
@@ -372,8 +379,32 @@ func staleKeepReason(c *staleCandidate, path, branch, base string) string {
 		return fmt.Sprintf("branch has commits not in %s", base)
 	}
 	c.Merged = staleStateYes
+
+	// Fourth predicate (REQ-WR-024). It cannot be folded into the dirty check:
+	// `git status --porcelain` and non-forced `git worktree remove` AGREE in
+	// disregarding ignored files, so a tree whose only content is
+	// `.claude/agent-memory/` reports dirty=no and is destroyed by --yes with
+	// exit 0. The decision is the SHARED one the PR-merge sweep uses
+	// (internal/session), not a second allowlist.
+	porcelain, err := gitWorktreeCmd("-C", path, "status", "--porcelain", "--ignored")
+	if err != nil {
+		c.Ignored = staleStateUndetermined
+		return fmt.Sprintf("cause=%s; could not read ignored content: %v", causeIgnoredCheckFailed, err)
+	}
+	if irreplaceable := session.IrreplaceableIgnoredEntries(porcelain); len(irreplaceable) > 0 {
+		c.Ignored = staleStateYes
+		return fmt.Sprintf("cause=%s; irreplaceable gitignored content: %s", causeIgnoredContent, strings.Join(irreplaceable, ", "))
+	}
+	c.Ignored = staleStateNo
 	return ""
 }
+
+// Cause tokens for the ignored-content guard, matching the PR-merge sweep's
+// vocabulary (REQ-WR-023) so one grep finds both sweeps' notices.
+const (
+	causeIgnoredContent     = "ignored-content"
+	causeIgnoredCheckFailed = "ignored-check-failed"
+)
 
 // worktreeHasLocalChanges reports whether the worktree at path has any
 // uncommitted or untracked files. Untracked files count: they are the class of

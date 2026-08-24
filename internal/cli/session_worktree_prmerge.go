@@ -230,25 +230,11 @@ func prMergeCleanup(cfg *config.Config, out io.Writer) {
 	}
 }
 
-// regenerableIgnoredPaths is the allowlist of gitignored paths whose loss
-// costs nothing, enumerated FROM the measurement rather than invented ahead of
-// it (design.md §A.7.3): runtime state, runtime-managed config, build output,
-// and test residue. Every ignored path outside this list — including one
-// nobody has classified — preserves the worktree (REQ-WR-024, fail-closed).
-//
-// [HARD] Do not extend this list by omission. A path is added here only after
-// it is observed AND shown to be reproduced by a build, a runtime write, or a
-// re-run.
-var regenerableIgnoredPaths = []string{
-	".moai/state",
-	".moai/logs",
-	".claude/settings.local.json",
-	".claude/settings.local.json.lock",
-	"bin",
-	"docs-site/public",
-	".ruff_cache",
-	"internal/cli/.moai",
-}
+// The ignored-content decision — the allowlist and the predicate over it —
+// lives in internal/session (REQ-WR-024, shared per the same rule as the
+// anchor decision): `worktree clean --stale` removes worktrees too, and a
+// second copy of the allowlist there would be a second thing to keep in
+// agreement forever, with a silent first divergence.
 
 // ignoredContentAllowsRemoval reports whether a candidate that has already
 // passed the merge, dirty, anchor, and refusal guards may be removed, given
@@ -275,41 +261,11 @@ func ignoredContentAllowsRemoval(wtPath string, out io.Writer) bool {
 		_, _ = fmt.Fprintf(out, "moai: PR-merge cleanup skipped (cause=ignored-check-failed; ignored-content check failed: %v): worktree %s preserved\n", err, wtPath)
 		return false
 	}
-	if irreplaceable := irreplaceableIgnoredEntries(porcelain); len(irreplaceable) > 0 {
+	if irreplaceable := session.IrreplaceableIgnoredEntries(porcelain); len(irreplaceable) > 0 {
 		_, _ = fmt.Fprintf(out, "moai: PR-merge cleanup skipped (cause=ignored-content; irreplaceable gitignored content: %s): worktree %s preserved\n", strings.Join(irreplaceable, ", "), wtPath)
 		return false
 	}
 	return true
-}
-
-// irreplaceableIgnoredEntries returns the `git status --porcelain --ignored`
-// entries that are NOT covered by regenerableIgnoredPaths. An empty result
-// means every ignored entry is regenerable and the tree is safe to remove.
-func irreplaceableIgnoredEntries(porcelain string) []string {
-	var irreplaceable []string
-	for _, line := range strings.Split(porcelain, "\n") {
-		if !strings.HasPrefix(line, "!! ") {
-			continue
-		}
-		entry := strings.Trim(strings.TrimSpace(strings.TrimPrefix(line, "!! ")), "\"")
-		entry = strings.TrimSuffix(entry, "/")
-		if entry == "" || isRegenerableIgnoredPath(entry) {
-			continue
-		}
-		irreplaceable = append(irreplaceable, entry)
-	}
-	return irreplaceable
-}
-
-// isRegenerableIgnoredPath reports whether entry is at or below an allowlisted
-// regenerable path.
-func isRegenerableIgnoredPath(entry string) bool {
-	for _, p := range regenerableIgnoredPaths {
-		if entry == p || strings.HasPrefix(entry, p+"/") {
-			return true
-		}
-	}
-	return false
 }
 
 // mergeState is the three-valued merge outcome (REQ-WR-001). The third value

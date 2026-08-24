@@ -59,6 +59,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   liveness probe all report the tree as anchored. All three sweeps that shared the blind guard now
   share this one — the PR-merge sweep, `worktree clean --stale`, and the `--merged-only` path, where
   it is the only thing standing between the sweep and a live session's tree.
+- **`worktree clean --stale --yes` destroyed gitignored content that nothing regenerates.** Its
+  cleanliness check ran `git status --porcelain` without `--ignored`, and a non-forced
+  `git worktree remove` disregards ignored files too — so a merged, clean, unanchored tree whose
+  only remaining content was `.claude/agent-memory/` reported `dirty=no` and was deleted, exit 0,
+  with nothing in the output to read afterwards. The ignored-content guard built for the PR-merge
+  sweep now covers this sweep as well, and the two share ONE decision — allowlist included — in
+  `internal/session`, rather than a second copy free to drift. `--stale --json` gains a fourth
+  predicate, `ignored`, so the inventory and the sweep stay the same evaluation.
 - **An unreadable worktree porcelain silently disarmed both `worktree clean` sweeps.** When
   `git worktree list --porcelain` failed, the lock reader returned an empty map that the callers
   could not distinguish from "no tree is locked", so every tree fell back to the session registry
