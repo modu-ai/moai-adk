@@ -1,7 +1,7 @@
 ---
 id: SPEC-V3R6-GRAPH-FRESHNESS-001
 title: "Graph layer freshness: per-layer drift gate, query-time refresh, content-addressed citations, AST symbol layer, MCP code queries"
-version: "1.0.0"
+version: "1.1.0"
 status: draft
 created: 2026-08-25
 updated: 2026-08-25
@@ -19,7 +19,7 @@ tier: L
 
 moai-adk's graph surfaces (codemaps, @MX index, edges.jsonl) describe a codebase that moves continuously, and nothing measures or signals the gap between the description and the described. Measured in this tree (WT-graph-freshness @ baa100ce5, 2026-08-25):
 
-- `.moai/project/codemaps/` was last regenerated at commit `6da952899` (2026-08-12). Since then, origin/main accumulated **740 commits** with zero notification to any consumer (graft analysis measured 713 at `294b4b6ab`; the base moved 27 further commits by the time this SPEC was authored).
+- `.moai/project/codemaps/` was last regenerated at commit `6da952899` (2026-08-12). Since then, origin/main accumulated **740 commits** with zero notification to any consumer. Measurement provenance: the graft analysis measured 713 at report time on `294b4b6ab` — that figure is no longer reproducible (738 measured at review time); this SPEC's 740 was measured directly at authoring in this tree and is the figure the SPEC stands on.
 - `.moai/state/mx-index.json` (primary checkout, 357 KB, 2026-08-20) carries only `schema_version`, `tags`, `scanned_at` — **no commit SHA provenance**. A reader cannot tell which tree or commit the index describes.
 - `.moai/state/mx-index.json` and `.moai/project/graph/edges.jsonl` do not exist in a fresh worktree at all (untracked runtime artifacts). Absence is indistinguishable from freshness today.
 - Citations in codemaps and reports anchor by line number. The same symbol carried different line numbers across trees (`init.go:773` vs `init.go:898`), producing 2 stale-misjudgment incidents this round.
@@ -74,6 +74,8 @@ The check shall compute each layer's staleness with the layer-specific metric be
 | mx-index | untracked runtime state | Count of scanner-read files whose working-tree content differs from the content recorded in the index's stamped scan inventory; index file absent ⇒ verdict `absent` | Untracked ⇒ no git history exists to count; the index is mechanical and cheap to rescan, so any content drift in what it indexed is actionable |
 | edges.jsonl | untracked derived artifact | Source-fingerprint mismatch: recompute the fingerprints of all source layers (codemaps set, mx-index, SPEC dir, reports dir) and compare against the fingerprints stamped at build time; artifact absent ⇒ verdict `absent` | A derived artifact goes stale exactly when its sources move; its own history is unobservable (untracked), so source-side fingerprints are the only sound signal |
 
+Comparison anchor under a dirty generation: **Where** the codemaps set was generated on a dirty working tree (provenance `dirty` + content fingerprint per REQ-GF-003), the metric's reference point is the stamped generation-time content fingerprint — the content the artifact was actually generated from — and the working-tree content is compared against that anchor, never against a named commit the generation did not actually see.
+
 The check shall not use filesystem modification time as a staleness signal for any layer: a fresh worktree checkout resets every mtime (observed in this tree — all codemaps files carry the checkout timestamp), which an mtime-based metric would misread as freshly regenerated.
 
 #### REQ-GF-003 — Provenance stamping on all gated artifacts (Ubiquitous)
@@ -90,7 +92,7 @@ Every gated artifact shall carry a provenance block recording: the absolute tree
 
 #### REQ-GF-006 — CI wiring (When)
 
-**When** CI runs on a pull request or push to main, a job shall run `moai graph check` against the PR-head tree using the binary built from that head, and fail the build when the check exits non-zero. CI-side thresholds may be configured independently of local defaults.
+**When** CI runs on a pull request or push to main, a job shall build the binary from the PR head, bootstrap the untracked mechanical layers to that head (`moai mx scan`, then `moai graph build`), then run `moai graph check`, and fail the build when the check exits non-zero. The bootstrap scopes the CI signal to codemaps drift — the tracked, curated layer: the mechanical layers are refreshed to head by the job itself, so an `absent` verdict for an untracked layer cannot fire in CI. CI-side thresholds may be configured independently of local defaults.
 
 ### M2 — query-time refresh
 
@@ -207,7 +209,7 @@ Mirrored from the graft analysis §성공 판정 (operator-mandated verdicts):
 
 ## §H. Cross-References
 
-- Evidence base: `.moai/reports/graft/graft-analysis-20260824.md` (operator-mandated; measured at `294b4b6ab`)
+- Evidence base: `.moai/reports/graft/graft-analysis-20260824.md` (operator-mandated; measured at `294b4b6ab`) — the report file is untracked and lives only in the primary checkout's `.moai/reports/graft/`; it is not present in worktrees
 - Anchor re-verification in this tree: `research.md` §Anchor Re-Verification
 - Related SPECs: `SPEC-V3R6-DOCS-CODEMAPS-V3-001` (codemaps v3 SSOT), `SPEC-DWF-CODEMAPS-PILOT-001` (codemaps pilot) — neither covers freshness, symbol layer, or code queries
 - Edge layers today: `internal/cli/graph.go` `moai graph build` (5 doc-derived layers)

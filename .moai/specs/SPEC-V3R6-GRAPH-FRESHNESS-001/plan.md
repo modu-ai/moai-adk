@@ -52,7 +52,7 @@ Decisions most likely to change: per-layer metric definitions (spec.md REQ-GF-00
 3. `moai graph check` subcommand: per-layer report + exit code (AC-GF-001/002/004/005).
 4. Thresholds in config (defaults in `internal/config`; gate.yaml override) + calibration measurement recorded.
 5. `moai gate` step (warn-only default, ast-grep precedent) (AC-GF-006).
-6. CI workflow job (standalone `graph-freshness.yml` following the spec-lint.yml precedent; binary built from PR head) (AC-GF-007, demonstrated on a non-main branch).
+6. CI workflow job (standalone `graph-freshness.yml` following the spec-lint.yml precedent): build binary from PR head → bootstrap the mechanical layers (`moai mx scan`, `moai graph build`) → `moai graph check` (AC-GF-007, red demonstrated on a non-main branch; healthy-head-green clause included). Day-one posture (explicit, not implicit): at landing time this repo carries 740+ commits of codemaps drift, so the job as specified lands red on day one. Chosen posture: **regenerate codemaps in the landing PR before the job is enabled** — the threshold keeps its reasoned default and is calibrated from real history in M1's calibration step afterward. Threshold-raising-to-pass-day-one is rejected as calibration-to-pass (a self-defeating gate).
 
 ### M2 — query-time refresh (priority: High)
 

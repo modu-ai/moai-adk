@@ -4,7 +4,7 @@ Two halves: (1) the operator-mandated evidence base, referenced not re-derived; 
 
 ## §1 Evidence Base (operator-mandated, read-first)
 
-`.moai/reports/graft/graft-analysis-20260824.md` — Graft (NanoNets, MIT) adoption analysis. Decision: adopt 4 design principles (freshness+drift gate, content-addressed citations, AST symbol layer, MCP code queries), do NOT install the tool (TS/npm runtime vs Go single binary + 16-language neutrality), do NOT adopt the LLM concept-node layer (moai-adk already has a human semantic layer; two semantic layers without a disagreement detector). The report's structure of Graft (content-hash cache, query-time structural refresh, Crux-stores-code-text-not-line-numbers, 6 MCP tools, `graft check` exit 1) is the design source this SPEC transfers.
+`.moai/reports/graft/graft-analysis-20260824.md` — Graft (NanoNets, MIT) adoption analysis. Path note: the report file is untracked and exists only in the primary checkout's `.moai/reports/graft/`; it is absent from worktrees (verified when the worktree read failed and the primary read succeeded). Decision: adopt 4 design principles (freshness+drift gate, content-addressed citations, AST symbol layer, MCP code queries), do NOT install the tool (TS/npm runtime vs Go single binary + 16-language neutrality), do NOT adopt the LLM concept-node layer (moai-adk already has a human semantic layer; two semantic layers without a disagreement detector). The report's structure of Graft (content-hash cache, query-time structural refresh, Crux-stores-code-text-not-line-numbers, 6 MCP tools, `graft check` exit 1) is the design source this SPEC transfers.
 
 Foreign figures that must NOT propagate as promises: `~3ms` doc-based refresh (124-file foreign repo), −42% tokens / −46% tools / −60% time controlled sweep, SWE-bench 54%→66% — all self-reported by Graft, unverified by third parties.
 
@@ -15,7 +15,7 @@ Every anchor the lead flagged was re-verified by command in this tree. Where a f
 | Anchor | Report (at `294b4b6ab`) | This tree (`baa100ce5`) | Command evidence |
 |---|---|---|---|
 | codemaps last regeneration | 2026-08-12 (mtime) | commit `6da952899` 2026-08-12 (git date; mtime unusable — see below) | `git log -1 --date=short -- .moai/project/codemaps/` |
-| Drift since codemaps date | 713 commits | **740 commits** on origin/main since 2026-08-12 | `git rev-list --count --since=2026-08-12 origin/main` |
+| Drift since codemaps date | 713 commits | **740 commits** on origin/main since 2026-08-12 (738 measured at review time — `--since` counts shift with history; see spec.md §A provenance note) | `git rev-list --count --since=2026-08-12 origin/main` |
 | mx-index provenance | (not examined) | **absent** — top-level keys are `schema_version`, `tags`, `scanned_at` only; no commit SHA | python3 read of primary checkout's `.moai/state/mx-index.json` |
 | mx-index in a fresh worktree | (not examined) | **does not exist** (untracked runtime artifact) | `ls .moai/state/mx-index.json` → No such file |
 | edges.jsonl in a fresh worktree | (not examined) | **does not exist**; `git ls-files .moai/project/graph/` → empty (untracked derived artifact) | `ls`, `git ls-files` |
@@ -26,7 +26,7 @@ Every anchor the lead flagged was re-verified by command in this tree. Where a f
 | `moai mx query` | — | exists (`internal/cli/mx_query.go`) — M2 has a live query surface to refresh | grep of cli |
 | gate machinery | — | `quality.NewQualityGate` at `internal/hook/quality/gate.go:305`; CLI gate shares config loader with PreToolUse hook (SSOT seam, ast-grep precedent for warn-only default) | grep + Read of `internal/cli/gate.go` |
 | MCP registration | 21 tools | `add()` pattern + named tool constants in `internal/cli/mcp_server.go`; catalog fn `mcpcat.MoaiMCPToolNames()` | grep |
-| CI landing surface | — | 18 workflow files; `spec-lint.yml` is the small-focused-workflow precedent for a standalone `graph-freshness.yml` | `ls .github/workflows/` |
+| CI landing surface | — | 17 tracked workflow files; `spec-lint.yml` is the small-focused-workflow precedent for a standalone `graph-freshness.yml` | `ls .github/workflows/` (17 files counted) |
 | astx importers | navigator-only | confirmed: importers are navigator internals + `internal/cli/navigator_enrich.go` only | grep `navigator/astx` |
 | astx provenance precedent | — | `Provenance` struct + `CurrentProvenance(projectRoot)` already exist in `internal/navigator/astx/enrich.go` — §2 of design.md reuses the shape convention | grep of exported surface |
 

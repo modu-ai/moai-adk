@@ -95,7 +95,7 @@ Registration follows the existing `add()` pattern + tool catalog (catalog consta
 ## §7 Gate & CI Wiring (M1)
 
 - `moai gate`: new step in the quality-gate step set, default **warn-only** (ast-grep precedent — pre-commit is the wrong place to force codemaps regeneration), enabled/blocking via gate config (SSOT loader path already shared between CLI and PreToolUse hook).
-- CI: standalone `.github/workflows/graph-freshness.yml` (spec-lint.yml precedent — small focused workflow, keeps ci.yml stable), building the moai binary from the PR head and running `moai graph check` on the head's own tree. The check on a PR head measures that head's own stamped state: a code PR that skips codemaps regeneration shows the accumulated drift — the intended signal.
+- CI: standalone `.github/workflows/graph-freshness.yml` (spec-lint.yml precedent — small focused workflow, keeps ci.yml stable). The job BOOTSTRAPS the mechanical layers before checking, in sequence: build the moai binary from the PR head → `moai mx scan` (mx-index refreshed to head) → `moai graph build` (edges refreshed to head) → `moai graph check`. The bootstrap scopes the CI signal to codemaps drift — the tracked, curated layer: the untracked mechanical layers are refreshed to head by the job itself, so an `absent` verdict for them cannot fire in CI (without the bootstrap the job would be structurally always-red on every fresh checkout — the D1 audit chain). A code PR that skips codemaps regeneration still shows the accumulated codemaps drift — the intended signal.
 - Exit contract: 0 fresh · 1 stale/absent · 2 system error (internal/cli conventions).
 
 ## §8 What This Design Does NOT Do

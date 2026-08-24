@@ -49,6 +49,9 @@ Given-When-Then scenarios, binary-testable. REQ→AC traceability at §D.2 must 
 - **Given** a branch whose head contains a deliberately-aged codemaps provenance stamp (stamped at an ancestor commit, threshold-exceeding source drift accumulated since) and the CI graph-freshness job
 - **When** the job runs on that head
 - **Then** the job conclusion is failure attributable to the graph-freshness step (verified on a non-main branch; main is never the demonstration vehicle)
+- **Given** an otherwise-clean head where the job's bootstrap has refreshed the mechanical layers (`moai mx scan`, `moai graph build`) and codemaps are freshly regenerated within threshold
+- **When** the job's `moai graph check` step runs
+- **Then** the check exits 0 and the job is green — a healthy head has a green path; the job is not structurally always-red
 
 ### AC-GF-008 — MUTANT B: refresh actually re-reads, not stamp-only (REQ-GF-007)
 
@@ -84,7 +87,7 @@ Given-When-Then scenarios, binary-testable. REQ→AC traceability at §D.2 must 
 
 - **Given** an mx-index produced by this SPEC's scanner
 - **When** a tag's location is read
-- **Then** it is anchored by file path + content hash with line numbers as convenience data; **When** lines are inserted above a tag in the cited file and the index refreshes, the tag resolves to the same symbol (hash unchanged by above-insertion? — no: hash covers the cited region, insertion above leaves the region content identical, resolution holds)
+- **Then** it is anchored by file path + content hash with line numbers as convenience data; **When** lines are inserted above a tag in the cited file and the index refreshes, the tag resolves to the same symbol — the hash covers the cited region's content, and inserting lines above the region leaves that content identical, so the anchor holds
 
 ### AC-GF-014 — Two-tree identical-target guarantee (REQ-GF-012)
 
@@ -138,7 +141,7 @@ Given-When-Then scenarios, binary-testable. REQ→AC traceability at §D.2 must 
 
 - **Given** the fixed M5 task set
 - **When** M5's first implementation commit is inspected
-- **Then** a baseline artifact recording Grep/Read call counts for that task set exists with a measurement timestamp preceding the first implementation commit; **When** the same task set runs after M5 with the code-query tools available, **Then** recorded Grep/Read call counts are lower than baseline. A baseline dated after implementation began fails the first clause.
+- **Then** a baseline artifact at `.moai/reports/t250/m5-baseline.md` exists, recording per-task counts of Grep and Read tool-use events for that task set — counted from the executing session's transcript, only those two tools, each measurement stamped with session id and date — with a measurement date preceding the first implementation commit; **When** the same task set runs after M5 with the code-query tools available, **Then** the post-run artifact at `.moai/reports/t250/m5-post.md` (same counting method) records lower Grep/Read call counts than baseline. A baseline dated after implementation began fails the first clause.
 
 ## §D.1 Severity Classification
 
@@ -198,7 +201,7 @@ Each check × (a) red condition, (b) the input that makes it red, (c) reachabili
 |---|---|---|---|
 | graph check exit code (AC-GF-004) | any layer over threshold or absent | codemaps stamped at ancestor commit + threshold-exceeding source drift | CI/gate consume exit code only; reporting-only mutant silently disarms both → 740-commit silent-drift class |
 | gate step (AC-GF-006) | enabled + stale fixture | stale fixture project, step enabled in gate config | pre-commit relies on step output naming; silent skip = gate green while layers drift |
-| CI job (AC-GF-007) | PR head's own tree stale | branch with deliberately-aged stamp | PR merge relies on job conclusion; a job that warns-only lets stale codemaps land on main |
+| CI job (AC-GF-007) | codemaps drift past threshold on the PR head after the bootstrap refreshed the mechanical layers | branch with deliberately-aged codemaps stamp (mechanical layers bootstrap-refreshed; codemaps drift remains) | PR merge relies on job conclusion; a job that warns-only lets stale codemaps land on main |
 | query refresh (AC-GF-008) | content changed between queries | uncommitted edit to a scanned file between two queries | agents act on answers; stamp-only refresh propagates stale answers into audits (init.go:773/:898 lineage) |
 | per-tree cache (AC-GF-010) | same query from two trees with different edits | two worktrees, distinct uncommitted edits | wrong-tree answer — the CR #8/t246 observed defect family |
 | citation resolution (AC-GF-014) | line drift between trees | blank lines inserted above cited region | reviewers trust citations; line-anchored citations misresolve across trees → stale misjudgments |
