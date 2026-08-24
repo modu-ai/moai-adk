@@ -317,7 +317,12 @@ func parseGLMReview(raw []byte) ReviewOutput {
 	}
 	text := ""
 	for i := range env.Content {
-		if env.Content[i].Type == "text" && env.Content[i].Text != "" {
+		// An empty Type is a text block too: the Anthropic-compatible shapes
+		// this parser sees include envelopes whose text blocks carry NO type
+		// field at all (TestParseGLMReview_StripsMarkdownFence's
+		// production-envelope fixture). Thinking/reasoning blocks DO carry a
+		// type, so the skip semantics hold.
+		if (env.Content[i].Type == "" || env.Content[i].Type == "text") && env.Content[i].Text != "" {
 			text = env.Content[i].Text
 			break
 		}

@@ -392,12 +392,15 @@ func defaultBackendCaller(ctx context.Context, backend, target, focus, projectRo
 }
 
 // performCodexAudit wraps the existing codex handler path (binary resolution +
-// runCodexReviewRPC) as a plain function callable without the MCP request
+// the codexReviewRPC seam) as a plain function callable without the MCP request
 // ceremony. It uses adversarial mode (turn/start + the adversarial-review
 // prompt) — the super-review secondary backend produces an uncorrelated second
 // opinion, not a re-sample of the claude analysis.
 //
-// Reuses (does NOT fork) mcp_codex.go: codexLookPath, runCodexReviewRPC,
+// Reuses (does NOT fork) mcp_codex.go: codexLookPath, the codexReviewRPC seam
+// (wired to runCodexAuditReviewRPC — the pin-aware audit resolution per
+// SPEC-V3R6-AUDIT-MODEL-PIN-001 M2; the audit_multi leg IS an audit entry
+// point, so the workflow.audit.codex pin applies here),
 // codexAdversarialReviewPrompt, inconclusiveReview.
 // projectRoot (SPEC-MCP-WORKTREE-ROOT-001 REQ-1 / AC-1b) names the tree codex
 // should read. This path carried NO `cwd` at all before — unlike the

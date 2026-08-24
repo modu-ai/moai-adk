@@ -484,3 +484,13 @@ docs_site_scope_decision: minimal-4-locale-addition   # config-sections.md enume
 - `sync_commit_sha` is a pending-backfill placeholder per the D3 exemption — resolves only after the commit lands (lead's post-merge step).
 - Version-sync (verify §6) not re-run: no version display was touched by this sync (CHANGELOG `[Unreleased]` carries no stamp by dispatch instruction).
 - A duplicate placeholder `## §E.3 Run-phase Audit-Ready Signal` heading (`_<pending run-phase completion>_`) sits directly above this §E.4 block — a run-phase artifact left in place (manager-develop's surface, not edited here); harmless to era classification (both §E.3 headings match the same marker).
+
+### §E.5 — Sync-audit round 1 fix verification (unfiltered, lane-measured 2026-08-24)
+
+Sync-audit review-1 (FAIL: F1 parser regression, F2 init-wizard leaf drop, F4 stale comment) fixed in the working tree; evidence below measured by the LANE against the fix tree (this section records the unfiltered-suite discipline the audit demanded — all runs `-count=1`, no `-run` filters):
+
+- `go test ./internal/cli/ -run 'TestParseGLMReview_StripsMarkdownFence|TestRunInit_WizardAuditSelectionPersists|TestWriteWorkflowAuditYAML_InsertsMissingLeavesIntoPinOnlyAuditBlock' -count=1` → **rc=0**, tail verbatim: `ok  github.com/modu-ai/moai-adk/internal/cli  1.124s` (F1+F2 targets green after fix)
+- `go test ./internal/config/ ./internal/web/ ./internal/core/... -count=1` → **rc=0**, tails verbatim: `ok internal/config 1.957s` / `ok internal/web 3.809s` / `ok internal/core/git 53.827s` / `ok internal/core/project 2.143s` / `ok internal/core/quality 1.935s`
+- `go vet ./internal/cli/ ./internal/core/project/` → **rc=0**, no output
+- `go test ./internal/cli/ -count=1 -timeout 900s` (UNFILTERED full suite) → **rc=0**, tail verbatim: `ok  github.com/modu-ai/moai-adk/internal/cli  543.851s` (full capture: /tmp/t225-cli-fix-verify.txt)
+- Load-artifact note (VCI honesty): two earlier unfiltered attempts under concurrent factory-lane load FAILED without fix-relevant names — attempt 1 `FAIL 283.293s` (names lost to a `| tail -5` pipe; the pipe also masked rc — pipe-trap recurrence, caught and re-run without pipe), attempt 2 timed out at 900s inside `TestDoctorCmd_VerboseExecution` — a test this branch never touched (0 diff on integration_test.go) that passes isolated in 34.4s. The rc=0 run above is the same tree; the earlier failures are machine-contention artifacts, not code state.
