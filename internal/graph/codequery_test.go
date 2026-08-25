@@ -49,9 +49,10 @@ func Helper(s string, n int) (string, error) {
 	return root
 }
 
-// CR round-3 Major (t261 observed): the lexical '..' check alone is defeated
-// by an IN-TREE SYMLINK pointing at an external file — containment now
-// resolves both ends through EvalSymlinks. Also observes the FIFO rejection.
+// CR round-3 Major (t261): the lexical '..' check alone is defeated by an
+// IN-TREE SYMLINK pointing at an external file — containment resolves both
+// ends through EvalSymlinks and reads only the resolved REGULAR file. Three
+// observed rejections, one per subtest.
 func TestFileAPI_RejectsSymlinkEscapeAndFIFO(t *testing.T) {
 	root := codeQueryFixture(t)
 	outside := t.TempDir()
@@ -62,41 +63,59 @@ func TestFileAPI_RejectsSymlinkEscapeAndFIFO(t *testing.T) {
 	if err := os.Symlink(secret, filepath.Join(root, "internal", "chain", "leak.go")); err != nil {
 		t.Skipf("symlink creation unavailable: %v", err)
 	}
-	// (a) symlink → external file: REJECTED (the lexical check passes — the
-	// resolved check must be what rejects it).
-	if _, err := FileAPI(root, "internal/chain/leak.go"); err == nil {
-		t.Error("in-tree symlink to an external file must be rejected")
-	} else if !strings.Contains(err.Error(), "escapes the project root") {
-		t.Errorf("rejection must name containment: %v", err)
-	}
-	// Citation path mirrors the same bypass: rejected, reason host-free.
-	cite, cerr := NewCitation("internal/chain/leak.go", "func Leaked() {}", 2)
-	if cerr != nil {
-		t.Fatal(cerr)
-	}
-	res, rerr := ResolveCitation(root, cite)
-	if rerr != nil {
-		t.Fatal(rerr)
-	}
-	if res.Matched {
-		t.Error("citation through an escaping symlink must not resolve")
-	}
 
-	// (b) FIFO target: rejected as non-regular (an open would hang).
-	fifo := filepath.Join(root, "internal", "chain", "pipe.go")
-	if err := mkfifo(t, fifo); err != nil {
-		t.Skipf("fifo creation unavailable: %v", err)
-	}
-	if _, err := FileAPI(root, "internal/chain/pipe.go"); err == nil {
-		t.Error("FIFO target must be rejected as non-regular")
-	} else if !strings.Contains(err.Error(), "not a regular file") {
-		t.Errorf("FIFO rejection must name regularity: %v", err)
-	}
-	citeF, _ := NewCitation("internal/chain/pipe.go", "anything", 1)
-	resF, _ := ResolveCitation(root, citeF)
-	if resF.Matched {
-		t.Error("citation to a FIFO must not resolve")
-	}
+	t.Run("symlink-to-external-rejected", func(t *testing.T) {
+		// The lexical check PASSES this input — the resolved check is the
+		// one that must reject it (observed red).
+		_, err := FileAPI(root, "internal/chain/leak.go")
+		if err == nil {
+			t.Fatal("in-tree symlink to an external file must be rejected")
+		}
+		if !strings.Contains(err.Error(), "escapes the project root") {
+			t.Errorf("rejection must name containment: %v", err)
+		}
+	})
+
+	t.Run("fifo-target-rejected", func(t *testing.T) {
+		fifo := filepath.Join(root, "internal", "chain", "pipe.go")
+		if err := mkfifo(t, fifo); err != nil {
+			t.Skipf("fifo creation unavailable: %v", err)
+		}
+		_, err := FileAPI(root, "internal/chain/pipe.go")
+		if err == nil {
+			t.Fatal("FIFO target must be rejected as non-regular")
+		}
+		if !strings.Contains(err.Error(), "not a regular file") {
+			t.Errorf("FIFO rejection must name regularity: %v", err)
+		}
+	})
+
+	t.Run("citation-mirrors-both", func(t *testing.T) {
+		// (3) ResolveCitation opens paths: both escapes must fail to resolve.
+		cite, cerr := NewCitation("internal/chain/leak.go", "func Leaked() {}", 2)
+		if cerr != nil {
+			t.Fatal(cerr)
+		}
+		res, rerr := ResolveCitation(root, cite)
+		if rerr != nil {
+			t.Fatal(rerr)
+		}
+		if res.Matched {
+			t.Error("citation through an escaping symlink must not resolve")
+		}
+		fifo := filepath.Join(root, "internal", "chain", "pipe2.go")
+		if err := mkfifo(t, fifo); err != nil {
+			t.Skipf("fifo creation unavailable: %v", err)
+		}
+		citeF, _ := NewCitation("internal/chain/pipe2.go", "anything", 1)
+		resF, _ := ResolveCitation(root, citeF)
+		if resF.Matched {
+			t.Error("citation to a FIFO must not resolve")
+		}
+		if resF.Reason != "cited path is not a regular file" {
+			t.Errorf("FIFO citation reason = %q", resF.Reason)
+		}
+	})
 }
 
 // mkfifo creates a named pipe for the FIFO-rejection observation. Uses the

@@ -54,6 +54,35 @@ func withCodeRoot(t *testing.T, args map[string]any, root string) map[string]any
 	return args
 }
 
+// CR round-3 Major observed THROUGH the MCP tool (t261): an in-root symlink
+// pointing at an external file is rejected by graph_file_api — the lexical
+// containment alone would have answered the external file's symbols.
+func TestGraphFileAPI_RejectsSymlinkEscape(t *testing.T) {
+	root := mcpCodeFixture(t)
+	outside := t.TempDir()
+	secret := filepath.Join(outside, "secret.go")
+	if err := os.WriteFile(secret, []byte("package secret\n\nfunc Leaked() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(secret, filepath.Join(root, "internal", "svc", "leak.go")); err != nil {
+		t.Skipf("symlink creation unavailable: %v", err)
+	}
+
+	req := mcp.CallToolRequest{}
+	req.Params.Arguments = withCodeRoot(t, map[string]any{"file": "internal/svc/leak.go"}, root)
+	res, err := handleGraphFileAPI(context.Background(), req)
+	if err != nil {
+		t.Fatalf("handler hard error: %v", err)
+	}
+	if !res.IsError {
+		t.Fatal("graph_file_api must error on a symlink-escaping file parameter")
+	}
+	body, _ := res.Content[0].(interface{ GetText() string })
+	if body != nil && strings.Contains(body.GetText(), "Leaked") {
+		t.Error("the external file's symbols leaked through the tool")
+	}
+}
+
 // CR round-2 (3855001953) wrong-tree regression (t261: failing input +
 // observed red): a DISTINCT project_root must reach the query — two trees
 // with different content yield different answers — and an INVALID root is

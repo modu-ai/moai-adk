@@ -121,14 +121,22 @@ func ResolveCitation(root string, c Citation) (Resolution, error) {
 	// through SYMLINK resolution (CR round-3 Major: an in-tree symlink to an
 	// external file defeats the lexical check alone). Reasons never embed
 	// host paths: they name only the citation-relative file.
-	if rel, err := filepath.Rel(root, target); err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || !resolvedWithin(root, target) {
+	if rel, err := filepath.Rel(root, target); err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return Resolution{File: c.File, Reason: "cited file path resolves outside the tree root"}, nil
 	}
-	// FIFO/socket targets would hang the read (CR round-2 3855001937).
-	if info, err := os.Stat(target); err != nil || !info.Mode().IsRegular() {
+	// resolveWithin (codequery.go) is the shared filepath.EvalSymlinks
+	// containment: root AND target resolved, target must land inside.
+	resolved := resolveWithin(root, target)
+	if resolved == "" {
+		return Resolution{File: c.File, Reason: "cited file path resolves outside the tree root"}, nil
+	}
+	// Regular-file guard on the RESOLVED path: a FIFO/socket would hang the
+	// read (CR round-2 3855001937).
+	if info, err := os.Lstat(resolved); err != nil || !info.Mode().IsRegular() {
 		return Resolution{File: c.File, Reason: "cited path is not a regular file"}, nil
 	}
-	data, err := os.ReadFile(target)
+	// Read only the resolved regular file.
+	data, err := os.ReadFile(resolved)
 	if err != nil {
 		return Resolution{File: c.File, Reason: "cited file unreadable"}, nil
 	}

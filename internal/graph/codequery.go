@@ -37,19 +37,24 @@ type FileAPIResult struct {
 	Provenance string          `json:"provenance"`
 }
 
-// resolvedWithin reports whether target resolves to inside root AFTER
-// symlink resolution on both ends (CR round-3 Major): filepath.Rel alone is
-// a LEXICAL check, so an in-tree symlink pointing at an external file would
-// defeat containment — the exact mirror of the '..' escape. Symlink
-// resolution failure is treated as outside (reject, don't guess).
-func resolvedWithin(root, target string) bool {
+// resolveWithin resolves BOTH root and target through filepath.EvalSymlinks
+// and returns the resolved target when it lands inside the resolved root
+// ("" otherwise). filepath.Rel alone is a LEXICAL check — an in-tree symlink
+// pointing at an external file would defeat containment, the exact mirror of
+// the '..' escape (CR round-3 Major). Resolution failure rejects (never
+// guess). Callers read/extract from the RESOLVED path only, so a Stat mode
+// check on it guards FIFO/socket targets os.Stat-following could blur.
+func resolveWithin(root, target string) string {
 	resolvedRoot, rErr := filepath.EvalSymlinks(root)
 	resolvedTarget, tErr := filepath.EvalSymlinks(target)
 	if rErr != nil || tErr != nil {
-		return false
+		return ""
 	}
 	rel, err := filepath.Rel(resolvedRoot, resolvedTarget)
-	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return ""
+	}
+	return resolvedTarget
 }
 
 // FileAPI lists a file's exported declarations with signatures — no function
@@ -64,14 +69,17 @@ func FileAPI(projectRoot, relPath string) (FileAPIResult, error) {
 	if rel, err := filepath.Rel(projectRoot, abs); err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return FileAPIResult{}, fmt.Errorf("graph: file path escapes the project root: %s", relPath)
 	}
-	if !resolvedWithin(projectRoot, abs) {
+	resolved := resolveWithin(projectRoot, abs)
+	if resolved == "" {
 		return FileAPIResult{}, fmt.Errorf("graph: file path escapes the project root: %s", relPath)
 	}
-	// Regular-file guard (CR round-2 3855001937): a FIFO/socket at the named
-	// path would hang the read; refuse non-regular files explicitly.
-	if info, err := os.Stat(abs); err != nil || !info.Mode().IsRegular() {
+	// Regular-file guard on the RESOLVED path (CR round-2 3855001937 +
+	// round-3): a FIFO/socket would hang the read; refuse non-regular files.
+	info, err := os.Lstat(resolved)
+	if err != nil || !info.Mode().IsRegular() {
 		return FileAPIResult{}, fmt.Errorf("graph: not a regular file: %s", relPath)
 	}
+	abs = resolved // extract only from the resolved regular file
 	lang := astx.DetectLanguage(abs)
 	res := FileAPIResult{File: filepath.ToSlash(relPath)}
 	if lang == "" {
