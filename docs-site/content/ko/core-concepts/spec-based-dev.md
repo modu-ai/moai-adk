@@ -638,6 +638,8 @@ era 분류는 `spec.md` 프론트매터의 `created:` 날짜와 `progress.md`의
 
 ## 관련 문서
 
+- [SPEC 라이프사이클](/ko/core-concepts/spec-lifecycle) -- 이 문서가 다루는 SPEC
+  문서의 라이프사이클(관문 포함)을 단계별로 따라갑니다
 - [MoAI-ADK란?](/ko/core-concepts/what-is-moai-adk) -- MoAI-ADK의 전체 구조를
   이해합니다
 - [개발 방법론 (DDD/TDD)](/ko/core-concepts/ddd) -- SPEC을 기반으로 안전하게 코드를

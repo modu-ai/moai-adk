@@ -19,6 +19,8 @@ index:
   title: "자율성 티어 (MOAI_AUTONOMY_TIER)"
 "kanban-mode":
   title: "칸반 모드"
+"factory-mode":
+  title: "팩토리 모드"
 "skill-guide":
   title: "스킬 가이드"
 "agent-guide":
