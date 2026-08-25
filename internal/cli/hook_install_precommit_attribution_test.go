@@ -112,7 +112,7 @@ func installWithContent(t *testing.T, root, incoming string) *PreCommitInstaller
 	return installer
 }
 
-func assertAttribution(t *testing.T, got *preCommitAttribution, wantClass preCommitClass, wantBasis preCommitBasis) {
+func assertAttribution(t *testing.T, got *hookAttribution, wantClass hookClass, wantBasis hookBasis) {
 	t.Helper()
 	if got == nil {
 		t.Fatalf("no attribution recorded: expected class=%v basis=%v", wantClass, wantBasis)
@@ -190,7 +190,7 @@ func TestPreCommitVersionBumpIsSilent(t *testing.T) {
 	root2 := newPreCommitTestRepo(t)
 	installWithContent(t, root2, previousPreCommitHookContent)
 	bump := installWithContent(t, root2, preCommitHookContent)
-	assertAttribution(t, bump.lastAttribution, preCommitUnmodified, preCommitBasisRecord)
+	assertAttribution(t, bump.lastAttribution, hookUnmodified, hookBasisRecord)
 }
 
 // TestPreCommitThreeWayAttribution — AC-PCP-014 (REQ-PCP-014).
@@ -208,7 +208,7 @@ func TestPreCommitThreeWayAttribution(t *testing.T) {
 
 		installer := installWithContent(t, root, incoming)
 
-		assertAttribution(t, installer.lastAttribution, preCommitUnmodified, preCommitBasisRecord)
+		assertAttribution(t, installer.lastAttribution, hookUnmodified, hookBasisRecord)
 		assertNoBackup(t, root)
 		if got := readHook(t, root); got != incoming {
 			t.Errorf("hook was not replaced with the incoming content")
@@ -222,7 +222,7 @@ func TestPreCommitThreeWayAttribution(t *testing.T) {
 
 		installer := installWithContent(t, root, incoming)
 
-		assertAttribution(t, installer.lastAttribution, preCommitUserModified, preCommitBasisRecord)
+		assertAttribution(t, installer.lastAttribution, hookUserModified, hookBasisRecord)
 	})
 }
 
@@ -239,7 +239,7 @@ func TestPreCommitLegacyNoRecord(t *testing.T) {
 
 		installer := installWithContent(t, root, preCommitHookContent)
 
-		assertAttribution(t, installer.lastAttribution, preCommitUserModified, preCommitBasisUndecidableLegacy)
+		assertAttribution(t, installer.lastAttribution, hookUserModified, hookBasisUndecidableLegacy)
 	})
 
 	t.Run("b_no_record_content_identical", func(t *testing.T) {
@@ -248,7 +248,7 @@ func TestPreCommitLegacyNoRecord(t *testing.T) {
 
 		installer := installWithContent(t, root, preCommitHookContent)
 
-		assertAttribution(t, installer.lastAttribution, preCommitUnmodified, preCommitBasisUndecidableLegacy)
+		assertAttribution(t, installer.lastAttribution, hookUnmodified, hookBasisUndecidableLegacy)
 		assertNoBackup(t, root)
 		if got, want := readRecord(t, root), digestOf(preCommitHookContent); got != want {
 			t.Errorf("record = %q, want %q", got, want)
@@ -262,7 +262,7 @@ func TestPreCommitLegacyNoRecord(t *testing.T) {
 
 		installer := installWithContent(t, root, preCommitHookContent)
 
-		assertAttribution(t, installer.lastAttribution, preCommitUnmodified, preCommitBasisUndecidableLegacy)
+		assertAttribution(t, installer.lastAttribution, hookUnmodified, hookBasisUndecidableLegacy)
 		assertNoBackup(t, root)
 		if got, want := readRecord(t, root), digestOf(preCommitHookContent); got != want {
 			t.Errorf("record = %q, want %q", got, want)
