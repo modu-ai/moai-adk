@@ -82,7 +82,7 @@ debt: plan-audit D11/D12 optional — D11 folded into M4 per-directory anchor gr
 sync_status: sync_closed
 sync_commit_sha: b2b52eb8a
 final_verdict: PASS (sync-audit FAIL F1 resolved at ee35caad6, re-audit addendum sync-audit-f1-resolution.md)
-close_commit: pending-backfill-close
+close_commit: a0450a2b5
 changelog_entry: true
 pr: pending (manager-git creates)
 ```
