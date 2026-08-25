@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 398" width="1200" height="398"
+     role="img" aria-labelledby="cards-kpi-grid-title cards-kpi-grid-desc">
+  <title id="cards-kpi-grid-title">Factory lane KPI summary</title>
+  <desc id="cards-kpi-grid-desc">Four factory-lane indicators with illustrative values: 128 cards completed, a 91 percent PR merge rate, a 96 percent CI pass rate, and a 4.2 hour median review turnaround.</desc>
+  <defs/>
+
+  <rect x="0" y="0" width="1200" height="398" fill="#FAF9F5"/>
+
+  <g>
+    <text x="60" y="96" font-family="'Noto Serif', Georgia, serif" font-size="34" font-weight="600" fill="#141413">Lane KPI Summary</text>
+    <text x="76" y="110" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="12" fill="#6B6359">FACTORY LANE</text>
+  </g>
+
+  <!-- layer band -->
+  <rect x="60" y="120" width="1080" height="150" rx="12" fill="#F3EFE6" stroke="#D9CDBE"/>
+
+  <g font-family="Pretendard, 'Noto Sans KR', 'Noto Sans JP', 'Noto Sans SC', 'Apple SD Gothic Neo', 'Hiragino Sans', 'Microsoft YaHei', system-ui, sans-serif">
+    <!-- card 1: focal -->
+    <rect x="76" y="136" width="249" height="118" rx="12" fill="#FBE9DF" stroke="#D97757" stroke-width="1.6"/>
+    <text x="200.5" y="186" font-family="'Noto Serif', Georgia, serif" font-size="34" font-weight="600" text-anchor="middle" fill="#141413">128</text>
+    <text x="200.5" y="219" font-size="14" text-anchor="middle" fill="#6B6359">cards completed</text>
+
+    <rect x="337" y="136" width="249" height="118" rx="12" fill="#FAF9F5" stroke="#D9CDBE"/>
+    <text x="461.5" y="186" font-family="'Noto Serif', Georgia, serif" font-size="34" font-weight="600" text-anchor="middle" fill="#141413">91%</text>
+    <text x="461.5" y="219" font-size="14" text-anchor="middle" fill="#6B6359">PR merge rate</text>
+
+    <rect x="614" y="136" width="249" height="118" rx="12" fill="#FAF9F5" stroke="#D9CDBE"/>
+    <text x="738.5" y="186" font-family="'Noto Serif', Georgia, serif" font-size="34" font-weight="600" text-anchor="middle" fill="#141413">96%</text>
+    <text x="738.5" y="219" font-size="14" text-anchor="middle" fill="#6B6359">CI pass rate</text>
+
+    <rect x="891" y="136" width="249" height="118" rx="12" fill="#FAF9F5" stroke="#D9CDBE"/>
+    <text x="1015.5" y="186" font-family="'Noto Serif', Georgia, serif" font-size="34" font-weight="600" text-anchor="middle" fill="#141413">4.2 h</text>
+    <text x="1015.5" y="219" font-size="14" text-anchor="middle" fill="#6B6359">review turnaround</text>
+  </g>
+
+  <text x="60" y="300" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="12" fill="#6B6359">illustrative values for the benchmark artifact</text>
+</svg>
