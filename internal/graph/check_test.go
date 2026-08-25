@@ -86,10 +86,6 @@ func writeCodemapsProvenanceBlock(t *testing.T, root string, pv *mx.Provenance) 
 	}
 }
 
-func quoteJSON(s string) string {
-	return `"` + strings.ReplaceAll(s, `\`, `\\`) + `"`
-}
-
 // AC-GF-001 — numeric per-layer report on a fully in-sync fixture: every layer
 // reports name + metric kind + integer value + threshold + verdict fresh, and
 // CheckFreshness reports no failure.

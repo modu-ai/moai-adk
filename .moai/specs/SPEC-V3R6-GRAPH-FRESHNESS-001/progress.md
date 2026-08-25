@@ -101,10 +101,11 @@ Scope of this delegation: **M1-M3 only** (M4 symbol layer, M5 MCP code queries a
 
 ### M3 — citation convention switch
 
-**AC-GF-012 (citation canon) — PASS**
+**AC-GF-012 (citation canon) — PASS-WITH-DEBT (scope narrowed per CR round-2 3855001878)**
 - (a) `go test ./internal/graph/ -run TestCitationRenderCarriesCanon -count=1`
 - (b) `ok`: rendered citation carries file + region hash + convenience L<n>; NewCitation rejects an empty excerpt (line-only anchor is not the canon).
 - (c) this run, this tree.
+- **Scope**: the canon, renderer, and resolver landed in the MECHANICAL writers (mx tag ContentHash, provenance sidecars, graph.Citation). The codemaps md bodies are LLM-written by /moai codemaps and are NOT yet excerpt-plus-hash — that writer's adoption rides its next regeneration (the debt; recorded in Gaps and narrowed in CHANGELOG).
 
 **AC-GF-013 (mx-index hash anchoring) — PASS**
 - (a) `go test ./internal/mx/ -run TestRefreshIndex_TagHashSurvivesLineDrift -count=1`
