@@ -90,7 +90,7 @@ sanity check, not the M3 gate. The emphasis cites repo paths under
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-08-25
-run_commit_sha: pending-backfill-t272 (no commit made in run-phase — orchestrator reviews, then routes commit+PR through manager-git per the repo-local all-tier PR policy; backfill the SHA at commit time)
+run_commit_sha: c23b4380e3819d67914807ecd7e22ef6f6fce7e8
 run_status: audit-ready (M1 + M2 + M3 complete; AC matrix below)
 
 ### AC matrix (from measured evidence only)
@@ -123,7 +123,7 @@ ac_fail_count: 0
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: 2026-08-25
-sync_commit_sha: pending-backfill-t272 (single sync commit not yet made — manager-git backfills the SHA after the commit lands; that commit carries the draft → completed frontmatter transition and the 3-phase close)
+sync_commit_sha: c23b4380e3819d67914807ecd7e22ef6f6fce7e8
 sync_status: audit-ready
 
 What sync verified (authored in worktree t272 at HEAD 71781683c, branch
@@ -144,6 +144,7 @@ WT-skillstead-gallery — same tree as the §E.2 AC-007 post-M2 measurement;
   self-check (`ac_pass_count: 12`, `ac_fail_count: 0`); sync adds no new AC
   surface.
 
-`run_commit_sha` keeps the §E.3 placeholder (`pending-backfill-t272`); both
-SHA backfills land with the sync commit via manager-git, which also commits
-the `.moai/reports/t272/` evidence tree and the 8 M2 docs files.
+Both SHA fields (`run_commit_sha` §E.3, `sync_commit_sha` §E.4) reference
+the combined run+sync commit and were backfilled by manager-git in the
+follow-up backfill commit; the referenced commit also carries the
+`.moai/reports/t272/` evidence tree and the 8 M2 docs files.
