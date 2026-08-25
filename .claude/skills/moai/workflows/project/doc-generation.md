@@ -324,14 +324,38 @@ Codemaps: [N files generated] in .moai/project/codemaps/
 Development Mode: [tdd/ddd] (auto-configured in Phase 12)
 ```
 
+### Step 4.1.5: Issue the First-Feature Card
+
+[HARD] Issue exactly ONE backlog card carrying the project's first feature, so the run ends with the next piece of work on the queue instead of only in prose.
+
+`/moai project` is a **standing source** under `.claude/skills/moai/workflows/todo.md` § Standing sources — the operator authorized the card in advance, and this step derives it rather than inventing it. Every condition there binds; the mechanics here implement them.
+
+1. Read `.moai/project/harness-spec.yaml` (written in Phase 8). Take `goal` as the card's subject and `scope` as its boundary.
+2. If `goal` is empty, absent, or null: **skip this step entirely** and say so in the Step 4.2 report. An unresolved interview answer is nothing to derive from, and a card invented to fill the gap is exactly what the doctrine forbids.
+3. Read the queue: `moai todo list --json`. If a `queued` item already carries the same `[PROJECT] ` text, **skip the add** and report that existing id — re-running `/moai project` must not stack duplicates.
+4. Otherwise add exactly one card, its text prefixed `[PROJECT] `:
+
+```bash
+moai todo add "[PROJECT] <goal, one line, bounded by scope>"
+```
+
+5. Report the issued id (`t<n>`) verbatim in the Step 4.2 summary. An id the operator was not shown is a card they do not know exists.
+
+[HARD] One card per run — not one per document, per feature, or per finding. The card is **queued, never started**: whether work begins is Step 4.2's question, and only the operator's answer there starts it.
+
 ### Step 4.2: Next Steps
 
-[HARD] After displaying the summary, use AskUserQuestion to present these options:
+[HARD] After displaying the summary — including the card id issued in Step 4.1.5, or the reason no card was issued — use AskUserQuestion to present these options:
 
-- Create SPEC (Recommended): Run `/moai plan` to define your first feature specification. This is the natural next step after project setup.
+- Create the SPEC and start now (Recommended): Pick the card issued in Step 4.1.5 and begin immediately. Selecting this branch IS the operator's pick (`todo.md` § Picking the next card) — record it with `moai todo next <n>` and continue in this same session with `/moai plan "<card text>"`. In Kanban Mode, report the pick to the lead instead and let it dispatch the card to the `plan` session. Run-phase entry still passes the Implementation Kickoff Approval gate, where the `ac_converge` goal is offered as the progression-mode axis and armed only after the gate passes — this branch never bypasses that gate.
+- Create SPEC later: Leave the card queued and stop here. `/moai plan` picks it up whenever the operator returns.
 - Review and Edit Documentation: Open the generated files for review and manual editing before proceeding.
 - Generate project-specific harness: Proceed to Phase 15 (`project/meta-harness.md`) to build a domain-specific harness (agents + skills) tailored to this project via the v4 harness Builder.
 - Done: Complete the project setup workflow.
+
+[HARD] AskUserQuestion accepts at most 4 options per question. Present "Create the SPEC and start now", "Create SPEC later", "Generate project-specific harness", and "Done"; name "Review and Edit Documentation" in the response body as the fifth path, reachable by answering Other.
+
+[HARD] No branch is taken on the operator's behalf. If no answer comes back, nothing starts — the card stays queued and the workflow ends. Starting work without that answer is a preselect, whatever the step is called.
 
 ---
 
@@ -346,3 +370,4 @@ Development Mode: [tdd/ddd] (auto-configured in Phase 12)
 - Phase 10: per-spawn `Agent(general-purpose)` devops specialist (optional LSP installation)
 - Phase 11: MoAI orchestrator (MCP server provisioning — matrix select + AskUserQuestion approval + additive `.mcp.json` write at project scope; subagent never prompts)
 - Phase 12: MoAI orchestrator (automatic development_mode configuration, no user interaction)
+- Phase 14: MoAI orchestrator (summary report; one derived `moai todo add` card as a standing source, no user interaction; then the next-steps AskUserQuestion whose branch is the operator's pick)

@@ -133,6 +133,11 @@ const (
 	GroupDocs = "docs"
 	// GroupGit covers manager-git.
 	GroupGit = "git"
+	// GroupLead covers manager-lead, the Tier L / kanban-factory coordinator.
+	// It is its own group because it matches no other row's shape: it fans out
+	// to every other agent, so it tracks the auditors' depth in the two upper
+	// columns while stepping down with the executors in the economical one.
+	GroupLead = "lead"
 	// GroupExplore covers the Anthropic built-in Explore read-only search agent.
 	// Assigned sonnet/low profile-invariantly (product decision); only
 	// user-added agents fall through to the inherit sentinel now.
@@ -151,6 +156,7 @@ var agentGroupMembership = map[string]string{
 	"manager-develop": GroupDevelop,
 	"super-advisor":   GroupAdvisor,
 	"manager-design":  GroupDesignHarnessE2E,
+	"manager-lead":    GroupLead,
 	"builder-harness": GroupDesignHarnessE2E,
 	"e2e-tester":      GroupDesignHarnessE2E,
 	"manager-docs":    GroupDocs,
@@ -158,10 +164,15 @@ var agentGroupMembership = map[string]string{
 	"Explore":         GroupExplore,
 }
 
-// profileMatrixAgentOrder is the canonical display/derivation order of the 11
+// profileMatrixAgentOrder is the canonical display/derivation order of the 12
 // retained agents for the model-profile preview surfaces (REQ-MPM-020). Explore
 // is included in the display and now resolves to its own explore group cell
 // (sonnet/low, profile-invariant), no longer the inherit sentinel.
+//
+// manager-lead was absent from this list until t205 and therefore resolved to
+// the unmapped-agent `inherit` sentinel — the Tier L coordinator, the one row
+// that fans out to every other agent, took whatever the session happened to be
+// on. It is a mapped row now.
 var profileMatrixAgentOrder = []string{
 	"manager-spec",
 	"plan-auditor",
@@ -169,6 +180,7 @@ var profileMatrixAgentOrder = []string{
 	"manager-develop",
 	"super-advisor",
 	"manager-design",
+	"manager-lead",
 	"builder-harness",
 	"e2e-tester",
 	"manager-docs",
@@ -185,8 +197,8 @@ func ProfileMatrixAgents() []string {
 	return out
 }
 
-// defaultProfileMatrix is the per-AGENT model+effort Go-code SSOT: 11 mapped
-// agents x 3 profiles = 33 cells. Outer key: profile {high, medium, low}. Inner
+// defaultProfileMatrix is the per-AGENT model+effort Go-code SSOT: 12 mapped
+// agents x 3 profiles = 36 cells. Outer key: profile {high, medium, low}. Inner
 // key: retained agent NAME (not a group — the group layer is display-only now,
 // because per-agent cells split two of the former groups). Value: {model,
 // effort}. This is the authoritative fallback for any cell absent from config
@@ -202,20 +214,28 @@ func ProfileMatrixAgents() []string {
 //     to finish the same long-horizon task. Unit token price is therefore not
 //     the cost driver — completion efficiency is. Opus is consequently the
 //     model for every multi-turn agentic row.
+//
 //   - `xhigh` is retired from the matrix: on Opus 5 it scores the same as
 //     `high` while costing materially more, so it is strictly dominated. `max`
 //     is the only level above `high`, so a row that wants more than `high`
 //     takes `max`.
-//   - The phase-weighted override: the benchmark-derived cost anchor put
-//     manager-develop at `medium` and derived the rest from it. That anchor is
-//     superseded by an operator policy that spends on the phase producing code
-//     and steps down the phases framing and recording it — run
-//     (manager-develop) and the on-demand advisor (super-advisor) hold `max` in
-//     the high column, review (sync-auditor) stays `high`, plan (manager-spec,
-//     plan-auditor) steps down to `high`, and sync (manager-docs) steps down to
-//     `low`. `medium` remains the knee of the Opus 5 cost/score curve; the
-//     policy departs from it in both directions, so this matrix is NOT the
-//     cost-minimal derivation and must not be re-derived back onto the anchor.
+//
+//   - The judgment-weighted policy (t205, operator-specified). The cells are
+//     settled operator input, not a derivation: the spend goes to the rows that
+//     JUDGE rather than the rows that produce. The three auditing/advising rows
+//     (plan-auditor, sync-auditor, super-advisor) and the two coordinating rows
+//     (manager-design, manager-lead) hold `high` in both upper columns, while
+//     the authoring and implementing rows (manager-spec, manager-develop) sit
+//     at `medium` in all three. `max` is absent from every cell — the level
+//     exists in the vocabulary but no row currently takes it. The economical
+//     column keeps super-advisor alone at `high`, because the escalation path
+//     is what a cheap column most needs to stay sound.
+//
+//     Do NOT re-derive these cells from a cost/score curve. An earlier
+//     phase-weighted derivation (spend on the phase producing code) is
+//     superseded, and re-deriving would silently walk manager-develop and
+//     manager-spec back up.
+//
 //   - Under a GLM backend these per-agent cells are NOT what reaches the wire.
 //     z.ai's reasoning control collapses every effort above `low` ({medium,
 //     high, xhigh, max}) onto reasoning_effort=max; only `low` stays at the
@@ -226,6 +246,7 @@ func ProfileMatrixAgents() []string {
 //     per-agent intent and takes effect on Claude-backed sessions, where agent
 //     frontmatter is the load-bearing channel; it does not by itself alter
 //     delivered GLM behavior. See glm_effort_overlay.go.
+//
 //   - Sonnet 5 is retained ONLY for single-shot, input-dominated, non-agentic
 //     rows (Explore search, manager-git mechanics) where the multi-step
 //     completion failure does not apply and the lower input price does.
@@ -239,38 +260,41 @@ func ProfileMatrixAgents() []string {
 // @MX:REASON: [AUTO] fan_in >= 3 (ResolveAgentModelEffort resolver + moai model profile CLI + web preview + harness class derivation); cells are settled design input, re-derivation forbidden
 var defaultProfileMatrix = map[string]map[string]config.ModelEffort{
 	PerformanceTierHigh: {
-		"manager-spec":    {Model: "opus", Effort: EffortLevelHigh},
+		"manager-spec":    {Model: "opus", Effort: EffortLevelMedium},
 		"plan-auditor":    {Model: "opus", Effort: EffortLevelHigh},
 		"sync-auditor":    {Model: "opus", Effort: EffortLevelHigh},
-		"manager-develop": {Model: "opus", Effort: EffortLevelMax},
-		"super-advisor":   {Model: "opus", Effort: EffortLevelMax},
+		"manager-develop": {Model: "opus", Effort: EffortLevelMedium},
+		"super-advisor":   {Model: "opus", Effort: EffortLevelHigh},
 		"manager-design":  {Model: "opus", Effort: EffortLevelHigh},
+		"manager-lead":    {Model: "opus", Effort: EffortLevelHigh},
 		"builder-harness": {Model: "opus", Effort: EffortLevelHigh},
 		"e2e-tester":      {Model: "opus", Effort: EffortLevelMedium},
-		"manager-docs":    {Model: "opus", Effort: EffortLevelLow},
+		"manager-docs":    {Model: "sonnet", Effort: EffortLevelLow},
 		"manager-git":     {Model: "sonnet", Effort: EffortLevelLow},
 		"Explore":         {Model: "sonnet", Effort: EffortLevelLow},
 	},
 	PerformanceTierMedium: {
-		"manager-spec":    {Model: "opus", Effort: EffortLevelHigh},
+		"manager-spec":    {Model: "opus", Effort: EffortLevelMedium},
 		"plan-auditor":    {Model: "opus", Effort: EffortLevelHigh},
 		"sync-auditor":    {Model: "opus", Effort: EffortLevelHigh},
-		"manager-develop": {Model: "opus", Effort: EffortLevelHigh},
+		"manager-develop": {Model: "opus", Effort: EffortLevelMedium},
 		"super-advisor":   {Model: "opus", Effort: EffortLevelHigh},
-		"manager-design":  {Model: "opus", Effort: EffortLevelMedium},
+		"manager-design":  {Model: "opus", Effort: EffortLevelHigh},
+		"manager-lead":    {Model: "opus", Effort: EffortLevelHigh},
 		"builder-harness": {Model: "opus", Effort: EffortLevelMedium},
 		"e2e-tester":      {Model: "opus", Effort: EffortLevelLow},
-		"manager-docs":    {Model: "opus", Effort: EffortLevelLow},
+		"manager-docs":    {Model: "sonnet", Effort: EffortLevelLow},
 		"manager-git":     {Model: "sonnet", Effort: EffortLevelLow},
 		"Explore":         {Model: "sonnet", Effort: EffortLevelLow},
 	},
 	PerformanceTierLow: {
-		"manager-spec":    {Model: "opus", Effort: EffortLevelLow},
-		"plan-auditor":    {Model: "opus", Effort: EffortLevelLow},
-		"sync-auditor":    {Model: "opus", Effort: EffortLevelLow},
-		"manager-develop": {Model: "opus", Effort: EffortLevelLow},
-		"super-advisor":   {Model: "opus", Effort: EffortLevelMedium},
-		"manager-design":  {Model: "opus", Effort: EffortLevelLow},
+		"manager-spec":    {Model: "opus", Effort: EffortLevelMedium},
+		"plan-auditor":    {Model: "opus", Effort: EffortLevelMedium},
+		"sync-auditor":    {Model: "opus", Effort: EffortLevelMedium},
+		"manager-develop": {Model: "opus", Effort: EffortLevelMedium},
+		"super-advisor":   {Model: "opus", Effort: EffortLevelHigh},
+		"manager-design":  {Model: "opus", Effort: EffortLevelMedium},
+		"manager-lead":    {Model: "opus", Effort: EffortLevelMedium},
 		"builder-harness": {Model: "opus", Effort: EffortLevelLow},
 		"e2e-tester":      {Model: "sonnet", Effort: EffortLevelLow},
 		"manager-docs":    {Model: "sonnet", Effort: EffortLevelLow},

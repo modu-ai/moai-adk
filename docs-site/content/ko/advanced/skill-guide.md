@@ -158,6 +158,24 @@ MoAI-ADK 템플릿은 **34개 스킬**을 제공합니다. 요청을 알맞은 �
 | `moai-domain-svg-infographic` | 편집 가능 SVG 기술 인포그래픽 (CJK 폰트) |
 | `moai-domain-design-dna` | 참조 디자인(스크린샷·이미지·URL)을 Design DNA JSON으로 역추출하고 그 JSON으로 새 산출물 생성 |
 
+### SVG 인포그래픽 — 생성 가능한 다이어그램 종류
+
+`moai-domain-svg-infographic` 스킬이 어느 종류의 다이어그램까지 만들 수 있는지는 추측이 아니라 실측으로 확인했습니다. 외부 카탈로그(SkillStead TypePack)의 9가지 형태를 같은 생성 과제로 실행해 스킬 자체의 품질 게이트(소스 린트, 2배 해상도 PNG 렌더 검증)를 통과하는지 측정했고, 그 결과 아홉 형태 모두 재현 가능함을 확인했습니다.
+
+| 다이어그램 형태 | 쓰임 | 실측 산출물 |
+| --------------- | ---- | ----------- |
+| 승인 게이트 흐름 (approval-gate) | 통과해야 할 관문이 있는 승인 절차 | `.moai/reports/t272/artifacts/approval-gate.svg` |
+| 전후 비교 (before-after) | 같은 기준으로 짚는 개선 전과 후 | `.moai/reports/t272/artifacts/before-after.svg` |
+| KPI 카드 그리드 (cards-kpi-grid) | 핵심 지표를 카드로 모은 요약 | `.moai/reports/t272/artifacts/cards-kpi-grid.svg` |
+| 의사결정 매트릭스 (decision-matrix) | 후보와 기준의 교차 평가 | `.moai/reports/t272/artifacts/decision-matrix.svg` |
+| 레이어 스택 (layer-stack) | 위에서 아래로 쌓이는 구조 | `.moai/reports/t272/artifacts/layer-stack.svg` |
+| 중첩 스코프 (nested-scope) | 경계가 겹겹으로 감싸는 구조 | `.moai/reports/t272/artifacts/nested-scope.svg` |
+| 프로세스 흐름 (process-flow) | 순서대로 이어지는 처리 단계 | `.moai/reports/t272/artifacts/process-flow.svg` |
+| 로드맵 타임라인 (roadmap-timeline) | 시간축에 놓인 단계와 이정표 | `.moai/reports/t272/artifacts/roadmap-timeline.svg` |
+| 토폴로지 구조 (topology-component) | 컴포넌트 사이의 연결 관계 | `.moai/reports/t272/artifacts/topology-component.svg` |
+
+각 형태는 네 가지 기본 레이아웃(층위 스택, 좌에서 우로 흐름, 나란히 비교, 계층 트리) 위에서 정보 구조를 보존하는 방식으로 표현됩니다. 형태별 판정 표와 게이트 로그는 `.moai/reports/t272/verdict.md`에서 확인할 수 있습니다.
+
 ### Reference — 모범 사례 (11개)
 
 | 스킬 | 하는 일 |

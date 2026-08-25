@@ -116,6 +116,18 @@ moai glm -f lane-3            # …GLM バックエンドのレーンも同じ�
 
 定義と例を備えた正式な用語集: [カンバンボード用語](https://adk.mo.ai.kr/ja/core-concepts/kanban-board-terms)
 
+カードも形によって、通る列が変わる。リードはカードが `backlog` を離れるとき、3 つのクラスに分類してディスパッチに名前を付ける。
+
+| クラス | 形 | 近道 |
+|---|---|---|
+| A — 即時クローズ | 1 ファイル・1 行、設計判断なし、回帰は CI が捕まえる | 1 つのセッションが PR まで丸ごと (`plan` を飛ばす) |
+| B — 原因未確認の欠陥 | 壊れているのは明確なのに、原因がまだ立っていない | `run → sync` (`plan` なし、SPEC なし) |
+| C — 設計変更 | 決定を含むか、サブシステムにまたがる | 3 列すべて |
+
+クラス A は主張ではなく、確認された証拠だけで認める — 1 ファイルに測定された diff と、マージされる HEAD のグリーンの CI を引用できなければクラス A ではない。クラス B は `plan` だけを飛ばし、sync ゲートのレビューはそのまま回り、原因確立の証拠 (再現コマンドと出力) をカードの進行記録に残す。
+
+詳しく: [カンバンモード — カードクラス](https://adk.mo.ai.kr/ja/advanced/kanban-mode)
+
 ### ボードを目で見る
 
 `moai web` はローカル・コンソールを立ち上げる。カンバン画面でカンバン・チェーンと SPEC パイプラインを一緒に眺め、Overview・Specs・Monitor・Settings・Todo 画面も併せ持つ。
@@ -404,6 +416,10 @@ AI エージェント同士がコンテキスト・不変条件・危険区域�
 ### ref / domain スキル
 
 ref スキル 11 個 (`moai-ref-api-patterns`、`moai-ref-owasp-checklist`、`moai-ref-llm-security`、`moai-ref-react-patterns`、`moai-ref-testing-pyramid`、`moai-ref-ui-polish`、`moai-ref-secops`、`moai-ref-supply-chain`、`moai-ref-seo`、`moai-ref-git-workflow`、`moai-ref-cross-model-audit`) と domain スキル 7 個 (`moai-domain-backend`、`moai-domain-frontend`、`moai-domain-database`、`moai-domain-design-dna`、`moai-domain-html-report`、`moai-domain-humanize`、`moai-domain-svg-infographic`) がエージェントに現場の知識を注入する。
+
+### SVG 技術インフォグラフィック
+
+`moai-domain-svg-infographic` スキルは編集可能な SVG 技術インフォグラフィックを作る。マークアップを書く前に座標を数値で計算し、完成したファイルは決定論的なソース lint と寸法検証付き 2 倍解像度 PNG レンダーを通る。承認ゲートフロー、前後比較、KPI カードグリッド、意思決定マトリクス、レイヤースタック、ネストしたスコープ、プロセスフロー、ロードマップタイムライン、コンポーネントトポロジーの 9 形式を外部カタログのベンチマークで実測し、すべて再現可能であることを確認した (形式別の成果物と判定: `.moai/reports/t272/verdict.md`)。
 
 ### クロスプラットフォーム
 

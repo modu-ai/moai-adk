@@ -25,6 +25,8 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -92,7 +94,13 @@ workflows/todo.md both document; ` + "`moai todo list`" + ` remains valid and pr
 same thing. A single unknown token stays an error (a mistyped verb must not
 become a card), while a phrase of two or more words falls through to add:
 ` + "`moai todo fix the flaky gate`" + ` adds that card. A one-word card therefore
-needs the explicit add verb — the price of keeping typos loud.`,
+needs the explicit add verb — the price of keeping typos loud.
+
+One fallthrough shape is refused outright: a verb-shaped first token followed
+by a card id (` + "`moai todo pick t151`" + `) is a mistyped verb, not a card, and
+becomes an error naming the known verbs. A card text that merely mentions an
+id later in the sentence still falls through, and ` + "`moai todo add \"<text>\"`" + `
+adds any text verbatim.`,
 		Args: func(cmd *cobra.Command, args []string) error {
 			// t69 fallthrough: two or more words are natural language → add.
 			// Deliberate failure modes: a single token (the mistyped verb
@@ -101,6 +109,13 @@ needs the explicit add verb — the price of keeping typos loud.`,
 			// card needs the explicit add verb; conversely a mistyped verb
 			// followed by more words ("lst the queue") DOES become a card,
 			// the accepted cost of the fallthrough.
+			//
+			// t203 narrows that accepted cost where the cost is highest:
+			// a verb-shaped first token addressing a card id is a mistyped
+			// verb, not a card — see todoMistypedVerbGuard.
+			if err := todoMistypedVerbGuard(cmd, args); err != nil {
+				return err
+			}
 			if len(args) > 1 {
 				return nil
 			}
@@ -120,6 +135,62 @@ needs the explicit add verb — the price of keeping typos loud.`,
 		newTodoAnalyzeCmd(), newTodoRelateCmd(), newTodoUnrelateCmd(), newTodoWhyCmd(),
 		newTodoPRCmd())
 	return cmd
+}
+
+// todoVerbShaped matches a first token that reads as a command verb: one
+// lowercase ASCII word, optionally hyphenated. Bounded in length so a long
+// word in a card text cannot pass for a verb.
+var todoVerbShaped = regexp.MustCompile(`^[a-z][a-z-]{1,15}$`)
+
+// todoCardIDShaped matches the id form the queue issues (`t<decimal>`, see
+// kanban.BacklogStore). Deliberately NOT the looser reference form the verbs
+// accept (`done 151` normalizes a bare number): a bare number is ordinary
+// card text ("fix 3 flaky tests"), while an explicit `t151` in second
+// position is an address.
+var todoCardIDShaped = regexp.MustCompile(`^t\d+$`)
+
+// todoMistypedVerbGuard refuses the one fallthrough shape that is almost
+// never a card: a verb-shaped first token followed by a card id
+// (`moai todo pick t151`). Cobra routes a REGISTERED verb to its subcommand,
+// so anything reaching the parent is an unregistered word — and a word
+// addressing a card id is a mistyped verb whose silent conversion into a
+// card is the data pollution #1597 reports.
+//
+// The t69 usability trade-off is preserved everywhere else: a natural-language
+// card still falls through to add, including one that merely mentions a card
+// id later in the sentence ("fix the drift found in t151"). Only the exact
+// verb-then-id shape is refused, and `moai todo add "<text>"` remains the
+// escape hatch for a card that genuinely reads that way.
+func todoMistypedVerbGuard(cmd *cobra.Command, args []string) error {
+	if len(args) < 2 {
+		return nil
+	}
+	if !todoVerbShaped.MatchString(args[0]) || !todoCardIDShaped.MatchString(args[1]) {
+		return nil
+	}
+	phrase := strings.Join(args, " ")
+	return fmt.Errorf(
+		"todo: %q is not a todo verb and %q is a card id — refusing to create a card named %q.\n"+
+			"Known verbs: %s\nTo add this text as a card anyway: moai todo add %q",
+		args[0], args[1], phrase, strings.Join(todoVerbNames(cmd), ", "), phrase)
+}
+
+// todoVerbNames lists the registered verb names, so the guard's message is
+// derived from the command tree rather than from a hand-maintained list that
+// drifts as verbs are added.
+func todoVerbNames(cmd *cobra.Command) []string {
+	if cmd == nil {
+		return nil
+	}
+	names := make([]string, 0, len(cmd.Commands()))
+	for _, sub := range cmd.Commands() {
+		if sub.Name() == "help" || sub.Name() == "completion" || sub.Hidden {
+			continue
+		}
+		names = append(names, sub.Name())
+	}
+	sort.Strings(names)
+	return names
 }
 
 // newTodoAddCmd — `moai todo add "<text>"` (REQ-TODO-002): append under the

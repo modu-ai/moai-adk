@@ -48,28 +48,32 @@ func writeLLMProfileYAML(t *testing.T, root, profile string, overrides map[strin
 	}
 }
 
-// TestG3ReadPathDerivesFromProfileMatrix (G3-1): the manager-spec select's
+// TestG3ReadPathDerivesFromProfileMatrix (G3-1): the manager-design select's
 // selected model/effort comes from its own high-profile cell (opus/high), NOT
 // the seeded frontmatter (sonnet/medium) — proving the read path repointed off
 // frontmatter onto the profile matrix. The seeded profile is the superseded
 // "max", so this also exercises the max -> high read alias. The frontmatter
 // effort is "medium" while the seeded agent's high-column cell is "high", which
 // keeps the negative assertion below discriminating.
+//
+// The probe is manager-design rather than manager-spec because manager-spec's
+// high cell is now `medium` — equal to the divergent frontmatter value, which
+// would make the negative assertion pass without observing anything.
 func TestG3ReadPathDerivesFromProfileMatrix(t *testing.T) {
 	root := t.TempDir()
-	seedAgentFMFile(t, root, "moai", "manager-spec", "sonnet", "medium") // frontmatter deliberately divergent
+	seedAgentFMFile(t, root, "moai", "manager-design", "sonnet", "medium") // frontmatter deliberately divergent
 	writeLLMProfileYAML(t, root, "max", nil)
 
 	body := renderAgentFMBody(t, root)
 
 	if !strings.Contains(body, `<option value="opus" selected`) {
-		t.Error("manager-spec model select did not select the high-profile cell (opus) — read path still reads frontmatter/badge-tier")
+		t.Error("manager-design model select did not select the high-profile cell (opus) — read path still reads frontmatter/badge-tier")
 	}
 	if !strings.Contains(body, `<option value="high" selected`) {
-		t.Error("manager-spec effort select did not select the high-profile cell (high)")
+		t.Error("manager-design effort select did not select the high-profile cell (high)")
 	}
 	if strings.Contains(body, `<option value="medium" selected`) {
-		t.Error("manager-spec effort select shows the FRONTMATTER value (medium) — read path must derive from the profile matrix")
+		t.Error("manager-design effort select shows the FRONTMATTER value (medium) — read path must derive from the profile matrix")
 	}
 }
 
@@ -139,9 +143,9 @@ func TestG3SaveDefaultValueClearsOverride(t *testing.T) {
 	a := newPolicyTestApp(root)
 	form := baseSaveForm()
 	form.Set("performance_tier", "medium")
-	// medium/manager-spec default = opus/high → submitting it clears the override.
+	// medium/manager-spec default = opus/medium → submitting it clears the override.
 	form.Set("agentfm.manager-spec.model", "opus")
-	form.Set("agentfm.manager-spec.effort", "high")
+	form.Set("agentfm.manager-spec.effort", "medium")
 
 	rec := servePost(t, a.routes(), "/save", form)
 	if rec.Code != http.StatusOK {

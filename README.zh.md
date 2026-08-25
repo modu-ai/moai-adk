@@ -116,6 +116,18 @@ moai glm -f lane-3            # ……GLM 后端上的一条泳道
 
 带定义和示例的正式术语表：[看板术语](https://adk.mo.ai.kr/zh/core-concepts/kanban-board-terms)
 
+卡片也会因形状不同而走不同的列。主控在卡片离开 `backlog` 时将其归入三个类别之一，并在派单文里写明。
+
+| 类别 | 形状 | 捷径 |
+|---|---|---|
+| A —— 立即关闭 | 一个文件·一行，无设计判断，回归由 CI 捕捉 | 一个会话包办到 PR（跳过 `plan`） |
+| B —— 原因未查明的缺陷 | 明显坏了，但原因还没确立 | `run → sync`（不经 `plan`，没有 SPEC） |
+| C —— 设计变更 | 含有决策，或横跨多个子系统 | 三个列全走 |
+
+类别 A 只凭查证过的证据认定，不接受主张 —— 引用不出以单文件测得的 diff 和将在合并的 HEAD 上跑绿的 CI，就不是类别 A。类别 B 只跳过 `plan`，sync 门禁的评审照常运转，并把原因确立的证据（复现命令与输出）留在卡片的进度记录里。
+
+详见：[看板模式 —— 卡片类别](https://adk.mo.ai.kr/zh/advanced/kanban-mode)
+
 ### 用眼睛看板
 
 `moai web` 会启动一个本地控制台。看板画面把看板链条和 SPEC 流水线放在一起，还附带 Overview、Specs、Monitor、Settings、Todo 画面。
@@ -404,6 +416,10 @@ TRUST 5（Tested · Readable · Unified · Secured · Trackable）作用于每�
 ### ref / domain 技能
 
 ref 技能 11 个（`moai-ref-api-patterns`、`moai-ref-owasp-checklist`、`moai-ref-llm-security`、`moai-ref-react-patterns`、`moai-ref-testing-pyramid`、`moai-ref-ui-polish`、`moai-ref-secops`、`moai-ref-supply-chain`、`moai-ref-seo`、`moai-ref-git-workflow`、`moai-ref-cross-model-audit`）与 domain 技能 7 个（`moai-domain-backend`、`moai-domain-frontend`、`moai-domain-database`、`moai-domain-design-dna`、`moai-domain-html-report`、`moai-domain-humanize`、`moai-domain-svg-infographic`）向智能体注入现场知识。
+
+### SVG 技术信息图
+
+`moai-domain-svg-infographic` 技能生成可编辑的 SVG 技术信息图。写标记之前先用数值算出坐标，完成的文件要通过对确定性源码 lint 和带尺寸校验的 2 倍分辨率 PNG 渲染。通过外部目录基准实测了九种形态——审批门流程、前后对比、KPI 卡片网格、决策矩阵、分层堆叠、嵌套作用域、流程图、路线图时间线、组件拓扑——确认九种全部可复现（分形态产物与判定：`.moai/reports/t272/verdict.md`）。
 
 ### 跨平台
 

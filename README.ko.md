@@ -116,6 +116,18 @@ moai glm -f lane-3            # …GLM 백엔드로 띄운 레인 하나
 
 정의와 예시를 갖춘 정식 용어집: [칸반 보드 용어](https://adk.mo.ai.kr/ko/core-concepts/kanban-board-terms)
 
+카드도 모양에 따라 지나치는 칸이 갈린다. 리드는 카드가 `backlog`를 떠날 때 세 클래스로 분류해 배차문에 이름 붙인다.
+
+| 클래스 | 모양 | 지름길 |
+|---|---|---|
+| A — 바로 닫기 | 파일 하나·한 줄, 설계 판단 없음, 회귀는 CI가 잡음 | 한 세션이 PR까지 통째로 (`plan` 건너뜀) |
+| B — 원인 미확인 결함 | 잘못된 건 분명한데 원인이 아직 안 서 있음 | `run → sync` (`plan` 없이, SPEC 없음) |
+| C — 설계 변경 | 결정이 들어 있거나 하위 시스템에 걸침 | 세 칸 모두 |
+
+클래스 A는 주장이 아니라 확인된 증거로만 인정한다 — 파일 하나로 측정된 diff와 머지될 HEAD의 초록 CI를 인용하지 못하면 클래스 A가 아니다. 클래스 B는 `plan`만 건너뛰고 sync 게이트의 리뷰는 그대로 돌아가며, 원인 확립 증거(재현 명령과 출력)를 카드의 진행 기록에 남긴다.
+
+자세히: [칸반 모드 — 카드 클래스](https://adk.mo.ai.kr/ko/advanced/kanban-mode)
+
 ### 보드를 눈으로 보기
 
 `moai web`은 로컬 콘솔을 띄운다. 칸반 화면에서 칸반 체인과 SPEC 파이프라인을 함께 보고, Overview·Specs·Monitor·Settings·Todo 화면이 함께 붙는다.
@@ -404,6 +416,10 @@ AI 에이전트끼리 컨텍스트·불변 계약·위험 구역을 주고받는
 ### ref / domain 스킬
 
 ref 스킬 11개(`moai-ref-api-patterns`, `moai-ref-owasp-checklist`, `moai-ref-llm-security`, `moai-ref-react-patterns`, `moai-ref-testing-pyramid`, `moai-ref-ui-polish`, `moai-ref-secops`, `moai-ref-supply-chain`, `moai-ref-seo`, `moai-ref-git-workflow`, `moai-ref-cross-model-audit`)와 domain 스킬 7개(`moai-domain-backend`, `moai-domain-frontend`, `moai-domain-database`, `moai-domain-design-dna`, `moai-domain-html-report`, `moai-domain-humanize`, `moai-domain-svg-infographic`)가 에이전트에 현장 지식을 주입한다.
+
+### SVG 기술 인포그래픽
+
+`moai-domain-svg-infographic` 스킬이 편집 가능한 SVG 기술 인포그래픽을 만든다. 마크업을 쓰기 전에 좌표를 수치로 계산하고, 완성된 파일은 소스 린트와 2배 해상도 PNG 렌더 검증을 거친다. 승인 게이트 흐름, 전후 비교, KPI 카드 그리드, 의사결정 매트릭스, 레이어 스택, 중첩 스코프, 프로세스 흐름, 로드맵 타임라인, 토폴로지 구조 아홉 가지 형태를 외부 카탈로그 벤치마크로 실측해 모두 재현 가능함을 확인했다(형태별 산출물과 판정: `.moai/reports/t272/verdict.md`).
 
 ### 크로스 플랫폼
 

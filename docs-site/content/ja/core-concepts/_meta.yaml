@@ -5,6 +5,8 @@ index:
   title: "MoAI-ADKとは？"
 "spec-based-dev":
   title: "SPECベース開発"
+"spec-lifecycle":
+  title: "SPEC ライフサイクル"
 ddd:
   title: "MoAI-ADK開発方法論"
 "trust-5":

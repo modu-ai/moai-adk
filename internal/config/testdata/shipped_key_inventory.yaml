@@ -978,6 +978,12 @@
 - path: "llm.profiles.high.manager-design.model"
   class: W
   evidence: reader
+- path: "llm.profiles.high.manager-lead.effort"
+  class: W
+  evidence: reader
+- path: "llm.profiles.high.manager-lead.model"
+  class: W
+  evidence: reader
 - path: "llm.profiles.high.manager-develop.effort"
   class: W
   evidence: reader
@@ -1044,6 +1050,12 @@
 - path: "llm.profiles.low.manager-design.model"
   class: W
   evidence: reader
+- path: "llm.profiles.low.manager-lead.effort"
+  class: W
+  evidence: reader
+- path: "llm.profiles.low.manager-lead.model"
+  class: W
+  evidence: reader
 - path: "llm.profiles.low.manager-develop.effort"
   class: W
   evidence: reader
@@ -1108,6 +1120,12 @@
   class: W
   evidence: reader
 - path: "llm.profiles.medium.manager-design.model"
+  class: W
+  evidence: reader
+- path: "llm.profiles.medium.manager-lead.effort"
+  class: W
+  evidence: reader
+- path: "llm.profiles.medium.manager-lead.model"
   class: W
   evidence: reader
 - path: "llm.profiles.medium.manager-develop.effort"

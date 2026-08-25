@@ -936,7 +936,7 @@ Custom team agent body`
 // ============================================================================
 
 // TestLintLR12_MatrixDrift_DriftedAgent tests LR-12: effort drift from the
-// canonical matrix. Uses a RETAINED agent (manager-spec, medium cell = high)
+// canonical matrix. Uses a RETAINED agent (manager-spec, medium cell = medium)
 // because canonicalEffortMatrix is derived from template.DefaultProfileMatrix —
 // archived names are out-of-roster and can no longer exercise this rule.
 func TestLintLR12_MatrixDrift_DriftedAgent(t *testing.T) {
@@ -982,7 +982,7 @@ SPEC agent body`
 	// For now, this test documents the expected behavior
 
 	if !foundLR12 {
-		t.Error("expected LR-12 violation for manager-spec with effort: low (matrix medium cell is high)")
+		t.Error("expected LR-12 violation for manager-spec with effort: low (matrix medium cell is medium)")
 	}
 }
 
@@ -1029,7 +1029,7 @@ func TestLintLR12_MatrixDrift_CleanAgent(t *testing.T) {
 name: manager-spec
 description: SPEC authoring specialist
 tools: Read, Write, Agent
-effort: high
+effort: medium
 ---
 SPEC agent body`
 
@@ -1048,7 +1048,7 @@ SPEC agent body`
 	// Correct effort value for the medium cell -> no LR-12 violation
 	for _, v := range violations {
 		if v.Rule == "LR-12" {
-			t.Errorf("expected no LR-12 violations for manager-spec with correct effort: high, got: %s", v.Message)
+			t.Errorf("expected no LR-12 violations for manager-spec with correct effort: medium, got: %s", v.Message)
 		}
 	}
 

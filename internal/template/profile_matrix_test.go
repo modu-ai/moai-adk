@@ -76,20 +76,21 @@ func TestApplyProfile_InsertsProfileWhenAbsent(t *testing.T) {
 }
 
 // TestResolveAgentModelEffort_MatrixAFidelity covers REQ-MPM-009/010/011/012 /
-// AC-MPM-005: profile:high with no overrides resolves every one of the 11 mapped
+// AC-MPM-005: profile:high with no overrides resolves every one of the 12 mapped
 // agents to the high column exactly.
 func TestResolveAgentModelEffort_MatrixAFidelity(t *testing.T) {
 	cfg := config.LLMConfig{Profile: "high"}
 	want := map[string]config.ModelEffort{
-		"manager-spec":    {Model: "opus", Effort: "high"},
+		"manager-spec":    {Model: "opus", Effort: "medium"},
 		"plan-auditor":    {Model: "opus", Effort: "high"},
 		"sync-auditor":    {Model: "opus", Effort: "high"},
-		"manager-develop": {Model: "opus", Effort: "max"},
-		"super-advisor":   {Model: "opus", Effort: "max"},
+		"manager-develop": {Model: "opus", Effort: "medium"},
+		"super-advisor":   {Model: "opus", Effort: "high"},
 		"manager-design":  {Model: "opus", Effort: "high"},
+		"manager-lead":    {Model: "opus", Effort: "high"},
 		"builder-harness": {Model: "opus", Effort: "high"},
 		"e2e-tester":      {Model: "opus", Effort: "medium"},
-		"manager-docs":    {Model: "opus", Effort: "low"},
+		"manager-docs":    {Model: "sonnet", Effort: "low"},
 		"manager-git":     {Model: "sonnet", Effort: "low"},
 		"Explore":         {Model: "sonnet", Effort: "low"},
 	}
@@ -110,9 +111,10 @@ func TestResolveAgentModelEffort_MatrixAFidelity(t *testing.T) {
 func TestResolveAgentModelEffort_LowColumn(t *testing.T) {
 	cfg := config.LLMConfig{Profile: "low"}
 	cases := map[string]config.ModelEffort{
-		"manager-spec":    {Model: "opus", Effort: "low"},
-		"super-advisor":   {Model: "opus", Effort: "medium"},
-		"manager-develop": {Model: "opus", Effort: "low"},
+		"manager-spec":    {Model: "opus", Effort: "medium"},
+		"super-advisor":   {Model: "opus", Effort: "high"},
+		"manager-develop": {Model: "opus", Effort: "medium"},
+		"manager-lead":    {Model: "opus", Effort: "medium"},
 		"manager-docs":    {Model: "sonnet", Effort: "low"},
 		"manager-git":     {Model: "sonnet", Effort: "low"},
 	}
@@ -125,7 +127,7 @@ func TestResolveAgentModelEffort_LowColumn(t *testing.T) {
 }
 
 // TestDefaultProfileMatrix_Shape asserts the structural invariants of the
-// per-agent matrix: 3 profiles x 11 agents = 33 cells, models restricted to
+// per-agent matrix: 3 profiles x 12 agents = 36 cells, models restricted to
 // {opus, sonnet} (fable is retired from the matrix — it is dominated by Opus 5
 // on the coding axis at every effort), efforts restricted to
 // {low, medium, high, max} (no `xhigh` cell — on Opus 5 xhigh scores the same
@@ -165,8 +167,8 @@ func TestDefaultProfileMatrix_Shape(t *testing.T) {
 			}
 		}
 	}
-	if total != 33 {
-		t.Errorf("matrix cell count = %d, want 33", total)
+	if total != 36 {
+		t.Errorf("matrix cell count = %d, want 36", total)
 	}
 }
 
@@ -203,13 +205,13 @@ func TestDefaultProfileMatrix_Monotone(t *testing.T) {
 func TestResolveHarnessAgentModelEffort(t *testing.T) {
 	// Derived: effort borrowed from the class row, model always pinned.
 	want := map[string]string{
-		HarnessClassReadOnlyExtract:     EffortLevelLow,  // Explore row
-		HarnessClassMechanicalTransform: EffortLevelLow,  // manager-git row
-		HarnessClassSynthesize:          EffortLevelLow,  // manager-docs row
-		HarnessClassResearch:            EffortLevelHigh, // plan-auditor row
-		HarnessClassVerifyJudge:         EffortLevelHigh, // sync-auditor row
-		HarnessClassImplement:           EffortLevelMax,  // manager-develop row
-		HarnessClassDesignArchitecture:  EffortLevelHigh, // manager-design row
+		HarnessClassReadOnlyExtract:     EffortLevelLow,    // Explore row
+		HarnessClassMechanicalTransform: EffortLevelLow,    // manager-git row
+		HarnessClassSynthesize:          EffortLevelLow,    // manager-docs row
+		HarnessClassResearch:            EffortLevelHigh,   // plan-auditor row
+		HarnessClassVerifyJudge:         EffortLevelHigh,   // sync-auditor row
+		HarnessClassImplement:           EffortLevelMedium, // manager-develop row
+		HarnessClassDesignArchitecture:  EffortLevelHigh,   // manager-design row
 	}
 	cfg := config.LLMConfig{Profile: "high"}
 	for class, exp := range want {
@@ -230,7 +232,7 @@ func TestResolveHarnessAgentModelEffort(t *testing.T) {
 	if known {
 		t.Errorf("unknown class should report known=false")
 	}
-	if got.Effort != EffortLevelMax || got.Model != HarnessAgentModel {
+	if got.Effort != EffortLevelMedium || got.Model != HarnessAgentModel {
 		t.Errorf("unknown class should fall back to implement: got %+v", got)
 	}
 
@@ -336,15 +338,17 @@ func TestResolveAgentModelEffort_StaleGroupKeyedMirror(t *testing.T) {
 		Profile: "high",
 		Profiles: map[string]map[string]config.ModelEffort{
 			// Deliberately unequal to the Go default high cell for manager-docs
-			// (opus/low) so honoring the stale group key would be observable.
-			"high": {GroupDocs: {Model: "sonnet", Effort: "low"}},
+			// (sonnet/low) so honoring the stale group key would be observable.
+			// The planted value has to be re-picked whenever that cell moves,
+			// or the assertion passes without observing anything.
+			"high": {GroupDocs: {Model: "opus", Effort: "max"}},
 		},
 	}
 	got, mapped := ResolveAgentModelEffort(cfg, "manager-docs")
 	if !mapped {
 		t.Fatalf("manager-docs should still resolve")
 	}
-	if (got != config.ModelEffort{Model: "opus", Effort: "low"}) {
+	if (got != config.ModelEffort{Model: "sonnet", Effort: "low"}) {
 		t.Errorf("stale group-keyed cell should be ignored, Go default used: got %+v", got)
 	}
 }
@@ -354,8 +358,12 @@ func TestResolveAgentModelEffort_StaleGroupKeyedMirror(t *testing.T) {
 // "max" folds to the high column.
 func TestResolveAgentModelEffort_LegacyAlias(t *testing.T) {
 	cfg := config.LLMConfig{PerformanceTier: "max"} // no profile
-	got, _ := ResolveAgentModelEffort(cfg, "manager-develop")
-	if (got != config.ModelEffort{Model: "opus", Effort: "max"}) {
+	// builder-harness is the probe because its cells still differ across all
+	// three columns (high/medium/low), so landing on the high column is
+	// observable. manager-develop no longer works here — it is `medium` in
+	// every column, which would pass for any column the alias resolved to.
+	got, _ := ResolveAgentModelEffort(cfg, "builder-harness")
+	if (got != config.ModelEffort{Model: "opus", Effort: "high"}) {
 		t.Errorf("legacy perf_tier max should resolve to the high column: got %+v", got)
 	}
 }
