@@ -19,6 +19,7 @@ tier: M
 | Date | Author | Change |
 |------|--------|--------|
 | 2026-08-25 | manager-spec | Initial creation — plan-phase artifacts for card t273 (Class C, Tier M). Scope fixed by `.moai/reports/t273/gap-map.md` GAP-1..GAP-4; that gap map's Out-of-Scope list is binding on this SPEC. |
+| 2026-08-25 | manager-spec | Plan-audit iter-1 revision (review-1 D1-D10): GREEN anchors strengthened (AC-001/007/009/011); run-entry pre-flight decoupled from nav approval (D2); gap-map committed to branch (D3); REQ-WFD-001 Class A canon completion (D4); AC-009 grep `-E` fix (D5); E7 count 33 (D6); REQ-WFD-004 relabel (D7); M1 qualifier move (D8); denominator footnote (D9); REQ-WFD-007 icon wording (D10). Team-lead nav approval recorded 2026-08-25 with three binding conditions (§C.3). |
 
 ## §A Context and Problem
 
@@ -40,13 +41,13 @@ Canonical sources the documentation must not drift from:
 
 REQ/AC budget: Tier M — 12 requirements, 11 acceptance criteria (ceilings 16/16 respected independently).
 
-- **REQ-WFD-001** (Ubiquitous): The docs-site kanban-mode page shall present the three card classes — A (direct close: one file, no design judgement, plan column skipped), B (defect, cause unknown: plan column skipped but the sync review gate NOT skipped, with cause-establishing evidence written to the card's progress record), and C (design change: all three working columns) — in all four locales, using the normative heading tokens of §C.4.
+- **REQ-WFD-001** (Ubiquitous): The docs-site kanban-mode page shall present the three card classes — A (direct close: one file, one line, no design judgement — CI catches the regression; admitted on checked evidence: measured one-file diff plus CI green on the head that will merge; plan column skipped), B (defect, cause unknown: plan column skipped but the sync review gate NOT skipped, with cause-establishing evidence written to the card's progress record), and C (design change: all three working columns) — in all four locales, using the normative heading tokens of §C.4.
 - **REQ-WFD-002** (Ubiquitous): The four README files shall carry a compact card-class table in the kanban section, authored in `README.ko.md` (canonical) and derived to `README.md` / `README.ja.md` / `README.zh.md`.
 - **REQ-WFD-003** (Ubiquitous): The docs-site shall provide a dedicated Factory Mode page at `advanced/factory-mode.md` in all four locales, covering: the lead + lane-1..N structure; whole-card routing contrasted with Kanban's column-to-column movement; the lane-internal plan>run>sync stages with per-stage sub-agent spawning; the per-lane concurrent sub-agent cap of 10 (launcher-injected `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS`); staggered lane activation; and `workers.json` slot ownership at `.moai/state/factory/workers.json`.
-- **REQ-WFD-004** (Ubiquitous): While the dedicated Factory Mode page exists, the kanban-mode page shall retain a Factory Mode summary that links to `advanced/factory-mode.md`, in all four locales.
+- **REQ-WFD-004** (State-driven): While the dedicated Factory Mode page exists, the kanban-mode page shall retain a Factory Mode summary that links to `advanced/factory-mode.md`, in all four locales.
 - **REQ-WFD-005** (Ubiquitous): The docs-site core-concepts section shall provide a SPEC lifecycle page at `core-concepts/spec-lifecycle.md` in all four locales, covering: the 3-phase table (command / owning agent / purpose); per-phase input→output artifacts; the three gates — Implementation Kickoff Approval (the plan→run human gate, mandatory and score-independent), plan-audit (independent audit, per-tier PASS thresholds 0.75 / 0.80 / 0.85), and sync-auditor (4-dimension quality scoring); the Tier S/M/L artifact sets (2 / 3 / 5 files) and REQ/AC ceilings (8 / 16 / 25); a one-paragraph Route A/B summary; and the /clear strategy.
 - **REQ-WFD-006** (Ubiquitous): The spec-lifecycle page and `core-concepts/spec-based-dev.md` shall cross-link each other with an explicit division of labor — spec-based-dev.md answers "what is a SPEC document"; spec-lifecycle.md answers "how does the lifecycle flow" — minimizing duplication.
-- **REQ-WFD-007** (Capability gate): Where the team lead has approved the navigation plan, the two new pages shall be registered in the per-locale `_meta.yaml` files (4 locales × 2 pages) and in `docs-site/data/menu/main.yaml` (leaf entries: 4-locale name map + `ref`), reusing an existing menu icon SVG case (`school` or `flash_on`) where an icon is used and introducing no new icon. Page authoring itself is not gated on this approval.
+- **REQ-WFD-007** (Capability gate): Where the team lead has approved the navigation plan (approval granted 2026-08-25; binding conditions in §C.3), the two new pages shall be registered in the per-locale `_meta.yaml` files (4 locales × 2 pages) and in `docs-site/data/menu/main.yaml` (leaf entries: 4-locale name map + `ref`). No menu icon is introduced; if an icon is ever attached, it must reuse the existing SVG cases (`school` or `flash_on`). Page authoring itself is not gated on this approval.
 - **REQ-WFD-008** (Ubiquitous): The canonical-locale chain shall govern all content changes — docs-site authored in ko and derived ko → en → ja/zh; README authored in `README.ko.md` and derived to en/ja/zh — with every canonical change landing in all 4 locales in the same PR.
 - **REQ-WFD-009** (Unwanted): The new and modified pages shall not contain Mermaid LR/RL directions, body-text emoji (the `{{</* icon */>}}` shortcode is the mechanism instead), forbidden URL domains (`docs.moai-ai.dev`, `adk.moai.com`, `adk.moai.kr` — only `adk.mo.ai.kr` is valid), or emphasis markers enclosing parenthetical text.
 - **REQ-WFD-010** (Ubiquitous): The 4-locale page inventory shall remain in exact parity after the change — every locale moves from the measured baseline of 150 pages to 152 — and the change shall introduce no NEW per-page section-count divergence against the `.locale-parity-baseline` ratchet.
@@ -69,13 +70,13 @@ REQ/AC budget: Tier M — 12 requirements, 11 acceptance criteria (ceilings 16/1
 
 All facts documented under REQ-WFD-011 trace to the three canonical rule files listed in §A. Where a canonical value also appears in existing public pages (e.g. `README.ko.md:80` cap 10, `advanced/kanban-mode.md:239`), the new pages restate the same value — no second opinion.
 
-### §C.3 Navigation gating
+### §C.3 Navigation gating (approval granted 2026-08-25)
 
-Nav edits (`_meta.yaml` × 4 locales, `data/menu/main.yaml`) are structure-curator domain and require team-lead approval BEFORE run-phase nav edits. Plan milestone M0 reports the nav proposal to the lead; milestone M4 executes nav edits only after approval. Page authoring (M1–M3) does not wait.
+Nav edits (`_meta.yaml` × 4 locales, `data/menu/main.yaml`) are structure-curator domain and required team-lead approval before run-phase nav edits. **The team lead approved the navigation plan on 2026-08-25**, with three binding conditions that become M4 completion criteria (plan.md §F M4): (1) the new items' order in all 4 locales' `_meta.yaml` must be identical across locales (factory-mode adjacent to kanban-mode); (2) `data/menu/main.yaml` name maps must carry all 4 keys ko/en/ja/zh — a missing key passes the build but breaks rendering; (3) the exit gate is the FULL `hns-oss-docs-verify` recipe observed passing (warning-free hugo build, sitemap, URL blacklist, Mermaid direction, 4-locale file existence, section-count parity). Plan milestone M0 records the approval and reports completion; milestone M4 executes nav edits under the three conditions. Page authoring (M1–M3) never waits on nav approval.
 
 ### §C.4 Normative heading/content tokens (AC anchors)
 
-The card-class section heading carries, per locale: ko `카드 클래스`, en `Card Classes`, ja `カードクラス`, zh `卡片类别`. Protocol values stay locale-verbatim: `Class A/B/C`, `Implementation Kickoff`, `0.75` / `0.80` / `0.85`, `workers.json`, `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS`, `sync-auditor`, `factory-mode`, `spec-lifecycle`.
+The card-class section heading carries, per locale: ko `카드 클래스`, en `Card Classes`, ja `カードクラス`, zh `卡片类别`. Protocol values stay locale-verbatim: `Class A/B/C`, `Implementation Kickoff`, `0.75` / `0.80` / `0.85`, `workers.json`, `CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS`, `sync-auditor`, `factory-mode`, `spec-lifecycle`, and the four sync-auditor dimension names `Functionality` / `Security` / `Craft` / `Consistency` (the 4-dimension scoring semantics; AC anchors rely on them).
 
 ### §C.5 Touch boundary
 
@@ -90,7 +91,7 @@ Full binary criteria with RED-NOW evidence and GREEN-PATH per criterion live in 
 Binding per `.moai/reports/t273/gap-map.md` § 명시적 비범위:
 
 ### Out of Scope — wholesale rewrite of existing pages
-- No full rewrite of existing 4-locale pages; the 524-page locale parity set is preserved (t87 drop rationale).
+- No full rewrite of existing 4-locale pages; the 524-page locale parity set is preserved (t87 drop rationale). Denominator note: 150 `.md` files per locale (incl. 19 `_index.md`) = 131 content pages per locale; 131 × 4 = **524 content pages**. The 150 × 4 = 600 figure in acceptance.md E5 counts all `.md` files — different denominators, both correct.
 
 ### Out of Scope — Origin-Trail Chain internals
 - JSONL / WorktreeNode 13-field / two-phase backfill internals are not re-documented; the existing kanban-mode.md deep section stays as-is.

@@ -16,13 +16,14 @@ Scope is fixed by `.moai/reports/t273/gap-map.md` GAP-1..GAP-4 (see spec.md §A)
 ## §C Pre-flight (run-phase entry)
 
 - [ ] Plan Audit Gate verdict for this SPEC (task #7) is PASS or skip-eligible, AND Implementation Kickoff Approval obtained (mandatory, score-independent).
-- [ ] M0 nav proposal approved by team lead (gates M4 only).
 - [ ] `hugo` available locally for the verify build; `.locale-parity-baseline` present (measured: exists, 58 lines).
 - [ ] Working tree clean except intended paths; commit staging by explicit pathspec only.
 
+Run entry does NOT depend on the nav approval. The lead approved the navigation plan on 2026-08-25 (recorded in spec.md §C.3) with three binding conditions; that approval gates M4 only — M1–M3 never wait on it, and no approval item belongs in this pre-flight (iter-1 D2).
+
 ## §D Constraints
 
-Per spec.md §C — i18n HARD rules (ko canonical chains, 4-locale same-PR, TD-only Mermaid, no body emoji, URL whitelist, version SSOT, no vercel.json redirects for additions); canonical-fidelity to the three rule files; nav gating (M4 after lead approval); touch boundary `docs-site/` + READMEs only.
+Per spec.md §C — i18n HARD rules (ko canonical chains, 4-locale same-PR, TD-only Mermaid, no body emoji, URL whitelist, version SSOT, no vercel.json redirects for additions); canonical-fidelity to the three rule files; nav registration under the recorded lead approval (2026-08-25) and its three completion conditions (spec.md §C.3); touch boundary `docs-site/` + READMEs only.
 
 ## §E Self-Verification (run-phase exit)
 
@@ -35,12 +36,12 @@ Per spec.md §C — i18n HARD rules (ko canonical chains, 4-locale same-PR, TD-o
 
 Ordered by decision-reversibility: the naming/split-boundary decisions come first; mechanical nav registration and verification come last. No time estimates — priority labels only.
 
-- **M0 (Priority High, parallel — starts immediately, gates M4 only)**: Report the nav proposal to the team lead (SendMessage): 2 new pages — `advanced/factory-mode.md` (advanced `_meta.yaml`, adjacent to kanban-mode) and `core-concepts/spec-lifecycle.md` (core-concepts `_meta.yaml`, adjacent to spec-based-dev) — `main.yaml` leaf entries with 4-locale name maps, no new icon. Page authoring (M1–M3) proceeds without waiting; M4 blocks on approval.
-- **M1 (Priority High) — GAP-3 spec-lifecycle page**: Author `core-concepts/spec-lifecycle.md` in ko first (page NAME decision finalizes here: `spec-lifecycle.md`), covering the spec.md REQ-WFD-005 content list; derive en/ja/zh; add bidirectional cross-links with `spec-based-dev.md` incl. the division-of-labor sentence. Flips AC-WFD-006/007/008, AC-WFD-011 (with M4 for nav).
+- **M0 (Priority High, parallel — starts immediately, gates M4 only)**: Record the lead's nav approval — granted 2026-08-25 with three binding conditions (spec.md §C.3) — and report completion (not a request) to the team lead (SendMessage): 2 new pages — `advanced/factory-mode.md` (advanced `_meta.yaml`, adjacent to kanban-mode) and `core-concepts/spec-lifecycle.md` (core-concepts `_meta.yaml`, adjacent to spec-based-dev) — `main.yaml` leaf entries with 4-locale name maps, no new icon. Page authoring (M1–M3) proceeds without waiting; M4 executes under the recorded approval's three conditions.
+- **M1 (Priority High) — GAP-3 spec-lifecycle page**: Author `core-concepts/spec-lifecycle.md` in ko first (page NAME decision finalizes here: `spec-lifecycle.md`), covering the spec.md REQ-WFD-005 content list; derive en/ja/zh; add bidirectional cross-links with `spec-based-dev.md` incl. the division-of-labor sentence. Flips AC-WFD-006/007/008, AC-WFD-011.
 - **M2 (Priority High) — GAP-2 factory-mode page**: Decide the split boundary (what moves out of kanban-mode.md's factory section vs. what stays in the summary); author `advanced/factory-mode.md` in ko per REQ-WFD-003; derive en/ja/zh; reduce kanban-mode.md's factory section to summary + link ×4 locales. Flips AC-WFD-003/004/005.
 - **M3 (Priority Medium) — GAP-1 + GAP-4 card classes**: Add the card-class section (normative heading tokens per spec.md §C.4) to `advanced/kanban-mode.md` ×4 locales, ko first; add the compact card-class table to the README kanban section ×4 files, `README.ko.md` first. Flips AC-WFD-001/002.
-- **M4 (Priority High, GATED on M0 approval) — nav registration**: `_meta.yaml` entries ×4 locales ×2 pages + `data/menu/main.yaml` 2 leaf entries (4-locale name maps + `ref`). No icon additions. Flips AC-WFD-009.
-- **M5 (Priority High) — verify exit gate**: Run plan §E in full (AC matrix + regression gates + new-page parity + canon spot-check); record evidence; hand to sync phase.
+- **M4 (Priority High, gated on the recorded lead approval of 2026-08-25) — nav registration**: `_meta.yaml` entries ×4 locales ×2 pages + `data/menu/main.yaml` 2 leaf entries (4-locale name maps + `ref`). No icon additions. Completion criteria from the approval (spec.md §C.3): (1) the new items' order is identical across all 4 locales' `_meta.yaml` (factory-mode adjacent to kanban-mode); (2) both `main.yaml` name maps carry all 4 keys ko/en/ja/zh — a missing key passes the build but breaks rendering; (3) verified inside the FULL `hns-oss-docs-verify` exit gate (M5), never a subset. Flips AC-WFD-009 (the nav-gated AC).
+- **M5 (Priority High) — verify exit gate**: Run plan §E in full (AC matrix + regression gates + new-page parity + canon spot-check). The card's exit gate is the FULL `hns-oss-docs-verify` recipe observed passing — warning-free hugo build, sitemap existence, URL blacklist, Mermaid direction, 4-locale file existence, section-count parity — never a subset (approval condition 3). Record evidence; hand to sync phase.
 
 ## §G Anti-Patterns
 

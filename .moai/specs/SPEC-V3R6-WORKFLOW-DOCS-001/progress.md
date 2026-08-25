@@ -7,7 +7,7 @@ plan_status: audit-ready
 plan_complete_at: 2026-08-25
 plan_artifacts: spec.md, plan.md, acceptance.md   # Tier M 3-file set (+ this progress skeleton)
 red_evidence: acceptance.md §D.3 (12 entries, tree db1362739)
-gated_milestone: M4 (nav registration) — requires team-lead approval per plan §F M0
+gated_milestone: M4 (nav registration) — lead approval granted 2026-08-25 with 3 binding completion conditions (spec.md §C.3, plan.md §F M0/M4); M1–M3 never wait on it
 known_correction: page-count baseline is 150/locale (not 131) — plan §B.1
 ```
 

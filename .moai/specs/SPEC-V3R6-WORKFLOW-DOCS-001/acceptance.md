@@ -8,8 +8,8 @@ Tier M · 11 ACs (ceiling 16). **AC discipline (binding)**: every AC below was a
 
 **Given** the docs-site kanban-mode page **When** a reader looks for card classes **Then** all four locales carry a section with the normative heading token (ko `카드 클래스` / en `Card Classes` / ja `カードクラス` / zh `卡片类别`) presenting A/B/C semantics.
 
-- RED-NOW: `grep -rn -E "카드 클래스|Class A|클래스 A|类别 A|卡片类别" docs-site/content/{ko,en,ja,zh}/advanced/kanban-mode.md README.ko.md README.md README.ja.md README.zh.md` → **no output (exit 1)** — zero matches in all 8 files; the concept is absent from every public surface.
-- GREEN-PATH: M3 → `grep -c "<locale token>" docs-site/content/<locale>/advanced/kanban-mode.md` returns ≥ 1 in each of the 4 locales. Missing-in-one = FAIL (both directions counted).
+- RED-NOW: `grep -rn -E "카드 클래스|Class A|클래스 A|类别 A|卡片类别" docs-site/content/{ko,en,ja,zh}/advanced/kanban-mode.md README.ko.md README.md README.ja.md README.zh.md` → **no output (exit 1)** — zero matches in all 8 files; the concept is absent from every public surface. (Re-verified on explicit 8-file paths at tree `59bdf63db`, iter-1 revision.)
+- GREEN-PATH: M3 → per locale: `grep -c "<locale heading token>" docs-site/content/<locale>/advanced/kanban-mode.md` ≥ 1 AND the substantive semantics tokens `grep -c "Class A"` ≥ 1, `grep -c "Class B"` ≥ 1, `grep -c "Class C"` ≥ 1 on the same file (`Class A/B/C` locale-verbatim per spec.md §C.4 — a page carrying only the heading token cannot pass). ×4 locales; missing-in-one = FAIL (both directions counted).
 
 ### AC-WFD-002 — card-class table in README kanban section, 4 files (REQ-WFD-002)
 
@@ -22,7 +22,7 @@ Tier M · 11 ACs (ceiling 16). **AC discipline (binding)**: every AC below was a
 
 **Given** the advanced section **When** Factory Mode is sought **Then** `advanced/factory-mode.md` exists in all 4 locales and names the slot registry.
 
-- RED-NOW: `find docs-site/content -name "*factory*" -o -name "*lifecycle*"` → **no output** (0 files); `ls docs-site/content/ko/advanced/` lists 34 md files, no `factory-mode.md`.
+- RED-NOW: `find docs-site/content -name "*factory*" -o -name "*lifecycle*"` → **no output** (0 files); `ls docs-site/content/ko/advanced/` lists 33 md files (37 entries incl. `_meta.yaml` and non-md files), no `factory-mode.md` (recounted at tree `59bdf63db`, iter-1 D6).
 - GREEN-PATH: M2 → `ls docs-site/content/{ko,en,ja,zh}/advanced/factory-mode.md` lists 4 files; `grep -c "workers.json" docs-site/content/ko/advanced/factory-mode.md` ≥ 1.
 
 ### AC-WFD-004 — per-lane cap anchor on factory-mode.md (REQ-WFD-003 / REQ-WFD-011)
@@ -50,8 +50,8 @@ Tier M · 11 ACs (ceiling 16). **AC discipline (binding)**: every AC below was a
 
 **Given** the lifecycle page **When** the gates section is read **Then** Implementation Kickoff Approval is named and the per-tier PASS thresholds appear (numbers locale-verbatim).
 
-- RED-NOW: page absent — `grep -c "Implementation Kickoff" docs-site/content/ko/core-concepts/spec-lifecycle.md` → **"No such file or directory" (exit 2)**.
-- GREEN-PATH: M1 → `grep -c "Implementation Kickoff" <page>` ≥ 1; `grep -c "0.85" <page>` ≥ 1 (implies the 0.75/0.80/0.85 row); ×4 locales for both greps.
+- RED-NOW: page absent — `grep -c "Implementation Kickoff" docs-site/content/ko/core-concepts/spec-lifecycle.md` → **"No such file or directory" (exit 2)** (re-verified at tree `59bdf63db`, iter-1 revision).
+- GREEN-PATH: M1 → `grep -c "Implementation Kickoff" <page>` ≥ 1 AND ALL THREE threshold greps ≥ 1: `grep -c "0.75"` ≥ 1, `grep -c "0.80"` ≥ 1, `grep -c "0.85"` ≥ 1 (a page carrying only `0.85` cannot pass — the per-tier row is 0.75/0.80/0.85, all locale-verbatim per spec.md §C.4); ×4 locales for all four greps.
 
 ### AC-WFD-008 — bidirectional cross-link spec-lifecycle ↔ spec-based-dev (REQ-WFD-006)
 
@@ -62,10 +62,10 @@ Tier M · 11 ACs (ceiling 16). **AC discipline (binding)**: every AC below was a
 
 ### AC-WFD-009 — nav registration (gated on lead approval) (REQ-WFD-007)
 
-**Given** the lead approved the nav proposal (M0) **When** navigation is inspected **Then** both pages are registered in main.yaml and the per-locale `_meta.yaml` files.
+**Given** the lead approved the nav proposal (approval granted 2026-08-25, spec.md §C.3) **When** navigation is inspected **Then** both pages are registered in main.yaml and the per-locale `_meta.yaml` files of all four locales.
 
-- RED-NOW: `grep -c "factory-mode" docs-site/data/menu/main.yaml docs-site/content/ko/advanced/_meta.yaml` → **0 / 0**; `grep -c "spec-lifecycle" docs-site/data/menu/main.yaml docs-site/content/ko/core-concepts/_meta.yaml` → **0 / 0** (measured). Icon SVG cases verified present for reuse: `grep -n "school|flash_on" docs-site/layouts/partials/menu.html` → `:58 flash_on`, `:65 school`.
-- GREEN-PATH: M4 (only after M0 approval) → all four greps ≥ 1 (main.yaml carries 4-locale name maps + `ref: /advanced/factory-mode` and `ref: /core-concepts/spec-lifecycle`; `_meta.yaml` ×4 locales each list both slugs).
+- RED-NOW: key-line anchor grep — `grep -cE '^\s*"(factory-mode|spec-lifecycle)":'` over the 4-locale `advanced/_meta.yaml` + 4-locale `core-concepts/_meta.yaml` → **0 ×8 files (exit 1)**; `grep -c "factory-mode\|spec-lifecycle" docs-site/data/menu/main.yaml` → **0** (measured at tree `59bdf63db`, iter-1 revision). Icon SVG cases verified present for reuse: `grep -n -E "school|flash_on" docs-site/layouts/partials/menu.html` → `:58 flash_on`, `:65 school` (D5: reproduced with `-E`; the previously recorded bare form could not have matched — an unescaped pipe in BRE is a literal; see §D.3 E9 for the BRE-escaped form).
+- GREEN-PATH: M4 (under the recorded lead approval) → `grep -cE '^\s*"(factory-mode|spec-lifecycle)":'` ≥ 1 in EACH of the 8 `_meta.yaml` files (key-line anchor matches menu entries only — comments are `#`-prefixed and cannot satisfy it); `grep -c "ref: /advanced/factory-mode" docs-site/data/menu/main.yaml` ≥ 1 AND `grep -c "ref: /core-concepts/spec-lifecycle" docs-site/data/menu/main.yaml` ≥ 1; both `main.yaml` name maps carry all 4 locale keys ko/en/ja/zh (approval condition 2 — a missing key passes the build but breaks rendering).
 
 ### AC-WFD-010 — 4-locale page-count parity 150 → 152 (REQ-WFD-010)
 
@@ -78,8 +78,8 @@ Tier M · 11 ACs (ceiling 16). **AC discipline (binding)**: every AC below was a
 
 **Given** the lifecycle page **When** the third gate is documented **Then** the sync-auditor agent is named (4-dimension quality scoring owner).
 
-- RED-NOW: page absent — `grep -c "sync-auditor" docs-site/content/ko/core-concepts/spec-lifecycle.md` → **"No such file or directory" (exit 2)**.
-- GREEN-PATH: M1 → grep ≥ 1, ×4 locales (agent identifier locale-verbatim).
+- RED-NOW: page absent — `grep -c "sync-auditor" docs-site/content/ko/core-concepts/spec-lifecycle.md` → **"No such file or directory" (exit 2)** (re-verified at tree `59bdf63db`, iter-1 revision).
+- GREEN-PATH: M1 → `grep -c "sync-auditor" <page>` ≥ 1 AND each of the four dimension names ≥ 1 on the same file: `grep -c "Functionality"`, `grep -c "Security"`, `grep -c "Craft"`, `grep -c "Consistency"` (dimension names locale-verbatim per spec.md §C.4 — a page naming only `sync-auditor` cannot pass; the four names ARE the 4-dimension scoring semantics in their cheapest grep-able form). ×4 locales.
 
 ## §D.1 Severity
 
@@ -112,12 +112,14 @@ All 11 ACs are **MUST-PASS** (closure gates). AC-WFD-009 additionally carries th
 | E4 | `find docs-site/content -name "*lifecycle*" -o -name "*factory*"` | no output |
 | E5 | `find docs-site/content -name '*.md' \| cut -d/ -f3 \| sort \| uniq -c` | 150 en / 150 ja / 150 ko / 150 zh |
 | E6 | `grep -c "^## " README.md README.ko.md README.ja.md README.zh.md` | 12 / 12 / 12 / 12 |
-| E7 | `ls docs-site/content/ko/advanced/` | 34 md files, no factory-mode.md |
+| E7 | `ls docs-site/content/ko/advanced/` | 33 md files (37 entries incl. `_meta.yaml` and non-md files), no factory-mode.md |
 | E8 | `ls docs-site/content/ko/core-concepts/` | 11 md files, no spec-lifecycle.md |
 | E9 | `grep -n "kanban-mode\|school\|flash_on" docs-site/data/menu/main.yaml docs-site/layouts/partials/menu.html` | leaf refs :484/:716; SVG cases flash_on menu.html:58, school menu.html:65 |
 | E10 | `wc -l docs-site/.locale-parity-baseline` | 58 lines (ratchet baseline exists) |
 | E11 | `grep -rn "workers.json" README.ko.md internal/` | README.ko.md:80; internal/kanban/factory_slots.go:48 |
 | E12 | `grep -rn "최대 10" README.ko.md docs-site/content/ko/advanced/kanban-mode.md` | README.ko.md:80; kanban-mode.md:239 |
+
+**Re-verification (iter-1 revision, tree `59bdf63db`, 2026-08-25)** — the strengthened/changed AC anchors were re-run on the current tree; all RED holds: E1 re-run on explicit 8-file paths → no output, exit 1; AC-007 and AC-011 RED (incl. the new `Functionality` dimension-anchor grep) → "No such file or directory", exit 2; AC-009 extended key-anchor grep `grep -cE '^\s*"(factory-mode|spec-lifecycle)":'` over all 8 `_meta.yaml` files → 0 ×8, exit 1, and `main.yaml` → 0, exit 1; D5 icon grep with `-E` reproduces `menu.html:58` (`flash_on`) and `menu.html:65` (`school`); D6 recount of `ko/advanced/` → 33 md files / 37 total entries. The revision touches `.moai/` files only (no `docs-site/` or README file), so the RED state is unchanged by the fix commit itself.
 
 ## §D.4 Indirect verification
 
