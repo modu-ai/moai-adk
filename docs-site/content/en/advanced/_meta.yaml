@@ -53,6 +53,8 @@ index:
   title: "Autonomy Tier (MOAI_AUTONOMY_TIER)"
 "kanban-mode":
   title: "Kanban Mode"
+"factory-mode":
+  title: "Factory Mode"
 "manager-lead":
   title: "manager-lead Lead Coordinator"
 "multi-model-audit":
