@@ -1,9 +1,13 @@
 package constitution_test
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"testing"
 	"unicode"
@@ -43,6 +47,14 @@ const (
 	// wantRegistryEntries pins the entry-set size (REQ-ZRR-005 / AC-ZRR-006).
 	// Deliberate registry growth updates this constant in the same change.
 	wantRegistryEntries = 101
+	// wantTupleDigest pins the entry-set SHAPE, not just its size
+	// (REQ-ZRH-004): SHA-256 hex over the sorted "id|zone|zone_class|%t"
+	// lines of all entries (see registryTupleDigest). A count-preserving
+	// substitution of any pinned tuple field changes exactly one line and
+	// therefore the digest (REQ-ZRH-005). A deliberate registry change
+	// updates wantRegistryEntries and wantTupleDigest in the same change
+	// (REQ-ZRH-006).
+	wantTupleDigest = "2edb5384085bccbea2f9fd85e535ac4bc3ec63f7cb0918c075340882b16f51c5"
 	// wantRetiredExempt pins the number of [SUPERSEDED …] clause-exempt
 	// entries under option C (spec.md §1.2 v0.5.0).
 	wantRetiredExempt = 4
@@ -134,6 +146,14 @@ func TestRegistrySyncGuard(t *testing.T) {
 			}
 			if len(reg.Entries) != wantRegistryEntries {
 				t.Fatalf("[%s mirror] entry count = %d, want %d (REQ-ZRR-005: the repair must not add or delete entries; deliberate growth updates wantRegistryEntries in the same change)", m.name, len(reg.Entries), wantRegistryEntries)
+			}
+
+			// --- 2b. Tuple-digest pin (REQ-ZRH-004): shape, not just size ---
+			// The count pin above cannot see a mutation that preserves the
+			// entry count while rewriting a pinned tuple field; the digest
+			// can (SPEC-ZONE-REGISTRY-HARDEN-001 F2).
+			if got := registryTupleDigest(reg.Entries); got != wantTupleDigest {
+				t.Fatalf("[%s mirror] registry tuple digest = %s, want %s — a pinned (id,zone,zone_class,canary_gate) tuple changed while the entry count stayed %d; if this is a deliberate registry change, update wantRegistryEntries and wantTupleDigest in the same change (REQ-ZRH-004/006)", m.name, got, wantTupleDigest, wantRegistryEntries)
 			}
 
 			registryRel, err := filepath.Rel(m.projectDir, m.registry)
@@ -276,6 +296,53 @@ func TestRegistrySyncMirrorsIdentical(t *testing.T) {
 	t.Logf("mirrors byte-identical: %d bytes", len(local))
 }
 
+// TestRegistryTupleDigestRejectsSubstitution pins REQ-ZRH-005
+// (SPEC-ZONE-REGISTRY-HARDEN-001 F2): a registry mutation that preserves the
+// entry count while altering any pinned tuple field (id / zone / zone_class /
+// canary_gate) must fail the digest assertion. Each mutant is applied to a
+// TempDir copy of the real registry — the working tree is never mutated.
+// Mutants keep the registry loadable (valid id format, parsable zone), so the
+// digest comparison itself is the check that fires, not a parser error.
+func TestRegistryTupleDigestRejectsSubstitution(t *testing.T) {
+	ms := registrySyncMirrors(t)
+
+	base, err := constitution.LoadRegistry(ms[0].registry, ms[0].projectDir)
+	if err != nil {
+		t.Fatalf("LoadRegistry(base): %v", err)
+	}
+	if got := registryTupleDigest(base.Entries); got != wantTupleDigest {
+		t.Fatalf("baseline registry digest drift: computed %s, want %s — a pinned tuple field changed on the real tree; if this is a deliberate registry change, update wantRegistryEntries and wantTupleDigest in the same change (REQ-ZRH-004/006)", got, wantTupleDigest)
+	}
+
+	cases := []struct {
+		name     string
+		field    string
+		newValue string
+	}{
+		{"id substitution", "id", "CONST-V3R2-0040"},
+		{"zone substitution", "zone", "Evolvable"},
+		{"zone_class substitution", "zone_class", "frozen-safety"},
+		{"canary_gate flip", "canary_gate", "false"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			regPath := writeTupleMutatedRegistryCopy(t, ms[0].registry, tc.field, tc.newValue)
+			reg, err := constitution.LoadRegistry(regPath, filepath.Dir(regPath))
+			if err != nil {
+				t.Fatalf("LoadRegistry(mutant %s): %v", tc.field, err)
+			}
+			if len(reg.Entries) != wantRegistryEntries {
+				t.Fatalf("fixture self-check: %s changed the entry count (%d != %d) — not a count-preserving substitution", tc.name, len(reg.Entries), wantRegistryEntries)
+			}
+			got := registryTupleDigest(reg.Entries)
+			if got == wantTupleDigest {
+				t.Fatalf("%s mutant produced the pinned digest %s — count-preserving substitution escape (REQ-ZRH-005)", tc.name, got)
+			}
+			t.Logf("%s: count preserved (%d entries), digest %s != pinned %s — rejected by the tuple-digest pin", tc.name, len(reg.Entries), got, wantTupleDigest)
+		})
+	}
+}
+
 // writeMutatedRegistryCopy copies the real registry into a temp dir with the
 // R1 scenario mutation applied (guard-failure-scenario.md §1): one character
 // inserted mid-span inside the quoted clause value of CONST-V3R2-004 — the
@@ -303,6 +370,73 @@ func writeMutatedRegistryCopy(t *testing.T, srcRegistry string) string {
 		t.Fatalf("write mutated registry copy: %v", err)
 	}
 	return regPath
+}
+
+// writeTupleMutatedRegistryCopy copies the real registry into a temp dir with
+// one tuple field line rewritten inside the CONST-V3R2-004 entry block — a
+// count-preserving substitution of a pinned (id, zone, zone_class,
+// canary_gate) field (SPEC-ZONE-REGISTRY-HARDEN-001 F2 / REQ-ZRH-005). The
+// entry block is located by id at run time, so the fixture tracks the entry
+// through future rewordings, mirroring writeMutatedRegistryCopy. The mutated
+// registry is loaded with its own dir as projectDir: cited-file orphans are
+// warnings only (REQ-CON-001-040), so parsing succeeds and the digest — not
+// a parser error — is what must reject the mutant.
+func writeTupleMutatedRegistryCopy(t *testing.T, srcRegistry, field, newValue string) string {
+	t.Helper()
+	data, err := os.ReadFile(srcRegistry)
+	if err != nil {
+		t.Fatalf("read registry for tuple mutation copy: %v", err)
+	}
+	src := string(data)
+	const marker = "- id: CONST-V3R2-004\n"
+	start := strings.Index(src, marker)
+	if start < 0 {
+		t.Fatalf("tuple mutation fixture drifted: entry CONST-V3R2-004 not found in %s", srcRegistry)
+	}
+	head := src[start+len(marker):]
+	end := len(src)
+	if next := strings.Index(head, "\n- id: "); next >= 0 {
+		end = start + len(marker) + next + 1
+	}
+	block := src[start:end]
+
+	// The id lives on the list-item line; every other field on an indented
+	// line inside the block.
+	prefix := "  "
+	if field == "id" {
+		prefix = "- "
+	}
+	fieldRe := regexp.MustCompile(`(?m)^` + regexp.QuoteMeta(prefix+field) + `: .*$`)
+	if !fieldRe.MatchString(block) {
+		t.Fatalf("tuple mutation fixture drifted: field %q not found in the CONST-V3R2-004 block of %s", field, srcRegistry)
+	}
+	mutated := src[:start] + fieldRe.ReplaceAllString(block, prefix+field+": "+newValue) + src[end:]
+
+	dir := t.TempDir()
+	regPath := filepath.Join(dir, "zone-registry.md")
+	if err := os.WriteFile(regPath, []byte(mutated), 0o600); err != nil {
+		t.Fatalf("write tuple-mutated registry copy: %v", err)
+	}
+	return regPath
+}
+
+// registryTupleDigest serializes the entry set to one
+// "id|zone|zone_class|canary_gate" line per entry (canary_gate rendered by
+// %t), sorts the lines (ids are unique, so this is an id sort for all
+// practical purposes), joins them with newlines, and returns the SHA-256
+// hex digest. Sorting makes the digest independent of YAML ordering, so the
+// same entry set always yields the same digest (SPEC-ZONE-REGISTRY-HARDEN-001
+// plan.md §B determinism note). The serialization format is implementation
+// latitude; ACs verify behavior (substitution rejected, clean tree passes),
+// not the digest value itself.
+func registryTupleDigest(entries []constitution.Rule) string {
+	lines := make([]string, len(entries))
+	for i, e := range entries {
+		lines[i] = fmt.Sprintf("%s|%s|%s|%t", e.ID, e.Zone, e.ZoneClass, e.CanaryGate)
+	}
+	sort.Strings(lines)
+	sum := sha256.Sum256([]byte(strings.Join(lines, "\n")))
+	return hex.EncodeToString(sum[:])
 }
 
 // headingSlug implements the six-step heading-to-slug rule declared by
