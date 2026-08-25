@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "tree_root": "/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t250",
-  "commit_sha": "5b88fd0ab0d0e1394bd92bec1650c54d35784281",
+  "commit_sha": "f513013b5dffc52cc5c6617d333b84049c07dcb5",
   "dirty": false,
   "described_roots": [
     "internal",
@@ -9,5 +9,5 @@
     "pkg"
   ],
   "generated_by": "codemaps-gen",
-  "generated_at": "2026-08-24T18:45:24Z"
+  "generated_at": "2026-08-25T03:59:45Z"
 }
