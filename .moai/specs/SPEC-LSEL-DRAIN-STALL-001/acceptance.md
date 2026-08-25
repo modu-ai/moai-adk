@@ -95,21 +95,22 @@
 ### AC-LDS-009 — 죽은 앵커 제거 + SKILL 미러 (MUST)
 
 - **Given** tracked lsel 표면 전체(`.claude/skills/hns-lsel-curator/**`, `.claude/workflows/lsel-drain-loop.js`), **When** `grep -rn "§28" <표면>`, **Then** 0건. **When** SKILL.md 판독, **Then** 내구-운영 섹션(트리거·드레인·검증·로컬 배선 안내) 존재.
-- **RED-now**: `grep -rn "§28" .claude/skills/hns-lsel-curator/` → **1건** (backlog_check.sh:50) — live CLAUDE.local.md(35,355B, 활성 유지)에는 §28/LSEL 0회: 앵커가 가리키는 실체 없음 (2026-08-25).
+- **RED-now**: `grep -rn "§28" .claude/skills/hns-lsel-curator/` → **2건** (backlog_check.sh:6 헤더 주석 + backlog_check.sh:50 리마인더 본문 — iter-1 D1 정정; 종전 1건 기록은 :50만 집계한 과소계상) — live CLAUDE.local.md(35,355B, 활성 유지)에는 §28/LSEL 0회: 앵커가 가리키는 실체 없음 (2026-08-25 재측정).
 - **Green path**: M1 — grep 0건 + SKILL.md 섹션 `grep -c` ≥1.
 
 ### AC-LDS-010 — live 일괄 드레인 + mutant guard (MUST — 카드 명명 mutant 봉쇄)
 
-- **Given** 유지자 머신의 live 백로그 (plan-phase 기측: offset 629 vs 인박스 4,204행 — M2 직전 재측정, moving target), **When** kickoff 승인 후 wrapper로 일괄 드레인 실행, **Then** 동시 충족: (1) `.moai/state/lsel/drain-offset.json`의 offset == 재측정한 live `wc -l` 값 (2) `jq '.candidates | length' clusters.json` ≥ 1 (3) `jq --argjson n "$LIVE" '.offset_after == $n and .total_read == ($n - 629)' clusters.json` — 자기일관(읽은 만큼만 전진).
+- **검증 절차(순서 보장 — iter-1 D2)**: (i) 드레인 **직전** 캡처 — `OFFSET_BEFORE=$(jq -r .offset .moai/state/lsel/drain-offset.json)` && `LIVE=$(wc -l < .moai/lessons-inbox.jsonl | tr -d ' ')` (ii) wrapper로 일괄 드레인 실행 (kickoff 승인 이후만) (iii) **직후** 검증. 근거: 인박스는 계속 자라므로 "현시점 wc -l"이 아니라 **캡처한 `$LIVE`**에 대해 판정하고, 배선 적용 후 다른 세션 시작이 끼어들면 no-op 드레인이 live clusters.json을 `candidates: [], total_read: 0`으로 덮어쓰므로(drain.sh 63-76행) 조건 (2)·(3)은 **`clusters-history/`의 일괄 드레인 archived 사본**으로 판정한다 — wrapper는 no-op 덮어쓰기 전에도 무조건 보존하므로(REQ-LDS-003) 해당 사본이 반드시 존재한다.
+- **Given** 유지자 머신의 live 백로그 (plan-phase 기측: offset 629 vs 인박스 4,204행 — M2 실행 직전 재측정, moving target), **When** wrapper로 일괄 드레인 실행, **Then** 동시 충족: (1) `.moai/state/lsel/drain-offset.json`의 offset == 캡처한 `$LIVE` (2) **archived 사본**에서 `jq '.candidates | length'` ≥ 1 (3) **archived 사본**에서 `jq --argjson n "$LIVE" --argjson b "$OFFSET_BEFORE" '.offset_after == $n and .total_read == ($n - $b)'` — 자기일관(읽은 만큼만 전진; `629` 하드코딩 폐지·재측정값 파라미터화 — D2).
 - **Mutant probe (fixture)**: 오프셋만 live로 전진시키고 클러스터링을 건너뛰는 구현은 (2)·(3)에서 FAIL — AC-LDS-005의 probe가 이를 기계 입증.
 - **RED-now**: `jq` predicate 현재 거짓 — offset 629 ≠ 4,204 (2026-08-25, primary live state). 빨른 이유: 드레인이 21일간 미실행 (트리거 부재, spec.md §B.2) — wrong-reason 아님(본 카드가 정확히 이 전표를 뒤집는다).
-- **Green path**: M2 — 3조건 동시 관측을 §E.2에 (명령+출력+측정 시점). fixture probe가 통과 못하는 mutant는 live에서도 금지.
+- **Green path**: M2 — 캡처→드레인→검증 순서로 3조건 동시 관측을 §E.2에 (명령+출력+측정 시점). fixture probe가 통과 못하는 mutant는 live에서도 금지.
 
 ### AC-LDS-011 — PRESERVE·경계 (MUST)
 
-- **Given** 본 SPEC 브랜치 diff (merge-base 대비), **When** 각 검사 실행, **Then** 동시 충족:
-  - `git diff --stat <merge-base> -- internal/template/templates` → 빈 출력 (미러링 0)
-  - `git diff <merge-base> -- internal/harness/applier.go internal/harness/curator_dispatch.go` → 빈 출력
+- **Given** 본 SPEC 브랜치 diff (기준 ref는 **명시적으로 `origin/main`에 결속** — 사전 `git fetch origin main`, three-dot 형식 `origin/main...HEAD` = merge-base..HEAD. 스테일 로컬 `main` ref에 대고 재면 무관 파일 8+개(internal/template/** 포함)가 뜨는 false-FAIL이 재현된다 — iter-1 D6), **When** 각 검사 실행, **Then** 동시 충족:
+  - `git diff --stat origin/main...HEAD -- internal/template/templates` → 빈 출력 (미러링 0)
+  - `git diff origin/main...HEAD -- internal/harness/applier.go internal/harness/curator_dispatch.go` → 빈 출력
   - 드레인 후 `find memory -newer <drain-start-timestamp> -name 'feedback_*' | wc -l` → 0 (M1 불변식 계승, SKILL.md §Verification 3번)
   - wrapper/drain 쓰기 대상이 `.moai/state/lsel/` 하위만 (`clusters-history/` 포함), 인박스 mtime·내용 불변
   - CI guard 3종(template-neutrality-check, lsel-leak-guard, internal_content_leak_test) PR에서 초록

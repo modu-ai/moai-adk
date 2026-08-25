@@ -1,7 +1,7 @@
 ---
 id: SPEC-LSEL-DRAIN-STALL-001
 title: "LSEL 드레인 3주 정지 — 내구 기계 트리거(session_drain.sh) + 정지 신호 + 3.5k 백로그 일괄 드레인"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-08-25
 updated: 2026-08-25
@@ -22,6 +22,7 @@ related_specs: [SPEC-V3R6-GRAPH-FRESHNESS-001]
 ## HISTORY
 
 - 2026-08-25 (plan-phase, v0.1.0) 최초 작성. 카드 t259 (Class B, Tier S~M → Tier M 확정). 카드 전문이 범위 권위: "LSEL 드레인이 3주째 정지 — 인박스 3,420행 미처리, 아무도 통지받지 않음". 리드 실측(2026-08-25)과 plan-phase 재측정(본인, 동일 primary 체크아웃 live state)이 원인 규명을 확정했다: **트리거 부재** (session-scoped `/loop` 레시피가 소유 세션과 함께 소멸, 그리고 그 레시피는 애초에 아무것도 실행하지 않는 `console.log` 묶음) — 드레인 엔진 자체의 실패가 아니다 (`drain.sh` 실백로그 dry-run rc=0으로 건재 확인). SPEC-LSEL-LOCAL-EVOLUTION-001 (completed)의 M1 불변식(드레인은 `.moai/state/lsel/`에만 쓴다, memory/ 무쓰기)을 그대로 계승하며, 본 SPEC은 그 드레인에 **내구 트리거와 정지 가시성**을 부여한다.
+- 2026-08-25 (plan-phase, iter-1 수정, v0.2.0) — plan-audit review-1 반영 (PASS-WITH-DEBT 0.92, Tier M 문턱 0.80). **D1** (MUST): §28 grep 관측 정정 — 실측 2건(backlog_check.sh:6 헤더 주석 + :50 리마인더 본문; 종전 1건 기록은 :50만 집계한 과소계상). **D2** (MUST): AC-LDS-010 — `629` 하드코딩 폐지(M2 재측정 `$OFFSET_BEFORE` 파라미터화) + 검증 창 취약성 폐쇄(배선 후 no-op 세션 시작 드레인도 clusters.json을 덮어쓰므로 후보·자기일관 조건은 clusters-history archived 사본으로 판정; 드레인 직전 $LIVE/$OFFSET_BEFORE 캡처 절차 명시). **D6** (MUST): PRESERVE diff 기준 ref를 명시적 `origin/main`(three-dot)에 결속 — 스테일 로컬 main ref에 의한 false-FAIL 차단. **D3** (SHOULD): 직접 `drain.sh` 호출 경로의 잔여위험 기록 + REQ-LDS-010 확장(모든 드레인 wrapper 경유, SKILL.md 검증 레시피 `session_drain.sh` 경유로 교체, PROPOSE는 archived 사본 판독). **D4** (SHOULD): REQ-LDS-006/§A "정확히 발화" 완화 — 임계 초과 시 발화(죽은 트리거의 관측 가능한 서명), 긴 세션 중반 누적에서도 발화 가능, 같은 SessionStart 내 wrapper 드레인과의 순서는 미지정. **D5** (SHOULD): SessionStart 배선 항목에 명시적 `"timeout": 30`(live 선례 형식) + REQ-LDS-005에 예산 수치 명시. D7(전방 참조)·D8(kickoff 상급 사항) 무변경.
 
 ## §A. User Story
 
@@ -32,7 +33,7 @@ related_specs: [SPEC-V3R6-GRAPH-FRESHNESS-001]
 **결과 가설:**
 - 드레인 오프셋이 live 인박스 끝까지 따라잡는다 (bulk drain, mutant-guard 검증 포함).
 - 세션 시작마다 잠금-보호된 드레인이 실행되며, 동시 다발 세션 시작(lane 병렬이 상식인 이 저장소)에서도 상태가 부패하지 않는다.
-- 다시 멈추면 backlog advisory가 같은 SessionStart 표면에 정지를 알린다 — 새 트리거가 죽었을 때 정확히 발화하는 belt-and-suspenders.
+- 다시 멈추면 backlog advisory가 같은 SessionStart 표면에 이를 알린다 — 발화 조건은 "세션 시작 시점에 unread 백로그가 임계 초과"(죽은 트리거의 관측 가능한 서명)이며, 긴 세션의 중반 누적으로도 발화할 수 있고 같은 SessionStart 안에서 wrapper 드레인과의 실행 순서는 미지정이다(경합 허용 — D4 완화).
 
 ## §B. Context and Background
 
@@ -67,6 +68,8 @@ related_specs: [SPEC-V3R6-GRAPH-FRESHNESS-001]
 
 `drain.sh`는 매 실행마다 clusters.json을 덮어쓴다(122행). 심지어 empty-delta no-op 경로(63-76행)조차 빈-후보 clusters.json을 쓴다. 잦은 트리거 하에서 모델 매개 PROPOSE 단계에 대기 중인 후보가 다음 드레인에 조용히 유실된다. 본 SPEC의 wrapper는 drain.sh를 수정하지 않고 **호출 전 보존(archive-before-overwrite)**으로 이 결함을 닫는다(범위-최소).
 
+> **잔여위험 + 휘발성 상호작용 (iter-1 D3)**: (a) 보존은 wrapper 매개다 — `drain.sh`를 **직접** 호출하면 여전히 덮어쓴다(레시피·문서는 REQ-LDS-010에 따라 전부 wrapper 경유로 교체하나, 직접 호출 가능성 자체는 남는다). (b) 세션 시작마다 드레인이 도는 체제에서 live `clusters.json`은 **휘발성**이다 — no-op 드레인조차 `candidates: [], total_read: 0`으로 덮어쓰므로(63-76행), PROPOSE 단계는 live 파일이 아니라 **archived `clusters-history/` 사본**을 읽어야 한다(REQ-LDS-010, AC-LDS-010 검증도 같은 근거).
+
 ## §C. Requirements (GEARS)
 
 > 요구 레이어는 GEARS. 검증 레이어(Given-When-Then)는 acceptance.md가 소유 — 여기에 GWT를 재술하지 않는다.
@@ -75,12 +78,12 @@ related_specs: [SPEC-V3R6-GRAPH-FRESHNESS-001]
 - **REQ-LDS-002 (event-detected, 동시성)** — **When** another session holds the drain lock, the wrapper shall skip the drain, emit a contention notice, and exit successfully (concurrent lane-session starts are the normal case in this repository, not an error).
 - **REQ-LDS-003 (event-detected + unwanted, 보존)** — **When** `clusters.json` holds one or more candidate clusters at wrapper invocation, the wrapper shall copy it to the history store (`.moai/state/lsel/clusters-history/`) before any overwrite occurs. The wrapper shall not silently discard staged candidates — `drain.sh` overwrites `clusters.json` on BOTH the drain path (line 122) and the empty-delta no-op path (lines 63-76), so the archive must precede the `drain.sh` invocation unconditionally.
 - **REQ-LDS-004 (state-driven, no-op)** — **While** the recorded drain offset equals the inbox tail, the wrapper shall complete without advancing the offset and without reporting a failure.
-- **REQ-LDS-005 (unwanted, fail-open 예산)** — The wrapper shall not block or fail session start on its own errors: wrapper errors degrade to a stderr notice and exit 0, and the wrapper's runtime stays within the SessionStart hook budget (advisory-check discipline, `.claude/rules/moai/development/coding-standards.md` § Advisory-Check Discipline).
-- **REQ-LDS-006 (event-driven, 정지 신호)** — **When** unread inbox backlog exceeds the configured threshold (default 25, `LSEL_BACKLOG_THRESHOLD`), `backlog_check.sh` shall surface the unread count, offset, and drain invocation as a SessionStart advisory — wired on the same local SessionStart surface as the wrapper (belt-and-suspenders: it fires exactly when the new mechanical trigger has failed).
+- **REQ-LDS-005 (unwanted, fail-open 예산)** — The wrapper shall not block or fail session start on its own errors: wrapper errors degrade to a stderr notice and exit 0, and the wrapper's runtime stays within an EXPLICIT SessionStart hook timeout set by the wiring (30 seconds, matching the live SessionStart hook precedent in `.claude/settings.json`) — against a measured full-backlog drain runtime under 1 second for a 1.1MB / ~4.2k-line inbox (plan-phase dry-run, §B.4), leaving two orders of magnitude of headroom (advisory-check discipline, `.claude/rules/moai/development/coding-standards.md` § Advisory-Check Discipline).
+- **REQ-LDS-006 (event-driven, 정지 신호)** — **When** unread inbox backlog exceeds the configured threshold (default 25, `LSEL_BACKLOG_THRESHOLD`) at session start, `backlog_check.sh` shall surface the unread count, offset, and drain invocation as a SessionStart advisory — wired on the same local SessionStart surface as the wrapper (belt-and-suspenders: a threshold-exceeding backlog at session start is the observable signature of a dead mechanical trigger; the advisory may also fire on mid-long-session accumulation, and its ordering relative to the wrapper drain within the same SessionStart is unspecified — the two hooks may race).
 - **REQ-LDS-007 (event-driven + unwanted, 백로그 방침)** — **When** the backlog drain executes, the drain shall process the FULL unread backlog to the live inbox tail in one pass (bulk drain), advancing the offset to the current live line count. The implementation shall not advance the offset without clustering the stubs the advance covers (카드 명명 mutant: "오프셋만 최신으로 밀고 실제 클러스터링은 안 하는 구현").
 - **REQ-LDS-008 (event-driven, 검증된 완료)** — **When** the backlog drain completes, verification shall confirm — via the `hns-lsel-curator/SKILL.md` §Verification recipe (lines 134-145) — that the offset equals the live inbox line count AND at least one candidate cluster is staged AND `clusters.json` is self-consistent (`offset_after` == live count, `total_read` == delta size).
 - **REQ-LDS-009 (ubiquitous, 배선 정직성)** — The SPEC artifacts shall record the SessionStart wiring (`.claude/settings.local.json`) and the CLAUDE.local.md LSEL operating-instructions section as maintainer-machine local deliverables with their apply steps stated, and shall state explicitly that the PR does not carry them — a tracked `.claude/settings.json` entry would be wiped by every `moai update` (CLAUDE.local.md §2.3), so tracked wiring is affirmatively wrong, not merely unconventional. The wrapper, its tests, the SKILL.md mirror, and the recipe/comment corrections DO ride the PR.
-- **REQ-LDS-010 (capability gate, 위생)** — **Where** the `lsel-drain-loop.js` recipe remains in the tree, its header and body shall describe it truthfully as a model-mediated reminder that prints commands and does not execute anything, and shall point at the wrapper as the durable trigger; the `hns-lsel-curator/SKILL.md` shall carry a durable-ops section (trigger + drain + verification) mirroring the local instructions; the dead `CLAUDE.local.md §28` anchor shall be removed from `backlog_check.sh`'s reminder text.
+- **REQ-LDS-010 (capability gate, 위생)** — **Where** the `lsel-drain-loop.js` recipe remains in the tree, its header and body shall describe it truthfully as a model-mediated reminder that prints commands and does not execute anything, and shall point at the wrapper as the durable trigger; the `hns-lsel-curator/SKILL.md` shall carry a durable-ops section (trigger + drain + verification) mirroring the local instructions, shall route ALL drains through the wrapper — the §Verification recipe shall invoke `session_drain.sh`, not `drain.sh` directly (wrapper-mediated archiving does not extend to direct `drain.sh` invocations) — and shall state that the PROPOSE stage reads the archived `clusters-history/` copy (live `clusters.json` is ephemeral under per-session-start drains, §B.5); the dead `CLAUDE.local.md §28` anchor shall be removed from `backlog_check.sh`'s reminder text and header comment (both occurrences: line 6 header + line 50 body).
 
 ## §D. Constraints (HARD)
 
@@ -97,8 +100,8 @@ related_specs: [SPEC-V3R6-GRAPH-FRESHNESS-001]
 
 | 항목 | 대상 | 이유 |
 |---|---|---|
-| SessionStart wrapper 배선 | `.claude/settings.local.json` `.hooks.SessionStart`에 `session_drain.sh` 항목 추가 | settings.json(tracked)은 `moai update`가 통째 재배포(§2.3) — 배선이 매 업데이트마다 유실된다. settings.local.json은 runtime-managed/personal, update가 지우지 않는다. |
-| SessionStart advisory 배선 | 같은 표면에 `backlog_check.sh` 항목 추가 | REQ-LDS-006의 발화 표면. |
+| SessionStart wrapper 배선 | `.claude/settings.local.json` `.hooks.SessionStart`에 `session_drain.sh` 항목 추가 — **명시적 `"timeout": 30`**(live SessionStart 선례 형식; REQ-LDS-005 예산) | settings.json(tracked)은 `moai update`가 통째 재배포(§2.3) — 배선이 매 업데이트마다 유실된다. settings.local.json은 runtime-managed/personal, update가 지우지 않는다. |
+| SessionStart advisory 배선 | 같은 표면에 `backlog_check.sh` 항목 추가 — 동일하게 `"timeout": 30` 명시 | REQ-LDS-006의 발화 표면. |
 | LSEL 운영 지침 복원 | CLAUDE.local.md에 LSEL 섹션(트리거·드레인·검증·PROPOSE 연계, 죽은 §28 앵커의 실체) | §B.3-3의 소실 복원. CLAUDE.local.md는 로컬 전용(템플릿 금지). |
 
 적용 증거(적용 후 jq/grep 출력)는 progress.md §E.2에 기록한다. PR diff에는 위 3종이 0건 포함된다(AC-LDS-012).

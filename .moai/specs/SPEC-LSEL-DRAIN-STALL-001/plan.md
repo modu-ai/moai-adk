@@ -9,7 +9,7 @@
 
 1. **`session_drain.sh`** (신규, tracked): flock 배타잠금 → clusters.json 후보 보존(`clusters-history/`) → `drain.sh` 실행 → 1행 상태 출력. drain.sh는 무수정(Constraint 7).
 2. **`session_drain_test.sh`** (신규, tracked): fixture 기반 wrapper 테스트 — drain 경로 / 잠금 경쟁 / 보존 / no-op / fail-open + **mutant probe**(오프셋만 전진하는 가짜를 넣고 검증 predicate가 이를 걸러내는지).
-3. **위생 수정**: `lsel-drain-loop.js` 주장-본문 일치화(REQ-LDS-010), `backlog_check.sh` 죽은 §28 앵커 제거 + wrapper 지시로 교체, `hns-lsel-curator/SKILL.md` 내구-운영 섹션 미러.
+3. **위생 수정**: `lsel-drain-loop.js` 주장-본문 일치화(REQ-LDS-010), `backlog_check.sh` 죽은 §28 앵커 제거(:6·:50 양쪽) + wrapper 지시로 교체, `hns-lsel-curator/SKILL.md` 내구-운영 섹션 미러 + **§Verification 레시피를 `session_drain.sh` 경유로 교체**(모든 드레인 wrapper 경유 — 직접 drain.sh 호출은 보존 우회).
 4. **로컬 인도물**(PR 미탑재, spec.md §E): settings.local.json SessionStart 배선 2건 + CLAUDE.local.md LSEL 섹션.
 5. **M2 백로그 일괄 드레인**: 유지자 머신에서 wrapper로 live 3.5k+ 백로그 소진 + SKILL.md §Verification 레시피로 검증(AC-LDS-010).
 
@@ -75,9 +75,9 @@ live-state 기반선(유지자 머신, M2 직전 재측정 — moving target): `
 
 우선순위 High. AC-LDS-010 (MUT — mutant guard), AC-LDS-011 (MUST), AC-LDS-012 (SHOULD, 적용 부).
 
-1. 유지자 머신에서 로컬 인도물 적용: settings.local.json SessionStart 2항(wrapper + backlog_check), CLAUDE.local.md LSEL 섹션 복원. — 적용 후 `jq '.hooks.SessionStart' .claude/settings.local.json` 관측을 §E.2에.
-2. live 백로그 재측정 후 wrapper로 일괄 드레인 실행 (kickoff 승인 이후만).
-3. SKILL.md §Verification 레시피 + 자기일관성 검증: `offset == live wc -l` && `candidates >= 1` && `offset_after == live` && `total_read == live − offset_before`. mutant probe: 세션 테스트의 오프셋-전진-가짜가 이 predicate에서 FAIL함을 fixture로 입증(AC-LDS-005에서 구축, 여기서 live 적용).
+1. 유지자 머신에서 로컬 인도물 적용: settings.local.json SessionStart 2항(wrapper + backlog_check, 각 항목 **명시적 `"timeout": 30`** — live 선례 형식, REQ-LDS-005), CLAUDE.local.md LSEL 섹션 복원. — 적용 후 `jq '.hooks.SessionStart' .claude/settings.local.json` 관측을 §E.2에.
+2. 일괄 드레인(순서 보장 — iter-1 D2): (i) 드레인 직전 `OFFSET_BEFORE`/`LIVE` 캡처 (ii) wrapper로 일괄 드레인 — 배선(step 1) 후 다른 세션이 먼저 시작해 세션 시작 트리거가 일괄 드레인을 수행해도 무방하다(같은 wrapper 경로) (iii) 직후 검증. kickoff 승인 이후만 실행.
+3. 검증(**archived 사본 판정** — no-op 세션 시작 드레인이 live clusters.json을 덮어쓰므로): `clusters-history/`의 일괄 드레인 사본에서 `offset_after == $LIVE` && `candidates >= 1` && `total_read == $LIVE − $OFFSET_BEFORE` (재측정값 파라미터화 — `629` 하드코딩 폐지). mutant probe: 세션 테스트의 오프셋-전진-가짜가 이 predicate에서 FAIL함을 fixture로 입증(AC-LDS-005에서 구축, 여기서 live 적용).
 4. memory/ 무쓰기 + 인박스 불변 + PRESERVE diff 증명 (AC-LDS-011).
 
 ### M1 — 내구 트리거 wrapper + 정지 신호 + 위생 (기계적 기반)
@@ -86,7 +86,7 @@ live-state 기반선(유지자 머신, M2 직전 재측정 — moving target): `
 
 1. `session_drain.sh` 작성 (TDD: 테스트先行 — session_drain_test.sh RED부터): flock → 무조건 보존 → drain.sh 호출 → 상태 1행 → fail-open.
 2. 테스트 5경로 + mutant probe (AC-LDS-005): drain / 경쟁 / 보존 / no-op / fail-open / offset-only-advance mutant가 검증 predicate를 통과 못함.
-3. 위생: lsel-drain-loop.js 헤더·본문 교정(실행 주장 제거 + session_drain.sh 참조), backlog_check.sh §28 앵커 제거·리마인더 텍스트 교체, SKILL.md 내구-운영 섹션(트리거·검증·로컬 배선 안내 — 로컬 항목은 "유지자 머신 적용"으로 명시) 미러.
+3. 위생: lsel-drain-loop.js 헤더·본문 교정(실행 주장 제거 + session_drain.sh 참조), backlog_check.sh §28 앵커 **양쪽 모두**(:6 헤더 + :50 본문) 제거·리마인더 텍스트 교체, SKILL.md 내구-운영 섹션(트리거·검증·로컬 배선 안내 — 로컬 항목은 "유지자 머신 적용"으로 명시) 미러 — **검증 레시피는 `drain.sh` 직접 호출이 아니라 `session_drain.sh` 경유로 교체**(모든 드레인 wrapper 경유, REQ-LDS-010 — 직접 호출은 보존을 우회한다)하고 **PROPOSE 단계는 archived clusters-history 사본 판독**을 명시(live clusters.json은 세션 시작 드레인 체제에서 휘발성 — spec.md §B.5 주석).
 4. 기존 테스트 회귀: drain_test.sh + backlog_check_test.sh 초록 유지.
 5. 로컬 인도물 문서화(spec.md §E 확정 — plan-phase에서 이미 완료 상태로 반영).
 
@@ -99,7 +99,7 @@ live-state 기반선(유지자 머신, M2 직전 재측정 — moving target): `
 - **AP-LDS-003**: drain.sh 수정로 clusters.json 유실 방지 시도 — no-op 경로 조건 분기를 놓치기 쉽다; wrapper의 호출-전 무조건 보존이 닫는다.
 - **AP-LDS-004**: wrapper가 세션 시작을 막는 형태 (unbounded 동기 드레인, 에러 시 non-zero) — advisory-check discipline 위반(REQ-LDS-005).
 - **AP-LDS-005**: 백로그 드레인을 "나중에 조금씩" 분할 — 3주 정지를 재현하는 지름길. 일괄(D1)이 디폴트.
-- **AP-LDS-006**: 템플릿 미러링/내부 토큰 유출 — CI guard 3종이 잡지만 PR 전 자가점검(`git diff --stat <merge-base> -- internal/template/templates` 빈 출력).
+- **AP-LDS-006**: 템플릿 미러링/내부 토큰 유출 — CI guard 3종이 잡지만 PR 전 자가점검. 기준 ref는 **명시적 `origin/main` 결속**(`git fetch origin main` 후 `git diff --stat origin/main...HEAD -- internal/template/templates` 빈 출력 — three-dot; 스테일 로컬 main ref 대상 재측정은 false-FAIL, iter-1 D6).
 
 ## §H. Cross-References
 
