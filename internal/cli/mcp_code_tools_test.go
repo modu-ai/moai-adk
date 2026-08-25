@@ -45,21 +45,78 @@ func Finish() {
 	return root
 }
 
-func withCodeRoot(t *testing.T, root string) {
+func withCodeRoot(t *testing.T, args map[string]any, root string) map[string]any {
 	t.Helper()
-	old := resolveCodeQueryRoot
-	resolveCodeQueryRoot = func() string { return root }
-	t.Cleanup(func() { resolveCodeQueryRoot = old })
+	if args == nil {
+		args = map[string]any{}
+	}
+	args["project_root"] = root
+	return args
+}
+
+// CR round-2 (3855001953) wrong-tree regression (t261: failing input +
+// observed red): a DISTINCT project_root must reach the query — two trees
+// with different content yield different answers — and an INVALID root is
+// rejected, not silently replaced by the default tree.
+func TestGraphTools_HonorProjectRoot(t *testing.T) {
+	treeA := mcpCodeFixture(t)
+	treeB := mcpCodeFixture(t)
+	// treeB gains a caller of Finish the doc layer cannot know.
+	if err := os.WriteFile(filepath.Join(treeB, "internal", "svc", "extra.go"),
+		[]byte("package svc\n\nfunc Extra() {\n\tFinish()\n}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	edgesB, _, err := graph.BuildWithCodeLayers(treeB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := graph.WriteJSONL(filepath.Join(treeB, ".moai", "project", "graph", "edges.jsonl"), edgesB); err != nil {
+		t.Fatal(err)
+	}
+
+	// Trace in tree A: Finish's callers exclude Extra.
+	reqA := mcp.CallToolRequest{}
+	reqA.Params.Arguments = withCodeRoot(t, map[string]any{"symbol": "Finish", "depth": float64(1)}, treeA)
+	resA, err := handleGraphTraceCalls(context.Background(), reqA)
+	if err != nil {
+		t.Fatalf("trace A error: %v", err)
+	}
+	bodyA := resA.Content[0].(mcp.TextContent).Text
+	if strings.Contains(bodyA, "Extra") {
+		t.Errorf("tree A's answer carries tree B's content — wrong-tree leak (t246 family): %s", bodyA)
+	}
+
+	// Trace in tree B: Finish's callers INCLUDE Extra.
+	reqB := mcp.CallToolRequest{}
+	reqB.Params.Arguments = withCodeRoot(t, map[string]any{"symbol": "Finish", "depth": float64(1)}, treeB)
+	resB, err := handleGraphTraceCalls(context.Background(), reqB)
+	if err != nil {
+		t.Fatalf("trace B error: %v", err)
+	}
+	bodyB := resB.Content[0].(mcp.TextContent).Text
+	if !strings.Contains(bodyB, "Extra") {
+		t.Errorf("tree B's answer must reflect its own content: %s", bodyB)
+	}
+
+	// An invalid project_root is REJECTED — never a silent default-tree answer.
+	reqBad := mcp.CallToolRequest{}
+	reqBad.Params.Arguments = map[string]any{"symbol": "Finish", "project_root": "/nonexistent/root/for/rejection"}
+	resBad, err := handleGraphTraceCalls(context.Background(), reqBad)
+	if err != nil {
+		t.Fatalf("handler hard error: %v", err)
+	}
+	if !resBad.IsError {
+		t.Errorf("invalid project_root must yield a tool error, got: %+v", resBad)
+	}
 }
 
 // AC-GF-020 — graph_file_api over MCP: exported signatures only, body-free,
 // provenance naming the tree.
 func TestHandleGraphFileAPI(t *testing.T) {
 	root := mcpCodeFixture(t)
-	withCodeRoot(t, root)
 
 	req := mcp.CallToolRequest{}
-	req.Params.Arguments = map[string]any{"file": "internal/svc/svc.go"}
+	req.Params.Arguments = withCodeRoot(t, map[string]any{"file": "internal/svc/svc.go"}, root)
 	res, err := handleGraphFileAPI(context.Background(), req)
 	if err != nil {
 		t.Fatalf("handler error: %v", err)
@@ -82,10 +139,9 @@ func TestHandleGraphFileAPI(t *testing.T) {
 // AC-GF-021 — find_code and trace_calls answer from the code layer over MCP.
 func TestHandleGraphFindAndTrace(t *testing.T) {
 	root := mcpCodeFixture(t)
-	withCodeRoot(t, root)
 
 	findReq := mcp.CallToolRequest{}
-	findReq.Params.Arguments = map[string]any{"query": "Finish"}
+	findReq.Params.Arguments = withCodeRoot(t, map[string]any{"query": "Finish"}, root)
 	findRes, err := handleGraphFindCode(context.Background(), findReq)
 	if err != nil {
 		t.Fatalf("find handler error: %v", err)
@@ -105,7 +161,7 @@ func TestHandleGraphFindAndTrace(t *testing.T) {
 	}
 
 	traceReq := mcp.CallToolRequest{}
-	traceReq.Params.Arguments = map[string]any{"symbol": "Finish", "depth": float64(1)}
+	traceReq.Params.Arguments = withCodeRoot(t, map[string]any{"symbol": "Finish", "depth": float64(1)}, root)
 	traceRes, err := handleGraphTraceCalls(context.Background(), traceReq)
 	if err != nil {
 		t.Fatalf("trace handler error: %v", err)

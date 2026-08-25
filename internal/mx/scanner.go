@@ -64,17 +64,19 @@ func (s *Scanner) SetIgnorePatterns(patterns []string) {
 // tag pass and the provenance inventory, so the index can later be
 // freshness-judged and refreshed per changed file.
 func (s *Scanner) ScanFile(filePath string) ([]Tag, error) {
-	data, err := os.ReadFile(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("open file: %w", err)
-	}
-
-	// Get comment prefix for this file extension
+	// Extension check BEFORE the read (CR round-2 3855002126): an unsupported
+	// language skips the I/O entirely — unsupported files are neither read
+	// nor inventoried, so paying for the read first is pure waste.
 	ext := strings.ToLower(filepath.Ext(filePath))
 	prefix := GetCommentPrefix(ext)
 	if prefix == "" {
 		// Unsupported language - skip (not read, not inventoried)
 		return nil, nil
+	}
+
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("open file: %w", err)
 	}
 
 	if s.fileHashes == nil {
@@ -316,15 +318,25 @@ func (s *Scanner) GetErrors() []string {
 	return s.errors
 }
 
+// RecordError appends a diagnostic to the scanner's error list through the
+// scanner's own API (CR round-2 3855001990): callers in the same package
+// (the refresh path) report per-file failures the CLI surfaces via
+// GetErrors(), instead of writing the unexported field directly.
+func (s *Scanner) RecordError(msg string) {
+	s.errors = append(s.errors, msg)
+}
+
 // ScanInventory returns the scan-root-relative path → content sha256 map for
 // every file the last ScanDir actually read. Empty before the first scan or
 // when nothing was read. Paths use forward slashes so the inventory is
-// platform-stable in the sidecar.
+// platform-stable in the sidecar. Only a real parent-directory escape is
+// excluded — a child literally NAMED "..generated.go" stays (CR round-2
+// 3855002133).
 func (s *Scanner) ScanInventory(rootDir string) map[string]string {
 	out := make(map[string]string, len(s.fileHashes))
 	for abs, sum := range s.fileHashes {
 		rel, err := filepath.Rel(rootDir, abs)
-		if err != nil || strings.HasPrefix(rel, "..") {
+		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 			continue
 		}
 		out[filepath.ToSlash(rel)] = sum

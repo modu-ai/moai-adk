@@ -147,6 +147,39 @@ func TestCitationRegionEditedReportsMismatch(t *testing.T) {
 	}
 }
 
+// CR round-2 boundary regression (t261: failing input + observed red):
+// a citation whose File escapes the root via .. is REJECTED, and the
+// reason carries no host path.
+func TestCitation_RejectsPathEscape_NoHostPathInReason(t *testing.T) {
+	root, excerpt := citedFixture(t, 0)
+	cite, err := NewCitation("../../../etc/passwd", excerpt, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := ResolveCitation(root, cite)
+	if err != nil {
+		t.Fatalf("escape attempt must resolve unmatched, not error: %v", err)
+	}
+	if res.Matched {
+		t.Error("a tree-escaping citation path must NOT resolve")
+	}
+	if !strings.Contains(res.Reason, "outside the tree root") {
+		t.Errorf("reason must name the containment rejection: %q", res.Reason)
+	}
+	if strings.Contains(res.Reason, root) {
+		t.Errorf("reason must not embed the host path: %q", res.Reason)
+	}
+	// Unreadable-file reason is likewise host-path-free.
+	cite2, _ := NewCitation("internal/missing.go", excerpt, 1)
+	res2, err := ResolveCitation(root, cite2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(res2.Reason, root) {
+		t.Errorf("unreadable reason must not embed the host path: %q", res2.Reason)
+	}
+}
+
 // Missing file resolves as unmatched (not a crash, not a forced match).
 func TestCitationMissingFile(t *testing.T) {
 	root, _ := t.TempDir(), ""

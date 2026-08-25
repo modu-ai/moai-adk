@@ -1,6 +1,7 @@
 package mx
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -64,10 +65,16 @@ func RefreshIndex(stateDir, scanRoot string, ignore []string) (*RefreshStats, er
 	s.SetIgnorePatterns(ignore)
 
 	err = walkScanFiles(scanRoot, ignore, func(absPath, rel string) error {
-		sum, err := HashFile(absPath)
-		if err != nil {
-			// Unreadable file: not inventoried, not parsed (fail-open, the
-			// scanner's own posture).
+		sum, hashErr := HashFile(absPath)
+		if hashErr != nil {
+			// Transiently unreadable ≠ vanished (CR round-2 3855001935):
+			// carry the previous digest forward so the file stays inventoried
+			// and its tags survive — a permission error or lock must not
+			// silently drop an existing file from the index.
+			if old, ok := oldInventory[rel]; ok {
+				newInventory[rel] = old
+				s.RecordError(fmt.Sprintf("refresh: unreadable (kept previous digest): %s: %v", rel, hashErr))
+			}
 			return nil
 		}
 		newInventory[rel] = sum
@@ -77,9 +84,9 @@ func RefreshIndex(stateDir, scanRoot string, ignore []string) (*RefreshStats, er
 			}
 		}
 		stats.ChangedDetected++
-		tags, err := s.ScanFile(absPath)
-		if err != nil {
-			s.errors = append(s.errors, err.Error())
+		tags, parseErr := s.ScanFile(absPath)
+		if parseErr != nil {
+			s.RecordError(fmt.Sprintf("refresh: scan %s: %v", rel, parseErr))
 			return nil
 		}
 		stats.FilesParsed++
@@ -150,10 +157,16 @@ func RefreshIndex(stateDir, scanRoot string, ignore []string) (*RefreshStats, er
 // walkScanFiles walks scanRoot applying the scanner's ignore semantics
 // (directory-base and relative-path pattern matching) and invokes fn for each
 // non-ignored regular file with both absolute and slash-relative paths.
+// Unreadable entries are SKIPPED, not fatal (CR round-2 3855001941): one
+// permission-denied directory must not abort the refresh — the per-file
+// posture is fail-open and the index does not need the unreadable subtree.
 func walkScanFiles(scanRoot string, ignore []string, fn func(absPath, rel string) error) error {
 	return filepath.Walk(scanRoot, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			return err
+			if info != nil && info.IsDir() {
+				return filepath.SkipDir // unreadable directory: skip its subtree
+			}
+			return nil // unreadable file: skip it
 		}
 		if info.IsDir() {
 			for _, pattern := range ignore {
@@ -171,6 +184,12 @@ func walkScanFiles(scanRoot string, ignore []string, fn func(absPath, rel string
 			if matched, mErr := filepath.Match(pattern, rel); mErr == nil && matched {
 				return nil
 			}
+		}
+		// Regular-file guard (CR round-2 3855001937): HashFile/ScanFile read
+		// content — a FIFO/socket/device under a walked root must be skipped,
+		// not opened (an open would hang the refresh).
+		if !info.Mode().IsRegular() {
+			return nil
 		}
 		return fn(path, filepath.ToSlash(rel))
 	})

@@ -1,15 +1,23 @@
 package graph
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/modu-ai/moai-adk/internal/mx"
 	"github.com/modu-ai/moai-adk/internal/navigator/astx"
 )
+
+// maxTraceDepth bounds TraceCalls traversal (shared by the MCP tool
+// description — one named policy value, not three drifting literals;
+// CR round-2 3855002055).
+const maxTraceDepth = 8
 
 // ─── graph_file_api (REQ-GF-017) ───
 
@@ -41,6 +49,11 @@ func FileAPI(projectRoot, relPath string) (FileAPIResult, error) {
 	if rel, err := filepath.Rel(projectRoot, abs); err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return FileAPIResult{}, fmt.Errorf("graph: file path escapes the project root: %s", relPath)
 	}
+	// Regular-file guard (CR round-2 3855001937): a FIFO/socket at the named
+	// path would hang the read; refuse non-regular files explicitly.
+	if info, err := os.Stat(abs); err != nil || !info.Mode().IsRegular() {
+		return FileAPIResult{}, fmt.Errorf("graph: not a regular file: %s", relPath)
+	}
 	lang := astx.DetectLanguage(abs)
 	res := FileAPIResult{File: filepath.ToSlash(relPath)}
 	if lang == "" {
@@ -48,8 +61,13 @@ func FileAPI(projectRoot, relPath string) (FileAPIResult, error) {
 	}
 
 	set, err := astx.Extract(lang, abs)
-	if err != nil || !set.Supported {
-		return res, fmt.Errorf("graph: extract %s: unsupported or unreadable", relPath)
+	if err != nil {
+		// Preserve the cause (CR round-2 3855002024): the MCP client sees
+		// this message and callers may errors.Is/As it.
+		return res, fmt.Errorf("graph: extract %s: %w", relPath, err)
+	}
+	if !set.Supported {
+		return res, fmt.Errorf("graph: extraction unsupported for %s (grammar unavailable or CGO disabled)", relPath)
 	}
 
 	lines := readLines(abs)
@@ -76,20 +94,20 @@ func FileAPI(projectRoot, relPath string) (FileAPIResult, error) {
 
 // CodeMatch is one find_code hit over the code-derived layer.
 type CodeMatch struct {
-	Symbol string `json:"symbol"`
-	File   string `json:"file"`
-	Line   int    `json:"line"`
-	Grade  string `json:"grade"`
-	Via    string `json:"via"` // how the layer observed the symbol
+	Symbol string `json:"Symbol"`
+	File   string `json:"File"`
+	Line   int    `json:"Line"`
+	Grade  string `json:"Grade"`
+	Via    string `json:"Via"` // how the layer observed the symbol
 }
 
 // FindCode searches the code-derived layer for a symbol name: callee sites
-// (where the symbol is called) and caller declarations observed invoking
-// relationships. Returns matches plus the answer provenance.
+// (where the symbol is called) and caller observations. Returns matches plus
+// the answer provenance.
 func FindCode(projectRoot, query string) ([]CodeMatch, string, error) {
-	edges, err := LoadJSONL(edgesArtifactPath(projectRoot))
+	edges, err := loadCodeEdges(projectRoot)
 	if err != nil {
-		return nil, "", fmt.Errorf("graph: load edges: %w", err)
+		return nil, "", err
 	}
 	var out []CodeMatch
 	seen := map[string]bool{}
@@ -99,14 +117,17 @@ func FindCode(projectRoot, query string) ([]CodeMatch, string, error) {
 		}
 		file, fn := splitCodeNode(e.Source)
 		if e.Target == query {
-			key := "callee:" + e.Source + ":" + fmt.Sprint(e.Line)
+			key := "callee:" + e.Source + ":" + e.Target + ":" + fmt.Sprint(e.Line)
 			if !seen[key] {
 				seen[key] = true
 				out = append(out, CodeMatch{Symbol: e.Target, File: file, Line: e.Line, Grade: e.Grade, Via: "callee (called at)"})
 			}
 		}
 		if fn == query {
-			key := "caller:" + file + ":" + fmt.Sprint(e.Line)
+			// Key includes the target (CR round-2 3855002033): one line may
+			// invoke two symbols (a(b())) — dropping the target would keep
+			// only the first edge of the two.
+			key := "caller:" + file + ":" + e.Target + ":" + fmt.Sprint(e.Line)
 			if !seen[key] {
 				seen[key] = true
 				out = append(out, CodeMatch{Symbol: fn, File: file, Line: e.Line, Grade: e.Grade, Via: "caller (calls " + e.Target + ")"})
@@ -128,32 +149,43 @@ type CallTraceEdge struct {
 
 // TraceCalls traverses code-call edges from a symbol: callers = who reaches
 // the symbol (reverse edges), callees = what the symbol calls (forward
-// edges), each up to depth hops. Depth is bounded defensively at 8.
+// edges), each up to depth hops. Depth is bounded defensively at
+// maxTraceDepth.
 func TraceCalls(projectRoot, symbol string, depth int) (callers, callees []CallTraceEdge, err error) {
 	if depth <= 0 {
 		depth = 1
 	}
-	if depth > 8 {
-		depth = 8
+	if depth > maxTraceDepth {
+		depth = maxTraceDepth
 	}
-	edges, err := LoadJSONL(edgesArtifactPath(projectRoot))
+	edges, err := loadCodeEdges(projectRoot)
 	if err != nil {
-		return nil, nil, fmt.Errorf("graph: load edges: %w", err)
+		return nil, nil, err
 	}
 
-	// Reverse BFS: symbol → its callers → their callers …
+	// Index once (CR round-2 3855002059): byTarget serves the reverse
+	// traversal, byCaller the forward — the per-frontier full-slice rescan
+	// was depth × |frontier| × |edges| on an interactive tool's hot path.
+	byTarget := map[string][]Edge{}
+	byCaller := map[string][]Edge{}
+	for _, e := range edges {
+		if e.Kind != KindCodeCall {
+			continue
+		}
+		byTarget[e.Target] = append(byTarget[e.Target], e)
+		if _, fn := splitCodeNode(e.Source); fn != "" {
+			byCaller[fn] = append(byCaller[fn], e)
+		}
+	}
+
 	revSeen := map[string]bool{symbol: true}
 	frontier := []string{symbol}
 	for hop := 0; hop < depth; hop++ {
 		var next []string
 		for _, node := range frontier {
-			for _, e := range edges {
-				if e.Kind != KindCodeCall || e.Target != node {
-					continue
-				}
+			for _, e := range byTarget[node] {
 				callers = append(callers, CallTraceEdge{From: e.Source, To: e.Target, Line: e.Line, Grade: e.Grade})
-				_, fn := splitCodeNode(e.Source)
-				if fn != "" && !revSeen[fn] {
+				if _, fn := splitCodeNode(e.Source); fn != "" && !revSeen[fn] {
 					revSeen[fn] = true
 					next = append(next, fn)
 				}
@@ -162,20 +194,12 @@ func TraceCalls(projectRoot, symbol string, depth int) (callers, callees []CallT
 		frontier = next
 	}
 
-	// Forward BFS: symbol → its callees → their callees …
 	fwdSeen := map[string]bool{symbol: true}
 	frontier = []string{symbol}
 	for hop := 0; hop < depth; hop++ {
 		var next []string
 		for _, node := range frontier {
-			for _, e := range edges {
-				if e.Kind != KindCodeCall {
-					continue
-				}
-				_, fn := splitCodeNode(e.Source)
-				if fn != node {
-					continue
-				}
+			for _, e := range byCaller[node] {
 				callees = append(callees, CallTraceEdge{From: e.Source, To: e.Target, Line: e.Line, Grade: e.Grade})
 				if !fwdSeen[e.Target] {
 					fwdSeen[e.Target] = true
@@ -189,6 +213,20 @@ func TraceCalls(projectRoot, symbol string, depth int) (callers, callees []CallT
 }
 
 // ─── shared helpers ───
+
+// loadCodeEdges loads the edges artifact, mapping an ABSENT artifact to a
+// distinct actionable error (CR round-2 3855002040): the untracked derived
+// layer is missing — the remedy is a build, not a bug report.
+func loadCodeEdges(projectRoot string) ([]Edge, error) {
+	edges, err := LoadJSONL(edgesArtifactPath(projectRoot))
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("graph layer absent: %s not found — run 'moai graph build' to create it", edgesArtifactPath(projectRoot))
+		}
+		return nil, fmt.Errorf("graph: load edges: %w", err)
+	}
+	return edges, nil
+}
 
 // edgesArtifactPath is the default edges.jsonl location.
 func edgesArtifactPath(projectRoot string) string {
@@ -226,11 +264,13 @@ func sortedKinds(m map[string][]astx.Symbol) []string {
 	return kinds
 }
 
-// isExported applies the language's export convention (Go: initial capital).
+// isExported applies the language's export convention. Go's rule is a
+// first-rune Unicode upper-case letter (CR round-2 3855002067: ASCII-only
+// misclassifies exported identifiers like Éxporté).
 func isExported(lang, name string) bool {
 	if lang == "go" && name != "" {
-		r := []rune(name)[0]
-		return r >= 'A' && r <= 'Z'
+		r, _ := utf8.DecodeRuneInString(name)
+		return unicode.IsUpper(r)
 	}
 	return true
 }
@@ -266,17 +306,44 @@ func signatureAt(lines []string, startLine int, lang string) string {
 	return strings.TrimSpace(b.String())
 }
 
-// bodyOpenIndex finds where a declaration's body opens on this line.
+// bodyOpenIndex finds where a declaration's body opens on this line, at
+// bracket depth zero. Delimiters inside parameter types — Go's
+// `map[string]struct{...}`, Python's `x: int`, Ruby's `a: 1` — sit inside
+// brackets or annotations and must not truncate the signature (CR round-2
+// 3855002078).
 func bodyOpenIndex(line, lang string) int {
+	depth := 0
 	switch lang {
 	case "python", "ruby", "elixir":
-		if i := strings.Index(line, ":"); i > 0 {
-			return i
+		// Body opens at the first depth-zero `:` — a colon inside (...) or
+		// [...] is an annotation/default, not the body.
+		for i, r := range line {
+			switch r {
+			case '(', '[':
+				depth++
+			case ')', ']':
+				depth--
+			case ':':
+				if depth == 0 && i > 0 {
+					return i
+				}
+			}
 		}
 		return -1
 	default:
-		if i := strings.Index(line, "{"); i > 0 {
-			return i
+		// Body opens at the first depth-zero `{` — a brace inside (...) is
+		// part of a parameter type.
+		for i, r := range line {
+			switch r {
+			case '(', '[':
+				depth++
+			case ')', ']':
+				depth--
+			case '{':
+				if depth == 0 && i > 0 {
+					return i
+				}
+			}
 		}
 		return -1
 	}

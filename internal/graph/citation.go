@@ -116,9 +116,16 @@ type Resolution struct {
 // — honest staleness, never force-resolution.
 func ResolveCitation(root string, c Citation) (Resolution, error) {
 	target := filepath.Join(root, filepath.FromSlash(c.File))
+	// Trust boundary: the citation's File arrives from persisted/external
+	// data. Reject any path resolving outside root — same containment
+	// discipline as FileAPI (CR round-2). Reasons never embed host paths:
+	// they name only the citation-relative file.
+	if rel, err := filepath.Rel(root, target); err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return Resolution{File: c.File, Reason: "cited file path resolves outside the tree root"}, nil
+	}
 	data, err := os.ReadFile(target)
 	if err != nil {
-		return Resolution{File: c.File, Reason: fmt.Sprintf("cited file unreadable: %v", err)}, nil
+		return Resolution{File: c.File, Reason: "cited file unreadable"}, nil
 	}
 
 	want := normalizeRegion(c.Excerpt)

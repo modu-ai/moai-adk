@@ -27,10 +27,14 @@ type Provenance struct {
 	// SchemaVersion is the provenance block schema version.
 	SchemaVersion int `json:"schema_version"`
 
-	// TreeRoot is the absolute root of the tree the artifact was generated in.
-	// Two worktrees of one repository never share provenance: an index whose
-	// TreeRoot differs from the reading tree is stale (wrong-tree defect
-	// family, CR #8/t246 lineage).
+	// TreeRoot is the absolute root of the tree the artifact was generated
+	// in. For UNTRACKED artifacts (mx-index, edges) it anchors per-tree
+	// identity: an index whose TreeRoot differs from the reading tree is
+	// stale (wrong-tree defect family, CR #8/t246 lineage). For TRACKED
+	// artifacts (codemaps) it is informational only — one file replicates to
+	// every checkout, so a mismatched root is the normal state everywhere
+	// but the stamper's machine and is never a freshness verdict
+	// (CR round-2 3855149192).
 	TreeRoot string `json:"tree_root"`
 
 	// CommitSHA is the commit checked out at generation time. Empty when the
@@ -112,6 +116,12 @@ func aggregateFingerprint(projectRoot string, roots []string) (string, error) {
 				return err
 			}
 			if info.IsDir() {
+				return nil
+			}
+			// Regular-file guard (CR round-2 3855001937): os.ReadFile blocks
+			// indefinitely on FIFOs/sockets/devices and follows symlinks —
+			// only regular files contribute to the fingerprint.
+			if !info.Mode().IsRegular() {
 				return nil
 			}
 			rel, relErr := filepath.Rel(projectRoot, path)

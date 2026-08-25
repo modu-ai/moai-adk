@@ -460,7 +460,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		"graph_file_api",
 		mcp.WithDescription("List a source file's exported declarations with signatures — no source bodies. Answers name the tree root + commit they were computed from."),
 		mcp.WithString("file", mcp.Required(), mcp.Description("Repository-relative file path (e.g. internal/graph/check.go).")),
-		projectRootPassthroughOption(),
+		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleGraphFileAPI)
 
@@ -468,7 +468,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		"graph_find_code",
 		mcp.WithDescription("Search the code-derived edge layer for a symbol: callee sites (where it is called) and caller observations, each with its resolution grade. Answer names the tree root + commit."),
 		mcp.WithString("query", mcp.Required(), mcp.Description("Symbol name to search for (e.g. 'CheckFreshness').")),
-		projectRootPassthroughOption(),
+		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleGraphFindCode)
 
@@ -476,8 +476,8 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		"graph_trace_calls",
 		mcp.WithDescription("Traverse code-call edges from a symbol: callers (who reaches it) and callees (what it calls), up to depth hops over the code-derived layer. Answer names the tree root + commit."),
 		mcp.WithString("symbol", mcp.Required(), mcp.Description("Symbol name to trace from (e.g. 'RefreshIndex').")),
-		mcp.WithNumber("depth", mcp.Description("Traversal depth in hops (default 1, capped at 8).")),
-		projectRootPassthroughOption(),
+		mcp.WithInteger("depth", mcp.Description("Traversal depth in hops (default 1, capped at 8).")),
+		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleGraphTraceCalls)
 }

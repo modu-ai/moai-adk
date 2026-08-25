@@ -150,9 +150,25 @@ func checkCodemaps(projectRoot string, th Thresholds) (LayerReport, error) {
 		return rep, nil
 	}
 
+	// Provenance scope validation (CR round-2 3855002115 / 3855149192):
+	// DescribedRoots are repository-controlled and must not aim the endpoint
+	// diff (or the dirty-fingerprint hash) outside this project — an invalid
+	// root is unjudgeable (absent), never fresh. TreeRoot is deliberately
+	// NOT matched against this checkout: codemaps is a TRACKED artifact, one
+	// file replicated to every checkout, so a different tree root is the
+	// normal state on every machine but the stamper's — hard-matching it
+	// would disable the check everywhere (the mx-index/edges layers are
+	// untracked and DO match TreeRoot; see checkMXIndex).
 	roots := pv.DescribedRoots
 	if len(roots) == 0 {
 		roots = mx.DefaultDescribedRoots
+	}
+	for _, r := range roots {
+		if err := validateDescribedRoot(projectRoot, r); err != nil {
+			rep.Verdict = VerdictAbsent
+			rep.Reason = fmt.Sprintf("described root %q invalid: %v", r, err)
+			return rep, nil
+		}
 	}
 
 	if pv.Dirty {
@@ -360,6 +376,24 @@ func checkEdges(projectRoot string) LayerReport {
 		rep.Verdict = VerdictFresh
 	}
 	return rep
+}
+
+// validateDescribedRoot rejects a described root that is empty, absolute,
+// or resolves outside the project root — the provenance block is repository
+// content and must not aim hashing/diffing past the tree it describes.
+func validateDescribedRoot(projectRoot, root string) error {
+	if root == "" {
+		return fmt.Errorf("empty")
+	}
+	if filepath.IsAbs(root) {
+		return fmt.Errorf("absolute path")
+	}
+	abs := filepath.Join(projectRoot, filepath.FromSlash(root))
+	rel, err := filepath.Rel(projectRoot, abs)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("resolves outside the project root")
+	}
+	return nil
 }
 
 // gitDiffNameCount counts files under roots whose working-tree content

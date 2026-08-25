@@ -115,6 +115,11 @@ func Extract(projectRoot string) (calls []CallEdge, imports []ImportEdge, matrix
 			if lang == "" || astx.GradeFor(lang) == astx.GradeNone {
 				return nil
 			}
+			// Regular-file guard (CR round-2 3855001937): extraction reads
+			// content; a FIFO/socket under a walked root is skipped, not opened.
+			if !info.Mode().IsRegular() {
+				return nil
+			}
 			set, xErr := astx.ExtractCalls(lang, path)
 			if xErr != nil || !set.Supported {
 				return nil

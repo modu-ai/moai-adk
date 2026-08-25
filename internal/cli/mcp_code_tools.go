@@ -14,18 +14,21 @@ import (
 // level answers from the code-derived layer, every response carrying the
 // tree+commit provenance. Read-only hint annotations match the audit-family
 // precedent (#1619).
-
-// resolveCodeQueryRoot resolves the tree the code queries answer from. A
-// worktree session MUST get its own tree's answer (the t246 wrong-tree
-// defect family) — the project root resolver, never a shared cache path.
-var resolveCodeQueryRoot = resolveProjectDir
+//
+// CR round-2 (3855001953): all three handlers resolve their tree via
+// resolveToolProjectRoot(req) — a supplied project_root is honored and a bad
+// one REJECTED — so a worktree session gets its OWN tree's answer (the t246
+// wrong-tree defect family), never a silent fallback to the primary checkout.
 
 func handleGraphFileAPI(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	rel, err := req.RequireString("file")
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
-	root := resolveCodeQueryRoot()
+	root, err := resolveToolProjectRoot(req)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
 	res, err := graph.FileAPI(root, rel)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
@@ -38,7 +41,10 @@ func handleGraphFindCode(ctx context.Context, req mcp.CallToolRequest) (*mcp.Cal
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
-	root := resolveCodeQueryRoot()
+	root, err := resolveToolProjectRoot(req)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
 	matches, prov, err := graph.FindCode(root, query)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
@@ -54,16 +60,19 @@ func handleGraphTraceCalls(ctx context.Context, req mcp.CallToolRequest) (*mcp.C
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
-	depth, _ := req.RequireInt("depth")
-	root := resolveCodeQueryRoot()
+	depth := req.GetInt("depth", 1)
+	root, err := resolveToolProjectRoot(req)
+	if err != nil {
+		return mcp.NewToolResultError(err.Error()), nil
+	}
 	callers, callees, err := graph.TraceCalls(root, symbol, depth)
 	if err != nil {
 		return mcp.NewToolResultError(err.Error()), nil
 	}
 	return jsonToolResult(map[string]interface{}{
-		"symbol":     symbol,
-		"callers":    callers,
-		"callees":    callees,
+		"symbol":    symbol,
+		"callers":   callers,
+		"callees":   callees,
 		"provenance": graph.AnswerProvenance(root),
 	})
 }
