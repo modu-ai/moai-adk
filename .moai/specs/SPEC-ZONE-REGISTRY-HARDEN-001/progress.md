@@ -80,16 +80,30 @@ registry_sync_test.go:156: [local mirror] registry tuple digest = 2edb5384085bcc
 
 **Gaps**: AC-ZRH-007(M3·manager-spec 소관) 미측정 · CI 전 매트릭스 판독 미수행(push 전 — Route B, manager-git 소관). **Residual-risk**: gofmt 스큐 2건은 baseline 부채로 잔존(본 SPEC 스코프 밖).
 
+### M3 — F3 문서 정렬: AC-ZRH-007 측정 (편집 manager-spec `c31c3613d` · 측정 본 에이전트 — plan §F D3 분업)
+
+측정 트리 `c31c3613d`(M3 커밋 HEAD, 측정 시점 워킹트리 clean). Given(M3 완료 후 트리) 충족:
+
+| AC | Status | Verification Command | Actual Output |
+|----|--------|---------------------|---------------|
+| AC-ZRH-007 | PASS | `grep -c 'strings.Count(rawFileContent, clause)' .moai/specs/SPEC-ZONE-REGISTRY-RESYNC-001/plan.md` | `0` (rc=1 — 발생 의미론 서술 제거) |
+| AC-ZRH-007 | PASS | `grep -c -i '라인 수 의미론' <동일 파일>` | `2` (≥1 — 실측 라인 수 의미론 기술) |
+| AC-ZRH-007 | PASS | `grep -c 'SPEC-ZONE-REGISTRY-HARDEN-001' <동일 파일>` | `1` (≥1 — 정정 출처 erratum 주석) |
+
+Then 3축 모두 충족 → **PASS**. 오케스트레이터 독립 사전측정(strings.Count 0 · HARDEN-001 1 · 라인수의미론 2)과 값 일치. M3 편집 표면(RESYNC-001 plan.md)은 가드가 pin하지 않으므로 비회귀 확인: `go test -count=1 ./internal/constitution/` → `ok … 0.508s`(트리 `c31c3613d`).
+
+**Gaps**: CI 전 매트릭스 판독 미수행(push 전 — Route B, manager-git 소관). **Residual-risk**: 없음(3축 전부 이번 실행·이 트리 관측).
+
 
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
 run_complete_at: 2026-08-25
-run_commit_sha: "pending-backfill-M2 (this file rides the M2 commit; M3 by manager-spec lands after — backfill per spec-frontmatter-schema.md D3 placeholder exemption)"
-run_status: m1-m2-complete-m3-pending
-ac_pass_count: 8
+run_commit_sha: "c31c3613d (M3 — final milestone commit; all three milestones' edits contained in 918840f61 / 9eafd81f4 / c31c3613d; AC-ZRH-007 measurement evidence rides the follow-up progress.md commit)"
+run_status: m1-m3-complete-awaiting-sync
+ac_pass_count: 9  # AC-ZRH-001..009 all measured PASS
 ac_fail_count: 0
-ac_pending_m3: 1  # AC-ZRH-007 (F3 — manager-spec via orchestrator re-delegation per plan.md §F D3)
+ac_pending_m3: 0
 ac_pass_with_debt: 1  # AC-ZRH-008 gofmt axis — pre-existing baseline skew on untouched validator.go/canary_test.go
 preserve_list_post_run_count: 0  # violations: git diff 1ae6e5c36..HEAD -- validator.go = 0 lines (measured)
 l44_pre_commit_fetch: "0 2 (origin/main...HEAD at 918840f61 — local ahead only, no parallel race)"
@@ -97,13 +111,13 @@ l44_post_push_fetch: "pending-push (Route B PR-mandatory: push + PR owned by man
 new_warnings_or_lints_introduced: 0  # golangci-lint ./internal/constitution/... → "0 issues."; registry_sync_test.go gofmt-clean
 cross_platform_build:
   windows_vet_rc: 0  # GOOS=windows GOARCH=amd64 go vet ./internal/constitution/
-total_run_phase_files: 5  # M1: 4 (ci-autofix twin pair + zone-registry mirror pair) · M2: 1 (registry_sync_test.go)
-m1_to_mN_commit_strategy: "plan-phase artifacts commit + per-milestone commit (M1 fix / M2 feat), card id t268 in every subject, no push (Route B)"
+total_run_phase_files: 6  # M1: 4 (ci-autofix twin pair + zone-registry mirror pair) · M2: 1 (registry_sync_test.go) · M3: 1 (RESYNC-001 plan.md, manager-spec)
+m1_to_mN_commit_strategy: "plan-phase artifacts commit + per-milestone commit (M1 fix / M2 feat by manager-develop, M3 docs by manager-spec per §F D3) + measurement-record commit, card id t268 in every subject, no push (Route B)"
 ```
 
-**커밋 목록(M1+M2 범위)**: `0da345433`(plan-phase artifacts) → `918840f61`(M1) → M2 커밋(본 커밋).
+**커밋 목록(run-phase 전체)**: `0da345433`(plan-phase artifacts) → `918840f61`(M1, manager-develop) → `9eafd81f4`(M2, manager-develop) → `c31c3613d`(M3, manager-spec) → progress.md 측정 기록 커밋(본 커밋, manager-develop).
 
-**주의(오케스트레이터→M3 재위임 시)**: M3(RESYNC-001 plan.md 의미론 정정 + 그 커밋)는 manager-develop이 아니라 manager-spec 소관(plan.md §F D3). manager-develop은 AC-ZRH-007 측정(grep 3종)만 담당.
+**M3 소유권(D3) 이행**: RESYNC-001 plan.md 본문 편집과 그 커밋은 manager-spec이 실행(`c31c3613d`), 본 에이전트는 AC-ZRH-007 측정만 담당(§E.2 M3 절).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
