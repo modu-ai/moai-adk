@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 450" width="1200" height="450"
+     role="img" aria-labelledby="roadmap-timeline-title roadmap-timeline-desc">
+  <title id="roadmap-timeline-title">SPEC 3-phase roadmap</title>
+  <desc id="roadmap-timeline-desc">An Epic advances through three SPEC phases on one time axis: plan delivers the audited SPEC, run verifies the acceptance criteria, and sync closes the three-phase lifecycle.</desc>
+  <defs>
+    <marker id="roadmap-timeline-arrow" markerUnits="userSpaceOnUse"
+            markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+      <path d="M 0 0 L 10 4 L 0 8 z" fill="#6B6359"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="450" fill="#FAF9F5"/>
+
+  <g>
+    <text x="60" y="96" font-family="'Noto Serif', Georgia, serif" font-size="34" font-weight="600" fill="#141413">SPEC 3-Phase Roadmap</text>
+    <text x="60" y="118" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="12" fill="#6B6359">ONE EPIC &#183; THREE PHASES</text>
+  </g>
+
+  <!-- connectors: milestone ticks, then the time axis -->
+  <g stroke="#6B6359" stroke-width="1">
+    <path d="M 308 295 V 394" fill="none"/>
+    <path d="M 600 295 V 394" fill="none"/>
+    <path d="M 892 295 V 394" fill="none"/>
+  </g>
+  <path d="M 60 400 H 1140" stroke="#6B6359" stroke-width="1.25" fill="none" marker-end="url(#roadmap-timeline-arrow)"/>
+  <text x="1140" y="388" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="12" text-anchor="end" fill="#6B6359">Epic timeline</text>
+
+  <!-- phase cards -->
+  <g font-family="Pretendard, 'Noto Sans KR', 'Noto Sans JP', 'Noto Sans SC', 'Apple SD Gothic Neo', 'Hiragino Sans', 'Microsoft YaHei', system-ui, sans-serif">
+    <rect x="198" y="125" width="220" height="170" rx="12" fill="#FAF9F5" stroke="#D9CDBE"/>
+    <text x="214" y="158" font-size="17" font-weight="600" fill="#141413">PLAN</text>
+    <text x="214" y="187" font-size="14" fill="#6B6359">SPEC drafted</text>
+    <text x="214" y="207" font-size="14" fill="#6B6359">plan-audit PASS</text>
+
+    <rect x="490" y="125" width="220" height="170" rx="12" fill="#FAF9F5" stroke="#D9CDBE"/>
+    <text x="506" y="158" font-size="17" font-weight="600" fill="#141413">RUN</text>
+    <text x="506" y="187" font-size="14" fill="#6B6359">implementation</text>
+    <text x="506" y="207" font-size="14" fill="#6B6359">ACs verified</text>
+
+    <rect x="782" y="125" width="220" height="170" rx="12" fill="#FBE9DF" stroke="#D97757" stroke-width="1.6"/>
+    <text x="798" y="158" font-size="17" font-weight="600" fill="#141413">SYNC</text>
+    <text x="798" y="187" font-size="14" fill="#6B6359">docs + PR</text>
+    <text x="798" y="207" font-size="14" fill="#6B6359">3-phase close</text>
+  </g>
+
+  <!-- milestone dots on the axis -->
+  <circle cx="308" cy="400" r="6" fill="#6B6359"/>
+  <circle cx="600" cy="400" r="6" fill="#6B6359"/>
+  <circle cx="892" cy="400" r="6" fill="#6B6359"/>
+  <text x="308" y="424" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="12" text-anchor="middle" fill="#6B6359">SPEC-audit PASS</text>
+  <text x="600" y="424" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="12" text-anchor="middle" fill="#6B6359">ACs verified</text>
+  <text x="892" y="424" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="12" text-anchor="middle" fill="#6B6359">3-phase close</text>
+</svg>

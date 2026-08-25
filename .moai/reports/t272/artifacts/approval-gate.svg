@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1660 470" width="1660" height="470"
+     role="img" aria-labelledby="approval-gate-title approval-gate-desc">
+  <title id="approval-gate-title">v3.1.4 release approval flow</title>
+  <desc id="approval-gate-desc">A pull request moves through the CI matrix and code review; maintainer approval is the gate that must pass before the merge, and a changes-requested verdict loops the PR back to draft.</desc>
+  <defs>
+    <marker id="approval-gate-arrow" markerUnits="userSpaceOnUse"
+            markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+      <path d="M 0 0 L 10 4 L 0 8 z" fill="#6B6359"/>
+    </marker>
+    <marker id="approval-gate-arrow-caution" markerUnits="userSpaceOnUse"
+            markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+      <path d="M 0 0 L 10 4 L 0 8 z" fill="#9a6700"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1660" height="470" fill="#FAF9F5"/>
+
+  <g><text x="60" y="96" font-family="'Noto Serif', Georgia, serif" font-size="34" font-weight="600" fill="#141413">v3.1.4 Release Approval Flow</text></g>
+
+  <!-- connectors: 4 forward, 1 dashed changes-requested return -->
+  <g stroke="#6B6359" stroke-width="1.25">
+    <path d="M 280 210 H 342" fill="none" marker-end="url(#approval-gate-arrow)"/>
+    <path d="M 572 210 H 634" fill="none" marker-end="url(#approval-gate-arrow)"/>
+    <path d="M 864 210 H 926" fill="none" marker-end="url(#approval-gate-arrow)"/>
+    <path d="M 1156 210 H 1218" fill="none" marker-end="url(#approval-gate-arrow)"/>
+  </g>
+  <path d="M 754 295 V 392 Q 754 400 746 400 H 178 Q 170 400 170 392 V 305"
+        stroke="#9a6700" stroke-width="1.25" stroke-dasharray="4,3" fill="none"
+        marker-end="url(#approval-gate-arrow-caution)"/>
+  <rect x="397" y="374" width="130" height="18" fill="#FAF9F5"/>
+  <text x="462" y="388" font-family="Pretendard, 'Noto Sans KR', 'Noto Sans JP', 'Noto Sans SC', 'Apple SD Gothic Neo', 'Hiragino Sans', 'Microsoft YaHei', system-ui, sans-serif" font-size="12" text-anchor="middle" fill="#9a6700">changes requested</text>
+
+  <!-- nodes -->
+  <g font-family="Pretendard, 'Noto Sans KR', 'Noto Sans JP', 'Noto Sans SC', 'Apple SD Gothic Neo', 'Hiragino Sans', 'Microsoft YaHei', system-ui, sans-serif">
+    <rect x="60" y="125" width="220" height="170" rx="12" fill="#FAF9F5" stroke="#D9CDBE"/>
+    <text x="76" y="158" font-size="17" font-weight="600" fill="#141413">PR Draft</text>
+    <text x="76" y="187" font-size="14" fill="#6B6359">feature branch PR</text>
+    <text x="76" y="207" font-size="14" fill="#6B6359">opened for review</text>
+
+    <rect x="352" y="125" width="220" height="170" rx="12" fill="#FAF9F5" stroke="#D9CDBE"/>
+    <text x="368" y="158" font-size="17" font-weight="600" fill="#141413">CI Matrix</text>
+    <text x="368" y="187" font-size="14" fill="#6B6359">build + test green</text>
+    <text x="368" y="207" font-size="14" fill="#6B6359">all three OS</text>
+
+    <rect x="644" y="125" width="220" height="170" rx="12" fill="#FAF9F5" stroke="#D9CDBE"/>
+    <text x="660" y="158" font-size="17" font-weight="600" fill="#141413">Code Review</text>
+    <text x="660" y="187" font-size="14" fill="#6B6359">reviewer comments</text>
+    <text x="660" y="207" font-size="14" fill="#6B6359">resolved</text>
+
+    <rect x="936" y="125" width="220" height="170" rx="12" fill="#FBE9DF" stroke="#D97757" stroke-width="1.6"/>
+    <text x="952" y="153" font-size="12" font-weight="600" fill="#B85C3E">&#9733; GATE</text>
+    <text x="952" y="179" font-size="17" font-weight="600" fill="#141413">Maintainer</text>
+    <text x="952" y="204" font-size="17" font-weight="600" fill="#141413">Approval</text>
+    <text x="952" y="233" font-size="14" fill="#6B6359">human sign-off</text>
+
+    <rect x="1228" y="125" width="220" height="170" rx="12" fill="#FAF9F5" stroke="#D9CDBE"/>
+    <text x="1244" y="158" font-size="17" font-weight="600" fill="#141413">Merge</text>
+    <text x="1244" y="187" font-size="14" fill="#6B6359">squash merge</text>
+    <text x="1244" y="207" font-size="14" fill="#6B6359">to main</text>
+
+    <text x="170" y="331" font-size="12" text-anchor="middle" fill="#6B6359">v3.1.4 release train</text>
+    <text x="462" y="331" font-size="12" text-anchor="middle" fill="#6B6359">darwin / linux / windows</text>
+    <text x="754" y="331" font-size="12" text-anchor="middle" fill="#6B6359">review verdict + CR</text>
+    <text x="1046" y="331" font-size="12" text-anchor="middle" fill="#6B6359">the approval gate</text>
+    <text x="1338" y="331" font-size="12" text-anchor="middle" fill="#6B6359">release tag follows CI</text>
+  </g>
+</svg>

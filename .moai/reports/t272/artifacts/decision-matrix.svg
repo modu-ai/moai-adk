@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 564" width="1200" height="564"
+     role="img" aria-labelledby="decision-matrix-title decision-matrix-desc">
+  <title id="decision-matrix-title">Database selection matrix</title>
+  <desc id="decision-matrix-desc">PostgreSQL, MongoDB, and Redis are compared across four criteria: data model, scaling, operations cost, and team familiarity.</desc>
+  <defs/>
+
+  <rect x="0" y="0" width="1200" height="564" fill="#FAF9F5"/>
+
+  <g><text x="60" y="96" font-family="'Noto Serif', Georgia, serif" font-size="34" font-weight="600" fill="#141413">Database Selection Matrix</text></g>
+
+  <!-- zebra bands behind rows 0 and 2 -->
+  <rect x="60" y="200" width="1080" height="76" fill="#F3EFE6"/>
+  <rect x="60" y="352" width="1080" height="76" fill="#F3EFE6"/>
+
+  <g font-family="Pretendard, 'Noto Sans KR', 'Noto Sans JP', 'Noto Sans SC', 'Apple SD Gothic Neo', 'Hiragino Sans', 'Microsoft YaHei', system-ui, sans-serif">
+    <!-- column headers -->
+    <rect x="348" y="120" width="245.33" height="64" rx="12" fill="#FBE9DF" stroke="#D97757" stroke-width="1.6"/>
+    <text x="470.67" y="158" font-size="17" font-weight="600" text-anchor="middle" fill="#141413">PostgreSQL</text>
+    <rect x="621.33" y="120" width="245.33" height="64" rx="12" fill="#F3EFE6" stroke="#D9CDBE"/>
+    <text x="744" y="158" font-size="17" font-weight="600" text-anchor="middle" fill="#141413">MongoDB</text>
+    <rect x="894.67" y="120" width="245.33" height="64" rx="12" fill="#F3EFE6" stroke="#D9CDBE"/>
+    <text x="1017.33" y="158" font-size="17" font-weight="600" text-anchor="middle" fill="#141413">Redis</text>
+
+    <!-- row labels -->
+    <text x="76" y="244" font-size="17" font-weight="600" fill="#141413">Data model</text>
+    <text x="76" y="320" font-size="17" font-weight="600" fill="#141413">Scaling</text>
+    <text x="76" y="396" font-size="17" font-weight="600" fill="#141413">Ops cost</text>
+    <text x="76" y="472" font-size="17" font-weight="600" fill="#141413">Familiarity</text>
+
+    <!-- cells: single-line by A3 contract -->
+    <text x="470.67" y="244" font-size="14" text-anchor="middle" fill="#141413">relational tables</text>
+    <text x="744" y="244" font-size="14" text-anchor="middle" fill="#6B6359">document BSON</text>
+    <text x="1017.33" y="244" font-size="14" text-anchor="middle" fill="#6B6359">key-value</text>
+
+    <text x="470.67" y="320" font-size="14" text-anchor="middle" fill="#141413">vertical + replicas</text>
+    <text x="744" y="320" font-size="14" text-anchor="middle" fill="#6B6359">horizontal shards</text>
+    <text x="1017.33" y="320" font-size="14" text-anchor="middle" fill="#6B6359">cluster mode</text>
+
+    <text x="470.67" y="396" font-size="14" text-anchor="middle" fill="#141413">backup + tuning</text>
+    <text x="744" y="396" font-size="14" text-anchor="middle" fill="#6B6359">shard upkeep</text>
+    <text x="1017.33" y="396" font-size="14" text-anchor="middle" fill="#6B6359">minimal</text>
+
+    <text x="470.67" y="472" font-size="14" text-anchor="middle" fill="#141413">high (SQL)</text>
+    <text x="744" y="472" font-size="14" text-anchor="middle" fill="#6B6359">medium</text>
+    <text x="1017.33" y="472" font-size="14" text-anchor="middle" fill="#6B6359">medium</text>
+  </g>
+</svg>

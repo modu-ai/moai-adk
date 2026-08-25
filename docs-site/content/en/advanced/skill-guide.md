@@ -95,6 +95,24 @@ This count is also a result of dieting — the skill catalog was refined from 48
 | `moai-domain-svg-infographic` | Editable SVG technical infographics (architecture, flow, comparison), CJK fonts |
 | `moai-domain-design-dna`    | Reverse-engineers a reference design (screenshot, image set, URL) into a Design DNA JSON, and generates a new artifact from it |
 
+### SVG Infographics — Producible Diagram Types
+
+Which diagram kinds `moai-domain-svg-infographic` can produce was measured, not assumed. All nine forms of an external catalog (the SkillStead TypePack) were run as identical generation briefs and checked against the skill's own delivery gates — the deterministic source lint and the dimension-verified 2x PNG render — and every one of them reproduced successfully.
+
+| Diagram type | Use | Measured artifact |
+| ------------ | --- | ----------------- |
+| Approval-gate flow | An ordered procedure with a gate that must pass | `.moai/reports/t272/artifacts/approval-gate.svg` |
+| Before-after comparison | Two states weighed against the same criteria | `.moai/reports/t272/artifacts/before-after.svg` |
+| KPI card grid | Key metrics laid out as cards | `.moai/reports/t272/artifacts/cards-kpi-grid.svg` |
+| Decision matrix | Options crossed with criteria | `.moai/reports/t272/artifacts/decision-matrix.svg` |
+| Layer stack | Components stacked top to bottom | `.moai/reports/t272/artifacts/layer-stack.svg` |
+| Nested scope | Boundaries wrapped one inside another | `.moai/reports/t272/artifacts/nested-scope.svg` |
+| Process flow | Steps joined in order | `.moai/reports/t272/artifacts/process-flow.svg` |
+| Roadmap timeline | Phases and milestones on a time axis | `.moai/reports/t272/artifacts/roadmap-timeline.svg` |
+| Component topology | How components connect | `.moai/reports/t272/artifacts/topology-component.svg` |
+
+Each form is expressed on top of the four base layouts (stack, left-to-right flow, side-by-side comparison, hierarchy tree) in a way that preserves the information structure. The per-form verdict table and gate logs live in `.moai/reports/t272/verdict.md`.
+
 ### Reference (Best Practices) - 11
 
 | Skill name                  | Description                                              |
