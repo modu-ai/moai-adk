@@ -43,7 +43,7 @@ All evidence measured in worktree t273 (branch WT-workflow-docs), 2026-08-25, fi
 
 | AC | Status | Command (representative) | Observed |
 |---|---|---|---|
-| AC-WFD-001 | PASS | `grep -c "Class A/B/C"` kanban-mode.md ×4 | 1/1(en 1,3)/1/1 — all locales carry literal protocol tokens |
+| AC-WFD-001 | PASS | heading-token grep ×4 + `grep -c "Class A/B/C"` kanban-mode.md ×4 | headings 카드 클래스/Card Classes/カードクラス/卡片类别 = 1×4 (en retitled post sync-audit F1); Class A/B/C literal 1×4 — all locales carry heading + protocol tokens |
 | AC-WFD-002 | PASS | `grep -c "카드 클래스"/"Card Classes"/"カードクラス"/"卡片类别"` README ×4 | 1/1/1/1 |
 | AC-WFD-003 | PASS | `ls` ×4 + `grep -c workers.json` | 4 files; workers.json 2/2/2/2 |
 | AC-WFD-004 | PASS | `grep -c CLAUDE_CODE_MAX_CONCURRENT_SUBAGENTS` factory-mode ×4 | 1/1/1/1 |

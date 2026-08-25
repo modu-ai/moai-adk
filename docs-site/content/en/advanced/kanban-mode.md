@@ -248,7 +248,7 @@ The detailed procedure of each phase inherits the existing chaining rules:
 
 What Kanban Mode adds on top is the **multi-session board viewpoint** — the lead session coordinates, run sessions work in parallel, and the Origin-Trail Chain tracks that lineage. For the detailed rules of the chain phases themselves, see the `/moai` unified command and `/moai goal`.
 
-## Card classes — not every card needs every column
+## Card Classes — not every card needs every column
 
 Most of what piles up in the backlog is small chores — a one-line fix, a stale reference, a flag rename. Pushing these through the full `plan → run → sync` costs more ceremony than the change is worth. So each time a card leaves `backlog`, the lead classifies it into one of three classes and names the class in the dispatch.
 
