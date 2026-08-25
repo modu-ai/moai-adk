@@ -9,7 +9,7 @@ description: |
   NOT for: SPEC body authoring (spec.md / plan.md / acceptance.md / design.md / research.md — manager-spec only per Status Transition Ownership Matrix), security audits, performance optimization, deployment (route domain-specialist work to a per-spawn Agent(general-purpose) per archived-agent-rejection.md §C)
 tools: Read, Write, Edit, Bash, Grep, Glob, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__moai__verify_snapshot, mcp__moai__verify_trend, mcp__moai__goal_status
 model: inherit
-effort: high
+effort: medium
 color: green
 permissionMode: bypassPermissions
 memory: project

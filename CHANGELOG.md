@@ -257,6 +257,13 @@ web console server no longer dies to a SIGTERM that lands during startup.
 
 ### Changed
 
+- **The per-agent model/effort matrix moves to a judgment-weighted policy.** The spend goes to the rows
+  that judge rather than the rows that produce: the auditing/advising rows and the coordinating rows hold
+  `high` in the two upper columns, while `manager-spec` and `manager-develop` sit at `medium` in all three.
+  `manager-docs` becomes `sonnet/low` everywhere; no row takes `max` any more.
+- **`manager-lead` joins the matrix.** It was absent entirely and resolved to the unmapped-agent `inherit`
+  sentinel — the Tier L coordinator took whatever model the session happened to be on. It is now a mapped
+  row with its own `lead` group, injectable and overridable like every other retained agent.
 - **The GLM reasoning-effort ceiling is raised to `max`.** Every Claude effort above `low`
   (`medium` / `high` / `xhigh` / `max`) now maps onto reasoning `max`, and a GLM session without an
   explicit override defaults to `max`. `low` is unchanged; no Claude effort maps to `high` anymore.
