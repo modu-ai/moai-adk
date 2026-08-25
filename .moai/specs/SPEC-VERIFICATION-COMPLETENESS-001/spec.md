@@ -2,7 +2,7 @@
 id: SPEC-VERIFICATION-COMPLETENESS-001
 title: "t241 하네스 규칙 6건의 규칙 파일 착지 — 검증 완결성(verification completeness) 규칙 + always-loaded 예산 영향 측정"
 version: "0.2.1"
-status: in-progress
+status: completed
 created: 2026-08-25
 updated: 2026-08-25
 author: manager-spec

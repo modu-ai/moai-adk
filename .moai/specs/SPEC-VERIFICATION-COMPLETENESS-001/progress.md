@@ -112,7 +112,25 @@ m1_to_mN_commit_strategy: "3 commits (M1 rule+SPEC artifacts / M2 mirror / M3 ev
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: complete
+sync_complete_at: 2026-08-25
+sync_commit_sha: pending-backfill
+sync_commit_sha_note: >
+  Pre-sync measured HEAD 0362f23c6 (M3 evidence commit, branch WT-harness-rules).
+  The sync commit cannot know its own SHA (self-referential hazard,
+  spec-frontmatter-schema.md D3 exemption); the lead references it after the
+  commit lands — same workaround §E.3 used.
+changelog_entry_added: "CHANGELOG.md [Unreleased] ### Added — SPEC-VERIFICATION-COMPLETENESS-001"
+spec_status_transition: "in-progress -> completed (single sync commit; implemented folded per 3-phase close)"
+spec_version: "0.2.1 (kept — sibling completed SPECs close at 0.x: PRECOMMIT-PRESERVE-001 0.5.0, AGENTS-MD-CANON-001 0.4.0)"
+b12_self_test_a: "pre-emission grep -c 'SPEC-VERIFICATION-COMPLETENESS-001' CHANGELOG.md -> 0 (rc=1) before emission"
+b12_self_test_b: "AC count: grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l -> 9 (AC-VC-001..009); CHANGELOG entry states 9 PASS"
+b12_self_test_c: "ls verified: .claude/rules/moai/development/verification-completeness.md + internal/template/templates/.claude/rules/moai/development/verification-completeness.md (both exist, 10783 B each)"
+push: withheld (card lane policy — lead merges)
+```
+
+
 
 ## §F Phase 4 Mode Selection
 
