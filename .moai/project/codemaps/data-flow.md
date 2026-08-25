@@ -256,6 +256,32 @@ flowchart TD
 
 ---
 
+## 8. 프리커밋 훅 보존 (moai init / update)
+
+```mermaid
+flowchart TD
+    A["moai init / update"]
+    B["설치 분류기<br/>(3-way)"]
+    C["SHA-256 사이드카<br/>.git/hooks/.moai-pre-commit.sha256"]
+    D["사용자 수정 훅"]
+    E["백업 pre-commit.bak.<UTC>"]
+    F["교체 + 백업 경로/stderr 공개"]
+
+    A --> B
+    B --> C
+    C -->|불일치| D
+    D --> E
+    E --> F
+```
+
+**흐름**:
+1. `moai init`/`moai update`가 기존 pre-commit 훅 발견 시 설치 분류기가 3-way 귀속 (설치본 vs 기록 다이제스트 vs 교체본)
+2. 기록된 다이제스트와 다른 훅은 사용자 수정본으로 분류 — 자동 덮어쓰지 않음
+3. 수정본은 `pre-commit.bak.<타임스탬프>`로 백업 (Windows 생성 가능한 콜론 없는 UTC 형식, 이름 충돌 시 형제 접미사)
+4. 백업 경로와 교체 공지가 양 호출 지점의 stderr에 출력; 백업 실패 시 훅은 그대로 유지
+
+---
+
 ## 주요 인터페이스 계약
 
 ### Handler (Hook System)
