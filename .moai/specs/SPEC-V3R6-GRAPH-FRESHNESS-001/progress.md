@@ -221,10 +221,11 @@ $ GOOS=windows go build ./...           → exit 0 (no output)   [after M1, M4, 
 ```yaml
 run_complete_at: 2026-08-25
 run_commit_sha: "M1 cd46e0250 / M2 68323efba / M3 5b88fd0ab / docs 7261712f1 / M4-M5 see final commits"
-run_status: "M1-M5 complete across two delegations"
-ac_pass_count: 22                 # AC-GF-001..022 (all; AC-022 with recorded baseline gap)
+run_status: "M1-M5 implemented; 20 AC pass, 2 pass-with-debt, 1 deferred evidence (CR round-2 3855149212 honest restatement — was 'all 22 pass', which overstated AC-GF-007/022)"
+ac_pass_count: 20
 ac_fail_count: 0
-ac_deferred_count: 0
+ac_pass_with_debt_count: 2        # AC-GF-012 (codemap md writer adoption deferred), AC-GF-022 (per-task baseline unobtainable — structural reduction only, m5-baseline.md)
+ac_deferred_count: 1              # AC-GF-007's non-main-branch CI-red observation: the job exists + local halves observed; the pushed-branch red was push-forbidden in-run (evidence gap, §E.2)
 preserve_list_post_run_count: 0   # no PRESERVE-list file modified
 new_warnings_or_lints_introduced: 0
 cross_platform_build:

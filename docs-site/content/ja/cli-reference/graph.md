@@ -56,6 +56,9 @@ $ moai graph query --milestones-no-card
 
 ```bash
 $ moai graph check
+codemaps  metric=described-source-diff value=0 threshold=40 verdict=fresh
+mx-index  metric=inventory-content-diff value=0 threshold=1 verdict=fresh
+edges     metric=source-fingerprint-mismatch value=0 threshold=0 verdict=fresh
 ```
 
 グラフの3層 — codemaps · @MX インデックス · edges.jsonl — がコードにどれだけ遅れているかを、層ごとに自分の指標で測り、`fresh` / `stale` / `absent` の判定を返します。codemaps はスタンプされた生成コミット以降に変わった記述対象ファイル数(戻した変更は0と数えます)、@MX インデックスは内容ハッシュが変わったファイル数、edges.jsonl はソースフィンガープリントの不一致を見ます。
@@ -68,6 +71,8 @@ mtime はどこでも読みません。新しいチェックアウトはすべ�
 
 ```bash
 $ moai graph stamp codemaps
+OK: stamped .moai/project/codemaps/provenance.json
+provenance: tree=/path/to/project commit=1a2b3c4d5e6
 ```
 
 codemaps を再生成した後の最後のステップとして実行します。文書の内容は `/moai codemaps` が整えますが、その内容が**どのツリー状態を記述しているか**はこのコマンドが `provenance.json` に記録します。`moai graph check` が codemaps 層を判定するよりどころがこの記録です。

@@ -3,9 +3,11 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/graph"
@@ -55,7 +57,15 @@ Thresholds are configured in gate.yaml (graph_freshness section).`,
 				return err
 			}
 
-			th := graphCheckThresholds(projectRoot)
+			th, cfgErr := graphCheckThresholds(projectRoot)
+			if cfgErr != nil {
+				// A PRESENT-but-malformed gate.yaml is a system error (exit 2,
+				// CR round-2 3855149230): silently checking under defaults
+				// could pass a tree the operator's (unreadable) config meant
+				// to fail. Absent or partial config keeps defaults.
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "graph check: config load failed: %v\n", cfgErr)
+				return &exitCodeError{code: 2, msg: fmt.Sprintf("graph check: gate.yaml unreadable: %v", cfgErr)}
+			}
 
 			res, err := graph.CheckFreshness(projectRoot, th)
 			if err != nil {
@@ -104,15 +114,30 @@ Thresholds are configured in gate.yaml (graph_freshness section).`,
 	return cmd
 }
 
-// graphCheckThresholds resolves thresholds from gate.yaml graph_freshness,
-// falling back to reasoned defaults when the config is absent or partial
-// (zero values mean "not configured").
-func graphCheckThresholds(projectRoot string) graph.Thresholds {
+// graphCheckThresholds resolves thresholds from gate.yaml graph_freshness.
+// Absent or partial config keeps the reasoned defaults; a PRESENT but
+// malformed gate.yaml is an error the caller surfaces as exit 2 — a broken
+// config must not silently pass a tree its intended thresholds would fail.
+func graphCheckThresholds(projectRoot string) (graph.Thresholds, error) {
 	th := graph.DefaultThresholds()
+	moaiDir := filepath.Join(projectRoot, ".moai")
+
+	// Pre-validate a present gate.yaml (CR round-2 3855149230): the shared
+	// loader logs-and-continues on parse errors (defaults contract), so the
+	// checker validates the file itself — a malformed file must exit 2, not
+	// silently check under defaults.
+	gatePath := filepath.Join(moaiDir, "config", "sections", "gate.yaml")
+	if data, err := os.ReadFile(gatePath); err == nil {
+		var probe map[string]any
+		if yamlErr := yaml.Unmarshal(data, &probe); yamlErr != nil {
+			return th, fmt.Errorf("gate.yaml present but unparseable: %w", yamlErr)
+		}
+	}
+
 	loader := config.NewLoader()
-	cfg, err := loader.Load(filepath.Join(projectRoot, ".moai"))
+	cfg, err := loader.Load(moaiDir)
 	if err != nil {
-		return th
+		return th, nil // absent/partial config: documented defaults path
 	}
 	gf := cfg.Gate.GraphFreshness
 	if gf.CodemapsChangedFiles > 0 {
@@ -121,5 +146,5 @@ func graphCheckThresholds(projectRoot string) graph.Thresholds {
 	if gf.MXIndexChangedFiles > 0 {
 		th.MXIndexChangedFiles = gf.MXIndexChangedFiles
 	}
-	return th
+	return th, nil
 }

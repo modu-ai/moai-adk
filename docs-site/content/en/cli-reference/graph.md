@@ -56,6 +56,9 @@ Before answering, a query refreshes the mechanical layers (the @MX index and edg
 
 ```bash
 $ moai graph check
+codemaps  metric=described-source-diff value=0 threshold=40 verdict=fresh
+mx-index  metric=inventory-content-diff value=0 threshold=1 verdict=fresh
+edges     metric=source-fingerprint-mismatch value=0 threshold=0 verdict=fresh
 ```
 
 Measures how far the graph's three layers — codemaps, the @MX index, edges.jsonl — have fallen behind the code, each by its own metric, and returns a `fresh` / `stale` / `absent` verdict per layer. Codemaps is judged by described-source files changed since the stamped generation commit (reverted churn counts zero), the @MX index by files whose content hash moved, edges.jsonl by source-fingerprint mismatch.
@@ -68,6 +71,8 @@ No filesystem mtime is read anywhere. A fresh checkout resets every mtime, which
 
 ```bash
 $ moai graph stamp codemaps
+OK: stamped .moai/project/codemaps/provenance.json
+provenance: tree=/path/to/project commit=1a2b3c4d5e6
 ```
 
 Run as the last step after regenerating codemaps. The content is curated by `/moai codemaps`; this command records **which tree state that content describes**, in `provenance.json` — the anchor `moai graph check` judges the codemaps layer against.

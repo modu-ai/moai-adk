@@ -186,6 +186,38 @@ func TestGraphCheckCmd_NotComparableExitsTwo(t *testing.T) {
 	}
 }
 
+// CR round-2 3855149230 (t261: failing input + observed red): a PRESENT but
+// malformed gate.yaml exits 2 — never a silent defaults-based pass — while an
+// absent config keeps the defaults path (exit reflects the check, not config).
+func TestGraphCheckCmd_MalformedGateYamlExitsTwo(t *testing.T) {
+	root := newCheckCLIRepo(t)
+	stampAllLayers(t, root)
+
+	cfgDir := filepath.Join(root, ".moai", "config", "sections")
+	if err := os.MkdirAll(cfgDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cfgDir, "gate.yaml"),
+		[]byte("gate: [unclosed\n  bad yaml: {{{"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := newGraphCmd()
+	cmd.SetArgs([]string{"check", "--root", root})
+	var out, errOut bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&errOut)
+	err := cmd.Execute()
+
+	var codeErr interface{ ExitCode() int }
+	if !errors.As(err, &codeErr) || codeErr.ExitCode() != 2 {
+		t.Fatalf("malformed gate.yaml must exit 2 (system error), got %v", err)
+	}
+	if !strings.Contains(errOut.String(), "gate.yaml") {
+		t.Errorf("exit-2 stderr must name the config: %s", errOut.String())
+	}
+}
+
 // AC-GF-005 (CLI surface): absent untracked layers exit 1 with explicit
 // absent verdicts — a fresh worktree state.
 func TestGraphCheckCmd_AbsentExitsOne(t *testing.T) {

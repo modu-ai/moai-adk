@@ -56,6 +56,9 @@ $ moai graph query --milestones-no-card
 
 ```bash
 $ moai graph check
+codemaps  metric=described-source-diff value=0 threshold=40 verdict=fresh
+mx-index  metric=inventory-content-diff value=0 threshold=1 verdict=fresh
+edges     metric=source-fingerprint-mismatch value=0 threshold=0 verdict=fresh
 ```
 
 按层各自的指标，测量图的三个层——codemaps · @MX 索引 · edges.jsonl——落后代码多远，并给出每层 `fresh` / `stale` / `absent` 判定。codemaps 看打了戳记的生成提交之后变化的被描述文件数(回退的改动计为 0)，@MX 索引看内容哈希变了的文件数，edges.jsonl 看源指纹是否不一致。
@@ -68,6 +71,8 @@ $ moai graph check
 
 ```bash
 $ moai graph stamp codemaps
+OK: stamped .moai/project/codemaps/provenance.json
+provenance: tree=/path/to/project commit=1a2b3c4d5e6
 ```
 
 重新生成 codemaps 后，作为最后一步执行。文档内容由 `/moai codemaps` 打磨，而这份内容**描述的是哪个树状态**由本命令写入 `provenance.json`——`moai graph check` 判定 codemaps 层的依据就是这份记录。
