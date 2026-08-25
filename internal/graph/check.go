@@ -106,7 +106,16 @@ func (r CheckResult) OffendingLayers() []LayerReport {
 // every mtime, which an mtime metric would misread as freshly regenerated.
 func CheckFreshness(projectRoot string, th Thresholds) (CheckResult, error) {
 	res := CheckResult{TreeRoot: projectRoot}
-	res.Layers = append(res.Layers, checkCodemaps(projectRoot, th))
+	codemapsRep, err := checkCodemaps(projectRoot, th)
+	if err != nil {
+		// Not-comparable stamped commit (e.g. shallow checkout missing the
+		// generation commit): epistemically distinct from stale — the layer
+		// was never measured. System error, exit 2 (spec-gap fix: the SPEC's
+		// verdict enum covers fresh|stale|absent and prescribes no
+		// not-comparable verdict; exit 2 names the missing commit).
+		return res, err
+	}
+	res.Layers = append(res.Layers, codemapsRep)
 	res.Layers = append(res.Layers, checkMXIndex(projectRoot, th))
 	res.Layers = append(res.Layers, checkEdges(projectRoot))
 	return res, nil
@@ -115,28 +124,30 @@ func CheckFreshness(projectRoot string, th Thresholds) (CheckResult, error) {
 // checkCodemaps: count of described-source files whose working-tree content
 // differs from the content at the stamped generation commit (endpoint diff —
 // reverted churn counts zero). Dirty generation anchors on the stamped
-// content fingerprint instead of a named commit.
-func checkCodemaps(projectRoot string, th Thresholds) LayerReport {
+// content fingerprint instead of a named commit. A stamped commit git cannot
+// resolve (shallow history, vanished SHA) is NOT judged stale — the layer was
+// never measured; the error propagates as a system error (exit 2).
+func checkCodemaps(projectRoot string, th Thresholds) (LayerReport, error) {
 	rep := LayerReport{Layer: LayerCodemaps, Metric: MetricDescribedSourceDiff, Threshold: th.CodemapsChangedFiles}
 
 	dir := filepath.Join(projectRoot, ".moai", "project", "codemaps")
 	if info, err := os.Stat(dir); err != nil || !info.IsDir() {
 		rep.Verdict = VerdictAbsent
 		rep.Reason = "codemaps directory missing"
-		return rep
+		return rep, nil
 	}
 	pvPath := filepath.Join(dir, "provenance.json")
 	data, err := os.ReadFile(pvPath)
 	if err != nil {
 		rep.Verdict = VerdictAbsent
 		rep.Reason = "no provenance block — freshness-unjudgeable, not fresh"
-		return rep
+		return rep, nil
 	}
 	var pv mx.Provenance
 	if err := json.Unmarshal(data, &pv); err != nil || pv.SchemaVersion == 0 {
 		rep.Verdict = VerdictAbsent
 		rep.Reason = "provenance block unparseable — freshness-unjudgeable"
-		return rep
+		return rep, nil
 	}
 
 	roots := pv.DescribedRoots
@@ -151,29 +162,32 @@ func checkCodemaps(projectRoot string, th Thresholds) LayerReport {
 		if err != nil {
 			rep.Verdict = VerdictAbsent
 			rep.Reason = "described roots unreadable: " + err.Error()
-			return rep
+			return rep, nil
 		}
 		if cur == pv.ContentFingerprint {
 			rep.Value = 0
 			rep.Verdict = VerdictFresh
-			return rep
+			return rep, nil
 		}
 		rep.Value = 1
 		rep.Verdict = VerdictStale
 		rep.Reason = fmt.Sprintf("content moved past dirty-generation fingerprint %s", shortHash(pv.ContentFingerprint))
-		return rep
+		return rep, nil
 	}
 
 	if pv.CommitSHA == "" {
 		rep.Verdict = VerdictAbsent
 		rep.Reason = "clean stamp carries no commit sha — freshness-unjudgeable"
-		return rep
+		return rep, nil
 	}
 	count, err := gitDiffNameCount(projectRoot, pv.CommitSHA, roots)
 	if err != nil {
-		rep.Verdict = VerdictStale
-		rep.Reason = "stamped commit not comparable: " + err.Error()
-		return rep
+		// Not-comparable (bad revision / shallow history): report the layer
+		// as unmeasured and surface the system error — never judge stale on
+		// a diff that could not run.
+		rep.Verdict = VerdictAbsent
+		rep.Reason = "stamped commit not comparable (unmeasured, system error follows)"
+		return rep, fmt.Errorf("codemaps stamp %s not comparable in this checkout: %w", shortHash(pv.CommitSHA), err)
 	}
 	rep.Value = count
 	if count >= th.CodemapsChangedFiles {
@@ -181,7 +195,7 @@ func checkCodemaps(projectRoot string, th Thresholds) LayerReport {
 	} else {
 		rep.Verdict = VerdictFresh
 	}
-	return rep
+	return rep, nil
 }
 
 // checkMXIndex: count of scanner-read files whose working-tree content hash

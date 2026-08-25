@@ -178,6 +178,29 @@ Scope of this delegation: **M1-M3 only** (M4 symbol layer, M5 MCP code queries a
 - Baseline artifact: `.moai/reports/t250/m5-baseline.md` — authored before the M5 implementation within the working session; committed together with it in the same commit (`7f2e9e77d`), so ordering rests on the authoring session record, not on git history (audit F3: a same-commit pair cannot prove ordering in git). Method: mechanical `grep -c '"name":"<tool>"'` over the 8 most recent real session transcripts (session ids + dates + counts tabled). Real finding: Grep tool-use is 0–1/session in this repository (agents search via Bash grep); Read 0–25/session. Per-task baseline counts: NOT OBTAINABLE (no pre-M5 session performed the fixed task set; a knowing-measurer simulation would fabricate counts) — recorded as an explicit gap per delegation instruction.
 - Post artifact: `.moai/reports/t250/m5-post.md` — the same fixed task set executed by the M5 engine against the real worktree (vehicle run, verbatim per-task logs): **0 Grep + 0 Read tool-use events, 5 tool calls, all provenance-stamped**. Claim bounded to what was measured (structural reduction on this task set), stated honestly.
 
+### CI fix round — PR #1648 findings (post-rebase, HEAD dc5d65aad)
+
+**F4 / not-comparable state (t241 mutant-discipline record):**
+- **(a) Turns red when** the codemaps provenance stamp names a commit the local git history does not hold (shallow checkout, vanished SHA) — `git diff <stamp>` cannot run and the layer was never measured. It reports as a SYSTEM ERROR (exit 2), never a fabricated `stale` verdict.
+- **(b) Failing input + observed reproduction** (local shallow clone of this branch, `git clone --depth 1`, fixed binary): verbatim —
+  ```
+  $ cd /tmp/t250shallow-repro && /tmp/t250bin/moai graph check
+  EXIT=2
+  --STDERR--
+  graph check: system error: codemaps stamp 5b88fd0ab0d0 not comparable in this checkout: git diff 5b88fd0ab0d0: exit status 128: fatal: bad object 5b88fd0ab0d0e1394bd92bec1650c54d35784281
+  ```
+  Contrast, the PRE-fix binary on the SAME clone reproduced the CI failure shape (verdict=stale + exit 1 on `fatal: bad object`) — the defect class exit 2 now replaces. Regression tests: `TestCheckFreshness_NotComparableIsSystemError` (engine) + `TestGraphCheckCmd_NotComparableExitsTwo` (CLI exit code + stderr naming), both observed PASS.
+- **(c) Reachability + why exit 2 is the honest signal there**: with `fetch-depth: 0` in graph-freshness.yml, the CI checkout holds the PR branch's full history; the stamp names an ancestor of the regenerating commit on the same branch (the standard flow), so `git diff` always resolves — **not-comparable cannot fire in the CI path** (the only CI-side exit-2 risk was exactly the shallow default, now removed at both layers). The remaining reachable environment is a USER's shallow clone running `moai graph check`: there, exit 2 with the named commit is the intended honest signal — the tool refuses to guess freshness from history it does not hold; exit 1 (stale) would assert a measurement that never ran, and exit 0 would bless an unmeasured layer. (A stamp naming a NON-ancestor commit — e.g. cherry-picked codemaps from another branch — also lands here even on full history; that is a mis-stamped artifact, and a system error is likewise the honest verdict.)
+- Spec-gap note: the SPEC's verdict enum (fresh|stale|absent) and REQ-GF-004 prescribe no not-comparable verdict; exit 2 (system error, per design.md §7's 0/1/2 contract) is the implemented completion, recorded as a spec-gap fix.
+
+**F1 mcp count guard**: catalog test updated 25 → 28 (main's design is a literal pin — kept literal per the delegation instruction; the registration/catalog equality guard in cli remains the drift catcher).
+
+**F2 nonoverlap guard jurisdiction**: TestConsumerOnly_M0AndMxByteUnchanged now gates on the branch's diff touching `internal/navigator/detect/` — the AC-NS2-005a consume-only contract binds Detect-layer change-sets; an mx-package SPEC (this one) legitimately editing internal/mx no longer trips a guard that has no standing over it. On Detect branches the guard is unchanged and still enforcing.
+
+**F3 web i18n key sets**: the 3 new catalog tools' schema fields required dictionary keys in all 4 locales (en/ko/ja/zh × title/desc added — set-membership fix, not translation work); `go test ./internal/web/` green.
+
+**Verification (unfiltered)**: `go test ./internal/mcp/ ./internal/graph/ ./internal/web/` → all `ok` (0.380s / 4.844s / 3.276s); `go test ./internal/hook/` → `ok ... 65.808s`; named tests isolated green (Count28, ConsumerOnly skip-by-jurisdiction, both i18n tests, NotComparable engine+CLI); `go vet` on mcp/hook/web/graph clean.
+
 ### E2 cross-platform builds (M1-M5 legs)
 ```
 $ go build ./...                        → exit 0 (no output)   [after M1, M3, M4, M5]

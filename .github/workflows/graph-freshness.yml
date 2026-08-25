@@ -19,7 +19,13 @@ jobs:
     timeout-minutes: 10
     steps:
       # Version alignment with ci.yml: actions/checkout@v7, actions/setup-go@v7.
+      # fetch-depth: 0 — the codemaps provenance stamp names an ancestor
+      # commit that a depth-1 shallow checkout does not hold; without the
+      # full history `git diff <stamp>` cannot run and the check would judge
+      # a fresh tree not-comparable (CI run 32775609689).
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod

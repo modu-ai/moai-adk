@@ -59,7 +59,11 @@ Thresholds are configured in gate.yaml (graph_freshness section).`,
 
 			res, err := graph.CheckFreshness(projectRoot, th)
 			if err != nil {
-				// System error — exit 2 per the 0/1/2 contract.
+				// System error — exit 2 per the 0/1/2 contract. The message
+				// prints explicitly: the ExitCoder vehicle's styled box is
+				// suppressed by the fang error handler, so without this the
+				// process would exit 2 silently.
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "graph check: system error: %v\n", err)
 				return &exitCodeError{code: 2, msg: fmt.Sprintf("graph check: %v", err)}
 			}
 

@@ -257,6 +257,26 @@ func TestCheckFreshness_AbsentLayers(t *testing.T) {
 	}
 }
 
+// CI run 32775609689 regression (audit F4): a stamped commit git cannot
+// resolve (shallow checkout / vanished SHA) is NOT judged stale — the layer
+// was never measured; CheckFreshness surfaces it as a system error (exit 2
+// at the CLI), never a fabricated staleness verdict.
+func TestCheckFreshness_NotComparableIsSystemError(t *testing.T) {
+	root := newCheckFixture(t)
+	// Stamp a plausible-looking SHA that no history holds.
+	writeCodemapsProvenance(t, root, "1234567890abcdef1234567890abcdef12345678")
+	writeSyncedMXIndex(t, root)
+	writeSyncedEdgesMeta(t, root)
+
+	res, err := CheckFreshness(root, DefaultThresholds())
+	if err == nil {
+		t.Fatalf("unresolvable stamp must surface a system error, got verdicts %+v", res.Layers)
+	}
+	if !strings.Contains(err.Error(), "not comparable") {
+		t.Errorf("error must name the not-comparable condition: %v", err)
+	}
+}
+
 // AC-GF-003 tail — an artifact whose provenance block is removed is
 // unjudgeable (absent-equivalent), never silently fresh.
 func TestCheckFreshness_NoProvenanceIsNotFresh(t *testing.T) {

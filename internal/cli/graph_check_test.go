@@ -156,6 +156,36 @@ func TestGraphCheckCmd_StaleExitsOne(t *testing.T) {
 	}
 }
 
+// CI run 32775609689 regression (F4): an unresolvable stamped commit exits 2
+// (system error) with the missing commit named — never a fabricated stale.
+func TestGraphCheckCmd_NotComparableExitsTwo(t *testing.T) {
+	root := newCheckCLIRepo(t)
+	// Stamp a plausible-looking SHA no history holds.
+	cmDir := filepath.Join(root, ".moai", "project", "codemaps")
+	if err := os.MkdirAll(cmDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	pvJSON := "{\"schema_version\": 1, \"tree_root\": \"" + root + "\", \"commit_sha\": \"1234567890abcdef1234567890abcdef12345678\", \"dirty\": false, \"generated_by\": \"codemaps-gen\"}"
+	if err := os.WriteFile(filepath.Join(cmDir, "provenance.json"), []byte(pvJSON), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cmd := newGraphCmd()
+	cmd.SetArgs([]string{"check", "--root", root})
+	var out, errOut bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&errOut)
+
+	err := cmd.Execute()
+	var codeErr interface{ ExitCode() int }
+	if !errors.As(err, &codeErr) || codeErr.ExitCode() != 2 {
+		t.Fatalf("unresolvable stamp must exit 2 (system error), got %v", err)
+	}
+	if !strings.Contains(errOut.String(), "not comparable") {
+		t.Errorf("exit-2 stderr must name the not-comparable condition:\n%s", errOut.String())
+	}
+}
+
 // AC-GF-005 (CLI surface): absent untracked layers exit 1 with explicit
 // absent verdicts — a fresh worktree state.
 func TestGraphCheckCmd_AbsentExitsOne(t *testing.T) {
