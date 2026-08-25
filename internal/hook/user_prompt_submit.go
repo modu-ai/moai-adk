@@ -15,6 +15,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/workflow"
 )
 
@@ -141,6 +142,17 @@ func (h *userPromptSubmitHandler) buildSessionTitle(ctx context.Context, cwd, tr
 		return ""
 	}
 
+	// No title yet, and this is a kanban or factory LEAD: the session's own name
+	// is the title, so the operator finds it in the session list under the name
+	// they and every peer already address it by (issue #1596). This branch sits
+	// ABOVE the SPEC branch deliberately — a lead session sitting in a project
+	// with SPECs is exactly the case that produced an unrelated SPEC heading as
+	// a lead's title. It sits BELOW the first-wins guard just as deliberately:
+	// a /rename still wins, as it does for every other source.
+	if name := leadSessionTitle(); name != "" {
+		return name
+	}
+
 	// No title yet. An active SPEC yields a content-bearing, stable title.
 	if cwd != "" {
 		if title := detectActiveSpec(cwd); title != "" {
@@ -161,6 +173,19 @@ func (h *userPromptSubmitHandler) buildSessionTitle(ctx context.Context, cwd, tr
 	// No SPEC and no usable first prompt: emit no title so the native ai-title
 	// generator has a clear field.
 	return ""
+}
+
+// leadSessionTitle returns the lead session's resolved name, or "" when this
+// session is not a kanban or factory lead.
+//
+// The value is published by the launcher (exportLeadSessionName) because the
+// launcher is the only actor that knows which name actually reached the backend
+// argv — the operator's own when they supplied one, the bare-or-bumped role
+// otherwise. Reading it here rather than re-deriving the role is what keeps the
+// title and the messaging address the same string; a title that guessed the role
+// would disagree with the session's real name on every bumped lead.
+func leadSessionTitle() string {
+	return strings.TrimSpace(os.Getenv(config.EnvMoaiKanbanLeadName))
 }
 
 // conversationLanguage returns the configured conversation_language, or "" when
