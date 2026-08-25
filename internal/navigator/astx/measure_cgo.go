@@ -179,3 +179,95 @@ func extractImpl(language string, sourcePath string) (SymbolSet, error) {
 		SourceBytes: int64(len(content)),
 	}, nil
 }
+
+// extractCallsImpl is the CGO-enabled implementation of ExtractCalls: it runs
+// the SAME embedded .scm query as symbol extraction and additionally honors
+// the @code.* / @func.node captures the call layers seed. A language without
+// call captures (no @code.call patterns compiled in the query) yields
+// Supported: false — the honest "none" grade — rather than an empty-but-true
+// set that would read as "scanned and found nothing".
+func extractCallsImpl(language string, sourcePath string) (CallSet, error) {
+	if scaffoldedLanguages[language] || !callGradeLanguages[language] {
+		return CallSet{Supported: false}, nil
+	}
+	entry, ok := seededGrammars[language]
+	if !ok {
+		return CallSet{Supported: false}, nil
+	}
+
+	content, err := os.ReadFile(sourcePath)
+	if err != nil || len(content) > maxFileSizeBytes {
+		return CallSet{Supported: false}, nil
+	}
+
+	parser := sitter.NewParser()
+	parser.SetLanguage(entry.grammar)
+	tree, err := parser.ParseCtx(context.Background(), nil, content)
+	if err != nil || tree == nil {
+		return CallSet{Supported: false}, nil
+	}
+	defer tree.Close()
+	root := tree.RootNode()
+
+	q, err := sitter.NewQuery(entry.query, entry.grammar)
+	if err != nil {
+		slog.Debug("astx: call query compile error", "lang", language, "error", err)
+		return CallSet{Supported: false}, nil
+	}
+	defer q.Close()
+
+	cursor := sitter.NewQueryCursor()
+	defer cursor.Close()
+	cursor.Exec(q, root)
+
+	out := CallSet{SourceBytes: int64(len(content))}
+	for {
+		match, ok := cursor.NextMatch()
+		if !ok {
+			break
+		}
+		var callerName string
+		var funcNode *sitter.Node
+		for _, cap := range match.Captures {
+			switch q.CaptureNameForId(cap.Index) {
+			case "code.call":
+				out.Calls = append(out.Calls, CallSite{
+					Callee: string(content[cap.Node.StartByte():cap.Node.EndByte()]),
+					File:   sourcePath,
+					Line:   int(cap.Node.StartPoint().Row) + 1,
+				})
+			case "code.import":
+				out.Imports = append(out.Imports, ImportSite{
+					Module: stripQuotes(string(content[cap.Node.StartByte():cap.Node.EndByte()])),
+					File:   sourcePath,
+					Line:   int(cap.Node.StartPoint().Row) + 1,
+				})
+			case "code.caller":
+				callerName = string(content[cap.Node.StartByte():cap.Node.EndByte()])
+			case "func.node":
+				funcNode = cap.Node
+			}
+		}
+		if funcNode != nil && callerName != "" {
+			out.Functions = append(out.Functions, FuncRange{
+				Name:      callerName,
+				File:      sourcePath,
+				StartLine: int(funcNode.StartPoint().Row) + 1,
+				EndLine:   int(funcNode.EndPoint().Row) + 1,
+			})
+		}
+	}
+	out.Supported = true
+	return out, nil
+}
+
+// stripQuotes removes paired surrounding quotes from a captured literal
+// (import paths in Go/JS/TS arrive quoted).
+func stripQuotes(s string) string {
+	if len(s) >= 2 {
+		if (s[0] == '"' && s[len(s)-1] == '"') || (s[0] == '\'' && s[len(s)-1] == '\'') {
+			return s[1 : len(s)-1]
+		}
+	}
+	return s
+}

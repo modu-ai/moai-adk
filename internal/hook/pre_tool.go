@@ -833,6 +833,21 @@ func (h *preToolHandler) loadGateConfig() *quality.GateConfig {
 				BlockOnError: ag.BlockOnError,
 				WarnOnlyMode: ag.WarnOnlyMode,
 			}
+			// Graph-freshness step mapping mirrors mapConfigGateToQuality in
+			// internal/cli/gate.go (zero-value thresholds fall back to the
+			// quality-layer defaults so a partial gate.yaml cannot zero a red
+			// line).
+			gfg := gate.GraphFreshness
+			qgfg := quality.DefaultGraphFreshnessConfig()
+			qgfg.Enabled = gfg.Enabled
+			qgfg.Blocking = gfg.Blocking
+			if gfg.CodemapsChangedFiles > 0 {
+				qgfg.CodemapsChangedFiles = gfg.CodemapsChangedFiles
+			}
+			if gfg.MXIndexChangedFiles > 0 {
+				qgfg.MXIndexChangedFiles = gfg.MXIndexChangedFiles
+			}
+			qcfg.GraphFreshness = qgfg
 			// t50: an empty RulesDir maps through as empty — no hardcoded path
 			// fallback. gate.yaml ast_grep_gate.rules_dir is the SSOT for where
 			// a project keeps its ast-grep rules; the template ships the key

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -50,6 +51,13 @@ Examples:
 				if err != nil {
 					return fmt.Errorf("resolve --path: %w", err)
 				}
+				// CR round-3: a scan root OUTSIDE the project is rejected —
+				// the sidecar's inventory is project-root-relative, so an
+				// external scan would persist tags whose files the provenance
+				// cannot cover (freshness-unjudgeable inventory).
+				if rel, relErr := filepath.Rel(projectRoot, abs); relErr != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+					return fmt.Errorf("--path %s resolves outside the project root — scan roots must live inside the project", pathArg)
+				}
 				scanRoot = abs
 			}
 
@@ -84,10 +92,20 @@ Examples:
 
 			stateDir := filepath.Join(projectRoot, ".moai", "state")
 			mgr := mx.NewManager(stateDir)
+			// CR round-2 (3855001981): the inventory's relative paths are
+			// provenance-root (projectRoot) relative, matching how the
+			// freshness check resolves them. ScanInventory drops files that
+			// do not resolve inside projectRoot (a --path OUTSIDE the project
+			// yields inventory entries only for the inside portion — an
+			// honest partial inventory rather than unresolvable keys).
 			sidecar := &mx.Sidecar{
 				SchemaVersion: mx.SchemaVersion,
 				Tags:          tags,
 				ScannedAt:     time.Now(),
+				// REQ-GF-003: provenance (tree, commit-or-dirty, per-file
+				// inventory) is stamped on every write — an index without it
+				// is freshness-unjudgeable.
+				Provenance: mx.StampMXScan(projectRoot, s.ScanInventory(projectRoot)),
 			}
 			if err := mgr.Write(sidecar); err != nil {
 				return fmt.Errorf("write sidecar: %w", err)

@@ -42,6 +42,13 @@ type Tag struct {
 	// Line is the 1-based line number where the tag appears.
 	Line int `json:"line"`
 
+	// ContentHash is the sha256 of the tag's own source line (trimmed) —
+	// the content-hash anchor (REQ-GF-011): lookups keyed by (File,
+	// ContentHash) survive line drift (lines inserted above leave the
+	// line's content, and so the hash, identical), while Line stays
+	// convenience data.
+	ContentHash string `json:"contentHash,omitempty"`
+
 	// Body is the main description text after @MX:KIND.
 	Body string `json:"body"`
 

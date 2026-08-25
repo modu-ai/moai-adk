@@ -384,7 +384,7 @@ func TestParseTag(t *testing.T) {
 	scanner := NewScanner()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tag, err := scanner.parseTag("/test/file.go", 1, tt.content)
+			tag, err := scanner.parseTag("/test/file.go", 1, tt.content, "// @MX: "+tt.content)
 
 			if tt.expectError {
 				if err == nil {
@@ -405,6 +405,22 @@ func TestParseTag(t *testing.T) {
 			}
 			if tt.expectID != "" && tag.AnchorID != tt.expectID {
 				t.Errorf("Expected AnchorID %q, got %q", tt.expectID, tag.AnchorID)
+			}
+			// ContentHash contract (CR round-2 3855149419): every parsed tag
+			// carries the sha256 of its own TRIMMED RAW SOURCE LINE (not of
+			// the parsed content). Pinned against one fully literal line so a
+			// regression to hashing `content` (or to an empty hash) fails:
+			// raw "// @MX: NOTE: simple note" hashes to the constant below.
+			rawLine := "// @MX: " + tt.content
+			if tag.ContentHash == "" {
+				t.Errorf("ContentHash empty for %q", rawLine)
+			}
+			if tt.name == "NOTE tag" {
+				const wantHash = "563b0d54a04c2859cbcd3530df6436a024d4c78b50e686c48dee186b808196a0"
+				if tag.ContentHash != wantHash {
+					t.Errorf("ContentHash = %s, want pinned %s (sha256 of trimmed raw line %q)",
+						tag.ContentHash, wantHash, rawLine)
+				}
 			}
 		})
 	}

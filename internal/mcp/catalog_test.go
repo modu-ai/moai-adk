@@ -5,15 +5,20 @@ import (
 	"testing"
 )
 
-// TestMoaiMCPTools_Count25 asserts the catalog declares exactly 25 tools,
-// matching the registration count in registerMoaiMCPTools (AC-C-001 /
-// AC-C-002). A change here without a matching server-side change is the drift
-// the guard test (internal/cli TestMoaiMCPServer_RegistrationMatchesCatalog)
-// catches.
-func TestMoaiMCPTools_Count25(t *testing.T) {
+// wantCatalogSize is the catalog-size invariant (AC-C-001 / AC-C-002): the
+// moai MCP server's tool surface. Update it ONLY together with a matching
+// registration change in registerMoaiMCPTools — the registration/catalog
+// equality guard (internal/cli TestMoaiMCPServer_RegistrationMatchesCatalog)
+// catches drift in either direction.
+const wantCatalogSize = 28
+
+// TestMoaiMCPTools_Count28 asserts the catalog declares exactly
+// wantCatalogSize tools, matching the registration count in
+// registerMoaiMCPTools.
+func TestMoaiMCPTools_Count28(t *testing.T) {
 	tools := MoaiMCPTools()
-	if len(tools) != 25 {
-		t.Fatalf("catalog declares %d tools, want 25", len(tools))
+	if len(tools) != wantCatalogSize {
+		t.Fatalf("catalog declares %d tools, want %d", len(tools), wantCatalogSize)
 	}
 }
 

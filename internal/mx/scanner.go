@@ -2,6 +2,9 @@ package mx
 
 import (
 	"bufio"
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -17,6 +20,7 @@ type Scanner struct {
 	anchorIDs      map[string]string // AnchorID -> file:line (for duplicate detection)
 	warnings       []string          // Scanner warnings
 	errors         []string          // Scanner errors
+	fileHashes     map[string]string // absolute path -> sha256(content) of files actually read (REQ-GF-003 scan inventory)
 }
 
 // errSubLineKind is the sentinel returned by parseTag when the parsed kind is a
@@ -55,24 +59,34 @@ func (s *Scanner) SetIgnorePatterns(patterns []string) {
 	s.ignorePatterns = patterns
 }
 
-// ScanFile scans a single file for @MX tags.
+// ScanFile scans a single file for @MX tags. The file's content hash is
+// recorded in the scanner's inventory (REQ-GF-003): one read covers both the
+// tag pass and the provenance inventory, so the index can later be
+// freshness-judged and refreshed per changed file.
 func (s *Scanner) ScanFile(filePath string) ([]Tag, error) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("open file: %w", err)
-	}
-	defer func() { _ = file.Close() }()
-
-	// Get comment prefix for this file extension
+	// Extension check BEFORE the read (CR round-2 3855002126): an unsupported
+	// language skips the I/O entirely — unsupported files are neither read
+	// nor inventoried, so paying for the read first is pure waste.
 	ext := strings.ToLower(filepath.Ext(filePath))
 	prefix := GetCommentPrefix(ext)
 	if prefix == "" {
-		// Unsupported language - skip
+		// Unsupported language - skip (not read, not inventoried)
 		return nil, nil
 	}
 
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("open file: %w", err)
+	}
+
+	if s.fileHashes == nil {
+		s.fileHashes = make(map[string]string)
+	}
+	sum := sha256.Sum256(data)
+	s.fileHashes[filePath] = hex.EncodeToString(sum[:])
+
 	var tags []Tag
-	scanner := bufio.NewScanner(file)
+	scanner := bufio.NewScanner(bytes.NewReader(data))
 	lineNum := 0
 
 	var pendingWarnTag *Tag // Track WARN tag that needs REASON
@@ -101,7 +115,7 @@ func (s *Scanner) ScanFile(filePath string) ([]Tag, error) {
 		}
 
 		// Parse the tag
-		tag, err := s.parseTag(filePath, lineNum, tagContent)
+		tag, err := s.parseTag(filePath, lineNum, tagContent, line)
 		if err != nil {
 			// A recognized sub-line (CEILING/UPGRADE/REASON/...) is not a tag.
 			// Skip it WITHOUT recording a parse error, but still pair an
@@ -243,8 +257,11 @@ func (s *Scanner) ScanFile(filePath string) ([]Tag, error) {
 	return tags, nil
 }
 
-// ScanDir recursively scans a directory for @MX tags.
+// ScanDir recursively scans a directory for @MX tags. The per-file content
+// inventory of files actually read is reset per call and exposed via
+// ScanInventory for provenance stamping.
 func (s *Scanner) ScanDir(rootDir string) ([]Tag, error) {
+	s.fileHashes = make(map[string]string)
 	var allTags []Tag
 
 	err := filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
@@ -301,6 +318,32 @@ func (s *Scanner) GetErrors() []string {
 	return s.errors
 }
 
+// RecordError appends a diagnostic to the scanner's error list through the
+// scanner's own API (CR round-2 3855001990): callers in the same package
+// (the refresh path) report per-file failures the CLI surfaces via
+// GetErrors(), instead of writing the unexported field directly.
+func (s *Scanner) RecordError(msg string) {
+	s.errors = append(s.errors, msg)
+}
+
+// ScanInventory returns the scan-root-relative path → content sha256 map for
+// every file the last ScanDir actually read. Empty before the first scan or
+// when nothing was read. Paths use forward slashes so the inventory is
+// platform-stable in the sidecar. Only a real parent-directory escape is
+// excluded — a child literally NAMED "..generated.go" stays (CR round-2
+// 3855002133).
+func (s *Scanner) ScanInventory(rootDir string) map[string]string {
+	out := make(map[string]string, len(s.fileHashes))
+	for abs, sum := range s.fileHashes {
+		rel, err := filepath.Rel(rootDir, abs)
+		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			continue
+		}
+		out[filepath.ToSlash(rel)] = sum
+	}
+	return out
+}
+
 // extractTagContent extracts the @MX tag content from a line.
 // Returns the content after "@MX:" and true if successful.
 func extractTagContent(line, commentPrefix string) (string, bool) {
@@ -322,8 +365,10 @@ func extractTagContent(line, commentPrefix string) (string, bool) {
 }
 
 // parseTag parses a tag content string into a Tag struct.
-// Expected format: "KIND: body text" or "ANCHOR:anchor-id: body text"
-func (s *Scanner) parseTag(filePath string, lineNum int, content string) (Tag, error) {
+// Expected format: "KIND: body text" or "ANCHOR:anchor-id: body text".
+// rawLine is the verbatim source line, hashed into the tag's ContentHash
+// anchor (REQ-GF-011).
+func (s *Scanner) parseTag(filePath string, lineNum int, content string, rawLine string) (Tag, error) {
 	// Split by first colon to get kind
 	parts := strings.SplitN(content, ":", 2)
 	if len(parts) < 2 {
@@ -365,14 +410,25 @@ func (s *Scanner) parseTag(filePath string, lineNum int, content string) (Tag, e
 	}
 
 	return Tag{
-		Kind:       kind,
-		File:       filePath,
-		Line:       lineNum,
-		Body:       body,
-		AnchorID:   anchorID,
-		CreatedBy:  "scanner", // TODO: Detect if human-created
-		LastSeenAt: time.Now(),
+		Kind:         kind,
+		File:         filePath,
+		Line:         lineNum,
+		Body:         body,
+		AnchorID:     anchorID,
+		ContentHash:  hashTagLine(rawLine),
+		CreatedBy:    "scanner", // TODO: Detect if human-created
+		LastSeenAt:   time.Now(),
 	}, nil
+}
+
+// hashTagLine hashes the raw source line a tag sits on (trimmed): the tag's
+// content-hash anchor (REQ-GF-011). Lines inserted above the tag leave the
+// line's content — and therefore the hash — identical, so tag lookups
+// anchored by (file, ContentHash) survive line drift while Line stays
+// convenience data.
+func hashTagLine(rawLine string) string {
+	sum := sha256.Sum256([]byte(strings.TrimSpace(rawLine)))
+	return hex.EncodeToString(sum[:])
 }
 
 // extractReason extracts the reason text from a @MX:REASON line.
