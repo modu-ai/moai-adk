@@ -2,7 +2,7 @@
 id: SPEC-ZONE-REGISTRY-HARDEN-001
 title: "zone-registry 감사 후속 F1-F3 — clause 완결화 · 튜플 digest pinning · 문서 의미론 정렬"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-08-25
 updated: 2026-08-25
 author: manager-spec

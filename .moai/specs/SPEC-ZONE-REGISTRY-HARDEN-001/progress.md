@@ -121,4 +121,21 @@ m1_to_mN_commit_strategy: "plan-phase artifacts commit + per-milestone commit (M
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-25
+sync_commit_sha: "pending-backfill-SPEC-ZONE-REGISTRY-HARDEN-001"  # backfilled in the immediately following commit (self-referential-hazard workaround per spec-frontmatter-schema.md D3)
+sync_status: completed
+b12_self_test_a: "grep -c 'SPEC-ZONE-REGISTRY-HARDEN-001' CHANGELOG.md → 0 pre-emission (no duplicate)"
+b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l → 9; CHANGELOG entry states 9 AC — match"
+b12_self_test_c: "all cited paths ls-verified (spec/plan/acceptance/progress.md, internal/constitution/registry_sync_test.go, both template rule paths, RESYNC-001 plan.md)"
+changelog_entry_position: "CHANGELOG.md [Unreleased] / Added — top entry"
+public_surface_assessment: "no public surface change — internal test-only guard (registry_sync_test.go), registry data clause value, formatting-only template rewrap, closed-SPEC plan.md erratum; CLI behavior / README / docs-site untouched (assessed & recorded at sync, this SPEC)"
+template_neutrality_5item: "C1-C5 all PASS on both template diffs (no SPEC-ID/REQ-AC token/audit-citation/date-sha/memory-path in staged template changes); ci-autofix-protocol.md rewrap + zone-registry.md clause swap are content-neutral"
+template_catalog_parity: "n/a — catalog.yaml catalogues skills/agents only; the two changed template rule paths are not catalogued (grep 'zone-registry|ci-autofix' catalog.yaml → 0)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (this sync commit; plan.md/acceptance.md carry no frontmatter block — spec.md is the only frontmatter-bearing artifact)"
+  updated_refreshed: "2026-08-25 (already current)"
+canary_compliance_check: {}  # no forward-looking policy self-tested by this SPEC
+```
+
+**Sync-phase surface (this commit, markdown-only — zero code changes)**: CHANGELOG `[Unreleased]` entry · `spec.md` frontmatter close (`status: in-progress → completed`) · this §E.4 signal. Template files and the 6 run-phase implementation files are untouched by sync.
