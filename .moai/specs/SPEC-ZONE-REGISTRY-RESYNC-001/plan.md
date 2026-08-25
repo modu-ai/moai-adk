@@ -105,7 +105,8 @@ M1 이 붉은 신호 없이 진행되는 것을 막기 위해, M1 은 §C 사전
   - `result.Skipped == true` 면 **실패**시킨다 (D7 / AC-ZRR-010)
   - `result.DriftCount != 0` 이면 실패, 실패한 엔트리 ID를 전부 출력
   - 같은 테스트 안에서 **anchor 해석**을 검사한다 — 각 엔트리의 `file:` 을 읽어 §D8 의 6단계 규칙으로 heading slug 집합을 만들고 `anchor:` 를 대조. slug 규칙은 코드에 그대로 적고, "이 규칙 아래에서 착지 시점 17건이 실패했다"를 주석으로 남긴다(REQ-ZRR-012). 검증기 코드는 건드리지 않으므로 D1 유지
-  - 같은 테스트 안에서 **리터럴 체크**를 검사한다 — 정규화 없이 엔트리별 `strings.Count(rawFileContent, clause)` 를 세어 1회 적중 / 0회 / 2회 이상 / 은퇴 면제 4건의 버킷을 출력한다(빈 clause 도 0회 버킷에서 실패). 이것이 AC-ZRR-002/003 의 기계화이며 검증기보다 엄격하다 — 판정은 boolean 이 아니라 횟수다
+  - 같은 테스트 안에서 **리터럴 체크**를 검사한다 — 정규화 없이 엔트리별 **라인 수 의미론**(`grep -F -c` 등가 — clause 를 리터럴 부분문자열로 포함하는 **행**의 개수. 같은 행에 2회 적중해도 1로 센다)으로 세어 1회 적중 / 0회 / 2회 이상 / 은퇴 면제 4건의 버킷을 출력한다(빈 clause 도 0회 버킷에서 실패). 이것이 AC-ZRR-002/003 의 기계화이며 검증기보다 엄격하다 — 판정은 boolean 이 아니라 횟수다
+  - **[정정 — SPEC-ZONE-REGISTRY-HARDEN-001 (2026-08-25)]** 위 항목의 원문은 리터럴 체크를 `strings.Count`(발생 의미론: 파일 전체 문자열에서의 등장 횟수)으로 기술했으나, 착지된 구현(`internal/constitution/registry_sync_test.go` 의 `literalHitCount`)과 acceptance 판정 규격은 `grep -F -c` **라인 수 의미론**을 잰다(t232 sync-audit verdict F3). 현 데이터는 양쪽 의미론에서 모두 once=97(감사 독립 측정)이라 그 판정은 불변이었다. 본 정정은 문서를 구현·acceptance 의 실측 의미론으로 정렬한다
 - CI 배선: 이 테스트는 이미 차단 경로인 `go test ./...` job 에서 돌아간다 → AC-ZRR-008 충족
 - 추가로 `.github/workflows/ci.yml` 의 `constitution-check` job 에 `constitution validate` 스텝을 넣되, **그 job 은 `continue-on-error: true` 이므로 보조 신호로만 취급**한다(가드 판정은 Go 테스트가 진다). 이 사실을 스텝 주석에 적는다.
 
