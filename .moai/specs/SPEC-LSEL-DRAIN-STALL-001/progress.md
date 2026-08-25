@@ -136,7 +136,7 @@ CI guard 3종: 본 브랜치 diff는 3종 트리거 경로(`internal/template/te
 
 ```yaml
 run_complete_at: 2026-08-26
-run_commit_sha: pending-backfill-run   # M2 커밋 착지 후 backfill (repo 관례 패턴)
+run_commit_sha: 29156eef7   # M2 run-phase 커밋 (backfilled at sync commit; D3 exemption)
 run_status: PASS
 ac_pass_count: 12          # AC-LDS-001..011 PASS + AC-LDS-012(SHOULD) 문서화·적용 모두 관측
 ac_fail_count: 0
@@ -154,4 +154,22 @@ m1_to_mN_commit_strategy: 2 commits (M1 wrapper+테스트+위생 / M2 live 일�
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-26
+sync_commit_sha: pending-backfill-sync   # 자기 자신 SHA는 커밋 착지 전 알 수 없음 — 후속 backfill 커밋에서 실측 SHA로 교체 (D3 self-referential-hazard workaround)
+sync_status: PASS
+changelog_entry_position: "CHANGELOG.md [Unreleased] > Added > 첫 번째 항목 (SPEC-LSEL-DRAIN-STALL-001)"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (3-phase close, 본 싱크 커밋에 병합 — 별도 Mx 커밋 없음)"
+  updated_field: "2026-08-26 (이미 동일 날짜 — 무변경 확인)"
+b12_self_test_a_pre_emission_grep: "grep -c 'SPEC-LSEL-DRAIN-STALL-001' CHANGELOG.md → 0 (배출 전 관측, 2026-08-26)"
+b12_self_test_b_ac_count_match: "acceptance.md distinct AC → 12 (AC-LDS-001..012); CHANGELOG 항목 12 AC 명시 (11 MUST + 1 SHOULD) — 일치"
+b12_self_test_c_path_verification: "session_drain.sh / session_drain_test.sh / backlog_check.sh / SKILL.md / lsel-drain-loop.js 전부 worktree 내 존재 Read 완료"
+local_deliverables_disclosure: |
+  REQ-LDS-009 로컬 인도물(유지자 머신 적용, 본 PR 미탑재 — 의도적):
+  - .claude/settings.local.json (primary): SessionStart lsel 항목 2개 (wrapper + backlog_check, timeout 30 each)
+  - CLAUDE.local.md (primary): §28 LSEL 드레인 운영 섹션
+  이유: tracked settings.json 항목은 moai update가 매번 지움 (CLAUDE.local.md §2.3) — 적용 절차는 spec.md §E에 문서화 (AC-LDS-012)
+close_statement: "3-phase close (plan 2026-08-25 → run 2026-08-26 M1 c45b19c54 + M2 29156eef7 → sync 2026-08-26, 본 커밋). status: in-progress → completed 병합 종결. 다음 잔여: 브랜치 push + PR CI 3종 판정 (manager-git 소관), 배선 첫 실제 발화 관측(다음 세션 시작)"
+```
+

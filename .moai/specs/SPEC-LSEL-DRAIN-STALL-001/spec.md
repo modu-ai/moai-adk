@@ -2,7 +2,7 @@
 id: SPEC-LSEL-DRAIN-STALL-001
 title: "LSEL 드레인 3주 정지 — 내구 기계 트리거(session_drain.sh) + 정지 신호 + 3.5k 백로그 일괄 드레인"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-08-25
 updated: 2026-08-26
 author: manager-spec
