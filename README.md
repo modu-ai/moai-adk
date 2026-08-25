@@ -116,7 +116,7 @@ Lane — card t1:  run session + worktree t1      ┘ run side by side, never mi
 
 Full glossary with definitions and examples: [Kanban board terms](https://adk.mo.ai.kr/en/core-concepts/kanban-board-terms)
 
-Cards also differ in which columns they pass through, by shape. As a card leaves `backlog`, the lead classifies it into one of three classes and names the class in the dispatch.
+Cards also differ in which columns they pass through, by shape. As a card leaves `backlog`, the lead classifies it into one of the three Card Classes and names the class in the dispatch.
 
 | Class | Shape | Shortcut |
 |---|---|---|
