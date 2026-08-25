@@ -123,7 +123,7 @@ m1_to_mN_commit_strategy: "plan-phase artifacts commit + per-milestone commit (M
 
 ```yaml
 sync_complete_at: 2026-08-25
-sync_commit_sha: "pending-backfill-SPEC-ZONE-REGISTRY-HARDEN-001"  # backfilled in the immediately following commit (self-referential-hazard workaround per spec-frontmatter-schema.md D3)
+sync_commit_sha: "2a709d396"
 sync_status: completed
 b12_self_test_a: "grep -c 'SPEC-ZONE-REGISTRY-HARDEN-001' CHANGELOG.md → 0 pre-emission (no duplicate)"
 b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l → 9; CHANGELOG entry states 9 AC — match"
