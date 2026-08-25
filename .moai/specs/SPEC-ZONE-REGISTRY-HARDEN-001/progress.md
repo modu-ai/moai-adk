@@ -124,6 +124,7 @@ m1_to_mN_commit_strategy: "plan-phase artifacts commit + per-milestone commit (M
 ```yaml
 sync_complete_at: 2026-08-25
 sync_commit_sha: "2a709d396"
+sync_commit_sha_backfill_basis: "recorded as a pending-backfill placeholder in the sync commit 2a709d396 and backfilled to the real SHA in d4deb4387 per the canonical D3 placeholder-backfill pattern (spec-frontmatter-schema.md D3 — a commit cannot embed its own SHA)"
 sync_status: completed
 b12_self_test_a: "grep -c 'SPEC-ZONE-REGISTRY-HARDEN-001' CHANGELOG.md → 0 pre-emission (no duplicate)"
 b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l → 9; CHANGELOG entry states 9 AC — match"
