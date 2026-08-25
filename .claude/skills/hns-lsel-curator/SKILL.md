@@ -10,10 +10,10 @@ description: >
 allowed-tools: Read, Grep, Glob, Bash
 user-invocable: false
 metadata:
-  version: "0.1.0"
+  version: "0.2.0"
   category: "harness"
   status: "active"
-  updated: "2026-08-04"
+  updated: "2026-08-26"
   tags: "lsel,self-evolution,drain,cluster,harness,dogfood"
 ---
 
@@ -129,16 +129,67 @@ curation pass (M2+), your job on top of the mechanical output is:
   mechanism skill; it never invokes the orchestrator's user gate. On a missing input,
   return a structured blocker report; the orchestrator runs the user gate (CLAUDE.md §8).
 
+## Durable operations — the session-start trigger (`session_drain.sh`)
+
+The drain's original "schedule" was a session-scoped `/loop` recipe that died with its
+owning session (2026-08-04) and executed nothing even while alive — the inbox stalled
+for 3 weeks with nobody notified (SPEC-LSEL-DRAIN-STALL-001 §B). The trigger is now
+mechanical:
+
+**ALL drains route through `session_drain.sh`** (next to this SKILL.md), never
+`drain.sh` directly. The wrapper adds what the frozen core deliberately lacks: an
+exclusive drain lock (contention = safe no-op), an **unconditional** archive of any
+existing `clusters.json` to `clusters-history/` BEFORE any overwrite (a direct
+`drain.sh` call bypasses archiving and can silently discard staged candidates —
+`drain.sh` overwrites `clusters.json` on both the drain path and the no-op path), a
+one-line status, and fail-open (any internal error degrades to a stderr notice and
+exit 0 — the hook never blocks session start).
+
+```bash
+session_drain.sh [--inbox <path>] [--state-dir <dir>]   # defaults: live paths
+```
+
+**PROPOSE reads the archived copies** in `.moai/state/lsel/clusters-history/` (newest
+first), NOT the live `clusters.json` — under per-session-start drains the live file is
+ephemeral: the next no-op session start overwrites it with `candidates: []`. The
+wrapper's archive is what survives.
+
+**Local wiring is a maintainer-machine deliverable** (applied in M2, NOT carried by
+the PR — a tracked `.claude/settings.json` entry would be wiped by every
+`moai update`, so tracked wiring is affirmatively wrong): add BOTH `session_drain.sh`
+and `backlog_check.sh` to `.claude/settings.local.json` `.hooks.SessionStart` with an
+explicit `"timeout": 30` each (the measured full-backlog drain is <1s for a 1.1MB
+inbox; 30s matches the live SessionStart hook precedent). Wiring verification:
+`jq '.hooks.SessionStart' .claude/settings.local.json`.
+
+**Removed dead anchors:** the former `CLAUDE.local.md` section-28 anchor references in
+`backlog_check.sh` (header comment + reminder body — both occurrences) were removed in
+SPEC-LSEL-DRAIN-STALL-001 M1; the operating instructions now live in this section,
+mirrored into the restored CLAUDE.local.md LSEL section (M2 local deliverable).
+
 ## Verification (run before declaring a drain complete)
 
 ```bash
-# 1. The drain mechanics (fixture-based characterization test — AC-LSEL-009/010):
+# 1. The drain mechanics + the wrapper (fixture-based characterization tests —
+#    AC-LSEL-009/010 and AC-LDS-001..006 + the mutant probe):
 .claude/skills/hns-lsel-curator/drain_test.sh
+.claude/skills/hns-lsel-curator/session_drain_test.sh
 
-# 2. A real drain of the live backlog (re-measure the count first — it is a moving target):
+# 2. A real drain of the live backlog — VIA THE WRAPPER (all drains are
+#    wrapper-mediated; re-measure first, the inbox is a moving target). Capture
+#    BEFORE the drain, then judge the ARCHIVED copy: a later no-op session-start
+#    drain overwrites the live clusters.json with candidates: [], but the wrapper
+#    archives unconditionally before any overwrite, so the bulk-drain result
+#    survives in clusters-history/.
+OFFSET_BEFORE=$(jq -r .offset .moai/state/lsel/drain-offset.json)
 LIVE_COUNT=$(wc -l < .moai/lessons-inbox.jsonl | tr -d ' ')
-.claude/skills/hns-lsel-curator/drain.sh --inbox .moai/lessons-inbox.jsonl --state-dir .moai/state/lsel
-jq '.offset_after == ($LIVE_COUNT|tonumber) and (.candidates | length) >= 1' .moai/state/lsel/clusters.json
+.claude/skills/hns-lsel-curator/session_drain.sh --inbox .moai/lessons-inbox.jsonl --state-dir .moai/state/lsel
+ARCHIVE=$(ls -t .moai/state/lsel/clusters-history/clusters-*.json | head -1)
+jq --argjson n "$LIVE_COUNT" --argjson b "$OFFSET_BEFORE" \
+   '(.offset_after == $n) and ((.candidates // []) | length >= 1) and (.total_read == ($n - $b))' "$ARCHIVE"
+# must print: true  (offset==live AND candidates>=1 AND self-consistent — the
+# AC-LDS-010 predicate; the session_drain_test.sh mutant probe proves it rejects
+# an offset-only-advance fake)
 
 # 3. M1 invariant — zero memory/ writes from the drain:
 find memory -newer <drain-start-timestamp> -name 'feedback_*' 2>/dev/null | wc -l   # must be 0
@@ -150,7 +201,9 @@ find memory -newer <drain-start-timestamp> -name 'feedback_*' 2>/dev/null | wc -
 inbox with known noise + signal stubs, runs `drain.sh`, and asserts the drain semantics:
 noise excluded pre-cluster, signal clustered with correct frequencies, singletons discarded,
 offset advanced, candidates emitted, zero `memory/` writes, idempotent re-drain. Run it after
-any edit to `drain.sh`.
+any edit to `drain.sh`. `session_drain_test.sh` (same directory) is the wrapper harness —
+five paths (drain / lock contention / archive-before-overwrite / no-op / fail-open) plus the
+mutant probe. Run it after any edit to `session_drain.sh`.
 
 ## Cross-references
 
@@ -168,7 +221,10 @@ any edit to `drain.sh`.
 
 ## PROPOSE stage (M2 — shadow proposals)
 
-The PROPOSE stage consumes the M1 candidate clusters in `.moai/state/lsel/clusters.json` and
+The PROPOSE stage consumes the candidate clusters **archived** in
+`.moai/state/lsel/clusters-history/` (newest archive — the live `clusters.json` is
+ephemeral under per-session-start drains: the next no-op drain overwrites it with
+`candidates: []`; SPEC-LSEL-DRAIN-STALL-001 REQ-LDS-010) and
 emits **shadow proposals** — one per candidate worth acting on — at
 `.moai/state/lsel/proposals/<proposal-id>/`. M2 proposals are SHADOW only: no APPROVE, no APPLY.
 APPROVE/APPLY land in M3 via the fresh `hns-lsel-applier` path (NOT via the dead
