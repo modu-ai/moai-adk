@@ -110,6 +110,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `cause=undetermined-merge`, `cause=ignored-content`, and the check-failure variants — so two
   worktrees preserved for different reasons are distinguishable from the sweep's output without
   inspecting the trees.
+- `/moai project` now ends by issuing one backlog card carrying the project's first feature, derived from that run's `harness-spec.yaml` `goal` and prefixed `[PROJECT] `, and its completion question offers starting that card as a branch. The queue doctrine gains a **standing source** concept to admit this: a workflow the operator authorized once to issue a card when it finishes, bound by five conditions (one card per run, derived not invented, marked, id reported, starting still a separate pick). The Implementation Kickoff Approval gate is unchanged — the start branch reaches it like any other run-phase entry, and the `ac_converge` goal is armed only after it passes.
 
 ### Fixed
 
