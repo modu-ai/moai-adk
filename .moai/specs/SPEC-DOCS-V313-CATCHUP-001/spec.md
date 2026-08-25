@@ -1,7 +1,7 @@
 ---
 id: SPEC-DOCS-V313-CATCHUP-001
 title: "v3.1.3 release documentation catch-up — docs-site 4 locales + README 4 files"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-08-26
 updated: 2026-08-26
@@ -19,6 +19,7 @@ tier: M
 ## HISTORY
 
 - 0.1.0 (2026-08-26): plan-phase 최초 작성. 카드 t274 (Class C, Tier M). baseline 트리 `e07a6d0f4` (worktree t274, branch WT-v313-docs)에서 CHANGELOG `[3.1.3]` 26항목 전수 조사 완료 — 검증된 격차 표는 §1. v3.1.3 릴리즈(#1602 계열, CHANGELOG 상 2026-08-24) 이후 문서가 코드를 따라가지 못한 격차를 닫는다.
+- 0.2.0 (2026-08-26): plan-audit iter1 (FAIL 0.7125) blocking 결함 D1–D6 + optional D7–D9 적용. D1: V 인벤토리 3건→8건 전수 재조사 (statusline·faq·claude-cloud·moai-feedback ×4로케일 + README:493). D2: plan URL 허용 도메인 정정 (`adk.mo.ai.kr`). D3: REQ-007 8축 재서술(version-sync 추가·기존부채 정합), `scripts/docs-i18n-check.sh` 존재 정정 및 M5 편입. D4: AC-004 목표값 고정·행별 판정. D5: AC-002·006·007·008 뮤턴트 폐쇄. D6: M1 흡수 대안 제거({new_page|deferred} 2분기). D7: A7 재판정(D→U-README, README:352 `analyze` 동사 부재 관측)·A12 init-wizard 편입 — 집계 D 4·U 10 → D 3·U 11. D8: AC-009 REQ 귀속·방어 AC 음성 점검(§C.5) 명명. D9: 격차 표 명령 정형화·A13 라인 정정(63·87·107행).
 
 ## 1. 문제 — 측정된 형태 (검증된 격차 표)
 
@@ -36,13 +37,13 @@ CHANGELOG.md `## [3.1.3] - 2026-08-24` (177–306행)의 항목을 전수 추출
 | A4 | `internal/codexadapter` — Codex 훅 어댑터 라이브러리 (11-이벤트 표, 아직 호출부 없음) | **N** | `grep -rln 'codexadapter\|hook adapter' …` → 0파일. A1과 동일 주제 — "아직 호출부 없음"이므로 문서 깊이는 승인 시 결정 |
 | A5 | `/moai feedback` 스크러빙 계약 (`moai feedback scrub`/`queue` 동사, 취약점 분류기, 재시도 큐, `feedback.auto_submit`) | **U** | `moai-feedback.md` 95행에 auto_submit 게이트는 문서화됨(4로케일). 그러나 `grep -n 'scrub\|queue' ko/utility-commands/moai-feedback.md` → scrub/queue 동사·분류기·재시도 큐 0행 → 기존 페이지 갱신 |
 | A6 | `workflow.todo.enabled` — 백로그 큐 끄기 스위치 (부재 시 on) | **U** | `grep -rln 'todo\.enabled' docs-site/content README…` → 0파일 → `advanced/config-sections.md`(+ `moai-todo.md` 크로스링크) 갱신 |
-| A7 | `moai todo` 큐 자기 분석 (add 시 측정, `moai todo analyze`) | **D** | `grep -n 'analyze\|측정\|중복' ko/utility-commands/moai-todo.md` → 95·97·99·166·195·196행 — "기록만 남김", "정확 중복 거절", "Jaccard 0.80"까지 완전 문서화(4로케일 존재) |
+| A7 | `moai todo` 큐 자기 분석 (add 시 측정, `moai todo analyze`) | **U** (README만) | docs-site는 완전 문서화 — `grep -n 'analyze\|측정\|중복' docs-site/content/ko/utility-commands/moai-todo.md` → 95·97·99·166·195·196행 ("기록만 남김", "정확 중복 거절", "Jaccard 0.80"). 그러나 `sed -n '352p' README.ko.md` → 동사 나열 `add·list·next·done·unpick·drop·undrop·edit·move`에 `analyze` 부재 (4파일 동일) → README:352 한 줄 갱신 [D7] |
 | A8 | MCP 5도구 선택적 `project_root` (워크트리 감사·재시작 주의 포함) | **D** | `grep -n 'project_root' ko/guides/mcp-server.md` → 96–114행 — 6도구 나열, 워크트리 사례 표, "재시작 전까지 예전 동작" 주의까지 완전 문서화(4로케일 존재) |
 | A9 | `moai-domain-svg-infographic` 커넥터 지오메트리 검사 (`SVG070`–`SVG074`) | **NA** | `grep -rln 'SVG06\|SVG07\|aria-labelledby' …` → 0파일. SVG 규칙 세부는 원래 docs-site 문서 표면 밖(skill 내부 린트 규칙) — v3.1.3 미반영이 아니라 문서화된 적이 없음 |
 | A10 | SVG 산출물 접근성 이름 (`SVG060`–`SVG064`) | **NA** | A9와 동일 근거 |
 | A11 | `moai-domain-design-dna` 다이어그램 프로파일 (`.design-dna/` 지속, mermaid/drawio 임포터) | **U** | `grep -n 'design-dna\|diagram' ko/advanced/skill-guide.md` → 159행 스킬 소개 행만 존재 — 프로파일·지속·임포터 미반영 → 기존 행 갱신. README 4파일 745행 design-dna 절도 동일 갱신 대상 |
-| A12 | `moai update`/`moai init` 스킬 미러 symlink→copy 폴백 통지 | **U** | `grep -n 'symlink' ko/cli-reference/update.md ko/getting-started/init-wizard.md` → 0행 → `cli-reference/update.md`에 통지 한 줄 (경량) |
-| A13 | `/moai gate` typecheck 축 (#1592) | **D** | `grep -n '…타입…' ko/utility-commands/moai-gate.md` → 7·10·23·64·88행 — "린트·포맷·타입 검사·테스트" 4축을 이미 서술. #1592로 코드가 문서를 따라잡은 형태 — 문서 갱신 불필요 |
+| A12 | `moai update`/`moai init` 스킬 미러 symlink→copy 폴백 통지 | **U** | `grep -n 'symlink' docs-site/content/ko/cli-reference/update.md docs-site/content/ko/getting-started/init-wizard.md` → 0행 — CHANGELOG가 `moai update`와 `moai init` 양쪽 통지이므로 두 페이지 모두 갱신 [D7] |
+| A13 | `/moai gate` typecheck 축 (#1592) | **D** | `grep -n '타입' docs-site/content/ko/utility-commands/moai-gate.md` → 7·10·23·63·87·107행 — "린트·포맷·타입 검사·테스트" 4축을 이미 서술. #1592로 코드가 문서를 따라잡은 형태 — 문서 갱신 불필요 |
 
 ### 1.2 Changed 4항목
 
@@ -67,23 +68,31 @@ CHANGELOG.md `## [3.1.3] - 2026-08-24` (177–306행)의 항목을 전수 추출
 | F8 | 웹 콘솔 서버 기동 중 SIGTERM 즉사 결함 | **NA** | `grep -n 'SIGTERM\|signal' ko/advanced/moai-web-console.md` → 0행. 내부 결함 수정 — 사용자 가시 문서 표면 아님 |
 | F9 | constitution의 `agent-authoring` 교차참조 복구 | **NA** | 내부 rules 참조 복구 — 사용자 문서와 무관 |
 
-### 1.4 항목 외 — version SSOT 갭 (카드 지시 조사, t272 잔여 재확인)
+### 1.4 항목 외 — version SSOT 갭 (카드 지시 조사, t272 잔여 재확인; 전수 재조사 [D1])
 
-26항목과 별개로, i18n 규칙 §7 release-sync 의무(“모든 버전 표시는 릴리즈 PR에서 함께 갱신”)가 v3.1.3에서 지켜지지 않았음을 관측했다:
+26항목과 별개로, i18n 규칙 §7 release-sync 의무(“모든 버전 표시는 릴리즈 PR에서 함께 갱신”)가 v3.1.3에서 지켜지지 않았음을 관측했다. 전수 재조사 명령: `grep -rn 'v3\.1\.[0-9]' docs-site/content/{ko,en,ja,zh} README.ko.md README.md README.ja.md README.zh.md` — 매칭에서 역사 인용(`added_in`/`new-badge` frontmatter, "v3.1.1에서 개명"류 서술)과 `--version` 플래그 문법 예시를 제외한 제품 버전 **표시(display)** 전부가 아래 8건이다:
 
-| ID | 표면 | 관측 | 판정 |
+| ID | 표면 | 관측 (RED-now) | 목표값 (green) |
 |----|------|------|------|
-| V1 | `docs-site/hugo.toml` 55–56행 | `version = "v3.1.2"`, `releaseDate = "2026-08-21"` (스테일) | **U** — v3.1.3 / 2026-08-24로 갱신 |
-| V2 | README 4파일 491행 statusline 예시 | `🗿 v3.1.2` ×4 (스테일 표시) | **U** — v3.1.3으로 |
-| V3 | README 4파일 766행 update-prompt 예시 | `🗿 v3.1.1 -> 🗿 v3.1.2` ×4 | **U** — 최신 릴리즈 기준 예시로 |
+| V1 | `docs-site/hugo.toml` 55–56행 | `version = "v3.1.2"`, `releaseDate = "2026-08-21"` | `v3.1.3` / `2026-08-24` |
+| V2 | README 4파일 491행 statusline 예시 | `🗿 v3.1.2` ×4 | `🗿 v3.1.3` |
+| V3 | README 4파일 766행 update-prompt 예시 | `🗿 v3.1.1 -> 🗿 v3.1.2` ×4 | `🗿 v3.1.2 -> 🗿 v3.1.3` |
+| V4 | `docs-site/content/*/advanced/statusline.md` 22행 ×4로케일 | `🗿 v3.1.2` | `🗿 v3.1.3` |
+| V5 | `docs-site/content/*/getting-started/faq.md` ×4로케일 | 37행 `🗿 v3.1.1 -> 🗿 v3.1.2` (ko 기준 라인; en 33행), 40–41행 설명 버전 표기, 46행 단독 `🗿 v3.1.2` | 예시 `🗿 v3.1.2 -> 🗿 v3.1.3`, 설명 동조, 단독 `🗿 v3.1.3` |
+| V6 | `docs-site/content/*/guides/claude-cloud.md` ×4로케일 | `go install github.com/modu-ai/moai-adk/cmd/moai@v3.1.2` (ko 68행, en 66행) | `@v3.1.3` |
+| V7 | README 4파일 493행 statusline 예시 브랜치 세그먼트 | `[WT] release/v3.1.2 +3` ×4 | `release/v3.1.3` |
+| V8 | `docs-site/content/*/utility-commands/moai-feedback.md` 62행 ×4로케일 | 이슈 템플릿 표 예시값 `v3.1.1` | `v3.1.3` (version-column example — 규칙 §7 명시 대상) |
 
-README 배지(24행)는 4파일 모두 `Release-v3.1.3`으로 이미 올바르다. **이 갭의 원인(릴리즈 프로세스가 hugo.toml·예시 표시를 동기화하지 않는 구조)은 별도 카드 권장 사항이며 이 SPEC이 흡수하지 않는다** — 이 SPEC은 증상(스테일 값)만 바로잡는다 (§6 Out of Scope 참조).
+**제외 기록 (관측했으나 갱신하지 않는 것)**: `cli-reference/update.md` 171행(`ko`)·175행(`en`)의 `moai update --version v3.1.0-rc1` — `--version` 플래그 문법 시연이지 제품 버전 표시가 아님. `added_in: "v3.1.1"` frontmatter와 `{{< new-badge v3.1.1 >}}`, "v3.1.1에서 개명/들어옴"류 서술(manager-lead.md:19, kanban-mode.md:217·281, agent-teams.md:102, home-hygiene.md, doctor.md 등) — 역사 인용은 규칙 §7이 명시적으로 보존 대상으로 지정. README 배지(24행)는 4파일 모두 `Release-v3.1.3`으로 이미 올바르다.
+
+**이 갭의 원인(릴리즈 프로세스가 hugo.toml·예시 표시를 동기화하지 않는 구조)은 별도 카드 권장 사항이며 이 SPEC이 흡수하지 않는다** — 이 SPEC은 증상(스테일 값)만 바로잡는다 (§6 Out of Scope 참조).
 
 ### 1.5 집계
 
-- 26항목 = **D 4** (A7·A8·A13·F7) + **U 10** (A5·A6·A11·A12·C1·C2·C3·F3·F4·F5) + **N 4** (A1–A4, codex dual-harness 주제로 통합 가능) + **NA 8** (A9·A10·C4·F1·F2·F6·F8·F9)
-- 항목 외: version SSOT 갭 3건 (V1–V3)
-- 작업 대상: U 10항목 + V1–V3 (기존 페이지/파일 갱신) + N 4항목(신규 페이지 — 승인 관문)
+- 26항목 = **D 3** (A8·A13·F7) + **U 11** (A5·A6·A7-README·A11·A12·C1·C2·C3·F3·F4·F5) + **N 4** (A1–A4, codex dual-harness 주제로 통합 가능) + **NA 8** (A9·A10·C4·F1·F2·F6·F8·F9)
+- 항목 외: version SSOT 갭 8건 (V1–V8)
+- 작업 대상: U 11항목 + V1–V8 (기존 페이지/파일 갱신) + N 4항목(신규 페이지 — 승인 관문)
+- 명령 표기 규약: 격차 표·AC의 `README…`·`README 4파일`은 `README.ko.md README.md README.ja.md README.zh.md` 전체 나열의 축약이며, `docs-site/content`는 네 로케일 전체를 가리킨다. 판정에 쓰는 grep 패턴 자체는 축약 없이 실행 가능한 형태로 기재한다 [D9].
 
 ## 2. 요구사항 (GEARS)
 
@@ -92,10 +101,10 @@ README 배지(24행)는 4파일 모두 `Release-v3.1.3`으로 이미 올바르�
 - **REQ-DVC-001** (Ubiquitous): Every documentation change produced under this SPEC shall land in all four locales — docs-site `content/{ko,en,ja,zh}` and README `{README.ko.md, README.md, README.ja.md, README.zh.md}` — in the same pull request. A canonical edit without its derived counterparts is a locale-parity failure.
 - **REQ-DVC-002** (When): When a gap-table item classified **U** (§1) is documented, the harness shall update the existing docs-site page(s) and README section(s) it maps to — canonical ko authored first, en/ja/zh derived from it — without creating new pages.
 - **REQ-DVC-003** (Where): Where a gap-table item classified **N** (§1: A1–A4, codex dual-harness) would require a new docs-site page, the harness shall not create the page, nor touch navigation config (per-locale `content/<locale>/_meta.yaml`, `data/menu/main.yaml`, `layouts/partials/menu.html` SVG cases), until the operator approves the new page explicitly; on denial the item shall be recorded as deferred to a separate card.
-- **REQ-DVC-004** (While): While this SPEC is in run phase, the version SSOT surfaces shall read the v3.1.3 release values — `docs-site/hugo.toml` `params.version = "v3.1.3"` with `params.releaseDate = "2026-08-24"`, and the README in-example version displays (statusline `🗿 v…` line, update-prompt example) in all four README files — with historical citations ("introduced in vX.Y.Z"류) left untouched.
+- **REQ-DVC-004** (While): While this SPEC is in run phase, the version SSOT surfaces shall read the v3.1.3 release values — every display enumerated in §1.4 V1–V8 (`hugo.toml` `params.version`/`params.releaseDate`, README 예시 표시, docs-site statusline·faq·claude-cloud·moai-feedback 표시, 전부 4로케일/4파일 대칭) shall carry the §1.4 목표값 — with historical citations ("introduced in vX.Y.Z"류, §1.4 제외 기록) left untouched.
 - **REQ-DVC-005** (While): While this SPEC is in run phase, the harness shall not modify any Go source under `internal/`/`pkg/`/`cmd/`, any template under `internal/template/templates/`, or any hook script — documentation surfaces only.
 - **REQ-DVC-006** (When): When an item classified **NA** (§1) is left undocumented, the skip and its §1 rationale shall remain recorded in this SPEC's gap table — no entry of the 26 shall be dropped silently.
-- **REQ-DVC-007** (When): When the run phase completes, the hns-oss-docs-verify recipe shall pass in full — warning-free hugo build, sitemap existence, URL-blacklist grep 0 hits, Mermaid LR/RL grep 0 hits, 4-locale file-existence and section parity, README 4-file heading parity, body-emoji scan 0 hits.
+- **REQ-DVC-007** (When): When the run phase completes, the hns-oss-docs-verify recipe shall report zero NEW violations across all its axes — the eight enumerated here: (1) warning-free hugo build, (2) sitemap existence, (3) URL-blacklist grep 0 hits, (4) Mermaid LR/RL grep 0 hits, (5) 4-locale file-existence and section parity (기계 검증: `scripts/docs-i18n-check.sh` — 파일 파리티·frontmatter title·H1·용어 verbatim 보존), (6) README 4-file heading parity, (7) body-emoji scan 0 hits, (8) version-sync — 모든 제품 버전 표시가 `hugo.toml` 버전(v3.1.3)과 일치 (§1.4 V1–V8). Axes that were already green at the pre-flight baseline (§C) shall remain green; pre-existing debt recorded in the baseline invents no new obligation and does not excuse a new violation (acceptance §D.1과 동일 계약).
 - **REQ-DVC-008** (When): When run-phase work begins, the §1 gap table's presence/absence cells shall be re-verified against the then-current tree — every cell re-observed by its named command, no carry-over from plan-phase observations (VCI §2 baseline-integrity attribution).
 
 ## 3. 제약
@@ -119,13 +128,18 @@ README 배지(24행)는 4파일 모두 `Release-v3.1.3`으로 이미 올바르�
 - `docs-site/content/{ko,en,ja,zh}/utility-commands/moai-todo.md` — A6 크로스링크 (선택)
 - `docs-site/content/{ko,en,ja,zh}/advanced/skill-guide.md` — A11 (design-dna 행 갱신)
 - `docs-site/content/{ko,en,ja,zh}/cli-reference/update.md` — A12 (symlink 폴백 통지)
+- `docs-site/content/{ko,en,ja,zh}/getting-started/init-wizard.md` — A12 (`moai init`쪽 통지) [D7]
 - `docs-site/content/{ko,en,ja,zh}/advanced/profile-matrix.md` — C1·C2 (매트릭스 표 재작성, manager-lead 행)
 - `docs-site/content/{ko,en,ja,zh}/multi-llm/model-policy.md` — C1 중복 매트릭스 표 + C3 (GLM reasoning 매핑)
 - `docs-site/content/{ko,en,ja,zh}/advanced/multi-model-audit.md` — F3·F4·F5 (inconclusive 케이스, 판정 기록 트리)
 
-**version SSOT:**
+**version SSOT (§1.4 V1–V8 전체 [D1]):**
 - `docs-site/hugo.toml` — V1 (`params.version`, `params.releaseDate`)
-- `README.ko.md` + `README.md` + `README.ja.md` + `README.zh.md` — V2·V3 (491·766행 예시) 및 A11 (design-dna 절 745행)
+- `docs-site/content/{ko,en,ja,zh}/advanced/statusline.md` — V4 (22행 예시)
+- `docs-site/content/{ko,en,ja,zh}/getting-started/faq.md` — V5 (update-prompt 예시·설명·단독 예시)
+- `docs-site/content/{ko,en,ja,zh}/guides/claude-cloud.md` — V6 (`go install …@v3.1.3`)
+- `docs-site/content/{ko,en,ja,zh}/utility-commands/moai-feedback.md` — V8 (62행 표 예시값; A5 갱신과 같은 파일)
+- `README.ko.md` + `README.md` + `README.ja.md` + `README.zh.md` — V2·V3·V7 (491·766·493행 예시), A7 (352행 todo 동사 나열에 `analyze`), A11 (design-dna 절 745행)
 
 **N 항목 (신규 페이지 — 승인 관문 후에만; 승인 시):**
 - `docs-site/content/{ko,en,ja,zh}/advanced/` 하위 신규 페이지 (가칭 `codex-dual-harness.md`) + `content/<locale>/_meta.yaml` ×4 + `data/menu/main.yaml` + `layouts/partials/menu.html` — A1–A4. **승인 전에는 이 파일 어디도 손대지 않는다.**

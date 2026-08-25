@@ -2,7 +2,7 @@
 
 ## §A Context
 
-카드 t274 (Class C, Tier M): v3.1.3 릴리즈(#1602 계열, CHANGELOG 2026-08-24)에서 문서가 코드를 따라가지 못한 격차를 닫는다. CHANGELOG `[3.1.3]` 26항목(Added 13·Changed 4·Fixed 9)을 docs-site 4로케일 + README 4파일에 문서 존재 여부로 매핑한 격차 표가 spec.md §1에 검증 완료 상태로 있다: **D 4 · U 10 · N 4 · NA 8**, 항목 외 version SSOT 갭 3건(V1–V3).
+카드 t274 (Class C, Tier M): v3.1.3 릴리즈(#1602 계열, CHANGELOG 2026-08-24)에서 문서가 코드를 따라가지 못한 격차를 닫는다. CHANGELOG `[3.1.3]` 26항목(Added 13·Changed 4·Fixed 9)을 docs-site 4로케일 + README 4파일에 문서 존재 여부로 매핑한 격차 표가 spec.md §1에 검증 완료 상태로 있다: **D 3 · U 11 · N 4 · NA 8**, 항목 외 version SSOT 갭 8건(V1–V8, plan-audit D1 전수 재조사 반영).
 
 - baseline 트리: `e07a6d0f4` (worktree t274, branch WT-v313-docs) — 격차 표의 모든 관측은 이 트리에서 이번 실행으로 얻었다.
 - 4로케일 파일 파리티 100% (파일 목록 체크섬 `98d2b226e6569dd7b07a8ce9ee4d3e5c` ×4), README H2 12개 ×4 — 구조는 건전하고 격차는 콘텐츠 수준이다.
@@ -10,7 +10,7 @@
 
 ## §B Known Issues
 
-- **hugo.toml v3.1.2 스테일** (55–56행): t272 종결(2026-08-25) 시 지목된 잔여. README 배지는 v3.1.3인데 hugo.toml과 README 예시(491·766행)만 뒤처진 상태. 이 SPEC이 증상을 수정(V1–V3), 프로세스 원인은 별도 카드 권장 (spec.md §6).
+- **hugo.toml v3.1.2 스테일** (55–56행): t272 종결(2026-08-25) 시 지목된 잔여. README 배지는 v3.1.3인데 제품 버전 표시가 뒤처진 표면은 처음 조사한 3곳(V1–V3)이 아니라 8곳(V1–V8)이다 — plan-audit D1 전수 재조사로 docs-site statusline·faq·claude-cloud·moai-feedback ×4로케일과 README:493이 추가됐다 (spec.md §1.4). 이 SPEC이 증상 전체를 수정, 프로세스 원인은 별도 카드 권장 (spec.md §6).
 - **ko `settings-json.md`의 `ANTHROPIC_` 부재 편차**: 배치 관측에서 en/ja/zh의 settings-json.md는 `ANTHROPIC_` 언급이 있으나 ko는 없다 (파일 목록 파리티와 무관한 콘텐츠 편차). 본 SPEC 범위 밖 관측 기록 — C4는 NA 판정이므로 이 편차를 이 SPEC에서 수리하지 않는다.
 - **`moai-gate.md`가 코드를 앞서 있었음**: A13(typecheck 축)은 문서가 이미 4축을 서술 — #1592로 코드가 문서를 따라잡았다. 갱신 불필요(판정 D)이며, run-phase에서 문서를 되레 "수정"하지 않도록 한다.
 
@@ -20,13 +20,14 @@ run-phase 착수 시 §1 격차 표의 셀을 전부 재관측한다 (REQ-DVC-00
 
 1. `grep -n '^## \[' CHANGELOG.md` — `[3.1.3]` 177행 존재 + 항목 수 재확인 (Added 13 / Changed 4 / Fixed 9).
 2. §1 각 행의 grep 재실행 — 예: `grep -rln 'todo\.enabled' docs-site/content README.md README.ko.md README.ja.md README.zh.md` → 현재 0파일. 셀 값이 plan-phase 관측과 달라지면(예: 병렬 세션이 문서화) 해당 행을 재판정하고 격차 표를 갱신한다.
-3. verify 레시피 baseline: hugo build가 이미 경고 없이 통과하는지, Mermaid LR/RL·URL 블랙리스트·body-emoji 현재 카운트를 측정 — run 종료 게이트(REQ-DVC-007)의 경과 판정 기준선. 기존 경고가 이미 있다면 그 목록을 기록하고 이 SPEC diff가 만드는 새 경고만 게이트 대상으로 판정한다(기존 부채 수리는 무상 확장 금지).
+3. verify 레시피 baseline: hugo build가 이미 경고 없이 통과하는지, Mermaid LR/RL·URL 블랙리스트·body-emoji 현재 카운트를 측정 — run 종료 게이트(REQ-DVC-007)의 경과 판정 기준선. 기존 위반이 이미 있다면 그 목록을 기록하고 이 SPEC diff가 만드는 새 위반만 게이트 대상으로 판정한다(기존 부채 수리는 무상 확장 금지; baseline green 축은 green 유지 — REQ-DVC-007과 동일 계약).
 4. hugo 빌드 환경 확인 (`hugo` 바이너리 존재 — verify 레시피 요건).
+5. 방어 AC 음성 점검 (negative probe, D8): AC-DVC-006과 AC-DVC-007의 red를 관측된 실패 입력으로 확인한다 — (a) 훅 경로에 1행짜리 임시 파일을 넣고 `git diff --stat e07a6d0f4 -- internal/ pkg/ cmd/ internal/hook/ .claude/hooks/`가 비지 않음을 관측 후 철회, (b) `_meta.yaml`에 무승인 1행을 넣고 AC-DVC-007 관측 명령이 비지 않음을 관측 후 철회. 두 관측 모두 progress.md §E.2에 기록한다.
 
 ## §D Constraints
 
 - 4로케일 동일 PR 의무 (locale-parity must_pass): ko 정본 → en/ja/zh 파생, 같은 PR.
-- docs-site 규칙: Mermaid TD-only, 본문 emoji 금지(icon shortcode), URL `adk.moai.kr` 단독, 강조 마커 간격, `moai-brand.css` FROZEN.
+- docs-site 규칙: Mermaid TD-only, 본문 emoji 금지(icon shortcode), URL `adk.mo.ai.kr` 단독 허용 (`docs.moai-ai.dev`·`adk.moai.com`·`adk.moai.kr` 금지 — 허용 도메인은 `.mo.ai.kr`, plan-audit D2 수정), 강조 마커 간격, `moai-brand.css` FROZEN.
 - README 규칙: `README.ko.md` 정본, 공용 언어 스위처 헤더 계약, 섹션 순서 파리티 유지 (H2 12개 구조 변경 없음 — 기존 섹션 안에서 갱신).
 - 버전 SSOT: `hugo.toml`이 단일 버전 표면 — 페이지·메뉴·README에 배포 프로세스 밖의 이중 버전 문자열을 하드코딩하지 않는다. "introduced in vX.Y.Z"류 역사 인용은 건드리지 않는다.
 - 게시(푸시)는 human-gated — run-phase는 파일 편집까지만.
@@ -40,24 +41,25 @@ run-phase 착수 시 §1 격차 표의 셀을 전부 재관측한다 (REQ-DVC-00
 | AC-DVC-00x | PASS/FAIL | `<명령 원문>` | `<출력 원문>` |
 
 검증 명령 카탈로그 (acceptance.md §D와 대응):
-- U 항목 착지: 항목별 키워드 grep이 4로케일 각각 1+ 파일 매칭 (예: `grep -rln 'todo\.enabled' docs-site/content/{ko,en,ja,zh}/…`).
-- version SSOT: `grep -n 'version\|releaseDate' docs-site/hugo.toml` → `v3.1.3`/`2026-08-24`; `grep -n '🗿 v3\.1' README.ko.md` 등 4파일.
-- 범위 순结성: `git diff --stat e07a6d0f4 -- internal/ pkg/ cmd/ internal/template/templates/` → 0파일.
-- 종료 게이트: hns-oss-docs-verify 레시피 7축 (warning-free hugo build, sitemap 존재, URL 블랙리스트 grep 0, Mermaid LR/RL grep 0, 4로케일 파일+섹션 파리티, README 4파일 헤딩 파리티, body-emoji 스캔 0).
+- U 항목 착지: 항목별 키워드 grep을 로케일별로 각 1+ 파일 매칭 — `grep -rln 'todo\.enabled' docs-site/content/ko`, `/en`, `/ja`, `/zh` 각각 비어 있지 않음 (4파일이 한 로케일에 몰려도 통과하지 않는 판정 [D5]).
+- version SSOT: `grep -n 'version\|releaseDate' docs-site/hugo.toml` → `v3.1.3`/`2026-08-24`; V2–V8 표면별 판정 — README 4파일 `grep -c '🗿 v3\.1\.3' README.ko.md README.md README.ja.md README.zh.md` → 각 `2+` (491 statusline + 766 update 예시), `grep -c 'release/v3\.1\.3' README.ko.md README.md README.ja.md README.zh.md` → 각 `1` (493행); docs-site 스테일 잔존 부정 판정 `grep -rc 'v3\.1\.2' docs-site/content/ko/advanced/statusline.md docs-site/content/ko/getting-started/faq.md docs-site/content/ko/guides/claude-cloud.md` → 전부 `0` (4로케일 각각 실행 [D1]).
+- 범위 무결성: `git diff --stat e07a6d0f4 -- internal/ pkg/ cmd/ internal/hook/ .claude/hooks/ internal/template/templates/` → 빈 출력 (훅 경로 포함 [D5]).
+- 방어 AC 음성 점검 (§C.5 관측 기록 — AC-DVC-006·007 red 확인 [D8]).
+- 종료 게이트: hns-oss-docs-verify 레시피 8축 (warning-free hugo build, sitemap 존재, URL 블랙리스트 grep 0, Mermaid LR/RL grep 0, 4로케일 파일+섹션 파리티 — 기계 검증 `scripts/docs-i18n-check.sh`, README 4파일 헤딩 파리티, body-emoji 스캔 0, version-sync: 모든 제품 버전 표시가 hugo.toml v3.1.3과 일치) [D3].
 
 ## §F Milestones (의사결정 가역성 내림차순 — 검토 민감도 높은 것부터)
 
 ### M1 — [OPERATOR GATE] codex dual-harness 신규 페이지 승인 확정 (N: A1–A4)
 
-가장 구조적인 결정부터. 신규 페이지(가칭 `advanced/codex-dual-harness.md`) 생성 여부를 operator에게 질의한다 — 내비게이션 설정(`_meta.yaml` ×4, `data/menu/main.yaml`, `menu.html` SVG case)은 structure-curator 소관이며 묵시적으로 가정하지 않는다. 대안: 기존 페이지 흡수(foundations 절 언급 수준) 또는 deferred(별도 카드). **승인·거부·지연 어느 쪽이든 M2–M3는 봉쇄되지 않는다.** 거부/지연 시 A1–A4를 "deferred — separate card"로 격차 표에 기록하고 M4는 축소된 범위로 진행한다.
+가장 구조적인 결정부터. 신규 페이지(가칭 `advanced/codex-dual-harness.md`) 생성 여부를 operator에게 질의한다 — 내비게이션 설정(`_meta.yaml` ×4, `data/menu/main.yaml`, `menu.html` SVG case)은 structure-curator 소관이며 묵시적으로 가정하지 않는다. 결정은 2분기다 [D6]: **new_page** (승인 → M4 실행) 또는 **deferred** (거부/지연 → A1–A4를 "deferred — separate card"로 격차 표에 기록, M4 건너뜀). "기존 페이지 흡수"는 선택지에서 제거했다 — 흡수 역시 "어느 페이지의 어느 절에 넣을지"라는 동일한 구조 결정이어서 별도의 실행 경로·AC를 요구하는데, 그 비용 대비 신규 페이지 경로 하나를 명확히 유지하는 편이 검증 가능성이 높다. 운영자가 흡수를 원하면 그 시점에 이 SPEC을 amend하는 것이 순서다. **승인·거부·지연 어느 쪽이든 M2–M3는 봉쇄되지 않는다.**
 
-### M2 — ko canonical 갱신 (U 10항목 + V1–V3)
+### M2 — ko canonical 갱신 (U 11항목 + V1–V8)
 
-docs-site ko 7페이지(moai-feedback, config-sections, skill-guide, update, profile-matrix, model-policy, multi-model-audit) + `hugo.toml` + `README.ko.md`(V2·V3 예시, A11 절)를 ko 정본으로 갱신한다. C1은 profile-matrix.md와 model-policy.md 양쪽 매트릭스 표를 모두 다시 쓴다 (한쪽만 고치면 페이지 간 모순이 남는다).
+docs-site ko 8페이지(moai-feedback, config-sections, skill-guide, update, init-wizard, profile-matrix, model-policy, multi-model-audit) + statusline·faq·claude-cloud 3페이지(V4–V6·V8) + `hugo.toml`(V1) + `README.ko.md`(V2·V3·V7 예시, A7 동사 나열, A11 절)을 ko 정본으로 갱신한다. C1은 profile-matrix.md와 model-policy.md 양쪽 매트릭스 표를 모두 다시 쓴다 (한쪽만 고치면 페이지 간 모순이 남는다).
 
 ### M3 — en/ja/zh 파생 (U 항목 + version SSOT)
 
-M2의 ko 정본에서 en/ja/zh 3로케일 ×7페이지 + README 3파일을 파생한다. Mermaid 방향·코드 블록·URL은 verbatim 보존. README 언어 스위처 헤더 계약 유지.
+M2의 ko 정본에서 en/ja/zh 3로케일 ×11페이지(U 8종 + version-SSOT 3종) + README 3파일(V2·V3·V7 예시, A7 동사 나열, A11 절)을 파생한다. Mermaid 방향·코드 블록·URL은 verbatim 보존. README 언어 스위처 헤더 계약 유지.
 
 ### M4 — (승인된 경우에만) 신규 페이지 ko 저작 + 4로케일 파생
 
@@ -65,7 +67,7 @@ M1 승인이 난 경우에만 실행. ko 저작 → `_meta.yaml`·`main.yaml`·`
 
 ### M5 — 종료 게이트: hns-oss-docs-verify + 격차 표 폐쇄
 
-verify 레시피 7축 실행(§E 카탈로그) — 전 축 통과 후 §1 격차 표의 각 U/N 행에 착지 증거(grep 결과)를 대입해 폐쇄 상태를 progress.md §E.2에 기록한다. NA 8항목은 근거와 함께 "문서화 안 함"으로 확정(REQ-DVC-006).
+verify 레시피 8축 실행(§E 카탈로그) — 4로케일 파리티 축은 `scripts/docs-i18n-check.sh`(tracked·실행가능, 8801B — 파일 파리티·frontmatter title·H1·용어 verbatim 보존 검증)을 기계 검증으로 실행하고 나머지 축은 §E 카탈로그의 grep/빌드 명령으로 관측한다 [D3]. 전 축 통과 후 §1 격차 표의 각 U/N 행에 착지 증거(grep 결과)를 대입해 폐쇄 상태를 progress.md §E.2에 기록한다. NA 8항목은 근거와 함께 "문서화 안 함"으로 확정(REQ-DVC-006).
 
 ## §G Anti-Patterns
 
@@ -81,7 +83,7 @@ verify 레시피 7축 실행(§E 카탈로그) — 전 축 통과 후 §1 격차
 
 - spec.md §1 격차 표 (이 plan의 입력) · acceptance.md §D AC Matrix (검증 계약)
 - Skill `hns-oss-docs-i18n-rules` (SSOT: `.moai/docs/docs-site-i18n-rules.md`) — 규칙 §1–§9
-- Skill `hns-oss-docs-verify` — 종료 게이트 7축 레시피 (스크립트 `docs-i18n-check.sh`·`gen_menu.py`는 존재하지 않음 — 인라인 체크만 실행)
+- Skill `hns-oss-docs-verify` — 종료 게이트 8축 레시피. [D3 정정] Skill `hns-oss-docs-i18n-rules`의 "스크립트는 존재하지 않는다" 주장은 스테일이다 — 실측 `scripts/docs-i18n-check.sh`는 tracked·실행가능(8801B, `-rwxr-xr-x`)하며 M5의 4로케일 파리티 축 기계 검증으로 편입했다. `gen_menu.py`만 존재하지 않음(실측 `git ls-files | grep -i 'i18n-check\|gen_menu'` → i18n-check 1件のみ).
 - Skill `hns-oss-docs-readme-sync` — README 4파일 동기화 절차
 - Skill `hns-oss-docs-structure-map` — M4 신규 페이지 시 내비게이션 설정 스키마
 - CHANGELOG.md 177–306행 (`[3.1.3]`) — 항목 원문

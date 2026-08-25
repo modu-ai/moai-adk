@@ -7,8 +7,9 @@
 - artifacts: spec.md · plan.md · acceptance.md (Tier M 3종 + 본 progress.md §E 스켈레톤)
 - baseline_tree: e07a6d0f4 (worktree t274, branch WT-v313-docs, card t274)
 - tier: M · reqs: 8 (REQ-DVC-001..008) · acs: 9 (AC-DVC-001..009)
-- inventory: CHANGELOG [3.1.3] 26항목 (Added 13 / Changed 4 / Fixed 9) — 격차 판정 D 4 / U 10 / N 4 / NA 8 + version SSOT 갭 3건 (V1–V3), spec.md §1
+- inventory: CHANGELOG [3.1.3] 26항목 (Added 13 / Changed 4 / Fixed 9) — 격차 판정 D 3 / U 11 / N 4 / NA 8 + version SSOT 갭 8건 (V1–V8), spec.md §1
 - notes: N 4항목(codex dual-harness)은 operator 승인 관문(REQ-DVC-003) — 승인 전 내비게이션 설정 불변. version SSOT 프로세스 원인은 별도 카드 권장 (본 SPEC은 증상만)
+- revised: 0.2.0 — plan-audit iter1 (FAIL 0.7125) blocking D1–D6 + optional D7–D9 applied, 2026-08-26
 
 ## §E.2 Run-phase Evidence
 
