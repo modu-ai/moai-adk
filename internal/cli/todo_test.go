@@ -19,6 +19,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -590,6 +592,103 @@ func TestTodoSingleWordNaturalLanguageStillErrors(t *testing.T) {
 	}
 	if _, _, err := runTodo(t, "lst"); err == nil {
 		t.Error("mistyped verb was accepted, want an error")
+	}
+}
+
+// TestTodoMistypedVerbWithCardIDErrors — t203 (#1597): `moai todo pick t151`
+// used to fall through to add and create a card named "pick t151". A
+// verb-shaped first token addressing a card id is a mistyped verb, so it is
+// an error naming the known verbs, and the queue stays untouched.
+func TestTodoMistypedVerbWithCardIDErrors(t *testing.T) {
+	for _, args := range [][]string{
+		{"pick", "t151"},
+		{"finish", "t20"},
+		{"un-pick", "t7"},
+	} {
+		t.Run(strings.Join(args, "_"), func(t *testing.T) {
+			_, store := todoFixture(t)
+
+			_, errOut, err := runTodo(t, args...)
+			if err == nil {
+				t.Fatalf("%v was accepted, want an error", args)
+			}
+			combined := err.Error() + errOut
+			if !strings.Contains(combined, args[0]) || !strings.Contains(combined, args[1]) {
+				t.Errorf("error must name the token and the id; got %q", combined)
+			}
+			// The message points at the real verbs and at the escape hatch.
+			for _, want := range []string{"next", "done", "moai todo add"} {
+				if !strings.Contains(combined, want) {
+					t.Errorf("error should mention %q; got %q", want, combined)
+				}
+			}
+
+			rec, loadErr := store.Load()
+			if loadErr != nil {
+				t.Fatalf("load: %v", loadErr)
+			}
+			if len(rec.Items) != 0 {
+				t.Errorf("refused invocation still mutated the queue: %+v", rec.Items)
+			}
+		})
+	}
+}
+
+// TestTodoNaturalLanguageCardsSurviveVerbGuard — the t69 trade-off is
+// preserved: the guard is the exact verb-then-id shape and nothing wider. A
+// natural-language card still falls through, including one carrying a bare
+// number or mentioning a card id later in the sentence.
+func TestTodoNaturalLanguageCardsSurviveVerbGuard(t *testing.T) {
+	for _, tc := range []struct {
+		args []string
+		want string
+	}{
+		{[]string{"fix", "the", "flaky", "gate"}, "fix the flaky gate"},
+		{[]string{"fix", "3", "flaky", "tests"}, "fix 3 flaky tests"},
+		{[]string{"fix", "the", "drift", "found", "in", "t151"}, "fix the drift found in t151"},
+		{[]string{"t151", "regression", "follow-up"}, "t151 regression follow-up"},
+	} {
+		t.Run(tc.want, func(t *testing.T) {
+			_, store := todoFixture(t)
+
+			if _, _, err := runTodo(t, tc.args...); err != nil {
+				t.Fatalf("natural-language fallthrough refused: %v", err)
+			}
+			rec, err := store.Load()
+			if err != nil {
+				t.Fatalf("load: %v", err)
+			}
+			if len(rec.Items) != 1 || rec.Items[0].Text != tc.want {
+				t.Errorf("card = %+v; want one card %q", rec.Items, tc.want)
+			}
+		})
+	}
+}
+
+// TestTodoVerbNamesDerivedFromCommandTree — the guard's message lists the
+// registered verbs rather than a hand-maintained copy, so a verb added later
+// appears without a second edit.
+func TestTodoVerbNamesDerivedFromCommandTree(t *testing.T) {
+	cmd := newTodoCmd()
+	names := todoVerbNames(cmd)
+
+	registered := 0
+	for _, sub := range cmd.Commands() {
+		if sub.Name() == "help" || sub.Name() == "completion" || sub.Hidden {
+			continue
+		}
+		registered++
+	}
+	if len(names) != registered {
+		t.Errorf("todoVerbNames returned %d names, want %d (one per registered verb)", len(names), registered)
+	}
+	if !sort.StringsAreSorted(names) {
+		t.Errorf("verb names should be sorted for a stable message: %v", names)
+	}
+	for _, want := range []string{"add", "done", "next"} {
+		if !slices.Contains(names, want) {
+			t.Errorf("verb list missing %q: %v", want, names)
+		}
 	}
 }
 

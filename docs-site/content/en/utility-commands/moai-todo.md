@@ -181,7 +181,7 @@ $ moai todo unrelate 2
 | Command | Behavior |
 |------|------|
 | `moai todo` (bare) | Prints the queue. Same output as `list`. |
-| `moai todo <two or more words>` | Adds the natural-language text as an item. A single word (including a typo'd verb) is an error, not an add. |
+| `moai todo <two or more words>` | Adds the natural-language text as an item. A single word (including a typo'd verb) is an error, not an add. A verb-shaped first token followed by a card id (`moai todo pick t151`) is read as a mistyped verb and errors — a card that merely mentions an id later in the sentence still adds. |
 | `moai todo add "<text>" [--pick]` | Adds an item and prints the issued id and position. With `--pick`, the add and the picked mark land in one locked write. |
 | `moai todo list` / `--json` | Renders the queue. `--json` emits the full records as JSON. |
 | `moai todo done <n>` | Removes item `n`. The explicit `t<n>` id form is preferred — queue positions move under concurrent adds. |
