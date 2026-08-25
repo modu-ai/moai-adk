@@ -765,7 +765,7 @@ moai constitution list --format json
   zone_class: frozen-canonical
   file: .claude/rules/moai/workflow/ci-autofix-protocol.md
   anchor: "#semantic-failure-no-auto-patch"
-  clause: "Semantic failures (data race, deadlock, panic, test assertion failure) MUST"
+  clause: "The orchestrator MUST immediately escalate via AskUserQuestion with the diagnosis report."
   canary_gate: true
 
 - id: CONST-V3R5-011

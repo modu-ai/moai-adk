@@ -104,8 +104,8 @@ Interaction surfaces:
 ## Semantic Failure — No Auto-Patch
 
 [ZONE:Frozen] [HARD] Semantic failures (data race, deadlock, panic, test assertion failure) MUST
-NOT be automatically patched. The orchestrator MUST immediately escalate via
-AskUserQuestion with the diagnosis report.
+NOT be automatically patched.
+The orchestrator MUST immediately escalate via AskUserQuestion with the diagnosis report.
 
 Classification is decided from the failing check's own output:
 - A failure whose root cause is a lint rule, a formatting rule, a build error, a type error,
