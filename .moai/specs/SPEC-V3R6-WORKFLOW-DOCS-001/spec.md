@@ -2,7 +2,7 @@
 id: SPEC-V3R6-WORKFLOW-DOCS-001
 title: "Document the SPEC lifecycle and the Kanban/Factory operating models on docs-site and README"
 version: "0.1.0"
-status: implemented
+status: completed
 created: 2026-08-25
 updated: 2026-08-26
 author: manager-spec
