@@ -1,6 +1,6 @@
 # M5 Post-run — fixed task set via the code-query tools (AC-GF-022)
 
-- **Measurement date**: 2026-08-25 (after M5 implementation; REMEASURED 2026-08-26 under CR round-2 3855149200 against the baseline's ORIGINAL task definitions — the first post-run had substituted narrower targets; the table below is the exact-set rerun).
+- **Measurement date**: 2026-08-25 (after M5 implementation; remeasured the same day under CR round-2 3855149200 against the baseline's ORIGINAL task definitions — the first post-run had substituted narrower targets; the table below is the exact-set rerun).
 - **Method**: the SAME fixed task set defined in m5-baseline.md, executed by the M5 query engine (the MCP handlers' backing functions) against the real worktree via a measurement vehicle test (deleted after the run). Counting rule identical to the baseline: Grep and Read TOOL-USE events only.
 
 ## Per-task results (verbatim from the exact-set measurement run)

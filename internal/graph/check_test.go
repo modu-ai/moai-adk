@@ -268,6 +268,44 @@ func TestCheckFreshness_AbsentLayers(t *testing.T) {
 	}
 }
 
+// CR round-3 d60180c9 (t261 observed red): an in-tree SYMLINK described root
+// whose target lives outside the project is rejected — filepath.Rel is
+// lexical, so resolution happens through EvalSymlinks before containment.
+func TestCheckFreshness_SymlinkRootRejected(t *testing.T) {
+	root := newCheckFixture(t)
+	outside := t.TempDir() // target tree, outside root by construction
+	if err := os.WriteFile(filepath.Join(outside, "secret.go"), []byte("package x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(root, "leak")); err != nil {
+		t.Skipf("symlink creation unavailable: %v", err)
+	}
+	head := gitFix(t, root, "rev-parse", "HEAD")
+	writeCodemapsProvenanceBlock(t, root, &mx.Provenance{
+		SchemaVersion: mx.ProvenanceSchemaVersion,
+		TreeRoot:      root,
+		CommitSHA:     head,
+		GeneratedBy:   "codemaps-gen",
+		DescribedRoots: []string{"leak"}, // in-tree symlink pointing outside
+	})
+	writeSyncedMXIndex(t, root)
+	writeSyncedEdgesMeta(t, root)
+
+	res, err := CheckFreshness(root, DefaultThresholds())
+	if err != nil {
+		t.Fatalf("symlink rejection is an absent-verdict path, not a system error: %v", err)
+	}
+	found := false
+	for _, l := range res.Layers {
+		if l.Layer == LayerCodemaps && strings.Contains(l.Reason, "symlink target resolves outside") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("codemaps layer must report the symlink rejection, layers=%+v", res.Layers)
+	}
+}
+
 // CI run 32775609689 regression (audit F4): a stamped commit git cannot
 // resolve (shallow checkout / vanished SHA) is NOT judged stale — the layer
 // was never measured; CheckFreshness surfaces it as a system error (exit 2

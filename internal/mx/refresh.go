@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -65,6 +66,13 @@ func RefreshIndex(stateDir, scanRoot string, ignore []string) (*RefreshStats, er
 	s.SetIgnorePatterns(ignore)
 
 	err = walkScanFiles(scanRoot, ignore, func(absPath, rel string) error {
+		// Unsupported languages are skipped BEFORE hashing (CR round-3 Major:
+		// hashing then dropping wasted a full read on every non-source file —
+		// the hot path of an interactive query refresh). The extension rule
+		// is the same one ScanFile applies (comment-prefix lookup).
+		if GetCommentPrefix(strings.ToLower(filepath.Ext(absPath))) == "" {
+			return nil
+		}
 		sum, hashErr := HashFile(absPath)
 		if hashErr != nil {
 			// Transiently unreadable ≠ vanished (CR round-2 3855001935):

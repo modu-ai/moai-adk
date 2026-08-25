@@ -216,12 +216,14 @@ func TraceCalls(projectRoot, symbol string, depth int) (callers, callees []CallT
 
 // loadCodeEdges loads the edges artifact, mapping an ABSENT artifact to a
 // distinct actionable error (CR round-2 3855002040): the untracked derived
-// layer is missing — the remedy is a build, not a bug report.
+// layer is missing — the remedy is a build, not a bug report. The message
+// carries the repo-relative artifact location only (CR round-3: the absolute
+// root is host information an LLM-facing error need not disclose).
 func loadCodeEdges(projectRoot string) ([]Edge, error) {
 	edges, err := LoadJSONL(edgesArtifactPath(projectRoot))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
-			return nil, fmt.Errorf("graph layer absent: %s not found — run 'moai graph build' to create it", edgesArtifactPath(projectRoot))
+			return nil, fmt.Errorf("graph layer absent: .moai/project/graph/edges.jsonl not found — run 'moai graph build' to create it")
 		}
 		return nil, fmt.Errorf("graph: load edges: %w", err)
 	}

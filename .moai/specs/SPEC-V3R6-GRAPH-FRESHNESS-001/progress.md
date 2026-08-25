@@ -251,7 +251,7 @@ m5_measurement:
   baseline_grep_tooluse_per_session: "0-1 (8-session sample)"
   baseline_read_tooluse_per_session: "0-25 (8-session sample)"
   post_taskset_grep_read_events: 0
-  post_taskset_tool_calls: 5
+  post_taskset_tool_calls: 28         # exact-set remeasurement (m5-post.md): T1 18 + T2 1 + T3 1 + T4 2 + T5 6
 ```
 
 ## §E.4 Sync-phase Audit-Ready Signal

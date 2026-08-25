@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -49,6 +50,13 @@ Examples:
 				abs, err := filepath.Abs(pathArg)
 				if err != nil {
 					return fmt.Errorf("resolve --path: %w", err)
+				}
+				// CR round-3: a scan root OUTSIDE the project is rejected —
+				// the sidecar's inventory is project-root-relative, so an
+				// external scan would persist tags whose files the provenance
+				// cannot cover (freshness-unjudgeable inventory).
+				if rel, relErr := filepath.Rel(projectRoot, abs); relErr != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+					return fmt.Errorf("--path %s resolves outside the project root — scan roots must live inside the project", pathArg)
 				}
 				scanRoot = abs
 			}

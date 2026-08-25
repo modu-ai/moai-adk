@@ -381,6 +381,11 @@ func checkEdges(projectRoot string) LayerReport {
 // validateDescribedRoot rejects a described root that is empty, absolute,
 // or resolves outside the project root — the provenance block is repository
 // content and must not aim hashing/diffing past the tree it describes.
+// EXISTING roots are symlink-resolved before the containment comparison
+// (CR round-3 d60180c9): filepath.Rel is lexical, so an in-tree symlink
+// pointing outside would otherwise slip past and hand the fingerprint walk
+// a path that reads outside projectRoot. Absent roots stay absent
+// contributors downstream and are not resolved.
 func validateDescribedRoot(projectRoot, root string) error {
 	if root == "" {
 		return fmt.Errorf("empty")
@@ -389,9 +394,23 @@ func validateDescribedRoot(projectRoot, root string) error {
 		return fmt.Errorf("absolute path")
 	}
 	abs := filepath.Join(projectRoot, filepath.FromSlash(root))
-	rel, err := filepath.Rel(projectRoot, abs)
-	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+
+	// Lexical containment first (cheap, catches plain .. escapes).
+	if rel, err := filepath.Rel(projectRoot, abs); err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 		return fmt.Errorf("resolves outside the project root")
+	}
+	// Symlink containment for roots that exist: resolve both ends and
+	// re-check. An absent root contributes nothing downstream (the
+	// fingerprint walk skips missing roots) and resolves to itself.
+	if _, statErr := os.Lstat(abs); statErr == nil {
+		resolvedRoot, rErr := filepath.EvalSymlinks(abs)
+		resolvedProject, pErr := filepath.EvalSymlinks(projectRoot)
+		if rErr != nil || pErr != nil {
+			return fmt.Errorf("resolves outside the project root")
+		}
+		if rel, err := filepath.Rel(resolvedProject, resolvedRoot); err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			return fmt.Errorf("symlink target resolves outside the project root")
+		}
 	}
 	return nil
 }
