@@ -569,7 +569,7 @@ func runTemplateSyncWithReporter(cmd *cobra.Command, reporter project.ProgressRe
 	}
 
 	// Install pre-push hook (REQ-CIAUT-002). Non-fatal; --no-hooks opts out.
-	installPrePushHookOptional(projectRoot, getBoolFlag(cmd, "no-hooks"), out)
+	installPrePushHookOptional(projectRoot, getBoolFlag(cmd, "no-hooks"), out, errOut)
 
 	// Install pre-commit hook (REQ-PC-001). Fast-subset commit tier; --no-hooks opts out.
 	installPreCommitHookOptional(projectRoot, getBoolFlag(cmd, "no-hooks"), out, errOut)
