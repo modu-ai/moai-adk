@@ -84,7 +84,7 @@ func stampAllLayers(t *testing.T, root string) {
 		t.Fatal(err)
 	}
 	if err := graph.WriteEdgesMeta(filepath.Join(graphDir, graph.MetaFileName),
-		root, graph.SourceFingerprintsForEdges(root)); err != nil {
+		root, graph.SourceFingerprintsForEdges(root), 0); err != nil {
 		t.Fatal(err)
 	}
 }

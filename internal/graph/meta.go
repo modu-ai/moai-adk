@@ -67,13 +67,16 @@ func dirFingerprint(dir string) (string, error) {
 }
 
 // WriteEdgesMeta stamps the edges provenance sidecar next to edges.jsonl.
-func WriteEdgesMeta(metaPath, projectRoot string, sourceFingerprints map[string]string) error {
+// edgeCount records the artifact's edge count at stamp time (CR round-2
+// 3855002085: the field previously always persisted 0 — an honest-looking
+// count that was not one).
+func WriteEdgesMeta(metaPath, projectRoot string, sourceFingerprints map[string]string, edgeCount int) error {
 	pv := mx.StampEdges(projectRoot, sourceFingerprints)
-	meta := edgesMeta{Provenance: pv}
+	meta := edgesMeta{Provenance: pv, EdgeCount: edgeCount}
 	return writeMetaFile(metaPath, meta)
 }
 
-// writeMetaMeta is split so tests can stamp a known edge count.
+// writeMetaFile writes the meta sidecar atomically (temp + rename).
 func writeMetaFile(metaPath string, meta edgesMeta) error {
 	data, err := json.MarshalIndent(meta, "", "  ")
 	if err != nil {

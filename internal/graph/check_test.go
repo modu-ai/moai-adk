@@ -1,6 +1,7 @@
 package graph
 
 import (
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -56,17 +57,31 @@ func newCheckFixture(t *testing.T) string {
 }
 
 // writeCodemapsProvenance writes a clean codemaps provenance sidecar stamped
-// at the current HEAD.
+// at the given commit. Marshalled from the struct (CR round-2 3855001906):
+// hand-interpolated JSON breaks on Windows temp paths' backslashes.
 func writeCodemapsProvenance(t *testing.T, root, commit string) {
+	t.Helper()
+	writeCodemapsProvenanceBlock(t, root, &mx.Provenance{
+		SchemaVersion: mx.ProvenanceSchemaVersion,
+		TreeRoot:      root,
+		CommitSHA:     commit,
+		GeneratedBy:   "codemaps-gen",
+	})
+}
+
+// writeCodemapsProvenanceBlock marshals and writes an arbitrary provenance
+// block for fixtures that need dirty stamps or custom fields.
+func writeCodemapsProvenanceBlock(t *testing.T, root string, pv *mx.Provenance) {
 	t.Helper()
 	dir := filepath.Join(root, ".moai", "project", "codemaps")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	body := "{\n  \"schema_version\": 1,\n  \"tree_root\": " + quoteJSON(root) +
-		",\n  \"commit_sha\": " + quoteJSON(commit) + ",\n  \"dirty\": false,\n" +
-		"  \"generated_by\": \"codemaps-gen\"\n}\n"
-	if err := os.WriteFile(filepath.Join(dir, "provenance.json"), []byte(body), 0o644); err != nil {
+	data, err := json.Marshal(pv)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "provenance.json"), data, 0o644); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -323,16 +338,13 @@ func TestCheckFreshness_DirtyGenerationAnchor(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AggregateDescribedFingerprint: %v", err)
 	}
-	dir := filepath.Join(root, ".moai", "project", "codemaps")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	body := "{\n  \"schema_version\": 1,\n  \"tree_root\": " + quoteJSON(root) +
-		",\n  \"commit_sha\": \"\",\n  \"dirty\": true,\n" +
-		"  \"content_fingerprint\": " + quoteJSON(fp) + ",\n  \"generated_by\": \"codemaps-gen\"\n}\n"
-	if err := os.WriteFile(filepath.Join(dir, "provenance.json"), []byte(body), 0o644); err != nil {
-		t.Fatal(err)
-	}
+	writeCodemapsProvenanceBlock(t, root, &mx.Provenance{
+		SchemaVersion:      mx.ProvenanceSchemaVersion,
+		TreeRoot:           root,
+		Dirty:              true,
+		ContentFingerprint: fp,
+		GeneratedBy:        "codemaps-gen",
+	})
 	writeSyncedMXIndex(t, root)
 	writeSyncedEdgesMeta(t, root)
 
@@ -521,7 +533,7 @@ func writeSyncedEdgesMeta(t *testing.T, root string) {
 		t.Fatal(err)
 	}
 	fp := SourceFingerprintsForEdges(root)
-	if err := WriteEdgesMeta(filepath.Join(graphDir, "edges.meta.json"), root, fp); err != nil {
+	if err := WriteEdgesMeta(filepath.Join(graphDir, "edges.meta.json"), root, fp, 0); err != nil {
 		t.Fatal(err)
 	}
 }

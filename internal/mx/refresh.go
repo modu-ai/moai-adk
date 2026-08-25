@@ -118,14 +118,12 @@ func RefreshIndex(stateDir, scanRoot string, ignore []string) (*RefreshStats, er
 			continue
 		}
 		rel = filepath.ToSlash(rel)
-		newSum, stillExists := newInventory[rel]
-		if !stillExists {
+		if _, stillExists := newInventory[rel]; !stillExists {
 			continue // vanished
 		}
 		if _, reparsed := parsedTagsByFile[tag.File]; reparsed {
 			continue // replaced below
 		}
-		_ = newSum
 		tags = append(tags, tag)
 	}
 	for _, parsed := range parsedTagsByFile {

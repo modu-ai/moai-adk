@@ -34,7 +34,7 @@ func refreshEdgesArtifact(projectRoot, edgesFile string) (edgesRefreshStats, err
 		return edgesRefreshStats{}, fmt.Errorf("write edges: %w", err)
 	}
 	if err := graph.WriteEdgesMeta(filepath.Join(filepath.Dir(edgesFile), graph.MetaFileName),
-		projectRoot, graph.SourceFingerprintsForEdges(projectRoot)); err != nil {
+		projectRoot, graph.SourceFingerprintsForEdges(projectRoot), len(edges)); err != nil {
 		return edgesRefreshStats{}, fmt.Errorf("write edges meta: %w", err)
 	}
 	return edgesRefreshStats{duration: time.Since(start)}, nil

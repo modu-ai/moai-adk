@@ -208,10 +208,14 @@ func modulePath(projectRoot string) string {
 // localizeModule strips the project's module prefix from an import path so
 // internal dependencies appear as repository-local paths (the same domain
 // the doc import layer speaks). External imports pass through unchanged;
-// isLocal reports whether the strip happened.
+// isLocal reports whether the path belongs to this project — including the
+// module ROOT itself (import == modulePrefix; CR round-2 3855149341).
 func localizeModule(module, modulePrefix string) (local string, isLocal bool) {
 	if modulePrefix == "" {
 		return module, false
+	}
+	if module == modulePrefix {
+		return module, true // the module root: local by definition
 	}
 	if l, ok := strings.CutPrefix(module, modulePrefix+"/"); ok {
 		return l, true

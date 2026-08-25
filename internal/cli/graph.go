@@ -313,7 +313,7 @@ Examples:
 			// REQ-GF-003: stamp the source-set fingerprints next to the
 			// artifact so its staleness is judgeable without a rebuild.
 			metaPath := filepath.Join(filepath.Dir(target), graph.MetaFileName)
-			if err := graph.WriteEdgesMeta(metaPath, projectRoot, graph.SourceFingerprintsForEdges(projectRoot)); err != nil {
+			if err := graph.WriteEdgesMeta(metaPath, projectRoot, graph.SourceFingerprintsForEdges(projectRoot), len(edges)); err != nil {
 				return fmt.Errorf("write edges meta: %w", err)
 			}
 
