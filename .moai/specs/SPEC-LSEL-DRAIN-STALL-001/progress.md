@@ -156,7 +156,7 @@ m1_to_mN_commit_strategy: 2 commits (M1 wrapper+테스트+위생 / M2 live 일�
 
 ```yaml
 sync_complete_at: 2026-08-26
-sync_commit_sha: pending-backfill-sync   # 자기 자신 SHA는 커밋 착지 전 알 수 없음 — 후속 backfill 커밋에서 실측 SHA로 교체 (D3 self-referential-hazard workaround)
+sync_commit_sha: 2384942e2
 sync_status: PASS
 changelog_entry_position: "CHANGELOG.md [Unreleased] > Added > 첫 번째 항목 (SPEC-LSEL-DRAIN-STALL-001)"
 frontmatter_status_transitions:
