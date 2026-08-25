@@ -18,7 +18,7 @@
 - **When** 문서화가 완료되었을 때
 - **Then** 각 항목의 식별 키워드가 docs-site 4로케일 대상 페이지에서 **로케일별로** 1+ 매칭되고, README 대상 항목(A7·A11)은 4파일 모두에 반영된다 [D5: 한 로케일에 4파일이 몰리는 뮤턴트 폐쇄 — 로케일별 판정]
 - **RED-now**: 대표 관측 — `grep -rln 'todo\.enabled' docs-site/content README.md README.ko.md README.ja.md README.zh.md` → 0파일; `grep -n 'scrub\|queue' docs-site/content/ko/utility-commands/moai-feedback.md` → 0행 (동사 미문서화); `grep -n 'symlink' docs-site/content/ko/cli-reference/update.md docs-site/content/ko/getting-started/init-wizard.md` → 0행; `sed -n '352p' README.ko.md` → 동사 나열에 `analyze` 부재
-- **green-path**: M2+M3 완료 후 항목별 grep을 **로케일별로** 실행 — `grep -rln 'todo\.enabled' docs-site/content/ko` · `/en` · `/ja` · `/zh` 가 각각 비어 있지 않은 목록 반환 (예: `grep -rln 'todo\.enabled' docs-site/content/ko` → `docs-site/content/ko/advanced/config-sections.md` 1+ 행). 총계 `grep -rln 'todo\.enabled' docs-site/content | wc -l` → `4`는 보조 확인일 뿐 판정은 아니다. README: `grep -c 'analyze' README.ko.md README.md README.ja.md README.zh.md` → 각 `1+` (352행 동사 나열)
+- **green-path**: M2+M3 완료 후 항목별 grep을 **로케일별로** 실행 — `grep -rln 'todo\.enabled' docs-site/content/ko` · `/en` · `/ja` · `/zh` 가 각각 비어 있지 않은 목록 반환 (예: `grep -rln 'todo\.enabled' docs-site/content/ko` → `docs-site/content/ko/advanced/config-sections.md` 1+ 행). 총계 `grep -rln 'todo\.enabled' docs-site/content | wc -l` → `4`는 보조 확인일 뿐 판정은 아니다. README: `sed -n '352p' README.ko.md README.md README.ja.md README.zh.md | grep -c 'analyze'` → `4` (352행 동사 나열에 라인 앵커 — 파일 전역 `analyze` 산발 언급으로 통과하는 뮤턴트 폐쇄 [R7])
 
 ### AC-DVC-003 — 프로필 매트릭스 정책값 (REQ-DVC-002; C1·C2)
 
@@ -30,11 +30,11 @@
 
 ### AC-DVC-004 — version SSOT 일관 (REQ-DVC-004; V1–V8) [D1: 전 표면 열거, D4: 목표값 고정·뮤턴트 폐쇄]
 
-- **Given** v3.1.3 릴리즈(2026-08-24)와 §1.4의 8개 스테일 표면 (V1 hugo.toml, V2 README:491, V3 README:766, V4 statusline.md:22 ×4, V5 faq.md ×4, V6 claude-cloud.md ×4, V7 README:493, V8 moai-feedback.md:62 ×4)
+- **Given** v3.1.3 릴리즈(2026-08-24)와 §1.4의 8개 스테일 표면 (V1 hugo.toml, V2 README:491, V3 README:766, V4 statusline.md:22 ×4, V5 faq.md ×4, V6 claude-cloud.md ×4, V7 README:493, V8 moai-feedback.md 표 예시값 — ko:62 `v3.1.1` 스테일 + en:62·ja:66·zh:66 플레이스홀더 `v10.8.0` [R1 정정])
 - **When** run-phase가 완료되었을 때
-- **Then** 8개 표면 전부가 §1.4의 목표값을 읽는다 — hugo.toml `v3.1.3`/`2026-08-24`; README 491행 `🗿 v3.1.3`; **766행 `🗿 v3.1.2 -> 🗿 v3.1.3`** (491행만 고치고 766행을 남기는 뮤턴트 폐쇄 — 아래 카운트 `2+`가 둘 다 잡음); 493행 `release/v3.1.3`; docs-site statusline 예시 `🗿 v3.1.3`, faq update 예시 `🗿 v3.1.2 -> 🗿 v3.1.3` + 단독 예시 `🗿 v3.1.3`, claude-cloud `@v3.1.3`, moai-feedback 표 예시값 `v3.1.3`. 역사 인용("v3.1.1부터"류, §1.4 제외 기록)은 변경되지 않는다
-- **RED-now**: `grep -n 'version\|releaseDate' docs-site/hugo.toml` → 55행 `v3.1.2`, 56행 `2026-08-21`; `grep -c '🗿 v3\.1\.2' README.ko.md` → `2` (491·766행); `grep -rc 'v3\.1\.2' docs-site/content/ko/advanced/statusline.md docs-site/content/ko/guides/claude-cloud.md` → 각 `1+`; `sed -n '37p;46p' docs-site/content/ko/getting-started/faq.md` → 스테일 예시
-- **green-path**: M2+M3 후 (a) `grep -n 'version\|releaseDate' docs-site/hugo.toml` → `v3.1.3`/`2026-08-24`; (b) `grep -c '🗿 v3\.1\.3' README.ko.md README.md README.ja.md README.zh.md` → **각 `2`** (491 statusline + 766 update 예시 — 491행만 고친 뮤턴트는 `1`로 red); (c) `grep -c 'release/v3\.1\.3' README.ko.md README.md README.ja.md README.zh.md` → 각 `1`; (d) `grep -rc 'v3\.1\.2' docs-site/content/ko/advanced/statusline.md docs-site/content/ko/getting-started/faq.md docs-site/content/ko/guides/claude-cloud.md docs-site/content/*/advanced/statusline.md docs-site/content/*/getting-started/faq.md docs-site/content/*/guides/claude-cloud.md` → 전부 `0`; (e) `grep -c '@v3\.1\.3' docs-site/content/ko/guides/claude-cloud.md` → `1`. 역사 인용 보존: `grep -c 'v3\.1\.1부터\|v3\.1\.1에' README.ko.md` → M2 전후 동일 카운트
+- **Then** 8개 표면 전부가 §1.4의 목표값을 읽는다 — hugo.toml `v3.1.3`/`2026-08-24`; README 491행 `🗿 v3.1.3`; **766행 `🗿 v3.1.2 -> 🗿 v3.1.3`** (491행만 고치고 766행을 남기는 뮤턴트 폐쇄 — 아래 카운트 `2`가 둘 다 잡음); 493행 `release/v3.1.3`; docs-site statusline 예시 `🗿 v3.1.3`, faq update 예시 `🗿 v3.1.2 -> 🗿 v3.1.3` + 단독 예시 `🗿 v3.1.3` (37행의 화살표 왼쪽 `v3.1.2` 토큰은 목표값의 일부다 — 삭제 대상이 아니다 [R3]), claude-cloud `@v3.1.3`, moai-feedback 표 예시값 4로케일 모두 `v3.1.3` (ko 스테일 수정 + en/ja/zh 플레이스홀더 정렬 [R1]). 역사 인용("v3.1.1부터"류, §1.4 제외 기록)은 변경되지 않는다
+- **RED-now**: `grep -n 'version\|releaseDate' docs-site/hugo.toml` → 55행 `v3.1.2`, 56행 `2026-08-21`; `grep -c '🗿 v3\.1\.2' README.ko.md` → `2` (491·766행); `grep -rc 'v3\.1\.2' docs-site/content/ko/advanced/statusline.md docs-site/content/ko/guides/claude-cloud.md` → 각 `1+`; `sed -n '37p;46p' docs-site/content/ko/getting-started/faq.md` → 스테일 예시; `grep -n 'v3\.1\.\|v10\.8\.0' docs-site/content/ko/utility-commands/moai-feedback.md docs-site/content/en/utility-commands/moai-feedback.md docs-site/content/ja/utility-commands/moai-feedback.md docs-site/content/zh/utility-commands/moai-feedback.md` → ko:62 `v3.1.1`, en:62/ja:66/zh:66 `v10.8.0` [R1]
+- **green-path**: M2+M3 후 (a) `grep -n 'version\|releaseDate' docs-site/hugo.toml` → `v3.1.3`/`2026-08-24`; (b) `grep -c '🗿 v3\.1\.3' README.ko.md README.md README.ja.md README.zh.md` → **각 `2`** (491 statusline + 766 update 예시 — 491행만 고친 뮤턴트는 `1`로 red); (c) `grep -c 'release/v3\.1\.3' README.ko.md README.md README.ja.md README.zh.md` → 각 `1`; (d) `grep -rc 'v3\.1\.2' docs-site/content/ko/advanced/statusline.md docs-site/content/en/advanced/statusline.md docs-site/content/ja/advanced/statusline.md docs-site/content/zh/advanced/statusline.md docs-site/content/ko/guides/claude-cloud.md docs-site/content/en/guides/claude-cloud.md docs-site/content/ja/guides/claude-cloud.md docs-site/content/zh/guides/claude-cloud.md` → 전부 `0` (V4·V6 스테일 잔존 부정 — **faq는 제외**: V5 목표 37행 `🗿 v3.1.2 -> 🗿 v3.1.3`이 v3.1.2 토큰을 정당히 유지하므로 blanket `v3.1.2→0` 판정은 올바른 수정을 red로 만든다 [R3]); (d-2) faq 부정 패턴 — `grep -c '🗿 v3\.1\.1' docs-site/content/ko/getting-started/faq.md docs-site/content/en/getting-started/faq.md docs-site/content/ja/getting-started/faq.md docs-site/content/zh/getting-started/faq.md` → 전부 `0` (스테일 설치측 토큰 소멸; faq에 v3.1.1가 남은 채 통과하는 뮤턴트 폐쇄), 및 faq 양수 판정 — `grep -c '🗿 v3\.1\.2 -> 🗿 v3\.1\.3' docs-site/content/ko/getting-started/faq.md docs-site/content/en/getting-started/faq.md docs-site/content/ja/getting-started/faq.md docs-site/content/zh/getting-started/faq.md` → 각 `1` (37행 고정 목표 형태); (e) `grep -c '@v3\.1\.3' docs-site/content/ko/guides/claude-cloud.md docs-site/content/en/guides/claude-cloud.md docs-site/content/ja/guides/claude-cloud.md docs-site/content/zh/guides/claude-cloud.md` → 각 `1`; (f) `grep -c 'v3\.1\.3' docs-site/content/ko/utility-commands/moai-feedback.md docs-site/content/en/utility-commands/moai-feedback.md docs-site/content/ja/utility-commands/moai-feedback.md docs-site/content/zh/utility-commands/moai-feedback.md` → 각 `1` (V8 — ko 스테일 수정 + en/ja/zh 플레이스홀더 `v10.8.0` 정렬; V8을 전부 미수정해도 (a)–(e)가 green이 되는 뮤턴트 폐쇄 [R2]), 보조 부정 `grep -c 'v10\.8\.0'` 동일 4파일 → 전부 `0`. 역사 인용 보존: `grep -c 'v3\.1\.1부터\|v3\.1\.1에' README.ko.md` → M2 전후 동일 카운트
 
 ### AC-DVC-005 — 종료 게이트: hns-oss-docs-verify 8축 (REQ-DVC-007) [D3: version-sync 축 추가·§D.1과 정합]
 
@@ -42,7 +42,7 @@
 - **When** 종료 게이트를 실행할 때
 - **Then** 8축 전부에서 신규 위반 0 (baseline green 축은 green 유지 — REQ-DVC-007과 동일 계약): (1) warning-free hugo build (2) sitemap.xml 존재 (3) URL 블랙리스트 grep 0히트 (4) Mermaid LR/RL grep 0히트 (5) 4로케일 파일 존재·섹션 수 파리티 — `scripts/docs-i18n-check.sh` exit 0 (6) README 4파일 헤딩 파리티 (7) 본문 emoji 스캔 0히트 (8) version-sync — docs-site content + README의 모든 제품 버전 표시가 hugo.toml `v3.1.3`과 일치 (AC-DVC-004의 (a)–(e) 판정이 이 축의 기계적 내용)
 - **RED-now**: 게이트 축은 문서 편집이 낸 격차에 대해 red — 축 5·6은 현재 green (파일 체크섬 파리티 ×4, H2 12 ×4, plan-phase 관측). 축 3·4·7의 baseline 카운트는 §C pre-flight 3에서 측정한다 (기존 부채와 신규 위반 구분)
-- **green-path**: M5에서 레시피 실행, 7축 출력 원문을 progress.md §E.2에 기록. 예: `hugo --source docs-site --quiet` rc=0 + 경고 0행; `grep -rc 'docs\.moai-ai\.dev\|adk\.moai\.com\|adk\.moai\.kr' docs-site/content/*/ | grep -v ':0$' | wc -l` → `0`
+- **green-path**: M5에서 레시피 실행, **축 라벨 8개를 각각 고유 행으로** progress.md §E.2에 기록 [R4: 축-8 version-sync 증거 누락 채록 방지]. 예: `hugo --source docs-site --quiet` rc=0 + 경고 0행; `grep -rc 'docs\.moai-ai\.dev\|adk\.moai\.com\|adk\.moai\.kr' docs-site/content/*/ | grep -v ':0$' | wc -l` → `0`
 
 ### AC-DVC-006 — 변경 범위 순結 (REQ-DVC-005)
 
@@ -87,7 +87,7 @@
 ## §D.2 Quality Gate / Definition of Done
 
 - [ ] AC-DVC-001 … AC-DVC-009 전부 관측된 출력과 함께 progress.md §E.2에 기록됨 (VCI §2 — 명령 + 출력 원문)
-- [ ] hns-oss-docs-verify 7축 통과 (AC-DVC-005)
+- [ ] hns-oss-docs-verify 8축 통과 (AC-DVC-005)
 - [ ] 4로케일 + README 4파일이 같은 PR에 존재 (REQ-DVC-001)
 - [ ] N 항목의 operator 결정 기록 존재 (AC-DVC-007)
 - [ ] Go/템플릿/훅 diff 0파일 (AC-DVC-006)

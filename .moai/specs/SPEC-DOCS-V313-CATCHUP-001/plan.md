@@ -42,7 +42,7 @@ run-phase 착수 시 §1 격차 표의 셀을 전부 재관측한다 (REQ-DVC-00
 
 검증 명령 카탈로그 (acceptance.md §D와 대응):
 - U 항목 착지: 항목별 키워드 grep을 로케일별로 각 1+ 파일 매칭 — `grep -rln 'todo\.enabled' docs-site/content/ko`, `/en`, `/ja`, `/zh` 각각 비어 있지 않음 (4파일이 한 로케일에 몰려도 통과하지 않는 판정 [D5]).
-- version SSOT: `grep -n 'version\|releaseDate' docs-site/hugo.toml` → `v3.1.3`/`2026-08-24`; V2–V8 표면별 판정 — README 4파일 `grep -c '🗿 v3\.1\.3' README.ko.md README.md README.ja.md README.zh.md` → 각 `2+` (491 statusline + 766 update 예시), `grep -c 'release/v3\.1\.3' README.ko.md README.md README.ja.md README.zh.md` → 각 `1` (493행); docs-site 스테일 잔존 부정 판정 `grep -rc 'v3\.1\.2' docs-site/content/ko/advanced/statusline.md docs-site/content/ko/getting-started/faq.md docs-site/content/ko/guides/claude-cloud.md` → 전부 `0` (4로케일 각각 실행 [D1]).
+- version SSOT: `grep -n 'version\|releaseDate' docs-site/hugo.toml` → `v3.1.3`/`2026-08-24`; V2–V8 표면별 판정 — README 4파일 `grep -c '🗿 v3\.1\.3' README.ko.md README.md README.ja.md README.zh.md` → 각 `2` (491 statusline + 766 update 예시 [R6: acceptance와 동일 상한]), `grep -c 'release/v3\.1\.3' README.ko.md README.md README.ja.md README.zh.md` → 각 `1` (493행); docs-site 부정 판정 — statusline·claude-cloud는 `grep -rc 'v3\.1\.2' docs-site/content/*/advanced/statusline.md docs-site/content/*/guides/claude-cloud.md` → 전부 `0`, faq는 별도 패턴 (V5 목표 37행이 v3.1.2 토큰을 유지하므로 blanket 0 부적합 [R3]): `grep -c '🗿 v3\.1\.1' docs-site/content/*/getting-started/faq.md` → 전부 `0` + `grep -c '🗿 v3\.1\.2 -> 🗿 v3\.1\.3' docs-site/content/*/getting-started/faq.md` → 각 `1`; V8은 `grep -c 'v3\.1\.3' docs-site/content/*/utility-commands/moai-feedback.md` → 각 `1` [R1·R2].
 - 범위 무결성: `git diff --stat e07a6d0f4 -- internal/ pkg/ cmd/ internal/hook/ .claude/hooks/ internal/template/templates/` → 빈 출력 (훅 경로 포함 [D5]).
 - 방어 AC 음성 점검 (§C.5 관측 기록 — AC-DVC-006·007 red 확인 [D8]).
 - 종료 게이트: hns-oss-docs-verify 레시피 8축 (warning-free hugo build, sitemap 존재, URL 블랙리스트 grep 0, Mermaid LR/RL grep 0, 4로케일 파일+섹션 파리티 — 기계 검증 `scripts/docs-i18n-check.sh`, README 4파일 헤딩 파리티, body-emoji 스캔 0, version-sync: 모든 제품 버전 표시가 hugo.toml v3.1.3과 일치) [D3].
@@ -55,7 +55,7 @@ run-phase 착수 시 §1 격차 표의 셀을 전부 재관측한다 (REQ-DVC-00
 
 ### M2 — ko canonical 갱신 (U 11항목 + V1–V8)
 
-docs-site ko 8페이지(moai-feedback, config-sections, skill-guide, update, init-wizard, profile-matrix, model-policy, multi-model-audit) + statusline·faq·claude-cloud 3페이지(V4–V6·V8) + `hugo.toml`(V1) + `README.ko.md`(V2·V3·V7 예시, A7 동사 나열, A11 절)을 ko 정본으로 갱신한다. C1은 profile-matrix.md와 model-policy.md 양쪽 매트릭스 표를 모두 다시 쓴다 (한쪽만 고치면 페이지 간 모순이 남는다).
+docs-site ko 8페이지(moai-feedback, config-sections, skill-guide, update, init-wizard, profile-matrix, model-policy, multi-model-audit) + statusline·faq·claude-cloud 3페이지(V4–V6; V8은 moai-feedback 소속 — A5 갱신과 같은 파일 [R5]) + `hugo.toml`(V1) + `README.ko.md`(V2·V3·V7 예시, A7 동사 나열, A11 절)을 ko 정본으로 갱신한다. C1은 profile-matrix.md와 model-policy.md 양쪽 매트릭스 표를 모두 다시 쓴다 (한쪽만 고치면 페이지 간 모순이 남는다).
 
 ### M3 — en/ja/zh 파생 (U 항목 + version SSOT)
 

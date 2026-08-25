@@ -1,7 +1,7 @@
 ---
 id: SPEC-DOCS-V313-CATCHUP-001
 title: "v3.1.3 release documentation catch-up — docs-site 4 locales + README 4 files"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-08-26
 updated: 2026-08-26
@@ -19,6 +19,7 @@ tier: M
 ## HISTORY
 
 - 0.1.0 (2026-08-26): plan-phase 최초 작성. 카드 t274 (Class C, Tier M). baseline 트리 `e07a6d0f4` (worktree t274, branch WT-v313-docs)에서 CHANGELOG `[3.1.3]` 26항목 전수 조사 완료 — 검증된 격차 표는 §1. v3.1.3 릴리즈(#1602 계열, CHANGELOG 상 2026-08-24) 이후 문서가 코드를 따라가지 못한 격차를 닫는다.
+- 0.3.0 (2026-08-26): plan-audit iter2 (FAIL 0.825 — score 임계 통과·AC-004 충족 불가로 FAIL) 마이크로 패스 R1–R4 + R5–R7 전부 채택. R1: V8 허위 관측 정정 — `v3.1.1`은 ko:62뿐, en:62·ja:66·zh:66은 플레이스홀더 `v10.8.0` (4로케일 재측정). R2: AC-004 판정 (f) V8 추가. R3: faq 판정 반전 수정 — blanket `v3.1.2→0`에서 faq 제외, `🗿 v3\.1\.1` 부정 + 37행 양수 판정으로 교체 (37행 목표 `🗿 v3.1.2 -> 🗿 v3.1.3`이 v3.1.2 토큰을 정당히 유지). R4: 축 개수 오탈 3곳을 8축으로 + 축 라벨 8개 고유 행 기록 요구. R5: M2 괄호에서 V8 제거. R6: plan §E 카운트 상한 acceptance와 정렬 (각 `2`). R7: `analyze` 판정 352행 라인 앵커.
 - 0.2.0 (2026-08-26): plan-audit iter1 (FAIL 0.7125) blocking 결함 D1–D6 + optional D7–D9 적용. D1: V 인벤토리 3건→8건 전수 재조사 (statusline·faq·claude-cloud·moai-feedback ×4로케일 + README:493). D2: plan URL 허용 도메인 정정 (`adk.mo.ai.kr`). D3: REQ-007 8축 재서술(version-sync 추가·기존부채 정합), `scripts/docs-i18n-check.sh` 존재 정정 및 M5 편입. D4: AC-004 목표값 고정·행별 판정. D5: AC-002·006·007·008 뮤턴트 폐쇄. D6: M1 흡수 대안 제거({new_page|deferred} 2분기). D7: A7 재판정(D→U-README, README:352 `analyze` 동사 부재 관측)·A12 init-wizard 편입 — 집계 D 4·U 10 → D 3·U 11. D8: AC-009 REQ 귀속·방어 AC 음성 점검(§C.5) 명명. D9: 격차 표 명령 정형화·A13 라인 정정(63·87·107행).
 
 ## 1. 문제 — 측정된 형태 (검증된 격차 표)
@@ -81,7 +82,7 @@ CHANGELOG.md `## [3.1.3] - 2026-08-24` (177–306행)의 항목을 전수 추출
 | V5 | `docs-site/content/*/getting-started/faq.md` ×4로케일 | 37행 `🗿 v3.1.1 -> 🗿 v3.1.2` (ko 기준 라인; en 33행), 40–41행 설명 버전 표기, 46행 단독 `🗿 v3.1.2` | 예시 `🗿 v3.1.2 -> 🗿 v3.1.3`, 설명 동조, 단독 `🗿 v3.1.3` |
 | V6 | `docs-site/content/*/guides/claude-cloud.md` ×4로케일 | `go install github.com/modu-ai/moai-adk/cmd/moai@v3.1.2` (ko 68행, en 66행) | `@v3.1.3` |
 | V7 | README 4파일 493행 statusline 예시 브랜치 세그먼트 | `[WT] release/v3.1.2 +3` ×4 | `release/v3.1.3` |
-| V8 | `docs-site/content/*/utility-commands/moai-feedback.md` 62행 ×4로케일 | 이슈 템플릿 표 예시값 `v3.1.1` | `v3.1.3` (version-column example — 규칙 §7 명시 대상) |
+| V8 | `docs-site/content/*/utility-commands/moai-feedback.md` 이슈 템플릿 표 예시값 — 로케일별 관측 상이 [R1 정정] | ko:62 `v3.1.1` (실제 스테일); en:62·ja:66·zh:66 플레이스홀더 `v10.8.0` (v3.1.x 문자열 아님 — `grep -n 'v3\.1\.\|v10\.8\.0'` 4로케일 재측정) | 4로케일 모두 `v3.1.3` (version-column example — 규칙 §7; 플레이스홀더도 version-sync 축이 읽는 표시이므로 정렬) |
 
 **제외 기록 (관측했으나 갱신하지 않는 것)**: `cli-reference/update.md` 171행(`ko`)·175행(`en`)의 `moai update --version v3.1.0-rc1` — `--version` 플래그 문법 시연이지 제품 버전 표시가 아님. `added_in: "v3.1.1"` frontmatter와 `{{< new-badge v3.1.1 >}}`, "v3.1.1에서 개명/들어옴"류 서술(manager-lead.md:19, kanban-mode.md:217·281, agent-teams.md:102, home-hygiene.md, doctor.md 등) — 역사 인용은 규칙 §7이 명시적으로 보존 대상으로 지정. README 배지(24행)는 4파일 모두 `Release-v3.1.3`으로 이미 올바르다.
 
@@ -118,7 +119,7 @@ CHANGELOG.md `## [3.1.3] - 2026-08-24` (177–306행)의 항목을 전수 추출
 
 ## 4. Tier 분류
 
-**Tier M.** 근거: 문서 전용이지만 4로케일 × (docs-site 페이지 6종 + README 4파일)의 동시 갱신, 항목별 매핑·파생 검증, 그리고 verify 레시피 7축 종료 게이트가 필요하다. Go 코드 신규·복잡 아키텍처 결정 없음 → Tier L 아님. 단일 파일 수정이 아니므로 Tier S 아님.
+**Tier M.** 근거: 문서 전용이지만 4로케일 × (docs-site 페이지 6종 + README 4파일)의 동시 갱신, 항목별 매핑·파생 검증, 그리고 verify 레시피 8축 종료 게이트가 필요하다. Go 코드 신규·복잡 아키텍처 결정 없음 → Tier L 아님. 단일 파일 수정이 아니므로 Tier S 아님.
 
 ## 5. 변경 대상 파일 (전부 baseline `e07a6d0f4` 기준)
 
@@ -138,7 +139,7 @@ CHANGELOG.md `## [3.1.3] - 2026-08-24` (177–306행)의 항목을 전수 추출
 - `docs-site/content/{ko,en,ja,zh}/advanced/statusline.md` — V4 (22행 예시)
 - `docs-site/content/{ko,en,ja,zh}/getting-started/faq.md` — V5 (update-prompt 예시·설명·단독 예시)
 - `docs-site/content/{ko,en,ja,zh}/guides/claude-cloud.md` — V6 (`go install …@v3.1.3`)
-- `docs-site/content/{ko,en,ja,zh}/utility-commands/moai-feedback.md` — V8 (62행 표 예시값; A5 갱신과 같은 파일)
+- `docs-site/content/{ko,en,ja,zh}/utility-commands/moai-feedback.md` — V8 (표 예시값 — ko:62 v3.1.1·en:62/ja:66/zh:66 플레이스홀더 v10.8.0 → 모두 v3.1.3; A5 갱신과 같은 파일)
 - `README.ko.md` + `README.md` + `README.ja.md` + `README.zh.md` — V2·V3·V7 (491·766·493행 예시), A7 (352행 todo 동사 나열에 `analyze`), A11 (design-dna 절 745행)
 
 **N 항목 (신규 페이지 — 승인 관문 후에만; 승인 시):**
