@@ -80,7 +80,7 @@ debt: plan-audit D11/D12 optional — D11 folded into M4 per-directory anchor gr
 
 ```yaml
 sync_status: audit-ready
-sync_commit_sha: pending-backfill-SPEC-V3R6-WORKFLOW-DOCS-001
+sync_commit_sha: b2b52eb8a
 changelog_entry: true
 pr: pending (manager-git creates)
 ```
