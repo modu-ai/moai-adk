@@ -116,6 +116,18 @@ Lane — card t1:  run session + worktree t1      ┘ run side by side, never mi
 
 Full glossary with definitions and examples: [Kanban board terms](https://adk.mo.ai.kr/en/core-concepts/kanban-board-terms)
 
+Cards also differ in which columns they pass through, by shape. As a card leaves `backlog`, the lead classifies it into one of three classes and names the class in the dispatch.
+
+| Class | Shape | Shortcut |
+|---|---|---|
+| A — direct close | one file · one line, no design judgment, regression caught by CI | one session carries it whole to the PR (`plan` skipped) |
+| B — defect, cause unknown | clearly broken, but the cause is not yet established | `run → sync` (no `plan`, no SPEC) |
+| C — design change | carries a decision or spans subsystems | all three columns |
+
+Class A is admitted on checked evidence, not assertion — a card that cannot cite a diff measured to one file and green CI on the head that will merge is not Class A. Class B skips only `plan`; the sync gate's review still runs, and the cause-establishing evidence (reproduction command and its output) is left in the card's progress record.
+
+Details: [Kanban Mode — card classes](https://adk.mo.ai.kr/en/advanced/kanban-mode)
+
 ### Watching the board
 
 `moai web` serves a local console. The Kanban screen shows the kanban chain alongside the SPEC pipeline, plus Overview, Specs, Monitor, Settings, and Todo screens.
