@@ -13,6 +13,17 @@ import (
 	"github.com/modu-ai/moai-adk/internal/graph"
 )
 
+// graph check exit codes (the 0/1/2 contract as named constants — CR
+// round-3: bare literals at four sites drifted from their documented
+// meaning). The fresh path returns nil (exit 0) per cobra convention.
+const (
+	// exitStaleOrAbsent: any layer stale or absent (REQ-GF-004).
+	exitStaleOrAbsent = 1
+	// exitSystemError: system error — not-comparable stamp, unreadable
+	// config, marshal failure (spec-gap exit-2 completion).
+	exitSystemError = 2
+)
+
 // newGraphCheckCmd 'moai graph check' answers per-layer staleness numerically
 // with exit-code discipline: 0 all fresh, 1 any layer stale/absent, 2 system
 // error (REQ-GF-001/004). Thresholds come from gate.yaml graph_freshness
@@ -64,7 +75,7 @@ Thresholds are configured in gate.yaml (graph_freshness section).`,
 				// could pass a tree the operator's (unreadable) config meant
 				// to fail. Absent or partial config keeps defaults.
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "graph check: config load failed: %v\n", cfgErr)
-				return &exitCodeError{code: 2, msg: fmt.Sprintf("graph check: gate.yaml unreadable: %v", cfgErr)}
+				return &exitCodeError{code: exitSystemError, msg: fmt.Sprintf("graph check: gate.yaml unreadable: %v", cfgErr)}
 			}
 
 			res, err := graph.CheckFreshness(projectRoot, th)
@@ -74,13 +85,13 @@ Thresholds are configured in gate.yaml (graph_freshness section).`,
 				// suppressed by the fang error handler, so without this the
 				// process would exit 2 silently.
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "graph check: system error: %v\n", err)
-				return &exitCodeError{code: 2, msg: fmt.Sprintf("graph check: %v", err)}
+				return &exitCodeError{code: exitSystemError, msg: fmt.Sprintf("graph check: %v", err)}
 			}
 
 			if asJSON {
 				data, err := json.MarshalIndent(res, "", "  ")
 				if err != nil {
-					return &exitCodeError{code: 2, msg: fmt.Sprintf("graph check: marshal: %v", err)}
+					return &exitCodeError{code: exitSystemError, msg: fmt.Sprintf("graph check: marshal: %v", err)}
 				}
 				_, _ = fmt.Fprintln(cmd.OutOrStdout(), string(data))
 			} else {
@@ -104,7 +115,7 @@ Thresholds are configured in gate.yaml (graph_freshness section).`,
 					l.Layer, l.Verdict, l.Value, l.Threshold, l.Reason)
 			}
 			// REQ-GF-004: stale or absent exits 1, naming the offending layer.
-			return &exitCodeError{code: 1, msg: "graph freshness check failed (stale or absent layer)"}
+			return &exitCodeError{code: exitStaleOrAbsent, msg: "graph freshness check failed (stale or absent layer)"}
 		},
 	}
 

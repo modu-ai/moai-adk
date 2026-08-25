@@ -37,6 +37,21 @@ type FileAPIResult struct {
 	Provenance string          `json:"provenance"`
 }
 
+// resolvedWithin reports whether target resolves to inside root AFTER
+// symlink resolution on both ends (CR round-3 Major): filepath.Rel alone is
+// a LEXICAL check, so an in-tree symlink pointing at an external file would
+// defeat containment — the exact mirror of the '..' escape. Symlink
+// resolution failure is treated as outside (reject, don't guess).
+func resolvedWithin(root, target string) bool {
+	resolvedRoot, rErr := filepath.EvalSymlinks(root)
+	resolvedTarget, tErr := filepath.EvalSymlinks(target)
+	if rErr != nil || tErr != nil {
+		return false
+	}
+	rel, err := filepath.Rel(resolvedRoot, resolvedTarget)
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
 // FileAPI lists a file's exported declarations with signatures — no function
 // bodies (REQ-GF-017/019). Exportedness is a language convention; Go filters
 // on the capitalization rule, other languages list their declaration set
@@ -44,9 +59,12 @@ type FileAPIResult struct {
 func FileAPI(projectRoot, relPath string) (FileAPIResult, error) {
 	abs := filepath.Join(projectRoot, filepath.FromSlash(relPath))
 	// Trust boundary: relPath arrives from an LLM-facing MCP tool parameter.
-	// A `..` component would escape the project root after Join — reject any
-	// path that does not resolve to inside projectRoot (audit F1).
+	// Reject any path not inside projectRoot — lexically (`..`) AND through
+	// symlink resolution (audit F1 + CR round-3 Major).
 	if rel, err := filepath.Rel(projectRoot, abs); err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return FileAPIResult{}, fmt.Errorf("graph: file path escapes the project root: %s", relPath)
+	}
+	if !resolvedWithin(projectRoot, abs) {
 		return FileAPIResult{}, fmt.Errorf("graph: file path escapes the project root: %s", relPath)
 	}
 	// Regular-file guard (CR round-2 3855001937): a FIFO/socket at the named
