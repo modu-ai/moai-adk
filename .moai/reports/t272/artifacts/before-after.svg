@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 490" width="1200" height="490"
+     role="img" aria-labelledby="before-after-title before-after-desc">
+  <title id="before-after-title">Agent catalog redesign, before and after</title>
+  <desc id="before-after-desc">The monolithic orchestrator and the 12-agent catalog are compared across the same three concerns: planning, implementation, and review and audit.</desc>
+  <defs/>
+
+  <rect x="0" y="0" width="1200" height="490" fill="#FAF9F5"/>
+
+  <g><text x="60" y="96" font-family="'Noto Serif', Georgia, serif" font-size="34" font-weight="600" fill="#141413">Agent Catalog Redesign &#8212; Before / After</text></g>
+
+  <!-- zebra bands behind rows 0 and 2, painted before cells -->
+  <rect x="60" y="200" width="1080" height="76" fill="#F3EFE6"/>
+  <rect x="60" y="352" width="1080" height="76" fill="#F3EFE6"/>
+
+  <!-- column headers -->
+  <g font-family="Pretendard, 'Noto Sans KR', 'Noto Sans JP', 'Noto Sans SC', 'Apple SD Gothic Neo', 'Hiragino Sans', 'Microsoft YaHei', system-ui, sans-serif">
+    <rect x="348" y="120" width="382" height="64" rx="12" fill="#F3EFE6" stroke="#D9CDBE"/>
+    <text x="539" y="158" font-size="17" font-weight="600" text-anchor="middle" fill="#141413">BEFORE &#8212; monolithic</text>
+    <rect x="758" y="120" width="382" height="64" rx="12" fill="#FBE9DF" stroke="#D97757" stroke-width="1.6"/>
+    <text x="949" y="158" font-size="17" font-weight="600" text-anchor="middle" fill="#141413">AFTER &#8212; 12-agent catalog</text>
+
+    <!-- row labels -->
+    <text x="76" y="244" font-size="17" font-weight="600" fill="#141413">Planning</text>
+    <text x="76" y="320" font-size="17" font-weight="600" fill="#141413">Implementation</text>
+    <text x="76" y="396" font-size="17" font-weight="600" fill="#141413">Review &amp; audit</text>
+
+    <!-- cells: single-line by A3 contract -->
+    <text x="539" y="244" font-size="14" text-anchor="middle" fill="#6B6359">one master prompt</text>
+    <text x="949" y="244" font-size="14" text-anchor="middle" fill="#141413">manager-spec drafts the SPEC</text>
+    <text x="539" y="320" font-size="14" text-anchor="middle" fill="#6B6359">inline direct edits</text>
+    <text x="949" y="320" font-size="14" text-anchor="middle" fill="#141413">manager-develop cycle</text>
+    <text x="539" y="396" font-size="14" text-anchor="middle" fill="#6B6359">self-check only</text>
+    <text x="949" y="396" font-size="14" text-anchor="middle" fill="#141413">plan + sync auditors</text>
+  </g>
+</svg>

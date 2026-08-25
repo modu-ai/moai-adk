@@ -1,0 +1,9 @@
+$ node .claude/skills/moai-domain-svg-infographic/scripts/render.mjs .moai/reports/t272/artifacts/approval-gate.svg --out .moai/reports/t272/artifacts/approval-gate.png
+browser    /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+version    Google Chrome 151.0.7922.174   (found via well-known install location, --headless=new)
+source     /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t272/.moai/reports/t272/artifacts/approval-gate.svg  1660x470 from viewBox
+target     3320x940  (scale 2x)
+png IHDR   3320x940
+output     /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t272/.moai/reports/t272/artifacts/approval-gate.png
+verified   dimensions match the target
+exit=0

@@ -405,6 +405,10 @@ Korean, Japanese, Chinese, and English docs are maintained in the same PR. Trans
 
 Eleven ref skills (`moai-ref-api-patterns`, `moai-ref-owasp-checklist`, `moai-ref-llm-security`, `moai-ref-react-patterns`, `moai-ref-testing-pyramid`, `moai-ref-ui-polish`, `moai-ref-secops`, `moai-ref-supply-chain`, `moai-ref-seo`, `moai-ref-git-workflow`, `moai-ref-cross-model-audit`) and seven domain skills (`moai-domain-backend`, `moai-domain-frontend`, `moai-domain-database`, `moai-domain-design-dna`, `moai-domain-html-report`, `moai-domain-humanize`, `moai-domain-svg-infographic`) inject field knowledge into agents.
 
+### SVG technical infographics
+
+The `moai-domain-svg-infographic` skill produces editable SVG technical infographics. Coordinates are computed numerically before any markup is written, and the finished file passes a deterministic source lint plus a dimension-verified 2x PNG render. An external-catalog benchmark measured nine forms — approval-gate flow, before-after comparison, KPI card grid, decision matrix, layer stack, nested scope, process flow, roadmap timeline, and component topology — and all nine proved reproducible (per-form artifacts and verdict: `.moai/reports/t272/verdict.md`).
+
 ### Cross-platform
 
 A single Go binary with no extra dependencies, running on macOS, Linux, and Windows. The hook system enforces gates mechanically, and the statusline surfaces cost and context in real time.

@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 962" width="1200" height="962"
+     role="img" aria-labelledby="topology-component-title topology-component-desc">
+  <title id="topology-component-title">Web-console component topology</title>
+  <desc id="topology-component-desc">The browser client reaches the web console and statusline, which talk to the moai CLI; the CLI in turn drives the tmux lanes and the MCP broker for session messaging.</desc>
+  <defs>
+    <marker id="topology-component-arrow" markerUnits="userSpaceOnUse"
+            markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+      <path d="M 0 0 L 10 4 L 0 8 z" fill="#6B6359"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="962" fill="#FAF9F5"/>
+
+  <g><text x="60" y="96" font-family="'Noto Serif', Georgia, serif" font-size="34" font-weight="600" fill="#141413">Web-Console Topology</text></g>
+
+  <!-- connectors -->
+  <g stroke="#6B6359" stroke-width="1.25">
+    <path d="M 600 300 V 318" fill="none" marker-end="url(#topology-component-arrow)"/>
+    <path d="M 600 478 V 496" fill="none" marker-end="url(#topology-component-arrow)"/>
+    <path d="M 323 656 V 674" fill="none" marker-end="url(#topology-component-arrow)"/>
+    <path d="M 873 656 V 674" fill="none" marker-end="url(#topology-component-arrow)"/>
+  </g>
+
+  <!-- layer 1: client -->
+  <rect x="60" y="150" width="1080" height="150" rx="12" fill="#F3EFE6" stroke="#D9CDBE"/>
+  <text x="76" y="140" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="12" fill="#6B6359">client</text>
+  <g font-family="Pretendard, 'Noto Sans KR', 'Noto Sans JP', 'Noto Sans SC', 'Apple SD Gothic Neo', 'Hiragino Sans', 'Microsoft YaHei', system-ui, sans-serif">
+    <rect x="60" y="166" width="1080" height="118" rx="12" fill="#FAF9F5" stroke="#D9CDBE"/>
+    <text x="76" y="199" font-size="17" font-weight="600" fill="#141413">browser</text>
+    <text x="76" y="228" font-size="14" fill="#6B6359">operator's client</text>
+    <text x="76" y="248" font-size="14" fill="#6B6359">opens the web console</text>
+  </g>
+
+  <!-- layer 2: console -->
+  <rect x="60" y="328" width="1080" height="150" rx="12" fill="#F3EFE6" stroke="#D9CDBE"/>
+  <text x="76" y="318" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="12" fill="#6B6359">console</text>
+  <g font-family="Pretendard, 'Noto Sans KR', 'Noto Sans JP', 'Noto Sans SC', 'Apple SD Gothic Neo', 'Hiragino Sans', 'Microsoft YaHei', system-ui, sans-serif">
+    <rect x="60" y="344" width="1080" height="118" rx="12" fill="#FAF9F5" stroke="#D9CDBE"/>
+    <text x="76" y="377" font-size="17" font-weight="600" fill="#141413">web console + statusline</text>
+    <text x="76" y="406" font-size="14" fill="#6B6359">per-session telemetry</text>
+    <text x="76" y="426" font-size="14" fill="#6B6359">renders lane progress</text>
+  </g>
+
+  <!-- layer 3: cli, the hub (focal) -->
+  <rect x="60" y="506" width="1080" height="150" rx="12" fill="#F3EFE6" stroke="#D9CDBE"/>
+  <text x="76" y="496" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="12" fill="#6B6359">cli</text>
+  <g font-family="Pretendard, 'Noto Sans KR', 'Noto Sans JP', 'Noto Sans SC', 'Apple SD Gothic Neo', 'Hiragino Sans', 'Microsoft YaHei', system-ui, sans-serif">
+    <rect x="60" y="522" width="1080" height="118" rx="12" fill="#FBE9DF" stroke="#D97757" stroke-width="1.6"/>
+    <text x="76" y="555" font-size="17" font-weight="600" fill="#141413">moai CLI</text>
+    <text x="76" y="584" font-size="14" fill="#6B6359">hooks + session state</text>
+    <text x="76" y="604" font-size="14" fill="#6B6359">drives the lanes</text>
+  </g>
+
+  <!-- layer 4: two backends -->
+  <rect x="60" y="684" width="1080" height="150" rx="12" fill="#F3EFE6" stroke="#D9CDBE"/>
+  <text x="76" y="674" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="12" fill="#6B6359">backends</text>
+  <g font-family="Pretendard, 'Noto Sans KR', 'Noto Sans JP', 'Noto Sans SC', 'Apple SD Gothic Neo', 'Hiragino Sans', 'Microsoft YaHei', system-ui, sans-serif">
+    <rect x="60" y="700" width="526" height="118" rx="12" fill="#FAF9F5" stroke="#D9CDBE"/>
+    <text x="76" y="733" font-size="17" font-weight="600" fill="#141413">tmux lanes</text>
+    <text x="76" y="762" font-size="14" fill="#6B6359">factory + kanban panes</text>
+    <text x="76" y="782" font-size="14" fill="#6B6359">one lane per card</text>
+
+    <rect x="614" y="700" width="526" height="118" rx="12" fill="#FAF9F5" stroke="#D9CDBE"/>
+    <text x="630" y="733" font-size="17" font-weight="600" fill="#141413">MCP broker</text>
+    <text x="630" y="762" font-size="14" fill="#6B6359">session messaging</text>
+    <text x="630" y="782" font-size="14" fill="#6B6359">claude + codex peers</text>
+  </g>
+</svg>

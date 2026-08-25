@@ -95,6 +95,24 @@ MoAI-ADK 模板共提供 **34 个技能**。目录按安装范围分为随每个
 | `moai-domain-svg-infographic` | 可编辑 SVG 技术信息图（架构·流程·对比），CJK 字体 |
 | `moai-domain-design-dna`    | 把参考设计（截图·图片·URL）逆向提取为 Design DNA JSON，并据此生成新的产物 |
 
+### SVG 信息图 — 可生成的图表种类
+
+`moai-domain-svg-infographic` 技能能生成哪些图表，不是推测而是实测确认的。把外部目录（SkillStead TypePack）的 9 种形态当作同样的生成任务运行，并测量是否通过技能自身的质量门（确定性源码 lint、带尺寸校验的 2 倍分辨率 PNG 渲染），结果 9 种形态全部可以复现。
+
+| 图表种类 | 用途 | 实测产物 |
+| -------- | ---- | -------- |
+| 审批门流程 | 必须通过关卡的审批步骤 | `.moai/reports/t272/artifacts/approval-gate.svg` |
+| 前后对比 | 用同一组标准对照改进前后 | `.moai/reports/t272/artifacts/before-after.svg` |
+| KPI 卡片网格 | 把关键指标排成卡片 | `.moai/reports/t272/artifacts/cards-kpi-grid.svg` |
+| 决策矩阵 | 候选与标准的交叉评估 | `.moai/reports/t272/artifacts/decision-matrix.svg` |
+| 分层堆叠 | 自上而下叠放的结构 | `.moai/reports/t272/artifacts/layer-stack.svg` |
+| 嵌套作用域 | 边界层层嵌套的结构 | `.moai/reports/t272/artifacts/nested-scope.svg` |
+| 流程图 | 依次衔接的处理步骤 | `.moai/reports/t272/artifacts/process-flow.svg` |
+| 路线图时间线 | 放在时间轴上的阶段与里程碑 | `.moai/reports/t272/artifacts/roadmap-timeline.svg` |
+| 组件拓扑 | 组件之间的连接关系 | `.moai/reports/t272/artifacts/topology-component.svg` |
+
+每种形态都在四种基本布局（堆叠、从左到右的流程、并排比较、层级树）之上以保留信息结构的方式表达。分形态判定表和门禁日志见 `.moai/reports/t272/verdict.md`。
+
 ### Reference（最佳实践）- 11 个
 
 | 技能名称                  | 说明                                              |

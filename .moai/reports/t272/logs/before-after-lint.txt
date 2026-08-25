@@ -1,0 +1,3 @@
+$ node .claude/skills/moai-domain-svg-infographic/scripts/check-svg.mjs .moai/reports/t272/artifacts/before-after.svg
+0 errors, 0 warnings
+exit=0

@@ -405,6 +405,10 @@ AI 에이전트끼리 컨텍스트·불변 계약·위험 구역을 주고받는
 
 ref 스킬 11개(`moai-ref-api-patterns`, `moai-ref-owasp-checklist`, `moai-ref-llm-security`, `moai-ref-react-patterns`, `moai-ref-testing-pyramid`, `moai-ref-ui-polish`, `moai-ref-secops`, `moai-ref-supply-chain`, `moai-ref-seo`, `moai-ref-git-workflow`, `moai-ref-cross-model-audit`)와 domain 스킬 7개(`moai-domain-backend`, `moai-domain-frontend`, `moai-domain-database`, `moai-domain-design-dna`, `moai-domain-html-report`, `moai-domain-humanize`, `moai-domain-svg-infographic`)가 에이전트에 현장 지식을 주입한다.
 
+### SVG 기술 인포그래픽
+
+`moai-domain-svg-infographic` 스킬이 편집 가능한 SVG 기술 인포그래픽을 만든다. 마크업을 쓰기 전에 좌표를 수치로 계산하고, 완성된 파일은 소스 린트와 2배 해상도 PNG 렌더 검증을 거친다. 승인 게이트 흐름, 전후 비교, KPI 카드 그리드, 의사결정 매트릭스, 레이어 스택, 중첩 스코프, 프로세스 흐름, 로드맵 타임라인, 토폴로지 구조 아홉 가지 형태를 외부 카탈로그 벤치마크로 실측해 모두 재현 가능함을 확인했다(형태별 산출물과 판정: `.moai/reports/t272/verdict.md`).
+
 ### 크로스 플랫폼
 
 별도 의존성 없이 macOS·Linux·Windows에서 도는 Go 단일 바이너리다. 훅 시스템이 게이트를 기계적으로 강제하고, 스테이터스라인이 비용과 컨텍스트를 실시간으로 보여준다.

@@ -405,6 +405,10 @@ AI エージェント同士がコンテキスト・不変条件・危険区域�
 
 ref スキル 11 個 (`moai-ref-api-patterns`、`moai-ref-owasp-checklist`、`moai-ref-llm-security`、`moai-ref-react-patterns`、`moai-ref-testing-pyramid`、`moai-ref-ui-polish`、`moai-ref-secops`、`moai-ref-supply-chain`、`moai-ref-seo`、`moai-ref-git-workflow`、`moai-ref-cross-model-audit`) と domain スキル 7 個 (`moai-domain-backend`、`moai-domain-frontend`、`moai-domain-database`、`moai-domain-design-dna`、`moai-domain-html-report`、`moai-domain-humanize`、`moai-domain-svg-infographic`) がエージェントに現場の知識を注入する。
 
+### SVG 技術インフォグラフィック
+
+`moai-domain-svg-infographic` スキルは編集可能な SVG 技術インフォグラフィックを作る。マークアップを書く前に座標を数値で計算し、完成したファイルは決定論的なソース lint と寸法検証付き 2 倍解像度 PNG レンダーを通る。承認ゲートフロー、前後比較、KPI カードグリッド、意思決定マトリクス、レイヤースタック、ネストしたスコープ、プロセスフロー、ロードマップタイムライン、コンポーネントトポロジーの 9 形式を外部カタログのベンチマークで実測し、すべて再現可能であることを確認した (形式別の成果物と判定: `.moai/reports/t272/verdict.md`)。
+
 ### クロスプラットフォーム
 
 追加の依存なしに macOS・Linux・Windows で動く Go 単一バイナリ。フック・システムがゲートを機械的に強制し、ステータスラインがコストとコンテキストをリアルタイムで示す。

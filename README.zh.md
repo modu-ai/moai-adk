@@ -405,6 +405,10 @@ TRUST 5（Tested · Readable · Unified · Secured · Trackable）作用于每�
 
 ref 技能 11 个（`moai-ref-api-patterns`、`moai-ref-owasp-checklist`、`moai-ref-llm-security`、`moai-ref-react-patterns`、`moai-ref-testing-pyramid`、`moai-ref-ui-polish`、`moai-ref-secops`、`moai-ref-supply-chain`、`moai-ref-seo`、`moai-ref-git-workflow`、`moai-ref-cross-model-audit`）与 domain 技能 7 个（`moai-domain-backend`、`moai-domain-frontend`、`moai-domain-database`、`moai-domain-design-dna`、`moai-domain-html-report`、`moai-domain-humanize`、`moai-domain-svg-infographic`）向智能体注入现场知识。
 
+### SVG 技术信息图
+
+`moai-domain-svg-infographic` 技能生成可编辑的 SVG 技术信息图。写标记之前先用数值算出坐标，完成的文件要通过对确定性源码 lint 和带尺寸校验的 2 倍分辨率 PNG 渲染。通过外部目录基准实测了九种形态——审批门流程、前后对比、KPI 卡片网格、决策矩阵、分层堆叠、嵌套作用域、流程图、路线图时间线、组件拓扑——确认九种全部可复现（分形态产物与判定：`.moai/reports/t272/verdict.md`）。
+
 ### 跨平台
 
 一个无额外依赖的 Go 单一二进制，跑在 macOS、Linux、Windows 上。钩子系统机械地强制门禁，状态栏实时显示成本和上下文。
