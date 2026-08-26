@@ -180,6 +180,14 @@ than forcing it. Pre-approved write paths in settings.json `permissions.allow` r
 Runtime-history rationale: `agent-common-protocol-reference.md` § Background Agent Execution
 rationale.
 
+[ZONE:Evolvable] [HARD] **While a worktree is being actively audited, it has exactly one writer.**
+The audit window runs from the opening measurement to the landed verdict, and the only session
+committing to that tree throughout it is the one that owns it. A previous audit session landing
+its own reports or scripts is itself a foreign commit, and every foreign commit — whoever writes
+it — waits until the window closes. Observing an unexpected HEAD move or a foreign commit on an
+actively audited worktree is a process defect: report it to the lead immediately and record it in
+the progress record — never continue quietly.
+
 ## Tool Usage Guidelines
 
 [ZONE:Evolvable] [HARD] Agents must follow tool usage patterns optimized for accuracy and efficiency.
