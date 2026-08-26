@@ -835,6 +835,13 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		AgentModelGuard: AgentModelGuardConfig{
 			Enabled: false,
 		},
+		// The SendMessage stop-guard deny layer ships OFF the same way: stop
+		// recording and send observation + advisory always run; a maintainer
+		// opts into denial via local config. Template neutrality: no
+		// `enabled: true` anywhere under internal/template/templates/.
+		AgentStopGuard: AgentStopGuardConfig{
+			Enabled: false,
+		},
 		// SPEC-MOAI-MCP-SERVER-001 M2 (REQ-MCP-008 / C6): the codex review gate
 		// ships default-OFF. Distributed users get an inert Stop hook; a
 		// maintainer opts in via local config. Template neutrality (§25): no

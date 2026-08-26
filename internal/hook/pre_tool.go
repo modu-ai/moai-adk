@@ -618,6 +618,12 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 			return NewDenyOutput(reason), nil
 		}
 		agentAdvisory = advisory
+
+		// Deliberate-revival escape hatch (stop-guard, REQ-TRG-005): a fresh
+		// spawn carrying a stopped teammate's name clears the registry entry
+		// BEFORE the spawn proceeds. Never denies; fail-open on removal error
+		// keeps the entry (the safe direction).
+		h.clearStoppedEntryOnRespawn(input)
 	}
 
 	// SendMessage stop-guard observation. Sibling of the agent-model branch:

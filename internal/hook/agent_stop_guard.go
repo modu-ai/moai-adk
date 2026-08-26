@@ -37,9 +37,15 @@ import (
 	"time"
 )
 
-// Audit event kinds (REQ-TRG-001). M1 observes stop_recorded and
-// send_observed; send_denied, respawn_cleared, and session_cleared join with
-// the M2 enforcement and lifecycle layers.
+// SentinelAgentStopViolation prefixes every deny emitted by the SendMessage
+// stop-guard, so the orchestrator can pattern-match the source without
+// parsing the full reason string. Mirrors the BRANCH_GUARD_VIOLATION and
+// AGENT_MODEL_VIOLATION precedents.
+const SentinelAgentStopViolation = "STOPPED_TEAMMATE_VIOLATION"
+
+// Audit event kinds (REQ-TRG-001): stop_recorded and send_observed from the
+// M1 observation layer; send_denied, respawn_cleared, and session_cleared
+// from the M2 enforcement + lifecycle layers.
 const (
 	// AgentStopKindStopRecorded — one row per observed TaskStop completion
 	// that resolved to an attributable target.
@@ -47,13 +53,25 @@ const (
 	// AgentStopKindSendObserved — one row per observed SendMessage issuance,
 	// including every uncertain variant (fail-open observe-only).
 	AgentStopKindSendObserved = "send_observed"
+	// AgentStopKindSendDenied — the enforcement layer refused the send
+	// (registry hit + gate enabled).
+	AgentStopKindSendDenied = "send_denied"
+	// AgentStopKindRespawnCleared — a fresh spawn carrying the stopped name
+	// cleared the entry (deliberate revival stays a spawn, not a message).
+	AgentStopKindRespawnCleared = "respawn_cleared"
+	// AgentStopKindSessionCleared — the session-end path removed the
+	// session's registry file.
+	AgentStopKindSessionCleared = "session_cleared"
 )
 
 // Audit decision values. "recorded" accompanies a persisted stop entry;
-// "allowed" accompanies an observed send (M1: every observed send).
+// "allowed" an observed send; "denied" an enforced refusal; "cleared" an
+// entry removal (respawn or session end).
 const (
 	agentStopDecisionRecorded = "recorded"
 	agentStopDecisionAllowed  = "allowed"
+	agentStopDecisionDenied   = "denied"
+	agentStopDecisionCleared  = "cleared"
 )
 
 // agentStopAuditFileName is the guard's JSONL audit log under
@@ -87,7 +105,9 @@ type AgentStopRegistry struct {
 
 // AgentStopAuditRecord is one JSONL row. Name and AgentID carry no omitempty
 // so every row exposes all six REQ-TRG-001 fields (empty string when
-// unknown) — post-hoc correlation reads a uniform shape.
+// unknown) — post-hoc correlation reads a uniform shape. Advisory records
+// the would-have-denied state: true when the gate is off but the recipient
+// matched a live registry entry (AC-TRG-007).
 type AgentStopAuditRecord struct {
 	Timestamp string `json:"timestamp"`
 	SessionID string `json:"session_id"`
@@ -95,6 +115,7 @@ type AgentStopAuditRecord struct {
 	Name      string `json:"name"`
 	AgentID   string `json:"agent_id"`
 	Decision  string `json:"decision"`
+	Advisory  bool   `json:"advisory"`
 }
 
 // agentStopRegistryPath returns the per-session registry file path.
@@ -309,11 +330,40 @@ func RecordAgentStop(projectRoot string, input *HookInput) {
 	})
 }
 
-// checkStopGuard is the PreToolUse(SendMessage) entry point. M1: observe and
-// advise only — every issuance appends exactly one send_observed row, and a
-// recipient matching a live entry in the same session's registry surfaces a
-// non-blocking advisory naming the stopped teammate. No deny decision exists
-// at this layer yet; the M2 enforcement layer adds the opt-in deny.
+// agentStopGuardEnabled reports whether the opt-in deny gate is on
+// (workflow.agent_stop_guard.enabled, distributed default false). A nil
+// provider or nil config returns false so a misconfigured hook can never
+// accidentally reach the deny path — the same defensive shape as
+// agentModelGuardEnabled and branchGuardEnabled.
+func (h *preToolHandler) agentStopGuardEnabled() bool {
+	if h.cfg == nil {
+		return false
+	}
+	cfg := h.cfg.Get()
+	if cfg == nil {
+		return false
+	}
+	return cfg.Workflow.AgentStopGuard.Enabled
+}
+
+// agentStopAdvisoryText renders the non-blocking advisory for a registry hit.
+// It names the stopped teammate and the orchestrator route — the deny reason
+// carries the same routing under the sentinel prefix.
+func agentStopAdvisoryText(recipient string) string {
+	return fmt.Sprintf(
+		"agent-stop: SendMessage is addressed to %q, a teammate stopped in this session. "+
+			"A message can revive it as an ownerless writer. Route coordination through the "+
+			"owning orchestrator, or respawn the name deliberately with a fresh spawn.",
+		recipient)
+}
+
+// checkStopGuard is the PreToolUse(SendMessage) entry point. Observation and
+// advisory always run: every issuance appends exactly one audit row. The deny
+// fires ONLY on positive evidence — a parsed recipient that matches a live
+// entry in the SAME session's registry AND the opt-in gate enabled; every
+// uncertain path (unparseable payload, absent recipient, unreadable or
+// missing registry) allows. Gate off + registry hit keeps the send allowed
+// but flags the row as would-have-denied (Advisory=true).
 func (h *preToolHandler) checkStopGuard(input *HookInput) (decision, reason, advisory string) {
 	recipient, parsed := parseSendRecipient(input.ToolInput)
 
@@ -323,16 +373,127 @@ func (h *preToolHandler) checkStopGuard(input *HookInput) (decision, reason, adv
 		Name:      recipient,
 		Decision:  agentStopDecisionAllowed,
 	}
+	var hit *AgentStopEntry
 	if parsed && input.SessionID != "" {
 		if entry, found := lookupAgentStopEntry(h.projectRoot(), input.SessionID, recipient); found {
+			hit = entry
 			rec.AgentID = entry.AgentID
-			advisory = fmt.Sprintf(
-				"agent-stop: SendMessage is addressed to %q, a teammate stopped in this session. "+
-					"A message can revive it as an ownerless writer. Route coordination through the "+
-					"owning orchestrator, or respawn the name deliberately with a fresh spawn.",
-				recipient)
+			advisory = agentStopAdvisoryText(recipient)
 		}
+	}
+
+	// Enforcement: deny only on the registry-hit + gate-enabled conjunction.
+	if hit != nil && h.agentStopGuardEnabled() {
+		rec.Kind = AgentStopKindSendDenied
+		rec.Decision = agentStopDecisionDenied
+		appendAgentStopAudit(h.projectRoot(), rec)
+		reason = fmt.Sprintf(
+			"%s: SendMessage is addressed to %q, a teammate stopped in this session. "+
+				"Sending would revive it as an ownerless writer mid-card. Route coordination "+
+				"through the owning orchestrator, or respawn the name deliberately with a fresh spawn.",
+			SentinelAgentStopViolation, recipient)
+		slog.Warn("agent stop guard denied",
+			"recipient", recipient,
+			"session_id", input.SessionID,
+		)
+		return DecisionDeny, reason, advisory
+	}
+
+	// Gate off + registry hit: record the would-have-denied state.
+	if hit != nil {
+		rec.Advisory = true
 	}
 	appendAgentStopAudit(h.projectRoot(), rec)
 	return "", "", advisory
+}
+
+// removeAgentStopEntry removes the entry matching name from the session's
+// registry (idempotent — an absent registry or absent entry is a nil error).
+// When the last entry is removed the registry file itself is deleted, so a
+// cleared session leaves no empty husk for lookups to trip over.
+func removeAgentStopEntry(projectRoot, sessionID, name string) error {
+	reg := loadAgentStopRegistry(projectRoot, sessionID)
+	if reg == nil {
+		return nil
+	}
+	kept := make([]AgentStopEntry, 0, len(reg.Entries))
+	for _, e := range reg.Entries {
+		if e.Name != name && e.identity() != name {
+			kept = append(kept, e)
+		}
+	}
+	if len(kept) == len(reg.Entries) {
+		return nil // nothing matched — no write
+	}
+	if len(kept) == 0 {
+		return os.Remove(agentStopRegistryPath(projectRoot, sessionID))
+	}
+	reg.Entries = kept
+	data, err := json.MarshalIndent(reg, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal stop registry: %w", err)
+	}
+	if err := os.WriteFile(agentStopRegistryPath(projectRoot, sessionID), append(data, '\n'), 0o600); err != nil {
+		return fmt.Errorf("write stop registry: %w", err)
+	}
+	return nil
+}
+
+// clearStoppedEntryOnRespawn implements the deliberate-revival escape hatch
+// (REQ-TRG-005): a fresh Agent/Task spawn carrying a name that matches a live
+// stop-registry entry clears that entry BEFORE the spawn proceeds. A failed
+// removal keeps the entry — the safe direction, since clearing is the
+// permission-granting side of this guard.
+func (h *preToolHandler) clearStoppedEntryOnRespawn(input *HookInput) {
+	sp, ok := extractAgentSpawn(input.ToolInput)
+	if !ok || sp.Name == "" || input.SessionID == "" {
+		return
+	}
+	root := h.projectRoot()
+	entry, found := lookupAgentStopEntry(root, input.SessionID, sp.Name)
+	if !found {
+		return
+	}
+	if err := removeAgentStopEntry(root, input.SessionID, sp.Name); err != nil {
+		slog.Warn("agent_stop_guard: respawn clear failed; entry kept",
+			"name", sp.Name,
+			"session_id", input.SessionID,
+			"error", err,
+		)
+		return
+	}
+	appendAgentStopAudit(root, AgentStopAuditRecord{
+		SessionID: input.SessionID,
+		Kind:      AgentStopKindRespawnCleared,
+		Name:      sp.Name,
+		AgentID:   entry.AgentID,
+		Decision:  agentStopDecisionCleared,
+	})
+}
+
+// ClearAgentStops is the session-end cleanup entry point (REQ-TRG-006): it
+// removes the session's stop-registry file and appends one session_cleared
+// audit row, so stale records never outlive the session that produced them
+// or leak into a later session's name reuse. No-op when no registry exists.
+// Fail-open on every error: cleanup may never fail the session end.
+func ClearAgentStops(projectRoot, sessionID string) {
+	if projectRoot == "" || sessionID == "" {
+		return
+	}
+	path := agentStopRegistryPath(projectRoot, sessionID)
+	if _, err := os.Stat(path); err != nil {
+		return // absent — nothing to clear, no audit row
+	}
+	if err := os.Remove(path); err != nil {
+		slog.Warn("agent_stop_guard: session clear failed",
+			"session_id", sessionID,
+			"error", err,
+		)
+		return
+	}
+	appendAgentStopAudit(projectRoot, AgentStopAuditRecord{
+		SessionID: sessionID,
+		Kind:      AgentStopKindSessionCleared,
+		Decision:  agentStopDecisionCleared,
+	})
 }
