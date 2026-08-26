@@ -204,15 +204,110 @@ mcp_codex.go:1564: classifyCodexAuth      100.0%
 
 ### 실측해야 할 것 — 갱신
 
-- ~~internal/cli 패키지 실행 시간~~ → **실측됨: 259.848s** (커버리지 프로파일 포함 실행, 이번 세션). 180칸 봉쇄 행렬(SPEC-CODEX-INIT-001, AC-CI-011)의 기준선으로 이 값을 쓸 수 있다.
+- ~~internal/cli 패키지 실행 시간~~ → **실측됨: 259.848s** (M1 상태, 커버리지 포함) → **M2 상태 재실측: 181.640s** (커버리지 포함, §E.2 M2). 180칸 봉쇄 행렬(SPEC-CODEX-INIT-001, AC-CI-011)의 기준선은 최신값(181.6s)을 쓴다.
+
+---
+
+## M2 — CODEX_HOME 해석 + 리드아웃 조립: **완결** (2026-08-27)
+
+세 번째 위임(t197-m2). 산출: `internal/cli/codex_readiness.go`(신규) + `internal/cli/codex_readiness_test.go`(신규, 시험 12개 함수 / 31 서브테스트). 기존 파일 무변경(`git status` 관측: untracked 2건, 수정 0건). 이 문서의 모든 근거는 이번 세션이 직접 실행해 관측한 것이다.
+
+설계: `codexReadiness` 구조체가 공유 프로브(`codexSetupProbe` seam → `ProbeCodexSetup`) · CODEX_HOME 해석(`resolveCodexHomeDir` 재사용 + `os.Stat` 존재 판정) · 배선 판정(`classifyCodexWiring` — 파일 집합 기반, `codexadapter.ValidateConfig` 화이트리스트 소비) · 에이전트 TOML 수(`.codex/agents/moai/*.toml` glob)를 한 구조체로 조립하고 `rows()`가 plan §C.4 의 고정 6행(`codex`/`home`/`auth`/`wiring`/`agents`/`harness`)을 렌더한다. 배선 상태 토큰 폐집합 `{not wired, partial, wired, invalid}`, 조치 문구 `run moai init --agent codex` 는 불완전 5상태 전부에만 붙는다. 런처는 아무것도 쓰지 않는다(CODEX_HOME 디렉터리 생성 0건 관측).
+
+### E8 — RED (스켈레톤 방식)
+
+구현 전 타입·상수·seam만 실제이고 함수 본체가 영값을 반환하는 스켈레톤을 두고 시험을 먼저 돌렸다:
+
+- 명령: `go test ./internal/cli/ -v -run 'TestResolveCodexHomeDir|TestClassifyCodexWiring|TestCodexReadiness|TestCountCodexAgentTOMLs' -count=1 -timeout 120s`
+- 관측 (rc 1): **31 RUN / 신규 동작 6개 함수 FAIL / 2개 PASS** — PASS 2개(`TestResolveCodexHomeDir_EnvAxis` · `_TrailingSeparatorJoinsCleanly`)는 M1이 이미 전달한 `resolveCodexHomeDir` 의 특성화(AC-CL-005 핀)라 원래 초록이며, 이는 특성화 기록이지 RED 가 아니다. RED 대상은 M2 신규 동작 6함수 전부:
+
+```
+--- FAIL: TestClassifyCodexWiring_SixStateMatrix (0.01s)
+--- FAIL: TestCodexReadiness_NoBannedWordsAllStates (0.00s)
+--- FAIL: TestCodexReadiness_SentinelPropagation (0.00s)
+--- FAIL: TestCodexReadiness_RowLabelSetAndBinaryAbsent (0.00s)
+--- FAIL: TestCodexReadiness_DoesNotCreateCodexHome (0.00s)
+--- FAIL: TestCountCodexAgentTOMLs (0.00s)
+    codex_readiness_test.go: row 0 is empty — a failed probe must degrade to its token, not skip the row
+```
+
+- 정직 기록: 첫 RED 실행에서 `TestResolveCodexHomeDir_GoesThroughHomeSeamNotHOMEEnv` 도 FAIL 했으나 이는 **시험 쪽 결함**이었다(env-set 칸은 seam을 부르지 않는데 호출수 +1을 기대). 시험 기대치를 칸별 seam 히트수로 고친 뒤 구현에 들어갔다.
+
+### E1 — M2 소관 AC 관측
+
+| AC | 상태 | 근거 (전 패키지 실행 안에서 통과) |
+|----|--------|---|
+| AC-CL-005 (CODEX_HOME 해석·출처) | **PASS (완결)** | `TestResolveCodexHomeDir_EnvAxis`(4칸: 설정 `/tmp/xyz`→env / 미설정·빈·공백뿐→default) · `_TrailingSeparatorJoinsCleanly`(홈 seam `/tmp/h/` → `filepath.Join` 결과 `/tmp/h/.codex`) · `_GoesThroughHomeSeamNotHOMEEnv`(`HOME=""` 상태에서 4칸 동일 + seam 히트수 칸별 0/1/1 검증) |
+| AC-CL-004 (리드아웃 실제 값) | PASS — M2 판정 가능 다리 전부; 맨몸/status 형태 동일성·MCP/web 교차는 M3+/블로커 | `TestClassifyCodexWiring_SixStateMatrix`(7 fixture: 디렉터리 부재·빈 디렉터리·한쪽만×2·양쪽 정상·위반·파싱실패 → 이름 붙은 상수와 행 전문 `==`; 두 partial 칸 배타성; 상태 폐집합; 조치 문구 5상태/정상 상태 부재) · `TestCodexReadiness_SentinelPropagation`(세 sentinel `SENTINEL-VER-9x9`·`/sentinel/path/codex`·`sentinel-provider` 각 행 정확 일치 + `ValidateConfig` sentinel 위반이 배선 행에 그대로 반영) |
+| AC-CL-006 (정보성) | PASS — M2 다리 | `TestCodexReadiness_NoBannedWordsAllStates`(6상태 × 6행에서 금지어 6종 대소문자 무시 히트 0 + 조치 문구 존재/부재). rc 0·stdout 전용·stderr 0바이트 판정은 M3 커맨드 표면 소관 |
+| AC-CL-011 (codex 부재 시 리드아웃) | PASS — M2 다리 | `TestCodexReadiness_RowLabelSetAndBinaryAbsent`(바이너리 부재 × 배선 wired/not wired: 행 라벨 집합 == {codex, home, auth, wiring, agents, harness}, 바이너리 행 `not found`, 배선 행 상수 일치, harness 행 고정) |
+| AC-CL-012 (쓰기 없음) | PASS — CODEX_HOME 다리 | `TestCodexReadiness_DoesNotCreateCodexHome`(존재하지 않는 경로 가리킴 → 2회 조립 후에도 `os.Stat` IsNotExist + home 행 `missing`·`run codex login` 보고). 4동사 × 격리 홈 스냅샷은 M3 소관 |
+| AC-CL-015 (공유 러너 무회귀) | PASS (재관측) | 아래 회귀축 + 이름 대조 + 커버리지. M2 순수함수 7종 100% |
+
+**전 패키지 실행**: `go test ./internal/cli/ -coverprofile=/tmp/t197_m2_cover_final.out -count=1 -timeout 1200s` → `ok ... 181.640s coverage: 79.0% of statements` (rc 0). M1 상태(259.8s)보다 짧다.
+
+**회귀축 (AC-CL-015)**: `go test ./internal/cli/ -json -run Codex -count=1 -timeout 1200s` → rc 0, 최상위 통과 시험 함수 130개(M1 118 + M2 12). **이름 대조**: `git grep -o -E "^func Test[A-Za-z0-9_]*Codex[A-Za-z0-9_]*" HEAD -- internal/cli` (123) vs 작업 트리 동일 grep (135) → **추가 12건, 삭제·개명 0건**. **skip 5건**: 전부 기존 `TestCodexLive_*` (SPEC-CODEX-PHASE2-001 소관 opt-in 라이브 프로브) — M1 기록과 동일 구성, 이 SPEC 시험의 skip 0, GOOS skip 3칸도 미발동(macOS 실행).
+
+### E3 — 커버리지
+
+`go tool cover -func=/tmp/t197_m2_cover_final.out`:
+
+```
+codex_readiness.go:114:  probeCodexReadiness   100.0%
+codex_readiness.go:131:  resolveCodexHomeInfo  100.0%
+codex_readiness.go:152:  classifyCodexWiring   100.0%
+codex_readiness.go:203:  codexPathExists       100.0%
+codex_readiness.go:210:  countCodexAgentTOMLs  100.0%
+codex_readiness.go:220:  codexWiringRowValue   100.0%
+codex_readiness.go:231:  rows                  100.0%
+```
+
+- M2 함수 7종 전부 100%. M1 순수함수 5종(`classifyCodexAuthFile`·`readCodexAuthFile`·`combineCodexStreams`·`parseCodexAuthLine`·`classifyCodexAuth`)도 100% 유지 — 회귀 없음. 패키지 전체 79.0%(M1 78.9% → +0.1pp).
+
+### E2 — 크로스 플랫폼 (이번 세션 관측)
+
+- `go build ./...` → rc 0
+- `go vet ./internal/cli/` → rc 0
+- `GOOS=windows go vet ./internal/cli/` → rc 0
+- `GOOS=windows go test -c ./internal/cli/` → rc 0 (AC-CL-014 — vet 보다 강한 링크 판정)
+- `gofmt -l` 신규 2파일 → 출력 없음
+- 신규 2파일 `go:build` 태그 0건 · `"syscall"` import 0건 (grep 관측)
+- 신규 시험 GOOS skip 0건 (기존 fixture 3칸 이름 고정 유지 — 이번 추가 시험은 전 플랫폼 실행형)
+
+### E4 — 서브에이전트 경계
+
+- `grep -rn "AskUserQuestion" internal/cli/codex_readiness.go internal/cli/codex_readiness_test.go` → 0건 (rc 1)
+
+### E5 — lint
+
+- `golangci-lint run` → `0 issues.` (rc 0)
+
+### E7 — 구조적 블로커 1건 (범위 판정 필요)
+
+**AC-CL-007 폐집합 다리가 현행 트리에서 성립하지 않는다.** AC 의 기계 판정: "`internal/` 하위 비시험 `*.go` 중 provider 리터럴(`"chatgpt"` 또는 `"apiKey"`)을 담은 파일의 집합이 `{internal/cli/mcp_codex.go}` 와 같다". 실측(`grep -rln '"chatgpt"\|"apiKey"' internal/ --include="*.go" | grep -v _test`):
+
+```
+internal/web/codex_state.go
+internal/cli/mcp_codex.go
+```
+
+`internal/web/codex_state.go:32-37` 이 표시층 미러 상수 4종(`codexAuthChatGPT`/`codexAuthAPIKey`/`codexAuthProvider`/`codexAuthUnknown`)을 갖고 있다. 이것은 분류 경로가 아니라(`internal/web/schemaform.go:114` `codexAuthProviderLabel` 의 표시 라벨 스위치가 소비) AC 의 기계 판정은 어긋난다. 해소는 (a) web 쪽 라벨 매핑을 CLI 주입으로 바꿔 리터럴을 제거하거나 (b) acceptance 예외를 명시하는 것 — 어느 쪽도 plan §C.1 의 파일 배치(신규 2 + 수정 1) 밖이라 **M2 는 손대지 않았고 리드 판정이 필요하다.** 이 SPEC 의 M2 산출물인 `codex_readiness.go` 자체는 provider 리터럴 0건(공유 프로브의 값을 전파만 한다). AC-CL-007 의 (b) MCP 도구 · (c) web 카드 sentinel 교차 다리도 이 판정과 함께 정리해야 한다(런처 표면 (a) 다리는 이번에 통과).
+
+### 남은 Gap (정직한 목록)
+
+- **AC-CL-004/006/011/012 의 커맨드 수준 다리** — 맨몸/status 두 형태 실행·rc 0·stdout 전용/stderr 0바이트·10칸·4동사 스냅샷. M3(커맨드 표면) 소관.
+- **AC-CL-007 폐집합·(b)(c) 교차** — 위 E7 블로커.
+- **부채 D4 · D5 · D6 · D8** — M2 범위 밖, 그대로. (D7 은 M1 에서 acceptance 판이 우선한다고 확정됨 — 이번 구현은 참조 문법 재사용 없음)
+- **tty 왕복 · Windows 실행** — 기존 그대로 명시적 Gap (판정 제외 조항).
+- **`CODEX_HOME` 환경변수 상수 위치** — 임무 지침이 `internal/config/envkeys.go` 상수를 예시로 들었으나 M1 이 `codexHomeEnvVar` 를 mcp_codex.go 에 국소 상수로 세웠고 M1 검증이 그 상태로 GREEN 이었다. 검증된 M1 코드를 뒤집는 리팩터는 범위 밖으로 판단해 유지했다(인라인 문자열 0건 요건은 충족). 리드가 envkeys.go 이전을 원하면 별도 마이크로 변경으로 처리 가능.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
-run_complete_at: 2026-08-26
-run_commit_sha: pending-backfill-m1-complete
-run_status: green-m1
-ac_pass_count: 3
+run_complete_at: 2026-08-27
+run_commit_sha: pending-backfill-m2
+run_status: green-m2
+ac_pass_count: 4
 ac_fail_count: 0
 preserve_list_post_run_count: 3
 l44_pre_commit_fetch: skip-worktree-isolated-lane
@@ -222,9 +317,10 @@ cross_platform_build:
   go_build: pass
   go_vet: pass
   goos_windows_vet: pass
+  goos_windows_test_compile: pass
   gofmt: pass
-total_run_phase_files: 4
+total_run_phase_files: 6
 m1_to_mN_commit_strategy: per-milestone
 ```
 
-M1 완결 시점의 신호. M2(CODEX_HOME 해석 + 리드아웃 조립) · M3(커맨드 표면) · M4(도움말 문안) 잔여 — `run_status: green-m1` 은 M1 한정 GREEN 이지 run-phase 전체 완료가 아니다. §E.3 최종본(전 마일스톤 완료)은 그때 갱신한다.
+M2 완결 시점의 신호. `ac_pass_count: 4` = M1 3건(AC-CL-008 · 009 · 015) + M2 1건(AC-CL-005 완결). AC-CL-004 · 006 · 011 · 012 의 M2 판정 가능 다리는 전부 통과했으나 커맨드 수준 다리가 M3 에 남아 있고, AC-CL-007 은 폐집합 블로커(§E.2 M2 E7)가 리드 판정 대기 중이다. M3(커맨드 표면) · M4(도움말 문안) 잔여 — `run_status: green-m2` 는 M2 한정 GREEN 이지 run-phase 전체 완료가 아니다. §E.3 최종본(전 마일스톤 완료)은 그때 갱신한다.
