@@ -121,13 +121,14 @@ This command changes nothing — it exposes exactly the values the orchestrator 
 
 On the GLM backend (`moai glm` / `moai cg` GLM panes), an overlay is applied on top of the profile matrix:
 
-- Model slot mapping: `fable` → `glm-5.3` (Fable slot, `ANTHROPIC_DEFAULT_FABLE_MODEL`). This slot is a GLM environment binding, independent of the profile matrix — it stays wired even though no matrix cell selects Fable.
+- Model slot mapping: `fable` → `glm-5.3-flash` (Fable slot, `ANTHROPIC_DEFAULT_FABLE_MODEL`). This slot is a GLM environment binding, independent of the profile matrix — it stays wired even though no matrix cell selects Fable.
 - Claude's 5-step effort collapses onto z.ai's reasoning ceiling. GLM-5.3 reasons **always** — disabling reasoning is not supported, and a request asking for it fails — so the control is a single 3-level `reasoning_effort` (low / high / max):
   - `low` → **reasoning-low**
   - `medium` / `high` / `xhigh` / `max` → **reasoning-max**
   - (unrecognized value → reasoning-max, the totality clause: never under-reason)
   - reasoning-high remains a legal wire value, but no Claude effort collapses onto it
   - a GLM session without an explicit override defaults to **reasoning-max**
+- flash exception: on `glm-5.3-flash` (the default model since the flash switch), the collapse above does not apply — **every** Claude effort, including `low`, pins **reasoning-max**, because flash accepts `reasoning_effort: max` only. The low/high/max levels exist on glm-5.3 and older, not on flash.
 - coding-max override: `manager-develop` is forced to **reasoning-max** regardless of the collapse result (z.ai's "reasoning max for coding tasks" recommendation)
 - `manager-git`, at `low` effort in all three profiles, occupies the reasoning-low tier
 

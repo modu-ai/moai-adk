@@ -684,16 +684,18 @@ z.ai GLM を Claude Code の代替バックエンドとして使う。環境変�
 | `moai glm` | GLM | GLM | 推奨 | 約 70% |
 | `moai cg` | Claude | GLM | **必須** | 約 60% |
 
-GLM Coding Plan は月 $10 から。glm-5.3、glm-4.7、glm-4.5-air と無料モデル (GLM-4.7-Flash, GLM-4.5-Flash) が使える。
+GLM Coding Plan は月 $10 から。glm-5.3-flash（デフォルト）、glm-5.3、glm-4.7、glm-4.5-air と無料モデル (GLM-4.7-Flash, GLM-4.5-Flash) が使える。
 
 Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて GLM モデルにマッピングされる:
 
 | Claude ティア | GLM モデル | コンテキスト |
 |---|---|---|
-| Opus | glm-5.3 | 1M |
-| Sonnet | glm-5.3 | 1M |
-| Haiku | glm-5.3 | 1M |
-| Fable | glm-5.3 | 1M |
+| Opus | glm-5.3-flash | 1M |
+| Sonnet | glm-5.3-flash | 1M |
+| Haiku | glm-5.3-flash | 1M |
+| Fable | glm-5.3-flash | 1M |
+
+> glm-5.3 はどのティアスロットでも引き続き選択できます（`llm.yaml` の `llm.glm.models.*`）。スロットを戻すのも 1 行の設定変更です。
 
 > 詳しくは: [Multi-LLM ガイド](https://adk.mo.ai.kr/ja/multi-llm) · [z.ai 料金](https://docs.z.ai/guides/overview/pricing)
 

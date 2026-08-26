@@ -156,7 +156,7 @@ flowchart TD
 
 ### GLM コンテキストゲージの補正 (Issue #653)
 
-ひとつ注意点があります。GLM-5.3 は実際には 1M コンテキストモデルですが、Claude Code はプロバイダに関係なく Claude スロット基準(Opus=1M, Sonnet/Haiku=200K)で `context_window_size` を報告します。そのため GLM セッションでは元の観測値が約 180K と誤って出ることがあります。MoAI は2か所でこの値を正します — ランチャーが `CLAUDE_CODE_MAX_CONTEXT_TOKENS` 環境変数でセッションに 1M ウィンドウを宣言し、ステータスラインは `internal/statusline/memory.go` の `ResolveGLMContextWindow` で観測値を補正します。`glm-5.3` は 1,000,000 にマッピングされ、`MOAI_STATUSLINE_CONTEXT_SIZE` 環境変数で直接上書きしたり、`llm.glm.context_windows` テーブルで設定したりもできます。GLM セッションでは元の値ではなく、MoAI ステータスラインの CW% を信頼してください。
+ひとつ注意点があります。GLM-5.3 は実際には 1M コンテキストモデルですが、Claude Code はプロバイダに関係なく Claude スロット基準(Opus=1M, Sonnet/Haiku=200K)で `context_window_size` を報告します。そのため GLM セッションでは元の観測値が約 180K と誤って出ることがあります。MoAI は2か所でこの値を正します — ランチャーが `CLAUDE_CODE_MAX_CONTEXT_TOKENS` 環境変数でセッションに 1M ウィンドウを宣言し、ステータスラインは `internal/statusline/memory.go` の `ResolveGLMContextWindow` で観測値を補正します。`glm-5.3` と `glm-5.3-flash`（デフォルトモデル）はそれぞれ独自のテーブルエントリで 1,000,000 にマッピングされ、`MOAI_STATUSLINE_CONTEXT_SIZE` 環境変数で直接上書きしたり、`llm.glm.context_windows` テーブルで設定したりもできます。GLM セッションでは元の値ではなく、MoAI ステータスラインの CW% を信頼してください。
 
 ## コンテキスト使用量スナップショット — 次のセッションのために
 

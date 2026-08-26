@@ -684,16 +684,18 @@ z.ai GLM을 Claude Code의 대체 백엔드로 쓴다. 환경변수만 바꾸면
 | `moai glm` | GLM | GLM | 권장 | 약 70% |
 | `moai cg` | Claude | GLM | 필수 | 약 60% |
 
-GLM Coding Plan은 월 $10부터다. glm-5.3, glm-4.7, glm-4.5-air와 무료 모델(GLM-4.7-Flash, GLM-4.5-Flash)을 쓸 수 있다.
+GLM Coding Plan은 월 $10부터다. glm-5.3-flash(기본값), glm-5.3, glm-4.7, glm-4.5-air와 무료 모델(GLM-4.7-Flash, GLM-4.5-Flash)을 쓸 수 있다.
 
 Claude의 각 티어는 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수를 통해 GLM 모델로 매핑된다:
 
 | Claude 티어 | GLM 모델 | 컨텍스트 |
 |---|---|---|
-| Opus | glm-5.3 | 1M |
-| Sonnet | glm-5.3 | 1M |
-| Haiku | glm-5.3 | 1M |
-| Fable | glm-5.3 | 1M |
+| Opus | glm-5.3-flash | 1M |
+| Sonnet | glm-5.3-flash | 1M |
+| Haiku | glm-5.3-flash | 1M |
+| Fable | glm-5.3-flash | 1M |
+
+> glm-5.3은 여전히 어느 티어 슬롯에서든 선택할 수 있다(`llm.yaml`의 `llm.glm.models.*`). 슬롯을 되돌리는 것도 한 줄 설정 변경이다.
 
 > 자세히: [Multi-LLM 가이드](https://adk.mo.ai.kr/ko/multi-llm) · [z.ai 요금제](https://docs.z.ai/guides/overview/pricing)
 

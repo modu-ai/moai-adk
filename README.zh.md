@@ -684,16 +684,18 @@ z.ai GLM 作为 Claude Code 的替代后端。只换环境变量，代码原样�
 | `moai glm` | GLM | GLM | 建议 | 约 70% |
 | `moai cg` | Claude | GLM | 必需 | 约 60% |
 
-GLM Coding Plan 每月 $10 起。可用 glm-5.3、glm-4.7、glm-4.5-air 以及免费模型（GLM-4.7-Flash、GLM-4.5-Flash）。
+GLM Coding Plan 每月 $10 起。可用 glm-5.3-flash（默认）、glm-5.3、glm-4.7、glm-4.5-air 以及免费模型（GLM-4.7-Flash、GLM-4.5-Flash）。
 
 Claude 的每一档通过 `ANTHROPIC_DEFAULT_*_MODEL` 环境变量映射到 GLM 模型：
 
 | Claude 档位 | GLM 模型 | 上下文 |
 |---|---|---|
-| Opus | glm-5.3 | 1M |
-| Sonnet | glm-5.3 | 1M |
-| Haiku | glm-5.3 | 1M |
-| Fable | glm-5.3 | 1M |
+| Opus | glm-5.3-flash | 1M |
+| Sonnet | glm-5.3-flash | 1M |
+| Haiku | glm-5.3-flash | 1M |
+| Fable | glm-5.3-flash | 1M |
+
+> glm-5.3 在任何档位插槽都仍然可选（`llm.yaml` 的 `llm.glm.models.*`）；把插槽改回去也只是一行配置改动。
 
 > 详见：[Multi-LLM 指南](https://adk.mo.ai.kr/zh/multi-llm) · [z.ai 定价](https://docs.z.ai/guides/overview/pricing)
 
