@@ -1,7 +1,7 @@
 ---
 id: SPEC-CI-FLAKE-SERIES-001
 title: "CI 의존 테스트 플레이크 3종 계열 수리 — poller 조기탈출 TOCTOU / 페어링 ratio 통계 / 단일 샘플 벽시계 단언"
-version: "0.2.0"
+version: "0.2.1"
 status: in-progress
 created: 2026-08-26
 updated: 2026-08-27
@@ -24,6 +24,7 @@ related_specs: [SPEC-CI-FLAKY-STABILIZE-001]
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-08-26 | manager-spec | 최초 작성 — 카드 t278 (t270·t271 흡수). plan-phase에서 CI 로그 attempt-1 포렌식 + 코드 정독으로 세 메커니즘 후보를 판별했고, 그 결과와 뒤집힌 카드 전제 2건을 §2에 고정 |
 | 0.2.0 | 2026-08-26 | manager-spec | plan-audit iter1(PASS-WITH-DEBT 0.86) 반영 — D1: REQ-CFS-008에 AC-CFS-010 대응(관측 가능 판정 명령). 적용 중 발견: `TestMedianRunsWarmupPlusSamples`(timing_test.go:174)이 cpuUnit 호출 + t.Parallel 병존 — 규칙 스코프를 "지속시간·비 단언 측정 테스트(자가선언 5종)"로 정밀화(이 테스트는 tick-양성 검사로 부하 강건, 면제 명시). D2: 관측 단위 N을 "go_code=true workflow **run** 수"로 고정(REQ-CFS-010·AC-CFS-007·plan M4 일관). D3: related_specs에서 실재하지 않는 SPEC-V3R6-CI-PR-SPEEDUP-001 제거(ci.yml 주석 인용으로만 존재 — §2.5에 주석 근거 명시). D4: §2.2 "≥10개"→"≥11개" 정정. D5: plan §B.3 wg 대기 방식 구체화 |
+| 0.2.1 | 2026-08-27 | manager-spec | spec-lint MissingExclusions 대응(PR #1666 CI) — §4의 **밖** 산문을 `### 4.1 Out of Scope` 하위 섹션(목록형 6항)으로 재구성. 내용 변화 없음(안 산문은 §4 서두 유지) |
 
 ## 1. 문제 — 측정된 형태
 
@@ -151,7 +152,14 @@ store 구현 자체는 결함 후보에서 **제외**된다:
 
 **안**: `internal/sessionmsg/store_test.go` 종료 규칙 + 그 결정론적 재현 테스트, `internal/timing` 보정 통계(공유 라이브러리 — 모든 AssertPaired 호출자에 적용) + 속성 테스트 2종(기존 load-step 핀 유지 + 교대 비대칭 신규 핀), `internal/hook/config_change_test.go` 단언 재구성, `.moai/reports/t278/` 산출물 일체.
 
-**밖**: store.go 본체 변경(§2.1에서 결함 제외 — 조사가 뒤집으면 그때 보고), 무관 테스트 경화, CI workflow 편집(관측만), BenchmarkConfigChange_AsyncReturn 변경, timing의 다른 두 arm(SteadyCeiling/Budget) 재조정, TestBranchGuard_Latency 등 다른 AssertPaired 호출자 테스트의 본체(공유 통계 변경의 수혜는 따라온다).
+### 4.1 Out of Scope — 수리 대상 밖
+
+- store.go 본체 변경(§2.1에서 결함 제외 — 조사가 뒤집히면 그때 보고)
+- 무관 테스트 경화(본 SPEC의 3 테스트 밖에 대한 일괄 안정화)
+- CI workflow 편집(관측만 수행, `.github/workflows/` 변경 없음)
+- `BenchmarkConfigChange_AsyncReturn` 변경(REQ-HAE-002의 p95 측정기는 현행 유지)
+- timing의 다른 두 arm(SteadyCeiling/Budget) 재조정 — 본 SPEC은 calibrated arm만 다룬다
+- `TestBranchGuard_Latency` 등 다른 AssertPaired 호출자 테스트의 본체(공유 통계 변경의 수혜는 따라온다)
 
 ## 5. 요구사항 (GEARS)
 
