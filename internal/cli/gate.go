@@ -161,6 +161,20 @@ func mapConfigGateToQuality(g config.GateConfig) *quality.GateConfig {
 		BlockOnError: ag.BlockOnError,
 		WarnOnlyMode: ag.WarnOnlyMode,
 	}
+	// Graph-freshness step (gate.yaml graph_freshness): zero-value thresholds
+	// mean "not configured" and fall back to the quality-layer defaults, so a
+	// partial gate.yaml cannot silently zero a red line.
+	gf := g.GraphFreshness
+	qgf := quality.DefaultGraphFreshnessConfig()
+	qgf.Enabled = gf.Enabled
+	qgf.Blocking = gf.Blocking
+	if gf.CodemapsChangedFiles > 0 {
+		qgf.CodemapsChangedFiles = gf.CodemapsChangedFiles
+	}
+	if gf.MXIndexChangedFiles > 0 {
+		qgf.MXIndexChangedFiles = gf.MXIndexChangedFiles
+	}
+	qcfg.GraphFreshness = qgf
 	// t50: an empty gate.yaml rules_dir maps through as empty — no hardcoded
 	// path fallback. gate.yaml ast_grep_gate.rules_dir is the SSOT for where a
 	// project keeps its ast-grep rules; the template ships the key with an

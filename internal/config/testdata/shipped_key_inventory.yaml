@@ -377,6 +377,21 @@
 - path: "gate.ast_grep_gate.warn_only_mode"
   class: R
   evidence: none
+- path: "gate.graph_freshness.blocking"
+  class: R
+  evidence: none
+- path: "gate.graph_freshness.codemaps_changed_files"
+  class: R
+  evidence: none
+- path: "gate.graph_freshness.enabled"
+  class: R
+  evidence: none
+- path: "gate.graph_freshness.mx_index_changed_files"
+  class: R
+  evidence: none
+- path: "gate.graph_freshness.update_budget_ms"
+  class: R
+  evidence: none
 - path: "gate.enabled"
   class: R
   evidence: none

@@ -53,6 +53,8 @@ index:
   title: "自主级别 (MOAI_AUTONOMY_TIER)"
 "kanban-mode":
   title: "看板模式"
+"factory-mode":
+  title: "工厂模式"
 "manager-lead":
   title: "manager-lead 领导协调者"
 "multi-model-audit":
