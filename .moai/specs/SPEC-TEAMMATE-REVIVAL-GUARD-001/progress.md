@@ -68,6 +68,13 @@ total_run_phase_files: 17                # 14 code/wiring/config (M1 7 unique + 
 m1_to_mN_commit_strategy: "per-milestone commits (M1 / M2 feat+test pair / M3 deliverables docs), no amend, no push; run_commit_sha backfilled one commit later (self-referential-hazard workaround)"
 ```
 
+Closure note: M1/M2/M3 complete — commit chain `7759b8130` → `f7bd5bdc7` → `70541af5c`
+→ `aac630f25` → `08c345cb4` (+ M3 closure docs commit, this file's companion edit);
+deliverable texts persisted as `proposal-rule-amendment.md` +
+`audit-commit-correlation-recipe.md` in this directory. Default-flip verdict:
+**DO-NOT-FLIP** — sustained dogfood remains the open flip-TRIGGER condition (not an AC;
+no third probe run).
+
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_

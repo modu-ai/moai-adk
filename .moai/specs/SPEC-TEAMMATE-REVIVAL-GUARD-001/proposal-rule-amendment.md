@@ -1,10 +1,12 @@
-# Proposal — Rule Amendment (Mechanism Pointer) + Audit Correlation Recipe
+# Proposal — Rule Amendment (Mechanism Pointer)
 
 > SPEC-TEAMMATE-REVIVAL-GUARD-001 · M3 deliverable · run-phase.
-> Status: PROPOSAL TEXT ONLY — nothing in this file has been applied to `.claude/rules/**`
-> or `.moai/docs/`; the orchestrator routes both at sync through the proper owners.
+> Status: PROPOSAL TEXT ONLY — nothing in this file has been applied to `.claude/rules/**`;
+> the orchestrator routes the amendment at sync through the rules owner.
 > The proposed amendment body (§A.1) is written to be neutral (no SPEC IDs, SHAs, or
 > internal dates) so the rules owner can adopt it verbatim.
+> Sibling deliverable: `audit-commit-correlation-recipe.md` (same directory) — the
+> direction-3 visibility recipe.
 
 ## §A Doctrine-pointer amendment (for `.claude/rules/moai/workflow/cross-session-messaging.md`)
 
@@ -37,46 +39,7 @@ see the mechanism layer note above)".
 already carry the discipline text; only the cross-session-messaging clause needs the
 mechanism pointer. No other rule file requires an edit for the pointer.
 
-## §B Audit → commit-window correlation recipe (`.moai/docs/` candidate)
-
-Purpose: when a stopped teammate is found to have run again (the revival incident
-shape), bound the revival window from the stop-guard audit trail and attribute the
-commits inside it post hoc. This is the visibility deliverable (direction 3) of the
-mechanism: rows exist so the window is provable after the fact.
-
-1. **Bound the window.**
-   `grep '"name":"<teammate>"' .moai/logs/agent-stop-audit.jsonl`
-   Window = `stop_recorded` (row N) → the earliest of `respawn_cleared`,
-   `session_cleared`, or the next `stop_recorded` for that name. Each row carries a
-   UTC RFC3339 timestamp, session_id, name, agent_id, and decision — enough to key the
-   window to one session.
-2. **Attribute commits inside the window.**
-   `git log --since='<window start UTC>' --until='<window end UTC>' --format='%h %cI %an%n%b'`
-   Match author/committer identity to the teammate where possible. Where the revived
-   agent committed under a shared identity, the audit row's session_id plus the window
-   boundaries are the attribution evidence.
-3. **Classify.** Commits inside a stop→window-end span with no intervening
-   `respawn_cleared` are revival-window output — re-verify them independently. The
-   originating incident precedent: the revived output itself passed re-verification;
-   the defect was ownership (an unowned writer), not artifact quality. The risk the
-   next revival carries is that it passes WITHOUT re-verification.
-4. **When the deny layer is enabled**, step 2 usually returns an empty result for the
-   window — the send was refused. An empty result is the guard working; the
-   `send_denied` row is the record that the attempt was made and when.
-
-**Worked example (measured in this card's worktree, live rows).** Session
-`703df7e1-…` stopped `t267-ep1-probe2` at `2026-08-26T17:12:48Z`; two sends were
-denied (`17:12:53Z`, `17:13:10Z` — the second teammate-issued, the incident vector);
-a same-name spawn cleared the entry at `17:13:21Z`;
-`git log --since='2026-08-26T17:12:48Z' --until='2026-08-26T17:13:21Z'` → 0 commits:
-no revival contamination; the deny held for the whole window.
-
-**Operational note.** A registry file whose session ended before the SessionEnd
-cleanup existed (or on a binary predating it) is inert: per-session scoping means no
-other session's sends consult it. Such files are manual-cleanup garbage, not a
-correctness hazard.
-
-## §C Default-flip verdict (recorded; NOT executed)
+## §B Default-flip verdict (recorded; NOT executed)
 
 Template default stays **false**. Measured today: two live probes (a recording-only
 probe and a full deny/respawn recipe), zero false-positive denies, zero wedged
