@@ -56,6 +56,13 @@ const codexWiringAction = "run moai init --agent codex"
 // in is what creates the directory, never the readout.
 const codexHomeMissingAction = "run codex login"
 
+// codexAuthUnknownAction is the remediation phrase the auth row carries when
+// the two-stage ladder could not establish a verdict (AC-CL-010): a gap is
+// reported with the ONE command that resolves it, identical across every
+// unknown-cause axis — per-cause wording would let a runner error masquerade
+// as a logout verdict.
+const codexAuthUnknownAction = "run codex login status"
+
 // codexBinaryNotFound is the binary-row token when the codex binary is absent
 // (AC-CL-011): the readout form succeeds precisely where the launch verbs
 // refuse, so the diagnostic surface must work when the thing it diagnoses is
@@ -244,11 +251,16 @@ func (r codexReadiness) rows() [6]string {
 		homeValue += ", missing — " + codexHomeMissingAction
 	}
 
+	authValue := r.AuthProvider
+	if authValue == codexAuthUnknown {
+		authValue += " — " + codexAuthUnknownAction
+	}
+
 	format := "%-" + strconv.Itoa(codexRowLabelWidth) + "s  %s"
 	return [6]string{
 		fmt.Sprintf(format, codexRowLabelCodex, binaryValue),
 		fmt.Sprintf(format, codexRowLabelHome, homeValue),
-		fmt.Sprintf(format, codexRowLabelAuth, r.AuthProvider),
+		fmt.Sprintf(format, codexRowLabelAuth, authValue),
 		fmt.Sprintf(format, codexRowLabelWiring, codexWiringRowValue(r.Wiring)),
 		fmt.Sprintf(format, codexRowLabelAgents, strconv.Itoa(r.AgentsTOMLs)+" TOML"),
 		fmt.Sprintf(format, codexRowLabelHarness, codexHarnessCommand),

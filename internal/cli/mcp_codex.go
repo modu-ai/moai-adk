@@ -1302,7 +1302,11 @@ func ProbeCodexSetup(ctx context.Context) CodexSetupResult {
 // Read-only: it REPORTS the toggle state; mutating it is a heavier,
 // wizard-owned concern (M4).
 func handleCodexSetup(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	s := ProbeCodexSetup(ctx)
+	// Consumed through the codexSetupProbe seam (NOT the direct function) so
+	// the sentinel cross-bridge of AC-CL-007 can stub ONE probe and observe
+	// the value on every consuming surface — the launcher readout (a) and
+	// this tool's response (b) — through the same injection point.
+	s := codexSetupProbe(ctx)
 	result := map[string]any{
 		"installed":     s.Installed,
 		"auth_provider": s.AuthProvider,

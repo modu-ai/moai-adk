@@ -44,6 +44,7 @@ func rootHelpGroups() []helpGroup {
 				{"moai cc", "Run Claude Code (with bridge)"},
 				{"moai cg", "Claude + GLM hybrid mode"},
 				{"moai glm", "Run Claude Code with GLM backend"},
+				{"moai codex", "Codex readiness readout + cli/app launch"},
 				{"moai web", "Launch browser-based settings console"},
 				{"moai statusline", "Emit status line for tmux/vim"},
 			},

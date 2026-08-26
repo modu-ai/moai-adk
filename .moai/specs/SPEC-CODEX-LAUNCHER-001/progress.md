@@ -303,13 +303,86 @@ internal/cli/mcp_codex.go
 - **tty 왕복 · Windows 실행** — 기존 그대로 명시적 Gap (판정 제외 조항).
 - **`CODEX_HOME` 환경변수 상수 위치** — 임무 지침이 `internal/config/envkeys.go` 상수를 예시로 들었으나 M1 이 `codexHomeEnvVar` 를 mcp_codex.go 에 국소 상수로 세웠고 M1 검증이 그 상태로 GREEN 이었다. 검증된 M1 코드를 뒤집는 리팩터는 범위 밖으로 판단해 유지했다(인라인 문자열 0건 요건은 충족). 리드가 envkeys.go 이전을 원하면 별도 마이크로 변경으로 처리 가능.
 
+## M3 — 커맨드 표면 + 동사 라우팅 + `--spawn`: **완결** (2026-08-27)
+
+네 번째 위임(t197-m3). 산출: `internal/cli/codex_launcher.go`(신규) · 시험 4파일(`codex_launcher_test.go` · `_readout_` · `_guards_` · `_cross_test.go`, 신규) · fixture 2종(`testdata/codex-app-message.sh` / `.bat` — 플랫폼별 한 다리씩, GOOS skip 0) · `internal/web/codex_card_sentinel_test.go`(신규). 수정 3파일: `spawn.go`(tmux 부재 진단 상수화 + `checkSpawnPrereqs` 추출 — 기존 3호출자가 같은 체크를 공유) · `mcp_codex.go`(`handleCodexSetup`이 `codexSetupProbe` seam 경유로 변경, 1줄 + 주석) · `help.go`(Launchers 섹션에 codex 행 1행). 이 문서의 모든 근거는 이번 세션이 직접 실행해 관측한 것이다.
+
+설계: `codexCmd`는 런처 패밀리 관례(cc.go) 그대로 — launch 그룹 + `DisableFlagParsing` + `SilenceErrors/SilenceUsage`(진단 바이트를 상수 그대로 유지). 동사 라우팅은 패키지 수준 맵 `codexVerbRouting`(폐집합의 원본 — 미지 토큰은 맵 부재로 거부, default 분기 없음). 두 기동 자리는 acceptance 판정 어휘의 "포착 seam" 그대로: 직접 경로 `codexDirectLaunchFn`(*exec.Cmd 를 받아 7필드 포착) · spawn 경로 `codexSpawnLaunchFn`(새 창에서 실행될 대상 (dir, program, args) 계약 — program/argv 는 tmux 가 아니라 codex). tmux 실행 원시(`exec.Command("tmux")`)는 spawn.go 소유 그대로(AC-CL-016 폐집합 축2 — 이 SPEC 파일의 기동 원시는 `exec.Command(req.Program, ...)` 1곳). 종료코드 전파는 `codexPropagateLaunchError`: 자식 `*exec.ExitError` → **의도적** `exitCodeError` 변환(ResolveExitCode 가 raw 를 chain-wide 거부하므로 변환이 전파를 가능하게 하는 유일한 길), 그 외는 `execerr.StatusDetail` 기술.
+
+### E8 — RED (스켈레톤 방식)
+
+타입·상수·seam·등록만 실제이고 라우팅/기동/리드아웃 본체가 영값인 스켈레톤을 두고 시험을 먼저 돌렸다:
+
+- 명령: `go test ./internal/cli/ -v -run 'TestCodex(Command|VerbRouting|Spawn|App|Direct|Readout|Launch|Launcher|Sentinel|SpecFiles)' -count=1 -timeout 300s`
+- 관측 (rc 1): **68 RUN / 16 top-level FAIL / 4 PASS**. PASS 4개는 전부 스켈레톤 실체부의 특성화(라우팅 맵 폐집합 · 중립성 스캔 · 빌드태그/syscall 0 · tmux 진단 단일 원천)다.
+- RED 중 발견한 **시험 결함 2건** (구현 결함 아님 — 시험을 고친 뒤 구현에 들어갔다): (1) guards 의 `ExecPrimitives` 스캔이 주석 안의 `exec.Command("tmux")` 언급을 오매치 — 주석 라인 필터 추가. (2) web 의 `Installed=false` 칸이 카드의 not-installed 렌더(올바른 동작)를 시임 우회로 오판 — 칸을 `Installed=true` 로 수정.
+
+### E1 — M3 소관 AC 관측
+
+| AC | 상태 | 근거 (전 패키지 실행 안에서 통과) |
+|----|--------|---|
+| AC-CL-001 (커맨드 등록) | **PASS** | `TestCodexCommand_RegisteredInLaunchGroup` — "Launchers" 섹션 헤딩 정확히 1회 + 블록에 4 런처 동일 블록 + 심볼 비교(`codexCmd.GroupID == ccCmd.GroupID`, `Parent() == rootCmd`) · `TestCodexCommand_HelpExitsZero`(--help/-h rc 0). **해석 기록**: AC 문면의 "LAUNCH COMMANDS 그룹 헤딩"은 이 레포의 실사용자 표면에서 help.go 의 커스텀 `renderRootHelp` "Launchers" 섹션에 대응한다 — cobra 기본 usage 템플릿은 이 레포 루트 help 에 노출되지 않는다(SetHelpFunc 우회). 판정은 사용자 표면 기준으로 옮기고 cobra 그룹 심볼 판정은 그대로 유지했다 |
+| AC-CL-002 (동사 라우팅) | **PASS** | `TestCodexVerbRouting_ClosedSets`(맵에서 유도한 launch 집합 == {cli, app} · readout 집합 == {"", status}) · `_LaunchCountsPerVerb`(맨몸/status 기동 0 · cli/app 각 1 — 두 자리 합) · `_UnknownTokenRejected`(bogus·cl·CLI·Cli·--model·-x 6칸: 기동 0 · rc 비영 · stderr == 사용법 상수 `codexUsageDiag`) · `_CwdCrossChecked`(3루트 시나리오 → 포착 Dir == 해석 루트 + seam 1회) · `_AppArgvExact`(argv == [codex, app]) · `_ExitCodePropagation`(0·1·2·126·127 5칸 전파) · `_StdioIdentity`(포착 stdio == 시험 프로세스 os.Stdin/Stdout/Stderr 항등) · `_PassthroughTailExact`(`--` 뒤 `--model o3 "a b" '$x' --flag=v` 토큰 단위 일치) · `_HelpAfterDashDashIsNotHelp`(-- 뒤 --help 는 codex 소유) |
+| AC-CL-003 (--spawn 패리티) | **PASS** | `TestCodexSpawn_Parity`(cli/app --spawn → spawn 1회 · 직접 0회 · 같은 꼬리의 spawn 포착 (program, argv) 이 직접 포착과 토큰 동일 — spawn 포착의 stdio 는 nil 명시) · `_TmuxAbsentDiagnosticBytes`(cc 와 codex 의 tmux-부재 error 본문 바이트 동일 + 기동 0) · `_RejectedOnReadoutForms`(맨몸/status --spawn 거부) · `_TmuxDiagnosticSingleSource`(공유 진단 리터럴이 비시험 Go 전체에서 정확히 1회 — `errTmuxSessionRequired` 상수) · `_RealAssemblyThroughStubTmux`(실제 spawn 조립: tmux 에 넘어가는 명령 문자열이 셸 인용된 토큰열 + tmux 실패 래핑). **해석 기록**: AC 문면 "spawnLaunch 를 1회 호출"은 tmux-새-창 경로 seam 을 가리킨다 — (program, argv) 가 tmux 가 아니라 새 창 대상 codex 여야 한다는 단서("기록 대상이 tmux 면 이 등식은 성립할 수 없다")가 기존 `spawnLaunch(out, sub, args)` 의 moai-재발행 조립과 양립하지 않으므로, codex 는 자체 spawn seam(새 창 대상 계약)을 갖되 전제 체크(`checkSpawnPrereqs`)·진단 상수·tmux 원시 호출을 기존 spawnLaunch 와 공유한다. 진단 바이트 동등은 error 본문 직접 비교로 판정했다(cc 의 stderr 는 cobra 가 "Error: " 접두를 붙이므로 전체 stderr 가 아닌 본문 기준) |
+| AC-CL-004 (리드아웃 실제 값) | **PASS — 커맨드 다리 완결** | `TestCodexReadout_CommandTenCells`(M2 다리와 동일 상수로 배선 행 `==` + 두 형태 값 동일) · `_SentinelRowsAtCommandSurface`(세 sentinel 행 — `SENTINEL-VER-9x9` · `/sentinel/path/codex` · `sentinel-provider` — 이 커맨드 표면에서 M2 상수와 정확 일치) |
+| AC-CL-006 (정보성) | **PASS — 커맨드 다리 완결** | 같은 시험 10칸: rc 0 · 배선 행 상수 일치 · `moai init --agent codex` 포함 · stdout 전용 · stderr 0바이트 · 금지어 6종 히트 0 · `TestCodexReadout_WiredStateOmitsAction`(wired 에서 조치 문구 부재) |
+| AC-CL-007 (분류 단일성) | **PASS — (b)(c) 교차 완결** | `TestCodexSentinel_CrossSurfacesCommandAndMCP` — 스텁 하나로 (a) 런처 리드아웃 · (b) `codex_setup` 응답(`auth_provider`·`binary`·`version` 전부 sentinel 정확 일치) 각 1회. (b) 를 위해 `handleCodexSetup` 이 `codexSetupProbe` seam 경유로 변경됐다(기본값이 `ProbeCodexSetup` 이므로 프로덕션 동작 불변). (c) web 카드: `internal/web/codex_card_sentinel_test.go` — 주입 시임에 sentinel 을 주면 렌더에 세 sentinel 전부 원문 등장(`codexAuthProviderLabel` 의 default 분기가 미지 토큰을 분류 없이 통과 — 두 번째 분류기 부재의 구조적 증거). **특성화**: (c) 는 이미 배선돼 있던 소비(SPEC-MCP-CONSOLE-001)를 sentinel 교차로 최초 판정한 것 — RED 가 아니라 이 시점에 판정 가능해진 칸이다. **폐집합 방정식 유지 실측**: `grep -rln '"chatgpt"\|"apiKey"' internal/ --include="*.go" \| grep -v _test` → 정확히 `{internal/cli/mcp_codex.go, internal/web/codex_state.go}` (개정판 그대로) — 이번 신규 파일의 리터럴 기여 0건 |
+| AC-CL-010 (판정 불가 조치) | **PASS** | `TestCodexReadout_UnknownAuthFourAxes` — 네 축(auth.json 부재+양스트림 비어 rc 0 · 부재+러너 오류 · 부재+비영 rc+문법 불일치 · auth.json 파싱 실패)을 **실제 사다리 경유**(공유 프로브 seam 스텁 아님 — LookPath/러너 스텁만)로 돌려 네 칸 모두 auth 행 전문이 이름 붙은 상수 `auth ... unknown — run codex login status` 와 정확 일치 + 폐집합 {logged out, logged-out, not logged in, no credentials, signed out} 히트 0. 이 AC 는 커맨드 표면이 있어야만 판정 가능해 M3 소관이었다 — 리드 지침의 열거(004/006/011/012)에 없어 재점검에서 발견, 구현(`rows()` 의 unknown 조치 문구 — 상수 `codexAuthUnknownAction`)과 시험을 이번에 추가했다. sentinel 칸(조치 없음)은 M2 상수 그대로 유지 |
+| AC-CL-011 (codex 부재) | **PASS — 커맨드 다리 완결** | `TestCodexReadout_BinaryAbsentFourCells`(바이너리 부재 × 배선 2 × 형태 2 = 4칸: rc 0 · 행 라벨 집합 == 6종 폐집합 · 바이너리 행 `not found` · 배선 행 상수) · `TestCodexLaunch_BinaryAbsentSingleDiagnostic`(cli/app: rc 비영 · 기동 0 · stderr 정확히 1줄 == 설치 상수 `codexInstallHint`) |
+| AC-CL-012 (쓰기 없음) | **PASS — 커맨드 다리 완결** | `TestCodexLauncher_NoWriteSnapshot` — 격리 홈(HOME·XDG 3종·TMPDIR·CLAUDE_CONFIG_DIR 전부 격리 아래; 프로젝트 루트·CODEX_HOME·프로필 디렉터리도 그 안)에서 8런(4형태 × CODEX_HOME 존재/부재): 실행 전후 격리 홈 트리 전체(파일 목록·mode·mtime 나노초) 동일 · 부재 CODEX_HOME 은 실행 후에도 `IsNotExist` + home 행이 missing·조치 보고 |
+| AC-CL-013 (중립성) | **PASS** | `TestCodexCommand_NeutralityScan` — `codexCmd` 의 string/[]string 필드(리플렉션 전수) + 모든 플래그 usage 에서 금지 패턴 9종(SPEC-/REQ-/카드id/ISO날짜/7자리SHA//Users///home//CLAUDE.local/.moai/reports) 0건 + 비-ASCII 0건. RED 중 상수의 em-dash 2건을 이 스캔이 잡아 하이픈으로 수정했다 — 스캔이 실제로 판정력이 있었다는 증거 |
+| AC-CL-014 (게이트·크로스 플랫폼) | **PASS** | 정적: `TestCodexSpecFiles_NoBuildTagsOrSyscall`(이 SPEC 파일 2종에서 OS 빌드태그 0 · `"syscall"` import 0 · 교체 식별자 0 · GOOS 접미 파일 0). 실행: `go build ./...` rc 0 · `go vet ./...` rc 0 · `GOOS=windows go vet ./internal/cli/ ./internal/web/` rc 0 · `GOOS=windows go test -c ./internal/cli/` rc 0(링크 판정). GOOS skip 는 기존 fixture 3칸뿐 — 이번 M3 시험(플랫폼별 fixture 다리 포함)은 전 플랫폼 실행형, macOS 실행에서 GOOS skip 0 관측 |
+| AC-CL-015 (공유 러너 무회귀) | **PASS (재관측)** | 회귀축 `go test ./internal/cli/ -json -run Codex -count=1 -timeout 1200s` → rc 0 · 이 SPEC 시험 skip 0 · 기존 skip 5건은 전부 `TestCodexLive_*`(SPEC-CODEX-PHASE2-001 소관 opt-in 라이브 프로브, M1/M2 기록과 동일 구성). **이름 대조**: `git grep` HEAD(135) vs 작업 트리(169) → **삭제·개명 0건 / 추가 34건**. 순수함수 3종 + M1·M2 함수 커버리지 100% 유지(아래 E3) |
+| AC-CL-016 (데스크톱 위임) | **PASS** | `TestCodexVerbRouting_AppArgvExact`(argv [codex, app]) · `TestCodexApp_FailureHasNoFollowup`(seam 실패 후 추가 기동 0 · rc 동일) · `_LaunchedProgramsClosedSet`(기동-bearing 칸 전체의 포착 basename 합집합 == {codex} — 축1) · `TestCodexSpecFiles_ExecPrimitivesCodexOnly`(이 SPEC 파일의 기동 원시 호출 0번 인자가 전부 codex 경로 변수 — 축2, `codex_readiness.go` 는 기동 0건) · `_OutputPassthroughDirect`/`_OutputPassthroughSpawn`(fixture 출력 — `install the desktop app from ...` — 이 직접/spawn 양경로에서 바이트 동일) · `_RealChildExitCodePropagates`(실자식 exit 7 → moai rc 7 — env 훅 `CODEX_FIXTURE_EXIT` 로 전 플랫폼 동일 시맨틱) |
+
+### E3 — 커버리지
+
+`go tool cover -func=/tmp/t197_m3_cover4.out` — `codex_launcher.go` 12함수: 11개 100% + `runCodex` 95.7%(미커버는 `-h` 단축 루프의 잔여 라인). M1 순수함수 5종(`classifyCodexAuthFile`·`readCodexAuthFile`·`combineCodexStreams`·`parseCodexAuthLine`·`classifyCodexAuth`)과 M2 함수 7종 100% 유지 — 회귀 없음. 패키지 전체 79.1%(M2 79.0% → +0.1pp). `codex_readiness.go` 도 전 함수 100% 유지(auth unknown 조치 추가 후 포함).
+
+### E2 — 크로스 플랫폼 (이번 세션 관측)
+
+- `go build ./...` → rc 0
+- `go vet ./...` → rc 0 · `GOOS=windows go vet ./internal/cli/ ./internal/web/` → rc 0
+- `GOOS=windows go test -c ./internal/cli/` → rc 0
+- `gofmt -l` 신규/수정 전 파일 → 출력 없음
+- `golangci-lint run` → `0 issues.` (초회 8건 — errcheck 7 · unused 1 — 을 수정 후 재측정)
+
+### E4 — 서브에이전트 경계
+
+- 신규 5파일 grep `AskUserQuestion` → 0건. CLI 코드는 프롬프트 없이 동사·플래그·상수 진단으로만 응답한다.
+
+### E5 — lint
+
+- `golangci-lint run` → `0 issues.` (rc 0)
+
+### E6 — 커밋 (push 안 함)
+
+- 이번 세션 커밋 1건 — 아래 §E.3 신호의 `run_commit_sha` 참조. 명시적 pathspec 만 staging. push 는 리드 지시(Do NOT push)에 따라 **하지 않았다**.
+
+### E7 — blocker
+
+없음. verify 스냅샷은 워킹트리 키 `108b77fc7d60428e9e7ce3434764bab9c12f9cd8:d9ec49e84f1d4d56` 로 기록(전체 수트 · 정적 배치 2체크, 전부 rc 0).
+
+### 실행 시간 재실측
+
+- internal/cli 전체(커버리지 포함): **301.465s**(최종판) — M2 181.6s 대비 증가(M3 시험 91케이스 추가). 180칸 봉쇄 행렬(SPEC-CODEX-INIT-001 AC-CI-011) 기준선은 이 최신값으로 갱신한다. 중간 실측 217.6s/221.2s/235.2s — 같은 트리에서 부하 편차가 있으니 상한 여유는 1200s 유지 권장.
+
+### 남은 Gap (정직한 목록)
+
+- **tty 왕복 · Windows 실행** — 판정 제외 조항 그대로 (운영자 수동 측정 · release multi-OS 레그 몫).
+- **부채 D4 · D5 · D6 · D8** — M3 범위 밖, 그대로. (D7 은 M1 에서 acceptance 판 우선 확정 — 이번 구현도 참조 문법 재사용 없음)
+- **`runCodex` 95.7%** — 미커버는 `-h` 단축 루프 잔여 라인. 순수함수 3종 100% 게이트(AC-CL-015)와 무관.
+- **`requireTmuxSpawnEnv` 환경 skip** — tmux/moai 바이너리가 없는 환경에서 spawn 성공-경로 칸 3종(`Spawn_Parity` 본체 · `_RealAssemblyThroughStubTmux` · `LaunchedProgramsClosedSet` · `_OutputPassthroughSpawn`)이 기존 `spawn_test.go` 의 `requireTmuxBinary` 관행(바이너리 부재 시 skip — LookPath 실호출이 판정 대상이므로 스텁하면 그 체크를 덮지 못함)을 따라 skip 될 수 있다. GOOS skip 가 아니라 AC-CL-014의 "GOOS skip 3칸" 계약과 무관하며, 이 머신 관측에서는 skip 0이었다.
+- **M4(도움말 문안 + 필요 시 템플릿 문서) 잔여** — `codexCmd` 의 Short/Long 은 동작에 충분한 최소문안으로 들어갔다(중립성 스캔 통과). 사용자 안내문 정비는 M4 소관.
+
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
 run_complete_at: 2026-08-27
-run_commit_sha: pending-backfill-m2
-run_status: green-m2
-ac_pass_count: 4
+run_commit_sha: pending-backfill-m3
+run_status: green-m3
+ac_pass_count: 16
 ac_fail_count: 0
 preserve_list_post_run_count: 3
 l44_pre_commit_fetch: skip-worktree-isolated-lane
@@ -321,8 +394,8 @@ cross_platform_build:
   goos_windows_vet: pass
   goos_windows_test_compile: pass
   gofmt: pass
-total_run_phase_files: 6
+total_run_phase_files: 18
 m1_to_mN_commit_strategy: per-milestone
 ```
 
-M2 완결 시점의 신호. `ac_pass_count: 4` = M1 3건(AC-CL-008 · 009 · 015) + M2 1건(AC-CL-005 완결). AC-CL-004 · 006 · 011 · 012 의 M2 판정 가능 다리는 전부 통과했으나 커맨드 수준 다리가 M3 에 남아 있고, AC-CL-007 은 폐집합 블로커(§E.2 M2 E7)가 리드 판정 대기 중이다. M3(커맨드 표면) · M4(도움말 문안) 잔여 — `run_status: green-m2` 는 M2 한정 GREEN 이지 run-phase 전체 완료가 아니다. §E.3 최종본(전 마일스톤 완료)은 그때 갱신한다.
+M3 완결 시점의 신호. `ac_pass_count: 16` = AC-CL-001~016 전부 판정 가능한 다리에서 PASS — M1(008·009·015) + M2(005) + M3(001·002·003·004·006·007·010·011·012·013·014·016). AC-CL-007 의 폐집합은 개정판(2026-08-27 운영자 예외 명시, `698de4683`) 그대로 유지됨을 M3 가 실측했다. 판정 제외 조항(tty 왕복 · 실 바이너리 auth 왕복 · 실 앱 기동 · PR 단계 Windows 실행)과 부채 D4·D5·D6·D8 은 Gap 으로 남는다(§E.2 M3 Gap 목록). M4(도움말 문안) 잔여 — `run_status: green-m3` 는 M3 한정 GREEN 이며 run-phase 전체 완료 선언은 M4 완결 시점에 한다. §E.3 최종본은 그때 갱신한다.
