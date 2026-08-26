@@ -58,9 +58,9 @@ description: 讲解按任务性质与质量/成本目标为每个智能体分配
 
 | 配置文件 (profile) | CLI 标志 | 特性 |
 |---------------|-----------|------|
-| **high** | `--model-policy high` | 质量优先。调用频率最低的两行使用 `max` effort |
-| **medium**（默认） | `--model-policy medium` | 质量与成本的平衡。成本/得分曲线的拐点 |
-| **low** | `--model-policy low` | 每任务成本最低。智能体行降到 Opus `low` |
+| **high** | `--model-policy high` | 质量优先。审计·顾问·协调行保持 `high`，撰写行停在 `medium` |
+| **medium**（默认） | `--model-policy medium` | 平衡。与 `high` 只在两行(builder-harness · e2e-tester)上不同 |
+| **low** | `--model-policy low` | 每任务成本最低。多数智能体行降到 Opus `medium` |
 
 {{< callout type="tip" >}}
 **名称对照**： `llm.yaml` 的 `profile` 字段、legacy `performance_tier` 别名与 CLI 标志 `--model-policy` 用的都是 `high`/`medium`/`low` 三个值，1:1 对应。默认值是 `medium`。旧顶层档位名 `max` 至今仍作为 `high` 的**只读别名**处理（让既有配置继续可读），但保存时始终写入 `high`。无需单独迁移。`performance_tier` 仅在 `profile` 缺失时读取。
@@ -70,25 +70,26 @@ description: 讲解按任务性质与质量/成本目标为每个智能体分配
 
 ## 各智能体分配表
 
-下面 33 个格子就是配置矩阵（11 个智能体 × 3 个配置文件）。每个格子是解析器在调用时注入的 `{model, effort}` 对。编排器主会话不是被调用的智能体，因此不在表中。
+下面 36 个格子就是配置矩阵（12 个智能体 × 3 个配置文件）。每个格子是解析器在调用时注入的 `{model, effort}` 对。编排器主会话不是被调用的智能体，因此不在表中。
 
-### Manager Agents（5 个）
+### Manager Agents（6 个）
 
 | 智能体 | high | medium | low |
 |---------|------|--------|-----|
-| manager-spec | opus / high | opus / medium | opus / low |
-| manager-develop | opus / max | opus / medium | opus / low |
-| manager-docs | opus / medium | opus / low | sonnet / low |
+| manager-spec | opus / medium | opus / medium | opus / medium |
+| manager-develop | opus / medium | opus / medium | opus / medium |
+| manager-docs | sonnet / low | sonnet / low | sonnet / low |
 | manager-git | sonnet / low | sonnet / low | sonnet / low |
-| manager-design | opus / high | opus / medium | opus / low |
+| manager-design | opus / high | opus / high | opus / medium |
+| manager-lead | opus / high | opus / high | opus / medium |
 
 ### Evaluator · Advisor · Builder · Specialist Agents（5 个）
 
 | 智能体 | high | medium | low |
 |---------|------|--------|-----|
-| plan-auditor | opus / high | opus / medium | opus / low |
-| sync-auditor | opus / high | opus / medium | opus / low |
-| super-advisor | opus / max | opus / high | opus / medium |
+| plan-auditor | opus / high | opus / high | opus / medium |
+| sync-auditor | opus / high | opus / high | opus / medium |
+| super-advisor | opus / high | opus / high | opus / high |
 | builder-harness | opus / high | opus / medium | opus / low |
 | e2e-tester | opus / medium | opus / low | sonnet / low |
 
@@ -104,11 +105,13 @@ description: 讲解按任务性质与质量/成本目标为每个智能体分配
 
 ## 分配原则
 
-- **所有智能体行都用 Opus**： `manager-spec`、`manager-develop`、`plan-auditor`、`sync-auditor`、`manager-design`、`builder-harness`、`manager-docs`、`e2e-tester` 等多轮工作全部留在 Opus。因为 Opus 的 `low` 比任何 effort 的 Sonnet 得分高、每任务成本却更低。
-- **Sonnet 只用于单发行**： `manager-git` 的机械性工作与 `Explore` 探索都是一次以输入为主的 pass 就结束，不存在多步完赛失败的问题，而在这些位置 Sonnet 更低的输入单价是决定性的。这两行在三个配置文件下都固定不变。
-- **`max` 只在两格**： 仅 `high` 配置文件的 `manager-develop` 与 `super-advisor`。这是调用频率最低、且一次判断会大幅左右后续成本的两行。
+- **开销流向做判断的行**： 这套策略是敲定的运营者判断，不是成本/得分推导。审计·顾问行（`plan-auditor`、`sync-auditor`、`super-advisor`）与协调行（`manager-design`、`manager-lead`）保持 `high`，而撰写·实现行（`manager-spec`、`manager-develop`）在三个配置文件中都停在 `medium`。
+- **所有智能体行都用 Opus**： `manager-spec`、`manager-develop`、`plan-auditor`、`sync-auditor`、`manager-design`、`manager-lead`、`builder-harness`、`e2e-tester` 等多轮工作全部留在 Opus。因为 Opus 的 `low` 比任何 effort 的 Sonnet 得分高、每任务成本却更低。
+- **Sonnet 只用于单发·以输入为主的行**： `manager-docs` 的文档整理、`manager-git` 的机械性工作与 `Explore` 探索都是一次以输入为主的 pass 就结束，不存在多步完赛失败的问题，而在这些位置 Sonnet 更低的输入单价是决定性的。这三行在三个配置文件下都固定为 `sonnet / low`。
+- **没有任何行取 `max`**： `max` 仍作为 `high` 之上唯一的级别留在词汇表中，但当前没有格子使用它。
 - **`xhigh` 哪里都不用**： 在 Opus 上得分与 `high` 相同，成本却多 49%。
-- **`low` 降的是 effort，不是模型等级**： 智能体行降到 Opus `low`，只有 `manager-docs` 与 `e2e-tester` 进一步退到 Sonnet。
+
+**`manager-lead` 现在是矩阵的一行。** 此前它完全不在表里，解析成未映射智能体的 `inherit` 哨兵值 —— Tier L 协调者拿到的是会话碰巧在用的模型。现在它和其他保留智能体一样拥有自己的行，是注入与覆盖的对象。
 
 制定计划的智能体不得审计自己的计划——`plan-auditor` 与 `sync-auditor` 因此与 `manager-spec` 分开分配。防偏差的力量不来自格子取值，而来自目录结构本身。
 
@@ -158,6 +161,23 @@ flowchart TD
     G --> H
     H --> I[".moai/logs/agent-model-audit.jsonl"]
 ```
+
+### GLM 后端的 reasoning 上限
+
+在 GLM 后端（`moai glm`，或 `moai cg` 的 GLM 面板）上，effort 不能照搬 Claude 的 5 级词汇。GLM-5.3 **始终推理** —— 不支持关闭 reasoning，请求关闭会直接失败。调节轴只有三档 `reasoning_effort`(low / high / max)，Claude effort 向它收拢：
+
+| Claude effort | GLM reasoning_effort |
+|--------------|---------------------|
+| `low` | `low` |
+| `medium` | `max` |
+| `high` | `max` |
+| `xhigh` | `max` |
+| `max` | `max` |
+| (无法识别的值) | `max` —— 全称条款: 绝不推理不足 |
+
+也就是说**上限是 `max`**: `low` 以上的所有 Claude effort 都收敛到 reasoning-max，无法识别的值落到 reasoning-max，没有显式覆盖的 GLM 会话默认以 reasoning-max 运行。reasoning-high 仍是有效的 wire 值，但没有任何 Claude effort 收拢到它上面。实现智能体 `manager-develop` 无论收拢结果如何都强制 reasoning-max（z.ai 的"编码任务用 reasoning max"建议），`manager-git` 在三个配置文件中都是 `low` effort，占据 reasoning-low 的位置。
+
+这套映射的源头是代码而不是本页 —— 运行时 SSOT 为 `internal/template/glm_effort_overlay.go`。
 
 ## 声明与解读不一致时（漂移）
 
@@ -225,7 +245,7 @@ moai update
 ### 用 CLI 标志直接设置
 
 ```bash
-moai init my-project --model-policy high    # 最高质量 (2 行使用 max effort)
+moai init my-project --model-policy high    # 质量优先 (审计·顾问·协调行 high)
 moai init my-project --model-policy medium  # 平衡 (默认值)
 moai init my-project --model-policy low     # 每任务成本最低
 ```
@@ -238,7 +258,7 @@ moai init my-project --model-policy low     # 每任务成本最低
 
 ## 下一步
 
-- [配置矩阵](/zh/advanced/profile-matrix/) —— 33 个格子的推导依据（基准测试）与解析器优先级细节
+- [配置矩阵](/zh/advanced/profile-matrix/) —— 36 个格子的布置依据（判断加权策略）与解析器优先级细节
 - [CG 模式](/zh/multi-llm/cg-mode) —— Claude 领队 + GLM 工作者的混合省钱方式
 - [自主级别](/zh/advanced/autonomy-tier/) —— `MOAI_AUTONOMY_TIER` 的成本 · 速度取舍
 - [CLI 参考](/zh/getting-started/cli) —— `moai init`、`moai update`、`moai model profile` 详解

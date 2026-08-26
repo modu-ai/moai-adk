@@ -128,6 +128,7 @@ After a card is picked, it continues like this:
 - **Not the board.** Which column a card sits in is held by the lead session and the SPEC status, not by this file.
 - **Not the source of truth for work in progress.** Once a card has a SPEC, the SPEC artifacts are the reference; the backlog item is only a pointer to it.
 - **It does not fill itself.** The tool never scrapes TODO comments, open issues, or audit findings into the queue. A human puts items in.
+- **The guidance surfaces can be switched off.** The session-start summary, the statusline TODO segment, and the automatic routing turn off with `workflow.todo.enabled: false` in `workflow.yaml` (see the [configuration reference](/en/advanced/config-sections/)). The command and its verbs keep working when off.
 
 ## CLI surface
 
