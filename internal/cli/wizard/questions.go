@@ -115,9 +115,9 @@ func DefaultQuestions(projectRoot string) []Question {
 			// for new projects (SPEC-CLI-WIZARD-RESTRUCTURE-001 REQ-WIZ-008). Max/High
 			// remains a fully selectable tier — only the DEFAULT moved.
 			Options: []Option{
-				{Label: "Max", Value: "high", Desc: "Opus 5 (max~low) + Sonnet (low, single-shot rows only) — Max $200 plan"},
-				{Label: "Medium (Recommended)", Value: "medium", Desc: "Opus 5 (high~low) + Sonnet (low, single-shot rows only) — Max $100 plan"},
-				{Label: "Low", Value: "low", Desc: "Opus 5 (medium~low) + Sonnet (low, docs/e2e/single-shot rows) — Plus $20 plan"},
+				{Label: "Max", Value: "high", Desc: "Opus 5 (high~medium) + Sonnet (low, docs/single-shot rows) — Max $200 plan"},
+				{Label: "Medium (Recommended)", Value: "medium", Desc: "Opus 5 (high~low) + Sonnet (low, docs/single-shot rows) — Max $100 plan"},
+				{Label: "Low", Value: "low", Desc: "Opus 5 (high~low) + Sonnet (low, docs/e2e/single-shot rows) — Plus $20 plan"},
 			},
 			Default:  "medium",
 			Required: true,

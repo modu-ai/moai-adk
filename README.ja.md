@@ -116,9 +116,21 @@ moai glm -f lane-3            # …GLM バックエンドのレーンも同じ�
 
 定義と例を備えた正式な用語集: [カンバンボード用語](https://adk.mo.ai.kr/ja/core-concepts/kanban-board-terms)
 
+カードも形によって、通る列が変わる。リードはカードが `backlog` を離れるとき、3 つのクラスに分類してディスパッチに名前を付ける。
+
+| クラス | 形 | 近道 |
+|---|---|---|
+| A — 即時クローズ | 1 ファイル・1 行、設計判断なし、回帰は CI が捕まえる | 1 つのセッションが PR まで丸ごと (`plan` を飛ばす) |
+| B — 原因未確認の欠陥 | 壊れているのは明確なのに、原因がまだ立っていない | `run → sync` (`plan` なし、SPEC なし) |
+| C — 設計変更 | 決定を含むか、サブシステムにまたがる | 3 列すべて |
+
+クラス A は主張ではなく、確認された証拠だけで認める — 1 ファイルに測定された diff と、マージされる HEAD のグリーンの CI を引用できなければクラス A ではない。クラス B は `plan` だけを飛ばし、sync ゲートのレビューはそのまま回り、原因確立の証拠 (再現コマンドと出力) をカードの進行記録に残す。
+
+詳しく: [カンバンモード — カードクラス](https://adk.mo.ai.kr/ja/advanced/kanban-mode)
+
 ### ボードを目で見る
 
-`moai web` はローカル・コンソールを立ち上げる。カンバン画面でカンバン・チェーンと SPEC パイプラインを一緒に眺め、Overview・Specs・Monitor・Settings 画面も併せ持つ。
+`moai web` はローカル・コンソールを立ち上げる。カンバン画面でカンバン・チェーンと SPEC パイプラインを一緒に眺め、Overview・Specs・Monitor・Settings・Todo 画面も併せ持つ。
 
 <p align="center">
   <img src="./assets/images/moai-web-overview.png" alt="moai web コンソール Overview 画面 — SPEC 集計、進行中 SPEC 一覧、セッション・レジストリ" width="90%">
@@ -349,7 +361,7 @@ SPEC ごとに独立した作業ツリーを与える。`moai cc -w <名前>` �
 | CWD 衝突の解決 | `(worktree_path, session_id)` の組で再利用パスを区別 |
 | 深さの上限 | 入れ子の複雑さを制限 |
 
-> **今すぐ使える**: `moai cc -k`（または `moai glm -k`）でリードを立ち上げ、`-k --name <role>` でコンパニオンを 1 つずつ接続する — ターミナル 1 台に 1 つ、手で立ち上げる。`moai chain <status|lineage|back|list|prune>` で系譜を読み、`moai todo`（引数なしでキュー表示、`add`·`list`·`next`·`done`·`unpick`·`drop`·`undrop`·`edit`·`move`、2 語以上はそのままカード追加）で `backlog` 列を運用する。起動手順は上の「v3.1 の新機能 — カンバンモード」節にある。
+> **今すぐ使える**: `moai cc -k`（または `moai glm -k`）でリードを立ち上げ、`-k --name <role>` でコンパニオンを 1 つずつ接続する — ターミナル 1 台に 1 つ、手で立ち上げる。`moai chain <status|lineage|back|list|prune>` で系譜を読み、`moai todo`（引数なしでキュー表示、`add`·`list`·`next`·`done`·`unpick`·`drop`·`undrop`·`edit`·`move`·`analyze`、2 語以上はそのままカード追加）で `backlog` 列を運用する。起動手順は上の「v3.1 の新機能 — カンバンモード」節にある。
 
 > 詳しくは: [カンバンモード・ガイド](https://adk.mo.ai.kr/ja/advanced/kanban-mode)
 
@@ -399,11 +411,15 @@ AI エージェント同士がコンテキスト・不変条件・危険区域�
   <img src="./assets/images/moai-web-settings.png" alt="moai web コンソール設定画面 — プロファイルバーと 11 個の設定タブ" width="90%">
 </p>
 
-`moai web` がローカルホスト限定のコンソールを開く。画面は Overview・Kanban・Specs・Monitor・Settings の 5 つで、設定画面は Identity・Language・LLM・3rd Party LLM・Workflow・Git & Worktree・Audit・Agents・Report・MCP・Cross-Session の 11 タブに分かれる。プロファイルの作成・改名・削除も同じ画面で行う。
+`moai web` がローカルホスト限定のコンソールを開く。画面は Overview・Kanban・Specs・Monitor・Settings・Todo の 6 つで、設定画面は Identity・Language・LLM・3rd Party LLM・Workflow・Git & Worktree・Audit・Agents・Report・MCP・Cross-Session の 11 タブに分かれる。プロファイルの作成・改名・削除も同じ画面で行う。
 
 ### ref / domain スキル
 
 ref スキル 11 個 (`moai-ref-api-patterns`、`moai-ref-owasp-checklist`、`moai-ref-llm-security`、`moai-ref-react-patterns`、`moai-ref-testing-pyramid`、`moai-ref-ui-polish`、`moai-ref-secops`、`moai-ref-supply-chain`、`moai-ref-seo`、`moai-ref-git-workflow`、`moai-ref-cross-model-audit`) と domain スキル 7 個 (`moai-domain-backend`、`moai-domain-frontend`、`moai-domain-database`、`moai-domain-design-dna`、`moai-domain-html-report`、`moai-domain-humanize`、`moai-domain-svg-infographic`) がエージェントに現場の知識を注入する。
+
+### SVG 技術インフォグラフィック
+
+`moai-domain-svg-infographic` スキルは編集可能な SVG 技術インフォグラフィックを作る。マークアップを書く前に座標を数値で計算し、完成したファイルは決定論的なソース lint と寸法検証付き 2 倍解像度 PNG レンダーを通る。承認ゲートフロー、前後比較、KPI カードグリッド、意思決定マトリクス、レイヤースタック、ネストしたスコープ、プロセスフロー、ロードマップタイムライン、コンポーネントトポロジーの 9 形式を外部カタログのベンチマークで実測し、すべて再現可能であることを確認した (形式別の成果物と判定: `.moai/reports/t272/verdict.md`)。
 
 ### クロスプラットフォーム
 
@@ -484,9 +500,9 @@ flowchart TD
 ### ステータスラインの読み方
 
 ```
-🤖 Opus | 🧠 xhigh·t | ♻️ 87% | 🔅 v2.1.212 | 🗿 v3.1.2 | ⏳ 2h 34m | 💬 MoAI
+🤖 Opus | 🧠 xhigh·t | ♻️ 87% | 🔅 v2.1.212 | 🗿 v3.1.3 | ⏳ 2h 34m | 💬 MoAI
 🪫 CW: ████████░░ 88% (⚠️/clear) | 🔋 5H: ████░░░░░░ 45% (4h 30m) | 🪫 7D: ████████░░ 82% (Jan 21)
-📁 moai-adk-go | 📡 modu-ai/moai-adk, 7/3 | 🅱️ [WT] release/v3.1.2 +3 | 💾 +1 M2 ?0 | 📋 [run SPEC-AUTH-001-run] | 💌 PR #1042 (⌥approved)
+📁 moai-adk-go | 📡 modu-ai/moai-adk, 7/3 | 🅱️ [WT] release/v3.1.3 +3 | 💾 +1 M2 ?0 | 📋 [run SPEC-AUTH-001-run] | 💌 PR #1042 (⌥approved)
 🏷️ run | 👤 manager-develop | 🔄 TODO: 1/3
 ```
 
@@ -668,16 +684,18 @@ z.ai GLM を Claude Code の代替バックエンドとして使う。環境変�
 | `moai glm` | GLM | GLM | 推奨 | 約 70% |
 | `moai cg` | Claude | GLM | **必須** | 約 60% |
 
-GLM Coding Plan は月 $10 から。glm-5.3、glm-4.7、glm-4.5-air と無料モデル (GLM-4.7-Flash, GLM-4.5-Flash) が使える。
+GLM Coding Plan は月 $10 から。glm-5.3-flash（デフォルト）、glm-5.3、glm-4.7、glm-4.5-air と無料モデル (GLM-4.7-Flash, GLM-4.5-Flash) が使える。
 
 Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて GLM モデルにマッピングされる:
 
 | Claude ティア | GLM モデル | コンテキスト |
 |---|---|---|
-| Opus | glm-5.3 | 1M |
-| Sonnet | glm-5.3 | 1M |
-| Haiku | glm-5.3 | 1M |
-| Fable | glm-5.3 | 1M |
+| Opus | glm-5.3-flash | 1M |
+| Sonnet | glm-5.3-flash | 1M |
+| Haiku | glm-5.3-flash | 1M |
+| Fable | glm-5.3-flash | 1M |
+
+> glm-5.3 はどのティアスロットでも引き続き選択できます（`llm.yaml` の `llm.glm.models.*`）。スロットを戻すのも 1 行の設定変更です。
 
 > 詳しくは: [Multi-LLM ガイド](https://adk.mo.ai.kr/ja/multi-llm) · [z.ai 料金](https://docs.z.ai/guides/overview/pricing)
 
@@ -729,7 +747,7 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて G
 | `moai memory <doctor\|archive>` | エージェント・メモリの点検と古い項目の保管 |
 | `moai tokens record` | プール別トークン使用の台帳記録 |
 | `moai clean [--home]` | 古い実行成果物の整理。`--home` を付けると `~/.moai` を許可リストの範囲で片付ける。既定は dry-run で、`--force` を与えて初めて実際に消す |
-| `moai web` | Web コンソール — 5 画面 (Overview · Kanban · Specs · Monitor · Settings)、11 タブ設定 |
+| `moai web` | Web コンソール — 6 画面 (Overview · Kanban · Specs · Monitor · Settings · Todo)、11 タブ設定 |
 
 > 全 49 コマンド: [CLI リファレンス](https://adk.mo.ai.kr/ja/cli-reference)
 
@@ -739,7 +757,7 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて G
 
 **domain (専門領域) 7 個**: `moai-domain-backend`, `moai-domain-frontend`, `moai-domain-database`, `moai-domain-design-dna`, `moai-domain-html-report`, `moai-domain-humanize`, `moai-domain-svg-infographic`
 
-`moai-domain-design-dna` は v3.1.1 で新しく入った。スクリーンショットでも画像の束でも生きた URL でも、参考にするデザインを 1 つ受け取り、色・余白・角丸・タイポグラフィといった測れる値と、そのデザインの質感、特殊なレンダリング効果までを Design DNA JSON 一式へ逆抽出する。その JSON を再び入れれば、同じ質感を持つ新しい成果物を作る — 「この画面のように作って」を言葉ではなく値で運ぶ経路だ。
+`moai-domain-design-dna` は v3.1.1 で新しく入った。スクリーンショットでも画像の束でも生きた URL でも、参考にするデザインを 1 つ受け取り、色・余白・角丸・タイポグラフィといった測れる値と、そのデザインの質感、特殊なレンダリング効果までを Design DNA JSON 一式へ逆抽出する。その JSON を再び入れれば、同じ質感を持つ新しい成果物を作る — 「この画面のように作って」を言葉ではなく値で運ぶ経路だ。ダイアグラムプロファイルにも対応している: アクティブなプロファイルの印はプロジェクトルートの `.design-dna/` 配下に保存されて `moai update` を生き延び、オプトインの mermaid・drawio インポータはソースを信頼しない入力として扱う — 座標・色・フォント・レイアウトは持ち越されない。
 
 ### CHANGELOG
 
@@ -760,7 +778,7 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて G
 ### ステータスラインのバージョン表示は何を意味する?
 
 ```
-🗿 v3.1.1 -> 🗿 v3.1.2
+🗿 v3.1.2 -> 🗿 v3.1.3
 ```
 
 前の値が現在インストールされている moai-adk のバージョンで、矢印は利用可能な更新があることを示す。`moai update` を実行すると消える。

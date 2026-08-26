@@ -55,3 +55,23 @@ gate:
     rules_dir: ".moai/config/astgrep-rules"
     block_on_error: false
     warn_only_mode: true
+  # The graph-freshness step checks the staleness of the project's graph
+  # layers (codemaps docs, the @MX index, the edges artifact) before commit
+  # and reports a per-layer verdict. Advisory by default — pre-commit is the
+  # wrong place to force a docs regeneration — with blocking opt-in below.
+  # The verdict is always emitted; a disabled step emits an explicit skip
+  # notice, never silence. Run `moai graph check` standalone for the full
+  # numeric report and exit codes.
+  graph_freshness:
+    enabled: true
+    blocking: false
+    # Red line for the codemaps layer: at or above this many described-source
+    # files changed since the docs' stamped generation commit, the layer is
+    # stale. Calibrate to your repository's docs-regeneration cadence.
+    codemaps_changed_files: 40
+    # Red line for the @MX index: at or above this many scanned files changed
+    # content since the last scan, the index is stale (it is cheap to rescan).
+    mx_index_changed_files: 1
+    # Query-time refresh cost budget in milliseconds. A refresh that exceeds
+    # it warns and still answers; it never blocks.
+    update_budget_ms: 2000

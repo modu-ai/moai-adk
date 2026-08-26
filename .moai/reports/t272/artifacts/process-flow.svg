@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1660 420" width="1660" height="420"
+     role="img" aria-labelledby="process-flow-title process-flow-desc">
+  <title id="process-flow-title">Kanban card lifecycle</title>
+  <desc id="process-flow-desc">A kanban card moves from backlog through plan and run to sync, where the sync gate reads the evidence before the card is marked done.</desc>
+  <defs>
+    <marker id="process-flow-arrow" markerUnits="userSpaceOnUse"
+            markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+      <path d="M 0 0 L 10 4 L 0 8 z" fill="#6B6359"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1660" height="420" fill="#FAF9F5"/>
+
+  <g><text x="60" y="96" font-family="'Noto Serif', Georgia, serif" font-size="34" font-weight="600" fill="#141413">Kanban Card Lifecycle</text></g>
+
+  <!-- connectors -->
+  <g stroke="#6B6359" stroke-width="1.25">
+    <path d="M 280 210 H 342" fill="none" marker-end="url(#process-flow-arrow)"/>
+    <path d="M 572 210 H 634" fill="none" marker-end="url(#process-flow-arrow)"/>
+    <path d="M 864 210 H 926" fill="none" marker-end="url(#process-flow-arrow)"/>
+    <path d="M 1156 210 H 1218" fill="none" marker-end="url(#process-flow-arrow)"/>
+  </g>
+
+  <g font-family="Pretendard, 'Noto Sans KR', 'Noto Sans JP', 'Noto Sans SC', 'Apple SD Gothic Neo', 'Hiragino Sans', 'Microsoft YaHei', system-ui, sans-serif">
+    <!-- stage 1 -->
+    <rect x="60" y="125" width="220" height="170" rx="12" fill="#FAF9F5" stroke="#D9CDBE"/>
+    <circle cx="90" cy="155" r="14" fill="#F3EFE6" stroke="#D9CDBE"/>
+    <text x="90" y="159" font-size="12" font-weight="600" text-anchor="middle" fill="#6B6359">1</text>
+    <text x="114" y="161" font-size="17" font-weight="600" fill="#141413">backlog</text>
+    <text x="76" y="187" font-size="14" fill="#6B6359">queued operator picks</text>
+    <text x="76" y="207" font-size="14" fill="#6B6359">cards wait for a lane</text>
+
+    <!-- stage 2 -->
+    <rect x="352" y="125" width="220" height="170" rx="12" fill="#FAF9F5" stroke="#D9CDBE"/>
+    <circle cx="382" cy="155" r="14" fill="#F3EFE6" stroke="#D9CDBE"/>
+    <text x="382" y="159" font-size="12" font-weight="600" text-anchor="middle" fill="#6B6359">2</text>
+    <text x="406" y="161" font-size="17" font-weight="600" fill="#141413">plan</text>
+    <text x="368" y="187" font-size="14" fill="#6B6359">SPEC + plan-audit</text>
+    <text x="368" y="207" font-size="14" fill="#6B6359">kickoff approval</text>
+
+    <!-- stage 3 -->
+    <rect x="644" y="125" width="220" height="170" rx="12" fill="#FAF9F5" stroke="#D9CDBE"/>
+    <circle cx="674" cy="155" r="14" fill="#F3EFE6" stroke="#D9CDBE"/>
+    <text x="674" y="159" font-size="12" font-weight="600" text-anchor="middle" fill="#6B6359">3</text>
+    <text x="698" y="161" font-size="17" font-weight="600" fill="#141413">run</text>
+    <text x="660" y="187" font-size="14" fill="#6B6359">manager-develop</text>
+    <text x="660" y="207" font-size="14" fill="#6B6359">cycle to green ACs</text>
+
+    <!-- stage 4: the sync gate -->
+    <rect x="936" y="125" width="220" height="170" rx="12" fill="#FBE9DF" stroke="#D97757" stroke-width="1.6"/>
+    <text x="952" y="153" font-size="12" font-weight="600" fill="#B85C3E">&#9733; SYNC GATE</text>
+    <text x="952" y="179" font-size="17" font-weight="600" fill="#141413">sync</text>
+    <text x="952" y="208" font-size="14" fill="#6B6359">docs + verify recipe</text>
+    <text x="952" y="228" font-size="14" fill="#6B6359">verdict gates done</text>
+
+    <!-- stage 5 -->
+    <rect x="1228" y="125" width="220" height="170" rx="12" fill="#FAF9F5" stroke="#D9CDBE"/>
+    <circle cx="1258" cy="155" r="14" fill="#F3EFE6" stroke="#D9CDBE"/>
+    <text x="1258" y="159" font-size="12" font-weight="600" text-anchor="middle" fill="#6B6359">5</text>
+    <text x="1282" y="161" font-size="17" font-weight="600" fill="#141413">done</text>
+    <text x="1244" y="187" font-size="14" fill="#6B6359">card closed</text>
+    <text x="1244" y="207" font-size="14" fill="#6B6359">evidence archived</text>
+
+    <text x="170" y="331" font-size="12" text-anchor="middle" fill="#6B6359">entry is an operator act</text>
+    <text x="462" y="331" font-size="12" text-anchor="middle" fill="#6B6359">SPEC-ID assigned</text>
+    <text x="754" y="331" font-size="12" text-anchor="middle" fill="#6B6359">one lane, one worktree</text>
+    <text x="1046" y="331" font-size="12" text-anchor="middle" fill="#6B6359">the sync gate</text>
+    <text x="1338" y="331" font-size="12" text-anchor="middle" fill="#6B6359">completion is read</text>
+  </g>
+</svg>

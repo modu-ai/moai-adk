@@ -221,8 +221,10 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	case factoryBranchLead:
 		leadLabel, _ := parseLeadLabel(filteredArgs)
 		defer enterFactoryLeadMode(entry.FactoryWorkers, leadLabel)()
-		recordKanbanSession(entry.Spec, kanban.BackendGLM, kanban.RoleLead)
-		filteredArgs = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
+		defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
+		var leadName string
+		filteredArgs, leadName = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
+		defer exportLeadSessionName(leadName)()
 		settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
@@ -234,7 +236,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		finalLabel := resolveFactoryWorkerName(launchProjectRoot(), factoryLabel, cmd.ErrOrStderr())
 		filteredArgs = replaceNamedLabel(filteredArgs, factoryLabel, finalLabel)
 		defer enterFactoryWorkerMode(finalLabel, entry.FactoryWorkers)()
-		recordKanbanSession(entry.Spec, kanban.BackendGLM, kanban.RoleLane)
+		defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
 		settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
@@ -247,9 +249,11 @@ func runGLM(cmd *cobra.Command, args []string) error {
 			// See cc.go: the operator's lead run id is adopted rather than replaced.
 			leadLabel, _ := parseLeadLabel(filteredArgs)
 			defer enterKanbanMode(entry.Spec, leadLabel)()
-			recordKanbanSession(entry.Spec, kanban.BackendGLM, kanban.RoleLead)
+			defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
 			// See cc.go: glm mirrors the lead branch exactly.
-			filteredArgs = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
+			var leadName string
+			filteredArgs, leadName = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
+			defer exportLeadSessionName(leadName)()
 			settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 			if len(settingsFlag) > 0 {
 				filteredArgs = append(filteredArgs, settingsFlag...)
@@ -261,7 +265,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 			finalLabel := resolveCompanionName(launchProjectRoot(), label, cmd.ErrOrStderr())
 			filteredArgs = replaceNamedLabel(filteredArgs, label, finalLabel)
 			defer enterKanbanCompanionMode(finalLabel)()
-			recordKanbanSession(entry.Spec, kanban.BackendGLM, companionRole(finalLabel))
+			defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
 			settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 			if len(settingsFlag) > 0 {
 				filteredArgs = append(filteredArgs, settingsFlag...)
@@ -401,13 +405,15 @@ func glmReasoningEnvVars() map[string]string {
 	return out
 }
 
-// glmReasoningEnvVarsForEffort returns the MAIN-SESSION reasoning-control env
-// injection derived from the web-set effort preference. It is the prefs-driven
-// counterpart to glmReasoningEnvVars() (which derives the hardcoded max session
-// default — SPEC-GLM-EFFORT-MAX-001 — used for sub-agents and the empty-effort
-// fallback). When
+// glmReasoningEnvVarsForModel returns the MAIN-SESSION reasoning-control env
+// injection derived from the web-set effort preference under the resolved
+// session model. It is the prefs-driven counterpart to glmReasoningEnvVars()
+// (which derives the hardcoded max session default — SPEC-GLM-EFFORT-MAX-001 —
+// used for sub-agents and the empty-effort fallback). When
 // effort is non-empty it collapses the Claude effort onto z.ai's reasoning
-// control via SessionGLMReasoningStateForEffort; when empty it falls back to the
+// control via SessionGLMReasoningStateForModel (which pins every effort to max
+// under glm-5.3-flash — flash accepts reasoning_effort: max only — and
+// collapses as before under any other model); when empty it falls back to the
 // session default (glmReasoningEnvVars). Thinking-off states emit no
 // ANTHROPIC_REASONING_EFFORT entry (reasoning_effort is moot when thinking is
 // off). glmReasoningEnvVars() stays intact — setGLMEnv still calls it as the
@@ -420,8 +426,8 @@ func glmReasoningEnvVars() map[string]string {
 // shim honors the Anthropic `thinking` parameter and ignores a top-level
 // z.ai-style `reasoning_effort` field, so this env reaches z.ai through the
 // thinking-budget mapping, not a native reasoning_effort passthrough.
-func glmReasoningEnvVarsForEffort(effort string) map[string]string {
-	state := template.SessionGLMReasoningStateForEffort(effort)
+func glmReasoningEnvVarsForModel(model, effort string) map[string]string {
+	state := template.SessionGLMReasoningStateForModel(model, effort)
 	out := make(map[string]string, 1)
 	if state.ThinkingEnabled {
 		out[config.EnvAnthropicReasoningEffort] = state.ReasoningEffort

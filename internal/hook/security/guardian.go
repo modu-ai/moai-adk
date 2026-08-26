@@ -47,18 +47,31 @@ func HandleSecurityScan(args []string, stdin io.Reader, stdout io.Writer, projec
 	if content == "" {
 		return nil // nothing to scan — silent
 	}
-	findings := ScanBuffer(content)
-	if len(findings) == 0 {
+	advisory := ScanBufferAdvisory(content)
+	if advisory == "" {
 		return nil // clean — silent pass
 	}
 	// Layer 1 is advisory-only: emit additionalContext, never a decision.
 	writeJSON(stdout, map[string]any{
 		"hookSpecificOutput": map[string]any{
 			"hookEventName":     "PostToolUse",
-			"additionalContext": guardianBanner + " " + formatFindings(findings),
+			"additionalContext": advisory,
 		},
 	})
 	return nil
+}
+
+// ScanBufferAdvisory scans content with the regex engine and renders the
+// Layer-1 advisory text, or "" when the buffer is clean. It is the single
+// producer of that text: both this file's HandleSecurityScan (the standalone
+// `moai hook security-scan` subcommand) and the in-process PostToolUse guardian
+// handler call it, so the two surfaces cannot drift apart.
+func ScanBufferAdvisory(content string) string {
+	findings := ScanBuffer(content)
+	if len(findings) == 0 {
+		return ""
+	}
+	return guardianBanner + " " + formatFindings(findings)
 }
 
 // HandleSecurityTurn is the Layer-2 Stop handler (REQ-SG-020). At turn end it
@@ -188,6 +201,15 @@ func extractWrittenContent(raw string) string {
 	if len(blob) == 0 {
 		blob = env.ToolInputSnake
 	}
+	return ExtractToolInputContent(blob)
+}
+
+// ExtractToolInputContent pulls the scannable text out of an already-unwrapped
+// tool-input object (the `tool_input` / `toolInput` value). It concatenates
+// Write content, Edit new_string, and every MultiEdit edit's new_string so a
+// MultiEdit batch is scanned in full. Callers holding the raw PostToolUse
+// envelope go through extractWrittenContent instead, which unwraps first.
+func ExtractToolInputContent(blob []byte) string {
 	if len(blob) == 0 {
 		return ""
 	}

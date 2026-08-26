@@ -72,6 +72,8 @@ A long human-intervention wait (time spent answering a question, time spent wait
 
 Think of it as 5 minutes being the baseline and the subscription environment auto-extending to 1 hour.
 
+Claude Code 2.1.243 also adds the `promptCacheTtl` / `subagentPromptCacheTtl` settings (env vars `CLAUDE_CODE_PROMPT_CACHE_TTL` / `CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL`): API-key and cloud-provider sessions can hold a 1-hour cache on the main conversation while subagents stay at 5 minutes. Whether a third-party gateway such as z.ai honors the setting is unmeasured.
+
 ## Cost: Reads Are Cheap, Writes Slightly Expensive
 
 Whether the cache is working shows up in two token figures the API reports with every response.

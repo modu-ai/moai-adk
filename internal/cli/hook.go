@@ -716,16 +716,30 @@ func runHarnessObserve(cmd *cobra.Command, _ []string) error {
 	// Resolve project root env-first (CLAUDE_PROJECT_DIR then os.Getwd()).
 	root := resolveHookProjectRoot()
 
+	// Read + normalize stdin JSON up front (handles native camelCase + flat
+	// snake_case). On parsing failure fields degrade to empty (non-blocking:
+	// never fails the parent tool). Reading before the learning gate below is
+	// required by the stop-guard recorder, which observes TaskStop completions
+	// regardless of the harness-learning configuration; usage-log.jsonl stays
+	// untouched on the learning-disabled path.
+	hookInput := readNormalizedHookInput()
+
+	// Stop-guard recorder (matcher-less PostToolUse dispatch → this handler).
+	// Unconditional by design: the stop registry and its audit trail record
+	// regardless of the enforcement gate's state, and the M2 deny layer reads
+	// what this writes — putting it behind the learning gate would silently
+	// starve enforcement in learning-disabled projects. Fail-open on every
+	// uncertainty (RecordAgentStop itself never returns an error).
+	if hookInput.ToolName == "TaskStop" {
+		hook.RecordAgentStop(root, hookInput)
+	}
+
 	// REQ-HRN-FND-009 gate: if learning.enabled is explicitly false, exit no-op.
-	// stdin is NOT consumed in the no-op path; the hook exits 0 immediately so
-	// the PostToolUse pipeline is non-blocking and leaves usage-log.jsonl untouched.
+	// usage-log.jsonl is left untouched; the stop-guard recorder above has
+	// already run so TaskStop completions stay recorded either way.
 	if !isHarnessLearningEnabled(root) {
 		return nil
 	}
-
-	// Read + normalize stdin JSON (handles native camelCase + flat snake_case).
-	// on parsing failure fields degrade to empty (non-blocking: never fails the parent tool).
-	hookInput := readNormalizedHookInput()
 
 	logPath := filepath.Join(root, ".moai", "harness", "usage-log.jsonl")
 	archiveDir := filepath.Join(root, ".moai", "harness", "learning-history", "archive")

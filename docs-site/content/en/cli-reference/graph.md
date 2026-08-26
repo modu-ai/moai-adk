@@ -26,6 +26,8 @@ $ moai graph build
 
 Gathers import edges, `@MX:SPEC` links, and inter-SPEC dependencies into `.moai/project/graph/edges.jsonl`. It works deterministically — run it twice from the same git HEAD and you get the same content. Queries always read this artifact, so **run build first, before querying**.
 
+On top of the document layers, the build derives edges straight from code — function-call edges (code-call) and import edges (code-import) — and every document edge survives unchanged. Import targets are normalized to repository-local package paths (the go.mod module prefix stripped) so code imports point into the same package domain as the codemaps import graph, and a 16-language grade matrix publishes, per language, the resolution level behind its call captures. Where the two layers disagree about the same relationship, neither is dropped: the doc edge stays with a `disagrees_with` marker naming the code layer's contrary observation, and `--all-disagreements` surfaces the suppressed direction too — local dependencies the code found and the docs stay silent about.
+
 ## moai graph query
 
 One call takes **exactly one** selector.
@@ -47,6 +49,33 @@ $ moai graph query --milestones-no-card
 ```
 
 `--edges <path>` points at a different edges.jsonl, and a positional root argument selects a different project root.
+
+Before answering, a query refreshes the mechanical layers (the @MX index and edges.jsonl) when they have gone stale. Only files whose content hash moved are re-parsed, so uncommitted edits are reflected in the answer without a rescan; a refresh whose measured cost exceeds gate.yaml's `update_budget_ms` (default 2000ms) warns and still answers. Every answer prints the tree root and commit (or dirty fingerprint) it was computed from, so there is no mistaking which tree answered.
+
+## moai graph check
+
+```bash
+$ moai graph check
+codemaps  metric=described-source-diff value=0 threshold=40 verdict=fresh
+mx-index  metric=inventory-content-diff value=0 threshold=1 verdict=fresh
+edges     metric=source-fingerprint-mismatch value=0 threshold=0 verdict=fresh
+```
+
+Measures how far the graph's three layers — codemaps, the @MX index, edges.jsonl — have fallen behind the code, each by its own metric, and returns a `fresh` / `stale` / `absent` verdict per layer. Codemaps is judged by described-source files changed since the stamped generation commit (reverted churn counts zero), the @MX index by files whose content hash moved, edges.jsonl by source-fingerprint mismatch.
+
+Every generated artifact declares, in a provenance block, which tree and commit it describes. An artifact without one is reported `absent` — unjudgeable, never silently fresh — and absent fails the check too: a fresh worktree holds none of these untracked artifacts, and the check says so instead of passing. Exit codes: 0 all fresh · 1 stale or absent · 2 system error. The pre-commit quality gate's graph-freshness step and the CI graph-freshness job consume this value directly. Thresholds are tuned in gate.yaml's `graph_freshness` section.
+
+No filesystem mtime is read anywhere. A fresh checkout resets every mtime, which an mtime-based metric would misread as freshly regenerated — so every metric here is a content hash, a git diff, or a fingerprint.
+
+## moai graph stamp codemaps
+
+```bash
+$ moai graph stamp codemaps
+OK: stamped .moai/project/codemaps/provenance.json
+provenance: tree=/path/to/project commit=1a2b3c4d5e6
+```
+
+Run as the last step after regenerating codemaps. The content is curated by `/moai codemaps`; this command records **which tree state that content describes**, in `provenance.json` — the anchor `moai graph check` judges the codemaps layer against.
 
 ## Caveats for two selectors
 

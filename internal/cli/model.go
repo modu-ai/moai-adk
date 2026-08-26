@@ -111,8 +111,10 @@ func resolveModelProfileReport(llm config.LLMConfig) modelProfileReport {
 			// t66 fold: state session inheritance explicitly instead of
 			// repeating the tier-mapped GLM model id per agent — the GLM model
 			// dimension is carried by the session env, not per-agent routing.
+			// Model-aware resolution: the session model (high slot) pins every
+			// effort to max under glm-5.3-flash, matching the wire.
 			entry.GLMModel = template.ModelInherit
-			entry.GLMReasoning = template.ResolveGLMReasoning(agent, me.Effort).Name
+			entry.GLMReasoning = template.ResolveGLMReasoningForModel(llm.GLM.Models.High, agent, me.Effort).Name
 		}
 		rpt.Agents = append(rpt.Agents, entry)
 	}

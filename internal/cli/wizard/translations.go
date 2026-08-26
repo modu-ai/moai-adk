@@ -100,9 +100,9 @@ var translations = map[string]map[string]QuestionTranslation{
 			Title:       "모델 정책 선택",
 			Description: "각 에이전트에 할당되는 Claude 모델 등급을 제어합니다. Claude 플랜에 맞추세요.",
 			Options: []OptionTranslation{
-				{Label: "Max", Desc: "Opus 5 (max~low) + Sonnet (low, 단발성 작업만) — Max $200 플랜"},
-				{Label: "Medium (권장)", Desc: "Opus 5 (high~low) + Sonnet (low, 단발성 작업만) — Max $100 플랜"},
-				{Label: "Low", Desc: "Opus 5 (medium~low) + Sonnet (low, 문서/E2E/단발성 작업) — Plus $20 플랜"},
+				{Label: "Max", Desc: "Opus 5 (high~medium) + Sonnet (low, 문서/단발성 작업) — Max $200 플랜"},
+				{Label: "Medium (권장)", Desc: "Opus 5 (high~low) + Sonnet (low, 문서/단발성 작업) — Max $100 플랜"},
+				{Label: "Low", Desc: "Opus 5 (high~low) + Sonnet (low, 문서/E2E/단발성 작업) — Plus $20 플랜"},
 			},
 		},
 		"project_mode": {
@@ -250,9 +250,9 @@ var translations = map[string]map[string]QuestionTranslation{
 			Title:       "モデルポリシーを選択",
 			Description: "各エージェントに割り当てる Claude モデルのティアを制御します。ご利用の Claude プランに合わせてください。",
 			Options: []OptionTranslation{
-				{Label: "Max", Desc: "Opus 5 (max~low) + Sonnet (low, 単発タスクのみ) — Max $200 プラン"},
-				{Label: "Medium (推奨)", Desc: "Opus 5 (high~low) + Sonnet (low, 単発タスクのみ) — Max $100 プラン"},
-				{Label: "Low", Desc: "Opus 5 (medium~low) + Sonnet (low, ドキュメント/E2E/単発タスク) — Plus $20 プラン"},
+				{Label: "Max", Desc: "Opus 5 (high~medium) + Sonnet (low, ドキュメント/単発タスク) — Max $200 プラン"},
+				{Label: "Medium (推奨)", Desc: "Opus 5 (high~low) + Sonnet (low, ドキュメント/単発タスク) — Max $100 プラン"},
+				{Label: "Low", Desc: "Opus 5 (high~low) + Sonnet (low, ドキュメント/E2E/単発タスク) — Plus $20 プラン"},
 			},
 		},
 		"project_mode": {
@@ -400,9 +400,9 @@ var translations = map[string]map[string]QuestionTranslation{
 			Title:       "选择模型策略",
 			Description: "控制为每个智能体分配的 Claude 模型等级。请与您的 Claude 套餐匹配。",
 			Options: []OptionTranslation{
-				{Label: "Max", Desc: "Opus 5 (max~low) + Sonnet (low, 仅一次性任务) — Max $200 套餐"},
-				{Label: "Medium (推荐)", Desc: "Opus 5 (high~low) + Sonnet (low, 仅一次性任务) — Max $100 套餐"},
-				{Label: "Low", Desc: "Opus 5 (medium~low) + Sonnet (low, 文档/E2E/一次性任务) — Plus $20 套餐"},
+				{Label: "Max", Desc: "Opus 5 (high~medium) + Sonnet (low, 文档/一次性任务) — Max $200 套餐"},
+				{Label: "Medium (推荐)", Desc: "Opus 5 (high~low) + Sonnet (low, 文档/一次性任务) — Max $100 套餐"},
+				{Label: "Low", Desc: "Opus 5 (high~low) + Sonnet (low, 文档/E2E/一次性任务) — Plus $20 套餐"},
 			},
 		},
 		"project_mode": {

@@ -52,6 +52,17 @@ moai doctor [OPTIONS]
 
 이 추정치는 `moai clean --home`이 쓰는 것과 **같은 스캐너**를 호출하므로, doctor가 말하는 숫자와 clean이 실제로 지우는 목록이 어긋나지 않습니다. 자세한 내용은 [홈 디렉터리 위생](/ko/advanced/home-hygiene)에 있습니다.
 
+## 종료 코드
+
+스크립트나 CI 래퍼에서 `moai doctor` 를 부를 때는 요약 줄이 아니라 종료 코드를 읽습니다.
+
+| 종료 코드 | 의미 |
+|-----------|------|
+| `0` | Fail 항목 없음. Warn 은 권고라 종료 코드를 바꾸지 않습니다 |
+| `1` | 한 건 이상이 Fail. 요약의 `Fail N` 이 그대로 반영됩니다 |
+
+Constitution Registry 항목은 레지스트리가 파싱되는지만 보지 않고 `moai constitution validate` 와 **같은 드리프트 검사**를 돌립니다. 따라서 같은 체크아웃에서 doctor 가 ok 라고 하는데 validate 가 실패하는 일은 없습니다. `MOAI_CONSTITUTION_SKIP_VALIDATE=1` 로 우회하면 doctor 도 구조 검사 판정으로 돌아갑니다.
+
 ## 예시
 
 ```bash

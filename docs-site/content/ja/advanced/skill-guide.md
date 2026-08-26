@@ -94,7 +94,25 @@ MoAI-ADK テンプレートは合計 **34 個のスキル** を提供します�
 | `moai-domain-html-report`   | Markdown → 単一 HTML レポートレンダラー (6 個のモード、外部依存性なし) |
 | `moai-domain-humanize`      | AI テキストのヒューマナイズ、後編集 (KO/EN/JA/ZH)    |
 | `moai-domain-svg-infographic` | 編集可能な SVG 技術インフォグラフィック (アーキテクチャ・フロー・比較)、CJK フォント |
-| `moai-domain-design-dna`    | 参照デザイン (スクリーンショット・画像・URL) を Design DNA JSON へ逆抽出し、その JSON から新しい成果物を生成 |
+| `moai-domain-design-dna`    | 参照デザイン (スクリーンショット・画像・URL) を Design DNA JSON へ逆抽出し、その JSON から新しい成果物を生成。ダイアグラムプロファイルに対応 — アクティブなプロファイルの印はプロジェクトルートの `.design-dna/` 配下に保存されて `moai update` を生き延び、オプトインの mermaid・drawio インポータはソースを信頼しない入力として扱う (座標・色・フォント・レイアウトは持ち越されない) |
+
+### SVG インフォグラフィック — 作成できるダイアグラムの種類
+
+`moai-domain-svg-infographic` スキルでどの種類のダイアグラムを作れるかは、推測ではなく実測で確認しました。外部カタログ (SkillStead TypePack) の 9 形式を同じ生成課題として実行し、スキル自身の品質ゲート (決定論的なソース lint と寸法検証付き 2 倍解像度 PNG レンダー) を通るかを測定した結果、9 形式すべてを再現できました。
+
+| ダイアグラムの種類 | 用途 | 実測成果物 |
+| ------------------ | ---- | ---------- |
+| 承認ゲートフロー | 通過すべき関門のある承認手順 | `.moai/reports/t272/artifacts/approval-gate.svg` |
+| 前後比較 | 同じ基準で比べる改善の前後 | `.moai/reports/t272/artifacts/before-after.svg` |
+| KPI カードグリッド | 主要指標をカードに並べたまとめ | `.moai/reports/t272/artifacts/cards-kpi-grid.svg` |
+| 意思決定マトリクス | 候補と基準の交差評価 | `.moai/reports/t272/artifacts/decision-matrix.svg` |
+| レイヤースタック | 上から下に積まれる構造 | `.moai/reports/t272/artifacts/layer-stack.svg` |
+| ネストしたスコープ | 境界が幾重にも囲む構造 | `.moai/reports/t272/artifacts/nested-scope.svg` |
+| プロセスフロー | 順につながる処理段階 | `.moai/reports/t272/artifacts/process-flow.svg` |
+| ロードマップタイムライン | 時間軸に置かれた段階とマイルストーン | `.moai/reports/t272/artifacts/roadmap-timeline.svg` |
+| コンポーネントトポロジー | コンポーネント間の接続関係 | `.moai/reports/t272/artifacts/topology-component.svg` |
+
+各形式は、4 つの基本レイアウト (スタック、左から右へのフロー、並列比較、階層ツリー) の上で情報構造を保つ形で表現されます。形式別の判定表とゲートログは `.moai/reports/t272/verdict.md` にあります。
 
 ### Reference (ベストプラクティス) - 11 個
 

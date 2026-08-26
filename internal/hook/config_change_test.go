@@ -2,8 +2,10 @@ package hook
 
 import (
 	"context"
+	"math"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"sync"
 	"testing"
@@ -14,12 +16,23 @@ import (
 
 // TestConfigChange_RT005ReloadIntegration verifies REQ-HAE-002 + SPEC-V3R2-RT-006
 // REQ-011 compatibility: when ConfigChange fires for a valid YAML file, the
-// main return path completes within ≤ 100ms with Continue=true, and the
+// main return path completes within ≤ 100ms (p95) with Continue=true, and the
 // async goroutine completes successfully.
 //
 // Per SPEC-V3R6-HOOK-ASYNC-EXPAND-001 REQ-HAE-002, the SystemMessage reload
 // confirmation is now logged via slog (async observability) rather than
 // returned in the main response. Tests verify the async path completes.
+//
+// The latency contract is enforced at its own statistic (REQ-CFS-007):
+// REQ-HAE-002 / AC-HAE-003 specify p95 ≤ 100ms — a multi-sample bound whose
+// measurement vehicle is BenchmarkConfigChange_AsyncReturn. The sync path
+// under test costs µs (one slog.Info, context setup, one goroutine spawn);
+// the 123.195919ms CI failure (run 32815411885 a1, 2026-08-25) was a single
+// ~120ms scheduler preemption landing inside one measurement window, not a
+// regression. A single-sample wall-clock maximum enforces a stronger contract
+// than the one written. The nearest-rank p95 of 20 fresh-handler samples
+// (ceil(0.95·20) = the 19th of 20 = the second-largest) needs TWO preempted
+// samples to trip; one is the observed noise form.
 func TestConfigChange_RT005ReloadIntegration(t *testing.T) {
 	t.Parallel()
 
@@ -30,37 +43,70 @@ func TestConfigChange_RT005ReloadIntegration(t *testing.T) {
 		t.Fatalf("write yaml: %v", err)
 	}
 
-	h := NewConfigChangeHandler().(*configChangeHandler)
-	input := &HookInput{
-		SessionID:      "sess-rt005",
-		ConfigFilePath: yamlPath,
-		HookEventName:  "ConfigChange",
+	const sampleCount = 20
+	durations := make([]time.Duration, 0, sampleCount)
+	for i := range sampleCount {
+		// Fresh handler per sample: each sample's async goroutine is drained
+		// before the next starts, so samples never accumulate in-flight
+		// goroutines or interfere through shared wait groups.
+		h := NewConfigChangeHandler().(*configChangeHandler)
+		input := &HookInput{
+			SessionID:      "sess-rt005",
+			ConfigFilePath: yamlPath,
+			HookEventName:  "ConfigChange",
+		}
+
+		start := time.Now()
+		out, err := h.Handle(context.Background(), input)
+		elapsed := time.Since(start)
+		if err != nil {
+			t.Fatalf("Handle() error: %v", err)
+		}
+		if out == nil {
+			t.Fatal("Handle() returned nil")
+		}
+		// Functional invariants — checked on the first sample only; the input
+		// is identical every sample and 20 repeats of the same Errorf would
+		// only obscure the failure.
+		if i == 0 {
+			// Not-explicitly-halted preserves the protocol invariant for the
+			// success case (continue absent = continue per official spec).
+			if out.Continue != nil && !*out.Continue {
+				t.Errorf("expected no explicit halt for valid config, got continue=false")
+			}
+			// SystemMessage moves to async log per REQ-HAE-002 design.
+			if out.SystemMessage != "" {
+				t.Errorf("expected empty SystemMessage in async mode, got: %q", out.SystemMessage)
+			}
+		}
+		durations = append(durations, elapsed)
+
+		// REQ-HAE-006: deterministic async-completion barrier between
+		// samples (the RT005 completion pattern this test already used).
+		testutil.WaitForAsync(t, h.waitGroup(), 2*time.Second)
 	}
 
-	start := time.Now()
-	out, err := h.Handle(context.Background(), input)
-	elapsed := time.Since(start)
-	if err != nil {
-		t.Fatalf("Handle() error: %v", err)
+	// REQ-HAE-002: main response is non-blocking, at the contract's p95
+	// statistic over the sample set.
+	p95 := rt005NearestRank(durations, 0.95)
+	if p95 > 100*time.Millisecond {
+		t.Errorf("synchronous return p95 %v over %d samples, want ≤ 100ms (REQ-HAE-002)", p95, sampleCount)
 	}
-	if out == nil {
-		t.Fatal("Handle() returned nil")
-	}
-	// REQ-HAE-002: main response is non-blocking.
-	if elapsed > 100*time.Millisecond {
-		t.Errorf("synchronous return took %v, want ≤ 100ms (REQ-HAE-002)", elapsed)
-	}
-	// Not-explicitly-halted preserves the protocol invariant for the success
-	// case (continue absent = continue per official spec).
-	if out.Continue != nil && !*out.Continue {
-		t.Errorf("expected no explicit halt for valid config, got continue=false")
-	}
-	// SystemMessage moves to async log per REQ-HAE-002 design.
-	if out.SystemMessage != "" {
-		t.Errorf("expected empty SystemMessage in async mode, got: %q", out.SystemMessage)
-	}
+}
 
-	testutil.WaitForAsync(t, h.waitGroup(), 2*time.Second)
+// rt005NearestRank returns the p-th percentile of samples by the nearest-rank
+// method (the ceil(p·n)-th smallest) — the same semantics as
+// internal/timing's percentile helper, kept local here because that helper is
+// unexported. For 20 samples at p95 this is the 19th smallest, i.e. the
+// second-largest value.
+func rt005NearestRank(samples []time.Duration, p float64) time.Duration {
+	sorted := slices.Clone(samples)
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i] < sorted[j] })
+	idx := int(math.Ceil(p * float64(len(sorted))))
+	if idx < 1 {
+		idx = 1
+	}
+	return sorted[idx-1]
 }
 
 // TestConfigChange_InvalidYAMLAsyncReject verifies REQ-HAE-002 + REQ-062

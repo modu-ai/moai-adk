@@ -120,6 +120,10 @@ func TestPreCommitInstall_PreservesForeignHook(t *testing.T) {
 	if string(got) != userHookContent {
 		t.Errorf("user hook was modified; expected original content preserved")
 	}
+	// SPEC-PRECOMMIT-PRESERVE-001 AC-PCP-008 (REQ-PCP-008): a marker-less hook
+	// must not be routed into the backup path either — ErrUserHookExists, bytes
+	// unchanged, and no pre-commit.bak.* artifact.
+	assertNoBackup(t, dir)
 }
 
 // TestPreCommitInstall_OverwritesMoaiHook — AC-PC-003: a pre-existing hook WITH
@@ -181,8 +185,8 @@ func TestPreCommitInstall_OptionalSkipSilent(t *testing.T) {
 	if err := exec.Command("git", "init", dir).Run(); err != nil {
 		t.Skipf("git init failed: %v", err)
 	}
-	var out strings.Builder
-	installPreCommitHookOptional(dir, true, &out)
+	var out, warn strings.Builder
+	installPreCommitHookOptional(dir, true, &out, &warn)
 
 	hookPath := filepath.Join(dir, ".git", "hooks", "pre-commit")
 	if _, err := os.Stat(hookPath); err == nil {
@@ -190,6 +194,9 @@ func TestPreCommitInstall_OptionalSkipSilent(t *testing.T) {
 	}
 	if out.Len() != 0 {
 		t.Errorf("expected no output on skip, got: %q", out.String())
+	}
+	if warn.Len() != 0 {
+		t.Errorf("expected no warning output on skip, got: %q", warn.String())
 	}
 }
 
@@ -200,8 +207,8 @@ func TestPreCommitInstall_OptionalFreshPrints(t *testing.T) {
 	if err := exec.Command("git", "init", dir).Run(); err != nil {
 		t.Skipf("git init failed: %v", err)
 	}
-	var out strings.Builder
-	installPreCommitHookOptional(dir, false, &out)
+	var out, warn strings.Builder
+	installPreCommitHookOptional(dir, false, &out, &warn)
 
 	if _, err := os.Stat(filepath.Join(dir, ".git", "hooks", "pre-commit")); err != nil {
 		t.Fatalf("hook not installed by optional wrapper: %v", err)
@@ -227,8 +234,8 @@ func TestPreCommitInstall_OptionalPreservedNote(t *testing.T) {
 		t.Fatalf("write user hook: %v", err)
 	}
 
-	var out strings.Builder
-	installPreCommitHookOptional(dir, false, &out)
+	var out, warn strings.Builder
+	installPreCommitHookOptional(dir, false, &out, &warn)
 
 	if !strings.Contains(out.String(), "preserved") {
 		t.Errorf("expected preserved note, got: %q", out.String())
@@ -306,8 +313,8 @@ func TestPreCommitInstall_NonFatalFailure(t *testing.T) {
 		t.Fatalf("write blocking file: %v", err)
 	}
 
-	var out strings.Builder
-	installPreCommitHookOptional(dir, false, &out) // MUST NOT panic / abort
+	var out, warn strings.Builder
+	installPreCommitHookOptional(dir, false, &out, &warn) // MUST NOT panic / abort
 
 	if !strings.Contains(out.String(), "Warning: pre-commit hook install failed") {
 		t.Errorf("expected non-fatal warning, got: %q", out.String())

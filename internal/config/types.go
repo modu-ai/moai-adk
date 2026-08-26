@@ -407,6 +407,13 @@ type WorkflowConfig struct {
 	// Sibling of BranchGuard — same opt-in shape, same default-OFF neutrality.
 	AgentModelGuard AgentModelGuardConfig `yaml:"agent_model_guard"`
 
+	// AgentStopGuard gates the deny layer of the PreToolUse SendMessage
+	// stop-guard. Default false: TaskStop recording and SendMessage
+	// observation + advisory always run, but no send is ever denied until a
+	// maintainer opts in via local config. Sibling of BranchGuard /
+	// AgentModelGuard — same opt-in shape, same default-OFF neutrality.
+	AgentStopGuard AgentStopGuardConfig `yaml:"agent_stop_guard"`
+
 	// IntegrationLock gates the PreToolUse release-integration holder guard
 	// (card t194). Default false: a single-developer repository has no
 	// integration window to serialize, so the guard ships INERT and the
@@ -614,6 +621,17 @@ type AgentModelGuardConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 
+// AgentStopGuardConfig mirrors workflow.agent_stop_guard.* — the opt-in deny
+// layer of the PreToolUse SendMessage stop-guard. When Enabled is false (the
+// distributed default) the guard still records every TaskStop completion and
+// still observes + advises on every SendMessage issuance, but it never denies
+// a send. Observation is not gated: the stop registry and its JSONL audit
+// record regardless of this flag, so flipping the gate on later finds the
+// registry already populated.
+type AgentStopGuardConfig struct {
+	Enabled bool `yaml:"enabled"`
+}
+
 // CodexConfig mirrors workflow.codex.* — the codex audit backend + review-gate
 // config surface (SPEC-MOAI-MCP-SERVER-001 M2, REQ-MCP-008/010). It is the
 // sibling of BranchGuard: an opt-in gate whose distributed default is OFF (C6).
@@ -771,6 +789,12 @@ type GateConfig struct {
 	// AstGrepGate configures the ast-grep domain rule scan step (SPEC-SLQG-001).
 	AstGrepGate AstGrepGateConfig `yaml:"ast_grep_gate"`
 
+	// GraphFreshness configures the graph-layer drift gate step
+	// (codemaps/mx-index/edges staleness check). Advisory by default, matching
+	// the ast-grep posture: pre-commit is the wrong place to force a codemaps
+	// regeneration.
+	GraphFreshness GraphFreshnessGateConfig `yaml:"graph_freshness"`
+
 	// DisabledSteps disables individual gate steps by step name, mirroring
 	// quality.GateConfig.DisabledSteps. Note the runner's inverted convention:
 	// an entry whose value is FALSE skips that step (issue #667 Fix 3). Before
@@ -802,6 +826,27 @@ type AstGrepGateConfig struct {
 	BlockOnError bool `yaml:"block_on_error"`
 	// WarnOnlyMode prevents blocking even when error-severity matches are found.
 	WarnOnlyMode bool `yaml:"warn_only_mode"`
+}
+
+// GraphFreshnessGateConfig configures the graph-layer freshness gate step:
+// per-layer staleness thresholds for codemaps / mx-index / edges, plus the
+// query-time update-cost budget the refresh paths compare against.
+type GraphFreshnessGateConfig struct {
+	// Enabled controls whether the graph-freshness step runs in moai gate.
+	Enabled bool `yaml:"enabled"`
+	// Blocking fails the gate on a red check; the default (false) keeps the
+	// step advisory — the verdict is always emitted, never silenced.
+	Blocking bool `yaml:"blocking"`
+	// CodemapsChangedFiles is the red line for the codemaps layer's
+	// endpoint-diff count (>= is stale). Zero falls back to the default.
+	CodemapsChangedFiles int `yaml:"codemaps_changed_files"`
+	// MXIndexChangedFiles is the red line for the mx-index layer's inventory
+	// mismatch count (>= is stale). Zero falls back to the default.
+	MXIndexChangedFiles int `yaml:"mx_index_changed_files"`
+	// UpdateBudgetMS bounds a query-time refresh's measured cost in
+	// milliseconds; an overrun warns (never blocks the answer). Zero falls
+	// back to the default.
+	UpdateBudgetMS int `yaml:"update_budget_ms"`
 }
 
 // GateTimeouts holds per-step timeout configuration in seconds.

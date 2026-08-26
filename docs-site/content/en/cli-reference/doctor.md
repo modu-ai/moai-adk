@@ -50,6 +50,17 @@ When the cleanable estimate exceeds the threshold (a compiled default of 500 MB)
 
 The estimate calls **the same scanner** `moai clean --home` uses, so the number doctor quotes and the list clean actually deletes cannot drift apart. Full detail: [Home Directory Hygiene](/en/advanced/home-hygiene).
 
+## Exit codes
+
+Scripts and CI wrappers calling `moai doctor` read the exit code, not the summary line.
+
+| Exit code | Meaning |
+|-----------|---------|
+| `0` | No failing check. Warnings are advisory and do not change the exit code |
+| `1` | One or more checks failed — the summary's `Fail N` carried through |
+
+The Constitution Registry check does more than confirm the registry parses: it runs the **same drift validation** as `moai constitution validate`. Doctor therefore cannot report ok on a checkout where validate fails. Bypassing with `MOAI_CONSTITUTION_SKIP_VALIDATE=1` returns doctor to its structural verdict.
+
 ## Examples
 
 ```bash

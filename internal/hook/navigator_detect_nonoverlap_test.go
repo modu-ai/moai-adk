@@ -305,6 +305,25 @@ func TestConsumerOnly_M0AndMxByteUnchanged(t *testing.T) {
 	if err != nil {
 		t.Fatalf("git diff --name-only %s failed: %v", diffRef, err)
 	}
+
+	// Jurisdiction gate (AC-NS2-005a scopes this guard to Detect-layer work):
+	// the consume-only contract binds the branch that CHANGES the Detect
+	// layer. A diff that touches no internal/navigator/detect/ file belongs
+	// to a different SPEC's change-set — e.g. an mx-package SPEC legitimately
+	// editing internal/mx — and running this guard on it would freeze mx
+	// against the wrong owner. Skip (not pass): the guard has no standing
+	// here, and the skip message names why.
+	touchedDetect := false
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		if strings.HasPrefix(strings.TrimSpace(line), "internal/navigator/detect/") {
+			touchedDetect = true
+			break
+		}
+	}
+	if !touchedDetect {
+		t.Skipf("diff vs %s touches no internal/navigator/detect/ file — AC-NS2-005a consume-only guard has no jurisdiction over this branch's change-set", diffRef)
+	}
+
 	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" {

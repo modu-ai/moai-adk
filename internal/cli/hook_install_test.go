@@ -133,9 +133,13 @@ func TestInstallPrePushHook_PreservesUserHook(t *testing.T) {
 	}
 }
 
-// TestInstallPrePushHook_OverwritesMoaiHook verifies that a pre-existing hook
-// WITH the MoAI marker is safely overwritten.
-func TestInstallPrePushHook_OverwritesMoaiHook(t *testing.T) {
+// TestInstallPrePushHook_OverwritesMoaiHookBacksUp verifies that a
+// pre-existing hook WITH the MoAI marker is replaced AND, because a planted
+// legacy hook carries no provenance record and differs from the incoming
+// content (the undecidable-legacy basis, read as user-modified), the pre-run
+// bytes are backed up first (t257). The pre-t257 version of this test asserted
+// the silent overwrite as correct behaviour; it is rewritten, not preserved.
+func TestInstallPrePushHook_OverwritesMoaiHookBacksUp(t *testing.T) {
 	dir := t.TempDir()
 	if err := exec.Command("git", "init", dir).Run(); err != nil {
 		t.Skipf("git init failed: %v", err)
@@ -167,5 +171,21 @@ func TestInstallPrePushHook_OverwritesMoaiHook(t *testing.T) {
 	}
 	if !strings.Contains(string(got), "ci-local") {
 		t.Error("new hook should contain ci-local")
+	}
+
+	// t257: the pre-run legacy bytes must survive in exactly one backup.
+	backups, err := filepath.Glob(filepath.Join(hooksDir, "pre-push.bak.*"))
+	if err != nil {
+		t.Fatalf("glob backups: %v", err)
+	}
+	if len(backups) != 1 {
+		t.Fatalf("expected exactly one pre-push backup, found %d: %v", len(backups), backups)
+	}
+	bak, err := os.ReadFile(backups[0])
+	if err != nil {
+		t.Fatalf("read backup %s: %v", backups[0], err)
+	}
+	if string(bak) != oldContent {
+		t.Errorf("backup must hold the pre-run bytes (%d bytes), got %d bytes", len(oldContent), len(bak))
 	}
 }

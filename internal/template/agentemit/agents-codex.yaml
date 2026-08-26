@@ -78,6 +78,8 @@ tool_classes:
   Skill: skill-loader
   Agent: subagent-spawn
   DesignSync: design-sync
+  SendMessage: cross-session-messaging
+  ListAgents: cross-session-messaging
   mcp__moai__: moai-mcp
 
 # Per-class dispositions — every semantic class carries exactly one, with
@@ -129,6 +131,15 @@ classes:
     rationale: >-
       DesignSync is a Claude-specific MCP-backed tool with no Codex
       equivalent.
+  - class: cross-session-messaging
+    disposition: documented-drop
+    rationale: >-
+      SendMessage/ListAgents are Claude Code runtime session tools with no
+      agent-TOML carrier on Codex. The Codex counterpart rides the moai MCP
+      broker (session_msg_register/list/send/poll) under the existing
+      server-level moai-mcp grant — manager-lead already carries
+      mcp__moai__* tokens, so its TOML grants the server; the deputy's
+      cross-session messaging doctrine lives in the agent body prose.
   - class: moai-mcp
     disposition: emit-field
     field: mcp_servers

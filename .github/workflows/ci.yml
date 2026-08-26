@@ -473,3 +473,13 @@ jobs:
         run: |
           MOAI_CONSTITUTION_REGISTRY=.claude/rules/moai/core/zone-registry.md \
             ./bin/moai constitution list --zone frozen | tail -1
+
+      - name: Verify zone registry (validate — secondary signal)
+        # SPEC-ZONE-REGISTRY-RESYNC-001 (M2): this job is continue-on-error: true,
+        # so this step is a SECONDARY signal only — a failure here can never block
+        # a PR (D6 / AC-ZRR-008). The blocking guard is TestRegistrySyncGuard in
+        # internal/constitution/registry_sync_test.go, which rides the ordinary
+        # `go test ./...` job (plan.md §F M2 design table).
+        run: |
+          MOAI_CONSTITUTION_REGISTRY=.claude/rules/moai/core/zone-registry.md \
+            ./bin/moai constitution validate

@@ -58,7 +58,7 @@ go install github.com/modu-ai/moai-adk/cmd/moai@latest
 远早于 `cmd/moai` 出现之前。直接点名 v3 发布版则会被拒绝：
 
 ```bash
-go install github.com/modu-ai/moai-adk/cmd/moai@v3.1.2
+go install github.com/modu-ai/moai-adk/cmd/moai@v3.1.3
 # go: invalid version: module contains a go.mod file, so module path must match
 #     major version ("github.com/modu-ai/moai-adk/v3")
 ```

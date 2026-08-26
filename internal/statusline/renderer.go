@@ -542,56 +542,69 @@ func (r *Renderer) isPREnabled() bool {
 //
 // Only one number/number pair may appear on the line: two of them side by
 // side is what produced the 2026-08-18 misread of the branch's "59/0" as
-// issues over pull requests. The pair therefore carries the counts an
-// operator actually reads off a status bar, and ahead/behind is not rendered
-// anywhere — the data is still collected on GitStatusData, it simply has no
-// slot on the bar.
+// issues over pull requests. The slash pair therefore belongs to the forge
+// counts alone. Ahead/behind returns to the branch in its original arrow form
+// (↑N ↓N) — arrows are not a slash pair, so the counts are readable again
+// without reintroducing the ambiguity the removal was protecting against.
 //
 // Behavior:
-//   - Workspace.Repo present + Branch present: "📡 owner/name, issues/PRs | 🅱️ branch +N"
+//   - Workspace.Repo present + Branch present: "📡 owner/name, issues/PRs | 🅱️ branch ↑A ↓B +N"
 //   - forge pair: see renderForgePair (zeros shown; unknown is "-/-"; gated segment omits it)
-//   - Workspace.Repo nil or incomplete:        "" (segment hidden — no git remote context)
+//   - Workspace.Repo nil or incomplete:        "🅱️ branch ↑A ↓B +N" (forge half withheld, branch kept)
 //   - Branch empty:                            "" (empty — no git context)
+//   - Ahead / Behind == 0:                      the corresponding arrow omitted
 //   - Dirty (Modified + Staged + Untracked) == 0: " +N" portion omitted
-//   - Worktree active:                          "[WT] " prefix prepended to branch
+//
+// The two halves have different availability. The branch comes from local git and
+// exists inside any repository; the forge identity comes from the optional
+// workspace.repo sub-object on Claude Code's stdin, absent both on payloads that
+// omit it and on checkouts with no configured remote. They are therefore rendered
+// independently: a missing forge half withholds only itself.
 //
 // @MX:NOTE: [AUTO] layout v3 CH3 — the sole renderer of the repo+branch line.
-// @MX:NOTE: [AUTO] Hide entire segment when git is uninitialized or remote repo info is missing (per user request 2026-05-22).
+// @MX:NOTE: [AUTO] Hide the FORGE half when remote repo info is missing (per user request 2026-05-22 — written when this segment carried repo identity alone).
 // @MX:NOTE: [AUTO] 2026-08-18 merge — GitHub counts moved here from renderSessionLine; ahead/behind demoted from ↑N/↓N arrows on the branch to an always-on "a/b" pair on the repo.
-// @MX:NOTE: [AUTO] 2026-08-20 — the slash pair now carries open issues / open PRs; ahead/behind is no longer rendered (operator decision, tradeoff accepted).
+// @MX:NOTE: [AUTO] 2026-08-20 — the slash pair carries open issues / open PRs.
+// @MX:NOTE: [AUTO] ahead/behind restored on the branch as ↑N ↓N (arrows, not a slash pair) per operator request — the counts had been collected but rendered nowhere.
 func (r *Renderer) renderRepoBranchSegment(data *StatusData) string {
 	if data == nil || !data.Git.Available || data.Git.Branch == "" {
 		return ""
 	}
 
-	// Hide segment when repo info is missing (git uninitialized or remote not configured).
-	if data.Workspace.Repo == nil {
-		return ""
+	// The "[WT] " branch prefix was retired (operator decision 2026-08-24,
+	// superseding the 2026-08-18 request): worktree identity rides the
+	// WT-<slug> branch-name convention instead of a statusline marker.
+	branch := "🅱️ " + data.Git.Branch
+
+	// Ahead/behind: commits this branch holds that its upstream does not, and the
+	// reverse. Rendered as arrows rather than a slash pair — the line already
+	// carries one "N/N" (the forge counts), and a second one is what produced the
+	// misread that took these counts off the bar. Each arrow is omitted at zero, so
+	// a synced branch stays quiet.
+	if data.Git.Ahead > 0 {
+		branch += fmt.Sprintf(" ↑%d", data.Git.Ahead)
 	}
-	repo := data.Workspace.Repo
-	if repo.Owner == "" || repo.Name == "" {
-		return ""
+	if data.Git.Behind > 0 {
+		branch += fmt.Sprintf(" ↓%d", data.Git.Behind)
 	}
 
-	// Worktree marker rides between the branch glyph and the branch name
-	// (operator request 2026-08-18): "🅱️ [WT] release/v3.1.1", not a leading
-	// prefix that separates the glyph from the branch it marks.
-	branch := data.Git.Branch
-	if r.isSegmentEnabled(SegmentWorktree) && data.Worktree != "" {
-		branch = "[WT] " + branch
-	}
-	branch = "🅱️ " + branch
-
-	// Dirty count (omitted when 0)
+	// Dirty count (omitted when 0). Follows the arrows: committed history first,
+	// then uncommitted work.
 	dirty := data.Git.Modified + data.Git.Staged + data.Git.Untracked
-	var dirtySuffix string
 	if dirty > 0 {
-		dirtySuffix = fmt.Sprintf(" +%d", dirty)
+		branch += fmt.Sprintf(" +%d", dirty)
+	}
+
+	// Withhold the forge half when repo info is missing (no remote configured, or
+	// a stdin payload that carries no workspace.repo). The branch stands alone.
+	repo := data.Workspace.Repo
+	if repo == nil || repo.Owner == "" || repo.Name == "" {
+		return branch
 	}
 
 	repoPart := fmt.Sprintf("📡 %s/%s", repo.Owner, repo.Name) + r.renderForgePair(data)
 
-	return repoPart + " | " + branch + dirtySuffix
+	return repoPart + " | " + branch
 }
 
 // renderForgePair renders the repo segment's slash pair — open issues over

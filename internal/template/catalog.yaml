@@ -36,7 +36,7 @@ catalog:
             - name: moai-kanban-foreman
               tier: core
               path: templates/.claude/skills/moai-kanban-foreman/
-              hash: fdae87cb7228172ebc29e289f8d6c71c2fd6d70a1a9ed6a14560c6de21e4c6a6
+              hash: 5c7681e02186eabfad10f8531c37702c89d47e661dbc69c235234ace56c7a6a6
               version: 1.0.0
             - name: moai-meta-harness
               tier: core
@@ -117,7 +117,7 @@ catalog:
             - name: manager-develop
               tier: core
               path: templates/.claude/agents/moai/manager-develop.md
-              hash: 75cefcd1ba883ff32ee960661c0d932a679ba74b68451d40e1458e4c8c339858
+              hash: 7872f2400dde416da12dc6c9d7842c1b2778798ced25d10c5a36ecff2c0bd90e
               version: 1.0.0
             - name: manager-docs
               tier: core
@@ -132,12 +132,12 @@ catalog:
             - name: manager-lead
               tier: core
               path: templates/.claude/agents/moai/manager-lead.md
-              hash: 0b6d4e56dc7ad73d7b6770d2815698a93962c010d504e126c81a64b4c614e86e
+              hash: eceaee8c480855dfde7c8bd2bbdc46581e05b32c455864843619a384e9574020
               version: 1.0.0
             - name: manager-spec
               tier: core
               path: templates/.claude/agents/moai/manager-spec.md
-              hash: d5a377f243daa6a1603fa932dc14a0599e205c65a20e288d56b861fbbe725c2b
+              hash: 96b4099da6b52fc895136d27ed7647ff80e0824a81002e18d5326523f0d7edd9
               version: 1.0.0
             - name: plan-auditor
               tier: core
@@ -152,7 +152,7 @@ catalog:
             - name: manager-design
               tier: core
               path: templates/.claude/agents/moai/manager-design.md
-              hash: fd753775af3dddb3a275f6b7294d1d1340c95e45b22b3eb8498e307233af4557
+              hash: fb7af236dc3ed0e95bd439f888c30e29318493dcd25e3dd5d12ac58db12a2a6a
               version: 1.0.0
             - name: e2e-tester
               tier: core

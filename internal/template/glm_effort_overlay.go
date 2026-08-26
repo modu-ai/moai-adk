@@ -26,7 +26,11 @@ package template
 // reasoning_effort=low) rather than the pre-5.3 thinking-off state: under
 // glm-5.3 the thinking-off state is not merely weaker, it is unreachable.
 
-import "github.com/modu-ai/moai-adk/internal/config"
+import (
+	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/config"
+)
 
 // GLM canonical reasoning-state names (REQ-MTP-027). GLM-5.3's reasoning control
 // has exactly three reachable levels; these named constants are the collapse
@@ -138,6 +142,28 @@ func CollapseClaudeEffortToGLM(effort string) GLMReasoningState {
 	}
 }
 
+// IsGLMFlashModel reports whether the resolved session model is glm-5.3-flash
+// (the flash variant). The check is substring-based and case-insensitive so a
+// decorated id (e.g. a suffix the caller forwards verbatim) still matches.
+func IsGLMFlashModel(model string) bool {
+	return strings.Contains(strings.ToLower(model), config.DefaultGLM53Flash)
+}
+
+// CollapseClaudeEffortToGLMForModel is the model-aware collapse. Under
+// glm-5.3-flash it returns the `max` state for EVERY Claude effort level —
+// including `low`: the 3-level GLM reasoning control (low/high/max) does not
+// exist on flash, which accepts reasoning_effort: max only, so emitting the
+// `low` state would send a wire value the model rejects. For every non-flash
+// model it delegates to the glm-5.3-family collapse unchanged
+// (CollapseClaudeEffortToGLM), preserving low→low, above-low→max, and the
+// unrecognized→max totality clause.
+func CollapseClaudeEffortToGLMForModel(model, effort string) GLMReasoningState {
+	if IsGLMFlashModel(model) {
+		return glmReasoningMax
+	}
+	return CollapseClaudeEffortToGLM(effort)
+}
+
 // GLMReasoningStateNames returns the three canonical z.ai reasoning-state names
 // in descending reasoning depth. It exists so a settings surface can offer the
 // state set as a closed widget domain without re-declaring the literals — the
@@ -190,6 +216,19 @@ func ResolveGLMReasoning(agentName, claudeEffort string) GLMReasoningState {
 	return CollapseClaudeEffortToGLM(claudeEffort)
 }
 
+// ResolveGLMReasoningForModel is the model-aware per-agent resolution: under
+// glm-5.3-flash the result is the `max` state regardless of agent or effort
+// (flash accepts reasoning_effort: max only — see
+// CollapseClaudeEffortToGLMForModel); for every non-flash model it delegates
+// to the model-unaware ResolveGLMReasoning (coding-max override + collapse)
+// unchanged.
+func ResolveGLMReasoningForModel(model, agentName, claudeEffort string) GLMReasoningState {
+	if IsGLMFlashModel(model) {
+		return glmReasoningMax
+	}
+	return ResolveGLMReasoning(agentName, claudeEffort)
+}
+
 // SessionGLMReasoningState derives the SESSION-GLOBAL GLM reasoning state for the
 // Branch-B explicit-write delivery (REQ-MTP-030, raised to the `max` state by
 // REQ-GEM-002 — lead-ratified 2026-08-22, superseding REQ-GER-004 of the stalled
@@ -238,6 +277,18 @@ func SessionGLMReasoningStateForEffort(effort string) GLMReasoningState {
 		return CollapseClaudeEffortToGLM(effort)
 	}
 	return SessionGLMReasoningState()
+}
+
+// SessionGLMReasoningStateForModel is the model-aware main-session
+// derivation: under glm-5.3-flash the session value is the `max` state both
+// for a web-set effort (including low — flash accepts reasoning_effort: max
+// only) and for the empty-effort fallback; for every non-flash model it
+// delegates to SessionGLMReasoningStateForEffort unchanged.
+func SessionGLMReasoningStateForModel(model, effort string) GLMReasoningState {
+	if IsGLMFlashModel(model) {
+		return glmReasoningMax
+	}
+	return SessionGLMReasoningStateForEffort(effort)
 }
 
 // IsGLMBackend reports whether the effective session backend is GLM (REQ-MTP-026).

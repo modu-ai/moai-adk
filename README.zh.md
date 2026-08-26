@@ -116,9 +116,21 @@ moai glm -f lane-3            # ……GLM 后端上的一条泳道
 
 带定义和示例的正式术语表：[看板术语](https://adk.mo.ai.kr/zh/core-concepts/kanban-board-terms)
 
+卡片也会因形状不同而走不同的列。主控在卡片离开 `backlog` 时将其归入三个类别之一，并在派单文里写明。
+
+| 类别 | 形状 | 捷径 |
+|---|---|---|
+| A —— 立即关闭 | 一个文件·一行，无设计判断，回归由 CI 捕捉 | 一个会话包办到 PR（跳过 `plan`） |
+| B —— 原因未查明的缺陷 | 明显坏了，但原因还没确立 | `run → sync`（不经 `plan`，没有 SPEC） |
+| C —— 设计变更 | 含有决策，或横跨多个子系统 | 三个列全走 |
+
+类别 A 只凭查证过的证据认定，不接受主张 —— 引用不出以单文件测得的 diff 和将在合并的 HEAD 上跑绿的 CI，就不是类别 A。类别 B 只跳过 `plan`，sync 门禁的评审照常运转，并把原因确立的证据（复现命令与输出）留在卡片的进度记录里。
+
+详见：[看板模式 —— 卡片类别](https://adk.mo.ai.kr/zh/advanced/kanban-mode)
+
 ### 用眼睛看板
 
-`moai web` 会启动一个本地控制台。看板画面把看板链条和 SPEC 流水线放在一起，还附带 Overview、Specs、Monitor、Settings 画面。
+`moai web` 会启动一个本地控制台。看板画面把看板链条和 SPEC 流水线放在一起，还附带 Overview、Specs、Monitor、Settings、Todo 画面。
 
 <p align="center">
   <img src="./assets/images/moai-web-overview.png" alt="moai web 控制台 Overview 画面 —— SPEC 汇总、进行中的 SPEC 列表、会话注册表" width="90%">
@@ -349,7 +361,7 @@ claude        # 或者 moai cc —— 在项目里运行 Claude Code
 | CWD 冲突消解 | 用 `(worktree_path, session_id)` 对区分复用路径 |
 | 深度上限 | 限制嵌套复杂度 |
 
-> **现在就能用**：`moai cc -k`（或 `moai glm -k`）启动主控，用 `-k --name <role>` 逐个接入伴随会话 —— 每终端一个，手动启动。`moai chain <status|lineage|back|list|prune>` 读谱系，`moai todo`（不带参数查看队列，`add`·`list`·`next`·`done`·`unpick`·`drop`·`undrop`·`edit`·`move`，两个以上的词直接当作追加卡片）运营 `backlog` 列。启动顺序见上文“v3.1 新功能 —— 看板模式”一节。
+> **现在就能用**：`moai cc -k`（或 `moai glm -k`）启动主控，用 `-k --name <role>` 逐个接入伴随会话 —— 每终端一个，手动启动。`moai chain <status|lineage|back|list|prune>` 读谱系，`moai todo`（不带参数查看队列，`add`·`list`·`next`·`done`·`unpick`·`drop`·`undrop`·`edit`·`move`·`analyze`，两个以上的词直接当作追加卡片）运营 `backlog` 列。启动顺序见上文“v3.1 新功能 —— 看板模式”一节。
 
 > 详见：[看板模式指南](https://adk.mo.ai.kr/zh/advanced/kanban-mode)
 
@@ -399,11 +411,15 @@ TRUST 5（Tested · Readable · Unified · Secured · Trackable）作用于每�
   <img src="./assets/images/moai-web-settings.png" alt="moai web 控制台设置画面 —— 档案栏和 11 个设置标签页" width="90%">
 </p>
 
-`moai web` 打开一个只监听本地主机的控制台。画面共五个 —— Overview、Kanban、Specs、Monitor、Settings；设置画面分成十一个标签页：Identity、Language、LLM、3rd Party LLM、Workflow、Git & Worktree、Audit、Agents、Report、MCP、Cross-Session。档案的创建、改名、删除也在同一画面完成。
+`moai web` 打开一个只监听本地主机的控制台。画面共六个 —— Overview、Kanban、Specs、Monitor、Settings、Todo；设置画面分成十一个标签页：Identity、Language、LLM、3rd Party LLM、Workflow、Git & Worktree、Audit、Agents、Report、MCP、Cross-Session。档案的创建、改名、删除也在同一画面完成。
 
 ### ref / domain 技能
 
 ref 技能 11 个（`moai-ref-api-patterns`、`moai-ref-owasp-checklist`、`moai-ref-llm-security`、`moai-ref-react-patterns`、`moai-ref-testing-pyramid`、`moai-ref-ui-polish`、`moai-ref-secops`、`moai-ref-supply-chain`、`moai-ref-seo`、`moai-ref-git-workflow`、`moai-ref-cross-model-audit`）与 domain 技能 7 个（`moai-domain-backend`、`moai-domain-frontend`、`moai-domain-database`、`moai-domain-design-dna`、`moai-domain-html-report`、`moai-domain-humanize`、`moai-domain-svg-infographic`）向智能体注入现场知识。
+
+### SVG 技术信息图
+
+`moai-domain-svg-infographic` 技能生成可编辑的 SVG 技术信息图。写标记之前先用数值算出坐标，完成的文件要通过对确定性源码 lint 和带尺寸校验的 2 倍分辨率 PNG 渲染。通过外部目录基准实测了九种形态——审批门流程、前后对比、KPI 卡片网格、决策矩阵、分层堆叠、嵌套作用域、流程图、路线图时间线、组件拓扑——确认九种全部可复现（分形态产物与判定：`.moai/reports/t272/verdict.md`）。
 
 ### 跨平台
 
@@ -484,9 +500,9 @@ flowchart TD
 ### 读懂状态栏
 
 ```
-🤖 Opus | 🧠 xhigh·t | ♻️ 87% | 🔅 v2.1.212 | 🗿 v3.1.2 | ⏳ 2h 34m | 💬 MoAI
+🤖 Opus | 🧠 xhigh·t | ♻️ 87% | 🔅 v2.1.212 | 🗿 v3.1.3 | ⏳ 2h 34m | 💬 MoAI
 🪫 CW: ████████░░ 88% (⚠️/clear) | 🔋 5H: ████░░░░░░ 45% (4h 30m) | 🪫 7D: ████████░░ 82% (Jan 21)
-📁 moai-adk-go | 📡 modu-ai/moai-adk, 7/3 | 🅱️ [WT] release/v3.1.2 +3 | 💾 +1 M2 ?0 | 📋 [run SPEC-AUTH-001-run] | 💌 PR #1042 (⌥approved)
+📁 moai-adk-go | 📡 modu-ai/moai-adk, 7/3 | 🅱️ [WT] release/v3.1.3 +3 | 💾 +1 M2 ?0 | 📋 [run SPEC-AUTH-001-run] | 💌 PR #1042 (⌥approved)
 🏷️ run | 👤 manager-develop | 🔄 TODO: 1/3
 ```
 
@@ -668,16 +684,18 @@ z.ai GLM 作为 Claude Code 的替代后端。只换环境变量，代码原样�
 | `moai glm` | GLM | GLM | 建议 | 约 70% |
 | `moai cg` | Claude | GLM | 必需 | 约 60% |
 
-GLM Coding Plan 每月 $10 起。可用 glm-5.3、glm-4.7、glm-4.5-air 以及免费模型（GLM-4.7-Flash、GLM-4.5-Flash）。
+GLM Coding Plan 每月 $10 起。可用 glm-5.3-flash（默认）、glm-5.3、glm-4.7、glm-4.5-air 以及免费模型（GLM-4.7-Flash、GLM-4.5-Flash）。
 
 Claude 的每一档通过 `ANTHROPIC_DEFAULT_*_MODEL` 环境变量映射到 GLM 模型：
 
 | Claude 档位 | GLM 模型 | 上下文 |
 |---|---|---|
-| Opus | glm-5.3 | 1M |
-| Sonnet | glm-5.3 | 1M |
-| Haiku | glm-5.3 | 1M |
-| Fable | glm-5.3 | 1M |
+| Opus | glm-5.3-flash | 1M |
+| Sonnet | glm-5.3-flash | 1M |
+| Haiku | glm-5.3-flash | 1M |
+| Fable | glm-5.3-flash | 1M |
+
+> glm-5.3 在任何档位插槽都仍然可选（`llm.yaml` 的 `llm.glm.models.*`）；把插槽改回去也只是一行配置改动。
 
 > 详见：[Multi-LLM 指南](https://adk.mo.ai.kr/zh/multi-llm) · [z.ai 定价](https://docs.z.ai/guides/overview/pricing)
 
@@ -729,7 +747,7 @@ Claude 的每一档通过 `ANTHROPIC_DEFAULT_*_MODEL` 环境变量映射到 GLM 
 | `moai memory <doctor\|archive>` | 智能体记忆体检与旧条目归档 |
 | `moai tokens record` | 按池记录 token 使用台账 |
 | `moai clean [--home]` | 清理旧的运行产物。加上 `--home` 就在允许清单范围内清理 `~/.moai`。默认是 dry-run，要加 `--force` 才真正删除 |
-| `moai web` | 网页控制台 —— 5 个画面（Overview · Kanban · Specs · Monitor · Settings）、11 标签页设置 |
+| `moai web` | 网页控制台 —— 6 个画面（Overview · Kanban · Specs · Monitor · Settings · Todo）、11 标签页设置 |
 
 > 全部 49 个命令：[CLI 参考](https://adk.mo.ai.kr/zh/cli-reference)
 
@@ -739,7 +757,7 @@ Claude 的每一档通过 `ANTHROPIC_DEFAULT_*_MODEL` 环境变量映射到 GLM 
 
 **domain（专业领域）7 个**：`moai-domain-backend`、`moai-domain-frontend`、`moai-domain-database`、`moai-domain-design-dna`、`moai-domain-html-report`、`moai-domain-humanize`、`moai-domain-svg-infographic`
 
-`moai-domain-design-dna` 是 v3.1.1 新加的。给它一份要参考的设计 —— 截图也好、一组图片也好、活的 URL 也好 —— 它会把颜色、间距、圆角、字体这些量得出来的值，连同那份设计的气质和特殊渲染效果，一并反推成一份 Design DNA JSON。再把这份 JSON 喂回去，它就造出气质相同的新产物 —— 这是把“做成这个画面的样子”从话语搬到数值上的路径。
+`moai-domain-design-dna` 是 v3.1.1 新加的。给它一份要参考的设计 —— 截图也好、一组图片也好、活的 URL 也好 —— 它会把颜色、间距、圆角、字体这些量得出来的值，连同那份设计的气质和特殊渲染效果，一并反推成一份 Design DNA JSON。再把这份 JSON 喂回去，它就造出气质相同的新产物 —— 这是把“做成这个画面的样子”从话语搬到数值上的路径。也支持图表配置档案：激活档案的标记保存在项目根目录的 `.design-dna/` 下，能活过 `moai update`；可选开启的 mermaid、drawio 导入器把来源当作不可信输入 —— 坐标、颜色、字体、版式一概不带过来。
 
 ### CHANGELOG
 
@@ -760,7 +778,7 @@ Claude 的每一档通过 `ANTHROPIC_DEFAULT_*_MODEL` 环境变量映射到 GLM 
 ### 状态栏里的版本显示是什么意思？
 
 ```
-🗿 v3.1.1 -> 🗿 v3.1.2
+🗿 v3.1.2 -> 🗿 v3.1.3
 ```
 
 前一个值是当前安装的 moai-adk 版本，箭头表示有可用更新。运行 `moai update` 后消失。

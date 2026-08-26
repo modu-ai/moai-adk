@@ -892,10 +892,10 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 
 	// Install pre-push hook (REQ-CIAUT-002). Non-fatal; --no-hooks opts out.
 	// Status/warning lines are human-facing -> stderr (REQ-CTX-016).
-	installPrePushHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.ErrOrStderr())
+	installPrePushHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.ErrOrStderr(), cmd.ErrOrStderr())
 
 	// Install pre-commit hook (REQ-PC-001). Fast-subset commit tier; --no-hooks opts out.
-	installPreCommitHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.ErrOrStderr())
+	installPreCommitHookOptional(opts.ProjectRoot, getBoolFlag(cmd, "no-hooks"), cmd.ErrOrStderr(), cmd.ErrOrStderr())
 
 	// SPEC-WORKTREE-BRANCH-GUARD-001 (REQ-WBG-009): surface the shared-checkout
 	// worktree advisory. Phrased per workflow.worktree.auto_create; rides stdout

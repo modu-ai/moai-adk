@@ -58,9 +58,9 @@ description: 作業の性質と品質/コストの目標に合わせてエージ
 
 | プロファイル (profile) | CLI フラグ | 性格 |
 |---------------|-----------|------|
-| **high** | `--model-policy high` | 品質優先。呼び出し頻度が最も低い 2 行に `max` effort |
-| **medium** (デフォルト) | `--model-policy medium` | 品質とコストのバランス。コスト/スコア曲線の変曲点 |
-| **low** | `--model-policy low` | 課題あたり最低コスト。エージェンティック行は Opus `low` に下がる |
+| **high** | `--model-policy high` | 品質優先。監査・助言・調整行が `high` を維持し、著作行は `medium` にとどまる |
+| **medium** (デフォルト) | `--model-policy medium` | バランス。`high` と 2 行 (builder-harness · e2e-tester) でのみ異なる |
+| **low** | `--model-policy low` | 課題あたり最低コスト。ほとんどのエージェンティック行は Opus `medium` に下がる |
 
 {{< callout type="tip" >}}
 **名前の整理**: `llm.yaml` の `profile` フィールド、legacy の `performance_tier` エイリアス、CLI フラグ `--model-policy` はいずれも `high`/`medium`/`low` の 3 値をそのまま使い、1:1 で対応します。デフォルトは `medium` です。旧最上位ティア名の `max` は、既存設定が読み込まれ続けるよう今も `high` の**読み取り専用エイリアス**として扱われますが、保存時には常に `high` と記録されます。移行作業は不要です。`performance_tier` は `profile` がないときのみ読み込まれます。
@@ -70,25 +70,26 @@ description: 作業の性質と品質/コストの目標に合わせてエージ
 
 ## エージェント別割り当て表
 
-以下の 33 セルがプロファイルマトリクス (エージェント 11 個 × プロファイル 3 個) です。各セルには、リゾルバが spawn 時点で注入する `{model, effort}` ペアが入っています。オーケストレーターのメインセッションは呼び出される側のエージェントではないため、表から外しています。
+以下の 36 セルがプロファイルマトリクス (エージェント 12 個 × プロファイル 3 個) です。各セルには、リゾルバが spawn 時点で注入する `{model, effort}` ペアが入っています。オーケストレーターのメインセッションは呼び出される側のエージェントではないため、表から外しています。
 
-### Manager Agents (5 個)
+### Manager Agents (6 個)
 
 | エージェント | high | medium | low |
 |---------|------|--------|-----|
-| manager-spec | opus / high | opus / medium | opus / low |
-| manager-develop | opus / max | opus / medium | opus / low |
-| manager-docs | opus / medium | opus / low | sonnet / low |
+| manager-spec | opus / medium | opus / medium | opus / medium |
+| manager-develop | opus / medium | opus / medium | opus / medium |
+| manager-docs | sonnet / low | sonnet / low | sonnet / low |
 | manager-git | sonnet / low | sonnet / low | sonnet / low |
-| manager-design | opus / high | opus / medium | opus / low |
+| manager-design | opus / high | opus / high | opus / medium |
+| manager-lead | opus / high | opus / high | opus / medium |
 
 ### Evaluator · Advisor · Builder · Specialist Agents (5 個)
 
 | エージェント | high | medium | low |
 |---------|------|--------|-----|
-| plan-auditor | opus / high | opus / medium | opus / low |
-| sync-auditor | opus / high | opus / medium | opus / low |
-| super-advisor | opus / max | opus / high | opus / medium |
+| plan-auditor | opus / high | opus / high | opus / medium |
+| sync-auditor | opus / high | opus / high | opus / medium |
+| super-advisor | opus / high | opus / high | opus / high |
 | builder-harness | opus / high | opus / medium | opus / low |
 | e2e-tester | opus / medium | opus / low | sonnet / low |
 
@@ -104,11 +105,13 @@ description: 作業の性質と品質/コストの目標に合わせてエージ
 
 ## 割り当て原則
 
-- **エージェンティック行はすべて Opus**: `manager-spec`、`manager-develop`、`plan-auditor`、`sync-auditor`、`manager-design`、`builder-harness`、`manager-docs`、`e2e-tester` などマルチターン作業はすべて Opus に残します。Opus の `low` がどの effort の Sonnet よりもスコアが高く、課題あたりコストが安いからです。
-- **Sonnet は単発の行のみ**: `manager-git` の機械的作業と `Explore` の探索は入力が大半を占める単一パスで終わり、マルチステップの完走失敗を心配する必要がなく、その場所では Sonnet の安い入力単価が決め手になります。この 2 行は 3 つのプロファイルすべてで固定です。
-- **`max` は 2 セルのみ**: `high` プロファイルの `manager-develop` と `super-advisor` だけです。呼び出し頻度が最も低く、1 回の判断がその後のコストを大きく左右する行です。
+- **支出は判断する行に**: ポリシーはコスト/スコア曲線の導出ではなく、確定されたオペレーター判断です。監査・助言行（`plan-auditor`、`sync-auditor`、`super-advisor`）と調整行（`manager-design`、`manager-lead`）が `high` を維持する一方、著作・実装行（`manager-spec`、`manager-develop`）は 3 プロファイルすべて `medium` にとどまります。
+- **エージェンティック行はすべて Opus**: `manager-spec`、`manager-develop`、`plan-auditor`、`sync-auditor`、`manager-design`、`manager-lead`、`builder-harness`、`e2e-tester` などマルチターン作業はすべて Opus に残します。Opus の `low` がどの effort の Sonnet よりもスコアが高く、課題あたりコストが安いからです。
+- **Sonnet は単発・入力支配の行のみ**: `manager-docs` のドキュメント整理、`manager-git` の機械的作業、`Explore` の探索は入力が大半を占める単一パスで終わり、マルチステップの完走失敗を心配する必要がなく、その場所では Sonnet の安い入力単価が決め手になります。この 3 行は 3 つのプロファイルすべてで `sonnet / low` に固定です。
+- **`max` を受ける行はない**: `max` は `high` の上の唯一の段階として語彙に残りますが、現在使用するセルはありません。
 - **`xhigh` はどこにも使わない**: Opus ではスコアが `high` と同じなのにコストだけ 49% 余分にかかります。
-- **`low` はモデルクラスではなく effort を下げる**: エージェンティック行は Opus `low` まで下がり、`manager-docs` と `e2e-tester` だけが Sonnet まで後退します。
+
+**`manager-lead` はマトリクスの 1 行になりました。** 以前は表にまったくなく、未マッピングエージェント用の `inherit` センチネルとして解決されていました — Tier L の調整者が、セッションがたまたま乗っていたモデルをそのまま受け取る状態でした。現在は他の維持エージェントと同じく自分の行を持ち、注入とオーバーライドの対象です。
 
 計画を立てたエージェントが自分の計画を監査しないよう、`plan-auditor` と `sync-auditor` は `manager-spec` とは別個に割り当てます。バイアスを防ぐ力はセルの値ではなく、カタログの構造そのものから生まれます。
 
@@ -158,6 +161,23 @@ flowchart TD
     G --> H
     H --> I[".moai/logs/agent-model-audit.jsonl"]
 ```
+
+### GLM バックエンドの reasoning 上限
+
+GLM バックエンド（`moai glm`、または `moai cg` の GLM ペイン）では、effort は Claude の 5 段語彙をそのまま使えません。GLM-5.3 は **常に推論します** — reasoning の無効化はサポートされず、それを要求するリクエストは失敗します。制御軸は 3 段階の `reasoning_effort`（low / high / max）1 つであり、Claude effort はその上に collapse します:
+
+| Claude effort | GLM reasoning_effort |
+|--------------|---------------------|
+| `low` | `low` |
+| `medium` | `max` |
+| `high` | `max` |
+| `xhigh` | `max` |
+| `max` | `max` |
+| (認識不能な値) | `max` — 全体性条項: 決して過少推論しない |
+
+つまり **上限は `max`** です。`low` より上のすべての Claude effort が reasoning-max に収束し、認識不能な値も reasoning-max に落ち、明示的なオーバーライドのない GLM セッションはデフォルトで reasoning-max として実行されます。reasoning-high は依然として有効な wire 値ですが、どの Claude effort もそこへは collapse しません。実装エージェントの `manager-develop` は collapse 結果と無関係に reasoning-max を強制され（z.ai の「コーディング課題は reasoning max」推奨）、`manager-git` は 3 プロファイルすべて `low` effort のため reasoning-low の席を占めます。
+
+このマッピングの源はコードであり、このページではありません — ランタイムの SSOT は `internal/template/glm_effort_overlay.go` です。
 
 ## 宣言と解釈がずれるとき (ドリフト)
 
@@ -225,7 +245,7 @@ moai update
 ### CLI フラグで直接設定
 
 ```bash
-moai init my-project --model-policy high    # 最高品質 (2 行に max effort)
+moai init my-project --model-policy high    # 品質優先 (監査・助言・調整行 high)
 moai init my-project --model-policy medium  # バランス (デフォルト)
 moai init my-project --model-policy low     # 課題あたり最低コスト
 ```
@@ -238,7 +258,7 @@ moai init my-project --model-policy low     # 課題あたり最低コスト
 
 ## 次のステップ
 
-- [プロファイルマトリクス](/ja/advanced/profile-matrix/) — 33 セルの導出根拠 (ベンチマーク) とリゾルバの優先順位の詳細
+- [プロファイルマトリクス](/ja/advanced/profile-matrix/) — 36 セルの配置根拠 (判断加重ポリシー) とリゾルバの優先順位の詳細
 - [CG モード](/ja/multi-llm/cg-mode) — Claude リーダー + GLM ワーカーのハイブリッドでコスト削減
 - [自律性ティア](/ja/advanced/autonomy-tier/) — `MOAI_AUTONOMY_TIER` のコスト · 速度トレードオフ
 - [CLI リファレンス](/ja/getting-started/cli) — `moai init`、`moai update`、`moai model profile` の詳細

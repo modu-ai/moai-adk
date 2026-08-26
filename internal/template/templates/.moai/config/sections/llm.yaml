@@ -33,25 +33,27 @@ llm:
   performance_tier: "medium"
 
   # Profile matrix (transparency + editability). Each profile column maps each
-  # retained agent NAME to a {model, effort} pair — 11 agents x 3 columns = 33
+  # retained agent NAME to a {model, effort} pair — 12 agents x 3 columns = 36
   # cells. The Go default (template.DefaultProfileMatrix) is the authoritative
   # fallback for any cell absent here. Agents not listed (any user-added agent)
   # stay model: inherit and are never injected.
   #
-  # Column intent (anchored on a long-horizon coding-agent benchmark measuring
-  # score, cost per task, output tokens, and agent steps at every effort level,
-  # then overridden by the phase-weighted policy below):
-  #   high   - quality first. `max` is reserved for the two rare-but-
-  #            decision-critical rows (run implementation, escalation advisor).
-  #   medium - the working default. NOT the cost-minimal derivation: the
-  #            benchmark anchor put manager-develop at `medium` and derived the
-  #            rest from it, but the phase-weighted policy departs from that knee
-  #            deliberately — run (manager-develop) and review (sync-auditor)
-  #            take `high`, plan (manager-spec, plan-auditor) steps down to
-  #            `high`, and sync (manager-docs) steps down to `low`. Do not
-  #            re-derive back onto the anchor.
-  #   low    - economical. Opus `low` still outscores Sonnet at any effort and
-  #            costs less per task, so it is the floor for agentic rows.
+  # Column intent. The cells are settled operator input, not a derivation: the
+  # spend goes to the rows that JUDGE rather than the rows that produce.
+  #   high   - quality first. The auditing/advising rows (plan-auditor,
+  #            sync-auditor, super-advisor) and the coordinating rows
+  #            (manager-design, manager-lead) hold `high`; the authoring and
+  #            implementing rows (manager-spec, manager-develop) sit at
+  #            `medium`. No row currently takes `max`.
+  #   medium - the working default. It differs from `high` in exactly two rows:
+  #            builder-harness steps down to `medium` and e2e-tester to `low`.
+  #   low    - economical. Every opus row lands on `medium` except
+  #            builder-harness (`low`) and super-advisor, which stays `high` —
+  #            the escalation path is what a cheap column most needs to keep
+  #            sound. Opus `low` still outscores Sonnet at any effort and costs
+  #            less per task, so it remains the floor for agentic rows.
+  # Do not re-derive these cells from a cost/score curve; that would silently
+  # walk manager-develop and manager-spec back up.
   #
   # Two model rules the matrix encodes:
   #   - Opus is the model for every multi-turn agentic row. Sonnet needs a
@@ -63,8 +65,9 @@ llm:
   #     failure does not apply and the lower input price does.
   #
   # `xhigh` is absent from the matrix on purpose: on Opus it scores the same as
-  # `high` at materially higher cost, so it is strictly dominated. `max` is the
-  # only level above `high`, so a row wanting more than `high` takes `max`.
+  # `high` at materially higher cost, so it is strictly dominated. `max` remains
+  # the only level above `high` and stays available to a row that wants it, but
+  # no row currently takes it.
   #
   # Under a GLM backend these cells are NOT what reaches the wire: z.ai's 3-state
   # reasoning control collapses {medium, high} onto one state and {xhigh, max}
@@ -74,7 +77,7 @@ llm:
   # where agent frontmatter carries the effort; they do not by themselves change
   # delivered GLM behavior.
   #
-  # manager-git / Explore are profile-invariant.
+  # manager-docs / manager-git / Explore are profile-invariant (all sonnet/low).
   #
   # The model value is injected as a per-spawn runtime arg ([1m]-safe). The
   # effort value reaches the agent through its frontmatter `effort:` (the Agent
@@ -82,36 +85,39 @@ llm:
   # no agent file, so its effort is stated at call time, never persisted.
   profiles:
     high:
-      manager-spec:    { model: opus,   effort: high }
+      manager-spec:    { model: opus,   effort: medium }
       plan-auditor:    { model: opus,   effort: high }
       sync-auditor:    { model: opus,   effort: high }
-      manager-develop: { model: opus,   effort: max }
-      super-advisor:   { model: opus,   effort: max }
+      manager-develop: { model: opus,   effort: medium }
+      super-advisor:   { model: opus,   effort: high }
       manager-design:  { model: opus,   effort: high }
+      manager-lead:    { model: opus,   effort: high }
       builder-harness: { model: opus,   effort: high }
       e2e-tester:      { model: opus,   effort: medium }
-      manager-docs:    { model: opus,   effort: low }
+      manager-docs:    { model: sonnet, effort: low }
       manager-git:     { model: sonnet, effort: low }
       Explore:         { model: sonnet, effort: low }
     medium:
-      manager-spec:    { model: opus,   effort: high }
+      manager-spec:    { model: opus,   effort: medium }
       plan-auditor:    { model: opus,   effort: high }
       sync-auditor:    { model: opus,   effort: high }
-      manager-develop: { model: opus,   effort: high }
+      manager-develop: { model: opus,   effort: medium }
       super-advisor:   { model: opus,   effort: high }
-      manager-design:  { model: opus,   effort: medium }
+      manager-design:  { model: opus,   effort: high }
+      manager-lead:    { model: opus,   effort: high }
       builder-harness: { model: opus,   effort: medium }
       e2e-tester:      { model: opus,   effort: low }
-      manager-docs:    { model: opus,   effort: low }
+      manager-docs:    { model: sonnet, effort: low }
       manager-git:     { model: sonnet, effort: low }
       Explore:         { model: sonnet, effort: low }
     low:
-      manager-spec:    { model: opus,   effort: low }
-      plan-auditor:    { model: opus,   effort: low }
-      sync-auditor:    { model: opus,   effort: low }
-      manager-develop: { model: opus,   effort: low }
-      super-advisor:   { model: opus,   effort: medium }
-      manager-design:  { model: opus,   effort: low }
+      manager-spec:    { model: opus,   effort: medium }
+      plan-auditor:    { model: opus,   effort: medium }
+      sync-auditor:    { model: opus,   effort: medium }
+      manager-develop: { model: opus,   effort: medium }
+      super-advisor:   { model: opus,   effort: high }
+      manager-design:  { model: opus,   effort: medium }
+      manager-lead:    { model: opus,   effort: medium }
       builder-harness: { model: opus,   effort: low }
       e2e-tester:      { model: sonnet, effort: low }
       manager-docs:    { model: sonnet, effort: low }
@@ -144,7 +150,7 @@ llm:
       synthesize:           { effort: low }     # <- manager-docs row
       research:             { effort: high }    # <- plan-auditor row
       verify-judge:         { effort: high }    # <- sync-auditor row
-      implement:            { effort: max }     # <- manager-develop row
+      implement:            { effort: medium }  # <- manager-develop row
       design-architecture:  { effort: high }    # <- manager-design row
     medium:
       read-only-extract:    { effort: low }
@@ -152,16 +158,16 @@ llm:
       synthesize:           { effort: low }
       research:             { effort: high }
       verify-judge:         { effort: high }
-      implement:            { effort: high }
-      design-architecture:  { effort: medium }
+      implement:            { effort: medium }
+      design-architecture:  { effort: high }
     low:
       read-only-extract:    { effort: low }
       mechanical-transform: { effort: low }
       synthesize:           { effort: low }
-      research:             { effort: low }
-      verify-judge:         { effort: low }
-      implement:            { effort: low }
-      design-architecture:  { effort: low }
+      research:             { effort: medium }
+      verify-judge:         { effort: medium }
+      implement:            { effort: medium }
+      design-architecture:  { effort: medium }
 
   # Optional per-agent overrides, keyed by canonical agent name. Each override
   # {model, effort} pair wins over the active profile's cell for that agent.
@@ -174,10 +180,10 @@ llm:
   glm:
     base_url: "https://api.z.ai/api/anthropic"
     models:
-      high: "glm-5.3"         # 1M context — Opus slot (main session + inherit agents)
-      medium: "glm-5.3"       # 1M context — Sonnet slot (balanced)
-      low: "glm-5.3"          # 1M context — Haiku slot (lightweight)
-      fable: "glm-5.3"        # 1M context — Fable tier (ANTHROPIC_DEFAULT_FABLE_MODEL)
+      high: "glm-5.3-flash"   # 1M context — Opus slot (main session + inherit agents)
+      medium: "glm-5.3-flash" # 1M context — Sonnet slot (balanced)
+      low: "glm-5.3-flash"    # 1M context — Haiku slot (lightweight)
+      fable: "glm-5.3-flash"  # 1M context — Fable tier (ANTHROPIC_DEFAULT_FABLE_MODEL)
 
     # ── GLM reasoning-effort mapping (documentation-only — the Go overlay at
     #    internal/template/glm_effort_overlay.go is the runtime SSOT) ──
@@ -199,6 +205,13 @@ llm:
     #   xhigh    → max
     #   max      → max
     #   (unrecognized → max; totality clause — never under-reason)
+    #
+    # FLASH EXCEPTION (glm-5.3-flash): when the resolved model is glm-5.3-flash,
+    # EVERY Claude effort level — including low — resolves to thinking=enabled,
+    # reasoning_effort=max. The 3-level reasoning control above (low/high/max)
+    # does not exist on flash, which accepts reasoning_effort: max only, so the
+    # low state is never emitted for flash. The collapse table applies to every
+    # non-flash model (glm-5.3 and older) unchanged.
     #
     # The `high` level stays a legal wire value and a selectable stored state
     # (settings widget), but no Claude effort collapses to it — every effort

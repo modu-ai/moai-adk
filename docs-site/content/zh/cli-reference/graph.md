@@ -26,6 +26,8 @@ $ moai graph build
 
 汇总导入边、`@MX:SPEC` 连接、SPEC 间依赖，写入 `.moai/project/graph/edges.jsonl`。它在同一个 git HEAD 上跑两次会产出相同内容 —— 是确定性的。查询永远读这份产物，所以**查询之前要先跑一次 build**。
 
+在文档层之上，build 现在直接从代码中提取边——函数调用边(code-call)和导入边(code-import)，而既有的文档边一条都不变。导入目标会剥掉 go.mod 模块路径、归一化成仓库本地包，与 codemaps 的导入图指向同一个包域；每种语言的调用解析到什么水准(grade)对全部 16 种语言公开。两层对同一条关系说法不一致时，不丢弃任何一方：文档边带着 `disagrees_with` 标记留下，`--all-disagreements` 连被抑制的方向(代码发现了、文档沉默的本地依赖)也一并显示。
+
 ## moai graph query
 
 一次调用只给**恰好一个**选择器。
@@ -47,6 +49,33 @@ $ moai graph query --milestones-no-card
 ```
 
 可以用 `--edges <路径>` 指向别的 edges.jsonl，或用根参数指定别的项目根。
+
+查询作答前，如果机械层(@MX 索引 · edges.jsonl)已经过期，会先刷新再回答。只有内容哈希变了的文件才会重新解析，因此未提交的编辑也会反映在答案里；刷新耗时超过 gate.yaml 的 `update_budget_ms`(默认 2000ms)时只警告，答案照常给出。每条答案都会在 stderr 上打印计算它所用的树根与提交(或 dirty 指纹)，不会混淆答案属于哪棵树。
+
+## moai graph check
+
+```bash
+$ moai graph check
+codemaps  metric=described-source-diff value=0 threshold=40 verdict=fresh
+mx-index  metric=inventory-content-diff value=0 threshold=1 verdict=fresh
+edges     metric=source-fingerprint-mismatch value=0 threshold=0 verdict=fresh
+```
+
+按层各自的指标，测量图的三个层——codemaps · @MX 索引 · edges.jsonl——落后代码多远，并给出每层 `fresh` / `stale` / `absent` 判定。codemaps 看打了戳记的生成提交之后变化的被描述文件数(回退的改动计为 0)，@MX 索引看内容哈希变了的文件数，edges.jsonl 看源指纹是否不一致。
+
+每个生成物都用 provenance 块声明自己描述的是哪棵树、哪个提交。没有这个块的产物判为 `absent`——判断不能冒充 fresh，absent 同样算失败：新 worktree 里这些未跟踪产物根本不存在，检查会如实说明而不是放行。退出码为 0(全部 fresh)· 1(stale 或 absent)· 2(系统错误)，提交前质量门的 graph-freshness 步骤和 CI 的 graph-freshness 作业直接消费这个值。阈值在 gate.yaml 的 `graph_freshness` 小节调整。
+
+任何地方都不读 mtime。新检出会把所有 mtime 重置，基于 mtime 的指标会误判成刚重新生成——所以这里的指标只有内容哈希、git diff 和指纹。
+
+## moai graph stamp codemaps
+
+```bash
+$ moai graph stamp codemaps
+OK: stamped .moai/project/codemaps/provenance.json
+provenance: tree=/path/to/project commit=1a2b3c4d5e6
+```
+
+重新生成 codemaps 后，作为最后一步执行。文档内容由 `/moai codemaps` 打磨，而这份内容**描述的是哪个树状态**由本命令写入 `provenance.json`——`moai graph check` 判定 codemaps 层的依据就是这份记录。
 
 ## 两个选择器的注意事项
 

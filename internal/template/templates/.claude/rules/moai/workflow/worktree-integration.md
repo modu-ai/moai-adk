@@ -51,7 +51,7 @@ Relationships:
 
 [HARD] **`moai worktree` verbs are L2-only.** An L1 tree under `.claude/worktrees/` is never registered with `moai worktree`, so `done`, `clean`, and `recover` cannot act on it — `moai worktree done` on an L1 tree is a category error, not a disposal. L1 disposal is the session-end keep/remove prompt, or `git worktree unlock` + `git worktree remove` after the session releases its lock. The lock itself is designed behavior, not a defect: it is held while the session runs and released on exit, and a dead session's lock auto-releases on Claude Code 2.1.210+ — a locked tree at disposal time means a live session still owns it, and the remediation is the unlock guidance, not a cause investigation.
 
-[HARD] **An unpushed worktree branch is the work's only instance.** A card or lane worktree is created from inside the session with the Claude tool (`EnterWorktree(<name>)`) or launched by the operator (`moai cc -w <name>`) — never with a bare `git worktree add`. Until its branch has been integrated and the remote merge has landed, dispose of no worktree, L1 or L2: disposal before that destroys the only copy of the work.
+[HARD] **An unpushed worktree branch is the work's only instance.** A card or lane worktree is created from inside the session with the Claude tool (`EnterWorktree(<name>)`) or launched by the operator (`moai cc -w <name>`) — never with a bare `git worktree add`. Until its branch has been integrated and the remote merge has landed, dispose of no worktree, L1 or L2: disposal before that destroys the only copy of the work. Before Claude Code 2.1.246 the runtime's own background retention sweep could delete a user-created worktree under `.claude/worktrees/` when a stale background-session record pointed at it (fixed in 2.1.246) — an unpushed L1 tree could be lost with nobody disposing of it, which is one more reason this rule treats the pre-merge tree as the only copy.
 
 [HARD] **Kanban/team card worktree branches carry the `WT-` prefix followed by a descriptive slug.** `EnterWorktree(<name>)` auto-names its branch `worktree-<name>`; for card worktrees, rename immediately after creation with `git branch -m WT-<slug>` (renaming the checked-out branch inside a worktree is safe — the tree, its lock, and the session anchoring are unaffected — and `moai cc -w <name>` re-entry resolves by tree name, not branch name). `WT-` is the session-worktree branch convention (`SessionWorktreeBranchPrefix`, `internal/cli/session_worktree.go`).
 
@@ -65,6 +65,31 @@ The rename is also a disposal-path switch, and that is deliberate:
 - Renamed to `WT-<slug>`, the tree becomes a **sweep candidate**: where `Workflow.Worktree.AutoCleanup` is enabled (distributed default: off), the sweep removes a `WT-` worktree once its branch reads merged (gh `MERGED` state, or the `git branch --merged origin/main` fallback — squash-merge blind) and the tree is clean, re-checking dirtiness immediately before removal, and never while a live session is anchored in the tree.
 
 Either way the unpushed-branch rule above still governs timing — the sweep's merged-branch condition is the same "after the remote merge" boundary. The lane-side procedure that consumes `WT-` branches lives in `kanban-dispatch.md` § Integration into the release branch is self-served.
+
+## Disposing a Worktree the Automatic Sweep Does Not Reach
+
+Automatic disposal covers one shape only: the PR-merge auto-cleanup sweep enumerates `git worktree list` and treats a tree as a candidate solely when its branch carries the launcher's `WT-` prefix. Every other registered worktree — one named after the change it makes, one entered by hand, one whose branch was renamed — falls outside that sweep and stays on disk until someone disposes of it. That is the safe direction (nothing is removed unasked), but it is not a disposal plan.
+
+**Worktree-ness is a property of the checkout, not of the branch name.** A branch-name glob finds only the trees named a particular way; `git worktree list` finds all of them. Any inventory of what is actually on disk therefore starts from the listing, never from a name pattern.
+
+The shipped inventory is the `--stale` sweep's own evaluation, rendered as data:
+
+```bash
+moai worktree clean --stale --json
+```
+
+It emits one object per non-protected registered worktree, carrying the path, the branch, the keep-reason, and the four predicates behind that reason — dirty state, merge state, anchor state, and ignored-content state. It removes nothing: `--json` is a report, and it overrides `--yes` rather than combining with it. A predicate the sweep short-circuited before asking reads `not-checked`, which is deliberately distinct from `undetermined` — the latter means it asked and could not tell. Neither is a negative.
+
+Read the report, then dispose of what it shows as removable:
+
+```bash
+moai worktree clean --stale        # preview: names the trees it would remove
+moai worktree clean --stale --yes  # perform the removals
+```
+
+Both paths honour the same guards: a dirty tree, an unmerged branch, a tree anchoring a live session, a tree holding gitignored content that nothing regenerates, and a tree whose state could not be read are each kept and reported with the reason. The ignored-content guard matters because `git status --porcelain` and a non-forced `git worktree remove` both disregard gitignored files: without it a tree whose only remaining content is agent memory reads as clean and is destroyed silently. It shares one allowlist with the automatic sweep, so both agree on what is regenerable — runtime state, runtime-managed config, build output, test residue — and anything unclassified keeps the tree. Branches are never deleted — the commits stay reachable by branch name after the directory is gone. The merge comparison is against `origin/main` by default, the same ref the automatic sweep uses, so the two cannot reach opposite conclusions about the same tree; `--base` overrides it.
+
+For a tree outside the sweep entirely, the manual path is unchanged: `git worktree unlock <path>` when a dead session's lock is still on it, then `git worktree remove <path>`. The unpushed-branch rule above governs the timing in every case.
 
 ## Claude Code 2.1.50+ Worktree Features
 

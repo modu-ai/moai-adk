@@ -65,7 +65,7 @@ go install github.com/modu-ai/moai-adk/cmd/moai@latest
 지정하면 아예 거부됩니다.
 
 ```bash
-go install github.com/modu-ai/moai-adk/cmd/moai@v3.1.2
+go install github.com/modu-ai/moai-adk/cmd/moai@v3.1.3
 # go: invalid version: module contains a go.mod file, so module path must match
 #     major version ("github.com/modu-ai/moai-adk/v3")
 ```

@@ -116,9 +116,21 @@ Lane — card t1:  run session + worktree t1      ┘ run side by side, never mi
 
 Full glossary with definitions and examples: [Kanban board terms](https://adk.mo.ai.kr/en/core-concepts/kanban-board-terms)
 
+Cards also differ in which columns they pass through, by shape. As a card leaves `backlog`, the lead classifies it into one of the three Card Classes and names the class in the dispatch.
+
+| Class | Shape | Shortcut |
+|---|---|---|
+| A — direct close | one file · one line, no design judgment, regression caught by CI | one session carries it whole to the PR (`plan` skipped) |
+| B — defect, cause unknown | clearly broken, but the cause is not yet established | `run → sync` (no `plan`, no SPEC) |
+| C — design change | carries a decision or spans subsystems | all three columns |
+
+Class A is admitted on checked evidence, not assertion — a card that cannot cite a diff measured to one file and green CI on the head that will merge is not Class A. Class B skips only `plan`; the sync gate's review still runs, and the cause-establishing evidence (reproduction command and its output) is left in the card's progress record.
+
+Details: [Kanban Mode — card classes](https://adk.mo.ai.kr/en/advanced/kanban-mode)
+
 ### Watching the board
 
-`moai web` serves a local console. The Kanban screen shows the kanban chain alongside the SPEC pipeline, plus Overview, Specs, Monitor, and Settings screens.
+`moai web` serves a local console. The Kanban screen shows the kanban chain alongside the SPEC pipeline, plus Overview, Specs, Monitor, Settings, and Todo screens.
 
 <p align="center">
   <img src="./assets/images/moai-web-overview.png" alt="moai web console — Overview screen with SPEC counts, in-progress SPECs, and session registry" width="90%">
@@ -349,7 +361,7 @@ Every SPEC gets its own working tree. Enter with `moai cc -w <name>`; add `--spa
 | CWD-collision resolution | `(worktree_path, session_id)` pair disambiguates reused paths |
 | Depth ceiling | Caps nesting complexity |
 
-> **Available now**: `moai cc -k` (or `moai glm -k`) starts the lead and `-k --name <role>` joins each companion — launched by hand, one per terminal. `moai chain <status|lineage|back|list|prune>` reads the lineage, and `moai todo` (bare invocation lists the queue; subcommands `add` · `list` · `next` · `done` · `unpick` · `drop` · `undrop` · `edit` · `move`; two or more words become a new card) operates the `backlog` column. The launch sequence is in the "What's New in v3.1 — Kanban Mode" section above.
+> **Available now**: `moai cc -k` (or `moai glm -k`) starts the lead and `-k --name <role>` joins each companion — launched by hand, one per terminal. `moai chain <status|lineage|back|list|prune>` reads the lineage, and `moai todo` (bare invocation lists the queue; subcommands `add` · `list` · `next` · `done` · `unpick` · `drop` · `undrop` · `edit` · `move` · `analyze`; two or more words become a new card) operates the `backlog` column. The launch sequence is in the "What's New in v3.1 — Kanban Mode" section above.
 
 > Details: [Kanban Mode Guide](https://adk.mo.ai.kr/en/advanced/kanban-mode)
 
@@ -399,11 +411,15 @@ Korean, Japanese, Chinese, and English docs are maintained in the same PR. Trans
   <img src="./assets/images/moai-web-settings.png" alt="moai web console — Settings screen with profile bar and 11 setting tabs" width="90%">
 </p>
 
-`moai web` opens a console bound to localhost. Five screens — Overview, Kanban, Specs, Monitor, Settings; the settings screen splits into eleven tabs: Identity, Language, LLM, 3rd Party LLM, Workflow, Git & Worktree, Audit, Agents, Report, MCP, Cross-Session. Profile create/rename/delete lives on the same screen.
+`moai web` opens a console bound to localhost. Six screens — Overview, Kanban, Specs, Monitor, Settings, Todo; the settings screen splits into eleven tabs: Identity, Language, LLM, 3rd Party LLM, Workflow, Git & Worktree, Audit, Agents, Report, MCP, Cross-Session. Profile create/rename/delete lives on the same screen.
 
 ### ref / domain skills
 
 Eleven ref skills (`moai-ref-api-patterns`, `moai-ref-owasp-checklist`, `moai-ref-llm-security`, `moai-ref-react-patterns`, `moai-ref-testing-pyramid`, `moai-ref-ui-polish`, `moai-ref-secops`, `moai-ref-supply-chain`, `moai-ref-seo`, `moai-ref-git-workflow`, `moai-ref-cross-model-audit`) and seven domain skills (`moai-domain-backend`, `moai-domain-frontend`, `moai-domain-database`, `moai-domain-design-dna`, `moai-domain-html-report`, `moai-domain-humanize`, `moai-domain-svg-infographic`) inject field knowledge into agents.
+
+### SVG technical infographics
+
+The `moai-domain-svg-infographic` skill produces editable SVG technical infographics. Coordinates are computed numerically before any markup is written, and the finished file passes a deterministic source lint plus a dimension-verified 2x PNG render. An external-catalog benchmark measured nine forms — approval-gate flow, before-after comparison, KPI card grid, decision matrix, layer stack, nested scope, process flow, roadmap timeline, and component topology — and all nine proved reproducible (per-form artifacts and verdict: `.moai/reports/t272/verdict.md`).
 
 ### Cross-platform
 
@@ -484,9 +500,9 @@ On the budget side, a token circuit breaker stands guard — it aborts at the ha
 ### Reading the statusline
 
 ```
-🤖 Opus | 🧠 xhigh·t | ♻️ 87% | 🔅 v2.1.212 | 🗿 v3.1.2 | ⏳ 2h 34m | 💬 MoAI
+🤖 Opus | 🧠 xhigh·t | ♻️ 87% | 🔅 v2.1.212 | 🗿 v3.1.3 | ⏳ 2h 34m | 💬 MoAI
 🪫 CW: ████████░░ 88% (⚠️/clear) | 🔋 5H: ████░░░░░░ 45% (4h 30m) | 🪫 7D: ████████░░ 82% (Jan 21)
-📁 moai-adk-go | 📡 modu-ai/moai-adk, 7/3 | 🅱️ [WT] release/v3.1.2 +3 | 💾 +1 M2 ?0 | 📋 [run SPEC-AUTH-001-run] | 💌 PR #1042 (⌥approved)
+📁 moai-adk-go | 📡 modu-ai/moai-adk, 7/3 | 🅱️ [WT] release/v3.1.3 +3 | 💾 +1 M2 ?0 | 📋 [run SPEC-AUTH-001-run] | 💌 PR #1042 (⌥approved)
 🏷️ run | 👤 manager-develop | 🔄 TODO: 1/3
 ```
 
@@ -668,16 +684,18 @@ z.ai GLM serves as an alternative backend for Claude Code. Switching is environm
 | `moai glm` | GLM | GLM | recommended | ~70% |
 | `moai cg` | Claude | GLM | **required** | ~60% |
 
-The GLM Coding Plan starts at $10/month. glm-5.3, glm-4.7, glm-4.5-air, and free models (GLM-4.7-Flash, GLM-4.5-Flash) are available.
+The GLM Coding Plan starts at $10/month. glm-5.3-flash (the default), glm-5.3, glm-4.7, glm-4.5-air, and free models (GLM-4.7-Flash, GLM-4.5-Flash) are available.
 
 Each Claude tier maps to a GLM model through the `ANTHROPIC_DEFAULT_*_MODEL` environment variables:
 
 | Claude tier | GLM model | Context |
 |---|---|---|
-| Opus | glm-5.3 | 1M |
-| Sonnet | glm-5.3 | 1M |
-| Haiku | glm-5.3 | 1M |
-| Fable | glm-5.3 | 1M |
+| Opus | glm-5.3-flash | 1M |
+| Sonnet | glm-5.3-flash | 1M |
+| Haiku | glm-5.3-flash | 1M |
+| Fable | glm-5.3-flash | 1M |
+
+> glm-5.3 stays selectable in any tier slot (`llm.glm.models.*` in `llm.yaml`); switching a slot back is a one-line config change.
 
 > Details: [Multi-LLM guide](https://adk.mo.ai.kr/en/multi-llm) · [z.ai pricing](https://docs.z.ai/guides/overview/pricing)
 
@@ -729,7 +747,7 @@ The [adk.mo.ai.kr](https://adk.mo.ai.kr) online documentation is organized into 
 | `moai memory <doctor\|archive>` | Agent memory checks and archiving of stale entries |
 | `moai tokens record` | Per-pool token usage ledger records |
 | `moai clean [--home]` | Clear leftovers from past runs. With `--home` it sweeps `~/.moai` inside the allowlist. Dry run by default; `--force` to actually delete |
-| `moai web` | Web console — 5 screens (Overview · Kanban · Specs · Monitor · Settings), 11-tab settings |
+| `moai web` | Web console — 6 screens (Overview · Kanban · Specs · Monitor · Settings · Todo), 11-tab settings |
 
 > All 49 commands: [CLI reference](https://adk.mo.ai.kr/en/cli-reference)
 
@@ -739,7 +757,7 @@ The [adk.mo.ai.kr](https://adk.mo.ai.kr) online documentation is organized into 
 
 **domain (specialist domains) — 7**: `moai-domain-backend`, `moai-domain-frontend`, `moai-domain-database`, `moai-domain-design-dna`, `moai-domain-html-report`, `moai-domain-humanize`, `moai-domain-svg-infographic`
 
-`moai-domain-design-dna` is new in v3.1.1. Hand it one design to work from — a screenshot, a set of images, or a live URL — and it reverse-engineers a single Design DNA JSON covering the measurable values (color, spacing, corners, typography), the feel of that design, and its special rendering effects. Feed the JSON back in and it produces a new artifact carrying the same feel — a route that moves "make it look like this screen" across as values instead of as words.
+`moai-domain-design-dna` is new in v3.1.1. Hand it one design to work from — a screenshot, a set of images, or a live URL — and it reverse-engineers a single Design DNA JSON covering the measurable values (color, spacing, corners, typography), the feel of that design, and its special rendering effects. Feed the JSON back in and it produces a new artifact carrying the same feel — a route that moves "make it look like this screen" across as values instead of as words. Diagram profiles are supported too: the active profile marker persists under the project root's `.design-dna/` so it survives `moai update`, and the opt-in mermaid and drawio importers treat their sources as untrusted input — coordinates, colors, fonts, and layout never carry over.
 
 ### CHANGELOG
 
@@ -760,7 +778,7 @@ That's normal. Tags mark high-fan-in, complex, or dangerous code only. In any pr
 ### What does the statusline version display mean?
 
 ```
-🗿 v3.1.1 -> 🗿 v3.1.2
+🗿 v3.1.2 -> 🗿 v3.1.3
 ```
 
 The first value is the currently installed moai-adk version; the arrow indicates an available update. It disappears after `moai update`.

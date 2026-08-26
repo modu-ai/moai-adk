@@ -234,8 +234,8 @@ func TestSaveLLMSection_PopulatesDefaultGLMModels(t *testing.T) {
 	// the high slot, so a smaller model elsewhere would inherit a window it cannot
 	// hold. Tier differentiation lives on the effort axis instead.
 	for _, slot := range []string{"high", "medium", "low", "fable"} {
-		if !strings.Contains(content, slot+": glm-5.3") {
-			t.Errorf("llm.yaml should contain glm-5.3 as the default %s model, got:\n%s", slot, content)
+		if !strings.Contains(content, slot+": glm-5.3-flash") {
+			t.Errorf("llm.yaml should contain glm-5.3-flash as the default %s model, got:\n%s", slot, content)
 		}
 	}
 

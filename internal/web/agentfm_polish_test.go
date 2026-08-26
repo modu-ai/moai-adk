@@ -153,26 +153,32 @@ func TestAgentFMTierSortOrder(t *testing.T) {
 	seedAgentFMFile(t, root, "moai", "plan-auditor", "opus", "")
 	seedAgentFMFile(t, root, "moai", "manager-git", "sonnet", "")
 	seedAgentFMFile(t, root, "moai", "manager-docs", "inherit", "")
+	// manager-design is the second opus core row, so the within-opus effort
+	// ordering below has two rows to compare. manager-docs can no longer serve
+	// that purpose: its matrix cell is sonnet/low, alongside manager-git.
+	seedAgentFMFile(t, root, "moai", "manager-design", "opus", "")
 	body := renderAgentFMBody(t, root)
 
 	gitPos := strings.Index(body, `agentfm.manager-git.model`)
 	docsPos := strings.Index(body, `agentfm.manager-docs.model`)
 	specPos := strings.Index(body, `agentfm.manager-spec.model`)
+	designPos := strings.Index(body, `agentfm.manager-design.model`)
 	auditorPos := strings.Index(body, `agentfm.plan-auditor.model`)
-	if gitPos < 0 || docsPos < 0 || specPos < 0 || auditorPos < 0 {
-		t.Fatalf(`agent row anchors not found (git=%d docs=%d spec=%d auditor=%d)`, gitPos, docsPos, specPos, auditorPos)
+	if gitPos < 0 || docsPos < 0 || specPos < 0 || designPos < 0 || auditorPos < 0 {
+		t.Fatalf(`agent row anchors not found (git=%d docs=%d spec=%d design=%d auditor=%d)`, gitPos, docsPos, specPos, designPos, auditorPos)
 	}
-	// Core group (manager-git, manager-docs, manager-spec) before meta group (plan-auditor).
-	if auditorPos < gitPos || auditorPos < docsPos || auditorPos < specPos {
-		t.Errorf(`meta agent (plan-auditor pos=%d) must come AFTER the core group (git=%d docs=%d spec=%d)`, auditorPos, gitPos, docsPos, specPos)
+	// Core group before meta group (plan-auditor).
+	if auditorPos < gitPos || auditorPos < docsPos || auditorPos < specPos || auditorPos < designPos {
+		t.Errorf(`meta agent (plan-auditor pos=%d) must come AFTER the core group (git=%d docs=%d spec=%d design=%d)`, auditorPos, gitPos, docsPos, specPos, designPos)
 	}
-	// Within core: sonnet (manager-git) before opus (manager-docs, manager-spec).
-	if docsPos < gitPos || specPos < gitPos {
-		t.Errorf(`sonnet agent (manager-git pos=%d) must come before opus core agents (docs=%d spec=%d)`, gitPos, docsPos, specPos)
+	// Within core: the sonnet rows (manager-git, manager-docs) before the opus
+	// rows (manager-spec, manager-design).
+	if specPos < gitPos || specPos < docsPos || designPos < gitPos || designPos < docsPos {
+		t.Errorf(`sonnet rows (git=%d docs=%d) must come before opus rows (spec=%d design=%d)`, gitPos, docsPos, specPos, designPos)
 	}
-	// Within core opus: low effort (manager-docs) before medium (manager-spec).
-	if specPos < docsPos {
-		t.Errorf(`opus/low (manager-docs pos=%d) must come before opus/medium (manager-spec pos=%d)`, docsPos, specPos)
+	// Within core opus: medium effort (manager-spec) before high (manager-design).
+	if designPos < specPos {
+		t.Errorf(`opus/medium (manager-spec pos=%d) must come before opus/high (manager-design pos=%d)`, specPos, designPos)
 	}
 }
 

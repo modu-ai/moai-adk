@@ -24,15 +24,22 @@ const defaultAutoCompactPct = 85
 // Entries use lowercase substring matching against the resolved model name.
 // Add entries here when a new GLM model ships; users can also override per
 // invocation via MOAI_STATUSLINE_CONTEXT_SIZE.
+//
+// Registration-time guidance: an unregistered "glm-5.3-*" variant inherits 1M
+// via the longest-substring match on "glm-5.3" below. Any future divergent
+// "glm-5.3-*" id MUST add its own explicit entry here at registration time —
+// the explicit "glm-5.3-flash" entry is the divergence guard for exactly that
+// rule (it would otherwise silently ride the substring match).
 var glmContextWindows = map[string]int{
-	"glm-5.3":     1_000_000, // GLM-5.3 (z.ai 1M-context model; drives Claude Code 1M auto-compact)
-	"glm-5.2":     1_000_000, // GLM-5.2 (z.ai 1M-context model)
-	"glm-5.1":     200_000,   // GLM-5.1 (z.ai) — actual ~230K, leave headroom
-	"glm-5":       128_000,
-	"glm-4.7":     128_000,
-	"glm-4.6":     128_000,
-	"glm-4.5":     128_000,
-	"glm-4.5-air": 128_000,
+	"glm-5.3-flash": 1_000_000, // GLM-5.3-Flash (z.ai 1M-context model, default coding model; explicit entry, not substring inheritance)
+	"glm-5.3":       1_000_000, // GLM-5.3 (z.ai 1M-context model; drives Claude Code 1M auto-compact)
+	"glm-5.2":       1_000_000, // GLM-5.2 (z.ai 1M-context model)
+	"glm-5.1":       200_000,   // GLM-5.1 (z.ai) — actual ~230K, leave headroom
+	"glm-5":         128_000,
+	"glm-4.7":       128_000,
+	"glm-4.6":       128_000,
+	"glm-4.5":       128_000,
+	"glm-4.5-air":   128_000,
 }
 
 // getAutoCompactThreshold returns the auto-compact trigger percentage.

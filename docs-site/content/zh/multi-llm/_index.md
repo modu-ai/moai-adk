@@ -24,19 +24,19 @@ GLM (Generative Language Model) 是 z.ai 提供的 AI 模型服务，与 Claude 
 |------|------|
 | **GLM 编码计划** | 每月 **$10** 起（[订阅链接](https://z.ai/subscribe?ic=1NDV03BGWU)） |
 | **兼容性** | 与 Claude Code 兼容 —— 无需修改代码 |
-| **模型** | glm-5.3, GLM-4.7, GLM-4.5-Air, 免费模型 |
+| **模型** | glm-5.3-flash（默认）, glm-5.3, GLM-4.7, GLM-4.5-Air, 免费模型 |
 
 ## 默认模型映射
 
 | Claude 层级 | GLM 模型 | 输入（每 1M Token） | 输出（每 1M Token） |
 |-------------|----------|-----------------|-----------------|
-| Opus / Sonnet / Haiku / Fable | glm-5.3 | 未公开 | 未公开 |
+| Opus / Sonnet / Haiku / Fable | glm-5.3-flash | 未公开 | 未公开 |
 
 > z.ai 尚未公布 glm-5.3 的按量单价。上一代 glm-5.2 为输入 $2.00 / 输出 $8.00 (每 1M 代币)。在定额 Coding Plan 下使用时，该单价不影响计费。
 
-> 4 个 Claude 层级 (Opus, Sonnet, Haiku, Fable) 全部统一映射到 `glm-5.3` 单一模型（1M 上下文）。之所以不像 opus→glm-5.3、sonnet→glm-4.7、haiku→glm-4.5-air 那样按层级分别映射 GLM 模型，是因为 1M 上下文模型和 200K 上下文模型无法在同一会话中混用 —— 代理 spawn 时，拥有 1M 上下文窗口的模型与 200K 模型无法共享会话。
+> 4 个 Claude 层级 (Opus, Sonnet, Haiku, Fable) 全部统一映射到 `glm-5.3-flash` 单一模型（1M 上下文）。之所以不像 opus→glm-5.3、sonnet→glm-4.7、haiku→glm-4.5-air 那样按层级分别映射 GLM 模型，是因为 1M 上下文模型和 200K 上下文模型无法在同一会话中混用 —— 代理 spawn 时，拥有 1M 上下文窗口的模型与 200K 模型无法共享会话。glm-5.3 在任何层级插槽都仍然可选（`llm.yaml` 的 `llm.glm.models.*`）。
 
-> 该映射通过 4 个 Claude Code `ANTHROPIC_DEFAULT_*_MODEL` 环境变量（`ANTHROPIC_DEFAULT_OPUS_MODEL`、`ANTHROPIC_DEFAULT_SONNET_MODEL`、`ANTHROPIC_DEFAULT_HAIKU_MODEL`、`ANTHROPIC_DEFAULT_FABLE_MODEL`）实现，全部设置为 `glm-5.3`。Fable 环境变量自 Claude Code v2.1.202 起获得官方支持。
+> 该映射通过 4 个 Claude Code `ANTHROPIC_DEFAULT_*_MODEL` 环境变量（`ANTHROPIC_DEFAULT_OPUS_MODEL`、`ANTHROPIC_DEFAULT_SONNET_MODEL`、`ANTHROPIC_DEFAULT_HAIKU_MODEL`、`ANTHROPIC_DEFAULT_FABLE_MODEL`）实现，全部设置为 `glm-5.3-flash`。Fable 环境变量自 Claude Code v2.1.202 起获得官方支持。
 
 > 同时提供免费模型：GLM-4.7-Flash、GLM-4.5-Flash。完整价格请参考 [z.ai Pricing](https://docs.z.ai/guides/overview/pricing)。
 

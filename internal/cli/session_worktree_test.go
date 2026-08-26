@@ -28,6 +28,11 @@ type swSeams struct {
 	configSet  func(dir, key, value string) error
 	remove     func(wtPath string) error
 	statusPorc func(wtPath string) (string, error)
+	// ignoredPorc is the SPEC-WORKTREE-REAPER-001 M2 ignored-content seam
+	// (`git status --porcelain --ignored`). It is separate from statusPorc
+	// because the dirty check is shared with the session-exit path and must
+	// not inherit this SPEC's ignored-content policy (design.md §B.6a).
+	ignoredPorc func(wtPath string) (string, error)
 }
 
 // swapSessionWorktreeSeams replaces the seams and registers restoration.
@@ -36,9 +41,10 @@ func swapSessionWorktreeSeams(t *testing.T, s swSeams) {
 	orig := swSeams{
 		add: sessionWorktreeGitWorktreeAdd, inWt: sessionWorktreeInGitWorktree,
 		short: sessionWorktreeResolveSessionShort, commonDir: sessionWorktreeGitCommonDir,
-		configSet:  sessionWorktreeGitConfigSet,
-		remove:     sessionWorktreeGitWorktreeRemove,
-		statusPorc: sessionWorktreeGitStatusPorcelain,
+		configSet:   sessionWorktreeGitConfigSet,
+		remove:      sessionWorktreeGitWorktreeRemove,
+		statusPorc:  sessionWorktreeGitStatusPorcelain,
+		ignoredPorc: sessionWorktreeGitStatusIgnored,
 	}
 	if s.add != nil {
 		sessionWorktreeGitWorktreeAdd = s.add
@@ -61,6 +67,9 @@ func swapSessionWorktreeSeams(t *testing.T, s swSeams) {
 	if s.statusPorc != nil {
 		sessionWorktreeGitStatusPorcelain = s.statusPorc
 	}
+	if s.ignoredPorc != nil {
+		sessionWorktreeGitStatusIgnored = s.ignoredPorc
+	}
 	t.Cleanup(func() {
 		sessionWorktreeGitWorktreeAdd = orig.add
 		sessionWorktreeInGitWorktree = orig.inWt
@@ -69,6 +78,7 @@ func swapSessionWorktreeSeams(t *testing.T, s swSeams) {
 		sessionWorktreeGitConfigSet = orig.configSet
 		sessionWorktreeGitWorktreeRemove = orig.remove
 		sessionWorktreeGitStatusPorcelain = orig.statusPorc
+		sessionWorktreeGitStatusIgnored = orig.ignoredPorc
 	})
 }
 

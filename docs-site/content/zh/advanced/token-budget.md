@@ -97,7 +97,7 @@ go test ./... > /tmp/moai-verify/1-go-test.log 2>&1; echo "exit=$?"; tail -50 /t
 
 文件重定向契约写入 `/tmp` 的证据会被操作系统定期清除(macOS 重启、Linux tmpfs 重挂载、systemd-tmpfiles)。当引用的路径不再解析为文件时，审计时无法到达证据。
 
-持久化义务解决这个问题。验证证据必须持久化到 `.moai/state/verify/<session>/` 下。此目录是与 `context-usage.json` 和 `active-sessions.json` 相同的 gitignored 运行时状态区域。
+持久化义务解决这个问题。验证证据必须持久化到 `.moai/state/verify/<session>/` 下。此目录是与 `context-usage/` 和 `active-sessions.json` 相同的 gitignored 运行时状态区域。
 
 确切的持久化机制(直接写入或 `/tmp` 写入后复制)是实现细节。契约陈述义务: 证据必须在 `/tmp` 清除后仍然存在于可引用、审计时可到达的路径上。
 

@@ -77,10 +77,10 @@ llm:
   glm:
     base_url: "https://api.z.ai/api/anthropic"
     models:
-      high: "glm-5.3"          # 1M context — Opus slot
-      medium: "glm-5.3"        # 1M context   — Sonnet slot
-      low: "glm-5.3"          # 1M context   — lightweight slot
-      fable: "glm-5.3"
+      high: "glm-5.3-flash"   # 1M context — Opus slot
+      medium: "glm-5.3-flash" # 1M context   — Sonnet slot
+      low: "glm-5.3-flash"    # 1M context   — lightweight slot
+      fable: "glm-5.3-flash"
 ```
 
 | Key | Description |
@@ -175,6 +175,48 @@ workflow:
 **Exemptions and failure direction.** The git agent that has to create branches is exempted by identity, and the `MOAI_BRANCH_GUARD_EXEMPT=1` environment variable also bypasses it. When classification is uncertain (not a git repository, `git rev-parse` failing, and so on) the command is allowed through and only an audit-log entry is written — the guard refuses only on positive evidence.
 
 Work that needs a different branch belongs in a worktree rather than behind a refusal. For the procedure see [moai worktree](/en/cli-reference/worktree/).
+
+## workflow.yaml — audit
+
+Pins which model and effort the cross-model audit backends (`codex_audit`, `glm_audit`, `audit_multi`) actually run on. Each backend takes one `{model, effort}` pair, and the distributed defaults are empty.
+
+```yaml
+workflow:
+    audit:
+        codex:
+            model: ""   # e.g. gpt-5.6-sol — a codex-servable model id
+            effort: ""  # e.g. high — low | medium | high | xhigh | max
+        glm:
+            model: ""   # e.g. glm-5.3
+            effort: ""  # e.g. max — low | high | max (z.ai reasoning-state names)
+```
+
+| Key | Description |
+|-----|-------------|
+| `audit.codex.{model, effort}` | The pair the codex audit carries on session start and review turns. An empty model, or one codex cannot serve, discards the pin and falls back to the existing SSOT resolution |
+| `audit.glm.{model, effort}` | The pair the GLM audit carries on the z.ai request. Effort accepts only the z.ai reasoning-state names `low`, `high`, `max`; any other value drops the reasoning directive while the model pin still applies |
+| Both pairs empty | The resolvers behave exactly as before this key existed — a project that never writes a pin changes nothing |
+
+The pin applies to the audit entry points only. Model resolution on the task-delegation paths (`codex_task`, `glm_task`) is unaffected, and the same fields are editable in the web console's Audit panel.
+
+## workflow.yaml — todo
+
+The switch that turns the backlog queue's **guidance surfaces** off. The session-start summary line, the statusline TODO segment, and the skill's inference routing of natural-language requests into the todo workflow — all three go quiet under this one key.
+
+```yaml
+workflow:
+    todo:
+        enabled: false   # explicit off — an absent key reads as on
+```
+
+| Key | Value | Meaning |
+|-----|-------|---------|
+| `todo.enabled` | (key absent, default) | On. The shipped template carries no todo block at all, which is the state most projects live in |
+| `todo.enabled` | `false` | The session-start summary, the statusline TODO segment, and the skill's automatic routing turn off |
+
+**Turning it off does not remove the command.** The `moai todo` CLI stays registered with every verb working, and an explicit `/moai todo` invocation still runs. That boundary is intended — the switch silences only the surfaces that show the queue to someone who did not ask for it, and leaves the path of someone actually using it untouched. A config file that cannot be read also resolves to on (fail-open).
+
+Reach for this key when the per-session backlog summary reads as noise on a small, one-off project. How to operate the queue itself is on the [moai todo](/en/utility-commands/moai-todo/) page.
 
 ## crosssession.yaml — cross-session messaging
 

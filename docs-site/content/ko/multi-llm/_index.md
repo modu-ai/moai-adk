@@ -154,9 +154,11 @@ Code의 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수로 주입되는 짝은 이렇�
 
 | Claude 슬롯 | GLM 모델 | 컨텍스트 |
 |-------------|----------|----------|
-| Opus / Fable | `glm-5.3` | 1M |
-| Sonnet | `glm-5.3` | 1M |
-| Haiku | `glm-5.3` | 1M |
+| Opus / Fable | `glm-5.3-flash` | 1M |
+| Sonnet | `glm-5.3-flash` | 1M |
+| Haiku | `glm-5.3-flash` | 1M |
+
+> `glm-5.3-flash`가 기본 모델이다. glm-5.3은 어느 티어 슬롯에서든 여전히 선택할 수 있다 — `llm.yaml`(`llm.glm.models.*`)에서 슬롯을 지정하면 기존 동작(1M 컨텍스트, 표준 effort 모아짐) 그대로 로드된다.
 
 ### 세 가지 실행 모드
 

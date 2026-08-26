@@ -30,6 +30,11 @@ type Sidecar struct {
 
 	// ScannedAt is the timestamp when this index was last updated.
 	ScannedAt time.Time `json:"scanned_at"`
+
+	// Provenance anchors the index to the tree and content it was scanned
+	// from (REQ-GF-003). nil on pre-provenance indexes; the freshness gate
+	// treats those as unjudgeable (absent-equivalent), never fresh.
+	Provenance *Provenance `json:"provenance,omitempty"`
 }
 
 // Archive contains tags that have been stale for more than 7 days.
