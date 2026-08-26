@@ -98,6 +98,8 @@ response = client.messages.create(
 | Claude サブスクリプション (Pro/Max/Team/Enterprise) | 1 時間 (自動、追加費用なし) | 上限超過時は 5 分へ自動切替 |
 | API キー · サードパーティ | 5 分 | `ENABLE_PROMPT_CACHING_1H=1` で 1 時間に切替可能 |
 
+Claude Code 2.1.243 以降は `promptCacheTtl` と `subagentPromptCacheTtl` の設定（環境変数 `CLAUDE_CODE_PROMPT_CACHE_TTL` / `CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL`）で、API キー・クラウドプロバイダのセッションがメイン会話だけ 1 時間のキャッシュを持てます。サブエージェントは 5 分のままです。z.ai などのサードパーティゲートウェイがこの設定を実際に反映するかは未測定です — ゲートウェイ環境では確認できるまで 5 分のデフォルトを基準に計画してください。
+
 ## キャッシュを壊すもの (コストの観点)
 
 以下の行動をすると、次のリクエストがキャッシュを外し、1 ターンが遅くなって高くなります。遅くて高いターンを 1 回払うと、新しいプレフィックスが再キャッシュされます。
