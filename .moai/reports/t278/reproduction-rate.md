@@ -74,9 +74,16 @@ Reading: a 0/40 window leaves a 37.7% chance the flake simply did not fire — t
 
 ## §5 Post-merge ledger (accruing from M3)
 
+Window opened **2026-08-26T18:05:57Z** — PR #1666 squash merge `379b310a6` landed on `main` (operator-approved via AskUserQuestion after CI read: required 5/5 pass, windows-latest Integration 13m41s pass; non-required `graph-freshness` fail attributed to orphan stamp `0d15864ae90b`, unrelated to this diff, main HEAD green).
+
+Inclusion boundary: ci.yml runs with `createdAt >= 2026-08-26T18:05:57Z` (the merge-commit push run included); `go_code=true` = Test job present via jobs API (same name-union as §4). Attempt-aware per §1 recipe. Window close per REQ-CFS-010: N ≥ 40 `go_code=true` runs AND ≥ 7 days.
+
 | Date | Run | Attempt | Job | Test | Result |
 |------|-----|---------|-----|------|--------|
-| — | — | — | — | — | (empty — window not yet opened) |
+| 2026-08-26T18:06:04Z | 32997835484 | 1 | `Test (ubuntu-latest)` success 18:14:18Z · `Race Test` success 18:16:19Z | 3 tests | **0 recurrences** — run conclusion `cancelled` (concurrency: superseded by main push run 32999196269 at 18:20:53Z; only `Integration Tests (windows-latest)` job was cancelled). Test/Race — the jobs hosting the 3 flaky tests — completed green before cancellation, so the observation is valid; `go_code=true`, counted (N=1) |
+| 2026-08-26T18:20:53Z | 32999196269 | 1 | all jobs success (incl. windows-latest Integration) | 3 tests | **0 recurrences** — `go_code=true`, counted (N=2) |
+
+Window status after first accrual: N=2/40, elapsed 0/7 days (earliest close 2026-09-02T18:05:57Z). Run 33000104346 (18:30:58Z, push main) in progress at ledger update — accrues on completion. Note the sync-audit watch item applied: conclusion state confirmed before accrual (cancelled ≠ unobserved).
 
 ## §6 Gaps / Residual-risk (baseline section)
 
