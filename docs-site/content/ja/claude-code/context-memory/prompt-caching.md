@@ -129,6 +129,8 @@ flowchart TD
 | API キー・サードパーティ | 5 分 | `ENABLE_PROMPT_CACHING_1H=1` で 1 時間へ切り替え |
 | (共通強制) | — | `FORCE_PROMPT_CACHING_5M=1` で 5 分を強制 |
 
+Claude Code 2.1.243 では `promptCacheTtl` / `subagentPromptCacheTtl` の設定（環境変数 `CLAUDE_CODE_PROMPT_CACHE_TTL` / `CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL`）も追加されました。API キー・クラウドプロバイダのセッションはメイン会話だけ 1 時間のキャッシュを持てて、サブエージェントは 5 分のままです。z.ai などのサードパーティゲートウェイでの反映は未測定です。
+
 ## モニタリング方法
 
 キャッシュがうまく動作しているかを見るには、上記の 2 つのトークン数値 (`cache_read_input_tokens`、`cache_creation_input_tokens`) を観察します。
