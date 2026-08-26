@@ -70,17 +70,24 @@
 //     saw, inflating only the numerator). AssertPaired interleaves the two
 //     and is the preferred entry point; Assert's precomputed refUnit is the
 //     legacy form.
-//   - Divide PER ROUND, not median by median. Pairing the sampling and then
-//     computing median(fn)/median(ref) throws the pairing away: the two
-//     medians are independent order statistics, and a load STEP that the two
+//   - Enforce the calibrated bound on BOTH figures: the median of the
+//     per-round ratios AND the ratio of the two medians, failing only when
+//     both exceed the bound (the AND-gate). Each figure alone is robust to
+//     one noise class and vulnerable to the other: a load STEP that the two
 //     series cross one round apart — which the alternating ref-first/fn-first
-//     order produces at the crossing — can put them on opposite sides of the
-//     step. Byte-identical functions then report the step's magnitude as code
-//     cost (CI: 2.32x / 2.72x / 4.64x on this package's own self-test before
-//     #1591; 1.82x on TestBranchGuard_Latency, 2026-08-24). AssertPaired
-//     enforces the median of the per-round ratios instead; both terms of each
-//     ratio are measured microseconds apart, so a step cancels inside the
-//     term. Pinned by TestCalibratedRatioSurvivesOffsetLoadStep.
+//     order produces at the crossing — puts the two medians on opposite sides
+//     of the step, so median(fn)/median(ref) reports the step's magnitude as
+//     code cost (CI: 2.32x / 2.72x / 4.64x on this package's own self-test
+//     before #1591; 1.82x on TestBranchGuard_Latency, 2026-08-24), while
+//     noise PHASE-LOCKED to the alternation order inflates the per-round
+//     ratios of half the rounds and leaves both medians equal — 2.47x
+//     per-round against 1.09x medians on byte-identical code (run 32779472351
+//     attempt 1, 2026-08-24). Requiring the two figures to agree keeps
+//     detection of bilateral regressions (a uniform kx cost moves both) while
+//     refusing the single-figure false positives either noise class produces.
+//     AssertPaired enforces this conjunction; pinned by
+//     TestCalibratedRatioSurvivesOffsetLoadStep (the step form) and
+//     TestCalibratedGateSurvivesAlternationLockedAsymmetry (the locked form).
 //   - Give both sides the SAME sample count. A 10-sample reference median
 //     under a 100-sample measured median makes the denominator the noisiest
 //     term in the ratio.
@@ -211,16 +218,54 @@ func ratioOfMedians(refUnit time.Duration, st Stats) float64 {
 //   - Alternating order: odd rounds run fn first, even rounds run ref first,
 //     so neither side systematically inherits the other's warm caches.
 //
+// The calibrated arm is the AND-gate: it fails only when BOTH the per-round
+// paired-ratio median AND the ratio-of-medians exceed b.MaxUnits
+// (CheckRatioAnd) — each figure is individually robust to one noise class
+// (per-round: offset load steps; ratio-of-medians: alternation-locked
+// scheduling asymmetry), so requiring their agreement refuses the
+// single-figure false positives either class produces while keeping bilateral
+// regression detection.
+//
 // b.Warmup rounds of BOTH functions run first and are discarded.
 func AssertPaired(t *testing.T, b Bound, ref, fn func()) {
 	refSt, st, paired := measurePaired(ref, fn, b.Iterations, b.Warmup)
-	report(t, b, refSt.Median, paired, st)
+	reportPaired(t, b, refSt.Median, paired, ratioOfMedians(refSt.Median, st), st)
+}
+
+// reportPaired is report for the paired path: it logs BOTH calibrated figures
+// and enforces the AND-gate. perRound is the median of the per-round fn/ref
+// ratios; medians is median(fn)/median(ref). Each figure is individually
+// robust to one noise class (per-round: offset load steps; ratio-of-medians:
+// alternation-locked scheduling asymmetry), so the calibrated arm fails only
+// when BOTH exceed b.MaxUnits — refusing the single-figure false positives
+// either class produces (SPEC-CI-FLAKE-SERIES-001; observed 2.47x per-round
+// against 1.09x medians on byte-identical code, run 32779472351 a1) while
+// keeping bilateral regression detection.
+func reportPaired(t *testing.T, b Bound, refUnit time.Duration, perRound, medians float64, st Stats) {
+	shownPerRound, shownMedians := math.Inf(1), math.Inf(1)
+	if perRound > 0 {
+		shownPerRound = perRound
+	}
+	if medians > 0 {
+		shownMedians = medians
+	}
+	line := fmt.Sprintf("%s: n=%d median=%v p95=%v worst=%v avg=%v | refUnit=%v ratio=%.2fx per-round / %.2fx medians (maxUnits=%.2fx, steadyCeiling=%v, budget=%v)",
+		b.Name, st.N, st.Median.Round(time.Microsecond), st.P95.Round(time.Microsecond),
+		st.Worst.Round(time.Microsecond), st.Avg.Round(time.Microsecond),
+		refUnit.Round(time.Microsecond), shownPerRound, shownMedians, b.MaxUnits, b.SteadyCeiling, b.Budget)
+	t.Log(line)
+	publish(line)
+
+	for _, err := range CheckRatioAnd(b, perRound, medians, st) {
+		t.Errorf("%s: %v", b.Name, err)
+	}
 }
 
 // report logs the measured distribution beside the reference unit and raises
 // one t.Errorf per violated bound. ratio is the calibrated figure the bound is
-// enforced against: for AssertPaired the per-round paired ratio, for Assert
-// the ratio of medians (0 disables the calibrated arm).
+// enforced against: for Assert the ratio of medians (0 disables the calibrated
+// arm). The paired path uses reportPaired, which enforces the AND-gate over
+// both calibrated figures instead.
 func report(t *testing.T, b Bound, refUnit time.Duration, ratio float64, st Stats) {
 	shown := math.Inf(1)
 	if ratio > 0 {
@@ -272,9 +317,9 @@ func Check(b Bound, refUnit time.Duration, st Stats) []error {
 }
 
 // CheckRatio is Check with the calibrated ratio supplied directly rather than
-// derived from a single reference median. AssertPaired uses it to enforce the
-// bound against the PAIRED ratio — the median of the per-round fn/ref ratios —
-// which the ratio of medians cannot express.
+// derived from a single reference median: the ratio of a PAIRED measurement —
+// the median of the per-round fn/ref ratios — which the ratio of a single
+// reference median cannot express.
 //
 // Why the distinction is load-bearing: paired sampling collects one reference
 // sample beside every measured sample precisely so a load excursion lands on
@@ -285,8 +330,54 @@ func Check(b Bound, refUnit time.Duration, st Stats) []error {
 // sides of the step. The per-round ratio cannot: both of its terms are measured
 // microseconds apart, so a step cancels inside each term.
 //
+// This single-figure form remains the estimator of the UNPAIRED path (Assert /
+// Check). The paired path AssertPaired enforces goes one step further and
+// requires a second figure's agreement — see CheckRatioAnd.
+//
 // A ratio <= 0 disables the calibrated arm (an unmeasurable reference).
 func CheckRatio(b Bound, ratio float64, st Stats) []error {
+	errs := checkAbsolute(b, st)
+	if b.MaxUnits > 0 && ratio > 0 && ratio > b.MaxUnits {
+		errs = append(errs, fmt.Errorf("measured latency is %.2fx the reference unit (median %v), above the %.2fx calibrated bound — "+
+			"the operation now costs more machine-cost units than its design (e.g. an added subprocess or per-write fsync); "+
+			"this is a code regression, not machine load (load inflates the reference equally)",
+			ratio, st.Median, b.MaxUnits))
+	}
+	return errs
+}
+
+// CheckRatioAnd is the paired calibrated gate: the calibrated arm fails only
+// when BOTH the per-round paired-ratio median AND the ratio-of-medians exceed
+// b.MaxUnits (the AND-gate, SPEC-CI-FLAKE-SERIES-001).
+//
+// Each figure is individually robust to one noise class and vulnerable to the
+// other: the per-round median survives offset load steps but is inflated by
+// noise phase-locked to the alternation order (observed 2.47x on
+// byte-identical code, run 32779472351 a1); the ratio-of-medians survives
+// alternation-locked asymmetry — both order statistics sit at the same level —
+// but reports a load step's magnitude when the two series cross the step one
+// round apart (observed 2.32x / 2.72x / 4.64x pre-#1591). Requiring both to
+// exceed the bound refuses each single-figure false positive while keeping
+// detection of bilateral regressions: a uniform kx cost growth moves both
+// figures together (pinned by TestPairedAndGateStillCatchesHomogeneousRegression).
+//
+// A figure <= 0 on EITHER side disables the calibrated arm (an unmeasurable
+// reference: no usable per-round ratios imply no usable reference median).
+func CheckRatioAnd(b Bound, perRound, medians float64, st Stats) []error {
+	errs := checkAbsolute(b, st)
+	if b.MaxUnits > 0 && perRound > b.MaxUnits && medians > b.MaxUnits {
+		errs = append(errs, fmt.Errorf("measured latency is %.2fx the reference unit by BOTH calibrated figures "+
+			"(per-round median %.2fx, ratio-of-medians %.2fx; median %v), above the %.2fx calibrated bound — "+
+			"the operation now costs more machine-cost units than its design (e.g. an added subprocess or per-write fsync); "+
+			"this is a code regression, not machine load (load inflates the reference equally)",
+			perRound, perRound, medians, st.Median, b.MaxUnits))
+	}
+	return errs
+}
+
+// checkAbsolute enforces the two distribution-level arms — p95 and worst —
+// that do not depend on the calibrated figure.
+func checkAbsolute(b Bound, st Stats) []error {
 	var errs []error
 	if st.P95 > b.SteadyCeiling {
 		errs = append(errs, fmt.Errorf("p95 latency %v exceeds steady-state ceiling %v — "+
@@ -297,12 +388,6 @@ func CheckRatio(b Bound, ratio float64, st Stats) []error {
 		errs = append(errs, fmt.Errorf("worst latency %v reaches the %v budget — "+
 			"a single invocation consuming the whole budget stalls the caller",
 			st.Worst, b.Budget))
-	}
-	if b.MaxUnits > 0 && ratio > 0 && ratio > b.MaxUnits {
-		errs = append(errs, fmt.Errorf("measured latency is %.2fx the reference unit (median %v), above the %.2fx calibrated bound — "+
-			"the operation now costs more machine-cost units than its design (e.g. an added subprocess or per-write fsync); "+
-			"this is a code regression, not machine load (load inflates the reference equally)",
-			ratio, st.Median, b.MaxUnits))
 	}
 	return errs
 }
