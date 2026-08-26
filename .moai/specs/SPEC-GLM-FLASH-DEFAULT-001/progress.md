@@ -140,7 +140,7 @@ m1_to_mN_commit_strategy: "per-milestone commits M1..M6 + spec frontmatter flip 
 
 ```yaml
 sync_complete_at: "2026-08-27"
-sync_commit_sha: "pending-backfill"   # backfilled in the immediately following commit (D3 exemption)
+sync_commit_sha: "f1208eba4"
 sync_status: "audit-ready"
 verification_basis:
   - "§E.2: 13/13 AC PASS with verbatim evidence (AC-001..AC-013)"
