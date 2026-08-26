@@ -7,6 +7,8 @@ index:
   title: "하네스 엔지니어링"
 "spec-based-dev":
   title: "SPEC 기반 개발"
+"spec-lifecycle":
+  title: "SPEC 라이프사이클"
 ddd:
   title: "MoAI-ADK 개발 방법론"
 "trust-5":

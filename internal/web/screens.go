@@ -140,6 +140,21 @@ func (a *app) handleKanban(w http.ResponseWriter, r *http.Request) {
 	a.renderPage(w, Kanban(vm, k))
 }
 
+// handleTodo serves the read-only backlog queue at its own top-level route
+// (SPEC-WEB-TODO-QUEUE-001 REQ-WTQ-002). The queue is an operator surface in
+// its own right — addressable and shareable as a URL, which a panel on /kanban
+// would not be.
+//
+// Read-only like the other four screens: GET only, no mutation, no lock. The
+// queue's own writes and id issuance belong to `moai todo`.
+func (a *app) handleTodo(w http.ResponseWriter, r *http.Request) {
+	if !a.readOnly(w, r) {
+		return
+	}
+	vm := a.shellVM(r, "todo", "Todo", "backlog queue")
+	a.renderPage(w, Todo(vm, a.buildTodo()))
+}
+
 func (a *app) handleMonitor(w http.ResponseWriter, r *http.Request) {
 	if !a.readOnly(w, r) {
 		return

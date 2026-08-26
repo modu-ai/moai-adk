@@ -23,6 +23,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/kanban"
 	"github.com/modu-ai/moai-adk/internal/session"
 	"github.com/modu-ai/moai-adk/internal/spec"
+	"github.com/modu-ai/moai-adk/internal/statusline"
 	"github.com/modu-ai/moai-adk/internal/verify"
 )
 
@@ -78,15 +79,21 @@ type SessionVM struct {
 	State     string
 	Heartbeat string
 	Cwd       string
+
+	// PID is the registry entry's process identifier. It is never rendered; it is
+	// carried because the factory-lane join finds a session by it. Carrying it
+	// here is what keeps the discipline of reading active-sessions.json exactly
+	// once, which a second read would break.
+	PID int
 }
 
 type RoleVM struct {
 	Role           string
 	Session        string
 	Backend        string
-	Model          string // 미기록 — 3단계에서 채워진다
-	Effort         string // 미기록 — 3단계
-	ContextPct     int    // -1 = 기록 없음
+	Model          string // from the session's telemetry record; "" = not recorded
+	Effort         string // as above
+	ContextPct     int    // -1 = not recorded; 0 means "recorded as 0%", a different fact
 	State          string
 	Stage          string
 	StageEstimated bool
@@ -124,6 +131,12 @@ type KanbanVM struct {
 	Roles    []RoleVM
 	Columns  []PipeColumnVM
 	Total    int
+
+	// Lanes are the factory lanes. They stand beside Roles rather than inside it:
+	// a lane is not a chain role, and widening ChainRoles would make every chain
+	// consumer defend against a variable-length role list. No registered lane
+	// yields an empty list, and the view draws that fact.
+	Lanes []LaneVM
 }
 
 type FilterVM struct {
@@ -223,8 +236,62 @@ func processAlive(pid int) bool {
 // 화면은 그 칸을 미기동으로 정직하게 그린다 — 그럴듯한 값을 채우지 않는다.
 func roleOf(r KanbanRecord) string { return strings.ToLower(strings.TrimSpace(r.Role)) }
 
+// chainRoleRecords keeps only the records whose role is one of the four fixed
+// chain roles. A factory lane's record carries role "lane", which is not a chain
+// role: buildChain treats any record as proof the chain is present but renders
+// only ChainRoles, so passing one through makes a lanes-only project render an
+// idle chain it does not have.
+func chainRoleRecords(records []KanbanRecord) []KanbanRecord {
+	isChainRole := make(map[string]bool, len(ChainRoles))
+	for _, role := range ChainRoles {
+		isChainRole[role] = true
+	}
+	out := make([]KanbanRecord, 0, len(records))
+	for _, r := range records {
+		if isChainRole[roleOf(r)] {
+			out = append(out, r)
+		}
+	}
+	return out
+}
+
+// readTelemetry reads one session's telemetry record through the single reader
+// SPEC-SESSION-TELEMETRY-001 exports, and builds the path with that SPEC's own
+// helper: this package restates neither the record's location nor its schema,
+// because one on-disk format declared in two places is a format that forks.
+//
+// Unreadable yields nil. "No record" and "the value is zero" are different
+// facts, and the view draws the difference.
+func readTelemetry(root, sessionID string) *statusline.SessionTelemetryRecord {
+	path := statusline.SessionTelemetryPath(filepath.Join(root, ".moai", "state"), sessionID)
+	if path == "" {
+		return nil
+	}
+	rec, err := statusline.ReadSessionTelemetry(path)
+	if err != nil {
+		return nil
+	}
+	return rec
+}
+
+// telemetryCells returns one session's model, effort and context percentage.
+// 기록이 없으면 빈 문자열과 -1 — 화면이 "기록 없음"으로 그리는 값이다.
+// 기록이 있어도 model/effort 가 비어 있으면(의존 SPEC 이전에 쓰인 기록) 그
+// 칸만 기록 없음으로 남는다. 그럴듯한 대체값을 채우지 않는다.
+func telemetryCells(rec *statusline.SessionTelemetryRecord) (model, effort string, pct int) {
+	if rec == nil {
+		return "", "", -1
+	}
+	pct = -1
+	if rec.ContextWindowSize > 0 {
+		pct = clampPct(int(rec.RawPct))
+	}
+	return rec.Model, rec.Effort, pct
+}
+
 // buildChain 은 칸반 세션 기록과 활성 세션을 역할 5칸에 배치한다.
-func buildChain(records []KanbanRecord, sessions map[string]SessionVM, cardID string) ChainVM {
+// root 는 세션별 텔레메트리 기록을 찾는 데만 쓴다.
+func buildChain(root string, records []KanbanRecord, sessions map[string]SessionVM, cardID string) ChainVM {
 	byRole := map[string]KanbanRecord{}
 	for _, r := range records {
 		if role := roleOf(r); role != "" {
@@ -246,13 +313,14 @@ func buildChain(records []KanbanRecord, sessions map[string]SessionVM, cardID st
 			s.State = StateStale
 		}
 		stage, estimated := estimateStage(s)
+		model, effort, pct := telemetryCells(readTelemetry(root, rec.SessionID))
 		out.Roles = append(out.Roles, RoleVM{
 			Role:           role,
 			Session:        rec.SessionID,
 			Backend:        rec.Backend,
-			Model:          "", // 3단계: Record 에 모델 스냅샷이 추가되면 채운다
-			Effort:         "", // 3단계
-			ContextPct:     -1, // 3단계: context-usage/<session-id>.json 분리 후
+			Model:          model,
+			Effort:         effort,
+			ContextPct:     pct,
 			State:          s.State,
 			Stage:          stage,
 			StageEstimated: estimated,
@@ -427,6 +495,7 @@ func loadSessions(root string, now time.Time) ([]SessionVM, map[string]SessionVM
 			State:     sessionState(e.LastHeartbeat, e.PID, now),
 			Heartbeat: humanSince(e.LastHeartbeat, now),
 			Cwd:       e.CWD,
+			PID:       e.PID,
 		}
 		out = append(out, vm)
 		byID[e.SessionID] = vm
@@ -604,7 +673,7 @@ func (a *app) buildOverview(now time.Time) (OverviewVM, error) {
 			{Label: "session", Value: itoa(live) + "/" + itoa(len(sessions)), Note: "PID confirmed / registry", NoteKey: "statNote.pid-confirmed-registry"},
 			{Label: "verify", Value: lastVerify, Note: itoa(verifyKeys) + " keys", NoteKey: "statNote.keys", NoteParams: itoa(verifyKeys)},
 		},
-		Chain:    buildChain(records, byID, chainCardID(records)),
+		Chain:    buildChain(root, records, byID, chainCardID(records)),
 		Sessions: sessions,
 	}
 	if len(inProgress) > maxOverviewRows {
@@ -670,7 +739,14 @@ func (a *app) buildKanban(now time.Time) (KanbanVM, error) {
 	}
 	_, byID := loadSessions(root, now)
 	records := loadKanbanRecords(root)
-	chain := buildChain(records, byID, chainCardID(records))
+	// The chain is built from chain-role records only. buildChain reads
+	// `len(records) > 0` as proof a chain exists but renders only ChainRoles, so
+	// feeding it a factory lane's record makes a project that runs lanes and no
+	// chain report a present chain stopped at an idle `lead` — a confident wrong
+	// answer on a supported configuration. loadFactoryLanes still receives the
+	// complete set; it is the half that needs the lane records.
+	chainRecords := chainRoleRecords(records)
+	chain := buildChain(root, chainRecords, byID, chainCardID(chainRecords))
 
 	return KanbanVM{
 		CardID:   chain.CardID,
@@ -678,6 +754,7 @@ func (a *app) buildKanban(now time.Time) (KanbanVM, error) {
 		Roles:    chain.Roles,
 		Columns:  pipelineColumns(rows),
 		Total:    len(rows),
+		Lanes:    loadFactoryLanes(root, byID, records),
 	}, nil
 }
 

@@ -19,7 +19,7 @@ The problem is that none of these variables is visible by default. Claude Code's
 The base layout is three lines; when a session name or backlog observation exists, a fourth line (the session line) is appended conditionally at the end. The example below is one instance of actual rendered output, copied verbatim down to the glyphs (small pictographic characters) each segment uses.
 
 ```text
-🤖 Opus | 🧠 xhigh·t | ♻️ 87% | 🔅 v2.1.212 | 🗿 v3.1.2 | ⏳ 4h 52m | 💬 MoAI
+🤖 Opus | 🧠 xhigh·t | ♻️ 87% | 🔅 v2.1.212 | 🗿 v3.1.3 | ⏳ 4h 52m | 💬 MoAI
 🪫 CW: ███████░░░ 72% (⚠️/clear) | 🔋 5H: █████░░░░░ 56% (46m) | 🔋 7D: █░░░░░░░░░ 13% (May 28)
 📁 moai-adk-go | 📡 modu-ai/moai-adk, 12/3 | 🅱️ main +2 | 💾 +0 M1 ?1 | 💌 PR #1234 (⌥approved)
 🏷️ run | 👤 manager-develop | 🔄 TODO: 1/3
@@ -160,7 +160,7 @@ One caveat. GLM-5.3 is a genuine 1M-context model, but Claude Code reports `cont
 
 ## The context-usage snapshot — for the next session
 
-The statusline also records its observation to `.moai/state/context-usage.json` on every render. The next session's start reads this snapshot as grounds for how full the window was just before. `raw_pct` (raw usage) and `stage` (none/soft/hard) are the key fields; `session_id`, `writer_pid`, and `captured_at` ride along so the writing session can be told apart.
+The statusline also records its observation to `.moai/state/context-usage/<session-id>.json` on every render — one record per session, named for the session that wrote it, so two sessions in the same project never overwrite each other. The next session's start reads its own record as grounds for how full the window was just before. `raw_pct` (raw usage) and `stage` (none/soft/hard) are the key fields; the model the session actually runs and its effort level ride along, as do `session_id`, `writer_pid`, and `captured_at`.
 
 Why does the session need distinguishing? When several sessions share one working directory, one session must not inherit another's usage and misjudge the window as full. So the identity of the session that wrote the record is checked, and records that mismatch or are stale are ignored, falling back to raw observation. The goal is to act conservatively, not to draw false confidence from a value that is not yours.
 

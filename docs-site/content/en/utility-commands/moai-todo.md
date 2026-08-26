@@ -128,6 +128,7 @@ After a card is picked, it continues like this:
 - **Not the board.** Which column a card sits in is held by the lead session and the SPEC status, not by this file.
 - **Not the source of truth for work in progress.** Once a card has a SPEC, the SPEC artifacts are the reference; the backlog item is only a pointer to it.
 - **It does not fill itself.** The tool never scrapes TODO comments, open issues, or audit findings into the queue. A human puts items in.
+- **The guidance surfaces can be switched off.** The session-start summary, the statusline TODO segment, and the automatic routing turn off with `workflow.todo.enabled: false` in `workflow.yaml` (see the [configuration reference](/en/advanced/config-sections/)). The command and its verbs keep working when off.
 
 ## CLI surface
 
@@ -181,7 +182,7 @@ $ moai todo unrelate 2
 | Command | Behavior |
 |------|------|
 | `moai todo` (bare) | Prints the queue. Same output as `list`. |
-| `moai todo <two or more words>` | Adds the natural-language text as an item. A single word (including a typo'd verb) is an error, not an add. |
+| `moai todo <two or more words>` | Adds the natural-language text as an item. A single word (including a typo'd verb) is an error, not an add. A verb-shaped first token followed by a card id (`moai todo pick t151`) is read as a mistyped verb and errors — a card that merely mentions an id later in the sentence still adds. |
 | `moai todo add "<text>" [--pick]` | Adds an item and prints the issued id and position. With `--pick`, the add and the picked mark land in one locked write. |
 | `moai todo list` / `--json` | Renders the queue. `--json` emits the full records as JSON. |
 | `moai todo done <n>` | Removes item `n`. The explicit `t<n>` id form is preferred — queue positions move under concurrent adds. |

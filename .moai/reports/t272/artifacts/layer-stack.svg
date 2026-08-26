@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 962" width="1200" height="962"
+     role="img" aria-labelledby="layer-stack-title layer-stack-desc">
+  <title id="layer-stack-title">moai-adk CLI architecture stack</title>
+  <desc id="layer-stack-desc">The moai CLI stacks four layers: the binary entrypoint, the command dispatcher, the core packages for config, hooks, and SPEC auditing, and the embedded template assets.</desc>
+  <defs>
+    <marker id="layer-stack-arrow" markerUnits="userSpaceOnUse"
+            markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+      <path d="M 0 0 L 10 4 L 0 8 z" fill="#6B6359"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="962" fill="#FAF9F5"/>
+
+  <g><text x="60" y="96" font-family="'Noto Serif', Georgia, serif" font-size="34" font-weight="600" fill="#141413">moai-adk CLI Architecture</text></g>
+
+  <!-- connectors: band-to-band verticals on shared lanes -->
+  <g stroke="#6B6359" stroke-width="1.25">
+    <path d="M 600 300 V 318" fill="none" marker-end="url(#layer-stack-arrow)"/>
+    <path d="M 230.67 478 V 496" fill="none" marker-end="url(#layer-stack-arrow)"/>
+    <path d="M 600 478 V 496" fill="none" marker-end="url(#layer-stack-arrow)"/>
+    <path d="M 969.33 478 V 496" fill="none" marker-end="url(#layer-stack-arrow)"/>
+    <path d="M 230.67 656 V 674" fill="none" marker-end="url(#layer-stack-arrow)"/>
+    <path d="M 600 656 V 674" fill="none" marker-end="url(#layer-stack-arrow)"/>
+    <path d="M 969.33 656 V 674" fill="none" marker-end="url(#layer-stack-arrow)"/>
+  </g>
+
+  <!-- layer 1 -->
+  <rect x="60" y="150" width="1080" height="150" rx="12" fill="#F3EFE6" stroke="#D9CDBE"/>
+  <text x="76" y="140" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="12" fill="#6B6359">cmd/moai</text>
+  <g font-family="Pretendard, 'Noto Sans KR', 'Noto Sans JP', 'Noto Sans SC', 'Apple SD Gothic Neo', 'Hiragino Sans', 'Microsoft YaHei', system-ui, sans-serif">
+    <rect x="60" y="166" width="1080" height="118" rx="12" fill="#FAF9F5" stroke="#D9CDBE"/>
+    <text x="76" y="199" font-size="17" font-weight="600" fill="#141413">moai</text>
+    <text x="76" y="228" font-size="14" fill="#6B6359">single static binary</text>
+    <text x="76" y="248" font-size="14" fill="#6B6359">go install target</text>
+  </g>
+
+  <!-- layer 2 -->
+  <rect x="60" y="328" width="1080" height="150" rx="12" fill="#F3EFE6" stroke="#D9CDBE"/>
+  <text x="76" y="318" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="12" fill="#6B6359">internal/cli</text>
+  <g font-family="Pretendard, 'Noto Sans KR', 'Noto Sans JP', 'Noto Sans SC', 'Apple SD Gothic Neo', 'Hiragino Sans', 'Microsoft YaHei', system-ui, sans-serif">
+    <rect x="60" y="344" width="1080" height="118" rx="12" fill="#FAF9F5" stroke="#D9CDBE"/>
+    <text x="76" y="377" font-size="17" font-weight="600" fill="#141413">cli</text>
+    <text x="76" y="406" font-size="14" fill="#6B6359">subcommand dispatch</text>
+    <text x="76" y="426" font-size="14" fill="#6B6359">flags + config</text>
+  </g>
+
+  <!-- layer 3: three core packages -->
+  <rect x="60" y="506" width="1080" height="150" rx="12" fill="#F3EFE6" stroke="#D9CDBE"/>
+  <text x="76" y="496" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="12" fill="#6B6359">internal/{config,hook,spec}</text>
+  <g font-family="Pretendard, 'Noto Sans KR', 'Noto Sans JP', 'Noto Sans SC', 'Apple SD Gothic Neo', 'Hiragino Sans', 'Microsoft YaHei', system-ui, sans-serif">
+    <rect x="60" y="522" width="341.33" height="118" rx="12" fill="#FAF9F5" stroke="#D9CDBE"/>
+    <text x="76" y="555" font-size="17" font-weight="600" fill="#141413">config</text>
+    <text x="76" y="584" font-size="14" fill="#6B6359">YAML section loader</text>
+    <text x="76" y="604" font-size="14" fill="#6B6359">env overrides</text>
+
+    <rect x="429.33" y="522" width="341.33" height="118" rx="12" fill="#FAF9F5" stroke="#D9CDBE"/>
+    <text x="445.33" y="555" font-size="17" font-weight="600" fill="#141413">hook</text>
+    <text x="445.33" y="584" font-size="14" fill="#6B6359">PreToolUse + Stop</text>
+    <text x="445.33" y="604" font-size="14" fill="#6B6359">settings wiring</text>
+
+    <rect x="798.67" y="522" width="341.33" height="118" rx="12" fill="#FAF9F5" stroke="#D9CDBE"/>
+    <text x="814.67" y="555" font-size="17" font-weight="600" fill="#141413">spec</text>
+    <text x="814.67" y="584" font-size="14" fill="#6B6359">lint + drift audit</text>
+    <text x="814.67" y="604" font-size="14" fill="#6B6359">era classifier</text>
+  </g>
+
+  <!-- layer 4 -->
+  <rect x="60" y="684" width="1080" height="150" rx="12" fill="#F3EFE6" stroke="#D9CDBE"/>
+  <text x="76" y="674" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="12" fill="#6B6359">internal/template</text>
+  <g font-family="Pretendard, 'Noto Sans KR', 'Noto Sans JP', 'Noto Sans SC', 'Apple SD Gothic Neo', 'Hiragino Sans', 'Microsoft YaHei', system-ui, sans-serif">
+    <rect x="60" y="700" width="1080" height="118" rx="12" fill="#FAF9F5" stroke="#D9CDBE"/>
+    <text x="76" y="733" font-size="17" font-weight="600" fill="#141413">template</text>
+    <text x="76" y="762" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="14" fill="#6B6359">//go:embed templates</text>
+    <text x="76" y="782" font-size="14" fill="#6B6359">scaffolds 16 languages</text>
+  </g>
+</svg>

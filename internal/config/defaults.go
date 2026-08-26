@@ -16,6 +16,18 @@ const (
 	DefaultDocumentation            = "en"
 	DefaultErrorMessages            = "en"
 
+	// Graph-freshness gate thresholds (graph layer drift): reasoned defaults,
+	// recalibratable via gate.yaml. The codemaps line reflects how many
+	// described-source files must drift before the curated docs are judged
+	// wrong enough to demand regeneration; the mx line reds on any inventoried
+	// content drift (the index is cheap to rescan).
+	DefaultGraphFreshnessCodemapsChangedFiles = 40
+	DefaultGraphFreshnessMXIndexChangedFiles  = 1
+	// DefaultGraphFreshnessUpdateBudgetMS bounds a query-time refresh's
+	// measured cost before a warning fires. A hypothesis until measured on
+	// this repository (never a foreign figure); overrun warns, never blocks.
+	DefaultGraphFreshnessUpdateBudgetMS = 2000
+
 	DefaultTestCoverageTarget    = 85
 	DefaultMaxTransformationSize = "small"
 	DefaultMinCoveragePerCommit  = 80
@@ -376,6 +388,44 @@ var DefaultGLMTaskTimeout = 600 * time.Second
 // runaway generation cannot consume the job's whole budget.
 const DefaultGLMTaskMaxTokens = 8192
 
+// Session messaging broker thresholds (SPEC-CODEX-SESSION-MSG-001 REQ-CSM-012
+// — single source of truth; package code must reference these, never inline
+// literals). All are `var` so tests can shorten them, mirroring
+// DefaultCodexReviewGateTimeout.
+//
+// @MX:ANCHOR: [AUTO] session-msg threshold SSOT consumed by internal/sessionmsg
+// @MX:REASON: fan_in >= 5 (envelope validation, store send/poll/sweep, agent online reporting, M2 MCP handlers). Value changes here retime every broker TTL without code edits.
+var (
+	// DefaultSessionMsgMessageTTL is how long a pending or claimed message
+	// lives before the lazy sweep deletes it (REQ-CSM-008).
+	DefaultSessionMsgMessageTTL = 24 * time.Hour
+	// DefaultSessionMsgClaimTTL is how long a claimed message may stay
+	// unacknowledged before the sweep returns it to pending (REQ-CSM-007).
+	DefaultSessionMsgClaimTTL = 10 * time.Minute
+	// DefaultSessionMsgAgentOfflineMinutes is the heartbeat age past which
+	// session_msg_list reports an agent online:false (REQ-CSM-004).
+	DefaultSessionMsgAgentOfflineMinutes = 30
+	// DefaultSessionMsgPollBatch is the maximum number of messages one poll
+	// claims from pending (REQ-CSM-006).
+	DefaultSessionMsgPollBatch = 16
+	// DefaultSessionMsgMaxTextBytes bounds the total text carried by one
+	// message envelope (REQ-CSM-005).
+	DefaultSessionMsgMaxTextBytes = 65536
+	// DefaultSessionMsgMaxDataBytes bounds the total JSON data carried by one
+	// message envelope (REQ-CSM-005 body-size ceiling — a data part is body
+	// content too). The value deliberately mirrors
+	// DefaultSessionMsgMaxTextBytes: REQ-CSM-005 names ONE body ceiling, so a
+	// second, different number would be a second policy with nothing to
+	// anchor it to. Both payload kinds are bounded independently rather than
+	// as a joint sum, matching how Validate already accumulates text.
+	DefaultSessionMsgMaxDataBytes = 65536
+	// DefaultSessionMsgMaxParts bounds the number of parts in one message
+	// (REQ-CSM-005 part-count ceiling). The M2 tool surface constructs at
+	// most 2 parts (text + optional data); the headroom tolerates future
+	// part kinds without a schema change.
+	DefaultSessionMsgMaxParts = 8
+)
+
 // DefaultFactoryWorkers is the fan-out size the count-less `-k --name
 // lane-<n>` form takes when the operator supplies no count
 // (SPEC-FACTORY-WORKER-FANOUT-001 REQ-FF-001, t85 lead loop). The value 8 is
@@ -517,6 +567,17 @@ func NewDefaultGateConfig() GateConfig {
 			Enabled:      true,
 			BlockOnError: false,
 			WarnOnlyMode: true,
+		},
+		// The graph-freshness step mirrors the ast-grep posture: ON and
+		// advisory by default. Thresholds are reasoned defaults, calibrated
+		// from this repository's own history (never foreign figures); the
+		// update budget bounds query-time refresh cost and only warns.
+		GraphFreshness: GraphFreshnessGateConfig{
+			Enabled:              true,
+			Blocking:             false,
+			CodemapsChangedFiles: DefaultGraphFreshnessCodemapsChangedFiles,
+			MXIndexChangedFiles:  DefaultGraphFreshnessMXIndexChangedFiles,
+			UpdateBudgetMS:       DefaultGraphFreshnessUpdateBudgetMS,
 		},
 	}
 }

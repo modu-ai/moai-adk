@@ -221,8 +221,10 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	case factoryBranchLead:
 		leadLabel, _ := parseLeadLabel(filteredArgs)
 		defer enterFactoryLeadMode(entry.FactoryWorkers, leadLabel)()
-		recordKanbanSession(entry.Spec, kanban.BackendGLM, kanban.RoleLead)
-		filteredArgs = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
+		defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
+		var leadName string
+		filteredArgs, leadName = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
+		defer exportLeadSessionName(leadName)()
 		settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
@@ -234,7 +236,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 		finalLabel := resolveFactoryWorkerName(launchProjectRoot(), factoryLabel, cmd.ErrOrStderr())
 		filteredArgs = replaceNamedLabel(filteredArgs, factoryLabel, finalLabel)
 		defer enterFactoryWorkerMode(finalLabel, entry.FactoryWorkers)()
-		recordKanbanSession(entry.Spec, kanban.BackendGLM, kanban.RoleLane)
+		defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
 		settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
@@ -247,9 +249,11 @@ func runGLM(cmd *cobra.Command, args []string) error {
 			// See cc.go: the operator's lead run id is adopted rather than replaced.
 			leadLabel, _ := parseLeadLabel(filteredArgs)
 			defer enterKanbanMode(entry.Spec, leadLabel)()
-			recordKanbanSession(entry.Spec, kanban.BackendGLM, kanban.RoleLead)
+			defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
 			// See cc.go: glm mirrors the lead branch exactly.
-			filteredArgs = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
+			var leadName string
+			filteredArgs, leadName = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
+			defer exportLeadSessionName(leadName)()
 			settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 			if len(settingsFlag) > 0 {
 				filteredArgs = append(filteredArgs, settingsFlag...)
@@ -261,7 +265,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 			finalLabel := resolveCompanionName(launchProjectRoot(), label, cmd.ErrOrStderr())
 			filteredArgs = replaceNamedLabel(filteredArgs, label, finalLabel)
 			defer enterKanbanCompanionMode(finalLabel)()
-			recordKanbanSession(entry.Spec, kanban.BackendGLM, companionRole(finalLabel))
+			defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendGLM)()
 			settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 			if len(settingsFlag) > 0 {
 				filteredArgs = append(filteredArgs, settingsFlag...)

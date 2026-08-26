@@ -19,7 +19,7 @@ draft: false
 基本布局是三行，存在会话名·积压观测时，第四行（会话行）会按条件附加在最后。下面的示例是实际渲染输出的一个实例，连每个段落使用的字形 (glyph，小图形字符) 都原样搬来。
 
 ```text
-🤖 Opus | 🧠 xhigh·t | ♻️ 87% | 🔅 v2.1.212 | 🗿 v3.1.2 | ⏳ 4h 52m | 💬 MoAI
+🤖 Opus | 🧠 xhigh·t | ♻️ 87% | 🔅 v2.1.212 | 🗿 v3.1.3 | ⏳ 4h 52m | 💬 MoAI
 🪫 CW: ███████░░░ 72% (⚠️/clear) | 🔋 5H: █████░░░░░ 56% (46m) | 🔋 7D: █░░░░░░░░░ 13% (May 28)
 📁 moai-adk-go | 📡 modu-ai/moai-adk, 12/3 | 🅱️ main +2 | 💾 +0 M1 ?1 | 💌 PR #1234 (⌥approved)
 🏷️ run | 👤 manager-develop | 🔄 TODO: 1/3
@@ -160,7 +160,7 @@ flowchart TD
 
 ## 上下文用量快照 —— 留给下一个会话
 
-状态栏每次渲染时，还会把观测值记录到 `.moai/state/context-usage.json`。这份快照会在下一个会话开始时作为“刚才窗口填了多少”的读取依据。`raw_pct`（原始使用率）和 `stage`（none/soft/hard）是核心字段，为了区分是哪个会话写下的值，还会一并留下 `session_id`、`writer_pid`、`captured_at`。
+状态栏每次渲染时，还会把观测值记录到 `.moai/state/context-usage/<session-id>.json`。每个会话一份，以该会话命名，所以同一项目里多个会话同时运行也不会相互覆盖。这份记录会在下一个会话开始时作为“刚才窗口填了多少”的读取依据。`raw_pct`（原始使用率）和 `stage`（none/soft/hard）是核心字段，该会话实际运行的模型与 effort 也会一并写入。`session_id`、`writer_pid`、`captured_at` 同样保留。
 
 为什么需要区分会话？当多个会话共用一个工作目录时，一个会话不能接过另一个会话的用量、误判“窗口已经满了”。所以要核对写记录的会话身份，不一致或过期的记录直接忽略，回退到原始观测值。目的是保守行事，而不是用缺失的数值制造虚假的确定。
 

@@ -605,6 +605,7 @@ era 分类通过自动检查 `spec.md` frontmatter 的 `created:` 日期与 `pro
 
 ## 相关文档
 
+- [SPEC 生命周期](/zh/core-concepts/spec-lifecycle) -- 沿着 plan/run/sync 流程（含各道关卡）走一遍本文所讲的 SPEC 文档
 - [什么是 MoAI-ADK？](/zh/core-concepts/what-is-moai-adk) -- 理解 MoAI-ADK 的整体结构
 - [开发方法论 (DDD/TDD)](/zh/core-concepts/ddd) -- 学习基于 SPEC 安全实现代码的 DDD/TDD 方法论
 - [TRUST 5 质量](/zh/core-concepts/trust-5) -- 学习验证已实现代码质量的标准

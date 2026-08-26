@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 830" width="1200" height="830"
+     role="img" aria-labelledby="nested-scope-title nested-scope-desc">
+  <title id="nested-scope-title">Trust-boundary nesting</title>
+  <desc id="nested-scope-desc">Each trust boundary contains the next: the organization wraps the kanban lead session, which wraps a lane worktree, which holds the card evidence read before the card advances.</desc>
+  <defs/>
+
+  <rect x="0" y="0" width="1200" height="830" fill="#FAF9F5"/>
+
+  <g><text x="60" y="96" font-family="'Noto Serif', Georgia, serif" font-size="34" font-weight="600" fill="#141413">Trust-Boundary Nesting</text></g>
+
+  <!-- containers painted outermost first -->
+  <rect x="60" y="130" width="1080" height="640" rx="12" fill="#F3EFE6" stroke="#D9CDBE"/>
+  <g>
+    <text x="76" y="154" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="12" fill="#6B6359">organization</text>
+    <text x="76" y="178" font-family="Pretendard, 'Noto Sans KR', 'Noto Sans JP', 'Noto Sans SC', 'Apple SD Gothic Neo', 'Hiragino Sans', 'Microsoft YaHei', system-ui, sans-serif" font-size="14" fill="#6B6359">all repos, one org policy</text>
+  </g>
+
+  <rect x="100" y="190" width="1000" height="540" rx="12" fill="#FAF9F5" stroke="#D9CDBE"/>
+  <g>
+    <text x="116" y="214" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="12" fill="#6B6359">kanban lead session</text>
+    <text x="116" y="238" font-family="Pretendard, 'Noto Sans KR', 'Noto Sans JP', 'Noto Sans SC', 'Apple SD Gothic Neo', 'Hiragino Sans', 'Microsoft YaHei', system-ui, sans-serif" font-size="14" fill="#6B6359">one moai cc -k session</text>
+  </g>
+
+  <rect x="140" y="250" width="920" height="440" rx="12" fill="#F3EFE6" stroke="#D9CDBE"/>
+  <g>
+    <text x="156" y="274" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="12" fill="#6B6359">lane worktree</text>
+    <text x="156" y="298" font-family="Pretendard, 'Noto Sans KR', 'Noto Sans JP', 'Noto Sans SC', 'Apple SD Gothic Neo', 'Hiragino Sans', 'Microsoft YaHei', system-ui, sans-serif" font-size="14" fill="#6B6359">one lane = one worktree</text>
+  </g>
+
+  <!-- innermost leaf: focal -->
+  <rect x="180" y="310" width="840" height="160" rx="12" fill="#FBE9DF" stroke="#D97757" stroke-width="1.6"/>
+  <g>
+    <text x="196" y="343" font-family="Pretendard, 'Noto Sans KR', 'Noto Sans JP', 'Noto Sans SC', 'Apple SD Gothic Neo', 'Hiragino Sans', 'Microsoft YaHei', system-ui, sans-serif" font-size="17" font-weight="600" fill="#141413">card evidence</text>
+    <text x="196" y="372" font-family="'JetBrains Mono', ui-monospace, monospace" font-size="14" fill="#6B6359">.moai/reports/&lt;card&gt;/verdict.md</text>
+    <text x="196" y="392" font-family="Pretendard, 'Noto Sans KR', 'Noto Sans JP', 'Noto Sans SC', 'Apple SD Gothic Neo', 'Hiragino Sans', 'Microsoft YaHei', system-ui, sans-serif" font-size="14" fill="#6B6359">read before the card advances</text>
+  </g>
+</svg>

@@ -67,6 +67,41 @@ func TestNewMxScanCmd_BuildsIndex(t *testing.T) {
 	}
 }
 
+// TestNewMxScanCmd_RejectsExternalScanPath (CR round-3, t261 observed red):
+// a --path resolving OUTSIDE the project root is REJECTED — an external scan
+// would persist tags whose files the project-root-relative provenance
+// inventory cannot cover.
+func TestNewMxScanCmd_RejectsExternalScanPath(t *testing.T) {
+	project := t.TempDir()
+	outside := t.TempDir() // a second tree, by construction outside project
+	if err := os.WriteFile(filepath.Join(outside, "ext.go"),
+		[]byte("package ext\n\n// @MX:NOTE: external\nfunc E() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	orig := findProjectRootFn
+	findProjectRootFn = func() (string, error) { return project, nil }
+	t.Cleanup(func() { findProjectRootFn = orig })
+
+	cmd := newMxScanCmd()
+	cmd.SetArgs([]string{"--path", outside})
+	var out strings.Builder
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatal("external --path must be rejected, got success")
+	}
+	if !strings.Contains(err.Error(), "outside the project root") {
+		t.Errorf("rejection must name the containment reason: %v", err)
+	}
+	// No sidecar was written into the project.
+	if _, statErr := os.Stat(filepath.Join(project, ".moai", "state", "mx-index.json")); statErr == nil {
+		t.Error("rejected scan must not write a sidecar")
+	}
+}
+
 // TestNewMxScanCmd_DryRunDoesNotWrite confirms --dry previews without persisting.
 func TestNewMxScanCmd_DryRunDoesNotWrite(t *testing.T) {
 	dir := t.TempDir()

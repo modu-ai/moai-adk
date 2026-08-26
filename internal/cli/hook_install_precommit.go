@@ -6,12 +6,26 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 // moaiPreCommitMarker is the identifier written near the top of the pre-commit
 // hook file. Its presence signals that the hook was installed by MoAI-ADK and
 // can be safely overwritten on subsequent installs.
 const moaiPreCommitMarker = "# MoAI-ADK pre-commit hook"
+
+// moaiPreCommitProvenanceName is the pre-commit provenance sidecar basename;
+// see hookTier.provenanceName (hook_install_shared.go) for the rationale.
+const moaiPreCommitProvenanceName = ".moai-pre-commit.sha256"
+
+// preCommitBackupPrefix is the pre-commit backup basename prefix; see
+// hookTier.backupPrefix (hook_install_shared.go) for the rationale.
+const preCommitBackupPrefix = "pre-commit.bak."
+
+// errPreCommitBackupFailed wraps a backup-write failure so the optional
+// wrapper can turn it into a warning while leaving the hook untouched
+// (REQ-PCP-010 sub-case (a)). It never reaches the caller as a failure.
+var errPreCommitBackupFailed = errors.New("pre-commit backup failed")
 
 // preCommitHookContent is the canonical content of the pre-commit hook. It
 // runs the fast subset (gofmt -l + go vet on staged Go files) followed by the
@@ -103,11 +117,36 @@ exit 0
 type PreCommitInstaller struct {
 	// repoRoot is the root of the git repository.
 	repoRoot string
+
+	// content is the hook body this installer writes — the "incoming" operand
+	// of the attribution. Defaults to preCommitHookContent; overridden in tests
+	// to construct a version bump without editing the shipped constant.
+	content string
+
+	// lastAttribution is the classification of the most recent install run
+	// against an existing marker-bearing hook, or nil when the run classified
+	// nothing (no existing hook, a non-MoAI hook, or skip=true).
+	lastAttribution *hookAttribution
+
+	// lastProvenanceErr holds a provenance-write failure from the most recent
+	// run. The write happens after a hook write that already succeeded, so it
+	// must not fail the caller (REQ-PCP-010); it is recorded rather than
+	// discarded so M2 can warn about it.
+	lastProvenanceErr error
+
+	// lastBackupPath is the backup copy written for a user-modified hook in the
+	// most recent run, or "" when no backup was taken. The wrapper reads it to
+	// emit the disclosure notice (REQ-PCP-004).
+	lastBackupPath string
+
+	// now supplies the timestamp for backup names. A seam so tests can force
+	// the same stamp twice and construct REQ-PCP-009's occupied-path Given.
+	now func() time.Time
 }
 
 // NewPreCommitInstaller creates a PreCommitInstaller for the given repository root.
 func NewPreCommitInstaller(repoRoot string) *PreCommitInstaller {
-	return &PreCommitInstaller{repoRoot: repoRoot}
+	return &PreCommitInstaller{repoRoot: repoRoot, content: preCommitHookContent, now: time.Now}
 }
 
 // InstallPreCommitHook writes the pre-commit hook to .git/hooks/pre-commit with
@@ -124,6 +163,10 @@ func NewPreCommitInstaller(repoRoot string) *PreCommitInstaller {
 // declared intent is achieved by making a real hook exist and run the fast
 // subset at commit time; a runtime severity dial is a separate follow-up.
 func (p *PreCommitInstaller) InstallPreCommitHook(skip bool) error {
+	p.lastAttribution = nil
+	p.lastProvenanceErr = nil
+	p.lastBackupPath = ""
+
 	if skip {
 		return nil
 	}
@@ -145,35 +188,95 @@ func (p *PreCommitInstaller) InstallPreCommitHook(skip bool) error {
 		if !hasMarker {
 			return ErrUserHookExists
 		}
-		// MoAI hook found — overwrite.
+		// MoAI hook found — classify it before overwriting. The verdict is
+		// recorded, not acted on: M1 decides, M2 hangs the backup and the
+		// notice off the decision.
+		installed, err := os.ReadFile(hookPath)
+		if err != nil {
+			return fmt.Errorf("read existing hook: %w", err)
+		}
+		attribution := classifyHook(installed, readHookProvenance(hookDir, preCommitTier), []byte(p.content))
+		p.lastAttribution = &attribution
+
+		// REQ-PCP-003: a user-modified hook is copied aside BEFORE the
+		// replacement is written, so the patch is recoverable the moment the
+		// loss-bearing overwrite happens.
+		if attribution.Class == hookUserModified {
+			backupPath, err := backupHook(hookDir, installed, p.now(), preCommitTier)
+			if err != nil {
+				// REQ-PCP-010 sub-case (a): the backup sits before the hook
+				// write, so a failure here means the patch cannot be made
+				// recoverable — the hook is left untouched and the caller is
+				// not failed; the wrapper turns this into a warning. Overwriting
+				// anyway would destroy the patch with no recoverable copy,
+				// the exact outcome REQ-PCP-006 forbids.
+				return fmt.Errorf("%w: %w", errPreCommitBackupFailed, err)
+			}
+			p.lastBackupPath = backupPath
+		}
 	}
 
-	if err := os.WriteFile(hookPath, []byte(preCommitHookContent), 0o755); err != nil {
+	if err := os.WriteFile(hookPath, []byte(p.content), 0o755); err != nil {
 		return fmt.Errorf("write pre-commit hook: %w", err)
 	}
+
+	// Record what was just written, so the next run can attribute a difference
+	// (REQ-PCP-001). A failure here follows a hook write that already
+	// succeeded, so it must not fail the caller (REQ-PCP-010): the missing
+	// record self-heals on the next run, which finds installed == incoming and
+	// re-stamps.
+	p.lastProvenanceErr = writeHookProvenance(hookDir, p.content, preCommitTier)
 
 	return nil
 }
 
 // installPreCommitHookOptional installs the pre-commit hook into projectRoot's
-// .git/hooks/ unless skip is true. Friendly, non-fatal: prints status to out,
-// returns nothing. Used by `moai init` and `moai update` to install the hook
-// consistently alongside the pre-push hook.
+// .git/hooks/ unless skip is true. Friendly, non-fatal: prints progress to out,
+// warnings to warn (a writer distinct from out — both callers bind it to the
+// command's stderr, REQ-PCP-004), returns nothing. Used by `moai init` and
+// `moai update` to install the hook consistently alongside the pre-push hook.
 //
 // If a non-MoAI user hook is present, this function preserves it and prints a
 // note. Other errors are reported as warnings; project init/update is never
 // blocked by hook installation failures.
-func installPreCommitHookOptional(projectRoot string, skip bool, out io.Writer) {
+func installPreCommitHookOptional(projectRoot string, skip bool, out, warn io.Writer) {
 	installer := NewPreCommitInstaller(projectRoot)
 	err := installer.InstallPreCommitHook(skip)
 	switch {
 	case err == nil:
 		if !skip {
 			_, _ = fmt.Fprintln(out, "  Pre-commit hook installed (.git/hooks/pre-commit)")
+			if installer.lastBackupPath != "" {
+				// REQ-PCP-004: the notice carries exactly two elements — the
+				// backup path and the fact of the replacement — on the warning
+				// writer, never the progress writer (which `moai update` binds
+				// to stdout, where a redirected run swallows a data-loss
+				// notice whole). It names nothing else; in particular it does
+				// not name pre-commit.local, a facility this SPEC does not ship.
+				_, _ = fmt.Fprintf(warn, "  Warning: user-modified pre-commit hook was replaced; previous hook backed up at %s\n", installer.lastBackupPath)
+			}
+			if installer.lastProvenanceErr != nil {
+				// REQ-PCP-010 sub-case (b): the hook write already succeeded,
+				// so the replacement stands; the missing record self-heals on
+				// the next run (REQ-PCP-005).
+				_, _ = fmt.Fprintf(warn, "  Warning: pre-commit provenance record not written: %v\n", installer.lastProvenanceErr)
+			}
 		}
 	case errors.Is(err, ErrUserHookExists):
 		_, _ = fmt.Fprintln(out, "  Note: existing pre-commit hook preserved (no MoAI-ADK marker found)")
+	case errors.Is(err, errPreCommitBackupFailed):
+		// REQ-PCP-010 sub-case (a): no backup could be written, so the hook was
+		// left exactly as found — nothing was installed and nothing was lost.
+		_, _ = fmt.Fprintf(warn, "  Warning: pre-commit hook left unchanged (backup could not be written): %v\n", err)
 	default:
-		_, _ = fmt.Fprintf(out, "  Warning: pre-commit hook install failed: %v\n", err)
+		if installer.lastBackupPath != "" {
+			// The backup succeeded but the replacement write failed, so no
+			// replacement notice (the hook was not replaced). Name the orphan
+			// backup so the artifact beside the unchanged hook is explained
+			// rather than mysterious (acceptance.md §D.1 edge table).
+			_, _ = fmt.Fprintf(warn, "  Warning: pre-commit hook install failed: %v (previous hook backed up at %s)\n", err, installer.lastBackupPath)
+		} else {
+			_, _ = fmt.Fprintf(out, "  Warning: pre-commit hook install failed: %v\n", err)
+		}
 	}
 }

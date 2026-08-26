@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -32,6 +33,8 @@ func newGraphCmd() *cobra.Command {
 	}
 	cmd.AddCommand(newGraphBuildCmd())
 	cmd.AddCommand(newGraphQueryCmd())
+	cmd.AddCommand(newGraphCheckCmd())
+	cmd.AddCommand(newGraphStampCmd())
 	return cmd
 }
 
@@ -137,6 +140,32 @@ Examples:
 				return fmt.Errorf("load edges: %w", err)
 			}
 
+			// REQ-GF-007: refresh the mechanical input layers before
+			// answering. edges.jsonl is derived: it is stale exactly when a
+			// source fingerprint moved OR its mx-index source layer itself
+			// drifted (the index FILE hash cannot see scan-source edits until
+			// the index is rewritten — the inventory drift probe can).
+			// The curated codemaps layer is NEVER auto-rewritten here — its
+			// staleness is the M1 gate's signal (spec.md §B.2).
+			if refreshNeeded := graph.EdgesSourcesMoved(projectRoot) || graph.MXIndexNeedsRefresh(projectRoot); refreshNeeded {
+				if stats, rErr := refreshEdgesArtifact(projectRoot, edgesFile); rErr != nil {
+					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "graph refresh failed (answering from the existing artifact): %v\n", rErr)
+				} else if over := graphRefreshOverrun(projectRoot, stats.duration); over > 0 {
+					_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
+						"graph refresh cost %s exceeded the %dms update budget by %.0fms (warning only, answer follows)\n",
+						stats.duration.Round(time.Millisecond), graphRefreshBudgetMS(projectRoot), over.Seconds()*1000)
+				}
+				edges, err = graph.LoadJSONL(edgesFile)
+				if err != nil {
+					return fmt.Errorf("reload refreshed edges: %w", err)
+				}
+			}
+			// REQ-GF-008: every query answer names the tree root and commit
+			// (or dirty fingerprint) it was computed from.
+			if pv, ok := graph.ReadEdgesMeta(filepath.Join(filepath.Dir(edgesFile), graph.MetaFileName)); ok {
+				_, _ = fmt.Fprintln(cmd.ErrOrStderr(), pv.Describe())
+			}
+
 			out := cmd.OutOrStdout()
 			switch {
 			case callersNode != "":
@@ -228,6 +257,7 @@ Examples:
 func newGraphBuildCmd() *cobra.Command {
 	var outPath string
 	var rootArg string
+	var allDisagreements bool
 
 	cmd := &cobra.Command{
 		Use:   "build",
@@ -257,7 +287,11 @@ Examples:
 				return err
 			}
 
-			edges, err := graph.Build(projectRoot)
+			mode := graph.DisagreementRefuteOnly
+			if allDisagreements {
+				mode = graph.DisagreementAll
+			}
+			edges, matrix, err := graph.BuildWithCodeLayersMode(projectRoot, mode)
 			if err != nil {
 				return fmt.Errorf("build graph: %w", err)
 			}
@@ -276,16 +310,27 @@ Examples:
 				return fmt.Errorf("write edges: %w", err)
 			}
 
+			// REQ-GF-003: stamp the source-set fingerprints next to the
+			// artifact so its staleness is judgeable without a rebuild.
+			metaPath := filepath.Join(filepath.Dir(target), graph.MetaFileName)
+			if err := graph.WriteEdgesMeta(metaPath, projectRoot, graph.SourceFingerprintsForEdges(projectRoot), len(edges)); err != nil {
+				return fmt.Errorf("write edges meta: %w", err)
+			}
+
 			out := cmd.OutOrStdout()
 			counts := map[string]int{}
 			for _, e := range edges {
 				counts[e.Kind]++
 			}
 			_, _ = fmt.Fprintf(out, "OK: wrote %d edges to %s\n", len(edges), target)
-			for _, kind := range []string{graph.KindImport, graph.KindMXSpec, graph.KindSpecDepends, graph.KindReportMilestone, graph.KindMilestoneCard} {
+			for _, kind := range []string{graph.KindImport, graph.KindMXSpec, graph.KindSpecDepends, graph.KindReportMilestone, graph.KindMilestoneCard, graph.KindCodeCall, graph.KindCodeImport} {
 				if c := counts[kind]; c > 0 {
 					_, _ = fmt.Fprintf(out, "  %s: %d\n", kind, c)
 				}
+			}
+			// REQ-GF-016: grade-matrix defect verdict — reported, never silent.
+			for _, defect := range graph.ValidateGradeMatrix(matrix) {
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "%s\n", defect)
 			}
 			return nil
 		},
@@ -293,6 +338,8 @@ Examples:
 
 	cmd.Flags().StringVar(&outPath, "out", "", "output path (defaults to <root>/.moai/project/graph/edges.jsonl)")
 	cmd.Flags().StringVar(&rootArg, "root", "", "project root (defaults to the auto-detected project root)")
+	cmd.Flags().BoolVar(&allDisagreements, "all-disagreements", false,
+		"also mark the suppressed direction: local code-import dependencies the doc layer does not record (revival path for the default's code-found/doc-silent suppression)")
 
 	return cmd
 }

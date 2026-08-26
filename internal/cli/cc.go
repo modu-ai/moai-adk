@@ -158,8 +158,10 @@ func runCC(cmd *cobra.Command, args []string) error {
 		// run.
 		leadLabel, _ := parseLeadLabel(filteredArgs)
 		defer enterFactoryLeadMode(entry.FactoryWorkers, leadLabel)()
-		recordKanbanSession(entry.Spec, kanban.BackendClaude, kanban.RoleLead)
-		filteredArgs = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
+		defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendClaude)()
+		var leadName string
+		filteredArgs, leadName = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
+		defer exportLeadSessionName(leadName)()
 		settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
@@ -172,7 +174,7 @@ func runCC(cmd *cobra.Command, args []string) error {
 		finalLabel := resolveFactoryWorkerName(launchProjectRoot(), factoryLabel, cmd.ErrOrStderr())
 		filteredArgs = replaceNamedLabel(filteredArgs, factoryLabel, finalLabel)
 		defer enterFactoryWorkerMode(finalLabel, entry.FactoryWorkers)()
-		recordKanbanSession(entry.Spec, kanban.BackendClaude, kanban.RoleLane)
+		defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendClaude)()
 		settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 		if len(settingsFlag) > 0 {
 			filteredArgs = append(filteredArgs, settingsFlag...)
@@ -189,10 +191,12 @@ func runCC(cmd *cobra.Command, args []string) error {
 			// companion commands the SessionStart notice prints on one run.
 			leadLabel, _ := parseLeadLabel(filteredArgs)
 			defer enterKanbanMode(entry.Spec, leadLabel)()
-			recordKanbanSession(entry.Spec, kanban.BackendClaude, kanban.RoleLead)
+			defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendClaude)()
 			// A lead launched bare has only an AI-generated title, which claude
 			// discards on /clear; naming it explicitly is what survives.
-			filteredArgs = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
+			var leadName string
+			filteredArgs, leadName = appendLeadName(filteredArgs, launchProjectRoot(), cmd.ErrOrStderr())
+			defer exportLeadSessionName(leadName)()
 			settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 			if len(settingsFlag) > 0 {
 				filteredArgs = append(filteredArgs, settingsFlag...)
@@ -205,7 +209,7 @@ func runCC(cmd *cobra.Command, args []string) error {
 			finalLabel := resolveCompanionName(launchProjectRoot(), label, cmd.ErrOrStderr())
 			filteredArgs = replaceNamedLabel(filteredArgs, label, finalLabel)
 			defer enterKanbanCompanionMode(finalLabel)()
-			recordKanbanSession(entry.Spec, kanban.BackendClaude, companionRole(finalLabel))
+			defer exportKanbanLaunchFacts(entry.Spec, kanban.BackendClaude)()
 			settingsFlag, settingsCleanup := prepareKanbanSettings(filteredArgs)
 			if len(settingsFlag) > 0 {
 				filteredArgs = append(filteredArgs, settingsFlag...)
