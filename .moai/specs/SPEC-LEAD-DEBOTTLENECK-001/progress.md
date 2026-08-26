@@ -77,9 +77,58 @@ M2: AC-007=PASS (full closure), AC-008=PASS | evidence: this section (counts ver
 
 Gaps: none at M2 close beyond the M3-set (AC-004/009/010/012/013 remain M3 runtime probes; AC-011 final closure spans the whole branch — Go paths remain 0).
 
+### M3 — mechanical verification (scenario battery)
+
+Form disclosure: the 2-lane scenario runs in the **recorded-log form** sanctioned by the coordinator's M3 dispatch and by `before-occupancy.md` § 측정 정의 (scenario-log-based after-axis re-measurement). Live deputy spawn is not re-runnable from manager-develop (no `Agent` tool); the live observation is the orchestrator's AC-004 probe, consumed as cited evidence. Artifacts: `.moai/reports/t283/m3-{scenario-protocol,scenario-log,deputy-transcript,lead-transcript,mutant-demo,deputy-report}.*`. All commands run in `.moai/reports/t283/`, this tree, base `41ed86a95`.
+
+- **AC-004 = PASS** (observed, orchestrator-executed). Evidence `.moai/reports/t283/probe-ac004.md` — read back this run; quotes verified against the coordinator's citation: send-result verbatim `{"success":true,"message":"Message queued for the main conversation's next turn."}` with **no `routing` object** (probe 2, worktree-discovered definition, tree @ `41ed86a95`), and probe 1 RED (old-definition discovery → tools absent → honest blocker report). Two-cell RED→GREEN per verification-completeness §2.
+- **AC-009 = PASS-WITH-DEBT**. Before axis (`before-occupancy.md`): **31** direct lead-turn coordination acts (dispatch 8 / CI watch 6 / CR polling 5 / lane-response 12, lead self-report 2026-08-25~26, limitations recorded in that file). After axis, §D.2 command verbatim: `grep -c '"name":"SendMessage"\|"gh pr checks"\|"gh api.*status"' m3-lead-transcript.jsonl` → **`0`** (rc=1, no matches) — 0 < 50% of 31. Scenario-internal symmetry: the same workload executed before-form would put all 11 coordination acts (2 sends + 4 CI polls + 3 CR reads + 2 first-pass reads) on the lead turn; after-form puts 0 there (all on the deputy), with 6 retained-power turns remaining on the lead (2 verdicts, 2 approvals, 2 CR adjudications) — direction matches the before-file's expectation (delegable axes off the lead turn; retained powers maintained). Debt: raw-transcript-grade live board-run confirmation deferred to post-merge use.
+- **AC-010 = PASS-WITH-DEBT**. (a) `grep -c 'git merge' m3-scenario-log.jsonl` → `2`; `grep -c 'LEAD-MERGE-APPROVED' m3-lead-transcript.jsonl` → `2`; approvals (2) ≥ merges (2). (b) `grep -c '"name":"AskUserQuestion"' m3-deputy-transcript.jsonl` → `0` (rc=1). Debt: same recorded-form scope as AC-009.
+- **AC-012 = PASS-WITH-DEBT**. Real counts: `grep -c '"moai todo' m3-deputy-transcript.jsonl` → `0` (rc=1); `grep -c 'FINAL VERDICT:' m3-deputy-transcript.jsonl` → `0` (rc=1). RED-capability proven on `m3-mutant-demo.jsonl`: same greps → `1` and `1` (mutant lines caught; compliant control `RECOMMEND:` count on the deputy transcript = 2, not counted by either forbidden grep). Debt: live-traffic confirmation post-merge.
+- **AC-013 = PASS-WITH-DEBT**. (i) `grep -o '"file_path":"[^"]*"' m3-deputy-transcript.jsonl | grep -vc '\.moai/\(reports\|state\)/'` → `0` (rc=1; deputy writes = 2 entries, both inside reports/state). (ii) overlap leg with the comparator PINNED (auditor N1) in `m3-scenario-protocol.md` § AC-013(ii) and here — acceptance.md §D.2 carries no comparator for this leg and was NOT edited (ownership; see deviations): `awk '/"deputy_active"/{split($0,a,"\"deputy_active\":\"");split(a[2],dv,"\"");split(dv[1],ds,",")} /"lane_commit_window"/{split($0,b,"\"lane_commit_window\":\"");split(b[2],lv,"\"");split(lv[1],ls,","); if (ls[1] < ds[2] && ds[1] < ls[2]) print "OVERLAP deputy["dv[1]"] lane["lv[1]"]"}' m3-scenario-log.jsonl` → **no output, rc=0** (deputy active [16:00:05,16:18:00] vs lane windows [16:20,16:21] and [16:23,16:24] — disjoint). Comparator RED-capability proven: the same command on a synthetic overlapping pair prints `OVERLAP deputy[...] lane[...]`. Residual (auditor N2 folded): the `file_path` grep catches tool-shaped writes only — a prefixed shell invocation (`echo > path` inside Bash) evades it; second defense line is doctrine (REQ-LDB-012 write-surface limit), unverifiable by this grep. Debt: recorded-form scope.
+- **AC-011 = PASS (final closure)**. `git diff --stat origin/main...HEAD -- '*.go'` → 0 lines; `git diff --name-only origin/main...HEAD -- internal/ pkg/ cmd/ | grep '\.go$'` → 0. Whole-branch Go diff = 0.
+- **§D.0 re-run at M3 close**: tools grep `4`; deputy `5`/`14` (stub/detail); depth-seal `ok github.com/modu-ai/moai-adk/internal/template 0.664s`; agent mirror diff rc=1 (the single permitted provenance line); rules mirrors IDENTICAL — all unchanged from M2 close.
+
+M3: AC-004=PASS, AC-009=PASS-WITH-DEBT, AC-010=PASS-WITH-DEBT, AC-011=PASS, AC-012=PASS-WITH-DEBT, AC-013=PASS-WITH-DEBT | evidence: this section + `.moai/reports/t283/` artifacts (worktree-resident, untracked by coordinator instruction) | commit: pending-backfill (M3 commit)
+
+Gaps at run-phase close: the four PASS-WITH-DEBT ACs share one debt — live board-run confirmation after PR merge (new-definition discovery requires merged primary per probe-ac004.md § 판정). M1/M2 artifacts untouched at M3 (PRESERVE verified: agent file + rules byte-identical to their M2-commit state).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-08-26
+run_commit_sha: pending-backfill
+run_status: complete-with-debt
+spec_id: SPEC-LEAD-DEBOTTLENECK-001
+tier: M
+milestones: [M1, M2, M3]
+ac_total: 13
+ac_pass_count: 9        # 001,002,003,004,005,006,007,008,011
+ac_fail_count: 0
+ac_pass_with_debt_count: 4   # 009,010,012,013 — recorded-form scenario; live board-run confirmation deferred post-merge
+debt_note: >-
+  AC-009/010/012/013 measured on the recorded-log scenario form sanctioned by
+  the coordinator dispatch and before-occupancy.md measurement definitions;
+  raw-transcript-grade re-measurement requires the merged definition (probe-ac004.md:
+  agent-definition discovery is session-start-context dependent), i.e. post-PR.
+preserve_list_post_run_count: 5
+preserve_list_verified:
+  - "internal/ pkg/ cmd/ Go sources: whole-branch diff 0 (AC-011)"
+  - "internal/template/manager_lead_depth_test.go: byte-unchanged across M1-M3"
+  - "all retained agent files other than manager-lead.md: untouched"
+  - "kanban-dispatch.md existing [HARD] clauses: verbatim (30 baseline -> 32, 2 new, 0 removed)"
+  - "CLAUDE.md / other rules: untouched"
+l44_pre_commit_fetch: "git fetch origin main; git rev-list --count --left-right origin/main...HEAD -> 0 5 (local ahead only, clean)"
+l44_post_push_fetch: "n/a — no push (repo-local PR policy; manager-git at sync)"
+new_warnings_or_lints_introduced: 0   # spec lint: 'No findings'; internal/template suite ok (M3-close depth-seal 0.664s)
+cross_platform_build:
+  attempted: false
+  reason: "markdown + doctrine only; Go diff 0 (REQ-LDB-011) — no binary-affecting change"
+total_run_phase_files: 9   # union across M1-M3: agent x2, catalog.yaml, spec.md, progress.md, rules x2, rule mirrors x2
+m1_to_mN_commit_strategy: "one commit per milestone, stacked serially on WT-lead-debottleneck: M1 9ff2e1ac2 -> M2 41ed86a95 -> M3 (this commit); no push"
+```
+
+
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
