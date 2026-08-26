@@ -77,6 +77,40 @@ func TestGLMModelSelectOptions(t *testing.T) {
 	}
 }
 
+// TestGLMFlashOptionLabelsAllLocales pins the flash option labels: the two
+// option-key families (tier-slot selects + audit GLM-model select) must each
+// carry a non-empty "glm-5.3-flash" label in all four locales — exactly 8
+// entries across the dictionary, one per (key family × locale).
+func TestGLMFlashOptionLabelsAllLocales(t *testing.T) {
+	dict := readEmbeddedAsset(t, "i18n.js")
+	cat, err := parseI18nCatalogue(dict)
+	if err != nil {
+		t.Fatalf("parse i18n catalogue: %v", err)
+	}
+	keyFamilies := []string{
+		"f.llm.glm.models.opt.",
+		"f.workflow.audit.glm.model.opt.",
+	}
+	total := 0
+	for _, fam := range keyFamilies {
+		key := fam + "glm-5.3-flash"
+		for _, loc := range []string{"en", "ko", "ja", "zh"} {
+			v, ok := cat[loc][key]
+			if !ok {
+				t.Errorf("locale %q is missing the flash option label %q (blank/untranslated render risk)", loc, key)
+				continue
+			}
+			if strings.TrimSpace(v) == "" {
+				t.Errorf("locale %q defines %q as an EMPTY label", loc, key)
+			}
+			total++
+		}
+	}
+	if total != 8 {
+		t.Errorf("flash option label count = %d, want exactly 8 (2 key families x 4 locales)", total)
+	}
+}
+
 // TestGLMEffortTierDefaults verifies AC-WCR-031: option set {Max, High, None}
 // and per-tier defaults fable=Max, high=Max, medium=High, low=None.
 //
