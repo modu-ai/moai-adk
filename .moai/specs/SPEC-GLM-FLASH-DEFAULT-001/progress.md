@@ -132,8 +132,9 @@ new_warnings_or_lints_introduced: 0
 cross_platform_build:
   darwin: "exit 0"
   windows_amd64: "exit 0"
-total_run_phase_files: 33   # 9 Go source/test files + i18n.js + template llm.yaml + 24 doc files
+total_run_phase_files: 44   # 17 Go source/test files + i18n.js + template llm.yaml + 24 doc files + spec.md frontmatter flip (audit F2 recount)
 m1_to_mN_commit_strategy: "per-milestone commits M1..M6 + spec frontmatter flip on M1"
+residual_per_slot_mixed_llm_yaml: "REACHABLE via web console's 4 independent tier selects (audit F1): a mixed llm.yaml (e.g. high=glm-5.3, low=glm-5.3-flash) keys session reasoning on the HIGH slot only — display and wire agree (all three surfaces high-slot keyed), but a flash non-high slot would show non-flash semantics. Not a code defect (consistent keying); out of SPEC scope; per-slot divergence would need per-slot reasoning state to close."
 ```
 
 ## §E.4 Sync-phase Audit-Ready Signal
