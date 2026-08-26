@@ -301,15 +301,17 @@ func agentFMIsGLMBackend(llm config.LLMConfig) bool {
 // is session-inherited, so the per-agent axis is effort — and its GLM reading
 // is the z.ai reasoning state the effort collapses to. The value reuses the
 // SAME overlay the `moai model profile` GLM_REASONING column derives from
-// (template.ResolveGLMReasoning — no second derivation), keyed by the
-// profile-matrix-resolved effort so an override row shows its overridden state.
+// (template.ResolveGLMReasoningForModel — no second derivation), keyed by the
+// profile-matrix-resolved effort so an override row shows its overridden
+// state. The resolution is model-aware: the session model (high slot) pins
+// every effort to max under glm-5.3-flash, so the display and the wire agree.
 // Returns "" under a Claude backend, where the GLM reading is noise.
 func agentGLMReasoning(llm config.LLMConfig, name string) string {
 	if !template.IsGLMBackend(llm) {
 		return ""
 	}
 	me, _ := template.ResolveAgentModelEffort(llm, name)
-	return template.ResolveGLMReasoning(name, me.Effort).Name
+	return template.ResolveGLMReasoningForModel(llm.GLM.Models.High, name, me.Effort).Name
 }
 
 // agentSelectedModel returns the model the row's select should display as

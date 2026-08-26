@@ -206,6 +206,13 @@ llm:
     #   max      → max
     #   (unrecognized → max; totality clause — never under-reason)
     #
+    # FLASH EXCEPTION (glm-5.3-flash): when the resolved model is glm-5.3-flash,
+    # EVERY Claude effort level — including low — resolves to thinking=enabled,
+    # reasoning_effort=max. The 3-level reasoning control above (low/high/max)
+    # does not exist on flash, which accepts reasoning_effort: max only, so the
+    # low state is never emitted for flash. The collapse table applies to every
+    # non-flash model (glm-5.3 and older) unchanged.
+    #
     # The `high` level stays a legal wire value and a selectable stored state
     # (settings widget), but no Claude effort collapses to it — every effort
     # above low converges on max.
