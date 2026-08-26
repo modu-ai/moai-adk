@@ -146,8 +146,10 @@ Examples:
 			// drifted (the index FILE hash cannot see scan-source edits until
 			// the index is rewritten — the inventory drift probe can).
 			// The curated codemaps layer is NEVER auto-rewritten here — its
-			// staleness is the M1 gate's signal (spec.md §B.2).
-			if refreshNeeded := graph.EdgesSourcesMoved(projectRoot) || graph.MXIndexNeedsRefresh(projectRoot); refreshNeeded {
+			// staleness is the M1 gate's signal (spec.md §B.2). The decision
+			// evaluates the SELECTED --edges artifact's provenance (CR
+			// round-2 3855149254), with the gate-calibrated drift red line.
+			if refreshNeeded := edgesRefreshNeeded(projectRoot, edgesFile, graph.DefaultThresholds().MXIndexChangedFiles); refreshNeeded {
 				if stats, rErr := refreshEdgesArtifact(projectRoot, edgesFile); rErr != nil {
 					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "graph refresh failed (answering from the existing artifact): %v\n", rErr)
 				} else if over := graphRefreshOverrun(projectRoot, stats.duration); over > 0 {

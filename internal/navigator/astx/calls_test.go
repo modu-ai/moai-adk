@@ -1,3 +1,5 @@
+//go:build cgo
+
 package astx
 
 import (
@@ -83,6 +85,37 @@ func TestExtractCalls_Go(t *testing.T) {
 	}
 	if !imports["fmt"] || !imports["strings"] {
 		t.Errorf("imports fmt/strings not captured: %v", set.Imports)
+	}
+}
+
+// TestExtractCalls_GoRawStringImport pins the raw-string import form (CR
+// 3855002146): Go accepts raw string literals as import paths, and the
+// @code.import capture must include them exactly as interpreted strings are.
+func TestExtractCalls_GoRawStringImport(t *testing.T) {
+	dir := t.TempDir()
+	src := "package demo\n\nimport (\n\t\"fmt\"\n\t`strings`\n)\n\nfunc A() { fmt.Println(1) }\n"
+	path := filepath.Join(dir, "raw.go")
+	if err := os.WriteFile(path, []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	set, err := ExtractCalls("go", path)
+	if err != nil {
+		t.Fatalf("ExtractCalls: %v", err)
+	}
+	if !set.Supported {
+		t.Fatal("ExtractCalls(go) Supported=false, want true")
+	}
+	modules := map[string]bool{}
+	for _, imp := range set.Imports {
+		modules[imp.Module] = true
+	}
+	// fmt (interpreted) doubles as the extraction-ran control; strings is the
+	// raw-string form under test.
+	if !modules["fmt"] {
+		t.Errorf("interpreted import fmt missing: %v", set.Imports)
+	}
+	if !modules["strings"] {
+		t.Errorf("raw-string import strings not captured: %v", set.Imports)
 	}
 }
 

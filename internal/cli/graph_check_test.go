@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"os"
 	"os/exec"
@@ -14,6 +15,24 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/graph"
 )
+
+// marshalCodemapsProvenance serializes a clean codemaps provenance sidecar
+// via json.Marshal (CR round-2 3855001906): hand-interpolated JSON breaks on
+// Windows temp paths' backslashes — a path like C:\Users\... yields invalid
+// escape sequences the check cannot parse.
+func marshalCodemapsProvenance(t *testing.T, root, commit string) []byte {
+	t.Helper()
+	data, err := json.Marshal(&mx.Provenance{
+		SchemaVersion: mx.ProvenanceSchemaVersion,
+		TreeRoot:      root,
+		CommitSHA:     commit,
+		GeneratedBy:   "codemaps-gen",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return data
+}
 
 // checkFixtureGit runs git in the CLI check fixture.
 func checkFixtureGit(t *testing.T, dir string, args ...string) string {
@@ -56,10 +75,8 @@ func stampAllLayers(t *testing.T, root string) {
 	if err := os.MkdirAll(cmDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	pvJSON := "{\n  \"schema_version\": 1,\n  \"tree_root\": \"" + root +
-		"\",\n  \"commit_sha\": \"" + head + "\",\n  \"dirty\": false,\n" +
-		"  \"generated_by\": \"codemaps-gen\"\n}\n"
-	if err := os.WriteFile(filepath.Join(cmDir, "provenance.json"), []byte(pvJSON), 0o644); err != nil {
+	pvJSON := marshalCodemapsProvenance(t, root, head)
+	if err := os.WriteFile(filepath.Join(cmDir, "provenance.json"), pvJSON, 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -165,8 +182,8 @@ func TestGraphCheckCmd_NotComparableExitsTwo(t *testing.T) {
 	if err := os.MkdirAll(cmDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	pvJSON := "{\"schema_version\": 1, \"tree_root\": \"" + root + "\", \"commit_sha\": \"1234567890abcdef1234567890abcdef12345678\", \"dirty\": false, \"generated_by\": \"codemaps-gen\"}"
-	if err := os.WriteFile(filepath.Join(cmDir, "provenance.json"), []byte(pvJSON), 0o644); err != nil {
+	pvJSON := marshalCodemapsProvenance(t, root, "1234567890abcdef1234567890abcdef12345678")
+	if err := os.WriteFile(filepath.Join(cmDir, "provenance.json"), pvJSON, 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -228,8 +245,8 @@ func TestGraphCheckCmd_AbsentExitsOne(t *testing.T) {
 		t.Fatal(err)
 	}
 	head := checkFixtureGit(t, root, "rev-parse", "HEAD")
-	pvJSON := "{\"schema_version\": 1, \"tree_root\": \"" + root + "\", \"commit_sha\": \"" + head + "\", \"dirty\": false, \"generated_by\": \"codemaps-gen\"}"
-	if err := os.WriteFile(filepath.Join(cmDir, "provenance.json"), []byte(pvJSON), 0o644); err != nil {
+	pvJSON := marshalCodemapsProvenance(t, root, head)
+	if err := os.WriteFile(filepath.Join(cmDir, "provenance.json"), pvJSON, 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -250,5 +267,38 @@ func TestGraphCheckCmd_AbsentExitsOne(t *testing.T) {
 	if !strings.Contains(out.String(), "fresh-worktree state") &&
 		!strings.Contains(out.String(), "untracked") {
 		t.Errorf("absent verdicts must carry explicit reasons:\n%s", out.String())
+	}
+}
+
+// CR round-2 3855001906 — the Windows-path breakage the marshal migration
+// fixes: a backslash tree root marshals to VALID JSON and round-trips, while
+// the retired hand-interpolation form on the same path is invalid JSON (the
+// `\U` escape does not exist), which is exactly how the fixtures broke on
+// Windows temp paths.
+func TestProvenanceFixtureJSONRoundTripsWindowsPaths(t *testing.T) {
+	const winRoot = `C:\Users\dev\proj`
+
+	data, err := json.Marshal(&mx.Provenance{
+		SchemaVersion: mx.ProvenanceSchemaVersion,
+		TreeRoot:      winRoot,
+		CommitSHA:     "1234567890abcdef1234567890abcdef12345678",
+		GeneratedBy:   "codemaps-gen",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var back mx.Provenance
+	if err := json.Unmarshal(data, &back); err != nil {
+		t.Fatalf("marshaled provenance must parse back: %v\nraw: %s", err, data)
+	}
+	if back.TreeRoot != winRoot {
+		t.Errorf("tree root round-trip = %q, want %q", back.TreeRoot, winRoot)
+	}
+
+	// Negative control — the hand-interpolated form on the same root is not
+	// valid JSON; a fixture built that way fails at parse time on Windows.
+	handInterp := "{\"tree_root\": \"" + winRoot + "\"}"
+	if json.Valid([]byte(handInterp)) {
+		t.Errorf("hand-interpolated form unexpectedly valid: %s", handInterp)
 	}
 }

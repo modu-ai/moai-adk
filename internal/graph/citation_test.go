@@ -180,6 +180,45 @@ func TestCitation_RejectsPathEscape_NoHostPathInReason(t *testing.T) {
 	}
 }
 
+// REQ-GFR-002 (CR round-2 3855001995) — the internal-consistency branch
+// (citation.go:148-152): a citation whose RegionHash is populated but
+// disagrees with the sha256 of its OWN excerpt is reported as such — never
+// silently re-hashed, never resolved by the content search below the branch.
+// The cited file here is intact, so only this branch distinguishes the
+// outcome from an ordinary stale-region mismatch.
+func TestCitationRegionHashMismatchReported(t *testing.T) {
+	root, excerpt := citedFixture(t, 0)
+	cite, err := NewCitation("internal/svc.go", excerpt, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Corrupt ONLY the hash: the excerpt still matches the file verbatim, so
+	// the content search WOULD match — the hash check reports first.
+	cite.RegionHash = regionHash(t, "func Different() int {\n\treturn 7\n}")
+
+	res, err := ResolveCitation(root, cite)
+	if err != nil {
+		t.Fatalf("inconsistent citation must resolve unmatched, not error: %v", err)
+	}
+	if res.Matched {
+		t.Fatal("an internally-inconsistent citation must NOT resolve")
+	}
+	if res.Reason != "citation region hash does not cover its excerpt" {
+		t.Errorf("reason = %q, want the hash-does-not-cover-its-excerpt branch reason", res.Reason)
+	}
+
+	// Control: the same citation with the CORRECT hash resolves — the branch
+	// fires on hash disagreement, not on anything else in this fixture.
+	ctl, err := NewCitation("internal/svc.go", excerpt, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resCtl, err := ResolveCitation(root, ctl)
+	if err != nil || !resCtl.Matched {
+		t.Fatalf("control citation must resolve matched: err=%v res=%+v", err, resCtl)
+	}
+}
+
 // Missing file resolves as unmatched (not a crash, not a forced match).
 func TestCitationMissingFile(t *testing.T) {
 	root, _ := t.TempDir(), ""
