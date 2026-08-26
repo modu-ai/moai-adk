@@ -127,10 +127,14 @@ const (
 	// codex_setup auth-provider classification tokens. The spellings are the
 	// wire tokens the web console maps to display labels — they are lowercase
 	// on both sides so the two surfaces agree (internal/web/codex_state.go).
-	codexAuthChatGPT  = "chatgpt"
-	codexAuthAPIKey   = "apiKey"
-	codexAuthProvider = "provider"
-	codexAuthUnknown  = "unknown"
+	// The former "provider" token is gone: the two-stage ladder maps only the
+	// grammar's captured terms (chatgpt / api key) and treats a provider
+	// phrase outside the grammar as unknown rather than guessing
+	// (SPEC-CODEX-LAUNCHER-001, plan §C.1). internal/web keeps its own mirror
+	// constant for legacy display mapping.
+	codexAuthChatGPT = "chatgpt"
+	codexAuthAPIKey  = "apiKey"
+	codexAuthUnknown = "unknown"
 
 	// codex sandbox-policy variants (REQ-CX2-007). SandboxPolicy is an
 	// INTERNALLY-TAGGED UNION object — {"type":"readOnly"} — not a bare string,

@@ -310,12 +310,19 @@ func TestCodexTools_Registered(t *testing.T) {
 }
 
 func TestCodexSetup_GoProbeNoNodeBridge(t *testing.T) {
+	// Isolate stage 1 (empty CODEX_HOME ⇒ no auth.json ⇒ descend) and feed the
+	// status line through the login-status seam — without isolation the
+	// developer's real auth.json decides auth_provider, so the assertion below
+	// would track the machine's login state instead of the probe under test.
+	t.Setenv("CODEX_HOME", t.TempDir())
 	withCodexLookPath(t, func(string) (string, error) { return "/fake/codex", nil })
 	withCodexRunner(t, &fakeCodexRunner{
 		stdoutByCmd: map[string]string{
-			"--version":    "codex 1.2.3\n",
-			"login status": "Logged in to ChatGPT via OAuth\n",
+			"--version": "codex 1.2.3\n",
 		},
+	})
+	withCodexLoginStatusRunner(t, func(_ context.Context, _ string) ([]byte, []byte, int, error) {
+		return nil, []byte("Logged in using ChatGPT\n"), 0, nil // field-observed channel: stderr
 	})
 
 	res, err := handleCodexSetup(context.Background(), mcp.CallToolRequest{
@@ -458,26 +465,38 @@ func TestRealCodexRunner_HappyAndError(t *testing.T) {
 	}
 }
 
-// TestClassifyCodexAuth_Branches covers each auth-provider classification arm.
+// TestClassifyCodexAuth_Branches covers each auth-provider classification arm
+// through the two-stage ladder (SPEC-CODEX-LAUNCHER-001 M1). CODEX_HOME is
+// isolated to an empty temp dir so stage 1 finds no auth.json and every case
+// reaches the stage-2 probe — without isolation the developer's real auth.json
+// short-circuits the ladder and the result follows the machine, not the case.
 func TestClassifyCodexAuth_Branches(t *testing.T) {
+	t.Setenv("CODEX_HOME", t.TempDir())
 	cases := map[string]string{
-		"Logged in to ChatGPT":             codexAuthChatGPT,
-		"Auth mode: API key (sk-...)":      codexAuthAPIKey,
-		"Configured custom provider 'foo'": codexAuthProvider,
+		// Whole-line grammar positives — the two classification arms (REQ-CL-009).
+		"Logged in using ChatGPT": codexAuthChatGPT,
+		"Logged in using API key": codexAuthAPIKey,
+		// Substring-era lines the whole-line grammar deliberately rejects: a
+		// line merely CONTAINING a provider term never classifies.
+		"Logged in to ChatGPT":             codexAuthUnknown,
+		"Auth mode: API key (sk-...)":      codexAuthUnknown,
+		"Configured custom provider 'foo'": codexAuthUnknown,
 		"":                                 codexAuthUnknown,
 		"something unrecognized":           codexAuthUnknown,
 	}
 	for out, want := range cases {
-		// drive classifyCodexAuth via the runner seam returning the canned stdout.
-		withCodexLookPath(t, func(string) (string, error) { return "/fake/codex", nil })
-		withCodexRunner(t, &fakeCodexRunner{stdout: out}) // "" ⇒ the out=="" arm → unknown
+		// drive classifyCodexAuth via the login-status seam returning the canned stdout.
+		withCodexLoginStatusRunner(t, func(_ context.Context, _ string) ([]byte, []byte, int, error) {
+			return []byte(out), nil, 0, nil // "" ⇒ no grammar line ⇒ unknown
+		})
 		if got := classifyCodexAuth(context.Background(), "/fake/codex"); got != want {
 			t.Errorf("classifyCodexAuth(%q) = %q, want %q", out, got, want)
 		}
 	}
-	// error arm: runner returns err ⇒ unknown.
-	withCodexLookPath(t, func(string) (string, error) { return "/fake/codex", nil })
-	withCodexRunner(t, &fakeCodexRunner{err: errFakeCodexCrash})
+	// error arm: probe runner returns err ⇒ unknown (an unreadable probe is a gap).
+	withCodexLoginStatusRunner(t, func(_ context.Context, _ string) ([]byte, []byte, int, error) {
+		return nil, nil, -1, errFakeCodexCrash
+	})
 	if got := classifyCodexAuth(context.Background(), "/fake/codex"); got != codexAuthUnknown {
 		t.Errorf("classifyCodexAuth on runner error = %q, want %q", got, codexAuthUnknown)
 	}

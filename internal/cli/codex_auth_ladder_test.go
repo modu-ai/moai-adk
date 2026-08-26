@@ -446,6 +446,29 @@ func TestCodexLoginStatusRunner_BothStreamsFixture(t *testing.T) {
 	}
 }
 
+// TestCodexAuthLadder_PinnedSkipNamesAreTheFixtureCallers consumes
+// codexAuthLadderSkipNames so the pin stays load-bearing (AC-CL-014): every
+// pinned name must be a real test function in this file, and the file must
+// carry exactly one codexFixtureRun call per pinned name — a fourth caller
+// would silently gain the windows skip outside the closed set.
+func TestCodexAuthLadder_PinnedSkipNamesAreTheFixtureCallers(t *testing.T) {
+	src, err := os.ReadFile(filepath.Join(".", "codex_auth_ladder_test.go"))
+	if err != nil {
+		t.Fatalf("read own source: %v", err)
+	}
+	s := string(src)
+	for _, n := range codexAuthLadderSkipNames {
+		if !strings.Contains(s, "func "+n+"(t *testing.T)") {
+			t.Errorf("pinned skip name %q has no test function in this file", n)
+		}
+	}
+	// Built by concatenation so this test's own source is not a call site.
+	needle := strings.Join([]string{"codexFixture", "Run(t,"}, "")
+	if got := strings.Count(s, needle); got != len(codexAuthLadderSkipNames) {
+		t.Errorf("codexFixtureRun call sites = %d, want %d (one per pinned fixture test)", got, len(codexAuthLadderSkipNames))
+	}
+}
+
 // ─── AC-CL-008 ladder integration (low-level runner stub, not a final-value stub) ───
 
 func TestClassifyCodexAuth_LadderIntegration(t *testing.T) {
