@@ -113,7 +113,8 @@ AC-CL-004 의 여섯 상태 중 **불완전한 다섯 상태 전부** 를, **맨
 - **And** 런처 리드아웃에서는 세 sentinel 값이 모두 나타난다.
 - **And Given** `codexadapter.ValidateConfig` 가 sentinel 위반을 돌려주도록 스텁
 - **Then** 배선 행이 그 위반을 반영한다 (호출만 하고 자체 검증 결과를 쓰지 않았다면 실패한다).
-- **And** **분류 원천의 폐집합 단언**: `internal/` 하위 비시험 `*.go` 중 provider 리터럴(`"chatgpt"` 또는 `"apiKey"`)을 담은 파일의 집합이 `{internal/cli/mcp_codex.go}` 와 **같다**. 두 번째 분류 경로는 — 명령 문구를 쓰든 `auth.json` 을 직접 열든 — 어딘가에서 이 두 리터럴 중 하나를 만들어야 하므로 이 등식에서 걸린다.
+- **And** **분류 원천의 폐집합 단언**: `internal/` 하위 비시험 `*.go` 중 provider 리터럴(`"chatgpt"` 또는 `"apiKey"`)을 담은 파일의 집합이 `{internal/cli/mcp_codex.go, internal/web/codex_state.go}` 와 **같다**. 두 번째 분류 경로는 — 명령 문구를 쓰든 `auth.json` 을 직접 열든 — 어딘가에서 이 두 리터럴 중 하나를 만들어야 하므로 이 등식에서 걸린다.
+- **And** **표시층 미러 예외** (2026-08-27 운영자 결정, acceptance 예외 명시): 단일 분류기 요구는 **분류 로직**(`internal/cli/mcp_codex.go`)에만 묶는다. 폐집합의 둘째 원소인 `internal/web/codex_state.go` 의 `codexAuth*` 상수는 프로브가 이미 만든 출력 토큰의 **소비·렌더링 지식**이지 두 번째 분류 구현이 아니다 — 이 파일 안에 분류 로직이 숨으면 폐집합 등식이 아니라 sentinel 전파 다리에서 걸린다. 예외는 이 폐집합 판정에만 미치며, 세 표면((a) 런처 리드아웃, (b) `codex_setup` MCP 도구 응답, (c) `moai web` 콘솔 Codex 카드 렌더)을 가로지르는 sentinel 전파 단언은 변경 없이 그대로 묶는다 — 이 예외를 (c) 표면이 전파 판정에서 빠지는 근거로 써서는 안 된다.
 - **And** 보조 확인: `grep -rn "login status" internal/ --include="*.go" | grep -v _test` 의 히트는 공유 분류기 한 곳뿐이다.
 - **And** `git diff` 에 `codexCommandRunner` 인터페이스 선언의 변경이 없다 (REQ-CL-010 후단).
 
