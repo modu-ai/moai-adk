@@ -20,7 +20,7 @@ Source: `.moai/reports/t279/triage-table.md` §F5 (tracked, on base). Chain: PR 
 
 Guard placement decision: immediately after `actions/checkout`, BEFORE setup-go/build. Rationale: the guard needs only git + jq (both preinstalled on ubuntu-latest runners) and the tracked JSON — an orphan-bound stamp should fail in seconds, not after paid Go-setup minutes. The `fetch-depth: 0` guarantee the workflow already documents makes the history-complete check possible in this checkout design. On `push` events, ancestry-versus-base is vacuous (`base == head`); the step's object-existence clause is the meaningful check there and pins the generic exit 2 with a defect-class name.
 
-GHA plumbing facts used: `github.base_ref` carries the target branch name for pull_request events (resolved as `origin/${{ github.base_ref }}`; valid because fetch-depth 0 materializes remote refs); `jq` selection `.commit_sha // empty` handles the omitempty field; on dirty-anchor provenance the clause prints a skip-with-reason and exits 0 (REQ-SR-003).
+GHA plumbing facts used: `github.base_ref` carries the target branch name for pull_request events (resolved as `origin/${{ github.base_ref }}`; valid because fetch-depth 0 materializes remote refs); `jq` selection `.commit_sha // empty` handles the omitempty field; on dirty-anchor provenance the clause prints a skip-with-reason and exits 0 (REQ-SR-003). **Iteration-2 pin**: the PR/push divergence is realized ONLY as a shell-internal base-ref emptiness test (`[ -z "${GITHUB_BASE_REF:-}" ]`, env-mapped from `github.base_ref`) inside ONE unconditional step — a step-level GitHub `if:` conditioning reachability on pull_request was evaluated and REJECTED because it would silently drop object-presence enforcement from push-to-main runs (plan-audit D1; anatomy statically asserted by acceptance.md AC-SP-011(b)/(c)).
 
 ## 3. Stamp path code reading
 
@@ -60,3 +60,23 @@ Fixture caveat for run-phase AC-SP/AC-SR execution: the `0d15864ae90b` object ex
 
 - **PR #1666 (t278) recurrence classification** — dispatched as unadjudicated and remains so; orphan-class vs staleness-class does not change this SPEC's mechanism (the guard fires identically either way). Not investigated further here.
 - **Predecessor-series relations** — related_specs carries both GRAPH-FRESHNESS SPEC IDs; strict `depends_on` is avoided since the second predecessor is `completed` and would add a lifecycle predicate with no value (its audit trail is frozen; this SPEC starts fresh).
+
+## 8. Iteration-2 remediation measurements (2026-08-27, HEAD through 0364217e9)
+
+Executed while clearing plan-audit iter-1 (PASS-WITH-DEBT 0.81); every cell below was run, not inferred:
+
+| Measurement | Command | Outcome |
+|---|---|---|
+| D3 threshold direction | read `internal/graph/check.go` region | `if count >= th.CodemapsChangedFiles { → VerdictStale }` at **:214** this tree (coordinator's :213 = adjacent tree) |
+| D5 absence premise | throwaway repo + local source-path fetch of main only | `git cat-file -e '0d15864ae90b^{commit}'` → rc=**128** (`fatal: Not a valid object name`) there; same command in the full-history worktree → rc=0. Fixture validity proven both directions before assertion text was written |
+| Guard branch A (non-ancestor) | §A.1 script vs origin/main | rc=1, `::error::…NOT an ancestor of PR base origin/main…` |
+| Guard branch B (ancestor GREEN) | §A.1 script, tracked-sha fixture | rc=0, `guard: stamp 410da655f… reachable from origin/main` |
+| Guard branch C (missing object) | §A.1 script inside main-only repo | rc=1, DISTINCT message `does not exist in this checkout's history` |
+| Guard branch D (no-anchor skip) | §A.1 script, fingerprint fixture | rc=0, skip-with-reason line carrying token `no commit anchor` |
+| Guard branch E (push-event GREEN) | empty GITHUB_BASE_REF | rc=0, `object presence verified only`, zero ancestry output |
+| Mutant catch (D1 discriminator) | emptiness-test dropped, push shape | rc=1 `fatal: Not a valid object name origin/` — any such implementation reddens legitimate pushes and is caught by AC-SP-011(a)'s expected-exit-0 |
+| AC-SP-012 forbidden-token scan | grep -E over §A.1 text | zero matches (rc=1); allowance counts cat-file/merge-base/jq each ≥1 |
+| Pre-M2 anatomy state | grep over graph-freshness.yml | zero matches for continue-on-error / GITHUB_BASE_REF / step-level if |
+
+Observable boundary: cells A-E and the mutant ran against §A.1's contract text materialized as a scratch file because the shipped workflow step does not exist until M2 lands (plan-phase writes no implementation code); AC-SP-002's literal fence uses command substitution that the worktree isolation guard refuses to execute here — its substance (fixture built from the jq-read tracked sha, guard exits 0) was observed via the two-step equivalent above, and the fence remains paste-executable in an unrestricted shell.
+

@@ -1,7 +1,7 @@
 ---
 id: SPEC-STAMP-REACHABILITY-001
 title: "Codemaps stamp reachability: CI pre-merge orphan guard and explicit-commit stamping mode"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-08-27
 updated: 2026-08-27
@@ -22,6 +22,7 @@ related_specs: [SPEC-V3R6-GRAPH-FRESHNESS-001, SPEC-V3R6-GRAPH-FRESHNESS-002]
 
 | Version | Date | Change | Author |
 |---------|------|--------|--------|
+| 0.2.0 | 2026-08-27 | Iteration-2 remediation clearing plan-audit iteration 1 (PASS-WITH-DEBT 0.81). D1: push-event anchor validity covered by new AC-SP-011 (GREEN cell + mutant-catch cell + static anatomy assertions — no `continue-on-error`, single-step shell-internal base-ref emptiness test pinned as THE conditioning mechanism); guard contract text made executable via acceptance.md §A.1 canonical reference script. D2: §D threshold-crossing recovery restated honestly — pre-merge threshold crossing accepts the red until a POST-MERGE main restamp (lead/operator act, outside delivery scope); merge-base restamp cannot restore freshness under its own trigger condition. D3: threshold direction corrected to ≥ (`count >= th.CodemapsChangedFiles`, measured check.go:214 this tree). D4: REQ-SR-004 gains verifying instrument AC-SP-012 (static inspection, forbidden-token enumeration). D5: AC-SP-003 fixture made paste-executable with local source-path fetch; absence premise MEASURED (rc=128) before baking the assertion. D6/D7 adopted (greppable prohibition tokens; canonical-script citation). All six guard-branch cells executed and quoted in acceptance.md baseline-attribution. | manager-spec |
 | 0.1.0 | 2026-08-27 | Initial plan-phase authoring. Root cause adopted from triage-table.md §F5 (card t291 = follow-up F5 of card t279); countermeasure options adjudicated: option 1 (CI reachability guard) + option 2 (--commit flag) selected, option 3 alternatives rejected-and-recorded. Orphan premise re-measured on worktree base da791eb0a (`merge-base --is-ancestor 0d15864ae90b origin/main` rc=1); false-positive premise verified (`410da655f…` IS an ancestor of origin/main). | manager-spec |
 
 ## §A. Problem Statement
@@ -100,7 +101,7 @@ A pull request carrying an orphan-bound codemaps stamp shall not be able to pres
 
 - **No new dependencies**; no dependency-version changes; no changes to gate.yaml defaults.
 - **Provenance schema stability**: schema_version stays 1; no field added or repurposed. `tree_root` remains an absolute path by design (CR round-2 R2 refutation stands; informational-only for the tracked codemaps layer).
-- **Stamp reachability (HARD, inherited)**: at no phase of THIS SPEC does the delivering PR's codemaps stamp get refreshed against a branch-local HEAD. If M1-M3 described-source churn crosses the codemaps threshold (>40 files), restamp via the documented merge-base recipe; expected churn is well below threshold, so the committed `410da655f…` stamp is expected to carry unchanged.
+- **Stamp reachability (HARD, inherited)**: at no phase of THIS SPEC does the delivering PR's codemaps stamp get refreshed against a branch-local HEAD — the REQ-GFR-014 ban is retained verbatim and unconditionally. Expected case: described-source churn stays below the threshold, so the committed `410da655f…` stamp carries to merge unchanged. **Threshold-crossing recovery restated honestly**: if described-source churn reaches the threshold (≥40 changed files — `count >= th.CodemapsChangedFiles`, measured `check.go:214` on the iteration-2 tree) before merge, the pre-merge codemaps-freshness red is **accepted and carried**, not papered over: a merge-base restamp cannot restore freshness in its own trigger case, because the checker diffs working-tree content against the content AT THE NAMED COMMIT — recording the pre-churn ancestor re-counts the same churn as stale (that was v0.1.0's ineffective advice). Recovery is a **POST-MERGE restamp on main** naming a main-reachable commit — a lead/operator act OUTSIDE this SPEC's delivery scope; no milestone here repairs a crossed threshold.
 - **Verification discipline**: affected-package tests only (`go test ./internal/cli/... ./internal/mx/... ./internal/graph/...`); NEVER a local full-suite run (CLAUDE.local.md §4/§6) — the delivering PR's CI is the full-suite judge. Workflow-step logic is exercised as local shell invocations against fixtures (acceptance.md) before landing; the workflow YAML itself is syntax-checked, not live-executed by plan/run phases.
 - **Docs-site 4-locale parity**: any cli-reference change touches en/ja/ko/zh in the same change-set (oss-docs i18n HARD rule).
 - **Template neutrality**: `.github/workflows/graph-freshness.yml` is dev-only repository infrastructure and is NOT template-mirrored (templates carry only `label-sync.yml` — measured). No `make build` is triggered by these edits; no forbidden-class content enters `internal/template/templates/**`.
