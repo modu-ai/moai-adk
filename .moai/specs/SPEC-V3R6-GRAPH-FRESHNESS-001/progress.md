@@ -303,3 +303,4 @@ m5_measurement:
     (§E.2 gap)
   - AC-GF-022 per-task baseline gap stands as recorded in §E.2/§E.3 — the CHANGELOG makes no
     measured-reduction claim
+mx_commit_sha: (this commit)
