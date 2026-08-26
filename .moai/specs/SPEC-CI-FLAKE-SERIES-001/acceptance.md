@@ -14,7 +14,7 @@
 | AC-CFS-004 | REQ-CFS-004 | 균질 3x 합성 분포(mutant: `cpuUnit(6_000_000)`) — 현행 추정량 실패(검출됨) | 신규 추정량도 여전히 실패(검출 보존) |
 | AC-CFS-005 | REQ-CFS-006 | 통계 결정 기록 부재 | `.moai/reports/t278/timing-statistic-decision.md`가 측정 데이터(§D.5 판정 명령)와 호출자 전수를 인용 |
 | AC-CFS-006 | REQ-CFS-007 | 변이(동기 경로 `time.Sleep(150ms)`)에서 현행 단일-샘플 단언 실패 — 단, 무부하시 통과하는 것이 노이즈 취약 | p95 재구성 후: (a) 변이 주입 시 여전히 실패 (b) 변이 제거 시 `go test -race -count=5 -run 'TestConfigChange' ./internal/hook/` 통과 |
-| AC-CFS-007 | REQ-CFS-009, 010, 011 | baseline 미측정(관측된 발화: 4건 — run 32774108273 a1, 32777242100, 32779472351 a1, 32815411885 a1) | `.moai/reports/t278/reproduction-rate.md`: (a) attempt-aware baseline 발화 수·분모(창 2026-08-10~) 측정 (b) 머지 후 ≥40 affected-job 관측 **AND** ≥7일에서 3 테스트 재발 0 (run ID 목록) (c) 신뢰도 산술 + Gaps/Residual-risk |
+| AC-CFS-007 | REQ-CFS-009, 010, 011 | baseline 미측정(관측된 발화: 4건 — run 32774108273 a1, 32777242100, 32779472351 a1, 32815411885 a1) | `.moai/reports/t278/reproduction-rate.md`: (a) attempt-aware baseline 발화 수·분모(창 2026-08-10~) 측정 (b) 머지 후 N≥40(N = go_code=true workflow run 수 — §D.1 GREEN 조건과 동일 정의) 관측 **AND** ≥7일에서 3 테스트 재발 0 (run ID 목록) (c) 신뢰도 산술(같은 N 정의) + Gaps/Residual-risk |
 | AC-CFS-008 | REQ-CFS-012 | 계열 보고서 부재 | `.moai/reports/t278/series-analysis.md` — 공통 인자 + 3 사례 대응 표 + 재사용 저작 규칙 명문화 |
 | AC-CFS-009 | (범위 규율) | — | diff가 명명된 파일(`store_test.go`, `stoprule` 신규 테스트, `timing.go`, timing 테스트 2종, `config_change_test.go`)과 산출물 경로에만 한정 — 무관 테스트 경화 0건 |
 | AC-CFS-010 | REQ-CFS-008 | 자가선언 측정 테스트 5종 전부 비병렬(현행 트리 실측: VIOLATION 0건 — 판정 명령의 RED는 mutant로 별도 관측 완료, §D.1) | 동일 판정 명령으로 VIOLATION 0건 유지 + 신규 측정 테스트의 마커 합류 |
