@@ -498,3 +498,42 @@ m1_to_mN_commit_strategy: per-milestone
 ```
 
 **Run-phase 최종 신호 (M1~M4 전부 완결)**. `run_status: green` — 마일스톤 한정 표기(`green-m3`)에서 run-phase 전체 완결형으로 진행. `ac_pass_count: 16` = AC-CL-001~016 전부 판정 가능한 다리에서 PASS — M1(008·009·015) + M2(005) + M3(001·002·003·004·006·007·010·011·012·013·014·016) + M4(013 신규 문안 재판정 + 템플릿 가드 첫 실행, 001/007/015 재판정). 판정 제외 조항 중 실 바이너리 auth 왕복은 M4 가 progress 부착 관측으로 갈음 닫았다(§E.2 M4); tty 왕복 · 실 앱 기동 · PR 단계 Windows 실행은 운영자 수동·CI 레그 몫으로 Gap 유지. 부채 D4·D5·D6·D8 은 acceptance 문면 개선 소관으로 이 문서에 기록된 채 남는다(§E.2 상단 부채 표 + 각 M Gap 목록). `run_commit_sha` 는 M4 코드 커밋 SHA 의 후속 docs 커밋 백필로 채운다(커밋은 자기 SHA 를 알 수 없다 — 이 브랜치에서 이미 쓴 two-commit 패턴).
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+```yaml
+sync_complete_at: 2026-08-27
+sync_commit_sha: pending-backfill-sync
+sync_status: green
+b12_self_test_a:
+  pre_emission_grep_count: 0
+b12_self_test_b:
+  acceptance_md_distinct_ac_identifiers: 17
+  spec_owned_ac_after_cross_ref_exclusion: 16
+  changelog_entry_ac_count: 16
+b12_self_test_c:
+  changelog_path_targets_verified: true
+changelog_entry_position: "[Unreleased] > Added — first entry (above SPEC-CODEX-WIRING-001)"
+frontmatter_status_transitions:
+  spec_md: draft->completed
+  plan_md: none-no-frontmatter-block
+  acceptance_md: none-no-frontmatter-block
+  progress_md: none-no-frontmatter-block
+canary_compliance_check:
+  applies: false
+  reason: this SPEC defines no forward-looking policy for its own sync tests to verify
+docs_site_obligation:
+  status: none
+  evidence: plan.md and spec.md carry no docs-site page in the sync checklist
+readme_surface:
+  files: 4
+  change: command-reference-table row added after the cc/glm/cg row (en/ko/ja/zh parity)
+```
+
+**Sync-phase 최종 신호**. `sync_status: green` — CHANGELOG `[Unreleased]` 엔트리(영어, SPEC-CODEX-WIRING-001 엔트리 위), README 4-locale 명령 참조 표 행, `spec.md` frontmatter close, 이 §E.4 가 단일 sync 커밋에 실린다. `sync_commit_sha` 는 이 브랜치의 two-commit 패턴대로 후속 백필 커밋으로 채운다.
+
+**B12 셀프테스트 관측값**. (a) 사전 grep `grep -c 'SPEC-CODEX-LAUNCHER-001' CHANGELOG.md` → 0 (배출 전, 중복 없음). (b) `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u` → 식별자 17개, 이 중 `AC-CI-002` 는 L77 의 교차 참조(SPEC-CODEX-INIT-001 소유 — 그 SPEC 이 이 런처의 wiring 판정을 소비한다)이므로 이 SPEC 소유 AC 는 AC-CL-001~016 = 16, CHANGELOG 엔트리의 "16 acceptance criteria" 와 정합. (c) 엔트리가 링크하는 `.moai/specs/SPEC-CODEX-LAUNCHER-001/spec.md` 존재 `ls` 확인.
+
+**README 표면 판정**. 배차 지시는 root+ko 를 언급했으나, 명령 참조 표가 4-locale 전부 L720 에 같은 행을 유지하는 행 단위 parity 구조(실측)이므로 4개 전부에 같은 위치(cc/glm/cg 행 바로 뒤)에 행을 추가했다. 백엔드 비교표(L665-669, Command/Leader/Workers/tmux/Cost)는 세션 백엔드 비교 표면이라 `moai codex`(Codex CLI/앱 런처, 세션 백엔치 아님)를 넣지 않았다.
+
+**frontmatter 경위 (drift 기록)**. run-phase 동안 `draft → in-progress` 전이(manager-develop 소유)가 누락돼 `spec.md` 는 sync 시점까지 `status: draft` 였다(M1~M4 · backfill 커밋 전부 spec.md 무수정 — `git log --follow` 실측). 이 저장소의 close 선례 4건(1f798f211 · 0a3def8fe · aa1891f0c · 0264af589)은 전부 `in-progress → completed` 다. 리드 판정으로 sync 커밋이 누락된 두 전이를 흡수해 `draft → completed` 로 닫는다(옵션 a) — run-phase 완결 사실(§E.3 green, 16/16)은 확정이고, 이미 지나간 라이프사이클 단계를 사후 기록하는 별도 커밋은 생성하지 않는다.

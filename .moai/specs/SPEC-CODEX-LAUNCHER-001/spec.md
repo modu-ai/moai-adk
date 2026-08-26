@@ -2,9 +2,9 @@
 id: SPEC-CODEX-LAUNCHER-001
 title: "Codex 전용 런처 — moai codex: 배선·CODEX_HOME·auth 상태 확인과 앱/CLI 기동"
 version: "0.8.1"
-status: draft
+status: completed
 created: 2026-08-24
-updated: 2026-08-25
+updated: 2026-08-27
 author: manager-spec
 priority: P1
 phase: "v3.2 target"
