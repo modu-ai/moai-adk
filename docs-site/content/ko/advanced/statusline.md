@@ -19,7 +19,7 @@ draft: false
 기본 레이아웃은 세 줄이고, 세션 이름·백로그 관측이 있으면 넷째 줄(세션 라인)이 마지막에 조건부로 붙습니다. 아래 예시는 실제 렌더된 출력의 한 사례로, 각 세그먼트가 쓰는 글리프(glyph, 작은 그림 문자)까지 그대로 옮겼습니다.
 
 ```text
-🤖 Opus | 🧠 xhigh·t | ♻️ 87% | 🔅 v2.1.212 | 🗿 v3.1.2 | ⏳ 4h 52m | 💬 MoAI
+🤖 Opus | 🧠 xhigh·t | ♻️ 87% | 🔅 v2.1.212 | 🗿 v3.1.3 | ⏳ 4h 52m | 💬 MoAI
 🪫 CW: ███████░░░ 72% (⚠️/clear) | 🔋 5H: █████░░░░░ 56% (46m) | 🔋 7D: █░░░░░░░░░ 13% (May 28)
 📁 moai-adk-go | 📡 modu-ai/moai-adk, 12/3 | 🅱️ main +2 | 💾 +0 M1 ?1 | 💌 PR #1234 (⌥approved)
 🏷️ run | 👤 manager-develop | 🔄 TODO: 1/3

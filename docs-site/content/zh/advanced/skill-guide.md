@@ -93,7 +93,7 @@ MoAI-ADK 模板共提供 **34 个技能**。目录按安装范围分为随每个
 | `moai-domain-html-report`   | Markdown → 单文件 HTML 报告渲染器（6 种模式，无外部依赖） |
 | `moai-domain-humanize`      | AI 文本人性化、润色（KO/EN/JA/ZH）    |
 | `moai-domain-svg-infographic` | 可编辑 SVG 技术信息图（架构·流程·对比），CJK 字体 |
-| `moai-domain-design-dna`    | 把参考设计（截图·图片·URL）逆向提取为 Design DNA JSON，并据此生成新的产物 |
+| `moai-domain-design-dna`    | 把参考设计（截图·图片·URL）逆向提取为 Design DNA JSON，并据此生成新的产物。支持图表配置档案 —— 激活档案的标记保存在项目根目录的 `.design-dna/` 下,能活过 `moai update`;可选开启的 mermaid·drawio 导入器把来源当作不可信输入(坐标、颜色、字体、版式一概不带过来) |
 
 ### SVG 信息图 — 可生成的图表种类
 

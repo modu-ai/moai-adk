@@ -361,7 +361,7 @@ SPEC ごとに独立した作業ツリーを与える。`moai cc -w <名前>` �
 | CWD 衝突の解決 | `(worktree_path, session_id)` の組で再利用パスを区別 |
 | 深さの上限 | 入れ子の複雑さを制限 |
 
-> **今すぐ使える**: `moai cc -k`（または `moai glm -k`）でリードを立ち上げ、`-k --name <role>` でコンパニオンを 1 つずつ接続する — ターミナル 1 台に 1 つ、手で立ち上げる。`moai chain <status|lineage|back|list|prune>` で系譜を読み、`moai todo`（引数なしでキュー表示、`add`·`list`·`next`·`done`·`unpick`·`drop`·`undrop`·`edit`·`move`、2 語以上はそのままカード追加）で `backlog` 列を運用する。起動手順は上の「v3.1 の新機能 — カンバンモード」節にある。
+> **今すぐ使える**: `moai cc -k`（または `moai glm -k`）でリードを立ち上げ、`-k --name <role>` でコンパニオンを 1 つずつ接続する — ターミナル 1 台に 1 つ、手で立ち上げる。`moai chain <status|lineage|back|list|prune>` で系譜を読み、`moai todo`（引数なしでキュー表示、`add`·`list`·`next`·`done`·`unpick`·`drop`·`undrop`·`edit`·`move`·`analyze`、2 語以上はそのままカード追加）で `backlog` 列を運用する。起動手順は上の「v3.1 の新機能 — カンバンモード」節にある。
 
 > 詳しくは: [カンバンモード・ガイド](https://adk.mo.ai.kr/ja/advanced/kanban-mode)
 
@@ -500,9 +500,9 @@ flowchart TD
 ### ステータスラインの読み方
 
 ```
-🤖 Opus | 🧠 xhigh·t | ♻️ 87% | 🔅 v2.1.212 | 🗿 v3.1.2 | ⏳ 2h 34m | 💬 MoAI
+🤖 Opus | 🧠 xhigh·t | ♻️ 87% | 🔅 v2.1.212 | 🗿 v3.1.3 | ⏳ 2h 34m | 💬 MoAI
 🪫 CW: ████████░░ 88% (⚠️/clear) | 🔋 5H: ████░░░░░░ 45% (4h 30m) | 🪫 7D: ████████░░ 82% (Jan 21)
-📁 moai-adk-go | 📡 modu-ai/moai-adk, 7/3 | 🅱️ [WT] release/v3.1.2 +3 | 💾 +1 M2 ?0 | 📋 [run SPEC-AUTH-001-run] | 💌 PR #1042 (⌥approved)
+📁 moai-adk-go | 📡 modu-ai/moai-adk, 7/3 | 🅱️ [WT] release/v3.1.3 +3 | 💾 +1 M2 ?0 | 📋 [run SPEC-AUTH-001-run] | 💌 PR #1042 (⌥approved)
 🏷️ run | 👤 manager-develop | 🔄 TODO: 1/3
 ```
 
@@ -754,7 +754,7 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて G
 
 **domain (専門領域) 7 個**: `moai-domain-backend`, `moai-domain-frontend`, `moai-domain-database`, `moai-domain-design-dna`, `moai-domain-html-report`, `moai-domain-humanize`, `moai-domain-svg-infographic`
 
-`moai-domain-design-dna` は v3.1.1 で新しく入った。スクリーンショットでも画像の束でも生きた URL でも、参考にするデザインを 1 つ受け取り、色・余白・角丸・タイポグラフィといった測れる値と、そのデザインの質感、特殊なレンダリング効果までを Design DNA JSON 一式へ逆抽出する。その JSON を再び入れれば、同じ質感を持つ新しい成果物を作る — 「この画面のように作って」を言葉ではなく値で運ぶ経路だ。
+`moai-domain-design-dna` は v3.1.1 で新しく入った。スクリーンショットでも画像の束でも生きた URL でも、参考にするデザインを 1 つ受け取り、色・余白・角丸・タイポグラフィといった測れる値と、そのデザインの質感、特殊なレンダリング効果までを Design DNA JSON 一式へ逆抽出する。その JSON を再び入れれば、同じ質感を持つ新しい成果物を作る — 「この画面のように作って」を言葉ではなく値で運ぶ経路だ。ダイアグラムプロファイルにも対応している: アクティブなプロファイルの印はプロジェクトルートの `.design-dna/` 配下に保存されて `moai update` を生き延び、オプトインの mermaid・drawio インポータはソースを信頼しない入力として扱う — 座標・色・フォント・レイアウトは持ち越されない。
 
 ### CHANGELOG
 
@@ -775,7 +775,7 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて G
 ### ステータスラインのバージョン表示は何を意味する?
 
 ```
-🗿 v3.1.1 -> 🗿 v3.1.2
+🗿 v3.1.2 -> 🗿 v3.1.3
 ```
 
 前の値が現在インストールされている moai-adk のバージョンで、矢印は利用可能な更新があることを示す。`moai update` を実行すると消える。

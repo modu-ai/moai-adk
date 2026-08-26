@@ -93,7 +93,7 @@ This count is also a result of dieting — the skill catalog was refined from 48
 | `moai-domain-html-report`   | Markdown → single-file HTML report renderer (6 modes, no external dependencies) |
 | `moai-domain-humanize`      | AI text humanization and post-editing (KO/EN/JA/ZH)    |
 | `moai-domain-svg-infographic` | Editable SVG technical infographics (architecture, flow, comparison), CJK fonts |
-| `moai-domain-design-dna`    | Reverse-engineers a reference design (screenshot, image set, URL) into a Design DNA JSON, and generates a new artifact from it |
+| `moai-domain-design-dna`    | Reverse-engineers a reference design (screenshot, image set, URL) into a Design DNA JSON, and generates a new artifact from it. Supports diagram profiles — the active profile marker persists under the project root's `.design-dna/` so it survives `moai update`, and the opt-in mermaid and drawio importers treat their sources as untrusted input (coordinates, colors, fonts, and layout never carry over) |
 
 ### SVG Infographics — Producible Diagram Types
 

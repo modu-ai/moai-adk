@@ -19,7 +19,7 @@ draft: false
 基本布局是三行，存在会话名·积压观测时，第四行（会话行）会按条件附加在最后。下面的示例是实际渲染输出的一个实例，连每个段落使用的字形 (glyph，小图形字符) 都原样搬来。
 
 ```text
-🤖 Opus | 🧠 xhigh·t | ♻️ 87% | 🔅 v2.1.212 | 🗿 v3.1.2 | ⏳ 4h 52m | 💬 MoAI
+🤖 Opus | 🧠 xhigh·t | ♻️ 87% | 🔅 v2.1.212 | 🗿 v3.1.3 | ⏳ 4h 52m | 💬 MoAI
 🪫 CW: ███████░░░ 72% (⚠️/clear) | 🔋 5H: █████░░░░░ 56% (46m) | 🔋 7D: █░░░░░░░░░ 13% (May 28)
 📁 moai-adk-go | 📡 modu-ai/moai-adk, 12/3 | 🅱️ main +2 | 💾 +0 M1 ?1 | 💌 PR #1234 (⌥approved)
 🏷️ run | 👤 manager-develop | 🔄 TODO: 1/3

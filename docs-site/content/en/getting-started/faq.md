@@ -30,16 +30,16 @@ They are two completely different things. This is the most common confusion, so 
 The MoAI statusline shows version information together with an update notification:
 
 ```text
-🗿 v3.1.1 -> 🗿 v3.1.2
+🗿 v3.1.2 -> 🗿 v3.1.3
 ```
 
-- **`🗿 v3.1.1`**: The currently installed version
-- **`-> 🗿 v3.1.2`**: A newer version available for update, joined by the ASCII arrow `->`
+- **`🗿 v3.1.2`**: The currently installed version
+- **`-> 🗿 v3.1.3`**: A newer version available for update, joined by the ASCII arrow `->`
 
 When you are on the latest version, only the version number is shown:
 
 ```text
-🗿 v3.1.2
+🗿 v3.1.3
 ```
 
 **How to update**: Run `moai update` and the update notification disappears.
