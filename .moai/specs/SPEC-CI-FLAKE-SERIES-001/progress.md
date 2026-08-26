@@ -120,7 +120,7 @@ M3 종료 조건 (머지 + 관측 기록 개시) 충족.
 
 - sync_status: implemented (2026-08-27). **`completed` 전환은 의도적 연기** (운영자 결정 2026-08-27) — AC-CFS-007(b) 관측 창이 충족된 뒤 후속 세션에서 종결. frontmatter_status_transitions: `in-progress → implemented` (spec.md, 본 sync 커밋이 운반; `implemented → completed` 는 연기됨).
 - sync_complete_at: 2026-08-27 (sync 커밋 착지일)
-- sync_commit_sha: "pending-backfill" — 직후 커밋에서 실제 short SHA로 backfill (자기 참조 위험 회피, spec-frontmatter-schema.md D3 면제)
+- sync_commit_sha: "3a7aaab37" — backfill 커밋에서 실제 short SHA로 교체 (자기 참조 위험 회피, spec-frontmatter-schema.md D3 면제)
 - **sync-audit (독립, 본 트리 `f0ecc5001`)**: PASS-WITH-DEBT — 조화평균 **0.942** (Functionality 0.95 / Security 0.95 / Craft 0.92 / Consistency 0.95; must-pass 방화벽 Functionality+Security 양측 임계 초과). 보고서: `.moai/reports/t278/sync-audit.md` (본 sync 커밋에 포함).
 - **AC 판정 (acceptance.md §D 기준, 10 AC): 9 GREEN / 1 PENDING / 0 RED**
   - GREEN 9: AC-CFS-001..006, 008, 009, 010 — 판정 명령·관측 출력·트리 SHA가 동반된 AC 매트릭스는 sync-audit.md §2 (재관측 또는 attributable 표시)
