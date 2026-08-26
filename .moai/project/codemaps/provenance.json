@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "tree_root": "/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t279",
-  "commit_sha": "c9eed8ac69a48ac42f74740a0806843001757284",
+  "commit_sha": "410da655f39d1d3731abf2f247e8e5353a9d0de5",
   "dirty": false,
   "described_roots": [
     "internal",
