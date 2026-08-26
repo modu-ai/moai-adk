@@ -3,7 +3,8 @@
 #
 # Emits a system-reminder referencing the LSEL drain when the lessons-inbox
 # line count exceeds (drain-offset.json offset + N). Designed to run as an
-# advisory check on SessionStart (see CLAUDE.local.md §28). Advisory only —
+# advisory check on SessionStart, wired alongside the session_drain.sh wrapper
+# (the durable mechanical trigger — SPEC-LSEL-DRAIN-STALL-001). Advisory only —
 # never blocks session start (advisory-check discipline, coding-standards.md).
 #
 # Usage: ./backlog_check.sh [--inbox <path>] [--state-dir <path>] [--threshold N]
@@ -45,9 +46,8 @@ fi
 cat >&2 <<EOF
 <system-reminder>
 lsel-backlog: $BACKLOG unread stubs in $INBOX (offset=$OFFSET, threshold=$THRESHOLD).
-Run the LSEL drain: .claude/skills/hns-lsel-curator/drain.sh --inbox $INBOX --state-dir $STATE_DIR
-Then draft shadow proposals from .moai/state/lsel/clusters.json (hns-lsel-curator PROPOSE).
-Per CLAUDE.local.md §28 (LSEL operating instructions).
+Run the LSEL drain via the wrapper: .claude/skills/hns-lsel-curator/session_drain.sh --inbox $INBOX --state-dir $STATE_DIR
+Then draft shadow proposals from the archived candidates in $STATE_DIR/clusters-history/ (hns-lsel-curator PROPOSE; the live clusters.json is ephemeral under per-session-start drains).
 </system-reminder>
 EOF
 exit 0

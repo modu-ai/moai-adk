@@ -116,6 +116,18 @@ moai glm -f lane-3            # ……GLM 后端上的一条泳道
 
 带定义和示例的正式术语表：[看板术语](https://adk.mo.ai.kr/zh/core-concepts/kanban-board-terms)
 
+卡片也会因形状不同而走不同的列。主控在卡片离开 `backlog` 时将其归入三个类别之一，并在派单文里写明。
+
+| 类别 | 形状 | 捷径 |
+|---|---|---|
+| A —— 立即关闭 | 一个文件·一行，无设计判断，回归由 CI 捕捉 | 一个会话包办到 PR（跳过 `plan`） |
+| B —— 原因未查明的缺陷 | 明显坏了，但原因还没确立 | `run → sync`（不经 `plan`，没有 SPEC） |
+| C —— 设计变更 | 含有决策，或横跨多个子系统 | 三个列全走 |
+
+类别 A 只凭查证过的证据认定，不接受主张 —— 引用不出以单文件测得的 diff 和将在合并的 HEAD 上跑绿的 CI，就不是类别 A。类别 B 只跳过 `plan`，sync 门禁的评审照常运转，并把原因确立的证据（复现命令与输出）留在卡片的进度记录里。
+
+详见：[看板模式 —— 卡片类别](https://adk.mo.ai.kr/zh/advanced/kanban-mode)
+
 ### 用眼睛看板
 
 `moai web` 会启动一个本地控制台。看板画面把看板链条和 SPEC 流水线放在一起，还附带 Overview、Specs、Monitor、Settings、Todo 画面。

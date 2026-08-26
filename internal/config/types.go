@@ -771,6 +771,12 @@ type GateConfig struct {
 	// AstGrepGate configures the ast-grep domain rule scan step (SPEC-SLQG-001).
 	AstGrepGate AstGrepGateConfig `yaml:"ast_grep_gate"`
 
+	// GraphFreshness configures the graph-layer drift gate step
+	// (codemaps/mx-index/edges staleness check). Advisory by default, matching
+	// the ast-grep posture: pre-commit is the wrong place to force a codemaps
+	// regeneration.
+	GraphFreshness GraphFreshnessGateConfig `yaml:"graph_freshness"`
+
 	// DisabledSteps disables individual gate steps by step name, mirroring
 	// quality.GateConfig.DisabledSteps. Note the runner's inverted convention:
 	// an entry whose value is FALSE skips that step (issue #667 Fix 3). Before
@@ -802,6 +808,27 @@ type AstGrepGateConfig struct {
 	BlockOnError bool `yaml:"block_on_error"`
 	// WarnOnlyMode prevents blocking even when error-severity matches are found.
 	WarnOnlyMode bool `yaml:"warn_only_mode"`
+}
+
+// GraphFreshnessGateConfig configures the graph-layer freshness gate step:
+// per-layer staleness thresholds for codemaps / mx-index / edges, plus the
+// query-time update-cost budget the refresh paths compare against.
+type GraphFreshnessGateConfig struct {
+	// Enabled controls whether the graph-freshness step runs in moai gate.
+	Enabled bool `yaml:"enabled"`
+	// Blocking fails the gate on a red check; the default (false) keeps the
+	// step advisory — the verdict is always emitted, never silenced.
+	Blocking bool `yaml:"blocking"`
+	// CodemapsChangedFiles is the red line for the codemaps layer's
+	// endpoint-diff count (>= is stale). Zero falls back to the default.
+	CodemapsChangedFiles int `yaml:"codemaps_changed_files"`
+	// MXIndexChangedFiles is the red line for the mx-index layer's inventory
+	// mismatch count (>= is stale). Zero falls back to the default.
+	MXIndexChangedFiles int `yaml:"mx_index_changed_files"`
+	// UpdateBudgetMS bounds a query-time refresh's measured cost in
+	// milliseconds; an overrun warns (never blocks the answer). Zero falls
+	// back to the default.
+	UpdateBudgetMS int `yaml:"update_budget_ms"`
 }
 
 // GateTimeouts holds per-step timeout configuration in seconds.

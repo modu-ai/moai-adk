@@ -479,6 +479,34 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		mcp.WithArray("ack_ids", mcp.Items(map[string]any{"type": "string"}), mcp.Description("Optional messageIds to acknowledge (delete from the claimed set).")),
 		mcp.WithReadOnlyHintAnnotation(false),
 	), handleSessionMsgPoll)
+	// --- M5 code-query tools (SPEC-V3R6-GRAPH-FRESHNESS-001 REQ-GF-017..019).
+	// Signature-level answers from the code-derived layer; every response
+	// carries tree+commit provenance. Read-only hints per the audit-family
+	// precedent.
+	add("graph_file_api", mcp.NewTool(
+		"graph_file_api",
+		mcp.WithDescription("List a source file's exported declarations with signatures — no source bodies. Answers name the tree root + commit they were computed from."),
+		mcp.WithString("file", mcp.Required(), mcp.Description("Repository-relative file path (e.g. internal/graph/check.go).")),
+		projectRootOption(),
+		mcp.WithReadOnlyHintAnnotation(true),
+	), handleGraphFileAPI)
+
+	add("graph_find_code", mcp.NewTool(
+		"graph_find_code",
+		mcp.WithDescription("Search the code-derived edge layer for a symbol: callee sites (where it is called) and caller observations, each with its resolution grade. Answer names the tree root + commit."),
+		mcp.WithString("query", mcp.Required(), mcp.Description("Symbol name to search for (e.g. 'CheckFreshness').")),
+		projectRootOption(),
+		mcp.WithReadOnlyHintAnnotation(true),
+	), handleGraphFindCode)
+
+	add("graph_trace_calls", mcp.NewTool(
+		"graph_trace_calls",
+		mcp.WithDescription("Traverse code-call edges from a symbol: callers (who reaches it) and callees (what it calls), up to depth hops over the code-derived layer. Answer names the tree root + commit."),
+		mcp.WithString("symbol", mcp.Required(), mcp.Description("Symbol name to trace from (e.g. 'RefreshIndex').")),
+		mcp.WithInteger("depth", mcp.Description("Traversal depth in hops (default 1, capped at 8).")),
+		projectRootOption(),
+		mcp.WithReadOnlyHintAnnotation(true),
+	), handleGraphTraceCalls)
 }
 
 // readMCPToolEnablement reads the per-tool enablement map from

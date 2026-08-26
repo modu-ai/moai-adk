@@ -629,6 +629,8 @@ era 分類は `spec.md` フロントマターの `created:` 日付と `progress.
 
 ## 関連ドキュメント
 
+- [SPEC ライフサイクル](/ja/core-concepts/spec-lifecycle) -- この文書が扱う SPEC
+  文書を plan/run/sync の流れ（関門を含む）に沿ってたどります
 - [MoAI-ADK とは?](/ja/core-concepts/what-is-moai-adk) -- MoAI-ADK の全体構造を
   理解します
 - [開発方法論 (DDD/TDD)](/ja/core-concepts/ddd) -- SPEC を基に安全にコードを

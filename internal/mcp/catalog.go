@@ -22,9 +22,10 @@ type ToolDef struct {
 	// WriteCapable is true for the nine tools whose handler may mutate state
 	// (goal_arm, verify_snapshot, codex_task, codex_job_cancel, glm_task,
 	// glm_job_cancel, plus the session-messaging broker's three mutating
-	// tools at the catalog tail) and false for the sixteen read-only tools.
-	// The console renders this distinction (REQ-C-3 / AC-C-003); M1 carries
-	// it so the declaration is complete.
+	// tools at the catalog tail) and false for the nineteen read-only tools
+	// (including the three graph code-query additions, SPEC-V3R6-GRAPH-
+	// FRESHNESS-001 M5). The console renders this distinction (REQ-C-3 /
+	// AC-C-003); M1 carries it so the declaration is complete.
 	WriteCapable bool
 }
 
@@ -62,6 +63,11 @@ var moaiMCPTools = []ToolDef{
 	{Name: "session_msg_list", WriteCapable: false},
 	{Name: "session_msg_send", WriteCapable: true},
 	{Name: "session_msg_poll", WriteCapable: true},
+	// Graph code-query family (SPEC-V3R6-GRAPH-FRESHNESS-001 M5): all
+	// read-only surfaces over the per-tree graph artifacts.
+	{Name: "graph_file_api", WriteCapable: false},
+	{Name: "graph_find_code", WriteCapable: false},
+	{Name: "graph_trace_calls", WriteCapable: false},
 }
 
 // MoaiMCPTools returns the single shared declaration of the moai MCP server's

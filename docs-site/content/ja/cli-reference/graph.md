@@ -26,6 +26,8 @@ $ moai graph build
 
 インポートエッジ·`@MX:SPEC` 接続·SPEC 間依存を集めて `.moai/project/graph/edges.jsonl` に記録します。同じ git HEAD で2回実行すれば同じ内容が出るよう、決定論的に動作します。問合せは常にこの成果物を読むので、**問合せの前にまず build を回して**おく必要があります。
 
+ドキュメント層に加えて、コードから直接抽出したエッジを上乗せします — 関数呼び出し(code-call)とインポート(code-import)で、既存のドキュメントエッジは一切変わりません。インポート先は go.mod のモジュールパスを剥がしてリポジトリローカルのパッケージに正規化し、codemaps のインポートグラフと同じ領域を指させます。呼び出しをどの水準(グレード)で解決したかは16言語すべてについて公表します。両層が同じ関係について食い違う場合、どちらも捨てずに `disagrees_with` マーカーとともに残し、`--all-disagreements` はデフォルトで抑止した方向(コードは発見したが文書が沈黙したローカル依存)まで表示します。
+
 ## moai graph query
 
 1回の呼び出しに与えるセレクタは**ちょうど1つ**だけです。
@@ -47,6 +49,33 @@ $ moai graph query --milestones-no-card
 ```
 
 `--edges <パス>`で別の edges.jsonl を指したり、ルート引数で別のプロジェクトルートを指定したりできます。
+
+問合せの前に、機械的な層(@MX インデックス · edges.jsonl)が古くなっていれば先に更新してから答えます。内容ハッシュが変わったファイルだけを再パースするため、コミットしていない編集も答えに反映されます。更新コストが gate.yaml の `update_budget_ms`(デフォルト2000ms)を超えたら警告だけを出し、答えは続けます。答えを計算したツリールートとコミット(または dirty フィンガープリント)が常に stderr に一緒に出るので、どのツリーの答えか取り違える余地がありません。
+
+## moai graph check
+
+```bash
+$ moai graph check
+codemaps  metric=described-source-diff value=0 threshold=40 verdict=fresh
+mx-index  metric=inventory-content-diff value=0 threshold=1 verdict=fresh
+edges     metric=source-fingerprint-mismatch value=0 threshold=0 verdict=fresh
+```
+
+グラフの3層 — codemaps · @MX インデックス · edges.jsonl — がコードにどれだけ遅れているかを、層ごとに自分の指標で測り、`fresh` / `stale` / `absent` の判定を返します。codemaps はスタンプされた生成コミット以降に変わった記述対象ファイル数(戻した変更は0と数えます)、@MX インデックスは内容ハッシュが変わったファイル数、edges.jsonl はソースフィンガープリントの不一致を見ます。
+
+各成果物は provenance ブロックで、どのツリー·コミットの産物かを明かします。ブロックのないものは `absent` — 判断不能を fresh と偽らず、absent も失敗です。新しいワークツリーにはそもそもこれらの成果物がないため、すべて absent として報告されます。終了コードは 0(すべて fresh)· 1(stale または absent)· 2(システムエラー)で、プリコミット品質ゲートの graph-freshness ステップと CI の graph-freshness ジョブがこの値をそのまま消費します。しきい値は gate.yaml の `graph_freshness` セクションで調整します。
+
+mtime はどこでも読みません。新しいチェックアウトはすべての mtime を初期化するため、mtime 基準の指標は再生成直後と誤判します — だからここにある指標は内容ハッシュと git diff、フィンガープリントだけです。
+
+## moai graph stamp codemaps
+
+```bash
+$ moai graph stamp codemaps
+OK: stamped .moai/project/codemaps/provenance.json
+provenance: tree=/path/to/project commit=1a2b3c4d5e6
+```
+
+codemaps を再生成した後の最後のステップとして実行します。文書の内容は `/moai codemaps` が整えますが、その内容が**どのツリー状態を記述しているか**はこのコマンドが `provenance.json` に記録します。`moai graph check` が codemaps 層を判定するよりどころがこの記録です。
 
 ## 2つのセレクタへの注意書き
 

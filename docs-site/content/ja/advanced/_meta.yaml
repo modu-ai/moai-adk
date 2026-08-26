@@ -53,6 +53,8 @@ index:
   title: "自律性ティア (MOAI_AUTONOMY_TIER)"
 "kanban-mode":
   title: "カンバンモード"
+"factory-mode":
+  title: "ファクトリーモード"
 "manager-lead":
   title: "manager-lead リードコーディネーター"
 "multi-model-audit":

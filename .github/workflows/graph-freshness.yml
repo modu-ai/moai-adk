@@ -1,0 +1,50 @@
+name: Graph Freshness
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Cancel in-progress runs for the same ref (the check is idempotent per head).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  graph-freshness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # Version alignment with ci.yml: actions/checkout@v7, actions/setup-go@v7.
+      # fetch-depth: 0 — the codemaps provenance stamp names an ancestor
+      # commit that a depth-1 shallow checkout does not hold; without the
+      # full history `git diff <stamp>` cannot run and the check would judge
+      # a fresh tree not-comparable (CI run 32775609689).
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Build binary from PR head
+        # The check must judge the head's own code, not an installed binary —
+        # an installed-binary lag silently re-anchors every layer.
+        run: go build -o ./bin/moai ./cmd/moai
+      - name: Bootstrap untracked mechanical layers
+        # mx-index and edges.jsonl are untracked runtime artifacts: a fresh
+        # checkout has neither, so an `absent` verdict for them cannot carry
+        # signal in CI. This bootstrap refreshes both to the head before the
+        # check runs, scoping the CI signal to the tracked, curated codemaps
+        # layer — a code PR that skips codemaps regeneration still shows the
+        # accumulated drift, which is the intended signal.
+        run: |
+          ./bin/moai mx scan --quiet
+          ./bin/moai graph build
+      - name: Check graph-layer freshness
+        # Exit 0 all fresh · 1 stale or absent · 2 system error. The step's
+        # failure is attributable to the graph-freshness check by name.
+        run: ./bin/moai graph check
