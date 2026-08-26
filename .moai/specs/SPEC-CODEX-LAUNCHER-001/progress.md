@@ -537,3 +537,7 @@ readme_surface:
 **README 표면 판정**. 배차 지시는 root+ko 를 언급했으나, 명령 참조 표가 4-locale 전부 L720 에 같은 행을 유지하는 행 단위 parity 구조(실측)이므로 4개 전부에 같은 위치(cc/glm/cg 행 바로 뒤)에 행을 추가했다. 백엔드 비교표(L665-669, Command/Leader/Workers/tmux/Cost)는 세션 백엔드 비교 표면이라 `moai codex`(Codex CLI/앱 런처, 세션 백엔치 아님)를 넣지 않았다.
 
 **frontmatter 경위 (drift 기록)**. run-phase 동안 `draft → in-progress` 전이(manager-develop 소유)가 누락돼 `spec.md` 는 sync 시점까지 `status: draft` 였다(M1~M4 · backfill 커밋 전부 spec.md 무수정 — `git log --follow` 실측). 이 저장소의 close 선례 4건(1f798f211 · 0a3def8fe · aa1891f0c · 0264af589)은 전부 `in-progress → completed` 다. 리드 판정으로 sync 커밋이 누락된 두 전이를 흡수해 `draft → completed` 로 닫는다(옵션 a) — run-phase 완결 사실(§E.3 green, 16/16)은 확정이고, 이미 지나간 라이프사이클 단계를 사후 기록하는 별도 커밋은 생성하지 않는다.
+
+## 감사 시정 — sync-audit F1 (pre-PR, 2026-08-27)
+
+sync-audit 유일 실결함 **F1 (Medium — codex 백엔드 독립 재현)** 을 PR 전 시정했다. `codexTokenSet.UnmarshalJSON` 이 언마셜 성공 경로에서 `credentialCount` 를 초기화하지 않아, 같은 리시버로의 재언마셜(외부 JSON 의 중복 `tokens` 키 — stdlib 이 커스텀 언마셜러를 키 발생마다 호출)에서 카운트가 누적됐다. RED 3케이스(테이블 행 `chatgpt+duplicate_tokens_last_empty` + `TestCodexTokenSet_CountResetsPerUnmarshal` 서브테스트 2개, `-v` 실행 38케이스 중 rc=1) → 함수 상단 리셋 이동으로 GREEN, 풀 패키지 게이트 재통과(`go test ./internal/cli/ -count=1 -timeout 550s` → ok 213.278s · `go vet ./internal/cli/` · `GOOS=windows go vet ./internal/cli/` · `golangci-lint run` → 0 issues — 전부 이 트리에서 직접 관측). 시정 커밋: `e8798b60e`. 감사 보고서: `.moai/reports/t197/sync-audit-SPEC-CODEX-LAUNCHER-001.md` (F2-F11 은 이 배차 범위 밖). AC-CL-007 closed-set 불변 유지 — 본 시정은 비테스트 파일에 "chatgpt"/"apiKey" 문자열 리터럴을 추가하지 않는다(전부 기존 리터럴, 수정은 카운터 리셋 이동뿐).
