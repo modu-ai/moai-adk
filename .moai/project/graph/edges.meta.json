@@ -1,0 +1,22 @@
+{
+  "provenance": {
+    "schema_version": 1,
+    "tree_root": "/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t290",
+    "commit_sha": "9b40cf6d53c23feadb8d7c7bb547f00d7bcfcf4d",
+    "dirty": false,
+    "described_roots": [
+      "internal",
+      "cmd",
+      "pkg"
+    ],
+    "source_fingerprints": {
+      "codemaps": "7b1aea85874ea6758d3131e9d89e0130bdff1aaabf68acd6b40685e847c93e26",
+      "mx-index": "3d0af4efc5718dfc13bc536db7c44dfadda4edb0d4a383e2152c764a5e952ef3",
+      "reports": "90ad7e10c982e867ce5782310d5b7aaba806e2fcaf98428a4f29ec0c529df134",
+      "specs": "fdeea00c5a5c18f50c9256bd5828b8df9927035b5daffe36fd3c3db607414ad7"
+    },
+    "generated_by": "graph-build",
+    "generated_at": "2026-08-26T18:56:18Z"
+  },
+  "edge_count": 180178
+}
