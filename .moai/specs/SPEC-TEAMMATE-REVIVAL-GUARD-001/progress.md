@@ -23,3 +23,21 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+Input parameters: tier M (3 artifacts); scope ≈6–9 files (`internal/hook/agent_stop_guard.go` + tests, `internal/config` defaults+loader, `.claude/settings.json` + template twin `settings.json.tmpl`, catalog parity if templates change); domain count 3 (hook Go code / config / template twins); language mix Go + JSON-settings + markdown; concurrency benefit LOW (coding-heavy, interdependent milestone chain); Agent Teams prereqs not requested (no `--team`).
+
+Mode evaluation:
+
+| Mode | Selected | Rationale |
+|------|----------|-----------|
+| direct | no | multi-file Go implementation with tests — not a typo/single-line fix |
+| serial | **SELECTED** | coding-heavy Tier M; single implementation agent keeps the write surface single-owner; milestones interdependent (M2 deny builds on M1 registry; M3 dogfood builds on M2) |
+| fanout | no | coding-heavy per Anthropic's coding-task parallelism caveat; no multi-domain research fan-out needed |
+| sweep | no | ≈9 files (< ~30); semantic new-code work, not a uniform mechanical transform |
+| agent-team | no | experimental + explicit-request-only; not requested |
+
+Decision: serial
+
+Justification: the run-phase scope is Go hook-handler code + config + template twins with a strictly sequential dependency chain, so sequential single-writer delegation is the safe default (Anthropic coding-task parallelism caveat: most coding tasks involve fewer truly parallelizable tasks than research). Progression mode: **autonomous** — operator choice at Implementation Kickoff Approval (2026-08-26); the `ac_converge` goal is armed alongside run-phase start (arm-only; it substitutes for no gate). Boundary Case: none — no threshold boundary was hit (scope and domain count sit clearly below fanout/sweep thresholds).
