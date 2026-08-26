@@ -43,7 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   — so a decided-not-to-report signal stays retrievable instead of hardening into
   cannot-be-reported.
 - **Three code-query MCP tools: `graph_find_code`, `graph_trace_calls`, `graph_file_api`** (the
-  self-hosted server grows from 21 to 24 tools, all read-only-hinted). Signature-level answers
+  self-hosted server grows from 25 to 28 tools, all read-only-hinted). Signature-level answers
   from the code-derived layer — a file's exported declarations with full signatures and no
   bodies, a symbol's call sites with their resolution grades, a call-graph traversal in both
   directions — and every answer names the tree root and commit it was computed from, so a
