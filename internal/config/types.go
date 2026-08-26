@@ -407,6 +407,13 @@ type WorkflowConfig struct {
 	// Sibling of BranchGuard — same opt-in shape, same default-OFF neutrality.
 	AgentModelGuard AgentModelGuardConfig `yaml:"agent_model_guard"`
 
+	// AgentStopGuard gates the deny layer of the PreToolUse SendMessage
+	// stop-guard. Default false: TaskStop recording and SendMessage
+	// observation + advisory always run, but no send is ever denied until a
+	// maintainer opts in via local config. Sibling of BranchGuard /
+	// AgentModelGuard — same opt-in shape, same default-OFF neutrality.
+	AgentStopGuard AgentStopGuardConfig `yaml:"agent_stop_guard"`
+
 	// IntegrationLock gates the PreToolUse release-integration holder guard
 	// (card t194). Default false: a single-developer repository has no
 	// integration window to serialize, so the guard ships INERT and the
@@ -611,6 +618,17 @@ type IntegrationLockConfig struct {
 // missing verdict stays advisory, because blocking it would refuse nearly
 // every spawn.
 type AgentModelGuardConfig struct {
+	Enabled bool `yaml:"enabled"`
+}
+
+// AgentStopGuardConfig mirrors workflow.agent_stop_guard.* — the opt-in deny
+// layer of the PreToolUse SendMessage stop-guard. When Enabled is false (the
+// distributed default) the guard still records every TaskStop completion and
+// still observes + advises on every SendMessage issuance, but it never denies
+// a send. Observation is not gated: the stop registry and its JSONL audit
+// record regardless of this flag, so flipping the gate on later finds the
+// registry already populated.
+type AgentStopGuardConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 

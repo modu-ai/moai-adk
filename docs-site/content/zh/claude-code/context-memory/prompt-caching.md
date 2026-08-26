@@ -129,6 +129,8 @@ flowchart TD
 | API 密钥·第三方 | 5 分钟 | 用 `ENABLE_PROMPT_CACHING_1H=1` 切换为 1 小时 |
 | （通用强制） | — | 用 `FORCE_PROMPT_CACHING_5M=1` 强制 5 分钟 |
 
+Claude Code 2.1.243 还新增了 `promptCacheTtl` / `subagentPromptCacheTtl` 设置（环境变量 `CLAUDE_CODE_PROMPT_CACHE_TTL` / `CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL`）：API 密钥和云提供商会话可以只为主对话保留 1 小时缓存，子代理仍为 5 分钟。z.ai 等第三方网关上是否生效尚未实测。
+
 ## 监控方法
 
 要查看缓存是否运转良好，就观察上述两个令牌数值（`cache_read_input_tokens`、`cache_creation_input_tokens`）。

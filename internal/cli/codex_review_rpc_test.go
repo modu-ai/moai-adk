@@ -119,7 +119,7 @@ func TestSynthesizeReviewOutput_FindingBulletsMapToFail(t *testing.T) {
 		"": "pass",
 	}
 	for text, want := range cases {
-		if got := synthesizeReviewOutput(text).Verdict; got != want {
+		if got := synthesizeReviewOutput(text, codexMethodReviewStart).Verdict; got != want {
 			t.Errorf("synthesize(%q).Verdict = %q, want %q", text, got, want)
 		}
 	}

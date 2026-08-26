@@ -51,6 +51,22 @@ a stopped teammate through the owning orchestrator or lead only — never to the
 Observing a stopped teammate running again is a process defect: report it to the lead immediately
 and record it in the progress record; do not continue quietly or send that teammate more messages.
 
+**Mechanism layer (landed).** The prohibition above is mechanically enforced at the
+PreToolUse layer: a SendMessage whose recipient — bare name, agent id, or the
+`name [ref]` form (suffix parsed and stripped) — matches a live entry in the same
+session's stop registry (`.moai/state/agent-stops/<session-id>.json`, populated by the
+matcher-less PostToolUse dispatch on every TaskStop completion) is refused with a
+sentinel-prefixed deny (`STOPPED_TEAMMATE_VIOLATION:`). Deliberate revival stays
+possible through an explicit fresh spawn carrying the same name — the entry clears
+before the spawn proceeds; session end removes the session's entries. Every stop,
+send, deny, and clear appends one JSONL row to `.moai/logs/agent-stop-audit.jsonl`.
+The deny layer is opt-in (`workflow.agent_stop_guard.enabled` — template default
+false; this repository's local config enables it for dogfood). The flag is a kill
+switch for the DENY only: recording and audit continue regardless of its state. A
+`STOPPED_TEAMMATE_VIOLATION` deny is never a bug to route around — it means the
+doctrine held: route coordination through the owning orchestrator, or respawn the
+name deliberately.
+
 [ZONE:Evolvable] **Role-boundary dispatch is permitted; offloading is not.** Where sessions are standing roles in a declared topology — one coordinating session and workers that each own a stage of the pipeline — a coordinating session may dispatch a work item to the session whose role owns that stage, and may ask for its completion status. Three conditions make this dispatch rather than offloading: the target's role is declared in advance rather than chosen because it happened to be idle, the work item is a **pointer into shared source of truth** (an identifier, a path, a contract section) rather than the work itself, and each worker writes to an isolated tree so concurrent workers cannot collide. All three must hold together; absent any one of them, it is offloading — see the anti-pattern below.
 
 [ZONE:Evolvable] **Do not let a dispatch depend on the reply arriving.** Because reply routing is not guaranteed, completion must also be observable in the shared source of truth — a progress record the coordinator can read — with the message serving as prompt notification rather than as the record. A coordinator that advances only on received replies stalls silently when one is lost.
@@ -101,7 +117,8 @@ works but a send never arrives is being blocked by something narrower.
 - **Peer-as-worker.** Offloading work this session should have done — or should have given to a subagent it supervises — onto an independent session, because that session is idle. Distinct from role-boundary dispatch (below), which is permitted.
 - **Reviving a stopped teammate.** Addressing a stopped teammate by name — one delivered message
   resumes it from the transcript as an ownerless writer. Coordination about it goes through the
-  owning orchestrator or lead, never the stopped name.
+  owning orchestrator or lead, never the stopped name (now also mechanically denied — see the
+  mechanism layer note above).
 - **Silent write race.** Messaging a peer about a shared path and then writing it anyway, without isolation, because the peer answered.
 - **Broadcast noise.** Messaging every listed session rather than the one whose work is affected.
 

@@ -16,3 +16,4 @@
 (call_expression function: (identifier) @code.call)
 (call_expression function: (selector_expression field: (field_identifier) @code.call))
 (import_spec path: (interpreted_string_literal) @code.import)
+(import_spec path: (raw_string_literal) @code.import)

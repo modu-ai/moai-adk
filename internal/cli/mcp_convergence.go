@@ -93,6 +93,11 @@ type PerBackendVerdict struct {
 	Summary   string    `json:"summary"`
 	Findings  []Finding `json:"findings"`
 	NextSteps []string  `json:"next_steps"`
+
+	// SynthesisNote carries forward ReviewOutput.SynthesisNote — the record that
+	// this backend's own verdict signals disagreed. It is forwarded rather than
+	// re-derived because converge sees only verdicts, never review bodies.
+	SynthesisNote string `json:"synthesis_note,omitempty"`
 }
 
 // ConvergenceResult is the synthesis output of converge(...) — the single
@@ -180,6 +185,17 @@ func converge(verdicts []PerBackendVerdict) ConvergenceResult {
 		}
 	}
 
+	// ── Step 2b: intra-backend signal divergence (REQ-CVS-003) ──
+	// A backend whose OWN verdict signals contradicted each other is a
+	// disagreement too — one inside a single review rather than between two
+	// backends — and the reader of the Verification Matrix needs to see it.
+	// Setting the flag here changes nothing about overall_verdict, which was
+	// already derived in Step 1: disagreement is information, never a block (C3).
+	synthesisNotes := collectSynthesisNotes(verdicts)
+	if len(synthesisNotes) > 0 {
+		disagreement = true
+	}
+
 	// ── Step 3: residual_risk_note + fail_open_backends ──
 	// The note is surfaced for the Verification Matrix residual-risk row whenever
 	// there is something for a human reader to see: a disagreement (split or
@@ -192,6 +208,15 @@ func converge(verdicts []PerBackendVerdict) ConvergenceResult {
 		note = describeDisagreement(verdicts)
 	case len(requiredFails) > 0:
 		note = describeRequiredFails(requiredFails)
+	}
+	// The intra-backend notes are appended rather than substituted: a
+	// cross-backend split and a backend contradicting itself can hold at once,
+	// and dropping either of them loses the reason the other needs reading.
+	if len(synthesisNotes) > 0 {
+		if note != "" {
+			note += " | "
+		}
+		note += strings.Join(synthesisNotes, " | ")
 	}
 
 	return ConvergenceResult{
@@ -311,6 +336,19 @@ func describeRequiredFails(fails []PerBackendVerdict) string {
 // the split for the Verification Matrix. It names the disagreeing backends and
 // their verdicts so a human reader of the Completion Report can see at a glance
 // which backend disagreed with which.
+// collectSynthesisNotes returns each backend's intra-review divergence note,
+// prefixed with the backend it came from so the combined residual-risk note
+// stays readable when more than one backend contradicted itself.
+func collectSynthesisNotes(vs []PerBackendVerdict) []string {
+	var out []string
+	for _, v := range vs {
+		if v.SynthesisNote != "" {
+			out = append(out, v.Backend+": "+v.SynthesisNote)
+		}
+	}
+	return out
+}
+
 func describeDisagreement(vs []PerBackendVerdict) string {
 	var passList, failList []string
 	for _, v := range vs {
@@ -501,12 +539,13 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	}
 	verdicts := []PerBackendVerdict{
 		{
-			Backend:   BackendClaude,
-			Gate:      claudeGate,
-			Verdict:   claudeVerdict.Verdict,
-			Summary:   claudeVerdict.Summary,
-			Findings:  claudeVerdict.Findings,
-			NextSteps: claudeVerdict.NextSteps,
+			Backend:       BackendClaude,
+			Gate:          claudeGate,
+			Verdict:       claudeVerdict.Verdict,
+			Summary:       claudeVerdict.Summary,
+			Findings:      claudeVerdict.Findings,
+			NextSteps:     claudeVerdict.NextSteps,
+			SynthesisNote: claudeVerdict.SynthesisNote,
 		},
 	}
 
@@ -557,12 +596,13 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 		for _, p := range parts {
 			if p.backend == wantName {
 				verdicts = append(verdicts, PerBackendVerdict{
-					Backend:   p.backend,
-					Gate:      p.gate,
-					Verdict:   p.out.Verdict,
-					Summary:   p.out.Summary,
-					Findings:  p.out.Findings,
-					NextSteps: p.out.NextSteps,
+					Backend:       p.backend,
+					Gate:          p.gate,
+					Verdict:       p.out.Verdict,
+					Summary:       p.out.Summary,
+					Findings:      p.out.Findings,
+					NextSteps:     p.out.NextSteps,
+					SynthesisNote: p.out.SynthesisNote,
 				})
 			}
 		}

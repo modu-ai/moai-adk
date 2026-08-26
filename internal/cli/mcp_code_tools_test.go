@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -74,11 +75,8 @@ func TestGraphFileAPI_RejectsSymlinkEscape(t *testing.T) {
 	if err != nil {
 		t.Fatalf("handler hard error: %v", err)
 	}
-	if !res.IsError {
-		t.Fatal("graph_file_api must error on a symlink-escaping file parameter")
-	}
-	body, _ := res.Content[0].(interface{ GetText() string })
-	if body != nil && strings.Contains(body.GetText(), "Leaked") {
+	body := toolText(t, res, true)
+	if strings.Contains(body, "Leaked") {
 		t.Error("the external file's symbols leaked through the tool")
 	}
 }
@@ -110,7 +108,7 @@ func TestGraphTools_HonorProjectRoot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("trace A error: %v", err)
 	}
-	bodyA := resA.Content[0].(mcp.TextContent).Text
+	bodyA := graphToolJSON(t, resA)
 	if strings.Contains(bodyA, "Extra") {
 		t.Errorf("tree A's answer carries tree B's content — wrong-tree leak (t246 family): %s", bodyA)
 	}
@@ -122,7 +120,7 @@ func TestGraphTools_HonorProjectRoot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("trace B error: %v", err)
 	}
-	bodyB := resB.Content[0].(mcp.TextContent).Text
+	bodyB := graphToolJSON(t, resB)
 	if !strings.Contains(bodyB, "Extra") {
 		t.Errorf("tree B's answer must reflect its own content: %s", bodyB)
 	}
@@ -134,9 +132,59 @@ func TestGraphTools_HonorProjectRoot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("handler hard error: %v", err)
 	}
-	if !resBad.IsError {
-		t.Errorf("invalid project_root must yield a tool error, got: %+v", resBad)
+	_ = toolText(t, resBad, true) // shape-checked: error result with content
+}
+
+// CR round-2 3855001928 — shape check BEFORE the type assertion: every
+// result site routes through toolText, which asserts the expected IsError
+// state and a non-empty Content. An error result with empty Content is a
+// test FAILURE with a message, never an index panic (the RED-capture probe
+// demonstrated the unguarded `Content[0]` panicking on exactly that shape).
+func toolText(t *testing.T, res *mcp.CallToolResult, wantError bool) string {
+	t.Helper()
+	text, err := toolTextShape(res, wantError)
+	if err != nil {
+		t.Fatal(err)
 	}
+	return text
+}
+
+// toolTextShape is the testable core: shape violations return an error
+// rather than panicking, so the empty-content contract itself carries a
+// test (TestToolTextShapeContract).
+func toolTextShape(res *mcp.CallToolResult, wantError bool) (string, error) {
+	if res.IsError != wantError {
+		return "", fmt.Errorf("result IsError=%v, want %v", res.IsError, wantError)
+	}
+	if len(res.Content) == 0 {
+		return "", fmt.Errorf("result carries no content (IsError=%v) — shape must be checked before the type assertion", res.IsError)
+	}
+	tc, ok := res.Content[0].(mcp.TextContent)
+	if !ok {
+		return "", fmt.Errorf("first content block is %T, want mcp.TextContent", res.Content[0])
+	}
+	return tc.Text, nil
+}
+
+// graphToolJSON returns a SUCCESSFUL graph tool result's payload as JSON
+// text. CR round-2 3855001978 moved the handlers onto the package's
+// toolJSON: the data now rides in StructuredContent and the text block is
+// the "<tool>: ok" fallback, so JSON assertions read the structured channel
+// (the sessionMsgStructuredMap convention). The shape check still runs
+// first — IsError state plus non-empty Content — via toolTextShape.
+func graphToolJSON(t *testing.T, res *mcp.CallToolResult) string {
+	t.Helper()
+	if _, err := toolTextShape(res, false); err != nil {
+		t.Fatal(err)
+	}
+	if res.StructuredContent == nil {
+		t.Fatalf("result carries no structured content: %+v", res)
+	}
+	b, err := json.Marshal(res.StructuredContent)
+	if err != nil {
+		t.Fatalf("marshal structured content: %v", err)
+	}
+	return string(b)
 }
 
 // AC-GF-020 — graph_file_api over MCP: exported signatures only, body-free,
@@ -150,7 +198,7 @@ func TestHandleGraphFileAPI(t *testing.T) {
 	if err != nil {
 		t.Fatalf("handler error: %v", err)
 	}
-	body := res.Content[0].(mcp.TextContent).Text
+	body := graphToolJSON(t, res)
 	if !strings.Contains(body, "func Run()") {
 		t.Errorf("Run signature missing: %s", body)
 	}
@@ -175,7 +223,7 @@ func TestHandleGraphFindAndTrace(t *testing.T) {
 	if err != nil {
 		t.Fatalf("find handler error: %v", err)
 	}
-	findBody := findRes.Content[0].(mcp.TextContent).Text
+	findBody := graphToolJSON(t, findRes)
 	var parsed struct {
 		Matches []struct {
 			Symbol string `json:"Symbol"`
@@ -188,6 +236,21 @@ func TestHandleGraphFindAndTrace(t *testing.T) {
 	if len(parsed.Matches) == 0 {
 		t.Fatalf("no matches for Finish: %s", findBody)
 	}
+	// CR round-2 3855001933 — the matches must carry Symbol/Via matching the
+	// fixture's content, not merely a non-empty count: Finish is observed as
+	// a CALLEE of Run (Via "callee (called at)"; codequery.go's wording).
+	// Finish is ALSO observed as a caller of Println — both observations are
+	// correct, so the assertion pins the callee one, which the fixture's
+	// Run→Finish edge guarantees.
+	sawFinishCallee := false
+	for _, m := range parsed.Matches {
+		if m.Symbol == "Finish" && m.Via == "callee (called at)" {
+			sawFinishCallee = true
+		}
+	}
+	if !sawFinishCallee {
+		t.Errorf("no match carries Symbol=Finish observed as a callee — Symbol/Via must be asserted, not just the count: %+v", parsed.Matches)
+	}
 
 	traceReq := mcp.CallToolRequest{}
 	traceReq.Params.Arguments = withCodeRoot(t, map[string]any{"symbol": "Finish", "depth": float64(1)}, root)
@@ -195,7 +258,7 @@ func TestHandleGraphFindAndTrace(t *testing.T) {
 	if err != nil {
 		t.Fatalf("trace handler error: %v", err)
 	}
-	traceBody := traceRes.Content[0].(mcp.TextContent).Text
+	traceBody := graphToolJSON(t, traceRes)
 	var tp struct {
 		Callers []map[string]any `json:"callers"`
 		Callees []map[string]any `json:"callees"`
@@ -208,5 +271,60 @@ func TestHandleGraphFindAndTrace(t *testing.T) {
 	}
 	if !strings.Contains(traceBody, root) {
 		t.Errorf("trace provenance must name the tree: %s", traceBody)
+	}
+}
+
+// The shape-check contract itself (CR round-2 3855001928): an error result
+// with EMPTY Content — the shape the RED-capture probe panicked on — is
+// reported as a failure, never a panic; IsError mismatches likewise.
+func TestToolTextShapeContract(t *testing.T) {
+	if _, err := toolTextShape(&mcp.CallToolResult{IsError: true}, true); err == nil {
+		t.Error("empty-content error result must be a shape violation, not an accepted result")
+	}
+	if _, err := toolTextShape(mcp.NewToolResultText("hello"), true); err == nil {
+		t.Error("IsError mismatch must be a shape violation")
+	}
+	text, err := toolTextShape(mcp.NewToolResultText("hello"), false)
+	if err != nil || text != "hello" {
+		t.Errorf("happy shape must yield the text: text=%q err=%v", text, err)
+	}
+}
+
+// CR round-2 3855001948 — required-parameter rejection per handler (empty
+// Arguments) plus the literal `..` path case: each rejection is a tool error
+// result NAMING the rejected input. The symlink test covers a different
+// escape vector; this pins the lexical one.
+func TestGraphTools_RequiredParamsAndDotDotPathRejected(t *testing.T) {
+	root := mcpCodeFixture(t)
+
+	cases := []struct {
+		name    string
+		handler func(context.Context, mcp.CallToolRequest) (*mcp.CallToolResult, error)
+		args    map[string]any // nil means truly EMPTY Arguments
+		wantIn  string         // substring the rejection must name
+	}{
+		{"file_api without file", handleGraphFileAPI, nil, "file"},
+		{"find_code without query", handleGraphFindCode, nil, "query"},
+		{"trace_calls without symbol", handleGraphTraceCalls, nil, "symbol"},
+		{"file_api literal .. path", handleGraphFileAPI,
+			map[string]any{"file": "../secret.go", "project_root": root}, "escapes the project root"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			args := tc.args
+			if args == nil {
+				args = map[string]any{}
+			}
+			req := mcp.CallToolRequest{}
+			req.Params.Arguments = args
+			res, err := tc.handler(context.Background(), req)
+			if err != nil {
+				t.Fatalf("rejection must be a tool error result, not a handler error: %v", err)
+			}
+			body := toolText(t, res, true)
+			if !strings.Contains(body, tc.wantIn) {
+				t.Errorf("rejection must name the rejected input %q, got: %s", tc.wantIn, body)
+			}
+		})
 	}
 }
