@@ -108,7 +108,7 @@ func TestGraphTools_HonorProjectRoot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("trace A error: %v", err)
 	}
-	bodyA := toolText(t, resA, false)
+	bodyA := graphToolJSON(t, resA)
 	if strings.Contains(bodyA, "Extra") {
 		t.Errorf("tree A's answer carries tree B's content — wrong-tree leak (t246 family): %s", bodyA)
 	}
@@ -120,7 +120,7 @@ func TestGraphTools_HonorProjectRoot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("trace B error: %v", err)
 	}
-	bodyB := toolText(t, resB, false)
+	bodyB := graphToolJSON(t, resB)
 	if !strings.Contains(bodyB, "Extra") {
 		t.Errorf("tree B's answer must reflect its own content: %s", bodyB)
 	}
@@ -166,6 +166,27 @@ func toolTextShape(res *mcp.CallToolResult, wantError bool) (string, error) {
 	return tc.Text, nil
 }
 
+// graphToolJSON returns a SUCCESSFUL graph tool result's payload as JSON
+// text. CR round-2 3855001978 moved the handlers onto the package's
+// toolJSON: the data now rides in StructuredContent and the text block is
+// the "<tool>: ok" fallback, so JSON assertions read the structured channel
+// (the sessionMsgStructuredMap convention). The shape check still runs
+// first — IsError state plus non-empty Content — via toolTextShape.
+func graphToolJSON(t *testing.T, res *mcp.CallToolResult) string {
+	t.Helper()
+	if _, err := toolTextShape(res, false); err != nil {
+		t.Fatal(err)
+	}
+	if res.StructuredContent == nil {
+		t.Fatalf("result carries no structured content: %+v", res)
+	}
+	b, err := json.Marshal(res.StructuredContent)
+	if err != nil {
+		t.Fatalf("marshal structured content: %v", err)
+	}
+	return string(b)
+}
+
 // AC-GF-020 — graph_file_api over MCP: exported signatures only, body-free,
 // provenance naming the tree.
 func TestHandleGraphFileAPI(t *testing.T) {
@@ -177,7 +198,7 @@ func TestHandleGraphFileAPI(t *testing.T) {
 	if err != nil {
 		t.Fatalf("handler error: %v", err)
 	}
-	body := toolText(t, res, false)
+	body := graphToolJSON(t, res)
 	if !strings.Contains(body, "func Run()") {
 		t.Errorf("Run signature missing: %s", body)
 	}
@@ -202,7 +223,7 @@ func TestHandleGraphFindAndTrace(t *testing.T) {
 	if err != nil {
 		t.Fatalf("find handler error: %v", err)
 	}
-	findBody := toolText(t, findRes, false)
+	findBody := graphToolJSON(t, findRes)
 	var parsed struct {
 		Matches []struct {
 			Symbol string `json:"Symbol"`
@@ -237,7 +258,7 @@ func TestHandleGraphFindAndTrace(t *testing.T) {
 	if err != nil {
 		t.Fatalf("trace handler error: %v", err)
 	}
-	traceBody := toolText(t, traceRes, false)
+	traceBody := graphToolJSON(t, traceRes)
 	var tp struct {
 		Callers []map[string]any `json:"callers"`
 		Callees []map[string]any `json:"callees"`

@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -271,10 +272,10 @@ func TestCheckFreshness_SymlinkRootRejected(t *testing.T) {
 	}
 	head := gitFix(t, root, "rev-parse", "HEAD")
 	writeCodemapsProvenanceBlock(t, root, &mx.Provenance{
-		SchemaVersion: mx.ProvenanceSchemaVersion,
-		TreeRoot:      root,
-		CommitSHA:     head,
-		GeneratedBy:   "codemaps-gen",
+		SchemaVersion:  mx.ProvenanceSchemaVersion,
+		TreeRoot:       root,
+		CommitSHA:      head,
+		GeneratedBy:    "codemaps-gen",
 		DescribedRoots: []string{"leak"}, // in-tree symlink pointing outside
 	})
 	writeSyncedMXIndex(t, root)
@@ -312,6 +313,15 @@ func TestCheckFreshness_NotComparableIsSystemError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "not comparable") {
 		t.Errorf("error must name the not-comparable condition: %v", err)
+	}
+	// CR round-2 3855149289 — the error path returns the layers measured so
+	// far: the codemaps row is already computed (absent/unmeasured) when the
+	// system error surfaces, and the report must carry it, not discard it.
+	if len(res.Layers) != 1 {
+		t.Fatalf("error-path report must carry the failing codemaps row, got %d layers: %+v", len(res.Layers), res.Layers)
+	}
+	if res.Layers[0].Layer != LayerCodemaps || res.Layers[0].Verdict != VerdictAbsent {
+		t.Errorf("error-path codemaps row = %+v, want layer %s verdict %s", res.Layers[0], LayerCodemaps, VerdictAbsent)
 	}
 }
 
@@ -436,7 +446,7 @@ func TestMXIndexNeedsRefresh_ProbeStates(t *testing.T) {
 	root := newCheckFixture(t)
 	head := gitFix(t, root, "rev-parse", "HEAD")
 
-	if !MXIndexNeedsRefresh(root) {
+	if !MXIndexNeedsRefresh(root, 1) {
 		t.Error("absent sidecar must need refresh (scan sources unindexed)")
 	}
 
@@ -446,13 +456,13 @@ func TestMXIndexNeedsRefresh_ProbeStates(t *testing.T) {
 	if err := mgr.Write(&mx.Sidecar{SchemaVersion: mx.SchemaVersion}); err != nil {
 		t.Fatal(err)
 	}
-	if MXIndexNeedsRefresh(root) {
+	if MXIndexNeedsRefresh(root, 1) {
 		t.Error("pre-provenance sidecar must NOT be refreshed (legacy contract)")
 	}
 
 	// In-sync provenance: not needed.
 	writeSyncedMXIndex(t, root)
-	if MXIndexNeedsRefresh(root) {
+	if MXIndexNeedsRefresh(root, 1) {
 		t.Error("in-sync index must not need refresh")
 	}
 
@@ -461,14 +471,104 @@ func TestMXIndexNeedsRefresh_ProbeStates(t *testing.T) {
 		[]byte("package changed\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if !MXIndexNeedsRefresh(root) {
+	if !MXIndexNeedsRefresh(root, 1) {
 		t.Error("inventory drift must need refresh")
 	}
 
 	// Wrong-tree anchor: needed (wrong-tree defect family).
 	writeMXIndexProvenance(t, root, "/some/other/tree", head)
-	if !MXIndexNeedsRefresh(root) {
+	if !MXIndexNeedsRefresh(root, 1) {
 		t.Error("wrong-tree index must need refresh")
+	}
+}
+
+// CR round-2 3855149315 — the drift red line is the CALLER's, not a hidden
+// DefaultThresholds() inside the probe: one drifted file crosses an injected
+// red line of 1 but not one of 2. A probe still pinned to the default (=1)
+// fails the threshold-2 leg.
+func TestMXIndexNeedsRefresh_ThresholdFromCaller(t *testing.T) {
+	root := newCheckFixture(t)
+	writeSyncedMXIndex(t, root)
+
+	if MXIndexNeedsRefresh(root, 2) {
+		t.Fatal("precondition: in-sync index must not need refresh at any threshold")
+	}
+
+	// Drift exactly one inventoried file.
+	if err := os.WriteFile(filepath.Join(root, "internal", "alpha", "alpha.go"),
+		[]byte("package changed\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if MXIndexNeedsRefresh(root, 2) {
+		t.Error("one drifted file must NOT cross a caller-injected red line of 2")
+	}
+	if !MXIndexNeedsRefresh(root, 1) {
+		t.Error("one drifted file must cross a caller-injected red line of 1")
+	}
+}
+
+// CR round-2 3855149325 — the ONE shared fingerprint-comparison rule (the
+// rebuild-free probe and the check must never disagree about what a moved
+// source is): identical => none moved; changed, vanished, or appeared => that
+// source, sorted.
+func TestCompareSourceFingerprints(t *testing.T) {
+	stamped := map[string]string{"codemaps": "a1", "mx-index": "b2", "specs": "c3"}
+	current := map[string]string{"codemaps": "a1", "mx-index": "CHANGED", "reports": "d4"}
+	// specs vanished from current; reports appeared; mx-index changed;
+	// codemaps is equal.
+	moved := compareSourceFingerprints(stamped, current)
+	want := []string{"mx-index", "reports", "specs"}
+	if !reflect.DeepEqual(moved, want) {
+		t.Errorf("moved = %v, want %v (changed + vanished + appeared, sorted)", moved, want)
+	}
+	if got := compareSourceFingerprints(stamped, stamped); len(got) != 0 {
+		t.Errorf("identical maps must yield no moved sources, got %v", got)
+	}
+	if got := compareSourceFingerprints(nil, nil); len(got) != 0 {
+		t.Errorf("empty maps must yield no moved sources, got %v", got)
+	}
+}
+
+// CR round-2 3855149254 — the probe reads the SELECTED artifact's meta
+// sidecar: a stale custom artifact probes moved while the default sits fresh,
+// and the mirror image holds (fresh custom + stale default => not moved).
+func TestEdgesSourcesMovedFor_SelectedArtifact(t *testing.T) {
+	root := newCheckFixture(t)
+	writeSyncedEdgesMeta(t, root) // default artifact in-sync
+
+	customDir := filepath.Join(root, "custom")
+	if err := os.MkdirAll(customDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	customEdges := filepath.Join(customDir, "edges.jsonl")
+	if err := os.WriteFile(customEdges, []byte(""), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	staleFP := map[string]string{"codemaps": "stale", "mx-index": "stale", "specs": "stale", "reports": "stale"}
+	if err := WriteEdgesMeta(filepath.Join(customDir, MetaFileName), root, staleFP, 0); err != nil {
+		t.Fatal(err)
+	}
+
+	if EdgesSourcesMoved(root) {
+		t.Fatal("precondition: default artifact is in-sync — the default probe must read fresh")
+	}
+	if !EdgesSourcesMovedFor(root, customEdges) {
+		t.Error("stale SELECTED artifact must probe moved")
+	}
+
+	// Mirror: re-stamp the custom meta against CURRENT fingerprints, then
+	// corrupt the default's.
+	if err := WriteEdgesMeta(filepath.Join(customDir, MetaFileName), root, SourceFingerprintsForEdges(root), 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteEdgesMeta(filepath.Join(root, ".moai", "project", "graph", MetaFileName), root, staleFP, 0); err != nil {
+		t.Fatal(err)
+	}
+	if !EdgesSourcesMoved(root) {
+		t.Fatal("precondition: corrupted default artifact must probe moved")
+	}
+	if EdgesSourcesMovedFor(root, customEdges) {
+		t.Error("fresh SELECTED artifact must probe not-moved even with a stale default")
 	}
 }
 

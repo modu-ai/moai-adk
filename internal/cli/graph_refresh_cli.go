@@ -33,6 +33,18 @@ func newEdgesRefreshClock() func() time.Duration {
 // @MX:REASON: mutating package var by design — the only test seam in the graph refresh path
 var edgesRefreshClock = newEdgesRefreshClock
 
+// edgesRefreshNeeded is the query path's refresh decision (REQ-GF-007, CR
+// round-2 3855149254): the edges half evaluates the SELECTED --edges
+// artifact's own provenance — EdgesSourcesMovedFor reads edgesFile's meta
+// sidecar, never the default artifact's — while the mx-index probe stays
+// tree-anchored: the index is a project-level source whichever artifact
+// consumes it. mxIndexChangedFiles is the caller's drift red line
+// (DefaultThresholds().MXIndexChangedFiles is the gate-calibrated value).
+func edgesRefreshNeeded(projectRoot, edgesFile string, mxIndexChangedFiles int) bool {
+	return graph.EdgesSourcesMovedFor(projectRoot, edgesFile) ||
+		graph.MXIndexNeedsRefresh(projectRoot, mxIndexChangedFiles)
+}
+
 // refreshEdgesArtifact brings the derived edges layer back in sync with its
 // sources: refresh the mx-index first (it is both a source and the mx-spec
 // edge extractor's input — and its inventory IS the described-source state

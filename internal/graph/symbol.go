@@ -1,6 +1,7 @@
 package graph
 
 import (
+	"fmt"
 	"path/filepath"
 	"sort"
 
@@ -30,7 +31,7 @@ func ValidateGradeMatrix(matrix map[string]string) []string {
 func CodeEdges(projectRoot string) ([]Edge, map[string]string, error) {
 	calls, imports, matrix, err := symbol.Extract(projectRoot)
 	if err != nil {
-		return nil, matrix, err
+		return nil, matrix, fmt.Errorf("graph: extract code edges: %w", err)
 	}
 	return mapSymbolEdges(calls, imports), matrix, nil
 }
@@ -93,7 +94,7 @@ const (
 func BuildWithCodeLayersMode(projectRoot string, mode DisagreementMode) ([]Edge, map[string]string, error) {
 	docEdges, err := Build(projectRoot)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("graph: build doc edges: %w", err)
 	}
 	calls, imports, matrix, err := symbol.Extract(projectRoot)
 	if err != nil {

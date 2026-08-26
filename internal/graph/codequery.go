@@ -14,9 +14,10 @@ import (
 	"github.com/modu-ai/moai-adk/internal/navigator/astx"
 )
 
-// maxTraceDepth bounds TraceCalls traversal (shared by the MCP tool
-// description — one named policy value, not three drifting literals;
-// CR round-2 3855002055).
+// maxTraceDepth bounds TraceCalls traversal (CR round-2 3855002055). The MCP
+// tool description in mcp_server.go restates the same cap as a literal
+// ("capped at 8") for its human readers — a static description string cannot
+// reference this const, and THIS const is the enforced bound.
 const maxTraceDepth = 8
 
 // ─── graph_file_api (REQ-GF-017) ───
@@ -150,7 +151,7 @@ func FindCode(projectRoot, query string) ([]CodeMatch, string, error) {
 			}
 		}
 		if fn == query {
-			// Key includes the target (CR round-2 3855002033): one line may
+			// Key includes the target (CR round-2 3855002040): one line may
 			// invoke two symbols (a(b())) — dropping the target would keep
 			// only the first edge of the two.
 			key := "caller:" + file + ":" + e.Target + ":" + fmt.Sprint(e.Line)
@@ -241,7 +242,7 @@ func TraceCalls(projectRoot, symbol string, depth int) (callers, callees []CallT
 // ─── shared helpers ───
 
 // loadCodeEdges loads the edges artifact, mapping an ABSENT artifact to a
-// distinct actionable error (CR round-2 3855002040): the untracked derived
+// distinct actionable error (CR round-2 3855002033): the untracked derived
 // layer is missing — the remedy is a build, not a bug report. The message
 // carries the repo-relative artifact location only (CR round-3: the absolute
 // root is host information an LLM-facing error need not disclose).
@@ -312,6 +313,11 @@ func readLines(path string) []string {
 	return strings.Split(string(data), "\n")
 }
 
+// signatureScanWindow bounds how far past the symbol's line signatureAt scans
+// for the body-opening delimiter before falling back to the symbol line
+// alone (CR round-2 3855002078 residual: the window was a bare literal 8).
+const signatureScanWindow = 8
+
 // signatureAt reconstructs a declaration signature from source lines: the
 // symbol's line through (excluding) the line where the body opens — the
 // signature text without the body. Falls back to the symbol line alone.
@@ -320,7 +326,7 @@ func signatureAt(lines []string, startLine int, lang string) string {
 		return ""
 	}
 	var b strings.Builder
-	for i := startLine - 1; i < len(lines) && i < startLine-1+8; i++ {
+	for i := startLine - 1; i < len(lines) && i < startLine-1+signatureScanWindow; i++ {
 		line := lines[i]
 		if idx := bodyOpenIndex(line, lang); idx >= 0 {
 			b.WriteString(strings.TrimSpace(line[:idx]))
