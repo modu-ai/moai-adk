@@ -293,6 +293,8 @@ internal/cli/mcp_codex.go
 
 `internal/web/codex_state.go:32-37` 이 표시층 미러 상수 4종(`codexAuthChatGPT`/`codexAuthAPIKey`/`codexAuthProvider`/`codexAuthUnknown`)을 갖고 있다. 이것은 분류 경로가 아니라(`internal/web/schemaform.go:114` `codexAuthProviderLabel` 의 표시 라벨 스위치가 소비) AC 의 기계 판정은 어긋난다. 해소는 (a) web 쪽 라벨 매핑을 CLI 주입으로 바꿔 리터럴을 제거하거나 (b) acceptance 예외를 명시하는 것 — 어느 쪽도 plan §C.1 의 파일 배치(신규 2 + 수정 1) 밖이라 **M2 는 손대지 않았고 리드 판정이 필요하다.** 이 SPEC 의 M2 산출물인 `codex_readiness.go` 자체는 provider 리터럴 0건(공유 프로브의 값을 전파만 한다). AC-CL-007 의 (b) MCP 도구 · (c) web 카드 sentinel 교차 다리도 이 판정과 함께 정리해야 한다(런처 표면 (a) 다리는 이번에 통과).
 
+**처분 (2026-08-27)**: 운영자 결정으로 옵션 (b) acceptance 예외 명시를 채택해 해소 — 폐집합이 `{internal/cli/mcp_codex.go, internal/web/codex_state.go}` 로 확정되고 `codexAuth*` 표시층 미러가 예외 원소로 문서화됐다(커밋 `698de4683`). (b)·(c) sentinel 교차 다리 판정은 별도 잔여 Gap 으로 M3 소관.
+
 ### 남은 Gap (정직한 목록)
 
 - **AC-CL-004/006/011/012 의 커맨드 수준 다리** — 맨몸/status 두 형태 실행·rc 0·stdout 전용/stderr 0바이트·10칸·4동사 스냅샷. M3(커맨드 표면) 소관.
