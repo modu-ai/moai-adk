@@ -2,7 +2,7 @@
 id: SPEC-DOCS-V313-CATCHUP-001
 title: "v3.1.3 release documentation catch-up — docs-site 4 locales + README 4 files"
 version: "0.3.0"
-status: in-progress
+status: completed
 created: 2026-08-26
 updated: 2026-08-26
 author: manager-spec

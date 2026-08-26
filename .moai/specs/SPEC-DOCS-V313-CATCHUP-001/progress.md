@@ -129,4 +129,20 @@
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- sync_status: audit-ready
+- sync_complete_at: 2026-08-26
+- sync_commit_sha: "pending-backfill" (placeholder — real SHA backfilled in the immediately following commit, per the D3 self-referential-hazard exemption)
+- changelog_entry_position: [Unreleased] → ### Added (single dense entry, SPEC-ID link, AC 9/9 referenced)
+- frontmatter_status_transitions:
+    - spec.md: in-progress → implemented → completed (3-phase close, merged into the single sync commit)
+    - updated: 2026-08-26
+    - plan.md / acceptance.md: no frontmatter change required (body untouched)
+- b12_self_test_a: duplicate grep `grep -c 'SPEC-DOCS-V313-CATCHUP-001' CHANGELOG.md` → 0 (PASS, this run, tree ecf9766bd)
+- b12_self_test_b: AC count match — acceptance.md distinct AC tokens = 9 (AC-DVC-001..009); CHANGELOG entry references 9 ACs, 9 PASS / 0 FAIL (PASS, this run)
+- b12_self_test_c: file-path verification — docs-site/content/{ko,en,ja,zh}/advanced/codex-dual-harness.md all exist (ls verified); docs-site/hugo.toml v3.1.3/2026-08-24 (lines 55-56); docs-site/data/menu/main.yaml ref /advanced/codex-dual-harness (line 752); README×4 present (PASS, this run)
+- verification_basis: docs-only scope — no Go build/lint/test surface (AC-DVC-006 diff 0 verified in §E.2); the binding verification is the hns-oss-docs-verify 8-axis exit gate, re-verified PASS on the post-merge tree 0044c7a83 (§E.2 병합 후 8축 재검증 표)
+- cross_platform_build.status: n/a (docs-only)
+- new_warnings_or_lints_introduced: 0 (hugo build WARN/ERROR 0행 on tree 0044c7a83)
+- mx_tag_validation: n/a (no code surface — zero @MX annotation targets in a documentation-only diff)
+- canary_compliance_check: n/a (no canary surface in docs-only scope)
+- publish_state: unpushed — sync commit lands on WT-v313-docs; push + PR owned by manager-git after sync-audit (per dispatch)
