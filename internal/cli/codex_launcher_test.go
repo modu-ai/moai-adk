@@ -891,3 +891,58 @@ func TestCodexVerbRouting_UnresolvableRootFallsBackToCwd(t *testing.T) {
 		t.Errorf("captured Dir = %q (launches %d), want process cwd %q", cap.records[0].Dir, cap.count(), cwd)
 	}
 }
+
+// ─── M4 — help and example copy (REQ-CL-014) ────────────────────────────────
+
+// TestCodexCommand_HelpCopyGuidance — M4's deliverable is the guidance copy
+// itself. Machine-judgeable properties, all derived (never restated):
+//
+//  1. the wiring action the help names is THE action the readout prints and
+//     the init generator accepts — derived from codexWiringAction so the
+//     help cannot drift from either surface
+//  2. every non-empty verb of the closed routing set (codexVerbRouting) is
+//     documented in Long, plus the --spawn and -- passthrough notes — the
+//     help cannot drop a verb that routes or document one that does not
+//  3. the Example field exists and is copy-pasteable: every non-comment,
+//     non-blank line is a moai codex invocation
+//
+// The neutrality judgment over the same strings lives in
+// codex_launcher_guards_test.go (AC-CL-013) and re-runs over whatever copy
+// these subtests accept.
+func TestCodexCommand_HelpCopyGuidance(t *testing.T) {
+	t.Run("wiring action matches the generator", func(t *testing.T) {
+		want := strings.TrimPrefix(codexWiringAction, "run ")
+		if !strings.Contains(codexCmd.Long, want) {
+			t.Errorf("Long does not name the wiring action %q (derived from codexWiringAction)", want)
+		}
+	})
+	t.Run("every routing verb documented", func(t *testing.T) {
+		for token := range codexVerbRouting {
+			if token == "" {
+				continue
+			}
+			if !strings.Contains(codexCmd.Long, token) {
+				t.Errorf("Long does not document routing verb %q", token)
+			}
+		}
+		for _, note := range []string{"--spawn", "--"} {
+			if !strings.Contains(codexCmd.Long, note) {
+				t.Errorf("Long does not mention %q", note)
+			}
+		}
+	})
+	t.Run("examples are copy-pasteable", func(t *testing.T) {
+		if codexCmd.Example == "" {
+			t.Fatal("Example is empty — M4 requires example copy")
+		}
+		for _, line := range strings.Split(codexCmd.Example, "\n") {
+			trimmed := strings.TrimSpace(line)
+			if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+				continue
+			}
+			if !strings.HasPrefix(trimmed, "moai codex") {
+				t.Errorf("example line %q is not a moai codex invocation", trimmed)
+			}
+		}
+	})
+}

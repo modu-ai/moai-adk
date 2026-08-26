@@ -376,12 +376,111 @@ internal/cli/mcp_codex.go
 - **M4(도움말 문안 + 필요 시 템플릿 문서) 잔여** — `codexCmd` 의 Short/Long 은 동작에 충분한 최소문안으로 들어갔다(중립성 스캔 통과). 사용자 안내문 정비는 M4 소관.
 
 
+## M4 — 도움말·예시 문안: **완결** (2026-08-27)
+
+다섯 번째 위임(t197-m4, run-phase 마지막 마일스톤). 산출: `codex_launcher.go` Long 재작성 + `Example` 필드 신설 + `codex_launcher_test.go`에 `TestCodexCommand_HelpCopyGuidance`(서브테스트 3) + `go.mod` 정리(pflag indirect→direct). 신규 파일 0건. 이 문서의 모든 근거는 이번 세션이 직접 실행해 관측한 것이다.
+
+### E8 — RED
+
+- 명령: `go test ./internal/cli/ -v -run 'TestCodexCommand_HelpCopyGuidance' -count=1 -timeout 120s`
+- 관측 (rc 1) — 서브테스트 2 FAIL / 1 PASS:
+
+```
+--- FAIL: TestCodexCommand_HelpCopyGuidance/wiring_action_matches_the_generator
+    codex_launcher_test.go:916: Long does not name the wiring action "moai init --agent codex" (derived from codexWiringAction)
+--- FAIL: TestCodexCommand_HelpCopyGuidance/examples_are_copy-pasteable
+    codex_launcher_test.go:936: Example is empty — M4 requires example copy
+--- PASS: TestCodexCommand_HelpCopyGuidance/every_routing_verb_documented
+```
+
+- PASS 칸은 기존 Long이 이미 동사 집합을 문서화한 것에 대한 특성화다. 판정 축 3종(전부 파생 비교 — 상수 재기술 없음): (1) help가 안내하는 배선 조치가 리드아웃 상수 `codexWiringAction`에서 파생한 문구와 정합 — t88 생성기의 실제 플래그 표면(`moai init --agent codex`, `init.go` 폐집합 claude/codex/both)과 일치, (2) 폐집합 `codexVerbRouting`의 미빈 동사 토큰 전부가 Long에 문서화(+`--spawn`·`--` 언급), (3) Example 이 비지 않고 주석·빈 행 제외 전 행이 `moai codex` 호출.
+
+### E1 — M4 소관 AC 관측
+
+| AC | 상태 | 근거 |
+|----|--------|---|
+| AC-CL-013 (중립성) | **PASS — 신규 문안 위에서 재판정** | `TestCodexCommand_NeutralityScan`(reflect 전수 — 신설 `Example` 필드 포함) 통과 + 템플릿 가드 `MOAI_TEMPLATE_LEAK_STRICT=1 go test ./internal/template/...` → `ok 22.836s` 외 3패키지 ok (AC 첫 조항 — 도움말 문안이 확정된 M4 시점에 처음 실행·기록) |
+| AC-CL-001 (--help rc 0) | PASS (재판정) | `TestCodexCommand_HelpExitsZero` + 빌드 바이너리 `moai codex --help` rc 0 관측 (커스텀 help 렌더러의 USAGE/EXAMPLES/FLAGS 섹션 전부 렌더) |
+| AC-CL-007 (폐집합) | PASS (유지 확인) | `grep -rln '"chatgpt"\|"apiKey"' internal/ --include="*.go" \| grep -v _test` → 정확히 `{internal/cli/mcp_codex.go, internal/web/codex_state.go}` — 개정판 그대로, M4 diff의 리터럴 기여 0건 |
+| AC-CL-015 (무회귀) | PASS (재관측) | 아래 회귀축 |
+
+**M4에서 새로 열리는 다리 점검**: AC-CL-013의 템플릿 가드 조항이 유일하게 이 시점에 판정 가능해졌다(도움말 문안 확정 전에는 그 전제가 성립하지 않는다). 나머지 help-표면 판정은 기존 시험이 새 문안 위에서 자동 재판정했다. 그 외 AC는 M4가 새로 판정 가능하게 만들지 않는다 — 16/16 그대로.
+
+### M2 지연 리뷰 — home 행 풀 경로: 결함 아님 (확인 기록)
+
+plan §C.4 예시 블록은 `home ~/.codex (default)`로 적혀 있으나 이는 문서 축약형이다. 실측(빌드 바이너리, 아래 실 바이너리 관측 참조): `home     /Users/goos/.codex (default)` — 풀 경로 렌더. AC-CL-005는 home 행 값 칸을 **해석된 경로 그 자체**와 정확 일치로 판정한다(`/tmp/xyz` → env 칸, `<home>/.codex` → `filepath.Join` 결과와의 비교). `~` 축약은 env 칸에서 성립하지 않고 default 칸의 Join 비교를 깨뜨린다 — REQ-CL-005 가 요구하는 것도 "resolved `CODEX_HOME`" 의 보고다. 같은 예시 블록의 codex 행(`/Users/…/bin/codex`)도 축약 표기임을 뒷받침한다. M4 SPEC 텍스트(도움말·예시 문안)는 리드아웃 행 형태를 요구하지 않는다. **변경하지 않는다.**
+
+### 템플릿 문서 — 불필요 판정 (plan M4 "필요 시")
+
+불필요. 템플릿 트리에서 런처 패밀리를 언급하는 파일(`.worktreeinclude`, `.moai/config/sections/crosssession.yaml` 등)은 전부 **워크트리 진입(`-w`)과 교차세션 설정 번역** 문맥이고, codex 런처는 `-w`가 없고 설정 파일을 쓰지 않는다(REQ-CL-013) — 참여하지 않는 표면에 문서를 추가할 근거가 없다. `moai codex` 를 언급하는 유일한 템플릿 파일(`.claude/rules/moai/core/moai-mcp-tools-catalogue.md`)은 MCP 세션 메시징 소관으로 런처와 무관하다.
+
+### 판정 제외 조항 갈음 관측 — 실 바이너리 auth 왕복
+
+spec 「판정 제외」: "실 바이너리 확인은 `moai codex status` 출력 1회를 progress.md 에 붙이는 것으로 갈음한다". 관측 (2026-08-27, 빌드 바이너리, 이 머신):
+
+```
+$ moai codex status; echo $?
+codex    codex-cli 0.149.0 (/Users/goos/.local/bin/codex)
+home     /Users/goos/.codex (default)
+auth     chatgpt
+wiring   not wired (.codex/hooks.json and .codex/config.toml absent) — run moai init --agent codex
+agents   0 TOML
+harness  moai hook --harness codex
+0
+```
+
+`auth chatgpt` — §A.2 결함(현행 `unknown`)이 실 바이너리 경로에서 해소됐다. `wiring not wired` + 조치 문구는 이 저장소에 `.codex/`가 없는 기본 상태(spec §A.4)와 정확히 일치한다.
+
+### 인계 수정 2건 (M3 잔여, 배차 지시)
+
+1. **go.mod pflag drift — 해소**: M3 의 `codex_launcher_guards_test.go` 가 `github.com/spf13/pflag` 를 직접 import하는데 go.mod 가 `// indirect` 로 표기하고 있었다. `go mod tidy` → pflag 가 direct 블록(go.mod:25)으로 이동하고 `// indirect` 주석이 사라졌다. go.sum 무변경.
+2. **`codex_launcher.go:88 unused method "argv"` 진단 — 미재현**: 현재 트리에서 `grep ') argv(' internal/cli/*.go` → 0건(그런 메서드가 존재하지 않음 — 라인 88은 주석), `golangci-lint run` → `0 issues.`(unused 러너 포함). 편집기 세션의 스테일 진단으로 판단 — 제거 대상 dead code 없음.
+
+### E2 — 크로스 플랫폼 (이번 세션 관측)
+
+- `go build ./...` → rc 0
+- `go vet ./internal/cli/` → rc 0 · `GOOS=windows go vet ./internal/cli/` → rc 0
+- `GOOS=windows go test -c ./internal/cli/` → rc 0 (AC-CL-014 — vet 보다 강한 링크 판정)
+- `gofmt -l` 수정 2파일 → 출력 없음
+- `MOAI_TEMPLATE_LEAK_STRICT=1 go test ./internal/template/...` → 3패키지 ok
+
+### E3 — 커버리지
+
+- 명령: `go test ./internal/cli/ -coverprofile=/tmp/t197_m4_cover.out -count=1 -timeout 1200s` → `ok ... 195.317s coverage: 79.1% of statements` (rc 0)
+- `go tool cover -func` — 순수함수 3종(`classifyCodexAuthFile` 100% · `parseCodexAuthLine` 100% · `combineCodexStreams` 100%) + M1/M2 전 함수 100% 유지 — 회귀 없음. `runCodex` 95.7%(M3 과 동일, `-h` 단축 루프 잔여).
+
+### E4 — 서브에이전트 경계
+
+- 수정 2파일 grep `AskUserQuestion` → 0건 (rc 1)
+
+### E5 — lint
+
+- `golangci-lint run` → `0 issues.` (rc 0)
+
+### 회귀축 (AC-CL-015)
+
+- 명령: `go test ./internal/cli/ -json -run Codex -count=1 -timeout 1200s` → rc 0, top-level 통과 시험 함수 165개.
+- **이름 대조**: HEAD(169) vs 작업 트리(170) → **추가 1건(`TestCodexCommand_HelpCopyGuidance`), 삭제·개명 0건**.
+- skip 5건 — 전부 기존 `TestCodexLive_*`(SPEC-CODEX-PHASE2-001 소관 opt-in 라이브 프로브, M1/M2/M3 기록과 동일 구성). 이 SPEC 시험 skip 0, GOOS skip 3칸 미발동(macOS 실행).
+
+### 실행 시간 재실측
+
+- internal/cli 전체(커버리지 포함): **195.317s** (M3 301.4s 대비 단축 — 같은 트리 계열 부하 편차 범위). 180칸 봉쇄 행렬(SPEC-CODEX-INIT-001 AC-CI-011) 기준선은 이 최신값으로 갱신한다.
+
+### 남은 Gap (정직한 목록)
+
+- **tty 왕복 · 실 앱 기동 · Windows 실행** — 판정 제외 조항 그대로 (운영자 수동 측정 · release multi-OS 레그 몫).
+- **부채 D4 · D5 · D6 · D8** — run-phase 내내 미해소 (acceptance 문면 개선 소관 — sync 로 넘기지 않고 이곳에 기록한다, 리드 지침).
+- **`runCodex` 95.7%** — 기존 그대로 (`-h` 단축 루프 잔여).
+
+---
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
 run_complete_at: 2026-08-27
-run_commit_sha: pending-backfill-m3
-run_status: green-m3
+run_commit_sha: pending-backfill-m4
+run_status: green
 ac_pass_count: 16
 ac_fail_count: 0
 preserve_list_post_run_count: 3
@@ -394,8 +493,8 @@ cross_platform_build:
   goos_windows_vet: pass
   goos_windows_test_compile: pass
   gofmt: pass
-total_run_phase_files: 18
+total_run_phase_files: 19
 m1_to_mN_commit_strategy: per-milestone
 ```
 
-M3 완결 시점의 신호. `ac_pass_count: 16` = AC-CL-001~016 전부 판정 가능한 다리에서 PASS — M1(008·009·015) + M2(005) + M3(001·002·003·004·006·007·010·011·012·013·014·016). AC-CL-007 의 폐집합은 개정판(2026-08-27 운영자 예외 명시, `698de4683`) 그대로 유지됨을 M3 가 실측했다. 판정 제외 조항(tty 왕복 · 실 바이너리 auth 왕복 · 실 앱 기동 · PR 단계 Windows 실행)과 부채 D4·D5·D6·D8 은 Gap 으로 남는다(§E.2 M3 Gap 목록). M4(도움말 문안) 잔여 — `run_status: green-m3` 는 M3 한정 GREEN 이며 run-phase 전체 완료 선언은 M4 완결 시점에 한다. §E.3 최종본은 그때 갱신한다.
+**Run-phase 최종 신호 (M1~M4 전부 완결)**. `run_status: green` — 마일스톤 한정 표기(`green-m3`)에서 run-phase 전체 완결형으로 진행. `ac_pass_count: 16` = AC-CL-001~016 전부 판정 가능한 다리에서 PASS — M1(008·009·015) + M2(005) + M3(001·002·003·004·006·007·010·011·012·013·014·016) + M4(013 신규 문안 재판정 + 템플릿 가드 첫 실행, 001/007/015 재판정). 판정 제외 조항 중 실 바이너리 auth 왕복은 M4 가 progress 부착 관측으로 갈음 닫았다(§E.2 M4); tty 왕복 · 실 앱 기동 · PR 단계 Windows 실행은 운영자 수동·CI 레그 몫으로 Gap 유지. 부채 D4·D5·D6·D8 은 acceptance 문면 개선 소관으로 이 문서에 기록된 채 남는다(§E.2 상단 부채 표 + 각 M Gap 목록). `run_commit_sha` 는 M4 코드 커밋 SHA 의 후속 docs 커밋 백필로 채운다(커밋은 자기 SHA 를 알 수 없다 — 이 브랜치에서 이미 쓴 two-commit 패턴).

@@ -1,6 +1,7 @@
 package cli
 
-// codex_launcher.go — SPEC-CODEX-LAUNCHER-001 M3 (REQ-CL-001/002/003/012):
+// codex_launcher.go — SPEC-CODEX-LAUNCHER-001 M3+M4
+// (REQ-CL-001/002/003/012, REQ-CL-014 help copy):
 // the `moai codex` command surface. Cobra registration sits in the launch
 // group next to cc/glm/cg; the verb routing accepts exactly {bare, status}
 // for the readout forms and {cli, app} for the launch verbs (closed sets —
@@ -13,10 +14,6 @@ package cli
 // The launcher never writes: no directory is created, no file mutated
 // (REQ-CL-013). Launch is a child process whose exit code propagates — no
 // process replacement, no OS build tags (AC-CL-014).
-//
-// RED state: types, constants, seams, and registration are real; the routing
-// and launch bodies below are pending (zero returns) until the tests are on
-// disk and their failures observed.
 
 import (
 	"errors"
@@ -140,14 +137,27 @@ func splitCodexDashDash(args []string) (head, tail []string, hasTail bool) {
 var codexCmd = &cobra.Command{
 	Use:   "codex [status | cli [codex-args...] | app]",
 	Short: "Codex launcher: readiness readout and explicit cli/app launch",
-	Long: "moai codex reports Codex readiness (binary, home, auth, wiring, agents, harness)\n" +
-		"and launches Codex explicitly:\n" +
-		"  moai codex          readiness readout (no launch)\n" +
-		"  moai codex status   same readout\n" +
-		"  moai codex cli      launch the Codex CLI in this project\n" +
-		"  moai codex app      launch the Codex desktop app delegation\n" +
-		"  --spawn (cli/app only) opens the launch in a new tmux window.\n" +
-		"Arguments after -- pass through to codex verbatim.",
+	Long: "Readiness readout and explicit launch for Codex.\n" +
+		"\n" +
+		"The readout reports six rows and never launches anything on its own:\n" +
+		"the codex binary, CODEX_HOME, the auth provider, the project wiring,\n" +
+		"the generated agent TOMLs, and the harness entry. Launching requires\n" +
+		"an explicit verb. An incomplete wiring row is informational, not an\n" +
+		"error: moai init --agent codex generates the .codex wiring files.\n" +
+		"\n" +
+		"  moai codex [status]   print the readiness readout (no launch)\n" +
+		"  moai codex cli        launch the Codex CLI at the project root\n" +
+		"  moai codex app        launch the Codex desktop app (codex app)\n" +
+		"  --spawn               open the launch in a new tmux window (cli/app only)\n" +
+		"  -- <codex-args...>    arguments after -- pass to codex verbatim",
+	Example: "  # Show what is installed, resolved, and wired (no launch)\n" +
+		"  moai codex\n" +
+		"\n" +
+		"  # Launch the Codex CLI here, passing arguments through verbatim\n" +
+		"  moai codex cli -- --model o3\n" +
+		"\n" +
+		"  # Launch the desktop app in a new tmux window\n" +
+		"  moai codex app --spawn",
 	GroupID:            "launch",
 	DisableFlagParsing: true,
 	SilenceErrors:      true,
