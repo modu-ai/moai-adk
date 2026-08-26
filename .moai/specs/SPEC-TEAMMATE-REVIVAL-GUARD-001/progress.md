@@ -14,11 +14,59 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Commits (branch `WT-taskstop-name-reclaim`, card-local — push deferred to sync per B9):
+`7759b8130` (M1 observe+record) → `f7bd5bdc7` (M2 enforcement + config-cache schema bump) →
+`70541af5c` (M2 coverage closure) → M3 deliverables commit (this file set; SHA backfilled in §E.3).
+
+### AC binary matrix (all attribution triples measured on this branch's tree)
+
+| AC | Status | Evidence (command → observed output) |
+|----|--------|--------------------------------------|
+| AC-TRG-001 stop records registry+audit | PASS | `go test ./internal/hook/ -run TestRecordAgentStopRecordsRegistryAndAudit -count=1` → `ok … internal/hook`; live: registry `.moai/state/agent-stops/612bd790-….json` + `stop_recorded` row 2026-08-26T05:43:06Z (orchestrator recording probe) |
+| AC-TRG-002 deny + sentinel + audit | PASS | `TestAgentStopGuardDenySentinelPath` → deny, reason prefix `STOPPED_TEAMMATE_VIOLATION:`, names teammate + orchestrator route, `send_denied` row; live: rows 2026-08-26T17:12:53Z & 17:13:10Z (orchestrator + teammate-issued, session `703df7e1-…`) |
+| AC-TRG-003 uncertain never denies | PASS | `TestAgentStopGuardUncertainNeverDenies` (malformed JSON / missing `to` / corrupt registry → allow + observe-only row) |
+| AC-TRG-004 live teammates unaffected (mirror mutant) | PASS | `TestAgentStopGuardLiveTeammatesUnaffected` (live Y / `main` / `notify_when_idle`→Y all allow); live: `send_observed name:"main"` allowed 17:13:33Z |
+| AC-TRG-005 same-name spawn clears | PASS | `TestSpawnNameClearsStoppedEntry` (+`TestSpawnOtherNameKeepsEntry` complement); live: `respawn_cleared` 17:13:21Z, post-clear send delivered and acknowledged end-to-end (orchestrator-verified step-6) |
+| AC-TRG-006 session end clears | PASS | `TestSessionEndClearsStops` (sess-1 file removed + `session_cleared` row; sess-2 survives); live: session `703df7e1`'s registry file absent after its end. Honest gap (orchestrator-noted): live removal is inferred from file absence — unit-test direct assertion + audit row carry the contract |
+| AC-TRG-007 gate off ⇒ advise never deny | PASS | `TestAgentStopGuardGateOffNeverDenies` (advisory surfaces; row records `advisory:true` would-have-denied state) + `TestWorkflowAgentStopGuardDefaultFalse` (defaults.go ships false) |
+| AC-TRG-008 audit row shape exactly-once | PASS | `TestAgentStopAuditRowShape` — all rows carry `{timestamp UTC RFC3339, session_id, kind, name, agent_id, decision}`; M2 kinds (`send_denied`, `respawn_cleared`, `session_cleared`) same shape + `advisory` flag; live rows in `.moai/logs/agent-stop-audit.jsonl` conform |
+| AC-TRG-009 wiring + mirror + neutrality | PASS | `grep -c '"matcher": "SendMessage\|TaskStop"' .claude/settings.json internal/template/templates/.claude/settings.json.tmpl` → `1`/`1` (pre-`|` alternation escaped in shell; verbatim matcher `SendMessage|TaskStop` ×1 each); `make build` clean; `go test ./internal/template/...` → `ok 34.408s` (neutrality + leak audits); config default exists in `internal/config/defaults.go`; twin neutrality greps 0 hits (no SPEC IDs / SHAs / dates) |
+| AC-TRG-010 live-session firing gate | PASS | Orchestrator E-P1 (PATH-pinned fresh headless sessions, worktree binary): probe A 2026-08-26T05:43Z — spawn→TaskStop→registry entry present; probe B 2026-08-26T17:12–17:13Z (2026-08-27 KST) — full recipe: deny (lead-issued), deny (teammate-issued, E4 parity), same-name respawn → cleared, post-respawn send delivered + acknowledged. Live-shape ground truth recorded: TaskStop payload carries the spawn name in the field mapped to `agent_id` with display-name empty — pinned as `TestExtractTaskStopTargetLiveShape` + `TestAgentStopGuardLiveShapeLifecycle` (matcher compares BOTH registry fields) |
+| AC-TRG-011 `name [ref]` both directions | PASS | `TestAgentStopGuardNameRefBothDirections` (stopped `X [ref]` DENIED / live `Y [ref]` ALLOWED) + live-shape `[ref]` subtest |
+
+### Cross-cutting findings recorded for sync
+
+- **Pre-existing defect fixed by this card**: config disk-cache schema poisoning — a cache
+  written by an older binary (struct lacking newly added fields) is served as fingerprint-valid
+  to a newer binary, which unmarshals zero-values over live file values (observed:
+  `enabled:false` served over `enabled:true`). Fix: `configCacheSchemaVersion` 1→2
+  (`internal/config/cache.go`, field-addition-is-a-compat-break rationale in the constant's
+  comment). **CHANGELOG must carry this** — it affects every config-field addition, not just
+  this SPEC. Isolation evidence: `MOAI_CONFIG_CACHE_DISABLED=1` load read the true value.
+- Live tests wrote two audit rows under the worktree `.moai/logs/` during binary smokes; all
+  unit tests write only under `t.TempDir()`.
+- PRESERVE surfaces untouched across the run (`.claude/rules/**`, other SPECs, research,
+  reports, runtime state/logs beyond the guard's own runtime artifacts); PRETOOL-PERF
+  fixture rewrites from test runs were restored before each commit.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-08-27
+run_commit_sha: "pending-backfill-m3"   # backfilled below after the M3 commit landed
+run_status: audit-ready
+ac_pass_count: 11
+ac_fail_count: 0
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: "origin/main...HEAD = 3 7 (origin advanced 3 since base c9eed8ac6 via parallel landings; card branch 7 ahead; reconciliation at sync)"
+l44_post_push_fetch: "no push (B9: card-local branch; push + PR at sync via manager-git)"
+new_warnings_or_lints_introduced: 0      # golangci-lint 0 issues, baseline 0
+cross_platform_build:
+  darwin: exit-0
+  windows_amd64: exit-0
+total_run_phase_files: 17                # 14 code/wiring/config (M1 7 unique + M2 10, overlap 3) + proposal-rule-amendment.md + progress.md §E.2/§E.3
+m1_to_mN_commit_strategy: "per-milestone commits (M1 / M2 feat+test pair / M3 deliverables docs), no amend, no push; run_commit_sha backfilled one commit later (self-referential-hazard workaround)"
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
