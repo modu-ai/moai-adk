@@ -97,7 +97,7 @@ Gaps at run-phase close: the four PASS-WITH-DEBT ACs share one debt — live boa
 
 ```yaml
 run_complete_at: 2026-08-26
-run_commit_sha: pending-backfill
+run_commit_sha: e7a3b2953   # M3 head — backfilled at sync (D3 exemption)
 run_status: complete-with-debt
 spec_id: SPEC-LEAD-DEBOTTLENECK-001
 tier: M
@@ -132,4 +132,33 @@ m1_to_mN_commit_strategy: "one commit per milestone, stacked serially on WT-lead
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-26
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+spec_id: SPEC-LEAD-DEBOTTLENECK-001
+tier: M
+three_phase_close: >-
+  in-progress -> implemented -> completed merged into the single sync commit
+  (docs(SPEC-LEAD-DEBOTTLENECK-001): sync-phase artifacts + 3-phase close) per the
+  3-phase close mandate — no separate Mx chore commit. spec.md frontmatter updated
+  to status: completed + updated: 2026-08-26; no body edits.
+changelog_entry_position: "CHANGELOG.md [Unreleased] > ### Added — first entry (top of list)"
+pass_with_debt_disclosure: >-
+  4 of 13 ACs (AC-009/010/012/013) are PASS-WITH-DEBT: measured on the recorded-log
+  scenario form sanctioned by the coordinator M3 dispatch + before-occupancy.md
+  measurement definitions. One shared debt: raw-transcript-grade live board-run
+  confirmation after PR merge — new-definition agent discovery is session-start
+  context dependent (probe-ac004.md), so the live re-measurement requires the merged
+  primary. Upgrade path: one live post-merge board run using the deputy; its
+  lead-turn occupancy grep (§D.2 command) re-measured against the 31-act before
+  axis closes the debt.
+b12_self_test:
+  pre_emission_grep: "grep -c 'SPEC-LEAD-DEBOTTLENECK-001' CHANGELOG.md -> 0 (pre-emission)"
+  ac_count_match: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l -> 13; CHANGELOG entry states 13 (9 PASS + 4 PASS-WITH-DEBT) — match"
+  file_path_verification: "ls verified: manager-lead.md + kanban-dispatch.md + kanban-dispatch-detail.md (local + 3 template mirrors all present)"
+  implementation_files_read: "Read all 3 local implementation files + mirrors (grep-verified deputy sections) before drafting the CHANGELOG entry"
+sync_scope: "markdown-only — CHANGELOG.md + spec.md frontmatter + progress.md; no docs-site surface (agent-definition + rules-internal change, not user-facing docs)"
+```
+
+3-phase close statement: plan (manager-spec, PASS 0.923 @ `ea27a72b9`, marker resolved `b20399b30`) → run (manager-develop, M1 `9ff2e1ac2` → M2 `41ed86a95` → M3 `e7a3b2953`, 9 PASS + 4 PASS-WITH-DEBT + 0 FAIL) → sync (this commit; CHANGELOG entry + §E.4 + §E.3 run_commit_sha backfill `e7a3b2953` per D3 + spec.md `in-progress → completed` merged close). Untracked `.moai/reports/t283/` evidence stays out of the commit per coordinator instruction (worktree-resident). No push, no PR — manager-git next.
