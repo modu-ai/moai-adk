@@ -131,7 +131,7 @@
 
 - sync_status: audit-ready
 - sync_complete_at: 2026-08-26
-- sync_commit_sha: "pending-backfill" (placeholder — real SHA backfilled in the immediately following commit, per the D3 self-referential-hazard exemption)
+- sync_commit_sha: bc87bc9ca (backfilled from pending-backfill placeholder, per the D3 self-referential-hazard exemption)
 - changelog_entry_position: [Unreleased] → ### Added (single dense entry, SPEC-ID link, AC 9/9 referenced)
 - frontmatter_status_transitions:
     - spec.md: in-progress → implemented → completed (3-phase close, merged into the single sync commit)
