@@ -77,7 +77,27 @@ no third probe run).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-27
+sync_commit_sha: "pending-backfill-SPEC-TEAMMATE-REVIVAL-GUARD-001"   # backfilled in the immediately following commit (self-referential-hazard workaround per spec-frontmatter-schema.md D3)
+sync_status: PASS
+changelog_entry_position: "CHANGELOG.md [Unreleased] > Added > 첫 번째 항목 (SPEC-TEAMMATE-REVIVAL-GUARD-001) + [Unreleased] > Fixed > 첫 번째 항목 (config disk-cache schema poisoning — 별도 항목)"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (3-phase close, 본 싱크 커밋에 병합 — 별도 Mx 커밋 없음)"
+  updated_field: "2026-08-26 → 2026-08-27 (종결 날짜로 갱신)"
+b12_self_test_a_pre_emission_grep: "grep -c 'SPEC-TEAMMATE-REVIVAL-GUARD' CHANGELOG.md → 0 (배출 전 관측, 2026-08-27, rc=1 — 중복 항목 없음)"
+b12_self_test_b_ac_count_match: "acceptance.md distinct AC → 11 (AC-TRG-001..011); CHANGELOG 항목 11 AC 명시 — 일치"
+b12_self_test_c_path_verification: "agent_stop_guard.go / agent_stop_guard_test.go / cache.go / defaults.go / settings.json / settings.json.tmpl / template twin cross-session-messaging.md 전부 worktree 내 ls 존재 확인; sentinel STOPPED_TEAMMATE_VIOLATION(agent_stop_guard.go:44)·matcher SendMessage|TaskStop 트윈·configCacheSchemaVersion=2(cache.go:25) grep 관측"
+rules_amendment_application: |
+  proposal-rule-amendment.md §A.1 본문(중립 텍스트)을 로컬+템플릿 cross-session-messaging.md 트윈에
+  동일 적용 (Never-address-a-stopped-teammate 조항 말미 메커니즘 단락 + Reviving 안티패턴 각주).
+  make build exit 0 (gen-catalog-hashes 재생성 — catalog.yaml 내용 diff 없음). 트윈 diff는 기존
+  의도적 Origin 라인(로컬 전용)만 잔존. SPEC-dir 원본(audit-commit-correlation-recipe.md,
+  a1a908802에서 트래킹됨)은 무수정 보존; §B 내용을 .moai/docs/agent-stop-audit-correlation.md로 배치(로컬 전용, 템플릿 미러 없음).
+foreign_commit_observation: "sync 작업 중 HEAD 이동 관측: 08c345cb4 → a1a908802 (t267-run M3 closure, 리드 조율분) — 원인 규명 후 그 위에 스택하여 진행, 쓰기 표면 충돌 0, 리드에게 실시간 통보 완료"
+close_statement: "3-phase close (plan 2026-08-26 audit-ready 0.88 PASS-WITH-DEBT → run 2026-08-26~27 M1 7759b8130 + M2 f7bd5bdc7/70541af5c + M3 aac630f25/08c345cb4/a1a908802 → sync 2026-08-27, 본 커밋). status: in-progress → completed 병합 종결. 다음 잔여: 브랜치 push + PR CI 판정 (Route B, manager-git 소관)"
+```
+
 
 ## §F Phase 4 Mode Selection
 
