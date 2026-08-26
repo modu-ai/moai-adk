@@ -90,6 +90,26 @@
 - M2 `e5808b61f` — ko canonical (14 files)
 - M3 `8eeecbf0f` — en/ja/zh 파생 (39 files)
 - M4 `5d68cdac9` — 신규 페이지 4로케일 + main.yaml 항목 (5 files)
+- M5 `bed33bbde` — 종료 게이트 8축 + AC 9/9 + 격차 표 폐쇄 (위 표들)
+
+### 병합 후 8축 재검증 (2026-08-26, 트리 `0044c7a83` — lane-4 후속 세션이 관측)
+
+배경: M5 증거는 `5d68cdac9` 트리 기준이었으나, 이후 origin/main 4커밍(t269·t250·t259·t273)이 착지했고
+그중 t273(#1656)이 README×4·main.yaml에서 본 카드 파일면과 겹침 → `0044c7a83` 병합 후 최종 트리에서
+전 축 재측정. M5의 좀비 완료분(선행 lane-4 세션의 in-flight 에이전트 소행)은 운영자 승인으로 흡수.
+
+| # | 축 | 관측 (재측정, 병합 트리) |
+|---|-----|------|
+| 1 | hugo build | `hugo --source docs-site --minify --gc` → rc=0, WARN/ERROR 0행 |
+| 2 | sitemap | `ls docs-site/public/sitemap.xml` → 572 bytes 존재 |
+| 3 | URL 블랙리스트 | grep 3-도메인 → `0` |
+| 4 | Mermaid LR/RL | grep → `0` |
+| 5 | 4로케일 파리티 | `scripts/docs-i18n-check.sh` rc=0, Errors 0 / Warnings 0; 래칫 now=54 = base=54, `comm -23` 신규 발산 0행 |
+| 6 | README H2 파리티 | `grep -c '^## '` → 12/12/12/12 |
+| 7 | 본문 emoji | 펜스 인식 스캔(스크립트 `.moai/state/verify/913edc05-…/bodyscan.pl`): 이모지 추가 32행 전부 faq×4·README×4·statusline×4의 코드펜스 내부 — 본문(펜스 밖) 카운트 HEAD=0, origin/main=0, 12파일 전부 SAME. 상식 검증: 펜스 무관 총계 faq_ko=5·README_ko=29 (스캐너 정상) |
+| 8 | version-sync | hugo.toml `v3.1.3`/`2026-08-24`; 배지 `Release-v3.1.3` ×4파일; `🗿` 토큰 분포 v3.1.3×24 + v3.1.2×12 — 후자 전부 승인형(faq "현재 설치된 버전" 설명 ×4 + 화살표-왼쪽 토큰 faq×4·README×4, acceptance [R3]·d-2). t273 유입 신규 스테일 표시 0건 |
+
+판정: **8축 전부 PASS (병합 트리 `0044c7a83` 기준)** — AC-DVC-005의 최종-트리 계약 충족.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
@@ -105,10 +125,7 @@
 - cross_platform_build.status: n/a (docs-only — Go 빌드 표면 무변경, AC-DVC-006 diff 0)
 - total_run_phase_files: 58 (hugo.toml 1 + docs-site 4로케일 53 + README 4)
 - m1_to_mn_commit_strategy: per-milestone 4 commits on WT-v313-docs, no push (manager-git owns push+PR at sync)
-
-## §E.3 Run-phase Audit-Ready Signal
-
-_<pending run-phase>_
+- post_merge_reverify_tree: 0044c7a83 (origin/main 4커밋 통합 후 8축 재검증 PASS — §E.2 병합 재검증 표)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
