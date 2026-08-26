@@ -2,9 +2,9 @@
 id: SPEC-V3R6-GRAPH-FRESHNESS-002
 title: "Graph freshness remediation: t250 CR round-2 adopted findings, test/code policy cleanup, and predecessor SPEC correction-and-close"
 version: "1.0.0"
-status: in-progress
+status: completed
 created: 2026-08-26
-updated: 2026-08-26
+updated: 2026-08-27
 author: manager-spec
 priority: P2
 phase: "v3.2.0 target"
