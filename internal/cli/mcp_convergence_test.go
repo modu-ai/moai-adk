@@ -586,13 +586,23 @@ func grepRepo(t *testing.T, files []string, needle string) []string {
 // AP-AMM-1).
 func TestPerformCodexAudit_ReusesExistingCodexHandler_NoReimpl_AP_AMM_1(t *testing.T) {
 	// Swap codex seams (the same ones mcp_codex_test.go swaps). The adversarial
-	// path (turn/start) emits the verdict as a final agentMessage; a clean review
-	// (no finding bullets) synthesizes to verdict=pass.
+	// path (turn/start) emits the verdict as a final agentMessage stating the
+	// verdict in a line of its own, which synthesizes to verdict=pass.
+	//
+	// The message STATES its verdict on purpose. This test's claim is
+	// pass-through — that the engine forwards whatever codex decided rather than
+	// deciding for itself — so the body has to carry a decision for there to be
+	// anything to forward. It previously read "codex:ok, no findings", a body
+	// matching no known verdict format, and passed only because the synthesizer
+	// then defaulted to pass. That default is the defect
+	// SPEC-CODEX-VERDICT-SYNTH-001 removes: on the adversarial path an
+	// unrecognized body now synthesizes inconclusive, because failing to
+	// recognize a format is having observed nothing.
 	lines := []string{
 		`{"id":1,"result":{"userAgent":"fake/1","codexHome":"/x","platformFamily":"unix","platformOs":"macos"}}`,
 		`{"id":2,"result":{"thread":{"id":"tid-fake"}}}`,
 		`{"id":3,"result":{"turn":{"id":"trn","status":"inProgress"}}}`,
-		`{"method":"item/completed","params":{"threadId":"tid-fake","turnId":"trn","completedAtMs":1,"item":{"type":"agentMessage","id":"m1","text":"codex:ok, no findings"}}}`,
+		`{"method":"item/completed","params":{"threadId":"tid-fake","turnId":"trn","completedAtMs":1,"item":{"type":"agentMessage","id":"m1","text":"Verdict: pass — no findings."}}}`,
 		`{"method":"turn/completed","params":{"threadId":"tid-fake","turn":{"id":"trn","status":"completed"}}}`,
 	}
 	prevLook, prevSess := codexLookPath, codexSession
