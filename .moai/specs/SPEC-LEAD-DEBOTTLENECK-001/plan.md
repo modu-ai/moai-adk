@@ -49,7 +49,7 @@ Tier M 구현 계획. 마일스킨 순서는 결정 가역성 — 변경 가능�
 4. 템플릿 미러 동기화 + `make build` + 중립성 스캔 — AC-007
 
 ### M3 (Medium) — 기계적 검증
-1. 런타임 프로브: UNNAMED deputy → named 세션 SendMessage 발송 형상 관측 (AC-004)
+1. 런타임 프로브: UNNAMED deputy → named 세션 SendMessage 발송 형상 관측 (AC-004 — 테스트 컴패니언은 리드 세션이 시나리오 시작 시 기동; 프로토콜 고정 토큰 `LEAD-MERGE-APPROVED`/`FINAL VERDICT:`/`RECOMMEND:` 사용)
 2. 2+ 레인 시나리오 before/after 리드 턴 점유 계수 (AC-009 — before는 구현 전 Pre-flight에서 녹화)
 3. 머지 승인 0 누락 + 게이트 우회 0 확인 (AC-010)
 4. 전체 diff 검사: Go 경로 0회 (AC-011)
