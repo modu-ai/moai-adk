@@ -349,7 +349,7 @@ SPEC마다 독립된 작업 트리를 준다. `moai cc -w <이름>`으로 진입
 | CWD 충돌 해결 | `(worktree_path, session_id)` 쌍으로 재사용 경로를 구분 |
 | 깊이 상한 | 중첩 복잡도를 제한 |
 
-> **지금 쓸 수 있다**: `moai cc -k`(또는 `moai glm -k`)로 리드를 띄우고, `-k --name <role>`로 동반 세션을 하나씩 붙인다 — 터미널당 하나씩 손으로 띄운다. `moai chain <status|lineage|back|list|prune>`으로 계보를 읽고, `moai todo`(인자 없이 대기열 보기, `add`·`list`·`next`·`done`·`unpick`·`drop`·`undrop`·`edit`·`move`, 두 단어 이상은 그대로 카드 추가)로 `backlog` 컬럼을 운영한다. 실행 순서는 위 "v3.1 새 기능 — 칸반 모드" 절에 있다.
+> **지금 쓸 수 있다**: `moai cc -k`(또는 `moai glm -k`)로 리드를 띄우고, `-k --name <role>`로 동반 세션을 하나씩 붙인다 — 터미널당 하나씩 손으로 띄운다. `moai chain <status|lineage|back|list|prune>`으로 계보를 읽고, `moai todo`(인자 없이 대기열 보기, `add`·`list`·`next`·`done`·`unpick`·`drop`·`undrop`·`edit`·`move`·`analyze`, 두 단어 이상은 그대로 카드 추가)로 `backlog` 컬럼을 운영한다. 실행 순서는 위 "v3.1 새 기능 — 칸반 모드" 절에 있다.
 
 > 자세히: [칸반 모드 가이드](https://adk.mo.ai.kr/ko/advanced/kanban-mode)
 
@@ -488,9 +488,9 @@ flowchart TD
 ### 스테이터스라인 읽기
 
 ```
-🤖 Opus | 🧠 xhigh·t | ♻️ 87% | 🔅 v2.1.212 | 🗿 v3.1.2 | ⏳ 2h 34m | 💬 MoAI
+🤖 Opus | 🧠 xhigh·t | ♻️ 87% | 🔅 v2.1.212 | 🗿 v3.1.3 | ⏳ 2h 34m | 💬 MoAI
 🪫 CW: ████████░░ 88% (⚠️/clear) | 🔋 5H: ████░░░░░░ 45% (4h 30m) | 🪫 7D: ████████░░ 82% (Jan 21)
-📁 moai-adk-go | 📡 modu-ai/moai-adk, 7/3 | 🅱️ [WT] release/v3.1.2 +3 | 💾 +1 M2 ?0 | 📋 [run SPEC-AUTH-001-run] | 💌 PR #1042 (⌥approved)
+📁 moai-adk-go | 📡 modu-ai/moai-adk, 7/3 | 🅱️ [WT] release/v3.1.3 +3 | 💾 +1 M2 ?0 | 📋 [run SPEC-AUTH-001-run] | 💌 PR #1042 (⌥approved)
 🏷️ run | 👤 manager-develop | 🔄 TODO: 1/3
 ```
 
@@ -742,7 +742,7 @@ Claude의 각 티어는 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수를 통해 GLM �
 
 **domain (전문 영역) 7개**: `moai-domain-backend`, `moai-domain-frontend`, `moai-domain-database`, `moai-domain-design-dna`, `moai-domain-html-report`, `moai-domain-humanize`, `moai-domain-svg-infographic`
 
-`moai-domain-design-dna`는 v3.1.1에 새로 들어왔다. 스크린샷이든 이미지 묶음이든 살아 있는 URL이든 참고할 디자인 하나를 받아 색·간격·모서리·타이포 같은 잴 수 있는 값과 그 디자인의 결, 특수 렌더링 효과까지 Design DNA JSON 한 벌로 역추출한다. 그 JSON을 다시 넣으면 같은 결을 지닌 새 산출물을 만든다 — "이 화면처럼 만들어 줘"를 말로 옮기지 않고 값으로 옮기는 경로다.
+`moai-domain-design-dna`는 v3.1.1에 새로 들어왔다. 스크린샷이든 이미지 묶음이든 살아 있는 URL이든 참고할 디자인 하나를 받아 색·간격·모서리·타이포 같은 잴 수 있는 값과 그 디자인의 결, 특수 렌더링 효과까지 Design DNA JSON 한 벌로 역추출한다. 그 JSON을 다시 넣으면 같은 결을 지닌 새 산출물을 만든다 — "이 화면처럼 만들어 줘"를 말로 옮기지 않고 값으로 옮기는 경로다. 다이어그램 프로파일도 지원한다: 활성 프로파일 표식이 프로젝트 루트의 `.design-dna/` 아래 저장되어 `moai update`를 넘겨 살아남고, 옵트인 mermaid·drawio 임포터는 소스를 신뢰하지 않는 입력으로 다뤄 좌표·색·글꼴·레이아웃은 넘어오지 않는다.
 
 ### CHANGELOG
 
@@ -763,7 +763,7 @@ Claude의 각 티어는 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수를 통해 GLM �
 ### 스테이터스라인의 버전 표시는 무슨 뜻인가?
 
 ```
-🗿 v3.1.1 -> 🗿 v3.1.2
+🗿 v3.1.2 -> 🗿 v3.1.3
 ```
 
 앞의 값이 현재 설치된 moai-adk 버전이고, 화살표는 올릴 수 있는 업데이트가 있다는 뜻이다. `moai update`를 실행하면 사라진다.
