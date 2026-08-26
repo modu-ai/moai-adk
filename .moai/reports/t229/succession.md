@@ -31,3 +31,12 @@
 
 - 분기점 `f7eec06c7` (2026-08-23) — 이후 main 대거 전진(t207·t187·v3.1.3 풀·t269·t250·t259·t273·t274 등). `origin/main..HEAD` diff의 −19,409는 스테일 베이스 역방향 아티팩트 (카드 삭제가 아님).
 - 병합 커밋·충돌 해소·병합 후 재검증: 아래 '진행' 절에 순차 기록.
+
+## 진행 — 병합 후 재검증 (2026-08-26, 후속 세션 관측)
+
+| 단계 | 관측 |
+|---|---|
+| 병합 | `4561f432c` (origin/main → WT-audit-verdict-converge, `--no-edit`) — 충돌 0, `internal/cli/` 마커 0건, 작업 트리 클린, divergence `0 17` |
+| 카드 코드 생존 | `mcp_codex.go`에 `adoptConservativeVerdict`·`codexScoredVerdict`·`codexVerdictSignalsOf` 마커 10회; `codex_verdict_regression_test.go`·`codex_review_rpc_test.go` 존재 |
+| 대상 테스트 (병합 트리) | `go test ./internal/cli/ -run 'TestSynthesizeReviewOutput\|TestConverge_\|TestRunMultiAudit_\|TestCodexTask_OutputText' -count=1` → `ok github.com/modu-ai/moai-adk/internal/cli 1.034s` (본문 ok 행 직독). `-v` 재실행 `=== RUN` 34케이스 — 셀렉터 0매칭 아님 확인 |
+| 전 패키지 판정 | CI 몫 (로컬 full 수트 재실행은 부하 규율 위반 — `m4-close.md` §2·CLAUDE.local §4) |
