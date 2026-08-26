@@ -98,6 +98,8 @@ response = client.messages.create(
 | Claude 订阅 (Pro/Max/Team/Enterprise) | 1 小时（自动，无额外费用） | 超出额度时自动切换为 5 分钟 |
 | API 密钥 · 第三方 | 5 分钟 | 可用 `ENABLE_PROMPT_CACHING_1H=1` 切换为 1 小时 |
 
+Claude Code 2.1.243 起，`promptCacheTtl` 和 `subagentPromptCacheTtl` 设置（环境变量 `CLAUDE_CODE_PROMPT_CACHE_TTL` / `CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL`）允许 API 密钥和云提供商会话只为主对话保留 1 小时缓存，子代理仍为 5 分钟。z.ai 等第三方网关是否真正生效尚未实测 —— 网关环境下，确认之前请按 5 分钟默认值来规划。
+
 ## 破坏缓存的行为（成本视角）
 
 做出下列行为后，下一个请求错过缓存，一个回合又慢又贵。付过一次又慢又贵的回合之后，新前缀会重新缓存。

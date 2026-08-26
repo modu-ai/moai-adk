@@ -133,6 +133,8 @@ response = client.messages.create(
 | Claude 구독 (Pro/Max/Team/Enterprise) | 1시간 (자동, 추가 비용 없음) | 한도 초과 시 5분으로 자동 전환 |
 | API 키·서드파티 | 5분 | `ENABLE_PROMPT_CACHING_1H=1`로 1시간 전환 가능 |
 
+Claude Code 2.1.243부터는 `promptCacheTtl`·`subagentPromptCacheTtl` 설정(환경변수 `CLAUDE_CODE_PROMPT_CACHE_TTL` / `CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL`)으로 API 키·클라우드 제공자 세션이 메인 대화에 한해 1시간 캐시를 유지할 수 있습니다. 서브에이전트는 5분에 남습니다. z.ai 같은 서드파티 게이트웨이가 이 설정을 실제로 반영하는지는 아직 측정되지 않았습니다 — 게이트웨이 환경에서는 확인 전까지 5분 기본값을 기준으로 계획하세요.
+
 ## 캐시를 깨뜨리는 것 (비용 관점)
 
 아래 행동을 하면 그다음 요청이 캐시를 놓쳐 한 턴이 느려지고 비싸집니다. 느리고

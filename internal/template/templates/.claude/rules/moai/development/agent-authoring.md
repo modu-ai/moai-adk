@@ -51,7 +51,7 @@ All agent definitions use YAML frontmatter. The following fields are available:
 | disallowedTools | No | None | Tools to deny (denylist approach, alternative to tools) |
 | model | No | inherit | Model selection: sonnet, opus, haiku, or inherit |
 | permissionMode | No | default | Permission behavior for the agent |
-| maxTurns | No | Unlimited | Maximum agentic turns before stopping (current optional field) |
+| maxTurns | No | Unlimited | Maximum agentic turns before stopping (current optional field). Since Claude Code 2.1.246 a subagent stopping at its `maxTurns` limit returns its output marked as partial with a hint to continue it via `SendMessage`, instead of appearing finished |
 | skills | No | None | Skills injected into agent context at startup |
 | mcpServers | No | None | MCP servers available to this agent |
 | hooks | No | None | Lifecycle hooks scoped to this agent |

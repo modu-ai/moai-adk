@@ -154,3 +154,11 @@ workflow:
     # the guard is active.
     branch_guard:
         enabled: true
+    # agent_stop_guard: SendMessage deny layer against revival of stopped
+    # teammates (TaskStop does not reclaim the name address; one message
+    # resumes a stopped agent from its transcript). Recording + observation +
+    # advisory always run regardless of this flag; this local opt-in enables
+    # the deny layer for dogfood. Shipped default-false in template
+    # (internal/config/defaults.go enforces this).
+    agent_stop_guard:
+        enabled: true

@@ -142,19 +142,26 @@ const (
 	// suffixed id as unknown, so the window comes from the resolved context
 	// window (glmAutoCompactWindow) instead.
 	//
+	// The default is glm-5.3-flash. glm-5.3 (DefaultGLM53) stays a named
+	// constant and a ValidGLMModels() member so an explicit selection keeps
+	// loading — the offered set is derived from these constants, so the
+	// non-default ids need their own declarations to survive a default switch.
+	//
 	// glm-5.3 is reachable on the Anthropic-compatible endpoint this client uses.
 	// It is not granted on the native paas surface for every account, so a key
 	// that works here can still be refused there — the two surfaces carry
 	// different model grants.
-	DefaultGLMHigh   = "glm-5.3"
-	DefaultGLMMedium = "glm-5.3"
-	DefaultGLMLow    = "glm-5.3"
-	DefaultGLMFable  = "glm-5.3"
-	// Additional GLM models — those exposed by ValidGLMModels() (glm-5.1,
-	// glm-4.7, glm-4.5-air) are selectable in the tier slots; glm-4.5,
+	DefaultGLM53Flash = "glm-5.3-flash"
+	DefaultGLM53      = "glm-5.3"
+	DefaultGLMHigh    = DefaultGLM53Flash
+	DefaultGLMMedium  = DefaultGLM53Flash
+	DefaultGLMLow     = DefaultGLM53Flash
+	DefaultGLMFable   = DefaultGLM53Flash
+	// Additional GLM models — those exposed by ValidGLMModels() (glm-5.3,
+	// glm-5.1, glm-4.7, glm-4.5-air) are selectable in the tier slots; glm-4.5,
 	// glm-4.6, glm-5.2, and glm-5-turbo are named constants with no config
-	// surface. glm-5.2 left the offered set when glm-5.3 became every tier's
-	// default, but stays declared so an existing llm.yaml naming it still
+	// surface. glm-5.2 left the offered set when a single model became every
+	// tier's default, but stays declared so an existing llm.yaml naming it still
 	// loads and still resolves a context window.
 	DefaultGLM45     = "glm-4.5"
 	DefaultGLM46     = "glm-4.6"
@@ -164,9 +171,9 @@ const (
 	DefaultGLM52     = "glm-5.2"
 	DefaultGLM5Turbo = "glm-5-turbo"
 	// Legacy GLM model names (map to tiers)
-	DefaultGLMHaiku  = "glm-5.3"
-	DefaultGLMSonnet = "glm-5.3"
-	DefaultGLMOpus   = "glm-5.3"
+	DefaultGLMHaiku  = DefaultGLM53Flash
+	DefaultGLMSonnet = DefaultGLM53Flash
+	DefaultGLMOpus   = DefaultGLM53Flash
 	// Default1MContextTokens is the token count for Claude Code's 1M context
 	// mode. Used to populate CLAUDE_CODE_AUTO_COMPACT_WINDOW when the High slot
 	// model resolves to the 1M context tier.
@@ -833,6 +840,13 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// config. Template neutrality: no `enabled: true` anywhere under
 		// internal/template/templates/.
 		AgentModelGuard: AgentModelGuardConfig{
+			Enabled: false,
+		},
+		// The SendMessage stop-guard deny layer ships OFF the same way: stop
+		// recording and send observation + advisory always run; a maintainer
+		// opts into denial via local config. Template neutrality: no
+		// `enabled: true` anywhere under internal/template/templates/.
+		AgentStopGuard: AgentStopGuardConfig{
 			Enabled: false,
 		},
 		// SPEC-MOAI-MCP-SERVER-001 M2 (REQ-MCP-008 / C6): the codex review gate

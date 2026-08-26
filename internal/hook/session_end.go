@@ -97,6 +97,10 @@ func (h *sessionEndHandler) Handle(ctx context.Context, input *HookInput) (*Hook
 	if projectDir != "" {
 		cleanupGLMSettingsLocal(projectDir)
 		cleanupBogusRootDir(projectDir)
+		// Stop-guard lifecycle cleanup: remove this session's stop-registry
+		// entries so stale records never outlive the session or leak into a
+		// later session's name reuse. Best-effort, fail-open.
+		ClearAgentStops(projectDir, input.SessionID)
 		// SPEC-OBSERVE-HYGIENE-001 M2 (REQ-OBH-002): prune zero-byte + aged
 		// trace-*.jsonl and stale task-metrics.jsonl under .moai/logs/. Best-effort;
 		// absent logs dir is a silent no-op (EC-2); the current session's active

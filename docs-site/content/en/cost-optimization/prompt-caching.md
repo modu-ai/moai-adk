@@ -144,6 +144,8 @@ large context on hand.
 | Claude subscription (Pro/Max/Team/Enterprise) | 1 hour (automatic, no extra cost) | Falls back to 5 minutes automatically when limits are exceeded |
 | API key · third-party | 5 minutes | Can switch to 1 hour with `ENABLE_PROMPT_CACHING_1H=1` |
 
+Since Claude Code 2.1.243, the `promptCacheTtl` and `subagentPromptCacheTtl` settings (env vars `CLAUDE_CODE_PROMPT_CACHE_TTL` / `CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL`) let API-key and cloud-provider sessions hold a 1-hour cache on the main conversation while subagents stay at 5 minutes. Whether a third-party gateway such as z.ai honors the setting is unmeasured — on a gateway, keep planning around the 5-minute default until you have verified otherwise.
+
 ## What breaks the cache (cost perspective)
 
 Do any of the following and the next request misses the cache — one turn gets

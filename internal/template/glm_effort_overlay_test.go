@@ -202,3 +202,96 @@ func TestSessionGLMReasoningStateForEffort(t *testing.T) {
 		})
 	}
 }
+
+// TestIsGLMFlashModel covers the flash-model predicate: exact id, decorated
+// id, case-insensitive input; and the non-flash negatives (glm-5.3 itself,
+// glm-5.1, empty).
+func TestIsGLMFlashModel(t *testing.T) {
+	tests := []struct {
+		model string
+		want  bool
+	}{
+		{config.DefaultGLM53Flash, true},
+		{"GLM-5.3-FLASH", true},
+		{"glm-5.3-flash[1m]", true},
+		{config.DefaultGLM53, false},
+		{config.DefaultGLM51, false},
+		{"", false},
+	}
+	for _, tt := range tests {
+		if got := IsGLMFlashModel(tt.model); got != tt.want {
+			t.Errorf("IsGLMFlashModel(%q) = %v, want %v", tt.model, got, tt.want)
+		}
+	}
+}
+
+// TestCollapseClaudeEffortToGLMForModel covers the model-aware collapse:
+// under glm-5.3-flash EVERY Claude effort (including low) resolves to the max
+// state — flash accepts reasoning_effort: max only, so the low state must not
+// be emitted; under any non-flash model the existing collapse is unchanged
+// (low→low, above-low→max, unrecognized→max).
+func TestCollapseClaudeEffortToGLMForModel(t *testing.T) {
+	flash := config.DefaultGLM53Flash
+	// Flash: every effort → max (thinking enabled, reasoning_effort=max).
+	for _, effort := range []string{
+		EffortLevelLow, EffortLevelMedium, EffortLevelHigh,
+		EffortLevelXHigh, EffortLevelMax, "bogus-unrecognized", "",
+	} {
+		got := CollapseClaudeEffortToGLMForModel(flash, effort)
+		if got.Name != GLMStateMax || !got.ThinkingEnabled || got.ReasoningEffort != GLMReasoningEffortMax {
+			t.Errorf("CollapseClaudeEffortToGLMForModel(flash, %q) = %+v, want the max state", effort, got)
+		}
+	}
+	// Mirror-image regression: non-flash collapse EXACTLY unchanged.
+	for _, tc := range []struct {
+		model, effort, wantName, wantEffort string
+	}{
+		{config.DefaultGLM53, EffortLevelLow, GLMStateLow, GLMReasoningEffortLow},
+		{config.DefaultGLM53, EffortLevelMedium, GLMStateMax, GLMReasoningEffortMax},
+		{config.DefaultGLM53, "bogus", GLMStateMax, GLMReasoningEffortMax},
+		{config.DefaultGLM51, EffortLevelLow, GLMStateLow, GLMReasoningEffortLow},
+		{"", EffortLevelLow, GLMStateLow, GLMReasoningEffortLow},
+	} {
+		got := CollapseClaudeEffortToGLMForModel(tc.model, tc.effort)
+		if got.Name != tc.wantName || got.ReasoningEffort != tc.wantEffort {
+			t.Errorf("CollapseClaudeEffortToGLMForModel(%q, %q) = %+v, want %s/%s",
+				tc.model, tc.effort, got, tc.wantName, tc.wantEffort)
+		}
+	}
+}
+
+// TestResolveGLMReasoningForModel covers the model-aware per-agent resolution:
+// under flash even a non-override agent at Claude effort low pins max (the
+// low state does not exist on flash); under non-flash the coding-max override
+// and the plain collapse keep their existing behavior.
+func TestResolveGLMReasoningForModel(t *testing.T) {
+	flash := config.DefaultGLM53Flash
+	if got := ResolveGLMReasoningForModel(flash, "manager-spec", EffortLevelLow); got.Name != GLMStateMax || got.ReasoningEffort != GLMReasoningEffortMax {
+		t.Errorf("ResolveGLMReasoningForModel(flash, manager-spec, low) = %+v, want max", got)
+	}
+	if got := ResolveGLMReasoningForModel(config.DefaultGLM53, "manager-spec", EffortLevelLow); got.Name != GLMStateLow {
+		t.Errorf("ResolveGLMReasoningForModel(glm-5.3, manager-spec, low) = %+v, want low", got)
+	}
+	if got := ResolveGLMReasoningForModel(config.DefaultGLM53, "manager-develop", EffortLevelLow); got.Name != GLMStateMax {
+		t.Errorf("ResolveGLMReasoningForModel(glm-5.3, manager-develop, low) = %+v, want max (coding-max override)", got)
+	}
+}
+
+// TestSessionGLMReasoningStateForModel covers the model-aware main-session
+// derivation: under flash a web-set low effort still pins max and the empty
+// fallback stays max; under non-flash the prefs-driven collapse is unchanged.
+func TestSessionGLMReasoningStateForModel(t *testing.T) {
+	flash := config.DefaultGLM53Flash
+	if got := SessionGLMReasoningStateForModel(flash, EffortLevelLow); got.Name != GLMStateMax || got.ReasoningEffort != GLMReasoningEffortMax {
+		t.Errorf("SessionGLMReasoningStateForModel(flash, low) = %+v, want max", got)
+	}
+	if got := SessionGLMReasoningStateForModel(flash, ""); got.Name != GLMStateMax {
+		t.Errorf("SessionGLMReasoningStateForModel(flash, \"\") = %+v, want max", got)
+	}
+	if got := SessionGLMReasoningStateForModel(config.DefaultGLM53, EffortLevelLow); got.Name != GLMStateLow || got.ReasoningEffort != GLMReasoningEffortLow {
+		t.Errorf("SessionGLMReasoningStateForModel(glm-5.3, low) = %+v, want low", got)
+	}
+	if got := SessionGLMReasoningStateForModel(config.DefaultGLM53, ""); got.Name != GLMStateMax {
+		t.Errorf("SessionGLMReasoningStateForModel(glm-5.3, \"\") = %+v, want max", got)
+	}
+}

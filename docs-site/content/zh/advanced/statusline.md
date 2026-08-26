@@ -156,7 +156,7 @@ flowchart TD
 
 ### GLM 上下文量表校正 (Issue #653)
 
-有一点要注意。GLM-5.3 实际上是 1M 上下文模型，但 Claude Code 不管提供方是谁，都按 Claude 槽位标准 (Opus=1M, Sonnet/Haiku=200K) 报告 `context_window_size`。于是 GLM 会话里原始观测值可能错误地显示为约 180K。MoAI 在两处把它纠正 —— 启动器用 `CLAUDE_CODE_MAX_CONTEXT_TOKENS` 环境变量向会话声明 1M 窗口，状态栏用 `internal/statusline/memory.go` 的 `ResolveGLMContextWindow` 校正观测值。`glm-5.3` 映射为 1,000,000，也可以用 `MOAI_STATUSLINE_CONTEXT_SIZE` 环境变量直接覆盖，或用 `llm.glm.context_windows` 表设置。GLM 会话里请信任 MoAI 状态栏的 CW%，而不是原始值。
+有一点要注意。GLM-5.3 实际上是 1M 上下文模型，但 Claude Code 不管提供方是谁，都按 Claude 槽位标准 (Opus=1M, Sonnet/Haiku=200K) 报告 `context_window_size`。于是 GLM 会话里原始观测值可能错误地显示为约 180K。MoAI 在两处把它纠正 —— 启动器用 `CLAUDE_CODE_MAX_CONTEXT_TOKENS` 环境变量向会话声明 1M 窗口，状态栏用 `internal/statusline/memory.go` 的 `ResolveGLMContextWindow` 校正观测值。`glm-5.3` 和 `glm-5.3-flash`（默认模型）各自通过自己的表项映射为 1,000,000，也可以用 `MOAI_STATUSLINE_CONTEXT_SIZE` 环境变量直接覆盖，或用 `llm.glm.context_windows` 表设置。GLM 会话里请信任 MoAI 状态栏的 CW%，而不是原始值。
 
 ## 上下文用量快照 —— 留给下一个会话
 

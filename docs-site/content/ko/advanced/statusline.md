@@ -156,7 +156,7 @@ flowchart TD
 
 ### GLM 컨텍스트 게이지 보정 (Issue #653)
 
-한 가지 주의할 점이 있습니다. GLM-5.3는 실제로 1M 컨텍스트 모델인데, Claude Code는 제공자와 무관하게 Claude 슬롯 기준(Opus=1M, Sonnet/Haiku=200K)으로 `context_window_size`를 보고합니다. 그래서 GLM 세션에서는 원본 관측값이 약 180K로 잘못 나올 수 있습니다. MoAI는 두 지점에서 이 값을 바로잡습니다 — 런처가 `CLAUDE_CODE_MAX_CONTEXT_TOKENS` 환경변수로 세션에 1M 창을 선언하고, 상태표시줄은 `internal/statusline/memory.go`의 `ResolveGLMContextWindow`로 관측값을 보정합니다. `glm-5.3`는 1,000,000으로 매핑되며, `MOAI_STATUSLINE_CONTEXT_SIZE` 환경변수로 직접 덮어쓰거나 `llm.glm.context_windows` 테이블로 설정할 수도 있습니다. GLM 세션에서는 원본 값이 아니라 MoAI 상태표시줄의 CW%를 신뢰하세요.
+한 가지 주의할 점이 있습니다. GLM-5.3는 실제로 1M 컨텍스트 모델인데, Claude Code는 제공자와 무관하게 Claude 슬롯 기준(Opus=1M, Sonnet/Haiku=200K)으로 `context_window_size`를 보고합니다. 그래서 GLM 세션에서는 원본 관측값이 약 180K로 잘못 나올 수 있습니다. MoAI는 두 지점에서 이 값을 바로잡습니다 — 런처가 `CLAUDE_CODE_MAX_CONTEXT_TOKENS` 환경변수로 세션에 1M 창을 선언하고, 상태표시줄은 `internal/statusline/memory.go`의 `ResolveGLMContextWindow`로 관측값을 보정합니다. `glm-5.3`와 `glm-5.3-flash`(기본 모델)는 각자 자기 테이블 항목으로 1,000,000에 매핑되며, `MOAI_STATUSLINE_CONTEXT_SIZE` 환경변수로 직접 덮어쓰거나 `llm.glm.context_windows` 테이블로 설정할 수도 있습니다. GLM 세션에서는 원본 값이 아니라 MoAI 상태표시줄의 CW%를 신뢰하세요.
 
 ## 컨텍스트 사용량 스냅샷 — 다음 세션을 위해
 

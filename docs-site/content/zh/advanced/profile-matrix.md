@@ -121,13 +121,14 @@ moai model profile --json   # 机器可读
 
 在 GLM 后端(`moai glm` / `moai cg` 的 GLM 面板)上，会在配置矩阵之上应用一层覆盖:
 
-- 模型槽位映射: `fable` → `glm-5.3`(Fable 槽位，`ANTHROPIC_DEFAULT_FABLE_MODEL`)。该槽位是 GLM 环境绑定，与配置矩阵无关 — 即使没有任何矩阵格子选择 Fable，它仍保持接线状态。
+- 模型槽位映射: `fable` → `glm-5.3-flash`(Fable 槽位，`ANTHROPIC_DEFAULT_FABLE_MODEL`)。该槽位是 GLM 环境绑定，与配置矩阵无关 — 即使没有任何矩阵格子选择 Fable，它仍保持接线状态。
 - Claude 的 5 级 effort collapse 到 z.ai 的 reasoning 上限上。GLM-5.3 **始终推理** — 不支持关闭 reasoning，请求关闭会直接失败 — 所以调节轴只有三档 `reasoning_effort`(low / high / max):
   - `low` → **reasoning-low**
   - `medium` / `high` / `xhigh` / `max` → **reasoning-max**
   - (无法识别的值 → reasoning-max，全称条款: 绝不推理不足)
   - reasoning-high 仍是有效的 wire 值，但没有任何 Claude effort collapse 到它上面
   - 没有显式覆盖的 GLM 会话默认以 **reasoning-max** 运行
+- flash 例外: 在 `glm-5.3-flash`（默认模型）上，上面的 collapse 规则不适用 — 包括 `low` 在内的**所有** Claude effort 都固定为 **reasoning-max**，因为 flash 只接受 `reasoning_effort: max`。low/high/max 三档是 glm-5.3 及更早模型的体系。
 - coding-max override: `manager-develop` 无论 collapse 结果如何都强制为 **reasoning-max**(z.ai 的"编码任务用 reasoning max"建议)
 - `manager-git` 在三个配置文件中都是 `low` effort，占据 reasoning-low 的位置
 

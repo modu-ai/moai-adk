@@ -1,6 +1,7 @@
 package config
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/pkg/models"
@@ -346,38 +347,39 @@ func TestNewDefaultLLMConfig(t *testing.T) {
 
 // TestNewDefaultLLMConfig_GLMTierMapping verifies the GLM model tier mapping.
 // The High slot (Opus equivalent) and the legacy Opus field both map to
-// glm-5.3 (the z.ai-accepted id); 1M context activation is driven by the
-// resolved context window, not a model-id suffix. Every Claude slot defaults
-// to the same model so auto-compact window sizing stays coherent.
+// glm-5.3-flash (the z.ai-accepted flash id, the default coding model); 1M
+// context activation is driven by the resolved context window, not a model-id
+// suffix. Every Claude slot defaults to the same model so auto-compact window
+// sizing stays coherent.
 func TestNewDefaultLLMConfig_GLMTierMapping(t *testing.T) {
 	t.Parallel()
 
 	cfg := NewDefaultLLMConfig()
 
-	if cfg.GLM.Models.High != "glm-5.3" {
-		t.Errorf("GLM.Models.High: got %q, want %q", cfg.GLM.Models.High, "glm-5.3")
+	if cfg.GLM.Models.High != "glm-5.3-flash" {
+		t.Errorf("GLM.Models.High: got %q, want %q", cfg.GLM.Models.High, "glm-5.3-flash")
 	}
-	if cfg.GLM.Models.Opus != "glm-5.3" {
-		t.Errorf("GLM.Models.Opus: got %q, want %q", cfg.GLM.Models.Opus, "glm-5.3")
+	if cfg.GLM.Models.Opus != "glm-5.3-flash" {
+		t.Errorf("GLM.Models.Opus: got %q, want %q", cfg.GLM.Models.Opus, "glm-5.3-flash")
 	}
 	// Every slot resolves to the same model. Claude Code sizes the auto-compact
 	// window once from the High slot; a smaller model in any other slot would
 	// inherit a window larger than it can hold. Tier differentiation lives on
 	// the effort axis (glm_effort_overlay.go), not here.
-	if cfg.GLM.Models.Medium != "glm-5.3" {
-		t.Errorf("GLM.Models.Medium: got %q, want %q (unified)", cfg.GLM.Models.Medium, "glm-5.3")
+	if cfg.GLM.Models.Medium != "glm-5.3-flash" {
+		t.Errorf("GLM.Models.Medium: got %q, want %q (unified)", cfg.GLM.Models.Medium, "glm-5.3-flash")
 	}
-	if cfg.GLM.Models.Low != "glm-5.3" {
-		t.Errorf("GLM.Models.Low: got %q, want %q (unified)", cfg.GLM.Models.Low, "glm-5.3")
+	if cfg.GLM.Models.Low != "glm-5.3-flash" {
+		t.Errorf("GLM.Models.Low: got %q, want %q (unified)", cfg.GLM.Models.Low, "glm-5.3-flash")
 	}
-	if cfg.GLM.Models.Sonnet != "glm-5.3" {
-		t.Errorf("GLM.Models.Sonnet: got %q, want %q (unified)", cfg.GLM.Models.Sonnet, "glm-5.3")
+	if cfg.GLM.Models.Sonnet != "glm-5.3-flash" {
+		t.Errorf("GLM.Models.Sonnet: got %q, want %q (unified)", cfg.GLM.Models.Sonnet, "glm-5.3-flash")
 	}
-	if cfg.GLM.Models.Haiku != "glm-5.3" {
-		t.Errorf("GLM.Models.Haiku: got %q, want %q (unified)", cfg.GLM.Models.Haiku, "glm-5.3")
+	if cfg.GLM.Models.Haiku != "glm-5.3-flash" {
+		t.Errorf("GLM.Models.Haiku: got %q, want %q (unified)", cfg.GLM.Models.Haiku, "glm-5.3-flash")
 	}
-	if cfg.GLM.Models.Fable != "glm-5.3" {
-		t.Errorf("GLM.Models.Fable: got %q, want %q (unified)", cfg.GLM.Models.Fable, "glm-5.3")
+	if cfg.GLM.Models.Fable != "glm-5.3-flash" {
+		t.Errorf("GLM.Models.Fable: got %q, want %q (unified)", cfg.GLM.Models.Fable, "glm-5.3-flash")
 	}
 }
 
@@ -386,17 +388,27 @@ func TestNewDefaultLLMConfig_GLMTierMapping(t *testing.T) {
 func TestDefaultGLMConstants(t *testing.T) {
 	t.Parallel()
 
-	if DefaultGLMHigh != "glm-5.3" {
-		t.Errorf("DefaultGLMHigh: got %q, want %q", DefaultGLMHigh, "glm-5.3")
+	if DefaultGLMHigh != "glm-5.3-flash" {
+		t.Errorf("DefaultGLMHigh: got %q, want %q", DefaultGLMHigh, "glm-5.3-flash")
 	}
-	if DefaultGLMOpus != "glm-5.3" {
-		t.Errorf("DefaultGLMOpus: got %q, want %q", DefaultGLMOpus, "glm-5.3")
+	if DefaultGLMOpus != "glm-5.3-flash" {
+		t.Errorf("DefaultGLMOpus: got %q, want %q", DefaultGLMOpus, "glm-5.3-flash")
 	}
-	if DefaultGLMMedium != "glm-5.3" {
-		t.Errorf("DefaultGLMMedium: got %q, want %q (unified)", DefaultGLMMedium, "glm-5.3")
+	if DefaultGLMMedium != "glm-5.3-flash" {
+		t.Errorf("DefaultGLMMedium: got %q, want %q (unified)", DefaultGLMMedium, "glm-5.3-flash")
 	}
-	if DefaultGLMLow != "glm-5.3" {
-		t.Errorf("DefaultGLMLow: got %q, want %q (unified)", DefaultGLMLow, "glm-5.3")
+	if DefaultGLMLow != "glm-5.3-flash" {
+		t.Errorf("DefaultGLMLow: got %q, want %q (unified)", DefaultGLMLow, "glm-5.3-flash")
+	}
+	// glm-5.3 preserved as a still-selectable model: it keeps its own named
+	// constant and its ValidGLMModels() membership even though no slot
+	// defaults to it anymore (the set is derived from constants; a bare
+	// retarget of the defaults would silently drop it from the offered set).
+	if DefaultGLM53 != "glm-5.3" {
+		t.Errorf("DefaultGLM53: got %q, want %q", DefaultGLM53, "glm-5.3")
+	}
+	if DefaultGLM53Flash != "glm-5.3-flash" {
+		t.Errorf("DefaultGLM53Flash: got %q, want %q", DefaultGLM53Flash, "glm-5.3-flash")
 	}
 	// The smaller models stay reachable as tier-slot choices even though no
 	// slot defaults to them — the closed set, not the default, is their home.
@@ -412,6 +424,14 @@ func TestDefaultGLMConstants(t *testing.T) {
 	}
 	if Default1MContextTokens != 1_000_000 {
 		t.Errorf("Default1MContextTokens: got %d, want %d", Default1MContextTokens, 1_000_000)
+	}
+	// The offered closed set: flash first (the default), glm-5.3 retained as an
+	// explicit member. Logged for the SPEC acceptance evidence.
+	wantSet := []string{DefaultGLM53Flash, DefaultGLM53, DefaultGLM51, DefaultGLM47, DefaultGLM45Air}
+	gotSet := ValidGLMModels()
+	t.Logf("ValidGLMModels() = %v", gotSet)
+	if !slices.Equal(gotSet, wantSet) {
+		t.Errorf("ValidGLMModels() = %v, want %v", gotSet, wantSet)
 	}
 }
 

@@ -77,10 +77,10 @@ llm:
   glm:
     base_url: "https://api.z.ai/api/anthropic"
     models:
-      high: "glm-5.3"          # 1M context — Opus 슬롯
-      medium: "glm-5.3"        # 1M context   — Sonnet 슬롯
-      low: "glm-5.3"          # 1M context   — 경량 슬롯
-      fable: "glm-5.3"
+      high: "glm-5.3-flash"   # 1M context — Opus 슬롯
+      medium: "glm-5.3-flash" # 1M context   — Sonnet 슬롯
+      low: "glm-5.3-flash"    # 1M context   — 경량 슬롯
+      fable: "glm-5.3-flash"
 ```
 
 | 키 | 설명 |

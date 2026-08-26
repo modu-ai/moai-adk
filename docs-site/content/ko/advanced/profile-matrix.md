@@ -125,7 +125,7 @@ effort는 목적 클래스마다 대응하는 유지 에이전트 행에서 빌�
 
 {{< icon warning warn >}} **정직성 고지**: GLM 백엔드 effort 오버레이는 구현과 배선은 끝났지만, 실제 GLM 세션에서의 유효성은 검증 예정입니다 — "동작 보장"으로 서술하지 않습니다.
 
-GLM 백엔드(`moai glm` 전환, 또는 `moai cg`의 GLM 패널)에서는 프로필 매트릭스 위에 오버레이가 얹힙니다. Fable 슬롯이 `glm-5.3`에 묶이고(z.ai가 도달 가능한 모델), Claude의 5단 effort가 z.ai의 reasoning 상한 체계로 모아집니다. GLM-5.3은 **항상 추론합니다** — reasoning을 끄는 것은 지원되지 않으므로, 조절 축은 세 단계 `reasoning_effort`(low / high / max) 하나입니다. 모아짐은: Claude `low`는 reasoning-low로, 그 위의 모든 단계(`medium`·`high`·`xhigh`·`max`)는 reasoning-max로. 인식하지 못하는 값도 reasoning-max로 빠집니다(전체성 조항 — 절대 과소 추론하지 않음). reasoning-high는 여전히 유효한 wire 값이지만 어떤 Claude effort도 그리로 모아지지는 않습니다. 명시적 오버라이드가 없는 GLM 세션은 기본으로 reasoning-max로 실행됩니다.
+GLM 백엔드(`moai glm` 전환, 또는 `moai cg`의 GLM 패널)에서는 프로필 매트릭스 위에 오버레이가 얹힙니다. Fable 슬롯이 `glm-5.3-flash`에 묶이고(z.ai가 도달 가능한 모델), Claude의 5단 effort가 z.ai의 reasoning 상한 체계로 모아집니다. GLM-5.3은 **항상 추론합니다** — reasoning을 끄는 것은 지원되지 않으므로, 조절 축은 세 단계 `reasoning_effort`(low / high / max) 하나입니다. 모아짐은: Claude `low`는 reasoning-low로, 그 위의 모든 단계(`medium`·`high`·`xhigh`·`max`)는 reasoning-max로. 인식하지 못하는 값도 reasoning-max로 빠집니다(전체성 조항 — 절대 과소 추론하지 않음). reasoning-high는 여전히 유효한 wire 값이지만 어떤 Claude effort도 그리로 모아지지는 않습니다. 명시적 오버라이드가 없는 GLM 세션은 기본으로 reasoning-max로 실행됩니다. 단, `glm-5.3-flash`(기본 모델)에서는 이 모아짐이 적용되지 않고 `low`를 포함한 모든 Claude effort가 reasoning-max로 고정됩니다 — flash는 `reasoning_effort: max`만 받아들이기 때문입니다. low/high/max 세 단계는 glm-5.3 이하 모델의 체계입니다.
 
 구현 에이전트인 `manager-develop`은 이 모아짐 결과와 무관하게 reasoning-max로 강제하고(z.ai의 "코딩 과제는 reasoning max" 권고), `manager-git`은 세 프로필 모두 `low` effort여서 reasoning-low 자리를 차지합니다. 런타임의 단일 원천은 `internal/template/glm_effort_overlay.go`입니다.
 

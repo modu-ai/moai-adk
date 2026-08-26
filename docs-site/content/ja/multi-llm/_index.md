@@ -24,19 +24,19 @@ GLM (Generative Language Model) は z.ai が提供する AI モデルサービ�
 |------|------|
 | **GLM コーディングプラン** | 月額 **$10** から ([登録リンク](https://z.ai/subscribe?ic=1NDV03BGWU)) |
 | **互換性** | Claude Code と互換 — コード変更なし |
-| **モデル** | glm-5.3、GLM-4.7、GLM-4.5-Air、無料モデル |
+| **モデル** | glm-5.3-flash（デフォルト）、glm-5.3、GLM-4.7、GLM-4.5-Air、無料モデル |
 
 ## デフォルトのモデルマッピング
 
 | Claude ティア | GLM モデル | 入力 (1M トークンあたり) | 出力 (1M トークンあたり) |
 |-------------|----------|-----------------|-----------------|
-| Opus / Sonnet / Haiku / Fable | glm-5.3 | 未公開 | 未公開 |
+| Opus / Sonnet / Haiku / Fable | glm-5.3-flash | 未公開 | 未公開 |
 
 > z.ai は glm-5.3 のトークン単価をまだ公表していません。前世代の glm-5.2 は入力 $2.00 / 出力 $8.00 (1M トークンあたり) でした。定額の Coding Plan で使う場合、この単価は課金に影響しません。
 
-> 4 つの Claude ティア (Opus、Sonnet、Haiku、Fable) はすべて `glm-5.3` の単一モデル (1M コンテキスト) に統一されます。GLM モデルを opus→glm-5.3、sonnet→glm-4.7、haiku→glm-4.5-air のようにティアごとに異なるマッピングにしない理由は、1M コンテキストモデルと 200K コンテキストモデルを同じセッションで混在させられないためです — エージェント spawn 時に 1M コンテキストウィンドウを持つモデルと 200K モデルがセッションを共有できない問題が発生します。
+> 4 つの Claude ティア (Opus、Sonnet、Haiku、Fable) はすべて `glm-5.3-flash` の単一モデル (1M コンテキスト) に統一されます。GLM モデルを opus→glm-5.3、sonnet→glm-4.7、haiku→glm-4.5-air のようにティアごとに異なるマッピングにしない理由は、1M コンテキストモデルと 200K コンテキストモデルを同じセッションで混在させられないためです — エージェント spawn 時に 1M コンテキストウィンドウを持つモデルと 200K モデルがセッションを共有できない問題が発生します。glm-5.3 はどのティアスロットでも引き続き選択できます（`llm.yaml` の `llm.glm.models.*`）。
 
-> このマッピングは 4 つの Claude Code `ANTHROPIC_DEFAULT_*_MODEL` 環境変数 (`ANTHROPIC_DEFAULT_OPUS_MODEL`、`ANTHROPIC_DEFAULT_SONNET_MODEL`、`ANTHROPIC_DEFAULT_HAIKU_MODEL`、`ANTHROPIC_DEFAULT_FABLE_MODEL`) で実装され、すべて `glm-5.3` に設定されます。Fable 環境変数は Claude Code v2.1.202 から公式サポートされています。
+> このマッピングは 4 つの Claude Code `ANTHROPIC_DEFAULT_*_MODEL` 環境変数 (`ANTHROPIC_DEFAULT_OPUS_MODEL`、`ANTHROPIC_DEFAULT_SONNET_MODEL`、`ANTHROPIC_DEFAULT_HAIKU_MODEL`、`ANTHROPIC_DEFAULT_FABLE_MODEL`) で実装され、すべて `glm-5.3-flash` に設定されます。Fable 環境変数は Claude Code v2.1.202 から公式サポートされています。
 
 > 無料モデルも提供されています: GLM-4.7-Flash、GLM-4.5-Flash。価格の詳細は [z.ai Pricing](https://docs.z.ai/guides/overview/pricing) を参照してください。
 

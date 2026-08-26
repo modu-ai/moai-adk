@@ -156,7 +156,7 @@ When the marker turns on, follow the fixed order: save in-flight work to `progre
 
 ### GLM context gauge correction (Issue #653)
 
-One caveat. GLM-5.3 is a genuine 1M-context model, but Claude Code reports `context_window_size` by the Claude slot regardless of provider (Opus=1M, Sonnet/Haiku=200K). So in a GLM session the raw observation can misreport at about 180K. MoAI corrects the value at two points — the launcher declares the 1M window to the session via the `CLAUDE_CODE_MAX_CONTEXT_TOKENS` environment variable, and the statusline corrects the observation via `ResolveGLMContextWindow` in `internal/statusline/memory.go`. `glm-5.3` maps to 1,000,000, and you can override it directly with the `MOAI_STATUSLINE_CONTEXT_SIZE` environment variable or configure it through the `llm.glm.context_windows` table. In a GLM session, trust the MoAI statusline's CW%, not the raw value.
+One caveat. GLM-5.3 is a genuine 1M-context model, but Claude Code reports `context_window_size` by the Claude slot regardless of provider (Opus=1M, Sonnet/Haiku=200K). So in a GLM session the raw observation can misreport at about 180K. MoAI corrects the value at two points — the launcher declares the 1M window to the session via the `CLAUDE_CODE_MAX_CONTEXT_TOKENS` environment variable, and the statusline corrects the observation via `ResolveGLMContextWindow` in `internal/statusline/memory.go`. `glm-5.3` and `glm-5.3-flash` (the default model) each map to 1,000,000 through their own table entries, and you can override it directly with the `MOAI_STATUSLINE_CONTEXT_SIZE` environment variable or configure it through the `llm.glm.context_windows` table. In a GLM session, trust the MoAI statusline's CW%, not the raw value.
 
 ## The context-usage snapshot — for the next session
 
