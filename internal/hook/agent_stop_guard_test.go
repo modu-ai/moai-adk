@@ -803,6 +803,45 @@ func TestExtractAgentSpawnName(t *testing.T) {
 	}
 }
 
+// TestRemoveAgentStopEntryKeepsSiblings pins the partial-removal path:
+// removing one entry of a multi-entry registry writes back the kept sibling
+// (only the LAST entry removal deletes the file).
+func TestRemoveAgentStopEntryKeepsSiblings(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	RecordAgentStop(root, taskStopInput("sess-1", `{"name":"worker-a"}`))
+	RecordAgentStop(root, taskStopInput("sess-1", `{"name":"worker-b"}`))
+
+	if err := removeAgentStopEntry(root, "sess-1", "worker-a"); err != nil {
+		t.Fatalf("removeAgentStopEntry: %v", err)
+	}
+	reg := readAgentStopRegistryFile(t, root, "sess-1")
+	if len(reg.Entries) != 1 || reg.Entries[0].Name != "worker-b" {
+		t.Errorf("registry after partial removal = %+v, want exactly worker-b", reg.Entries)
+	}
+
+	// Absent registry / absent entry are idempotent nil-error no-ops.
+	if err := removeAgentStopEntry(root, "sess-9", "worker-a"); err != nil {
+		t.Errorf("absent registry: got error %v, want nil", err)
+	}
+	if err := removeAgentStopEntry(root, "sess-1", "worker-z"); err != nil {
+		t.Errorf("absent entry: got error %v, want nil", err)
+	}
+}
+
+// TestClearAgentStopsAbsentNoop pins the session-clear no-op: an absent
+// registry produces no audit row and no error.
+func TestClearAgentStopsAbsentNoop(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	ClearAgentStops(root, "sess-none")
+	if _, err := os.Stat(filepath.Join(root, ".moai", "logs", agentStopAuditFileName)); !os.IsNotExist(err) {
+		t.Errorf("absent-registry clear wrote an audit artifact")
+	}
+	ClearAgentStops("", "sess-1")
+	ClearAgentStops(root, "")
+}
+
 // TestSessionEndClearsStops pins AC-TRG-006: the session-end path removes the
 // session's registry file and appends a session_cleared audit row.
 func TestSessionEndClearsStops(t *testing.T) {
