@@ -6,7 +6,26 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/navigator/astx"
 )
+
+// requireCodeExtraction skips the calling test when the astx extraction
+// layer cannot run (tree-sitter needs CGO): a `!cgo` toolchain yields SKIP
+// verdicts, never FAILs, with the reason naming extraction-unsupported
+// (REQ-GFR-001 / CR round-2 3855002004).
+func requireCodeExtraction(t *testing.T) {
+	t.Helper()
+	probe := filepath.Join(t.TempDir(), "probe.go")
+	if err := os.WriteFile(probe, []byte("package probe\n\nfunc P() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	set, err := astx.Extract("go", probe)
+	if err == nil && set.Supported {
+		return
+	}
+	t.Skipf("extraction unsupported (tree-sitter unavailable or CGO disabled): %v", err)
+}
 
 // codeQueryFixture: A→B→C chain plus an exported helper with args.
 func codeQueryFixture(t *testing.T) string {
@@ -144,6 +163,7 @@ func TestFileAPI_RejectsPathEscape(t *testing.T) {
 // AC-GF-020 — file_api answers exported signatures only: Helper's full
 // signature with parameter names, no function bodies anywhere.
 func TestFileAPI_SignaturesOnly(t *testing.T) {
+	requireCodeExtraction(t)
 	root := codeQueryFixture(t)
 
 	res, err := FileAPI(root, "internal/chain/chain.go")
@@ -173,6 +193,7 @@ func TestFileAPI_SignaturesOnly(t *testing.T) {
 
 // AC-GF-021 — find_code + trace_calls answer from the code layer.
 func TestFindCodeAndTraceCalls(t *testing.T) {
+	requireCodeExtraction(t)
 	root := codeQueryFixture(t)
 
 	found, prov, err := FindCode(root, "B")
@@ -222,6 +243,7 @@ func TestFindCodeAndTraceCalls(t *testing.T) {
 // Per-tree anchoring (REQ-GF-019 / the t246 defect family): two trees with
 // different content answer from their OWN artifacts — no cross-tree reuse.
 func TestCodeQueries_PerTreeAnswers(t *testing.T) {
+	requireCodeExtraction(t)
 	treeA := codeQueryFixture(t)
 	treeB := codeQueryFixture(t)
 
@@ -252,10 +274,20 @@ func TestCodeQueries_PerTreeAnswers(t *testing.T) {
 			inB = true
 		}
 	}
+	// Positive assertion first (CR round-2 3855002013): tree A's answer must
+	// carry its own known caller — B calls C in the base fixture — so an
+	// EMPTY answer cannot pass the leak check vacuously.
+	inA := false
 	for _, e := range callersA {
+		if strings.HasSuffix(e.From, ":B") {
+			inA = true
+		}
 		if strings.HasSuffix(e.From, ":D") {
 			t.Error("tree A answered with tree B's content — cross-tree leak (t246 family)")
 		}
+	}
+	if !inA {
+		t.Errorf("tree A's own answer must include its B caller — without this the leak check passes vacuously on an empty answer: %+v", callersA)
 	}
 	if !inB {
 		t.Errorf("tree B's own answer must include its D caller: %+v", callersB)

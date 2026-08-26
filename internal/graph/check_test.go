@@ -2,6 +2,7 @@ package graph
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -196,7 +197,7 @@ func TestCheckFreshness_AgedLayerFails(t *testing.T) {
 	// Age codemaps past the default threshold (>= 40 changed described-source
 	// files since the stamped commit).
 	for i := 0; i < DefaultThresholds().CodemapsChangedFiles; i++ {
-		p := filepath.Join(root, "internal", "alpha", filepath.FromSlash("gen"+strings.Repeat("0", 3-len(itoa(i)))+itoa(i)+".go"))
+		p := filepath.Join(root, "internal", "alpha", fmt.Sprintf("gen%03d.go", i))
 		if err := os.WriteFile(p, []byte("package alpha\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -220,18 +221,6 @@ func TestCheckFreshness_AgedLayerFails(t *testing.T) {
 			}
 		}
 	}
-}
-
-func itoa(i int) string {
-	if i == 0 {
-		return "0"
-	}
-	var b []byte
-	for i > 0 {
-		b = append([]byte{byte('0' + i%10)}, b...)
-		i /= 10
-	}
-	return string(b)
 }
 
 // AC-GF-005 — absent is a distinct, failing verdict: a fresh worktree state

@@ -2,11 +2,16 @@ package quality
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/modu-ai/moai-adk/internal/graph"
+	"github.com/modu-ai/moai-adk/internal/mx"
 )
 
 // gfGit runs git in the fixture repo.
@@ -128,6 +133,79 @@ func TestGateGraphFreshness_FreshNoticeBeforeLanguageDetection(t *testing.T) {
 	// what the language-detection-ordering guarantees.
 	if !strings.Contains(out, "graph-freshness") {
 		t.Errorf("step must emit its notice even with no detectable language, got: %q", out)
+	}
+}
+
+// gfStampAllLayers stamps an IN-SYNC state for all three graph layers on the
+// fixture — mirrors the CLI fixture's stampAllLayers (graph_check_test.go):
+// codemaps provenance at HEAD, mx sidecar over the fixture's own file
+// inventory, and an edges meta stamped against the CURRENT source
+// fingerprints (order matters — the mx sidecar write must precede the
+// fingerprint computation or the edges layer reads back stale).
+func gfStampAllLayers(t *testing.T, root string) {
+	t.Helper()
+	head := gfGit(t, root, "rev-parse", "HEAD")
+
+	cmDir := filepath.Join(root, ".moai", "project", "codemaps")
+	if err := os.MkdirAll(cmDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	pvJSON, err := json.Marshal(&mx.Provenance{
+		SchemaVersion: mx.ProvenanceSchemaVersion,
+		TreeRoot:      root,
+		CommitSHA:     head,
+		GeneratedBy:   "codemaps-gen",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(cmDir, "provenance.json"), pvJSON, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	sum, err := mx.HashFile(filepath.Join(root, "internal", "a.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	mgr := mx.NewManager(filepath.Join(root, ".moai", "state"))
+	if err := mgr.Write(&mx.Sidecar{
+		SchemaVersion: mx.SchemaVersion,
+		ScannedAt:     time.Now(),
+		Provenance:    mx.StampMXScan(root, map[string]string{"internal/a.go": sum}),
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	graphDir := filepath.Join(root, ".moai", "project", "graph")
+	if err := os.MkdirAll(graphDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(graphDir, "edges.jsonl"), []byte(""), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := graph.WriteEdgesMeta(filepath.Join(graphDir, graph.MetaFileName),
+		root, graph.SourceFingerprintsForEdges(root), 0); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// REQ-GFR-002 / CR round-2 3855002099 — the all-fresh posture: a fixture
+// with ALL THREE layers stamped in sync passes carrying the LITERAL fresh
+// notice (gate.go:1216 "graph-freshness: all layers fresh"), not merely any
+// "graph-freshness" substring — the other postures (stale/disabled) also
+// contain the substring, so only the literal distinguishes fresh.
+func TestGateGraphFreshness_AllLayersFreshNotice(t *testing.T) {
+	root := newGFFixture(t)
+	gfStampAllLayers(t, root)
+
+	g := gfGate(&GraphFreshnessConfig{Enabled: true, Blocking: false,
+		CodemapsChangedFiles: 40, MXIndexChangedFiles: 1}, root)
+	passed, out := g.Run(context.Background())
+	if !passed {
+		t.Fatalf("all-layers-fresh fixture must pass the gate, got: %s", out)
+	}
+	if !strings.Contains(out, "graph-freshness: all layers fresh") {
+		t.Errorf("fresh posture must carry the literal all-fresh notice, got: %q", out)
 	}
 }
 
