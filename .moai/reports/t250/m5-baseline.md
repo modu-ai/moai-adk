@@ -15,9 +15,10 @@
 
 ## What WAS measured (session-transcript scan, Grep/Read only)
 
-Mechanical `grep -c '"name":"<tool>"'` over session transcript JSONL files in
-`~/.claude/projects/-Users-goos-MoAI-moai-adk-go/` — the 8 most recent
-sessions at measurement time:
+Mechanical `grep -c '"name":"<tool>"'` over session transcript JSONL files in the
+developer-local Claude Code session store for this repository (machine-specific
+path outside the repository; redacted from the committed report) — the 8 most
+recent sessions at measurement time:
 
 | Transcript (session id) | Date | Grep tool-use | Read tool-use |
 |---|---|---|---|

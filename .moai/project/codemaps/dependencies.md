@@ -113,7 +113,7 @@ graph TD
 
 - `cli` → 모든 business 계층 + infrastructure
 - `config` → models, defs (핵심 주입)
-- `hook` → config, lsp, session, mx
+- `hook` → config, lsp, session, mx, graph
 - `coreGit` → foundation
 
 ---

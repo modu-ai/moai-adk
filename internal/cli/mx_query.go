@@ -111,7 +111,7 @@ moai mx query --file-prefix internal/auth/ --format table`,
 			// pre-existing behavior (absent errors above; unjudgeable answers
 			// as-is).
 			errs := cmd.ErrOrStderr()
-			if graph.MXIndexNeedsRefresh(projectRoot) {
+			if graph.MXIndexNeedsRefresh(projectRoot, graph.DefaultThresholds().MXIndexChangedFiles) {
 				if stats, rErr := mx.RefreshIndex(stateDir, projectRoot, nil); rErr != nil {
 					_, _ = fmt.Fprintf(errs, "mx refresh failed (answering from the existing index): %v\n", rErr)
 				} else if over := graphRefreshOverrun(projectRoot, stats.Duration); over > 0 {

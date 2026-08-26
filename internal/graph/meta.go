@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"github.com/modu-ai/moai-adk/internal/mx"
 )
@@ -97,27 +98,53 @@ func writeMetaFile(metaPath string, meta edgesMeta) error {
 	return nil
 }
 
-// EdgesSourcesMoved reports whether the edges artifact's source fingerprints
-// no longer match the tree's current source sets — the cheap, rebuild-free
-// staleness probe the query paths consult before refreshing (REQ-GF-007).
-// No provenance sidecar ⇒ moved (the artifact cannot be judged fresh).
+// compareSourceFingerprints names every source set whose stamped and current
+// fingerprints disagree — changed content, vanished from the current tree, or
+// APPEARED after the build (a source absent at build time — e.g. the mx
+// sidecar did not yet exist — moved from absent to present just as surely as
+// one that changed content). One comparison rule shared by the rebuild-free
+// probe (EdgesSourcesMovedFor) and the check (checkEdges) so the two can
+// never disagree about what a moved source is (CR round-2 3855149325).
+func compareSourceFingerprints(stamped, current map[string]string) []string {
+	names := make([]string, 0, len(stamped)+len(current))
+	for name := range stamped {
+		names = append(names, name)
+	}
+	for name := range current {
+		if _, ok := stamped[name]; !ok {
+			names = append(names, name)
+		}
+	}
+	sort.Strings(names)
+	var moved []string
+	for _, name := range names {
+		if cur, exists := current[name]; !exists || cur != stamped[name] {
+			moved = append(moved, name)
+		}
+	}
+	return moved
+}
+
+// EdgesSourcesMoved reports whether the DEFAULT edges artifact's source
+// fingerprints no longer match the tree's current source sets — the cheap,
+// rebuild-free staleness probe the query paths consult before refreshing
+// (REQ-GF-007). No provenance sidecar ⇒ moved (the artifact cannot be judged
+// fresh).
 func EdgesSourcesMoved(projectRoot string) bool {
-	pv, ok := ReadEdgesMeta(filepath.Join(projectRoot, ".moai", "project", "graph", MetaFileName))
+	return EdgesSourcesMovedFor(projectRoot, filepath.Join(projectRoot, ".moai", "project", "graph", "edges.jsonl"))
+}
+
+// EdgesSourcesMovedFor is EdgesSourcesMoved over a caller-SELECTED edges
+// artifact (--edges): the probe reads the selected artifact's OWN meta
+// sidecar — the edges.meta.json in its directory — not the default
+// artifact's, so a refresh decision follows the artifact the query is about
+// to answer from (CR round-2 3855149254).
+func EdgesSourcesMovedFor(projectRoot, edgesFile string) bool {
+	pv, ok := ReadEdgesMeta(filepath.Join(filepath.Dir(edgesFile), MetaFileName))
 	if !ok {
 		return true
 	}
-	current := SourceFingerprintsForEdges(projectRoot)
-	for name, stamped := range pv.SourceFingerprints {
-		if cur, exists := current[name]; !exists || cur != stamped {
-			return true
-		}
-	}
-	for name := range current {
-		if _, stamped := pv.SourceFingerprints[name]; !stamped {
-			return true // a source appeared after the build
-		}
-	}
-	return false
+	return len(compareSourceFingerprints(pv.SourceFingerprints, SourceFingerprintsForEdges(projectRoot))) > 0
 }
 
 // ReadEdgesMeta loads the edges provenance sidecar. ok=false when the file is
