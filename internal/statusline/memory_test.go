@@ -487,6 +487,9 @@ func TestResolveGLMContextWindow(t *testing.T) {
 		}{
 			{"glm-5.2 1M context", "glm-5.2", 1_000_000},
 			{"glm-5.2[1m] suffix resolves via substring match", "glm-5.2[1m]", 1_000_000},
+			{"glm-5.3-flash direct table entry (divergence guard)", "glm-5.3-flash", 1_000_000},
+			{"glm-5.3 retained entry", "glm-5.3", 1_000_000},
+			{"unregistered glm-5.3-* variant inherits 1M via substring", "glm-5.3-flash-lite", 1_000_000},
 			{"glm-5.1 substring match (longest wins)", "glm-5.1", 200_000},
 			{"glm-4.5-air longest match wins over glm-4.5", "glm-4.5-air", 128_000},
 			{"glm-4.5 fallback when no -air suffix", "glm-4.5", 128_000},
@@ -537,4 +540,23 @@ func TestResolveGLMContextWindow(t *testing.T) {
 			t.Errorf("ResolveGLMContextWindow(glm-4.5) = %d, want 128000 (built-in fallback)", got)
 		}
 	})
+}
+
+// TestGLMContextWindowsFlashDirectEntry pins that "glm-5.3-flash" carries its
+// OWN explicit table entry (the divergence guard). Resolution alone would pass
+// through the "glm-5.3" longest-substring path today (both 1M), so the
+// assertion targets the table directly: a future divergent flash window must
+// change THIS entry, not ride the inherited substring match.
+func TestGLMContextWindowsFlashDirectEntry(t *testing.T) {
+	got, ok := glmContextWindows["glm-5.3-flash"]
+	if !ok {
+		t.Fatal(`glmContextWindows has no explicit "glm-5.3-flash" entry — the flash window rides the glm-5.3 substring match instead of its own entry`)
+	}
+	if got != 1_000_000 {
+		t.Errorf(`glmContextWindows["glm-5.3-flash"] = %d, want 1000000`, got)
+	}
+	// The glm-5.3 entry itself must stay.
+	if got := glmContextWindows["glm-5.3"]; got != 1_000_000 {
+		t.Errorf(`glmContextWindows["glm-5.3"] = %d, want 1000000 (retained)`, got)
+	}
 }
