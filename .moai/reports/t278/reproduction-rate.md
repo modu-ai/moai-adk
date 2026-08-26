@@ -74,9 +74,13 @@ Reading: a 0/40 window leaves a 37.7% chance the flake simply did not fire — t
 
 ## §5 Post-merge ledger (accruing from M3)
 
+Window opened **2026-08-26T18:05:57Z** — PR #1666 squash merge `379b310a6` landed on `main` (operator-approved via AskUserQuestion after CI read: required 5/5 pass, windows-latest Integration 13m41s pass; non-required `graph-freshness` fail attributed to orphan stamp `0d15864ae90b`, unrelated to this diff, main HEAD green).
+
+Inclusion boundary: ci.yml runs with `createdAt >= 2026-08-26T18:05:57Z` (the merge-commit push run included); `go_code=true` = Test job present via jobs API (same name-union as §4). Attempt-aware per §1 recipe. Window close per REQ-CFS-010: N ≥ 40 `go_code=true` runs AND ≥ 7 days.
+
 | Date | Run | Attempt | Job | Test | Result |
 |------|-----|---------|-----|------|--------|
-| — | — | — | — | — | (empty — window not yet opened) |
+| 2026-08-26T18:06:04Z | 32997835484 | 1 | — | — | merge-commit push run; in progress at window open — conclusion accrues on completion |
 
 ## §6 Gaps / Residual-risk (baseline section)
 

@@ -104,3 +104,15 @@ M1 결정(AND-gate) 구현: `AssertPaired` → `reportPaired`가 두 수치(per-
 - `5aedc1cd3` fix(SPEC-CI-FLAKE-SERIES-001): M2 RT005 latency assertion rebuilt as 20-sample p95 (t278)
 - `324883ebb` fix(SPEC-CI-FLAKE-SERIES-001): M2 paired calibrated arm enforces AND-gate (t278)
 
+### M3 — PR + CI 관측·머지·관측 창 개시 (2026-08-27, tree `30f3eddd0` → merge `379b310a6`)
+
+- PR #1666 (title t278, head `30f3eddd0` = branch HEAD) — CI 전수 판독 (이번 실행, gh pr checks 1666):
+  - required 5종 (`Test (ubuntu-latest)` / `Lint` / `Build (linux/amd64)` / `Analyze (Go) (go)` / `Release PR Multi-OS Gate`) 전부 pass — `gh api repos/modu-ai/moai-adk/branches/main/protection` → `required_status_checks.contexts`로 required 목록 확인.
+  - `Integration Tests (windows-latest)` pass 13m41s (마지막 pending 해소 — `gh pr checks 1666 --watch` 완료 시점) + mac/ubuntu 50s/48s pass · `Race Test` 7m42s pass · `Test (ubuntu-latest)` 8m45s pass · `spec-lint` 1m13s pass.
+  - 비-required `graph-freshness` fail (run 32995636365): `codemaps stamp 0d15864ae90b not comparable in this checkout: fatal: bad object` — 스탬프 고아(본 diff 무관). main HEAD 동일 체크 2026-08-26T17:45:04Z `success` 관측 (check-runs API) → 상속 아닌 PR-체크아웃 접근성 결함, 머지 차단 사유 아님.
+  - CodeRabbit `Review rate limited` — 리뷰 미시작 (gap으로 기록, pass 아님).
+- 운영자 squash 머지 승인 (AskUserQuestion — 옵션 A) → `gh pr merge 1666 --squash` → **MERGED `379b310a6` @ 2026-08-26T18:05:57Z**, `origin/main` `da791eb0a`→`379b310a6` 전진 확인 (`git fetch origin main` 후 rev-list `4 8`).
+- **관측 창 개시**: 경계 `createdAt ≥ 2026-08-26T18:05:57Z`, 첫 run `32997835484` (merge-commit push, 18:06:04Z 생성, 개시 시점 진행 중) — `reproduction-rate.md` §5 ledger 적립 개시.
+
+M3 종료 조건 (머지 + 관측 기록 개시) 충족.
+
