@@ -30,7 +30,7 @@ Canonical problem record: `.moai/reports/t279/triage-table.md` §F5. Code/premis
 All constraints from spec.md §D bind the run phase; the load-bearing four:
 
 1. **No new dependencies**, no schema_version change, no gate.yaml default changes.
-2. **Stamp reachability HARD**: never refresh this PR's codemaps stamp against branch-local HEAD. Below the threshold the committed `410da655f…` stamp carries to merge unchanged (expected case). At-or-above the threshold (≥40 changed files, `count >= th.CodemapsChangedFiles`, measured `check.go:214`) NO in-SPEC recovery exists: a merge-base restamp re-counts the same churn as stale by construction, so the pre-merge codemaps red is accepted and carried until a POST-MERGE main restamp — a lead/operator act outside this SPEC's delivery scope.
+2. **Stamp reachability HARD**: never refresh this PR's codemaps stamp against branch-local HEAD. Below the threshold the committed `410da655f…` stamp carries to merge unchanged (expected case). At-or-above the threshold (≥40 changed files, `count >= th.CodemapsChangedFiles`, authoritative pin `check.go:213` at HEAD 016dc0b8c) NO in-SPEC recovery exists: a merge-base restamp re-counts the same churn as stale by construction, so the pre-merge codemaps red is accepted and carried until a POST-MERGE main restamp — a lead/operator act outside this SPEC's delivery scope.
 3. **Targeted tests only** (`./internal/cli/... ./internal/mx/... ./internal/graph/...`); CI on the delivering PR is the full-suite judge. New tests use `t.TempDir()`, no OTEL env in parallel tests, path-free stderr assertions per cli conventions.
 4. **Docs-site 4-locale parity** when cli-reference pages change; no template-source impact (workflow file dev-only — measured, research.md §5).
 

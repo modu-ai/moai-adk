@@ -14,6 +14,12 @@ Iteration-2 additions to baseline-attribution (2026-08-27, HEAD advanced through
 - Six logic cells observed via acceptance.md §A.1's canonical script (Branch labels reused below): A rc=1 with `::error::codemaps provenance stamp 0d15864ae90b is NOT an ancestor of PR base origin/main …`; B rc=0 `guard: stamp 410da655f… reachable from origin/main`; C rc=1 `::error::codemaps provenance names commit 0d15864ae90b which does not exist in this checkout's history`; D rc=0 skip-with-reason line; E rc=0 `guard: push event (no base ref) — object presence verified only`; F (mutant) rc=1 `fatal: Not a valid object name origin/`.
 - Pre-M2 anatomy state observed: `grep -n "continue-on-error\|GITHUB_BASE_REF\|if:" .github/workflows/graph-freshness.yml` → zero matches.
 
+Delta-round additions (2026-08-27, post-iter-2 merge 016dc0b8c):
+
+- The tracked provenance is a MOVING TARGET and its sha is never asserted as a present-tense fact below. Historical pins carry their date/tree; the live-tree probe under AC-SP-002 is RECORDED, not pre-asserted. Observed this round: tracked `.commit_sha` = `a995e58fa69b40f3d76a76c0a5ca56d0594fb528` (upstream #1668 delivery), locally present (`git cat-file -t` → commit) but NOT an ancestor of origin/main (rc=1) — the second live F5-class instance on main; instance repair routes to lead triage outside this SPEC's scope.
+- Live-probe observation with the §A.1 canonical script against that current provenance: rc=1, `::error::codemaps provenance stamp a995e58fa… is NOT an ancestor of PR base origin/main …` — i.e., where a live orphan exists, the guard's red IS the correct instrument output, not an instrument failure. Instrument validity is decided by the fixture-controlled cells (AC-SP-001/002), never by which way the moving target points today.
+- N3 numeral correction propagated: authoritative threshold-comparison pin is `check.go:213` at HEAD 016dc0b8c (iter-2's :214 was a mis-count from a sed-offset print; file untouched since da791eb0a). Any :214 sighting in older commits is superseded by this round.
+
 ## §A. Reference Guard Script (canonical text)
 
 Every guard-shaped AC below verifies against THIS text: run-phase copies it verbatim into the workflow step (modulo workflow-env lines); evidence cells source it for execution. Where this section and the shipped step body disagree, the shipped step body must be brought to this contract or a blocker report returned.
@@ -66,20 +72,35 @@ REPO="$PWD" PROV=/tmp/pv-orphan.json GITHUB_BASE_REF=main bash <reference-script
 Observed (iteration-2): `rc=1`, message as quoted in baseline-attribution.
 Mutation/vacuity guard: count ≥1 ancestry-branch hit across evidence; a selector matching zero executions is green-vacuous.
 
-### AC-SP-002 — Guard passes on correct ancestor-named stamps (no false positive)
+### AC-SP-002 — Guard passes on correct ancestor-named stamps (no false positive; fixture-controlled, sha never reified)
 
-**Given** the tracked `.moai/project/codemaps/provenance.json` (`commit_sha` `410da655f…`)
-**When** the §A.1 canonical script runs against origin/main
-**Then** it exits 0 printing the reachability pass line.
+The tracked `.moai/project/codemaps/provenance.json` is a MUTABLE file; this criterion asserts GUARD correctness on controlled fixtures and records — never pre-asserts — the live-tree outcome.
 
-Verify:
+**(i) Instrument cell (fixture-controlled).**
+**Given** a provenance fixture naming ANY revision verified ancestor-of-origin/main at execution time (e.g., `git merge-base HEAD origin/main`, read fresh)
+**When** the §A.1 canonical script runs with that fixture
+**Then** it exits 0 printing the reachability pass line — regardless of which sha the tracked file currently names.
 
 ```bash
-printf "{\"schema_version\":1,\"commit_sha\":\"$(jq -r '.commit_sha' .moai/project/codemaps/provenance.json)\",\"dirty\":false}\n" > /tmp/pv-current.json
-REPO="$PWD" PROV=/tmp/pv-current.json GITHUB_BASE_REF=main bash <reference-script> ; echo "rc=$?"
+ANC=$(git merge-base HEAD origin/main)   # read at verification time — no stored literal
+printf '{"schema_version":1,"commit_sha":"%s","dirty":false}\n' "$ANC" > /tmp/pv-anc.json
+REPO="$PWD" PROV=/tmp/pv-anc.json GITHUB_BASE_REF=main bash <reference-script> ; echo "rc=$?"
+# expect rc=0, guard: stamp <ANC> reachable from origin/main
 ```
 
-Observed (iteration-2): `rc=0`, `guard: stamp 410da655f… reachable from origin/main`. Additional sweep: both `c9eed8ac6` and the delivering PR's eventual final stamp evaluate green.
+Observed equivalence (iteration-2, literal fixture `410da655f39d…` then-valid): `rc=0`, `guard: stamp 410da655f… reachable from origin/main`.
+
+**(ii) Historical live observation, date/tree-pinned (record-only).** On 2026-08-27 at HEAD lineage `0364217e9`, the tracked `.commit_sha` was `410da655f39d…` and `git merge-base --is-ancestor <sha> origin/main` returned rc=0 with the guard equivalent green (cell B). That sentence is TRUE OF ITS DATE/TREE ONLY; no current-tense claim about the mutable file is made anywhere in this document.
+
+**(iii) Live probe — RECORDED, not asserted.**
+
+```bash
+jq -r '.commit_sha' .moai/project/codemaps/provenance.json   # whatever it names NOW
+# build a one-field fixture from the value just read; run the §A.1 script vs origin/main; RECORD rc + output
+```
+
+Recorded delta-round (2026-08-27, post-merge 016dc0b8c): tracked sha `a995e58fa69b40f3d76a76c0a5ca56d0594fb528`; probe rc=1 with the ancestry `::error::` annotation naming that sha. Interpretation fixed here: where a live orphan exists on the tracked tree, red is the CORRECT instrument output (the guard doing its job); instrument validity rests solely on cells (i) and AC-SP-001, so this record neither passes nor fails the AC.
+**Pass rule**: AC-SP-002 holds iff cell (i) exits 0 with its pass line. Where the verification-time live probe comes back green (instance repaired), attach its output as supplementary evidence; do not substitute it for (i).
 
 ### AC-SP-003 — Guard fails on object-absence (environment-dependent shape closed; premise measured)
 
@@ -171,18 +192,20 @@ When the §A.1 canonical script runs
 Then it exits 0 AND stdout names object-presence verification only AND carries NO ancestry output.
 
 ```bash
-REPO="$PWD" PROV=/tmp/pv-current.json GITHUB_BASE_REF= bash <reference-script>
+REPO="$PWD" PROV=/tmp/pv-anc.json GITHUB_BASE_REF= bash <reference-script>
 echo "push-green rc=$?"        # expect rc=0, line: guard: push event (no base ref)...
 ```
 
 **Mutant-catch cell (discriminates the exact regression D1 names).** A guard variant that evaluates ancestry unconditionally against the empty base ref MUST fail this AC:
 
 ```bash
-REPO="$PWD" PROV=/tmp/pv-current.json GITHUB_BASE_REF= bash <mutant-script> ; echo "mutant rc=$?"
-# expect rc≠0 (fatal: Not a valid object name origin/) — i.e., the mutant turns a legitimate push red
+REPO="$PWD" PROV=/tmp/pv-anc.json GITHUB_BASE_REF= bash <mutant-script> ; echo "mutant rc=$?"
+# ASSERTED DISCRIMINATORS: exit rc≠0 AND a ::error:: annotation naming origin/ —
+# any visible git fatal text (e.g. "Not a valid object name origin/") is incidental:
+# the CANONICAL path suppresses stderr via 2>/dev/null, so such output is not part of the contract.
 ```
 
-Both cells OBSERVED (iteration-2): canonical rc=0 presence-only; mutant rc=1 — so any implementation equal to the mutant is caught by asserting (a)'s expected rc=0 + absence of ancestry output.
+Both cells OBSERVED (iteration-2): canonical rc=0 presence-only; mutant rc=1 with `::error::not ancestor of origin/` (its stray fatal line was incidental, suppression being exactly what the canonical script adds). Any implementation equal to the mutant is caught by asserting (a)'s expected rc=0 + absence of ancestry output.
 
 **(b) Static anatomy assertions over the SHIPPED `.github/workflows/graph-freshness.yml`** (execute after M2 lands; pre-M2 state observed as zero-matches):
 
@@ -233,7 +256,7 @@ Positive-side check: each allowed primitive occurs at least once (`grep -c` ≥1
 | AC-SP-011 | Must | REQ-SR-001, REQ-SR-004, REQ-SR-008 | push-event validity + anatomy + judgeability inputs (instrument basis) |
 | AC-SP-012 | Must | REQ-SR-004 | static-inspection instrument |
 
-Traceability both directions: REQ-SR-001→{001,002,011} · REQ-SR-002→{003} · REQ-SR-003→{004} · REQ-SR-004→{011,012} (+ plan.md §E4 review note) · REQ-SR-005→{005,006} · REQ-SR-006→{007} · REQ-SR-007→{008} · REQ-SR-008→{001,002,011} · REQ-SR-009→{009} · REQ-SR-010→{010}; every AC maps back into that list.
+Traceability both directions: REQ-SR-001→{001,002,011} · REQ-SR-002→{003} · REQ-SR-003→{004} · REQ-SR-004→{011,012} (+ plan.md §E3 dry-run review note) · REQ-SR-005→{005,006} · REQ-SR-006→{007} · REQ-SR-007→{008} · REQ-SR-008→{001,002,011} · REQ-SR-009→{009} · REQ-SR-010→{010}; every AC maps back into that list.
 
 ## §E. Edge Cases
 

@@ -67,7 +67,7 @@ Executed while clearing plan-audit iter-1 (PASS-WITH-DEBT 0.81); every cell belo
 
 | Measurement | Command | Outcome |
 |---|---|---|
-| D3 threshold direction | read `internal/graph/check.go` region | `if count >= th.CodemapsChangedFiles { → VerdictStale }` at **:214** this tree (coordinator's :213 = adjacent tree) |
+| D3 threshold direction | read `internal/graph/check.go` region; re-measured iter-2 with single grep hit | `if count >= th.CodemapsChangedFiles { → VerdictStale }` — authoritative pin **check.go:213** at HEAD 016dc0b8c (iter-2 author mis-measured :214 from a sed-offset print; the file is untouched since base da791eb0a, so the discrepancy was an authoring error, not a tree change) |
 | D5 absence premise | throwaway repo + local source-path fetch of main only | `git cat-file -e '0d15864ae90b^{commit}'` → rc=**128** (`fatal: Not a valid object name`) there; same command in the full-history worktree → rc=0. Fixture validity proven both directions before assertion text was written |
 | Guard branch A (non-ancestor) | §A.1 script vs origin/main | rc=1, `::error::…NOT an ancestor of PR base origin/main…` |
 | Guard branch B (ancestor GREEN) | §A.1 script, tracked-sha fixture | rc=0, `guard: stamp 410da655f… reachable from origin/main` |
@@ -78,5 +78,5 @@ Executed while clearing plan-audit iter-1 (PASS-WITH-DEBT 0.81); every cell belo
 | AC-SP-012 forbidden-token scan | grep -E over §A.1 text | zero matches (rc=1); allowance counts cat-file/merge-base/jq each ≥1 |
 | Pre-M2 anatomy state | grep over graph-freshness.yml | zero matches for continue-on-error / GITHUB_BASE_REF / step-level if |
 
-Observable boundary: cells A-E and the mutant ran against §A.1's contract text materialized as a scratch file because the shipped workflow step does not exist until M2 lands (plan-phase writes no implementation code); AC-SP-002's literal fence uses command substitution that the worktree isolation guard refuses to execute here — its substance (fixture built from the jq-read tracked sha, guard exits 0) was observed via the two-step equivalent above, and the fence remains paste-executable in an unrestricted shell.
+Observable boundary: cells A-E and the mutant ran against §A.1's contract text materialized as a scratch file because the shipped workflow step does not exist until M2 lands (plan-phase writes no implementation code). Worktree-guard acknowledgment covers BOTH acceptance.md fences the isolation guard refused here — AC-SP-002's command-substitution fixture build AND AC-SP-003's `cd /tmp/stamp-guard-t` compound: both are paste-executable in an unrestricted shell; their substance was observed via sandbox-safe equivalents (two-step fixture build for AC-SP-002; stepwise init→fetch→cat-file→guard sequence for AC-SP-003) with identical outcomes.
 
