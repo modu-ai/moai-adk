@@ -503,7 +503,7 @@ m1_to_mN_commit_strategy: per-milestone
 
 ```yaml
 sync_complete_at: 2026-08-27
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 189c8f8302fc3e7f064409bd8d6ec53693de41f3
 sync_status: green
 b12_self_test_a:
   pre_emission_grep_count: 0
