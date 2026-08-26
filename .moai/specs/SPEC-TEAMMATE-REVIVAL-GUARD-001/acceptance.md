@@ -8,7 +8,7 @@
 1. **RED baseline provenance** — RED cells cite the §B measurements in plan.md (B1: no `SendMessage|TaskStop` matcher in `.claude/settings.json`; B2: `grep -rn "TaskStop\|SendMessage" internal/ --include="*.go" -l` → 0 files). Both measured on `c9eed8ac6` before any implementation.
 2. **RED reason** — every AC is red for the same stated reason: the guard, its wiring, and its registry do not exist. No AC is red due to unrelated pre-existing files, and each green path runs through code this SPEC adds (no "someone fixes unrelated files" paths).
 3. **Mutant guard** — AC-TRG-003/004 pin the fail-open direction and its mirror (a guard that denies nothing satisfies nothing; a guard that denies live teammates fails AC-TRG-004b). The human-discipline mutant (broadcast instead of mechanism) satisfies no AC — there is nothing to run.
-4. **Live-vs-unit split** — unit ACs (001–008) run on synthetic `HookInput` fixtures with `t.TempDir()` registries; AC-TRG-010 is the live-session gate (E-P1) because mid-session probing was inconclusive (plan.md §C.1-E7).
+4. **Live-vs-unit split** — unit ACs (001–008 and 011) run on synthetic `HookInput` fixtures with `t.TempDir()` registries; AC-TRG-010 is the live-session gate (E-P1) because mid-session probing was inconclusive (plan.md §C.1-E7).
 
 ## §B AC Matrix
 
@@ -62,7 +62,7 @@
 
 ### AC-TRG-007 — Gate off ⇒ observe + advise, never deny (REQ-TRG-007) · P1 · M2
 
-- **Given** the registry holds a live entry for X and `workflow.agent_stop_guard.enabled = false` (shipped default per C.3 recommendation),
+- **Given** the registry holds a live entry for X and `workflow.agent_stop_guard.enabled = false` (the resolved shipped default — plan.md §C.3 decision: false; value unchanged),
 - **When** a SendMessage to X is evaluated,
 - **Then** no deny is emitted; an advisory surfaces; the audit row records the would-have-denied state (`send_observed` + advisory flag).
 - **RED-now**: no gate, no guard, no rows (B1/B2).

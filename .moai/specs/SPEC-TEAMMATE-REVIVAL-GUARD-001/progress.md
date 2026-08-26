@@ -9,6 +9,8 @@
 - Catalog uniqueness check (executed): `ls .moai/specs/ | grep -c "SPEC-TEAMMATE-REVIVAL-GUARD"` → `0` (pre-emission).
 - Out of Scope lint shape: 5 `### Out of Scope — <topic>` H3 sub-headings, each with `-` bullets.
 - Enforcement default RESOLVED (plan-audit iteration 2, D1): shipped default **false** — operator decision 2026-08-26, orchestrator AskUserQuestion round, recommended option taken (plan.md §C.3). M3 default-flip trigger remains evidence-gated.
+- `plan_status: audit-ready`
+- `plan_complete_at: 2026-08-26` — plan-audit iter-2 PASS-WITH-DEBT 0.88 (all MUST-PASS clear, D1–D5 confirmed resolved); report: `.moai/reports/plan-audit/SPEC-TEAMMATE-REVIVAL-GUARD-001-review-2.md`
 
 ## §E.2 Run-phase Evidence
 
