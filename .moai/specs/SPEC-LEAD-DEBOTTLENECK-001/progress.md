@@ -61,6 +61,22 @@ M1: AC-001=PASS, AC-002=PASS, AC-003=PASS, AC-005=PASS, AC-006=PASS | evidence: 
 
 Gaps: AC-004/009/010/012/013 are M3 runtime-probe ACs (not executable at M1 by §D.1 gate mapping); AC-007 full closure and AC-008 are M2 (kanban-dispatch doctrine surface untouched at M1 by scope).
 
+### M2 — deputy doctrine surface (kanban-dispatch extension)
+
+Measured on this tree, t283 worktree, base `9ff2e1ac2`:
+
+- AC-008 [HARD] preservation: `grep -c '\[HARD\]' kanban-dispatch.md` → before `30` (auditor baseline, re-measured pre-edit), after `32`. Delta = 2 NEW clauses ("The deputy never holds a power of consequence", "Nothing structural moves with the delegation") — pure insertion, `git diff` shows `10 insertions(+), 0 deletions(-)`; every existing [HARD] clause survives verbatim (no deleted lines). `grep -ci deputy` → `5` (RED-now was 0); detail → `14` (RED-now 0).
+- Detail companion: `git diff --numstat` → `23 1`; the single "deleted" line is the Factory "Evidence, verdict, integration unchanged" bullet extended in place (original sentence preserved verbatim; plan.md M2 item 3's one-line Factory connection). No [HARD] line touched.
+- AC-007 full closure: (a) `diff -q` local vs mirror → STUB-IDENTICAL and DETAIL-IDENTICAL (zero divergence — additions carry no forbidden tokens in either copy); (b) `make build` rc=0, catalog.yaml no-diff (rules files are not catalog entries — verified by grep before build); (c) neutrality `grep -rc 'SPEC-LEAD-DEBOTTLENECK\|REQ-LDB' internal/template/templates/` → 0 hits; `grep -rc 't283' internal/template/templates/.claude/rules/moai/workflow/` → 0 hits. §25.3 5-item self-check passed on both mirrors (no SPEC IDs / REQ tokens / dates / audit citations / internal paths).
+- Stub growth bound: +10 lines (≤ ~25 bound), +1,444 bytes — exceeds the 1,000B single-edit threshold of `rule-authoring.md` (b); growth statement + non-invoking cost carried in the M2 commit body per the duty.
+- Full affected package: `go test ./internal/template/ -count=1` → `ok github.com/modu-ai/moai-adk/internal/template 31.935s` (includes TestTemplateNoInternalContentLeak on the mirrors).
+- spec lint: `bin/moai spec lint .moai/specs/SPEC-LEAD-DEBOTTLENECK-001/spec.md` → `✓ No findings`.
+- PRESERVE: working tree touches only the 4 rule/mirror files + this progress.md; agent files (M1 charter) untouched; no `internal/`, `pkg/`, `cmd/` Go paths.
+
+M2: AC-007=PASS (full closure), AC-008=PASS | evidence: this section (counts verbatim above) + test run on this tree | commit: pending-backfill (M2 commit)
+
+Gaps: none at M2 close beyond the M3-set (AC-004/009/010/012/013 remain M3 runtime probes; AC-011 final closure spans the whole branch — Go paths remain 0).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
