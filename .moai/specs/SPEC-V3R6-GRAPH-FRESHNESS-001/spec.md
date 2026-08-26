@@ -1,10 +1,10 @@
 ---
 id: SPEC-V3R6-GRAPH-FRESHNESS-001
 title: "Graph layer freshness: per-layer drift gate, query-time refresh, content-addressed citations, AST symbol layer, MCP code queries"
-version: "1.1.0"
+version: "1.2.0"
 status: implemented
 created: 2026-08-25
-updated: 2026-08-25
+updated: 2026-08-27
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
@@ -84,7 +84,7 @@ Every gated artifact shall carry a provenance block recording: the absolute tree
 
 #### REQ-GF-004 — Exit-code discipline (When)
 
-**When** any layer's measured value exceeds its configured threshold or any layer's verdict is `absent`, `moai graph check` shall exit non-zero (exit 1) and name the offending layer, value, and threshold in its output; **When** all layers are within threshold, the command shall exit 0.
+**When** any layer's measured value exceeds its configured threshold or any layer's verdict is `absent`, `moai graph check` shall exit non-zero (exit 1) and name the offending layer, value, and threshold in its output; **When** all layers are within threshold, the command shall exit 0; **When** a gated layer's staleness cannot be measured because the check's own substrate errs — the provenance stamp names a commit the local git history cannot diff against (not-comparable) — the command shall exit 2 (system error), name the failing operation, and report the affected layer as unmeasured with no freshness verdict for it (neither fresh, stale, nor absent), never fabricating a `stale` verdict for a measurement that never ran.
 
 #### REQ-GF-005 — `moai gate` integration (Where)
 

@@ -258,8 +258,13 @@ m5_measurement:
 
 - sync_status: complete
 - sync_complete_at: 2026-08-25
-- sync_commit_sha: pending-backfill — the single sync commit on WT-graph-freshness cannot
-  contain its own SHA (D3 placeholder-backfill exemption); the integrating lead backfills
+- sync_commit_sha: "2fc4b40a6"
+  — backfilled before close (t279 M4, manager-spec re-delegation): the WT-graph-freshness
+  sync commit `docs(SPEC-V3R6-GRAPH-FRESHNESS-001): sync-phase artifacts (t250)`. The prose
+  `pending-backfill` placeholder matched none of `needsSHABackfill`'s four recognized forms
+  (closer.go:397-405), so without this manual step the close would succeed and freeze the
+  placeholder as the permanent §E.4 value — placeholder-freezing per
+  SPEC-V3R6-GRAPH-FRESHNESS-002 research.md §4
 - changelog_entry_position: `CHANGELOG.md` `## [Unreleased]` → `### Added` (4 entries: the
   `moai graph check` drift-gate family + gate step + CI job + `graph stamp`; code-derived edge
   layers; the 3 MCP code-query tools; content-addressed citations) and `### Changed`
@@ -290,7 +295,8 @@ m5_measurement:
     0 warn/error lines in the build log; rendered
     `public/{ko,en,ja,zh}/cli-reference/graph/index.html` each carry the new sections
 - open_followups:
-  - `sync_commit_sha` backfill (this commit's SHA) once the lead integrates the branch
+  - RESOLVED (t279 M4): `sync_commit_sha` backfill — done ahead of close by the manager-spec
+    re-delegation; §E.4 now carries `2fc4b40a6`
   - graph-freshness CI job lands bootstrap-only; enabling it as a required check is an
     operator decision (day-one posture: codemaps regenerated in this PR)
   - `/moai codemaps` skill-side adoption of the citation canon rides the next regeneration
