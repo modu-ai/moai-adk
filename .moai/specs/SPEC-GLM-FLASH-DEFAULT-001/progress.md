@@ -138,4 +138,23 @@ m1_to_mN_commit_strategy: "per-milestone commits M1..M6 + spec frontmatter flip 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: "2026-08-27"
+sync_commit_sha: "pending-backfill"   # backfilled in the immediately following commit (D3 exemption)
+sync_status: "audit-ready"
+verification_basis:
+  - "§E.2: 13/13 AC PASS with verbatim evidence (AC-001..AC-013)"
+  - "lint: 0 NEW warnings/lints introduced (§E.3 new_warnings_or_lints_introduced: 0)"
+  - "dual-platform build: darwin exit 0, windows_amd64 exit 0"
+  - "post-merge merged-tree smoke re-verified by orchestrator (origin/main merge landed clean after run_commit_sha 9e1bb9e3d)"
+gaps:
+  - "full internal/cli suite deferred to PR CI (lane-local verification scope per §4 discipline)"
+  - "internal/config package coverage 80.6% — pre-existing, not introduced by this SPEC"
+changelog_entry_position: "CHANGELOG.md [Unreleased] ### Changed"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (merged 3-phase close on the sync commit)"
+b12_self_test:
+  a_pre_emission_grep: "grep -c 'SPEC-GLM-FLASH-DEFAULT-001' CHANGELOG.md -> 0 (pre-emission)"
+  b_ac_count_match: "acceptance.md distinct AC tokens = 13; CHANGELOG entry states 13 PASS, 0 FAIL"
+  c_file_path_verification: "README.md, internal/web/assets/i18n.js, internal/config/defaults.go, internal/config/closed_sets.go, internal/template/glm_effort_overlay.go, internal/statusline/memory.go — all read on this tree before emission"
+```
