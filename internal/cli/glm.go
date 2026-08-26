@@ -291,7 +291,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	// Z.AI concurrency limits (1-3 in-flight requests per paid tier) are sometimes
 	// misreported by Claude Code as "context window limit".
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "WARNING: moai glm uses GLM models for the MAIN SESSION. Known limitations:")
-	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "  - Main session context window: 128K (glm-4.5-air), 202K (glm-4.7), 1M (glm-5.2)")
+	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "  - Main session context window: 1M (glm-5.3, glm-5.3-flash)")
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "  - Z.AI concurrency is limited (1-3 in-flight requests per paid tier)")
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "If you want Claude as leader and GLM for teammates, use 'moai cg' instead.")
 

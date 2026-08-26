@@ -478,6 +478,46 @@
     reapplyHaikuLocks(); // 초기 상태(서버 렌더가 이미 disabled 를 방출하지만 재확인).
   }
 
+  // ── GLM flash → effort-select lock (3rd Party LLM → GLM Settings 탭) ──
+
+  // applyGLMFlashEffortLock 은 한 GLM 티어의 model select 값이 "glm-5.3-flash"
+  // 이면 같은 티어의 effort select 를 max 로 고정하고 max 이외의 옵션을 비활성화한다.
+  // flash 는 z.ai reasoning_effort "max" 만 받는다(공식 스펙 — low/high 는 미지원).
+  // 티어 페어링은 name 접미사(high/medium/low/fable)로 한다: models.* 전체 뒤에
+  // effort.* 전체가 렌더되어 두 select 가 같은 행 컨테이너에 있지 않기 때문.
+  // haiku 잠금과 달리 select 자체는 활성으로 남겨 "max 고정" 상태를 보여준다.
+  function applyGLMFlashEffortLock(modelSel) {
+    var tier = modelSel.name.slice("llm.glm.models.".length);
+    var effort = document.querySelector('select[name="llm.glm.effort.' + tier + '"]');
+    if (!effort) return;
+    var isFlash = modelSel.value === "glm-5.3-flash";
+    for (var o = 0; o < effort.options.length; o++) {
+      var opt = effort.options[o];
+      opt.disabled = isFlash && opt.value !== "max";
+      if (opt.disabled && opt.selected) effort.value = "max";
+    }
+  }
+
+  // reapplyGLMFlashLocks 는 리스너를 건드리지 않고 현재 값 기준으로 전체 티어의
+  // 잠금을 다시 적용한다 (초기 로드 + 저장 후 body swap 이후 호출).
+  function reapplyGLMFlashLocks() {
+    var models = document.querySelectorAll('select[name^="llm.glm.models."]');
+    for (var i = 0; i < models.length; i++) applyGLMFlashEffortLock(models[i]);
+  }
+
+  // wireGLMFlashEffortLock 은 각 GLM 티어 model select 의 change 에 잠금을 배선한다.
+  function wireGLMFlashEffortLock() {
+    var models = document.querySelectorAll('select[name^="llm.glm.models."]');
+    for (var i = 0; i < models.length; i++) {
+      (function (sel) {
+        sel.addEventListener("change", function () {
+          applyGLMFlashEffortLock(sel);
+        });
+      })(models[i]);
+    }
+    reapplyGLMFlashLocks();
+  }
+
   // initConsole 는 모든 콘솔 초기화를 한 곳에서 수행한다 — DOMContentLoaded(첫
   // 로드 / htmx 비활성 전체 새로고침) 와 htmx:afterSettle(boost body swap 직후)
   // 양쪽에서 호출된다. boost swap 은 body 전체를 교체하므로 새 요소는 리스너가
@@ -501,6 +541,8 @@
     wireProfileMatrix();
     // haiku model → effort select 비활성 잠금(초기 + change + 티어 repopulation).
     wireHaikuEffortLock();
+    // GLM flash model → 티어 effort select 를 max 로 고정(초기 + change).
+    wireGLMFlashEffortLock();
   }
 
   document.addEventListener("DOMContentLoaded", initConsole);

@@ -106,7 +106,7 @@ type pageView struct {
 	FieldErrors map[string]string
 
 	// GLMKeyConfigured reports whether a GLM API key is currently stored in
-	// ~/.moai/.env.glm (drives the presence indicator in the 3rd Party LLM
+	// ~/.moai/.env.glm (drives the presence indicator in the GLM Settings
 	// section). GLMKeyHint is the bounded trailing-four disclosure (empty when
 	// the stored key is four characters or fewer). The full key NEVER reaches
 	// the view model — computeGLMKeyHint truncates before this struct is built

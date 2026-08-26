@@ -144,32 +144,33 @@ func TestEffortGoUnboundWording(t *testing.T) {
 	}
 }
 
-// TestLLMSectionRenamedThirdParty verifies G1-4: the tab strip label and the
-// section title read "3rd Party LLM" (key sec.llm.title and tab id llm unchanged),
+// TestLLMSectionRenamedGLMSettings verifies G1-4 (renamed again from
+// "3rd Party LLM" to "GLM Settings", 2026-08-27): the tab strip label and the
+// section title read "GLM Settings" (key sec.llm.title and tab id llm unchanged),
 // and sec.llm.desc describes only the GLM backend tiers.
-func TestLLMSectionRenamedThirdParty(t *testing.T) {
+func TestLLMSectionRenamedGLMSettings(t *testing.T) {
 	for _, tab := range consoleTabs() {
 		if tab.ID == "llm" {
 			if tab.LabelKey != "sec.llm.title" {
 				t.Errorf("llm tab LabelKey = %q, want sec.llm.title (key must not change)", tab.LabelKey)
 			}
-			if tab.Baseline != "3rd Party LLM" {
-				t.Errorf("llm tab Baseline = %q, want %q", tab.Baseline, "3rd Party LLM")
+			if tab.Baseline != "GLM Settings" {
+				t.Errorf("llm tab Baseline = %q, want %q", tab.Baseline, "GLM Settings")
 			}
 		}
 	}
 	for _, meta := range schemaSectionMetas() {
-		if string(meta.ID) == "llm" && meta.Title != "3rd Party LLM" {
-			t.Errorf("llm section Title = %q, want %q", meta.Title, "3rd Party LLM")
+		if string(meta.ID) == "llm" && meta.Title != "GLM Settings" {
+			t.Errorf("llm section Title = %q, want %q", meta.Title, "GLM Settings")
 		}
 	}
 
 	dict := readEmbeddedAsset(t, "i18n.js")
 	for _, want := range []string{
-		`"sec.llm.title": "3rd Party LLM"`,
-		`"sec.llm.title": "서드파티 LLM"`,
-		`"sec.llm.title": "サードパーティ LLM"`,
-		`"sec.llm.title": "第三方 LLM"`,
+		`"sec.llm.title": "GLM Settings"`,
+		`"sec.llm.title": "GLM 설정"`,
+		`"sec.llm.title": "GLM設定"`,
+		`"sec.llm.title": "GLM设置"`,
 	} {
 		if !strings.Contains(dict, want) {
 			t.Errorf("i18n.js missing renamed section title entry: %s", want)

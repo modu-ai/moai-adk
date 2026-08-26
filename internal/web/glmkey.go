@@ -8,7 +8,7 @@ import (
 	"github.com/modu-ai/moai-adk/internal/settings"
 )
 
-// SPEC-GLM-KEY-INPUT-001 — GLM API key field rendered in the 3rd Party LLM
+// SPEC-GLM-KEY-INPUT-001 — GLM API key field rendered in the GLM Settings
 // settings section. This file owns the credential field's hand-built parse /
 // validate / view-model path. It is deliberately OUT of the schema FieldDef set
 // (D-2): the credential never enters settings.AllFields() so no generic
@@ -20,7 +20,7 @@ import (
 // It is the ONLY surface this field uses to round-trip through the form.
 const glmAPIKeyFormField = "glm_api_key"
 
-// glmKeyViewHint carries the redacted disclosure the 3rd Party LLM section may
+// glmKeyViewHint carries the redacted disclosure the GLM Settings section may
 // surface about a stored GLM API key. The full key NEVER crosses into the view
 // model — only a "configured" boolean and, for a key longer than four
 // characters, its final four characters (REQ-GKI-004-002 / -004-004).
