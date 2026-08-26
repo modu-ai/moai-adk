@@ -79,4 +79,22 @@ AC-CVS-006 만 죽는다 — 이 AC 가 없었다면 mutant (e) 가 초록으로
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-08-26
+sync_commit_sha: "pending-backfill"  # real SHA backfilled in the immediately following commit (D3 exemption)
+b12_self_test_a: pass   # grep -c 'SPEC-CODEX-VERDICT-SYNTH-001' CHANGELOG.md -> 0 (pre-emission)
+b12_self_test_b: pass   # AC count: acceptance.md AC-CVS-001..006 = 6 ACs; CHANGELOG entry states 6 PASS 0 FAIL
+b12_self_test_c: pass   # cited paths verified: internal/cli/mcp_codex.go, codex_verdict_regression_test.go, codex_review_rpc_test.go, .moai/reports/t229/succession.md
+changelog_entry_position: "[Unreleased] -> ### Fixed"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (3-phase close, merged into the single sync commit)"
+  updated_field: "2026-08-25 -> 2026-08-26"
+canary_compliance_check: not-applicable  # no forward-looking policy self-tested by this SPEC
+```
+
+**Verification basis.** §E.2 suite/mutant evidence (suite `ok internal/cli 510.756s` read from the log body line; mutant (e) independence observed; `mcp_codex.go` sha256 pin OK) + successor-session post-merge re-verification per `.moai/reports/t229/succession.md`: origin/main merged clean as `4561f432c`, targeted tests re-run on the merged tree (`ok internal/cli 1.034s`, 34 cases). **Full-package verdict is deferred to PR CI per the verification-load discipline — an honest gap, not a claim.**
+
+**Scope deferral record.** The card↔SPEC scope gap (participant-count axis deferred to a new card by operator decision, 2026-08-26) is recorded in `.moai/reports/t229/succession.md` § "발견 — 카드↔SPEC 범위 갭"; no CHANGELOG content is emitted for the deferred axis.
+
+**Code-read verification before CHANGELOG emission (B12).** Read on this tree: `synthesizeReviewOutput(reviewText, method)`, `codexVerdictSignalsOf` (3 signals: stated verdict label / scored verdict line / severity-tagged finding bullet), `adoptConservativeVerdict` (P-CONS set-max rule, order-independent), `codexUnrecognizedVerdict` (native review/start keeps pass; adversarial turn/start → inconclusive), `describeSignalDivergence` (SynthesisNote recorded only on genuine disagreement), plus both test files.
