@@ -1418,11 +1418,14 @@ type codexTokenSet struct{ credentialCount int }
 
 // UnmarshalJSON implements json.Unmarshaler. A non-object value yields a zero
 // count rather than an error, so a stale file descends instead of failing.
+// Each call counts ONLY its own payload: the reset up front keeps a reused
+// receiver (a second Unmarshal into the same value, or duplicate `tokens`
+// keys decoded per occurrence) from accumulating across calls.
 func (t *codexTokenSet) UnmarshalJSON(b []byte) error {
+	t.credentialCount = 0
 	var m map[string]nonEmptyString
 	if err := json.Unmarshal(b, &m); err != nil {
-		t.credentialCount = 0 // not an object ⇒ no credential material
-		return nil
+		return nil // not an object ⇒ no credential material
 	}
 	for k, v := range m {
 		if codexChatGPTCredentialKeys[k] && bool(v) {

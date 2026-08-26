@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -100,6 +101,11 @@ func TestClassifyCodexAuthFile_Table(t *testing.T) {
 		{"apikey+object", `{"auth_mode":"apikey","OPENAI_API_KEY":{}}`, "", false, false},
 		{"chatgpt+id_token", `{"auth_mode":"chatgpt","tokens":{"id_token":"x"}}`, codexAuthChatGPT, true, false},
 		{"chatgpt+refresh_token", `{"auth_mode":"chatgpt","tokens":{"refresh_token":"x"}}`, codexAuthChatGPT, true, false},
+		// Duplicate `tokens` keys: stdlib decodes each occurrence into the
+		// field, so the custom Unmarshaler runs per occurrence and the LAST
+		// occurrence is the whole truth (sync-audit F1).
+		{"chatgpt+duplicate_tokens_last_empty", `{"auth_mode":"chatgpt","tokens":{"access_token":"x"},"tokens":{}}`, "", false, false},
+		{"chatgpt+duplicate_tokens_last_valid", `{"auth_mode":"chatgpt","tokens":{},"tokens":{"access_token":"x"}}`, codexAuthChatGPT, true, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -115,6 +121,37 @@ func TestClassifyCodexAuthFile_Table(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestCodexTokenSet_CountResetsPerUnmarshal pins the Unmarshaler contract
+// (sync-audit F1, SPEC-CODEX-LAUNCHER-001 remediation): an UnmarshalJSON call
+// counts ONLY its own payload. A reused receiver (a second json.Unmarshal into
+// the same value) or duplicate `tokens` keys in one document must not
+// accumulate the count — stdlib last-wins semantics make the final occurrence
+// the whole truth, matching nonEmptyString's overwrite behaviour.
+func TestCodexTokenSet_CountResetsPerUnmarshal(t *testing.T) {
+	t.Run("reused receiver counts only the latest payload", func(t *testing.T) {
+		var f codexAuthFile
+		if err := json.Unmarshal([]byte(`{"auth_mode":"chatgpt","tokens":{"access_token":"x"}}`), &f); err != nil {
+			t.Fatalf("first unmarshal: %v", err)
+		}
+		if err := json.Unmarshal([]byte(`{"auth_mode":"chatgpt","tokens":{}}`), &f); err != nil {
+			t.Fatalf("second unmarshal: %v", err)
+		}
+		if got := f.Tokens.credentialCount; got != 0 {
+			t.Errorf("credentialCount after re-unmarshal = %d, want 0", got)
+		}
+	})
+	t.Run("duplicate tokens keys do not accumulate", func(t *testing.T) {
+		var f codexAuthFile
+		raw := `{"auth_mode":"chatgpt","tokens":{"access_token":"x"},"tokens":{"id_token":"y"}}`
+		if err := json.Unmarshal([]byte(raw), &f); err != nil {
+			t.Fatalf("unmarshal: %v", err)
+		}
+		if got := f.Tokens.credentialCount; got != 1 {
+			t.Errorf("credentialCount with duplicate tokens keys = %d, want 1", got)
+		}
+	})
 }
 
 // TestCodexAuthFileTypes_NoSecretRetention is the CLOSED-SET reflection
