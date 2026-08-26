@@ -129,7 +129,7 @@ Given-When-Then scenarios, binary-testable. REQ→AC traceability at §D.2 must 
 
 - **Given** a file with exported declarations and non-trivial function bodies
 - **When** `graph_file_api` is called on it
-- **Then** the response lists exported signatures and contains no function bodies; the response names the tree root + commit it answered from
+- **Then** the response lists exported signatures and contains no function bodies; the response names the tree root + commit it answered from; for non-Go languages the response returns the extracted declaration set without non-exported filtering — exported-identifier filtering is Go-only (first-rune upper-case, `isExported` in codequery.go), per the implemented export rule
 
 ### AC-GF-021 — `graph_find_code` + `graph_trace_calls` answer from the code layer (REQ-GF-018, REQ-GF-019)
 
@@ -147,8 +147,8 @@ Given-When-Then scenarios, binary-testable. REQ→AC traceability at §D.2 must 
 
 | Severity | ACs | Meaning |
 |---|---|---|
-| MUST | AC-GF-001..007, 009, 010, 014, 017, 018, 019, 022 | Gate correctness, wrong-tree safety, mutant kills, additivity, baseline integrity — failure blocks close |
-| SHOULD | AC-GF-008, 011, 012, 013, 015, 016, 020, 021 | Convention/tooling quality — failure requires recorded debt |
+| MUST | AC-GF-001..010, 014, 017, 018, 019, 022 | Gate correctness, wrong-tree safety, mutant kills, additivity, baseline integrity — failure blocks close |
+| SHOULD | AC-GF-011, 012, 013, 015, 016, 020, 021 | Convention/tooling quality — failure requires recorded debt |
 
 (Auditor may promote a SHOULD to MUST where the failure reproduces the observed defect family — wrong-tree answers and silent-layer-picks are always promotion candidates.)
 

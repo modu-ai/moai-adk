@@ -262,10 +262,11 @@ func extractCallsImpl(language string, sourcePath string) (CallSet, error) {
 }
 
 // stripQuotes removes paired surrounding quotes from a captured literal
-// (import paths in Go/JS/TS arrive quoted).
+// (import paths in Go/JS/TS arrive quoted; Go raw-string imports arrive
+// backtick-quoted).
 func stripQuotes(s string) string {
 	if len(s) >= 2 {
-		if (s[0] == '"' && s[len(s)-1] == '"') || (s[0] == '\'' && s[len(s)-1] == '\'') {
+		if (s[0] == '"' && s[len(s)-1] == '"') || (s[0] == '\'' && s[len(s)-1] == '\'') || (s[0] == '`' && s[len(s)-1] == '`') {
 			return s[1 : len(s)-1]
 		}
 	}

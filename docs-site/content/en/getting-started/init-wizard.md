@@ -183,6 +183,8 @@ graph TD
     E --> J["git-strategy.yaml"]
 ```
 
+When installation deploys the skill mirror, it prefers a symbolic link. On systems where a link cannot be created, a copy is deployed instead, and the `moai init` completion summary then says so — the one thing worth knowing is that a copy does not follow the source the way a link does.
+
 ## Editing the configuration
 
 ### Manual editing

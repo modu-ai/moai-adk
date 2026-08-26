@@ -745,6 +745,12 @@ main:
           zh: 多模型审计收敛
         ref: /advanced/multi-model-audit
       - name:
+          ko: Codex 듀얼 하네스
+          en: Codex Dual Harness
+          ja: Codex デュアルハーネス
+          zh: Codex 双 harness
+        ref: /advanced/codex-dual-harness
+      - name:
           ko: 자율성 티어 (MOAI_AUTONOMY_TIER)
           en: Autonomy Tier (MOAI_AUTONOMY_TIER)
           ja: 自律性ティア (MOAI_AUTONOMY_TIER)

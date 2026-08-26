@@ -116,6 +116,8 @@ graph TD
     H --> I
 ```
 
+When synchronization finishes, a deployment summary is printed to the terminal. The skill mirror for codex-cli (`.agents/skills`) is deployed as a symbolic link by default; on systems where a link cannot be created, it falls back to a copy. When that fallback happens, `moai update` says so explicitly in the summary — a copy does not follow the source the way a link does, so knowing which form landed matters.
+
 ### Pre-clean backup
 
 Before redistributing templates, when MoAI cleans the roots it manages (the template-managed paths under `.claude/` and `.moai/`), files sitting inside them that **the templates do not deploy are backed up first**, and only then cleaned. The backup lands under a per-run timestamped directory `.moai-backups/<timestamp>/pre-clean/<root>/...` at its original relative path, and **if the backup fails, the cleanup itself aborts** — there is no path that deletes without a backup.

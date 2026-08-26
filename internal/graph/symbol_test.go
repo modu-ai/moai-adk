@@ -52,6 +52,7 @@ func hasCodeEdge(edges []Edge, kind, src, tgt string) bool {
 // AC-GF-017 — an UNDOCUMENTED A→B call appears as a code-call edge, and a
 // blast-radius query at B reaches A through it.
 func TestCodeEdges_UndocumentedCallAppears(t *testing.T) {
+	requireCodeExtraction(t)
 	root := codeFixture(t)
 	edges, matrix, err := CodeEdges(root)
 	if err != nil {
@@ -134,6 +135,7 @@ func docCodeFixture(t *testing.T) string {
 // AC-GF-018 — additivity: the doc-derived edge set is byte-preserved when
 // the code layers join the build. E_doc ⊆ E_out unchanged.
 func TestBuild_CodeLayersAreAdditive(t *testing.T) {
+	requireCodeExtraction(t)
 	root := docCodeFixture(t)
 
 	docEdges, err := Build(root)
@@ -178,6 +180,7 @@ func TestBuild_CodeLayersAreAdditive(t *testing.T) {
 // stays RETRIEVABLE — DisagreementAll marks it with an explicit [revived]
 // tag, and the default mode's genuine refutation markers are unaffected.
 func TestBuild_DisagreementAllRevivesSuppressedDirection(t *testing.T) {
+	requireCodeExtraction(t)
 	root := docCodeFixture(t) // doc has internal/alpha→internal/beta; demo.go imports nothing internal
 
 	refuteEdges, _, err := BuildWithCodeLayersMode(root, DisagreementRefuteOnly)
@@ -252,6 +255,7 @@ func TestGradeMatrixDefect_MissingCellIsReported(t *testing.T) {
 
 // code-import edges: an import in described sources yields a file→module edge.
 func TestCodeEdges_ImportEdges(t *testing.T) {
+	requireCodeExtraction(t)
 	root := codeFixture(t)
 	if err := os.WriteFile(filepath.Join(root, "internal", "wire", "imp.go"),
 		[]byte("package wire\n\nimport \"fmt\"\n\nfunc D() { fmt.Println(1) }\n"), 0o644); err != nil {

@@ -2,12 +2,15 @@ package cli
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/modu-ai/moai-adk/internal/graph"
+	"github.com/modu-ai/moai-adk/internal/mx"
 )
 
 // buildEdgesFixture runs the build on the standard fixture and returns root.
@@ -147,12 +150,22 @@ func TestGraphQuery_PerTreeIsolation(t *testing.T) {
 }
 
 // AC-GF-011 — update-cost budget warning: a budget configured below the
-// actual refresh cost triggers a warning naming both, and the answer still
-// arrives (exit reflects the query, not the overrun).
+// measured refresh duration triggers a warning naming both, and the answer
+// still arrives (exit reflects the query, not the overrun).
+// CR round-2 3855149237: the duration arrives through the injection seam —
+// a FIXED 50ms — so the overrun fires deterministically; the test no longer
+// relies on "any real refresh exceeds the 1ms budget".
 func TestGraphQuery_BudgetOverrunWarns(t *testing.T) {
 	root := buildEdgesFixture(t)
 
-	// Configure a 0-equivalent... budget of 1ms — any real refresh exceeds it.
+	// Inject the deterministic duration BEFORE anything can read the seam.
+	origClock := edgesRefreshClock
+	edgesRefreshClock = func() func() time.Duration {
+		return func() time.Duration { return 50 * time.Millisecond }
+	}
+	defer func() { edgesRefreshClock = origClock }()
+
+	// A 1ms budget — the injected 50ms deterministically exceeds it.
 	cfgDir := filepath.Join(root, ".moai", "config", "sections")
 	if err := os.MkdirAll(cfgDir, 0o755); err != nil {
 		t.Fatal(err)
@@ -181,6 +194,76 @@ func TestGraphQuery_BudgetOverrunWarns(t *testing.T) {
 	}
 	if !strings.Contains(out.String(), "callers of") {
 		t.Errorf("the answer must still arrive, got: %q", out.String())
+	}
+}
+
+// AC-GFR-007 default-construction check — the UN-injected seam constructs
+// the wall-clock measurer, so production CLI behavior is unchanged by the
+// seam's existence: the package var IS newEdgesRefreshClock, and a measurer
+// it constructs reads durations that advance with real time.
+func TestEdgesRefreshClockDefaultIsWallClock(t *testing.T) {
+	if got, want := fmt.Sprintf("%p", edgesRefreshClock), fmt.Sprintf("%p", newEdgesRefreshClock); got != want {
+		t.Errorf("edgesRefreshClock = %s, want the wall-clock constructor newEdgesRefreshClock (%s) — production must measure wall-clock", got, want)
+	}
+	elapsed := newEdgesRefreshClock()
+	first := elapsed()
+	time.Sleep(2 * time.Millisecond)
+	second := elapsed()
+	if second < first || second <= 0 {
+		t.Errorf("wall-clock measurer must advance monotonically with real time: first=%s second=%s", first, second)
+	}
+}
+
+// AC-GFR-010 / CR round-2 3855149254 — the refresh-needed decision follows
+// the SELECTED --edges artifact: a stale custom artifact needs the refresh
+// while the default sits fresh, and a fresh custom artifact needs nothing
+// while the default sits stale. The mx-index probe is tree-anchored and
+// stamped in-sync for both legs, so the edges half is the only mover.
+func TestEdgesRefreshNeeded_FollowsSelectedEdgesArtifact(t *testing.T) {
+	root := buildEdgesFixture(t)
+	// graph build does not write the mx sidecar; index it so the
+	// tree-anchored probe reads in-sync, then re-stamp the default meta
+	// (the sidecar's appearance moves the mx-index fingerprint).
+	if _, err := mx.RefreshIndex(filepath.Join(root, ".moai", "state"), root, nil); err != nil {
+		t.Fatalf("refresh mx index: %v", err)
+	}
+	defaultMeta := filepath.Join(root, ".moai", "project", "graph", graph.MetaFileName)
+	if err := graph.WriteEdgesMeta(defaultMeta, root, graph.SourceFingerprintsForEdges(root), 0); err != nil {
+		t.Fatal(err)
+	}
+
+	customDir := filepath.Join(root, "custom")
+	if err := os.MkdirAll(customDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	customEdges := filepath.Join(customDir, "edges.jsonl")
+	if err := os.WriteFile(customEdges, []byte(""), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	staleFP := map[string]string{"codemaps": "stale", "mx-index": "stale", "specs": "stale", "reports": "stale"}
+	if err := graph.WriteEdgesMeta(filepath.Join(customDir, graph.MetaFileName), root, staleFP, 0); err != nil {
+		t.Fatal(err)
+	}
+
+	if graph.EdgesSourcesMoved(root) {
+		t.Fatal("precondition: default artifact must be fresh")
+	}
+	if !edgesRefreshNeeded(root, customEdges, 1) {
+		t.Error("stale SELECTED artifact must need the refresh")
+	}
+
+	// Mirror: custom fresh, default stale.
+	if err := graph.WriteEdgesMeta(filepath.Join(customDir, graph.MetaFileName), root, graph.SourceFingerprintsForEdges(root), 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := graph.WriteEdgesMeta(defaultMeta, root, staleFP, 0); err != nil {
+		t.Fatal(err)
+	}
+	if !graph.EdgesSourcesMoved(root) {
+		t.Fatal("precondition: default artifact must now be stale")
+	}
+	if edgesRefreshNeeded(root, customEdges, 1) {
+		t.Error("fresh SELECTED artifact must not trigger a refresh of the selected path")
 	}
 }
 

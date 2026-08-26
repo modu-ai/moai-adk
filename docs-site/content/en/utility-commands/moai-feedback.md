@@ -59,14 +59,14 @@ The following information is included automatically when submitting feedback, so
 
 | Collected item | Description | Example | Collection mode |
 |-----------|------|------|-----------|
-| MoAI-ADK version | Currently installed version (`moai version`) | v10.8.0 | Guaranteed (always collected) |
+| MoAI-ADK version | Currently installed version (`moai version`) | v3.1.3 | Guaranteed (always collected) |
 | OS info | Operating system and version (`uname`) | macOS 15.2 | Guaranteed (always collected) |
 | Go toolchain version | Build provenance of the tool binary (`go version`) | go1.23.4 | best-effort (omitted where the Go toolchain is not installed) |
 | Error logs | Error context passed by the orchestrator (if any) | TypeError: ... | best-effort (included only when the orchestrator passes it; the workflow itself does not read session transcripts) |
 
 ## Feedback Configuration
 
-`/moai feedback` reinforces the issue-creation process with the following 4 behaviors.
+`/moai feedback` reinforces the issue-creation process with the following behaviors.
 
 ### Diagnostics: Guaranteed Items + best-effort Items
 
@@ -101,6 +101,14 @@ feedback:
 ```
 
 `moai init` also asks for this value in the setup wizard, and it can be changed later from the web console's Feedback section. Setting it to `true` skips only the question — masking still runs, and a report that reads as a security-vulnerability disclosure is still refused and routed to the private advisory path instead of a public issue.
+
+### Pre-submission scrubbing contract
+
+Between the drafted report and `gh issue create`, a **scrubbing contract** runs. A masking scrubber covers sensitive values such as secrets, tokens, and paths; a vulnerability classifier decides whether the body reads as a security disclosure; and the masked-value list (mask log) and any failed submissions (retry queue) are each kept as a record. You can inspect this procedure directly from the terminal with the `moai feedback scrub` (masking preview) and `moai feedback queue` (retry queue) verbs.
+
+The classifier reads the body **before** masking. A vulnerability report is recognized by the very strings masking removes, so classifying afterwards would fail silently on exactly the path whose cost is a public disclosure. The order is therefore fixed.
+
+This contract is a convention the skill body follows, not a sandbox. Opening an issue by hand on GitHub bypasses all three (masking, classification, the confirmation question) — the same caution is yours when writing into a public repository directly.
 
 ## Feedback Types
 

@@ -129,6 +129,28 @@ The `-k` / `-f` lead session does not draft its own coordination: it spawns the 
 
 [HARD] **Spawn manager-lead UNNAMED.** Under `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` a named spawn converts to an in-process teammate, and that path carries two measured hazards: an observed output-loss discrepancy (one same-version session watched a named spawn become an output-less in-process teammate — the two-sided evidence is recorded in CLAUDE.md §15), and in-process teammates cannot spawn background subagents, which forces foreground-only execution and breaks the dialogue-never-blocks property above. An unnamed spawn keeps it a plain subagent (related: `orchestration-mode-selection.md` §C.1).
 
+### Deputy mode — background coordination off the lead's turn
+
+The lead's turn loop is the scarcest surface on the board: a dispatch send, a CI watch, and a CodeRabbit poll each occupy it serially, and while it is occupied the lead cannot judge anything else. The deputy exists to move that occupancy. The lead session (still through manager-lead, still UNNAMED) delegates coordination duties to a background deputy instance whose charter — the delegable/retained matrix, the delivery-shape verification protocol, the standing messaging hazards — is codified in the agent itself (`.claude/agents/moai/manager-lead.md` § Deputy dispatch surface). This section adds only what the board sees of it.
+
+**What the deputy does in the background:**
+
+- **Dispatch sends with delivery-shape verification.** The deputy sends the fixed-field address blocks for ALREADY-PICKED cards and reads every send result. A `routing` object on the result means an in-process mailbox took the block — lost, not delivered — and the deputy re-sends to the `name [ref]` form the `ListAgents` listing printed (§ The dispatch cycle). A rapid-burst refusal is read and reported; the queue already carries the delegation, so a refused nudge stalls nothing.
+- **Bounded CI-watch polls.** The deputy polls a card's checks to terminal states and returns those states — the states, never a judgement about them.
+- **CodeRabbit two-condition reads.** The deputy reads the combined-status `CodeRabbit` entry (state `success` AND description `Review completed`) plus the `Merge Risk:` line matching the current `headRefOid`, and REPORTS both conditions to the lead. It never adjudicates the slot-wait outcome: a card carrying `Review rate limited` is reported as exactly that, and the lead decides what it means.
+- **First-pass evidence reading.** The deputy reads a card's completion evidence and returns findings as recommendations, each prefixed `RECOMMEND:` — never a verdict token.
+- **Summary reporting.** The deputy folds its observations into a single report addressed to the lead session.
+
+**What returns to the lead's turn:** `RECOMMEND:`-prefixed recommendations, terminal CI states, delivery confirmations and refusals, and the two-condition CodeRabbit read. That is the entire return surface — the deputy's report is input to the lead's judgement, never a substitute for it.
+
+**What does not change — the structural principles:**
+
+- **The verdict's home.** The final PASS/FAIL remains the lead's, read from evidence on disk (§ The verdict's home). A deputy recommendation promoted to a verdict is exactly the adjudication-promotion failure the report/verdict split exists to prevent.
+- **Completion is read, never trusted.** The deputy's first-pass read does not discharge the lead's own evidence-read obligation. The lead advances a card on what the lead read; a deputy report is one more claim until the evidence under it has been read.
+- **The queue is the channel.** The deputy's `SendMessage` is a nudge, never the delegation (stub § The delegation channel is the queue); card advancement never depends on a message arriving, whoever sent it.
+
+The retained powers — final verdicts, final merge approval, operator gates, card issuance and `done`, CodeRabbit adjudication, cross-session dispute coordination — are enumerated under the `DEPUTY-RETAINED-BY-LEAD` marker in the agent charter; the stub carries the [HARD] boundary clauses.
+
 The queue on disk remains the delegation channel and completion remains evidence-read (stub § The delegation channel is the queue, § Completion is read, never trusted) — messaging stays a nudge. The rename changes who drafts the coordination, not what counts as delegated or as done.
 
 ## Per-card fan-out and sub-agent execution
@@ -155,7 +177,7 @@ Factory Mode (`moai cc -f <N>` / `moai glm -f <N>`) trades the per-column board 
 - **Serial stages, sub-agent execution.** Plan completes before run begins, run before sync — a lane never runs two stages of the same card concurrently. Within a stage it fans out sub-agents per § Per-card fan-out and sub-agent execution.
 - **Classes collapse into the lane.** A/B/C still name which ceremonies a card skips (B skips `plan` and carries no SPEC; A goes straight to the close), but the "wholesale vs serial hand-off" distinction between sessions disappears — there are no per-column sessions to hand off to. Every lane runs the serial stages for whatever its card still needs.
 - **The `/clear` boundary is between cards, not phases.** The between-phases hand-off disappears (that is the point of the mode); the between-cards one does not — a factory lane is cleared once its card reaches `done`, before the next card is routed to it, exactly as the stub's `/clear` rule requires.
-- **Evidence, verdict, integration unchanged.** The lane writes the same completion signals; the lead still reads evidence and owns the final PASS/FAIL; release-branch integration is still lane work under the stub's rules.
+- **Evidence, verdict, integration unchanged.** The lane writes the same completion signals; the lead still reads evidence and owns the final PASS/FAIL; release-branch integration is still lane work under the stub's rules. The deputy surface applies unchanged too: a factory lead may delegate dispatch sends and watches to the coordination deputy exactly as a kanban lead does (§ The lead works through manager-lead → Deputy mode), while the lead keeps the verdict and the batch pull request.
 
 ## The verdict's home
 

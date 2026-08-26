@@ -154,8 +154,10 @@ func hashEntries(entries []hashEntry) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-// gitOut runs a git command in dir and returns trimmed stdout. Empty output
-// with a nil error never happens; errors return "" (fail-open by callers).
+// gitOut runs a git command in dir and returns trimmed stdout; on any error
+// it returns "" (fail-open by callers). Empty output with a nil error is a
+// real, expected state — a clean `git status --porcelain` produces exactly
+// that, and treeDirty's emptiness test depends on it (CR round-2 3855149357).
 func gitOut(dir string, args ...string) string {
 	cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
 	out, err := cmd.Output()

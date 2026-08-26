@@ -4,15 +4,15 @@ weight: 4
 draft: false
 ---
 
-MoAI-ADK maps each of the 11 retained agents to its own `{model, effort}` pair through a single **profile matrix**. The active **profile** (`high` / `medium` / `low`) selects one column of the matrix, and that column's values apply to every subagent spawn. The matrix is **33 cells** keyed by agent name (11 agents × 3 profiles), replacing both the former group abstraction and the `plan_type × tier` axis.
+MoAI-ADK maps each of the 12 retained agents to its own `{model, effort}` pair through a single **profile matrix**. The active **profile** (`high` / `medium` / `low`) selects one column of the matrix, and that column's values apply to every subagent spawn. The matrix is **36 cells** keyed by agent name (12 agents × 3 profiles), replacing both the former group abstraction and the `plan_type × tier` axis.
 
 ## Profile axis
 
 The profile has three values:
 
-- `high` — quality-first column. Opus 5 carries every multi-turn agentic row, and `max` is reserved for the two rarest-invocation rows (`manager-develop`, `super-advisor`). `xhigh` appears in no cell: on Opus 5 it scores the same as `high` while costing materially more.
-- `medium` (default) — the balanced column, and the anchor the rest of the matrix derives from. `manager-develop` sits at Opus 5 `medium`, the knee of the cost/score curve. An absent or empty value is interpreted as `medium`.
-- `low` — economical column. Opus 5 at `low` still scores higher **and** costs less per task than Sonnet 5 at any effort, so Opus is retained on every agentic row; Sonnet appears only on single-shot, input-dominated rows.
+- `high` — quality-first column. The spend goes to the rows that judge rather than the rows that produce: the auditing/advising rows (`plan-auditor`, `sync-auditor`, `super-advisor`) and the coordinating rows (`manager-design`, `manager-lead`) hold `high`, while the authoring and implementing rows (`manager-spec`, `manager-develop`) sit at `medium` in all three columns. No row takes `max`. `xhigh` appears in no cell: on Opus 5 it scores the same as `high` while costing materially more.
+- `medium` (default) — the balanced column. It differs from `high` in exactly two rows: `builder-harness` steps down to `medium` and `e2e-tester` to `low`. An absent or empty value is interpreted as `medium`.
+- `low` — economical column. Opus 5 at `low` still scores higher **and** costs less per task than Sonnet 5 at any effort, so Opus is retained on every agentic row; most Opus rows land on `medium`, with `super-advisor` alone keeping `high` — the escalation path is what a cheap column most needs to keep sound. Sonnet appears only on single-shot, input-dominated rows.
 
 `max` is a **read-time alias** of `high`. An existing `profile: max` still resolves to `high`, and saves always write the canonical name `high`. No migration step is required.
 
@@ -29,35 +29,37 @@ The accepted values are `high` / `medium` / `low`; the legacy `max` is also acce
 
 ## Profile matrix
 
-The 11 retained agents receive their `{model, effort}` directly from the matrix below. Only user-added agents resolve to `inherit` (inherit the parent session model) and are excluded from model injection. Haiku appears nowhere in the matrix.
+The 12 retained agents receive their `{model, effort}` directly from the matrix below. Only user-added agents resolve to `inherit` (inherit the parent session model) and are excluded from model injection. Haiku appears nowhere in the matrix.
 
 | Agent | high | medium (default) | low |
 |---|---|---|---|
-| manager-spec | opus / high | opus / medium | opus / low |
-| plan-auditor | opus / high | opus / medium | opus / low |
-| sync-auditor | opus / high | opus / medium | opus / low |
-| manager-develop | opus / max | opus / medium | opus / low |
-| super-advisor | opus / max | opus / high | opus / medium |
-| manager-design | opus / high | opus / medium | opus / low |
+| manager-spec | opus / medium | opus / medium | opus / medium |
+| plan-auditor | opus / high | opus / high | opus / medium |
+| sync-auditor | opus / high | opus / high | opus / medium |
+| manager-develop | opus / medium | opus / medium | opus / medium |
+| super-advisor | opus / high | opus / high | opus / high |
+| manager-design | opus / high | opus / high | opus / medium |
+| manager-lead | opus / high | opus / high | opus / medium |
 | builder-harness | opus / high | opus / medium | opus / low |
 | e2e-tester | opus / medium | opus / low | sonnet / low |
-| manager-docs | opus / medium | opus / low | sonnet / low |
+| manager-docs | sonnet / low | sonnet / low | sonnet / low |
 | manager-git | sonnet / low | sonnet / low | sonnet / low |
 | Explore | sonnet / low | sonnet / low | sonnet / low |
 
-Model distribution across the 33 cells is Opus 25 / Sonnet 8. Fable appears in no cell, and no cell uses `xhigh`.
+Model distribution across the 36 cells is Opus 26 / Sonnet 10. Fable appears in no cell, and no cell uses `xhigh` or `max`.
 
-The `manager-git` and `Explore` rows are fixed at `sonnet / low` regardless of the profile — mechanical work and read-only exploration do not raise their model class even when the profile rises.
+The `manager-docs`, `manager-git`, and `Explore` rows are fixed at `sonnet / low` regardless of the profile — documentation synthesis, mechanical work, and read-only exploration do not raise their model class even when the profile rises.
 
 Every row is monotone: `high` ≥ `medium` ≥ `low`. Lowering the profile never gives any agent a stronger combination than before.
 
 ### Why these cells
 
-The cells are derived from a long-horizon coding-agent benchmark that reports score, cost per task, output tokens, and agent steps **at every effort level** — not from unit token price. Three measurements drive the layout:
+The cells are not derived from a cost/score curve — they are **settled operator input**. The single principle: the spend goes to the rows that judge, not the rows that produce. The auditing/advising rows (`plan-auditor`, `sync-auditor`, `super-advisor`) and the coordinating rows (`manager-design`, `manager-lead`) hold `high`, while the authoring and implementing rows (`manager-spec`, `manager-develop`) sit at `medium` in all three columns, `manager-docs` drops to `sonnet / low`, and no row takes `max`. Re-deriving these cells from a curve would silently walk the producing rows back up — treat a value change as an operator-judgment update, not a recalculation.
 
-- **Opus dominates Sonnet at every effort.** Opus 5 at `low` (58%, $1.66/task, 36 steps) scores higher and costs less per task than Sonnet 5 at any level, including Sonnet 5 at `max` (54%, $26.40/task, 268 steps). What drives per-task cost is completion efficiency — the steps and output tokens spent finishing the task — not the per-token price. Sonnet is therefore retained only where multi-step completion does not apply: single-shot, input-dominated rows (`Explore` search, `manager-git` mechanics) where its lower input price is the operative factor.
-- **`xhigh` is strictly dominated on Opus.** `high` scores 73% at $6.08 while `xhigh` scores the same 73% at $9.07 — no gain, +49% cost, +22% steps. It is retired from the matrix (6 cells → 0). `max` survives only in the two rarest-invocation cells.
-- **`medium` is the knee of the curve.** Marginal cost per point rises several-fold above it: `low`→`medium` costs $0.15 per point, `medium`→`high` costs $0.70 per point (4.7×). This is why `manager-develop` at `medium` anchors the default column.
+The two rules governing model class are grounded in measurement:
+
+- **Opus dominates Sonnet at every effort.** Opus 5 at `low` (58%, $1.66/task, 36 steps) scores higher and costs less per task than Sonnet 5 at any level, including Sonnet 5 at `max` (54%, $26.40/task, 268 steps). What drives per-task cost is completion efficiency — the steps and output tokens spent finishing the task — not the per-token price. Sonnet is therefore retained only where multi-step completion does not apply: single-shot, input-dominated rows (`Explore` search, `manager-git` mechanics) where its lower input price is the operative factor. This is why every multi-turn agentic row is Opus.
+- **`xhigh` is strictly dominated on Opus.** `high` scores 73% at $6.08 while `xhigh` scores the same 73% at $9.07 — no gain, +49% cost, +22% steps. It is retired from the matrix (6 cells → 0). `max` remains the only level above `high` in the vocabulary, but no row currently takes it.
 
 {{< icon warning warn >}} **Scope of the evidence**: the benchmark measures *coding* agents. Documentation authoring, audit judgment, and SPEC authoring quality are **not** directly measured — those row placements rest on a similarity inference to multi-turn agentic work. Any row is reversible per-agent via `llm.agent_overrides`.
 
@@ -73,11 +75,11 @@ Each purpose class borrows its effort from a corresponding retained-agent row:
 |---|---|---|---|---|
 | `read-only-extract` | Explore | opus / low | opus / low | opus / low |
 | `mechanical-transform` | manager-git | opus / low | opus / low | opus / low |
-| `synthesize` | manager-docs | opus / medium | opus / low | opus / low |
-| `research` | plan-auditor | opus / high | opus / medium | opus / low |
-| `verify-judge` | sync-auditor | opus / high | opus / medium | opus / low |
-| `implement` | manager-develop | opus / max | opus / medium | opus / low |
-| `design-architecture` | manager-design | opus / high | opus / medium | opus / low |
+| `synthesize` | manager-docs | opus / low | opus / low | opus / low |
+| `research` | plan-auditor | opus / high | opus / high | opus / medium |
+| `verify-judge` | sync-auditor | opus / high | opus / high | opus / medium |
+| `implement` | manager-develop | opus / medium | opus / medium | opus / medium |
+| `design-architecture` | manager-design | opus / high | opus / high | opus / medium |
 
 `llm.harness_agents[profile][class].effort` overrides a class's effort. The model never changes through any path. An unrecognized class falls back to `implement`.
 
@@ -120,15 +122,16 @@ This command changes nothing — it exposes exactly the values the orchestrator 
 On the GLM backend (`moai glm` / `moai cg` GLM panes), an overlay is applied on top of the profile matrix:
 
 - Model slot mapping: `fable` → `glm-5.3` (Fable slot, `ANTHROPIC_DEFAULT_FABLE_MODEL`). This slot is a GLM environment binding, independent of the profile matrix — it stays wired even though no matrix cell selects Fable.
-- Claude's 5-step effort collapses into the 3-state z.ai can reach:
-  - `low` → **thinking-off**
-  - `medium` / `high` → **reasoning-high**
-  - `xhigh` / `max` (legacy effort value) → **reasoning-max**
-  - (unrecognized value → reasoning-max, to prevent under-reasoning)
-- coding-max override: `manager-develop` is forced to **reasoning-max** regardless of the collapse result
-- `manager-git` at low effort → **thinking-off**
+- Claude's 5-step effort collapses onto z.ai's reasoning ceiling. GLM-5.3 reasons **always** — disabling reasoning is not supported, and a request asking for it fails — so the control is a single 3-level `reasoning_effort` (low / high / max):
+  - `low` → **reasoning-low**
+  - `medium` / `high` / `xhigh` / `max` → **reasoning-max**
+  - (unrecognized value → reasoning-max, the totality clause: never under-reason)
+  - reasoning-high remains a legal wire value, but no Claude effort collapses onto it
+  - a GLM session without an explicit override defaults to **reasoning-max**
+- coding-max override: `manager-develop` is forced to **reasoning-max** regardless of the collapse result (z.ai's "reasoning max for coding tasks" recommendation)
+- `manager-git`, at `low` effort in all three profiles, occupies the reasoning-low tier
 
-Whether z.ai actually consumes the `ANTHROPIC_REASONING_EFFORT` value via the Anthropic-compat shim is an empirical task requiring live GLM session outbound observation. The runtime SSOT is `internal/template/glm_effort_overlay.go`.
+The runtime SSOT is `internal/template/glm_effort_overlay.go`.
 
 ## Next steps
 

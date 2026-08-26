@@ -15,13 +15,43 @@ type edgesRefreshStats struct {
 	duration time.Duration
 }
 
+// newEdgesRefreshClock constructs a wall-clock measurer for one refresh:
+// call the constructor at the refresh's start, the returned func at its end.
+func newEdgesRefreshClock() func() time.Duration {
+	start := time.Now()
+	return func() time.Duration { return time.Since(start) }
+}
+
+// edgesRefreshClock is the duration seam for the edges refresh (CR round-2
+// 3855149237 / REQ-GFR-004): production constructs the wall-clock measurer
+// via newEdgesRefreshClock; tests may inject a deterministic duration so
+// budget-overrun assertions never depend on real refresh timing. The
+// default-construction contract (seam == wall-clock constructor) is pinned
+// by TestEdgesRefreshClockDefaultIsWallClock.
+//
+// @MX:NOTE: [AUTO] test-injection seam for budget-overrun determinism (SPEC-V3R6-GRAPH-FRESHNESS-002 REQ-GFR-004)
+// @MX:REASON: mutating package var by design — the only test seam in the graph refresh path
+var edgesRefreshClock = newEdgesRefreshClock
+
+// edgesRefreshNeeded is the query path's refresh decision (REQ-GF-007, CR
+// round-2 3855149254): the edges half evaluates the SELECTED --edges
+// artifact's own provenance — EdgesSourcesMovedFor reads edgesFile's meta
+// sidecar, never the default artifact's — while the mx-index probe stays
+// tree-anchored: the index is a project-level source whichever artifact
+// consumes it. mxIndexChangedFiles is the caller's drift red line
+// (DefaultThresholds().MXIndexChangedFiles is the gate-calibrated value).
+func edgesRefreshNeeded(projectRoot, edgesFile string, mxIndexChangedFiles int) bool {
+	return graph.EdgesSourcesMovedFor(projectRoot, edgesFile) ||
+		graph.MXIndexNeedsRefresh(projectRoot, mxIndexChangedFiles)
+}
+
 // refreshEdgesArtifact brings the derived edges layer back in sync with its
 // sources: refresh the mx-index first (it is both a source and the mx-spec
 // edge extractor's input — and its inventory IS the described-source state
 // the code-derived layers consume), then rebuild (doc + code layers) and
 // re-stamp. Mechanical only — no LLM, no network (REQ-GF-007).
 func refreshEdgesArtifact(projectRoot, edgesFile string) (edgesRefreshStats, error) {
-	start := time.Now()
+	elapsed := edgesRefreshClock()
 
 	if _, err := mx.RefreshIndex(filepath.Join(projectRoot, ".moai", "state"), projectRoot, nil); err != nil {
 		return edgesRefreshStats{}, fmt.Errorf("refresh mx-index: %w", err)
@@ -37,7 +67,7 @@ func refreshEdgesArtifact(projectRoot, edgesFile string) (edgesRefreshStats, err
 		projectRoot, graph.SourceFingerprintsForEdges(projectRoot), len(edges)); err != nil {
 		return edgesRefreshStats{}, fmt.Errorf("write edges meta: %w", err)
 	}
-	return edgesRefreshStats{duration: time.Since(start)}, nil
+	return edgesRefreshStats{duration: elapsed()}, nil
 }
 
 // graphRefreshBudget resolves the query-time update-cost budget (milliseconds)

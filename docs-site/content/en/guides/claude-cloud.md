@@ -63,7 +63,7 @@ newest tag the un-suffixed path can carry — `v1.14.5`, from long before `cmd/m
 a v3 release by name is refused outright:
 
 ```bash
-go install github.com/modu-ai/moai-adk/cmd/moai@v3.1.2
+go install github.com/modu-ai/moai-adk/cmd/moai@v3.1.3
 # go: invalid version: module contains a go.mod file, so module path must match
 #     major version ("github.com/modu-ai/moai-adk/v3")
 ```

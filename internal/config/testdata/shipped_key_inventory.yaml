@@ -378,20 +378,20 @@
   class: R
   evidence: none
 - path: "gate.graph_freshness.blocking"
-  class: R
-  evidence: none
+  class: W
+  evidence: reader internal/hook/quality/gate.go (runGraphFreshnessStep) + internal/hook/pre_tool.go:840
 - path: "gate.graph_freshness.codemaps_changed_files"
-  class: R
-  evidence: none
+  class: W
+  evidence: reader internal/hook/quality/gate.go (runGraphFreshnessStep) + internal/hook/pre_tool.go:840
 - path: "gate.graph_freshness.enabled"
-  class: R
-  evidence: none
+  class: W
+  evidence: reader internal/hook/quality/gate.go (runGraphFreshnessStep) + internal/hook/pre_tool.go:840
 - path: "gate.graph_freshness.mx_index_changed_files"
-  class: R
-  evidence: none
+  class: W
+  evidence: reader internal/hook/quality/gate.go (runGraphFreshnessStep) + internal/hook/pre_tool.go:840
 - path: "gate.graph_freshness.update_budget_ms"
-  class: R
-  evidence: none
+  class: W
+  evidence: reader internal/cli/graph_refresh_cli.go:71 (graphRefreshBudgetMS)
 - path: "gate.enabled"
   class: R
   evidence: none

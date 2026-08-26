@@ -97,9 +97,12 @@ func (r CheckResult) OffendingLayers() []LayerReport {
 }
 
 // CheckFreshness computes the per-layer staleness of the three gated layers
-// under projectRoot. It returns a complete report (every layer present, even
-// on failure paths) plus an error only for system failures that prevent any
-// verdict at all (exit 2 territory per the 0/1/2 contract).
+// under projectRoot. A successful return carries all three layer reports; a
+// system error (exit 2 territory per the 0/1/2 contract) aborts the walk at
+// the failing layer, and the error-path report is PARTIAL by design — it
+// carries the layers measured so far (at most the failing codemaps row,
+// marked absent/unmeasured) and never fabricates the layers it never
+// reached (CR round-2 3855149289).
 //
 // No filesystem modification time is read anywhere in this function — mtime
 // is a banned staleness signal (REQ-GF-002): a fresh worktree checkout resets
@@ -113,6 +116,7 @@ func CheckFreshness(projectRoot string, th Thresholds) (CheckResult, error) {
 		// was never measured. System error, exit 2 (spec-gap fix: the SPEC's
 		// verdict enum covers fresh|stale|absent and prescribes no
 		// not-comparable verdict; exit 2 names the missing commit).
+		res.Layers = append(res.Layers, codemapsRep)
 		return res, err
 	}
 	res.Layers = append(res.Layers, codemapsRep)
@@ -251,8 +255,12 @@ func checkMXIndex(projectRoot string, th Thresholds) LayerReport {
 	return rep
 }
 
-// sidecarAbsentReason distinguishes the three unjudgeable mx-index states.
-var sidecarAbsentReason = "mx-index absent (untracked runtime artifact — fresh worktree state)"
+// sidecarAbsentReason is the fixed reason the mx-index layer carries whenever
+// its sidecar cannot be judged fresh or stale: the three load failures
+// loadMXSidecarForCheck collapses — file absent, unparseable JSON, no
+// provenance block — all leave the layer unmeasured, so one immutable reason
+// serves that single unjudgeable state (CR round-2 3855149309).
+const sidecarAbsentReason = "mx-index absent (untracked runtime artifact — fresh worktree state)"
 
 // loadMXSidecarForCheck loads the sidecar and reports whether it carries a
 // provenance block (the freshness-judgeable precondition).
@@ -306,7 +314,12 @@ func MXIndexDrift(projectRoot string, inventory map[string]string) (mismatch int
 // unindexed too. A sidecar WITHOUT a provenance block is deliberately NOT
 // refreshed: it is unjudgeable rather than stale, and pre-provenance indexes
 // keep answering exactly as they did before this SPEC.
-func MXIndexNeedsRefresh(projectRoot string) bool {
+//
+// mxIndexChangedFiles is the drift red line, INJECTED BY THE CALLER (CR
+// round-2 3855149315): a drift count >= it needs a refresh. This function
+// applies no threshold policy of its own — callers state theirs (the
+// gate-calibrated value is DefaultThresholds().MXIndexChangedFiles).
+func MXIndexNeedsRefresh(projectRoot string, mxIndexChangedFiles int) bool {
 	sidecarPath := filepath.Join(projectRoot, ".moai", "state", mx.SidecarFileName)
 	data, err := os.ReadFile(sidecarPath)
 	if err != nil {
@@ -324,7 +337,7 @@ func MXIndexNeedsRefresh(projectRoot string) bool {
 		return true
 	}
 	mismatch, _, _ := MXIndexDrift(projectRoot, pv.FileInventory)
-	return mismatch >= DefaultThresholds().MXIndexChangedFiles
+	return mismatch >= mxIndexChangedFiles
 }
 
 // checkEdges: recompute the four source-set fingerprints and compare against
@@ -346,30 +359,9 @@ func checkEdges(projectRoot string) LayerReport {
 	}
 
 	current := SourceFingerprintsForEdges(projectRoot)
-	mismatch := 0
-	var moved []string
-	// Union of stamped and current source-set names: a source that APPEARED
-	// after the build (e.g. the mx sidecar did not exist at build time) moved
-	// from absent to present just as surely as one that changed content.
-	names := make([]string, 0, len(pv.SourceFingerprints)+len(current))
-	for name := range pv.SourceFingerprints {
-		names = append(names, name)
-	}
-	for name := range current {
-		if _, stamped := pv.SourceFingerprints[name]; !stamped {
-			names = append(names, name)
-		}
-	}
-	sort.Strings(names)
-	for _, name := range names {
-		if cur, exists := current[name]; !exists || cur != pv.SourceFingerprints[name] {
-			mismatch++
-			moved = append(moved, name)
-		}
-	}
-	sort.Strings(moved)
-	rep.Value = mismatch
-	if mismatch > 0 {
+	moved := compareSourceFingerprints(pv.SourceFingerprints, current)
+	rep.Value = len(moved)
+	if len(moved) > 0 {
 		rep.Verdict = VerdictStale
 		rep.Reason = "source set(s) moved: " + strings.Join(moved, ", ")
 	} else {

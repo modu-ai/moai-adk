@@ -37,7 +37,7 @@ func TestSynthesizeReviewOutput_AdversarialVerdictLine(t *testing.T) {
 
 2. The shared parameter description promised the wrong fallback.`
 
-	if got := synthesizeReviewOutput(adversarial).Verdict; got != "fail" {
+	if got := synthesizeReviewOutput(adversarial, codexMethodReviewStart).Verdict; got != "fail" {
 		t.Errorf("adversarial prose opening with %q synthesized Verdict = %q, want \"fail\"\nreview text:\n%s",
 			"Verdict: fail", got, adversarial)
 	}
@@ -61,7 +61,7 @@ func TestSynthesizeReviewOutput_VerdictLineDirections(t *testing.T) {
 		{"the word verdict in prose only", "I could not reach a verdict on the caching layer.", "pass"},
 	}
 	for _, c := range cases {
-		if got := synthesizeReviewOutput(c.text).Verdict; got != c.want {
+		if got := synthesizeReviewOutput(c.text, codexMethodReviewStart).Verdict; got != c.want {
 			t.Errorf("%s: Verdict = %q, want %q (text: %q)", c.name, got, c.want, c.text)
 		}
 	}

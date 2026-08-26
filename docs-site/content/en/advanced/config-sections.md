@@ -199,6 +199,25 @@ workflow:
 
 The pin applies to the audit entry points only. Model resolution on the task-delegation paths (`codex_task`, `glm_task`) is unaffected, and the same fields are editable in the web console's Audit panel.
 
+## workflow.yaml — todo
+
+The switch that turns the backlog queue's **guidance surfaces** off. The session-start summary line, the statusline TODO segment, and the skill's inference routing of natural-language requests into the todo workflow — all three go quiet under this one key.
+
+```yaml
+workflow:
+    todo:
+        enabled: false   # explicit off — an absent key reads as on
+```
+
+| Key | Value | Meaning |
+|-----|-------|---------|
+| `todo.enabled` | (key absent, default) | On. The shipped template carries no todo block at all, which is the state most projects live in |
+| `todo.enabled` | `false` | The session-start summary, the statusline TODO segment, and the skill's automatic routing turn off |
+
+**Turning it off does not remove the command.** The `moai todo` CLI stays registered with every verb working, and an explicit `/moai todo` invocation still runs. That boundary is intended — the switch silences only the surfaces that show the queue to someone who did not ask for it, and leaves the path of someone actually using it untouched. A config file that cannot be read also resolves to on (fail-open).
+
+Reach for this key when the per-session backlog summary reads as noise on a small, one-off project. How to operate the queue itself is on the [moai todo](/en/utility-commands/moai-todo/) page.
+
 ## crosssession.yaml — cross-session messaging
 
 Decides how this session treats messages from your other Claude Code sessions. The `moai cc` · `moai glm` · `moai cg` launchers translate these values into a transient `--settings` file at launch, and the web console edits this file through the settings seam. A session launched without the launcher — a bare `claude` command — does not read this file.
