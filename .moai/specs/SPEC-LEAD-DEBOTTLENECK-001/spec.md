@@ -2,7 +2,7 @@
 id: SPEC-LEAD-DEBOTTLENECK-001
 title: "리드 병목 해소 — manager-lead 백그라운드 병렬 위임 (deputy dispatch surface)"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-08-26
 updated: 2026-08-26
 author: manager-spec (card t283)
