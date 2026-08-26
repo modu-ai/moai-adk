@@ -73,6 +73,14 @@ flowchart TD
 
 The second diagram shows the path from a backend's gate setting to the final verdict. An advisory backend only adds a disagreement flag on conflict; it never changes the verdict itself.
 
+## inconclusive — no verdict on code that was never read
+
+When the codex and GLM backends cannot collect the diff to review, they **do not make the call at all** — the result is `inconclusive` and the backend is not invoked. This corrects a former defect: a backend that failed to secure the code to review used to hand down a confident verdict anyway, and one live run produced a `fail` citing a repository whitelist this codebase does not contain. A verdict about unread code carries no information in either direction, so a collection failure now ends at `inconclusive` with no backend call.
+
+When a backend itself declares `inconclusive`, convergence reads that value **as inconclusive** — never synthesized into a PASS. It is the same conservative grain as "no PASS can be issued without a PASS from the required backends": counting a no-verdict as a pass would quietly leak trust out of the required gate.
+
+The **recording location** of the convergence verdict also follows the tree that was audited. The MCP server is a long-lived subprocess whose working directory cannot follow a worktree switch; formerly the verdict writer resolved its state directory once at process start from the primary checkout, so an audit run inside a worktree left its verdict in a directory that worktree's gate never looked at. Today the verdict is recorded under the `project_root` tree named by the call — an audit run from a worktree leaves its verdict where that worktree's gate reads it (see the [MCP server](/en/guides/mcp-server/) page for the `project_root` argument).
+
 ## fail-open — A Missing Backend Does Not Stop the Flow
 
 Multi-model audit follows fail-open (the principle of designing so that the absence of a non-mandatory element does not stop the whole flow). For example, if you set the GLM backend as an advisory gate but API auth is missing or the call fails, that backend's verdict is treated as no-result and convergence continues with the remaining active backends. One missing advisory backend does not halt the whole audit or end in an error.

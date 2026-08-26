@@ -128,6 +128,7 @@ flowchart TD
 - **不是看板。** 卡片在哪一列由主控会话和 SPEC 状态掌握，不在这个文件里。
 - **不是进行中工作的原本。** 卡片有了 SPEC 之后，SPEC 产物才是基准；待办条目只是指向它的标记。
 - **不会自行填充。** 工具不会自动抓取 TODO 注释、开放 issue 或审计结果放进队列。放条目的是人。
+- **引导表面可以关掉。** 会话启动摘要、状态栏 TODO 段、自动路由,用 `workflow.yaml` 里的 `workflow.todo.enabled: false` 关闭(见[配置文档](/zh/advanced/config-sections/))。关掉后命令和动词照常工作。
 
 ## CLI 表面
 

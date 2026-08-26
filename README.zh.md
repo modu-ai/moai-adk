@@ -361,7 +361,7 @@ claude        # 或者 moai cc —— 在项目里运行 Claude Code
 | CWD 冲突消解 | 用 `(worktree_path, session_id)` 对区分复用路径 |
 | 深度上限 | 限制嵌套复杂度 |
 
-> **现在就能用**：`moai cc -k`（或 `moai glm -k`）启动主控，用 `-k --name <role>` 逐个接入伴随会话 —— 每终端一个，手动启动。`moai chain <status|lineage|back|list|prune>` 读谱系，`moai todo`（不带参数查看队列，`add`·`list`·`next`·`done`·`unpick`·`drop`·`undrop`·`edit`·`move`，两个以上的词直接当作追加卡片）运营 `backlog` 列。启动顺序见上文“v3.1 新功能 —— 看板模式”一节。
+> **现在就能用**：`moai cc -k`（或 `moai glm -k`）启动主控，用 `-k --name <role>` 逐个接入伴随会话 —— 每终端一个，手动启动。`moai chain <status|lineage|back|list|prune>` 读谱系，`moai todo`（不带参数查看队列，`add`·`list`·`next`·`done`·`unpick`·`drop`·`undrop`·`edit`·`move`·`analyze`，两个以上的词直接当作追加卡片）运营 `backlog` 列。启动顺序见上文“v3.1 新功能 —— 看板模式”一节。
 
 > 详见：[看板模式指南](https://adk.mo.ai.kr/zh/advanced/kanban-mode)
 
@@ -500,9 +500,9 @@ flowchart TD
 ### 读懂状态栏
 
 ```
-🤖 Opus | 🧠 xhigh·t | ♻️ 87% | 🔅 v2.1.212 | 🗿 v3.1.2 | ⏳ 2h 34m | 💬 MoAI
+🤖 Opus | 🧠 xhigh·t | ♻️ 87% | 🔅 v2.1.212 | 🗿 v3.1.3 | ⏳ 2h 34m | 💬 MoAI
 🪫 CW: ████████░░ 88% (⚠️/clear) | 🔋 5H: ████░░░░░░ 45% (4h 30m) | 🪫 7D: ████████░░ 82% (Jan 21)
-📁 moai-adk-go | 📡 modu-ai/moai-adk, 7/3 | 🅱️ [WT] release/v3.1.2 +3 | 💾 +1 M2 ?0 | 📋 [run SPEC-AUTH-001-run] | 💌 PR #1042 (⌥approved)
+📁 moai-adk-go | 📡 modu-ai/moai-adk, 7/3 | 🅱️ [WT] release/v3.1.3 +3 | 💾 +1 M2 ?0 | 📋 [run SPEC-AUTH-001-run] | 💌 PR #1042 (⌥approved)
 🏷️ run | 👤 manager-develop | 🔄 TODO: 1/3
 ```
 
@@ -754,7 +754,7 @@ Claude 的每一档通过 `ANTHROPIC_DEFAULT_*_MODEL` 环境变量映射到 GLM 
 
 **domain（专业领域）7 个**：`moai-domain-backend`、`moai-domain-frontend`、`moai-domain-database`、`moai-domain-design-dna`、`moai-domain-html-report`、`moai-domain-humanize`、`moai-domain-svg-infographic`
 
-`moai-domain-design-dna` 是 v3.1.1 新加的。给它一份要参考的设计 —— 截图也好、一组图片也好、活的 URL 也好 —— 它会把颜色、间距、圆角、字体这些量得出来的值，连同那份设计的气质和特殊渲染效果，一并反推成一份 Design DNA JSON。再把这份 JSON 喂回去，它就造出气质相同的新产物 —— 这是把“做成这个画面的样子”从话语搬到数值上的路径。
+`moai-domain-design-dna` 是 v3.1.1 新加的。给它一份要参考的设计 —— 截图也好、一组图片也好、活的 URL 也好 —— 它会把颜色、间距、圆角、字体这些量得出来的值，连同那份设计的气质和特殊渲染效果，一并反推成一份 Design DNA JSON。再把这份 JSON 喂回去，它就造出气质相同的新产物 —— 这是把“做成这个画面的样子”从话语搬到数值上的路径。也支持图表配置档案：激活档案的标记保存在项目根目录的 `.design-dna/` 下，能活过 `moai update`；可选开启的 mermaid、drawio 导入器把来源当作不可信输入 —— 坐标、颜色、字体、版式一概不带过来。
 
 ### CHANGELOG
 
@@ -775,7 +775,7 @@ Claude 的每一档通过 `ANTHROPIC_DEFAULT_*_MODEL` 环境变量映射到 GLM 
 ### 状态栏里的版本显示是什么意思？
 
 ```
-🗿 v3.1.1 -> 🗿 v3.1.2
+🗿 v3.1.2 -> 🗿 v3.1.3
 ```
 
 前一个值是当前安装的 moai-adk 版本，箭头表示有可用更新。运行 `moai update` 后消失。

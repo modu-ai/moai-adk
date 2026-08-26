@@ -156,7 +156,7 @@ MoAI-ADK 템플릿은 **34개 스킬**을 제공합니다. 요청을 알맞은 �
 | `moai-domain-html-report` | Markdown → 단일 HTML 리포트 렌더러 (외부 의존성 없음) |
 | `moai-domain-humanize` | AI 텍스트 윤문/휴머나이제이션 (KO/EN/JA/ZH) |
 | `moai-domain-svg-infographic` | 편집 가능 SVG 기술 인포그래픽 (CJK 폰트) |
-| `moai-domain-design-dna` | 참조 디자인(스크린샷·이미지·URL)을 Design DNA JSON으로 역추출하고 그 JSON으로 새 산출물 생성 |
+| `moai-domain-design-dna` | 참조 디자인(스크린샷·이미지·URL)을 Design DNA JSON으로 역추출하고 그 JSON으로 새 산출물 생성. 다이어그램 프로파일을 지원 — 활성 프로파일 표식이 프로젝트 루트의 `.design-dna/` 아래 저장되어 `moai update`를 넘겨 살아남고, 옵트인 mermaid·drawio 임포터는 소스를 신뢰하지 않는 입력으로 다룹니다(좌표·색·글꼴·레이아웃은 넘어오지 않음) |
 
 ### SVG 인포그래픽 — 생성 가능한 다이어그램 종류
 

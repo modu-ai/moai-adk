@@ -94,7 +94,7 @@ MoAI-ADK テンプレートは合計 **34 個のスキル** を提供します�
 | `moai-domain-html-report`   | Markdown → 単一 HTML レポートレンダラー (6 個のモード、外部依存性なし) |
 | `moai-domain-humanize`      | AI テキストのヒューマナイズ、後編集 (KO/EN/JA/ZH)    |
 | `moai-domain-svg-infographic` | 編集可能な SVG 技術インフォグラフィック (アーキテクチャ・フロー・比較)、CJK フォント |
-| `moai-domain-design-dna`    | 参照デザイン (スクリーンショット・画像・URL) を Design DNA JSON へ逆抽出し、その JSON から新しい成果物を生成 |
+| `moai-domain-design-dna`    | 参照デザイン (スクリーンショット・画像・URL) を Design DNA JSON へ逆抽出し、その JSON から新しい成果物を生成。ダイアグラムプロファイルに対応 — アクティブなプロファイルの印はプロジェクトルートの `.design-dna/` 配下に保存されて `moai update` を生き延び、オプトインの mermaid・drawio インポータはソースを信頼しない入力として扱う (座標・色・フォント・レイアウトは持ち越されない) |
 
 ### SVG インフォグラフィック — 作成できるダイアグラムの種類
 
