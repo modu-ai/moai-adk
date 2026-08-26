@@ -31,8 +31,10 @@ import (
 )
 
 // writeLLMGLMYAML writes root/.moai/config/sections/llm.yaml carrying the GLM
-// backend intent signal (team_mode) plus an optional profile column.
-func writeLLMGLMYAML(t *testing.T, root, teamMode, prof string) {
+// backend intent signal (team_mode) plus an optional profile column. highModel
+// pins the high slot: "" omits the models block (loader defaults apply —
+// glm-5.3-flash post default-switch); an explicit id pins that model.
+func writeLLMGLMYAML(t *testing.T, root, teamMode, prof, highModel string) {
 	t.Helper()
 	dir := filepath.Join(root, ".moai", "config", "sections")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -45,6 +47,9 @@ func writeLLMGLMYAML(t *testing.T, root, teamMode, prof string) {
 	}
 	if prof != "" {
 		b.WriteString("    profile: \"" + prof + "\"\n")
+	}
+	if highModel != "" {
+		b.WriteString("    glm:\n        models:\n            high: \"" + highModel + "\"\n")
 	}
 	if err := os.WriteFile(filepath.Join(dir, "llm.yaml"), []byte(b.String()), 0o644); err != nil {
 		t.Fatalf("write llm.yaml: %v", err)
@@ -71,7 +76,8 @@ func renderAgentFMGLMBody(t *testing.T, root string) string {
 	return rec.Body.String()
 }
 
-// TestAgentFMGLMReasoningMapRendered (R1+R2): under team_mode glm the rendered
+// TestAgentFMGLMReasoningMapRendered (R1+R2): under team_mode glm with an
+// explicit glm-5.3 high slot (the non-flash collapse baseline) the rendered
 // rows carry each agent's derived z.ai reasoning state and the panel note is
 // present. The seeded agents cover the post SPEC-GLM-EFFORT-MAX-001 collapse on
 // their columns: manager-develop (max via the coding-max override), manager-git
@@ -82,7 +88,7 @@ func TestAgentFMGLMReasoningMapRendered(t *testing.T) {
 	seedAgentFMFile(t, root, "moai", "manager-develop", "opus", "medium")
 	seedAgentFMFile(t, root, "moai", "manager-git", "sonnet", "low")
 	seedAgentFMFile(t, root, "moai", "manager-spec", "opus", "high")
-	writeLLMGLMYAML(t, root, "glm", "medium")
+	writeLLMGLMYAML(t, root, "glm", "medium", "glm-5.3")
 
 	body := renderAgentFMGLMBody(t, root)
 
@@ -120,6 +126,27 @@ func TestAgentFMGLMReasoningMapRendered(t *testing.T) {
 	}
 }
 
+// TestAgentFMGLMReasoningMapFlashPinsMax: under the post default-switch
+// session model (no explicit models block — the loader default is
+// glm-5.3-flash) even manager-git at Claude effort low derives the max chip:
+// flash accepts reasoning_effort: max only, and the display must agree with
+// the wire (ResolveGLMReasoningForModel).
+func TestAgentFMGLMReasoningMapFlashPinsMax(t *testing.T) {
+	root := t.TempDir()
+	seedAgentFMFile(t, root, "moai", "manager-develop", "opus", "medium")
+	seedAgentFMFile(t, root, "moai", "manager-git", "sonnet", "low")
+	writeLLMGLMYAML(t, root, "glm", "medium", "")
+
+	body := renderAgentFMGLMBody(t, root)
+
+	if strings.Contains(body, `data-glm-reasoning="`+template.GLMStateLow+`"`) {
+		t.Error("flash session model still derives a low chip for a low-effort agent — the display disagrees with the max-only flash wire")
+	}
+	if !strings.Contains(body, `data-glm-reasoning="`+template.GLMStateMax+`"`) {
+		t.Error("flash session model does not derive the max chip — the effort(reasoning) map is not exposed")
+	}
+}
+
 // TestAgentFMGLMReasoningMapHiddenUnderClaude (R1+R2 negative): without a GLM
 // backend signal the reasoning chips and the glmnote stay absent — the
 // effort(reasoning) map is a GLM reading, noise under a Claude backend.
@@ -127,7 +154,7 @@ func TestAgentFMGLMReasoningMapHiddenUnderClaude(t *testing.T) {
 	root := t.TempDir()
 	seedAgentFMFile(t, root, "moai", "manager-develop", "opus", "medium")
 	seedAgentFMFile(t, root, "moai", "manager-git", "sonnet", "low")
-	writeLLMGLMYAML(t, root, "", "medium")
+	writeLLMGLMYAML(t, root, "", "medium", "")
 
 	body := renderAgentFMGLMBody(t, root)
 

@@ -121,13 +121,14 @@ moai model profile --json   # 機械可読
 
 GLM バックエンド（`moai glm` / `moai cg` の GLM ペイン）では、プロファイルマトリクスの上にオーバーレイが適用されます:
 
-- モデルスロットのマッピング: `fable` → `glm-5.3`（Fable スロット、`ANTHROPIC_DEFAULT_FABLE_MODEL`）。このスロットは GLM 環境のバインディングであり、プロファイルマトリクスとは独立です — マトリクスのどのセルも Fable を選択しませんが、配線は維持されます。
+- モデルスロットのマッピング: `fable` → `glm-5.3-flash`（Fable スロット、`ANTHROPIC_DEFAULT_FABLE_MODEL`）。このスロットは GLM 環境のバインディングであり、プロファイルマトリクスとは独立です — マトリクスのどのセルも Fable を選択しませんが、配線は維持されます。
 - Claude の 5 段 effort は z.ai の reasoning 上限に collapse します。GLM-5.3 は **常に推論します** — reasoning を無効化することはサポートされず、それを要求する呼び出しは失敗します。したがって制御軸は 3 段階の `reasoning_effort`（low / high / max）1 つです:
   - `low` → **reasoning-low**
   - `medium` / `high` / `xhigh` / `max` → **reasoning-max**
   - （認識不能な値 → reasoning-max、全体性条項: 決して過少推論しない）
   - reasoning-high は依然として有効な wire 値ですが、どの Claude effort もそこへは collapse しません
   - 明示的なオーバーライドのない GLM セッションはデフォルトで **reasoning-max** で実行されます
+- flash 例外: `glm-5.3-flash`（デフォルトモデル）では上の collapse は適用されず、`low` を含む **すべて** の Claude effort が **reasoning-max** に固定されます — flash は `reasoning_effort: max` しか受け付けないためです。low/high/max の 3 段階は glm-5.3 以前のモデルの体系です。
 - coding-max override: `manager-develop` は collapse 結果と無関係に **reasoning-max** を強制（z.ai の「コーディング課題は reasoning max」推奨）
 - `manager-git` は 3 プロファイルすべて `low` effort のため、reasoning-low の席を占めます
 

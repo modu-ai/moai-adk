@@ -684,16 +684,18 @@ z.ai GLM serves as an alternative backend for Claude Code. Switching is environm
 | `moai glm` | GLM | GLM | recommended | ~70% |
 | `moai cg` | Claude | GLM | **required** | ~60% |
 
-The GLM Coding Plan starts at $10/month. glm-5.3, glm-4.7, glm-4.5-air, and free models (GLM-4.7-Flash, GLM-4.5-Flash) are available.
+The GLM Coding Plan starts at $10/month. glm-5.3-flash (the default), glm-5.3, glm-4.7, glm-4.5-air, and free models (GLM-4.7-Flash, GLM-4.5-Flash) are available.
 
 Each Claude tier maps to a GLM model through the `ANTHROPIC_DEFAULT_*_MODEL` environment variables:
 
 | Claude tier | GLM model | Context |
 |---|---|---|
-| Opus | glm-5.3 | 1M |
-| Sonnet | glm-5.3 | 1M |
-| Haiku | glm-5.3 | 1M |
-| Fable | glm-5.3 | 1M |
+| Opus | glm-5.3-flash | 1M |
+| Sonnet | glm-5.3-flash | 1M |
+| Haiku | glm-5.3-flash | 1M |
+| Fable | glm-5.3-flash | 1M |
+
+> glm-5.3 stays selectable in any tier slot (`llm.glm.models.*` in `llm.yaml`); switching a slot back is a one-line config change.
 
 > Details: [Multi-LLM guide](https://adk.mo.ai.kr/en/multi-llm) · [z.ai pricing](https://docs.z.ai/guides/overview/pricing)
 

@@ -57,7 +57,8 @@ func ValidWorkflowDefaultModes() []string {
 }
 
 // ValidGLMModels returns the closed set offered for the llm.glm.models.* tier
-// slots, in descending capability order.
+// slots, default-first: glm-5.3-flash (the default) leads, and no capability
+// ordering between flash and glm-5.3 is claimed beyond that placement.
 //
 // The members are DERIVED from the DefaultGLM* constants rather than restated:
 // a second literal list would drift from the defaults the launcher actually
@@ -67,14 +68,19 @@ func ValidWorkflowDefaultModes() []string {
 // they are the SSOT for "which model may a tier slot hold", which is what this
 // set answers.
 //
-// glm-5.2 was withdrawn from this set once glm-5.3 became the default for every
-// tier: offering the immediate predecessor of the default buys nothing a user
-// wants and costs a widget row. DefaultGLM52 itself is DELIBERATELY retained as
-// a constant — an existing llm.yaml may still name glm-5.2 in a tier slot, and
-// the statusline context-window table still resolves it, so the id stays
-// loadable even though it is no longer offered.
+// glm-5.3 is listed EXPLICITLY (DefaultGLM53) even though no tier slot
+// defaults to it anymore: the set derives from constants, so a default
+// retarget without the explicit member would silently drop glm-5.3 from the
+// offered set and break an existing explicit selection.
+//
+// glm-5.2 was withdrawn from this set once a single model became the default
+// for every tier: offering the immediate predecessor of the default buys
+// nothing a user wants and costs a widget row. DefaultGLM52 itself is
+// DELIBERATELY retained as a constant — an existing llm.yaml may still name
+// glm-5.2 in a tier slot, and the statusline context-window table still
+// resolves it, so the id stays loadable even though it is no longer offered.
 func ValidGLMModels() []string {
-	return []string{DefaultGLMHigh, DefaultGLM51, DefaultGLM47, DefaultGLM45Air}
+	return []string{DefaultGLM53Flash, DefaultGLM53, DefaultGLM51, DefaultGLM47, DefaultGLM45Air}
 }
 
 // ValidAuditModels returns the closed set for workflow.audit.model, derived
