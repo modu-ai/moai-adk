@@ -15,11 +15,11 @@ Tier M 구현 계획. 마일스킨 순서는 결정 가역성 — 변경 가능�
 2. **정지 티메이트 부활**: deputy가 TaskStop된 세션에 이름으로 메시지를 보내면 transcript에서 부활한다 (SPEC-TEAMMATE-REVIVAL-SOLE-WRITER-001 교리 — agent 본문 deputy 절에 인용 추가).
 3. **routing-object 유실**: in-process mailbox가 이름을 가로챌 수 있음 (단일 대조 실험 기반 — 재발송 비용은 낮고 미발견 비용은 정지된 보드이므로 재발송 프로토콜 채택).
 4. **rapid-burst refusal**: deputy의 다중 발송 팬아웃이 inbox 용량 초과로 거부될 수 있음 — 발송 결과를 읽고 거부를 보고해야 한다.
-5. **[NEEDS CLARIFICATION: 매트릭스 확정]** spec.md §4 매트릭스 초안은 plan 심사 후 운영자 kickoff에서 확정 확인이 필요하다 (카드 지시: "매트릭스 표 — LEAD가 plan 후 심사").
+5. **매트릭스 확정 — 해소(RESOLVED 2026-08-26)**: spec.md §4 매트릭스는 리드 판정(a) 확정(위임 5축 = 실측 병목축 일치, 유지 6항 = 카드 경계 무오차) 후 Implementation Kickoff Approval에서 운영자 비준(매트릭스 비준 + run 승인 + 자율 진행 모드, 2026-08-26). §4 본문은 비준본 그대로 유지.
 
 ## §C Pre-flight
 
-- [ ] 매트릭스 초안(spec.md §4) 리드/운영자 확정 — [NEEDS CLARIFICATION: 매트릭스 확정] 해소
+- [x] 매트릭스 초안(spec.md §4) 리드/운영자 확정 — 해소됨 (리드 판정 + 운영자 kickoff 비준, 2026-08-26 — §B.5)
 - [ ] baseline 측정 재실행 (AC-009 "before" 계수 — 구현 전 리드 세션 시나리오 녹화)
 - [ ] 중립성 카탈로그 §25.1 숙지 (미러에 금지되는 내용 클래스)
 
