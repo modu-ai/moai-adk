@@ -2,7 +2,7 @@
 id: SPEC-GLM-FLASH-DEFAULT-001
 title: "GLM-5.3-Flash as the default coding model"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-08-27
 updated: 2026-08-27
 author: manager-spec
