@@ -177,7 +177,7 @@ Gaps (explicitly NOT observed): full-suite run on a clean matrix (CI's job on th
 
 ```yaml
 sync_complete_at: 2026-08-27
-sync_commit_sha: "pending-backfill — D3 self-referential-hazard workaround: a commit cannot know its own hash; the real SHA is backfilled in the immediately following commit"
+sync_commit_sha: "ffd98485c"
 sync_status: "complete — the single sync commit carries the in-progress → implemented → completed close + the CHANGELOG [Unreleased] ### Fixed entry + this §E.4; markdown-only (no code, no README, no docs-site)"
 changelog_entry_position: "CHANGELOG.md [Unreleased] ### Fixed — first entry in the section"
 docs_site_sync: "none — M3 already landed all four doc corrections (dependencies.md hook bullet, m5-baseline.md redaction, prior-entry MCP count, docs-site ko graph.md phrase); the 002 SPEC adds no user-facing surface beyond the M1-M3 deliverables (minimal-addition rule)"

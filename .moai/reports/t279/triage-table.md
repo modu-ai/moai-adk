@@ -80,6 +80,8 @@
 | F3 | 3855149371 | git 부재 시 fingerprint 앵커 | REQ-GF-003 commit-앵커 설계와 상충하는 의미 변경 — 현행 honest-absent가 설계 의도 |
 | F4 | 3855002093 | symbol.Extract 스캔패키지 증거 분리 반환 | Heavy lift (반환 시그니처 변경 파급) |
 | F5 | (리드 긴급 지시, 2026-08-26) | **머지 방식 × provenance 스탬프 상호작용 — squash 머지가 스탬프 커밋을 고아화** | 아래 §F5 상세 |
+| F6 | 3855852818 (round-3+, 스레드 스윕에서 발견) | `resolveWithin` 부재파일≠탈출 혼동 — codequery.go:73-75·citation.go 해당 지점이 루트 내 부재 파일에 "escapes the project root" 보고 (resolveWithin :48-59의 `tErr != nil → ""` 경로) | t279 스레드 정리 중 실측 확인된 신규 still-valid Minor — SPEC 범위 동결(채택 29) 밖. 운영자·리드의 접기/후속 카드 판단 대기 |
+| F7 | 3855795705 (round-3+, 스레드 스윕에서 발견) | graph_check.go:77-78·87-88 원시 cfgErr/err 텍스트 stderr 노출(경로 포함 가능) — M2 #18은 graph_stamp.go만 커버 | 동일 클래스의 미커버 지점 — F6과 동일 사유 |
 
 ## §F5 구조적 결함 기록 — squash 머지와 스탬프의 상호작용 (리드 긴급 지시 반영)
 
@@ -119,9 +121,10 @@
 
 ## PR #1648 스레드 정리 매핑 (sync-phase)
 
-- 미해결 42개 스레드 ID: `pr1648-unresolved-threads.tsv` (comment-id → thread ID)
-- 정리 원칙: 채택 29건 → t279 PR 머지 후 "fixed in t279 (<위치>)" resolve · 기각 2건 → 반증 요지 resolve · 후속 4건 → 후보 카드 안내 resolve · 연기 1건 → 기록 위치 인용 resolve · 이미 수정됨(미해결 스레드만) → 수정 위치 인용 resolve
-- 목표: 미해결 42 → 0 (Merge Risk High 가중 제거)
+- 미해결 42개 스레드 ID: `pr1648-unresolved-threads.tsv` (comment-id → thread ID), 판정 조인: `thread-disposition.tsv`
+- **스레드 스윕 재조정 (2026-08-27 실측)**: 42개 중 3개(3855852818·3855852801·3855795705)는 round-2 덤프(69건) 밖의 **후속 라운드 댓글**이었다. 본문 확인 결과: 3855852801(mcp_code_tools_test.go:80-83 타입 단언)은 M1 #6의 toolText/toolTextShape 수정에 이미 흡수(병합 후 resolve) · 3855852818·3855795705는 still-valid 신규 발견 → F6·F7로 기록(즉시 resolve, 후속 안내)
+- 정리 원칙: 채택분(24+1=25개) → t279 PR 머지 후 "fixed in t279 (<위치>)" resolve · 기각 2·연기 1·후속 4+F6·F7·이미 수정됨 8 = **17개 → 즉시 resolve**(반증·기록·수정 위치 인용)
+- 목표: 미해결 42 → 17 (머지 후 → 0; Merge Risk High 가중 감소)
 
 ## 실행 구조 제안 (manager-spec 입력)
 
