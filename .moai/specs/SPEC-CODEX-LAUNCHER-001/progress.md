@@ -479,7 +479,7 @@ harness  moai hook --harness codex
 
 ```yaml
 run_complete_at: 2026-08-27
-run_commit_sha: pending-backfill-m4
+run_commit_sha: 921fff60288d11b4267604e8fb49d6764deac3bf
 run_status: green
 ac_pass_count: 16
 ac_fail_count: 0
