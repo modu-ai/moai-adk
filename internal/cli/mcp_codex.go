@@ -1253,10 +1253,13 @@ type codexVerdictSignal struct {
 // fourth signal be added here without touching the adoption rule.
 func codexVerdictSignalsOf(reviewText string) []codexVerdictSignal {
 	var signals []codexVerdictSignal
-	if m := codexStatedVerdict.FindStringSubmatch(reviewText); m != nil {
+	// FindAll, not Find: one body can carry the same recognizer's line twice
+	// ("Verdict: pass" then "Verdict: fail"), and a first-match-only read
+	// would drop the later — conservative — occurrence (PR #1663 review).
+	for _, m := range codexStatedVerdict.FindAllStringSubmatch(reviewText, -1) {
 		signals = append(signals, codexVerdictSignal{"stated verdict label", strings.ToLower(m[1])})
 	}
-	if m := codexScoredVerdict.FindStringSubmatch(reviewText); m != nil {
+	for _, m := range codexScoredVerdict.FindAllStringSubmatch(reviewText, -1) {
 		signals = append(signals, codexVerdictSignal{"scored verdict line", strings.ToLower(m[1])})
 	}
 	if codexFindingBullet.MatchString(reviewText) {

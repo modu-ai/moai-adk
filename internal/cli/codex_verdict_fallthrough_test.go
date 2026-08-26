@@ -70,10 +70,11 @@ func TestSynthesizeReviewOutput_NativeCleanReviewStaysPass(t *testing.T) {
 }
 
 // TestSynthesizeReviewOutput_ModeSplitsTheSameBody is the wiring witness
-// (acceptance.md AC-CVS-003, "모드 배선 증인은 C5 로 한다"). C5 is chosen over the
-// empty body because the empty body never reaches the synthesizer in
-// production — runTurn short-circuits it. One body, two modes, two verdicts:
-// that is what proves the mode split is actually wired rather than declared.
+// (acceptance.md AC-CVS-003, which names C5 as the mode-wiring witness). C5 is
+// chosen over the empty body because the empty body never reaches the
+// synthesizer in production — runTurn short-circuits it. One body, two modes,
+// two verdicts: that is what proves the mode split is actually wired rather
+// than declared.
 func TestSynthesizeReviewOutput_ModeSplitsTheSameBody(t *testing.T) {
 	const c5 = "I walked the diff and moved on."
 

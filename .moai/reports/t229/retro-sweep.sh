@@ -7,10 +7,24 @@
 #   - every .claude/worktrees/*/.moai/reports/
 #   - .moai/state/audit-multi/*.json (the DQ-1 persisted ConvergenceResult)
 # Deduped by content hash, because worktrees carry copies of the same report.
-set -uo pipefail
+#
+# PR #1663 review hardening: ROOT defaults to the repository root derived from
+# this script's own location (never a developer-specific absolute path); the
+# hash tool is selected up front and the script exits when none is available
+# or a hash fails — a silently empty hash would mark later files as duplicates.
+set -euo pipefail
 
-ROOT="${1:-/Users/goos/MoAI/moai-adk-go}"
+ROOT="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}"
 OUT="${2:-/dev/stdout}"
+
+if command -v sha256sum >/dev/null 2>&1; then
+  hash_one() { sha256sum "$1" | cut -c1-12; }
+elif command -v shasum >/dev/null 2>&1; then
+  hash_one() { shasum -a 256 "$1" | cut -c1-12; }
+else
+  echo "retro-sweep: neither sha256sum nor shasum is available" >&2
+  exit 1
+fi
 
 {
   echo "# t229 retrospective sweep"
@@ -23,7 +37,7 @@ OUT="${2:-/dev/stdout}"
   while IFS= read -r f; do
     n_state=$((n_state + 1))
     echo "- $f"
-  done < <(find "$ROOT" -path '*/.moai/state/audit-multi/*.json' -type f 2>/dev/null)
+  done < <(find "$ROOT/.moai/state/audit-multi" "$ROOT"/.claude/worktrees/*/.moai/state/audit-multi -name '*.json' -type f 2>/dev/null)
   echo "count: $n_state"
   echo
 
@@ -34,7 +48,11 @@ OUT="${2:-/dev/stdout}"
   seen=""
   while IFS= read -r f; do
     grep -qE '^\|[[:space:]]*codex[[:space:]]*\|' "$f" 2>/dev/null || continue
-    h=$(shasum -a 256 "$f" | cut -c1-12)
+    if ! h=$(hash_one "$f"); then
+      echo "retro-sweep: hash failed: $f" >&2
+      exit 1
+    fi
+    [ -n "$h" ] || { echo "retro-sweep: empty hash: $f" >&2; exit 1; }
     case " $seen " in *" $h "*) continue ;; esac
     seen="$seen $h"
     row=$(grep -E '^\|[[:space:]]*codex[[:space:]]*\|' "$f" | head -1 | tr -d '\n')

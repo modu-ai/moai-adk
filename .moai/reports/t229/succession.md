@@ -38,5 +38,11 @@
 |---|---|
 | 병합 | `4561f432c` (origin/main → WT-audit-verdict-converge, `--no-edit`) — 충돌 0, `internal/cli/` 마커 0건, 작업 트리 클린, divergence `0 17` |
 | 카드 코드 생존 | `mcp_codex.go`에 `adoptConservativeVerdict`·`codexScoredVerdict`·`codexVerdictSignalsOf` 마커 10회; `codex_verdict_regression_test.go`·`codex_review_rpc_test.go` 존재 |
-| 대상 테스트 (병합 트리) | `go test ./internal/cli/ -run 'TestSynthesizeReviewOutput\|TestConverge_\|TestRunMultiAudit_\|TestCodexTask_OutputText' -count=1` → `ok github.com/modu-ai/moai-adk/internal/cli 1.034s` (본문 ok 행 직독). `-v` 재실행 `=== RUN` 34케이스 — 셀렉터 0매칭 아님 확인 |
+| 대상 테스트 (병합 트리) | 아래 코드블록의 명령 그대로 실행 → `ok github.com/modu-ai/moai-adk/internal/cli 1.034s` (본문 ok 행 직독). `-v` 재실행 `=== RUN` 34케이스 — 셀렉터 0매칭 아님 확인 |
 | 전 패키지 판정 | CI 몫 (로컬 full 수트 재실행은 부하 규율 위반 — `m4-close.md` §2·CLAUDE.local §4) |
+
+위 표의 대상 테스트 명령 (복사·실행용 원문 — 표 셀 안에서는 파이프를 이스케이프하면 복사 시 정규식이 리터럴 파이프로 변해 0매칭이 되므로 코드블록으로 둔다, PR #1663 CR):
+
+```bash
+go test ./internal/cli/ -run 'TestSynthesizeReviewOutput|TestConverge_|TestRunMultiAudit_|TestCodexTask_OutputText' -count=1
+```

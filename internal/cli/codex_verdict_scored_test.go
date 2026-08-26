@@ -58,6 +58,11 @@ var codexSignalCorpus = []struct {
 	{"K6 three signals", "Verdict: pass — nothing to block on.\n\nINCONCLUSIVE 0.50 / 1.00\n\n- [P2] weak hash at auth.go:88", "fail"},
 	{"K7 scored inconclusive then stated pass", "INCONCLUSIVE 0.50 / 1.00\n\nVerdict: pass — nothing to block on.", VerdictInconclusive},
 	{"K8 signals agree", "Verdict: pass — nothing to block on.\n\nPASS 0.99 / 1.00", "pass"},
+	// K9/K10 (PR #1663 review): the SAME recognizer firing twice. A
+	// first-match-only collector drops the second occurrence and synthesizes
+	// the lenient one — every match must enter the signal set.
+	{"K9 repeated stated verdicts, lenient first", "Verdict: pass — nothing to block on the first pass.\n\nVerdict: fail — merge blocked on the second pass.", "fail"},
+	{"K10 repeated scored verdicts, lenient first", "PASS 0.99 / 1.00\n\nFAIL 0.25 / 1.00", "fail"},
 }
 
 // TestSynthesizeReviewOutput_AdoptsMostConservativeSignal is AC-CVS-006.
