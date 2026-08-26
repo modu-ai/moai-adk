@@ -134,7 +134,7 @@ m1_to_mN_commit_strategy: "one commit per milestone, stacked serially on WT-lead
 
 ```yaml
 sync_complete_at: 2026-08-26
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: c7c5b2f61
 sync_status: complete
 spec_id: SPEC-LEAD-DEBOTTLENECK-001
 tier: M
