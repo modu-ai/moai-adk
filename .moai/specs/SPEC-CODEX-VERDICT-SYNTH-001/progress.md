@@ -82,7 +82,7 @@ AC-CVS-006 만 죽는다 — 이 AC 가 없었다면 mutant (e) 가 초록으로
 ```yaml
 sync_status: audit-ready
 sync_complete_at: 2026-08-26
-sync_commit_sha: "pending-backfill"  # real SHA backfilled in the immediately following commit (D3 exemption)
+sync_commit_sha: "62ea002dc"
 b12_self_test_a: pass   # grep -c 'SPEC-CODEX-VERDICT-SYNTH-001' CHANGELOG.md -> 0 (pre-emission)
 b12_self_test_b: pass   # AC count: acceptance.md AC-CVS-001..006 = 6 ACs; CHANGELOG entry states 6 PASS 0 FAIL
 b12_self_test_c: pass   # cited paths verified: internal/cli/mcp_codex.go, codex_verdict_regression_test.go, codex_review_rpc_test.go, .moai/reports/t229/succession.md
