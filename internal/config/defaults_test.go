@@ -1,6 +1,7 @@
 package config
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/pkg/models"
@@ -423,6 +424,14 @@ func TestDefaultGLMConstants(t *testing.T) {
 	}
 	if Default1MContextTokens != 1_000_000 {
 		t.Errorf("Default1MContextTokens: got %d, want %d", Default1MContextTokens, 1_000_000)
+	}
+	// The offered closed set: flash first (the default), glm-5.3 retained as an
+	// explicit member. Logged for the SPEC acceptance evidence.
+	wantSet := []string{DefaultGLM53Flash, DefaultGLM53, DefaultGLM51, DefaultGLM47, DefaultGLM45Air}
+	gotSet := ValidGLMModels()
+	t.Logf("ValidGLMModels() = %v", gotSet)
+	if !slices.Equal(gotSet, wantSet) {
+		t.Errorf("ValidGLMModels() = %v, want %v", gotSet, wantSet)
 	}
 }
 
