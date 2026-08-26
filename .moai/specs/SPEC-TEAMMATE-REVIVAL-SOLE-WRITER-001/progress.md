@@ -69,7 +69,7 @@ mx_scan: "변경 파일 전부 markdown — @MX 부착 대상 0 (plan.md §D.3 �
 
 ```yaml
 sync_complete_at: 2026-08-26
-sync_commit_sha: pending-backfill   # a commit cannot know its own SHA (D3) — backfilled in the immediately following commit
+sync_commit_sha: f40eb72c0         # backfilled (D3) — this sync commit carries the 3-phase close
 sync_status: completed              # 3-phase close — the in-progress → completed transition rides this same sync commit
 sync_commit_contains:
   - CHANGELOG.md [Unreleased] Added entry for SPEC-TEAMMATE-REVIVAL-SOLE-WRITER-001
@@ -87,4 +87,4 @@ frontmatter_status_transitions:
 canary_compliance_check: not_applicable   # doctrine-only; no canary surface touched
 ```
 
-_§E.4 end — sync_commit_sha backfill follows in the next commit._
+_§E.4 end — sync_commit_sha backfilled to `f40eb72c0` in the follow-up commit._
