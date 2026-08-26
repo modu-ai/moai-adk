@@ -346,30 +346,9 @@ func TestConcurrentSendPoll(t *testing.T) {
 		wgPoll.Add(1)
 		go func() {
 			defer wgPoll.Done()
-			var ids []string
-			stop := false
-			deadline := time.Now().Add(60 * time.Second)
-			for !stop && time.Now().Before(deadline) {
-				res, err := s.Poll(receiver.AgentID, nil)
-				if err != nil {
-					t.Errorf("poll: %v", err)
-					break
-				}
-				for _, m := range res.Messages {
-					ids = append(ids, m.Message.MessageID)
-				}
-				if len(res.Messages) == 0 && res.Remaining == 0 {
-					// Drain reached the send frontier: stop only when every
-					// sender has finished; otherwise brief backoff.
-					select {
-					case <-sendersDone:
-						stop = true
-					default:
-						time.Sleep(2 * time.Millisecond)
-					}
-				}
-			}
-			collected <- ids
+			// The stop rule lives in pollUntilDrained (stoprule_test.go) so
+			// TestPollerStopRule polices the same code this test runs.
+			collected <- pollUntilDrained(t, s, receiver.AgentID, sendersDone, nil)
 		}()
 	}
 	wgSend.Wait()

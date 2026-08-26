@@ -2,9 +2,9 @@
 id: SPEC-CI-FLAKE-SERIES-001
 title: "CI 의존 테스트 플레이크 3종 계열 수리 — poller 조기탈출 TOCTOU / 페어링 ratio 통계 / 단일 샘플 벽시계 단언"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-08-26
-updated: 2026-08-26
+updated: 2026-08-27
 author: manager-spec
 priority: P1
 phase: "post-v3.1.3 (next patch train)"
