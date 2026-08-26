@@ -79,22 +79,30 @@
 ### AC-TRG-009 — Wiring + template mirror + neutrality (REQ-TRG-008) · P2 · M1 (matcher twins), M2 (config)
 
 - **Given** the implemented tree,
-- **When** checking `.claude/settings.json` and `internal/template/templates/.claude/settings.json`,
+- **When** checking `.claude/settings.json` and `internal/template/templates/.claude/settings.json.tmpl` (the template twin is the `.tmpl` source; no plain settings.json exists there — auditor-measured 2026-08-26),
 - **Then** both carry a PreToolUse matcher entry `SendMessage|TaskStop` routed to the existing pre-tool wrapper; the config default exists in `internal/config/defaults.go`; template twins contain no SPEC IDs / REQ tokens / commit SHAs / internal dates (neutrality greps 0 hits); `make build` regenerates without diff noise; `internal_content_leak_test.go` + `template_neutrality_audit_test.go` pass.
 - **RED-now**: no such matcher in either tree (B1 — local tree measured; template twin assumed identical pending M1 mirror verification, which is itself part of this AC's green path).
 - **Green path**: M1/M2 mirror + `make build` + CI neutrality guards.
 
-### AC-TRG-010 — Live-session firing gate (all REQs, E4 parity) · P1 · M3
+### AC-TRG-010 — Live-session firing gate (all REQs, E4 parity) · P1 · M2
 
 - **Given** a fresh session started after the wiring ships (hooks active from launch, not mid-session),
 - **When** the E-P1 recipe runs (spawn → TaskStop → registry check → send deny → teammate-issued send deny → same-name respawn → clear → send allow),
 - **Then** every step's expected observation holds (registry entry, sentinel deny from both lead- and teammate-issued sends, respawn clear).
 - **RED-now**: cannot be red-measured pre-implementation (requires the wiring); its pre-state is plan.md §C.1-E7's inconclusive probe — the AC exists to force the live verification, substituting for the probe that could not run mid-session.
-- **Green path**: M3 dogfood record in progress.md §E.2.
+- **Green path**: M2 — full-recipe execution recorded in progress.md §E.2 (M3 re-runs it as sustained dogfood for the default-flip trigger).
+
+### AC-TRG-011 — `name [ref]` addressing matched both directions (REQ-TRG-003, REQ-TRG-004) · P1 · M2
+
+- **Given** the registry holds a live entry for stopped name X (gate enabled) and Y is a live teammate,
+- **When** SendMessage inputs arrive addressed `X [ref]` and `Y [ref]` (the sanctioned disambiguated addressing form),
+- **Then** the `X [ref]` send is DENIED (the optional `[ref]` suffix parsed and stripped, base name matched against the registry) and the `Y [ref]` send is ALLOWED with a `send_observed` audit row; unparseable suffix forms stay fail-open (AC-TRG-003).
+- **RED-now** (`c9eed8ac6`): no guard parses any recipient (B1/B2).
+- **Green path**: M2 table-driven tests over both directions.
 
 ## §C Severity classification
 
-- **P1 (blocker)**: AC-TRG-001, 002, 003, 004, 005, 007, 008, 010 — the deny mechanism, its fail-open boundary, and live firing.
+- **P1 (blocker)**: AC-TRG-001, 002, 003, 004, 005, 007, 008, 010, 011 — the deny mechanism, its fail-open boundary (both addressing forms), and live firing.
 - **P2 (required for close)**: AC-TRG-006, 009 — lifecycle hygiene and distribution hygiene.
 
 ## §D Traceability
@@ -112,7 +120,7 @@ See spec.md §3 (REQ ↔ AC ↔ milestone matrix). Every REQ-TRG-001..008 maps t
 2. E-P1 live recipe executed once with results recorded in progress.md §E.2 (AC-TRG-010).
 3. Affected-package suites green (`go test ./internal/hook/... ./internal/config/...`), pushed, CI full-suite green.
 4. Template mirror + `make build` + neutrality 0/0/0.
-5. `[NEEDS CLARIFICATION: enforcement default]` resolved at Implementation Kickoff Approval and recorded in progress.md.
+5. Enforcement default recorded as resolved — **false** (operator decision 2026-08-26, orchestrator AskUserQuestion round) — in plan.md §C.3 and progress.md §E.1; the M3 default-flip trigger remains open as an evidence-gated follow-up, not an open clarification.
 
 ## §G Forward-looking checks
 

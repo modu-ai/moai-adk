@@ -52,11 +52,11 @@ All measured/read 2026-08-26 on tree `c9eed8ac6` unless noted.
 
 **Deferred: write-path quarantine of revived agents** (deny `git commit` etc. from an agent matching a live stop record). Reachable per E4's `agent_id` fields, but `agent_id` stability across resume is unverified and a wrong quarantine wedges legitimate work — Out of Scope (spec.md §5), revisit after M3 dogfood.
 
-### C.3 `[NEEDS CLARIFICATION: enforcement default]` — shipped default of `workflow.agent_stop_guard.enabled`
+### C.3 Enforcement default — RESOLVED: shipped default of `workflow.agent_stop_guard.enabled` is **false**
 
-- **Recommended**: ship **false** (observe + advise always-on; deny opt-in) — consistent with both existing guards (`Workflow.BranchGuard.Enabled` false, `Workflow.AgentModelGuard.Enabled` false); enable it in the dev repo's local config at M2 for dogfood; flip the template default only after M3 dogfood shows zero false-positive denies (record the flip as a named upgrade trigger).
-- **Alternative**: ship **true** — the deny target is doctrine-prohibited in all cases (deliberate revival is a spawn, which clears), so a false positive requires state corruption. Cost: an enforcement bug in the shipped template wedges every team user's sends, and the two existing precedents both chose opt-in.
-- Surfaced at Implementation Kickoff Approval (orchestrator gate); SPEC authoring proceeded on the recommended value (card instruction: recommend, do not stall).
+- **Resolved** (operator decision 2026-08-26, orchestrator AskUserQuestion round, recommended option taken): ship **false** — observe + advise always-on; deny opt-in. Consistent with both existing guards (`Workflow.BranchGuard.Enabled` false, `Workflow.AgentModelGuard.Enabled` false). The dev repo's local config enables it at M2 for dogfood.
+- **Default-flip upgrade trigger** (kept open, evidence-gated): flip the template default to true only after M3 dogfood shows zero false-positive denies; the flip is recorded against that evidence, not against intent.
+- **Rejected alternative**: ship **true** — the deny target is doctrine-prohibited in all cases (deliberate revival is a spawn, which clears), so a false positive requires state corruption; but an enforcement bug in the shipped template would wedge every team user's sends, and both existing precedents chose opt-in.
 
 ### C.4 Naming / placement (low reversibility cost, listed for completeness)
 
@@ -77,7 +77,7 @@ All measured/read 2026-08-26 on tree `c9eed8ac6` unless noted.
 
 ## §E Pre-flight (run-phase verification recipes)
 
-**E-P1 — Live firing verification (M1 gate; substitutes for the inconclusive E7 probe).** Wire the matcher entries, START A FRESH SESSION with the wiring in place (hooks are configuration the session picks up at launch — mid-session pickup is the suspected confounder), then:
+**E-P1 — Live firing verification (M1: steps 1–2; M2: full recipe steps 1–5; substitutes for the inconclusive E7 probe).** Wire the matcher entries, START A FRESH SESSION with the wiring in place (hooks are configuration the session picks up at launch — mid-session pickup is the suspected confounder), then:
 1. Spawn a named throwaway agent; `TaskStop` it.
 2. `cat .moai/state/agent-stops/<session>.json` → entry present.
 3. `SendMessage` to the stopped name → expect sentinel-prefixed deny; `tail .moai/logs/agent-stop-audit.jsonl` → `stop_recorded` + `send_denied` rows.
@@ -96,10 +96,10 @@ Any step failing red ⇒ design premise broken ⇒ blocker report, not a patch-a
 | # | Priority | Milestone | Contents |
 |---|----------|-----------|----------|
 | M1 | High | Observe + record layer | `agent_stop_guard.go` recorder (PostToolUse TaskStop) + observer (PreToolUse SendMessage, advise-only), registry read/write helpers, JSONL audit, unit tests (synthetic HookInput fixtures; t.TempDir), settings matcher twins + `make build`, E-P1 live firing gate |
-| M2 | High | Enforcement layer | Deny path + `STOPPED_TEAMMATE_VIOLATION` sentinel, spawn-name clears entry (extend `extractAgentSpawn` with `Name`), SessionEnd cleanup, `workflow.agent_stop_guard.enabled` config (default per C.3), fail-open tests both directions (mirror-image mutant: guard must not deny live teammates), dev-repo local enable for dogfood |
-| M3 | Medium | Dogfood + doctrine pointer + correlation recipe | E-P1 full recipe incl. teammate-issued send + respawn-clear; propose rule amendment text (mechanism pointer + kill switch) as orchestrator deliverable; write the audit→commit-window correlation recipe (`.moai/docs/` candidate); record default-flip verdict with evidence |
+| M2 | High | Enforcement layer | Deny path + `STOPPED_TEAMMATE_VIOLATION` sentinel, spawn-name clears entry (extend `extractAgentSpawn` with `Name`), SessionEnd cleanup, `workflow.agent_stop_guard.enabled` config (default per C.3), fail-open tests both directions (mirror-image mutant: guard must not deny live teammates), full E-P1 recipe steps 3–5 (deny, teammate-issued deny, respawn-clear) green, dev-repo local enable for dogfood |
+| M3 | Medium | Dogfood + doctrine pointer + correlation recipe | Re-run E-P1 in a sustained dogfood team session (evidence for the default-flip trigger); propose rule amendment text (mechanism pointer + kill switch) as orchestrator deliverable; write the audit→commit-window correlation recipe (`.moai/docs/` candidate); record default-flip verdict with evidence |
 
-Trim guard: M3 is independently droppable; M1+M2 deliver the deny mechanism the card asks for.
+Trim guard: M3 is independently droppable; M1+M2 deliver the deny mechanism the card asks for, including the full live-firing recipe (E-P1 steps 1–5) at M2.
 
 ## §G Anti-patterns
 

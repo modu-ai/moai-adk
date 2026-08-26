@@ -1,14 +1,14 @@
 ---
 id: SPEC-TEAMMATE-REVIVAL-GUARD-001
 title: "Mechanism: stop-registry + SendMessage deny guard against revival of stopped teammates"
-version: "0.1.0"
+version: "0.1.1"
 status: draft
 created: 2026-08-26
 updated: 2026-08-26
 author: manager-spec (card t267)
 priority: P2
 phase: "v3.1.4 target"
-module: "internal/hook, .claude/settings.json, internal/template/templates/.claude/settings.json, internal/config"
+module: "internal/hook, .claude/settings.json, internal/template/templates/.claude/settings.json.tmpl, internal/config"
 lifecycle: spec-anchored
 tags: "agent-teams, hooks, pretool-use, stop-registry, guard, audit, template-mirror"
 tier: M
@@ -24,6 +24,7 @@ related_specs:
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-08-26 | manager-spec | Initial plan-phase emission (card t267, Class C). Incident evidence from SPEC-ZONE-REGISTRY-RESYNC-001 (card t232, 2026-08-25); doctrine boundary per SPEC-TEAMMATE-REVIVAL-SOLE-WRITER-001 §1.3 (landed 2026-08-26, card t269). Per-layer feasibility findings measured on tree `c9eed8ac6` — plan.md §C carries command + observed output for each claim. |
+| 0.1.1 | 2026-08-26 | manager-spec | Plan-audit iteration-2 fix pass (card t267): D1 enforcement default RESOLVED false (operator decision 2026-08-26, AskUserQuestion round; clarification marker stripped); D2 unmatcher'd PostToolUse dispatch corrected to `handle-harness-observe.sh` (evidence row B3); D3 full E-P1 recipe attributed to M2; D4 template twin path corrected to `settings.json.tmpl`; D5 `name [ref]` recipient matching added to REQ-TRG-003 + AC-TRG-011. |
 
 ## 1. Problem — measured shape
 
@@ -61,10 +62,10 @@ As a kanban lead / orchestrator working an agent team, I want a `SendMessage` ad
   - Precedent: `internal/hook/agent_model_guard.go:54,167-195` (JSONL audit, silent-failure append)
 
 - **REQ-TRG-002** (Event-driven — stop recording): **When** a `TaskStop` tool call against a named agent completes successfully, **the stop-guard** shall persist a stop record `{session_id, name, agent_id, stopped_at}` into the per-session stop registry at `.moai/state/agent-stops/<session-id>.json` and emit the `stop_recorded` audit event.
-  - Recording rides the already-wired unmatcher'd `PostToolUse` dispatch (`.claude/settings.json` delivers every tool completion to `handle-post-tool.sh` today — measured, plan.md §C.1-E1); the handler extends to recognize `TaskStop` completions.
+  - Recording rides the already-wired unmatcher'd `PostToolUse` dispatch (`.claude/settings.json`'s matcher-less entry delivers every tool completion to `handle-harness-observe.sh` → `moai hook harness-observe` today — measured, plan.md §B-B3); run-phase wiring extends that dispatch or adds a matcher-bound entry to recognize `TaskStop` completions.
   - Repeated stops of the same name upsert idempotently (same name ⇒ refresh `stopped_at`, no duplicate entries).
 
-- **REQ-TRG-003** (Event-driven — deny the send): **When** the enforcement gate is enabled and a `SendMessage` tool call's recipient — bare name or agent id — matches a live entry in the same session's stop registry, **the stop-guard** shall deny the call with a sentinel-prefixed reason (`STOPPED_TEAMMATE_VIOLATION: …`) that names the stopped teammate and routes coordination through the owning orchestrator, and shall emit the `send_denied` audit event. *(fix direction 2 — reject instead of revive)*
+- **REQ-TRG-003** (Event-driven — deny the send): **When** the enforcement gate is enabled and a `SendMessage` tool call's recipient — bare name, agent id, or the sanctioned `name [ref]` form (the optional `[ref]` suffix is parsed and stripped before comparison) — matches a live entry in the same session's stop registry, **the stop-guard** shall deny the call with a sentinel-prefixed reason (`STOPPED_TEAMMATE_VIOLATION: …`) that names the stopped teammate and routes coordination through the owning orchestrator, and shall emit the `send_denied` audit event. *(fix direction 2 — reject instead of revive)*
   - Wiring: new `PreToolUse` matcher entry `SendMessage|TaskStop` in `.claude/settings.json` + template twin, routed to the existing `handle-pre-tool.sh` wrapper (matcher-syntax precedent: the existing `Agent|Task` entry — plan.md §C.1-E1).
 
 - **REQ-TRG-004** (Unwanted — fail-open): **The stop-guard** shall not deny a `SendMessage` call on uncertain evidence — unparseable `tool_input`, absent recipient field, unreadable or missing registry file, or ambiguous name/id match — and shall route every such case to observe-only with an audit event. An enforcement bug must never wedge a session (house norm: `branch_guard.go`, `agent_model_guard.go:22-26`).
@@ -74,7 +75,7 @@ As a kanban lead / orchestrator working an agent team, I want a `SendMessage` ad
 
 - **REQ-TRG-006** (Event-driven — session-end cleanup): **When** a session ends, **the session-end path** shall remove that session's stop-registry entries, so stale records never outlive the session that produced them or leak into a later session's name reuse.
 
-- **REQ-TRG-007** (Capability gate — enforcement default): **Where** `workflow.agent_stop_guard.enabled` is false (shipped template default; house-norm-consistent with `Workflow.BranchGuard.Enabled` and `Workflow.AgentModelGuard.Enabled`), **the stop-guard** shall observe and advise without denying; where true, REQ-TRG-003's deny path is active. The default value is the kickoff sub-decision — `[NEEDS CLARIFICATION: enforcement default]` in plan.md §C.3, with the recommended resolution and its dogfood-to-flip upgrade trigger.
+- **REQ-TRG-007** (Capability gate — enforcement default): **Where** `workflow.agent_stop_guard.enabled` is false (shipped template default; house-norm-consistent with `Workflow.BranchGuard.Enabled` and `Workflow.AgentModelGuard.Enabled`), **the stop-guard** shall observe and advise without denying; where true, REQ-TRG-003's deny path is active. The shipped default is **false** — resolved by operator decision 2026-08-26 (orchestrator AskUserQuestion round, recommended option taken; recorded in plan.md §C.3) — alongside the default-flip upgrade trigger: flip the template default only after M3 dogfood shows zero false-positive denies.
 
 - **REQ-TRG-008** (Ubiquitous — template neutrality): **The settings wiring, hook code, and config defaults this SPEC adds** shall ship in the template twins (`internal/template/templates/…`) free of SPEC IDs, REQ tokens, commit SHAs, and internal dates, per the template-internal-isolation doctrine (C1–C8 catalogue; CI guard `template-neutrality-check.yaml`).
 
@@ -84,7 +85,7 @@ As a kanban lead / orchestrator working an agent team, I want a `SendMessage` ad
 |-----|--------------------|------------------------|
 | REQ-TRG-001 | AC-TRG-001, AC-TRG-008 | M1 |
 | REQ-TRG-002 | AC-TRG-001 | M1 |
-| REQ-TRG-003 | AC-TRG-002, AC-TRG-007 | M2 |
+| REQ-TRG-003 | AC-TRG-002, AC-TRG-007, AC-TRG-011 | M2 |
 | REQ-TRG-004 | AC-TRG-003, AC-TRG-004 | M2 |
 | REQ-TRG-005 | AC-TRG-005 | M2 |
 | REQ-TRG-006 | AC-TRG-006 | M2 |
