@@ -67,4 +67,24 @@ mx_scan: "변경 파일 전부 markdown — @MX 부착 대상 0 (plan.md §D.3 �
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-26
+sync_commit_sha: pending-backfill   # a commit cannot know its own SHA (D3) — backfilled in the immediately following commit
+sync_status: completed              # 3-phase close — the in-progress → completed transition rides this same sync commit
+sync_commit_contains:
+  - CHANGELOG.md [Unreleased] Added entry for SPEC-TEAMMATE-REVIVAL-SOLE-WRITER-001
+  - progress.md §E.4 (this block)
+  - spec.md frontmatter close (status: in-progress → completed, updated: 2026-08-26) — frontmatter only, no body change
+  - markdown-only: no code, README, or docs-site changes
+b12_self_test_a: pass               # grep -c 'SPEC-TEAMMATE-REVIVAL-SOLE-WRITER-001' CHANGELOG.md → 0 before emission
+b12_self_test_b: pass               # entry AC count 6 == distinct AC-TRSW-001..006 tokens in spec.md §3 (Tier S inline — no acceptance.md)
+b12_self_test_c: pass               # every path named in the entry verified to exist (4 rule twins + spec.md)
+frontmatter_status_transitions:
+  spec.md: "in-progress → completed (this sync commit)"
+  plan.md: none                     # frontmatter-only artifacts: spec.md is the only one carrying a frontmatter block per run-phase record
+  acceptance.md: none               # Tier S inline — acceptance.md does not exist
+  progress.md: none
+canary_compliance_check: not_applicable   # doctrine-only; no canary surface touched
+```
+
+_§E.4 end — sync_commit_sha backfill follows in the next commit._

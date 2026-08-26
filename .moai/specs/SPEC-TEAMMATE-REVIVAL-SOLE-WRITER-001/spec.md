@@ -2,7 +2,7 @@
 id: SPEC-TEAMMATE-REVIVAL-SOLE-WRITER-001
 title: "Doctrine: prevent SendMessage revival of stopped teammates + sole-writer discipline for worktrees during active audits"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-08-26
 updated: 2026-08-26
 author: manager-spec (card t269)
