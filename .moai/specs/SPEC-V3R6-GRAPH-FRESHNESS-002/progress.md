@@ -11,6 +11,22 @@
 - Split decision: new SPEC, not an increment — predecessor is `implemented` with a frozen audit trail; M4 owns its amendment (1.1.0 → 1.2.0) and close as THIS SPEC's scope. No `depends_on` (predecessor `implemented` ≠ `completed`; circular — research.md §6.3).
 - Evidence base: `.moai/reports/t279/triage-table.md` + `verify-{graph,cli,docs}.md` (read, not re-derived); `moai spec close --help` + the close implementation code-verified at `internal/spec/closer.go` this run (research.md §4 — §E.5 authoring dropped, manual SHA backfill ordered before the close, pass-with-debt non-blocking).
 
+## §F Phase 4 Mode Selection
+
+Logged by the orchestrator before the first run-phase spawn (2026-08-26, after Implementation Kickoff Approval: approve + autonomous progression, goal armed via `moai goal arm` under session 13b75f36 — mechanical condition: predecessor completed + sync_commit_sha 2fc4b40a6 + this SPEC implemented + targeted package tests green).
+
+Input parameters: tier M · scope ~22 files (11 test/code + astx + docs + SPEC artifacts) · domains: Go tests, Go production policy, astx query + build tags, docs/CHANGELOG/docs-site, SPEC lifecycle (5) · language mix Go+markdown · concurrency benefit LOW (coding-heavy).
+
+| Mode | Selected | Rationale |
+|---|---|---|
+| direct | no | multi-file, semantic changes across 5 domains |
+| serial | **yes** | coding-heavy Tier M; M1→M2→M3 dependency chain (M2 touches files M1 tests; M4 depends on all); Anthropic coding-task parallelism caveat |
+| fanout | no | not research-heavy; write-capable parallelism forbidden |
+| sweep | no | < 30 files; semantic, multi-rule; not mechanical-uniform |
+| agent-team | no | not operator-requested |
+
+Decision: serial — one manager-develop delegation per milestone (M1, M2, M3), M4 split into a manager-spec re-delegation (predecessor body corrections + manual backfill) followed by the close CLI. Boundary case: none (5 domains would tempt fanout, but every domain is write-capable coding work → serial per the tie-breaker).
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_
