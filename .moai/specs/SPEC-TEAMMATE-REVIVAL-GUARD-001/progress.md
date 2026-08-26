@@ -79,7 +79,7 @@ no third probe run).
 
 ```yaml
 sync_complete_at: 2026-08-27
-sync_commit_sha: "pending-backfill-SPEC-TEAMMATE-REVIVAL-GUARD-001"   # backfilled in the immediately following commit (self-referential-hazard workaround per spec-frontmatter-schema.md D3)
+sync_commit_sha: "ea9b1f522"   # backfilled in the immediately following commit (self-referential-hazard workaround per spec-frontmatter-schema.md D3)
 sync_status: PASS
 changelog_entry_position: "CHANGELOG.md [Unreleased] > Added > 첫 번째 항목 (SPEC-TEAMMATE-REVIVAL-GUARD-001) + [Unreleased] > Fixed > 첫 번째 항목 (config disk-cache schema poisoning — 별도 항목)"
 frontmatter_status_transitions:
