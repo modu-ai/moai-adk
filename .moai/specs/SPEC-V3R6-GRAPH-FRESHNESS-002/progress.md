@@ -115,9 +115,63 @@ Post-change verification (attribution: this run, this tree, M3 complete pre-comm
 - **Graph-freshness hygiene**: the codemaps/reports edits do NOT trip the codemaps gate (`.moai/` is not described-source); NO local `moai graph check` read was taken in M3 (a post-mutation read would need a `moai graph build` re-run first — §B stamp/build ordering); NOTHING restamped (REQ-GFR-014: the M0 stamp at `c9eed8ac6` carries to merge; AC-GFR-016 is the sync-phase obligation).
 - **Scope discipline**: astx diff = 4 build-tag lines + nocgo_test.go + 1 test func + 1 go.scm line + 1 stripQuotes condition; docs = 4 single-line surgical edits; no docs-site layouts/config/shared navigation touched; no codemaps regeneration.
 
+### M4 — predecessor SPEC correction + close (amendment by manager-spec; close by orchestrator-direct)
+
+Row ledger (plan.md §F M4 steps 1-3):
+
+| Step | comment-id | file(s) | AC | Evidence (a command / b verbatim / c this run, this tree) |
+|---|---|---|---|---|
+| 1a | 3855001890 | …-001/spec.md:87 | AC-GFR-014 | Third When-clause added: exit 2 for not-comparable system errors — names the failing operation, affected layer unmeasured, NO verdict fabricated (never `stale` for a measurement that never ran). Matches the F4 fix, graph-freshness.yml's documented 0/1/2, and docs-site ko graph.md:66. Frontmatter version 1.1.0 → 1.2.0, updated 2026-08-27 |
+| 1b | 3855001874 | …-001/acceptance.md §D.1 | AC-GFR-014 | AC-GF-008 moved SHOULD → MUST. Deviation (recorded): the MUST row folds into range notation `AC-GF-001..010` (008's removal from SHOULD makes the range contiguous) — semantically identical, no mechanical consumer parses §D.1 rows (closer scans FAIL/PASS-WITH-DEBT markers only). §D.4 gate 2's existing MUST listing unchanged |
+| 1c | 3855001867 | …-001/acceptance.md AC-GF-020 | AC-GFR-014 | Then-clause carries the non-Go qualifier (declaration set without non-exported filtering; Exported filtering is Go-only — `isExported` returns true unconditionally for non-Go). Signatures-only + provenance-naming assertions preserved |
+| 2 | (card task 4) | …-001/progress.md §E.4 :261 | AC-GFR-015 | `sync_commit_sha: "2fc4b40a6"` — manual backfill BEFORE close (D3 exemption surface). Adjacent rationale line records the placeholder-freezing rationale (needsSHABackfill closer.go:397-405 recognizes none of the 4 placeholder forms in `pending-backfill — <prose>`; without the manual step the close would freeze the placeholder permanently). open_followups backfill row marked RESOLVED (t279 M4); the other 3 follow-ups stand |
+| 3 | (close) | …-001 spec.md + progress.md | AC-GFR-015 | Orchestrator-direct invocation, verbatim: `$ moai spec close SPEC-V3R6-GRAPH-FRESHNESS-001` → `[full-close] SPEC SPEC-V3R6-GRAPH-FRESHNESS-001 — close transitions computed. / Computed transitions: / spec.md:frontmatter.status → completed / progress.md:§E.3.status → completed / progress.md:§E.5.mx_commit_sha → <derived-from-recent-mx-commit> / Commit: f32e9a3460d6a0a41e1fe79dbf320f22fb05525d` — **exit 0 on the FULL-CLOSE path (no fallback needed, no --force)**. sync_commit_sha NOT in the transition list — needsSHABackfill was false, the manual value held. Close commit subject (machine-generated, the branch's one commit without the t279 card id, as plan.md predicted): `chore(SPEC-V3R6-GRAPH-FRESHNESS-001): Mx-phase audit-ready signal + 3-phase close` |
+
+Post-close end state (observed this run, this tree):
+
+- `grep -m1 '^status:' …-001/spec.md` → `status: completed`
+- `grep -n 'sync_commit_sha' …-001/progress.md` → `:261 - sync_commit_sha: "2fc4b40a6"` (preserved through the close) + `:298 RESOLVED (t279 M4)` follow-up row
+- `grep -c '§E.5' …-001/progress.md` → 0 (no §E.5 authored — modern 4-section schema preserved; close precondition 2 satisfied via the §E.4+SHA 3-phase predicate)
+- `git show --stat f32e9a346` → 2 files (spec.md 2±, progress.md +1 — the appended `mx_commit_sha: (this commit)` L60 placeholder at :306, the sanctioned chicken-and-egg form; the 5 already-discharged dogfood SPECs left the same placeholder per closer.go:193-194)
+- Commit chain: `fe575d8f4` (mode log) → `371b8799c` (M1) → `58bb7d8ba` (M2) → `e70d6acde` (M3) → `bc9192411` (M4 amendment) → `f32e9a346` (close)
+
+Amendment-commit verification (manager-spec, pre-close, verbatim): `moai spec lint …-001/spec.md` → `✓ No findings` rc=0 · exit-2 clause grep → :87 hit · AC-GF-020 qualifier cites `isExported` (function-name citation; :298-304 Go-only unicode.IsUpper re-verified this run) · `git show --stat bc9192411` → 3 files, +15/−9.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-08-27
+run_commit_sha: "M0 52f7ba135 / M1 371b8799c / M2 58bb7d8ba / M3 e70d6acde / M4-amendment bc9192411 / predecessor-close f32e9a346"
+run_status: "M1-M4 implemented; predecessor SPEC-V3R6-GRAPH-FRESHNESS-001 corrected (v1.2.0) and closed (completed, sync_commit_sha 2fc4b40a6) via full-close path exit 0 — no fallback, no --force"
+ac_pass_count: 15             # AC-GFR-001..015, each with attribution-triple evidence in §E.2
+ac_fail_count: 0
+ac_pending_sync_count: 1       # AC-GFR-016 (final stamp main-reachable + no branch-HEAD restamp) — observable only on the PR head; M0 stamp c9eed8ac6 carried unmodified through M1-M4
+ac_pass_with_debt_count: 0
+preserve_list_post_run_count: 0
+new_warnings_or_lints_introduced: 0   # golangci-lint 0 issues at every milestone, baseline-identical
+cross_platform_build:
+  darwin: "pass"
+  windows: "pass (GOOS=windows GOARCH=amd64 go build)"
+  cgo_disabled: "pass (CGO_ENABLED=0 build + graph/astx test legs — skips, not failures)"
+coverage_touched_packages:
+  graph: "86.4%"
+  hook_quality: "89.6%"
+  cli: "79.2% (standing package structure; M1/M2 diffs test-additive + seams — cannot reduce coverage)"
+  mx: "84.8% (comment-only M2 diff)"
+  config: "80.6% (testdata-only M2 diff)"
+total_run_phase_files: 12+16+12+3   # per-milestone: M1 / M2 / M3 / M4(+close)
+delegations: "run-m1 (429-killed after finding #2 — ledger closed, state inherited) / run-m1b / run-m2 / run-m3 / spec-m4 + orchestrator-direct close"
+known_deviations:
+  - "M2 #12 took BOTH remedies (error-path report + honest doc) — stronger than the allowed cheaper-one"
+  - "M2 #17 wire change: graph tool success JSON rides StructuredContent, text fallback '<tool>: ok' (package convention the finding asked to join)"
+  - "M3 #11: specids_test.go left untagged (CGO-independent — keeps !cgo coverage non-vacuous)"
+  - "M4 #1b: §D.1 MUST row folded to range notation AC-GF-001..010"
+  - "close commit f32e9a346 subject is machine-generated (no t279 card id — predicted by plan.md; traceability rides the dispatch)"
+```
+
+Verification commands (final tree, this run): `go test ./internal/graph/ ./internal/cli/ ./internal/hook/quality/ ./internal/mx/ ./internal/config/ ./internal/navigator/astx/ -count=1` → all `ok` rc=0 (cli 218s the slowest); `CGO_ENABLED=0 go test ./internal/graph/ ./internal/navigator/astx/ -count=1` → `ok` ×2; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0; `golangci-lint run --timeout=2m` → `0 issues.`; `moai spec lint` on both SPECs → `✓ No findings`.
+
+Gaps (explicitly NOT observed): full-suite run on a clean matrix (CI's job on the PR head); cli/mx/config coverage shortfalls are standing package structure (per-milement attribution in §E.2); AC-GFR-016 unobserved until the PR exists.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
