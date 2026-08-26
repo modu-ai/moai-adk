@@ -53,7 +53,7 @@ Commits (branch `WT-taskstop-name-reclaim`, card-local — push deferred to sync
 
 ```yaml
 run_complete_at: 2026-08-27
-run_commit_sha: "pending-backfill-m3"   # backfilled below after the M3 commit landed
+run_commit_sha: "aac630f25"   # M3 deliverables commit (backfilled one commit later — self-referential-hazard workaround)
 run_status: audit-ready
 ac_pass_count: 11
 ac_fail_count: 0
