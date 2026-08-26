@@ -2,7 +2,7 @@
 id: SPEC-TEAMMATE-REVIVAL-GUARD-001
 title: "Mechanism: stop-registry + SendMessage deny guard against revival of stopped teammates"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-08-26
 updated: 2026-08-26
 author: manager-spec (card t267)
