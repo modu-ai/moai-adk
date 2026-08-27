@@ -98,7 +98,7 @@ Stamp-state final check (REQ-GFR-014 inheritance): NOTHING was restamped during 
 
 ```yaml
 run_complete_at: "2026-08-27"
-run_commit_sha: "pending-backfill-e4eb15ea4-successor"
+run_commit_sha: "2378bc14c033652313e7b62519caf3de25e3442e"
 run_status: "run-phase-complete"
 ac_pass_count: 12
 ac_fail_count: 0
