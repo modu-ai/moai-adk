@@ -1,4 +1,4 @@
-# Git Workflow Doctrine — Enhanced GitHub Flow
+# Git Workflow Doctrine — git-flow (2026-08-27 전환; 종전 모델: Enhanced GitHub Flow)
 
 > Externalized verbatim from CLAUDE.local.md §18 on 2026-05-20 (v2.20.0-rc1 release-readiness consolidation). Original section authored v2.14.0 onward.
 
@@ -61,25 +61,30 @@
 
 ### §18.1 브랜치 구조
 
+> **[HARD] 2026-08-27 개정 — git-flow.** 카드 작업은 `develop`에서 갈라져 `develop`으로 돌아오고, `main`을 갱신하는 유일한 경로는 릴리스 PR이다. 종전 구조(모든 단기 브랜치가 `main`에서 분기)는 `[RETIRED 2026-08-27]`.
+
 ```
-main ──●──●──●──●──●──  (protected, 항상 배포 가능, tags 부착)
-       ↑  ↑     ↑
-       │  │     release/vX.Y.Z (며칠 이내)
-       │  │
-       │  feat/SPEC-XXX-description (1-3일)
-       │  fix/issue-NNN-description (1일)
-       │  docs/topic-description (1일)
-       │  chore/task-description (1일)
-       │  plan/vX.Y-topic (SPEC 초안 모음)
-       │
-       hotfix/vX.Y.Z-description (main의 tag에서 분기)
+main ─────●───────────────●──  (protected, 릴리스 PR로만 갱신, tags 부착)
+          ↑               ↑
+          │               release/vX.Y.Z (develop에서 분기, 며칠 이내)
+          │
+develop ──●──●──●──●──●──●──  (통합 브랜치, origin/develop CI가 판정)
+             ↑  ↑     ↑
+             │  │     WT-<slug> (카드 워크트리 — PR 없이 --no-ff 병합)
+             │  WT-<slug>
+             WT-<slug>
+
+hotfix/vX.Y.Z-description (main의 tag에서 분기 → main 대상 PR)
 ```
 
 ### §18.2 [HARD] 브랜치 명명 규칙
 
+> **[HARD] 2026-08-27 개정.** 카드/SPEC 작업의 브랜치는 `WT-<slug>` 하나다(카드 워크트리, `develop`에서 분기, 카드 id는 브랜치가 아니라 워크트리 디렉터리가 운반한다 — `gitflow-lane-protocol.md` §1). 아래 표의 `feat/*`·`fix/*`·`docs/*`·`chore/*`·`plan/*` 등 단기 브랜치는 **카드 경로에서 더 이상 쓰이지 않으며**, 릴리스·hotfix 경로와 역사 기록으로만 남는다.
+
 | 접두사 | 용도 | 수명 | 예시 |
 |--------|------|------|------|
-| `feat/SPEC-XXX-*` | 기능 개발 (SPEC 기반) | 1-3일 | `feat/SPEC-AUTH-001-oauth2` |
+| `WT-<slug>` | **카드 워크트리 (현행)** — `develop`에서 분기 | 카드 통합까지 | `WT-gitflow-doc-align` |
+| `feat/SPEC-XXX-*` | 기능 개발 (SPEC 기반) — 카드 경로 무효 | 1-3일 | `feat/SPEC-AUTH-001-oauth2` |
 | `fix/issue-NNN-*` | 이슈 기반 버그 수정 | 1일 | `fix/issue-683-race-condition` |
 | `fix/*` | 이슈 없는 버그 수정 | 1일 | `fix/ci-lint-errcheck` |
 | `docs/*` | 문서 작업 | 1일 | `docs/v2.14-release-notes` |
@@ -95,9 +100,11 @@ main ──●──●──●──●──●──  (protected, 항상 배
 
 각 브랜치 유형별 머지 방식 **반드시** 준수:
 
+> **[HARD] 2026-08-27 개정.** 카드 통합(`WT-<slug>` → `develop`)은 이 표의 대상이 **아니다** — PR도 squash도 없고, 통합 워크트리 안에서 `git merge --no-ff`로 합친 뒤 `origin/develop`에 push한다(`gitflow-lane-protocol.md` §2·§4). 아래 표는 **`main`으로 가는 PR**에만 적용된다.
+
 | 머지 유형 | 전략 | gh 명령어 | 이유 |
 |-----------|------|-----------|------|
-| feature/fix/chore/docs → main | **squash** | `gh pr merge N --squash` | WIP commit 정리, 1 PR = 1 main commit |
+| ~~feature/fix/chore/docs → main~~ **[RETIRED 2026-08-27 — 카드는 main PR을 내지 않는다]** | ~~squash~~ | — | 종전 체제의 역사 기록 |
 | release/* → main | **merge commit** ⭐ | `gh pr merge N --merge` | 릴리스 마일스톤 + 개별 SPEC commit 보존 |
 | hotfix/* → main | **merge commit** | `gh pr merge N --merge` | 긴급 변경 이력 명확성 |
 | plan/* → main | **squash** | `gh pr merge N --squash` | 초안 commit 정리 |
@@ -144,7 +151,7 @@ Agent(subagent_type: "manager-git",
 
 | 타입 | 기준 | 주기 | 브랜치 |
 |------|------|------|--------|
-| **Patch (vX.Y.Z)** | 버그 수정만 | 필요 시 즉시 | `fix/*` PR (self-merge) 여러 개 → main → tag bump (2026-07-20: 직접 main push 불가, PR 경유) |
+| **Patch (vX.Y.Z)** | 버그 수정만 | 필요 시 즉시 | 카드 여러 개 → `develop` 병합 → `release/vX.Y.Z`(develop에서 분기) → main 릴리스 PR → tag bump (2026-08-27 개정) |
 | **Minor (vX.Y.0)** | SPEC cluster (2-4 SPECs) 또는 주요 feature | 1-2주 | `release/vX.Y.0` 경유 |
 | **Major (vX.0.0)** | Breaking changes | 3-6개월 | `release/vX.0.0` + migration guide |
 | **Hotfix (vX.Y.Z+1)** | 프로덕션 긴급 수정 | 24h 이내 | `hotfix/vX.Y.Z+1-*` → main |
@@ -303,7 +310,7 @@ lefthook install      # .git/hooks/pre-push 자동 등록
 
 ```bash
 # 1. release 브랜치 생성 + 작업
-git checkout -b release/v2.15.0 main
+git checkout -b release/v2.15.0 develop   # [2026-08-27] 분기점은 develop (종전 main)
 # CHANGELOG.md, SPEC status 업데이트, docs-site update 등
 
 # 2. PR + review + merge (merge commit 전략)
@@ -316,17 +323,18 @@ git checkout main && git pull
 # → tag 생성, push, GoReleaser 자동 실행, GitHub Release 생성
 ```
 
-**Patch Release (fix 브랜치 PR → main)** — (2026-07-20: 직접 main push 불가, PR self-merge 경유):
+**Patch Release** — (2026-08-27 개정: 카드 PR 없음, 릴리스 PR만 `main`으로 간다):
 
 ```bash
-# 1. fix 브랜치에서 수정 + PR + squash merge (self-merge, 0 approvals, 4 CI checks)
-# 2. main pull + tag + push (release 스크립트)
+# 1. 카드 워크트리(WT-<slug>)에서 수정 → 통합 워크트리에서 develop 에 --no-ff 병합 → git push origin develop
+# 2. origin/develop CI green 확인 → release/vX.Y.Z 를 develop 에서 분기 → main 릴리스 PR (merge commit, self-merge 0 approvals)
+# 3. main pull + tag + push (release 스크립트)
 ./scripts/release.sh v2.14.1
 ```
 
 ### §18.9 자동화 도구
 
-**구성 완료된 도구 (Enhanced GitHub Flow 공식 인프라)**:
+**구성 완료된 도구 (공식 자동화 인프라 — 2026-08-27 git-flow 전환과 무관하게 유효)**:
 
 | 도구 | 역할 | 트리거 | 설정 파일 |
 |------|------|--------|-----------|
@@ -358,7 +366,7 @@ git checkout main && git pull
 - ❌ `main`에서 따서 카드 작업 시작 (분기점은 `develop`) · 카드 단위 PR은 존재하지 않는다 — 통합은 로컬 `develop` 병합(`git merge --no-ff`)이다
 - ❌ release PR squash merge (merge commit 필수 — 개별 SPEC commit 보존)
 - ❌ tag 수동 push 없이 `gh release create` (GoReleaser와 충돌)
-- ❌ branch prefix 관례 위반 (`feat/SPEC-*` 대신 `add-something` 등)
+- ❌ branch prefix 관례 위반 (카드는 `WT-<slug>`, 릴리스는 `release/vX.Y.Z`, hotfix는 `hotfix/vX.Y.Z-*` — `add-something` 등 임의 명명 금지)
 - ❌ `--rebase` merge 전략 (history rewrite 방지)
 - ❌ CI fail 상태 PR merge (admin override 필요, 최소화)
 

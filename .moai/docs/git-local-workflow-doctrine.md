@@ -171,11 +171,11 @@ git stash pop || git checkout stash@{0} -- <missing-paths>                  # 5)
 
 > **[RETIRED 2026-07-20]** 종전 이 표의 Tier S/M 행은 "main 직접 push (manager-develop/manager-docs commit 직접 수행)" 이었다. `enforce_admins: true` 로 main-direct가 불가능해지면서 두 행 모두 PR routing으로 통합. `manager-develop`/`manager-docs`는 여전히 commit을 수행하되, push·PR은 `manager-git`이 담당한다 (self-merge 흐름).
 
-**Owner 명시 (REQ-ATR-020 정합)**: 모든 tier에서 PR 생성은 `manager-git` 의 책임이다. `manager-develop` 또는 `manager-docs` 는 commit 만 수행 후 `manager-git` 에게 push + PR 생성을 위임한다. 이는 Anthropic 2026 SRP (Single Responsibility Principle) 정합 — 각 retained agent 가 명확한 phase boundary 를 가진다. (2026-07-20 이전: Tier S/M은 manager-develop이 commit+push를 자체 수행했으나, main-direct push 차단으로 이제 push도 PR 경유.)
+**Owner 명시 (REQ-ATR-020 정합)** — **[RETIRED 2026-08-27 — 카드 경로에는 무효; ceremony owner 규격은 릴리스 경로에 계승]**: 모든 tier에서 PR 생성은 `manager-git` 의 책임이다. `manager-develop` 또는 `manager-docs` 는 commit 만 수행 후 `manager-git` 에게 push + PR 생성을 위임한다. 이는 Anthropic 2026 SRP (Single Responsibility Principle) 정합 — 각 retained agent 가 명확한 phase boundary 를 가진다. (2026-07-20 이전: Tier S/M은 manager-develop이 commit+push를 자체 수행했으나, main-direct push 차단으로 이제 push도 PR 경유.)
 
 **Late-Branch 4-Phase Pattern**: Tier L PR routing 시 `manager-git` 은 `.moai/docs/git-workflow-doctrine.md` §18.3.1 의 Late-Branch 4-Phase 패턴 (A: branch creation / B: commit / C: PR creation / D: Late-Branch closure)을 따른다. Phase D Late-Branch closure 는 PR 머지 후 local main 정렬 의무 — `.claude/agents/moai/manager-git.md` § Late-Branch Invocation Pattern 참조.
 
-**Routing 결정 흐름 (2026-07-20 PR-mandatory)**:
+**Routing 결정 흐름 (2026-07-20 PR-mandatory)** — **[RETIRED 2026-08-27 — 현행은 위 (a)/(b)/(c) 3항]**:
 1. 모든 SPEC/변경 → `manager-git` routing으로 PR 생성 (main-direct 불가)
 2. SPEC tier 가 L OR 사용자가 `--pr` 명시 → 무거운 ceremony (Late-Branch 4-Phase + 풀 CI 매트릭스)
 3. Tier S/M (without `--pr`) → 경량 ceremony (단기 브랜치 + Tier 1 CI 통과 즉시 self-merge) — 여전히 PR 경유이나 리뷰 오버헤드 최소
@@ -195,7 +195,7 @@ git stash pop || git checkout stash@{0} -- <missing-paths>                  # 5)
 
 **완화 정책 4중 (Defense in Depth)**:
 
-1. **[HARD] Pre-spawn fetch obligation**: `.claude/rules/moai/core/agent-common-protocol.md` §Pre-Spawn Sync Check (L1) — implementation Agent spawn 전 `git fetch origin && git rev-list --count --left-right origin/main...HEAD` 의무. `N 0` (origin ahead) 감지 시 STOP + AskUserQuestion (rebase / inspect / abort 3 옵션).
+1. **[HARD] Pre-spawn fetch obligation**: `.claude/rules/moai/core/agent-common-protocol.md` §Pre-Spawn Sync Check (L1) — implementation Agent spawn 전 `git fetch origin && git rev-list --count --left-right origin/main...HEAD` 의무. **[2026-08-27 주의]** 이 baseline은 배포되는 SSOT(`agent-common-protocol.md`)의 문구 그대로이며 `origin/main`을 가리킨다 — git-flow로 전환한 이 리포에서 카드 작업의 실제 발산 기준점은 `origin/develop`이므로, 로컬 카드 작업에는 `origin/develop...HEAD`로 읽는다(SSOT 수정은 이 문서의 범위 밖). `N 0` (origin ahead) 감지 시 STOP + AskUserQuestion (rebase / inspect / abort 3 옵션).
 
 2. **[SHOULD] Multi-session 인지 시 worktree opt-in 권장**: 사용자가 동일 cwd에서 2+ 세션 작업 패턴이면 `moai cc -w <이름>`으로 SPEC별 working tree 분리. Memory는 여전히 공유되나 git working tree는 분리 → race 원천 차단. CLAUDE.md §14 [SHOULD] worktree advisory + session-handoff.md Block 0 패턴 활용.
 
@@ -208,7 +208,7 @@ git stash pop || git checkout stash@{0} -- <missing-paths>                  # 5)
 - `ps aux | grep claude` 또는 `tmux list-panes` 다중 결과
 - mystery commit 1회 이상 발견된 경험 있음
 
-본 정책 적용 시 §23.9 PR-mandatory routing (모든 tier PR 경유, 2026-07-20)은 single/multi-session 공통 기본값. Multi-session 시 사용자는 L2 worktree로 자발적 분리 OR SPEC별 독립 feat 브랜치로 race 원천 차단 (branch 격리가 PR-mandatory 체제에서 자연스러운 완화책). ~~§23.7 일반화 (모든 tier main 직진)는 single-session 환경 기본값~~ **[RETIRED 2026-07-20]**.
+본 정책 적용 시 §23.9 **현행 카드 routing (2026-08-27 git-flow — 카드 워크트리는 `develop`에서 분기하고 PR 없이 로컬 `develop`에 병합)** 은 single/multi-session 공통 기본값이다. ~~§23.9 PR-mandatory routing (모든 tier PR 경유, 2026-07-20)~~ **[RETIRED 2026-08-27]**. Multi-session 시 race는 **카드별 워크트리 격리**로 원천 차단된다 — git-flow 체제에서 카드마다 독립 워크트리·독립 `WT-<slug>` 브랜치를 갖는 것이 곧 격리이므로, 별도 완화책을 추가할 필요가 없다. ~~§23.7 일반화 (모든 tier main 직진)는 single-session 환경 기본값~~ **[RETIRED 2026-07-20]**.
 
 선례: SPEC-V3R6-LEGACY-CLEANUP-001 race incident (2026-05-23) + agent-common-protocol.md §Pre-Spawn Sync Check L1 정책 도입.
 
