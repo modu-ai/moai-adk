@@ -411,6 +411,25 @@ func TestExtractEmissionViaInit_ResolvesRelativeBin(t *testing.T) {
 	}
 }
 
+// TestBoundedTail keeps a failed extraction's output from flooding a doctor
+// row: long output is trimmed to its tail, short output passes through.
+func TestBoundedTail(t *testing.T) {
+	if got := boundedTail([]byte("  short  ")); got != "short" {
+		t.Errorf("boundedTail(short) = %q, want %q", got, "short")
+	}
+	long := strings.Repeat("x", 500) + "END"
+	got := boundedTail([]byte(long))
+	if len(got) > 310 {
+		t.Errorf("boundedTail(long) length = %d, want a bounded tail", len(got))
+	}
+	if !strings.HasSuffix(got, "END") {
+		t.Errorf("boundedTail(long) = %q, want it to keep the tail", got)
+	}
+	if !strings.HasPrefix(got, "...") {
+		t.Errorf("boundedTail(long) = %q, want the elision marker", got)
+	}
+}
+
 // TestFindEmbedCheckRoot_SkipsStrayMarker pins the subdirectory-anchor defect
 // found by running the check from a package directory in the real repository:
 // a test side effect leaves a bare .moai/state/ directory there, so a walk
