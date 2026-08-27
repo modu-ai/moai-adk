@@ -1,14 +1,14 @@
 ---
 id: SPEC-INTEGRATION-LOCK-LIVENESS-001
 title: "Release-integration lock: anchor holder liveness to the session process, not the acquire CLI process (card t298)"
-version: "0.1.2"
+version: "0.1.3"
 status: draft
 created: 2026-08-27
 updated: 2026-08-27
 author: manager-spec
 priority: P1
 phase: "v3.1.4 target"
-module: "internal/kanban, internal/cli, internal/hook"
+module: "internal/kanban, internal/cli, internal/hook, internal/session"
 lifecycle: spec-anchored
 tags: "integration-lock, liveness, kanban, factory, t298"
 tier: M
@@ -188,10 +188,11 @@ code shape. REQ numbering: REQ-INL-NNN.
   gone — fail-open on uncertainty, unchanged.
 
 - **REQ-INL-009** (Event-driven / documentation) — **When** the fix lands, the two local
-  documents in scope shall state the restored serialization guarantee: the
-  `.claude/rules/local/gitflow-lane-protocol.md` §3 blockquote, which enshrines the defect as a
-  workaround, shall be rewritten; `CLAUDE.local.md` §4.1, which is silent on the guarantee,
-  shall be extended with it (per §B item 13's measured distinction).
+  documents in scope shall state the restored session-anchored liveness guarantee and the
+  legacy re-acquire consequence: the `.claude/rules/local/gitflow-lane-protocol.md` §3
+  blockquote, which enshrines the defect as a workaround, shall be rewritten;
+  `CLAUDE.local.md` §4.1, which is silent on the guarantee, shall be extended with it
+  (per §B item 13's measured distinction).
 
 - **REQ-INL-010** (Unwanted) — The acquire verb shall not silently overwrite another lane's
   recorded trace: every takeover (stale-reclaim or `--force`) shall continue reporting the
@@ -289,6 +290,7 @@ and must write no displacement record), which no other row observes.
 | 0.1.0 | 2026-08-27 | Initial draft (plan phase, card t298). Status set to `draft` on creation across all four plan-phase artifacts. |
 | 0.1.1 | 2026-08-27 | plan-audit iter-1 repair (FAIL 0.795): D1 marker-write assertion added to AC-INL-001; D2 AC-INL-011 + §B item 13 restated against re-measured CLAUDE.local.md; D4 acquire read-modify-write hazard added to §G + M5 wording bound; D3 pre-flight scoped to imports; D5 regex claim attributed; D6-D9 applied. |
 | 0.1.2 | 2026-08-27 | Surgical plan-phase amendment (card t298, still `draft`): AC-INL-012 added (acquire-refusal path — the gap through which the field harm passed), traced to existing REQ-INL-004 + REQ-INL-010 with no new REQ; §A gains the two production field observations of 2026-08-27 plus the identity-of-record vs atomicity layer distinction; progress.md §E.1 gains an unresolved-provenance note on the iter-1 repair pass. |
+| 0.1.3 | 2026-08-27 | Second-audit blocking-defect close (card t298, still `draft`): D1 — `module:` gains `internal/session` (M2 exports a production seam there; plan.md references it ~13 times, and the field previously named only kanban/cli/hook). D2 — AC-INL-013 added: the negative assertion that measures plan.md §F M5's [HARD] wording bound over BOTH shipped documents, closing the surviving mutant (a doc edit that deletes the caveat, adds AC-INL-010/011's required tokens, and ALSO writes an unqualified serialization-guarantee claim passed the entire prior criterion set). Traced to REQ-INL-009; §D matrix and §D.3 MUST-PASS list updated. |
 
 ## Exclusions
 

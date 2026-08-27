@@ -1,6 +1,7 @@
 # SPEC-INTEGRATION-LOCK-LIVENESS-001 — Acceptance Criteria (card t298)
 
-Baseline tree for every RED-now cell: `d29b8942e` @ `WT-integration-lock` (worktree t298).
+Baseline tree for every RED-now cell: `d29b8942e` @ `WT-integration-lock` (worktree t298);
+cells re-measured after the develop merge name `c67a6ea64` and cite the drift check.
 Two-cell discipline per `.claude/rules/moai/development/verification-completeness.md` §2: each
 criterion carries a RED-now cell stating why it is red (or, for preserved-invariant criteria,
 its mutant-guard pairing) and a green-path cell naming the flipping milestone. All tests run
@@ -23,6 +24,7 @@ primary-checkout state files are never touched.
 | AC-INL-010 | REQ-INL-009 | Documentation | M5 |
 | AC-INL-011 | REQ-INL-009 | Documentation | M5 |
 | AC-INL-012 | REQ-INL-004, REQ-INL-010 | RED-first (acquire refusal) | M2 |
+| AC-INL-013 | REQ-INL-009 | Negative assertion (doc wording bound) | M5 |
 
 ## §D.1 Criteria (Given-When-Then, two cells each)
 
@@ -205,8 +207,8 @@ stale-reclaim), never to a refusal.
   exits — so `current.Stale()` is true and control takes the `case current.Stale():` reclaim
   arm (line 163) instead: the bare acquire SUCCEEDS and reports `displaced: sess-a`
   (`internal/cli/integration.go:196-199`). Both clauses therefore fail today. Existing coverage
-  cannot see this: `runIntegration` (integration_lock_cli_test.go:26-43, quoted verbatim in the
-  §E.1 repair note) executes the cobra command **in-process**, so the recorded pid is the
+  cannot see this: `runIntegration` (integration_lock_cli_test.go:26-43) executes the cobra
+  command **in-process**, so the recorded pid is the
   still-alive `go test` process and the two existing refusal tests —
   `TestIntegrationAcquire_RefusesASecondLane` (integration_lock_cli_test.go:106) and
   `TestAcquireIntegrationLock_RefusesASecondLiveSession` (internal/kanban/integration_lock_test.go:60)
@@ -228,6 +230,60 @@ stale-reclaim), never to a refusal.
   output shows the non-zero exit naming `sess-a`, the record still holding `sess-a`, and no
   `displaced:` line.
 
+### AC-INL-013 — neither shipped document claims a serialization guarantee (negative assertion)
+**Given** plan.md §F M5 carries a [HARD] wording bound on the prose this SPEC ships — forbidding
+"직렬화를 보장한다" and any equivalent unqualified guarantee claim, "동시 acquire는 불가능하다",
+and any wording implying the record is a capability boundary rather than a coordination signal —
+and no criterion in AC-INL-001..012 measures that bound; **When** M5 lands; **Then** the
+forbidden-phrase sweep over BOTH shipped documents returns **0**:
+
+```bash
+grep -hoE '직렬화를[[:space:]]*보장|동시.*acquire.*불가능|acquire.*동시.*불가능' \
+  .claude/rules/local/gitflow-lane-protocol.md CLAUDE.local.md | wc -l
+```
+
+Scope is exactly those two paths — the SPEC artifacts under `.moai/specs/` necessarily quote the
+forbidden strings to define them and are never swept.
+
+- **Why this row exists (the gap it closes, and the harm behind it):** spec.md §G records that
+  the acquire path remains an unserialized read-modify-write which this SPEC does **not** fix. The
+  lead announcement is therefore currently the FIRST serialization layer, and two lanes have
+  already read `moai integration acquire` output as window ownership and collided (spec.md §A,
+  field reproduction, 2026-08-27). A shipped document claiming the lock now guarantees
+  serialization would cause lanes to drop the announcement layer — converting a documented,
+  operator-visible coordination step into a false mechanical guarantee. The surviving mutant this
+  row kills: a documentation edit that deletes the §3 caveat (satisfying AC-INL-010), adds
+  AC-INL-011's two required tokens, **and also** writes 직렬화를 보장한다 passes every criterion in
+  AC-INL-001..012 while landing that false guarantee in a [HARD] doctrine document.
+- **Traceability:** REQ-INL-009 (the documentation requirement) — this row measures the negative
+  half of what M5 ships, where AC-INL-010/011 measure the positive half. REQ-INL-010 does **not**
+  apply: it governs the acquire verb's displaced-holder reporting, not shipped prose. **No new REQ
+  was added.**
+- **RED-now (measured on this tree, `6d3f8251c` @ `WT-integration-lock`):** the command above
+  returns **1** — `.claude/rules/local/gitflow-lane-protocol.md:42`, the §3 caveat blockquote
+  "현재 이 락은 직렬화를 보장하지 못한다 — 카드 t298 …". `CLAUDE.local.md` contributes **0**.
+  The first pattern arm is deliberately **polarity-agnostic**: it matches `직렬화를 보장` whatever
+  follows, so it hits today's negated caveat AND a future positive claim. That choice is what
+  makes the criterion non-vacuous — the positive-only form `직렬화를[[:space:]]*보장한다` measures
+  **0** on both files on this tree (measured in this run), so a positive-only pattern would be
+  green at arrival and would assert nothing about the work.
+- **Consequence for M5's replacement prose (binding):** the shipped replacement must state the
+  mechanism positively — the hold survives the acquire CLI's exit and is released by the holder's
+  death, an explicit release, or a recorded `--force`; the lead announcement remains the doctrine's
+  first layer — and must **not** restate the honest negated form 직렬화를 보장하지 못한다 either.
+  None of plan.md §F M5's required-instead wording contains a swept token, so writing it as
+  prescribed does not trip this check.
+- **Mutant probe (run against scratch copies; the real files were not modified):** correct-M5
+  simulation (line 42 deleted, nothing added) → **0**; mutant A (deletion + `이 락은 이제
+  직렬화를 보장한다.`) → **1**; mutant B (mutant A + `동시 acquire는 불가능하다.` in
+  CLAUDE.local.md) → **2**. The criterion fails on both mutants and passes only the correct edit.
+- **Reviewer-judgment sub-clause (not greppable):** the third prohibition — wording implying the
+  record is a capability boundary rather than a coordination signal — is a judgment about meaning,
+  not a token match. It is asserted by review of the M5 diff, not by the command above; the grep
+  is the mechanical floor, not the whole bound.
+- **Green path:** M5; the same command returns 0 after the caveat is replaced by the bounded
+  statement, with AC-INL-010/011 independently confirming the required wording is present.
+
 ## §D.2 Edge Cases
 
 - Acquire run from a plain shell (no Claude env, no launcher stamp): ancestry walk finds the
@@ -243,8 +299,10 @@ stale-reclaim), never to a refusal.
 
 ## §D.3 Severity and Closure Gates
 
-- MUST-PASS: AC-INL-001, 002, 003, 004, 007, 008, 012 (the contract, its mutant guards, backward
-  compat, the guard consumer, and the acquire-refusal path).
+- MUST-PASS: AC-INL-001, 002, 003, 004, 007, 008, 012, 013 (the contract, its mutant guards,
+  backward compat, the guard consumer, the acquire-refusal path, and the doc wording bound —
+  013 is MUST-PASS because its failure mode is a false mechanical guarantee in a [HARD] doctrine
+  document, which would retire the announcement layer that is currently the first one).
 - SHOULD-PASS: AC-INL-005, 006, 009, 010, 011 (preserved invariants, parity compile, docs).
 - Definition of Done: all MUST-PASS observed green on the implementation tree with verbatim
   outputs recorded in progress.md §E.2; both doc rows landed; CI green on the PR head.
