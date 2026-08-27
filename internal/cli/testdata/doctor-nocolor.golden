@@ -27,18 +27,19 @@
 │    9 ok, 3 warn, 0 fail                                                                                                                              │
 │                                                                                                                                                      │
 │  Workspace ---                                                                                                                                       │
-│    STATUS  CHECK             MESSAGE                                                                                                                 │
-│    warn    Hooks Config      .claude/hooks/ not found — hook handlers unavailable                                                                    │
-│    ok      Hook opt-in:      disabled                                                                                                                │
-│    warn    Slash Commands    .claude/commands/ not found — slash commands unavailable                                                                │
-│    warn    Skills Allowlist  .claude/skills/ not found                                                                                               │
-│    warn    MX Tag Config     .moai/config/sections/mx.yaml not found — MX annotation thresholds use defaults                                         │
-│    warn    Worktree State    .moai/state/ not found — worktree checkpoint storage unavailable                                                        │
-│    warn    BODP Config       .moai/branches/ not found — BODP audit trail disabled                                                                   │
-│    warn    Telemetry Config  .moai/config/sections/telemetry.yaml not found — telemetry uses defaults                                                │
-│    warn    Glamour Cache     glamour not integrated                                                                                                  │
-│    ok      Codex Wiring      not wired (claude-only project) — skipped                                                                               │
-│    2 ok, 8 warn, 0 fail                                                                                                                              │
+│    STATUS  CHECK                 MESSAGE                                                                                                             │
+│    warn    Hooks Config          .claude/hooks/ not found — hook handlers unavailable                                                                │
+│    ok      Hook opt-in:          disabled                                                                                                            │
+│    warn    Slash Commands        .claude/commands/ not found — slash commands unavailable                                                            │
+│    warn    Skills Allowlist      .claude/skills/ not found                                                                                           │
+│    warn    MX Tag Config         .moai/config/sections/mx.yaml not found — MX annotation thresholds use defaults                                     │
+│    warn    Worktree State        .moai/state/ not found — worktree checkpoint storage unavailable                                                    │
+│    ok      Worktree Base Branch  git_strategy.worktree_base_branch unset — card worktrees follow the repository default                              │
+│    warn    BODP Config           .moai/branches/ not found — BODP audit trail disabled                                                               │
+│    warn    Telemetry Config      .moai/config/sections/telemetry.yaml not found — telemetry uses defaults                                            │
+│    warn    Glamour Cache         glamour not integrated                                                                                              │
+│    ok      Codex Wiring          not wired (claude-only project) — skipped                                                                           │
+│    3 ok, 8 warn, 0 fail                                                                                                                              │
 │                                                                                                                                                      │
 │  [Pass 16]  [Warn 11]  [Fail 0]                                                                                                                      │
 │                                                                                                                                                      │

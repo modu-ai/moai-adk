@@ -114,7 +114,7 @@ func RunWorktreeBaseAlignment(projectRoot string) map[string]any {
 		// REQ-WBR-009: pointing refs/remotes/origin/HEAD at a ref that does not
 		// exist is strictly worse than the defect this SPEC repairs, so a typo
 		// costs one diagnostic line and nothing else.
-		fmt.Fprintf(worktreeBaseBranchStderr,
+		_, _ = fmt.Fprintf(worktreeBaseBranchStderr,
 			"warning: git_strategy.worktree_base_branch names %q, which has no remote-tracking branch "+
 				"(refs/remotes/origin/%s); refs/remotes/origin/HEAD left unchanged — correct the setting\n",
 			configured, configured)
@@ -126,7 +126,7 @@ func RunWorktreeBaseAlignment(projectRoot string) map[string]any {
 		return data
 	}
 
-	fmt.Fprintf(worktreeBaseBranchStderr,
+	_, _ = fmt.Fprintf(worktreeBaseBranchStderr,
 		"notice: refs/remotes/origin/HEAD realigned from %s to %s per git_strategy.worktree_base_branch\n",
 		current, configured)
 	data["worktree_base_branch_aligned"] = configured

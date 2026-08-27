@@ -27,11 +27,82 @@ blocker: none — D2 (widget shape) CLOSED by operator ruling 2026-08-27: `TypeT
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Full verdict with per-AC commands, exit codes, `=== RUN` counts, and evidence paths: `.moai/reports/t313/run-verdict.md`.
+Verbatim command output: `.moai/state/verify/t313/` (persistent — survives `/tmp` clearance).
+Measured in worktree `.claude/worktrees/t313`, branch `WT-worktree-baseref`, at HEAD `8c46460ff` unless a row says otherwise.
+
+### AC matrix
+
+| AC | Status | Verification command | Actual output | Evidence |
+|---|---|---|---|---|
+| AC-WBR-001 | PASS | `go test ./internal/config -run 'GitStrategy' -count=1 -v` | exit 0, 35 `=== RUN`, 0 vacuous | `ac-wbr-001.txt` |
+| AC-WBR-002 | PASS | value-side grep + `go test ./internal/template -run 'WorktreeBaseBranchTemplate' -v` | branch-grep exit 1 (no match); guard exit 0, 1 `=== RUN` | `ac-wbr-002.txt`, `ac-wbr-002-guard.txt` |
+| AC-WBR-003 | PASS | `go test ./internal/hook -run 'WorktreeBaseBranch.*(Unset\|Empty)' -count=1 -v` | exit 0, 1 `=== RUN`, 0 vacuous | `ac-wbr-003.txt` |
+| AC-WBR-004 | PASS | `go test ./internal/hook -run 'WorktreeBaseBranch.*Match' -count=1 -v` | exit 0, 1 `=== RUN`, 0 vacuous | `ac-wbr-004.txt` |
+| AC-WBR-005 | PASS | `go test ./internal/hook -run 'WorktreeBaseBranch.*Mismatch' -count=1 -v` | exit 0, 1 `=== RUN`, 0 vacuous | `ac-wbr-005.txt` |
+| AC-WBR-006 | PASS | `go test ./internal/hook -run 'WorktreeBaseBranch.*(FailOpen\|GitError)' -count=1 -v` | exit 0, 2 `=== RUN`, 0 vacuous | `ac-wbr-006.txt` |
+| AC-WBR-007 | PASS | `go test ./internal/cli -run 'SessionWorktree.*Base' -count=1 -v -timeout 600s` | exit 0, 5 `=== RUN`, 0 vacuous | `ac-wbr-007.txt` |
+| AC-WBR-008 | PASS | `... -run 'SessionWorktree.*(NoBase\|Unresolvable)'` + `... -run 'SessionWorktree.*(SharedPredicate\|Resolver)'` | exit 0/0, 3 + 2 `=== RUN`, 0 vacuous | `ac-wbr-008a.txt`, `ac-wbr-008b.txt` |
+| AC-WBR-009 | PASS | `go test ./internal/cli -run 'Doctor.*WorktreeBaseBranch' -v` + `./bin/moai doctor --check 'Worktree Base Branch'` | exit 0, 7 `=== RUN`; CLI exit 0, item reachable by exact name | `ac-wbr-009.txt`, `ac-wbr-009-doctor-run.txt` |
+| AC-WBR-010 | PASS | `go test ./internal/web -run 'WorktreeBaseBranch' -v` + `go test ./internal/settings -run 'AllFields' -v` | exit 0/0, 2 + 1 `=== RUN`, 0 vacuous | `ac-wbr-010-web.txt`, `ac-wbr-010-allfields.txt` |
+| AC-WBR-011 | PASS | `go test ./internal/settings -run 'WorktreeBaseBranch.*Type' -v` + `go test ./internal/web -run 'WorktreeBaseBranch.*(Text\|FreeText)' -v` | exit 0/0, 1 + 1 `=== RUN`, 0 vacuous | `ac-wbr-011-schema.txt`, `ac-wbr-011-render.txt` |
+| AC-WBR-012 | PASS | `go test ./internal/web ./internal/hook ./internal/cli -run 'WorktreeBaseBranch' -v` + mutation check | exit 0, 21 `=== RUN`, 0 vacuous; mutant (FieldDef removed) exit 1 | `ac-wbr-012.txt`, `ac-wbr-012-mutation.txt` |
+| AC-WBR-013 | PASS | `make build` + diff-scoped parity probes (N1-repaired form) | exit 0; 0 `NO-TEMPLATE-COUNTERPART`, 0 `DRIFT`; mirror byte-identical | `ac-wbr-013-parity.txt`, `make-build-final.txt` |
+| AC-WBR-014 | PASS | `go test ./internal/settings -run 'GitStrategy.*RoundTrip' -count=1 -v` | exit 0, 2 `=== RUN`, 0 vacuous | `ac-wbr-014.txt` |
+| AC-WBR-015 | PASS | `go test ./internal/hook -run 'WorktreeBaseBranch.*Unresolvable' -count=1 -v` | exit 0, 2 `=== RUN`, 0 vacuous | `ac-wbr-015.txt` |
+| AC-WBR-016 | PASS (both halves) | `go test ./internal/hook -run 'WorktreeBaseBranch.*(Fires\|Registered\|Once\|LinkedWorktree\|NotPrimary)' -v` | exit 0, 4 `=== RUN`, 0 vacuous | `ac-wbr-016.txt` |
+
+### Invariants
+
+| Invariant | Status | Evidence |
+|---|---|---|
+| `go build ./...` clean | PASS (exit 0) | `go-build.txt` |
+| Cross-platform build (windows/amd64, linux/amd64) | PASS (exit 0, 0) | `go-build.txt` |
+| `go vet` clean on the five affected packages | PASS (exit 0) | `go-vet.txt` |
+| `golangci-lint run` clean on the five affected packages | PASS (exit 0, `0 issues.`) | `golangci-lint.txt` |
+| No file under `.claude/skills/moai-workflow-project/schemas/` modified (t316 boundary) | PASS (diff empty) | recorded in run-verdict |
+| Full-package regression: config / settings / web / hook / cli | PASS (all `ok`) | `coverage.txt`, `coverage-cli.txt` |
+
+### Scope note — one file outside the plan §D write list
+
+`internal/config/types.go` `ModeProfile` gained three pass-through fields (`develop_branch`, `release_branch_prefix`, `rc_version_format`). spec.md §C lists the ModeProfile schema gap as out of scope, and REQ-WBR-013 requires this SPEC's write path not to drop those keys — the two are only jointly satisfiable by modelling them, because `saveSection` re-marshals the struct with no merge step (read at `internal/config/manager.go:418`). MEASURED before the change: the typed save deleted all three (`m5-settings-1.txt`). No accessor and no consumer was added; the fields exist only to survive the round trip. Recorded here rather than absorbed silently.
+
+Three further cascade edits, all inside the SPEC's own envelope: the shipped-key triage inventory (a new shipped template key must be classified), the free-text whitelist guard (a new `TypeText` field must be justified), and the doctor golden snapshots (a new diagnostic row).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-08-27
+run_commit_sha: pending-backfill-run-final   # M6 docs commit 8c46460ff; the evidence commit that carries this block cannot name its own hash
+run_status: COMPLETE — 16/16 AC PASS, zero blockers
+ac_pass_count: 16
+ac_fail_count: 0
+ac_pass_with_debt_count: 0
+milestone_commits:
+  M1: 81808d85b   # config schema + neutral template default
+  M2: cf2955ed5   # SessionStart origin/HEAD alignment
+  M3: 9e1ea4226   # git worktree add base operand
+  M4: 5658988be   # Worktree Base Branch doctor diagnostic
+  M5: 04c645a68   # web free-text field + guards + round-trip preservation
+  M6: 8c46460ff   # worktree rule documentation + mirror
+preserve_list_post_run_count: 0 unrelated files modified
+l44_pre_commit_fetch: HEAD + branch re-read immediately before each of the 6 commits; unchanged each time (d0bc4bba5 → 8c46460ff, linear)
+l44_post_push_fetch: n/a — NOT pushed; integration is the orchestrator's call per the dispatch
+new_warnings_or_lints_introduced: 0 (golangci-lint 0 issues; the 2 errcheck findings this run introduced were fixed before the final measurement)
+cross_platform_build:
+  darwin_native: exit 0
+  windows_amd64: exit 0
+  linux_amd64: exit 0
+coverage:
+  internal/config: 80.6%
+  internal/hook: 85.1%
+  internal/settings: 90.3%
+  internal/cli: 79.6%
+  internal/web: 66.8%
+  note: package-level pre-existing baselines, not a per-change figure; no baseline was measured before this SPEC, so no delta is claimed
+total_run_phase_files: 21 changed (11 production, 7 test, 3 golden snapshots) across 6 commits
+m1_to_mN_commit_strategy: one commit per milestone, each naming card t313 in its body
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
