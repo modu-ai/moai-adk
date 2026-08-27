@@ -50,6 +50,9 @@ const codexGeneratorAgentCodex = "codex"
 // refusal report must never mask the refusal it accompanies, so the write
 // error is observed and deliberately dropped.
 func codexGatePrintf(w io.Writer, format string, args ...any) {
+	if w == nil {
+		return
+	}
 	if _, err := fmt.Fprintf(w, format, args...); err != nil {
 		return
 	}
