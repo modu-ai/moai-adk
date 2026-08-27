@@ -14,6 +14,16 @@ rather than discovered by an auditor.
 Fixture SPEC directories live under `internal/spec/testdata/movingref/`. Each is a minimal,
 schema-valid SPEC directory; the line under test is the only thing that varies between them.
 
+**[HARD] Fixture era precondition.** Every fixture SPEC directory MUST classify as era **V3R6** —
+either by carrying `era: V3R6` in frontmatter, or by carrying a `progress.md` with `§E.2` and `§E.4`
+markers and a `sync_commit_sha` value. This is not cosmetic. `internal/spec/lint.go` demotes
+findings on a grandfather-era or terminal-status SPEC (`isGrandfatheredSpecDir` → `applyEraDemotion`,
+which sets `Advisory = true` on every warning), and `Report.HasErrors` escalates under `--strict`
+only for a warning that is **not** advisory. A "minimal, schema-valid" fixture with no `progress.md`
+classifies V2.x under era heuristic H-1, and one whose `progress.md` lacks the markers classifies
+V3R2-R4 under H-2 — both demoted, both silently un-escalatable. AC-MRG-005's `--strict` half would
+then fail for a reason having nothing to do with the rule under test.
+
 ## §B. Baseline anchor
 
 All criteria are decided against the frozen pre-flight baseline recorded in `plan.md` §C step 4
@@ -145,15 +155,25 @@ AC-MRG-001 still passes — which is exactly why it is a separate criterion.
 ### AC-MRG-010 — corpus triage classifies without editing (MUST)
 
 **Given** M4 complete,
-**when** `.moai/reports/t342/corpus-triage.md` is read and
-`git status --short -- .moai/specs` is run,
+**when** `.moai/reports/t342/corpus-triage.md` is read and **both** of the following are run —
+
+```
+git diff --name-only "$BASELINE_SHA"..HEAD -- .moai/specs | grep -v SPEC-MOVING-REF-GUARD-001
+git status --short -- .moai/specs
+```
+
 **then** the report classifies every finding as anchor / subject / already-frozen with a one-line
-reason, **and** no SPEC artifact outside `SPEC-MOVING-REF-GUARD-001/` is modified.
+reason, **and both commands return empty**.
 
 **Fails when:** the run-phase bulk-pins the corpus — this card enacting the failure mode it exists
 to prevent.
-**Mutation that must turn it red:** pin a single occurrence in any other SPEC directory; the
-`git status` check reports it and the criterion fails.
+**Mutation that must turn it red:** pin a single occurrence in another SPEC directory **and commit
+it**. The committed form is the one that matters: `git status` alone reads the working tree only, so
+a committed edit — the exact shape plan.md's [HARD] M4 clause forbids — leaves `git status` clean and
+the criterion passing green. The two-surface decider is taken from `SPEC-DESIGN-MOAIWEBV2-002`
+AC-MWA-007a, which pairs the same two commands for the same reason.
+
+**Traces to:** REQ-MRG-011.
 
 ### AC-MRG-011 — the detection limits are stated (MUST)
 
@@ -196,27 +216,73 @@ recommends. That failure is worse than a plain false positive: it teaches reader
 correct remedy, which is the card's dominant failure mode arriving by a different road.
 **Mutation that must turn it red:** remove the R4-form exclusion from the rule; the finding
 reappears.
-**Counter-mutation, required — the exclusion must not become a bypass:** replace the fixture with
-`git diff --name-only origin/main -- internal/ (unchanged)`, which mentions a git command and a
-parenthesis but states a *result* rather than an instruction to measure. This MUST still be flagged.
-Without this second assertion, an over-broad exclusion — "any line containing a command and a
-parenthesis" — passes AC-MRG-013 while silently disabling AC-MRG-001, and the guard is off.
-**Open:** the recognizable signature of the R4 form is `spec.md` §H Q0, unresolved at plan-phase.
-This criterion fixes the *behaviour* required of whatever signature is chosen; it does not assert
-the signature exists yet.
+
+**Counter-mutation set — TWO fixtures, both required.** One is insufficient, and the audit proved
+it rather than argued it.
+
+**CM-1 (positional bypass).** `git diff --name-only origin/main -- internal/ (unchanged)` — mentions
+a git command and a parenthesis but states a *result*, not an instruction to measure. MUST still be
+flagged. This blocks the exclusion shape "a git verb before the ref and a parenthesized value after
+it", which would otherwise exempt AC-MRG-001's fixture too.
+
+**CM-2 (command-token bypass).** A fetch chained to a divergence read, carrying a claim:
+`git fetch origin main && git rev-list --count --left-right origin/main...HEAD` → `0 0` (no
+divergence). MUST still be flagged.
+
+CM-2 exists because CM-1 protects AC-MRG-001's *shape* and nothing else. An exclusion keyed on the
+**fetch verb** passes AC-MRG-001, -006, -013 and CM-1 — no other fixture carries a fetch verb — while
+silencing **76 of 117** unpinned divergence lines in the live corpus (`spec.md` §B.6, re-measured at
+`43329ec8b`). That is the largest real class of this defect, and it would have shipped green.
+
+**Mutation that must turn CM-2 red:** key the R4 exclusion on any command token — `git fetch`, or
+any other verb — instead of on imperative structure. CM-2 must go green-to-red, while AC-MRG-001,
+-006 and CM-1 all stay passing. **An R4 exclusion accepted without CM-2 red under this mutation is
+not accepted** (see DoD).
+
+**Open:** how imperative structure is *recognized* is `spec.md` §H Q0, unresolved at plan-phase.
+What is no longer open is that it MUST NOT key on a command token — a token key is forgeable by
+construction. This criterion fixes the behaviour required of whatever signature is chosen; it does
+not assert the signature exists yet.
+
+### AC-MRG-014 — negative control on the invariant-claim conjunct (MUST)
+
+**Given** a fixture line naming a moving ref inside a git-command context but carrying **no**
+invariant-claim marker — a plain instruction, `git fetch origin main && git rev-list --count
+--left-right origin/main...HEAD`, with no assertion about what the result was —
+**when** the linter runs over it,
+**then** zero `MovingRefUnpinned` findings are reported.
+
+**Fails when:** the rule drops the claim-marker conjunct and flags any unpinned moving ref in a
+git-command context. REQ-MRG-001 is a four-way conjunction; three conjuncts have a negative control
+(AC-MRG-002 the SHA pin, AC-MRG-003(b) the marker, AC-MRG-013 CM-1/CM-2 the R4 form) and until now
+this one had none.
+**Mutation that must turn it red:** delete the claim-marker conjunct from the rule. The mutant is
+not exotic — it is the *simpler* rule, and it passes AC-MRG-001 (fires), AC-MRG-001's own mutation
+(`origin/mainx` → 0), and AC-MRG-002, -004, -005, -006, -008, -009, -013 unchanged. Measured over
+`.moai/specs/**` at `43329ec8b`, excluding this SPEC's directory, that mutant yields **495** findings
+against the **42** §D.5 sizes its severity argument on — a ~12× over-fire that the entire suite
+passes green, and one that defeats §D.5 directly, since bulk suppression is the rational response to
+495 warnings.
+
+This is the `verification-completeness.md` §2 mutant-probe defect: an invalid-cases-only suite
+passes an all-matching mutant.
 
 ## §D. Definition of Done
 
-- Criteria AC-MRG-001 through AC-MRG-005 and AC-MRG-007 through AC-MRG-013 PASS; AC-MRG-006 PASSes
+- Criteria AC-MRG-001 through AC-MRG-005 and AC-MRG-007 through AC-MRG-014 PASS; AC-MRG-006 PASSes
   or is withdrawn with the withdrawal recorded in `spec.md` HISTORY.
-- AC-MRG-013's counter-mutation was run and observed to keep AC-MRG-001 red, proving the R4
-  exclusion did not become a blanket bypass. An R4 exclusion accepted on AC-MRG-013 alone is not
-  accepted.
+- **Both** of AC-MRG-013's counter-mutations were run: CM-1 observed to keep AC-MRG-001 red under the
+  positional bypass, and CM-2 observed to go red under a command-token-keyed exclusion while
+  AC-MRG-001, -006 and CM-1 stayed green. An R4 exclusion accepted on AC-MRG-013 alone, or on CM-1
+  alone, is **not accepted** — CM-1 protects AC-MRG-001's shape and nothing else.
+- AC-MRG-014's mutation was run and the all-matching mutant observed to be caught. A suite that
+  passes the claim-marker-dropped mutant is not accepted regardless of its other results.
 - Every criterion's stated mutation was actually planted, observed to turn the criterion red, and
   reverted — recorded in `progress.md` §E.2 with the verbatim failing output. A criterion asserted
   to be falsifiable without the mutation having been run is not evidence (`verification-claim-integrity.md` §1).
 - `go test ./internal/spec/...` green; `go vet ./internal/spec/...` rc 0.
 - `go build ./...` rc 0.
 - This SPEC's own PRESERVE evidence cites the frozen `BASELINE_SHA`, not a moving ref.
-- Open questions Q1-Q3 (`spec.md` §H) each carry a recorded disposition: resolved, deferred with a
-  reason, or escalated to the operator.
+- Open questions **Q0-Q4** (`spec.md` §H) each carry a recorded disposition: resolved, deferred with
+  a reason, or escalated to the operator. Q0 is the one M3 cannot be implemented without answering,
+  so its omission from this list was itself a gap.

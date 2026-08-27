@@ -30,6 +30,29 @@ authoring time.
 The filter-4 set of 42 was enumerated in full and read, not sampled. Its three-way classification is
 recorded in `spec.md` §B.3.
 
+**Filter commands, verbatim (audit D10).** v0.1.0 and v0.2.0 described filters 2-4 rather than
+quoting them, so the figures could not be reproduced — the iter-1 auditor's reconstruction gave
+597 / 79 / 53 against the recorded 527 / 53 / 42, same order of magnitude, different alternation.
+Under `verification-claim-integrity.md` §2 an attributed claim names *the command*, not a
+description of one. The three alternations are therefore recorded here, and re-run at `43329ec8b`
+with this SPEC's own directory excluded, where they reproduce the original figures exactly:
+
+```bash
+# Filter 2 — git-command context (→ 527)
+grep -rnE 'git [a-z-]+[^`]*origin/(main|develop|HEAD)' .moai/specs --include='*.md' \
+  | grep -vc SPEC-MOVING-REF-GUARD-001
+
+# Filter 3 — + invariant-claim marker (→ 53)
+… | grep -v SPEC-MOVING-REF-GUARD-001 \
+  | grep -ciE 'byte-unchanged|byte unchanged|unchanged|preserv|보존|no diff|empty|0 files|부재|absent|변경 ?없|그대로'
+
+# Filter 4 — − SHA pin (→ 42)
+… | grep -cvE '\b[0-9a-f]{7,40}\b'
+```
+
+The claim-marker alternation in filter 3 is the load-bearing one and is the piece the auditor could
+not reconstruct: `byte-unchanged|byte unchanged|unchanged|preserv|보존|no diff|empty|0 files|부재|absent|변경 ?없|그대로`, applied case-insensitively.
+
 **Explicitly NOT observed at plan-phase** (Gaps):
 
 - The detector does not exist, so the 42-line candidate set is a *grep prevalence measurement*, not
@@ -60,6 +83,57 @@ recorded in `spec.md` §B.3.
   generalize it. `spec.md` §H Q0 carries it as the least-settled open question; AC-MRG-013 fixes the
   required *behaviour* without asserting the signature exists.
 
+**v0.3.0 — plan audit iter-1 remediation, re-measured rather than carried.**
+
+Verdict: PASS-WITH-DEBT 0.82, revised 0.80 after the targeted re-audit
+(`.moai/reports/t342/plan-audit.md`, in this worktree — the isolation guard refused the primary
+path, and the lead is handling recovery; this worktree's copy is left untouched per instruction).
+
+Every load-bearing figure was re-measured here at `43329ec8b` before being written into the SPEC.
+Two of the auditor's D11 figures did not reproduce, one reproduced exactly, and D2's did:
+
+| Figure | Audit | Re-measured here | Verdict |
+|---|---|---|---|
+| D11 candidate lines (diff-shaped class) | 100 | **52** | did not reproduce — different alternation (D10) |
+| D11 of those with the fetch verb | 36 | **6** | did not reproduce — same cause |
+| D11 fetch ∧ `rev-list --count --left-right` corpus lines | 81 | **81** | reproduces exactly |
+| D2 all-matching-mutant over-fire | 495 | **495** | reproduces exactly |
+
+The two non-reproducing figures are D10's consequence and not a dispute about the finding. Measuring
+the class the bypass actually lands on — unpinned divergence lines, the REQ-MRG-006 class — gives
+**76 of 117 silenced (65%)**, which is *worse* than the auditor's estimate. D11 is therefore
+confirmed and strengthened, and `spec.md` §B.6 records the re-measurement rather than the audit's
+numbers.
+
+Sample of the silenced class (`grep -rn 'rev-list --count --left-right' … | grep 'git fetch'`, no
+SHA on the line):
+
+```
+SPEC-V3R6-PLAN-AUDITOR-GEARS-ALIGN-001/plan.md:63
+  `git fetch origin && git rev-list --count --left-right origin/main...HEAD` → expect `0 0`
+SPEC-AGENT-PARALLEL-OPT-001/plan.md:92
+  `git fetch origin main && git rev-list --count --left-right origin/main...HEAD` | 병렬 세션 레이스 부재 확인
+```
+
+**NOT observed at v0.3.0 (Gaps):**
+
+- No Go code exists, so AC-MRG-013 CM-2 and AC-MRG-014 are *specified* falsifiable, not *observed*
+  falsifiable. Both mutations are run-phase obligations under the DoD; neither has been planted.
+- The fetch-verb bypass was reasoned from fixture inspection, not executed against a built rule.
+  The 76/117 reach is a corpus measurement of what *would* be silenced, not an observed silencing.
+- Whether keying on imperative structure is *implementable* was not tested — §H Q0 keeps the
+  recognition method open, and this revision constrains only what it must not key on.
+
+**P1 — the tree moved under the auditor, and the recurrence is recorded rather than tidied away.**
+The v0.2.0 addendum was written and committed (`b3e25945f` → `43329ec8b`) inside the audit window,
+violating the one-writer rule in `agent-common-protocol.md` § Background Agent Execution. The
+auditor caught it and re-verified against the settled tree; a verdict written from its 08:08
+snapshot would have reported three fabricated defects from mid-write state. That is this card's own
+subject — a measurement whose validity expired being served as current — occurring for the **third**
+time in its own lifecycle, after §B.4 (the dispatch base line) and §B.5 (the format change). It is
+recorded here as a process finding rather than as a sixth grounded instance, per the auditor's
+judgment that it is a violation of the writer rule and not a new shape of the defect.
+
 **Residual risk:** the exemption predicate (`spec.md` §D.1) is a judgment procedure. Its four tests
 were validated against five real instances, all of which it classifies correctly — but five is a
 small validation set, and **all five are SUBJECT-class** (`spec.md` §D.3 tally). The ANCHOR side of
@@ -68,6 +142,13 @@ than by applying the tests in anger. A disposition outside the anchor/subject di
 exist; the v0.1.0 → v0.2.0 revision is itself evidence that the classification can be incomplete —
 instance 3 was classified ANCHOR at v0.1.0 and that reading was wrong. `spec.md` §H carries the open
 questions rather than closing them.
+
+The v0.3.0 audit sharpened this: the SUBJECT branch has five adjudicated instances, the **ANCHOR
+branch has zero** — it rests on seven corpus lines classified by the author alone. D1 (Test 1
+over-returning ANCHOR for want of an evaluation time) is exactly the failure an unvalidated branch
+would be expected to have, and it was found by an auditor rather than by the author. The skew and D1
+are one fact from two directions, now stated as a limitation in `spec.md` §D.3 and not only as a
+strength.
 
 **Status transition:** `(none) → draft`, emitted across all four plan-phase artifacts.
 

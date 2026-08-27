@@ -1,7 +1,7 @@
 ---
 id: SPEC-MOVING-REF-GUARD-001
 title: "Moving-ref invariant guard: warn on unpinned invariant claims, with the anchor-or-subject exemption predicate shipped alongside"
-version: "0.1.0"
+version: "0.3.0"
 status: draft
 created: 2026-08-28
 updated: 2026-08-28
@@ -22,6 +22,7 @@ related_specs: [SPEC-GRAPH-FRESHNESS-CADENCE-001, SPEC-VERIFICATION-COMPLETENESS
 
 | Version | Date | Change | Author |
 |---------|------|--------|--------|
+| 0.3.0 | 2026-08-28 | Remediation of plan audit iter-1 PASS-WITH-DEBT 0.82, revised 0.80 after the targeted re-audit (`.moai/reports/t342/plan-audit.md`, written in this worktree because the isolation guard refused the primary path). Eight blocking defects fixed, four optional accepted. **D1** (critical): Test 1 carried no evaluation time, and the "Test 1 governs" tie-break routed the predicate's own founding case back to ANCHOR — so R4 was unreachable for the case it was invented for. Test 1 now specifies read-time evaluation and the tie-break routes a Test 1 / Test 3 disagreement to Test 4 instead of resolving to ANCHOR. The v0.2.0 correction had fixed the worked example without fixing the procedure; that is now recorded as the distinction it is. **D12** (major): §D.4's incentive argument was still the two-remedy one, leaving R4 an unpriced exemption — an author could rephrase into R4 shape and be done, which is the bulk-suppression outcome by another route. §D.4 restated for four remedies and R4 given an explicit cost; L6 extended with the incentive residual alongside the freshness one. **D11** (critical): an R4 exclusion keyed on the fetch verb passes all thirteen criteria including AC-MRG-013's counter-mutation. Second counter-mutation fixture added, and Q0 now requires the R4 signature to key on imperative structure rather than any command token. **D2** (critical): no negative control on the invariant-claim conjunct — AC-MRG-014 added. **D3**: fixture era precondition stated so AC-MRG-005's `--strict` half is satisfiable. **D4**: AC-MRG-010 now decided on both the committed diff and the working tree. **D6**: `version` was left at 0.1.0 while HISTORY carried a 0.2.0 row — the documented-vs-actual divergence this SPEC prohibits, in its own frontmatter; bumped here to 0.3.0 with the miss recorded rather than silently corrected. **D7**: two pre-addendum citations in plan.md swept. Optional **D5** (DoD now Q0-Q4, Q4 being newly opened by D1's tie-break change), **D8** (`Where` → `When`/`While` on five requirements), **D9** (REQ-MRG-011 added; AC-MRG-010 is no longer an orphan) and **D10** (the three grep alternations recorded verbatim in `progress.md` §E.1) also applied. §D.3 now states the ANCHOR-branch validation gap as a limitation, not only the skew as a strength. Every figure re-measured in this tree at `43329ec8b` rather than carried from the audit — two of the auditor's D11 figures did not reproduce under the now-recorded alternations, and the re-measurement is worse than their estimate; see `progress.md` §E.1. | manager-spec |
 | 0.2.0 | 2026-08-28 | Lead addendum absorbed. **(1)** Grounded instance 3 re-attributed: the stale-base occurrence is the **lead's own dispatch block**, named as such rather than as an anonymous occurrence, and §B.4 now states that it sits on the same axis as the card's side-discipline — relaying a once-measured value without re-measuring is the form this card prohibits. The attribution was re-verified in this turn before being written (`git rev-parse ec15ec2cd^` → `44095ddc2…`; `git reflog show WT-moving-ref-guard` → created from `origin/develop` at `ec15ec2cd`), because citing the dispatched figure unverified would have made this SPEC an instance of its own defect. **(2)** Fifth grounded instance added (§B.5, §D.3): the lead's change to the dispatch base line, from `base: origin/develop <sha>` to `base: measure at entry … (dispatch-time reference value: <sha>)`. **(3)** The predicate is **kept two-way** at the top level but gains **Test 4**, which routes within the SUBJECT class, and the remedy space expands from three branches to **four** with the addition of R4 (state the measuring command as the criterion, demote the value to a dated reference). §D.1 now states explicitly that classification and remedy selection are two steps, because conflating them is a second, subtler route to the card's dominant failure mode. Why the new case does not become a third top-level branch, and why it does not fold into ANCHOR, is argued in §D.1.1. **(4)** New REQ-MRG-010 / AC-MRG-013: the R4 form must not be flagged. **(5)** New detection limit L6 — the detector cannot tell a live reference value from a rotted one — with AC-MRG-011's grep count raised from 5 to 6. | manager-spec |
 | 0.1.0 | 2026-08-28 | Initial plan-phase authoring for card t342, in worktree `.claude/worktrees/t342` at HEAD `ec15ec2cd`. Every figure in §B was measured in this tree; the corpus survey (§B.3) and the two-dot/three-dot discriminator experiment (§B.2) were run here rather than carried over. The card's own dispatch supplied a third live instance of its subject (§B.4), verified against `git reflog show WT-moving-ref-guard`. The exemption predicate (§D.1) is specified as the primary deliverable per the card's [HARD] clause, and milestone ordering (plan.md §F) puts it first for that reason. | manager-spec |
 
@@ -183,6 +184,45 @@ that the correct remedy here is neither pinning nor keeping a bare moving ref: i
 measuring command as the criterion and demoting the value to a dated reference**. A reader who
 knows only "pin it" has no way to reach this form.
 
+### B.6 — The fetch-verb bypass, re-measured (audit D11)
+
+The iter-1 audit found that an R4 exclusion keyed on the **fetch verb** — the most salient token in
+R4's only exemplar, and the natural thing to reach for while Q0 leaves the signature ungeneralized —
+passes all thirteen acceptance criteria including AC-MRG-013's counter-mutation, because no other
+criterion's fixture carries a fetch verb.
+
+**Re-measured here at `43329ec8b` rather than carried from the audit**, with every alternation
+recorded (`progress.md` §E.1). Two of the auditor's figures did not reproduce under this SPEC's own
+alternations, and one did:
+
+| Figure | Audit | This re-measurement | Command |
+|---|---|---|---|
+| Candidate lines, diff-shaped class | 100 | **52** | filters 2-4 of §B.3, `grep -v SPEC-MOVING-REF-GUARD-001` |
+| Of those, carrying the fetch verb | 36 | **6** | same, `grep -c 'git fetch'` |
+| Corpus lines pairing fetch with `rev-list --count --left-right` | 81 | **81** | `grep -rn 'rev-list --count --left-right' .moai/specs --include='*.md' \| grep -c 'git fetch'` |
+
+The divergence on the first two is D10's consequence, not a dispute: the v0.2.0 artifacts described
+the claim-marker alternation instead of quoting it, so the auditor reconstructed a different one.
+That is precisely why the alternations are now recorded verbatim.
+
+**The re-measurement makes the finding worse, not weaker.** The diff-shaped class is the wrong place
+to size this bypass; the class it actually lands on is the divergence form of REQ-MRG-006, and
+measured directly:
+
+```
+grep -rn 'rev-list --count --left-right' .moai/specs --include='*.md' \
+  | grep -v SPEC-MOVING-REF-GUARD-001 | grep -cvE '\b[0-9a-f]{7,40}\b'   → 117
+… | grep -c 'git fetch'                                                   → 76
+```
+
+**76 of 117** unpinned divergence lines — 65% — would be silenced. The pairing is structural rather
+than incidental: the Pre-Spawn / Pre-Edit Sync Check block in `agent-common-protocol.md` is a fetch
+followed by `git rev-list --count --left-right origin/main...HEAD`, so every progress record quoting
+that block carries both tokens on one line. A sample of the silenced set is in `progress.md` §E.1.
+
+The consequence for the design is in §H Q0: the R4 signature keys on imperative structure, never on
+a command token.
+
 ## §C. Scope
 
 In scope: SPEC artifacts under `.moai/specs/**` (`spec.md`, `plan.md`, `acceptance.md`,
@@ -196,13 +236,20 @@ template mirror of that doctrine.
 This is the deliverable the card marks [HARD]. It is a three-test decision procedure, applied in
 order, and every test is answerable by reading the sentence the ref appears in.
 
-**Test 1 — Substitution.** Replace the ref token with the SHA it resolves to *right now*. Re-read
-the sentence.
+**Test 1 — Substitution.** Replace the ref token with the SHA it resolves to *right now*, then
+re-read the sentence **as a later reader will act on it — not as you read it at the moment of
+substitution.**
 
-- It still says what it meant → the ref is an **ANCHOR** (an address at which a measurement was
-  taken). Anchors are pinned.
-- It now says something different, narrower, or weaker → the ref is the **SUBJECT** (the claim is
+- It still says what it meant, *and still will when acted on later* → the ref is an **ANCHOR** (an
+  address at which a measurement was taken). Anchors are pinned.
+- It now says something different, narrower, or weaker — **including a meaning that is correct at
+  the instant of substitution and decays afterwards** → the ref is the **SUBJECT** (the claim is
   *about* mainline as a living thing). Subjects keep the moving ref.
+
+The evaluation time is load-bearing and is stated because omitting it broke this predicate once.
+Write-time and read-time are exactly what separate an ANCHOR from an S2 claim: substituting today's
+tip into "the base you will start from" reads correctly *today* and is wrong for every reader after.
+A Test 1 applied at substitution time returns ANCHOR for every S2 claim there is.
 
 **Test 2 — Falsification source.** Applies when the claim currently reads false. Attribute the flip:
 were the commits that caused it authored by this SPEC's work, or not?
@@ -217,11 +264,19 @@ Is the same answer expected?
 - Yes → anchor. Pin.
 - No, *and that variance is the point of the claim* → subject. Keep the moving ref.
 
-Tests 1 and 3 will normally agree; where they disagree, Test 1 governs, because it reads the
-sentence's meaning rather than predicting a future run.
+**Tie-break.** Tests 1 and 3 will normally agree. Where they disagree, **run Test 4** — do not
+resolve to ANCHOR.
 
-**Test 4 — Read-time action.** Applies only once Tests 1-3 have returned SUBJECT. Ask: must a later
-reader *act* on this claim by measuring something?
+A disagreement between them is not noise to be settled by precedence; it is the **signature of an
+S2 claim**. Test 1 (read at the substitution instant) says "the value fits" while Test 3 says "the
+value must not be fixed", and that combination is what a live-state claim looks like from the
+inside. The v0.1.0 tie-break said "Test 1 governs" and thereby routed every S2 claim to ANCHOR —
+which is how instance 3 was misclassified, and why R4 was unreachable for the case that motivated
+it. The correction is in the *procedure*, not only in the worked example (§D.3).
+
+**Test 4 — Read-time action.** Runs when Tests 1-3 return SUBJECT, **and also whenever Tests 1 and 3
+disagree** (per the tie-break above). Ask: must a later reader *act* on this claim by measuring
+something?
 
 - **No — the claim is narrative.** It describes what mainline carries, quotes a command as text, or
   records a coordinate as the subject of a correction. Nothing is measured at read time. → **S1**,
@@ -286,7 +341,7 @@ criterion and demotes re-measurement to a confirmation step. The remedy is the i
 first, value second and marked as a reference — so a reader who skims the line still sees an
 instruction to measure rather than a number to trust.
 
-### D.3 — The three grounded instances, mapped onto the predicate
+### D.3 — The five grounded instances, mapped onto the predicate
 
 **Instance 1 — t292 (the card's own citation): provenance narrative.** The claim's subject is what
 `origin/main` *currently carries*. Test 1: substituting a SHA converts "what mainline carries" into
@@ -314,6 +369,20 @@ freeze a value, which is exactly the shape that failed. The defect is not that t
 chosen; it is that a value was stated at all where a command belonged. The measured cost of the
 v0.1.0 reading is in §B.2 — a `44095ddc2`-anchored PRESERVE check reports
 `3 files changed, 288 insertions(+)` against work that does not exist.
+
+**Trace of the v0.3.0 procedure over this instance, step by step**, because v0.2.0 corrected the
+label here while leaving the tests that produced the wrong label untouched — and a reader is
+entitled to check that the procedure now reaches the answer on its own:
+
+| Step | Result |
+|---|---|
+| Test 1, read **as a later reader will act on it** | substituting today's tip is correct today and wrong for every reader after → decaying meaning → **SUBJECT** |
+| Test 3 | re-measuring next week gives a different tip and that variance is the point → **SUBJECT** |
+| Tie-break | not invoked — the tests agree. (Had Test 1 been read at substitution time it would have returned ANCHOR; the tie-break would then have routed to Test 4 rather than to ANCHOR, reaching the same place by the other road.) |
+| Test 4 | a reader must measure to obtain their base → **S2** |
+| Remedy | **R4** |
+
+Both routes now terminate at R4. Under v0.1.0 neither did.
 
 **Instance 4 (found by the §B.3 survey) — AC-COORD-016.** Asserts a literal command string is
 preserved verbatim in a document. The ref token sits inside quoted subject matter, and no reader
@@ -343,6 +412,20 @@ Both SUBJECT sub-shapes and both of their remedies are represented, which is the
 validate Test 4 at all. Five instances remains a small validation set (`progress.md` §E.1 residual
 risk).
 
+**The skew is also a limitation, and the doctrine must publish it as one.** The paragraph above
+gives the skew's positive reading; the negative reading follows from the same fact and is not
+optional. The SUBJECT branch has five adjudicated instances. **The ANCHOR branch has zero** — it
+rests entirely on seven corpus lines classified by reading, none of which was independently
+escalated, disputed, or adjudicated by anyone but the author. The ANCHOR branch is therefore the
+**unvalidated** half of this predicate.
+
+That is not an abstract worry. D1 — Test 1 lacking an evaluation time and thereby over-returning
+ANCHOR — is exactly the failure an unvalidated branch would be expected to have, and it was found
+by an auditor rather than by the author. The skew and D1 are one fact seen from two directions: the
+ANCHOR branch is both the untested one and the one that demonstrably misclassified. A reader
+applying this predicate should weight an ANCHOR verdict less confidently than a SUBJECT one, and
+should treat a Test 1 / Test 3 disagreement as evidence against ANCHOR rather than for it.
+
 ### D.4 — The exemption is author-declared, and it costs a reason
 
 The predicate's tests are judgments about meaning. No regex decides them, and pretending otherwise
@@ -360,6 +443,31 @@ in rendered markdown.
 **The reason is mandatory and non-empty (AC-MRG-003).** A bare marker would make "silence the
 warning" cheaper than "pin the SHA", which inverts the incentive this SPEC exists to set. With a
 reason required, declaring and pinning cost about the same, and the author picks on the merits.
+
+**Pricing across all four remedies (restated for v0.3.0).** The paragraph above was computed against
+a two-door choice and is no longer sufficient on its own: R4 opened a third door and arrived
+carrying no reason requirement at all. An author who simply wants a line to stop being flagged
+could rephrase it into R4 shape and be done — and satisfying a shape is always cheaper than writing
+a justification. Left unpriced, R4 is the cheapest available silencer, which is the bulk-suppression
+outcome §D.5 exists to prevent, reached by a different road.
+
+**R4's cost is that it must name the command a reader is to run, and that command must be the one
+that actually decides the claim.** This is not an added tax; it is R4's definition made binding. Its
+cost is real for the same reason the marker's reason is: a wrong or vague command is visible to the
+next reader who runs it, and a plausible one cannot be produced without knowing what would decide
+the claim. Rephrasing to escape a warning does not survive it.
+
+Pricing table — all four remedies carry a cost that is not merely shape-satisfying:
+
+| Remedy | What it costs the author |
+|---|---|
+| R1 | resolving the SHA and recording the tree and date it was resolved in |
+| R2 | capturing the baseline before the first run-phase commit, and recording the resolved value |
+| R3 | writing a non-empty reason a reviewer can disagree with |
+| R4 | naming the deciding command, which a later reader will run |
+
+The **count** is what does the work here, not any single entry: with one remedy on offer the author
+pins, and with four, none of which is free, choosing requires applying the predicate.
 
 The existing per-SPEC `lint.skip` mechanism (`applylintSkip`, `internal/spec/lint.go`) remains
 available but is deliberately **not** the exemption path: it silences the code for a whole document,
@@ -403,10 +511,10 @@ prose and are not identical to any mechanism.
   `warning` for each line in a SPEC artifact that names a moving ref (`origin/main`,
   `origin/develop`, `origin/HEAD`) inside a git-command context, carries an invariant-claim marker,
   and carries neither a 7-40 character hexadecimal SHA nor a frozen-baseline variable reference.
-- **REQ-MRG-002**: Where a flagged line, or the line immediately preceding it, carries a
+- **REQ-MRG-002**: When a flagged line, or the line immediately preceding it, carries a
   `<!-- moving-ref-ok: <reason> -->` marker with a non-empty reason, the linter shall suppress the
   finding for that line.
-- **REQ-MRG-003**: Where such a marker carries an empty or whitespace-only reason, the linter shall
+- **REQ-MRG-003**: When such a marker carries an empty or whitespace-only reason, the linter shall
   emit a finding reporting the marker as incomplete rather than suppressing.
 - **REQ-MRG-004**: The `MovingRefUnpinned` finding message shall name all four remediation branches
   of §D.2 — pin, freeze, declare, and state-the-command — and shall not present pinning as the sole
@@ -419,13 +527,17 @@ prose and are not identical to any mechanism.
   neither a SHA nor a date.
 - **REQ-MRG-007**: While the three-dot (`A...B`) form is present, the linter shall treat it as
   equivalent to the two-dot form and shall not suppress the finding.
-- **REQ-MRG-008**: The linter shall not emit `MovingRefUnpinned` for a line whose moving ref carries
-  a resolved SHA pin or a frozen-baseline variable reference (`$BASELINE_SHA` or equivalent).
-- **REQ-MRG-009**: Where only `MovingRefUnpinned` findings are present, `moai spec lint` shall exit
+- **REQ-MRG-008**: While a line's moving ref carries a resolved SHA pin or a frozen-baseline
+  variable reference (`$BASELINE_SHA` or equivalent), the linter shall not emit
+  `MovingRefUnpinned` for that line.
+- **REQ-MRG-009**: While only `MovingRefUnpinned` findings are present, `moai spec lint` shall exit
   0; under `--strict` it shall exit non-zero.
-- **REQ-MRG-010**: Where a line is written in the R4 form — a measuring command stated as the
-  criterion, with any value following it parenthesized and labelled a reference — the linter shall
-  not emit `MovingRefUnpinned` for that line.
+- **REQ-MRG-010**: While a line is written in the R4 form — a measuring command stated as the
+  criterion in imperative structure, with any value syntactically demoted to a labelled reference —
+  the linter shall not emit `MovingRefUnpinned` for that line.
+- **REQ-MRG-011**: The corpus triage of milestone M4 shall classify every finding without modifying
+  any SPEC artifact outside this SPEC's own directory, measured against both the committed diff and
+  the working tree.
 
 ## §F. Detection limits (stated, not discovered later)
 
@@ -454,6 +566,16 @@ in this SPEC implies coverage of any of them.
   is bounded by R4's own design — the command is stated first, so a reader who follows the line
   re-measures regardless of what the stale value says.
 
+  **L6 carries a second residual, on incentives rather than freshness.** The same shape-blindness
+  that prevents a freshness judgment also means the detector cannot distinguish an author who
+  applied the predicate and reached R4 from one who rephrased into R4 shape to stop being flagged.
+  §D.4 prices R4 against this — the form must name the deciding command — but that price is enforced
+  by **review, not by the detector**, which reads shape only. An author determined to silence a line
+  can still do it; what the pricing buys is that doing so requires stating a command a later reader
+  will run, which is harder to fake convincingly than an empty gesture. D11 is this gap exploited by
+  an implementer writing the exclusion; this is the same gap exploited by an author writing the
+  claim.
+
 ## §G. Out of Scope
 
 ### Out of Scope — corpus remediation
@@ -477,12 +599,24 @@ in this SPEC implies coverage of any of them.
 
 ## §H. Open questions for the operator
 
-- **Q0 — R4 form recognition (new, and the least settled).** REQ-MRG-010 exempts the R4 form, but
-  the form is prose and its recognizable signature is not yet fixed — the lead's dispatch line is
-  one instantiation, not a grammar. If the exclusion is written too loosely it becomes a bypass
-  (any line mentioning a command escapes the guard); too tightly and it misses legitimate
-  variations. Recorded as the run-phase decision most likely to need operator input, and deliberately
-  not guessed here.
+- **Q0 — R4 form recognition (the least settled, and now partly constrained).** REQ-MRG-010 exempts
+  the R4 form, but the form is prose and its recognizable signature is not fixed — the lead's
+  dispatch line is one instantiation, not a grammar. Too loose and the exclusion is a bypass; too
+  tight and it misses legitimate variations.
+
+  **One constraint is now settled and is not open:** the signature MUST key on **imperative
+  structure** — an instruction to measure, with the value syntactically demoted — and MUST NOT key
+  on any command token. A token key is forgeable by construction, and the audit demonstrated it: an
+  exclusion keyed on the fetch verb passes all thirteen criteria, counter-mutation included, while
+  silencing the largest real class of the defect (§B.6). What remains open is how imperative
+  structure is recognized, not whether it is the key.
+- **Q4 — the Test 1 / Test 3 undecidable region.** The v0.3.0 tie-break routes a disagreement to
+  Test 4 rather than resolving it, which is correct for every case examined so far but is a
+  *deferral*, not a decision procedure: it presumes a disagreement always signals S2. A claim that
+  is genuinely an anchor and *also* trips Test 3 would be misrouted, and no such case has been
+  found — which is not evidence that none exists, given the ANCHOR branch's validation gap (§D.3).
+  Recorded as an open question in its own right; `progress.md` §E.1's "a fifth disposition may
+  exist" covers coverage of the classes, not this ambiguity between two tests.
 - **Q1 — Marker syntax.** `<!-- moving-ref-ok: … -->` is proposed on the grounds that it renders
   invisibly. An alternative is a visible inline tag readable in the rendered document. Left open
   because it is a taste call about whether the exemption should be visible to a reader of the

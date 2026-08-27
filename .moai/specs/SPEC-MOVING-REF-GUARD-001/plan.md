@@ -21,7 +21,8 @@ claims that are correct as written.
   this SPEC prevents. Severity is fixed at `warning` by REQ-MRG-009 and D.5.
 - **The three-dot form is not a safe exemption** (`spec.md` §B.2, measured). A run-phase
   implementer is likely to propose exempting `...`; AC-MRG-004 is the guard against it.
-- **The corpus contains all three predicate dispositions**, so a detector tuned only on the
+- **The corpus contains both predicate classes and all four remedies** (ANCHOR, SUBJECT/S1,
+  SUBJECT/S2; R1-R4 — `spec.md` §D.2/§D.3), so a detector tuned only on the
   true-positive shape will fire on `AC-COORD-016` and `REQ-LB-006`. That is expected and is what the
   marker exists for (L4).
 
@@ -100,15 +101,21 @@ remediation branches.
 
 The R4-form exclusion is the delicate one: too loose and it is a blanket bypass that silently
 disables the rule, too tight and it flags the recommended remedy. `acceptance.md` AC-MRG-013 carries
-both a mutation and a counter-mutation for exactly this, and `spec.md` §H Q0 records the signature
-as unresolved — resolve it with the operator before implementing, rather than guessing at it.
+a mutation and **two** counter-mutations (CM-1 positional, CM-2 command-token), and `spec.md` §H Q0
+records how imperative structure is recognized as unresolved — resolve it with the operator before
+implementing, rather than guessing at it.
+
+[HARD] **The exclusion MUST key on imperative structure, never on a command token.** This is settled,
+not open. The iter-1 audit demonstrated a fetch-verb-keyed exclusion passing all thirteen criteria
+then in force while silencing 76 of 117 unpinned divergence lines (`spec.md` §B.6). A token key is
+forgeable by construction.
 
 Registered in the `l.rules` slice in `internal/spec/lint.go`.
 
 Tests in `internal/spec/lint_movingref_test.go`, fixture-driven under `internal/spec/testdata/`.
 Every test states the mutation that makes it fail (see `acceptance.md` §D).
 
-Decides AC-MRG-001, -002, -004, -005, -006, -008, -009, -013.
+Decides AC-MRG-001, -002, -004, -005, -006, -008, -009, -013, -014.
 
 ### M4 — Corpus triage record (classification only)
 
@@ -134,7 +141,8 @@ its own.
 ## §G. Anti-patterns
 
 - **Bulk-pinning the corpus.** The card's named dominant failure mode. Guarded by M4's [HARD] clause
-  and by REQ-MRG-004 (the message names three branches).
+  and by REQ-MRG-004 (the message names four branches), each of which §D.4 prices so that none is
+  a free silencer.
 - **Exempting the three-dot form.** Disproved by measurement in `spec.md` §B.2; guarded by
   AC-MRG-004.
 - **A bare marker with no reason.** Would make silencing cheaper than fixing; guarded by AC-MRG-003,
