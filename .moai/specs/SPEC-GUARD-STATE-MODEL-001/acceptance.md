@@ -6,7 +6,7 @@ Two-cell discipline per `.claude/rules/moai/development/verification-completenes
 
 Budget: Tier M ≤ 16 acceptance criteria. **Count: 16 — at the ceiling.**
 
-**Two baselines, labelled at every use.** RED-now cells measure *this deliverable's absence* and are pinned to `091966c55`. Citations of card t326's landed surfaces are pinned to **`origin/develop` at `ec15ec2cd`**, a diverged tree (67 ahead / 9 behind). Reading the baseline tree for a t326 surface reports a landed feature as absent, so each such citation names its tree inline.
+**Two baselines, labelled at every use.** RED-now cells measure *this deliverable's absence* and are pinned to `091966c55`. Citations of card t326's landed surfaces are pinned to **`origin/develop` at `ec15ec2cd`**, a diverged tree (diverged, `merge-base --is-ancestor` false). Reading the baseline tree for a t326 surface reports a landed feature as absent, so each such citation names its tree inline.
 
 ## §D AC Matrix
 
@@ -133,11 +133,13 @@ Budget: Tier M ≤ 16 acceptance criteria. **Count: 16 — at the ceiling.**
 - **Mutant:** clause (a) alone is satisfied by an evaluator writing its cache into the working tree — no forge mutation, but a git write that becomes drift for the next reader. Clause (b) alone is satisfied by an evaluator that opens an issue and touches no file.
 
 ### AC-GSM-015 — the published contract holds
-**Given** any emitted result; **When** its classifications are inspected; **Then** BOTH hold — (a) every entry carries exactly one classification, and (b) **exactly one value in the vocabulary is designated clean**, verified by asserting the designation is single-valued rather than by counting how many entries happen to be `OK`.
+**Given** any emitted result; **When** its classifications and its designation are inspected; **Then** ALL THREE hold — (a) every entry carries exactly one classification, (b) **exactly one value in the vocabulary is designated clean**, verified by asserting the designation is single-valued rather than by counting how many entries happen to be `OK`, and (c) **the result carries that designation in machine-readable form**, such that a consumer given only the result — and no knowledge of any value's name — can partition entries into clean and non-clean.
 - **RED-now:** no evaluator and no published designation exist (AC-GSM-006's measurement).
 - **Green path:** M3. Passing output is a single designated clean value.
 - **Why this criterion exists here and not in the consuming SPEC:** `SPEC-GUARD-LIVENESS-001` consumes the contract and can verify that its own trigger uses the clean/non-clean partition — but it **cannot** verify that exactly one clean value exists, because it never names the vocabulary. If this SPEC ever designated two clean values, every criterion in the consuming SPEC would still pass while its advisory under-fired. This criterion is the other half of that seam.
-- **Mutant:** clause (b) stated as "at least one entry classifies `OK`" is satisfied while a second value is also treated as clean. Asserting the **designation** rather than the observed entries is what closes it.
+- **Mutant (b):** clause (b) stated as "at least one entry classifies `OK`" is satisfied while a second value is also treated as clean. Asserting the **designation** rather than the observed entries is what closes it.
+- **Mutant (c), and it is the seam's own failure mode:** clauses (a) and (b) together are satisfied by a result that designates the clean value **in prose in this SPEC** and emits nothing. The consumer is then forced to hardcode the literal — which its own criteria forbid — or to read the surface fold, which under-reports because `UNREADABLE` also folds to `ok` while only `OK` is clean. Clause (c) is what makes the designation a *carried field* rather than a documented fact, and the test is stated as *a consumer given only the result and no value names can partition it*, so it is decidable without reference to either SPEC's prose.
+- **Symmetry note:** this clause is the producing half of a two-sided obligation. Its consuming half is `SPEC-GUARD-LIVENESS-001` REQ-GDL-001 (iii)/(iv) and AC-GDL-001(c). Repairing one side alone re-opens the gap in the other direction, which is why both landed in the same commit.
 
 ### AC-GSM-016 — every classification folds, and none folds to `fail`
 **Given** the 7-row fixture of AC-GSM-007 plus the table's `Surface fold` column; **When** each case is classified and folded; **Then** ALL THREE hold — (a) every one of the six classifications has a declared fold into `ok` / `warn` / `fail`, (b) **no classification folds to `fail`**, and (c) the meaningless/incomplete boundary holds — `UNREADABLE` folds to `ok` while `UNKNOWN` and `UNRESOLVED` fold to `warn`.

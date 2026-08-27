@@ -6,7 +6,8 @@ Plan-phase artifacts authored on `091966c55` @ `WT-guard-liveness` (worktree `.c
 
 - Artifacts: `spec.md`, `plan.md`, `acceptance.md` (Tier M set) + this file.
 - Requirements: 13 (Tier M ceiling 16). Acceptance criteria: 16 (ceiling 16 — at the ceiling).
-- **Two baselines.** RED-now cells pin `091966c55`; card t326 citations pin `origin/develop` at `ec15ec2cd`, a diverged tree (67 ahead / 9 behind). Each t326 citation names its tree inline (`spec.md` §C.2.1).
+- **v0.3.0 carries the producing half of the sibling SPEC's D1 seam repair** (REQ-GSM-012 designator + AC-GSM-015(c)), landed in the same commit as its consuming half. Because the AC budget is at its ceiling, the clause extends AC-GSM-015 rather than adding a criterion.
+- **Two baselines.** RED-now cells pin `091966c55`; card t326 citations pin `origin/develop` at `ec15ec2cd`, a diverged tree (diverged, `merge-base --is-ancestor` false). Each t326 citation names its tree inline (`spec.md` §C.2.1).
 - **Reuse verdict (v0.2.0):** t326's fold discipline and leniency principle adopted with citation; its **value vocabulary does not fit** and the measurement showing why is recorded — three of six values here have no counterpart there, one of its four has none here. Leniency bounded at *meaningless* (`UNREADABLE` → `ok`) versus *incomplete* (`UNKNOWN`/`UNRESOLVED` → `warn`).
 - Card: **t347** (issued by the lead; the sibling surfacing SPEC is card t333). Dispatch is a separate lead decision — this lane authored the plan-phase artifacts only.
 - Every RED-now cell is pinned to `091966c55` and its command was run on this tree during authoring; no cell was carried across the scope reduction from the predecessor without re-measurement.
