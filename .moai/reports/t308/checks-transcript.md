@@ -608,3 +608,38 @@ checks-transcript.md:210 → raw/b2.txt   (exists)
 checks-transcript.md:235 → raw/b3.txt, raw/b4.txt   (now exist)
 verdict.md:70            → raw/b3.txt, raw/b4.txt   (now exist)
 exit: 0 — every cited raw path resolves; no other raw citation exists in the pack.
+
+### CHK-043 — B5 (out-of-inventory, reported by lane-13 via lead): `gitflow` vs canonical `git-flow`
+Provenance: NOT an INV row. Raised by lane-13 during t303 work, relayed by the lead, and verified
+here before acting — a relayed claim is a hypothesis until measured (VCI §1.1 surface 3).
+
+$ grep -n 'workflow:' .moai/config/sections/git-strategy.yaml
+8:        workflow: git-flow
+35:        workflow: github-flow
+62:        workflow: github-flow
+exit: 0
+⇒ canonical value is `git-flow` (hyphenated) at git-strategy.yaml:8.
+
+$ grep -n "workflow: gitflow" CLAUDE.local.md
+182:grep -n 'workflow: gitflow' .moai/config/sections/git-strategy.yaml || echo 'REVERTED — 재적용 필요'
+187:… 손으로 되돌린다: `workflow: gitflow`, …
+exit: 0
+Plus the prose comment at L181 ("gitflow 가 아니면 되돌아간 것") naming the same unhyphenated value.
+
+Consequence, stated concretely: the L182 check greps a string the canonical file does not contain,
+so it prints `REVERTED — 재적용 필요` against a CORRECT config — a false alarm that instructs the
+reader to "repair" what is already right; and L187, followed literally, writes the wrong value back.
+
+### CHK-FIX-021 — subject edit: three `gitflow` → `git-flow` (from CHK-043)
+L181 comment, L182 check command, L187 manual-restore value (the last marked
+`[2026-08-27 감사 정정]`; the two inside the code block are left unmarked so the block stays
+copy-pasteable).
+
+$ grep -c "workflow: gitflow" CLAUDE.local.md
+0
+exit: 1 (no matches — the unhyphenated form is gone)
+$ grep -n "workflow: git-flow" CLAUDE.local.md
+182:grep -n 'workflow: git-flow' .moai/config/sections/git-strategy.yaml || echo 'REVERTED — 재적용 필요'
+187:… 손으로 되돌린다: `workflow: git-flow` [2026-08-27 감사 정정], …
+exit: 0
+Scope note: §2.3, outside the §4.1 exclusion zone. No other file touched.
