@@ -512,27 +512,6 @@
               ],
               "current_value_path": "git_strategy.personal.github_integration",
               "required": true
-            },
-            {
-              "question": "Auto-create branches for Personal mode? (current: {{git_strategy.personal.auto_branch}})",
-              "header": "Auto Branch",
-              "field": "git_strategy.personal.auto_branch",
-              "type": "select_single",
-              "multiSelect": false,
-              "options": [
-                {
-                  "label": "Enabled",
-                  "description": "Automatically create feature branches (recommended)",
-                  "value": true
-                },
-                {
-                  "label": "Disabled",
-                  "description": "Manual branch creation",
-                  "value": false
-                }
-              ],
-              "current_value_path": "git_strategy.personal.auto_branch",
-              "required": true
             }
           ]
         },
@@ -721,27 +700,6 @@
                 }
               ],
               "current_value_path": "git_strategy.team.github_integration",
-              "required": true
-            },
-            {
-              "question": "Auto-create branches for Team mode? (current: {{git_strategy.team.auto_branch}})",
-              "header": "Auto Branch",
-              "field": "git_strategy.team.auto_branch",
-              "type": "select_single",
-              "multiSelect": false,
-              "options": [
-                {
-                  "label": "Enabled",
-                  "description": "Automatically create feature branches (recommended)",
-                  "value": true
-                },
-                {
-                  "label": "Disabled",
-                  "description": "Manual branch creation",
-                  "value": false
-                }
-              ],
-              "current_value_path": "git_strategy.team.auto_branch",
               "required": true
             }
           ]

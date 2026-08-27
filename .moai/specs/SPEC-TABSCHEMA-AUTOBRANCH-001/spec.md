@@ -2,7 +2,7 @@
 id: SPEC-TABSCHEMA-AUTOBRANCH-001
 title: "Remove dead-path auto_branch questions from tab_schema batches 3.3 and 3.6"
 version: "0.1.1"
-status: draft
+status: in-progress
 created: 2026-08-27
 updated: 2026-08-27
 author: manager-spec
