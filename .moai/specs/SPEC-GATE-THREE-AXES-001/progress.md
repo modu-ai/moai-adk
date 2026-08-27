@@ -469,7 +469,7 @@ next_milestone: none                # run phase closed at M3; /moai sync SPEC-GA
 ```yaml
 sync_status: complete
 sync_complete_at: 2026-08-27
-sync_commit_sha: "pending-backfill"  # D3 exemption — a commit cannot know its own hash; the real sha of the sync commit lands in the follow-up backfill commit
+sync_commit_sha: "6a0c80b77"  # D3 exemption — backfilled in the follow-up commit after the sync commit landed (full sha 6a0c80b77b65bcdc7269e42f949639ebfbd93a6c)
 b12_self_test_a_changelog_pre_emission_grep: 0  # grep -c 'SPEC-GATE-THREE-AXES-001' CHANGELOG.md before emission → 0, rc=1 (absent; no duplicate entry from a parallel BATCH-SYNC session)
 b12_self_test_b_ac_count: 16  # distinct AC IDs in acceptance.md (AC-GTA-001..016, grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' | sort -u) == 16 criteria counted from the §D.1-§D.3 headings; the CHANGELOG entry covers all three axes' criteria in one entry
 b12_self_test_c_path_verification: pass  # ls-verified this session: .moai/specs/SPEC-GATE-THREE-AXES-001/{spec,plan,acceptance,progress}.md, CHANGELOG.md, .moai/state/verify/af9f2ca2/{t235-m3.log,head.txt}, internal/hook/quality/, internal/cli/gate.go
