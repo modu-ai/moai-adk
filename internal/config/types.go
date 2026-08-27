@@ -810,6 +810,11 @@ type GateTimeouts struct {
 	Lint      int `yaml:"lint"`
 	Test      int `yaml:"test"`
 	Typecheck int `yaml:"typecheck"`
+	// LockWait bounds how long a starting gate run waits for the gate-run
+	// lock — the advisory lock serializing concurrent manual `moai gate` runs
+	// in one project — before degrading to an unserialized run. In seconds,
+	// like its siblings; a policy knob, not a step budget.
+	LockWait int `yaml:"lock_wait"`
 }
 
 // VetTimeoutDuration converts the Vet timeout to time.Duration.
@@ -847,6 +852,17 @@ func (g *GateConfig) TypecheckTimeoutDuration() time.Duration {
 		return 300 * time.Second
 	}
 	return time.Duration(g.Timeouts.Typecheck) * time.Second
+}
+
+// LockWaitDuration converts the gate-run lock wait budget to time.Duration.
+// Returns 30s when the value is zero or negative — long enough that a
+// concurrent run finishing normally is waited out, short enough that a
+// starting run is not held hostage by one that will not.
+func (g *GateConfig) LockWaitDuration() time.Duration {
+	if g.Timeouts.LockWait <= 0 {
+		return 30 * time.Second
+	}
+	return time.Duration(g.Timeouts.LockWait) * time.Second
 }
 
 // SunsetConfig defines the Build-to-Delete framework configuration.

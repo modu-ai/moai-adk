@@ -55,6 +55,12 @@ type GateConfig struct {
 	TypecheckCommand string
 	// TypecheckTimeout is the maximum duration allowed for the typecheck step.
 	TypecheckTimeout time.Duration
+	// LockWait bounds how long a starting gate run waits for the gate-run
+	// lock before degrading to an unserialized run. The lock itself is
+	// CLI-side (internal/cli/gate_lock.go); the budget travels through this
+	// struct so the config chain stays one object (gate.yaml → config loader
+	// → this config → the CLI's wait loop).
+	LockWait time.Duration
 }
 
 // DefaultGateConfig returns a GateConfig with production-safe defaults.
@@ -71,6 +77,10 @@ func DefaultGateConfig() *GateConfig {
 		// closing the hole for every project that does have one.
 		TypecheckEnabled: true,
 		TypecheckTimeout: 300 * time.Second,
+		// The gate-run lock's wait budget — see LockWait. 30s waits out a
+		// concurrently finishing run while never holding a starting run
+		// without bound.
+		LockWait: 30 * time.Second,
 	}
 }
 
@@ -1058,7 +1068,7 @@ func (g *QualityGate) runStep(ctx context.Context, stepName string, timeout time
 	// to the launcher. Recording only on success is how the pass path came to
 	// report nothing at all.
 	defer func() {
-		g.summary.markExecuted(stepName, commandLine(name, args...), time.Since(startedAt))
+		g.summary.markExecuted(stepName, commandLine(name, args...), startedAt, time.Since(startedAt))
 	}()
 
 	cmd := exec.CommandContext(stepCtx, name, args...)

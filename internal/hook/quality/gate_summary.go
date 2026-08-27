@@ -83,6 +83,11 @@ type stepRecord struct {
 	// duration is the wall-clock span measured around the step's own execution.
 	// Zero on every outcome but outcomeExecuted.
 	duration time.Duration
+	// startedAt is the wall-clock instant the step's execution began. Zero on
+	// every outcome but outcomeExecuted. A duration alone cannot say WHEN a
+	// step ran, and the when is what makes two runs' execution windows
+	// comparable — the question a serialized-run reader asks.
+	startedAt time.Time
 	// reason explains a non-executed outcome.
 	reason string
 }
@@ -145,6 +150,12 @@ func (s *runSummary) relabel(from, to string) {
 // but not listed would otherwise be reported as never reached, which is the
 // same false claim in the other direction.
 func (s *runSummary) mark(label string, outcome stepOutcome, reason, command string, d time.Duration) {
+	s.markAt(label, outcome, reason, command, time.Time{}, d)
+}
+
+// markAt is mark with the execution-start instant; only the executed outcome
+// carries one.
+func (s *runSummary) markAt(label string, outcome stepOutcome, reason, command string, startedAt time.Time, d time.Duration) {
 	if s == nil || label == "" {
 		return
 	}
@@ -156,6 +167,7 @@ func (s *runSummary) mark(label string, outcome stepOutcome, reason, command str
 	rec.outcome = outcome
 	rec.reason = reason
 	rec.command = command
+	rec.startedAt = startedAt
 	rec.duration = d
 }
 
@@ -170,11 +182,12 @@ func (s *runSummary) markDisabled(label, reason string) {
 }
 
 // markExecuted records that the command was run, with the span measured around
-// it. Called on every exit from the execution path — a step that failed, timed
-// out, or could not be launched still executed as far as the summary is
-// concerned, and its command line is still what the gate handed over.
-func (s *runSummary) markExecuted(label, command string, d time.Duration) {
-	s.mark(label, outcomeExecuted, "", command, d)
+// it and the instant it began. Called on every exit from the execution path —
+// a step that failed, timed out, or could not be launched still executed as
+// far as the summary is concerned, and its command line is still what the
+// gate handed over.
+func (s *runSummary) markExecuted(label, command string, startedAt time.Time, d time.Duration) {
+	s.markAt(label, outcomeExecuted, "", command, startedAt, d)
 }
 
 // commandLine renders a step's binary and arguments the way they were handed to
@@ -223,12 +236,17 @@ func (s *runSummary) render() string {
 	return b.String()
 }
 
-// outcomeField renders the outcome, carrying the measured duration for an
-// executed step. Exactly one outcome token appears here, whatever the detail
-// beside it says.
+// startedAtFormat renders an executed step's start instant — RFC3339 with
+// millisecond precision, parseable by time.Parse(time.RFC3339, …) and fine
+// enough to order two runs' steps against each other.
+const startedAtFormat = "2006-01-02T15:04:05.000Z07:00"
+
+// outcomeField renders the outcome, carrying the measured duration and the
+// start instant for an executed step. Exactly one outcome token appears here,
+// whatever the detail beside it says.
 func (r *stepRecord) outcomeField() string {
 	if r.outcome == outcomeExecuted {
-		return fmt.Sprintf("%s in %s", outcomeExecuted, r.duration.Round(time.Millisecond))
+		return fmt.Sprintf("%s in %s at %s", outcomeExecuted, r.duration.Round(time.Millisecond), r.startedAt.Format(startedAtFormat))
 	}
 	return string(r.outcome)
 }

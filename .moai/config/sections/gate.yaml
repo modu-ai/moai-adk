@@ -20,6 +20,11 @@ gate:
     # A type-check over a large monorepo routinely outlasts the test budget,
     # so it gets its own.
     typecheck: 300
+    # How long a starting `moai gate` run waits for the gate-run lock — the
+    # advisory lock that serializes concurrent manual gate runs in one
+    # project — before degrading to an unserialized run. On expiry the run
+    # proceeds and reports that it did; the lock never fails the gate.
+    lock_wait: 30
   # The typecheck axis runs between vet and lint, so a type error surfaces
   # before the slower style pass and a project whose linter config is absent
   # still gets a correctness gate.

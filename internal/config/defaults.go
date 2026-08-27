@@ -504,6 +504,10 @@ func NewDefaultGateConfig() GateConfig {
 			Lint:      60,
 			Test:      120,
 			Typecheck: 300,
+			// The gate-run lock's wait budget: a policy knob, not a step
+			// budget. 30s waits out a concurrently finishing run while never
+			// holding a starting run without bound.
+			LockWait: 30,
 		},
 		// The typecheck axis is ON by default. A project with no type-check
 		// surface reports the skip and passes, so enabling it costs nothing

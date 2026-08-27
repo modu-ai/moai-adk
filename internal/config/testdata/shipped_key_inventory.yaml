@@ -386,6 +386,9 @@
 - path: "gate.timeouts.lint"
   class: R
   evidence: none
+- path: "gate.timeouts.lock_wait"
+  class: W
+  evidence: reader
 - path: "gate.timeouts.test"
   class: R
   evidence: none

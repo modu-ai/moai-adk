@@ -283,51 +283,185 @@ Two smaller notes:
 1. **`WaitDelay` fires on a path the timeout branch does not cover.** When the child exits cleanly but a descendant holds the pipes, `cmd.Run` returns `exec.ErrWaitDelay` and `stepCtx.Err()` is nil — so the existing `DeadlineExceeded` branch never sees it. A dedicated branch reports it as a failure: the captured output is provably incomplete, and passing on truncated output would restore exactly the silence axis 1 was written to remove.
 2. **The grace budget is a constant, not a config key.** `stepWaitGrace = 2s` in `step_process_group.go`, per `plan.md` §A.4's proposal — a safety bound rather than a policy. No `gate.yaml` key was added, so no template mirror was needed in M2.
 
+---
+
+## §E.2 Run-phase Evidence — Milestone M3
+
+Milestone **M3** (axis 3 — concurrent manual runs are serialized). Every command below was run in `.claude/worktrees/t235` on branch `WT-gate-three-axes`, against the working tree stacked on **9bf8c04a8**. M1 and M2 territory is untouched apart from the summary start-instant (below, with its reasoning).
+
+### Deliverables
+
+| File | State | Lines |
+|------|-------|-------|
+| `internal/cli/gate.go` | modified | +30 / −0 — the wait wrapper around runGate's body; the outer 10-minute net is preserved verbatim and created AFTER the wait, so it still bounds exactly what it always bounded (`gate.Run`), not the lock wait |
+| `internal/cli/gate_lock.go` | new | 283 — shared body: sentinel, holder identity, bounded wait loop, notices |
+| `internal/cli/gate_lock_unix.go` | new (`//go:build !windows`) | 69 — flock substrate + gated-out clear, mirroring `board_lock_unix.go` |
+| `internal/cli/gate_lock_windows.go` | new (`//go:build windows`) | 211 — atomic-create substrate + the guarded stale clear with the changed-hands abort |
+| `internal/cli/gate_lock_test.go` | new | 272 |
+| `internal/cli/gate_lock_cli_test.go` | new | 399 |
+| `internal/hook/quality/gate.go` | modified | +11 / −1 — `LockWait` config field; `markExecuted` passes the start instant |
+| `internal/hook/quality/gate_summary.go` | modified | +30 / −6 — `startedAt` on executed records, rendered in the outcome field |
+| `internal/config/types.go` | modified | +16 — `GateTimeouts.LockWait` + `LockWaitDuration()` |
+| `internal/config/defaults.go` | modified | +4 |
+| `internal/config/testdata/shipped_key_inventory.yaml` | modified | +3 — `gate.timeouts.lock_wait` W/reader (the anti-rot guard fails without it) |
+| `internal/template/templates/.moai/config/sections/gate.yaml` | modified | +5 — Template-First: edited before `make build`, before the local copy; carries no SPEC ID, REQ token, or date |
+| `.moai/config/sections/gate.yaml` | modified | +5 — local mirror |
+
+`git status --short` at close lists exactly these thirteen paths and nothing else.
+
+### Package placement (settled in run-phase per plan.md §M3)
+
+**Alongside the CLI.** Both precedents place the lock in the package of its only consumer — the spec-close lock lives in `internal/spec`, the board lock in `internal/kanban` — and the gate-run lock has exactly one consumer (`runGate`). A package of its own would add an import boundary no second consumer crosses. The liveness probe is reused rather than restated: `kanban.FactoryProcessAlive` (already exported, already cross-platform, already imported by five other files in this package).
+
+### RED evidence — observed against this tree, behaviour reverted, source restored and re-verified green after each
+
+Each criterion's named pre-fix behaviour was actually built and run. Every revert was restored immediately and the tree re-run green before the next.
+
+**AC-GTA-011** — the summary timestamp removed (outcome field reverted to `executed in <dur>`):
+
+```
+$ go test -count=1 -run '^TestGateCmd_SecondRunWaitsForFirst$' -timeout 120s ./internal/cli/
+--- FAIL: TestGateCmd_SecondRunWaitsForFirst (5.53s)
+    gate_lock_cli_test.go:207: first run's summary carries no executed rows:
+      - go vet: executed in 167ms — go vet ./...
+      - typecheck: executed in 2.531s — …/cli.test -test.run=^TestGateLockHelperSleep$ -test.timeout=60s
+      …
+```
+
+The executed rows are there; the criterion's instrument — the start instant — is not, so the two runs' windows cannot be compared. That is the pre-implementation state: the runs overlap and nothing can see it.
+
+**AC-GTA-012** — the waiting notice removed from the wait loop:
+
+```
+--- FAIL: TestGateLock_WaitNoticeNamesHolder (0.30s)
+    gate_lock_test.go:124: waiting notice does not name the recorded holder pid; want "held by pid 4366" in:
+```
+
+**AC-GTA-013** — the expiry verdict line emptied (the wait still bounded, the report dropped):
+
+```
+--- FAIL: TestGateLock_WaitIsBoundedAndDegrades (0.40s)
+    gate_lock_test.go:168: degradation verdict line "" does not state that the run is unserialized
+```
+
+**AC-GTA-015** — the naive error path: the unavailable-lock error propagated as the command's error (the AC's own RED prescription — "observed against the M3 tree before the error-path handling is added"):
+
+```
+--- FAIL: TestGateCmd_ReadOnlyLockDirReturnsGateVerdict (0.00s)
+    gate_lock_cli_test.go:326: a read-only lock directory failed the run instead of degrading: gate-run lock: unavailable
+      (acquire gate-run lock: creating state dir: mkdir …/.moai/state: permission denied) — running unserialized
+```
+
+**AC-GTA-014 / AC-GTA-016** — no pre-implementation RED is meaningful, per the criteria's own notes: pre-implementation there is no lock, the third run's acquisition is trivially immediate, and no artifact exists to be stale. Both are verified green on the M3 tree below.
+
+### AC matrix
+
+| AC | Status | Verification command | Actual output |
+|----|--------|----------------------|---------------|
+| AC-GTA-011 | PASS | `go test -count=1 -run '^TestGateCmd_SecondRunWaitsForFirst$' -timeout 120s ./internal/cli/` | `--- PASS (5.37s)` — second run's first executed step begins after the first run's last executed step ended, read from the two summaries' timestamps |
+| AC-GTA-012 | PASS | `go test -count=1 -run '^TestGateLock_WaitNoticeNamesHolder$' ./internal/cli/` | `--- PASS (0.20s)` — notice names the recorded pid; also asserted at CLI level inside AC-GTA-011's test |
+| AC-GTA-013 | PASS | `go test -count=1 -run '^TestGateLock_WaitIsBoundedAndDegrades$' ./internal/cli/` + `…TestGateCmd_WaitExpiryRunsUnserializedWithOwnVerdict…` | `--- PASS (0.40s)` — waited exactly the 400ms budget, bounded by budget+5s slack; `--- PASS (1.99s)` — both verdict subtests: pass-verdict AND fail-verdict returned with `unserialized` stated |
+| AC-GTA-014 | PASS (darwin half) | `go test -count=1 -run '^TestGateLock_DeadHolderArtifactAcquiresFarBelowBudget$' ./internal/cli/` | `--- PASS (0.00s)` — acquisition over a dead holder's artifact is immediate, no degradation, no notice. The Windows clear path is compile-only here |
+| AC-GTA-015 | PASS | `go test -count=1 -run '^TestGateCmd_ReadOnlyLockDirReturnsGateVerdict$' ./internal/cli/` | `--- PASS (0.10s)` — gate's own verdict returned, lock reported unavailable + unserialized |
+| AC-GTA-016 | PASS | `go test -count=1 -run '^TestGateCmd_DegradedRunNeverReacquires$' ./internal/cli/` | `--- PASS (3.05s)` — third run acquires immediately while the degraded run is still executing |
+
+The two runs in the AC-GTA-011 test are two `runGate` invocations in two goroutines — two open file descriptions presenting the same surface to the kernel's flock that two OS processes would; the lock substrate exercised is the real cross-process one, and the same test's notice assertion reads the artifact a real contender reads.
+
+### Mutation evidence — each mutant actually built and run
+
+| Mutant | Applied as | Result |
+|--------|-----------|--------|
+| AC-GTA-011's — *emit a waiting line while running anyway* | `runGate` takes no lock (`waitRes := gateLockWaitResult{}`) | **FAILED**: `first run never recorded a holder in the lock artifact under …` — a run that locks nothing records no holder, and the synchronization precondition exposes it before the timestamp assertion even runs |
+| AC-GTA-012's — *generic "another run is in progress"* | notice text rewritten without the pid | **FAILED**: `waiting notice does not name the recorded holder pid; want "held by pid 18768" in: gate-run lock: another run is in progress — waiting (budget 300ms)` |
+| AC-GTA-013 Mutant A — *waiting indefinitely* | expiry branch disabled (`if false`) | **FAILED** — hang, observed in isolation (`-test.run` + `-test.timeout 15s`): `panic: test timed out after 15s` |
+| AC-GTA-013 Mutant B — *failing the run when the wait expires* | `runGate` returns an error on the expired line | **FAILED**: `the lock's wait expiry failed a passing run: gate-run lock wait expired` |
+| AC-GTA-016's — *opportunistically re-acquiring after degrading* | degraded `runGate` runs a watcher goroutine that takes the lock the moment it frees and holds it for the rest of the run | **FAILED**: `third run waited 1.311985084s to acquire — the degraded run must have left the lock free for it` |
+| AC-GTA-014's — *treating every held artifact as live* | not killable on this machine | On the Unix substrate a dead holder's flock is already free, so acquisition succeeds regardless of any fast path — the mutant and the fix are behaviourally identical on darwin. Killable on Windows only; carried as a CI-matrix obligation |
+
+Every mutant was reverted immediately after its run; the tree at commit time carries none of them. One mid-milestone defect the criteria themselves caught is worth recording: the first draft of the wait loop degraded at `W − retryDelay` (it skipped the final sleep slice), and AC-GTA-013's lower bound killed it — `wait lasted 300ms, want at least the budget 400ms`. The loop now sleeps the remaining slice, and the test reports 0.40s.
+
+### Suite, vet, lint, cross-platform
+
+| Check | Command | Result |
+|-------|---------|--------|
+| quality suite | `go test -count=1 -timeout 900s ./internal/hook/quality/` | rc=0 — `ok … 10.035s` |
+| cli suite | `go test -count=1 -timeout 1200s ./internal/cli/` | rc=0 — `ok … 248.577s`, zero `--- FAIL` lines |
+| config suite (touched package) | `go test -count=1 -timeout 600s ./internal/config/` | rc=0 — `ok … 2.063s`, the shipped-key anti-rot guard included |
+| template neutrality | `go test -count=1 ./internal/template/...` | rc=0 — `ok 23.929s` + `agentemit 0.524s` |
+| t218 regression (PRESERVE) | `go test -run 'TestRunStep_ParentDeadlineIsNotBlamedOnTheStep\|TestRunStep_StepDeadlineStillBlamesTheStep' -v ./internal/hook/quality/` | both `--- PASS (0.10s)` |
+| t218 diff constraint (PRESERVE) | `git diff 294b4b6ab -- internal/hook/quality/gate_timeout_attribution_test.go \| wc -c` | `0` — byte-identical to the tree the SPEC cites |
+| M2 machinery | no edit to any `step_process_group*.go`; the quality suite above covers them | unmodified, green |
+| vet | `go vet ./internal/hook/quality/ ./internal/cli/` | rc=0, no output |
+| lint | `golangci-lint run --timeout=5m ./internal/hook/quality/... ./internal/cli/...` | `0 issues.`, rc=0 (three `errcheck` findings on the new notices were fixed first — `_, _ = fmt.Fprintf`, the repo's idiom) |
+| windows compile | `GOOS=windows GOARCH=amd64 go build ./...` | rc=0 — compilation evidence only, never behavioural |
+| subagent boundary | `grep -rn 'AskUserQuestion' <touched files> --include='*.go' \| grep -v _test.go` | rc=1 — no matches |
+| template embed | `make build` | rc=0, binary rebuilt after the template edit (Template-First order held: template → build → local copy) |
+
+### What was NOT observed
+
+- **Windows behaviour, in full.** `GOOS=windows go build` says the platform file compiles and nothing more. The Windows substrate's clear path — dead-holder removal with the changed-hands abort, the empty-artifact grace — is **a gap, not a pass**, until the CI Windows matrix runs it. Same standing as M2's Windows half of AC-GTA-008.
+- **Two runs as two OS processes.** The AC-GTA-011 fixture is two `runGate` invocations in one process — two file descriptions against the same kernel flock primitive, but not two separate process images. The notice, the artifact, and the lock are all the real artifacts; only the process boundary is simulated.
+- **The full suite.** `go test ./...` was not run and is prohibited here. The verdict is CI's, against the pull-request head.
+- **The lock under the git pre-commit hook's real invocation shape.** The lock wraps `runGate`, which the pre-commit hook shells out to; every test here calls `runGate` directly. No property depends on the caller.
+- **M1/M2 territory.** `gate_timeout_attribution_test.go` is byte-identical (0-byte diff above); no `step_process_group*.go` file was edited; the summary change is additive to executed rows only.
+
+### Where the SPEC and the source disagreed
+
+One interpretation, not a contradiction, worth recording:
+
+**AC-GTA-011 binds to "as timestamped in its own AC-GTA-002 summary" — but the M1 summary carried durations only.** A duration cannot say WHEN a step ran, and the when is exactly what orders two runs' windows. M3 therefore adds the start instant to executed records (`startedAt`, rendered `at 2026-08-27T05:11:02.123Z` beside the duration). This is a measured wall-clock value on the outcome line, the same standing the duration already has: AC-GTA-001's "every other step's outcome line is identical" was already interpreted in M1 through the `outcomeOf` reduction, which drops measured values precisely because they legitimately differ between runs. The reduction is unchanged; the M1 test still passes byte-for-byte.
+
+Two smaller notes:
+
+1. **The budget is waited out in full, not rounded down to the retry delay.** The criterion's lower bound (`≥ W`) forbids degrading at `W − 100ms`; the loop's final sleep is the remaining slice. The first draft got this wrong and the test caught it (RED-shaped observation recorded above).
+2. **The dead-holder fast path is Unix-unreachable by construction.** flock contention implies an open descriptor implies a live holder, so the `processAlive` branch fires only on the Windows substrate, where the artifact IS the lock. The shared-body branch is kept platform-symmetric rather than gated out, because its Windows reachability is the point (REQ-GTA-014) and dead logic on Unix costs one syscall per retry.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
-run_milestone: M1
-run_status: complete-with-debt      # AC-GTA-006's named fixture is unreachable locally
-run_complete_at: 2026-08-25
-run_commit_sha: 3c441782b           # M1; backfilled in the follow-up commit
-run_base_sha: 5ee95c5e8
+run_milestone: M3                   # run phase complete: M1 + M2 + M3 all landed
+run_status: complete-with-debt      # Windows behavioural halves (AC-GTA-008 win, AC-GTA-014 clear path) + AC-GTA-006's named fixture are CI-matrix-dependent
+run_complete_at: 2026-08-27
+run_commit_sha: pending-backfill-M3 # a commit cannot know its own hash; backfilled in the follow-up commit
+run_base_sha: 9bf8c04a8             # M3 base (M1 base 5ee95c5e8, M2 base ba22f41cf)
 run_branch: WT-gate-three-axes
 run_worktree: .claude/worktrees/t235
 
-ac_pass_count: 6                    # AC-GTA-001..005, 007
+ac_pass_count: 15                   # AC-GTA-001..005,007 (M1) + 008-unix,009,010 (M2) + 011..016 (M3)
 ac_pass_with_debt_count: 1          # AC-GTA-006 (scanner-absent fixture skipped: sg installed)
 ac_fail_count: 0
-ac_out_of_scope: [AC-GTA-008, AC-GTA-009, AC-GTA-010, AC-GTA-011, AC-GTA-012, AC-GTA-013, AC-GTA-014, AC-GTA-015, AC-GTA-016]
+ac_windows_halves_ci_deferred: [AC-GTA-008, AC-GTA-014]
 
 red_evidence:
-  ac_gta_005: observed              # gate.go reverted to 5ee95c5e8; test failed
-  ac_gta_001_004_006_007: mutation  # residue tests; 6/6 named mutants killed, no pre-GREEN output exists
-  mutants_applied: 6
-  mutants_killed: 6
-  mutants_survived: 0
+  m1: ac_gta_005 observed; ac_gta_001_004_006_007 mutation (6/6 killed)
+  m2: ac_gta_008_009 observed as hangs in isolation; ac_gta_010 pre-change measurement
+  m3: ac_gta_011_012_013_015 observed by reverting the behaviour on this tree; ac_gta_014_016 no meaningful pre-RED (criteria's own notes)
+  m3_mutants_applied: 5
+  m3_mutants_killed: 4
+  m3_mutants_not_killable_here: 1   # AC-GTA-014's hold-as-live mutant: Windows-only, carried to CI
 
-total_run_phase_files: 4
-files_modified: 1
-files_added: 3
-preserve_list_post_run_count: 0     # git status --short lists only the 4 SPEC-scope paths
+total_run_phase_files: 23           # 4 (M1) + 6 (M2) + 13 (M3)
+m3_files_modified: 8
+m3_files_added: 5
+preserve_list_post_run_count: 0     # git status --short lists only the 13 SPEC-scope paths
 
 new_warnings_or_lints_introduced: 0
 lint_command: "golangci-lint run --timeout=5m ./internal/hook/quality/... ./internal/cli/..."
 lint_result: "0 issues."
-coverage_internal_hook_quality: 90.3
+coverage_internal_hook_quality: 90.3   # re-measured on the M3 tree (M1 measured the same figure)
 coverage_threshold: 85
 
 cross_platform_build:
   darwin_arm64_test: pass           # behavioural
-  goos_windows_vet: pass            # compilation only
+  goos_windows_build: pass          # compilation only
   goos_linux_vet: pass              # compilation only
 
-pre_commit_fetch: "git fetch origin main -> rc=0; git rev-list --count --left-right origin/main...HEAD -> 9 5"
+pre_commit_fetch: "git fetch origin main -> rc=0; git rev-list --count --left-right origin/main...HEAD -> 40 8 (main advanced during the card's life; no foreign commit touched this worktree — HEAD re-read 9bf8c04a8 before staging)"
 post_push_fetch: not-applicable     # WT-gate-three-axes is unpushed; the worktree holds the only copy
 full_suite_verdict: deferred-to-ci  # go test ./... prohibited locally
 
 m1_to_mN_commit_strategy: one-commit-per-milestone
-next_milestone: M2                  # axis 2 — not started, deliberately untouched
+next_milestone: none                # run phase closed at M3; /moai sync SPEC-GATE-THREE-AXES-001 is next
 ```
 
 ## §E.4 Sync-phase Audit-Ready Signal
