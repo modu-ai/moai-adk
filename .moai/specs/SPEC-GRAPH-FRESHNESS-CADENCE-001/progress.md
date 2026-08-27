@@ -646,6 +646,302 @@ $ git diff d2cba5e21..HEAD -- internal/graph/check.go | grep -nE "^[+-].*(40|Thr
   under two and a half days. At a lower integration rate the same 17-integration crossing is a
   longer wall-clock interval, and 40 becomes correspondingly laxer in time terms.
 
+### M3 — Failure attribution (REQ-GFC-007, REQ-GFC-008, REQ-GFC-010)
+
+Implemented in worktree `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t322`, branch
+`WT-graph-freshness-cadence`, base HEAD `988adaf98` (M2's commit). Cycle type TDD: every criterion
+was observed RED before GREEN, and each of the three mutants below was planted, observed to fail the
+criterion that must catch it, and reverted.
+
+#### Delivered surface
+
+| Site | Change |
+|---|---|
+| `internal/graph/check.go` `LayerReport` | Five new fields: `Contribution *int`, `ContributionBase string`, `ContributionAbsentReason string`, `DrivingPaths []string`, `DrivingPathsOmitted int`. All `omitempty`; the five pre-existing fields keep their names, types, and meanings. |
+| `internal/graph/check.go` `drivingPathDisplayBound` (new const) | `10` — the readable maximum REQ-GFC-008 requires. Overflow is declared in `DrivingPathsOmitted`, never dropped. |
+| `internal/graph/check.go` `gitDiffNameList` (new) | The measurement `gitDiffNameCount` now wraps: the sorted described-worthy path set, unioned across the endpoint diff and the untracked listing. Count and list come from **one** traversal, so a report cannot name paths its own count disagrees with. `gitDiffNameCount` is preserved as a thin `len()` wrapper, so AC-GFC-002's criterion still decides the same function. |
+| `internal/graph/check.go` `attachContribution` (new) | Resolves `HEAD^1` via `git rev-parse --verify --quiet`; on success measures the contribution with the **same predicate and the same union** as the cumulative count, differing only in base. On failure sets `ContributionAbsentReason` and leaves `Contribution` nil. |
+| `internal/graph/check.go` `attachDrivingPaths` (new) | Truncates to the bound and records the overflow count. |
+| `internal/graph/check.go` `checkCodemaps` | Contribution attached at **all three measured exits** (dirty-fresh, dirty-stale, clean). Driving paths attached on the **stale** verdict only, matching REQ-GFC-008's `When the codemaps layer is stale` guard. |
+| `internal/cli/graph_check.go` `writeLayerAttribution` (new) | Renders the attribution beneath each offending layer's stderr verdict line. |
+
+**Two placement decisions, stated because they are judgments rather than mechanics.**
+
+*The contribution is attached on the dirty-fingerprint path too, but the driving paths are not.* The
+contribution is a property of the change under judgment, so it is measurable regardless of how the
+stamp was written. The driving-path list is not: the dirty path compares one hash against another
+and holds no path set at all, so producing a list there would name files the metric never counted.
+An empty list is the honest output, and it is what that path emits.
+
+*Driving paths are guarded on the stale verdict.* A fresh layer has nothing driving it; listing the
+sub-threshold churn there would present tolerated drift as if it were the cause of a failure that
+did not occur.
+
+**REQ-GFC-007 reports; it does not gate.** The exit code is still decided by the cumulative count
+alone (`rep.Value >= th.CodemapsChangedFiles`). `plan.md` §G names gating on the per-change count as
+an anti-pattern — it would eliminate inheritance and the accumulated-drift signal together — and
+names a *cumulative* count displayed without gating as the mutant. Neither is present: the
+cumulative still gates, the contribution still only reports.
+
+#### RED evidence, captured before each implementation
+
+```
+$ go test ./internal/graph/ -run 'TestCheckCodemaps_Contribution|TestCheckCodemaps_DrivingPaths' -count=1
+internal/graph/check_attribution_test.go:65:10: rep.Contribution undefined (type LayerReport has no field or method Contribution)
+internal/graph/check_attribution_test.go:71:10: rep.ContributionAbsentReason undefined (type LayerReport has no field or method ContributionAbsentReason)
+internal/graph/check_attribution_test.go:113:17: undefined: drivingPathDisplayBound
+internal/graph/check_attribution_test.go:131:14: rep.DrivingPaths undefined (type LayerReport has no field or method DrivingPaths)
+FAIL	github.com/modu-ai/moai-adk/internal/graph [build failed]
+
+$ go test ./internal/cli/ -run 'TestGraphCheckCmd_StaleStderrNamesDrivingPaths' -count=1
+--- FAIL: TestGraphCheckCmd_StaleStderrNamesDrivingPaths (0.55s)
+    graph_check_attribution_test.go:61: stderr names no driving path — the count alone was reported:
+```
+
+**One RED is disclosed as weaker than it looks.** `TestGraphCheckCmd_JSONCarriesAttribution` was
+authored after the struct fields had already landed for the unit tests, so its first run failed on a
+harness detail (cobra appends its usage block to the same writer, breaking a whole-buffer
+`json.Unmarshal`; fixed by decoding only the first JSON value) rather than on the criterion. Its
+genuine RED is mutant (b) below, where `driving_paths` is absent from the row and the criterion
+fails on the requirement instead of on the harness. Recorded rather than presented as a clean RED.
+
+#### Mutant runs (RED under the mutant → GREEN after revert)
+
+**(a) a missing first parent defaults to 0** — `attachContribution` sets `Contribution = &0`
+instead of recording the absent reason. This is the mutant AC-GFC-008 names.
+
+```
+--- FAIL: TestCheckCodemaps_Contribution/no_first_parent_reports_the_contribution_absent,_never_0
+    check_attribution_test.go:94: contribution = 0 (present), want absent
+        — HEAD has no first parent, so a present 0 is fabricated
+--- FAIL: TestGraphCheckCmd_JSONCarriesAttribution
+    graph_check_attribution_test.go:150: contribution is present on a checkout with no first parent — a fabricated 0: 0
+--- FAIL: TestGraphCheckCmd_StaleStderrNamesDrivingPaths
+    graph_check_attribution_test.go:78: stderr does not state why the contribution is unmeasured
+```
+
+Killed on all three surfaces. The measured-zero sub-test (the inheriting merge) stays GREEN under
+the mutant, which is the point: the criterion separates a fabricated 0 from a measured one, rather
+than merely asserting that some 0 appears. After revert: `ok ... 1.811s`.
+
+**(b) the report carries the count alone** — the `attachDrivingPaths` call removed.
+
+```
+--- FAIL: TestCheckCodemaps_DrivingPaths/over_the_display_bound…
+    check_attribution_test.go:132: driving paths listed = 0, want 10 (0 = the report carries the count alone)
+--- FAIL: TestCheckCodemaps_DrivingPaths/under_the_display_bound…
+    check_attribution_test.go:163: driving paths listed = 0, want 4 (0 = the report carries the count alone)
+--- FAIL: TestGraphCheckCmd_StaleStderrNamesDrivingPaths
+    graph_check_attribution_test.go:61: stderr names no driving path — the count alone was reported
+--- FAIL: TestGraphCheckCmd_JSONCarriesAttribution
+    graph_check_attribution_test.go:138: codemaps row carries no driving_paths field:
+        map[contribution_absent_reason:… layer:codemaps metric:described-source-diff threshold:40 value:41 verdict:stale]
+```
+
+Killed on all three. After revert: `ok`.
+
+**(c) the attribution is computed but never rendered** — `writeLayerAttribution` removed from the
+CLI while the struct keeps every field. This is the mutant the unit tests **cannot** catch, and it
+is the one that matters operationally: `.github/workflows/graph-freshness.yml:87` runs
+`./bin/moai graph check`, so stderr is the surface a lane actually reads.
+
+```
+$ go test ./internal/graph/ -run TestCheckCodemaps -count=1
+ok  	github.com/modu-ai/moai-adk/internal/graph	4.760s          ← unit tests GREEN under the mutant
+$ go test ./internal/cli/ -run 'TestGraphCheckCmd_StaleStderrNamesDrivingPaths|TestGraphCheckCmd_JSONCarriesAttribution'
+--- FAIL: TestGraphCheckCmd_StaleStderrNamesDrivingPaths (0.60s)
+    graph_check_attribution_test.go:61: stderr names no driving path — the count alone was reported
+```
+
+The JSON criterion also stayed GREEN, correctly: JSON is a separate render, and the mutant leaves it
+intact. Only the stderr criterion moved, which is what makes it a criterion rather than a duplicate.
+After revert: `ok ... 4.068s`.
+
+#### AC matrix — M3
+
+| AC | Status | Deciding command | Observed |
+|---|---|---|---|
+| AC-GFC-008 | PASS | `go test ./internal/graph/ -run TestCheckCodemaps_Contribution -count=1` | `ok github.com/modu-ai/moai-adk/internal/graph` — both sub-tests PASS; mutant (a) fails the no-first-parent sub-test |
+| AC-GFC-009 | PASS | `./bin/moai graph check --root <fixture>` (stderr) | verbatim below |
+| AC-GFC-010 | PASS | `./bin/moai graph check --root <fixture> --json \| jq '.layers[] \| select(.layer=="codemaps")'` | verbatim below |
+
+#### AC-GFC-009 fixture and stderr, verbatim
+
+The fixture is a throwaway git repository built to the inherited-red shape the SPEC exists to make
+legible: commit 1 is the stamp target, commit 2 adds 41 described-worthy `.go` files plus the two
+kinds of noise the predicate must reject (`f01_test.go`, `testdata/x.go`), commit 3 adds nothing
+described-worthy and is HEAD. The provenance block was **hand-written** at commit 1 — `moai graph
+stamp` was not run anywhere, in this tree or in the fixture (`plan.md` §D, REQ-GFC-009).
+
+```
+$ ./bin/moai graph check --root <fixture>
+codemaps  metric=described-source-diff value=41 threshold=40 verdict=stale
+mx-index  metric=inventory-content-diff value=0 threshold=1 verdict=absent  (mx-index absent …)
+edges     metric=source-fingerprint-mismatch value=0 threshold=0 verdict=absent  (edges.jsonl absent …)
+graph check: layer codemaps verdict=stale value=41 threshold=40 —
+  contribution: 0 described-worthy file(s) vs first parent 5d7bf3e92 (inherited — this change contributed none of it)
+    internal/aged/f01.go
+    internal/aged/f02.go
+    internal/aged/f03.go
+    internal/aged/f04.go
+    internal/aged/f05.go
+    internal/aged/f06.go
+    internal/aged/f07.go
+    internal/aged/f08.go
+    internal/aged/f09.go
+    internal/aged/f10.go
+    ... and 31 more (listing bounded)
+graph check: layer mx-index verdict=absent value=0 threshold=1 — …
+graph check: layer edges verdict=absent value=0 threshold=0 — …
+exit=1
+```
+
+Ten paths listed, the overflow declared as `31 more`, `41 = 10 + 31` reconciling, and neither
+`f01_test.go` nor `testdata/x.go` appearing in the listing or in the count. The verdict line reads
+as the operator needs it to: 41 files are red, this change caused none of them.
+
+#### AC-GFC-010, verbatim
+
+```
+$ ./bin/moai graph check --root <fixture> --json | jq '.layers[] | select(.layer=="codemaps")'
+{
+  "layer": "codemaps",
+  "metric": "described-source-diff",
+  "value": 41,
+  "threshold": 40,
+  "verdict": "stale",
+  "contribution": 0,
+  "contribution_base": "5d7bf3e9294c750419fe144666bfd3fb4c4d3eb7",
+  "driving_paths": [ "internal/aged/f01.go", … "internal/aged/f10.go" ],
+  "driving_paths_omitted": 31
+}
+```
+
+The five pre-existing fields (`layer`, `metric`, `value`, `threshold`, `verdict`) are unchanged in
+name and meaning; `reason` is absent here only because a stale endpoint-diff carries none, exactly
+as before this change. The new fields are distinct keys, not overloads of existing ones.
+
+#### This tree's own corrected reading (M1's open gap, now closed)
+
+M1 recorded as a gap that the worktree's own `graph check` had not been re-run after the change. Run
+now, at M3:
+
+```
+$ ./bin/moai graph check --json | jq '.layers[] | select(.layer=="codemaps")'
+{ "layer": "codemaps", "metric": "described-source-diff", "value": 4, "threshold": 40,
+  "verdict": "fresh", "contribution": 2, "contribution_base": "988adaf98ddf57f5cb72a0bb53f96166b54e20c8" }
+```
+
+Four described-worthy files differ from the stamp; this change contributed two of them
+(`internal/graph/check.go` and `internal/cli/graph_check.go` — the two new `_test.go` files are
+correctly excluded by the predicate). Fresh at 40, and the attribution reads truthfully on a real
+tree rather than only on a fixture.
+
+#### Independent verification batch (this run, this tree, base `988adaf98`)
+
+```
+$ go test -cover ./internal/graph/... ./internal/mx/... -count=1
+ok  github.com/modu-ai/moai-adk/internal/graph         16.756s  coverage: 88.0% of statements
+ok  github.com/modu-ai/moai-adk/internal/graph/symbol   1.388s  coverage: 86.2% of statements
+ok  github.com/modu-ai/moai-adk/internal/mx             6.030s  coverage: 88.9% of statements
+$ go test -cover ./internal/cli/ -count=1
+ok  github.com/modu-ai/moai-adk/internal/cli          365.242s  coverage: 79.5% of statements
+$ go vet ./internal/graph/... ./internal/mx/... ./internal/cli/... ./internal/config/...   → exit 0
+$ GOOS=windows GOARCH=amd64 go build ./...                                                 → exit 0
+$ golangci-lint run --timeout=5m ./internal/graph/... ./internal/cli/...                   → 0 issues.
+$ gofmt -l internal/graph/check.go internal/cli/graph_check.go \
+        internal/graph/check_attribution_test.go internal/cli/graph_check_attribution_test.go
+  → (no output)
+$ make build                                                                               → exit 0
+```
+
+Constraint checks:
+
+```
+$ grep -rn "graph stamp" .github/ .claude/                              → no output (rc 1)
+$ git diff --stat d2cba5e21 -- .moai/project/codemaps/provenance.json   → empty
+$ grep -n "CodemapsChangedFiles: 40" internal/graph/check.go            → 53 (unchanged by M2 and M3)
+```
+
+The full local suite was NOT run (`plan.md` §D): CI renders the full verdict. `e2e/` was not run.
+
+#### Coordinate drift caused by M3
+
+M3 inserted lines into `internal/graph/check.go` only. `internal/mx/` is untouched
+(`git diff --stat HEAD -- internal/mx/` → empty), so **every `provenance.go` row in M1's drift table
+is unchanged by M3** and its post-M1 values still stand. `internal/cli/graph_check.go` is modified
+but is cited by no artifact.
+
+Both columns measured, not inferred — pre-M3 by `git show HEAD:internal/graph/check.go | grep -n …`,
+post-M3 by `grep -n …` on the delivered tree:
+
+| Cited coordinate | Construct cited | post-M1 (`5d95a2e8d`) | post-M3 | Deciding command |
+|---|---|---|---|---|
+| `check.go:168` | `roots = mx.DefaultDescribedRoots` | 168 | **200** | `grep -n "roots = mx.DefaultDescribedRoots"` |
+| `check.go:181` | the codemaps dirty-branch recompute | 184 | **216** | `grep -n "AggregateDescribedFingerprintFiltered(projectRoot, roots)"` |
+| `check.go:187` | the sole `ContentFingerprint` comparator | 190 | **222** | `grep -n "cur == pv.ContentFingerprint"` |
+
+`check.go:168` was listed in M1's *unmoved* table — M1's insertions were all below it. M3's are not:
+the five new `LayerReport` fields and `drivingPathDisplayBound` sit above it, so it moves for the
+first time here. Recorded explicitly so a refresh that trusts M1's "unmoved" column does not skip it.
+
+One construct changed shape as well as position and a refresh must not copy only the number: the
+threshold comparison formerly read `if count >= th.CodemapsChangedFiles` and now reads
+`if rep.Value >= th.CodemapsChangedFiles`, because the count is derived from the path list.
+
+The refresh itself remains deferred to the close of run-phase per the M1 drift record above
+(`#### Coordinate drift caused by M1`), and this milestone does not perform it: `spec.md` and
+`plan.md` bodies are manager-spec's. With M3 landed, no further milestone moves these coordinates,
+so the deferred refresh can now be run once against a stable tree — its deciding command is the
+enumeration recorded in that section.
+
+The M1 record's line-number *values* are as measured at `5d95a2e8d` and the three `check.go` rows
+above supersede them; the `provenance.go` rows there still stand. A refresh reads both records
+together, not the M1 one alone.
+
+#### Gaps — what M3 did NOT observe
+
+- **The full local test suite was not run.** Only `internal/graph/...`, `internal/mx/...`, and
+  `internal/cli/` were executed. A regression in any other package is unobserved here and is CI's
+  verdict to render.
+- **`e2e/` was not run** (the operator has a live console; that suite mutates real profiles).
+- **No cross-platform *execution*.** Windows was verified by `go build` only — `GOOS=windows go vet`
+  was not re-run for M3, and no test executed on Windows. The `HEAD^1` resolution and the
+  `git rev-parse --verify --quiet` invocation are unexercised there; they use the same `gitOutput`
+  path M1 already ships, so the risk is low but it is unobserved rather than measured.
+- **`internal/cli` coverage is 79.5%, below the 85% target.** This is the package's pre-existing
+  baseline for a very large package, not a regression M3 introduced (M3 only adds tests to it), but
+  the figure is stated rather than omitted because the target is not met.
+- **The hook gate's notice was deliberately NOT changed.** `internal/hook/quality/gate.go:1310-1317`
+  renders a compact one-line graph-freshness notice and still names only layer, verdict, value, and
+  threshold. It is left alone because AC-GFC-009's surface is the CLI, because CI runs the CLI
+  (`.github/workflows/graph-freshness.yml:87`), and because a bounded path listing does not fit a
+  one-line advisory notice. A reader of the hook notice therefore still cannot tell an inherited red
+  from an originated one — a real residual, recorded rather than silently accepted.
+- **`git rev-parse --verify --quiet HEAD^1` was not exercised against a detached or unborn HEAD.**
+  The root-commit case is covered by a test; a genuinely unborn `HEAD` (fresh `git init`, no commit)
+  reaches the same absent branch by construction but was not run.
+- **The display bound of 10 is a judgment, not a measurement.** No reader was asked what listing
+  length is readable; the number was chosen and is unvalidated.
+
+#### Residual risk — M3
+
+- **`attachContribution` runs two extra git invocations per measured codemaps check** (a
+  `rev-parse` and a `diff` + `ls-files` pair). On a very large repository this roughly doubles the
+  codemaps layer's git cost. Not measured; stated because the gate runs on every CI job.
+- **The contribution's base is `HEAD^1`, which means different things on different histories.** On a
+  merge commit it is the mainline the merge landed on, which is the intended reading. On a linear
+  commit it is simply the previous commit, which is a coherent but weaker notion of "the change
+  under judgment". `plan.md` §F names this asymmetry; the implementation reports the figure with its
+  base sha attached (`contribution_base`) so a reader can see what it was measured against rather
+  than having to assume.
+- **Driving paths name what differs from the stamp, not what is undescribed.** A path in the listing
+  is a described-worthy file that moved since the codemaps documents were generated; whether the
+  documents actually needed to describe it is a separate judgment the metric does not make.
+- **The listing is bounded at 10 with the remainder counted, so a red driven by a long tail shows
+  only its alphabetical head.** Sorting is stable rather than ranked — there is no notion of which
+  driving path matters most, so the ten shown are the first ten by path, not the ten worth reading.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
