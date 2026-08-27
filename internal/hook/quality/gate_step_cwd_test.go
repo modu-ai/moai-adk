@@ -46,7 +46,7 @@ func TestRunStep_RunsInConfiguredProjectDir(t *testing.T) {
 	cfg.ProjectDir = repo
 	g := NewQualityGate(cfg)
 
-	ok, output := g.runStep(context.Background(), "go vet", 60*time.Second, "go", "vet", "./...")
+	ok, output := g.runStep(context.Background(), "go vet", "", 60*time.Second, "go", "vet", "./...")
 	if ok {
 		t.Fatalf("runStep passed on a fixture whose only package fails `go vet` — the step did not run in cfg.ProjectDir (%s) but in the calling process's cwd", repo)
 	}
