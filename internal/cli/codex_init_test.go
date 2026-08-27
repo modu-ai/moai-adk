@@ -12,6 +12,7 @@ package cli
 // sites), and seam-only filesystem access on the judged paths.
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
@@ -917,7 +918,41 @@ func TestCodexInitFailurePaths(t *testing.T) {
 	}
 }
 
-// ─── independent definition-5 scanner (test side) ──────────────────────────
+// ─── default seam implementations ──────────────────────────────────────────
+
+// TestCodexGateDefaultSeams exercises the gate's DEFAULT seam bodies, which
+// every counted cell stubs out: the prompt accepts only y/yes, the generator
+// default really delegates to codexwiring.Wire, and the capability probe
+// runs without touching global state. Deliberately subtest-free — the 354
+// cell count maps onto axis-named subtests only.
+func TestCodexGateDefaultSeams(t *testing.T) {
+	var out bytes.Buffer
+	if !defaultCodexOfferPrompt(&out, strings.NewReader("y\n"), codexWiringInfo{Status: codexWiringStatusNotWired}) {
+		t.Errorf("prompt declined a `y` answer")
+	}
+	if !strings.Contains(out.String(), codexWiringAction) {
+		t.Errorf("offer text does not name the remedy: %q", out.String())
+	}
+	out.Reset()
+	if defaultCodexOfferPrompt(&out, strings.NewReader("n\n"), codexWiringInfo{}) {
+		t.Errorf("prompt accepted an `n` answer")
+	}
+	out.Reset()
+	if defaultCodexOfferPrompt(&out, strings.NewReader(""), codexWiringInfo{}) {
+		t.Errorf("prompt accepted EOF")
+	}
+
+	proj := t.TempDir()
+	if err := defaultCodexInitGenerator(codexGeneratorRequest{ProjectRoot: proj, Agent: codexGeneratorAgentCodex}); err != nil {
+		t.Fatalf("default generator failed: %v", err)
+	}
+	for _, rel := range []string{".codex/hooks.json", ".codex/config.toml"} {
+		if _, err := os.Stat(filepath.Join(proj, rel)); err != nil {
+			t.Errorf("default generator did not produce %s: %v", rel, err)
+		}
+	}
+	_ = defaultCodexPromptCapable() // must not panic; value is environment-dependent
+}
 
 // codexTestExecImports counts executing `@directive` lines per acceptance
 // definition 5, implemented independently from the production scanner so the

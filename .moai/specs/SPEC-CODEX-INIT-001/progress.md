@@ -23,9 +23,9 @@ the round-5 auditor on the same tree.
 | M1 | Proposal gate + state×verb×spawn matrix + injected-state judgement | 24 + 32 | GREEN | `.moai/state/verify/t340/m1-m3-gate-cells.txt` (148 PASS subtests incl. M2/M3) |
 | M2 | Generator delegation, decline, non-interactive prompt counting | 20 + 20 + 40 | GREEN | same run, per-test `-v` subtests |
 | M3 | Failure paths E1/E2/E3 × verb × spawn | 12 | GREEN | same run |
-| M4 | Path containment (before M5 — the guard is the contract's first act) | 180 | pending | |
-| M5 | Instruction contract + idempotency | 10 + 12 | pending | |
-| M6 | Local-file reachability + overlays | 4 | pending | |
+| M4 | Path containment — guard is the contract's FIRST act (M4 before M5, plan §D) | 84 + 60 + 36 | GREEN | `.moai/state/verify/t340/m4-containment-second-run.txt` (180 PASS, skip list printed: "(none)" on darwin) |
+| M5 | Instruction contract + idempotency | 10 + 12 | GREEN | `.moai/state/verify/t340/m5-m6-link-cells-second-run.txt` (26 PASS incl. M6) |
+| M6 | Local-file reachability + overlays | 4 | GREEN | same run |
 
 ### M1-M3 observed-red record (E8)
 
@@ -49,10 +49,10 @@ the round-5 auditor on the same tree.
 | AC-CI-004 (accept) | 20 | PASS | same | `TestCodexInitAcceptDelegation` 20/20 |
 | AC-CI-004 (prompt) | 40 | PASS | same | `TestCodexInitPromptIssuance` 40/40 |
 | AC-CI-010 | 12 | PASS | same | `TestCodexInitFailurePaths` 12/12 |
-| AC-CI-011 | 180 | — | pending M4 | |
-| AC-CI-005/006 | 22 | — | pending M5 | |
-| AC-CI-007 | 4 | — | pending M6 | |
-| AC-CI-008 | overlay | partial | embedded SNAP assertions in M1-M3 cells; containment overlay lands with M4 | |
+| AC-CI-011 | 180 | PASS | `go test ./internal/cli/ -run TestCodexPathGuard -v` | 180/180; darwin runs all real fixtures; skip list "(none)" |
+| AC-CI-005/006 | 22 | PASS | `go test ./internal/cli/ -run 'TestCodexContractLinkCreation\|TestCodexContractIdempotent' -v` | 22/22 |
+| AC-CI-007 | 4 | PASS | `... -run TestCodexLocalReachability -v` | 4/4 |
+| AC-CI-008 | overlay | PASS | embedded in every cell above (SNAP outside-set, write-seam paths, process-seam count) | no isolated cells by design |
 
 ### Existing-suite protection
 
@@ -63,17 +63,17 @@ Evidence: `.moai/state/verify/t340/existing-codex-tests-after-gate.txt`.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-run_complete_at:
-run_commit_sha:
-run_status: in-progress
-ac_pass_count: 6
+run_complete_at: 2026-08-28
+run_commit_sha: 0a518f1d8
+run_status: complete
+ac_pass_count: 11
 ac_fail_count: 0
 preserve_list_post_run_count: 0
 l44_pre_commit_fetch:
 l44_post_push_fetch:
 new_warnings_or_lints_introduced:
 cross_platform_build.darwin_arm64: build+vet pass (in-run)
-cross_platform_build.windows: GOOS=windows vet pending (M4 close)
+cross_platform_build.windows: GOOS=windows vet rc=0 (2026-08-28, lead takeover after agent stall)
 total_run_phase_files: 5 (codex_init.go, codex_contract.go, codex_init_test.go,
 codex_contract_test.go pending, codex_launcher.go +1 call site)
 m1_to_mN_commit_strategy: per-milestone commits (M1-M3 gate surface, M4+M5
