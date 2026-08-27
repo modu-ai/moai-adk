@@ -88,10 +88,39 @@
 
 ## Residual-risk — 수리하지 않고 보고하는 것 (범위 밖)
 
-1. **`git-workflow-doctrine.md` §18.12 BODP 결정 행렬(현 `:414`)이 `→ main @ origin/main`을 기본값으로 둔다.**
-   이 서술은 `internal/bodp/relatedness.go`의 **실제 코드 동작을 정확히 기술**한다 — 즉 문서 결함이 아니라
-   **코드가 git-flow 전환을 따라오지 못한 것**이다. 문서를 고치면 코드와 어긋나므로 손대지 않았다.
-   후속 카드감(코드 변경).
+1. **`git-workflow-doctrine.md` §18.12 BODP — [자기정정 2026-08-27] 최초 판정이 미검증이었다.**
+
+   최초 verdict는 "§18.12의 `→ main @ origin/main` 기본값은 `internal/bodp/relatedness.go`의 실제
+   코드 동작을 정확히 기술한 것이므로 코드가 전환을 못 따라온 것"이라고 적었다. **이 주장은 코드를
+   읽지 않고 문서의 자기 인용을 그대로 받아 적은 것이었다.** 리드 요청으로 실측한 결과 **거짓**이다.
+
+   실측:
+
+   | 명령 | 출력 | 뜻 |
+   |---|---|---|
+   | `ls internal/bodp/` | `No such file or directory` | 디렉터리 부재 |
+   | `git ls-files -- 'internal/bodp' \| wc -l` | `0` | 추적 파일 0건 |
+   | `grep -rn 'applyMatrix\|relatedness\.go' --include='*.go' .` | 출력 없음 | Go 참조 0건 |
+   | `git ls-files \| grep bodp` | `.moai/bodp/plan/SPEC-V3R4-HARNESS-003-2026-05-15.json`, `.moai/reports/expert-debug/bodp-audit-trail-leak-2026-05-09.md` | 남은 것은 계획 JSON과 옛 리포트뿐 |
+
+   **`internal/bodp/relatedness.go` 는 이 트리에 존재하지 않는다.** §18.12가 `Check()` / `applyMatrix()`
+   함수를 파일 경로까지 대며 인용하는 것은 **죽은 코드 경로 인용**이다.
+
+   현재 살아 있는 표면 2곳(실측):
+   - `.claude/rules/moai/development/branch-origin-protocol.md:26` — [ZONE:Evolvable] [HARD]
+     "When no signal fires, the recommendation is `origin/main`". 같은 파일 `:42`가 동일한 8행 행렬을
+     보유. 즉 **기본값의 실제 소유자는 Go 코드가 아니라 이 배포 룰 파일**이다.
+   - `internal/cli/doctor.go:894-906` `checkBODPConfig` — `.moai/branches/` 디렉터리 존재 여부만
+     `os.Stat` 한다. **base 선택 로직이 전혀 없다.**
+
+   **따라서 결함의 종류가 바뀐다.** "코드가 전환을 못 따라옴"(코드 카드)이 아니라 **① 문서가 없는
+   패키지를 인용함(스테일 인용) + ② 기본값의 실제 SSOT는 배포되는 룰 파일**이다. ②는 GitHub Flow를
+   쓰는 다운스트림 사용자에게는 `origin/main`이 옳으므로 이 리포 사정으로 바꿀 수 없고, 로컬
+   git-flow와의 간극을 어디서 흡수할지가 별도 설계 판단이다.
+
+   **수리하지 않은 이유는 그대로 유효하나 근거가 다르다** — 코드와 어긋나서가 아니라, ①은 git-flow
+   정합이 아닌 스테일-인용 결함이고 ②는 배포 SSOT 소관이라 이 카드의 3파일 범위 밖이기 때문이다.
+   후속 카드는 **코드 변경 카드가 아니라 문서 인용 정정 + 배포 룰 SSOT 판단 카드**로 잡아야 한다.
 2. **`git-local-workflow-doctrine.md` 제목/`:12` 헤딩의 "PR-mandatory 1-person OSS".**
    릴리스 경로에는 여전히 참이고, `:5` 전환 고지가 제목 바로 아래 4줄 거리에 있어 grep 독자도
    즉시 만난다. 오도 위험이 낮다고 판단해 남겼다 — 이견이 있으면 리드 판단.
