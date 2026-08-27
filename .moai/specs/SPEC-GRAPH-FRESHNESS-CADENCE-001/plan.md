@@ -23,14 +23,23 @@ fake.
 - **`aggregateFingerprint` has four call sites and only one of them may be filtered.** Measured:
   `internal/graph/check.go:181` (codemaps dirty checker — filter), `internal/graph/meta.go:67`
   (`dirFingerprint`, the edges layer's source sets — **must not** filter, REQ-GFC-003a) and
-  `internal/mx/provenance.go:196` (`baseProvenance`, shared by all three stamp writers — filter for
-  the codemaps stamp only). spec.md §D.1 records what a filter inside the function would do to the
-  edges layer.
+  `internal/mx/provenance.go:219` (the call inside `baseProvenance`, whose declaration is at `:208`;
+  shared by all three stamp writers — filter for the codemaps stamp only). spec.md §D.1 records what
+  a filter inside the function would do to the edges layer.
 - **The codemaps content fingerprint has a producer and a consumer, and they must move together.**
-  `baseProvenance` writes it; `check.go:181` reads it. Filtering one without the other leaves every
-  dirty codemaps stamp permanently mismatched. Existing dirty codemaps stamps are invalidated by
-  this change; they are transient by construction (only on trees with uncommitted described-source
-  changes), so this is accepted rather than migrated.
+  `baseProvenance` writes it; `check.go:181` computes the current value and `:187` compares it.
+  Filtering one without the other leaves every dirty codemaps stamp permanently mismatched. Existing
+  dirty codemaps stamps are invalidated by this change; they are transient by construction (only on
+  trees with uncommitted described-source changes), so this is accepted rather than migrated.
+- **Leaving the mx-scan and graph-build stamps unfiltered rests on a measured premise**: `check.go:187`
+  is the only non-test comparator of `ContentFingerprint` in the tree (`provenance.go:280` reads it
+  for display only). AC-GFC-004's sole-comparator clause pins it; if the run phase finds a second
+  comparator, the pairing in REQ-GFC-003 is no longer sufficient and the milestone stops for a
+  judgment rather than proceeding.
+- **`treeDirty` (`provenance.go:201`) is deliberately not touched.** It selects `baseProvenance`'s
+  anchor branch without consulting the predicate, so a tree dirty only under `testdata` is still
+  refused the `--commit` anchor. Recorded as a known residual (spec.md §D.1 / §E), not a work item —
+  do not "fix" it in passing.
 - The tracked `provenance.json` in this tree names `d2fcecc8b40d1cb…`. It is an ancestor of this
   branch's HEAD (verified `git merge-base --is-ancestor` → rc 0), so the checker is comparable here.
   Nothing in this plan restamps it.
@@ -88,8 +97,12 @@ rather than deriving a new value; a correction is admissible only if the measure
 - Re-measure both axes: the per-integration contribution distribution (`spec.md` §B.5) and the
   cumulative-crossing cadence (`spec.md` §B.6, the `--reverse` union walk). Name the percentile
   convention used — nearest-rank (audit D5).
-- State the expected red frequency at the measured integration rate and check it against §D.2's
-  stated intent of roughly one red per day of factory activity.
+- Run the cumulative walk **twice** — once over the whole window and once with any self-referential
+  or otherwise outlier integration removed — and report both. §B.6's 40-crossing moves from 10 to 16
+  on that single exclusion, so a single-walk figure is not a cadence measurement (audit N1).
+- State the expected red frequency at the measured integration rate, on the outlier-excluded walk,
+  and check it against §D.2's stated intent of roughly one red every day and a half of factory
+  activity.
 - Record every command, its verbatim output, the convention, and the conclusion in `progress.md`
   §E.2. A threshold left at 40 without that record fails REQ-GFC-005 exactly as a changed one would.
 

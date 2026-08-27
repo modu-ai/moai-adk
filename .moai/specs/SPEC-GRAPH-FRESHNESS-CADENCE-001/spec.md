@@ -1,7 +1,7 @@
 ---
 id: SPEC-GRAPH-FRESHNESS-CADENCE-001
 title: "Graph-freshness cadence: described-worthy metric predicate, threshold re-derivation, and non-inheriting failure attribution"
-version: "0.2.0"
+version: "0.2.1"
 status: draft
 created: 2026-08-27
 updated: 2026-08-27
@@ -22,7 +22,8 @@ related_specs: [SPEC-V3R6-GRAPH-FRESHNESS-001, SPEC-V3R6-GRAPH-FRESHNESS-002, SP
 
 | Version | Date | Change | Author |
 |---------|------|--------|--------|
-| 0.2.0 | 2026-08-27 | Remediation of plan audit PASS-WITH-DEBT 0.82 (`.moai/reports/t322/plan-audit.md`), four blocking defects. **D1**: the predicate is no longer applied inside `aggregateFingerprint` — re-measured, `dirFingerprint` (`internal/graph/meta.go:67`) hashes `.moai/project/codemaps`, `.moai/specs`, `.moai/reports`, of which the first two contain **zero** `.go` files, so a `.go`-only filter there collapses both to the same empty-entry constant `e3b0c442…` and permanently greens the edges layer. Predicate relocated to the codemaps call sites; a second collateral consumer the audit did not name (`baseProvenance`, `internal/mx/provenance.go:196`, shared by the codemaps-gen / mx-scan / graph-build stamp writers) is handled by REQ-GFC-003's producer/consumer pairing. **D2**: cumulative-crossing cadence measured and added to §B.5; §D.2 reversed — **40 is retained**, re-justified on the integration axis. **D3**: AC-GFC-003 now decided through the built artifact. **D4**: AC-GFC-005 extended from four absent branches to all seven. **D5-D7** applied (p90 corrected to 9 with the convention named; `DefaultDescribedRoots` consumer citation corrected to five call sites; AC-GFC-007's search space bounded). **D8** accepted: `internal/template/templates` holds 0 tracked `.go` files and the prefix rule removes nothing the `.go` rule does not — the clause, REQ-GFC-004, REQ-GFC-012, milestone M4 and their criteria are withdrawn. | manager-spec |
+| 0.2.1 | 2026-08-27 | Remediation of plan audit iter-2 PASS-WITH-DEBT 0.895 (`.moai/reports/t322/plan-audit-iter2.md`) — the Tier M iteration ceiling, so these are applied directly rather than as a plan-phase re-entry. **N1**: §D.2's cadence figure rested on `6786c3fa4`, the self-referential SPEC-V3R6-GRAPH-FRESHNESS-001 delivery that §B.5 already disowns and that contributes 29 of the union's 49 at the crossing. The cumulative walk was re-measured here both ways — 40-crossing at integration **10** with it, **16** without (15-crossing unaffected at 5, it precedes the outlier) — both recorded in §B.6, and §D.2 / §G Q4 restated on the outlier-excluded ≈1.6 days. AC-GFC-006 now requires the run-phase Axis 2 to carry the same counterfactual. The §D.2 reversal is untouched: it rests on §B.6 consequence 1 (the streak's corrected cumulative is 2, so the threshold is not load-bearing), which the figure does not affect. **N2**: `baseProvenance` cited at `provenance.go:196` in three places — `:196` is inside `ResolveCommit`; corrected to `:208` (declaration) and `:219` (the `aggregateFingerprint` call) per site. **N3**: counts left stale by the D8 withdrawal recounted — twelve live acceptance criteria, four §G questions, 11 live requirements. **O2** accepted: `treeDirty` (`provenance.go:201`) named as a deliberately predicate-blind consumer, with the `--commit`-anchor residual stated (§D.1, §E). **O4** accepted: the premise that makes the unpaired mx-scan / graph-build producers safe — `check.go:187` is the only non-test `ContentFingerprint` comparator — is now stated in §D.1 and pinned by an AC-GFC-004 clause. | manager-spec |
+| 0.2.0 | 2026-08-27 | Remediation of plan audit PASS-WITH-DEBT 0.82 (`.moai/reports/t322/plan-audit.md`), four blocking defects. **D1**: the predicate is no longer applied inside `aggregateFingerprint` — re-measured, `dirFingerprint` (`internal/graph/meta.go:67`) hashes `.moai/project/codemaps`, `.moai/specs`, `.moai/reports`, of which the first two contain **zero** `.go` files, so a `.go`-only filter there collapses both to the same empty-entry constant `e3b0c442…` and permanently greens the edges layer. Predicate relocated to the codemaps call sites; a second collateral consumer the audit did not name (`baseProvenance`, `internal/mx/provenance.go:208`, shared by the codemaps-gen / mx-scan / graph-build stamp writers) is handled by REQ-GFC-003's producer/consumer pairing. **D2**: cumulative-crossing cadence measured and added to §B.5; §D.2 reversed — **40 is retained**, re-justified on the integration axis. **D3**: AC-GFC-003 now decided through the built artifact. **D4**: AC-GFC-005 extended from four absent branches to all seven. **D5-D7** applied (p90 corrected to 9 with the convention named; `DefaultDescribedRoots` consumer citation corrected to five call sites; AC-GFC-007's search space bounded). **D8** accepted: `internal/template/templates` holds 0 tracked `.go` files and the prefix rule removes nothing the `.go` rule does not — the clause, REQ-GFC-004, REQ-GFC-012, milestone M4 and their criteria are withdrawn. | manager-spec |
 | 0.1.0 | 2026-08-27 | Initial plan-phase authoring for card t322. All baseline figures in §B re-measured in worktree `.claude/worktrees/t322` at HEAD `d2cba5e21`; the orchestrator's dispatch figures (55 / 0 / 5, 21 / 198) reproduced exactly. Three judgments adjudicated in §D with rejected alternatives recorded. Ordering basis against t311 / t304 established in §F. | manager-spec |
 
 ## §A. Problem Statement
@@ -174,10 +175,32 @@ filtered by the predicate, unioned):
 | 10 | **49** ← crosses 40 |
 | 30 | 86 |
 
+**The 40-crossing above is produced by a single integration, and that integration is the one §B.5
+disowns.** The union goes `…8 → 21, 9 → 21, 10 → 49`: the jump from 21 to 49 is `6786c3fa4` alone,
+the SPEC-V3R6-GRAPH-FRESHNESS-001 delivery that introduced this gate — a self-referential outlier
+contributing 29 described-worthy files
+(`git diff --name-only 6786c3fa4^1..6786c3fa4 -- internal cmd pkg | grep '\.go$' | grep -v
+'_test\.go$' | grep -v '/testdata/' | grep -c .` → **29**). A cadence figure that rests on it
+describes how often the gate reds *when the gate itself is being built*, which is not the cadence
+the operator is being asked about. So the walk was re-run with that integration removed from the
+window (29 integrations, same predicate, same union accumulation):
+
+| Threshold | Crossing with `6786c3fa4` | Crossing without it |
+|---|---|---|
+| 15 | integration 5 (union 17) | integration 5 (union 17) |
+| **40** | **integration 10** (union 49) | **integration 16** (union 43) |
+
+The 15-crossing is unaffected — it happens before the outlier. The 40-crossing moves from 10 to 16,
+a 60% difference in the red rate, in the direction that makes the gate *less* red. (Convention note:
+"without" removes the outlier from the window entirely. Retaining it as a zero-contribution slot
+instead puts the same crossing at slot 17; it is one event under two counting conventions, not two
+measurements.)
+
 The window `39c677f47 … 48eb945df` spans 2026-08-25 to 2026-08-27 — 30 integrations in three days,
-≈10/day. At that rate the corrected metric crosses **40 in about one day** and **15 in about half a
-day**, and it stays red for every later integration until the six documents are regenerated by
-hand.
+≈10/day (≈9.7/day with the outlier removed). **The operative figures are the outlier-excluded ones**:
+the corrected metric crosses **40 in about 1.6 days** and **15 in about half a day**, and it stays
+red for every later integration until the six documents are regenerated by hand. The
+with-outlier row is retained above only so the counterfactual is auditable.
 
 Two consequences follow, and §D.2 is decided on them:
 
@@ -185,7 +208,8 @@ Two consequences follow, and §D.2 is decided on them:
    corrected cumulative is 2, which passes under 15 and under 40 alike. §D.1's predicate alone
    stops the reported streak.
 2. **"40 became ~13× laxer" is true only on the commit axis.** On the integration axis — the one CI
-   runs on — corrected-40 already reds within roughly a day. It is not lax there.
+   runs on — corrected-40 reds within roughly a day and a half even after the self-referential
+   outlier is removed. It is not lax there.
 
 ## §C. Requirements (GEARS)
 
@@ -280,13 +304,36 @@ fresh forever. That is precisely the permanently-green gate §D.3 rejects on pri
 a layer §E declares out of scope.
 
 A second collateral consumer, which the audit did not name, is `baseProvenance`
-(`internal/mx/provenance.go:196`): it computes the dirty `ContentFingerprint` unfiltered for **all
-three** stamp writers. Filtering only the checker at `check.go:181` would leave every dirty codemaps
-stamp permanently mismatched against the checker reading it.
+(`internal/mx/provenance.go:208`, its `aggregateFingerprint` call at `:219`): it computes the dirty
+`ContentFingerprint` unfiltered for **all three** stamp writers. Filtering only the checker at
+`check.go:181` would leave every dirty codemaps stamp permanently mismatched against the checker
+reading it.
 
 So the predicate goes to the codemaps call sites — the checker at `check.go:181` and the codemaps
 stamp writer — through a predicate-bearing variant, leaving `AggregateDescribedFingerprint`'s
 contract intact for `meta.go` and leaving the mx-scan and graph-build stamps unchanged.
+
+**Why leaving the mx-scan and graph-build stamps unfiltered is safe — the premise, measured.**
+Those two writers keep emitting an unfiltered `ContentFingerprint`, which is only harmless because
+**codemaps is the only layer that ever compares one**. Measured:
+`grep -rn --include='*.go' 'ContentFingerprint' . | grep -v _test.go` yields exactly one comparator,
+`checkCodemaps` at `internal/graph/check.go:187` (reading the value computed at `:181`), plus one
+display-only reader, `Provenance.Describe` at `internal/mx/provenance.go:280`; `checkMXIndex` and
+the edges check never read the field. The producer/consumer pairing REQ-GFC-003 requires is
+therefore sufficient *given this premise* — and it stops being sufficient the moment a future layer
+adds a dirty-fingerprint comparison for mx-index or edges. AC-GFC-004 pins the premise as a control
+rather than leaving it a footnote.
+
+**One described-roots consumer is deliberately left predicate-blind: `treeDirty`.**
+`treeDirty` (`internal/mx/provenance.go:201`) decides, from `git status --porcelain` over the
+described roots, whether `baseProvenance` takes the dirty-fingerprint branch or the commit-anchor
+branch. It consults no predicate and this SPEC does not give it one. The consequence is worth
+stating because it cuts against this SPEC's own thesis: a tree dirty **only** under `testdata` —
+carrying no described-worthy change at all — is still classified dirty, and is therefore still
+refused the `--commit` merge-base anchor that `SPEC-STAMP-REACHABILITY-001` delivered and that §D.3
+cites as the orphan mitigation. Leaving it is the conservative default (a false "dirty" over-reports
+rather than under-reports, and changing the anchor-mode selector is a `SPEC-STAMP-REACHABILITY-001`
+concern, not a metric one), so it is recorded as a known residual rather than a work item — see §E.
 
 **Rejected — narrow `described_roots` instead.** Rejected on the expressiveness measurement above,
 and on the shared-consumer coupling.
@@ -305,14 +352,19 @@ Ground: §B.3, §B.5, §B.6.
 **Why v0.1.0's argument does not survive.** It rested on "40 was calibrated at 13.7 files/commit,
 the corrected metric runs at ~1.0, so the metric shrank ~13× and the threshold cannot carry over".
 That is true on the **commit** axis and irrelevant on the **integration** axis, which is the one CI
-runs on. §B.6 measures it: corrected-40 crosses at 10 integrations, ≈one day at the observed
-≈10 integrations/day. 40 is not lax on the axis that decides how often the gate is red.
+runs on. §B.6 measures it: corrected-40 crosses at **16 integrations** once the self-referential
+`6786c3fa4` is excluded — ≈1.6 days at the observed ≈10 integrations/day. (With that outlier
+included the crossing is 10, ≈one day; §B.6 records both and takes the excluded figure as
+operative.) 40 is not lax on the axis that decides how often the gate is red — not by the margin
+the with-outlier figure suggests, but a gate that reds every day and a half is not a gate nobody
+notices.
 
 **Why 15 is worse, not better.** §B.6 puts corrected-15 at 5 integrations — roughly twice per day —
 and the red then persists for every subsequent integration until six documents are regenerated by
 hand, a regeneration §D.3 deliberately refuses to automate and which t311 and t304 have not been
-able to schedule. Doubling the red rate of a gate whose only exit is manual work nobody has
-scheduled is a reliable way to get the gate ignored.
+able to schedule. Against retained-40's ≈1.6 days that is roughly a **threefold** increase in red
+rate, and tripling the red rate of a gate whose only exit is manual work nobody has scheduled is a
+reliable way to get the gate ignored.
 
 **Why the threshold should not move in this SPEC at all.** §B.6's first consequence is decisive:
 the streak's corrected cumulative is **2**, which passes under 15 and under 40 alike. §D.1's
@@ -322,9 +374,12 @@ neither the predicate nor the threshold could be cleared. So the threshold is he
 control.
 
 **Intended red frequency, stated.** At the observed integration rate, retained-40 under the
-corrected predicate is expected to red roughly **once per day of factory activity**, and each red
-should then be a true statement that undescribed architectural surface has accumulated. Whether
-once per day is tolerable is a debt-tolerance question, not a metric question — recorded as §G Q4.
+corrected predicate is expected to red roughly **once every day and a half of factory activity**
+(§B.6's outlier-excluded crossing: 16 integrations at ≈10/day). Each red should then be a true
+statement that undescribed architectural surface has accumulated. Whether that frequency is
+tolerable is a debt-tolerance question, not a metric question — recorded as §G Q4. The figure is a
+single-window measurement over three days and is offered as an order of magnitude, not a rate
+constant; REQ-GFC-005 requires the run phase to re-measure it.
 
 REQ-GFC-005 requires the run phase to confirm 40 against re-measurements on **both** axes and record
 the derivation; a correction is admissible if the measurement supports one, but it must be measured,
@@ -404,6 +459,10 @@ would rot without a single red. Per-change contribution is therefore *reported* 
 - Moving `CodemapsChangedFiles` away from 40. §D.2 retains it as the control variable so the predicate change is attributable on its own. A sensitivity change belongs to a follow-up taken once a regeneration cadence exists.
 - Any configuration surface for the predicate. Withdrawn at v0.2.0 with REQ-GFC-004 / REQ-GFC-012 (§G Q2).
 
+### Out of Scope — the dirty/clean anchor-mode selector
+
+- `treeDirty` (`internal/mx/provenance.go:201`) stays predicate-blind: it decides `baseProvenance`'s dirty-vs-commit anchor branch from a raw `git status --porcelain` over the described roots, and this SPEC does not filter it. Known residual, stated in §D.1: a tree dirty only under `testdata` is still refused the `--commit` merge-base anchor delivered by `SPEC-STAMP-REACHABILITY-001`. Changing an anchor-mode selector belongs to that SPEC's axis, not to the metric.
+
 ### Out of Scope — the edges layer's fingerprint
 
 - `mx.AggregateDescribedFingerprint`'s contract and `dirFingerprint`'s four source sets. REQ-GFC-003a pins them byte-identical rather than changing them; §D.1 records why touching them would permanently green a layer this SPEC does not own.
@@ -460,12 +519,15 @@ their own; t322 does not supply one and does not claim to.
    file-level collision. Folding it here would make one coherent change to `check.go`; keeping it
    in t304 keeps this SPEC's scope to the cadence defect. Not decided.
 
-4. **Is roughly one red per day of factory activity tolerable?** §B.6 measures corrected-40 crossing
-   at ≈10 integrations ≈ one day at the observed rate, and §D.2 retains 40 on that basis. Each such
-   red will be a true statement that undescribed surface has accumulated, and its only exit is a
-   manual regeneration of six documents. If that frequency is judged intolerable, the lever is a
-   regeneration cadence (t311 / t304) or the Q1 advisory-degradation policy — not a threshold raise,
-   which would only defer the same red.
+4. **Is roughly one red every day and a half of factory activity tolerable?** §B.6 measures
+   corrected-40 crossing at **16 integrations** ≈ 1.6 days at the observed rate, once the
+   self-referential `6786c3fa4` is excluded from the window; §D.2 retains 40 on that basis. (The
+   with-outlier figure is 10 integrations ≈ one day; it is recorded in §B.6 but is not the figure
+   this question is posed on, because it measures the gate's redness during its own construction.)
+   Each such red will be a true statement that undescribed surface has accumulated, and its only
+   exit is a manual regeneration of six documents. If that frequency is judged intolerable, the
+   lever is a regeneration cadence (t311 / t304) or the Q1 advisory-degradation policy — not a
+   threshold raise, which would only defer the same red.
 
 ## §H. Cross-References
 

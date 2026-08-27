@@ -57,9 +57,20 @@ have left it green.*
 reads it back with no intervening edit, Then the codemaps verdict is `fresh`; and When a file under
 a `testdata` segment is then modified, Then the verdict remains `fresh`; and When a production `.go`
 file is modified, Then the verdict becomes `stale`.
-Decided by: `go test ./internal/mx/ -run TestCodemapsFingerprint_ProducerConsumer -count=1`.
+And Given the delivered tree, When every non-test reference to `ContentFingerprint` is enumerated,
+Then exactly one **comparator** exists — `checkCodemaps` at `internal/graph/check.go:187` — and any
+other comparator is a defect against this SPEC's premise that mx-scan's and graph-build's unfiltered
+fingerprints are harmless.
+Decided by: `go test ./internal/mx/ -run TestCodemapsFingerprint_ProducerConsumer -count=1`, and for
+the sole-comparator clause `grep -rn --include='*.go' 'ContentFingerprint' . | grep -v _test.go`
+recorded verbatim in `progress.md` §E.2 (plan-phase baseline: one comparator at `check.go:187`, one
+display-only reader at `internal/mx/provenance.go:280`, the rest declarations and the single
+producer at `:219`).
 Mutant this kills: a filtered checker paired with an unfiltered codemaps stamp writer — the first
-assertion fails immediately, because the tree is stale against its own fresh stamp.
+assertion fails immediately, because the tree is stale against its own fresh stamp. The
+sole-comparator clause kills a different mutant: a second comparator added against the mx-index or
+edges layer, which would make the deliberate producer asymmetry live with nothing guarding it.
+*Extended at v0.2.1 with the sole-comparator clause (audit O4).*
 
 **AC-GFC-005** — Given each of the **seven** absent-verdict branches of `checkCodemaps` in turn,
 When `checkCodemaps` runs, Then the verdict is `absent` carrying that branch's pre-existing reason
@@ -93,10 +104,17 @@ the percentile convention used, and the conclusion for the threshold:
 - **Axis 2, cumulative-crossing cadence**: the same log with `--reverse`, accumulating the distinct
   described-worthy union, yielding the integration count at which the union first reaches the
   threshold, plus the window's date span so the crossing can be expressed as a red frequency.
+- **Axis 2 outlier sensitivity**: Axis 2 run a second time with the window's single largest
+  contributor removed, and both crossings recorded side by side. A single-walk crossing is not
+  admissible as the cadence figure — in the plan-phase window one integration moved the 40-crossing
+  from 10 to 16 — and the **outlier-excluded** crossing is the one the frequency conclusion is
+  stated on, with the exclusion justified in one sentence.
 
 The record itself is the observable. A threshold **retained** without this record fails exactly as a
-changed one would, and a record carrying only Axis 1 fails.
-*Extended at v0.2.0 to require Axis 2 and to name the percentile convention (audit D2, D5).*
+changed one would; a record carrying only Axis 1 fails; and a record carrying Axis 2 as a single
+walk, with no outlier counterfactual, fails.
+*Extended at v0.2.0 to require Axis 2 and to name the percentile convention (audit D2, D5); at
+v0.2.1 to require the Axis 2 outlier counterfactual (audit N1).*
 
 **AC-GFC-007** — Given the threshold value in the delivered code, When the branch's own record is
 searched over a **bounded** space, Then no justification appeals to a check that was failing.
@@ -139,6 +157,12 @@ covers the fact that this SPEC does not change it.
 **AC-GFC-012** — *withdrawn at v0.2.0 with REQ-GFC-012 (audit D8).* No config key is added, so no
 template mirror is required.
 
+**AC-GFC-013** — Given the delivered change set, When the pipeline surfaces are searched, Then no
+`graph stamp` invocation exists in `.github/` or `.claude/` that the change introduced, and the
+tracked `.moai/project/codemaps/provenance.json` is byte-identical to its state at the branch base.
+Decided by: `grep -rn "graph stamp" .github/ .claude/` and
+`git diff --stat d2cba5e21 -- .moai/project/codemaps/provenance.json` returning empty.
+
 **AC-GFC-014** — Given the tree before this change and the tree after it, When
 `SourceFingerprintsForEdges` is computed over the same fixture project, Then every one of its four
 source-set fingerprints is byte-identical across the two, and in particular the `.moai/project/codemaps`
@@ -150,13 +174,7 @@ inequality assertion: `.moai/project/codemaps` and `.moai/specs` contain zero `.
 (`find … -name '*.go' | wc -l` → 0 for both), so under a `.go`-only filter both collapse to exactly
 that constant — which is why the assertion is stated as an inequality against it rather than as a
 general "fingerprints differ".
-*Added at v0.2.0 (audit D1).*
-
-**AC-GFC-013** — Given the delivered change set, When the pipeline surfaces are searched, Then no
-`graph stamp` invocation exists in `.github/` or `.claude/` that the change introduced, and the
-tracked `.moai/project/codemaps/provenance.json` is byte-identical to its state at the branch base.
-Decided by: `grep -rn "graph stamp" .github/ .claude/` and
-`git diff --stat d2cba5e21 -- .moai/project/codemaps/provenance.json` returning empty.
+*Added at v0.2.0 (audit D1); relocated below AC-GFC-013 at v0.2.1 to match the §D matrix order.*
 
 ## §D.2 — Edge Cases
 
@@ -171,10 +189,11 @@ Decided by: `grep -rn "graph stamp" .github/ .claude/` and
 
 ## §D.3 — Definition of Done
 
-- All thirteen criteria decided, each with its command's verbatim output recorded in `progress.md`
+- All **twelve live** criteria decided (AC-GFC-001..010, 013, 014; 011 and 012 withdrawn at v0.2.0),
+  each with its command's verbatim output recorded in `progress.md`
   §E.2.
 - `go vet ./internal/graph/... ./internal/mx/... ./internal/config/... ./internal/cli/...` clean.
 - Affected-package tests green locally; the full verdict is CI's.
 - `make build` succeeds and the template mirror is present.
 - No restamp performed, and no restamp introduced (AC-GFC-013).
-- The three open questions in `spec.md` §G remain recorded as open, or carry the operator's decision.
+- The **four** open questions in `spec.md` §G remain recorded as open, or carry the operator's decision.
