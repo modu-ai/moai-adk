@@ -409,12 +409,12 @@ for reasons that predate this card; asserting `0` would fail on content this SPE
 
 ## Definition of Done
 
-- [ ] AC-TSA-001 through AC-TSA-008, **including the paired sub-criteria AC-TSA-005b and
+- [x] AC-TSA-001 through AC-TSA-008, **including the paired sub-criteria AC-TSA-005b and
       AC-TSA-007b**, all measured GREEN, with verbatim output recorded in `progress.md` §E.2
-- [ ] `make build` run after the template edit (Template-First). This is no longer a bare checklist
+- [x] `make build` run after the template edit (Template-First). This is no longer a bare checklist
       item: its exit code and the resulting binary scan are measured by AC-TSA-005b, and the DoD
       bullet is satisfied by that criterion's recorded output rather than by an assertion here
-- [ ] `moai spec lint` run unpiped with output redirected to a file, exit code reported, and the file
+- [x] `moai spec lint` run unpiped with output redirected to a file, exit code reported, and the file
       searched for `SPEC-TABSCHEMA-AUTOBRANCH-001` — never through `tail`
-- [ ] No file outside `LOCAL`, `TMPL`, the embedded-asset regeneration, and this SPEC directory is
+- [x] No file outside `LOCAL`, `TMPL`, the embedded-asset regeneration, and this SPEC directory is
       modified

@@ -157,4 +157,79 @@ m1_to_mN_commit_strategy: >-
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-27
+sync_commit_sha: pending-backfill-sync   # this sync commit; backfilled by the immediately following commit
+sync_status: complete
+spec_status_transition: in-progress -> completed   # 3-phase close; completed rides this sync commit
+independent_sync_audit:
+  verdict: PASS
+  weighted_harmonic_mean: 95.3
+  tier: S
+  threshold: 75
+  evaluator_profile: default   # Functionality 40 / Security 25 / Craft 20 / Consistency 15
+  dimensions: {functionality: 98, security: 96, craft: 92, consistency: 92}
+  must_pass_firewall: functionality PASS, security PASS
+  report: .moai/reports/t316/sync-audit.md
+  findings: 5   # 0 blocking, 2 MINOR (both closed by this commit), 3 INFO
+ac_pass_count: 10   # AC-TSA-001..008 + 005b + 007b, independently re-measured GREEN by the auditor
+ac_fail_count: 0
+docs_impact: none
+changelog_entry: added under [Unreleased] -> Changed
+```
+
+### Documentation impact — measured, not assumed
+
+`grep -rn 'auto_branch'` across `docs-site/`, `README*.md`, and the owning skill returns eight
+docs-site lines (ko/en/ja/zh × 2 in `workflow-commands/moai-run.md`), **all** naming the surviving
+canonical spelling `git_strategy.automation.auto_branch`. Zero documentation line anywhere names a
+deleted path (`git_strategy.personal.auto_branch` / `git_strategy.team.auto_branch`). The deletion
+therefore requires no documentation change, and the 4-locale set stays in sync without being touched.
+
+Independently corroborated at the config surface: the rendered
+`.moai/config/sections/git-strategy.yaml` carries `automation.auto_branch` inside each of the three
+mode profiles (lines 23 / 50 / 77) plus one distinct, explicitly deprecated top-level `auto_branch`
+(line 91). No `git_strategy.personal.auto_branch` shape exists in the rendered config either — the
+dead-path claim holds on the config surface as well as in the Go type.
+
+### Sync-phase findings closure
+
+- **F1 [MINOR] closed by this commit** — the four `acceptance.md` Definition-of-Done checkboxes were
+  left unticked despite every item being discharged with recorded evidence. Ticked here.
+- **F2 [MINOR] closed by this commit** — `spec.md` frontmatter `status: in-progress` and this
+  section's `_<pending sync-phase>_` placeholder were the sync phase's own remaining stamping
+  obligation. Both land in this commit.
+- **F3 / F4 / F5 [INFO] carried, not actioned.** F3 (`tab_schema.json` has no runtime consumer —
+  no parser, no test, no lint, and the owning `SKILL.md` does not point at it) is out of this card's
+  scope by construction and is **already a separate queued card** in the backlog, filed from this
+  card's own discovery. F4 records that the surviving canonical key is genuinely live at the config
+  surface (`git-strategy.yaml.tmpl`, `sync/delivery.md:31,39`) independent of the orphaned schema.
+  F5 records that the header counter drift (`total_settings: 60` vs computed 46; `total_batches: 18`
+  vs computed 17) is pre-existing, widened only arithmetically by this deletion, and recorded out of
+  scope in `spec.md` §4.
+
+### §E.4 Gaps — what sync phase did NOT observe
+
+- **CI status on `origin/develop` after the merge (`6310dbf28`) was not read.** Both this sync phase
+  and the audit judged the tree, not the pipeline.
+- **No cross-platform build and no full-suite run.** Only `./internal/template/...` was exercised
+  (green, 28.9s), per the repository's standing prohibition on local full-suite runs. The change
+  touches no Go code; the full verdict belongs to CI.
+- **`make build` was not re-run during sync phase.** AC-TSA-005b's binary scan was discharged in run
+  phase against the binary built there; sync phase asserts no fresh build.
+- **The interview was never executed.** The schema has no runtime consumer (F3), so `AC-TSA-001`'s
+  `mode_admits` semantics remain a reconstruction with no executable oracle — corroborated twice
+  (run phase and audit), validated by no runtime.
+
+### §E.4 Residual risk
+
+- **The schema is an orphan.** Nothing mechanically prevents a future regression to the dead
+  spelling; the correctness this card establishes is preserved by convention only until F3's card is
+  decided.
+- **`AC-TSA-007b` compares parsed JSON**, so a pure reformat of untouched regions would still read
+  `True`. The `0/42` numstat makes that unlikely here, but no criterion mechanically rejects it.
+- **A later reader who skips `spec.md` §4** may mis-attribute the widened header-counter drift to
+  this deletion.
+- **Manual-mode operators are now visibly never asked about auto-branching.** Behaviour is unchanged
+  (their answer previously went to a dead path), but the silence is no longer masked; recorded in
+  `spec.md` §4 as a separate design question for a separate card.
