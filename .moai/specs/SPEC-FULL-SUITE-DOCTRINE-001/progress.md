@@ -335,7 +335,7 @@ m1_to_mN_commit_strategy: single-commit
 
 - sync_status: implemented (2026-08-27). **`completed` 전환은 의도적 연기** — AC-FSD-011의 관측 창이 아직 열려 있다. frontmatter_status_transitions: `in-progress → implemented` (spec.md, 본 sync 커밋이 운반; `implemented → completed` 는 연기). 같은 사유로 `implemented` 에 머물러 있는 선례: SPEC-CI-FLAKE-SERIES-001(카드 t278).
 - sync_complete_at: 2026-08-27 (sync 커밋 착지일)
-- sync_commit_sha: "pending-backfill" — 자기 참조를 피하려 placeholder로 두고, 바로 다음 커밋에서 실제 short SHA로 교체한다(리드 소관).
+- sync_commit_sha: `b904de9a3` — sync 커밋은 자기 sha를 담을 수 없어 placeholder로 두었고, 이 값은 레인 오케스트레이터가 바로 다음 커밋에서 역채웠다.
 - run_commit_sha 역채움: §E.3의 `pending-backfill-t301` → **`f33bbe39c`**. 이 커밋이 `origin/develop` 의 조상임을 확인했다(`git merge-base --is-ancestor f33bbe39c origin/develop` → rc=0).
 
 ### 무엇이 미결이고, 무엇이 그것을 닫으며, 누가 판정하는가
