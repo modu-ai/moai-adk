@@ -4,7 +4,7 @@ Baseline tree for every RED-now cell: **`d34a789a4`** @ `WT-guard-liveness` (wor
 
 Each criterion was put through that rule's §2 mutant probe. Where a single-clause criterion admitted a mutant satisfying it while violating its requirement, a second clause was added and the mutant that forced it is recorded in the criterion.
 
-Budget: Tier M ≤ 16 acceptance criteria. **Count: 12.**
+Budget: Tier M ≤ 16 acceptance criteria. **Count: 14.**
 
 ## §D AC Matrix
 
@@ -22,6 +22,8 @@ Budget: Tier M ≤ 16 acceptance criteria. **Count: 12.**
 | AC-GDL-010 | REQ-GDL-011, REQ-GDL-013 | Positive + negative assertion | M3 |
 | AC-GDL-011 | REQ-GDL-014 | RED-first (measurement age) | M3 |
 | AC-GDL-012 | REQ-GDL-015 | Additive-only diff assertion | M4 |
+| AC-GDL-013 | REQ-GDL-013 | Zero-input surfacing pair | M3 |
+| AC-GDL-014 | REQ-GDL-016 | Change-leading pair | M3 |
 
 ## §D.1 Criteria (Given-When-Then, two cells each)
 
@@ -99,9 +101,25 @@ Budget: Tier M ≤ 16 acceptance criteria. **Count: 12.**
 - **Green path:** M4. Passing output is `<added> 0 <file>` from `--numstat`, with the grep returning rc=0.
 - **Mutant:** the grep clause alone is satisfied by a commit that adds the clause and rewrites the surrounding section. The zero-deletions clause is what enforces "extend, never re-author".
 
+### AC-GDL-013 — the advisory arrives with no operator input
+**Given** an evaluation whose result carries at least one `STALE` or `UNDECLARED` entry; **When** the operator begins a session and issues no command naming a guard, a workflow file, or the liveness feature itself; **Then** BOTH hold — (a) the advisory is rendered, and (b) the rendering path consumed no operator-supplied guard identifier or query string.
+- **RED-now:** on `d34a789a4` there is no advisory and no evaluator (AC-GDL-005's measurement), so the only way to learn a guard's last-fired time is a hand-written targeted query. Red because the answer is reachable *only* by someone who already knows which question to ask — which is the defect §A.4 records, not merely a missing feature.
+- **Green path:** M3. Passing output is the advisory present in a session transcript containing no such command.
+- **Mutant:** clause (a) alone is satisfied by shipping a `moai guard liveness` verb plus documentation telling the operator to run it. That mutant renders an advisory, satisfies "the harness surfaces it", and leaves the operator needing to know the mechanism exists — the exact relocation §D.2 rejects. Clause (b) is what excludes it, and it is stated as *inputs consumed* rather than *how the operator felt*, so it is decidable.
+- **Why the negative clause is the load-bearing one:** the lead session in §A.4 could run the correct query the moment it was handed the workflow's name. What it could not do was know that a query was owed. A criterion that only checks "an advisory exists when asked for" would have passed against the state that produced this card.
+
+### AC-GDL-014 — the advisory leads with changes and survives a standing red
+**Given** two consecutive evaluations where entry set S is `STALE` in both and entry T newly became `STALE` in the second; **When** the second advisory is rendered; **Then** BOTH hold — (a) T appears in the advisory's leading position, and (b) the members of S are represented as a count and are not re-rendered as individual entries.
+- **RED-now:** no advisory exists on `d34a789a4`, so there is no rendering order to assert. Red for absence.
+- **Green path:** M3. Passing output shows T named and S collapsed to a count.
+- **Mutant:** clause (a) alone is satisfied by a renderer that prints the full standing list with T at the top — which is the block a reader learns to skip after the third session, and is how a new advisory inherits the filter that an always-red neighbour has already trained (`spec.md` §A.7). Clause (b) is what forces the collapse.
+- **Bounded claim:** this criterion asserts change-leading, not that the advisory gets read. Whether a compact standing count also becomes skippable is not measured by any criterion here and is recorded in §D.7.
+
 ## §D.7 Residual risk (recorded, not claimed as closed)
 
 - **The regress is relocated, not eliminated.** The evaluator's liveness is entailed by the liveness of its host surface. If that surface is itself removed or silently stops, the evaluator stops with it — the same defect class, one layer up. Full closure would need an unattended watcher, which reintroduces exactly what `spec.md` §D rejects. Partial mitigation: AC-GDL-011's measurement age makes a stale advisory legible; it does not make an *absent* advisory legible, and nothing in this SPEC does.
 - **`gh run list` completeness.** REQ-GDL-007 converts retention loss into an explicit `UNKNOWN`, which prevents a false alarm. It does not recover the lost history: a guard that stopped firing longer ago than the retention window reads `UNKNOWN` forever, indistinguishable from a release-only guard between releases. The expectation window is therefore bounded above by retention, and an entry whose window exceeds it is not answerable by this design.
 - **The procedural correlation layer has one executor.** Out of scope per `spec.md` §E, and recorded here because the contrast is the point: correlating scattered observations into a card is done today only by the lead session, which disappears when the lead dies or is cleared. Card t326's deployment check runs without a lead; this card's advisory does too, but the step *after* the advisory — someone deciding a `STALE` classification is worth a card — does not.
+- **Change-leading raises the cost of habituation without abolishing it.** REQ-GDL-016 stops the advisory reprinting an identical block every session, which is what trains a reader's filter. A compact standing count is still something a reader can learn to skip, and no criterion here measures whether the advisory is actually read — AC-GDL-014 measures only that it leads with changes. The always-red neighbour (`spec.md` §A.7) is real and is not repaired by this card, so the new advisory renders next to a channel whose filter is already trained.
+- **An entry that stays STALE goes quiet by design.** It is announced once and thereafter only counted. Re-announcing it every session is the noise that produces the filter, so the trade is deliberate — but a long-standing `STALE` is quiet, and quiet is the subject of this card. This is the sharpest unresolved tension in the design and it is recorded rather than argued away.
 - **The manifest is hand-maintained.** AC-GDL-001 catches a workflow file added without an entry only when the evaluator next runs, and AC-GDL-008 reports it as `UNDECLARED` rather than blocking. A new guard therefore sits undeclared until someone reads an advisory. This is deliberate — a blocking gate on manifest completeness would be a new always-green risk of its own — but it is a gap, not a solved problem.

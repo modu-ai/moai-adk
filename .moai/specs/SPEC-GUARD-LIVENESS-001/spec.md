@@ -1,7 +1,7 @@
 ---
 id: SPEC-GUARD-LIVENESS-001
 title: "Guard firing-liveness: declare when each CI guard should have fired, and make a guard that silently stopped visible (card t333)"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-08-28
 updated: 2026-08-28
@@ -22,6 +22,7 @@ era: V3R6
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-08-28 | manager-spec | Initial plan-phase authoring (card t333). Scope narrowed to the event-history axis; the binary-lag state comparison stays with card t326. |
+| 0.2.0 | 2026-08-28 | manager-spec | Amended after the evidence artifact was extended. §A.3 split into Claim A / Claim B (the two observations are not of equal strength). §A.4 rewritten to the complete third instance — the gap closed because one observer handed the other the question, and nothing would have told the lead its picture was wrong. §A.7 extended with the always-red obligation. §D restructured into two independent binding constraints (self-observation, unprompted discoverability) plus what the design does not close. REQ-GDL-013 strengthened to require zero operator input; REQ-GDL-016 added (change-leading advisory). AC-GDL-013 and AC-GDL-014 added. Counts 15→16 REQ, 12→14 AC. |
 
 ## §A Context and Problem
 
@@ -47,15 +48,29 @@ The deployment axis is not dropped here. The t298 instance below happens to also
 
 The git-flow transition removed card PRs, so two guards whose trigger was `pull_request` stopped running on `develop` entirely. Card t314 rewired both — `spec-lint.yml` and `docs-i18n-check.yml` gained `push` on `develop` — and closed with the first firing left as a **pending opportunistic observation**; the operator's recorded decision was literally "go with opportunistic observation".
 
-This lane closed that pending observation by measurement. Both guards have now actually fired on `develop` push and both succeeded. Full evidence, with commands and verbatim output, is at `.moai/reports/t333/trigger-axis-observation.md`.
+This lane closed that pending observation by measurement. Full evidence, with commands and verbatim output, is at `.moai/reports/t333/trigger-axis-observation.md`. **The two observations are not of equal strength, and the difference is itself this card's subject — they are stated separately and must not be folded into one sentence.**
+
+- **Claim A — `spec-lint`.** Fired on `develop` push, success, on three consecutive pushes. Visible in an **unfiltered** `gh run list --branch develop`. Independently reproduced by the lead session from its own query.
+- **Claim B — `docs-i18n-check`.** Fired once on `develop` push, success. **Not visible in the unfiltered listing.** Recovering it required a query targeted at that workflow by name.
 
 The load-bearing point is not that they fired. It is that **they fired, they were correct, and none of that reached anyone**. A firing and a non-firing were indistinguishable from outside until someone went looking. Had they *not* fired, the same plan would have produced the same silence.
 
-### A.4 Instance 3 — the two observations were not of equal strength
+### A.4 Instance 3 — checking is not sufficient, because the default view is lossy from inside
 
-Measured while documenting A.3. `spec-lint`'s firing is visible in an unfiltered `gh run list --branch develop`; `docs-i18n-check`'s is **not**, and recovering it required a query targeted at that workflow by name. Absence from the default listing has at least two causes — a `paths:` filter that did not match, or a trigger that cannot fire at all — and the listing does not separate them. The lead session, querying the default way, reproduced the first and could not reproduce the second: two competent readers of the same repository, minutes apart, reached different pictures of which guards were alive.
+Produced by measuring the other two, which is what makes it the strongest of the three.
 
-This is why REQ-GDL-006 forbids the repository-global listing as an evidence source. It is not a preference about query ergonomics; the global listing is measurably incapable of answering the question for a low-frequency guard.
+`docs-i18n-check`'s absence from the default listing has at least two causes, and the listing does not separate them: its `paths:` filter did not match this round, or its trigger is broken and it cannot fire at all. Both render as *not in the list*. The path-filter reading is an inference from opening the workflow file — and **a coherent explanation is not an observation**.
+
+The lead session, querying the default way, reproduced Claim A and could not reproduce Claim B. Two competent readers of the same repository, minutes apart, held different pictures of which guards were alive — not because either measured badly, but because the surface does not carry the answer.
+
+**Then the lead did reproduce Claim B — but only after this lane handed it the query.** It ran the targeted query, got matching output, and recorded why it could: the workflow's name had reached it in a message from this lane. It did not suspect the answer; it was handed the question.
+
+That is the complete form of the instance. The gap did not close because a second observer looked harder. It closed because one observer handed the other the question. Absent that hand-off the lead's picture would have stayed as it was — and **nothing anywhere would have told it the picture was wrong. There is no signal for "your view of which guards are alive is incomplete."** The incompleteness is silent by exactly the mechanism the non-firing is.
+
+Two requirements descend from this instance:
+
+- REQ-GDL-006 forbids the repository-global listing as an evidence source. Not a preference about query ergonomics — the global listing is measurably incapable of answering the question for a low-frequency guard, and its incapacity is invisible from inside it.
+- REQ-GDL-013 requires the answer to arrive **unprompted**. A targeted query can only be issued by someone who already suspects the answer, so a design answering only when queried has not solved this problem — it has relocated it into whoever is expected to already know. §D states this as a binding constraint and tests the design against it.
 
 ### A.5 Instance 4 — fires, does nothing, reads green (measured in this plan phase)
 
@@ -77,7 +92,11 @@ All three are `skipped` — the workflow's own `if: github.event.pull_request.me
 
 ### A.7 The always-red variant (recorded, not this card's subject)
 
-`Graph Freshness` failed on every `develop` push in the measured window (3/3). It is card t322's subject. It is recorded because it is a second route to the same end state: a guard that is red on every run stops being read just as thoroughly as one that never runs. Silence and constant noise are different mechanisms arriving at the same place — nobody looks. This card addresses only the silence mechanism.
+`Graph Freshness` failed on every `develop` push in the measured window (`d34a789a4`, `0c7457f8d`, `812ee01fc` — 3/3). Repairing it is card t322's subject and is out of scope here (§E).
+
+It is recorded because it is a second route to the same end state, and because it bears directly on question (c). A guard that is red on every single run stops being read just as thoroughly as one that never runs: the signal is present, carries no information, and is filtered out by every reader. **Silence and constant noise are different mechanisms arriving at the same place — nobody looks.**
+
+The consequence for this card is a design obligation, not a scope expansion: **making a channel and making a channel that gets read are different jobs.** A new advisory rendered next to a permanently-red neighbour inherits that neighbour's filter, so the design must be honest about whether it survives one. REQ-GDL-016 is that obligation, and §D tests the design against it rather than assuming it.
 
 ## §B Relationship to the landed verification-completeness rule
 
@@ -99,7 +118,7 @@ The t241 lane's out-of-scope statement ("규칙 파일 본문 개정 없음") co
 
 ## §C Requirements (GEARS)
 
-Budget: Tier M ≤ 16 requirements. **Count: 15.**
+Budget: Tier M ≤ 16 requirements. **Count: 16.**
 
 ### C.1 The expectation record — where firing expectations are written (question (a))
 
@@ -121,16 +140,21 @@ Budget: Tier M ≤ 16 requirements. **Count: 15.**
 
 ### C.3 Reachability — who sees the silence (question (c))
 
-- **REQ-GDL-013** — When the evaluator's result carries at least one `STALE` or `UNDECLARED` entry, the harness shall surface it to the operator as a non-blocking advisory at an already-attended surface. A liveness verdict visible to nobody is the same defect one layer up.
+- **REQ-GDL-013** — When the evaluator's result carries at least one `STALE` or `UNDECLARED` entry, the harness shall surface it to the operator as a non-blocking advisory at an already-attended surface, **without the operator issuing any query and without the operator needing to know which guard to ask about**. A liveness verdict that answers only when queried has relocated the defect into whoever is expected to already know the question (§A.4).
 - **REQ-GDL-014** — The advisory shall carry the age of the measurement it reports, so a stale advisory declares its own staleness rather than reading as a current all-clear.
+- **REQ-GDL-016** — The advisory shall lead with the entries whose classification **changed** since the previously rendered result, and shall carry any unchanged `STALE` or `UNDECLARED` entries as a compact standing count rather than as a re-rendered list. A channel that reprints an identical block every session trains the filter that removes it, and a new advisory rendered beside a permanently-red neighbour inherits that filter (§A.7).
 
 ### C.4 Doctrine
 
 - **REQ-GDL-015** — `.claude/rules/moai/development/verification-completeness.md` shall gain an additive continued-firing clause stating that a check's completion does not survive a change to its trigger, its deployment, or its branch model. No existing text in that file shall be modified.
 
-## §D How the design answers the self-application constraint
+## §D How the design answers the two binding constraints
 
-The card's hardest constraint: build a periodic check and that check becomes subject to this very card — a check that catches non-firing catches nothing if it itself stops firing.
+Two constraints bind this design, and they are independent — a design can pass either while failing the other, and failing either leaves the same defect one level up.
+
+### D.1 Constraint 1 — self-observation
+
+*Build a periodic check and that check becomes subject to this very card: a check that catches non-firing catches nothing if it itself stops firing.*
 
 The design answers it by **not being periodic**. The evaluator is pull-based (REQ-GDL-011) and runs at a moment that already happens for other reasons. Its firing is *entailed* by someone working, not scheduled independently of them, so there is no cadence of its own that could be silently missed. A scheduled watcher would have one, and the forge additionally disables scheduled workflows after a period of repository inactivity — a silent stop by design, in the exact shape this card exists to catch.
 
@@ -139,7 +163,27 @@ Two further properties close the shallower openings:
 - The evaluator declares its own coverage (REQ-GDL-009) and refuses an all-clear on an empty sweep (REQ-GDL-010), so a degraded run announces itself instead of rendering green.
 - The advisory carries its own measurement age (REQ-GDL-014), so a stale verdict is legible as stale.
 
-**This relocates the regress rather than eliminating it, and the SPEC says so.** If the attended surface hosting the evaluator is itself removed, the evaluator stops with it — the same defect class, one layer up. Full closure would require an unattended watcher, which reintroduces the regress this design avoids. Recorded as residual risk in `acceptance.md` §D.7, not claimed as solved.
+### D.2 Constraint 2 — unprompted discoverability
+
+*A targeted query can only be issued by someone who already suspects the answer, so a design that relies on a reader knowing which question to ask has relocated the problem into whoever is expected to already know* (§A.4).
+
+The design is tested against three questions rather than assumed to pass them.
+
+**Does it surface without being asked, or answer only when queried?** It surfaces. REQ-GDL-013 makes the advisory an output of an already-attended surface, not a verb the operator invokes. The operator supplies no guard name, no workflow file, and no query — this is precisely the input the lead session did not have and could not have produced.
+
+**If it answers only when queried, what tells a reader that a query is owed, and which one?** Not applicable by construction, and that is the point: this question is the one the current state fails, and every candidate that keeps a query in the loop inherits the failure. It is why "add a `moai guard liveness` verb and document it" was rejected as a complete answer — a documented verb is still a question someone must know to ask.
+
+**Is the thing that would announce a missing guard itself discoverable by someone who does not already know it exists?** Yes, in the only sense available: it is not a thing to be discovered. It arrives in the operator's session unbidden, so the reader needs no prior knowledge of the mechanism's existence. This is the property that a manifest plus a CLI verb, on their own, would not have had.
+
+### D.3 What the design does not close
+
+**The regress is relocated, not eliminated, and the SPEC says so rather than claiming closure.**
+
+- If the attended surface hosting the evaluator is removed, the evaluator stops with it — the same defect class, one layer up. Full closure would need an unattended watcher, which reintroduces the regress D.1 avoids.
+- REQ-GDL-016 buys legibility against an always-red neighbour by leading with *changes* rather than reprinting a standing list — but a standing count is still a thing a reader can learn to skip. Change-leading raises the cost of habituation; it does not abolish it. **Making a channel and making a channel that gets read are different jobs**, and this design does the first well and the second only partly.
+- REQ-GDL-016 also has its own failure direction: an entry that goes `STALE` and stays `STALE` is announced once and thereafter only counted. That is deliberate — re-announcing it every session is the noise that produces the filter — but it means a long-standing `STALE` is quiet by design, and quiet is what this card is about.
+
+All three are recorded in `acceptance.md` §D.7 as residual risk, not as solved problems.
 
 ## §E Out of Scope
 
