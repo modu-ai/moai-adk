@@ -1,14 +1,14 @@
 ---
 id: SPEC-GRAPH-FRESHNESS-CADENCE-001
 title: "Graph-freshness cadence: described-worthy metric predicate, threshold re-derivation, and non-inheriting failure attribution"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-08-27
 updated: 2026-08-27
 author: manager-spec
 priority: P1
 phase: "v3.2.0 target"
-module: "internal/graph, internal/mx, internal/config, .moai/config/sections/gate.yaml"
+module: "internal/graph, internal/mx"
 lifecycle: spec-anchored
 tags: "graph, codemaps, freshness, metric, threshold, attribution, cadence"
 era: V3R6
@@ -22,6 +22,7 @@ related_specs: [SPEC-V3R6-GRAPH-FRESHNESS-001, SPEC-V3R6-GRAPH-FRESHNESS-002, SP
 
 | Version | Date | Change | Author |
 |---------|------|--------|--------|
+| 0.2.0 | 2026-08-27 | Remediation of plan audit PASS-WITH-DEBT 0.82 (`.moai/reports/t322/plan-audit.md`), four blocking defects. **D1**: the predicate is no longer applied inside `aggregateFingerprint` — re-measured, `dirFingerprint` (`internal/graph/meta.go:67`) hashes `.moai/project/codemaps`, `.moai/specs`, `.moai/reports`, of which the first two contain **zero** `.go` files, so a `.go`-only filter there collapses both to the same empty-entry constant `e3b0c442…` and permanently greens the edges layer. Predicate relocated to the codemaps call sites; a second collateral consumer the audit did not name (`baseProvenance`, `internal/mx/provenance.go:196`, shared by the codemaps-gen / mx-scan / graph-build stamp writers) is handled by REQ-GFC-003's producer/consumer pairing. **D2**: cumulative-crossing cadence measured and added to §B.5; §D.2 reversed — **40 is retained**, re-justified on the integration axis. **D3**: AC-GFC-003 now decided through the built artifact. **D4**: AC-GFC-005 extended from four absent branches to all seven. **D5-D7** applied (p90 corrected to 9 with the convention named; `DefaultDescribedRoots` consumer citation corrected to five call sites; AC-GFC-007's search space bounded). **D8** accepted: `internal/template/templates` holds 0 tracked `.go` files and the prefix rule removes nothing the `.go` rule does not — the clause, REQ-GFC-004, REQ-GFC-012, milestone M4 and their criteria are withdrawn. | manager-spec |
 | 0.1.0 | 2026-08-27 | Initial plan-phase authoring for card t322. All baseline figures in §B re-measured in worktree `.claude/worktrees/t322` at HEAD `d2cba5e21`; the orchestrator's dispatch figures (55 / 0 / 5, 21 / 198) reproduced exactly. Three judgments adjudicated in §D with rejected alternatives recorded. Ordering basis against t311 / t304 established in §F. | manager-spec |
 
 ## §A. Problem Statement
@@ -88,23 +89,27 @@ Composition of t228's 55 files:
 | production `.go` (`coverage_matrix.go`, `rule_severity.go`) | **2** |
 
 The same shape holds for the described roots as a whole (`git ls-files internal cmd pkg`):
-**3,628** tracked files, of which **998** are production Go outside `testdata/` and outside
-`internal/template/templates/`. 72% of the surface the metric counts is not architectural surface.
+**3,628** tracked files, of which **998** are production Go outside `testdata/`. 72% of the surface
+the metric counts is not architectural surface.
 
 And the curated documents corroborate it. Of the **80** distinct `internal|pkg|cmd` paths cited
 across `.moai/project/codemaps/*.md`, **0** contain a `testdata` segment, and the template payload
 tree is cited exactly once — as the bare directory `internal/template/templates/`, never per file.
 
-The counterfactual is decisive. Applying a described-worthy predicate (production `.go`; excluding
-`_test.go`, any `/testdata/` segment, and `internal/template/templates/**`) to the same cumulative
-window that produced 65:
+The counterfactual is decisive. Applying a described-worthy predicate (`.go`, excluding `_test.go`
+and any `testdata` path segment) to the same cumulative window that produced 65:
 
 ```
 git diff --name-only 9326b5478d… 48eb945df -- internal cmd pkg \
-  | grep '\.go$' | grep -v '_test\.go$' | grep -v '/testdata/' \
-  | grep -v '^internal/template/templates/' | grep -c .
+  | grep '\.go$' | grep -v '_test\.go$' | grep -v '/testdata/' | grep -c .
 → 2
 ```
+
+The template payload tree needs no rule of its own. `git ls-files internal/template/templates |
+grep -c '\.go$'` → **0**: it holds no tracked Go file, so the `.go` rule already removes all of it,
+t228's 7 rule YAMLs included. Adding `internal/template/templates` as an exclusion prefix changes
+this window's result from 2 to 2 — it excludes nothing measured, and is therefore not part of the
+predicate (v0.2.0, audit D8).
 
 **65 → 2.** The entire three-integration red streak was produced by files the codemaps documents do
 not describe and never have. Per integration under the same predicate: t228 → 2, t308 → 0,
@@ -145,9 +150,42 @@ the §B.2 predicate):
 |---|---|
 | integrations contributing 0 | 12 of 30 |
 | median | 2 |
-| p90 | 11 |
+| p90 (nearest-rank, `ceil(0.9·30)` = rank 27) | **9** |
 | maximum | 29 (`6786c3fa4` — the SPEC-V3R6-GRAPH-FRESHNESS-001 delivery itself) |
 | mean | 3.9 |
+
+v0.1.0 reported p90 = 11; that value sits at rank 28, the 93rd percentile. Corrected here, with the
+convention named (audit D5).
+
+### B.6 — Cumulative-crossing cadence: the axis the gate actually runs on
+
+Per-integration contribution is not the axis that decides how often the gate is red. The metric is
+cumulative since the stamp, so the deciding question is how many integrations elapse before the
+running union crosses the threshold. Measured over the same 30-integration window, oldest first,
+accumulating the distinct described-worthy union
+(`git log --first-parent -30 --reverse --name-only --pretty=format:"===%h" -- internal cmd pkg`,
+filtered by the predicate, unioned):
+
+| Integrations since a hypothetical restamp | Distinct described-worthy union |
+|---|---|
+| 3 | 11 |
+| 5 | **17** ← crosses 15 |
+| 8 | 21 |
+| 10 | **49** ← crosses 40 |
+| 30 | 86 |
+
+The window `39c677f47 … 48eb945df` spans 2026-08-25 to 2026-08-27 — 30 integrations in three days,
+≈10/day. At that rate the corrected metric crosses **40 in about one day** and **15 in about half a
+day**, and it stays red for every later integration until the six documents are regenerated by
+hand.
+
+Two consequences follow, and §D.2 is decided on them:
+
+1. **The threshold is not load-bearing for the defect this SPEC exists to fix.** The streak's
+   corrected cumulative is 2, which passes under 15 and under 40 alike. §D.1's predicate alone
+   stops the reported streak.
+2. **"40 became ~13× laxer" is true only on the commit axis.** On the integration axis — the one CI
+   runs on — corrected-40 already reds within roughly a day. It is not lax there.
 
 ## §C. Requirements (GEARS)
 
@@ -155,21 +193,26 @@ the §B.2 predicate):
 architecture document could describe.
 
 **REQ-GFC-002 (Ubiquitous).** The described-worthy predicate shall admit a path only when it ends
-in `.go`, and shall reject it when the name ends in `_test.go`, when any path segment equals
-`testdata`, or when the path lies under a configured payload-exclusion prefix whose default set is
-`internal/template/templates`.
+in `.go`, and shall reject it when the name ends in `_test.go` or when any path segment equals
+`testdata`.
 
-**REQ-GFC-003 (Ubiquitous).** The clean-stamp endpoint diff and the dirty-stamp content
-fingerprint shall admit files through one shared predicate function, so that a file excluded from
-the count is also excluded from the fingerprint.
+**REQ-GFC-003 (Ubiquitous).** The predicate shall be applied at the codemaps call sites only, and
+the producer and consumer of the codemaps content fingerprint shall apply the same predicate, so
+that a dirty-stamped tree is judged against a fingerprint computed the same way it was stamped.
 
-**REQ-GFC-004 (Where the project configures `gate.graph_freshness`).** Where a project supplies
-`gate.graph_freshness.described_exclude_prefixes`, the checker shall use that list in place of the
-default payload-exclusion set, and where the key is absent the default set shall apply.
+**REQ-GFC-003a (Unwanted).** The predicate shall not be applied inside `aggregateFingerprint`, and
+the fingerprint that `dirFingerprint` computes for the edges layer's four source sets shall be
+byte-identical before and after this change.
 
-**REQ-GFC-005 (Ubiquitous).** The `CodemapsChangedFiles` threshold shall be re-derived from a
-measurement taken at implementation time against the corrected predicate, and the run-phase
-evidence shall record the command, its output, and the derivation.
+**REQ-GFC-004** — *withdrawn at v0.2.0 (audit D8).* A configurable payload-exclusion list was
+specified before any file was shown to need it; `internal/template/templates` holds 0 tracked `.go`
+files (§B.2), so the list would have excluded nothing. Recorded rather than renumbered, to keep the
+surviving REQ identifiers stable.
+
+**REQ-GFC-005 (Ubiquitous).** The `CodemapsChangedFiles` threshold shall be confirmed or corrected
+from measurements taken at implementation time on **both** axes — the per-integration contribution
+distribution and the cumulative-crossing cadence of §B.6 — and the run-phase evidence shall record
+each command, its output, the percentile convention used, and the derivation.
 
 **REQ-GFC-006 (Unwanted).** The threshold shall not be raised in order to make a failing check
 pass; a raise is admissible only as the recorded outcome of REQ-GFC-005's derivation.
@@ -194,10 +237,9 @@ directory, missing or unparseable provenance, invalid described root, not-compar
 commit — shall be preserved unchanged; an unjudgeable layer stays unjudgeable and never becomes
 fresh.
 
-**REQ-GFC-012 (Where the project distributes templates).** Where a configuration key or default is
-added under `.moai/config/sections/gate.yaml`, the corresponding template source under
-`internal/template/templates/` shall carry the same key, neutral of this repository's internal
-state.
+**REQ-GFC-012** — *withdrawn at v0.2.0 (audit D8).* It was conditional on adding a configuration
+key; with REQ-GFC-004 withdrawn, no key is added and no template mirror is required. Recorded
+rather than renumbered.
 
 ## §D. Judgments
 
@@ -214,16 +256,37 @@ counted files are described files.
 **Where the predicate belongs: in the metric, not in `described_roots`.** `described_roots` is a
 list of directory prefixes (`internal`, `cmd`, `pkg` — `mx.DefaultDescribedRoots`), and the noise
 is *interleaved inside* those roots: 397 tracked files sit under a `testdata` segment scattered
-across arbitrary packages, and `internal/template/templates` is a payload subtree of a described
-package. A prefix-inclusion list cannot express "everything under `internal` except any
-`testdata` segment". Narrowing the roots would also silently change
-`mx.AggregateDescribedFingerprint` and `internal/graph/symbol`, which consume the same list for
-unrelated purposes.
+across arbitrary packages. A prefix-inclusion list cannot express "everything under `internal`
+except any `testdata` segment". Narrowing the roots would also change five call sites that consume
+`mx.DefaultDescribedRoots` for unrelated purposes — `internal/graph/check.go:168`,
+`internal/graph/symbol/symbol.go:99`, and the three stamp writers at
+`internal/mx/provenance.go:237,253,264` (codemaps-gen, mx-scan, graph-build). Three of the five are
+stamp writers, which makes the placement argument stronger than v0.1.0 stated (audit D6).
 
-**Consistency obligation (REQ-GFC-003).** Applying the predicate only to the endpoint diff would
-leave the dirty-stamp path hashing every file, so a `testdata` edit would flip a dirty-stamped
-tree stale while leaving a clean-stamped tree untouched — the same tree judged two ways depending
-on how it was stamped. One shared predicate closes that.
+**Consistency obligation, and its blast radius (REQ-GFC-003 / REQ-GFC-003a).** Applying the
+predicate only to the endpoint diff would leave the dirty-stamp path hashing every file, so a
+`testdata` edit would flip a dirty-stamped tree stale while leaving a clean-stamped tree untouched.
+But applying it *inside* `aggregateFingerprint` — v0.1.0's instruction — is worse, and this is the
+audit's critical finding (D1), re-measured here.
+
+`dirFingerprint` (`internal/graph/meta.go:67`) reaches `mx.AggregateDescribedFingerprint` for three
+of the edges layer's four source sets: `.moai/project/codemaps`, `.moai/specs`, `.moai/reports`.
+Measured with `find` over the three, the first two contain **zero** `.go` files and the third
+contains 2 strays in untracked report directories. Under a `.go`-only filter applied there, the
+codemaps and specs source sets both collapse to the empty-entry hash
+`e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` — the same constant, and a
+permanent one — so `compareSourceFingerprints` never reports movement and the edges layer reports
+fresh forever. That is precisely the permanently-green gate §D.3 rejects on principle, inflicted on
+a layer §E declares out of scope.
+
+A second collateral consumer, which the audit did not name, is `baseProvenance`
+(`internal/mx/provenance.go:196`): it computes the dirty `ContentFingerprint` unfiltered for **all
+three** stamp writers. Filtering only the checker at `check.go:181` would leave every dirty codemaps
+stamp permanently mismatched against the checker reading it.
+
+So the predicate goes to the codemaps call sites — the checker at `check.go:181` and the codemaps
+stamp writer — through a predicate-bearing variant, leaving `AggregateDescribedFingerprint`'s
+contract intact for `meta.go` and leaving the mx-scan and graph-build stamps unchanged.
 
 **Rejected — narrow `described_roots` instead.** Rejected on the expressiveness measurement above,
 and on the shared-consumer coupling.
@@ -232,32 +295,42 @@ and on the shared-consumer coupling.
 whether documents cite real packages; it is orthogonal to whether the *count* is inflated, and it
 would not have prevented any of the three failures. It belongs to t304 — see §F.
 
-### D.2 — (b) Is 40 still the right threshold? **No, and it cannot be carried over.**
+### D.2 — (b) Is 40 still the right threshold? **Yes. Retain it, on a corrected justification.**
 
-Ground: §B.3 and §B.5. Two facts settle it.
+*Reversed at v0.2.0. v0.1.0 answered "no, re-derive to 15" from the per-integration axis alone; the
+audit's D2 supplied the cumulative axis, which changes the answer.*
 
-First, 40 was calibrated against the inflated metric, at 13.7 files/commit (137 over 10 commits).
-Under the corrected predicate the same tree yields ~1.0 described-worthy files/commit (51 over 50
-commits). The metric shrinks by roughly 13×; a threshold carried across that change is not the
-same threshold.
+Ground: §B.3, §B.5, §B.6.
 
-Second, the original calibration stated two intents at once — *"routine small PRs pass"* and
-*"accumulated drift reds"* — and under the old metric the noise floor was doing the work of the
-first. Scaling 40 by the shrink factor gives ≈3, which fails the first intent outright: §B.5 shows
-a single integration contributing 11 described-worthy files at p90 and 29 at maximum. A threshold
-of 3 would convert the drift gate into a per-change regeneration mandate.
+**Why v0.1.0's argument does not survive.** It rested on "40 was calibrated at 13.7 files/commit,
+the corrected metric runs at ~1.0, so the metric shrank ~13× and the threshold cannot carry over".
+That is true on the **commit** axis and irrelevant on the **integration** axis, which is the one CI
+runs on. §B.6 measures it: corrected-40 crosses at 10 integrations, ≈one day at the observed
+≈10 integrations/day. 40 is not lax on the axis that decides how often the gate is red.
 
-**Re-derivation, not rescaling.** The threshold must sit above the single-integration p90 so no
-routine integration reds alone, and low enough that a handful of integrations accumulate past it.
-With p90 = 11 and mean = 3.9 per integration, **15** satisfies both: it clears the p90 by a
-margin, and it fires after roughly four integrations of mean accumulation. The maximum observed
-single integration (29) would red on its own — correctly, since 29 described-worthy files is an
-architectural change that should carry regeneration.
+**Why 15 is worse, not better.** §B.6 puts corrected-15 at 5 integrations — roughly twice per day —
+and the red then persists for every subsequent integration until six documents are regenerated by
+hand, a regeneration §D.3 deliberately refuses to automate and which t311 and t304 have not been
+able to schedule. Doubling the red rate of a gate whose only exit is manual work nobody has
+scheduled is a reliable way to get the gate ignored.
 
-15 is this SPEC's proposed value, and REQ-GFC-005 requires the run phase to re-measure the
-distribution and record the derivation rather than adopt the number on this SPEC's authority.
+**Why the threshold should not move in this SPEC at all.** §B.6's first consequence is decisive:
+the streak's corrected cumulative is **2**, which passes under 15 and under 40 alike. §D.1's
+predicate alone stops the reported streak. Changing the threshold in the same SPEC would alter two
+variables at once and make the outcome unattributable — if the gate behaved unexpectedly afterwards,
+neither the predicate nor the threshold could be cleared. So the threshold is held fixed as the
+control.
 
-**A threshold change alone does not address inheritance** — see D.3.
+**Intended red frequency, stated.** At the observed integration rate, retained-40 under the
+corrected predicate is expected to red roughly **once per day of factory activity**, and each red
+should then be a true statement that undescribed architectural surface has accumulated. Whether
+once per day is tolerable is a debt-tolerance question, not a metric question — recorded as §G Q4.
+
+REQ-GFC-005 requires the run phase to confirm 40 against re-measurements on **both** axes and record
+the derivation; a correction is admissible if the measurement supports one, but it must be measured,
+not carried from this section.
+
+**No threshold value addresses inheritance** — see D.3.
 
 ### D.3 — (c) Where should stamp refresh attach in the merge pipeline? **Nowhere. The framing is the trap.**
 
@@ -326,6 +399,15 @@ would rot without a single red. Per-change contribution is therefore *reported* 
 
 - `graph-freshness.yml`'s unfiltered `pull_request` trigger and its double-firing risk under git-flow. Owned by **t294**.
 
+### Out of Scope — threshold sensitivity change
+
+- Moving `CodemapsChangedFiles` away from 40. §D.2 retains it as the control variable so the predicate change is attributable on its own. A sensitivity change belongs to a follow-up taken once a regeneration cadence exists.
+- Any configuration surface for the predicate. Withdrawn at v0.2.0 with REQ-GFC-004 / REQ-GFC-012 (§G Q2).
+
+### Out of Scope — the edges layer's fingerprint
+
+- `mx.AggregateDescribedFingerprint`'s contract and `dirFingerprint`'s four source sets. REQ-GFC-003a pins them byte-identical rather than changing them; §D.1 records why touching them would permanently green a layer this SPEC does not own.
+
 ### Out of Scope — other gated layers
 
 - The `mx-index` and `edges` layers, their thresholds, and their fingerprints. Both are untracked runtime artifacts bootstrapped in CI before the check runs; neither participates in the failure mode in §B.1.
@@ -369,16 +451,21 @@ their own; t322 does not supply one and does not claim to.
    debt is tolerable. This SPEC gates on the cumulative count in both cases and supplies the
    attribution (REQ-GFC-007) either policy would need.
 
-2. **Should `internal/template/templates/**` be excluded from the predicate?** Decided yes in
-   REQ-GFC-002, on the measurement that the curated documents cite the tree once as a bare
-   directory and never per file. The residual: a change to the *set of subdirectories* under that
-   payload tree arguably is described surface, and a file-count predicate cannot express that
-   distinction. The exclusion is configurable (REQ-GFC-004) so the operator can reverse it without
-   a code change.
+2. **Should the predicate be configurable at all?** v0.1.0 specified a configurable
+   payload-exclusion list; v0.2.0 withdrew it once measurement showed it excludes nothing
+   (§B.2, audit D8). The predicate ships fixed. If a project later needs an exclusion, it should be
+   added against a measured file, not in advance — deferred rather than decided.
 
 3. **Does t304's citation-existence axis fold into this SPEC or stay in t304?** §F establishes the
    file-level collision. Folding it here would make one coherent change to `check.go`; keeping it
    in t304 keeps this SPEC's scope to the cadence defect. Not decided.
+
+4. **Is roughly one red per day of factory activity tolerable?** §B.6 measures corrected-40 crossing
+   at ≈10 integrations ≈ one day at the observed rate, and §D.2 retains 40 on that basis. Each such
+   red will be a true statement that undescribed surface has accumulated, and its only exit is a
+   manual regeneration of six documents. If that frequency is judged intolerable, the lever is a
+   regeneration cadence (t311 / t304) or the Q1 advisory-degradation policy — not a threshold raise,
+   which would only defer the same red.
 
 ## §H. Cross-References
 
