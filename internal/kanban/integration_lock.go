@@ -62,16 +62,31 @@ var ErrIntegrationLockForeign = errors.New("release integration window is held b
 // IsIntegrationLockForeign reports whether err is the foreign-release sentinel.
 func IsIntegrationLockForeign(err error) bool { return errors.Is(err, ErrIntegrationLockForeign) }
 
+// PIDSourceSessionOwner marks a record whose PID names the OWNING SESSION
+// rather than whichever process wrote the record. It is the discriminator
+// between the two record shapes on disk: a record carrying it was written by a
+// caller that resolved the owner (and pid 0 there means "owner unresolvable",
+// not "no pid"), while a record without it predates the anchor and is read
+// exactly as it always was.
+const PIDSourceSessionOwner = "session-owner"
+
 // IntegrationLock is the recorded holder of the release integration window.
 //
 // SessionID is the address a human and a peer both use; PID is what makes
 // staleness decidable. Both are recorded because neither alone suffices: a
 // session id cannot be probed for liveness, and a pid cannot be addressed in a
 // dispatch.
+//
+// PIDSource records WHOSE pid the PID field is. It is additive and optional:
+// its absence is a legacy record, and no read path branches on it — the probe
+// below already answers correctly for both shapes. It exists so a human (and a
+// future reader) can tell an unresolvable-owner record apart from one written
+// before the anchor existed, which the pid alone cannot express.
 type IntegrationLock struct {
 	SessionID   string `json:"session_id"`
 	SessionName string `json:"session_name,omitempty"`
 	PID         int    `json:"pid"`
+	PIDSource   string `json:"pid_source,omitempty"`
 	Branch      string `json:"branch"`
 	Worktree    string `json:"worktree"`
 	AcquiredAt  string `json:"acquired_at"`
@@ -88,6 +103,13 @@ func (l *IntegrationLock) Held() bool { return l != nil && l.SessionID != "" }
 // "stale" (two lanes merging at once) is the failure this lock exists to
 // prevent, while the cost of a false "live" is one operator asking the holder
 // to release. The asymmetry is not close.
+//
+// A pid of 0 is the anchored form of that same indeterminacy — the acquirer
+// could not resolve its owning session — and it takes the same answer: live,
+// releasable only by an explicit release or a recorded --force. The single
+// probe below serves both record shapes, so there is no marker-conditional
+// branch here and none is wanted: a legacy record's dead pid still reads
+// reclaimable exactly as it did before the anchor existed.
 func (l *IntegrationLock) Stale() bool {
 	if !l.Held() {
 		return false
@@ -143,6 +165,15 @@ func ReadIntegrationLock(projectRoot string) (*IntegrationLock, error) {
 // force takes over a LIVE holder. It exists because a wedged session must not
 // be able to block the batch forever, and it is never the quiet path: the
 // caller is expected to surface `replaced`.
+//
+// want.PID is recorded verbatim, including zero. This function deliberately
+// does NOT fill an unset pid with os.Getpid(): a window outlives the process
+// that records it, so this process's pid is dead by the time any reader probes
+// it, and filling the field with it made every record read as abandoned the
+// instant it was written. Resolving the owner is the CALLER's job (the acquire
+// verb uses session.ResolveOwnerPID); an unset pid arriving here means the
+// caller could not resolve one, and the conservative reading of that — live
+// until released — is Stale()'s.
 func AcquireIntegrationLock(projectRoot string, want IntegrationLock, force bool) (replaced *IntegrationLock, err error) {
 	if want.SessionID == "" {
 		return nil, errors.New("integration lock: session id is required")
@@ -170,9 +201,6 @@ func AcquireIntegrationLock(projectRoot string, want IntegrationLock, force bool
 
 	if want.AcquiredAt == "" {
 		want.AcquiredAt = time.Now().UTC().Format(time.RFC3339)
-	}
-	if want.PID == 0 {
-		want.PID = os.Getpid()
 	}
 	if err := writeIntegrationLock(path, &want); err != nil {
 		return nil, err

@@ -174,9 +174,19 @@ func newIntegrationAcquireCmd() *cobra.Command {
 			if branch == "" {
 				branch = currentBranch()
 			}
+			// The pid recorded is the OWNING SESSION's, never this process's.
+			// This command exits the moment it returns, so its own pid is dead
+			// before any reader probes it — recording it made every window read
+			// as abandoned the instant it was taken. An unresolvable owner is
+			// recorded as pid 0 rather than guessed at: pid 0 reads LIVE, so the
+			// failure direction is "an operator must ask the holder to release"
+			// rather than "two lanes merge at once".
+			ownerPID, _ := session.ResolveOwnerPID()
 			replaced, err := kanban.AcquireIntegrationLock(root, kanban.IntegrationLock{
 				SessionID:   sessionID,
 				SessionName: nameFlag,
+				PID:         ownerPID,
+				PIDSource:   kanban.PIDSourceSessionOwner,
 				Branch:      branch,
 				Worktree:    wt,
 				Card:        cardFlag,
