@@ -48,6 +48,7 @@ func stampFSDetail(err error) string {
 // @MX:NOTE: [AUTO] graph stamp — content curation stays with /moai codemaps; only the provenance anchor is mechanical
 func newGraphStampCmd() *cobra.Command {
 	var rootArg string
+	var commitRev string
 
 	cmd := &cobra.Command{
 		Use:   "stamp codemaps",
@@ -58,14 +59,36 @@ Run as the LAST step of a codemaps regeneration: the content is curated, the
 provenance is mechanical. The stamped block records the tree root, the HEAD
 commit (or dirty + content fingerprint when described sources carry
 uncommitted changes), and the described roots — everything 'moai graph check'
-needs to judge the layer.`,
+needs to judge the layer.
+
+Use --commit to name a merge-surviving revision instead of the checked-out
+HEAD: under squash merges a branch-local HEAD stamp is orphaned at merge time.
+The safe recipe is the merge base:
+
+  moai graph stamp codemaps --commit "$(git merge-base HEAD origin/main)"
+
+Never restamp against a branch-local HEAD — the stamp's commit then exists
+only on the feature branch and 'moai graph check' goes not-comparable on main
+after the squash lands.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectRoot, err := resolveGraphRoot(rootArg)
 			if err != nil {
 				return fmt.Errorf("graph stamp: %w", err)
 			}
 
-			pv, err := mx.StampCodemaps(projectRoot)
+			// Validation order (REQ-SR-005/006): resolve the named revision
+			// FIRST and reject the unresolvable before anything touches the
+			// filesystem; the mx entry then rejects the dirty combination
+			// pre-write — mirroring the tmp/rename atomic-install contract.
+			commitSHA := ""
+			if commitRev != "" {
+				commitSHA, err = mx.ResolveCommit(projectRoot, commitRev)
+				if err != nil {
+					return fmt.Errorf("graph stamp: %w", err)
+				}
+			}
+
+			pv, err := mx.StampCodemaps(projectRoot, commitSHA)
 			if err != nil {
 				return fmt.Errorf("stamp codemaps provenance: %w", err)
 			}
@@ -104,5 +127,7 @@ needs to judge the layer.`,
 	}
 
 	cmd.Flags().StringVar(&rootArg, "root", "", "project root (defaults to the auto-detected project root)")
+	cmd.Flags().StringVar(&commitRev, "commit", "",
+		`explicit commit anchor (any rev-parse expression; recorded verbatim as the resolved full sha). Use "$(git merge-base HEAD origin/main)" so the stamp survives a squash merge — never a branch-local HEAD`)
 	return cmd
 }

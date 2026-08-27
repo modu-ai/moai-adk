@@ -2,7 +2,7 @@
 id: SPEC-STAMP-REACHABILITY-001
 title: "Codemaps stamp reachability: CI pre-merge orphan guard and explicit-commit stamping mode"
 version: "0.2.1"
-status: draft
+status: in-progress
 created: 2026-08-27
 updated: 2026-08-27
 author: manager-spec
