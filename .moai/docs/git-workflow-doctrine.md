@@ -12,7 +12,11 @@
 ---
 
 
-v2.14.0 릴리스 이후 공식 채택. Gitflow 대안 비교 분석 결과 (v2.14 후 세션) 이 프로젝트의 1-2명 팀 + 2일/릴리스 cadence + 단일 CLI 배포 환경에서 Gitflow의 `develop` 이중 관리 부담을 상회하는 장점이 부재. 현재 de-facto 패턴을 유지하되 **formalization + automation**으로 개선.
+> **[RETIRED 2026-08-27]** 아래 단락은 v2.14 시점의 기각 판단이다 — 2026-08-27 운영자 지시로 git-flow 전환하면서 뒤집혔다(상단 고지 참조).
+
+~~v2.14.0 릴리스 이후 공식 채택. Gitflow 대안 비교 분석 결과 (v2.14 후 세션) 이 프로젝트의 1-2명 팀 + 2일/릴리스 cadence + 단일 CLI 배포 환경에서 Gitflow의 `develop` 이중 관리 부담을 상회하는 장점이 부재. 현재 de-facto 패턴을 유지하되 **formalization + automation**으로 개선.~~
+
+현재 모델: **git-flow** (2026-08-27 운영자 지시). 분기·통합·CI 판정 규칙은 상단 고지의 정본(`CLAUDE.local.md` §4.1 · `.claude/rules/local/gitflow-lane-protocol.md`)이 정한다.
 
 ### §18.0 [HARD] 운영 원칙 — 5가지 즉시 개선 Framework
 
@@ -49,7 +53,7 @@ v2.14.0 릴리스 이후 공식 채택. Gitflow 대안 비교 분석 결과 (v2.
 
 **금지 사항** (§18.10 전체 위반 금지):
 - ❌ `main` 직접 push
-- ❌ `develop` 브랜치 생성 (Gitflow 패턴)
+- ❌ `main`(또는 `origin/main`)에서 카드 브랜치 생성 — 카드 워크트리는 `develop`에서 분기한다
 - ❌ Release PR squash merge (history 손실)
 - ❌ `--rebase` merge 전략
 - ❌ 수동 `gh release create` (GoReleaser와 충돌)
@@ -106,7 +110,10 @@ main ──●──●──●──●──●──  (protected, 항상 배
 
 ### §18.3.1 [HARD] Tier-based PR Routing (SPEC-V3R6-AGENT-TEAM-REBUILD-001 REQ-ATR-020)
 
-SPEC tier에 따라 PR **ceremony 무게**가 다르며, 본 정책은 PR-mandatory 1-person OSS 운영의 기본 (default) 동작을 명문화한다. **(2026-07-20 개정) `enforce_admins: true`로 모든 tier가 PR을 경유한다** — tier는 더 이상 main-direct 여부를 가르지 않고 PR ceremony 무게(브랜치 수명 / CI 매트릭스 / 리뷰 깊이)만 결정:
+> **[HARD] POLICY CHANGE (2026-08-27) — 카드 단위 PR 폐지.** 이 표의 PR routing은 릴리스 경로(`release/vX.Y.Z` → `main`)에만 적용된다. 카드/SPEC 작업은 더 이상 PR을 만들지 않는다: 카드 워크트리는 `develop`에서 분기하고, 검증을 마친 카드는 통합 워크트리에서 로컬 `develop`에 `git merge --no-ff`로 직접 통합되며, `origin/develop`의 CI가 통합을 판정한다(정본: `CLAUDE.local.md` §4.1 · `.claude/rules/local/gitflow-lane-protocol.md`).
+> [RETIRED 2026-08-27 — 아래 tier routing 표와 본 섹션 나머지는 "모든 변경이 main 대상 PR" 체제의 역사 기록이다; 카드 적용에는 무효이며, ceremony 규격은 릴리스 경로에 계승된다]
+
+SPEC tier에 따라 PR **ceremony 무게**가 다르며, 본 정책은 PR-mandatory 1-person OSS 운영의 기본 (default) 동작을 명문화한다. ~~**(2026-07-20 개정) `enforce_admins: true`로 모든 tier가 PR을 경유한다** — tier는 더 이상 main-direct 여부를 가르지 않고 PR ceremony 무게(브랜치 수명 / CI 매트릭스 / 리뷰 깊이)만 결정~~ **[RETIRED 2026-08-27]**:
 
 | SPEC tier | Branch policy | Owner | Rationale |
 |-----------|---------------|-------|-----------|
@@ -348,7 +355,7 @@ git checkout main && git pull
 ### §18.10 [HARD] 공식 위반 금지 사항
 
 - ❌ `main`에 직접 push (반드시 PR 경유)
-- ❌ `develop` 브랜치 생성 (Gitflow 패턴 금지)
+- ❌ `main`에서 따서 카드 작업 시작 (분기점은 `develop`) · 카드 단위 PR은 존재하지 않는다 — 통합은 로컬 `develop` 병합(`git merge --no-ff`)이다
 - ❌ release PR squash merge (merge commit 필수 — 개별 SPEC commit 보존)
 - ❌ tag 수동 push 없이 `gh release create` (GoReleaser와 충돌)
 - ❌ branch prefix 관례 위반 (`feat/SPEC-*` 대신 `add-something` 등)

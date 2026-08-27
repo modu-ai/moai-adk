@@ -2502,9 +2502,6 @@
 - path: "github.enable_trust_5"
   class: R
   evidence: none
-- path: "github.spec_git_workflow"
-  class: R
-  evidence: none
 - path: "hook.observability_events"
   class: R
   evidence: none

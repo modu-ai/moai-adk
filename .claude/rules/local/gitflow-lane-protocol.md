@@ -26,12 +26,13 @@ paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/
 
 [HARD] `develop`은 **정확히 한 워크트리**에만 체크아웃된다 — 리드가 배치 시작 시 provisioning 하는 통합 워크트리 `.claude/worktrees/develop`. 레인은 자기 트리에 `develop`을 체크아웃하지 않는다(git은 한 브랜치를 한 워크트리에만 내준다).
 
-병합은 **들어가서** 한다:
+[HARD] **병합 절차의 정본은 여기가 아니다.** `WT-*` 브랜치의 통합 절차 — 병합 창 조율, 통합 워크트리 진입, no-ff 병합, 통합 브랜치 push(강제 push 금지), 퇴장 — 는 배포되는 `.claude/skills/moai/workflows/sync/delivery.md` Step 3.2 의 `git-flow` 전략 `WT-*` 경로가 소유한다. 레인은 그 절차를 그대로 따르고, 이 문서는 아래 리포 고유 사항만 덧붙인다. 절차를 여기에 다시 적지 않는다 — 두 벌이 되는 순간 갈라진다.
 
-1. `EnterWorktree(.claude/worktrees/develop)`
-2. `git merge --no-ff WT-<slug>`
-3. `ExitWorktree` — primary 체크아웃으로 돌아온다
-4. 자기 카드 작업이 남아 있으면 `EnterWorktree(<card-id>)`로 재진입
+리포 고유 사항:
+
+- 통합 워크트리 경로는 `.claude/worktrees/develop` 이고, 리드가 배치 시작 시 provisioning 한다.
+- 통합 브랜치는 `develop` 이며 push 대상은 `origin/develop` 이다(§4의 CI 판정 면).
+- 병합을 마치고 자기 카드 작업이 남아 있으면 `EnterWorktree(<card-id>)` 로 재진입한다 — `ExitWorktree` 는 primary 체크아웃으로 돌아가지 자기 트리로 돌아가지 않는다.
 
 [HARD] 자기 워크트리 안에서 `git -C .claude/worktrees/develop merge …` 로 **원격 조작하는 것은 worktree-session 가드가 거부한다**. 들어가는 것이 유일한 인가 경로다.
 
@@ -113,10 +114,11 @@ rm -f ~/go/bin/moai && cp bin/moai ~/go/bin/moai
 
 ## Cross-references
 
+- `.claude/skills/moai/workflows/sync/delivery.md` Step 3.2 — `WT-*` 통합 절차의 정본(배포되는 스킬이 소유; 이 문서는 리포 고유 사항만)
 - `CLAUDE.local.md` §4.1 — 이 모델의 근거와 전환 기록(t281 역전, 2026-08-14 기각 사유의 현재 상태)
 - `.claude/rules/local/repo-local-pr-policy.md` — `main` 브랜치 보호와 PR 필수 규정
 - `.moai/docs/git-workflow-doctrine.md` (§18) / `.moai/docs/git-local-workflow-doctrine.md` (§23) — 상위 독트린(일부 초과분(superseded), 상단 주석 참조)
-- `.moai/config/sections/git-strategy.yaml` — `git_strategy.manual.workflow: gitflow` + develop/release 키(`moai update` 후 재적용 필요, `CLAUDE.local.md` §2.3)
+- `.moai/config/sections/git-strategy.yaml` — `git_strategy.manual.workflow: git-flow` + develop/release 키(`moai update` 후 재적용 필요, `CLAUDE.local.md` §2.3)
 
 ---
 

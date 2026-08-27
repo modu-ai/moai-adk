@@ -1,0 +1,32 @@
+=== INV-113 pointers to 4.1
+247:- [ ] 변경 대상 패키지 테스트 통과 (`go test ./internal/<pkg>/...`) — **전체 스위트(`go test ./...`)를 로컬에서 돌리지 않는다**. 레인 여러 개가 동시에 돌려 load 413까지 치솟고 다른 워크스페이스를 마비시킨 사고(2026-08-15)가 있다. 전 패키지 판정은 CI 몫이며, 깨끗한 환경에서 PR head를 돌리므로 근거로도 더 강하다. 예외는 §4.1의 `develop` 통합 검증 — 그때도 영향 패키지만, 병합 창을 쥔 레인 **1개만**
+274:### §4.1 통합 레인 (git-flow, `develop` 원격 공유)
+276:> **2026-08-27 전환 — 운영자 지시로 GitHub Flow → git-flow.** 이 절은 2026-08-26 백로그 카드 t281이 정한 "로컬 전용·일회용 develop, 원격 push 금지"를 **명시적으로 뒤집는다**. 되돌린 근거는 아래 §4.1.3에 남긴다.
+292:#### §4.1.1 [HARD] 여섯 가지 규율
+303:#### §4.1.2 운영 절차
+321:#### §4.1.3 2026-08-14 GitFlow 기각 사유 — 지금 어디까지 해소됐나
+329:#### §4.1.4 로컬 CI를 두지 않는 이유 — 검토 후 기각(2026-08-15, 유지)
+638:- **§18 Git Workflow** (Enhanced GitHub Flow 본문 + [2026-08-27] git-flow 전환 상위모델 노트 — 정본은 §4.1, branch protection `enforce_admins: true`, Hybrid Trunk RETIRED): `.moai/docs/git-workflow-doctrine.md`
+--- 4.1 subsections
+19:#### §4.1.1 [HARD] 여섯 가지 규율
+30:#### §4.1.2 운영 절차
+48:#### §4.1.3 2026-08-14 GitFlow 기각 사유 — 지금 어디까지 해소됐나
+56:#### §4.1.4 로컬 CI를 두지 않는 이유 — 검토 후 기각(2026-08-15, 유지)
+62:**알려진 마찰** — BranchGuard가 읽기 전용 `git branch --list` / `git branch -vv`까지 막는다(패턴 `\bgit\s+branch\b`가 조회를 구분하지 않음). §18 독트린은 `git branch -vv`를 허용 조회로 명시하므로 과다 매칭이다(`git merge-base`는 제외 처리돼 있는 것과 대비). 우회: `git show-ref --verify refs/heads/<name>`.
+=== INV-140
+-rw-r--r--@ 1 goos  staff  399 Aug 27 17:40 .claude/commands/moai/harness.md
+harness-workflow-ok
+=== INV-139 target
+### Go Test Execution Rules
+=== INV-047 subject lines
+.moai/state/last-cc-version.json # Dev-only: CC tracking state (§21)
+.moai/research/cc-update-*.md  # Dev-only: CC update reports (§21)
+.moai/cache/                   # Cache
+.moai/logs/                    # Logs
+.moai/state/                   # Session state storage
+.moai/specs/                   # Active SPEC documents
+.moai/plans/                   # Session plans
+.moai/reports/                 # Generated reports
+.moai/manifest.json            # Generated at runtime
+.moai/status_line.sh           # Rendered from .sh.tmpl
+.moai/astgrep-rules/                                                       # Dogfood-only: 실험적 ast-grep 룰셋 전체. §2.3에 따라 .moai/config/astgrep-rules → .moai/astgrep-rules 로 이동(2026-08-15): `.moai/config` 통째 삭제가 로컬 전용 6개(go/{concurrency,error-handling,idioms,resource-safety}.yml, security/{secrets,web}.yml)를 매번 지웠음. gate.yaml `ast_grep_gate.rules_dir` 로 연결. 주의: (2026-08-27 감사 정정) `moai ast-grep`/`moai ast-edit` CLI의 `--rules-dir` 기본값은 현재 `gate.yaml`의 `ast_grep_gate.rules_dir`이며, 빈 값이면 기본 경로 폴백 없이 0룰 스캔을 한다(t50)
