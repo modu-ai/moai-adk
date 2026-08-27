@@ -1,7 +1,7 @@
 ---
 id: SPEC-INTEGRATION-LOCK-LIVENESS-001
 title: "Release-integration lock: anchor holder liveness to the session process, not the acquire CLI process (card t298)"
-version: "0.1.0"
+version: "0.1.2"
 status: draft
 created: 2026-08-27
 updated: 2026-08-27
@@ -34,6 +34,38 @@ prevent.
 Live reproduction by the lead (2026-08-27): `moai integration acquire --name probe-test` followed
 immediately by `moai integration status` printed BOTH "held by a session that is gone
 (reclaimable)" AND "holder: \<session> (pid 6397)" — pid 6397 was the CLI process itself.
+
+### Field reproduction (production, factory run of this repository, 2026-08-27)
+
+The probe above is a deliberate reproduction. Two observations from the same day are the
+*unprompted* production occurrence — recorded here as field evidence, not as a second diagnosis:
+
+1. **A bare acquire displaced a live holder.** A second lane's
+   `moai integration acquire --name <card>` took the window over WITHOUT `--force`. The
+   displaced record named session `96ef12ab-fb49-4e2b-b124-97f86af36eeb`, pid `53833`, held
+   since `2026-08-27T10:36:47Z` — displaced roughly 42 seconds after it was recorded, and the
+   pid probe on it reported `no such process`. Forty-two seconds is far shorter than any lane's
+   integration work, which is what makes the reading unambiguous: the probe was answering about
+   the exited `acquire` CLI, not about the lane.
+2. **Both lanes were told the window was theirs.** The displaced holder was a live lane that had
+   read its own `acquire` output ("window acquired") as possession, entered the integration
+   worktree, and completed a merge — while the coordinating session, seeing the window as
+   reclaimable, opened the same window to the second lane. The file intersection between the two
+   merges happened to be empty, so nothing was corrupted. The absence of damage is luck, not a
+   mitigating property: the fact of record is that the lock answered "yours" to two holders at
+   the same time.
+
+Observation 2 is why AC-INL-012 exists as a distinct criterion: the harm surfaced on the
+**acquire** path, which the status-read criteria do not gate.
+
+Two layers are involved and this SPEC repairs only the first of them. **Identity of record** —
+*what* pid is written — is the defect above: the implementation cannot produce a live holder at
+all, because the recorded pid belongs to the short-lived `moai` CLI process that exits when the
+command returns, so the dead-holder-is-reclaimable logic is behaving correctly on an input that
+is always dead. **Atomicity** — *how* the record is written — is the separate, unserialized
+read-modify-write in `AcquireIntegrationLock` (§G, and the iter-1 audit's D4), which this card
+does not close. Conflating them would misread a correct probe as a broken one, or read this
+card's fix as delivering mutual exclusion it does not deliver (plan.md §F M5's wording bound).
 
 The same defect shape was already solved once in this repository for the session work registry:
 `internal/session/session_pid.go` exists precisely because "the registry is written from a hook
@@ -94,10 +126,21 @@ All line numbers measured on this tree; re-verify before citing elsewhere.
     acquire CLI process exits" — the red test requires a real child binary (built via
     `go build -o`, NOT `go run`: an intermediate `go` process is not a wrapper name the
     ancestry walk skips, and it exits early).
-13. Docs that currently enshrine the defect as a workaround (exist on THIS branch; main lacks
-    them): `.claude/rules/local/gitflow-lane-protocol.md` §3 blockquote (lines 42-43:
-    "[HARD] 현재 이 락은 직렬화를 보장하지 못한다 — 카드 t298 …") and `CLAUDE.local.md`
-    §4.1/§4.1.2 (git-flow 통합 레인 운영 절차, lead-notice-only serialization prose).
+13. The two local-only documents in scope carry the defect DIFFERENTLY, and the difference
+    decides what M5 does to each (re-measured on `c67a6ea64`; both files are byte-identical to
+    `d29b8942e` — `git diff --stat d29b8942e HEAD -- CLAUDE.local.md
+    .claude/rules/local/gitflow-lane-protocol.md` → empty):
+    - `.claude/rules/local/gitflow-lane-protocol.md` §3 **enshrines** it — the blockquote at
+      lines 42-43 states "[HARD] 현재 이 락은 직렬화를 보장하지 못한다 — 카드 t298 …" and
+      prescribes the lead-notice-only workaround ("직렬화는 리드 공지로 한다"). This file is
+      REWRITTEN. Present on this branch and on `origin/develop`; absent on `origin/main`
+      (`git cat-file -e origin/main:<path>` → non-zero).
+    - `CLAUDE.local.md` §4.1/§4.1.2 is **silent** on it — it carries no workaround prose:
+      `grep -n '직렬화' CLAUDE.local.md` returns no match, and §4.1.2 is a bash procedure block
+      whose only lock lines are `moai integration acquire --name <lane>` (312) and
+      `moai integration release` (317). §4.1.1's closing line delegates the operating rules to
+      gitflow-lane-protocol.md, which is where the caveat lives. This file is EXTENDED with the
+      guarantee statement, not rewritten (see acceptance.md AC-INL-011).
 
 ## §C Requirements (GEARS)
 
@@ -114,7 +157,7 @@ code shape. REQ numbering: REQ-INL-NNN.
   non-wrapper ancestor process — and shall record that pid together with an additive
   owner-anchor marker in the lock record.
 
-- **REQ-INL-003** (Event-detected) — **When** no owner pid can be resolved at acquire time, the
+- **REQ-INL-003** (Event-driven) — **When** no owner pid can be resolved at acquire time, the
   acquire verb shall record pid 0 with the owner-anchor marker, and the holder shall therefore
   read LIVE until explicit release or a recorded `--force` takeover — never treated as stale.
 
@@ -127,10 +170,12 @@ code shape. REQ numbering: REQ-INL-NNN.
   `--force`.
 
 - **REQ-INL-006** (Capability gate / backward compatibility) — **Where** an on-disk record
-  predates the owner anchor (no owner-anchor marker present), the lock shall evaluate it with
-  the pre-existing probe semantics — a dead recorded pid reads reclaimable, exactly as before —
-  and the record schema change shall be additive-only (a new optional field; no existing field
-  renamed, retyped, or removed; existing records remain parseable).
+  predates the owner anchor (no owner-anchor marker present), the lock shall continue to read it
+  exactly as it reads it today: same probe, same outcome (a dead recorded pid reads reclaimable).
+  This is an invariant to preserve, not a second evaluation path to build — no marker-conditional
+  branch is added, because the existing `PID`-probe logic already yields the correct answer for
+  both record shapes. The record schema change shall be additive-only (a new optional field; no
+  existing field renamed, retyped, or removed; existing records remain parseable).
 
 - **REQ-INL-007** (Capability gate / platform parity) — **Where** the platform cannot report
   process ancestry (Windows), the acquire verb shall degrade to the REQ-INL-003 conservative
@@ -143,9 +188,10 @@ code shape. REQ numbering: REQ-INL-NNN.
   gone — fail-open on uncertainty, unchanged.
 
 - **REQ-INL-009** (Event-driven / documentation) — **When** the fix lands, the two local
-  documents that currently enshrine the defect as a workaround
-  (`.claude/rules/local/gitflow-lane-protocol.md` §3 blockquote; `CLAUDE.local.md` §4.1/§4.1.2)
-  shall be rewritten to describe the restored serialization guarantee.
+  documents in scope shall state the restored serialization guarantee: the
+  `.claude/rules/local/gitflow-lane-protocol.md` §3 blockquote, which enshrines the defect as a
+  workaround, shall be rewritten; `CLAUDE.local.md` §4.1, which is silent on the guarantee,
+  shall be extended with it (per §B item 13's measured distinction).
 
 - **REQ-INL-010** (Unwanted) — The acquire verb shall not silently overwrite another lane's
   recorded trace: every takeover (stale-reclaim or `--force`) shall continue reporting the
@@ -175,12 +221,14 @@ code shape. REQ numbering: REQ-INL-NNN.
 
 ## §E Acceptance Matrix (summary)
 
-Canonical enumeration lives in `acceptance.md` (AC-INL-001..AC-INL-011), each criterion carrying
+Canonical enumeration lives in `acceptance.md` (AC-INL-001..AC-INL-012), each criterion carrying
 the two-cell discipline: a RED-now cell pinned to tree `d29b8942e` stating why it is red, and a
 green-path cell naming the milestone that flips it. Highlights: AC-INL-001 is the required
 red-first cross-process reproduction (child acquire exits; parent session alive; status must
 read HELD — fails today); AC-INL-003 is its mutant-guard pair (owner genuinely gone →
-reclaimable), which together exclude both the vacuous and the impossible direction.
+reclaimable), which together exclude both the vacuous and the impossible direction; AC-INL-012
+gates the ACQUIRE refusal path (a bare second acquire must not transfer a live holder's window,
+and must write no displacement record), which no other row observes.
 
 ## §F Dependencies and Related SPECs
 
@@ -203,12 +251,44 @@ reclaimable), which together exclude both the vacuous and the impossible directi
 - **Legacy in-flight windows at upgrade** read reclaimable exactly as today (no wedge, no
   regression); a lane that acquired pre-fix must re-acquire post-upgrade — noted in the doc
   rewrite.
+- **The acquire path is an unserialized read-modify-write, and this SPEC does not change that
+  (residual hazard, RETAINED).** Measured on `c67a6ea64`:
+  `grep -n 'Flock\|flock\|LockFile' internal/kanban/integration_lock.go internal/cli/integration.go`
+  returns exactly 5 lines, none of them a call site: two are `flock` **prose** in the package
+  header comment (integration_lock.go:15, 19), and three are the `IntegrationLockFileName`
+  constant and its use (integration_lock.go:38, 39, 106), which match only on the `LockFile`
+  substring. `internal/cli/integration.go` contributes no match at all. `AcquireIntegrationLock` (integration_lock.go:146-181) runs
+  `ReadIntegrationLock` → decide → `writeIntegrationLock` with nothing between them, and the
+  write's staging path is a fixed `path + ".tmp"` (integration_lock.go:229), shared by every
+  concurrent writer. Two lanes acquiring at the same instant can therefore both read "free" (or
+  both read the same stale record), both write, and both believe they hold the window — last
+  write wins, silently. Fail-direction: this is the **false-"live-for-me"** direction, the one
+  the §D asymmetry constraint calls the failure the lock exists to prevent, so it is the one
+  hazard here that does NOT resolve toward TREAT-AS-LIVE. Today it is masked (every holder reads
+  reclaimable, so nothing is serialized anyway); after this fix serialization becomes real
+  everywhere EXCEPT this window, which is precisely why it must be stated rather than papered
+  over. The package header's own claim that "the flock discipline is borrowed only to serialize
+  mutations of that record" is not backed by the code. Serializing the record mutation is
+  explicitly OUT of scope for this card (see plan.md §F M5's bounded doc wording); it is a
+  separate card, and widening this one to cover it is the named anti-pattern.
+- **PID reuse** — a recorded owner pid whose session died and whose pid the OS later reassigns
+  to an unrelated process probes as live, wedging the window until an operator `--force`.
+  Consistent with the asymmetry (it fails toward TREAT-AS-LIVE, the cheap direction) and
+  inherited unchanged from the existing pid-probe design, but previously unstated.
+- **The record is implicitly single-host** — `IntegrationLock` (integration_lock.go:71-79)
+  carries `SessionID, SessionName, PID, Branch, Worktree, AcquiredAt, Card` and **no host
+  field**, while `session.Entry` (registry.go:86-95) does carry `Host`. A pid probed on a
+  different host is meaningless. Not a regression this SPEC introduces, and not addressed here;
+  recorded so a future multi-host reader does not mistake the pid anchor for host-qualified
+  identity.
 
 ## §H History
 
 | Version | Date | Change |
 |---|---|---|
 | 0.1.0 | 2026-08-27 | Initial draft (plan phase, card t298). Status set to `draft` on creation across all four plan-phase artifacts. |
+| 0.1.1 | 2026-08-27 | plan-audit iter-1 repair (FAIL 0.795): D1 marker-write assertion added to AC-INL-001; D2 AC-INL-011 + §B item 13 restated against re-measured CLAUDE.local.md; D4 acquire read-modify-write hazard added to §G + M5 wording bound; D3 pre-flight scoped to imports; D5 regex claim attributed; D6-D9 applied. |
+| 0.1.2 | 2026-08-27 | Surgical plan-phase amendment (card t298, still `draft`): AC-INL-012 added (acquire-refusal path — the gap through which the field harm passed), traced to existing REQ-INL-004 + REQ-INL-010 with no new REQ; §A gains the two production field observations of 2026-08-27 plus the identity-of-record vs atomicity layer distinction; progress.md §E.1 gains an unresolved-provenance note on the iter-1 repair pass. |
 
 ## Exclusions
 

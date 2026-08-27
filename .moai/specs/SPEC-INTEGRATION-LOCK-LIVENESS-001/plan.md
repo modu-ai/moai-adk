@@ -92,10 +92,18 @@ reintroduce the catastrophic false-"stale" direction on a timer.
 
 ## §C Pre-flight (before M1)
 
-- Confirm the tree: `git rev-parse --short HEAD` → `d29b8942e`; branch `WT-integration-lock`.
+- Confirm the branch: `git branch --show-current` → `WT-integration-lock`. HEAD advances as the
+  lane merges `develop`, so do NOT assert a fixed HEAD sha here. The invariant that actually
+  guards §B's line-pinned premises is that the premise files have not moved since the baseline:
+  `git diff --stat d29b8942e HEAD -- internal/kanban/integration_lock.go internal/cli/integration.go internal/hook/integration_lock_guard.go internal/session/session_pid.go internal/session/registry.go CLAUDE.local.md .claude/rules/local/gitflow-lane-protocol.md`
+  → **empty output**. Non-empty means re-measure §B's line numbers before citing them.
 - Confirm no other lane is mid-flight on these files (read `git status --short`).
 - Confirm `internal/session` does not import `internal/kanban` (no cycle when exporting the
-  seam): `grep -rn 'internal/kanban' internal/session/` → 0 hits expected.
+  seam). Scope the check to imports, not to any textual occurrence:
+  `grep -rn '"github.com/modu-ai/moai-adk/internal/kanban"' internal/session/` → **0 hits**
+  (rc=1). The unscoped form `grep -rn 'internal/kanban' internal/session/` returns **1 hit** —
+  a comment at `internal/session/session_pid.go:49` referencing
+  `internal/kanban/factory_slots.go` — which is not an import and must not be read as a cycle.
 
 ## §D Constraints (carried from spec.md §D)
 
@@ -115,13 +123,18 @@ reintroduce the catastrophic false-"stale" direction on a timer.
 ## §E Self-Verification (milestone exit evidence)
 
 Each milestone's exit is a command plus observed output recorded in progress.md §E.2:
-- M1 exit: the new cross-process test FAILS on the unmodified tree (observed failure text
-  names "reclaimable" where HELD was asserted) — the defect made mechanical.
+- M1 exit: the new cross-process tests FAIL on the unmodified tree — two with observed failure
+  text naming "reclaimable" where HELD was asserted, and the AC-INL-012 test with a bare second
+  acquire succeeding where refusal was asserted — the defect made mechanical on both the status
+  read and the acquire path.
 - M2 exit: the same test PASSES; `go test ./internal/cli/ ./internal/kanban/` green.
 - M3 exit: regression-pair tests green (legit-stale, foreign-release, force-reporting,
   legacy-record compat).
 - M4 exit: guard-consumer tests green; `GOOS=windows go vet ./internal/...` clean.
-- M5 exit: grep shows the caveat text gone from both docs and the replacement text present.
+- M5 exit: two greps, one per document, per their ACs — gitflow-lane-protocol.md's caveat text
+  gone with the bounded replacement present (AC-INL-010), and CLAUDE.local.md §4.1's two token
+  counts flipped from 0 to ≥1 (AC-INL-011). Plus a wording-bound self-check: neither shipped
+  text contains an unqualified serialization-guarantee claim (M5's forbidden list).
 
 ## §F Milestones
 
@@ -139,8 +152,20 @@ Author `internal/cli/integration_lock_owner_liveness_test.go`:
   `MOAI_SESSION_PID=<parent pid>` → assert held/not-reclaimable after child exit. Also fails
   today (current code ignores the env var and records the child pid). This variant is the
   platform-neutral one (no ancestry walk) and doubles as the Windows-behavior proxy.
-- Verification: `go test ./internal/cli/ -run 'TestIntegrationOwnerLiveness' -v` → both FAIL
-  with the reclaimable-where-held assertion; record verbatim output in progress.md §E.2.
+- **AC-INL-012 test (`TestIntegrationOwnerLiveness_BareAcquireRefusesLiveHolder`):** same
+  cross-process shape, reusing the two helpers above. Child A runs
+  `integration acquire --session sess-a` and EXITS (owner = the still-live parent test process);
+  child B then runs `integration acquire --session sess-b` **without** `--force`. Assert BOTH:
+  (a) child B exits non-zero with the `ErrIntegrationLockHeld` contention sentinel naming
+  `sess-a`, and the on-disk record under the temp root still has `session_id == "sess-a"`;
+  (b) child B's output carries no `displaced:` line (and, with `--json`, no non-null `replaced`).
+  Fails today — child A's recorded pid is its own and is dead, so acquire takes the
+  `case current.Stale():` reclaim arm (integration_lock.go:163) and child B SUCCEEDS while
+  reporting `displaced: sess-a`. This is the field harm of 2026-08-27 (spec.md §A) made
+  mechanical, and it is the one path the pre-existing in-process tests cannot express.
+- Verification: `go test ./internal/cli/ -run 'TestIntegrationOwnerLiveness' -v` → all three
+  FAIL (two with the reclaimable-where-held assertion, one with the bare-acquire-succeeded
+  assertion); record verbatim output in progress.md §E.2.
 
 ### M2 — GREEN: owner-pid anchor lands (Priority: High)
 - `internal/session`: export the seam (e.g. `ResolveOwnerPID() (pid int, resolved bool)`)
@@ -151,7 +176,7 @@ Author `internal/cli/integration_lock_owner_liveness_test.go`:
 - `internal/kanban/integration_lock.go`: add the additive `PIDSource` field; DELETE the
   `os.Getpid()` fallback (integration_lock.go:174-176); `Stale()` semantics per plan §B.4
   (anchored records: pid 0 → live; legacy records: unchanged).
-- Exit: M1's two tests flip green; `go test ./internal/cli/ ./internal/kanban/ ./internal/session/` green.
+- Exit: M1's three tests flip green (AC-INL-001, AC-INL-002, AC-INL-012); `go test ./internal/cli/ ./internal/kanban/ ./internal/session/` green.
 
 ### M3 — Regression pairs and backward compatibility (Priority: Medium)
 - Legit-staleness pair (AC-INL-003): acquire with `MOAI_SESSION_PID` pointing at a spawned
@@ -176,14 +201,28 @@ Author `internal/cli/integration_lock_owner_liveness_test.go`:
   env-stamp variant (M1) covers Windows-behavior semantics via the platform-neutral path.
 - Confirm `factory_alive_windows.go` untouched (`git diff --stat` shows no hit).
 
-### M5 — Documentation rewrite (Priority: Medium)
+### M5 — Documentation (Priority: Medium)
+
+**[HARD] Wording bound — claim only what lands.** What this SPEC delivers is *holder-liveness
+anchoring*: a recorded window now stays held while the holding session's process is alive. It
+does NOT deliver mutual exclusion between two lanes acquiring concurrently — the acquire path
+remains an unserialized read-modify-write (spec.md §G, measured). Both documents MUST therefore
+be written so that a lane reading them cannot conclude the record makes a concurrent double
+acquire impossible. Forbidden in the shipped prose: "직렬화를 보장한다" and any equivalent
+unqualified guarantee claim, "동시 acquire는 불가능하다", and any wording implying the record is
+a capability boundary rather than a coordination signal. Required instead: the hold survives the
+acquire CLI's exit and is released by the holder's death, explicit release, or a recorded
+`--force`; the lead announcement remains the doctrine's first layer.
+
 - `.claude/rules/local/gitflow-lane-protocol.md` §3: replace the two-line caveat blockquote
-  (lines 42-43, "직렬화를 보장하지 못한다 — 카드 t298 …") with the restored guarantee: the lock
-  now anchors liveness to the session process; legacy pre-fix windows read reclaimable —
-  re-acquire after upgrade; lead-notice remains the doctrine's first layer, the record is the
-  mechanical layer under it.
-- `CLAUDE.local.md` §4.1/§4.1.2: update the lead-notice-only serialization prose to the
-  restored two-layer description.
+  (lines 42-43, "직렬화를 보장하지 못한다 — 카드 t298 …") with the bounded statement above: the
+  lock now anchors liveness to the session process, so `status` no longer reports every live
+  holder as reclaimable; legacy pre-fix windows still read reclaimable — re-acquire after
+  upgrade; lead-notice remains the doctrine's first layer, the record is the mechanical layer
+  under it, and it is a coordination signal rather than a capability boundary.
+- `CLAUDE.local.md` §4.1: **extend**, do not rewrite — this file carries no workaround prose to
+  correct (spec.md §B item 13). Add the bounded guarantee statement plus the legacy re-acquire
+  note near the §4.1.2 procedure, satisfying AC-INL-011's two greps.
 - Both are local-only files — no template mirror, no `make build`.
 
 ## §G Anti-Patterns (do not)
@@ -195,12 +234,15 @@ Author `internal/cli/integration_lock_owner_liveness_test.go`:
 - Do NOT run the red test through `go run` or the in-process cobra harness — neither
   simulates "the CLI process exits".
 - Do NOT touch the live primary-checkout state files during development or testing.
+- Do NOT let the M5 prose claim serialization stronger than what lands — the acquire
+  read-modify-write stays unserialized (spec.md §G), and adding an flock to close it is a
+  separate card, not a widening of this one.
 - Do NOT widen the guard's merge pattern or flip its enablement default.
 
 ## §H Cross-References
 
 - spec.md §B premises (line-pinned baseline), §C REQ-INL-001..010, §D constraints.
-- acceptance.md AC-INL-001..011 (two-cell discipline; each row names its flipping milestone).
+- acceptance.md AC-INL-001..012 (two-cell discipline; each row names its flipping milestone).
 - progress.md §E skeleton (this file's §E defines the per-milestone exit evidence format).
 - Upstream doctrine: `.claude/rules/moai/workflow/kanban-dispatch.md` § "Integration into the
   release branch is self-served"; local operating rule:
