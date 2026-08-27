@@ -107,7 +107,7 @@ Never add files directly to the local project directories without also adding th
 
 **Verification**: Before committing, check that every new file under `.claude/`, `.moai/`, or `.agency/` has a corresponding file in `internal/template/templates/`.
 
-**§2.1 Template Content Neutrality — Acceptable Content Range for Templates**: When editing template source files in `internal/template/templates/`, ensure content adheres to the **acceptable** kept-classes (C1/C2/C4/C5/C6/C8) and excludes the FORBIDDEN content classes (SPEC IDs, REQ tokens, Audit citations, internal dates, commit SHAs, macOS-bias paths, CLAUDE.local references), enforced by CI guard (`.github/workflows/template-neutrality-check.yaml` trigger on path change). The canonical C1-C8 acceptable-vs-forbidden content-class catalogue lives in `.moai/docs/template-internal-isolation-doctrine.md §25.1` (cross-referenced by **§25 (Template Internal-Content Isolation)** of this file, now a stub). This ensures 16-language template distribution remains neutral to moai-adk internal development state.
+**§2.1 Template Content Neutrality — Acceptable Content Range for Templates**: When editing template source files in `internal/template/templates/`, ensure content adheres to the **acceptable** kept-classes (C1/C2/C4/C5/C6/C8) and excludes the FORBIDDEN content classes (SPEC IDs, REQ tokens, Audit citations, internal dates, commit SHAs, macOS-bias paths, CLAUDE.local references), enforced by CI guard (`.github/workflows/template-neutrality-check.yaml` trigger on path change). The canonical C1-C8 acceptable-vs-forbidden content-class catalogue lives in `.moai/docs/template-internal-isolation-doctrine.md §25.1` (cross-referenced by **§25 (Template Internal-Content Isolation)** of this file, now a stub). This keeps the template neutral across the 16 supported **programming languages** (§15) and free of moai-adk internal development state. Distinct axis: user-facing locales (ko/en/ja/zh) are governed by the §8 Localization Contract in the active output style — see §15's disambiguation note.
 
 **Pre-PR Verification (template contributor-checklist)** — before opening a PR that touches `internal/template/templates/**`, run the canonical 5-item pre-commit self-check (the CI guard `template-neutrality-check.yaml` is the safety net). See `.moai/docs/template-internal-isolation-doctrine.md` §25.3 for the full 5-item checklist and §25.1 for the forbidden/allowed content-class catalogue (C1-C8). (C3 dates + C7 commit-hashes are owned by the sibling `internal_content_leak_test.go` per §25, not this neutrality checklist.)
 
@@ -486,6 +486,10 @@ moai-adk-go uses YAML for configuration:
 - **Hook timeout** → settings.json `{"timeout": 60}` (기본 5초).
 - **`moai version` exit 137 (SIGKILL) after binary reinstall** → `cp bin/moai ~/go/bin/moai`만으로 부족; 기존 binary 잔재(go install buildinfo·mmap 캐시)가 꼬여 SHA가 같아도 crash. **반드시 `rm -f ~/go/bin/moai && cp bin/moai ~/go/bin/moai`**(또는 `make install`)로 inode 갱신하며 clean 재설치. 맨손 `go install ./cmd/moai`는 금지 — `LDFLAGS`(Makefile:9)를 안 실어서 `pkg/version`의 컴파일 기본값(`Commit="none"`, `Date="unknown"`)이 박히고, 그러면 `strings ~/go/bin/moai | grep <sha>` 기반 binary lag 검증 자체가 불가능해진다. `make install`(Makefile:38)은 `go install $(LDFLAGS) ./cmd/moai`라 안전. 직후 `~/go/bin/moai version; echo $?`로 exit 0 확인(137이면 rm+cp 재시도). 진단 징후: `bin/moai version`=0인데 `~/go/bin/moai version`=137. binary lag 검증은 §6 검증 규율(clear → 측정).
 
+### [HARD] 사용 중 버그·개선 발견 → 즉시 `/moai:feedback`
+
+MoAI-ADK를 사용하다 버그나 개선이 필요한 부분을 발견하는 족족 `/moai:feedback`으로 피드백을 제출한다 — 세션을 마친 뒤 몰아서 남기지 않는다. 대상: `moai` CLI 동작, 훅, 템플릿, 스킬, 에이전트, 팩토리·칸반 운영 결함 전반. 재현 명령과 관측된 출력을 함께 남긴다. 구분: 유지자에게 보고할 사안은 `/moai:feedback`, 작업으로 예정할 사안은 `/moai todo add`.
+
 ---
 
 ---
@@ -541,16 +545,27 @@ moai-adk-go uses YAML for configuration:
 
 ---
 
-## 15. 템플릿 언어 중립성
+## 15. 템플릿 프로그래밍-언어 중립성
 
-### [HARD] `internal/template/templates/` 하위는 16개 언어 동등 취급
+> **[HARD] 용어 — "언어"는 두 축을 가리킨다. 수식어 없이 쓰지 않는다.**
+>
+> | 축 | 값 | 요구되는 것 | 지배 규칙 |
+> |---|---|---|---|
+> | **프로그래밍 언어** (16) | go, python, typescript, … swift | **중립** — 어느 하나를 PRIMARY로 두지 않음 | 이 §15 |
+> | **사용자 대화 로케일** (4) | ko, en, ja, zh | **번역** — 로케일마다 자연스러운 원어 | 활성 output style §8 Localization Contract |
+>
+> 이 둘은 서로 독립이다. 템플릿은 16개 프로그래밍 언어에 중립이면서, 동시에 4개 로케일로 번역된다.
+> "16개 언어"를 배포 로케일 수로 읽는 것이 반복 관측된 오독이므로, 문서에서는 항상
+> **"프로그래밍 언어"** 또는 **"로케일"** 로 수식해 쓴다.
 
-도구의 구현 언어(Go)와 사용자 프로젝트 언어는 별개. 템플릿은 모든 사용자를 위한 것.
+### [HARD] `internal/template/templates/` 하위는 16개 프로그래밍 언어를 동등 취급
 
-- 언어 편향 허용: `CLAUDE.local.md`, `settings.local.json`, 로컬 `.moai/config/`
-- 언어 편향 금지: `internal/template/templates/**` 전체
+도구의 구현 언어(Go)와 사용자 프로젝트의 프로그래밍 언어는 별개. 템플릿은 모든 사용자를 위한 것.
 
-### 16개 지원 언어 (모두 동등)
+- 프로그래밍-언어 편향 허용: `CLAUDE.local.md`, `settings.local.json`, 로컬 `.moai/config/`
+- 프로그래밍-언어 편향 금지: `internal/template/templates/**` 전체
+
+### 16개 지원 프로그래밍 언어 (모두 동등)
 
 ```
 go, python, typescript, javascript, rust, java, kotlin, csharp,
@@ -562,7 +577,7 @@ Dart/Flutter 캐논 이름: **"flutter"** (not "dart").
 ### 체크리스트 (템플릿 수정 시)
 
 - [ ] 특정 언어를 "PRIMARY"로 배치하지 않았는가?
-- [ ] 16개 언어가 동등 수준으로 나열되어 있는가?
+- [ ] 16개 프로그래밍 언어가 동등 수준으로 나열되어 있는가?
 - [ ] 특정 언어만 "enabled", 나머지 "planned"로 격하하지 않았는가?
 - [ ] project_markers 기반 자동 감지 로직이 포함되어 있는가?
 - [ ] 로컬 config와 템플릿이 달라도 정상 (같으면 오히려 의심)
@@ -628,3 +643,21 @@ Sections §18-27 were consolidated into external `.moai/docs/` files to reduce l
 - **§25 Template Internal-Content Isolation** (neutrality catalogue, CI guard): `.moai/docs/template-internal-isolation-doctrine.md`
 - **§26 Linear 연동** (local-only): `.moai/docs/local-linear-integration.md`
 - **§27 Agent-Skill Architecture** [HARD]: every agent gets ≥1 skill set (4 elements: workflow skill + knowhow reference + scripts + trigger); all skill bodies in English; `/moai:<sub>` slash-wrapping maintained; `/moai:harness` meta-harness (v4 Builder); Analyze-First execution plan before any work
+
+---
+
+## 28. LSEL 드레인 운영 (지역 자가진화 루프)
+
+> 복원 2026-08-26 (SPEC-LSEL-DRAIN-STALL-001 M2). 이 섹션이 과거 진행 문서들이 참조하던 "§28" 앵커의 실체다 — 3주 드레인 정지(2026-08-04~25) 당시 이 섹션이 소실돼 있었다. 정본은 `.claude/skills/hns-lsel-curator/SKILL.md` § Durable operations.
+
+### [HARD] 내구 트리거 — 세션 시작 배선
+
+드레인은 어떤 Claude 세션의 생사에도 의존하지 않는다. `.claude/settings.local.json` `.hooks.SessionStart`에 2개 lsel 항목이 배선돼 있다(각 `"timeout": 30`): (1) `session_drain.sh` 래퍼 — 배타잠금 → 기존 clusters.json 무조건 보존(`clusters-history/`) → `drain.sh` 실행 → 1행 상태 → fail-open. (2) `backlog_check.sh` advisory — 읽지 않은 백로그가 임계(기본 25, `LSEL_BACKLOG_THRESHOLD`) 초과면 system-reminder 발화. **이 배선이 settings.local.json(로컬 전용)에 있는 것은 의도적이다** — tracked `settings.json`은 `moai update`가 통째 재배포해 배선이 매 업데이트 유실된다(§2.3). 검증: `jq '.hooks.SessionStart' .claude/settings.local.json`.
+
+### [HARD] 모든 드레인은 래퍼 경로로
+
+`drain.sh`를 **직접** 호출하지 않는다 — 직접 호출은 호출-전 보존을 우회해 스테이징된 후보를 조용히 유실시킨다(drain.sh는 드레인 경로든 no-op 경로든 clusters.json을 덮어쓴다). 항상 `session_drain.sh --inbox .moai/lessons-inbox.jsonl --state-dir .moai/state/lsel`.
+
+### PROPOSE는 archived 사본 판독
+
+세션 시작마다 드레인이 도는 체제에서 live `clusters.json`은 휘발성이다(no-op 드레인조차 `candidates: []`로 덮어쓴다). 후보 제안(PROPOSE)은 `.moai/state/lsel/clusters-history/`의 사본(최신순)을 읽는다. 검증 레시피·mutant guard 포함 전체 절차는 SKILL.md § Verification.
