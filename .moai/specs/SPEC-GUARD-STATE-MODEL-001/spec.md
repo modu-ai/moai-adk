@@ -1,6 +1,6 @@
 ---
 id: SPEC-GUARD-STATE-MODEL-001
-title: "Guard liveness state model: declare firing expectations, and decide every entry into exactly one classification"
+title: "Guard liveness state model: declare firing expectations, and decide every entry into exactly one classification (card t347)"
 version: "0.1.0"
 status: draft
 created: 2026-08-28
@@ -10,19 +10,19 @@ priority: P1
 phase: "v3.1.4 target"
 module: ".moai/guards, internal/cli, internal/guard"
 lifecycle: spec-anchored
-tags: "guard, liveness, state-model, classification, manifest, cadence, totality"
+tags: "guard, liveness, state-model, classification, manifest, cadence, totality, t347"
 tier: M
 era: V3R6
 related_specs: [SPEC-GUARD-LIVENESS-001]
 ---
 
-# SPEC-GUARD-STATE-MODEL-001 — Guard Liveness State Model
+# SPEC-GUARD-STATE-MODEL-001 — Guard Liveness State Model (card t347)
 
 ## HISTORY
 
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
-| 0.1.0 | 2026-08-28 | manager-spec | Initial plan-phase authoring, created by the **scope reduction of `SPEC-GUARD-LIVENESS-001` after its iter-3 FAIL + STOP** (0.800 → 0.800 → 0.667). This SPEC receives the state model — the family in which every one of that SPEC's hardest defects landed (D2, D5, N2, T2, T4) — plus the three unresolved findings that travel with it as **starting material rather than history**: T2 (a failed forge query has no admissible classification), N2's unresolved half, and T4. The state model is authored **as a state table, not as prose**: prose is what let a five-value vocabulary cover at least six states without anyone noticing. Totality is demonstrated by construction in both directions (§C.2). |
+| 0.1.0 | 2026-08-28 | manager-spec | Initial plan-phase authoring as **card t347**, created by the **scope reduction of `SPEC-GUARD-LIVENESS-001` (card t333) after its iter-3 FAIL + STOP** (0.800 → 0.800 → 0.667). This SPEC receives the state model — the family in which every one of that SPEC's hardest defects landed (D2, D5, N2, T2, T4) — plus the three unresolved findings that travel with it as **starting material rather than history**: T2 (a failed forge query has no admissible classification), N2's unresolved half, and T4. The state model is authored **as a state table, not as prose**: prose is what let a five-value vocabulary cover at least six states without anyone noticing. Totality is demonstrated by construction in both directions (§C.2). |
 
 ## §A Context and Problem
 
@@ -80,15 +80,19 @@ Budget: Tier M ≤ 16 requirements. **Count: 12.**
 
 - **REQ-GSM-006** — The evaluator shall decide every entry it encounters by the **state table below, which is normative**. The table is the artifact; the prose around it describes it and does not extend it.
 
-  | # | Entry condition | Classification | Implied action |
-  |---|---|---|---|
-  | 1 | Entry's declared kind has no reader in this deliverable | `UNREADABLE` | None until a reader for that kind exists |
-  | 2 | Kind has a reader; the query did not return a result (error, auth failure, rate limit, timeout) | `UNRESOLVED` | Retry; check credentials and forge availability |
-  | 3 | Query returned; a qualifying run exists inside the expectation window | `OK` | None |
-  | 4 | Query returned; a qualifying run exists, most recent one older than the window | `STALE` | Investigate why the subject stopped firing |
-  | 5 | Query returned zero qualifying runs; the entry's declared condition says firing is not currently expected | `OK` | None — this is the observation the entry predicted |
-  | 6 | Query returned zero qualifying runs; the entry's declared condition does not account for the absence | `UNKNOWN` | Look again with a longer window; retention may have consumed the history |
-  | 7 | A workflow file exists on disk with no manifest entry | `UNDECLARED` | Add an entry, or record why the subject is unwatched |
+  | # | Entry condition | Classification | Implied action | Flipped by (and what it needs first) |
+  |---|---|---|---|---|
+  | 1 | Entry's declared kind has no reader in this deliverable | `UNREADABLE` | None until a reader for that kind exists | M2 — **needs M1's `kind` field**; without it this row is undeliverable regardless of M2 |
+  | 2 | Kind has a reader; the query did not return a result (error, auth failure, rate limit, timeout) | `UNRESOLVED` | Retry; check credentials and forge availability | M2 — needs the query path's error channel to be distinguishable from an empty result |
+  | 3 | Query returned; a qualifying run exists inside the expectation window | `OK` | None | M2 — **needs M1's window field** and M1's measured-quantity value (which runs qualify) |
+  | 4 | Query returned; a qualifying run exists, most recent one older than the window | `STALE` | Investigate why the subject stopped firing | M2 — same M1 dependencies as row 3 |
+  | 5 | Query returned zero qualifying runs; the entry's declared condition says firing is not currently expected | `OK` | None — this is the observation the entry predicted | M2 — **needs M1's release-cycle-conditional field** (REQ-GSM-004); absent it, this row collapses into row 6 and the value becomes wrong rather than missing |
+  | 6 | Query returned zero qualifying runs; the entry's declared condition does not account for the absence | `UNKNOWN` | Look again with a longer window; retention may have consumed the history | M2 |
+  | 7 | A workflow file exists on disk with no manifest entry | `UNDECLARED` | Add an entry, or record why the subject is unwatched | M2 — needs the disk enumeration, whose degradation REQ-GSM-010 guards |
+
+  **The last column is not decoration, and it is the reason this table has five columns rather than four.** The predecessor SPEC's milestone map passed a union count — every criterion appeared in some milestone's flip list — while one criterion was assigned to a milestone that could not deliver it: it required a classification the milestone's own vocabulary bullet did not yet contain. A union count answers *"is every criterion listed?"* and is **structurally incapable** of answering *"can the listed milestone deliver it?"*. Recording the delivering milestone per cell, together with the M1 field each cell depends on, is what makes the second question checkable — and without it this table would prove totality of *classification* while saying nothing about totality of *delivery*, reproducing the defect inside the artifact built to prevent it.
+
+  Three rows (1, 3/4, 5) depend on an M1 schema field. Rows 3 and 5 are where a missing dependency is most dangerous: it does not leave the cell empty, it makes the cell produce the **wrong value** — row 5 without its conditional field silently becomes row 6, turning a correctly-quiet release-only subject into a reported anomaly on every sweep.
 
 - **REQ-GSM-007** — The classification vocabulary shall be exactly the closed set `OK`, `STALE`, `UNKNOWN`, `UNDECLARED`, `UNREADABLE`, `UNRESOLVED`, and each value shall carry a distinct implied action; no two values shall share one. **Totality binds in both directions**: every row of the table shall map to exactly one value (no entry condition is unclassifiable), and every value shall be reachable from at least one row (no value is an unused option). A value no entry can receive is a defect in the evaluator; **an entry no value can receive is a hole in the state space**, and the second direction is the one that has actually failed.
 

@@ -1,4 +1,4 @@
-# SPEC-GUARD-STATE-MODEL-001 — Implementation Plan
+# SPEC-GUARD-STATE-MODEL-001 — Implementation Plan (card t347)
 
 Baseline tree for every measurement: **`091966c55`** @ `WT-guard-liveness` (worktree `.claude/worktrees/t333`).
 
@@ -8,11 +8,9 @@ Milestones are ordered by **decision reversibility**. The manifest schema and th
 
 This SPEC was created by the scope reduction of `SPEC-GUARD-LIVENESS-001` after its iter-3 FAIL + STOP. It receives the state model — the family in which that SPEC's hardest defects all landed — and three unresolved findings as **starting material**: T2, N2's unresolved half, and T4 (`spec.md` §A.3).
 
-### A.1 This SPEC's card id
+### A.1 This SPEC's card
 
-> **`<CARD-PENDING>`** — this SPEC's card id has been requested from the lead and is not yet assigned. **This line is the single place the placeholder sits in this artifact set.** When the id arrives, replace it here and in `SPEC-GUARD-LIVENESS-001/plan.md` §A.1 (the corresponding single placeholder there); nothing else in either artifact set references it.
-
-The sibling SPEC does **not** `depends_on` this one. The seam is a published contract (`spec.md` §B), so the two are independently implementable.
+This SPEC is card **t347**. The sibling SPEC (`SPEC-GUARD-LIVENESS-001`) is card t333 and does **not** `depends_on` this one — the seam is a published contract (`spec.md` §B), so the two are independently implementable and have different destinations: t333 goes to the Implementation Kickoff Approval gate, while t347's dispatch is a separate decision.
 
 ## §B Known issues and constraints carried in
 
@@ -53,12 +51,13 @@ The two decisions worth the most review attention. Every later milestone reads t
 
 - Define the manifest schema: locator, expected events, window, measured quantity (REQ-GSM-002), plus the release-cycle-conditional form (REQ-GSM-004).
 - Fix the measured-quantity vocabulary at exactly three values with the conclusion set each admits (REQ-GSM-003).
-- **Author the state table as the normative artifact** (REQ-GSM-006) — 7 rows, 6 values, each value with a distinct implied action. Check totality in both directions **before** populating the census: every row maps to exactly one value, and every value is reachable from at least one row (REQ-GSM-007). An uncovered condition must appear as a missing row, never as a sentence.
+- **Author the state table as the normative artifact** (REQ-GSM-006) — 7 rows, 6 values, each value with a distinct implied action, **and a `Flipped by` cell per row naming the delivering milestone and the M1 field it depends on**. Check totality in both directions **before** populating the census: every row maps to exactly one value, and every value is reachable from at least one row (REQ-GSM-007). An uncovered condition must appear as a missing row, never as a sentence.
+- **Ship the three M1 fields the table's rows depend on**, and check them against the table rather than against a flip-list count: the `kind` field (row 1), the window field plus the measured-quantity value (rows 3 and 4), and the release-cycle-conditional field (row 5). **A missing dependency here does not leave a cell empty — it makes the cell produce the wrong value.** Row 5 without its conditional field silently becomes row 6, and every correctly-quiet release-only subject is reported as an anomaly on every sweep.
 - Apply the subject-agnostic shape test: each entry carries kind, locator and cadence as data. If accepting a second-kind entry requires changing the schema or either vocabulary, the schema has hardcoded its subject — reshape it now (B-0's sibling failure mode).
 - Choose the manifest path outside `.moai/config/` (B-5).
 - Populate the census: one entry per workflow file, 18 of 18, including the two release-only subjects.
 
-Flips: AC-GSM-001, AC-GSM-002, AC-GSM-003 (a)(b), AC-GSM-004, AC-GSM-005 (b).
+Flips: AC-GSM-001, AC-GSM-002, AC-GSM-003 (a)(b), AC-GSM-004, AC-GSM-005 (b), AC-GSM-007 (c).
 
 ### M2 — the classifier
 
@@ -69,7 +68,7 @@ Flips: AC-GSM-001, AC-GSM-002, AC-GSM-003 (a)(b), AC-GSM-004, AC-GSM-005 (b).
 - Row 7 — the set comparison against disk enumeration (REQ-GSM-008).
 - Refuse an all-clear when the queried count is zero **or** the enumeration returned zero files (REQ-GSM-010, B-2).
 
-Flips: AC-GSM-003 (c), AC-GSM-005 (a), AC-GSM-006, AC-GSM-007, AC-GSM-008, AC-GSM-009, AC-GSM-010, AC-GSM-011, AC-GSM-012.
+Flips: AC-GSM-003 (c), AC-GSM-005 (a), AC-GSM-006, AC-GSM-007 (a)(b), AC-GSM-008, AC-GSM-009, AC-GSM-010, AC-GSM-011, AC-GSM-012.
 
 ### M3 — the result and its contract
 
@@ -79,7 +78,9 @@ Flips: AC-GSM-003 (c), AC-GSM-005 (a), AC-GSM-006, AC-GSM-007, AC-GSM-008, AC-GS
 
 Flips: AC-GSM-013, AC-GSM-014, AC-GSM-015.
 
-**Milestone map check.** All 15 criteria appear across the flip lists, and each listed milestone can actually deliver what it is assigned — a union count answers "is every criterion listed?" and is structurally blind to "can that milestone deliver it?", which is how T4 escaped the predecessor's repair. AC-GSM-003 and AC-GSM-005 are clause-split for that reason: their schema halves land at M1, their classifier halves at M2.
+**Milestone map check — deliberately not a union count.** All 15 criteria appear across the flip lists, **and** each listed milestone can actually deliver what it is assigned. The second half is the one that matters: a union count answers "is every criterion listed?" and is structurally blind to "can that milestone deliver it?", which is exactly how T4 escaped the predecessor's repair — every criterion was listed, and one sat at a milestone whose own vocabulary did not yet contain the value it required.
+
+Three criteria are clause-split because they genuinely span milestones, and splitting them is what keeps the map honest rather than merely complete: AC-GSM-003 and AC-GSM-005 have schema halves at M1 and classifier halves at M2; AC-GSM-007's delivery clause (c) is checked at M1 against the schema while its classification clauses (a)(b) land at M2. The state table's own `Flipped by` column is the artifact this check reads — it is the only place the per-cell answer lives.
 
 ## §G Anti-patterns to avoid
 

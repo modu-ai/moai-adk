@@ -8,13 +8,11 @@ Milestones are ordered by **decision reversibility**. The invocation contract le
 
 See `spec.md` §A. Six empirical instances ground the problem; this SPEC owns the **surfacing half** of the event-history axis after the iter-3 scope reduction.
 
-### A.1 The sibling SPEC and its pending card id
+### A.1 The sibling SPEC
 
-The state model — the manifest, the querying, the classifications, and the set comparison — is `SPEC-GUARD-STATE-MODEL-001`, authored alongside this SPEC as plan-phase artifacts.
+The state model — the manifest, the querying, the classifications, and the set comparison — is `SPEC-GUARD-STATE-MODEL-001`, card **t347**, authored alongside this SPEC as plan-phase artifacts.
 
-> **`<CARD-PENDING>`** — the state-model SPEC's card id has been requested from the lead and is not yet assigned. **This line is the single place the placeholder sits in this artifact set.** When the id arrives, replace it here and in `SPEC-GUARD-STATE-MODEL-001/plan.md` §A.1 (the corresponding single placeholder there); nothing else in either artifact set references a card id for it.
-
-This SPEC does **not** `depends_on` the state SPEC. The seam is a consumed contract (`spec.md` §B.1), so the two are independently implementable.
+This SPEC does **not** `depends_on` it. The seam is a consumed contract (`spec.md` §B.1), so the two are independently implementable — and they have different destinations: **this artifact set is finishable on its own** and goes to the Implementation Kickoff Approval gate, while t347's dispatch is a separate decision. Nothing in this set requires a t347 artifact to exist: the only cross-references are to the sibling SPEC's ID and to the contract clauses this SPEC declares for itself in REQ-GDL-001.
 
 ## §B Known issues and constraints carried in
 

@@ -1,4 +1,4 @@
-# SPEC-GUARD-STATE-MODEL-001 — Progress
+# SPEC-GUARD-STATE-MODEL-001 — Progress (card t347)
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
@@ -6,7 +6,7 @@ Plan-phase artifacts authored on `091966c55` @ `WT-guard-liveness` (worktree `.c
 
 - Artifacts: `spec.md`, `plan.md`, `acceptance.md` (Tier M set) + this file.
 - Requirements: 12 (Tier M ceiling 16). Acceptance criteria: 15 (ceiling 16).
-- Card id: **pending** — requested from the lead, placeholder recorded in `plan.md` §A.1 (the single place it sits in this artifact set).
+- Card: **t347** (issued by the lead; the sibling surfacing SPEC is card t333). Dispatch is a separate lead decision — this lane authored the plan-phase artifacts only.
 - Every RED-now cell is pinned to `091966c55` and its command was run on this tree during authoring; no cell was carried across the scope reduction from the predecessor without re-measurement.
 
 ### Origin

@@ -1,4 +1,4 @@
-# SPEC-GUARD-STATE-MODEL-001 — Acceptance Criteria
+# SPEC-GUARD-STATE-MODEL-001 — Acceptance Criteria (card t347)
 
 Baseline tree for every RED-now cell: **`091966c55`** @ `WT-guard-liveness` (worktree `.claude/worktrees/t333`). Every cited command was **run on this tree during authoring** — no cell was carried across the scope reduction from the predecessor SPEC without re-measurement.
 
@@ -16,7 +16,7 @@ Budget: Tier M ≤ 16 acceptance criteria. **Count: 15.**
 | AC-GSM-004 | REQ-GSM-004 | Declared-quiet expectation | M1 |
 | AC-GSM-005 | REQ-GSM-001 | Subject-agnostic shape pair | M1 |
 | AC-GSM-006 | REQ-GSM-005 | Per-subject query + negative pair | M2 |
-| AC-GSM-007 | REQ-GSM-006, REQ-GSM-007 | **Table totality — every row classified** | M2 |
+| AC-GSM-007 | REQ-GSM-006, REQ-GSM-007 | **Table totality — every row classified + delivery check** | M1 (c) / M2 (a)(b) |
 | AC-GSM-008 | REQ-GSM-007 | **Value reachability — every value reachable** | M2 |
 | AC-GSM-009 | REQ-GSM-006 | Row 2 — failed query (T2) | M2 |
 | AC-GSM-010 | REQ-GSM-006 | Rows 5 and 6 — excused vs unexcused absence | M2 |
@@ -74,11 +74,14 @@ Budget: Tier M ≤ 16 acceptance criteria. **Count: 15.**
 - **Mutant:** clause (a) alone is satisfied by an evaluator that issues N targeted queries **and also** one global listing used as a fast path — which reintroduces the exact failure for whichever subject the global listing hides. Clause (b) is stated as a measured call count rather than a source grep, because a grep for a call site is satisfied by a mutant building the same request from string fragments.
 
 ### AC-GSM-007 — the state table is total: every row classifies
-**Given** a fixture supplying **one case per row** of the REQ-GSM-006 table (7 rows); **When** the evaluator classifies each; **Then** ALL hold — every case receives **exactly one** classification, no case is left unclassified, and no case receives more than one.
+**Given** a fixture supplying **one case per row** of the REQ-GSM-006 table (7 rows), and the M1 schema; **When** the evaluator classifies each case and the table's `Flipped by` column is read against the schema; **Then** ALL THREE hold — (a) every case receives **exactly one** classification, none unclassified and none receiving more than one; (b) the classifier is table-driven, so each case's value traces to its row; and (c) every row's declared M1 dependency is present in the M1 schema.
 - **RED-now:** no classifier exists (AC-GSM-006's measurement). Red for absence — no case can be decided.
 - **Green path:** M2. Passing output is 7 cases, 7 single classifications.
 - **Why this criterion is the centre of the SPEC:** the predecessor's state model failed three audits by leaving a condition uncovered while every requirement read complete in isolation. A per-row fixture makes an uncovered condition a **failing case** rather than a sentence nobody wrote. This is the "state table, not prose" instruction made mechanical.
 - **Mutant:** a classifier with a catch-all default satisfies "every case receives exactly one classification" while collapsing rows 1, 2 and 6 into one value. AC-GSM-008 is the paired direction that excludes it, and AC-GSM-009 and AC-GSM-010 pin the specific rows that have historically collapsed.
+- **Delivery clause (c):** additionally, **every row's `Flipped by` cell names a milestone that can actually deliver it** — for each row whose cell declares an M1 dependency (rows 1, 3, 4, 5), the named M1 field is present in the M1 schema, checked by reading the schema rather than by counting flip-list membership.
+- **Why clause (c) is a separate assertion from (a):** the predecessor's milestone map passed a **union count** — every criterion appeared in some flip list — while one criterion sat at a milestone that could not deliver it. A union count answers "is every criterion listed?" and is structurally blind to "can the listed milestone deliver it?". Clause (c) is the second question, and it is checked against the schema because that is the only place the answer lives.
+- **Mutant (c):** clauses (a) and (b) together are satisfied by a table whose `Flipped by` column reads `M2` uniformly. That column would be true and useless — every classification is emitted by the classifier — and it would hide exactly the failure it exists to catch: a row whose M1 field was never shipped produces the **wrong value**, not a missing one. Row 5 is the sharp case: without its conditional field it silently becomes row 6, and a correctly-quiet release-only subject is reported as an anomaly on every sweep.
 
 ### AC-GSM-008 — every classification value is reachable
 **Given** the same 7-row fixture; **When** the classifications are collected; **Then** **each of the six values** — `OK`, `STALE`, `UNKNOWN`, `UNDECLARED`, `UNREADABLE`, `UNRESOLVED` — is produced by at least one case.

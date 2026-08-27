@@ -1,7 +1,7 @@
 ---
 id: SPEC-GUARD-LIVENESS-001
 title: "Guard firing-liveness — the surfacing model: make a guard that silently stopped reach the operator unbidden (card t333)"
-version: "1.0.0"
+version: "1.1.0"
 status: draft
 created: 2026-08-28
 updated: 2026-08-28
@@ -29,6 +29,7 @@ related_specs: [SPEC-GUARD-STATE-MODEL-001]
 | 0.5.0 | 2026-08-28 | manager-spec | plan-audit iter-1 repair: all 7 blocking defects (D1-D7) closed. |
 | 0.6.0 | 2026-08-28 | manager-spec | plan-audit iter-2 repair: N1, N2, N5 closed. |
 | 1.0.0 | 2026-08-28 | manager-spec | **Scope reduction after the iter-3 FAIL + STOP (0.800 → 0.800 → 0.667).** No fourth repair round — the regression clause forbids one without an override and none was granted. The SPEC is split along the seam its own defects kept landing on. This SPEC keeps the **surfacing model**, which converged: the auditor re-ran both prior N1 mutants and could not revive either. The **state model** (former REQ-GDL-001..010 + 012, carrying D2, D5, N2, T2, T4 as one never-converging family) moves to `SPEC-GUARD-STATE-MODEL-001`. Seam resolved as **contract, not dependency** (§B.1). Requirements renumbered contiguously — mapping in §B.2. **T9 closed** — the unconditional-invocation clause is promoted to its own requirement (REQ-GDL-003) and gains AC-GDL-003, the criterion the audit named the single most consequential missing one. **T3 dissolved structurally** rather than restated: the trigger is now expressed in contract terms, so no criterion can encode a classification list. Optional T7, T10, T11 folded into §D.3; N4 taken in AC-GDL-006. Counts 16→9 REQ, 16→9 AC. |
+| 1.1.0 | 2026-08-28 | manager-spec | **§A.9 added — instance 7, measured on `091966c55`.** Every completed `ci.yml` run on `develop` in the observed window failed (5/5; two cancelled, one in progress), failing jobs `Test (ubuntu-latest)` and `Race Test` on run `33117635467`; the cause is recorded as the lead's attribution (a doctor check structurally red in CI's bin-absent environment since `812ee01fc`, card t346) and not this lane's measurement. The instance is the roles reversed: instances 1-6 are absence read as success, while this is **a verdict that was produced, was correct, was red, and reached no one** — the orchestrator on card t333 named `origin/develop` CI as the judge when reporting t298's landing and never returned to read the verdict. It is the live case for §A.8, which was hypothetical until this card produced one, and it is the strongest available evidence that the discipline is not sufficient without a mechanism, because it happened to the party that spent the session policing this exact failure in others. The sibling state-model SPEC's card id `t347` is filled throughout. No requirement or criterion changed — counts unchanged at 9 REQ / 9 AC. |
 
 ## §A Context and Problem
 
@@ -112,6 +113,41 @@ This instance is on a third axis — not deployment, not trigger, but a **select
 `Graph Freshness` failed on every `develop` push in the measured window (3/3). Repairing it is card t322's subject.
 
 It is recorded because it is a second route to the same end state, and it bears directly on this SPEC. A guard red on every single run stops being read just as thoroughly as one that never runs. **Silence and constant noise are different mechanisms arriving at the same place — nobody looks.** The consequence is a design obligation: **making a channel and making a channel that gets read are different jobs**, and REQ-GDL-007 is where this SPEC pays it.
+
+§A.9 is the live case for this section. It was a hypothetical until this card produced one.
+
+### A.9 Instance 7 — a verdict was produced, was correct, was red, and reached no one
+
+The roles are reversed here. Instances 1 through 6 are all *absence read as success*. This one is a **verdict that existed, was correct, and was never collected** — and it was produced by the party running this card.
+
+Measured on `091966c55`:
+
+```
+$ gh run list --branch develop --workflow ci.yml --limit 8 \
+    --json createdAt,conclusion,headSha,status
+2026-08-27T22:49:25Z  in_progress    44095ddc2
+2026-08-27T21:19:51Z  completed  failure    4fdbd55c1
+2026-08-27T21:16:38Z  completed  cancelled  8806a8788
+2026-08-27T18:28:00Z  completed  failure    8da086fbd
+2026-08-27T18:22:22Z  completed  cancelled  9a1831efd
+2026-08-27T15:24:50Z  completed  failure    f5a834fef
+2026-08-27T15:05:15Z  completed  failure    da03d9188
+2026-08-27T14:51:23Z  completed  failure    d34a789a4
+```
+
+**Every completed run in the window failed** — five of five; the two `cancelled` runs are superseded pushes rather than counterexamples, and one run was still in progress at measurement. The failing jobs on the most recent completed run (`33117635467`) are `Test (ubuntu-latest)` and `Race Test`.
+
+The **cause** is the lead's attribution and not this lane's measurement: a doctor check that always fails in CI's bin-absent environment, structurally red since `812ee01fc`, now card t346 with another lane. What this lane measured is the redness and its span, not why.
+
+**What happened, stated plainly.** When the orchestrator on card t333 reported that t298 had landed, it wrote that the full suite was not run locally because `origin/develop` CI is the judge. It named CI as the authority, and then never went back to read its verdict — it read the run listing while CI was still in progress, saw an empty conclusion, and moved on. The verdict arrived. Nobody collected it.
+
+Note the last row: `d34a789a4` is this SPEC's own original RED-now baseline, the t298 integration push. The failing run is the one this card's own measurements were taken against.
+
+**Why this is the same defect and not a different one.** Deferring to an authority and never reading its answer is, from the outside, **indistinguishable from the authority never having answered**. The green that follows is not false — no claim was made about the verdict — it is simply uninformative, which is §A.0's shape exactly: a mechanism (here, a human protocol) correctly answering a narrower question than the reader believes it answered. "CI is the judge" is true; "CI judged, and we read it" was never established.
+
+**And it composes with §A.8.** Part of why the return trip did not happen is that a red CI row on `develop` has been unremarkable for a day: the channel carries a standing red, so a new red in it carries no information. That is §A.8's mechanism with a first-person instance behind it rather than a hypothetical neighbour.
+
+**The reason it belongs in the SPEC rather than in a lessons file** is what it demonstrates about discipline versus mechanism. It happened to the party that had spent the entire session policing this exact failure mode in others — auditing unobserved claims, requiring measured baselines, rejecting a green whose swept set was empty. A discipline held that attentively still did not survive one deferral. **That is the strongest available evidence that the discipline is not sufficient without a mechanism**, which is the premise of this whole card: the answer must arrive unbidden (REQ-GDL-005), because the alternative is a competent party intending to go back and look, and not going back.
 
 ## §B Relationship to the landed rule, and to the state-model SPEC
 
