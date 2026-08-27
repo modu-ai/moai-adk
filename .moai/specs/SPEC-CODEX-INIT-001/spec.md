@@ -2,7 +2,7 @@
 id: SPEC-CODEX-INIT-001
 title: "Codex 미배선 프로젝트 초기화 — 생성기 호출 제안과 AGENTS.md 지시 계약"
 version: "0.3.0"
-status: draft
+status: in-progress
 created: 2026-08-24
 updated: 2026-08-28
 author: manager-spec

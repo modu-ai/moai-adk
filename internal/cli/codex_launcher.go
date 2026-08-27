@@ -250,6 +250,12 @@ func runCodexLaunch(cmd *cobra.Command, verb string, tail []string, spawn bool) 
 	}
 
 	req := codexLaunchRequest{Program: binaryPath, Args: append([]string{verb}, tail...), Dir: dir}
+	// SPEC-CODEX-INIT-001: the init-offer gate — the ONE call site both
+	// launch verbs pass through right before launching. The gate takes no
+	// spawn argument: both launch paths cross the same function (REQ-CI-002).
+	if err := codexInitOfferGate(cmd, dir); err != nil {
+		return err
+	}
 	if spawn {
 		return codexSpawnLaunch(req)
 	}

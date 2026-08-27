@@ -1,0 +1,80 @@
+# SPEC-CODEX-INIT-001 — progress
+
+> Run-phase record. `§F Phase 4 Mode Selection` is the orchestrator's log —
+> not authored here. `§E.4` belongs to manager-docs at the sync commit.
+
+## §E.1 Plan-phase Audit-Ready Signal
+
+plan_status: audit-ready
+plan_complete_at: 2026-08-28
+plan_audit: round 5 PASS 1.00 (.moai/reports/t340/verdict-iter5.md)
+
+## §E.2 Run-phase Evidence
+
+Baseline: worktree t340, branch `WT-codex-init`, plan-repair commit `6a98ef743`
+(base `f5a834fef` = origin/develop). RED-now observations R1-R4 were pinned at
+`f5a834fef` (acceptance.md two-cell table) and independently re-executed by
+the round-5 auditor on the same tree.
+
+### Milestones
+
+| M | Scope | Cells | Status | Evidence |
+|---|---|---|---|---|
+| M1 | Proposal gate + state×verb×spawn matrix + injected-state judgement | 24 + 32 | GREEN | `.moai/state/verify/t340/m1-m3-gate-cells.txt` (148 PASS subtests incl. M2/M3) |
+| M2 | Generator delegation, decline, non-interactive prompt counting | 20 + 20 + 40 | GREEN | same run, per-test `-v` subtests |
+| M3 | Failure paths E1/E2/E3 × verb × spawn | 12 | GREEN | same run |
+| M4 | Path containment (before M5 — the guard is the contract's first act) | 180 | pending | |
+| M5 | Instruction contract + idempotency | 10 + 12 | pending | |
+| M6 | Local-file reachability + overlays | 4 | pending | |
+
+### M1-M3 observed-red record (E8)
+
+- Plan-phase RED-now: acceptance R1-R4 at `f5a834fef` — implementation units
+  absent (`ls internal/cli/codex_init.go …` rc 1), launch path direct to
+  `codexSpawnLaunch`/`codexDirectLaunch` with no gate, repo itself unwired.
+  Auditor round 5 re-executed these on the same tree (verdict §4).
+- In-run observed reds (mutant-style, verbatim in the session transcript):
+  (a) accept cells red on a chmod-after-close defect — `AGENTS.md missing
+  after acceptance` across all 20 cells; (b) E1-E3 cells red on a missing
+  interactive flag — gate exited at the non-interactive branch and the
+  generator was never reached. Both observed red before the fix, green after.
+
+### AC matrix so far (GREEN per cell = `-v` subtest)
+
+| AC | Cells | Status | Command | Actual output |
+|---|---|---|---|---|
+| AC-CI-001 | 24 | PASS | `go test ./internal/cli/ -run TestCodexInit -v` | `TestCodexInitGateStateMatrix` 24/24 subtests |
+| AC-CI-002 | 32 | PASS | same | `TestCodexInitGateInjectedState` 32/32 |
+| AC-CI-003 | 20 | PASS | same | `TestCodexInitDecline` 20/20 |
+| AC-CI-004 (accept) | 20 | PASS | same | `TestCodexInitAcceptDelegation` 20/20 |
+| AC-CI-004 (prompt) | 40 | PASS | same | `TestCodexInitPromptIssuance` 40/40 |
+| AC-CI-010 | 12 | PASS | same | `TestCodexInitFailurePaths` 12/12 |
+| AC-CI-011 | 180 | — | pending M4 | |
+| AC-CI-005/006 | 22 | — | pending M5 | |
+| AC-CI-007 | 4 | — | pending M6 | |
+| AC-CI-008 | overlay | partial | embedded SNAP assertions in M1-M3 cells; containment overlay lands with M4 | |
+
+### Existing-suite protection
+
+`go test ./internal/cli/ -run TestCodex` rc 0 after the gate insertion —
+launcher-SPEC tests unbroken; the shared launch-capture helper pins the gate
+open (`withCodexGateOpen`) and four manual-seam launcher tests call it.
+Evidence: `.moai/state/verify/t340/existing-codex-tests-after-gate.txt`.
+
+## §E.3 Run-phase Audit-Ready Signal
+
+run_complete_at:
+run_commit_sha:
+run_status: in-progress
+ac_pass_count: 6
+ac_fail_count: 0
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch:
+l44_post_push_fetch:
+new_warnings_or_lints_introduced:
+cross_platform_build.darwin_arm64: build+vet pass (in-run)
+cross_platform_build.windows: GOOS=windows vet pending (M4 close)
+total_run_phase_files: 5 (codex_init.go, codex_contract.go, codex_init_test.go,
+codex_contract_test.go pending, codex_launcher.go +1 call site)
+m1_to_mN_commit_strategy: per-milestone commits (M1-M3 gate surface, M4+M5
+contract file, M6 reachability)
