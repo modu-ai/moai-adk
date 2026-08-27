@@ -82,7 +82,7 @@ func TestBacklogEnginePragmasSurviveConnectionChurn(t *testing.T) {
 }
 
 // AC-TOSQ-017 (schema half) / REQ-TOSQ-001: the physical artifact carries the
-// meta, items, and findings tables plus the state-index, and stamps the
+// meta, items, findings, and archived_* tables plus the state-index, and stamps the
 // schema version on first open.
 func TestBacklogEngineSchemaShape(t *testing.T) {
 	eng := openTestEngine(t)
@@ -106,7 +106,12 @@ func TestBacklogEngineSchemaShape(t *testing.T) {
 		t.Fatalf("rows error = %v", err)
 	}
 	sort.Strings(got)
-	want := []string{"findings", "idx_items_state", "items", "meta"}
+	// The two archived_* tables joined the shape in
+	// SPEC-TODO-DESTRUCTIVE-GUARD-001 (card t330): `done` archives the row and
+	// its findings instead of discarding them. The assertion stays an EXACT
+	// set — a table appearing here that no SPEC put here is the regression
+	// this test exists to catch.
+	want := []string{"archived_findings", "archived_items", "findings", "idx_items_state", "items", "meta"}
 	if strings.Join(got, ",") != strings.Join(want, ",") {
 		t.Errorf("schema objects = %v, want %v", got, want)
 	}

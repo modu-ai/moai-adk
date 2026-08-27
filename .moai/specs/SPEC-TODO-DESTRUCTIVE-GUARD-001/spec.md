@@ -2,7 +2,7 @@
 id: SPEC-TODO-DESTRUCTIVE-GUARD-001
 title: "Reversibility for `moai todo done` — an additive archive, its restore verb, and a landing-predicate seam"
 version: "0.2.1"
-status: draft
+status: in-progress
 created: 2026-08-27
 updated: 2026-08-28
 author: manager-spec (card t330)
