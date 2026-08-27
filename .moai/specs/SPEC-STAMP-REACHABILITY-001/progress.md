@@ -117,7 +117,7 @@ m1_to_mN_commit_strategy: "one commit per milestone (M1 cd71c701e, M2 e4eb15ea4,
 
 - sync_status: PASS (binding workflow verdict — 4-dimension harmonic mean 0.912 ≥ 0.85 threshold; Functionality 0.95 / Security 0.90 / Craft 0.90 / Consistency 0.90; 10 findings, all minor, 0 critical, no contested findings; binding promotion applied per SPEC-AUDIT-SNAPSHOT-001 A3 — no cold sync-auditor spawned)
 - sync_complete_at: 2026-08-27
-- sync_commit_sha: "pending-backfill-sync"  # backfilled in the immediately following commit (commit cannot know its own SHA)
+- sync_commit_sha: 71dca6875
 - Orchestrator trust-but-verify batch: V1-V6 matrix passed 6/6 (commit history/tree clean · affected-package tests `ok internal/cli 181.723s` unpiped exit 0 · guard-step anatomy statically confirmed · `--commit` flag surface + dirty pre-write rejection both ends · SPEC transition/evidence presence · 4-locale `--commit` parity = 3 occurrences each in en/ja/ko/zh). Evidence persisted at `.moai/state/verify/t291/` (machine-local, gitignored).
 - Post-audit cosmetic repair: error-prefix unification (`ad33cc9f4`) — user-visible message now renders `graph stamp: <mx context>` uniformly, mx self-reference prefix removed. Scoped rerun `go test -count=1 -run 'TestGraphStampCmd_|TestStampCodemaps_|TestResolveCommit' ./internal/cli/ ./internal/mx/` → both packages ok.
 - Gaps: live GitHub Actions execution unobserved locally (YAML syntax validation + shell dry-run only) — the delivering flow's first origin/develop run is the witness, predicted RED on the codemaps row until the known orphan-stamp instance (`a995e58fa69b…`) is repaired via lead triage restamp; cross-platform builds deferred to CI.
