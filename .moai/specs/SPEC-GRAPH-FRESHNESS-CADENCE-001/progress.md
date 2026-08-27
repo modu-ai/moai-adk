@@ -345,12 +345,15 @@ the four artifacts, then resolve each against the delivered tree:
 ```bash
 grep -rhno '[A-Za-z0-9_]*\.go:[0-9][0-9,]*' \
   .moai/specs/SPEC-GRAPH-FRESHNESS-CADENCE-001/{spec,plan,acceptance,progress}.md \
-  | awk -F: '{print $2":"$3}' | sort -u          # → 26 distinct citations at 5d95a2e8d,
-                                                  #   re-measured 26 after this record was added
-                                                  #   (its new-value columns carry no file prefix,
-                                                  #    so they are not themselves citations)
+  | awk -F: '{print $2":"$3}' | sort -u          # count is tree-dependent — measure, do not quote
 sed -n '<N>p' <path>                              # resolve each row
 ```
+
+**The citation count is a property of the tree, not a constant — measure it at refresh time rather
+than quoting a figure from here.** It was 26 at `5d95a2e8d` and 27 once M2 landed, which added
+`check.go:53` (the `CodemapsChangedFiles: 40` citation). Every later milestone that cites code moves
+it again, so a number frozen into this record would be false by the time the refresh runs. The
+command above is the measurement; this paragraph is only the warning against skipping it.
 
 A basename-keyed resolver is NOT sufficient here and must not be substituted: `find internal -name
 provenance.go` returns three files (`internal/config`, `internal/mx`, `internal/navigator/sync`) and
@@ -365,6 +368,28 @@ number alone will silently skip 253 and 264.
 
 Ownership: `spec.md` and `plan.md` bodies are manager-spec's, so this milestone records the drift and
 does not repair it.
+
+**Provenance of this section, recorded so the history reads correctly later.** For a period this
+record existed twice: this section, and a near-duplicate `### §E.2b Citation drift introduced by M1`
+placed after `## §E.4`. Both arrived in the same commit, `368bfae2f`, whose message names only the
+second. The orchestrator, reading two dispatches as unstarted, wrote its own subsection and then
+staged and committed `progress.md` in one compound command without re-reading `git status --short`
+immediately beforehand, so this section — uncommitted in the same file at that moment — was swept in
+under that message. Nothing was lost, and the duplicate has been folded into this section and
+removed. Two things were carried over from it and are above: the per-row deciding grep, and the N2
+framing. Its own refresh-deciding command was NOT carried over — measured on the same tree, its
+regex `internal/[a-z]+/[a-z_]+\.go` returns 19 citations against this section's 27, missing
+`internal/graph/symbol/symbol.go:99` (three path segments), the trailing members of the comma list
+`237,253,264`, and every bare-form citation, which is the form `spec.md` and `plan.md` mostly use.
+The originating discipline is `AGENTS.md` §2: stage by explicit pathspec and re-read status
+immediately before staging, which binds even when no concurrent actor was expected.
+
+It then happened a second time, from a different actor: `988adaf98`, the M2 commit, carries this
+section's per-row deciding-grep column and its N2 paragraph — both uncommitted in this file when
+that commit staged it — under an M2 message. Two sweeps by two actors on one file is the signal
+worth keeping here: `progress.md` is a shared surface during run-phase, so an agent that stages it
+whole absorbs whatever another agent has in flight. Nothing was lost either time, but only because
+the overlap was noticed and reported rather than because the staging was safe.
 
 ### M2 — Threshold confirmation (REQ-GFC-005, REQ-GFC-006)
 
@@ -628,38 +653,3 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
-
-### §E.2b Citation drift introduced by M1 (recorded, refresh deferred)
-
-M1 added code to `internal/graph/check.go` and `internal/mx/provenance.go`, which
-moved three source coordinates that `spec.md` and `plan.md` cite by line number.
-Measured in this tree at `5d95a2e8d` by the orchestrator, each by the grep that
-decides it:
-
-| what | cited in spec.md / plan.md (pre-M1) | actual at 5d95a2e8d | deciding command |
-|---|---|---|---|
-| sole comparator | `internal/graph/check.go:187` | `:190` | `grep -n "cur == pv.ContentFingerprint" internal/graph/check.go` |
-| display-only reader | `internal/mx/provenance.go:280` | `:312` | `grep -n "dirty fingerprint=" internal/mx/provenance.go` |
-| `treeDirty` | `internal/mx/provenance.go:201` | `:225` | `grep -n "func treeDirty" internal/mx/provenance.go` |
-
-So the four artifacts currently disagree: `progress.md` carries post-M1
-coordinates, `spec.md` and `plan.md` carry pre-M1 ones.
-
-**The refresh is deliberately deferred to the close of run-phase, after M3.** M3
-adds attribution output to `check.go` and will move these lines again; refreshing
-now would be done twice. This is recorded rather than silent because this SPEC
-already failed audit iter-2 on this exact defect class (N2 — `provenance.go:196`
-cited while the function was at `:208`); the difference is that N2 was wrong and
-unnoticed, and this is wrong and written down.
-
-Refresh-complete is decided by extracting every `internal/…/*.go:NNN` citation
-from the four artifacts and checking each against the delivered tree:
-
-```
-grep -ohE '(internal/[a-z]+/[a-z_]+\.go):[0-9]+' .moai/specs/SPEC-GRAPH-FRESHNESS-CADENCE-001/*.md \
-  | sort -u | while IFS=: read f l; do printf '%s:%s -> ' "$f" "$l"; sed -n "${l}p" "$f"; done
-```
-
-Every row must show the construct its citation claims. Recorded by the
-orchestrator because two dispatches asking the M1 agent to record it returned
-idle with no commit; `spec.md` and `plan.md` bodies were not touched.
