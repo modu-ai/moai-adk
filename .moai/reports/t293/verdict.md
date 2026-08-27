@@ -7,8 +7,16 @@
 
 이슈 modu-ai/moai-adk#1675의 수용기준(AC-001..008, AC-010..011)이 본 워크트리에서 구현·검증되었고,
 AC-004의 양방향 회귀(opty-out→억제 / none→github 복귀)가 테스트로 고정되었다. AC-009는 킥오프 게이트
-결정(D1)에 따라 DEFERRED다. M7 운영 편집(`forge: none`)이 본 저장소 로컬 설정에 적용되어 코드
-병합 전이라도 이 레포 세션의 gh 폴링이 멈춘다.
+결정(D1)에 따라 DEFERRED다. M7 운영 편집(`forge: none`)이 본 저장소 로컬 설정에 적용되었다.
+
+> **[정정 — sync 감사 F2, 2026-08-27]** 이 문단은 원래 "코드 병합 전이라도 이 레포 세션의 gh
+> 폴링이 멈춘다"로 끝났다. 실측으로 반증됐다. 워크트리 세션의 `boardRoot`는
+> `worktree.original_cwd`, 즉 **primary 체크아웃**이고, primary의
+> `.moai/config/sections/statusline.yaml`에는 `forge` 키가 아직 없다(33줄, 병합 전 원본 —
+> `grep -n 'forge' <primary>/.moai/config/sections/statusline.yaml` → rc 1). 이 워크트리의 같은
+> 파일 12행만 `forge: "none"`이다. 따라서 옵트아웃의 운영 효과는 **병합분이 primary 워킹트리에
+> 도달한 뒤에** 발효된다. 코드 결함이 아니라 배포 상태다. 근거:
+> `.moai/reports/t293/sync-audit.md` §2.6.
 
 ## Evidence (증거 — 명령과 실측 출력)
 
