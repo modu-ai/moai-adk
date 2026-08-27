@@ -72,7 +72,7 @@ Tree: `812ee01fc` (worktree `t303`, branch `WT-strategy-key-sync`, base develop 
 
 ```yaml
 sync_complete_at: 2026-08-27
-sync_commit_sha: pending-backfill-sync   # this SPEC's sync commit; backfilled by its immediate successor
+sync_commit_sha: e9f288473   # this SPEC's sync commit; backfilled in this follow-up commit
 sync_status: complete
 spec_status_transition: in-progress -> implemented
 transition_rationale: >-
