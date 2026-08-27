@@ -22,6 +22,7 @@ related_specs: [SPEC-GRAPH-FRESHNESS-CADENCE-001, SPEC-VERIFICATION-COMPLETENESS
 
 | Version | Date | Change | Author |
 |---------|------|--------|--------|
+| 0.2.0 | 2026-08-28 | Lead addendum absorbed. **(1)** Grounded instance 3 re-attributed: the stale-base occurrence is the **lead's own dispatch block**, named as such rather than as an anonymous occurrence, and §B.4 now states that it sits on the same axis as the card's side-discipline — relaying a once-measured value without re-measuring is the form this card prohibits. The attribution was re-verified in this turn before being written (`git rev-parse ec15ec2cd^` → `44095ddc2…`; `git reflog show WT-moving-ref-guard` → created from `origin/develop` at `ec15ec2cd`), because citing the dispatched figure unverified would have made this SPEC an instance of its own defect. **(2)** Fifth grounded instance added (§B.5, §D.3): the lead's change to the dispatch base line, from `base: origin/develop <sha>` to `base: measure at entry … (dispatch-time reference value: <sha>)`. **(3)** The predicate is **kept two-way** at the top level but gains **Test 4**, which routes within the SUBJECT class, and the remedy space expands from three branches to **four** with the addition of R4 (state the measuring command as the criterion, demote the value to a dated reference). §D.1 now states explicitly that classification and remedy selection are two steps, because conflating them is a second, subtler route to the card's dominant failure mode. Why the new case does not become a third top-level branch, and why it does not fold into ANCHOR, is argued in §D.1.1. **(4)** New REQ-MRG-010 / AC-MRG-013: the R4 form must not be flagged. **(5)** New detection limit L6 — the detector cannot tell a live reference value from a rotted one — with AC-MRG-011's grep count raised from 5 to 6. | manager-spec |
 | 0.1.0 | 2026-08-28 | Initial plan-phase authoring for card t342, in worktree `.claude/worktrees/t342` at HEAD `ec15ec2cd`. Every figure in §B was measured in this tree; the corpus survey (§B.3) and the two-dot/three-dot discriminator experiment (§B.2) were run here rather than carried over. The card's own dispatch supplied a third live instance of its subject (§B.4), verified against `git reflog show WT-moving-ref-guard`. The exemption predicate (§D.1) is specified as the primary deliverable per the card's [HARD] clause, and milestone ordering (plan.md §F) puts it first for that reason. | manager-spec |
 
 ## §A. Problem Statement
@@ -126,9 +127,11 @@ three dispositions the predicate produces, which is the useful result:
   `acceptance.md:14` deciding its criteria against `$BASELINE_SHA`. This is a third remediation
   branch that pre-dates this SPEC and is promoted to the recommended default in §D.2 (R2).
 
-### B.4 — This card's dispatch reproduced its own subject (live, this tree)
+### B.4 — The lead's dispatch reproduced this card's own subject (live, this tree)
 
-The dispatch named the base as `origin/develop 44095ddc2`. The tree was created from a later tip:
+**Attributed to the lead**, who owns the instance and asked for it to be recorded as theirs rather
+than as an anonymous occurrence. The dispatch block named the base as `origin/develop 44095ddc2`.
+The tree was created from a later tip:
 
 ```
 git reflog show WT-moving-ref-guard
@@ -144,6 +147,41 @@ against work that does not exist.
 
 This is the card's subject occurring in the act of dispatching the card, and it is used as
 grounding instance 3 in §D.3.
+
+**It is the same axis as the card's side-discipline, not a neighbouring one.** The side-discipline
+says a once-measured divergence value must not keep being cited without re-measurement; the stale
+base line is that rule violated on a base SHA instead of a divergence count. Both are a measurement
+whose validity expired being re-served as current. §D.6 therefore treats them as one defect on two
+carriers rather than as two rules.
+
+The attribution above was **re-verified in this turn before being written** rather than copied from
+the dispatch — `git rev-parse ec15ec2cd^` → `44095ddc2cc1c9fed2b3bd5ac946f48017988aba`, and the
+reflog line quoted above. Citing the dispatched figure on the dispatcher's word would have been the
+prohibited form, in the document that prohibits it.
+
+### B.5 — The lead's dispatch-format change (attributed decision, 2026-08-28)
+
+Recorded on the lead's authority as a design decision, **not** as an observed practice — see the
+Gap note in `progress.md` §E.1. The base line changes from:
+
+```
+base: origin/develop <sha>
+```
+
+to:
+
+```
+base: measure at entry with git fetch origin develop (dispatch-time reference value: <sha>)
+```
+
+The lead's stated reasoning, quoted because it names the mechanism more precisely than a paraphrase
+would: *writing the value first makes it read as the criterion, and demotes re-measurement to a
+confirmation step. Inverting the order is the fix.*
+
+This is the observation that produces remedy **R4** (§D.2) and Test 4 (§D.1). Its significance is
+that the correct remedy here is neither pinning nor keeping a bare moving ref: it is **stating the
+measuring command as the criterion and demoting the value to a dated reference**. A reader who
+knows only "pin it" has no way to reach this form.
 
 ## §C. Scope
 
@@ -182,24 +220,71 @@ Is the same answer expected?
 Tests 1 and 3 will normally agree; where they disagree, Test 1 governs, because it reads the
 sentence's meaning rather than predicting a future run.
 
-**Generality.** The predicate is not specific to git refs. It governs any *moving coordinate* — a
-source line number is the same hazard on a moving tree, and §D.3 instance 2 is that case. What is
-detected here is the git-ref form only; what is *published* is the predicate.
+**Test 4 — Read-time action.** Applies only once Tests 1-3 have returned SUBJECT. Ask: must a later
+reader *act* on this claim by measuring something?
 
-### D.2 — Three remediation branches, not two
+- **No — the claim is narrative.** It describes what mainline carries, quotes a command as text, or
+  records a coordinate as the subject of a correction. Nothing is measured at read time. → **S1**,
+  remedied by R3.
+- **Yes — the claim asserts the current state of a moving thing, and a reader will act on it.** →
+  **S2**, remedied by **R4**: state the measuring command as the criterion, demote any value to a
+  dated reference.
+
+Test 4 exists because the two SUBJECT sub-shapes take structurally different remedies, and because
+S2 written in anchor form is exactly how the lead's dispatch failed (§B.4, §B.5).
+
+**Classification and remedy are two steps, not one.** The tests return a class; the class does not
+name the remedy by itself — ANCHOR selects between R1 and R2, SUBJECT between R3 and R4. This is
+stated because collapsing the two steps is a second, subtler route to the card's dominant failure
+mode: a reader who believes the class *is* the remedy has only as many remedies as there are
+classes, and reaches for the first one that fits.
+
+#### D.1.1 — Why the predicate stays two-way at the top level
+
+The lead asked whether S2 should be a third top-level branch. It should not, and the reason is that
+the top-level tests answer one question — *is this ref an address, or the thing being talked
+about?* — and S1 and S2 give the same answer to it. Separating them requires a different kind of
+question (what will a reader **do** with this claim?), which is naturally a follow-on rather than a
+peer; promoting it would mean the top-level branch is decided by two unrelated criteria at once,
+which is how decision procedures become unusable.
+
+It also must not fold into ANCHOR, and the reason is sharper: an anchor's entire purpose is that its
+value is **fixed**, while an S2 claim's entire purpose is that its value **must not be**. They are
+opposite requirements on the same property. Routing S2 to ANCHOR is precisely the error that
+produced the stale base line — treating "the tip you will start from" as though it were an address.
+
+What the addendum genuinely changes is therefore the **remedy space**, which goes from three
+branches to four (§D.2), plus the routing test above. Recording this as "two classes, four remedies"
+rather than "three classes" keeps the classification honest and puts the new case where a reader
+will actually find it.
+
+#### D.1.2 — Generality
+
+The predicate is not specific to git refs. It governs any *moving coordinate* — a source line
+number is the same hazard on a moving tree, and §D.3 instance 2 is that case. What is detected here
+is the git-ref form only; what is *published* is the predicate.
+
+### D.2 — Four remediation branches
 
 The failure mode the card names is a reader who learns one branch. The finding message therefore
-names all three (AC-MRG-008).
+names all four (AC-MRG-008), and the count matters more than any single entry: with one remedy on
+offer the reader pins; with four, choosing requires reading the predicate.
 
-| | Branch | When | Form |
-|---|---|---|---|
-| **R1** | Pin the literal SHA | Anchor, and the anchor value is already known at authoring time | replace `origin/main` with the resolved 40-hex SHA, recorded with the tree and date it was resolved in |
-| **R2** | Freeze at pre-flight *(recommended default)* | Anchor, but the value is not knowable when the criterion is written — the usual case for a run-phase PRESERVE criterion | `BASELINE_SHA=$(git rev-parse origin/main)` captured before the first run-phase commit; criteria decided against `$BASELINE_SHA`, and the resolved value recorded in `progress.md` |
-| **R3** | Keep the moving ref, declare the exemption | Subject | leave the ref; add the inline marker with a stated reason |
+| | Branch | Class | When | Form |
+|---|---|---|---|---|
+| **R1** | Pin the literal SHA | ANCHOR | the anchor value is already known at authoring time | replace `origin/main` with the resolved 40-hex SHA, recorded with the tree and date it was resolved in |
+| **R2** | Freeze at pre-flight *(recommended default for anchors)* | ANCHOR | the value is not knowable when the criterion is written — the usual case for a run-phase PRESERVE criterion | `BASELINE_SHA=$(git rev-parse origin/main)` captured before the first run-phase commit; criteria decided against `$BASELINE_SHA`, resolved value recorded in `progress.md` |
+| **R3** | Keep the moving ref, declare the exemption | SUBJECT / S1 | narrative — nothing is measured at read time | leave the ref; add the inline marker with a stated reason |
+| **R4** | State the measuring command; demote the value to a dated reference | SUBJECT / S2 | the claim asserts the current state of a moving thing and a reader will act on it | lead with the command that must be run at read time; any value follows it, parenthesized and dated, explicitly labelled a reference |
 
 R2 is recommended over R1 for run-phase criteria because it removes the authoring-time knowledge
 requirement that makes R1 awkward, while giving the same fixed-value guarantee. It is not novel —
 §B.3 records it already in use.
+
+**R4's ordering is load-bearing, not stylistic.** Per §B.5: a value written first reads as the
+criterion and demotes re-measurement to a confirmation step. The remedy is the inversion — command
+first, value second and marked as a reference — so a reader who skims the line still sees an
+instruction to measure rather than a number to trust.
 
 ### D.3 — The three grounded instances, mapped onto the predicate
 
@@ -215,16 +300,48 @@ the correction N2 records." Test 1, applied to a line number rather than a ref: 
 current coordinate destroys the record of the miscitation. → **SUBJECT → R3.** This instance is
 what establishes the predicate's generality (§D.1).
 
-**Instance 3 — this card's dispatch (§B.4).** The dispatch named `44095ddc2` meaning "the tip of
-develop you will start from" — an address. Test 1: substituting the true value `ec15ec2cd` preserves
-the meaning exactly and corrects it. Test 3: re-measuring next week gives a different tip, and that
-variance is *not* the point. → **ANCHOR → R2** (capture at entry, then cite the captured value),
-with the measured cost of not doing so recorded in §B.2.
+**Instance 3 — the lead's dispatch base line (§B.4).** Attributed to the lead at their request; the
+attribution was verified in this turn rather than taken on the dispatcher's word. The line named
+`44095ddc2` meaning "the tip of develop you will start from". Test 1: substituting the *current*
+value corrects it, so the ref is not narrative — but the substitution decays immediately, because
+the sentence means "whatever the tip is when you enter". Test 3: re-measuring next week gives a
+different tip **and that variance is the point** — the reader is supposed to get today's tip. →
+**SUBJECT / S2 → R4.**
+
+This instance is the reason Test 4 exists. Under the v0.1.0 predicate it was classified ANCHOR → R2,
+and that classification was **wrong in a way worth recording**: R2 would have had the *dispatcher*
+freeze a value, which is exactly the shape that failed. The defect is not that the wrong SHA was
+chosen; it is that a value was stated at all where a command belonged. The measured cost of the
+v0.1.0 reading is in §B.2 — a `44095ddc2`-anchored PRESERVE check reports
+`3 files changed, 288 insertions(+)` against work that does not exist.
 
 **Instance 4 (found by the §B.3 survey) — AC-COORD-016.** Asserts a literal command string is
-preserved verbatim in a document. The ref token sits inside quoted subject matter. → **SUBJECT →
-R3.** Retained here because it is the class the detector will most often flag wrongly, and it is
-the fixture for AC-MRG-003.
+preserved verbatim in a document. The ref token sits inside quoted subject matter, and no reader
+measures anything on the strength of it. Test 4: no read-time action. → **SUBJECT / S1 → R3.**
+Retained because it is the class the detector will most often flag wrongly, and it is the fixture
+for AC-MRG-003.
+
+**Instance 5 — the lead's dispatch-format change (§B.5).** The remedy of instance 3, adopted as a
+standing format: `base: measure at entry with git fetch origin develop (dispatch-time reference
+value: <sha>)`. It is instance 3 correctly classified — S2, remedied by R4 — and it is the only one
+of the five that shows the remedy rather than the defect. It supplies the detector's R4-recognition
+fixture (AC-MRG-013), so the guard does not flag the very form it recommends.
+
+**Classification tally, and a skew worth naming.** All five grounded instances are SUBJECT-class —
+S1 ×3 (instances 1, 2, 4), S2 ×2 (instances 3 and 5, the same case as defect and as remedy). **No
+grounded instance is ANCHOR.** The ANCHOR class is evidenced instead by the seven corpus lines named
+in §B.3 (`AC-TST-010`, `AC-AFS-012`, `AC-MSD-010`, `AC-WC-009`, `AC-CFS-010`, `AC-NS2-005`, and the
+already-frozen `SPEC-DESIGN-MOAIWEBV2-002` pair).
+
+The skew is not an accident of collection and is the strongest available argument for shipping the
+predicate: the instances that got *noticed* and escalated into cards are overwhelmingly the ones
+where pinning would have been wrong. Anchor-class defects are quietly correct to pin and generate no
+incident; subject-class ones destroy information when pinned, which is what makes them memorable.
+A guard tuned only on the noticed cases would therefore be tuned entirely on the exemption class.
+
+Both SUBJECT sub-shapes and both of their remedies are represented, which is the minimum needed to
+validate Test 4 at all. Five instances remains a small validation set (`progress.md` §E.1 residual
+risk).
 
 ### D.4 — The exemption is author-declared, and it costs a reason
 
@@ -258,7 +375,16 @@ the `Strict` branch of the exit-code computation) and escalates only under `--st
 ### D.6 — Disposition of the side-discipline (divergence figures)
 
 The card asks whether "a divergence value measured once (`0 0`) must not keep being cited without
-re-measurement" is a requirement, guidance, or out of scope. **Split, and recorded as such:**
+re-measurement" is a requirement, guidance, or out of scope.
+
+**It is the same defect as §A, on a different carrier — not a neighbouring rule.** §B.4 establishes
+this: the lead's stale base line is the side-discipline violated on a base SHA rather than on a
+divergence count, and both are a measurement whose validity expired being re-served as current. The
+remedy is correspondingly the same: **R4**, not R1. One does not pin `0 0`; one writes the
+re-measuring command as the criterion and demotes `0 0` to a dated reference — which is exactly the
+transformation the lead applied to the dispatch base line (§B.5).
+
+**Split by carrier, and recorded as such:**
 
 - **In scope as a requirement (REQ-MRG-006) for the SPEC-document carrier.** A `progress.md` or
   `plan.md` line citing a `rev-list --count --left-right` figure with no accompanying SHA or
@@ -282,11 +408,12 @@ prose and are not identical to any mechanism.
   finding for that line.
 - **REQ-MRG-003**: Where such a marker carries an empty or whitespace-only reason, the linter shall
   emit a finding reporting the marker as incomplete rather than suppressing.
-- **REQ-MRG-004**: The `MovingRefUnpinned` finding message shall name all three remediation branches
-  of §D.2 — pin, freeze, and declare — and shall not present pinning as the sole remedy.
-- **REQ-MRG-005**: The doctrine section shall state the anchor-or-subject predicate (§D.1), its
-  three grounded instances (§D.3), the three remediation branches (§D.2), and the five detection
-  limits (§F), and shall be mirrored into the distributed template.
+- **REQ-MRG-004**: The `MovingRefUnpinned` finding message shall name all four remediation branches
+  of §D.2 — pin, freeze, declare, and state-the-command — and shall not present pinning as the sole
+  remedy.
+- **REQ-MRG-005**: The doctrine section shall state the anchor-or-subject predicate and its four
+  tests (§D.1), the five grounded instances (§D.3), the four remediation branches (§D.2), and the
+  six detection limits (§F), and shall be mirrored into the distributed template.
 - **REQ-MRG-006**: The linter shall emit a `MovingRefUnpinned` finding for a line citing a
   branch-divergence count (`rev-list --count --left-right` against a moving ref) that carries
   neither a SHA nor a date.
@@ -296,6 +423,9 @@ prose and are not identical to any mechanism.
   a resolved SHA pin or a frozen-baseline variable reference (`$BASELINE_SHA` or equivalent).
 - **REQ-MRG-009**: Where only `MovingRefUnpinned` findings are present, `moai spec lint` shall exit
   0; under `--strict` it shall exit non-zero.
+- **REQ-MRG-010**: Where a line is written in the R4 form — a measuring command stated as the
+  criterion, with any value following it parenthesized and labelled a reference — the linter shall
+  not emit `MovingRefUnpinned` for that line.
 
 ## §F. Detection limits (stated, not discovered later)
 
@@ -313,7 +443,16 @@ in this SPEC implies coverage of any of them.
   documents `git reset --hard origin/main` as doctrine and will be flagged. This is why the
   exemption is a marker rather than a cleverer regex.
 - **L5 — No carrier outside the SPEC tree is covered.** Dispatch messages, commit messages, PR
-  bodies, and reports under `.moai/reports/` carry the same defect and are not scanned (§D.6).
+  bodies, and reports under `.moai/reports/` carry the same defect and are not scanned (§D.6). The
+  lead's dispatch base line — grounded instance 3, the occurrence that motivated R4 — sits on
+  exactly such a carrier and would not have been caught by this guard.
+- **L6 — A rotted reference value is indistinguishable from a live one.** REQ-MRG-010 exempts the
+  R4 form, and the detector cannot tell whether the parenthesized reference value is current or
+  years stale; it reads the *shape* of the demotion, not the freshness of the number. This limit is
+  **created by** the R4 exemption rather than pre-existing it, and it is accepted deliberately: the
+  alternative is flagging the recommended form, which would teach readers to avoid it. The residual
+  is bounded by R4's own design — the command is stated first, so a reader who follows the line
+  re-measures regardless of what the stale value says.
 
 ## §G. Out of Scope
 
@@ -338,6 +477,12 @@ in this SPEC implies coverage of any of them.
 
 ## §H. Open questions for the operator
 
+- **Q0 — R4 form recognition (new, and the least settled).** REQ-MRG-010 exempts the R4 form, but
+  the form is prose and its recognizable signature is not yet fixed — the lead's dispatch line is
+  one instantiation, not a grammar. If the exclusion is written too loosely it becomes a bypass
+  (any line mentioning a command escapes the guard); too tightly and it misses legitimate
+  variations. Recorded as the run-phase decision most likely to need operator input, and deliberately
+  not guessed here.
 - **Q1 — Marker syntax.** `<!-- moving-ref-ok: … -->` is proposed on the grounds that it renders
   invisibly. An alternative is a visible inline tag readable in the rendered document. Left open
   because it is a taste call about whether the exemption should be visible to a reader of the

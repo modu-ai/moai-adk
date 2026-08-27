@@ -63,9 +63,11 @@ ref is rejected on its own SPEC's terms.
 
 **Most reversible under review; therefore first.** No code.
 
-Author the doctrine section carrying: the anchor-or-subject predicate and its three tests
-(`spec.md` §D.1); the three remediation branches with R2 as recommended default (§D.2); the four
-grounded instances (§D.3); the five detection limits (§F). Placement: a section in
+Author the doctrine section carrying: the anchor-or-subject predicate and its **four** tests
+(`spec.md` §D.1, Test 4 routing within the SUBJECT class); the §D.1 statement that classification
+and remedy selection are two separate steps; the **four** remediation branches, R2 the anchor-class
+default and R4 for live-state claims (§D.2); the **five** grounded instances (§D.3); the **six**
+detection limits (§F). Placement: a section in
 `.claude/rules/moai/core/verification-claim-integrity.md`, which already owns the
 baseline-attribution invariant this defect violates, rather than a new always-loaded file.
 
@@ -93,14 +95,20 @@ exist, changing the syntax means editing every one.
 `internal/spec/lint_movingref.go` implementing `Rule` with `Code() == "MovingRefUnpinned"`:
 moving-ref token detection in a git-command context, invariant-claim marker matching, SHA-pin and
 frozen-baseline-variable exclusion, three-dot non-exemption, marker suppression, divergence-figure
-variant (REQ-MRG-006), and a message naming all three remediation branches.
+variant (REQ-MRG-006), **R4-form exclusion (REQ-MRG-010)**, and a message naming all four
+remediation branches.
+
+The R4-form exclusion is the delicate one: too loose and it is a blanket bypass that silently
+disables the rule, too tight and it flags the recommended remedy. `acceptance.md` AC-MRG-013 carries
+both a mutation and a counter-mutation for exactly this, and `spec.md` §H Q0 records the signature
+as unresolved — resolve it with the operator before implementing, rather than guessing at it.
 
 Registered in the `l.rules` slice in `internal/spec/lint.go`.
 
 Tests in `internal/spec/lint_movingref_test.go`, fixture-driven under `internal/spec/testdata/`.
 Every test states the mutation that makes it fail (see `acceptance.md` §D).
 
-Decides AC-MRG-001, -002, -004, -005, -006, -008, -009.
+Decides AC-MRG-001, -002, -004, -005, -006, -008, -009, -013.
 
 ### M4 — Corpus triage record (classification only)
 
@@ -131,6 +139,11 @@ its own.
   AC-MRG-004.
 - **A bare marker with no reason.** Would make silencing cheaper than fixing; guarded by AC-MRG-003,
   which requires the empty-reason case to still produce a finding.
+- **Believing the class names the remedy.** Two classes, four remedies (`spec.md` §D.1). A reader
+  who collapses the two steps has only as many remedies as classes and takes the first that fits —
+  a second, subtler route to the same "pin everything" outcome.
+- **An R4 exclusion wide enough to be a bypass.** Passes AC-MRG-013 while silently disabling
+  AC-MRG-001; guarded by that criterion's mandatory counter-mutation.
 - **An acceptance criterion that cannot fail.** Every criterion in `acceptance.md` names its
   falsifying input. A guard whose criterion cannot fail is indistinguishable from a guard that is
   switched off — and this SPEC's deliverable *is* a guard, so the hazard is doubled here.

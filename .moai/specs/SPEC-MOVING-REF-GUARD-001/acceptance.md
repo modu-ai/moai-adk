@@ -100,28 +100,35 @@ run-phase without disturbing the rest.
 ### AC-MRG-007 — the predicate ships with the warning (MUST)
 
 **Given** the M1 doctrine section,
-**when** it is read, **then** it contains all three predicate tests of `spec.md` §D.1 (substitution,
-falsification source, re-measurement expectation), all three remediation branches of §D.2, and all
-four grounded instances of §D.3.
+**when** it is read, **then** it contains all four predicate tests of `spec.md` §D.1 (substitution,
+falsification source, re-measurement expectation, read-time action), all four remediation branches
+of §D.2, all five grounded instances of §D.3, and the §D.1 statement that classification and remedy
+selection are two separate steps.
 
-**Decided by:** `grep -c` for the three test names, the three branch labels `R1`/`R2`/`R3`, and the
-four instance identifiers, in the doctrine file.
+**Decided by:** `grep -c` for the four test names, the four branch labels `R1`/`R2`/`R3`/`R4`, and
+the five instance identifiers, in the doctrine file.
 **Fails when:** the doctrine ships with the warning but without the predicate — the card's [HARD]
 prohibition, and its dominant failure mode.
 **Mutation that must turn it red:** delete the "falsification source" test from the doctrine; the
 grep count drops and the criterion fails.
+**Second mutation, for the addendum:** delete Test 4 (read-time action). The S1/S2 split becomes
+undecidable, so instances 3 and 5 can no longer be routed to R4 — the criterion must fail on the
+test-name count.
 
-### AC-MRG-008 — the finding message names all three branches (MUST)
+### AC-MRG-008 — the finding message names all four branches (MUST)
 
 **Given** any emitted `MovingRefUnpinned` finding,
 **when** its `Message` is asserted on in `lint_movingref_test.go`,
-**then** it names pinning, freezing at pre-flight, and declaring the exemption — and does not
-present pinning as the sole remedy.
+**then** it names pinning, freezing at pre-flight, declaring the exemption, and stating the
+measuring command — and does not present pinning as the sole remedy.
 
 **Fails when:** the message reads "pin the SHA" alone. This is the mechanism by which the dominant
 failure mode reaches a reader: most people act on the message and never open the doctrine.
 **Mutation that must turn it red:** shorten the message to name only pinning; the string assertion
 fails.
+**Second mutation, for the addendum:** drop only R4 from the message, leaving three branches. The
+assertion must still fail — R4 is the branch a reader cannot reach by intuition, and the one the
+lead's own dispatch failure demonstrates is needed (`spec.md` §B.5).
 
 ### AC-MRG-009 — the rule reads sibling artifacts (MUST)
 
@@ -151,14 +158,18 @@ to prevent.
 ### AC-MRG-011 — the detection limits are stated (MUST)
 
 **Given** the M1 doctrine section,
-**when** it is read, **then** it states all five limits L1-L5 of `spec.md` §F, and no acceptance
+**when** it is read, **then** it states all six limits L1-L6 of `spec.md` §F, and no acceptance
 criterion in this SPEC asserts coverage of any of them.
 
-**Decided by:** `grep -c 'L[1-5] —'` over the doctrine file returning 5, and a manual read of §C
-confirming no criterion claims L1 coverage.
+**Decided by:** `grep -c 'L[1-6] —'` over the doctrine file returning 6, and a manual read of §C
+confirming no criterion claims L1 or L6 coverage.
 **Fails when:** L1 (refs expressed without an `origin/` token) is dropped — it is the limit most
 likely to be quietly omitted, because stating it weakens the apparent value of the deliverable.
-**Mutation that must turn it red:** delete the L1 paragraph; the grep count drops to 4.
+**Mutation that must turn it red:** delete the L1 paragraph; the grep count drops to 5.
+**Second mutation, for the addendum:** delete L6 (a rotted reference value is indistinguishable
+from a live one). L6 is the limit the R4 exemption *creates*, so omitting it would let the SPEC
+introduce a blind spot in the same delivery that claims to enumerate them — the count drops to 5
+and the criterion fails.
 
 ### AC-MRG-012 — template mirror and neutrality (MUST)
 
@@ -173,10 +184,34 @@ is not cosmetic here.
 **Mutation that must turn it red:** copy the local doctrine verbatim into the template; the
 neutrality guard reports the SPEC-ID and SHA tokens.
 
+### AC-MRG-013 — the R4 form is not flagged (MUST)
+
+**Given** a fixture line in the R4 form —
+`base: measure at entry with git fetch origin develop (dispatch-time reference value: 44095ddc2)` —
+**when** the linter runs over it,
+**then** zero `MovingRefUnpinned` findings are reported.
+
+**Fails when:** the R4 exclusion is absent, and the guard flags the very form the doctrine
+recommends. That failure is worse than a plain false positive: it teaches readers to avoid the
+correct remedy, which is the card's dominant failure mode arriving by a different road.
+**Mutation that must turn it red:** remove the R4-form exclusion from the rule; the finding
+reappears.
+**Counter-mutation, required — the exclusion must not become a bypass:** replace the fixture with
+`git diff --name-only origin/main -- internal/ (unchanged)`, which mentions a git command and a
+parenthesis but states a *result* rather than an instruction to measure. This MUST still be flagged.
+Without this second assertion, an over-broad exclusion — "any line containing a command and a
+parenthesis" — passes AC-MRG-013 while silently disabling AC-MRG-001, and the guard is off.
+**Open:** the recognizable signature of the R4 form is `spec.md` §H Q0, unresolved at plan-phase.
+This criterion fixes the *behaviour* required of whatever signature is chosen; it does not assert
+the signature exists yet.
+
 ## §D. Definition of Done
 
-- Criteria AC-MRG-001 through AC-MRG-005 and AC-MRG-007 through AC-MRG-012 PASS; AC-MRG-006 PASSes
+- Criteria AC-MRG-001 through AC-MRG-005 and AC-MRG-007 through AC-MRG-013 PASS; AC-MRG-006 PASSes
   or is withdrawn with the withdrawal recorded in `spec.md` HISTORY.
+- AC-MRG-013's counter-mutation was run and observed to keep AC-MRG-001 red, proving the R4
+  exclusion did not become a blanket bypass. An R4 exclusion accepted on AC-MRG-013 alone is not
+  accepted.
 - Every criterion's stated mutation was actually planted, observed to turn the criterion red, and
   reverted — recorded in `progress.md` §E.2 with the verbatim failing output. A criterion asserted
   to be falsifiable without the mutation having been run is not evidence (`verification-claim-integrity.md` §1).
