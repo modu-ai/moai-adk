@@ -16,28 +16,28 @@ fake.
 
 ## §B. Known Issues Inherited
 
-- `mx.DefaultDescribedRoots` is consumed by five call sites (`internal/graph/check.go:168`,
-  `internal/graph/symbol/symbol.go:99`, and `internal/mx/provenance.go:237,253,264` — the
+- `mx.DefaultDescribedRoots` is consumed by five call sites (`internal/graph/check.go:200`,
+  `internal/graph/symbol/symbol.go:99`, and `internal/mx/provenance.go:269,285,296` — the
   codemaps-gen, mx-scan and graph-build stamp writers). This SPEC must not change that list — the
   predicate is a separate axis (spec.md §D.1).
 - **`aggregateFingerprint` has four call sites and only one of them may be filtered.** Measured:
-  `internal/graph/check.go:181` (codemaps dirty checker — filter), `internal/graph/meta.go:67`
+  `internal/graph/check.go:216` (codemaps dirty checker — filter), `internal/graph/meta.go:67`
   (`dirFingerprint`, the edges layer's source sets — **must not** filter, REQ-GFC-003a) and
-  `internal/mx/provenance.go:219` (the call inside `baseProvenance`, whose declaration is at `:208`;
-  shared by all three stamp writers — filter for the codemaps stamp only). spec.md §D.1 records what
+  `internal/mx/provenance.go:251` (the fingerprint call inside `baseProvenance`, whose declaration
+  is at `:240`; shared by all three stamp writers — filter for the codemaps stamp only). spec.md §D.1 records what
   a filter inside the function would do to the edges layer.
 - **The codemaps content fingerprint has a producer and a consumer, and they must move together.**
-  `baseProvenance` writes it; `check.go:181` computes the current value and `:187` compares it.
+  `baseProvenance` writes it; `check.go:216` computes the current value and `:222` compares it.
   Filtering one without the other leaves every dirty codemaps stamp permanently mismatched. Existing
   dirty codemaps stamps are invalidated by this change; they are transient by construction (only on
   trees with uncommitted described-source changes), so this is accepted rather than migrated.
-- **Leaving the mx-scan and graph-build stamps unfiltered rests on a measured premise**: `check.go:187`
-  is the only non-test comparator of `ContentFingerprint` in the tree (`provenance.go:280` reads it
+- **Leaving the mx-scan and graph-build stamps unfiltered rests on a measured premise**: `check.go:222`
+  is the only non-test comparator of `ContentFingerprint` in the tree (`provenance.go:312` reads it
   for display only), so nothing compares what those two producers write. spec.md §D.1 states the
   premise and its obligation: adding a comparing consumer against the mx-index or edges layer
   requires re-checking REQ-GFC-003's pairing. If the run phase finds a second comparator already
   present, stop for a judgment rather than proceeding — the asymmetry is no longer safe.
-- **`treeDirty` (`provenance.go:201`) is examined and deferred, not overlooked.** It selects
+- **`treeDirty` (`provenance.go:225`) is examined and deferred, not overlooked.** It selects
   `baseProvenance`'s anchor branch without consulting the predicate, so a tree dirty only under
   `testdata` is still refused the `--commit` anchor. Accepted residual (spec.md §D.1 / §E), out of
   scope for this SPEC — do not "fix" it in passing.
@@ -77,7 +77,7 @@ The judgment most likely to be revised on review: *which files count*.
 - Apply it in `gitDiffNameCount` (`internal/graph/check.go`) to both the `git diff --name-only`
   branch and the `git ls-files --others` branch.
 - Add a predicate-bearing fingerprint variant (e.g. `AggregateDescribedFingerprintFiltered`) and use
-  it at `check.go:181` **and** in the codemaps stamp path, so producer and consumer agree
+  it at `check.go:216` **and** in the codemaps stamp path, so producer and consumer agree
   (REQ-GFC-003). Two mechanisms are open: give `baseProvenance` a fingerprint-function parameter and
   have `StampCodemaps` pass the filtered one, or have `StampCodemaps` recompute `ContentFingerprint`
   after `baseProvenance` returns. Either is acceptable; the first is cleaner, the second smaller.

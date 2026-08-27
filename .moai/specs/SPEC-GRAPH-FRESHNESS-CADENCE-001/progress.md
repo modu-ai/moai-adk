@@ -23,9 +23,10 @@ Plan-phase artifacts authored for card t322 in worktree
   `.moai/reports/t322/plan-audit.md`.
 - Remediation landed at v0.2.0; the per-defect account is the `spec.md` HISTORY row for that
   version. D1 was additionally confirmed by the orchestrator directly against source
-  (`internal/mx/provenance.go:107-143` applies no extension filter; `internal/graph/meta.go:67`
-  routes three non-Go directories through it), so it is an established finding rather than an
-  auditor hypothesis.
+  (`internal/mx/provenance.go:121-123` — `aggregateFingerprint`, which still applies no extension
+  filter, M1 having moved the walk itself into `aggregateFingerprintPred` where the `admit`
+  predicate is threaded; `internal/graph/meta.go:67` routes three non-Go directories through it),
+  so it is an established finding rather than an auditor hypothesis.
 - D2 reversed the threshold judgment: the v0.1.0 value 15 was derived on the per-integration axis
   while the metric is cumulative-since-stamp; on the cumulative axis 15 reds the gate roughly twice
   per day at the observed integration rate, and the streak this SPEC exists to fix carries a
@@ -43,14 +44,173 @@ Plan-phase artifacts authored for card t322 in worktree
   disclaimer there that it is not the reason 40 is retained.
 - Two consumers examined at v0.2.1 and given explicit dispositions in `spec.md` §D.1, so neither
   reads as an oversight to a later reader: the unpaired `StampMXScan` / `StampEdges` producers are
-  **safe on a stated premise** (`check.go:187` is the only non-test `ContentFingerprint` comparator —
-  re-measured at this HEAD), and `treeDirty` (`provenance.go:201`) is **examined and deferred** with
+  **safe on a stated premise** (`check.go:222` is the only non-test `ContentFingerprint` comparator —
+  re-measured at this HEAD), and `treeDirty` (`provenance.go:225`) is **examined and deferred** with
   its residual recorded (a tree dirty only under `testdata` is still refused the `--commit`
   merge-base anchor). The `treeDirty` deferral is a candidate for a follow-up card — operator's call.
 - Ordering basis for t322 / t311 / t304: `spec.md` §F.
 - Open questions deliberately left to the operator: `spec.md` §G (**four** — Q4 added at v0.2.0 and
   restated on the outlier-excluded cadence figure at v0.2.1).
 - Evidence path: `.moai/reports/t322/`.
+
+## §E.1c Deferred citation refresh — executed at run-phase close
+
+The one-shot refresh scheduled by `§E.2`'s `#### Coordinate drift caused by M1` and confirmed
+runnable by `#### Coordinate drift caused by M3`. Executed in worktree
+`/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t322`, branch `WT-graph-freshness-cadence`, against
+the delivered tree at `8b11bbba1`, on 2026-08-28. Scope: `spec.md`, `plan.md`, and `§E.1`/`§E.1b`
+of this file. **Line numbers and the prose that names a changed construct — nothing else.** No
+requirement, judgment, scope decision or acceptance criterion is touched.
+
+`acceptance.md` was checked rather than assumed: the enumeration below returns no row for it, so it
+carries no line-number citation and needed no edit.
+
+### The resolver
+
+Recorded as a command rather than as a result, because a result is true only of the tree it was run
+against:
+
+```bash
+W=$(git rev-parse --show-toplevel)
+for art in "$@"; do
+  grep -no '[A-Za-z0-9_/]*[A-Za-z0-9_]\.go:[0-9][0-9,-]*' "$art" | while IFS= read -r hit; do
+    aln=${hit%%:*}; cite=${hit#*:}; file=${cite%%.go:*}.go; nums=${cite#*.go:}
+    case $file in
+      */*)           path=$file ;;                              # already a full path
+      check.go)      path=internal/graph/check.go ;;            # basenames collide — map explicitly
+      meta.go)       path=internal/graph/meta.go ;;
+      symbol.go)     path=internal/graph/symbol/symbol.go ;;
+      provenance.go) path=internal/mx/provenance.go ;;
+      *) path=$(find "$W/internal" -name "$file" -not -path '*/testdata/*' | sed "s#^$W/##" | head -1) ;;
+    esac
+    for n in $(printf '%s' "$nums" | tr ',-' '  '); do        # expand comma lists AND ranges
+      src=$(awk -v n="$n" 'NR==n{sub(/^[[:space:]]+/,""); print; f=1} END{if(!f) print "<NO SUCH LINE>"}' "$W/$path")
+      [ -z "$src" ] && src='<BLANK LINE>'
+      printf '%-13s %-4s %-40s %s\n' "$(basename "$art")" "$aln" "$path:$n" "$src"
+    done
+  done
+done
+```
+
+It is built against four failure modes, three of them named in the M1 record and the fourth found
+while running it:
+
+1. **Multi-segment paths.** The character class admits `/`, so `internal/graph/symbol/symbol.go:99`
+   matches whole. A `internal/[a-z]+/[a-z_]+\.go` shape does not.
+2. **Comma lists.** `237,253,264` is expanded by `tr`, so every member is resolved rather than only
+   the first. A resolver that splits on the first number silently drops the trailing two.
+3. **Basename collisions.** `provenance.go` exists in `internal/config`, `internal/mx` and
+   `internal/navigator/sync`; `check.go` and `symbol.go` collide likewise. Bare-form citations are
+   therefore mapped through an explicit table keyed on the path each citing sentence names — never
+   resolved by basename search.
+4. **Ranges, and blank target lines.** `107-143` is a fourth citation form, present in `§E.1b` and
+   named by neither drift record; `tr` expands it to both endpoints. Separately, a citation whose
+   target line is blank must not be reported as missing — the first run mislabelled
+   `check.go:168` that way, so `<BLANK LINE>` and `<NO SUCH LINE>` are now distinguished.
+
+### Disposition
+
+Old values below are historical by construction — this table is a record of a move, so its left
+column resolves against the pre-refresh tree and its right column against `8b11bbba1`.
+
+| Cited construct | Old | New | Disposition |
+|---|---|---|---|
+| `roots = mx.DefaultDescribedRoots` (`internal/graph/check.go`) | 168 | 200 | corrected |
+| codemaps dirty-branch recompute (`internal/graph/check.go`) | 181 | 216 | corrected |
+| sole `ContentFingerprint` comparator (`internal/graph/check.go`) | 187 | 222 | corrected |
+| `dirFingerprint`'s aggregate call (`internal/graph/meta.go`) | 67 | 67 | unmoved — verified, not assumed |
+| `DefaultDescribedRoots` consumer (`internal/graph/symbol/symbol.go`) | 99 | 99 | unmoved — verified, not assumed |
+| `aggregateFingerprint` (`internal/mx/provenance.go`) | 107-143 | 121-123 | corrected **+ prose**: M1 moved the walk into `aggregateFingerprintPred`, so the span that once held it now holds only the nil-`admit` wrapper |
+| `func treeDirty` (`internal/mx/provenance.go`) | 201 | 225 | corrected |
+| `func baseProvenance` (`internal/mx/provenance.go`) | 208 | 240 | corrected |
+| fingerprint call inside `baseProvenance` (`internal/mx/provenance.go`) | 219 | 251 | corrected **+ prose**: the call is now `fingerprint(projectRoot, describedRoots)` through the new `fingerprint fingerprintFunc` parameter, not a direct `aggregateFingerprint` call |
+| three stamp writers' `baseProvenance` calls (`internal/mx/provenance.go`) | 237,253,264 | 269,285,296 | corrected |
+| `Provenance.Describe` display reader (`internal/mx/provenance.go`) | 280 | 312 | corrected |
+| N2's quoted coordinates (`internal/mx/provenance.go`) | 196 / 208 / 219 | — | **left historical** — see below |
+
+Nothing was found unresolvable.
+
+### What was deliberately left, and why
+
+The `spec.md` v0.2.1 HISTORY row records audit finding N2: `baseProvenance` was cited at
+`provenance.go:196`, which is inside `ResolveCommit`, and was corrected to `:208` and `:219`. In
+that sentence the coordinates are the **subject** of the finding, not addresses into the tree —
+`:196` is the defect and `:208` / `:219` are the remediation. Renumbering any of the three would
+rewrite what the audit found and what the correction was, erasing the record. The M1 drift record
+names `:196` explicitly; the reason it gives ("refreshing it would erase the correction it
+documents") applies with equal force to the two values that *are* that correction, so all three are
+left as written.
+
+The discriminator applied throughout is therefore **mention versus use**: where a coordinate is
+quoted as the thing being discussed it stays, and where it is used as an address for a construct it
+is refreshed. Every other HISTORY citation — `treeDirty`, the `ContentFingerprint` comparator,
+`baseProvenance` in the v0.2.0 D1 account — is an address, and was refreshed accordingly, so a
+reader following one lands on the construct the sentence names.
+
+`§E.2` and `§E.3` are out of scope and untouched. Their coordinates are measurements attributed to
+named SHAs (`4a50d44f4`, `5d95a2e8d`, `988adaf98`), and a measurement rewritten to a later tree is
+no longer a measurement.
+
+### Verbatim resolution, post-refresh
+
+`spec.md`, `plan.md`, `acceptance.md` — `acceptance.md` contributes no rows:
+
+```text
+spec.md       25   internal/mx/provenance.go:196            func GitHead(root string) string {
+spec.md       25   internal/mx/provenance.go:196            func GitHead(root string) string {
+spec.md       26   internal/mx/provenance.go:196            func GitHead(root string) string {
+spec.md       26   internal/mx/provenance.go:225            func treeDirty(root string, roots []string) bool {
+spec.md       26   internal/graph/check.go:222              if cur == pv.ContentFingerprint {
+spec.md       27   internal/graph/meta.go:67                return mx.AggregateDescribedFingerprint(filepath.Dir(dir), []string{filepath.Base(dir)})
+spec.md       27   internal/mx/provenance.go:240            func baseProvenance(projectRoot, generatedBy string, describedRoots []string, fingerprint fingerprintFunc) *Provenance {
+spec.md       286  internal/graph/check.go:200              roots = mx.DefaultDescribedRoots
+spec.md       287  internal/graph/symbol/symbol.go:99       for _, root := range mx.DefaultDescribedRoots {
+spec.md       288  internal/mx/provenance.go:269            pv := baseProvenance(projectRoot, "codemaps-gen", DefaultDescribedRoots, AggregateDescribedFingerprintFiltered)
+spec.md       288  internal/mx/provenance.go:285            pv := baseProvenance(projectRoot, "mx-scan", DefaultDescribedRoots, AggregateDescribedFingerprint)
+spec.md       288  internal/mx/provenance.go:296            pv := baseProvenance(projectRoot, "graph-build", DefaultDescribedRoots, AggregateDescribedFingerprint)
+spec.md       297  internal/graph/meta.go:67                return mx.AggregateDescribedFingerprint(filepath.Dir(dir), []string{filepath.Base(dir)})
+spec.md       308  internal/mx/provenance.go:240            func baseProvenance(projectRoot, generatedBy string, describedRoots []string, fingerprint fingerprintFunc) *Provenance {
+spec.md       310  internal/graph/check.go:216              cur, err := mx.AggregateDescribedFingerprintFiltered(projectRoot, roots)
+spec.md       313  internal/graph/check.go:216              cur, err := mx.AggregateDescribedFingerprintFiltered(projectRoot, roots)
+spec.md       322  internal/graph/check.go:216              cur, err := mx.AggregateDescribedFingerprintFiltered(projectRoot, roots)
+spec.md       323  internal/mx/provenance.go:312            return fmt.Sprintf("provenance: tree=%s dirty fingerprint=%s", p.TreeRoot, shortHash(p.ContentFingerprint))
+spec.md       335  internal/mx/provenance.go:225            func treeDirty(root string, roots []string) bool {
+spec.md       475  internal/mx/provenance.go:225            func treeDirty(root string, roots []string) bool {
+plan.md       19   internal/graph/check.go:200              roots = mx.DefaultDescribedRoots
+plan.md       20   internal/graph/symbol/symbol.go:99       for _, root := range mx.DefaultDescribedRoots {
+plan.md       20   internal/mx/provenance.go:269            pv := baseProvenance(projectRoot, "codemaps-gen", DefaultDescribedRoots, AggregateDescribedFingerprintFiltered)
+plan.md       20   internal/mx/provenance.go:285            pv := baseProvenance(projectRoot, "mx-scan", DefaultDescribedRoots, AggregateDescribedFingerprint)
+plan.md       20   internal/mx/provenance.go:296            pv := baseProvenance(projectRoot, "graph-build", DefaultDescribedRoots, AggregateDescribedFingerprint)
+plan.md       24   internal/graph/check.go:216              cur, err := mx.AggregateDescribedFingerprintFiltered(projectRoot, roots)
+plan.md       24   internal/graph/meta.go:67                return mx.AggregateDescribedFingerprint(filepath.Dir(dir), []string{filepath.Base(dir)})
+plan.md       26   internal/mx/provenance.go:251            if fp, err := fingerprint(projectRoot, describedRoots); err == nil {
+plan.md       30   internal/graph/check.go:216              cur, err := mx.AggregateDescribedFingerprintFiltered(projectRoot, roots)
+plan.md       34   internal/graph/check.go:222              if cur == pv.ContentFingerprint {
+plan.md       35   internal/mx/provenance.go:312            return fmt.Sprintf("provenance: tree=%s dirty fingerprint=%s", p.TreeRoot, shortHash(p.ContentFingerprint))
+plan.md       40   internal/mx/provenance.go:225            func treeDirty(root string, roots []string) bool {
+plan.md       80   internal/graph/check.go:216              cur, err := mx.AggregateDescribedFingerprintFiltered(projectRoot, roots)
+plan.md       84   internal/graph/meta.go:67                return mx.AggregateDescribedFingerprint(filepath.Dir(dir), []string{filepath.Base(dir)})
+```
+
+`§E.1`/`§E.1b` of this file, resolved over `sed -n '1,55p'` of it as it stood immediately before
+this subsection was appended:
+
+```text
+e1b.md        26   internal/mx/provenance.go:121            func aggregateFingerprint(projectRoot string, roots []string) (string, error) {
+e1b.md        26   internal/mx/provenance.go:123            }
+e1b.md        28   internal/graph/meta.go:67                return mx.AggregateDescribedFingerprint(filepath.Dir(dir), []string{filepath.Base(dir)})
+e1b.md        47   internal/graph/check.go:222              if cur == pv.ContentFingerprint {
+e1b.md        48   internal/mx/provenance.go:225            func treeDirty(root string, roots []string) bool {
+```
+
+Every row above resolves to the construct its citing sentence names, with one intended exception:
+the three `provenance.go:196` rows, which resolve to `func GitHead` because they are N2's quotation
+of a wrong citation and are preserved as such. Two of those three rows are the v0.2.2 HISTORY entry
+recording this refresh, which necessarily names the coordinate it declined to change.
+
+The reader who re-runs this later should expect different artifact line numbers and, if any source
+moves again, different source coordinates. The command is the check; these rows are only what it
+printed here.
 
 ## §E.2 Run-phase Evidence
 
