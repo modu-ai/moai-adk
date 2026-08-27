@@ -1,0 +1,88 @@
+### zone
+274:### §4.1 통합 레인 (git-flow, `develop` 원격 공유)
+339:## 5. Version Management
+--- wc
+     666 CLAUDE.local.md
+--- INV-001 last content commit
+20fab1786 2026-08-27 14:59:01 +0900
+--- INV-002 twin ---
+7:---
+71:---
+229:---
+241:---
+337:---
+343:---
+389:---
+395:---
+441:---
+478:---
+484:---
+498:---
+514:---
+527:---
+549:---
+590:---
+619:---
+631:---
+650:---
+--- INV-003 headings
+9:## 1. Quick Start
+11:### Work Location
+20:### Development Cycle
+28:### [CRITICAL] moai CLI vs /moai Slash Command
+73:## 2. File Synchronization
+75:### Protected Directories (Never Modify During Template Sync)
+83:### Template Source (Single Source of Truth)
+92:### [HARD] Template-First Rule
+114:### Local-Only Files (Never in Templates)
+146:### [HARD] §2.3 moai update는 관리 대상 뿌리 안의 로컬 전용 파일을 통째로 삭제한다
+204:### [HARD] settings.local.json Separation
+215:### [WARN] OpenTelemetry / OTEL in Tests
+222:### Embedded Template System
+231:## 3. Code Standards
+235:### Go-Specific (이 프로젝트 전용)
+243:## 4. Git Workflow
+245:### Before Commit
+251:### Before Push
+256:### Commit Message Format
+274:### §4.1 통합 레인 (git-flow, `develop` 원격 공유)
+339:## 5. Version Management
+345:## 6. Testing Guidelines
+347:### ⚠️ IMPORTANT: Prevent Accidental File Modifications
+351:### Test Isolation
+376:### Coverage Targets
+381:### Go Test Execution Rules
+391:## 7. Hook Development Guidelines
+397:## 8. Template Variable Strategy
+399:### Template vs Local Settings
+413:### Template Variables
+443:## 9. Configuration System
+445:### Config File Format
+460:### Configuration Priority
+480:## 10. Build and Development Commands
+486:## 11. Frequent Issues and Solutions
+494:### [HARD] 사용 중 버그·개선 발견 → 즉시 `/moai:feedback`
+500:## 12. YAML Frontmatter 빠른 참조
+504:### 로컬 개발 체크리스트
+516:## 13. GLM Integration Testing
+518:### [HARD] Dev 프로젝트에서 GLM 통합 테스트 실행 금지
+529:## 14. 하드코딩 방지
+531:### [HARD] Go 코드 (internal/, pkg/) 하드코딩 금지
+538:### [HARD] .sh.tmpl 폴백 경로에 `.HomeDir` 금지
+545:### 하드코딩 허용 영역
+551:## 15. 템플릿 프로그래밍-언어 중립성
+564:### [HARD] `internal/template/templates/` 하위는 16개 프로그래밍 언어를 동등 취급
+571:### 16개 지원 프로그래밍 언어 (모두 동등)
+580:### 체크리스트 (템플릿 수정 시)
+592:## 16. 오케스트레이터 자가 점검
+594:### [HARD] 자가 점검 4 질문 (복잡 작업 시작 전 필수)
+603:### 수량 기반 트리거
+609:### 허용되는 직접 수행
+613:### 순서: Rule 5 → §16 → Rule 1
+621:## 17. docs-site 4개국어 문서 동기화 규칙
+627:### §17.1 디자인 컴포넌트 + 아이콘 규약 → See `.moai/docs/docs-site-design-components.md`
+633:## References
+652:## 28. LSEL 드레인 운영 (지역 자가진화 루프)
+656:### [HARD] 내구 트리거 — 세션 시작 배선
+660:### [HARD] 모든 드레인은 래퍼 경로로
+664:### PROPOSE는 archived 사본 판독

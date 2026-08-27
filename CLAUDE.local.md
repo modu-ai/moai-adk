@@ -2,7 +2,7 @@
 
 > **Purpose**: Essential guide for local moai-adk-go development
 > **Audience**: GOOS (local developer only)
-> **Last Updated**: 2026-05-25
+> **Last Updated**: 2026-08-27
 
 ---
 
@@ -85,7 +85,7 @@ moai version            # Show version
 # All template changes MUST be made here
 internal/template/templates/.claude/
 internal/template/templates/.moai/
-internal/template/templates/.agency/
+# (.agency/ 템플릿 뿌리는 제거됨 — legacy archive; [2026-08-27 감사 정정])
 internal/template/templates/CLAUDE.md
 ```
 
@@ -116,9 +116,10 @@ Never add files directly to the local project directories without also adding th
 .claude/settings.local.json    # Personal settings — runtime-managed, NEVER template
 .claude/settings.json          # Rendered from .json.tmpl
 .claude/agent-memory/          # Per-project agent memory
-.claude/hooks/moai/handle-*.sh # Generated hook wrappers (not templates)
+.claude/hooks/moai/handle-*.sh # Hook wrappers deployed from templates (.sh/.sh.tmpl pairs in internal/template/templates/.claude/hooks/moai/ — edit both sides together, §2.3)
 .claude/rules/local/lifecycle-sync-gate.md                 # Dev-only: maintainer lifecycle sync-gate rule (no template mirror, unreferenced by any shipped template file — intentional local-only)
 .claude/rules/local/repo-local-pr-policy.md               # Dev-only: repo-local all-tier PR policy override (Route A main-direct disabled by branch protection enforce_admins:true; no template mirror — intentional local-only)
+.claude/rules/local/gitflow-lane-protocol.md              # Dev-only: git-flow lane operational rule (2026-08-27 transition; no template mirror — added [2026-08-27 감사])
 .claude/commands/harness/{release-update,github,release}*  # Dev-only: split maintainer harness entries (§21)
 .claude/commands/harness/release-update/manifest.json      # Dev-only: release-update harness manifest (§21)
 .claude/workflows/hns-release-update-run.js                # Dev-only: release-update harness Runner (§21)
@@ -132,26 +133,26 @@ CLAUDE.local.md                # This file
 .moai/state/last-cc-version.json # Dev-only: CC tracking state (§21)
 .moai/research/cc-update-*.md  # Dev-only: CC update reports (§21)
 .moai/cache/                   # Cache
-.moai/logs/                    # Logs
-.moai/state/                   # Session state storage
+.moai/logs/                    # Logs — 내용물만 로컬 전용. 빈 디렉터리 스캐폴드(.gitkeep)는 템플릿에 있다 [2026-08-27 감사 정정]
+.moai/state/                   # Session state storage — 위와 같음(템플릿에 .gitkeep + state/chain/ 스캐폴드 존재)
 .moai/specs/                   # Active SPEC documents
 .moai/plans/                   # Session plans
-.moai/reports/                 # Generated reports
+.moai/reports/                 # Generated reports — 내용물만 로컬 전용(템플릿에 reports/plan-audit/ 스캐폴드 존재) [2026-08-27 감사 정정]
 .moai/manifest.json            # Generated at runtime
 .moai/status_line.sh           # Rendered from .sh.tmpl
-.moai/astgrep-rules/                                                       # Dogfood-only: 실험적 ast-grep 룰셋 전체. §2.3에 따라 .moai/config/astgrep-rules → .moai/astgrep-rules 로 이동(2026-08-15): `.moai/config` 통째 삭제가 로컬 전용 6개(go/{concurrency,error-handling,idioms,resource-safety}.yml, security/{secrets,web}.yml)를 매번 지웠음. gate.yaml `ast_grep_gate.rules_dir` 로 연결. 주의: `moai ast-grep` CLI의 `--rules-dir` 기본값은 여전히 구 경로라 CLI 직접 호출 시 경로를 명시할 것
+.moai/astgrep-rules/                                                       # Dogfood-only: 실험적 ast-grep 룰셋 전체. §2.3에 따라 .moai/config/astgrep-rules → .moai/astgrep-rules 로 이동(2026-08-15): `.moai/config` 통째 삭제가 로컬 전용 6개(go/{concurrency,error-handling,idioms,resource-safety}.yml, security/{secrets,web}.yml)를 매번 지웠음. gate.yaml `ast_grep_gate.rules_dir` 로 연결. 주의: (2026-08-27 감사 정정) `moai ast-grep`/`moai ast-edit` CLI의 `--rules-dir` 기본값은 현재 `gate.yaml`의 `ast_grep_gate.rules_dir`이며, 빈 값이면 기본 경로 폴백 없이 0룰 스캔을 한다(t50)
 ```
 
 ### [HARD] §2.3 moai update는 관리 대상 뿌리 안의 로컬 전용 파일을 통째로 삭제한다
 
 **위 Local-Only 목록에 적혀 있다는 사실만으로는 파일이 보호되지 않는다.** 2026-08-15 `moai update --yes` 실행에서 이 목록에 명시된 파일 12개가 실제로 삭제됐다 — 목록은 사람과 AI가 읽는 문서일 뿐, 삭제를 수행하는 Go 코드는 이 파일을 읽지 않는다.
 
-**삭제 주체**: `CleanMoaiManagedPaths` (`internal/cli/update/deploy/deploy.go:29`). diff 기반이 아니다. 템플릿 재배포 **전에** 아래 뿌리를 `os.RemoveAll`로 **통째 삭제**한 뒤 임베드 템플릿에 있는 것만 다시 깐다. 템플릿에 대응 파일이 없으면 복구되지 않는다.
+**삭제 주체**: `CleanMoaiManagedPaths` (`internal/cli/update/deploy/deploy.go:107`; [2026-08-27 감사 정정]). diff 기반이 아니다. 템플릿 재배포 **전에** 아래 뿌리를 `os.RemoveAll`로 **통째 삭제**한 뒤 임베드 템플릿에 있는 것만 다시 깐다. 템플릿에 대응 파일이 없으면 복구되지 않는다.
 
 ```
 .claude/settings.json      .claude/commands/moai     .claude/agents/moai
 .claude/skills/moai*(글롭) .claude/rules/moai         .claude/output-styles/moai
-.claude/hooks/moai         .moai/config              (deploy.go:122)
+.claude/hooks/moai         .moai/config              (deploy.go:187-190; [2026-08-27 감사 정정])
 ```
 
 `.moai-skip-cleanup` 마커는 이 함수가 **참조하지 않는다**(참조 0회 — v2→v3 clean-reinstall 경로 전용). 사용자가 편집할 수 있는 보호 목록 설정은 **존재하지 않는다**.
@@ -162,7 +163,7 @@ CLAUDE.local.md                # This file
 |---|---|---|
 | 룰 | `.claude/rules/moai/**` | `.claude/rules/` 하위의 **비-moai** 디렉터리 |
 | 스킬 | `.claude/skills/moai*` | `moai`로 **시작하지 않는** 이름 (글롭 회피) |
-| ast-grep 룰셋 | `.moai/config/astgrep-rules/` | `.moai/` 하위 **`config/` 밖** + `gate.yaml`의 `ast_grep_gate.rules_dir` 지정 (빈 값일 때만 기본 경로 폴백 — `internal/cli/gate.go:160-161`) |
+| ast-grep 룰셋 | `.moai/config/astgrep-rules/` | `.moai/` 하위 **`config/` 밖** + `gate.yaml`의 `ast_grep_gate.rules_dir` 지정 (빈 값이면 기본 경로 폴백 없음 — t50, `internal/cli/astgrep.go:69,105`; [2026-08-27 감사 정정]) |
 | 하네스 | — | `.claude/skills/hns-*`, `.claude/agents/harness/`, `.claude/commands/harness/`, `.moai/harness/` (`IsUserOwnedNamespace` 백업 대상) |
 
 **[HARD] update 실행 후 매번 검증한다.** 전제: 실행 **전** 추적 파일 수정이 0이어야 diff 귀속이 가능하다.
@@ -196,7 +197,7 @@ git restore --source=HEAD -- .moai/config/sections/git-strategy.yaml
   for f in internal/template/templates/.claude/hooks/moai/*.tmpl; do b=${f%.tmpl}; [ -f "$b" ] && diff -q "$b" "$f" >/dev/null || echo "DRIFT $(basename $b)"; done
   ```
 
-**참고 — 관련 결함 3건** (별도 카드 소관): ① `CleanMoaiManagedPaths`에 보호 목록 부재(근본 원인) ② `archiveLegacySkills`가 wipe **이후**(`update.go:513`)에 호출돼 원본이 이미 없어 `0 archived`로 조용히 통과 ③ `--dry-run`이 `CleanMoaiManagedPaths` 삭제 예정 목록을 미리보기하지 않음.
+**참고 — 관련 결함 3건** (별도 카드 소관): ① `CleanMoaiManagedPaths`에 보호 목록 부재(근본 원인) ② `archiveLegacySkills`가 wipe **이후**(`internal/cli/update.go:554`; [2026-08-27 감사 정정])에 호출돼 원본이 이미 없어 `0 archived`로 조용히 통과 ③ `--dry-run`이 `CleanMoaiManagedPaths` 삭제 예정 목록을 미리보기하지 않음.
 
 > **§2.2 astgrep-rules 로컬 전용 예외 (2026-07-02)**: 로컬 `.moai/config/astgrep-rules/`의 언어별 서브디렉터리 트리 + `sgconfig.yml`은 dogfood-experimental(10/17 빈 `.gitkeep` stub, 나머지는 데모성 스캐폴드, 메시지 언어 혼재 ko/en, `sgconfig.yml`이 존재하지 않는 `utils` ruleDir 참조 + SPEC-ID 포함)이라 템플릿에 미러하지 않는다. 배포 사용자는 template-managed `go-hardcoding.yml`(root, SPEC-ID stripped) 1개를 baseline으로 받는다. **(2026-08-01 정정)** 종전 이 절은 "`gate.yaml`/`gate` 로더 부재 → `AstGrepGate.Enabled` 항상 컴파일 기본값 false"라고 적었으나 **두 주장 모두 현재 main에서 거짓**이다: 로더는 `internal/config/loader_gate.go` 에 존재하며 `internal/config/loader.go` 의 `Loader.Load` 에서 호출된다(SPEC-CONFIG-AUDIT-REPAIR-001 M2, PR #1142). 실제 기본값은 `internal/config/defaults.go` 의 `AstGrepGate{Enabled: true, BlockOnError: false, WarnOnlyMode: true}` — 즉 **차단 없는 권고 모드로 켜져 있고**, 차단(blocking)만이 `gate.yaml` opt-in이다. 단, **릴리스된 `v3.0.1` 에는 로더가 없어**(`loadGateSection` 호출 0회) 해당 버전 사용자에게는 종전 서술이 여전히 사실이다 — 이것이 이슈 #1265 의 내용이며, 해결책은 코드 수정이 아니라 릴리스다. 16-언어 정식 룰셋 배포(메시지 영어 통일 + 데모 stub → 실제 패턴 + `utils` 정리 + SPEC-ID strip + `sg` config-mode 검증)는 별도 후속 SPEC 소관.
 
@@ -374,8 +375,8 @@ Never use `filepath.Join(cwd, userPath)` when `userPath` can be absolute.
 
 ### Coverage Targets
 
-- Package-level: 85% minimum coverage
-- Critical packages (cli, template, hook): 90%+ coverage
+- Package-level: 85% minimum coverage (`.moai/config/sections/quality.yaml` `test_coverage_target: 85`)
+- Critical packages (cli, template, hook): 90%+ coverage — 목표치로서 유효하나 기계적 근거는 strict 평가 프로필의 전역 "Coverage >= 90%" 게이트뿐이다(`.moai/config/evaluator-profiles/strict.md`; 패키지별 룰은 미발견 [2026-08-27 감사 정정])
 
 ### Go Test Execution Rules
 
@@ -399,7 +400,7 @@ See: `.moai/docs/hook-development.md` — shell-script-only hook pattern, hook w
 
 moai-adk-go uses different path variable strategies:
 
-**Template settings** (`internal/template/templates/.claude/settings.json`):
+**Template settings** (`internal/template/templates/.claude/settings.json.tmpl`; [2026-08-27 감사 정정]):
 - Uses: `{{.GoBinPath}}` template variable (Go template syntax)
 - Purpose: Runtime rendering during `moai init`
 - Cross-platform: Resolved by `template.TemplateContext`
@@ -414,16 +415,18 @@ moai-adk-go uses different path variable strategies:
 Available in Go templates (`*.tmpl` files):
 
 ```go
-type TemplateContext struct {
+type TemplateContext struct { // (요약 발췌 — 전체 구조체는 internal/template/context.go)
     GoBinPath string  // Path to Go bin directory
     HomeDir   string  // User home directory
 }
 ```
 
 **Usage in templates:**
-```go
-// .moai/status_line.sh.tmpl
-export PATH="{{.GoBinPath}}:$PATH"
+```bash
+# .moai/status_line.sh.tmpl — 바이너리 폴백 체인(command -v → ResolvedMoaiPath → $HOME/go/bin)
+if [ -f "$HOME/go/bin/moai" ]; then
+	exec "$HOME/go/bin/moai" statusline
+fi
 ```
 
 **Rendering:**
@@ -432,7 +435,9 @@ ctx := template.NewTemplateContext(
     template.WithGoBinPath(detectGoBinPath()),
     template.WithHomeDir(homeDir),
 )
-deployer.Deploy(ctx, projectRoot, mgr, ctx)
+// Deploy(ctx context.Context, projectRoot string, m manifest.Manager, tmplCtx *TemplateContext)
+// — 첫 인자는 context.Context, 마지막 인자가 TemplateContext다 [2026-08-27 감사 정정]
+deployer.Deploy(context.Background(), projectRoot, mgr, tmplCtx)
 ```
 
 ---
@@ -443,12 +448,9 @@ deployer.Deploy(ctx, projectRoot, mgr, ctx)
 
 moai-adk-go uses YAML for configuration:
 
-**Project config** (`.moai/config/config.yaml`):
-- Main configuration file
-- Contains sections for different settings
+**Project config**: 단일 `config.yaml`은 없다 — 설정은 `.moai/config/sections/*.yaml` 32개 파일로만 존재한다([2026-08-27 감사 정정]; 종전 서술이 가리키던 `.moai/config/config.yaml`은 이 트리에 부재).
 
-**Section files** (`.moai/config/sections/*.yaml`):
-- `config.yaml` - Main config
+**Section files** (`.moai/config/sections/*.yaml`, 32개):
 - `quality.yaml` - Quality gates, development mode
 - `language.yaml` - Language preferences
 - `user.yaml` - User information
@@ -457,9 +459,11 @@ moai-adk-go uses YAML for configuration:
 ### Configuration Priority
 
 1. Environment Variables (override file values) — the actually-implemented
-   config overrides read by `internal/config/manager.go` `applyEnvOverrides`:
-   `MOAI_DEVELOPMENT_MODE`, `MOAI_LOG_LEVEL`, `MOAI_LOG_FORMAT`, `MOAI_NO_COLOR`,
-   plus `MOAI_CONFIG_DIR` (config directory location). All env-var names are
+   config overrides: `internal/config/manager.go` `applyEnvOverrides` reads
+   `MOAI_DEVELOPMENT_MODE`, `MOAI_LOG_LEVEL`, `MOAI_LOG_FORMAT`, `MOAI_NO_COLOR`
+   (manager.go:398-411), while `MOAI_CONFIG_DIR` (config directory location) is
+   honored separately by the same file's config-dir resolver (manager.go:70;
+   [2026-08-27 감사 정정]). All env-var names are
    constants in `internal/config/envkeys.go`.
 2. User Configuration: `.moai/config/sections/*.yaml`
 3. Template Defaults: From `internal/template/templates/.moai/config/`
@@ -484,13 +488,11 @@ moai-adk-go uses YAML for configuration:
 - **Templates not updated after editing** → §2 Embedded Template System (`make build` 필수, `//go:embed all:templates`).
 - **Tests modify ~/.claude/settings.json** → §6 `t.TempDir()` 격리 위반. 테스트가 project root에 파일 만드는지 확인.
 - **Hook timeout** → settings.json `{"timeout": 60}` (기본 5초).
-- **`moai version` exit 137 (SIGKILL) after binary reinstall** → `cp bin/moai ~/go/bin/moai`만으로 부족; 기존 binary 잔재(go install buildinfo·mmap 캐시)가 꼬여 SHA가 같아도 crash. **반드시 `rm -f ~/go/bin/moai && cp bin/moai ~/go/bin/moai`**(또는 `make install`)로 inode 갱신하며 clean 재설치. 맨손 `go install ./cmd/moai`는 금지 — `LDFLAGS`(Makefile:9)를 안 실어서 `pkg/version`의 컴파일 기본값(`Commit="none"`, `Date="unknown"`)이 박히고, 그러면 `strings ~/go/bin/moai | grep <sha>` 기반 binary lag 검증 자체가 불가능해진다. `make install`(Makefile:38)은 `go install $(LDFLAGS) ./cmd/moai`라 안전. 직후 `~/go/bin/moai version; echo $?`로 exit 0 확인(137이면 rm+cp 재시도). 진단 징후: `bin/moai version`=0인데 `~/go/bin/moai version`=137. binary lag 검증은 §6 검증 규율(clear → 측정).
+- **`moai version` exit 137 (SIGKILL) after binary reinstall** → `cp bin/moai ~/go/bin/moai`만으로 부족; 기존 binary 잔재(go install buildinfo·mmap 캐시)가 꼬여 SHA가 같아도 crash. **반드시 `rm -f ~/go/bin/moai && cp bin/moai ~/go/bin/moai`**(또는 `make install`)로 inode 갱신하며 clean 재설치. 맨손 `go install ./cmd/moai`는 금지 — `LDFLAGS`(Makefile:9)를 안 실어서 `pkg/version`의 컴파일 기본값(`Commit="none"`, `Date="unknown"`)이 박히고, 그러면 `strings ~/go/bin/moai | grep <sha>` 기반 binary lag 검증 자체가 불가능해진다. `make install`(Makefile:40-41; [2026-08-27 감사 정정])은 `go install $(LDFLAGS) ./cmd/moai`라 안전. 직후 `~/go/bin/moai version; echo $?`로 exit 0 확인(137이면 rm+cp 재시도). 진단 징후: `bin/moai version`=0인데 `~/go/bin/moai version`=137. binary lag 검증은 §6 검증 규율(clear → 측정).
 
 ### [HARD] 사용 중 버그·개선 발견 → 즉시 `/moai:feedback`
 
 MoAI-ADK를 사용하다 버그나 개선이 필요한 부분을 발견하는 족족 `/moai:feedback`으로 피드백을 제출한다 — 세션을 마친 뒤 몰아서 남기지 않는다. 대상: `moai` CLI 동작, 훅, 템플릿, 스킬, 에이전트, 팩토리·칸반 운영 결함 전반. 재현 명령과 관측된 출력을 함께 남긴다. 구분: 유지자에게 보고할 사안은 `/moai:feedback`, 작업으로 예정할 사안은 `/moai todo add`.
-
----
 
 ---
 
@@ -506,7 +508,7 @@ MoAI-ADK를 사용하다 버그나 개선이 필요한 부분을 발견하는 �
 - [ ] Template 수정 후 `make build` 실행
 - [ ] Local copy (`.claude/`)도 동기화
 
-탐지 스크립트: `memory/audit_sweep_patterns.md` Pattern A 참조.
+탐지 스크립트: 전역 프로젝트 메모리(`~/.claude/projects/-Users-goos-MoAI-moai-adk-go/memory/`)의 `audit_sweep_patterns.md` Pattern A 참조.
 
 ---
 
@@ -582,7 +584,7 @@ Dart/Flutter 캐논 이름: **"flutter"** (not "dart").
 - [ ] project_markers 기반 자동 감지 로직이 포함되어 있는가?
 - [ ] 로컬 config와 템플릿이 달라도 정상 (같으면 오히려 의심)
 
-상세 교훈: `memory/lessons.md` #5 참조.
+상세 교훈: 전역 프로젝트 메모리(`~/.claude/projects/-Users-goos-MoAI-moai-adk-go/memory/`)의 `lessons.md` #5 참조.
 
 ---
 
@@ -611,7 +613,7 @@ Typo/포맷 수정, 설정 1개 편집, 사용자 명시 요청, 위임 대상 �
 
 Rule 5(WHAT) → §16(WHO) → Rule 1(HOW) → 실행
 
-상세 교훈 및 5 Whys: `memory/lessons.md` #4 참조.
+상세 교훈 및 5 Whys: 전역 프로젝트 메모리(`~/.claude/projects/-Users-goos-MoAI-moai-adk-go/memory/`)의 `lessons.md` #4 참조.
 
 ---
 
@@ -633,12 +635,12 @@ Sections §18-27 were consolidated into external `.moai/docs/` files to reduce l
 
 - **§5 Version Management** (SemVer pre-release, ldflags injection, release process): `.moai/docs/version-management.md`
 - **§7 Hook Development** (shell-script-only pattern, settings.json format, quoting rules): `.moai/docs/hook-development.md`
-- **§18 Git Workflow** (Enhanced GitHub Flow, branch protection `enforce_admins: true`, Hybrid Trunk RETIRED): `.moai/docs/git-workflow-doctrine.md`
+- **§18 Git Workflow** (Enhanced GitHub Flow 본문 + [2026-08-27] git-flow 전환 상위모델 노트 — 정본은 §4.1, branch protection `enforce_admins: true`, Hybrid Trunk RETIRED): `.moai/docs/git-workflow-doctrine.md`
 - **§19 AskUserQuestion Enforcement + §19.1 Implementation Kickoff Approval Mandatory Restoration** (REQ-ATR-015): canonical SSOT at `.claude/rules/moai/core/askuser-protocol.md` + `.claude/rules/moai/workflow/orchestration-mode-selection.md` §E (the gate is mandatory and score-independent; plan-auditor PASS never auto-bypasses it)
 - **§20 Vercel Build Cost Guard** [HARD]: all Vercel projects MUST use Elastic build machine ($0.0035/CPU min vs Turbo $0.126/min); check Build Machine setting first on cost anomalies
 - **§21 Dev-Only Commands Isolation** (split harnesses, `SPLIT_HARNESS_NAMESPACE_LEAK` sentinel): `.moai/docs/dev-only-commands-isolation.md`
 - **§22 Dev Settings Intent** (settings.json key semantics): `.moai/docs/local-dev-settings-intent.md`
-- **§23 Local Git Workflows** (PR-mandatory 1-person OSS, all tiers via PR): `.moai/docs/git-local-workflow-doctrine.md`
+- **§23 Local Git Workflows** (PR-mandatory 1-person OSS, all tiers via PR — 릴리스 PR 경로; [2026-08-27] 카드 작업은 git-flow `develop` 병합으로 전환, 상위모델 노트 참조): `.moai/docs/git-local-workflow-doctrine.md`
 - **§24 Harness Namespace** (template-managed vs user-owned separation): `.moai/docs/harness-namespace-doctrine.md`
 - **§25 Template Internal-Content Isolation** (neutrality catalogue, CI guard): `.moai/docs/template-internal-isolation-doctrine.md`
 - **§26 Linear 연동** (local-only): `.moai/docs/local-linear-integration.md`
