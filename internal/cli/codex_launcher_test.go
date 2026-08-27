@@ -95,10 +95,12 @@ func (c *codexLaunchCapture) programBasenames() map[string]bool {
 
 // withCodexLaunchCapture stubs both launch seams (recording seven fields per
 // call) and the binary lookup (sentinel path). Direct runs return
-// cap.failDirectWith; spawn runs succeed.
+// cap.failDirectWith; spawn runs succeed. The init-offer gate is pinned OPEN
+// (wired) — launcher-SPEC tests exercise launch mechanics, not the gate.
 func withCodexLaunchCapture(t *testing.T) *codexLaunchCapture {
 	t.Helper()
 	cap := &codexLaunchCapture{}
+	withCodexGateOpen(t)
 	prevDirect, prevSpawn, prevLook := codexDirectLaunchFn, codexSpawnLaunchFn, codexLookPath
 	codexDirectLaunchFn = func(cmd *exec.Cmd) error {
 		cap.add(codexLaunchRecord{
@@ -696,6 +698,7 @@ func TestCodexApp_OutputPassthroughDirect(t *testing.T) {
 	codexDirectLaunchFn = func(cmd *exec.Cmd) error { return cmd.Run() }
 	t.Cleanup(func() { codexLookPath, codexDirectLaunchFn = prevLook, prevDirect })
 	withCodexProjectRoot(t, t.TempDir())
+	withCodexGateOpen(t)
 
 	got, err := withStdoutCapture(t, func() error {
 		c := &cobra.Command{Use: "codex"}
@@ -731,6 +734,7 @@ func TestCodexApp_OutputPassthroughSpawn(t *testing.T) {
 	}
 	t.Cleanup(func() { codexLookPath, codexSpawnLaunchFn = prevLook, prevSpawn })
 	withCodexProjectRoot(t, t.TempDir())
+	withCodexGateOpen(t)
 	prev := inTmuxFn
 	inTmuxFn = func() bool { return true }
 	t.Cleanup(func() { inTmuxFn = prev })
@@ -783,6 +787,7 @@ func TestCodexApp_RealChildExitCodePropagates(t *testing.T) {
 	codexDirectLaunchFn = func(cmd *exec.Cmd) error { return cmd.Run() }
 	t.Cleanup(func() { codexLookPath, codexDirectLaunchFn = prevLook, prevDirect })
 	withCodexProjectRoot(t, t.TempDir())
+	withCodexGateOpen(t)
 
 	c := &cobra.Command{Use: "codex"}
 	err := runCodex(c, []string{"app"})
@@ -803,6 +808,7 @@ func TestCodexApp_RealChildExitCodePropagates(t *testing.T) {
 func TestCodexSpawn_RealAssemblyThroughStubTmux(t *testing.T) {
 	requireTmuxSpawnEnv(t)
 	fixture := codexAppMessageFixture(t)
+	withCodexGateOpen(t)
 
 	prevLook, prevSpawn, prevTmux, prevInTmux := codexLookPath, codexSpawnLaunchFn, tmuxSpawnFn, inTmuxFn
 	codexLookPath = func(string) (string, error) { return fixture, nil }
