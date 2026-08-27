@@ -211,6 +211,120 @@ $ golangci-lint run --timeout=2m ./internal/hook/... ./internal/astgrep/... ./in
                           staticcheck De Morgan — fixed in-place before completion)
 $ grep -rn 'AskUserQuestion\|mcp__askuser' <created files> → zero hits (rc=1)
 
+---
+
+## §E.2b Run-phase Evidence — M2 (coverage matrix, evidence rule, four-class checker)
+
+M2 (card t228), tree `.claude/worktrees/t228`, branch `WT-astgrep-16-langs`, base HEAD
+`075e79344`. Everything below was re-measured in this run; nothing carried forward.
+
+### Item 1 — parser probe re-run (NOT copied forward)
+
+```
+$ sg --version
+ast-grep 0.40.5                                   rc=0   (matches SPEC pin A2)
+
+$ printf 'x <- 1\n' | sg run -l r --stdin
+error: invalid value 'r' for '--lang <LANG>': r is not supported!
+                                                  rc=2
+
+$ printf 'void main() {}\n' | sg run -l flutter --stdin
+error: invalid value 'flutter' for '--lang <LANG>': flutter is not supported!
+                                                  rc=2
+```
+
+Full 16-language axis re-derivation (`sg run -p 'zzz' -l <L> --stdin`, one invocation per id):
+14 ACCEPTED (go, javascript, python, typescript, rust, java, kotlin, csharp, ruby, php, elixir,
+cpp, scala, swift) / 2 REJECTED (r rc=2, flutter rc=2). The 14/2 split is therefore measured
+here, not inherited. Transcript: `.moai/state/verify/t228-m2m3/lang-axis-probe.txt`.
+
+### Items 2-3 — the document
+
+`coverage-matrix.md`: 112 cells (8 families × 14 parseable languages), 14 IMPLEMENTED seeded from
+the measured inventory, 98 PENDING for `SPEC-ASTGREP-BREADTH-001`. Excluded-languages record
+carries both languages, the verbatim rc=2 refusals, the version, and the equal-opportunity idiom.
+
+### Items 4-6 — the checker, and the RED that changed it
+
+RED (authored before the fix, verbatim):
+
+```
+--- FAIL: TestCheckerClassesFireThroughDocumentPath/(c)_bare-assertion_exemption
+    defect (c) bare-assertion exemption misclassified as dangling rule id:
+    [{Class:dangling rule id Key:F3/ruby Detail:names rule id "ruby has no weak-hash sink
+     worth flagging" which is absent from the shipped ruleset}]
+--- FAIL: TestParseCoverageMatrixRoutesSharedColumnByState
+    EXEMPT cell = {... State:EXEMPT RuleID:no csrf token surface in this ecosystem Rationale: ...};
+    want Rationale set, RuleID empty
+```
+
+Cause: column 4 is shared (`rule id / rationale`) and the parser read it as a rule id
+unconditionally. The four classes were proven against hand-built structs but the **wired gate**
+reads markdown first, so a document-level defect (c) landed in class 4 instead of class 3 — the
+right count of failures under the wrong name, which is the exact confusion the four-class split
+exists to prevent. Fixed by routing column 4 on `State` (2 hunks, `ParseCoverageMatrix`).
+
+Two adjacent defects fixed in the same pass, both inside the files this milestone certifies: a
+dead test helper (`matrixLanguageAt`, declared and never called — a new `unused` finding waiting
+to happen) and an unguarded `strings.Fields(...)[0]` index that panics on an empty leading field.
+
+GREEN — all four classes fire through the document path, each named distinctly:
+
+```
+--- PASS: TestCheckerClassesFireThroughDocumentPath
+    --- PASS: /(a)_deleted_cell                        (key-set mismatch, names F3/ruby)
+    --- PASS: /(b)_substitution_at_constant_count      (key-set mismatch at count 112)
+    --- PASS: /(c)_bare-assertion_exemption            (unevidenced exemption; class 4 forbidden)
+    --- PASS: /(d)_dangling_rule_id                    (dangling rule id, names F3/go)
+--- PASS: TestCoverageMatrixDocumentMatchesShippedRuleset
+--- PASS: TestExcludedLanguagesRecordedWithVersionAndProbeOutput
+```
+
+Case (c) asserts the *absence* of the classes it must not emit, so a future re-read of column 4
+cannot make it green again by landing in the wrong bucket.
+
+### Mutant guard — the wired gate is live on the REAL document
+
+```
+# Mutant C: F5/scala row substituted for a duplicate F5/php row (count stays 112)
+--- FAIL: TestCoverageMatrixDocumentMatchesShippedRuleset
+    key-set mismatch findings on the real matrix: [{Class:key-set mismatch Key:matrix
+    Detail:cell key set differs from the 112-key Cartesian product: missing=[F5/scala];
+    duplicated/substituted=[F5/php x2]}]
+```
+
+Reverted; `cmp` reports the restored document byte-identical; post-revert re-run `ok`.
+
+### M2 AC matrix
+
+| AC | claim | evidence | status |
+|---|---|---|---|
+| AC-A16-009 | key set == 112-key Cartesian product, set comparison not count | `TestCoverageMatrixDocumentMatchesShippedRuleset` PASS; mutant C names both sides of a constant-count substitution | PASS |
+| AC-A16-010 | every cell resolves to exactly one state | class-2 branch + document gate PASS; 14/98 accounting asserted | PASS |
+| AC-A16-011 | every exemption carries cite:/probe: | `TestCheckerUnevidencedExemptionDetected`, `TestCheckerEvidencedExemptionsPass`, and document-path case (c) PASS | PASS |
+| AC-A16-012 | no cell names a rule absent from the ruleset | `TestCheckerDanglingRuleIDDetected` + document-path case (d), resolved against the real shipped ruleset | PASS |
+| AC-A16-013 | four synthetic defects, four distinct class names | `TestCheckerClassesFireThroughDocumentPath` 4/4 subtests PASS, (b) load-bearing, (c) forbids misclassification | PASS |
+| AC-A16-014 | excluded record: both languages, verbatim refusal, version, equal-opportunity idiom | `TestExcludedLanguagesRecordedWithVersionAndProbeOutput` PASS; probes re-run this session | PASS |
+
+### M2 gates
+
+```
+$ go test -count=1 ./internal/astgrep/...                       rc=0   ok
+$ go vet ./internal/astgrep/...                                 rc=0
+$ GOOS=windows GOARCH=amd64 go vet ./internal/astgrep/...       rc=0
+$ gofmt -l internal/astgrep/                                    (empty)
+$ golangci-lint run --timeout=3m ./internal/astgrep/...         rc=0   0 issues.
+```
+
+new_warnings_or_lints_introduced: 0. No file under `internal/template/templates/**` touched by
+M2, so no `make build` and no neutrality surface. Nothing pushed.
+
+Gaps (M2): the full repository suite was NOT run — verification is scoped to the affected package
+per the standing local-load prohibition; CI owns the cross-package verdict. `sg test` was not
+re-run at M2 (M1 owns it; M2 touches no rule YAML). Residual risk: the 98 PENDING cells assert
+nothing, by design — the contract they carry is enforced only when the successor fills them, and a
+PENDING cell that is never filled fails no test here.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
