@@ -1,0 +1,9 @@
+id: sec-command-injection-exec
+snapshots:
+  ? |
+    child_process.exec(script);
+  : labels:
+    - source: child_process.exec(script)
+      style: primary
+      start: 0
+      end: 26

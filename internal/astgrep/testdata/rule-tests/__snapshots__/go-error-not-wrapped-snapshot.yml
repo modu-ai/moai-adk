@@ -1,0 +1,17 @@
+id: go-error-not-wrapped
+snapshots:
+  ? |
+    func load() error {
+        err := read()
+        return err
+    }
+  : fixed: |
+      func load() error {
+          err := read()
+          return fmt.Errorf("TODO: operation: %w", err)
+      }
+    labels:
+    - source: return err
+      style: primary
+      start: 42
+      end: 52
