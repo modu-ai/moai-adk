@@ -4,6 +4,15 @@ on:
   pull_request:
     paths:
       - '.moai/specs/**'
+  # develop is the integration branch under git-flow: lane work merges into it
+  # directly, with no card PR to carry the pull_request trigger above. Without a
+  # push trigger this lint never runs on the branch where SPECs actually land.
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - '.moai/specs/**'
 
 permissions:
   contents: read
