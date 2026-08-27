@@ -34,6 +34,7 @@
 1. **변경 후 실렌더 빈도의 실측 미수행.** 이유: 레인 세션이 worktree 격리되어 있어 Primary checkout의 context-usage 스냅샷 디렉터리를 향한 stat 루프가 세션 가드(PUT refusal, "too complex to verify stays inside the worktree")에 4회(Bash 복합형 ×3, Monitor ×1) 기계적으로 거부됐다. `dangerouslyDisableSandbox: true`로도 불가 — 가드는 샌드박스와 별개 계층이므로 우회하지 않았다. Primary 유효층 파일(`settings.json`/`settings.local.json`) 편집도 같은 가드로 불가했다.
 2. **primary 유효층 미반영**(의도된 핸드오프): 이 머신에서 실효 주기는 settings.local.json(statusLine.command=cc-statusline.sh)이 최우선이므로, 머지 후 아래 절차 없으면 본 머신은 여전히 10s로 렌더한다.
 3. 핫리로드 여부(CC가 settings 변경을 재시작 없이 읽는지) 미검증.
+4. **PR 브랜치에서 판정급 CI 무실행** — 리드 지적(2026-08-27)을 본 세션이 사후 기계 대조로 확정: `gh run list --branch WT-statusline-cost --json name,event,conclusion` → `Graph Freshness`·`Community`·`lsel-leak-guard` 3개만 success. 빌드 4플랫폼 / Race / Test / Integration 매트릭스는 이 브랜치에서 한 번도 트리거되지 않았다(`gh pr checks` pass 행만으로는 부재가 보이지 않는 구조). 전 매트릭스 판정은 리드의 develop 직접 병합+push 시점에 받는다(t291·t235와 같은 경로).
 
 ### 핸드오프 — 리드/운영자 후속 절차 (머지 후)
 
