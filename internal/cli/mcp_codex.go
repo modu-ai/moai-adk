@@ -274,6 +274,21 @@ type ReviewOutput struct {
 	// apart from a verdict the review stated plainly, which leaves the next
 	// person diagnosing an incident nothing to read.
 	SynthesisNote string `json:"synthesis_note,omitempty"`
+
+	// GateUnmet records that the project declared workflow.audit.gates.codex:
+	// required but THIS audit could not satisfy that requirement — the result
+	// is a fail-open inconclusive, not a review. Empty whenever the gate is
+	// not `required` or a real verdict exists.
+	//
+	// #1632 axis 3: "required reads as a guarantee but behaves as a
+	// suggestion". The tool layer cannot force a caller to invoke the audit,
+	// but it CAN refuse to let a mandatory gate's failure pass silently — an
+	// inconclusive result that looked byte-identical with or without a
+	// declared required gate now carries the unmet state as a structured
+	// field, so a machine consumer sees the gap instead of string-parsing for
+	// it. Additive + omitempty (the SynthesisNote precedent): no existing
+	// consumer's JSON changes, and the fail-open verdict itself is preserved.
+	GateUnmet string `json:"gate_unmet,omitempty"`
 }
 
 // Finding is a single review finding (§G.4).
@@ -1361,10 +1376,60 @@ func synthesizeReviewOutput(reviewText, method string) ReviewOutput {
 	return ReviewOutput{
 		Verdict:       verdict,
 		Summary:       strings.TrimSpace(reviewText),
-		Findings:      []Finding{},
+		Findings:      codexFindingsOf(reviewText),
 		NextSteps:     []string{},
 		SynthesisNote: describeSignalDivergence(signals, verdict),
 	}
+}
+
+// codexFindingLine matches ONE severity-tagged finding bullet ("- [P1] message")
+// and captures the indent, the severity token, and the message text. codex's
+// native review mode and the adversarial prompt both shape findings this way —
+// the shape #1632 axis 1 reports arriving in summary prose while the structured
+// arrays stayed empty. The severity token is kept VERBATIM (e.g. "P1"): codex
+// owns that vocabulary, and mapping it to a different scale would invent a
+// translation no consumer asked for.
+var codexFindingLine = regexp.MustCompile(`(?m)^([ \t]*)[-*][ \t]+\[([A-Za-z]+\d+)\][ \t]*(.*)$`)
+
+// codexPathLineRef matches a path:line anchor inside a finding message
+// ("internal/auth/keys.go:42"). The extension is matched GENERICALLY
+// (`\.[A-Za-z0-9]+`), not enumerated: moai is language-neutral, and an
+// extension allowlist would silently drop anchors for every language it forgot.
+var codexPathLineRef = regexp.MustCompile(`([\w./@+-]+\.[A-Za-z0-9]+):([0-9]+)`)
+
+// codexFindingsOf parses codex's review prose into structured findings
+// (#1632 axis 1). Each severity-tagged bullet becomes one Finding carrying the
+// verbatim severity, the message as title/body, and the first path:line anchor
+// found in the message as File/Line. Indented continuation lines following a
+// bullet are joined into that finding's body — codex commonly continues a
+// finding across the next lines, and truncating it to the headline would lose
+// the substance a reviewer needs. A body with no bullets returns an empty,
+// non-nil slice: the parser invents no structure from prose.
+func codexFindingsOf(reviewText string) []Finding {
+	findings := []Finding{}
+	var cur *Finding
+	var curIndent string
+	for _, ln := range strings.Split(reviewText, "\n") {
+		m := codexFindingLine.FindStringSubmatch(ln)
+		if m == nil {
+			if cur != nil && strings.TrimSpace(ln) != "" && strings.HasPrefix(ln, curIndent+" ") {
+				cur.Body += "\n" + strings.TrimSpace(ln)
+			}
+			continue
+		}
+		indent, sev, msg := m[1], m[2], strings.TrimSpace(m[3])
+		f := Finding{Severity: sev, Title: msg, Body: msg}
+		if pm := codexPathLineRef.FindStringSubmatch(msg); pm != nil && !strings.Contains(pm[1], "://") {
+			f.File = pm[1]
+			if line, err := strconv.Atoi(pm[2]); err == nil {
+				f.Line = line
+			}
+		}
+		findings = append(findings, f)
+		cur = &findings[len(findings)-1]
+		curIndent = indent
+	}
+	return findings
 }
 
 // describeSignalDivergence names every signal and the value adopted, but ONLY
@@ -1433,7 +1498,10 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	notifyMCPProgress(ctx, token, 0, "codex 감사 시작 — 모드: "+mode+", target: "+target)
 	binaryPath, err := codexLookPath(codexBinaryName)
 	if err != nil {
-		return codexReviewToolResult(inconclusiveReview("codex binary not found in PATH")), nil
+		// The gate annotation rides EVERY fail-open exit, including this early
+		// one — a missing binary is exactly the state where a required gate
+		// goes silently unmet (the review never ran at all).
+		return codexReviewToolResult(applyGateUnmet(inconclusiveReview("codex binary not found in PATH"), root)), nil
 	}
 	notifyMCPProgress(ctx, token, 0.1, "codex 바이너리 확인 — 리뷰 요청 준비 중...")
 
@@ -1453,8 +1521,26 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 
 	notifyMCPProgress(ctx, token, 0.2, "codex에 리뷰 요청 전송 중... (수분 소요 가능)")
 	out, _ := codexReviewRPC(ctx, binaryPath, method, params) // fail-open inside
+	out = applyGateUnmet(out, root)
 	notifyMCPProgress(ctx, token, 0.9, "codex 응답 수신 — 결과 조립 중...")
 	return codexReviewToolResult(out), nil
+}
+
+// applyGateUnmet annotates a fail-open inconclusive audit with the declared
+// codex gate when that gate is `required` (#1632 axis 3). The audit tree's own
+// workflow.yaml decides — the same project_root the review ran against — so a
+// named tree's gate follows the named tree, not the server's cwd. The verdict
+// itself is untouched: fail-open stays fail-open, and the annotation makes the
+// gap VISIBLE rather than relabeling an unknown as a pass or a fail.
+func applyGateUnmet(out ReviewOutput, projectDir string) ReviewOutput {
+	if out.Verdict != VerdictInconclusive {
+		return out
+	}
+	if workflowAuditPins(projectDir).Gates.Codex != config.AuditGateRequired {
+		return out
+	}
+	out.GateUnmet = "workflow.audit.gates.codex is `required`, but this audit returned no verdict (fail-open inconclusive)"
+	return out
 }
 
 // codexReviewToolResult shapes a ReviewOutput as the schema-typed MCP result
@@ -1681,6 +1767,18 @@ func classifyCodexAuthFile(raw []byte) (provider string, ok bool, err error) {
 	case codexAuthModeAPIKey:
 		if bool(f.APIKey) {
 			return codexAuthAPIKey, true, nil
+		}
+	case "":
+		// Legacy auth.json written before codex started persisting auth_mode.
+		// codex itself keeps working on such a file — it infers the mode from
+		// the credential material — so the ladder rejecting it wholesale read
+		// a WORKING login as unknown (#1632 axis 4). Mirror codex's inference,
+		// with its precedence: an explicit API key wins, then token material.
+		if bool(f.APIKey) {
+			return codexAuthAPIKey, true, nil
+		}
+		if f.Tokens.credentialCount >= 1 {
+			return codexAuthChatGPT, true, nil
 		}
 	}
 	return "", false, nil
