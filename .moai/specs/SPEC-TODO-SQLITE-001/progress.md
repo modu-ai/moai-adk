@@ -23,7 +23,7 @@ branch: WT-todo-sqlite @ d29b8942e (develop-based integration line)
 | M3 directory rename (t309) + fallback read | complete | `8910c337c` |
 | M4 consumer sweep | complete | `8910c337c` |
 | M5 export-json + downgrade docs | complete | `ffe33ac09` |
-| M6 cross-platform / race / gates | complete | (this commit) |
+| M6 cross-platform / race / gates | complete | `d19187327` |
 
 M3 and M4 landed in one commit: the sweep is what makes the rename true, and a
 commit that renamed the directory while consumers still named the old one would
@@ -264,7 +264,7 @@ run_status: complete
 ac_pass_count: 18
 ac_fail_count: 0
 milestones_complete: M1, M2, M3, M4, M5, M6
-run_commit_shas: 3d24cf6df (M1), 83a1d492a (M2), 447f517fe (evidence), 8910c337c (M3+M4), ffe33ac09 (M5), pending-backfill-m6
+run_commit_shas: 3d24cf6df (M1), 83a1d492a (M2), 447f517fe (evidence), 8910c337c (M3+M4), ffe33ac09 (M5), d19187327 (M6)
 coverage_internal_kanban: 87.6%
 coverage_changed_path_files: 86.9% (506/582 statements)
 coverage_internal_statusline: 90.6%
