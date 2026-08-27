@@ -174,6 +174,17 @@ git status --porcelain | grep '^ D'                   # 삭제된 파일 — 0�
 git status --porcelain | grep '^ D' | sed 's/^...//' | tr '\n' '\0' | xargs -0 git restore --
 ```
 
+**[HARD] update 후 `git-strategy.yaml`의 git-flow 키를 반드시 재적용한다.** `.moai/config`는 위 wipe 대상이므로, `moai update` 는 `.moai/config/sections/git-strategy.yaml` 을 템플릿 기본값(`workflow: github-flow`, develop/release 키 없음)으로 되돌린다. 이 파일은 **템플릿에 미러하지 않는다** — 미러하면 16개 언어 배포판 전체에 이 프로젝트의 사설 워크플로가 실려 나간다(§15). 그러니 매 update 후 로컬에서 다시 넣는다:
+
+```bash
+# 확인 — gitflow 가 아니면 되돌아간 것
+grep -n 'workflow: gitflow' .moai/config/sections/git-strategy.yaml || echo 'REVERTED — 재적용 필요'
+# 재적용 (git_strategy.manual 블록)
+git restore --source=HEAD -- .moai/config/sections/git-strategy.yaml
+```
+
+`git restore` 가 통하지 않는 상황(커밋 전 상태)이면 `git_strategy.manual` 아래를 손으로 되돌린다: `workflow: gitflow`, 그리고 `main_branch:` 바로 아래에 `develop_branch: develop` / `release_branch_prefix: release/` / `rc_version_format: vX.Y.Z-rc.N` 세 줄.
+
 **[HARD] 보고된 파일 수를 믿지 않는다.** `Updated N files`의 N은 관리 대상 뿌리 **밖** 파일만 센다(`internal/cli/update/plan/plan.go:73` `if IsMoaiManaged(...) { continue }`). 2026-08-15 실측: 보고 32, 실제 175. **삭제는 이 요약에 전혀 나타나지 않는다.**
 
 **삭제만이 손실이 아니다 — 덮어쓰기 2종** (2026-08-15 실측):
@@ -232,7 +243,7 @@ Language policy는 `.claude/rules/moai/development/coding-standards.md`에 정�
 
 ### Before Commit
 - [ ] Code in English
-- [ ] 변경 대상 패키지 테스트 통과 (`go test ./internal/<pkg>/...`) — **전체 스위트(`go test ./...`)를 로컬에서 돌리지 않는다**. 레인 여러 개가 동시에 돌려 load 413까지 치솟고 다른 워크스페이스를 마비시킨 사고(2026-08-15)가 있다. 전 패키지 판정은 CI 몫이며, 깨끗한 환경에서 PR head를 돌리므로 근거로도 더 강하다. 예외는 §4.1의 통합 검증 — 그때는 **직렬로 1건씩**
+- [ ] 변경 대상 패키지 테스트 통과 (`go test ./internal/<pkg>/...`) — **전체 스위트(`go test ./...`)를 로컬에서 돌리지 않는다**. 레인 여러 개가 동시에 돌려 load 413까지 치솟고 다른 워크스페이스를 마비시킨 사고(2026-08-15)가 있다. 전 패키지 판정은 CI 몫이며, 깨끗한 환경에서 PR head를 돌리므로 근거로도 더 강하다. 예외는 §4.1의 `develop` 통합 검증 — 그때도 영향 패키지만, 병합 창을 쥔 레인 **1개만**
 - [ ] Linting passing (`golangci-lint run`)
 - [ ] Templates regenerated (`make build`)
 
@@ -259,48 +270,64 @@ fix(cli): prevent race condition in hook execution
 test(settings): add TestEnsureGlobalSettingsEnv test cases
 ```
 
-### §4.1 로컬 통합 레인 (develop)
+### §4.1 통합 레인 (git-flow, `develop` 원격 공유)
 
-카드별로 각각 검증해 머지했는데 **합쳐진 상태는 아무도 보지 않는** 구멍을 막는다. 2026-08-15에 PR 12개가 각각 초록불로 main에 들어갔고, 합류 후에야 `moai update`가 로컬 전용 파일을 지운다는 사실이 드러났다.
+> **2026-08-27 전환 — 운영자 지시로 GitHub Flow → git-flow.** 이 절은 2026-08-26 백로그 카드 t281이 정한 "로컬 전용·일회용 develop, 원격 push 금지"를 **명시적으로 뒤집는다**. 되돌린 근거는 아래 §4.1.3에 남긴다.
+
+카드별로 각각 검증해 머지했는데 **합쳐진 상태는 아무도 보지 않는** 구멍을 막는다. 2026-08-15에 PR 12개가 각각 초록불로 main에 들어갔고, 합류 후에야 `moai update`가 로컬 전용 파일을 지운다는 사실이 드러났다. 새 모델은 그 합류 지점을 **원격에 올려** CI가 판정하게 하고, 그 위에서 rc 빌드를 잘라 손으로 시험한다.
 
 ```
-main (primary 체크아웃, 읽기 전용 — BranchGuard가 지킴)
- └─ develop (로컬 전용·일회용 시험대, 원격 push 금지)
-      ↑ merge — 합쳐서 돌려보는 자리
-      ├─ worktree: 카드A ─┐
-      ├─ worktree: 카드B ─┼→ main에서 분기, PR도 각자 main으로
-      └─ worktree: 카드C ─┘        ↓
-                              CI 전 매트릭스 = 최종 판정
+main (릴리스 PR로만 갱신 — 브랜치 보호 enforce_admins:true)
+ ↑ 릴리스 PR (유일한 main 진입로)
+release/vX.Y.Z ← develop 에서 분기
+ ↑
+develop (원격 공유: origin/develop, CI가 판정)
+ ↑ merge --no-ff (통합 워크트리 안에서, 레인이 직접)
+ ├─ worktree: 카드A ─┐
+ ├─ worktree: 카드B ─┼→ 전부 develop 에서 분기, 카드 PR 없음
+ └─ worktree: 카드C ─┘
 ```
 
-**[HARD] 다섯 가지 규율**
+#### §4.1.1 [HARD] 여섯 가지 규율
 
-1. **`develop`은 원격에 올리지 않는다.** push 금지, upstream 설정 금지. 원격에 없으므로 `.github/workflows/` 13개의 `branches: [main]` 트리거도, Vercel 프로덕션 브랜치도 건드릴 필요가 없다 — 이것이 2026-08-14에 기각된 GitFlow 안과 갈리는 지점이다.
-2. **카드 브랜치는 `develop`이 아니라 `main`에서 판다.** PR이 develop의 병합 이력을 끌고 들어가지 않게 한다.
-3. **`develop`은 일회용이다.** 라운드가 끝나면 버리고 main에서 다시 만든다. 상설로 두면 어제 기각 사유("develop도 main처럼 뒤처진다")를 그대로 재현한다.
-4. **PR은 카드별로 main에 낸다.** N개를 develop에 모아 한 PR로 내면 리뷰 품질이 떨어지고 CodeRabbit rate limit이 악화된다(2026-08-15 실측 사례 t26).
-5. **통합 검증은 직렬로 1건씩.** 로컬 develop의 "통과"는 조기 신호일 뿐 CI급 근거가 아니다 — 깨끗한 환경도, darwin/windows 매트릭스도 아니다. **판정은 언제나 main PR의 CI.**
+1. **카드 워크트리는 `develop`에서 판다.** `main`이 아니다.
+2. **카드 PR은 없다.** 검증을 마친 카드는 통합 워크트리에서 로컬 `develop`에 `git merge --no-ff`로 직접 합친다. 카드 단위 CodeRabbit 리뷰도 없다.
+3. **`develop`은 원격에 올린다.** `git push origin develop` — **원격 CI가 통합 판정의 주체**다. 로컬 통과는 조기 신호일 뿐이다.
+4. **rc 빌드는 운영자 요청 시 `develop`에서 자른다.** `make build VERSION=vX.Y.Z-rc.N` → clean 재설치 → 손으로 시험(절차는 `.claude/rules/local/gitflow-lane-protocol.md`).
+5. **로컬 시험을 통과하면 `release/vX.Y.Z`를 `develop`에서 분기한다.** main으로 가는 것은 이 브랜치뿐이다.
+6. **`main`은 릴리스 PR로만 갱신된다.** 브랜치 보호(`enforce_admins: true`)가 이를 기계적으로 강제한다 — §23 참조.
 
-**운영 절차**
+레인/리드가 따르는 운영 규칙 정본은 `.claude/rules/local/gitflow-lane-protocol.md`(로컬 전용 룰)다. 이 절은 모델과 근거만 기록한다.
+
+#### §4.1.2 운영 절차
 
 ```bash
-# 라운드 시작 — develop을 main 기준으로 재생성 (BranchGuard 때문에 manager-git 위임 필요)
-#   git branch -D develop && git branch develop main
-# 통합 워크트리 진입 (raw `git worktree add` 금지 — 런처 경유)
-moai cc -w develop
+# 리드: 통합 워크트리 1개 provisioning (raw `git worktree add` 금지 — 런처 경유)
+moai cc -w develop            # .claude/worktrees/develop
 
-# 워크트리 안에서 카드 브랜치를 합쳐 시험
-git -C <worktree> merge --no-ff <카드브랜치>
+# 레인: 카드 워크트리는 develop 에서 분기
+#   EnterWorktree(<card-id>) → git branch -m WT-<slug>
+
+# 레인: 병합 창 확보 → 통합 워크트리 진입 → 병합 → push
+moai integration acquire --name <lane>
+#   EnterWorktree(.claude/worktrees/develop)
+git merge --no-ff WT-<slug>
 go build ./... && go vet ./... && go test ./internal/<영향패키지>/...
-
-# 통과하면 카드 브랜치를 push하고 main PR — develop은 push하지 않는다
-# 라운드 종료 후 워크트리 폐기
-moai worktree done develop
+git push origin develop
+moai integration release
 ```
 
-**로컬 CI를 두지 않는 이유** — 검토 후 기각(2026-08-15):
+#### §4.1.3 2026-08-14 GitFlow 기각 사유 — 지금 어디까지 해소됐나
 
-- **self-hosted runner**: job을 보내는 주체가 GitHub이라 **원격에 없는 ref에는 애초에 job이 오지 않는다** — 로컬 develop 검증에 무용하다. 게다가 `modu-ai/moai-adk`는 **공개 저장소**라, 러너를 붙이면 누구나 포크 PR로 이 머신에서 임의 코드를 실행할 수 있다. 공개 저장소에 권장되지 않는 구성이다.
+당시 기각 근거 두 가지의 현재 상태를 그대로 남긴다. 하나는 이번 전환으로 답이 됐고, 하나는 **여전히 살아 있다**.
+
+- **해소됨 — `.github/workflows/`의 `branches: [main]` 트리거.** 원격에 없는 ref에는 job이 오지 않아 develop 검증이 무용하다는 지적이었다. 이번 전환에서 push 트리거 6개(`ci.yml`, `codeql.yml`, `graph-freshness.yml`, `lsel-leak-guard.yaml`, `template-neutrality-check.yaml`, `test-install.yml`)에 `develop`을 추가해 origin/develop이 CI 판정을 받는다. `pull_request` 트리거는 카드 PR이 없으므로 그대로 `[main]`이다.
+- **미해소 — Vercel 프로덕션 브랜치 바인딩.** docs-site의 Vercel 프로젝트는 여전히 특정 브랜치에 묶여 있고, 이번 변경은 이를 건드리지 않았다. `develop`에 docs-site 변경이 들어갈 때 프리뷰/프로덕션 배포가 어떻게 반응하는지는 **미검증**이다 — docs-site를 만지는 카드는 이 점을 별도로 확인한다.
+- **여전히 유효한 실측** — 카드별 PR의 지연은 CI가 아니라 **리뷰(CodeRabbit rate limit 포함)**가 지배했다(2026-08-15 t26). 따라서 카드 PR 폐지가 주는 이득은 **속도가 아니다**. 이번 전환의 이득은 rc 빌드를 자를 수 있는 **상시 스테이징 면(origin/develop)**을 갖는 것이다. 속도를 근거로 이 모델을 정당화하지 않는다.
+
+#### §4.1.4 로컬 CI를 두지 않는 이유 — 검토 후 기각(2026-08-15, 유지)
+
+- **self-hosted runner**: `modu-ai/moai-adk`는 **공개 저장소**라, 러너를 붙이면 누구나 포크 PR로 이 머신에서 임의 코드를 실행할 수 있다. 공개 저장소에 권장되지 않는 구성이다.
 - **`act`**: 리눅스 컨테이너 한정이라 이 리포의 darwin×2 / windows 빌드와 macOS·Windows 통합 테스트를 재현하지 못한다. 실제 CI와 어긋나면 진단이 틀어진다.
 - **비용 근거 없음**: GitHub 공식 문서 — *"GitHub Actions usage is free for self-hosted runners and for public repositories that use standard GitHub-hosted runners."* 공개 저장소는 **분 수 제한 없이 무료**다. CI를 아낄 이유가 없다.
 

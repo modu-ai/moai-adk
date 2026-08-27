@@ -2,6 +2,13 @@
 
 > Maintainer-local doctrine extracted from CLAUDE.local.md to cut session-launch context (CLAUDE.local.md loads in full at every launch). The matching CLAUDE.local.md section now carries a short stub pointing here. This file is NOT loaded at launch — read it when the topic applies. Subsection numbering is preserved so existing cross-references still resolve.
 
+> **[HARD] 상위 모델 변경 (2026-08-27) — GitHub Flow → git-flow.** 운영자 지시로 카드 작업은 `develop`에서 분기하고 카드 단위 PR 없이 `develop`으로 직접 병합되며, `origin/develop`의 CI가 통합을 판정한다. 정본: `CLAUDE.local.md` §4.1 + `.claude/rules/local/gitflow-lane-protocol.md`.
+>
+> - **초과분(superseded)**: 이 문서의 "모든 변경은 **`main`으로 향하는** PR을 경유한다"는 적용 대상 — 일상 카드 작업은 이제 `main` PR을 내지 않는다. §23.9의 tier별 PR ceremony도 카드 단위로는 발생하지 않는다.
+> - **여전히 구속력 있음**: `enforce_admins: true` 로 인한 `main` 직접 push 전면 차단, `main`은 **릴리스 PR로만** 갱신된다는 규칙, self-merge 허용 조건(승인 0 + CI status check 통과), pre-push/pre-commit 훅 설정, PR merge 후 로컬 동기화 패턴(A4/A5/A6). 이들은 릴리스 PR 경로에 그대로 적용된다.
+>
+> 아래 본문은 그 구분 아래 읽는다.
+
 ## 23. Local Git Workflows + Hook Setup (PR-mandatory 1-person OSS)
 
 > **[HARD] POLICY CHANGE (2026-07-20) — Hybrid Trunk main-direct RETIRED.** modu-ai/moai-adk main branch에 `enforce_admins: true` 적용됨 (`gh api`로 live 검증). 이제 admin 포함 **누구도 main에 직접 push 불가**. 모든 변경 (daily Tier S/M commit 포함)은 PR을 경유해야 한다. self-merge는 허용 (`required_approving_review_count: 0`) — 4개 CI status check (Test ubuntu-latest / Lint / Build linux/amd64 / CodeQL) 통과 시 리뷰어 대기 없이 본인이 머지. 종전 "모든 tier main 직진 push 허용" 정책 (2026-05-22 `cd9eead14`)은 폐기(RETIRED)되었으며, 아래 본문에서 superseded로 표시된 문장은 역사적 기록으로만 유지한다.

@@ -5,13 +5,16 @@ git_strategy:
     gitlab:
         instance_url: ""
     manual:
-        workflow: github-flow
+        workflow: gitflow
         environment: local
         github_integration: false
         push_to_remote: false
         auto_checkpoint: disabled
         branch_prefix: ""
         main_branch: ""
+        develop_branch: develop
+        release_branch_prefix: release/
+        rc_version_format: vX.Y.Z-rc.N
         draft_pr: false
         required_reviews: 0
         branch_protection: false
