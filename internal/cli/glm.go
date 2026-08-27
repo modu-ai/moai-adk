@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -656,6 +657,14 @@ func disableTeamMode(projectRoot string) error {
 
 // saveLLMSection saves only the LLM section to llm.yaml.
 // Empty GLM model values are populated with defaults to avoid confusion.
+//
+// @MX:NOTE: [AUTO] RC1 change-detection gate (glm-settings-persist): the write
+// is SKIPPED when the persisted llm.yaml already equals the desired section
+// state semantically (llmSectionSemanticallyEqual below). The launcher calls
+// this on EVERY moai glm/cg/cc launch; an unconditional typed re-marshal there
+// destroyed hand-written comments, flipped the file mode 0644→0600
+// (writeFileAtomic's perm), and touched mtime on every launch — reopening a
+// lost-update window against concurrent writers.
 func saveLLMSection(sectionsDir string, llm config.LLMConfig) error {
 	// Populate empty GLM model values with defaults for clarity.
 	// This prevents llm.yaml from containing empty model strings that
@@ -695,6 +704,14 @@ func saveLLMSection(sectionsDir string, llm config.LLMConfig) error {
 		LLM config.LLMConfig `yaml:"llm"`
 	}{LLM: llm}
 
+	// RC1 change-detection gate: skip the write when the persisted file already
+	// carries this exact section state. A read error leaves the gate undecided
+	// and falls through to the write (the write itself then surfaces the error).
+	if persisted, ok, err := readPersistedLLMSection(sectionsDir); err == nil && ok &&
+		llmSectionSemanticallyEqual(persisted, wrapper.LLM) {
+		return nil
+	}
+
 	data, err := yaml.Marshal(wrapper)
 	if err != nil {
 		return fmt.Errorf("marshal llm config: %w", err)
@@ -702,6 +719,58 @@ func saveLLMSection(sectionsDir string, llm config.LLMConfig) error {
 
 	path := filepath.Join(sectionsDir, "llm.yaml")
 	return writeFileAtomic(path, data, 0o600)
+}
+
+// readPersistedLLMSection reads the current llm.yaml into a config.LLMConfig.
+// ok is false only when the file does not exist (a first write must proceed);
+// an unreadable or unparseable file returns the error so the caller can fall
+// through to the write path rather than silently skipping it.
+func readPersistedLLMSection(sectionsDir string) (config.LLMConfig, bool, error) {
+	data, err := os.ReadFile(filepath.Join(sectionsDir, "llm.yaml"))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return config.LLMConfig{}, false, nil
+		}
+		return config.LLMConfig{}, false, fmt.Errorf("read llm.yaml: %w", err)
+	}
+	wrapper := struct {
+		LLM config.LLMConfig `yaml:"llm"`
+	}{}
+	if err := yaml.Unmarshal(data, &wrapper); err != nil {
+		return config.LLMConfig{}, false, fmt.Errorf("parse llm.yaml: %w", err)
+	}
+	return wrapper.LLM, true, nil
+}
+
+// llmSectionSemanticallyEqual compares two LLM sections by VALUE, not by file
+// bytes: both are config.LLMConfig structs, so formatting, key order, and
+// comments are invisible to the comparison. This is what lets a hand-written
+// llm.yaml (with comments) be recognized as already carrying the desired
+// state, so the launcher skips the rewrite entirely.
+func llmSectionSemanticallyEqual(a, b config.LLMConfig) bool {
+	normalizeLLMSectionMaps(&a)
+	normalizeLLMSectionMaps(&b)
+	return reflect.DeepEqual(a, b)
+}
+
+// normalizeLLMSectionMaps replaces nil maps with empty maps so a section whose
+// map fields were never set compares equal to one round-tripped through a
+// yaml.Marshal that renders nil maps as `{}`. Deliberate zero-value
+// equivalence: "key absent" and "key present but empty" carry no different
+// intent for these mirrors.
+func normalizeLLMSectionMaps(c *config.LLMConfig) {
+	if c.Profiles == nil {
+		c.Profiles = map[string]map[string]config.ModelEffort{}
+	}
+	if c.HarnessAgents == nil {
+		c.HarnessAgents = map[string]map[string]config.ModelEffort{}
+	}
+	if c.AgentOverrides == nil {
+		c.AgentOverrides = map[string]config.ModelEffort{}
+	}
+	if c.GLM.ContextWindows == nil {
+		c.GLM.ContextWindows = map[string]int{}
+	}
 }
 
 // GLMConfigFromYAML represents the GLM settings from llm.yaml.
