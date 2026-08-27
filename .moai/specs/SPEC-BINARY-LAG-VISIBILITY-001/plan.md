@@ -1,7 +1,7 @@
 ---
 id: SPEC-BINARY-LAG-VISIBILITY-001
 title: "배포 지연 가시성 — 구현 계획"
-version: "0.4.0"
+version: "0.4.1"
 status: in-progress
 created: 2026-08-27
 updated: 2026-08-28
@@ -81,7 +81,7 @@ go test ./internal/cli/... ./internal/hook/... 2>&1 | tail -5   # 착수 전 GRE
 `checkBinaryFreshness`의 판정 본체를 주입 가능한 단일 함수로 뽑고, doctor 항목과 세션 시작 권고 **양쪽**이 그것을 호출하게 한다. 적용가능성 술어(§5)는 이 함수 안에 산다.
 
 - 기존 관용 다섯 갈래(커밋 메타데이터 없음 / cwd 불가 / git 아님 / HEAD 일치 / 조상 아님)를 **보존**한다. 축소는 배포판 회귀다.
-- 기준점 해석은 t317 D9 선례를 따라 `.moai/` marker 상향 탐색을 채택한다 — doctor 배선이 `os.Getwd()` 원값을 넘기므로, 하위 디렉터리 실행에서 적용 가능한 트리가 적용 불가로 뒤집히지 않게 한다.
+- [HARD] 기준점 해석은 **git 자신의 상향 탐색**이다 — `git -C <dir> rev-parse HEAD`가 `dir`에서 위로 올라가 트리를 찾으므로 하위 디렉터리 실행에서도 같은 HEAD로 해소된다(AC-BLV-003 하위 디렉터리 앵커 게이트 충족). **`.moai/` marker 상향 탐색을 쓰지 않는다** — HEAD는 있으나 `.moai/`가 없는 git 트리를 적용 불가로 뒤집어 REQ-BLV-003과 충돌한다. 근거 전문: `spec.md` §5.
 - 권고는 `AdditionalContext`에 **append-if-non-empty** 패턴으로 붙인다(`session_start.go:343-346`·`:369`의 확립된 형태 — 비어 있으면 대입, 아니면 `\n\n` 덧붙임). 기존 귀속 문자열·GLM 리마인더·팩토리 공지를 덮어쓰지 않는다.
 - [HARD] doctor 항목은 **재배선만** 한다 — **세 레지스트리 어디에도** 새 이름을 등록하지 않는다(REQ-BLV-009): `systemChecks`(`internal/cli/doctor.go:187`), `moaiChecks`(`:195` 선언 ~ `:212`), `workspaceChecks`(`:214`). 셋은 `:245-249` → `:93-95` `allChecks`로 합류해 같은 exit 판정에 들어간다. t317도 `moaiChecks`에 등록할 예정이므로, 판정은 절대 개수가 아니라 **이 변경의 전후 이름 집합 합집합** 대조이며, 추출 단위는 따옴표 문자열이 아니라 **항목의 이름 표현식**이다(상수 식별자 회피 차단 — AC-BLV-009).
 - AC: AC-BLV-001, AC-BLV-002, AC-BLV-003, AC-BLV-005, AC-BLV-008, AC-BLV-009
