@@ -422,7 +422,7 @@ Two smaller notes:
 run_milestone: M3                   # run phase complete: M1 + M2 + M3 all landed
 run_status: complete-with-debt      # Windows behavioural halves (AC-GTA-008 win, AC-GTA-014 clear path) + AC-GTA-006's named fixture are CI-matrix-dependent
 run_complete_at: 2026-08-27
-run_commit_sha: pending-backfill-M3 # a commit cannot know its own hash; backfilled in the follow-up commit
+run_commit_sha: f3c470578           # M3; backfilled in the follow-up commit
 run_base_sha: 9bf8c04a8             # M3 base (M1 base 5ee95c5e8, M2 base ba22f41cf)
 run_branch: WT-gate-three-axes
 run_worktree: .claude/worktrees/t235
