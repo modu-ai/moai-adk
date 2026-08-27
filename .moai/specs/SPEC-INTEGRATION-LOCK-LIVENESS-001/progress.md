@@ -173,9 +173,182 @@ cancel()`, so no process outlives the test.
 
 **Production files changed in M1:** none — verified by `git show --stat HEAD` on the M1 commit.
 
+### M2+M3 — GREEN: owner-pid anchor lands (card t298)
+
+Commit `3f3465369`. Measured on the working tree at that commit, in this run,
+on branch `WT-integration-lock` (parent `ac68ef1ec`).
+
+**Production files changed (3):**
+
+| File | Change |
+|---|---|
+| `internal/session/session_pid.go` | export `ResolveOwnerPID() (pid int, resolved bool)` — the existing chain (live `MOAI_SESSION_PID` stamp → nearest non-wrapper ancestor) with NO `os.Getpid()` third step; `resolveSessionPID` now wraps it and keeps that fallback for the registry alone |
+| `internal/cli/integration.go` | acquire resolves the owner pid and records it plus `PIDSource: kanban.PIDSourceSessionOwner` |
+| `internal/kanban/integration_lock.go` | additive `PIDSource string \`json:"pid_source,omitempty"\`` + the `PIDSourceSessionOwner` constant; **deleted** `if want.PID == 0 { want.PID = os.Getpid() }` (the defect line, formerly 174-176) |
+
+**Test files changed (2):** `internal/session/session_pid_test.go` (adds
+`TestResolveOwnerPID_Precedence`, 3 sub-tests pinning env-stamp / ancestry /
+unresolvable-reports-zero), `internal/kanban/integration_lock_test.go` (M3
+regression + backward-compat rows, below).
+
+**AC-INL-001 / 002 / 012 — the M1 RED flips.** Command, verbatim output:
+
+```
+$ go test ./internal/cli/ -run 'TestIntegrationOwnerLiveness' -v -count=1
+=== RUN   TestIntegrationOwnerLiveness_AncestryPathHoldsAfterAcquireCLIExits
+--- PASS: TestIntegrationOwnerLiveness_AncestryPathHoldsAfterAcquireCLIExits (3.91s)
+=== RUN   TestIntegrationOwnerLiveness_EnvStampHoldsAfterAcquireCLIExits
+--- PASS: TestIntegrationOwnerLiveness_EnvStampHoldsAfterAcquireCLIExits (4.03s)
+=== RUN   TestIntegrationOwnerLiveness_BareAcquireRefusesLiveHolder
+--- PASS: TestIntegrationOwnerLiveness_BareAcquireRefusesLiveHolder (3.89s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	12.624s
+```
+
+Selector match count is **3** — three `=== RUN` lines for three tests, the same
+three that failed in M1. A zero-match selector prints `ok` and proves nothing,
+so the count is stated rather than inferred. The pre-fix RED transcript for the
+same command is preserved verbatim at `.moai/reports/t298/red-baseline.txt`.
+
+**AC-INL-004 / 007 (M3) — new rows, all green:**
+
+| Test | AC | Asserts |
+|---|---|---|
+| `TestAcquireIntegrationLock_AnchoredPIDZeroIsLiveNotStale` | AC-INL-004 | an anchored pid-0 record reads live, and a bare second acquire over it returns the contention sentinel |
+| `TestReadIntegrationLock_LegacyRecordWithoutPIDSource` | AC-INL-007 | a hand-written pre-anchor record (no `pid_source` key, dead pid) parses, carries empty `PIDSource`, reads reclaimable, is taken over with the displaced holder reported, and re-acquire still refreshes |
+| `TestAcquireIntegrationLock_RecordsTheCallersOwnerPID` | AC-INL-001 (b) at the package layer | the caller's resolved pid and the marker land on disk verbatim |
+
+`go test ./internal/kanban/ -run '<the three above>' -v -count=1` reported 3
+`--- PASS` / `--- SKIP` lines (count measured, not assumed).
+
+**One pre-existing assertion was updated, deliberately.**
+`TestAcquireIntegrationLock_RecordsHolder` asserted `got.PID == os.Getpid()` —
+it asserted the deleted line. It now asserts `got.PID == 0` plus
+`!got.Stale()`: a caller that supplies no pid gets no invented one, and the
+conservative reading of an unset pid is live. No other pre-existing assertion
+changed; the two refusal tests the lead named were verified untouched and green
+(below).
+
+### M4 — guard consumer + platform parity (card t298)
+
+Commit `d5006ff25`. Test-only; `internal/hook/integration_lock_guard.go` is
+unchanged — it consumes `Stale()`, and `Stale()` is what M2 fixed.
+
+**AC-INL-008.** `TestCheckIntegrationLock_FollowsAnchoredLiveness`, three
+sub-tests on one run:
+
+```
+$ go test ./internal/hook/ -run 'TestCheckIntegrationLock' -v -count=1
+--- PASS: TestCheckIntegrationLock_FollowsAnchoredLiveness (0.00s)
+    --- PASS: TestCheckIntegrationLock_FollowsAnchoredLiveness/anchored_live_holder_denies (0.00s)
+    --- PASS: TestCheckIntegrationLock_FollowsAnchoredLiveness/anchored_dead_holder_allows (0.00s)
+    --- PASS: TestCheckIntegrationLock_FollowsAnchoredLiveness/anchored_pid-0_holder_denies_conservatively (0.00s)
+```
+
+The four pre-existing guard tests (`_DeniesAForeignLiveHolder`,
+`_AllowsTheHolder`, `_FailsOpen` with 6 sub-tests, `_OnlyGuardsMerge`) ran in
+the same invocation and all passed.
+
+**AC-INL-009 — cross-compile parity.**
+
+```
+$ GOOS=windows GOARCH=amd64 go vet ./internal/...
+(no output)   rc=0
+```
+
+Recorded at `.moai/reports/t298/vet-windows.txt`. **This proves compilation,
+not behavior**: `go vet` under a cross GOOS does not build or run tests, so the
+Windows *behavior* leg rests on the platform-neutral env-stamp test (AC-INL-002)
+and the pid-0 conservative test (AC-INL-004), neither of which uses the ancestry
+walk. `internal/kanban/factory_alive_windows.go` is untouched —
+`git diff --stat -- internal/kanban/factory_alive_windows.go` is empty.
+
+### M5 — documentation (card t298)
+
+Commit `1061b10a4`. Two local-only files; no template mirror, no `make build`.
+
+| AC | Command | Observed | Want |
+|---|---|---|---|
+| AC-INL-010 | `grep -c '직렬화를 보장하지 못한다' .claude/rules/local/gitflow-lane-protocol.md` | `0` | 0 (caveat gone) |
+| AC-INL-010 | `grep -c '세션 프로세스에 묶여' .claude/rules/local/gitflow-lane-protocol.md` | `1` | ≥1 (replacement present) |
+| AC-INL-011 | `awk '/^### §4\.1 /,/^## 5\./' CLAUDE.local.md \| grep -c '세션 프로세스'` | `1` | ≥1 |
+| AC-INL-011 | `awk '/^### §4\.1 /,/^## 5\./' CLAUDE.local.md \| grep -c '재획득'` | `1` | ≥1 |
+| AC-INL-013 | `grep -hoE '직렬화를[[:space:]]*보장\|동시.*acquire.*불가능\|acquire.*동시.*불가능' <both files> \| wc -l` | `0` | 0 |
+
+AC-INL-011's two greps were `0` / `0` on the baseline (recorded in
+acceptance.md's RED cell) and are `1` / `1` now.
+
+### Package suites (every package this branch touches)
+
+The touched set was derived, not assumed:
+`git diff --name-only origin/develop...HEAD` plus the working tree named
+`internal/cli`, `internal/hook`, `internal/kanban`, `internal/session`. Each was
+run non-recursively (no `/...`) so `internal/hook/perf` — which rewrites SPEC
+fixtures — was never entered, and `e2e/` was never run.
+
+```
+$ go test ./internal/cli/ -count=1
+ok  	github.com/modu-ai/moai-adk/internal/cli	247.154s        (real 248.86s)
+
+$ go test ./internal/kanban/ ./internal/hook/ ./internal/session/ -count=1
+ok  	github.com/modu-ai/moai-adk/internal/kanban	12.517s
+ok  	github.com/modu-ai/moai-adk/internal/hook	25.064s
+ok  	github.com/modu-ai/moai-adk/internal/session	5.866s
+```
+
+Full logs: `.moai/reports/t298/suite-cli.txt`, `.moai/reports/t298/suite-others.txt`.
+
+**The two pre-existing refusal tests the dispatch named, run individually:**
+
+```
+$ go test ./internal/cli/ -run 'TestIntegrationAcquire_RefusesASecondLane' -v -count=1
+--- PASS: TestIntegrationAcquire_RefusesASecondLane (0.06s)
+
+$ go test ./internal/kanban/ -run 'TestAcquireIntegrationLock_RefusesASecondLiveSession' -v -count=1
+--- PASS: TestAcquireIntegrationLock_RefusesASecondLiveSession (0.00s)
+```
+
+**Fixture hygiene:** `git status --porcelain | grep -E '\.moai/specs/|internal/hook/perf/'`
+returned nothing at the end of the run — no SPEC fixture and no perf fixture was
+left modified.
+
+**Isolation:** every new and changed test builds its fixtures under
+`t.TempDir()`; the cross-process cases pin `CLAUDE_PROJECT_DIR` and
+`GIT_CEILING_DIRECTORIES` to that root and set `cmd.Dir` to it. The live
+primary-checkout `.moai/state/integration-lock.json`, the session registry, and
+the card queue were never read or written by any test in this run.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-08-27
+run_commit_sha: 1061b10a4        # M5, the last run-phase commit on WT-integration-lock
+run_status: audit-ready
+milestones_landed: M2, M3, M4, M5   # M1 landed earlier (RED authoring)
+ac_pass_count: 11                # AC-INL-001..004, 007..013 observed green in this run
+ac_fail_count: 0
+ac_not_observed: 2               # AC-INL-005, AC-INL-006 — pre-existing invariants, green
+                                 # inside the package suites but not re-asserted individually
+preserve_list_post_run_count: 0  # nothing outside the SPEC's declared scope was modified
+new_warnings_or_lints_introduced: none observed
+cross_platform_build:
+  goos_windows_vet: clean (rc=0, no output)
+  caveat: vet proves compilation, not behavior
+total_run_phase_files: 8         # 3 production, 3 test, 2 local-only docs
+m1_to_mN_commit_strategy: >
+  four commits on WT-integration-lock — M1 (RED, earlier), M2+M3 (3f3465369),
+  M4 (d5006ff25), M5 (1061b10a4). M2 and M3 share one commit because both
+  land in internal/kanban/integration_lock_test.go and splitting a single
+  file across two commits would have left the tree non-compiling in between.
+not_pushed: true                 # the lane owns integration; no push, no merge
+```
+
+**Residual risk, restated from spec.md §G and unchanged by this run:** the
+acquire path is still an unserialized read-modify-write, so two lanes acquiring
+in the same instant can both believe they hold the window. This run fixed
+identity of record (whose pid), not atomicity. That is why the M5 prose says
+plainly that the record is a coordination signal and the lead announcement
+remains the first layer.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
