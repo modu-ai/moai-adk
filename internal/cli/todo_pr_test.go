@@ -155,7 +155,9 @@ func TestTodoPR_QueueDirUnchanged(t *testing.T) {
 			installSpy(t, tc.spy)
 
 			before := queueDirDigest(t, root)
-			beforeStat, err := os.Stat(store.Path())
+			// The physical carrier is the engine's database; Path() now names
+			// the legacy document, which a migrated queue no longer has.
+			beforeStat, err := os.Stat(store.EnginePath())
 			if err != nil {
 				t.Fatalf("stat backlog: %v", err)
 			}
@@ -172,7 +174,7 @@ func TestTodoPR_QueueDirUnchanged(t *testing.T) {
 			if before != after {
 				t.Errorf("queue directory changed across the invocation\nbefore:\n%s\nafter:\n%s", before, after)
 			}
-			afterStat, err := os.Stat(store.Path())
+			afterStat, err := os.Stat(store.EnginePath())
 			if err != nil {
 				t.Fatalf("stat backlog after: %v", err)
 			}
