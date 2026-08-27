@@ -147,6 +147,18 @@ type GitStrategyConfig struct {
 	GitHubUsername string       `yaml:"github_username"`
 	GitLab         GitLabConfig `yaml:"gitlab"`
 
+	// WorktreeBaseBranch names the branch card worktrees are cut from
+	// (SPEC-WORKTREE-BASEREF-001 REQ-WBR-001). It is a repository-wide fact,
+	// so it sits at the git_strategy root rather than inside a mode profile.
+	//
+	// The empty string is the neutral default and means "take no action"
+	// (REQ-WBR-002): the SessionStart origin/HEAD alignment step no-ops and
+	// `git worktree add` is invoked with no base operand, byte-identically to
+	// the pre-SPEC behavior. The shipped template ships it empty
+	// (REQ-WBR-003) — naming a branch there would not be neutral across
+	// downstream projects.
+	WorktreeBaseBranch string `yaml:"worktree_base_branch"`
+
 	// Mode profile forward-compat scaffolds.
 	Manual   ModeProfile `yaml:"manual"`
 	Personal ModeProfile `yaml:"personal"`

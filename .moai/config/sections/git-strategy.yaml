@@ -2,6 +2,7 @@ git_strategy:
     mode: manual
     provider: github
     github_username: ""
+    worktree_base_branch: develop
     gitlab:
         instance_url: ""
     manual:

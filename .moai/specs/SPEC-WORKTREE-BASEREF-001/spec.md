@@ -2,7 +2,7 @@
 id: SPEC-WORKTREE-BASEREF-001
 title: "Configurable card-worktree base branch — one stored setting, two consumers (origin/HEAD alignment at SessionStart, git worktree add base operand), surfaced by moai doctor and the web console"
 version: "0.3.1"
-status: draft
+status: in-progress
 created: 2026-08-27
 updated: 2026-08-27
 author: manager-spec (card t313)
