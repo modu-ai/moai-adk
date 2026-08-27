@@ -15,6 +15,8 @@ paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/
 
 [HARD] 카드 워크트리는 **`develop`에서** 만든다. `main`이 아니다.
 
+[HARD] **로컬 `main`은 동기화만 하는 참조점이고, 아무도 거기서 분기하지 않는다.** 이 모델에서 `main`을 갱신하는 유일한 경로는 릴리스 PR이며, 로컬 `main`이 `origin/main`보다 뒤처져 있어도 작업에는 지장이 없다 — `develop`이 `origin/main`을 포함하기 때문이다. 따라서 로컬 `main`을 앞당기지 못하는 상황(예: 공유 체크아웃의 미커밋 작업과 충돌)은 작업을 막는 사유가 아니다. 상태줄의 `↓N` 표시는 그 사실의 반영일 뿐이다.
+
 - 런처를 경유한다: `moai cc -w <card-id>` 또는 현재 세션에서 `EnterWorktree(<card-id>)`. **맨손 `git worktree add` 금지** — git은 아는데 MoAI는 모르는 트리가 생겨 `done`/`clean`/`recover`가 닫을 대상이 없어진다.
 - 생성 직후 브랜치를 제자리에서 개명한다: `git branch -m WT-<slug>`. slug은 카드가 **하는 일**에서 뽑고(소문자 `a-z0-9-`, 토큰 3개 이하, 24자 이하), **카드 id를 넣지 않는다**. 워크트리 디렉터리는 카드 id를 유지한다(`.claude/worktrees/<card-id>`).
 - 새 카드는 새 워크트리다. 이전 카드 트리에 앵커돼 있으면 `ExitWorktree`로 primary 체크아웃에 돌아온 뒤 만든다 — 안 그러면 새 카드 작업이 옛 카드 브랜치에 얹힌다.
@@ -36,6 +38,9 @@ paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/
 ## 3. 직렬화 — 병합 창은 한 번에 한 레인
 
 [HARD] 기존 메커니즘을 그대로 쓴다. 새로 만들지 않는다.
+
+> **[HARD] 현재 이 락은 직렬화를 보장하지 못한다 — 카드 t298.** 재현(2026-08-27): `moai integration acquire` 직후 `moai integration status`가 곧바로 `held by a session that is gone (reclaimable)`을 출력한다. 기록되는 pid가 세션이 아니라 방금 실행된 짧은 CLI 프로세스의 것이라, 그 명령이 반환하는 순간 죽고 이후 모든 조회가 홀더를 사라진 것으로 판정한다. **모든 홀더가 항상 인수 가능하게 보인다.**
+> 고쳐질 때까지: `acquire`는 기록으로 계속 남기되, **직렬화는 리드 공지로 한다** — 머지 직전에 리드에게 알리고 리드가 창 상태를 확인해 준 뒤 들어간다. `status`가 `reclaimable`이라고 나오는 것은 **비었다는 뜻이 아니다**.
 
 ```bash
 moai integration acquire --name <lane>   # 통합 워크트리에 들어가기 전
