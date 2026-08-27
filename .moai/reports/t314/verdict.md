@@ -4,6 +4,7 @@
 - base: origin/develop `48eb945df` (reflog: Created from origin/develop)
 - tree: `.claude/worktrees/t314`, branch `WT-neutrality-guard-trigger`
 - scope: `.github/workflows/**` 18개 전수, git-flow 전환(`11216d13f`) 이후 축
+- landed: origin/develop `cd43dc928` (`23f12b3a0` 의 no-ff 병합)
 
 ## Claim
 
@@ -99,11 +100,28 @@ main 으로 미는 경로가 열려 있다. 실측은 아직 안 함(전환 이�
 
 ## Gaps
 
-- E6 은 **미검증 가설**이다 — `spec-status-auto-sync` 가 develop 대상 PR 에서 실제로 main 에
-  push 하는지 실행 이력으로 확인하지 못했다 (발화 이력 0건).
-- develop→main 릴리스 PR 에서 `pull_request: branches:[main]` 가 실제로 걸리는지는
-  **열린 PR 이 0건이라 관측하지 못했다.** 설정 판독일 뿐 실측이 아니다.
-- `graph-freshness` 의 develop failure 원인은 이 카드에서 조사하지 않았다 (t294 소관).
+세 건이며, 셋의 성격이 서로 다르다. 특히 3번은 **결함이 아니라 관측 대기**다.
+
+1. **미검증 — 릴리스 PR 필터.** develop→main 릴리스 PR 에서
+   `pull_request: branches:[main]` 가 실제로 걸리는지는 **열린 PR 이 0건이라 관측하지
+   못했다.** 설정 판독일 뿐 실측이 아니다.
+2. **미검증 가설 — `spec-status-auto-sync` (E6).** develop 대상 PR 이 닫힐 때 실제로
+   main 에 push 하는지 실행 이력으로 확인하지 못했다 (전환 이후 PR 0건이라 발화 이력 없음).
+   카드 **t325** 소관.
+3. **관측 대기 — 이 카드가 배선한 두 트리거의 첫 발화.** `spec-lint` 와
+   `docs-i18n-check` 가 develop push 에서 실제로 도는 것을 아직 보지 못했다. 착지 push
+   (`cd43dc928`) 의 diff 가 `.github/workflows/**` 와 `.moai/reports/**` 뿐이라 두
+   워크플로의 `paths:` 필터에 걸리지 않았기 때문이다 — **필터가 의도대로 동작한 결과이지
+   결함이 아니다.** 즉 "배선했다"까지 증명됐고 "돈다"는 아직이다.
+
+   운영자 판정(2026-08-27): **기회주의 관측으로 간다.** `.moai/specs/**` 또는
+   `docs-site/content/**` 를 건드리는 카드가 develop 에 들어가는 순간이 첫 관측 기회이며,
+   그때 해당 레인이 `gh run list --branch=develop` 로 실행 이력을 확인한다.
+   워크플로 자기 경로를 push paths 에 넣는 자가 발화 방식은 **채택하지 않는다** —
+   워크플로 파일을 건드릴 때마다 develop 에서 린트가 도는 부작용 때문이다.
+
+범위 밖: `graph-freshness` 의 develop 상태는 이 카드에서 조사하지 않았다 (t322/t294 소관).
+착지 시점 실측으로 `52c693327`·`d2cba5e21` 에서 success, `48eb945df` 가 마지막 failure.
 
 ## 조치 (이 카드에서 실제로 바꾼 것)
 
