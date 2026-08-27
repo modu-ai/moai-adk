@@ -273,3 +273,67 @@ exit=0
 `1 ok, 0 warn, 0 fail` 과 `Pass 1` 이 **필터가 실제로 한 항목만 남겼음**을 말한다(전체 실행이면 수십 건이 나온다). 따라서 D1 근거 2의 "자동 트리거와 스크립트 가능한 동사를 동시에 제공한다"는 주장은 이제 관측에 근거한다.
 
 부수 관측: 이 실행의 판정이 `ok — no running moai MCP server recorded` 다. 즉 대조할 대상이 없을 때 이 선례 항목은 **OK 로 처리**한다. 신설할 임베드 검사는 D3 수리로 **정반대**를 요구한다 — 판정 대상 바이너리가 없으면 실패로 종료. 두 항목이 같은 `doctor` 안에서 부재를 다르게 다루는 것이므로, run-phase 가 항목을 등록할 때 이 비대칭을 의도된 것으로 명시하는 편이 좋다(임베드 검사는 부재를 "비교 0건 통과"로 흘리면 공허해지기 때문이다).
+
+---
+
+## 측정 11 — run-phase 결과 오케스트레이터 독립 재현
+
+run-phase 가 AC 7/7 을 보고했다. 보고를 근거로 삼지 않고 이 카드의 핵심 주장 — "새 검사는 측정 8이 죽이지 못한 뮤턴트를 죽인다" — 를 직접 재현했다.
+
+같은 뮤턴트를 심고 두 가지를 나란히 돌렸다.
+
+```console
+$ printf '\n# verify-t317-orchestrator\n' >> internal/template/templates/.codex/agents/moai/manager-git.toml
+
+$ go test ./internal/template/agentemit/... -run TestEmbedFSPresenceAndByteEquality -count=1
+ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	0.459s      ← 생존 (여전히 공허)
+
+$ make embed-check
+    fail    Agent Emit Embed  moai embeds stale agent-emit artifacts (11/11 compared): manager-git.toml
+    0 ok, 0 warn, 1 fail
+   Pass 0    Warn 0    Fail 1
+exit status 1                                                              ← 사망
+```
+
+**측정 8의 결론이 뒤집혔다.** 같은 뮤턴트에 대해 기존 임베드 테스트는 여전히 통과하고, 신설 검사는 실패한다. 그리고 `11/11 compared` 가 함께 나온다 — D3 이 요구한 기수 보고가 실제로 붙어 있어 부분 추출이 통과로 새지 않는다.
+
+`make build` 도 컴파일에 닿기 전에 멈춘다:
+
+```console
+$ make build
+--- FAIL: TestGoldenCommittedArtifactsMatchEmission (0.00s)
+    golden_test.go:109: .codex/agents/moai/manager-git.toml: committed artifact differs from emission (sha256 mismatch)
+agent-emit drift: committed .codex/agents/moai/*.toml differ from the .md source layer — run `make agents-emit`
+make: *** [agents-emit-check] Error 1
+```
+
+`go build` 행이 출력에 없다 — `agents-emit-check` 가 `build` 의 **첫 번째** 선행이라 컴파일 단계에 도달하지 않는다(`Makefile:23 build: agents-emit-check templ-generate`). 그리고 이 검사는 재생성하지 않는다: 실패 메시지가 `make agents-emit` 을 **부르라고 안내**할 뿐 스스로 고치지 않는다.
+
+원복과 원복 확인:
+
+```console
+$ git checkout -- internal/template/templates/.codex/agents/moai/manager-git.toml
+$ git status --short
+(무출력 — 트리 청결)
+$ make embed-check
+   Pass 1    Warn 0    Fail 0
+```
+
+`.PHONY` 도 닫혔다 — `Makefile:16` 에 `agents-emit agents-emit-check embed-check` 세 이름이 모두 들어 있다.
+
+### LSP 유령 중복 진단 (결함 아님)
+
+이 검증 중 편집기 진단이 `internal/cli` 테스트에 중복 선언(`sameDir`, `snapshotTree`)을 보고했다. 실제 결함이 아니다.
+
+```console
+$ go vet ./internal/cli/...
+(무출력 — 테스트 포함 컴파일 통과)
+$ grep -rn "func sameDir\|func snapshotTree" internal/cli/
+internal/cli/todo_queue_root_test.go:61:func sameDir(a, b string) bool {
+internal/cli/clean_home_test.go:24:func snapshotTree(t *testing.T, root string) map[string]string {
+$ grep -rn "func sameDir\|func snapshotTree" <primary>/internal/cli/
+<primary>/internal/cli/todo_queue_root_test.go:61:func sameDir(a, b string) bool {
+<primary>/internal/cli/clean_home_test.go:24:func snapshotTree(t *testing.T, root string) map[string]string {
+```
+
+각 트리에서 한 번씩만 선언돼 있다. 워크트리와 primary 가 같은 패키지 경로를 공유해 언어 서버가 둘을 겹쳐 색인하며 만든 유령이고, `go vet` 이 판정 권한을 갖는다. 워크트리 병행 작업에서 재발할 형태라 적어 둔다.

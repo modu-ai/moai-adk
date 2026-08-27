@@ -134,3 +134,31 @@ subagent_boundary_grep: 0                # grep -rn 'AskUserQuestion|mcp__askuse
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+---
+
+## §G Out-of-Scope Observations
+
+### G-1 — `internal/cli/.moai/` 테스트 잔재가 marker 기반 루트 탐색의 의미를 조용히 바꾼다 **[별도 카드 감]**
+
+**관측(이 트리, 이 실행):**
+
+```console
+$ ls internal/cli/.moai/state/
+config-cache.json  factory/  kanban/
+$ find internal/cli/.moai -type f
+internal/cli/.moai/state/config-cache.json
+internal/cli/.moai/state/kanban/leads.json
+internal/cli/.moai/state/factory/workers.json
+$ git check-ignore -v internal/cli/.moai/state
+.gitignore:280:internal/cli/.moai/	internal/cli/.moai/state
+$ git ls-files internal/cli/.moai | wc -l
+       0
+```
+
+- **untracked 이고 gitignored 다** — `git status` 에 나타나지 않고, 삭제해도 git 안전망이 없다.
+- **`internal/cli` 테스트 실행마다 재생성된다.** 생성 주체는 config 캐시의 `MkdirAll` 부수효과(`internal/config/cache.go`, 파일명 상수 `config-cache.json`). 이 사실은 `internal/cli/doctor_golden_test.go:66` 주석이 **이미 명문화**하고 있다 — "a prior test's config load writes `<cwd>/.moai/state/config-cache.json` (the cache's MkdirAll side effect)". 골든 테스트는 `t.Chdir(t.TempDir())` + 캐시 비활성화로 자신만 격리할 뿐, 잔재 자체를 막지 않는다. `kanban/leads.json`·`factory/workers.json` 도 같은 성격의 cwd-상대 상태 쓰기다(mtime 이 서로 다르다 — 서로 다른 실행이 남겼다).
+
+**왜 이 SPEC 범위 밖인데도 적어 두는가.** 이 잔재는 D9 게이트를 실제로 실패시켰다: `.moai/` marker 를 앵커로 한 상향 탐색이 `internal/cli/.moai/` 에서 멈춰, **적용 가능한 트리를 적용 불가로 오판**했다. 이 SPEC 은 앵커를 커밋 방출물로 바꿔 자기 판정만 구했을 뿐, **잔재를 없애지도, 다른 marker 기반 탐색을 보호하지도 않는다.** 이 저장소에는 `.moai/` 를 marker 로 쓰는 상향 탐색이 더 있고(예: `nearestProjectRoot`, `internal/cli/glm.go:1058` 의 `findProjectRoot()`), 그 소비자들은 `internal/cli` 하위에서 실행될 때 같은 방식으로 조용히 잘못된 루트를 잡는다. 침묵이 위험의 본체다 — 오판이 에러가 아니라 **다른 정답**으로 나타난다.
+
+**카드로 뽑을 것(제안, 이 SPEC 에서 수행하지 않음):** (a) `internal/cli` 테스트가 패키지 cwd 에 상태를 쓰지 않도록 격리(golden 테스트가 자기 몫만 한 것을 패키지 전역으로), 또는 (b) `.moai/` marker 상향 탐색 소비자 전수 조사 후 각자의 앵커가 "판정 대상 그 자체"인지 점검. 둘은 배타적이지 않다.
