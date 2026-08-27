@@ -157,8 +157,12 @@ const (
 	DefaultGLMMedium  = DefaultGLM53Flash
 	DefaultGLMLow     = DefaultGLM53Flash
 	DefaultGLMFable   = DefaultGLM53Flash
-	// Additional GLM models — those exposed by ValidGLMModels() (glm-5.3,
-	// glm-5.1, glm-4.7, glm-4.5-air) are selectable in the tier slots; glm-4.5,
+	// DefaultGLM53Flash is the sparse-attention GLM-5.3-Flash variant (1M
+	// context). Unlike glm-5.3 it accepts reasoning_effort "max" only — the
+	// web console locks the tier effort select to max when a tier slot holds
+	// it, and the effort overlay branches per-model.
+	// Additional GLM models — those exposed by ValidGLMModels() (glm-5.1,
+	// glm-4.7, glm-4.5-air) are selectable in the tier slots; glm-4.5,
 	// glm-4.6, glm-5.2, and glm-5-turbo are named constants with no config
 	// surface. glm-5.2 left the offered set when a single model became every
 	// tier's default, but stays declared so an existing llm.yaml naming it still
