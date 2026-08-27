@@ -20,6 +20,8 @@ This SPEC does **not** `depends_on` it. The seam is a consumed contract (`spec.m
 - **B-1 — the self-observation constraint.** A watcher that cannot prove its own firing is forbidden. Answered by making the evaluator pull-based rather than scheduled, and the answer's load-bearing half is REQ-GDL-003's unconditional invocation (`spec.md` §D.1).
 - **B-2 — the unprompted-discoverability constraint.** A targeted query can only be issued by someone who already suspects the answer, so a design answering only when queried relocates the problem into whoever is expected to already know (`spec.md` §A.4, §D.2). Independent of B-1: a design can pass one and fail the other.
 - **B-3 — the trigger must not enumerate.** Three audit iterations failed on one shape: the trigger listed symptoms and a run reached the same silence down an unenumerated branch (D1, then N1, then T3). The contract seam makes enumeration unrepresentable; the implementation must not reintroduce it by hardcoding value names (AC-GDL-002).
+- **B-5 — the t326 citations are pinned to a different tree, and reading the wrong one inverts the finding.** `origin/develop` at `ec15ec2cd` is **diverged** from this SPEC's baseline (67 ahead / 9 behind; `git merge-base --is-ancestor` returns false). t326's session-start advisory and its comparison package exist there and are **absent from the baseline tree**, so a check run here reports a landed feature as missing. Every t326 citation names its tree inline (`spec.md` §A.10); RED-now cells stay pinned to `091966c55` because they measure this deliverable's absence.
+- **B-6 — the host surface is latency-bounded, so render and refresh are separate acts.** t326's comparable path bounds itself at 250 ms and can afford an inline comparison because it is two short local `git` invocations. This SPEC's evaluator issues one forge query per subject — 18 here — and no sequence of network round-trips fits that bound. The advisory reads a persisted result (REQ-GDL-011); wiring the queries into the host surface is a latency defect that only appears on a slow network.
 - **B-4 — the always-red neighbour is real and is not repaired here.** `Graph Freshness` fails on every `develop` push (card t322). A new advisory rendered beside it inherits its trained filter; REQ-GDL-007 is the mitigation and it is partial.
 
 ## §C Pre-flight (measured on `091966c55`)
@@ -62,7 +64,10 @@ Flips: AC-GDL-001, AC-GDL-003, AC-GDL-004.
 - The advisory arrives with no operator-supplied guard identifier or query (REQ-GDL-005). A documented CLI verb is not an acceptable sole answer — it is still a question someone must know to ask.
 - The stated age is derived from the persisted result's own timestamp (REQ-GDL-006).
 
-Flips: AC-GDL-002, AC-GDL-005, AC-GDL-006.
+- Join the **existing** session-start additional-context block through that surface's contributor mechanism; open no second surface (REQ-GDL-010).
+- Read a **persisted** result at the host surface; issue no forge query inline (REQ-GDL-011, B-6).
+
+Flips: AC-GDL-002, AC-GDL-005, AC-GDL-006, AC-GDL-010, AC-GDL-011.
 
 ### M3 — legibility and safety
 
@@ -86,6 +91,9 @@ Flips: AC-GDL-009.
 - **Shipping a CLI verb as the whole answer to arrival.** A verb the operator must know to run reproduces §A.4 exactly: the lead session could run the right query the instant it was handed the workflow's name, and could not know a query was owed.
 - **Reprinting the full standing list every session.** How a new advisory inherits the filter an always-red neighbour has already trained (B-4).
 - **Persisting the previous result inside the working tree.** Violates AC-GDL-008(b) and creates drift for the next reader.
+- **Opening a second advisory surface.** Two channels for one concern is §A.8's filtering mechanism applied twice. Join the existing block (REQ-GDL-010).
+- **Querying the forge inline at the host surface.** It passes every test on a fast network and stalls session start on a slow one — a latency defect that appears only where it hurts (B-6).
+- **Checking for a t326 surface in this tree.** It is absent here and present on `origin/develop`; the check returns "No such file or directory" for a landed feature (B-5).
 - **Describing any instance as a hidden failure.** B-0. The wording determines what gets built.
 
 ## §H Cross-references

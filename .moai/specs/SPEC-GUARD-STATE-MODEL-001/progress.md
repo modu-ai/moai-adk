@@ -5,7 +5,9 @@
 Plan-phase artifacts authored on `091966c55` @ `WT-guard-liveness` (worktree `.claude/worktrees/t333`).
 
 - Artifacts: `spec.md`, `plan.md`, `acceptance.md` (Tier M set) + this file.
-- Requirements: 12 (Tier M ceiling 16). Acceptance criteria: 15 (ceiling 16).
+- Requirements: 13 (Tier M ceiling 16). Acceptance criteria: 16 (ceiling 16 — at the ceiling).
+- **Two baselines.** RED-now cells pin `091966c55`; card t326 citations pin `origin/develop` at `ec15ec2cd`, a diverged tree (67 ahead / 9 behind). Each t326 citation names its tree inline (`spec.md` §C.2.1).
+- **Reuse verdict (v0.2.0):** t326's fold discipline and leniency principle adopted with citation; its **value vocabulary does not fit** and the measurement showing why is recorded — three of six values here have no counterpart there, one of its four has none here. Leniency bounded at *meaningless* (`UNREADABLE` → `ok`) versus *incomplete* (`UNKNOWN`/`UNRESOLVED` → `warn`).
 - Card: **t347** (issued by the lead; the sibling surfacing SPEC is card t333). Dispatch is a separate lead decision — this lane authored the plan-phase artifacts only.
 - Every RED-now cell is pinned to `091966c55` and its command was run on this tree during authoring; no cell was carried across the scope reduction from the predecessor without re-measurement.
 

@@ -21,6 +21,8 @@ This SPEC is card **t347**. The sibling SPEC (`SPEC-GUARD-LIVENESS-001`) is card
 - **B-4 — field-level inertness.** The predecessor carried two counts that were required, rendered, and consumed by nothing. REQ-GSM-009 clause (b) and AC-GSM-013 make every count trace to a consumer.
 - **B-5 — `moai update` deletes `.moai/config/` wholesale.** The manifest lives outside that root (REQ-GSM-001), or it is a liveness record that itself silently stops.
 - **B-6 — the manifest is repository-specific, not template content.** It describes this repository's `.github/workflows/`. It must not be mirrored into `internal/template/templates/`.
+- **B-7 — the t326 citations are pinned to a different tree, and reading the wrong one inverts the finding.** `origin/develop` at `ec15ec2cd` is **diverged** from this SPEC's baseline (67 ahead / 9 behind; `git merge-base --is-ancestor` returns false). t326's surfaces — `internal/binlag/`, `internal/cli/uikit/types.go`, `internal/cli/doctor.go` `checkBinaryFreshness` — exist there and are **absent from the baseline tree**, so a check run here reports a landed feature as missing. Every t326 citation in these artifacts names its tree inline; RED-now cells stay pinned to `091966c55` because they measure this deliverable's absence.
+- **B-8 — reuse from t326 is partial by measurement, not by preference.** The fold discipline and the leniency principle transfer; the value vocabulary does not (`spec.md` §C.2.1 carries the measurement). Do not import t326's four `Status` values — three of this SPEC's six have no counterpart there, and forcing them into `not-applicable` is the collapse that failed the predecessor three times.
 
 ## §C Pre-flight (measured on `091966c55`)
 
@@ -68,7 +70,9 @@ Flips: AC-GSM-001, AC-GSM-002, AC-GSM-003 (a)(b), AC-GSM-004, AC-GSM-005 (b), AC
 - Row 7 — the set comparison against disk enumeration (REQ-GSM-008).
 - Refuse an all-clear when the queried count is zero **or** the enumeration returned zero files (REQ-GSM-010, B-2).
 
-Flips: AC-GSM-003 (c), AC-GSM-005 (a), AC-GSM-006, AC-GSM-007 (a)(b), AC-GSM-008, AC-GSM-009, AC-GSM-010, AC-GSM-011, AC-GSM-012.
+- Fold every classification to the three-value surface vocabulary per the table's `Surface fold` column; **never emit `fail`** (REQ-GSM-013). The boundary is `UNREADABLE` → `ok` (meaningless — the comparison never applied) versus `UNKNOWN`/`UNRESOLVED` → `warn` (incomplete — it applied and could not finish). Adopting card t326's leniency wholesale, folding all uncertainty to `ok`, reproduces this card's own subject inside its solution.
+
+Flips: AC-GSM-003 (c), AC-GSM-005 (a), AC-GSM-006, AC-GSM-007 (a)(b), AC-GSM-008, AC-GSM-009, AC-GSM-010, AC-GSM-011, AC-GSM-012, AC-GSM-016.
 
 ### M3 — the result and its contract
 

@@ -4,7 +4,9 @@ Baseline tree for every RED-now cell: **`091966c55`** @ `WT-guard-liveness` (wor
 
 Two-cell discipline per `.claude/rules/moai/development/verification-completeness.md` §2. Each criterion carries a RED-now cell stating **why** it is red and a green-path cell naming its flipping milestone, and each was put through that rule's §2 mutant probe.
 
-Budget: Tier M ≤ 16 acceptance criteria. **Count: 15.**
+Budget: Tier M ≤ 16 acceptance criteria. **Count: 16 — at the ceiling.**
+
+**Two baselines, labelled at every use.** RED-now cells measure *this deliverable's absence* and are pinned to `091966c55`. Citations of card t326's landed surfaces are pinned to **`origin/develop` at `ec15ec2cd`**, a diverged tree (67 ahead / 9 behind). Reading the baseline tree for a t326 surface reports a landed feature as absent, so each such citation names its tree inline.
 
 ## §D AC Matrix
 
@@ -25,6 +27,7 @@ Budget: Tier M ≤ 16 acceptance criteria. **Count: 15.**
 | AC-GSM-013 | REQ-GSM-009 | Counts carried + each consumed | M3 |
 | AC-GSM-014 | REQ-GSM-011 | Negative assertion (no mutation) | M3 |
 | AC-GSM-015 | REQ-GSM-012 | Published-contract conformance | M3 |
+| AC-GSM-016 | REQ-GSM-013 | Surface fold + never-`fail` + reuse boundary | M2 |
 
 ## §D.1 Criteria (Given-When-Then, two cells each)
 
@@ -135,6 +138,13 @@ Budget: Tier M ≤ 16 acceptance criteria. **Count: 15.**
 - **Green path:** M3. Passing output is a single designated clean value.
 - **Why this criterion exists here and not in the consuming SPEC:** `SPEC-GUARD-LIVENESS-001` consumes the contract and can verify that its own trigger uses the clean/non-clean partition — but it **cannot** verify that exactly one clean value exists, because it never names the vocabulary. If this SPEC ever designated two clean values, every criterion in the consuming SPEC would still pass while its advisory under-fired. This criterion is the other half of that seam.
 - **Mutant:** clause (b) stated as "at least one entry classifies `OK`" is satisfied while a second value is also treated as clean. Asserting the **designation** rather than the observed entries is what closes it.
+
+### AC-GSM-016 — every classification folds, and none folds to `fail`
+**Given** the 7-row fixture of AC-GSM-007 plus the table's `Surface fold` column; **When** each case is classified and folded; **Then** ALL THREE hold — (a) every one of the six classifications has a declared fold into `ok` / `warn` / `fail`, (b) **no classification folds to `fail`**, and (c) the meaningless/incomplete boundary holds — `UNREADABLE` folds to `ok` while `UNKNOWN` and `UNRESOLVED` fold to `warn`.
+- **RED-now:** no classifier and no fold exist on this SPEC's baseline (AC-GSM-006's measurement). Red for absence. The surface vocabulary the fold targets is measured on **`origin/develop` at `ec15ec2cd`** — `CheckOK`/`CheckWarn`/`CheckFail` in `internal/cli/uikit/types.go`, three values with no skipped state — a diverged tree from this SPEC's baseline (`spec.md` §C.2.1).
+- **Green path:** M2. Passing output is six declared folds, zero `fail`, and the boundary as stated.
+- **Mutant (b):** without the never-`fail` clause, an implementation folding `UNDECLARED` or `STALE` to `fail` satisfies every other criterion while promoting a routine sweep to a failing exit status. Card t326 reached the same conclusion for the same reason and recorded it in source: *"never Fail — a Fail here would promote every downstream `moai doctor` run to exit 1"*.
+- **Mutant (c), and it is this SPEC's own subject:** an implementation that adopts t326's leniency wholesale folds **all** uncertainty to `ok` — `UNREADABLE`, `UNKNOWN` and `UNRESOLVED` alike. It passes (a) and (b), reads as principled reuse, and reproduces the defect this card exists to catch: a mechanism reporting green about a set it never learned. Clause (c) is where the reuse stops, and it stops at the line between *meaningless* (no reader — the comparison never applied) and *incomplete* (the comparison applied and could not finish).
 
 ## §D.7 Residual risk (recorded, not claimed as closed)
 

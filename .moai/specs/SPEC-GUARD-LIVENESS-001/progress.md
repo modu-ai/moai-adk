@@ -5,7 +5,8 @@
 Plan-phase artifacts authored on `091966c55` @ `WT-guard-liveness` (worktree `.claude/worktrees/t333`).
 
 - Artifacts: `spec.md`, `plan.md`, `acceptance.md` (Tier M set) + this file.
-- Requirements: 9 (Tier M ceiling 16). Acceptance criteria: 9 (ceiling 16). Both comfortably under, which is the outcome of the scope reduction.
+- Requirements: 11 (Tier M ceiling 16). Acceptance criteria: 11 (ceiling 16). Both well under, which is the outcome of the scope reduction.
+- **Two baselines.** RED-now cells pin `091966c55`; card t326 citations pin `origin/develop` at `ec15ec2cd`, a diverged tree (67 ahead / 9 behind). Each t326 citation names its tree inline — reading the baseline for a t326 surface reports a landed feature as absent (`spec.md` §A.10).
 - Primary evidence artifact: `.moai/reports/t333/trigger-axis-observation.md` (tracked at `c30f761dd`).
 - Every RED-now cell is pinned to `091966c55` and its command was re-run during the split; no cell was carried across without re-measurement.
 

@@ -1,7 +1,7 @@
 ---
 id: SPEC-GUARD-LIVENESS-001
 title: "Guard firing-liveness — the surfacing model: make a guard that silently stopped reach the operator unbidden (card t333)"
-version: "1.1.0"
+version: "1.2.0"
 status: draft
 created: 2026-08-28
 updated: 2026-08-28
@@ -30,6 +30,7 @@ related_specs: [SPEC-GUARD-STATE-MODEL-001]
 | 0.6.0 | 2026-08-28 | manager-spec | plan-audit iter-2 repair: N1, N2, N5 closed. |
 | 1.0.0 | 2026-08-28 | manager-spec | **Scope reduction after the iter-3 FAIL + STOP (0.800 → 0.800 → 0.667).** No fourth repair round — the regression clause forbids one without an override and none was granted. The SPEC is split along the seam its own defects kept landing on. This SPEC keeps the **surfacing model**, which converged: the auditor re-ran both prior N1 mutants and could not revive either. The **state model** (former REQ-GDL-001..010 + 012, carrying D2, D5, N2, T2, T4 as one never-converging family) moves to `SPEC-GUARD-STATE-MODEL-001`. Seam resolved as **contract, not dependency** (§B.1). Requirements renumbered contiguously — mapping in §B.2. **T9 closed** — the unconditional-invocation clause is promoted to its own requirement (REQ-GDL-003) and gains AC-GDL-003, the criterion the audit named the single most consequential missing one. **T3 dissolved structurally** rather than restated: the trigger is now expressed in contract terms, so no criterion can encode a classification list. Optional T7, T10, T11 folded into §D.3; N4 taken in AC-GDL-006. Counts 16→9 REQ, 16→9 AC. |
 | 1.1.0 | 2026-08-28 | manager-spec | **§A.9 added — instance 7, measured on `091966c55`.** Every completed `ci.yml` run on `develop` in the observed window failed (5/5; two cancelled, one in progress), failing jobs `Test (ubuntu-latest)` and `Race Test` on run `33117635467`; the cause is recorded as the lead's attribution (a doctor check structurally red in CI's bin-absent environment since `812ee01fc`, card t346) and not this lane's measurement. The instance is the roles reversed: instances 1-6 are absence read as success, while this is **a verdict that was produced, was correct, was red, and reached no one** — the orchestrator on card t333 named `origin/develop` CI as the judge when reporting t298's landing and never returned to read the verdict. It is the live case for §A.8, which was hypothetical until this card produced one, and it is the strongest available evidence that the discipline is not sufficient without a mechanism, because it happened to the party that spent the session policing this exact failure in others. The sibling state-model SPEC's card id `t347` is filled throughout. No requirement or criterion changed — counts unchanged at 9 REQ / 9 AC. |
+| 1.2.0 | 2026-08-28 | manager-spec | **Card t326's landed session-start advisory disposed of as IN SCOPE, composing (§B.3) — not excluded.** §A.10 added: the t326 citations are pinned to `origin/develop` at `ec15ec2cd`, a tree **diverged** from this SPEC's baseline (67 ahead / 9 behind, `merge-base --is-ancestor` false), where reading the baseline for a t326 surface reports a landed feature as absent. **REQ-GDL-010** requires joining the existing session-start additional-context block rather than opening a second surface — that block is already a multi-contributor surface and t326's helper records itself as the fifth joiner. **REQ-GDL-011** records a constraint the design did not previously state and which the read discovered: the host surface is latency-bounded (t326 bounds its comparable path at 250 ms and affords an inline comparison only because it is two short local `git` calls), while this evaluator issues one forge query per subject — so **render and refresh are separate acts** and the advisory reads a persisted result. That split was already implied by REQ-GDL-006's persisted timestamp and never stated. The divergence from t326's silence policy (it speaks on one outcome; REQ-GDL-004 speaks on any non-clean) is deliberate and its cost is recorded in §D.3. AC-GDL-010 and AC-GDL-011 adopt both. Counts 9→11 REQ, 9→11 AC. |
 
 ## §A Context and Problem
 
@@ -149,6 +150,23 @@ Note the last row: `d34a789a4` is this SPEC's own original RED-now baseline, the
 
 **The reason it belongs in the SPEC rather than in a lessons file** is what it demonstrates about discipline versus mechanism. It happened to the party that had spent the entire session policing this exact failure mode in others — auditing unobserved claims, requiring measured baselines, rejecting a green whose swept set was empty. A discipline held that attentively still did not survive one deferral. **That is the strongest available evidence that the discipline is not sufficient without a mechanism**, which is the premise of this whole card: the answer must arrive unbidden (REQ-GDL-005), because the alternative is a competent party intending to go back and look, and not going back.
 
+## §A.10 Tree attribution for the t326 citations
+
+[Every citation in §B.3 and §E of `internal/binlag/`, `internal/hook/session_start_binary_lag.go`, `internal/cli/doctor.go` and `internal/cli/uikit/types.go` is measured on **`origin/develop` at `ec15ec2cd`**, not on this SPEC's baseline tree.]
+
+The two trees are **diverged**, not merely offset — measured on `091966c55`:
+
+```
+$ git merge-base --is-ancestor 37263c222 origin/develop && echo ancestor || echo "NOT ancestor"
+NOT ancestor
+$ git rev-list --count --left-right origin/develop...HEAD
+67	9
+```
+
+`origin/develop` carries 67 commits this branch does not, including all of t326's landed work; this branch carries 9 it does not, all of them this card's SPEC authoring. **Reading this tree for a t326 surface returns "No such file or directory" for a feature that exists** — a stale-tree reading that reports a landed feature as absent, which is the D7 class this SPEC already paid for once.
+
+Every RED-now cell in `acceptance.md` remains pinned to `091966c55`, because those measure *this* deliverable's absence. The t326 citations are pinned separately to `ec15ec2cd` and labelled at each use. Mixing the two pins silently is the failure this section exists to prevent.
+
 ## §B Relationship to the landed rule, and to the state-model SPEC
 
 `.claude/rules/moai/development/verification-completeness.md` landed at `7f5b6a947` and already carries the observed-failure discipline, the three-part check spec, the two-cell adoption pair, and the mutant probe. **None of it is re-authored here.**
@@ -171,6 +189,42 @@ That is the entire contract. This SPEC does **not** name the vocabulary, state h
 
 **The seam also buys a correctness property, which is the strongest evidence it is genuine.** Three iterations of defects — D1, N1, T3 — were one shape: the trigger enumerated **symptoms**, first two named classifications, then those plus a coverage proxy, and each time a run reached the same silence down an unenumerated branch. Under the contract the trigger cannot enumerate, because there is nothing to enumerate: there is the clean value, and there is everything else. **The defect family that failed this SPEC three times is not merely fixed here — it is unrepresentable here.** T3 is dissolved by that restructuring rather than restated as two corrected sentences.
 
+### B.3 The landed session-start advisory — in scope, and it constrains the design
+
+An unprompted-discoverability path **already exists and is running**. Card t326 landed not only a doctor item but a session-start advisory, measured on `origin/develop` at `ec15ec2cd` (§A.10):
+
+```
+$ git ls-tree --full-tree -r --name-only origin/develop | grep -i binlag
+internal/binlag/binlag.go
+internal/hook/session_start_binary_lag.go
+…
+```
+
+§D.2 argues for a mechanism that reaches a reader without being asked. One exists, so this SPEC owes an answer rather than silence. **The disposition is: in scope, composing with it — not a second surface.**
+
+**Why composition rather than a parallel channel.** The session-start advisory block is already a multi-contributor surface by construction. `session_start_binary_lag.go` carries a helper for exactly this, and its own comment records that it is the fifth joiner:
+
+> `appendAdditionalContext` adds text to the session-start additionalContext, creating the hook-specific output block when this is the first contributor and separating from earlier contributors otherwise. Callers upstream open-code this same shape; the lag advisory is the last one to join, so it uses a helper rather than adding a fifth copy.
+
+A second surface would split the reader's attention across two channels for one concern, and §A.8's mechanism says a second channel is exactly how both end up filtered. REQ-GDL-010 records the composition obligation.
+
+**The constraint this discovery imposes, which the design did not previously state.** The session-start path is latency-bounded:
+
+```
+$ git show origin/develop:internal/hook/session_start_binary_lag.go | grep -n "binaryLagJoinBound ="
+const binaryLagJoinBound = 250 * time.Millisecond
+```
+
+t326 can afford an inline comparison because it is two short **local** `git` invocations. This SPEC's evaluator issues **one forge query per subject** — 18 on this repository — and no sequence of network round-trips fits inside a 250 ms join bound. **The render and the refresh are therefore separate acts**, and the SPEC now says so: the advisory reads a *persisted* result at the host surface and performs no forge query inline (REQ-GDL-011).
+
+This was already implied and never stated — REQ-GDL-006 requires the reported age to be derived from a persisted result, which presupposes that something persisted it at another time. Making the split explicit is what stops an implementer from wiring the evaluator's queries directly into session start and discovering the bound at run time.
+
+**What this SPEC deliberately does not adopt from t326's advisory.** Its silence policy is the opposite of REQ-GDL-004's trigger, and the divergence is intentional:
+
+> Empty covers every non-lag outcome, and they are not distinguished here on purpose: a session start is not a diagnostic report, so the only outcome worth interrupting a reader for is the one where the binary really is running code the tree has moved past.
+
+t326 speaks on **one** outcome and is silent on all others. REQ-GDL-004 fires on **any** non-clean entry. Both are defensible for their own subject — t326 compares one binary and can name the single interesting verdict, while this SPEC sweeps N subjects where "could not determine" is itself the finding (§A.0). The cost of the divergence is real and is recorded in §D.3: composing a speak-on-any-non-clean advisory into a block whose established policy is speak-rarely changes that block's noise profile, and §A.8 is precisely about what a noisier channel does to its readers.
+
 ### B.2 Requirement renumbering across the split
 
 Requirements were renumbered contiguously, because a non-contiguous set fails the numbering must-pass. The mapping from v0.6.0 is recorded once, here:
@@ -190,7 +244,7 @@ Requirements were renumbered contiguously, because a non-contiguous set fails th
 
 ## §C Requirements (GEARS)
 
-Budget: Tier M ≤ 16 requirements. **Count: 9.**
+Budget: Tier M ≤ 16 requirements. **Count: 11.**
 
 ### C.1 The consumed contract
 
@@ -206,7 +260,12 @@ Budget: Tier M ≤ 16 requirements. **Count: 9.**
 - **REQ-GDL-007** — The advisory shall lead with the entries whose classification **changed** since the previously rendered result, and shall carry unchanged non-clean entries as a compact standing count rather than as a re-rendered list. A channel that reprints an identical block every session trains the filter that removes it, and a new advisory rendered beside a permanently-red neighbour inherits that filter (§A.8).
 - **REQ-GDL-008** — The advisory path shall not write to the repository working tree, commit, push, open an issue, or mutate any forge state. The result persistence REQ-GDL-007 requires shall live outside the working tree.
 
-### C.3 Doctrine
+### C.3 Composition with the landed session-start path
+
+- **REQ-GDL-010** — The advisory shall join the **existing** session-start additional-context block through that surface's established contributor mechanism, and shall not create a second advisory surface for the same concern. A second channel splits one concern across two surfaces, which is how both acquire a reader's filter (§A.8, §B.3).
+- **REQ-GDL-011** — When rendering at the host surface, the advisory shall read a **persisted** evaluation result and shall perform no forge query inline. The refresh that produces that result is a separate act from the render, because the host surface is latency-bounded (t326's comparable path bounds itself at 250 ms) and one forge query per subject cannot fit inside such a bound.
+
+### C.4 Doctrine
 
 - **REQ-GDL-009** — `.claude/rules/moai/development/verification-completeness.md` shall gain an additive continued-firing clause stating that a check's completion does not survive a change to its trigger, its deployment, or its branch model. No existing text in that file shall be modified.
 
@@ -240,7 +299,10 @@ Three questions, tested rather than assumed:
 - **Change-leading makes a long-standing non-clean entry quiet by design.** It is announced once and thereafter only counted. Re-announcing it every session is the noise that produces the filter, so the trade is deliberate — but quiet is the subject of this card, and this is the sharpest unresolved tension in the design.
 - **The advisory reaches one observer, and §A.4's subject is two.** An advisory rendered in observer 1's session leaves observer 2 exactly where §A.4 found the lead. The design narrows *who must already know the question* from "someone" to "whoever attends a session", which is an improvement rather than a closure.
 
-All five are recorded in `acceptance.md` §D.7 as residual risk, not as solved problems.
+- **Composing into the landed session-start block changes that block's noise profile.** t326's advisory speaks on one outcome and is silent on every other; REQ-GDL-004 speaks on any non-clean entry. Joining a speak-rarely channel with a speak-often contributor is a decision with a cost, and §A.8 is exactly about what a noisier channel does to its readers. REQ-GDL-007's change-leading is the mitigation and it is partial. The alternative — a second surface — was rejected as worse (§B.3), not as costless.
+- **The render/refresh split is stated but its refresh trigger is not.** REQ-GDL-011 establishes that the host surface reads a persisted result rather than querying inline, because the bound forbids it. What causes a refresh, and how stale a persisted result may become before the advisory's own age disclosure (REQ-GDL-006) stops being sufficient, is not decided here. This is a genuine open edge introduced by the latency finding, and it is recorded rather than resolved.
+
+All seven are recorded in `acceptance.md` §D.7 as residual risk, not as solved problems.
 
 ## §E Out of Scope
 
@@ -248,8 +310,10 @@ All five are recorded in `acceptance.md` §D.7 as residual risk, not as solved p
 - Which classifications exist, what each means, how an entry is decided into one, the manifest that declares firing expectations, the per-workflow querying, and the set comparison against disk. All of it is `SPEC-GUARD-STATE-MODEL-001`; its card id is pending and recorded in `plan.md` §A.1, the single place the placeholder sits.
 - This SPEC consumes only the three-clause contract in REQ-GDL-001 and restates none of the vocabulary (§B.1).
 
-### Out of Scope — the binary-lag state comparison
-- Whether the installed binary's build commit is a strict ancestor of the tree HEAD, and the session-start advisory that surfaces it. Owned by card t326 (`SPEC-BINARY-LAG-VISIBILITY-001`, REQ-BLV-001..009, in flight; the file is absent from this tree, so the cited requirement range is not verifiable from here).
+### Out of Scope — the binary-lag comparison itself (but NOT its surfacing path)
+- Whether the installed binary's build commit is a strict ancestor of the tree HEAD — the comparison, its verdict vocabulary, and the doctor item that reports it. Owned by card t326.
+- **The session-start advisory path is explicitly NOT excluded.** It is in scope as a composition target: REQ-GDL-010 requires this advisory to join that existing block rather than open a second surface, and REQ-GDL-011 records the latency constraint that composition imposes. See §B.3 for the disposition and its reasoning.
+- Correction to an earlier draft of this section: t326's work is **landed on `origin/develop` at `ec15ec2cd`**, not in flight, and its files are absent from *this* tree only because the two are diverged (§A.10). An earlier reading of this tree concluded the surfaces did not exist; they do. The `REQ-BLV-001..009` range remains uncited here because this SPEC now cites t326's **source** rather than its requirement numbering.
 
 ### Out of Scope — C5, policy-rule firing (named follow-up candidate)
 - Applying the same three questions to **policy-layer rules** rather than CI guards. Grounding is §A.7: a rule landed, sat inside its own `paths:`, was cited by name in audits, and its named defect recurred two days later with nothing detecting it.

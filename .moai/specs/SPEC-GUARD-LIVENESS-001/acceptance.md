@@ -4,7 +4,9 @@ Baseline tree for every RED-now cell: **`091966c55`** @ `WT-guard-liveness` (wor
 
 Two-cell discipline per `.claude/rules/moai/development/verification-completeness.md` §2: each criterion carries a RED-now cell stating **why** it is red, and a green-path cell naming the flipping milestone. Each was put through that rule's §2 mutant probe; where a single-clause criterion admitted a mutant, a second clause was added and the mutant is recorded.
 
-Budget: Tier M ≤ 16 acceptance criteria. **Count: 9** — comfortably under, which is the point of the reduction.
+Budget: Tier M ≤ 16 acceptance criteria. **Count: 11** — still well under, which is the point of the reduction.
+
+**Two baselines, labelled at every use.** RED-now cells measure *this deliverable's absence* and are pinned to `091966c55`. Citations of card t326's landed surfaces are pinned to **`origin/develop` at `ec15ec2cd`**, a diverged tree (67 ahead / 9 behind — `spec.md` §A.10). Mixing the two pins silently would be an unattributed claim, so each t326 citation names its tree inline.
 
 ## §D AC Matrix
 
@@ -19,6 +21,8 @@ Budget: Tier M ≤ 16 acceptance criteria. **Count: 9** — comfortably under, w
 | AC-GDL-007 | REQ-GDL-007 | Change-leading pair | M3 |
 | AC-GDL-008 | REQ-GDL-008 | Negative assertion (no mutation) | M3 |
 | AC-GDL-009 | REQ-GDL-009 | Additive-only diff assertion | M4 |
+| AC-GDL-010 | REQ-GDL-010 | Composition + no-second-surface pair | M2 |
+| AC-GDL-011 | REQ-GDL-011 | No-inline-query + bound pair | M2 |
 
 ## §D.1 Criteria (Given-When-Then, two cells each)
 
@@ -103,6 +107,20 @@ Budget: Tier M ≤ 16 acceptance criteria. **Count: 9** — comfortably under, w
 - **Green path:** M4. Passing output is `<added> 0 <file>` from `--numstat`, with the grep returning rc=0.
 - **Mutant:** the grep clause alone is satisfied by a commit that adds the clause and rewrites the surrounding section. The zero-deletions clause enforces "extend, never re-author".
 
+### AC-GDL-010 — the advisory joins the existing block, and opens no second surface
+**Given** a session start in which at least one other contributor already writes to the session-start additional-context block, and an evaluation result carrying a non-clean entry; **When** the session starts; **Then** BOTH hold — (a) this advisory's text appears **within that same block**, separated from the earlier contributor rather than replacing it, and (b) the change introduces **no** additional advisory surface for this concern — no new hook output field, no second block, no separate emission path.
+- **RED-now:** no advisory exists on `091966c55` (AC-GDL-001's measurement), so there is nothing to join with and nothing to duplicate. Red for absence. The composition target is measured on `origin/develop` at `ec15ec2cd` and is present there — `internal/hook/session_start_binary_lag.go` carries the contributor helper, whose own comment records it as the fifth joiner to that block.
+- **Green path:** M2. Passing output is one block containing both contributors' text.
+- **Mutant:** clause (a) alone is satisfied by an implementation that writes its own block and happens to render adjacently — visually similar, structurally a second surface, and it drifts the moment either emitter changes. Clause (b) is the negative assertion that excludes it, stated as *no new emission path* rather than as *looks like one block*.
+- **Why a second surface is the wrong answer even though it is easier:** §A.8's mechanism is that a channel carrying no information gets filtered. Two channels for one concern is the same mechanism applied twice — each carries less than the single channel would, and a reader who learns to skip one has no reason to treat the other differently.
+
+### AC-GDL-011 — the render performs no forge query
+**Given** the advisory rendering at the host surface with the forge unreachable (network denied); **When** the session starts; **Then** ALL THREE hold — (a) the advisory still renders from the persisted result, (b) **zero** forge calls are issued by the render path, counted the same way AC-GDL-001 counts value names, and (c) the render completes within the host surface's join bound.
+- **RED-now:** no advisory and no persisted result exist (AC-GDL-001's measurement). Red for absence.
+- **Green path:** M2. Passing output is a rendered advisory, zero forge calls, and a render inside the bound.
+- **Why this criterion exists, and it was not in the design until t326 was read:** the comparable landed path bounds itself at 250 ms — `const binaryLagJoinBound = 250 * time.Millisecond`, measured on `origin/develop` at `ec15ec2cd`. t326 can afford an inline comparison because it is two short local `git` invocations; this SPEC's evaluator issues **one forge query per subject**, 18 on this repository, and no sequence of network round-trips fits that bound.
+- **Mutant:** clause (a) alone is satisfied by an implementation that queries the forge inline and succeeds on a fast network. It passes every test run on a healthy connection and stalls session start on a slow one — a latency defect that only appears in the conditions where it hurts. The network-denied fixture is what makes it fail at test time instead of at a user's session start, and clause (c) is what catches the variant that degrades gracefully but still blocks.
+
 ## §D.7 Residual risk (recorded, not claimed as closed)
 
 - **The host surface can be removed, and the evaluator stops with it** — the same defect class one layer up. Full closure needs an unattended watcher, which reintroduces the regress `spec.md` §D.1 avoids.
@@ -111,4 +129,6 @@ Budget: Tier M ≤ 16 acceptance criteria. **Count: 9** — comfortably under, w
 - **Change-leading makes a long-standing non-clean entry quiet by design.** Announced once, thereafter only counted. Re-announcing every session is the noise that produces the filter, so the trade is deliberate — but quiet is this card's subject, and this is the sharpest unresolved tension.
 - **The advisory reaches one observer, and §A.4's subject is two.** An advisory in observer 1's session leaves observer 2 where §A.4 found the lead. The design narrows *who must already know the question* from "someone" to "whoever attends a session" — an improvement, not a closure.
 - **The seam is verified by a grep, which is a proxy for a design property.** AC-GDL-001(b) and AC-GDL-002(b) detect a hardcoded value name in source. They do not detect an implementation that infers the vocabulary structurally — for instance by assuming a fixed value count. The contract is stated in three clauses and only two of them are mechanically checked.
+- **Composing into the landed session-start block changes that block's noise profile.** t326's advisory speaks on one outcome and is silent on every other; REQ-GDL-004 speaks on any non-clean entry. Joining a speak-rarely channel with a speak-often contributor has a cost, and §A.8 is about exactly what a noisier channel does to its readers. Change-leading mitigates it partially. A second surface was rejected as worse, not as costless.
+- **The refresh trigger is undecided.** REQ-GDL-011 establishes that the render reads a persisted result because the host bound forbids querying inline. What causes a refresh — and how stale a persisted result may become before REQ-GDL-006's age disclosure stops being sufficient — is not decided here. It is a genuine open edge introduced by the latency finding, and no criterion covers it.
 - **The contract's third clause is consumed, not verified.** REQ-GDL-001 asserts that exactly one value means *nothing to report*. This SPEC checks that its own trigger uses that partition; it cannot check that the producing SPEC actually designates exactly one such value. If the state model ever designated two clean values, this SPEC's criteria would all still pass while the advisory under-fired. That is the cost of the contract seam, and it is the state SPEC's REQ-GSM-012 that carries the other half.
