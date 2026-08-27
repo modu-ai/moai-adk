@@ -1,7 +1,7 @@
 ---
 id: SPEC-GUARD-LIVENESS-001
 title: "Guard firing-liveness: declare when each CI guard should have fired, and make a guard that silently stopped visible (card t333)"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-08-28
 updated: 2026-08-28
@@ -22,7 +22,8 @@ era: V3R6
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
 | 0.1.0 | 2026-08-28 | manager-spec | Initial plan-phase authoring (card t333). Scope narrowed to the event-history axis; the binary-lag state comparison stays with card t326. |
-| 0.2.0 | 2026-08-28 | manager-spec | Amended after the evidence artifact was extended. §A.3 split into Claim A / Claim B (the two observations are not of equal strength). §A.4 rewritten to the complete third instance — the gap closed because one observer handed the other the question, and nothing would have told the lead its picture was wrong. §A.7 extended with the always-red obligation. §D restructured into two independent binding constraints (self-observation, unprompted discoverability) plus what the design does not close. REQ-GDL-013 strengthened to require zero operator input; REQ-GDL-016 added (change-leading advisory). AC-GDL-013 and AC-GDL-014 added. Counts 15→16 REQ, 12→14 AC. |
+| 0.2.0 | 2026-08-28 | manager-spec | Amended after the evidence artifact was extended. §A.3 split into Claim A / Claim B (the two observations are not of equal strength). §A.4 rewritten to the complete third instance — the gap closed because one observer handed the other the question, and nothing would have told the lead its picture was wrong. the always-red subsection (renumbered to §A.8 in v0.3.0) extended with the always-red obligation. §D restructured into two independent binding constraints (self-observation, unprompted discoverability) plus what the design does not close. REQ-GDL-013 strengthened to require zero operator input; REQ-GDL-016 added (change-leading advisory). AC-GDL-013 and AC-GDL-014 added. Counts 15→16 REQ, 12→14 AC. |
+| 0.3.0 | 2026-08-28 | manager-spec | Three inputs from the t241 lane's prediction-ledger verdict (all six rows `false`). §A.7 added — instance 6, a `-run` selector matching two tests that did not exist, recurring inside the landed rule's own `paths:` two days after it landed; the always-red subsection renumbered §A.7→§A.8 and its inbound references updated. §B.1 added — a policy rule landing is not a policy rule working. §C.1.1 added — the one-number-two-events trap with the lane's measured occurred/survived table; REQ-GDL-003 strengthened to forbid it. REQ-GDL-001 extended to require the watched set be held as data; §D.4 added — subject-agnostic shape without a subject-agnostic deliverable. §E gains two entries: C5 (policy-rule firing) as a named follow-up candidate with its grounding, and C2 (unpinned invariant assertions) explicitly declined on the lane's exemption-discriminant warning. AC-GDL-015 added. Counts 16 REQ (unchanged, at budget), 14→15 AC. |
 
 ## §A Context and Problem
 
@@ -90,7 +91,17 @@ All three are `skipped` — the workflow's own `if: github.event.pull_request.me
 
 `.github/workflows/` holds **18** workflow files. Grouping the 100 most recent runs by workflow name yields **11** distinct names; seven files never appear. Some of those are legitimately release-only, but the listing does not say which — and the 100-run window it was drawn from spans **about three hours** (`2026-08-27T11:53:56Z` → `14:57:34Z`), because a handful of high-frequency workflows saturate it. Nothing today distinguishes "correctly quiet" from "silently stopped".
 
-### A.7 The always-red variant (recorded, not this card's subject)
+### A.7 Instance 6 — a selector that matched nothing, inside the landed rule's own scope
+
+The cleanest of the set, and the one that fixes the mechanism's generality.
+
+`.claude/rules/moai/development/verification-completeness.md` landed at `7f5b6a947` — author and committer date both `Tue Aug 25 13:05:04 2026 +0900`, verified in this plan phase with `git show -s --format='%H%n%ad%n%cd'`. Two days later, on 2026-08-27, its own named defect recurred in `.moai/specs/**/progress.md` — **squarely inside the rule's `paths:` scope**. A `-run` selector named three tests; only one existed under that name. **Two never ran.** The run reported `ok ... 0.249s`, and nobody saw it until sync close. Source: the t241 lane's prediction-ledger verdict, whose six rows all recorded `false`.
+
+**Nothing failed.** Two checks did not exist, and the exit code said nothing about that. Absence read as green.
+
+This instance is on a third axis — not deployment (§A.2), not trigger (§A.3), but a **selector matching nothing** — and that is what makes it load-bearing for scope. The defect is not a property of GitHub Actions. **Any check whose non-execution is indistinguishable from its success has it.** That generality is the justification for this SPEC's mechanism being about *firing*, and about a watched set held as data, rather than about workflow files (§D.4).
+
+### A.8 The always-red variant (recorded, not this card's subject)
 
 `Graph Freshness` failed on every `develop` push in the measured window (`d34a789a4`, `0c7457f8d`, `812ee01fc` — 3/3). Repairing it is card t322's subject and is out of scope here (§E).
 
@@ -116,17 +127,38 @@ Boundary against the rule's `(c)`, stated explicitly so the two clauses are not 
 
 The t241 lane's out-of-scope statement ("규칙 파일 본문 개정 없음") confirms the rule body will not be edited by its own work, so the extension point is stable. This card's rule work is **additive only** (REQ-GDL-015).
 
+### B.1 A policy rule landing is not a policy rule working
+
+§A.7 is evidence about this very rule, and it should be stated plainly rather than left as an awkward implication. The rule was **correct**, **in scope**, and **cited by name in audits** — and the defect it names recurred two days after it landed, inside its own `paths:`. The t241 lane's prediction ledger recorded `false` on all six rows.
+
+Nothing detects at that layer. A rule is a policy artifact: it changes what a careful reader does, and it has no run records, no exit code, and no mechanical firing. That is exactly why §A.7's recurrence went unseen until sync close, and it is the strongest available argument that this card's subject is not a CI-workflow quirk.
+
+It is also why the deliverable here stays mechanical and stays scoped to things that *have* run records (§E). Extending the same three questions to policy rules is a real follow-up, named as C5 in §E, not a widening of this card.
+
 ## §C Requirements (GEARS)
 
 Budget: Tier M ≤ 16 requirements. **Count: 16.**
 
 ### C.1 The expectation record — where firing expectations are written (question (a))
 
-- **REQ-GDL-001** — The system shall carry a guard-liveness manifest declaring one expectation entry per workflow file under `.github/workflows/`. The manifest shall live outside `.moai/config/`, because `moai update` deletes that root wholesale (`CleanMoaiManagedPaths`) and a manifest lost on update is a guard-liveness record that itself silently stops.
+- **REQ-GDL-001** — The system shall carry a guard-liveness manifest declaring one expectation entry per workflow file under `.github/workflows/`. The manifest shall live outside `.moai/config/`, because `moai update` deletes that root wholesale (`CleanMoaiManagedPaths`) and a manifest lost on update is a guard-liveness record that itself silently stops. **The manifest shall hold its watched set as data — a list of watched subjects each carrying its own kind, locator, and expected cadence — and shall not be shaped so that only a GitHub workflow can occupy an entry** (§D.4, §E C5).
 - **REQ-GDL-002** — Each manifest entry shall carry the workflow file path, the triggering event or events under which firing is expected, an expectation window, and exactly one measured quantity.
-- **REQ-GDL-003** — The measured-quantity vocabulary shall be exactly `fired-at-all`, `fired-with-effect`, and `verdict-rendered`, where `fired-with-effect` excludes runs whose conclusion is `skipped` or `cancelled`, and `verdict-rendered` additionally requires a terminal `success` or `failure`. Each entry names exactly one, so a reader can tell which of two different things a number measures.
+- **REQ-GDL-003** — The measured-quantity vocabulary shall be exactly `fired-at-all`, `fired-with-effect`, and `verdict-rendered`, where `fired-with-effect` excludes runs whose conclusion is `skipped` or `cancelled`, and `verdict-rendered` additionally requires a terminal `success` or `failure`. **Each entry shall name exactly one, and no entry shall be written whose single number is asked to measure both whether a guard fired and whether a firing caught anything.** These are different axes: a guard that runs faithfully and catches nothing scores full marks on the first (§C.1.1).
 - **REQ-GDL-004** — Where a workflow file has no manifest entry, the evaluator shall classify it `UNDECLARED` and report it. It shall not be skipped, ignored, or counted toward a clean result.
 - **REQ-GDL-005** — Where a guard is legitimately expected to be quiet outside a release cycle, its entry shall declare that condition explicitly rather than being omitted, so "correctly quiet" is a recorded expectation rather than an absence a reader must infer.
+
+#### C.1.1 The one-number-two-events trap, measured
+
+The trap REQ-GDL-003 forbids is not hypothetical here. The t241 lane's prediction ledger predicted **"0 audit findings"** as its success signal on four rows — a number that moves the *wrong way* when the rule works, because authors still write shallow criteria and the audit now catches them. Its own measurement separates the two events the single number was carrying:
+
+| Ledger row | Defect occurred | Survived to adoption |
+|---|---:|---:|
+| VC-1 | 3 | 2 |
+| VC-2 | 7 | 1 |
+| VC-4 | 5 | 1 |
+| VC-6 | 2 | 1 |
+
+The same split sits directly in this SPEC's path. An expectation of the form "this guard should fire every N days" carries both **firing count** and **whether a firing caught anything**, and measuring only the first awards full marks to a guard that runs faithfully and catches nothing — the §A.5 shape one layer along. The vocabulary in REQ-GDL-003 exists to make an author choose, and that lane is writing "survived-to-adoption count" into its own next ledger, so the two cards stay consistent.
 
 ### C.2 The evaluator — what verifies the expectations (question (b))
 
@@ -142,7 +174,7 @@ Budget: Tier M ≤ 16 requirements. **Count: 16.**
 
 - **REQ-GDL-013** — When the evaluator's result carries at least one `STALE` or `UNDECLARED` entry, the harness shall surface it to the operator as a non-blocking advisory at an already-attended surface, **without the operator issuing any query and without the operator needing to know which guard to ask about**. A liveness verdict that answers only when queried has relocated the defect into whoever is expected to already know the question (§A.4).
 - **REQ-GDL-014** — The advisory shall carry the age of the measurement it reports, so a stale advisory declares its own staleness rather than reading as a current all-clear.
-- **REQ-GDL-016** — The advisory shall lead with the entries whose classification **changed** since the previously rendered result, and shall carry any unchanged `STALE` or `UNDECLARED` entries as a compact standing count rather than as a re-rendered list. A channel that reprints an identical block every session trains the filter that removes it, and a new advisory rendered beside a permanently-red neighbour inherits that filter (§A.7).
+- **REQ-GDL-016** — The advisory shall lead with the entries whose classification **changed** since the previously rendered result, and shall carry any unchanged `STALE` or `UNDECLARED` entries as a compact standing count rather than as a re-rendered list. A channel that reprints an identical block every session trains the filter that removes it, and a new advisory rendered beside a permanently-red neighbour inherits that filter (§A.8).
 
 ### C.4 Doctrine
 
@@ -185,18 +217,36 @@ The design is tested against three questions rather than assumed to pass them.
 
 All three are recorded in `acceptance.md` §D.7 as residual risk, not as solved problems.
 
+### D.4 Subject-agnostic shape, without a subject-agnostic deliverable
+
+§A.7 establishes that the defect is not a property of GitHub Actions: any check whose non-execution is indistinguishable from its success has it — a workflow that stopped firing, a binary that was never redeployed, a `-run` selector matching two tests that do not exist. The deliverable nonetheless stays scoped to CI guards (§E), because a workflow has run records and a policy rule has none, and those are different mechanics rather than one mechanism at two scales.
+
+The reconciliation is a shape constraint, not a scope expansion. REQ-GDL-001 requires the watched set to be **data**: each entry carries its kind, its locator, and its expected cadence, so a second kind of subject can be added later by adding entries and a reader for that kind — not by rewriting the manifest schema and the classification vocabulary around it.
+
+This is also a design smell test worth applying during M1, and `plan.md` §F records it as such: **if the schema cannot accommodate a second kind of subject without being rewritten, the schema has hardcoded its subject** and should be reshaped before the census is populated. The test costs nothing at M1 and is expensive to apply after 18 entries exist.
+
 ## §E Out of Scope
 
 ### Out of Scope — the binary-lag state comparison
 - Whether the installed binary's build commit is a strict ancestor of the tree HEAD, and the session-start advisory that surfaces it. Owned by card t326 (`SPEC-BINARY-LAG-VISIBILITY-001`, REQ-BLV-001..009, in flight). No part of it is re-specified here.
 - The A/B binary-comparison recipe that diagnosed the t298 instance.
 
+### Out of Scope — C5, policy-rule firing (named follow-up candidate)
+- Applying the same three questions — where expectations live, what verifies them, who sees the silence — to **policy-layer rules** rather than CI guards. Named here as a follow-up candidate rather than passed over in silence, because the grounding already exists and a later reader should not have to rediscover it.
+- The grounding is §A.7 and §B.1: a rule landed at `7f5b6a947`, sat inside its own `paths:` scope, was cited by name in audits — and its named defect recurred two days later with nothing detecting it. The t241 lane's prediction ledger recorded `false` on all six rows.
+- Excluded from the deliverable on mechanics, not on merit: a workflow has run records and a policy rule has none, so verifying a rule keeps firing is a different problem, not a bigger instance of this one. Widening the deliverable would inflate a Tier M card.
+- What this card owes C5 is a shape, and it pays it: REQ-GDL-001 requires the watched set to be data, so a second kind of subject can be added without rewriting the manifest (§D.4).
+
+### Out of Scope — C2, warning on unpinned invariant assertions
+- Explicitly declined rather than merely unaddressed, on the t241 lane's own warning. C2 requires an exemption discriminant: a provenance statement whose subject **is** the mainline correctly carries a moving ref, and pinning it destroys the claim being made. Mechanized without that discriminant it is a false-positive factory.
+- It is also a different axis — assertion pinning, not firing liveness — so importing it here would buy a false-positive source in exchange for nothing this card needs.
+
 ### Out of Scope — the procedural correlation layer
 - The lead session correlating scattered observations, issuing a card, and dispatching it. Excluded on the same grounds card t326 §7 excluded it: it is not a code artifact, and including it inflates a Tier M card.
 - Recorded rather than merely dropped, because the contrast matters: the sole executor of that layer today is the lead session, and it disappears when the lead dies or is cleared. t326's deployment check, by contrast, runs without a lead. See `acceptance.md` §D.7.
 
 ### Out of Scope — the always-red variant
-- `Graph Freshness` failing on every `develop` push. Card t322's subject (§A.7). This card addresses the silence mechanism only, not the constant-noise mechanism that arrives at the same end state.
+- `Graph Freshness` failing on every `develop` push. Card t322's subject (§A.8). This card addresses the silence mechanism only, not the constant-noise mechanism that arrives at the same end state.
 
 ### Out of Scope — guard correctness
 - Whether a guard that fired would have caught a real defect. This card measures firing, not findings. §A.3's evidence read exit status only, and the SPEC claims nothing beyond that.

@@ -13,7 +13,8 @@ See `spec.md` §A. Five empirical instances ground the requirements; two of them
 - **B-1 — the self-application constraint.** A watcher that cannot prove its own firing is forbidden. Answered by making the evaluator pull-based rather than scheduled (`spec.md` §D.1). The answer relocates the regress; it does not eliminate it, and §D.3 says so.
 - **B-1b — the unprompted-discoverability constraint.** A targeted query can only be issued by someone who already suspects the answer, so a design answering only when queried relocates the problem into whoever is expected to already know (`spec.md` §A.4, §D.2). Independent of B-1: a design can pass one and fail the other, and failing either leaves the same defect one level up.
 - **B-2 — `gh run list` is not a complete history.** It reports what the forge retained. Measured: the default 100-run listing spans about three hours on this repository because high-frequency workflows saturate it. Any evaluator built on it inherits the limit; REQ-GDL-007 makes the limit an explicit `UNKNOWN` state rather than a silent "never fired".
-- **B-3 — do not conflate "a defect occurred" with "a defect survived to adoption."** The t241 lane mis-signed its own prediction ledger by predicting "0 audit findings" as success, when a rule working *well* at the audit layer drives that number **up**. Every expectation this SPEC writes names its measured quantity (REQ-GDL-003) so the same inversion cannot be written here.
+- **B-3 — do not conflate "a defect occurred" with "a defect survived to adoption."** The t241 lane mis-signed its own prediction ledger by predicting "0 audit findings" as success, when a rule working *well* at the audit layer drives that number **up**. Its own measurement separates the two events the single number was carrying — VC-1 3/2, VC-2 7/1, VC-4 5/1, VC-6 2/1 (occurred / survived to adoption). The same split sits in this SPEC's path: "should fire every N days" carries both firing count and whether a firing caught anything. Every expectation this SPEC writes names its measured quantity (REQ-GDL-003, `spec.md` §C.1.1) so the same inversion cannot be written here.
+- **B-6 — a policy rule landing is not a policy rule working.** The rule at `7f5b6a947` (author == committer, `Tue Aug 25 13:05:04 2026 +0900`, verified in this plan phase) was correct, in scope, and cited by name in audits, and its named defect recurred two days later inside its own `paths:` — a `-run` selector naming three tests of which one existed, green at `ok ... 0.249s`, unseen until sync close. Nothing detects at the policy layer. This is why the deliverable stays mechanical and stays on subjects that have run records, and why C5 is a named follow-up rather than a widening (`spec.md` §B.1, §E).
 - **B-4 — `moai update` deletes `.moai/config/` wholesale.** `CleanMoaiManagedPaths` removes the root before redeploying templates, so a manifest placed there is deleted on every update. REQ-GDL-001 puts the manifest outside that root.
 - **B-5 — the manifest is repository-specific, not template content.** It describes this repository's `.github/workflows/`. It must not be mirrored into `internal/template/templates/`; doing so would ship this repository's CI census to every downstream project.
 
@@ -48,9 +49,10 @@ The data-model decision, and the one worth the most review attention: every late
 - Fix the `measures` vocabulary at exactly three values with the conclusion-set each admits (REQ-GDL-003).
 - Fix the classification vocabulary the evaluator emits: `OK`, `STALE`, `UNKNOWN`, `UNDECLARED`.
 - Choose the manifest path outside `.moai/config/` (REQ-GDL-001, B-4).
+- **Apply the subject-agnostic smell test before populating the census.** Each entry carries its kind, locator, and expected cadence as data (REQ-GDL-001). Try adding a second-kind entry with no workflow behind it: if the schema, the classification vocabulary, or the `measures` vocabulary has to change to accept it, the schema has hardcoded its subject — reshape it now. The test is nearly free here and expensive once 18 entries are written against the schema. This is a **shape** obligation, not a capability one: nothing in C5 (`spec.md` §E) enters the deliverable.
 - Populate the census: one entry per workflow file, 18 of 18.
 
-Flips: AC-GDL-001, AC-GDL-002, AC-GDL-003, AC-GDL-004.
+Flips: AC-GDL-001, AC-GDL-002, AC-GDL-003, AC-GDL-004, AC-GDL-015.
 
 ### M2 — the evaluator
 
@@ -88,7 +90,10 @@ Flips: AC-GDL-012.
 - **Omitting a release-only guard from the manifest because it is "supposed to be quiet".** Omission is what makes silence unreadable; declare the condition instead (REQ-GDL-005).
 - **Counting `skipped` runs as firings.** §A.5 is a live instance of exactly this misread.
 - **Shipping a CLI verb as the whole answer to (c).** A verb the operator must know to run reproduces §A.4 exactly: the lead session could run the right query the instant it was handed the workflow's name, and could not know a query was owed. Rejected in `spec.md` §D.2 and excluded by AC-GDL-013's negative clause.
-- **Reprinting the full standing list every session.** It is how a new advisory inherits the filter an always-red neighbour has already trained (`spec.md` §A.7). REQ-GDL-016 leads with changes instead.
+- **Reprinting the full standing list every session.** It is how a new advisory inherits the filter an always-red neighbour has already trained (`spec.md` §A.8). REQ-GDL-016 leads with changes instead.
+- **Writing an expectation whose one number measures two events.** "Fires every N days" scores full marks for a guard that runs faithfully and catches nothing. B-3 carries the measured table.
+- **Shaping the manifest around GitHub workflows.** A `workflow:` field as the entry's identity, rather than a kind plus a locator, is the hardcoded-subject smell — cheap to avoid at M1, expensive to unwind after 18 entries (`spec.md` §D.4).
+- **Importing the t241 lane's C2 (unpinned invariant assertions).** Declined on that lane's own warning: without an exemption discriminant it is a false-positive factory, and a provenance statement whose subject *is* the mainline correctly carries a moving ref. Different axis; `spec.md` §E records the decision.
 - **Mirroring the manifest into the template tree.** B-5.
 
 ## §H Cross-references

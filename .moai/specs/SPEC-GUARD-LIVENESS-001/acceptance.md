@@ -4,7 +4,7 @@ Baseline tree for every RED-now cell: **`d34a789a4`** @ `WT-guard-liveness` (wor
 
 Each criterion was put through that rule's §2 mutant probe. Where a single-clause criterion admitted a mutant satisfying it while violating its requirement, a second clause was added and the mutant that forced it is recorded in the criterion.
 
-Budget: Tier M ≤ 16 acceptance criteria. **Count: 14.**
+Budget: Tier M ≤ 16 acceptance criteria. **Count: 15.**
 
 ## §D AC Matrix
 
@@ -24,6 +24,7 @@ Budget: Tier M ≤ 16 acceptance criteria. **Count: 14.**
 | AC-GDL-012 | REQ-GDL-015 | Additive-only diff assertion | M4 |
 | AC-GDL-013 | REQ-GDL-013 | Zero-input surfacing pair | M3 |
 | AC-GDL-014 | REQ-GDL-016 | Change-leading pair | M3 |
+| AC-GDL-015 | REQ-GDL-001 | Subject-agnostic shape pair | M1 |
 
 ## §D.1 Criteria (Given-When-Then, two cells each)
 
@@ -112,14 +113,21 @@ Budget: Tier M ≤ 16 acceptance criteria. **Count: 14.**
 **Given** two consecutive evaluations where entry set S is `STALE` in both and entry T newly became `STALE` in the second; **When** the second advisory is rendered; **Then** BOTH hold — (a) T appears in the advisory's leading position, and (b) the members of S are represented as a count and are not re-rendered as individual entries.
 - **RED-now:** no advisory exists on `d34a789a4`, so there is no rendering order to assert. Red for absence.
 - **Green path:** M3. Passing output shows T named and S collapsed to a count.
-- **Mutant:** clause (a) alone is satisfied by a renderer that prints the full standing list with T at the top — which is the block a reader learns to skip after the third session, and is how a new advisory inherits the filter that an always-red neighbour has already trained (`spec.md` §A.7). Clause (b) is what forces the collapse.
+- **Mutant:** clause (a) alone is satisfied by a renderer that prints the full standing list with T at the top — which is the block a reader learns to skip after the third session, and is how a new advisory inherits the filter that an always-red neighbour has already trained (`spec.md` §A.8). Clause (b) is what forces the collapse.
 - **Bounded claim:** this criterion asserts change-leading, not that the advisory gets read. Whether a compact standing count also becomes skippable is not measured by any criterion here and is recorded in §D.7.
+
+### AC-GDL-015 — the manifest holds its watched set as data
+**Given** the M1 manifest schema; **When** an entry of a second, non-workflow kind is added — a watched subject carrying a different `kind` and locator, with no GitHub workflow behind it; **Then** BOTH hold — (a) the manifest reader accepts the entry's shape and reports it (as `UNKNOWN` at minimum, since no reader for that kind exists yet), and (b) accepting it required no change to the manifest schema, the classification vocabulary, or the `measures` vocabulary.
+- **RED-now:** no manifest and no schema exist on `d34a789a4` (AC-GDL-001's measurement). Red for absence.
+- **Green path:** M1. Passing output is the second-kind entry parsed and reported, with the M1 schema unmodified afterwards.
+- **Mutant:** clause (a) alone is satisfied by a reader with a hardcoded `workflow:` field that happens to tolerate an unknown value in it. That mutant accepts the entry while leaving the schema shaped so only a workflow can occupy it — the hardcoded-subject smell §D.4 exists to catch. Clause (b) is what excludes it, and it is stated as *no schema change was required* rather than *the schema looks general*, so it is decidable by diff.
+- **Scope note:** this criterion asserts a **shape**, not a capability. It does not require this card to watch anything other than CI guards, and no part of C5 (`spec.md` §E) is in the deliverable. It exists because the test is nearly free at M1 and expensive once 18 entries are written against the schema.
 
 ## §D.7 Residual risk (recorded, not claimed as closed)
 
 - **The regress is relocated, not eliminated.** The evaluator's liveness is entailed by the liveness of its host surface. If that surface is itself removed or silently stops, the evaluator stops with it — the same defect class, one layer up. Full closure would need an unattended watcher, which reintroduces exactly what `spec.md` §D rejects. Partial mitigation: AC-GDL-011's measurement age makes a stale advisory legible; it does not make an *absent* advisory legible, and nothing in this SPEC does.
 - **`gh run list` completeness.** REQ-GDL-007 converts retention loss into an explicit `UNKNOWN`, which prevents a false alarm. It does not recover the lost history: a guard that stopped firing longer ago than the retention window reads `UNKNOWN` forever, indistinguishable from a release-only guard between releases. The expectation window is therefore bounded above by retention, and an entry whose window exceeds it is not answerable by this design.
 - **The procedural correlation layer has one executor.** Out of scope per `spec.md` §E, and recorded here because the contrast is the point: correlating scattered observations into a card is done today only by the lead session, which disappears when the lead dies or is cleared. Card t326's deployment check runs without a lead; this card's advisory does too, but the step *after* the advisory — someone deciding a `STALE` classification is worth a card — does not.
-- **Change-leading raises the cost of habituation without abolishing it.** REQ-GDL-016 stops the advisory reprinting an identical block every session, which is what trains a reader's filter. A compact standing count is still something a reader can learn to skip, and no criterion here measures whether the advisory is actually read — AC-GDL-014 measures only that it leads with changes. The always-red neighbour (`spec.md` §A.7) is real and is not repaired by this card, so the new advisory renders next to a channel whose filter is already trained.
+- **Change-leading raises the cost of habituation without abolishing it.** REQ-GDL-016 stops the advisory reprinting an identical block every session, which is what trains a reader's filter. A compact standing count is still something a reader can learn to skip, and no criterion here measures whether the advisory is actually read — AC-GDL-014 measures only that it leads with changes. The always-red neighbour (`spec.md` §A.8) is real and is not repaired by this card, so the new advisory renders next to a channel whose filter is already trained.
 - **An entry that stays STALE goes quiet by design.** It is announced once and thereafter only counted. Re-announcing it every session is the noise that produces the filter, so the trade is deliberate — but a long-standing `STALE` is quiet, and quiet is the subject of this card. This is the sharpest unresolved tension in the design and it is recorded rather than argued away.
 - **The manifest is hand-maintained.** AC-GDL-001 catches a workflow file added without an entry only when the evaluator next runs, and AC-GDL-008 reports it as `UNDECLARED` rather than blocking. A new guard therefore sits undeclared until someone reads an advisory. This is deliberate — a blocking gate on manifest completeness would be a new always-green risk of its own — but it is a gap, not a solved problem.
