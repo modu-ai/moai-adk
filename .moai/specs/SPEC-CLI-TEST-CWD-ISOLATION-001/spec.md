@@ -2,7 +2,7 @@
 id: SPEC-CLI-TEST-CWD-ISOLATION-001
 title: "internal/cli tests must not leave a .moai/ in the repository tree — cwd state-write isolation"
 version: "0.2.2"
-status: in-progress
+status: completed
 created: 2026-08-28
 updated: 2026-08-28
 author: manager-spec

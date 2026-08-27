@@ -196,6 +196,9 @@ preserved — archived snapshots, not live residue). No tracked file touched; no
 change; does not affect the worktree baseline. Code-level isolation for the non-cli
 packages (`internal/{permission,statusline,web}` residue regeneration) remains out of
 scope per spec.md §B.
+2026-08-28 (sync-phase): the primary-checkout residue removal was operator-confirmed through the
+lane session (AskUserQuestion round) — the §D.6 post-merge cleanup item is discharged at the
+source, not awaiting the lead.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
@@ -225,4 +228,65 @@ run-phase by direct operator instruction — see the run-phase context note in �
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — manager-docs populates; carries sync_commit_sha on close>_
+```yaml
+sync_complete_at: 2026-08-28
+sync_commit_sha: pending-backfill-SPEC-CLI-TEST-CWD-ISOLATION-001
+sync_status: complete
+b12_self_test_a: pass    # grep -c 'SPEC-CLI-TEST-CWD-ISOLATION-001' CHANGELOG.md → 0 pre-emission (no prior entry)
+b12_self_test_b: pass    # AC-ID census of acceptance.md → 5; §E.2 matrix / §E.3 ac_pass_count → 5/5
+b12_self_test_c: pass    # every path named in the entry resolves via ls (spec.md + 4 test files, 5/5)
+changelog_entry_position: "[Unreleased] / ### Fixed"
+frontmatter_status_transitions:
+  spec.md: in-progress → completed
+  plan.md: n/a (markdown-header convention — no YAML frontmatter)
+  acceptance.md: n/a (markdown-header convention — no YAML frontmatter)
+  progress.md: n/a (markdown-header convention — no YAML frontmatter)
+canary_compliance_check: not-applicable   # this SPEC declares no forward-looking policy its own sync tests
+```
+
+`sync_commit_sha` carries the `pending-backfill-*` placeholder per `spec-frontmatter-schema.md`
+§ SHA placeholder backfill exemption (D3) — a commit cannot know its own hash until after it
+lands — and is backfilled in the immediately following commit, the two-commit pattern every
+sibling close on `origin/develop` uses (e.g. `4b36b00d6` → backfill `4fdbd55c1`, t340).
+
+### 이 sync 커밋이 담은 것
+
+마크다운 3종이다. `internal/` 아래는 한 파일도 건드리지 않았다.
+
+| 산출물 | 내용 |
+|---|---|
+| `CHANGELOG.md` `[Unreleased] / Fixed` | 1 항목. 운영자 관점 서술 — 테스트 스위트가 리포지터리 트리 안에 `.moai/` 상태 디렉터리를 남기던 결함과 그 수정(5개 테스트 루트 고정 + TestMain 잔여 가드). REQ/AC 식별자는 본문에 AC 계수만 인용했다 |
+| `spec.md` 프론트매터 | `status: in-progress → completed` (3-phase close — 종결 전이는 이 sync 커밋에 병합). `updated:` 는 이미 `2026-08-28`(= sync 커밋 날짜)이라 무변경 |
+| `progress.md` | §E.2 운영자-확인 1행 추가 + 이 §E.4 블록 |
+
+docs-site / README 는 건드리지 않았다. 이 변경은 테스트 전용 내부 수정이다 — 새 CLI 동사도,
+새 설정 키도, 문서화된 플래그도, 사용자에게 보이는 동작 변경도 없다. docs-site 페이지가
+필요 없다는 이 판단 자체가 이 블록에 기록된다 (배차 지시 4번).
+
+### 관측된 검증
+
+| 항목 | 명령 | 관측된 출력 |
+|---|---|---|
+| CHANGELOG 중복 없음 | `grep -c 'SPEC-CLI-TEST-CWD-ISOLATION-001' CHANGELOG.md` | `0` (사전 배출 시점) — 기존 항목 없음, 병렬 세션 중복 아님 |
+| AC 계수 일치 | `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md \| sort -u \| wc -l` | `5` (AC-001..AC-005). §E.3 `ac_pass_count: 5` 와 일치 |
+| 인용 경로 실재 | `ls` (spec.md + `internal/cli/{main,cc,factory,glm}_test.go`) | 전부 존재 (5/5) |
+| run 커밋 조상 확인 | `git merge-base --is-ancestor f5ff4d74e HEAD` | rc `0` — §E.3 의 `run_commit_sha` 가 이 트리의 조상이다 |
+
+`go build` / `go test` 는 돌리지 않았다. 이 커밋에 코드 변경이 없으므로 스위트를 태울 근거가
+없고(배차 제약 — 문서 검증만 수행), 전 패키지 판정은 `origin/develop` CI의 몫이다.
+
+### 미검증 / 잔여
+
+- **§D.5 종결 게이트의 세 번째 항목은 리드 소관으로 열려 있다**: `WT-cli-test-cwd` 브랜치의
+  `develop` 통합 + `origin/develop` CI 초록(전체 스위트 판정 면). 통합은 배차된 대로 리드가
+  소유하며 이 세션은 push하지 않는다.
+- **§D.6 CI 관측 사이클 1회** (darwin × windows 에서 guard 요주의 관찰) — 머지 후 실제 CI
+  몫이며 sync 범위가 아니다.
+- **§D.6 primary 체크아웃 잔여 제거는 run-phase 에 이미 시행됐다** (운영자 직접 지시, §E.2
+  context note) — sync-phase 에 운영자 확인(2026-08-28, 리드 세션 AskUserQuestion)이 추가로
+  기록됐다.
+- `sync_commit_sha` 는 이 커밋 시점에 placeholder 상태다. 후속 백필 커밋이 실제 SHA를 채운다.
+- **프론트매터 전이는 `spec.md` 한 곳뿐이다.** 배차 지시는 네 산출물 전부를 지목했으나, 이
+  SPEC 은 `plan.md` / `acceptance.md` / `progress.md` 를 마크다운 헤더 규약으로 작성했다 — 세
+  파일에 YAML 프론트매터 블록이 애초에 없다. 없는 블록을 새로 만드는 것은 manager-docs 에게
+  금지된 본문 수정이므로 하지 않았다 (SPEC-CLI-STATE-DIR-BOUND-001 과 같은 마감 형태).
