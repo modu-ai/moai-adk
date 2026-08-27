@@ -337,7 +337,10 @@ the four artifacts, then resolve each against the delivered tree:
 ```bash
 grep -rhno '[A-Za-z0-9_]*\.go:[0-9][0-9,]*' \
   .moai/specs/SPEC-GRAPH-FRESHNESS-CADENCE-001/{spec,plan,acceptance,progress}.md \
-  | awk -F: '{print $2":"$3}' | sort -u          # → 26 distinct citations at 5d95a2e8d
+  | awk -F: '{print $2":"$3}' | sort -u          # → 26 distinct citations at 5d95a2e8d,
+                                                  #   re-measured 26 after this record was added
+                                                  #   (its new-value columns carry no file prefix,
+                                                  #    so they are not themselves citations)
 sed -n '<N>p' <path>                              # resolve each row
 ```
 
