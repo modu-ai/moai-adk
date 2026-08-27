@@ -1,8 +1,8 @@
 ---
 id: SPEC-TODO-SQLITE-001
 title: "SQLite-backed backlog queue store with .moai/state/todo rename"
-version: "0.1.0"
-status: in-progress
+version: "0.1.1"
+status: completed
 created: 2026-08-27
 updated: 2026-08-27
 author: manager-spec

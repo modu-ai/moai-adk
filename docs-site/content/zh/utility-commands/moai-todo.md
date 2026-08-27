@@ -53,7 +53,7 @@ flowchart TD
 
 ## 状态文件
 
-队列保存在 `.moai/state/kanban/backlog.json`。它只存在于项目内部，不会被提交。
+队列保存在 `.moai/state/todo/backlog.db` 这一个 SQLite 数据库里。它只存在于项目内部，不会被提交。下面的形状是 `moai todo list --json` 与 `moai todo export-json` 输出的记录形状，数据库里也是同样的字段。该目录下每个文件分别是什么、以及怎样退回纯 JSON，见项目内的 `.moai/docs/todo-queue-storage.md`。
 
 ```json
 {
@@ -198,12 +198,13 @@ $ moai todo unrelate 2
 | `moai todo relate <a> <b> --relation (contains \| absorbs \| replaces \| conflicts) [--note <text>]` | 记录两张卡片之间的一条关系。它只是记录——两张卡片原封不动，`absorbs` 不会执行任何吸收。 |
 | `moai todo unrelate <index>` | 删除指定的那条记录。序号即 `why` 打印的序号。卡片不变。 |
 | `moai todo why <n>` | 打印指向该卡片的所有记录；若没有，则明确说明没有——什么都不打印会与崩溃无法区分。 |
+| `moai todo export-json` | 把活着的队列以旧格式的 `backlog.json` 写到数据库旁边，供早于数据库的版本读取。它是运行那一刻的副本，不是实时镜像，因此请在替换二进制之前立刻导出。之后的 `todo` 动词会把这个文件原样留在原处。 |
 
 CLI 不会弹出提示。它接受参数和标志、输出一行、把错误写到 stderr——在脚本和 CI 中都能安全使用的形态。
 
-在链接型 worktree 里执行时，队列也**归属为 primary 检出的那一个队列**——一个仓库一条队列的契约。在卡片 worktree 里执行 `moai todo add`，追加的就是主控和工头循环读取的同一份文件。没有 git 元数据的项目把队列放在 `~/.moai/todo/<project-key>/backlog.json`。
+在链接型 worktree 里执行时，队列也**归属为 primary 检出的那一个队列**——一个仓库一条队列的契约。在卡片 worktree 里执行 `moai todo add`，追加的就是主控和工头循环读取的同一份文件。没有 git 元数据的项目把队列放在 `~/.moai/todo/<project-key>/backlog.db`。
 
-两个表面共享同一个存储层。变更先抓住队列文件旁边的锁文件（backlog.lock），再通过同目录临时文件写入加原子改名落盘；读取则不加锁。条目 id 在锁内从文件中持久化的最高水位标记（`last_seq`）签发，因此被移除条目的 id 永不复用。
+两个表面共享同一个存储层。变更先抓住数据库旁边的锁文件（backlog.lock），再由一个 WAL 模式的 SQLite 事务落盘；读取则不加锁。条目 id 从持久化的最高水位标记（`last_seq`）签发，而该值在与插入相同的事务内推进，id 上还有 UNIQUE 约束，因此即使进程在变更途中死掉，被移除条目的 id 也永不复用。
 
 {{< callout type="info" >}}
 **已安装的二进制**：CLI 已合入 main 随版本分发。已安装的 `moai` 二进制要重新安装后才能获得这个命令。

@@ -398,4 +398,100 @@ Stated explicitly, because an empty Gaps section would itself be a claim.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-<pending sync-phase>
+sync_complete_at: 2026-08-27
+sync_status: complete
+sync_commit_sha: pending-backfill      # backfilled by the lane orchestrator in the
+#   immediately following commit — a commit cannot carry its own sha.
+card: t306 (absorbs t309)
+branch: WT-todo-sqlite
+spec_status_transition: in-progress -> completed (3-phase close: plan -> run -> sync;
+#   the `completed` transition rides THIS sync commit, per the 3-phase close convention)
+spec_version: 0.1.0 -> 0.1.1
+changelog_entry_position: CHANGELOG.md `## [Unreleased]` / `### Added`, first entry
+ac_pass_count: 18                      # AC-TOSQ-001..018
+ac_fail_count: 0
+
+### Landed run-phase commits
+
+All reachable from `origin/develop`; the card's work was integrated ahead of this
+sync commit, so the run-phase evidence describes a tree that is already merged.
+
+| Commit | Carries |
+|---|---|
+| `3030df58b` | plan artifacts |
+| `3d24cf6df` | M1 — SQLite driver adoption (`modernc.org/sqlite`, pure Go) + storage engine |
+| `83a1d492a` | M2 — store guts + lazy migration state machine |
+| `447f517fe` | M1+M2 evidence |
+| `8910c337c` | M3 — state-directory rename (`.moai/state/kanban` -> `.moai/state/todo`, absorbing card t309) + M4 consumer sweep |
+| `ffe33ac09` | M5 — `export-json` downgrade route + docs |
+| `d19187327` | M6 — cross-platform, race and quality gates |
+| `1c5840558` | SHA backfill |
+| `a8099e43e` | rescue commit — verb-surface guard `todo_surface_test.go` + companions |
+| `3cb258d62` | merge commit on `develop` |
+
+### Post-merge verification
+
+Measured by the lane orchestrator against the MERGED tree (`3cb258d62`), not
+carried over from the run-phase tree. Cited here with that attribution rather
+than re-executed: the machine is shared with eight concurrent lanes, and a
+re-run under that load would measure the machine, not the code.
+
+| Dimension | Command | Observed |
+|---|---|---|
+| kanban package | `go test ./internal/kanban/...` | ok 13.2s |
+| statusline package | `go test ./internal/statusline/...` | ok 15.3s |
+| web package | `go test ./internal/web/...` | ok 3.6s |
+| hook package | `go test ./internal/hook/...` | ok 27.1s |
+| cli package | `go test ./internal/cli/...` | ok 220.4s + 16 sub-packages all ok |
+| Cross-platform vet | `GOOS=windows go vet` / `GOOS=linux go vet` | rc=0 on both |
+| Coverage (C-1 floor 85%) | `go test -cover ./internal/kanban/...` | 87.7% of statements |
+| Lint | `golangci-lint run ./internal/kanban/...` | 0 issues |
+| Format | `gofmt -l` on card-attributable files | 0 unformatted |
+| Live queue untouched | inspection of `.moai/state/kanban/` | no `.db` artifact; primary checkout clean |
+| Binary provenance | `strings bin/moai \| grep -F 3cb258d62` | hit — built from the merged tree |
+
+### Sync-phase checks run in THIS tree
+
+| Check | Command | Observed |
+|---|---|---|
+| B12-1 duplicate-entry guard | `grep -c 'SPEC-TODO-SQLITE-001' CHANGELOG.md` | `0` — no prior entry, emission safe |
+| B12-2 AC count | `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md \| sort -u \| wc -l` | `18` (AC-TOSQ-001..018), matching the CHANGELOG entry's stated count |
+| B12-3 path verification | `ls .moai/docs/todo-queue-storage.md internal/template/templates/.moai/docs/todo-queue-storage.md` | both present, 113 lines, 5911 B |
+| Template mirror parity | `diff -q` on the pair above | identical — the M5 mirror is intact, verified rather than assumed |
+| REQ-TOSQ-018 | `grep -rn 'state/kanban' internal/template/templates/` | 1 hit, in `todo-queue-storage.md` prose naming the OLD directory as history ("Earlier releases called it ..."). Not a live path reference; REQ-TOSQ-018 holds |
+
+### Documentation synchronized
+
+- `CHANGELOG.md` — one `### Added` entry under `## [Unreleased]`.
+- docs-site 4-locale (`ko` / `en` / `ja` / `zh`), `utility-commands/moai-todo.md` and
+  `advanced/moai-web-console.md`: the queue path and storage form corrected to
+  `.moai/state/todo/backlog.db`, and the additive `export-json` verb added to the
+  CLI-surface table. These pages stated `.moai/state/kanban/backlog.json`, which
+  the M3 rename and the M1/M2 storage swap made factually false — the correction
+  is card-attributable, not a drive-by edit.
+- `.moai/docs/todo-queue-storage.md` (REQ-TOSQ-017) landed at M5 and is unchanged
+  here; its template mirror was verified intact rather than re-copied.
+
+### Gaps — what this sync phase did NOT observe
+
+Stated explicitly, because an empty Gaps section would itself be a claim.
+
+- **No verification was re-executed in this tree.** Every figure in the
+  post-merge table above is the lane orchestrator's measurement, cited with that
+  attribution. This sync phase ran only the greps, `ls`, and `diff` recorded in
+  the sync-phase table — no test, no build, no lint.
+- **`sync_commit_sha` is a placeholder.** It is `pending-backfill` until the
+  orchestrator's following commit; any reader resolving this SPEC's sync commit
+  before that backfill lands will not find it here.
+- **The docs-site build was not run.** The 4-locale edits are text corrections to
+  existing tables and sentences; no Hugo build, link check, or locale-parity
+  linter was executed against them in this tree.
+- **The README verb enumeration was left alone.** `README*.md` line 364 lists ten
+  `moai todo` verbs and omits `pr`, `relate`, `unrelate`, `why` — a gap that
+  predates this card. `export-json` was NOT added there, because adding one verb
+  to a list already missing four would leave it no more accurate and would put a
+  non-card-attributable edit in this commit. Recorded as follow-up work.
+- **Every run-phase Gap in §E.3 remains open.** The windows behavioral verdict,
+  ten-lane process-level contention, the SC-3 live rehearsal transcript, the real
+  operator queue's own migration, and the CI full-suite verdict were not observed
+  here either; this phase added no evidence on any of them.
