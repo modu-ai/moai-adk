@@ -102,7 +102,7 @@ run_commit_sha:
   m1: 05d2c234b   # M1 archive storage shape
   m2: 3a0ce021c   # M2-M5 undone, done's guards, export disclosure
   m3: 3f1a7b896   # M6 doctrine + template mirror
-  m_final: pending-backfill-progress-commit   # this progress.md commit
+  m_final: b08c7a6e4   # the progress.md commit, backfilled (a commit cannot name its own SHA)
 run_status: complete
 ac_pass_count: 16
 ac_fail_count: 0
