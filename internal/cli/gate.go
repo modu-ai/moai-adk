@@ -55,9 +55,37 @@ func init() {
 // exit code. Failure output goes to stderr so git's pre-commit hook surfaces
 // it to the caller (verified by M1.c — git pre-commit stderr reaches the Bash
 // tool result).
+//
+// Before any step executes, the run takes the gate-run lock (gate_lock.go):
+// two manual `moai gate` runs in one checkout would otherwise run the full
+// toolchain against the same working tree at the same time. The wait for the
+// lock is bounded by gate.timeouts.lock_wait; when the budget expires the
+// run degrades to unserialized execution and says so on stderr. The lock
+// never decides the exit code: every lock outcome — acquired, degraded,
+// unavailable — runs the gate and returns the gate's own verdict.
 func runGate(cmd *cobra.Command, _ []string) error {
 	projectDir := resolveGateProjectDir()
 	cfg := loadGateCfgForCLI(projectDir)
+
+	// The lock is taken before anything else the run does (except reading the
+	// config, which is where the wait budget itself comes from). The wait is
+	// bounded by its own budget, so the 10-minute safety net below keeps
+	// bounding what it always bounded — the gate run — and is created after
+	// the wait for exactly that reason.
+	waitRes := waitForGateLock(projectDir, cfg.LockWait, cmd.ErrOrStderr())
+	if waitRes.line != "" {
+		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), waitRes.line)
+	}
+	// One-way: a run that degraded never re-acquires the lock for the rest
+	// of its life — the wait loop has returned, and nothing after this point
+	// attempts acquisition again.
+	if waitRes.lock != nil {
+		defer func() {
+			if err := waitRes.lock.Release(); err != nil {
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "gate-run lock: release failed: %v\n", err)
+			}
+		}()
+	}
 
 	// Overall deadline: vet (30s) + lint (60s) + test (120s) + ast-grep + slack.
 	// Per-step timeouts inside the gate enforce the real ceilings; this outer
@@ -144,6 +172,8 @@ func mapConfigGateToQuality(g config.GateConfig) *quality.GateConfig {
 		TypecheckEnabled: g.Typecheck.Enabled,
 		TypecheckCommand: g.Typecheck.Command,
 		TypecheckTimeout: g.TypecheckTimeoutDuration(),
+
+		LockWait: g.LockWaitDuration(),
 	}
 	// Map gate.disabled_steps through verbatim (issue #1265): the runner reads
 	// FALSE as "skip this step", so normalising values here would silently stop
