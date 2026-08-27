@@ -68,4 +68,63 @@ carried_debt:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+Tree: `812ee01fc` (worktree `t303`, branch `WT-strategy-key-sync`, base develop tip). Coherence-evidence commands re-run on this tree, verbatim outputs below.
+
+```yaml
+sync_complete_at: 2026-08-27
+sync_commit_sha: pending-backfill-sync   # this SPEC's sync commit; backfilled by its immediate successor
+sync_status: complete
+spec_status_transition: in-progress -> implemented
+transition_rationale: >-
+  NOT taken to completed. Per the Status Transition Ownership Matrix, manager-docs may carry the
+  transition to completed on this same sync commit, but the independent sync audit that decides
+  PASS-vs-PASS-WITH-DEBT has not yet run for this SPEC — the dispatching lead stated explicitly
+  that the completed call is theirs after that audit, not this agent's. implemented is therefore
+  the correct terminal state for this commit.
+frontmatter_status_transitions:
+  spec.md: "in-progress -> implemented (updated: 2026-08-27)"
+  plan.md: "no status: field present in this SPEC's plan.md frontmatter — nothing to transition (see note below)"
+  acceptance.md: "no status: field present in this SPEC's acceptance.md frontmatter — nothing to transition (see note below)"
+  progress.md: "no status: field present in this SPEC's progress.md frontmatter — nothing to transition (see note below)"
+coherence_evidence:
+  - claim: "The dead key github.spec_git_workflow survives in exactly one place, the documented D1 fallback sentinel"
+    command: "grep -rn \"spec_git_workflow\" internal/template/templates"
+    output: "internal/template/templates/.claude/skills/moai/workflows/sync/delivery.md:33 (the D1 legacy-fallback sentinel; 1 hit total)"
+  - claim: "The canonical key is read 6 times in the shipped sync-delivery skill"
+    command: "grep -c \"git_strategy.{mode}.workflow\" internal/template/templates/.claude/skills/moai/workflows/sync/delivery.md"
+    output: "6"
+  - claim: "REQ-SYK-010's auto_branch rebind survives untouched by t316"
+    command: "grep -n \"auto_branch\" internal/template/templates/.claude/skills/moai-workflow-project/schemas/tab_schema.json"
+    output: "3 hits, lines 964/966/982, all git_strategy.{mode}.automation.auto_branch"
+  - claim: "t316 (6310dbf28) removed the two malformed personal/team auto_branch bindings this SPEC's OBS-1 named, and did not touch this SPEC's rebind"
+    command: "grep -n \"personal.auto_branch\\|team.auto_branch\" internal/template/templates/.claude/skills/moai-workflow-project/schemas/tab_schema.json"
+    output: "exit 1, 0 hits"
+  - claim: "Template<->local mirror parity holds for tab_schema.json"
+    command: "diff internal/template/templates/.claude/skills/moai-workflow-project/schemas/tab_schema.json .claude/skills/moai-workflow-project/schemas/tab_schema.json"
+    output: "empty diff, exit 0"
+  - claim: "The primary checkout's git-strategy.yaml value is inside the canonical domain, resolving carried debt on that config"
+    command: "grep -n \"workflow:\\|mode:\" .moai/config/sections/git-strategy.yaml"
+    output: "mode: manual (L2); manual.workflow: git-flow (L8) -- inside {github-flow, git-flow}"
+  - claim: "Carried-debt item B5 (CLAUDE.local.md instructing the non-canonical 'workflow: gitflow' spelling) is resolved, by card t308"
+    command: "grep -n \"workflow: gitflow\" CLAUDE.local.md"
+    output: "exit 1, 0 hits"
+  - claim: "No docs-site page references the dead key or the mode-scoped canonical path introduced by this SPEC"
+    command: "grep -rln \"spec_git_workflow\" docs-site"
+    output: "exit 1, 0 hits (existing docs-site references to git_strategy.automation.auto_branch predate this SPEC and are unrelated -- verified by inspection, not edited)"
+debt_disposition:
+  OBS-1: "resolved-by-t316 (6310dbf28) -- the malformed bindings it named are gone; this SPEC's own rebind is untouched"
+  D7b_git_strategy_yaml: "resolved -- primary checkout's git-strategy.yaml carries mode: manual / manual.workflow: git-flow, inside the canonical {github-flow, git-flow} domain"
+  B5_claude_local_md: "resolved-by-t308 (da301bbe1) -- the non-canonical 'workflow: gitflow' instruction is gone from CLAUDE.local.md"
+  OBS-2: "OPEN -- the rebound SPEC-branching interview question overlaps the per-mode auto_branch questions in the personal/team batches. Reported, not resolved, per REQ-SYK-010's explicit instruction to rebind rather than delete."
+  OBS-3: "OPEN -- the template-neutrality CI guard triggers on pull_request: branches: [main]; under this repo's git-flow card branches (no PR) it may not fire on CI for this card. Run locally instead, exit 0 -- not independently re-verified on CI by this sync commit."
+ac_count_used_for_b12_self_test: 12   # AC-SYK-001..012, the canonical ### AC-SYK-NNN headings (grep -c '^### AC-SYK-' acceptance.md -> 12); a raw AC-([A-Z0-9]+-)*[0-9]+ regex over the whole file returns 24 because L111 also carries a shorthand REQ-to-AC traceability table using the abbreviated AC-NNN alias for the same 12 criteria -- the 24 is a markup-shape artifact, not 24 distinct ACs
+b12_self_test_a: "grep -c SPEC-SYNC-STRATEGY-KEY-001 CHANGELOG.md (pre-emission) = 0 -- no duplicate, emission proceeded"
+b12_self_test_b: "12 distinct AC-SYK-NNN headings in acceptance.md; CHANGELOG entry states '12 acceptance criteria (AC-SYK-001..012): 12 PASS, 0 FAIL' -- matches"
+b12_self_test_c: "all file paths named in the CHANGELOG entry (delivery.md, tab_schema.json, CLAUDE.local.md) verified present via the grep/diff commands above -- no ls-only claim was needed since every path was already read by the coherence-evidence commands"
+docs_impact: none   # measured -- see coherence_evidence docs-site row above
+changelog_entry_position: "CHANGELOG.md ### Changed section, first bullet (before SPEC-TABSCHEMA-AUTOBRANCH-001)"
+```
+
+### Frontmatter transition note (plan.md / acceptance.md / progress.md carry no status: field)
+
+This SPEC's `plan.md`, `acceptance.md`, and `progress.md` were authored at plan-phase with no YAML frontmatter block at all (confirmed: `grep -n "^status:"` across all four artifacts matches only `spec.md`). This differs from at least one other recently-closed SPEC in this repository (SPEC-STATUSLINE-PROFILE-RESPECT-001 / card t293) whose plan.md/acceptance.md/progress.md DID carry a `status:`/`updated:` frontmatter pair — but in that case too, only `spec.md`'s field was actually transitioned at sync-close (its own progress.md §E.4 names the field `spec_status_transition`, singular). The canonical Status Transition Ownership Matrix (`.claude/rules/moai/development/spec-frontmatter-schema.md` § Canonical 12 Required Fields) scopes the 12-field frontmatter schema to `spec.md` specifically; it does not mandate frontmatter on the other three artifacts. Given both the schema scope and the repo precedent, this sync commit transitions `spec.md`'s `status:` field only, and does not add new frontmatter structure to files that never carried it — inventing a frontmatter block on files where none exists would be a body-shape change outside a mechanical status-field transition. Surfaced here rather than silently resolved, per the agent's obligation to report rather than paper over a premise gap between the dispatch instruction and the artifacts actually on disk.
