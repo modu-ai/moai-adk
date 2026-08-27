@@ -138,7 +138,7 @@ adds any text verbatim.`,
 		newTodoUnpickCmd(), newTodoEditCmd(), newTodoMoveCmd(),
 		newTodoDropCmd(), newTodoUndropCmd(),
 		newTodoAnalyzeCmd(), newTodoRelateCmd(), newTodoUnrelateCmd(), newTodoWhyCmd(),
-		newTodoPRCmd())
+		newTodoPRCmd(), newTodoExportJSONCmd())
 	return cmd
 }
 

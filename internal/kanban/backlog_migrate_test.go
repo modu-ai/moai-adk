@@ -211,38 +211,105 @@ func TestMigrationQuarantinesLegacyByteIdentical(t *testing.T) {
 	}
 }
 
-// AC-TOSQ-004 / REQ-TOSQ-013: both layouts present (the crash window between
-// commit and quarantine) serves the DATABASE, and completes the quarantine
-// without failing the call.
+// AC-TOSQ-004 / REQ-TOSQ-013: both layouts present. The DATABASE is served,
+// and what happens to the json depends on which of the two ways it got there.
+//
+// A database beside a backlog.json is ambiguous, and the ambiguity is
+// load-bearing: the json is either pre-cutover legacy stranded by a crash
+// between the migration commit and the quarantine, or a downgrade export the
+// operator just asked for. Quarantining the second silently deletes the only
+// artifact a downgraded release can read. The in-flight marker written inside
+// the migration is what separates them, so both directions are asserted here —
+// asserting either alone would pass a store that ignored the marker entirely.
 func TestMigrationBothPresentPrefersDatabase(t *testing.T) {
 	t.Parallel()
-	store, _ := seedMigrationRoot(t, migrationFixture)
 
-	// Migrate, then restore the legacy file from its quarantine to reconstruct
-	// state D exactly as a crash between step 5 and step 6 would leave it.
-	if _, err := store.Load(); err != nil {
-		t.Fatalf("initial Load: %v", err)
-	}
-	if _, _, err := store.Add("post-cutover card"); err != nil {
-		t.Fatalf("Add: %v", err)
-	}
-	quarantine := store.Path() + backlogMigratedSuffix
-	if err := os.Rename(quarantine, store.Path()); err != nil {
-		t.Fatalf("reconstruct state D: %v", err)
+	// Reconstruct state D FAITHFULLY: a crash in that window leaves the legacy
+	// file AND the in-flight marker. Renaming the quarantine back without the
+	// marker reconstructs a different state — the export case below.
+	reconstructCrashedCutover := func(t *testing.T, store *BacklogStore) {
+		t.Helper()
+		if err := os.Rename(store.Path()+backlogMigratedSuffix, store.Path()); err != nil {
+			t.Fatalf("restore legacy file: %v", err)
+		}
+		eng, err := openBacklogEngine(backlogSQLitePath(store.Path()))
+		if err != nil {
+			t.Fatalf("open db to set the in-flight marker: %v", err)
+		}
+		if err := eng.markQuarantinePending(t.Context()); err != nil {
+			t.Fatalf("set in-flight marker: %v", err)
+		}
+		if err := eng.close(); err != nil {
+			t.Fatalf("close: %v", err)
+		}
 	}
 
-	rec, err := store.Load()
-	if err != nil {
-		t.Fatalf("Load(state D) = %v, want nil — the quarantine retry must not fail the call", err)
-	}
-	// The database carries 5 items (4 seeded + 1 added); the restored legacy
-	// file carries 4. Reading 4 would mean the stale JSON won.
-	if len(rec.Items) != 5 {
-		t.Fatalf("items = %d, want 5 — the database must stay authoritative", len(rec.Items))
-	}
-	if _, err := os.Stat(store.Path()); !os.IsNotExist(err) {
-		t.Errorf("legacy file still present (err=%v) — the retry should have re-quarantined it", err)
-	}
+	t.Run("interrupted migration completes its quarantine", func(t *testing.T) {
+		t.Parallel()
+		store, _ := seedMigrationRoot(t, migrationFixture)
+		if _, err := store.Load(); err != nil {
+			t.Fatalf("initial Load: %v", err)
+		}
+		if _, _, err := store.Add("post-cutover card"); err != nil {
+			t.Fatalf("Add: %v", err)
+		}
+		reconstructCrashedCutover(t, store)
+
+		rec, err := store.Load()
+		if err != nil {
+			t.Fatalf("Load(state D) = %v, want nil — the retry must not fail the call", err)
+		}
+		// The database carries 5 items (4 seeded + 1 added); the restored
+		// legacy file carries 4. Reading 4 would mean the stale JSON won.
+		if len(rec.Items) != 5 {
+			t.Fatalf("items = %d, want 5 — the database must stay authoritative", len(rec.Items))
+		}
+		if _, err := os.Stat(store.Path()); !os.IsNotExist(err) {
+			t.Errorf("legacy file still present (err=%v) — the interrupted quarantine should have completed", err)
+		}
+	})
+
+	t.Run("a downgrade export is left exactly where it was put", func(t *testing.T) {
+		t.Parallel()
+		// A FRESH root, deliberately: no legacy file ever existed here, so no
+		// .migrated quarantine exists either. That matters — an earlier form of
+		// this subtest reused a migrated root, where the "never overwrite an
+		// existing quarantine" guard silently did the work and the subtest
+		// passed even with the marker check removed. It asserted a mechanism it
+		// was not exercising.
+		store := NewBacklogStore(filepath.Join(t.TempDir(), "backlog.json"))
+		if _, _, err := store.Add("a card"); err != nil {
+			t.Fatalf("seed Add: %v", err)
+		}
+		if _, err := os.Stat(store.Path() + backlogMigratedSuffix); err == nil {
+			t.Fatal("fixture invalid: a quarantine exists, so this would not exercise the marker")
+		}
+
+		// The export: a backlog.json written AFTER the store was already a
+		// database, so no in-flight marker is set.
+		exported := []byte(`{"version":1,"last_seq":1,"items":[],"findings":[]}`)
+		if err := os.WriteFile(store.Path(), exported, 0o644); err != nil {
+			t.Fatalf("write export: %v", err)
+		}
+
+		rec, err := store.Load()
+		if err != nil {
+			t.Fatalf("Load(db + export) = %v, want nil", err)
+		}
+		if len(rec.Items) != 1 {
+			t.Fatalf("items = %d, want 1 — the database must stay authoritative", len(rec.Items))
+		}
+		got, err := os.ReadFile(store.Path())
+		if err != nil {
+			t.Fatalf("the export was renamed or removed: %v", err)
+		}
+		if string(got) != string(exported) {
+			t.Error("the export's contents changed")
+		}
+		if _, err := os.Stat(store.Path() + backlogMigratedSuffix); err == nil {
+			t.Error("the export was quarantined as if it were pre-cutover legacy")
+		}
+	})
 }
 
 // REQ-TOSQ-014 / C-6: an existing quarantine is never overwritten. The bytes

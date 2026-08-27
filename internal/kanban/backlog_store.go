@@ -437,11 +437,14 @@ func (s *BacklogStore) load() (*BacklogRecord, error) {
 func (s *BacklogStore) openEngine(lockHeld bool) (*backlogEngine, error) {
 	switch layout := inspectBacklogLayout(s.path); {
 	case layout.dbExists && layout.jsonExists:
-		// State D — reachable after a crash between the migration commit and
-		// the quarantine. The database is authoritative on every path; finish
-		// the quarantine best-effort and never fail the caller's verb for it
-		// (REQ-TOSQ-013).
-		quarantineLegacyBacklog(s.path)
+		// State D — a database beside a backlog.json. The database is
+		// authoritative on every path either way, but the json's identity
+		// decides what happens to it: pre-cutover legacy left by a crash
+		// between the migration commit and the quarantine is finished
+		// best-effort (REQ-TOSQ-013), while an export written for a downgrade
+		// is left exactly where the operator put it. The in-flight marker
+		// inside the database is what tells them apart.
+		completeInterruptedQuarantine(s.path)
 	case !layout.dbExists && layout.jsonExists:
 		// State B — migrate under the lock.
 		if err := s.migrateUnderLock(lockHeld); err != nil {

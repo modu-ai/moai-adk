@@ -64,6 +64,20 @@ const (
 const (
 	backlogMetaKeyLastSeq       = "last_seq"
 	backlogMetaKeySchemaVersion = "schema_version"
+
+	// backlogMetaKeyQuarantinePending records that a migration committed its
+	// data but has not yet quarantined the legacy file. It is written inside
+	// the migration transaction and cleared once the rename lands.
+	//
+	// It exists to answer a question the filesystem cannot: a database sitting
+	// beside a backlog.json is ambiguous. That json may be pre-cutover legacy
+	// left by a crash between the commit and the quarantine — which must be
+	// quarantined — or it may be an export this binary just wrote for a
+	// downgrade, which must be left exactly where the operator put it.
+	// Quarantining an export would silently delete the only artifact a
+	// downgraded release can read, and the operator would not find out until
+	// the older binary came up to an empty queue.
+	backlogMetaKeyQuarantinePending = "legacy_quarantine_pending"
 )
 
 // backlogDDL is the physical schema (design.md §2). Everything is IF NOT

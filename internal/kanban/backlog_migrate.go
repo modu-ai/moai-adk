@@ -359,6 +359,11 @@ func migrateLegacyBacklog(queuePath string) error {
 		return fmt.Errorf("migrate backlog %s -> %s: parity check failed, legacy file left authoritative: %w",
 			queuePath, dbPath, err)
 	}
+	if err := eng.markQuarantinePending(ctx); err != nil {
+		_ = eng.close()
+		removeBacklogDBArtifacts(dbPath)
+		return fmt.Errorf("migrate backlog %s -> %s: %w", queuePath, dbPath, err)
+	}
 	if err := eng.close(); err != nil {
 		removeBacklogDBArtifacts(dbPath)
 		return fmt.Errorf("migrate backlog %s -> %s: closing: %w", queuePath, dbPath, err)
@@ -366,7 +371,69 @@ func migrateLegacyBacklog(queuePath string) error {
 
 	// Authority flips here and not before.
 	quarantineLegacyBacklog(queuePath)
+	clearQuarantinePending(dbPath)
 	return nil
+}
+
+// markQuarantinePending records the in-flight migration's last outstanding
+// step. writeRecord upserts meta wholesale, so this is set AFTER it — see
+// migrateLegacyBacklog's ordering — and only the crash window between the
+// commit and the rename leaves it set.
+func (e *backlogEngine) markQuarantinePending(ctx context.Context) error {
+	_, err := e.db.ExecContext(ctx,
+		`INSERT INTO meta(key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+		backlogMetaKeyQuarantinePending, "1")
+	if err != nil {
+		return mapBacklogEngineError(fmt.Sprintf("mark quarantine pending %s", e.dbPath), err)
+	}
+	return nil
+}
+
+// quarantinePending reports whether a migration's quarantine step is still
+// outstanding. A read failure answers false: the consequence of guessing wrong
+// in that direction is a legacy file left visible, which is recoverable; the
+// other direction quarantines a file that should have been left alone.
+func (e *backlogEngine) quarantinePending(ctx context.Context) bool {
+	var v string
+	if err := e.db.QueryRowContext(ctx,
+		`SELECT value FROM meta WHERE key = ?`, backlogMetaKeyQuarantinePending).Scan(&v); err != nil {
+		return false
+	}
+	return v == "1"
+}
+
+// clearQuarantinePending drops the marker once the rename has landed.
+// Best-effort: a failure leaves the marker set, and the next open re-runs a
+// quarantine that is already a no-op.
+func clearQuarantinePending(dbPath string) {
+	eng, err := openBacklogEngine(dbPath)
+	if err != nil {
+		return
+	}
+	defer func() { _ = eng.close() }()
+	_, _ = eng.db.ExecContext(context.Background(),
+		`DELETE FROM meta WHERE key = ?`, backlogMetaKeyQuarantinePending)
+}
+
+// completeInterruptedQuarantine finishes a migration that committed its data
+// but crashed before renaming the legacy file away (state D).
+//
+// It acts ONLY when the in-flight marker says a quarantine is outstanding. A
+// backlog.json sitting beside a database with no marker set is not pre-cutover
+// legacy — it is an export written for a downgrade — and it is left untouched.
+func completeInterruptedQuarantine(queuePath string) {
+	dbPath := backlogSQLitePath(queuePath)
+	eng, err := openBacklogEngine(dbPath)
+	if err != nil {
+		return
+	}
+	pending := eng.quarantinePending(context.Background())
+	_ = eng.close()
+	if !pending {
+		return
+	}
+	quarantineLegacyBacklog(queuePath)
+	clearQuarantinePending(dbPath)
 }
 
 // quarantineLegacyBacklog RENAMES the legacy file to its .migrated sibling
