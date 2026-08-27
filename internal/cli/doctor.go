@@ -199,6 +199,10 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		{"Binary Freshness", checkBinaryFreshness},
 		{"MCP Scope Duplicates", func(v bool) DiagnosticCheck { return checkMCPScopeDuplicates(cwd, v) }},
 		{mcpServerVersionCheckName, func(v bool) DiagnosticCheck { return checkMCPServerVersion(cwd, v) }},
+		// SPEC-AGENT-EMIT-LINEAGE-001 REQ-AEL-004: embed-axis judgment point.
+		// Applicable only in a tree carrying the committed emission set — a
+		// deployed project sees one added `ok` row and the same exit status.
+		{agentEmitEmbedCheckName, func(v bool) DiagnosticCheck { return checkAgentEmitEmbed(cwd, v) }},
 		{"Constitution Registry", func(v bool) DiagnosticCheck {
 			registryPath := resolveRegistryPath(cwd)
 			strictMode := os.Getenv(constitutionStrictEnvKey) == "1"
@@ -218,6 +222,9 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		{"Skills Allowlist", func(v bool) DiagnosticCheck { return checkSkillsAllowlist(cwd, v) }},
 		{"MX Tag Config", func(v bool) DiagnosticCheck { return checkMXTagConfig(cwd, v) }},
 		{"Worktree State", func(v bool) DiagnosticCheck { return checkWorktreeState(cwd, v) }},
+		// SPEC-WORKTREE-BASEREF-001 REQ-WBR-012: the read-only counterpart of
+		// the SessionStart origin/HEAD alignment step.
+		{"Worktree Base Branch", func(v bool) DiagnosticCheck { return checkWorktreeBaseBranch(cwd, v) }},
 		{"BODP Config", func(v bool) DiagnosticCheck { return checkBODPConfig(cwd, v) }},
 		{"Telemetry Config", func(v bool) DiagnosticCheck { return checkTelemetryConfig(cwd, v) }},
 		{"Glamour Cache", checkGlamourCache},
