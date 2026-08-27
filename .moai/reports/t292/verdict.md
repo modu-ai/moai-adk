@@ -77,12 +77,27 @@ $ git rev-list --count --left-right origin/main...origin/develop
 
 **(4) 릴리스 경로의 분기점**
 
+> **정정 (M2 단계에서 자체 발견).** 이 절의 최초 판(`c72e9c039`)은 아래 두 [HARD] 줄을
+> `.moai/docs/git-workflow-doctrine.md`의 `:51`·`:55`로 적었으나, **파일 귀속이 틀렸다.**
+> 두 줄은 `.claude/agents/harness/hns-release-specialist.md`에 있다. 서로 다른 두 파일에
+> 건 grep 결과를 한 인용으로 합쳐 적은 것이 원인이다. 규칙 자체는 실재하므로 판정 (a)는
+> 그대로 서지만, 인용을 따라간 사람이 엉뚱한 파일을 열게 되므로 아래와 같이 바로잡는다.
+
 ```
-$ git show origin/develop:.moai/docs/git-workflow-doctrine.md | grep -n "release/"
-51:- [HARD] Release branch `release/vX.Y.Z` is cut **from `develop`**, never from `main`.
-55:- [HARD] **Hotfix is the single exception**: `hotfix/vX.Y.Z-*` is cut **from `main`**
-101:| release/* → main | **merge commit** | `gh pr merge N --merge` |
+$ git show origin/develop:.claude/agents/harness/hns-release-specialist.md | sed -n '51,59p'
+51:- [HARD] Release branch `release/vX.Y.Z` is cut **from `develop`**, never from
+52:  `main`. `develop` is the integration surface every card lands on (…), so a
+53:  release branch cut from `main` would ship none of it.
+55:- [HARD] **Hotfix is the single exception**: `hotfix/vX.Y.Z-*` is cut **from
+56:  `main`**, because a hotfix by definition repairs what is already in production
+
+$ git show origin/develop:.moai/docs/git-workflow-doctrine.md | sed -n '95,103p'
+101:| release/* → main | **merge commit** ⭐ | `gh pr merge N --merge` | …
+102:| hotfix/* → main | **merge commit** | `gh pr merge N --merge` | …
 ```
+
+즉 **분기점 규칙**(develop에서 딴다 / hotfix만 main에서 딴다)은 `hns-release-specialist.md`,
+**머지 전략 표**는 `git-workflow-doctrine.md`에 있다. 두 파일 모두 `origin/develop`에서 읽었다.
 
 릴리스 브랜치가 develop에서 갈라지므로 그 head 트리의 스탬프는 `d2fcecc8b`이고, head 이력 안에서 도달 가능하다 — 릴리스 PR의 graph-freshness는 초록이다. 그 PR이 머지되는 순간 main의 스탬프도 `d2fcecc8b`로 바뀌고, 동시에 그 커밋이 main에서 도달 가능해진다.
 
@@ -159,3 +174,47 @@ $ git rev-parse origin/main
 2. main-push의 graph-freshness 레드가 "릴리스 전까지 알려진 무해 상태"임을 한 줄로 기록해, hotfix 작성자가 원인 추적에 시간을 쓰지 않게 한다.
 
 `Graph Freshness`가 required check로 승격되면 그때 재평가가 필요합니다.
+
+---
+
+## M2 — 운영자 판정 ②의 이행
+
+운영자가 ②(메모 한 줄, 스탬프 수리 없음)를 선택했다. 아래는 그 이행 기록이다.
+위 (a) 판정과 근거·Gaps·잔여 위험은 원문 그대로 두었다(정정 1건 제외, 해당 절에 명시).
+
+### 놓을 자리 — 판단과 근거
+
+**선택: `.claude/agents/harness/hns-release-specialist.md`의 hotfix [HARD] 항목 바로 아래.**
+
+세 후보를 측정으로 갈랐다.
+
+| 후보 | 읽히는 시점 | 판정 |
+|---|---|---|
+| `hns-release-specialist.md` hotfix 절 | hotfix **착수 전**, 절차를 읽을 때 | **채택** |
+| `.github/workflows/graph-freshness.yml` 주석 | 레드를 본 **뒤**, 이름을 따라 열 때 | 기각 |
+| `.moai/docs/git-workflow-doctrine.md` | 분기 규칙 조회 시 | 기각 |
+
+- 채택 근거: 메모의 목적은 "추적 비용 제거"인데, 절차 문서는 **레드를 보기 전에** 읽힌다. 추적을 짧게 만드는 것보다 애초에 시작되지 않게 하는 쪽이 낫다. 또 이 메모는 "hotfix는 main에서 딴다"는 [HARD] 규칙의 직접적 귀결이므로, 그 규칙 바로 옆이 의미상의 자리다. hotfix 절차의 정본이 이 파일이라는 것도 측정으로 확인했다 — `git grep -lI hotfix origin/develop` 결과 중 절차를 기술하는 문서는 이 파일과 `.claude/commands/harness/release.md`뿐이고, `.claude/skills/moai/workflows/release.md`에는 hotfix 언급이 **0건**이다.
+- `graph-freshness.yml` 기각: 주석 관례는 실제로 있다(46줄 중 28줄이 주석, 과거 CI 사고를 run id와 함께 설명). 자리로서 어색하지 않다. 그러나 ① 레드를 본 뒤에야 열리므로 추적이 이미 시작된 뒤고, ② 이 파일은 t314가 최근 건드린 파일이며(`cd43dc928`) 해당 워크트리에 세션이 살아 있어 같은 파일에 두 레인이 붙을 위험이 있다.
+- `git-workflow-doctrine.md` 기각: lane-18이 t310으로 감사 중이라 리드가 배제 조건을 걸었다. 덧붙여, 리드가 이 파일의 `:55`로 알고 있던 [HARD] 줄은 애초에 **이 파일에 없다**(위 정정 참조).
+- `CLAUDE.local.md`은 t308 소관이라 후보에서 제외했다(리드 지시).
+
+배포 영향 없음을 확인했다: `internal/template/templates/.claude/agents/`에 `harness/` 하위가 존재하지 않는다 — 이 파일은 dev-only이며 템플릿 미러 의무가 없다. Template-First 규율에 걸리지 않는다.
+
+### 메모의 형태 — 조건절 필수
+
+"무해"만 적으면 required check 목록이 바뀐 뒤에도 다음 사람이 그 문장을 믿는다. 그래서 메모는 세 가지를 함께 적었다.
+
+1. **왜 무해한가** — `Graph Freshness`가 `main`의 required status checks에 없다. 확인 명령과 현재 다섯 항목을 그대로 실었다.
+2. **언제 거짓이 되는가** — 그 목록에 `Graph Freshness`가 추가되면 이 메모는 거짓이고 레드는 차단 요인이 된다. 문장으로 명시했다.
+3. **언제 저절로 사라지는가** — 다음 `develop` → `main` 릴리스 머지.
+
+### 브랜치명 불일치
+
+브랜치는 `WT-stamp-orphan-repair`인데 실제로 한 일은 스탬프 수리가 아니라 "수리하지 않기로 한 판정 + 메모"다. 리드 지시에 따라 개명하지 않았다 — `c72e9c039`가 이미 이 이름 위에 있고, 이름 정합보다 이력 연속성이 우선이다. 카드 추적은 커밋 메시지의 `t292`, 이 증거 경로, 배차의 `card:` 필드가 담당한다.
+
+### M2 Gaps
+
+- **hotfix PR을 실제로 만들어 레드를 확인하지 않았다.** 메모의 사실 주장("hotfix PR에 Graph Freshness 레드가 뜬다")은 트리거 정의(`pull_request` 무조건) + 분기점 [HARD] 규칙 + main 스탬프 도달불가 rc의 연역이다.
+- **required contexts 목록은 이 시점의 스냅샷**이다. 메모 자체가 그 조건성을 명시하므로 노후화는 감지 가능하지만, 목록을 감시하는 장치는 만들지 않았다.
+- 메모를 읽을 사람이 실제로 이 파일을 연다는 것은 **절차 문서라는 성격에서 추론**했을 뿐, 열람 기록으로 측정한 것이 아니다.
