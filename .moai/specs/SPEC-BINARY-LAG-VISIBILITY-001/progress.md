@@ -278,6 +278,50 @@ RED   binary_lag_test.go:177: this SPEC added doctor check name binaryLagCheckNa
       ← 인용 부호가 없다. 따옴표 문자열만 추출했다면 델타가 비어 통과했을 것(감사 N1)
 ```
 
+### AC-BLV-009 — t317 착지가 두 설계 판단을 실제로 입증했다
+
+이 SPEC v0.4.0이 `moaiChecks`를 인용한 시점 이후, plan-phase 중에 t317이 자기 항목을
+**같은 슬라이스에, 상수 식별자로** 등록하며 착지했다. 실측:
+
+```
+$ grep -n 'moaiChecks := \|"Binary Freshness"\|mcpServerVersionCheckName\|agentEmitEmbedCheckName\|workspaceChecks := ' internal/cli/doctor.go
+197:	moaiChecks := []checkFunc{
+201:		{"Binary Freshness", checkBinaryFreshness},
+203:		{mcpServerVersionCheckName, func(v bool) DiagnosticCheck { return checkMCPServerVersion(cwd, v) }},
+207:		{agentEmitEmbedCheckName, func(v bool) DiagnosticCheck { return checkAgentEmitEmbed(cwd, v) }},
+220:	workspaceChecks := []checkFunc{
+```
+
+SPEC이 인용한 창(`moaiChecks` `:195`~`:212`, `workspaceChecks` `:214`)과 어긋난다. 두 원인이
+겹쳐 있고, 둘 다 이 기준의 판정과 무관하다:
+
+- **t317의 항목 4줄** (주석 3 + 항목 1). 기준점 blob에서 이미 확인된다 — `git show
+  22f90b1c7:internal/cli/doctor.go`에서 `workspaceChecks`가 `:218`(SPEC 인용 `:214` 대비 +4).
+- **이 SPEC의 import 2줄** (`context`, `binlag`). `:218` → `:220`의 나머지 +2가 그것이다.
+
+**기준점 blob에 t317 항목이 이미 들어 있다**는 것이 결정적이다:
+
+```
+$ git show 22f90b1c7:internal/cli/doctor.go | grep -c 'agentEmitEmbedCheckName'
+1
+```
+
+즉 `agentEmitEmbedCheckName`은 before 집합과 after 집합 **양쪽에** 있고 델타에 0을 기여한다.
+AC-BLV-009가 통과하는 것은 이 SPEC이 이름을 추가하지 않았기 때문이지, 슬라이스가 그대로여서가
+아니다 — 슬라이스는 그대로가 아니다.
+
+두 설계 판단이 가설에서 **입증**으로 바뀌었다:
+
+- **절대 개수·내용이 아니라 전후 델타로 판정한 것**(감사 D3). 슬라이스의 절대 상태를 단언했다면
+  t317이 착지하는 순간, 이 SPEC과 무관한 이유로 깨졌을 것이다.
+- **추출 단위를 「항목의 이름 표현식」으로 잡은 것**(감사 N1). 상수 식별자 등록은 이제
+  `mcpServerVersionCheckName` 하나가 아니라 **둘**이다 — 뮤턴트 3이 방어하는 형태의
+  살아 있는 실례가 같은 슬라이스 안에 있다.
+
+행 인용이 어긋난 것은 드리프트가 아니라 **이 기준이 제 일을 하고 있다는 증거**다. 판정이 행
+구간이 아니라 슬라이스 리터럴 전체를 `go/ast`로 읽고 델타를 보기 때문에, 창이 밀려도 결과가
+바뀌지 않는다.
+
 ### 회귀 확인
 
 ```
