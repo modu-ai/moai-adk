@@ -199,6 +199,10 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		{"Binary Freshness", checkBinaryFreshness},
 		{"MCP Scope Duplicates", func(v bool) DiagnosticCheck { return checkMCPScopeDuplicates(cwd, v) }},
 		{mcpServerVersionCheckName, func(v bool) DiagnosticCheck { return checkMCPServerVersion(cwd, v) }},
+		// SPEC-AGENT-EMIT-LINEAGE-001 REQ-AEL-004: embed-axis judgment point.
+		// Applicable only in a tree carrying the committed emission set — a
+		// deployed project sees one added `ok` row and the same exit status.
+		{agentEmitEmbedCheckName, func(v bool) DiagnosticCheck { return checkAgentEmitEmbed(cwd, v) }},
 		{"Constitution Registry", func(v bool) DiagnosticCheck {
 			registryPath := resolveRegistryPath(cwd)
 			strictMode := os.Getenv(constitutionStrictEnvKey) == "1"

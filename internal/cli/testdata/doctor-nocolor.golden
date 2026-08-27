@@ -18,12 +18,13 @@
 │    ok      Binary Freshness       development build (no commit metadata)                                                                             │
 │    ok      MCP Scope Duplicates   no MCP configuration found (project or global)                                                                     │
 │    ok      MCP Server Version     no running moai MCP server recorded                                                                                │
+│    ok      Agent Emit Embed       not applicable: no committed agent-emit artifacts (not a MoAI project root)                                        │
 │    warn    Constitution Registry  zone-registry.md not found at ".claude/rules/moai/core/zone-registry.md" — run `moai constitution list` to verify  │
 │    ok      Harness 5-Layer        .moai/harness/ not present (no harness configured)                                                                 │
 │    ok      Migration              current version 0                                                                                                  │
 │    ok      Plugin Deployment      no plugin marker (binary-managed)                                                                                  │
 │    ok      Home Disk Usage        no ~/.moai home found — nothing to report                                                                          │
-│    8 ok, 3 warn, 0 fail                                                                                                                              │
+│    9 ok, 3 warn, 0 fail                                                                                                                              │
 │                                                                                                                                                      │
 │  Workspace ---                                                                                                                                       │
 │    STATUS  CHECK             MESSAGE                                                                                                                 │
@@ -39,6 +40,6 @@
 │    ok      Codex Wiring      not wired (claude-only project) — skipped                                                                               │
 │    2 ok, 8 warn, 0 fail                                                                                                                              │
 │                                                                                                                                                      │
-│  [Pass 15]  [Warn 11]  [Fail 0]                                                                                                                      │
+│  [Pass 16]  [Warn 11]  [Fail 0]                                                                                                                      │
 │                                                                                                                                                      │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
