@@ -77,6 +77,20 @@ provenance: tree=/path/to/project commit=1a2b3c4d5e6
 
 重新生成 codemaps 后，作为最后一步执行。文档内容由 `/moai codemaps` 打磨，而这份内容**描述的是哪个树状态**由本命令写入 `provenance.json`——`moai graph check` 判定 codemaps 层的依据就是这份记录。
 
+### 指定一个能活过合并的提交（`--commit`）
+
+```bash
+$ moai graph stamp codemaps --commit "$(git merge-base HEAD origin/main)"
+OK: stamped .moai/project/codemaps/provenance.json
+provenance: tree=/path/to/project commit=1a2b3c4d5e6
+```
+
+不带旗标执行时，戳记记录的是当前检出的 HEAD。在功能分支上这是个陷阱：本仓库用**挤压合并**（squash merge）合入拉取请求，分支上的提交——HEAD 也在内——永远不会进入 main 的历史。指向分支本地 HEAD 的戳记在挤压合并落地的那一刻就成了孤儿，之后打开的每个拉取请求都会继承 graph-freshness 的红灯（`not comparable`，exit 2）。这个失败真实发生过一次，并以 `0d15864ae90b` 事件留档追查。
+
+`--commit <rev>` 接受任何 `git rev-parse` 表达式（完整 sha、短哈希、引用名都可以），解析成完整 sha 后原样记录。上面的 merge-base 配方就是安全写法：`git merge-base HEAD origin/main` 既是 main 的祖先（能活过挤压合并），内容又与分支点上的 described 源一致（不会把别的拉取请求合入的改动算成你的漂移）。千万不要对着分支本地 HEAD 重新盖戳。另外，described 源存在未提交改动时使用 `--commit` 会被直接拒绝——指定提交和内容指纹是两种不同的诚实声明，而 schema 里锚的位置只有一个。
+
+这条纪律由 CI 机械地兜底：graph-freshness 工作流在给出任何新鲜度判定之前，先验证被跟踪戳记的提交是拉取请求目标分支的祖先。注定成为孤儿的戳记会在原地点名失败，而不是等合并之后才以一个无名的 exit 2 冒出来。
+
 ## 两个选择器的注意事项
 
 {{< callout type="warning" >}}

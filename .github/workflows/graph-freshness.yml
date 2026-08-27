@@ -3,7 +3,7 @@ name: Graph Freshness
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, develop]
 
 permissions:
   contents: read
@@ -26,6 +26,43 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
+      - name: Guard codemaps stamp reachability (pre-merge)
+        # Incident 0d15864ae90b (t279 triage §F5): under squash merges a
+        # codemaps stamp naming a branch-local HEAD is orphaned at merge time —
+        # the stamped commit never reaches main's history and every later PR
+        # inherits the not-comparable red. This step verifies the tracked
+        # provenance's commit_sha IS an ancestor of the PR base BEFORE any
+        # freshness verdict is reported (SPEC-STAMP-REACHABILITY-001
+        # acceptance.md §A.1 canonical text). It runs unconditionally on
+        # pull_request AND push; the shell-internal base-ref emptiness test is
+        # the ONLY PR/push divergence — a step-level `if:` conditioning on
+        # pull_request would silently drop object-presence enforcement from
+        # push-to-main runs. The step carries no silent-slip escape hatch: an
+        # orphan-bound stamp must fail this job, not slip past it.
+        env:
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+        run: |
+          REPO="$PWD"
+          PROV=".moai/project/codemaps/provenance.json"
+          set -euo pipefail
+          SHA=$(jq -r '.commit_sha // empty' "$PROV")
+          if [ -z "$SHA" ]; then
+            echo "guard: provenance carries no commit anchor (dirty/content-fingerprint anchor) — reachability not judgeable, skipping"
+            exit 0
+          fi
+          if ! git -C "$REPO" cat-file -e "${SHA}^{commit}" 2>/dev/null; then
+            echo "::error::codemaps provenance names commit ${SHA} which does not exist in this checkout's history"
+            exit 1
+          fi
+          if [ -z "${GITHUB_BASE_REF:-}" ]; then
+            echo "guard: push event (no base ref) — object presence verified only"
+            exit 0
+          fi
+          if ! git -C "$REPO" merge-base --is-ancestor "$SHA" "origin/${GITHUB_BASE_REF}" 2>/dev/null; then
+            echo "::error::codemaps provenance stamp ${SHA} is NOT an ancestor of PR base origin/${GITHUB_BASE_REF} — orphan-bound stamp (a squash merge would strand it)"
+            exit 1
+          fi
+          echo "guard: stamp ${SHA} reachable from origin/${GITHUB_BASE_REF}"
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod

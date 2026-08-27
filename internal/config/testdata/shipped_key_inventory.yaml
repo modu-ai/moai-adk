@@ -391,7 +391,7 @@
   evidence: reader internal/hook/quality/gate.go (runGraphFreshnessStep) + internal/hook/pre_tool.go:840
 - path: "gate.graph_freshness.update_budget_ms"
   class: W
-  evidence: reader internal/cli/graph_refresh_cli.go:71 (graphRefreshBudgetMS)
+  evidence: reader internal/cli/graph_refresh_cli.go:77 (graphRefreshBudgetMS)
 - path: "gate.enabled"
   class: R
   evidence: none
@@ -401,6 +401,9 @@
 - path: "gate.timeouts.lint"
   class: R
   evidence: none
+- path: "gate.timeouts.lock_wait"
+  class: W
+  evidence: reader
 - path: "gate.timeouts.test"
   class: R
   evidence: none

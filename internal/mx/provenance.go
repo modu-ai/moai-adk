@@ -173,6 +173,29 @@ func GitHead(root string) string {
 	return gitOut(root, "rev-parse", "HEAD")
 }
 
+// ResolveCommit resolves a user-supplied revision expression to a full commit
+// sha via `git rev-parse --verify <rev>^{commit}` (REQ-SR-005). The verify
+// form rejects anything that is not exactly one commit — tags, trees, and
+// ambiguous short revs all fail rather than resolving loosely. Errors are
+// deliberately path-free: they name the revision, never the absolute local
+// path (CR round-2 3855149248 discipline).
+//
+// @MX:NOTE: [AUTO] explicit-commit resolution — survivability is NOT decided here: a local machine cannot judge merge-survivability, so the CI reachability guard owns that half (SPEC-STAMP-REACHABILITY-001 §B.2)
+func ResolveCommit(root, rev string) (string, error) {
+	cmd := exec.Command("git", "-C", root, "rev-parse", "--verify", rev+"^{commit}")
+	var errBuf strings.Builder
+	cmd.Stderr = &errBuf
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("resolve revision %q: not a commit in this repository", rev)
+	}
+	sha := strings.TrimSpace(string(out))
+	if sha == "" {
+		return "", fmt.Errorf("resolve revision %q: not a commit in this repository", rev)
+	}
+	return sha, nil
+}
+
 // treeDirty reports whether any file under the given repo-relative roots has
 // uncommitted changes (staged, unstaged, or untracked) versus HEAD.
 func treeDirty(root string, roots []string) bool {
@@ -203,9 +226,23 @@ func baseProvenance(projectRoot, generatedBy string, describedRoots []string) *P
 }
 
 // StampCodemaps builds the provenance block for a codemaps regeneration over
-// the default described roots.
-func StampCodemaps(projectRoot string) (*Provenance, error) {
-	return baseProvenance(projectRoot, "codemaps-gen", DefaultDescribedRoots), nil
+// the default described roots. commitSHA, when non-empty, is an explicitly
+// named full sha (already resolved by the caller via ResolveCommit) recorded
+// verbatim instead of detected HEAD — the merge-surviving anchor mode
+// (REQ-SR-005). A named commit plus a dirty described-source tree is a
+// contradiction (two anchors, one schema slot) and is rejected pre-write
+// (REQ-SR-006): the schema's omitempty fields would silently blank whichever
+// anchor loses.
+func StampCodemaps(projectRoot, commitSHA string) (*Provenance, error) {
+	pv := baseProvenance(projectRoot, "codemaps-gen", DefaultDescribedRoots)
+	if commitSHA == "" {
+		return pv, nil
+	}
+	if pv.Dirty {
+		return nil, fmt.Errorf("--commit names a commit anchor but the described sources carry uncommitted changes — record either the named commit on a clean tree or the dirty content fingerprint, never both")
+	}
+	pv.CommitSHA = commitSHA
+	return pv, nil
 }
 
 // StampMXScan builds the provenance block for an mx sidecar write, carrying

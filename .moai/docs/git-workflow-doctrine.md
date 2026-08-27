@@ -2,6 +2,13 @@
 
 > Externalized verbatim from CLAUDE.local.md §18 on 2026-05-20 (v2.20.0-rc1 release-readiness consolidation). Original section authored v2.14.0 onward.
 
+> **[HARD] 상위 모델 변경 (2026-08-27) — GitHub Flow → git-flow.** 운영자 지시로 이 리포는 git-flow로 전환했다. 새 모델의 정본은 `CLAUDE.local.md` §4.1(모델·근거)과 `.claude/rules/local/gitflow-lane-protocol.md`(레인 운영 규칙)다.
+>
+> - **초과분(superseded)**: 이 문서가 전제하는 "`develop` 없는 Enhanced GitHub Flow" 자체 — 즉 feature 브랜치가 `main`에서 분기해 `main`으로 PR을 낸다는 전제. 이제 카드 워크트리는 `develop`에서 분기하고, 카드 단위 PR은 없으며, 통합은 `origin/develop`에서 CI로 판정된다. 서두의 "Gitflow 기각" 판단도 이 전환으로 뒤집혔다.
+> - **여전히 구속력 있음**: `main` 브랜치 보호(`enforce_admins: true`, PR 필수 §18.7), `main`으로 가는 릴리스 PR, merge strategy(release = merge commit), label 3축, Release Drafter, hotfix 명명 규칙. 릴리스 브랜치가 `main` 대신 `develop`에서 분기한다는 점만 바뀐다.
+>
+> 아래 본문은 그 구분 아래 읽는다 — 통째로 폐기된 것이 아니다.
+
 ---
 
 

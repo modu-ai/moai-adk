@@ -77,6 +77,20 @@ provenance: tree=/path/to/project commit=1a2b3c4d5e6
 
 Run as the last step after regenerating codemaps. The content is curated by `/moai codemaps`; this command records **which tree state that content describes**, in `provenance.json` — the anchor `moai graph check` judges the codemaps layer against.
 
+### Naming a merge-surviving commit (`--commit`)
+
+```bash
+$ moai graph stamp codemaps --commit "$(git merge-base HEAD origin/main)"
+OK: stamped .moai/project/codemaps/provenance.json
+provenance: tree=/path/to/project commit=1a2b3c4d5e6
+```
+
+By default the stamp records the checked-out HEAD. On a feature branch that is a trap: this repository merges pull requests with **squash merges**, so the branch's commits — including its HEAD — never enter main's history. A stamp naming a branch-local HEAD is orphaned the moment the squash lands, and every later pull request inherits a red graph-freshness check (`not comparable`, exit 2). That exact failure shipped once and was traced in the `0d15864ae90b` incident.
+
+`--commit <rev>` accepts any `git rev-parse` expression (a full sha, a short rev, a ref), resolves it to the full sha, and records that sha verbatim. The merge-base recipe above is the safe form: `git merge-base HEAD origin/main` is an ancestor of main (so it survives the squash) **and** content-equal to your branch's described sources at the branch point (so the check does not count other PRs' merged churn as your drift). Never restamp against a branch-local HEAD — `--commit` with a dirty described-source tree is rejected outright, because a named commit and a content fingerprint are two different honesty claims and the schema carries only one anchor.
+
+CI backs this discipline mechanically: the graph-freshness workflow verifies the tracked stamp's commit is an ancestor of the pull request's base branch before reporting any freshness verdict, so an orphan-bound stamp fails the check by name instead of surfacing as a generic exit 2 after the merge.
+
 ## Caveats for two selectors
 
 {{< callout type="warning" >}}
