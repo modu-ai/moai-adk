@@ -104,7 +104,28 @@ func AggregateDescribedFingerprint(projectRoot string, roots []string) (string, 
 	return aggregateFingerprint(projectRoot, roots)
 }
 
+// AggregateDescribedFingerprintFiltered is AggregateDescribedFingerprint
+// restricted to described-worthy files (REQ-GFC-002). It is the codemaps
+// layer's fingerprint: the codemaps stamp writer produces it and the codemaps
+// checker recomputes it, so a dirty-stamped tree is judged against a
+// fingerprint computed the way it was stamped (REQ-GFC-003).
+//
+// Deliberately NOT the default: aggregateFingerprint stays unfiltered because
+// the edges layer hashes .moai/project/codemaps and .moai/specs through it,
+// and neither holds a .go file — a predicate there would collapse both to the
+// same empty-entry constant and green that layer permanently (REQ-GFC-003a).
+func AggregateDescribedFingerprintFiltered(projectRoot string, roots []string) (string, error) {
+	return aggregateFingerprintPred(projectRoot, roots, IsDescribedWorthy)
+}
+
 func aggregateFingerprint(projectRoot string, roots []string) (string, error) {
+	return aggregateFingerprintPred(projectRoot, roots, nil)
+}
+
+// aggregateFingerprintPred walks roots and folds the entries. admit, when
+// non-nil, filters by repo-relative slash path AFTER the regular-file guard;
+// a nil admit contributes every regular file (the unfiltered contract).
+func aggregateFingerprintPred(projectRoot string, roots []string, admit func(string) bool) (string, error) {
 	var entries []hashEntry
 	for _, root := range roots {
 		abs := filepath.Join(projectRoot, filepath.FromSlash(root))
@@ -126,6 +147,9 @@ func aggregateFingerprint(projectRoot string, roots []string) (string, error) {
 			}
 			rel, relErr := filepath.Rel(projectRoot, path)
 			if relErr != nil {
+				return nil
+			}
+			if admit != nil && !admit(filepath.ToSlash(rel)) {
 				return nil
 			}
 			sum, sumErr := HashFile(path)
@@ -203,9 +227,17 @@ func treeDirty(root string, roots []string) bool {
 	return gitOut(root, args...) != ""
 }
 
+// fingerprintFunc computes a dirty-tree content fingerprint over described
+// roots. Passed per stamp writer so each layer's producer can be paired with
+// its own consumer (REQ-GFC-003).
+type fingerprintFunc func(projectRoot string, roots []string) (string, error)
+
 // baseProvenance stamps the fields shared by every layer's block: tree root,
-// commit-or-dirty anchoring, generation metadata.
-func baseProvenance(projectRoot, generatedBy string, describedRoots []string) *Provenance {
+// commit-or-dirty anchoring, generation metadata. fingerprint decides how the
+// dirty branch's ContentFingerprint is computed — the codemaps writer passes
+// the described-worthy-filtered aggregate, the mx-scan and graph-build writers
+// pass the unfiltered one.
+func baseProvenance(projectRoot, generatedBy string, describedRoots []string, fingerprint fingerprintFunc) *Provenance {
 	pv := &Provenance{
 		SchemaVersion: ProvenanceSchemaVersion,
 		TreeRoot:      projectRoot,
@@ -216,7 +248,7 @@ func baseProvenance(projectRoot, generatedBy string, describedRoots []string) *P
 	}
 	if treeDirty(projectRoot, describedRoots) {
 		pv.Dirty = true
-		if fp, err := aggregateFingerprint(projectRoot, describedRoots); err == nil {
+		if fp, err := fingerprint(projectRoot, describedRoots); err == nil {
 			pv.ContentFingerprint = fp
 		}
 		return pv
@@ -234,7 +266,7 @@ func baseProvenance(projectRoot, generatedBy string, describedRoots []string) *P
 // (REQ-SR-006): the schema's omitempty fields would silently blank whichever
 // anchor loses.
 func StampCodemaps(projectRoot, commitSHA string) (*Provenance, error) {
-	pv := baseProvenance(projectRoot, "codemaps-gen", DefaultDescribedRoots)
+	pv := baseProvenance(projectRoot, "codemaps-gen", DefaultDescribedRoots, AggregateDescribedFingerprintFiltered)
 	if commitSHA == "" {
 		return pv, nil
 	}
@@ -250,7 +282,7 @@ func StampCodemaps(projectRoot, commitSHA string) (*Provenance, error) {
 func StampMXScan(projectRoot string, inventory map[string]string) *Provenance {
 	// The mx scanner reads source trees, not the described-roots universe:
 	// dirtiness is judged over the same roots the inventory lives under.
-	pv := baseProvenance(projectRoot, "mx-scan", DefaultDescribedRoots)
+	pv := baseProvenance(projectRoot, "mx-scan", DefaultDescribedRoots, AggregateDescribedFingerprint)
 	pv.FileInventory = make(map[string]string, len(inventory))
 	for k, v := range inventory {
 		pv.FileInventory[k] = v
@@ -261,7 +293,7 @@ func StampMXScan(projectRoot string, inventory map[string]string) *Provenance {
 // StampEdges builds the provenance block for an edges.jsonl build, carrying
 // the already-computed source-set fingerprints.
 func StampEdges(projectRoot string, sourceFingerprints map[string]string) *Provenance {
-	pv := baseProvenance(projectRoot, "graph-build", DefaultDescribedRoots)
+	pv := baseProvenance(projectRoot, "graph-build", DefaultDescribedRoots, AggregateDescribedFingerprint)
 	pv.SourceFingerprints = make(map[string]string, len(sourceFingerprints))
 	for k, v := range sourceFingerprints {
 		pv.SourceFingerprints[k] = v
