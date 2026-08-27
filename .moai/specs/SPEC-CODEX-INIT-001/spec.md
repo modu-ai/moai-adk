@@ -4,7 +4,7 @@ title: "Codex 미배선 프로젝트 초기화 — 생성기 호출 제안과 AG
 version: "0.3.0"
 status: draft
 created: 2026-08-24
-updated: 2026-08-25
+updated: 2026-08-28
 author: manager-spec
 priority: P1
 phase: "v3.2 target"
@@ -70,7 +70,7 @@ t88(M4)이 배선 생성기를 만들었지만, 미배선 프로젝트에서 Cod
 - `AGENTS.md` ↔ `CLAUDE.md` 지시 계약 확보 (기존 내용 보존, 멱등)
 - `CLAUDE.local.md` 의 두 하네스 도달성
 
-### Out of Scope (제외)
+### Out of Scope — 범위 밖 항목
 
 - 배선 **내용** 의 결정 — 무엇을 어떤 형태로 까는지는 SPEC-CODEX-WIRING-001 소관
 - 배선 **상태 판정 로직** — REQ-CL-006(런처)이 정의하고 이 SPEC 은 소비만 한다
