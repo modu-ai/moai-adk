@@ -147,13 +147,20 @@ git stash pop || git checkout stash@{0} -- <missing-paths>                  # 5)
 - [HARD] `git reset --hard` 대신 `--keep` 사용 (sandbox 안전)
 - [HARD] `gh pr merge --delete-branch` 후 fatal 발생 시 `gh pr view --json state` 별도 확인 (실제 머지 여부)
 - [HARD] `git stash pop` 결과는 `git status` 별도 검증 필수 (silent skip 가능성)
-- [HARD] **(2026-07-20 신규) PR-mandatory: 모든 tier (S/M/L) 변경은 PR 경유.** `enforce_admins: true`로 main direct push는 admin 포함 완전 차단. self-merge 허용 (0 approvals) — 4개 CI status check 통과 시 리뷰어 대기 없이 본인 머지. tier는 main-direct 여부가 아니라 PR ceremony 무게(§23.9)에만 영향.
-- [HARD] **`git push origin main` 금지** — 시도 시 server-side rejected. 항상 feat/fix/chore/docs/release 브랜치 → `gh pr create` → CI green → `gh pr merge` 흐름.
+- [HARD] **(2026-08-27 개정)** 카드 변경은 PR 없이 통합된다 — 카드 워크트리는 `develop`에서 분기하고, 통합 워크트리에서 로컬 `develop`에 `git merge --no-ff`로 합친 뒤 push한다(`origin/develop` CI가 판정). ~~PR-mandatory: 모든 tier (S/M/L) 변경은 PR 경유~~ **[RETIRED 2026-08-27 — 카드 변경은 더 이상 PR을 만들지 않는다]**. main direct push 금지는 변함 없다(`enforce_admins: true`, 아래 불릿); PR 경로는 릴리스 전용이다(`release/vX.Y.Z` → `main`, manager-git 위임). self-merge 조건(0 approvals + 필수 status check 통과)은 릴리스 경로 PR에 그대로 적용되며, tier는 그 ceremony 무게만 결정한다.
+- [HARD] **`git push origin main` 금지** — 시도 시 server-side rejected. ~~항상 feat/fix/chore/docs/release 브랜치 → `gh pr create` → CI green → `gh pr merge` 흐름~~ **[RETIRED 2026-08-27 — 카드 변경에는 더 이상 적용되지 않는다]**. 릴리스 경로(`release/vX.Y.Z` → `main`, manager-git 위임)만 PR을 경유하며, 카드 변경은 로컬 `develop` 병합으로 통합된다.
 - ~~[HARD] 1-person OSS Hybrid Trunk: 모든 tier (S/M/L) main 직진 push 허용~~ **[RETIRED 2026-07-20 — enforce_admins: true 적용으로 무효]** (종전: CI 4 status checks + pre-push hook 5s warn + Conventional Commits + Release Drafter 4중 보호, §23.0 chore commit `cd9eead14`, 2026-05-22 채택. 이 문장은 역사적 기록으로만 유지.)
 
 ### §23.9 Tier-based PR Routing (REQ-ATR-020 — SPEC-V3R6-AGENT-TEAM-REBUILD-001; 2026-07-20 PR-mandatory 개정)
 
-[HARD] **(2026-07-20 개정) 모든 tier (S/M/L)는 이제 PR을 경유한다.** `enforce_admins: true` 적용으로 main direct push가 완전히 차단되었으므로, tier는 더 이상 "main-direct vs PR" 을 가르지 않는다. tier가 결정하는 것은 **PR ceremony 무게** (브랜치 수명 / 리뷰 깊이 / 라벨 세밀도 / 풀 CI 매트릭스 여부)뿐이다. 모든 경우 PR 생성·머지는 `manager-git` 서브에이전트가 담당한다.
+**(2026-08-27 현행 — git-flow 카드 routing, gitflow-lane-protocol.md 준수):**
+- (a) **카드/SPEC 작업**: 워크트리를 `develop`에서 분기하고, 검증을 마친 카드는 통합 워크트리에서 로컬 `develop`에 `git merge --no-ff`로 통합한다. **카드 PR은 만들지 않는다** — `origin/develop`의 CI가 통합을 판정한다.
+- (b) **릴리스**: `release/vX.Y.Z`를 `develop`에서 분기 → `main` 대상 릴리스 PR(`manager-git` 위임, merge commit strategy) — required status check 통과 시 self-merge 허용(0 approvals).
+- (c) **명시적 `--pr`**: 카드 흐름에서는 더 이상 존재하지 않는다(정본: 카드는 PR을 만들지 않음 — 연구 기록 SPEC-GITFLOW-DOCTRINE-ALIGN-001 research.md F-6). review round가 필요하면 릴리스 경로 또는 운영자 지시로 처리한다.
+
+> **[RETIRED 2026-08-27]** 아래 (2026-07-20 세부 — 모든-tier PR ceremony 표와 routing 결정 흐름)은 카드 단위 PR 체제의 역사 기록이다. 카드 적용에는 무효이며, ceremony 규격은 현행 규칙 (b)의 릴리스 경로에 계승된다.
+
+~~[HARD] **(2026-07-20 개정) 모든 tier (S/M/L)는 이제 PR을 경유한다.** `enforce_admins: true` 적용으로 main direct push가 완전히 차단되었으므로, tier는 더 이상 "main-direct vs PR" 을 가르지 않는다. tier가 결정하는 것은 **PR ceremony 무게** (브랜치 수명 / 리뷰 깊이 / 라벨 세밀도 / 풀 CI 매트릭스 여부)뿐이다. 모든 경우 PR 생성·머지는 `manager-git` 서브에이전트가 담당한다.~~ **[RETIRED 2026-08-27 — 카드 변경은 더 이상 PR을 경유하지 않는다]**: 현행은 위 3항(a/b/c)이며, PR 생성은 릴리스 경로 전용이다(manager-git).
 
 | Tier / 조건 | 기본 routing | Owner | PR ceremony 무게 |
 |------------|-------------|-------|------|
