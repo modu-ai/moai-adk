@@ -133,7 +133,72 @@ subagent_boundary_grep: 0                # grep -rn 'AskUserQuestion|mcp__askuse
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-27
+sync_commit_sha: pending-backfill-sync   # backfilled in the immediately following commit
+sync_status: complete
+b12_self_test_a: pass                    # grep -c 'SPEC-AGENT-EMIT-LINEAGE-001' CHANGELOG.md → 0 before emission (no duplicate)
+b12_self_test_b: pass-with-note          # AC-ID token sweep of acceptance.md → 8 unique tokens, 7 live
+b12_self_test_c: pass                    # every path claimed in the CHANGELOG entry verified with `ls` (rc=0, 9/9)
+changelog_entry_position: "[Unreleased] → ### Added, first bullet"
+frontmatter_status_transitions:
+  spec.md: "in-progress → completed (merged sync close)"
+  plan.md: "n/a — no frontmatter block"
+  acceptance.md: "n/a — no frontmatter block"
+  progress.md: "n/a — no frontmatter block"
+canary_compliance_check: n/a             # this SPEC defines no forward-looking policy its own sync must test
+```
+
+### B12 self-test b — the count discrepancy, stated rather than smoothed
+
+`grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l` returns **8**
+(`AC-AEL-001` … `AC-AEL-008`), while the SPEC carries **7** live acceptance criteria.
+The eighth token is not an eighth criterion: `AC-AEL-008` survives only inside the
+retirement footnote at `acceptance.md:165` and the matching `spec.md` 「폐기 판정」 section,
+both of which exist to record that the criterion was withdrawn in v0.2.0. `acceptance.md:3`
+and `:165` both state the live total as 7, `spec.md §3`'s REQ→AC coverage table maps 7,
+and §E.2's AC matrix judges 7. The CHANGELOG entry therefore states **7**, and this note
+is the attribution for why the mechanical count and the stated count differ.
+
+### Sync-phase changes (this commit)
+
+| File | Change |
+|---|---|
+| `CHANGELOG.md` | `[Unreleased] → Added` entry (first bullet) |
+| `internal/cli/doctor_agentemit_embed.go` | `@MX` annotations only — no behavior change (`go build ./internal/cli/` rc=0, `gofmt -l` empty) |
+| `internal/template/CLAUDE.md` | build-prerequisite chain corrected + cross-reference to `CLAUDE.local.md` §2.0 |
+| `.moai/specs/SPEC-AGENT-EMIT-LINEAGE-001/spec.md` | frontmatter `status: in-progress → completed` |
+| `.moai/specs/SPEC-AGENT-EMIT-LINEAGE-001/progress.md` | this §E.4 block |
+
+**@MX annotations added (2).** Both are mechanically triggered by
+`mx-tag-protocol.md` § When to Add Tags, and nothing else in the file triggered a tag:
+
+| Site | Tag | Trigger that called for it |
+|---|---|---|
+| `checkAgentEmitEmbedAgainst` | `@MX:WARN` + `@MX:REASON` + `@MX:SPEC` | "If-branches >= 8" — measured 10 |
+| `extractEmissionViaInit` | `@MX:ANCHOR` + `@MX:REASON` + `@MX:SPEC` | "External system integration point detected" — it spawns the binary under judgment |
+
+Not added, and why: no function in the file is exported (no public-API-boundary
+`@MX:ANCHOR`, no untested-public `@MX:TODO`); measured non-test fan_in is at most 2 for
+every function, below the fan_in ≥ 3 `@MX:ANCHOR` trigger; there is no goroutine, channel,
+or global-state mutation. No `@MX:DEBT` was added — the carried debt below lives in SPEC
+artifacts, not as a bounded simplification in this code.
+
+### Carried debt — still OPEN after sync
+
+This sync does **not** close any of the following. Each was re-read in this tree at
+`8d1bfd167` and none was resolved by what shipped:
+
+| Item | Status | Evidence |
+|---|---|---|
+| D10 — `plan.md §B.1` enumerates 5 impacted files, actual 8 | **OPEN** | `plan.md §B.1` still lists 5 rows; the 3 golden files it omits are recorded only in §E.2's "영향 파일 (실제 8건)" table. `plan.md` body is not manager-docs-editable |
+| D11 — `plan.md §B.1`'s "one file per doctor check is the convention" over-claim | **OPEN** | the claim stands verbatim in `plan.md §B.1` row 2; §E.2 records the correction, the claim itself was not edited |
+| D12 — `spec.md` cites `golden_test.go:285`, accurate range is `:284-285` | **OPEN** | the citation stands in `spec.md` §2 「공허성 봉투」; §E.2 explicitly recorded it as "표기 정정만 남은 항목이라 손대지 않았다" |
+| §G-1 — `internal/cli/.moai/` test residue redirects other `.moai/`-marker upward walks | **OPEN** | this SPEC re-anchored its own walk on the committed emission set (`f3e5006ce`); the residue still exists and other consumers (e.g. `findProjectRoot()` at `internal/cli/glm.go`) are untouched |
+
+D10/D11/D12 are all `plan.md`/`spec.md` **body** content, which manager-docs may not edit
+(`spec-frontmatter-schema.md` § Forbidden ownership crossings). Closing them requires
+re-delegation to manager-spec; they are recorded here rather than silently carried.
 
 ---
 

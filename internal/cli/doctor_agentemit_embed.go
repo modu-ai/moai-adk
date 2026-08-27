@@ -74,6 +74,16 @@ func checkAgentEmitEmbed(cwd string, verbose bool) DiagnosticCheck {
 //
 // binPath == "" resolves the target from the env override, then from the
 // project root's bin/moai.
+//
+// @MX:WARN: [AUTO] 10 if-branches, each an early return carrying a distinct
+// verdict (not applicable / no judgment target / extraction failure /
+// comparison failure / cardinality shortfall / stale bytes / match). A branch
+// inserted at the wrong point silently reclassifies one of the others.
+// @MX:REASON: [AUTO] the branch ORDER is the contract: applicability is
+// decided before a judgment target is demanded, and the cardinality gate runs
+// before the byte comparison. Reordering either makes "0 comparisons -> pass"
+// reachable again — the vacuity this check exists to close.
+// @MX:SPEC: SPEC-AGENT-EMIT-LINEAGE-001
 func checkAgentEmitEmbedAgainst(cwd, binPath string, extract emissionExtractor, verbose bool) DiagnosticCheck {
 	check := DiagnosticCheck{Name: agentEmitEmbedCheckName}
 
@@ -262,6 +272,15 @@ func compareEmission(committed []string, extractedRoot string) (compared int, di
 // this deployment writes a whole project (git init and hook installation
 // included), and a mis-aimed target directory would contaminate the tree the
 // check is judging.
+//
+// @MX:ANCHOR: [AUTO] external-system integration point — this spawns the
+// binary under judgment and lets it deploy an entire project (git init and
+// hook installation included). The scratch target MUST stay outside the
+// repository, and os.RemoveAll is aimed only at the os.MkdirTemp result.
+// @MX:REASON: [AUTO] REQ-AEL-002 forbids every check this SPEC introduces
+// from writing inside the repository tree; a mis-aimed target directory would
+// contaminate the very tree being judged and then be deleted.
+// @MX:SPEC: SPEC-AGENT-EMIT-LINEAGE-001
 func extractEmissionViaInit(binPath string) (string, func(), error) {
 	base, err := os.MkdirTemp("", "moai-embed-check-")
 	if err != nil {

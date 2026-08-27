@@ -2,7 +2,7 @@
 id: SPEC-AGENT-EMIT-LINEAGE-001
 title: "에이전트 정의 방출 계보 — 로컬 즉시 드리프트 검사 + 임베드 축 판정 지점"
 version: "0.6.0"
-status: in-progress
+status: completed
 created: 2026-08-27
 updated: 2026-08-27
 author: manager-spec
