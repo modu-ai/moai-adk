@@ -69,11 +69,160 @@ directory in the pre-flight).
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+M1 (card t228), tree `.claude/worktrees/t228`, branch `WT-astgrep-16-langs`.
+Commits: `20657baa3 -> 5c02f1546` (harness/assets/design-R1/frontmatter transition)
+and the pinning-test commit this block rides. Nothing pushed (git-flow override B9;
+integration lands into develop by the lead).
+
+### Pre-flight (all verbatim, before first edit)
+
+| check | command | result |
+|---|---|---|
+| sg version | `sg --version` | `ast-grep 0.40.5` rc=0 (matches SPEC pin A2) |
+| branch/HEAD | `git rev-parse --short HEAD && git branch --show-current` | `20657baa3 / WT-astgrep-16-langs` |
+| cleanliness | `git status --porcelain \| wc -l` | `0` |
+| module build | `go build ./...` | exit 0 |
+| B2 conflict scan | `grep -rn 'Retired\|superseded\|TestHarnessRetirement' internal/astgrep/ internal/cli/` | no ast-grep-related conflicts (hits only unrelated cli subsystems) |
+
+§A.5 pre-flight residue removal: stray empty dir
+`internal/template/templates/.moai/config/astgrep-rules/security/.claude/agent-memory/manager-spec/`
+verified file-less (`find ... -type f | wc -l` → `0`) then removed; untracked so
+`git status` stayed `0`.
+
+### Protected-before baseline — template ruleset SHA256s at HEAD 20657baa3 (pre-edit)
+
+```
+934e9eed15b7551a9233840868511b8872741ce71e18fe052eacaefe1ffd80da  go/concurrency.yml
+935741b6b2db21938ededa54d4f49e6c5b0016a1562371cb757da4c1c7e66afa  go/error-handling.yml
+6586624ceb3759e4712536448d4b1ade0fd6d43ac2e3e1ba3a55858e85d41c07  go/hardcoding.yml
+5e5f19ce089a4b09a5c3e5a06e03f65bb03940f6008c8e22b3a1a48a40b52cff  go/idioms.yml
+d648495afdb8c62938b50fade2d079c059990f9b0e9f5ad7981e7ac354069161  go/resource-safety.yml
+e227766eb1e9654f8e4b811091eb1a48011299854894a8c8cd66368eba845168  security/credentials.yml
+9fa00d04c869a93787ec9b3b2d480dbf9bc174efeae512299bbe908c011b378d  security/crypto.yml
+1ab931e02a362682b455b6adfa9f6216dd38a5fc990f17b4feb9446e17e5f690  security/injection.yml
+15446281266aecca6b60afdba5ae46df9c0db9010a808147701220c887e770db  security/secrets.yml
+3da57a2cadd7cee8bc785ba97463d4eea0bbc270efcbd92a15752b08c42d46b1  security/web.yml
+54ee886e21d1c6a4986d1304aba5fd18f0808727040c78f291a39da0982cf40e  sgconfig.yml
+```
+
+### R1 id-keying — measured, not assumed
+
+Full transcript recorded in `design.md` §3.3 (settled): ast-grep keys cases by id ALONE with one
+global snapshot name; silent drop ("Configuration not found!") for unmatched ids; inline snippets
+are single-language-routed. Decision: convention unchanged (rename branch blocked by PRESERVE
+`internal/hook/security/prefilter_test.go` pinning `sec-hardcoded-credential` across four
+languages). Reported count therefore 21 (= distinct rule ids over 26 rules) — recorded as the
+AC-A16-001 deviation below rather than declared.
+
+### Latent-dead patterns surfaced (each fixed structurally, metadata untouched)
+
+Four shipped patterns matched nothing under ast-grep 0.40.5 before M1 gave them cases:
+`sec-template-injection-html`, `go-defer-in-loop`, `sec-hardcoded-api-key`,
+`sec-hardcoded-jwt-signing-key`. Each now uses the vetted structural form
+(`kind:`+anchored-regex or all/inside composition); real-file scan probes fired and the
+negative controls stayed quiet before the change was applied.
+
+### Harness green + rule mutants (plan M1 item 5)
+
+```
+$ sg test --config internal/template/templates/.moai/config/astgrep-rules/sgconfig.yml
+test result: ok. 21 passed; 0 failed;
+rc=0                                       (post-revert rerun; also after make build)
+
+# Mutant A: sec-weak-hash-md5 pattern -> zzz("sh")
+[Missing] Expect rule sec-weak-hash-md5 to report issues, but none found in:
+FAIL sec-weak-hash-md5  .M
+Error: test failed. 20 passed; 1 failed;     mutA-rc=4   (reverted)
+
+# Mutant B: go-interface-empty-not-any pattern -> var cache map[string]$T
+[Noisy] Expect go-interface-empty-not-any to report no issue, but some issues found in:
+[Wrong] go-interface-empty-not-any snapshot is different from baseline.
+Error: test failed. 20 passed; 1 failed;     mutB-rc=4   (reverted; post-revert sg test rc=0)
+```
+
+### Corpus pinning test — RED probes on known failing inputs (instruments proven live)
+
+Probe A — appended one comment byte to `py_deny_os_system.py`:
+```
+--- FAIL: TestAstgrepCorpusFixturesPinned
+    py_deny_os_system.py changed since 294b4b6ab: sha256 = da3814..., want 3d2b44...
+FAIL github.com/modu-ai/moai-adk/internal/hook
+```
+
+Probe B — flipped one wantDeny value:
+```
+--- FAIL: TestAstgrepCorpusTablePinned
+    py_clean.py: wantDeny flipped from false to true since 294b4b6ab — a flip is how
+    a red differential row turns green without any rule change; ...
+```
+
+Probe C — added "rust" to coveredCorpusLanguages (green-by-skip condition):
+```
+pre_tool_scan_differential_test.go:242: corpus rejected: no denying fixture for covered language(s) rust
+--- FAIL: TestAstgrepCorpusRunDoesNotSkip
+    differential re-run SKIPPED; green-by-skip proves nothing.
+    differential re-run reported a rejected corpus: ...
+```
+
+All three restored (`git checkout -- <path>`; restored digest re-printed matching base blob);
+final pin suite `PASS ok internal/hook` again.
+
+### AC-A16-006 negative validation (deployed-shaped tree without repo-side root)
+
+```
+$ cp -R $T/* tmp/proj/.moai/config/astgrep-rules/ ; sample.go absent-root scan:
+$ sg scan --config .moai/config/astgrep-rules/sgconfig.yml sample.go
+error[sec-weak-hash-md5]: MD5 is unsuitable for security use. ...
+scan completed; rc=0 path-wise (finding expected; "1 error(s) found" notice only)
+```
+No configuration error; `testConfigs` present; `ruleDirs` unchanged ([go, security]).
+
+### AC-A16-008 standing diff
+
+```
+$ git diff --stat 294b4b6ab -- internal/hook/ ':(exclude)internal/hook/astgrep_corpus_pin_test.go'
+(no output)                     # every pre-existing hook file byte-unchanged from pinned base
+```
+Corpus fixture digests and the extracted wantDeny/covered-language pins live as constants inside
+`internal/hook/astgrep_corpus_pin_test.go` (blob-level equality against `294b4b6ab` cross-checked
+at authoring time; the source-file prose delta from t217's upstream assertion-(ii) is deliberately
+NOT whole-file-pinned — only the table values are, per the criterion's wording).
+
+### Builds / vet / lint / boundary
+
+```
+$ make build            → success; catalog.yaml diff EMPTY (plan §D requirement)
+$ go build ./...        → exit 0
+$ GOOS=windows GOARCH=amd64 go vet ./internal/template/... ./internal/astgrep/...
+                        → exit 0
+$ go test -count=1 ./internal/template/...   → ok (after make build: stale-embed trap excluded)
+$ go test -count=1 -run 'TestAstgrepCorpus|TestScanWriteContentDifferential' ./internal/hook/
+                        → ok (rerun after make build)
+$ golangci-lint run --timeout=2m ./internal/hook/... ./internal/astgrep/... ./internal/template/...
+                        → 0 issues (two NEW findings introduced mid-work — errcheck fh.Close,
+                          staticcheck De Morgan — fixed in-place before completion)
+$ grep -rn 'AskUserQuestion\|mcp__askuser' <created files> → zero hits (rc=1)
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-08-27
+run_commit_sha: "(this commit)"   # placeholder backfill per D3 exemption; M-final backfills
+run_status: M1 COMPLETE (M2/M3 pending)
+milestones_done: [M1]
+m1_stop_condition: harness green (21/21) from repo-side root; both mutants observed failing
+  ([Missing] rc=4, [Noisy] rc=4); id-keying answer recorded (design.md §3.3); corpus pinning
+  test present and green incl. RED probes on all three instruments
+new_warnings_or_lints_introduced: 0
+cross_platform_build.windows_vet: PASS
+cross_platform_build.local_build: PASS
+total_run_phase_files_m1: 48 (c1) + 1 (pinning test)
+m1_to_mN_commit_strategy: separate conventional commits per milestone; catalog diff asserted
+  empty on every template-touching commit (AC-A16-019 posture preserved pre-close)
+l44_pre_commit_fetch: n/a (worktree-only branch; origin copy intentionally stale per B9)
+l44_post_push_fetch: n/a (nothing pushed)
+
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
