@@ -135,7 +135,7 @@ subagent_boundary_grep: 0                # grep -rn 'AskUserQuestion|mcp__askuse
 
 ```yaml
 sync_complete_at: 2026-08-27
-sync_commit_sha: pending-backfill-sync   # backfilled in the immediately following commit
+sync_commit_sha: 3235aa08f               # backfilled here; the sync commit cannot name its own hash
 sync_status: complete
 b12_self_test_a: pass                    # grep -c 'SPEC-AGENT-EMIT-LINEAGE-001' CHANGELOG.md → 0 before emission (no duplicate)
 b12_self_test_b: pass-with-note          # AC-ID token sweep of acceptance.md → 8 unique tokens, 7 live
