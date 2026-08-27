@@ -237,7 +237,7 @@ rather than merely reported:
 
 ```yaml
 sync_complete_at: 2026-08-27
-sync_commit_sha: pending-backfill-sync   # this sync commit; backfilled by its immediate successor
+sync_commit_sha: 2114ed981   # this SPEC's sync commit; backfilled by its immediate successor
 sync_status: complete
 spec_status_transition: in-progress -> implemented
 transition_rationale: >-
