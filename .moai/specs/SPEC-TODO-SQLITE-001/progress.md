@@ -400,7 +400,7 @@ Stated explicitly, because an empty Gaps section would itself be a claim.
 
 sync_complete_at: 2026-08-27
 sync_status: complete
-sync_commit_sha: pending-backfill      # backfilled by the lane orchestrator in the
+sync_commit_sha: 39b9a3e81            # backfilled by the lane orchestrator in the
 #   immediately following commit — a commit cannot carry its own sha.
 card: t306 (absorbs t309)
 branch: WT-todo-sqlite
@@ -480,9 +480,9 @@ Stated explicitly, because an empty Gaps section would itself be a claim.
   post-merge table above is the lane orchestrator's measurement, cited with that
   attribution. This sync phase ran only the greps, `ls`, and `diff` recorded in
   the sync-phase table — no test, no build, no lint.
-- **`sync_commit_sha` is a placeholder.** It is `pending-backfill` until the
-  orchestrator's following commit; any reader resolving this SPEC's sync commit
-  before that backfill lands will not find it here.
+- **`sync_commit_sha` was backfilled, not self-recorded.** The sync commit
+  `39b9a3e81` could not carry its own sha, so the value above was written by the
+  lane orchestrator in the immediately following commit.
 - **The docs-site build was not run.** The 4-locale edits are text corrections to
   existing tables and sentences; no Hugo build, link check, or locale-parity
   linter was executed against them in this tree.
