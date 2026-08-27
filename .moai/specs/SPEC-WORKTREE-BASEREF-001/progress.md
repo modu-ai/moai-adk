@@ -108,7 +108,7 @@ m1_to_mN_commit_strategy: one commit per milestone, each naming card t313 in its
 
 ```yaml
 sync_complete_at: 2026-08-27
-sync_commit_sha: pending-backfill-sync   # this block rides the sync commit and cannot name its own hash; backfilled immediately after
+sync_commit_sha: de2042416   # backfilled in the immediately following commit (a commit cannot name its own hash)
 sync_status: COMPLETE — sync-audit PASS 0.90, zero blocking findings, merge-ready into develop
 sync_audit_verdict: "PASS 0.90 harmonic (Functionality 0.95 / Security 1.00 / Craft 0.80 / Consistency 0.90); must-pass firewall clear on both dimensions; evaluator profile `default`, weights 40/25/20/15"
 sync_audit_report: .moai/reports/t313/sync-audit.md

@@ -71,7 +71,7 @@ Mirror parity: `diff -q` between the local rule and the template mirror is clean
 
 ## 5. Sync commit
 
-**SHA: `PLACEHOLDER_SYNC_SHA`** — recorded below after the commit landed.
+**SHA: `de2042416`** — recorded below after the commit landed.
 
 `progress.md` §E.4 carries `sync_commit_sha: pending-backfill-sync`. A commit cannot name its own hash, so the placeholder is the established pattern (`spec-frontmatter-schema.md` § SHA placeholder backfill exemption). **Backfill method: a second, follow-up commit** — not an amend, so the sync commit's own SHA stays stable and the audit trail shows both steps.
 
