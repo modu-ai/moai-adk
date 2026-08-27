@@ -21,7 +21,7 @@ func TestRunStep_PytestNoTestsCollectedPasses(t *testing.T) {
 		t.Skip("uses a POSIX shell to synthesise the exit code")
 	}
 	g := NewQualityGate(DefaultGateConfig())
-	ok, msg := g.runStep(context.Background(), "pytest", 10*time.Second, "sh", "-c", "exit 5")
+	ok, msg := g.runStep(context.Background(), "pytest", "", 10*time.Second, "sh", "-c", "exit 5")
 	if !ok {
 		t.Fatalf("pytest exit 5 (no tests collected) must pass the gate, got failure: %s", msg)
 	}
@@ -32,7 +32,7 @@ func TestRunStep_PytestRealFailureStillFails(t *testing.T) {
 		t.Skip("uses a POSIX shell to synthesise the exit code")
 	}
 	g := NewQualityGate(DefaultGateConfig())
-	ok, msg := g.runStep(context.Background(), "pytest", 10*time.Second, "sh", "-c", "echo boom >&2; exit 1")
+	ok, msg := g.runStep(context.Background(), "pytest", "", 10*time.Second, "sh", "-c", "echo boom >&2; exit 1")
 	if ok {
 		t.Fatal("pytest exit 1 is a real test failure and must still fail the gate")
 	}
@@ -46,7 +46,7 @@ func TestRunStep_NonPytestExit5StillFails(t *testing.T) {
 		t.Skip("uses a POSIX shell to synthesise the exit code")
 	}
 	g := NewQualityGate(DefaultGateConfig())
-	ok, _ := g.runStep(context.Background(), "go test", 10*time.Second, "sh", "-c", "exit 5")
+	ok, _ := g.runStep(context.Background(), "go test", "", 10*time.Second, "sh", "-c", "exit 5")
 	if ok {
 		t.Fatal("exit 5 is pytest-specific; other steps must still fail on it")
 	}
