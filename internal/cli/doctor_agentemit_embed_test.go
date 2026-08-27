@@ -71,11 +71,12 @@ func staticExtractor(dir string) emissionExtractor {
 
 // --- findEmbedCheckRoot ---------------------------------------------------
 
-// TestFindEmbedCheckRoot_WalksUpToMoaiMarker pins the applicability anchor:
-// the check resolves the project root ITSELF rather than trusting the raw
-// os.Getwd() value doctor hands every check (doctor.go passes cwd verbatim).
-func TestFindEmbedCheckRoot_WalksUpToMoaiMarker(t *testing.T) {
-	root := newEmbedFixtureRoot(t)
+// TestFindEmbedCheckRoot_WalksUpFromSubdirectory pins the applicability
+// anchor: the check resolves the tree under check ITSELF rather than trusting
+// the raw os.Getwd() value doctor hands every check (doctor.go passes cwd
+// verbatim), so a run from a subdirectory reaches the same root.
+func TestFindEmbedCheckRoot_WalksUpFromSubdirectory(t *testing.T) {
+	root := newEmbedFixtureRoot(t, "manager-git.toml")
 	sub := filepath.Join(root, "internal", "cli")
 	if err := os.MkdirAll(sub, 0o755); err != nil {
 		t.Fatalf("mkdir sub: %v", err)
@@ -83,7 +84,7 @@ func TestFindEmbedCheckRoot_WalksUpToMoaiMarker(t *testing.T) {
 
 	got, ok := findEmbedCheckRoot(sub)
 	if !ok {
-		t.Fatalf("findEmbedCheckRoot(%q) = not found, want the .moai-bearing ancestor", sub)
+		t.Fatalf("findEmbedCheckRoot(%q) = not found, want the committed-set-bearing ancestor", sub)
 	}
 	if !embedSameDir(t, got, root) {
 		t.Errorf("findEmbedCheckRoot(%q) = %q, want %q", sub, got, root)
@@ -91,8 +92,8 @@ func TestFindEmbedCheckRoot_WalksUpToMoaiMarker(t *testing.T) {
 }
 
 // TestFindEmbedCheckRoot_NoMarker reports not-found when no ancestor carries
-// a .moai/ directory. t.TempDir() sits under the OS temp root, which has no
-// .moai marker on any ancestor.
+// a committed emission set. t.TempDir() sits under the OS temp root, which
+// carries neither the committed set nor a .moai marker.
 func TestFindEmbedCheckRoot_NoMarker(t *testing.T) {
 	dir := t.TempDir()
 	if _, ok := findEmbedCheckRoot(dir); ok {
@@ -407,5 +408,53 @@ func TestExtractEmissionViaInit_ResolvesRelativeBin(t *testing.T) {
 	}
 	if !strings.Contains(string(got), "manager-git.toml") {
 		t.Errorf("extracted body = %q, want the stand-in payload", string(got))
+	}
+}
+
+// TestFindEmbedCheckRoot_SkipsStrayMarker pins the subdirectory-anchor defect
+// found by running the check from a package directory in the real repository:
+// a test side effect leaves a bare .moai/state/ directory there, so a walk
+// that stops at the NEAREST .moai-bearing ancestor anchors on that artifact
+// instead of the repository root. The applicable tree then reports "not
+// applicable" — an applicable tree misjudged as skippable, which is the
+// narrow re-entry of the vacuity this check exists to close.
+//
+// The anchor is therefore the nearest ancestor carrying the COMMITTED
+// EMISSION SET, which is what the applicability predicate actually names.
+func TestFindEmbedCheckRoot_SkipsStrayMarker(t *testing.T) {
+	root := newEmbedFixtureRoot(t, "manager-git.toml")
+	sub := filepath.Join(root, "pkgdir")
+	if err := os.MkdirAll(filepath.Join(sub, projectRootMarker, "state"), 0o755); err != nil {
+		t.Fatalf("mkdir stray marker: %v", err)
+	}
+
+	got, ok := findEmbedCheckRoot(sub)
+	if !ok {
+		t.Fatalf("findEmbedCheckRoot(%q) = not found, want the root above the stray marker", sub)
+	}
+	if !embedSameDir(t, got, root) {
+		t.Errorf("findEmbedCheckRoot(%q) = %q, want %q — a stray marker must not anchor the walk", sub, got, root)
+	}
+}
+
+// TestAgentEmitEmbed_StrayMarkerStillJudges is the same defect at the check
+// level: a run from a subdirectory carrying a stray marker must still judge,
+// never report not-applicable.
+func TestAgentEmitEmbed_StrayMarkerStillJudges(t *testing.T) {
+	root := newEmbedFixtureRoot(t, "manager-git.toml")
+	writeFakeBinary(t, root)
+	sub := filepath.Join(root, "pkgdir")
+	if err := os.MkdirAll(filepath.Join(sub, projectRootMarker, "state"), 0o755); err != nil {
+		t.Fatalf("mkdir stray marker: %v", err)
+	}
+	extracted := newExtractedDir(t, map[string]string{
+		"manager-git.toml": "name = \"manager-git.toml\"\n# stale\n",
+	})
+
+	c := checkAgentEmitEmbedAgainst(sub, "", staticExtractor(extracted), false)
+
+	if c.Status != uikit.CheckFail {
+		t.Fatalf("status = %q, want fail — an applicable tree must not flip to not-applicable when run from a subdirectory; message: %s",
+			c.Status, c.Message)
 	}
 }

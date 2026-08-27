@@ -84,20 +84,20 @@ func checkAgentEmitEmbedAgainst(cwd, binPath string, extract emissionExtractor, 
 	root, ok := findEmbedCheckRoot(cwd)
 	if !ok {
 		check.Status = uikit.CheckOK
-		check.Message = "not applicable: no committed agent-emit artifacts (not a MoAI project root)"
-		return check
-	}
-
-	committed := committedEmissionSet(root)
-	if len(committed) == 0 {
-		check.Status = uikit.CheckOK
-		check.Message = fmt.Sprintf("not applicable: no committed emission set at %s/", committedEmissionRelDir)
+		if _, inProject := nearestProjectRoot(cwd); inProject {
+			check.Message = fmt.Sprintf("not applicable: no committed emission set at %s/", committedEmissionRelDir)
+		} else {
+			check.Message = "not applicable: no committed agent-emit artifacts (not a MoAI project root)"
+		}
 		if verbose {
 			check.Detail = "this check judges the moai-adk repository's own emitted .codex artifacts; " +
 				"a deployed project carries none and is skipped"
 		}
 		return check
 	}
+
+	// Non-empty by construction: it is what the walk matched on.
+	committed := committedEmissionSet(root)
 
 	// --- applicable: absence of a judgment target is FAILURE ------------
 	//
@@ -159,11 +159,34 @@ func checkAgentEmitEmbedAgainst(cwd, binPath string, extract emissionExtractor, 
 	return check
 }
 
-// findEmbedCheckRoot walks up from start to the nearest ancestor carrying a
-// .moai/ directory. doctor passes each check the raw working directory, so a
-// run from a subdirectory must still resolve the same root — otherwise an
+// findEmbedCheckRoot walks up from start to the nearest ancestor carrying the
+// COMMITTED EMISSION SET. doctor passes each check the raw working directory,
+// so a run from a subdirectory must still resolve the same root — otherwise an
 // applicable tree silently reports "not applicable".
+//
+// The walk does NOT stop at the nearest .moai/-bearing ancestor. Measured in
+// this repository: a package directory can carry a bare .moai/state/ left by a
+// test side effect, and anchoring there misjudges the applicable repository
+// root as skippable. The applicability predicate names the committed set, so
+// the committed set is what the walk looks for.
 func findEmbedCheckRoot(start string) (string, bool) {
+	return walkUp(start, func(dir string) bool {
+		return len(committedEmissionSet(dir)) > 0
+	})
+}
+
+// nearestProjectRoot walks up to the nearest ancestor carrying a .moai/
+// directory. It phrases the not-applicable reason and decides nothing.
+func nearestProjectRoot(start string) (string, bool) {
+	return walkUp(start, func(dir string) bool {
+		info, err := os.Stat(filepath.Join(dir, projectRootMarker))
+		return err == nil && info.IsDir()
+	})
+}
+
+// walkUp returns the nearest ancestor of start (start included) satisfying
+// match, walking toward the filesystem root.
+func walkUp(start string, match func(dir string) bool) (string, bool) {
 	dir := start
 	if dir == "" {
 		wd, err := os.Getwd()
@@ -176,7 +199,7 @@ func findEmbedCheckRoot(start string) (string, bool) {
 		dir = abs
 	}
 	for {
-		if info, err := os.Stat(filepath.Join(dir, projectRootMarker)); err == nil && info.IsDir() {
+		if match(dir) {
 			return dir, true
 		}
 		parent := filepath.Dir(dir)
