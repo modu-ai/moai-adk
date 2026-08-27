@@ -16,7 +16,6 @@ package web
 
 import (
 	"net/http"
-	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -162,19 +161,6 @@ func TestBrowserRoundTripPreservesExoticSelectValues(t *testing.T) {
 	if got := readSeededSectionFile(t, root, "workflow"); !strings.Contains(got, config.DefaultGLM52) {
 		t.Errorf("workflow.yaml lost the persisted exotic audit GLM pin after a browser-equivalent save:\n%s", got)
 	}
-}
-
-// submitSchemaForm issues a same-origin POST to /save carrying the given form
-// values (postGLMSave sibling kept local for readability).
-func submitSchemaForm(a *app, form url.Values) *httptest.ResponseRecorder {
-	h := a.routes()
-	req := httptest.NewRequest(http.MethodPost, "/save", strings.NewReader(form.Encode()))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Sec-Fetch-Site", "same-origin")
-	req.Host = "127.0.0.1:8080"
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
-	return rec
 }
 
 // TestParseSchemaFormPassthroughPreserve pins the validation half of RC2 at the
