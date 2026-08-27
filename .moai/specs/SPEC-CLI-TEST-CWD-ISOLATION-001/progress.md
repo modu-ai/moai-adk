@@ -112,6 +112,41 @@ clean (union = exactly the reproducer's file set):
   guard's alone, and the message names the actually-detected residue path (not a path that can
   never exist), so the guard is not vacuously passing.
 
+### M3 — isolation fixes applied, targeted GREEN observed (AC-003 + REQ-4)
+
+- **Change** (D4 ladder rung 1 — explicit root injection through the resolver's documented env
+  parameter, the `TestCC_KanbanWritesNoStateRecord` / t161 medicine; test-only diff): each of
+  the 5 producing tests gained
+
+  ```go
+  t.Setenv(config.EnvClaudeProjectDir, t.TempDir())
+  ```
+
+  at test entry (parent scope for the 4-subtest `TestCC_FactoryEntryThroughRunCC`). This
+  redirects `launchProjectRoot() → resolveProjectDir()` — the resolver the name-claim call
+  sites actually use — into the test-owned sandbox. None of the 5 tests call `t.Parallel()`
+  (B2 audited). Files: `internal/cli/cc_test.go` (2 tests), `internal/cli/glm_test.go` (1),
+  `internal/cli/factory_test.go` (2). `go vet ./internal/cli/` exit 0; `gofmt -l` empty on all
+  four touched files.
+- **AC-003 command** (frozen reproducer, verbatim, fixed tree, HEAD post-M2 `65e7e7672` +
+  unstaged M3 edits):
+
+  ```
+  unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED CLAUDE_PROJECT_DIR && go test ./internal/cli -run 'Kanban|Factory' -count=1
+  ```
+
+- **Verbatim output**: `ok  \tgithub.com/modu-ai/moai-adk/internal/cli\t1.004s` (rc=0; guard
+  green — a residue would have failed the run per M2)
+- **AC-003 judgment**: `test ! -e internal/cli/.moai` → succeeds; baseline delta
+  (`diff /tmp/t334-moai-pre.txt <post-scan>`) → empty (exit 0). Pre-run state verified clean +
+  baseline unchanged immediately before the run.
+- **REQ-4 (frozen per-test selectors, each run individually, env-scrubbed, `-count=1`)**:
+  `TestCC_FactoryEntryThroughRunCC` → ok 0.744s clean; `TestCC_KanbanEnvMutationIsRestored` →
+  ok 0.725s clean; `TestCC_KanbanFlagStrippedBeforeLaunch` → ok 0.733s clean;
+  `TestGLM_FactoryWorkerEntry` → ok 0.717s clean; `TestGLM_KanbanFlagParity` → ok 0.724s
+  clean. Cumulative post-5-runs baseline delta → empty. Each run's guard rode the selector
+  (TestMain) and stayed green.
+
 ### Run-phase context note (user-directed, outside SPEC AC scope)
 
 2026-08-28, mid-M1: the operator instructed immediate removal of ALL residue `.moai`
