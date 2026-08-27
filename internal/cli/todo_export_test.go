@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -231,4 +232,139 @@ func TestTodoExportJSON_SurvivesSubsequentVerbs(t *testing.T) {
 	if _, err := os.Stat(target + ".migrated"); err == nil {
 		t.Error("the export was quarantined as if it were pre-cutover legacy")
 	}
+}
+
+// The export's failure paths. They matter more than most error branches:
+// this file is the ONLY artifact a downgraded release can read, so an export
+// that fails must say so loudly. An export that reported success while writing
+// nothing would send an operator into a downgrade with no queue, and they
+// would discover it after swapping binaries.
+func TestTodoExportJSON_FailurePathsSurface(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("a read-only directory does not block file creation on Windows")
+	}
+	if os.Geteuid() == 0 {
+		t.Skip("read-only directory does not block the root user")
+	}
+
+	t.Run("unwritable queue directory is reported, not swallowed", func(t *testing.T) {
+		root, _ := todoFixture(t)
+		if _, _, err := runTodo(t, "add", "a card"); err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+		dir := kanban.StateDirForRoot(root)
+		t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+		if err := os.Chmod(dir, 0o500); err != nil {
+			t.Fatalf("revoke write bit: %v", err)
+		}
+
+		out, _, err := runTodo(t, "export-json")
+		if err == nil {
+			t.Fatal("export-json into an unwritable directory succeeded, want an error")
+		}
+		if strings.Contains(out, "exported") {
+			t.Errorf("stdout claimed success on a failed export: %q", out)
+		}
+	})
+
+	t.Run("no residue is left when the write fails", func(t *testing.T) {
+		root, _ := todoFixture(t)
+		if _, _, err := runTodo(t, "add", "a card"); err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+		dir := kanban.StateDirForRoot(root)
+		before := len(dirEntryNames(t, dir))
+		t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+		if err := os.Chmod(dir, 0o500); err != nil {
+			t.Fatalf("revoke write bit: %v", err)
+		}
+		_, _, _ = runTodo(t, "export-json")
+		if err := os.Chmod(dir, 0o755); err != nil {
+			t.Fatalf("restore write bit: %v", err)
+		}
+		if after := len(dirEntryNames(t, dir)); after != before {
+			t.Errorf("directory entries %d -> %d; a failed export must leave no temp behind", before, after)
+		}
+	})
+}
+
+// writeExportAtomic's own contract, exercised directly: it creates the parent
+// when absent, and it replaces an existing file rather than appending to it.
+func TestWriteExportAtomic(t *testing.T) {
+	t.Parallel()
+
+	t.Run("creates a missing parent directory", func(t *testing.T) {
+		target := filepath.Join(t.TempDir(), "nested", "deeper", "backlog.json")
+		if err := writeExportAtomic(target, []byte("{}\n")); err != nil {
+			t.Fatalf("writeExportAtomic = %v, want nil", err)
+		}
+		got, err := os.ReadFile(target)
+		if err != nil {
+			t.Fatalf("read: %v", err)
+		}
+		if string(got) != "{}\n" {
+			t.Errorf("contents = %q", got)
+		}
+	})
+
+	t.Run("replaces rather than appends", func(t *testing.T) {
+		target := filepath.Join(t.TempDir(), "backlog.json")
+		if err := os.WriteFile(target, []byte("PRIOR CONTENT THAT MUST NOT SURVIVE"), 0o644); err != nil {
+			t.Fatalf("seed: %v", err)
+		}
+		if err := writeExportAtomic(target, []byte("{}\n")); err != nil {
+			t.Fatalf("writeExportAtomic = %v, want nil", err)
+		}
+		got, err := os.ReadFile(target)
+		if err != nil {
+			t.Fatalf("read: %v", err)
+		}
+		if string(got) != "{}\n" {
+			t.Errorf("contents = %q, want the prior file fully replaced", got)
+		}
+	})
+
+	t.Run("a target that is a directory is reported, and no temp survives", func(t *testing.T) {
+		dir := t.TempDir()
+		target := filepath.Join(dir, "backlog.json")
+		if err := os.Mkdir(target, 0o755); err != nil {
+			t.Fatalf("seed a directory where the file would go: %v", err)
+		}
+		if err := writeExportAtomic(target, []byte("{}")); err == nil {
+			t.Fatal("writeExportAtomic onto a directory = nil, want an error")
+		}
+		for _, name := range dirEntryNames(t, dir) {
+			if name != "backlog.json" {
+				t.Errorf("failed replace left residue %q", name)
+			}
+		}
+	})
+
+	t.Run("an uncreatable parent is reported", func(t *testing.T) {
+		if os.Geteuid() == 0 {
+			t.Skip("root can create anywhere")
+		}
+		blocked := filepath.Join(t.TempDir(), "blocked")
+		if err := os.WriteFile(blocked, nil, 0o644); err != nil {
+			t.Fatalf("seed a file where a directory would go: %v", err)
+		}
+		// The parent path names a FILE, so MkdirAll cannot succeed.
+		if err := writeExportAtomic(filepath.Join(blocked, "backlog.json"), []byte("{}")); err == nil {
+			t.Fatal("writeExportAtomic into an uncreatable parent = nil, want an error")
+		}
+	})
+}
+
+// dirEntryNames lists a directory's entries.
+func dirEntryNames(t *testing.T, dir string) []string {
+	t.Helper()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatalf("read dir %s: %v", dir, err)
+	}
+	names := make([]string, 0, len(entries))
+	for _, e := range entries {
+		names = append(names, e.Name())
+	}
+	return names
 }

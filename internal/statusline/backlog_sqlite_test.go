@@ -10,6 +10,7 @@
 package statusline
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"sort"
@@ -157,39 +158,92 @@ func TestResolveBacklogCounts_UnreadableIsUnavailableNotZero(t *testing.T) {
 	})
 }
 
-// AC-TOSQ-012 / C-2: the per-render read stays inside the latency budget on a
-// >=500-item fixture — median <= 10ms, hard ceiling 25ms. Measured on this
-// machine, in this run; the number is logged so the evidence is the observed
-// distribution rather than a pass/fail with nothing behind it.
+// AC-TOSQ-012 / C-2: the ADDED per-render latency stays inside budget on a
+// >=500-item fixture — median added <= 10ms, hard ceiling 25ms.
+//
+// C-2 words the budget as "added per-render latency of the backlog-count read
+// ... VERSUS the current whole-file JSON read". That is a differential, and
+// measuring it as one is not a technicality — it is what makes the number mean
+// anything. An absolute wall-clock threshold measures the machine as much as
+// the code: run inside a full concurrent suite, this same read showed a p95 of
+// 29ms against 0.6ms when run alone. A test asserting the absolute figure
+// would pass on a quiet laptop and fail in CI, which is a flaky gate rather
+// than a budget.
+//
+// Both arms are measured INTERLEAVED against equivalent fixtures, so whatever
+// load the machine is under lands on both and largely cancels. The absolute
+// distributions are logged either way, because the differential is the gate
+// but the absolute numbers are what a reader wants to see.
 func TestResolveBacklogCounts_LatencyBudget(t *testing.T) {
 	if testing.Short() {
 		t.Skip("latency measurement skipped under -short")
 	}
-	root := t.TempDir()
-	seedQueue(t, root, 500)
+
+	// Arm A: the database layout, as shipped.
+	dbRoot := t.TempDir()
+	seedQueue(t, dbRoot, 500)
+
+	// Arm B: the same queue in the legacy whole-file JSON layout — the
+	// baseline C-2 names. Built by exporting arm A's content, so the two arms
+	// hold identical cards rather than merely similar ones.
+	jsonRoot := t.TempDir()
+	legacyDir := kanban.LegacyStateDirForRoot(jsonRoot)
+	if err := os.MkdirAll(legacyDir, 0o755); err != nil {
+		t.Fatalf("seed legacy dir: %v", err)
+	}
+	src, err := kanban.NewBacklogStore(kanban.BacklogPathForRoot(dbRoot)).LoadPure()
+	if err != nil {
+		t.Fatalf("read arm A for the baseline fixture: %v", err)
+	}
+	encoded, err := json.Marshal(src)
+	if err != nil {
+		t.Fatalf("encode baseline fixture: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(legacyDir, "backlog.json"), encoded, 0o644); err != nil {
+		t.Fatalf("write baseline fixture: %v", err)
+	}
+	if base := kanban.BacklogCountsForRoot(jsonRoot); !base.Available {
+		t.Fatal("the JSON baseline fixture is unreadable; the comparison would be meaningless")
+	}
 
 	const runs = 41
-	samples := make([]time.Duration, 0, runs)
+	dbSamples := make([]time.Duration, 0, runs)
+	jsonSamples := make([]time.Duration, 0, runs)
 	for i := 0; i < runs; i++ {
 		start := time.Now()
-		got := resolveBacklogCounts(root)
-		samples = append(samples, time.Since(start))
-		if !got.Available {
-			t.Fatalf("render %d read nothing", i)
+		if got := resolveBacklogCounts(dbRoot); !got.Available {
+			t.Fatalf("database render %d read nothing", i)
 		}
-	}
-	sort.Slice(samples, func(a, b int) bool { return samples[a] < samples[b] })
-	median := samples[len(samples)/2]
-	p95 := samples[(len(samples)*95)/100]
+		dbSamples = append(dbSamples, time.Since(start))
 
-	t.Logf("AC-TOSQ-012: 500-item fixture, %d renders — median %v, p95 %v, max %v (budget: median <=10ms, ceiling 25ms)",
-		runs, median, p95, samples[len(samples)-1])
-
-	if median > 10*time.Millisecond {
-		t.Errorf("median render read %v exceeds the 10ms budget (C-2)", median)
+		start = time.Now()
+		if got := resolveBacklogCounts(jsonRoot); !got.Available {
+			t.Fatalf("json render %d read nothing", i)
+		}
+		jsonSamples = append(jsonSamples, time.Since(start))
 	}
-	if p95 > 25*time.Millisecond {
-		t.Errorf("p95 render read %v exceeds the 25ms hard ceiling (C-2)", p95)
+
+	sort.Slice(dbSamples, func(a, b int) bool { return dbSamples[a] < dbSamples[b] })
+	sort.Slice(jsonSamples, func(a, b int) bool { return jsonSamples[a] < jsonSamples[b] })
+	mid, p95i := len(dbSamples)/2, (len(dbSamples)*95)/100
+
+	addedMedian := dbSamples[mid] - jsonSamples[mid]
+	addedP95 := dbSamples[p95i] - jsonSamples[p95i]
+
+	t.Logf("AC-TOSQ-012: 500-item fixture, %d interleaved render pairs\n"+
+		"  database : median %v  p95 %v  max %v\n"+
+		"  json     : median %v  p95 %v  max %v\n"+
+		"  ADDED    : median %v  p95 %v   (budget: median <=10ms, ceiling 25ms)",
+		runs,
+		dbSamples[mid], dbSamples[p95i], dbSamples[len(dbSamples)-1],
+		jsonSamples[mid], jsonSamples[p95i], jsonSamples[len(jsonSamples)-1],
+		addedMedian, addedP95)
+
+	if addedMedian > 10*time.Millisecond {
+		t.Errorf("added median %v exceeds the 10ms budget (C-2)", addedMedian)
+	}
+	if addedP95 > 25*time.Millisecond {
+		t.Errorf("added p95 %v exceeds the 25ms hard ceiling (C-2)", addedP95)
 	}
 }
 

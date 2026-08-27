@@ -217,7 +217,7 @@ Every row's command was run in this tree, this run. Evidence logs under
 | AC-TOSQ-007 | PASS | `go test ./internal/kanban -run TestStateDirBothPresentLeavesLegacyUntouched` | PASS — todo dir wins on both resolvers and through a real read + write; legacy census and queue bytes unchanged |
 | AC-TOSQ-008 | PASS | `go test ./internal/kanban -run TestStateDirRelocationRefusedFallsBackToLegacyRead` | PASS — refusal FIRED by revoking the state parent's write bit; no error surfaces, queue served from the old layout, no partial new directory |
 | AC-TOSQ-009 | PASS | `go test -race ./internal/kanban -run TestConcurrencyStress` | PASS — 8 writers x 6 adds = 48 distinct ids, 48 stored items, last_seq 48, 0 collisions, 0 lost updates; race detector clean |
-| AC-TOSQ-010 | PASS | `go test ./internal/cli/... ./internal/web/... -count=1` | exit 0 — every behavioral guard green UNMODIFIED, including the console's own `TestTodoSectionReadsThroughToProjectLocalQueue` / `TestConsoleRoutesLeaveBacklogUntouched` and the bare-join convention walk. Only physical assertions were re-pointed (detail below) |
+| AC-TOSQ-010 | PASS | (a) `go test ./internal/cli/... ./internal/web/... -count=1`  (b) `go test ./internal/cli -run 'TestTodoVerbSurfaceZeroDelta\|TestTodoVerbExitCodesUnchanged'` | (a) exit 0 — every behavioral guard green UNMODIFIED, including the console's own `TestTodoSectionReadsThroughToProjectLocalQueue` / `TestConsoleRoutesLeaveBacklogUntouched` and the bare-join convention walk. (b) PASS — the frozen 14-verb x flag table shows zero deltas, `export-json` is the single permitted addition, and 13 representative invocations return their pre-swap success/refusal verdict. **This half was MISSING from the first version of this matrix — see the correction below.** |
 | AC-TOSQ-011 | PASS | `go test ./internal/cli -run TestTodoExportJSON` | PASS ×4 — round trip through the legacy record shape with post-cutover state changes present; the live store stays authoritative; no temp residue; the export survives later verbs |
 | AC-TOSQ-012 | PASS | `go test ./internal/statusline -run TestResolveBacklogCounts_LatencyBudget` | 500-item fixture, 41 renders — median 433.459us, p95 604.541us, max 716.833us. Budget: median <=10ms, ceiling 25ms |
 | AC-TOSQ-013 | PASS (compile evidence only) | `GOOS={windows,linux,darwin} GOARCH=amd64 go vet ./internal/...` + `GOOS=darwin GOARCH=arm64` | exit 0 on all four. The windows BEHAVIORAL verdict is CI's, per acceptance.md D.3 — see Gaps |
@@ -226,6 +226,60 @@ Every row's command was run in this tree, this run. Evidence logs under
 | AC-TOSQ-016 | PASS | `make build` then `strings bin/moai \| grep -c` | exit 0; embedded bundle carries `state/todo/backlog.json` 4x and `state/kanban/backlog.json` 0x |
 | AC-TOSQ-017 | PASS | `go test ./internal/kanban -run 'TestMigrationParity/physical_schema_present\|TestReorderedItemsRoundTrip'` | PASS — meta rows (`schema_version`, `last_seq`) present; a `todo move`-shaped reorder round-trips as `t3, t1, t2`, so array position is the stored order |
 | AC-TOSQ-018 | PASS | `go test ./internal/kanban -run TestBacklogEnginePragmas` | PASS — `journal_mode` reads `wal`, `busy_timeout` >= 5000, asserted on the pool AND across connection churn |
+
+### CORRECTION — AC-TOSQ-010 was first reported PASS on half its criterion
+
+The first version of this matrix marked AC-TOSQ-010 PASS citing only "the
+existing suites are green". That is one of the two halves acceptance.md asks
+for. The AC's green-evidence cell reads:
+
+> `go test ./internal/cli -run 'TestTodo' ./internal/web ...` PASS **+
+> surface-diff test asserts zero-delta**
+
+and its scenario names "a frozen verb-surface comparison table (verb x flags x
+exit codes) generated pre/post swap shows zero deltas". No such test existed.
+Marking the AC PASS on the strength of the surface LOOKING unchanged was an
+unobserved claim — precisely the failure this SPEC's own doctrine names, and
+the same shape as the two vacuous guards recorded above, this time in my
+report rather than in a test.
+
+The gap was raised by the lead. It is now closed by
+`internal/cli/todo_surface_test.go`.
+
+**The frozen table's baseline is measured, not remembered.** Its provenance is
+a diff of the surface DECLARATIONS between the branch point and HEAD:
+
+```
+git diff 7ed6edb3e..HEAD -- 'internal/cli/todo*.go' | grep -E '^[+-]' \
+  | grep -vE '^(\+\+\+|---)' \
+  | grep -E 'Use:|Flags\(\)\.|Args:|cobra\.(NoArgs|ExactArgs|...)'
+```
+
+which returns exactly two lines, both introducing `export-json`:
+
+```
++		Use:   "export-json",
++		Args: cobra.NoArgs,
+```
+
+Every other verb, flag, and arity declaration on this branch is byte-unchanged.
+That is the zero-delta proof; the test then freezes it going forward, reading
+the LIVE cobra tree rather than source text so it also catches what a source
+grep would miss — a flag registered elsewhere, a shorthand added, a default
+changed.
+
+Fired by mutation (logs: `.moai/state/verify/t306-ac010/red.log`):
+
+| Mutation | Observed |
+|---|---|
+| verb renamed (`list` -> `ls`) | FAIL — "verb \"list\" is GONE from the surface"; "verb \"ls\" appeared and is not this SPEC's declared addition" |
+| flag dropped (`add --force`) | FAIL — "verb \"add <text>\" re-flagged: frozen [force=bool(false) pick=bool(false)] / live [pick=bool(false)]" |
+| shorthand added (`relate --note` -> `-n`) | FAIL — "re-flagged: frozen [note=string() ...] / live [note=string()/-n ...]" |
+| `export-json` unregistered (vacuity check) | FAIL — "export-json is not registered; the downgrade route is unreachable"; "surface holds 14 verbs, want 15" |
+
+The fourth is the one that matters for this matrix's own honesty: without it
+the table would pass on a tree where the addition had never been wired in.
+
 
 ### M6 additions
 
@@ -265,9 +319,12 @@ ac_pass_count: 18
 ac_fail_count: 0
 milestones_complete: M1, M2, M3, M4, M5, M6
 run_commit_shas: 3d24cf6df (M1), 83a1d492a (M2), 447f517fe (evidence), 8910c337c (M3+M4), ffe33ac09 (M5), d19187327 (M6)
-coverage_internal_kanban: 87.6%
-coverage_changed_path_files: 86.9% (506/582 statements)
-coverage_internal_statusline: 90.6%
+coverage_internal_kanban: 87.6%          # go test -cover ./internal/kanban/...
+coverage_changed_path_files: 86.9% (506/582 statements, from the profile)
+coverage_internal_statusline: 91.3%      # go test -cover ./internal/statusline/...
+coverage_internal_cli_affected_paths: 94.5% (358/379 statements — kanban.go 98.2%, todo.go 94.3%, todo_export.go 77.1%; C-1 floor for affected command paths is 90%)
+coverage_internal_cli_package: 79.5%     # pre-existing baseline for the whole package, not a changed-path figure
+coverage_internal_web_package: 66.8%     # pre-existing baseline; this branch touched 3 files in it
 race_detector: clean (go test -race ./internal/kanban/...)
 lint: golangci-lint run ./internal/{kanban,statusline,web,cli}/... — 0 issues
 cross_platform_vet: windows/amd64, linux/amd64, darwin/amd64, darwin/arm64 — all exit 0
@@ -303,6 +360,15 @@ Stated explicitly, because an empty Gaps section would itself be a claim.
   behavior under test but not a thing this run observed.
 - **CI full-suite verdict.** Only affected packages were run locally (load
   discipline). `go test ./...` was NOT run; that verdict is CI's.
+- **`todo_export.go` sits at 77.1%.** The affected-path aggregate (94.5%) clears
+  C-1's 90% floor, but this new file does not reach it alone. The residue is
+  three I/O error branches inside `writeExportAtomic` — a failed `Write`, a
+  failed `Close`, and a `Replace` that fails for a reason other than the target
+  being a directory. Reaching them needs an injected-failure seam in production
+  code, and adding a seam to move a number is the over-engineering this
+  project's constitution forbids. The reachable failure paths ARE covered: an
+  unwritable directory, an uncreatable parent, a target that is a directory,
+  and the no-residue guarantee on each.
 - **Per-file coverage below the bar.** Two changed-path files sit under 85%
   individually — `backlog_migrate.go` 80.2%, `todo_root.go` 79.6% — while the
   changed-path total (86.9%) and the package (87.6%) clear it. C-1 is worded
