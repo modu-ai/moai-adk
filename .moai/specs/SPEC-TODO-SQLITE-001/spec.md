@@ -2,7 +2,7 @@
 id: SPEC-TODO-SQLITE-001
 title: "SQLite-backed backlog queue store with .moai/state/todo rename"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-08-27
 updated: 2026-08-27
 author: manager-spec
@@ -75,8 +75,8 @@ never numeric.
   duplicate or reused id even when a process dies mid-mutation.
 
 - REQ-TOSQ-006: **When** the store meets an engine-level fault (lock timeout /
-  SQLITE_BUSY beyond the busy window, corruption, constraint violation), it shall map
-  the fault onto the package's named error taxonomy (in the style of
+  SQLITE_BUSY beyond the busy window, corruption, constraint violation), the store
+  shall map the fault onto the package's named error taxonomy (in the style of
   `IsBoardLockHeld`) and surface the named error to the caller; under no such fault
   shall the store delete or overwrite either the database or any quarantined legacy
   artifact as a recovery action.
@@ -252,3 +252,4 @@ Measured ground truth lives in research.md; physical schema and algorithms in de
 |------|--------|
 | 2026-08-27 | Initial draft (t306 plan-phase; absorbs t309 directory rename). |
 | 2026-08-27 | Plan-audit iter-1 revision: contiguous REQ renumbering (001..018), shall-modality restored in REQ-013/015, statusline budget cite fixed to C-2, tier frontmatter added, consumer inventory extended (cli/kanban.go registries). |
+| 2026-08-27 | Run-phase M1 editorial: REQ-TOSQ-006 clause 1 subject made explicit ("the store shall map"), closing plan-audit finding N1. |
