@@ -9,8 +9,6 @@ package cli
 // fake pass). The windows floor (108 cells) runs on the mode-injection,
 // directory, and `..`-escape axes.
 
-import "os"
-
 func makeCodexFIFOFixture(path string) error {
 	return errCodexFixtureUnsupported
 }

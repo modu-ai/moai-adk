@@ -231,16 +231,6 @@ func withCodexFSRecorder(t *testing.T, failCreateTemp error) *codexFSRecorder {
 
 func (r *codexFSRecorder) total() int { return len(r.calls) }
 
-func (r *codexFSRecorder) countKind(kind string) int {
-	n := 0
-	for _, c := range r.calls {
-		if c.Kind == kind {
-			n++
-		}
-	}
-	return n
-}
-
 // readsOf counts read-mode calls whose path contains substr.
 func (r *codexFSRecorder) readsOf(substr string) int {
 	n := 0
