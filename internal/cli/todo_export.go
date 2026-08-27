@@ -76,7 +76,9 @@ func runTodoExportJSON(cmd *cobra.Command) error {
 		return fmt.Errorf("export-json: %w", err)
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "exported %d cards, %d findings to %s\n",
+	// The write is to the command's own stream, which cannot fail in a way the
+	// caller can act on — the export itself already landed.
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "exported %d cards, %d findings to %s\n",
 		len(rec.Items), len(rec.Findings), target)
 	return nil
 }

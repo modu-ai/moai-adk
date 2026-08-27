@@ -20,10 +20,16 @@ branch: WT-todo-sqlite @ d29b8942e (develop-based integration line)
 |---|---|---|
 | M1 driver adoption + storage skeleton | complete | `3d24cf6df` |
 | M2 store guts + migration state machine | complete | `83a1d492a` |
-| M3 directory rename (t309) + fallback read | not started | — |
-| M4 consumer sweep | not started | — |
-| M5 templates + export-json + docs | not started | — |
-| M6 cross-platform / race / gates | not started | — |
+| M3 directory rename (t309) + fallback read | complete | `8910c337c` |
+| M4 consumer sweep | complete | `8910c337c` |
+| M5 export-json + downgrade docs | complete | `ffe33ac09` |
+| M6 cross-platform / race / gates | complete | (this commit) |
+
+M3 and M4 landed in one commit: the sweep is what makes the rename true, and a
+commit that renamed the directory while consumers still named the old one would
+be a broken tree by construction. The template edits ride M4 (Template-First
+plus `make build`) rather than M5, because the three skill docs name the
+directory the rename moved.
 
 M2 absorbed the storage half of plan.md M3 (the lazy migration state machine,
 REQ-TOSQ-011..014). The split was forced by a real seam rather than chosen: the
@@ -151,9 +157,178 @@ the read path takes no lock and fails at the engine. Both are asserted
 | web / statusline / hook | `go test ./internal/web/... ./internal/statusline/... ./internal/hook/... -count=1` | all ok |
 | Cross-compile vet | `GOOS={linux,windows,darwin} GOARCH=amd64 go vet ./internal/kanban/...` | exit 0 on all three (compile evidence only — the windows BEHAVIORAL verdict is CI's, per D.3) |
 
+### M3-M6 safety mechanisms fired MECHANICALLY
+
+Continuing the table above; same discipline, same restore-after.
+
+| # | Mechanism | Mutation applied | Observed on mutant |
+|---|---|---|---|
+| 9 | stale-copy policy (REQ-TOSQ-015) | the `dirExists(current)` early return removed | `TestStateDirBothPresentLeavesLegacyUntouched` FAIL — "last_seq = 42, want 99 — the current directory must win" |
+| 10 | fallback read on refused relocation (AC-TOSQ-008) | refusal returns the new dir instead of the legacy one | `TestStateDirRelocationRefusedFallsBackToLegacyRead` FAIL — "resolved to .../state/todo, want the legacy directory served in place" |
+| 11 | pure resolver never relocates (REQ-TOSQ-015) | the `!adopt` early return removed | `TestStateDirPureResolutionNeverRelocates` FAIL — "want the legacy directory observed in place" |
+| 12 | export survives later verbs (REQ-TOSQ-013/016) | state D quarantines unconditionally, ignoring the in-flight marker | `TestTodoExportJSON_SurvivesSubsequentVerbs` FAIL — "the export was renamed or removed by a later verb"; `TestMigrationBothPresentPrefersDatabase/a_downgrade_export_is_left_exactly_where_it_was_put` FAIL |
+
+Mutation-run logs: `.moai/state/verify/t306-m3/red.log`, `.moai/state/verify/t306-m5/red.log`.
+
+### A second vacuous guard, found the same way
+
+The M5 state-D subtest asserting "an export is left alone" passed under mutant
+12 on its first form. It reused a root that had already migrated, so a
+`backlog.json.migrated` existed — and the SEPARATE "never overwrite an existing
+quarantine" guard silently did the work. The subtest asserted a mechanism it
+was not exercising.
+
+Rebuilt on a fresh root where no quarantine exists, it fires. Two instances of
+this shape in one SPEC (the other is recorded above, at M2) is the reason every
+row in both tables cites the mutant that fired it: a guard that has never been
+seen red has proven nothing, whatever its green says.
+
+### A defect the export surfaced
+
+Writing `export-json` exposed a real fault in the M2 state-D rule, not a test
+problem. A database beside a `backlog.json` is ambiguous — pre-cutover legacy
+stranded by a crash between the migration commit and the quarantine, or a
+downgrade export the operator just asked for. M2 quarantined unconditionally,
+so `moai todo export-json` followed by ANY `todo` verb renamed the operator's
+only downgrade artifact to `.migrated`. They would not have found out until the
+older binary came up to an empty queue.
+
+Closed by recording an in-flight marker (`meta.legacy_quarantine_pending`) as
+the migration's last outstanding step, cleared once the rename lands. Only a
+set marker means "finish this quarantine"; an export never sets one. The
+state-D test now asserts BOTH directions, and reconstructs the crash case
+faithfully — legacy file restored AND the marker set, which is what a real
+crash leaves. Asserting either direction alone passes a store that ignores the
+marker entirely.
+
+### AC matrix (acceptance.md §D)
+
+Every row's command was run in this tree, this run. Evidence logs under
+`.moai/state/verify/t306-m*/`.
+
+| AC | Status | Command | Observed |
+|----|--------|---------|----------|
+| AC-TOSQ-001 | PASS | `go test ./internal/kanban -run TestMigrationParity` | PASS with named subtests: item count, per-item field equality, spec_id null shape, insertion order preserved, findings order and tuples, last_seq above max-present survives, physical schema present |
+| AC-TOSQ-002 | PASS | `go test ./internal/kanban -run TestMigrationIDContinuity` | PASS — first id after the cutover is `t43` (persisted mark 42 + 1), second `t44` |
+| AC-TOSQ-003 | PASS | `go test ./internal/kanban -run TestMigrationQuarantinesLegacyByteIdentical` | PASS — `backlog.json` absent, `backlog.json.migrated` sha256-equal to the seed |
+| AC-TOSQ-004 | PASS | `go test ./internal/kanban -run TestMigrationBothPresentPrefersDatabase` | PASS, both subtests — interrupted migration completes its quarantine; a downgrade export is left exactly where it was put |
+| AC-TOSQ-005 | PASS | `go test ./internal/kanban -run 'TestMigrationMalformedAbortsWithoutDestroying\|TestMigrationPartialFailureRemovesArtifacts'` | PASS — malformed seed: structured error, seed sha256 unchanged, no db artifact; duplicate-id seed (the case that actually reaches the cleanup path): `IsBacklogIDConflict`, no `.db`/`-wal`/`-shm` residue, seed unchanged, no quarantine |
+| AC-TOSQ-006 | PASS | `go test ./internal/kanban -run TestStateDirRelocatesLegacyWithRegistryFiles` | PASS — census: 3 registry files + `backlog.json` all under `.moai/state/todo/`; legacy dir gone; sampled record byte-unchanged; `RecordPath` follows |
+| AC-TOSQ-007 | PASS | `go test ./internal/kanban -run TestStateDirBothPresentLeavesLegacyUntouched` | PASS — todo dir wins on both resolvers and through a real read + write; legacy census and queue bytes unchanged |
+| AC-TOSQ-008 | PASS | `go test ./internal/kanban -run TestStateDirRelocationRefusedFallsBackToLegacyRead` | PASS — refusal FIRED by revoking the state parent's write bit; no error surfaces, queue served from the old layout, no partial new directory |
+| AC-TOSQ-009 | PASS | `go test -race ./internal/kanban -run TestConcurrencyStress` | PASS — 8 writers x 6 adds = 48 distinct ids, 48 stored items, last_seq 48, 0 collisions, 0 lost updates; race detector clean |
+| AC-TOSQ-010 | PASS | `go test ./internal/cli/... ./internal/web/... -count=1` | exit 0 — every behavioral guard green UNMODIFIED, including the console's own `TestTodoSectionReadsThroughToProjectLocalQueue` / `TestConsoleRoutesLeaveBacklogUntouched` and the bare-join convention walk. Only physical assertions were re-pointed (detail below) |
+| AC-TOSQ-011 | PASS | `go test ./internal/cli -run TestTodoExportJSON` | PASS ×4 — round trip through the legacy record shape with post-cutover state changes present; the live store stays authoritative; no temp residue; the export survives later verbs |
+| AC-TOSQ-012 | PASS | `go test ./internal/statusline -run TestResolveBacklogCounts_LatencyBudget` | 500-item fixture, 41 renders — median 433.459us, p95 604.541us, max 716.833us. Budget: median <=10ms, ceiling 25ms |
+| AC-TOSQ-013 | PASS (compile evidence only) | `GOOS={windows,linux,darwin} GOARCH=amd64 go vet ./internal/...` + `GOOS=darwin GOARCH=arm64` | exit 0 on all four. The windows BEHAVIORAL verdict is CI's, per acceptance.md D.3 — see Gaps |
+| AC-TOSQ-014 | PASS | `go test ./internal/kanban -cover` + per-file statement count from the profile | package `internal/kanban` 87.6% (was 82.0% before the M6 unit tests); changed-path files 506/582 = 86.9%. Both clear the 85% bar |
+| AC-TOSQ-015 | PASS | dual-spelling grep over `internal/ pkg/ cmd/` excluding `_test.go` and `kanban-board` | Zero `"state", "kanban"` segment joins. Two `state/kanban` occurrences remain, both comments and both on the allowlist: `state_dir.go:7` (the fallback reader's own justification, naming this SPEC) and `board_test.go:128` (naming the board dir that deliberately did NOT rename). Template tree: zero |
+| AC-TOSQ-016 | PASS | `make build` then `strings bin/moai \| grep -c` | exit 0; embedded bundle carries `state/todo/backlog.json` 4x and `state/kanban/backlog.json` 0x |
+| AC-TOSQ-017 | PASS | `go test ./internal/kanban -run 'TestMigrationParity/physical_schema_present\|TestReorderedItemsRoundTrip'` | PASS — meta rows (`schema_version`, `last_seq`) present; a `todo move`-shaped reorder round-trips as `t3, t1, t2`, so array position is the stored order |
+| AC-TOSQ-018 | PASS | `go test ./internal/kanban -run TestBacklogEnginePragmas` | PASS — `journal_mode` reads `wal`, `busy_timeout` >= 5000, asserted on the pool AND across connection churn |
+
+### M6 additions
+
+- **Lock-held relocation** (plan.md M6, design.md R6). POSIX and Windows
+  disagree: renaming a directory holding an open, locked file is permitted on
+  one and refused on the other. `TestStateDirRelocationUnderHeldLock` therefore
+  asserts the platform-NEUTRAL invariants — the queue stays readable and
+  complete, exactly ONE directory holds it (no half-moved debris), the session
+  records travel with it, and a retry after the lock releases lands on the
+  current directory. Observed on darwin/arm64: `relocated=true`. A test written
+  to assert either platform's specific outcome would be a regression on the
+  other.
+- **Coverage** (C-1). The M6 unit tests are not padding: the findings helper
+  family (`Names`, `SamePairAs`, `HasFindingTuple`, `AppendFindingOnce`,
+  `FindingsNaming`, `RemoveFindingsNaming`, `HasAgentFindingForPair`) and the
+  count surface were reachable only from OTHER packages' tests, so their rules
+  were asserted through a command surface — which means a change to a rule plus
+  a compensating change to its command could pass together. They now have
+  direct tests stating the rules themselves (unordered pair matching,
+  tuple-once excluding timestamp and note, the 1-based index `todo unrelate`
+  addresses).
+- **Lint** (E5). `golangci-lint run` over `internal/{kanban,statusline,web,cli}`
+  — 0 issues. Two were found and fixed rather than suppressed: an unused
+  helper I had written and never called, and an unchecked `Fprintf` on the
+  command's own stream.
+- **Secured** (D.6). Grep for SQL built by concatenation or `Sprintf` over
+  `internal/kanban/*.go`: clean. Every value travels through a placeholder.
+- **Subagent boundary**. `AskUserQuestion` / `mcp__askuser` in the touched
+  production code: 0 matches.
+
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-<pending run-phase>
+run_complete_at: 2026-08-27
+run_status: complete
+ac_pass_count: 18
+ac_fail_count: 0
+milestones_complete: M1, M2, M3, M4, M5, M6
+run_commit_shas: 3d24cf6df (M1), 83a1d492a (M2), 447f517fe (evidence), 8910c337c (M3+M4), ffe33ac09 (M5), pending-backfill-m6
+coverage_internal_kanban: 87.6%
+coverage_changed_path_files: 86.9% (506/582 statements)
+coverage_internal_statusline: 90.6%
+race_detector: clean (go test -race ./internal/kanban/...)
+lint: golangci-lint run ./internal/{kanban,statusline,web,cli}/... — 0 issues
+cross_platform_vet: windows/amd64, linux/amd64, darwin/amd64, darwin/arm64 — all exit 0
+affected_suite: 33 packages ok, exit 0
+binary_size_delta: +5,911,568 B (+5.64 MiB) vs the 77,719,874 B pre-driver baseline; C-4 budget +12 MiB
+new_warnings_or_lints_introduced: none
+preserve_list_post_run: no file outside the SPEC's scope envelope was modified
+push_state: NOT pushed, no PR — integration is the lane orchestrator's act
+
+### Gaps — what was NOT observed
+
+Stated explicitly, because an empty Gaps section would itself be a claim.
+
+- **Windows behavioral verdict.** Local evidence for windows/amd64 stops at
+  `go vet` compile success. No windows binary was executed, so the lock-held
+  rename divergence (design.md R6), `LockFileEx` sharing-violation behavior,
+  and the windows lock-release path are UNVERIFIED behaviorally here. This is
+  the indirect verification acceptance.md D.3 accepts in advance; the verdict
+  belongs to the CI windows job on the push, which has not happened.
+- **Ten-lane process-level contention.** AC-TOSQ-009 was measured in-process
+  (8 goroutine writers under `-race`). No multi-PROCESS stress run was
+  executed, so real factory-fleet contention across separate `moai` processes
+  is approximated, not observed. acceptance.md D.3 accepts this approximation;
+  fleet-scale validation remains dogfood observation.
+- **SC-3 live rehearsal transcript.** The seed to migrate to mutate to export
+  chain is proven by `TestTodoExportJSON_RoundTripsThroughTheLegacyShape`
+  driving the real CLI verbs. A hand-run transcript on a scratch root outside
+  the test harness was NOT captured.
+- **The real operator queue was never touched.** Every test used `t.TempDir()`.
+  No command in this run was pointed at the live `.moai/state/kanban/` queue,
+  so the production queue's own migration has NOT been exercised — it will
+  happen on the first `moai todo` command after this lands, which is the
+  behavior under test but not a thing this run observed.
+- **CI full-suite verdict.** Only affected packages were run locally (load
+  discipline). `go test ./...` was NOT run; that verdict is CI's.
+- **Per-file coverage below the bar.** Two changed-path files sit under 85%
+  individually — `backlog_migrate.go` 80.2%, `todo_root.go` 79.6% — while the
+  changed-path total (86.9%) and the package (87.6%) clear it. C-1 is worded
+  "overall on changed-path files", so this reads as PASS; recording the
+  per-file figures rather than only the aggregate, since the aggregate is what
+  passes and the per-file numbers are what a reader would want to challenge.
+
+### Residual risk
+
+- The migration is one-way per queue root and fires unattended on the first
+  `todo` verb. Its safety rests on the parity check running BEFORE authority
+  flips — verified by mutation (row 7) — but a defect in the parity comparison
+  itself would pass its own check. The comparison is exhaustive by field rather
+  than by count, and all ten of its axes are fired directly
+  (`TestMigrationParityCatchesTamperedRecord`), which is the strongest local
+  guard available short of a second independent implementation.
+- The state-D marker distinguishes an interrupted migration from an export. A
+  database written by some future path that sets the marker and then never
+  clears it would quarantine a legitimate `backlog.json` on the next open. Only
+  the migration writes it today, and it is cleared in the same function.
+- `-wal` and `-shm` siblings are new artifacts in a directory operators and
+  scripts read. Backup tooling that copies `backlog.db` alone, without the WAL,
+  captures a queue missing its most recent commits. The downgrade doc names all
+  five artifacts for exactly this reason, but tooling outside this repository
+  cannot be made to read it.
+
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

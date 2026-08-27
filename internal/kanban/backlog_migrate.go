@@ -30,7 +30,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strconv"
 	"time"
 
@@ -518,6 +517,3 @@ func derefSpecID(p *string) any {
 	}
 	return *p
 }
-
-// backlogDirName is the directory the queue artifacts share.
-func backlogDirName(queuePath string) string { return filepath.Dir(queuePath) }
