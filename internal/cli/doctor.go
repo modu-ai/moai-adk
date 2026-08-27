@@ -5,6 +5,7 @@ package cli
 // @MX:NOTE: [AUTO] Binary freshness check detects stale builds via commit hash comparison
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,6 +19,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/astgrep"
+	"github.com/modu-ai/moai-adk/internal/binlag"
 	"github.com/modu-ai/moai-adk/internal/cli/printer"
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/constitution"
@@ -495,54 +497,51 @@ func checkMoAIVersion(_ bool) DiagnosticCheck {
 // regressions where a fix has been committed but the user has not rebuilt
 // the binary, so hook handlers silently run the old code path.
 //
-// Skipped (reported OK) when:
+// The comparison itself lives in internal/binlag, shared with the unprompted
+// session-start advisory. This item renders that one verdict; it does not
+// carry a second copy of the comparison, so the two surfaces cannot drift
+// apart and a stub installed in the seam is observed by both.
+//
+// Reported OK (never Fail — a Fail here would promote every downstream
+// `moai doctor` run to exit 1) when:
 //   - version.GetCommit() is unset ("", "none", "unknown") — dev build
 //   - CWD is not inside a git working tree (git rev-parse walks upward)
 //   - binary commit is not an ancestor of HEAD (release/branch build)
 func checkBinaryFreshness(verbose bool) DiagnosticCheck {
 	check := DiagnosticCheck{Name: "Binary Freshness"}
 
-	binCommit := strings.TrimSpace(version.GetCommit())
-	if binCommit == "" || binCommit == "none" || binCommit == "unknown" {
-		check.Status = uikit.CheckOK
-		check.Message = "development build (no commit metadata)"
-		return check
-	}
-
 	cwd, err := os.Getwd()
 	if err != nil {
-		check.Status = uikit.CheckOK
-		check.Message = "cannot determine working directory"
-		return check
+		// Reported through the seam's own not-applicable path so the message
+		// set stays in one place.
+		cwd = ""
 	}
 
-	headOut, err := exec.Command("git", "-C", cwd, "rev-parse", "HEAD").Output()
-	if err != nil {
-		check.Status = uikit.CheckOK
-		check.Message = "not in a git source tree (skipped)"
-		return check
-	}
-	sourceHead := strings.TrimSpace(string(headOut))
+	v := binlag.Evaluate(context.Background(), binlag.Request{
+		Dir:           cwd,
+		BinaryCommit:  version.GetCommit(),
+		BinaryVersion: version.GetVersion(),
+	})
 
-	if strings.HasPrefix(sourceHead, binCommit) {
-		check.Status = uikit.CheckOK
-		check.Message = fmt.Sprintf("binary matches source HEAD (%s)", binCommit)
-		return check
-	}
-
-	// Binary differs from HEAD. Check whether it is an ancestor (= stale).
-	ancestorErr := exec.Command("git", "-C", cwd, "merge-base", "--is-ancestor", binCommit, sourceHead).Run()
-	if ancestorErr == nil {
+	switch v.Status {
+	case binlag.StatusBehind:
 		check.Status = uikit.CheckWarn
-		check.Message = fmt.Sprintf("binary is behind source tree (binary: %s, HEAD: %s)", binCommit, shortCommit(sourceHead))
-		check.Detail = "Run 'make build && make install' to rebuild with the latest fixes"
-		return check
-	}
-
-	check.Status = uikit.CheckOK
-	check.Message = fmt.Sprintf("binary from a different branch (binary: %s, HEAD: %s)", binCommit, shortCommit(sourceHead))
-	if verbose {
-		check.Detail = "binary commit is not an ancestor of source HEAD (release or branch build)"
+		check.Message = fmt.Sprintf("binary is behind source tree (binary: %s, HEAD: %s)",
+			v.BinaryCommit, binlag.Short(v.SourceHead))
+		check.Detail = "Run '" + binlag.RemedyCommand + "' to rebuild with the latest fixes"
+	case binlag.StatusFresh:
+		check.Status = uikit.CheckOK
+		check.Message = fmt.Sprintf("binary matches source HEAD (%s)", v.BinaryCommit)
+	case binlag.StatusDivergent:
+		check.Status = uikit.CheckOK
+		check.Message = fmt.Sprintf("binary from a different branch (binary: %s, HEAD: %s)",
+			v.BinaryCommit, binlag.Short(v.SourceHead))
+		if verbose {
+			check.Detail = v.Reason
+		}
+	default:
+		check.Status = uikit.CheckOK
+		check.Message = v.Reason
 	}
 	return check
 }
