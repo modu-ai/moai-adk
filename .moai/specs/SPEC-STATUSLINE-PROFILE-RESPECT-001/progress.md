@@ -78,7 +78,66 @@ None open — kickoff gate passed 2026-08-27. Resolutions on record:
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run phase executed 2026-08-27 in worktree `.claude/worktrees/t293`, branch
+`WT-statusline-profile`, base `3abde7053`. Commits: `62485c918` (M1),
+`5a193fa4c` (M2+M3), `d615bf374` (M4), plus the M7/§E.2 closure commit. All
+evidence below is (this run, this tree) against the post-M4 HEAD unless noted.
+
+### AC matrix
+
+| AC | Status | Test | Evidence |
+|----|--------|------|----------|
+| AC-001 | PASS | `TestBuilder_SegmentGateSuppressesPairAndSpawn` | `go test ./internal/statusline/ ./internal/profile/ -count=1 -v -run '...'` → exit 0, 12 top-level PASS / 0 FAIL (`ac-matrix.txt`) |
+| AC-002 | PASS | `TestMaybeRefreshGitHubCounts_ExplicitNoForgeSpawnsNothing` (+`TestMaybeRefreshGitHubCounts_UnsetOverrideStillSpawns`) | same run, exit 0 |
+| AC-003 | PASS | `TestMaybeRefreshGitHubCounts_NoConfigSpawnsOnce`, `TestBuilder_NilSegmentsPreservesSpawn` | same run, exit 0 |
+| AC-004 | PASS | `TestForgeOptOut_TwoWayRevert` (paired with AC-002 in same run) | same run, exit 0 |
+| AC-005 | PASS | `TestRender_ForgePairFourStateContract` (6 subtests) | same run, exit 0 |
+| AC-006 | PASS | `TestResolveLaunchProfileForProject_SubtreeWorktreeResolves` | same run, exit 0 |
+| AC-007 | PASS | `TestResolveLaunchProfileForProject_DeepestRegisteredAncestorWins` | same run, exit 0 |
+| AC-008 | PASS | `TestResolveLaunchProfileForProject_LexicalPrefixIsNotAnAncestor` | same run, exit 0 |
+| AC-009 | DEFERRED (kickoff D1) | — | no run-phase test by design; follow-up card "launch-ledger write-side subtree normalization" |
+| AC-010 | PASS | grep review | `grep -n 'exec.Command\|gh \|git remote'` over the 3 new test files → only comment-line hits; zero exec targets (`ac-matrix.txt` sibling greps) |
+| AC-011 | PASS | grep review | new code adds no env-var reads; pre-existing refs use `config.EnvClaudeConfigDir` / `config.EnvNoProfileFallback`; paths via `filepath` APIs |
+
+### TDD RED evidence (pre-GREEN, `--count=1`)
+
+- Statusline gates: `go test ./internal/statusline/ -run 'ExplicitNoForgeSpawnsNothing|SegmentGateSuppressesPairAndSpawn|TwoWayRevert'` → exit 1;
+  verbatim `spawn attempts = 1, want 0 — an explicit no-forge override must
+  gate the refresh child` and `gated render spawn attempts = 1, want 0`
+  (`red-statusline.txt`).
+- Profile walk: `go test ./internal/profile/ -run 'Subtree|Deepest|Lexical|Stale|ExactMatchBeatsSubtree'` → exit 1;
+  verbatim `subtree session resolved to "", want "alpha"` (`red-profile.txt`).
+  RED for the right stated reason: gates/walk absent, not fixture breakage
+  (AC-008 / miss-fallthrough / exact-match guards were green at RED and stayed
+  green — the two-cell pair).
+
+### Closure gates
+
+- `go test ./internal/statusline/... ./internal/profile/... -count=1` → exit 0
+  (`final-suite.txt`; both `ok`).
+- `GOOS=windows GOARCH=amd64 go build ./...` → exit 0 (`final-winbuild.txt`).
+- `go vet ./internal/statusline/... ./internal/profile/... ./internal/cli/` → exit 0.
+- `gofmt -l` over the 6 touched files → empty.
+- Coverage (touched packages): statusline 90.6%; profile 84.3% package /
+  `lookupSubtreeProjectKey` 88.9% and `ResolveLaunchProfileForProject` 100.0%
+  per-function (`coverage.txt`, `profile-cover.out`).
+- M7 operational read-back: `.moai/config/sections/statusline.yaml` line 12
+  reads `forge: "none"`; `git status internal/template/` clean (no mirror).
+
+Evidence dir: `.moai/state/verify/t293-dev/` — `m0-baseline.txt`,
+`red-statusline.txt`, `red-profile.txt`, `green-m1m3.txt`, `green-m1m3-v2.txt`,
+`m4-fourstate.txt`, `coverage.txt`, `profile-cover.out`, `final-suite.txt`,
+`final-winbuild.txt`, `ac-matrix.txt`.
+
+### Gaps
+
+- Profile package-level coverage 84.3% is below the 85% bar; the shortfall is
+  pre-existing uncovered functions (Delete, GetCurrentName paths) outside this
+  SPEC's scope. The SPEC's own additions are covered at 88.9% / 100%.
+- No integration run of the real statusline binary against the repo-local
+  `forge: none` key (M7 is an operational edit; its code path is covered by
+  unit tests against identical fixtures).
+
 
 ## §E.3 Run-phase Audit-Ready Signal
 
