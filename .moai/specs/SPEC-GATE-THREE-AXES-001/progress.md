@@ -466,4 +466,42 @@ next_milestone: none                # run phase closed at M3; /moai sync SPEC-GA
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: complete
+sync_complete_at: 2026-08-27
+sync_commit_sha: "pending-backfill"  # D3 exemption — a commit cannot know its own hash; the real sha of the sync commit lands in the follow-up backfill commit
+b12_self_test_a_changelog_pre_emission_grep: 0  # grep -c 'SPEC-GATE-THREE-AXES-001' CHANGELOG.md before emission → 0, rc=1 (absent; no duplicate entry from a parallel BATCH-SYNC session)
+b12_self_test_b_ac_count: 16  # distinct AC IDs in acceptance.md (AC-GTA-001..016, grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' | sort -u) == 16 criteria counted from the §D.1-§D.3 headings; the CHANGELOG entry covers all three axes' criteria in one entry
+b12_self_test_c_path_verification: pass  # ls-verified this session: .moai/specs/SPEC-GATE-THREE-AXES-001/{spec,plan,acceptance,progress}.md, CHANGELOG.md, .moai/state/verify/af9f2ca2/{t235-m3.log,head.txt}, internal/hook/quality/, internal/cli/gate.go
+changelog_entry_position: "[Unreleased] > Fixed, first entry"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (single sync commit, 3-phase close; spec.md is the only artifact of the four carrying a frontmatter block; updated: 2026-08-25 -> 2026-08-27, the sync-commit-date convention the SPEC-CODEX-WIRING-001 close used)"
+  plan_acceptance_progress_md: "no frontmatter block — n/a"
+status_transition_commit_strategy: single sync commit carries plan->run->sync close; no separate Mx chore commit; no §E.5 section
+verification_basis:
+  orchestrator_rerun_batch:  # measured at HEAD 9ad91b606 (.moai/state/verify/af9f2ca2/head.txt); four lines verbatim in t235-m3.log, inside this worktree
+    internal_hook_quality: "ok  10.138s  (go test -count=1)"
+    internal_config: "ok  1.854s  (go test -count=1)"
+    internal_template_neutrality: "ok  24.189s  (go test -count=1)"
+    internal_cli: "ok  239.670s  (go test -count=1)"
+  agent_lane_runs:  # §E.2 M3 rows, same tree, -count=1
+    internal_hook_quality: "ok  10.035s"
+    internal_config: "ok  2.063s"
+    internal_template: "ok  23.929s + agentemit 0.524s"
+    internal_cli: "ok  248.577s"
+windows_behavioural_halves: compile-only-locally  # AC-GTA-008 Windows half + AC-GTA-014 Windows clear path: GOOS=windows build passes; behavioural verdict carried to the CI Windows matrix per acceptance.md §D.4's evidence rule — a gap, not a pass, until that run is read
+full_suite_verdict: deferred-to-ci  # go test ./... prohibited locally (plan.md §C.1); the verdict is the integration branch (origin/develop) CI run against the merged head
+preserve_attestations:
+  outer_10min_net: "kept — internal/cli/gate.go:93 still creates context.WithTimeout(Background, 10*time.Minute) after the lock wait returns; the net bounds gate.Run, exactly what it always bounded, not the wait (read at this line this session)"
+  t218_attribution_file: "byte-identical since 294b4b6ab — git diff 294b4b6ab -- internal/hook/quality/gate_timeout_attribution_test.go | wc -c → 0 (re-measured this session)"
+  m2_machinery: "untouched post-M2 — git log 9bf8c04a8..HEAD -- 'internal/hook/quality/step_process_group*' → 0 commits (measured this session)"
+user_doc_surface: changelog-only  # this card has no user-doc surface beyond CHANGELOG.md — no README, docs-site, or codemap touch, per the minimal-addition precedent; the execution summary is human-facing diagnostic output, deliberately not a machine-parseable contract (spec.md §D)
+canary_compliance_check:
+  applicable: false  # SPEC defines no forward-looking policy canaried by its own sync tests
+evidence_paths:
+  - CHANGELOG.md  # [Unreleased] Fixed, SPEC-GATE-THREE-AXES-001 entry
+  - .moai/specs/SPEC-GATE-THREE-AXES-001/spec.md  # frontmatter status close
+  - .moai/specs/SPEC-GATE-THREE-AXES-001/progress.md  # this section
+  - .moai/state/verify/af9f2ca2/t235-m3.log  # orchestrator rerun batch, worktree-local verify evidence
+code_changes_in_sync_phase: 0  # internal/, templates, and tests untouched in sync; CHANGELOG + SPEC artifacts only
+```

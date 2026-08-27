@@ -41,6 +41,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A passing `moai gate` run now reports what actually ran, a hung step's timeout kills the
+  step's whole process group instead of hanging the gate, and concurrent manual gate runs in one
+  checkout serialize instead of stampeding the same toolchain**
+  ([SPEC-GATE-THREE-AXES-001](.moai/specs/SPEC-GATE-THREE-AXES-001/spec.md), #1639). A passing run
+  previously printed nothing at all — a test step that replayed a build cache and one that genuinely
+  executed the suite were byte-identical silence, and the test axis's pass-side output was discarded
+  before it could ever reach the terminal. Every configured step now reports its own outcome:
+  `executed` with a measured duration, start instant, and the command line that actually ran (the
+  resolved argv, not the step's label — the two diverge on two of the three Node test-resolution
+  tiers, where an invisible `--passWithNoTests` decides what a pass even means), or its own skip
+  reason, distinguishing all five paths by which the gate skips a step; steps a failed predecessor
+  prevented from running report `not reached` rather than inheriting a verdict, and existing
+  non-blocking notices survive alongside the summary. When a step's deadline expires, Unix
+  terminates the step's entire process group (`Setpgid` at spawn, group signal at kill) — a
+  descendant holding the step's output pipe previously kept `Wait` blocked past the very deadline
+  meant to bound it — and the return is grace-bounded on both platforms; on Windows, where no
+  process-group primitive is applied, the reason states that descendants may have survived.
+  Concurrent manual `moai gate` invocations in one project serialize on a per-project lock: a
+  starting run waits a bounded budget (`gate.timeouts.lock_wait`, default 30s) while naming the
+  holder PID it waits on, then degrades to running unserialized with an explicit notice — never
+  failing the run, and still returning the gate's own verdict — and a dead holder, an unacquirable
+  lock, and a read-only lock directory all take that same fail-open path. Each phase shipped with
+  named regression tests whose RED was observed before the implementation existed, and every
+  mutant its criterion names was built, run, and killed per `acceptance.md` (the one Windows-only
+  dead-holder mutant is carried by the CI matrix).
 - **The PR-merge sweep read "gh could not answer" as "not merged".** `gh pr view` errors on the
   ordinary case of a merged PR whose head branch was deleted on the remote, and the sweep collapsed
   that error, an absent PR, and malformed JSON into one empty string it treated as a negative — the

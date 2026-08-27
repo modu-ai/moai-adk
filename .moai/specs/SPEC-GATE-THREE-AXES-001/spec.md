@@ -2,9 +2,9 @@
 id: SPEC-GATE-THREE-AXES-001
 title: "Quality gate: report what ran, enforce the step timeout, serialize manual runs"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-08-24
-updated: 2026-08-25
+updated: 2026-08-27
 author: GOOS
 priority: P1
 phase: "v3.1.4 target"
