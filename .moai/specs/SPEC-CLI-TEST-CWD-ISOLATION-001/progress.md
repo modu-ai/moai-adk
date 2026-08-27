@@ -147,6 +147,39 @@ clean (union = exactly the reproducer's file set):
   clean. Cumulative post-5-runs baseline delta → empty. Each run's guard rode the selector
   (TestMain) and stayed green.
 
+### M4 — package-wide verification + wrap-up (AC-004 + AC-005)
+
+- **AC-004 command** (full package, serial, single attempt, Bash timeout 600 s, env-scrubbed,
+  fixed tree at M3 commit `f5ff4d74e`):
+
+  ```
+  unset MOAI_KANBAN MOAI_KANBAN_ID MOAI_KANBAN_LABEL MOAI_KANBAN_LEAD_ADDR MOAI_KANBAN_SETTINGS_INJECTED CLAUDE_PROJECT_DIR && go test ./internal/cli -count=1
+  ```
+
+- **Verbatim output**: `ok  \tgithub.com/modu-ai/moai-adk/internal/cli\t396.090s` (rc=0 —
+  guard green: with the TestMain guard in place, any package-cwd `.moai` creation would have
+  failed this run)
+- **AC-004 judgment**: `test ! -e internal/cli/.moai` → succeeds; baseline delta → empty
+  (exit 0). Pre-run state verified clean + baseline unchanged immediately before the run.
+- **AC-005 enumeration** (`git diff --name-only d34a789a4..HEAD`):
+  - Go files: `internal/cli/main_test.go`, `internal/cli/cc_test.go`,
+    `internal/cli/factory_test.go`, `internal/cli/glm_test.go` — **all `*_test.go`; zero
+    non-test Go changes; no production default-path behavior change; no env-guarded seam
+    needed** (ladder rung 1 sufficed for all five tests).
+  - Non-test files: the 4 SPEC artifacts (spec/plan/acceptance/progress) — documentation only.
+  - Touched package: `internal/cli` only → full suite green per AC-004.
+  - PRESERVE honored: no consumer-side file in the diff (`glm.go` walk, `state_dir.go`
+    semantics, hook walkers untouched); `.gitignore` untouched; no template/CHANGELOG change.
+- **Quality gates**: `golangci-lint run --timeout=2m` → `0 issues.` (baseline `0 issues.`,
+  delta 0 new); `go vet ./internal/cli/` exit 0; `gofmt -l` empty on all touched files;
+  `go build ./...` exit 0; `GOOS=windows GOARCH=amd64 go build ./...` exit 0;
+  `GOOS=windows GOARCH=amd64 go vet ./internal/cli/` exit 0 (windows test-file compilation).
+- **Evidence carry-over**: `red-probe.md`, `plan-audit-iter1.md`, `plan-audit-iter2.md`
+  copied worktree → primary `.moai/reports/t334/` with `cmp` byte-verification
+  (worktree-gitignored-artifact lesson).
+- **Card-id convention**: `Card: t334` present in every commit body on the branch (3/3:
+  `9114ddbc3` plan, `65e7e7672` M1-M2, `f5ff4d74e` M3; this M4 evidence commit is the 4th).
+
 ### Run-phase context note (user-directed, outside SPEC AC scope)
 
 2026-08-28, mid-M1: the operator instructed immediate removal of ALL residue `.moai`
@@ -166,7 +199,29 @@ scope per spec.md §B.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-08-28
+run_commit_sha: f5ff4d74e        # M3 implementation head; M4 evidence commit rides after this block
+run_status: complete
+ac_pass_count: 5                 # AC-001..AC-005 all PASS with recorded evidence (§E.2)
+ac_fail_count: 0
+preserve_list_post_run_count: 0 violations   # no consumer-side/gitignore/template file in diff
+l44_pre_commit_fetch: pending-backfill        # recorded at the M4 evidence commit (below)
+l44_post_push_fetch: not-applicable           # no push from this card worktree; integration into develop is lead-owned per gitflow lane protocol
+new_warnings_or_lints_introduced: 0           # baseline "0 issues." → post "0 issues."
+cross_platform_build:
+  darwin: pass
+  windows: pass
+  windows_test_compile: pass
+total_run_phase_files: 6                      # 4 internal/cli *_test.go + spec.md frontmatter + progress.md
+m1_to_mN_commit_strategy: per-milestone commits — M1+M2 combined (RED evidence + residue guard, carries draft→in-progress), M3 isolation fixes, M4 evidence
+```
+
+**Pending integration (lead-owned, §D.5 closure gate)**: branch `WT-cli-test-cwd` (4 commits,
+base `d34a789a4`) awaits merge into local `develop` via the integration worktree per the
+gitflow lane protocol; CI on `origin/develop` is the full-suite verdict surface. The primary
+checkout's stale `internal/cli/.moai` (§D.6 forward-looking item) was ALREADY removed during
+run-phase by direct operator instruction — see the run-phase context note in §E.2.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
