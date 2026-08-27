@@ -208,7 +208,7 @@ func TestResolveTodoQueueRoot_HomeUnresolvableWritesNothing(t *testing.T) {
 	t.Cleanup(func() { HomeDirFn = orig })
 
 	got := ResolveTodoQueueRoot(dir)
-	want := filepath.Join(dir, ".moai", "state", "kanban")
+	want := filepath.Join(dir, ".moai", "state", "todo")
 	if got != want {
 		t.Fatalf("home-unresolvable root = %q, want %q", got, want)
 	}

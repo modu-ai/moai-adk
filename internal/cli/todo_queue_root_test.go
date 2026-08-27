@@ -161,7 +161,7 @@ func TestTodoQueue_FallbackAdoptsExistingLocalQueue(t *testing.T) {
 	// Seed a pre-fallback local queue: 2 queued + 1 picked, ids from an
 	// earlier high-water mark — the shape a v3.1.0-era project carries.
 	spec := "SPEC-EXAMPLE-001"
-	localDir := filepath.Join(dir, ".moai", "state", "kanban")
+	localDir := kanban.StateDirForRoot(dir)
 	if err := os.MkdirAll(localDir, 0o755); err != nil {
 		t.Fatalf("mkdir local queue dir: %v", err)
 	}
@@ -212,6 +212,7 @@ func TestTodoQueue_FallbackAdoptsExistingLocalQueue(t *testing.T) {
 		t.Fatalf("second adoption run changed item count: %d, want 3", len(rec2.Items))
 	}
 }
+
 // TestTodoQueue_WorktreeSeesPrimaryQueue is the [HARD] acceptance pair in
 // code form: (1) a list from the worktree reports the primary's item count,
 // and (2) an add issued from the worktree lands in the primary's queue file.

@@ -234,6 +234,35 @@ func (e *backlogEngine) countQueued(ctx context.Context) (int, error) {
 	return n, nil
 }
 
+// countByState returns the picked and queued counts through ONE grouped
+// aggregate over the state index — the statusline's constant-cost path.
+func (e *backlogEngine) countByState(ctx context.Context) (picked, queued int, err error) {
+	ctx, cancel := context.WithTimeout(ctx, backlogOpTimeout)
+	defer cancel()
+	rows, err := e.db.QueryContext(ctx, `SELECT state, COUNT(*) FROM items GROUP BY state`)
+	if err != nil {
+		return 0, 0, mapBacklogEngineError(fmt.Sprintf("count backlog %s", e.dbPath), err)
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var state string
+		var n int
+		if scanErr := rows.Scan(&state, &n); scanErr != nil {
+			return 0, 0, mapBacklogEngineError(fmt.Sprintf("count backlog %s", e.dbPath), scanErr)
+		}
+		switch BacklogState(state) {
+		case BacklogStatePicked:
+			picked = n
+		case BacklogStateQueued:
+			queued = n
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return 0, 0, mapBacklogEngineError(fmt.Sprintf("count backlog %s", e.dbPath), err)
+	}
+	return picked, queued, nil
+}
+
 // ---------------------------------------------------------------------------
 // Migration (design.md §4 state machine)
 // ---------------------------------------------------------------------------

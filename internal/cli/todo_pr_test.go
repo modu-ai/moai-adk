@@ -109,7 +109,9 @@ func seedQueue(t *testing.T, store *kanban.BacklogStore, texts ...string) []stri
 // or a changed byte all move it.
 func queueDirDigest(t *testing.T, root string) string {
 	t.Helper()
-	dir := filepath.Join(root, ".moai", "state", "kanban")
+	// Resolve rather than restate: a spelled-out directory name keeps passing
+	// after a rename it no longer tracks.
+	dir := kanban.StateDirForRoot(root)
 	var lines []string
 	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {

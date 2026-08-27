@@ -240,14 +240,6 @@ func NewBacklogStore(path string) *BacklogStore {
 	return &BacklogStore{path: path}
 }
 
-// BacklogPathForRoot returns the backlog file's canonical location under a
-// project root — the one path shape every root-relative consumer (the kanban
-// SessionStart notice, the factory lead loop's queue poll) builds the store
-// from, so no two surfaces hand-roll their own join.
-func BacklogPathForRoot(root string) string {
-	return filepath.Join(root, ".moai", "state", "kanban", "backlog.json")
-}
-
 // QueuedCount returns the number of items in state "queued", failing open to
 // 0 (the store already reads a missing file as an empty queue). It is the
 // shared count shape both the kanban notice and the factory lead loop render
@@ -288,6 +280,66 @@ func (s *BacklogStore) QueuedCount() int {
 		}
 	}
 	return n
+}
+
+// BacklogStateCounts is the queue reduced to what a glance needs: how much
+// work is in flight and how much is waiting. Dropped items are deliberately
+// not counted — they are history, and a number that only ever grows is noise.
+type BacklogStateCounts struct {
+	Picked    int
+	Queued    int
+	Available bool
+}
+
+// @MX:ANCHOR: [AUTO] BacklogCountsForRoot — the statusline's per-render read
+// @MX:REASON: expected fan_in >= 3 (statusline render, kanban notice, factory loop); it runs once per status render, so a non-constant-cost implementation here puts every render on a path that grows with the queue
+//
+// BacklogCountsForRoot counts items by state under a project root.
+//
+// PURE and fail-open, both load-bearing. Pure because this runs on a
+// per-render process that must never perform the one-time storage cutover or
+// directory relocation; fail-open because an unreadable queue must render
+// nothing rather than an authoritative-looking zero — "no cards" and "could
+// not read the cards" are different claims, and Available is what separates
+// them.
+//
+// Constant cost on the database layout: three aggregates over an indexed
+// column, not a whole-document parse (REQ-TOSQ-009, C-2).
+func BacklogCountsForRoot(root string) BacklogStateCounts {
+	if root == "" {
+		return BacklogStateCounts{}
+	}
+	path := BacklogPathForRoot(root)
+	layout := inspectBacklogLayout(path)
+	if layout.dbExists {
+		eng, err := openBacklogEngine(backlogSQLitePath(path))
+		if err != nil {
+			return BacklogStateCounts{}
+		}
+		defer func() { _ = eng.close() }()
+		picked, queued, err := eng.countByState(context.Background())
+		if err != nil {
+			return BacklogStateCounts{}
+		}
+		return BacklogStateCounts{Picked: picked, Queued: queued, Available: true}
+	}
+	if !layout.jsonExists {
+		return BacklogStateCounts{}
+	}
+	rec, err := loadLegacyBacklogJSON(path)
+	if err != nil {
+		return BacklogStateCounts{}
+	}
+	counts := BacklogStateCounts{Available: true}
+	for _, it := range rec.Items {
+		switch it.State {
+		case BacklogStatePicked:
+			counts.Picked++
+		case BacklogStateQueued:
+			counts.Queued++
+		}
+	}
+	return counts
 }
 
 // QueuedBacklogCountForRoot is the one-call form of QueuedCount under a

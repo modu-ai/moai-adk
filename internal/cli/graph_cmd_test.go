@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // graphFixtureProject builds a tiny project with one edge per layer under a
@@ -261,7 +263,7 @@ func milestonesQueryFixture(t *testing.T) string {
 	}
 
 	queueRoot := t.TempDir()
-	queueDir := filepath.Join(queueRoot, ".moai", "state", "kanban")
+	queueDir := kanban.StateDirForRoot(queueRoot)
 	if err := os.MkdirAll(queueDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -291,7 +293,7 @@ func TestGraphQueryCmd_MilestonesNoCard(t *testing.T) {
 		"demo-report#S6  no card claimed ([new card needed])",
 		"milestones without a live card: 3 of 4", // S1/t108 live: clean, not listed
 		"git log --oneline --grep 'merge: tNN'",  // [HARD] caveat must ride the result
-		"새 카드 발급 전에 계보를 확인",              // zero-hit grep != work never done; check re-issuance lineage (re-review M2)
+		"새 카드 발급 전에 계보를 확인",                      // zero-hit grep != work never done; check re-issuance lineage (re-review M2)
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("output missing %q:\n%s", want, out)
@@ -308,7 +310,7 @@ func TestGraphQueryCmd_MilestonesNoCardQueueUnreadableSkipsComparison(t *testing
 	// Corrupt the queue the seam points at: only no-card milestones flag,
 	// and the skip is announced rather than silently passing every claim.
 	queueRoot := todoQueueRootFn()
-	if err := os.WriteFile(filepath.Join(queueRoot, ".moai", "state", "kanban", "backlog.json"), []byte("{not json"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(kanban.StateDirForRoot(queueRoot), "backlog.json"), []byte("{not json"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 

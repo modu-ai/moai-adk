@@ -92,7 +92,7 @@ not something this loop can do for itself.
    - `command`:
 
      ```sh
-     f=.moai/state/kanban/backlog.json
+     f=.moai/state/todo/backlog.json
      last=init
      while true; do
        if [ -f "$f" ]; then cur=$(cksum "$f"); else cur=missing; fi

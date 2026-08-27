@@ -191,7 +191,7 @@ func kanbanLeadNotice(runID, root, lang string) string {
 }
 
 // queuedBacklogCount returns the number of cards waiting in the backlog queue
-// under root — the same .moai/state/kanban/backlog.json the `moai todo` CLI
+// under root — the same .moai/state/todo/backlog.json the `moai todo` CLI
 // operates (internal/cli/todo.go todoBacklogPath). Since the t85 factory lead
 // loop reads the same count, the path shape and the queued-only counting live
 // in ONE shared place — kanban.QueuedBacklogCountForRoot (BacklogStore.

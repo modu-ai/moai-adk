@@ -1,9 +1,7 @@
 package statusline
 
 import (
-	"encoding/json"
-	"os"
-	"path/filepath"
+	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // BacklogCounts is the kanban backlog reduced to what a glance needs: how much
@@ -13,14 +11,6 @@ type BacklogCounts struct {
 	Picked    int  // state == "picked" — admitted to the board, in flight
 	Queued    int  // state == "queued" — waiting for the operator to pick
 	Available bool // false when no backlog file could be read
-}
-
-// backlogFileSnippet is the minimal subset of backlog.json the statusline
-// reads. Only the per-item state is load-bearing.
-type backlogFileSnippet struct {
-	Items []struct {
-		State string `json:"state"`
-	} `json:"items"`
 }
 
 // resolveBoardRoot returns the directory holding the project's kanban state.
@@ -38,33 +28,20 @@ func resolveBoardRoot(input *StdinData) string {
 	return resolveProjectDir(input)
 }
 
-// resolveBacklogCounts reads .moai/state/kanban/backlog.json under boardRoot and
-// counts items by state. Best-effort + fail-open: an absent file, a read error,
-// or a parse error all yield Available=false and render nothing. Constant-cost
-// (one read of one small file) per statusline render — it must never grow with
-// the number of cards in a way that puts the render on a slow path.
+// resolveBacklogCounts counts the backlog by state under boardRoot.
+//
+// It delegates to kanban.BacklogCountsForRoot rather than reading a file
+// itself: the queue's storage is a database now, and a second reader here
+// would have to be kept in step with the store by hand — the exact drift the
+// single-seam rule exists to prevent. The two properties this render depends
+// on are the shared helper's, and both are load-bearing: PURE (a status render
+// must never perform the one-time storage cutover or directory relocation) and
+// fail-open (an unreadable queue renders nothing rather than an
+// authoritative-looking zero).
+//
+// Constant-cost per render, on either layout: it must never grow with the
+// number of cards in a way that puts the render on a slow path.
 func resolveBacklogCounts(boardRoot string) BacklogCounts {
-	if boardRoot == "" {
-		return BacklogCounts{}
-	}
-	path := filepath.Join(boardRoot, ".moai", "state", "kanban", "backlog.json")
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return BacklogCounts{} // absent or unreadable → nothing to show
-	}
-	var s backlogFileSnippet
-	if err := json.Unmarshal(data, &s); err != nil {
-		return BacklogCounts{} // corrupt → nothing to show (fail-open)
-	}
-
-	counts := BacklogCounts{Available: true}
-	for _, item := range s.Items {
-		switch item.State {
-		case "picked":
-			counts.Picked++
-		case "queued":
-			counts.Queued++
-		}
-	}
-	return counts
+	c := kanban.BacklogCountsForRoot(boardRoot)
+	return BacklogCounts{Picked: c.Picked, Queued: c.Queued, Available: c.Available}
 }

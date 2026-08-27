@@ -327,7 +327,7 @@ func enterKanbanCompanionMode(label string) func() {
 // something to consult — Claude Code owns the session-name namespace but
 // offers moai no query into it, so the claim set is moai's own state.
 func companionRegistryPath(root string) string {
-	return filepath.Join(root, ".moai", "state", "kanban", "companions.json")
+	return filepath.Join(kanban.StateDirForRoot(root), "companions.json")
 }
 
 // resolveCompanionName returns the label this companion session should launch
@@ -365,7 +365,7 @@ func resolveCompanionName(root, label string, notes io.Writer) string {
 // collide, and sharing one file would make each mode's launches contend on the
 // other's writes for no benefit. The shape and the machinery are identical.
 func leadRegistryPath(root string) string {
-	return filepath.Join(root, ".moai", "state", "kanban", "leads.json")
+	return filepath.Join(kanban.StateDirForRoot(root), "leads.json")
 }
 
 // resolveLeadName returns the label this lead session should launch under:
