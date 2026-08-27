@@ -159,7 +159,7 @@ m1_to_mN_commit_strategy: >-
 
 ```yaml
 sync_complete_at: 2026-08-27
-sync_commit_sha: pending-backfill-sync   # this sync commit; backfilled by the immediately following commit
+sync_commit_sha: dd64b59ea   # this SPEC's sync commit; backfilled by its immediate successor
 sync_status: complete
 spec_status_transition: in-progress -> completed   # 3-phase close; completed rides this sync commit
 independent_sync_audit:
