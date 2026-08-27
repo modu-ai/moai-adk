@@ -5,7 +5,7 @@ git_strategy:
     gitlab:
         instance_url: ""
     manual:
-        workflow: gitflow
+        workflow: git-flow
         environment: local
         github_integration: false
         push_to_remote: false
