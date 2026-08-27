@@ -302,6 +302,42 @@ rc=0   ok  Binary Freshness  binary matches source HEAD (c70c6aed9)
 이 SPEC이 일으키지도 통제하지도 않는 검사이므로, 완료 정의가 이미 좁혀 놓은 `--check "Binary Freshness"`
 형태로 판정한다(감사 D8이 비-git 케이스에 대해 세운 것과 같은 근거가 소스 트리에서 실현된 것).
 
+### 실물 end-to-end 관측 — 스텁 없이, 실제 지연 상태에서
+
+증거 커밋(`1c042b93a`)이 착지하면서 트리 HEAD가 설치된 바이너리의 빌드 커밋(`c70c6aed9`)을
+앞질렀다. 즉 **이 SPEC이 닫으려는 바로 그 상태가 실제로 발생했고**, 그 상태에서 실물 바이너리로
+두 표면을 모두 관측했다. 스텁도, 주입도 없다.
+
+doctor 표면:
+
+```
+$ ./bin/moai doctor --check "Binary Freshness"
+rc=0
+  warn  Binary Freshness  binary is behind source tree (binary: c70c6aed9, HEAD: 1c042b93a)
+  Pass 0  Warn 1  Fail 0
+```
+
+요청 없는 발화 표면 — 실제 훅 실행, 직렬화된 출력의 `hookSpecificOutput.additionalContext`:
+
+```
+$ ./bin/moai hook session-start < <session-start JSON>
+rc=0
+$ jq -r '.hookSpecificOutput.additionalContext' <출력>
+...
+Factory Mode: joined the factory run as lane-18.
+
+moai binary lag: the installed binary was built from commit c70c6aed9, an ancestor of this tree's HEAD 1c042b93a.
+Fixes committed after c70c6aed9 are NOT in the binary you are running, so its output describes older code.
+Rebuild before trusting any moai CLI result: make build && make install
+```
+
+세 가지가 한 번에 확인된다: (1) 아무도 진단 명령을 치지 않았는데 판정이 도달했다,
+(2) 두 SHA와 수리 명령이 모두 담겼다, (3) 기존 Factory Mode 공지를 **덮어쓰지 않고 덧붙였다**
+(append-if-non-empty 패턴 보존).
+
+exit 상태는 doctor에서 0으로 유지된다 — 지연은 `Warn`이지 `Fail`이 아니므로
+`doctorExitStatus`를 승격시키지 않는다.
+
 ### 범위 준수
 
 - t317 워크트리에 쓰기 0건 — 읽기 전용 인용만.
