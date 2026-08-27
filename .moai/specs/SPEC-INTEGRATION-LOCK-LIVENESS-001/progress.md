@@ -352,4 +352,235 @@ remains the first layer.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-27
+sync_commit_sha: d013660e7           # this SPEC's sync commit on WT-integration-lock
+sync_status: completed              # clean PASS → completed, per the status rule below
+sync_audit:
+  verdict: PASS                      # clean — sync-auditor `audit-t298`, fresh context, --deep
+  overall_score: 0.9189              # 4-dimension harmonic mean; Tier M PASS threshold 0.80
+  dimensions:                        # as RE-DERIVED; see provenance_hazard below
+    functionality: 0.95              # must-pass — passes independently
+    security: 0.87                   # must-pass — passes independently
+    craft: 0.92
+    consistency: 0.94
+  findings: 4                        # F1..F4, ALL optional
+  blocking_findings: 0
+  report: .moai/reports/t298/sync-audit.md   # the auditor's exclusive write scope
+  read_the_dimensions_not_the_aggregate: >
+    The aggregate barely moved across the re-derivation (0.9193 → 0.9189) while BOTH
+    must-pass dimensions moved, in OPPOSITE directions: Functionality 0.94 → 0.95 (the
+    §G residual judged not to belong as a Functionality deduction) and Security
+    0.88 → 0.87 (a further deduction for the undeclared F2). The two corrections
+    offset. A reader comparing only the harmonic means would conclude nothing changed,
+    which is the opposite of what happened — the auditor flags this trap itself.
+  spawned_by: orchestrator           # manager-docs carries no Agent tool and cannot
+                                     # spawn one; the audit is not this agent's to run
+  status_rule: >
+    clean PASS → `completed`; PASS-WITH-DEBT → `implemented`. The spec.md `status:`
+    field is held at `in-progress` until the verdict is relayed, and the transition
+    is the last edit before the close commit.
+  provenance_hazard:                 # recorded so a later reader sees this unprompted
+    what_happened: >
+      The audit path was OCCUPIED when the auditor arrived. Before the orchestrator
+      spawned `audit-t298`, manager-docs had written its own 4-dimension read to
+      `.moai/reports/t298/sync-audit.md` — the same path — and committed it in
+      `2b49785de`. The auditor read that file before manager-docs removed it, and
+      its report opens by referring to that content. The independence of a
+      fresh-context audit was therefore compromised at the input, not at the verdict.
+    how_it_surfaced: >
+      manager-docs named the hazard when it removed the file, stated the signal to
+      watch for (a verdict at or near its own PASS-WITH-DEBT 0.924), and said plainly
+      that whether the auditor had READ the path was not observable to it. The
+      orchestrator then confirmed the read had already happened.
+    what_it_produced: >
+      Two of four dimensions came back numerically identical to manager-docs's read
+      (Functionality 0.94, Security 0.88) — and those two are the must-pass pair.
+      Craft and Consistency diverged (0.95→0.92, 0.93→0.94), and the verdict diverged
+      in kind (PASS-WITH-DEBT 0.924 → PASS 0.9193).
+    how_it_was_handled: >
+      The orchestrator sent the auditor back to RE-DERIVE the two must-pass figures
+      from its own evidence, with an explicit instruction not to lower the verdict
+      merely to appear independent. Those two figures are therefore after-the-fact
+      re-derivations, not first-pass observations, and are recorded as such here.
+    what_the_re_derivation_showed: >
+      Both must-pass figures MOVED, in opposite directions: Functionality 0.94 → 0.95
+      and Security 0.88 → 0.87. Neither still coincides with the contaminating read.
+      The auditor also stated plainly that it HAD read the manager-docs file before
+      fixing its first figures — the honest answer, and the one that made the
+      re-derivation necessary. The aggregate moved only 0.9193 → 0.9189 because the
+      two corrections offset, which is why the per-dimension derivations, not the
+      harmonic mean, are the evidence here.
+    why_the_judgment_still_reads_as_its_own: >
+      The auditor's §F deductions cite findings manager-docs never made — F1 (the
+      AC-INL-003 fixture seeds a legacy-shaped record, not the anchored one the Given
+      describes), F2 (Windows `isProcessAlive` returns true unconditionally, so a dead
+      `MOAI_SESSION_PID` is recorded — the one path tilting AGAINST the declared
+      TREAT-AS-LIVE asymmetry, and undeclared in §G), and F4 plus three `t.Skip`
+      escape hatches. Same numbers, different deductions.
+    second_artifact_dangling_reference: >
+      The hazard produced TWO artifacts, not one. Besides the touched figures, the
+      auditor's report initially carried a dangling forward reference: it was written
+      to be APPENDED below the manager-docs report and opened by referring to that
+      content as its §0 — but manager-docs had already removed the file from the
+      worktree, so what landed was the appendix alone, citing a section that was not
+      in it (`grep -c 'Sync-phase Quality Assessment'` → 0; first heading at line 4
+      was the auditor's own). The superseded manager-docs report remains retrievable
+      at `2b49785de:.moai/reports/t298/sync-audit.md`. Corrected BEFORE this commit:
+      the auditor rewrote its opening to stand alone and replaced the dangling
+      reference with a provenance paragraph carrying that path-at-commit citation.
+      Restoring the manager-docs report above the audit was considered and rejected —
+      two verdicts in one artifact, with no way for a later reader to tell at a glance
+      which one binds, is a worse defect than the one being fixed.
+    residual: >
+      Functionality and Security are the two figures the contamination touched; they
+      stand at 0.95 and 0.87 as re-derived, not at the 0.94 / 0.88 that coincided
+      with the contaminating read. Craft (0.92), Consistency (0.94), the four
+      findings, and the §G confirmation were never affected — Craft and Consistency
+      differed from the contaminating read at first derivation. What cannot be
+      recovered is a first-pass, never-contaminated derivation of the must-pass pair;
+      the re-derivation is the best available evidence, not a substitute for one.
+newly_surfaced_residual:
+  finding_id: F2
+  surfaced_by: fresh-context sync-auditor `audit-t298`   # NOT manager-docs, NOT the
+                                                         # orchestrator — neither the
+                                                         # SPEC nor this close caught it
+  site: internal/session/anchor_pid_windows.go:14
+  what: >
+    On Windows `isProcessAlive` returns `true` unconditionally. That makes the
+    liveness check inside `sessionPIDFromEnv` (session_pid.go:99) vacuous there, so a
+    `MOAI_SESSION_PID` naming an already-dead process is recorded as the holder pid.
+    Judgment after the record is made uses `kanban.FactoryProcessAlive`, which on
+    Windows IS a real `OpenProcess` probe — so that window then reads reclaimable.
+  why_it_matters: >
+    This is the one path that tilts AGAINST the TREAT-AS-LIVE asymmetry §D declares.
+    Every other indeterminate path in this design resolves toward "live, ask the
+    holder to release"; this one resolves toward "reclaimable", which is the
+    two-lanes-merge-at-once direction the lock exists to prevent. It also leaves
+    acceptance §D.2 ("a dead stamp must be skipped") unmet on that platform.
+  scope_note: >
+    Narrow premise (an inherited stale env stamp) and NOT a regression this card
+    introduced — but undeclared in `spec.md` §G, which is what makes it a finding
+    rather than a known residual.
+  classification: >
+    (i) a §G DOCUMENTATION OMISSION, AND (iii) FOLLOW-UP CARD MATERIAL —
+    explicitly NOT (ii) a defect this card should have covered.
+  classification_reasoning: >
+    `anchor_pid_windows.go:14` is the session REGISTRY's platform probe, not the
+    acquire path this card scoped, and it returned unconditionally `true` before this
+    SPEC existed (zero diff on that file). The defect was not created by this card; it
+    became VISIBLE because this card's anchor now sits on top of that probe. Fixing it
+    here would mean changing the registry's Windows liveness semantics — the surface
+    §D.4 explicitly declared out of bounds — so covering it in this card was never the
+    correct move.
+  the_g_gap_precisely: >
+    The omission is NARROWER than "F2 is missing from §G". §G already documents the
+    STAMP-ABSENT path (no `MOAI_SESSION_PID`, owner unresolvable → pid 0, conservative
+    degrade toward live). What it omits is the STAMP-PRESENT-BUT-DEAD path: a stamp
+    naming an already-exited process, which on Windows passes the vacuous liveness
+    check, is recorded, and then reads reclaimable. That precision is what makes the
+    follow-up card actionable rather than a restatement of the finding.
+  spec_g_not_edited: true    # §G is spec body — not this agent's to edit, and not
+                             # this phase's job. Recorded here, not there.
+ac_pass_count: 13                   # AC-INL-001..013, counted against acceptance.md
+ac_fail_count: 0
+ac_not_observed: 0                  # up from §E.3's 2 — AC-INL-005 and AC-INL-006 were
+                                    # closed individually in sync-phase (below)
+changelog_entry_position: "## [Unreleased] → ### Fixed, first entry"
+frontmatter_status_transitions:
+  spec_md: in-progress → completed
+  plan_md: n/a          # carries no YAML frontmatter — verified, not assumed
+  acceptance_md: n/a    # same
+  progress_md: n/a      # same
+  note: >
+    Only spec.md carries a frontmatter block in this SPEC, so it is the sole
+    machine-read status surface and the only file transitioned. Measured:
+    `grep -nE '^(status|updated|version):'` across all four returned matches in
+    spec.md only. The prose preambles in plan.md and progress.md that read
+    "Status: draft" are historical statements about plan-phase authorship and
+    are body content this agent does not own — left unedited deliberately.
+  updated_field: already 2026-08-27 in spec.md; no refresh needed
+b12_self_test_a: >
+  Pre-emission grep. `grep -c 'SPEC-INTEGRATION-LOCK-LIVENESS-001\|t298' CHANGELOG.md`
+  → 0 before the write. No duplicate entry from a parallel session.
+b12_self_test_b: >
+  AC count match. `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l`
+  → 13, non-zero and plausible; the CHANGELOG entry states the same 13.
+b12_self_test_c: >
+  File-path verification. Every path this entry names was confirmed to exist by `ls`
+  before the commit.
+sync_phase_go_diff: none            # this close touches markdown only; measured, not assumed
+```
+
+**Sync-phase verification observed in this run** (all in worktree `.claude/worktrees/t298`,
+HEAD `f8b7264ba`):
+
+```
+$ go vet ./internal/kanban/ ./internal/session/ ./internal/cli/ ./internal/hook/
+(exit 0, no output)
+
+$ go test ./internal/kanban/ -run 'TestReleaseIntegrationLock_HolderAndForeign' -v -count=1
+--- PASS: TestReleaseIntegrationLock_HolderAndForeign (0.00s)        # AC-INL-005
+
+$ go test ./internal/cli/ -run 'TestIntegrationAcquire_ForceReportsWhatItDisplaced' -v -count=1
+--- PASS: TestIntegrationAcquire_ForceReportsWhatItDisplaced (0.06s) # AC-INL-006
+```
+
+The two ACs §E.3 recorded as `ac_not_observed` were preserved invariants, green inside the
+package suites but never asserted individually. They are now observed by name, which is why
+this section reports 13/13 rather than 11 + 2. No full suite was run: per the repository's
+verification-load discipline the full-suite verdict belongs to CI on the pushed branch.
+
+### Real-environment confirmation — evidence that did not exist at run-phase time
+
+The fix sat undeployed for most of 2026-08-27, and during that window three lanes
+independently observed the defect it fixes. Recorded here as **observation by other
+sessions**, not as a self-report:
+
+- **Before deployment**: lanes lane-16, lane-17 and lane-18 each observed `reclaimable` with
+  an acquire-CLI pid recorded as the holder. One real eviction occurred without `--force`.
+- **lane-18's isolated A/B**, `CLAUDE_PROJECT_DIR` pinned so the live lock was never touched:
+  the old binary reproduced all four stages of the failure chain; the HEAD build reported
+  `held` and refused a second acquire with exit 1.
+- **After deployment, first live use** (this card's own integration window): `held`, pid
+  33289 — the session-owning process. The lead had replaced the binary at `343399d2f`.
+- **The discriminating detail**: the holder UUID was recorded correctly in **both** cases;
+  only the pid differed. That is what confirms the diagnosis — the defect was never in
+  identity *interpretation*; the recorded pid itself was a value unrelated to the session.
+
+This confirms the fix behaves correctly in the live environment. It is **not** a proof of
+atomicity and must not be read as one.
+
+Making the deployment lag itself visible — a fixed binary sitting unshipped while lanes keep
+hitting the old defect — is **out of scope for this card and re-scoped to card t326**
+(lane-18). Nothing was done about it here.
+
+### §G residual verdict — still open
+
+Re-measured on this tree at HEAD `f8b7264ba`:
+
+```
+$ grep -n "Flock\|flock\|LockFile" internal/kanban/integration_lock.go internal/cli/integration.go
+internal/kanban/integration_lock.go:15    # "flock" in prose, package header comment
+internal/kanban/integration_lock.go:19    # "flock" in prose, package header comment
+internal/kanban/integration_lock.go:38    # IntegrationLockFileName doc comment
+internal/kanban/integration_lock.go:39    # const IntegrationLockFileName
+internal/kanban/integration_lock.go:128   # its use in the path join
+```
+
+Five lines, **no call site**; `internal/cli/integration.go` contributes **zero** matches. The
+§G residual — the acquire path as an unserialized read-modify-write — is therefore **still
+open**. No later commit closed it, and this card did not widen to cover it. (§G's own citation
+of line 106 is correct: it is attributed by name to `c67a6ea64`, and the M2 comment additions
+moved the path join to 128 afterwards.)
+
+The independent audit **confirmed** this reading against its own measurement, and additionally
+verified by diff that the M5 prose did not paper the residual over. It also surfaced a **second,
+undeclared asymmetry** that §G does not mention — the Windows `isProcessAlive` path, recorded
+above as `newly_surfaced_residual` (finding F2). That one is attributed to the audit: neither
+this SPEC nor this close caught it.
+
+Operational consequence, unchanged and restated so no reader infers otherwise: a recorded hold
+is a **coordination signal, not a permission boundary**, so **the lead announcement remains
+the first serialization layer**. A follow-up card for the serialization work is recommended to
+the lead; card issuance is not this agent's power and none was filed.
