@@ -395,7 +395,12 @@ func (a *app) handleSave(w http.ResponseWriter, r *http.Request) {
 
 	// SPEC-WEB-CONSOLE-011 M2b: parse the 10-section schema fields generically
 	// (FieldDef가 SSOT — read-only/제외군 키는 스키마에 없어 자동 무시, EC-8).
-	schemaEdits, schemaErrs := parseSchemaForm(r)
+	// RC2 passthrough-preserve (glm-settings-persist): the disk current values
+	// gate the closed-set validation — a submission equal to the previously
+	// persisted value passes even when the running binary no longer offers it.
+	// A read failure degrades to the strict closed set (nil current).
+	currentSchemaValues, _ := a.schemaCurrentValues(a.cfg.ProjectRoot)
+	schemaEdits, schemaErrs := parseSchemaForm(r, currentSchemaValues)
 
 	// SPEC-GLM-KEY-INPUT-001 M2: parse the GLM API key submitted value. Parsed
 	// BEFORE the validator merge so a line-break in the key joins the atomic-

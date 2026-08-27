@@ -307,13 +307,15 @@ type GLMSettings struct {
 	ContextWindows map[string]int `yaml:"context_windows,omitempty"`
 	// Effort carries a per-tier reasoning-effort preference.
 	//
-	// STORED ONLY. No runtime path reads it. The GLM launcher injects exactly
-	// one session-global ANTHROPIC_REASONING_EFFORT, derived in
+	// LOAD-BEARING since RC3 (glm-settings-persist): the GLM launcher reads the
+	// slot serving the main session's model (internal/cli
+	// resolveGLMMainSessionEffort) and a non-empty stored value overrides the
+	// prefs/model_policy effort chain for that session. Sub-agents keep the
+	// session-global ANTHROPIC_REASONING_EFFORT derived in
 	// internal/template/glm_effort_overlay.go from the session-wide
-	// llm.effort_level preference — a value unrelated to this tier map. These
-	// four fields therefore record an intent the current single-channel runtime
-	// cannot honor per tier. They are persisted so the preference survives, and
-	// the console labels them stored-only rather than implying they apply.
+	// llm.effort_level preference, and the collapse overlay stays governing for
+	// the final wire value (stored high and max both wire as reasoning_effort
+	// max; low wires as low; glm-5.3-flash pins everything to max).
 	Effort GLMTierEffort `yaml:"effort,omitempty"`
 }
 
