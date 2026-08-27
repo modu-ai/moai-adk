@@ -458,6 +458,26 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		}
 	}
 
+	// SPEC-BINARY-LAG-VISIBILITY-001 REQ-BLV-001/002/008: the deployment-lag
+	// verdict, emitted without anyone asking for it.
+	//
+	// The comparison this renders already existed and was already correct; it
+	// simply had no caller but a human typing `moai doctor`, so on the day it
+	// mattered it reached nobody through five steps and three observers. This
+	// is the automatic caller. It runs before any lane observes anything,
+	// which is the only point in that sequence cheap enough to check on every
+	// session and early enough to matter.
+	//
+	// additionalContext, not systemMessage and not the Data map: Data carries
+	// json:"-" (see the attribution comment above), so a verdict placed there
+	// would be computed correctly and rendered by no one — reproducing the
+	// exact dead end this closes.
+	lagRoot := input.ProjectDir
+	if lagRoot == "" {
+		lagRoot = input.CWD
+	}
+	appendAdditionalContext(out, binaryLagAdvisory(ctx, lagRoot))
+
 	return out, nil
 }
 
