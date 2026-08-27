@@ -745,6 +745,14 @@ func installFactoryLaunchSeam(t *testing.T) *factoryLaunchCapture {
 // the factory signal with the t118 socket scheme, and the incremental worker
 // shape desugars into the lane branch with the per-lane cap live at launch.
 func TestCC_FactoryEntryThroughRunCC(t *testing.T) {
+	// SPEC-CLI-TEST-CWD-ISOLATION-001: every subtest drives the real runCC
+	// factory path, whose lead-name and worker-name claims resolve their root
+	// via launchProjectRoot -> resolveProjectDir ($CLAUDE_PROJECT_DIR or cwd) —
+	// not the findProjectRootFn stub installFactoryLaunchSeam swaps in. Under
+	// that resolver the registries land in internal/cli/.moai; pointing the env
+	// at a temp dir keeps both writes in the test-owned sandbox.
+	t.Setenv(config.EnvClaudeProjectDir, t.TempDir())
+
 	t.Run("bare -f is the one-lane factory lead", func(t *testing.T) {
 		clearFactoryTestEnv(t)
 		c := installFactoryLaunchSeam(t)
@@ -827,6 +835,12 @@ func TestCC_FactoryEntryThroughRunCC(t *testing.T) {
 // lane form selects the lane branch there too (same parse, same
 // environment contract, GLM backend constant).
 func TestGLM_FactoryWorkerEntry(t *testing.T) {
+	// SPEC-CLI-TEST-CWD-ISOLATION-001: the lane entry claims the worker name
+	// via launchProjectRoot -> resolveProjectDir ($CLAUDE_PROJECT_DIR or cwd),
+	// a resolver the findProjectRootFn stub does not intercept — redirect it to
+	// a temp sandbox so the registry write stays out of the package cwd.
+	t.Setenv(config.EnvClaudeProjectDir, t.TempDir())
+
 	clearFactoryTestEnv(t)
 	c := installFactoryLaunchSeam(t)
 
