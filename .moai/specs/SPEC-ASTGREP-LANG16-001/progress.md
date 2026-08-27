@@ -17,7 +17,8 @@ scope: contract (M1-M3)
 successor: SPEC-ASTGREP-BREADTH-001
 audit_iteration: 5 audits (0.68 -> 0.69 -> 0.71 -> 0.84 -> PASS 0.88)
 spec_version: 0.7.0
-plan_status: audit-passed; open minor findings N5, N6 (see plan-audit-iter5.md)
+audit_verdict: PASS 0.88 (iter5); open minor findings: N5 §A.6 half (note-half closed), N6
+gate_recheck: ".moai/reports/plan-audit/SPEC-ASTGREP-LANG16-001-2026-08-27.md (narrow-delta; F1+F2-note fixed here)"
 ```
 
 Plan-phase basis: `.moai/reports/t228/plan-measurements.md` (M1-M4; M5 superseded — the
@@ -77,3 +78,32 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+```yaml
+tier: L
+scope_files: ~8 (template rules YAML, sgconfig.yml, rule-tests tree, corpus pin test, coverage-matrix.md, checker Go test)
+domains: 3 (ast-grep YAML configs, Go test code, markdown contract docs)
+file_language_mix: yaml/go/markdown
+concurrency_benefit: LOW (M1 harness -> M2 matrix -> M3 severity are strictly sequential)
+agent_team_prereqs: not requested
+```
+
+| Mode    | Selected      | Rationale                                                              |
+|---------|---------------|------------------------------------------------------------------------|
+| direct  | not selected  | Multi-milestone Tier L, no trivial path                                 |
+| serial  | **selected**  | Coding-heavy, sequential dependency chain, one milestone per spawn      |
+| fanout  | not selected  | No independent research fan-out; coding caveat binds                    |
+| sweep   | not selected  | Not a uniform mechanical transform; worktree-editing                    |
+
+Decision: serial
+
+Justification: Anthropic's coding-task parallelism caveat applies — the three milestones form a
+strict dependency chain (harness before matrix before reclassification), so concurrency buys only
+cache pressure and reconciliation cost. Each milestone delegates once to manager-develop with the
+Tier L Section A-E template. Boundary case: none — all thresholds resolve unambiguously toward
+serial.
+
+Kickoff approval: operator approved "승인 — M1~M3 연속 실행" this session, AFTER the lead dispatch
+and prior to any run-phase implementation spawn.
