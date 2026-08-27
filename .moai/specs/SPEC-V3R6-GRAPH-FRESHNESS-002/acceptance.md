@@ -113,7 +113,15 @@ Given-When-Then scenarios, binary-testable. REQ↔AC traceability at §D.2 is 10
 
 - **Given** the delivering PR's final tree (all M1-M4 + sync work landed; M1-M3 described-source churn ~15-20 files, within threshold 40)
 - **When** the codemaps provenance stamp is read and tested — `git merge-base --is-ancestor <stamp-sha> origin/main` — and `moai graph check` runs on the PR head
-- **Then** the stamp names a main-reachable commit (`c9eed8ac6` unless a recorded, main-reachable refresh was required); the ancestor test exits 0; `moai graph check` exits 0 with all three layers fresh; and no commit in the PR's history restamped against a branch-local HEAD (`git log -p -- .moai/project/codemaps/provenance.json` shows every `commit_sha` value main-reachable)
+- **Then** the stamp names a main-reachable commit (`c9eed8ac6` unless a recorded, main-reachable refresh was required); the ancestor test exits 0; `moai graph check` exits 0 with all three layers fresh; and no commit in the PR's history restamped against a branch-local HEAD — every `commit_sha` value provenance.json has ever carried is main-reachable, observed per historical state via `git show` of the blob at each touching commit (`git log -p` shows only transition hunks, not the full state each commit carried — CR #1665 3865025074):
+
+  ```bash
+  for sha in $(git rev-list HEAD -- .moai/project/codemaps/provenance.json); do
+    printf '%s ' "$sha"
+    git show "$sha":.moai/project/codemaps/provenance.json | grep -o '"commit_sha": *"[^"]*"'
+  done
+  # each printed sha must pass: git merge-base --is-ancestor <sha> origin/main
+  ```
 - **Baseline**: M0 delivered exactly this state — commit `52f7ba135`, measured chain mx scan → build → stamp → rebuild → check with 3/3 layers fresh exit 0 (triage-table.md §F5); the `0d15864ae90b` orphaning this guards against is the observed failure (lane-4 #1662)
 
 ## §D.1 Severity Classification

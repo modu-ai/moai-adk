@@ -303,4 +303,11 @@ m5_measurement:
     (§E.2 gap)
   - AC-GF-022 per-task baseline gap stands as recorded in §E.2/§E.3 — the CHANGELOG makes no
     measured-reduction claim
+  - "2026-08-27 (CR #1665 thread 3865025070): `status: completed` vs AC-GF-022 pass-with-debt
+    reconciled as a recorded deviation — the per-task baseline remains unobtainable (§E.2 Gaps:
+    per-task counts from real prior sessions; §E.3 ac_pass_with_debt_count: 2), and no later
+    commit resolved it: the t279 M4 backfill above resolved only the sync_commit_sha row. Per
+    §D.1 policy wording the debt stays recorded — the close rode the debt-blind path
+    (hasGenuinePassWithDebtVerdict scans acceptance.md only, closer.go:667). No status change
+    without an orchestrator decision."
 mx_commit_sha: (this commit)

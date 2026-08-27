@@ -2,7 +2,7 @@
 
 ## §A. Context
 
-- **Work location**: worktree `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t279`, branch `WT-t250-followup`, baseline tree `c9eed8ac6` (includes #1648 squash `6786c3fa4`). Branch HEAD at authoring: `52f7ba135` (the M0 restamp — provenance.json only; the RED-now pins at `c9eed8ac6` are unaffected). Run-phase commits land on this branch; the card-level PR to `main` follows the repo-local all-tier PR policy (Route B only — the Route A direct-push allowance in the delegation template's B9 is **overridden** here).
+- **Work location**: worktree `.claude/worktrees/t279` (repo-relative path; recorded 2026-08-27, CR #1665 3865025081), branch `WT-t250-followup`, baseline tree `c9eed8ac6` (includes #1648 squash `6786c3fa4`). Branch HEAD at authoring: `52f7ba135` (the M0 restamp — provenance.json only; the RED-now pins at `c9eed8ac6` are unaffected). Run-phase commits land on this branch; the card-level PR to `main` follows the repo-local all-tier PR policy (Route B only — the Route A direct-push allowance in the delegation template's B9 is **overridden** here).
 - **SPEC artifacts**: `.moai/specs/SPEC-V3R6-GRAPH-FRESHNESS-002/{spec,plan,acceptance,progress}.md` + `research.md`. Predecessor artifacts at `.moai/specs/SPEC-V3R6-GRAPH-FRESHNESS-001/` (status `implemented`, version 1.1.0 — M4 amends to 1.2.0).
 - **Scope definition (authoritative)**: `.moai/reports/t279/triage-table.md` sections A-1..A-4. The three verify reports carry the per-finding file:line RED-now baselines pinned at `c9eed8ac6`.
 - **Predecessor close state today**: `§E.4 sync_commit_sha: pending-backfill`; no `§E.5` section (schema-correct — none is wanted); `§E.3 ac_pass_with_debt_count: 2` (AC-GF-012, AC-GF-022 — recorded debt, non-blocking per the code-verified close path). See research.md §4 for the close-path analysis.
@@ -36,6 +36,7 @@ Baseline outputs recorded before any change, so NEW-vs-pre-existing classificati
 - **Forbidden**: `go test ./...` locally (CLAUDE.local.md §4/§6); `git add -A`/sweep staging; `--no-verify`; force-push; editing predecessor `spec.md`/`acceptance.md` bodies outside the M4 manager-spec re-delegation.
 - **Ownership routing**: M1-M3 → manager-develop; M4 body corrections + §E.4 SHA backfill → manager-spec re-delegation (orchestrator-mediated, D-NEW-1 pattern, separate commit `feat(SPEC-V3R6-GRAPH-FRESHNESS-001): correction-and-close amendment (t279 M4)`); close CLI invoked afterward — the tool performs its own atomic commit.
 - **Required**: Conventional Commits with card id `t279` in every commit message on the branch; per-milestone commits.
+- **Documented exception (CR #1665 3865025092)**: the machine-generated close commit's subject carries no `t279` — its traceability rides the dispatch's `card:` field and the surrounding t279 commits (as recorded in the §F M4 close-commit note; the tool generates its own subject).
 - **Stamp reachability (HARD, sync-phase)** — the PR's final codemaps stamp keeps naming a main-reachable commit (`c9eed8ac6`); restamping against the branch HEAD is FORBIDDEN (squash merge re-orphans it — REQ-GFR-014/AC-GFR-016, triage §F5). M1-M3 churn (~15-20 described-source files) stays under threshold 40 by design; if a refresh ever becomes necessary, it names another main-reachable commit and is recorded.
 
 ## §E. Self-Verification (per delegation, attribution triple a/b/c)

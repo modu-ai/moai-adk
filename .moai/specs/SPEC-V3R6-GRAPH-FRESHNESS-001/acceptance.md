@@ -127,8 +127,8 @@ Given-When-Then scenarios, binary-testable. REQ→AC traceability at §D.2 must 
 
 ### AC-GF-020 — `graph_file_api` signatures-only (REQ-GF-017, REQ-GF-019)
 
-- **Given** a file with exported declarations and non-trivial function bodies
-- **When** `graph_file_api` is called on it
+- **Given** a Go file with exported declarations, at least one non-exported declaration, and non-trivial function bodies — the non-exported declaration is load-bearing: an exported-only fixture would pass the filtering assertion vacuously (CR #1665 3865025045) — **and** a non-Go fixture carrying at least one lowercase-first declaration, which Go-only filtering would have dropped had it been (wrongly) applied
+- **When** `graph_file_api` is called on each fixture
 - **Then** the response lists exported signatures and contains no function bodies; the response names the tree root + commit it answered from; for non-Go languages the response returns the extracted declaration set without non-exported filtering — exported-identifier filtering is Go-only (first-rune upper-case, `isExported` in codequery.go), per the implemented export rule
 
 ### AC-GF-021 — `graph_find_code` + `graph_trace_calls` answer from the code layer (REQ-GF-018, REQ-GF-019)
@@ -151,6 +151,8 @@ Given-When-Then scenarios, binary-testable. REQ→AC traceability at §D.2 must 
 | SHOULD | AC-GF-011, 012, 013, 015, 016, 020, 021 | Convention/tooling quality — failure requires recorded debt |
 
 (Auditor may promote a SHOULD to MUST where the failure reproduces the observed defect family — wrong-tree answers and silent-layer-picks are always promotion candidates.)
+
+(Range note, 2026-08-27 — CR #1665 3865025050: `AC-GF-001..010` is inclusive range notation, and AC-GF-009 has been MUST since authoring — no SHOULD demotion of it was intended or made. The t279 M4 amendment promoted only AC-GF-008 SHOULD→MUST (SPEC-V3R6-GRAPH-FRESHNESS-002 progress.md M4 row 1b), which made the MUST set contiguous 001..010; the range fold is notation, not a reclassification of 009. AC-GF-009's pass is recorded in progress.md §E.3 — 20 pass, the debt set being AC-GF-012/022 only.)
 
 ## §D.2 Traceability Matrix
 
