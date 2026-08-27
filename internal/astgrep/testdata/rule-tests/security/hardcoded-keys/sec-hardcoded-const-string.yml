@@ -1,0 +1,9 @@
+# Test pair for the hardcoded API key rule. The valid sample contains no key
+# literal at all; the value comes from configuration.
+id: sec-hardcoded-api-key
+valid:
+  - |
+    const usageNote = "load keys from the environment";
+invalid:
+  - |
+    const openAiKey = "sk-live-alpha"

@@ -1,0 +1,8 @@
+# Test pair for the time.Since idiom rule.
+id: go-time-since-manual
+valid:
+  - |
+    elapsed := time.Since(startedAt)
+invalid:
+  - |
+    elapsed := time.Now().Sub(startedAt)

@@ -2,9 +2,9 @@
 id: SPEC-ASTGREP-LANG16-001
 title: "ast-grep ruleset contract: test harness, coverage matrix, and severity discipline"
 version: "0.7.0"
-status: draft
+status: in-progress
 created: 2026-08-24
-updated: 2026-08-25
+updated: 2026-08-27
 author: manager-spec
 priority: P2
 phase: "v3.2.0 target"

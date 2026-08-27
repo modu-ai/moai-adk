@@ -5,8 +5,13 @@ severity: error
 message: Marking user input as trusted HTML via html/template.HTML() enables XSS.
 note: The template.HTML() conversion bypasses escaping. Never use it on user
   input; where unavoidable, sanitize with a library such as bluemonday.
+# Expressed as a call node with an anchored literal prefix rather than a plain
+# pattern: ast-grep 0.40.x silently matches nothing for this dotted-call shape,
+# while the call_expression + regex form fires precisely (same family form as
+# the credential rules).
 rule:
-  pattern: template.HTML($USER_INPUT)
+  kind: call_expression
+  regex: '^template\.HTML\('
 metadata:
   owasp: A03:2021 - Injection
   cwe: CWE-79

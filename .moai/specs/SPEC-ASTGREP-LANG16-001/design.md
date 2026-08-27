@@ -143,19 +143,55 @@ verified only by "the file parses", would produce a ruleset that reports clean b
 nothing. `sg test` is the tool that distinguishes an inert rule from an absent one, and every
 `IMPLEMENTED` cell depends on it.
 
-### 3.3 Open decision — rule-id keying (R1)
+### 3.3 Settled — rule-id keying (R1). Measured M1 (card t228), ast-grep 0.40.5
 
-The shipped convention repeats one id across languages: `sec-hardcoded-credential` appears four
-times with four `language:` values. Whether `sg test` keys snapshots by id alone or by
-id+language is not yet measured.
+**Measured verdict: `sg test` keys each test case by the case `id` ALONE, globally — one snapshot
+file `<id>-snapshot.yml` shared by every case carrying that id, independent of testDir or file
+name. Two further engine facts shape the same record:**
 
-- **id+language** → convention unchanged, no rename.
-- **id alone** → per-language suffixed ids (`sec-hardcoded-credential-rust`), which renames four
-  existing rules.
+1. A case whose id does not equal an existing rule configuration is silently dropped ("Configuration not found!", exit still 0).
+2. Inline `sg test` snippets route through a single language selection: python-branch rules never observe their inline snippets even when their pattern matches byte-for-byte on real files (`sg scan --rule <doc> py_deny_os_system.py` fires; the identical snippet inside a case is `[Missing]`).
 
-This is settled at M1, before any new rule is authored, because the second branch is a breaking
-rename. Discovering it at M5 would mean renaming rules that already have committed snapshots and
-matrix references. The measurement and the decision are recorded in this section at M1.
+**Commands and observed outputs (scratch ruleset `dup.yml`: two docs, one id, languages go + python):**
+
+```
+$ sg test --config sgconfig.yml            # two case files, both id: dup-cred
+[Wrong] No dup-cred baseline found.
+...
+FAIL dup-cred .W / FAIL dup-cred .W ; "test failed. 0 passed; 2 failed;"
+
+$ sg test -U --config sgconfig.yml && cat tests/__snapshots__/dup-cred-snapshot.yml
+...single file written...
+id: dup-cred
+snapshots:
+  ? |
+    y := "sk-proj-demo"
+  : ...       # only ONE variant's entry survives; second write clobbers the first
+
+$ sg test --config sgconfig.yml            # re-run after update
+[Missing] Expect rule dup-cred ... "No dup-cred baseline found."  → 1 passed; 1 failed; rc=4
+
+# distinct ids rename probe on one file:
+Configuration not found! dup-cred-py   → runner drops the case silently, rc=0
+```
+
+**Decision: the shipped convention stays UNCHANGED — no renames.** Two reasons:
+
+- The collision lives entirely in the CASE-id layer, which this SPEC authors. One union case per
+  DISTINCT rule id covers every language branch that the snippet pipeline can reach; three shared
+  families (`sec-hardcoded-credential`, `sec-command-injection-shell/exec`) collapse 26 rules into
+  21 unique ids, so the harness reports **21 passing tests for 26 rules** — the derivable number
+  under this keying, recorded here for AC-A16-001 rather than declared.
+- The plan's first branch (per-language suffixed rule ids) was measured to be FORBIDDEN, not
+  merely unnecessary: `internal/hook/security/prefilter_test.go` (PRESERVE-listed,
+  `TestPrefilterKindPlusRegexAlternation`) pins the literal `sec-hardcoded-credential` document in
+  all four covered languages; renaming any variant turns that guard red.
+
+**Rule defects surfaced while making cases pass (all four were inert under 0.40.5; each fixed with
+a structural pattern of the vetted kind+regex family, metadata untouched):
+`sec-template-injection-html`, `go-defer-in-loop`, `sec-hardcoded-api-key`,
+`sec-hardcoded-jwt-signing-key`.** Their harness coverage previously did not exist, which is why
+no earlier gate ever saw these go silent.
 
 ---
 

@@ -1,0 +1,9 @@
+# Test pair for the []byte-to-string allocation rule. The valid sample converts
+# from a buffer rather than a literal byte slice.
+id: go-bytes-buffer-string-conversion
+valid:
+  - |
+    rendered := string(buf.Bytes())
+invalid:
+  - |
+    label := string([]byte{'a', 'b', 'c'})

@@ -1,0 +1,9 @@
+# Test pair for the hardcoded JWT signing key rule. The valid sample signs with
+# a key loaded at runtime.
+id: sec-hardcoded-jwt-signing-key
+valid:
+  - |
+    encoded, err := claims.SignedString(signingKey)
+invalid:
+  - |
+    encoded, err := claims.SignedString([]byte("hunter2-secret"))
