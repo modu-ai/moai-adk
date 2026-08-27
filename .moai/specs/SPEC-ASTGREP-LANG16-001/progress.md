@@ -295,6 +295,74 @@ cannot make it green again by landing in the wrong bucket.
 
 Reverted; `cmp` reports the restored document byte-identical; post-revert re-run `ok`.
 
+### M2 follow-up fix — the class-3 positive control was vacuous
+
+Found in lead review of the M2 commit (`49375fd77`), reproduced here before fixing rather than
+taken on report. `TestCheckerEvidencedExemptionsPass` was a **vacuous positive control**:
+
+```go
+citeCell := base[0]                 // MatrixCell is a VALUE type -- this copies
+citeCell.State = StateExempt        // ... so the write never reaches base
+```
+
+`fullMatrix()` returns `[]MatrixCell`, so the two writes landed on copies. The matrix handed to
+`CheckCoverageMatrix` stayed all-IMPLEMENTED, **no EXEMPT cell reached class 3 at all**, and the
+assertion `len(unevidenced) == 0` held regardless of what the acceptance branch did.
+
+Reproduced independently — mutant G disables `cite:`/`probe:` acceptance entirely, so every EXEMPT
+cell must be flagged:
+
+```
+# coverage_matrix.go:162
+-  if !strings.Contains(lower, "cite:") && !strings.Contains(lower, "probe:") {
++  if !strings.Contains(lower, "ZZZNEVERMATCH") {
+
+$ go test -count=1 -run 'TestCheckerEvidencedExemptionsPass|TestCheckerUnevidencedExemptionDetected' -v
+--- PASS: TestCheckerUnevidencedExemptionDetected (0.00s)
+--- PASS: TestCheckerEvidencedExemptionsPass (0.00s)      <- passes with acceptance DISABLED
+ok      0.155s
+```
+
+The detection direction of class 3 was guarded; the **acceptance** direction was not. The line-162
+logic is correct as written, but nothing would have caught its regression — so plan §B M2 item 4
+and the M2 stop condition were not in fact proven by the committed suite.
+
+RED — the corrected control (pointer writes) under the same mutant G:
+
+```
+--- FAIL: TestCheckerEvidencedExemptionsPass
+    coverage_matrix_test.go:203: cite:/probe:-evidenced exemptions reported unevidenced (2):
+    [{Class:unevidenced exemption Key:F1/go Detail:EXEMPT evidence carries neither cite: nor
+      probe: ("cite: cpp stdlib reference, process-spawn section")}
+     {Class:unevidenced exemption Key:F1/javascript Detail:EXEMPT evidence carries neither
+      cite: nor probe: ("probe: sg run -p '...' -l elixir --stdin -> no match")}]
+```
+
+Mutant reverted (`cmp` byte-identical; `git diff --stat` on the file empty; zero `ZZZNEVERMATCH`
+occurrences remain), then GREEN:
+
+```
+--- PASS: TestCheckerUnevidencedExemptionDetected (0.00s)
+--- PASS: TestCheckerEvidencedExemptionsPass (0.00s)
+ok      github.com/modu-ai/moai-adk/internal/astgrep    0.348s
+```
+
+Two guards added beyond the pointer fix, so the control cannot silently go vacuous again: it counts
+the EXEMPT cells actually reaching the checker and fails if the writes stop landing, and it asserts
+the two cells trip neither class 2 nor class 4 — a wrong-bucket pass is as bad as a vacuous one.
+
+Same-defect sweep across both test files (the fix is worth nothing if a sibling carries it):
+
+| pattern searched | result |
+|---|---|
+| element copied to a local, then field-written | 3 hits, none defective — one slice reslice (`cells[:0]`, filtering) and two map-value copies read only in assertions |
+| range loop-variable copy, then field-written | none |
+| surviving mutations | all write through `cells[i]` or `&base[i]` |
+
+`go vet` carries no `-unusedwrite` flag (the analyzer is not in the default vet set), so the sweep
+above is the grep, not a claim that a tool cleared it. Gates after the fix: `go test -count=1
+./internal/astgrep/...` rc=0; `go vet` rc=0; `gofmt -l` empty; `golangci-lint` 0 issues.
+
 ### M2 AC matrix
 
 | AC | claim | evidence | status |

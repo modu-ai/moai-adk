@@ -168,18 +168,46 @@ func TestCheckerUnevidencedExemptionDetected(t *testing.T) {
 }
 
 // Class 3 positive controls — citation OR probe each satisfy the obligation.
+//
+// The cells are mutated THROUGH the slice, not through a copy. MatrixCell is a
+// value type, so `c := base[0]; c.State = StateExempt` writes to a copy the
+// checker never sees: the matrix stays all-IMPLEMENTED, no EXEMPT cell reaches
+// class 3, and the assertion holds no matter what the acceptance branch does.
+// That shape passed with cite:/probe: acceptance entirely disabled, which is a
+// control asserting nothing. Take pointers so the writes land.
 func TestCheckerEvidencedExemptionsPass(t *testing.T) {
 	base := fullMatrix(t)
-	citeCell := base[0]
+	citeCell := &base[0]
 	citeCell.State, citeCell.RuleID, citeCell.Rationale, citeCell.Evidence =
 		StateExempt, "", "no shell-string sink", "cite: cpp stdlib reference, process-spawn section"
-	probeCell := base[1]
+	probeCell := &base[1]
 	probeCell.State, probeCell.RuleID, probeCell.Rationale, probeCell.Evidence =
 		StateExempt, "", "Logger macros take no user format string",
 		`probe: sg run -p '...' -l elixir --stdin -> no match`
+
+	// Guard the guard: if the writes ever stop landing, fail here rather than
+	// passing vacuously downstream.
+	var exempt int
+	for _, c := range base {
+		if c.State == StateExempt {
+			exempt++
+		}
+	}
+	if exempt != 2 {
+		t.Fatalf("fixture error: %d EXEMPT cells reached the checker, want 2 — "+
+			"the positive control asserts nothing without them", exempt)
+	}
+
 	got := CheckCoverageMatrix(base, stubRuleset(base))
 	if n := len(findingsOfClass(t, got, ClassUnevidencedExemption)); n != 0 {
 		t.Fatalf("cite:/probe:-evidenced exemptions reported unevidenced (%d): %+v", n, got)
+	}
+	// Both cells carry a rationale and no rule id, so neither may trip class 2
+	// or class 4; a wrong-bucket pass is as bad as a vacuous one.
+	for _, cls := range []FailureClass{ClassUnresolvedCell, ClassDanglingRuleID} {
+		if f := findingsOfClass(t, got, cls); len(f) > 0 {
+			t.Fatalf("evidenced exemptions tripped %s: %+v", cls, f)
+		}
 	}
 }
 
