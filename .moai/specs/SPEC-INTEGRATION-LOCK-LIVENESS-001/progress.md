@@ -352,4 +352,120 @@ remains the first layer.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-27
+sync_commit_sha: pending-backfill   # backfilled in the immediately following commit
+sync_status: implemented            # NOT completed — see sync_audit.debt below
+sync_audit:
+  verdict: PASS-WITH-DEBT
+  overall_score: 0.924              # harmonic mean; Tier M PASS threshold 0.80
+  dimensions:
+    functionality: 0.94
+    security: 0.88
+    craft: 0.95
+    consistency: 0.93
+  report: .moai/reports/t298/sync-audit.md
+  independence: partial             # independent OF THE IMPLEMENTATION (authored by
+                                    # manager-develop), NOT a fresh-context sync-auditor
+                                    # spawn — manager-docs carries no Agent tool
+  debt: >
+    The mandated fresh-context sync-auditor verdict does not exist. That is the sole
+    reason this close reads PASS-WITH-DEBT rather than clean PASS, and it is why the
+    status transition stops at `implemented`: it is a gap in the audit process, not a
+    defect found in the work.
+ac_pass_count: 13                   # AC-INL-001..013, counted against acceptance.md
+ac_fail_count: 0
+ac_not_observed: 0                  # up from §E.3's 2 — AC-INL-005 and AC-INL-006 were
+                                    # closed individually in sync-phase (below)
+changelog_entry_position: "## [Unreleased] → ### Fixed, first entry"
+frontmatter_status_transitions:
+  spec_md: in-progress → implemented
+  plan_md: n/a          # carries no YAML frontmatter — verified, not assumed
+  acceptance_md: n/a    # same
+  progress_md: n/a      # same
+  note: >
+    Only spec.md carries a frontmatter block in this SPEC, so it is the sole
+    machine-read status surface and the only file transitioned. Measured:
+    `grep -nE '^(status|updated|version):'` across all four returned matches in
+    spec.md only. The prose preambles in plan.md and progress.md that read
+    "Status: draft" are historical statements about plan-phase authorship and
+    are body content this agent does not own — left unedited deliberately.
+  updated_field: already 2026-08-27 in spec.md; no refresh needed
+b12_self_test_a: >
+  Pre-emission grep. `grep -c 'SPEC-INTEGRATION-LOCK-LIVENESS-001\|t298' CHANGELOG.md`
+  → 0 before the write. No duplicate entry from a parallel session.
+b12_self_test_b: >
+  AC count match. `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l`
+  → 13, non-zero and plausible; the CHANGELOG entry states the same 13.
+b12_self_test_c: >
+  File-path verification. Every path this entry names was confirmed to exist by `ls`
+  before the commit.
+sync_phase_go_diff: none            # this close touches markdown only; measured, not assumed
+```
+
+**Sync-phase verification observed in this run** (all in worktree `.claude/worktrees/t298`,
+HEAD `f8b7264ba`):
+
+```
+$ go vet ./internal/kanban/ ./internal/session/ ./internal/cli/ ./internal/hook/
+(exit 0, no output)
+
+$ go test ./internal/kanban/ -run 'TestReleaseIntegrationLock_HolderAndForeign' -v -count=1
+--- PASS: TestReleaseIntegrationLock_HolderAndForeign (0.00s)        # AC-INL-005
+
+$ go test ./internal/cli/ -run 'TestIntegrationAcquire_ForceReportsWhatItDisplaced' -v -count=1
+--- PASS: TestIntegrationAcquire_ForceReportsWhatItDisplaced (0.06s) # AC-INL-006
+```
+
+The two ACs §E.3 recorded as `ac_not_observed` were preserved invariants, green inside the
+package suites but never asserted individually. They are now observed by name, which is why
+this section reports 13/13 rather than 11 + 2. No full suite was run: per the repository's
+verification-load discipline the full-suite verdict belongs to CI on the pushed branch.
+
+### Real-environment confirmation — evidence that did not exist at run-phase time
+
+The fix sat undeployed for most of 2026-08-27, and during that window three lanes
+independently observed the defect it fixes. Recorded here as **observation by other
+sessions**, not as a self-report:
+
+- **Before deployment**: lanes lane-16, lane-17 and lane-18 each observed `reclaimable` with
+  an acquire-CLI pid recorded as the holder. One real eviction occurred without `--force`.
+- **lane-18's isolated A/B**, `CLAUDE_PROJECT_DIR` pinned so the live lock was never touched:
+  the old binary reproduced all four stages of the failure chain; the HEAD build reported
+  `held` and refused a second acquire with exit 1.
+- **After deployment, first live use** (this card's own integration window): `held`, pid
+  33289 — the session-owning process. The lead had replaced the binary at `343399d2f`.
+- **The discriminating detail**: the holder UUID was recorded correctly in **both** cases;
+  only the pid differed. That is what confirms the diagnosis — the defect was never in
+  identity *interpretation*; the recorded pid itself was a value unrelated to the session.
+
+This confirms the fix behaves correctly in the live environment. It is **not** a proof of
+atomicity and must not be read as one.
+
+Making the deployment lag itself visible — a fixed binary sitting unshipped while lanes keep
+hitting the old defect — is **out of scope for this card and re-scoped to card t326**
+(lane-18). Nothing was done about it here.
+
+### §G residual verdict — still open
+
+Re-measured on this tree at HEAD `f8b7264ba`:
+
+```
+$ grep -n "Flock\|flock\|LockFile" internal/kanban/integration_lock.go internal/cli/integration.go
+internal/kanban/integration_lock.go:15    # "flock" in prose, package header comment
+internal/kanban/integration_lock.go:19    # "flock" in prose, package header comment
+internal/kanban/integration_lock.go:38    # IntegrationLockFileName doc comment
+internal/kanban/integration_lock.go:39    # const IntegrationLockFileName
+internal/kanban/integration_lock.go:128   # its use in the path join
+```
+
+Five lines, **no call site**; `internal/cli/integration.go` contributes **zero** matches. The
+§G residual — the acquire path as an unserialized read-modify-write — is therefore **still
+open**. No later commit closed it, and this card did not widen to cover it. (§G's own citation
+of line 106 is correct: it is attributed by name to `c67a6ea64`, and the M2 comment additions
+moved the path join to 128 afterwards.)
+
+Operational consequence, unchanged and restated so no reader infers otherwise: a recorded hold
+is a **coordination signal, not a permission boundary**, so **the lead announcement remains
+the first serialization layer**. A follow-up card for the serialization work is recommended to
+the lead; card issuance is not this agent's power and none was filed.
