@@ -24,3 +24,10 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+- Input parameters: tier=M · scope ≈6-8 files (internal/cli/graph_stamp.go+tests, internal/mx/provenance.go+tests, .github/workflows/graph-freshness.yml, command Long text, docs-site cli-reference ×4 locales) · domains=3 (Go CLI / CI YAML / docs markdown) · language mix Go+YAML+MD · concurrency benefit LOW (coding-heavy, inter-milestone dependency M1→M2→M3 sequential in plan.md) · Agent Teams prereqs not requested.
+- Mode evaluation: direct — not selected (multi-file semantic change) · fanout — not selected (Anthropic coding-task parallelism caveat: implementation is coding-heavy with milestone ordering; parallel spawns would race shared files) · sweep — not selected (<30 files, non-mechanical multi-rule edits, Workflow overhead unwarranted) · **serial — selected**.
+- Decision: `serial` (one `manager-develop` sub-agent, milestones in plan.md order, TDD cycles per milestone).
+- Justification: coding-heavy work plus strict M1→M2→M3 dependency ordering makes sequential single-agent execution both the safe default and the cache-economical one; a single §E evidence stream per milestone lands contiguously in §E.2. Recorded after Implementation Kickoff Approval (operator-approved 2026-08-27, relayed by lead session) and pre-spawn sync checks (divergence absorbed through merge `e514e695f`; same-SPEC active sessions `[]`).
