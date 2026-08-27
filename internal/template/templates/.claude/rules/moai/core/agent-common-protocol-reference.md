@@ -18,8 +18,8 @@ batch for a typical run-phase completion. The orchestrator SHOULD invoke all 7
 in parallel within a single response turn:
 
 ```bash
-# 1. Full test suite (Go)
-go test ./... > /tmp/moai-verify/1-go-test.log 2>&1; echo "exit=$?"; tail -50 /tmp/moai-verify/1-go-test.log
+# 1. Change-scoped tests (Go)
+go test ./internal/<pkg>/... > /tmp/moai-verify/1-go-test.log 2>&1; echo "exit=$?"; tail -50 /tmp/moai-verify/1-go-test.log
 
 # 2. Coverage report (per-package)
 go test -coverprofile=cover.out ./internal/<pkg>/... > /tmp/moai-verify/2-cover.log 2>&1; echo "exit=$?"; tail -50 /tmp/moai-verify/2-cover.log
