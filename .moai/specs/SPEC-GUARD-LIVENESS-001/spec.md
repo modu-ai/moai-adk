@@ -1,7 +1,7 @@
 ---
 id: SPEC-GUARD-LIVENESS-001
 title: "Guard firing-liveness: declare when each CI guard should have fired, and make a guard that silently stopped visible (card t333)"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-08-28
 updated: 2026-08-28
@@ -24,10 +24,24 @@ era: V3R6
 | 0.1.0 | 2026-08-28 | manager-spec | Initial plan-phase authoring (card t333). Scope narrowed to the event-history axis; the binary-lag state comparison stays with card t326. |
 | 0.2.0 | 2026-08-28 | manager-spec | Amended after the evidence artifact was extended. §A.3 split into Claim A / Claim B (the two observations are not of equal strength). §A.4 rewritten to the complete third instance — the gap closed because one observer handed the other the question, and nothing would have told the lead its picture was wrong. the always-red subsection (renumbered to §A.8 in v0.3.0) extended with the always-red obligation. §D restructured into two independent binding constraints (self-observation, unprompted discoverability) plus what the design does not close. REQ-GDL-013 strengthened to require zero operator input; REQ-GDL-016 added (change-leading advisory). AC-GDL-013 and AC-GDL-014 added. Counts 15→16 REQ, 12→14 AC. |
 | 0.3.0 | 2026-08-28 | manager-spec | Three inputs from the t241 lane's prediction-ledger verdict (all six rows `false`). §A.7 added — instance 6, a `-run` selector matching two tests that did not exist, recurring inside the landed rule's own `paths:` two days after it landed; the always-red subsection renumbered §A.7→§A.8 and its inbound references updated. §B.1 added — a policy rule landing is not a policy rule working. §C.1.1 added — the one-number-two-events trap with the lane's measured occurred/survived table; REQ-GDL-003 strengthened to forbid it. REQ-GDL-001 extended to require the watched set be held as data; §D.4 added — subject-agnostic shape without a subject-agnostic deliverable. §E gains two entries: C5 (policy-rule firing) as a named follow-up candidate with its grounding, and C2 (unpinned invariant assertions) explicitly declined on the lane's exemption-discriminant warning. AC-GDL-015 added. Counts 16 REQ (unchanged, at budget), 14→15 AC. |
+| 0.4.0 | 2026-08-28 | manager-spec | Precision correction to the card's shape. §A.0 added — absent execution is not suppressed failure; an exit code answers a question about the selected set, and nothing compares the selected set against the intended one. §A.7's instance restated: the value is that the absence never reached the exit code, and the green was true about what was selected rather than false. §B's boundary against the landed rule's `(c)` rewritten on the same distinction — reachability presupposes something to reach. REQ-GDL-004 restated as the set comparison it always was; §C.2 gains a preamble naming the three requirements that force it. plan.md gains B-0 and two anti-patterns (outcome-only evaluator, hidden-failure framing). No requirement or criterion added — counts unchanged at 16 REQ / 15 AC. |
 
 ## §A Context and Problem
 
 A guard fired when it was built, then something changed — deployment, trigger, branch model — and it silently stopped, and nothing announced the stop. Because it is an **absence** rather than a failure, it reads as green.
+
+### A.0 Absent execution is not suppressed failure
+
+Two shapes are easy to blur, and this card is entirely the second. Getting them the wrong way round misdescribes every instance below.
+
+- **Suppressed failure** — something ran, went red, and the red did not reach anyone. This is the landed rule's §1.2 **(c)**, and it is *not* this card's subject (§B).
+- **Absent execution** — nothing ran, so nothing could go red, and the absence is reported as success by a mechanism that is answering a narrower question than the reader thinks it is.
+
+The distinction is not pedantic, because it rules out the obvious framing. It is wrong to say the check *should have failed and did not*: there was no failure to suppress. The accurate sentence is **"nothing failed, and there was nothing there to fail."**
+
+What every instance below shares is a mechanism correctly answering a question about a set that had silently become the wrong set. An exit code of zero means *everything selected passed*; it does not mean *everything that should have passed, passed*. Nothing in the mechanism compares the selected set against the intended one. **Green is accurate and uninformative at the same time.**
+
+That is also the sharpest form of design question (b). A liveness check that can only read the outcomes of things that executed inherits exactly this blindness. It must ask not "did this run pass?" but **"was this in the set that ran, and should it have been?"** — which is why REQ-GDL-004 and REQ-GDL-007 are load-bearing rather than housekeeping.
 
 ### A.1 The axis this card owns, and the axis it does not
 
@@ -95,9 +109,11 @@ All three are `skipped` — the workflow's own `if: github.event.pull_request.me
 
 The cleanest of the set, and the one that fixes the mechanism's generality.
 
-`.claude/rules/moai/development/verification-completeness.md` landed at `7f5b6a947` — author and committer date both `Tue Aug 25 13:05:04 2026 +0900`, verified in this plan phase with `git show -s --format='%H%n%ad%n%cd'`. Two days later, on 2026-08-27, its own named defect recurred in `.moai/specs/**/progress.md` — **squarely inside the rule's `paths:` scope**. A `-run` selector named three tests; only one existed under that name. **Two never ran.** The run reported `ok ... 0.249s`, and nobody saw it until sync close. Source: the t241 lane's prediction-ledger verdict, whose six rows all recorded `false`.
+`.claude/rules/moai/development/verification-completeness.md` landed at `7f5b6a947` — author and committer date both `Tue Aug 25 13:05:04 2026 +0900`, verified in this plan phase with `git show -s --format='%H%n%ad%n%cd'`. Two days later, on 2026-08-27, its own named defect recurred in `.moai/specs/**/progress.md` — **squarely inside the rule's `paths:` scope**. A `-run` selector named three tests; only one existed under that name. The run printed `ok ... 0.249s`, and nobody saw it until sync close. Source: the t241 lane's prediction-ledger verdict, whose six rows all recorded `false`.
 
-**Nothing failed.** Two checks did not exist, and the exit code said nothing about that. Absence read as green.
+The value of the instance is not that two checks were missing. It is that **their absence never reached the exit code.**
+
+That green was **not false**. It was **true about what was selected** — `rc 0` means everything selected passed. It does not mean everything that should have passed, passed. The exit code answers a question about the selected set, and the selected set had itself become wrong; nothing in the mechanism compares the selected set against the intended one. **Nothing failed, and there was nothing there to fail** (§A.0).
 
 This instance is on a third axis — not deployment (§A.2), not trigger (§A.3), but a **selector matching nothing** — and that is what makes it load-bearing for scope. The defect is not a property of GitHub Actions. **Any check whose non-execution is indistinguishable from its success has it.** That generality is the justification for this SPEC's mechanism being about *firing*, and about a watched set held as data, rather than about workflow files (§D.4).
 
@@ -123,7 +139,9 @@ $ git show origin/develop:.claude/rules/moai/development/verification-completene
 
 That `(a)` speaks about **authoring time** — a check scheduled at a structurally always-green moment. Nothing in the rule speaks about a check that was correctly scheduled and later stopped. **The rule watches a check being born; this card watches whether it stays alive.**
 
-Boundary against the rule's `(c)`, stated explicitly so the two clauses are not read as overlapping: the rule's `(c)` covers a failure that **happened and nobody saw** — a red at debug level, absent from traces. This card covers a failure that **never happens at all**. Absence looks green, so `(c)` cannot reach it.
+Boundary against the rule's `(c)`, stated explicitly so the two clauses are not read as overlapping. The rule's `(c)` covers a **suppressed failure** — something ran, went red, and the red did not reach anyone: a red at debug level, absent from traces. This card covers an **absent execution** — nothing ran, so no red exists to be reached (§A.0).
+
+`(c)` is a reachability clause, and reachability presupposes something to reach. When the execution is absent there is no signal to route, no exit code to surface, and no log level to raise: the mechanism reports success accurately, about a set that had silently become the wrong one. That is why `(c)` cannot reach this defect, and why the extension is genuinely additive rather than a restatement of an existing clause at a different volume.
 
 The t241 lane's out-of-scope statement ("규칙 파일 본문 개정 없음") confirms the rule body will not be edited by its own work, so the extension point is stable. This card's rule work is **additive only** (REQ-GDL-015).
 
@@ -144,7 +162,7 @@ Budget: Tier M ≤ 16 requirements. **Count: 16.**
 - **REQ-GDL-001** — The system shall carry a guard-liveness manifest declaring one expectation entry per workflow file under `.github/workflows/`. The manifest shall live outside `.moai/config/`, because `moai update` deletes that root wholesale (`CleanMoaiManagedPaths`) and a manifest lost on update is a guard-liveness record that itself silently stops. **The manifest shall hold its watched set as data — a list of watched subjects each carrying its own kind, locator, and expected cadence — and shall not be shaped so that only a GitHub workflow can occupy an entry** (§D.4, §E C5).
 - **REQ-GDL-002** — Each manifest entry shall carry the workflow file path, the triggering event or events under which firing is expected, an expectation window, and exactly one measured quantity.
 - **REQ-GDL-003** — The measured-quantity vocabulary shall be exactly `fired-at-all`, `fired-with-effect`, and `verdict-rendered`, where `fired-with-effect` excludes runs whose conclusion is `skipped` or `cancelled`, and `verdict-rendered` additionally requires a terminal `success` or `failure`. **Each entry shall name exactly one, and no entry shall be written whose single number is asked to measure both whether a guard fired and whether a firing caught anything.** These are different axes: a guard that runs faithfully and catches nothing scores full marks on the first (§C.1.1).
-- **REQ-GDL-004** — Where a workflow file has no manifest entry, the evaluator shall classify it `UNDECLARED` and report it. It shall not be skipped, ignored, or counted toward a clean result.
+- **REQ-GDL-004** — Where a workflow file has no manifest entry, the evaluator shall classify it `UNDECLARED` and report it. It shall not be skipped, ignored, or counted toward a clean result. This requirement is the set comparison §A.0 names: it asks whether a subject **was in the set that was examined, and should have been**, rather than reading outcomes only for subjects the manifest already knew about. An evaluator without it reproduces the defect at its own layer — accurate about what it looked at, silent about what it never looked at.
 - **REQ-GDL-005** — Where a guard is legitimately expected to be quiet outside a release cycle, its entry shall declare that condition explicitly rather than being omitted, so "correctly quiet" is a recorded expectation rather than an absence a reader must infer.
 
 #### C.1.1 The one-number-two-events trap, measured
@@ -161,6 +179,8 @@ The trap REQ-GDL-003 forbids is not hypothetical here. The t241 lane's predictio
 The same split sits directly in this SPEC's path. An expectation of the form "this guard should fire every N days" carries both **firing count** and **whether a firing caught anything**, and measuring only the first awards full marks to a guard that runs faithfully and catches nothing — the §A.5 shape one layer along. The vocabulary in REQ-GDL-003 exists to make an author choose, and that lane is writing "survived-to-adoption count" into its own next ledger, so the two cards stay consistent.
 
 ### C.2 The evaluator — what verifies the expectations (question (b))
+
+The requirements below are shaped by §A.0. An evaluator that reads only the outcomes of runs that happened is answering the same narrower question every instance in §A was undone by. Three of them exist to force the set comparison instead: REQ-GDL-004 asks whether a subject was in the examined set at all, REQ-GDL-007 refuses to read an empty result as an answer, and REQ-GDL-010 refuses a verdict drawn from an empty sweep.
 
 - **REQ-GDL-006** — When the evaluator runs, it shall query run history **per workflow file**, and shall not derive any guard's last-fired time from a repository-global run listing (§A.4, §A.6).
 - **REQ-GDL-007** — Where a per-workflow query returns no runs within the retained window, the evaluator shall classify the guard `UNKNOWN` and shall not report it as "never fired". `gh run list` reports the runs the forge retained; a run aged out of retention is indistinguishable from a run that never happened.

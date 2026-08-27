@@ -75,6 +75,7 @@ Budget: Tier M ≤ 16 acceptance criteria. **Count: 15.**
 - **RED-now:** no evaluator and no manifest exist on `d34a789a4`, so an undeclared file is the state of all 18 files and nothing reports any of them. Red for absence.
 - **Green path:** M2. Passing output names the file and returns a non-all-clear result.
 - **Mutant:** a criterion asserting only "appears in the output" is satisfied by an evaluator that lists it under a heading and still returns all-clear. The non-all-clear clause is what makes the classification consequential.
+- **Why this is the card's own defect turned on the evaluator:** every instance in `spec.md` §A is a mechanism reporting accurately about a set that had silently become the wrong set (§A.0). An evaluator that reads outcomes only for entries the manifest already lists is that same mechanism — correct about what it examined, silent about what it never examined. This criterion is what forces it to compare the set it examined against the set on disk, and it is the reason a green from this evaluator carries information rather than merely being true.
 
 ### AC-GDL-009 — the evaluator declares its own coverage and refuses an empty sweep
 **Given** the evaluator; **When** it emits a result, and separately when it is run against a manifest whose every query fails; **Then** BOTH hold — (a) every result carries a measurement timestamp and all four coverage counts (declared, queried, unknown, undeclared), and (b) the all-queries-failed run does not report an all-clear and its `queried` count reads `0`.
