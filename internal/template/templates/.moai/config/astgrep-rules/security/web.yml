@@ -15,6 +15,9 @@ rule:
 metadata:
   owasp: A03:2021 - Injection
   cwe: CWE-79
+  anchor: >-
+    cite: Go standard library, html/template - type HTML string, documented as
+    content that is emitted without escaping.
 ---
 id: sec-log-injection-unsanitized
 language: go
@@ -27,6 +30,9 @@ rule:
 metadata:
   owasp: A09:2021 - Security Logging and Monitoring Failures
   cwe: CWE-117
+  anchor: >-
+    cite: Go standard library, log - func Printf(format string, v ...any), the
+    formatted-write call this pattern matches.
 ---
 id: sec-csrf-no-token-check
 language: go
@@ -39,3 +45,6 @@ rule:
 metadata:
   owasp: A01:2021 - Broken Access Control
   cwe: CWE-352
+  anchor: >-
+    cite: Go standard library, net/http - type HandlerFunc func(ResponseWriter,
+    *Request), the handler signature this pattern matches.

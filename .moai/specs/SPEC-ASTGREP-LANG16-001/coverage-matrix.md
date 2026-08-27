@@ -101,7 +101,7 @@ ast-grep **0.40.5**, re-probed at M2 rather than copied forward.
 | F5 | cpp | PENDING | - | - |
 | F5 | scala | PENDING | - | - |
 | F5 | swift | PENDING | - | - |
-| F6 | go | IMPLEMENTED | sec-csrf-no-token-check | internal/astgrep/testdata/rule-tests/ (sg-test case pair) |
+| F6 | go | IMPLEMENTED | sec-csrf-no-token-check | rule-tests case pair; anchor cite: net/http HandlerFunc. **precision limitation** — the pattern is the shape of every Go HTTP handler, CSRF-protected or not, so no benign same-shape negative exists and the promotion clause cannot be satisfied; stays `warning` |
 | F6 | javascript | PENDING | - | - |
 | F6 | python | PENDING | - | - |
 | F6 | typescript | PENDING | - | - |
@@ -115,7 +115,7 @@ ast-grep **0.40.5**, re-probed at M2 rather than copied forward.
 | F6 | cpp | PENDING | - | - |
 | F6 | scala | PENDING | - | - |
 | F6 | swift | PENDING | - | - |
-| F7 | go | IMPLEMENTED | sec-log-injection-unsanitized | internal/astgrep/testdata/rule-tests/ (sg-test case pair) |
+| F7 | go | IMPLEMENTED | sec-log-injection-unsanitized | rule-tests case pair; anchor cite: log.Printf. **precision limitation** — the pattern matches every `log.Printf` carrying arguments, sanitized or not, so a benign same-shape negative still matches; stays `warning` |
 | F7 | javascript | PENDING | - | - |
 | F7 | python | PENDING | - | - |
 | F7 | typescript | PENDING | - | - |
@@ -175,3 +175,29 @@ For more information, try '--help'.
 the exemption-evidence standard are inherited whole by
 SPEC-ASTGREP-BREADTH-001 (its plan.md §C treats this as non-renegotiable
 contract).
+
+## Severity and anchors (M3)
+
+Severity follows the two-clause promotion predicate applied to each rule's own
+test cases, never to family membership: a rule carries `error` only where it is
+in a security family **and** owns a `valid` case containing a benign construct
+of the same shape as its `invalid` case, on which it reports zero findings.
+Measured across the 26 shipped rules: **12 `error` / 14 `warning`**, of which
+two security rules sit at `warning` — the shape matchers annotated in F6 and F7
+above. The direction is not preset; a rule leaves `error` when it lacks the
+evidence and enters `error` when it acquires it.
+
+Every security rule carries `metadata.cwe` **and** a `metadata.anchor` entry
+holding the same evidence class an EXEMPT cell owes for an absence claim: a
+`cite:` naming the language / stdlib / framework reference that documents its
+matched head symbol, or a `probe:` recording the invocation and its observed
+output. The CWE label alone is reviewer-checkable — a pattern matching an
+invented symbol can carry a real CWE id and match nothing that exists — so the
+anchor is the mechanical half. Both fields are asserted by
+`internal/astgrep/rule_severity_test.go` against the shipped tree, so a new
+rule cannot be added without them.
+
+Anchor form by rule: `probe:` where the matched head symbol is a vendor token
+prefix rather than a documented API symbol (the hardcoded-credential family and
+the API-key rule); `cite:` for the remainder, whose head symbols are documented
+standard-library or framework calls.

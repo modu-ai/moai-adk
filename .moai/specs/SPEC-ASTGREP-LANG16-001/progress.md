@@ -325,13 +325,197 @@ re-run at M2 (M1 owns it; M2 touches no rule YAML). Residual risk: the 98 PENDIN
 nothing, by design — the contract they carry is enforced only when the successor fills them, and a
 PENDING cell that is never filled fails no test here.
 
+---
+
+## §E.2c Run-phase Evidence — M3 (severity reclassification and the CWE anchor)
+
+M3 (card t228), tree `.claude/worktrees/t228`, branch `WT-astgrep-16-langs`, base HEAD
+`49375fd77` (the M2 commit). Re-measured in this run.
+
+### Item 1 — the two-clause predicate applied to all 26
+
+The predicate was applied rule by rule, to each rule's OWN cases, never to family membership.
+Measured outcome — **12 `error` / 14 `warning`**; the count did not move, and that is a result, not
+an assumption: every promotion was re-derived rather than inherited.
+
+| rule (security family) | clause 1 | clause 2 — benign same-shape `valid` | severity |
+|---|---|---|---|
+| `sec-hardcoded-credential` (go/python/javascript/typescript) | yes | **strengthened this milestone** — the sole `valid` case was `token := os.Getenv(...)`, a *different* shape (call, not literal). Added `bearer := "not-a-secret-placeholder"`: an assignment whose RHS IS a string literal, benign, zero findings | `error` |
+| `sec-weak-hash-md5` | yes | `sha256.New()` vs `md5.New()` — same shape (hash constructor call) | `error` |
+| `sec-command-injection-shell` (go) | yes | `exec.Command("git", "status", ...)` vs `exec.Command("sh","-c",...)` — same call, benign argument list | `error` |
+| `sec-command-injection-shell` (python) | yes | shares the id's case document; benign argument-list form | `error` |
+| `sec-command-injection-exec` (javascript/typescript) | yes | `child_process.execFile(...)` vs `child_process.exec(...)` — same module, non-shell sibling | `error` |
+| `sec-hardcoded-api-key` | yes | `const usageNote = "..."` vs `const openAiKey = "sk-live-alpha"` — same `const_spec` shape, benign literal | `error` |
+| `sec-hardcoded-jwt-signing-key` | yes | `claims.SignedString(signingKey)` vs `claims.SignedString([]byte("..."))` — same call, non-literal key | `error` |
+| `sec-template-injection-html` | yes | `template.HTMLEscapeString(...)` vs `template.HTML(...)` — adjacent symbol, and the anchored regex `^template\.HTML\(` requires the literal `(`, so the escaper does not match | `error` |
+| `sec-csrf-no-token-check` | yes | **FAILS** — the pattern is the shape of every Go HTTP handler; a CSRF-protected handler is the benign same-shape construct and still matches. No satisfiable negative exists | `warning` |
+| `sec-log-injection-unsanitized` | yes | **FAILS** — evaluated against the predicate rather than assumed. The pattern is `log.Printf($FORMAT, $$$ARGS)`, which matches every `log.Printf` carrying arguments; a sanitized call is the benign same-shape construct and still matches. The shipped `valid` case (`slog.Info(...)`) is a *different* function, so it discharges nothing | `warning` |
+
+The twelve `go-*` rules fail clause 1 (not a security family) and all sit at `warning` — asserted
+by `TestErrorSeverityFollowsTheTwoClausePredicate`, which fails any `error` outside a security
+family.
+
+### Item 2 — the two known cases
+
+`sec-csrf-no-token-check` stays `warning` with its precision limitation recorded as the F6/go
+matrix annotation. `sec-log-injection-unsanitized` was evaluated, not assumed: it fails clause 2
+for the same structural reason, so it also stays `warning` and gains an F7/go annotation. Both are
+now mechanically pinned by `TestShapeMatchersStayWarningWithRecordedLimitation`, which asserts BOTH
+the severity and the presence of the matrix annotation.
+
+### Item 3 — `metadata.cwe`
+
+Measured: **14 of 14 security rules already carried `cwe`; 0 lacking.** Each `invalid` case was
+read against its declared weakness class and instantiates it in idiomatic code: CWE-798 by a
+literal credential/API-key assignment, CWE-327 by the MD5 constructor, CWE-78 by a shell-routed
+execution call, CWE-321 by a literal signing key, CWE-79 by the unescaped-HTML conversion, CWE-117
+by a raw external value in a log format, CWE-352 by a state-changing handler with no token check.
+
+### Item 4 — the citation-or-probe anchor (RED at 0 of 14)
+
+RED, verbatim (14 identical failures, one shown):
+
+```
+--- FAIL: TestSecurityRulesCarryCweAndAnchor
+    sec-hardcoded-credential (go): metadata.anchor is ""; want a [cite: probe:] prefixed
+    entry naming the reference documenting its matched head symbol, or a recorded probe
+    ... (14 rules, one line each — the plan's "measured today at 0 of 14", re-measured here)
+```
+
+Every anchor was **measured before it was written**. Head-symbol probes actually run (rc=0 each):
+
+```
+$ printf 'h := md5.New()\n'                   | sg run -p 'md5.New()' -l go --stdin
+STDIN:1:h := md5.New()
+$ printf 'exec.Command("sh", "-c", userCmd)\n' | sg run -p 'exec.Command("sh", "-c", $CMD)' -l go --stdin
+STDIN:1:exec.Command("sh", "-c", userCmd)
+$ printf 'os.system(cmd)\n'                    | sg run -p 'os.system($CMD)' -l python --stdin
+STDIN:1:os.system(cmd)
+$ printf 'subprocess.run(cmd, shell=True)\n'   | sg run -p 'subprocess.run($CMD, shell=True)' -l python --stdin
+STDIN:1:subprocess.run(cmd, shell=True)
+$ printf 'child_process.exec(script);\n'       | sg run -p 'child_process.exec($CMD)' -l javascript --stdin
+STDIN:1:child_process.exec(script);
+   (typescript: identical output)
+$ printf 'log.Printf("user %s", name)\n'      | sg run -p 'log.Printf($FORMAT, $$$ARGS)' -l go --stdin
+STDIN:1:log.Printf("user %s", name)
+```
+
+The five `kind:`+regex rules cannot be probed through `sg run -p`, so they were probed through
+their own rule documents against real-shaped files:
+
+```
+$ sg scan --config sgconfig.yml cred.go
+error[sec-hardcoded-credential]: A credential appears to be hardcoded in source. ...   (x2)
+error[sec-hardcoded-api-key]:   API key hardcoded in source. ...
+$ sg scan --config sgconfig.yml jwt.go
+error[sec-hardcoded-jwt-signing-key]: JWT signing key hardcoded as a literal byte slice. ...
+$ sg scan --config sgconfig.yml tpl.go
+error[sec-template-injection-html]: Marking user input as trusted HTML via html/template.HTML() enables XSS.
+$ sg scan --config sgconfig.yml csrf.go
+warning[sec-csrf-no-token-check]: POST handler without CSRF token verification. ...
+$ sg scan ... cred.py / cred.js / cred.ts
+error[sec-hardcoded-credential]: ...   (each language variant fires independently)
+```
+
+Anchors then written into `metadata.anchor`, alongside `metadata.cwe` as the plan requires:
+`probe:` where the matched head symbol is a **vendor token prefix** rather than a documented API
+symbol (the four credential variants and the API-key rule — five probes, each carrying its
+invocation and observed output); `cite:` for the remaining nine, whose head symbols are documented
+standard-library or framework calls (`crypto/md5.New`, `os/exec.Command`, `os.system` /
+`subprocess shell=True`, `child_process.exec` ×2, `golang-jwt Token.SignedString`,
+`html/template.HTML`, `log.Printf`, `net/http.HandlerFunc`).
+
+### Item 5 — the handed record corrected
+
+`sec-template-injection-html` **measures `error`** in the shipped tree; the handed measurement
+record listed it as `warning`. Pinned by `TestTemplateInjectionRuleMeasuresError` so the stale
+value cannot be re-derived from memory.
+
+### Mutant guards — all three new assertions proven live
+
+```
+# Mutant D: metadata.anchor stripped from sec-csrf-no-token-check
+--- FAIL: TestSecurityRulesCarryCweAndAnchor
+    sec-csrf-no-token-check (go): metadata.anchor is ""; want a [cite: probe:] prefixed entry ...
+
+# Mutant E: sec-csrf-no-token-check promoted to error
+--- FAIL: TestShapeMatchersStayWarningWithRecordedLimitation
+    sec-csrf-no-token-check: severity "error"; a shape matcher must stay warning (REQ-A16-014)
+--- FAIL: TestSeveritySplitAcrossAllTwentySix
+    severity split = 13 error / 13 warning, want 12 / 14
+    1 security rules sit at warning, want 2 (both shape matchers)
+
+# Mutant F: F6/go precision-limitation annotation stripped from the matrix
+--- FAIL: TestShapeMatchersStayWarningWithRecordedLimitation
+    sec-csrf-no-token-check cell (F6/go) evidence = "rule-tests case pair"; REQ-A16-015
+    requires a recorded precision-limitation annotation ...
+```
+
+All reverted; `cmp` reports both mutated files byte-identical to their pre-mutant copies;
+post-revert package run `ok`.
+
+### M3 AC matrix
+
+| AC | claim | evidence | status |
+|---|---|---|---|
+| AC-A16-015 | every `error` is backed by a benign-shape negative case | `TestErrorSeverityFollowsTheTwoClausePredicate` PASS over all 26; `sg test` 21/21 proves the zero-findings half; credential family strengthened to a genuine same-shape negative | PASS |
+| AC-A16-016 | every security rule carries `metadata.cwe` AND a cite/probe anchor for its matched head symbol | `TestSecurityRulesCarryCweAndAnchor` PASS 14/14, RED→GREEN from 0/14; every anchor measured before written; mutant D live | PASS |
+| AC-A16-017 | shape matcher stays `warning`, demotion visible in the matrix | `TestShapeMatchersStayWarningWithRecordedLimitation` PASS; mutants E and F live | PASS |
+| AC-A16-018 | severity across all 26 follows from evidence, not assertion | per-rule predicate table above + `TestSeveritySplitAcrossAllTwentySix` PASS (12/14, 2 security at warning) | PASS |
+| AC-A16-019 | neutrality (partial — close-phase criterion) | ruleset + rule-test trees scanned for SPEC-ID / date / SHA / macOS path / CLAUDE.local: the only hit is a pre-existing redacted Slack-token placeholder (`xoxb-000000000000-...`) already present at HEAD, matched by the hex-shaped SHA pattern, not a commit SHA. `make build` leaves `internal/template/catalog.yaml` **unchanged** | PARTIAL — close-phase owns the remaining clauses |
+
+### M3 gates
+
+```
+$ sg test --config .../sgconfig.yml                             rc=0   21 passed; 0 failed
+$ go test -count=1 ./internal/astgrep/...                       rc=0   ok
+$ go test -count=1 ./internal/template/...                      rc=0   ok
+$ go vet ./internal/astgrep/...                                 rc=0
+$ GOOS=windows GOARCH=amd64 go vet ./internal/astgrep/...       rc=0
+$ gofmt -l internal/astgrep/                                    (empty)
+$ golangci-lint run --timeout=3m ./internal/astgrep/...         rc=0   0 issues.
+$ make build                                                    rc=0; catalog.yaml diff EMPTY
+$ grep -rn 'AskUserQuestion|mcp__askuser' <the four created files>   rc=1 (no hits)
+```
+
+new_warnings_or_lints_introduced: 0.
+
+### Pre-existing failure surfaced, NOT introduced here — for the lead
+
+`go test ./internal/hook/...` fails on three subtests:
+
+```
+--- FAIL: TestScanWriteContentNoConfigNoTempFile/control:_resolvable_config_creates_exactly_one_temp_file
+    pre_tool_scan_config_test.go:127: expected 1 ScanFile call for the control, got 0
+--- FAIL: TestScanWriteContentUncoveredLanguage/control_sample.go
+    pre_tool_scan_config_test.go:239: expected 1 ScanFile call for the .go control, got 0
+--- FAIL: TestScanWriteContentCoveredLanguageFollowsConfig/shipped_ruleset_scans_go
+    pre_tool_scan_config_test.go:253: expected 1 ScanFile call, got 0
+```
+
+Attributed by bisection rather than assumed: the five edited ruleset files were restored to their
+HEAD (`49375fd77`) blobs, `make build` re-run, and the same three subtests re-run — **they fail
+identically with M3's template edits absent**. The edits were then restored and `make build` re-run
+(catalog diff empty, 14 anchors present, `sg test` 21/21). The failure is therefore pre-existing on
+this branch and outside M3's scope; M3 changes only `metadata` fields, which do not affect matching.
+Not repaired here — repairing it would be scope expansion into a subsystem this SPEC declares
+PRESERVE. The corpus pinning suite (`internal/hook/security`, `TestAstgrepCorpus*`) is green.
+
+Gaps (M3): the full repository suite was NOT run (standing local-load prohibition; CI owns the
+cross-package verdict). Clause-2 "same shape" is a structural judgement recorded per rule in the
+table above, not a mechanical measurement — the mechanical half is the zero-findings assertion
+`sg test` already makes. The nine `cite:` anchors name references rather than executing them, which
+is exactly the evidence class the requirement permits; the five `probe:` anchors carry executed
+output. Residual risk: an anchor can go stale if an upstream library renames the symbol it cites,
+and nothing re-checks a citation the way a probe re-checks itself.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
 run_complete_at: 2026-08-27
 run_commit_sha: "(this commit)"   # placeholder backfill per D3 exemption; M-final backfills
-run_status: M1 COMPLETE (M2/M3 pending)
-milestones_done: [M1]
+run_status: M1-M3 COMPLETE (contract half closed; close-phase pending)
+milestones_done: [M1, M2, M3]
 m1_stop_condition: harness green (21/21) from repo-side root; both mutants observed failing
   ([Missing] rc=4, [Noisy] rc=4); id-keying answer recorded (design.md §3.3); corpus pinning
   test present and green incl. RED probes on all three instruments
@@ -339,6 +523,20 @@ new_warnings_or_lints_introduced: 0
 cross_platform_build.windows_vet: PASS
 cross_platform_build.local_build: PASS
 total_run_phase_files_m1: 48 (c1) + 1 (pinning test)
+total_run_phase_files_m2: 4 (coverage-matrix.md, coverage_matrix.go, coverage_matrix_test.go,
+  progress.md)
+total_run_phase_files_m3: 9 (5 security rule YAML, 1 rule-test case doc, rule_severity.go,
+  rule_severity_test.go, coverage-matrix.md; progress.md)
+m2_stop_condition: checker fails on all four synthetic defects with four distinct class
+  names -- proven through the DOCUMENT path, not only against hand-built structs -- and
+  passes on the seeded 14; mutant on the real matrix observed failing and reverted
+m3_stop_condition: all 26 severities re-derived from each rule's own cases (12 error /
+  14 warning); 14/14 security rules carry metadata.cwe AND a cite:/probe: anchor measured
+  before it was written (RED at 0/14); both warning-classified security rules carry a
+  recorded precision-limitation annotation; three mutants observed failing and reverted
+preexisting_failure_not_introduced: internal/hook pre_tool_scan_config_test.go 3 subtests
+  ("expected 1 ScanFile call, got 0") -- attributed by bisection against HEAD blobs, fails
+  identically with M3 template edits absent; outside scope, not repaired
 m1_to_mN_commit_strategy: separate conventional commits per milestone; catalog diff asserted
   empty on every template-touching commit (AC-A16-019 posture preserved pre-close)
 l44_pre_commit_fetch: n/a (worktree-only branch; origin copy intentionally stale per B9)
