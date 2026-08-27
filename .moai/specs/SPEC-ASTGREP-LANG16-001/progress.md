@@ -179,10 +179,18 @@ No configuration error; `testConfigs` present; `ruleDirs` unchanged ([go, securi
 
 ### AC-A16-008 standing diff
 
+REBASE RE-PIN (the §E baseline rule applied): measured literally against plan base `294b4b6ab`
+the standing diff shows 40 files / +6776 — all of it UPSTREAM work that entered through the
+2026-08-27 rebase onto origin/develop (t227/t217 lineage), none of it ours. Re-pinned to the true
+fork point:
+
 ```
-$ git diff --stat 294b4b6ab -- internal/hook/ ':(exclude)internal/hook/astgrep_corpus_pin_test.go'
-(no output)                     # every pre-existing hook file byte-unchanged from pinned base
+$ git merge-base HEAD origin/develop        -> d29b8942e
+$ git diff --stat d29b8942e -- internal/hook/ ':(exclude)internal/hook/astgrep_corpus_pin_test.go'
+(no output)                     # vs fork point: only the carve-out file exists; every
+                                # pre-existing hook file byte-unchanged by THIS SPEC
 ```
+
 Corpus fixture digests and the extracted wantDeny/covered-language pins live as constants inside
 `internal/hook/astgrep_corpus_pin_test.go` (blob-level equality against `294b4b6ab` cross-checked
 at authoring time; the source-file prose delta from t217's upstream assertion-(ii) is deliberately

@@ -21,7 +21,9 @@ import (
 //
 //   TestAstgrepCorpusFixturesPinned — the twelve fixtures under
 //     internal/hook/security/testdata/scan-corpus/ are byte-identical to
-//     their blobs at base 294b4b6ab, so an edited fixture cannot turn a red
+//     their blobs at base 294b4b6ab (the plan-measured tree; digests verified
+//     equal on this branch, whose fork point is develop d29b8942e), so an
+//     edited fixture cannot turn a red
 //     differential row green invisibly.
 //
 //   TestAstgrepCorpusTablePinned — the recorded wantDeny values in
