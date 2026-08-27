@@ -24,7 +24,7 @@ See `spec.md` §A. Five empirical instances ground the requirements; two of them
 | Check | Command | Result |
 |---|---|---|
 | Manifest absent | `ls .moai/guards` | `No such file or directory` (rc=1) |
-| No `moai guard liveness` verb | `grep -n '"guard"' internal/cli/*.go` | only `internal/cli/constitution.go:49` (`moai constitution guard`) — an unrelated verb |
+| No `moai guard liveness` verb | `grep -n '"guard"' internal/cli/*.go \| grep -v _test.go` | `internal/cli/constitution.go:49` only (`moai constitution guard`) — an unrelated verb. Unnarrowed, the glob also returns `constitution_guard_test.go:93`, which belongs to the same unrelated verb |
 | Rule carries no continued-firing clause | `grep -nE "last.fired\|continued.firing\|stopped firing\|liveness\|stale guard" .claude/rules/moai/development/verification-completeness.md` | rc=1, no match |
 | Workflow census | `ls -1 .github/workflows/` | 18 files |
 | Recent-run census | `gh run list --limit 100 --json workflowName ... \| group_by` | 11 distinct workflow names |
@@ -33,7 +33,7 @@ See `spec.md` §A. Five empirical instances ground the requirements; two of them
 
 - Read-only against the forge (REQ-GDL-012). No issue creation, no dispatch, no commit.
 - No scheduled workflow is added by this SPEC (REQ-GDL-011).
-- No existing text in `verification-completeness.md` is modified (REQ-GDL-015).
+- No existing text in `verification-completeness.md` is modified (REQ-GDL-016).
 - No file under `internal/template/templates/` is touched (B-5).
 
 ## §E Self-verification
@@ -73,14 +73,14 @@ The second-least-reversible decision after M1, because the surfacing contract is
 
 - Invoke the evaluator from an already-attended surface; add no scheduled workflow (REQ-GDL-011).
 - Render `STALE` and `UNDECLARED` entries as a non-blocking advisory that arrives **with no operator-supplied guard identifier or query** (REQ-GDL-013). A documented `moai guard liveness` verb is not an acceptable sole answer — it is still a question someone must know to ask.
-- Lead with entries whose classification changed since the previous rendered result; carry unchanged `STALE`/`UNDECLARED` entries as a compact standing count (REQ-GDL-016). This requires persisting the previous result to diff against.
+- Lead with entries whose classification changed since the previous rendered result; carry unchanged `STALE`/`UNDECLARED` entries as a compact standing count (REQ-GDL-015). This requires persisting the previous result to diff against.
 - The advisory carries the age of the measurement it reports (REQ-GDL-014).
 
 Flips: AC-GDL-010, AC-GDL-011, AC-GDL-013, AC-GDL-014.
 
 ### M4 — doctrine (most mechanical)
 
-- Add the continued-firing clause to `verification-completeness.md` as new text only. Verify by diff that no existing line changed (REQ-GDL-015).
+- Add the continued-firing clause to `verification-completeness.md` as new text only. Verify by diff that no existing line changed (REQ-GDL-016).
 
 Flips: AC-GDL-012.
 
@@ -91,7 +91,7 @@ Flips: AC-GDL-012.
 - **Omitting a release-only guard from the manifest because it is "supposed to be quiet".** Omission is what makes silence unreadable; declare the condition instead (REQ-GDL-005).
 - **Counting `skipped` runs as firings.** §A.5 is a live instance of exactly this misread.
 - **Shipping a CLI verb as the whole answer to (c).** A verb the operator must know to run reproduces §A.4 exactly: the lead session could run the right query the instant it was handed the workflow's name, and could not know a query was owed. Rejected in `spec.md` §D.2 and excluded by AC-GDL-013's negative clause.
-- **Reprinting the full standing list every session.** It is how a new advisory inherits the filter an always-red neighbour has already trained (`spec.md` §A.8). REQ-GDL-016 leads with changes instead.
+- **Reprinting the full standing list every session.** It is how a new advisory inherits the filter an always-red neighbour has already trained (`spec.md` §A.8). REQ-GDL-015 leads with changes instead.
 - **Building the evaluator to read outcomes only.** "For each manifest entry, fetch its runs and judge them" is the shape that inherits the defect: it is accurate about the entries it holds and silent about the workflow files it does not. The set comparison against disk (REQ-GDL-004) is not an add-on to that loop — it is the part that makes the loop's green informative.
 - **Describing any instance as a failure that was hidden.** B-0. The wording matters because it determines what gets built: a hidden-failure framing leads to surfacing and routing work, and there is no signal here to surface.
 - **Writing an expectation whose one number measures two events.** "Fires every N days" scores full marks for a guard that runs faithfully and catches nothing. B-3 carries the measured table.
