@@ -1,7 +1,7 @@
 ---
 id: SPEC-BINARY-LAG-VISIBILITY-001
 title: 배포 지연 가시성 — 설치된 바이너리가 저장소 HEAD보다 뒤처졌음을 요청 없이 알린다
-version: 0.2.0
+version: 0.3.0
 status: draft
 created: 2026-08-27
 updated: 2026-08-27
@@ -20,6 +20,7 @@ tier: M
 |---|---|---|---|
 | 0.1.0 | 2026-08-27 | manager-spec | 최초 작성. 카드 t326 운영자 재범위(통합 락 결함 → 배포 지연 가시성) 반영. 사전 조사에서 **카드 지시문의 전제 1건이 반증**되어 범위를 재구성했다(§1.4). 요구 7 / 수락 7. Tier M |
 | 0.2.0 | 2026-08-27 | manager-spec | clarification 2건 종결(리드·운영자 결정). (a) 발화 표면 = `additionalContext` 확정 — 아울러 리드가 **v0.1.0의 선례 인용을 정정**했다: `computeDeferredAdvisory`의 권고는 `HookOutput.Data`(`internal/hook/types.go:394`, `json:"-"`)로 들어가 **도달하지 않으므로**, 그 형태를 복사하면 결손이 재생산된다. 선례를 「일정」과 「발화」로 분리하고 REQ-BLV-008 + AC-BLV-008을 신설(§1.7.1). (b) `VERSION` 무변경 + 별도 `BUILD_ID` 확정 — REQ-BLV-004 재작성, 감수 비용을 §7.5 잔여 위험으로 명시, 제목 줄 축은 별도 카드로 이관. 인용 행번호 정정 3건(`doctor.go` 495 / 199 / 140). 요구 7→**8** / 수락 7→**8** |
+| 0.3.0 | 2026-08-27 | manager-spec | plan-audit iter-1(`.moai/reports/t326/plan-audit-iter1.md`, PASS-WITH-DEBT 0.80) 결함 **8건 전수 수리** — 리드가 blocking 3건을 넘어 optional 5건까지 확대 지시. **D1**(§4 행 3이 `computeDeferredAdvisory` 권고 맵을 지시 → 자기 자신의 안티패턴 처방) 재작성 + `AdditionalContext` 구속 조항 추가, 문서 전수 스윕에서 `plan.md` §B 3항 동종 잔재 1건 추가 발견·수리. **D2** C-2를 요구 수준으로 승격(REQ/AC-BLV-009 신설). **D3** C-2 근거를 한쪽 방향으로 재진술(t317 항목명은 run-phase 미확정). **D4** `version.go` 9→8. **D5** C-1 근거를 t317 적극적 범위로 교체. **D6** AC-BLV-006 시간 제한 소유자 명시 + 판정이 실제로 RED로 만드는 뮤턴트로 교체. **D7** AC-BLV-008을 키 지정 unmarshal로 변경 + `systemMessage` 뮤턴트 추가. **D8** DoD를 `--check "Binary Freshness"`로 범위 축소. D9는 정보성으로 유지. 요구 8→**9** / 수락 8→**9** |
 
 ---
 
@@ -118,9 +119,7 @@ $ git describe --tags              → v3.1.2-494-g343399d2f
 
 **도달이 실측된 표면은 `AdditionalContext`다.** `session_start.go:305`가 세션 귀속 문자열을 `hookSpecificOutput.AdditionalContext`에 쓰고, 그 문자열은 **이 세션의 시작 컨텍스트에 그대로 도착했다**(`moai session attribution: source_session_id=ae79f362-…`). `:343-346`과 `:369`가 비어 있으면 대입하고 아니면 `\n\n`로 덧붙이는 확립된 패턴을 보여준다.
 
-따라서 `computeDeferredAdvisory`는 **일정(scheduling)의 선례**로만 채택한다 — 지연 실행, 최선 노력, 경계된 조인, 다음 세션에서의 멱등 재유도. **발화(emission)의 선례로는 채택하지 않는다.** REQ-BLV-008이 이 구분을 요구 수준으로 고정한다.
-
-두 번째 축은 단계와 무관하게 상시 필요하다: 지연을 의심한 사람이 가장 먼저 손을 뻗는 표면(`moai version`)이 오늘은 **적극적으로 오도한다**(§1.5). 그 표면은 고쳐져야 한다.
+따라서 `computeDeferredAdvisory`는 **일정(scheduling)의 선례**로만 채택한다 — 지연 실행, 최선 노력, 경계된 조인, 다음 세션에서의 멱등 재유도. **발화(emission)의 선례로는 채택하지 않는다.** REQ-BLV-008이 이 구분을 요구 수준으로 고정하고, §4 행 3의 구속 조항이 파일 수준 지시로 못박는다.
 
 ---
 
@@ -148,6 +147,8 @@ $ git describe --tags              → v3.1.2-494-g343399d2f
 
 **REQ-BLV-008** — The advisory shall be emitted on a surface that reaches the observer. The advisory shall be written into `hookSpecificOutput.additionalContext`, and shall not be written **only** into a field the hook contract excludes from serialization.
 
+**REQ-BLV-009** — The lag verdict shall be surfaced through the existing `Binary Freshness` doctor item. The implementation shall not register an additional doctor check name.
+
 ### 3.1 요구 ↔ 수락 추적
 
 | 요구 | 수락 |
@@ -160,6 +161,7 @@ $ git describe --tags              → v3.1.2-494-g343399d2f
 | REQ-BLV-006 | AC-BLV-006 |
 | REQ-BLV-007 | AC-BLV-007 |
 | REQ-BLV-008 | AC-BLV-008 |
+| REQ-BLV-009 | AC-BLV-009 |
 
 수락 기준 본문은 `acceptance.md`(Tier M 분리)에 있다.
 
@@ -171,10 +173,12 @@ $ git describe --tags              → v3.1.2-494-g343399d2f
 |---|---|---|
 | 1 | `internal/cli/doctor.go` | 기존 `checkBinaryFreshness`를 공유 seam 호출로 환원 |
 | 2 | `internal/cli/`의 신규 파일 1건 (예: `binary_lag.go`) | 단일 비교 구현 + 적용가능성 술어 |
-| 3 | `internal/hook/session_start.go` | `computeDeferredAdvisory`에 권고 1건 추가 |
+| 3 | `internal/hook/session_start.go` | **`AdditionalContext` append 지점**(`:343-346`·`:369` 패턴)에 지연 권고를 덧붙인다 |
 | 4 | `Makefile` | `BUILD_ID` 도입 + ldflags 주입 (`VERSION ?=` 행은 불변) |
-| 5 | `internal/cli/binary_lag_test.go` (신규) | AC-BLV-002·003·004·007 |
-| 6 | `internal/hook/` 테스트 1건 | AC-BLV-001·005·006 |
+| 5 | `internal/cli/binary_lag_test.go` (신규) | AC-BLV-002·003·004·007·009 |
+| 6 | `internal/hook/` 테스트 1건 | AC-BLV-001·005·006·008 |
+
+[HARD] **행 3에 관한 구속 조항.** 변경 대상은 `computeDeferredAdvisory`의 권고 맵이 **아니다.** 그 맵은 `session_start.go:264`·`:574`에서 `data`로 병합되고 `:276`에서 marshal된 뒤 `:301`에서 `HookOutput{Data: jsonData}`가 되는데, `Data`는 `json:"-"`다(`internal/hook/types.go:394`) — 즉 그 경로에 넣은 권고는 직렬화되지 않는다. 지연 스캔 seam을 재사용하더라도 **빌려오는 것은 일정(scheduling)뿐이며, 판정 결과는 권고 맵에 들어가서는 안 되고 `AdditionalContext`로 나와야 한다.** 이 조항을 어긴 구현이 곧 AC-BLV-008의 대표 뮤턴트이자 `plan.md` §G 첫 번째 안티패턴이다.
 
 6건 ≥ 5 → **Tier S의 `< 5 files` 기준 위반 → Tier M**. (t317이 동일 사유로 S→M 승격된 선례를 따른다.)
 
@@ -202,9 +206,13 @@ t317 SPEC(`SPEC-AGENT-EMIT-LINEAGE-001` REQ-AEL-004, v0.5.0, plan-audit iter-3 P
 | Link 2 | 커밋된 산출물 ↔ 바이너리에 임베드된 바이트 | 카드 t317 / `SPEC-AGENT-EMIT-LINEAGE-001` REQ-AEL-004 | **진행 중** |
 | Link 1 | 저장소 HEAD ↔ 설치된 바이너리 | **이 SPEC** | 판정은 존재(§1.4), 도달이 결손 |
 
-**제약 C-1** — 이 SPEC의 구현은 `agentemit` 임베드 축을 검사하지 않는다. 그 축은 t317 소관이며, t317의 §Out of Scope가 `agentemit` 밖 임베드 검증을 명시적으로 제외해 이 자리를 비워 두었다.
+**제약 C-1** — 이 SPEC의 구현은 `agentemit` 임베드 축을 검사하지 않는다. 그 축은 t317 소관이다. 비중첩의 근거는 t317의 **적극적 범위**다: REQ-AEL-004가 검사 대상을 `.codex/agents/moai/*.toml` 바이트로 명시하며, 이 SPEC은 그 대상을 건드리지 않는다.
 
-**제약 C-2** — 이 SPEC의 doctor 항목은 **신규 항목이 아니라 기존 `Binary Freshness` 항목의 재배선**이다. 새 검사 이름을 추가하지 않는다. t317은 별도 이름의 항목을 추가하므로 이름 충돌이 발생하지 않는다.
+> 종전 근거 정정(v0.3.0, 감사 D5): 이전 판은 t317의 §Out of Scope가 「`agentemit` 밖 임베드 검증」을 제외한다고 적었으나, 실측한 그 절(t317 `spec.md:136-137`)은 **「같은 동어반복이 다른 임베드 테스트에도 있는지 조사하지 않는다」**는 더 좁은 진술이다. 결론(비중첩)은 유지되지만 근거를 적극적 범위로 교체했다.
+
+**제약 C-2** (요구 수준: REQ-BLV-009, 판정: AC-BLV-009) — 이 SPEC의 doctor 항목은 **신규 항목이 아니라 기존 `Binary Freshness` 항목의 재배선**이다. 새 검사 이름을 추가하지 않는다.
+
+> 근거는 **한쪽 방향으로만** 진술한다(v0.3.0, 감사 D3). 이 SPEC이 이름을 등록하지 않으므로, 이름 충돌은 오직 t317 자신의 선택에서만 발생할 수 있다. 종전 판은 「t317은 별도 이름의 항목을 추가하므로 충돌하지 않는다」고 적었으나, t317 `plan.md:68`은 **항목명 문자열이 run-phase 확정**이라고 명시한다 — 아직 정해지지 않은 사실을 근거로 쓸 수 없다. 또한 같은 줄이 t317 역시 **같은 `moaiChecks` 슬라이스**에 등록할 것임을 밝히므로, AC-BLV-009는 슬라이스의 절대 항목 수가 아니라 **이 SPEC의 변경 전후 이름 집합**을 대조한다.
 
 **제약 C-3** — 이 SPEC은 실행 중 프로세스 축을 건드리지 않는다(Link 3 종결).
 
@@ -251,4 +259,4 @@ t317 SPEC(`SPEC-AGENT-EMIT-LINEAGE-001` REQ-AEL-004, v0.5.0, plan-audit iter-3 P
 
 ## §8 미해결 관측 (요구사항 아님)
 
-- `pkg/version/version.go:9`의 컴파일 기본값이 `Version = "v3.1.3"`인데 `Makefile`의 태그 파생 기본값은 `v3.1.2`다. 즉 ldflags 없는 맨손 `go build`가 태그 파생 빌드보다 **높은** 문자열을 찍는다. §1.5의 역전과 같은 계열이지만 별개 경로이므로, 관측으로만 기록하고 REQ-BLV-004의 판정 범위에 넣을지는 plan-phase의 판단에 맡긴다.
+- `pkg/version/version.go:8`의 컴파일 기본값이 `Version = "v3.1.3"`인데 `Makefile`의 태그 파생 기본값은 `v3.1.2`다. 즉 ldflags 없는 맨손 `go build`가 태그 파생 빌드보다 **높은** 문자열을 찍는다. §1.5의 역전과 같은 계열이지만 별개 경로이므로, 관측으로만 기록하고 REQ-BLV-004의 판정 범위에 넣을지는 plan-phase의 판단에 맡긴다.

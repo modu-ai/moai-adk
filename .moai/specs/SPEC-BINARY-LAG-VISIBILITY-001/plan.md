@@ -1,7 +1,7 @@
 ---
 id: SPEC-BINARY-LAG-VISIBILITY-001
 title: "배포 지연 가시성 — 구현 계획"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-08-27
 updated: 2026-08-27
@@ -30,7 +30,7 @@ tier: M
 
 1. `checkBinaryFreshness`는 현재 `os.Getwd()` 기준으로 동작하며 `verbose` 외 주입 지점이 없다 — 테스트에서 상태를 흔들 수 없다. M2의 seam 추출이 이를 푼다.
 2. `doctorExitStatus`는 Fail 1건으로 exit 1을 만든다(`internal/cli/doctor.go:140`). 적용 불가를 Fail로 만들면 배포판 전체가 깨진다 — `acceptance.md` AC-BLV-003의 대표 뮤턴트가 바로 이것이다.
-3. `computeDeferredAdvisory`(`internal/hook/session_start.go:593`)는 errgroup 태스크가 **자기 로컬 맵에만** 쓰는 계약이다. 새 권고도 같은 계약을 지켜야 하며, 그렇지 않으면 동시 맵 쓰기가 된다.
+3. `computeDeferredAdvisory`(`internal/hook/session_start.go:593`)는 errgroup 태스크가 **자기 로컬 맵에만** 쓰는 계약이다. 지연 스캔 seam을 재사용한다면 그 동시성 계약은 지켜야 한다 — 다만 **판정 결과를 그 권고 맵에 남겨서는 안 된다.** 맵은 `:264`·`:574` → `:276` marshal → `:301` `HookOutput{Data:}`로 흘러가고 `Data`는 `json:"-"`이므로 직렬화되지 않는다. 빌려오는 것은 일정뿐이고, 결과는 `AdditionalContext`로 나와야 한다(`spec.md` §4 행 3 구속 조항).
 4. `Makefile:6`의 `VERSION ?=`는 사용자 지정 가능(`?=`)하다. 릴리스 절차가 `VERSION=`을 명시로 넘기는 경로는 **보존**되어야 한다.
 
 ---
@@ -52,7 +52,7 @@ go test ./internal/cli/... ./internal/hook/... 2>&1 | tail -5   # 착수 전 GRE
 
 - **로컬 전체 스위트 금지.** 영향 패키지만 돌리고 전 패키지 판정은 CI에 맡긴다(CLAUDE.local.md §4).
 - **t317 워크트리에 쓰기 금지.** 다른 레인의 살아 있는 트리이며, 읽기 전용 스냅샷 인용만 허용된다.
-- **신규 doctor 검사 이름 금지**(spec.md 제약 C-2).
+- **신규 doctor 검사 이름 금지** — REQ-BLV-009 / AC-BLV-009 (spec.md 제약 C-2).
 - 템플릿 아래(`internal/template/templates/`)를 건드리는 변경이 생기면 Template-First 규율과 `make build`가 따라붙는다. 현재 계획상 해당 없음이나, M1의 결정에 따라 훅 래퍼가 필요해지면 `.sh`/`.sh.tmpl` 쌍을 함께 고쳐야 한다(CLAUDE.local.md §2.3).
 
 ---
@@ -83,7 +83,8 @@ go test ./internal/cli/... ./internal/hook/... 2>&1 | tail -5   # 착수 전 GRE
 - 기존 관용 다섯 갈래(커밋 메타데이터 없음 / cwd 불가 / git 아님 / HEAD 일치 / 조상 아님)를 **보존**한다. 축소는 배포판 회귀다.
 - 기준점 해석은 t317 D9 선례를 따라 `.moai/` marker 상향 탐색을 채택한다 — doctor 배선이 `os.Getwd()` 원값을 넘기므로, 하위 디렉터리 실행에서 적용 가능한 트리가 적용 불가로 뒤집히지 않게 한다.
 - 권고는 `AdditionalContext`에 **append-if-non-empty** 패턴으로 붙인다(`session_start.go:343-346`·`:369`의 확립된 형태 — 비어 있으면 대입, 아니면 `\n\n` 덧붙임). 기존 귀속 문자열·GLM 리마인더·팩토리 공지를 덮어쓰지 않는다.
-- AC: AC-BLV-001, AC-BLV-002, AC-BLV-003, AC-BLV-005, AC-BLV-008
+- [HARD] doctor 항목은 **재배선만** 한다 — `moaiChecks`(`internal/cli/doctor.go:196-205`)에 새 이름을 등록하지 않는다(REQ-BLV-009). t317도 같은 슬라이스에 등록할 예정이므로, 판정은 절대 개수가 아니라 **이 변경의 전후 이름 집합** 대조다.
+- AC: AC-BLV-001, AC-BLV-002, AC-BLV-003, AC-BLV-005, AC-BLV-008, AC-BLV-009
 
 ### M3 — 빌드 신원 단조성 수리 [사용자 표면 · `VERSION` 불변]
 
@@ -98,14 +99,21 @@ go test ./internal/cli/... ./internal/hook/... 2>&1 | tail -5   # 착수 전 GRE
 
 ### M4 — 뮤턴트 대조 + 회귀 확인 [기계적]
 
-`acceptance.md`의 대표 뮤턴트 8종(AC별 1~2종)을 순차로 심고 RED를 관측한 뒤 원복한다. 이어서:
+`acceptance.md`의 대표 뮤턴트 전부(AC별 1~2종)를 순차로 심고 RED를 관측한 뒤 원복한다. AC-BLV-009는 처음부터 GREEN인 회귀 가드이므로 **뮤턴트 대조가 유일한 유효성 근거**다 — 반드시 심어 볼 것. 이어서:
 
 ```bash
 go test ./internal/cli/... ./internal/hook/...
 go vet ./internal/cli/... ./internal/hook/...
 moai doctor            # 이 저장소에서 exit 0 유지
-(cd "$(mktemp -d)" && moai doctor; echo "rc=$?")   # 비-git 트리에서 exit 0 유지
 ```
+
+비-git 트리 확인은 **이 SPEC의 검사로 범위를 좁혀** 실행한다(감사 D8 — 전체 실행은 통제 밖 검사에 의존):
+
+```bash
+moai doctor --check "Binary Freshness"   # 비-git 디렉터리에서, exit 0 유지
+```
+
+> 감사 Gaps 기록: 감사관은 워크트리 격리 가드 때문에 트리 밖 디렉터리에서 실물 `moai doctor`를 돌리지 못했다. 위 좁힌 형태의 실측이 그 미관측 항목을 닫는다.
 
 - AC: AC-BLV-006 + 완료 정의 전 항목
 
@@ -113,6 +121,8 @@ moai doctor            # 이 저장소에서 exit 0 유지
 
 ## §G 안티패턴
 
+- **`moaiChecks`에 새 검사 이름 추가.** REQ-BLV-009 위반이며, t317과 같은 슬라이스를 두 레인이 동시에 건드리는 상황에서 경계를 무너뜨린다. AC-BLV-009의 대표 뮤턴트다.
+- **권고를 `systemMessage`에 쓰기.** 직렬화되므로 문서 전체 검색은 통과하지만 운영자 결정 (a)를 위반한다. AC-BLV-008 뮤턴트 2.
 - **권고를 `HookOutput.Data`에 넣기.** `json:"-"`라 직렬화되지 않는다 — 올바른 판정을 아무도 렌더하지 않는 필드에 넣는 것이며, 이 SPEC이 닫으려는 결손의 재생산이다. `computeDeferredAdvisory`의 기존 권고 키들이 정확히 이 상태다(`spec.md` §1.7.1).
 - **구조체 필드를 직접 읽어 「도달」을 주장하기.** `json:"-"` 필드도 통과시키므로 AC-BLV-008의 요점을 놓친다. 판정은 직렬화된 JSON 바이트에서 한다.
 - **`VERSION` 파생을 고쳐 단조성을 얻기.** 운영자 결정 b 위반이며 `RELEASE_BINARY`·`version.json`·`internal/update/local.go`로 파급된다. 단조 신원은 `BUILD_ID`에 들어간다.
@@ -128,7 +138,7 @@ moai doctor            # 이 저장소에서 exit 0 유지
 ## §H 상호 참조
 
 - `spec.md` §6 — 세 고리 사슬 경계와 제약 C-1·C-2·C-3
-- `acceptance.md` — AC 8건과 대표 뮤턴트
+- `acceptance.md` — AC 9건과 대표 뮤턴트
 - `internal/cli/doctor.go:495` `checkBinaryFreshness` — 재사용 대상 (등록: `:199`)
 - `internal/cli/doctor.go:140` `doctorExitStatus` — 배포판 회귀 위험의 근원
 - `internal/cli/doctor_mcp_version.go` — Link 3 선례(구조 + 「양성 증거에만 WARN」 규율)

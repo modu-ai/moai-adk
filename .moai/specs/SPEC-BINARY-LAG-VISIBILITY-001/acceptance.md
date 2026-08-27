@@ -1,7 +1,7 @@
 ---
 id: SPEC-BINARY-LAG-VISIBILITY-001
 title: "배포 지연 가시성 — 수락 기준"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-08-27
 updated: 2026-08-27
@@ -99,13 +99,17 @@ $ git describe --tags              → v3.1.2-494-g343399d2f
 
 ## AC-BLV-006 (REQ-BLV-006) — 실패 개방 + 시간 제한
 
-**Given** 하위 비교가 시간 제한을 초과하도록 강제된 상태에서,
+[HARD] **시간 제한의 소유자는 호출자(핸들러) 쪽이다.** seam 내부의 `context.WithTimeout`이 아니라, 핸들러가 seam을 **기한 있는 조인**으로 호출한다. 선례는 `computeDeferredAdvisory`의 `driftTimeout` 처리(`internal/hook/session_start.go:593` 인접)이며 같은 계약을 따른다.
+
+이 소유권 지정은 판정 방법이 요구하는 것이다. 판정이 seam에 스텁을 주입하는 이상 **seam 내부에 있던 시간 제한은 스텁으로 대체돼 사라지므로**, seam-내부 소유를 가정한 뮤턴트는 애초에 실행되지 않는다(감사 D6). 남는 유일한 판정 대상은 호출자 쪽 기한이다.
+
+**Given** 비교 seam이 시간 제한을 초과해 블록하도록 스텁으로 대체된 상태에서,
 **When** 세션 시작 핸들러가 실행될 때,
-**Then** 핸들러가 시간 제한 안에 반환하고, 오류를 반환하지 않으며, 지연 권고를 방출하지 않는다.
+**Then** 핸들러가 기한 안에 반환하고, 오류를 반환하지 않으며, 지연 권고를 방출하지 않는다.
 
-**판정**: 비교 seam에 제한을 넘겨 블록하는 스텁을 주입하고, 호출의 경과 시간 상한과 `err == nil`을 단언한다.
+**판정**: 제한을 넘겨 블록하는 스텁을 seam에 주입하고, 호출의 경과 시간 상한과 `err == nil`, 그리고 권고 부재를 단언한다.
 
-**대표 뮤턴트**: 시간 제한 없는 `exec.Command` 호출. 스텁 대신 응답하지 않는 git을 만나면 세션 시작이 매달린다. 선례는 `computeDeferredAdvisory`의 `driftTimeout` 처리(`internal/hook/session_start.go:593` 인접)이며, 같은 계약을 따른다.
+**대표 뮤턴트**: **기한 없이 seam을 조인하는 핸들러** — `<-done` 또는 `wg.Wait()`를 `context`/`select` 없이 그대로 기다리는 구현. 스텁이 블록하는 동안 핸들러가 함께 매달리므로 경과 시간 단언이 RED가 된다. 이 뮤턴트는 판정이 실제로 붉게 만드는 것이며, 스텁으로 대체되는 seam 내부에 살지 않는다.
 
 **공허성 차단**: 「아무것도 하지 않는」 구현도 이 기준을 통과한다. AC-BLV-001이 그 대조군이다.
 
@@ -129,30 +133,51 @@ $ git describe --tags              → v3.1.2-494-g343399d2f
 
 **Given** 바이너리가 트리 HEAD보다 뒤처진 트리에서,
 **When** 세션 시작 핸들러가 실행되고 그 출력이 **훅 계약대로 JSON 직렬화될 때**,
-**Then** 지연 권고 문자열이 직렬화된 JSON의 `hookSpecificOutput.additionalContext` 안에 나타난다.
+**Then** 지연 권고 문자열이 직렬화된 JSON의 **`hookSpecificOutput.additionalContext` 키 아래에** 나타난다.
 
-**판정**: 핸들러 출력을 `json.Marshal` 한 **뒤** 그 바이트에서 권고 문자열을 찾는다. 구조체 필드를 직접 읽지 않는다 — 직접 읽기는 `json:"-"` 필드도 통과시키므로 이 기준의 요점을 정확히 놓친다.
+**판정**: 핸들러 출력을 `json.Marshal` 한 뒤 그 바이트를 **다시 unmarshal 해서 `hookSpecificOutput.additionalContext` 키의 값**을 꺼내고, 그 값 안에서 권고 문자열을 찾는다. 두 가지를 모두 하지 않는다: (a) 구조체 필드 직접 읽기 — `json:"-"` 필드도 통과시킨다; (b) 문서 전체에 대한 부분 문자열 검색 — 직렬화되는 **다른** 키에 쓴 구현도 통과시킨다(아래 뮤턴트 2, 감사 D7).
 
 **RED-now 셀**: 사전 구현 트리에는 지연 권고 자체가 없으므로 직렬화 출력에 그 문자열이 없다. **RED인 이유**: 기능 부재이며, 무관한 파일 때문이 아니다.
 
 **green path 셀**: M2가 권고를 `AdditionalContext`에 append 하면 뒤집힌다. 통과 시 출력은 직렬화 JSON 안에 두 SHA를 담은 권고 문자열을 포함한다.
 
-**대표 뮤턴트**: **형식이 완벽한 권고를 `HookOutput.Data`에 넣는 구현.** `Data`는 `json:"-"`(`internal/hook/types.go:394`)이므로 직렬화되지 않는다. 이 뮤턴트는 「권고가 생성되는가」를 구조체 수준에서 확인하는 모든 단위 테스트를 통과하면서 **어떤 사용자에게도 도달하지 않는다** — 이 SPEC이 닫으려는 도달 불가를 그대로 재생산한다. 같은 결함이 이 파일에 이미 선례로 기록돼 있다(`session_start.go:296` 인접 주석, 「structural root cause of the attribution dead feature」).
+**대표 뮤턴트 1 — 도달하지 않는 필드**: 형식이 완벽한 권고를 `HookOutput.Data`에 넣는 구현. `Data`는 `json:"-"`(`internal/hook/types.go:394`)이므로 직렬화되지 않는다. 「권고가 생성되는가」를 구조체 수준에서 확인하는 모든 단위 테스트를 통과하면서 **어떤 사용자에게도 도달하지 않는다** — 이 SPEC이 닫으려는 도달 불가를 그대로 재생산한다. 같은 결함이 이 파일에 이미 선례로 기록돼 있다(`session_start.go:296` 인접 주석, 「structural root cause of the attribution dead feature」).
+
+**대표 뮤턴트 2 — 도달하지만 잘못된 키**: 권고를 `SystemMessage`에 쓰는 구현. `SystemMessage`는 `json:"systemMessage,omitempty"`(`internal/hook/types.go:366`)라 **직렬화된다** — 따라서 문서 전체 부분 문자열 검색은 통과한다. 그러나 이는 운영자 결정 (a)를 위반한다(`plan.md` M1: 「`additionalContext` 단독. `systemMessage`도, 둘 다도 아니다」). 키를 지정해 unmarshal 하는 위 판정만이 이 뮤턴트를 RED로 만든다. **명시적 결정을 어떤 기준도 판정하지 않으면 그것은 판정되지 않은 결정이며**, 그 공백이 바로 이 카드가 닫으려는 결함의 계열이다.
 
 **공허성 차단**: 대조군은 AC-BLV-002가 겸한다 — 일치하는 트리에서는 직렬화 출력에도 권고가 없어야 한다.
 
 ---
 
+## AC-BLV-009 (REQ-BLV-009) — doctor 검사 이름이 하나도 늘지 않는다
+
+**Given** 이 SPEC의 변경 **이전** 트리(base SHA로 고정)와 **이후** 트리에 대해,
+**When** 각각에서 `internal/cli/doctor.go`의 `moaiChecks` 슬라이스가 등록하는 **검사 이름 집합**을 추출할 때,
+**Then** 두 집합이 **동일하다** — 원소가 하나도 추가되지 않았고, `Binary Freshness`가 양쪽 모두에 있다.
+
+**판정**: 이름 **집합의 전후 대조**다. 절대 개수 단언이 아니고, 리터럴 grep도 아니다.
+
+[HARD] **절대 개수로 판정하지 않는 이유** (감사 D3에서 실측): t317 `plan.md:68`은 t317 역시 **같은 `moaiChecks` 슬라이스**에 자기 항목을 등록할 것이며 그 **이름 문자열은 run-phase에 확정**된다고 명시한다. 따라서 「슬라이스 항목이 정확히 N개」류 단언은 t317이 착지하는 순간 이 SPEC과 무관하게 깨진다. 판정 대상은 **이 SPEC의 diff가 집합에 무엇을 더했는가**이지, 슬라이스의 미래 절대 상태가 아니다.
+
+**RED-now 셀**: 사전 구현 트리에서 전후 집합이 같으므로 이 기준은 **처음부터 GREEN**이다. 이는 결함이 아니라 이 기준의 성격이다 — 이것은 **회귀 가드(불변 단언)**이지 기능 획득 기준이 아니다. 공허성은 아래 뮤턴트가 막는다.
+
+**대표 뮤턴트**: 지연 판정을 위해 `{"Binary Lag", checkBinaryLag}` 같은 **새 항목을 `moaiChecks`에 추가하는 구현.** 기능적으로는 동작하고 AC-BLV-001·002·003·008을 전부 통과하지만, 집합 대조에서 원소가 하나 늘어 RED가 된다. 이 뮤턴트가 잡히지 않으면 두 레인이 같은 파일의 같은 슬라이스를 동시에 건드리는 상황에서 경계가 사람의 체크박스에만 남는다.
+
+**판정 근거 위치**: `internal/cli/doctor.go:196-205`(`moaiChecks` 리터럴), 기존 등록은 `:199`.
+
+---
+
 ## 완료 정의 (Definition of Done)
 
-- [ ] AC-BLV-001 ~ 008 전부 GREEN.
+- [ ] AC-BLV-001 ~ 009 전부 GREEN.
 - [ ] 각 AC의 대표 뮤턴트를 실제로 심어 RED를 관측하고 원복한 기록이 `progress.md` §E.2에 있다(뮤턴트별 커맨드 + 관측 출력).
 - [ ] AC-BLV-008의 판정이 **직렬화된 JSON 바이트**를 검사한다(구조체 필드 직접 읽기가 아니다).
 - [ ] `Makefile`의 `VERSION ?=` 행이 이 SPEC 전후로 바이트 동일하다(AC-BLV-004 (c), 트리 SHA 고정 인용).
 - [ ] 영향 패키지 테스트 통과: `go test ./internal/cli/... ./internal/hook/...`. **로컬 전체 스위트는 돌리지 않는다**(CLAUDE.local.md §4).
 - [ ] `go vet ./internal/cli/... ./internal/hook/...` 통과.
 - [ ] `moai doctor`가 이 저장소에서 exit 0을 유지한다(회귀 없음).
-- [ ] 비-git 임시 디렉터리에서 `moai doctor`가 exit 0을 유지한다(REQ-BLV-003 실물 확인).
+- [ ] 비-git 임시 디렉터리에서 **`moai doctor --check "Binary Freshness"`** 가 exit 0을 유지한다(REQ-BLV-003 실물 확인; `--check` 플래그는 `internal/cli/doctor.go:58`에 존재). **전체 doctor 실행으로 범위를 넓히지 않는다** — 그 exit 상태는 이 SPEC이 통제하지도 측정하지도 않은 다른 검사들(MoAI Config, Claude Config, Constitution Registry, MCP 2종)에 의존하므로, 넓히면 이 SPEC이 일으키지 않은 이유로 달성 불가가 될 수 있다(감사 D8). AC-BLV-003 (c)와 같은 범위다.
+- [ ] AC-BLV-009 집합 대조가 **절대 개수가 아니라 전후 이름 집합**으로 판정됐다(t317이 같은 슬라이스에 등록 예정 — 감사 D3).
 - [ ] `Makefile` 수리 후 `make build`가 성공하고, 결과 바이너리가 커밋 식별 성분을 담은 `BUILD_ID`를 보고한다. **`moai version`의 제목 줄이 `v3.1.2`로 남는 것은 기대된 결과이며 결함이 아니다**(spec.md §7.5 감수 비용).
 - [ ] 신규 doctor 검사 **이름**이 추가되지 않았다(spec.md 제약 C-2 — 기존 `Binary Freshness` 재배선).
 - [ ] t317 워크트리에 쓰기가 발생하지 않았다.
