@@ -99,7 +99,79 @@ Three additive changes; no existing REQ or AC renumbered, reworded, or removed.
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — RED: cross-process reproduction (card t298)
+
+Measured on tree `ecf6382b6dcd1f5cf057e457e2c8116d9b0420ff` (`ecf6382b6`) @ `WT-integration-lock`,
+in worktree `.claude/worktrees/t298`. Test-only milestone: no production file was modified.
+
+**Artifact:** `internal/cli/integration_lock_owner_liveness_test.go` — three tests, all named
+`TestIntegrationOwnerLiveness*`, sharing the `buildMoaiBinary` / `runIntegrationChild` helpers
+required by plan.md §F M1. The child binary is produced by `go build -o <t.TempDir()>/moai
+./cmd/moai` and exec'd directly; `go run` is not used (plan.md §D — the intermediate `go`
+process is outside the ancestry walk's wrapper-name set).
+
+**Command:**
+
+```
+go test ./internal/cli/ -run 'TestIntegrationOwnerLiveness' -v -count=1
+```
+
+**Selector match count:** 3 (`grep -c '^=== RUN'` over the transcript → `3`). The regex is not a
+zero-match no-op: a zero-match selector prints `ok` and would not be a RED.
+
+**Exit code:** `1`. All three tests FAIL.
+
+**Verbatim output** — the durable copy is the block below, committed with this file. The
+session-local copy at `.moai/state/verify/t298-m1/red-run.txt` is gitignored
+(`.gitignore:284` → `.moai/state/`) and does not survive worktree disposal, so it is a
+convenience artifact, not the evidence of record:
+
+```
+=== RUN   TestIntegrationOwnerLiveness_AncestryPathHoldsAfterAcquireCLIExits
+    integration_lock_owner_liveness_test.go:184: window reads reclaimable while the owning session (this test process, pid 9509) is alive; recorded pid 10481 is the exited acquire CLI's: {"held":true,"lock":{"session_id":"sess-owner-a","session_name":"lane-owner-a","pid":10481,"branch":"","worktree":"/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegrationOwnerLiveness_AncestryPathHoldsAfterAcquireCLIExi3833388289/002","acquired_at":"2026-08-27T11:13:04Z"},"root":"/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegrationOwnerLiveness_AncestryPathHoldsAfterAcquireCLIExi3833388289/002","stale":true}
+    integration_lock_owner_liveness_test.go:188: recorded pid = 10481, want the owning session's pid 9509
+    integration_lock_owner_liveness_test.go:194: record pid_source = "", want "session-owner"; record = map[acquired_at:2026-08-27T11:13:04Z branch: pid:10481 session_id:sess-owner-a session_name:lane-owner-a worktree:/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegrationOwnerLiveness_AncestryPathHoldsAfterAcquireCLIExi3833388289/002]
+--- FAIL: TestIntegrationOwnerLiveness_AncestryPathHoldsAfterAcquireCLIExits (4.06s)
+=== RUN   TestIntegrationOwnerLiveness_EnvStampHoldsAfterAcquireCLIExits
+    integration_lock_owner_liveness_test.go:221: window reads reclaimable while the stamped owner (pid 9509) is alive: {"held":true,"lock":{"session_id":"sess-owner-b","session_name":"lane-owner-b","pid":11393,"branch":"","worktree":"/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegrationOwnerLiveness_EnvStampHoldsAfterAcquireCLIExits3639930886/002","acquired_at":"2026-08-27T11:13:07Z"},"root":"/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegrationOwnerLiveness_EnvStampHoldsAfterAcquireCLIExits3639930886/002","stale":true}
+    integration_lock_owner_liveness_test.go:224: recorded pid = 11393, want the stamped MOAI_SESSION_PID 9509
+--- FAIL: TestIntegrationOwnerLiveness_EnvStampHoldsAfterAcquireCLIExits (3.79s)
+=== RUN   TestIntegrationOwnerLiveness_BareAcquireRefusesLiveHolder
+    integration_lock_owner_liveness_test.go:249: bare acquire by sess-b took the window from live holder sess-a (exit 0): time=2026-08-27T20:13:11.632+09:00 level=WARN msg="config sections directory not found, using defaults" path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegrationOwnerLiveness_BareAcquireRefusesLiveHolder198728607/002/.moai/config/sections
+        release-integration window acquired by sess-b on 
+          displaced: sess-a (pid 11862), held since 2026-08-27T11:13:11Z
+    integration_lock_owner_liveness_test.go:256: on-disk session_id = "sess-b", want "sess-a" (the window must not have been transferred); record = map[acquired_at:2026-08-27T11:13:11Z branch: pid:12051 session_id:sess-b session_name:lane-b worktree:/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegrationOwnerLiveness_BareAcquireRefusesLiveHolder198728607/002]
+    integration_lock_owner_liveness_test.go:261: refused acquire reported a displacement; displaced-holder bookkeeping belongs to --force and stale-reclaim only: time=2026-08-27T20:13:11.632+09:00 level=WARN msg="config sections directory not found, using defaults" path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestIntegrationOwnerLiveness_BareAcquireRefusesLiveHolder198728607/002/.moai/config/sections
+        release-integration window acquired by sess-b on 
+          displaced: sess-a (pid 11862), held since 2026-08-27T11:13:11Z
+--- FAIL: TestIntegrationOwnerLiveness_BareAcquireRefusesLiveHolder (3.84s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	12.489s
+FAIL
+```
+
+**Failure attribution — each test fails for the defect, not for a harness accident:**
+
+| Test | AC | Observed | Why it is the defect |
+|---|---|---|---|
+| `_AncestryPathHoldsAfterAcquireCLIExits` | AC-INL-001 (a)+(b) | `stale: true`, recorded pid `10481` ≠ owning session pid `9509`; `pid_source` absent | The recorded pid is the exited child acquire CLI's own (`os.Getpid()`, integration_lock.go:174-176). The child built and ran, wrote a valid record, and exited 0 — so this is not a build, fixture, or missing-binary failure; only the pid identity is wrong. The absent `pid_source` is the baseline schema (spec.md §B verified premise). |
+| `_EnvStampHoldsAfterAcquireCLIExits` | AC-INL-002 | recorded pid `11393` ≠ stamped `MOAI_SESSION_PID=9509` | The acquire path never consults `MOAI_SESSION_PID`; it records the child's pid. Platform-neutral (no ancestry walk), so it is also the Windows-semantics proxy. |
+| `_BareAcquireRefusesLiveHolder` | AC-INL-012 (a)+(b) | child B exited 0, on-disk `session_id` flipped to `sess-b`, output carried `displaced: sess-a (pid 11862)` | Child A's recorded pid died with child A, so `current.Stale()` is true and acquire takes the `case current.Stale():` reclaim arm (integration_lock.go:163) instead of the refusal branch (161-168). This is the 2026-08-27 field harm reproduced mechanically. |
+
+The AC-INL-012 holder-naming sub-assertion (`sess-a` present in child B's output) did not fire —
+`sess-a` appears there in the `displaced:` line rather than in a refusal. That is consistent with,
+not a weakening of, the RED: the three assertions that did fire establish that the transfer
+happened.
+
+**Isolation:** every fixture is under `t.TempDir()`; the child runs with `CLAUDE_PROJECT_DIR` and
+`GIT_CEILING_DIRECTORIES` pinned to that temp root (same contract as `runIntegration`,
+integration_lock_cli_test.go:26-43) and with `cmd.Dir` set to it, so no live integration-lock
+record, session registry, or card queue was read or written. `CLAUDE_CODE_SESSION_ID` and
+`MOAI_SESSION_PID` are scrubbed from the inherited child environment and put back only per case.
+Child and build processes are bounded by `exec.CommandContext` timeouts (60s / 5m) with `defer
+cancel()`, so no process outlives the test.
+
+**Production files changed in M1:** none — verified by `git show --stat HEAD` on the M1 commit.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
