@@ -75,6 +75,16 @@ var (
 // mechanism the rest of this file uses.
 var WorktreeBaseBranchResolvable = worktreeBaseBranchResolvableReal
 
+// WorktreeBaseBranchOriginHead returns the short branch name currently named by
+// refs/remotes/origin/HEAD, or an error when no such symref exists (typically:
+// no origin remote is configured).
+//
+// Exported for the `moai doctor` diagnostic, which reports the same comparison
+// this alignment step performs — without writing anything.
+func WorktreeBaseBranchOriginHead() (string, error) {
+	return worktreeBaseBranchReadOriginHead()
+}
+
 // runWorktreeBaseAlignment performs the origin/HEAD alignment and returns its
 // own local data map, matching the shape of the other SessionStart errgroup
 // tasks. Every failure path is fail-open: this step never blocks, fails, or
