@@ -1,109 +1,99 @@
-# SPEC-GUARD-LIVENESS-001 — Implementation Plan (card t333)
+# SPEC-GUARD-LIVENESS-001 — Implementation Plan (card t333, surfacing model)
 
-Baseline tree for every measurement in this plan: `d34a789a4` @ `WT-guard-liveness` (worktree `.claude/worktrees/t333`), equal to `origin/develop` at authoring time.
+Baseline tree for every measurement: **`091966c55`** @ `WT-guard-liveness` (worktree `.claude/worktrees/t333`).
 
-Milestones are ordered by **decision reversibility** — the manifest schema and the classification vocabulary are the decisions that cost the most to change later, so they lead. The mechanical work (evaluator plumbing, doctrine text) sits at the bottom.
+Milestones are ordered by **decision reversibility**. The invocation contract leads, because it is what §D.1's answer to self-observation rests on and a wrong choice there cannot be repaired without redoing the surface.
 
 ## §A Context
 
-See `spec.md` §A. Five empirical instances ground the requirements; two of them (§A.5 `spec-status-auto-sync` all-`skipped`, §A.6 the 18-vs-11 census gap) were measured during this plan phase and are what force the `fired-with-effect` vocabulary and the `UNDECLARED` classification respectively.
+See `spec.md` §A. Six empirical instances ground the problem; this SPEC owns the **surfacing half** of the event-history axis after the iter-3 scope reduction.
+
+### A.1 The sibling SPEC and its pending card id
+
+The state model — the manifest, the querying, the classifications, and the set comparison — is `SPEC-GUARD-STATE-MODEL-001`, authored alongside this SPEC as plan-phase artifacts.
+
+> **`<CARD-PENDING>`** — the state-model SPEC's card id has been requested from the lead and is not yet assigned. **This line is the single place the placeholder sits in this artifact set.** When the id arrives, replace it here and in `SPEC-GUARD-STATE-MODEL-001/plan.md` §A.1 (the corresponding single placeholder there); nothing else in either artifact set references a card id for it.
+
+This SPEC does **not** `depends_on` the state SPEC. The seam is a consumed contract (`spec.md` §B.1), so the two are independently implementable.
 
 ## §B Known issues and constraints carried in
 
-- **B-0 — the defect is absent execution, not suppressed failure.** Nothing runs, so nothing can go red, and a mechanism reports success accurately about a set that had silently become the wrong set. Do not implement or describe any part of this as "the check should have failed and did not" — there is no failure to suppress (`spec.md` §A.0). The operational consequence for M2: an evaluator that reads only the outcomes of runs that happened inherits the exact blindness, so the set comparison (REQ-GDL-004) is load-bearing, not housekeeping.
-- **B-1 — the self-application constraint.** A watcher that cannot prove its own firing is forbidden. Answered by making the evaluator pull-based rather than scheduled (`spec.md` §D.1). The answer relocates the regress; it does not eliminate it, and §D.3 says so.
-- **B-1b — the unprompted-discoverability constraint.** A targeted query can only be issued by someone who already suspects the answer, so a design answering only when queried relocates the problem into whoever is expected to already know (`spec.md` §A.4, §D.2). Independent of B-1: a design can pass one and fail the other, and failing either leaves the same defect one level up.
-- **B-2 — `gh run list` is not a complete history.** It reports what the forge retained. Measured: the default 100-run listing spans about three hours on this repository because high-frequency workflows saturate it. Any evaluator built on it inherits the limit; REQ-GDL-007 makes the limit an explicit `UNKNOWN` state rather than a silent "never fired".
-- **B-3 — do not conflate "a defect occurred" with "a defect survived to adoption."** The t241 lane mis-signed its own prediction ledger by predicting "0 audit findings" as success, when a rule working *well* at the audit layer drives that number **up**. Its own measurement separates the two events the single number was carrying — VC-1 3/2, VC-2 7/1, VC-4 5/1, VC-6 2/1 (occurred / survived to adoption). The same split sits in this SPEC's path: "should fire every N days" carries both firing count and whether a firing caught anything. Every expectation this SPEC writes names its measured quantity (REQ-GDL-003, `spec.md` §C.1.1) so the same inversion cannot be written here.
-- **B-6 — a policy rule landing is not a policy rule working.** The rule at `7f5b6a947` (author == committer, `Tue Aug 25 13:05:04 2026 +0900`, verified in this plan phase) was correct, in scope, and cited by name in audits, and its named defect recurred two days later inside its own `paths:` — a `-run` selector naming three tests of which one existed, green at `ok ... 0.249s`, unseen until sync close. Nothing detects at the policy layer. This is why the deliverable stays mechanical and stays on subjects that have run records, and why C5 is a named follow-up rather than a widening (`spec.md` §B.1, §E).
-- **B-4 — `moai update` deletes `.moai/config/` wholesale.** `CleanMoaiManagedPaths` removes the root before redeploying templates, so a manifest placed there is deleted on every update. REQ-GDL-001 puts the manifest outside that root.
-- **B-5 — the manifest is repository-specific, not template content.** It describes this repository's `.github/workflows/`. It must not be mirrored into `internal/template/templates/`; doing so would ship this repository's CI census to every downstream project.
+- **B-0 — the defect is absent execution, not suppressed failure.** Nothing runs, so nothing can go red, and a mechanism reports success accurately about a set that had silently become the wrong set (`spec.md` §A.0). Do not implement or describe any part of this as "the check should have failed and did not" — there is no failure to suppress. A hidden-failure framing leads to building surfacing and routing for a signal that does not exist.
+- **B-1 — the self-observation constraint.** A watcher that cannot prove its own firing is forbidden. Answered by making the evaluator pull-based rather than scheduled, and the answer's load-bearing half is REQ-GDL-003's unconditional invocation (`spec.md` §D.1).
+- **B-2 — the unprompted-discoverability constraint.** A targeted query can only be issued by someone who already suspects the answer, so a design answering only when queried relocates the problem into whoever is expected to already know (`spec.md` §A.4, §D.2). Independent of B-1: a design can pass one and fail the other.
+- **B-3 — the trigger must not enumerate.** Three audit iterations failed on one shape: the trigger listed symptoms and a run reached the same silence down an unenumerated branch (D1, then N1, then T3). The contract seam makes enumeration unrepresentable; the implementation must not reintroduce it by hardcoding value names (AC-GDL-002).
+- **B-4 — the always-red neighbour is real and is not repaired here.** `Graph Freshness` fails on every `develop` push (card t322). A new advisory rendered beside it inherits its trained filter; REQ-GDL-007 is the mitigation and it is partial.
 
-## §C Pre-flight (measured on `d34a789a4`)
+## §C Pre-flight (measured on `091966c55`)
 
 | Check | Command | Result |
 |---|---|---|
-| Manifest absent | `ls .moai/guards` | `No such file or directory` (rc=1) |
-| No `moai guard liveness` verb | `grep -n '"guard"' internal/cli/*.go \| grep -v _test.go` | `internal/cli/constitution.go:49` only (`moai constitution guard`) — an unrelated verb. Unnarrowed, the glob also returns `constitution_guard_test.go:93`, which belongs to the same unrelated verb |
-| Rule carries no continued-firing clause | `grep -nE "last.fired\|continued.firing\|stopped firing\|liveness\|stale guard" .claude/rules/moai/development/verification-completeness.md` | rc=1, no match |
-| Workflow census | `ls -1 .github/workflows/` | 18 files |
-| Recent-run census | `gh run list --limit 100 --json workflowName ... \| group_by` | 11 distinct workflow names |
+| No advisory or evaluator wiring | `grep -rln "guard-liveness\|guardLiveness" .claude/hooks/ internal/` | no output, rc=1 |
+| No `moai guard liveness` verb | `grep -n '"guard"' internal/cli/*.go \| grep -v _test.go` | `internal/cli/constitution.go:49` only — the unrelated `moai constitution guard` verb. Unnarrowed, the glob also returns `constitution_guard_test.go:93`, same unrelated verb |
+| Rule carries no continued-firing clause | `grep -nE "last.fired\|continued.firing\|stopped firing\|liveness\|stale guard" .claude/rules/moai/development/verification-completeness.md` | no output, rc=1 |
+| Scheduled-workflow baseline | `grep -l '^  schedule:' .github/workflows/* \| wc -l` | `3` |
+| Evidence artifact tracked | `git log --oneline -1 -- .moai/reports/t333/trigger-axis-observation.md` | `c30f761dd` — the SPEC's citations resolve from the branch |
 
 ## §D Constraints
 
-- Read-only against the forge (REQ-GDL-012). No issue creation, no dispatch, no commit.
-- No scheduled workflow is added by this SPEC (REQ-GDL-011).
-- No existing text in `verification-completeness.md` is modified (REQ-GDL-016).
-- No file under `internal/template/templates/` is touched (B-5).
+- No scheduled workflow is added (REQ-GDL-002; the baseline of 3 is asserted at merge).
+- The advisory path performs no forge mutation and no working-tree write (REQ-GDL-008); result persistence lives outside the working tree.
+- No existing text in `verification-completeness.md` is modified (REQ-GDL-009).
+- No classification value name appears anywhere in this deliverable's source (AC-GDL-001(b), AC-GDL-002(b)).
+- No file under `internal/template/templates/` is touched — this is repository-specific wiring, not template content.
 
 ## §E Self-verification
 
-Every acceptance criterion in `acceptance.md` carries a RED-now cell pinned to `d34a789a4` with its stated reason, and a green-path cell naming the flipping milestone, per `.claude/rules/moai/development/verification-completeness.md` §2. Each criterion was additionally subjected to the mutant probe from that rule's §2; where a single-clause criterion admitted a mutant, a second clause was added and the mutant is recorded in the criterion.
+Every criterion in `acceptance.md` carries a RED-now cell pinned to `091966c55` and a green-path cell naming its flipping milestone. **No cell was carried across the scope reduction without re-running its command** — the audit's D7 finding is that an unreproducible measurement inside a RED-now cell is precisely the evidence-integrity failure the two-cell discipline exists to prevent.
 
 ## §F Milestones
 
-### M1 — the manifest schema and the classification vocabulary (least reversible)
+### M1 — the invocation contract (least reversible)
 
-The data-model decision, and the one worth the most review attention: every later milestone reads this shape, and changing it after the census is populated means rewriting all 18 entries.
+The decision §D.1 rests on, and the one worth the most review attention.
 
-- Define the manifest schema: per-entry `workflow`, `expect_events`, `window`, `measures` (REQ-GDL-002), plus the release-cycle-conditional form (REQ-GDL-005).
-- Fix the `measures` vocabulary at exactly three values with the conclusion-set each admits (REQ-GDL-003).
-- Fix the classification vocabulary the evaluator emits: `OK`, `STALE`, `UNKNOWN`, `UNDECLARED`.
-- Choose the manifest path outside `.moai/config/` (REQ-GDL-001, B-4).
-- **Apply the subject-agnostic smell test before populating the census.** Each entry carries its kind, locator, and expected cadence as data (REQ-GDL-001). Try adding a second-kind entry with no workflow behind it: if the schema, the classification vocabulary, or the `measures` vocabulary has to change to accept it, the schema has hardcoded its subject — reshape it now. The test is nearly free here and expensive once 18 entries are written against the schema. This is a **shape** obligation, not a capability one: nothing in C5 (`spec.md` §E) enters the deliverable.
-- Populate the census: one entry per workflow file, 18 of 18.
+- Wire the evaluator's invocation into an already-attended surface, pull-based, no scheduled workflow (REQ-GDL-002).
+- **Invocation is unconditional on that surface's activation** — no path filter, no changed-file test, no subject-matter condition (REQ-GDL-003). This is the clause the audit found verified by nothing; the surviving mutant was an evaluator gated on whether the session diff touched `.github/workflows/`, which is `docs-i18n-check.yml` rebuilt inside the deliverable.
+- Consume the classification contract without naming any value (REQ-GDL-001).
 
-Flips: AC-GDL-001, AC-GDL-002, AC-GDL-003 (a)(b), AC-GDL-004, AC-GDL-015.
+Flips: AC-GDL-001, AC-GDL-003, AC-GDL-004.
 
-### M2 — the evaluator
+### M2 — the trigger and its arrival
 
-- Per-workflow query, one query per manifest entry; the repository-global listing is never an evidence source (REQ-GDL-006).
-- Empty per-workflow result classifies `UNKNOWN` (REQ-GDL-007); last qualifying run older than the window classifies `STALE` (REQ-GDL-008).
-- `fired-with-effect` rejects `skipped` and `cancelled`; `verdict-rendered` additionally requires `success` or `failure` (REQ-GDL-003).
-- Workflow file present on disk with no manifest entry classifies `UNDECLARED` (REQ-GDL-004).
-- Every entry is classified into exactly one value of the closed set `OK` / `STALE` / `UNKNOWN` / `UNDECLARED` / `UNREADABLE`, and the result carries its measurement timestamp and the five coverage counts (REQ-GDL-009). The set is total in both directions: no value is unreachable, and no entry is unclassifiable — `UNREADABLE` exists because the second direction was violated once already.
-- A declared expectation that says firing is not currently expected classifies `OK`, not `UNKNOWN` (REQ-GDL-007). This is what keeps M3's advisory from firing every session on a healthy repository.
-- The evaluator mutates nothing — no forge write, no working-tree write (REQ-GDL-012). Any result persistence M3 needs therefore lives outside the working tree.
-- All-clear is refused when the successfully-queried count is zero (REQ-GDL-010).
-- Read-only: no forge mutation of any kind (REQ-GDL-012).
+- Render when any entry is non-clean — the partition, not a list (REQ-GDL-004). If implementation appears to need a value name, that is B-3 resurfacing; re-derive rather than enumerate.
+- The advisory arrives with no operator-supplied guard identifier or query (REQ-GDL-005). A documented CLI verb is not an acceptable sole answer — it is still a question someone must know to ask.
+- The stated age is derived from the persisted result's own timestamp (REQ-GDL-006).
 
-Flips: AC-GDL-003 (c), AC-GDL-005, AC-GDL-006, AC-GDL-007, AC-GDL-008, AC-GDL-009 (a)(b), AC-GDL-016.
+Flips: AC-GDL-002, AC-GDL-005, AC-GDL-006.
 
-### M3 — the attended surface
+### M3 — legibility and safety
 
-The second-least-reversible decision after M1, because the surfacing contract is what constraint 2 (`spec.md` §D.2) is satisfied or failed by, and a CLI-verb-shaped answer here cannot be repaired later without redoing the surface.
+- Lead with changed classifications; carry unchanged non-clean entries as a compact standing count (REQ-GDL-007). Requires persisting the previous result to diff against, **outside the working tree** — AC-GDL-008(b) asserts a byte-identical tree across a run.
+- No forge mutation, no working-tree write (REQ-GDL-008).
 
-- Invoke the evaluator from an already-attended surface; add no scheduled workflow (REQ-GDL-011).
-- Render the advisory whenever **any entry classifies as anything other than `OK`** — one condition, not a list of symptoms — arriving **with no operator-supplied guard identifier or query** (REQ-GDL-013). Two earlier drafts enumerated symptoms and each left a run that reached the same silence down an unenumerated branch; if implementation appears to need a second arm, re-derive the condition rather than adding one. A documented `moai guard liveness` verb is not an acceptable sole answer — it is still a question someone must know to ask.
-- Lead with entries whose classification changed since the previous rendered result; carry unchanged non-`OK` entries as a compact standing count (REQ-GDL-015). This requires persisting the previous result to diff against, **outside the working tree** — AC-GDL-016(b) asserts a byte-identical tree across a run.
-- The advisory carries the age of the measurement it reports (REQ-GDL-014).
-
-Flips: AC-GDL-009 (c), AC-GDL-010, AC-GDL-011, AC-GDL-013, AC-GDL-014.
+Flips: AC-GDL-007, AC-GDL-008.
 
 ### M4 — doctrine (most mechanical)
 
-- Add the continued-firing clause to `verification-completeness.md` as new text only. Verify by diff that no existing line changed (REQ-GDL-016).
+- Add the continued-firing clause to `verification-completeness.md` as new text only; verify by diff that no existing line changed (REQ-GDL-009).
 
-Flips: AC-GDL-012.
+Flips: AC-GDL-009.
+
+**Milestone map check.** Every criterion appears in exactly one flip list and each listed milestone can actually deliver it — the audit's T4 finding was that a union count answers "is every criterion in some list?" and is structurally blind to "can the listed milestone deliver it?". AC-GDL-001 is at M1 because the contract is consumed at the invocation site; AC-GDL-003 and AC-GDL-004 are M1 for the same reason.
 
 ## §G Anti-patterns to avoid
 
-- **Adding a scheduled watcher workflow "just as a backstop".** It is subject to the defect it watches for, the forge disables it after repository inactivity, and it starts the regress the design exists to avoid. Rejected in `spec.md` §D, not merely unimplemented.
-- **Reporting a clean sweep from a global run listing.** Measured to be incapable of answering the question for a low-frequency guard (§A.4, §A.6).
-- **Omitting a release-only guard from the manifest because it is "supposed to be quiet".** Omission is what makes silence unreadable; declare the condition instead (REQ-GDL-005).
-- **Counting `skipped` runs as firings.** §A.5 is a live instance of exactly this misread.
-- **Shipping a CLI verb as the whole answer to (c).** A verb the operator must know to run reproduces §A.4 exactly: the lead session could run the right query the instant it was handed the workflow's name, and could not know a query was owed. Rejected in `spec.md` §D.2 and excluded by AC-GDL-013's negative clause.
-- **Reprinting the full standing list every session.** It is how a new advisory inherits the filter an always-red neighbour has already trained (`spec.md` §A.8). REQ-GDL-015 leads with changes instead.
-- **Building the evaluator to read outcomes only.** "For each manifest entry, fetch its runs and judge them" is the shape that inherits the defect: it is accurate about the entries it holds and silent about the workflow files it does not. The set comparison against disk (REQ-GDL-004) is not an add-on to that loop — it is the part that makes the loop's green informative.
-- **Describing any instance as a failure that was hidden.** B-0. The wording matters because it determines what gets built: a hidden-failure framing leads to surfacing and routing work, and there is no signal here to surface.
-- **Writing an expectation whose one number measures two events.** "Fires every N days" scores full marks for a guard that runs faithfully and catches nothing. B-3 carries the measured table.
-- **Shaping the manifest around GitHub workflows.** A `workflow:` field as the entry's identity, rather than a kind plus a locator, is the hardcoded-subject smell — cheap to avoid at M1, expensive to unwind after 18 entries (`spec.md` §D.4).
-- **Importing the t241 lane's C2 (unpinned invariant assertions).** Declined on that lane's own warning: without an exemption discriminant it is a false-positive factory, and a provenance statement whose subject *is* the mainline correctly carries a moving ref. Different axis; `spec.md` §E records the decision.
-- **Mirroring the manifest into the template tree.** B-5.
+- **Gating the evaluator's invocation on anything.** A path filter, a changed-file test, or a subject-matter condition rebuilds §A.3's guard inside the deliverable. This is the single most consequential mutant in the SPEC.
+- **Hardcoding a classification value name.** It works today and breaks the moment the state SPEC adds a value; more importantly it reintroduces the enumeration shape that failed three audits (B-3).
+- **Shipping a CLI verb as the whole answer to arrival.** A verb the operator must know to run reproduces §A.4 exactly: the lead session could run the right query the instant it was handed the workflow's name, and could not know a query was owed.
+- **Reprinting the full standing list every session.** How a new advisory inherits the filter an always-red neighbour has already trained (B-4).
+- **Persisting the previous result inside the working tree.** Violates AC-GDL-008(b) and creates drift for the next reader.
+- **Describing any instance as a hidden failure.** B-0. The wording determines what gets built.
 
 ## §H Cross-references
 
-- `.moai/reports/t333/trigger-axis-observation.md` — this SPEC's primary evidence artifact.
-- `.claude/rules/moai/development/verification-completeness.md` — the landed rule this SPEC extends additively (`spec.md` §B).
-- `SPEC-BINARY-LAG-VISIBILITY-001` (card t326, in flight) — the state axis, out of scope here.
-- `.moai/specs/SPEC-INTEGRATION-LOCK-LIVENESS-001/` (card t298) — instance 1's subject.
+- `.moai/reports/t333/trigger-axis-observation.md` — the primary evidence artifact (tracked at `c30f761dd`).
+- `.moai/reports/plan-audit/SPEC-GUARD-LIVENESS-001-review-{1,2,3}.md` — the three audit iterations; review-3 carries the FAIL + STOP and the scope-reduction recommendation this split implements.
+- `.moai/specs/SPEC-GUARD-STATE-MODEL-001/` — the sibling SPEC holding the state model.
+- `.claude/rules/moai/development/verification-completeness.md` — the landed rule this SPEC extends additively.
+- `SPEC-BINARY-LAG-VISIBILITY-001` (card t326, in flight) — the binary-state axis, out of scope here.
