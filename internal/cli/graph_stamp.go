@@ -90,7 +90,7 @@ after the squash lands.`,
 
 			pv, err := mx.StampCodemaps(projectRoot, commitSHA)
 			if err != nil {
-				return fmt.Errorf("stamp codemaps provenance: %w", err)
+				return fmt.Errorf("graph stamp: %w", err)
 			}
 
 			cmDir := filepath.Join(projectRoot, ".moai", "project", "codemaps")

@@ -239,7 +239,7 @@ func StampCodemaps(projectRoot, commitSHA string) (*Provenance, error) {
 		return pv, nil
 	}
 	if pv.Dirty {
-		return nil, fmt.Errorf("stamp codemaps: --commit names a commit anchor but the described sources carry uncommitted changes — record either the named commit on a clean tree or the dirty content fingerprint, never both")
+		return nil, fmt.Errorf("--commit names a commit anchor but the described sources carry uncommitted changes — record either the named commit on a clean tree or the dirty content fingerprint, never both")
 	}
 	pv.CommitSHA = commitSHA
 	return pv, nil
