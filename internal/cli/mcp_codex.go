@@ -1768,6 +1768,18 @@ func classifyCodexAuthFile(raw []byte) (provider string, ok bool, err error) {
 		if bool(f.APIKey) {
 			return codexAuthAPIKey, true, nil
 		}
+	case "":
+		// Legacy auth.json written before codex started persisting auth_mode.
+		// codex itself keeps working on such a file — it infers the mode from
+		// the credential material — so the ladder rejecting it wholesale read
+		// a WORKING login as unknown (#1632 axis 4). Mirror codex's inference,
+		// with its precedence: an explicit API key wins, then token material.
+		if bool(f.APIKey) {
+			return codexAuthAPIKey, true, nil
+		}
+		if f.Tokens.credentialCount >= 1 {
+			return codexAuthChatGPT, true, nil
+		}
 	}
 	return "", false, nil
 }

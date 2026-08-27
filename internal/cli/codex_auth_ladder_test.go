@@ -106,6 +106,18 @@ func TestClassifyCodexAuthFile_Table(t *testing.T) {
 		// occurrence is the whole truth (sync-audit F1).
 		{"chatgpt+duplicate_tokens_last_empty", `{"auth_mode":"chatgpt","tokens":{"access_token":"x"},"tokens":{}}`, "", false, false},
 		{"chatgpt+duplicate_tokens_last_valid", `{"auth_mode":"chatgpt","tokens":{},"tokens":{"access_token":"x"}}`, codexAuthChatGPT, true, false},
+		// Legacy auth.json written before codex started persisting auth_mode
+		// (issue #1632 axis 4): codex itself still works — it infers the mode
+		// from the credential material — so the ladder must mirror that
+		// inference instead of descending to stage 2 (or reporting unknown).
+		{"legacy_file+tokens", `{"tokens":{"access_token":"x"}}`, codexAuthChatGPT, true, false},
+		{"legacy_file+refresh_token", `{"tokens":{"refresh_token":"x"}}`, codexAuthChatGPT, true, false},
+		{"legacy_file+apikey", `{"OPENAI_API_KEY":"x"}`, codexAuthAPIKey, true, false},
+		{"legacy_file+empty_material", `{}`, "", false, false},
+		{"legacy_file+null_material", `{"OPENAI_API_KEY":null}`, "", false, false},
+		{"legacy_file+both_materials_prefers_apikey", `{"OPENAI_API_KEY":"x","tokens":{"access_token":"y"}}`, codexAuthAPIKey, true, false},
+		{"legacy_file+blank_apikey_with_tokens", `{"OPENAI_API_KEY":"","tokens":{"access_token":"x"}}`, codexAuthChatGPT, true, false},
+		{"legacy_file+unknown_mode_still_descends", `{"auth_mode":"totally-new-mode","tokens":{"access_token":"x"}}`, "", false, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
