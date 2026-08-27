@@ -1,8 +1,8 @@
 ---
 id: SPEC-FULL-SUITE-DOCTRINE-001
 title: "manager-develop 전량-스위트 지시의 상위 계약 복귀"
-version: "0.5.0"
-status: in-progress
+version: "0.5.1"
+status: implemented
 created: 2026-08-27
 updated: 2026-08-27
 author: manager-spec
