@@ -22,7 +22,7 @@ metadata:
 #### Step 1.2: Analyze Project Status
 
 - Analyze Git changes: git status, git diff, categorize changed files
-- Read project configuration: git_strategy.mode, conversation_language, spec_git_workflow
+- Read project configuration: git_strategy.mode, git_strategy.{mode}.workflow, conversation_language
 - Determine synchronization mode from $ARGUMENTS
 - Detect branch context: Check current branch name
 
