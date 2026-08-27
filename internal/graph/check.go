@@ -178,7 +178,10 @@ func checkCodemaps(projectRoot string, th Thresholds) (LayerReport, error) {
 	if pv.Dirty {
 		rep.Metric = MetricGenerationFP
 		rep.Threshold = 1
-		cur, err := mx.AggregateDescribedFingerprint(projectRoot, roots)
+		// Filtered to described-worthy files, paired with the codemaps stamp
+		// writer which produces it the same way (REQ-GFC-003). The unfiltered
+		// aggregate stays the edges layer's (REQ-GFC-003a).
+		cur, err := mx.AggregateDescribedFingerprintFiltered(projectRoot, roots)
 		if err != nil {
 			rep.Verdict = VerdictAbsent
 			rep.Reason = "described roots unreadable: " + err.Error()
@@ -407,10 +410,15 @@ func validateDescribedRoot(projectRoot, root string) error {
 	return nil
 }
 
-// gitDiffNameCount counts files under roots whose working-tree content
-// differs from commit — endpoint comparison, reverted churn counts zero.
-// A file untracked at HEAD counts too: its content (existence) differs from
-// the stamped commit, and `git diff <commit>` alone would silently skip it.
+// gitDiffNameCount counts DESCRIBED-WORTHY files under roots whose
+// working-tree content differs from commit — endpoint comparison, reverted
+// churn counts zero. A file untracked at HEAD counts too: its content
+// (existence) differs from the stamped commit, and `git diff <commit>` alone
+// would silently skip it.
+//
+// Both branches apply mx.IsDescribedWorthy (REQ-GFC-001/002): filtering only
+// the diff branch leaves an untracked fixture counted, which is the exact
+// shape of the noise this metric exists to stop counting.
 func gitDiffNameCount(projectRoot, commit string, roots []string) (int, error) {
 	changed := map[string]bool{}
 
@@ -419,7 +427,7 @@ func gitDiffNameCount(projectRoot, commit string, roots []string) (int, error) {
 		return 0, fmt.Errorf("git diff %s: %w", shortHash(commit), err)
 	} else {
 		for _, line := range strings.Split(out, "\n") {
-			if p := strings.TrimSpace(line); p != "" {
+			if p := strings.TrimSpace(line); p != "" && mx.IsDescribedWorthy(p) {
 				changed[p] = true
 			}
 		}
@@ -430,7 +438,7 @@ func gitDiffNameCount(projectRoot, commit string, roots []string) (int, error) {
 		return 0, fmt.Errorf("git ls-files --others: %w", err)
 	} else {
 		for _, line := range strings.Split(out, "\n") {
-			if p := strings.TrimSpace(line); p != "" {
+			if p := strings.TrimSpace(line); p != "" && mx.IsDescribedWorthy(p) {
 				changed[p] = true
 			}
 		}

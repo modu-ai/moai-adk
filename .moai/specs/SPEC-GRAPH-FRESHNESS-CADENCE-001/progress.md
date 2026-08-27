@@ -54,7 +54,237 @@ Plan-phase artifacts authored for card t322 in worktree
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — Described-worthy predicate
+
+Implemented in worktree `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t322`, branch
+`WT-graph-freshness-cadence`, base HEAD `4a50d44f4`. Cycle type TDD; every criterion below was
+observed RED before it was observed GREEN, and the three mutants `plan.md` §E M1 names were each
+planted, observed to fail their criterion, and reverted.
+
+Pre-flight, re-measured in this tree at `4a50d44f4` (not carried from the dispatch):
+
+```
+$ go build ./internal/graph/... ./internal/mx/... ./internal/config/...
+→ exit 0
+$ ./bin/moai graph check
+→ codemaps metric=described-source-diff value=5 threshold=40 verdict=fresh
+```
+
+The baseline `moai graph check` was run after `make build`, because this worktree carried no
+`bin/moai` at entry.
+
+#### Delivered surface
+
+| Site | Change |
+|---|---|
+| `internal/mx/described_worthy.go` (new) | `IsDescribedWorthy(relPath string) bool` — the single exported predicate. `.go` suffix, not `_test.go`, no path segment equal to `testdata`. Pure: no configuration parameter (REQ-GFC-004 withdrawn), no filesystem access. |
+| `internal/graph/check.go` `gitDiffNameCount` | Predicate applied to **both** branches — the `git diff --name-only` branch and the `git ls-files --others --exclude-standard` branch. |
+| `internal/mx/provenance.go` | `AggregateDescribedFingerprintFiltered` added; `aggregateFingerprintPred(projectRoot, roots, admit)` carries the walk, with the predicate applied **after** the existing regular-file guard. |
+| `internal/graph/check.go` `checkCodemaps` dirty branch | Consumer switched to `AggregateDescribedFingerprintFiltered`. |
+| `internal/mx/provenance.go` `baseProvenance` | Gains a `fingerprint fingerprintFunc` parameter; `StampCodemaps` passes the filtered aggregate, `StampMXScan` and `StampEdges` pass the unfiltered one. |
+| `internal/mx/provenance.go` `AggregateDescribedFingerprint` / `aggregateFingerprint` | **Unchanged behaviour** — `aggregateFingerprint` delegates with a `nil` predicate, so `meta.go:67 dirFingerprint` and the edges layer are untouched (REQ-GFC-003a). |
+
+**Producer/consumer mechanism chosen: the `baseProvenance` fingerprint-function parameter**, the
+first of the two `plan.md` §E M1 admits. Chosen over recomputing inside `StampCodemaps` for two
+reasons: it makes the pairing visible at the call site (each stamp writer names the fingerprint its
+consumer will recompute, so a future writer cannot inherit the wrong one by omission), and it
+computes one fingerprint rather than computing the unfiltered one and discarding it — the recompute
+alternative walks a dirty described tree twice. The cost is the three mechanical call-site updates
+the parameter forces, which is the smaller price.
+
+#### AC matrix
+
+| AC | Status | Deciding command | Observed |
+|---|---|---|---|
+| AC-GFC-001 | PASS | `go test ./internal/mx/ -run TestDescribedWorthy -count=1` | `ok github.com/modu-ai/moai-adk/internal/mx 0.336s` |
+| AC-GFC-002 | PASS | `go test ./internal/graph/ -run TestGitDiffNameCount_Predicate -count=1` | `ok github.com/modu-ai/moai-adk/internal/graph 0.852s` |
+| AC-GFC-003 | PASS | `./bin/moai graph check --root <fixture> --json` → codemaps `.value` | `2` |
+| AC-GFC-004 | PASS | `go test ./internal/mx/ -run TestCodemapsFingerprint_ProducerConsumer -count=1` | `ok github.com/modu-ai/moai-adk/internal/mx 0.471s` |
+| AC-GFC-005 | PASS | `go test ./internal/graph/ -run TestCheckCodemaps_Absent -count=1 -v` | 7/7 sub-tests PASS, each pinned to its pre-existing reason string; branch 7 pinned as the `(absent, err != nil)` pair |
+| AC-GFC-014 | PASS | `go test ./internal/graph/ -run TestSourceFingerprintsForEdges_Unchanged -count=1` | `ok github.com/modu-ai/moai-adk/internal/graph 0.619s` |
+
+RED evidence, captured before each implementation:
+
+```
+AC-GFC-001  internal/mx/described_worthy_test.go:33:13: undefined: IsDescribedWorthy
+            FAIL github.com/modu-ai/moai-adk/internal/mx [build failed]
+AC-GFC-002  --- FAIL: TestGitDiffNameCount_Predicate (0.52s)
+            check_predicate_test.go:55: gitDiffNameCount = 41, want 1
+AC-GFC-004  internal/mx/codemaps_fingerprint_test.go:58:14: undefined: AggregateDescribedFingerprintFiltered
+            FAIL github.com/modu-ai/moai-adk/internal/mx [build failed]
+```
+
+AC-GFC-005 and AC-GFC-014 are preservation criteria: their RED is the mutant, not the
+pre-implementation tree. AC-GFC-014's is recorded under mutant (ii) below; AC-GFC-005 pins behaviour
+this milestone must not move, and no mutant of it is claimed.
+
+#### Mutant runs (RED under the mutant → GREEN after revert)
+
+**(i) predicate on the `git diff` branch only** — the predicate removed from the
+`git ls-files --others` branch:
+
+```
+--- FAIL: TestGitDiffNameCount_Predicate (0.52s)
+    check_predicate_test.go:55: gitDiffNameCount = 2, want 1
+      (41 = no predicate; 2 = predicate on the git diff branch only)
+```
+
+The count landed on exactly the 2 the criterion predicts: the one production `.go` change plus the
+untracked fixture the unfiltered branch admits. After revert: `ok ... 0.852s`.
+
+**(ii) predicate pushed down into `aggregateFingerprint`** — `aggregateFingerprintPred` called with
+`IsDescribedWorthy` instead of `nil`:
+
+```
+--- FAIL: TestSourceFingerprintsForEdges_Unchanged (0.29s)
+    check_predicate_test.go:79: source set "codemaps" collapsed to the empty-entry hash
+        — the predicate reached aggregateFingerprint
+    check_predicate_test.go:79: source set "specs" collapsed to the empty-entry hash
+        — the predicate reached aggregateFingerprint
+    check_predicate_test.go:88: codemaps source fingerprint did not move on a non-.go edit
+        — the edges layer is permanently green
+```
+
+Both source sets collapsed to `e3b0c442…`, exactly the constant `spec.md` §D.1 measured, and the
+layer went permanently green. After revert: `ok ... 0.619s`.
+
+**(iii) filtered checker with an unfiltered codemaps stamp writer** — `StampCodemaps` passing
+`AggregateDescribedFingerprint`:
+
+```
+--- FAIL: TestCodemapsFingerprint_ProducerConsumer (0.32s)
+    codemaps_fingerprint_test.go:67: stale against its own fresh stamp
+        — the producer and the consumer disagree
+```
+
+The first assertion failed, as the criterion predicts. After revert: `ok ... 0.471s`.
+
+#### Sole-comparator enumeration (`spec.md` §D.1 premise, re-measured)
+
+Delivered tree:
+
+```
+$ grep -rn --include='*.go' 'ContentFingerprint' . | grep -v _test.go
+internal/graph/check.go:190:		if cur == pv.ContentFingerprint {
+internal/graph/check.go:197:		rep.Reason = fmt.Sprintf("content moved past dirty-generation fingerprint %s", shortHash(pv.ContentFingerprint))
+internal/mx/provenance.go:46:	// ContentFingerprint, never a named commit the generation did not see.
+internal/mx/provenance.go:49:	// ContentFingerprint is the aggregate sha256 of the described content at
+internal/mx/provenance.go:52:	ContentFingerprint string `json:"content_fingerprint,omitempty"`
+internal/mx/provenance.go:237:// dirty branch's ContentFingerprint is computed — the codemaps writer passes
+internal/mx/provenance.go:252:			pv.ContentFingerprint = fp
+internal/mx/provenance.go:312:		return fmt.Sprintf("provenance: tree=%s dirty fingerprint=%s", p.TreeRoot, shortHash(p.ContentFingerprint))
+```
+
+Exactly **one comparator** (`check.go:190`, the equality test) and **one display-only reader**
+(`provenance.go:312`, `Provenance.Describe`). The remaining hits are the struct field, its doc
+comments, the producer write at `provenance.go:252`, and the stale-verdict reason formatter at
+`check.go:197` — none of them compares.
+
+The plan-phase baseline cites `check.go:187` and `provenance.go:280`. Both reproduce verbatim at the
+base commit, so the delivered line numbers are this milestone's own insertions shifting the same two
+sites, not new sites:
+
+```
+$ git show 4a50d44f4:internal/graph/check.go | grep -n 'ContentFingerprint'
+187:		if cur == pv.ContentFingerprint {
+194:		rep.Reason = fmt.Sprintf(...)
+$ git show 4a50d44f4:internal/mx/provenance.go | grep -n 'ContentFingerprint' | tail -1
+280:		return fmt.Sprintf("provenance: tree=%s dirty fingerprint=%s", ...)
+```
+
+No second comparator is present, so `plan.md` §B's stop-for-judgment condition did not fire and the
+unpaired `StampMXScan` / `StampEdges` producers remain safe on the stated premise.
+
+#### AC-GFC-003 fixture and baseline attribution
+
+The fixture is a local clone checked out detached at `48eb945df`, which already carries the codemaps
+provenance stamped at `9326b5478d0f51979dfb498527458dcea5e0370b` (`commit_sha` read from the
+fixture's own `provenance.json`) — no stamp edit was made, and no `moai graph stamp` was run
+anywhere.
+
+```
+$ ./bin/moai graph check --root <fixture> --json
+codemaps: {"metric":"described-source-diff","value":2,"threshold":40,"verdict":"fresh"}
+```
+
+Baseline-attribution row (what the metric did before the change, on the same window):
+
+```
+$ git -C <fixture> diff --name-only 9326b5478d… 48eb945df -- internal cmd pkg | grep -c .
+65
+$ … | grep '\.go$' | grep -v '_test\.go$' | grep -v '/testdata/' | grep -c .
+2
+```
+
+**65 → 2**, reproducing `spec.md` §B.2's counterfactual through the delivered code rather than
+through a shell filter chain.
+
+#### Independent verification batch (this run, this tree, base `4a50d44f4`)
+
+```
+$ go test ./internal/graph/... ./internal/mx/... -count=1
+ok  github.com/modu-ai/moai-adk/internal/graph         10.885s
+ok  github.com/modu-ai/moai-adk/internal/graph/symbol   0.402s
+ok  github.com/modu-ai/moai-adk/internal/mx             5.358s
+$ go vet ./internal/graph/... ./internal/mx/...                            → exit 0
+$ GOOS=windows GOARCH=amd64 go build ./...                                 → exit 0
+$ GOOS=windows GOARCH=amd64 go vet ./internal/graph/... ./internal/mx/...  → exit 0
+$ go test -cover ./internal/graph/ ./internal/mx/ -count=1
+coverage: 87.9% of statements (graph) · 88.9% of statements (mx)
+$ golangci-lint run --timeout=5m ./internal/graph/... ./internal/mx/...
+0 issues.
+$ go test ./internal/hook/quality/... -count=1                             → ok (11.669s)
+$ go test ./internal/cli/ -run Graph -count=1                              → ok (8.204s)
+```
+
+The full local suite was NOT run (`plan.md` §D): CI renders the full verdict. `e2e/` was not run.
+
+Constraint checks:
+
+```
+$ grep -rn "graph stamp" .github/ .claude/                                 → no output
+$ git diff --stat 4a50d44f4 -- .moai/project/codemaps/provenance.json      → empty
+```
+
+The threshold is untouched at 40 (`DefaultThresholds`), as `plan.md` §D requires — M2 owns any
+change to it.
+
+Evidence files: `.moai/state/verify/t322-m1/` (`tests.txt`, `lint.txt`, `ac003-graph-check.json`).
+
+#### Gaps — what was NOT observed
+
+- **The full local test suite was not run.** Only `internal/graph/...`, `internal/mx/...`,
+  `internal/hook/quality/...`, and the `Graph`-filtered subset of `internal/cli` were executed. Any
+  regression in a package outside those is unobserved here and is CI's verdict to render.
+- **`e2e/` was not run** (the operator has a live console; that suite mutates real profiles).
+- **The AC-GFC-014 "before and after" comparison was not run as a literal two-tree diff.** The
+  criterion is decided by the inequality against the empty-entry hash plus a behavioural assertion
+  that a non-`.go` edit still moves the codemaps source fingerprint, both on the delivered tree, and
+  by the mutant run above. Byte-identity of every edges fingerprint against a pre-change tree
+  computed over the same fixture was not separately captured.
+- **No cross-platform run of the test suite.** Windows was verified by `go build` and `go vet` only
+  (compilation, not execution).
+- **M2 and M3 were not started.** No threshold re-measurement, no per-change attribution, no
+  driving-path stderr output, no `--json` attribution fields.
+- **The tree's own `graph check` was not re-run after the change** to record what the corrected
+  metric now reports for this worktree; the pre-flight figure (5, fresh) is the pre-change one.
+
+#### Residual risk
+
+- **Existing dirty codemaps stamps are invalidated by this change** — a tree carrying a dirty
+  `ContentFingerprint` written before this commit will read stale once, until it is re-stamped by the
+  ordinary regeneration path. `plan.md` §B accepts this as transient by construction; it is named
+  here because the first operator to hit it will see a stale codemaps verdict with no source change
+  behind it.
+- **`treeDirty` still consults no predicate** (`spec.md` §D.1, examined and deferred): a tree dirty
+  only under `testdata` is still refused the `--commit` anchor. Unchanged by this milestone, by
+  design.
+- **The mx-scan and graph-build stamps now write a fingerprint computed differently from the
+  codemaps stamp.** Safe only while nothing compares them — verified above at this HEAD, and silent
+  if that changes. The obligation is recorded in `spec.md` §D.1.
+- **The predicate is a judgment, not a measurement.** It admits every non-test `.go` file outside
+  `testdata`, including generated Go and Go under `internal/template/templates` (of which there are
+  currently none). If a generated-Go tree lands under a described root, the metric will count it.
 
 ## §E.3 Run-phase Audit-Ready Signal
 

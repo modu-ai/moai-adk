@@ -2,7 +2,7 @@
 id: SPEC-GRAPH-FRESHNESS-CADENCE-001
 title: "Graph-freshness cadence: described-worthy metric predicate, threshold re-derivation, and non-inheriting failure attribution"
 version: "0.2.1"
-status: draft
+status: in-progress
 created: 2026-08-27
 updated: 2026-08-27
 author: manager-spec
