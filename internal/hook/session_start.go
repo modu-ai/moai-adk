@@ -172,6 +172,16 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			return nil
 		})
 
+		// Task 5 — card-worktree base-branch alignment (SPEC-WORKTREE-BASEREF-001
+		// REQ-WBR-004). Touches only refs/remotes/origin/HEAD, shares no file
+		// with Tasks 1-4, and gates itself on the primary checkout before
+		// reading anything. Fail-open like the rest of the group.
+		var worktreeBaseData map[string]any
+		g.Go(func() error {
+			worktreeBaseData = runWorktreeBaseAlignment(input.ProjectDir)
+			return nil
+		})
+
 		if err := g.Wait(); err != nil {
 			// Best-effort contract preserved: Handle never returns a non-nil
 			// error from these steps. errgroup.WithContext cancels on first
@@ -181,7 +191,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 				"error", err.Error())
 		}
 
-		mergeData(data, settingsData, registryData, skillData, migrationData)
+		mergeData(data, settingsData, registryData, skillData, migrationData, worktreeBaseData)
 
 		// (b) Defer heavy advisory scanning off the synchronous critical path.
 		// These four steps (telemetry prune, stale-memory wrap, pending-proposal
