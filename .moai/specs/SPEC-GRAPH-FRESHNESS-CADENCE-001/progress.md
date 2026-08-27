@@ -286,6 +286,75 @@ Evidence files: `.moai/state/verify/t322-m1/` (`tests.txt`, `lint.txt`, `ac003-g
   `testdata`, including generated Go and Go under `internal/template/templates` (of which there are
   currently none). If a generated-Go tree lands under a described root, the metric will count it.
 
+#### Coordinate drift caused by M1 — refresh deferred to run-phase close
+
+M1 inserted lines into `internal/graph/check.go` and `internal/mx/provenance.go`, which moved source
+coordinates that `spec.md` and `plan.md` cite by line number. Those two artifacts still carry the
+pre-M1 values; this section (`§E.2`) carries the post-M1 ones, so the artifacts currently disagree
+with each other. The disagreement is recorded here rather than repaired, because M3 adds attribution
+output to `check.go` and will move several of these lines again — one refresh after M3 costs less
+than two, and a refresh done now would be measured against a tree that no longer exists by the time
+anyone reads it.
+
+Both columns are measured, not inferred: the pre-M1 column is
+`git show 4a50d44f4:<file> | grep -n …` and the post-M1 column is `grep -n …` on the delivered tree.
+Every pre-M1 coordinate reproduced exactly at `4a50d44f4`, so each row is a move of the same
+construct, not a new site.
+
+| Cited coordinate | Construct cited | pre-M1 (`4a50d44f4`) | post-M1 (`5d95a2e8d`) | What the old line holds now |
+|---|---|---|---|---|
+| `check.go:181` | the codemaps dirty-branch recompute | 181 | **184** | first line of the M1 comment above the recompute |
+| `check.go:187` | the sole `ContentFingerprint` comparator | 187 | **190** | `rep.Reason = "described roots unreadable: "…` |
+| `provenance.go:107` | `func aggregateFingerprint` (cited in `§E.1`) | 107 | **121** | doc comment of `AggregateDescribedFingerprintFiltered` |
+| `provenance.go:201` | `func treeDirty` | 201 | **225** | a `ResolveCommit` doc-comment line |
+| `provenance.go:208` | `func baseProvenance` (declaration) | 208 | **240** | `func ResolveCommit` |
+| `provenance.go:219` | the `aggregateFingerprint` call inside `baseProvenance` | 219 | **251** | a closing brace |
+| `provenance.go:237,253,264` | the three stamp writers' `baseProvenance` calls | 237 / 253 / 264 | **269 / 285 / 296** | 237 is now a doc-comment line |
+| `provenance.go:280` | `Provenance.Describe`, the display-only reader | 280 | **312** | a `StampMXScan` comment line |
+
+Two of these changed shape as well as position, and a refresh must not copy only the number:
+`baseProvenance` gained a `fingerprint fingerprintFunc` parameter, and the call at the old `:219` is
+now `fingerprint(projectRoot, describedRoots)` rather than a direct `aggregateFingerprint` call.
+
+Cited coordinates M1 did **not** move, confirmed unmoved rather than assumed:
+
+| Coordinate | Construct | Basis |
+|---|---|---|
+| `check.go:168` | `roots = mx.DefaultDescribedRoots` | still line 168 — M1's insertions are all below it |
+| `meta.go:67` | `dirFingerprint`'s aggregate call | `git diff --stat 4a50d44f4 -- internal/graph/meta.go` → empty |
+| `symbol.go:99` | `symbol.go`'s `DefaultDescribedRoots` consumer | `git diff --stat 4a50d44f4 -- internal/graph/symbol/symbol.go` → empty |
+
+One citation is **excluded from the refresh by construction**: `provenance.go:196` in `spec.md`'s
+v0.2.1 HISTORY row is a quotation of the wrong citation audit finding N2 corrected. It is a record of
+an error, not a pointer into the tree, and refreshing it would erase the correction it documents.
+
+`acceptance.md` carries no line-number citation at all (`grep -no '[A-Za-z0-9_]*\.go:[0-9]\+'` → no
+output), so the refresh scope is `spec.md`, `plan.md`, and `progress.md` `§E.1`.
+
+**Deciding command for the refresh (run at run-phase close, after M3).** Enumerate every citation in
+the four artifacts, then resolve each against the delivered tree:
+
+```bash
+grep -rhno '[A-Za-z0-9_]*\.go:[0-9][0-9,]*' \
+  .moai/specs/SPEC-GRAPH-FRESHNESS-CADENCE-001/{spec,plan,acceptance,progress}.md \
+  | awk -F: '{print $2":"$3}' | sort -u          # → 26 distinct citations at 5d95a2e8d
+sed -n '<N>p' <path>                              # resolve each row
+```
+
+A basename-keyed resolver is NOT sufficient here and must not be substituted: `find internal -name
+provenance.go` returns three files (`internal/config`, `internal/mx`, `internal/navigator/sync`) and
+`check.go` / `symbol.go` collide likewise, so each row resolves against the path its citing sentence
+names — `check.go` → `internal/graph/check.go`, `meta.go` → `internal/graph/meta.go`, `symbol.go` →
+`internal/graph/symbol/symbol.go`, `provenance.go` → `internal/mx/provenance.go`.
+
+The refresh is complete when every resolved line is the construct its citing sentence names, with the
+`:196` HISTORY quotation left untouched. The comma-list form (`237,253,264`) needs its trailing
+members read by eye — the enumeration prints the row whole, but a resolver that splits on the first
+number alone will silently skip 253 and 264.
+
+Ownership: `spec.md` and `plan.md` bodies are manager-spec's, so this milestone records the drift and
+does not repair it.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
@@ -293,3 +362,38 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+### §E.2b Citation drift introduced by M1 (recorded, refresh deferred)
+
+M1 added code to `internal/graph/check.go` and `internal/mx/provenance.go`, which
+moved three source coordinates that `spec.md` and `plan.md` cite by line number.
+Measured in this tree at `5d95a2e8d` by the orchestrator, each by the grep that
+decides it:
+
+| what | cited in spec.md / plan.md (pre-M1) | actual at 5d95a2e8d | deciding command |
+|---|---|---|---|
+| sole comparator | `internal/graph/check.go:187` | `:190` | `grep -n "cur == pv.ContentFingerprint" internal/graph/check.go` |
+| display-only reader | `internal/mx/provenance.go:280` | `:312` | `grep -n "dirty fingerprint=" internal/mx/provenance.go` |
+| `treeDirty` | `internal/mx/provenance.go:201` | `:225` | `grep -n "func treeDirty" internal/mx/provenance.go` |
+
+So the four artifacts currently disagree: `progress.md` carries post-M1
+coordinates, `spec.md` and `plan.md` carry pre-M1 ones.
+
+**The refresh is deliberately deferred to the close of run-phase, after M3.** M3
+adds attribution output to `check.go` and will move these lines again; refreshing
+now would be done twice. This is recorded rather than silent because this SPEC
+already failed audit iter-2 on this exact defect class (N2 — `provenance.go:196`
+cited while the function was at `:208`); the difference is that N2 was wrong and
+unnoticed, and this is wrong and written down.
+
+Refresh-complete is decided by extracting every `internal/…/*.go:NNN` citation
+from the four artifacts and checking each against the delivered tree:
+
+```
+grep -ohE '(internal/[a-z]+/[a-z_]+\.go):[0-9]+' .moai/specs/SPEC-GRAPH-FRESHNESS-CADENCE-001/*.md \
+  | sort -u | while IFS=: read f l; do printf '%s:%s -> ' "$f" "$l"; sed -n "${l}p" "$f"; done
+```
+
+Every row must show the construct its citation claims. Recorded by the
+orchestrator because two dispatches asking the M1 agent to record it returned
+idle with no commit; `spec.md` and `plan.md` bodies were not touched.
