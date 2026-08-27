@@ -230,7 +230,7 @@ run-phase by direct operator instruction — see the run-phase context note in �
 
 ```yaml
 sync_complete_at: 2026-08-28
-sync_commit_sha: pending-backfill-SPEC-CLI-TEST-CWD-ISOLATION-001
+sync_commit_sha: 242abc5c5
 sync_status: complete
 b12_self_test_a: pass    # grep -c 'SPEC-CLI-TEST-CWD-ISOLATION-001' CHANGELOG.md → 0 pre-emission (no prior entry)
 b12_self_test_b: pass    # AC-ID census of acceptance.md → 5; §E.2 matrix / §E.3 ac_pass_count → 5/5
