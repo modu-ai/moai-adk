@@ -2,7 +2,7 @@
 id: SPEC-BINARY-LAG-VISIBILITY-001
 title: 배포 지연 가시성 — 설치된 바이너리가 저장소 HEAD보다 뒤처졌음을 요청 없이 알린다
 version: "0.4.0"
-status: draft
+status: in-progress
 created: 2026-08-27
 updated: 2026-08-28
 author: manager-spec
