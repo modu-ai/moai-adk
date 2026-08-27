@@ -77,6 +77,20 @@ provenance: tree=/path/to/project commit=1a2b3c4d5e6
 
 codemaps を再生成した後の最後のステップとして実行します。文書の内容は `/moai codemaps` が整えますが、その内容が**どのツリー状態を記述しているか**はこのコマンドが `provenance.json` に記録します。`moai graph check` が codemaps 層を判定するよりどころがこの記録です。
 
+### マージを生き残るコミットの指定 (`--commit`)
+
+```bash
+$ moai graph stamp codemaps --commit "$(git merge-base HEAD origin/main)"
+OK: stamped .moai/project/codemaps/provenance.json
+provenance: tree=/path/to/project commit=1a2b3c4d5e6
+```
+
+フラグなしで実行すると、スタンプは現在チェックアウトしている HEAD を記録します。機能ブランチではこれが落とし穴です。このリポジトリはプルリクエストを**スカッシュマージ**で統合するため、ブランチのコミット — HEAD も含め — は main の履歴に一切入りません。ブランチローカルの HEAD を指すスタンプは、スカッシュマージが決まった瞬間に孤児になり、その後に開くすべてのプルリクエストが graph-freshness の赤判定（`not comparable`、exit 2）を受け継ぎます。この失敗は実際に一度発生し、`0d15864ae90b` インシデントとして追跡されました。
+
+`--commit <rev>` は `git rev-parse` の式（フル sha、短縮ハッシュ、ref 名のどれでも）を受け取り、フル sha に解決してそのまま記録します。上の merge-base レシピが安全な形です。`git merge-base HEAD origin/main` は main の祖先なのでスカッシュマージを生き残り、同時に分岐点での described ソースと内容が一致するため、他の PR が統合した変更まで自分のドリフトとして数えられません。ブランチローカルの HEAD で再スタンプしないでください。また、described ソースに未コミットの変更がある状態で `--commit` を使うと即座に拒否されます — コミット指定とコンテンツフィンガープリントは異なる正直性の主張であり、スキーマのアンカーは一つしか持てないからです。
+
+この規律は CI が機械的に支えます。graph-freshness ワークフローは鮮度判定を報告する前に、追跡されているスタンプのコミットがプルリクエストのベースブランチの祖先かどうかを検証します。孤児になるスタンプは、マージ後の無名の exit 2 ではなく、名前付きでその場で失敗します。
+
 ## 2つのセレクタへの注意書き
 
 {{< callout type="warning" >}}

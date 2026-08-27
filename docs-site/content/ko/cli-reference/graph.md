@@ -77,6 +77,20 @@ provenance: tree=/path/to/project commit=1a2b3c4d5e6
 
 codemaps를 다시 생성한 다음 마지막 단계로 실행합니다. 문서 내용은 `/moai codemaps`가 다듬지만, 그 내용이 **어떤 트리 상태를 묘사하는지**는 이 명령이 `provenance.json`으로 기록합니다. `moai graph check`가 codemaps 층을 판정하는 근거가 이 기록입니다.
 
+### 머지를 살아남는 커밋 지정 (`--commit`)
+
+```bash
+$ moai graph stamp codemaps --commit "$(git merge-base HEAD origin/main)"
+OK: stamped .moai/project/codemaps/provenance.json
+provenance: tree=/path/to/project commit=1a2b3c4d5e6
+```
+
+플래그 없이 실행하면 스탬프는 현재 체크아웃된 HEAD를 기록합니다. 기능 브랜치에서는 이것이 함정입니다. 이 저장소는 풀 리퀘스트를 **스쿼시 머지**로 합치기 때문에, 브랜치의 커밋 — HEAD 포함 — 은 main 역사에 절대 들어가지 않습니다. 브랜치 로컬 HEAD를 가리키는 스탬프는 스쿼시 머지가 이루어지는 순간 고아가 되고, 이후 열리는 모든 풀 리퀘스트가 graph-freshness 빨간불(`not comparable`, exit 2)을 물려받습니다. 이 실패가 실제로 한 번 발생해 `0d15864ae90b` 인시던트로 추적된 사례가 있습니다.
+
+`--commit <rev>`는 `git rev-parse` 표현식(전체 sha, 짧은 해시, 레퍼런스 이름 모두 가능)을 받아 전체 sha로 풀어 그대로 기록합니다. 위의 merge-base 레시피가 안전한 형태입니다. `git merge-base HEAD origin/main`은 main의 조상이라 스쿼시를 살아남는 동시에, 분기점에서 브랜치의 described 소스와 내용이 같아서 다른 PR이 머지한 변경까지 내 드리프트로 세지 않습니다. 브랜치 로컬 HEAD로 재스탬프하지 마세요. 또 described 소스에 커밋되지 않은 변경이 있는 상태에서 `--commit`을 쓰면 그냥 거부됩니다 — 커밋 지정과 콘텐츠 핑거프린트는 서로 다른 정직성 주장이라 스키마에 앵커 자리는 하나뿐이기 때문입니다.
+
+이 규율은 CI가 기계적으로 받칩니다. graph-freshness 워크플로는 신선도 판정을 내리기 전에 추적된 스탬프의 커밋이 풀 리퀘스트 베이스 브랜치의 조상인지 검사하므로, 고아가 될 스탬프는 머지 뒤의 무명 exit 2가 아니라 이름을 갖고 그 자리에서 실패합니다.
+
 ## 두 셀렉터를 위한 주의문
 
 {{< callout type="warning" >}}
