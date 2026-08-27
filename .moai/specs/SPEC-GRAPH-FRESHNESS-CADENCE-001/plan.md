@@ -33,13 +33,14 @@ fake.
   trees with uncommitted described-source changes), so this is accepted rather than migrated.
 - **Leaving the mx-scan and graph-build stamps unfiltered rests on a measured premise**: `check.go:187`
   is the only non-test comparator of `ContentFingerprint` in the tree (`provenance.go:280` reads it
-  for display only). AC-GFC-004's sole-comparator clause pins it; if the run phase finds a second
-  comparator, the pairing in REQ-GFC-003 is no longer sufficient and the milestone stops for a
-  judgment rather than proceeding.
-- **`treeDirty` (`provenance.go:201`) is deliberately not touched.** It selects `baseProvenance`'s
-  anchor branch without consulting the predicate, so a tree dirty only under `testdata` is still
-  refused the `--commit` anchor. Recorded as a known residual (spec.md §D.1 / §E), not a work item —
-  do not "fix" it in passing.
+  for display only), so nothing compares what those two producers write. spec.md §D.1 states the
+  premise and its obligation: adding a comparing consumer against the mx-index or edges layer
+  requires re-checking REQ-GFC-003's pairing. If the run phase finds a second comparator already
+  present, stop for a judgment rather than proceeding — the asymmetry is no longer safe.
+- **`treeDirty` (`provenance.go:201`) is examined and deferred, not overlooked.** It selects
+  `baseProvenance`'s anchor branch without consulting the predicate, so a tree dirty only under
+  `testdata` is still refused the `--commit` anchor. Accepted residual (spec.md §D.1 / §E), out of
+  scope for this SPEC — do not "fix" it in passing.
 - The tracked `provenance.json` in this tree names `d2fcecc8b40d1cb…`. It is an ancestor of this
   branch's HEAD (verified `git merge-base --is-ancestor` → rc 0), so the checker is comparable here.
   Nothing in this plan restamps it.

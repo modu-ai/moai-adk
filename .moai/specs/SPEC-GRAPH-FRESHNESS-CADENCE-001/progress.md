@@ -39,7 +39,14 @@ Plan-phase artifacts authored for card t322 in worktree
 - Remediation of N1/N2/N3 and optional O2/O4 landed at **v0.2.1**, applied directly rather than as a
   plan-phase re-entry (the iteration ceiling is reached). The cadence walk was re-measured in this
   tree both ways — 40-crossing at integration 10 with the outlier, **16** without it — and the
-  outlier-excluded figure is now the operative one in §B.6, §D.2 and §G Q4.
+  outlier-excluded figure is now the operative one in §B.6, §D.2 and §G Q4, carrying an explicit
+  disclaimer there that it is not the reason 40 is retained.
+- Two consumers examined at v0.2.1 and given explicit dispositions in `spec.md` §D.1, so neither
+  reads as an oversight to a later reader: the unpaired `StampMXScan` / `StampEdges` producers are
+  **safe on a stated premise** (`check.go:187` is the only non-test `ContentFingerprint` comparator —
+  re-measured at this HEAD), and `treeDirty` (`provenance.go:201`) is **examined and deferred** with
+  its residual recorded (a tree dirty only under `testdata` is still refused the `--commit`
+  merge-base anchor). The `treeDirty` deferral is a candidate for a follow-up card — operator's call.
 - Ordering basis for t322 / t311 / t304: `spec.md` §F.
 - Open questions deliberately left to the operator: `spec.md` §G (**four** — Q4 added at v0.2.0 and
   restated on the outlier-excluded cadence figure at v0.2.1).

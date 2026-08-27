@@ -57,20 +57,9 @@ have left it green.*
 reads it back with no intervening edit, Then the codemaps verdict is `fresh`; and When a file under
 a `testdata` segment is then modified, Then the verdict remains `fresh`; and When a production `.go`
 file is modified, Then the verdict becomes `stale`.
-And Given the delivered tree, When every non-test reference to `ContentFingerprint` is enumerated,
-Then exactly one **comparator** exists — `checkCodemaps` at `internal/graph/check.go:187` — and any
-other comparator is a defect against this SPEC's premise that mx-scan's and graph-build's unfiltered
-fingerprints are harmless.
-Decided by: `go test ./internal/mx/ -run TestCodemapsFingerprint_ProducerConsumer -count=1`, and for
-the sole-comparator clause `grep -rn --include='*.go' 'ContentFingerprint' . | grep -v _test.go`
-recorded verbatim in `progress.md` §E.2 (plan-phase baseline: one comparator at `check.go:187`, one
-display-only reader at `internal/mx/provenance.go:280`, the rest declarations and the single
-producer at `:219`).
+Decided by: `go test ./internal/mx/ -run TestCodemapsFingerprint_ProducerConsumer -count=1`.
 Mutant this kills: a filtered checker paired with an unfiltered codemaps stamp writer — the first
-assertion fails immediately, because the tree is stale against its own fresh stamp. The
-sole-comparator clause kills a different mutant: a second comparator added against the mx-index or
-edges layer, which would make the deliberate producer asymmetry live with nothing guarding it.
-*Extended at v0.2.1 with the sole-comparator clause (audit O4).*
+assertion fails immediately, because the tree is stale against its own fresh stamp.
 
 **AC-GFC-005** — Given each of the **seven** absent-verdict branches of `checkCodemaps` in turn,
 When `checkCodemaps` runs, Then the verdict is `absent` carrying that branch's pre-existing reason

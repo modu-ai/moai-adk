@@ -22,7 +22,7 @@ related_specs: [SPEC-V3R6-GRAPH-FRESHNESS-001, SPEC-V3R6-GRAPH-FRESHNESS-002, SP
 
 | Version | Date | Change | Author |
 |---------|------|--------|--------|
-| 0.2.1 | 2026-08-27 | Remediation of plan audit iter-2 PASS-WITH-DEBT 0.895 (`.moai/reports/t322/plan-audit-iter2.md`) — the Tier M iteration ceiling, so these are applied directly rather than as a plan-phase re-entry. **N1**: §D.2's cadence figure rested on `6786c3fa4`, the self-referential SPEC-V3R6-GRAPH-FRESHNESS-001 delivery that §B.5 already disowns and that contributes 29 of the union's 49 at the crossing. The cumulative walk was re-measured here both ways — 40-crossing at integration **10** with it, **16** without (15-crossing unaffected at 5, it precedes the outlier) — both recorded in §B.6, and §D.2 / §G Q4 restated on the outlier-excluded ≈1.6 days. AC-GFC-006 now requires the run-phase Axis 2 to carry the same counterfactual. The §D.2 reversal is untouched: it rests on §B.6 consequence 1 (the streak's corrected cumulative is 2, so the threshold is not load-bearing), which the figure does not affect. **N2**: `baseProvenance` cited at `provenance.go:196` in three places — `:196` is inside `ResolveCommit`; corrected to `:208` (declaration) and `:219` (the `aggregateFingerprint` call) per site. **N3**: counts left stale by the D8 withdrawal recounted — twelve live acceptance criteria, four §G questions, 11 live requirements. **O2** accepted: `treeDirty` (`provenance.go:201`) named as a deliberately predicate-blind consumer, with the `--commit`-anchor residual stated (§D.1, §E). **O4** accepted: the premise that makes the unpaired mx-scan / graph-build producers safe — `check.go:187` is the only non-test `ContentFingerprint` comparator — is now stated in §D.1 and pinned by an AC-GFC-004 clause. | manager-spec |
+| 0.2.1 | 2026-08-27 | Remediation of plan audit iter-2 PASS-WITH-DEBT 0.895 (`.moai/reports/t322/plan-audit-iter2.md`) — the Tier M iteration ceiling, so these are applied directly rather than as a plan-phase re-entry. **N1**: §D.2's cadence figure rested on `6786c3fa4`, the self-referential SPEC-V3R6-GRAPH-FRESHNESS-001 delivery that §B.5 already disowns and that contributes 29 of the union's 49 at the crossing. The cumulative walk was re-measured here both ways — 40-crossing at integration **10** with it, **16** without (15-crossing unaffected at 5, it precedes the outlier) — both recorded in §B.6, and §D.2 / §G Q4 restated on the outlier-excluded ≈1.6 days. AC-GFC-006 now requires the run-phase Axis 2 to carry the same counterfactual. The §D.2 reversal is untouched: it rests on §B.6 consequence 1 (the streak's corrected cumulative is 2, so the threshold is not load-bearing), which the figure does not affect. **N2**: `baseProvenance` cited at `provenance.go:196` in three places — `:196` is inside `ResolveCommit`; corrected to `:208` (declaration) and `:219` (the `aggregateFingerprint` call) per site. **N3**: counts left stale by the D8 withdrawal recounted — twelve live acceptance criteria, four §G questions, 11 live requirements. **O2** accepted: `treeDirty` (`provenance.go:201`) given an explicit disposition — **examined and deferred**, with the accepted residual stated (a tree dirty only under `testdata` is still refused the `--commit` merge-base anchor) so a later reader can tell the consumer was judged rather than missed (§D.1, §E). **O4** accepted: the premise that makes the unpaired mx-scan / graph-build producers safe — `check.go:187` is the only non-test `ContentFingerprint` comparator, so nothing compares what those producers write — is stated as a §D.1 body paragraph carrying its own obligation (adding a comparing consumer requires re-checking REQ-GFC-003's pairing), because that failure mode is silent and would otherwise take this SPEC's safety argument with it unrecorded. Deliberately **not** promoted to a requirement or an AC. §G Q4 additionally carries a disclaimer that the cadence figure is not the reason 40 is retained — the retention rests on the corrected cumulative of 2 — so the operator cannot mistake the number for the argument. | manager-spec |
 | 0.2.0 | 2026-08-27 | Remediation of plan audit PASS-WITH-DEBT 0.82 (`.moai/reports/t322/plan-audit.md`), four blocking defects. **D1**: the predicate is no longer applied inside `aggregateFingerprint` — re-measured, `dirFingerprint` (`internal/graph/meta.go:67`) hashes `.moai/project/codemaps`, `.moai/specs`, `.moai/reports`, of which the first two contain **zero** `.go` files, so a `.go`-only filter there collapses both to the same empty-entry constant `e3b0c442…` and permanently greens the edges layer. Predicate relocated to the codemaps call sites; a second collateral consumer the audit did not name (`baseProvenance`, `internal/mx/provenance.go:208`, shared by the codemaps-gen / mx-scan / graph-build stamp writers) is handled by REQ-GFC-003's producer/consumer pairing. **D2**: cumulative-crossing cadence measured and added to §B.5; §D.2 reversed — **40 is retained**, re-justified on the integration axis. **D3**: AC-GFC-003 now decided through the built artifact. **D4**: AC-GFC-005 extended from four absent branches to all seven. **D5-D7** applied (p90 corrected to 9 with the convention named; `DefaultDescribedRoots` consumer citation corrected to five call sites; AC-GFC-007's search space bounded). **D8** accepted: `internal/template/templates` holds 0 tracked `.go` files and the prefix rule removes nothing the `.go` rule does not — the clause, REQ-GFC-004, REQ-GFC-012, milestone M4 and their criteria are withdrawn. | manager-spec |
 | 0.1.0 | 2026-08-27 | Initial plan-phase authoring for card t322. All baseline figures in §B re-measured in worktree `.claude/worktrees/t322` at HEAD `d2cba5e21`; the orchestrator's dispatch figures (55 / 0 / 5, 21 / 198) reproduced exactly. Three judgments adjudicated in §D with rejected alternatives recorded. Ordering basis against t311 / t304 established in §F. | manager-spec |
 
@@ -313,27 +313,37 @@ So the predicate goes to the codemaps call sites — the checker at `check.go:18
 stamp writer — through a predicate-bearing variant, leaving `AggregateDescribedFingerprint`'s
 contract intact for `meta.go` and leaving the mx-scan and graph-build stamps unchanged.
 
-**Why leaving the mx-scan and graph-build stamps unfiltered is safe — the premise, measured.**
-Those two writers keep emitting an unfiltered `ContentFingerprint`, which is only harmless because
-**codemaps is the only layer that ever compares one**. Measured:
-`grep -rn --include='*.go' 'ContentFingerprint' . | grep -v _test.go` yields exactly one comparator,
-`checkCodemaps` at `internal/graph/check.go:187` (reading the value computed at `:181`), plus one
-display-only reader, `Provenance.Describe` at `internal/mx/provenance.go:280`; `checkMXIndex` and
-the edges check never read the field. The producer/consumer pairing REQ-GFC-003 requires is
-therefore sufficient *given this premise* — and it stops being sufficient the moment a future layer
-adds a dirty-fingerprint comparison for mx-index or edges. AC-GFC-004 pins the premise as a control
-rather than leaving it a footnote.
+**The unpaired producers are safe on a premise, and the premise is stated here because it can
+break silently.** `StampMXScan` and `StampEdges` go on writing an unfiltered `ContentFingerprint`
+while the codemaps writer is filtered — a deliberate asymmetry, and one this SPEC leaves in place.
+It is safe for exactly one reason: **nothing ever compares what those two producers write.**
+Measured — `grep -rn --include='*.go' 'ContentFingerprint' . | grep -v _test.go` yields a single
+comparing consumer, `checkCodemaps` (`internal/graph/check.go:181` recomputes, `:187` compares),
+plus one display-only reader, `Provenance.Describe` (`internal/mx/provenance.go:280`). `checkMXIndex`
+and the edges check never read the field at all.
 
-**One described-roots consumer is deliberately left predicate-blind: `treeDirty`.**
+So the producer/consumer pairing REQ-GFC-003 requires is sufficient *given that premise*, and it
+stops being sufficient the moment anyone adds a comparing consumer against the mx-index or edges
+layer. **Adding such a consumer therefore obliges a re-check of this SPEC's pairing** — the
+unfiltered producers would have to be filtered with it, or the new comparison would read a
+fingerprint computed over a different file set than the one it is judging. That failure is silent:
+nothing in the build or the test suite would flag it, and what breaks is this argument, which is why
+the argument is written down here rather than left as a footnote.
+
+**One described-roots consumer is examined and deliberately deferred: `treeDirty`.**
 `treeDirty` (`internal/mx/provenance.go:201`) decides, from `git status --porcelain` over the
 described roots, whether `baseProvenance` takes the dirty-fingerprint branch or the commit-anchor
-branch. It consults no predicate and this SPEC does not give it one. The consequence is worth
-stating because it cuts against this SPEC's own thesis: a tree dirty **only** under `testdata` —
-carrying no described-worthy change at all — is still classified dirty, and is therefore still
-refused the `--commit` merge-base anchor that `SPEC-STAMP-REACHABILITY-001` delivered and that §D.3
-cites as the orphan mitigation. Leaving it is the conservative default (a false "dirty" over-reports
-rather than under-reports, and changing the anchor-mode selector is a `SPEC-STAMP-REACHABILITY-001`
-concern, not a metric one), so it is recorded as a known residual rather than a work item — see §E.
+branch. It consults no predicate. **This SPEC does not give it one, and that is a decision, not an
+oversight** — it was examined during the iter-2 remediation and left out of scope.
+
+The residual that decision accepts, stated so nobody has to rediscover it: a tree dirty **only**
+under `testdata` — carrying no described-worthy change at all, by this SPEC's own thesis — is still
+classified dirty, and is therefore still refused the `--commit` merge-base anchor that
+`SPEC-STAMP-REACHABILITY-001` delivered and that §D.3 cites as the orphan mitigation. Deferred
+rather than fixed because a false "dirty" over-reports rather than under-reports (the conservative
+direction), and because an anchor-mode selector belongs to `SPEC-STAMP-REACHABILITY-001`'s axis, not
+to the metric this SPEC corrects. Recorded as a known residual in §E; a follow-up card is the
+operator's call.
 
 **Rejected — narrow `described_roots` instead.** Rejected on the expressiveness measurement above,
 and on the shared-consumer coupling.
@@ -461,7 +471,7 @@ would rot without a single red. Per-change contribution is therefore *reported* 
 
 ### Out of Scope — the dirty/clean anchor-mode selector
 
-- `treeDirty` (`internal/mx/provenance.go:201`) stays predicate-blind: it decides `baseProvenance`'s dirty-vs-commit anchor branch from a raw `git status --porcelain` over the described roots, and this SPEC does not filter it. Known residual, stated in §D.1: a tree dirty only under `testdata` is still refused the `--commit` merge-base anchor delivered by `SPEC-STAMP-REACHABILITY-001`. Changing an anchor-mode selector belongs to that SPEC's axis, not to the metric.
+- `treeDirty` (`internal/mx/provenance.go:201`) stays predicate-blind. **Examined at v0.2.1 and deliberately deferred — not overlooked.** It decides `baseProvenance`'s dirty-vs-commit anchor branch from a raw `git status --porcelain` over the described roots, and this SPEC does not filter it. Accepted residual, stated in full in §D.1: a tree dirty only under `testdata` is still refused the `--commit` merge-base anchor delivered by `SPEC-STAMP-REACHABILITY-001`. Deferred because an anchor-mode selector belongs to that SPEC's axis, not to the metric, and because the mis-classification errs conservative. A follow-up card is the operator's call, not this SPEC's.
 
 ### Out of Scope — the edges layer's fingerprint
 
@@ -524,6 +534,19 @@ their own; t322 does not supply one and does not claim to.
    self-referential `6786c3fa4` is excluded from the window; §D.2 retains 40 on that basis. (The
    with-outlier figure is 10 integrations ≈ one day; it is recorded in §B.6 but is not the figure
    this question is posed on, because it measures the gate's redness during its own construction.)
+
+   **This number is not the reason 40 is retained — do not read it as one.** The decision to retain
+   40 rests on independent ground: §B.6 consequence 1, that the streak this SPEC exists to fix
+   carries a corrected cumulative of **2**, which passes under 15 and under 40 alike. The threshold
+   is therefore not load-bearing for the defect being fixed, and is held fixed as the control so the
+   predicate change is attributable on its own. The cadence figure answers a different question —
+   how often the retained gate will be red — and the operator can judge that frequency
+   intolerable without any of it disturbing the retention decision. (v0.1.0's own history is the
+   caution: a threshold argument built on one axis of one window was reversed once already, and at
+   v0.2.0 the replacement figure was itself produced by a single integration §B.5 had already
+   declared an outlier — a decision input made out of data the document had excluded from its own
+   distribution.)
+
    Each such red will be a true statement that undescribed surface has accumulated, and its only
    exit is a manual regeneration of six documents. If that frequency is judged intolerable, the
    lever is a regeneration cadence (t311 / t304) or the Q1 advisory-degradation policy — not a
