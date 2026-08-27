@@ -73,6 +73,14 @@ t326, t234, 열 장 — 은 사용할 수 있는 녹색 CI 판정 없이 착지�
 신호 자체가 죽어 있어 어떤 후속 head 를 대입해도 녹색이 나오지 않는다. 그래서 이 수리의 실질
 이익은 검사 한 개가 아니라, 일괄 착지분이 CI 판정을 다시 받을 수 있게 되는 것이다.
 
+범위 귀속을 둘로 갈라 적는다 — 배경 사실과 본 카드의 소관은 다른 명제다. 배경: 이 구간
+전체에서 CI 초록을 얻은 착지는 0 장이다(판정 난 것은 전부 failure, 나머지는 동시 push 의
+concurrency 취소). 소관: t346 이 책임지는 구간은 `da03d9188`(t317) 이후뿐이고, 그 앞 두 런의
+적색은 원인이 다르므로 이 카드가 고치지 않는다. 이 구분이 없으면 연속된 붉음을 하나의 원인으로
+읽는 시간 축 압축이 생긴다 — 배차자가 처음 "열 장"으로 집계한 것이 바로 그 압축이었고
+(붉음의 연속을 원인의 단일성으로 읽은 것), head 별 원인을 갈라 재산 두 축이 함께 참이 된다.
+이는 앞서 `Graph Freshness` 상속 레드를 전부로 본 오독과 같은 형태다.
+
 ## 2. 요구사항 (GEARS)
 
 **REQ-CDB-001** — While the embed-axis doctor check is applicable (the tree under check carries the committed emission set) and no readable binary exists at the resolved judgment-target path, the check shall report an informational skip — status `ok` with a message stating that no binary was judged — and shall contribute no fail to `moai doctor`'s exit status.

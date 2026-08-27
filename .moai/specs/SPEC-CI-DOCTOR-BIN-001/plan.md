@@ -8,6 +8,7 @@
 - **수리 방향 (운영자 결정, 옵션 (a))**: 바이너리 부재 → 정보성 skip (`ok` + 이유 메시지), fail-open. 선례: `checkBinaryFreshness` (카드 t184, `internal/cli/doctor.go:502` — 판정 불가 시 `ok` + 메시지, doctor 를 gate 하지 않음).
 - **관련 인프라 (PRESERVE 대상)**: `internal/cli/doctor.go`의 레지스트리(`:205` 등록)·`countFailedChecks`/`doctorExitStatus`(`:101`, `:140-146`), `findEmbedCheckRoot` 상향 탐색, `MOAI_EMBED_CHECK_BIN` override, `uikit` 상태 열거 — 전부 수정 대상 아님.
 - **plan-auditor verdict**: PASS 0.93 (Tier S 임계 0.75, skip-eligible; iter 1/1 — `.moai/reports/t346/verdict-plan.md`). minor 3건 처분 — **D1**(`related_specs` 비스키마 필드): 수용된 minor 로 문서화. 비차단 참조를 차단 의미의 `depends_on:` 으로 옮기면 관계가 왜곡되고 스키마 등록은 범위 확장이라 하지 않았다(감사 판정 "스킵해도 무방"). **D2**(supersession 선언의 검증 계층 파생 미지목): 적용 — spec.md REQ-CDB-001 주해에 파생물 한 문장 추가. **D3**(CI 전칭 과잉 일반화): 적용 — §1 전칭을 go test 잡 한정으로 축소 + `lint`/`constitution-check` 대조 각주. D2·D3 수리로 artifact-hash 불변이 깨지므로 감사 권고대로 Phase 1 재실행이 정규 경로다.
+- **파급 계수의 귀속 경위**: 배차자가 제시한 "열 장" 계수는 서브에이전트가 head 별 CI 원인을 갈라 재측정하면서 배경 사실(구간 내 CI 초록 0장)과 본 카드 소관(da03d9188 이후 구조적 적색)으로 갈라졌고, SPEC §1 의 파급 문단은 그 두 축을 별개 명제로 적는다 — 배차자 계수를 재현 없이 쓰지 않은 처리 기록.
 
 ### §A.5 PRESERVE 목록 (범위 절제)
 
