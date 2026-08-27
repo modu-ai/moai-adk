@@ -2,7 +2,7 @@
 id: SPEC-INTEGRATION-LOCK-LIVENESS-001
 title: "Release-integration lock: anchor holder liveness to the session process, not the acquire CLI process (card t298)"
 version: "0.1.3"
-status: implemented
+status: completed
 created: 2026-08-27
 updated: 2026-08-27
 author: manager-spec
