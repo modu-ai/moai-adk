@@ -82,9 +82,7 @@ contract file, M6 reachability)
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: 2026-08-28
-sync_commit_sha: pending-backfill-sync (D3 exemption — a commit cannot know its
-own SHA; the real SHA is backfilled by the orchestrator in the immediately
-following commit)
+sync_commit_sha: 4b36b00d6
 sync_status: complete
 b12_self_test_a: pre-emission grep `grep -c 'SPEC-CODEX-INIT-001' CHANGELOG.md`
 → 0 (clear to emit; no parallel BATCH-SYNC entry)
