@@ -78,3 +78,36 @@ total_run_phase_files: 5 (codex_init.go, codex_contract.go, codex_init_test.go,
 codex_contract_test.go pending, codex_launcher.go +1 call site)
 m1_to_mN_commit_strategy: per-milestone commits (M1-M3 gate surface, M4+M5
 contract file, M6 reachability)
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+sync_complete_at: 2026-08-28
+sync_commit_sha: pending-backfill-sync (D3 exemption — a commit cannot know its
+own SHA; the real SHA is backfilled by the orchestrator in the immediately
+following commit)
+sync_status: complete
+b12_self_test_a: pre-emission grep `grep -c 'SPEC-CODEX-INIT-001' CHANGELOG.md`
+→ 0 (clear to emit; no parallel BATCH-SYNC entry)
+b12_self_test_b: distinct AC ids in acceptance.md → 13 raw tokens (AC-CI-001..011
+= 11 own; AC-CL-004/007 are launcher-SPEC cross-references cited in the shared
+definitions). CHANGELOG entry cites 11 (AC-CI-001..011), matching §E.3
+ac_pass_count: 11 — non-zero on both sides
+b12_self_test_c: every file path claimed in the CHANGELOG entry verified to
+exist (`.moai/specs/SPEC-CODEX-INIT-001/spec.md`, `internal/cli/codex_launcher.go`,
+`internal/cli/codex_contract.go`, `internal/codexwiring/`) — all present
+changelog_entry_position: `[Unreleased]` → `### Added`, first (top) entry
+frontmatter_status_transitions.spec_md: in-progress → completed (3-phase close
+merged into the single sync commit). plan.md / acceptance.md / progress.md carry
+no YAML frontmatter in this SPEC — no further transitions apply
+mx_tag_validation: performed as a sync sub-step by direct read — @MX:NOTE on the
+gate's single-judgement source (`internal/cli/codex_init.go`) and @MX:ANCHOR +
+@MX:REASON on the contract's ordering invariant
+(`internal/cli/codex_contract.go`, secureCodexInstructionContract) are present
+and well-formed; no missing tags found, none added
+codemaps_regeneration: 6 documents (overview / modules / data-flow / dependencies
+/ entry-points / docs-truth) + provenance.json updated to describe the `moai
+codex` launcher surface (card t197 gap) and this SPEC's init-offer gate surface
+(codex_init / codex_contract / single call site in codex_launcher); measured
+counts refreshed to this tree (2026-08-28). provenance commit_sha pinned to
+`f1d80b305` — the described tree; the sync commit changes no Go file under
+internal/, cmd/, or pkg/
