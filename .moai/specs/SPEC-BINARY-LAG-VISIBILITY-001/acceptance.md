@@ -1,12 +1,12 @@
 ---
 id: SPEC-BINARY-LAG-VISIBILITY-001
 title: "배포 지연 가시성 — 수락 기준"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-08-27
-updated: 2026-08-27
+updated: 2026-08-28
 author: manager-spec
-priority: HIGH
+priority: High
 phase: "v3.1.4 target"
 module: internal/cli, internal/hook, build
 lifecycle: spec-anchored
@@ -99,7 +99,9 @@ $ git describe --tags              → v3.1.2-494-g343399d2f
 
 ## AC-BLV-006 (REQ-BLV-006) — 실패 개방 + 시간 제한
 
-[HARD] **시간 제한의 소유자는 호출자(핸들러) 쪽이다.** seam 내부의 `context.WithTimeout`이 아니라, 핸들러가 seam을 **기한 있는 조인**으로 호출한다. 선례는 `computeDeferredAdvisory`의 `driftTimeout` 처리(`internal/hook/session_start.go:593` 인접)이며 같은 계약을 따른다.
+[HARD] **시간 제한의 소유자는 호출자(핸들러) 쪽이다.** seam 내부의 `context.WithTimeout`이 아니라, 핸들러가 seam을 **기한 있는 조인**으로 호출한다. 선례는 `internal/hook/session_start.go:243-257` — `joinTimer := time.NewTimer(deferredScanJoinBound)` + `advisoryCh`에 대한 `select`다.
+
+> 선례 정정(v0.4.0, 감사 N2): v0.3.0은 `computeDeferredAdvisory`의 `driftTimeout` 처리를 선례로 들었으나, 실측하니 그것은 `session_start.go:622-624`의 `context.WithTimeout`이 **동기 호출을 감싼 것**이다 — 이 절이 명시적으로 배제하는 바로 그 형태다. 파일 안의 진짜 호출자측 기한 조인은 `:243-257`이며, 그쪽으로 옮겼다.
 
 이 소유권 지정은 판정 방법이 요구하는 것이다. 판정이 seam에 스텁을 주입하는 이상 **seam 내부에 있던 시간 제한은 스텁으로 대체돼 사라지므로**, seam-내부 소유를 가정한 뮤턴트는 애초에 실행되지 않는다(감사 D6). 남는 유일한 판정 대상은 호출자 쪽 기한이다.
 
@@ -108,6 +110,10 @@ $ git describe --tags              → v3.1.2-494-g343399d2f
 **Then** 핸들러가 기한 안에 반환하고, 오류를 반환하지 않으며, 지연 권고를 방출하지 않는다.
 
 **판정**: 제한을 넘겨 블록하는 스텁을 seam에 주입하고, 호출의 경과 시간 상한과 `err == nil`, 그리고 권고 부재를 단언한다.
+
+[HARD] **주입하는 스텁은 context 취소를 존중하지 않는다** (감사 N2). 이것이 판별력을 만드는 선택이다 — 취소를 존중하는 스텁이면 `context.WithTimeout` 감싸기도 핸들러를 풀어주므로 **두 형태가 모두 통과해 기준이 아무것도 구분하지 못한다.** 취소를 무시하는 스텁 아래서는 오직 진짜 timer+select 조인만이 핸들러를 기한 안에 반환시킨다. 이는 REQ-BLV-006이 실제로 요구하는 바와도 일치한다: 핸들러는 **seam이 무엇을 하든** 막히지 않아야 하며, 취소를 무시하는 seam이야말로 그 요구가 존재하는 이유다.
+
+[HARD] **테스트 경로 전제 — 비동기 분기를 켜야 한다** (감사 N3). `internal/hook/main_test.go:47`이 `deferredScansAsync = false`를 **테스트 바이너리 전체**에 설정하므로, 기본 경로에서 핸들러는 기한 조인이 **아예 없는** 인라인 분기를 탄다 — 그 상태로 이 기준대로 테스트를 쓰면 구현이 옳든 그르든 블록 스텁 아래서 매달린다. 따라서 이 테스트는 플래그를 `true`로 뒤집고 복원해야 하며, 선례가 이미 있다: `session_start_parallel_test.go:315-321`(`origAsync` 보존 → `t.Cleanup`에서 복원). 이 전제를 적지 않으면 run-phase는 원인 불명의 hang을 만난다.
 
 **대표 뮤턴트**: **기한 없이 seam을 조인하는 핸들러** — `<-done` 또는 `wg.Wait()`를 `context`/`select` 없이 그대로 기다리는 구현. 스텁이 블록하는 동안 핸들러가 함께 매달리므로 경과 시간 단언이 RED가 된다. 이 뮤턴트는 판정이 실제로 붉게 만드는 것이며, 스텁으로 대체되는 seam 내부에 살지 않는다.
 
@@ -151,9 +157,11 @@ $ git describe --tags              → v3.1.2-494-g343399d2f
 
 ## AC-BLV-009 (REQ-BLV-009) — doctor 검사 이름이 하나도 늘지 않는다
 
-**Given** 이 SPEC의 변경 **이전** 트리(base SHA로 고정)와 **이후** 트리에 대해,
-**When** 각각에서 `internal/cli/doctor.go`의 `moaiChecks` 슬라이스가 등록하는 **검사 이름 집합**을 추출할 때,
+**Given** 이 SPEC의 변경 **이전** 트리와 **이후** 트리에 대해 — 기준점은 **이 SPEC의 첫 커밋의 부모**이며, 고정 SHA를 미리 못박을 필요는 없다(감사 N6; 판정이 전후 **델타**라서 기준이 이 SPEC의 변경 직전 트리이기만 하면 결과가 같다. 다만 **움직이는 참조를 쓰지 않는다** — 측정 시점에 그 부모 SHA를 확정해 기록한다),
+**When** 각각에서 `internal/cli/doctor.go`의 **세 검사 레지스트리 전체**(`systemChecks` / `moaiChecks` / `workspaceChecks`)가 등록하는 **검사 이름 집합의 합집합**을 추출할 때,
 **Then** 두 집합이 **동일하다** — 원소가 하나도 추가되지 않았고, `Binary Freshness`가 양쪽 모두에 있다.
+
+[HARD] **세 레지스트리 전부를 판정한다** (감사 N7). REQ-BLV-009는 「추가 doctor 검사 이름을 등록하지 않는다」를 **한정 없이** 말하는데, `moaiChecks` 하나만 판정하면 `workspaceChecks`에 `{"Binary Lag", …}`를 등록한 구현이 **요구를 위반한 채 기준을 통과한다.** 실측으로 셋이 같은 판정 목록으로 합류함을 확인했다: `:245-249`가 세 슬라이스를 `checkGroup`으로 묶고, `:93-95`가 `allChecks`로 평탄화하며, 거기서 `countFailedChecks` → `doctorExitStatus`로 이어진다. **요구를 좁히지 않고 판정을 넓힌다** — 요구의 문언이 정직한 쪽이기 때문이다.
 
 **판정**: 이름 **집합의 전후 대조**다. 절대 개수 단언이 아니고, 리터럴 grep도 아니다.
 
@@ -161,9 +169,19 @@ $ git describe --tags              → v3.1.2-494-g343399d2f
 
 **RED-now 셀**: 사전 구현 트리에서 전후 집합이 같으므로 이 기준은 **처음부터 GREEN**이다. 이는 결함이 아니라 이 기준의 성격이다 — 이것은 **회귀 가드(불변 단언)**이지 기능 획득 기준이 아니다. 공허성은 아래 뮤턴트가 막는다.
 
-**대표 뮤턴트**: 지연 판정을 위해 `{"Binary Lag", checkBinaryLag}` 같은 **새 항목을 `moaiChecks`에 추가하는 구현.** 기능적으로는 동작하고 AC-BLV-001·002·003·008을 전부 통과하지만, 집합 대조에서 원소가 하나 늘어 RED가 된다. 이 뮤턴트가 잡히지 않으면 두 레인이 같은 파일의 같은 슬라이스를 동시에 건드리는 상황에서 경계가 사람의 체크박스에만 남는다.
+**대표 뮤턴트 1**: 지연 판정을 위해 `{"Binary Lag", checkBinaryLag}` 같은 **새 항목을 `moaiChecks`에 추가하는 구현.** 기능적으로는 동작하고 AC-BLV-001·002·003·008을 전부 통과하지만, 집합 대조에서 원소가 하나 늘어 RED가 된다. 이 뮤턴트가 잡히지 않으면 두 레인이 같은 파일의 같은 슬라이스를 동시에 건드리는 상황에서 경계가 사람의 체크박스에만 남는다.
 
-**판정 근거 위치**: `internal/cli/doctor.go:196-205`(`moaiChecks` 리터럴), 기존 등록은 `:199`.
+**대표 뮤턴트 2 — 이웃 레지스트리로 회피**: 같은 항목을 `workspaceChecks`에 등록하는 구현. `moaiChecks`만 보는 판정은 통과시키고, 세 레지스트리 합집합 판정만이 RED로 만든다(감사 N7).
+
+**대표 뮤턴트 3 — 상수 이름으로 회피**: `{binaryLagCheckName, checkBinaryLag}`처럼 이름을 **상수 식별자**로 넣는 구현. 따옴표 문자열만 추출하는 판정은 after 집합에서도 놓쳐 델타가 비므로 통과시킨다. **항목 단위 + 이름 표현식** 추출만이 RED로 만든다.
+
+**판정 근거 위치**: `internal/cli/doctor.go`의 **세 슬라이스 리터럴 전체** — `systemChecks`(`:187`), `moaiChecks`(`:195` 선언 ~ `:212` 닫는 괄호, 항목 `:196-211`), `workspaceChecks`(`:214`). 기존 `Binary Freshness` 등록은 `:199`.
+
+[HARD] **추출 범위는 「행 구간」이 아니라 「슬라이스 리터럴 전체」다** (감사 N1). 종전 판이 인용한 `196-205`는 Constitution Registry 항목 중간에서 끊기고 뒤쪽 4개(`Harness 5-Layer :207`, `Migration :208`, `Plugin Deployment :209`, `Home Disk Usage :211`)를 빠뜨린다. **새 검사를 덧붙일 때 가장 자연스러운 위치가 슬라이스 끝**이므로, 행 구간으로 추출하면 이 기준이 잡으려는 바로 그 뮤턴트가 창 밖에 놓인다.
+
+[HARD] **추출 단위는 「따옴표 문자열」이 아니라 「항목의 이름 표현식」이다.** 슬라이스 항목의 이름 자리에는 문자열 리터럴뿐 아니라 **상수 식별자**도 올 수 있다 — 실측: `:201`이 `mcpServerVersionCheckName` 상수를 쓴다. 따옴표만 grep하면 (a) 그 기존 항목을 양쪽에서 모두 놓치고(델타에는 무해), (b) **구현자가 `{binaryLagCheckName, checkBinaryLag}`처럼 상수 이름으로 새 항목을 추가하면 after 집합에서도 놓쳐 델타가 비고 기준이 통과한다** — 요구를 위반한 채로. 따라서 각 `{...}` **항목**을 세고, 그 이름 표현식(리터럴이든 식별자든)을 집합의 원소로 삼는다.
+
+> **런타임 열거는 불가능하다** (실측): `checkFunc` 타입이 `runGroupedChecksObserved` **함수 본문 안에** 선언돼 있고(`:180-184`) 세 슬라이스 모두 함수 지역 변수라, 이름 집합을 노출하는 내보낸 접근자가 없다. `--check` 필터도 비매칭 항목을 **건너뛸 뿐 열거하지 않으므로**(`:231-232`) 열거 경로가 아니다. 그러므로 추출은 **소스 정적 판독**이다. 이 제약은 판정 방식을 규정하며, run-phase가 런타임 열거를 찾다가 없다는 사실을 재발견하지 않게 하려고 여기 기록한다.
 
 ---
 

@@ -1,12 +1,12 @@
 ---
 id: SPEC-BINARY-LAG-VISIBILITY-001
 title: 배포 지연 가시성 — 설치된 바이너리가 저장소 HEAD보다 뒤처졌음을 요청 없이 알린다
-version: 0.3.0
+version: "0.4.0"
 status: draft
 created: 2026-08-27
-updated: 2026-08-27
+updated: 2026-08-28
 author: manager-spec
-priority: HIGH
+priority: High
 phase: "v3.1.4 target"
 module: internal/cli, internal/hook, build
 lifecycle: spec-anchored
@@ -21,6 +21,7 @@ tier: M
 | 0.1.0 | 2026-08-27 | manager-spec | 최초 작성. 카드 t326 운영자 재범위(통합 락 결함 → 배포 지연 가시성) 반영. 사전 조사에서 **카드 지시문의 전제 1건이 반증**되어 범위를 재구성했다(§1.4). 요구 7 / 수락 7. Tier M |
 | 0.2.0 | 2026-08-27 | manager-spec | clarification 2건 종결(리드·운영자 결정). (a) 발화 표면 = `additionalContext` 확정 — 아울러 리드가 **v0.1.0의 선례 인용을 정정**했다: `computeDeferredAdvisory`의 권고는 `HookOutput.Data`(`internal/hook/types.go:394`, `json:"-"`)로 들어가 **도달하지 않으므로**, 그 형태를 복사하면 결손이 재생산된다. 선례를 「일정」과 「발화」로 분리하고 REQ-BLV-008 + AC-BLV-008을 신설(§1.7.1). (b) `VERSION` 무변경 + 별도 `BUILD_ID` 확정 — REQ-BLV-004 재작성, 감수 비용을 §7.5 잔여 위험으로 명시, 제목 줄 축은 별도 카드로 이관. 인용 행번호 정정 3건(`doctor.go` 495 / 199 / 140). 요구 7→**8** / 수락 7→**8** |
 | 0.3.0 | 2026-08-27 | manager-spec | plan-audit iter-1(`.moai/reports/t326/plan-audit-iter1.md`, PASS-WITH-DEBT 0.80) 결함 **8건 전수 수리** — 리드가 blocking 3건을 넘어 optional 5건까지 확대 지시. **D1**(§4 행 3이 `computeDeferredAdvisory` 권고 맵을 지시 → 자기 자신의 안티패턴 처방) 재작성 + `AdditionalContext` 구속 조항 추가, 문서 전수 스윕에서 `plan.md` §B 3항 동종 잔재 1건 추가 발견·수리. **D2** C-2를 요구 수준으로 승격(REQ/AC-BLV-009 신설). **D3** C-2 근거를 한쪽 방향으로 재진술(t317 항목명은 run-phase 미확정). **D4** `version.go` 9→8. **D5** C-1 근거를 t317 적극적 범위로 교체. **D6** AC-BLV-006 시간 제한 소유자 명시 + 판정이 실제로 RED로 만드는 뮤턴트로 교체. **D7** AC-BLV-008을 키 지정 unmarshal로 변경 + `systemMessage` 뮤턴트 추가. **D8** DoD를 `--check "Binary Freshness"`로 범위 축소. D9는 정보성으로 유지. 요구 8→**9** / 수락 8→**9** |
+| 0.4.0 | 2026-08-28 | manager-spec | plan-audit iter-2(`.moai/reports/t326/plan-audit-iter2.md`, PASS-WITH-DEBT **0.85**, iter-1 0.80 대비 단조 개선) 결함 **8건(N1-N8) 전수 수리** — 리드가 이번에도 optional까지 확대 지시. **N1**(blocking) `moaiChecks` 인용 범위 `196-205`→**슬라이스 리터럴 전체**(선언 `:195` ~ 닫는 괄호 `:212`); 종전 창은 끝부분 4개 항목을 빠뜨려 **덧붙이기 가장 자연스러운 위치가 창 밖**이었다. 아울러 추출 단위를 「따옴표 문자열」→**「항목의 이름 표현식」**으로 강화(상수 식별자 회피 차단, 뮤턴트 3 신설) + 런타임 열거 불가 사실 기록. **N2**(blocking) AC-BLV-006 선례를 `:622-624`(ctx-wrap, 이 절이 배제하는 형태)→**`:243-257`**(timer+select 기한 조인)로 이동 + **스텁이 context 취소를 존중하지 않음**을 명시(판별력의 원천). **N3** 테스트 경로 전제 명시(`main_test.go:47` 전역 `deferredScansAsync=false` → 플래그 뒤집기+복원, 선례 `session_start_parallel_test.go:315-321`). **N4** marshal `:276`→`:277`, 병합 `:264`→`:266`. **N5** t317 Out-of-Scope `136-137`→`137-138`. **N6** AC-BLV-009 기준점을 「이 SPEC 첫 커밋의 부모」로 명문화. **N7** AC-BLV-009 판정을 `moaiChecks` 단독→**세 레지스트리 합집합**으로 확대(요구를 좁히지 않고 판정을 넓힘; 뮤턴트 2 신설). **N8** `priority: HIGH`→`High`, `version` 인용 부호 통일, lint 결과의 증명 범위 정정. 요구/수락 개수 불변(9 / 9) |
 
 ---
 
@@ -178,7 +179,7 @@ $ git describe --tags              → v3.1.2-494-g343399d2f
 | 5 | `internal/cli/binary_lag_test.go` (신규) | AC-BLV-002·003·004·007·009 |
 | 6 | `internal/hook/` 테스트 1건 | AC-BLV-001·005·006·008 |
 
-[HARD] **행 3에 관한 구속 조항.** 변경 대상은 `computeDeferredAdvisory`의 권고 맵이 **아니다.** 그 맵은 `session_start.go:264`·`:574`에서 `data`로 병합되고 `:276`에서 marshal된 뒤 `:301`에서 `HookOutput{Data: jsonData}`가 되는데, `Data`는 `json:"-"`다(`internal/hook/types.go:394`) — 즉 그 경로에 넣은 권고는 직렬화되지 않는다. 지연 스캔 seam을 재사용하더라도 **빌려오는 것은 일정(scheduling)뿐이며, 판정 결과는 권고 맵에 들어가서는 안 되고 `AdditionalContext`로 나와야 한다.** 이 조항을 어긴 구현이 곧 AC-BLV-008의 대표 뮤턴트이자 `plan.md` §G 첫 번째 안티패턴이다.
+[HARD] **행 3에 관한 구속 조항.** 변경 대상은 `computeDeferredAdvisory`의 권고 맵이 **아니다.** 그 맵은 `session_start.go:266`(`maps.Copy(data, advisory)`)·`:574`에서 `data`로 병합되고 `:277`에서 marshal된 뒤 `:301`에서 `HookOutput{Data: jsonData}`가 되는데, `Data`는 `json:"-"`다(`internal/hook/types.go:394`) — 즉 그 경로에 넣은 권고는 직렬화되지 않는다. 지연 스캔 seam을 재사용하더라도 **빌려오는 것은 일정(scheduling)뿐이며, 판정 결과는 권고 맵에 들어가서는 안 되고 `AdditionalContext`로 나와야 한다.** 이 조항을 어긴 구현이 곧 AC-BLV-008의 대표 뮤턴트이자 `plan.md` §G 첫 번째 안티패턴이다.
 
 6건 ≥ 5 → **Tier S의 `< 5 files` 기준 위반 → Tier M**. (t317이 동일 사유로 S→M 승격된 선례를 따른다.)
 
@@ -208,7 +209,7 @@ t317 SPEC(`SPEC-AGENT-EMIT-LINEAGE-001` REQ-AEL-004, v0.5.0, plan-audit iter-3 P
 
 **제약 C-1** — 이 SPEC의 구현은 `agentemit` 임베드 축을 검사하지 않는다. 그 축은 t317 소관이다. 비중첩의 근거는 t317의 **적극적 범위**다: REQ-AEL-004가 검사 대상을 `.codex/agents/moai/*.toml` 바이트로 명시하며, 이 SPEC은 그 대상을 건드리지 않는다.
 
-> 종전 근거 정정(v0.3.0, 감사 D5): 이전 판은 t317의 §Out of Scope가 「`agentemit` 밖 임베드 검증」을 제외한다고 적었으나, 실측한 그 절(t317 `spec.md:136-137`)은 **「같은 동어반복이 다른 임베드 테스트에도 있는지 조사하지 않는다」**는 더 좁은 진술이다. 결론(비중첩)은 유지되지만 근거를 적극적 범위로 교체했다.
+> 종전 근거 정정(v0.3.0, 감사 D5): 이전 판은 t317의 §Out of Scope가 「`agentemit` 밖 임베드 검증」을 제외한다고 적었으나, 실측한 그 절(t317 `spec.md:137-138`)은 **「같은 동어반복이 다른 임베드 테스트에도 있는지 조사하지 않는다」**는 더 좁은 진술이다. 결론(비중첩)은 유지되지만 근거를 적극적 범위로 교체했다.
 
 **제약 C-2** (요구 수준: REQ-BLV-009, 판정: AC-BLV-009) — 이 SPEC의 doctor 항목은 **신규 항목이 아니라 기존 `Binary Freshness` 항목의 재배선**이다. 새 검사 이름을 추가하지 않는다.
 
