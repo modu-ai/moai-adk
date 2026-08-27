@@ -148,3 +148,34 @@ func selectedSchemaValue(f settings.FieldDef, value string) string {
 	}
 	return f.Default
 }
+
+// schemaSavedCurrentSuffix labels the synthetic option that carries a persisted
+// value outside the offered option set (RC2, glm-settings-persist). The value
+// token itself stays verbatim; only this suffix marks the option as the saved
+// state rather than an offered choice. Option labels are English-by-design
+// (applyI18n's ".opt." guard), so the suffix needs no i18n key.
+const schemaSavedCurrentSuffix = " (saved)"
+
+// schemaUnlistedCurrentValue reports the persisted current value when it is
+// non-empty AND absent from the field's offered option set — the out-of-set
+// case where an HTML <select> would otherwise auto-select its first option,
+// and selects always submit on POST, so ANY console save silently rewrote the
+// unknown value to the first offered option (RC2). The renderer appends one
+// synthetic option carrying this exact raw value (marked selected) so the
+// submission round-trips the value unchanged; parseSchemaForm's
+// passthrough-preserve rule then accepts it.
+//
+// ok is false when the current value is listed (normal render) or empty (the
+// EmptyLabel / first-option behavior is correct there).
+func schemaUnlistedCurrentValue(f settings.FieldDef, value string) (string, bool) {
+	cur := selectedSchemaValue(f, value)
+	if cur == "" {
+		return "", false
+	}
+	for _, opt := range f.Options {
+		if opt.Value == cur {
+			return "", false
+		}
+	}
+	return cur, true
+}

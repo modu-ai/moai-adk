@@ -285,7 +285,14 @@ func schemaEditableField(f settings.FieldDef) bool {
 // companion(name+"__present") 패턴으로 "unchecked → false"와 "미제출 → preserve"
 // 를 구분한다 (기존 nested-config 선례). 타입/옵션 위반은 per-field 오류로
 // 수집되어 atomic reject(EC-2)에 합류한다.
-func parseSchemaForm(r *http.Request) (map[string]string, map[string]string) {
+//
+// current는 필드별 디스크 현재값이다 (RC2 passthrough-preserve,
+// glm-settings-persist): 닫힌 옵션 집합 검증은 "이전에 영속된 값과 동일한
+// 제출"을 통과시킨다 — 렌더러가 옵션 밖 영속값을 synthetic option으로
+// round-trip시키므로, 그 제출이 거부되면 콘솔은 그 필드를 다시 저장할 수
+// 없다. 전혀 새로운 집합 밖 제출은 여전히 거부된다. nil이면 옵트인 없는
+// 종전 동작(엄격한 닫힌 집합)이다.
+func parseSchemaForm(r *http.Request, current map[string]string) (map[string]string, map[string]string) {
 	edits := map[string]string{}
 	errs := map[string]string{}
 
@@ -340,7 +347,10 @@ func parseSchemaForm(r *http.Request) (map[string]string, map[string]string) {
 			if raw == "" && !f.EmptySubmits {
 				continue
 			}
-			if f.Validate != nil && !f.Validate(raw) {
+			if f.Validate != nil && !f.Validate(raw) && raw != current[f.Name] {
+				// RC2 passthrough-preserve: out-of-set BUT equal to the previously
+				// persisted value → accept (the synthetic-option round-trip submits
+				// exactly this). Genuinely new out-of-set submissions still reject.
 				errs[f.Name] = "invalid option"
 				continue
 			}

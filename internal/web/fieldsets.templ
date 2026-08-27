@@ -411,6 +411,13 @@ templ schemaSelectRow(f settings.FieldDef, value string, errs map[string]string)
 						<option value={ opt.Value } data-i18n={ opt.I18nKey } data-i18n-title={ f.Description + ".option." + opt.Value }>{ opt.Value }</option>
 					}
 				}
+				// RC2 (glm-settings-persist): a persisted value outside the offered
+				// set gets ONE synthetic option carrying the exact raw value, marked
+				// selected — otherwise the browser auto-selects the first option and
+				// any save from any tab silently rewrites the stored value.
+				if cur, unlisted := schemaUnlistedCurrentValue(f, value); unlisted {
+					<option value={ cur } selected>{ cur + schemaSavedCurrentSuffix }</option>
+				}
 			</select>
 		</div>
 		@fieldDescription(f)
