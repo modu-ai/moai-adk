@@ -226,10 +226,14 @@ func applyLLMKey(l *config.LLMConfig, key, v string) error {
 		l.GLM.Models.Low = v
 	case "glm.models.fable":
 		l.GLM.Models.Fable = v
-	// SPEC-WEB-CONSOLE-REDESIGN-001 M4: per-tier reasoning effort. These are
-	// stored only — no runtime path reads them (the launcher injects one
-	// session-global ANTHROPIC_REASONING_EFFORT derived from llm.effort_level).
-	// The write exists so the preference survives; the console labels it.
+	// SPEC-WEB-CONSOLE-REDESIGN-001 M4: per-tier reasoning effort. Since RC3
+	// (glm-settings-persist) these ARE load-bearing: the GLM launcher
+	// (internal/cli resolveGLMMainSessionEffort) reads the slot serving the
+	// main session's model and lets a non-empty value override the
+	// prefs/model_policy effort chain at the next moai glm launch. Sub-agents
+	// keep the session-global ANTHROPIC_REASONING_EFFORT derived from
+	// llm.effort_level; the collapse overlay governs the wire value (stored
+	// high and max both wire as max).
 	case "glm.effort.high":
 		l.GLM.Effort.High = v
 	case "glm.effort.medium":

@@ -782,6 +782,11 @@ type GLMConfigFromYAML struct {
 		Low    string
 		Fable  string
 	}
+	// Effort carries the per-tier reasoning-effort preference (llm.glm.effort.*)
+	// through to the launcher (RC3, glm-settings-persist): resolveGLMMainSessionEffort
+	// lets a non-empty slot value override the prefs/model_policy effort chain for
+	// the main session. Empty slots mean "unset" — the prefs chain applies.
+	Effort config.GLMTierEffort
 	EnvVar string
 }
 
@@ -874,8 +879,62 @@ func loadGLMConfig(root string) (*GLMConfigFromYAML, error) {
 			Low:    low,
 			Fable:  fable,
 		},
+		Effort: llm.GLM.Effort,
 		EnvVar: envVar,
 	}, nil
+}
+
+// glmSlotEffortForModel resolves the stored per-tier effort (llm.glm.effort.*)
+// for the GLM tier slot serving the main-session model (RC3,
+// glm-settings-persist).
+//
+// The alias→slot pairing mirrors setGLMEnv's ANTHROPIC_DEFAULT_*_MODEL
+// assignments — the ONE alias/slot mapping in the tree: opus feeds
+// Models.High (→ effort.high), sonnet Models.Medium, haiku Models.Low, fable
+// Models.Fable. The [1m] suffix is split before lookup (splitModelSuffix), and
+// a canonical claude-* id is reverse-mapped through
+// template.ModelAliasFromCanonicalID — the same helper resolveMainSessionModel
+// uses on the model under a GLM backend. An empty or unknown model (including
+// a raw GLM id, which is not an alias) resolves "": the caller falls back to
+// the prefs effort chain unchanged, byte-identical to the pre-RC3 launch.
+func glmSlotEffortForModel(model string, effort config.GLMTierEffort) string {
+	if model == "" {
+		return ""
+	}
+	base, _ := splitModelSuffix(model)
+	switch template.ModelAliasFromCanonicalID(base) {
+	case "opus":
+		return effort.High
+	case "sonnet":
+		return effort.Medium
+	case "haiku":
+		return effort.Low
+	case "fable":
+		return effort.Fable
+	default:
+		return ""
+	}
+}
+
+// resolveGLMMainSessionEffort resolves the effort fed to the GLM launch
+// overlay. Precedence: a non-empty stored glm.effort[slot] for the slot
+// serving the main-session model WINS over the prefs/model_policy chain
+// (fallback = resolveLaunchEffort's result); an empty stored value or a model
+// with no slot claim keeps the fallback unchanged.
+//
+// The downstream collapse overlay stays governing for the final wire value
+// (glmReasoningEnvVarsForModel → SessionGLMReasoningStateForModel,
+// SPEC-GLM-EFFORT-MAX-001): a stored "high" and a stored "max" BOTH reach
+// z.ai as reasoning_effort=max (every Claude effort above low collapses to
+// max), a stored "low" wires as low, and under glm-5.3-flash every stored
+// effort pins to max (flash accepts reasoning_effort: max only). Callers
+// choose the stored values from that z.ai state vocabulary, so no additional
+// translation happens here.
+func resolveGLMMainSessionEffort(model string, tier config.GLMTierEffort, fallback string) string {
+	if stored := glmSlotEffortForModel(model, tier); stored != "" {
+		return stored
+	}
+	return fallback
 }
 
 // getGLMEnvPath returns the path to ~/.moai/.env.glm.

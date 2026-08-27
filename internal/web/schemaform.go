@@ -204,12 +204,15 @@ func schemaSectionMetas() []schemaSectionMeta {
 			TitleKey: "sec.llm.title", DescKey: "sec.llm.desc",
 			Title: "GLM Settings", Desc: "GLM backend model tier mappings and per-tier reasoning effort.",
 			Fields: settings.SectionFields(settings.SectionLLM), Extras: true,
-			// REQ-WCR-033: the honesty note. The four per-tier effort values are
-			// stored and never applied — the runtime reads one session-global
-			// ANTHROPIC_REASONING_EFFORT derived from the session effort_level
-			// preference. Rendered once at the panel header, not per field.
+			// Honesty note (REQ-WCR-033 lineage, updated by RC3
+			// glm-settings-persist): the per-tier effort now APPLIES — at the
+			// next moai glm launch, the slot serving the main session's model
+			// overrides the session-wide effort_level preference; sub-agents
+			// keep the session-wide value, and the collapse overlay still
+			// governs the wire value (stored high and max both wire as max).
+			// Rendered once at the panel header, not per field.
 			NoteKey: "sec.llm.effortnote",
-			Note:    "Reasoning effort applied at runtime comes from the session-wide effort_level preference on the LLM tab, not from these tiers. The four per-tier values below are stored only.",
+			Note:    "Applied at the next moai glm launch: the effort stored for the main session's model slot overrides the session-wide effort_level preference. Sub-agents keep the session-wide value. Stored high and max both reach z.ai as max.",
 		},
 		// workflow restored (Issue 3): reverse the cca120c70 reclassification for
 		// workflow ONLY — the worktree auto-create toggle renders via this fieldset.
