@@ -191,6 +191,15 @@ This setting governs **Claude-native** worktrees only, which is now every worktr
 
 That asymmetry is the reason to prefer the reset path for card work. `baseRef` is silent whether it lands right or wrong; the reset path ends in an exit code somebody read.
 
+**The stored setting: `git_strategy.worktree_base_branch`.** `baseRef` accepts only `"fresh"` or `"head"`, so it cannot name a branch — which leaves the branch choice resting on `refs/remotes/origin/HEAD`, local repository metadata that does not survive a fresh clone. The moai setting `git_strategy.worktree_base_branch` (in `.moai/config/sections/git-strategy.yaml`) is the reproducible handle on that choice, and it has two consumers:
+
+- **At session start**, from the primary checkout only, moai points `refs/remotes/origin/HEAD` at the configured branch and prints one line saying it did. Native worktrees created afterwards read the corrected symref. Inside a linked worktree the step does nothing at all — the symref is repository-global while the config file is tracked and follows each worktree's own branch, so one writer is both sufficient and the only way two lanes do not reverse each other's writes forever.
+- **When moai creates the worktree itself** (`moai cc -w <name>`), the configured branch is passed to `git worktree add` as the base operand, so the new tree is cut from it rather than from the invoking tree's HEAD. This half honours the setting from any working tree.
+
+The empty value — the shipped default — means take no action on both paths, reproducing the pre-setting behaviour exactly. A value naming a branch that has no remote-tracking counterpart is refused before either write: the session-start step prints one diagnostic line and leaves the symref alone, and worktree creation falls back to the no-operand form. Pointing `refs/remotes/origin/HEAD` at a ref that does not exist would be worse than the mismatch it was meant to fix.
+
+`moai doctor --check 'Worktree Base Branch'` reports the current comparison without writing anything, and distinguishes a plain mismatch (repaired by running the alignment) from an unresolvable value (repaired by correcting the setting). It reports metadata state only — worktrees already cut from the wrong base are not re-created by it.
+
 
 ### `.worktreeinclude` (Copy Gitignored Files into Native Worktrees)
 

@@ -13,19 +13,39 @@ LOCAL_RELEASE_DIR ?= $(HOME)/.moai/releases
 PLATFORM := $(shell go env GOOS)-$(shell go env GOARCH)
 RELEASE_BINARY := moai-$(VERSION)-$(PLATFORM)
 
-.PHONY: all build test lint fix clean install generate templ-generate help release-local constitution-check ci-local pr-merge ci-disable verify-required-checks tui-snapshot tui-snapshot-verify preflight lint-fast test-race-short
+.PHONY: all build test lint fix clean install generate templ-generate help release-local constitution-check ci-local pr-merge ci-disable verify-required-checks tui-snapshot tui-snapshot-verify preflight lint-fast test-race-short agents-emit agents-emit-check embed-check
 
 all: lint test build ## Run lint, test, and build
 
 templ-generate: ## Generate *_templ.go from *.templ sources (pure-Go codegen, no Node)
 	go run github.com/a-h/templ/cmd/templ generate -path ./internal/web
 
-build: templ-generate ## Build the binary
+build: agents-emit-check templ-generate ## Build the binary
 	@go run ./internal/template/scripts/gen-catalog-hashes.go --all
 	go build $(LDFLAGS) -o bin/$(BINARY_NAME) ./cmd/moai
 
 agents-emit: ## Regenerate the .codex/agents/moai TOMLs from the neutral .md layer
 	AGENTEMIT_UPDATE=1 go test ./internal/template/agentemit/... -run TestGoldenCommittedArtifactsMatchEmission
+
+# Read-only source-layer drift check, wired ahead of `build` so a missed
+# regeneration turns red locally instead of waiting for CI. It NEVER writes:
+# regeneration stays behind the explicit `agents-emit` verb, because a build
+# that silently overwrote a hand edit would erase the evidence CI needs to see.
+# AGENTEMIT_UPDATE is scrubbed so an inherited value cannot flip this into the
+# regeneration branch.
+agents-emit-check: ## Verify the committed .codex TOMLs match the .md source layer (read-only; never regenerates)
+	@AGENTEMIT_UPDATE= go test ./internal/template/agentemit/... -run TestGoldenCommittedArtifactsMatchEmission -count=1 \
+		|| { printf 'agent-emit drift: committed .codex/agents/moai/*.toml differ from the .md source layer — run `make agents-emit`\n' >&2; exit 1; }
+
+# Embed-axis judgment point: compares the .codex artifacts carried by an
+# ALREADY-BUILT binary against the committed ones. It deliberately has no
+# `build` prerequisite — a freshly built binary matches the committed set by
+# construction, so a check that could only run right after a build would be
+# the same tautology it exists to close. Same reason it is not attached to a
+# CI build job: CI builds from the commit it checks.
+# The runner is built from source; the JUDGMENT TARGET is $(BIN), never rebuilt.
+embed-check: ## Verify a built binary's embedded .codex TOMLs match the committed set (BIN=<path>, default bin/moai)
+	@MOAI_EMBED_CHECK_BIN=$(or $(BIN),bin/$(BINARY_NAME)) go run ./cmd/moai doctor --check "Agent Emit Embed"
 
 release-local: build ## Create a local release for development updates
 	@echo "Creating local release: $(VERSION)"

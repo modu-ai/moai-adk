@@ -172,6 +172,13 @@ func applyGitStrategyKey(gs *config.GitStrategyConfig, key, v string) error {
 	case "mode":
 		gs.Mode = v
 		return nil
+	case "worktree_base_branch":
+		// SPEC-WORKTREE-BASEREF-001 REQ-WBR-013. Free text (REQ-WBR-014), so any
+		// branch name is accepted and the empty value is the neutral
+		// take-no-action state. Trimmed here as well as on read, so a value with
+		// surrounding whitespace is never persisted untrimmed.
+		gs.WorktreeBaseBranch = strings.TrimSpace(v)
+		return nil
 	}
 
 	profileName, rest, ok := strings.Cut(key, ".")
