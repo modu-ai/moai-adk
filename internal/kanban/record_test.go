@@ -62,9 +62,9 @@ func TestWriteThenReadRoundTripsEveryField(t *testing.T) {
 	}
 }
 
-func TestRecordPathIsSessionKeyedUnderStateKanban(t *testing.T) {
+func TestRecordPathIsSessionKeyedUnderStateTodo(t *testing.T) {
 	root := t.TempDir()
-	want := filepath.Join(root, ".moai", "state", "kanban", "session-abc123.json")
+	want := filepath.Join(root, ".moai", "state", "todo", "session-abc123.json")
 
 	if got := RecordPath(root, "session-abc123"); got != want {
 		t.Errorf("RecordPath = %q, want %q", got, want)
