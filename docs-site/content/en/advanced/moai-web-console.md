@@ -105,7 +105,7 @@ The key property is that **the event carries no data**. The server sends only th
 | `session` | `.moai/state` |
 | `goal` | `.moai/state/goal` |
 | `verify` | `.moai/state/verify` |
-| `kanban` | `.moai/state/kanban` |
+| `kanban` | `.moai/state/todo` |
 | `config` | `.moai/config/sections` |
 
 Only the `config` event is handled differently. If the screen changed underneath you while you were editing settings, the values you were typing would disappear — so instead of refreshing, it raises a banner saying the config files changed.

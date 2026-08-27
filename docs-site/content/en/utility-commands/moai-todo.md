@@ -53,7 +53,7 @@ Any other argument shape is treated as a description. `/moai todo fix flaky CI c
 
 ## State file
 
-The queue is stored at `.moai/state/kanban/backlog.json`. It lives inside the project and is never committed.
+The queue is stored in one SQLite database at `.moai/state/todo/backlog.db`. It lives inside the project and is never committed. The shape below is the record as `moai todo list --json` and `moai todo export-json` emit it — the database holds the same fields. For what every artifact in that directory is, and how to get back to plain JSON, see `.moai/docs/todo-queue-storage.md` in your project.
 
 ```json
 {
@@ -198,12 +198,13 @@ $ moai todo unrelate 2
 | `moai todo relate <a> <b> --relation (contains \| absorbs \| replaces \| conflicts) [--note <text>]` | Records one relation between two cards. It is a record only — both cards stay exactly as they were, and `absorbs` performs no absorption. |
 | `moai todo unrelate <index>` | Removes the addressed record. The index is the one `why` prints. No card changes. |
 | `moai todo why <n>` | Prints every record naming the card, or says explicitly that there are none — printing nothing would be indistinguishable from a crash. |
+| `moai todo export-json` | Writes the live queue out as a legacy-format `backlog.json` beside the database, so a release predating the database can read it. It is a copy taken at the moment you run it, not a live mirror — export immediately before swapping binaries. Later `todo` verbs leave the file exactly where it was put. |
 
 The CLI never prompts. It takes arguments and flags, prints one line, and reports errors on stderr — a shape that is safe in scripts and CI.
 
-Run it inside a linked worktree and the queue still **resolves to the one queue of the primary checkout** — the contract is one repository, one queue. A `moai todo add` from a card worktree lands in the same file the lead and the foreman loop read. Projects without git metadata keep the queue at `~/.moai/todo/<project-key>/backlog.json`.
+Run it inside a linked worktree and the queue still **resolves to the one queue of the primary checkout** — the contract is one repository, one queue. A `moai todo add` from a card worktree lands in the same file the lead and the foreman loop read. Projects without git metadata keep the queue at `~/.moai/todo/<project-key>/backlog.db`.
 
-Both surfaces share the same storage layer. Mutations hold the sibling lock file (backlog.lock) next to the queue file and land through a same-directory temp-file write followed by an atomic rename; reads are lock-free. Item ids are issued inside the lock from the persisted high-water mark (`last_seq`), so a removed item's id is never reused.
+Both surfaces share the same storage layer. Mutations hold the sibling lock file (backlog.lock) next to the database and land inside one SQLite transaction in WAL mode; reads take no lock. Item ids are issued from the persisted high-water mark (`last_seq`), advanced in the same transaction as the insert and guarded by a UNIQUE constraint on the id, so a removed item's id is never reused even if a process dies mid-mutation.
 
 {{< callout type="info" >}}
 **Installed binary**: the CLI ships with the distributed binary. An already-installed `moai` binary only gains this command after reinstalling.
