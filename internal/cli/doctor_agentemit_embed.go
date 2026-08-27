@@ -273,10 +273,12 @@ func compareEmission(committed []string, extractedRoot string) (compared int, di
 // included), and a mis-aimed target directory would contaminate the tree the
 // check is judging.
 //
-// @MX:ANCHOR: [AUTO] external-system integration point — this spawns the
-// binary under judgment and lets it deploy an entire project (git init and
-// hook installation included). The scratch target MUST stay outside the
-// repository, and os.RemoveAll is aimed only at the os.MkdirTemp result.
+// @MX:WARN: [AUTO] this spawns the binary under judgment and lets it deploy
+// an entire project (git init and hook installation included). The scratch
+// target MUST stay outside the repository, and os.RemoveAll is aimed only at
+// the os.MkdirTemp result. Tagged WARN rather than ANCHOR: the subprocess
+// stays inside this process tree, so the "external system" clause does not
+// apply — what this carries is a hazard marker, not an anchor.
 // @MX:REASON: [AUTO] REQ-AEL-002 forbids every check this SPEC introduces
 // from writing inside the repository tree; a mis-aimed target directory would
 // contaminate the very tree being judged and then be deleted.
