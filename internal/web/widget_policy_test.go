@@ -210,13 +210,25 @@ func TestClosedSetRejectsOutOfSetValue(t *testing.T) {
 // not an enumerable closed set — new codex model ids appear upstream and a pin
 // like gpt-5.6-sol cannot be pre-listed. The servability filter at the resolver
 // (codexServableModel) is the validation point, not the widget.
+// `git_strategy.worktree_base_branch` (SPEC-WORKTREE-BASEREF-001 REQ-WBR-014)
+// joins them for the same reason, and this entry is the operator ruling
+// recorded at that SPEC's plan.md §A D2.1 rather than an unexamined exemption:
+// a branch name has no closed domain. A select carrying main / develop would
+// bake two repository-specific names into the SHIPPED schema, leaving a user
+// whose default branch is `trunk` or `master` unable to select their own — the
+// same template-neutrality violation that forbids the shipped template default
+// from naming a branch. The free text is not a shortcut taken for lack of a
+// better widget; it is the only shape that stays neutral downstream. The
+// validation point is the pre-write resolvability check
+// (`git show-ref --verify refs/remotes/origin/<value>`), not the widget.
 var freeTextWhitelist = map[string]bool{
-	"user_name":                     true,
-	"feedback.repository":           true,
-	"observability.report_dir":      true,
-	"observability.trace_dir":       true,
-	"security.sandbox.docker_image": true,
-	"workflow.audit.codex.model":    true,
+	"user_name":                         true,
+	"git_strategy.worktree_base_branch": true,
+	"feedback.repository":               true,
+	"observability.report_dir":          true,
+	"observability.trace_dir":           true,
+	"security.sandbox.docker_image":     true,
+	"workflow.audit.codex.model":        true,
 }
 
 // m4PendingFreeText held the GLM model tier fields while their conversion was

@@ -161,7 +161,14 @@ func gitStrategyFields() []FieldDef {
 	modeField := withRadio(typedField(SectionGitStrategy, "git_strategy", "mode", TypeRadio),
 		"f.git_strategy.mode.opt.", []string{"manual", "personal", "team"}, "", "")
 	modeField.Description = "fieldDesc.git_strategy.mode"
-	fields := []FieldDef{modeField}
+	// SPEC-WORKTREE-BASEREF-001 REQ-WBR-014: free text, NOT a closed option set.
+	// A select carrying main / develop would bake two repository-specific branch
+	// names into the shipped schema, so a user whose default branch is `trunk`
+	// could not pick their own. The two common names live in the description
+	// (prose), never in an option set.
+	baseBranch := typedField(SectionGitStrategy, "git_strategy", "worktree_base_branch", TypeText)
+	baseBranch.Description = "fieldDesc.git_strategy.worktree_base_branch"
+	fields := []FieldDef{modeField, baseBranch}
 	// merge_method 옵션은 config.ValidMergeMethods() SSOT에서 정렬 파생한다
 	// (REQ-WC14-011 — 리터럴 재선언 금지; B3 — map-range 비결정성 제거를 위해 정렬
 	// 후 사용. 정렬은 파생이지 재선언이 아님). 3개 profile 공유.
