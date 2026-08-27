@@ -132,7 +132,7 @@ else.
 
 ```yaml
 run_complete_at: 2026-08-27
-run_commit_sha: <M1-PLACEHOLDER — backfill after commit>
+run_commit_sha: 914c4edf5   # the single run-phase commit; this line backfilled by 914c4edf5's successor
 run_status: complete
 ac_pass_count: 10          # AC-TSA-001..008 + 005b + 007b
 ac_fail_count: 0
