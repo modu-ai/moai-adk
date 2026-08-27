@@ -53,7 +53,7 @@ The data-model decision, and the one worth the most review attention: every late
 - **Apply the subject-agnostic smell test before populating the census.** Each entry carries its kind, locator, and expected cadence as data (REQ-GDL-001). Try adding a second-kind entry with no workflow behind it: if the schema, the classification vocabulary, or the `measures` vocabulary has to change to accept it, the schema has hardcoded its subject — reshape it now. The test is nearly free here and expensive once 18 entries are written against the schema. This is a **shape** obligation, not a capability one: nothing in C5 (`spec.md` §E) enters the deliverable.
 - Populate the census: one entry per workflow file, 18 of 18.
 
-Flips: AC-GDL-001, AC-GDL-002, AC-GDL-003, AC-GDL-004, AC-GDL-015.
+Flips: AC-GDL-001, AC-GDL-002, AC-GDL-003 (a)(b), AC-GDL-004, AC-GDL-015.
 
 ### M2 — the evaluator
 
@@ -61,22 +61,24 @@ Flips: AC-GDL-001, AC-GDL-002, AC-GDL-003, AC-GDL-004, AC-GDL-015.
 - Empty per-workflow result classifies `UNKNOWN` (REQ-GDL-007); last qualifying run older than the window classifies `STALE` (REQ-GDL-008).
 - `fired-with-effect` rejects `skipped` and `cancelled`; `verdict-rendered` additionally requires `success` or `failure` (REQ-GDL-003).
 - Workflow file present on disk with no manifest entry classifies `UNDECLARED` (REQ-GDL-004).
-- Result carries its measurement timestamp and the four coverage counts (REQ-GDL-009).
+- Every entry is classified into exactly one value of the closed set `OK` / `STALE` / `UNKNOWN` / `UNDECLARED` / `UNREADABLE`, and the result carries its measurement timestamp and the five coverage counts (REQ-GDL-009). The set is total in both directions: no value is unreachable, and no entry is unclassifiable — `UNREADABLE` exists because the second direction was violated once already.
+- A declared expectation that says firing is not currently expected classifies `OK`, not `UNKNOWN` (REQ-GDL-007). This is what keeps M3's advisory from firing every session on a healthy repository.
+- The evaluator mutates nothing — no forge write, no working-tree write (REQ-GDL-012). Any result persistence M3 needs therefore lives outside the working tree.
 - All-clear is refused when the successfully-queried count is zero (REQ-GDL-010).
 - Read-only: no forge mutation of any kind (REQ-GDL-012).
 
-Flips: AC-GDL-005, AC-GDL-006, AC-GDL-007, AC-GDL-008, AC-GDL-009.
+Flips: AC-GDL-003 (c), AC-GDL-005, AC-GDL-006, AC-GDL-007, AC-GDL-008, AC-GDL-009 (a)(b), AC-GDL-016.
 
 ### M3 — the attended surface
 
 The second-least-reversible decision after M1, because the surfacing contract is what constraint 2 (`spec.md` §D.2) is satisfied or failed by, and a CLI-verb-shaped answer here cannot be repaired later without redoing the surface.
 
 - Invoke the evaluator from an already-attended surface; add no scheduled workflow (REQ-GDL-011).
-- Render `STALE` and `UNDECLARED` entries as a non-blocking advisory that arrives **with no operator-supplied guard identifier or query** (REQ-GDL-013). A documented `moai guard liveness` verb is not an acceptable sole answer — it is still a question someone must know to ask.
-- Lead with entries whose classification changed since the previous rendered result; carry unchanged `STALE`/`UNDECLARED` entries as a compact standing count (REQ-GDL-015). This requires persisting the previous result to diff against.
+- Render the advisory whenever **any entry classifies as anything other than `OK`** — one condition, not a list of symptoms — arriving **with no operator-supplied guard identifier or query** (REQ-GDL-013). Two earlier drafts enumerated symptoms and each left a run that reached the same silence down an unenumerated branch; if implementation appears to need a second arm, re-derive the condition rather than adding one. A documented `moai guard liveness` verb is not an acceptable sole answer — it is still a question someone must know to ask.
+- Lead with entries whose classification changed since the previous rendered result; carry unchanged non-`OK` entries as a compact standing count (REQ-GDL-015). This requires persisting the previous result to diff against, **outside the working tree** — AC-GDL-016(b) asserts a byte-identical tree across a run.
 - The advisory carries the age of the measurement it reports (REQ-GDL-014).
 
-Flips: AC-GDL-010, AC-GDL-011, AC-GDL-013, AC-GDL-014.
+Flips: AC-GDL-009 (c), AC-GDL-010, AC-GDL-011, AC-GDL-013, AC-GDL-014.
 
 ### M4 — doctrine (most mechanical)
 
