@@ -296,21 +296,29 @@ output to `check.go` and will move several of these lines again — one refresh 
 than two, and a refresh done now would be measured against a tree that no longer exists by the time
 anyone reads it.
 
+It is written down rather than left silent because this SPEC already failed plan audit iter-2 on
+this exact defect class — N2, `provenance.go:196` cited while the function was at `:208`. The
+difference is only that N2 was wrong and unnoticed; this is wrong and recorded.
+
 Both columns are measured, not inferred: the pre-M1 column is
 `git show 4a50d44f4:<file> | grep -n …` and the post-M1 column is `grep -n …` on the delivered tree.
 Every pre-M1 coordinate reproduced exactly at `4a50d44f4`, so each row is a move of the same
 construct, not a new site.
 
-| Cited coordinate | Construct cited | pre-M1 (`4a50d44f4`) | post-M1 (`5d95a2e8d`) | What the old line holds now |
-|---|---|---|---|---|
-| `check.go:181` | the codemaps dirty-branch recompute | 181 | **184** | first line of the M1 comment above the recompute |
-| `check.go:187` | the sole `ContentFingerprint` comparator | 187 | **190** | `rep.Reason = "described roots unreadable: "…` |
-| `provenance.go:107` | `func aggregateFingerprint` (cited in `§E.1`) | 107 | **121** | doc comment of `AggregateDescribedFingerprintFiltered` |
-| `provenance.go:201` | `func treeDirty` | 201 | **225** | a `ResolveCommit` doc-comment line |
-| `provenance.go:208` | `func baseProvenance` (declaration) | 208 | **240** | `func ResolveCommit` |
-| `provenance.go:219` | the `aggregateFingerprint` call inside `baseProvenance` | 219 | **251** | a closing brace |
-| `provenance.go:237,253,264` | the three stamp writers' `baseProvenance` calls | 237 / 253 / 264 | **269 / 285 / 296** | 237 is now a doc-comment line |
-| `provenance.go:280` | `Provenance.Describe`, the display-only reader | 280 | **312** | a `StampMXScan` comment line |
+Each row carries the **content-anchored grep that decides it**. Anchoring on the construct rather
+than on the number is what lets a later reader re-derive the coordinate after M3 moves these lines
+again, instead of trusting a number this record froze.
+
+| Cited coordinate | Construct cited | pre-M1 (`4a50d44f4`) | post-M1 (`5d95a2e8d`) | Deciding grep | What the old line holds now |
+|---|---|---|---|---|---|
+| `check.go:181` | the codemaps dirty-branch recompute | 181 | **184** | `grep -n 'AggregateDescribedFingerprintFiltered(projectRoot, roots)' internal/graph/check.go` | first line of the M1 comment above the recompute |
+| `check.go:187` | the sole `ContentFingerprint` comparator | 187 | **190** | `grep -n 'cur == pv.ContentFingerprint' internal/graph/check.go` | `rep.Reason = "described roots unreadable: "…` |
+| `provenance.go:107` | `func aggregateFingerprint` (cited in `§E.1`) | 107 | **121** | `grep -n 'func aggregateFingerprint(' internal/mx/provenance.go` | doc comment of `AggregateDescribedFingerprintFiltered` |
+| `provenance.go:201` | `func treeDirty` | 201 | **225** | `grep -n 'func treeDirty' internal/mx/provenance.go` | a `ResolveCommit` doc-comment line |
+| `provenance.go:208` | `func baseProvenance` (declaration) | 208 | **240** | `grep -n 'func baseProvenance' internal/mx/provenance.go` | `func ResolveCommit` |
+| `provenance.go:219` | the `aggregateFingerprint` call inside `baseProvenance` | 219 | **251** | `grep -n 'fingerprint(projectRoot, describedRoots)' internal/mx/provenance.go` | a closing brace |
+| `provenance.go:237,253,264` | the three stamp writers' `baseProvenance` calls | 237 / 253 / 264 | **269 / 285 / 296** | `grep -n 'pv := baseProvenance(projectRoot,' internal/mx/provenance.go` | 237 is now a doc-comment line |
+| `provenance.go:280` | `Provenance.Describe`, the display-only reader | 280 | **312** | `grep -n 'dirty fingerprint=' internal/mx/provenance.go` | a `StampMXScan` comment line |
 
 Two of these changed shape as well as position, and a refresh must not copy only the number:
 `baseProvenance` gained a `fingerprint fingerprintFunc` parameter, and the call at the old `:219` is
@@ -357,6 +365,261 @@ number alone will silently skip 253 and 264.
 
 Ownership: `spec.md` and `plan.md` bodies are manager-spec's, so this milestone records the drift and
 does not repair it.
+
+### M2 — Threshold confirmation (REQ-GFC-005, REQ-GFC-006)
+
+Measured in worktree `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t322`, branch
+`WT-graph-freshness-cadence`, at HEAD `bee0598fe`, on 2026-08-27. **Conclusion: 40 is confirmed and
+retained. The measurement supports no correction.** The derivation follows; the record itself is the
+deliverable REQ-GFC-005 requires, and it would have failed identically had the value been changed.
+
+#### Which window, and why it is not `spec.md` §B's window
+
+`spec.md` §B.5/§B.6 measured the 30-integration window ending at `48eb945df`, taken from this
+branch's own HEAD during plan-phase authoring. That is no longer the right window for two reasons,
+both measured rather than assumed:
+
+1. **This branch's HEAD is no longer an integration series.** Eight of the last thirty first-parent
+   commits reachable from HEAD are this card's own plan-phase and M1 commits
+   (`git log --first-parent -30 --pretty=format:"%h %s" | grep -c 't322'` → 8). Walking them would
+   measure the cadence of authoring this SPEC, not the cadence of factory integration — and M1 is
+   itself a described-worthy contributor, so it would inflate its own threshold justification.
+2. **`develop` has advanced past the branch base.** `develop` = `origin/develop` = `343399d2f`, and
+   `d2cba5e21` (this branch's base) is behind it; four integrations landed after `48eb945df`
+   (`52c693327`, `6310dbf28`, `3cb258d62`, and the tip's own first parent).
+
+So both axes are measured on **`develop`**, the branch integrations actually land on, which is the
+axis CI runs the gate on. The window is its last 30 first-parent commits touching the described
+roots:
+
+```
+$ git log --first-parent -30 --reverse --pretty=format:"%h %ad" --date=short develop -- internal cmd pkg
+5fd63ebcb 2026-08-25   … (oldest)
+3cb258d62 2026-08-27   … (newest)
+$ git log -1 --format='%h %ad' --date=iso-strict 5fd63ebcb → 2026-08-25T12:30:28+09:00
+$ git log -1 --format='%h %ad' --date=iso-strict 3cb258d62 → 2026-08-27T22:37:03+09:00
+```
+
+Span **2.421 days**, 29 inter-arrival gaps across 30 integrations → **≈12.0 integrations/day**
+(≈11.6/day with the outlier removed). Comparable to §B.6's ≈10/day, measured on a different window.
+
+#### The predicate and the percentile convention, stated
+
+The described-worthy predicate applied to both axes is the delivered one: path ends in `.go`, name
+does not end in `_test.go`, and **no path segment equals `testdata`** (segment equality, not
+substring — `internal/foo/testdatax/a.go` is admitted).
+
+**Percentile convention: nearest-rank.** Rank = `ceil(p · n)` over the ascending sort, 1-indexed.
+For n = 30, p90 is rank 27. This is the convention audit D5 named after v0.1.0 reported a p90 that
+actually sat at rank 28 (the 93rd percentile).
+
+Both axes are computed by one script over one captured log, so the two axes cannot silently diverge
+on the predicate:
+
+```
+$ git log --first-parent -30 --reverse --name-only --pretty=format:"===%h" develop -- internal cmd pkg \
+    > .moai/state/verify/t322-m2/axis-raw.txt          # 443 lines
+$ python3 .moai/state/verify/t322-m2/axes.py .moai/state/verify/t322-m2/axis-raw.txt
+```
+
+The per-integration counts the script derives reproduce independently through an awk one-liner over
+the same command, so the script is not the sole witness:
+
+```
+$ git log --first-parent -30 --reverse --name-only --pretty=format:"===%h" develop -- internal cmd pkg \
+  | awk '/^===/{if(h!="")print h" "c; h=substr($0,4); c=0; delete seen; next}
+         /\.go$/ && !/_test\.go$/ && $0 !~ /(^|\/)testdata\// {if(!seen[$0]++) c++}
+         END{if(h!="")print h" "c}'
+5fd63ebcb 1   db1362739 5   7f5b6a947 0   e91def4ca 0   a739d04b4 4   71781683c 0
+6786c3fa4 29  c9eed8ac6 0   9a95e7a02 0   410da655f 2   da791eb0a 11  379b310a6 1
+5ea3d6706 0   968ed2acb 8   26c5a7d54 8   a46862091 0   7b10c95ba 0   8ef14f5ae 3
+6b20c0fe6 5   22df80e90 9   f25f2d348 2   242748906 11  cb1833f87 0   8d8da0b2b 5
+7ed6edb3e 0   3809d1d36 2   48eb945df 0   52c693327 3   6310dbf28 0   3cb258d62 15
+```
+
+#### Axis 1 — per-integration described-worthy contribution
+
+```
+=== AXIS 1 - per-integration described-worthy contribution ===
+n                      = 30
+integrations contrib 0 = 12 of 30
+median                 = 2.0
+p90 (nearest-rank, rank=27) = 11
+maximum                = 29  (6786c3fa4)
+mean                   = 4.13
+ascending              = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 2, 3, 3, 4, 5, 5, 5, 8, 8, 9, 11, 11, 15, 29]
+```
+
+Against `spec.md` §B.5 (a different, earlier window): zero-contributors 12/30 → **12/30 unchanged**,
+median 2 → **2 unchanged**, p90 9 → **11**, mean 3.9 → **4.13**, maximum 29 (`6786c3fa4`) →
+**29 (`6786c3fa4`), the same integration**. The distribution shifted slightly upward and its shape
+did not change: most integrations contribute nothing or a handful, and one self-referential outlier
+dominates.
+
+**Axis 1 alone cannot decide the threshold**, and this is the point audit D2 established. A p90 of
+11 would argue for a threshold near 11 only if the metric were per-change. It is cumulative since
+the stamp, so Axis 2 is the deciding axis and Axis 1 is context for it.
+
+#### Axis 2 — cumulative-crossing cadence (whole window)
+
+```
+=== AXIS 2 - cumulative-crossing cadence [whole window] ===
+window size = 30 integrations
+   1  5fd63ebcb  union=1        11  da791eb0a  union=41     21  f25f2d348  union=64
+   2  db1362739  union=6        12  379b310a6  union=42     22  242748906  union=71
+   3  7f5b6a947  union=6        13  5ea3d6706  union=42     23  cb1833f87  union=71
+   4  e91def4ca  union=6        14  968ed2acb  union=47     24  8d8da0b2b  union=75
+   5  a739d04b4  union=10       15  26c5a7d54  union=54     25  7ed6edb3e  union=75
+   6  71781683c  union=10       16  a46862091  union=54     26  3809d1d36  union=77
+   7  6786c3fa4  union=39  <-- crosses 15                   27  48eb945df  union=77
+   8  c9eed8ac6  union=39       17  7b10c95ba  union=54     28  52c693327  union=80
+   9  9a95e7a02  union=39       18  8ef14f5ae  union=57     29  6310dbf28  union=80
+  10  410da655f  union=41  <-- crosses 40                   30  3cb258d62  union=94
+                                 19  6b20c0fe6  union=60
+                                 20  22df80e90  union=64
+threshold 15: first crossed at integration 7 (6786c3fa4, union 39)
+threshold 40: first crossed at integration 10 (410da655f, union 41)
+```
+
+**This single walk is not admissible as the cadence figure**, exactly as `plan.md` §E M2 and
+AC-GFC-006 require. The union goes `6 → 10 → 10 → 39` at integration 7: the jump from 10 to 39 is
+`6786c3fa4` alone — the `SPEC-V3R6-GRAPH-FRESHNESS-001` delivery that *introduced this gate*,
+contributing 29 described-worthy files. Both crossings above sit downstream of it, so both describe
+how often the gate reds while the gate itself is being built.
+
+#### Axis 2 — outlier sensitivity (`6786c3fa4` excluded)
+
+The exclusion is justified in one sentence, and it is the same sentence §B.6 gives: `6786c3fa4` is
+the commit that delivered this gate, so counting its own 29 files as evidence for the gate's red
+rate measures the construction of the instrument rather than the process it observes.
+
+```
+=== AXIS 2 - cumulative-crossing cadence [outlier 6786c3fa4 excluded] ===
+window size = 29 integrations
+   1  5fd63ebcb  union=1        11  379b310a6  union=24     21  242748906  union=58
+   2  db1362739  union=6        12  5ea3d6706  union=24     22  cb1833f87  union=58
+   3  7f5b6a947  union=6        13  968ed2acb  union=32     23  8d8da0b2b  union=62
+   4  e91def4ca  union=6        14  26c5a7d54  union=39     24  7ed6edb3e  union=62
+   5  a739d04b4  union=10       15  a46862091  union=39     25  3809d1d36  union=64
+   6  71781683c  union=10       16  7b10c95ba  union=39     26  48eb945df  union=64
+   7  c9eed8ac6  union=10       17  8ef14f5ae  union=42  <-- crosses 40
+   8  9a95e7a02  union=10       18  6b20c0fe6  union=45     27  52c693327  union=67
+   9  410da655f  union=12       19  22df80e90  union=49     28  6310dbf28  union=67
+  10  da791eb0a  union=23  <-- crosses 15                   29  3cb258d62  union=81
+                                 20  f25f2d348  union=49
+threshold 15: first crossed at integration 10 (da791eb0a, union 23)
+threshold 40: first crossed at integration 17 (8ef14f5ae, union 42)
+```
+
+Side by side, with `spec.md` §B.6's plan-phase figures for comparison:
+
+| Threshold | with outlier (now) | **without outlier (now)** | with outlier (§B.6) | without outlier (§B.6) |
+|---|---|---|---|---|
+| 15 | integration 7 | **integration 10** | integration 5 | integration 5 |
+| **40** | integration 10 | **integration 17** | integration 10 | integration 16 |
+
+The 40-crossing reproduces almost exactly: **16 → 17 integrations** on the operative
+outlier-excluded walk, measured on a different window three days later. The 15-crossing does *not*
+reproduce §B.6's claim that it is unaffected by the outlier — in this window the outlier lands at
+integration 7, *before* the 15-crossing, so removing it moves that crossing from 7 to 10. §B.6's
+"unaffected" was a property of its window, not of the metric; recorded here as a correction rather
+than carried forward.
+
+#### Expected red frequency, and the check against §D.2's stated intent
+
+Stated on the **outlier-excluded** walk, as AC-GFC-006 requires:
+
+```
+$ python3 -c "…"   # 28 gaps / 2.421 days = 11.56 integrations/day
+outlier-excluded, thresh 40 : 17 integrations / 11.56 per day = 1.47 days to red
+outlier-excluded, thresh 15 : 10 integrations / 11.56 per day = 0.86 days to red
+with outlier,     thresh 40 : 10 integrations / 11.98 per day = 0.83 days to red
+with outlier,     thresh 15 :  7 integrations / 11.98 per day = 0.58 days to red
+```
+
+`spec.md` §D.2 states the intent as *"roughly once every day and a half of factory activity"*. The
+re-measured figure is **1.47 days**. That is the stated intent, reproduced independently on a
+different window — not a value tuned to it.
+
+The comparison against 15 also survives, with its magnitude corrected. §D.2 argued 15 would be
+roughly a **threefold** increase in red rate; measured here it is **1.47 / 0.86 ≈ 1.7×**, not 3×.
+The direction of §D.2's argument holds — 15 reds noticeably more often, against a gate whose only
+exit is manual regeneration — but the "threefold" magnitude was a property of the plan-phase window
+and does not reproduce. Recorded as a correction to the *argument's magnitude*, not to its
+conclusion.
+
+#### Conclusion (REQ-GFC-005)
+
+**40 is confirmed. Retained unchanged.** The evidence, in order of weight:
+
+1. The deciding axis (Axis 2, outlier-excluded) puts the 40-crossing at 1.47 days of factory
+   activity — the frequency `spec.md` §D.2 declared as the intent, reproduced on a window it was
+   not derived from.
+2. The alternative the SPEC considered and rejected (15) measures at 0.86 days, ≈1.7× more often.
+   Nothing in this measurement argues for it.
+3. Axis 1 shifted (p90 9 → 11, mean 3.9 → 4.13) without changing shape, and does not decide the
+   threshold in either direction — the metric is cumulative, not per-change.
+4. The threshold is not load-bearing for the reported defect regardless: the streak's corrected
+   cumulative is 2, which passes at 15 and at 40 alike (`spec.md` §B.2, re-verified through the
+   delivered code in M1's AC-GFC-003 record). M1 alone stops the streak.
+
+Nothing was changed in `internal/graph/check.go` by this milestone. `DefaultThresholds` still reads
+`CodemapsChangedFiles: 40` at `internal/graph/check.go:53`.
+
+#### AC matrix — M2
+
+| AC | Status | Deciding command | Observed |
+|---|---|---|---|
+| AC-GFC-006 | PASS | `git log --first-parent -30 --reverse --name-only --pretty=format:"===%h" develop -- internal cmd pkg` + the axes script | Both axes recorded above with verbatim output, the nearest-rank convention named, Axis 2 walked twice, and the frequency conclusion stated on the outlier-excluded walk |
+| AC-GFC-007 | PASS | the three bounded commands below | No justification appealing to a failing check exists on any of the three surfaces |
+
+AC-GFC-007, decided by all three of its commands, and asserted **only** over those three surfaces:
+
+```
+$ grep -n "CodemapsChangedFiles" internal/graph/check.go
+43:	// CodemapsChangedFiles: red when the endpoint-diff count is >= this value.
+44:	CodemapsChangedFiles int
+53:		CodemapsChangedFiles: 40,
+135:	rep := LayerReport{Layer: LayerCodemaps, Metric: MetricDescribedSourceDiff, Threshold: th.CodemapsChangedFiles}
+216:	if count >= th.CodemapsChangedFiles {
+
+$ git log d2cba5e21..HEAD --format=%B | grep -niE "raise|raised|lower|lowered|threshold|so that|passes"
+  → 7 hits, every one of them about retaining 40 or about reversing the v0.1.0 proposal to 15:
+    "Threshold untouched at 40; no restamp anywhere"
+    "the threshold judgment is reversed — 40 is retained. The value 15 …"
+    "The threshold change was therefore not load-bearing and is now out of scope."
+  → zero hits of the form "raised/lowered so that <check> passes"
+
+$ git diff d2cba5e21..HEAD -- internal/graph/check.go | grep -nE "^[+-].*(40|Threshold|CodemapsChangedFiles)"
+  → (no threshold line added or removed)
+```
+
+#### Gaps — what M2 did NOT observe
+
+- **The plan-phase window was not re-walked.** `spec.md` §B.6's window (`39c677f47 … 48eb945df`)
+  was superseded by the `develop` window measured above; the comparison table quotes §B.6's recorded
+  figures rather than re-deriving them, so those four cells are carried, not measured here.
+- **One window, three days.** Both axes rest on a single 30-integration window spanning 2.421 days.
+  The integration rate is an order of magnitude, not a rate constant — the same caveat `spec.md`
+  §D.2 attaches to its own figure.
+- **No sensitivity beyond the single largest contributor.** AC-GFC-006 requires one outlier
+  counterfactual and one was run; the walk was not re-run against a second- or third-largest
+  exclusion, so the crossing's stability under a broader trimming is unobserved.
+- **`3cb258d62` contributes 15 and sits at the window edge.** Its effect on the crossings is nil
+  (both crossings occur well before it), but it would dominate a window shifted one integration
+  later, so the next re-measurement may see a different Axis 1 tail.
+- **No code was executed for this milestone.** M2 is a measurement over git history; the delivered
+  binary's own reading of the metric was not re-run here (M1's record carries that).
+
+#### Residual risk — M2
+
+- **The confirmation rests on a frequency judgment, not a mechanical criterion.** "≈1.5 days per
+  red is tolerable" is a debt-tolerance position (`spec.md` §G Q4), and it is the operator's to
+  revise. What is measured is the crossing; whether that crossing is the right one is a decision
+  this record does not make.
+- **The window is drawn from a period of unusually high factory activity** — 30 integrations in
+  under two and a half days. At a lower integration rate the same 17-integration crossing is a
+  longer wall-clock interval, and 40 becomes correspondingly laxer in time terms.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
