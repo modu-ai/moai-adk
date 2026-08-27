@@ -36,7 +36,7 @@ func consoleTabs() []consoleTab {
 		{ID: "identity", LabelKey: "sec.identity.title", Baseline: "Identity"},
 		{ID: "language", LabelKey: "sec.language.title", Baseline: "Language"},
 		{ID: "launch", LabelKey: "sec.launch.title", Baseline: "LLM"},
-		{ID: "llm", LabelKey: "sec.llm.title", Baseline: "3rd Party LLM"},
+		{ID: "llm", LabelKey: "sec.llm.title", Baseline: "GLM Settings"},
 		// workflow restored (Issue 3): the worktree auto-create toggle lives here.
 		// Original ordering placed it after llm (pre-cca120c70).
 		{ID: "workflow", LabelKey: "sec.workflow.title", Baseline: "Workflow"},
@@ -202,7 +202,7 @@ func schemaSectionMetas() []schemaSectionMeta {
 		{
 			ID: settings.SectionLLM, PanelID: "llm", Icon: "rocket",
 			TitleKey: "sec.llm.title", DescKey: "sec.llm.desc",
-			Title: "3rd Party LLM", Desc: "GLM backend model tier mappings and per-tier reasoning effort.",
+			Title: "GLM Settings", Desc: "GLM backend model tier mappings and per-tier reasoning effort.",
 			Fields: settings.SectionFields(settings.SectionLLM), Extras: true,
 			// REQ-WCR-033: the honesty note. The four per-tier effort values are
 			// stored and never applied — the runtime reads one session-global

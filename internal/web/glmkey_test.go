@@ -77,15 +77,15 @@ func TestGLMKeyField_Renders(t *testing.T) {
 	if !strings.Contains(body, `name="`+glmAPIKeyFormField+`"`) {
 		t.Fatalf("settings page missing GLM API key control (name=%q)", glmAPIKeyFormField)
 	}
-	// The control appears inside the 3rd Party LLM section (between its legend
+	// The control appears inside the GLM Settings section (between its legend
 	// and the next section's legend).
-	llm := indexOf(body, "3rd Party LLM")
+	llm := indexOf(body, "GLM Settings")
 	if llm < 0 {
-		t.Fatalf("settings page missing the 3rd Party LLM section")
+		t.Fatalf("settings page missing the GLM Settings section")
 	}
 	key := indexOf(body, `name="`+glmAPIKeyFormField+`"`)
 	if key < llm {
-		t.Fatalf("GLM key control at %d appears before the 3rd Party LLM legend at %d", key, llm)
+		t.Fatalf("GLM key control at %d appears before the GLM Settings legend at %d", key, llm)
 	}
 }
 
