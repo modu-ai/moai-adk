@@ -110,12 +110,26 @@ type ModeProfile struct {
 	PushToRemote      bool   `yaml:"push_to_remote"`
 
 	// Mode-conditional optional fields (zero value when the mode lacks the key).
-	AutoCheckpoint   string `yaml:"auto_checkpoint"`   // manual mode only
-	BranchPrefix     string `yaml:"branch_prefix"`     // personal/team modes only
-	MainBranch       string `yaml:"main_branch"`       // personal/team modes only
-	DraftPR          bool   `yaml:"draft_pr"`          // team mode only
-	RequiredReviews  int    `yaml:"required_reviews"`  // team mode only
-	BranchProtection bool   `yaml:"branch_protection"` // team mode only
+	AutoCheckpoint string `yaml:"auto_checkpoint"` // manual mode only
+	BranchPrefix   string `yaml:"branch_prefix"`   // personal/team modes only
+	MainBranch     string `yaml:"main_branch"`     // personal/team modes only
+	// Manual-mode git-flow keys. These have NO Go consumer — they are
+	// pass-through fields whose only job is to survive a typed load-and-save
+	// round trip (SPEC-WORKTREE-BASEREF-001 REQ-WBR-013 / AC-WBR-014).
+	//
+	// Measured before they existed: saving git_strategy through the typed path
+	// re-marshals this struct, so a `worktree_base_branch` edit made from the
+	// web console silently DELETED all three from git-strategy.yaml. Modelling
+	// them does not repair the wider schema divergence — no accessor and no
+	// consumer is added — it only stops the write path this SPEC introduces
+	// from newly exposing it.
+	DevelopBranch       string `yaml:"develop_branch"`        // manual mode, git-flow only
+	ReleaseBranchPrefix string `yaml:"release_branch_prefix"` // manual mode, git-flow only
+	RCVersionFormat     string `yaml:"rc_version_format"`     // manual mode, git-flow only
+
+	DraftPR          bool `yaml:"draft_pr"`          // team mode only
+	RequiredReviews  int  `yaml:"required_reviews"`  // team mode only
+	BranchProtection bool `yaml:"branch_protection"` // team mode only
 
 	// MergeMethod selects the PR merge method for this mode.
 	// One of "squash", "merge", "rebase". Empty unmarshals to the Go zero value

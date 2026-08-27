@@ -36,10 +36,15 @@ import (
 // Function-variable seams for test injection. Each has a Real counterpart
 // below; tests swap these via swapWorktreeBaseBranchSeams and restore on
 // cleanup — the idiom already used by internal/cli/session_worktree.go.
+//
+// Three of them are EXPORTED, and only because a guard in another package must
+// be able to observe them: the anti-dead-key regression guard asserts that a
+// stored key reaches the git write seam, which is not something a grep or an
+// in-package test can discharge on its behalf.
 var (
-	// worktreeBaseBranchInPrimaryCheckout reports whether cwd is the primary
+	// WorktreeBaseBranchInPrimaryCheckout reports whether cwd is the primary
 	// checkout (git-dir == git-common-dir), the REQ-WBR-004 discriminant.
-	worktreeBaseBranchInPrimaryCheckout = worktreeBaseBranchInPrimaryCheckoutReal
+	WorktreeBaseBranchInPrimaryCheckout = worktreeBaseBranchInPrimaryCheckoutReal
 
 	// worktreeBaseBranchReadConfig is the ALIGNMENT-ENTRY seam: the read of the
 	// configured git_strategy.worktree_base_branch value. AC-WBR-016 counts THIS
@@ -49,12 +54,13 @@ var (
 	// path never reaches.
 	worktreeBaseBranchReadConfig = worktreeBaseBranchReadConfigReal
 
-	// worktreeBaseBranchReadOriginHead returns the branch name currently named
-	// by refs/remotes/origin/HEAD.
-	worktreeBaseBranchReadOriginHead = worktreeBaseBranchReadOriginHeadReal
+	// WorktreeBaseBranchOriginHead returns the branch name currently named
+	// by refs/remotes/origin/HEAD. Also read by the `moai doctor` diagnostic,
+	// which reports this same comparison without writing anything.
+	WorktreeBaseBranchOriginHead = worktreeBaseBranchReadOriginHeadReal
 
-	// worktreeBaseBranchSetHead runs `git remote set-head origin <branch>`.
-	worktreeBaseBranchSetHead = worktreeBaseBranchSetHeadReal
+	// WorktreeBaseBranchSetHead runs `git remote set-head origin <branch>`.
+	WorktreeBaseBranchSetHead = worktreeBaseBranchSetHeadReal
 
 	// worktreeBaseBranchStderr is the notice channel, matching the existing
 	// SessionStart precedent (the empty-session_id warning).
@@ -75,25 +81,15 @@ var (
 // mechanism the rest of this file uses.
 var WorktreeBaseBranchResolvable = worktreeBaseBranchResolvableReal
 
-// WorktreeBaseBranchOriginHead returns the short branch name currently named by
-// refs/remotes/origin/HEAD, or an error when no such symref exists (typically:
-// no origin remote is configured).
-//
-// Exported for the `moai doctor` diagnostic, which reports the same comparison
-// this alignment step performs — without writing anything.
-func WorktreeBaseBranchOriginHead() (string, error) {
-	return worktreeBaseBranchReadOriginHead()
-}
-
-// runWorktreeBaseAlignment performs the origin/HEAD alignment and returns its
+// RunWorktreeBaseAlignment performs the origin/HEAD alignment and returns its
 // own local data map, matching the shape of the other SessionStart errgroup
 // tasks. Every failure path is fail-open: this step never blocks, fails, or
 // aborts session start (REQ-WBR-008).
-func runWorktreeBaseAlignment(projectRoot string) map[string]any {
+func RunWorktreeBaseAlignment(projectRoot string) map[string]any {
 	data := make(map[string]any)
 
 	// Gate on the primary checkout FIRST — before any read (REQ-WBR-004).
-	if !worktreeBaseBranchInPrimaryCheckout() {
+	if !WorktreeBaseBranchInPrimaryCheckout() {
 		return data
 	}
 
@@ -103,7 +99,7 @@ func runWorktreeBaseAlignment(projectRoot string) map[string]any {
 		return data
 	}
 
-	current, err := worktreeBaseBranchReadOriginHead()
+	current, err := WorktreeBaseBranchOriginHead()
 	if err != nil {
 		// No origin remote, no origin/HEAD, or git unavailable — silent no-op.
 		return data
@@ -126,7 +122,7 @@ func runWorktreeBaseAlignment(projectRoot string) map[string]any {
 		return data
 	}
 
-	if err := worktreeBaseBranchSetHead(configured); err != nil {
+	if err := WorktreeBaseBranchSetHead(configured); err != nil {
 		return data
 	}
 

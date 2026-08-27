@@ -178,7 +178,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		// reading anything. Fail-open like the rest of the group.
 		var worktreeBaseData map[string]any
 		g.Go(func() error {
-			worktreeBaseData = runWorktreeBaseAlignment(input.ProjectDir)
+			worktreeBaseData = RunWorktreeBaseAlignment(input.ProjectDir)
 			return nil
 		})
 

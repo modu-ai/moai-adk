@@ -41,19 +41,19 @@ type worktreeBaseBranchFakes struct {
 // by internal/cli/session_worktree.go.
 func swapWorktreeBaseBranchSeams(t *testing.T, f *worktreeBaseBranchFakes) {
 	t.Helper()
-	origPrimary := worktreeBaseBranchInPrimaryCheckout
+	origPrimary := WorktreeBaseBranchInPrimaryCheckout
 	origRead := worktreeBaseBranchReadConfig
-	origHead := worktreeBaseBranchReadOriginHead
+	origHead := WorktreeBaseBranchOriginHead
 	origResolvable := WorktreeBaseBranchResolvable
-	origSet := worktreeBaseBranchSetHead
+	origSet := WorktreeBaseBranchSetHead
 	origErr := worktreeBaseBranchStderr
 
-	worktreeBaseBranchInPrimaryCheckout = func() bool { return f.primary }
+	WorktreeBaseBranchInPrimaryCheckout = func() bool { return f.primary }
 	worktreeBaseBranchReadConfig = func(string) string {
 		f.entryCalls++
 		return f.configured
 	}
-	worktreeBaseBranchReadOriginHead = func() (string, error) {
+	WorktreeBaseBranchOriginHead = func() (string, error) {
 		f.originHeadCalls++
 		return f.originHead, f.originHeadErr
 	}
@@ -61,7 +61,7 @@ func swapWorktreeBaseBranchSeams(t *testing.T, f *worktreeBaseBranchFakes) {
 		f.resolvableArgs = append(f.resolvableArgs, branch)
 		return f.resolvable
 	}
-	worktreeBaseBranchSetHead = func(branch string) error {
+	WorktreeBaseBranchSetHead = func(branch string) error {
 		f.setHeadCalls++
 		f.setHeadArgs = append(f.setHeadArgs, branch)
 		return f.setHeadErr
@@ -69,11 +69,11 @@ func swapWorktreeBaseBranchSeams(t *testing.T, f *worktreeBaseBranchFakes) {
 	worktreeBaseBranchStderr = &f.stderr
 
 	t.Cleanup(func() {
-		worktreeBaseBranchInPrimaryCheckout = origPrimary
+		WorktreeBaseBranchInPrimaryCheckout = origPrimary
 		worktreeBaseBranchReadConfig = origRead
-		worktreeBaseBranchReadOriginHead = origHead
+		WorktreeBaseBranchOriginHead = origHead
 		WorktreeBaseBranchResolvable = origResolvable
-		worktreeBaseBranchSetHead = origSet
+		WorktreeBaseBranchSetHead = origSet
 		worktreeBaseBranchStderr = origErr
 	})
 }
@@ -93,7 +93,7 @@ func TestWorktreeBaseBranchAlignmentUnsetIsSilentNoOp(t *testing.T) {
 	f := &worktreeBaseBranchFakes{primary: true, configured: "", originHead: "main", resolvable: true}
 	swapWorktreeBaseBranchSeams(t, f)
 
-	runWorktreeBaseAlignment(t.TempDir())
+	RunWorktreeBaseAlignment(t.TempDir())
 
 	if f.setHeadCalls != 0 {
 		t.Errorf("empty setting: write seam invoked %d times, want 0", f.setHeadCalls)
@@ -113,7 +113,7 @@ func TestWorktreeBaseBranchAlignmentMatchIsSilentNoOp(t *testing.T) {
 	f := &worktreeBaseBranchFakes{primary: true, configured: "develop", originHead: "develop", resolvable: true}
 	swapWorktreeBaseBranchSeams(t, f)
 
-	runWorktreeBaseAlignment(t.TempDir())
+	RunWorktreeBaseAlignment(t.TempDir())
 
 	if f.setHeadCalls != 0 {
 		t.Errorf("match: write seam invoked %d times, want 0", f.setHeadCalls)
@@ -129,7 +129,7 @@ func TestWorktreeBaseBranchAlignmentMismatchWritesAndAnnounces(t *testing.T) {
 	f := &worktreeBaseBranchFakes{primary: true, configured: "develop", originHead: "main", resolvable: true}
 	swapWorktreeBaseBranchSeams(t, f)
 
-	runWorktreeBaseAlignment(t.TempDir())
+	RunWorktreeBaseAlignment(t.TempDir())
 
 	if f.setHeadCalls != 1 {
 		t.Fatalf("mismatch: write seam invoked %d times, want exactly 1", f.setHeadCalls)
@@ -154,7 +154,7 @@ func TestWorktreeBaseBranchAlignmentUnresolvableWritesNothing(t *testing.T) {
 	f := &worktreeBaseBranchFakes{primary: true, configured: "no-such-branch", originHead: "main", resolvable: false}
 	swapWorktreeBaseBranchSeams(t, f)
 
-	runWorktreeBaseAlignment(t.TempDir())
+	RunWorktreeBaseAlignment(t.TempDir())
 
 	if f.setHeadCalls != 0 {
 		t.Errorf("unresolvable: write seam invoked %d times, want 0 — refs/remotes/origin/HEAD must never name a ref that does not exist", f.setHeadCalls)
@@ -218,7 +218,7 @@ func TestWorktreeBaseBranchAlignmentFailOpenOnOriginHeadError(t *testing.T) {
 	}
 	swapWorktreeBaseBranchSeams(t, f)
 
-	runWorktreeBaseAlignment(t.TempDir())
+	RunWorktreeBaseAlignment(t.TempDir())
 
 	if f.setHeadCalls != 0 {
 		t.Errorf("origin/HEAD read failure: write seam invoked %d times, want 0", f.setHeadCalls)
