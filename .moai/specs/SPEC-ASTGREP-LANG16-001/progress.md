@@ -577,6 +577,116 @@ is exactly the evidence class the requirement permits; the five `probe:` anchors
 output. Residual risk: an anchor can go stale if an upstream library renames the symbol it cites,
 and nothing re-checks a citation the way a probe re-checks itself.
 
+## §E.2d Run-phase Evidence — integration fix: the pre-filter control payload
+
+Symptom (measured by the lead in the merged state `origin/develop 7ed6edb3e` + this branch, and
+reproduced on this branch alone at `388ae3971`):
+
+```
+$ go test -count=1 -run 'TestScanWriteContentNoConfigNoTempFile|TestScanWriteContentUncoveredLanguage|TestScanWriteContentCoveredLanguageFollowsConfig' ./internal/hook/
+--- FAIL: TestScanWriteContentNoConfigNoTempFile/control:_resolvable_config_creates_exactly_one_temp_file
+    pre_tool_scan_config_test.go:127: expected 1 ScanFile call for the control, got 0
+--- FAIL: TestScanWriteContentUncoveredLanguage/control_sample.go
+    pre_tool_scan_config_test.go:239: expected 1 ScanFile call for the .go control, got 0
+--- FAIL: TestScanWriteContentCoveredLanguageFollowsConfig/shipped_ruleset_scans_go
+    pre_tool_scan_config_test.go:253: expected 1 ScanFile call, got 0
+FAIL	github.com/modu-ai/moai-adk/internal/hook	0.707s
+```
+
+Attribution (lead's three-step bisection, all reverted): whole shipped ruleset at the pre-merge
+revision => PASS; re-apply only this branch's `security/*.yml` => FAIL; restore ONLY
+`security/secrets.yml` => PASS. Trigger is M1's restructuring of `sec-hardcoded-api-key`, not M3's
+severity work. The §E.2c note above recorded the same three subtests as "pre-existing, not
+introduced by M3" — correct as to M3, and this section closes the remaining half by naming M1 as
+the trigger and repairing the instrument.
+
+Mechanism: `internal/hook/pre_tool.go scanWriteContent` calls
+`security.DerivePrefilters(coverage.ConfigPath).CanSkip(language, content)`, which skips the scan
+when the payload carries none of the language's mandatory ERROR-severity literals. The test's
+`goPayloadContent` carried `const`, derived from the OLD `pattern: const $NAME = "sk-$$$REST"`.
+M1 replaced that with `kind: const_spec` + `regex: '"sk-'`, so `const` is no longer derivable, the
+clean payload trips no mandatory literal, the gate skips, and the control arms observe 0 calls.
+
+Invariant cited (the test's own comment, `pre_tool_scan_config_test.go:68-78`): a control asserting
+"a covered language still scans" must use a payload that survives every skip the gate applies while
+remaining clean, so no recorded decision changes. That is an INVARIANT, not a literal — when the
+ruleset changes, the payload satisfying it must change with it. Reverting `secrets.yml` was
+rejected: it resurrects the latent-dead pattern M1 fixed and still leaves the invariant unsatisfied.
+
+Measured go token set — `security.DerivePrefilters` against the CURRENT shipped sgconfig
+(`internal/template/templates/.moai/config/astgrep-rules/sgconfig.yml`), printed verbatim from a
+temporary in-package probe (removed after measurement, not committed):
+
+```
+Known=true
+lang=go derivable=true tokens=["\"sk-" ".SignedString([]byte(\"" "AIza" "AKIA" "exec.Command" "ghp_" "md5.New" "sk-" "template.HTML(" "xox"]
+lang=javascript derivable=true tokens=["AIza" "AKIA" "child_process.exec" "cp.exec" "ghp_" "sk-" "xox"]
+lang=python derivable=true tokens=["AIza" "AKIA" "ghp_" "os.system" "sk-" "subprocess.Popen" "subprocess.call" "subprocess.run" "xox"]
+lang=typescript derivable=true tokens=["AIza" "AKIA" "child_process.exec" "cp.exec" "ghp_" "sk-" "xox"]
+```
+
+`const` is absent, confirming the mechanism by measurement rather than by inference. Of the ten go
+tokens, eight are themselves violations (`md5.New`, `template.HTML(`, `.SignedString([]byte("`, and
+the five credential prefixes) and would change a recorded decision. `exec.Command` is the one token
+whose owning rule (`sec-command-injection-shell`, `pattern: exec.Command("sh", "-c", $CMD)`)
+requires ADDITIONAL literal arguments to match, so a benign explicit-argument-list invocation
+carries the token and cannot match the rule.
+
+New payload, and its cleanliness measured directly with the shipped ruleset:
+
+```
+$ cat sample.go
+package main
+
+import (
+	"fmt"
+	"os/exec"
+)
+
+func main() {
+	cmd := exec.Command("git", "status", "--porcelain")
+	fmt.Println(cmd.Path)
+}
+$ sg scan --config internal/template/templates/.moai/config/astgrep-rules/sgconfig.yml sample.go
+rc=0        # zero findings, at any severity
+```
+
+Mutant tripwire — the controls are proven live, not merely green. Mutant: `PrefilterSet.CanSkip`
+forced to `return true` (prefilter.go:62), i.e. the pre-filter path disabled in the skip direction:
+
+```
+# under the mutant
+--- FAIL: TestScanWriteContentNoConfigNoTempFile/control:_resolvable_config_creates_exactly_one_temp_file
+    pre_tool_scan_config_test.go:143: expected 1 ScanFile call for the control, got 0
+--- FAIL: TestScanWriteContentUncoveredLanguage/control_sample.go
+    pre_tool_scan_config_test.go:255: expected 1 ScanFile call for the .go control, got 0
+--- FAIL: TestScanWriteContentCoveredLanguageFollowsConfig/shipped_ruleset_scans_go
+    pre_tool_scan_config_test.go:269: expected 1 ScanFile call, got 0
+FAIL	github.com/modu-ai/moai-adk/internal/hook	0.705s
+
+# mutant reverted
+$ go test -count=1 ./internal/hook/          ok  github.com/modu-ai/moai-adk/internal/hook  26.874s
+$ go test -count=1 ./internal/astgrep/...    ok  github.com/modu-ai/moai-adk/internal/astgrep 0.477s
+$ go vet ./internal/hook/...                 rc=0 (no output)
+```
+
+AC impact: none. No AC of this SPEC asserts on `goPayloadContent`; the change repairs an
+instrument in a neighbouring SPEC's test asset (SPEC-SEC-SCAN-SURFACE-001 M1/M2 controls), edited
+under the lead's explicit authorization. Recorded decisions are unchanged — the payload is clean
+before and after, so every allow/deny in the differential corpus is untouched.
+
+Gaps: the repository-wide suite was NOT run (standing local-load prohibition; CI owns the
+cross-package verdict). Only the `CanSkip`-disabling mutant was run; the `coverage.Covers` mutant
+was not. The differential corpus's `go/allow/clean` and `go/allow/warning-only` rows were inspected
+and left unchanged — they assert allow, which a skip also produces, so they carry no control
+obligation this fix could satisfy.
+
+Residual risk: the payload's validity remains a function of the shipped ruleset. Any future edit
+that removes `sec-command-injection-shell`'s go rule, or narrows it so `exec.Command` stops being a
+mandatory literal, silently re-opens this exact regression. The in-file comment now names the
+derivation source and instructs re-measurement, which is mitigation rather than a mechanical guard;
+no test asserts that `goPayloadContent` still carries a derivable token.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
