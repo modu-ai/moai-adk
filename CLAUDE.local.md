@@ -107,6 +107,32 @@ Never add files directly to the local project directories without also adding th
 
 **Verification**: Before committing, check that every new file under `.claude/`, `.moai/`, or `.agency/` has a corresponding file in `internal/template/templates/`.
 
+### [HARD] §2.0 에이전트 정의는 사본이 셋이고, 셋째는 손으로 고치지 않는다
+
+에이전트 정의는 세 벌 있는데 **하나만 손편집 대상이 아니다.**
+
+| 사본 | 경로 | 성격 |
+|---|---|---|
+| C1 | `.claude/agents/moai/*.md` | 로컬 도그푸드, 손편집 |
+| C2 | `internal/template/templates/.claude/agents/moai/*.md` | 배포 미러, 손편집 — **중립 원본 층** |
+| C3 | `internal/template/templates/.codex/agents/moai/*.toml` | **C2 로부터 기계 방출** (`internal/template/agentemit`) |
+
+[HARD] **`internal/template/templates/.claude/agents/moai/*.md` 를 고쳤으면 `make agents-emit` 을 돌린다.** 그러지 않으면 `internal/template/templates/.codex/agents/moai/*.toml` 이 스테일한 채로 남고, 그 상태로 만든 바이너리가 옛 정의를 임베드한 채 돌아간다. C1↔C2 는 바이트 동일 관계가 **아니다**(의도된 분기) — 생성 관계는 C2 → C3 한 방향뿐이다.
+
+[HARD] **C3 를 손으로 고치지 않는다.** 손편집은 다음 방출에서 말없이 덮인다. 고칠 것이 있으면 C2 를 고치고 재생성한다.
+
+빠뜨렸을 때 어디서 잡히는가 — 세 지점이 각각 다른 축을 본다:
+
+| 검사 | 무엇을 보는가 | 언제 |
+|---|---|---|
+| `make build` (선행 `agents-emit-check`) | 소스 층: 커밋된 `.toml` vs `.md` 방출 결과 | 로컬 빌드마다. **읽기전용 — 재생성하지 않는다** |
+| `go test ./internal/template/agentemit/...` | 같은 축 | CI 매 실행 |
+| `make embed-check` / `moai doctor --check "Agent Emit Embed"` | **임베드 축**: 이미 빌드된 바이너리가 실은 바이트 vs 커밋본 | 수동. `BIN=<path>` 로 설치본도 겨눌 수 있다 |
+
+셋째가 따로 있는 이유: `go test` 는 테스트 바이너리를 매번 새로 컴파일하고 `//go:embed` 가 그 시점 커밋본을 읽으므로, 소스↔소스 비교로는 **노후한 바이너리를 원리상 볼 수 없다**. 그래서 `make embed-check` 는 `build` 를 선행으로 갖지 않는다 — 갓 빌드한 바이너리는 정의상 일치하므로 build 직후에만 도는 검사는 동어반복이다. 같은 이유로 CI 빌드 잡에도 붙이지 않는다(CI 는 자신이 검사하는 커밋에서 빌드한다).
+
+재생성은 **`make agents-emit` 이라는 명시적 동사로만** 일어난다. build 가 조용히 덮으면 손편집이 있었다는 사실 자체가 사라진다.
+
 **§2.1 Template Content Neutrality — Acceptable Content Range for Templates**: When editing template source files in `internal/template/templates/`, ensure content adheres to the **acceptable** kept-classes (C1/C2/C4/C5/C6/C8) and excludes the FORBIDDEN content classes (SPEC IDs, REQ tokens, Audit citations, internal dates, commit SHAs, macOS-bias paths, CLAUDE.local references), enforced by CI guard (`.github/workflows/template-neutrality-check.yaml` trigger on path change). The canonical C1-C8 acceptable-vs-forbidden content-class catalogue lives in `.moai/docs/template-internal-isolation-doctrine.md §25.1` (cross-referenced by **§25 (Template Internal-Content Isolation)** of this file, now a stub). This keeps the template neutral across the 16 supported **programming languages** (§15) and free of moai-adk internal development state. Distinct axis: user-facing locales (ko/en/ja/zh) are governed by the §8 Localization Contract in the active output style — see §15's disambiguation note.
 
 **Pre-PR Verification (template contributor-checklist)** — before opening a PR that touches `internal/template/templates/**`, run the canonical 5-item pre-commit self-check (the CI guard `template-neutrality-check.yaml` is the safety net). See `.moai/docs/template-internal-isolation-doctrine.md` §25.3 for the full 5-item checklist and §25.1 for the forbidden/allowed content-class catalogue (C1-C8). (C3 dates + C7 commit-hashes are owned by the sibling `internal_content_leak_test.go` per §25, not this neutrality checklist.)
