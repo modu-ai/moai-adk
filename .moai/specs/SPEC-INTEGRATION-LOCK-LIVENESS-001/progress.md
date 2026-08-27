@@ -354,7 +354,7 @@ remains the first layer.
 
 ```yaml
 sync_complete_at: 2026-08-27
-sync_commit_sha: pending-backfill   # backfilled in the immediately following commit
+sync_commit_sha: d013660e7           # this SPEC's sync commit on WT-integration-lock
 sync_status: completed              # clean PASS → completed, per the status rule below
 sync_audit:
   verdict: PASS                      # clean — sync-auditor `audit-t298`, fresh context, --deep
