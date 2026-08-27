@@ -106,14 +106,18 @@
 
 t241: "제안 규칙의 효과는 미검증 예측이므로 Lessons Protocol의 prediction/verified 짝으로 기록 후 다음 라운드 확인 필요." 아래 6줄이 그 prediction 기록이다 — 규칙이 작동한다는 주장은 랜딩 시점까지 미검증 예측이며, 다음 라운드(또는 차기 감사)에서 각 행에 verified: true|false를 부기한다(moai-constitution §Lessons Protocol의 harness-edit prediction/verified 규율과 동형).
 
-| 규칙 | prediction — 규칙이 작동한다 = | 다음 라운드 확인 |
-|---|---|---|
-| VC-1 | 신규 체크 승인물 중 '출력만 내고 rc·비교를 반환하지 않는' 도구 0건 | 라운드 내 신규 체크 diff 판독(rc 반환 구조) |
-| VC-2 | 'mutant가 쓰여 AC 무효화' 감사 지적 0건 | plan-audit shallow-AC 지적 수 |
-| VC-3 | 구조적으로 항상-녹색 시점의 체크 승인 0건 | 게이트 제안 리뷰 기록 |
-| VC-4 | vacuous·impossible·wrong-reason-RED AC 채택 0건 | plan-audit AC 지적 유형 집계 |
-| VC-5 | AC 재스코프 후 해당 REQ/plan 미수정 지적 0건 | 감사 traceability 지적 수 |
-| VC-6 | 이동 ref 불변 주장·재측정 없는 재인용 0건 | 감사 moving-ref 지적 수 |
+| 규칙 | prediction — 규칙이 작동한다 = | 다음 라운드 확인 | verified (2026-08-28, 카드 t241) |
+|---|---|---|---|
+| VC-1 | 신규 체크 승인물 중 '출력만 내고 rc·비교를 반환하지 않는' 도구 0건 | 라운드 내 신규 체크 diff 판독(rc 반환 구조) | **false** — 신규 3건(t301 D8 차단 / t301 N6 "눈 확인" 채택 / t303 F2 zero-match 선택자가 sync 종결까지 도달). 2건이 게이트를 통과 |
+| VC-2 | 'mutant가 쓰여 AC 무효화' 감사 지적 0건 | plan-audit shallow-AC 지적 수 | **false** — 신규 7건(t298 ×2, t301 ×3, t316, t235). 6건은 감사 루프 내 폐쇄, 1건(t301 N7)은 뮤턴트가 살아 있는 채 run 반입 |
+| VC-3 | 구조적으로 항상-녹색 시점의 체크 승인 0건 | 게이트 제안 리뷰 기록 | **false** — 신규 1건 확정(t301 AC-FSD-010: 감사관 자신의 처방으로 acceptance.md v0.4.0에 채택, 다음 회차가 "빨간불이 될 수 없다"로 반전, 게이트 FAIL) + 모호 2건 |
+| VC-4 | vacuous·impossible·wrong-reason-RED AC 채택 0건 | plan-audit AC 지적 유형 집계 | **false** — 신규 5건(t301 ×2, t298, t310, t306). 4건은 지적·수리, 1건(t306 AC-013/014)은 RED 미관측 상태로 0.94 통과 |
+| VC-5 | AC 재스코프 후 해당 REQ/plan 미수정 지적 0건 | 감사 traceability 지적 수 | **false** — 신규 1건(t298 N1: iter-1 수리가 계획·위험 절만 고치고 REQ-INL-009 를 남겨 요구↔계획 모순쌍 생성). 착지 전 수리 확인됨 |
+| VC-6 | 이동 ref 불변 주장·재측정 없는 재인용 0건 | 감사 moving-ref 지적 수 | **false** — 신규 2건. t272 verdict 의 skill immutability 주장이 `origin/main` 기준 + SHA 핀 부재로 **오늘 재현 불가**(통과), t274 는 감사 중 오염을 탐지해 고정 SHA 로 전량 재측정(자가교정) |
+
+**판정 근거·방법·후속 카드 후보**: `.moai/reports/t241/verdict.md`.
+
+**장부 문면의 결함 (판정 중 발견, 다음 장부 저작 시 교정할 것).** VC-2·VC-4·VC-5·VC-6 은 예측을 **"감사 지적 0건"** 으로 적었다. 이 지표는 규칙이 감사 층에서 잘 작동할수록 **올라간다** — 저작 층이 여전히 결함을 만들고 감사가 그것을 잡아내기 때문이다. 실제로 이번 라운드의 감사 산출물은 `verification-completeness.md` 를 파일명·절 번호로 인용하며 뮤턴트 프로브와 비공허성 계수를 실행하고 있다. 즉 "결함이 발생했는가"와 "결함이 채택까지 살아남았는가"는 서로 다른 사건인데 한 숫자로 재려 했다. 위 verified 칸은 두 사건을 갈라 적었다. 다음 장부는 예측을 **채택까지 살아남은 건수**로 쓰고, 감사 지적 수는 반대 부호의 보조 지표로 둘 것.
 
 ## §B. Known Issues (위임 프롬프트 주입 항목)
 

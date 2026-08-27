@@ -620,6 +620,9 @@
 - path: "git_strategy.team.workflow"
   class: W
   evidence: reader
+- path: "git_strategy.worktree_base_branch"
+  class: W
+  evidence: reader
 - path: "handoff.guide"
   class: R
   evidence: none

@@ -25,7 +25,7 @@ Tree: `63b4628a6` (worktree `t303`, branch `WT-sync-strategy-key`). Full command
 | AC-SYK-009 | MUST | `go test ./internal/config/ -run TestShippedConfigKeysHaveReaders -count=1`; `grep -c 'github.spec_git_workflow' internal/config/testdata/shipped_key_inventory.yaml` | `ok github.com/modu-ai/moai-adk/internal/config 0.870s` (exit 0); `0` | PASS |
 | AC-SYK-010 | MUST | `grep -c 'github.spec_git_workflow'` / `grep -c 'automation.auto_branch'` on `T/.claude/skills/moai-workflow-project/schemas/tab_schema.json` | `0` / `3`; JSON re-parsed valid after the edit | PASS |
 | AC-SYK-011 | SHOULD | `sed -n '25p'` on template and local `doc-execution.md` | both: `- Read project configuration: git_strategy.mode, git_strategy.{mode}.workflow, conversation_language` | PASS |
-| AC-SYK-012 | MUST | (1) local dead-key grep refined; (2) `diff` tab_schema template↔local; (3) `grep -c 'SPEC-SYNC-PARALLEL-DOCS-001'` local doc-execution.md; (4) `grep -n 'workflow:' .moai/config/sections/git-strategy.yaml` | (1) `0`; (2) empty; (3) `3` — A5 block intact; (4) `workflow: git-flow` at L8 | PASS |
+| AC-SYK-012 | MUST | (1) local dead-key grep refined; (2) `diff` tab_schema template↔local; (3) `grep -c 'SPEC-SYNC-PARALLEL-DOCS-001'` local doc-execution.md; (4) `grep -n 'workflow:' .moai/config/sections/git-strategy.yaml` | (1) `0` **refined** — the raw local grep returns `1`, the same D1 fallback sentinel AC-SYK-002 excludes; AC-SYK-012.1's own text carries no refinement clause, so the exclusion is inherited from AC-SYK-002 and is stated here rather than left implicit (independent sync audit, F3); (2) empty; (3) `3` — A5 block intact; (4) `workflow: git-flow` at L8 | PASS (inherited refinement, disclosed) |
 
 Invariants held (all measured on `63b4628a6`):
 
@@ -33,7 +33,7 @@ Invariants held (all measured on `63b4628a6`):
 |---|---|---|---|
 | Step 3.1 Tier Route A/B gate preserved | `git diff 0931789b6 -- D` inspected for the Route gate hunk | no hunk touches the Route A/B gate block | PASS |
 | Template neutrality guard | `go test ./internal/template/ -run TestTemplateNeutralityAudit -count=1` | `ok github.com/modu-ai/moai-adk/internal/template 0.524s` (exit 0) | PASS |
-| Adjacent template guards | `go test ./internal/template/ -run 'TestInternalContentLeak\|TestRuleTemplateMirror\|TestCommandsAudit' -count=1` | `ok github.com/modu-ai/moai-adk/internal/template 0.249s` (exit 0) | PASS |
+| Adjacent template guards | **Corrected by the independent sync audit (F2).** The run-phase selector `-run 'TestInternalContentLeak\|TestRuleTemplateMirror\|TestCommandsAudit'` named three tests, but only one exists under those names — `grep -rn 'func TestInternalContentLeak\|func TestCommandsAudit' internal/` returns nothing, so that run was a **vacuous green over two of the three**: it established `TestRuleTemplateMirrorDrift` alone. Re-run with the real names on tree `812ee01fc`: `go test ./internal/template/ -run 'TestTemplateNoInternalContentLeak\|TestRuleTemplateMirrorDrift\|TestCommandsThinPattern' -count=1` | `ok github.com/modu-ai/moai-adk/internal/template 6.739s` (exit 0); `-v` shows all three RUN and PASS, so the selector is non-vacuous this time | PASS (re-measured) |
 | Embedded templates regenerated | `make build` then `git status --short` | exit 0; empty status — catalog.yaml unchanged because `gen-catalog-hashes.go:22` hashes only each skill's root SKILL.md, not sub-files | PASS |
 | Local-only content preserved | `diff` template↔local for delivery.md / doc-execution.md | delivery.md: footer 2 lines only; doc-execution.md: the A5 attribution block only | PASS |
 
@@ -68,4 +68,81 @@ carried_debt:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+Tree: `812ee01fc` (worktree `t303`, branch `WT-strategy-key-sync`, base develop tip). Coherence-evidence commands re-run on this tree, verbatim outputs below.
+
+```yaml
+sync_complete_at: 2026-08-27
+sync_commit_sha: e9f288473   # this SPEC's sync commit; backfilled in this follow-up commit
+sync_status: complete
+spec_status_transition: in-progress -> implemented
+transition_rationale: >-
+  NOT taken to completed. Per the Status Transition Ownership Matrix, manager-docs may carry the
+  transition to completed on this same sync commit, but the independent sync audit that decides
+  PASS-vs-PASS-WITH-DEBT has not yet run for this SPEC — the dispatching lead stated explicitly
+  that the completed call is theirs after that audit, not this agent's. implemented is therefore
+  the correct terminal state for this commit.
+frontmatter_status_transitions:
+  spec.md: "in-progress -> implemented (updated: 2026-08-27)"
+  plan.md: "no status: field present in this SPEC's plan.md frontmatter — nothing to transition (see note below)"
+  acceptance.md: "no status: field present in this SPEC's acceptance.md frontmatter — nothing to transition (see note below)"
+  progress.md: "no status: field present in this SPEC's progress.md frontmatter — nothing to transition (see note below)"
+coherence_evidence:
+  - claim: "The dead key github.spec_git_workflow survives in exactly one place, the documented D1 fallback sentinel"
+    command: "grep -rn \"spec_git_workflow\" internal/template/templates"
+    output: "internal/template/templates/.claude/skills/moai/workflows/sync/delivery.md:33 (the D1 legacy-fallback sentinel; 1 hit total)"
+  - claim: "The canonical key is read 6 times in the shipped sync-delivery skill"
+    command: "grep -c \"git_strategy.{mode}.workflow\" internal/template/templates/.claude/skills/moai/workflows/sync/delivery.md"
+    output: "6"
+  - claim: "REQ-SYK-010's auto_branch rebind survives untouched by t316"
+    command: "grep -n \"auto_branch\" internal/template/templates/.claude/skills/moai-workflow-project/schemas/tab_schema.json"
+    output: "3 hits, lines 964/966/982, all git_strategy.{mode}.automation.auto_branch"
+  - claim: "t316 (6310dbf28) removed the two malformed personal/team auto_branch bindings this SPEC's OBS-1 named, and did not touch this SPEC's rebind"
+    command: "grep -n \"personal.auto_branch\\|team.auto_branch\" internal/template/templates/.claude/skills/moai-workflow-project/schemas/tab_schema.json"
+    output: "exit 1, 0 hits"
+  - claim: "Template<->local mirror parity holds for tab_schema.json"
+    command: "diff internal/template/templates/.claude/skills/moai-workflow-project/schemas/tab_schema.json .claude/skills/moai-workflow-project/schemas/tab_schema.json"
+    output: "empty diff, exit 0"
+  - claim: "The primary checkout's git-strategy.yaml value is inside the canonical domain, resolving carried debt on that config"
+    command: "grep -n \"workflow:\\|mode:\" .moai/config/sections/git-strategy.yaml"
+    output: "mode: manual (L2); manual.workflow: git-flow (L8) -- inside {github-flow, git-flow}"
+  - claim: "Carried-debt item B5 (CLAUDE.local.md instructing the non-canonical 'workflow: gitflow' spelling) is resolved, by card t308"
+    command: "grep -n \"workflow: gitflow\" CLAUDE.local.md"
+    output: "exit 1, 0 hits"
+  - claim: "No docs-site page references the dead key or the mode-scoped canonical path introduced by this SPEC"
+    command: "grep -rln \"spec_git_workflow\" docs-site"
+    output: "exit 1, 0 hits (existing docs-site references to git_strategy.automation.auto_branch predate this SPEC and are unrelated -- verified by inspection, not edited)"
+debt_disposition:
+  OBS-1: "resolved-by-t316 (6310dbf28) -- the malformed bindings it named are gone; this SPEC's own rebind is untouched"
+  D7b_git_strategy_yaml: "resolved -- primary checkout's git-strategy.yaml carries mode: manual / manual.workflow: git-flow, inside the canonical {github-flow, git-flow} domain"
+  B5_claude_local_md: "resolved-by-t308 (da301bbe1) -- the non-canonical 'workflow: gitflow' instruction is gone from CLAUDE.local.md"
+  OBS-2: "OPEN -- the rebound SPEC-branching interview question overlaps the per-mode auto_branch questions in the personal/team batches. Reported, not resolved, per REQ-SYK-010's explicit instruction to rebind rather than delete."
+  OBS-3: "OPEN -- the template-neutrality CI guard triggers on pull_request: branches: [main]; under this repo's git-flow card branches (no PR) it may not fire on CI for this card. Run locally instead, exit 0 -- not independently re-verified on CI by this sync commit."
+ac_count_used_for_b12_self_test: 12   # AC-SYK-001..012, the canonical ### AC-SYK-NNN headings (grep -c '^### AC-SYK-[0-9]\{3\}' acceptance.md -> 12). Corrected by the independent sync audit (F1): the surplus figure is 24 from `grep -oE 'AC-SYK-[0-9]{3}' acceptance.md | wc -l`, and its cause is ACs cross-referencing one another inside their own bodies (AC-005 x4, AC-002 x3, AC-003 x3), NOT the L111 shorthand table -- L111's abbreviated AC-NNN aliases match no AC-SYK- prefix and contribute zero to the 24. The looser regex AC-([A-Z0-9]+-)*[0-9]+ returns 37, and L111's 13 alias tokens are exactly that 37-24 remainder. The original note paired the right conclusion (12 distinct ACs) with the wrong command and the wrong attribution.
+b12_self_test_a: "grep -c SPEC-SYNC-STRATEGY-KEY-001 CHANGELOG.md (pre-emission) = 0 -- no duplicate, emission proceeded"
+b12_self_test_b: "12 distinct AC-SYK-NNN headings in acceptance.md; CHANGELOG entry states '12 acceptance criteria (AC-SYK-001..012): 12 PASS, 0 FAIL' -- matches"
+b12_self_test_c: "all file paths named in the CHANGELOG entry (delivery.md, tab_schema.json, CLAUDE.local.md) verified present via the grep/diff commands above -- no ls-only claim was needed since every path was already read by the coherence-evidence commands"
+docs_impact: none   # measured -- see coherence_evidence docs-site row above
+changelog_entry_position: "CHANGELOG.md ### Changed section, first bullet (before SPEC-TABSCHEMA-AUTOBRANCH-001)"
+```
+
+### Frontmatter transition note (plan.md / acceptance.md / progress.md carry no status: field)
+
+This SPEC's `plan.md`, `acceptance.md`, and `progress.md` were authored at plan-phase with no YAML frontmatter block at all (confirmed: `grep -n "^status:"` across all four artifacts matches only `spec.md`). This differs from at least one other recently-closed SPEC in this repository (SPEC-STATUSLINE-PROFILE-RESPECT-001 / card t293) whose plan.md/acceptance.md/progress.md DID carry a `status:`/`updated:` frontmatter pair — but in that case too, only `spec.md`'s field was actually transitioned at sync-close (its own progress.md §E.4 names the field `spec_status_transition`, singular). The canonical Status Transition Ownership Matrix (`.claude/rules/moai/development/spec-frontmatter-schema.md` § Canonical 12 Required Fields) scopes the 12-field frontmatter schema to `spec.md` specifically; it does not mandate frontmatter on the other three artifacts. Given both the schema scope and the repo precedent, this sync commit transitions `spec.md`'s `status:` field only, and does not add new frontmatter structure to files that never carried it — inventing a frontmatter block on files where none exists would be a body-shape change outside a mechanical status-field transition. Surfaced here rather than silently resolved, per the agent's obligation to report rather than paper over a premise gap between the dispatch instruction and the artifacts actually on disk.
+
+### Independent sync-audit findings — disposition and cross-references
+
+Verdict: PASS-WITH-DEBT, weighted harmonic mean 90.21 against the Tier M threshold 80 (Functionality 96 / Security 93 / Craft 78 / Consistency 90), must-pass firewall cleared on both must-pass dimensions, zero blocking findings. Cold-start auditor, different session from the run and from this sync. Report: `.moai/reports/t303/sync-audit.md`.
+
+**F2 — vacuous green from a selector that matched nothing (the named form).** This is the failure shape card **t241** names: creating a check is not completing it, and "the selector chose nothing, so it printed ok" is one of its canonical forms. The §E.2 "Adjacent template guards" row cited `-run 'TestInternalContentLeak|TestRuleTemplateMirror|TestCommandsAudit'` and reported `ok ... 0.249s`. Two of those three test names do not exist: `grep -rn 'func TestInternalContentLeak\|func TestCommandsAudit' internal/` returns no output. Only `TestRuleTemplateMirrorDrift` matched, so the green established one guard while the row claimed three.
+
+The correction is not "re-run until green" — the original run WAS green. `rc 0` means *everything selected passed*, never *everything that should pass, passed*. The completion act is counting what the selector actually swept: re-run with the real names (`TestTemplateNoInternalContentLeak|TestRuleTemplateMirrorDrift|TestCommandsThinPattern`) gave `ok github.com/modu-ai/moai-adk/internal/template 6.739s`, and `-v` showed all three RUN and PASS — three counted, not inferred. Recorded here at the lead's request as a real-world instance for the t241 implementing session to cite.
+
+**F4 — real defect, deliberately NOT fixed here (outside this SPEC's scope envelope); evidence for card issuance.** File `internal/template/templates/.claude/skills/moai/workflows/sync/delivery.md`, line **278**, current text verbatim:
+
+> `6. Push the integration branch: `git push origin develop` — never force-push. On a rejected push, fetch, integrate the fetched integration branch, and push again`
+
+The label says *the integration branch*; the literal hardcodes `develop`. Under a `release/vX.Y.Z` batch — the model this repo's own lane doctrine uses — the literal targets the wrong branch while the surrounding prose reads as if it were parameterized. The mismatch is between the step's own label and its own command, which is why it survives reading. Scope note: the same file's line 299 (`1. Push to develop: `git push origin develop``) is NOT this defect — it sits under a `**develop branch** → Push directly:` heading where `develop` is the correct literal.
+
+**OBS-3 cross-reference — card t333.** The open debt recorded above (the template-neutrality CI guard triggers on `pull_request: branches: [main]`, so under this repo's git-flow card branches it may not fire on CI) is the same trigger-axis family card **t333** covers — a guard that ran under one branch model and silently stops running under another. OBS-3 stays open here and is not resolved by this SPEC; t333 is the place it gets addressed.
+
+**F5 — NOT adopted; the audit's own claim failed measurement.** The audit reported that the new CHANGELOG bullet omits a trailing `MoAI` marker "both adjacent entries carry". Measured on this tree: neither adjacent entry carries one (`sed -n '12p'` and `sed -n '237p'` on CHANGELOG.md, tails read directly). An auditor verdict is itself subject to verification; this one was a false positive and is recorded as such rather than acted on.

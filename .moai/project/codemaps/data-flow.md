@@ -282,6 +282,49 @@ flowchart TD
 
 ---
 
+## 9. codex 런치 게이트 (moai codex cli/app)
+
+```mermaid
+flowchart TD
+    A["moai codex cli / app"]
+    B["classifyCodexWiring<br/>(런처 배선 판정 소비)"]
+    C{"wired?"}
+    D["직접 기동 또는<br/>tmux spawn 기동"]
+    E["상태·처방 보고"]
+    F{"프롬프트 가능?"}
+    G["보고 후 종료 rc 1<br/>(프롬프트 발행 없음)"]
+    H["초기화 제안 프롬프트"]
+    I{"수락?"}
+    J["기록 없이 종료 rc 130<br/>(취소 — 오류와 구분)"]
+    K["codexwiring.Wire<br/>(배선 생성, agent=codex, 1회)"]
+    L["지시 계약 확보<br/>(AGENTS.md ↔ CLAUDE.md 링크)"]
+    M["기동"]
+
+    A --> B
+    B --> C
+    C -->|wired| D
+    C -->|불완전| E
+    E --> F
+    F -->|불가| G
+    F -->|가능| H
+    H --> I
+    I -->|거절| J
+    I -->|수락| K
+    K --> L
+    L --> M
+```
+
+**흐름**:
+1. 두 기동 동사(`cli`, `app`)가 기동 직전 같은 게이트 함수(`codexInitOfferGate`)를 통과 — 게이트는 `--spawn` 인자를 받지 않아 spawn 우회 경로가 존재하지 않음
+2. 배선 판정은 런처의 단일 분류기(`classifyCodexWiring`, `internal/cli/codex_readiness.go`) 반환값을 소비 — 게이트가 디스크를 재판정하지 않음
+3. `wired`면 즉시 기동, 그 외 상태는 상태와 처방을 stderr로 보고
+4. 비대화형 세션은 프롬프트를 발행하지 않고 보고 후 종료 (대답할 수 없는 프롬프트가 자동화를 매다는 것을 방지)
+5. 거절 시 아무것도 쓰지 않고 종료 코드 130 — 취소이지 오류가 아님
+6. 수락 시 기존 배선 생성기(`codexwiring.Wire`)를 정확히 1회 호출한 뒤 지시 계약 확보 — 생성기 실패 시 계약 단계도, 기동도 없음
+7. 지시 계약은 연결 전용: 없는 파일은 최소 본문으로 생성, 있는 파일은 바이트 단위 보존 + 링크 지시 1행 추가(이미 링크됐으면 무변화 — 코드펜스/주석/인용구 밖의 실행 import만 계수). 모든 경로는 봉쇄 판정(기존 컴포넌트는 일반 디렉터리, 심볼릭 링크/`..` 해석 결과가 프로젝트 루트 안)을 **읽기·쓰기보다 먼저** 통과하며, 쓰기는 per-file temp+rename에 전체 스테이징 → 전체 rename 순서
+
+---
+
 ## 주요 인터페이스 계약
 
 ### Handler (Hook System)
