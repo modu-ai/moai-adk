@@ -105,7 +105,7 @@ SPEC 領域の先頭には検索ボックスと status フィルタチップが�
 | `session` | `.moai/state` |
 | `goal` | `.moai/state/goal` |
 | `verify` | `.moai/state/verify` |
-| `kanban` | `.moai/state/kanban` |
+| `kanban` | `.moai/state/todo` |
 | `config` | `.moai/config/sections` |
 
 `config` イベントだけは扱いが異なります。設定を編集している最中に画面が下から変わると入力中の値が消えてしまうため、更新はせず「設定ファイルが変わった」というバナーだけを出します。

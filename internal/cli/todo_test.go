@@ -206,21 +206,15 @@ func TestTodoDone_MissReportedFileUntouched(t *testing.T) {
 	}
 	root := os.Getenv("CLAUDE_PROJECT_DIR")
 	real := todoBacklogPath(root)
-	before, err := os.ReadFile(real)
-	if err != nil {
-		t.Fatalf("read before: %v", err)
-	}
+	before := queueStateBytes(t, real)
 
-	_, _, err = runTodo(t, "done", "t3")
+	_, _, err := runTodo(t, "done", "t3")
 	if err == nil {
 		t.Fatal("done on a missing id must fail")
 	}
-	after, err := os.ReadFile(real)
-	if err != nil {
-		t.Fatalf("read after: %v", err)
-	}
+	after := queueStateBytes(t, real)
 	if !bytes.Equal(before, after) {
-		t.Error("file changed on a missed done; must be byte-identical")
+		t.Error("file changed on a missed done; must be record-identical")
 	}
 }
 
@@ -232,10 +226,7 @@ func TestTodoNextBare_ReadOnlyOldestFirst(t *testing.T) {
 		}
 	}
 	real := todoBacklogPath(root)
-	before, err := os.ReadFile(real)
-	if err != nil {
-		t.Fatalf("read before: %v", err)
-	}
+	before := queueStateBytes(t, real)
 
 	out, _, err := runTodo(t, "next")
 	if err != nil {
@@ -249,10 +240,7 @@ func TestTodoNextBare_ReadOnlyOldestFirst(t *testing.T) {
 		t.Errorf("bare next order wrong: %q", lines)
 	}
 
-	after, err := os.ReadFile(real)
-	if err != nil {
-		t.Fatalf("read after: %v", err)
-	}
+	after := queueStateBytes(t, real)
 	if !bytes.Equal(before, after) {
 		t.Error("bare next must leave the backlog byte-identical")
 	}
@@ -298,21 +286,15 @@ func TestTodoNext_OutOfRangeFileUntouched(t *testing.T) {
 		t.Fatalf("seed add: %v", err)
 	}
 	real := todoBacklogPath(root)
-	before, err := os.ReadFile(real)
-	if err != nil {
-		t.Fatalf("read before: %v", err)
-	}
+	before := queueStateBytes(t, real)
 
-	_, _, err = runTodo(t, "next", "99")
+	_, _, err := runTodo(t, "next", "99")
 	if err == nil {
 		t.Fatal("next on a missing id must fail")
 	}
-	after, err := os.ReadFile(real)
-	if err != nil {
-		t.Fatalf("read after: %v", err)
-	}
+	after := queueStateBytes(t, real)
 	if !bytes.Equal(before, after) {
-		t.Error("file changed on a missed next; must be byte-identical")
+		t.Error("file changed on a missed next; must be record-identical")
 	}
 }
 
@@ -859,31 +841,22 @@ func TestTodoUnpick_RefusalsLeaveFileUntouched(t *testing.T) {
 		t.Fatalf("seed add: %v", err)
 	}
 	real := todoBacklogPath(root)
-	before, err := os.ReadFile(real)
-	if err != nil {
-		t.Fatalf("read before: %v", err)
-	}
+	before := queueStateBytes(t, real)
 
 	if _, _, err := runTodo(t, "unpick", "1"); err == nil {
 		t.Error("unpick on a queued (not picked) card must fail")
 	}
-	after, err := os.ReadFile(real)
-	if err != nil {
-		t.Fatalf("read after refused unpick: %v", err)
-	}
+	after := queueStateBytes(t, real)
 	if !bytes.Equal(before, after) {
-		t.Error("file changed on a refused unpick; must be byte-identical")
+		t.Error("file changed on a refused unpick; must be record-identical")
 	}
 
 	if _, _, err := runTodo(t, "unpick", "t9"); err == nil {
 		t.Error("unpick on a missing id must fail")
 	}
-	after2, err := os.ReadFile(real)
-	if err != nil {
-		t.Fatalf("read after missed unpick: %v", err)
-	}
+	after2 := queueStateBytes(t, real)
 	if !bytes.Equal(before, after2) {
-		t.Error("file changed on a missed unpick; must be byte-identical")
+		t.Error("file changed on a missed unpick; must be record-identical")
 	}
 }
 
@@ -925,20 +898,14 @@ func TestTodoNextPick_ExpectGuard(t *testing.T) {
 		}
 	}
 	real := todoBacklogPath(root)
-	before, err := os.ReadFile(real)
-	if err != nil {
-		t.Fatalf("read before: %v", err)
-	}
+	before := queueStateBytes(t, real)
 
 	if _, _, err := runTodo(t, "next", "2", "--expect", "alpha"); err == nil {
 		t.Fatal("next --expect must refuse when the card text does not match")
 	}
-	after, err := os.ReadFile(real)
-	if err != nil {
-		t.Fatalf("read after refused pick: %v", err)
-	}
+	after := queueStateBytes(t, real)
 	if !bytes.Equal(before, after) {
-		t.Error("file changed on a refused --expect pick; must be byte-identical")
+		t.Error("file changed on a refused --expect pick; must be record-identical")
 	}
 
 	out, _, err := runTodo(t, "next", "2", "--expect", "beta")

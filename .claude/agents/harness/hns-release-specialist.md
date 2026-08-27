@@ -57,6 +57,18 @@ to surface a user-decision prompt (patch/minor/major).
   and must not drag unreleased `develop` work with it. A hotfix MUST also be
   back-merged into `develop` after it merges to `main` (Phase 9) — otherwise the
   fix disappears at the next release.
+- **Expect a red `Graph Freshness` on a hotfix PR, and do not trace it.** Because
+  the branch is cut from `main`, it inherits `main`'s codemaps provenance stamp,
+  which currently names a commit unreachable from `main` — so the check fails on
+  the head. It does **not** block the merge, and that is true for exactly one
+  reason: `Graph Freshness` is absent from `main`'s required status checks
+  (`gh api repos/modu-ai/moai-adk/branches/main/protection --jq
+  .required_status_checks.contexts` → `Test (ubuntu-latest)` / `Lint` /
+  `Build (linux/amd64)` / `Analyze (Go) (go)` / `Release PR Multi-OS Gate`).
+  **If that list ever gains `Graph Freshness`, this note is false and the red
+  becomes a blocker.** The condition resolves on its own at the next
+  `develop` → `main` release merge, which carries `develop`'s reachable stamp onto
+  `main`; measured and reasoned in `.moai/reports/t292/verdict.md` (card t292).
 - Target `main` (production only). Tag `vX.Y.Z` (SemVer, GoReleaser trigger). Tags
   are NOT branch-protected — the `scripts/release.sh` tag-push flow is unaffected.
 - [HARD] Merge strategy **merge commit** (`gh pr merge --merge --delete-branch`) — squash forbidden (preserve individual SPEC commits, project git workflow doctrine §18.3).

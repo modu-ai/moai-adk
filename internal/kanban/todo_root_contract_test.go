@@ -8,7 +8,7 @@ import (
 
 // TestAdoptionLandsWhereConsumersRead pins the path contract both resolvers and
 // every caller share. Adoption used to write <root>/backlog.json while callers
-// resolve the store through BacklogPathForRoot — <root>/.moai/state/kanban/
+// resolve the store through BacklogPathForRoot — <root>/.moai/state/todo/
 // backlog.json — so an adopted queue was moved somewhere nothing reads and the
 // operator's cards silently disappeared from `moai todo`.
 func TestAdoptionLandsWhereConsumersRead(t *testing.T) {

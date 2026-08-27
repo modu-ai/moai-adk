@@ -1,0 +1,117 @@
+--- FAIL: TestBuilder_SegmentGateSuppressesPairAndSpawn (0.04s)
+    forge_spawn_gate_test.go:182: enabled render "🤖 glm-5.3 | 🗿 v3.1.3\n🔋 5H: ░░░░░░░░░░ 0% | 🔋 7D: ░░░░░░░░░░ 0%\n📁 001" must serve the cached pair
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/statusline	14.523s
+Deleted profile: testprofile
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+Warning: launch.yaml records "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestLookupProjectKey_DuplicateEntriesResolveDeterministically2057712680/001/MoAI-adk-go" twice for one directory, under different profiles ("profile-b" vs "profile-a").
+Using "profile-b". Remove the stale entry from /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/moai-profile-pkg-3706524562/launch.yaml to silence this.
+--- FAIL: TestResolveLaunchProfileForProject_SubtreeWorktreeResolves (0.00s)
+    subtree_resolve_test.go:60: subtree session resolved to "", want "alpha"
+--- FAIL: TestResolveLaunchProfileForProject_DeepestRegisteredAncestorWins (0.00s)
+    subtree_resolve_test.go:79: nested subtree resolved to "", want "beta" (deepest registered ancestor)
+--- FAIL: TestResolveLaunchProfileForProject_StaleAncestorSkippedNotDeadEnd (0.00s)
+    subtree_resolve_test.go:145: session under a stale registration resolved to "", want "alpha" (walk continues past the unusable entry)
+2026/08/27 13:38:25 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSyncToProjectConfig_NoConfigDir2522782088/001/.moai/config/sections
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/profile	0.496s
+FAIL

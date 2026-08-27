@@ -1,0 +1,2 @@
+ok  	github.com/modu-ai/moai-adk/internal/statusline	13.680s
+ok  	github.com/modu-ai/moai-adk/internal/profile	0.813s

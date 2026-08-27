@@ -105,7 +105,7 @@ SPEC 영역 맨 위에는 검색창과 status 필터 칩이 있습니다. 그 �
 | `session` | `.moai/state` |
 | `goal` | `.moai/state/goal` |
 | `verify` | `.moai/state/verify` |
-| `kanban` | `.moai/state/kanban` |
+| `kanban` | `.moai/state/todo` |
 | `config` | `.moai/config/sections` |
 
 `config` 이벤트만 다르게 다룹니다. 설정을 편집하는 중에 화면이 밑에서 바뀌면 입력하던 값이 사라지므로, 갱신하지 않고 "설정 파일이 바뀌었다"는 배너만 띄웁니다.

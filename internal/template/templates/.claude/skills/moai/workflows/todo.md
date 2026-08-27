@@ -14,7 +14,7 @@ it and the lead dispatches it to the `plan` session.
 The queue is deliberately thin. It records *what the operator wants next*, and
 nothing that a SPEC, a git history, or a board would record better.
 
-State lives at `.moai/state/kanban/backlog.json` of the PRIMARY checkout
+State lives at `.moai/state/todo/backlog.json` of the PRIMARY checkout
 (project-local, not committed). A linked worktree resolves to the same
 primary queue — one repository, one queue: a card worktree's `moai todo`
 adds to and reads the file the lead and the foreman loop see. A project

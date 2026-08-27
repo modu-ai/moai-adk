@@ -317,7 +317,7 @@ exit=0
 
 ```yaml
 run_complete_at: 2026-08-27
-run_commit_sha: pending-backfill-t301
+run_commit_sha: f33bbe39c
 run_status: audit-ready
 ac_pass_count: 14
 ac_fail_count: 0
@@ -333,4 +333,34 @@ m1_to_mN_commit_strategy: single-commit
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- sync_status: implemented (2026-08-27). **`completed` 전환은 의도적 연기** — AC-FSD-011의 관측 창이 아직 열려 있다. frontmatter_status_transitions: `in-progress → implemented` (spec.md, 본 sync 커밋이 운반; `implemented → completed` 는 연기). 같은 사유로 `implemented` 에 머물러 있는 선례: SPEC-CI-FLAKE-SERIES-001(카드 t278).
+- sync_complete_at: 2026-08-27 (sync 커밋 착지일)
+- sync_commit_sha: `b904de9a3` — sync 커밋은 자기 sha를 담을 수 없어 placeholder로 두었고, 이 값은 레인 오케스트레이터가 바로 다음 커밋에서 역채웠다.
+- run_commit_sha 역채움: §E.3의 `pending-backfill-t301` → **`f33bbe39c`**. 이 커밋이 `origin/develop` 의 조상임을 확인했다(`git merge-base --is-ancestor f33bbe39c origin/develop` → rc=0).
+
+### 무엇이 미결이고, 무엇이 그것을 닫으며, 누가 판정하는가
+
+**(a) 미결 항목 — AC-FSD-011 (회귀 관측).** 이 SPEC이 문면에서 지운 것은 "run-phase에서 전량 스위트를 돌려라" 는 지시다. 그 지시가 실제로 사라졌는지는 이 트리에서 15개 AC 중 14개로 이미 기계 판정했지만, **지시가 사라진 뒤의 run-phase가 실제로 어떻게 도는지**는 문면 검사로 알 수 없다. AC-FSD-011은 그 사후 관측 항목이고, 관측 대상이 아직 발생하지 않았으므로 미결이다. 미결을 통과로 적지 않는다(`acceptance.md` §D.3).
+
+**(b) 닫는 조건 — 다음 세 가지를 모두 충족해야 한다.**
+
+1. **관측 대상 발생**: `f33bbe39c` 착지 이후 실제 run-phase 1회가 STEP 5 배치를 실행할 것. 합성 재현이나 리허설은 대상이 아니다 — 실제 카드의 run-phase여야 한다.
+2. **기록 내용**: 그 배치의 **실측 소요**와 **실행한 명령**을 함께 적을 것 (`acceptance.md` AC-FSD-011 Then 절).
+3. **귀속 표기**: 물려받은 값 **49분 40초**를 나란히 제시하되, 그것이 리드에게서 물려받은 주장이며 이 SPEC의 어떤 세션도 재측정하지 않았음을 명시할 것. 재측정하려면 로컬 전량 스위트를 돌려야 하는데 그것이 `spec.md §C` C4가 금지한 행위다. 따라서 이 항목은 사전/사후 **대조 실험이 아니다** — 사후 값만 실측이고 사전 값은 인용이다. **개선폭을 정량 주장으로 내세우면 그 자체로 조건 위반이다.**
+
+**(c) 판정 주체.** 관측을 수행하고 §E.2에 기록하는 것은 그 run-phase를 도는 세션이다. 그 기록을 읽고 AC-FSD-011의 GREEN/RED를 확정한 뒤 `implemented → completed` 전환을 운반하는 것은 **후속 sync 커밋의 manager-docs** 다(`spec-frontmatter-schema.md` § Status Transition Ownership Matrix). 관측 세션이 스스로 종결을 선언하지 않는다.
+
+### 별개의 미결 — 전량 스위트 판정 (AC-FSD-011과 혼동하지 말 것)
+
+이 SPEC이 지운 로컬 전량 판정을 무엇이 대신하는지는 문면으로 이미 못박혔다: **통합 브랜치의 CI run** 이 리포지터리 전역 테스트 판정의 주체이고, 그 판정은 **보고 시점에 미결**이다(STEP 5에 `integration branch` · `PENDING at report time` 두 정본 토큰으로 고정, AC-FSD-007로 판정 완료). 이것은 SPEC 문면의 요구사항이지 이 SPEC의 미결 AC가 아니다 — 즉 이 항목은 SPEC 종결을 막지 않는다. 이 sync 커밋 자체의 리포지터리 전역 판정도 같은 규율을 따른다: 로컬에서 전량 스위트를 돌리지 않았고(C4 금지), 통합 브랜치 CI가 판정하며, 이 보고 시점에 미결이다.
+
+### b12 자가검사 (본 실행, 커밋 전)
+
+- (a) 사전 grep `grep -c 'SPEC-FULL-SUITE-DOCTRINE-001' CHANGELOG.md` → **0** (중복 없음, 배출 진행)
+- (b) AC 고유 식별자 `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l` → **15** — CHANGELOG 기재 "15 acceptance criteria"와 일치. 내역은 14 통과 + 1 연기(AC-FSD-011) + 0 실패로 §E.3와 합이 맞는다.
+- (c) CHANGELOG 인용 경로 실재 확인: `.claude/agents/moai/manager-develop.md`, `internal/template/templates/.claude/agents/moai/manager-develop.md`, `internal/template/templates/.codex/agents/moai/manager-develop.toml` 3벌 모두 실재.
+- changelog_entry_position: `## [Unreleased]` → `### Added` 최상단 (본 sync 커밋)
+
+### 이 sync 커밋의 범위
+
+`spec.md` frontmatter 종결(`in-progress → implemented`, version `0.5.0 → 0.5.1`), `progress.md` §E.3 SHA 역채움 + 본 §E.4 신호, CHANGELOG `[Unreleased]` 항목 1건. **문서 전용** — Go·템플릿·훅 표면 변경 0. 새 요구사항·AC·독트린 문면은 추가하지 않았다.

@@ -1,0 +1,6 @@
+ok  	github.com/modu-ai/moai-adk/internal/kanban	12.517s
+ok  	github.com/modu-ai/moai-adk/internal/hook	25.064s
+ok  	github.com/modu-ai/moai-adk/internal/session	5.866s
+real 26.32
+user 35.91
+sys 15.45

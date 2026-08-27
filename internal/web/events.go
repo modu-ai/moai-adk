@@ -27,8 +27,10 @@ var watchMap = map[string][]string{
 	"session": {".moai/state"},
 	"goal":    {".moai/state/goal"},
 	"verify":  {".moai/state/verify"},
-	"kanban":  {".moai/state/kanban"},
-	"config":  {".moai/config/sections"},
+	// SSE event KEY stays "kanban" — it is a frontend-visible contract. Only
+	// the watched PATH moved with the state-directory rename.
+	"kanban": {".moai/state/todo"},
+	"config": {".moai/config/sections"},
 }
 
 // Hub 는 열린 SSE 연결 집합이다. 값을 나르지 않으므로 상태는 채널뿐이다.

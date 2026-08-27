@@ -460,7 +460,7 @@ func TestCC_KanbanWritesNoStateRecord(t *testing.T) {
 	// (leads.json) and the backlog queue live there too, and the launch
 	// legitimately writes the former. A RECORD is a file carrying session_id,
 	// and no such file may appear.
-	recordDir := filepath.Join(tmp, ".moai", "state", "kanban")
+	recordDir := kanban.StateDirForRoot(tmp)
 	entries, err := os.ReadDir(recordDir)
 	if err != nil && !os.IsNotExist(err) {
 		t.Fatalf("ReadDir: %v", err)

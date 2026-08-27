@@ -45,10 +45,15 @@ func init() {
 }
 
 // todoBacklogPath returns the backlog file location under root — the same
-// .moai/state/kanban/backlog.json the todo skill and the dispatch protocol
-// name (REQ-TODO-001). The root itself is resolved by resolveTodoQueueRoot.
+// path the todo skill and the dispatch protocol name (REQ-TODO-001). The root
+// itself is resolved by resolveTodoQueueRoot.
+//
+// This is the ADOPTING form: the `moai todo` command path is where the
+// one-time relocation of the legacy state directory belongs, because it is
+// where the queue lock is already in play (REQ-TOSQ-015). The read-only
+// surfaces — the console, the statusline — use the pure form and move nothing.
 func todoBacklogPath(root string) string {
-	return kanban.BacklogPathForRoot(root)
+	return kanban.BacklogPathForRootAdopting(root)
 }
 
 // resolveTodoQueueRoot returns the directory the backlog queue hangs from
@@ -77,7 +82,7 @@ func newTodoCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "todo",
 		Short: "Operate the kanban backlog queue",
-		Long: `Operate the kanban backlog queue at .moai/state/kanban/backlog.json.
+		Long: `Operate the kanban backlog queue at .moai/state/todo/backlog.json.
 
 The queue resolves against the PRIMARY checkout even when this command runs
 inside a linked worktree — one repository, one queue; a card worktree adds
@@ -133,7 +138,7 @@ adds any text verbatim.`,
 		newTodoUnpickCmd(), newTodoEditCmd(), newTodoMoveCmd(),
 		newTodoDropCmd(), newTodoUndropCmd(),
 		newTodoAnalyzeCmd(), newTodoRelateCmd(), newTodoUnrelateCmd(), newTodoWhyCmd(),
-		newTodoPRCmd())
+		newTodoPRCmd(), newTodoExportJSONCmd())
 	return cmd
 }
 
