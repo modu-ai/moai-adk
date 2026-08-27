@@ -258,8 +258,14 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 		// GitHub counts are read from cache only — the render path never calls
 		// the network. When the cache has aged out, a detached child is asked
 		// to refresh it and this render proceeds with the previous value.
+		// The segment gate reaches the spawn, not just the render: a switched-
+		// off segment must also stop the polling (REQ-001,
+		// SPEC-STATUSLINE-PROFILE-RESPECT-001). An absent segments map reads as
+		// all-enabled, so the default behavior is unchanged (REQ-003).
 		data.GitHub = resolveGitHubCounts(boardRoot)
-		maybeRefreshGitHubCounts(boardRoot)
+		if b.renderer.isSegmentEnabled(SegmentGitHub) {
+			maybeRefreshGitHubCounts(boardRoot)
+		}
 	}
 
 	// SPEC-INFINITE-GOAL-001 REQ-3: resolve whether an armed goal exists for

@@ -362,6 +362,46 @@ func asString(v any) string {
 	return s
 }
 
+// lookupSubtreeProjectKey resolves a directory that has no ledger entry of its
+// own to the profile of its deepest REGISTERED ancestor
+// (SPEC-STATUSLINE-PROFILE-RESPECT-001 REQ-006..008, kickoff decision D1: the
+// walk lives here in the READ path, only after lookupProjectKey's exact/alias
+// scan has missed — lookupProjectKey itself is untouched).
+//
+// The chain of filepath.Dir steps makes the match structural rather than
+// lexical: "/proj" is an ancestor of "/proj/worktrees/x" but never of
+// "/proj-other", because no Dir step ever produces the latter from the former.
+// Walking outward from the session directory, the FIRST registered ancestor is
+// by construction the deepest (REQ-007). Each ancestor must exist on disk —
+// a registration for a directory that is gone (a deleted worktree) is skipped
+// rather than matched, and the walk continues outward to the enclosing live
+// project.
+//
+// A hit whose profile directory has vanished (launchCandidateIsUsable false)
+// is likewise skipped, mirroring the exact path's fall-through to "" rather
+// than dead-ending on a stale entry.
+//
+// @MX:NOTE: [AUTO] subtree resolution walk — read-path only (kickoff D1); the
+// write-side normalization that would key one registration to future subtrees
+// is REQ-009, deferred to a follow-up card.
+func lookupSubtreeProjectKey(projects map[string]any, dir, baseDir string) (string, bool) {
+	if dir == "" || len(projects) == 0 {
+		return "", false
+	}
+	for cur := filepath.Dir(dir); ; cur = filepath.Dir(cur) {
+		if _, ok := projects[cur]; ok {
+			if info, err := os.Stat(cur); err == nil && info.IsDir() {
+				if name := asString(projects[cur]); launchCandidateIsUsable(baseDir, name) {
+					return name, true
+				}
+			}
+		}
+		if parent := filepath.Dir(cur); parent == cur {
+			return "", false // reached the volume root: no registered ancestor
+		}
+	}
+}
+
 // loadLaunchLedger reads and decodes the ledger as a generic map so unknown and
 // legacy keys are tolerated rather than rejected. A missing or corrupt file
 // yields an error the callers translate into "no fallback".
@@ -430,6 +470,12 @@ func ResolveLaunchProfileForProject(projectRoot, profileName string) string {
 				if name, ok := projects[stored].(string); ok && launchCandidateIsUsable(baseDir, name) {
 					return name
 				}
+			} else if name, found := lookupSubtreeProjectKey(projects, key, baseDir); found {
+				// The directory has no entry of its own but sits inside a
+				// registered project's subtree — a fresh worktree, typically.
+				// The walk reuses the already-normalized key so both sides of
+				// the comparison went through the same EvalSymlinks spelling.
+				return name
 			}
 		}
 	}
