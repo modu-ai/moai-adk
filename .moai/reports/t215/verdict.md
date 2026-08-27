@@ -57,6 +57,40 @@ prev=""; n=0; while [ $n -lt 200 ]; do cur=$(stat -f %m "$F" 2>/dev/null); if [ 
 - 외부 상태 필드(github 개수 등)가 이벤트 후 최대 60초까지 늦게 반영될 수 있다 — 초단기 신선도가 필요한 머신은 settings.local.json으로 30 이하로 되돌리면 된다(카드가 허용한 30~60 밴드).
 - warm-path 잔여 비용(§조치2)의 축소는 이번 변경으로 묻히지만 사라지지 않는다 — 후속 최적화 카드 여지.
 
-## 조치2 — warm-path 내부 실측 분해
+## 조치2 — warm-path 내부 실측 분해 (해소)
 
-> PENDING — 진단 워커(Agent general-purpose, 이름 t215-profiler)가 벤치마크 자산 + pprof 상위 함수 + 단계별 시간표를 반환하는 대로 아래에 기입. 감사가 지목한 "관측 가능한 subprocess spawn만으로 설명 안 되는 잔여 비용"의 실측 출처 확정 목적.
+진단 워커(t215-profiler)가 본 트리에서 실측하고 두 커밋으로 착지: `41d506eca`(벤치마크 자산 `internal/statusline/profile_bench_test.go`, 380줄) · `4fe39013c`(`profiling.md` 전체 증거사슬 + `timeit_harness.py` 재생 하네스). 아래 수치는 모두 워커 실행의 것이다.
+
+### 단계 분포 (M=120, `MOAI_PROFILE_PHASES=1` 분배 리포터)
+
+| 단계 | median | p95 |
+|---|---|---|
+| build_end_to_end | 167.2ms | 192.9ms |
+| builder_init_new (`New(opts)` — git rev-parse 2회 포함) | 58.7ms | 63.3ms |
+| git_collect_status (symbolic-ref + status --porcelain + upstream rev-list) | 161.8ms | 189.8ms |
+| stdin_parse | 0.008ms | — |
+| version_check_update | 0.053ms | — |
+| instant_collectors | 0.279ms | — |
+| snapshot_write / render | ~0 / 0.009ms | — |
+
+### 외부 시간 (N=40, 프라이밍 제외)
+
+- `.moai/status_line.sh` 체인: median **235.5ms**, p95 250.9ms
+- 로컬/설치 바이너리 `statusline` 단독: 240.2 / 235.8ms (±3ms 일치 — 트리 코드와 설치본 동등 확인)
+- git 개별 명령(child): `status --porcelain` 86.5ms > `symbolic-ref` 36.8 ≈ `rev-list @{u}` 36.4 > `rev-parse` 2종 ~29ms. `git --version` 기동 바닥 **19.3ms**(true floor 1.7ms 대비).
+
+### 산술 폐곡과 결론
+
+- init spawns 58.6 ↔ phase 58.7, status spawns 159.7 ↔ phase 161.8 — 외부↔내부 수렴(잔여 = Go 측 exec 오버헤드).
+- CPU 프로필(BenchmarkStatuslineWarmPath 60×): on-CPU 1.98%뿐 — top flat이 syscall/pthread_cond_wait/kevent = child 대기.
+- **명명된 결론**: 이번 실행의 warm wall(~236ms)은 100% 설명 — 직렬 git spawn 5회 ≈93%(child wall 220ms, 회당 git 기동 바닥 19.3ms), Go 부팅 ≈7%, 프로세스 내 나머지 전부 <0.35ms(<0.2%). 렌더러/ANSI/gradient/update-probe/OTEL/sleep 의심 후보 전부 기계적 배제. 유일한 꼬리 위험: stdin에 rate_limits 부재 시에만 도는 OAuth usage 경로(정적 상한 3s, 현행 CC 페이로드는 게이트 오프).
+
+### 감사 "미지의 잔여 비용" 판정에 대한 정리
+
+구조는 닫혔다 — quiet 머신에는 잔여 계산 비용이 관측되지 않는다. 감사의 0.55~0.66s는 load 47~69 창 실측이라 동일 조건 재현이 불가능하고, 워커 Gaps도 명시하듯 그 창은 hypothesis-grade 환경 귀속으로만 서술할 수 있다(두 baseline 모두 속성을 명기했다: 감사=고부하 창, 본 실측=quiet). 빈도 축 공격(조치1)이 단위비용 환경과 무관하게 -83%를 보장하는 이유이기도 하다.
+
+### 수정형 지렛대 (측정 상한 — 본 카드 미구현, 후속 카드 후보)
+
+- `NewRepository`의 항상-중복 rev-parse 제거: -58.7ms
+- ahead-behind rev-list·status spawn 축소/병합: -36~-123ms
+
