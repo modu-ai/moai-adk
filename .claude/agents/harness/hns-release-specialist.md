@@ -218,7 +218,7 @@ required check does not block day-to-day PRs. Delegate to manager-git
 2. `gh pr create --head release/vX.Y.Z --base main --title "release: vX.Y.Z" --body "..."`.
 3. `gh pr checks --watch`.
 4. [HARD] `gh pr merge --merge --delete-branch` (merge commit, NOT squash — §18.3).
-5. `git checkout main && git pull origin main`.
+5. Bring the tag source to the merged tip. [HARD] Do NOT `git checkout main && git pull origin main` — a branch switch or merge in the primary checkout is denied by the branch guard, and that checkout is shared with other live sessions. Instead: `git fetch origin main`, then `git worktree add --detach <tag-worktree> origin/main` and run step 6 from that worktree (drive it with `git -C <tag-worktree>`, never `cd`). Dispose the detached worktree once the tag has landed.
 6. [HARD] `MOAI_RELEASE_VIA_HARNESS=1 ./scripts/release.sh vX.Y.Z` (or `MOAI_RELEASE_VIA_HARNESS=1 make release V=vX.Y.Z`; add `--hotfix` for hotfix) — automatic CHANGELOG verify + CI check + tag + push + GoReleaser watch. The `MOAI_RELEASE_VIA_HARNESS=1` prefix is mandatory: `scripts/release.sh` aborts without it (release provenance gate), and it is what causes the annotated tag to carry the `Released-via: harness:release` / `Release-version:` / `Release-commit:` trailer that `.github/workflows/release.yml` `verify-provenance` requires before GoReleaser runs. Never export it outside this harness-driven invocation, and never hand-craft the trailer on a manual tag. Fallback on script failure: re-run the script (fix the reported validation) — a manual `git tag` + push is NOT a valid fallback, because such a tag fails `verify-provenance` and publishes nothing.
 7. Verify GoReleaser workflow triggered (tags bypass branch protection).
 
