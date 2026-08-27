@@ -122,7 +122,7 @@ func TestParseSchemaFormBoolSemanticsUnchanged(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			req := httptest.NewRequest("POST", "/save", strings.NewReader(tc.form.Encode()))
 			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-			edits, errs := parseSchemaForm(req)
+			edits, errs := parseSchemaForm(req, nil)
 			if len(errs) != 0 {
 				t.Fatalf("parseSchemaForm returned errors: %v", errs)
 			}
@@ -187,7 +187,7 @@ func TestClosedSetRejectsOutOfSetValue(t *testing.T) {
 	req := httptest.NewRequest("POST", "/save",
 		strings.NewReader(url.Values{"workflow.audit.model": {"definitely-not-a-backend"}}.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	edits, errs := parseSchemaForm(req)
+	edits, errs := parseSchemaForm(req, nil)
 	if _, ok := edits["workflow.audit.model"]; ok {
 		t.Error("an out-of-set audit model was collected as an edit — membership validation did not fire")
 	}

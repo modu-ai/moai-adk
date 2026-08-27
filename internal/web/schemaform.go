@@ -36,7 +36,7 @@ func consoleTabs() []consoleTab {
 		{ID: "identity", LabelKey: "sec.identity.title", Baseline: "Identity"},
 		{ID: "language", LabelKey: "sec.language.title", Baseline: "Language"},
 		{ID: "launch", LabelKey: "sec.launch.title", Baseline: "LLM"},
-		{ID: "llm", LabelKey: "sec.llm.title", Baseline: "3rd Party LLM"},
+		{ID: "llm", LabelKey: "sec.llm.title", Baseline: "GLM Settings"},
 		// workflow restored (Issue 3): the worktree auto-create toggle lives here.
 		// Original ordering placed it after llm (pre-cca120c70).
 		{ID: "workflow", LabelKey: "sec.workflow.title", Baseline: "Workflow"},
@@ -202,14 +202,17 @@ func schemaSectionMetas() []schemaSectionMeta {
 		{
 			ID: settings.SectionLLM, PanelID: "llm", Icon: "rocket",
 			TitleKey: "sec.llm.title", DescKey: "sec.llm.desc",
-			Title: "3rd Party LLM", Desc: "GLM backend model tier mappings and per-tier reasoning effort.",
+			Title: "GLM Settings", Desc: "GLM backend model tier mappings and per-tier reasoning effort.",
 			Fields: settings.SectionFields(settings.SectionLLM), Extras: true,
-			// REQ-WCR-033: the honesty note. The four per-tier effort values are
-			// stored and never applied — the runtime reads one session-global
-			// ANTHROPIC_REASONING_EFFORT derived from the session effort_level
-			// preference. Rendered once at the panel header, not per field.
+			// Honesty note (REQ-WCR-033 lineage, updated by RC3
+			// glm-settings-persist): the per-tier effort now APPLIES — at the
+			// next moai glm launch, the slot serving the main session's model
+			// overrides the session-wide effort_level preference; sub-agents
+			// keep the session-wide value, and the collapse overlay still
+			// governs the wire value (stored high and max both wire as max).
+			// Rendered once at the panel header, not per field.
 			NoteKey: "sec.llm.effortnote",
-			Note:    "Reasoning effort applied at runtime comes from the session-wide effort_level preference on the LLM tab, not from these tiers. The four per-tier values below are stored only.",
+			Note:    "Applied at the next moai glm launch: the effort stored for the main session's model slot overrides the session-wide effort_level preference. Sub-agents keep the session-wide value. Stored high and max both reach z.ai as max.",
 		},
 		// workflow restored (Issue 3): reverse the cca120c70 reclassification for
 		// workflow ONLY — the worktree auto-create toggle renders via this fieldset.
@@ -285,7 +288,14 @@ func schemaEditableField(f settings.FieldDef) bool {
 // companion(name+"__present") 패턴으로 "unchecked → false"와 "미제출 → preserve"
 // 를 구분한다 (기존 nested-config 선례). 타입/옵션 위반은 per-field 오류로
 // 수집되어 atomic reject(EC-2)에 합류한다.
-func parseSchemaForm(r *http.Request) (map[string]string, map[string]string) {
+//
+// current는 필드별 디스크 현재값이다 (RC2 passthrough-preserve,
+// glm-settings-persist): 닫힌 옵션 집합 검증은 "이전에 영속된 값과 동일한
+// 제출"을 통과시킨다 — 렌더러가 옵션 밖 영속값을 synthetic option으로
+// round-trip시키므로, 그 제출이 거부되면 콘솔은 그 필드를 다시 저장할 수
+// 없다. 전혀 새로운 집합 밖 제출은 여전히 거부된다. nil이면 옵트인 없는
+// 종전 동작(엄격한 닫힌 집합)이다.
+func parseSchemaForm(r *http.Request, current map[string]string) (map[string]string, map[string]string) {
 	edits := map[string]string{}
 	errs := map[string]string{}
 
@@ -340,7 +350,10 @@ func parseSchemaForm(r *http.Request) (map[string]string, map[string]string) {
 			if raw == "" && !f.EmptySubmits {
 				continue
 			}
-			if f.Validate != nil && !f.Validate(raw) {
+			if f.Validate != nil && !f.Validate(raw) && raw != current[f.Name] {
+				// RC2 passthrough-preserve: out-of-set BUT equal to the previously
+				// persisted value → accept (the synthetic-option round-trip submits
+				// exactly this). Genuinely new out-of-set submissions still reject.
 				errs[f.Name] = "invalid option"
 				continue
 			}

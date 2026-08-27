@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -291,7 +292,7 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	// Z.AI concurrency limits (1-3 in-flight requests per paid tier) are sometimes
 	// misreported by Claude Code as "context window limit".
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "WARNING: moai glm uses GLM models for the MAIN SESSION. Known limitations:")
-	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "  - Main session context window: 128K (glm-4.5-air), 202K (glm-4.7), 1M (glm-5.2)")
+	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "  - Main session context window: 1M (glm-5.3, glm-5.3-flash)")
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "  - Z.AI concurrency is limited (1-3 in-flight requests per paid tier)")
 	_, _ = fmt.Fprintln(cmd.ErrOrStderr(), "If you want Claude as leader and GLM for teammates, use 'moai cg' instead.")
 
@@ -656,6 +657,14 @@ func disableTeamMode(projectRoot string) error {
 
 // saveLLMSection saves only the LLM section to llm.yaml.
 // Empty GLM model values are populated with defaults to avoid confusion.
+//
+// @MX:NOTE: [AUTO] RC1 change-detection gate (glm-settings-persist): the write
+// is SKIPPED when the persisted llm.yaml already equals the desired section
+// state semantically (llmSectionSemanticallyEqual below). The launcher calls
+// this on EVERY moai glm/cg/cc launch; an unconditional typed re-marshal there
+// destroyed hand-written comments, flipped the file mode 0644→0600
+// (writeFileAtomic's perm), and touched mtime on every launch — reopening a
+// lost-update window against concurrent writers.
 func saveLLMSection(sectionsDir string, llm config.LLMConfig) error {
 	// Populate empty GLM model values with defaults for clarity.
 	// This prevents llm.yaml from containing empty model strings that
@@ -695,6 +704,14 @@ func saveLLMSection(sectionsDir string, llm config.LLMConfig) error {
 		LLM config.LLMConfig `yaml:"llm"`
 	}{LLM: llm}
 
+	// RC1 change-detection gate: skip the write when the persisted file already
+	// carries this exact section state. A read error leaves the gate undecided
+	// and falls through to the write (the write itself then surfaces the error).
+	if persisted, ok, err := readPersistedLLMSection(sectionsDir); err == nil && ok &&
+		llmSectionSemanticallyEqual(persisted, wrapper.LLM) {
+		return nil
+	}
+
 	data, err := yaml.Marshal(wrapper)
 	if err != nil {
 		return fmt.Errorf("marshal llm config: %w", err)
@@ -702,6 +719,58 @@ func saveLLMSection(sectionsDir string, llm config.LLMConfig) error {
 
 	path := filepath.Join(sectionsDir, "llm.yaml")
 	return writeFileAtomic(path, data, 0o600)
+}
+
+// readPersistedLLMSection reads the current llm.yaml into a config.LLMConfig.
+// ok is false only when the file does not exist (a first write must proceed);
+// an unreadable or unparseable file returns the error so the caller can fall
+// through to the write path rather than silently skipping it.
+func readPersistedLLMSection(sectionsDir string) (config.LLMConfig, bool, error) {
+	data, err := os.ReadFile(filepath.Join(sectionsDir, "llm.yaml"))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return config.LLMConfig{}, false, nil
+		}
+		return config.LLMConfig{}, false, fmt.Errorf("read llm.yaml: %w", err)
+	}
+	wrapper := struct {
+		LLM config.LLMConfig `yaml:"llm"`
+	}{}
+	if err := yaml.Unmarshal(data, &wrapper); err != nil {
+		return config.LLMConfig{}, false, fmt.Errorf("parse llm.yaml: %w", err)
+	}
+	return wrapper.LLM, true, nil
+}
+
+// llmSectionSemanticallyEqual compares two LLM sections by VALUE, not by file
+// bytes: both are config.LLMConfig structs, so formatting, key order, and
+// comments are invisible to the comparison. This is what lets a hand-written
+// llm.yaml (with comments) be recognized as already carrying the desired
+// state, so the launcher skips the rewrite entirely.
+func llmSectionSemanticallyEqual(a, b config.LLMConfig) bool {
+	normalizeLLMSectionMaps(&a)
+	normalizeLLMSectionMaps(&b)
+	return reflect.DeepEqual(a, b)
+}
+
+// normalizeLLMSectionMaps replaces nil maps with empty maps so a section whose
+// map fields were never set compares equal to one round-tripped through a
+// yaml.Marshal that renders nil maps as `{}`. Deliberate zero-value
+// equivalence: "key absent" and "key present but empty" carry no different
+// intent for these mirrors.
+func normalizeLLMSectionMaps(c *config.LLMConfig) {
+	if c.Profiles == nil {
+		c.Profiles = map[string]map[string]config.ModelEffort{}
+	}
+	if c.HarnessAgents == nil {
+		c.HarnessAgents = map[string]map[string]config.ModelEffort{}
+	}
+	if c.AgentOverrides == nil {
+		c.AgentOverrides = map[string]config.ModelEffort{}
+	}
+	if c.GLM.ContextWindows == nil {
+		c.GLM.ContextWindows = map[string]int{}
+	}
 }
 
 // GLMConfigFromYAML represents the GLM settings from llm.yaml.
@@ -713,6 +782,11 @@ type GLMConfigFromYAML struct {
 		Low    string
 		Fable  string
 	}
+	// Effort carries the per-tier reasoning-effort preference (llm.glm.effort.*)
+	// through to the launcher (RC3, glm-settings-persist): resolveGLMMainSessionEffort
+	// lets a non-empty slot value override the prefs/model_policy effort chain for
+	// the main session. Empty slots mean "unset" — the prefs chain applies.
+	Effort config.GLMTierEffort
 	EnvVar string
 }
 
@@ -805,8 +879,62 @@ func loadGLMConfig(root string) (*GLMConfigFromYAML, error) {
 			Low:    low,
 			Fable:  fable,
 		},
+		Effort: llm.GLM.Effort,
 		EnvVar: envVar,
 	}, nil
+}
+
+// glmSlotEffortForModel resolves the stored per-tier effort (llm.glm.effort.*)
+// for the GLM tier slot serving the main-session model (RC3,
+// glm-settings-persist).
+//
+// The alias→slot pairing mirrors setGLMEnv's ANTHROPIC_DEFAULT_*_MODEL
+// assignments — the ONE alias/slot mapping in the tree: opus feeds
+// Models.High (→ effort.high), sonnet Models.Medium, haiku Models.Low, fable
+// Models.Fable. The [1m] suffix is split before lookup (splitModelSuffix), and
+// a canonical claude-* id is reverse-mapped through
+// template.ModelAliasFromCanonicalID — the same helper resolveMainSessionModel
+// uses on the model under a GLM backend. An empty or unknown model (including
+// a raw GLM id, which is not an alias) resolves "": the caller falls back to
+// the prefs effort chain unchanged, byte-identical to the pre-RC3 launch.
+func glmSlotEffortForModel(model string, effort config.GLMTierEffort) string {
+	if model == "" {
+		return ""
+	}
+	base, _ := splitModelSuffix(model)
+	switch template.ModelAliasFromCanonicalID(base) {
+	case "opus":
+		return effort.High
+	case "sonnet":
+		return effort.Medium
+	case "haiku":
+		return effort.Low
+	case "fable":
+		return effort.Fable
+	default:
+		return ""
+	}
+}
+
+// resolveGLMMainSessionEffort resolves the effort fed to the GLM launch
+// overlay. Precedence: a non-empty stored glm.effort[slot] for the slot
+// serving the main-session model WINS over the prefs/model_policy chain
+// (fallback = resolveLaunchEffort's result); an empty stored value or a model
+// with no slot claim keeps the fallback unchanged.
+//
+// The downstream collapse overlay stays governing for the final wire value
+// (glmReasoningEnvVarsForModel → SessionGLMReasoningStateForModel,
+// SPEC-GLM-EFFORT-MAX-001): a stored "high" and a stored "max" BOTH reach
+// z.ai as reasoning_effort=max (every Claude effort above low collapses to
+// max), a stored "low" wires as low, and under glm-5.3-flash every stored
+// effort pins to max (flash accepts reasoning_effort: max only). Callers
+// choose the stored values from that z.ai state vocabulary, so no additional
+// translation happens here.
+func resolveGLMMainSessionEffort(model string, tier config.GLMTierEffort, fallback string) string {
+	if stored := glmSlotEffortForModel(model, tier); stored != "" {
+		return stored
+	}
+	return fallback
 }
 
 // getGLMEnvPath returns the path to ~/.moai/.env.glm.

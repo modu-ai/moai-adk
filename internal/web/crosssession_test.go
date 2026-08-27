@@ -29,7 +29,7 @@ func TestParseSchemaFormEmptySubmits(t *testing.T) {
 	t.Run("EmptySubmits field: empty submission becomes an edit", func(t *testing.T) {
 		edits, errs := parseSchemaForm(postSchemaForm(url.Values{
 			"crosssession.inbound": {""},
-		}))
+		}), nil)
 		if len(errs) != 0 {
 			t.Fatalf("parseSchemaForm errors: %v", errs)
 		}
@@ -40,7 +40,7 @@ func TestParseSchemaFormEmptySubmits(t *testing.T) {
 	t.Run("non-opted-in select: empty submission still preserves", func(t *testing.T) {
 		edits, errs := parseSchemaForm(postSchemaForm(url.Values{
 			"report.format": {""},
-		}))
+		}), nil)
 		if len(errs) != 0 {
 			t.Fatalf("parseSchemaForm errors: %v", errs)
 		}
@@ -53,7 +53,7 @@ func TestParseSchemaFormEmptySubmits(t *testing.T) {
 		// submission, a test client) must not fabricate revert edits.
 		edits, errs := parseSchemaForm(postSchemaForm(url.Values{
 			"agentfm.dev-a.effort": {"high"},
-		}))
+		}), nil)
 		if len(errs) != 0 {
 			t.Fatalf("parseSchemaForm errors: %v", errs)
 		}
@@ -64,7 +64,7 @@ func TestParseSchemaFormEmptySubmits(t *testing.T) {
 	t.Run("EmptySubmits field: out-of-set value rejected", func(t *testing.T) {
 		edits, errs := parseSchemaForm(postSchemaForm(url.Values{
 			"crosssession.inbound": {"maybe"},
-		}))
+		}), nil)
 		if _, ok := errs["crosssession.inbound"]; !ok {
 			t.Errorf("errs = %v, want a crosssession.inbound entry (out-of-set rejected)", errs)
 		}
