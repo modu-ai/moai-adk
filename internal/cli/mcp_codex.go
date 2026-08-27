@@ -274,6 +274,21 @@ type ReviewOutput struct {
 	// apart from a verdict the review stated plainly, which leaves the next
 	// person diagnosing an incident nothing to read.
 	SynthesisNote string `json:"synthesis_note,omitempty"`
+
+	// GateUnmet records that the project declared workflow.audit.gates.codex:
+	// required but THIS audit could not satisfy that requirement — the result
+	// is a fail-open inconclusive, not a review. Empty whenever the gate is
+	// not `required` or a real verdict exists.
+	//
+	// #1632 axis 3: "required reads as a guarantee but behaves as a
+	// suggestion". The tool layer cannot force a caller to invoke the audit,
+	// but it CAN refuse to let a mandatory gate's failure pass silently — an
+	// inconclusive result that looked byte-identical with or without a
+	// declared required gate now carries the unmet state as a structured
+	// field, so a machine consumer sees the gap instead of string-parsing for
+	// it. Additive + omitempty (the SynthesisNote precedent): no existing
+	// consumer's JSON changes, and the fail-open verdict itself is preserved.
+	GateUnmet string `json:"gate_unmet,omitempty"`
 }
 
 // Finding is a single review finding (§G.4).
@@ -1483,7 +1498,10 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	notifyMCPProgress(ctx, token, 0, "codex 감사 시작 — 모드: "+mode+", target: "+target)
 	binaryPath, err := codexLookPath(codexBinaryName)
 	if err != nil {
-		return codexReviewToolResult(inconclusiveReview("codex binary not found in PATH")), nil
+		// The gate annotation rides EVERY fail-open exit, including this early
+		// one — a missing binary is exactly the state where a required gate
+		// goes silently unmet (the review never ran at all).
+		return codexReviewToolResult(applyGateUnmet(inconclusiveReview("codex binary not found in PATH"), root)), nil
 	}
 	notifyMCPProgress(ctx, token, 0.1, "codex 바이너리 확인 — 리뷰 요청 준비 중...")
 
@@ -1503,8 +1521,26 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 
 	notifyMCPProgress(ctx, token, 0.2, "codex에 리뷰 요청 전송 중... (수분 소요 가능)")
 	out, _ := codexReviewRPC(ctx, binaryPath, method, params) // fail-open inside
+	out = applyGateUnmet(out, root)
 	notifyMCPProgress(ctx, token, 0.9, "codex 응답 수신 — 결과 조립 중...")
 	return codexReviewToolResult(out), nil
+}
+
+// applyGateUnmet annotates a fail-open inconclusive audit with the declared
+// codex gate when that gate is `required` (#1632 axis 3). The audit tree's own
+// workflow.yaml decides — the same project_root the review ran against — so a
+// named tree's gate follows the named tree, not the server's cwd. The verdict
+// itself is untouched: fail-open stays fail-open, and the annotation makes the
+// gap VISIBLE rather than relabeling an unknown as a pass or a fail.
+func applyGateUnmet(out ReviewOutput, projectDir string) ReviewOutput {
+	if out.Verdict != VerdictInconclusive {
+		return out
+	}
+	if workflowAuditPins(projectDir).Gates.Codex != config.AuditGateRequired {
+		return out
+	}
+	out.GateUnmet = "workflow.audit.gates.codex is `required`, but this audit returned no verdict (fail-open inconclusive)"
+	return out
 }
 
 // codexReviewToolResult shapes a ReviewOutput as the schema-typed MCP result
