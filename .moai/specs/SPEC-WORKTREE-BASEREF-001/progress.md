@@ -106,4 +106,45 @@ m1_to_mN_commit_strategy: one commit per milestone, each naming card t313 in its
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-27
+sync_commit_sha: pending-backfill-sync   # this block rides the sync commit and cannot name its own hash; backfilled immediately after
+sync_status: COMPLETE — sync-audit PASS 0.90, zero blocking findings, merge-ready into develop
+sync_audit_verdict: "PASS 0.90 harmonic (Functionality 0.95 / Security 1.00 / Craft 0.80 / Consistency 0.90); must-pass firewall clear on both dimensions; evaluator profile `default`, weights 40/25/20/15"
+sync_audit_report: .moai/reports/t313/sync-audit.md
+sync_audit_ac_reproduction: 16/16 MUST criteria re-executed independently in this tree; 0 vacuous passes; all five touched package trees green in full (config, settings, web, hook, cli); go vet rc 0; golangci-lint "0 issues."
+b12_self_test_a: "pre-emission grep — `grep -c 'SPEC-WORKTREE-BASEREF-001' CHANGELOG.md` returned 0 before the write (no duplicate entry from a parallel session)"
+b12_self_test_b: "AC count match — `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l` returned 16; the CHANGELOG entry states 16 acceptance criteria (AC-WBR-001..016)"
+b12_self_test_c: "file-path verification — all 12 paths cited in the CHANGELOG entry confirmed present via `ls -1` (spec.md, git-strategy.yaml, types.go, worktree_base_branch.go, session_worktree.go, doctor_worktree_base.go, schema_sections.go, git-strategy.yaml.tmpl, worktree-integration.md, sync-audit.md, session_start.go, i18n.js)"
+changelog_entry_position: "CHANGELOG.md [Unreleased] → ### Added, first entry (line 12)"
+frontmatter_status_transitions:
+  spec_md: "in-progress → implemented → completed (merged into this single sync commit per the 3-phase close); `updated:` refreshed to 2026-08-27"
+  plan_md: "no frontmatter block — no transition applicable"
+  acceptance_md: "no frontmatter block — no transition applicable"
+  progress_md: "no frontmatter block — no transition applicable"
+docs_review:
+  m6_commit: 8c46460ff
+  surfaces: ".claude/rules/moai/workflow/worktree-integration.md + internal/template/templates/ mirror (byte-identical, `diff -q` clean)"
+  verdict: "ACCURATE AND COMPLETE — no doc repair needed. Five claims re-verified against the shipped code in this tree: (1) the key sits at the root of `git_strategy` in `.moai/config/sections/git-strategy.yaml` (confirmed in the local file and at `internal/config/types.go:174`); (2) the session-start half fires only from the primary checkout (gate precedes the read, `internal/hook/worktree_base_branch.go:91-100`); (3) the `git worktree add` half is honoured from any tree (`internal/cli/session_worktree.go:215-221`); (4) the unresolvable value falls back to the no-operand form (`session_worktree.go:216-218`, `gitWorktreeAddArgs`); (5) the doctor item is reachable by the exact name `Worktree Base Branch` (`internal/cli/doctor_worktree_base.go`). The shipped template default is empty (`git-strategy.yaml.tmpl:12`), matching the documented neutral default."
+  docs_site: "no gap — docs-site does not enumerate individual `git_strategy` keys (no `worktree_root` / `github_username` page mentions either); the web-console page describes the Git & Worktree group at group level. The user-facing field strings ship in all four locales via `internal/web/assets/i18n.js`."
+debt_findings_recorded (6, all optional, none blocking):
+  F1: "MINOR — `internal/config/types.go:121,174`. AC-WBR-001's second command expects exactly 1 grep hit; the tree returns 2 (line 121 is a doc-comment mention added by the M5 pass-through block). Substantive reading passes; a verbatim re-run reads red on a correct tree. Disposition: DEFERRED — criterion-text repair (narrow to `grep -c '^\\s*WorktreeBaseBranch string'`), no runtime effect."
+  F2: "MINOR — coverage. Package aggregates below the 85% Craft threshold (config 80.6%, cli 79.6%, web 66.8%) are pre-existing baselines, not this delta; the added code is well covered (RunWorktreeBaseAlignment 100.0%, gitWorktreeAddArgs 100.0%, checkWorktreeBaseBranch 90.0%). The four real git-wrapper seams have no standing automated guard — the auditor exercised them by hand (A6). Disposition: DEFERRED — a `testing.Short()`-skipped integration test over a throwaway bare-origin clone would convert those manual runs into a guard. Highest-leverage follow-up alongside F4."
+  F3: "MINOR — `acceptance.md:243`. AC-WBR-013 check (1) excludes only `^.moai/specs/`, so this diff's `.moai/reports/t313/*.md` evidence files emit false NO-TEMPLATE-COUNTERPART lines; the implementer added `grep -v '^.moai/reports/'` and disclosed the deviation in `ac-wbr-013-parity.txt`. Auditor reproduced both forms and agreed. Disposition: DEFERRED — fold `^.moai/reports/` into the criterion's exclusion."
+  F4: "MINOR — `internal/settings/worktree_base_branch_test.go:94-98`. AC-WBR-014's guard asserts the three unmodelled key NAMES survive the typed save, not their VALUES; a regression writing `develop_branch: \"\"` would stay green. The values do survive today (read path verified, and the local `git-strategy.yaml` is intact after this SPEC's one-line edit) — a guard-strength gap, not a live defect. Disposition: DEFERRED — assert full `key: value` pairs. Highest-leverage follow-up alongside F2."
+  F5: "INFORMATIONAL — `internal/hook/worktree_base_branch.go:171,190`, `internal/cli/session_worktree.go:250-254`. No `--` end-of-options separator on the three git invocations carrying the free-text value. Every call uses `exec.Command` with a separate argument vector — no shell, no interpolation, so no injection surface; the two option-position calls are additionally gated behind the resolvability predicate, so an option-shaped value is reachable only if a remote-tracking ref of that literal name exists. Disposition: DEFERRED — optional hardening, add `--` before the branch operand."
+  F6: "MINOR — `acceptance.md:335`. §D.3's `grep -q '[no tests to run]'` VACUOUS clause is over-broad: it fails every multi-package invocation in the file (10 such lines per `./internal/hook/...` run) including correct ones, because sibling packages legitimately match no test. The operative clause is the `=== RUN` count and the auditor applied it that way. Disposition: DEFERRED — scope the string check to the owning package, or drop it. Affects any future SPEC copying the stanza."
+audit_gaps_explicitly_not_checked (5, stated so they are not mistaken for passes):
+  1: "AC-WBR-012's mutation was NOT independently reproduced. Re-running it requires deleting the `FieldDef` from `internal/settings/schema_sections.go`, a source edit the audit is forbidden from making. The auditor read the implementer's capture (`ac-wbr-012-mutation.txt`), judged it internally consistent with the guard's source, and attributed the claim to the implementer rather than to an independent run."
+  2: "Cross-platform. All measurement is darwin/arm64. No Windows or Linux run: `git rev-parse --git-common-dir` path comparison and `git worktree add` operand handling were not exercised there. CI covers this on the PR head."
+  3: "Concurrency. Two simultaneous SessionStarts against one repository were not run; the design argument (the second finds a match and no-ops; the primary-checkout gate leaves exactly one writer) was read but not stress-tested."
+  4: "The web console was not driven through a browser. The render half is asserted against `renderConsolePage(t)` output; no end-to-end form submit was performed, so the POST → `applyGitStrategyKey` → file path is covered by the round-trip unit test only."
+  5: "Inherited G2 — `EnterWorktree`'s actual read of `refs/remotes/origin/HEAD` remains inferred from behaviour rather than read from Claude Code source. Unchanged by this SPEC and explicitly mitigated by the doctor item."
+residual_risk:
+  - "The four real git-wrapper seams have no standing automated guard (F2); the auditor's A6 runs prove they work today, nothing prevents a silent regression tomorrow."
+  - "AC-WBR-014's value-preservation property rests on a key-name assertion (F4) — the property holds, the guard is weaker than the property."
+  - "`refs/remotes/origin/HEAD` is repository-global metadata: the primary-checkout gate confines moai's writers to one, but an external actor (another tool, a manual `git remote set-head`, a fresh clone) can still move it between sessions. Inherent to the approach, accepted by design — realignment is idempotent and costs one notice line, and the doctor item surfaces the state."
+sync_phase_files: "CHANGELOG.md (1 entry), .moai/specs/SPEC-WORKTREE-BASEREF-001/{spec.md frontmatter, progress.md §E.4}, .moai/reports/t313/{sync-audit.md, sync-summary.md} — no Go, template, or docs file changed at sync (the M6 docs review found nothing to repair)"
+push_state: "NOT pushed, no PR opened — integration is the orchestrator's call per the dispatch"
+t316_boundary: "no file under `.claude/skills/moai-workflow-project/schemas/` touched (both `tab_schema.json` untouched)"
+```
