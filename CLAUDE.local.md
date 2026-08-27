@@ -178,13 +178,13 @@ git status --porcelain | grep '^ D' | sed 's/^...//' | tr '\n' '\0' | xargs -0 g
 **[HARD] update 후 `git-strategy.yaml`의 git-flow 키를 반드시 재적용한다.** `.moai/config`는 위 wipe 대상이므로, `moai update` 는 `.moai/config/sections/git-strategy.yaml` 을 템플릿 기본값(`workflow: github-flow`, develop/release 키 없음)으로 되돌린다. 이 파일은 **템플릿에 미러하지 않는다** — 미러하면 16개 언어 배포판 전체에 이 프로젝트의 사설 워크플로가 실려 나간다(§15). 그러니 매 update 후 로컬에서 다시 넣는다:
 
 ```bash
-# 확인 — gitflow 가 아니면 되돌아간 것
-grep -n 'workflow: gitflow' .moai/config/sections/git-strategy.yaml || echo 'REVERTED — 재적용 필요'
+# 확인 — git-flow 가 아니면 되돌아간 것
+grep -n 'workflow: git-flow' .moai/config/sections/git-strategy.yaml || echo 'REVERTED — 재적용 필요'
 # 재적용 (git_strategy.manual 블록)
 git restore --source=HEAD -- .moai/config/sections/git-strategy.yaml
 ```
 
-`git restore` 가 통하지 않는 상황(커밋 전 상태)이면 `git_strategy.manual` 아래를 손으로 되돌린다: `workflow: gitflow`, 그리고 `main_branch:` 바로 아래에 `develop_branch: develop` / `release_branch_prefix: release/` / `rc_version_format: vX.Y.Z-rc.N` 세 줄.
+`git restore` 가 통하지 않는 상황(커밋 전 상태)이면 `git_strategy.manual` 아래를 손으로 되돌린다: `workflow: git-flow` [2026-08-27 감사 정정], 그리고 `main_branch:` 바로 아래에 `develop_branch: develop` / `release_branch_prefix: release/` / `rc_version_format: vX.Y.Z-rc.N` 세 줄.
 
 **[HARD] 보고된 파일 수를 믿지 않는다.** `Updated N files`의 N은 관리 대상 뿌리 **밖** 파일만 센다(`internal/cli/update/plan/plan.go:73` `if IsMoaiManaged(...) { continue }`). 2026-08-15 실측: 보고 32, 실제 175. **삭제는 이 요약에 전혀 나타나지 않는다.**
 
