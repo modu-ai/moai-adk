@@ -430,7 +430,15 @@ unobserved:
 sync_complete_at: 2026-08-28
 sync_commit_sha: d3454f1e6   # 이 커밋의 바로 다음 커밋에서 backfill(커밋은 자기 해시를 알 수 없다)
 sync_status: COMPLETE — CHANGELOG 항목 1건 + @MX 주석 + 3-phase close. 통합은 리드 소관(push 안 함, PR 안 냄)
-sync_audit_verdict: "NOT RUN — 이 카드의 sync-audit은 배차되지 않았다. 판정 근거로 인용할 감사 점수가 없다"
+sync_audit_verdict: "PASS-WITH-DEBT 0.86 (가중 조화평균) — 보고서 .moai/reports/t326/sync-audit.md. 차원별 Functionality 0.95 / Security 1.00 / Craft 0.65 / Consistency 0.80; must-pass 방화벽(Functionality·Security) 통과. 지적 6건 F1-F6 중 F1·F2 가 blocking"
+sync_audit_score_baseline: "[HARD] 0.86 은 **수리 이전 트리 bfd09fcfc** 에 대고 잰 값이다. F1(레이스) 과 F2(D8 누락) 를 수리한 뒤 트리(a213f161b)에 대한 재측정은 **하지 않았다** — 점수가 올랐을 것이라고 추정할 수는 있으나 아무도 재지 않았으므로 개선된 점수를 주장하지 않는다"
+sync_audit_findings_disposition:
+  F1: "[HIGH][blocking] `go test -race ./internal/hook/` 레드(DATA RACE 1건) — **수리됨**. 커밋 a213f161b, 테스트 전용. 재측정 rc 0(verification.race_hook)"
+  F2: "[MEDIUM][blocking] 스캔이 자기 선언 범위 안의 어긋남을 놓쳤고 그 측정을 확인으로 기록 — **수리됨**. D8 추가 + D7 note 재작성 + divergences_found 갱신(이 커밋)"
+  F3: "[MEDIUM][optional] 스캔 method 가 plan.md 를 제외 — **흡수함**. method 를 plan.md 로 넓히고 D9-D13 추가, 감사가 지목한 5건 전부 이 트리에서 직접 재측정(이 커밋)"
+  F4: "[LOW][optional] D2 처분은 옳으나 논거가 한 걸음 넓다 — 조치 없음. 감사 자신이 '부채이지 결함 아님'으로 분류했고 D1..D13 일괄 manager-spec 재위임을 대안으로 제시한다. 리드 소관"
+  F5: "[LOW][optional] `go run ./cmd/moai doctor` 의 fail 2건과 테스트의 `doctor: 1 check(s) failed` 가 서로 다른 환경 측정인데 한 문단에 있다 — 조치 없음, 리드 판단 대기"
+  F6: "[INFO] residual_risk 3건은 정확 — 조치 없음"
 lane_verdict_report: .moai/reports/t326/verdict.md   # run-phase 레인 판정(카드 전제 반증 기록 포함)
 plan_audit_reports: [.moai/reports/t326/plan-audit-iter1.md, .moai/reports/t326/plan-audit-iter2.md]  # PASS-WITH-DEBT 0.80 → 0.85 단조
 
@@ -469,6 +477,8 @@ verification:
   test_3pkg: "`go test ./internal/binlag/... ./pkg/version/... ./internal/hook/...` → rc 0, 전 패키지 ok (증거: .moai/state/verify/t326-sync/test-3pkg.txt)"
   test_cli: "`go test ./internal/cli/...` → rc 1, FAIL 9건 (증거: .moai/state/verify/t326-sync/test-cli.txt)"
   test_cli_attribution: "FAIL 9건은 §E.3이 기록한 `pre_existing_baseline_red: true` 의 9건과 개수가 일치하고, 전부 doctor 스위트(TestRunDoctor_* 6 + TestDoctorCmd_* 3)다. `go run ./cmd/moai doctor` 로 실제 실패 검사를 직접 판독했다 — `Agent Emit Embed`, `Harness 5-Layer` 2건으로 §E.3의 `pre_existing_doctor_fails` 와 같고, `Binary Freshness` 는 `ok — development build (no commit metadata)` 로 통과한다. regression_delta 0"
+  race_hook: "`go test -race -count=1 ./internal/hook/` → **rc 0**, `ok github.com/modu-ai/moai-adk/internal/hook 33.223s` (증거: .moai/reports/t326/f1-evidence/manager-docs-recheck-race-hook.txt — a213f161b 트리에서 이 레코드 작성자가 직접 재실행). 리드 레인의 독립 재측정도 rc 0 (.moai/reports/t326/f1-evidence/lane4-recheck-race-hook.txt, 31.521s)"
+  race_hook_gap_closed: "이 게이트는 run-phase 에도 1차 sync 에도 **실행되지 않았다** — CLAUDE.local.md §6 이 goroutine·channel 을 건드리는 코드에 `go test -race` 를 규정하고 이 SPEC 은 goroutine 을 추가하는데도 빠뜨렸다. sync-audit F1 [HIGH][blocking] 이 그 누락을 잡아냈고, 당시 이 게이트는 **레드**였다(DATA RACE 1건, 이 SPEC 자신의 신규 테스트 `TestSessionStart_BlockingComparerDoesNotStallSessionStart` 에서 stub goroutine 을 join 하지 않고 `binlag.Comparer` 를 복원 — 증거 .moai/reports/t326/f1-evidence/red-race-hook.txt). 커밋 a213f161b(테스트 전용 수정)로 초록이 됐다. 메워진 결손이며, 메워졌다는 사실과 함께 결손이었다는 사실을 남긴다"
   ac_blv_004c_recheck: "`git show 22f90b1c7:Makefile | grep '^VERSION ?='` 와 현재 트리의 같은 줄을 diff — 동일. sync-phase 편집이 이 불변식을 건드리지 않았음을 재확인"
 
 sync_phase_files: "CHANGELOG.md(항목 1건), .moai/specs/SPEC-BINARY-LAG-VISIBILITY-001/{spec.md·plan.md·acceptance.md·progress.md frontmatter, progress.md §E.4}, internal/binlag/binlag.go + internal/cli/doctor.go + internal/hook/session_start_binary_lag.go + pkg/version/version.go(@MX 주석만 — 실행 코드 무변경)"
@@ -477,8 +487,8 @@ spec_body_untouched: "spec.md / plan.md / acceptance.md 본문 0줄 변경 — f
 
 spec_body_vs_code_divergence_scan:
   mandate: "리드 addendum(2026-08-28) — 이 카드의 전제는 plan·run에서 두 번 반증됐고 v0.4.1이 §5-vs-REQ-BLV-003 모순을 기록했다. 따라서 sync에서 남은 본문 주장과 착지한 코드의 어긋남을 능동적으로 훑는다. 발견은 **Gap으로 기록만** 한다 — 본문 편집은 manager-docs 소관 밖이고, 검증되지 않은 화해는 기록된 Gap보다 나쁘다"
-  method: "spec.md §3(REQ 9건)·§4(파일 표 + [HARD] 구속 조항)·§5(적용가능성)·§6(C-1..C-3), acceptance.md AC-BLV-001..009 의 코드 주장·경로·행번호를 이 트리(f9c96c381)에서 grep/sed로 직접 재측정. 인용 행번호는 SPEC이 자기 기준점으로 지목한 22f90b1c7 와 v0.4.1 커밋 bf1a19813 양쪽에서도 재측정해 드리프트 귀속을 갈랐다"
-  divergences_found: 7
+  method: "spec.md §3(REQ 9건)·§4(파일 표 + [HARD] 구속 조항)·§5(적용가능성)·§6(C-1..C-3), acceptance.md AC-BLV-001..009, **plan.md 전체(§실측 근거·[HARD] 구속 조항·인용 목록 144-152행)** 의 코드 주장·경로·행번호를 grep/sed로 직접 재측정. 인용 행번호는 SPEC이 자기 기준점으로 지목한 22f90b1c7 와 v0.4.1 커밋 bf1a19813 양쪽에서도 재측정해 드리프트 귀속을 갈랐다. **plan.md 범위 확장(D9-D13)과 D8 은 sync-audit F2/F3 지적을 받아 a213f161b 트리에서 재측정해 추가했다** — 1차 스캔(D1-D7)은 f9c96c381 트리 기준이었고 plan.md 를 method 에서 제외했었다. 재측정 수치는 감사 보고서에서 옮겨온 것이 아니라 이 트리에서 직접 잰 값이다"
+  divergences_found: 13   # 1차 7건 + F2 수리 1건(D8) + F3 범위 확장 5건(D9-D13)
   D1:
     file: ".moai/specs/SPEC-BINARY-LAG-VISIBILITY-001/spec.md §4 표 행 2"
     claim: "「`internal/cli/`의 신규 파일 1건 (예: `binary_lag.go`)」 — 단일 비교 구현이 internal/cli 에 놓인다"
@@ -519,8 +529,45 @@ spec_body_vs_code_divergence_scan:
     file: "acceptance.md AC-BLV-009"
     claim: "「`:245-249` 가 세 슬라이스를 `checkGroup` 으로 묶는다」"
     code: "실제 묶는 자리는 **254-258**(`return []checkGroup{` 254, System/MoAI-ADK/Workspace 3행 255-257). 245-249 는 무관한 observer 루프. 기준점 22f90b1c7 에서는 252행"
-    note: "같은 AC 의 다른 인용 `:93-95`(allChecks 평탄화)는 **정확**하고, 세 레지스트리 선언(189 systemChecks / 197 moaiChecks / 220 workspaceChecks)도 실재한다. 판정 내용은 성립하며 근거 인용 한 줄의 주소만 틀렸다"
+    note: "같은 AC 의 다른 인용 `:93-95`(allChecks 평탄화)는 **정확**하다. 세 레지스트리 선언은 실재하지만 그 실측값(189 systemChecks / 197 moaiChecks / 220 workspaceChecks)은 **같은 AC 가 인용한 187/195/214 와 어긋난다** — 1차 스캔은 이 수치를 재고 나서 '실재한다'는 존재 확인으로만 적어 정확성을 함의하게 뒀는데, 존재는 참이고 그 함의는 거짓이다. 어긋남 자체는 D8 로 분리해 기록한다. 판정 내용은 성립하며 근거 인용의 주소만 틀렸다"
     attribution: "authoring"
+  D8:
+    file: "acceptance.md AC-BLV-009 「판정 근거 위치」 (178행) · plan.md [HARD] 구속 조항 (86행) · plan.md 인용 목록 (144행)"
+    claim: "세 레지스트리를 `systemChecks`(`:187`) · `moaiChecks`(`:195` 선언 ~ `:212` 닫는 괄호, 항목 `:196-211`) · `workspaceChecks`(`:214`) 로 지목. `Binary Freshness` 등록은 `:199`"
+    code: "a213f161b 트리 실측 — `grep -n 'systemChecks\\|moaiChecks\\|workspaceChecks' internal/cli/doctor.go` 가 **189 / 197 / 220**. `moaiChecks` 는 197 선언, 항목 **198-217**, 닫는 괄호 **218**. `{\"Binary Freshness\", checkBinaryFreshness}` 는 **201행**"
+    note: "선언 주소가 각각 2 / 2 / 6 어긋나고, 인용한 항목 구간 `:196-211` 은 실제 항목 구간 198-217 의 뒤쪽 4건(`Harness 5-Layer` 213 · `Migration` 214 · `Plugin Deployment` 215 · `Home Disk Usage` 217)을 창 밖에 남긴다 — AC-BLV-009 자신의 [HARD] 주석이 경고한 바로 그 실패 형태(「행 구간으로 추출하면 이 기준이 잡으려는 바로 그 뮤턴트가 창 밖에 놓인다」)다. **판정력은 무사하다**: 테스트는 슬라이스 리터럴을 행이 아니라 식별자로 읽으므로(`binary_lag_test.go` `checkNamesFromSource`) 이 주소들이 틀려도 AC 판정은 영향받지 않는다. 결함은 가드가 아니라 기록에 있다. 1차 스캔은 이 수치를 D7 note 에서 이미 쟀으면서 어긋남으로 적지 않았다(F2)"
+    attribution: "authoring(인용) + 1차 sync 스캔의 누락(F2 로 지적받아 이번에 수리)"
+  D9:
+    file: "plan.md 25행 · 144행"
+    claim: "`internal/cli/doctor.go:495` 가 `checkBinaryFreshness`"
+    code: "`grep -n 'func checkBinaryFreshness' internal/cli/doctor.go` → **518행**"
+    note: "23행 어긋남. @MX 주석 추가분(이 sync 커밋)이 일부 기여하나 재측정은 a213f161b 트리 기준값만 기록한다. 함수 자체는 실재하고 의미 변화 없음"
+    attribution: "authoring + 이 sync 커밋의 주석 삽입 혼재(분리 미측정 — Gap)"
+  D10:
+    file: "plan.md 33행 · 148행"
+    claim: "`internal/hook/session_start.go:593` 이 `computeDeferredAdvisory`"
+    code: "`grep -n 'computeDeferredAdvisory' internal/hook/session_start.go` → 선언은 **623행**(`func (h *sessionStartHandler) computeDeferredAdvisory(`), 호출은 274·604행"
+    note: "30행 어긋남. 함수는 실재하며 plan 이 이 함수에서 끌어낸 「일정 선례」 논지는 성립한다"
+    attribution: "authoring"
+  D11:
+    file: "plan.md 150행"
+    claim: "`internal/hook/session_start.go:305` 이 `AdditionalContext`"
+    code: "305행은 doc 주석 안(`// The AdditionalContext is the serialized field per Claude Code SessionStart` 는 304행). 실제 필드 대입은 **315행**(`AdditionalContext: fmt.Sprintf(`)"
+    note: "10행 어긋남. 같은 행이 함께 인용한 append 패턴 `:343-346`·`:369` 는 D4 와 동일한 어긋남(실측 353-356·379-382)이다"
+    attribution: "authoring"
+  D12:
+    file: "plan.md 93행 · 152행"
+    claim: "`Makefile:14` 가 `RELEASE_BINARY` 에 보간"
+    code: "`grep -n 'RELEASE_BINARY' Makefile` → 정의는 **25행**(`RELEASE_BINARY := moai-$(VERSION)-$(PLATFORM)`), 소비는 64·65·66·68행. 14행에는 해당 정의가 없다"
+    note: "11행 어긋남. VERSION 이 바깥으로 뻗는다는 논지(무변경 유지 근거)는 성립한다"
+    attribution: "authoring"
+  D13:
+    file: "plan.md 93행 · 152행"
+    claim: "`Makefile:35` 가 `version.json` 에 쓴다"
+    code: "`grep -n 'version.json' Makefile` → 쓰기는 **66행**(`@echo '{\"version\":...}' > $(LOCAL_RELEASE_DIR)/version.json`); 17행은 주석 안 언급"
+    note: "31행 어긋남. 같은 문장이 인용한 `internal/update/local.go:65` 는 **정확하다** — 65행이 `versionFile := filepath.Join(c.config.ReleasesDir, \"version.json\")`"
+    attribution: "authoring"
+  plan_md_scope_note: "F3 지적(1차 스캔의 method 가 plan.md 를 제외했다)을 받아 plan.md 를 훑었다. 감사가 지목한 5건은 **전부 이 트리에서 재현됐고**(D9-D13) 감사 보고서의 수치와도 일치하나, 위 값은 옮겨 적은 것이 아니라 a213f161b 에서 직접 잰 것이다. plan.md 의 나머지 인용은 이미 기록된 어긋남의 재진술이거나 정확하다 — `:266`·`:574`·`:277`·`:301`(D3 재진술) · `:245-249`(D7 재진술) · `:622-624`(D6 재진술) · `doctor.go:140`(D5 재진술) · `:343-346`·`:369`(D4 재진술) · `:187`/`:195`/`:212`/`:214`/`:199`(D8 재진술) · `session_start.go:243-257` timer+select 선례(**정확** — 253행 `joinTimer := time.NewTimer(...)` + 254행 select) · `doctor.go:93-95` allChecks(**정확** — 93행 `var allChecks []DiagnosticCheck`) · `Makefile:6` `VERSION ?=`(**정확** — AC-BLV-004(c) 가 기계 판정) · `internal/update/local.go:65`(**정확**). 본문은 한 줄도 고치지 않았다 — plan.md 는 closed 이며 본문 편집은 manager-docs 소관 밖이다"
   claims_re_verified_as_accurate:
     - "REQ-BLV-009 / C-2 — 검사 이름 집합 불변: 세 레지스트리 전수 판독에서 `Binary Freshness` 는 있고 `Binary Lag` 류 신규 이름은 없다"
     - "REQ-BLV-008 / plan.md M1 운영자 결정 — 권고는 additionalContext 단독. `session_start_binary_lag.go` 에 SystemMessage 쓰기 0건이고, session_start.go 의 SystemMessage 쓰기 2곳(386·437)은 무관한 기능의 운영자 통지"
@@ -528,10 +575,12 @@ spec_body_vs_code_divergence_scan:
     - "AC-BLV-006 인용 `main_test.go:47`(deferredScansAsync=false) · `session_start_parallel_test.go:315-321`(origAsync 보존 → t.Cleanup 복원) 정확"
     - "REQ-BLV-004 — Makefile `VERSION ?=` 행이 22f90b1c7 대비 바이트 동일"
     - "§4 표 행 1·4·5·6 — doctor.go 환원, Makefile BUILD_ID, internal/cli/binary_lag_test.go, internal/hook 테스트 1건: 전부 실재"
-  disposition: "7건 전부 **기록만** 했다. spec.md / plan.md / acceptance.md 본문은 한 줄도 고치지 않았다. D1 은 실질(경로가 다르다), D2-D7 은 인용 주소 오차이며 어느 것도 착지한 코드의 동작을 바꾸지 않는다. 본문 수리가 필요하다고 판단되면 manager-spec 재위임 소관이다"
+  disposition: "13건 전부 **기록만** 했다. spec.md / plan.md / acceptance.md 본문은 한 줄도 고치지 않았다. D1 은 실질(경로가 다르다), D2-D13 은 인용 주소 오차이며 어느 것도 착지한 코드의 동작을 바꾸지 않는다. 본문 수리가 필요하다고 판단되면 manager-spec 재위임 소관이다 — 감사 권고 4번(D1..D13 을 한 배치로 묶어 재위임)이 그 형태를 제안한다"
 
 gaps_explicitly_not_observed:
-  - "sync-audit 미실시 — 이 sync 결과에 대한 독립 4차원 판정은 존재하지 않는다. 리드가 배차하면 그때 채워진다"
+  - "**수리 후 트리의 감사 점수** — sync-audit 은 실시됐으나(PASS-WITH-DEBT 0.86) 그 측정은 bfd09fcfc 기준이다. F1·F2 수리 후 트리 a213f161b 에 대한 재감사는 배차되지 않았고 점수를 재지 않았다"
+  - "**D9 의 귀속 분리** — `doctor.go:495` → 518 의 23행 어긋남에서 authoring 오차와 이 sync 커밋의 @MX 주석 삽입분이 각각 몇 행인지 갈라 재지 않았다. 22f90b1c7·bf1a19813 대비 재측정을 D2 처럼 수행하지 않았다"
+  - "**감사가 남긴 Gap 은 이 레코드가 닫지 않았다** — 교차 플랫폼, `internal/cli` 의 -race, 기준선 22f90b1c7 에서 9건 FAIL 재현 여부, `make build` 실물 바이너리, `moai mx query` 수확. 보고서 §5 가 정본이며 이 sync 는 그중 어느 것도 새로 관측하지 않았다"
   - "교차 플랫폼 — 전부 darwin/arm64 관측. GOOS=windows / linux 빌드·테스트 미실행(CI 몫)"
   - "전체 스위트 미실행 — 레인-로컬 규율에 따라 4개 패키지로 범위를 좁혔다. 저장소 전체 판정은 origin/develop CI 몫이며 보고 시점에 PENDING"
   - "@MX 주석은 주석이므로 런타임 동작을 바꾸지 않는다는 것을 build/vet/test 재실행으로 확인했을 뿐, 별도의 MX 스캐너(`moai mx query`)로 태그가 실제 수확되는지는 관측하지 않았다"
