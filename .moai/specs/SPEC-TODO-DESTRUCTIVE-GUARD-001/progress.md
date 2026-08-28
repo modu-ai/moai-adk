@@ -155,7 +155,7 @@ Doctrine (2): both `todo.md` paths. SPEC (1): `spec.md` frontmatter `draft → i
 
 ```yaml
 sync_complete_at: 2026-08-28
-sync_commit_sha: pending-backfill-sync   # this commit cannot name its own SHA; backfilled in the immediately following commit
+sync_commit_sha: 0048e33cd   # backfilled (a commit cannot name its own SHA)
 sync_status: completed
 b12_self_test_a: "grep -c SPEC-TODO-DESTRUCTIVE-GUARD-001 CHANGELOG.md -> 0 (pre-emission; count checked before this entry was appended)"
 b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l -> 16 (matches ac_pass_count in §E.3 and the CHANGELOG entry's stated 16/16)"
