@@ -244,3 +244,82 @@ Every figure above was measured in this run, against this tree:
 Files changed vs `origin/develop`: `CHANGELOG.md`,
 `.moai/specs/SPEC-GRAPH-FRESHNESS-CADENCE-001/{spec.md,progress.md}`,
 `docs-site/content/{ko,en,ja,zh}/cli-reference/graph.md`, and this verdict.
+
+---
+
+## Post-merge develop CI — measured (PENDING → resolved)
+
+Merge landed: `51d08d428..5e194bba2` on `origin/develop`, 2026-08-28.
+
+### Workflow results on `5e194bba2` — 5 of 6 green, all `attempt=1`
+
+| Workflow | Result | Run |
+|---|---|---|
+| Graph Freshness | success | `33170428938` |
+| **docs i18n parity check** | success | `33170428931` |
+| SPEC Lint | success | `33170428983` |
+| CodeQL | success | `33170428904` |
+| lsel-leak-guard | success | `33170429044` |
+| CI | **failure** | `33170428973` |
+
+`docs i18n parity check` did not run on the preceding develop landings — it is triggered by this
+merge's docs-site edits, so it is the one job that judges this change directly rather than
+inheriting. It passed.
+
+Graph Freshness remains green, now 7 consecutive. The attribution stated earlier stands unchanged:
+the streak began at `8806a8788`'s restamp, not at this card.
+
+### CI failure split — inherited 14, new 1, and this card's own flake did NOT recur
+
+15 distinct failing tests, against the 15 measured pre-merge on `d566ecc75` (run `33128899299`):
+
+| Group | Count | Change vs pre-merge |
+|---|---|---|
+| t346 (doctor) — name/symptom attribution, source NOT inspected | 9 | unchanged |
+| t340 / SPEC-CODEX-INIT-001 | 3 | unchanged |
+| unattributed (`TestConcurrencyStress`, `TestSessionStart_BlockingComparerDoesNotStallSessionStart`) | 2 | unchanged |
+| t322's own `TestGitDiffNameCount_Predicate` | 0 | **did not recur** (now 1 of 5 post-landing runs) |
+| **new: `TestBinaryLag_OneSeamServesBothSurfaces`** | 1 | **appeared** |
+
+**The new failure is not attributable to this merge, and the reason is measured rather than
+argued.** This merge's own diff versus its first parent is 8 files, of which `.go` files number
+**zero**:
+
+```
+$ git diff --name-only 5e194bba2^1..5e194bba2 | grep -c '\.go$'
+0
+```
+
+The change is CHANGELOG, two SPEC artifacts, four docs-site pages, and this report. A documentation
+diff cannot introduce a Go test failure.
+
+The attribution window is nevertheless wider than one commit and this is stated rather than
+glossed: the last CI run to reach a verdict before this one was on `d566ecc75`, because t303's
+merge at `51d08d428` had its CI run **cancelled** (`33170177541`) by the concurrency rule when this
+push superseded it. So `TestBinaryLag_OneSeamServesBothSurfaces` first appears in an interval
+containing both t303's commits and this one. What rules this card out is the zero-Go-file
+measurement above, not the ordering.
+
+### The new failure is the same shape as this card's flake — a class, not two incidents
+
+```
+Race Test:
+  --- FAIL: TestBinaryLag_OneSeamServesBothSurfaces (0.01s)
+      testing.go:1464: TempDir RemoveAll cleanup: unlinkat /tmp/TestBinaryLag_OneSeamServesBothSurfaces1851821693/001/.moai/state: directory not empty
+```
+
+Compare this card's own flake, recorded above: `TempDir RemoveAll cleanup: unlinkat
+/tmp/TestGitDiffNameCount_Predicate…/001/.git/objects: directory not empty`. Same mechanism — a
+`t.TempDir` cleanup racing something that writes into the directory after the test body returns —
+in a different test, a different package, and again under the race detector.
+
+That widens the flake finding: `TestGitDiffNameCount_Predicate` is likely not a defect specific to
+this card's fixture but one instance of a repository-wide cleanup-race class. The evidence is
+recorded here so a flake card can be scoped to the class rather than to one test. Two instances do
+not establish a class — this is a hypothesis with two observations, and it has not been measured
+across the suite.
+
+### Residual risk unchanged by this section
+
+The card's central claim remains unexercised: Graph Freshness has been green on every landing since
+a restamp preceded it, so nothing yet has put the predicate in front of a real inherited red.
