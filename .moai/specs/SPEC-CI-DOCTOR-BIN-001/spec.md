@@ -2,7 +2,7 @@
 id: SPEC-CI-DOCTOR-BIN-001
 title: "doctor 임베드 축 검사 — 바이너리 부재 시 정보성 skip (develop CI 구조적 적색 수리)"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-08-28
 updated: 2026-08-28
 author: manager-spec
