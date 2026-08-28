@@ -342,7 +342,7 @@ m1_to_mN_commit_strategy: "single M1 commit on WT-ac-count-sweep carrying M1-M5 
 amendment: "v0.5.0 — absent-from-snapshot files are reported, not failed (spec.md 3.5 rule 4)"
 amendment_applied_at: 2026-08-28
 amendment_base_head: "d2a70f9e3"        # tree the change was authored and measured against
-amendment_commit_sha: "PENDING-BACKFILL"  # a commit cannot cite its own SHA
+amendment_commit_sha: "dc03e0496"  # backfilled by the orchestrator — a commit cannot cite its own SHA
 amendment_files_changed: 1              # internal/spec/ac_count_clause_test.go only
 template_mirror_required: false         # no .claude/ path touched -> no mirror, no `make agents-emit`, no `make build`
 ac_pass_count: 8

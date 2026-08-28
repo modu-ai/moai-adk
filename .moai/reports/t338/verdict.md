@@ -87,3 +87,79 @@ $ ... --since=1.days ...                                          #  5
 - **다른 카드 소유 파일 편집.** M5 정규화가 `SPEC-GRAPH-FRESHNESS-CADENCE-001/acceptance.md`(t322 소유, in-progress)에 `[RETIRED]` 토큰을 4행 부착했다. 산문 무변경이나 통합 순서에 걸린다.
 - **`spec.md`·`research.md` 의 청결을 지키는 AC 가 없다.** AC-ACD-006 의 corpus 는 `acceptance.md` 한정이다. 이번 run 에서 `§E.2` 초고가 실제로 한 번 정지했고 §3.4 적용으로 해소했다 — 재발 가능한 자리다.
 - **`design.md`·`research.md` 가 `draft` 로 남았다.** 상태 전이 규약이 4종만 명시한다. `moai spec audit` 은 경고하지 않는다. Tier L 6종 전이 규약 공백이며 이 카드 범위 밖이다.
+
+---
+
+# 추가 — v0.5.0 조항 개정 (운영자 판정 B)
+
+측정 트리: 같은 워크트리, HEAD `dc03e0496` 시점. 아래 명령은 모두 이 트리에서 이 실행으로 돌렸다.
+
+## Claim
+
+4. run-phase 이후 develop 흡수가 초록을 빨강으로 바꿨고, 이는 카드 결함이 아니라 AC-ACD-006 설계 비용의 발현이다.
+5. 운영자 판정 B(실패 표면 축소)를 문면과 검증자에 반영했고, 좁힘이 검사 종료와 구별된다는 것을 관측했다.
+
+## Evidence
+
+### 주장 4 — 병합이 만든 레드와 그 비용
+```
+$ git merge --no-edit origin/develop     # rc=0, 충돌 0건
+$ go test ./internal/spec/... -count=1
+--- FAIL: TestACCounterFullCorpusMatchesBaseline
+    ac_count_clause_test.go:430: .moai/specs/SPEC-TODO-DESTRUCTIVE-GUARD-001/acceptance.md:
+        counts 16 but is absent from the snapshot
+```
+비용은 얼리지 않고 재유도한다:
+```
+$ for d in 7 3 1; do git log --since=$d.days --diff-filter=A --name-only --format= \
+    origin/develop -- '.moai/specs/*/acceptance.md' | grep -c acceptance.md; done
+```
+`origin/develop` `947f5cffb`(2026-08-28) 관측: 7일 60 / 3일 29 / 24시간 6. 한 시간 전 같은 명령은 59 / 28 / 5 였다 — **값은 브랜치와 함께 움직이며, 판정이 딛고 선 것은 자릿수(하루 여러 건)이지 특정 수가 아니다.**
+
+### 주장 5 — 좁힘의 관측 (오케스트레이터 독립 뮤테이션 2건)
+
+에이전트가 3방향을 관측했고, 그와 별도로 내가 두 방향을 직접 심어 재현했다.
+
+**이음매(새 파일이 정지) — GREEN + 보고**
+```
+$ mkdir -p .moai/specs/SPEC-ORCH-SEAM-PROBE-001    # AC-PRB-001 을 표시/미표시로 함께 담음
+$ go test ./internal/spec/ -run TestACCounterFullCorpusMatchesBaseline -count=1 -v
+    ac_count_clause_test.go:483:   absent-from-snapshot
+        .moai/specs/SPEC-ORCH-SEAM-PROBE-001/acceptance.md: HALT AC-PRB-001
+--- PASS
+```
+**사라짐(스냅샷에만 있는 파일) — RED** — 에이전트가 gap 으로 남긴 분기다:
+```
+$ printf '%s\n' '.moai/specs/SPEC-ORCH-GONE-PROBE-001/acceptance.md  COUNT 5 …' \
+    >> .moai/reports/t338/ac-count-baseline.txt
+$ go test ./internal/spec/ -run TestACCounterFullCorpusMatchesBaseline -count=1
+    ac_count_clause_test.go:471: .moai/specs/SPEC-ORCH-GONE-PROBE-001/acceptance.md:
+        present in the snapshot but no longer matched by the corpus glob
+FAIL
+```
+둘 다 원복했다(프로브 디렉터리 삭제 확인 / 스냅샷 `cmp` 일치).
+
+**통과가 공허하지 않은 근거**: 스냅샷 부재 파일이 0건이 아니라 **2건**이다(`SPEC-BACKLOG-LOCK-BUDGET-001` COUNT 6, `SPEC-TODO-DESTRUCTIVE-GUARD-001` COUNT 16). 좁혀진 분기가 실제로 두 번 실행되고 두 번 보고했다. **스냅샷을 재생성하지 않은 것은 의도적이다** — 재생성하면 그 2건이 흡수돼 이 검증이 공허해진다.
+
+**전이 테이블**: 10칸, 신규 3칸 포함, 칸마다 `wantErr` 와 `wantReport` 를 함께 단언한다. 선택자 없는 전수 루프라 0개 선택으로 초록을 내는 형태가 아니다. 보고 문자열을 바이트 단위로 비교하므로 **보고 없이 좁히기만 한 구현은 여기서 죽는다.**
+
+```
+$ go test ./internal/spec/... -count=1
+ok  github.com/modu-ai/moai-adk/internal/spec  29.633s
+$ for f in spec plan acceptance design research progress; do \
+    python3 .moai/reports/t338/iter2-scratch/counter.py <artifact> adj; done
+41 / 11 / 24 / 2 / 10 / 48 — 전부 rc=0, ambiguous=0
+```
+`progress.md` 만 47 → 48 로 움직였다. §E.2.9 가 뮤테이션 출력을 그대로 인용하며 `AC-MUT-002` 를 처음 담기 때문이다 — **이 작업이 만든 이동이지 회귀가 아니다.**
+
+## 종결된 카드의 산출물을 편집했다 (명시)
+
+M5 정규화가 `.moai/specs/SPEC-GRAPH-FRESHNESS-CADENCE-001/acceptance.md` 를 4행 편집했다 — `AC-GFC-011`·`AC-GFC-012` 뒤에 `[RETIRED]` 토큰 부착뿐이고 산문은 바뀌지 않았다. 이 파일은 **카드 t322 의 산출물이고 t322 는 3단계 착지 후 종결됐다.** M5 의 종단 이전 정규화 범위 안이지만, 종결된 카드의 파일을 나중 카드가 편집한 사실 자체를 여기 남긴다 — 그 SPEC 을 다시 여는 사람이 편집의 출처를 `git blame` 없이 알 수 있어야 한다.
+
+## 이 개정의 Gaps
+
+- **v0.5.0 문면을 본 감사관이 없다.** 기록된 `PASS 0.91`(iter-3)은 v0.4.1 에 대한 판정이고, 재감사는 운영자가 불필요로 판정했다. `progress.md` §E.1 과 HISTORY 에도 같은 말이 적혀 있다.
+- **CI 판정이 없다.** 브랜치 미푸시. 전체 스위트는 지시대로 로컬에서 돌리지 않았다.
+- **cross-platform 미측정.** 변경은 테스트 전용 Go 이고 플랫폼 분기가 없지만 재지 않았다.
+- **부재 2건의 계수(6·16)가 옳은지는 손으로 유도하지 않았다.** 개정이 주장하는 것은 그 값의 정확성이 아니라 그것이 회귀가 아닌 새 관측이라는 것뿐이다.
+- **`counter.py` 내부는 신뢰에 의존한다.** 계수기 자체에 결함이 있으면 여섯 산출물의 `ambiguous=0` 이 모두 공허해진다.
