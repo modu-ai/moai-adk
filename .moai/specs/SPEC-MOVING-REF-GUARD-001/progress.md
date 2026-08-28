@@ -1010,6 +1010,191 @@ report's §4.1 states a view on which form should decide, as an input to the orc
   matches a variable reference and not the assignment that creates it. Recorded as an observation
   only; changing it is a Go source change M4 does not make.
 
+### M5 — template mirror of the moving-ref doctrine, neutralized (2026-08-28)
+
+**Deliverable**: `internal/template/templates/.claude/rules/moai/core/verification-claim-integrity.md`
+receives `### 2.1 Moving-ref attribution — the anchor-or-subject predicate` in the same structural
+position it occupies locally (between §2's closing paragraph and `## 3.`), with two internal
+identifiers replaced by descriptions. `plan.md` §F M5's mechanical scope held: the local doctrine
+was not touched, and no `spec.md` / `plan.md` / `acceptance.md` edit was made.
+
+All measurements below ran at HEAD `81e33c81e` on branch `WT-moving-ref-guard`, with the M5 edit in
+the working tree; the commit carrying this record is the M5 commit itself.
+
+#### Claim 1 — the section carries exactly two forbidden tokens, and no date, SHA, or biased path
+
+```
+$ sed -n '48,152p' .claude/rules/moai/core/verification-claim-integrity.md > /tmp/sec21
+$ grep -oE '\b(SPEC|REQ|AC)-[A-Z0-9-]+\b' /tmp/sec21 | sort -u
+AC-COORD-016
+SPEC-GRAPH-FRESHNESS-CADENCE-001
+
+$ grep -noE '\b[0-9]{4}-[0-9]{2}-[0-9]{2}\b|\b[0-9a-f]{7,40}\b' /tmp/sec21
+(no output)
+
+$ grep -noE '/Users/|CLAUDE\.local|PR #[0-9]+' /tmp/sec21
+(no output)
+```
+
+The section carries no corpus figure either: its only quantities are counts of its own content
+(four tests, four remedies, five instances), which stay true in any tree. The `§B.3` prevalence
+figure of 42 appears nowhere in it, so no measurement of this repository crossed into the template.
+
+#### Claim 2 — both tokens were neutralized by description, all five instances preserved
+
+| token | became |
+|---|---|
+| `SPEC-GRAPH-FRESHNESS-CADENCE-001` (instance 2) | `a cadence SPEC` |
+| `AC-COORD-016` (instance 4) | `an acceptance criterion` |
+
+Instance 2's parenthetical keeps the whole shape — the citation refresh that deliberately left three
+source coordinates unrefreshed because they were the subject of an audit finding — and instance 4
+keeps "asserting that a literal command is preserved verbatim in a document". Nothing was deleted:
+AC-MRG-007 requires all five grounded instances, and an instance stripped to satisfy the guard would
+fail that criterion in the template, which is worse than the token.
+
+```
+$ diff <un-neutralized planted copy> <neutralized mirror>
+124c124
+< ... (`SPEC-GRAPH-FRESHNESS-CADENCE-001`, whose citation refresh ...
+---
+> ... (a cadence SPEC whose citation refresh ...
+128c128
+< ... (`AC-COORD-016`, which asserts a literal command ...
+---
+> ... (an acceptance criterion asserting that a literal command ...
+```
+
+Two hunks, no others — the mirrored body is otherwise the local §2.1 verbatim.
+
+#### Claim 3 — `make build` exits 0 and regenerates nothing else
+
+```
+$ make build ; echo $?
+... go build -ldflags "..." -o bin/moai ./cmd/moai
+0
+
+$ git status --short
+ M internal/template/templates/.claude/rules/moai/core/verification-claim-integrity.md
+```
+
+`catalog.yaml` was rewritten in place by the `gen-catalog-hashes --all` step but its content is
+unchanged (rules files are not hashed into it), so the commit carries one file.
+
+#### Claim 4 — all three CI neutrality-guard steps pass
+
+The guard the workflow `.github/workflows/template-neutrality-check.yaml` runs is three `go test`
+steps, not one. Each was run in its own invocation, matching the workflow:
+
+```
+$ go test ./internal/template/... -run 'TestTemplateNeutralityAudit' -v ; echo $?
+--- PASS: TestTemplateNeutralityAuditC8Preserve (0.05s)
+--- PASS: TestTemplateNeutralityAudit (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/template	0.752s
+0
+
+$ go test ./internal/template/... -run 'TestTemplateNoInternalContentLeak' -v ; echo $?
+--- PASS: TestTemplateNoInternalContentLeak (0.50s)
+ok  	github.com/modu-ai/moai-adk/internal/template	0.744s
+0
+
+$ MOAI_TEMPLATE_LEAK_STRICT=1 go test ./internal/template/... -run 'TestTemplateNoInternalContentLeak' -v ; echo $?
+--- PASS: TestTemplateNoInternalContentLeak (0.60s)
+ok  	github.com/modu-ai/moai-adk/internal/template	0.844s
+0
+```
+
+The mirror-parity guard was also run, because the edited path is a local↔template rule pair:
+
+```
+$ go test ./internal/template/ -run 'Mirror' ; echo $?
+ok  	github.com/modu-ai/moai-adk/internal/template	0.692s
+0
+```
+
+#### Claim 5 — AC-MRG-012's mutation was planted, observed red, and reverted
+
+The un-neutralized local §2.1 was copied verbatim into the template, the three guard steps were run
+against it, and the neutralized text was then restored (Claim 4 is the post-revert state).
+
+```
+$ go test ./internal/template/ -run TestTemplateNoInternalContentLeak -v ; echo $?
+internal_content_leak_test.go:1240: template internal-content leak detected (1 occurrences, mode=narrow):
+internal_content_leak_test.go:1250:   [1] templates/.claude/rules/moai/core/verification-claim-integrity.md | class=C2-req-ac-internal-prefix | match=AC-COORD-016
+internal_content_leak_test.go:1267: Remediation: apply substitution dictionary ...
+--- FAIL: TestTemplateNoInternalContentLeak (0.50s)
+FAIL	github.com/modu-ai/moai-adk/internal/template	0.742s
+1
+
+$ MOAI_TEMPLATE_LEAK_STRICT=1 go test ./internal/template/ -run TestTemplateNoInternalContentLeak -v ; echo $?
+internal_content_leak_test.go:1240: template internal-content leak detected (1 occurrences, mode=strict):
+internal_content_leak_test.go:1250:   [1] templates/.claude/rules/moai/core/verification-claim-integrity.md | class=C2-req-ac-internal-prefix | match=AC-COORD-016
+--- FAIL: TestTemplateNoInternalContentLeak (0.60s)
+FAIL	github.com/modu-ai/moai-adk/internal/template	0.849s
+1
+```
+
+**The mutation goes red on one of the two tokens, not both — a finding, recorded rather than worked
+around.** `AC-COORD-016` is caught by class `C2-req-ac-internal-prefix`. `SPEC-GRAPH-FRESHNESS-
+CADENCE-001` is caught by nothing: the SPEC-ID classes are deliberately enumerated rather than
+generic, so the whole-tree class matches only the `V3R[2-6]` / `AGENCY` / `WORKTREE` prefixes and
+its sibling matches two named single-domain families. A comment in the guard states the reason — a
+generic `SPEC-[A-Z-]+-[0-9]+` form would flag the pedagogical placeholder IDs used throughout the
+skill bodies — so the narrowness is a design decision, not a defect in the guard. The consequence
+for this criterion is that its stated red comes from the AC token alone.
+
+```
+$ go test ./internal/template/ -run TestTemplateNeutralityAudit -v ; echo $?
+--- PASS: TestTemplateNeutralityAudit (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/template	0.512s
+0
+```
+
+The neutrality-audit step stays **green on the mutation**: its classes are C1 macOS-bias path, C2
+bare-narrative, C4 memory-ref, C5 CLAUDE.local, C6 PR-number, and C9 — a disjoint set that by
+construction owns no SPEC-ID or REQ/AC class. The criterion's red therefore comes from the leak
+guard's two steps, not from the step whose name is "neutrality".
+
+#### Baseline-attribution
+
+- `BASELINE_SHA` = `d566ecc7511e1954e3aeb1dff3a60afa5be1089b`, the frozen pre-flight baseline this
+  SPEC's run phase was dispatched against. Cited as the literal SHA, not re-resolved from a moving
+  ref — the R2 form this SPEC's own §2.1 prescribes.
+- Every command above ran at HEAD `81e33c81e` (branch `WT-moving-ref-guard`, M4 landed), with the
+  M5 working-tree edit present. Claim 5's two failing runs ran at the same HEAD with the planted
+  mutation in the working tree instead.
+- The local doctrine's unchanged state was measured, not assumed:
+  `git diff --stat -- .claude/rules/moai/core/verification-claim-integrity.md` printed nothing, and
+  `git diff --stat` over the whole tree reported one file, 105 insertions.
+
+#### Gaps
+
+- **REQ-MRG-010 / AC-MRG-013 are deferred** per the Q0 option C decision; CM-1 and CM-2 were not
+  run in this milestone.
+- **The mirrored copy was read back end-to-end** (`sed -n '48,152p'` over the template file, whole
+  section rendered and read), so this is not a grep-only check. The head and tail of the template
+  file outside §2.1 were **not** re-read in this milestone — they were read once before the edit and
+  are unmodified by it per the `git diff --stat` above.
+- **No downstream tree was exercised.** Whether the mirrored file is correct *for a user who runs
+  `moai init`* cannot be observed from this repository: this tree has no distributed copy to
+  inspect, and the guards read the template source, not an initialized project.
+- **The neutralization is judged, not measured.** That "a cadence SPEC" carries the same doctrinal
+  content as the named SPEC ID is a reading, and no mechanism checks it.
+- **No coverage figure was measured**; M5 adds no Go code, and the package-scoped suite was not run
+  beyond the four named test targets.
+
+#### Residual-risk
+
+- **The guard would not catch a re-introduced SPEC-ID of this family.** The finding in Claim 5 cuts
+  both ways: a future edit that reinstates `SPEC-GRAPH-FRESHNESS-CADENCE-001`, or introduces any
+  SPEC-ID outside the enumerated prefixes, passes all three steps. The mirrored copy's freedom from
+  SPEC IDs rests on the Claim 1 scan and on review, not on CI.
+- **A date or SHA introduced later is caught only in the strict tier**, which is enabled by an
+  environment variable in one workflow step. A local `go test` without it would not see that class.
+- **The two copies can now drift silently.** The mirror is deliberately not byte-identical, so the
+  mirror-parity guard does not cover this pair; a later edit to the local §2.1 will not be reported
+  as a missing mirror update.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
