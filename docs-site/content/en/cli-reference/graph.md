@@ -67,6 +67,8 @@ Every generated artifact declares, in a provenance block, which tree and commit 
 
 No filesystem mtime is read anywhere. A fresh checkout resets every mtime, which an mtime-based metric would misread as freshly regenerated — so every metric here is a content hash, a git diff, or a fingerprint.
 
+A stale verdict now carries its own attribution. When the `codemaps` layer goes stale, stderr prints how many of the drifting files this change itself contributed (`contribution`) and the commit it was measured against (`contribution_base`, typically `HEAD^1`), followed by up to 10 driving paths — anything past that is summarized as `... and N more`. `--json` exposes the same data as the `contribution` / `contribution_base` / `driving_paths` / `driving_paths_omitted` fields. A single stderr line now tells a lane whether it merely inherited the red (contribution 0) or caused it (contribution > 0).
+
 ## moai graph stamp codemaps
 
 ```bash

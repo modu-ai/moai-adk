@@ -1104,8 +1104,99 @@ together, not the M1 one alone.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+_Backfilled at sync-phase (t322) from §E.2's already-recorded evidence. Run-phase closed with the
+§E.2 record above and left this section a placeholder; no run-phase agent authored a standalone
+audit-ready signal block of its own. Every figure below is a verbatim carry from §E.2 — this is a
+sync-phase reconstruction, not a fresh run-phase measurement._
+
+```
+run_status: audit-ready
+run_complete_at: 2026-08-28 (M3 merge 44095ddc2)
+run_commit_sha: 44095ddc2cc1c9fed2b3bd5ac946f48017988aba
+  (M1 5d95a2e8dade18a6a890c2e4e3bda8c0aebed0b7, M2 988adaf98ddf57f5cb72a0bb53f96166b54e20c8,
+   M3 8b11bbba181727a9ff750dfe100d9b7b03cbde0c)
+```
+
+AC matrix (carried from §E.2): 12/12 live AC PASS — AC-GFC-001..010, 013, 014, 0 FAIL. AC-GFC-011
+and AC-GFC-012 withdrawn at plan-phase (v0.2.0, audit D8) before run-phase began.
+
+Independent verification batch (carried verbatim from §E.2, base `988adaf98`):
+
+```
+$ go test -cover ./internal/graph/... ./internal/mx/... -count=1
+ok  github.com/modu-ai/moai-adk/internal/graph         16.756s  coverage: 88.0% of statements
+ok  github.com/modu-ai/moai-adk/internal/graph/symbol   1.388s  coverage: 86.2% of statements
+ok  github.com/modu-ai/moai-adk/internal/mx             6.030s  coverage: 88.9% of statements
+$ go test -cover ./internal/cli/ -count=1
+ok  github.com/modu-ai/moai-adk/internal/cli          365.242s  coverage: 79.5% of statements
+$ go vet ./internal/graph/... ./internal/mx/... ./internal/cli/... ./internal/config/...   → exit 0
+$ GOOS=windows GOARCH=amd64 go build ./...                                                 → exit 0
+$ golangci-lint run --timeout=5m ./internal/graph/... ./internal/cli/...                   → 0 issues.
+$ make build                                                                               → exit 0
+```
+
+Gaps: the full local suite (`go test ./...`) was NOT run at run-phase (per `plan.md` §D — CI renders
+the full verdict); `e2e/` was not run. This section did not exist as a run-phase artifact; treat its
+attribution as sync-phase-reconstructed, not run-phase-observed.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```
+sync_status: audit-ready
+sync_complete_at: 2026-08-28
+sync_commit_sha: pending-backfill-sync
+```
+
+**What sync changed**: `CHANGELOG.md` `[Unreleased]` → `### Added` entry; `docs-site/content/{ko,en,ja,zh}/cli-reference/graph.md`
+— one paragraph added identically in structure to each locale's `## moai graph check` section,
+describing the new stale-verdict `contribution` / `contribution_base` / `driving_paths` /
+`driving_paths_omitted` attribution that M3 added to both the stderr rendering and `--json` output;
+this file's §E.3 backfill and this §E.4 close; `spec.md` / `plan.md` / `acceptance.md` frontmatter
+`status: in-progress → implemented → completed` + `updated:` refresh (the single sync commit merges
+the terminal transition, per `spec-frontmatter-schema.md` § Status Transition Ownership Matrix).
+
+B12 self-test (CHANGELOG emission discipline, `manager-develop-prompt-template.md` §B12):
+
+```
+a. pre-emission grep, BEFORE this edit:
+   $ grep -c 'SPEC-GRAPH-FRESHNESS-CADENCE-001' CHANGELOG.md   → 0  (no duplicate entry)
+b. AC count match:
+   $ grep -oE 'AC-GFC-[0-9]+' acceptance.md | sort -u | wc -l   → 14
+   (14 = 12 live [AC-GFC-001..010, 013, 014] + AC-GFC-011/012, both still tokened in acceptance.md's
+   §D matrix as *withdrawn* rows. The CHANGELOG entry states the live count, 12, and names the two
+   withdrawn IDs explicitly — matching acceptance.md's own §D.1 disposition rather than the raw
+   14-token grep, which is a RED flag deliberately inspected rather than trusted at face value.)
+c. file path verification:
+   $ ls internal/graph/check.go internal/mx/described_worthy.go internal/mx/provenance.go \
+       internal/cli/graph_check.go docs-site/content/ko/cli-reference/graph.md \
+       docs-site/content/en/cli-reference/graph.md docs-site/content/ja/cli-reference/graph.md \
+       docs-site/content/zh/cli-reference/graph.md
+   → all 8 paths present (see § Verification below for the actual run)
+```
+
+**Docs-site scope decision**: only `## moai graph check` in the CLI-reference page changed. No
+other page across the 4-locale docs-site set references `CodemapsChangedFiles`, the described-worthy
+predicate, or the threshold-40 cadence at the granularity this SPEC's change affects — so no other
+page was touched. The four edits are structurally identical (same insertion point, same field
+names verbatim, translated prose).
+
+Frontmatter transitions applied in this commit, all four SPEC artifacts: `status: in-progress →
+implemented → completed`; `updated: 2026-08-28`.
+
+**Gaps**: §E.3 above is a sync-phase backfill from §E.2, not a run-phase-authored signal (stated in
+its own header). The docs-site paragraph was authored by transcribing the AC-GFC-009/010 verbatim
+fixture output already recorded in §E.2 — sync-phase did NOT independently re-run the CLI against a
+freshly reconstructed stale-fixture to re-observe the stderr/JSON attribution; the sentence's
+factual content is a direct carry of already-verified §E.2 evidence, not a fresh sync-phase
+verification of the CLI's stale-output behavior. The full repository test suite (`go test ./...`)
+was not run at sync, per this repository's standing contract (`AGENTS.md` §4 / `CLAUDE.local.md`
+§6) — CI on the integration branch (`origin/develop`) is the authoritative full-suite verdict and
+is PENDING at the time this section was written.
+
+**Residual-risk**: the docs-site paragraph could drift from the CLI's actual stderr/JSON rendering
+if a later change alters field names, the display bound (10), or the omission-summary format
+without a corresponding docs update — no CI guard ties this page's prose to
+`internal/graph/check.go`'s literal output, so a future silent divergence is possible. The
+`pending-backfill-sync` placeholder for `sync_commit_sha` is filled in the immediately following
+commit, per the established convention (`spec-frontmatter-schema.md` § SHA placeholder backfill
+exemption) — until that commit lands, this section's own `sync_commit_sha` field is provisional.
