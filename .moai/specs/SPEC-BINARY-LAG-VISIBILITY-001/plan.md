@@ -2,7 +2,7 @@
 id: SPEC-BINARY-LAG-VISIBILITY-001
 title: "배포 지연 가시성 — 구현 계획"
 version: "0.4.1"
-status: in-progress
+status: completed
 created: 2026-08-27
 updated: 2026-08-28
 author: manager-spec

@@ -122,7 +122,7 @@ catalog:
             - name: manager-docs
               tier: core
               path: templates/.claude/agents/moai/manager-docs.md
-              hash: 27d6252a33131be637294ddced274213bb817012747731d08844becd7a3b7954
+              hash: 3606cc18c7ed3d13df290913fab2ff387034dbb0329c669e1ad8e538cb4b0954
               version: 1.0.0
             - name: manager-git
               tier: core

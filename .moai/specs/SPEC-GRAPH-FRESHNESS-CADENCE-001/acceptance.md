@@ -17,8 +17,8 @@ command was not run is a Gap, never a pass.
 | AC-GFC-008 | REQ-GFC-007 | M3 | `go test ./internal/graph/ -run TestCheckCodemaps_Contribution -count=1` |
 | AC-GFC-009 | REQ-GFC-008 | M3 | `./bin/moai graph check` on a stale fixture (stderr inspection) |
 | AC-GFC-010 | REQ-GFC-010 | M3 | `./bin/moai graph check --json \| jq` |
-| AC-GFC-011 | — | — | *withdrawn at v0.2.0 with REQ-GFC-004 (audit D8)* |
-| AC-GFC-012 | — | — | *withdrawn at v0.2.0 with REQ-GFC-012 (audit D8)* |
+| AC-GFC-011 [RETIRED] | — | — | *withdrawn at v0.2.0 with REQ-GFC-004 (audit D8)* |
+| AC-GFC-012 [RETIRED] | — | — | *withdrawn at v0.2.0 with REQ-GFC-012 (audit D8)* |
 | AC-GFC-013 | REQ-GFC-009 | all | `grep -rn "graph stamp" .github/ .claude/` |
 | AC-GFC-014 | REQ-GFC-003a | M1 | `go test ./internal/graph/ -run TestSourceFingerprintsForEdges_Unchanged -count=1` |
 
@@ -138,12 +138,12 @@ pre-existing fields (`layer`, `metric`, `value`, `threshold`, `verdict`, `reason
 name and meaning.
 Decided by: `./bin/moai graph check --json | jq '.layers[] | select(.layer=="codemaps")'`.
 
-**AC-GFC-011** — *withdrawn at v0.2.0 with REQ-GFC-004 (audit D8).* No configuration key is added,
+**AC-GFC-011 [RETIRED]** — *withdrawn at v0.2.0 with REQ-GFC-004 (audit D8).* No configuration key is added,
 so there is nothing to resolve. `graphCheckThresholds` keeps its existing behaviour, including the
 present-but-unparseable `gate.yaml` → exit 2 contract, and AC-GFC-014's untouched-surface assertion
 covers the fact that this SPEC does not change it.
 
-**AC-GFC-012** — *withdrawn at v0.2.0 with REQ-GFC-012 (audit D8).* No config key is added, so no
+**AC-GFC-012 [RETIRED]** — *withdrawn at v0.2.0 with REQ-GFC-012 (audit D8).* No config key is added, so no
 template mirror is required.
 
 **AC-GFC-013** — Given the delivered change set, When the pipeline surfaces are searched, Then no

@@ -226,6 +226,55 @@ func TestAgentEmitEmbed_ExtractionErrorFails(t *testing.T) {
 	}
 }
 
+// TestAgentEmitEmbed_ComparisonErrorFails guards the comparison-failure
+// branch — the fourth fail path downstream of the binary-present check, and
+// the only one that carried no dedicated test. compareEmission returns a
+// non-nil error on exactly one path: the extracted counterpart read SUCCEEDS
+// and the committed-side os.ReadFile then fails.
+//
+// The fixture reaches that path by making one committed entry a DIRECTORY
+// named manager-git.toml while its extracted counterpart stays a normal
+// readable file. The directory is legal fixture material only because
+// committedEmissionSet globs "*.toml" and filepath.Glob matches directories
+// as readily as files; if that glob is ever tightened to regular files, this
+// fixture stops reaching the comparison-failure branch and must be rebuilt.
+//
+// Ordering is load-bearing: compareEmission reads the EXTRACTED side first
+// and continues to uncompared when THAT read fails, which lands on the
+// cardinality branch instead. The extracted counterpart must be a real file.
+//
+// Status alone cannot identify this branch — all four fail paths report
+// CheckFail — so the assertions pin the message and rule out the three
+// sibling branches' distinctive prefixes.
+func TestAgentEmitEmbed_ComparisonErrorFails(t *testing.T) {
+	root := newEmbedFixtureRoot(t, "manager-git.toml")
+	writeFakeBinary(t, root)
+
+	committed := filepath.Join(root, filepath.FromSlash(committedEmissionRelDir), "manager-git.toml")
+	if err := os.Remove(committed); err != nil {
+		t.Fatalf("remove committed file: %v", err)
+	}
+	if err := os.MkdirAll(committed, 0o755); err != nil {
+		t.Fatalf("mkdir committed-as-directory: %v", err)
+	}
+
+	extracted := newExtractedDir(t, map[string]string{"manager-git.toml": "name = \"manager-git.toml\"\n"})
+
+	c := checkAgentEmitEmbedAgainst(root, "", staticExtractor(extracted), false)
+
+	if c.Status != uikit.CheckFail {
+		t.Errorf("status = %q, want fail (comparison error); message: %s", c.Status, c.Message)
+	}
+	if !strings.Contains(c.Message, "comparison failed") {
+		t.Errorf("message = %q, want it to name the comparison failure", c.Message)
+	}
+	for _, sibling := range []string{"could not extract", "compared ", "embeds stale"} {
+		if strings.Contains(c.Message, sibling) {
+			t.Errorf("message = %q carries sibling-branch prefix %q — the verdict must identify the comparison-failure branch", c.Message, sibling)
+		}
+	}
+}
+
 // --- the judgment itself --------------------------------------------------
 
 // TestAgentEmitEmbed_MatchReportsCardinality: a clean comparison passes AND
