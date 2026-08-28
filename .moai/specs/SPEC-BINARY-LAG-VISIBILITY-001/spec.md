@@ -1,7 +1,7 @@
 ---
 id: SPEC-BINARY-LAG-VISIBILITY-001
 title: 배포 지연 가시성 — 설치된 바이너리가 저장소 HEAD보다 뒤처졌음을 요청 없이 알린다
-version: "0.4.1"
+version: "0.4.2"
 status: completed
 created: 2026-08-27
 updated: 2026-08-28
@@ -23,6 +23,7 @@ tier: M
 | 0.3.0 | 2026-08-27 | manager-spec | plan-audit iter-1(`.moai/reports/t326/plan-audit-iter1.md`, PASS-WITH-DEBT 0.80) 결함 **8건 전수 수리** — 리드가 blocking 3건을 넘어 optional 5건까지 확대 지시. **D1**(§4 행 3이 `computeDeferredAdvisory` 권고 맵을 지시 → 자기 자신의 안티패턴 처방) 재작성 + `AdditionalContext` 구속 조항 추가, 문서 전수 스윕에서 `plan.md` §B 3항 동종 잔재 1건 추가 발견·수리. **D2** C-2를 요구 수준으로 승격(REQ/AC-BLV-009 신설). **D3** C-2 근거를 한쪽 방향으로 재진술(t317 항목명은 run-phase 미확정). **D4** `version.go` 9→8. **D5** C-1 근거를 t317 적극적 범위로 교체. **D6** AC-BLV-006 시간 제한 소유자 명시 + 판정이 실제로 RED로 만드는 뮤턴트로 교체. **D7** AC-BLV-008을 키 지정 unmarshal로 변경 + `systemMessage` 뮤턴트 추가. **D8** DoD를 `--check "Binary Freshness"`로 범위 축소. D9는 정보성으로 유지. 요구 8→**9** / 수락 8→**9** |
 | 0.4.0 | 2026-08-28 | manager-spec | plan-audit iter-2(`.moai/reports/t326/plan-audit-iter2.md`, PASS-WITH-DEBT **0.85**, iter-1 0.80 대비 단조 개선) 결함 **8건(N1-N8) 전수 수리** — 리드가 이번에도 optional까지 확대 지시. **N1**(blocking) `moaiChecks` 인용 범위 `196-205`→**슬라이스 리터럴 전체**(선언 `:195` ~ 닫는 괄호 `:212`); 종전 창은 끝부분 4개 항목을 빠뜨려 **덧붙이기 가장 자연스러운 위치가 창 밖**이었다. 아울러 추출 단위를 「따옴표 문자열」→**「항목의 이름 표현식」**으로 강화(상수 식별자 회피 차단, 뮤턴트 3 신설) + 런타임 열거 불가 사실 기록. **N2**(blocking) AC-BLV-006 선례를 `:622-624`(ctx-wrap, 이 절이 배제하는 형태)→**`:243-257`**(timer+select 기한 조인)로 이동 + **스텁이 context 취소를 존중하지 않음**을 명시(판별력의 원천). **N3** 테스트 경로 전제 명시(`main_test.go:47` 전역 `deferredScansAsync=false` → 플래그 뒤집기+복원, 선례 `session_start_parallel_test.go:315-321`). **N4** marshal `:276`→`:277`, 병합 `:264`→`:266`. **N5** t317 Out-of-Scope `136-137`→`137-138`. **N6** AC-BLV-009 기준점을 「이 SPEC 첫 커밋의 부모」로 명문화. **N7** AC-BLV-009 판정을 `moaiChecks` 단독→**세 레지스트리 합집합**으로 확대(요구를 좁히지 않고 판정을 넓힘; 뮤턴트 2 신설). **N8** `priority: HIGH`→`High`, `version` 인용 부호 통일, lint 결과의 증명 범위 정정. 요구/수락 개수 불변(9 / 9) |
 | 0.4.1 | 2026-08-28 | manager-spec | **§5 앵커 문장 개정 (run-phase 발견 · 리드 재위임).** run-phase가 §5와 REQ-BLV-003의 **모순**을 발견했고, 코드는 요구를 따랐다. 종전 §5는 기준점 해석으로 t317의 `.moai/` marker 상향 탐색을 채택한다고 적었으나, REQ-BLV-003은 적용가능성을 「대조할 저장소 HEAD가 없음」에 걸므로 **HEAD는 있으나 `.moai/`가 없는 git 트리**에 두 규칙이 서로 다른 답을 준다 — marker 규칙으로는 REQ-BLV-003 위반 없이 §5를 구현할 수 없다. 구현이 채택한 **git 자신의 상향 탐색**(`internal/binlag/binlag.go:101` `rev-parse HEAD`, `:111` `merge-base --is-ancestor`)을 문서에 반영하고, 충돌 자체를 「복원 금지」 사유로 명기했다. t317의 **적용 불가 → ok 보고 · exit 상태 불변** 추론은 변경 없이 그대로 재사용한다(버려진 것은 두 번째 뿌리 해소 기구뿐이며, AC-BLV-003 하위 디렉터리 앵커 게이트는 git 상향 탐색으로 유지된다). 문서 전수 스윕에서 `plan.md` M2의 동종 지시 1건 추가 발견·수리. 요구/수락 개수 불변(9 / 9); `progress.md` run-phase 증거는 manager-develop 소관이라 미변경 |
+| 0.4.2 | 2026-08-28 | manager-spec | **주소 정정 2건 (sync-phase 발견 · 리드 재위임).** sync-phase의 본문-대-코드 어긋남 스캔이 기록한 13건 중 리드가 2건만 수리하도록 지시했다. **D1**(§4 표 행 2가 단일 비교 구현을 `internal/cli/`의 신규 파일로 지시 — 같은 문서의 §5는 이미 `internal/binlag/binlag.go`를 인용하므로 한 문서가 두 경로를 주장하고 있었다) 행 2를 실제 경로로 정정하고, 되돌림을 막기 위해 `internal/cli` → `internal/hook` import 사이클이라는 일탈 사유를 행 안에 명시했다(사유 전문은 `progress.md` §E.3 소관). **D2**(§5의 `binlag.go:101`·`:111` 인용은 커밋 `bf1a19813` 시점에는 정확했으나 sync 커밋 `d3454f1e6`이 그 위에 @MX 주석을 넣어 밀어냈다) 현재 트리에서 직접 재측정한 **121 · 131**로 갱신했다. D3-D13은 리드 지시에 따라 **기록된 채로 미수리**로 남는다. 요구·수락의 내용과 개수는 불변(9 / 9) |
 
 ---
 
@@ -174,7 +175,7 @@ $ git describe --tags              → v3.1.2-494-g343399d2f
 | # | 경로 | 성격 |
 |---|---|---|
 | 1 | `internal/cli/doctor.go` | 기존 `checkBinaryFreshness`를 공유 seam 호출로 환원 |
-| 2 | `internal/cli/`의 신규 파일 1건 (예: `binary_lag.go`) | 단일 비교 구현 + 적용가능성 술어 |
+| 2 | 신규 패키지 `internal/binlag/binlag.go` | 단일 비교 구현 + 적용가능성 술어. **`internal/cli`에 두지 않는다** — `internal/cli` → `internal/hook` import 사이클 때문에 `internal/cli`의 seam은 훅 핸들러에서 도달 불가다(사유 전문은 `progress.md` §E.3 `spec_deviations`). 되돌리지 말 것 |
 | 3 | `internal/hook/session_start.go` | **`AdditionalContext` append 지점**(`:343-346`·`:369` 패턴)에 지연 권고를 덧붙인다 |
 | 4 | `Makefile` | `BUILD_ID` 도입 + ldflags 주입 (`VERSION ?=` 행은 불변) |
 | 5 | `internal/cli/binary_lag_test.go` (신규) | AC-BLV-002·003·004·007·009 |
@@ -192,7 +193,7 @@ $ git describe --tags              → v3.1.2-494-g343399d2f
 
 t317 SPEC(`SPEC-AGENT-EMIT-LINEAGE-001` REQ-AEL-004, v0.5.0, plan-audit iter-3 PASS 0.90)이 임베드 축에 대해 이 문제를 이미 상세히 측정하고 결론지었다 — 「적용 불가 → ok 보고, exit 상태 불변」 경로가 필수라는 것. **그 추론을 재유도하지 않고 재사용한다.** 이 부분은 변경 없이 그대로 유효하다.
 
-**기준점 해석은 git 자신의 상향 탐색이다 — `.moai/` marker 탐색이 아니다.** 구현은 `git -C <dir> rev-parse HEAD`(`internal/binlag/binlag.go:101`)와 `git -C <dir> merge-base --is-ancestor`(`:111`)를 argv 형태로 호출하며, git이 `dir`에서 위로 올라가 트리를 찾으므로 **하위 디렉터리에서 실행해도 같은 HEAD로 해소된다.** §5가 지키려던 성질(AC-BLV-003의 하위 디렉터리 앵커 게이트)은 그대로 유지되고, 버려지는 것은 이 SPEC의 대상이 필요로 하지 않는 **두 번째 뿌리 해소 기구**뿐이다.
+**기준점 해석은 git 자신의 상향 탐색이다 — `.moai/` marker 탐색이 아니다.** 구현은 `git -C <dir> rev-parse HEAD`(`internal/binlag/binlag.go:121`)와 `git -C <dir> merge-base --is-ancestor`(`:131`)를 argv 형태로 호출하며, git이 `dir`에서 위로 올라가 트리를 찾으므로 **하위 디렉터리에서 실행해도 같은 HEAD로 해소된다.** §5가 지키려던 성질(AC-BLV-003의 하위 디렉터리 앵커 게이트)은 그대로 유지되고, 버려지는 것은 이 SPEC의 대상이 필요로 하지 않는 **두 번째 뿌리 해소 기구**뿐이다.
 
 [HARD] **`.moai/` marker 탐색을 「복원」하지 말 것 — REQ-BLV-003과 충돌한다.** v0.4.0까지 이 절은 t317의 marker 상향 탐색을 채택한다고 적었으나, run-phase가 그 문장이 **자기 요구와 모순**됨을 발견했고 코드는 요구를 따랐다. REQ-BLV-003은 적용가능성을 **「대조할 저장소 HEAD가 없음」**에 건다. 따라서 **HEAD는 있으나 `.moai/` 디렉터리가 없는 git 트리는 반드시 적용 가능**해야 하는데, marker 규칙 아래서는 적용 불가로 판정된다 — 문장과 요구가 같은 트리에 서로 다른 답을 준다. 즉 marker 규칙으로는 REQ-BLV-003을 위반하지 않고서는 §5를 구현할 수 없다.
 
