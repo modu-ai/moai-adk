@@ -1,7 +1,7 @@
 ---
 id: SPEC-ARTIFACT-STATELESS-001
 title: "비-spec.md SPEC 산출물 무상태 확정 — 규약 명문화 · 재발 방지 lint · status 라인 정리"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-08-28
 updated: 2026-08-28
@@ -21,6 +21,7 @@ related_specs: [SPEC-PHASE-FRONTMATTER-OWNER-001]
 
 | 날짜 | 버전 | 변경 |
 |---|---|---|
+| 2026-08-28 | 0.2.0 | plan-auditor 1차 **PASS-WITH-DEBT 0.86** 대응, blocking 6건(D1~D6) + optional 1건(D9). **(D6) 모집단을 전 코퍼스 696(389 파일)으로 확정** — 무상태 선언이 Tier에 의존하지 않는 것과 같은 이유로 라이프사이클 status에도 의존하지 않으며, 종결로 좁히면 status 축에 같은 모양의 구멍이 생긴다(§1.6). 362는 389의 종결-한정 부분집합으로 병기해 추적성을 유지한다. **(D4) 소급 편집 구분을 논증으로 승격**(§1.5) — 백필은 기록된 값을 바꾸고 D1 정리는 기록이 된 적 없는 필드를 지운다. **(D1·D3) `AC-AST-001-01`·`-02`를 신설 앵커 `### Artifact Statelessness` 범위로 한정**하고 세 문장을 각각 별도 판정으로 분해 — 종전 판정은 미수정 파일에서 7개 중 6개가 이미 참이었고, 부정 검사는 선언한 PASS 문자열이 원리상 출력될 수 없었다. **(D2) `AC-AST-001-04`의 lint 호출을 심는 SPEC 하나로 한정** — 종전 전 코퍼스 호출은 M2 선행 시 정상 lint에도 FAIL했다. **(D5) 교차검증 주장 한정**(§1.6) — 두 스크립트가 `fm_of`를 공유하므로 검증된 것은 집계 로직뿐이다. **(D9) 템플릿 미러를 조건절에서 사실로**(REQ-AST-001-015 + `AC-AST-001-11`) — 실측 결과 실재하며 바이트 동일. REQ 13 → 15, AC 10 → 11. |
 | 2026-08-28 | 0.1.0 | 최초 작성. 카드 t357의 두 전제(「규약이 4종 명시」·「Tier L 6종」)가 실측으로 뒤집힌 뒤, 운영자가 **안 C(무상태 선언)** 를 선택한 결과를 명세한다. 정리 정의는 **D1(status 라인만 제거)** 로 못박고, 재발 방지 lint를 이 SPEC의 본체로 둔다. |
 
 ## §1 배경
@@ -87,29 +88,69 @@ related_specs: [SPEC-PHASE-FRONTMATTER-OWNER-001]
 | 해당 종결 SPEC | 544 | 0 | **170** |
 | 실제 편집 파일 | 1,251 | 0 | **362** (D1 기준) |
 
+> 이 표는 **운영자에게 제시됐던 그대로**이며 모집단이 종결 SPEC 633이다. 이후 §1.6이 모집단을 전 코퍼스 696으로 확대했으므로 안 C의 실제 편집 파일은 **389**다(362는 그 부분집합). 표를 사후에 고쳐 쓰지 않고 이 주석으로 관계를 남긴다 — 결정 시점의 근거가 무엇이었는지가 기록으로서 의미를 갖는다.
+
+#### 소급 편집 — 안 A를 물린 근거가 안 C에는 적용되지 않는 이유
+
+운영자가 안 A를 물린 근거 하나는 **소급 편집(이력 왜곡)** 이었다. 안 C도 닫힌 SPEC의 파일을 편집한다. 두 행위가 왜 다른지를 전제로 두지 않고 여기서 논증한다.
+
+**두 행위는 축이 다르다.**
+
+- **안 A의 백필은 기록된 값을 다른 값으로 바꾼다.** `design.md`의 `status: draft`를 `status: completed`로 옮기는 것은, 그 SPEC이 닫히던 시점에 그 파일이 무엇이었는지에 대한 **주장을 사후에 다시 쓰는** 일이다. 그 주장이 옳은지 그른지와 무관하게, 그것은 기록의 내용을 변경한다.
+- **안 C의 D1 정리는 규약이 정의한 적 없는 필드를 지운다.** §1.3이 실측한 대로 그 필드는 규약이 요구한 적이 없고, 검사가 읽은 적도 없으며(`audit.go:347`·`lint.go:307,328`은 `spec.md`만 본다), `closer.go:312,335`가 쓴 적도 없다. §1.2가 인용한 규약 문언(`spec-frontmatter-schema.md:13`)은 의무 대상을 `spec.md`로 괄호까지 박아 놓았다.
+
+따라서 지워지는 것은 **애초에 기록으로서의 지위를 가진 적이 없다** — §1.3의 표현대로 "규약 위반이 아니라, 규약에 없는 필드를 에이전트가 임의로 붙였다가 아무도 옮기지 않은 것"이다. 규약이 읽지 않고 검사가 보지 않으며 close 절차가 쓰지 않는 필드는, 그 SPEC이 닫히던 시점에 대해 아무것도 주장하지 않는다. 그것을 지우는 것은 이력의 삭제가 아니라 **즉흥의 잔여물 제거**다.
+
+**뒤집어 말하면 이렇다**: 안 A는 기록이 말하는 바를 바꾸므로 소급 편집의 반대에 걸리고, 안 C는 기록이 아닌 것을 치우므로 걸리지 않는다. 이 구분이 성립하지 않는 유일한 경우는 그 필드가 실제로 무언가를 기록하고 있었을 때인데, §1.3의 4개 실측 좌표가 그렇지 않음을 보인다.
+
 안 C가 닫는 구멍 하나를 기록해 둔다: **종결 SPEC 106건이 `design.md`/`research.md`를 보유하면서 `tier: L`이 아니다.** 규약을 "Tier L 한정"으로 좁혀 쓰는 안 A/B 형태였다면 이 106건은 규약 밖에 그대로 남는다. 안 C는 **Tier와 무관하게** 모든 비-spec.md 산출물을 규약 밖으로 확정하므로 이 106건도 빠짐없이 규칙 안에 들어온다. 이것이 선택된 안이 견고한 이유이며, 명세에 남겨야 할 사실이다.
 
-### §1.6 정리 정의는 D1으로 못박는다
+### §1.6 정리 정의는 D1으로, 모집단은 전 코퍼스로 못박는다
 
-두 정의를 모두 실측했다 (모집단 = 종결 SPEC, 트리 `c6aa61346`):
+두 정의를 모두 실측했다. **모집단이 두 가지라 수치도 두 벌**이라는 점을 먼저 분리해 적는다.
+
+**모집단 = 전 코퍼스 696 SPEC** (이 SPEC이 채택하는 모집단, 트리 `3b1830b96`):
 
 | 정의 | design | research | plan | acceptance | **합** |
 |---|---:|---:|---:|---:|---:|
-| **D1 — `status:` 라인만 제거** | 23 | 29 | 155 | 155 | **362** |
-| D2 — frontmatter 블록 통째 제거 | 25 | 32 | 180 | 180 | 417 |
+| **D1 — `status:` 라인만 제거** | 27 | 34 | 164 | 164 | **389** |
+| D2 — frontmatter 블록 통째 제거 | — | — | — | — | (미측정; D2 미채택) |
 
-측정 명령 (원자료 `.moai/cache/t357_fmrows.tsv`, 1,410행 / 종결 SPEC 608개 소속):
+```bash
+bash .moai/reports/t357/t357_d1_by_artifact.sh .
+# HEAD=3b1830b96 / design 27 / research 34 / plan 164 / acceptance 164 / total 389
+```
+
+**모집단 = 종결(closed = completed + implemented) SPEC 633** (참고값, 트리 `c6aa61346`):
+
+| 정의 | design | research | plan | acceptance | **합** |
+|---|---:|---:|---:|---:|---:|
+| **D1** | 23 | 29 | 155 | 155 | **362** |
+| D2 | 25 | 32 | 180 | 180 | 417 |
 
 ```bash
 awk -F'\t' '$5=="yes"{d1[$2]++; t++} END{for(k in d1) print k, d1[k]; print "total", t}' \
-  .moai/cache/t357_fmrows.tsv
+  .moai/reports/t357/t357_fmrows.tsv
 ```
 
-**D1을 채택한다.** 근거: 무상태 선언이 지배하는 것은 **status 축**이다. `id`·`title`·`version`·`created`는 이 카드가 아무것도 판정하지 않은 **다른 축**이며, 그것까지 제거하는 것은 범위 확대다.
+**362는 389의 종결-한정 부분집합이다.** 운영자에게 제시됐던 수치가 362이므로 폐기하지 않고 이 관계로 남긴다 — 차분 27건은 미종결 SPEC(draft·in-progress·archived·superseded·rejected)에 있다. 두 모집단을 같은 명령으로 한 번에 재측정한 결과:
 
-D2에만 걸리는 차분(55개 파일)의 성격도 실측된다 — 그 블록들은 **spec.md frontmatter의 복제본**이다. 필드 빈도는 `version` 371 · `status` 362 · `id` 356 · `created` 340 · `title` 289이고, D2 블록 417개 중 **224개가 12~14 필드**를 담고 있다. 즉 D2는 "부수 필드 정리"가 아니라 복제된 스키마 블록 전체를 지우는 별개의 결정이다.
+```bash
+bash .moai/reports/t357/t357_d1_all.sh .
+# HEAD=3b1830b96 / D1 전체 696 모집단 = 389 / D1 종결(633) 모집단 = 362
+```
 
-D1의 **362는 실측 보고(§4 (c))가 독립적으로 도출한 362와 정확히 교차 검증된다** — 두 계수는 서로 다른 스크립트에서 나왔다.
+#### 채택 — 정의는 D1, 모집단은 전 코퍼스 696
+
+**정의 D1을 채택한다.** 근거: 무상태 선언이 지배하는 것은 **status 축**이다. `id`·`title`·`version`·`created`는 이 카드가 아무것도 판정하지 않은 **다른 축**이며, 그것까지 제거하는 것은 범위 확대다.
+
+D2에만 걸리는 차분(종결 모집단 기준 55개 파일)의 성격도 실측된다 — 그 블록들은 **spec.md frontmatter의 복제본**이다. 필드 빈도는 `version` 371 · `status` 362 · `id` 356 · `created` 340 · `title` 289이고, D2 블록 417개 중 **224개가 12~14 필드**를 담고 있다. 즉 D2는 "부수 필드 정리"가 아니라 복제된 스키마 블록 전체를 지우는 별개의 결정이다.
+
+**모집단은 전 코퍼스 696을 채택한다.** 근거는 §1.5의 논거와 같은 형태다: **무상태 선언은 무조건적이다.** 그것은 Tier에 의존하지 않고(§1.5가 106건으로 논증한 그 축), 라이프사이클 status에도 의존하지 않는다. 정리를 종결 여부로 좁히면 status 축에 **같은 모양의 구멍**을 새로 낸다 — 오늘 `in-progress`인 SPEC이 내일 닫히면서 규약 밖 필드를 그대로 달고 들어온다. 규칙의 조건이 하나면 정리의 조건도 하나여야 한다.
+
+#### 교차검증의 범위 — 무엇이 검증됐고 무엇이 안 됐는가
+
+D1의 362는 두 경로(`t357_rows.tsv` 재집계, `t357_fmrows.tsv` 집계)에서 같은 값이 나왔다. 다만 두 스크립트는 **동일한 `fm_of` awk 추출기를 공유한다**(`NR==1&&/^---/{f=1;next} f&&/^---/{exit} f`). 따라서 이 일치가 검증하는 것은 **집계 로직**이고, §5가 기록한 추출 단계의 공통 실패 모드(1행이 `---`가 아닌 파일을 전부 "frontmatter 없음"으로 계상)는 **두 경로에 동일하게 작용하므로 교차검증되지 않는다.** 계수 자체는 정확하나, 이 일치를 추출기 독립성의 근거로 읽지 않는다.
 
 ### §1.7 무상태 선언만으로는 재발을 막지 못한다 — lint가 이 SPEC의 본체다
 
@@ -125,15 +166,18 @@ lint 술어는 **D1 정의와 같은 축을 본다**: 비-spec.md SPEC 산출물
 
 ## §2 목적
 
-비-spec.md SPEC 산출물을 **무상태(stateless)** 로 확정한다. 세 가지를 함께 한다: 규약 명문화, 재발 방지 lint, D1 정리. 셋 중 하나라도 빠지면 목적이 성립하지 않는다 — 명문화만 하면 재발하고, lint만 하면 기존 362건에 걸리며, 정리만 하면 다시 쌓인다.
+비-spec.md SPEC 산출물을 **무상태(stateless)** 로 확정한다. 세 가지를 함께 한다: 규약 명문화, 재발 방지 lint, D1 정리. 셋 중 하나라도 빠지면 목적이 성립하지 않는다 — 명문화만 하면 재발하고, lint만 하면 기존 위반(전 코퍼스 389건 @ `3b1830b96`)에 걸리며, 정리만 하면 다시 쌓인다.
 
 ## §3 요구사항 (GEARS)
 
 ### §3.1 규약 명문화 (M1)
 
-- REQ-AST-001-001: The frontmatter schema document SHALL state explicitly that the canonical 12-field obligation binds `spec.md` only, and that every other SPEC artifact — `plan.md`, `acceptance.md`, `design.md`, `research.md` — is stateless.
-- REQ-AST-001-002: The frontmatter schema document SHALL state that the stateless declaration binds regardless of the SPEC's Tier, so that a SPEC carrying `design.md` without `tier: L` is not left outside the rule.
-- REQ-AST-001-003: The frontmatter schema document SHALL define statelessness on the status axis — the absence of a `status:` field — and SHALL NOT prohibit frontmatter as such.
+M1의 신설 소절은 **고정 앵커 제목 `### Artifact Statelessness`** 를 갖는다. AC는 그 앵커로 소절 본문을 잘라낸 뒤 그 안에서만 판정하므로, 앵커가 없으면 어떤 판정도 통과할 수 없다. 아래 네 REQ가 그 소절이 담아야 할 것을 규정한다.
+
+- REQ-AST-001-001: The frontmatter schema document SHALL carry a sub-section anchored by the literal heading `### Artifact Statelessness`, and that sub-section SHALL state that the canonical 12-field obligation binds `spec.md` only, in the literal form `binds `spec.md` only`.
+- REQ-AST-001-002: The `### Artifact Statelessness` sub-section SHALL state that the declaration is Tier-independent, in the literal form `Tier-independent`, so that a SPEC carrying `design.md` without `tier: L` is not left outside the rule.
+- REQ-AST-001-003: The `### Artifact Statelessness` sub-section SHALL define statelessness on the status axis by naming all four artifacts (`plan.md`, `acceptance.md`, `design.md`, `research.md`) together with the prohibition of a `status:` field in their frontmatter.
+- REQ-AST-001-014: The `### Artifact Statelessness` sub-section SHALL state that frontmatter as such remains permitted, in the literal form `Frontmatter itself is permitted`, and SHALL NOT carry any blanket prohibition of frontmatter.
 
 ### §3.2 재발 방지 lint (M2)
 
@@ -144,10 +188,22 @@ lint 술어는 **D1 정의와 같은 축을 본다**: 비-spec.md SPEC 산출물
 
 ### §3.3 코퍼스 정리 (M3)
 
-- REQ-AST-001-008: The corpus cleanup SHALL remove only the `status:` line from a non-`spec.md` SPEC artifact's frontmatter, and SHALL leave every other frontmatter field in place (definition D1).
-- REQ-AST-001-009: The corpus cleanup SHALL re-measure its target set at the run-phase HEAD rather than reuse the 362 counted at `c6aa61346`, because `origin/develop` has advanced by 26 commits to `48d8ef4be` since the measurement.
+- REQ-AST-001-008: The corpus cleanup SHALL cover **every** SPEC directory under `.moai/specs/SPEC-*/` regardless of the SPEC's lifecycle status (population = all 696 at `3b1830b96`, 389 files), and SHALL remove only the `status:` line from a non-`spec.md` artifact's frontmatter, leaving every other frontmatter field in place (definition D1).
+- REQ-AST-001-009: The corpus cleanup SHALL re-measure its target set at the run-phase HEAD rather than reuse the 389 counted at `3b1830b96`, because `origin/develop` has advanced by 26 commits to `48d8ef4be` since the original measurement.
 - REQ-AST-001-010: The corpus cleanup and the lint rule SHALL land in the same SPEC, so that no era carve-out is required for the lint to hold against the live corpus.
 - REQ-AST-001-011: The corpus cleanup SHALL NOT modify `spec.md` or `progress.md` in any SPEC directory.
+
+### §3.3b 템플릿 미러 (M1에 부수)
+
+미러는 **실재하며 현재 바이트 동일**하다 — 조건절이 아니라 사실이다:
+
+```bash
+diff -q .claude/rules/moai/development/spec-frontmatter-schema.md \
+        internal/template/templates/.claude/rules/moai/development/spec-frontmatter-schema.md
+# (무출력) → MIRROR IDENTICAL @ 3b1830b96, 양쪽 23,317 bytes
+```
+
+- REQ-AST-001-015: The template mirror at `internal/template/templates/.claude/rules/moai/development/spec-frontmatter-schema.md` SHALL receive the same `### Artifact Statelessness` sub-section in the same commit as the local rule file, so the two files remain byte-identical (Template-First, `CLAUDE.local.md` §2 [HARD]).
 
 ### §3.4 무엇을 하지 않는가
 
@@ -158,8 +214,8 @@ lint 술어는 **D1 정의와 같은 축을 본다**: 비-spec.md SPEC 산출물
 
 GWT 본문과 실행 가능한 판정 명령은 `acceptance.md`에 있다. 아래는 REQ ↔ AC 추적 매트릭스다.
 
-- AC-AST-001-01: Given 규약이 12필드 의무를 괄호로만 암시할 때, When M1 소절이 착지하면, Then spec.md 한정·무상태·Tier 무관 셋이 명시된다 (maps REQ-AST-001-001, REQ-AST-001-002, REQ-AST-001-003)
-- AC-AST-001-02: Given 무상태가 frontmatter 금지로 읽힐 여지가 있을 때, When 규약 문구를 읽으면, Then 금지 대상이 status 필드로 한정된다 (maps REQ-AST-001-003)
+- AC-AST-001-01: Given 규약에 `### Artifact Statelessness` 앵커가 없을 때, When M1 소절이 착지하면, Then 그 소절 안에서 spec.md 한정·4종 무상태·Tier 무관 세 문장이 각각 별도로 판정된다 (maps REQ-AST-001-001, REQ-AST-001-002, REQ-AST-001-003)
+- AC-AST-001-02: Given 무상태가 frontmatter 금지로 읽힐 여지가 있을 때, When 그 소절을 잘라내 읽으면, Then frontmatter 허용 문장이 있고 일체 금지 문형이 0건이다 (maps REQ-AST-001-003, REQ-AST-001-014)
 - AC-AST-001-03: Given lint 엔진이 규칙 배열과 era 예외 목록을 가질 때, When M2가 착지하면, Then 새 코드가 등록되고 era 예외에는 없다 (maps REQ-AST-001-004, REQ-AST-001-006)
 - AC-AST-001-04: Given 규칙이 작성됐으나 거부를 관측하지 못한 상태에서, When 비-spec.md 산출물에 status를 심고 lint를 돌리면, Then 거부를 관측하고 원복한다 (maps REQ-AST-001-007)
 - AC-AST-001-05: Given status 없는 산출물과 spec.md·progress.md가 존재할 때, When lint를 돌리면, Then 그 셋에 대해 거부가 나오지 않는다 (maps REQ-AST-001-005, REQ-AST-001-011)
@@ -168,6 +224,7 @@ GWT 본문과 실행 가능한 판정 명령은 `acceptance.md`에 있다. 아�
 - AC-AST-001-08: Given 두 파일이 대상 밖일 때, When M3 diff를 읽으면, Then spec.md·progress.md 변경이 없다 (maps REQ-AST-001-011)
 - AC-AST-001-09: Given era 예외 미설정이 동시 착지에 의존할 때, When 종결 시점 트리에서 판정하면, Then 규칙 등록과 D1 잔여 0이 함께 성립한다 (maps REQ-AST-001-006, REQ-AST-001-010)
 - AC-AST-001-10: Given tier 값 정정과 백필이 스코프 밖일 때, When 전체 diff를 읽으면, Then tier 편집 0건이고 status 추가 0건이다 (maps REQ-AST-001-012, REQ-AST-001-013)
+- AC-AST-001-11: Given 템플릿 미러가 실재하고 현재 바이트 동일할 때, When M1이 착지하면, Then 두 파일이 여전히 바이트 동일하고 양쪽에 앵커 소절이 있다 (maps REQ-AST-001-015)
 
 ## §4 스코프 제외
 
@@ -186,7 +243,7 @@ GWT 본문과 실행 가능한 판정 명령은 `acceptance.md`에 있다. 아�
 ### Out of Scope — 종결 SPEC 산출물 상태 백필
 
 - 닫힌 SPEC의 비-spec.md 산출물 상태를 사후에 `completed`로 옮기는 작업(안 A, 파일 1,251개)은 하지 않는다.
-- 근거: 운영자가 안 C를 선택했다. 백필의 이력 왜곡 여부는 이 SPEC의 측정 대상이 아니었다.
+- 근거: 백필은 **기록된 값을 다른 값으로 바꾸는** 행위이고, 이 SPEC의 D1 정리는 **규약이 정의한 적 없는 필드를 제거하는** 행위다 — 축이 다르다. 전체 논증은 §1.5 「소급 편집」 절.
 
 ### Out of Scope — progress.md의 status 표기
 
@@ -201,14 +258,17 @@ GWT 본문과 실행 가능한 판정 명령은 `acceptance.md`에 있다. 아�
 ## §5 Gaps — 관측하지 않은 것
 
 - **원 사례 미재현.** 카드가 지목한 `SPEC-AC-COUNT-DISCRIMINATOR-001`은 lane-7 t338 브랜치에 있고 develop 코퍼스에 없다. 원 사례를 직접 재현하지 못했다.
-- **계수의 baseline 고정.** 이 문서의 모든 수치(696 / 633 / 362 / 417 / 170 / 106 / 12)는 트리 **`c6aa61346`** 귀속이다. 측정 이후 `origin/develop`은 **`48d8ef4be`(26 커밋)** 로 전진했으므로, **정리 마일스톤 착수 전에 run-phase HEAD에서 재측정한다**(REQ-AST-001-009). 이 문서의 숫자를 그대로 재사용하지 않는다.
+- **계수의 baseline 고정 — 두 트리가 섞여 있다.** 초기 실측(696 / 633 / 362 / 417 / 170 / 106 / 12)은 트리 **`c6aa61346`** 귀속이고, 전 코퍼스 D1 수치(389 = 27/34/164/164)와 미러 동일성 확인은 트리 **`3b1830b96`** 귀속이다. 두 SHA를 병기해 읽는다. 측정 이후 `origin/develop`은 **`48d8ef4be`(26 커밋)** 로 전진했으므로, **정리 마일스톤 착수 전에 run-phase HEAD에서 재측정한다**(REQ-AST-001-009). 이 문서의 숫자를 판정값으로 재사용하지 않는다.
 - **lint 구현 비용 미측정.** §1.8은 구현 좌표를 적었을 뿐 규칙 신설의 실제 작업량은 재지 않았다.
-- **상태 추출의 한계.** frontmatter 첫 `status:` 라인 기준이며, 1행이 `---`가 아닌 파일은 전부 "frontmatter 없음"으로 계상된다. frontmatter가 2행부터 시작하는 변칙 파일이 있으면 오분류될 수 있다.
+- **상태 추출의 한계 — 그리고 그 실패 모드는 교차검증되지 않았다.** 판정은 frontmatter 첫 `status:` 라인 기준이며, 1행이 `---`가 아닌 파일은 전부 "frontmatter 없음"으로 계상된다. frontmatter가 2행부터 시작하는 변칙 파일이 있으면 오분류될 수 있다. 362를 도출한 두 경로가 **같은 `fm_of` 추출기를 공유**하므로 이 실패 모드는 두 경로에 동일하게 작용한다 — 일치가 검증한 것은 집계 로직뿐이다(§1.6).
+- **배포 사용자 코퍼스 미측정.** 새 lint를 error 심각도로 두었을 때 배포 사용자 트리에 기존 위반이 있는지는 이 리포에서 잴 수 없다. 완화안은 `plan.md` §B3.
 
 ## §6 참조
 
 - 실측 보고: `.moai/reports/t357/plan-measurement.md` (커밋 `7537ce693`)
 - 원자료: `.moai/reports/t357/t357_rows.tsv`, `t357_closed.tsv`, `t357_audit.txt`, `t357_measure.sh`
-- D1/D2 필드 축 원자료: `.moai/cache/t357_fmrows.tsv`, `.moai/cache/t357_fmfields.txt`
+- 감사 보고: `.moai/reports/t357/plan-audit.md` (D1~D9; 이 개정이 닫는 결함 목록)
+- D1/D2 필드 축 원자료: `.moai/reports/t357/t357_fmrows.tsv`, `.moai/reports/t357/t357_fmfields.txt`
+- 모집단별 재측정 스크립트: `.moai/reports/t357/t357_d1_all.sh` (전 코퍼스 vs 종결), `.moai/reports/t357/t357_d1_by_artifact.sh` (전 코퍼스 산출물별)
 - 규약 SSOT: `.claude/rules/moai/development/spec-frontmatter-schema.md`
 - lint 엔진: `internal/spec/lint.go`, `internal/spec/lint_ownership.go`, `internal/spec/audit.go`, `internal/spec/closer.go`
