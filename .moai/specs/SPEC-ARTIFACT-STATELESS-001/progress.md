@@ -6,15 +6,16 @@
 
 - 산출물: `spec.md` · `plan.md` · `acceptance.md` · `progress.md` (Tier M 계약. `design.md`/`research.md`는 Tier M 산출물이 아니며, 이 SPEC의 주제상으로도 만들지 않는다)
 - 운영자 결정: **안 C(무상태 선언)**. 정의는 **D1(status 라인만 제거)**, 모집단은 **전 코퍼스 696**
-- REQ 15 / AC 11 (Tier M 상한 각 16)
+- REQ 16 / AC 11 (Tier M 상한 각 16)
 
 ### 감사 이력
 
 | 회차 | 판정 | 점수 | 결과 |
 |---|---|---|---|
 | 1 | PASS-WITH-DEBT | 0.86 (Tier M 임계 0.80) | blocking 6건(D1~D6) + optional D9 → v0.2.0에서 전부 반영 |
+| 2 | PASS-WITH-DEBT | 0.92 (네 차원 단조 상승) | 1차 10건 중 9건 해소. 잔여 blocking 2건(N1 빈 슬롯 공허 PASS — 개정이 들여옴, R1 부정문 맹점) + minor N2~N4 → v0.3.0에서 반영, R1은 잔여 부채로 §5에 명시 |
 
-감사 보고: `.moai/reports/t357/plan-audit.md` (감사 트리 `3b1830b96`)
+감사 보고: `.moai/reports/t357/plan-audit.md` (1차, 감사 트리 `3b1830b96`) · `.moai/reports/t357/plan-audit-iter2.md` (2차, 감사 트리 `aacad4f99`)
 
 ### 측정 baseline — 두 트리가 섞여 있다
 
@@ -67,7 +68,7 @@ anchor in mirror: FAIL
 3. 배포 사용자 코퍼스의 기존 위반 여부는 이 리포에서 측정 불가 — lint 심각도 결정의 잔여 위험(`plan.md` §B3/§D)
 4. 362를 도출한 두 경로가 `fm_of` 추출기를 공유하므로 추출 단계 실패 모드는 교차검증되지 않음(spec.md §1.6)
 
-다음: plan-audit 재감사(델타 범위) → Implementation Kickoff Approval → run
+다음: M2(재발 방지 lint) + M3(D1 코퍼스 정리) — 운영자 결정으로 함께 보류 중이다. M2만 먼저 착지시키면 코퍼스 잔여 위반이 남은 상태에서 `spec-lint.yml`이 develop push에 `--strict`로 돌고 `--strict`가 warning을 error로 승격시켜 develop SPEC Lint가 적색이 된다. 병합 큐가 빠지면 둘을 함께 재개한다.
 
 ## §E.2 Run-phase Evidence
 
