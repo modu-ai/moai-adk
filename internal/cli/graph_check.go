@@ -3,6 +3,7 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -113,6 +114,7 @@ Thresholds are configured in gate.yaml (graph_freshness section).`,
 			for _, l := range res.OffendingLayers() {
 				_, _ = fmt.Fprintf(errs, "graph check: layer %s verdict=%s value=%d threshold=%d — %s\n",
 					l.Layer, l.Verdict, l.Value, l.Threshold, l.Reason)
+				writeLayerAttribution(errs, l)
 			}
 			// REQ-GF-004: stale or absent exits 1, naming the offending layer.
 			return &exitCodeError{code: exitStaleOrAbsent, msg: "graph freshness check failed (stale or absent layer)"}
@@ -123,6 +125,43 @@ Thresholds are configured in gate.yaml (graph_freshness section).`,
 	cmd.Flags().BoolVar(&asJSON, "json", false, "machine-readable JSON report on stdout")
 
 	return cmd
+}
+
+// writeLayerAttribution renders a failing layer's attribution beneath its
+// verdict line: the change's own described-worthy contribution (REQ-GFC-007)
+// and the paths driving the cumulative count (REQ-GFC-008).
+//
+// This is the surface that matters operationally. CI runs `moai graph check`
+// and the lane reads its stderr, so a report that carries the attribution in
+// the struct but renders only the count leaves the reader exactly where this
+// SPEC found them: unable to tell an inherited red from one they caused.
+//
+// The contribution is REPORTED here, never gated on — the exit code is still
+// decided by the cumulative count alone.
+func writeLayerAttribution(errs io.Writer, l graph.LayerReport) {
+	switch {
+	case l.Contribution != nil:
+		base := l.ContributionBase
+		if len(base) > 9 {
+			base = base[:9]
+		}
+		verb := "originated by this change"
+		if *l.Contribution == 0 {
+			verb = "inherited — this change contributed none of it"
+		}
+		_, _ = fmt.Fprintf(errs, "  contribution: %d described-worthy file(s) vs first parent %s (%s)\n",
+			*l.Contribution, base, verb)
+	case l.ContributionAbsentReason != "":
+		// Absent, and said so. A fabricated 0 would read as the inheriting
+		// signature on every checkout that has no comparison base.
+		_, _ = fmt.Fprintf(errs, "  contribution: unmeasured — %s\n", l.ContributionAbsentReason)
+	}
+	for _, path := range l.DrivingPaths {
+		_, _ = fmt.Fprintf(errs, "    %s\n", path)
+	}
+	if l.DrivingPathsOmitted > 0 {
+		_, _ = fmt.Fprintf(errs, "    ... and %d more (listing bounded)\n", l.DrivingPathsOmitted)
+	}
 }
 
 // graphCheckThresholds resolves thresholds from gate.yaml graph_freshness.
