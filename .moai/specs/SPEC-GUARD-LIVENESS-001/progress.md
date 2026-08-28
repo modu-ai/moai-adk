@@ -762,7 +762,7 @@ Every row names the command that confirms it, so a sync-phase auditor re-runs th
 
 ```yaml
 run_complete_at: 2026-08-28
-run_commit_sha: pending-backfill-m4
+run_commit_sha: 0c7c61740
 run_status: complete
 ac_pass_count: 13
 ac_fail_count: 0
@@ -795,4 +795,191 @@ $ git diff 8fa67f647~1 HEAD -- .moai/specs/SPEC-GUARD-LIVENESS-001/spec.md
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+**Tree.** Every measurement below was taken on `WT-guard-liveness` at **`6cde9ae08`** (the template-mirror commit, five commits above the `origin/develop` merge `a0a5b84f3`) plus this sync commit's own working-tree changes, in the worktree `.claude/worktrees/t333`. No cell was carried from a run-phase milestone: every command quoted here was re-run in this phase, on this tree.
+
+**Deliverable.** One sync commit carrying: the `spec.md` frontmatter transition, the `§E.3` `run_commit_sha` backfill, this section, one `CHANGELOG.md` `[Unreleased] → Added` entry, and one `@MX:WARN` + `@MX:REASON` annotation in `internal/hook/session_start_guard_liveness.go`. No Go behaviour changed — the MX annotation is comment-only. No file under `internal/template/templates/` was touched, so `make build` was not required and no regenerated asset is in this commit.
+
+### Status transition — what moved, and what has no field to move
+
+The 3-phase close's `implemented` half is applied here; the `completed` half is **deliberately withheld**. This card has not merged: its branch is unpushed, no CI has judged any of its five commits, and the lead integrates it. Marking `completed` on an unmerged branch would assert a close that no integration has confirmed.
+
+Only `spec.md` carries YAML frontmatter in this SPEC. `plan.md`, `acceptance.md`, and `progress.md` were authored without a frontmatter block at plan-phase, so there is no `status:` field on them to transition — the same fact `§E.3` records for the run-phase `draft → in-progress` move. Adding one now would be authoring body structure into artifacts this phase may not modify, so it was not done.
+
+```
+$ grep -c '^---$' .moai/specs/SPEC-GUARD-LIVENESS-001/plan.md
+0
+$ sed -n '5p;7p' .moai/specs/SPEC-GUARD-LIVENESS-001/spec.md
+status: implemented
+updated: 2026-08-28
+```
+
+`updated:` already read `2026-08-28` and is correct for this commit's date; it was left as-is rather than rewritten to the same value.
+
+### CHANGELOG emission — the three B12 self-tests, run before drafting
+
+**(1) Pre-emission duplicate check.** Zero existing references, so this is a first emission and not a parallel-session duplicate:
+
+```
+$ grep -c 'SPEC-GUARD-LIVENESS-001' CHANGELOG.md
+0
+```
+
+**(2) AC count match against `acceptance.md`, the SSOT.** Thirteen distinct AC identifiers, which is what the entry claims. **The count is non-zero, so the comparison is not vacuous** — a selector returning 0 would have made `0 == 0` pass while measuring nothing:
+
+```
+$ grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' .moai/specs/SPEC-GUARD-LIVENESS-001/acceptance.md | sort -u | wc -l
+      13
+```
+
+The thirteen are `AC-GDL-001` … `AC-GDL-013`, contiguous with no gaps, matching `§E.3`'s matrix row-for-row.
+
+**(3) File-path verification.** Every path named in the entry was listed before the entry was written:
+
+```
+$ ls internal/guardliveness/
+advisory.go  contract.go  evaluator.go  store.go  (+ 9 _test.go files)
+$ ls internal/hook/session_start_guard_liveness.go
+internal/hook/session_start_guard_liveness.go
+$ ls .claude/rules/moai/development/verification-completeness.md \
+     internal/template/templates/.claude/rules/moai/development/verification-completeness.md
+(both present, 14107 bytes each)
+```
+
+### The template mirror divergence M4 reported is closed
+
+`§E.2` M4 reported the local rule and its template mirror as divergent and explicitly left the decision to an operator. That decision was taken before this phase and landed as `6cde9ae08`: the clause was mirrored into the template tree. Re-measured here rather than taken from the commit message:
+
+```
+$ diff -q .claude/rules/moai/development/verification-completeness.md \
+          internal/template/templates/.claude/rules/moai/development/verification-completeness.md
+(no output; rc=0)
+```
+
+The `plan.md` §D no-touch constraint was correct for `internal/` code and wrong for this doctrine clause: a rule edited locally without its mirror is deleted by the next `moai update`. That is recorded as a scope correction, not as a constraint violated quietly.
+
+### MX sweep — one tag added, and the two the protocol did not call for
+
+The run phase had already annotated the evaluator's refresh goroutine (`internal/guardliveness/evaluator.go:149`). The sweep found one more surface the protocol names and two it does not.
+
+**Added — `@MX:WARN` + `@MX:REASON` on the async render goroutine** (`internal/hook/session_start_guard_liveness.go`). It is the second of the deliverable's two `go func()` sites and the only one that was unannotated:
+
+```
+$ grep -n 'go func()' internal/guardliveness/*.go internal/hook/session_start_guard_liveness.go | grep -v _test
+internal/guardliveness/evaluator.go:157:	go func() {
+internal/hook/session_start_guard_liveness.go:173:	go func() {
+```
+
+The `@MX:REASON` states the hazard rather than only the mitigation: an abandoned read still writes its render record, so the operator sees nothing while the entry is marked announced — the residual risk `§E.2` M3 records, now carried at the code site where a later reader will meet it.
+
+**Not added — `@MX:ANCHOR`.** The threshold is fan_in ≥ 3 non-test callers. The most-called exported symbol in the package has two:
+
+```
+$ grep -rn 'Partition()' internal/ --include='*.go' | grep -v _test.go
+internal/guardliveness/contract.go:108:func (r Result) Partition() ([]Entry, error) {
+internal/guardliveness/contract.go:148:	nonClean, err := r.Partition()
+internal/guardliveness/advisory.go:70:	nonClean, err := s.Result.Partition()
+```
+
+Two call sites plus the declaration. The package's only external consumer is `internal/hook/session_start_guard_liveness.go`, whose eleven references spread across nine distinct symbols. No symbol reaches three.
+
+**Not added — `@MX:TODO`.** The trigger is an untested public function. Per-function coverage was measured rather than inferred from the package total; no function in the package is at 0%:
+
+```
+$ go test -count=1 -coverprofile=/tmp/gl.cov ./internal/guardliveness/ ; go tool cover -func=/tmp/gl.cov
+... 23 functions, lowest 55.0% (store.write, unexported), lowest exported 75.0% (DefaultStore)
+total:  (statements)  88.2%
+```
+
+No bulk annotation was applied.
+
+### README and docs-site — no update, and why
+
+**No user-facing documentation change is warranted, and this is a finding rather than an omission.** The deliverable adds no hook event, no wrapper script, no `settings.json` key, no CLI verb, and no configuration surface; the one rule file it edits is path-scoped doctrine that ships through the template tree and is not described in the site. Measured:
+
+```
+$ grep -rniE 'guard.?liveness|verification-completeness' docs-site README.md README.ko.md README.ja.md README.zh.md
+(no output; rc=1)
+```
+
+The stronger reason is the producer gap below: `guardliveness.Unwired()` is what every production activation reaches, so on a real tree nothing is persisted and the advisory renders nothing. Documenting an operator-visible advisory now would describe behaviour that does not yet occur — a documentation claim ahead of its mechanism, which is this SPEC's own subject inverted. The docs-site's four-locale obligation therefore does not fire, and no `docs-site/` file was opened.
+
+### Sync-phase verification (re-run on this tree, this phase)
+
+```
+$ go build ./...                                                   → rc=0
+$ go vet ./internal/guardliveness/... ./internal/hook/             → rc=0
+$ gofmt -l internal/hook/session_start_guard_liveness.go internal/guardliveness
+(no output)
+$ go test -count=1 ./internal/guardliveness/
+ok  	github.com/modu-ai/moai-adk/internal/guardliveness	0.912s
+$ go test -count=1 ./internal/hook/
+ok  	github.com/modu-ai/moai-adk/internal/hook	30.235s
+```
+
+Invariants, re-measured rather than carried:
+
+```
+$ grep -rnE '\b(OK|STALE|UNKNOWN|UNDECLARED|UNREADABLE|UNRESOLVED|ORPHANED)\b' \
+    internal/guardliveness/{contract,evaluator,store,advisory}.go \
+    internal/hook/session_start_guard_liveness.go \
+  | grep -v '^[^:]*:[0-9]*:[[:space:]]*//'
+(no output; rc=1)
+
+$ grep -l '^  schedule:' .github/workflows/* | wc -l
+       3
+
+$ grep -rn -A2 'EventType() EventType' internal/hook --include='*.go' | grep -v _test | grep -c 'EventSessionStart'
+4
+```
+
+The §D.2 seam instrument still covers the same five non-test source files — the sync commit added a comment to one of them and no new source file — and still returns rc=1. The `@MX:REASON` text was checked against the instrument's vocabulary before it was written; it names none of the seven reserved values.
+
+Working tree before staging carried exactly the three files this commit touches and no foreign entry: `progress.md`, `spec.md`, and `internal/hook/session_start_guard_liveness.go`, all modified, nothing untracked. `CHANGELOG.md` is edited after this block is written and joins the staged set afterwards.
+
+`internal/hook`'s suite has been observed to rewrite `.moai/specs/SPEC-HOOK-PRETOOL-PERF-001/{baseline,postchange}.md`; it did not this run — neither path appeared in the working-tree listing — so no restore was needed.
+
+### Audit-ready signal
+
+```yaml
+sync_complete_at: 2026-08-28
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+b12_self_test_a: pass (grep -c 'SPEC-GUARD-LIVENESS-001' CHANGELOG.md → 0, no duplicate)
+b12_self_test_b: pass (13 distinct AC ids in acceptance.md, non-zero, matches the entry's claim)
+b12_self_test_c: pass (every path named in the entry listed via ls before drafting)
+changelog_entry_position: "[Unreleased] → Added, first entry of the section"
+frontmatter_status_transitions:
+  spec.md: in-progress → implemented
+  plan.md: not-applicable (no frontmatter block authored at plan-phase)
+  acceptance.md: not-applicable (no frontmatter block authored at plan-phase)
+  progress.md: not-applicable (no frontmatter block authored at plan-phase)
+  completed_transition: withheld — branch unmerged, no CI verdict read; the lead integrates
+mx_sweep:
+  added: 1 (@MX:WARN + @MX:REASON, internal/hook/session_start_guard_liveness.go async render goroutine)
+  anchor_not_added: max non-test fan_in is 2 (Result.Partition), below the >=3 threshold
+  todo_not_added: no function in internal/guardliveness measures 0% coverage
+canary_compliance_check: not-applicable — this SPEC defines no forward-looking policy that its own sync tests
+docs_surface_decision: no README or docs-site change; no user-visible surface added, and the producer is unwired so the advisory renders nothing on a real tree
+template_mirror: parity restored at 6cde9ae08, re-verified rc=0 this phase
+ci_verdict: not-read — nothing pushed, no run exists for any of the five commits
+```
+
+### Gaps — what the sync phase did NOT observe
+
+These are carried forward from the run phase because they remain true, not because they were re-copied without checking.
+
+- **The producer does not exist.** `guardliveness.Unwired()` is what every production activation reaches, so on a real tree nothing is persisted and the advisory is silent. **Every rendering assertion in this SPEC is against a seeded or stubbed result.** The producer is `SPEC-GUARD-STATE-MODEL-001`, card **t347**, and is out of this card's scope by construction (`spec.md` §E). Until it lands, this deliverable's operator-visible behaviour is unexercised on any real tree.
+- **The async render branch is unexercised.** Tests run with `deferredScansAsync=false`, so the timer/goroutine path — the one that actually enforces the 250 ms join bound in production, and the one this phase's `@MX:WARN` annotates — never runs under test. The bound is asserted as a declared constant and as elapsed time on the inline path; the abandonment behaviour at the bound is not measured.
+- **CI has not judged any of these commits.** Nothing was pushed, so there is no full suite, no cross-platform test matrix, and no `Graph Freshness` verdict for `8fa67f647`, `24ecc7e65`, `a004a35ab`, `0c7c61740`, `6cde9ae08`, or this sync commit. `origin/develop` additionally carries a standing red (`Graph Freshness`, card t322), so whoever reads CI later **must count the failure set rather than assume it is one row**, and must separate an inherited red from a new one before attributing anything to this card.
+- **`Render` in `contract.go` is a caller-less second renderer.** It predates `Advisory`, is still exercised by M1's contract tests, and re-renders the full non-clean list. Nothing stops a later caller reaching for it and undoing M3's noise reduction.
+- **A render abandoned at the 250 ms join bound still writes its render record.** The operator sees nothing while the entry is marked announced, so it appears as a standing count on the next session. Now annotated at the code site; still not fixed and still not measured.
+- **`golangci-lint` was not run locally at M3, at M4, or in this phase.** It ran at M1 and M2 (0 issues both times). `go vet` and `gofmt` were run here; the lint gate is CI's, and CI has not run.
+- **`sync_commit_sha` is a placeholder.** A commit cannot name its own hash, and the delegation scopes this phase to a single commit, so no follow-up backfill commit was made. The field reads `pending-backfill-sync` and is **not** a recorded SHA; whoever integrates this card backfills it or accepts it as open.
+- **Whether the doctrine clause is read.** Nothing measures whether an author writing a check next month applies §1.3 — the same bounded claim AC-GDL-007 makes about the advisory.
+
+### Residual risk
+
+- **The close is half-applied by design, and a reader could mistake that for an oversight.** `spec.md` reads `implemented`, not `completed`. If this card merges and nobody performs the terminal transition, the SPEC sits at `implemented` indefinitely and the drift detector — which treats V3R6 SPECs as subject to lifecycle invariants — has a live SPEC with no close commit. The transition is owed at integration.
+- **The whole deliverable is a surface with nothing behind it.** Four milestones of mechanically-verified machinery render nothing on any real tree until t347 lands. That is the declared split and not a defect, but it means this card's merge adds a silent code path, and a silent code path is what this SPEC exists to make visible. Nothing here detects that t347 never arrives.
+- **The mirrored doctrine clause now ships to every downstream project.** `verification-completeness.md` §1.3 travels through the template tree, so the continued-firing obligation reaches users whose projects have none of this machinery. It is doctrine, so it costs them only reading — but it names a completion act (a stale-guard signal that arrives unasked) that no shipped mechanism yet provides.
+- **The three artifacts without frontmatter stay outside the schema.** `plan.md`, `acceptance.md`, and `progress.md` carry no `status:`, so no lint rule and no drift detector reads a lifecycle state from them. This SPEC's state lives entirely in `spec.md`; a tool that samples any other artifact learns nothing.

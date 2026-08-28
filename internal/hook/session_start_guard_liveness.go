@@ -167,6 +167,17 @@ func guardLivenessAdvisory(root string) string {
 		return read()
 	}
 
+	// @MX:WARN: [AUTO] unjoined background goroutine — a read that outruns
+	// guardLivenessJoinBound is abandoned by the select below and keeps running.
+	// @MX:REASON: session start is latency-bounded, so the read cannot be
+	// awaited without spending the input-lag budget. Bounded because the read is
+	// non-mutating with respect to the working tree and the forge (REQ-GDL-008)
+	// and its channel is buffered, so an abandoned goroutine sends once and
+	// exits rather than leaking. NOT harmless: an abandoned read still writes
+	// its render record, so the operator sees nothing while the entry is marked
+	// announced and appears as a standing count next session (progress.md §E.2
+	// M3 residual risk).
+	//
 	// Buffered so a read that finishes after the bound has elapsed can still
 	// send and exit rather than leaking blocked on an abandoned channel.
 	rendered := make(chan string, 1)
