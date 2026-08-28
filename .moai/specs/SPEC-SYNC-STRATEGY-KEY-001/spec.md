@@ -2,9 +2,9 @@
 id: SPEC-SYNC-STRATEGY-KEY-001
 title: "Unify git delivery strategy on git_strategy.<mode>.workflow — retire github.spec_git_workflow, clean the value axis, route WT-* lanes, stop on unmatched branches"
 version: "0.2.0"
-status: implemented
+status: completed
 created: 2026-08-27
-updated: 2026-08-27
+updated: 2026-08-28
 author: manager-spec (card t303)
 priority: P1
 phase: "v3.2.0"
