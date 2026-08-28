@@ -2,7 +2,7 @@
 id: SPEC-BACKLOG-LOCK-BUDGET-001
 title: "Acceptance criteria — queue lock-wait budget (card t354)"
 version: "0.1.0"
-status: in-progress
+status: implemented
 created: 2026-08-28
 updated: 2026-08-28
 author: manager-spec

@@ -163,4 +163,96 @@ m1_to_mN_commit_strategy: single-commit   # M1-M5 land together; the change is o
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+**Baseline attribution.** Every figure below was measured by the orchestrator in THIS worktree
+(`.claude/worktrees/t354`), on branch `WT-concurrency-stress`, against the **rebased** tree at HEAD
+`a680ea6e8` — the implementation commit `da6b3b438` replayed onto `origin/develop` at `77b2bcae6`.
+`git rev-list --count --left-right origin/develop...HEAD` read `0	1` (one commit ahead, clean).
+The §E.2 run-phase figures were taken on the pre-rebase tree at `e08d5e55c` and are **not**
+re-cited here as sync-phase evidence; the table below is a fresh measurement on the tree that will
+be integrated.
+
+### Claim / Evidence / Baseline-attribution
+
+| Claim | Command | Observed output |
+|---|---|---|
+| The package builds and vets clean on the rebased tree | `go vet ./internal/kanban/...` | exit 0, no output |
+| The whole package passes under `-race` | `go test ./internal/kanban/ -race -count=1 -v` | `ok github.com/modu-ai/moai-adk/internal/kanban 20.725s`, zero `FAIL` lines |
+| The guard passes under repetition | `go test ./internal/kanban/ -run TestConcurrencyStress -race -count=5` | 5/5 PASS — `0.66 / 0.69 / 0.64 / 0.68 / 0.67 s` |
+| `TestConcurrencyStress` cost on the rebased tree | (from the whole-package `-v` run above) | `0.79 s` |
+| The three new guards pass | (from the whole-package `-v` run above) | `TestBoardLockWaitBudgetDerivedFromNamedInputs` PASS, `TestBoardLockRetryWaitIsNotLockstep` PASS, `TestBacklogLockStuckHolderSurfacesBoundedNamedError` PASS (1.69 s — it waits the 1.65 s budget out against a `t.Cleanup`-released holder; that duration is the design, not a hang) |
+| AC-BLB-004 holds by source read, not only by grep | direct read of `acquireBoardLockSerialized` (`board_store.go:155-173`) and `(*BacklogStore).acquireLock` (`backlog_store.go:719-745`) | Neither function carries a literal delay or a local retry ceiling; both bound by `boardLockWaitBudget` (`board_store.go:158`, `backlog_store.go:730`) and both call `boardLockRetryWait(attempt)` (`board_store.go:171`, `backlog_store.go:743`) |
+| The guard was not weakened | `git diff HEAD~1 HEAD -- internal/kanban/backlog_concurrency_test.go` | 0 lines — `writers`, `addsPerWriter`, and every assertion stand as they were |
+| No residual retired constant or literal sleep | `grep -n 'time\.Sleep([0-9]\|boardLockRetries\|boardLockRetryDelay' internal/kanban/board_store.go internal/kanban/backlog_store.go` | no output, exit 1 (zero hits) |
+
+**Margin comparison, pre vs post (worst observation of the whole-package `-race` form).**
+
+| | Worst `TestConcurrencyStress` | Budget | Consumed |
+|---|---|---|---|
+| Pre-change (§E.2, HEAD `e08d5e55c`) | 0.86 s | 1.025 s (retired) | **84%** |
+| Post-change (§E.2, HEAD `e08d5e55c` + diff) | 1.02 s | 1.65 s (derived) | **62%** |
+
+**What this establishes, stated exactly.** No regression, plus a margin improvement from 84% to
+62% of the wait budget on the machine that measured it. It does **not** establish that the CI
+defect is closed. The failure does not reproduce on this machine — it passed 5/5 and 3/3 both
+before and after the change — so no local run can distinguish "fixed" from "still latent".
+
+### AC PASS/FAIL matrix at sync
+
+| AC | Status | Basis |
+|---|---|---|
+| AC-BLB-001 | PASS | `TestBoardLockWaitBudgetDerivedFromNamedInputs` PASS on the rebased tree |
+| AC-BLB-002 | PASS | `TestBoardLockRetryWaitIsNotLockstep` PASS on the rebased tree |
+| AC-BLB-003 | PASS | `TestBacklogLockStuckHolderSurfacesBoundedNamedError` PASS, returned at 1.69 s inside the `budget × 2` = 3.3 s bound |
+| AC-BLB-004 | PASS | zero-hit grep + direct read of both functions (row above) |
+| AC-BLB-005 | PASS | 5/5 isolated + whole-package PASS, zero adds failed under contention |
+| AC-BLB-006 | **PENDING — not claimable in sync-phase** | CI on the PR head is the binding evidence (`spec.md` §F, `acceptance.md` AC-BLB-006). Nothing in this section, and nothing that can be run in this worktree, discharges it. It is **not** softened and **not** marked PASS. |
+
+**AC-BLB-006 remains PENDING, in as many words.** The criterion requires both the
+`Test (ubuntu-latest)` job and the `Race Test` job green at `run_attempt=1` on the PR head, with a
+log grep for `failed under contention` returning zero hits. No push, no PR, and no CI run has
+occurred for this card at the time of this commit. Because the defect is a contention tail event, a
+green re-run would not close it either — `attempt=1` is required by the criterion. The SPEC
+therefore closes at `implemented`, **not** `completed`: the terminal transition waits on evidence
+this session cannot read.
+
+### Gaps (explicitly NOT observed in sync-phase)
+
+- **CI on the PR head** — the AC-BLB-006 binding evidence. Not run.
+- **`golangci-lint`** — not run in sync-phase either. Only `go vet ./internal/kanban/...`.
+- **Windows** — `board_lock_windows.go` uses atomic-create rather than `flock`. The wait policy is
+  platform-neutral and shared, but no Windows run was performed.
+- **Coverage** — no `-cover` run at sync.
+- **Full suite** — never run locally, by constraint. The full-suite verdict belongs to CI.
+
+### Residual risk
+
+- **A widened budget surfaces a genuinely stuck holder later** — 1.65 s instead of 1.025 s.
+  AC-BLB-003 measures the bound and the budget stays derived rather than merely large, but the
+  trade is real.
+- **The margin improvement is a single-machine observation.** 84% → 62% was measured here, on a
+  machine where the guard never failed. It predicts nothing about the CI machine's tail.
+- **The headroom factor 5 is a judgement, not a proof** — `spec.md` §F says why no closed-form
+  worst case exists for an unfair lock.
+- **Jitter is probabilistic in principle.** AC-BLB-002 asserts distinctness and bounds only; with a
+  10 ms span at nanosecond resolution across 32 draws the false-failure probability is vanishing
+  rather than zero.
+
+```yaml
+sync_complete_at: 2026-08-28
+sync_commit_sha: pending-backfill-sync
+sync_status: implemented-ci-pending
+b12_self_test_a: pass   # grep -c 'SPEC-BACKLOG-LOCK-BUDGET-001' CHANGELOG.md -> 0 (no duplicate entry)
+b12_self_test_b: pass   # AC ids in acceptance.md -> 6 distinct (AC-BLB-001..006); CHANGELOG entry states 6
+b12_self_test_c: pass   # every path claimed in the CHANGELOG entry verified present via ls
+changelog_entry_position: "[Unreleased] -> ### Fixed (top of section)"
+frontmatter_status_transitions:
+  spec_md: in-progress -> implemented
+  plan_md: in-progress -> implemented
+  acceptance_md: in-progress -> implemented
+  progress_md: n/a           # carries no frontmatter block
+  completed_transition: withheld   # AC-BLB-006 (CI on the PR head) is unread; the terminal close waits on it
+canary_compliance_check: n/a       # this SPEC defines no forward-looking policy that its own sync tests
+mx_tag_validation: not-applicable  # no new exported surface; the policy constants are unexported and the
+                                   # existing @MX:ANCHOR on openEngine (backlog_store.go) is untouched
+docs_surface: none                 # internal/kanban only; no CLI flag, no template mirror, no docs-site page
+```
