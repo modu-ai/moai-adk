@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -142,6 +143,34 @@ func (f BacklogFinding) SamePairAs(other BacklogFinding) bool {
 		(f.SubjectID == other.RelatedID && f.RelatedID == other.SubjectID)
 }
 
+// BacklogArchivedFinding is one archived finding plus the index it occupied
+// in Findings when its card was archived. The position is what makes a
+// restore return the record to the bytes it had rather than to an
+// equivalent-looking record with a different finding order.
+type BacklogArchivedFinding struct {
+	Finding  BacklogFinding `json:"finding"`
+	Position int            `json:"position"`
+}
+
+// BacklogArchiveEntry is one archived card: the row itself, the findings that
+// named it, and the position each occupied.
+//
+// The positions are load-bearing (REQ-TDG-002). `done` splices a row out of
+// the middle of the queue, so a restore that appended would return the same
+// SET of cards in a different ORDER — a record that reads correctly and is
+// not the record the operator had. Carrying the index costs one integer and
+// removes the whole class.
+//
+// The card's findings travel WITH it rather than in a parallel array: a
+// finding that outlives its subject points at nothing (the reason `done`
+// removed them in the first place), and keeping them inside the entry makes
+// "restore the card and everything recorded about it" one move.
+type BacklogArchiveEntry struct {
+	Item     BacklogItem              `json:"item"`
+	Position int                      `json:"position"`
+	Findings []BacklogArchivedFinding `json:"findings"`
+}
+
 // BacklogRecord is the backlog file's document shape. LastSeq is the
 // persisted id high-water mark — additive top-level, absent in files that
 // predate the field (derived from max present id on load). Findings is the
@@ -149,11 +178,137 @@ func (f BacklogFinding) SamePairAs(other BacklogFinding) bool {
 // older files, and always rendered as an array — never null, never an
 // omitted key — so a reader never has to tell "no findings" apart from "no
 // such feature".
+// Archived is the third additive top-level field, following the same
+// precedent again: absent in older files, always rendered as an array, and
+// invisible to every live-queue reader by CONSTRUCTION rather than by filter
+// — a reader that iterates Items cannot see an archived row, so no state
+// enum, no listing filter, and no analysis input had to change for it
+// (spec.md §B.1).
 type BacklogRecord struct {
-	Version  int              `json:"version"`
-	LastSeq  int              `json:"last_seq"`
-	Items    []BacklogItem    `json:"items"`
-	Findings []BacklogFinding `json:"findings"`
+	Version  int                   `json:"version"`
+	LastSeq  int                   `json:"last_seq"`
+	Items    []BacklogItem         `json:"items"`
+	Findings []BacklogFinding      `json:"findings"`
+	Archived []BacklogArchiveEntry `json:"archived"`
+}
+
+// ArchivedIndex returns the index of id in the archive, or -1.
+func (r *BacklogRecord) ArchivedIndex(id string) int {
+	for i, entry := range r.Archived {
+		if entry.Item.ID == id {
+			return i
+		}
+	}
+	return -1
+}
+
+// itemIndex returns the index of id among the live items, or -1.
+func (r *BacklogRecord) itemIndex(id string) int {
+	for i, it := range r.Items {
+		if it.ID == id {
+			return i
+		}
+	}
+	return -1
+}
+
+// ArchiveCard moves the addressed card and every finding naming it out of the
+// live queue and into the archive, recording the position each occupied.
+//
+// This is what `done` performs instead of discarding. The findings move with
+// the card for the reason they were previously deleted with it — a finding
+// that outlives its subject points at a card the operator can no longer see —
+// but moving rather than deleting is what makes the act reversible, and the
+// relations are operator judgment that a discard loses silently (spec.md §A.2).
+func (r *BacklogRecord) ArchiveCard(id string) error {
+	if r.ArchivedIndex(id) >= 0 {
+		return fmt.Errorf("backlog item %s is already archived", id)
+	}
+	at := r.itemIndex(id)
+	if at < 0 {
+		return fmt.Errorf("no backlog item %s", id)
+	}
+
+	entry := BacklogArchiveEntry{
+		Item:     r.Items[at],
+		Position: at,
+		Findings: []BacklogArchivedFinding{},
+	}
+	kept := make([]BacklogFinding, 0, len(r.Findings))
+	for i, f := range r.Findings {
+		if f.Names(id) {
+			entry.Findings = append(entry.Findings, BacklogArchivedFinding{Finding: f, Position: i})
+			continue
+		}
+		kept = append(kept, f)
+	}
+	r.Findings = kept
+	r.Items = append(r.Items[:at:at], r.Items[at+1:]...)
+	r.Archived = append(r.Archived, entry)
+	return nil
+}
+
+// RestoreCard moves an archived card and its findings back into the live
+// queue at the positions they held, and REMOVES the archive entry so each row
+// has exactly one home (REQ-TDG-016).
+//
+// It refuses when the id has since been reissued to a different live card
+// (REQ-TDG-013): overwriting the live row would destroy a card nobody asked
+// to lose, and splitting one id across two cards is worse than the mistake
+// the restore is undoing.
+func (r *BacklogRecord) RestoreCard(id string) error {
+	at := r.ArchivedIndex(id)
+	if at < 0 {
+		return fmt.Errorf("no archived backlog item %s", id)
+	}
+	if live := r.itemIndex(id); live >= 0 {
+		return fmt.Errorf("cannot restore %s: the id has been reissued to a live card %q — refusing rather than overwriting it",
+			id, r.Items[live].Text)
+	}
+
+	entry := r.Archived[at]
+	r.Items = insertBacklogItem(r.Items, entry.Item, entry.Position)
+	// Ascending position order: each insertion shifts the ones after it, so
+	// restoring low indexes first reproduces the original layout.
+	sorted := append([]BacklogArchivedFinding(nil), entry.Findings...)
+	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].Position < sorted[j].Position })
+	for _, af := range sorted {
+		r.Findings = insertBacklogFinding(r.Findings, af.Finding, af.Position)
+	}
+	r.Archived = append(r.Archived[:at:at], r.Archived[at+1:]...)
+	return nil
+}
+
+// insertBacklogItem inserts it at pos, clamping into range. Clamping rather
+// than failing is deliberate: the round trip this SPEC guarantees is
+// `done` immediately followed by `undone`, where the position is exact. A
+// restore taken after other cards moved has no exact answer, and refusing
+// there would make the archive unrecoverable for the operator who waited.
+func insertBacklogItem(items []BacklogItem, it BacklogItem, pos int) []BacklogItem {
+	if pos < 0 {
+		pos = 0
+	}
+	if pos > len(items) {
+		pos = len(items)
+	}
+	out := make([]BacklogItem, 0, len(items)+1)
+	out = append(out, items[:pos]...)
+	out = append(out, it)
+	return append(out, items[pos:]...)
+}
+
+// insertBacklogFinding inserts f at pos, clamping into range (see above).
+func insertBacklogFinding(findings []BacklogFinding, f BacklogFinding, pos int) []BacklogFinding {
+	if pos < 0 {
+		pos = 0
+	}
+	if pos > len(findings) {
+		pos = len(findings)
+	}
+	out := make([]BacklogFinding, 0, len(findings)+1)
+	out = append(out, findings[:pos]...)
+	out = append(out, f)
+	return append(out, findings[pos:]...)
 }
 
 // HasFindingTuple reports whether a finding carrying the same
@@ -560,17 +715,20 @@ func (s *BacklogStore) Add(text string) (*BacklogItem, int, error) {
 }
 
 // acquireBacklogLockSerialized acquires the backlog's sibling lock, retrying
-// contention for the same bounded window as the board lock (25ms x 40 ~ 1s):
-// a mutation racing a short-lived holder serializes behind it instead of
-// failing, while a genuinely stuck holder surfaces as an error rather than a
-// hang. The timeout error names the lock artifact so the operator can act on
-// the right file.
+// contention against the SAME shared wait policy as the board lock
+// (boardLockWaitBudget and boardLockRetryWait, board_store.go — REQ-BLB-006:
+// one policy, both call sites, so a change to either the budget or the
+// backoff applies here without a second edit): a mutation racing a
+// short-lived holder serializes behind it instead of failing, while a
+// genuinely stuck holder surfaces as an error rather than a hang. The timeout
+// error names the lock artifact so the operator can act on the right file.
 func (s *BacklogStore) acquireLock() (*BoardLock, error) {
 	if err := os.MkdirAll(filepath.Dir(s.path), 0o755); err != nil {
 		return nil, fmt.Errorf("mutate backlog %s: creating dir: %w", s.path, err)
 	}
 	var lastErr error
-	for attempt := 0; attempt <= boardLockRetries; attempt++ {
+	deadline := time.Now().Add(boardLockWaitBudget)
+	for attempt := 0; ; attempt++ {
 		impl, err := acquireBoardLockImpl(s.LockPath())
 		if err == nil {
 			return &BoardLock{path: s.LockPath(), impl: impl}, nil
@@ -579,9 +737,11 @@ func (s *BacklogStore) acquireLock() (*BoardLock, error) {
 			return nil, fmt.Errorf("mutate backlog %s: lock %s: %w", s.path, s.LockPath(), err)
 		}
 		lastErr = err
-		time.Sleep(boardLockRetryDelay)
+		if !time.Now().Before(deadline) {
+			return nil, fmt.Errorf("mutate backlog %s: lock %s: %w", s.path, s.LockPath(), lastErr)
+		}
+		time.Sleep(boardLockRetryWait(attempt))
 	}
-	return nil, fmt.Errorf("mutate backlog %s: lock %s: %w", s.path, s.LockPath(), lastErr)
 }
 
 // normalizeBacklogRecord establishes the invariants every in-memory record
@@ -598,8 +758,24 @@ func normalizeBacklogRecord(rec *BacklogRecord) {
 	if rec.Findings == nil {
 		rec.Findings = []BacklogFinding{}
 	}
+	if rec.Archived == nil {
+		rec.Archived = []BacklogArchiveEntry{}
+	}
+	for i := range rec.Archived {
+		if rec.Archived[i].Findings == nil {
+			rec.Archived[i].Findings = []BacklogArchivedFinding{}
+		}
+	}
+	// The mark must clear every id the record HOLDS, archived rows included:
+	// a hand-edited low last_seq beside an archived t7 would otherwise reissue
+	// t7 to a new card and make that card's restore unreachable (REQ-TDG-013).
 	if max := maxPresentBacklogSeq(rec.Items); max > rec.LastSeq {
 		rec.LastSeq = max
+	}
+	for _, entry := range rec.Archived {
+		if n, ok := parseBacklogSeq(entry.Item.ID); ok && n > rec.LastSeq {
+			rec.LastSeq = n
+		}
 	}
 }
 

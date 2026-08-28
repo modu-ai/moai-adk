@@ -80,7 +80,33 @@ func runTodoExportJSON(cmd *cobra.Command) error {
 	// caller can act on — the export itself already landed.
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "exported %d cards, %d findings to %s\n",
 		len(rec.Items), len(rec.Findings), target)
+	discloseArchiveDowngradeCost(cmd, rec)
 	return nil
+}
+
+// discloseArchiveDowngradeCost warns, on STDERR, that a release predating the
+// archive discards archived rows on its first write.
+//
+// The export deliberately CARRIES the archive (REQ-TDG-015): this file is the
+// downgrade route, and an export that silently dropped every archived card
+// would destroy exactly the rows the archive exists to preserve. What cannot
+// be prevented is what the older binary does next — it unmarshals into a
+// struct with no archive field, drops the unknown key, and re-serializes
+// without it. No code here runs inside that binary, so the loss can only be
+// made loud, which is what this line does.
+//
+// STDERR, not stdout: `internal/cli/todo.go:20-22` contracts one structured
+// stdout line per verb, and that line is the surface agents parse. A warning
+// printed there would corrupt a machine read to deliver a human message.
+func discloseArchiveDowngradeCost(cmd *cobra.Command, rec *kanban.BacklogRecord) {
+	if len(rec.Archived) == 0 {
+		return
+	}
+	_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
+		"note: this export carries %d archived card(s). A release predating the archive "+
+			"reads only the fields it knows, so it will discard them on its first write to the queue. "+
+			"Restore anything you still need with `moai todo undone <id>` before downgrading.\n",
+		len(rec.Archived))
 }
 
 // writeExportAtomic lands the export through a same-directory temp plus a

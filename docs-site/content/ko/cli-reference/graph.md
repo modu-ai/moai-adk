@@ -67,6 +67,8 @@ edges     metric=source-fingerprint-mismatch value=0 threshold=0 verdict=fresh
 
 mtime은 어디에서도 읽지 않습니다. 새 체크아웃은 모든 mtime을 초기화하므로 mtime 기반 지표는 방금 재생성된 것으로 오판합니다 — 그래서 모든 지표는 내용 해시, git diff, 지문뿐입니다.
 
+stale 판정에는 원인 첨부가 함께 옵니다. `codemaps` 층이 stale이면 stderr에 이 변경이 기여한 파일 수(`contribution`)와 측정 기준 커밋(`contribution_base`, 보통 `HEAD^1`)이 먼저 찍히고, 드리프트를 일으킨 경로가 최대 10개까지 나열되며 그 이상은 `... and N more`로 요약됩니다. `--json`에서는 같은 정보가 `contribution` · `contribution_base` · `driving_paths` · `driving_paths_omitted` 필드로 노출됩니다. 이 red를 물려받았을 뿐인지(기여 0) 직접 만들었는지(기여 >0)를 stderr 한 줄로 구분할 수 있습니다.
+
 ## moai graph stamp codemaps
 
 ```bash
