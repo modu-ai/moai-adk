@@ -636,9 +636,162 @@ ok  	github.com/modu-ai/moai-adk/internal/hook
 - **The record and the verdict can disagree about what exists.** They are separate files with no cross-check: a store where the verdict was written and the record was not — or the reverse, after a partial failure — yields a render that treats entries as new or as standing on the strength of a file that does not describe the same measurement. Each write is atomic individually; the pair is not.
 - **`Render` in `contract.go` is now a second renderer with no caller.** It predates `Advisory`, is still exercised by M1's contract tests, and re-renders the full non-clean list. Nothing stops a later caller from reaching for it and reintroducing the noise profile M3 removes.
 
+### M4 — doctrine
+
+**Tree.** Every measurement below was taken on `WT-guard-liveness` at **`a004a35ab`** (the M3 commit) plus M4's working-tree change, which the M4 commit carries, in the worktree `.claude/worktrees/t333`.
+
+**Deliverable.** One insertion into `.claude/rules/moai/development/verification-completeness.md`: a new `### 1.3 Continued firing` sub-section between §1.2's evidence block and `## 2`. No other file. No Go source. No file under `internal/template/templates/` — see the Gap below, which is the reason that is a statement rather than an oversight.
+
+**What the clause says, and why it is not a restatement of §1.2(c).** §1.2(a) asks WHEN a check must run to be meaningful and answers it once, at authoring time; the clause records that the answer does not keep holding, and names the three ways a live check goes quiet — trigger, deployment, selection — each with the observed instance behind it. It states the distinction the whole card rests on: this is **absent execution**, not suppressed failure, so §1.2(c)'s reachability has nothing to route. It closes with the completion act (a stale-guard signal that arrives unasked) and the general test: *any check whose non-execution is indistinguishable from its success has this defect.*
+
+#### RED, before the clause existed
+
+```
+$ grep -nE "last.fired|continued.firing|stopped firing|liveness|stale guard" \
+    .claude/rules/moai/development/verification-completeness.md
+(no output; rc=1)
+```
+
+Measured on `a004a35ab`, not carried from the `091966c55` cell in `acceptance.md`. This same command is the criterion's own discriminator, so the baseline rc=1 is what makes the rc=0 below mean something.
+
+#### AC-GDL-009 — the doctrine addition is additive only
+
+**(a) zero deleted lines:**
+
+```
+$ git diff --numstat a004a35ab -- .claude/rules/moai/development/verification-completeness.md
+48	0	.claude/rules/moai/development/verification-completeness.md
+```
+
+**(b) the clause is present, matched by the discriminator that returned rc=1 on the baseline:**
+
+```
+$ grep -nE "last.fired|continued.firing|stopped firing|liveness|stale guard" \
+    .claude/rules/moai/development/verification-completeness.md
+101:continued-firing answer: how a reader learns the check has stopped firing, as a stale-guard signal
+106:the answer. Liveness that answers on demand is not liveness; it is a second thing to remember to
+(rc=0)
+```
+
+**Mutant probe — the criterion's own: a commit that adds the clause and rewrites the surrounding section.** One existing line in §1.2(c) was reworded (`A red visible to nobody is a red that never happened.` → `A red nobody can see never happened.`) with the new clause left in place. The grep clause passed it; the zero-deletions clause caught it:
+
+```
+$ git diff --numstat a004a35ab -- .claude/rules/moai/development/verification-completeness.md
+49	1	.claude/rules/moai/development/verification-completeness.md
+$ grep -nE "last.fired|continued.firing|stopped firing|liveness|stale guard" ... > /dev/null; echo rc=$?
+rc=0
+```
+
+That is exactly the division the criterion predicts: the grep alone would have admitted a re-authoring, and `0` deletions is what enforces "extend, never re-author". The reword was reverted and the numstat re-measured at `48 0` above.
+
+**Two things deliberately not touched.** The file's `Version: 1.0.0` footer was left alone — bumping it is a modification of existing text and would have failed clause (a) for a bookkeeping reason. And the always-loaded statement duty of `rule-authoring.md` does not fire here: `verification-completeness.md` carries a loading-scope header declaring it path-scoped, so the 1,000-byte growth clause, which binds the four always-loaded slots, does not reach it.
+
+#### Invariants held (re-measured on this tree)
+
+```
+$ go build ./...                                          → exit 0
+$ GOOS=windows GOARCH=amd64 go build ./...                → exit 0
+$ GOOS=linux   GOARCH=amd64 go build ./...                → exit 0
+$ GOOS=windows GOARCH=amd64 go vet ./internal/guardliveness/... ./internal/hook/  → exit 0
+
+$ grep -l '^  schedule:' .github/workflows/* | wc -l
+       3
+
+$ grep -rn -A2 'EventType() EventType' internal/hook --include='*.go' | grep -v _test | grep -c 'EventSessionStart'
+4
+```
+
+M4 touched no Go source, so the §D.2 seam instrument's subject set is unchanged from M3 and its rc=1 result stands as measured there.
+
+#### Gaps — what M4 did NOT observe
+
+- **The template mirror was not updated, and it now diverges.** `internal/template/templates/.claude/rules/moai/development/verification-completeness.md` was byte-identical to the local rule before this commit and is not after it:
+
+  ```
+  $ diff -q .claude/rules/moai/development/verification-completeness.md \
+       internal/template/templates/.claude/rules/moai/development/verification-completeness.md
+  Files ... differ                                                        (rc=1)
+  ```
+
+  `plan.md` §D states that no file under `internal/template/templates/` is touched by this deliverable, and the delegation forbade resolving the tension unilaterally. **This is reported, not resolved.** The Template-First rule (`CLAUDE.local.md` §2) says the template is the source of truth for anything under `.claude/`, and a rule edited locally without its mirror is reverted by the next `moai update` (§2.3). Someone must decide which surface is right; the divergence is stated here so the decision is made rather than discovered.
+- **CI's verdict on this commit.** Not pushed (the delegation forbids it), so no full suite and no cross-platform test matrix — only the local cross-platform *builds* above. `origin/develop` carries a standing red (`spec.md` §A.9), so a future reading must separate an inherited red from a new one.
+- **Whether the clause is read.** It is doctrine in a path-scoped rule; nothing measures whether an author writing a check next month applies it. That is the same bounded claim AC-GDL-007 makes about the advisory.
+
+#### Residual risk
+
+- **A doctrine clause is the weakest of this SPEC's four deliverables.** M1-M3 are mechanically verified; this one asserts that a rule file contains a clause. Nothing checks that a new check specification actually answers it, and the rule set has no lint for its own §1.2 either.
+- **The clause's own test is not mechanized.** "Any check whose non-execution is indistinguishable from its success" is a question an author asks, not a grep. That is honest for a doctrine layer and it is the reason M1-M3 exist.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+### Run-phase AC matrix (13 criteria)
+
+Every row names the command that confirms it, so a sync-phase auditor re-runs the set rather than re-deriving it. Commands are run from the worktree root (`.claude/worktrees/t333`). `M` is the milestone that flipped the row; `Evidence` points at the §E.2 sub-section carrying the verbatim output.
+
+**Every `-run` selector below was executed and its PASS count counted before being written here.** A test-name regex matching zero tests still prints `ok` — the defect `verification-completeness.md` §1.1's evidence footnote names, and the one §A.7 records as this SPEC's own instance 6. Four rows were corrected during that check: the selectors first drafted for AC-GDL-001, AC-GDL-003, AC-GDL-012, and AC-GDL-013 named tests that do not exist under those names and would have swept nothing.
+
+| AC | M | Status | Confirming command | Evidence |
+|---|---|---|---|---|
+| AC-GDL-001 | M1 | PASS | `go test -count=1 -run 'TestPartitionFiresOnExactlyTheNonCleanEntries\|TestPartitionDoesNotConsultTheSurfaceFold\|TestPartitionRefusesAContractViolatingResult' ./internal/guardliveness/` (10 subtests PASS) + the §D.2 instrument (below) | §E.2 M1 |
+| AC-GDL-002 | M2 | PASS | `go test -count=1 -run 'TestAdvisoryRendersOnAnyNonCleanEntry\|TestAdvisoryIsSilentOnAConformingAllCleanResult' ./internal/guardliveness/` + the §D.2 instrument | §E.2 M2 |
+| AC-GDL-003 | M1 | PASS | `go test -count=1 -run TestSessionStart_GuardLivenessRefreshOnEveryActivation ./internal/hook/` (the two opposite-diff fixtures) + `go test -count=1 -run 'TestRefreshReachesTheQueryLayerOnEveryActivation\|TestUnwiredProducerIsStillReached' ./internal/guardliveness/` (the arrival count at the query layer) | §E.2 M1 |
+| AC-GDL-004 | M1 | PASS | `grep -l '^  schedule:' .github/workflows/* \| wc -l` → `3` (unchanged baseline) | §E.2 M1, M3, M4 |
+| AC-GDL-005 | M2 | PASS | `go test -count=1 -run TestSessionStart_GuardLivenessAdvisoryArrivesWithNoOperatorInput ./internal/hook/` | §E.2 M2; amended at M3, see §E.2 M3 |
+| AC-GDL-006 | M2 | PASS | `go test -count=1 -run TestAdvisoryAgeComesFromThePersistedTimestamp ./internal/guardliveness/` | §E.2 M2 |
+| AC-GDL-007 | M3 | PASS | `go test -count=1 -run 'TestAdvisoryLeadsWithChangesAndCollapsesStandingEntries\|TestAdvisoryFirstRenderTreatsEveryNonCleanEntryAsChanged\|TestAdvisoryRendersAStandingCountWhenNothingChanged\|TestAdvisoryTreatsAReclassifiedEntryAsChanged' ./internal/guardliveness/` | §E.2 M3 |
+| AC-GDL-008 | M3 | PASS | `go test -count=1 -run TestAdvisoryPathIssuesNoMutatingCall ./internal/guardliveness/` (clause a) + `go test -count=1 -run 'TestGuardLivenessRenderLeavesTheWorkingTreeByteIdentical\|TestGuardLivenessRenderPersistsItsRecordOutsideTheTree' ./internal/hook/` (clause b) | §E.2 M3 |
+| AC-GDL-009 | M4 | PASS | `git diff --numstat a004a35ab -- .claude/rules/moai/development/verification-completeness.md` → `48 0` (clause a) + `grep -nE "last.fired\|continued.firing\|stopped firing\|liveness\|stale guard" .claude/rules/moai/development/verification-completeness.md` → rc=0 (clause b) | §E.2 M4 |
+| AC-GDL-010 | M2 | PASS | `go test -count=1 -run 'TestGuardLivenessJoinsThroughTheExistingContributorHelper\|TestSessionStartHandlerCountIsUnchanged' ./internal/hook/` (both clauses, as tests) + `grep -rn -A2 'EventType() EventType' internal/hook --include='*.go' \| grep -v _test \| grep -c 'EventSessionStart'` → `4` (clause b, as a direct count) | §E.2 M2, M3, M4 |
+| AC-GDL-011 | M2 | PASS | `go test -count=1 -run 'TestGuardLivenessRenderIssuesNoForgeQuery\|TestGuardLivenessRenderJoinBoundIsDeclaredAndHonoured' ./internal/hook/` | §E.2 M2 |
+| AC-GDL-012 | M2 | PASS | `go test -count=1 -run 'TestOnActivationReturnsWithoutAwaitingTheRefresh\|TestRefreshResultIsPersistedForALaterActivation\|TestAFailedRefreshDoesNotOverwriteThePersistedResult' ./internal/guardliveness/` | §E.2 M2 |
+| AC-GDL-013 | M2 | PASS | `go test -count=1 -run 'TestAdvisoryNamesTheContractViolationAndNeverReportsAllClear\|TestSessionStart_GuardLivenessReportsAContractViolation' ./internal/guardliveness/ ./internal/hook/` (the five contract-negation fixtures plus the host-surface case) | §E.2 M2 |
+
+**Invariant rows** — asserted at every milestone, not owned by any one criterion:
+
+| Invariant | Status | Confirming command | Result |
+|---|---|---|---|
+| Seam instrument (§D.2) returns rc=1 over the deliverable's five non-test source files | PASS | `grep -rnE '\b(OK\|STALE\|UNKNOWN\|UNDECLARED\|UNREADABLE\|UNRESOLVED\|ORPHANED)\b' internal/guardliveness/{contract,evaluator,store,advisory}.go internal/hook/session_start_guard_liveness.go \| grep -v '^[^:]*:[0-9]*:[[:space:]]*//'` | no output, rc=1 |
+| Scheduled-workflow baseline unchanged | PASS | `grep -l '^  schedule:' .github/workflows/* \| wc -l` | `3` |
+| Session-start handler count unchanged | PASS | `grep -rn -A2 'EventType() EventType' internal/hook --include='*.go' \| grep -v _test \| grep -c 'EventSessionStart'` | `4` |
+| No file under `internal/template/templates/` modified | PASS **with a Gap** | `git diff --name-only 8fa67f647~1 HEAD -- internal/template/templates/` | no output — and the mirror consequently diverges; see §E.2 M4 Gaps |
+| Cross-platform build | PASS | `go build ./...`; `GOOS=windows GOARCH=amd64 go build ./...`; `GOOS=linux GOARCH=amd64 go build ./...` | exit 0, exit 0, exit 0 |
+| Package tests | PASS | `go test -count=1 ./internal/guardliveness/... ./internal/hook/` | `ok` both |
+| Coverage on the new package | PASS | `go test -count=1 -cover ./internal/guardliveness/...` | `coverage: 88.2% of statements` (threshold 85%) |
+
+### Audit-ready signal
+
+```yaml
+run_complete_at: 2026-08-28
+run_commit_sha: pending-backfill-m4
+run_status: complete
+ac_pass_count: 13
+ac_fail_count: 0
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: not-run
+l44_post_push_fetch: not-run
+new_warnings_or_lints_introduced: none observed (go vet exit 0, gofmt clean on the touched package; golangci-lint not run locally — CI's gate)
+cross_platform_build:
+  darwin_arm64: pass
+  linux_amd64: pass
+  windows_amd64: pass
+  windows_amd64_vet: pass
+total_run_phase_files: 21
+m1_to_mN_commit_strategy: one commit per milestone, four in sequence on WT-guard-liveness — 8fa67f647 (M1), 24ecc7e65 (M2), a004a35ab (M3), and the M4 commit this block rides. Not pushed; the delegation scopes the run phase to local commits.
+```
+
+**Two fields carry a value that is not a pass, stated rather than left to read as one.** `run_commit_sha` is a placeholder because a commit cannot name its own hash; it is backfilled in a follow-up. `l44_pre_commit_fetch` and `l44_post_push_fetch` read `not-run` because this run phase performs no push and the delegation forbids one — no fetch was issued, so recording `clean` would be a claim about a command that never ran.
+
+### Run-phase status transition
+
+`spec.md` moved `draft → in-progress` on the M1 commit (`8fa67f647`), frontmatter only:
+
+```
+$ git diff 8fa67f647~1 HEAD -- .moai/specs/SPEC-GUARD-LIVENESS-001/spec.md
+-status: draft
++status: in-progress
+```
+
+`plan.md`, `acceptance.md`, and `progress.md` carry **no YAML frontmatter** in this SPEC's plan-phase authoring, so there was no `status:` field on them to transition. `progress.md` is left at `in-progress`; the `in-progress → implemented → completed` close belongs to manager-docs and rides the single sync commit.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
