@@ -24,4 +24,12 @@ run_complete_at: 2026-08-28
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_complete_at: 2026-08-28
+sync_commit_sha: pending-backfill-t346
+sync_status: audit-ready
+changelog_entry_position: "CHANGELOG.md `## [Unreleased]` → `### Added`, first entry"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed"
+b12_self_test_a: "grep -c 'SPEC-CI-DOCTOR-BIN-001' CHANGELOG.md → 0 (pre-emission, clean)"
+b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' spec.md | sort -u → 4 distinct AC-CDB-001..004; CHANGELOG entry cites all 4 by id"
+b12_self_test_c: "internal/cli/doctor_agentemit_embed.go and internal/cli/doctor_agentemit_embed_test.go both verified present via ls before citing their paths"
