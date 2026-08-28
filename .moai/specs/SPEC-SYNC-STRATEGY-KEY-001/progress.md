@@ -146,3 +146,26 @@ The label says *the integration branch*; the literal hardcodes `develop`. Under 
 **OBS-3 cross-reference — card t333.** The open debt recorded above (the template-neutrality CI guard triggers on `pull_request: branches: [main]`, so under this repo's git-flow card branches it may not fire on CI) is the same trigger-axis family card **t333** covers — a guard that ran under one branch model and silently stops running under another. OBS-3 stays open here and is not resolved by this SPEC; t333 is the place it gets addressed.
 
 **F5 — NOT adopted; the audit's own claim failed measurement.** The audit reported that the new CHANGELOG bullet omits a trailing `MoAI` marker "both adjacent entries carry". Measured on this tree: neither adjacent entry carries one (`sed -n '12p'` and `sed -n '237p'` on CHANGELOG.md, tails read directly). An auditor verdict is itself subject to verification; this one was a false positive and is recorded as such rather than acted on.
+
+### Terminal transition — implemented -> completed (card t303, lane-2, 2026-08-28)
+
+The sync-phase §E.4 above deferred the `completed` call to the dispatching lead, pending an independent re-read of the landed change. That re-read has now run, on a tree at `d566ecc75` (= `origin/develop`, divergence `0 0`), and is recorded verbatim at `.moai/reports/t303/verdict.md`.
+
+```yaml
+spec_status_transition: implemented -> completed
+transitioned_by: card t303 lane, on the dispatching lead's instruction after the re-read
+measured_tree: d566ecc75
+landing_ancestry: "git merge-base --is-ancestor 0c7457f8d origin/develop -> exit 0"
+ac_recheck: "AC-SYK-001..012, all 12 PASS on this tree; commands and observed outputs in the verdict"
+ac_008_baseline_note: >-
+  The acceptance recipe pins baseline d29b8942e, which now predates unrelated template edits by
+  other cards. Re-running it verbatim would attribute those edits to this SPEC, so the probe was
+  scoped to this card's own commit range (0931789b6..63b4628a6): 239 diff lines, zero canonical-shape
+  SPEC tokens on added lines.
+open_debt_unchanged:
+  OBS-2: "OPEN -- interview-schema question overlap; not touched by this transition"
+  OBS-3: "OPEN -- neutrality guard trigger axis; card t333"
+carried_forward_elsewhere: "D6 (v3.3.0 fallback removal) and D7a (v3.2.0 release-note duty) are card t315's"
+```
+
+**F1 (acceptance-text defect, no implementation consequence).** AC-SYK-012 sub-criterion 1 requires `grep -rn 'spec_git_workflow' .claude/skills/ .moai/config/sections/system.yaml` to count **0** on the local tree. The measured count is **1**, and that one hit is the deprecation fallback sentinel at `delivery.md:33` — the very sentinel AC-SYK-003 requires to exist. Applied literally, AC-012.1 and AC-003 cannot both hold. AC-SYK-002 anticipated exactly this on the template side and carried an explicit refinement clause; AC-012.1 did not carry that clause across to the local side. The defect is in the acceptance wording, not in the implementation, and is recorded rather than silently satisfied. A corrective, if the lead wants one, is a one-line refinement of AC-012.1 to "zero excluding the documented fallback sentinel".

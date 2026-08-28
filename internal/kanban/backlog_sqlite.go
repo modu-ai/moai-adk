@@ -86,6 +86,19 @@ const (
 // findings keep NO uniqueness constraint because lossless doctrine forbids
 // letting a storage constraint reject legacy duplicate tuples at migration —
 // tuple-once behavior stays application-level (AppendFindingOnce).
+//
+// The two archived_* tables are the reversal storage (SPEC-TODO-DESTRUCTIVE-
+// GUARD-001 REQ-TDG-003/004). They are ADDITIVE and cost nothing on an
+// existing database: this whole DDL runs on every open and every statement is
+// IF NOT EXISTS, so a queue created by an earlier binary gains the tables the
+// first time a newer one opens it — which is precisely why the archive is a
+// pair of tables rather than a fourth `state` value. SQLite cannot ALTER a
+// CHECK constraint, so admitting a fourth state would need a table rebuild on
+// every operator queue in the field.
+//
+// archived_items deliberately carries NO state CHECK: an archived row is
+// history rather than a live lifecycle position, and leaving the constraint
+// off keeps the live three-value enum the single constrained surface.
 const backlogDDL = `
 CREATE TABLE IF NOT EXISTS meta (
   key   TEXT PRIMARY KEY,
@@ -107,6 +120,26 @@ CREATE TABLE IF NOT EXISTS findings (
   score      REAL  NOT NULL,
   note       TEXT  NOT NULL DEFAULT '',
   at         TEXT  NOT NULL
+);
+CREATE TABLE IF NOT EXISTS archived_items (
+  seq      INTEGER PRIMARY KEY,
+  id       TEXT    NOT NULL UNIQUE,
+  text     TEXT    NOT NULL,
+  added_at TEXT    NOT NULL,
+  spec_id  TEXT,
+  state    TEXT    NOT NULL,
+  position INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS archived_findings (
+  archive_seq INTEGER NOT NULL,
+  position    INTEGER NOT NULL,
+  subject_id  TEXT  NOT NULL,
+  related_id  TEXT  NOT NULL,
+  relation    TEXT  NOT NULL,
+  source      TEXT  NOT NULL,
+  score       REAL  NOT NULL,
+  note        TEXT  NOT NULL DEFAULT '',
+  at          TEXT  NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_items_state ON items(state);
 `

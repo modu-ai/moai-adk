@@ -67,6 +67,8 @@ edges     metric=source-fingerprint-mismatch value=0 threshold=0 verdict=fresh
 
 mtime はどこでも読みません。新しいチェックアウトはすべての mtime を初期化するため、mtime 基準の指標は再生成直後と誤判します — だからここにある指標は内容ハッシュと git diff、フィンガープリントだけです。
 
+stale 判定には原因の内訳が付くようになりました。`codemaps` 層が stale になると、stderr にはこの変更自身が寄与したファイル数(`contribution`)と測定基準のコミット(`contribution_base`、通常は `HEAD^1`)がまず出力され、続いてドリフトを起こした経路が最大10件まで列挙され、それ以上は `... and N more` にまとめられます。`--json` では同じ情報が `contribution` · `contribution_base` · `driving_paths` · `driving_paths_omitted` フィールドとして出ます。この red を単に引き継いだだけか(寄与0)、自分で起こしたのか(寄与>0)を stderr 一行で見分けられます。
+
 ## moai graph stamp codemaps
 
 ```bash

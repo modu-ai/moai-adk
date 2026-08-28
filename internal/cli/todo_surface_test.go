@@ -60,8 +60,37 @@ var frozenTodoSurface = map[string][]string{
 	"why <n>":          {},
 }
 
-// theOnlyPermittedAddition is this SPEC's additive verb (REQ-TOSQ-016).
-const theOnlyPermittedAddition = "export-json"
+// permittedVerbAdditions lists every verb sanctioned by a SPEC since the
+// freeze, one entry per SPEC. The frozen table above is NOT edited when a verb
+// is added: leaving it at the branch point is what lets this file still say
+// which SPEC introduced what, and an addition that appears here without a SPEC
+// naming it is the regression the guard exists to catch.
+//
+//   - export-json — SPEC-TODO-SQLITE-001 REQ-TOSQ-016 (the downgrade route)
+//   - undone      — SPEC-TODO-DESTRUCTIVE-GUARD-001 REQ-TDG-001 (done's inverse)
+var permittedVerbAdditions = []string{"export-json", "undone"}
+
+// permittedFlagAdditions records flags added to an ALREADY-FROZEN verb, which
+// is a re-flagging and therefore needs its own declaration rather than an edit
+// to the frozen table.
+//
+//   - done --expect / --require-landed — SPEC-TODO-DESTRUCTIVE-GUARD-001
+//     REQ-TDG-008 / REQ-TDG-009 (the mis-addressing guard and the opt-in
+//     landing seam). Both are opt-in: absent, `done` behaves exactly as the
+//     frozen surface says.
+var permittedFlagAdditions = map[string][]string{
+	"done <n>": {"expect=string()", "require-landed=bool(false)"},
+}
+
+// isPermittedVerbAddition reports whether a live verb is a declared addition.
+func isPermittedVerbAddition(use string) bool {
+	for _, added := range permittedVerbAdditions {
+		if strings.HasPrefix(use, added) {
+			return true
+		}
+	}
+	return false
+}
 
 // dumpTodoSurface reads the live command tree.
 func dumpTodoSurface(t *testing.T) map[string][]string {
@@ -101,6 +130,8 @@ func TestTodoVerbSurfaceZeroDelta(t *testing.T) {
 			t.Errorf("verb %q is GONE from the surface — renamed or removed; every script that types it breaks", use)
 			continue
 		}
+		wantFlags = append(append([]string{}, wantFlags...), permittedFlagAdditions[use]...)
+		sort.Strings(wantFlags)
 		if strings.Join(gotFlags, ",") != strings.Join(wantFlags, ",") {
 			t.Errorf("verb %q re-flagged:\n  frozen: %v\n  live:   %v", use, wantFlags, gotFlags)
 		}
@@ -111,28 +142,30 @@ func TestTodoVerbSurfaceZeroDelta(t *testing.T) {
 		if _, frozen := frozenTodoSurface[use]; frozen {
 			continue
 		}
-		if !strings.HasPrefix(use, theOnlyPermittedAddition) {
-			t.Errorf("verb %q appeared on the surface and is not this SPEC's declared addition", use)
+		if !isPermittedVerbAddition(use) {
+			t.Errorf("verb %q appeared on the surface and is not a declared addition", use)
 		}
 	}
 
-	// (3) The declared addition is actually present — the table would
-	// otherwise pass vacuously if export-json had never been registered.
-	var foundAddition bool
-	for use := range live {
-		if strings.HasPrefix(use, theOnlyPermittedAddition) {
-			foundAddition = true
+	// (3) Every declared addition is actually present — the table would
+	// otherwise pass vacuously if one had never been registered.
+	for _, added := range permittedVerbAdditions {
+		var found bool
+		for use := range live {
+			if strings.HasPrefix(use, added) {
+				found = true
+			}
 		}
-	}
-	if !foundAddition {
-		t.Errorf("%s is not registered; the downgrade route is unreachable", theOnlyPermittedAddition)
+		if !found {
+			t.Errorf("declared addition %q is not registered", added)
+		}
 	}
 
 	// (4) Count check. Without it, a verb removed AND a verb added would
 	// cancel out in the two loops above.
-	if got, want := len(live), len(frozenTodoSurface)+1; got != want {
-		t.Errorf("surface holds %d verbs, want %d (%d frozen + 1 addition): %v",
-			got, want, len(frozenTodoSurface), sortedTodoVerbs(live))
+	if got, want := len(live), len(frozenTodoSurface)+len(permittedVerbAdditions); got != want {
+		t.Errorf("surface holds %d verbs, want %d (%d frozen + %d declared additions): %v",
+			got, want, len(frozenTodoSurface), len(permittedVerbAdditions), sortedTodoVerbs(live))
 	}
 }
 

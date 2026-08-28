@@ -176,16 +176,36 @@ func TestAgentEmitEmbed_NotApplicable_NoCommittedSet(t *testing.T) {
 
 // --- applicable-but-unjudgeable ------------------------------------------
 
-// TestAgentEmitEmbed_MissingBinaryFails is the vacuity envelope: in a tree
-// that DOES carry the committed emission set, an unreadable judgment target
-// is FAILURE. "0 comparisons -> pass" must not be reachable here.
-func TestAgentEmitEmbed_MissingBinaryFails(t *testing.T) {
+// TestAgentEmitEmbed_MissingBinarySkips is the informational-skip envelope
+// (REQ-CDB-001, superseding the bin-absent-failure clause of REQ-AEL-004): in
+// a tree that DOES carry the committed emission set, an absent judgment
+// target is a judgment the tree cannot host — reported ok, never fail — and
+// the skip must end before any attempt to execute the nonexistent binary.
+// REQ-CDB-002: the message names the absent path and the remedy so
+// "skipped: nothing to judge" stays distinguishable from "check disabled".
+func TestAgentEmitEmbed_MissingBinarySkips(t *testing.T) {
 	root := newEmbedFixtureRoot(t, "manager-git.toml", "manager-docs.toml")
+	absent := filepath.Join(root, "bin", "does-not-exist")
 
-	c := checkAgentEmitEmbedAgainst(root, filepath.Join(root, "bin", "does-not-exist"), staticExtractor(""), false)
+	called := false
+	extract := func(string) (string, func(), error) {
+		called = true
+		return "", func() {}, nil
+	}
 
-	if c.Status != uikit.CheckFail {
-		t.Errorf("status = %q, want fail (applicable tree, no judgment target)", c.Status)
+	c := checkAgentEmitEmbedAgainst(root, absent, extract, false)
+
+	if c.Status != uikit.CheckOK {
+		t.Errorf("status = %q, want ok (applicable tree, no judgment target = skip); message: %s", c.Status, c.Message)
+	}
+	if called {
+		t.Error("extraction ran against a nonexistent binary — the skip must end before execution")
+	}
+	if !strings.Contains(c.Message, absent) {
+		t.Errorf("message = %q, want it to name the absent judgment-target path %q", c.Message, absent)
+	}
+	if !strings.Contains(c.Message, "make build") || !strings.Contains(c.Message, embedCheckBinEnvKey) {
+		t.Errorf("message = %q, want it to name the remedy (`make build` or %s=<path>)", c.Message, embedCheckBinEnvKey)
 	}
 }
 
