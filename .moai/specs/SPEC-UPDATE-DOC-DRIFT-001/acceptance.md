@@ -301,7 +301,7 @@ recorded — in which case §22.8's *original* text was right and REQ-UDD-004's 
 wrong. This is the criterion that keeps the polarity inversion measured rather than assumed. It also
 fails if `AutoMerge` gains a reader, which would make the surviving half of the sentence false too.
 
-#### AC-UDD-006 — **RETIRED at v0.3.0** (REQ-UDD-005 retired)
+#### AC-UDD-006 [RETIRED] — **RETIRED at v0.3.0** (REQ-UDD-005 retired)
 
 The E4 cross-reference this criterion required is present:
 `grep -c 'CONFIG-KEY-HONESTY' .moai/docs/local-dev-settings-intent.md` → `2` (`:60`, `:65`), and
@@ -571,12 +571,12 @@ All three already hold — this is a **preservation guard** for a retired requir
 detector. It fails if a future change drops `install` from the help text (reverting to option A), or
 removes the reachability wiring the sibling landed.
 
-#### AC-UDD-002, AC-UDD-003 — **RETIRED at v0.3.0**
+#### AC-UDD-002 [RETIRED], AC-UDD-003 [RETIRED] — **RETIRED at v0.3.0**
 
-AC-UDD-002 specified two bespoke tests (`TestUpdateDryRunRendersCleanReinstallPlan`,
+AC-UDD-002 [RETIRED] specified two bespoke tests (`TestUpdateDryRunRendersCleanReinstallPlan`,
 `TestUpdateDryRunNoMutation`) for an implementation this SPEC no longer performs. The reachability
 half is covered by AC-UDD-001's use of the sibling's existing test; the no-mutation half is the
-sibling's own guarantee, recorded at `internal/cli/update.go:551-555`. AC-UDD-003 required
+sibling's own guarantee, recorded at `internal/cli/update.go:551-555`. AC-UDD-003 [RETIRED] required
 `progress.md` §E.2 to record the option-B execution — the execution happened in
 `SPEC-UPDATE-REINSTALL-LOOP-002`, whose `progress.md` carries it, so requiring a second record here
 would be a claim about work this SPEC did not do.
@@ -775,7 +775,7 @@ is run *before* the M2 edit, not after.
   `SPEC-INTERNAL-ARCH-001` applies the reciprocal cross-reference. Closing this SPEC with AC-UDD-024
   red is permitted, provided the open half is named in `progress.md` §E.1 rather than silently
   passed.
-- AC-UDD-002, AC-UDD-003, AC-UDD-006 are retired; their retirement evidence is recorded above and
+- AC-UDD-002 [RETIRED], AC-UDD-003 [RETIRED], AC-UDD-006 [RETIRED] are retired; their retirement evidence is recorded above and
   is not re-litigated.
 - Falsification procedures C-1 through C-4 produce their stated contradictions.
 - Every documentation correction cites the `file:line` or content-anchored symbol it was verified
