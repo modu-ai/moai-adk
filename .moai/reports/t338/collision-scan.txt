@@ -1,0 +1,2 @@
+lines carrying >=2 distinct AC prefixes: 123
+files containing such a line          : 56
