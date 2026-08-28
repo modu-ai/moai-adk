@@ -141,7 +141,36 @@ No follow-up card was issued from this lane; card issuance is the operator's act
 - A template file's correctness for a downstream user cannot be observed from this repository.
 - One rule-behaviour candidate, unaddressed and outside the milestones' scope:
   `frozenBaselinePattern` matches a variable **reference** but not an **assignment**, so a line that
-  *teaches* R2 is flagged while the sibling line that *applies* it is correctly exempt.
+  *teaches* R2 is flagged while the sibling line that *applies* it is correctly exempt. Reproduced
+  at HEAD `a77f29a6b`, both directions:
+
+  ```
+  $ sed -n '36p' .moai/specs/SPEC-DESIGN-MOAIWEBV2-002/plan.md
+  - [ ] Record `BASELINE_SHA=$(git rev-parse origin/main)` BEFORE the first run-phase commit/push …
+  $ sed -n '36p' .moai/specs/SPEC-DESIGN-MOAIWEBV2-002/plan.md | grep -cE '\$\{?[A-Z_]*BASELINE[A-Z_]*\}?'
+  0
+
+  $ sed -n '14p' .moai/specs/SPEC-DESIGN-MOAIWEBV2-002/acceptance.md
+  `$BASELINE_SHA` below is the pre-flight-recorded origin/main SHA (`BASELINE_SHA=$(git rev-parse origin/main)`, …
+  $ sed -n '14p' .moai/specs/SPEC-DESIGN-MOAIWEBV2-002/acceptance.md | grep -cE '\$\{?[A-Z_]*BASELINE[A-Z_]*\}?'
+  1
+  ```
+
+  And the rule's own output over the live corpus confirms which sibling it flags:
+
+  ```
+  $ go run ./cmd/moai spec lint | grep MovingRefUnpinned | grep MOAIWEBV2-002
+  WARNING   MovingRefUnpinned   …/SPEC-DESIGN-MOAIWEBV2-002/plan.md       35
+  WARNING   MovingRefUnpinned   …/SPEC-DESIGN-MOAIWEBV2-002/plan.md       36
+  WARNING   MovingRefUnpinned   …/SPEC-DESIGN-MOAIWEBV2-002/progress.md   58
+  ```
+
+  `acceptance.md:14` — the line that actually applies R2 — is absent from the output, exempted by its
+  `$BASELINE_SHA` reference. `plan.md:36`, which records the R2 capture command, carries `BASELINE`
+  with no `$` before it (`$(git …` puts a `(` after the `$`), so the pattern misses it. The
+  consequence is that the guard warns on the sentence teaching its own recommended remedy. Whether
+  the pattern should also match the assignment form is a rule-behaviour decision, not a triage call,
+  and is left to the operator.
 
 ## Residual risk
 
