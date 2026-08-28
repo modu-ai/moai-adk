@@ -83,7 +83,8 @@ func checkAgentEmitEmbed(cwd string, verbose bool) DiagnosticCheck {
 // decided before a judgment target is demanded, and the cardinality gate runs
 // before the byte comparison. Reordering either makes "0 comparisons -> pass"
 // reachable again — the vacuity this check exists to close.
-// @MX:SPEC: SPEC-AGENT-EMIT-LINEAGE-001
+// @MX:SPEC: SPEC-CI-DOCTOR-BIN-001 (no-judgment-target branch verdict;
+// branch structure from SPEC-AGENT-EMIT-LINEAGE-001)
 func checkAgentEmitEmbedAgainst(cwd, binPath string, extract emissionExtractor, verbose bool) DiagnosticCheck {
 	check := DiagnosticCheck{Name: agentEmitEmbedCheckName}
 
@@ -109,17 +110,24 @@ func checkAgentEmitEmbedAgainst(cwd, binPath string, extract emissionExtractor, 
 	// Non-empty by construction: it is what the walk matched on.
 	committed := committedEmissionSet(root)
 
-	// --- applicable: absence of a judgment target is FAILURE ------------
+	// --- applicable: no readable judgment target is an informational skip --
 	//
-	// "0 comparisons -> pass" must not be reachable in a tree that carries a
-	// committed emission set: that is the vacuity this check exists to close.
+	// A tree without bin/moai cannot host this judgment at all — the CI jobs
+	// that run `go test` never build a binary, so reporting a failed judgment
+	// there classifies "nothing to judge" as a judgment outcome. Precedent:
+	// checkBinaryFreshness (t184) reports ok + a reason for every "cannot
+	// judge" input instead of gating doctor on it. REQ-CDB-003 is untouched:
+	// the fail paths below fire exactly when a readable binary IS present.
 	if binPath == "" {
 		binPath = resolveEmbedCheckBin(root)
 	}
 	if info, err := os.Stat(binPath); err != nil || info.IsDir() {
-		check.Status = uikit.CheckFail
-		check.Message = fmt.Sprintf("no readable binary to judge at %s (%d committed artifacts to compare)", binPath, len(committed))
-		check.Detail = fmt.Sprintf("build one with `make build`, or aim the check elsewhere with %s=<path>", embedCheckBinEnvKey)
+		check.Status = uikit.CheckOK
+		check.Message = fmt.Sprintf("skipped: no readable binary to judge at %s — %d committed artifacts unjudged; build one with `make build` or aim the check elsewhere with %s=<path>",
+			binPath, len(committed), embedCheckBinEnvKey)
+		if verbose {
+			check.Detail = fmt.Sprintf("the judgment target would have been %s, compared against the committed %s/ set", binPath, committedEmissionRelDir)
+		}
 		return check
 	}
 

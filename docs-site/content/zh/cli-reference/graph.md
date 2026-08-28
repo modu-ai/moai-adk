@@ -67,6 +67,8 @@ edges     metric=source-fingerprint-mismatch value=0 threshold=0 verdict=fresh
 
 任何地方都不读 mtime。新检出会把所有 mtime 重置，基于 mtime 的指标会误判成刚重新生成——所以这里的指标只有内容哈希、git diff 和指纹。
 
+stale 判定现在会附带归因信息。`codemaps` 层判为 stale 时，stderr 会先打印这次变更自身贡献的漂移文件数(`contribution`)和测量所依据的提交(`contribution_base`，通常是 `HEAD^1`)，接着列出最多 10 个引发漂移的路径，超出部分归纳为 `... and N more`。`--json` 中同样的信息以 `contribution` · `contribution_base` · `driving_paths` · `driving_paths_omitted` 字段暴露。一行 stderr 就能分清这条 lane 是仅仅继承了这个 red(贡献 0)还是自己造成的(贡献 > 0)。
+
 ## moai graph stamp codemaps
 
 ```bash
