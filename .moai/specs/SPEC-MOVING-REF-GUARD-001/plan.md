@@ -34,9 +34,23 @@ Run in the worktree, before the first M3 edit:
 2. `git rev-parse --short HEAD` and `git branch --show-current` → re-read immediately before each
    commit, never carried from an earlier turn.
 3. `go build ./internal/spec/...` → rc 0 (establishes the pre-change baseline compiles).
-4. `git rev-parse origin/develop` → **record the value in `progress.md` §E.2 at capture time.** This
-   SPEC's own PRESERVE evidence uses R2 (freeze at pre-flight), not a moving ref. Doing otherwise
-   would make the SPEC an instance of its own defect.
+4. `git rev-parse origin/develop` → **record the value in `progress.md` §E.2 at capture time** as
+   `BASELINE_SHA`. This SPEC's own PRESERVE evidence uses R2 (freeze at pre-flight), not a moving
+   ref. Doing otherwise would make the SPEC an instance of its own defect.
+   - Recorded: `BASELINE_SHA = d566ecc7511e1954e3aeb1dff3a60afa5be1089b` (2026-08-28).
+5. `git merge-base HEAD origin/develop` → **record the value as a SECOND frozen literal**,
+   `MERGE_BASELINE_SHA`. Step 4's literal names a point on mainline *before* this branch diverged,
+   so any range anchored there spans mainline as well as this branch — which is correct for
+   "what has this work changed" and wrong for "what has this branch added beyond mainline". The
+   second question is the one AC-MRG-010 asks, and it needs its own anchor.
+   - Recorded: `MERGE_BASELINE_SHA = 5e194bba27c146d8c2157d92b4a3fb3995919ff0` (2026-08-28).
+   - **[HARD] Re-record on every mainline absorption.** A merge-base is computed, and this SPEC
+     forbids deciding against a computed-at-read-time anchor — so it is frozen here instead. The
+     freeze has a cost: the literal goes stale the moment this branch merges mainline again, and
+     the criterion it decides then reds on absorbed mainline commits exactly as step 4's literal
+     did. Any further absorption therefore obliges a new dated entry above, before AC-MRG-010 is
+     decided again. This is limit L6 acting on this SPEC's own evidence, handled the way the
+     doctrine says to handle it: the command is the criterion, the value is a dated reference.
 
 ## §D. Constraints
 
@@ -96,19 +110,22 @@ exist, changing the syntax means editing every one.
 `internal/spec/lint_movingref.go` implementing `Rule` with `Code() == "MovingRefUnpinned"`:
 moving-ref token detection in a git-command context, invariant-claim marker matching, SHA-pin and
 frozen-baseline-variable exclusion, three-dot non-exemption, marker suppression, divergence-figure
-variant (REQ-MRG-006), **R4-form exclusion (REQ-MRG-010)**, and a message naming all four
-remediation branches.
+variant (REQ-MRG-006), and a message naming all four remediation branches.
 
-The R4-form exclusion is the delicate one: too loose and it is a blanket bypass that silently
-disables the rule, too tight and it flags the recommended remedy. `acceptance.md` AC-MRG-013 carries
-a mutation and **two** counter-mutations (CM-1 positional, CM-2 command-token), and `spec.md` §H Q0
-records how imperative structure is recognized as unresolved — resolve it with the operator before
-implementing, rather than guessing at it.
+**The R4-form exclusion (REQ-MRG-010) is NOT built here — deferred by operator decision on
+`spec.md` §H Q0, option C.** It was the delicate one: too loose and it is a blanket bypass that
+silently disables the rule, too tight and it flags the recommended remedy — and with R4's reachable
+class measured empty (§B.7, corroborated by M4's external-occupancy 0), only the first error was
+available to it. Deferring removes the bypass rather than trying to aim around it. AC-MRG-013 and
+its two counter-mutations (CM-1 positional, CM-2 command-token) defer with it, unrun; early R4-form
+lines are silenced with the R3 marker instead. R4 stays in the finding message — the doctrine
+carries the remedy; only its lint exclusion is deferred.
 
-[HARD] **The exclusion MUST key on imperative structure, never on a command token.** This is settled,
-not open. The iter-1 audit demonstrated a fetch-verb-keyed exclusion passing all thirteen criteria
-then in force while silencing 76 of 117 unpinned divergence lines (`spec.md` §B.6). A token key is
-forgeable by construction.
+[HARD] **When that exclusion is eventually built, it MUST key on imperative structure, never on a
+command token.** This is settled, not open, and it survives the deferral. The iter-1 audit
+demonstrated a fetch-verb-keyed exclusion passing all thirteen criteria then in force while
+silencing 76 of 117 unpinned divergence lines (`spec.md` §B.6). A token key is forgeable by
+construction.
 
 Registered in the `l.rules` slice in `internal/spec/lint.go`.
 
@@ -151,7 +168,9 @@ its own.
   who collapses the two steps has only as many remedies as classes and takes the first that fits —
   a second, subtler route to the same "pin everything" outcome.
 - **An R4 exclusion wide enough to be a bypass.** Passes AC-MRG-013 while silently disabling
-  AC-MRG-001; guarded by that criterion's mandatory counter-mutation.
+  AC-MRG-001; guarded by that criterion's mandatory counter-mutation. Not reachable in this SPEC
+  after the Q0 option-C deferral — no exclusion is built here — but the bullet is kept because the
+  hazard travels with REQ-MRG-010 to whatever work implements it.
 - **Testing only one direction of an exemption.** CM-1 and CM-2 both ask whether the exclusion is
   too *wide*; until iter-2 nothing asked whether it works *at all*, and the fixture was in fact
   unflaggable. Both directions or neither — an exemption needs a criterion that fails when the

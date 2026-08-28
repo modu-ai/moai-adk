@@ -1,7 +1,7 @@
 ---
 id: SPEC-MOVING-REF-GUARD-001
 title: "Moving-ref invariant guard: warn on unpinned invariant claims, with the anchor-or-subject exemption predicate shipped alongside"
-version: "0.6.0"
+version: "0.7.0"
 status: in-progress
 created: 2026-08-28
 updated: 2026-08-28
@@ -22,6 +22,7 @@ related_specs: [SPEC-GRAPH-FRESHNESS-CADENCE-001, SPEC-VERIFICATION-COMPLETENESS
 
 | Version | Date | Change | Author |
 |---------|------|--------|--------|
+| 0.7.0 | 2026-08-28 | Acceptance-criteria repair round, on six defects the run-phase agents raised and deliberately did not patch themselves (`acceptance.md` body is manager-spec's). Every one is a criterion that was true when written and became false or vacuous later; none is a criterion reshaped to fit the artifact it decides. **(a) AC-MRG-011's second half replaced.** `grep -c 'ANCHOR' ≥ 1` guarded nothing — `ANCHOR` is one of the predicate's two class names, so with L7 deleted the count half correctly drops 7 → 6 while the ANCHOR half returns **9**. Re-keyed on L7's distinguishing phrase (`the ANCHOR branch of the predicate is unvalidated`), deliberately not on `L7 —`, which would re-measure the count half's axis. Mutation re-planted: count `7 → 6`, phrase `1 → 0`, retired key steady at 9. **(b) AC-MRG-011's stale figure** corrected 5 → **6**: the limit set grew 5 → 6 → 7 across revisions and the mutation text was not swept with it. **(c) AC-MRG-002's fixture wording** corrected from "`origin/main` **replaced by** a SHA" — which deletes the token, fails conjuncts 1+2 rather than being exempted, and makes the criterion's own mutation unable to redden it — to the **retaining** form the implementation already used and REQ-MRG-008 is worded for. Mutation re-planted (delete the hex-SHA branch): RED. **(d) AC-MRG-009's separation clause KEPT, by re-placing the fixture rather than deleting the clause.** At M3 the body-only mutant took seven criteria red together, AC-MRG-001 among them, because its fixture row sat in `acceptance.md` while `SPECDoc.Body` carries `spec.md` alone. The row was moved into the fixture's `spec.md` and the mutant re-run: **AC-MRG-009 red, AC-MRG-001 green** (with -002, -005, -008, -014 also green; -003/-004/-006 collateral-red on the same sibling property). The separation is now measured rather than asserted. **(e) §H Q0 answered — option C, operator decision**: REQ-MRG-010, AC-MRG-013, CM-1 and CM-2 deferred out of scope, with grounds (R4's reachable class measured empty twice — 0 of 42 by §B.7's probes, external occupancy 0 against M4's 97 findings — so the exclusion can only over-exempt, and the iter-1 audit measured a token-keyed exclusion passing all thirteen criteria while silencing 76 of 117 real divergence lines), and with a resume condition M4 sharpened: 0 external S2 lines but **2 S2 lines in this SPEC's own directory**, both R4-form, the class filling prospectively from this card's own output exactly as §B.7 predicted. R4 stays in the doctrine and in the finding message; only its lint exclusion defers. The unrun counter-mutation obligation travels with the requirement rather than being discharged. **(f) AC-MRG-010's decider re-anchored** from `$BASELINE_SHA` to a second frozen literal `MERGE_BASELINE_SHA`, recorded at `plan.md` §C step 5. The old range starts before this branch diverged, so it spanned mainline and returned four paths from cards t322/t303 at every measurement — a wrong-reason red that also could not distinguish its own stated mutation from a routine merge. The new anchor stays a *recorded* value, never computed at read time, and carries a [HARD] re-recording obligation on any further mainline absorption (limit L6 acting on this SPEC's own evidence, handled by R2 + R4). Also swept: AC-MRG-001's fixture location, §B's baseline anchor (two literals, two questions), §D DoD, `plan.md` M3 and §C, and §F L6 marked prospective while the exclusion is deferred. `verification-claim-integrity.md`, its template mirror, and `lint_movingref.go` are byte-identical to their pre-round state; `lint_movingref_test.go` carries one assertion change (`acceptance.md` → `spec.md`) that the (d) re-placement makes necessary. | manager-spec |
 | 0.6.0 | 2026-08-28 | Run-phase M1-M2. **M1**: the doctrine section landed as `### 2.1 Moving-ref attribution — the anchor-or-subject predicate` inside `.claude/rules/moai/core/verification-claim-integrity.md`, placed directly under §2 as a specialization of the baseline-attribution invariant it enforces. It carries the four predicate tests with Test 1's read-time evaluation and the tie-break routing a Test 1 / Test 3 disagreement to Test 4 (never to ANCHOR), the two-classes-four-remedies statement, R1-R4 with the §D.4 pricing table, the five grounded instances with the classification skew in both readings, the marker surface, all seven limits L1-L7, and the divergence-figure carrier split. Deciding greps recorded verbatim in `progress.md` §E.2. **M2**: the marker surface is fixed — syntax, mandatory non-empty reason, line scope (flagged line or the line immediately above), and the incomplete-marker finding of REQ-MRG-003. **Q1 resolved**: the invisible HTML-comment form is adopted on the grounds that the marker is an author-to-linter annotation rather than rendered content, with the reviewer-visibility concern met by the reason's visibility in the source diff. **Finding raised for the operator, not silently patched**: AC-MRG-011's third mutation (delete L7 → the limit count drops **and** `grep -c 'ANCHOR'` returns 0) is only half-falsifying against this doctrine. `ANCHOR` is a class name used throughout the predicate, so deleting L7 moves the count 10 → 9, never to 0; the `≥ 1` half of that criterion is satisfied by the predicate regardless of L7 and therefore guards nothing. The count half (`grep -c 'L[1-7] —'` 7 → 6) does go red as specified. M3 (detector), M4 (corpus triage) and M5 (template mirror) are untouched; Q0 remains with the operator and M3 cannot be implemented without it. | manager-develop |
 | 0.5.0 | 2026-08-28 | D13 closed on its second condition — R4's scope characterized by measurement instead of asserted. **The reachable scope is empty: 0 of the 42 candidate lines** (§B.7, two independent probes). R4 is one day old, so no corpus line is written in its form, and the class is populated only by remediations the doctrine itself will produce. REQ-MRG-010's "does real work on exactly one class" is therefore corrected to the measured truth — the class is nameable but currently unoccupied, and AC-MRG-013 is a synthetic-only criterion with no live counterpart. Per the lead's instruction not to manufacture a scope to keep a clause alive, **§H Q0 is answered on that basis and now carries a scope decision for the operator**: option C (ship R4 as doctrine, defer the exclusion, silence early R4 lines with the R3 marker) eliminates the D11 bypass entirely and converts Q0's unsolved shape-recognition problem into the already-solved marker problem, at the cost of one marker per line until volume justifies the exclusion. Recommended, not taken — it changes scope. §B.7 also records that the earlier `81` re-cited as current had drifted to `86`, this card's own subject recurring a fourth time. | manager-spec |
 | 0.4.0 | 2026-08-28 | Plan audit iter-2 (PASS-WITH-DEBT 0.86, +0.06 monotonic, `.moai/reports/t342/plan-audit-iter2.md`) closed all eight iter-1 blocking defects and raised two new ones. Applied here as a **targeted pre-run edit**, not a plan-phase re-entry — iter-2 was the Tier M ceiling. **D13** (critical): AC-MRG-013's fixture was the lead's dispatch line, which cannot fail — re-measured independently here, it carries **0** `origin/<branch>` slash tokens (`git fetch origin develop` is two arguments, an L1 blind-spot line by this SPEC's own §F), **1** hex SHA (so REQ-MRG-008 already exempts it) and **0** claim markers, and the full REQ-MRG-001 pipeline returns **0** against it. Removing the R4 exclusion entirely therefore did not make the finding reappear, so the card's [HARD] deliverable had no criterion proving the exemption exists at all — the suite guarded thoroughly against an exclusion that is too *wide* and not at all against one that does nothing. Fixture replaced with a REQ-MRG-001-residual-class line whose six properties are measured in `progress.md` §E.1, and REQ-MRG-010 now carries the residual-scope sentence the old fixture was hiding: the exclusion does real work on exactly one class, because a SHA-valued R4 reference is already exempt via REQ-MRG-008 and a divergence-count reference via REQ-MRG-006's date conjunct — both verified by measurement. **D14** (major): §D.3's ANCHOR-branch limitation was publishable-optional — `grep -n 'ANCHOR' acceptance.md` returned nothing, so M1 could drop the one limitation this audit round added while passing every criterion. Promoted to **L7**, which pulls it into AC-MRG-011 with the count raised 6→7, the same handling L6 received at v0.2.0. Optional **D15** (Test 4's gate named Tests 1-3 though Test 2 is conditional and never returns a class — gate reworded to Tests 1 and 3, with Test 2's non-classifying role stated) and **D16** (§B.3's "three dispositions the predicate produces" was the triage taxonomy, not the predicate's — the same residue swept from plan.md at v0.3.0) both applied. | manager-spec |
@@ -585,9 +586,17 @@ prose and are not identical to any mechanism.
   `MovingRefUnpinned` for that line.
 - **REQ-MRG-009**: While only `MovingRefUnpinned` findings are present, `moai spec lint` shall exit
   0; under `--strict` it shall exit non-zero.
-- **REQ-MRG-010**: While a line is written in the R4 form — a measuring command stated as the
-  criterion in imperative structure, with any value syntactically demoted to a labelled reference —
-  the linter shall not emit `MovingRefUnpinned` for that line.
+- **REQ-MRG-010** *(DEFERRED out of this SPEC at v0.7.0 — §H Q0, option C, operator decision)*:
+  While a line is written in the R4 form — a measuring command stated as the criterion in
+  imperative structure, with any value syntactically demoted to a labelled reference — the linter
+  shall not emit `MovingRefUnpinned` for that line.
+
+  **Not implemented here.** M3 ships no R4 branch; AC-MRG-013, CM-1 and CM-2 defer with this
+  requirement and were never run. The requirement text is retained verbatim as the specification a
+  follow-up starts from, along with the [HARD] signature constraint (§H Q0: imperative structure,
+  never a command token) and the unrun counter-mutation obligation. Early R4-form lines are
+  silenced with the R3 marker in the meantime; R4 remains a doctrine remedy and stays in the
+  finding message — only its lint exclusion is deferred. Grounds and resume condition: §H Q0.
 
   **Residual scope — nameable, and empty today (measured).** The class this exclusion could act on
   is exactly one: a REQ-MRG-001-class line — moving ref in a git-command context, carrying a claim
@@ -627,9 +636,15 @@ in this SPEC implies coverage of any of them.
   bodies, and reports under `.moai/reports/` carry the same defect and are not scanned (§D.6). The
   lead's dispatch base line — grounded instance 3, the occurrence that motivated R4 — sits on
   exactly such a carrier and would not have been caught by this guard.
-- **L6 — A rotted reference value is indistinguishable from a live one.** REQ-MRG-010 exempts the
-  R4 form, and the detector cannot tell whether the parenthesized reference value is current or
-  years stale; it reads the *shape* of the demotion, not the freshness of the number. This limit is
+- **L6 — A rotted reference value is indistinguishable from a live one.** *(Prospective as of
+  v0.7.0: REQ-MRG-010 is deferred per §H Q0 option C, so the shipped detector carries no R4
+  exclusion and this limit does not yet act on it. The limit is retained rather than withdrawn
+  because it belongs to the R4 remedy, which ships as doctrine — a reader applying R4 today faces
+  exactly this residual, enforced by review instead of by the detector. The doctrine's own L6
+  states it without this qualifier; the qualifier is about the detector's current reach, not about
+  the remedy.)* REQ-MRG-010 exempts the R4 form, and the detector cannot tell whether the
+  parenthesized reference value is current or years stale; it reads the *shape* of the demotion,
+  not the freshness of the number. This limit is
   **created by** the R4 exemption rather than pre-existing it, and it is accepted deliberately: the
   alternative is flagging the recommended form, which would teach readers to avoid it. The residual
   is bounded by R4's own design — the command is stated first, so a reader who follows the line
@@ -704,6 +719,45 @@ in this SPEC implies coverage of any of them.
   problem for a solved one at a cost that scales with actual usage rather than being paid upfront.
   It is not taken here — deferring a requirement is a scope decision, and this SPEC declines to make
   it silently.
+
+  ---
+
+  **RESOLVED — option C, by operator decision (2026-08-28, v0.7.0).** The scope decision was put to
+  the operator rather than taken by an agent, and the operator took the recommendation.
+
+  **What is deferred, exactly:** REQ-MRG-010 (the R4-form lint exclusion), AC-MRG-013, and both of
+  AC-MRG-013's counter-mutations CM-1 and CM-2. None was implemented; CM-1 and CM-2 were never run.
+  M3 shipped no R4 branch in the rule, so there was nothing for those criteria to probe — and the
+  DoD's counter-mutation obligation is recorded as *deferred*, travelling with the requirement,
+  rather than quietly discharged.
+
+  **Why, on the measurement rather than on preference:** §B.7 measured R4's reachable class as
+  **0 of 42** candidate lines on two independent probes, and M4 re-measured it against the rule's
+  own 97 external findings with the same answer — external R4 occupancy **0**. An exclusion with no
+  occupants cannot under-exempt; every error available to it is therefore a D11-shaped
+  over-exemption. That failure is not hypothetical: the iter-1 audit measured a fetch-verb-keyed
+  exclusion passing all thirteen criteria then in force, counter-mutation included, while silencing
+  **76 of 117** real unpinned divergence lines — the largest live class of this defect, shipping
+  green. Deferring eliminates the bypass by construction, because no exclusion exists to key
+  wrongly, and converts Q0's unsolved shape-recognition problem into the already-solved marker
+  problem.
+
+  **What is NOT deferred:** R4 itself. It remains a doctrine remedy in §D.2, keeps its §D.4 pricing,
+  and stays named in the finding message (REQ-MRG-004 / AC-MRG-008) — the branch a reader cannot
+  reach by intuition is exactly the one that must not vanish from the message. Only the lint
+  exclusion is deferred. Meanwhile early R4-form lines are silenced with the R3 marker, whose
+  mandatory reason records *why* the line is S2 — the cost option C names, paid one line at a time.
+
+  **Resume condition — sharpened by M4 beyond what §B.7 could see.** Reconsider when the R4 form is
+  actually observed in the corpus. M4's rule output found **0 external S2 lines** but **2 S2 lines
+  inside this SPEC's own directory**, both R4-form: precisely what §B.7 predicted in writing that
+  the class is "populated prospectively, by the R4 remediations M1's doctrine will produce". The
+  class has begun to fill, and it is filling from this card's own output. When it holds live
+  external occupants, the exclusion acquires something to under-exempt and the trade-off that
+  decided option C inverts. The [HARD] constraint above survives the deferral unchanged: whatever
+  eventually implements it MUST key on imperative structure, never on a command token.
+
+  No follow-up card is issued from this SPEC — card issuance is the operator's act.
 - **Q4 — the Test 1 / Test 3 undecidable region.** The v0.3.0 tie-break routes a disagreement to
   Test 4 rather than resolving it, which is correct for every case examined so far but is a
   *deferral*, not a decision procedure: it presumes a disagreement always signals S2. A claim that

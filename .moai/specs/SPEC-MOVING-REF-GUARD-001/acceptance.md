@@ -26,18 +26,35 @@ then fail for a reason having nothing to do with the rule under test.
 
 ## §B. Baseline anchor
 
-All criteria are decided against the frozen pre-flight baseline recorded in `plan.md` §C step 4
-(`BASELINE_SHA`), never against `origin/develop` directly. A criterion here that named a moving ref
-would make this SPEC an instance of its own defect.
+All criteria are decided against a frozen pre-flight literal recorded in `plan.md` §C — step 4
+(`BASELINE_SHA`, the mainline point this work is measured from) or step 5 (`MERGE_BASELINE_SHA`,
+the branch point beyond which only this branch's own commits lie) — never against `origin/develop`
+directly. A criterion here that named a moving ref would make this SPEC an instance of its own
+defect.
+
+**Two literals, because one anchor cannot answer both questions.** `BASELINE_SHA` answers "what has
+this work changed since it began", which is the right range for evidence about the deliverable.
+`MERGE_BASELINE_SHA` answers "what has *this branch* added beyond mainline", which is the only
+range in which a PRESERVE claim about other SPECs' directories is decidable — a range starting
+before the divergence point necessarily contains mainline's own commits, and reds on them (see
+AC-MRG-010). Both are recorded values with a stated re-recording obligation, never computed at
+read time.
 
 ## §C. Criteria
 
 ### AC-MRG-001 — the detector fires on the true-positive shape (MUST)
 
-**Given** a fixture SPEC whose `acceptance.md` carries the row
+**Given** a fixture SPEC whose `spec.md` carries the row
 `` | AC-X | `git diff --name-only origin/main -- internal/` | empty (unchanged) | ``,
 **when** `go test ./internal/spec/ -run TestMovingRef_FiresOnUnpinnedAnchor` runs,
 **then** exactly one `MovingRefUnpinned` finding is reported, at that file and line.
+
+**[HARD] The fixture lives in `spec.md`, not in a sibling artifact, and the placement is
+load-bearing.** `SPECDoc.Body` carries `spec.md` alone, so a row placed there survives
+AC-MRG-009's body-only mutant — which is the only arrangement under which that mutant can take
+AC-MRG-009 red *while this criterion stays green*, the separation AC-MRG-009 asserts. The fixture
+was originally placed in `acceptance.md`, which made that separation unobservable; the placement
+was corrected at v0.7.0 and the separation then **measured** rather than asserted.
 
 **Fails when:** the rule is not registered in `l.rules`, or the pattern misses the two-dot form.
 **Mutation that must turn it red:** change the fixture's `origin/main` to `origin/mainx` — the count
@@ -46,14 +63,25 @@ substring of the row.
 
 ### AC-MRG-002 — a pinned claim is not flagged (MUST)
 
-**Given** the AC-MRG-001 fixture with `origin/main` replaced by a 40-character hexadecimal SHA,
+**Given** the AC-MRG-001 fixture **retaining** its `origin/main` token and carrying the anchor's
+resolved 40-character hexadecimal SHA on the same line,
 **when** the linter runs over it,
 **then** zero `MovingRefUnpinned` findings are reported.
+
+**[HARD] The moving-ref token is retained deliberately, and the earlier wording — "`origin/main`
+**replaced by** a SHA" — was corrected at v0.7.0 because it specified a vacuous fixture.** Read
+literally, replacement deletes the token, so the line fails conjuncts 1+2 and is never *exempted*
+at all; this criterion's own mutation could then not turn it red, which is exactly the shape §A
+exists to prevent. Retaining the ref and recording the SHA beside it is the shape filter 4 of
+`spec.md` §B.3 actually removes, and the shape REQ-MRG-008 is worded for ("While a **line's moving
+ref** carries a resolved SHA pin"). The implemented fixture already had the retaining form; the
+correction brings the criterion's text to what was built and measured, not the reverse.
 
 **Fails when:** the SHA-pin exclusion is absent — the rule then flags every occurrence, including
 already-correct ones, which is the shape that trains readers to ignore it.
 **Mutation that must turn it red:** delete the hex-SHA exclusion branch from the rule; the finding
-must reappear.
+must reappear. Observed red under the retaining fixture at v0.7.0 (`progress.md` §E.2 records the
+M3 run; the v0.7.0 re-observation is in the commit body).
 
 ### AC-MRG-003 — the marker suppresses, but only with a reason (MUST)
 
@@ -152,18 +180,56 @@ miss the majority of the corpus while appearing to work.
 **Mutation that must turn it red:** restrict the rule to `doc.Body`; this criterion fails while
 AC-MRG-001 still passes — which is exactly why it is a separate criterion.
 
+**The separation is measured, not asserted, and it required a fixture correction to become
+observable.** At M3 the body-only mutant took **seven** criteria red at once, AC-MRG-001 among
+them, because AC-MRG-001's fixture row was specified in `acceptance.md` while `SPECDoc.Body`
+carries `spec.md` alone — the clause above was then unsatisfiable as written. Rather than delete
+the clause, the fixture was re-placed into `spec.md` at v0.7.0 (AC-MRG-001, above) and the mutant
+re-run. Observed: AC-MRG-009 red, **AC-MRG-001 green**, alongside AC-MRG-002, -005, -008 and -014.
+AC-MRG-003, -004 and -006 remain collateral-red — their fixtures also live in sibling artifacts,
+which is the same property this criterion names rather than a separate signal. The clause is
+therefore kept because it now holds, not because it was left standing.
+
 ### AC-MRG-010 — corpus triage classifies without editing (MUST)
 
 **Given** M4 complete,
 **when** `.moai/reports/t342/corpus-triage.md` is read and **both** of the following are run —
 
 ```
-git diff --name-only "$BASELINE_SHA"..HEAD -- .moai/specs | grep -v SPEC-MOVING-REF-GUARD-001
+git diff --name-only "$MERGE_BASELINE_SHA"..HEAD -- .moai/specs | grep -v SPEC-MOVING-REF-GUARD-001
 git status --short -- .moai/specs
 ```
 
 **then** the report classifies every finding as anchor / subject / already-frozen with a one-line
 reason, **and both commands return empty**.
+
+**[HARD] The first command's anchor was corrected at v0.7.0, from `$BASELINE_SHA` to
+`$MERGE_BASELINE_SHA` — the second frozen literal recorded at pre-flight (`plan.md` §C step 5).**
+`$BASELINE_SHA` names a point on mainline *before* this branch diverged, so its range spans
+mainline as well as this branch, and the command returned **four paths** at every measurement:
+`SPEC-GRAPH-FRESHNESS-CADENCE-001/{spec,progress}.md` and
+`SPEC-SYNC-STRATEGY-KEY-001/{spec,progress}.md`, from commits `f9c827217`, `28f16d030`,
+`bc66c30b7` (card t322) and `ed68889e3` (card t303) — all landed on mainline, absorbed by this
+branch's merge commits, none authored here (`merge-base --is-ancestor` rc 0 on all four,
+`progress.md` §E.2 M4 Claim 4).
+
+That is a **wrong-reason red** in the `verification-completeness.md` §2 sense: red on arrival, red
+regardless of what this work does, and — worse — unable to distinguish the mutation this criterion
+names (pin a line in another SPEC directory *and commit it*, on this branch) from a routine
+mainline merge, since both produce the same four-path output. A decider that cannot tell its own
+mutation from ordinary background motion decides nothing.
+
+`$MERGE_BASELINE_SHA` measures only what this branch adds beyond mainline, and returns empty.
+**It remains a *recorded* value, not a computed one** — that distinction is the whole point of
+`plan.md` §C's freeze discipline, and a merge-base recomputed at read time would reintroduce the
+moving anchor this SPEC exists to prohibit. Its own residual is stated rather than hidden: the
+literal goes stale the moment this branch absorbs mainline again, so **any further absorption
+obliges re-recording it in `plan.md` §C step 5**, dated, before this criterion is decided again.
+That is limit L6 acting on this SPEC's own evidence, handled by R2 + R4 — the command is the
+criterion, the literal is a dated reference.
+
+`git status --short -- .moai/specs` is unchanged and stays as the second surface: it is what
+catches an *uncommitted* edit, which no committed-diff range can see.
 
 **Fails when:** the run-phase bulk-pins the corpus — this card enacting the failure mode it exists
 to prevent.
@@ -182,11 +248,24 @@ AC-MWA-007a, which pairs the same two commands for the same reason.
 criterion in this SPEC asserts coverage of any of them.
 
 **Decided by:** `grep -c 'L[1-7] —'` over the doctrine file returning 7, plus
-`grep -c 'ANCHOR' <doctrine>` ≥ 1 for L7 specifically, and a manual read of §C confirming no
-criterion claims L1 or L6 coverage.
+`grep -c 'the ANCHOR branch of the predicate is unvalidated' <doctrine>` returning 1 for L7
+specifically, and a manual read of §C confirming no criterion claims L1 or L6 coverage.
+
+**[HARD] The second half was `grep -c 'ANCHOR' <doctrine>` ≥ 1 until v0.7.0, and it guarded
+nothing.** `ANCHOR` is one of the predicate's two **class names**, so it appears throughout the
+tests, the tie-break, the remedy table and the instances. Measured against the shipped doctrine
+with L7 deleted, the count half correctly drops 7 → 6 while `grep -c 'ANCHOR'` returns **9** — the
+`≥ 1` check is satisfied by any doctrine that publishes the predicate at all, with or without L7.
+The replacement keys on L7's **distinguishing phrase** rather than on the class name. It is
+deliberately *not* keyed on `L7 —`, which would only re-measure what the count half already
+measures and would give the criterion two halves reading the same axis.
+
 **Fails when:** L1 (refs expressed without an `origin/` token) is dropped — it is the limit most
 likely to be quietly omitted, because stating it weakens the apparent value of the deliverable.
-**Mutation that must turn it red:** delete the L1 paragraph; the grep count drops to 5.
+**Mutation that must turn it red:** delete the L1 paragraph; the grep count drops to **6**. (The
+criterion said "to 5" until v0.7.0; the limit set grew 5 → 6 at v0.2.0 and 6 → 7 at v0.4.0 and the
+mutation text was not swept with it. The criterion still went red throughout, so falsifiability
+held — only the stated figure was wrong.)
 **Second mutation, for the addendum:** delete L6 (a rotted reference value is indistinguishable
 from a live one). L6 is the limit the R4 exemption *creates*, so omitting it would let the SPEC
 introduce a blind spot in the same delivery that claims to enumerate them — the count drops to 6
@@ -195,7 +274,9 @@ and the criterion fails.
 limitation lived only in `spec.md` §D.3 prose and `grep -n 'ANCHOR' acceptance.md` returned nothing,
 so M1 could have published the doctrine without it while passing every criterion — the one
 limitation the audit round added was the one thing droppable. The count drops to 6 **and** the
-`grep -c 'ANCHOR'` check returns 0; both halves must fail.
+distinguishing-phrase check returns 0; both halves must fail. Observed at v0.7.0: count `7 → 6`,
+phrase `1 → 0`, with the retired `grep -c 'ANCHOR'` key holding at **9** throughout — which is the
+measurement that condemns the old half rather than an argument about it.
 
 ### AC-MRG-012 — template mirror and neutrality (MUST)
 
@@ -210,7 +291,36 @@ is not cosmetic here.
 **Mutation that must turn it red:** copy the local doctrine verbatim into the template; the
 neutrality guard reports the SPEC-ID and SHA tokens.
 
-### AC-MRG-013 — the R4 form is not flagged (MUST)
+### AC-MRG-013 — the R4 form is not flagged (DEFERRED out of this SPEC at v0.7.0)
+
+> **[HARD] DEFERRED, with CM-1 and CM-2, by operator decision on `spec.md` §H Q0 — option C.**
+> REQ-MRG-010 (the R4-form lint exclusion) leaves this SPEC's scope together with this criterion
+> and both of its counter-mutations. Nothing below was implemented, run, or observed; the text is
+> retained verbatim as the specification a follow-up would start from, **not** as a criterion this
+> SPEC claims.
+>
+> **Why:** `spec.md` §B.7 measured R4's reachable class as **0 of 42** candidate lines on two
+> independent probes, and M4 re-measured it against the rule's own 97 external findings with the
+> same result — **external R4 occupancy 0**. With no occupants the exclusion can only
+> over-exempt today, never under-exempt, so every error available to it is a D11-shaped bypass —
+> and the iter-1 audit measured that bypass concretely: an exclusion keyed on the fetch verb passes
+> all thirteen criteria, counter-mutation included, while silencing **76 of 117** real unpinned
+> divergence lines. Deferring removes the bypass entirely, because no exclusion exists to key
+> wrongly, and replaces Q0's unsolved shape-recognition problem with the already-solved marker one.
+>
+> **Meanwhile:** early R4-form lines are silenced with the R3 marker
+> (`<!-- moving-ref-ok: <reason> -->`), whose mandatory reason records *why* the line is S2. R4
+> itself is unaffected — it remains a doctrine remedy and stays named in the finding message
+> (REQ-MRG-004 / AC-MRG-008); only its **lint exclusion** is deferred.
+>
+> **Resume condition:** reconsider when the R4 form is actually observed in the corpus. M4 gives
+> this a sharper reading than §B.7 could: the rule found **0 external S2 lines** but **2 S2 lines
+> inside this SPEC's own directory**, both R4-form — exactly what §B.7 predicted when it wrote that
+> the class is "populated prospectively, by the R4 remediations M1's doctrine will produce". The
+> class has begun to fill, from this card's own output. When it holds live external occupants, the
+> exclusion has something to under-exempt and the trade-off inverts.
+>
+> No follow-up card is issued from here: card issuance is the operator's act.
 
 **Given** a fixture line in the R4 form, drawn from REQ-MRG-010's residual class —
 
@@ -308,12 +418,17 @@ passes an all-matching mutant.
 
 ## §D. Definition of Done
 
-- Criteria AC-MRG-001 through AC-MRG-005 and AC-MRG-007 through AC-MRG-014 PASS; AC-MRG-006 PASSes
-  or is withdrawn with the withdrawal recorded in `spec.md` HISTORY.
-- **Both** of AC-MRG-013's counter-mutations were run: CM-1 observed to keep AC-MRG-001 red under the
-  positional bypass, and CM-2 observed to go red under a command-token-keyed exclusion while
-  AC-MRG-001, -006 and CM-1 stayed green. An R4 exclusion accepted on AC-MRG-013 alone, or on CM-1
-  alone, is **not accepted** — CM-1 protects AC-MRG-001's shape and nothing else.
+- Criteria AC-MRG-001 through AC-MRG-005, AC-MRG-007 through AC-MRG-012, and AC-MRG-014 PASS;
+  AC-MRG-006 PASSes or is withdrawn with the withdrawal recorded in `spec.md` HISTORY (KEPT at M3).
+  **AC-MRG-013 is excluded from this list**: it is deferred with REQ-MRG-010 per `spec.md` §H Q0
+  option C, and a deferred criterion is neither a PASS nor a FAIL.
+- **AC-MRG-013's counter-mutation obligation is deferred, not discharged.** CM-1 and CM-2 were NOT
+  run, because no R4 exclusion was built for them to probe. The obligation travels with the
+  requirement: whichever work later implements REQ-MRG-010 inherits it unchanged — **both**
+  counter-mutations required, CM-1 observed to keep AC-MRG-001 red under the positional bypass and
+  CM-2 observed to go red under a command-token-keyed exclusion while AC-MRG-001, -006 and CM-1
+  stay green. An R4 exclusion accepted on AC-MRG-013 alone, or on CM-1 alone, is **not accepted**
+  there either — CM-1 protects AC-MRG-001's shape and nothing else.
 - AC-MRG-014's mutation was run and the all-matching mutant observed to be caught. A suite that
   passes the claim-marker-dropped mutant is not accepted regardless of its other results.
 - Every criterion's stated mutation was actually planted, observed to turn the criterion red, and
@@ -321,7 +436,15 @@ passes an all-matching mutant.
   to be falsifiable without the mutation having been run is not evidence (`verification-claim-integrity.md` §1).
 - `go test ./internal/spec/...` green; `go vet ./internal/spec/...` rc 0.
 - `go build ./...` rc 0.
-- This SPEC's own PRESERVE evidence cites the frozen `BASELINE_SHA`, not a moving ref.
+- This SPEC's own PRESERVE evidence cites a frozen literal — `BASELINE_SHA` or, for AC-MRG-010's
+  first surface, `MERGE_BASELINE_SHA` (`plan.md` §C steps 4-5) — never a moving ref.
 - Open questions **Q0-Q4** (`spec.md` §H) each carry a recorded disposition: resolved, deferred with
   a reason, or escalated to the operator. Q0 is the one M3 cannot be implemented without answering,
-  so its omission from this list was itself a gap.
+  so its omission from this list was itself a gap. **Q0 is answered — option C, by operator
+  decision, recorded at `spec.md` §H with its grounds and resume condition; Q1 resolved at M2; Q2
+  resolved at M3 (AC-MRG-006 KEPT); Q3 and Q4 stand open by record.**
+- **Every criterion corrected at v0.7.0 was re-observed falsifiable after the correction.** A
+  criterion whose mutation is re-run only before the correction is indistinguishable from one
+  vacuous criterion swapped for another; the re-observation is what separates them. Applies to
+  AC-MRG-002, AC-MRG-009 and AC-MRG-011 (mutations re-planted, observed red, reverted) and, for
+  AC-MRG-010 and AC-MRG-011's stale figure, to the measurement each correction rests on.

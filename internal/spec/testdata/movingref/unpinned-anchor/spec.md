@@ -20,14 +20,25 @@ related_rule: []
 
 # SPEC-MRGA-001: Moving-ref fixture — unpinned anchor
 
-The flagged line lives in this fixture's `acceptance.md`. This body is deliberately
-clean so the only findings the linter reports are `MovingRefUnpinned`.
+The flagged row lives in THIS file, not in a sibling artifact, and the placement is
+load-bearing rather than incidental. `SPECDoc.Body` carries `spec.md` alone, so a
+row placed here survives AC-MRG-009's body-only mutant — which is what lets that
+mutant take AC-MRG-009 red while leaving AC-MRG-001 green. A row placed in
+`acceptance.md` instead takes both criteria down together, and the separation the
+two criteria assert becomes unobservable.
+
+| AC | Command | Expected |
+|---|---|---|
+| AC-X | `git diff --name-only origin/main -- internal/` | empty (unchanged) |
+
+Nothing else in this fixture directory names a moving ref, so the only finding the
+linter reports is the one `MovingRefUnpinned` above.
 
 ## 2. Scope
 
 ### 2.1 In Scope
 
-- The single flagged row in acceptance.md
+- The single flagged row in this spec.md body
 
 ### 2.2 Out of Scope
 

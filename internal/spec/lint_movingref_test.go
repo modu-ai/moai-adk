@@ -90,8 +90,12 @@ func TestMovingRef_FiresOnUnpinnedAnchor(t *testing.T) {
 		t.Fatalf("expected exactly 1 MovingRefUnpinned finding, got %d: %v", len(got), got)
 	}
 	f := got[0]
-	if filepath.Base(f.File) != "acceptance.md" {
-		t.Errorf("expected the finding against acceptance.md, got %s", f.File)
+	// The fixture row lives in spec.md — i.e. inside SPECDoc.Body — deliberately.
+	// AC-MRG-009 asserts that its body-only mutant goes red "while AC-MRG-001
+	// still passes"; a row placed in a sibling artifact takes both criteria down
+	// together and that separation becomes unobservable.
+	if filepath.Base(f.File) != "spec.md" {
+		t.Errorf("expected the finding against spec.md, got %s", f.File)
 	}
 	line := fixtureLine(t, f.File, f.Line)
 	if !strings.Contains(line, "git diff --name-only origin/main") {
