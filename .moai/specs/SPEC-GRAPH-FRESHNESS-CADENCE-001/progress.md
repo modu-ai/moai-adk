@@ -1106,8 +1106,12 @@ together, not the M1 one alone.
 
 _Backfilled at sync-phase (t322) from §E.2's already-recorded evidence. Run-phase closed with the
 §E.2 record above and left this section a placeholder; no run-phase agent authored a standalone
-audit-ready signal block of its own. Every figure below is a verbatim carry from §E.2 — this is a
-sync-phase reconstruction, not a fresh run-phase measurement._
+audit-ready signal block of its own. Every measurement below is a verbatim carry from §E.2 — this
+is a sync-phase reconstruction, not a fresh run-phase measurement. One figure is NOT such a carry
+and is marked here rather than left to look like one: `run_commit_sha` names the merge commit
+`44095ddc2`, which post-dates the run-phase record and appears nowhere in §E.2 (`grep -c 44095ddc2`
+against the §E.2 base → 0). It was read from git at sync-phase by the lane, and its provenance is
+that observation, not §E.2._
 
 ```
 run_status: audit-ready
@@ -1151,9 +1155,9 @@ sync_commit_sha: bc66c30b74a9acb8899886deb8af0421135541b4
 — one paragraph added identically in structure to each locale's `## moai graph check` section,
 describing the new stale-verdict `contribution` / `contribution_base` / `driving_paths` /
 `driving_paths_omitted` attribution that M3 added to both the stderr rendering and `--json` output;
-this file's §E.3 backfill and this §E.4 close; `spec.md` / `plan.md` / `acceptance.md` frontmatter
-`status: in-progress → implemented → completed` + `updated:` refresh (the single sync commit merges
-the terminal transition, per `spec-frontmatter-schema.md` § Status Transition Ownership Matrix).
+this file's §E.3 backfill and this §E.4 close; and `spec.md` frontmatter
+`status: in-progress → implemented → completed` (the single sync commit merges the terminal
+transition, per `spec-frontmatter-schema.md` § Status Transition Ownership Matrix).
 
 B12 self-test (CHANGELOG emission discipline, `manager-develop-prompt-template.md` §B12):
 
@@ -1180,8 +1184,13 @@ predicate, or the threshold-40 cadence at the granularity this SPEC's change aff
 page was touched. The four edits are structurally identical (same insertion point, same field
 names verbatim, translated prose).
 
-Frontmatter transitions applied in this commit, all four SPEC artifacts: `status: in-progress →
-implemented → completed`; `updated: 2026-08-28`.
+Frontmatter transition applied in this commit — **`spec.md` only**, which is the one artifact in
+this SPEC set carrying a `status:` key: `status: in-progress → implemented → completed`. `plan.md`,
+`acceptance.md`, and `progress.md` carry no `status:` key at all, so there was nothing to transition
+in them; the convention was checked against a sibling closed SPEC rather than assumed
+(`grep -m1 '^status:'` over all four artifacts of SPEC-WORKTREE-BASEREF-001 returns the `spec.md`
+row alone). `updated:` already read `2026-08-28` before this commit and therefore did not move — the
+end state is correct, but no refresh was performed and none is claimed.
 
 **Gaps**: §E.3 above is a sync-phase backfill from §E.2, not a run-phase-authored signal (stated in
 its own header). The docs-site paragraph was authored by transcribing the AC-GFC-009/010 verbatim
