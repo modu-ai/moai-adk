@@ -160,3 +160,31 @@ F2가 이 카드의 주제를 한 번 더 반복했다는 점을 남긴다: 1차
 
 수리 후 재감사 · `internal/cli`의 `-race` · 교차 플랫폼(전부 darwin/arm64) · 전체 스위트(CI 몫) ·
 기준선 22f90b1c7 재현 · `moai mx query` 태그 수확.
+
+### CI 상속 실패의 귀속 — F1과 같은 표면으로 판정
+
+리드 인계(lane-9 실측): develop CI의 상속 실패 15건 중
+`TestSessionStart_BlockingComparerDoesNotStallSessionStart`가 이 카드의 도입 커밋 `c70c6aed9`로
+**t326 귀속**이 확정됐다. 즉 이 카드가 CI에 들여온 실패다. F1에서 고친 데이터 레이스와 같은
+표면인지가 물음이었다.
+
+**같은 표면으로 판정한다.** 근거 셋:
+
+1. **CI는 레이스가 발현하는 조건에서 돈다.** `.github/workflows/ci.yml:238`이
+   `go test -race -count=1 ./...`, `release-pr-multi-os.yml:189`가 `go test -race -timeout 25m ./...`.
+   레이스는 `-race` 없이는 발현하지 않으며, 실제로 `-race` 없는 로컬 실행은 수리 전에도 통과했다
+   (1차 sync의 `test-3pkg` rc 0).
+2. **실패한 테스트 이름이 정확히 그 테스트다.** 수리 전 `-race`에서 패키지 전체를 통틀어 레이스는
+   하나였고 그것이 이 테스트였다(`f1-evidence/red-race-hook.txt`).
+3. **대안 가설을 갈라봤다.** 이 테스트에는 시간 기반 단언이 하나 있다
+   (`elapsed > binaryLagJoinBound+2*time.Second`). 부하 높은 러너에서 시간 단언이 흔들릴 여지는
+   원리상 있으나, 250ms 기한에 **2초 여유**가 붙어 있어 지배 가설이 되지 못한다.
+
+**한계 — 이것은 추론이지 CI 로그 판독이 아니다.** CI 실행 로그는 읽지 않았다(리드 인계 사항).
+위 셋은 「CI가 레이스를 볼 수 있는 조건에서 돌았고, 그 조건에서 레드였던 유일한 것이 이 테스트다」를
+세울 뿐, 그 CI 런의 실패 메커니즘을 직접 관측한 것은 아니다.
+
+**따라서 반증 가능한 형태로 남긴다**: 수리(`a213f161b`)가 이 실패의 원인이었다면, 조용한 head에서
+완주하는 CI에서 이 테스트는 **사라져야 한다**. 사라지지 않으면 별건이며 이 판정은 틀린 것이다.
+로컬 측정으로는 흡수 트리(origin/develop `947f5cffb` 흡수 후)에서
+`go test -race -count=1 ./internal/hook/` rc 0 (`f1-evidence/merged-race-hook.txt`).
