@@ -42,7 +42,7 @@
 
 ```yaml
 run_complete_at: 2026-08-28
-run_commit_sha: pending-backfill-run
+run_commit_sha: 240553113
 run_status: audit-ready
 ac_pass_count: 8
 ac_fail_count: 0
