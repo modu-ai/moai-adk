@@ -25,7 +25,7 @@ run_complete_at: 2026-08-28
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: 2026-08-28
-sync_commit_sha: pending-backfill-t346
+sync_commit_sha: f5f1a5314               # backfilled here; the sync commit cannot name its own hash
 sync_status: audit-ready
 changelog_entry_position: "CHANGELOG.md `## [Unreleased]` → `### Added`, first entry"
 frontmatter_status_transitions:
