@@ -22,7 +22,7 @@ Decisions settled at plan-phase, each from a cited measurement:
 
 Measurements recorded at plan-phase that contradict the framing the card was dispatched with:
 
-1. The existing landed primitive fails in **both** reachable modes, and correcting the ref moves the failure rather than removing it. As shipped (`LandedRef = "origin/main"`, `prlink_landed.go:28`) it answers **false** for every develop-integrated card — `origin/main` names t306 in 0 commits — so a default-on refusal would block everything. After the obvious ref correction it answers **true** on any mention — `origin/develop` names t306 in 13 commits, the earliest being the run commit `3cb258d62` — so it would have passed the premature `done` silently (`spec.md` §A.4). The opt-in ruling rests on the predicate answering the wrong question, not on the ref.
+1. The existing landed primitive fails in **both** reachable modes, and correcting the ref moves the failure rather than removing it. As shipped (`LandedRef = "origin/main"`, `prlink_landed.go:28`) it answers **false** for every develop-integrated card — `origin/main` names t306 in 0 commits — so a default-on refusal would block everything. After the obvious ref correction it answers **true** on any mention — `origin/develop` names t306 in 13 commits, the earliest being the plan-phase commit `3030df58b` — before any of that card's code existed — so it would have passed the premature `done` silently (`spec.md` §A.4). The opt-in ruling rests on the predicate answering the wrong question, not on the ref.
 2. `LandedRef` is stale under the develop-integration git-flow. Not fixed here — shared with `moai todo pr`; declared out of scope in `spec.md` §D and left as a candidate follow-up card.
 3. There is no live JSON engine. `openEngine` (`backlog_store.go:437-455`) falls through to the SQLite engine on every path, so a "both live backends" comparison is unreachable (`plan.md` §D).
 4. The `moai todo` surface is **15** verbs, not 14 — the doctrine table omits `why` (`todo.go:137-141`).
@@ -167,6 +167,28 @@ frontmatter_status_transitions:
   acceptance_md: "no frontmatter block present in acceptance.md -- no transition performed"
 canary_compliance_check: "not applicable -- this SPEC defines no forward-looking policy that its own sync tests"
 ```
+
+### Independent sync audit
+
+Verdict **PASS-WITH-DEBT, harmonic 0.890** (Functionality 0.95 / Security 0.92 / Craft 0.82 / Consistency 0.88), zero blocking findings, ten debt findings F1-F10. Report: `.moai/reports/t330/sync-audit.md` (audited HEAD `7382ce247`).
+
+The auditor did not read the claims back — it built the pre-archive binary from `812ee01fc` and ran six isolated fixtures. What that changes about this record:
+
+- **Strict round trip byte-identical: YES**, measured on a middle-of-queue card carrying two findings.
+- **The downgrade claim moved from inference to measurement.** §E.3 reasoned about the JSON path; the auditor measured it. The archive DOES drop from the live queue when a pre-archive binary migrates an export, but that binary leaves a `backlog.json.migrated` sidecar holding the original — so the shipped stderr disclosure is conservative, not overstated.
+- **The reissue defense survived an attack**, not just a test: `last_seq` hand-lowered to 0 and the database moved aside still would not reissue `t1`.
+- **Both freeze tests are extended, not loosened.** `TestBacklogEngineSchemaShape` keeps its exact-set `strings.Join` comparison and grew two elements; `TestTodoVerbSurfaceZeroDelta` keeps the frozen table at its fork point and declares the additions separately, comparing `frozen ∪ declared` after a sort.
+
+Corrected before integration, on the auditor's evidence:
+
+- **F1** — `progress.md` and `plan.md` §D both carried `3cb258d62` as the earliest `origin/develop` commit naming t306. `spec.md` v0.2.2 had already corrected this; the two stale copies had not. Re-derived independently here: `git log 812ee01fc --grep='t306' --oneline | wc -l` → `13`, earliest `3030df58b` — the plan-phase commit, before any of that card's code existed, which is a *stronger* statement of the predicate's defect than the wrong SHA made.
+- **F2** — the CHANGELOG's `internal/cli` coverage figure (79.9%) matched no recorded measurement (§E.3 and `evidence/cover-cli.txt` both say 79.8%). Both figures are real: 79.8% at run-phase, 79.9% re-measured on the merged tree in this session. The entry now names both and attributes each.
+- **F3** — the CHANGELOG said the new code was covered "except two stream-write-failure arms"; §E.3 lists four uncovered arms, two of them SQL-failure paths. Corrected to the four §E.3 actually records.
+
+Carried forward, NOT closed (follow-up material, t331):
+
+- **F4** — `writeArchive` (`backlog_migrate.go:292`) rewrites the entire archive on **every** queue mutation, not only on `done`. `spec.md` §D declares unbounded growth out of scope, but nowhere records that the growth is a *per-write* cost.
+- **F6** — `--require-landed` fails open indistinguishably: in a repository with no such ref it exits `rc=0` printing `done t2`, identical to a pass. A machine reading stdout cannot tell "the guard cleared it" from "the guard never ran". Combined with the ref defect already documented, the flag's practical discriminating power in this repository is currently zero — true and disclosed in the help text and the doctrine, but no operational surface says in one line that turning it on does not prevent a t306-class incident.
 
 ### Sync-phase scope decisions
 

@@ -49,7 +49,7 @@ Stated in full at `spec.md` §B.2, with the two failure modes at §A.4. The load
 | Mode | `LandedRef` | Answer for t306 | Failure |
 |---|---|---|---|
 | As shipped | `origin/main` (`prlink_landed.go:28`) | **false** — 0 matching commits | default-on refusal blocks every develop-integrated card |
-| After the obvious ref correction | integration branch | **true** — 13 matching commits, earliest the run commit `3cb258d62` | default-on refusal passes the premature `done` silently |
+| After the obvious ref correction | integration branch | **true** — 13 matching commits, earliest the plan-phase commit `3030df58b` | default-on refusal passes the premature `done` silently |
 
 Measured at `812ee01fc`:
 
