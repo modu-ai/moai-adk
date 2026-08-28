@@ -129,8 +129,10 @@ const (
 	// agent spawned into a Sonnet or Haiku slot inherits that window. Give those
 	// slots smaller models and the window overstates what they can actually hold:
 	// the spawn runs past its real limit with compaction still waiting for a
-	// ceiling it will never reach. Pointing every slot at the same 1M model is
-	// what makes the single window true for all of them.
+	// ceiling it will never reach. Pointing every slot at a 1M model is what
+	// makes the single window true for all of them — the Fable slot holds
+	// glm-5.3 rather than glm-5.3-flash, and the invariant is the 1M context
+	// both carry, not model identity.
 	//
 	// Tier differentiation does not disappear — it moves to the effort axis,
 	// which is where z.ai actually implements it. See glm_effort_overlay.go: the
@@ -142,10 +144,11 @@ const (
 	// suffixed id as unknown, so the window comes from the resolved context
 	// window (glmAutoCompactWindow) instead.
 	//
-	// The default is glm-5.3-flash. glm-5.3 (DefaultGLM53) stays a named
-	// constant and a ValidGLMModels() member so an explicit selection keeps
-	// loading — the offered set is derived from these constants, so the
-	// non-default ids need their own declarations to survive a default switch.
+	// The default is glm-5.3-flash for the High, Medium, and Low slots and
+	// glm-5.3 for the Fable slot. Both stay named constants and ValidGLMModels()
+	// members so an explicit selection keeps loading — the offered set is derived
+	// from these constants, so the non-default ids need their own declarations to
+	// survive a default switch.
 	//
 	// glm-5.3 is reachable on the Anthropic-compatible endpoint this client uses.
 	// It is not granted on the native paas surface for every account, so a key
@@ -156,7 +159,7 @@ const (
 	DefaultGLMHigh    = DefaultGLM53Flash
 	DefaultGLMMedium  = DefaultGLM53Flash
 	DefaultGLMLow     = DefaultGLM53Flash
-	DefaultGLMFable   = DefaultGLM53Flash
+	DefaultGLMFable   = DefaultGLM53
 	// DefaultGLM53Flash is the sparse-attention GLM-5.3-Flash variant (1M
 	// context). Unlike glm-5.3 it accepts reasoning_effort "max" only — the
 	// web console locks the tier effort select to max when a tier slot holds
