@@ -14,7 +14,7 @@ graph TD
     cmd["cmd/moai<br/>main()"]
     
     subgraph P["Presentation Layer"]
-        cli["internal/cli<br/>(188 non-test)<br/>~60 verbs"]
+        cli["internal/cli<br/>(260 non-test)<br/>61 root 등록"]
         tui["internal/tui"]
         statusline["internal/statusline"]
         web["internal/web"]
@@ -65,7 +65,7 @@ graph TD
     cli --> coreGit
     cli --> coreProject
     cli --> graph
-    cli --> codexwiring
+    cli -->|codex init 게이트 위임| codexwiring
     cli --> ciwatch
     cli --> mcp
     cli --> chain
@@ -130,7 +130,7 @@ graph TD
 | `internal/settings` | settings.json / settings.local.json 헬퍼 |
 | `internal/graph` | 코드베이스 엣지 산출물(edges.jsonl) + 3-레이어 신선도 게이트(`moai graph check`)·쿼리 시점 갱신·인용 앵커·MCP 코드 쿼리 엔진 |
 | `internal/graph/symbol` | 그래프 빌더의 astx 추출 시임 — navigator 계층 의존 없이 code-call/code-import 엣지 추출 (`go list -deps` 격리 검증) |
-| `internal/codexwiring` | `moai init --agent codex`용 `.codex/hooks.json`·`config.toml` 생성기 (SPEC-CODEX-WIRING-001) |
+| `internal/codexwiring` | `moai init --agent codex`용 `.codex/hooks.json`·`config.toml` 생성기 (SPEC-CODEX-WIRING-001). `moai codex cli/app` 기동 경로의 init-offer 게이트가 수락 시 `Wire()`를 위임받는다 (SPEC-CODEX-INIT-001) |
 | `internal/codexadapter` | codex 하네스 어댑터 — codexwiring이 소비하는 공통 계층 |
 | `internal/ciwatch` | CI 감시 루프 엔진 (scripts/ci-watch 백엔드) |
 | `internal/mcp` | 자체 호스팅 MCP 서버의 도구 카탈로그 단일 선언 (28 도구) |

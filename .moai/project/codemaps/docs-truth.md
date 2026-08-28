@@ -73,15 +73,19 @@ Top-level verbs rendered by `moai --help`, grouped by capability:
 | Capability group | Verbs |
 |------------------|-------|
 | Project | `init`, `doctor`, `status`, `update`, `version` |
-| Launchers | `cc`, `cg`, `glm`, `web`, `statusline` |
+| Launchers | `cc`, `cg`, `glm`, `codex`, `web`, `statusline` |
 | Autonomous Development | `loop`, `spec`, `worktree`, `goal` |
 | Governance | `constitution`, `mx`, `telemetry` |
 
-Additional verbs registered across the `internal/cli/` tree (109 non-test `.go` files, 152 non-test `.AddCommand(` calls): `hook`, `agent`, `research`, `workflow`, `migrate`, `profile`, `lsp`, `github`, `clean`, `feedback`, `review`, `coverage`, `e2e`, `codemaps`, `design`, `project`, `plan`, `run`, `sync`, `harness`, `session`, `fix`, `gate`, `mx`.
+Additional verbs registered across the `internal/cli/` tree (260 non-test `.go` files including subpackages, 201 non-test `.AddCommand(` calls): `hook`, `agent`, `research`, `workflow`, `migrate`, `profile`, `lsp`, `github`, `clean`, `feedback`, `review`, `coverage`, `e2e`, `codemaps`, `design`, `project`, `plan`, `run`, `sync`, `harness`, `session`, `fix`, `gate`, `mx`.
 
-The checklist lists human-facing verb names (e.g. `init`, `update`, `glm`, `cc`, `cg`, `web`, `session`, `spec`, `harness`, `worktree`, `hook`, `agent`, `research`, `workflow`), NOT internal Go identifiers like `worktree.WorktreeCmd`.
+The checklist lists human-facing verb names (e.g. `init`, `update`, `glm`, `cc`, `cg`, `codex`, `web`, `session`, `spec`, `harness`, `worktree`, `hook`, `agent`, `research`, `workflow`), NOT internal Go identifiers like `worktree.WorktreeCmd`.
 
-**Source:** `moai --help` rendered output + `grep -rn '\.AddCommand(' internal/cli/ --include='*.go' | grep -v _test` (109 non-test files, 152 non-test calls). Verified 2026-07-29.
+**Source:** `moai --help` rendered output + `grep -rn '\.AddCommand(' internal/cli/ --include='*.go' | grep -v _test` (201 non-test calls) + `grep -rhn 'rootCmd\.AddCommand(' internal/cli --include='*.go' | grep -v _test | wc -l` (61 root registrations) + `find internal/cli -name '*.go' ! -name '*_test.go' | wc -l` (260). Re-verified 2026-08-28: 201 / 61 / 260.
+
+The `codex` launcher: closed-set verb routing `{bare, status}` (readout, rc 0, never launches) × `{cli, app}` (launch, `--spawn` optional, `--` passthrough); an unknown token is rejected with a one-line usage diagnostic (rc 1), never routed to a launch. Both launch verbs pass through ONE init-offer gate function immediately before launching — the gate takes no `--spawn` parameter, accepts exactly `y`/`yes` at its prompt, exits 130 on decline (cancel, not error) and 1 on failure or a non-interactive session (report only, no prompt issued), and on acceptance delegates to the `moai init --agent codex` wiring generator exactly once, then links `AGENTS.md` ↔ `CLAUDE.md` (connection-only: at most one appended `@AGENTS.md` / `@CLAUDE.local.md` directive per file, path-containment guard runs before any read or write, writes are per-file temp+rename, idempotent on re-run).
+
+**Source (gate):** `internal/cli/codex_launcher.go` (verb routing, single gate call site in `runCodexLaunch`), `internal/cli/codex_init.go` (gate + seams), `internal/cli/codex_contract.go` (link contract). Verified 2026-08-28 by direct read.
 
 ### §4.2 `/moai` Claude Code skill set (15 commands)
 

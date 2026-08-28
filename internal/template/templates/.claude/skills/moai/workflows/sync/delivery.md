@@ -272,10 +272,10 @@ Detect current branch type and route accordingly. The route list is normative an
 **WT-* branch** (checked FIRST) → integration-worktree merge, no PR:
 1. Create no pull request for this branch
 2. Coordinate the merge window with the coordinating session before entering the integration worktree, so exactly one session integrates at a time
-3. Enter the designated develop integration worktree (the integration branch is checked out in exactly one worktree; never check it out in the current worktree)
+3. Enter the designated integration worktree (the integration branch is checked out in exactly one worktree; never check it out in the current worktree)
 4. Merge the branch there: `git merge --no-ff <branch>`
 5. Resolve any conflicts the merge raises; an unresolvable conflict is reported back to the coordinating session rather than forced
-6. Push the integration branch: `git push origin develop` — never force-push. On a rejected push, fetch, integrate the fetched integration branch, and push again
+6. Push the integration branch: `git push origin <integration-branch>` — never force-push. On a rejected push, fetch, integrate the fetched integration branch, and push again
 7. Exit the integration worktree and report the branch name, merge commit, and evidence path
 8. Precondition: when the designated integration worktree does not exist, stop and report — provisioning it is the coordinating session's act
 

@@ -172,6 +172,16 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			return nil
 		})
 
+		// Task 5 — card-worktree base-branch alignment (SPEC-WORKTREE-BASEREF-001
+		// REQ-WBR-004). Touches only refs/remotes/origin/HEAD, shares no file
+		// with Tasks 1-4, and gates itself on the primary checkout before
+		// reading anything. Fail-open like the rest of the group.
+		var worktreeBaseData map[string]any
+		g.Go(func() error {
+			worktreeBaseData = RunWorktreeBaseAlignment(input.ProjectDir)
+			return nil
+		})
+
 		if err := g.Wait(); err != nil {
 			// Best-effort contract preserved: Handle never returns a non-nil
 			// error from these steps. errgroup.WithContext cancels on first
@@ -181,7 +191,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 				"error", err.Error())
 		}
 
-		mergeData(data, settingsData, registryData, skillData, migrationData)
+		mergeData(data, settingsData, registryData, skillData, migrationData, worktreeBaseData)
 
 		// (b) Defer heavy advisory scanning off the synchronous critical path.
 		// These four steps (telemetry prune, stale-memory wrap, pending-proposal
@@ -447,6 +457,26 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			out.HookSpecificOutput.AdditionalContext += "\n\n" + banner
 		}
 	}
+
+	// SPEC-BINARY-LAG-VISIBILITY-001 REQ-BLV-001/002/008: the deployment-lag
+	// verdict, emitted without anyone asking for it.
+	//
+	// The comparison this renders already existed and was already correct; it
+	// simply had no caller but a human typing `moai doctor`, so on the day it
+	// mattered it reached nobody through five steps and three observers. This
+	// is the automatic caller. It runs before any lane observes anything,
+	// which is the only point in that sequence cheap enough to check on every
+	// session and early enough to matter.
+	//
+	// additionalContext, not systemMessage and not the Data map: Data carries
+	// json:"-" (see the attribution comment above), so a verdict placed there
+	// would be computed correctly and rendered by no one — reproducing the
+	// exact dead end this closes.
+	lagRoot := input.ProjectDir
+	if lagRoot == "" {
+		lagRoot = input.CWD
+	}
+	appendAdditionalContext(out, binaryLagAdvisory(ctx, lagRoot))
 
 	return out, nil
 }
