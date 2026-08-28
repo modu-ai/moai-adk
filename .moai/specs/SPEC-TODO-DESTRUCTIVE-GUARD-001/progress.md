@@ -153,4 +153,37 @@ Doctrine (2): both `todo.md` paths. SPEC (1): `spec.md` frontmatter `draft → i
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-28
+sync_commit_sha: pending-backfill-sync   # this commit cannot name its own SHA; backfilled in the immediately following commit
+sync_status: completed
+b12_self_test_a: "grep -c SPEC-TODO-DESTRUCTIVE-GUARD-001 CHANGELOG.md -> 0 (pre-emission; count checked before this entry was appended)"
+b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l -> 16 (matches ac_pass_count in §E.3 and the CHANGELOG entry's stated 16/16)"
+b12_self_test_c: "ls on all 6 implementation files + 4 test files + 2 doctrine files named in CHANGELOG -> all 12 resolved (see progress.md §E.2 Files touched, verified again independently in this phase)"
+changelog_entry_position: "top of CHANGELOG.md [Unreleased] > ### Added, immediately above the SPEC-CODEX-INIT-001 entry"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (updated: unchanged at 2026-08-28, already same-day)"
+  plan_md: "no frontmatter block present in plan.md -- no transition performed"
+  acceptance_md: "no frontmatter block present in acceptance.md -- no transition performed"
+canary_compliance_check: "not applicable -- this SPEC defines no forward-looking policy that its own sync tests"
+```
+
+### Sync-phase scope decisions
+
+- **README (4 locales): no change.** `README.md` / `README.ko.md` / `README.ja.md` / `README.zh.md` name `moai todo done` only inside an illustrative, already-partial verb-listing parenthetical (`add · list · next · done · unpick · drop · undrop · edit · move · analyze`) that omits several existing verbs (`pr`, `relate`, `unrelate`, `why`, `export-json`, and — deliberately left omitted here — `undone`). No README surface documents `done`'s removal-vs-archive semantics in prose. Adding `undone` to that parenthetical would misrepresent it as newly-exhaustive when it was never exhaustive; left unchanged.
+- **docs-site (4 locales): changed.** `docs-site/content/{ko,en,ja,zh}/utility-commands/moai-todo.md` documented `moai todo done <n>` in prose ("Removes item `n`") and in its state-file `state` field description, both now false under this SPEC. Corrected in all 4 locales, ko-canonical derivation per `hns-oss-docs-i18n-rules` (docs-site chain is ko → en/ja/zh): the `state` field description, the `done` row (archive semantics + `--expect`/`--require-landed`), a new `undone` row, two new usage-example command blocks, and the `export-json` row's downgrade-disclosure note. All 4 files gained the same 10 lines (217 -> 227), `## ` heading count unchanged at 9 per locale, URL blacklist grep clean. Not pushed; docs-site publishing is human/orchestrator-gated (`hns-oss-docs-i18n-rules` §9) and out of this session's scope regardless.
+- **@MX annotations**: not added or modified. The run-phase implementation files were not read in full by this sync session beyond what `progress.md` §E.2/§E.3 already cite; no new exported function was identified as requiring a tag beyond what run-phase already recorded (`progress.md` §E.2 makes no @MX claim either). Flagged as a gap below rather than asserted clean.
+
+### Gaps — what was explicitly NOT observed at sync-phase
+
+- **Nothing pushed.** This session made no `git push`. The repository-wide CI verdict for this branch (`WT-todo-destructive-guard`) belongs to whoever integrates it — see `.claude/rules/local/gitflow-lane-protocol.md`.
+- **Full test suite not run.** Only the two packages this SPEC touches were exercised at run-phase (`internal/kanban`, `internal/cli`); the sync session ran no tests at all (documentation-only change).
+- **Windows tests**: not compiled or run at sync-phase (inherited gap from §E.3; unchanged).
+- **`moai spec lint` / `moai spec audit`**: not run against the SPEC artifacts after this frontmatter transition, matching the gap already recorded in §E.3.
+- **@MX tag sweep**: not performed as an independent pass at sync-phase (see scope decision above) — this is a gap, not a clean-scan claim.
+- **docs-site hugo build**: not run (no `hugo` invocation in this session); heading-count and URL-blacklist checks were grep-based only, not a rendered-output check.
+
+### Residual risk
+
+- The docs-site correction is prose derived from `progress.md` §E.2/§E.3 and the `todo.md` doctrine (already updated at run-phase M6), not from re-reading the Go implementation files line-by-line at sync-phase; a subtle behavioral detail present in code but absent from both existing doctrine surfaces could be missed.
+- `spec.md` HISTORY table was NOT updated with a sync-phase row — out of this agent's frontmatter-only scope per the ownership matrix; a reader relying on HISTORY alone will not see the sync-phase summary and must instead consult this §E.4 block or the CHANGELOG entry.
