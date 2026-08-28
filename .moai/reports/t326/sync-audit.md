@@ -328,3 +328,63 @@ The three `residual_risk` entries (Binary Freshness sits inside an already-red s
 ---
 
 **Auditor's note on stance**: this card's premise was disproved twice before implementation, so I treated the sync signal's assertions as hypotheses throughout. The record held up better than that prior predicted — the 7 divergences are all real, the `claims_re_verified_as_accurate` list survived spot-checking, the @MX comment-only claim is mechanically true, and the AC tests are non-vacuous in the specific ways their anti-vacuity clauses demand. The two things the record got wrong are both in the same place: it did not look at `plan.md`, and it recorded one measurement it took as a confirmation rather than as the mismatch it was.
+
+---
+
+## 8. Lane-4 post-repair addendum (orchestrator, after F1/F2/F3 repair)
+
+Written by the lane orchestrator on the repaired tree, AFTER the audit above was scored.
+The 0.86 score was measured against the pre-repair tree `bfd09fcfc` and has NOT been re-measured.
+
+### Closing one Gap the audit left open: attribution of the 9 `internal/cli` failures
+
+The audit recorded, as an unobserved Gap, whether the 9 `internal/cli` FAILs reproduce at the
+baseline `22f90b1c7` — i.e. whether they are genuinely inherited rather than caused by this SPEC.
+That question matters more here than usual: every one of the 9 is a doctor-suite test, and this
+SPEC adds a row to the doctor registry.
+
+Measured on the repaired tree `1d6388fd7`:
+
+```
+$ go test -count=1 ./internal/cli/...        rc=1
+$ grep "^--- FAIL" <output>                  9 lines
+--- FAIL: TestRunDoctor_WithExport / _WithFix / _Verbose / _AllFlags /
+          _VerboseAndDetail / _ExportMode
+--- FAIL: TestDoctorCmd_Execution / _ExportFlag / _VerboseExecution
+    coverage_improvement_test.go: runDoctor error: doctor: 1 check(s) failed
+```
+
+Same 9 names, same suite, as §E.3's recorded baseline — counted and enumerated, not assumed equal
+because the count matched.
+
+The attribution is then closed **mechanically rather than by re-running the baseline**:
+`checkBinaryFreshness` (`internal/cli/doctor.go:518-554`) cannot emit a failing status at all. Its
+switch assigns `uikit.CheckWarn` on `StatusBehind` and `uikit.CheckOK` on `StatusFresh`,
+`StatusDivergent`, and `default` — there is no path to `CheckFail`. A check that cannot fail cannot
+be the "1 check(s) failed" the tests report, and a row that can only add a `Warn` cannot change a
+count of failures.
+
+**What this does and does not establish.** It establishes that the row this SPEC added is not the
+failing check. It does NOT establish that the 9 failures predate the SPEC in general — that would
+need a baseline run at `22f90b1c7`, which was not performed. The residual exposure is narrow: the
+SPEC's only other `internal/cli` change is the registry line at `doctor.go:201`.
+
+### Verification re-run by the lane orchestrator (not read from the sub-agent's files)
+
+| Command | rc | Evidence |
+|---|---|---|
+| `go test -race -count=1 ./internal/hook/` | 0 | `f1-evidence/lane4-recheck-race-hook.txt` |
+| `go build ./internal/binlag/... ./internal/cli/... ./internal/hook/... ./pkg/version/...` | 0 | — |
+| `go vet` (same four packages) | 0 | `f1-evidence/lane4-final-vet.txt` |
+| `go test -count=1 ./internal/cli/...` | 1 (9 inherited) | `f1-evidence/lane4-final-test-cli.txt` |
+
+Exit codes were read directly from each command rather than through a pipe, so none of them is a
+downstream tool's status.
+
+### Still not observed
+
+- Baseline run at `22f90b1c7` (the narrow residual above).
+- `go test -race ./internal/cli/` — the audit left this unobserved and this addendum does not close it.
+- Cross-platform: everything here is darwin/arm64. `GOOS=windows` / `linux` remain CI's.
+- Full repository suite — lane-local discipline; the repository verdict is CI's on the integration branch.
+- No re-audit of the repaired tree. The 0.86 stands as a pre-repair measurement.
