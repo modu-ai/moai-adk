@@ -2,7 +2,7 @@
 id: SPEC-TODO-LANDING-STATE-001
 title: "A card that knows its own landing state, half A — the integration-branch ref correction, a three-valued landed answer, and a guard that says whether it ran"
 version: "0.3.0"
-status: draft
+status: in-progress
 created: 2026-08-28
 updated: 2026-08-29
 author: manager-spec (card t331)

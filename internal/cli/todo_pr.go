@@ -68,24 +68,33 @@ var todoRunCommand kanban.CommandRunner = func(name string, args ...string) (str
 // landed state. Read-only, fail-open, one `gh` query.
 func newTodoPRCmd() *cobra.Command {
 	var jsonOutput bool
+	// The landed ref is RESOLVED, not constant: a project that integrates on
+	// a branch other than the default asks the question about its own branch,
+	// and the help text names the ref the check will actually use rather than
+	// a default that may not apply here.
+	landedRef := todoLandedRef()
 	cmd := &cobra.Command{
 		Use:   "pr [<id>]",
 		Short: "Report each card's open pull request or landed state (read-only)",
 		Long: `Report, for every queued card, whether an open pull request already
-delivers it or whether its work has already landed on ` + kanban.LandedRef + `.
+delivers it or whether its work has already landed on ` + landedRef + `.
 
 The verb writes NOTHING: no card field, no finding, no cache, no lock. It
 computes every outcome live and prints it.
 
-Four outcomes, distinguishable by kind alone:
+Five outcomes, distinguishable by kind alone:
 
   linked     one open pull request carries the card id
              confidence exact    — read off the PR title
              confidence inferred — read off a single PR body
   ambiguous  several open PR bodies carry it; every candidate is listed and
              none is chosen
-  landed     no open PR carries it, and ` + kanban.LandedRef + ` history names it
+  landed     no open PR carries it, and ` + landedRef + ` history names it.
+             It means SOMETHING naming the card landed on that ref — NOT that
+             the card's last step landed
   no-link    nobody has started this
+  unknown    the landing question could not be asked (no such ref, no git, a
+             failed query). This is NOT evidence of not-landed
 
 The landed check is local git and keeps working when gh does not. When gh is
 absent, unauthenticated, or offline the link column renders empty, the
@@ -131,7 +140,8 @@ func runTodoPR(cmd *cobra.Command, only string, jsonOutput bool) error {
 		prs = nil
 	}
 
-	landed := kanban.GitLandedQuerier{Run: todoRunCommand}
+	landedRef := todoLandedRef()
+	landed := kanban.GitLandedQuerier{Run: todoRunCommand, Ref: landedRef}
 	outcomes := make([]kanban.PRLinkOutcome, 0, len(rec.Items))
 	var degraded []string
 	for _, it := range rec.Items {
@@ -146,8 +156,8 @@ func runTodoPR(cmd *cobra.Command, only string, jsonOutput bool) error {
 	}
 	if len(degraded) > 0 {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
-			"note: landed check degraded for %s; those cards report no-link without having been checked\n",
-			strings.Join(degraded, " "))
+			"note: the landed check against %s could not answer for %s; those cards report unknown rather than no-link, because an unanswerable query is not evidence of not-landed\n",
+			landedRef, strings.Join(degraded, " "))
 	}
 
 	out := cmd.OutOrStdout()
