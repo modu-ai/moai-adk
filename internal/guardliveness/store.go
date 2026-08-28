@@ -16,6 +16,14 @@ import (
 // storeSubdir is the persistence directory under the ~/.moai state tree.
 const storeSubdir = "guard-liveness"
 
+// Per-root filename suffixes. Two things are persisted about a root and they
+// answer different questions: what the mechanism last MEASURED, and what the
+// reader was last SHOWN.
+const (
+	resultSuffix   = ".json"
+	renderedSuffix = ".rendered.json"
+)
+
 // ErrNoPersistedResult reports that no evaluation result has been persisted for
 // a root yet. It is deliberately distinct from an all-clear: before the first
 // refresh completes there is nothing to report ABOUT, which is not the same as
@@ -66,16 +74,53 @@ func DefaultStore() (*Store, error) {
 // half-written file that would parse as a malformed result and be reported as
 // a contract violation that never happened.
 func (s *Store) Save(root string, r Result, takenAt time.Time) error {
+	return s.write(s.pathFor(root, resultSuffix), Snapshot{TakenAt: takenAt, Result: r})
+}
+
+// SaveRendered records what this render announced, for the NEXT render to diff
+// against (REQ-GDL-007). It is a separate file from the persisted result: one
+// is what the mechanism measured, the other is what the reader was shown, and a
+// render that overwrote the first with the second would hand the next
+// activation a measurement that never happened.
+//
+// This is a write, and it deliberately lands in the same directory as the
+// result — outside every evaluated working tree (REQ-GDL-008). The render
+// leaves the tree byte-identical; its memory lives elsewhere.
+func (s *Store) SaveRendered(root string, rec RenderRecord) error {
+	return s.write(s.pathFor(root, renderedSuffix), rec)
+}
+
+// LoadRendered returns what the previous render announced for a root. Nothing
+// written yet is an empty record rather than an error: before any render every
+// non-clean entry is a change, which is what a reader who has been shown
+// nothing needs.
+func (s *Store) LoadRendered(root string) (RenderRecord, error) {
+	payload, err := os.ReadFile(s.pathFor(root, renderedSuffix))
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return RenderRecord{}, nil
+		}
+		return RenderRecord{}, fmt.Errorf("guard liveness: read the render record: %w", err)
+	}
+
+	var rec RenderRecord
+	if err := json.Unmarshal(payload, &rec); err != nil {
+		return RenderRecord{}, fmt.Errorf("guard liveness: decode the render record: %w", err)
+	}
+	return rec, nil
+}
+
+// write places a value at path atomically.
+func (s *Store) write(final string, v any) error {
 	if err := os.MkdirAll(s.dir, 0o755); err != nil {
 		return fmt.Errorf("guard liveness: create the persistence directory: %w", err)
 	}
 
-	payload, err := json.Marshal(Snapshot{TakenAt: takenAt, Result: r})
+	payload, err := json.Marshal(v)
 	if err != nil {
 		return fmt.Errorf("guard liveness: encode the result: %w", err)
 	}
 
-	final := s.pathFor(root)
 	tmp, err := os.CreateTemp(s.dir, "snapshot-*.tmp")
 	if err != nil {
 		return fmt.Errorf("guard liveness: open a temporary file: %w", err)
@@ -100,7 +145,7 @@ func (s *Store) Save(root string, r Result, takenAt time.Time) error {
 // Load returns the most recently persisted snapshot for a root, or
 // ErrNoPersistedResult when none has been written.
 func (s *Store) Load(root string) (Snapshot, error) {
-	payload, err := os.ReadFile(s.pathFor(root))
+	payload, err := os.ReadFile(s.pathFor(root, resultSuffix))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return Snapshot{}, ErrNoPersistedResult
@@ -115,10 +160,11 @@ func (s *Store) Load(root string) (Snapshot, error) {
 	return snap, nil
 }
 
-// pathFor keys a root by a digest of its path. One store serves every tree on
-// the machine, and a digest keeps two trees apart without embedding a filesystem
-// path — which would not survive as a filename — in the key.
-func (s *Store) pathFor(root string) string {
+// pathFor keys a root by a digest of its path, with a suffix separating the two
+// things persisted per root. One store serves every tree on the machine, and a
+// digest keeps two trees apart without embedding a filesystem path — which
+// would not survive as a filename — in the key.
+func (s *Store) pathFor(root, suffix string) string {
 	sum := sha256.Sum256([]byte(filepath.Clean(root)))
-	return filepath.Join(s.dir, hex.EncodeToString(sum[:])[:32]+".json")
+	return filepath.Join(s.dir, hex.EncodeToString(sum[:])[:32]+suffix)
 }

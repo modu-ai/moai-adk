@@ -452,6 +452,190 @@ The full suite was not run locally: `AGENTS.md` §4 and `CLAUDE.local.md` §4.1 
 - **A store that cannot be resolved degrades to silence.** The refresh still runs and still reaches the query layer; only its carriage is lost, and the render reports an absent verdict rather than an all-clear. The degradation is logged at debug level, which `verification-completeness.md` §1.2(c) names as a reachability that nobody observes.
 - **The test path and the production path differ at the render.** Under `deferredScansAsync=false` the read is inline; in production it runs behind a timer. The two share `read()`, so the logic is common, but the abandonment path is production-only.
 
+### M3 — legibility and safety
+
+**Tree.** Every measurement below was taken on `WT-guard-liveness` at **`24ecc7e65`** (the M2 commit) plus M3's working-tree changes, which the M3 commit carries, in the worktree `.claude/worktrees/t333`. M1's and M2's invariant cells were re-run here rather than carried; all still hold.
+
+**Deliverable.** `internal/guardliveness/advisory.go` (the `RenderRecord` shape, the change/standing split, the new `Advisory` signature), `internal/guardliveness/store.go` (`SaveRendered` / `LoadRendered` on a second per-root file, and the atomic write factored out of `Save`), `internal/hook/session_start_guard_liveness.go` (the render loads the previous record, diffs against it, and persists the new one). No new session-start handler; no workflow file touched; no file under `internal/template/templates/`; no existing text in `verification-completeness.md` modified.
+
+**One decision worth stating, because the criterion does not force it.** The comparison subject is the previously **RENDERED** state, not the previously persisted result. A verdict nobody was shown is not one a reader can be assumed to know, so a refresh that completes and is never rendered does not silence the entry it found. The record is therefore written by the render, into a file of its own beside the verdict.
+
+#### RED, before any M3 implementation existed
+
+```
+$ go test ./internal/guardliveness/... ./internal/hook/
+# github.com/modu-ai/moai-adk/internal/guardliveness [.../guardliveness.test]
+internal/guardliveness/advisory_change_test.go:50:20: assignment mismatch: 2 variables but Advisory returns 1 value
+internal/guardliveness/advisory_change_test.go:50:71: undefined: RenderRecord
+internal/guardliveness/advisory_change_test.go:50:87: too many arguments in call to Advisory
+	have (Snapshot, unknown type, "time".Time)
+	want (Snapshot, "time".Time)
+internal/guardliveness/advisory_change_test.go:60:16: assignment mismatch: 2 variables but Advisory returns 1 value
+internal/guardliveness/advisory_change_test.go:89:15: assignment mismatch: 2 variables but Advisory returns 1 value
+internal/guardliveness/advisory_change_test.go:105:81: too many errors
+FAIL	github.com/modu-ai/moai-adk/internal/guardliveness [build failed]
+# github.com/modu-ai/moai-adk/internal/hook [.../hook.test]
+internal/hook/session_start_guard_liveness_mutation_test.go:132:20: store.LoadRendered undefined (type *guardliveness.Store has no field or method LoadRendered)
+FAIL	github.com/modu-ai/moai-adk/internal/hook [build failed]
+FAIL
+```
+
+As at M1 and M2, a build failure is the weak half of RED — it establishes that the tests ran before the code, not that they discriminate. The four mutant probes below are the strong half, and each was written against the GREEN tree and observed to fail.
+
+#### AC-GDL-007 — the advisory leads with changes and survives a standing non-clean neighbour
+
+```
+$ go test -count=1 -run 'TestAdvisoryLeadsWithChangesAndCollapsesStandingEntries|TestAdvisoryFirstRenderTreatsEveryNonCleanEntryAsChanged|TestAdvisoryRendersAStandingCountWhenNothingChanged|TestAdvisoryTreatsAReclassifiedEntryAsChanged|TestAdvisoryRecordsNothingForAContractViolatingResult|TestAdvisoryRecordsNothingWithoutARecordedTimestamp|TestAdvisoryRecordsAnAllCleanResultSoARelapseIsAnnounced' -v ./internal/guardliveness/
+--- PASS: TestAdvisoryLeadsWithChangesAndCollapsesStandingEntries (0.00s)
+--- PASS: TestAdvisoryFirstRenderTreatsEveryNonCleanEntryAsChanged (0.00s)
+--- PASS: TestAdvisoryRendersAStandingCountWhenNothingChanged (0.00s)
+--- PASS: TestAdvisoryTreatsAReclassifiedEntryAsChanged (0.00s)
+--- PASS: TestAdvisoryRecordsNothingForAContractViolatingResult (0.00s)
+--- PASS: TestAdvisoryRecordsNothingWithoutARecordedTimestamp (0.00s)
+--- PASS: TestAdvisoryRecordsAnAllCleanResultSoARelapseIsAnnounced (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/guardliveness	0.160s
+```
+
+The criterion's own fixture is `TestAdvisoryLeadsWithChangesAndCollapsesStandingEntries`: S = {`subject-2`, `subject-3`} is non-clean in both evaluations and T = `subject-1` newly became non-clean in the second. (a) the first `- ` line names T. (b) neither member of S appears anywhere in the second render's text, and the count `2` does.
+
+**Mutant probe (a) — the renderer the criterion's own mutant note names: print the full standing list with T at the top.** The standing count line was replaced by a loop over `standing`, and the criterion failed:
+
+```
+--- FAIL: TestAdvisoryLeadsWithChangesAndCollapsesStandingEntries (0.00s)
+    advisory_change_test.go:76: standing subject "subject-2" is re-rendered individually instead of being counted:
+        moai guard liveness (measured 5m ago) — 1 subject(s) changed:
+          - subject-1
+          - subject-2
+          - subject-3
+--- FAIL: TestAdvisoryTreatsAReclassifiedEntryAsChanged (0.00s)
+    advisory_change_test.go:147: the unchanged subject is re-rendered individually:
+```
+
+**Mutant probe (b) — the opposite direction: nothing ever counts as changed.** `splitByChange`'s predicate was disabled (`if false && ...`), so every non-clean entry became standing and the advisory collapsed to a count with no leading entry:
+
+```
+--- FAIL: TestAdvisoryLeadsWithChangesAndCollapsesStandingEntries (0.00s)
+    advisory_change_test.go:56: the first render omits "subject-2", so it never announced what the second must treat as standing:
+        moai guard liveness (measured 2h00m ago) — 2 subject(s) still not reporting clean, unchanged since the last session.
+--- FAIL: TestAdvisoryFirstRenderTreatsEveryNonCleanEntryAsChanged (0.00s)
+    advisory_change_test.go:92: first render omits non-clean subject "subject-2":
+```
+
+This mutant is not in the criterion's text, and it is the one a change-leading design is most likely to ship by accident: a renderer so quiet it never announces anything is trivially compact.
+
+#### AC-GDL-008 — the advisory path mutates nothing
+
+**(a) zero mutating calls, counted at the call layer** over the deliverable's own five non-test source files. The count is an AST walk plus an import-set check rather than a text grep, so an aliased selector cannot slip past it:
+
+```
+$ go test -count=1 -run 'TestAdvisoryPathIssuesNoMutatingCall|TestRenderRecordRoundTripsThroughTheStore|TestLoadRenderedIsEmptyBeforeAnyRender|TestRenderRecordDoesNotOverwriteThePersistedResult' -v ./internal/guardliveness/
+--- PASS: TestAdvisoryPathIssuesNoMutatingCall (0.00s)
+--- PASS: TestRenderRecordRoundTripsThroughTheStore (0.00s)
+--- PASS: TestLoadRenderedIsEmptyBeforeAnyRender (0.00s)
+--- PASS: TestRenderRecordDoesNotOverwriteThePersistedResult (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/guardliveness	0.176s
+```
+
+**(b) the working tree is byte-identical across a render**, verified by `git status --porcelain` in a throwaway repository whose porcelain baseline is deliberately NON-empty (one modified tracked file, one untracked file) — an empty baseline compares equal to an empty result even when a write happened:
+
+```
+$ go test -count=1 -run 'TestGuardLivenessRenderLeavesTheWorkingTreeByteIdentical|TestGuardLivenessRenderPersistsItsRecordOutsideTheTree' -v ./internal/hook/
+--- PASS: TestGuardLivenessRenderLeavesTheWorkingTreeByteIdentical (0.09s)
+--- PASS: TestGuardLivenessRenderPersistsItsRecordOutsideTheTree (0.05s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	0.575s
+```
+
+**Mutant probe — the criterion's own: a renderer that writes its cache into the working tree.** One `os.WriteFile` into the evaluated root was added to the render path. Clause (a) passed it — `os.WriteFile` is not a forge call, and the store legitimately uses it outside the tree — and clause (b) caught it, which is exactly the division the criterion's mutant note predicts:
+
+```
+--- FAIL: TestGuardLivenessRenderLeavesTheWorkingTreeByteIdentical (0.09s)
+    session_start_guard_liveness_mutation_test.go:95: the render changed the working tree.
+        before:
+         M tracked.txt
+        ?? untracked.txt
+
+        after:
+         M tracked.txt
+        ?? .moai-guard-liveness-cache
+        ?? untracked.txt
+```
+
+**Mutant probe — the other direction: a forge mutation with no file write.** The same line was replaced with `exec.Command("gh", "issue", "create", ...)`. Clause (b) would have passed it (no file changed); clause (a) caught it at both the import and the call:
+
+```
+--- FAIL: TestAdvisoryPathIssuesNoMutatingCall (0.00s)
+    mutation_test.go:92: the advisory path carries 2 mutating call site(s), want 0:
+        ../hook/session_start_guard_liveness.go: imports os/exec
+        ../hook/session_start_guard_liveness.go:156: calls Command
+```
+
+**The persistence lives outside the working tree**, which the criterion names as its own consequence rather than an oversight. Both per-root files resolve under `paths.StateDir()` → `~/.moai/state/guard-liveness/`, and `TestGuardLivenessRenderPersistsItsRecordOutsideTheTree` asserts the record directory is not a prefix-child of the evaluated root.
+
+#### Invariants held (re-measured on this tree, not carried)
+
+```
+$ grep -rnE '\b(OK|STALE|UNKNOWN|UNDECLARED|UNREADABLE|UNRESOLVED|ORPHANED)\b' \
+    internal/guardliveness/contract.go internal/guardliveness/evaluator.go \
+    internal/guardliveness/store.go internal/guardliveness/advisory.go \
+    internal/hook/session_start_guard_liveness.go \
+  | grep -v '^[^:]*:[0-9]*:[[:space:]]*//'
+(no output; rc=1)
+
+$ grep -l '^  schedule:' .github/workflows/* | wc -l
+       3
+
+$ grep -rn -A2 'EventType() EventType' internal/hook --include='*.go' | grep -v _test | grep -c 'EventSessionStart'
+4
+```
+
+The §D.2 instrument runs over the same five files it did at M2 — M3 added no source file, only edits — and still returns rc=1. The schedule baseline and the session-start handler count are unchanged.
+
+#### Build, tests, coverage, vet
+
+```
+$ go build ./...                                          → exit 0
+$ go test -count=1 ./internal/guardliveness/... ./internal/hook/
+ok  	github.com/modu-ai/moai-adk/internal/guardliveness	0.770s
+ok  	github.com/modu-ai/moai-adk/internal/hook	30.085s
+
+$ go test -count=1 -cover ./internal/guardliveness/...
+ok  	github.com/modu-ai/moai-adk/internal/guardliveness	0.938s	coverage: 88.2% of statements
+
+$ go vet ./internal/guardliveness/... ./internal/hook/    → exit 0
+$ gofmt -l internal/guardliveness                          → no output
+```
+
+Coverage moved 87.1% → 88.2%. The full suite was not run locally: `AGENTS.md` §4 and `CLAUDE.local.md` §4.1 scope local verification to the change and leave the full-suite verdict to CI. **That verdict has not been read for this commit** — it is a Gap below, not a pass.
+
+#### One existing test was amended, and the amendment is stated rather than absorbed
+
+`TestSessionStart_GuardLivenessAdvisoryArrivesWithNoOperatorInput` (AC-GDL-005, landed at M2) drives `Handle` twice and asserts the two advisories are byte-identical while operator input varies between them. Change-leading breaks the second premise honestly: the second render now differs because it is the *second*, not because of the operator input. The test resets the render record between the two runs, restoring operator input as the only variable — which is the property AC-GDL-005 actually asserts. **The assertion was not weakened**; a confound introduced by M3 was removed:
+
+```
+$ go test -count=1 -run TestSessionStart_GuardLivenessAdvisoryArrivesWithNoOperatorInput ./internal/hook/
+ok  	github.com/modu-ai/moai-adk/internal/hook
+```
+
+#### Gaps — what M3 did NOT observe
+
+- **CI's verdict on this commit.** Not pushed at M3 (the delegation forbids it), so no full suite, no cross-platform matrix, no `Graph Freshness`. `origin/develop` additionally carries a standing red (`spec.md` §A.9), so a future reading must separate an inherited red from a new one rather than counting a red row as this change's.
+- **AC-GDL-009** — not measured at M3. The doctrine clause is M4.
+- **The producer still does not exist.** `Unwired()` is what every production activation reaches, so on a real tree the store is never written and the render is silent. Every rendering assertion above is against a seeded result. Nothing here demonstrates change-leading over an actual workflow's liveness, because nothing yet produces one — that is `SPEC-GUARD-STATE-MODEL-001`'s (card t347).
+- **The async render path.** Tests run with `deferredScansAsync=false`, so the timer/goroutine branch of `guardLivenessAdvisory` is not exercised. The record is written inside that branch too, and the abandonment behaviour at the bound is not measured.
+- **Whether a compact standing count is itself skippable.** AC-GDL-007's own bounded claim: this asserts change-leading, not that the advisory gets read. Nothing here measures a reader.
+- **`golangci-lint` was not run at M3.** `go vet` and `gofmt` were; the lint gate is CI's.
+
+#### Residual risk
+
+- **A render abandoned at the join bound still records.** The record is written inside `read()`, which runs in a goroutine the timer may abandon. When the bound elapses the operator sees nothing and the entry is nonetheless marked announced, so it appears as a standing count on the next session. The window is a local file read against a 250 ms ceiling, so it is narrow; it is not zero, and its failure direction is silence, which is this card's own subject.
+- **A resolved entry is never announced.** An entry returning to the clean value has changed, and the advisory does not say so: REQ-GDL-004 fires only on a non-clean entry, and rendering recoveries would grow the block change-leading exists to shrink. Deliberate, and it means the advisory reports deterioration only.
+- **The change-leading trade `spec.md` §D.3 names is now real code.** A long-standing non-clean entry is announced once and thereafter only counted. Quiet is this card's subject, and this is the deliberate quiet it accepts.
+- **The record and the verdict can disagree about what exists.** They are separate files with no cross-check: a store where the verdict was written and the record was not — or the reverse, after a partial failure — yields a render that treats entries as new or as standing on the strength of a file that does not describe the same measurement. Each write is atomic individually; the pair is not.
+- **`Render` in `contract.go` is now a second renderer with no caller.** It predates `Advisory`, is still exercised by M1's contract tests, and re-renders the full non-clean list. Nothing stops a later caller from reaching for it and reintroducing the noise profile M3 removes.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

@@ -100,7 +100,13 @@ func guardLivenessSinkOption() guardliveness.Option {
 
 // guardLivenessAdvisory returns the guard firing-liveness notice for this tree,
 // or the empty string when there is nothing to say
-// (SPEC-GUARD-LIVENESS-001 REQ-GDL-004/005/006/011/013, card t333 M2).
+// (SPEC-GUARD-LIVENESS-001 REQ-GDL-004/005/006/007/008/011/013, card t333).
+//
+// It leads with what CHANGED since the previous render and carries the rest as
+// a count (REQ-GDL-007), which needs a memory of what the reader was last
+// shown. That memory is written beside the persisted verdict — OUTSIDE every
+// evaluated working tree, so the render leaves the tree byte-identical
+// (REQ-GDL-008). Nothing on this path calls a forge.
 //
 // It reads a PERSISTED verdict and issues no subject query of its own. That
 // split is the constraint this surface imposes rather than a preference: one
@@ -134,7 +140,25 @@ func guardLivenessAdvisory(root string) string {
 			slog.Debug("session start: no persisted guard-liveness verdict (non-blocking)", "error", err.Error())
 			return ""
 		}
-		return guardliveness.Advisory(snapshot, time.Now())
+
+		// What the PREVIOUS render announced, which is what the reader can be
+		// assumed to already know. A read that fails degrades to an empty
+		// record: every non-clean entry is then announced again, which is
+		// noisier than intended and never quieter — the failure direction that
+		// costs a reader nothing.
+		previous, err := store.LoadRendered(root)
+		if err != nil {
+			slog.Debug("session start: previous guard-liveness render record unavailable (non-blocking)", "error", err.Error())
+			previous = guardliveness.RenderRecord{}
+		}
+
+		text, rendered := guardliveness.Advisory(snapshot, previous, time.Now())
+		if rendered != nil {
+			if err := store.SaveRendered(root, *rendered); err != nil {
+				slog.Debug("session start: persisting the guard-liveness render record failed (non-blocking)", "error", err.Error())
+			}
+		}
+		return text
 	}
 
 	if !deferredScansAsyncEnabled() {

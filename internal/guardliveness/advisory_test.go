@@ -39,7 +39,7 @@ func TestAdvisoryRendersOnAnyNonCleanEntry(t *testing.T) {
 		{"every entry non-clean, no two sharing a classification", allDistinct, []string{"subject-a", "subject-b", "subject-c"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			text := Advisory(snapshotAt(tc.result, now.Add(-90*time.Second)), now)
+			text, _ := Advisory(snapshotAt(tc.result, now.Add(-90*time.Second)), RenderRecord{}, now)
 			if text == "" {
 				t.Fatalf("advisory was silent on a result carrying non-clean entries")
 			}
@@ -61,7 +61,7 @@ func TestAdvisoryIsSilentOnAConformingAllCleanResult(t *testing.T) {
 		Clean:   designate("alpha"),
 		Entries: []Entry{entry("subject-1", "alpha", "settled")},
 	}
-	if text := Advisory(snapshotAt(allClean, now.Add(-time.Hour)), now); text != "" {
+	if text, _ := Advisory(snapshotAt(allClean, now.Add(-time.Hour)), RenderRecord{}, now); text != "" {
 		t.Fatalf("advisory spoke on an all-clean result: %q", text)
 	}
 }
@@ -74,8 +74,8 @@ func TestAdvisoryIsSilentOnAConformingAllCleanResult(t *testing.T) {
 // constant-offset renderer prints the SAME age twice.
 func TestAdvisoryAgeComesFromThePersistedTimestamp(t *testing.T) {
 	now := time.Now()
-	first := Advisory(snapshotAt(resultA(), now.Add(-90*time.Minute)), now)
-	second := Advisory(snapshotAt(resultA(), now.Add(-30*time.Minute)), now)
+	first, _ := Advisory(snapshotAt(resultA(), now.Add(-90*time.Minute)), RenderRecord{}, now)
+	second, _ := Advisory(snapshotAt(resultA(), now.Add(-30*time.Minute)), RenderRecord{}, now)
 
 	if !strings.Contains(first, "1h30m") {
 		t.Errorf("advisory taken 90m ago does not state that age:\n%s", first)
@@ -96,7 +96,7 @@ func TestAdvisoryAgeComesFromThePersistedTimestamp(t *testing.T) {
 // A snapshot with no recorded timestamp is not a measurement, and reporting one
 // as though it were current is the failure REQ-GDL-006 exists to prevent.
 func TestAdvisoryIsSilentWithoutARecordedTimestamp(t *testing.T) {
-	if text := Advisory(Snapshot{Result: resultA()}, time.Now()); text != "" {
+	if text, _ := Advisory(Snapshot{Result: resultA()}, RenderRecord{}, time.Now()); text != "" {
 		t.Fatalf("advisory rendered from a snapshot carrying no timestamp: %q", text)
 	}
 }
@@ -129,7 +129,7 @@ func TestAdvisoryNamesTheContractViolationAndNeverReportsAllClear(t *testing.T) 
 		}, "exactly one classification"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			text := Advisory(snapshotAt(tc.result, now.Add(-5*time.Minute)), now)
+			text, _ := Advisory(snapshotAt(tc.result, now.Add(-5*time.Minute)), RenderRecord{}, now)
 			if text == "" {
 				t.Fatalf("silence on a contract-violating result — the partition had no referent and nothing rendered, which is an all-clear by omission")
 			}

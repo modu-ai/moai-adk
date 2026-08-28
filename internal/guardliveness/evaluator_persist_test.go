@@ -53,7 +53,7 @@ func TestRefreshResultIsPersistedForALaterActivation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load during a stalled refresh: %v", err)
 	}
-	text := Advisory(snap, time.Now())
+	text, _ := Advisory(snap, RenderRecord{}, time.Now())
 	if elapsed := time.Since(renderStart); elapsed >= renderBoundUnderTest {
 		t.Fatalf("render took %v, at or beyond the %v bound", elapsed, renderBoundUnderTest)
 	}
@@ -75,7 +75,7 @@ func TestRefreshResultIsPersistedForALaterActivation(t *testing.T) {
 	if !next.TakenAt.After(earlier) {
 		t.Fatalf("persisted TakenAt = %v, not after the seeded %v — the abandoned refresh never landed", next.TakenAt, earlier)
 	}
-	after := Advisory(next, time.Now())
+	after, _ := Advisory(next, RenderRecord{}, time.Now())
 	if !strings.Contains(after, "subject-2") || !strings.Contains(after, "subject-3") {
 		t.Fatalf("the subsequent activation did not read the completed refresh's result:\n%s", after)
 	}

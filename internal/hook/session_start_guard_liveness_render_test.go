@@ -118,6 +118,15 @@ func TestSessionStart_GuardLivenessAdvisoryArrivesWithNoOperatorInput(t *testing
 	// (b) the rendering path consumed no operator-supplied identifier or query
 	// string: varying every operator-authored input field leaves the advisory
 	// byte-identical.
+	//
+	// The render record left by the first run is reset first, because the
+	// advisory is change-leading (REQ-GDL-007) and a second render against the
+	// first one's record would differ for a reason that has nothing to do with
+	// operator input. Holding it fixed is what leaves operator input as the
+	// only variable, which is the whole of this clause.
+	if err := store.SaveRendered(root, guardliveness.RenderRecord{}); err != nil {
+		t.Fatalf("reset the render record: %v", err)
+	}
 	loud, err := h.Handle(context.Background(), &HookInput{
 		SessionID:          "sess-guard-liveness-render",
 		CWD:                root,
