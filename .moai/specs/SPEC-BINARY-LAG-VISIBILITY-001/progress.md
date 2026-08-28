@@ -428,7 +428,7 @@ unobserved:
 
 ```yaml
 sync_complete_at: 2026-08-28
-sync_commit_sha: pending-backfill-sync   # 커밋은 자기 해시를 알 수 없다 — 바로 다음 커밋에서 backfill
+sync_commit_sha: d3454f1e6   # 이 커밋의 바로 다음 커밋에서 backfill(커밋은 자기 해시를 알 수 없다)
 sync_status: COMPLETE — CHANGELOG 항목 1건 + @MX 주석 + 3-phase close. 통합은 리드 소관(push 안 함, PR 안 냄)
 sync_audit_verdict: "NOT RUN — 이 카드의 sync-audit은 배차되지 않았다. 판정 근거로 인용할 감사 점수가 없다"
 lane_verdict_report: .moai/reports/t326/verdict.md   # run-phase 레인 판정(카드 전제 반증 기록 포함)
