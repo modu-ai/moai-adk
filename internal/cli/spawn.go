@@ -48,6 +48,11 @@ var inTmuxFn = func() bool { return tmux.NewDetector().InTmuxSession() }
 // pointer is the only way to assert cwd and command deterministically.
 var tmuxSpawnFn = defaultTmuxSpawn
 
+// spawnLookPath is the PATH-resolution seam (wraps exec.LookPath so a --spawn
+// cell is bounded by the spawn seam rather than by the binaries the host
+// running the test suite happens to have installed).
+var spawnLookPath = exec.LookPath
+
 // stripSpawnFlag removes every --spawn token appearing BEFORE the `--`
 // pass-through marker and reports whether one was found. Tokens at or after
 // `--` belong to claude and are returned untouched.
@@ -122,10 +127,10 @@ func checkSpawnPrereqs() error {
 	if !inTmuxFn() {
 		return fmt.Errorf(errTmuxSessionRequired, spawnFlag, spawnFlag)
 	}
-	if _, err := exec.LookPath("tmux"); err != nil {
+	if _, err := spawnLookPath("tmux"); err != nil {
 		return fmt.Errorf("%s requires the tmux binary: %w", spawnFlag, err)
 	}
-	if _, err := exec.LookPath("moai"); err != nil {
+	if _, err := spawnLookPath("moai"); err != nil {
 		return fmt.Errorf("%s needs the moai binary in PATH: %w", spawnFlag, err)
 	}
 	return nil

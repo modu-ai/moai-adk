@@ -351,10 +351,15 @@ func withCodexGateHarness(t *testing.T, projectRoot string, opts codexHarnessOpt
 	withCodexProjectRoot(t, projectRoot)
 
 	// --spawn cells cross checkSpawnPrereqs before the spawn seam — pin
-	// in-tmux so the seam (not the precondition) bounds the cell.
+	// in-tmux AND PATH resolution so the seam (not the precondition, and not
+	// the binaries the host running the suite happens to have) bounds the cell.
 	prevInTmux := inTmuxFn
 	inTmuxFn = func() bool { return true }
 	t.Cleanup(func() { inTmuxFn = prevInTmux })
+
+	prevLookPath := spawnLookPath
+	spawnLookPath = func(file string) (string, error) { return "/stub/bin/" + file, nil }
+	t.Cleanup(func() { spawnLookPath = prevLookPath })
 
 	return h
 }
