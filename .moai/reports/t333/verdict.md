@@ -2,7 +2,16 @@
 
 **SPEC**: SPEC-GUARD-LIVENESS-001 (surfacing model) · **Tier M** · **Branch**: `WT-guard-liveness`
 **Worktree**: `.claude/worktrees/t333` · **Base**: `origin/develop` at `d566ecc75`, merged as `a0a5b84f3`
-**Verdict**: **PASS** — 13/13 acceptance criteria, run and sync phases complete, unpushed.
+**Verdict**: **PASS** — 13/13 acceptance criteria, run and sync phases complete.
+
+> **What this card merges is a silent code path, not a wired guard.**
+> `guardliveness.Unwired()` is what every production activation reaches, so on a real tree no
+> verdict is persisted and the advisory renders nothing. Every rendering assertion here is measured
+> against a seeded or stubbed result. The producer is `SPEC-GUARD-STATE-MODEL-001`, **card t347**,
+> still queued — out of scope by the iter-3 split, not by oversight. **Do not read this card as
+> "the guard-liveness advisory is now wired."** Nothing in the deliverable detects that t347 never
+> arrives, which is itself one more check whose non-execution is indistinguishable from its
+> success.
 
 The subject: a guard that ran yesterday and does not run today, with nothing reporting the
 difference. Not a suppressed failure — an absent execution. Nothing ran, so nothing could go red,

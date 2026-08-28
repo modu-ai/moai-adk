@@ -795,6 +795,20 @@ $ git diff 8fa67f647~1 HEAD -- .moai/specs/SPEC-GUARD-LIVENESS-001/spec.md
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
+> **Read this before reading anything else in this section: what merges here is a silent code path,
+> and it is not a wired guard.** `guardliveness.Unwired()` is what every production activation
+> reaches, so on a real tree no verdict is ever persisted and the advisory renders nothing at all.
+> Every rendering assertion in this SPEC — the partition, the change-leading, the age disclosure,
+> the contract-violation notice — is measured against a seeded or stubbed result. The producer that
+> would make any of it visible is `SPEC-GUARD-STATE-MODEL-001`, **card t347**, which is still
+> queued; it is out of this card's scope by the iter-3 split, not by oversight.
+>
+> The consequence for a later reader is concrete: **do not read this card as "the guard-liveness
+> advisory is now wired".** It is a contract, a consumer, and a doctrine clause, with the
+> producer's socket deliberately empty. Nothing in this deliverable detects that t347 never
+> arrives — which is, in the register this SPEC is about, one more check whose non-execution is
+> indistinguishable from its success.
+
 **Tree.** Every measurement below was taken on `WT-guard-liveness` at **`6cde9ae08`** (the template-mirror commit, five commits above the `origin/develop` merge `a0a5b84f3`) plus this sync commit's own working-tree changes, in the worktree `.claude/worktrees/t333`. No cell was carried from a run-phase milestone: every command quoted here was re-run in this phase, on this tree.
 
 **Deliverable.** One sync commit carrying: the `spec.md` frontmatter transition, the `§E.3` `run_commit_sha` backfill, this section, one `CHANGELOG.md` `[Unreleased] → Added` entry, and one `@MX:WARN` + `@MX:REASON` annotation in `internal/hook/session_start_guard_liveness.go`. No Go behaviour changed — the MX annotation is comment-only. No file under `internal/template/templates/` was touched, so `make build` was not required and no regenerated asset is in this commit.
