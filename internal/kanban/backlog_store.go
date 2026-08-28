@@ -715,17 +715,20 @@ func (s *BacklogStore) Add(text string) (*BacklogItem, int, error) {
 }
 
 // acquireBacklogLockSerialized acquires the backlog's sibling lock, retrying
-// contention for the same bounded window as the board lock (25ms x 40 ~ 1s):
-// a mutation racing a short-lived holder serializes behind it instead of
-// failing, while a genuinely stuck holder surfaces as an error rather than a
-// hang. The timeout error names the lock artifact so the operator can act on
-// the right file.
+// contention against the SAME shared wait policy as the board lock
+// (boardLockWaitBudget and boardLockRetryWait, board_store.go — REQ-BLB-006:
+// one policy, both call sites, so a change to either the budget or the
+// backoff applies here without a second edit): a mutation racing a
+// short-lived holder serializes behind it instead of failing, while a
+// genuinely stuck holder surfaces as an error rather than a hang. The timeout
+// error names the lock artifact so the operator can act on the right file.
 func (s *BacklogStore) acquireLock() (*BoardLock, error) {
 	if err := os.MkdirAll(filepath.Dir(s.path), 0o755); err != nil {
 		return nil, fmt.Errorf("mutate backlog %s: creating dir: %w", s.path, err)
 	}
 	var lastErr error
-	for attempt := 0; attempt <= boardLockRetries; attempt++ {
+	deadline := time.Now().Add(boardLockWaitBudget)
+	for attempt := 0; ; attempt++ {
 		impl, err := acquireBoardLockImpl(s.LockPath())
 		if err == nil {
 			return &BoardLock{path: s.LockPath(), impl: impl}, nil
@@ -734,9 +737,11 @@ func (s *BacklogStore) acquireLock() (*BoardLock, error) {
 			return nil, fmt.Errorf("mutate backlog %s: lock %s: %w", s.path, s.LockPath(), err)
 		}
 		lastErr = err
-		time.Sleep(boardLockRetryDelay)
+		if !time.Now().Before(deadline) {
+			return nil, fmt.Errorf("mutate backlog %s: lock %s: %w", s.path, s.LockPath(), lastErr)
+		}
+		time.Sleep(boardLockRetryWait(attempt))
 	}
-	return nil, fmt.Errorf("mutate backlog %s: lock %s: %w", s.path, s.LockPath(), lastErr)
 }
 
 // normalizeBacklogRecord establishes the invariants every in-memory record
