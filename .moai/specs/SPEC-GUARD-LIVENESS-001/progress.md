@@ -815,7 +815,7 @@ $ git diff 8fa67f647~1 HEAD -- .moai/specs/SPEC-GUARD-LIVENESS-001/spec.md
 
 ### Status transition — what moved, and what has no field to move
 
-The 3-phase close's `implemented` half is applied here; the `completed` half is **deliberately withheld**. This card has not merged: its branch is unpushed, no CI has judged any of its five commits, and the lead integrates it. Marking `completed` on an unmerged branch would assert a close that no integration has confirmed.
+The 3-phase close's `implemented` half was applied in the sync commit; the `completed` half was **deliberately withheld there**, because at that point the card had not merged — its branch was unpushed and no integration had confirmed a close. It was applied afterwards, at integration, once the merge actually landed (`a22c9fcbd` on `develop`, pushed over `c6aa61346`), in the same backfill commit that filled `sync_commit_sha`. Recorded as a sequence rather than rewritten to read as though `completed` had always been set: which claim was true at which commit is the substance here.
 
 Only `spec.md` carries YAML frontmatter in this SPEC. `plan.md`, `acceptance.md`, and `progress.md` were authored without a frontmatter block at plan-phase, so there is no `status:` field on them to transition — the same fact `§E.3` records for the run-phase `draft → in-progress` move. Adding one now would be authoring body structure into artifacts this phase may not modify, so it was not done.
 
@@ -956,7 +956,7 @@ Working tree before staging carried exactly the three files this commit touches 
 
 ```yaml
 sync_complete_at: 2026-08-28
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 00af58dcf
 sync_status: complete
 b12_self_test_a: pass (grep -c 'SPEC-GUARD-LIVENESS-001' CHANGELOG.md → 0, no duplicate)
 b12_self_test_b: pass (13 distinct AC ids in acceptance.md, non-zero, matches the entry's claim)
@@ -988,7 +988,7 @@ These are carried forward from the run phase because they remain true, not becau
 - **`Render` in `contract.go` is a caller-less second renderer.** It predates `Advisory`, is still exercised by M1's contract tests, and re-renders the full non-clean list. Nothing stops a later caller reaching for it and undoing M3's noise reduction.
 - **A render abandoned at the 250 ms join bound still writes its render record.** The operator sees nothing while the entry is marked announced, so it appears as a standing count on the next session. Now annotated at the code site; still not fixed and still not measured.
 - **`golangci-lint` was not run locally at M3, at M4, or in this phase.** It ran at M1 and M2 (0 issues both times). `go vet` and `gofmt` were run here; the lint gate is CI's, and CI has not run.
-- **`sync_commit_sha` is a placeholder.** A commit cannot name its own hash, and the delegation scopes this phase to a single commit, so no follow-up backfill commit was made. The field reads `pending-backfill-sync` and is **not** a recorded SHA; whoever integrates this card backfills it or accepts it as open.
+- **`sync_commit_sha` was a placeholder, and is now backfilled.** A commit cannot name its own hash, so the sync phase left the field reading `pending-backfill-sync`. It is `00af58dcf` as of the integration backfill, which also carried the `implemented → completed` transition — both were withheld until the card actually merged, because asserting a close before integration confirms it is the shape of claim this SPEC exists to prohibit. The card landed on `develop` as merge `a22c9fcbd`, pushed over `c6aa61346`.
 - **Whether the doctrine clause is read.** Nothing measures whether an author writing a check next month applies §1.3 — the same bounded claim AC-GDL-007 makes about the advisory.
 
 ### Residual risk
