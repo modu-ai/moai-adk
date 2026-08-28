@@ -478,6 +478,348 @@ bullets beneath it.
 - **The five grounded instances remain a small validation set**, and the ANCHOR branch still has
   zero adjudicated instances (L7). The doctrine now publishes that gap, which does not close it.
 
+---
+
+### M3 — the detector (2026-08-28)
+
+**Scope.** `internal/spec/lint_movingref.go` (new), its registration in `internal/spec/lint.go`,
+`internal/spec/lint_movingref_test.go` (new), and eight fixture SPEC directories under
+`internal/spec/testdata/movingref/`. No SPEC artifact outside this SPEC's own directory was touched,
+and within it only this file.
+
+**Q0 disposition — resolved as option C, by operator decision.** REQ-MRG-010 (the R4-form exclusion)
+and AC-MRG-013 (with both counter-mutations CM-1 and CM-2) are **deferred out of this scope**. No
+R4-form exclusion, imperative-structure recognizer, or command-token exclusion exists in the rule;
+no AC-MRG-013 fixture was written and CM-1 / CM-2 were not run. Grounds, per `spec.md` §B.7: R4's
+reachable class measured **0 of 42** candidate lines on two independent probes, so an exclusion for
+it can only over-exempt, never under-exempt — every error available to it is a D11-shaped bypass.
+R4 remains in the finding **message** (AC-MRG-008 asserts it); only its lint exclusion is deferred.
+Recording the deferral in `spec.md` / `plan.md` / `acceptance.md` is manager-spec's artifact
+ownership and was deliberately NOT done here.
+
+#### Claim 1 — the suite is green, and the selector swept something
+
+The case count is reported rather than `ok` alone: a test-name regex matching zero tests prints `ok`
+and asserts nothing.
+
+**Evidence.**
+
+```
+$ go test ./internal/spec/ -run 'TestMovingRef' -v 2>&1 | tail -25
+=== RUN   TestMovingRef_FiresOnUnpinnedAnchor
+--- PASS: TestMovingRef_FiresOnUnpinnedAnchor (0.38s)
+=== RUN   TestMovingRef_PinnedClaimNotFlagged
+--- PASS: TestMovingRef_PinnedClaimNotFlagged (0.23s)
+=== RUN   TestMovingRef_MarkerSuppressesOnlyWithReason
+--- PASS: TestMovingRef_MarkerSuppressesOnlyWithReason (0.67s)
+=== RUN   TestMovingRef_ThreeDotNotExempt
+--- PASS: TestMovingRef_ThreeDotNotExempt (0.22s)
+=== RUN   TestMovingRef_SeverityWarningAndExitCode
+--- PASS: TestMovingRef_SeverityWarningAndExitCode (0.48s)
+=== RUN   TestMovingRef_DivergenceFigureVariant
+--- PASS: TestMovingRef_DivergenceFigureVariant (0.24s)
+=== RUN   TestMovingRef_MessageNamesAllFourBranches
+--- PASS: TestMovingRef_MessageNamesAllFourBranches (0.24s)
+=== RUN   TestMovingRef_ReadsSiblingArtifacts
+--- PASS: TestMovingRef_ReadsSiblingArtifacts (0.22s)
+=== RUN   TestMovingRef_NegativeControlOnClaimConjunct
+--- PASS: TestMovingRef_NegativeControlOnClaimConjunct (0.23s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/spec	3.101s
+```
+
+Nine cases selected, nine PASS — the selector is not vacuous.
+
+Whole-package, with the case count measured rather than inferred:
+
+```
+$ go test ./internal/spec/... 2>&1 | tail -20
+ok  	github.com/modu-ai/moai-adk/internal/spec	28.595s
+
+$ go test ./internal/spec/... -v 2>&1 | grep -c '^--- PASS\|^    --- PASS'
+572
+
+$ go test ./internal/spec/... -v 2>&1 | grep -cE '^(--- FAIL|    --- FAIL|--- SKIP|    --- SKIP)'
+0
+
+$ go vet ./internal/spec/... && echo VET_RC_0
+VET_RC_0
+
+$ go build ./... && echo BUILD_RC_0
+BUILD_RC_0
+```
+
+572 cases pass; 0 fail and 0 skip. `gofmt -l` reports neither new file.
+
+#### Claim 2 — every stated mutation was planted, observed red, and reverted
+
+Ten mutations. Each is recorded with its verbatim failing output; each was reverted and the suite
+re-run green afterwards. A criterion asserted falsifiable without the mutation having been run is
+not evidence (`verification-claim-integrity.md` §1).
+
+**M-001 (AC-MRG-001) — `origin/main` → `origin/mainx` in the fixture. The first attempt did NOT
+turn it red, and that is the finding.**
+
+```
+$ go test ./internal/spec/ -run 'TestMovingRef_FiresOnUnpinnedAnchor' 2>&1 | tail -20
+ok  	github.com/modu-ai/moai-adk/internal/spec	0.430s
+```
+
+The criterion was **vacuous as first implemented**: the §B.3 filter-2 alternation
+`origin/(main|develop|HEAD)` has no right boundary, so `origin/mainx` matches on the `origin/main`
+prefix and the mutation could not falsify anything. A trailing `\b` was added to
+`movingRefGitContextPattern` and `movingRefTokenPattern` — a deliberate tightening of the recorded
+filter, priced below — after which the mutation is falsifying:
+
+```
+$ go test ./internal/spec/ -run 'TestMovingRef_FiresOnUnpinnedAnchor' 2>&1 | tail -20
+--- FAIL: TestMovingRef_FiresOnUnpinnedAnchor (0.24s)
+    lint_movingref_test.go:90: expected exactly 1 MovingRefUnpinned finding, got 0: []
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	0.605s
+FAIL
+```
+
+Reverted; suite green (`ok ... 2.975s`).
+
+**M-002 (AC-MRG-002) — delete the hex-SHA exclusion branch.**
+
+```
+--- FAIL: TestMovingRef_PinnedClaimNotFlagged (0.23s)
+    lint_movingref_test.go:114: expected 0 findings on a SHA-pinned claim, got 1: [{testdata/movingref/pinned-sha/acceptance.md 15 warning MovingRefUnpinned `origin/main` decides an invariant claim on this line with no SHA pin and no frozen-baseline variable, so the measurement expires the moment mainline advances. …}]
+FAIL	github.com/modu-ai/moai-adk/internal/spec	3.144s
+```
+
+**M-003 (AC-MRG-003) — remove the non-empty-reason check (any marker suppresses).**
+
+```
+--- FAIL: TestMovingRef_MarkerSuppressesOnlyWithReason (0.64s)
+    lint_movingref_test.go:136: (c) bare marker: expected 1 finding, got 0: []
+FAIL	github.com/modu-ai/moai-adk/internal/spec	3.027s
+```
+
+**M-004 (AC-MRG-004) — add a `strings.Contains(line, "...")` early return.**
+
+```
+--- FAIL: TestMovingRef_ThreeDotNotExempt (0.23s)
+    lint_movingref_test.go:154: expected 1 finding on the three-dot form, got 0: []
+--- FAIL: TestMovingRef_DivergenceFigureVariant (0.23s)
+    lint_movingref_test.go:213: expected 1 finding on the divergence-figure form, got 0: []
+FAIL	github.com/modu-ai/moai-adk/internal/spec	3.081s
+```
+
+AC-MRG-006 also goes red because the divergence fixture uses the `...` form; the criterion the
+mutation names is red, and the collateral is consistent rather than a separate signal.
+
+**M-005 (AC-MRG-005) — emit at `SeverityError`.**
+
+```
+--- FAIL: TestMovingRef_SeverityWarningAndExitCode (0.45s)
+    lint_movingref_test.go:185: expected severity "warning", got "error"
+    lint_movingref_test.go:191: non-strict lint must exit 0 when the only findings are MovingRefUnpinned warnings
+FAIL	github.com/modu-ai/moai-adk/internal/spec	0.813s
+```
+
+Both halves red — the severity assertion **and** the exit-code assertion, which is the half the
+criterion is actually about.
+
+**M-006 (AC-MRG-006) — append a resolved SHA to the divergence fixture line.**
+
+```
+--- FAIL: TestMovingRef_DivergenceFigureVariant (0.27s)
+    lint_movingref_test.go:213: expected 1 finding on the divergence-figure form, got 0: []
+FAIL	github.com/modu-ai/moai-adk/internal/spec	2.969s
+```
+
+The rule keys on the missing pin, not on the `rev-list` verb alone.
+
+**M-008a (AC-MRG-008) — shorten the message to name only pinning.**
+
+```
+--- FAIL: TestMovingRef_MessageNamesAllFourBranches (0.21s)
+    lint_movingref_test.go:249: message omits R1 (pin): expected substring "pin the resolved SHA" in: … Pin the SHA.
+    lint_movingref_test.go:249: message omits R2 (freeze at pre-flight): …
+    lint_movingref_test.go:249: message omits R3 (declare the exemption): …
+    lint_movingref_test.go:249: message omits R4 (state the command): …
+    lint_movingref_test.go:254: message must not present pinning as the sole remedy; got: …
+    lint_movingref_test.go:258: message must state that it is a question rather than a verdict; got: …
+FAIL	github.com/modu-ai/moai-adk/internal/spec	0.576s
+```
+
+**M-008b (AC-MRG-008, second mutation) — drop ONLY R4, leaving three branches.**
+
+```
+--- FAIL: TestMovingRef_MessageNamesAllFourBranches (0.21s)
+    lint_movingref_test.go:249: message omits R4 (state the command): expected substring "state the measuring command" in: `origin/main` decides an invariant claim on this line … then choose among four remedies — R1 pin the resolved SHA; R2 freeze at pre-flight (`BASELINE_SHA=$(git rev-parse origin/main)`) and decide the criterion against the frozen value; R3 keep the moving ref and declare the exemption with a non-empty reason, `<!-- moving-ref-ok: <reason> -->`; Pinning is one branch of four, not the default. …
+FAIL	github.com/modu-ai/moai-adk/internal/spec	0.574s
+```
+
+The assertion still fails with three branches present, and fails on the R4 row alone — one assertion
+per branch, so no single branch can be dropped silently.
+
+**M-009 (AC-MRG-009) — restrict the rule to `doc.Body`.**
+
+```
+--- FAIL: TestMovingRef_FiresOnUnpinnedAnchor (0.23s)
+    lint_movingref_test.go:90: expected exactly 1 MovingRefUnpinned finding, got 0: []
+--- FAIL: TestMovingRef_MarkerSuppressesOnlyWithReason (0.69s)
+    lint_movingref_test.go:129: (a) no marker: expected 1 finding, got 0: []
+    lint_movingref_test.go:136: (c) bare marker: expected 1 finding, got 0: []
+--- FAIL: TestMovingRef_ThreeDotNotExempt (0.23s)
+    lint_movingref_test.go:154: expected 1 finding on the three-dot form, got 0: []
+--- FAIL: TestMovingRef_SeverityWarningAndExitCode (0.22s)
+    lint_movingref_test.go:182: expected 1 MovingRefUnpinned finding, got 0
+--- FAIL: TestMovingRef_DivergenceFigureVariant (0.22s)
+    lint_movingref_test.go:213: expected 1 finding on the divergence-figure form, got 0: []
+--- FAIL: TestMovingRef_MessageNamesAllFourBranches (0.22s)
+    lint_movingref_test.go:236: expected 1 finding, got 0
+--- FAIL: TestMovingRef_ReadsSiblingArtifacts (0.23s)
+    lint_movingref_test.go:274: expected 1 finding from the sibling progress.md, got 0: []
+FAIL	github.com/modu-ai/moai-adk/internal/spec	2.838s
+```
+
+AC-MRG-009 goes red as required. **Its stated separation clause does not hold, and the reason is in
+`acceptance.md` rather than in the implementation.** AC-MRG-009 says the body-only mutant "fails
+while AC-MRG-001 still passes — which is exactly why it is a separate criterion". But AC-MRG-001's
+own fixture is specified as *"a fixture SPEC whose `acceptance.md` carries the row"*, and
+`SPECDoc.Body` carries `spec.md` alone — so a body-only mutant necessarily takes AC-MRG-001 down
+with it. The two clauses are inconsistent with each other; the fixture placement was followed as
+written and the inconsistency is reported rather than resolved here (it is `acceptance.md` body
+content, which run-phase does not own).
+
+**M-014 (AC-MRG-014) — delete the claim-marker conjunct. The mutant the Definition of Done singles
+out.**
+
+```
+--- FAIL: TestMovingRef_NegativeControlOnClaimConjunct (0.22s)
+    lint_movingref_test.go:296: expected 0 findings on a claim-free instruction, got 1: [{testdata/movingref/no-claim/progress.md 14 warning MovingRefUnpinned `origin/main` decides an invariant claim on this line with no SHA pin and no frozen-baseline variable, …}]
+FAIL	github.com/modu-ai/moai-adk/internal/spec	3.126s
+```
+
+**AC-MRG-014 is the ONLY red.** Every other criterion — AC-MRG-001, -002, -003, -004, -005, -006,
+-008, -009 — stays green under the all-matching mutant, which is the property the DoD asserts and
+which is here measured rather than argued.
+
+#### Claim 3 — the over-fire the claim-marker conjunct prevents, measured at this tree
+
+`acceptance.md` AC-MRG-014 cites **495** findings for the mutant at `43329ec8b`. Re-measured here
+rather than carried over, using the rule's own alternations as a grep equivalent (a grep prevalence
+measurement, not rule output — the same caveat §E.1 records for the 42):
+
+```
+$ grep -rnE 'git [a-z-]+[^`]*origin/(main|develop|HEAD)\b' .moai/specs --include='*.md' \
+    | grep -v SPEC-MOVING-REF-GUARD-001 | grep -cvE '\b[0-9a-f]{7,40}\b'
+451
+
+$ grep -rnE 'git [a-z-]+[^`]*origin/(main|develop|HEAD)\b' .moai/specs --include='*.md' \
+    | grep -v SPEC-MOVING-REF-GUARD-001 \
+    | grep -iE 'byte-unchanged|byte unchanged|unchanged|preserv|보존|no diff|empty|0 files|부재|absent|변경 ?없|그대로' \
+    | grep -cvE '\b[0-9a-f]{7,40}\b'
+42
+```
+
+**451 vs 42 — a 10.7x over-fire at this tree**, against the 495 vs 42 (11.8x) recorded at
+`43329ec8b`. The figures differ because the trees differ; the conclusion does not. Bulk suppression
+is the rational response to 451 warnings, which defeats §D.5 directly.
+
+The second command also reproduces `spec.md` §B.3's filter-4 figure of **42 exactly**, at this tree.
+
+#### Claim 4 — the `\b` tightening is priced, and costs nothing on the live corpus
+
+The tightening M-001 forced is a deviation from the alternation recorded verbatim in §E.1, so its
+effect is measured rather than assumed. Same filter chain, `\b` removed:
+
+```
+$ grep -rnE 'git [a-z-]+[^`]*origin/(main|develop|HEAD)' .moai/specs --include='*.md' \
+    | grep -v SPEC-MOVING-REF-GUARD-001 \
+    | grep -iE 'byte-unchanged|byte unchanged|unchanged|preserv|보존|no diff|empty|0 files|부재|absent|변경 ?없|그대로' \
+    | grep -cvE '\b[0-9a-f]{7,40}\b'
+42
+```
+
+**42 with the boundary and 42 without it** — the tightening is a no-op on the live corpus and
+changes no §B.3 figure. It buys AC-MRG-001's falsifiability at zero measured cost.
+
+#### Claim 5 — AC-MRG-002's fixture deviates from its literal wording, deliberately
+
+AC-MRG-002 says "the AC-MRG-001 fixture with `origin/main` **replaced by** a 40-character
+hexadecimal SHA". Taken literally the moving-ref token disappears, the line then fails conjuncts 1+2
+rather than being exempted by REQ-MRG-008, and the criterion's own stated mutation (delete the
+hex-SHA exclusion branch) **cannot turn it red** — a vacuous criterion of exactly the shape §A
+exists to prevent.
+
+The fixture therefore **retains** the ref and records the resolved SHA on the same line — the shape
+filter 4 of §B.3 actually removes (a line in a git-command context carrying a 7-40 hex SHA), and the
+shape REQ-MRG-008 is worded for ("While a **line's moving ref** carries a resolved SHA pin"). M-002's
+red output above confirms the criterion is falsifiable under this fixture.
+
+#### Claim 6 — AC-MRG-006 was KEPT, not withdrawn
+
+REQ-MRG-006 is SHOULD-tier and `spec.md` §H Q2 permits withdrawal at run-phase. It was kept. The
+measurement that decided it: the divergence branch requires a **cited figure** (a result pair such
+as `→ 0 0`), not merely the `rev-list --count --left-right` verb, so it does not fire on
+AC-MRG-014's negative-control line, which names the same command and asserts nothing. That fixture
+passing green (0 findings) with AC-MRG-006 passing green (1 finding) is the evidence the two shapes
+are separated. No over-fire was observed on any fixture.
+
+#### Baseline-attribution
+
+- Frozen pre-flight baseline: `BASELINE_SHA = d566ecc7511e1954e3aeb1dff3a60afa5be1089b`, taken as
+  given from the dispatch and cited as a literal SHA, never re-resolved from `origin/develop`.
+  Re-resolving it would make this SPEC an instance of its own defect.
+- Every command above ran against worktree `WT-moving-ref-guard` at HEAD **`cb90e8a86`** (`git
+  rev-parse --short HEAD`, re-read immediately before this record was written), with the M3 changes
+  present in the working tree and not yet committed.
+- `git status --short` at that moment: ` M internal/spec/lint.go`, `?? internal/spec/lint_movingref.go`,
+  `?? internal/spec/lint_movingref_test.go`, `?? internal/spec/testdata/movingref/` — no file outside
+  this SPEC's directory and `internal/spec/` was modified.
+
+#### Gaps — what was explicitly NOT observed
+
+- **M4 (corpus triage) and M5 (template mirror) were not started.** AC-MRG-010 and AC-MRG-012 are
+  entirely unobserved. The 451 / 42 figures above are a grep prevalence measurement for the severity
+  argument only — they are **not** the M4 triage, which must classify each finding as anchor /
+  subject / already-frozen with a reason, and they are not rule output.
+- **REQ-MRG-010 and AC-MRG-013 are unimplemented and untested** (Q0 option C). CM-1 and CM-2 were
+  not run. No claim is made here about whether an R4 exclusion would work.
+- **The rule was never run over the live `.moai/specs` corpus.** Every figure in Claim 3 and Claim 4
+  is grep, not `MovingRefUnpinned` output. The two may disagree, and no criterion here assumes they
+  agree — the same caveat §E.1 records for the plan-phase 42.
+- **`AC-MRG-007` and `AC-MRG-011` were not re-verified.** They are M1's criteria; nothing in M3
+  re-read the doctrine file.
+- **`BASELINE_SHA` was not independently re-resolved** — same Gap as M1/M2. Its correspondence to
+  `origin/develop` at pre-flight rests on the dispatcher's measurement.
+- **No cross-platform build was run.** Only host `go build ./...`; no `GOOS=windows` / `GOOS=linux`
+  vet.
+- **No `go test ./...`.** Package-scoped only, per plan.md §D and the card's constraint.
+- **`golangci-lint` was not run.** Only `gofmt -l` (clean on both new files) and `go vet`.
+- **The five §B.3-named corpus lines were not checked against the rule.** Whether the rule actually
+  fires on `AC-TST-010` / `AC-AFS-012` and stays silent on `AC-COORD-016` / `REQ-LB-006` is M4's
+  question and is unobserved.
+
+#### Residual-risk — what could still be wrong despite the above
+
+- **The eight fixtures are synthetic and were authored by the same actor as the rule.** A shared
+  misreading of REQ-MRG-001 would produce a fixture and a rule that agree with each other and both
+  disagree with the corpus. Only M4 tests that.
+- **Limit L2 is unchanged and now has teeth.** The detector reads shape, never subject, so on the
+  live corpus it will fire on `REQ-LB-006` and any other line where the command is quoted subject
+  matter. That is expected (L4) and is what the marker is for — but until M4 classifies the corpus,
+  the true-positive rate is unmeasured, and a reader meeting a wall of findings may bulk-suppress
+  regardless of what the message says.
+- **The divergence branch's figure-citation heuristic is the least-grounded piece.** It accepts
+  `→ | -> | => | : | =` followed by two integers, or a backtick-wrapped integer pair. `:` and `=`
+  are broad, and no corpus measurement was taken of how often they precede an unrelated integer pair
+  on a `rev-list` line. AC-MRG-014's fixture is the only negative control it has.
+- **`shaPinPattern` is line-scoped and lexical.** Any 7-40 character lowercase-hex word on the line
+  exempts it, including an English word that happens to be hex-shaped (`defaced`, `decade` + a
+  digit) and an unrelated SHA. This is inherited from §B.3 filter 4 rather than introduced here, but
+  it means a claim can be exempted by an anchor that anchors nothing — a rotted-value blind spot of
+  the same family as L6.
+- **The rule re-reads every `*.md` in each SPEC directory on every `Lint()` call.** Whole-package
+  test time is 28.6s and no regression was observed, but no before/after timing was measured, so the
+  cost on a large catalog is unquantified.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
