@@ -134,6 +134,55 @@ time in its own lifecycle, after §B.4 (the dispatch base line) and §B.5 (the f
 recorded here as a process finding rather than as a sixth grounded instance, per the auditor's
 judgment that it is a violation of the writer rule and not a new shape of the defect.
 
+**v0.4.0 — plan audit iter-2 (PASS-WITH-DEBT 0.86, +0.06 monotonic), targeted pre-run edit.**
+
+Iter-2 verified all eight iter-1 blocking defects closed and raised D13/D14 blocking, D15/D16
+optional. Applied as a targeted edit rather than a plan-phase re-entry — iter-2 was the Tier M
+ceiling.
+
+**D13 — the old AC-MRG-013 fixture was vacuous, re-measured independently rather than accepted.**
+The lead measured two of the three axes; all three were re-run here, plus the pipeline check that
+settles it:
+
+| Axis | Old fixture (lead's dispatch line) | New fixture |
+|---|---|---|
+| `grep -cE 'origin/[a-z]'` | **0** — `git fetch origin develop` is two args, no slash token (an L1 blind-spot line) | **1** |
+| `grep -cE '\b[0-9a-f]{7,40}\b'` | **1** — REQ-MRG-008 already exempts it | **0** |
+| claim marker (filter-3 alternation, `-i`) | **0** | **1** |
+| git-command context (filter 2) | — | **1** |
+| `grep -cE '\$[A-Z_]*BASELINE[A-Z_]*'` | — | **0** |
+| **full REQ-MRG-001 pipeline (filters 2-4)** | **0** — unflaggable, so removing the R4 exclusion changed nothing | **1** |
+
+The last row is the defect: with the old fixture the exemption could have been entirely absent and
+every criterion would still have passed. The new fixture is
+`` - verify `internal/hook` is unchanged by this work: run `git diff --name-only origin/develop -- internal/hook` at read time (reference reading 2026-08-28: empty) ``.
+
+**Residual-scope verification (the thing the old fixture was hiding).** REQ-MRG-010's exclusion does
+real work on exactly one class, established by measuring the two shapes that need no exclusion:
+
+- *SHA-valued R4 reference* — the old fixture itself: `\b[0-9a-f]{7,40}\b` → **1**, so REQ-MRG-008
+  exempts it without REQ-MRG-010.
+- *Divergence-class R4 reference* — `- run `git rev-list --count --left-right origin/main...HEAD` at
+  entry (reference reading 2026-08-28: 0 0)`: divergence class → **1**, carries a date → **1**, so
+  REQ-MRG-006's date conjunct exempts it without REQ-MRG-010.
+- *The residual* — the new fixture: divergence class → **0**, hex → **0**, so neither of the above
+  applies and the R4 exclusion is the only thing that can exempt it.
+
+**D14** — L7 added, and the mechanism matters more than the text: before this, `grep -n 'ANCHOR'
+acceptance.md` returned nothing, so the ANCHOR-branch limitation lived only in §D.3 prose and M1
+could have published the doctrine without it while passing every criterion. As L7 it is inside
+AC-MRG-011's count (6→7) and its own `grep -c 'ANCHOR'` check.
+
+**NOT observed at v0.4.0 (Gaps):**
+
+- Still no Go code, so every fixture property above is a measurement of the fixture *text* against
+  the specified filters — not an observation of a built rule flagging or exempting it. The claim
+  "removing the R4 exclusion makes the finding reappear" is a *prediction* from the pipeline
+  measurement, and becomes evidence only when M3 plants the mutation.
+- The residual-scope characterization was verified against three constructed shapes, not against the
+  live corpus. Whether R4-form lines of the residual class actually occur in `.moai/specs/**` was not
+  measured — the form is new, so the expected count is low, but "low" was not established.
+
 **Residual risk:** the exemption predicate (`spec.md` §D.1) is a judgment procedure. Its four tests
 were validated against five real instances, all of which it classifies correctly — but five is a
 small validation set, and **all five are SUBJECT-class** (`spec.md` §D.3 tally). The ANCHOR side of

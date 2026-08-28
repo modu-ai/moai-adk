@@ -1,7 +1,7 @@
 ---
 id: SPEC-MOVING-REF-GUARD-001
 title: "Moving-ref invariant guard: warn on unpinned invariant claims, with the anchor-or-subject exemption predicate shipped alongside"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-08-28
 updated: 2026-08-28
@@ -22,6 +22,7 @@ related_specs: [SPEC-GRAPH-FRESHNESS-CADENCE-001, SPEC-VERIFICATION-COMPLETENESS
 
 | Version | Date | Change | Author |
 |---------|------|--------|--------|
+| 0.4.0 | 2026-08-28 | Plan audit iter-2 (PASS-WITH-DEBT 0.86, +0.06 monotonic, `.moai/reports/t342/plan-audit-iter2.md`) closed all eight iter-1 blocking defects and raised two new ones. Applied here as a **targeted pre-run edit**, not a plan-phase re-entry — iter-2 was the Tier M ceiling. **D13** (critical): AC-MRG-013's fixture was the lead's dispatch line, which cannot fail — re-measured independently here, it carries **0** `origin/<branch>` slash tokens (`git fetch origin develop` is two arguments, an L1 blind-spot line by this SPEC's own §F), **1** hex SHA (so REQ-MRG-008 already exempts it) and **0** claim markers, and the full REQ-MRG-001 pipeline returns **0** against it. Removing the R4 exclusion entirely therefore did not make the finding reappear, so the card's [HARD] deliverable had no criterion proving the exemption exists at all — the suite guarded thoroughly against an exclusion that is too *wide* and not at all against one that does nothing. Fixture replaced with a REQ-MRG-001-residual-class line whose six properties are measured in `progress.md` §E.1, and REQ-MRG-010 now carries the residual-scope sentence the old fixture was hiding: the exclusion does real work on exactly one class, because a SHA-valued R4 reference is already exempt via REQ-MRG-008 and a divergence-count reference via REQ-MRG-006's date conjunct — both verified by measurement. **D14** (major): §D.3's ANCHOR-branch limitation was publishable-optional — `grep -n 'ANCHOR' acceptance.md` returned nothing, so M1 could drop the one limitation this audit round added while passing every criterion. Promoted to **L7**, which pulls it into AC-MRG-011 with the count raised 6→7, the same handling L6 received at v0.2.0. Optional **D15** (Test 4's gate named Tests 1-3 though Test 2 is conditional and never returns a class — gate reworded to Tests 1 and 3, with Test 2's non-classifying role stated) and **D16** (§B.3's "three dispositions the predicate produces" was the triage taxonomy, not the predicate's — the same residue swept from plan.md at v0.3.0) both applied. | manager-spec |
 | 0.3.0 | 2026-08-28 | Remediation of plan audit iter-1 PASS-WITH-DEBT 0.82, revised 0.80 after the targeted re-audit (`.moai/reports/t342/plan-audit.md`, written in this worktree because the isolation guard refused the primary path). Eight blocking defects fixed, four optional accepted. **D1** (critical): Test 1 carried no evaluation time, and the "Test 1 governs" tie-break routed the predicate's own founding case back to ANCHOR — so R4 was unreachable for the case it was invented for. Test 1 now specifies read-time evaluation and the tie-break routes a Test 1 / Test 3 disagreement to Test 4 instead of resolving to ANCHOR. The v0.2.0 correction had fixed the worked example without fixing the procedure; that is now recorded as the distinction it is. **D12** (major): §D.4's incentive argument was still the two-remedy one, leaving R4 an unpriced exemption — an author could rephrase into R4 shape and be done, which is the bulk-suppression outcome by another route. §D.4 restated for four remedies and R4 given an explicit cost; L6 extended with the incentive residual alongside the freshness one. **D11** (critical): an R4 exclusion keyed on the fetch verb passes all thirteen criteria including AC-MRG-013's counter-mutation. Second counter-mutation fixture added, and Q0 now requires the R4 signature to key on imperative structure rather than any command token. **D2** (critical): no negative control on the invariant-claim conjunct — AC-MRG-014 added. **D3**: fixture era precondition stated so AC-MRG-005's `--strict` half is satisfiable. **D4**: AC-MRG-010 now decided on both the committed diff and the working tree. **D6**: `version` was left at 0.1.0 while HISTORY carried a 0.2.0 row — the documented-vs-actual divergence this SPEC prohibits, in its own frontmatter; bumped here to 0.3.0 with the miss recorded rather than silently corrected. **D7**: two pre-addendum citations in plan.md swept. Optional **D5** (DoD now Q0-Q4, Q4 being newly opened by D1's tie-break change), **D8** (`Where` → `When`/`While` on five requirements), **D9** (REQ-MRG-011 added; AC-MRG-010 is no longer an orphan) and **D10** (the three grep alternations recorded verbatim in `progress.md` §E.1) also applied. §D.3 now states the ANCHOR-branch validation gap as a limitation, not only the skew as a strength. Every figure re-measured in this tree at `43329ec8b` rather than carried from the audit — two of the auditor's D11 figures did not reproduce under the now-recorded alternations, and the re-measurement is worse than their estimate; see `progress.md` §E.1. | manager-spec |
 | 0.2.0 | 2026-08-28 | Lead addendum absorbed. **(1)** Grounded instance 3 re-attributed: the stale-base occurrence is the **lead's own dispatch block**, named as such rather than as an anonymous occurrence, and §B.4 now states that it sits on the same axis as the card's side-discipline — relaying a once-measured value without re-measuring is the form this card prohibits. The attribution was re-verified in this turn before being written (`git rev-parse ec15ec2cd^` → `44095ddc2…`; `git reflog show WT-moving-ref-guard` → created from `origin/develop` at `ec15ec2cd`), because citing the dispatched figure unverified would have made this SPEC an instance of its own defect. **(2)** Fifth grounded instance added (§B.5, §D.3): the lead's change to the dispatch base line, from `base: origin/develop <sha>` to `base: measure at entry … (dispatch-time reference value: <sha>)`. **(3)** The predicate is **kept two-way** at the top level but gains **Test 4**, which routes within the SUBJECT class, and the remedy space expands from three branches to **four** with the addition of R4 (state the measuring command as the criterion, demote the value to a dated reference). §D.1 now states explicitly that classification and remedy selection are two steps, because conflating them is a second, subtler route to the card's dominant failure mode. Why the new case does not become a third top-level branch, and why it does not fold into ANCHOR, is argued in §D.1.1. **(4)** New REQ-MRG-010 / AC-MRG-013: the R4 form must not be flagged. **(5)** New detection limit L6 — the detector cannot tell a live reference value from a rotted one — with AC-MRG-011's grep count raised from 5 to 6. | manager-spec |
 | 0.1.0 | 2026-08-28 | Initial plan-phase authoring for card t342, in worktree `.claude/worktrees/t342` at HEAD `ec15ec2cd`. Every figure in §B was measured in this tree; the corpus survey (§B.3) and the two-dot/three-dot discriminator experiment (§B.2) were run here rather than carried over. The card's own dispatch supplied a third live instance of its subject (§B.4), verified against `git reflog show WT-moving-ref-guard`. The exemption predicate (§D.1) is specified as the primary deliverable per the card's [HARD] clause, and milestone ordering (plan.md §F) puts it first for that reason. | manager-spec |
@@ -111,7 +112,9 @@ Over `.moai/specs/**/*.md` in this tree:
 | 4 | (3) with no 7-40 hex SHA on the line | **42** | (3) piped through `grep -v -E '\b[0-9a-f]{7,40}\b'` |
 
 **42 is the raw candidate set, not 42 defects.** The set was enumerated and read; it contains all
-three dispositions the predicate produces, which is the useful result:
+three **triage** dispositions — anchor-unpinned, subject-correctly-unpinned, and already-frozen —
+which is the useful result. These are the categories the M4 corpus triage sorts into, not the
+predicate's own classes (two, with the S1/S2 split — §D.1):
 
 - **Anchor, unpinned — genuine finding.** `AC-TST-010` (`SPEC-V3R6-TEST-REFACTOR-001/acceptance.md:35`,
   `git diff origin/main -- .moai/specs/…` deciding "no predecessor SPEC body modified"); `AC-AFS-012`
@@ -274,9 +277,12 @@ inside. The v0.1.0 tie-break said "Test 1 governs" and thereby routed every S2 c
 which is how instance 3 was misclassified, and why R4 was unreachable for the case that motivated
 it. The correction is in the *procedure*, not only in the worked example (§D.3).
 
-**Test 4 — Read-time action.** Runs when Tests 1-3 return SUBJECT, **and also whenever Tests 1 and 3
-disagree** (per the tie-break above). Ask: must a later reader *act* on this claim by measuring
-something?
+**Test 4 — Read-time action.** Runs when **Tests 1 and 3** return SUBJECT, and also whenever they
+disagree (per the tie-break above). Test 2 is deliberately not part of this gate: it is conditional
+— it runs only when the claim currently reads false — and it returns a *falsification attribution*
+(true signal vs spurious red), never a class. A gate naming "Tests 1-3" would therefore be
+unsatisfiable for a claim that reads true, which is most of them. Ask: must a later reader *act* on
+this claim by measuring something?
 
 - **No — the claim is narrative.** It describes what mainline carries, quotes a command as text, or
   records a coordinate as the subject of a correction. Nothing is measured at read time. → **S1**,
@@ -521,7 +527,8 @@ prose and are not identical to any mechanism.
   remedy.
 - **REQ-MRG-005**: The doctrine section shall state the anchor-or-subject predicate and its four
   tests (§D.1), the five grounded instances (§D.3), the four remediation branches (§D.2), and the
-  six detection limits (§F), and shall be mirrored into the distributed template.
+  seven detection limits (§F) **including L7's ANCHOR-branch validation gap**, and shall be mirrored
+  into the distributed template.
 - **REQ-MRG-006**: The linter shall emit a `MovingRefUnpinned` finding for a line citing a
   branch-divergence count (`rev-list --count --left-right` against a moving ref) that carries
   neither a SHA nor a date.
@@ -535,6 +542,17 @@ prose and are not identical to any mechanism.
 - **REQ-MRG-010**: While a line is written in the R4 form — a measuring command stated as the
   criterion in imperative structure, with any value syntactically demoted to a labelled reference —
   the linter shall not emit `MovingRefUnpinned` for that line.
+
+  **Residual scope (measured).** This exclusion does real work on exactly one class: a
+  REQ-MRG-001-class line — moving ref in a git-command context, carrying a claim marker, with no SHA
+  and no frozen-baseline variable — written in R4 form **whose demoted reference value is a
+  measurement result rather than a commit SHA**. The other two R4 shapes need no exclusion because
+  they are already exempt without it: an R4 line whose reference value is a SHA is exempt under
+  REQ-MRG-008, and an R4 line in the divergence class is exempt under REQ-MRG-006's date conjunct,
+  since a dated reference is precisely what that requirement asks for. Both were verified by
+  measurement (`progress.md` §E.1), and the scope is recorded here because Q0 asks how to recognize
+  the R4 form — a question that cannot be answered well without knowing how narrow the form's job
+  actually is.
 - **REQ-MRG-011**: The corpus triage of milestone M4 shall classify every finding without modifying
   any SPEC artifact outside this SPEC's own directory, measured against both the committed diff and
   the working tree.
@@ -575,6 +593,15 @@ in this SPEC implies coverage of any of them.
   will run, which is harder to fake convincingly than an empty gesture. D11 is this gap exploited by
   an implementer writing the exclusion; this is the same gap exploited by an author writing the
   claim.
+- **L7 — the ANCHOR branch of the predicate is unvalidated.** Not a limit of the detector but of the
+  doctrine it enforces, and stated among the limits because a reader applying the predicate needs it
+  at the same moment they need the others. The SUBJECT branch has five adjudicated instances
+  (§D.3); the ANCHOR branch has **zero** — it rests on seven corpus lines classified by the author
+  alone, none independently escalated or disputed. D1 of the iter-1 audit, in which Test 1
+  over-returned ANCHOR for want of a stated evaluation time, is exactly the failure an unvalidated
+  branch would be expected to have, and it was found by an auditor rather than by the author.
+  Consequences for a reader: weight an ANCHOR verdict less confidently than a SUBJECT one, and treat
+  a Test 1 / Test 3 disagreement as evidence *against* ANCHOR rather than for it (§D.1 tie-break).
 
 ## §G. Out of Scope
 

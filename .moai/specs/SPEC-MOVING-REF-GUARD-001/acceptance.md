@@ -178,18 +178,24 @@ AC-MWA-007a, which pairs the same two commands for the same reason.
 ### AC-MRG-011 — the detection limits are stated (MUST)
 
 **Given** the M1 doctrine section,
-**when** it is read, **then** it states all six limits L1-L6 of `spec.md` §F, and no acceptance
+**when** it is read, **then** it states all seven limits L1-L7 of `spec.md` §F, and no acceptance
 criterion in this SPEC asserts coverage of any of them.
 
-**Decided by:** `grep -c 'L[1-6] —'` over the doctrine file returning 6, and a manual read of §C
-confirming no criterion claims L1 or L6 coverage.
+**Decided by:** `grep -c 'L[1-7] —'` over the doctrine file returning 7, plus
+`grep -c 'ANCHOR' <doctrine>` ≥ 1 for L7 specifically, and a manual read of §C confirming no
+criterion claims L1 or L6 coverage.
 **Fails when:** L1 (refs expressed without an `origin/` token) is dropped — it is the limit most
 likely to be quietly omitted, because stating it weakens the apparent value of the deliverable.
 **Mutation that must turn it red:** delete the L1 paragraph; the grep count drops to 5.
 **Second mutation, for the addendum:** delete L6 (a rotted reference value is indistinguishable
 from a live one). L6 is the limit the R4 exemption *creates*, so omitting it would let the SPEC
-introduce a blind spot in the same delivery that claims to enumerate them — the count drops to 5
+introduce a blind spot in the same delivery that claims to enumerate them — the count drops to 6
 and the criterion fails.
+**Third mutation, for L7:** delete L7 (the ANCHOR branch is unvalidated). Before iter-2 this
+limitation lived only in `spec.md` §D.3 prose and `grep -n 'ANCHOR' acceptance.md` returned nothing,
+so M1 could have published the doctrine without it while passing every criterion — the one
+limitation the audit round added was the one thing droppable. The count drops to 6 **and** the
+`grep -c 'ANCHOR'` check returns 0; both halves must fail.
 
 ### AC-MRG-012 — template mirror and neutrality (MUST)
 
@@ -206,16 +212,41 @@ neutrality guard reports the SPEC-ID and SHA tokens.
 
 ### AC-MRG-013 — the R4 form is not flagged (MUST)
 
-**Given** a fixture line in the R4 form —
-`base: measure at entry with git fetch origin develop (dispatch-time reference value: 44095ddc2)` —
+**Given** a fixture line in the R4 form, drawn from REQ-MRG-010's residual class —
+
+```
+- verify `internal/hook` is unchanged by this work: run `git diff --name-only origin/develop -- internal/hook` at read time (reference reading 2026-08-28: empty)
+```
+
 **when** the linter runs over it,
 **then** zero `MovingRefUnpinned` findings are reported.
+
+**Fixture properties, measured (not asserted) — the fixture MUST be flaggable absent the exclusion.**
+The previous fixture (the lead's dispatch line) was vacuous three ways at once, so this replacement's
+properties are measured and recorded rather than reasoned about:
+
+| Property | Required | Measured | Command |
+|---|---|---|---|
+| moving-ref slash token | ≥1 | **1** | `grep -cE 'origin/[a-z]'` |
+| hex SHA 7-40 | **0** (else REQ-MRG-008 exempts it) | **0** | `grep -cE '\b[0-9a-f]{7,40}\b'` |
+| invariant-claim marker | ≥1 | **1** | filter-3 alternation, `-i` |
+| git-command context | ≥1 | **1** | `grep -cE 'git [a-z-]+[^\`]*origin/(main\|develop\|HEAD)'` |
+| frozen-baseline variable | **0** | **0** | `grep -cE '\$[A-Z_]*BASELINE[A-Z_]*'` |
+| **full REQ-MRG-001 pipeline** | **1** — would be flagged absent R4 | **1** | filters 2-4 chained |
+
+The last row is the one that makes this criterion non-vacuous, and it is the row the old fixture
+failed (it measured **0**). The date in the reference is not this line's exemption route: REQ-MRG-001
+carries no date conjunct, and the line is not in the divergence class (`grep -c 'rev-list --count
+--left-right'` → 0), so **the R4 exclusion is the only thing that can exempt it**.
 
 **Fails when:** the R4 exclusion is absent, and the guard flags the very form the doctrine
 recommends. That failure is worse than a plain false positive: it teaches readers to avoid the
 correct remedy, which is the card's dominant failure mode arriving by a different road.
 **Mutation that must turn it red:** remove the R4-form exclusion from the rule; the finding
-reappears.
+reappears. Against the *previous* fixture this mutation produced no finding at all, which is what
+made the criterion vacuous — the exemption could have been entirely absent and every criterion would
+still have passed. Run this mutation first, before CM-1 and CM-2: it is the only one that proves the
+exclusion **exists**, where those two prove it is not too wide.
 
 **Counter-mutation set — TWO fixtures, both required.** One is insufficient, and the audit proved
 it rather than argued it.
