@@ -230,12 +230,19 @@ func TestSaveLLMSection_PopulatesDefaultGLMModels(t *testing.T) {
 	content := string(data)
 
 	// Verify that default values were populated, not empty strings. Every slot
-	// carries the same model: Claude Code sizes the auto-compact window once from
-	// the high slot, so a smaller model elsewhere would inherit a window it cannot
-	// hold. Tier differentiation lives on the effort axis instead.
-	for _, slot := range []string{"high", "medium", "low", "fable"} {
-		if !strings.Contains(content, slot+": glm-5.3-flash") {
-			t.Errorf("llm.yaml should contain glm-5.3-flash as the default %s model, got:\n%s", slot, content)
+	// carries a 1M model: Claude Code sizes the auto-compact window once from the
+	// high slot, so a smaller model elsewhere would inherit a window it cannot
+	// hold. The Fable slot holds glm-5.3 rather than glm-5.3-flash — both are 1M,
+	// so the window invariant survives the split. Tier differentiation lives on
+	// the effort axis instead.
+	for slot, wantModel := range map[string]string{
+		"high":   "glm-5.3-flash",
+		"medium": "glm-5.3-flash",
+		"low":    "glm-5.3-flash",
+		"fable":  "glm-5.3",
+	} {
+		if !strings.Contains(content, slot+": "+wantModel+"\n") {
+			t.Errorf("llm.yaml should contain %q as the default %s model, got:\n%s", wantModel, slot, content)
 		}
 	}
 

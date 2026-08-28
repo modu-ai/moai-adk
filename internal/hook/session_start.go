@@ -70,6 +70,20 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		"project_dir", input.ProjectDir,
 	)
 
+	// SPEC-GUARD-LIVENESS-001 REQ-GDL-002/003 (card t333 M1): initiate the
+	// guard firing-liveness refresh.
+	//
+	// Placed at the top of Handle deliberately. Everything below it can return
+	// early — the marshal failure a few hundred lines down does — and an
+	// invocation sitting after such a return is unconditional only on the
+	// activations that got that far. The refresh is never awaited, so entering
+	// here costs the input-lag budget nothing.
+	guardLivenessRoot := input.ProjectDir
+	if guardLivenessRoot == "" {
+		guardLivenessRoot = input.CWD
+	}
+	guardLivenessRefresh(ctx, guardLivenessRoot)
+
 	data := map[string]any{
 		"session_id": input.SessionID,
 		"status":     "initialized",
@@ -477,6 +491,19 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		lagRoot = input.CWD
 	}
 	appendAdditionalContext(out, binaryLagAdvisory(ctx, lagRoot))
+
+	// SPEC-GUARD-LIVENESS-001 REQ-GDL-004/005/010/011 (card t333 M2): the guard
+	// firing-liveness verdict, emitted without anyone asking for it.
+	//
+	// It joins THIS block through the same helper rather than opening a surface
+	// of its own. A second channel would split one concern across two, and a
+	// reader who learns to skip one has no reason to treat the other
+	// differently — which is the filtering mechanism this card is about,
+	// applied twice.
+	//
+	// The read is of a persisted verdict; the refresh that produces the next
+	// one was initiated at the top of Handle and is not waited on here.
+	appendAdditionalContext(out, guardLivenessAdvisory(guardLivenessRoot))
 
 	return out, nil
 }
