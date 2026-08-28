@@ -450,7 +450,7 @@ mx_annotations_added:
   - "internal/cli/doctor.go — checkBinaryFreshness에 @MX:ANCHOR(행 이름 고정 + Fail 승격 금지, REASON/TEST 하위줄). 파일 상단의 기존 @MX:NOTE는 그대로 둠"
   - "internal/hook/session_start_binary_lag.go — binaryLagJoinBound(250ms 상수)에 @MX:NOTE. binaryLagAdvisory의 기존 @MX:WARN은 run-phase가 이미 달았고 그대로 둠"
   - "pkg/version/version.go — GetBuildID에 @MX:NOTE(Version으로 폴백하지 않는다)"
-  mx_fan_in_basis: "grep -rn 'binlag\\.' internal pkg --include='*.go' | grep -v _test.go — Evaluate 3개 호출점 관측"
+mx_fan_in_basis: "grep -rn 'binlag\\.' internal pkg --include='*.go' | grep -v _test.go — Evaluate 3개 호출점 관측"
 
 docs_review:
   readme: "변경 없음 — 4개 로케일 README 어디에도 doctor 검사 행 목록이나 세션 시작 훅 내부가 없다. 이 기능이 바꾸는 것은 유지자가 보는 표면이고, README가 서술하는 사용자 여정에는 걸리지 않는다"
@@ -474,6 +474,61 @@ verification:
 sync_phase_files: "CHANGELOG.md(항목 1건), .moai/specs/SPEC-BINARY-LAG-VISIBILITY-001/{spec.md·plan.md·acceptance.md·progress.md frontmatter, progress.md §E.4}, internal/binlag/binlag.go + internal/cli/doctor.go + internal/hook/session_start_binary_lag.go + pkg/version/version.go(@MX 주석만 — 실행 코드 무변경)"
 push_state: "push 안 함, PR 안 냄 — 통합은 리드 소관(dispatch 지시)"
 spec_body_untouched: "spec.md / plan.md / acceptance.md 본문 0줄 변경 — frontmatter `status:` + `updated:` 만"
+
+spec_body_vs_code_divergence_scan:
+  mandate: "리드 addendum(2026-08-28) — 이 카드의 전제는 plan·run에서 두 번 반증됐고 v0.4.1이 §5-vs-REQ-BLV-003 모순을 기록했다. 따라서 sync에서 남은 본문 주장과 착지한 코드의 어긋남을 능동적으로 훑는다. 발견은 **Gap으로 기록만** 한다 — 본문 편집은 manager-docs 소관 밖이고, 검증되지 않은 화해는 기록된 Gap보다 나쁘다"
+  method: "spec.md §3(REQ 9건)·§4(파일 표 + [HARD] 구속 조항)·§5(적용가능성)·§6(C-1..C-3), acceptance.md AC-BLV-001..009 의 코드 주장·경로·행번호를 이 트리(f9c96c381)에서 grep/sed로 직접 재측정. 인용 행번호는 SPEC이 자기 기준점으로 지목한 22f90b1c7 와 v0.4.1 커밋 bf1a19813 양쪽에서도 재측정해 드리프트 귀속을 갈랐다"
+  divergences_found: 7
+  D1:
+    file: ".moai/specs/SPEC-BINARY-LAG-VISIBILITY-001/spec.md §4 표 행 2"
+    claim: "「`internal/cli/`의 신규 파일 1건 (예: `binary_lag.go`)」 — 단일 비교 구현이 internal/cli 에 놓인다"
+    code: "구현은 신규 패키지 `internal/binlag/binlag.go`. internal/cli → internal/hook import 사이클 때문에 internal/cli 의 seam 은 훅 핸들러에서 도달 불가"
+    note: "§E.3 `spec_deviations` 가 사유를 기록했고 §5 본문은 이미 `internal/binlag/binlag.go` 를 인용한다 — 즉 §4와 §5가 **같은 문서 안에서 서로 다른 경로를 주장한다**. 본문 미수리 상태이며 화해하지 않았다"
+    attribution: "authoring/run-phase. 이 sync 커밋과 무관"
+  D2:
+    file: "spec.md §5"
+    claim: "`internal/binlag/binlag.go:101`(rev-parse HEAD) · `:111`(merge-base --is-ancestor)"
+    code: "현재 트리에서 각각 **121행 · 131행**"
+    note: "bf1a19813 에서는 101·111 로 **정확했다**. 이 sync 커밋 `d3454f1e6` 이 그 위쪽에 @MX 주석 20줄을 넣어 밀어냈다 — **내가 만든 어긋남**이다. 인용이 가리키는 코드 자체는 동일하며 의미 변화는 없다"
+    attribution: "이 sync 커밋 d3454f1e6"
+  D3:
+    file: "spec.md §4 [HARD] 구속 조항"
+    claim: "`session_start.go:266`(maps.Copy) · `:277`(marshal) · `:301`(HookOutput{Data}) · `:574`(2차 병합)"
+    code: "`internal/hook/session_start.go` 실측 — maps.Copy(data, advisory) 는 **258행과 276행 2곳**, `json.Marshal(data)` 는 **287행**, `out := &HookOutput{Data: jsonData}` 는 **311행**. 574행 부근에는 해당 구조가 없다"
+    note: "SPEC이 스스로 지목한 기준점 `22f90b1c7` 에서도 258/276/287/311 로 **동일** — 즉 병렬 레인 드리프트가 아니라 **작성 시점의 인용 오차**다. 조항이 말하는 사실(Data 가 json:\"-\" 라 그 경로는 직렬화되지 않는다)은 참이고 `types.go:394` 인용도 정확하다. 틀린 것은 행번호뿐"
+    attribution: "authoring. 코드 변경과 무관"
+  D4:
+    file: "spec.md §4 표 행 3"
+    claim: "「`AdditionalContext` append 지점(`:343-346`·`:369` 패턴)에 덧붙인다」"
+    code: "실제 append 블록은 353-356 · 379-382 · 430-433 · 454-457 이고, 착지한 권고는 그중 어느 곳도 아닌 **479행**에서 신규 헬퍼 `appendAdditionalContext(out, …)` 로 붙는다(Handle 말미)"
+    note: "요구(REQ-BLV-008: additionalContext 에 쓴다)는 충족한다. 어긋난 것은 인용한 위치와 「덧붙이는 자리」의 서술이다"
+    attribution: "authoring"
+  D5:
+    file: "spec.md §5"
+    claim: "`internal/cli/doctor.go:140` 이 `doctorExitStatus`"
+    code: "`func doctorExitStatus` 는 **142행**(140 은 그 doc 주석 안). bf1a19813 에서도 142"
+    note: "2행 오차. 의미 변화 없음"
+    attribution: "authoring"
+  D6:
+    file: "acceptance.md AC-BLV-006"
+    claim: "배제 대상 ctx-wrap 형태의 선례로 `session_start.go:622-624` 를 지목"
+    code: "`computeDeferredAdvisory` 안의 `context.WithTimeout(context.Background(), driftTimeout)` 는 **652행**(기준점 22f90b1c7 에서는 632행). 622-624 는 함수 선언·doc 주석 자리"
+    note: "이 인용 자체가 v0.4.0 감사 N2 의 **정정 결과**였는데, 정정된 번호도 여전히 어긋난다. 다만 AC 가 채택한 선례(`:243-257` timer+select)는 **정확하다** — 253행 `joinTimer := time.NewTimer(deferredScanJoinBound)` + 254행 select 가 인용 창 안에 있다. 판정력의 원천은 무사하고, 대비용으로 든 반례의 주소만 틀렸다"
+    attribution: "authoring"
+  D7:
+    file: "acceptance.md AC-BLV-009"
+    claim: "「`:245-249` 가 세 슬라이스를 `checkGroup` 으로 묶는다」"
+    code: "실제 묶는 자리는 **254-258**(`return []checkGroup{` 254, System/MoAI-ADK/Workspace 3행 255-257). 245-249 는 무관한 observer 루프. 기준점 22f90b1c7 에서는 252행"
+    note: "같은 AC 의 다른 인용 `:93-95`(allChecks 평탄화)는 **정확**하고, 세 레지스트리 선언(189 systemChecks / 197 moaiChecks / 220 workspaceChecks)도 실재한다. 판정 내용은 성립하며 근거 인용 한 줄의 주소만 틀렸다"
+    attribution: "authoring"
+  claims_re_verified_as_accurate:
+    - "REQ-BLV-009 / C-2 — 검사 이름 집합 불변: 세 레지스트리 전수 판독에서 `Binary Freshness` 는 있고 `Binary Lag` 류 신규 이름은 없다"
+    - "REQ-BLV-008 / plan.md M1 운영자 결정 — 권고는 additionalContext 단독. `session_start_binary_lag.go` 에 SystemMessage 쓰기 0건이고, session_start.go 의 SystemMessage 쓰기 2곳(386·437)은 무관한 기능의 운영자 통지"
+    - "AC-BLV-008 인용 `types.go:394`(Data json:\"-\") · `types.go:366`(SystemMessage json 태그) 정확"
+    - "AC-BLV-006 인용 `main_test.go:47`(deferredScansAsync=false) · `session_start_parallel_test.go:315-321`(origAsync 보존 → t.Cleanup 복원) 정확"
+    - "REQ-BLV-004 — Makefile `VERSION ?=` 행이 22f90b1c7 대비 바이트 동일"
+    - "§4 표 행 1·4·5·6 — doctor.go 환원, Makefile BUILD_ID, internal/cli/binary_lag_test.go, internal/hook 테스트 1건: 전부 실재"
+  disposition: "7건 전부 **기록만** 했다. spec.md / plan.md / acceptance.md 본문은 한 줄도 고치지 않았다. D1 은 실질(경로가 다르다), D2-D7 은 인용 주소 오차이며 어느 것도 착지한 코드의 동작을 바꾸지 않는다. 본문 수리가 필요하다고 판단되면 manager-spec 재위임 소관이다"
 
 gaps_explicitly_not_observed:
   - "sync-audit 미실시 — 이 sync 결과에 대한 독립 4차원 판정은 존재하지 않는다. 리드가 배차하면 그때 채워진다"
