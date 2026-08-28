@@ -1,29 +1,38 @@
-# Implementation Plan — SPEC-TODO-LANDING-STATE-001
+# Implementation Plan — SPEC-TODO-LANDING-STATE-001 (half A)
 
 Card t331. Authored at tree `3de2f85a2` (worktree `.claude/worktrees/t331`, branch
-`WT-card-landing-state`). Every citation below carries that tree SHA.
+`WT-card-landing-state`), re-verified at HEAD `11426a128`; no cited source file changed between the
+two, so every `@ 3de2f85a2` pin below still resolves.
+
+**Scope: half A — the discriminator.** The landing-evidence half (storage, the recording verb, an
+observed commit on `todo pr`, the live SPEC-status read) is card **t359**, which depends on this one.
+See `spec.md` §A.5 and §D.
 
 Milestones are ordered by **decision-reversibility**, not by execution convenience: the decisions
-most likely to change on review come first (the ref-resolution semantics, the storage shape, the
-user-visible stdout contract), and the mechanical work comes last.
+most likely to change on review come first (the ref-resolution semantics, then the two user-visible
+output contracts), and the mechanical work comes last.
 
 ---
 
 ## §A Tier classification
 
-**Tier M.**
+**Tier M — 11 requirements against a ceiling of 16, 10 acceptance criteria against a ceiling of 16.**
 
-| Signal | Measurement @ `3de2f85a2` |
+| Signal | Measurement |
 |---|---|
 | Packages touched | 3 (`internal/kanban`, `internal/cli`, plus a read of `internal/config`) |
-| Production call sites of the constant being replaced | 6 (`grep -rn 'LandedRef' --include='*.go' internal/`) |
-| New storage objects | 1 table + 1 top-level record field, both purely additive |
-| New CLI verb | 1 (`todo land`), plus one changed stdout line on `todo done` and one new outcome kind on `todo pr` |
+| Production call sites of the constant being replaced | **7** (`grep -rn 'LandedRef' --include='*.go' internal/` @ `3de2f85a2` → 12 lines: 1 comment, 1 declaration, 7 production uses, 2 test lines) |
+| Files expected to change | 6-8: `prlink_landed.go`, `prlink.go`, `todo_pr.go`, `todo.go`, two test files, two `todo.md` copies |
+| New storage objects | **none** — this SPEC persists nothing (`spec.md` §B.2) |
+| New CLI verb | none. One new outcome kind on `todo pr`, one new column on its row, one changed stdout line on `todo done` |
 | Doctrine files | 2 (the skill doc and its template mirror) |
-| Migration required | none (REQ-TLS-017) |
+| Migration required | none — nothing is stored |
 
-Not Tier S: it changes a user-visible CLI contract and a persisted schema. Not Tier L: no new
-subsystem, no cross-cutting refactor, and the blast radius is measured rather than estimated.
+Not Tier S: more than 5 files, and it changes a user-visible CLI contract on two surfaces. Not
+Tier L: no new subsystem, no persisted schema, no cross-cutting refactor, and the blast radius is
+measured rather than estimated. The prior draft's 26 requirements were the symptom of two SPECs in
+one document, not of a tier misjudgement; with the storage half moved to t359 the count sits inside
+the Tier M ceiling with room to spare.
 
 ---
 
@@ -42,30 +51,48 @@ subsystem, no cross-cutting refactor, and the blast radius is measured rather th
    read the exit code separately or use `set -o pipefail`.
 5. **[HARD] No prompting.** `internal/cli/todo.go:20` @ `3de2f85a2` records the subagent boundary —
    this command surface never prompts. The new verb inherits it.
-6. **Subprocess census.** `internal/cli/todo_undone_test.go:311-334` and the `todo pr` census assert
+6. **Subprocess census.** `internal/cli/todo_undone_test.go:310-334` and the `todo pr` census assert
    exact subprocess counts. Any new `git` call must be routed through `todoRunCommand`
-   (`internal/cli/todo_pr.go:56-66` @ `3de2f85a2`) and its count budget stated, or those tests go red
+   (`internal/cli/todo_pr.go:57-65` @ `3de2f85a2`) and its count budget stated, or those tests go red
    for the right reason and must be updated deliberately, not silently.
+7. **[HARD] Template neutrality on the mirror edit.** REQ-TLS-010 requires editing
+   `internal/template/templates/.claude/skills/moai/workflows/todo.md`, and changes under that path
+   trigger `.github/workflows/template-neutrality-check.yaml`, which rejects SPEC IDs, REQ tokens,
+   internal dates, and commit SHAs in template content. This SPEC's own vocabulary is full of all
+   four, so the mirror edit must be written in neutral prose: describe the resolved ref, the
+   `unknown` outcome, and the verdict token without naming `SPEC-TODO-LANDING-STATE-001`,
+   `REQ-TLS-*`, `3de2f85a2`, or any date.
+8. **[HARD] Persist nothing.** Nothing under `internal/kanban/backlog_*.go` is modified. A diff
+   touching the store is a scope breach into card t359 (acceptance.md §E gate 5).
 
 ---
 
-## §C Open questions for the Implementation Kickoff gate
+## §C Questions raised at plan-phase, and how each was settled
 
-- **[NEEDS CLARIFICATION: landing-verdict token spelling]** REQ-TLS-009 requires a stdout landing
-  verdict on every `todo done`. Two shapes are viable: a suffix on the existing line
-  (`done t331 landing=landed`) or a second line. The suffix changes the exact stdout string that
-  `TestTodoDone_RequireLandedProceedsWhenInconclusive` (`internal/cli/todo_undone_test.go:296` @
-  `3de2f85a2`) asserts with `strings.HasPrefix(stdout, "done t1")` — a prefix assert, so a suffix
-  survives it. A second line does too. The choice affects any operator script parsing `todo done`.
-  Recommendation: suffix, because it keeps one line per act.
-- **[NEEDS CLARIFICATION: exit code on `unknown`]** REQ-TLS-012 forbids refusing, so the exit code
-  stays 0 in the current reading. An alternative is a distinct non-zero-but-non-fatal code. That
-  would change the contract for every unattended caller and is **not** recommended; it is named here
-  so the gate can rule on it rather than have it decided inside a milestone.
-- **[NEEDS CLARIFICATION: which verb records the observation]** §B.4 requires an operator-issued
-  verb. `moai todo land <id>` is proposed (shaped after `todo relate`: writes a record, touches no
-  card). The alternative — recording as a side effect of `todo done` — is weaker, because it records
-  the landing only at the moment the operator no longer needs it.
+No clarification marker remains open in this artifact. Two of the three raised at 0.1.0 were
+resolvable from the sources and are ruled below; the third left with the storage half.
+
+**1. The landing-verdict token's spelling — RULED: a suffix on the existing line.**
+`spec.md` §A.6 Table 2 already writes the answer this way in every row (`stdout landing=landed`,
+`landing=not-landed`, `landing=unknown`), so the SPEC had in fact decided it; the marker recorded a
+choice that was already made elsewhere in the same document. The form is
+`done <id> landing=<verdict>`. It survives the one existing assertion mechanically:
+`TestTodoDone_RequireLandedProceedsWhenInconclusive` asserts
+`strings.HasPrefix(stdout, "done t1")` (`internal/cli/todo_undone_test.go:297` @ `3de2f85a2`), and a
+suffix does not disturb a prefix. One line per act; a second line would give an operator script two
+records for one event.
+
+**2. The exit code on `unknown` — RULED: it stays 0.**
+Settled by two sources rather than by preference. REQ-TLS-006 forbids refusing on `unknown`, and
+`spec.md` §D excludes "reversing the proceed-on-unanswerable policy" outright; a distinct non-zero
+code is that reversal wearing different clothes, because every unattended caller treats non-zero as
+refusal. The repair is on the reporting axis, not the policy axis (`spec.md` §B.5) — the stdout
+token is what makes the two outcomes distinguishable, and it does that without touching the exit
+code any caller already depends on.
+
+**3. Which verb records the observation — RETIRED, not answered.**
+The question only existed for the storage half and left with it (card t359). Nothing in this SPEC
+records anything, so there is no verb to choose.
 
 ---
 
@@ -78,72 +105,60 @@ question means.
 
 - Replace `const LandedRef` (`internal/kanban/prlink_landed.go:28` @ `3de2f85a2`) with a resolver:
   a `LandedRefFor(projectRoot string) string` returning `origin/<worktree_base_branch>` when
-  configured and `origin/main` when not (REQ-TLS-001, REQ-TLS-002).
+  configured and `origin/main` when not (REQ-TLS-001).
 - Reuse `config.LoadWorktreeBaseBranch` (`internal/config/loader_worktree_base.go:28` @ `3de2f85a2`).
   Do not re-parse the YAML.
 - Thread the resolved ref through `LandedGrepArgs` and `GitLandedQuerier`
   (`internal/kanban/prlink_landed.go:39-81` @ `3de2f85a2`) as a field, not a package global — the
-  package is a pure function of its inputs by ruling (`internal/kanban/prlink.go:17-19` @
+  package is a pure function of its inputs by ruling (`internal/kanban/prlink.go:18-21` @
   `3de2f85a2`) and must stay so.
-- Update the six user-facing text sites (REQ-TLS-003) so they name the resolved ref.
+- Update the **seven** user-facing text sites (REQ-TLS-002) so they name the resolved ref:
+  `prlink_landed.go:44`, `:78`; `todo_pr.go:75`, `:87`; `todo.go:357`, `:399`, `:428`.
+- Update the four **doc comments** that hardcode `origin/main` in prose, which the `LandedRef` grep
+  does not find and which silently mislead the next reader once the ref resolves:
+  `prlink_landed.go:26-27`, `:52`, `prlink.go:31`, `prlink.go:42` @ `3de2f85a2`.
 
 **Reversibility note.** Empty configuration must be byte-identical to today. That is the property
 that makes this milestone safe to land before the rest.
 
 ### M2 — the three-valued answer and the `unknown` outcome (user-visible contract)
 
-- Replace the `(bool, error)` return of `Landed` with a three-valued answer (REQ-TLS-005..007).
-- Map an unresolvable ref to `unknown` rather than to `false` (REQ-TLS-006). The probe at
-  `3de2f85a2` — `git log origin/no-such-ref … ; rc=128` — is the input.
-- Add the `unknown` outcome kind to the resolver (`internal/kanban/prlink.go:31-49` @ `3de2f85a2`),
-  keeping the existing four intact, and render it distinctly in `todo pr` (REQ-TLS-008).
-- Keep the resolver a pure function; the querier stays the only I/O seam.
+- Replace the `(bool, error)` return of `Landed` with a three-valued answer (REQ-TLS-003).
+- Map an unresolvable ref to `unknown` rather than to `false` (REQ-TLS-004). The probe
+  `git log origin/no-such-ref … ; rc=128` is the input.
+- Add the `unknown` outcome kind to the resolver (`internal/kanban/prlink.go:30-48` @ `3de2f85a2`),
+  keeping the existing four intact, and render it distinctly in `todo pr` (REQ-TLS-004).
+- Keep the resolver a pure function; the querier stays the only I/O seam. `Landed` keeps returning a
+  boolean fact and no commit (`SPEC-KANBAN-QUEUE-PR-SYNC-001` REQ-1.10, enforced at
+  `prlink_landed.go:62-67` @ `3de2f85a2`) — the answer's *arity* changes, not what it may carry.
 
 ### M3 — the stdout landing verdict on `todo done` (user-visible contract)
 
 - Emit exactly one landing-verdict token on stdout per invocation, including without the flag
-  (REQ-TLS-009..011), resolving the §C spelling question first.
-- Preserve the permissive policy on `unknown` (REQ-TLS-012) — this milestone changes the report, not
-  the decision.
-- Update `internal/cli/todo_undone_test.go:287-302` @ `3de2f85a2` deliberately: its current PASS is
+  (REQ-TLS-005), in the `done <id> landing=<verdict>` form ruled in §C.
+- Preserve the permissive policy on `unknown` (REQ-TLS-006) — this milestone changes the report, not
+  the decision, and the exit code stays 0 (§C).
+- Update `internal/cli/todo_undone_test.go:287-303` @ `3de2f85a2` deliberately: its current PASS is
   the RED baseline this SPEC exists to move (acceptance.md AC-TLS-006).
 
-### M4 — landing observations: storage shape (persisted schema)
+### M4 — the queue state on the `todo pr` row
 
-- Add a `landings` top-level array to `BacklogRecord` (`internal/kanban/backlog_store.go:186-193` @
-  `3de2f85a2`), following the `findings` / `archived` precedent exactly: absent in older files,
-  always rendered as an array, never null (REQ-TLS-013, REQ-TLS-016).
-- Add a `landings` table to `backlogDDL` (`internal/kanban/backlog_sqlite.go:101-135` @ `3de2f85a2`)
-  as `CREATE TABLE IF NOT EXISTS`. No `ALTER TABLE`, no CHECK change, no `schema_version` bump
-  (REQ-TLS-017).
-- Leave `BacklogItem`'s five fields untouched (REQ-TODO-013).
-- Confirm the downgrade story: a binary predating this change opens the queue and leaves the rows
-  intact (REQ-TLS-018).
+- Add the card's queue `state` to the rendered row (REQ-TLS-007), so a `queued` card with no link and
+  a `picked` card with no link stop reading alike (`spec.md` §A.6 C1 vs C2).
+- The row is printed at `internal/cli/todo_pr.go:175-176` @ `3de2f85a2` — five columns today
+  (`CardID, Kind, PRs, Confidence, text`), none of them the state. The value is already in hand:
+  `runTodoPR` holds `rec.Items` and builds a text map from it at `:167-169`.
+- No new subprocess, no new query. This is a column over data already loaded.
 
-### M5 — the recording verb
+### M5 — doctrine and template mirror (mechanical)
 
-- `moai todo land <id>` — resolve the ref, query it, and record one observation under the lock
-  (REQ-TLS-014, REQ-TLS-023).
-- The observation names the commit **as it exists on the resolved ref** (REQ-TLS-015). The t200
-  measurement in spec.md §A.3 is the guard: `7fc161b36` must never be recorded.
-- The verb changes no card (REQ-TLS-021) — the `todo relate` shape.
-- `todo pr` is not touched (REQ-TLS-024).
-
-### M6 — live SPEC status on the read surface
-
-- Render the card's live SPEC status through `kanban.ReadCardStatus`
-  (`internal/kanban/status_read.go:99` @ `3de2f85a2`), carrying its `Source` tag (REQ-TLS-019).
-- An unresolved status renders as unresolved, never as a status value (REQ-TLS-020).
-- This is a read-path addition on `todo pr`; keep it inside the existing per-invocation cost budget
-  (the status read is a `git show` blob read, no network).
-
-### M7 — doctrine and template mirror (mechanical)
-
-- Update both copies of `todo.md` (REQ-TLS-025): the new verb, the `unknown` outcome, the stdout
-  verdict token, and the restated [HARD] operator-only rule.
-- Restate the remaining limit (REQ-TLS-026): `landed` means the ref's history names the card, not
-  that the card's last step landed.
-- `make build`, then verify the embedded bundle carries the edit.
+- Update both copies of `todo.md` (REQ-TLS-010): the resolved ref, the `unknown` outcome, the stdout
+  verdict token, and the restated [HARD] operator-only rule. Write the mirror in neutral prose
+  (§B.7) — no SPEC id, no REQ token, no date, no commit SHA.
+- Restate the remaining limit (REQ-TLS-011): `landed` means the resolved ref's history names the
+  card, not that the card's last step landed.
+- `make build`, then verify the embedded bundle carries the edit and that `diff` of the two copies
+  is empty.
 
 ---
 
@@ -151,18 +166,19 @@ that makes this milestone safe to land before the rest.
 
 | # | Risk | Mitigation |
 |---|---|---|
-| R1 | The ref correction changes `todo pr`'s answers for **every** card at once; a lead reading the new output may over-trust it. | REQ-TLS-026 forces the remaining limit into the doctrine. spec.md §A.5 records that the ref correction closes the false negative and leaves the false positive open. |
+| R1 | The ref correction changes `todo pr`'s answers for **every** card at once; a lead reading the new output may over-trust it. | REQ-TLS-011 forces the remaining limit into the doctrine. `spec.md` §A.5 records that the ref correction closes the false negative and leaves the false positive open for card t359. |
 | R2 | A downstream project with `worktree_base_branch` empty silently keeps the old (wrong-for-them) behaviour. | Deliberate: the neutral-empty ruling is inherited from `internal/config/types.go:164-174` @ `3de2f85a2`. `moai doctor` already surfaces an unresolvable configured branch. |
-| R3 | Adding a `git` call to a read path breaks the subprocess census tests. | §B.6: route through `todoRunCommand` and state the budget. Treat a census failure as a design signal, not a test to relax. |
-| R4 | The recorded SHA is taken from the wrong ref after a later ref reconfiguration, making an old observation unresolvable. | REQ-TLS-014 records the ref **with** the SHA, so an observation is self-describing and a stale one is detectable rather than misleading. |
-| R5 | Scope creep into automatic closure. | §B.4 non-goal + §D exclusions + AC-TLS-013, which asserts the absence mechanically rather than by convention. |
-| R6 | The `unknown` outcome is added to the JSON shape of `todo pr --json`, breaking a consumer that switches exhaustively on four kinds. | The kind field is documented as a closed set; adding a fifth value is a contract change. Name it in the sync-phase notes and check `internal/web` for consumers before landing M2. |
+| R3 | Adding a `git` call to a read path breaks the subprocess census tests. | §B.6: route through `todoRunCommand` and state the budget. Treat a census failure as a design signal, not a test to relax. M4 adds no subprocess at all. |
+| R4 | Scope creep into automatic closure — made *more* attractive by this SPEC, because after it every develop-landed card starts answering `landed`. | `spec.md` §B.4 non-goal + §D exclusions + AC-TLS-008, which asserts the absence **behaviourally** (whole-queue byte identity) rather than by name-matching, and whose RED was established by planting a mutant that evades every name-based check (acceptance.md §D.1). |
+| R5 | Scope creep into card t359's storage axis mid-implementation ("we are already here, just add the column"). | acceptance.md §E gate 5 and §B.8: nothing under `internal/kanban/backlog_*.go` is modified, so the breach is visible in the diff rather than argued about in review. |
+| R6 | The `unknown` outcome is added to the JSON shape of `todo pr --json`, breaking a consumer that switches exhaustively on the four kinds. | **The in-repo half is measured and is zero, not deferred.** `grep -rn 'PRLink' --include='*.go' .` excluding tests and `internal/kanban/prlink*` returns matches in exactly one file — `internal/cli/todo_pr.go:135`, `:141`, `:176`, `:181-182` — and it formats `o.Kind` with `%s` (`:175-176`) rather than switching on it, so there is no exhaustive in-repo switch to break. `internal/web` exists (108 Go files) and contains **zero** `PRLink` references (`grep -rn 'PRLink' internal/web` → rc 1). The residual risk is external consumers of `todo pr --json`, which cannot be greped and is genuinely open: name the new kind in the sync-phase notes. Note also that the "closed set, switch exhaustively" wording belongs to `PRLinkConfidence` (`prlink.go:50-51` @ `3de2f85a2`), not to `PRLinkKind`, whose comment (`:30-33`) says only "one of the four … outcome kinds" — a fifth value is still a contract change, but a weaker one than the earlier draft implied. |
 
 ---
 
 ## §F Cross-references
 
 - spec.md §A.6 — the state table this plan implements.
-- acceptance.md — the RED baselines, each measured at `3de2f85a2`.
+- acceptance.md — the RED baselines; §D.1 carries the planted-mutant RED behind AC-TLS-008.
 - `SPEC-TODO-DESTRUCTIVE-GUARD-001` §B.2 — the inherited t330/t331 boundary.
 - `SPEC-WORKTREE-BASEREF-001` — the config resolver reused in M1.
+- **Card t359** — the landing-evidence half; depends on this SPEC landing first (`spec.md` §A.5).

@@ -1,7 +1,7 @@
 ---
 id: SPEC-TODO-LANDING-STATE-001
-title: "A card that knows its own landing state — the integration-branch ref correction, a three-valued landed answer, and landing evidence on the queue record"
-version: "0.1.0"
+title: "A card that knows its own landing state, half A — the integration-branch ref correction, a three-valued landed answer, and a guard that says whether it ran"
+version: "0.2.0"
 status: draft
 created: 2026-08-28
 updated: 2026-08-28
@@ -10,27 +10,37 @@ priority: P1
 phase: "v3.1.4 target"
 module: "internal/kanban, internal/cli, internal/config, .claude/skills/moai/workflows/todo.md, internal/template/templates/.claude/skills/moai/workflows/todo.md"
 lifecycle: spec-anchored
-tags: "kanban, backlog-queue, cli, landing-state, integration-branch, git-flow, evidence, additive-schema"
+tags: "kanban, backlog-queue, cli, landing-state, integration-branch, git-flow, three-valued-answer"
 tier: M
 related_specs:
   - SPEC-KANBAN-QUEUE-PR-SYNC-001
   - SPEC-TODO-DESTRUCTIVE-GUARD-001
-  - SPEC-TODO-SQLITE-001
   - SPEC-WORKTREE-BASEREF-001
 ---
 
-# SPEC: A card that knows its own landing state
+# SPEC: A card that knows its own landing state — half A, the discriminator
 
 ## HISTORY
 
 | Version | Date | Change |
 |---------|------|--------|
 | 0.1.0 | 2026-08-28 | Initial plan-phase authoring (card t331), measured at tree `3de2f85a2`. Root cause identified and measured: `LandedRef = "origin/main"` while the project integrates on `develop`. Scope boundary against t330 inherited verbatim from `SPEC-TODO-DESTRUCTIVE-GUARD-001` §B.2. One deviation from the dispatching lead's stated storage direction is recorded and justified in §B.2. |
+| 0.2.0 | 2026-08-28 | **Scope split by operator ruling** (plan-audit iteration 1, FAIL 0.74). The SPEC carried two SPECs in one document — a discriminator and an evidence store — which is what put it at 26 requirements, above even the Tier L ceiling of 25. The evidence half (landing observations, their storage, the recording verb, an observed commit on `todo pr`, the live SPEC-status read) moved to **card t359**, which depends on this one; §B.2 became a pointer and §D records the whole axis as out of scope. What remains is half A: the ref correction, the three-valued answer, the stdout verdict, and the queue `state` on the read surface — **11 requirements, Tier M (ceiling 16)**. Also in this revision: AC-TLS-008 rebuilt from a name-based grep sweep, which a mutant satisfied, into a behavioural whole-queue byte-identity assertion, with its RED **observed by planting that mutant** and then reverted; seven `file:line` citations re-measured and corrected and every remaining citation re-opened at its address; `origin/develop` figures re-expressed as re-runnable commands carrying the ref's own SHA and an observation instant, because a tree SHA does not pin a moving ref; the three plan-phase clarification markers resolved or retired with the B half; and the "six production sites" count corrected to seven against the grep printed beside it. |
 
 > **Provenance discipline.** Every `file:line` citation in this document was measured at tree
-> `3de2f85a2` (branch `WT-card-landing-state`, worktree `.claude/worktrees/t331`). A prior reader of
+> `3de2f85a2` (branch `WT-card-landing-state`, worktree `.claude/worktrees/t331`) and re-opened at
+> its address during the 0.2.0 remediation at HEAD `11426a128`. The pins remain valid across both
+> trees because no cited source file changed between them — `git diff --name-only 3de2f85a2 HEAD`
+> returns only this SPEC's own artifacts and `.moai/reports/t331/plan-audit.md`. A prior reader of
 > this card cited a path from a stale tree and reported it missing, so the tree SHA travels with the
 > citation rather than being assumed.
+
+> **A tree SHA does not pin a moving ref.** Citations into files are pinned to a tree; measurements
+> **about** `origin/main` or `origin/develop` are not, because those refs advance independently of
+> any tree. Every such figure below therefore travels with the command that produced it, the two
+> refs' own SHAs, and the instant it was observed — and is **re-measured** rather than re-cited by a
+> later reader (`verification-completeness.md` §4). The `0 329` divergence recorded at 0.1.0 read
+> `0 334` at plan-audit and `0 349` at 0.2.0; the direction never changed, only the number.
 
 > **Named exemplar unavailable.** The dispatch named the t347 / t333 report split as the format
 > exemplar for §A.6's state table. Neither `.moai/reports/t347` nor `.moai/reports/t333` exists at
@@ -66,22 +76,39 @@ const LandedRef = "origin/main"
 ```
 
 The project integrates on `develop` (`.moai/config/sections/git-strategy.yaml` @ `3de2f85a2`:
-`worktree_base_branch: develop`, `develop_branch: develop`). Measured at `3de2f85a2`:
+`git_strategy.worktree_base_branch: develop` at `:5`, `git_strategy.manual.develop_branch: develop`
+at `:16`).
+
+The figures below are **about the refs, not about the tree**, so each is stated as the command that
+produced it. Re-run them rather than re-citing them.
 
 ```
+$ git rev-parse origin/main origin/develop
+48239c7dc7428c8751a04f6321887c2d36123884
+c6aa613463e6234155f45ce76666e985a42cd80c
 $ git rev-list --count --left-right origin/main...origin/develop
-0	329
+0	349
+$ git merge-base --is-ancestor origin/main origin/develop ; echo rc=$?
+rc=0
 ```
 
-`main` is a strict ancestor of `develop` and lags it by 329 commits. Per-card, measured at
-`3de2f85a2` with the check's own predicate (`git log <ref> --perl-regexp --grep='\b<id>\b' --oneline`):
+**Observed at 2026-08-28T13:15Z**, `origin/main` = `48239c7dc`, `origin/develop` = `c6aa61346`.
+`main` is a strict ancestor of `develop` and lags it, and the lag grows: the same command read
+`0 329` when this SPEC was first authored. What is load-bearing is the **left column being zero**,
+not the right column's value.
+
+Per-card, same instant and same two ref SHAs, using the check's own predicate
+(`git log <ref> --perl-regexp --grep='\b<id>\b' --oneline | wc -l`):
 
 | Card | commits on `origin/main` | commits on `origin/develop` | `todo pr` answers | truth |
 |---|---|---|---|---|
 | t293 | 0 | 9 | `no-link` | landed, sync-closed |
 | t310 | 0 | 6 | `no-link` | landed, sync-closed |
-| t322 | 0 | 5 | `no-link` | landed, sync-closed |
+| t322 | 0 | 24 | `no-link` | landed, sync-closed |
 | t200 | 1 | 1 | `landed` | landed (promoted to `main`) |
+
+t322's develop count read `5` at 0.1.0 and `24` now — the count moved, the zero did not. Only the
+zero is the claim.
 
 The three misdispatched cards read `no-link` — *"nobody has started this"* — which is the dispatch
 signal that sent the lead to dispatch them again. t200 read `landed` only because its landing
@@ -90,7 +117,8 @@ predates the `main`/`develop` divergence.
 **So the guard did not fail to detect a landing. It asked a branch that had never seen one.** Every
 card integrated on `develop` since the git-flow switch returns a FALSE not-landed, and the card's
 `no-link` symptom is that false answer reaching the four-outcome renderer
-(`internal/kanban/prlink.go:160-178` @ `3de2f85a2`: no PR hit + `Landed()` false ⇒ `no-link`).
+(`internal/kanban/prlink.go:175-185` @ `3de2f85a2` — the landed leg: no PR hit, `landed.Landed()` at
+`:178`, and the `if isLanded` promotion at `:182` never taken ⇒ the outcome stays `no-link`).
 
 Recording this attribution is load-bearing: a reader who fixes only the symptom would add PR-less
 card handling and leave every develop-landed card still reading `no-link`.
@@ -99,7 +127,8 @@ card handling and leave every develop-landed card still reading `no-link`.
 
 Where `todo pr` is unavailable or unconvincing, the lead falls back by hand to
 `git merge-base --is-ancestor <card-branch-commit> <ref>`. That surface has an independent blindness.
-Measured at `3de2f85a2`:
+Measured against `origin/develop` = `c6aa61346` at 2026-08-28T13:15Z (a ref probe, so re-run rather
+than re-cite):
 
 ```
 $ git merge-base --is-ancestor 7fc161b36 origin/develop ; echo $?
@@ -126,25 +155,37 @@ ref's own history, never on ancestry of a card-branch SHA.
 ### A.4 The third surface: `--require-landed` cannot say whether it ran
 
 `internal/cli/todo.go:417-431` @ `3de2f85a2` — on an unanswerable query the guard emits a stderr
-note and returns `nil`, so `done` proceeds and prints `done <id>` with exit 0. Measured at
-`3de2f85a2`:
+note and returns `nil` (`:420-423`), and on a satisfied query it returns `nil` (`:430`). `done`
+proceeds identically on both paths and prints `done <id>` with exit 0.
+
+**The code, not the tests, is what establishes stdout identity.** `todoRequireLanded` has exactly
+two `return nil` paths and writes nothing to stdout on either, so the caller's printed line is the
+same bytes in both cases. The tests below establish the **exit code**, and one of them is commonly
+misread as establishing more than it does:
 
 ```
-$ go test ./internal/cli/ -run 'TestTodoDone_RequireLanded' -v 2>&1 | tail -5
+$ go test ./internal/cli/ -count=1 -run 'TestTodoDone_RequireLanded|TestTodoDone_NoLandingQueryWithoutTheFlag' -v 2>&1 | tail -8
 === RUN   TestTodoDone_RequireLandedRefusesWhenNotLanded
---- PASS: TestTodoDone_RequireLandedRefusesWhenNotLanded (0.15s)
+--- PASS: TestTodoDone_RequireLandedRefusesWhenNotLanded (0.13s)
 === RUN   TestTodoDone_RequireLandedProceedsWhenInconclusive
---- PASS: TestTodoDone_RequireLandedProceedsWhenInconclusive (0.14s)
+--- PASS: TestTodoDone_RequireLandedProceedsWhenInconclusive (0.13s)
+=== RUN   TestTodoDone_NoLandingQueryWithoutTheFlag
+--- PASS: TestTodoDone_NoLandingQueryWithoutTheFlag (0.20s)
 PASS
-ok  	github.com/modu-ai/moai-adk/internal/cli	1.180s
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.395s
 ```
+
+(One invocation, three tests. The `-run 'TestTodoDone_RequireLanded'` regex used at 0.1.0 excludes
+the third test, so a PASS pair drawn from it could not have included
+`TestTodoDone_NoLandingQueryWithoutTheFlag`; the regex above selects all three.)
 
 `TestTodoDone_RequireLandedProceedsWhenInconclusive`
-(`internal/cli/todo_undone_test.go:287-302` @ `3de2f85a2`) asserts exit 0 and a stdout prefix of
-`done t1` on an unanswerable query. `TestTodoDone_NoLandingQueryWithoutTheFlag`
-(`:326-331`, PASS at `3de2f85a2`) asserts exit 0 with a stub reporting landed. The two outcomes are
-therefore **byte-identical on stdout and on the exit code**; they differ only in a stderr note that
-no caller is obliged to read.
+(`internal/cli/todo_undone_test.go:287-303` @ `3de2f85a2`) asserts exit 0 and a stdout prefix of
+`done t1` on an unanswerable query (`:297`). `TestTodoDone_NoLandingQueryWithoutTheFlag`
+(`:306-335`; the positive control at `:326-331`) asserts exit 0 and a subprocess count with a stub
+reporting landed — it **never inspects stdout**. So the two outcomes are **byte-identical on stdout
+and on the exit code**, with the stdout half resting on `todo.go:417-431` and the exit-code half on
+the two tests; they differ only in a stderr note that no caller is obliged to read.
 
 That is card t330's F6, handed to this card by lane-5: *"the guard passed it"* and *"the guard did
 not run"* are mechanically indistinguishable.
@@ -162,7 +203,7 @@ rc=128
 `SPEC-TODO-DESTRUCTIVE-GUARD-001` §B.2 @ `3de2f85a2` states the boundary explicitly, and this SPEC
 adopts it verbatim rather than restating it in its own words:
 
-| Owned by t330 (landed) | Owned by t331 (this SPEC) |
+| Owned by t330 (landed) | Owned by the t331 axis |
 |---|---|
 | the archive storage and `undone` | the persisted landing-state field on the card |
 | `--expect` guard on `done` | the phase-aware predicate that reads it |
@@ -172,13 +213,29 @@ adopts it verbatim rather than restating it in its own words:
 t330 §D also records the ref correction as explicitly out of ITS scope — "a separate decision with
 its own blast radius". That decision is made here (§B.1).
 
-One inherited finding constrains this SPEC and must be carried forward, because it is the reason the
-ref correction alone is not the whole answer. t330 §A.4 @ `3de2f85a2` measured that with the ref
-corrected the grep predicate is satisfied by a card's **plan-phase** commit — the earliest of t306's
-13 develop commits is `3030df58b`, a plan-phase artifacts commit — so a ref-corrected predicate is
-structurally always-true for any card that has reached the integration branch at all. Correcting the
-ref therefore fixes the *false negative* (§A.2) and leaves the *false positive* untouched. Both are
-in scope here; §B.3's evidence record is the answer to the second.
+**This SPEC is the first half of that axis, and only the first half.** The right-hand column above
+was originally one card; it is now split in two, and the split is the reason this document carries no
+storage design:
+
+| Half | Owner | Scope |
+|---|---|---|
+| **A — the discriminator** | **this SPEC** | the landed ref is resolved from configuration rather than compiled in; the landed answer becomes three-valued; `moai todo done` says on stdout which answer it got, so "the guard passed" and "the guard did not run" stop reading alike; the queue `state` becomes visible beside the link outcome |
+| **B — the evidence** | **card t359** | landing observations persisted on the queue record, the storage shape that holds them, the recording verb, rendering an observed commit on `todo pr`, and the live SPEC-status read that separates a run landing from a sync landing |
+
+B depends on A landing first, and the dependency is not schedule convenience: an evidence record
+written from a predicate that asks the wrong ref stores wrong evidence, permanently, and a stored
+observation is far more expensive to correct than a live answer. Getting the discriminator right is
+the precondition for storing anything at all. Everything in the B row is **out of scope here** and is
+listed as such in §D.
+
+One inherited finding constrains both halves and belongs on the record here, because it is the reason
+A alone is not the whole answer. t330 §A.4 @ `3de2f85a2` measured that with the ref corrected the
+grep predicate is satisfied by a card's **plan-phase** commit — the earliest of t306's 13 develop
+commits is `3030df58b`, a plan-phase artifacts commit — so a ref-corrected predicate is structurally
+always-true for any card that has reached the integration branch at all. Correcting the ref therefore
+fixes the *false negative* (§A.2) and leaves the *false positive* untouched. **A fixes the false
+negative and states the residual limit in the doctrine (REQ-TLS-011); closing the false positive is t359's
+work**, and this SPEC deliberately does not claim it.
 
 ### A.6 The state model — the states, and what each surface says about them
 
@@ -189,7 +246,7 @@ integration branch names it, and whether the card's work is complete.
 **Column legend.**
 
 - **S1 — `moai todo list`**: the queue's own `state` column (`queued` / `picked` / `dropped`;
-  `internal/kanban/backlog_store.go:52-60` @ `3de2f85a2`).
+  `internal/kanban/backlog_store.go:53-60` @ `3de2f85a2`).
 - **S2 — `moai todo pr <id>`**: the four-outcome resolver (`internal/kanban/prlink.go` @
   `3de2f85a2`), whose landed leg greps `LandedRef`.
 - **S3 — hand ancestry**: `git merge-base --is-ancestor <card-branch-commit> <ref>`, the lead's
@@ -211,6 +268,12 @@ integration branch names it, and whether the card's work is complete.
 | C8 | dropped | `dropped` | as its commit history dictates | — | refuses / passes | yes |
 | C9 | archived (`done`) | invisible | invisible | — | — | yes |
 | C10 | any state, landed ref **does not resolve** | as stored | `no-link` + stderr note | error | **proceeds, exit 0, `done <id>`** | **no — F6** |
+| C11 | **queued**, landed — a duplicate card filed for work that already shipped | `queued` | `no-link` (ref lags) | ANCESTOR or NOT-ANCESTOR | refuses | **no** — reads identically to C1 |
+
+C11 is reachable, not hypothetical: `todo add` refuses only a byte-identical duplicate, so a lead
+filing new work for something already done lands here — the card's own originating incident. It is
+the same S2 defect as C5 seen from a `queued` card; the corrected S2 answers it correctly, so the
+design needed no addition, only the enumeration did.
 
 #### Table 2 — what each surface MUST report after this SPEC
 
@@ -219,21 +282,41 @@ integration branch names it, and whether the card's work is complete.
 | C1 | queued, never started | `queued` | `no-link` | *retired as a decision input* | refuses; stdout `landing=not-landed` |
 | C2 | picked, no commits yet | `picked` | `no-link` **+ `picked` is visible in the same row** | " | refuses; stdout `landing=not-landed` |
 | C3 | picked, unmerged commits | `picked` | `linked` where a PR exists, else `no-link` | " | refuses; stdout `landing=not-landed` |
-| C4 | picked, run landed, sync not | `picked` | `landed` **with the observed commit named**, and the card's live SPEC status shown as `in-progress` | " | passes; stdout `landing=landed` |
-| C5 | picked, fully landed, not closed | `picked` | **`landed`** with the observed commit named, SPEC status `implemented`/`completed` | " | passes; stdout `landing=landed` |
-| C6 | landed via squash | `picked` | `landed` — the answer rests on the ref's history, never on ancestry | " | passes; stdout `landing=landed` |
-| C7 | landed and promoted | `picked` | `landed` | " | passes; stdout `landing=landed` |
+| **C4-C7** | picked and landed, by any route — run-only, fully, via squash, or promoted to `main` | `picked` | **`landed`** — one answer, resting on the resolved ref's history and never on ancestry | " | passes; stdout `landing=landed` |
 | C8 | dropped | `dropped` | unchanged | " | unchanged |
 | C9 | archived | invisible | invisible | " | — |
 | C10 | landed ref does not resolve | as stored | **`unknown`**, distinct from `no-link`, naming the unresolved ref | " | **proceeds** (policy unchanged) but stdout reads `landing=unknown` |
+| C11 | queued, landed | `queued` | `landed`, beside the queue state `queued` | " | passes; stdout `landing=landed` |
+
+**C4 through C7 are one row here, and saying so is the point.** In Table 1 they are four distinct
+rows because today they genuinely answer differently — C4 and C5 read `no-link`, C6 reads `landed`
+only if the ref happens to name the card, C7 reads `landed` by luck of `main`. After this SPEC all
+four answer `landed` through the same mechanism, so under the row legend's "separately observable"
+rule they are no longer four states as far as *these surfaces* can tell. Keeping them as four
+identical rows would assert a distinction the tooling does not make.
+
+The distinction that collapses is real and is not lost, only unaddressed here: separating a **run**
+landing (C4) from a **fully sync-closed** one (C5) needs evidence about *which* commits landed and
+what the card's SPEC status is — the false positive t330 §A.4 measured, and card **t359**'s scope
+(§A.5). This SPEC's honest claim is narrower and is written into the doctrine by REQ-TLS-011: a
+`landed` answer reports that the resolved ref's history names the card, **not** that the card's last
+step landed.
+
+**What S2 does NOT gain: the delivering commit's name.** `todo pr` keeps rendering `landed` as a
+boolean fact about the resolved ref and names no commit. That is `SPEC-KANBAN-QUEUE-PR-SYNC-001`
+REQ-1.10 (`spec.md:251-255` @ `3de2f85a2`), enforced at `prlink_landed.go:62-67` and `prlink.go:42-43`
+@ `3de2f85a2`, and this SPEC does not touch it — changing the ref the question is asked about changes
+no part of what the answer may carry. Whether an observation record may name commits, and under what
+rule, is t359's question, not this one's.
 
 Three things the tables make visible that prose does not:
 
 1. **C1 and C5 collapse onto the same cell today** (`queued`/`picked` differ, but the landed-bearing
-   column reads `no-link` for both). That collapse is the misdispatch.
-2. **C4 and C5 stay distinct only through evidence, never through a boolean.** A single landed
-   boolean cannot separate "run landed" from "everything landed" — which is t330 §A.4's finding, and
-   the reason §B.3 records observations rather than a flag.
+   column reads `no-link` for both). That collapse is the misdispatch, and it is what this SPEC
+   repairs.
+2. **C4 and C5 cannot be separated by a boolean at all.** A single landed answer cannot tell "run
+   landed" from "everything landed" — t330 §A.4's finding — so this SPEC does not pretend to, and
+   the pair stays merged in Table 2. Separating them needs the evidence record, which is t359's.
 3. **C10 is the row with no honest cell today.** It reads exactly like a card that was checked.
 
 ---
@@ -264,8 +347,9 @@ branch there would not be neutral across downstream projects. This SPEC inherits
 exactly: **empty ⇒ `origin/main`**, byte-identical to today's behaviour, so a downstream project
 that configures nothing sees no change at all.
 
-**M3 — the blast radius is four call sites and is bounded.** Every consumer of the constant, measured
-at `3de2f85a2` by `grep -rn 'LandedRef' --include='*.go' internal/`:
+**M3 — the blast radius is bounded and measured.** `grep -rn 'LandedRef' --include='*.go' internal/`
+@ `3de2f85a2` returns 12 lines: 1 doc comment, 1 declaration, **7 production uses**, and 2 test
+lines. The 7:
 
 | Site | Use |
 |---|---|
@@ -273,93 +357,50 @@ at `3de2f85a2` by `grep -rn 'LandedRef' --include='*.go' internal/`:
 | `internal/kanban/prlink_landed.go:78` | an error string |
 | `internal/cli/todo_pr.go:75`, `:87` | user-facing help text |
 | `internal/cli/todo.go:357`, `:399`, `:428` | user-facing help and refusal text |
-| `internal/cli/todo_undone_test.go:277-278` | a test asserting the refusal names the ref |
 
-Six production sites and one test. t330 §D deferred this correction on blast-radius grounds; the
-measured radius is small and entirely inside two packages.
+Plus the declaration at `prlink_landed.go:28` and its comment at `:26-27`, and one test —
+`internal/cli/todo_undone_test.go:277-278`, asserting the refusal names the ref.
+
+**Seven production sites and one test** (an earlier draft of this row said six, contradicting the
+grep printed beside it). t330 §D deferred this correction on blast-radius grounds; the measured
+radius is small and entirely inside two packages.
+
+Four **doc comments** hardcode `origin/main` in prose and go stale the moment the ref resolves —
+they are not `LandedRef` references, so the grep above does not find them, and a reader who trusts
+them after the change is misled by the comment layer rather than the code: `prlink_landed.go:26-27`
+("LandedRef is the ref the landed question is asked about"), `:52` ("origin/main is an existing
+local ref" — the exact premise REQ-TLS-001 stops relying on), `prlink.go:31` ("already in
+origin/main"), and `prlink.go:42` @ `3de2f85a2`. They are named in `plan.md` M1 so the change
+carries them.
 
 **Why not simply re-point the constant at `origin/develop`.** It would fix this repository and break
 every downstream one, because the constant ships in the binary while the integration branch is a
 per-project fact. The neutral-default rule in M2 exists for exactly this reason.
 
-### B.2 Decision 2 — landing evidence is a new top-level array, not a per-item column
+### B.2 Decision 2 — this SPEC persists nothing; the storage axis is card t359's
 
-Ruled: landing observations are stored as a **new top-level array on the record and a new SQLite
-table**, keyed by card id. The five-field per-item contract is untouched.
+Ruled: **nothing is persisted.** This SPEC changes what the landed question asks and how its answer
+is reported; it stores no landing evidence, adds no field to the queue record, adds no table, and
+renders no observed commit.
 
-**This deviates from the dispatching lead's stated direction and the deviation is deliberate.** The
-dispatch said "evidence columns added with `ALTER TABLE ADD COLUMN` are the sanctioned direction".
-The deviation rests on a constraint the dispatch did not cite and on a capability an `ALTER TABLE`
-cannot supply:
+**Card t359 owns the storage axis** — landing observations on the queue record, the shape that holds
+them, the recording verb, an observed commit on the `todo pr` surface, and the live SPEC-status read
+that separates a run landing from a sync landing. **t359 depends on this SPEC landing first**: an
+evidence record written from a predicate that asks the wrong ref stores wrong evidence permanently,
+and a stored observation costs far more to correct than a live answer. The questions the storage
+design must answer — what `REQ-TODO-013` permits, how `SPEC-TODO-ANALYSIS-001` read it, and whether
+an observation may name a commit under `SPEC-KANBAN-QUEUE-PR-SYNC-001` REQ-1.10 — belong to t359 and
+are deliberately not argued here. §D records the whole axis as out of scope.
 
-**M1 — per-item fields are frozen.** `internal/kanban/backlog_store.go:42-46` and `:62-64` @
-`3de2f85a2`:
-
-```go
-// backlogVersion is the record schema version. The schema is ADDITIVE within
-// version 1: `last_seq` was appended as a top-level field with no version
-// bump, and no per-item field may ever be added (spec.md §E out-of-scope).
-...
-// BacklogItem is one queued card. The five fields are the frozen per-item
-// contract (REQ-TODO-013)
-```
-
-An `ALTER TABLE items ADD COLUMN landed_sha` is cheap in SQLite and expensive in the record contract:
-the SQLite row and `BacklogItem` are two faces of one schema, and REQ-TODO-013 freezes the second.
-
-**M2 — a new table is free on every existing database, exactly as `archived_*` was.**
-`internal/kanban/backlog_sqlite.go:96-100` @ `3de2f85a2` records the precedent and its reason in the
-same breath as the CHECK constraint the lead's out-of-scope ruling cites:
-
-```
-// The two archived_* tables are the reversal storage ... They are ADDITIVE and cost
-// nothing on an existing database: this whole DDL runs on every open and every
-// statement is IF NOT EXISTS ... which is precisely why the archive is a pair of
-// tables rather than a fourth `state` value. SQLite cannot ALTER a CHECK constraint,
-// so admitting a fourth state would need a table rebuild on every operator queue in
-// the field.
-```
-
-The archive is the third application of a precedent (`last_seq`, `findings`, `archived`); landing
-observations are the fourth. It needs no migration code and no `schema_version` bump.
-
-**M3 — a column cannot hold what must be held.** A card has more than one landing: the run landing
-and the sync landing are distinct events, and telling them apart is the whole content of §A.5's
-inherited false-positive finding (C4 vs C5 in the Table 2). One column per card records one event
-and silently overwrites the other; an observation list records both, in order, with the commit that
-carried each.
-
-The deviation therefore *strengthens* the lead's own out-of-scope ruling rather than contradicting
-it: no `ALTER TABLE`, no CHECK change, no rebuild, and the frozen per-item contract preserved.
-
-### B.3 Decision 3 — the recorded fact is an observation, and SPEC status is read live
-
-Ruled: an observation records **what was seen on the ref**, and nothing derived. Concretely: the card
-id, the resolved ref, the observed commit SHA **as it exists on that ref**, the commit subject, and
-the observation instant.
-
-Two consequences, both requirements rather than notes:
-
-- **Never a card-branch SHA.** §A.3 measured that the card-branch commit and the landed commit are
-  different objects under squash. Recording `7fc161b36` as t200's landing would record a SHA that is
-  not on the integration branch at all — an evidence path that does not resolve, which
-  `verification-claim-integrity.md` §2 calls an unattributed claim.
-- **SPEC status is not copied into the queue.** `kanban.ReadCardStatus(primaryRoot, specID, bases)`
-  (`internal/kanban/status_read.go:99` @ `3de2f85a2`) already reads a card's frontmatter `status`
-  from the card's branch without a checkout, and tags the source it came from
-  (`StatusSourceBranch` / `StatusSourcePrimary` / `StatusSourceUnresolved`, `:44-48` @ `3de2f85a2`).
-  The SPEC frontmatter is the SSOT for status; copying it into the queue would create a second
-  source that drifts silently. The card's request for "the card's SPEC id and status" is satisfied by
-  `spec_id` (already a per-item field) plus a **live read**, not by a stored copy.
-
-### B.4 Explicit NON-GOAL — a landing field is evidence, never a transition
+### B.4 Explicit NON-GOAL — a landing answer is evidence, never a transition
 
 **The tooling must not close, move, drop, re-order, or re-state a card on its own authority when it
 detects a landing.** This is stated here in the SPEC body, not only as a design note, because it is
 the most plausible slip for the next person reading this design: *"since we are detecting the landing
-anyway, let the tool close the card."*
+anyway, let the tool close the card."* It binds this SPEC even though this SPEC stores nothing — the
+detection surfaces it changes are exactly where the slip would be introduced.
 
-The reason it is forbidden is not stylistic. `.claude/skills/moai/workflows/todo.md:53-58` @
+The reason it is forbidden is not stylistic. `.claude/skills/moai/workflows/todo.md:53-57` @
 `3de2f85a2` is [HARD]:
 
 > `edit`, `move`, `drop`, `undrop`, `done`, and `undone` are operator acts, exactly like `add` and the
@@ -367,27 +408,26 @@ The reason it is forbidden is not stylistic. `.claude/skills/moai/workflows/todo
 > inferred priority, never as tidy-up, never to fold one card into another, and never because a card
 > looks stale. **The queue records the operator's intent; it does not curate it.**
 
-A landing observation is a *measurement*. Acting on it converts a measurement into a decision, and
-the decision is the operator's. The failure mode this prevents is concrete and worse than the one
-the card is about: an auto-close on a **run** landing (state C4) would close a card whose sync commit
-is still unpushed in a lane's worktree — precisely the t306 incident that motivated t330, now
-performed by the machine and at scale.
+A landing answer is a *measurement*. Acting on it converts a measurement into a decision, and the
+decision is the operator's. The failure mode this prevents is concrete and worse than the one the
+card is about: an auto-close on a **run** landing (state C4) would close a card whose sync commit is
+still unpushed in a lane's worktree — precisely the t306 incident that motivated t330, now performed
+by the machine and at scale. The ref correction makes the slip *more* attractive, not less, because
+after it every develop-landed card starts answering `landed`.
 
 The mechanical form of the non-goal:
 
 - `moai todo pr` remains **read-only** — it writes no field, no finding, no cache, no lock
   (`internal/cli/todo_pr.go:1-16` @ `3de2f85a2` states this as a property of the file). Detection
-  does not become a write path.
-- Recording an observation happens **only inside an operator-issued verb**, and that verb changes no
-  card — the same shape `todo relate` already has ("The verb writes a record and touches neither
-  card; `absorbs` does not absorb", `todo.md:47` @ `3de2f85a2`).
+  does not become a write path. This is asserted behaviourally, not by name-matching: see
+  `acceptance.md` AC-TLS-008 and its planted-mutant RED.
 - `--require-landed` stays **opt-in**. Flipping it default-on is out of scope (§D) even though this
   SPEC repairs the ref: t330 §A.4's false-positive finding is not closed by the ref correction, and a
   default-on check that passes structurally is worse than no check.
 
 ### B.5 Decision 4 — the unanswerable case stays permissive, and stops being silent
 
-Ruled: **the proceed-on-unanswerable policy is NOT reversed.** `todo.md:63-68` @ `3de2f85a2` states
+Ruled: **the proceed-on-unanswerable policy is NOT reversed.** `todo.md:59-67` @ `3de2f85a2` states
 it with its reason — "refusing on the absence of evidence would block every machine that cannot
 answer" — and that reason still holds. F6 is not that the guard proceeds; F6 is that a caller cannot
 tell that it proceeded.
@@ -406,79 +446,61 @@ the three answers. This SPEC does not make that decision, and §D records it as 
 
 ## §C Requirements
 
+**11 requirements, Tier M (ceiling 16).** An earlier draft carried 26, above even the Tier L ceiling
+of 25. The overage was not editorial: it was two SPECs in one document. The storage half is now card
+t359 (§A.5, §B.2, §D), and what remains here is the discriminator — stated once each, with no
+requirement split across two entries to look smaller.
+
 ### C.1 The landed ref
 
-- **REQ-TLS-001** — The landed check shall ask its question about the repository's configured
-  integration branch.
-- **REQ-TLS-002** — **Where** `git_strategy.worktree_base_branch` carries a non-empty value, the
+- **REQ-TLS-001** — **Where** `git_strategy.worktree_base_branch` carries a non-empty value, the
   landed check shall resolve its ref from that value; **where** it is empty, the landed check shall
-  use `origin/main`, byte-identically to the behaviour at `3de2f85a2`.
-- **REQ-TLS-003** — Every surface that names the landed ref in user-facing text shall name the
+  use `origin/main`, byte-identically to the behaviour at `3de2f85a2`. In either case the check shall
+  read the ref as the repository holds it, and shall not require the ref to be reachable from the
+  session's own working tree.
+- **REQ-TLS-002** — Every surface that names the landed ref in user-facing text shall name the
   **resolved** ref, never a compile-time constant.
-- **REQ-TLS-004** — The landed check shall not require the resolved ref to be reachable from the
-  session's own working tree; it shall read the ref as the repository holds it.
 
 ### C.2 The three-valued answer
 
-- **REQ-TLS-005** — The landed check shall return one of exactly three answers: `landed`,
-  `not-landed`, `unknown`.
-- **REQ-TLS-006** — **When** the resolved landed ref does not resolve in the repository, the landed
-  check shall answer `unknown` and shall not answer `not-landed`.
-- **REQ-TLS-007** — No consumer shall infer `unknown` from a zero value, an empty string, or a
-  dropped error; the answer shall be carried in a field a consumer must read.
-- **REQ-TLS-008** — **Where** the landed answer is `unknown`, `moai todo pr` shall render an
-  `unknown` outcome distinct from `no-link`, naming the ref that did not resolve.
+- **REQ-TLS-003** — The landed check shall return one of exactly three answers — `landed`,
+  `not-landed`, `unknown` — carried in a field a consumer must read; no consumer shall infer
+  `unknown` from a zero value, an empty string, or a dropped error.
+- **REQ-TLS-004** — **When** the resolved landed ref does not resolve in the repository, the landed
+  check shall answer `unknown` and shall not answer `not-landed`; and `moai todo pr` shall render
+  that answer as an outcome distinct from `no-link`, naming the ref that did not resolve.
 
 ### C.3 Distinguishability on the channel callers read
 
-- **REQ-TLS-009** — `moai todo done` shall emit exactly one landing-verdict token on **stdout** in
-  every invocation, including invocations made without `--require-landed`.
-- **REQ-TLS-010** — **While** `--require-landed` is set and the landed answer is `unknown`,
-  `moai todo done` shall archive the card and shall emit a stdout landing-verdict token distinct from
-  the token it emits when the answer is `landed`.
-- **REQ-TLS-011** — The landing verdict shall not be carried on stderr alone.
-- **REQ-TLS-012** — The guard shall not refuse on an `unknown` answer; the permissive policy at
-  `todo.md:63-68` @ `3de2f85a2` is preserved unchanged.
+- **REQ-TLS-005** — `moai todo done` shall emit exactly one landing-verdict token on **stdout** in
+  every invocation, including invocations made without `--require-landed`; the verdict shall not be
+  carried on stderr alone.
+- **REQ-TLS-006** — **While** `--require-landed` is set and the landed answer is `unknown`,
+  `moai todo done` shall archive the card, shall not refuse, and shall emit a stdout landing-verdict
+  token distinct from the token it emits when the answer is `landed`. The permissive policy at
+  `todo.md:59-67` @ `3de2f85a2` is preserved unchanged.
 
-### C.4 Landing evidence on the queue record
+### C.4 The read surface
 
-- **REQ-TLS-013** — The queue record shall carry landing observations as a **new top-level array**;
-  the five-field per-item contract (REQ-TODO-013) shall remain untouched.
-- **REQ-TLS-014** — A landing observation shall carry: the card id, the resolved ref, the observed
-  commit SHA, the observed commit subject, and the observation instant.
-- **REQ-TLS-015** — The observed commit SHA shall be a commit that exists **on the resolved ref**; a
-  card-branch commit SHA shall never be recorded as a landing SHA.
-- **REQ-TLS-016** — **Where** a card carries more than one landing observation, all shall be retained
-  in observation order; a later observation shall not overwrite or remove an earlier one.
-- **REQ-TLS-017** — The storage shall admit landing observations through `CREATE TABLE IF NOT EXISTS`
-  only: no `ALTER TABLE`, no CHECK-constraint change, no `schema_version` bump, no table rebuild.
-- **REQ-TLS-018** — A binary that predates landing observations shall continue to open and mutate a
-  queue that carries them, and shall leave them intact where it rewrites the record.
+- **REQ-TLS-007** — `moai todo pr` shall render each card's queue `state` alongside its link outcome,
+  so that a `queued` card with no link and a `picked` card with no link are distinguishable rows.
 
-### C.5 The card's SPEC status
+### C.5 Authority
 
-- **REQ-TLS-019** — The card's SPEC status shall be read live through `kanban.ReadCardStatus`; it
-  shall not be copied into the queue record.
-- **REQ-TLS-020** — **Where** the live SPEC status cannot be resolved, the surface shall render it as
-  unresolved rather than as any status value.
+- **REQ-TLS-008** — Detecting a landing shall not change a card's `state`, position, text, or
+  `spec_id`, and the tooling shall not close, archive, drop, re-order, or re-state a card on its own
+  authority under any circumstance, including a fully-landed card whose SPEC reads `completed`.
+- **REQ-TLS-009** — `moai todo pr` shall remain read-only: no field, no finding, no cache, no lock.
 
-### C.6 Authority
+### C.6 Doctrine
 
-- **REQ-TLS-021** — Detecting or recording a landing shall not change a card's `state`, position,
-  text, or `spec_id`.
-- **REQ-TLS-022** — The tooling shall not close, archive, drop, re-order, or re-state a card on its
-  own authority under any circumstance, including a fully-landed card whose SPEC reads `completed`.
-- **REQ-TLS-023** — A landing observation shall be written only inside an operator-issued verb.
-- **REQ-TLS-024** — `moai todo pr` shall remain read-only: no field, no finding, no cache, no lock,
-  no landing observation.
-
-### C.7 Doctrine
-
-- **REQ-TLS-025** — `.claude/skills/moai/workflows/todo.md` and its template mirror
+- **REQ-TLS-010** — `.claude/skills/moai/workflows/todo.md` and its template mirror
   (`internal/template/templates/.claude/skills/moai/workflows/todo.md`) shall be updated in the same
-  change, and the [HARD] operator-only mutation rule shall be restated unweakened.
-- **REQ-TLS-026** — The doctrine shall state the landed check's remaining limit: a `landed` answer
-  reports that the ref's history names the card, not that the card's last step landed.
+  change to carry the resolved ref, the `unknown` outcome, and the stdout verdict token, and the
+  [HARD] operator-only mutation rule shall be restated unweakened.
+- **REQ-TLS-011** — The doctrine shall state the landed check's remaining limit: a `landed` answer
+  reports that the resolved ref's history names the card, not that the card's last step landed, and
+  this SPEC does not make the run-versus-sync distinction.
 
 ---
 
@@ -487,6 +509,23 @@ the three answers. This SPEC does not make that decision, and §D records it as 
 This SPEC deliberately does not build the following. Each is out of scope for a stated reason, not by
 oversight.
 
+### Out of Scope — landing evidence and its storage (card t359)
+
+This SPEC persists nothing (§B.2). The whole storage axis belongs to **card t359**, which depends on
+this SPEC landing first: evidence recorded from a predicate that asks the wrong ref is wrong
+permanently, and a stored observation costs far more to correct than a live answer.
+
+- Landing observations on the queue record, in any shape — a top-level array, a per-item field, a
+  new table, or a column.
+- The verb that would record one, and any question about which verb records it.
+- Rendering an observed commit SHA or subject on `todo pr`, and any rule that would select among
+  the several commits a card's grep predicate matches (t322 matches 24 on `origin/develop`, §A.2).
+- The live SPEC-status read that would separate a run landing from a sync landing.
+- Retention, pruning, or compaction of any of the above.
+- Everything the storage design must reconcile before it can be built — what `REQ-TODO-013` permits,
+  how completed `SPEC-TODO-ANALYSIS-001` read it, and whether an observation may name a commit under
+  `SPEC-KANBAN-QUEUE-PR-SYNC-001` REQ-1.10. Those are t359's questions and are not argued here.
+
 ### Out of Scope — queue schema normalization
 
 - `tier` and `depends_on` field normalization on the card record. The dispatching lead excluded it,
@@ -494,13 +533,13 @@ oversight.
   the `todo.md` [HARD] rules, which is a doctrine change and is not open. Low schema cost is not by
   itself a reason to do it now; when the precondition is met, a follow-up card pays the same additive
   cost this SPEC would have paid.
-- Any fourth `state` value, including `landed`. `internal/kanban/backlog_sqlite.go:96-100` and
-  `:105-112` @ `3de2f85a2` constrain `items.state` with
-  `CHECK (state IN ('queued','picked','dropped'))` and explain in the comment above the DDL that
-  SQLite cannot ALTER a CHECK constraint, so a fourth value would force a table rebuild on every
-  operator queue in the field.
-- Any new per-item field (frozen by REQ-TODO-013, `internal/kanban/backlog_store.go:42-46` @
-  `3de2f85a2`).
+- Any fourth `state` value, including `landed`. `internal/kanban/backlog_sqlite.go:113` @ `3de2f85a2`
+  constrains `items.state` with `CHECK (state IN ('queued','picked','dropped'))`, and the comment
+  above the DDL (`:95-97`) explains that SQLite cannot ALTER a CHECK constraint, so a fourth value
+  would force a table rebuild on every operator queue in the field.
+- Any new per-item field (`internal/kanban/backlog_store.go:62-63` @ `3de2f85a2` names the five-field
+  contract). Whether that contract is extensible at all is t359's question, not this SPEC's — nothing
+  here touches the record.
 - Any `schema_version` bump or migration of existing operator queues.
 
 ### Out of Scope — automatic state transitions
@@ -518,17 +557,15 @@ oversight.
 - Flipping `--require-landed` to default-on. t330 §A.4's false-positive finding is not closed by the
   ref correction, and that decision belongs with a predicate that can distinguish a run landing from
   a sync landing.
-- Making the predicate phase-aware (telling a run landing from a sync landing) **automatically**.
-  This SPEC records the observations that make the distinction *readable*; deriving a phase verdict
-  from them is a further step and is not taken here.
+- Making the predicate phase-aware (telling a run landing from a sync landing) at all. This SPEC
+  answers `landed` for every card the resolved ref names and says so plainly in the doctrine
+  (REQ-TLS-011); the distinction needs evidence this SPEC does not collect (card t359).
 
 ### Out of Scope — adjacent surfaces
 
 - The guard's **manifestation history** — how many cards were misjudged, when, and what each
   misjudgement cost. That is card t347's scope. This SPEC uses four cards as test inputs and claims
   nothing about the population.
-- Retention, pruning, or compaction of landing observations. They grow without bound in this SPEC; a
-  retention policy is a separate decision requiring operator input.
 - Any change to the `gh` query budget on `todo pr` (one query per invocation,
   `internal/cli/todo_pr.go:8-13` @ `3de2f85a2`), or any new default-on network cost on `todo list`,
   `todo next`, or any other read path.
@@ -540,23 +577,22 @@ oversight.
 
 ## §E Traceability
 
+Every requirement carries at least one acceptance criterion, and every acceptance criterion traces
+to a requirement — 11 requirements, 10 criteria, no orphan on either side.
+
 | Requirement | Acceptance criteria |
 |---|---|
-| REQ-TLS-001, REQ-TLS-002 | AC-TLS-001, AC-TLS-002 |
-| REQ-TLS-003 | AC-TLS-003 |
-| REQ-TLS-004 | AC-TLS-002 |
-| REQ-TLS-005, REQ-TLS-006, REQ-TLS-007 | AC-TLS-004 |
-| REQ-TLS-008 | AC-TLS-005 |
-| REQ-TLS-009, REQ-TLS-010, REQ-TLS-011 | AC-TLS-006 |
-| REQ-TLS-012 | AC-TLS-007 |
-| REQ-TLS-013, REQ-TLS-014, REQ-TLS-016 | AC-TLS-008 |
-| REQ-TLS-015 | AC-TLS-009 |
-| REQ-TLS-017, REQ-TLS-018 | AC-TLS-010 |
-| REQ-TLS-019, REQ-TLS-020 | AC-TLS-011 |
-| REQ-TLS-021, REQ-TLS-023 | AC-TLS-012 |
-| REQ-TLS-022 | AC-TLS-013 |
-| REQ-TLS-024 | AC-TLS-014 |
-| REQ-TLS-025, REQ-TLS-026 | AC-TLS-015 |
+| REQ-TLS-001 | AC-TLS-001, AC-TLS-002 |
+| REQ-TLS-002 | AC-TLS-003 |
+| REQ-TLS-003 | AC-TLS-004 |
+| REQ-TLS-004 | AC-TLS-004, AC-TLS-005 |
+| REQ-TLS-005 | AC-TLS-006 |
+| REQ-TLS-006 | AC-TLS-006, AC-TLS-007 |
+| REQ-TLS-007 | AC-TLS-010 |
+| REQ-TLS-008 | AC-TLS-008 |
+| REQ-TLS-009 | AC-TLS-008 |
+| REQ-TLS-010 | AC-TLS-009 |
+| REQ-TLS-011 | AC-TLS-009 |
 
 ---
 
@@ -564,11 +600,13 @@ oversight.
 
 - `SPEC-TODO-DESTRUCTIVE-GUARD-001` — the archive, `undone`, `--expect`, and the `--require-landed`
   seam this SPEC consumes; its §B.2 boundary table is inherited verbatim in §A.5.
-- `SPEC-KANBAN-QUEUE-PR-SYNC-001` — the resolver and the landed primitive being corrected.
-- `SPEC-TODO-SQLITE-001` — the storage engine and the additive-table precedent.
+- `SPEC-KANBAN-QUEUE-PR-SYNC-001` — the resolver and the landed primitive being corrected; its
+  REQ-1.10 (the resolver names no delivering commit) is untouched by this SPEC.
 - `SPEC-WORKTREE-BASEREF-001` (card t313) — `worktree_base_branch`, its neutral-empty ruling, and the
   resolver reused in §B.1.
+- **Card t359** — the landing-evidence half of this axis (storage, recording verb, observed commit
+  on `todo pr`, live SPEC status). Depends on this SPEC; see §A.5 and §D.
 - `.claude/skills/moai/workflows/todo.md` — the [HARD] operator-only mutation doctrine and the
   `--require-landed` limit note.
-- `.claude/rules/moai/core/verification-claim-integrity.md` — why a recorded SHA that does not
-  resolve on the named ref is an unattributed claim.
+- `.claude/rules/moai/development/verification-completeness.md` — the two-cell adoption discipline
+  and the mutant probe AC-TLS-008 was rewritten under.
