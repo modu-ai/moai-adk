@@ -66,7 +66,7 @@ run-phase 관측(§ Claim ~ § Residual-risk)과, 오케스트레이터가 execu
 
 ```yaml
 sync_complete_at: 2026-08-28
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 72052f998
 sync_status: audit-ready
 b12_self_test_a: skipped-changelog-out-of-scope   # grep -c 'SPEC-DOCTOR-EMBED-COMPARE-BRANCH-001' CHANGELOG.md → 0 (관측), 그러나 방출 자체가 SPEC §Out of Scope
 b12_self_test_b: pass                             # acceptance.md AC 토큰 8건 == §E.2 판정 행 8건
