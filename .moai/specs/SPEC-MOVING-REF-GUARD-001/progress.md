@@ -249,7 +249,234 @@ strength.
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1-M2 — the doctrine section and the exemption marker surface (2026-08-28)
+
+**Baseline (frozen at pre-flight, per plan.md §C step 4 — R2, not a moving ref).**
+`BASELINE_SHA = d566ecc7511e1954e3aeb1dff3a60afa5be1089b`. This SPEC's own PRESERVE evidence cites
+that literal SHA; it does not cite `origin/develop`, because doing so would make this SPEC an
+instance of its own defect. The value was frozen and supplied at dispatch; it was **not** re-resolved
+in this run — that omission is recorded as a Gap below rather than papered over.
+
+Worktree HEAD every command below ran against: `a1b8439c36f51f191291cc6db9565cc5b2ec2e25`
+(`a1b8439c3`), branch `WT-moving-ref-guard`, in `.claude/worktrees/t342`. Doctrine file under test
+throughout: `.claude/rules/moai/core/verification-claim-integrity.md`.
+
+---
+
+#### Claim 1 — the doctrine section exists and carries the predicate (AC-MRG-007)
+
+**Claim.** `### 2.1 Moving-ref attribution — the anchor-or-subject predicate` was added to
+`.claude/rules/moai/core/verification-claim-integrity.md`, immediately below §2 (the
+baseline-attribution invariant it specializes) and above §3, carrying all four predicate tests, all
+four remediation branches R1-R4, all five grounded instances, and the two-separate-steps statement.
+
+**Evidence** (four greps, run against `a1b8439c3`):
+
+```
+$ grep -oc 'Test [1-4] — [A-Z][a-z-]*' .claude/rules/moai/core/verification-claim-integrity.md
+4
+$ grep -oc '\*\*R[1-4]\*\*' .claude/rules/moai/core/verification-claim-integrity.md
+4
+$ grep -c 'Instance [1-5] —' .claude/rules/moai/core/verification-claim-integrity.md
+5
+$ grep -c 'two classes and four remedies' .claude/rules/moai/core/verification-claim-integrity.md
+1
+```
+
+Per-label enumeration, so the counts are not read as four unnamed matches:
+
+```
+$ grep -on 'Test [1-4] — [A-Z][a-z-]*' .claude/rules/moai/core/verification-claim-integrity.md
+58:Test 1 — Substitution
+63:Test 2 — Falsification
+68:Test 3 — Re-measurement
+72:Test 4 — Read-time
+$ grep -o '\*\*R[1-4]\*\*' .claude/rules/moai/core/verification-claim-integrity.md | sort | uniq -c
+   1 **R1**
+   1 **R2**
+   1 **R3**
+   1 **R4**
+```
+
+**Baseline-attribution.** Commands run in this turn, against this tree, at HEAD `a1b8439c3`, on the
+tree frozen from `BASELINE_SHA d566ecc7511e1954e3aeb1dff3a60afa5be1089b`.
+
+**Note on the deciding grep's form.** A looser `grep -c 'Test [1-4] — '` returns **4 on the
+Test-2-deleted mutant** as well, because the tie-break paragraph contains the string
+`Test 4 — do not resolve to ANCHOR`. The name-bearing form above
+(`grep -oc 'Test [1-4] — [A-Z][a-z-]*'`) is the one that actually discriminates, and it is the form
+recorded here. The looser form is a criterion that would have passed its own mutation.
+
+---
+
+#### Claim 2 — the criterion is falsifiable: two mutations planted, observed red, reverted
+
+**Mutation A1 — delete the falsification-source test (Test 2).**
+
+```
+$ grep -oc 'Test [1-4] — [A-Z][a-z-]*' .claude/rules/moai/core/verification-claim-integrity.md
+3
+$ grep -c 'Falsification source' .claude/rules/moai/core/verification-claim-integrity.md
+0
+$ grep -on 'Test [1-4] — [A-Z][a-z-]*' .claude/rules/moai/core/verification-claim-integrity.md
+58:Test 1 — Substitution
+63:Test 3 — Re-measurement
+67:Test 4 — Read-time
+```
+
+4 → 3. RED. Reverted; the clean count returns to 4 (Claim 1).
+
+**Mutation A2 — delete Test 4 (read-time action).**
+
+```
+$ grep -oc 'Test [1-4] — [A-Z][a-z-]*' .claude/rules/moai/core/verification-claim-integrity.md
+3
+$ grep -on 'Test [1-4] — [A-Z][a-z-]*' .claude/rules/moai/core/verification-claim-integrity.md
+58:Test 1 — Substitution
+63:Test 2 — Falsification
+68:Test 3 — Re-measurement
+```
+
+4 → 3. RED. Reverted.
+
+---
+
+#### Claim 3 — all seven detection limits are stated (AC-MRG-011)
+
+**Claim.** L1 through L7 of `spec.md` §F are stated in the doctrine section, each in the
+`L<N> — <statement>` form the criterion greps for, with L7 naming the ANCHOR-branch validation gap.
+
+**Evidence:**
+
+```
+$ grep -c 'L[1-7] —' .claude/rules/moai/core/verification-claim-integrity.md
+7
+$ grep -c 'ANCHOR' .claude/rules/moai/core/verification-claim-integrity.md
+10
+```
+
+**Baseline-attribution.** This run, this tree, HEAD `a1b8439c3`.
+
+---
+
+#### Claim 4 — three limit mutations planted, observed, reverted; the third is only half-falsifying
+
+**Mutation B1 — delete the L1 paragraph** (the limit AC-MRG-011 names as most likely to be quietly
+omitted):
+
+```
+$ grep -c 'L[1-7] —' .claude/rules/moai/core/verification-claim-integrity.md
+6
+```
+
+7 → 6. RED. Reverted. **Recorded correction to the criterion's own text:** AC-MRG-011 states this
+mutation drops the count "to 5". The observed value is **6** — the criterion's expected figure was
+written when the limit set was smaller (the count was raised 5 → 6 at v0.2.0 and 6 → 7 at v0.4.0)
+and its mutation text was not swept with it. The criterion still goes red, so the falsifiability
+holds; the stated number does not.
+
+**Mutation B2 — delete L6** (the limit the R4 exemption creates):
+
+```
+$ grep -c 'L[1-7] —' .claude/rules/moai/core/verification-claim-integrity.md
+6
+```
+
+7 → 6. RED. Reverted.
+
+**Mutation B3 — delete L7** (the ANCHOR-branch validation gap). AC-MRG-011 requires **both** halves
+to fail. Observed:
+
+```
+$ grep -c 'L[1-7] —' .claude/rules/moai/core/verification-claim-integrity.md
+6
+$ grep -c 'ANCHOR' .claude/rules/moai/core/verification-claim-integrity.md
+9
+```
+
+The count half goes red (7 → 6) as specified. **The `ANCHOR` half does not**: the criterion expects
+`grep -c 'ANCHOR'` to return 0, and it returns 9. The reason is structural rather than an authoring
+slip — `ANCHOR` is one of the predicate's two **class names**, so it necessarily appears throughout
+the tests, the tie-break, the remedy table, and the instances. Against a doctrine that publishes the
+predicate at all, `grep -c 'ANCHOR' ≥ 1` is satisfied whether or not L7 exists, and therefore guards
+nothing. The criterion's `≥ 1` check was written when the token appeared only in L7's own text
+(`acceptance.md` v0.4.0, where `grep -n 'ANCHOR' acceptance.md` returned nothing at all).
+
+This is surfaced rather than repaired: rewriting an acceptance criterion mid-run so that it fits the
+artifact just produced is the exact shape of a criterion that cannot fail, and `acceptance.md` is
+not this milestone's to author. A replacement key that would actually discriminate — e.g. a grep for
+L7's distinguishing phrase rather than for the class name — is a decision for the lead or the
+operator.
+
+---
+
+#### Claim 5 — the exemption marker surface is fixed (M2, AC-MRG-003 syntax half)
+
+**Claim.** The doctrine section fixes: the syntax `<!-- moving-ref-ok: <reason> -->`; the mandatory
+non-empty reason; the line scope (the flagged line or the line immediately above it); and the
+incomplete-marker behaviour of REQ-MRG-003 — an empty or whitespace-only reason produces a finding
+reporting the marker as incomplete rather than suppressing. `spec.md` §H Q1 is resolved to the
+invisible HTML-comment form, with the grounds recorded there and a HISTORY row added (v0.6.0).
+
+**Evidence:**
+
+```
+$ grep -c 'moving-ref-ok' .claude/rules/moai/core/verification-claim-integrity.md
+1
+$ grep -c 'Q1 — Marker syntax. RESOLVED at M2' .moai/specs/SPEC-MOVING-REF-GUARD-001/spec.md
+1
+```
+
+The marker string appears once, in the fenced syntax block; the four properties are stated as prose
+bullets beneath it.
+
+**Baseline-attribution.** This run, this tree, HEAD `a1b8439c3`.
+
+---
+
+#### Gaps — what was explicitly NOT observed
+
+- **M3 (the detector) was not started.** No file under `internal/spec/` was read or written. No
+  `MovingRefUnpinned` rule exists, so AC-MRG-001, -002, -004, -005, -006, -008, -009, -013 and -014
+  are entirely unobserved by this milestone.
+- **M4 (corpus triage) and M5 (template mirror) were not started.** The 42 candidate lines of §B.3
+  were not classified, and the doctrine was not mirrored into
+  `internal/template/templates/.claude/rules/moai/core/`. AC-MRG-010 and AC-MRG-012 are unobserved.
+- **Q0 is unanswered and remains with the operator.** M3 cannot be implemented without it
+  (`spec.md` §H).
+- **No Go command was run.** `go build`, `go vet`, and `go test` were not executed in this
+  delegation — nothing in M1/M2 touches Go, and running them would have measured a tree this work
+  did not change. plan.md §C step 3's `go build ./internal/spec/...` pre-flight is therefore
+  unobserved.
+- **`BASELINE_SHA` was not independently re-resolved.** It was taken as given from the dispatch and
+  used as the frozen citation. Its correspondence to `origin/develop` at pre-flight rests on the
+  dispatcher's measurement, not on one made here.
+- **The doctrine's mirror-neutrality was not checked.** The section as written carries two SPEC-ID /
+  AC-ID tokens (`SPEC-GRAPH-FRESHNESS-CADENCE-001`, `AC-COORD-016`) that the template-neutrality
+  guard forbids in a mirrored copy. They are legitimate in the local copy and are M5's problem;
+  no neutrality check was run here.
+- **Only the two AC-deciding greps were run.** The doctrine was not read back end-to-end by a second
+  reader, and no check was made that its prose is consistent with `spec.md` §D beyond the greps.
+
+#### Residual-risk — what could still be wrong despite the above
+
+- **The greps verify presence, not correctness.** Every criterion decided here is a token count. A
+  doctrine that named all four tests while stating them wrongly would pass every command recorded
+  above. The mutations raise the floor (a *missing* element is caught) without touching the ceiling.
+- **The doctrine section adds ~14.5 KB to an always-loaded file.** Measured, not estimated:
+  `git show HEAD:<doctrine> | wc -c` → `8224`; `wc -c <doctrine>` → `23020`; growth 14,796 bytes.
+  Every session pays that on every turn and again after each `/clear`,
+  including sessions that never write a moving-ref claim. `spec.md` §C fixes the placement as one
+  always-loaded doctrine section and REQ-MRG-005 requires it, so this is a design decision rather
+  than a defect — but a reviewer preferring a `paths:`-scoped companion would be disagreeing with
+  the SPEC, not with the implementation. The `rule-authoring.md` statement duty is discharged in the
+  commit body.
+- **`plan.md` §F M1 still says "the **six** detection limits (§F)".** `spec.md` §F carries seven and
+  AC-MRG-011 greps for seven; the plan text was not swept when L7 was added at v0.4.0. Seven were
+  authored. The stale plan line was left in place rather than corrected, because sweeping it is not
+  in M1/M2's scope — recorded here so it is not read later as evidence that six were intended.
+- **The five grounded instances remain a small validation set**, and the ANCHOR branch still has
+  zero adjudicated instances (L7). The doctrine now publishes that gap, which does not close it.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
