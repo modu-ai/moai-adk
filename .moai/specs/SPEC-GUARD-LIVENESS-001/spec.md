@@ -2,7 +2,7 @@
 id: SPEC-GUARD-LIVENESS-001
 title: "Guard firing-liveness — the surfacing model: make a guard that silently stopped reach the operator unbidden (card t333)"
 version: "1.5.0"
-status: draft
+status: in-progress
 created: 2026-08-28
 updated: 2026-08-28
 author: manager-spec
