@@ -1,7 +1,7 @@
 ---
 id: SPEC-TEMPDIR-CLEANUP-RACE-001
 title: "Deferred session-start writes must not outlive Handle for a cross-package caller — a deliberate synchronous-scan seam plus a regression guard for the t.TempDir cleanup race"
-version: "0.1.2"
+version: "0.1.3"
 status: draft
 created: 2026-08-28
 updated: 2026-08-28
@@ -27,6 +27,7 @@ related_specs:
 | 0.1.0 | 2026-08-28 | manager-spec (card t352) | Initial draft. Scope bound to the one reproduced observation in `.moai/reports/t352/reproduction.md`; the second observation stays an open gap. |
 | 0.1.1 | 2026-08-28 | manager-spec (card t352) | Plan-audit repairs D1-D8. Corrected the caller inventory (a production caller exists at `internal/cli/deps.go:221`, and the constructor is non-variadic); recorded the base SHA the diff-shape AC judges against; withdrew the misattributed 1-in-5 CI frequency; restated the fixture rationale in terms of `Handle`'s return; recorded the Tier S budget overrun explicitly (nine ACs and a separate `acceptance.md`, both retained — no criterion folded or deleted; justification in `plan.md` §D.4); stated the CI-runtime headroom constraint; stated why the entry-set comparison generalizes REQ-TCR-001; split the compound REQ-TCR-002. |
 | 0.1.2 | 2026-08-28 | manager-spec (card t352) | Plan-audit iteration 2 repairs D9-D10. Removed the unattributed "slowest package" superlative from the §D CI-headroom constraint, replacing it with the repo's own `ci.yml:232` figure cited as an unverified carry; paired AC-TCR-002b(ii)'s emptiness check with a mandatory non-empty positive control so a broken pathspec cannot pass as an unchanged file. |
+| 0.1.3 | 2026-08-28 | manager-spec (card t352) | §F factual addition only — no scope, requirement, or design change; observation 1 stays excluded and unreproduced. Recorded that observation 1 is the sole failing test on the latest measured `develop` head (CI run `33173944485`, head `c6aa61346`), that it manifests under the race detector only (`Race Test` failed while `Test (ubuntu-latest)` passed on that head), that the earlier 1-in-5 frequency figure is superseded with no new rate claimed, and — as a Gap — that `-race` on linux/amd64 is the untried lever, since this lane's `-race` run passed on linux/aarch64. |
 
 ---
 
@@ -232,6 +233,43 @@ Carried forward from `.moai/reports/t352/reproduction.md` § Gaps and § Residua
   the package, and a background writer detectable within 750 ms on macOS or Linux aarch64. Not ruled
   out: an x86-64-specific or runner-specific writer, a writer appearing later than 750 ms, or a
   cleanup interaction that is not a writer at all.
+
+- **The excluded observation is, on the latest measured head, the SOLE failing test on `develop` —
+  so landing this SPEC does not turn `develop` green.** §C already states that observation 1's flake
+  stays; this is the sharper form: nothing else is red alongside it, so a reader must not infer a
+  green `develop` from this card landing. Evidence — CI run `33173944485`, head
+  `c6aa613463e6234155f45ce76666e985a42cd80c` (`c6aa61346`) on `develop`, status `completed`,
+  conclusion `failure`; log `.moai/state/verify/lead-ci/c6aa61346-failed.log:51-52`:
+
+  ```
+  --- FAIL: TestGitDiffNameCount_Predicate (0.14s)
+      testing.go:1464: TempDir RemoveAll cleanup: unlinkat /tmp/TestGitDiffNameCount_Predicate2957256880/001/.git/objects: directory not empty
+  ```
+
+  `grep -c 'FAIL:'` over that log returns `1` — line 51 is its only failing-test line, and the
+  failing package is `internal/graph`. (Carried, not verified here: the lead reports the baseline
+  `5e194bba2` carried 15 failing tests of which 14 are now gone. That comparison was not
+  re-measured in this card.)
+
+- **Observation 1 manifests under the race detector only — the sharpest discriminant recorded so
+  far.** On that same head the `Race Test` job failed while `Test (ubuntu-latest)` **passed**:
+  `gh run view 33173944485 --json jobs` reports `failure Race Test` and `success Test
+  (ubuntu-latest)`, with every `Build (…)`, `Lint`, and `Integration Tests (…)` job `success`. A
+  reproduction attempt that omits `-race` is therefore expected to pass and to prove nothing.
+
+- **The earlier frequency figure is superseded, and no new rate is claimed.** `t322/verdict.md:281`'s
+  "1 of 5 post-landing runs" predates this appearance; observation 1 has now been seen on a third,
+  later head. Three scattered observations across different heads do not make a rate — computing one
+  would be inventing a denominator — so this SPEC records the occurrences and claims no frequency
+  for observation 1, exactly as §A.4 already declines to claim one for observation 2.
+
+- **Untried lever for a future observation-1 card: `-race` on linux/amd64.** This lane's Linux
+  attempt ran `go test ./internal/graph/... -race -count=5` on **linux/aarch64** and passed, while
+  the CI failure is linux/**amd64**. So "run it under the race detector" is demonstrably *not*
+  sufficient on its own to reproduce it — the untried combination is the race detector **and** the
+  amd64 architecture together. Recorded as an untried lever, not as a hypothesis this SPEC endorses:
+  nothing here establishes that architecture is the operative variable rather than runner load,
+  filesystem, or something not yet named.
 - **The container measured was aarch64; CI is x86-64.** An architecture-specific writer is not
   excluded for observation 1.
 - **The graph-probe figures were taken on `e08d5e55c`, not `77b2bcae6`**, and the 22 intervening
