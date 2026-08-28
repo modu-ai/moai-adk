@@ -1,7 +1,7 @@
 ---
 id: SPEC-TODO-DESTRUCTIVE-GUARD-001
 title: "Reversibility for `moai todo done` — an additive archive, its restore verb, and a landing-predicate seam"
-version: "0.2.1"
+version: "0.2.2"
 status: in-progress
 created: 2026-08-27
 updated: 2026-08-28
@@ -25,6 +25,7 @@ related_specs:
 | Version | Date | Change |
 |---------|------|--------|
 | 0.1.0 | 2026-08-27 | Initial plan-phase authoring (card t330). Decision 1 ruled from the storage measurements; Decision 2 boundary settled against t331 after the existing landed primitive was measured against the motivating incident. |
+| 0.2.2 | 2026-08-28 | §A.4 strengthened with one measured observation and one correction, both re-measured on this tree. Correction: the earliest of the 13 ref-corrected matches is the plan-phase artifacts commit `3030df58b`, not the run merge `3cb258d62` (tenth of 13) — the prior wording named the wrong commit as earliest. Strengthening: the grep-plus-nonempty shape (`prlink_landed.go:39-48`, `:80`) cannot discriminate commit kind, while the card-id-in-every-commit traceability discipline generates the matched signal unconditionally, so under the ref correction the predicate is structurally always-true for any card that has reached the integration branch. No REQ or AC added (16/16 unchanged); Decision 2's opt-in ruling unchanged and further justified. |
 | 0.2.1 | 2026-08-28 | plan-audit iter2 debt closure (PASS-WITH-DEBT 0.9375). S1: the two `acceptance.md` citations the D7 sweep missed (`todo.go:341`→347, `352-354`→351-353) and the false "four refreshed" claim in progress.md. N1: AC-TDG-015 now captures stdout and stderr separately, with the reason recorded. N2: AC-TDG-007 asserts the exact `why` output. N3: `move`'s flag set corrected to four. N4: the "only point we control" claim softened so the in-artifact warning carrier stays open. Budget exhaustion recorded as plan.md §F.4. |
 | 0.2.0 | 2026-08-28 | plan-audit iter1 delta (FAIL 0.75). §A.4 rewritten to state both failure modes of the landed predicate with their ref conditions (D1). Decision 3 added: the archive is deliberately included in `export-json` with a downgrade disclosure — REQ-TDG-015, and the D4 downgrade-loss gap closed with it (D2/D4). REQ-TDG-006, AC-TDG-006 and §A.3 rewritten to the reachable single-engine configuration (D3). Verb surface corrected to 15, re-derived from `AddCommand` (D5). `--expect` holder set corrected to `next`/`edit`/`drop`/`undrop` (D6). Four citations refreshed and the t306 commit count corrected 10→13 (D7). REQ-TDG-016 added: restore empties the archive entry (D8). Decision 1 unchanged. |
 
@@ -81,7 +82,9 @@ $ git log origin/develop --perl-regexp --grep='\bt306\b' --oneline | wc -l
 
 **Mode 1 — as shipped.** `LandedRef = "origin/main"` (`internal/kanban/prlink_landed.go:28`), while the project's integration branch is now `develop`. `origin/main` names t306 in **zero** commits, so the predicate answers **false** — and would answer false for every develop-integrated card. A default-on refusal in this mode blocks `done` on essentially the entire queue. It would have "caught" the t306 incident only in the sense that a check refusing everything catches everything.
 
-**Mode 2 — after the obvious ref correction.** Pointed at the real integration branch, the predicate answers **true**: `origin/develop` names t306 in 13 commits, the earliest being the *run* commit `3cb258d62`, which landed long before the sync commit. So in the mode a maintainer would naturally "fix" it into, the predicate is satisfied at the exact moment of the premature `done`, and a default-on refusal passes silently while reporting that a check ran and was satisfied.
+**Mode 2 — after the obvious ref correction.** Pointed at the real integration branch, the predicate answers **true**: `origin/develop` names t306 in 13 commits. The run-phase integration merge `3cb258d62` is the tenth of them and landed long before the sync commit — so in the mode a maintainer would naturally "fix" it into, the predicate is satisfied at the exact moment of the premature `done`, and a default-on refusal passes silently while reporting that a check ran and was satisfied.
+
+**Mode 2 is satisfied earlier still — at plan-phase.** The same ref-corrected measurement puts the *earliest* of the 13 at `3030df58b`, `docs(SPEC-TODO-SQLITE-001): plan-phase artifacts … (t306)`, which precedes the run merge by about three hours. The predicate cannot tell the two apart: `LandedGrepArgs` (`internal/kanban/prlink_landed.go:39-48`) builds `git log <ref> --perl-regexp --grep='\b<id>\b' --oneline`, and `Landed` decides by `strings.TrimSpace(out) != ""` (`:80`) — a non-empty commit set, whatever kind of commit produced it. Meanwhile the signal it greps for is generated unconditionally by a *different* discipline: this project requires the card id in **every** commit message on the card's branch (`AGENTS.md` §3, `.claude/rules/moai/workflow/kanban-dispatch.md`), precisely because the `WT-<slug>` branch name no longer identifies the card. So the plan-phase commit alone satisfies the predicate, before a line of implementation exists. Under the ref correction, the check is structurally always-true for any card that has reached the integration branch at all — it is not merely permissive in this instance, it has no discriminating power to lose.
 
 Neither mode is a guard. The primitive answers *"has anything naming this card landed"*, not *"has this card's last step landed"*, and only the first question is answerable from a commit-message grep. Mode 1 is uselessly strict, Mode 2 is dangerously permissive, and correcting the ref moves the failure from the first to the second rather than removing it.
 
@@ -89,7 +92,7 @@ The opt-in ruling in §B.2 therefore rests on **the predicate answering the wron
 
 Distinguishing the last step requires knowing which phase the card is in — the persisted landing-state field, which is **card t331's scope**, and t331 is recorded as containing t330.
 
-> Any restatement of the Mode 2 form ("the run commit satisfies it, so it was already true") is incomplete without its ref-correction condition. As shipped, it is false.
+> Any restatement of the Mode 2 form — "the run commit satisfies it", or its stronger version "even the plan commit satisfies it" — is incomplete without its ref-correction condition. As shipped, against `origin/main`, both are false.
 
 ### A.5 The safety net this SPEC actually delivers
 
