@@ -163,3 +163,64 @@ M5 정규화가 `.moai/specs/SPEC-GRAPH-FRESHNESS-CADENCE-001/acceptance.md` 를
 - **cross-platform 미측정.** 변경은 테스트 전용 Go 이고 플랫폼 분기가 없지만 재지 않았다.
 - **부재 2건의 계수(6·16)가 옳은지는 손으로 유도하지 않았다.** 개정이 주장하는 것은 그 값의 정확성이 아니라 그것이 회귀가 아닌 새 관측이라는 것뿐이다.
 - **`counter.py` 내부는 신뢰에 의존한다.** 계수기 자체에 결함이 있으면 여섯 산출물의 `ambiguous=0` 이 모두 공허해진다.
+
+---
+
+# 최종 — sync 착지 + 병합 트리 재측정
+
+측정 트리: 같은 워크트리, HEAD `7ac5ce369`(`origin/develop` `48d8ef4be` 흡수 완료, `0 15`).
+
+## Claim
+
+6. sync 단계가 닫혔고, 규약의 첫 실사용에서 판별자가 실제로 수를 바꿨다.
+7. 개정 전이라면 레드를 냈을 병합이 지금은 통과하며, 새 파일들이 보고된다 — 판정 B 가 실제로 작동한다.
+
+## Evidence
+
+### 주장 6 — 첫 실사용
+CHANGELOG 항목을 쓰며 manager-docs 가 자기 B12 자가검사를 새 규약으로 돌렸다. 같은 파일, 같은 트리, 두 형태:
+```
+$ grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' <this SPEC's acceptance.md> | sort -u | wc -l
+27
+$ python3 .moai/reports/t338/iter2-scratch/counter.py <same file> adj
+COUNT 24   (live=24 excluded=3 ambiguous=0)
+```
+**27 → 24.** 차이 3은 구 스윕이 볼 수 없던 폐기 기준이다. CHANGELOG 에는 24 가 적혔다. 이것이 이 카드가 존재하는 이유의 첫 실증이다 — 카드 원문의 사례(스윕 8 / 실제 7)와 같은 형태이고, 이번엔 규약이 그것을 잡았다.
+
+상태 전이(3단계 close): `spec.md` · `plan.md` · `acceptance.md` · `progress.md` → `completed`. `design.md` · `research.md` 는 `draft` 로 남겼다 — 전이 규약이 4종만 명시하고 Tier L 6종을 상정하지 않는다. **임의로 넓히지 않았고 카드 t357 소관으로 넘겼다.**
+
+### 주장 7 — 병합이 판정을 시험한 자리
+`origin/develop` 26커밋을 흡수했다(CHANGELOG 충돌 1건 — 다른 카드가 같은 자리에 항목을 넣었다. 양쪽 항목을 모두 보존해 해소했고 마커 잔여 0).
+
+흡수는 새 `acceptance.md` 2건을 들여왔다. **개정 전 검증자였다면 이것이 정확히 레드를 냈을 형태다.**
+```
+$ go test ./internal/spec/ -run TestACCounterFullCorpusMatchesBaseline -count=1 -v
+    ac_count_clause_test.go:481: AC corpus: 4 file(s) matched by the glob but absent
+        from the snapshot - reported, not failed (spec.md 3.5 rule 4)
+    ac_count_clause_test.go:483:   absent-from-snapshot …/SPEC-BACKLOG-LOCK-BUDGET-001/…: COUNT 6
+    ac_count_clause_test.go:483:   absent-from-snapshot …/SPEC-GUARD-LIVENESS-001/…: COUNT 13
+    ac_count_clause_test.go:483:   absent-from-snapshot …/SPEC-GUARD-STATE-MODEL-001/…: COUNT 17
+    ac_count_clause_test.go:483:   absent-from-snapshot …/SPEC-TODO-DESTRUCTIVE-GUARD-001/…: COUNT 16
+--- PASS
+$ go test ./internal/spec/... -count=1
+ok  github.com/modu-ai/moai-adk/internal/spec  28.337s
+```
+부재 2건 → 4건으로 늘고 넷 다 이름과 관측으로 보고됐다. 통과했으되 조용하지 않다.
+
+**계수기의 독립 교차 확인 1건**: `SPEC-GUARD-LIVENESS-001` 을 계수기가 **13** 으로 셌고, 그 카드가 자기 CHANGELOG 에 적은 값도 `13 acceptance criteria (AC-GDL-001..013)` 다. 다른 사람이 손으로 센 값과 기계 값이 일치한다 — 계수기 정확성의 외부 근거이며, `counter.py` 를 신뢰에만 의존한다는 잔여 위험을 부분적으로 줄인다(한 표본이므로 없애지는 못한다).
+
+병합 트리 최종:
+```
+6종 계수기 41 / 11 / 24 / 2 / 10 / 48 — 전부 rc=0, ambiguous=0
+corpus 전수 files=610  halting=0  files-with-excluded=5
+manager-docs.md 로컬/미러 diff 무출력
+추적 파일 미커밋 변경 0
+```
+
+## 이 단계의 Gaps
+
+- **CI 판정이 여전히 없다.** 브랜치 미푸시. 병합 트리의 초록은 로컬 `internal/spec` 한정이고, 전체 스위트는 지시대로 로컬에서 돌리지 않았다.
+- **부재 4건의 계수(6·13·16·17)가 옳은지 전수 손유도하지 않았다.** 13 한 건만 외부 값과 대조했다. 개정이 주장하는 것은 그 값들의 정확성이 아니라 그것들이 회귀가 아닌 새 관측이라는 것뿐이다.
+- **CHANGELOG 충돌 해소를 렌더로 확인하지 않았다.** 마커 잔여 0과 두 항목 존재는 grep 으로 확인했으나 마크다운 렌더는 보지 않았다.
+- **cross-platform · golangci-lint 미측정.** awk 계수기는 BSD awk(macOS)에서만 돌렸다.
+- **v0.5.0 문면을 본 감사관이 없다.** `PASS 0.91`(iter-3)은 v0.4.1 판정이다.
