@@ -1,0 +1,64 @@
+2026/08/28 21:38:21 INFO session started session_id=sess-lag-blocked cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_BlockingComparerDoesNotStallSessionStart4106504567/001 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_BlockingComparerDoesNotStallSessionStart4106504567/001
+2026/08/28 21:38:21 WARN configuration not available, proceeding with defaults session_id=sess-lag-blocked
+2026/08/28 21:38:21 INFO teammateMode updated mode=auto in_tmux=false
+2026/08/28 21:38:21 INFO session start (deferred): MX index built via cold-start scan project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionStart_BlockingComparerDoesNotStallSessionStart4106504567/001 tags=0
+==================
+WARNING: DATA RACE
+Write at 0x0001059cada0 by goroutine 25:
+  github.com/modu-ai/moai-adk/internal/hook.TestSessionStart_BlockingComparerDoesNotStallSessionStart.func3()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t326/internal/hook/session_start_binary_lag_test.go:161 +0x38
+  testing.(*common).Cleanup.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1317 +0x124
+  testing.(*common).runCleanup()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:1667 +0x16c
+  testing.tRunner.func2()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2030 +0x48
+  runtime.deferreturn()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/runtime/panic.go:668 +0x5c
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+
+Previous read at 0x0001059cada0 by goroutine 39:
+  github.com/modu-ai/moai-adk/internal/binlag.Evaluate()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t326/internal/binlag/binlag.go:91 +0xa0
+  github.com/modu-ai/moai-adk/internal/hook.binaryLagAdvisory.func1()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t326/internal/hook/session_start_binary_lag.go:70 +0x5c
+
+Goroutine 25 (running) created at:
+  testing.(*T).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x7bc
+  testing.runTests.func1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2585 +0x74
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.runTests()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2583 +0x7a0
+  testing.(*M).Run()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2443 +0xb38
+  go.uber.org/goleak.VerifyTestMain()
+      /Users/goos/go/pkg/mod/go.uber.org/goleak@v1.3.0/testmain.go:53 +0x44
+  github.com/modu-ai/moai-adk/internal/hook.TestMain()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t326/internal/hook/main_test.go:49 +0x68
+  main.main()
+      _testmain.go:1928 +0x104
+
+Goroutine 39 (running) created at:
+  github.com/modu-ai/moai-adk/internal/hook.binaryLagAdvisory()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t326/internal/hook/session_start_binary_lag.go:64 +0x198
+  github.com/modu-ai/moai-adk/internal/hook.(*sessionStartHandler).Handle()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t326/internal/hook/session_start.go:479 +0x1d84
+  github.com/modu-ai/moai-adk/internal/hook.handleForLagTest()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t326/internal/hook/session_start_binary_lag_test.go:42 +0x1e4
+  github.com/modu-ai/moai-adk/internal/hook.TestSessionStart_BlockingComparerDoesNotStallSessionStart()
+      /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t326/internal/hook/session_start_binary_lag_test.go:168 +0x2f0
+  testing.tRunner()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2036 +0x164
+  testing.(*T).Run.gowrap1()
+      /Users/goos/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.4.darwin-arm64/src/testing/testing.go:2101 +0x34
+==================
+--- FAIL: TestSessionStart_BlockingComparerDoesNotStallSessionStart (0.31s)
+    testing.go:1712: race detected during execution of test
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	0.988s
+FAIL
+EXIT=1

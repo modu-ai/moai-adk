@@ -23,6 +23,9 @@ import (
 // there: the comparison is two short git invocations that normally finish in
 // tens of milliseconds, and a quarter-second caps the worst case a pathological
 // repository can add to session start.
+//
+// @MX:NOTE: the join bound lives in the caller, never inside the seam
+// @MX:SPEC: SPEC-BINARY-LAG-VISIBILITY-001
 const binaryLagJoinBound = 250 * time.Millisecond
 
 // binaryLagAdvisory returns the deployment-lag notice for this tree, or the

@@ -31,6 +31,9 @@ func GetCommit() string {
 // hash when the build carried no ldflags. It never falls back to Version:
 // Version is the string that cannot order two builds, which is the whole
 // reason this identity exists.
+//
+// @MX:NOTE: never falls back to Version — Version cannot order two builds
+// @MX:SPEC: SPEC-BINARY-LAG-VISIBILITY-001
 func GetBuildID() string {
 	if BuildID != "" {
 		return BuildID
