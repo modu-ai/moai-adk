@@ -86,7 +86,7 @@ The queue is stored in one SQLite database at `.moai/state/todo/backlog.db`. It 
 | `id` | A short, stable identifier assigned at add time. Never reused after removal. |
 | `spec_id` | An optional link to a SPEC identifier. Filled when the pick records it via `--spec`; when the id is not yet known it stays `null` even in the `picked` state. |
 | `findings` | The records kept about **pairs** of cards. A relation belongs to the pair rather than to either card, which is why it lives here and not in an item. Always an array — a file written before this feature loads with an empty one, so "no findings" never has to be told apart from "no such feature". `source` is `mechanical` (a measured text similarity) or `agent` (a judgment written by a human or an agent). A finding leaves the file when its card does. |
-| `state` | The lifecycle discriminator. One of `queued` · `picked` · `dropped` — this value is what separates "still a backlog item" from "already a card on the board". A picked item stays in the file so ongoing work is visible. The only way an item is **removed from the file** is an explicit `moai todo done` run by a human — nothing removes it automatically when its work completes. Discarding is not removal: `moai todo drop <n> "<reason>"` moves a card to `dropped` while keeping it in the file, prefixing its text with the reason, and `moai todo undrop <n>` reverses that exactly. A dropped card is not a pick candidate. |
+| `state` | The lifecycle discriminator. One of `queued` · `picked` · `dropped` — this value is what separates "still a backlog item" from "already a card on the board". A picked item stays in the file so ongoing work is visible. The only way an item **leaves the live queue** is an explicit `moai todo done` run by a human — nothing removes it automatically when its work completes. `done` does not delete the card and its findings; it **archives** them: they stop appearing in `list` / `next` / `why` / `analyze`, and `moai todo undone <n>` restores both, at the position the card held. Discarding is different from archiving: `moai todo drop <n> "<reason>"` moves a card to `dropped` while keeping it in the live queue file, prefixing its text with the reason, and `moai todo undrop <n>` reverses that exactly. A dropped card is not a pick candidate. |
 
 The file is written atomically (write to a temp file, then rename) so a crash mid-write cannot truncate the queue. A missing file is not an error but an **empty queue**, and a malformed file is reported and left untouched — the human intent stored here is the one value that cannot be regenerated.
 
@@ -148,8 +148,17 @@ $ moai todo list
 # View as structured records
 $ moai todo list --json
 
-# Remove an item — accepts a number (t4) or an explicit id
+# Archive an item — accepts a number (t4) or an explicit id
 $ moai todo done 4
+
+# Reverse it: restore an archived card back to where it was
+$ moai todo undone 4
+
+# Only proceed when the text starts with the prefix — guards against closing the wrong card
+$ moai todo done 4 --expect "auth middleware"
+
+# Ask whether the card landed, and refuse only on a positive "not landed" answer
+$ moai todo done 4 --require-landed
 
 # Print queued items oldest-first (read-only)
 $ moai todo next
@@ -185,7 +194,8 @@ $ moai todo unrelate 2
 | `moai todo <two or more words>` | Adds the natural-language text as an item. A single word (including a typo'd verb) is an error, not an add. A verb-shaped first token followed by a card id (`moai todo pick t151`) is read as a mistyped verb and errors — a card that merely mentions an id later in the sentence still adds. |
 | `moai todo add "<text>" [--pick]` | Adds an item and prints the issued id and position. With `--pick`, the add and the picked mark land in one locked write. |
 | `moai todo list` / `--json` | Renders the queue. `--json` emits the full records as JSON. |
-| `moai todo done <n>` | Removes item `n`. The explicit `t<n>` id form is preferred — queue positions move under concurrent adds. |
+| `moai todo done <n> [--expect <prefix>] [--require-landed]` | Takes item `n` out of the live queue under the lock. The explicit `t<n>` id form is preferred — queue positions move under concurrent adds. The card and every finding naming it are **archived, not deleted** — `undone` restores both. Archived rows do not appear in `list` / `next` / `why` / `analyze` or the duplicate-analysis input. `--expect <prefix>` refuses unless the card's text starts with the prefix — a guard against closing the wrong card. `--require-landed` asks a landing predicate and refuses only on a positive "not landed" answer, proceeding when the predicate is inconclusive — the predicate only asks whether a commit on the configured reference names the card, and being asked is not a guarantee the answer is right. Without the flag, `done` runs no landing query and adds no cost; every refusal path leaves the queue record byte-identical. |
+| `moai todo undone <n>` | Restores an archived card, along with every finding that named it, to the live queue at the position it held, and empties the archive entry. `done` followed by `undone` returns the queue record to the same bytes. Refused, naming the collision, when the id has since been reissued to a different live card — the live card is left alone. |
 | `moai todo next` | Prints queued items oldest-first. Read-only. |
 | `moai todo next <n> [--spec <SPEC-ID>]` | Marks the item `picked`; with `--spec`, records the identifier verbatim. One locked write. |
 | `moai todo unpick <n>` | Reverts the `picked` mark. Because the pick itself is a human judgment, the revert is also done directly by a human. |
@@ -198,7 +208,7 @@ $ moai todo unrelate 2
 | `moai todo relate <a> <b> --relation (contains \| absorbs \| replaces \| conflicts) [--note <text>]` | Records one relation between two cards. It is a record only — both cards stay exactly as they were, and `absorbs` performs no absorption. |
 | `moai todo unrelate <index>` | Removes the addressed record. The index is the one `why` prints. No card changes. |
 | `moai todo why <n>` | Prints every record naming the card, or says explicitly that there are none — printing nothing would be indistinguishable from a crash. |
-| `moai todo export-json` | Writes the live queue out as a legacy-format `backlog.json` beside the database, so a release predating the database can read it. It is a copy taken at the moment you run it, not a live mirror — export immediately before swapping binaries. Later `todo` verbs leave the file exactly where it was put. |
+| `moai todo export-json` | Writes the live queue out as a legacy-format `backlog.json` beside the database, so a release predating the database can read it. It is a copy taken at the moment you run it, not a live mirror — export immediately before swapping binaries. Unlike live items, archived cards ARE **included** in this export — but whenever the exported record actually carries archived rows, the command discloses on stderr that a binary predating the archive feature will drop that field on its first write. Later `todo` verbs leave the file exactly where it was put. |
 
 The CLI never prompts. It takes arguments and flags, prints one line, and reports errors on stderr — a shape that is safe in scripts and CI.
 
