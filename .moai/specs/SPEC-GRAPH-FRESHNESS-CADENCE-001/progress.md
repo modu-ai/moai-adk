@@ -1144,7 +1144,7 @@ attribution as sync-phase-reconstructed, not run-phase-observed.
 ```
 sync_status: audit-ready
 sync_complete_at: 2026-08-28
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: bc66c30b74a9acb8899886deb8af0421135541b4
 ```
 
 **What sync changed**: `CHANGELOG.md` `[Unreleased]` → `### Added` entry; `docs-site/content/{ko,en,ja,zh}/cli-reference/graph.md`
