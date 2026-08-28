@@ -10,18 +10,20 @@
 > - 신규 lint finding 코드: `ArtifactStatusFieldForbidden`
 > - M1 신설 소절 앵커 제목: `### Artifact Statelessness`
 >
-> **SHA 자리표시자**: `$BASE_M3`(M3 착수 직전 SHA)와 `$BASE_SPEC`(SPEC 착수 직전 SHA)은 `progress.md §E.2`의 「기준 SHA」 표에 기록된 값을 쓴다. 실행 시 그 표에서 읽어 export 한다.
+> **기준값 슬롯**: `$BASE_M3`(M3 착수 직전 SHA) · `$BASE_SPEC`(SPEC 착수 직전 SHA) · baseline `N`(M3 착수 시 D1 대상 수)은 `progress.md §E.1`의 「기준값」 표에서 읽는다. [HARD] 추출은 **반드시 공용 스니펫 (C)의 3중 가드를 거친다** — 빈 슬롯이 조용히 빈 문자열로 통과하면 `""..HEAD`가 `HEAD..HEAD`로 해석되어 AC가 아무것도 검사하지 않고 PASS를 출력한다.
 
 ---
 
 ## 공용 스니펫
 
-각 코드 블록은 별개 셸에서 실행되므로, 아래 두 정의는 **필요한 블록마다 인라인한다**(붙여넣기만으로 실행되게 하기 위함).
+각 코드 블록은 별개 셸에서 실행되므로, 아래 네 정의는 **필요한 블록마다 인라인한다**(붙여넣기만으로 실행되게 하기 위함).
 
 ```bash
-# (A) 소절 추출 — 앵커가 없으면 빈 문자열이 되어 이하 모든 grep이 실패한다
+# (A) 소절 추출 — 앵커가 없으면 빈 문자열이 되어 이하 모든 grep이 실패한다.
+#     종료 조건은 **레벨 3 이하 제목**(`# `/`## `/`### `)이다. `/^##/`로 두면
+#     소절 안의 `#### 하위제목`에서도 끊겨, 올바른 소절이 오탐 FAIL한다.
 F=.claude/rules/moai/development/spec-frontmatter-schema.md
-SEC=$(awk '/^### Artifact Statelessness/{f=1;next} f&&/^##/{exit} f' "$F")
+SEC=$(awk '/^### Artifact Statelessness/{f=1;next} f&&/^#{1,3} /{exit} f' "$F")
 
 # (B) D1 잔여 계수 — 전 코퍼스 696 모집단, frontmatter 블록 안의 status: 만 센다
 count_d1() {
@@ -35,7 +37,32 @@ count_d1() {
   done
   echo "$n"
 }
+
+# (C) 기준값 추출 + 3중 가드 — 빈 슬롯 / 오형식 / 이 트리에 없는 SHA 를 모두
+#     **큰 소리로** 죽인다. 가드가 없으면 빈 슬롯이 ""..HEAD → HEAD..HEAD 로
+#     조용히 해석되어 빈 diff·rc=0 을 내고, AC가 아무것도 검사하지 않은 채
+#     PASS를 출력한다.
+P=.moai/specs/SPEC-ARTIFACT-STATELESS-001/progress.md
+read_sha() {   # $1 = progress.md 「기준값」 표의 행 레이블
+  local v
+  # 가드1: {7,} — 0회 반복을 막아 빈 슬롯 행에 아예 매치하지 않게 한다
+  v=$(sed -n "s/^| $1 | \`\([0-9a-f]\{7,\}\)\` |.*/\1/p" "$P")
+  # 가드2: 비었으면(미매치 포함) 즉시 실패
+  [ -n "$v" ] || { echo "FAIL — 「$1」 슬롯이 비어 있거나 7자리 미만이다" >&2; return 1; }
+  # 가드3: 형식은 맞아도 이 트리에 없는 SHA면 실패
+  git rev-parse --verify "$v^{commit}" >/dev/null 2>&1 \
+    || { echo "FAIL — 「$1」 = $v 가 이 트리에서 커밋으로 해석되지 않는다" >&2; return 1; }
+  echo "$v"
+}
+read_num() {   # $1 = 행 레이블 — D1 baseline N 용 (숫자, 최소 1자리)
+  local v
+  v=$(sed -n "s/^| $1 | \`\([0-9]\{1,\}\)\` |.*/\1/p" "$P")
+  [ -n "$v" ] || { echo "FAIL — 「$1」 슬롯이 비어 있거나 숫자가 아니다" >&2; return 1; }
+  echo "$v"
+}
 ```
+
+> **왜 세 겹인가**: `[0-9a-f]*`는 0회 반복을 허용해 **빈 슬롯 행에 매치하고 빈 문자열을 캡처한다** — 실패가 아니라 조용한 성공이다. `\{7,\}`가 그 매치 자체를 막고, `-n` 검사가 미매치를 잡고, `rev-parse --verify`가 형식은 맞으나 존재하지 않는 SHA(다른 레인의 커밋, 오타)를 잡는다. 셋 중 하나라도 빠지면 빈/잘못된 기준값이 `git diff`에 들어가 AC를 공허하게 만든다.
 
 ---
 
@@ -49,12 +76,19 @@ count_d1() {
 
 ```bash
 F=.claude/rules/moai/development/spec-frontmatter-schema.md
-SEC=$(awk '/^### Artifact Statelessness/{f=1;next} f&&/^##/{exit} f' "$F")
+SEC=$(awk '/^### Artifact Statelessness/{f=1;next} f&&/^#{1,3} /{exit} f' "$F")
 echo "section bytes = ${#SEC}"
 
+# 부정 근접 검사 — 리터럴이 부정문 안에 들어가 있으면 그 문장은 단언이 아니다
+neg_hit() {   # $1 = 리터럴
+  printf '%s\n' "$SEC" | grep -F "$1" \
+    | grep -qiE '\b(not|never|no longer|rejected|incorrect|false)\b|아니|않'
+}
+
 # S1 — spec.md 한정
-printf '%s\n' "$SEC" | grep -qF 'binds `spec.md` only' \
-  && echo "S1 PASS" || echo "S1 FAIL"
+if printf '%s\n' "$SEC" | grep -qF 'binds `spec.md` only'; then
+  neg_hit 'binds `spec.md` only' && echo "S1 FAIL — 리터럴이 부정문 안에 있다" || echo "S1 PASS"
+else echo "S1 FAIL"; fi
 
 # S2 — 4종 전부 + status 축
 s2=1
@@ -65,13 +99,18 @@ printf '%s\n' "$SEC" | grep -qE '`status:`' || s2=0
 [ "$s2" -eq 1 ] && echo "S2 PASS" || echo "S2 FAIL"
 
 # S3 — Tier 무관
-printf '%s\n' "$SEC" | grep -qF 'Tier-independent' \
-  && echo "S3 PASS" || echo "S3 FAIL"
+if printf '%s\n' "$SEC" | grep -qF 'Tier-independent'; then
+  neg_hit 'Tier-independent' && echo "S3 FAIL — 리터럴이 부정문 안에 있다" || echo "S3 PASS"
+else echo "S3 FAIL"; fi
 ```
 
 판정: **S1·S2·S3 세 줄이 모두 `PASS`.** 하나라도 FAIL이면 AC 전체 FAIL.
 
-**착지 전 실측 (`3b1830b96`, 미수정 트리)** — `section bytes = 0`, `S1 FAIL` / `S2 FAIL` / `S3 FAIL`. 세 판정 모두 착지 전에는 성립할 수 없다. (요구사항: REQ-AST-001-001 / 002 / 003)
+**착지 전 실측 (`3b1830b96` / 재확인 `aacad4f99`, 미수정 트리)** — `section bytes = 0`, `S1 FAIL` / `S2 FAIL` / `S3 FAIL`. 세 판정 모두 착지 전에는 성립할 수 없다.
+
+> **[HARD] 이 검사가 판정하는 것은 리터럴의 존재와 배치이지 문장의 주장(polarity)이 아니다.** 부정 근접 검사는 같은 줄 안의 부정어만 잡는다. 여러 줄에 걸친 부정(`… only.` 다음 줄에 `— 이것은 사실이 아니다`)은 기계로 닫히지 않으므로, DoD의 인간 판독 항목이 유일한 방어다. 잔여는 spec.md §5에 부채로 명시돼 있다.
+
+(요구사항: REQ-AST-001-001 / 002 / 003)
 
 ---
 
@@ -85,9 +124,12 @@ printf '%s\n' "$SEC" | grep -qF 'Tier-independent' \
 
 ```bash
 F=.claude/rules/moai/development/spec-frontmatter-schema.md
-SEC=$(awk '/^### Artifact Statelessness/{f=1;next} f&&/^##/{exit} f' "$F")
+SEC=$(awk '/^### Artifact Statelessness/{f=1;next} f&&/^#{1,3} /{exit} f' "$F")
 
 P=0; printf '%s\n' "$SEC" | grep -qF 'Frontmatter itself is permitted' && P=1
+# 부정 근접 — 허용 문장이 부정문 안에 있으면 허용이 아니다
+printf '%s\n' "$SEC" | grep -F 'Frontmatter itself is permitted' \
+  | grep -qiE '\b(not|never|no longer|rejected|incorrect|false)\b|아니|않' && P=0
 N=$(printf '%s\n' "$SEC" | grep -cE 'MUST NOT (carry|have|contain) (a |any )?(YAML )?frontmatter')
 echo "permission=$P blanket_prohibition=$N"
 [ "$P" -eq 1 ] && [ "$N" -eq 0 ] && echo PASS || echo FAIL
@@ -95,7 +137,7 @@ echo "permission=$P blanket_prohibition=$N"
 
 판정: `permission=1 blanket_prohibition=0` + `PASS`.
 
-**착지 전 실측 (`3b1830b96`)** — `permission=0 blanket_prohibition=0` → `FAIL`. 부정 검사는 이미 0이지만 허용 문장이 없어 전체가 FAIL한다. (요구사항: REQ-AST-001-003 / 014)
+**착지 전 실측 (`3b1830b96` / 재확인 `aacad4f99`)** — `permission=0 blanket_prohibition=0` → `FAIL`. 부정 검사는 이미 0이지만 허용 문장이 없어 전체가 FAIL한다. (요구사항: REQ-AST-001-003 / 014)
 
 > **설계 메모 (왜 이 형태인가)**: 종전 판정은 문서 전역에 `grep -inE '(no|never|금지).{0,40}frontmatter'`를 걸고 `||` 분기로 PASS 문자열을 냈다. 그 grep은 미수정 파일에서 이미 4행 이상 매치하므로 `||` 분기가 결코 실행되지 않았고, 선언한 PASS 문자열은 **원리상 출력될 수 없었다.** 범위를 소절로 좁히고 매치 패턴을 "frontmatter 자체 금지" 문형으로 한정해 이 결함을 닫는다.
 
@@ -225,20 +267,47 @@ M3 **착수 전**에 같은 명령을 한 번 돌려 baseline N과 HEAD SHA를 `
 **Then** 제거된 라인이 전부 `status:` 라인이고, `id:`/`title:`/`version:`/`created:` 라인은 하나도 제거되지 않았다.
 
 ```bash
-BASE_M3=$(sed -n 's/^| M3 착수 직전 | `\([0-9a-f]*\)` |.*/\1/p' \
-  .moai/specs/SPEC-ARTIFACT-STATELESS-001/progress.md)
-echo "BASE_M3=$BASE_M3"
+P=.moai/specs/SPEC-ARTIFACT-STATELESS-001/progress.md
+read_sha() {
+  local v
+  v=$(sed -n "s/^| $1 | \`\([0-9a-f]\{7,\}\)\` |.*/\1/p" "$P")
+  [ -n "$v" ] || { echo "FAIL — 「$1」 슬롯이 비어 있거나 7자리 미만이다" >&2; return 1; }
+  git rev-parse --verify "$v^{commit}" >/dev/null 2>&1 \
+    || { echo "FAIL — 「$1」 = $v 가 이 트리에서 커밋으로 해석되지 않는다" >&2; return 1; }
+  echo "$v"
+}
+read_num() {
+  local v
+  v=$(sed -n "s/^| $1 | \`\([0-9]\{1,\}\)\` |.*/\1/p" "$P")
+  [ -n "$v" ] || { echo "FAIL — 「$1」 슬롯이 비어 있거나 숫자가 아니다" >&2; return 1; }
+  echo "$v"
+}
+
+BASE_M3=$(read_sha 'M3 착수 직전') || { echo "AC-07 FAIL — 기준 SHA 없음"; exit 1; }
+N=$(read_num 'M3 착수 시 D1 baseline N') || { echo "AC-07 FAIL — baseline N 없음"; exit 1; }
+echo "BASE_M3=$BASE_M3  baseline_N=$N"
+
 git diff "$BASE_M3"..HEAD -- '.moai/specs/*/plan.md' '.moai/specs/*/acceptance.md' \
   '.moai/specs/*/design.md' '.moai/specs/*/research.md' \
   | grep '^-' | grep -v '^---' > .moai/reports/t357/t357_removed.txt
-echo "removed lines total:      $(wc -l < .moai/reports/t357/t357_removed.txt)"
-echo "removed non-status lines: $(grep -cvE '^-status:' .moai/reports/t357/t357_removed.txt)"
+
+TOTAL=$(wc -l < .moai/reports/t357/t357_removed.txt | tr -d ' ')
+NONSTATUS=$(grep -cvE '^-status:' .moai/reports/t357/t357_removed.txt | tr -d ' ')
+echo "removed lines total:      $TOTAL   (baseline N = $N)"
+echo "removed non-status lines: $NONSTATUS"
 grep -vE '^-status:' .moai/reports/t357/t357_removed.txt | head -20
+
+# 두 조건을 **명령이** 판정한다 — 실행자의 기억에 맡기지 않는다
+[ "$NONSTATUS" -eq 0 ] && [ "$TOTAL" -eq "$N" ] \
+  && echo "AC-07 PASS" \
+  || echo "AC-07 FAIL — non-status=$NONSTATUS (must be 0), total=$TOTAL vs N=$N (must be equal)"
 ```
 
-판정: `removed non-status lines: 0` **그리고** `removed lines total`이 M3 착수 전 baseline N과 같다(제거 누락 없음).
+판정: `AC-07 PASS`. 두 조건의 **논리곱**이다 — (1) 제거된 비-status 라인 0 (D1 준수), (2) 제거 총량 == M3 착수 시 baseline N (제거 누락 없음).
 
-**착지 전 실측** — `BASE_M3`이 아직 기록되지 않아 명령이 성립하지 않는다(M3 착수 시 확정). (요구사항: REQ-AST-001-008)
+> **왜 두 번째 조건이 명령이어야 하는가**: 종전 판은 이 조건을 산문으로만 달아 두었다. 기준 SHA가 비면 `git diff`가 빈 결과를 내 `total=0`이 되고, 첫 조건(`non-status=0`)만 보는 실행자는 그것을 PASS로 읽는다 — 정확히 이 SPEC이 없애려는 "아무것도 보지 않는 검사"다. `total == N` 비교가 그 경로를 닫는다(빈 diff면 `0 != N`으로 즉시 FAIL).
+
+**착지 전 실측 (`aacad4f99`, 빈 슬롯 상태)** — `read_sha`가 가드1·2에서 걸려 `FAIL — 「M3 착수 직전」 슬롯이 비어 있거나 7자리 미만이다` + `AC-07 FAIL — 기준 SHA 없음`, exit 1. **PASS를 출력하지 않는다.** (요구사항: REQ-AST-001-008)
 
 ---
 
@@ -249,15 +318,38 @@ grep -vE '^-status:' .moai/reports/t357/t357_removed.txt | head -20
 **Then** 변경 파일 목록에 `spec.md`·`progress.md`가 없다 (이 SPEC 자신의 산출물 제외).
 
 ```bash
-BASE_M3=$(sed -n 's/^| M3 착수 직전 | `\([0-9a-f]*\)` |.*/\1/p' \
-  .moai/specs/SPEC-ARTIFACT-STATELESS-001/progress.md)
+P=.moai/specs/SPEC-ARTIFACT-STATELESS-001/progress.md
+read_sha() {
+  local v
+  v=$(sed -n "s/^| $1 | \`\([0-9a-f]\{7,\}\)\` |.*/\1/p" "$P")
+  [ -n "$v" ] || { echo "FAIL — 「$1」 슬롯이 비어 있거나 7자리 미만이다" >&2; return 1; }
+  git rev-parse --verify "$v^{commit}" >/dev/null 2>&1 \
+    || { echo "FAIL — 「$1」 = $v 가 이 트리에서 커밋으로 해석되지 않는다" >&2; return 1; }
+  echo "$v"
+}
+BASE_M3=$(read_sha 'M3 착수 직전') || { echo "AC-08 FAIL — 기준 SHA 없음"; exit 1; }
+echo "BASE_M3=$BASE_M3"
+
+# 비공허성 가드 — 「정리 대상 집합」이 실제로 이 범위 안에 있는지 확인한다.
+# `.moai/specs` 전체를 세면 이 SPEC 자신의 산출물 4개만으로도 충족되므로(그것들은
+# 아래에서 제외된다) 가드가 헐거워진다. 세는 대상을 정리 대상과 일치시킨다.
+CLEANED=$(git diff --name-only "$BASE_M3"..HEAD -- '.moai/specs/*/plan.md' \
+  '.moai/specs/*/acceptance.md' '.moai/specs/*/design.md' '.moai/specs/*/research.md' \
+  | grep -v 'SPEC-ARTIFACT-STATELESS-001' | wc -l | tr -d ' ')
+[ "$CLEANED" -gt 0 ] || { echo "AC-08 FAIL — $BASE_M3..HEAD 에 정리 대상 편집이 0건 (M3가 아직 착지하지 않았다)"; exit 1; }
+echo "cleanup-target files in range = $CLEANED"
+
 git diff --name-only "$BASE_M3"..HEAD -- .moai/specs \
   | grep -E '/(spec|progress)\.md$' \
   | grep -v 'SPEC-ARTIFACT-STATELESS-001' \
-  && echo FAIL || echo "no spec.md/progress.md touched: PASS"
+  && echo "AC-08 FAIL" || echo "no spec.md/progress.md touched: AC-08 PASS"
 ```
 
-판정: `no spec.md/progress.md touched: PASS`. (요구사항: REQ-AST-001-011)
+판정: `changed files under .moai/specs = <N>` (N > 0) **그리고** `no spec.md/progress.md touched: AC-08 PASS`.
+
+> 비공허성 가드가 필요한 이유: 이 AC의 본체는 grep 미매치 시 `||` 분기로 PASS를 낸다. 빈 입력에도 grep은 미매치이므로, 가드가 없으면 **아무것도 검사하지 않고 PASS**한다. 종전 판이 정확히 그 상태였다.
+
+**착지 전 실측 (`aacad4f99`, 빈 슬롯 상태)** — `FAIL — 「M3 착수 직전」 슬롯이 비어 있거나 7자리 미만이다` + `AC-08 FAIL — 기준 SHA 없음`, exit 1. (요구사항: REQ-AST-001-011)
 
 ---
 
@@ -299,18 +391,38 @@ echo "rule_matches=$R d1_remaining=$D"
 **Then** tier 값을 바꾼 편집이 0건이고, 비-spec.md 산출물에 `status:`를 **추가**한 편집도 0건이다.
 
 ```bash
-BASE_SPEC=$(sed -n 's/^| SPEC 착수 직전 | `\([0-9a-f]*\)` |.*/\1/p' \
-  .moai/specs/SPEC-ARTIFACT-STATELESS-001/progress.md)
+P=.moai/specs/SPEC-ARTIFACT-STATELESS-001/progress.md
+read_sha() {
+  local v
+  v=$(sed -n "s/^| $1 | \`\([0-9a-f]\{7,\}\)\` |.*/\1/p" "$P")
+  [ -n "$v" ] || { echo "FAIL — 「$1」 슬롯이 비어 있거나 7자리 미만이다" >&2; return 1; }
+  git rev-parse --verify "$v^{commit}" >/dev/null 2>&1 \
+    || { echo "FAIL — 「$1」 = $v 가 이 트리에서 커밋으로 해석되지 않는다" >&2; return 1; }
+  echo "$v"
+}
+BASE_SPEC=$(read_sha 'SPEC 착수 직전') || { echo "AC-10 FAIL — 기준 SHA 없음"; exit 1; }
 echo "BASE_SPEC=$BASE_SPEC"
-echo -n "tier edits: "
-git diff "$BASE_SPEC"..HEAD -- .moai/specs | grep -E '^[+-]tier:' \
-  | grep -v 'SPEC-ARTIFACT-STATELESS-001' | wc -l
-echo -n "status additions in non-spec artifacts: "
-git diff "$BASE_SPEC"..HEAD -- '.moai/specs/*/plan.md' '.moai/specs/*/acceptance.md' \
-  '.moai/specs/*/design.md' '.moai/specs/*/research.md' | grep -cE '^\+status:'
+
+# 비공허성 가드 — 이 AC의 판정은 "두 계수 모두 0"이라, 빈 diff 에서도 그대로 성립한다.
+# 세는 대상을 정리 대상 집합과 일치시킨다(이 SPEC 자신의 산출물은 제외).
+CLEANED=$(git diff --name-only "$BASE_SPEC"..HEAD -- '.moai/specs/*/plan.md' \
+  '.moai/specs/*/acceptance.md' '.moai/specs/*/design.md' '.moai/specs/*/research.md' \
+  | grep -v 'SPEC-ARTIFACT-STATELESS-001' | wc -l | tr -d ' ')
+[ "$CLEANED" -gt 0 ] || { echo "AC-10 FAIL — $BASE_SPEC..HEAD 에 정리 대상 편집이 0건 (M3가 아직 착지하지 않았다)"; exit 1; }
+echo "cleanup-target files in range = $CLEANED"
+
+TIER=$(git diff "$BASE_SPEC"..HEAD -- .moai/specs | grep -E '^[+-]tier:' \
+  | grep -v 'SPEC-ARTIFACT-STATELESS-001' | wc -l | tr -d ' ')
+ADDS=$(git diff "$BASE_SPEC"..HEAD -- '.moai/specs/*/plan.md' '.moai/specs/*/acceptance.md' \
+  '.moai/specs/*/design.md' '.moai/specs/*/research.md' | grep -cE '^\+status:' | tr -d ' ')
+echo "tier edits: $TIER"
+echo "status additions in non-spec artifacts: $ADDS"
+[ "$TIER" -eq 0 ] && [ "$ADDS" -eq 0 ] && echo "AC-10 PASS" || echo "AC-10 FAIL"
 ```
 
-판정: 두 계수 모두 **0**. (요구사항: REQ-AST-001-012 / 013)
+판정: `changed files under .moai/specs = <N>` (N > 0) **그리고** 두 계수 모두 0 → `AC-10 PASS`.
+
+**착지 전 실측 (`aacad4f99`, 빈 슬롯 상태)** — `FAIL — 「SPEC 착수 직전」 슬롯이 비어 있거나 7자리 미만이다` + `AC-10 FAIL — 기준 SHA 없음`, exit 1. 종전 판은 이 상태에서 두 계수 모두 0을 내며 **공허하게 PASS**했다. (요구사항: REQ-AST-001-012 / 013)
 
 ---
 
@@ -360,6 +472,8 @@ grep -qF '### Artifact Statelessness' "$M" && echo "anchor mirror: PASS" || echo
 - [ ] AC-AST-001-01 ~ AC-AST-001-11 전부 PASS, 각 판정의 **실제 명령 출력을 인용**
 - [ ] AC-AST-001-04의 심기→관측→원복 4단계가 실행되었고, `before` 매치 0 / `after` 매치 ≥1 / `after rc` 비-0 / 원복 후 빈 diff 가 **함께** 인용됨 (일부만 인용하면 미충족)
 - [ ] AC-AST-001-01의 S1·S2·S3가 각각 인용됨 (합산 PASS 한 줄로 갈음 불가)
+- [ ] **[인간 판독]** `### Artifact Statelessness` 소절 원문을 인용하고, S1·S2·S3의 각 리터럴이 **평서 단언**으로 쓰였음을(반례·인용·"이렇게 읽지 말 것" 문형 안이 아님을) 사람이 확인함 — 기계 검사는 같은 줄 부정어만 잡으므로 여러 줄에 걸친 부정은 이 항목이 유일한 방어다(spec.md §5 부채)
+- [ ] `progress.md §E.1` 「기준값」 표의 세 슬롯(`SPEC 착수 직전` / `M3 착수 직전` / `M3 착수 시 D1 baseline N`)이 채워졌고, AC-07·08·10이 가드를 통과해 실행됨 — 빈 슬롯 상태의 출력을 PASS 근거로 인용하는 것은 미충족
 - [ ] `progress.md §E.2`의 「기준 SHA」 표에 `SPEC 착수 직전` / `M3 착수 직전` 두 SHA가 기록됨
 - [ ] 모든 계수에 측정 명령 + 트리 SHA가 병기됨 (`c6aa61346`의 362, `3b1830b96`의 389 리터럴을 판정값으로 재사용 금지)
 - [ ] M2와 M3가 같은 SPEC 안에서 착지 (AC-AST-001-09)

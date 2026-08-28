@@ -45,14 +45,20 @@ anchor in mirror: FAIL
 
 `moai spec lint .moai/specs/SPEC-ARTIFACT-STATELESS-001/spec.md` → `✓ No findings`, rc=0, `ArtifactStatusFieldForbidden` 매치 **0** (AC-04 비공허성 가드가 실제로 0을 낸다).
 
-### 기준 SHA — run-phase에서 채운다
+### 기준값 — run-phase에서 채운다
 
-`acceptance.md`의 `AC-AST-001-07` / `-08` / `-10`이 이 표를 `sed`로 읽는다. 형식(`| <이름> | \`<sha>\` |`)을 바꾸지 않는다.
+`acceptance.md`의 `AC-AST-001-07` / `-08` / `-10`이 이 표를 `sed`로 읽는다. 형식(`| <이름> | \`<값>\` |`)을 바꾸지 않는다.
 
-| 시점 | SHA |
+| 시점 | 값 |
 |---|---|
 | SPEC 착수 직전 | `` |
 | M3 착수 직전 | `` |
+| M3 착수 시 D1 baseline N | `` |
+
+[HARD] **빈 슬롯은 AC를 통과시키지 않는다.** 추출은 `\{7,\}`(SHA) / `\{1,\}`(숫자) 패턴 + `-n` 검사 + `git rev-parse --verify` 3중 가드를 거치며, 빈 슬롯은 stderr에 `FAIL — 「…」 슬롯이 비어 있거나 …`를 내고 exit 1 한다. 가드 없이 `[0-9a-f]*`로 읽으면 빈 슬롯이 매치되어 빈 문자열을 캡처하고, `""..HEAD`가 `HEAD..HEAD`로 조용히 해석돼 AC가 공허하게 PASS한다 — iter-2 감사 N1이 지적한 결함이다.
+
+- `SPEC 착수 직전` / `M3 착수 직전`: 7자리 이상 hex SHA
+- `M3 착수 시 D1 baseline N`: `bash .moai/reports/t357/t357_d1_all.sh .` 의 「D1 전체 696 모집단」 값 (착수 시점 참고: 389 @ `3b1830b96`)
 
 ### 미해결 Gap
 
