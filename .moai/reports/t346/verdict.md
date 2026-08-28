@@ -91,6 +91,7 @@ bin-present 대조 (`bin/moai` 복원 후 같은 9종 + embed 11종): `grep -cE 
 - **본 수리만으로 develop CI 는 초록이 되지 않는다.** 위 계열 2·3·4·5가 남는다 — 다른 레인의 착지 판정(CI 판독) 봉쇄는 t346 착지로 해소되지 않는다.
 - 계열 3·4·5 는 도입 커밋까지만 확인했다 — **각 실패의 근본 원인을 고치는 방법은 조사하지 않았다** (범위 밖).
 - `internal/cli` 커버리지 79.9% 는 패키지 임계 85% 미만이나, 본 변경 이전 baseline 을 이번 실행에서 측정하지 않았다 — 개선/악화 방향을 단언하지 않는다. 변경 2파일은 신규 분기 없이 기존 분기의 verdict 만 바꿨고 그 분기는 테스트가 덮는다.
+- **REQ-CDB-003 의 fail 분기는 4개인데 전용 테스트는 3개다.** `grep -n 'CheckFail' internal/cli/doctor_agentemit_embed.go` → `:139` 추출 실패 · `:146` 비교 실패 · `:155` 기수 미달 · `:162` 스테일 드리프트. 비회귀 테스트는 `ExtractionErrorFails` · `PartialExtractionFails` · `DriftFailsAndNamesPath` 3개뿐으로, **`:146`(compareEmission 이 err 를 반환하는 경로)에는 전용 테스트가 없다**. 본 수리가 그 분기를 건드리지 않았다는 것은 diff 로 확인되지만(변경은 bin 부재 분기 1곳), 그 분기가 실제로 fail 을 내는지는 이번 실행에서 관측하지 않았다 — 기존 커버리지 공백이며 본 카드가 만든 것이 아니다. 후속 카드 후보.
 - 전체 스위트(`go test ./...`)는 로컬에서 돌리지 않았다 (CLAUDE.local.md §4 규율) — 전 패키지 판정은 CI 몫.
 
 ## Residual-risk
