@@ -213,7 +213,7 @@ corpus 전체: `files=606 halting=0 files-with-excluded=5`(시작 시점 1 → �
 
 ```yaml
 run_complete_at: 2026-08-28
-run_commit_sha: "<PLACEHOLDER — M1 commit; backfill after commit>"
+run_commit_sha: "23df21c9e"   # M1 commit; backfilled in a follow-up commit (a commit cannot cite its own SHA)
 run_status: complete
 ac_pass_count: 8
 ac_fail_count: 0
@@ -233,7 +233,7 @@ tests:
   new_test_cases_executed: 9   # TestAC* top-level tests, 3 of them with subtests; every one observed running
 mutants_killed: 3   # mirror one-character; fixture partial-marking + end-of-line token move; corpus token plant. All restored, all re-verified green
 total_run_phase_files: 24   # `git status --short` at commit time: 14 modified + 10 new
-m1_to_mN_commit_strategy: "single M1 commit on WT-ac-count-sweep carrying M1-M5; no push, no develop merge (integration awaits the lead)"
+m1_to_mN_commit_strategy: "single M1 commit on WT-ac-count-sweep carrying M1-M5 (23df21c9e), plus one SHA-backfill follow-up commit; no push, no develop merge (integration awaits the lead)"
 ```
 
 **파일 24건의 내역** — `git status --short` 를 커밋 직전에 다시 읽어 센 값이다.
