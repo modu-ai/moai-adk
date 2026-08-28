@@ -2,7 +2,7 @@
 id: SPEC-TEMPDIR-CLEANUP-RACE-001
 title: "Deferred session-start writes must not outlive Handle for a cross-package caller — a deliberate synchronous-scan seam plus a regression guard for the t.TempDir cleanup race"
 version: "0.1.3"
-status: draft
+status: in-progress
 created: 2026-08-28
 updated: 2026-08-28
 author: manager-spec (card t352)
