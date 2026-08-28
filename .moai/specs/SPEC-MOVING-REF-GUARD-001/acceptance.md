@@ -239,6 +239,14 @@ failed (it measured **0**). The date in the reference is not this line's exempti
 carries no date conjunct, and the line is not in the divergence class (`grep -c 'rev-list --count
 --left-right'` → 0), so **the R4 exclusion is the only thing that can exempt it**.
 
+**[HARD] This criterion is synthetic-only, and that is a limit on what it can establish.** R4's
+reachable scope in the live corpus is **empty — 0 of 42 candidate lines, two independent probes**
+(`spec.md` §B.7). The fixture above therefore has no live counterpart and cannot acquire one until
+the doctrine is in use. The criterion proves the exclusion *works* against a constructed line; it
+does **not** demonstrate the exclusion is *needed*. Those are different claims and this criterion
+supports only the first. `spec.md` §H Q0 carries the resulting scope decision — option C would defer
+this criterion together with REQ-MRG-010.
+
 **Fails when:** the R4 exclusion is absent, and the guard flags the very form the doctrine
 recommends. That failure is worse than a plain false positive: it teaches readers to avoid the
 correct remedy, which is the card's dominant failure mode arriving by a different road.

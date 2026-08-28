@@ -173,6 +173,52 @@ acceptance.md` returned nothing, so the ANCHOR-branch limitation lived only in �
 could have published the doctrine without it while passing every criterion. As L7 it is inside
 AC-MRG-011's count (6→7) and its own `grep -c 'ANCHOR'` check.
 
+**v0.5.0 — D13's second condition closed: R4's scope measured, not asserted.**
+
+The v0.4.0 fixture swap was necessary and not sufficient; leaving REQ-MRG-010's reach
+uncharacterized would have seated a different vacuous criterion in the same chair. Measured (§B.7):
+**0 of 42** candidate lines fall in R4's class, on two independent probes — a narrow one keyed on
+imperative measure-instruction shapes and a deliberately broader one keyed on any value-demotion
+marker. R4 is one day old, so no corpus line is written in a form that did not exist when it was
+written. Reported as empty rather than talked up: per the lead's instruction, a dead clause honestly
+labelled beats a live-looking one nobody can exercise. §H Q0 now carries the scope decision, with
+option C (defer the exclusion, use the R3 marker meanwhile) recommended but not taken.
+
+**D13's provenance — the transferable part, recorded as such.** The vacuous fixture was the lead's
+dispatch line, and it became a fixture *because* the lead had flagged that line as an instance of
+the defect. The prose intuition was right; the mechanical question — can this card's own conjuncts
+actually see this line? — was never asked of it. An instance handed down by a lead and adopted as a
+fixture without verification becomes a vacuous control by construction, and the authority of the
+source is precisely what suppresses the check. This is not a fixture-selection slip to be logged
+anonymously; it is a named failure mode, and the guard against it is that **a fixture's properties
+are measured on adoption, whatever its provenance**.
+
+**The asymmetry D13 exposes, in this card's own terms.** CM-1 and CM-2 both test that the exclusion
+is not too **wide**. Nothing tested that it works **at all**. Those are the two directions of a
+single question, and this card exists to insist both are checked — §D.1's own predicate is built on
+the symmetric claim that an unobserved success and an unobserved failure are both gaps. The suite
+had one direction covered three times over and the other not at all, on the card's [HARD]
+deliverable. The ordering note now in AC-MRG-013 (run the removal mutation *first*) is the operative
+fix; this record is the reason.
+
+**Count reconciliation — three figures, one pass, because the commands were written down.** The
+auditor's `100 / 36`, my `117 / 76`, and the `129 / 81` pair reconcile to a single difference:
+whether this SPEC's own directory is excluded, and at which revision. Re-measured at this revision:
+divergence total `130` unexcluded vs `117` self-excluded; fetch ∧ divergence `86` unexcluded vs
+`76` self-excluded-and-hex-filtered. The earlier `81` is now `86` because *this SPEC* added lines
+quoting those commands. None of these is a correction of another; they are different measurements
+that were mistaken for the same one while the commands stayed unwritten. That is D10's whole point,
+and the reconciliation was only possible because v0.3.0 recorded the alternations verbatim.
+
+**NOT observed at v0.5.0 (Gaps):**
+
+- The two §B.7 probes are keyed on English imperative markers. An R4-form line written in Korean, or
+  in a phrasing neither alternation anticipates, would not be counted — so "0 of 42" is a floor on
+  emptiness, not a proof of it. Given R4's age the true count is very unlikely to exceed zero, but
+  "unlikely" is not "measured" and the distinction is kept.
+- Whether option C is *implementable* — whether the R3 marker reads naturally on an R4 line — was
+  not tested. It is a recommendation, not a validated design.
+
 **NOT observed at v0.4.0 (Gaps):**
 
 - Still no Go code, so every fixture property above is a measurement of the fixture *text* against

@@ -152,6 +152,18 @@ its own.
   a second, subtler route to the same "pin everything" outcome.
 - **An R4 exclusion wide enough to be a bypass.** Passes AC-MRG-013 while silently disabling
   AC-MRG-001; guarded by that criterion's mandatory counter-mutation.
+- **Testing only one direction of an exemption.** CM-1 and CM-2 both ask whether the exclusion is
+  too *wide*; until iter-2 nothing asked whether it works *at all*, and the fixture was in fact
+  unflaggable. Both directions or neither — an exemption needs a criterion that fails when the
+  exemption is absent, not only ones that fail when it is too broad.
+- **Adopting a lead-supplied instance as a fixture without measuring it.** The vacuous AC-MRG-013
+  fixture was the lead's dispatch line, promoted because the lead had identified it as an instance of
+  the defect. The prose intuition was correct and the mechanical question was never asked; the
+  authority of the source is what suppressed the check. Measure a fixture's properties on adoption,
+  whatever its provenance (`progress.md` §E.1).
+- **Keeping a clause alive by manufacturing a scope for it.** §B.7 measured R4's reachable scope as
+  empty and says so, rather than describing the class in a way that implies occupants. An exemption
+  with no scope is a dead clause; label it and let the operator decide (§H Q0).
 - **An acceptance criterion that cannot fail.** Every criterion in `acceptance.md` names its
   falsifying input. A guard whose criterion cannot fail is indistinguishable from a guard that is
   switched off — and this SPEC's deliverable *is* a guard, so the hazard is doubled here.
