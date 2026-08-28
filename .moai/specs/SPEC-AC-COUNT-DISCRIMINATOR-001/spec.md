@@ -2,7 +2,7 @@
 id: SPEC-AC-COUNT-DISCRIMINATOR-001
 title: "AC 개수 자가검사 판별자 — 폐기 기준을 문면 예약 토큰으로 가르고, 애매는 세지 않고 멈춘다"
 version: "0.5.0"
-status: in-progress
+status: completed
 created: 2026-08-28
 updated: 2026-08-28
 author: manager-spec

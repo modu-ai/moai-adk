@@ -2,7 +2,7 @@
 id: SPEC-AC-COUNT-DISCRIMINATOR-001
 title: "AC 개수 자가검사 판별자 — 진행 기록"
 version: "0.5.0"
-status: in-progress
+status: completed
 created: 2026-08-28
 updated: 2026-08-28
 author: manager-spec
@@ -387,4 +387,36 @@ push_state: "not pushed, not merged — this branch is the last merge of a batch
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-28
+sync_commit_sha: "pending-backfill-sync"   # a commit cannot cite its own SHA; backfilled in the immediately following commit
+sync_status: complete
+b12_self_test_a: "grep -c 'SPEC-AC-COUNT-DISCRIMINATOR-001' CHANGELOG.md -> 0 (pre-emission; no duplicate entry from a parallel session)"
+b12_self_test_b: "amended counter (manager-docs.md B12, MOAI-AC-COUNTER sentinels) on acceptance.md -> stdout 24, rc=0, stderr 'live=24 excluded=3 ambiguous=0'; retired token sweep on the same file -> 27. The gap of 3 is exactly the excluded identifiers the old sweep could not see, and the CHANGELOG entry states 24"
+b12_self_test_c: "ls on every path claimed in the entry -> all present: manager-docs.md (local + mirror), manager-docs.toml, manager-develop-prompt-template.md (local + mirror), internal/spec/ac_count_clause_test.go, internal/spec/testdata/ac_count/{adjacency,shapes,vocab}.md, .moai/reports/t338/{ac-count-baseline.txt,debt-list.md,collision-scan.sh}, and the four normalized acceptance.md"
+changelog_entry_position: "CHANGELOG.md [Unreleased] -> ### Added, first entry (line 12); inserted above SPEC-GRAPH-FRESHNESS-CADENCE-001"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (merged 3-phase close on this sync commit); updated: 2026-08-28"
+  plan_md: "in-progress -> completed; updated: 2026-08-28"
+  acceptance_md: "in-progress -> completed; updated: 2026-08-28"
+  progress_md: "in-progress -> completed; updated: 2026-08-28"
+  design_md: "NOT transitioned - left at draft"
+  research_md: "NOT transitioned - left at draft"
+  design_research_rationale: "the ownership matrix enumerates four artifacts (spec/plan/acceptance/progress) and predates Tier L's six. Widening the transition on this sync's own initiative would be undocumented drift; card t357 owns the question. Recorded here rather than silently resolved"
+canary_compliance_check:
+  applicable: true
+  reason: "this SPEC defines a forward-looking policy (the reserved-token convention + the halt obligation) whose FIRST live consumer is this very sync's B12 self-test"
+  result: "the convention was exercised end to end on its own CHANGELOG entry: the counter ran, decided every identifier, emitted one integer, and the entry carries that integer. No halt was reached, so the halt branch was NOT exercised on this run - it was exercised earlier, by the run phase, on the E.2 draft (AMBIGUOUS AC-SYN-010 AC-SYN-002, rc=3) and by three planted mutants"
+  six_artifact_regression_watch: "python3 .moai/reports/t338/iter2-scratch/counter.py <file> adj -> spec 41 / plan 11 / acceptance 24 / design 2 / research 10 / progress 48; all rc=0, ambiguous=0. Re-measured after this section was written; progress.md did NOT move (48 -> 48) because this section names only identifiers already present in E.2/E.3 and introduces none"
+tests:
+  affected_packages: "go test ./internal/spec/... -count=1 -> ok"
+  full_suite: "NOT RUN locally by instruction; no CI verdict exists - this branch is unpushed"
+docs_sync: "no user-facing doc surface describes the AC-count self-test. Scanned: README*.md, .moai/docs/, docs-site/ -> zero prose hits (the single docs-site hit is a minified theme JS bundle, unrelated). The two surfaces that DO describe it - .claude/agents/moai/manager-docs.md B12 and .claude/rules/moai/development/manager-develop-prompt-template.md, each with its template mirror - were already updated in the run phase and are unchanged by this sync"
+snapshot_regenerated: false   # unchanged from run phase; the two absent files are the live evidence the narrowing reports rather than fails
+push_state: "not pushed, not merged - this branch is the last merge of a batch and integration is the lead's window"
+```
+
+**이 sync 가 관측하지 않은 것.** 브랜치가 미푸시라 **CI 판정이 없다**. 전체 스위트는 지시대로
+로컬에서 돌리지 않았다. `sync_commit_sha` 는 커밋 시점에 확정되지 않으므로 후속 커밋에서 채운다.
+`design.md`·`research.md` 의 `draft` 는 이 sync 가 고치지 않고 남긴 상태이며, 그 판단의 근거는
+위 `design_research_rationale` 에 적었다.
