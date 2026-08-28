@@ -131,7 +131,7 @@ func TestSessionStart_LagAdvisorySerializesUnderAdditionalContext(t *testing.T) 
 // has no bounded join at all.
 func TestSessionStart_BlockingComparerDoesNotStallSessionStart(t *testing.T) {
 	release := make(chan struct{})
-	t.Cleanup(func() { close(release) })
+	stubExited := make(chan struct{})
 
 	orig := binlag.Comparer
 	origAsync := deferredScansAsync
@@ -139,14 +139,30 @@ func TestSessionStart_BlockingComparerDoesNotStallSessionStart(t *testing.T) {
 	deferredScansAsync = true
 	deferredScanSeamMu.Unlock()
 	binlag.Comparer = func(context.Context, binlag.Request) binlag.Verdict {
+		defer close(stubExited)
 		<-release // ignores ctx on purpose
 		return behindVerdict()
 	}
+	// Registered FIRST so it runs LAST: t.Cleanup is LIFO, and the seam may
+	// only be restored once the abandoned goroutine has stopped reading it.
+	// Swapping these two registrations reinstates the data race.
 	t.Cleanup(func() {
 		binlag.Comparer = orig
 		deferredScanSeamMu.Lock()
 		deferredScansAsync = origAsync
 		deferredScanSeamMu.Unlock()
+	})
+	// Registered SECOND so it runs FIRST: release the deliberately-abandoned
+	// goroutine and JOIN it before the restore above. The join belongs in
+	// cleanup and nowhere earlier — waiting for the stub before the assertion
+	// would delete the very property AC-BLV-006 measures.
+	t.Cleanup(func() {
+		close(release)
+		select {
+		case <-stubExited:
+		case <-time.After(10 * time.Second):
+			t.Errorf("stub comparer did not exit after release; restoring the seam would race with it")
+		}
 	})
 
 	start := time.Now()
