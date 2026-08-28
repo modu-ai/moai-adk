@@ -71,9 +71,22 @@ type Verdict struct {
 // Comparer is the single substitutable seam. Both the doctor check item and
 // the session-start advisory reach the comparison through it, so a stub
 // installed here is observed by both.
+//
+// @MX:ANCHOR: the one comparison implementation both lag surfaces read
+// @MX:SPEC: SPEC-BINARY-LAG-VISIBILITY-001
+// @MX:REASON: a second copy of the comparison in either caller lets the two
+// surfaces drift apart silently; routing both through this variable is what
+// makes "a single implementation" observable rather than merely asserted.
+// @MX:TEST: internal/cli/binary_lag_test.go, internal/hook/session_start_binary_lag_test.go
 var Comparer = gitCompare
 
 // Evaluate returns the lag verdict for req, routed through Comparer.
+//
+// @MX:ANCHOR: fan_in 3 — doctor.go:520, session_start_binary_lag.go:55 and :67
+// @MX:SPEC: SPEC-BINARY-LAG-VISIBILITY-001
+// @MX:REASON: package API boundary; every lag verdict anywhere in the binary
+// is produced here, so a change to its signature or semantics reaches both
+// the diagnostic surface and the unprompted session-start surface at once.
 func Evaluate(ctx context.Context, req Request) Verdict {
 	return Comparer(ctx, req)
 }
@@ -85,6 +98,13 @@ func Evaluate(ctx context.Context, req Request) Verdict {
 // no commit metadata, not a git tree, HEAD match, and non-ancestor. That
 // leniency is deliberate and must not be narrowed: each narrowing turns a
 // perfectly healthy downstream installation into a reported fault.
+//
+// @MX:WARN: shells out to git; every non-lag path must stay lenient
+// @MX:SPEC: SPEC-BINARY-LAG-VISIBILITY-001
+// @MX:REASON: the two exec calls are the only external-system dependency in
+// this package, and each early return is a deliberate not-a-problem verdict.
+// Converting any of them into a fault promotes a downstream `moai doctor` run
+// to a failure over a repository the user does not have.
 func gitCompare(ctx context.Context, req Request) Verdict {
 	binCommit := strings.TrimSpace(req.BinaryCommit)
 	if binCommit == "" || binCommit == "none" || binCommit == "unknown" {
@@ -130,6 +150,9 @@ const RemedyCommand = "make build && make install"
 // start is read once and ignored thereafter, and an ignored notice closes
 // nothing — so the advisory speaks only when the binary really is running code
 // the tree has moved past.
+//
+// @MX:NOTE: empty string is the answer for every verdict except StatusBehind
+// @MX:SPEC: SPEC-BINARY-LAG-VISIBILITY-001
 func Advisory(v Verdict) string {
 	if v.Status != StatusBehind {
 		return ""
