@@ -779,7 +779,7 @@ total_run_phase_files: 21
 m1_to_mN_commit_strategy: one commit per milestone, four in sequence on WT-guard-liveness — 8fa67f647 (M1), 24ecc7e65 (M2), a004a35ab (M3), and the M4 commit this block rides. Not pushed; the delegation scopes the run phase to local commits.
 ```
 
-**Two fields carry a value that is not a pass, stated rather than left to read as one.** `run_commit_sha` is a placeholder because a commit cannot name its own hash; it is backfilled in a follow-up. `l44_pre_commit_fetch` and `l44_post_push_fetch` read `not-run` because this run phase performs no push and the delegation forbids one — no fetch was issued, so recording `clean` would be a claim about a command that never ran.
+**Two fields carry a value that is not a pass, stated rather than left to read as one.** `run_commit_sha` was written as a placeholder because a commit cannot name its own hash; the sync commit `00af58dcf` backfilled it to `0c7c61740`, and this sentence was corrected in the same pass rather than left describing a state the field no longer holds. `l44_pre_commit_fetch` and `l44_post_push_fetch` read `not-run` because this run phase performs no push and the delegation forbids one — no fetch was issued, so recording `clean` would be a claim about a command that never ran.
 
 ### Run-phase status transition
 
