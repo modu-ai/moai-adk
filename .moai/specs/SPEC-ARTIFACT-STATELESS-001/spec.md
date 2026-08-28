@@ -2,9 +2,9 @@
 id: SPEC-ARTIFACT-STATELESS-001
 title: "비-spec.md SPEC 산출물 무상태 확정 — 규약 명문화 · 재발 방지 lint · status 라인 정리"
 version: "0.3.0"
-status: draft
+status: in-progress
 created: 2026-08-28
-updated: 2026-08-28
+updated: 2026-08-29
 author: manager-spec
 priority: P2
 phase: "v3.1.4 target"
