@@ -507,6 +507,14 @@ func checkMoAIVersion(_ bool) DiagnosticCheck {
 //   - version.GetCommit() is unset ("", "none", "unknown") — dev build
 //   - CWD is not inside a git working tree (git rev-parse walks upward)
 //   - binary commit is not an ancestor of HEAD (release/branch build)
+//
+// @MX:ANCHOR: renders the shared binlag verdict; never promotes to Fail
+// @MX:SPEC: SPEC-BINARY-LAG-VISIBILITY-001
+// @MX:REASON: the row name is fixed ("Binary Freshness") and AC-BLV-009 judges
+// mechanically that this SPEC added no new doctor check name; a Warn keeps
+// `doctorExitStatus` at 0, and raising it to Fail would break every downstream
+// project, which has no source tree to compare its binary against.
+// @MX:TEST: internal/cli/binary_lag_test.go
 func checkBinaryFreshness(verbose bool) DiagnosticCheck {
 	check := DiagnosticCheck{Name: "Binary Freshness"}
 

@@ -2,7 +2,7 @@
 id: SPEC-BINARY-LAG-VISIBILITY-001
 title: "배포 지연 가시성 — 진행 기록"
 version: "0.4.0"
-status: in-progress
+status: completed
 created: 2026-08-27
 updated: 2026-08-28
 author: manager-spec
@@ -426,4 +426,64 @@ unobserved:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-28
+sync_commit_sha: pending-backfill-sync   # 커밋은 자기 해시를 알 수 없다 — 바로 다음 커밋에서 backfill
+sync_status: COMPLETE — CHANGELOG 항목 1건 + @MX 주석 + 3-phase close. 통합은 리드 소관(push 안 함, PR 안 냄)
+sync_audit_verdict: "NOT RUN — 이 카드의 sync-audit은 배차되지 않았다. 판정 근거로 인용할 감사 점수가 없다"
+lane_verdict_report: .moai/reports/t326/verdict.md   # run-phase 레인 판정(카드 전제 반증 기록 포함)
+plan_audit_reports: [.moai/reports/t326/plan-audit-iter1.md, .moai/reports/t326/plan-audit-iter2.md]  # PASS-WITH-DEBT 0.80 → 0.85 단조
+
+b12_self_test_a: "사전 grep — `grep -c 'SPEC-BINARY-LAG-VISIBILITY-001' CHANGELOG.md` 가 쓰기 전 0 반환(병렬 세션의 중복 항목 없음)"
+b12_self_test_b: "AC 개수 일치 — `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l` 가 9 반환(AC-BLV-001..009); CHANGELOG 항목도 9건으로 적었다"
+b12_self_test_c: "파일 경로 확인 — CHANGELOG 항목이 인용한 경로 전부 `ls -1` 로 존재 확인(internal/binlag/binlag.go, internal/cli/doctor.go, internal/cli/version.go, internal/hook/session_start.go, internal/hook/session_start_binary_lag.go, pkg/version/version.go, Makefile, spec.md). 인용한 행번호 `session_start.go:479` 도 grep로 재확인 — 초안의 `:461` 은 틀렸고 고쳤다"
+changelog_entry_position: "CHANGELOG.md [Unreleased] → ### Added 첫 항목(12행)"
+
+frontmatter_status_transitions:
+  spec_md: "in-progress → implemented → completed (3-phase close, 이 단일 sync 커밋에 병합); `updated:` 2026-08-28"
+  plan_md: "in-progress → implemented → completed; `updated:` 2026-08-28"
+  acceptance_md: "in-progress → implemented → completed; `updated:` 2026-08-28"
+  progress_md: "in-progress → implemented → completed; `updated:` 2026-08-28"
+
+mx_annotations_added:
+  - "internal/binlag/binlag.go — Comparer에 @MX:ANCHOR(단일 구현 seam 불변식, SPEC/REASON/TEST 하위줄), Evaluate에 @MX:ANCHOR(fan_in 3: doctor.go:520 + session_start_binary_lag.go:55,:67), gitCompare에 @MX:WARN(git 외부 호출 + 다섯 관용 경로 축소 금지, REASON 하위줄), Advisory에 @MX:NOTE"
+  - "internal/cli/doctor.go — checkBinaryFreshness에 @MX:ANCHOR(행 이름 고정 + Fail 승격 금지, REASON/TEST 하위줄). 파일 상단의 기존 @MX:NOTE는 그대로 둠"
+  - "internal/hook/session_start_binary_lag.go — binaryLagJoinBound(250ms 상수)에 @MX:NOTE. binaryLagAdvisory의 기존 @MX:WARN은 run-phase가 이미 달았고 그대로 둠"
+  - "pkg/version/version.go — GetBuildID에 @MX:NOTE(Version으로 폴백하지 않는다)"
+  mx_fan_in_basis: "grep -rn 'binlag\\.' internal pkg --include='*.go' | grep -v _test.go — Evaluate 3개 호출점 관측"
+
+docs_review:
+  readme: "변경 없음 — 4개 로케일 README 어디에도 doctor 검사 행 목록이나 세션 시작 훅 내부가 없다. 이 기능이 바꾸는 것은 유지자가 보는 표면이고, README가 서술하는 사용자 여정에는 걸리지 않는다"
+  docs_site: "변경 없음 — `docs-site/content/ko/cli-reference/doctor.md` 를 `Binary\\|Freshness\\|바이너리` 로 훑었고 검사 행 목록을 열거하지 않는다(유일한 히트는 무관한 「릴리즈 개수」 행). AC-BLV-009 가 doctor 검사 이름이 하나도 늘지 않았음을 기계적으로 판정하므로 문서에 추가할 행 자체가 없다. `BUILD_ID`/`BuildID` 전수 grep도 docs-site·README 히트 0"
+  verdict: "문서 수정 불필요 — 편집하지 않았다. 판단을 명시로 남긴다"
+
+template_first_check:
+  claim: "이 SPEC은 템플릿 미러 의무를 남기지 않았다"
+  evidence: "run-phase 전체 커밋(c70c6aed9 + 증거 4건)이 건드린 파일 10개는 모두 Go 소스·Makefile·SPEC 산출물이다. `internal/template/templates/` 하위에 Makefile도 pkg/version 미러도 존재하지 않는다(find 결과 0건). sync-phase가 건드린 CHANGELOG.md 역시 템플릿 대응물이 없다"
+  make_build: "실행하지 않음 — 임베드 대상 파일을 아무것도 바꾸지 않았으므로 재생성할 것이 없다"
+
+verification:
+  vet: "`go vet ./internal/binlag/... ./internal/cli/... ./internal/hook/... ./pkg/version/...` → rc 0 (증거: .moai/state/verify/t326-sync/vet.txt)"
+  gofmt: "`gofmt -l` on binlag + doctor.go + session_start_binary_lag.go + pkg/version → 빈 목록(clean)"
+  build: "`go build ./internal/binlag/... ./internal/cli/... ./internal/hook/... ./pkg/version/...` → rc 0"
+  test_3pkg: "`go test ./internal/binlag/... ./pkg/version/... ./internal/hook/...` → rc 0, 전 패키지 ok (증거: .moai/state/verify/t326-sync/test-3pkg.txt)"
+  test_cli: "`go test ./internal/cli/...` → rc 1, FAIL 9건 (증거: .moai/state/verify/t326-sync/test-cli.txt)"
+  test_cli_attribution: "FAIL 9건은 §E.3이 기록한 `pre_existing_baseline_red: true` 의 9건과 개수가 일치하고, 전부 doctor 스위트(TestRunDoctor_* 6 + TestDoctorCmd_* 3)다. `go run ./cmd/moai doctor` 로 실제 실패 검사를 직접 판독했다 — `Agent Emit Embed`, `Harness 5-Layer` 2건으로 §E.3의 `pre_existing_doctor_fails` 와 같고, `Binary Freshness` 는 `ok — development build (no commit metadata)` 로 통과한다. regression_delta 0"
+  ac_blv_004c_recheck: "`git show 22f90b1c7:Makefile | grep '^VERSION ?='` 와 현재 트리의 같은 줄을 diff — 동일. sync-phase 편집이 이 불변식을 건드리지 않았음을 재확인"
+
+sync_phase_files: "CHANGELOG.md(항목 1건), .moai/specs/SPEC-BINARY-LAG-VISIBILITY-001/{spec.md·plan.md·acceptance.md·progress.md frontmatter, progress.md §E.4}, internal/binlag/binlag.go + internal/cli/doctor.go + internal/hook/session_start_binary_lag.go + pkg/version/version.go(@MX 주석만 — 실행 코드 무변경)"
+push_state: "push 안 함, PR 안 냄 — 통합은 리드 소관(dispatch 지시)"
+spec_body_untouched: "spec.md / plan.md / acceptance.md 본문 0줄 변경 — frontmatter `status:` + `updated:` 만"
+
+gaps_explicitly_not_observed:
+  - "sync-audit 미실시 — 이 sync 결과에 대한 독립 4차원 판정은 존재하지 않는다. 리드가 배차하면 그때 채워진다"
+  - "교차 플랫폼 — 전부 darwin/arm64 관측. GOOS=windows / linux 빌드·테스트 미실행(CI 몫)"
+  - "전체 스위트 미실행 — 레인-로컬 규율에 따라 4개 패키지로 범위를 좁혔다. 저장소 전체 판정은 origin/develop CI 몫이며 보고 시점에 PENDING"
+  - "@MX 주석은 주석이므로 런타임 동작을 바꾸지 않는다는 것을 build/vet/test 재실행으로 확인했을 뿐, 별도의 MX 스캐너(`moai mx query`)로 태그가 실제 수확되는지는 관측하지 않았다"
+  - "CHANGELOG 산문의 서술 정확성은 코드·SPEC 재판독으로 세웠지만, 문장 단위로 판정하는 기계적 게이트는 없다"
+
+residual_risk:
+  - "`Binary Freshness` 행은 doctor 스위트 9건이 이미 레드인 패키지 안에 있다. 이 SPEC이 그 레드를 늘리지도 줄이지도 않았지만, 그 스위트가 초록으로 돌아오기 전까지는 이 행의 회귀가 스위트 수준 신호로는 드러나지 않는다 — 전용 테스트(internal/cli/binary_lag_test.go)가 유일한 가드다"
+  - "advisory 는 250ms 안에 못 끝나면 조용히 사라진다. 병리적으로 느린 저장소에서는 지연이 있어도 아무 말도 하지 않으며, 그것이 설계다(fail-open) — 다만 「말이 없다」가 「지연이 없다」로 읽힐 위험은 남는다"
+  - "`moai version` 제목 줄은 여전히 태그 바닥값을 읽는다. SPEC이 수용한 비용이고 별도 카드 소관"
+```
