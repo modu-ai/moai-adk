@@ -134,7 +134,7 @@ adds any text verbatim.`,
 		},
 		GroupID: "tools",
 	}
-	cmd.AddCommand(newTodoAddCmd(), newTodoListCmd(), newTodoDoneCmd(), newTodoNextCmd(),
+	cmd.AddCommand(newTodoAddCmd(), newTodoListCmd(), newTodoDoneCmd(), newTodoUndoneCmd(), newTodoNextCmd(),
 		newTodoUnpickCmd(), newTodoEditCmd(), newTodoMoveCmd(),
 		newTodoDropCmd(), newTodoUndropCmd(),
 		newTodoAnalyzeCmd(), newTodoRelateCmd(), newTodoUnrelateCmd(), newTodoWhyCmd(),
@@ -325,32 +325,66 @@ func newTodoListCmd() *cobra.Command {
 	return cmd
 }
 
-// newTodoDoneCmd — `moai todo done <n>` (REQ-TODO-004): remove the
-// addressed row under the lock. A bare <n> is normalized to the item id
-// t<n>; the explicit id is the preferred form because queue positions move
-// under concurrent adds.
+// newTodoDoneCmd — `moai todo done <n>` (REQ-TODO-004): take the addressed
+// row out of the live queue under the lock. A bare <n> is normalized to the
+// item id t<n>; the explicit id is the preferred form because queue positions
+// move under concurrent adds.
+//
+// The row is ARCHIVED rather than discarded (SPEC-TODO-DESTRUCTIVE-GUARD-001
+// REQ-TDG-003), so `undone` can put it back. `done` keeps its plain meaning —
+// the card leaves the queue and no live reader sees it again — but it is no
+// longer the one destructive verb with no way back.
+//
+// Two opt-in guards refuse INSIDE the mutation callback, so each inherits
+// Mutate's byte-identity-on-refusal contract: `--expect <prefix>` follows the
+// convention `next`, `edit`, `drop` and `undrop` already carry, and
+// `--require-landed` asks the landing question with its limit stated.
 func newTodoDoneCmd() *cobra.Command {
-	return &cobra.Command{
+	var expect string
+	var requireLanded bool
+	cmd := &cobra.Command{
 		Use:   "done <n>",
-		Short: "Remove a card from the backlog queue by id",
-		Args:  cobra.ExactArgs(1),
+		Short: "Archive a card out of the backlog queue by id",
+		Long: `Move the addressed card out of the live queue as one locked write.
+
+The card and every finding naming it move into the archive rather than being
+discarded, so ` + "`moai todo undone <n>`" + ` restores both. Archived rows are invisible
+to every live-queue reader (` + "`list`, `next`, `why`, `analyze`" + `, the counts).
+
+` + "`--expect <prefix>`" + ` refuses unless the addressed card's text starts with the
+prefix — the guard against closing the wrong card.
+
+` + "`--require-landed`" + ` refuses unless a commit on ` + kanban.LandedRef + ` names the card.
+It is OPT-IN and honestly limited: it answers "has anything naming this card
+landed on that ref", NOT "has this card's last step landed", so it cannot tell a
+run commit from a sync commit. Absent the flag no landing query runs at all.`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := normalizeTodoRef(args[0])
 			store := newTodoStore()
 			if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
-				for i, it := range rec.Items {
-					if it.ID == id {
-						rec.Items = append(rec.Items[:i], rec.Items[i+1:]...)
-						// A finding outliving its subject points at a card
-						// the operator can no longer see, so the card and
-						// every finding naming it leave together.
-						rec.RemoveFindingsNaming(id)
-						return nil
+				// Refused mutations below: Mutate writes nothing, so the
+				// record stays byte-identical on every one of them.
+				at := -1
+				for i := range rec.Items {
+					if rec.Items[i].ID == id {
+						at = i
+						break
 					}
 				}
-				// Refused mutation: Mutate writes nothing, so the file stays
-				// byte-identical on a miss.
-				return fmt.Errorf("no backlog item %s", id)
+				if at < 0 {
+					return fmt.Errorf("no backlog item %s", id)
+				}
+				if expect != "" && !strings.HasPrefix(rec.Items[at].Text, expect) {
+					return fmt.Errorf("backlog item %s is %q, not matching --expect %q",
+						id, todoTextPrefix(rec.Items[at].Text), expect)
+				}
+				if requireLanded {
+					if err := todoRequireLanded(cmd, id); err != nil {
+						return err
+					}
+				}
+				return rec.ArchiveCard(id)
 			}); err != nil {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
 				return err
@@ -359,6 +393,41 @@ func newTodoDoneCmd() *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&expect, "expect", "",
+		"Refuse unless the card text starts with this prefix")
+	cmd.Flags().BoolVar(&requireLanded, "require-landed", false,
+		"Refuse unless a commit on "+kanban.LandedRef+" names the card (opt-in; see --help for its limit)")
+	return cmd
+}
+
+// todoRequireLanded answers the opt-in landing question for id.
+//
+// It refuses ONLY on positive evidence of not-landed, and PROCEEDS when the
+// answer is inconclusive — no git, no such ref, a query error. That asymmetry
+// is the point: the guard exists to catch a card closed before its work
+// shipped, and a guard that also blocked every machine without the ref would
+// be refusing on the absence of evidence rather than on evidence.
+//
+// The limit is stated rather than hidden. The predicate asks whether ANY
+// commit on the ref names the card, so a card whose run commit landed reads as
+// landed even though its sync commit has not — the exact case that motivated
+// this SPEC. Making it answer the right question needs a persisted
+// landing-state field, which is a separate card's scope; this ships the seam
+// and says plainly what it can and cannot answer (spec.md §A.4).
+func todoRequireLanded(cmd *cobra.Command, id string) error {
+	landed, err := kanban.GitLandedQuerier{Run: todoRunCommand}.Landed(id)
+	if err != nil {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
+			"note: --require-landed could not answer for %s (%v) — proceeding, because an unanswerable query is not evidence of not-landed\n",
+			id, err)
+		return nil
+	}
+	if !landed {
+		return fmt.Errorf("backlog item %s is named by no commit on %s — --require-landed refuses "+
+			"(the check asks whether anything naming the card has landed on that ref, not whether the card's last step has)",
+			id, kanban.LandedRef)
+	}
+	return nil
 }
 
 // newTodoNextCmd — `moai todo next [<n>] [--spec <SPEC-ID>]` (REQ-TODO-005).

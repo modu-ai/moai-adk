@@ -69,6 +69,54 @@ in production and absent from traces: the failure was reached but not observed.
 > anyway; and as a runner that logged its own failure at debug level, silent in production and
 > absent from traces — reachability designed, observability absent.
 
+### 1.3 Continued firing
+
+[ZONE:Evolvable] [HARD] A check's completion does not survive a change to its trigger, its
+deployment, or its branch model. §1.2(a) asks WHEN a check must run to be meaningful and answers
+it once, at authoring time; nothing in that answer keeps holding. A check correctly scheduled on
+Monday can stop firing on Friday because the event it subscribed to was abolished, because the
+binary carrying it is older than the fix it was supposed to run, or because a selector that once
+matched now matches nothing. The check is still in the tree, still correct, and no longer runs.
+
+**This is absent execution, not suppressed failure, and the distinction decides what to build.**
+§1.2(c) routes a red to someone who will see it; that clause presupposes a red exists. Here
+nothing ran, so nothing could go red, and there is no signal to route — no exit code, no log
+line, no trace. The accurate sentence is not "the check should have failed and did not"; it is
+**"nothing failed, and there was nothing there to fail."** A green that follows is true about the
+set that was selected and silent about the set that was intended, and nothing in the mechanism
+compares the two.
+
+Three ways a live check goes quiet, each observed:
+
+- **Trigger.** A branch-model change abolished the event two guards subscribed to; both stopped
+  running on the integration branch and neither announced it. Their absence from a default run
+  listing was indistinguishable from a path filter declining to match.
+- **Deployment.** A fix landed and the installed binary was built from an older commit, so the
+  fixed code never ran. Three observers each independently reproduced the pre-fix behaviour and a
+  card was issued for a defect that was already repaired.
+- **Selection.** A test-name selector named three tests of which one existed. The run printed a
+  passing line and a duration; the two absent tests never reached the exit code.
+
+**The completion act.** A check specification is unfinished until it also states its
+continued-firing answer: how a reader learns the check has stopped firing, as a stale-guard signal
+that arrives without being asked for.
+A verdict available only to whoever thinks to query it has relocated the problem into the person
+expected to already know the question, which is precisely the person who does not have it: the
+targeted query that recovers a missing guard can only be issued by someone who already suspects
+the answer. Liveness that answers on demand is not liveness; it is a second thing to remember to
+check.
+
+The general form, and the test to apply to any check: **any check whose non-execution is
+indistinguishable from its success has this defect.** Ask of each one — if this stopped running
+tomorrow, what would be different in what I see? Where the honest answer is "nothing", the check
+is complete against §1.1 and §1.2 and still unfinished here.
+
+> Evidence: observed as two guards silently unsubscribed by a branch-model change, their
+> non-firing indistinguishable from a non-matching path filter in the default listing; as a fix
+> that landed while the installed binary predated it, reproduced as a live defect by three
+> independent observers; and as a selector naming three tests of which one existed, the run
+> printing a pass whose swept set was two-thirds empty.
+
 ## 2. Two-cell adoption discipline
 
 [ZONE:Evolvable] [HARD] Adopting an acceptance criterion takes two cells authored as a pair: a

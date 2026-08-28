@@ -99,6 +99,10 @@ func (e *backlogEngine) readRecord(ctx context.Context) (*BacklogRecord, error) 
 		return nil, mapBacklogEngineError(fmt.Sprintf("load backlog %s", e.dbPath), err)
 	}
 
+	if err := e.readArchive(ctx, rec); err != nil {
+		return nil, err
+	}
+
 	lastSeq, err := e.readLastSeq(ctx)
 	if err != nil {
 		return nil, err
@@ -107,6 +111,108 @@ func (e *backlogEngine) readRecord(ctx context.Context) (*BacklogRecord, error) 
 
 	normalizeBacklogRecord(rec)
 	return rec, nil
+}
+
+// readArchive loads the archived cards and the findings that rode with them
+// into rec (SPEC-TODO-DESTRUCTIVE-GUARD-001 REQ-TDG-003). Entries come back
+// in stored order (ORDER BY seq), each entry's findings in stored order, and
+// the archive_seq join column is the entry's 1-based seq — the same
+// position-as-key shape `items` already uses.
+func (e *backlogEngine) readArchive(ctx context.Context, rec *BacklogRecord) error {
+	rows, err := e.db.QueryContext(ctx,
+		`SELECT seq, id, text, added_at, spec_id, state, position FROM archived_items ORDER BY seq`)
+	if err != nil {
+		return mapBacklogEngineError(fmt.Sprintf("load backlog archive %s", e.dbPath), err)
+	}
+	defer func() { _ = rows.Close() }()
+
+	bySeq := map[int]int{} // archive_seq -> index in rec.Archived
+	for rows.Next() {
+		var seq int
+		var entry BacklogArchiveEntry
+		var specID sql.NullString
+		var state string
+		if err := rows.Scan(&seq, &entry.Item.ID, &entry.Item.Text, &entry.Item.AddedAt,
+			&specID, &state, &entry.Position); err != nil {
+			return mapBacklogEngineError(fmt.Sprintf("load backlog archive %s", e.dbPath), err)
+		}
+		if specID.Valid {
+			v := specID.String
+			entry.Item.SpecID = &v
+		}
+		entry.Item.State = BacklogState(state)
+		entry.Findings = []BacklogArchivedFinding{}
+		bySeq[seq] = len(rec.Archived)
+		rec.Archived = append(rec.Archived, entry)
+	}
+	if err := rows.Err(); err != nil {
+		return mapBacklogEngineError(fmt.Sprintf("load backlog archive %s", e.dbPath), err)
+	}
+
+	findingRows, err := e.db.QueryContext(ctx,
+		`SELECT archive_seq, position, subject_id, related_id, relation, source, score, note, at
+		 FROM archived_findings ORDER BY archive_seq, rowid`)
+	if err != nil {
+		return mapBacklogEngineError(fmt.Sprintf("load backlog archive %s", e.dbPath), err)
+	}
+	defer func() { _ = findingRows.Close() }()
+	for findingRows.Next() {
+		var archiveSeq int
+		var af BacklogArchivedFinding
+		if err := findingRows.Scan(&archiveSeq, &af.Position, &af.Finding.SubjectID, &af.Finding.RelatedID,
+			&af.Finding.Relation, &af.Finding.Source, &af.Finding.Score, &af.Finding.Note, &af.Finding.At); err != nil {
+			return mapBacklogEngineError(fmt.Sprintf("load backlog archive %s", e.dbPath), err)
+		}
+		idx, ok := bySeq[archiveSeq]
+		if !ok {
+			// An archived finding whose card is gone is an orphan the store
+			// cannot place. Refuse rather than guess: dropping it silently is
+			// exactly the loss this SPEC exists to stop.
+			return fmt.Errorf("load backlog archive %s: archived finding names archive_seq %d with no archived card: %w",
+				e.dbPath, archiveSeq, ErrBacklogCorrupt)
+		}
+		rec.Archived[idx].Findings = append(rec.Archived[idx].Findings, af)
+	}
+	if err := findingRows.Err(); err != nil {
+		return mapBacklogEngineError(fmt.Sprintf("load backlog archive %s", e.dbPath), err)
+	}
+	return nil
+}
+
+// writeArchive replaces the stored archive with rec's, inside the caller's
+// transaction so an archive write can never land apart from the item write
+// that produced it.
+func (e *backlogEngine) writeArchive(ctx context.Context, tx *sql.Tx, rec *BacklogRecord) error {
+	if _, err := tx.ExecContext(ctx, `DELETE FROM archived_items`); err != nil {
+		return mapBacklogEngineError(fmt.Sprintf("write backlog archive %s", e.dbPath), err)
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM archived_findings`); err != nil {
+		return mapBacklogEngineError(fmt.Sprintf("write backlog archive %s", e.dbPath), err)
+	}
+	for i, entry := range rec.Archived {
+		var specID any
+		if entry.Item.SpecID != nil {
+			specID = *entry.Item.SpecID
+		}
+		seq := i + 1
+		if _, err := tx.ExecContext(ctx,
+			`INSERT INTO archived_items(seq, id, text, added_at, spec_id, state, position)
+			 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			seq, entry.Item.ID, entry.Item.Text, entry.Item.AddedAt, specID,
+			string(entry.Item.State), entry.Position); err != nil {
+			return mapBacklogWriteError(e.dbPath, entry.Item.ID, err)
+		}
+		for _, af := range entry.Findings {
+			if _, err := tx.ExecContext(ctx,
+				`INSERT INTO archived_findings(archive_seq, position, subject_id, related_id, relation, source, score, note, at)
+				 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+				seq, af.Position, af.Finding.SubjectID, af.Finding.RelatedID, af.Finding.Relation,
+				af.Finding.Source, af.Finding.Score, af.Finding.Note, af.Finding.At); err != nil {
+				return mapBacklogEngineError(fmt.Sprintf("write backlog archive %s", e.dbPath), err)
+			}
+		}
+	}
+	return nil
 }
 
 // readLastSeq reads the persisted high-water mark; an unstamped database
@@ -181,6 +287,10 @@ func (e *backlogEngine) writeRecord(ctx context.Context, rec *BacklogRecord) (er
 			f.SubjectID, f.RelatedID, f.Relation, f.Source, f.Score, f.Note, f.At); err != nil {
 			return mapBacklogEngineError(fmt.Sprintf("write backlog %s", e.dbPath), err)
 		}
+	}
+
+	if err = e.writeArchive(ctx, tx, rec); err != nil {
+		return err
 	}
 
 	if err = upsertMeta(ctx, tx, backlogMetaKeyLastSeq, strconv.Itoa(rec.LastSeq)); err != nil {
@@ -489,6 +599,36 @@ func assertBacklogParity(source, migrated *BacklogRecord) error {
 	for i := range source.Findings {
 		if source.Findings[i] != migrated.Findings[i] {
 			return fmt.Errorf("finding %d: %+v != %+v", i, source.Findings[i], migrated.Findings[i])
+		}
+	}
+	// The archive is part of parity, not an extra. A legacy file can carry
+	// archived rows — `export-json` writes them (REQ-TDG-015) and that export
+	// IS the legacy artifact a downgrade-then-upgrade cycle migrates back — so
+	// omitting them here would let the migration drop exactly the rows this
+	// SPEC exists to preserve, while still reporting success.
+	if len(source.Archived) != len(migrated.Archived) {
+		return fmt.Errorf("archived count %d != %d", len(source.Archived), len(migrated.Archived))
+	}
+	for i := range source.Archived {
+		want, got := source.Archived[i], migrated.Archived[i]
+		if want.Item.ID != got.Item.ID || want.Item.Text != got.Item.Text ||
+			want.Item.AddedAt != got.Item.AddedAt || want.Item.State != got.Item.State ||
+			want.Position != got.Position {
+			return fmt.Errorf("archived %d: %+v != %+v", i, want.Item, got.Item)
+		}
+		if !equalSpecID(want.Item.SpecID, got.Item.SpecID) {
+			return fmt.Errorf("archived %d (%s): spec_id %v != %v", i, want.Item.ID,
+				derefSpecID(want.Item.SpecID), derefSpecID(got.Item.SpecID))
+		}
+		if len(want.Findings) != len(got.Findings) {
+			return fmt.Errorf("archived %d (%s): finding count %d != %d", i, want.Item.ID,
+				len(want.Findings), len(got.Findings))
+		}
+		for j := range want.Findings {
+			if want.Findings[j] != got.Findings[j] {
+				return fmt.Errorf("archived %d (%s): finding %d: %+v != %+v", i, want.Item.ID, j,
+					want.Findings[j], got.Findings[j])
+			}
 		}
 	}
 	if source.LastSeq != migrated.LastSeq {

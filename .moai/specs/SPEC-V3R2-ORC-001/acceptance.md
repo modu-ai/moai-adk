@@ -316,10 +316,10 @@ comm -23 <(echo "$SRC" | sort -u) <(echo "$TGT" | sort -u)
 ```
 
 **Note**: After M2.2-M2.4 retire builder-{agent,skill,plugin} to stubs, the
-source bodies will be unavailable for AC-12 verification at audit time. M1.1
+source bodies will be unavailable for AC-12 [REF] verification at audit time. M1.1
 captures a snapshot of source trigger rows to
 `.moai/specs/SPEC-V3R2-ORC-001/trigger-source-snapshot.txt` BEFORE the
-retirement runs, so AC-12 can be verified against the snapshot.
+retirement runs, so AC-12 [REF] can be verified against the snapshot.
 
 **Edge cases**:
 - Trigger row in target uses different phrasing (e.g., `agent_creation` vs
@@ -407,7 +407,7 @@ git diff --name-status origin/main...HEAD -- 'internal/template/templates/.claud
 ## AC-ORC-001-17 — No silent trigger drops (REQ-017)
 
 **Given** REQ-017 declares CI fails on dropped keywords
-**When** the trigger-union test from AC-12 runs against snapshot
+**When** the trigger-union test from AC-12 [REF] runs against snapshot
 **Then** zero keywords are missing from any merged target.
 
 **Verification**: same as AC-ORC-001-12 (acceptance check is shared).
@@ -420,45 +420,45 @@ git diff --name-status origin/main...HEAD -- 'internal/template/templates/.claud
 
 | REQ-ID | AC-ID(s) | Notes |
 |--------|----------|-------|
-| REQ-ORC-001-001 | AC-01 | Roster size |
-| REQ-ORC-001-002 | AC-02, AC-12 | manager-cycle preservation |
-| REQ-ORC-001-003 | AC-03, AC-12, AC-15 | builder-platform shape |
-| REQ-ORC-001-004 | AC-04 | Diagnostic Sub-Mode |
-| REQ-ORC-001-005 | AC-06 | Template-First |
-| REQ-ORC-001-006 | AC-05, AC-13 | Retired stub schema + content |
-| REQ-ORC-001-007 | AC-07 | MIG-001 dependency (verified at integration) |
-| REQ-ORC-001-008 | AC-08, AC-14 | manager-project scope shrink |
-| REQ-ORC-001-009 | AC-12 | Trigger union |
-| REQ-ORC-001-010 | AC-09 | Trigger dedup |
-| REQ-ORC-001-011 | AC-10 | Context7 audit |
-| REQ-ORC-001-012 | AC-11 (informative — Optional) | manager-quality memory (also verified) |
-| REQ-ORC-001-013 | AC-11 | plan-auditor memory |
-| REQ-ORC-001-014 | AC-15 | expert-performance Write |
-| REQ-ORC-001-015 | AC-15 | Advisor-only rejection (deferred to ORC-002) |
-| REQ-ORC-001-016 | AC-16 | No orphan deletions |
-| REQ-ORC-001-017 | AC-12, AC-17 | Trigger-drop CI |
+| REQ-ORC-001-001 | AC-01 [REF] | Roster size |
+| REQ-ORC-001-002 | AC-02 [REF], AC-12 [REF] | manager-cycle preservation |
+| REQ-ORC-001-003 | AC-03 [REF], AC-12 [REF], AC-15 [REF] | builder-platform shape |
+| REQ-ORC-001-004 | AC-04 [REF] | Diagnostic Sub-Mode |
+| REQ-ORC-001-005 | AC-06 [REF] | Template-First |
+| REQ-ORC-001-006 | AC-05 [REF], AC-13 [REF] | Retired stub schema + content |
+| REQ-ORC-001-007 | AC-07 [REF] | MIG-001 dependency (verified at integration) |
+| REQ-ORC-001-008 | AC-08 [REF], AC-14 [REF] | manager-project scope shrink |
+| REQ-ORC-001-009 | AC-12 [REF] | Trigger union |
+| REQ-ORC-001-010 | AC-09 [REF] | Trigger dedup |
+| REQ-ORC-001-011 | AC-10 [REF] | Context7 audit |
+| REQ-ORC-001-012 | AC-11 [REF] (informative — Optional) | manager-quality memory (also verified) |
+| REQ-ORC-001-013 | AC-11 [REF] | plan-auditor memory |
+| REQ-ORC-001-014 | AC-15 [REF] | expert-performance Write |
+| REQ-ORC-001-015 | AC-15 [REF] | Advisor-only rejection (deferred to ORC-002) |
+| REQ-ORC-001-016 | AC-16 [REF] | No orphan deletions |
+| REQ-ORC-001-017 | AC-12 [REF], AC-17 [REF] | Trigger-drop CI |
 
 ### Reverse (AC → REQ)
 
 | AC-ID | REQ-ID(s) | Coverage |
 |-------|-----------|----------|
-| AC-01 | REQ-001 | Direct |
-| AC-02 | REQ-002 | Direct |
-| AC-03 | REQ-003 | Direct |
-| AC-04 | REQ-004 | Direct |
-| AC-05 | REQ-006 | Direct |
-| AC-06 | REQ-005 | Direct |
-| AC-07 | REQ-007 | Direct (deferred to MIG-001) |
-| AC-08 | REQ-008 | Primary |
-| AC-09 | REQ-010 | Direct |
-| AC-10 | REQ-011 | Direct |
-| AC-11 | REQ-012, REQ-013 | Both |
-| AC-12 | REQ-002, REQ-003, REQ-009, REQ-017 | Multi-coverage (union test) |
-| AC-13 | REQ-006 | Stub content quality |
-| AC-14 | REQ-008 | manager-project allowlist |
-| AC-15 | REQ-014, REQ-015 | Optional Write + advisor-only |
-| AC-16 | REQ-016 | Direct |
-| AC-17 | REQ-017 | Direct |
+| AC-01 [REF] | REQ-001 | Direct |
+| AC-02 [REF] | REQ-002 | Direct |
+| AC-03 [REF] | REQ-003 | Direct |
+| AC-04 [REF] | REQ-004 | Direct |
+| AC-05 [REF] | REQ-006 | Direct |
+| AC-06 [REF] | REQ-005 | Direct |
+| AC-07 [REF] | REQ-007 | Direct (deferred to MIG-001) |
+| AC-08 [REF] | REQ-008 | Primary |
+| AC-09 [REF] | REQ-010 | Direct |
+| AC-10 [REF] | REQ-011 | Direct |
+| AC-11 [REF] | REQ-012, REQ-013 | Both |
+| AC-12 [REF] | REQ-002, REQ-003, REQ-009, REQ-017 | Multi-coverage (union test) |
+| AC-13 [REF] | REQ-006 | Stub content quality |
+| AC-14 [REF] | REQ-008 | manager-project allowlist |
+| AC-15 [REF] | REQ-014, REQ-015 | Optional Write + advisor-only |
+| AC-16 [REF] | REQ-016 | Direct |
+| AC-17 [REF] | REQ-017 | Direct |
 
 **Coverage**: 17 REQs → 17 ACs; every REQ has at least 1 AC. Some ACs cover
 multiple REQs (consolidating verification effort).
@@ -469,8 +469,8 @@ multiple REQs (consolidating verification effort).
 
 The SPEC is "done" (audit-ready) when all the following are true:
 
-- [ ] All 17 ACs (AC-01 through AC-17) PASS per their verification commands.
-- [ ] `diff -r` template↔local empty (AC-06).
+- [ ] All 17 ACs (AC-01 [REF] through AC-17 [REF]) PASS per their verification commands.
+- [ ] `diff -r` template↔local empty (AC-06 [REF]).
 - [ ] `make build` exit 0; `make test` exit 0; `golangci-lint run` exit 0.
 - [ ] No remaining literal `manager-ddd|manager-tdd|builder-{agent,skill,plugin}|expert-debug|expert-testing` outside stub bodies and migration tables (M4 sweep complete).
 - [ ] CLAUDE.md Agent Catalog block updated (M4.3).

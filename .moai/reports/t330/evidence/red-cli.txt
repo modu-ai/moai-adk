@@ -1,0 +1,64 @@
+=== RUN   TestTodoDone_RemovesByID
+--- PASS: TestTodoDone_RemovesByID (0.38s)
+=== RUN   TestTodoDone_MissReportedFileUntouched
+--- PASS: TestTodoDone_MissReportedFileUntouched (0.21s)
+=== RUN   TestTodoUndone_RestoresTheCard
+    todo_undone_test.go:108: undone: todo: "undone" is not a todo verb and "t1" is a card id — refusing to create a card named "undone t1".
+        Known verbs: add, analyze, done, drop, edit, export-json, list, move, next, pr, relate, undrop, unpick, unrelate, why
+        To add this text as a card anyway: moai todo add "undone t1"
+--- FAIL: TestTodoUndone_RestoresTheCard (0.22s)
+=== RUN   TestTodoDone_UndoneRoundTripIsByteIdentical
+    todo_undone_test.go:127: relate: accepts 2 arg(s), received 3
+--- FAIL: TestTodoDone_UndoneRoundTripIsByteIdentical (0.22s)
+=== RUN   TestTodoDone_ArchivesRatherThanDiscards
+    todo_undone_test.go:153: export carries no `archived` array: keys [version last_seq items findings]
+--- FAIL: TestTodoDone_ArchivesRatherThanDiscards (0.45s)
+=== RUN   TestTodoUndone_SurvivesMigrationFromLegacyJSON
+    todo_undone_test.go:184: undone: todo: "undone" is not a todo verb and "t1" is a card id — refusing to create a card named "undone t1".
+        Known verbs: add, analyze, done, drop, edit, export-json, list, move, next, pr, relate, undrop, unpick, unrelate, why
+        To add this text as a card anyway: moai todo add "undone t1"
+--- FAIL: TestTodoUndone_SurvivesMigrationFromLegacyJSON (0.23s)
+=== RUN   TestTodoDone_ArchivedRowsInvisibleToLiveReaders
+    todo_undone_test.go:196: relate: accepts 2 arg(s), received 3
+--- FAIL: TestTodoDone_ArchivedRowsInvisibleToLiveReaders (0.36s)
+=== RUN   TestTodoDone_ExpectRefusesMismatch
+    todo_undone_test.go:246: refusal "Error: unknown flag: --expect\n" must name the observed prefix
+--- FAIL: TestTodoDone_ExpectRefusesMismatch (0.16s)
+=== RUN   TestTodoDone_RequireLandedRefusesWhenNotLanded
+    todo_undone_test.go:265: refusal "Error: unknown flag: --require-landed\n" must name the ref the answer is about (origin/main)
+--- FAIL: TestTodoDone_RequireLandedRefusesWhenNotLanded (0.20s)
+=== RUN   TestTodoDone_RequireLandedProceedsWhenInconclusive
+    todo_undone_test.go:278: an inconclusive landing answer must proceed, got unknown flag: --require-landed (stderr "Error: unknown flag: --require-landed\n")
+--- FAIL: TestTodoDone_RequireLandedProceedsWhenInconclusive (0.16s)
+=== RUN   TestTodoDone_NoLandingQueryWithoutTheFlag
+    todo_undone_test.go:304: done --require-landed (stub reports landed): unknown flag: --require-landed
+--- FAIL: TestTodoDone_NoLandingQueryWithoutTheFlag (0.28s)
+=== RUN   TestTodoDoneUndone_RefusalsWriteNothing
+--- PASS: TestTodoDoneUndone_RefusalsWriteNothing (0.31s)
+=== RUN   TestTodoDoneUndone_NeverPrompt
+    todo_undone_test.go:376: [done t1 --expect zzz] terminated with unknown flag: --expect
+    todo_undone_test.go:376: [done t99] terminated with mutate backlog /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestTodoDoneUndone_NeverPrompt2808331129/001/.moai/state/todo/backlog.json: mutation refused: no backlog item t99
+    todo_undone_test.go:376: [done t1 --require-landed] terminated with unknown flag: --require-landed
+    todo_undone_test.go:376: [done t1] terminated with <nil>
+    todo_undone_test.go:376: [undone t1] terminated with todo: "undone" is not a todo verb and "t1" is a card id — refusing to create a card named "undone t1".
+        Known verbs: add, analyze, done, drop, edit, export-json, list, move, next, pr, relate, undrop, unpick, unrelate, why
+        To add this text as a card anyway: moai todo add "undone t1"
+    todo_undone_test.go:376: [undone t1] terminated with todo: "undone" is not a todo verb and "t1" is a card id — refusing to create a card named "undone t1".
+        Known verbs: add, analyze, done, drop, edit, export-json, list, move, next, pr, relate, undrop, unpick, unrelate, why
+        To add this text as a card anyway: moai todo add "undone t1"
+--- PASS: TestTodoDoneUndone_NeverPrompt (0.30s)
+=== RUN   TestTodoUndone_ReissuedIDRefuses
+--- PASS: TestTodoUndone_ReissuedIDRefuses (0.24s)
+=== RUN   TestTodoExportJSON_CarriesArchiveAndDisclosesDowngrade
+    todo_undone_test.go:428: export carries no `archived` array: keys [items findings version last_seq]
+--- FAIL: TestTodoExportJSON_CarriesArchiveAndDisclosesDowngrade (0.29s)
+=== RUN   TestTodoExportJSON_NoDisclosureWithoutArchivedRows
+--- PASS: TestTodoExportJSON_NoDisclosureWithoutArchivedRows (0.19s)
+=== RUN   TestTodoUndone_EmptiesTheArchiveEntry
+    todo_undone_test.go:465: undone: todo: "undone" is not a todo verb and "t1" is a card id — refusing to create a card named "undone t1".
+        Known verbs: add, analyze, done, drop, edit, export-json, list, move, next, pr, relate, undrop, unpick, unrelate, why
+        To add this text as a card anyway: moai todo add "undone t1"
+--- FAIL: TestTodoUndone_EmptiesTheArchiveEntry (0.21s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	5.400s
+FAIL
