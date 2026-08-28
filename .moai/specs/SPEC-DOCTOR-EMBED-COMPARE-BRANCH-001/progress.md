@@ -59,4 +59,40 @@ m1_to_mN_commit_strategy: single-commit  # Tier S 단일 마일스톤 M1
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+증거의 정본은 primary 체크아웃의 `.moai/reports/t356/verdict.md`이다. 그 파일은 executor의
+run-phase 관측(§ Claim ~ § Residual-risk)과, 오케스트레이터가 executor 보고와 **별개로 직접
+심고 원복하며 재관측한** 기록(§ 오케스트레이터 독립 재관측 R1-R5)을 함께 담고 있다. sync-phase는
+그 기록을 읽었을 뿐 mutation을 다시 돌리지 않았다 — 재실행하지 않았다는 사실을 여기 남긴다.
+
+```yaml
+sync_complete_at: 2026-08-28
+sync_commit_sha: pending-backfill-sync
+sync_status: audit-ready
+b12_self_test_a: skipped-changelog-out-of-scope   # grep -c 'SPEC-DOCTOR-EMBED-COMPARE-BRANCH-001' CHANGELOG.md → 0 (관측), 그러나 방출 자체가 SPEC §Out of Scope
+b12_self_test_b: pass                             # acceptance.md AC 토큰 8건 == §E.2 판정 행 8건
+b12_self_test_c: pass                             # 주장된 경로 2건 실재 확인 (아래 evidence_paths_verified)
+changelog_entry_position: none                    # 의도적 미방출 — 사용자 표면 변화 0, 약속은 t346 c2b51293e가 이미 적재
+evidence_paths_verified:
+  - /Users/goos/MoAI/moai-adk-go/.moai/reports/t356/verdict.md
+  - internal/cli/doctor_agentemit_embed_test.go
+frontmatter_status_transitions:
+  spec_md: in-progress -> implemented -> completed
+  plan_md: n/a-no-frontmatter-block
+  acceptance_md: n/a-no-frontmatter-block
+  progress_md: n/a-no-frontmatter-block
+  updated_field_refreshed: 2026-08-28
+mx_tag_validation: no-op                          # 신규 최상위 선언이 테스트 함수 1개, 프로덕션 diff 0 — @MX 대상 없음
+docs_surfaces_touched: none                       # CHANGELOG / README / docs-site / codemaps 전부 무변경
+canary_compliance_check: n/a                      # 이 SPEC은 전방위 정책을 정의하지 않음
+push_state: not-pushed                            # 통합 창 동결 — 커밋만
+```
+
+미검증(sync-phase 자체의 Gap):
+
+- **원격 CI 판정 없음.** push하지 않았으므로 darwin/windows 매트릭스 판정은 통합 시점의 몫이다.
+- **mutation 재실행 없음.** R1-R2는 오케스트레이터가 이미 관측한 기록을 읽었을 뿐, sync-phase에서
+  mutant를 다시 심지 않았다.
+- **`golangci-lint` 여전히 미실행.** run-phase와 동일하게 `go vet` + `gofmt`까지만 관측됐다.
+
+잔여 위험: verdict.md § Residual-risk의 Glob-디렉터리 결합이 그대로 남아 있다. 그 성질이 수리되면
+이 테스트가 조용히 `:146`을 지키지 않게 될 수 있으며, 수리 자체는 SPEC이 별도 카드로 미룬 항목이다.

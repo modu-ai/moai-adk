@@ -2,7 +2,7 @@
 id: SPEC-DOCTOR-EMBED-COMPARE-BRANCH-001
 title: "Agent Emit Embed 검사의 comparison-failure 분기(:146) 비회귀 테스트 — 약속된 4분기 중 무방비 1분기 봉합"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-08-28
 updated: 2026-08-28
 author: manager-spec
