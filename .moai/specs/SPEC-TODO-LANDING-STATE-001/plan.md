@@ -1,8 +1,9 @@
 # Implementation Plan — SPEC-TODO-LANDING-STATE-001 (half A)
 
 Card t331. Authored at tree `3de2f85a2` (worktree `.claude/worktrees/t331`, branch
-`WT-card-landing-state`), re-verified at HEAD `11426a128`; no cited source file changed between the
-two, so every `@ 3de2f85a2` pin below still resolves.
+`WT-card-landing-state`), re-verified at HEAD `11426a128` (0.2.0) and again at HEAD `45cff0f59`
+(0.3.0 delta fix); no cited source file changed across any of the three, so every `@ 3de2f85a2` pin
+below still resolves.
 
 **Scope: half A — the discriminator.** The landing-evidence half (storage, the recording verb, an
 observed commit on `todo pr`, the live SPEC-status read) is card **t359**, which depends on this one.
@@ -72,15 +73,26 @@ the Tier M ceiling with room to spare.
 No clarification marker remains open in this artifact. Two of the three raised at 0.1.0 were
 resolvable from the sources and are ruled below; the third left with the storage half.
 
-**1. The landing-verdict token's spelling — RULED: a suffix on the existing line.**
-`spec.md` §A.6 Table 2 already writes the answer this way in every row (`stdout landing=landed`,
-`landing=not-landed`, `landing=unknown`), so the SPEC had in fact decided it; the marker recorded a
-choice that was already made elsewhere in the same document. The form is
-`done <id> landing=<verdict>`. It survives the one existing assertion mechanically:
+**1. The landing-verdict token — RULED, and the ruling has two parts with different sources.**
+
+*Part (a), the token's spelling — decided by the SPEC.* `spec.md` §A.6 Table 2 writes the answer the
+same way in every row (`landing=landed`, `landing=not-landed`, `landing=unknown`), so the marker
+recorded a choice already made elsewhere in the same document. The spelling is inherited, not chosen
+here.
+
+*Part (b), the token's placement — a plan-phase design ruling, not a derivation.* Table 2 decides
+nothing about **where** the token sits, and `REQ-TLS-005` ("exactly one landing-verdict token on
+stdout") is satisfied by a suffix and by a second line equally, so nothing in the SPEC constrains it.
+The plan rules the suffix form — `done <id> landing=<verdict>` — on one stated reason: **one line per
+act**, because a second line would give an operator script two records for one event. That is a
+design preference held at plan-phase and is labelled as such; it is open to reversal on review at no
+cost to any requirement. (An earlier draft presented the placement as something "the SPEC had in fact
+decided", which overclaimed its source.)
+
+Mechanically the suffix survives the one existing assertion:
 `TestTodoDone_RequireLandedProceedsWhenInconclusive` asserts
 `strings.HasPrefix(stdout, "done t1")` (`internal/cli/todo_undone_test.go:297` @ `3de2f85a2`), and a
-suffix does not disturb a prefix. One line per act; a second line would give an operator script two
-records for one event.
+suffix does not disturb a prefix.
 
 **2. The exit code on `unknown` — RULED: it stays 0.**
 Settled by two sources rather than by preference. REQ-TLS-006 forbids refusing on `unknown`, and
@@ -148,6 +160,12 @@ that makes this milestone safe to land before the rest.
 - The row is printed at `internal/cli/todo_pr.go:175-176` @ `3de2f85a2` — five columns today
   (`CardID, Kind, PRs, Confidence, text`), none of them the state. The value is already in hand:
   `runTodoPR` holds `rec.Items` and builds a text map from it at `:167-169`.
+- **This is a contract change on a machine-readable surface, and is stated as one: the row goes from
+  five tab-separated columns to six.** The new `state` column sits **between `Confidence` and
+  `text`** — appended after every fixed-width-ish field and before the free-text tail, so a consumer
+  splitting on tabs and reading the last field still reads the card text. It is nonetheless a column
+  count change: a consumer doing `cut -f5` gets the state where it used to get the text. Same class
+  as R6's fifth outcome kind, and it goes into the same sync-phase note.
 - No new subprocess, no new query. This is a column over data already loaded.
 
 ### M5 — doctrine and template mirror (mechanical)
@@ -155,8 +173,11 @@ that makes this milestone safe to land before the rest.
 - Update both copies of `todo.md` (REQ-TLS-010): the resolved ref, the `unknown` outcome, the stdout
   verdict token, and the restated [HARD] operator-only rule. Write the mirror in neutral prose
   (§B.7) — no SPEC id, no REQ token, no date, no commit SHA.
-- Restate the remaining limit (REQ-TLS-011): `landed` means the resolved ref's history names the
-  card, not that the card's last step landed.
+- Restate the remaining limit **inside the `todo pr` outcome list** (REQ-TLS-011, both clauses):
+  (a) `landed` means the resolved ref's history names the card, not that the card's last step landed;
+  (b) `unknown` means the question could not be asked and is not evidence of not-landed. The existing
+  `--require-landed` limit note (`todo.md:59-67` @ `3de2f85a2`) stays unweakened — the delta is that
+  the limit stops being stated only there. See acceptance.md §D.2 for the measured gap.
 - `make build`, then verify the embedded bundle carries the edit and that `diff` of the two copies
   is empty.
 
@@ -171,13 +192,15 @@ that makes this milestone safe to land before the rest.
 | R3 | Adding a `git` call to a read path breaks the subprocess census tests. | §B.6: route through `todoRunCommand` and state the budget. Treat a census failure as a design signal, not a test to relax. M4 adds no subprocess at all. |
 | R4 | Scope creep into automatic closure — made *more* attractive by this SPEC, because after it every develop-landed card starts answering `landed`. | `spec.md` §B.4 non-goal + §D exclusions + AC-TLS-008, which asserts the absence **behaviourally** (whole-queue byte identity) rather than by name-matching, and whose RED was established by planting a mutant that evades every name-based check (acceptance.md §D.1). |
 | R5 | Scope creep into card t359's storage axis mid-implementation ("we are already here, just add the column"). | acceptance.md §E gate 5 and §B.8: nothing under `internal/kanban/backlog_*.go` is modified, so the breach is visible in the diff rather than argued about in review. |
-| R6 | The `unknown` outcome is added to the JSON shape of `todo pr --json`, breaking a consumer that switches exhaustively on the four kinds. | **The in-repo half is measured and is zero, not deferred.** `grep -rn 'PRLink' --include='*.go' .` excluding tests and `internal/kanban/prlink*` returns matches in exactly one file — `internal/cli/todo_pr.go:135`, `:141`, `:176`, `:181-182` — and it formats `o.Kind` with `%s` (`:175-176`) rather than switching on it, so there is no exhaustive in-repo switch to break. `internal/web` exists (108 Go files) and contains **zero** `PRLink` references (`grep -rn 'PRLink' internal/web` → rc 1). The residual risk is external consumers of `todo pr --json`, which cannot be greped and is genuinely open: name the new kind in the sync-phase notes. Note also that the "closed set, switch exhaustively" wording belongs to `PRLinkConfidence` (`prlink.go:50-51` @ `3de2f85a2`), not to `PRLinkKind`, whose comment (`:30-33`) says only "one of the four … outcome kinds" — a fifth value is still a contract change, but a weaker one than the earlier draft implied. |
+| R6 | The `unknown` outcome is added to the JSON shape of `todo pr --json`, breaking a consumer that switches exhaustively on the four kinds. | **The in-repo half is measured and is zero, not deferred.** `grep -rn 'PRLink' --include='*.go' .` excluding tests and `internal/kanban/prlink*` returns matches in exactly one file — `internal/cli/todo_pr.go:135`, `:141`, `:176`, `:181-182` — and it formats `o.Kind` with `%s` (`:175-176`) rather than switching on it, so there is no exhaustive in-repo switch to break. `internal/web` exists (108 Go files) and contains **zero** `PRLink` references (`grep -rn 'PRLink' internal/web` → rc 1). The residual risk is external consumers of `todo pr --json`, which cannot be greped and is genuinely open: name the new kind in the sync-phase notes. Note also that the "closed set, switch exhaustively" wording belongs to `PRLinkConfidence` (`prlink.go:50-51` @ `3de2f85a2`), not to `PRLinkKind`, whose comment (`:30-33`) says only "one of the four … outcome kinds" — a fifth value is still a contract change, but a weaker one than the earlier draft implied. **The M4 column-count change (five tab-separated columns to six) is the same risk on the plain-text surface and rides the same mitigation: name BOTH the new outcome kind and the new column in the sync-phase notes.** |
 
 ---
 
 ## §F Cross-references
 
-- spec.md §A.6 — the state table this plan implements.
+- spec.md §A.6 — the state table this plan implements, on the shipped surfaces S1 / S2 / S4. The S3
+  (hand ancestry) column is recorded there, not implemented here: this SPEC changes nothing about it
+  and no milestone below touches it.
 - acceptance.md — the RED baselines; §D.1 carries the planted-mutant RED behind AC-TLS-008.
 - `SPEC-TODO-DESTRUCTIVE-GUARD-001` §B.2 — the inherited t330/t331 boundary.
 - `SPEC-WORKTREE-BASEREF-001` — the config resolver reused in M1.

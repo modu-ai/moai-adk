@@ -1,10 +1,10 @@
 ---
 id: SPEC-TODO-LANDING-STATE-001
 title: "A card that knows its own landing state, half A — the integration-branch ref correction, a three-valued landed answer, and a guard that says whether it ran"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-08-28
-updated: 2026-08-28
+updated: 2026-08-29
 author: manager-spec (card t331)
 priority: P1
 phase: "v3.1.4 target"
@@ -26,14 +26,16 @@ related_specs:
 |---------|------|--------|
 | 0.1.0 | 2026-08-28 | Initial plan-phase authoring (card t331), measured at tree `3de2f85a2`. Root cause identified and measured: `LandedRef = "origin/main"` while the project integrates on `develop`. Scope boundary against t330 inherited verbatim from `SPEC-TODO-DESTRUCTIVE-GUARD-001` §B.2. One deviation from the dispatching lead's stated storage direction is recorded and justified in §B.2. |
 | 0.2.0 | 2026-08-28 | **Scope split by operator ruling** (plan-audit iteration 1, FAIL 0.74). The SPEC carried two SPECs in one document — a discriminator and an evidence store — which is what put it at 26 requirements, above even the Tier L ceiling of 25. The evidence half (landing observations, their storage, the recording verb, an observed commit on `todo pr`, the live SPEC-status read) moved to **card t359**, which depends on this one; §B.2 became a pointer and §D records the whole axis as out of scope. What remains is half A: the ref correction, the three-valued answer, the stdout verdict, and the queue `state` on the read surface — **11 requirements, Tier M (ceiling 16)**. Also in this revision: AC-TLS-008 rebuilt from a name-based grep sweep, which a mutant satisfied, into a behavioural whole-queue byte-identity assertion, with its RED **observed by planting that mutant** and then reverted; seven `file:line` citations re-measured and corrected and every remaining citation re-opened at its address; `origin/develop` figures re-expressed as re-runnable commands carrying the ref's own SHA and an observation instant, because a tree SHA does not pin a moving ref; the three plan-phase clarification markers resolved or retired with the B half; and the "six production sites" count corrected to seven against the grep printed beside it. |
+| 0.3.0 | 2026-08-29 | **Scoped delta fix after plan-audit iteration 2** (PASS 0.85; the Tier M iteration ceiling is exhausted, so the four blocking defects route as a delta fix before Implementation Kickoff Approval rather than as a third audit round). D1: AC-TLS-008's assertion is widened from the queue directory to the whole project root, because the auditor planted a cache written **outside** `StateDirForRoot` and the criterion stayed GREEN; the widened form's RED was re-established here by planting that same mutant, observing 4/4 FAIL, and reverting (`acceptance.md` §D.1.a). D2: Table 2's S3 column said hand ancestry was "retired as a decision input" while no requirement delivered and no criterion verified that retirement — the cells now read *unchanged from Table 1*, the C4-C7 collapse is re-argued on the shipped surfaces (S1/S2/S4) alone, and §D records the non-retirement as out of scope. D3: `REQ-TLS-011` restated a limit the doctrine already carries at `todo.md:59-67`, so its criterion could not fail on it; the requirement is sharpened to the two clauses genuinely absent — the limit at the `todo pr` outcome list, and the meaning of `unknown` — and `acceptance.md` §D.2 records the gap as three commands with their verbatim output rather than as a conclusion. D4: the `LandedRef` line-class breakdown summed to 11 against a stated 12; the twelfth is named as a substring false positive at `todo_undone_test.go:266` and the word-boundary form (`grep -rnw` → 11) is stated beside it. Optional D5 (the stdout-token ruling's over-claimed source) and D6 (the five-to-six column contract change) are both addressed in `plan.md`. No source file was modified: `internal/cli/todo_pr.go` reads SHA-1 `a80ca6bdf8cd61f278310befdc400e547aa00d04` before and after the mutant probe. |
 
 > **Provenance discipline.** Every `file:line` citation in this document was measured at tree
 > `3de2f85a2` (branch `WT-card-landing-state`, worktree `.claude/worktrees/t331`) and re-opened at
-> its address during the 0.2.0 remediation at HEAD `11426a128`. The pins remain valid across both
-> trees because no cited source file changed between them — `git diff --name-only 3de2f85a2 HEAD`
-> returns only this SPEC's own artifacts and `.moai/reports/t331/plan-audit.md`. A prior reader of
-> this card cited a path from a stale tree and reported it missing, so the tree SHA travels with the
-> citation rather than being assumed.
+> its address during the 0.2.0 remediation at HEAD `11426a128` and again during the 0.3.0 delta fix
+> at HEAD `45cff0f59`. The pins remain valid across all three trees because no cited source file
+> changed between them — `git diff --name-only 3de2f85a2 HEAD` at `45cff0f59` returns exactly six
+> paths: this SPEC's own four artifacts plus `.moai/reports/t331/plan-audit.md` and
+> `plan-audit-iter2.md`. A prior reader of this card cited a path from a stale tree and reported it
+> missing, so the tree SHA travels with the citation rather than being assumed.
 
 > **A tree SHA does not pin a moving ref.** Citations into files are pinned to a tree; measurements
 > **about** `origin/main` or `origin/develop` are not, because those refs advance independently of
@@ -277,23 +279,41 @@ design needed no addition, only the enumeration did.
 
 #### Table 2 — what each surface MUST report after this SPEC
 
-| # | State | S1 | S2 `todo pr` | S3 ancestry | S4 `--require-landed` |
-|---|---|---|---|---|---|
-| C1 | queued, never started | `queued` | `no-link` | *retired as a decision input* | refuses; stdout `landing=not-landed` |
-| C2 | picked, no commits yet | `picked` | `no-link` **+ `picked` is visible in the same row** | " | refuses; stdout `landing=not-landed` |
-| C3 | picked, unmerged commits | `picked` | `linked` where a PR exists, else `no-link` | " | refuses; stdout `landing=not-landed` |
-| **C4-C7** | picked and landed, by any route — run-only, fully, via squash, or promoted to `main` | `picked` | **`landed`** — one answer, resting on the resolved ref's history and never on ancestry | " | passes; stdout `landing=landed` |
-| C8 | dropped | `dropped` | unchanged | " | unchanged |
-| C9 | archived | invisible | invisible | " | — |
-| C10 | landed ref does not resolve | as stored | **`unknown`**, distinct from `no-link`, naming the unresolved ref | " | **proceeds** (policy unchanged) but stdout reads `landing=unknown` |
-| C11 | queued, landed | `queued` | `landed`, beside the queue state `queued` | " | passes; stdout `landing=landed` |
+**Scope of this table: the three shipped surfaces.** S1, S2, and S4 are surfaces this SPEC changes or
+preserves, and every cell below is a claim about them. **S3 is not a shipped surface** (see the column
+legend) and **this SPEC delivers no change to it**: no requirement in §C names ancestry, no
+acceptance criterion asserts anything about it, and nothing here retires it, deprecates it, or
+removes it from anyone's hand. Its cells therefore read *unchanged from Table 1* — an honest record
+of what this SPEC leaves alone, not a claim about a change it does not make. (An earlier draft wrote
+"*retired as a decision input*" in every S3 cell. Nothing delivered that retirement, so the wording
+asserted an unimplemented column; it is corrected here rather than backed by a new requirement,
+because retiring a lead's manual fallback is a doctrine decision this SPEC has no mandate for.)
 
-**C4 through C7 are one row here, and saying so is the point.** In Table 1 they are four distinct
-rows because today they genuinely answer differently — C4 and C5 read `no-link`, C6 reads `landed`
-only if the ref happens to name the card, C7 reads `landed` by luck of `main`. After this SPEC all
-four answer `landed` through the same mechanism, so under the row legend's "separately observable"
-rule they are no longer four states as far as *these surfaces* can tell. Keeping them as four
-identical rows would assert a distinction the tooling does not make.
+| # | State | S1 | S2 `todo pr` | S3 ancestry (not shipped; unchanged) | S4 `--require-landed` |
+|---|---|---|---|---|---|
+| C1 | queued, never started | `queued` | `no-link` | as Table 1 | refuses; stdout `landing=not-landed` |
+| C2 | picked, no commits yet | `picked` | `no-link` **+ `picked` is visible in the same row** | as Table 1 | refuses; stdout `landing=not-landed` |
+| C3 | picked, unmerged commits | `picked` | `linked` where a PR exists, else `no-link` | as Table 1 | refuses; stdout `landing=not-landed` |
+| **C4-C7** | picked and landed, by any route — run-only, fully, via squash, or promoted to `main` | `picked` | **`landed`** — one answer, resting on the resolved ref's history and never on ancestry | as Table 1 (still ANCESTOR for C4/C7, NOT-ANCESTOR for C6, either for C5 — see the collapse note) | passes; stdout `landing=landed` |
+| C8 | dropped | `dropped` | unchanged | as Table 1 | unchanged |
+| C9 | archived | invisible | invisible | as Table 1 | — |
+| C10 | landed ref does not resolve | as stored | **`unknown`**, distinct from `no-link`, naming the unresolved ref | as Table 1 | **proceeds** (policy unchanged) but stdout reads `landing=unknown` |
+| C11 | queued, landed | `queued` | `landed`, beside the queue state `queued` | as Table 1 | passes; stdout `landing=landed` |
+
+**C4 through C7 are one row here, and the collapse is argued on the shipped surfaces alone.** In
+Table 1 they are four distinct rows because today they genuinely answer differently on S2 and S4 —
+C4 and C5 read `no-link`, C6 reads `landed` only if the ref happens to name the card, C7 reads
+`landed` by luck of `main`. After this SPEC all four answer `landed` through the same mechanism, and
+their S1 and S4 cells are likewise identical, so on **S1, S2, and S4 together** the four are no
+longer separately observable and keeping them apart would assert a distinction the shipped tooling
+does not make.
+
+**What the collapse does not claim.** S3 still separates them — C6's squash landing is
+NOT-ANCESTOR where C7's is ANCESTOR — and that separation survives this SPEC untouched, because a
+lead running `git merge-base --is-ancestor` by hand is outside every surface here. The collapsed row
+is therefore *observationally single on the shipped surfaces*, not observationally single in the
+world. The earlier draft's collapse leaned on S3 being retired; it is re-argued here without that
+premise, and the argument is unaffected: S3 was never one of the surfaces this SPEC repairs.
 
 The distinction that collapses is real and is not lost, only unaddressed here: separating a **run**
 landing (C4) from a **fully sync-closed** one (C5) needs evidence about *which* commits landed and
@@ -348,8 +368,16 @@ exactly: **empty ⇒ `origin/main`**, byte-identical to today's behaviour, so a 
 that configures nothing sees no change at all.
 
 **M3 — the blast radius is bounded and measured.** `grep -rn 'LandedRef' --include='*.go' internal/`
-@ `3de2f85a2` returns 12 lines: 1 doc comment, 1 declaration, **7 production uses**, and 2 test
-lines. The 7:
+@ `3de2f85a2` returns **12** lines, which account as: 1 doc comment, 1 declaration, **7 production
+uses**, 2 test lines, **and 1 substring false positive** — `internal/cli/todo_undone_test.go:266`,
+the function name `TestTodoDone_RequireLandedRefusesWhenNotLanded`, which contains `LandedRef`
+inside "Require**LandedRef**uses" and is not a reference to the identifier at all. The false positive
+is named rather than absorbed because it is the reason the substring count reads one higher than the
+identifier count: the **word-boundary** form
+`grep -rnw 'LandedRef' --include='*.go' internal/` returns **11** — the eleven real references — and
+a reader who re-runs the unanchored grep and counts 12 has found the collision, not a missed site.
+Both figures were re-measured during the 0.3.0 remediation and are stated together for that reason.
+The 7 production uses:
 
 | Site | Use |
 |---|---|
@@ -498,9 +526,20 @@ requirement split across two entries to look smaller.
   (`internal/template/templates/.claude/skills/moai/workflows/todo.md`) shall be updated in the same
   change to carry the resolved ref, the `unknown` outcome, and the stdout verdict token, and the
   [HARD] operator-only mutation rule shall be restated unweakened.
-- **REQ-TLS-011** — The doctrine shall state the landed check's remaining limit: a `landed` answer
-  reports that the resolved ref's history names the card, not that the card's last step landed, and
-  this SPEC does not make the run-versus-sync distinction.
+- **REQ-TLS-011** — The doctrine shall state the landed check's remaining limit **at each surface
+  that renders a landing answer**, not only under `--require-landed` where it is stated today.
+  Concretely: (a) the `moai todo pr` outcome list shall state that `landed` reports that the resolved
+  ref's history names the card, not that the card's last step landed; and (b) the same list shall
+  state that `unknown` means the question could not be asked and is **not** evidence of not-landed.
+  The existing `--require-landed` limit note stays, unweakened.
+
+  > **Why this is a delta and not a restatement.** The limit exists in the doctrine today, but exactly
+  > once and scoped to the opt-in guard — `grep -n 'LAST step' .claude/skills/moai/workflows/todo.md`
+  > returns a single line, `60`, inside the paragraph that opens `[HARD] `--require-landed` is OPT-IN
+  > and honestly limited`. The `todo pr` outcome row (`:51`) describes `landed` mechanically and
+  > states no limit, and `grep -c -i 'unknown'` over the file returns `0` (rc=1) because the outcome
+  > does not exist yet. (a) and (b) are therefore both absent today. See `acceptance.md` AC-TLS-009's
+  > RED cell for the commands and their verbatim output.
 
 ---
 
@@ -563,6 +602,12 @@ permanently, and a stored observation costs far more to correct than a live answ
 
 ### Out of Scope — adjacent surfaces
 
+- **Retiring hand ancestry (`git merge-base --is-ancestor`) as a decision input.** The S3 column of
+  §A.6 records what the lead's manual fallback reports; this SPEC neither changes it nor withdraws
+  it. Retiring a manual practice is a doctrine decision about how a lead works, not a code change on
+  any surface here, and no requirement or criterion in this SPEC delivers or verifies one. A
+  corrected S2 is expected to make the fallback unnecessary in practice, which is an *effect* of this
+  SPEC and not a claim it makes.
 - The guard's **manifestation history** — how many cards were misjudged, when, and what each
   misjudgement cost. That is card t347's scope. This SPEC uses four cards as test inputs and claims
   nothing about the population.
