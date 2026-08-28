@@ -69,7 +69,9 @@ Flips: AC-GDL-001, AC-GDL-003, AC-GDL-004.
 - Initiate the refresh on every activation and **never await it**; persist its result for a later activation (REQ-GDL-012). This is what makes REQ-GDL-003's unconditional binding compatible with the latency bound.
 - Identify clean entries by reading the result's carried designator, never by a value literal and never by the surface fold (REQ-GDL-001 (iii)/(iv)).
 
-Flips: AC-GDL-002, AC-GDL-005, AC-GDL-006, AC-GDL-010, AC-GDL-011, AC-GDL-012.
+- Refuse an all-clear on a result whose clean-value designation is absent, null, or multi-valued; render the contract violation instead (REQ-GDL-013). The partition has no referent on such a result, and the path of least resistance is to render nothing.
+
+Flips: AC-GDL-002, AC-GDL-005, AC-GDL-006, AC-GDL-010, AC-GDL-011, AC-GDL-012, AC-GDL-013.
 
 ### M3 — legibility and safety
 
@@ -84,7 +86,9 @@ Flips: AC-GDL-007, AC-GDL-008.
 
 Flips: AC-GDL-009.
 
-**Milestone map check.** Every criterion appears in exactly one flip list and each listed milestone can actually deliver it — the audit's T4 finding was that a union count answers "is every criterion in some list?" and is structurally blind to "can the listed milestone deliver it?". AC-GDL-001 is at M1 because the contract is consumed at the invocation site; AC-GDL-003 and AC-GDL-004 are M1 for the same reason.
+**Milestone map check — stated as a derivation, not a transcribed count.** The check is: *every `### AC-GDL-` heading in `acceptance.md` appears in some flip list below*, **and** each listed milestone can actually deliver what it is assigned. Stating it this way earned its keep immediately — running it at v1.4.0 caught AC-GDL-013 owned by no milestone, minutes after it was written, which is the exact defect shape that escaped two prior audits on this pair. A transcribed number would have gone stale silently instead.
+
+Every criterion appears in exactly one flip list and each listed milestone can actually deliver it — the audit's T4 finding was that a union count answers "is every criterion in some list?" and is structurally blind to "can the listed milestone deliver it?". AC-GDL-001 is at M1 because the contract is consumed at the invocation site; AC-GDL-003 and AC-GDL-004 are M1 for the same reason.
 
 ## §G Anti-patterns to avoid
 
