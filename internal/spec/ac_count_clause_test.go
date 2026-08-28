@@ -319,61 +319,85 @@ func parseACBaseline(t *testing.T, path string) map[string]acBaselineEntry {
 
 // acComparison is the snapshot-vs-run decision, factored out so every transition
 // of AC-ACD-006 item 5 is exercised directly rather than only through whichever
-// transitions the live corpus happens to contain today. It returns "" for a
-// pass and the failure reason otherwise.
-func acComparison(want acBaselineEntry, known bool, halted bool, haltIDs string, live, excluded int) string {
+// transitions the live corpus happens to contain today.
+//
+// It returns two strings: problem is the failure reason ("" on pass), and
+// report is this run's observation for a file the snapshot does NOT record
+// ("" when the snapshot records it).
+//
+// ABSENCE IS JUDGED FIRST (spec.md §3.5 rule 4, AC-ACD-006 item 2, v0.5.0).
+// A file the snapshot does not carry is a new observation, never a regression —
+// whether it counts or halts — so it is reported and does not fail. Item 5(d)
+// keeps the regression it actually targets: a file the snapshot recorded as
+// COUNT that starts halting. The report is REQUIRED output, not optional: a
+// narrowing that emits nothing is indistinguishable from switching the check
+// off for that file.
+func acComparison(want acBaselineEntry, known bool, halted bool, haltIDs string, live, excluded int) (problem, report string) {
+	if !known {
+		if halted {
+			return "", fmt.Sprintf("HALT %s", haltIDs)
+		}
+		return "", fmt.Sprintf("COUNT %d", live)
+	}
 	if halted {
 		switch {
-		case !known:
-			return fmt.Sprintf("halts but is absent from the snapshot (halting ids: %s)", haltIDs)
 		case !want.halt:
-			return fmt.Sprintf("snapshot records COUNT %d, this run HALTs (%s)", want.live, haltIDs)
+			return fmt.Sprintf("snapshot records COUNT %d, this run HALTs (%s)", want.live, haltIDs), ""
 		case want.haltIDs != haltIDs:
-			return fmt.Sprintf("halting identifier set moved: snapshot %q, this run %q", want.haltIDs, haltIDs)
+			return fmt.Sprintf("halting identifier set moved: snapshot %q, this run %q", want.haltIDs, haltIDs), ""
 		}
-		return ""
+		return "", ""
 	}
 	switch {
-	case !known:
-		return fmt.Sprintf("counts %d but is absent from the snapshot", live)
 	case want.halt:
-		return fmt.Sprintf("snapshot records HALT %q, this run counts %d - normalization landed without a snapshot refresh", want.haltIDs, live)
+		return fmt.Sprintf("snapshot records HALT %q, this run counts %d - normalization landed without a snapshot refresh", want.haltIDs, live), ""
 	case want.live != live || want.excluded != excluded:
-		return fmt.Sprintf("snapshot live=%d excluded=%d, this run live=%d excluded=%d", want.live, want.excluded, live, excluded)
+		return fmt.Sprintf("snapshot live=%d excluded=%d, this run live=%d excluded=%d", want.live, want.excluded, live, excluded), ""
 	}
-	return ""
+	return "", ""
 }
 
-// TestACBaselineComparisonTransitions covers AC-ACD-006 item 5 (b)-(e)
-// directly. The live corpus carries no halting file today, so without this the
-// halt-handling branches would be asserted but never executed.
+// TestACBaselineComparisonTransitions covers AC-ACD-006 item 5 (b)-(e) and the
+// two absence rows of design.md §C.2 directly. The live corpus carries no
+// halting file today, so without this the halt-handling branches would be
+// asserted but never executed — and the absent-and-halting row (the seam the
+// v0.5.0 amendment resolved) occurs in no live tree at all.
 func TestACBaselineComparisonTransitions(t *testing.T) {
 	count := acBaselineEntry{live: 7, excluded: 2}
 	halt := acBaselineEntry{halt: true, haltIDs: "AC-SYN-002"}
 	cases := []struct {
-		name    string
-		want    acBaselineEntry
-		known   bool
-		halted  bool
-		ids     string
-		live    int
-		exc     int
-		wantErr bool
+		name       string
+		want       acBaselineEntry
+		known      bool
+		halted     bool
+		ids        string
+		live       int
+		exc        int
+		wantErr    bool
+		wantReport string
 	}{
-		{"count-stable", count, true, false, "", 7, 2, false},
-		{"count-moved", count, true, false, "", 8, 2, true},
-		{"count-state-moved-live-to-excluded", count, true, false, "", 6, 3, true},
-		{"b: count-to-halt", count, true, true, "AC-SYN-002", 0, 0, true},
-		{"c: halt-to-count", halt, true, false, "", 7, 2, true},
-		{"d: halt-absent-from-snapshot", acBaselineEntry{}, false, true, "AC-SYN-002", 0, 0, true},
-		{"e: halting-id-set-moved", halt, true, true, "AC-SYN-002 AC-SYN-004", 0, 0, true},
-		{"halt-stable", halt, true, true, "AC-SYN-002", 0, 0, false},
-		{"count-absent-from-snapshot", acBaselineEntry{}, false, false, "", 7, 2, true},
+		{"count-stable", count, true, false, "", 7, 2, false, ""},
+		{"count-moved", count, true, false, "", 8, 2, true, ""},
+		{"count-state-moved-live-to-excluded", count, true, false, "", 6, 3, true, ""},
+		{"b: count-to-halt", count, true, true, "AC-SYN-002", 0, 0, true, ""},
+		{"c: halt-to-count", halt, true, false, "", 7, 2, true, ""},
+		{"e: halting-id-set-moved", halt, true, true, "AC-SYN-002 AC-SYN-004", 0, 0, true, ""},
+		{"halt-stable", halt, true, true, "AC-SYN-002", 0, 0, false, ""},
+		// v0.5.0 amendment: absence is judged first. Neither row fails, and
+		// both MUST carry this run's observation as the report.
+		{"absent-and-counts: report, do not fail", acBaselineEntry{}, false, false, "", 7, 2, false, "COUNT 7"},
+		{"absent-and-halts: report, do not fail (§3.5 rule 4)", acBaselineEntry{}, false, true, "AC-SYN-002", 0, 0, false, "HALT AC-SYN-002"},
+		// The regression 5(d) actually targets survives the narrowing: a file
+		// the snapshot recorded as COUNT that starts halting still fails.
+		{"d: recorded-COUNT starts halting", count, true, true, "AC-SYN-002", 0, 0, true, ""},
 	}
 	for _, tc := range cases {
-		got := acComparison(tc.want, tc.known, tc.halted, tc.ids, tc.live, tc.exc)
-		if (got != "") != tc.wantErr {
-			t.Errorf("%s: acComparison = %q, wantErr=%v", tc.name, got, tc.wantErr)
+		problem, report := acComparison(tc.want, tc.known, tc.halted, tc.ids, tc.live, tc.exc)
+		if (problem != "") != tc.wantErr {
+			t.Errorf("%s: acComparison problem = %q, wantErr=%v", tc.name, problem, tc.wantErr)
+		}
+		if report != tc.wantReport {
+			t.Errorf("%s: acComparison report = %q, want %q", tc.name, report, tc.wantReport)
 		}
 	}
 }
@@ -395,6 +419,10 @@ func TestACCounterFullCorpusMatchesBaseline(t *testing.T) {
 	sort.Strings(matches)
 
 	seen := map[string]bool{}
+	// Files the glob matches but the snapshot does not record. Reporting these
+	// is required output (AC-ACD-006 item 2): a narrowing that emits nothing
+	// cannot be told apart from the check being switched off for that file.
+	absent := []string{}
 	tallyRe := regexp.MustCompile(`live=(\d+) excluded=(\d+) ambiguous=0`)
 	for _, abs := range matches {
 		rel, err := filepath.Rel(root, abs)
@@ -414,8 +442,12 @@ func TestACCounterFullCorpusMatchesBaseline(t *testing.T) {
 			// never recorded as a zero count (AC-ACD-006 item 5).
 			ids := strings.Fields(strings.TrimPrefix(strings.SplitN(stdout, "\n", 2)[0], "AMBIGUOUS"))
 			sort.Strings(ids)
-			if why := acComparison(want, known, true, strings.Join(ids, " "), 0, 0); why != "" {
-				t.Errorf("%s: %s", rel, why)
+			problem, report := acComparison(want, known, true, strings.Join(ids, " "), 0, 0)
+			if problem != "" {
+				t.Errorf("%s: %s", rel, problem)
+			}
+			if report != "" {
+				absent = append(absent, fmt.Sprintf("%s: %s", rel, report))
 			}
 			continue
 		}
@@ -426,14 +458,29 @@ func TestACCounterFullCorpusMatchesBaseline(t *testing.T) {
 			t.Fatalf("%s: per-state tally absent from stderr %q", rel, stderr)
 		}
 		excluded, _ := strconv.Atoi(m[2])
-		if why := acComparison(want, known, false, "", live, excluded); why != "" {
-			t.Errorf("%s: %s", rel, why)
+		problem, report := acComparison(want, known, false, "", live, excluded)
+		if problem != "" {
+			t.Errorf("%s: %s", rel, problem)
+		}
+		if report != "" {
+			absent = append(absent, fmt.Sprintf("%s: %s", rel, report))
 		}
 	}
 	for rel := range baseline {
 		if !seen[rel] {
 			t.Errorf("%s: present in the snapshot but no longer matched by the corpus glob", rel)
 		}
+	}
+
+	// Required output (AC-ACD-006 item 2). t.Logf is the surface: it is shown
+	// on `go test -v` and on any failing run. Measured, so the choice is not
+	// assumed: non-verbose `go test` discards a PASSING package's output
+	// wholesale, so a direct os.Stderr write is equally invisible there and
+	// would only duplicate this.
+	sort.Strings(absent)
+	t.Logf("AC corpus: %d file(s) matched by the glob but absent from the snapshot - reported, not failed (spec.md 3.5 rule 4)", len(absent))
+	for _, ln := range absent {
+		t.Logf("  absent-from-snapshot %s", ln)
 	}
 }
 

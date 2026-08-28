@@ -121,7 +121,7 @@ golden_test.go:109: .codex/agents/moai/manager-docs.toml: committed artifact dif
 | AC-ACD-003 | PASS | `TestACCounterHaltsOnPartialMarking`. 뮤턴트 이전 rc=0 live=3; 이후 `AMBIGUOUS AC-SYN-002` + 해소 한 줄(`[RETIRED]`/`[REF]` 문자열 포함) rc=3, 맨 정수 없음; 원복 rc=0 live=3 |
 | AC-ACD-004 | PASS | (가) 네 오탐 파일 모두 스윕=계수기(18=18, 12=12, 20=20, 34=34, 정규화 **이전** 값) 이고 여덟 식별자(AC-RA-02/07/11/14/17, AC-CMR-002, AC-LSPMCP-RETIRE-007, AC-ORC-001-05) 상태 전부 `live`. (나) `adjacency.md` 여섯 경우 live=4 excluded=2 — 손계산 일치 |
 | AC-ACD-005 | PASS | 항목1 추출 1건·비어있지 않음·바이트 동일 / 항목2 뮤턴트 (a) / 항목3 `manager-docs.md` 쌍 `diff` 무출력 / 항목4 prompt-template 쌍 차이 **171행 1건**(줄 수를 바꾸지 않는 1행 치환으로 편집해 행 번호 보존) / 항목5 개정 절·미러 SPEC-ID `0` / 항목6 (a) TOML 이 개정 명령을 담음 (b) golden `ok` (c) 뮤턴트 (a) 로 RED |
-| AC-ACD-006 | PASS | corpus 재유도 `606`파일(글롭 깊이 1, `_archive/` 제외), 스냅샷 `.moai/reports/t338/ac-count-baseline.txt` 608행(주석 2 + 606). 차이 0. 뮤턴트 (c) 가 경로를 지목. 항목5 (b)-(e) 네 전이는 `TestACBaselineComparisonTransitions` 가 직접 실행한다 — 현재 corpus 에 `HALT` 파일이 0건이라 그 분기가 실행되지 않는 공허를 막기 위함 |
+| AC-ACD-006 | PASS (v0.5.0 개정 반영, E.2.9) | corpus 재유도 `606`파일(글롭 깊이 1, `_archive/` 제외), 스냅샷 `.moai/reports/t338/ac-count-baseline.txt` 608행(주석 2 + 606). 차이 0. 뮤턴트 (c) 가 경로를 지목. 항목5 (b)-(e) 네 전이는 `TestACBaselineComparisonTransitions` 가 직접 실행한다 — 현재 corpus 에 `HALT` 파일이 0건이라 그 분기가 실행되지 않는 공허를 막기 위함. **v0.5.0 개정분(항목 2 의 부재 파일 보고·비실패 + 항목 5(d) 좁힘)은 E.2.9 가 별도로 담는다** — 위 `606` 은 개정 이전 실행의 값이고, 개정 후 실행의 재유도 값과 부재 2건은 E.2.9 에 있다 |
 | AC-ACD-007 | PASS (항목 5a) | 대상 **4건**(0건 아님). 아래 E.2.5 가 플래그별 손 판정을 식별자 단위로 담는다 |
 | AC-ACD-008 | PASS | 종단 상태 + 인용 축 종단 이전 + 별칭 축 후보(정규화 1건 제외) **510경로**에 좁힌 `git diff --stat` 무출력. `debt-list.md` 축 3절, 방향 라벨(하한/상한/상한), 총계 줄 `grep -c '^합계\|^총계\|^Total'` → `0`. 항목 수 대조: 인용 124 = `pre-terminal-scan.sh` 재유도 `status=completed`, 별칭 85 = `grep -c '^=== '` 재유도. 폐기 축 절은 면제이며 출처를 E.2.5 로 명시 |
 
@@ -214,6 +214,95 @@ SPEC-V3R2-ORC-001                 COUNT 34 live=34 excluded=0  →  COUNT 17 liv
 > 재측정으로 확인했다. 규약을 예시하는 문서가 자기 규약에 걸린 세 번째 사례다.
 corpus 전체: `files=606 halting=0 files-with-excluded=5`(시작 시점 1 → 정규화 4건이 더해졌다).
 
+### E.2.9 v0.5.0 조항 개정 구현 — 부재 파일은 보고하되 실패시키지 않는다
+
+**왜 고쳤나.** run-phase 는 초록으로 끝났는데, `origin/develop` 를 흡수하자 **깨끗한 머지에서**
+`TestACCounterFullCorpusMatchesBaseline` 이 붉어졌다. 스냅샷이 corpus 전체를 잠그고 있어
+**새로 추가된** `acceptance.md` 가 차이로 잡혔기 때문이다. 신규 파일은 하루 여러 건 들어오므로
+설계대로 두면 이 테스트가 상시 레드 생성기가 된다. 운영자 판정: 실패 표면을 좁힌다.
+
+**무엇이 바뀌었나.** 파일 **1건** — `internal/spec/ac_count_clause_test.go`.
+`.claude/` 아래는 한 글자도 건드리지 않았다(확인: `git status --short` 에 `.claude/` 경로 0건).
+따라서 Template-First 미러도, `make agents-emit` 도, `make build` 도 이 개정에는 해당이 없다.
+개정은 **계수기가 아니라 검증자**를 향한 것이고, 절 문면(B12)은 그대로다.
+
+`acComparison` 이 실패 사유 한 값 대신 `(problem, report)` 두 값을 낸다. 핵심은 순서다 —
+**부재를 맨 앞에서 판정한다.**
+
+```go
+	if !known {
+		if halted {
+			return "", fmt.Sprintf("HALT %s", haltIDs)
+		}
+		return "", fmt.Sprintf("COUNT %d", live)
+	}
+```
+
+종전에는 `halted` 분기가 먼저였고 그 안에서 `!known` 이 곧바로 실패였다
+(`halts but is absent from the snapshot`). 그 두 줄이 `acceptance.md` 항목 5(d)와 항목 2 가
+만나는 이음매였고, 개정은 여기를 **부재 우선**으로 못 박은 것이다. 기록된 파일의 이동·정지 전이·
+식별자 집합 이동·사라짐은 네 분기 그대로 남아 있다.
+
+**보고 표면.** `t.Logf` 로 부재 파일마다 경로와 이번 실행의 관측을 낸다. 표면 선택은 가정하지
+않고 측정했다 — 비-verbose `go test` 는 **통과한 패키지의 출력을 통째로 버린다**(실측: `t.Logf`
+도 `os.Stderr` 직접 쓰기도 둘 다 안 보였고, `ok ... 3.720s` 한 줄뿐이었다). 즉 `os.Stderr` 직접
+쓰기는 `t.Logf` 대비 아무것도 더 보여 주지 못하면서 출력만 이중화하므로 뺐다. 통과 실행의 보고는
+`-v` 에서 읽는다.
+
+**기준 실행(개정 후, 뮤턴트 없음).** 명령과 출력:
+
+```
+$ go test ./internal/spec/ -run TestACCounterFullCorpusMatchesBaseline -count=1 -v
+    ac_count_clause_test.go:481: AC corpus: 2 file(s) matched by the glob but absent from the snapshot - reported, not failed (spec.md 3.5 rule 4)
+    ac_count_clause_test.go:483:   absent-from-snapshot .moai/specs/SPEC-BACKLOG-LOCK-BUDGET-001/acceptance.md: COUNT 6
+    ac_count_clause_test.go:483:   absent-from-snapshot .moai/specs/SPEC-TODO-DESTRUCTIVE-GUARD-001/acceptance.md: COUNT 16
+--- PASS: TestACCounterFullCorpusMatchesBaseline (3.19s)
+ok  	github.com/modu-ai/moai-adk/internal/spec	3.563s
+```
+
+개정 **이전** 같은 명령의 출력은 같은 두 파일을 실패로 냈다(`counts 6 but is absent…` ·
+`counts 16 but is absent…`). 부재 파일이 **2건이므로 이 통과는 공허하지 않다** — 좁힌 분기가
+실제로 실행됐고, 그 실행이 보고를 냈다.
+
+**스냅샷은 재생성하지 않았다.** 그 두 건이 좁힘이 작동한다는 살아 있는 증거이고, 지금 재생성하면
+두 건이 스냅샷에 흡수돼 이 검증 자체가 공허해진다. 재생성은 다음 정기 갱신의 몫이며, 편입된
+뒤부터는 `spec.md` §3.5 의 1·2·3번이 그 두 파일을 지킨다.
+
+**뮤턴트 3종 — 셋 다 관측하고 셋 다 원복했다.**
+
+| 뮤턴트 | 심은 것 | 관측 | 원복 |
+|---|---|---|---|
+| ① 기록된 파일의 수가 움직임 | 스냅샷의 `SPEC-AC-COUNT-DISCRIMINATOR-001/acceptance.md` 항목을 `COUNT 24 live=24` → `COUNT 23 live=23` | **RED** — `...: snapshot live=23 excluded=3, this run live=24 excluded=3` | `git restore` 후 `git status --short` 무출력 |
+| ② 새 파일이 세는 경우 | `.moai/specs/SPEC-T338-MUTANT-NEW-001/acceptance.md` 신규(기준 3건) | **GREEN**, 보고가 지목 — `absent-from-snapshot .moai/specs/SPEC-T338-MUTANT-NEW-001/acceptance.md: COUNT 3` (부재 2 → 3) | 아래 ③ 이후 디렉터리째 제거 |
+| ③ 새 파일이 **정지**하는 경우 | 같은 경로를 부분 표시로 다시 씀(한 식별자의 두 등장 중 한 곳만 예약 토큰) | **GREEN**, 보고가 식별자까지 지목 — `absent-from-snapshot .moai/specs/SPEC-T338-MUTANT-NEW-001/acceptance.md: HALT AC-MUT-002` | `rm` + `rmdir`, `ls` 가 `No such file or directory` |
+
+③ 이 이 개정의 이음매다. ② 만으로는 부족하다 — **부재를 먼저 판정하지 않은 구현도 ①②에서는
+똑같이 보이기 때문**이다. 그래서 ③ 을 **개정 이전 검증자**에도 돌려 인과를 세웠다
+(`git restore -- internal/spec/ac_count_clause_test.go` 로 `d2a70f9e3` 판으로 되돌린 뒤 실행):
+
+```
+--- FAIL: TestACCounterFullCorpusMatchesBaseline (3.51s)
+    ac_count_clause_test.go:418: .moai/specs/SPEC-T338-MUTANT-NEW-001/acceptance.md: halts but is absent from the snapshot (halting ids: AC-MUT-002)
+```
+
+같은 트리·같은 뮤턴트에서 개정 전은 붉고 개정 후는 초록이므로, ③ 의 초록은 **이 개정이 만든
+것**이지 파일이 정지하지 않아서가 아니다. 개정판 파일은 스크래치 사본에서 되돌리고 `cmp` 로
+동일함을 확인했다.
+
+**전이 표도 함께 넓혔다.** `TestACBaselineComparisonTransitions` 에 세 행을 더했다 — 부재+계수
+(보고 `COUNT 7`, 실패 아님) · 부재+정지(보고 `HALT …`, 실패 아님) · **기록된 `COUNT` 파일이
+정지하기 시작**(실패). 마지막 행이 5(d)가 좁혀진 뒤에도 겨눈 회귀를 그대로 잡는다는 것을
+합성 입력으로 직접 실행한다. 보고 문자열은 기대값과 문자 단위로 대조하므로, 보고를 빠뜨린
+구현은 이 테스트에서 죽는다.
+
+**패키지 전체.** `go test ./internal/spec/... -count=1` → `ok ... 29.106s`. 저장소 전체 수트는
+지시대로 돌리지 않았다(판정은 CI 몫).
+
+**여섯 산출물 재측정(이 개정 후).** `spec 41` · `plan 11` · `acceptance 24` · `design 2` ·
+`research 10` · `progress 47 → **48**`, 여섯 건 모두 `rc=0 ambiguous=0`. 움직인 것은 `progress.md`
+하나이고 **그 이동은 이 편집이 만든 것이다** — 위 표가 뮤턴트 ③ 의 출력을 그대로 옮겨 담으면서
+그 출력이 이름으로 담은 식별자가 이 파일에 처음 들어왔다. 회귀로 읽지 말 것. 나머지 다섯은 불변.
+
 ### E.2.8 잔여 위험
 
 - **통합 충돌 가능성**: `SPEC-GRAPH-FRESHNESS-CADENCE-001` 은 다른 카드(t322)가 소유한 in-progress 파일이다. 이 브랜치의 편집은 4행뿐이지만, 그 카드가 같은 파일을 움직이면 병합에서 만난다. 리드가 통합 순서를 정할 때 읽을 수 있도록 여기 적는다
@@ -245,6 +334,32 @@ tests:
 mutants_killed: 3   # mirror one-character; fixture partial-marking + end-of-line token move; corpus token plant. All restored, all re-verified green
 total_run_phase_files: 24   # `git status --short` at commit time: 14 modified + 10 new
 m1_to_mN_commit_strategy: "single M1 commit on WT-ac-count-sweep carrying M1-M5 (23df21c9e), plus one SHA-backfill follow-up commit; no push, no develop merge (integration awaits the lead)"
+```
+
+### v0.5.0 조항 개정 실행 신호 (M1 블록을 대체하지 않고 더한다)
+
+```yaml
+amendment: "v0.5.0 — absent-from-snapshot files are reported, not failed (spec.md 3.5 rule 4)"
+amendment_applied_at: 2026-08-28
+amendment_base_head: "d2a70f9e3"        # tree the change was authored and measured against
+amendment_commit_sha: "PENDING-BACKFILL"  # a commit cannot cite its own SHA
+amendment_files_changed: 1              # internal/spec/ac_count_clause_test.go only
+template_mirror_required: false         # no .claude/ path touched -> no mirror, no `make agents-emit`, no `make build`
+ac_pass_count: 8
+ac_fail_count: 0
+ac_ids_re_verified: [AC-ACD-006]        # the only AC whose clause moved; the other seven are untouched by this amendment
+snapshot_regenerated: false             # deliberate: the two absent files ARE the evidence the narrowing works
+absent_files_reported: 2                # SPEC-BACKLOG-LOCK-BUDGET-001, SPEC-TODO-DESTRUCTIVE-GUARD-001 -> the pass is non-vacuous
+mutations_observed: 3                   # (1) recorded count moved -> RED; (2) new counting file -> GREEN+reported; (3) new HALTING file -> GREEN+reported
+mutation_3_causation: "same tree, same mutant, pre-amendment verifier -> FAIL 'halts but is absent from the snapshot (halting ids: AC-MUT-002)'; post-amendment -> PASS + report"
+mutations_restored: 3                   # git restore (snapshot); rm+rmdir (scratch SPEC dir); cmp-verified copy-back (test file)
+new_warnings_or_lints_introduced: 0     # gofmt -l on the changed file: empty; go vet ./internal/spec/ -> rc=0
+tests:
+  affected_packages: "go test ./internal/spec/... -count=1 -> ok (29.106s)"
+  full_suite: "NOT RUN locally by instruction; CI on the integration branch is the full-suite judge"
+six_artifact_counter: "python3 .moai/reports/t338/iter2-scratch/counter.py <file> adj -> spec 41 / plan 11 / acceptance 24 / design 2 / research 10 / progress 48 ; all rc=0 ambiguous=0"
+six_artifact_delta: "progress.md 47 -> 48 ; the move is THIS edit (E.2.9 records identifiers by name), not a regression. The other five are unmoved"
+push_state: "not pushed, not merged — this branch is the last merge of a batch and integration is the lead's window"
 ```
 
 **파일 24건의 내역** — `git status --short` 를 커밋 직전에 다시 읽어 센 값이다.
