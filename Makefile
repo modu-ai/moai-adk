@@ -6,7 +6,18 @@ MODULE := github.com/modu-ai/moai-adk
 VERSION ?= $(shell git describe --tags --abbrev=0 2>/dev/null || git rev-parse --short HEAD 2>/dev/null || echo "dev")
 COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
 DATE := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
-LDFLAGS := -ldflags "-s -w -X $(MODULE)/pkg/version.Version=$(VERSION) -X $(MODULE)/pkg/version.Commit=$(COMMIT) -X $(MODULE)/pkg/version.Date=$(DATE)"
+# BUILD_ID is the MONOTONE build identity, and it is deliberately separate from
+# VERSION. VERSION derives with --abbrev=0, which drops the commit-distance
+# suffix and so collapses every commit since the last tag onto one string — it
+# is a tag floor, not a build identity, and two builds in an ancestor relation
+# read as identical through it. Worse, an explicit release-candidate VERSION
+# reads HIGHER than a later default build, so comparing version strings reaches
+# the opposite conclusion about which binary is newer.
+# VERSION stays as it is because it reaches outward (RELEASE_BINARY below,
+# version.json, internal/update/local.go); the identity that has to be monotone
+# goes here instead, where nothing else consumes it.
+BUILD_ID := $(shell git describe --tags --dirty 2>/dev/null || git rev-parse --short HEAD 2>/dev/null || echo "dev")
+LDFLAGS := -ldflags "-s -w -X $(MODULE)/pkg/version.Version=$(VERSION) -X $(MODULE)/pkg/version.Commit=$(COMMIT) -X $(MODULE)/pkg/version.Date=$(DATE) -X $(MODULE)/pkg/version.BuildID=$(BUILD_ID)"
 
 # Local release configuration
 LOCAL_RELEASE_DIR ?= $(HOME)/.moai/releases
