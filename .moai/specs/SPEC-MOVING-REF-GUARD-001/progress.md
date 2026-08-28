@@ -820,6 +820,196 @@ are separated. No over-fire was observed on any fixture.
   test time is 28.6s and no regression was observed, but no before/after timing was measured, so the
   cost on a large catalog is unquantified.
 
+### M4 — corpus triage record, classification only (2026-08-28)
+
+**Deliverable**: `.moai/reports/t342/corpus-triage.md`. Classification only — `plan.md` §F M4's
+[HARD] no-edit clause held: no marker was added, no SHA was pinned, and no SPEC artifact outside
+this SPEC's own directory was touched.
+
+#### Claim 1 — the rule emits 107 findings over `.moai/specs/**`
+
+```
+$ go run ./cmd/moai spec lint --json > <out>
+rc=0
+
+$ jq -r '.[].code' <out> | sort | uniq -c | sort -rn
+ 107 MovingRefUnpinned
+  24 MissingExclusions
+  18 StatusGitConsistency
+  14 FrontmatterInvalid
+   7 LegacyEARSKeyword
+   1 OwnershipTransitionInvalid
+
+$ jq -r '.[] | select(.code=="MovingRefUnpinned") | "\(.file):\(.line)"' <out> | wc -l ; … | sort -u | wc -l
+     107
+     107
+```
+
+107 distinct `file:line` pairs, no duplicates despite `Check` being invoked once per `SPECDoc` and
+re-scanning the whole SPEC directory each time. Zero findings are the REQ-MRG-003 incomplete-marker
+variant — no `moving-ref-ok` marker exists anywhere in the corpus yet.
+
+#### Claim 2 — 107 vs the §B.3 prevalence figure of 42, fully attributed
+
+`§E.1` records that the plan-phase 42 is a grep prevalence measurement, not rule output, that the
+two may differ, and that no criterion assumes they agree. They differ, by **+55** on the
+comparable population (97 external findings vs 42), and neither figure was adjusted to meet the
+other.
+
+```
+rule findings, whole catalogue                                   107
+rule findings, this SPEC's own directory excluded                 97
+§B.3 filter-4 grep, re-run at HEAD 1ed8a9997, own dir excluded     42
+```
+
+Decomposition, measured:
+
+```
+$ cut -f2 <97 external findings> | grep -ciE 'byte-unchanged|byte unchanged|unchanged|preserv|보존|no diff|empty|0 files|부재|absent|변경 ?없|그대로'
+41
+$ cut -f2 <97 external findings> | grep -cE 'rev-list\s+--count\s+--left-right'
+61
+```
+
+- **+56** from the REQ-MRG-006 divergence-figure branch, which filter 3 never contained (61 lines
+  carry the divergence command; 56 of them do not match the claim alternation). 41 + 61 − 97 = 5
+  lines satisfy both branches.
+- **−1** from the REQ-MRG-008 frozen-baseline exclusion, which filter 4 does not have:
+
+```
+$ comm -23 <grep-42 locations> <rule-97 locations>
+.moai/specs/SPEC-DESIGN-MOAIWEBV2-002/acceptance.md:14
+```
+
+  That line uses `$BASELINE_SHA` — the R2 remedy in use, correctly exempted by the rule and blindly
+  counted by the grep. 41 + 56 = 97. The §B.3 figure reproduces at this HEAD unchanged (`42`).
+
+#### Claim 3 — classification tally, and the S2 count corroborates §B.7
+
+```
+class            all   external   own dir
+anchor            48         48         0
+subject / S1      56         48         8
+subject / S2       2          0         2
+already-frozen     1          1         0
+unclassifiable     0          0         0
+total            107         97        10
+```
+
+Both §B.7 probes, re-run against the rule's 97 external findings rather than the grep 42, return
+**1** hit each; the hit (`SPEC-V3R6-HARNESS-PROPOSAL-GEN-001/plan.md:116`) is a directive with no
+demoted dated reference value, so it is a probe false positive. **External R4 occupancy is 0**,
+unchanged from §B.7's measurement. Both S2 findings sit in this SPEC's own directory and are the R4
+form this SPEC's own doctrine created — exactly what §B.7 predicted ("every R4 remediation M1
+recommends produces exactly one"). They are flagged because the REQ-MRG-010 exclusion is deferred
+(Q0 option C).
+
+All three §B.3-named classes reproduce under the rule, including both subject-class lines
+(`AC-COORD-016` finding 82, `REQ-LB-006` finding 53), which the rule flags as expected under L2/L4
+and which **must not be pinned**.
+
+#### Claim 4 — AC-MRG-010's two decider forms, both run, both recorded
+
+Form A, the criterion as literally written in `acceptance.md:161`:
+
+```
+$ git diff --name-only "$BASELINE_SHA"..HEAD -- .moai/specs | grep -v SPEC-MOVING-REF-GUARD-001
+.moai/specs/SPEC-GRAPH-FRESHNESS-CADENCE-001/progress.md
+.moai/specs/SPEC-GRAPH-FRESHNESS-CADENCE-001/spec.md
+.moai/specs/SPEC-SYNC-STRATEGY-KEY-001/progress.md
+.moai/specs/SPEC-SYNC-STRATEGY-KEY-001/spec.md
+```
+
+**NON-EMPTY**, and attributed rather than remediated:
+
+```
+$ git log --format='%h %s' --no-merges "$BASELINE_SHA"..HEAD -- <those two directories>
+f9c827217 docs(SPEC-GRAPH-FRESHNESS-CADENCE-001): correct two overstated claims in the sync signal (t322)
+28f16d030 docs(SPEC-GRAPH-FRESHNESS-CADENCE-001): backfill sync_commit_sha (t322)
+bc66c30b7 docs(SPEC-GRAPH-FRESHNESS-CADENCE-001): sync-phase close (3-phase plan->run->sync) (t322)
+ed68889e3 docs(SPEC-SYNC-STRATEGY-KEY-001): terminal transition implemented -> completed (t303)
+```
+
+All four are cards t322 / t303, landed on mainline and absorbed by this branch's two merge commits;
+each confirmed an ancestor of `origin/develop` (re-fetched immediately before the judgment,
+`origin/develop` = `77b2bcae6` at that moment) with `merge-base --is-ancestor` rc=0 on all four.
+None was authored on `WT-moving-ref-guard`.
+
+Form B, narrowed to what this branch adds beyond mainline:
+
+```
+$ git diff --name-only 5e194bba27c146d8c2157d92b4a3fb3995919ff0..HEAD -- .moai/specs | grep -v SPEC-MOVING-REF-GUARD-001
+(empty)
+```
+
+Second command of the pair, both forms:
+
+```
+$ git status --short -- .moai/specs
+(empty)
+```
+
+`acceptance.md` was NOT edited to change the decider — its body content is manager-spec's. The
+report's §4.1 states a view on which form should decide, as an input to the orchestrator.
+
+#### Baseline-attribution
+
+- Frozen pre-flight baseline: `BASELINE_SHA = d566ecc7511e1954e3aeb1dff3a60afa5be1089b`, cited as a
+  literal and never re-resolved from `origin/develop`, per `plan.md` §C step 4.
+- Every command above ran in worktree `WT-moving-ref-guard` at HEAD **`1ed8a9997`**
+  (`git rev-parse --short HEAD`, re-read immediately before this record was written), working tree
+  clean at the time of the lint run.
+- `origin/develop` was re-fetched immediately before the ancestry judgment and resolved to
+  `77b2bcae6` at that moment; the four commits' ancestry is attributed to that reading, not to a
+  ref value read earlier in the session.
+
+#### Gaps — what was explicitly NOT observed
+
+- **M5 (template mirror) was not started.** AC-MRG-012 is entirely unobserved.
+- **REQ-MRG-010 and AC-MRG-013 remain unimplemented and untested** (Q0 option C). CM-1 and CM-2 were
+  not run. Findings 27 and 32 are the deferral's live consequence; no claim is made about whether an
+  exclusion would classify them correctly.
+- **Every classification is one reader's judgment** — limit L2 acting on the triage rather than on
+  the detector. The predicate was applied by hand by the same actor that ran the rule, with no
+  independent adjudication. L7 sharpens this for the anchor rows: the ANCHOR branch has zero
+  adjudicated instances, and this milestone adds 48 author-classified anchors to the seven §F L7
+  already counts.
+- **Rows where a second reader could reasonably differ are named in the report §6** (findings 11,
+  22, 42, 65, 67, 68, 80, 81, 91, 98, 103) rather than forced into a bucket. `unclassifiable` is 0
+  because each of those has a stated reading, not because no doubt exists.
+- **No claim that 107 is the complete defect set.** Limits L1, L3, and L5 are unchanged and
+  unmeasured here; `.moai/reports/**`, where the R4-motivating instance lives, was not scanned.
+- **No test was run and no build was performed.** `go run ./cmd/moai spec lint` compiled the tree as
+  a side effect (rc 0) and is the only compilation evidence this milestone produces. No
+  `go test`, no `gofmt`, no `golangci-lint`, no cross-platform vet.
+- **The rule was run against this worktree at this HEAD only.** The figures are not claimed to hold
+  on `origin/develop` or any other branch.
+
+#### Residual-risk
+
+- **A misreading of §D.1 would reproduce itself uniformly** across 107 rows rather than surfacing as
+  an inconsistency, because the shape buckets were derived from the corpus by the same reader who
+  then applied them. The external S2 count of 0 is the only figure with an independent check against
+  it (§B.7, measured before this milestone existed), and it agrees.
+- **The `DIR` bucket is 35 external rows and carries the most doctrinal weight.** If a directive
+  counts as S2 — that is, if Test 4's "a reader will act on it" is read to include executing a
+  procedure step — then 35 findings move from R3 to R4 and §B.7's empty-scope conclusion moves with
+  them. The narrower reading was taken (Test 4 asks whether the claim *asserts the current state of
+  a moving thing*, which a directive does not), and a reviewer who disagrees should expect the R4
+  scope question to reopen.
+- **107 findings is a large enough wall to provoke the response this SPEC exists to prevent.** 56
+  are subject-class lines correct as written that will keep firing until 56 markers are written; the
+  incentive to write one blanket suppression instead is real, and only the reason field's cost
+  opposes it — a price enforced by review, not by the detector (L6's second residual).
+- **The §2 decomposition rests on grep re-derivations of the rule's own branches**, not on
+  instrumented rule output: the rule does not report which conjunct fired, so 41 / 61 / 56 were
+  reconstructed by applying its published patterns to the flagged lines. A divergence between the
+  reconstruction and the rule's actual internal path would not be visible.
+- **`SPEC-DESIGN-MOAIWEBV2-002/plan.md:36` (finding 7) shows the rule flagging the line that teaches
+  R2** while correctly exempting the line that applies it, because the frozen-baseline pattern
+  matches a variable reference and not the assignment that creates it. Recorded as an observation
+  only; changing it is a Go source change M4 does not make.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_
