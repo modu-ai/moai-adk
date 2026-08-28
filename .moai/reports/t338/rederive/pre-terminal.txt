@@ -1,0 +1,37 @@
+PRE-TERMINAL [draft] .moai/specs/SPEC-AC-COUNT-DISCRIMINATOR-001/acceptance.md
+PRE-TERMINAL [implemented] .moai/specs/SPEC-AGENCY-ABSORB-001/acceptance.md
+PRE-TERMINAL [implemented] .moai/specs/SPEC-ASKUSER-ENFORCE-001/acceptance.md
+PRE-TERMINAL [in-progress] .moai/specs/SPEC-ASTGREP-LANG16-001/acceptance.md
+PRE-TERMINAL [implemented] .moai/specs/SPEC-CI-MULTI-LLM-001/acceptance.md
+PRE-TERMINAL [draft] .moai/specs/SPEC-CONFIG-TIER-RESOLVE-001/acceptance.md
+PRE-TERMINAL [implemented] .moai/specs/SPEC-CORE-001/acceptance.md
+PRE-TERMINAL [implemented] .moai/specs/SPEC-DOCS-SITE-001/acceptance.md
+PRE-TERMINAL [in-progress] .moai/specs/SPEC-GITFLOW-DOCTRINE-ALIGN-001/acceptance.md
+PRE-TERMINAL [draft] .moai/specs/SPEC-KANBAN-BOOTSTRAP-001/acceptance.md
+PRE-TERMINAL [implemented] .moai/specs/SPEC-LOOP-001/acceptance.md
+PRE-TERMINAL [implemented] .moai/specs/SPEC-MX-001/acceptance.md
+PRE-TERMINAL [implemented] .moai/specs/SPEC-SLV3-001/acceptance.md
+PRE-TERMINAL [implemented] .moai/specs/SPEC-STATUSLINE-001/acceptance.md
+PRE-TERMINAL [draft] .moai/specs/SPEC-UPDATE-CI-GUARD-001/acceptance.md
+PRE-TERMINAL [implemented] .moai/specs/SPEC-V3R2-CON-001/acceptance.md
+PRE-TERMINAL [implemented] .moai/specs/SPEC-V3R2-HRN-002/acceptance.md
+PRE-TERMINAL [implemented] .moai/specs/SPEC-V3R2-ORC-001/acceptance.md
+PRE-TERMINAL [implemented] .moai/specs/SPEC-V3R2-RT-001/acceptance.md
+PRE-TERMINAL [implemented] .moai/specs/SPEC-V3R2-RT-004/acceptance.md
+PRE-TERMINAL [implemented] .moai/specs/SPEC-V3R2-RT-005/acceptance.md
+PRE-TERMINAL [implemented] .moai/specs/SPEC-V3R2-SPC-003/acceptance.md
+PRE-TERMINAL [implemented] .moai/specs/SPEC-V3R2-SPC-004/acceptance.md
+PRE-TERMINAL [implemented] .moai/specs/SPEC-V3R2-WF-002/acceptance.md
+PRE-TERMINAL [implemented] .moai/specs/SPEC-V3R2-WF-006/acceptance.md
+PRE-TERMINAL [implemented] .moai/specs/SPEC-V3R3-COV-001/acceptance.md
+PRE-TERMINAL [implemented] .moai/specs/SPEC-V3R4-HOOK-HARDEN-001/acceptance.md
+PRE-TERMINAL [implemented] .moai/specs/SPEC-V3R6-AUDIT-MODEL-PIN-001/acceptance.md
+PRE-TERMINAL [implemented] .moai/specs/SPEC-V3R6-GEARS-MIGRATION-001/acceptance.md
+PRE-TERMINAL [implemented] .moai/specs/SPEC-V3R6-SKILL-GEARS-ALIGN-001/acceptance.md
+PRE-TERMINAL [implemented] .moai/specs/SPEC-V3R6-UPDATE-ARCHIVE-CONTRACT-001/acceptance.md
+PRE-TERMINAL [implemented] .moai/specs/SPEC-WF-AUDIT-GATE-001/acceptance.md
+---
+multi-domain files      : 156
+  status=completed      : 124
+  pre-terminal          : 32
+  no spec.md status     : 0
