@@ -29,9 +29,14 @@ import (
 )
 
 // Entry is one subject's outcome inside an evaluation result.
+//
+// The JSON tags are load-bearing rather than decorative: a result travels from
+// the refresh that produced it to the LATER activation that renders it through
+// the store (store.go), and a shape that does not survive that round trip would
+// arrive as a contract violation that never happened.
 type Entry struct {
 	// Subject names what was evaluated.
-	Subject string
+	Subject string `json:"subject"`
 
 	// Classifications carries the entry's classification. The contract says
 	// exactly one; the field is a slice so a result that violates that clause
@@ -40,7 +45,7 @@ type Entry struct {
 	// value on comparison and would be treated as nothing-to-report — it
 	// under-fires rather than failing loudly, which is the failure this
 	// representation exists to make visible.
-	Classifications []string
+	Classifications []string `json:"classifications"`
 
 	// Surface is the producer's folded surface value, carried through and
 	// DELIBERATELY never consulted. More than one classification folds to the
@@ -49,7 +54,7 @@ type Entry struct {
 	// nothing-to-report. The field exists so a result carrying such an entry is
 	// representable — that is the fixture AC-GDL-001 clause (c) requires — not
 	// so the partition can read it.
-	Surface string
+	Surface string `json:"surface"`
 }
 
 // Designation carries which value of the producer's vocabulary is the clean
@@ -57,17 +62,17 @@ type Entry struct {
 // more than one (multi-valued) are both contract violations and are
 // representable so they can be refused.
 type Designation struct {
-	Values []string
+	Values []string `json:"values"`
 }
 
 // Result is one evaluation, as consumed by the advisory.
 type Result struct {
 	// Entries is the evaluated set.
-	Entries []Entry
+	Entries []Entry `json:"entries"`
 
 	// Clean designates the vocabulary's clean value. A nil pointer is an absent
 	// designation — distinct from a present-but-null one.
-	Clean *Designation
+	Clean *Designation `json:"clean"`
 }
 
 // Errors returned by Partition when the consumed result violates the contract.

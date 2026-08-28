@@ -492,6 +492,19 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 	}
 	appendAdditionalContext(out, binaryLagAdvisory(ctx, lagRoot))
 
+	// SPEC-GUARD-LIVENESS-001 REQ-GDL-004/005/010/011 (card t333 M2): the guard
+	// firing-liveness verdict, emitted without anyone asking for it.
+	//
+	// It joins THIS block through the same helper rather than opening a surface
+	// of its own. A second channel would split one concern across two, and a
+	// reader who learns to skip one has no reason to treat the other
+	// differently — which is the filtering mechanism this card is about,
+	// applied twice.
+	//
+	// The read is of a persisted verdict; the refresh that produces the next
+	// one was initiated at the top of Handle and is not waited on here.
+	appendAdditionalContext(out, guardLivenessAdvisory(guardLivenessRoot))
+
 	return out, nil
 }
 

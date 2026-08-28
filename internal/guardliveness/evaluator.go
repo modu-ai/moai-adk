@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"time"
 )
 
 // Activation describes one activation of the already-attended host surface.
@@ -45,20 +46,45 @@ func (unwiredProducer) Produce(context.Context, Activation) (Result, error) {
 // no producer; the count at the query layer stays the count of activations.
 func Unwired() Producer { return unwiredProducer{} }
 
+// Sink records a completed refresh for a later activation to read. *Store is
+// the implementation; the interface exists so the evaluator does not know where
+// the result lands, and so a test can watch it land.
+type Sink interface {
+	Save(root string, r Result, takenAt time.Time) error
+}
+
 // Evaluator runs the refresh half of the advisory: it asks the producer for the
-// next result. It is pull-based and has no cadence of its own — a scheduled
-// watcher would be subject to the very defect it watches for (REQ-GDL-002).
+// next result and persists it. It is pull-based and has no cadence of its own —
+// a scheduled watcher would be subject to the very defect it watches for
+// (REQ-GDL-002).
 type Evaluator struct {
 	producer Producer
+	sink     Sink
+}
+
+// Option configures an Evaluator.
+type Option func(*Evaluator)
+
+// WithSink persists each completed refresh, which is what carries a result
+// across the render/refresh split: the host surface is latency-bounded, so the
+// activation that PRODUCES a verdict is never the one that renders it
+// (REQ-GDL-011/012). Without a sink the evaluator still refreshes, and nothing
+// downstream ever sees the answer.
+func WithSink(s Sink) Option {
+	return func(e *Evaluator) { e.sink = s }
 }
 
 // New returns an Evaluator over the given producer. A nil producer degrades to
 // Unwired rather than panicking at session start.
-func New(p Producer) *Evaluator {
+func New(p Producer, opts ...Option) *Evaluator {
 	if p == nil {
 		p = Unwired()
 	}
-	return &Evaluator{producer: p}
+	e := &Evaluator{producer: p}
+	for _, opt := range opts {
+		opt(e)
+	}
+	return e
 }
 
 // Refresh asks the producer for the next result.
@@ -69,6 +95,31 @@ func New(p Producer) *Evaluator {
 // same defect one frame inward.
 func (e *Evaluator) Refresh(ctx context.Context, act Activation) (Result, error) {
 	return e.producer.Produce(ctx, act)
+}
+
+// Run refreshes and persists, which is the whole of one activation's
+// production half.
+//
+// Only a refresh that ANSWERED is persisted. Recording a failed one would
+// replace the last verdict anything actually measured with an empty result,
+// and an empty result partitions to nothing non-clean — an all-clear about a
+// set nobody evaluated (spec.md §A.0). The previous result stays, and its age
+// keeps growing where the reader can see it (REQ-GDL-006).
+//
+// A persistence failure is reported and is not the refresh's failure: the
+// verdict was produced correctly, and only its carriage to the next activation
+// broke.
+func (e *Evaluator) Run(ctx context.Context, act Activation) (Result, error) {
+	res, err := e.Refresh(ctx, act)
+	if err != nil {
+		return res, err
+	}
+	if e.sink != nil {
+		if saveErr := e.sink.Save(act.Root, res, time.Now()); saveErr != nil {
+			slog.Debug("guard liveness: persisting the refresh failed (non-blocking)", "error", saveErr.Error())
+		}
+	}
+	return res, nil
 }
 
 // Refresh is the handle on one initiated refresh.
@@ -91,9 +142,9 @@ func (r *Refresh) Wait() (Result, error) {
 // Both halves are load-bearing. Initiating on EVERY activation is what makes
 // the verdict entailed by someone working rather than by a cadence of its own;
 // returning without awaiting is what makes that compatible with a
-// latency-bounded host surface. The result is carried on the handle for a
-// caller that wants it; the host surface discards it and will read the
-// persisted result instead.
+// latency-bounded host surface. The completed result is persisted (Run) for a
+// LATER activation to render from; the handle carries it for a caller that
+// wants to observe this one, and the host surface does not.
 //
 // @MX:WARN: [AUTO] unjoined background goroutine — the refresh outlives this
 // call by construction.
@@ -111,7 +162,7 @@ func (e *Evaluator) OnActivation(ctx context.Context, act Activation) *Refresh {
 				r.err = errors.New("guard liveness: refresh panicked")
 			}
 		}()
-		res, err := e.Refresh(ctx, act)
+		res, err := e.Run(ctx, act)
 		r.result = res
 		r.err = err
 	}()
