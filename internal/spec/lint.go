@@ -136,6 +136,12 @@ func NewLinter(opts LinterOptions) *Linter {
 		&StatusCaseNormalizationRule{},
 		&StatusGitConsistencyRule{},
 		&OwnershipTransitionRule{},
+		// MovingRefUnpinnedRule — SPEC-MOVING-REF-GUARD-001 M3, REQ-MRG-001.
+		// Per-SPEC (not cross-SPEC): it reads the SPEC's own sibling artifacts
+		// via filepath.Dir(doc.Path), so lint.skip and era demotion both apply.
+		// Severity is warning only (spec.md §D.5) and the code is deliberately
+		// NOT in eraDemotableCodes.
+		&MovingRefUnpinnedRule{},
 		// cross-SPEC rules
 		&DependencyCycleRule{},
 		&DuplicateSPECIDRule{},
