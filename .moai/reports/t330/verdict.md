@@ -51,7 +51,7 @@ The full suite was NOT run locally, per CLAUDE.local.md §4 — the whole-module
 | `0048e33cd` | sync-phase close: CHANGELOG entry, docs-site 4-locale, `progress.md` §E.4, `spec.md` frontmatter `in-progress → completed` |
 | `0566d5394` | backfill `sync_commit_sha` (a commit cannot name its own SHA) |
 | `7382ce247` | correct the CHANGELOG close sentence to the transitions that actually happened |
-| `<this commit>` | audit report + verdict + F1-F3 corrections |
+| `2eb5b8274` | audit report + verdict + F1-F3 corrections (SHA backfilled in the following commit — a commit cannot name its own) |
 
 ### Independent sync audit
 
