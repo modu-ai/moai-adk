@@ -389,7 +389,7 @@ push_state: "not pushed, not merged — this branch is the last merge of a batch
 
 ```yaml
 sync_complete_at: 2026-08-28
-sync_commit_sha: "pending-backfill-sync"   # a commit cannot cite its own SHA; backfilled in the immediately following commit
+sync_commit_sha: "1b0081804"   # a commit cannot cite its own SHA; backfilled in the immediately following commit
 sync_status: complete
 b12_self_test_a: "grep -c 'SPEC-AC-COUNT-DISCRIMINATOR-001' CHANGELOG.md -> 0 (pre-emission; no duplicate entry from a parallel session)"
 b12_self_test_b: "amended counter (manager-docs.md B12, MOAI-AC-COUNTER sentinels) on acceptance.md -> stdout 24, rc=0, stderr 'live=24 excluded=3 ambiguous=0'; retired token sweep on the same file -> 27. The gap of 3 is exactly the excluded identifiers the old sweep could not see, and the CHANGELOG entry states 24"
