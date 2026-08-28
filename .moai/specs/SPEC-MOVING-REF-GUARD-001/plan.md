@@ -44,6 +44,11 @@ Run in the worktree, before the first M3 edit:
    "what has this work changed" and wrong for "what has this branch added beyond mainline". The
    second question is the one AC-MRG-010 asks, and it needs its own anchor.
    - Recorded: `MERGE_BASELINE_SHA = 5e194bba27c146d8c2157d92b4a3fb3995919ff0` (2026-08-28).
+   - Re-recorded after absorbing `origin/develop` at the integration window:
+     `MERGE_BASELINE_SHA = c48e8aaa251950e194025ed6a8c4733d61b88cde` (2026-08-29). This is the
+     value AC-MRG-010 is decided against from here on. The 2026-08-28 entry is kept rather than
+     overwritten: erasing a superseded anchor destroys the record of what was measured when, which
+     is the same information loss this SPEC exists to prevent.
    - **[HARD] Re-record on every mainline absorption.** A merge-base is computed, and this SPEC
      forbids deciding against a computed-at-read-time anchor — so it is frozen here instead. The
      freeze has a cost: the literal goes stale the moment this branch merges mainline again, and
