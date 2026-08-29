@@ -218,6 +218,15 @@ remaining shelter for the five findings on closed history and this criterion wou
 wrong thing. The lane's instruction in that case is to **stop and report**, not to add the entry and
 not to weaken this criterion — see `spec.md` REQ-SSF-007 and `plan.md` §C.4.
 
+**[HARD] The contingency was RESOLVED by observation on 2026-08-29, and the criterion is unchanged.**
+The t357 lane reports, through the lead, that t357 M2 sets `SeverityError` directly at its own rule's
+emission site with no global warning-to-error promotion — so this rule's `Finding.Severity` stays
+`warning`, the shelter holds, and REQ-SSF-007's premise is intact. This is a **reported** observation,
+not one verified from this tree (no t357 SPEC directory exists here). The resolution **strengthens**
+this criterion's premise: the map entry would still be inert, so its absence is still what the map
+should show. It does not relax the criterion, and the "stop and report" instruction above is now
+historical.
+
 **Fails when:** an implementer adds the code to the map "for symmetry" with the demotion the rule
 already receives.
 **Mutation that must turn it red:** add `"SyncSHASlotFormat": true` to the map — the grep must show a

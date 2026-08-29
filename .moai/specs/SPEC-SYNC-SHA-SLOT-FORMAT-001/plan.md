@@ -112,6 +112,16 @@ Full measured baseline in `spec.md` §B. Every figure there was measured in this
    operator's. Do **not** attempt to verify t357 from this tree; no SPEC directory for it exists here,
    and this row is carried from the dispatch as an expectation.
 
+   **RESOLVED by observation, 2026-08-29.** The t357 lane reports, through the lead, that t357 M2 sets
+   `Severity: SeverityError` directly at its own rule's emission site (`REQ-AST-001-006`, guarded by
+   `TestArtifactStatus_SurvivesEraDemotion`) — no global warning-to-error promotion, no `Advisory`, no
+   `eraDemotableCodes` entry of its own. It therefore promotes at **neither** row of the table above:
+   this rule's `Finding.Severity` stays `warning`, the shelter holds, and REQ-SSF-007 stands as
+   written. This is a **reported** observation, not one measured here — no t357 SPEC directory exists
+   in this tree — so it is recorded with its provenance for later re-verification against t357's
+   landed diff. The lane instruction above is consequently **historical**: it is what would have
+   applied in the second case, and is no longer live.
+
 ## §D. Constraints
 
 - **No corpus repair.** `git diff a6bbbf82b -- .moai/specs` must show no modification to any

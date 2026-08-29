@@ -1,7 +1,7 @@
 ---
 id: SPEC-SYNC-SHA-SLOT-FORMAT-001
 title: "sync_commit_sha slot format: one value grammar, one shared predicate, and a guard that survives the backfill window"
-version: "0.2.0"
+version: "0.2.1"
 status: in-progress
 created: 2026-08-29
 updated: 2026-08-29
@@ -22,6 +22,7 @@ related_specs: [SPEC-MOVING-REF-GUARD-001, SPEC-V3R6-LIFECYCLE-REDESIGN-001]
 
 | Version | Date | Change | Author |
 |---------|------|--------|--------|
+| 0.2.1 | 2026-08-29 | REQ-SSF-007's t357 contingency **resolved by observation, not deleted**. The t357 lane reports, through the lead, that t357 M2 sets `Severity: SeverityError` directly at its own rule's emission site (`REQ-AST-001-006`, guarded by `TestArtifactStatus_SurvivesEraDemotion`), with no global warning->error promotion, no `Advisory`, and no `eraDemotableCodes` entry of its own — so it promotes at neither layer the contingency table named as a hazard, this rule's `Finding.Severity` stays `warning`, and REQ-SSF-007 holds as written. The mechanism paragraph and the two-layer table are kept because they record what was at stake; the lane's "stop and report" instruction is marked historical. Recorded as a **reported** observation with its provenance — no t357 SPEC directory exists in this tree, so nothing was verified here. Mirrored into `plan.md` §C.4 and `acceptance.md` AC-SSF-010. §D.3 additionally records the contrast the operator asked to keep: t299 and t357 M2 reached opposite severities through the same count-first procedure (5 findings / 0 non-advisory -> `warning`; 392 day-one violations -> `error`, on the ground that the same commit removes all 392). No requirement, criterion, or measured figure changed. | manager-spec |
 | 0.2.0 | 2026-08-29 | Plan audit iter-1 FAIL (0.80, `.moai/reports/t299/plan-audit-iter1.md`) remediated. **D1 (critical)**: §B.6 derived its enforcement cost from §B.2's twelve non-SHA values without passing them through REQ-SSF-005's own exemption — seven are recognized placeholders and are not findings. The corrected prediction is **5 findings, 0 non-advisory**, re-derived here with the auditor's classifier and named per file and line. The sharpest consequence is that the two `implemented` SPECs §B.6 had nominated as the non-advisory pair both hold `pending-backfill-sync` and are therefore **exempt**: the old prediction and the exemption cancelled exactly, which is why the error was invisible from inside the derivation. §D.3, AC-SSF-006, `plan.md` §C.3 and §F M4 all inherited the figure and are corrected with it. **D2**: §D.3's severity rationale named those two exempt SPECs as its exemplars and so refuted itself; rewritten against "0 non-advisory, 5 advisory, all on closed history", which strengthens the `warning` verdict rather than weakening it. **D3**: AC-SSF-010 added to decide REQ-SSF-007 mechanically, and REQ-SSF-007's justification is now stated as **conditional** on the rule's severity remaining `warning` at the `Finding` level, with the t357 contingency and the lane's response named. **D4**: the `mx_commit_sha` inheritance is measured (85 slots, 9 non-SHA, three of them deliberate declarations) and accepted in an explicit Out-of-Scope bullet, with the blast radius measured rather than asserted — all three owning SPECs are `completed`. **D5**: §B.3's command now excludes this SPEC's own directory, which was self-matching twice. **D6**: the annotation figure is restated with its correct denominator (105 of 346 values; 99 of the 334 conforming). D7/D8 recorded, no change; D9 is a pre-existing repository-wide inconsistency and stays recorded. A point the audit implied but did not state is now explicit in §A and §D.2: the lint rule will never flag the motivating t354 slot, because that slot is an admitted placeholder — the closer-side inversion is what repairs it. | manager-spec |
 | 0.1.0 | 2026-08-29 | Initial plan-phase authoring for card t299, in worktree `.claude/worktrees/t299` at HEAD `a6bbbf82b`. Every figure in §B was measured in this tree; none was carried from the dispatch. Two dispatch claims were re-derived and one was **sharpened**: the root cause is not that `needsSHABackfill`'s allowlist is merely closed, but that the allowlist and the doctrine disagree — the `pending-backfill-*` spelling `spec-frontmatter-schema.md` §D3 itself prescribes is **absent** from that allowlist, so the closer's blind spot is aimed precisely at the sanctioned pattern (§B.3). A fourth independent value reader was found beyond the three named in the dispatch (§B.4). | manager-spec |
 
@@ -289,12 +290,28 @@ existing warning-demotion path already covers grandfathered and terminal-status 
 > | `Report.HasErrors` (escalation-time) | `Finding.Severity` stays `warning`; the entry stays inert; REQ-SSF-007 holds unchanged |
 > | `Finding.Severity` (finding-time) | the demotion path no longer shelters these findings; REQ-SSF-007's premise is void |
 >
-> **What the lane does if t357 lands first:** read which layer it promotes at, and if it is
-> `Finding.Severity`, **stop and report to the lead** rather than adding the map entry on its own
-> authority. Adding it would satisfy REQ-SSF-007's inverse without the requirement having been
-> changed, and the choice between "shelter these five" and "keep the map errors-only" is a policy
-> decision the operator owns. AC-SSF-010 decides the requirement as written; it does not decide the
-> contingency.
+> **RESOLVED by observation on 2026-08-29 — the contingency did not materialize. It is kept here
+> rather than deleted so a later reader can see what was at stake and re-check it.** The t357 lane
+> reports, through the lead, that card t357 M2 sets `Severity: SeverityError` **directly at its own
+> rule's emission site** (`REQ-AST-001-006`, guarded by `TestArtifactStatus_SurvivesEraDemotion`). It
+> introduces no global `SeverityWarning` -> error promotion, sets no `Advisory`, and adds no code of
+> its own to `eraDemotableCodes`. t357 therefore promotes at **neither** of the two layers the table
+> above anticipates as a hazard: this rule's `Finding.Severity` stays `warning`, the warning-demotion
+> path still shelters it, and an `eraDemotableCodes` entry for `SyncSHASlotFormat` would still be
+> inert. **REQ-SSF-007's premise holds, and the requirement stands as written.**
+>
+> **This is a reported observation, not one this lane measured.** No t357 SPEC directory exists in
+> this tree, and nothing above was read from `internal/spec` here; it is attributed to the t357 lane
+> via the lead and recorded with that provenance so a later reader re-verifies it against t357's
+> landed diff rather than inheriting it. The resolution **strengthens** AC-SSF-010's premise; it does
+> not relax the criterion, which still requires the code's absence from the map.
+>
+> **Historical — the response that would have applied.** Had t357 promoted at `Finding.Severity`, the
+> lane's instruction was to read which layer it promotes at and **stop and report to the lead** rather
+> than adding the map entry on its own authority: adding it would have satisfied REQ-SSF-007's inverse
+> without the requirement having been changed, and the choice between "shelter these five" and "keep
+> the map errors-only" is a policy decision the operator owns. That response is no longer live.
+> AC-SSF-010 decides the requirement as written; it never decided the contingency.
 
 **REQ-SSF-008** — The system shall not alter `cleanFieldValue`, whose `(this commit)`-as-value
 behavior the era-classification heuristics depend on.
@@ -401,6 +418,18 @@ exemplar of enforcement cost.
 SPECs (`lint.go:284`); a warning is already marked advisory by the `case f.Severity == SeverityWarning`
 branch immediately below it. Adding the code would be inert, and inert entries in a policy map read as
 intent. This follows `MovingRefUnpinnedRule`, which records the same choice for the same reason.
+
+**A contrast worth keeping: card t357 M2 reached the opposite severity through the same procedure.**
+Both cards chose a severity by first counting the day-one violations and only then picking the
+severity that count could carry. This card measured **5 findings / 0 non-advisory** and chose
+`warning`. t357 M2 — reported through the lead, **not** verified from this tree — measured **392
+day-one violations** and chose `error`. The two verdicts are not in tension, and t357's ground is
+**not** "no violations exist": it is that the **same commit** removes all 392, so its rule lands on a
+corpus already clean. That ground is load-bearing in exactly the way this card's is — if the cleanup
+were dropped from that commit, t357's severity decision would have to be revisited immediately, just
+as `warning` here would have to be revisited if the five findings sat on open cards rather than closed
+history. What a later reader should carry from the comparison is the procedure, not either verdict:
+count the day-one cost first, then choose the severity that cost can bear.
 
 ### D.4 — t354 coordination
 
