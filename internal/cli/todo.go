@@ -77,6 +77,17 @@ func newTodoStore() *kanban.BacklogStore {
 	return kanban.NewBacklogStore(todoBacklogPath(resolveTodoQueueRoot()))
 }
 
+// todoLandedRef is the single place the todo surface resolves the ref the
+// landing question is asked about, so the help text, the flag description, the
+// refusal, and the query itself can never name different refs.
+//
+// It resolves against the SAME root the queue does — the primary checkout —
+// because the queue and the integration branch are properties of one
+// repository, not of whichever worktree the command happens to run in.
+func todoLandedRef() string {
+	return kanban.LandedRefFor(resolveTodoQueueRoot())
+}
+
 // newTodoCmd creates the `moai todo` parent command.
 func newTodoCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -342,6 +353,7 @@ func newTodoListCmd() *cobra.Command {
 func newTodoDoneCmd() *cobra.Command {
 	var expect string
 	var requireLanded bool
+	landedRef := todoLandedRef()
 	cmd := &cobra.Command{
 		Use:   "done <n>",
 		Short: "Archive a card out of the backlog queue by id",
@@ -354,14 +366,22 @@ to every live-queue reader (` + "`list`, `next`, `why`, `analyze`" + `, the coun
 ` + "`--expect <prefix>`" + ` refuses unless the addressed card's text starts with the
 prefix — the guard against closing the wrong card.
 
-` + "`--require-landed`" + ` refuses unless a commit on ` + kanban.LandedRef + ` names the card.
+` + "`--require-landed`" + ` refuses unless a commit on ` + landedRef + ` names the card.
 It is OPT-IN and honestly limited: it answers "has anything naming this card
 landed on that ref", NOT "has this card's last step landed", so it cannot tell a
-run commit from a sync commit. Absent the flag no landing query runs at all.`,
+run commit from a sync commit. Absent the flag no landing query runs at all.
+
+Every successful invocation prints one landing verdict on stdout —
+` + "`done <id> landing=landed|not-landed|unknown`" + `. Without the flag the verdict is
+` + "`unknown`" + `, because no query ran: "the guard passed" and "the guard did not
+run" are different facts and no longer the same bytes.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := normalizeTodoRef(args[0])
 			store := newTodoStore()
+			// Unknown until a query answers otherwise. Absent the flag no
+			// query runs at all, and `unknown` is the honest report of that.
+			verdict := kanban.LandingUnknown
 			if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
 				// Refused mutations below: Mutate writes nothing, so the
 				// record stays byte-identical on every one of them.
@@ -380,23 +400,29 @@ run commit from a sync commit. Absent the flag no landing query runs at all.`,
 						id, todoTextPrefix(rec.Items[at].Text), expect)
 				}
 				if requireLanded {
-					if err := todoRequireLanded(cmd, id); err != nil {
+					answer, err := todoRequireLanded(cmd, id)
+					if err != nil {
 						return err
 					}
+					verdict = answer
 				}
 				return rec.ArchiveCard(id)
 			}); err != nil {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
 				return err
 			}
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "done %s\n", id)
+			// One line per act, carrying exactly one landing verdict — a second
+			// line would give an operator script two records for one event.
+			// The suffix preserves the `done <id>` prefix every existing
+			// reader keys off.
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "done %s landing=%s\n", id, verdict)
 			return nil
 		},
 	}
 	cmd.Flags().StringVar(&expect, "expect", "",
 		"Refuse unless the card text starts with this prefix")
 	cmd.Flags().BoolVar(&requireLanded, "require-landed", false,
-		"Refuse unless a commit on "+kanban.LandedRef+" names the card (opt-in; see --help for its limit)")
+		"Refuse unless a commit on "+landedRef+" names the card (opt-in; see --help for its limit)")
 	return cmd
 }
 
@@ -414,20 +440,21 @@ run commit from a sync commit. Absent the flag no landing query runs at all.`,
 // this SPEC. Making it answer the right question needs a persisted
 // landing-state field, which is a separate card's scope; this ships the seam
 // and says plainly what it can and cannot answer (spec.md §A.4).
-func todoRequireLanded(cmd *cobra.Command, id string) error {
-	landed, err := kanban.GitLandedQuerier{Run: todoRunCommand}.Landed(id)
+func todoRequireLanded(cmd *cobra.Command, id string) (kanban.LandingAnswer, error) {
+	q := kanban.GitLandedQuerier{Run: todoRunCommand, Ref: todoLandedRef()}
+	answer, err := q.Landed(id)
 	if err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
-			"note: --require-landed could not answer for %s (%v) — proceeding, because an unanswerable query is not evidence of not-landed\n",
-			id, err)
-		return nil
+			"note: --require-landed could not answer for %s against %s (%v) — proceeding, because an unanswerable query is not evidence of not-landed\n",
+			id, q.LandedRef(), err)
+		return kanban.LandingUnknown, nil
 	}
-	if !landed {
-		return fmt.Errorf("backlog item %s is named by no commit on %s — --require-landed refuses "+
+	if answer == kanban.LandingNotLanded {
+		return answer, fmt.Errorf("backlog item %s is named by no commit on %s — --require-landed refuses "+
 			"(the check asks whether anything naming the card has landed on that ref, not whether the card's last step has)",
-			id, kanban.LandedRef)
+			id, q.LandedRef())
 	}
-	return nil
+	return answer, nil
 }
 
 // newTodoNextCmd — `moai todo next [<n>] [--spec <SPEC-ID>]` (REQ-TODO-005).

@@ -1195,10 +1195,217 @@ guard's two steps, not from the step whose name is "neutrality".
   mirror-parity guard does not cover this pair; a later edit to the local §2.1 will not be reported
   as a missing mirror update.
 
+### Repair round — `MovingRefUnpinned` emitted advisory (REQ-MRG-009 as amended at spec.md v0.8.0)
+
+Measured in this worktree on branch `WT-moving-ref-guard`. Pre-repair HEAD `a4c6cb6ec`; the
+post-repair corpus runs and the package suite were executed against the working tree carrying the
+repair, immediately before the commit that lands it. Frozen anchors cited as literals:
+`BASELINE_SHA = d566ecc7511e1954e3aeb1dff3a60afa5be1089b`,
+`MERGE_BASELINE_SHA = c48e8aaa251950e194025ed6a8c4733d61b88cde`.
+
+#### Claim
+
+1. Before the repair, `moai spec lint --strict` exits 1 on the live corpus.
+2. `MovingRefUnpinnedRule` now sets `Advisory: true` at its own emission site — both branches, the
+   incomplete-marker finding and the default one — leaving `Severity` at `SeverityWarning`.
+3. After the repair, `moai spec lint --strict` exits **0** on the same corpus.
+4. After the repair, `moai spec lint` (no `--strict`) still **reports** the findings: the count is
+   non-zero and identical under both invocations.
+5. AC-MRG-005 as amended is falsifiable in both directions: one mutation reddens the exit half and
+   leaves the count half green, the other reddens the count half and leaves both exit assertions
+   green.
+6. `internal/spec` is green and the `TestMovingRef` selector matches a non-zero number of cases.
+
+#### Evidence
+
+**Claim 1 — pre-repair `--strict`** (`go run ./cmd/moai spec lint --strict`, at `a4c6cb6ec`,
+evidence `.moai/state/verify/t342/pre-strict.txt`):
+
+```
+0 error(s), 174 warning(s)
+exit status 1
+rc=1
+```
+`grep -c MovingRefUnpinned` over that output: `110`.
+
+**Claim 2 — the diff.** `internal/spec/lint_movingref.go`, two emission sites, one added line each:
+
+```go
+				Severity: SeverityWarning,
+				Advisory: true, // REQ-MRG-009 (v0.8.0): reports, never gates — see file header
+				Code:     r.Code(),
+```
+
+`applyEraDemotion`, `eraDemotableCodes`, `Report.HasErrors`, and every other rule are byte-unchanged
+in this commit; the file header gained the paragraph recording why the mechanism is the emission
+site rather than the era map. **Precedent**: `StatusGitConsistencyRule` already emits
+`Advisory: true` at its own emission site (`internal/spec/lint.go`,
+`Advisory: true, // heuristic git-implied signal — never strict-escalated`), so this repair follows
+an established pattern in the same package rather than introducing one.
+
+**Claim 3 — post-repair `--strict`** (`go run ./cmd/moai spec lint --strict`,
+`.moai/state/verify/t342/post-strict.txt`):
+
+```
+0 error(s), 174 warning(s)
+rc=0
+```
+
+**Claim 4 — post-repair non-strict** (`go run ./cmd/moai spec lint`,
+`.moai/state/verify/t342/post-plain.txt`):
+
+```
+0 error(s), 174 warning(s)
+rc=0
+```
+`grep -c MovingRefUnpinned`: **110** under `--strict`, **110** under the plain run. The finding
+count did not move; only the exit code did. This is the observation that separates an advisory
+guard from a switched-off one — rc 0 alone is produced just as readily by a rule emitting nothing.
+
+**Claim 5 — the two mutations, planted, observed, reverted.**
+
+Mutation A, drop `Advisory: true` from both emission sites
+(`go test ./internal/spec/ -run TestMovingRef_AdvisoryAndStillReported -v`):
+
+```
+=== RUN   TestMovingRef_AdvisoryAndStillReported
+    lint_movingref_test.go:202: --strict lint must ALSO exit 0: the finding is advisory and must not escalate
+    lint_movingref_test.go:225: finding is NOT Advisory — `--strict` escalates it and the corpus gates; the rule must set Advisory at its emission site
+--- FAIL: TestMovingRef_AdvisoryAndStillReported (0.51s)
+```
+The count assertions stayed green, as the amended criterion requires.
+
+Mutation B, remove `&MovingRefUnpinnedRule{}` from `defaultRules()` in `internal/spec/lint.go`:
+
+```
+=== RUN   TestMovingRef_AdvisoryAndStillReported
+    lint_movingref_test.go:209: non-strict lint reported ZERO MovingRefUnpinned findings — exit 0 is vacuous; the guard is switched off
+    lint_movingref_test.go:216: expected 1 MovingRefUnpinned finding on this fixture, got 0
+--- FAIL: TestMovingRef_AdvisoryAndStillReported (0.54s)
+```
+Both exit assertions stayed green — the rule emits nothing, so nothing escalates. The two mutations
+therefore redden disjoint halves, which is what makes the criterion falsifiable in both directions.
+
+Both mutations were reverted immediately after the observation; the restored file was re-checked by
+counting the marker (`grep -c "Advisory: true"` → 3 in `lint_movingref.go`; `grep -c
+"&MovingRefUnpinnedRule{}"` → 1 in `lint.go`).
+
+**Claim 6 — package suite and selector count.**
+
+```
+ok  	github.com/modu-ai/moai-adk/internal/spec	32.974s
+rc=0
+```
+`go test ./internal/spec/ -run TestMovingRef -count=1 -v | grep -c '^--- PASS'` → **9**. A
+zero-match selector is therefore ruled out. `go vet ./internal/spec/...` exits 0 with no output.
+
+#### Baseline-attribution
+
+- Pre-repair corpus measurement: `go run ./cmd/moai spec lint --strict` at HEAD `a4c6cb6ec` on
+  `WT-moving-ref-guard`, output above, evidence `.moai/state/verify/t342/pre-strict.txt`.
+- Post-repair corpus measurements: the same two commands against the working tree carrying the
+  repair, at the same HEAD plus the uncommitted change; evidence `post-strict.txt` / `post-plain.txt`
+  in the same directory.
+- Package suite and `go vet`: same tree, same moment; evidence `.moai/state/verify/t342/pkg-test.txt`.
+- Frozen literals `BASELINE_SHA d566ecc75…` and `MERGE_BASELINE_SHA c48e8aaa2…` are cited as
+  recorded values and were NOT re-resolved in this round.
+- The `develop` CI attribution (`84b3b7949` reddening SPEC Lint, red across the three following
+  heads, green at `c48e8aaa2`) is carried from `spec.md` §D.7 and was **not** re-measured here.
+
+#### Gaps
+
+- **`develop`'s CI was not re-run.** The claim that this repair turns the SPEC Lint job green rests
+  on the local corpus reproduction, not on an observed CI run; the branch is unpushed.
+- **The corpus figure `110` is this tree's**, which carries this branch's own SPEC directory. The
+  figure on `develop` at `a6bbbf82b` was also 110 per §D.7, but that is a carried number, not one
+  re-measured here.
+- **No coverage figure was measured.** The repair adds one field to two existing composite literals
+  and rewrites one test; `-cover` was not run.
+- **`go test ./...` was not run** — package-scoped only, per the dispatch and the local
+  full-suite prohibition.
+- **The other 64 non-`MovingRefUnpinned` warnings were not examined.** They are advisory era-demoted
+  findings per §D.7; that classification was not re-verified here.
+
+#### Residual-risk
+
+- **The guard now reports without gating, and nothing mechanically forces the promotion back.** The
+  promotion condition lives in `spec.md` §D.7 as prose — remediate or R3-exempt the
+  `.moai/reports/t342/corpus-triage.md` findings, then restore the retracted `--strict` clause
+  verbatim — and **prose does not fire**. No test, no lint rule, and no CI job observes that the
+  corpus has been remediated, so the advisory state persists until a human reads §D.7 and acts.
+  This is, by this SPEC's own §D.7 wording, the same shape the SPEC exists to detect: a claim true
+  when written, quietly emptied afterwards, with nothing signalling the change.
+- **A future rule that genuinely should gate could be written advisory by imitation.** The emission
+  site now carries a visible `Advisory: true` precedent inside this package with a comment that
+  reads as a general licence unless the header paragraph is also read.
+- **The count assertion is fixture-scoped.** `TestMovingRef_AdvisoryAndStillReported` decides the
+  count on a one-finding fixture; a regression that narrowed the rule to fire on *some* corpus lines
+  but not others would keep that fixture at 1 and pass.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+**Gap — not written by run-phase; recorded here at sync rather than fabricated.** This section is
+`manager-develop`'s own signal, and run-phase closed on commit `3b71281e7` (the document round)
+without emitting it. Per `verification-claim-integrity.md` §1.1, sync-phase does not author a
+run-phase audit-ready signal it did not itself observe — doing so would be an unobserved completion
+claim on manager-develop's behalf.
+
+The run-phase evidence that does exist is recorded verbatim in §E.2 above, across five dated
+records: the M1-M2 doctrine-and-marker section (claims 1-4, the four planted mutations observed red
+and reverted), the M3 detector record, the M4 corpus-triage record, the M5 template-mirror record,
+and the document round's four-criteria repair. `.moai/reports/t342/verdict.md` is the lane
+orchestrator's independent re-verification of all five (nine V1-V9 checks re-executed, two
+additional mutations planted by the orchestrator itself) — that verdict is the closest thing to a
+run-phase audit-ready signal this SPEC has, and it precedes rather than substitutes for §E.3.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+**Claim.** Sync-phase closed SPEC-MOVING-REF-GUARD-001 on 2026-08-29: the four-artifact frontmatter
+transition `in-progress → implemented → completed` was applied (spec.md is the only artifact
+carrying a `status:` field; plan.md/acceptance.md/progress.md carry none), the CHANGELOG
+`[Unreleased]` section gained one entry naming the delivered rule, doctrine, template mirror, and
+corpus-triage record, and the regression check below confirms no code regression from the
+documentation-only sync commit.
+
+**Evidence.**
+
+```
+$ grep -c 'SPEC-MOVING-REF-GUARD-001' CHANGELOG.md      (pre-emission dup check)
+0
+$ grep -oE 'AC-MRG-[0-9]+' .moai/specs/SPEC-MOVING-REF-GUARD-001/acceptance.md | sort -u | wc -l
+14
+$ go test ./internal/spec/... -count=1
+ok  	github.com/modu-ai/moai-adk/internal/spec	33.083s
+```
+
+**Baseline-attribution.** Commands run in this turn, against this tree, at worktree HEAD `cf8888bf6`
+(pre-sync-commit), branch `WT-moving-ref-guard`. The regression check is package-scoped to
+`internal/spec` — the package this SPEC's own deliverable (the `MovingRefUnpinned` lint rule) lives
+in — per this repository's local-full-suite prohibition (`CLAUDE.local.md` §6); a full-suite
+verdict is CI's, not a local one.
+
+**Gaps.**
+
+- §E.3 is not authored by this section (see above) — it is a recorded gap, not a fabricated PASS.
+- This run covers `internal/spec` only. Two known reds exist elsewhere in the tree, neither observed
+  by this package-scoped run and neither attributable to this SPEC's own change (a documentation-only
+  sync touching no Go source): `TestBinaryLag_OneSeamServesBothSurfaces` (`internal/cli`, card
+  t361) and `TestConcurrencyStress` (`internal/kanban`, card t354). A package-scoped green says
+  nothing about either.
+- `go vet ./internal/spec/...` and `go build ./...` were not re-run in this sync commit — both were
+  observed green by the run-phase verdict (`.moai/reports/t342/verdict.md`) at a later HEAD than
+  this sync commit's parent, and no Go source changes in this sync commit.
+- `sync_commit_sha` cannot be written in this commit — a commit cannot cite its own hash. The field
+  is omitted below and backfilled with the real SHA in the immediately following commit.
+
+**Residual-risk.** The sync-phase transition and CHANGELOG entry are documentation-only; nothing in
+this commit changes the `MovingRefUnpinned` rule's behavior or the doctrine's content. The residual
+risks named in `.moai/reports/t342/verdict.md` § Residual risk (synthetic fixtures, lexical
+`shaPinPattern`, the divergence-figure heuristic, the 35-row instruction-line triage call, the
+doctrine's always-loaded size) carry forward unchanged by this sync.
+
+```yaml
+sync_status: completed
+sync_complete_at: 2026-08-29
+sync_commit_sha: "8088ec3c2"  # a commit cannot cite its own SHA; backfilled in the immediately following commit
+```
