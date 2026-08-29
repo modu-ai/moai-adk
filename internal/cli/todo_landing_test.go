@@ -90,3 +90,77 @@ func TestTodoPR_UnknownReachesJSON(t *testing.T) {
 		t.Errorf("json %q does not carry the unknown outcome", stdout)
 	}
 }
+
+// AC-TLS-006 — `done` prints exactly one landing verdict, and the three
+// answers produce three DISTINCT tokens. This is the criterion whose RED is
+// that "the guard passed" and "the guard did not run" were the same bytes.
+func TestTodoDone_StdoutCarriesTheLandingVerdict(t *testing.T) {
+	cases := []struct {
+		name string
+		args []string
+		out  string
+		err  error
+		want kanban.LandingAnswer
+	}{
+		{"landed", []string{"done", "t1", "--require-landed"}, "abc1234 fix: something (t1)\n", nil, kanban.LandingLanded},
+		{"unanswerable", []string{"done", "t1", "--require-landed"}, "", fmt.Errorf("fatal: bad revision"), kanban.LandingUnknown},
+		{"no query at all", []string{"done", "t1"}, "", nil, kanban.LandingUnknown},
+	}
+	seen := map[string]string{}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			todoFixture(t)
+			seedTodo(t, "alpha work")
+			stubLandingQuery(t, tc.out, tc.err)
+
+			stdout, stderr, err := runTodo(t, tc.args...)
+			if err != nil {
+				t.Fatalf("todo %v: %v (stderr %q)", tc.args, err, stderr)
+			}
+			want := "landing=" + string(tc.want)
+			if !strings.Contains(stdout, want) {
+				t.Errorf("stdout = %q, want it to carry %q", stdout, want)
+			}
+			if n := strings.Count(stdout, "landing="); n != 1 {
+				t.Errorf("stdout = %q carries %d landing verdicts, want exactly 1", stdout, n)
+			}
+			// The archive still goes through and the prefix is preserved —
+			// the report changed, the act did not.
+			if !strings.HasPrefix(stdout, "done t1") {
+				t.Errorf("stdout = %q, want the archive confirmation to keep its prefix", stdout)
+			}
+			seen[tc.name] = strings.TrimSpace(stdout)
+		})
+	}
+	// The distinctness half. Without it, three tokens that happen to be equal
+	// would satisfy every assertion above.
+	if seen["landed"] == seen["unanswerable"] {
+		t.Errorf("a satisfied guard and an unanswerable one print the same bytes (%q) — the defect this SPEC closes", seen["landed"])
+	}
+}
+
+// AC-TLS-007 (regression-guard) — the permissive policy is unchanged: an
+// `unknown` answer still archives the card and still exits 0. This SPEC
+// repairs the reporting axis, never the policy axis.
+func TestTodoDone_UnknownStillProceeds(t *testing.T) {
+	_, store := todoFixture(t)
+	seedTodo(t, "alpha work")
+	stubLandingQuery(t, "", fmt.Errorf("fatal: bad revision 'origin/develop'"))
+
+	stdout, stderr, err := runTodo(t, "done", "t1", "--require-landed")
+	if err != nil {
+		t.Fatalf("an unknown landing answer must proceed, got %v (stderr %q)", err, stderr)
+	}
+	if !strings.Contains(stdout, "landing="+string(kanban.LandingUnknown)) {
+		t.Errorf("stdout = %q, want the unknown verdict named", stdout)
+	}
+	rec, err := store.Load()
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	for _, it := range rec.Items {
+		if it.ID == "t1" {
+			t.Errorf("card t1 is still in the live queue; --require-landed must archive on unknown")
+		}
+	}
+}

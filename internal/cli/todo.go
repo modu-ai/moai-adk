@@ -379,6 +379,9 @@ run" are different facts and no longer the same bytes.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := normalizeTodoRef(args[0])
 			store := newTodoStore()
+			// Unknown until a query answers otherwise. Absent the flag no
+			// query runs at all, and `unknown` is the honest report of that.
+			verdict := kanban.LandingUnknown
 			if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
 				// Refused mutations below: Mutate writes nothing, so the
 				// record stays byte-identical on every one of them.
@@ -397,18 +400,22 @@ run" are different facts and no longer the same bytes.`,
 						id, todoTextPrefix(rec.Items[at].Text), expect)
 				}
 				if requireLanded {
-					// M1 threads the resolved ref; the stdout verdict token
-					// the answer feeds is M3's surface.
-					if _, err := todoRequireLanded(cmd, id); err != nil {
+					answer, err := todoRequireLanded(cmd, id)
+					if err != nil {
 						return err
 					}
+					verdict = answer
 				}
 				return rec.ArchiveCard(id)
 			}); err != nil {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
 				return err
 			}
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "done %s\n", id)
+			// One line per act, carrying exactly one landing verdict — a second
+			// line would give an operator script two records for one event.
+			// The suffix preserves the `done <id>` prefix every existing
+			// reader keys off.
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "done %s landing=%s\n", id, verdict)
 			return nil
 		},
 	}
