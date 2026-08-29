@@ -215,9 +215,7 @@ m1_to_mN_commit_strategy: "one commit per milestone, M1..M4, each naming card t3
 
 ```yaml
 sync_complete_at: 2026-08-29
-# sync_commit_sha is OMITTED in this commit rather than placeholder-filled: a commit cannot cite
-# its own hash, and prose in a SHA slot is the defect card t299 is closing. It is written in the
-# immediately following backfill commit, in the canonical form `sync_commit_sha: "<sha>"`.
+sync_commit_sha: "e0bc3c1f1"   # a commit cannot cite its own SHA; backfilled in the immediately following commit
 sync_status: complete
 run_commit_sha_backfill: "dc817409f — replaced the prose placeholder that previously occupied the §E.3 run_commit_sha slot (progress.md:197). Verified: `git cat-file -t dc817409f` -> commit; `git merge-base --is-ancestor dc817409f HEAD` -> exit 0; `git branch --contains dc817409f` -> WT-red-now-threshold. The placeholder token is deliberately not quoted anywhere in this directory, so a residue grep returns zero rather than matching this record"
 b12_self_test_a: "grep -c 'SPEC-RED-NOW-THRESHOLD-001' CHANGELOG.md -> 0, exit 1 (pre-emission; no duplicate entry from a parallel session)"
