@@ -154,3 +154,38 @@ func TestSyncSHAGrammar_KnownLimitationL2(t *testing.T) {
 		}
 	}
 }
+
+// TestSyncSHASlotFormat_AbsentFromEraDemotableCodes decides AC-SSF-010, and so
+// decides REQ-SSF-007 mechanically rather than by a grep a reader has to
+// remember to run.
+//
+// `eraDemotableCodes` demotes ERRORS (lint.go:284 gates on
+// `f.Severity == SeverityError`); a warning is already made advisory by the
+// branch immediately below it. An entry for a warning-severity code would
+// therefore be INERT, and an inert entry in a policy map reads to a later
+// maintainer as intent that was never meant. MovingRefUnpinnedRule records the
+// same choice for the same reason.
+//
+// [HARD] This criterion decides the requirement AS WRITTEN; it does not decide
+// the contingency. REQ-SSF-007's justification holds only while this rule's
+// severity is `warning` at the Finding level. If a later change promotes at that
+// level rather than at `Report.HasErrors`, the map becomes the ONLY remaining
+// shelter for the five findings on closed history, the requirement inverts, and
+// this test would be enforcing the wrong thing. The instruction in that case is
+// to stop and report — not to add the entry, and not to weaken this test.
+//
+// Mutation that must turn it red: add `"SyncSHASlotFormat": true` to the map.
+func TestSyncSHASlotFormat_AbsentFromEraDemotableCodes(t *testing.T) {
+	if eraDemotableCodes["SyncSHASlotFormat"] {
+		t.Error("SyncSHASlotFormat is present in eraDemotableCodes; the entry is inert for a warning and reads as intent (REQ-SSF-007, AC-SSF-010)")
+	}
+	want := map[string]bool{"MissingExclusions": true, "FrontmatterInvalid": true}
+	if len(eraDemotableCodes) != len(want) {
+		t.Fatalf("eraDemotableCodes has %d entries, want exactly %d (%v); got %v", len(eraDemotableCodes), len(want), want, eraDemotableCodes)
+	}
+	for code := range want {
+		if !eraDemotableCodes[code] {
+			t.Errorf("eraDemotableCodes is missing the expected entry %q", code)
+		}
+	}
+}
