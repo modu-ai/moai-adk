@@ -18,7 +18,12 @@ claims that are correct as written.
 
 - **42 candidate lines already exist** in `.moai/specs/**` (`spec.md` §B.3). Any severity above
   `warning` reds the corpus on day one and the rational response is bulk suppression — the outcome
-  this SPEC prevents. Severity is fixed at `warning` by REQ-MRG-009 and D.5.
+  this SPEC prevents. Severity is fixed at `warning` by REQ-MRG-001 and D.5.
+
+  **Corrected at v0.8.0**: `warning` alone is not sufficient, and this line said it was. `--strict`
+  escalates any non-advisory warning, and the run-phase build red `develop`'s SPEC Lint job on 110
+  `MovingRefUnpinned` findings — 2.6× the 42 estimated here. The finding is now emitted advisory,
+  which is what makes the day-one claim above true. See `spec.md` §D.5 and §D.7.
 - **The three-dot form is not a safe exemption** (`spec.md` §B.2, measured). A run-phase
   implementer is likely to propose exempting `...`; AC-MRG-004 is the guard against it.
 - **The corpus contains both predicate classes and all four remedies** (ANCHOR, SUBJECT/S1,
