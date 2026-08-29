@@ -45,6 +45,7 @@ CI runs `go test` without `-v` or `-json`, so CI artifacts carry **no per-test e
 | Coverage compatibility | `go test -count=1 -json -coverprofile=… -covermode=atomic` on `./internal/hook/mx/complexity/` and on `./pkg/...` | rc=0; `coverage.out` written correctly in both (`mode: atomic` header + per-statement rows; 47 lines and 17 lines respectively) while JSON went to stdout. `-json` and coverage **coexist**. |
 | Both forms of "did not run" are ONE query | `go test -count=1 -json ./cmd/moai/...` and `./internal/template/scripts/` (packages with 0 test files) | Emits an `output` event carrying `[no test files]`, then a **package-level** `{"Action":"skip"}` with **no `Test` field**. See §C.1 — this is the single-predicate property. |
 | Zero-test-file packages in this tree | `go list -f …` | Exactly **three**: `cmd/moai`, `internal/template/scripts`, `scripts/convert-nextra-to-hextra`. |
+| **Build diagnostics travel in-stream, NOT on stderr** | throwaway module outside the repo, one package with a deliberate syntax error, `go test -json ./...` | rc=1; **stdout 666 bytes, stderr 0 bytes**; action sequence `build-output build-output build-fail start output fail`, the compiler diagnostic carried inside the `build-output` events. Measured twice independently (coordinator, then this agent on darwin/arm64 · go 1.26.4) with the same shape. **Falsifies the original brief's premise that stderr carries build errors.** |
 | Failure bodies survive in the stream | a path typo — `./internal/version/...`, not a package here | rc=1; the stream carried `Action=="fail"` plus the verbatim body `FAIL\t./internal/version/... [setup failed]`. Observed, not assumed. |
 
 **Extrapolation, stated as such**: the full-suite artifact size is **not measured**. It is an extrapolation from two packages (785,790 B and 1,178,655 B for one package each, over 135 packages) and is expected to be in the tens of megabytes uncompressed, ~15× smaller gzipped. No requirement below depends on a specific full-suite byte figure.
@@ -96,7 +97,7 @@ An AC asserting only that the workflow YAML contains `-json` is **insufficient**
 - **REQ-CTO-008** (Event-driven) — When a test invocation finishes, the job shall upload the compressed event stream as a build artifact, whether the invocation passed or failed.
 - **REQ-CTO-009** (Ubiquitous) — The change shall not alter any branch-protection required check name, and shall not alter the console-visible failure text a reader relies on to diagnose a red run.
 - **REQ-CTO-010** (Event-driven) — When the change has landed in a workflow that a real CI run executes, the SPEC owner shall record the run URL / job id and the verbatim census lines naming a genuinely skipping test.
-- **REQ-CTO-011** (Ubiquitous) — The test invocation shall not redirect stderr into the event-stream file. Only stdout is redirected, so build errors, toolchain errors, and setup failures stay console-visible and cannot corrupt the stream.
+- **REQ-CTO-011** (Ubiquitous) — The test invocation shall not redirect stderr into the event-stream file, so that no non-JSON text can corrupt the stream. **The rationale is stream integrity, NOT console visibility**: under `-json`, `go test` routes compiler diagnostics into **stdout** as `build-output` events terminated by `build-fail`, and stderr is empty (§A.1), so a bare stdout redirect *removes build errors from the console* rather than preserving them. Consequently the census **shall** surface build failures explicitly — stderr will not do it.
 
 > **Pattern labels.** The canonical GEARS five are Ubiquitous, Event-driven, State-driven, Capability gate, and Event-detected. `Unwanted` belongs to the legacy EARS table, not to GEARS, so the three always-active negative constraints here (REQ-CTO-003, -009, -011) carry **Ubiquitous** — a prohibition with no trigger is an always-active requirement stated negatively. REQ-CTO-004 carries **Event-detected**: a detected failure producing a response is exactly that form.
 
@@ -112,7 +113,14 @@ An AC asserting only that the workflow YAML contains `-json` is **insufficient**
 Design constraints these sites impose:
 
 1. `shell: bash` resolves to a verbatim shell string carrying **`-e` as well as `-o pipefail`** — on the Linux runner, `/usr/bin/bash --noprofile --norc -e -o pipefail {0}`. The Windows runner resolves a different `bash` path with the identical flag set, so `-e` binds on all four sites and nothing here is Linux-specific. Under `-e` the step dies AT a failing `go test`, so a following `rc=$?` never executes and the census never prints. Any exit-code capture must survive `-e`; `plan.md` §B.1 carries the prescribed form and the reason. (`shell: bash` is separately load-bearing on the two 3-OS jobs, where the windows runner would otherwise parse POSIX syntax as PowerShell — see `ci.yml:157`. That windows rationale does **not** apply to the ubuntu-only `test` job; the `-e -o pipefail` consequence applies to all four sites.)
-2. Build failures and toolchain errors go to **stderr**, not into the JSON stream, so the summary step must not swallow stderr. The stream itself demonstrably carries what the summary needs for in-suite failures: a path typo produced rc=1 with `Action=="fail"` and the verbatim body `FAIL\t./internal/version/... [setup failed]` (§A.1). The obligation to print failures and preserve rc still binds — it is now known to be satisfiable from the stream.
+2. **Build diagnostics travel inside the stream, not on stderr — and a bare stdout redirect therefore hides them.** Under `-json`, `go test` emits compiler diagnostics as `build-output` events terminated by `build-fail`, with **stderr empty (0 bytes)** — measured, §A.1. An earlier draft of this SPEC asserted the opposite (that stderr keeps build errors console-visible); that assertion was **falsified by measurement** and is corrected here.
+
+   Two consequences follow, and the second is the load-bearing one:
+
+   - stderr is still not redirected into the file (REQ-CTO-011), but the reason is **stream integrity**, not console visibility.
+   - Console visibility of a build failure is restored **only** by the census emitting an explicit `BUILD FAILED` row carrying the `build-output` text. That row is **load-bearing, not cosmetic**: delete it and a build failure produces a red job whose console says nothing about why. No green run will ever contradict its removal — the same hazard shape as the `; rc=$?` form in `plan.md` §B.1.
+
+   In-suite failures are separately covered: a path typo produced rc=1 with `Action=="fail"` and the verbatim body `FAIL\t./internal/version/... [setup failed]` (§A.1).
 3. Two of the four sites (`ci.yml:329`, `release-pr-multi-os.yml:189`) run a 3-OS matrix including windows, where the summary implementation must not assume GNU-only tooling. `jq` is already used in four workflows in this repo, so it is an established dependency rather than a new one.
 4. Artifact steps follow the house convention already in this repo: `actions/upload-artifact@v7` with `retention-days: 7`, matching `ci.yml:433-438`. The two matrix jobs need the OS in the artifact name or their three legs collide.
 5. With `-json`, the human-readable `coverage: NN% of statements` lines move into JSON `output` events. Codecov reads the `coverage.out` **file**, not stdout, so the upload step is unaffected.
@@ -167,6 +175,22 @@ Two ACs cannot be satisfied from the single approved dispatch, and this SPEC say
 Both debts discharge on the first genuinely red CI run after this lands — an ordinary event, not a scheduled task.
 
 If the fallback observation path is taken (post-merge `ci.yml` on the `develop` push), AC-CTO-007 closes **post-merge** and taking the fallback is recorded as **debt**, never as a pre-merge pass. The rule at §G — never present the fallback as a pre-merge observation — is unchanged and binding.
+
+---
+
+## J. Residual risks and gaps
+
+Recorded per `verification-claim-integrity.md` §3 — these are **not** defects and **not** passes; they are what was left unobserved.
+
+### Residual risk — the stream file sits in the repo root during the run
+
+`test-stream.json` is written to the repository root *while* `go test ./...` is executing. It is gitignored, so every git-based check stays clean; but a test that walks the repo root **through the filesystem** rather than through git would see a file that did not exist when its expectations were written. **Unmeasured** — no such test is known to exist, and none was searched for. Recorded as residual risk rather than as a defect. Mitigation if it ever bites: write the stream to a path outside the repo root (e.g. `$RUNNER_TEMP`) and upload from there.
+
+### Gap — the census has run on darwin/arm64 only
+
+Every local verification of the census (AC-CTO-002, -003, -003b) ran on **darwin/arm64**. The census depends on `jq`, and on `gzip` / `sed` / `sort` in the surrounding step. Measured precedent in this repo: **all four** workflows that use `jq` (`auto-merge.yml`, `graph-freshness.yml`, `release-drafter-cleanup.yml`, `review-quality-gate.yml`) are `runs-on: ubuntu-latest` — so there is **no** existing evidence of `jq` on the windows or macOS runners, and none for `gzip`/`sed`/`sort` under git-bash.
+
+Two of the four call sites are 3-OS matrices (`ci.yml:329`, `release-pr-multi-os.yml:189`), so **the approved dispatch is the first exposure of the census to windows and macOS**. This is a named Gap, not a predicted failure and not a pass: if a non-ubuntu leg fails on tooling, that is the ONE-run dispatch doing its job, and the cause is established before any re-run (`acceptance.md` AC-CTO-007).
 
 ---
 

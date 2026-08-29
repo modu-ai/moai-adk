@@ -41,7 +41,7 @@ Evidence: fixture file path, the command, and the verbatim census output showing
 
 ### AC-CTO-003 — a red run stays red and stays readable (verified LOCALLY, by design)
 
-What this AC tests is **shell semantics**, not CI infrastructure: whether `-e` kills the step before the census, whether the exit code survives, and whether stderr stayed out of the stream. All three are reproducible on a developer machine, and none of them need a CI runner. The ONE-run constraint on the dispatch therefore does not weaken this AC — it relocates it.
+What this AC tests is **shell semantics**, not CI infrastructure: whether `-e` kills the step before the census, whether the exit code survives, and whether non-JSON text stayed out of the stream. All three are reproducible on a developer machine, and none of them need a CI runner. The ONE-run constraint on the dispatch therefore does not weaken this AC — it relocates it.
 
 Baseline already observed on this tree: a path typo (`./internal/version/...`, not a package here) produced rc=1 with `Action=="fail"` in the stream and the verbatim body `FAIL\t./internal/version/... [setup failed]`.
 
@@ -57,13 +57,15 @@ Evidence: the extracted step body, the exact invocation used, and its verbatim o
 
 **Named debt (not a pass):** the CI-level confirmation of the red path is **not** obtained pre-merge, because it would require a second dispatch. Recorded in `progress.md` per `plan.md` M4.2; discharges on the first genuinely red CI run after this lands.
 
-### AC-CTO-003b — stderr stays out of the stream
+### AC-CTO-003b — the stream stays clean and the build failure stays visible
 
 A **compiling** tree carrying a failing test (AC-CTO-003) and a **non-compiling** tree are mutually exclusive states, so this clause gets its own tree and its own execution rather than riding on AC-CTO-003's `Given`. Both are local, and they run in sequence.
 
 **Given** the same extracted `run:` body, and a tree with a deliberately broken build (e.g. a syntax error in one package),
 **When** that body is executed locally under the same shell string,
-**Then** the build error appears **on the console**, the stream file contains **no** stderr text, and the stream file remains parseable by the AC-CTO-002 census.
+**Then** the build error appears **on the console** — via the census `BUILD FAILED` row, since stderr is empty and carries nothing (`spec.md` §A.1); the stream file contains **no raw non-JSON text**; and the stream file remains parseable by the AC-CTO-002 census.
+
+(The pass criteria are unchanged from the version this SPEC was audited on — only the stated *mechanism* of console visibility is corrected. The implementer's `BUILD FAILED` row is what satisfies clause 1; it was never stderr.)
 
 A `2>&1 > f` implementation fails this criterion — that is the reason it is stated separately rather than folded into AC-CTO-003.
 

@@ -34,7 +34,12 @@ Surface: 2 workflow files (**4** invocation sites — `ci.yml:183`, `ci.yml:238`
      The `||` places the command in a context where `-e` does not fire, so `rc` is captured and the census still runs. An explicit `set +e` / `set -e` bracket around the invocation is equally acceptable.
 
    Do not "simplify" the `|| rc=$?` back to `; rc=$?`: it looks equivalent and is not, and the difference is invisible on a green run — it appears only on the red run, where the evidence matters most.
-2. **stderr is outside the JSON stream.** Build errors, toolchain errors, and vet-style failures never appear as JSON events. Redirecting only stdout keeps them console-visible; redirecting `2>&1` into the JSON file would both hide them and corrupt the stream. Redirect **stdout only**.
+2. **Build diagnostics are INSIDE the stream, and stderr is empty — do not restore the old rationale.** Measured (`spec.md` §A.1): for a package with a syntax error, `go test -json ./...` produced rc=1 with **stdout 666 bytes and stderr 0 bytes**, the compiler diagnostic carried in `build-output` events terminated by `build-fail`. An earlier draft of this plan said the opposite — that stderr carries build errors and a stdout-only redirect keeps them visible. **That was false.**
+
+   What follows:
+
+   - Redirect **stdout only** — still correct, but for stream integrity (no non-JSON text in the file), NOT for console visibility. `2>&1` would corrupt the stream.
+   - A bare `> file` redirect **swallows build errors from the console**. The census's `BUILD FAILED` row is what puts them back, and it is **load-bearing**. Do not delete it as redundant: a green run cannot contradict its removal, so the loss would surface only on the red run where it matters — the same hazard shape as `; rc=$?` in §B.1 above.
 3. **Windows legs (two of the four sites).** `ci.yml:329` (`test-integration`) and `release-pr-multi-os.yml:189` (`full-matrix-test`) both run a 3-OS matrix including `windows-latest`, so the summary implementation must be portable — no GNU-specific text tooling. `jq` is already used in four workflows in this repo, so it is an **established** dependency and is the default choice rather than a new one to justify.
 4. **One predicate, two labels.** `Action=="skip"` catches both forms of "did not run"; the presence or absence of the `Test` field labels which (`spec.md` §C.1). The census must not be built as two independent detections — that was an earlier framing and is superseded.
 5. **Required check names are name-matched by branch protection.** `Test (ubuntu-latest)` and its skip-marker twin (`ci.yml` `test-skip-marker`) must keep emitting the same names. Adding steps inside the job is safe; renaming the job is not.
@@ -122,6 +127,8 @@ Every claim in the closing report carries the command that produced it and that 
 | `pipefail` / `tee` masks a red suite | explicit `rc` capture (§B.1); reviewed in M1 |
 | Windows leg breaks on the summary implementation | portability constraint stated in §B.3; the 3-OS matrix is the observation vehicle, so a break surfaces in M4 |
 | Artifact-name collision across matrix legs | per-OS artifact names in M3 |
+| Census tooling (`jq`, `gzip`, `sed`, `sort`) unverified on windows/macOS runners | named Gap in `spec.md` §J — all four existing `jq` workflows are ubuntu-only, so the dispatch is first exposure; a tooling failure on a non-ubuntu leg is a diagnosis to establish, not a re-run to attempt |
+| `test-stream.json` visible in the repo root mid-run to a filesystem-walking test | residual risk in `spec.md` §J — gitignored, so git-based checks are unaffected; unmeasured, mitigation is to write outside the repo root |
 | Full-suite stream size is unknown (extrapolated) | gzip measured at ~15.5×; if the artifact proves oversized, the fallback is per-package artifacts, not dropping the census |
 
 ## G. Anti-patterns
