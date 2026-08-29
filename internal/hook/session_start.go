@@ -77,6 +77,8 @@ type Option func(*sessionStartHandler)
 // "synchronous deferred scans" that still left three goroutines running past
 // Handle would be misnamed, and those goroutines are a leak for any caller that
 // checks for one.
+//
+// @MX:NOTE: [AUTO] opt-in cross-package sync seam — a caller that owns and deletes ProjectDir needs this
 func WithSynchronousDeferredScans() Option {
 	return func(h *sessionStartHandler) { h.syncDeferredScans = true }
 }
