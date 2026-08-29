@@ -160,7 +160,7 @@ new_warnings_or_lints_introduced: none-observed  # no Go code changed; no shell
 cross_platform_build:
   status: not-applicable   # no Go source changed in this card
   windows_census_execution: NOT-MEASURED   # named gap
-total_run_phase_files: 24   # 4 workflow/gitignore + 4 census + 16 SPEC/evidence
+total_run_phase_files: 31   # measured: git diff 1a635aea8 --name-only | wc -l
 m1_to_mN_commit_strategy: "M1 separate (census + fixture check + draft->in-progress); M2+M3 combined (three of four sites share ci.yml)"
 deliberate_breakages_reverted:
   - internal/hook/mx/complexity/t358_probe_test.go   # AC-CTO-003, removed; git status clean
