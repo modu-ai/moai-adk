@@ -55,8 +55,8 @@ anchor in mirror: FAIL
 | 시점 | 값 |
 |---|---|
 | SPEC 착수 직전 | `096aaf527` |
-| M3 착수 직전 | `` |
-| M3 착수 시 D1 baseline N | `` |
+| M3 착수 직전 | `30b8e3fef` |
+| M3 착수 시 D1 baseline N | `393` |
 
 [HARD] **빈 슬롯은 AC를 통과시키지 않는다.** 추출은 `\{7,\}`(SHA) / `\{1,\}`(숫자) 패턴 + `-n` 검사 + `git rev-parse --verify` 3중 가드를 거치며, 빈 슬롯은 stderr에 `FAIL — 「…」 슬롯이 비어 있거나 …`를 내고 exit 1 한다. 가드 없이 `[0-9a-f]*`로 읽으면 빈 슬롯이 매치되어 빈 문자열을 캡처하고, `""..HEAD`가 `HEAD..HEAD`로 조용히 해석돼 AC가 공허하게 PASS한다 — iter-2 감사 N1이 지적한 결함이다.
 
@@ -79,7 +79,7 @@ anchor in mirror: FAIL
 | 시점 | 값 |
 |---|---|
 | M1 착수 직전 (§E.1 「SPEC 착수 직전」 슬롯과 동일) | `096aaf527` |
-| M3 착수 직전 | (미착수 — M3 미승인) |
+| M3 기준 SHA | §E.1 「기준값」 표의 「M3 착수 직전」 슬롯이 SSOT — 여기에 값을 적지 않는다 |
 
 > §E.1 「기준값」 표가 SHA의 SSOT다. 이 표는 같은 이름의 행을 만들지 않는다 — `AC-AST-001-10`의 `sed` 추출이 같은 이름을 두 번 매치하면 값이 두 줄이 되어 `git rev-parse --verify`가 실패한다.
 
@@ -374,6 +374,116 @@ research.md          # spec.md 가 없다
 4. **`lint.skip` 상호작용 미관측.** 이 규칙은 per-SPEC 규칙이라 `lint.skip: [ArtifactStatusFieldForbidden]`으로 개별 SPEC이 빠져나갈 수 있다. 기존 규칙과 같은 성질이고 의도된 것이지만, 이 실행이 그 경로를 실제로 돌려보지는 않았다.
 5. **`spec.md` 없는 SPEC 디렉터리는 가드의 사각지대다.** 위에서 규명한 393 vs 392의 원인이다. `discoverSPECs`가 `SPEC-*/spec.md`로 SPEC을 찾으므로, `spec.md` 없이 산출물만 있는 디렉터리(현재 `SPEC-V3R4-CC2X-ADOPT-001` 1건)에는 이 규칙이 도달하지 않는다. M3 정리는 디렉터리 순회형이라 이번엔 치우지만, **그런 디렉터리에 다시 `status:`가 생기면 lint는 잡지 못한다.** 이 SPEC은 그것을 고치지 않는다 — 발견 경로를 바꾸는 것은 `discoverSPECs`의 계약 변경이고 모든 규칙에 영향을 주므로 별도 카드 소관이다. 여기서는 관측 기록으로만 남긴다.
 6. **이 워크트리 바이너리로만 관측했다.** AC-04와 코퍼스 측정은 `./bin/moai`(이 트리에서 `go build`로 방금 만든 것)로 돌렸다. PATH의 설치본은 이 규칙을 모르므로 같은 명령이 다른 답을 낸다 — 재현 시 바이너리를 확인할 것.
+
+### M3 — D1 코퍼스 정리 (착지)
+
+기준 HEAD `30b8e3fef` — `origin/develop` `15453140a`(t352 `0b7329712` → t331 `51daada00` → t342 `15453140a` 순 착지)를 흡수한 머지 커밋. 흡수는 M3 착수의 전제였다: 셋 다 `.moai/specs/`를 건드리므로 흡수 전에 재측정하면 곧바로 낡는다.
+
+#### 흡수 — 충돌 1건 예상, 실제 0건
+
+리드가 레지스트리 슬라이스 1줄 충돌을 예상했으나 `git merge origin/develop`은 충돌 없이 끝났다. 두 규칙(`ArtifactStatusFieldForbiddenRule`, `MovingRefUnpinnedRule`)이 배열에 나란히 들어갔고, 각자의 근거 주석도 함께 남았다. 병합 트리에서 재검증:
+
+```
+$ go build ./... && go vet ./internal/spec/...
+BUILD_VET_OK
+$ go test ./internal/spec/ -count=1
+ok  	github.com/modu-ai/moai-adk/internal/spec	33.739s
+```
+
+t342가 같은 파일에 들여온 것과 이 규칙의 **대비를 코드 주석에 남겼다**(`lint_artifact_status.go` 헤더). 둘 다 `eraDemotableCodes`에 없지만 이유가 반대다 — t342는 warning이라 그 맵에 **닿을 수 없어서** emission site에서 `Advisory: true`를 세우고, 이 규칙은 error라 **닿을 수 있는데도** 넣지 않는 선택이다. 한쪽을 다른 쪽의 선례로 읽으면 양쪽 다 뒤집힌다.
+
+#### REQ-AST-001-009 재측정 — 판정값은 run-phase HEAD에서 다시 쟀다
+
+`3b1830b96`의 389를 재사용하지 않았다.
+
+```
+$ bash .moai/reports/t357/t357_d1_all.sh .
+HEAD=30b8e3fef
+D1 전체 696 모집단 = 393
+D1 종결(633) 모집단 = 366
+
+$ bash .moai/reports/t357/t357_d1_by_artifact.sh .
+HEAD=30b8e3fef
+design 28 / research 35 / plan 165 / acceptance 165 / total 393
+```
+
+착수 baseline 389 대비 **+4건(+1.0%)** 으로 ±20% 가드(311~467) 안이다. 같은 모집단끼리 견줬다.
+
+**라벨 하나가 낡았다 — 수치는 아니다.** 스크립트가 찍는 「전체 696 모집단」의 696은 고정 문자열이고, 실제 SPEC 디렉터리는 이 트리에서 **704개**다(`ls -d .moai/specs/SPEC-*/ | wc -l`). 계수 자체는 glob을 순회해 얻으므로 393은 704개 전부를 훑은 값이다. 라벨만 갱신 대상이며, 이 카드는 스크립트를 고치지 않고 사실만 기록한다.
+
+#### 정리 — 도구가 lint와 같은 술어를 쓴다
+
+`.moai/reports/t357/t357_d1_clean.py`. 술어를 산문으로 맞추지 않고 **코드로 복제**했다(블록은 1행에서만 열림 / `---` 접두 매치로 닫힘 / `status:` 접두, 콜론 뒤 공백 불요). 대상 4종만 열고 `spec.md`·`progress.md`는 **아예 열지 않는다** — 빠뜨릴 수 있는 예외가 아니라 구조로 막았다.
+
+dry-run이 먼저 목록을 냈고, 적용 결과가 그것과 일치한다:
+
+```
+$ python3 .moai/reports/t357/t357_d1_clean.py --dry-run
+… (393줄)
+would clean: 393 files, 393 status lines removed
+
+$ python3 .moai/reports/t357/t357_d1_clean.py
+cleaned: 393 files, 393 status lines removed
+```
+
+**393 파일에서 393 라인** — 한 파일이 두 개를 들고 있던 경우가 없다. 원자료: `t357_m3_dryrun.txt` · `t357_m3_apply.txt`.
+
+#### AC 판정 — 명령이 판정한다
+
+판정 러너 `.moai/reports/t357/t357_ac_m3.sh`를 신설했다. acceptance.md의 명령 블록을 **술어와 판정 문구까지 그대로** 옮긴 것이며, 존재 이유는 기계적이다 — worktree 세션 가드가 함수·heredoc·`test A && test B` 같은 복합 셸 payload를 정적으로 추적할 수 없다며 거부하므로, 블록을 세션 셸에 그대로 붙여넣을 수 없다. 파일에서 돌리면 동일하게 실행된다. 요약이 아니라 **판정** 러너다: 각 기준이 비교한 수를 찍은 뒤 스스로 비교하므로, 어떤 판정도 실행자가 수를 옳게 읽었다는 데 기대지 않는다.
+
+```
+$ bash .moai/reports/t357/t357_ac_m3.sh .
+HEAD=cb473a1a4
+BASE_M3=30b8e3fef  baseline_N=393
+--- AC-AST-001-06 (D1 residual across the whole corpus) ---
+D1 remaining (whole corpus) = 0
+AC-06 PASS
+--- AC-AST-001-07 (D1 not D2: only status lines removed, none missed) ---
+removed lines total:      393   (baseline N = 393)
+removed non-status lines: 0
+AC-07 PASS
+--- AC-AST-001-08 (spec.md / progress.md untouched) ---
+cleanup-target files in range = 393
+no spec.md/progress.md touched: AC-08 PASS
+--- AC-AST-001-09 (rule registered AND residual 0, together) ---
+rule_matches=2 d1_remaining=0
+AC-09 PASS
+--- AC-AST-001-10 (out-of-scope axes untouched) ---
+tier edits=0  status additions=0
+AC-10 PASS
+```
+
+`AC-AST-001-05`(거짓 양성 없음)는 전 코퍼스 lint로 판정했다:
+
+```
+$ ./bin/moai spec lint > .moai/reports/t357/t357_ac05.txt 2>&1; echo "rc=$?"
+rc=0
+$ grep -c 'ArtifactStatusFieldForbidden' .moai/reports/t357/t357_ac05.txt
+0
+$ tail -1 .moai/reports/t357/t357_ac05.txt
+0 error(s), 177 warning(s)
+```
+
+`spec.md`/`progress.md`를 지목한 finding이 없다 — 이 코드의 finding 자체가 0이므로 자명하게 성립한다.
+
+**`--strict`도 확인했다.** develop의 SPEC Lint 잡이 `--strict`로 돌기 때문이다:
+
+```
+$ ./bin/moai spec lint --strict > .moai/reports/t357/t357_ac09_strict.txt 2>&1; echo "strict rc=$?"
+strict rc=0
+0 error(s), 177 warning(s)
+```
+
+M1 판정 3종도 병합 트리에서 다시 통과한다(`t357_ac_precheck_m3.txt`): AC-01 S1/S2/S3 PASS · AC-02 PASS · AC-11 미러 동일 + 양쪽 앵커 PASS.
+
+**AC 11개 전부 판정 완료** — 01·02·11(M1, 병합 트리 재확인) / 03·04(M2) / 05·06·07·08·09·10(M3).
+
+### Gap — M3 실행이 관측하지 않은 것
+
+1. **배포 사용자 코퍼스**는 여전히 이 리포에서 잴 수 없다(불변). error 심각도의 잔여 위험은 `plan.md` §B3/§D 그대로다.
+2. **`spec.md` 없는 디렉터리는 정리했으나 가드 사각지대는 그대로다**(M2 Gap 5). `SPEC-V3R4-CC2X-ADOPT-001/research.md`도 이번에 정리됐지만, 그 디렉터리에 다시 `status:`가 생기면 lint는 여전히 방문하지 않는다. 발견 경로(`discoverSPECs`) 변경은 전 규칙에 영향을 주므로 별도 카드 소관 — 리드가 운영자 판정 대기열에 얹었다.
+3. **전체 스위트 미실행.** 정리된 코퍼스에 대해 `internal/spec`(36.2s ok)과 `internal/cli`(전 패키지 rc=0, `t357_m3_cli_test.txt`)를 다시 돌렸다 — 정리가 `.moai/specs`를 읽는 테스트의 입력을 바꿨을 수 있어 M2 시점 결과를 재사용하지 않았다. 그 밖의 패키지는 돌리지 않았다: `go test ./...`는 로컬에서 돌리지 않으며(`CLAUDE.local.md` §4), 전 패키지 판정은 `origin/develop` CI 몫이다.
 
 ## §E.3 Run-phase Audit-Ready Signal
 

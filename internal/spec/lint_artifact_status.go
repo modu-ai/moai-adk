@@ -58,6 +58,16 @@ package spec
 // retroactively. If the cleanup is ever split into a separate card, this
 // decision inverts and the code MUST be era-demoted — plan.md §B2 records the
 // pair.
+//
+// CONTRAST with MovingRefUnpinnedRule, which sits in the same package and also
+// stays out of `eraDemotableCodes` — for the opposite reason. That rule emits
+// `warning` and sets `Advisory: true` at the emission site BECAUSE the map is
+// consulted only for `SeverityError` findings, so a warning can never reach it;
+// the emission site is its only lever. This rule emits `error`, so the map
+// WOULD reach it — staying out is a live choice rather than a structural
+// necessity, and it is affordable only because the cleanup lands alongside.
+// Same absence, different mechanism: reading one as precedent for the other
+// inverts both.
 
 import (
 	"fmt"
