@@ -187,6 +187,7 @@ carrying M2's flipped RED — is at `progress.md` §E.2 above (this same file), 
 
 ```yaml
 sync_complete_at: 2026-08-29
+sync_commit_sha: c9f712232   # backfilled (a commit cannot name its own SHA)
 sync_status: completed
 b12_self_test_a: "grep -c SPEC-TODO-LANDING-STATE-001 CHANGELOG.md -> 1 (post-emission re-check; the
   pre-emission check was not run as a separate command before the Edit in this session — recorded
