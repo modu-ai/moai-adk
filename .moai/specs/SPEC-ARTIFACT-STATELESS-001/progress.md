@@ -411,6 +411,23 @@ design 28 / research 35 / plan 165 / acceptance 165 / total 393
 
 **라벨 하나가 낡았다 — 수치는 아니다.** 스크립트가 찍는 「전체 696 모집단」의 696은 고정 문자열이고, 실제 SPEC 디렉터리는 이 트리에서 **704개**다(`ls -d .moai/specs/SPEC-*/ | wc -l`). 계수 자체는 glob을 순회해 얻으므로 393은 704개 전부를 훑은 값이다. 라벨만 갱신 대상이며, 이 카드는 스크립트를 고치지 않고 사실만 기록한다.
 
+그 문자열이 인용되면 낡은 수가 퍼지므로 **어디에 있는지 좌표를 남긴다**(트리 `2cc154d55` 기준). 두 부류를 구분한다 — 갱신 대상은 앞의 것뿐이다.
+
+**(a) 트리에 귀속되지 않은 라벨 — 인용되면 낡은 수가 퍼진다:**
+
+| 좌표 | 형태 |
+|---|---|
+| `.moai/reports/t357/t357_d1_all.sh:3` | 주석 「closed-only vs 전체 696」 |
+| `.moai/reports/t357/t357_d1_all.sh:21` | `echo "D1 전체 696 모집단 = $all"` — 출력에 실리는 유일한 지점 |
+| `.moai/specs/SPEC-ARTIFACT-STATELESS-001/acceptance.md:28` | 스니펫 (B) 주석 「전 코퍼스 696 모집단」 |
+| `.moai/specs/SPEC-ARTIFACT-STATELESS-001/acceptance.md:252` | `echo "D1 remaining (all 696) = $(count_d1)"` |
+| `.moai/specs/SPEC-ARTIFACT-STATELESS-001/acceptance.md:255` | 판정문 「`D1 remaining (all 696) = 0`」 |
+| `.moai/specs/SPEC-ARTIFACT-STATELESS-001/acceptance.md:7,237` · `plan.md:25,43,53,125` · `progress.md:8,64` | 산문 「전 코퍼스 696」 — 모집단의 **정의**(= `.moai/specs/SPEC-*/` 전부)를 가리키는 자리라 수를 빼도 뜻이 보존된다 |
+
+**(b) 트리에 귀속된 실측 — 낡은 것이 아니라 그 시점의 사실이다:** `spec.md:34`(「코퍼스 696개」 @ `c6aa61346`) · `spec.md:62`(「696 SPEC」 @ 같은 트리) · `spec.md:92` · `spec.md:25` · `progress.md:24`(초기 실측 표, 트리 열 있음). 이들은 SHA와 함께 적혀 있으므로 고치면 오히려 기록이 틀어진다.
+
+이 카드의 산출물 중 `t357_ac_m3.sh`와 `t357_d1_clean.py`는 모집단 수를 문자열로 갖지 않는다(`whole corpus` / glob 순회) — 같은 부채를 새로 만들지 않았다.
+
 #### 정리 — 도구가 lint와 같은 술어를 쓴다
 
 `.moai/reports/t357/t357_d1_clean.py`. 술어를 산문으로 맞추지 않고 **코드로 복제**했다(블록은 1행에서만 열림 / `---` 접두 매치로 닫힘 / `status:` 접두, 콜론 뒤 공백 불요). 대상 4종만 열고 `spec.md`·`progress.md`는 **아예 열지 않는다** — 빠뜨릴 수 있는 예외가 아니라 구조로 막았다.
