@@ -274,8 +274,13 @@ func TestTodoDone_RequireLandedRefusesWhenNotLanded(t *testing.T) {
 	if err == nil {
 		t.Fatal("done --require-landed must refuse a card no commit names")
 	}
-	if !strings.Contains(stderr, kanban.LandedRef) {
-		t.Errorf("refusal %q must name the ref the answer is about (%s)", stderr, kanban.LandedRef)
+	// AC-TLS-003 — the refusal names the RESOLVED ref, not a constant. Read
+	// through the same resolver the command uses, so a project configured on
+	// another integration branch is asserted against its own ref rather than
+	// against a transcription of the default.
+	wantRef := todoLandedRef()
+	if !strings.Contains(stderr, wantRef) {
+		t.Errorf("refusal %q must name the ref the answer is about (%s)", stderr, wantRef)
 	}
 	if got := readBacklogBytes(t, root); string(got) != string(before) {
 		t.Errorf("refused done wrote to the record.\n got: %s\nwant: %s", got, before)
