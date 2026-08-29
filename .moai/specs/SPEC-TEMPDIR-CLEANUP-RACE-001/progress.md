@@ -147,7 +147,7 @@ m1_to_mN_commit_strategy: "single milestone, single commit 410f6241d"
 
 ```yaml
 sync_complete_at: 2026-08-29
-sync_commit_sha: "pending-backfill-t352-sync"
+sync_commit_sha: "804402bdc"  # a commit cannot cite its own SHA; backfilled in the immediately following commit
 sync_status: audit-ready
 b12_self_test_a: "grep -c 'SPEC-TEMPDIR-CLEANUP-RACE-001' CHANGELOG.md -> 0 (rc=1, no match); no duplicate entry, emission proceeded"
 b12_self_test_b: "AC count 9, from the distinct AC-IDs of acceptance.md §D matrix; CHANGELOG entry names all 9. See the pattern note below."
@@ -211,8 +211,6 @@ explicitly **not** closed by this card and remains the sole failing test on the 
 
 ### Gaps
 
-- `sync_commit_sha` is a placeholder. A commit cannot name its own hash; backfill in a follow-up
-  commit (the SHA-placeholder-backfill exemption, `spec-frontmatter-schema.md`).
 - No CI run exists for `WT-tempdir-cleanup-race`. The branch is unpushed and CI is the full-suite
   verdict (`acceptance.md` §D.4 clause 3 remains **unmet**), so this close is local-evidence-only.
 - `origin/develop` is 58 commits ahead of this branch and was deliberately not merged in sync-phase.
