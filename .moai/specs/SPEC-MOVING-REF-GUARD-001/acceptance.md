@@ -21,8 +21,15 @@ findings on a grandfather-era or terminal-status SPEC (`isGrandfatheredSpecDir` 
 which sets `Advisory = true` on every warning), and `Report.HasErrors` escalates under `--strict`
 only for a warning that is **not** advisory. A "minimal, schema-valid" fixture with no `progress.md`
 classifies V2.x under era heuristic H-1, and one whose `progress.md` lacks the markers classifies
-V3R2-R4 under H-2 — both demoted, both silently un-escalatable. AC-MRG-005's `--strict` half would
-then fail for a reason having nothing to do with the rule under test.
+V3R2-R4 under H-2 — both demoted, both silently un-escalatable.
+
+**The precondition survives the v0.8.0 amendment, with its reason restated.** It was written to
+keep AC-MRG-005's `--strict` half satisfiable; that half is now retracted (`spec.md` §D.7), and the
+precondition matters for the opposite reason. `MovingRefUnpinned` is now advisory **at emission**,
+so a fixture that is *also* era-demoted would be advisory for two independent reasons and could not
+distinguish them: the rule's own `Advisory: true` would be unobservable behind the era path, and a
+build that dropped it would still pass. Holding every fixture at V3R6 is what makes AC-MRG-005's
+first mutation — drop `Advisory: true` — able to redden the criterion at all.
 
 ## §B. Baseline anchor
 
@@ -112,16 +119,38 @@ upstream advance. It is not: `spec.md` §B.2 measured the identical wrong answer
 **Mutation that must turn it red:** add a `strings.Contains(line, "...")` early-return to the rule;
 this criterion must fail immediately.
 
-### AC-MRG-005 — severity is warning, and the exit code follows (MUST)
+### AC-MRG-005 — the finding is advisory, and it is still reported (MUST)
+
+*(Amended at v0.8.0. The prior form asserted `--strict` exits non-zero; that clause is retracted
+with REQ-MRG-009 — see `spec.md` §D.7.)*
 
 **Given** a fixture corpus whose only findings are `MovingRefUnpinned`,
-**when** `moai spec lint` runs, **then** it exits 0; **and when** `moai spec lint --strict` runs,
-**then** it exits non-zero.
+**when** `moai spec lint` runs, **then** it exits 0 **and reports a non-zero count of
+`MovingRefUnpinned` findings**; **and when** `moai spec lint --strict` runs, **then** it likewise
+exits 0 **and reports the same non-zero count**.
 
-**Fails when:** the finding is emitted at `SeverityError`, which reds the 42 existing corpus
-candidates (`spec.md` §B.3) on first run.
-**Mutation that must turn it red:** change the emitted severity to `SeverityError`; the non-strict
-exit becomes non-zero.
+**[HARD] Both halves are required, and they falsify in opposite directions.** Exit 0 alone is
+satisfied trivially by a rule that emits nothing at all, which is precisely the confusion this
+criterion must rule out: an advisory guard and a switched-off guard produce the same exit code and
+are separated only by whether the finding is still in the report.
+
+- **Half 1 — does not gate.** *Fails when:* the finding is non-advisory, so `Report.HasErrors`
+  escalates it under `--strict` (`internal/spec/lint.go`: `r.Strict && f.Severity ==
+  SeverityWarning && !f.Advisory`), or it is emitted at `SeverityError` and reds even the
+  non-strict run. *Falsifying input:* the fixture corpus above, run under `--strict`, against a
+  build in which the rule does not set `Advisory: true` — the run exits non-zero.
+  **Mutation that must turn it red:** drop `Advisory: true` from the emitted finding; the
+  `--strict` exit becomes non-zero while the reported count is unchanged.
+- **Half 2 — still reported.** *Fails when:* the rule is disabled, unregistered, or narrowed to
+  match nothing, in which case both invocations exit 0 with **zero** findings and half 1 passes
+  vacuously. *Falsifying input:* the same fixture corpus against a build with the rule removed from
+  the `l.rules` registration slice — both exits are 0 and the count is 0.
+  **Mutation that must turn it red:** remove the rule from registration (or return `nil` from its
+  `Check`); the reported count drops to 0 under both invocations while both exits stay 0.
+
+**Decided by:** the exit code of each invocation, and the count of `MovingRefUnpinned` entries in
+the same run's report, read together per invocation. A run whose count is not read has decided
+half 1 only.
 
 ### AC-MRG-006 — the divergence-figure variant fires (SHOULD)
 
