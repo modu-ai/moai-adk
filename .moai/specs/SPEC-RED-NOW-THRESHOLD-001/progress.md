@@ -194,7 +194,7 @@ All commands below were run at `f60403c07` unless the row says otherwise.
 
 ```yaml
 run_complete_at: 2026-08-29
-run_commit_sha: pending-backfill-run-final
+run_commit_sha: "dc817409f"   # a commit cannot cite its own SHA; backfilled in the sync commit
 run_status: complete
 ac_pass_count: 16
 ac_fail_count: 0
@@ -213,4 +213,53 @@ m1_to_mN_commit_strategy: "one commit per milestone, M1..M4, each naming card t3
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-29
+# sync_commit_sha is OMITTED in this commit rather than placeholder-filled: a commit cannot cite
+# its own hash, and prose in a SHA slot is the defect card t299 is closing. It is written in the
+# immediately following backfill commit, in the canonical form `sync_commit_sha: "<sha>"`.
+sync_status: complete
+run_commit_sha_backfill: "dc817409f — replaced the prose placeholder that previously occupied the §E.3 run_commit_sha slot (progress.md:197). Verified: `git cat-file -t dc817409f` -> commit; `git merge-base --is-ancestor dc817409f HEAD` -> exit 0; `git branch --contains dc817409f` -> WT-red-now-threshold. The placeholder token is deliberately not quoted anywhere in this directory, so a residue grep returns zero rather than matching this record"
+b12_self_test_a: "grep -c 'SPEC-RED-NOW-THRESHOLD-001' CHANGELOG.md -> 0, exit 1 (pre-emission; no duplicate entry from a parallel session)"
+b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u -> 17 tokens. 17 is NOT the criterion count and is not what the CHANGELOG states. Two tokens (AC-5, AC-6) are plan-auditor Group 4 checklist identifiers quoted inside AC-RNT-007's cells, not criteria of this SPEC; and AC-RNT-009 is carried as two lettered criteria (AC-RNT-009a / AC-RNT-009b) that the digit-terminated pattern collapses into one. 17 - 2 + 1 = 16, which matches acceptance.md §D.1 (13 release-blocking + 3 regression-guard) and §E.2's 16-row PASS matrix. The CHANGELOG entry states 16"
+b12_self_test_c: "ls on every path claimed in the entry -> all present: .claude/rules/moai/development/verification-completeness.md (local + template mirror), .claude/agents/moai/plan-auditor.md (local + template mirror), internal/template/templates/.codex/agents/moai/plan-auditor.toml, internal/spec/red_now_cell_test.go, internal/spec/testdata/red_now/{violating,legitimate,ledger}/acceptance.md, internal/template/catalog.yaml"
+changelog_entry_position: "CHANGELOG.md [Unreleased] -> ### Added, first entry; inserted above SPEC-MOVING-REF-GUARD-001"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (merged 3-phase close on this sync commit); updated: 2026-08-29"
+  plan_md: "NOT transitioned - carries NO frontmatter block at all (grep -c '^---$' -> 0)"
+  acceptance_md: "NOT transitioned - carries NO frontmatter block at all (grep -c '^---$' -> 0)"
+  progress_md: "NOT transitioned - carries NO frontmatter block at all (grep -c '^---$' -> 0)"
+  sibling_rationale: "spec-frontmatter-schema.md § Artifact Statelessness: plan.md / acceptance.md / design.md / research.md are stateless on the status axis and MUST NOT carry `status:`. All three siblings here carry no frontmatter whatsoever, so there was no field to transition. Adding one to satisfy an 'all four artifacts' reading would have created the exact drift the rule forbids. Recorded rather than silently resolved"
+mx_tag_validation:
+  scanned: "internal/spec/red_now_cell_test.go — the only Go file this SPEC adds"
+  result: "grep -n '@MX:' -> zero matches, and zero is correct here. The file declares no exported identifier (every symbol is a test function or an unexported helper in package spec), so the @MX:ANCHOR / @MX:NOTE triggers for exported surface and high fan_in do not fire. The reused-seam sibling internal/spec/ac_count_clause_test.go (card t338, landed) likewise carries zero. No tag was added, and the absence is a measured disposition rather than an unperformed step"
+canary_compliance_check:
+  applicable: true
+  reason: "this SPEC defines a forward-looking policy — the four-element RED-now cell contract — and the run phase ran L1 against this SPEC's own acceptance.md as a self-application probe"
+  result: "20 commands collected across two carriers, ZERO element findings — every release-blocking row resolves to a §D.0 ledger entry carrying command, stdout and exit code, with the document-level pin `a6bbbf82b` inherited. THREE form findings remain OPEN and are carried forward unrepaired: all three sit on the §D.0.1 divergence-probe illustration lines, whose `<fixture-A>` / `<fixture-B>` placeholders the scanner reads as shell redirection. That is the form check being literally correct on an illustrative line rather than on a real citation. Not repaired, deliberately: repairing means either editing acceptance.md body content (outside manager-docs' ownership) or narrowing the scanner in a way that re-opens mutant M-5. Reported as a finding, not smoothed away"
+  boundary: "MP-8 re-executes a cited command; it does NOT verify the command measures its stated premise (mutant M-6, spec.md §A.2.2 / §E). MP-8 would NOT have caught the incident recorded in §A.2.1. This is a design fact, not a debt, and it is not scheduled for closure"
+carried_residuals_still_open:
+  m_3: "a token pasted INSIDE the ~41-line extracted §2 span still satisfies AC-RNT-001's element assertion; span-scoping defeats only a token pasted outside it (acceptance.md §D.2)"
+  m_6: "see canary_compliance_check.boundary — design fact, not debt"
+  go_test_non_execution: "the repository-local test's own non-execution is a tool boundary the SPEC carries openly; AC-RNT-014's liveness anchors narrow it but do not close it"
+  self_application_form_findings: "the three §D.0.1 findings above"
+audit_debt: "The plan-auditor score 0.800 (iteration 2, Tier M threshold 0.80, verdict FAIL on critical defect N1) describes the ITERATION-2 TEXT, not the artifacts as they now stand. Audits run since that revision: NONE. The final revision closed one critical (N1) and four major (N2, N3, N5, N7) defects plus a minor (N6), and a later correction round replaced the §A.2 evidence, reframed the census from one cell to nine, and added REQ-RNT-015 / AC-RNT-015 — none of which any audit has seen. The iteration cap is 2 (.moai/config/sections/harness.yaml:77, plan_audit_tier_ceilings: M: 2), it was reached, and the OPERATOR ruled to accept within the cap against the coordinator's own recommendation of a third iteration. N1's closure was confirmed by the author and the coordinator, which is not an independent audit. SSOT: spec.md §E. Reading 0.800 as this SPEC's current quality is the error the SPEC exists to prohibit"
+plan_deviation_carried: "plan.md §F M2 specifies the sentinel `# MOAI-REDNOW-BEGIN`; the implementation uses `<!-- MOAI-REDNOW-BEGIN -->`. A `# `-prefixed line is an H1 in markdown and would terminate the enclosing `### M5` section, breaking AC-RNT-004's containment assertion. The TOKEN is unchanged, so ledger entries E-07 and E-09 (`grep -c 'MOAI-REDNOW-BEGIN'`) resolve exactly as written"
+tests:
+  affected_packages: "go test ./internal/spec/ -count=1 -> ok github.com/modu-ai/moai-adk/internal/spec 34.714s, exit 0 (.moai/reports/t343/sync-test-spec.txt)"
+  full_suite: "NOT RUN locally, by instruction and by this repository's [HARD] local-full-suite prohibition. No CI verdict exists — this branch is unpushed"
+lint: "golangci-lint run --timeout=5m ./internal/spec/... -> '0 issues.', exit 0 (.moai/reports/t343/sync-lint-spec.txt). The four LSP style hints on red_now_cell_test.go (SplitSeq x3, CutPrefix x1) are hints the configured linter does not raise; they were NOT fixed here — a code edit does not belong in a documentation-transition commit"
+cross_platform_build:
+  darwin: "go build ./... -> exit 0"
+  windows: "GOOS=windows GOARCH=amd64 go build ./... -> exit 0"
+mirror_parity: "diff -q on the verification-completeness.md pair -> exit 0 (byte-identical). plan-auditor.md legitimately DIFFERS from its mirror (neutralization), so parity there is asserted span-wise by TestMP8MirrorSpanIsByteEqual, not by diff. grep -c 'MOAI-REDNOW-BEGIN' -> 1 on each of the three carriers (local .md, template .md, codex .toml)"
+docs_sync: "no user-facing doc surface enumerates the plan-auditor must-pass firewall. Scanned: README{,.ko,.ja,.zh}.md, docs-site/content/**, .moai/docs/**. README's three plan-auditor hits are agent-catalog rows (a mermaid node, a pipeline node, an evaluator table row) that name the agent, never its MP-N criteria; every docs-site 'Must-Pass' hit is the sync-auditor 4-dimension firewall (Functionality/Security), a different mechanism. grep for 'MP-1'/'MP-7' across docs-site/content -> zero. No README or docs-site edit was made, and none is owed"
+spec_audit_pre_sync: "mcp__moai__spec_audit (project_root = this worktree) -> era V3R5, H-3 (§E.2 present, sync_commit_sha missing), severity INFO, zero drift findings. The V3R5 reading is the pre-sync state this section changes; re-classification to V3R6 follows the backfill commit that writes sync_commit_sha"
+push_state: "not pushed, not merged, no PR. The lead owns the integration window and gives the order after this report"
+```
+
+**What this sync did NOT observe.** The branch is unpushed, so **there is no CI verdict** — the
+full-suite judgment belongs to whoever integrates `WT-red-now-threshold`. The full suite was not
+run locally, by instruction. No third plan audit was run, so `0.800` remains attached to the
+iteration-2 text and nothing has graded the current one. The three self-application form findings
+are open. `sync_commit_sha` is written by the immediately following commit.

@@ -2,7 +2,7 @@
 id: SPEC-RED-NOW-THRESHOLD-001
 title: "RED-now cell adoption gate — a release-blocking criterion must carry an observed, re-executable RED"
 version: "0.4.0"
-status: in-progress
+status: completed
 created: 2026-08-29
 updated: 2026-08-29
 author: manager-spec
