@@ -44,6 +44,10 @@ type spyRunner struct {
 	ghFail error
 	// landedFor is the set of cards `git log` reports as landed.
 	landedFor map[string]bool
+	// gitFail is the set of cards whose landing query FAILS — the fixture for
+	// an unanswerable question (no such ref, no git, a broken remote), which
+	// must render distinctly from an answered-empty one.
+	gitFail map[string]error
 }
 
 func installSpy(t *testing.T, s *spyRunner) *spyRunner {
@@ -59,6 +63,12 @@ func installSpy(t *testing.T, s *spyRunner) *spyRunner {
 			}
 			return s.prJSON, nil
 		case "git":
+			joined := strings.Join(args, " ")
+			for card, failure := range s.gitFail {
+				if strings.Contains(joined, card) {
+					return "", failure
+				}
+			}
 			for card, landed := range s.landedFor {
 				if landed && strings.Contains(strings.Join(args, " "), card) {
 					return "d9899f437 fix: something (" + card + ")\n", nil
