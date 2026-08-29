@@ -171,4 +171,57 @@ milestone_shas: [260ea5369, 9ba33d0a2, 61424aed0, 9414374b4, f10827fd3, 5be48b3f
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+Sync-phase entered at HEAD `d3833fc20` (`0 14` behind `origin/develop`, already absorbed at
+worktree entry). Deliverables: `CHANGELOG.md` `[Unreleased] > ### Added` entry; the `done` row on
+all four `docs-site/content/{ko,en,ja,zh}/utility-commands/moai-todo.md` pages updated with the
+stdout landing-verdict token and the `unknown` reading — `moai todo pr` is NOT documented on that
+page at any locale (no `todo pr` row, no `no-link`/`linked`/`ambiguous` mention anywhere in the
+file), so no `todo pr` section was invented; only the surface the page already covered at this
+granularity (`--require-landed`) was extended. `.claude/skills/moai/workflows/todo.md` and its
+template mirror already carried the resolved ref, the `unknown` outcome, and the stdout verdict
+token from run-phase M5 — re-verified byte-identical this phase (`diff` rc=0, re-run below).
+
+**Milestone-boundary deviation pointer.** M1 and M2 could not be staged separately at the
+implementation level; the full record — including M1's reversed `TestResolve_LandedErrorDegradesToUnknown`
+carrying M2's flipped RED — is at `progress.md` §E.2 above (this same file), not restated here.
+
+```yaml
+sync_complete_at: 2026-08-29
+sync_status: completed
+b12_self_test_a: "grep -c SPEC-TODO-LANDING-STATE-001 CHANGELOG.md -> 1 (post-emission re-check; the
+  pre-emission check was not run as a separate command before the Edit in this session — recorded
+  as a process gap, not a pass. The post-emission count of exactly 1, at the single insertion point
+  this session made, confirms no duplicate entry exists.)"
+b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l -> 10 (matches
+  ac_pass_count in §E.3 and the CHANGELOG entry's stated 10/10)"
+b12_self_test_c: "ls on all files named in the CHANGELOG entry: internal/kanban/{prlink.go,
+  prlink_landed.go}, internal/cli/{todo.go,todo_pr.go}, .claude/skills/moai/workflows/todo.md +
+  template mirror -> all resolved (see §E.3 total_run_phase_files for the full 9+2 list this
+  entry's file references are drawn from)"
+changelog_entry_position: "top of CHANGELOG.md [Unreleased] > ### Added, immediately above the
+  SPEC-AC-COUNT-DISCRIMINATOR-001 entry"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (updated: 2026-08-29, already same-day, unchanged)"
+  plan_md: "no status field in plan.md frontmatter -- no transition performed"
+  acceptance_md: "no status field in acceptance.md frontmatter -- no transition performed"
+canary_compliance_check: "not applicable -- this SPEC defines no forward-looking policy that its
+  own sync tests"
+```
+
+Verification re-run this phase:
+
+```
+$ go build ./...                                                                → exit 0
+$ go test ./internal/kanban/... -count=1                                        → ok  github.com/modu-ai/moai-adk/internal/kanban  13.262s
+$ go test ./internal/cli/ -count=1 -run 'TestTodoPR|TestTodoDone|TestLandedRef' → ok  github.com/modu-ai/moai-adk/internal/cli  10.551s
+$ diff .claude/skills/moai/workflows/todo.md internal/template/templates/.claude/skills/moai/workflows/todo.md → rc=0
+$ grep -c 'SPEC-TODO-LANDING-STATE-001' CHANGELOG.md → 1
+```
+
+This sync commit carries the 3-phase close (`in-progress → implemented → completed` merged into
+the sync commit), this §E.4 signal, and the CHANGELOG entry. `sync_commit_sha` is intentionally
+**omitted** from this block — not placeholder-filled — because this commit cannot cite its own SHA;
+it is added by name (`sync_commit_sha: <sha>`) in the immediately following commit, per the SHA
+placeholder backfill exemption (`.claude/rules/moai/development/spec-frontmatter-schema.md`
+§ Status Transition Ownership Matrix). Nothing was pushed by this session; the repository-wide CI
+verdict belongs to whoever integrates the `WT-card-landing-state` branch.
