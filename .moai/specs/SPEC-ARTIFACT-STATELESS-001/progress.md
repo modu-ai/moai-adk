@@ -504,7 +504,7 @@ M1 판정 3종도 병합 트리에서 다시 통과한다(`t357_ac_precheck_m3.t
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-- 산출물: M1(`1dc5c1c27`) 규약 명문화 — `.claude/rules/moai/development/spec-frontmatter-schema.md` § Artifact Statelessness + 템플릿 미러 바이트 동일. M2(`abfd47156`) 재발 방지 lint — `ArtifactStatusFieldForbiddenRule`(`internal/spec/lint_artifact_status.go`), 등록 `internal/spec/lint.go`, 테스트 `internal/spec/lint_artifact_status_test.go`(5개 판정 기준 + `internal/spec/testdata/artifactstatus/` 5개 픽스처). M3(`2cc154d55`, `12f79509f`) D1 코퍼스 정리 — `.moai/reports/t357/t357_d1_clean.py`로 393개 비-spec.md 산출물에서 `status:` 라인 제거.
+- 산출물: M1(`1dc5c1c27`) 규약 명문화 — `.claude/rules/moai/development/spec-frontmatter-schema.md` § Artifact Statelessness + 템플릿 미러 바이트 동일. M2(`abfd47156`) 재발 방지 lint — `ArtifactStatusFieldForbiddenRule`(`internal/spec/lint_artifact_status.go`), 등록 `internal/spec/lint.go`, 테스트 `internal/spec/lint_artifact_status_test.go`(5개 판정 기준 + `internal/spec/testdata/artifactstatus/` 5개 픽스처). M3 — 정리 자체는 `cb473a1a4`(`.moai/reports/t357/t357_d1_clean.py`로 393개 비-spec.md 산출물에서 `status:` 라인 제거), 증거·판정 러너는 `2cc154d55`, 696 라벨 좌표는 `12f79509f`. 흡수 머지는 `30b8e3fef`(`origin/develop` `15453140a`).
 - AC 판정: 11개 전부 PASS — 01·02·11(M1) / 03·04(M2) / 05·06·07·08·09·10(M3). 판정 명령·관측 출력은 §E.2 각 마일스톤 절에 병기.
 - 검증: `internal/spec` 패키지 전체 PASS(36.2s), `internal/cli` 전 패키지 rc=0(`t357_m3_cli_test.txt`), `moai spec lint`/`--strict` 양쪽 rc=0·error 0·warning 177(spec.md/progress.md 미지목).
 - 뮤테이션: `ArtifactStatusFieldForbiddenRule` 술어에 심어 RED 확인 후 되돌림(§E.2 M2 절).
@@ -513,7 +513,7 @@ M1 판정 3종도 병합 트리에서 다시 통과한다(`t357_ac_precheck_m3.t
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: "2026-08-29"
-sync_commit_sha: "pending-backfill"  # a commit cannot cite its own SHA; backfilled in the immediately following commit
+sync_commit_sha: "4332c1855"  # backfilled in the commit immediately following the sync commit — a commit cannot cite its own SHA
 sync_status: completed
 b12_self_test_a: "grep -c 'SPEC-ARTIFACT-STATELESS-001' CHANGELOG.md → 0 (checked before append)"
 b12_self_test_b: "11 distinct AC-AST-001-NN identifiers in acceptance.md == 11 ACs referenced in CHANGELOG entry"
