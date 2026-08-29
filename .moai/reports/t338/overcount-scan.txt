@@ -1,0 +1,33 @@
+OVERCOUNT .moai/specs/SPEC-AGENT-EMIT-LINEAGE-001/acceptance.md  AC-AEL-008
+OVERCOUNT .moai/specs/SPEC-AGENT-PARALLEL-OPT-001/acceptance.md  AC-APO-050
+OVERCOUNT .moai/specs/SPEC-AGENT-PARALLEL-OPT-001/acceptance.md  AC-APO-052
+OVERCOUNT .moai/specs/SPEC-AGENT-PARALLEL-OPT-001/acceptance.md  AC-APO-070
+OVERCOUNT .moai/specs/SPEC-AGENT-PARALLEL-OPT-001/acceptance.md  AC-DCP-010
+OVERCOUNT .moai/specs/SPEC-ASTGREP-EDIT-001/acceptance.md  AC-002
+OVERCOUNT .moai/specs/SPEC-COMPLETION-MARKER-RETIRE-001/acceptance.md  AC-CMR-002
+OVERCOUNT .moai/specs/SPEC-CONFIG-AUDIT-REPAIR-001/acceptance.md  AC-CAR-001
+OVERCOUNT .moai/specs/SPEC-CONFIG-DEAD-SWEEP-001/acceptance.md  AC-CDS-001
+OVERCOUNT .moai/specs/SPEC-CONFIG-DEAD-SWEEP-001/acceptance.md  AC-CDS-002
+OVERCOUNT .moai/specs/SPEC-CONFIG-DEAD-SWEEP-001/acceptance.md  AC-CDS-006
+OVERCOUNT .moai/specs/SPEC-E2E-REVIVAL-001/acceptance.md  AC-E2E-014
+OVERCOUNT .moai/specs/SPEC-LSPMCP-RETIRE-001/acceptance.md  AC-LSPMCP-RETIRE-007
+OVERCOUNT .moai/specs/SPEC-MODEL-TIER-PLANTYPE-001/acceptance.md  AC-MTP-025
+OVERCOUNT .moai/specs/SPEC-PRECOMMIT-PRESERVE-001/acceptance.md  AC-PCP-015
+OVERCOUNT .moai/specs/SPEC-UPDATE-DOC-DRIFT-001/acceptance.md  AC-UDD-006
+OVERCOUNT .moai/specs/SPEC-V3R2-ORC-001/acceptance.md  AC-ORC-001-05
+OVERCOUNT .moai/specs/SPEC-V3R2-WF-001/acceptance.md  AC-WF001-04
+OVERCOUNT .moai/specs/SPEC-V3R2-WF-001/acceptance.md  AC-WF001-07
+OVERCOUNT .moai/specs/SPEC-V3R3-RETIRED-AGENT-001/acceptance.md  AC-RA-02
+OVERCOUNT .moai/specs/SPEC-V3R3-RETIRED-AGENT-001/acceptance.md  AC-RA-07
+OVERCOUNT .moai/specs/SPEC-V3R3-RETIRED-AGENT-001/acceptance.md  AC-RA-11
+OVERCOUNT .moai/specs/SPEC-V3R3-RETIRED-AGENT-001/acceptance.md  AC-RA-14
+OVERCOUNT .moai/specs/SPEC-V3R3-RETIRED-AGENT-001/acceptance.md  AC-RA-17
+OVERCOUNT .moai/specs/SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-002/acceptance.md  AC-SDF002-B-10
+OVERCOUNT .moai/specs/SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-002/acceptance.md  AC-SDF002-B-11
+OVERCOUNT .moai/specs/SPEC-V3R6-DOCS-V3-REBUILD-001/acceptance.md  AC-DVR-012
+OVERCOUNT .moai/specs/SPEC-V3R6-WORKFLOW-AGENT-DOC-ALIGN-001/acceptance.md  AC-WADA-012
+OVERCOUNT .moai/specs/SPEC-WEB-CONSOLE-006/acceptance.md  AC-WC6-019
+---
+acceptance.md scanned : 601
+files over-counted    : 18
+phantom AC ids        : 29

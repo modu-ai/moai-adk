@@ -65,13 +65,81 @@ Status values follow the canonical 8-value enum: draft, planned, in-progress, im
 Before appending to `CHANGELOG.md` `[Unreleased]` section, this agent MUST run 3 self-tests per `.claude/rules/moai/development/manager-develop-prompt-template.md` § B-relevant.12:
 
 1. **Pre-emission grep**: `grep -c '<SPEC-ID>' CHANGELOG.md` — if count ≥ 1, halt emission and return blocker report (avoids duplicate entries from parallel BATCH-SYNC sessions)
-2. **AC count match**: count the DISTINCT AC identifiers in `acceptance.md` and verify the CHANGELOG entry references the same count:
+2. **AC count match**: count the LIVE acceptance-criterion identifiers declared by `acceptance.md` and verify the CHANGELOG entry references the same count.
+
+   **Reserved tokens.** Two literal tokens mark an identifier occurrence that does NOT declare a live criterion of the file it sits in:
+
+   | Token | Meaning |
+   |---|---|
+   | `[RETIRED]` | the criterion this occurrence names has been retired |
+   | `[REF]` | this occurrence declares nothing — it refers to a criterion declared elsewhere, whether in another SPEC or under its canonical spelling in the same file |
+
+   The bracketed shape is deliberate: prose does not produce it by accident, so a criterion that merely *discusses* retirement is never mistaken for a retired one.
+
+   **Adjacency — a token binds to the identifier occurrence, never to the line.** A token marks the occurrence it immediately follows, separated from it by spaces and tabs only. Two boundaries are load-bearing:
+
+   - **A newline breaks adjacency.** The token sits on the same line as the occurrence it marks.
+   - **Any character that is not a space or a tab breaks adjacency — a closing backtick included.** To mark an occurrence written inside a code span, the token goes INSIDE the span (`AC-SYN-010 [REF]`), not after it.
+
+   A leading token marks nothing — `[RETIRED] AC-SYN-013` leaves that identifier live — and a token adjacent to no occurrence at all changes no verdict. Reserved tokens MUST NOT be placed adjacent to an occurrence that declares a live criterion.
+
+   Binding the token to the LINE instead is the regression this convention exists to prevent: one line can carry a live identifier and a retired one together, and a line-unit counter then swallows the live criterion silently while still exiting 0.
+
+   **Three states, decided per identifier.** The marks of ALL of an identifier's occurrences decide its state, and the three cases are exhaustive and mutually exclusive:
+
+   | State | Condition | Handling |
+   |---|---|---|
+   | live | none of its occurrences is marked | counted |
+   | excluded | every one of its occurrences is marked | excluded (`[RETIRED]` and `[REF]` alike) |
+   | ambiguous | some but not all of its occurrences are marked | **not counted — the self-test halts** |
+
+   **Halt obligation.** On any ambiguous identifier the self-test emits NO count: it names every ambiguous identifier, states the resolution — add the reserved token immediately after that identifier's remaining occurrences — and returns a blocker report instead of a CHANGELOG entry. Emitting a number for an identifier whose state is undecided is exactly the unfounded figure this self-test exists to stop. Do NOT soften the counter to make a halt count quietly; clear the halt by applying the convention.
+
+   Run the counter with `AC_FILE` set to the SPEC's acceptance file (`AC_FILE=.moai/specs/<SPEC-ID>/acceptance.md`):
 
    ```bash
-   grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' .moai/specs/<SPEC-ID>/acceptance.md | sort -u | wc -l
+   # MOAI-AC-COUNTER-BEGIN
+   awk '
+     {
+       rest = $0
+       while (match(rest, /AC-([A-Z0-9]+-)*[0-9]+/)) {
+         id = substr(rest, RSTART, RLENGTH)
+         rest = substr(rest, RSTART + RLENGTH)
+         if (rest ~ /^[ \t]*(\[RETIRED\]|\[REF\])/) mk[id] = 1; else um[id] = 1
+         if (!(id in seen)) { seen[id] = 1; order[++n] = id }
+       }
+     }
+     END {
+       live = 0; exc = 0; amb = ""
+       for (i = 1; i <= n; i++) {
+         id = order[i]
+         if ((id in mk) && (id in um)) amb = amb " " id
+         else if (id in mk) exc++
+         else live++
+       }
+       if (amb != "") {
+         print "AMBIGUOUS" amb
+         print "resolve: place [RETIRED] or [REF] immediately after every remaining occurrence of each identifier named above - same line, separated by spaces or tabs only"
+         exit 3
+       }
+       print live
+       printf "live=%d excluded=%d ambiguous=0\n", live, exc > "/dev/stderr"
+     }
+   ' "$AC_FILE"
+   # MOAI-AC-COUNTER-END
    ```
 
-   Anchor on the AC-ID token, never on the surrounding markdown. AC entries appear as `### AC-RIL2-001 — …` headings, as `| AC-HYG-001-001 |` table cells, and as `| AC-DFF-01 |` two-digit rows; a pattern keyed to one markup shape silently misses the others. The `([A-Z0-9]+-)*` middle allows digit-bearing domains (`RIL2`, `V3R6`) and four-segment IDs (`AC-HYG-001-001`), and the whole group is optional so domain-less `AC-001` still matches.
+   **Output contract** — three shapes and nothing else:
+
+   | Situation | stdout | exit code |
+   |---|---|---|
+   | every identifier decided | the live count, one integer | 0 |
+   | any identifier ambiguous | `AMBIGUOUS <id> …` followed by a one-line resolution | non-zero |
+   | live count is 0 | `0` | 0, and the RED flag below applies |
+
+   The per-state tally (`live=… excluded=… ambiguous=0`) goes to stderr, so stdout stays exactly one integer for the caller to read. The absence of an integer IS the "no answer" signal — never substitute a guess for it.
+
+   Anchor on the AC-ID token and the reserved token, never on the surrounding markdown and never on natural-language retirement vocabulary. AC entries appear as `### AC-SYN-001 — …` headings, as `| AC-SYN-003 |` table cells, and as `AC-SYN-05` two-digit inline rows; a pattern keyed to one markup shape silently misses the others, and matching the word "retired" reads a live criterion whose SUBJECT is retirement as retired. The `([A-Z0-9]+-)*` middle allows digit-bearing domains and four-segment IDs, and the whole group is optional so a domain-less `AC-001` still matches.
 
    **A count of 0 is a RED flag, not a pass.** `0 == 0` is a vacuous comparison — if the command returns 0, stop and inspect `acceptance.md` by hand rather than reporting the self-test satisfied. Before trusting any replacement pattern, run it against a handful of real `acceptance.md` files and confirm the counts are non-zero and plausible.
 3. **File path verification**: every file path claimed in the CHANGELOG entry MUST exist via `ls <path>` verification before committing
