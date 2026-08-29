@@ -102,11 +102,114 @@ citable by path; it remains a precedent, not a dependency.
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run-phase tree: `15453140a` → `f60403c07` (M1 `3dc185382`, M2 `51d2935d3`,
+M3 `5f0b9d7c1`, M4 `f60403c07`). Every figure below was produced by running the
+named command in this worktree during this run; the plan-phase ledger was
+measured on `a6bbbf82b` and was **re-measured here before any edit**
+(`.moai/reports/t343/run-red-baseline.md`) — all eight cited REDs reproduced.
+
+### Milestones
+
+| M | Change | Command | Observed | Exit |
+|---|--------|---------|----------|------|
+| M1 | `verification-completeness.md` §2.1 — four elements, two carriers, structural-not-lexical, undecidable disposition | `grep -c "RED-now cell content" .claude/rules/moai/development/verification-completeness.md` | `1` (was `0`) | 0 |
+| M2 | `plan-auditor.md` MP-8 + Group 4 AC-6 + report row | `grep -c "MP-8" .claude/agents/moai/plan-auditor.md` | `6` (was `0`) | 0 |
+| M3 | `internal/spec/red_now_cell_test.go` + 3 fixtures | `go test ./internal/spec/ -count=1` | `ok github.com/modu-ai/moai-adk/internal/spec 36.588s` | 0 |
+| M4 | mirrors + `make agents-emit` + `make build` | `make build` | exit 0 (`.moai/reports/t343/m4-make-build.txt`) | 0 |
+
+RED before GREEN, captured verbatim: `.moai/reports/t343/m3-red.txt` (exit 1, 19
+`FAIL` lines) is the test suite run **before** M1 and M2 landed;
+`.moai/reports/t343/m4-mirror-red.txt` (exit 1) is the three mirror assertions
+before M4.
+
+### AC PASS/FAIL matrix
+
+All commands below were run at `f60403c07` unless the row says otherwise.
+
+| AC | Class | Status | Verification command | Actual output |
+|----|-------|--------|----------------------|---------------|
+| AC-RNT-001 | release-blocking | PASS | `go test ./internal/spec/ -run TestRuleClauseEnumeratesFourElements -count=1` | `ok  github.com/modu-ai/moai-adk/internal/spec` (exit 0) |
+| AC-RNT-002 | regression-guard | PASS | `grep -c -e tense -e mood -e counterfactual -e "future.sense" .claude/rules/moai/development/verification-completeness.md .claude/agents/moai/plan-auditor.md` | `…verification-completeness.md:0` / `…plan-auditor.md:0`, exit 1 — unchanged |
+| AC-RNT-003 | release-blocking | PASS | `go test ./internal/spec/ -run TestRuleClauseStatesDemotionNotPass -count=1` | `ok` (exit 0) |
+| AC-RNT-004 | release-blocking | PASS | `go test ./internal/spec/ -run TestMP8SpanNamesReexecution -count=1` | `ok` (exit 0); the span is contained in the `### M5` section span |
+| AC-RNT-005 | release-blocking | PASS | `go test ./internal/spec/ -run TestMP8SpanIsScoreIndependent -count=1` | `ok` (exit 0) |
+| AC-RNT-006 | release-blocking | PASS | `go test ./internal/spec/ -run TestMP8SpanCarriesNABranch -count=1` | `ok` (exit 0) |
+| AC-RNT-007 | release-blocking | PASS | `go test ./internal/spec/ -run TestGroup4AndReportRowExist -count=1` | `ok` (exit 0); `grep -c "AC-6:" …plan-auditor.md` → `1`, exit 0 (was `0`, exit 1) |
+| AC-RNT-008 | release-blocking | PASS | `go test ./internal/spec/ -run 'TestCommandScopeIsCarrierIndependent\|TestMP8SentinelMutantsAreDetected' -count=1 -v` | `M-5 observed: cell-scoped=0 findings, carrier-independent=1 findings [line 17 (ledger-entry) … carries unquoted [\|]]`; zero-pair, two-pair and empty-span mutants each rejected (exit 0) |
+| AC-RNT-009a | release-blocking | PASS | `go test ./internal/spec/ -run TestRedNowViolatingFixtureIsReported -count=1 -v` | `violating fixture findings: elements=[AC-VIO-001 (line 29): release-blocking RED-now cell carries no command, stdout and exit code] form=[line 20 (ledger-entry) … carries unquoted [\|]]` (exit 0) |
+| AC-RNT-009b | release-blocking | PASS | `go test ./internal/spec/ -run TestRedNowLegitimateFixtureIsClean -count=1` | `ok` (exit 0) — zero findings on a non-empty command set |
+| AC-RNT-010 | release-blocking | PASS | `go test ./internal/spec/ -run 'TestMP8MirrorSpanIsByteEqual\|TestRuleMirrorIsByteIdentical' -count=1` + `make build` | both `PASS`; `make build` exit 0 |
+| AC-RNT-011 | regression-guard | PASS | `go test ./internal/spec/ -run TestMP8MirrorSpanIsNeutral -count=1` | `PASS` (exit 0); `grep -nE "SPEC-[A-Z]+-[0-9]{3}" internal/template/templates/.claude/agents/moai/plan-auditor.md` → the two pre-existing illustrative placeholders only (lines 474, 492) |
+| AC-RNT-012 | regression-guard | PASS | `grep -rl "red_now" internal/template/templates/` | empty stdout, exit 1 — unchanged; `TestRedNowArtifactsDoNotShip` PASS |
+| AC-RNT-013 | release-blocking | PASS | `go test ./internal/spec/ -run TestMP8SpanCarriesExecutionDiscipline -count=1` | `ok` (exit 0) |
+| AC-RNT-014 | release-blocking | PASS | `go test ./internal/spec/ -run TestMP8LivenessAnchors -count=1` | `PASS` (exit 0) — the MP-8-row deletion mutant was observed failing the liveness predicate |
+| AC-RNT-015 | release-blocking | PASS | `go test ./internal/spec/ -run TestMP8SpanKeysOnExecutedCount -count=1` | `ok` (exit 0) |
+
+13 release-blocking PASS, 3 regression-guard PASS, 0 FAIL, 0 PASS-WITH-DEBT.
+
+### Closure gates (`acceptance.md` §D.4)
+
+1. Every release-blocking AC passes with its ledger id, command, output and exit code cited — above.
+2. Every regression-guard AC still returns its stated green output — E-02 `0`/`0` exit 1, E-11 empty exit 1, E-10 two placeholders exit 0.
+3. Both directions of REQ-RNT-009 observed — AC-RNT-009a and AC-RNT-009b, on separate fixtures.
+4. Mutants observed failing, not argued — M-2 (three variants), the MP-8-row deletion, M-4 and M-5.
+5. `make build` exit 0 and the mirror span comparison passes.
+
+### Deviations, recorded rather than smoothed over
+
+- **Sentinel spelling.** `plan.md` §F M2 spells the sentinel `# MOAI-REDNOW-BEGIN`.
+  It is implemented as `<!-- MOAI-REDNOW-BEGIN -->`. A `# `-prefixed line in
+  markdown prose is an H1 heading: it renders visibly and terminates the enclosing
+  `### M5` section, which would break AC-RNT-004's containment assertion. The token
+  is unchanged, so ledger entries E-07 and E-09 (`grep -c "MOAI-REDNOW-BEGIN"`)
+  resolve exactly as written.
+- **Two same-SPEC cascades.** The mirror edit invalidated the generated
+  `.codex/agents/moai/plan-auditor.toml` (closed by `make agents-emit`) and the
+  template catalog hash in `internal/template/catalog.yaml` (closed by `make build`).
+  Both are inside the scope envelope; neither is a scope expansion.
+- **The plan artifacts were untracked** in this worktree and are committed by M1.
+
+### Boundaries reached during the run, stated where they hold
+
+- **L1 checks the single-invocation form, not read-only-ness.** The mechanical half
+  is the extracted metacharacter list; whether a conforming command only reads is
+  the auditor's judgment under MP-8's execution-discipline branch. This is stated
+  in the MP-8 clause rather than left implied.
+- **The quote-aware scan treats a backtick or `$(` inside double quotes as quoted.**
+  A real shell expands both there. Narrowing this would need a shell parser; the
+  disposition for a refused command is demotion, not an error, so the direction of
+  the residual is permissive rather than dangerous.
+- **Applied to this SPEC's own `acceptance.md`** (throwaway probe, not committed):
+  20 commands collected across two carriers, **zero element findings** — every
+  release-blocking row resolves to a ledger entry carrying command, stdout and exit
+  code, with the document pin inherited. Three form findings, all on the §D.0.1
+  divergence-probe illustration lines, whose `<fixture-A>` / `<fixture-B>`
+  placeholders read as redirection to the scanner. That is the form check being
+  literally correct on an illustrative line rather than a real citation. It is
+  reported, not repaired: repairing it would require either editing `acceptance.md`
+  body content (not this agent's artifact) or narrowing the scanner in a way that
+  re-opens M-5.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-08-29
+run_commit_sha: pending-backfill-run-final
+run_status: complete
+ac_pass_count: 16
+ac_fail_count: 0
+preserve_list_post_run_count: 0   # no file outside the M1-M4 envelope was modified
+l44_pre_commit_fetch: "not run — this worktree is a lane tree; the lead owns integration and no push was performed"
+l44_post_push_fetch: "not applicable — no push performed (the lead owns integration)"
+new_warnings_or_lints_introduced: 0   # golangci-lint run --timeout=5m ./internal/spec/... -> "0 issues.", exit 0
+cross_platform_build:
+  darwin: "go build ./... -> exit 0"
+  windows: "GOOS=windows GOARCH=amd64 go build ./... -> exit 0"
+coverage:
+  internal/spec: "89.1% of statements (go test -cover ./internal/spec/ -count=1, exit 0)"
+total_run_phase_files: 25   # git diff --name-only 15453140a..f60403c07 | wc -l
+m1_to_mN_commit_strategy: "one commit per milestone, M1..M4, each naming card t343; no push"
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
