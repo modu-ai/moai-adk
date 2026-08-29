@@ -1260,4 +1260,5 @@ doctrine's always-loaded size) carry forward unchanged by this sync.
 ```yaml
 sync_status: completed
 sync_complete_at: 2026-08-29
+sync_commit_sha: "8088ec3c2"  # a commit cannot cite its own SHA; backfilled in the immediately following commit
 ```
