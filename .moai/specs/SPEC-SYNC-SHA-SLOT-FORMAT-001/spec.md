@@ -2,7 +2,7 @@
 id: SPEC-SYNC-SHA-SLOT-FORMAT-001
 title: "sync_commit_sha slot format: one value grammar, one shared predicate, and a guard that survives the backfill window"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-08-29
 updated: 2026-08-29
 author: manager-spec
