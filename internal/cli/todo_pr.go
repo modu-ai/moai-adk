@@ -174,16 +174,29 @@ func runTodoPR(cmd *cobra.Command, only string, jsonOutput bool) error {
 		return nil
 	}
 	text := map[string]string{}
+	state := map[string]kanban.BacklogState{}
 	for _, it := range rec.Items {
 		text[it.ID] = it.Text
+		state[it.ID] = it.State
 	}
 	for _, o := range outcomes {
-		// Five columns, always present. The link column is BLANK rather than
+		// SIX columns, always present. The link column is BLANK rather than
 		// omitted when there is nothing to show, so a degraded run and a
 		// genuinely unlinked card render the same shape and differ only in
 		// the stderr note (AC-005).
-		_, _ = fmt.Fprintf(out, "%s\t%s\t%s\t%s\t%s\n",
-			o.CardID, o.Kind, formatPRLinks(o.PRs), o.Confidence, text[o.CardID])
+		//
+		// The queue STATE sits between Confidence and the free-text tail: a
+		// `picked` card with no commits and a `queued`, never-started one both
+		// resolve to `no-link`, and without the state they rendered as the
+		// same row. It is a column-count change on a machine-readable
+		// surface — a consumer doing `cut -f5` now gets the state where it
+		// used to get the text — but a consumer reading the LAST field still
+		// reads the card text.
+		//
+		// No new subprocess and no new query: the value is already in hand
+		// from the record this render already loaded.
+		_, _ = fmt.Fprintf(out, "%s\t%s\t%s\t%s\t%s\t%s\n",
+			o.CardID, o.Kind, formatPRLinks(o.PRs), o.Confidence, state[o.CardID], text[o.CardID])
 	}
 	return nil
 }

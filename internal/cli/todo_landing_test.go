@@ -91,6 +91,56 @@ func TestTodoPR_UnknownReachesJSON(t *testing.T) {
 	}
 }
 
+// AC-TLS-010 — the row carries the queue state, so a `picked` card with no
+// commits (the t338 shape) is distinguishable from a `queued`, never-started
+// one. Both resolve to `no-link`; before this column they rendered alike.
+//
+// Stated limit, asserted as part of the criterion: this distinguishes *picked
+// with no commits* from *never started*. It does NOT claim to detect work that
+// produced no commit.
+func TestTodoPR_RowCarriesQueueState(t *testing.T) {
+	_, store := todoFixture(t)
+	ids := seedQueue(t, store, "picked but no commits", "never started")
+	if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+		for i := range rec.Items {
+			if rec.Items[i].ID == ids[0] {
+				rec.Items[i].State = kanban.BacklogStatePicked
+			}
+		}
+		return nil
+	}); err != nil {
+		t.Fatalf("pick %s: %v", ids[0], err)
+	}
+	installSpy(t, &spyRunner{prJSON: `[]`})
+
+	stdout, _, err := runTodo(t, "pr")
+	if err != nil {
+		t.Fatalf("todo pr: %v", err)
+	}
+	picked := prRow(t, stdout, ids[0])
+	queued := prRow(t, stdout, ids[1])
+
+	// Six columns: CardID, Kind, PRs, Confidence, State, text.
+	if len(picked) != 6 {
+		t.Fatalf("row %v has %d columns, want 6 (the state column was added)", picked, len(picked))
+	}
+	if picked[1] != queued[1] {
+		t.Fatalf("fixture premise broken: the two cards must share the %q outcome, got %q and %q",
+			kanban.PRLinkNoLink, picked[1], queued[1])
+	}
+	if picked[4] != string(kanban.BacklogStatePicked) {
+		t.Errorf("state column for the picked card = %q, want %q", picked[4], kanban.BacklogStatePicked)
+	}
+	if queued[4] != string(kanban.BacklogStateQueued) {
+		t.Errorf("state column for the queued card = %q, want %q", queued[4], kanban.BacklogStateQueued)
+	}
+	// The card text stays the LAST field, so a consumer reading the tail
+	// still reads the text after the column count changed.
+	if picked[5] != "picked but no commits" {
+		t.Errorf("last column = %q, want the card text", picked[5])
+	}
+}
+
 // AC-TLS-006 — `done` prints exactly one landing verdict, and the three
 // answers produce three DISTINCT tokens. This is the criterion whose RED is
 // that "the guard passed" and "the guard did not run" were the same bytes.
