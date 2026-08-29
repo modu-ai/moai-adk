@@ -85,7 +85,7 @@ func TestGuardLivenessRenderLeavesTheWorkingTreeByteIdentical(t *testing.T) {
 		t.Fatal("the fixture's porcelain baseline is empty, so the comparison would hold vacuously")
 	}
 
-	text := guardLivenessAdvisory(repo)
+	text := guardLivenessAdvisory(repo, deferredScansAsyncEnabled())
 	if text == "" {
 		t.Fatal("the render said nothing on a result carrying a non-clean entry, so nothing was measured")
 	}
@@ -116,12 +116,12 @@ func TestGuardLivenessRenderPersistsItsRecordOutsideTheTree(t *testing.T) {
 		t.Fatalf("seed the persisted result: %v", err)
 	}
 
-	first := guardLivenessAdvisory(repo)
+	first := guardLivenessAdvisory(repo, deferredScansAsyncEnabled())
 	if !strings.Contains(first, "subject-fires") {
 		t.Fatalf("the first render did not announce the non-clean subject:\n%s", first)
 	}
 
-	second := guardLivenessAdvisory(repo)
+	second := guardLivenessAdvisory(repo, deferredScansAsyncEnabled())
 	if strings.Contains(second, "subject-fires") {
 		t.Fatalf("the second render re-announced a standing subject individually:\n%s", second)
 	}
