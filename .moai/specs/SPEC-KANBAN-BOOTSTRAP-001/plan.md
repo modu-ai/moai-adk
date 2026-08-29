@@ -2,7 +2,6 @@
 id: SPEC-KANBAN-BOOTSTRAP-001
 title: "Implementation plan — Kanban session topology, bootstrap, and dispatch"
 version: "0.7.0"
-status: draft
 created: 2026-08-10
 updated: 2026-08-14
 author: manager-spec

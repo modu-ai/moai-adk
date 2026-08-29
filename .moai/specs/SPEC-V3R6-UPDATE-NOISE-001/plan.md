@@ -2,7 +2,6 @@
 id: SPEC-V3R6-UPDATE-NOISE-001
 title: "SPEC-V3R6-UPDATE-NOISE-001 — Implementation Plan"
 version: "0.2.0"
-status: implemented
 created: 2026-05-23
 updated: 2026-05-22
 author: manager-spec

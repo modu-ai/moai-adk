@@ -2,7 +2,6 @@
 spec_id: SPEC-V3R2-WF-001
 title: Acceptance Criteria — Skill Consolidation Stage 1 (48 → 38)
 version: "1.1.0"
-status: draft
 created: 2026-04-24
 updated: 2026-04-25
 author: manager-spec (acceptance.md generation; v1.1.0 revision post plan-audit 2026-04-25)

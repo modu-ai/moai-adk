@@ -2,7 +2,6 @@
 id: SPEC-V3R6-ANTHROPIC-AUDIT-TIER3-001
 title: "Acceptance — Anthropic Best-Practice Audit Tier 3 (F3+F9+F13)"
 version: "0.2.0"
-status: implemented
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec

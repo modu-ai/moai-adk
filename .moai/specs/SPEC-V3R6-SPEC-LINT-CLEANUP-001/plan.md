@@ -2,7 +2,6 @@
 id: SPEC-V3R6-SPEC-LINT-CLEANUP-001
 title: "spec-lint MissingExclusions baseline cleanup — Implementation Plan (Tier S minimal Section A)"
 version: "0.1.0"
-status: implemented
 created: 2026-05-25
 updated: 2026-05-25
 author: GOOS행님
