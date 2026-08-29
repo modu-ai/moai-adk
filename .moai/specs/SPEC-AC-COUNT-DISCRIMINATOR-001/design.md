@@ -2,7 +2,6 @@
 id: SPEC-AC-COUNT-DISCRIMINATOR-001
 title: "AC 개수 자가검사 판별자 — 설계"
 version: "0.5.0"
-status: draft
 created: 2026-08-28
 updated: 2026-08-28
 author: manager-spec

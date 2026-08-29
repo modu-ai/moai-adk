@@ -2,7 +2,6 @@
 id: SPEC-INTERNAL-TEST-004
 title: "Regenerate stale doctor/status golden testdata for version bump rc7→rc10 (whole-repo green)"
 version: "0.1.0"
-status: completed
 created: 2026-07-09
 updated: 2026-07-09
 author: manager-spec

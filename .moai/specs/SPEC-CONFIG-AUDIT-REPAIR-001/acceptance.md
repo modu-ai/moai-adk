@@ -2,7 +2,6 @@
 id: SPEC-CONFIG-AUDIT-REPAIR-001
 title: "Acceptance criteria — config audit repair"
 version: "0.2.0"
-status: completed
 created: 2026-07-25
 updated: 2026-07-25
 author: manager-spec

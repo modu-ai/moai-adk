@@ -136,6 +136,13 @@ func NewLinter(opts LinterOptions) *Linter {
 		&StatusCaseNormalizationRule{},
 		&StatusGitConsistencyRule{},
 		&OwnershipTransitionRule{},
+		// ArtifactStatusFieldForbiddenRule — SPEC-ARTIFACT-STATELESS-001 M2,
+		// REQ-AST-001-004. Per-SPEC: it reads the SPEC's own sibling artifacts
+		// via filepath.Dir(doc.Path). Severity is `error` and the code is
+		// deliberately NOT in eraDemotableCodes — that absence holds only
+		// because the D1 corpus cleanup lands in the same SPEC (REQ-AST-001-006
+		// / -010); splitting the cleanup out inverts the decision.
+		&ArtifactStatusFieldForbiddenRule{},
 		// MovingRefUnpinnedRule — SPEC-MOVING-REF-GUARD-001 M3, REQ-MRG-001.
 		// Per-SPEC (not cross-SPEC): it reads the SPEC's own sibling artifacts
 		// via filepath.Dir(doc.Path), so lint.skip and era demotion both apply.
