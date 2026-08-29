@@ -145,4 +145,75 @@ m1_to_mN_commit_strategy: "single milestone, single commit 410f6241d"
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-29
+sync_commit_sha: "pending-backfill-t352-sync"
+sync_status: audit-ready
+b12_self_test_a: "grep -c 'SPEC-TEMPDIR-CLEANUP-RACE-001' CHANGELOG.md -> 0 (rc=1, no match); no duplicate entry, emission proceeded"
+b12_self_test_b: "AC count 9, from the distinct AC-IDs of acceptance.md §D matrix; CHANGELOG entry names all 9. See the pattern note below."
+b12_self_test_c: "ls over all 8 paths named in the CHANGELOG entry -> all present; ls internal/cli/zz_t352_probe_test.go -> No such file or directory (deletion confirmed)"
+changelog_entry_position: "CHANGELOG.md [Unreleased] -> ### Fixed, first bullet"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented -> completed (merged into this single sync commit)"
+  plan_md: "n/a — carries no frontmatter"
+  acceptance_md: "n/a — carries no frontmatter"
+  progress_md: "n/a — carries no frontmatter"
+  updated_field: "2026-08-28 -> 2026-08-29 (spec.md only, the sole frontmatter-bearing artifact)"
+canary_compliance_check: "n/a — this SPEC defines no forward-looking policy that its own sync would test"
+```
+
+### B12 self-test (b) — the canonical AC-count pattern undercounts this SPEC
+
+The canonical command
+`grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l` returns **7**, not 9: this
+SPEC's criteria carry lowercase letter suffixes (`AC-TCR-002a`, `002b`, `004a`, `004b`) that the
+pattern truncates, collapsing each pair onto its bare parent. A suffix-aware variant
+(`'AC-([A-Z0-9]+-)*[0-9]+[a-z]?'`) returns **10**, over-counting instead, because the prose and the
+§D.2/§D.3 tables also reference the bare parents `AC-TCR-002` and `AC-TCR-004`, which are not
+criteria. Neither number is 0, so the vacuous-comparison hazard the discipline warns about does not
+apply here — but neither is the criterion count either.
+
+The count of record is **9**, taken from the distinct AC-IDs of the `§D AC matrix`
+(`grep -oE '^\| (AC-TCR-[0-9]+[ab]?)' acceptance.md | sort -u` → 9 rows: 001, 002a, 002b, 003,
+004a, 004b, 005, 006, 007). It agrees independently with `spec.md` §E, which records "nine
+acceptance criteria" as its deliberate Tier S budget overrun. The CHANGELOG entry names all nine.
+
+### MX Tag validation (sync sub-step)
+
+Sync-phase touched markdown only (`CHANGELOG.md`, `spec.md` frontmatter, this file). The run-phase
+Go surface carries `SPEC-TEMPDIR-CLEANUP-RACE-001` REQ references in the doc comments on `Option`,
+`WithSynchronousDeferredScans`, `sessionStartHandler.syncDeferredScans`, and `asyncDeferredScans`.
+No `@MX:NOTE` / `@MX:WARN` / `@MX:ANCHOR` annotation was added or altered in this commit.
+
+### Sync-phase verification
+
+Markdown-only diff, so no Go verification was re-run in sync-phase. Run-phase evidence stands as
+recorded in §E.2, measured by the lane at HEAD `410f6241d` on darwin/arm64 — carried, not
+re-measured here.
+
+### Documentation impact — none, deliberately
+
+`adk.mo.ai.kr` documents the CLI surface and the MoAI workflows, not `internal/` Go packages, and
+`hook.WithSynchronousDeferredScans` is an internal test-facing seam with exactly one caller
+(`internal/cli/session_start_deferred_write_test.go`, plus the adopting
+`internal/cli/binary_lag_test.go`). No shipped command's behaviour, output, or flag set changed —
+the production default is untouched by construction (AC-TCR-002a / AC-TCR-002b). Authoring a
+docs-site page for a test seam would be scope expansion, so no locale set was touched.
+
+### §F risks re-read at close (`acceptance.md` §D.4)
+
+`spec.md` §F was re-read at close and every risk there remains **open**; nothing in this card closes
+one. In particular: CI was never re-run during reproduction, so the CI-side outcome is unmeasured;
+the guard measures the write rather than the collision, so the final link to the observed CI failure
+string stays an inference; and observation 1 (`TestGitDiffNameCount_Predicate`, `internal/graph`) is
+explicitly **not** closed by this card and remains the sole failing test on the last measured
+`develop` head.
+
+### Gaps
+
+- `sync_commit_sha` is a placeholder. A commit cannot name its own hash; backfill in a follow-up
+  commit (the SHA-placeholder-backfill exemption, `spec-frontmatter-schema.md`).
+- No CI run exists for `WT-tempdir-cleanup-race`. The branch is unpushed and CI is the full-suite
+  verdict (`acceptance.md` §D.4 clause 3 remains **unmet**), so this close is local-evidence-only.
+- `origin/develop` is 58 commits ahead of this branch and was deliberately not merged in sync-phase.
+  The lane merges and re-verifies at integration time.
