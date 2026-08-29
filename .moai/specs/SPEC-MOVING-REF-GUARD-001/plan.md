@@ -54,6 +54,11 @@ Run in the worktree, before the first M3 edit:
      value AC-MRG-010 is decided against from here on. The 2026-08-28 entry is kept rather than
      overwritten: erasing a superseded anchor destroys the record of what was measured when, which
      is the same information loss this SPEC exists to prevent.
+   - Re-recorded after the second absorption, at the integration window that merged this card:
+     `MERGE_BASELINE_SHA = 51daada00079ee818ae29adb0c2d5c34c5071a29` (2026-08-29). This is the
+     value AC-MRG-010 is decided against from here on. Both earlier entries are kept — the record
+     of which anchor decided which measurement is the point, and overwriting it would erase exactly
+     what this SPEC exists to preserve.
    - **[HARD] Re-record on every mainline absorption.** A merge-base is computed, and this SPEC
      forbids deciding against a computed-at-read-time anchor — so it is frozen here instead. The
      freeze has a cost: the literal goes stale the moment this branch merges mainline again, and
