@@ -378,8 +378,8 @@ func TestNewDefaultLLMConfig_GLMTierMapping(t *testing.T) {
 	if cfg.GLM.Models.Haiku != "glm-5.3-flash" {
 		t.Errorf("GLM.Models.Haiku: got %q, want %q (unified)", cfg.GLM.Models.Haiku, "glm-5.3-flash")
 	}
-	if cfg.GLM.Models.Fable != "glm-5.3-flash" {
-		t.Errorf("GLM.Models.Fable: got %q, want %q (unified)", cfg.GLM.Models.Fable, "glm-5.3-flash")
+	if cfg.GLM.Models.Fable != "glm-5.3" {
+		t.Errorf("GLM.Models.Fable: got %q, want %q (Fable slot is the one non-flash slot)", cfg.GLM.Models.Fable, "glm-5.3")
 	}
 }
 

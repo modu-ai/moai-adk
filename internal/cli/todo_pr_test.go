@@ -44,6 +44,10 @@ type spyRunner struct {
 	ghFail error
 	// landedFor is the set of cards `git log` reports as landed.
 	landedFor map[string]bool
+	// gitFail is the set of cards whose landing query FAILS — the fixture for
+	// an unanswerable question (no such ref, no git, a broken remote), which
+	// must render distinctly from an answered-empty one.
+	gitFail map[string]error
 }
 
 func installSpy(t *testing.T, s *spyRunner) *spyRunner {
@@ -59,6 +63,12 @@ func installSpy(t *testing.T, s *spyRunner) *spyRunner {
 			}
 			return s.prJSON, nil
 		case "git":
+			joined := strings.Join(args, " ")
+			for card, failure := range s.gitFail {
+				if strings.Contains(joined, card) {
+					return "", failure
+				}
+			}
 			for card, landed := range s.landedFor {
 				if landed && strings.Contains(strings.Join(args, " "), card) {
 					return "d9899f437 fix: something (" + card + ")\n", nil
@@ -105,19 +115,38 @@ func seedQueue(t *testing.T, store *kanban.BacklogStore, texts ...string) []stri
 }
 
 // queueDirDigest is the recursive digest AC-004 asserts on: every path under
-// the queue directory plus that file's SHA-256. A new path, a removed path,
-// or a changed byte all move it.
+// the PROJECT ROOT plus that file's SHA-256. A new path, a removed path, or a
+// changed byte all move it.
+//
+// The scope is the whole root, not the queue directory
+// (SPEC-TODO-LANDING-STATE-001 AC-TLS-008). The narrower form was porous in a
+// way that mattered: the read-only ruling prohibits a write BY THE VERB
+// anywhere, and a criterion scoped to `kanban.StateDirForRoot(root)` cannot
+// fail on the "no cache" clause at all — a landing cache written to
+// `<root>/.moai/cache/` on every invocation left it fully green. The
+// assertion is therefore drawn at the verb's reach.
+//
+// Stated limit, and it is an approved residual rather than an oversight: a
+// write OUTSIDE the fixture root — $HOME, /tmp, a global cache — still evades
+// this. The criterion is "the verb's reach within the project", NOT "this verb
+// writes nowhere", and it is not claimed to be the latter.
+//
+// `.git` is skipped: the fixture is a real git repository (queue-root
+// resolution goes through git), and git's own housekeeping — gc, index
+// refresh, ref logs — moves bytes there for reasons that have nothing to do
+// with the verb under test.
 func queueDirDigest(t *testing.T, root string) string {
 	t.Helper()
-	// Resolve rather than restate: a spelled-out directory name keeps passing
-	// after a rename it no longer tracks.
-	dir := kanban.StateDirForRoot(root)
+	dir := root
 	var lines []string
 	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if d.IsDir() {
+			if d.Name() == ".git" {
+				return fs.SkipDir
+			}
 			return nil
 		}
 		data, err := os.ReadFile(path) // #nosec G304 -- test fixture path
@@ -136,9 +165,10 @@ func queueDirDigest(t *testing.T, root string) string {
 	return strings.Join(lines, "\n")
 }
 
-// AC-004 — nothing under the queue directory changes across an invocation
-// (REQ-2.1, REQ-2.2). Asserted on the linked, ambiguous, landed, and
-// fail-open paths, because the ruling has to hold on all of them.
+// AC-004 / AC-TLS-008 — nothing under the PROJECT ROOT changes across an
+// invocation (REQ-2.1, REQ-2.2, REQ-TLS-008, REQ-TLS-009). Asserted on the
+// linked, ambiguous, landed, fail-open, landed-and-picked, and unanswerable
+// paths, because the ruling has to hold on all of them.
 func TestTodoPR_QueueDirUnchanged(t *testing.T) {
 	cases := []struct {
 		name string
@@ -149,11 +179,31 @@ func TestTodoPR_QueueDirUnchanged(t *testing.T) {
 		{"json form", &spyRunner{prJSON: pinnedPRJSON}, []string{"pr", "--json"}},
 		{"landed path", &spyRunner{prJSON: `[]`, landedFor: map[string]bool{"t1": true}}, []string{"pr"}},
 		{"fail-open path", &spyRunner{ghFail: fmt.Errorf("gh: not found")}, []string{"pr"}},
+		// The landed path exercised for a card that is NOT in the default
+		// queued state, so the state column added by
+		// SPEC-TODO-LANDING-STATE-001 is read on a landed row too. (The queue
+		// has no `completed` state — `picked` is the non-default state a
+		// landed card actually carries.)
+		{"landed and picked", &spyRunner{prJSON: `[]`, landedFor: map[string]bool{"t1": true}}, []string{"pr"}},
+		// The unknown path: the verb must not write a cache while degrading.
+		{"unanswerable path", &spyRunner{prJSON: `[]`, gitFail: map[string]error{"t1": fmt.Errorf("fatal: bad revision")}}, []string{"pr"}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			root, store := todoFixture(t)
-			seedQueue(t, store, "first card", "second card")
+			ids := seedQueue(t, store, "first card", "second card")
+			if tc.name == "landed and picked" {
+				if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
+					for i := range rec.Items {
+						if rec.Items[i].ID == ids[0] {
+							rec.Items[i].State = kanban.BacklogStatePicked
+						}
+					}
+					return nil
+				}); err != nil {
+					t.Fatalf("pick %s: %v", ids[0], err)
+				}
+			}
 			installSpy(t, tc.spy)
 
 			before := queueDirDigest(t, root)
@@ -174,7 +224,7 @@ func TestTodoPR_QueueDirUnchanged(t *testing.T) {
 
 			after := queueDirDigest(t, root)
 			if before != after {
-				t.Errorf("queue directory changed across the invocation\nbefore:\n%s\nafter:\n%s", before, after)
+				t.Errorf("project root changed across the invocation\nbefore:\n%s\nafter:\n%s", before, after)
 			}
 			afterStat, err := os.Stat(store.EnginePath())
 			if err != nil {

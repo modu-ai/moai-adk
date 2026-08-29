@@ -67,11 +67,16 @@ var newGuardLivenessStore = guardliveness.DefaultStore
 //     Its result is persisted on completion and read by a LATER activation
 //     (guardLivenessAdvisory), which is what keeps the unconditional binding
 //     compatible with the bound.
-func guardLivenessRefresh(ctx context.Context, root string) {
+//
+// The async parameter is the CALLER's answer, not this function's: it is the
+// conjunction of the package-private test-binary seam and the per-handler
+// WithSynchronousDeferredScans option, which cannot be read from here because
+// the option lives on the handler value (SPEC-TEMPDIR-CLEANUP-RACE-001).
+func guardLivenessRefresh(ctx context.Context, root string, async bool) {
 	act := guardliveness.Activation{Root: root}
 	evaluator := guardliveness.New(guardLivenessProducer, guardLivenessSinkOption())
 
-	if !deferredScansAsyncEnabled() {
+	if !async {
 		// Test path (TestMain sets deferredScansAsync=false): run inline so no
 		// goroutine outlives the test boundary, matching the binary-lag
 		// contributor on this surface and for the same reason.
@@ -124,7 +129,9 @@ func guardLivenessSinkOption() guardliveness.Option {
 // clean. A verdict that could not be READ renders the contract violation by
 // name (guardliveness.Advisory), because reporting that as silence would be
 // this card's own subject at the consumer's layer.
-func guardLivenessAdvisory(root string) string {
+//
+// The async parameter is the CALLER's answer; see guardLivenessRefresh.
+func guardLivenessAdvisory(root string, async bool) string {
 	if root == "" {
 		return ""
 	}
@@ -161,9 +168,10 @@ func guardLivenessAdvisory(root string) string {
 		return text
 	}
 
-	if !deferredScansAsyncEnabled() {
-		// Test path (TestMain sets deferredScansAsync=false): run inline so no
-		// goroutine outlives the test boundary.
+	if !async {
+		// Test path (TestMain sets deferredScansAsync=false, or the caller
+		// passed WithSynchronousDeferredScans): run inline so no goroutine
+		// outlives the test boundary.
 		return read()
 	}
 

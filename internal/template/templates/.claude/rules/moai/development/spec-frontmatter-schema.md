@@ -31,6 +31,21 @@ tags: "tag1, tag2, tag3"
 ---
 ```
 
+### Artifact Statelessness
+
+The canonical 12-field obligation above binds `spec.md` only.
+Every other artifact in a SPEC directory is governed by this sub-section instead.
+
+The four sibling artifacts — `plan.md`, `acceptance.md`, `design.md`, and `research.md` — are **stateless on the status axis**: they MUST NOT carry a `status:` field in their YAML frontmatter. A SPEC's lifecycle state lives in exactly one place, `spec.md`, which is the file every lint, audit, and close path reads it from.
+
+Frontmatter itself is permitted in those four artifacts.
+Statelessness is confined to the status axis: fields such as `id`, `title`, `version`, and `created` are outside the scope of this rule, and an artifact may carry a frontmatter block or omit one entirely, as its author prefers. Reading statelessness as a blanket ban on frontmatter is a misreading of the axis this rule governs.
+
+This declaration is Tier-independent.
+It holds for every SPEC directory whatever the `tier:` value says, so a SPEC that carries `design.md` or `research.md` while declaring a Tier other than L falls under exactly the same rule as one that declares `tier: L`.
+
+Two files sit outside this sub-section: `spec.md`, which carries the canonical `status:` field per the schema above, and `progress.md`, which records phase progress in body sections rather than in frontmatter.
+
 ## Field Reference
 
 | Field | Type | Constraints | Notes |
