@@ -41,7 +41,12 @@ const binaryLagJoinBound = 250 * time.Millisecond
 // @MX:WARN @MX:REASON bounded-background-goroutine join — a comparison that
 // overruns the bound is abandoned for this session; safe because the verdict
 // is read-only and re-derives identically at the next session start.
-func binaryLagAdvisory(ctx context.Context, dir string) string {
+//
+// The async parameter is the CALLER's answer: the conjunction of the
+// package-private test-binary seam and the per-handler
+// WithSynchronousDeferredScans option, which lives on the handler value and
+// cannot be read from here (SPEC-TEMPDIR-CLEANUP-RACE-001).
+func binaryLagAdvisory(ctx context.Context, dir string, async bool) string {
 	if dir == "" {
 		return ""
 	}
@@ -51,10 +56,11 @@ func binaryLagAdvisory(ctx context.Context, dir string) string {
 		BinaryVersion: version.GetVersion(),
 	}
 
-	if !deferredScansAsyncEnabled() {
-		// Test path (TestMain sets deferredScansAsync=false): run inline so no
-		// goroutine outlives the test boundary, matching the deferred-scan
-		// branch a few hundred lines up and for the same reason.
+	if !async {
+		// Test path (TestMain sets deferredScansAsync=false, or the caller
+		// passed WithSynchronousDeferredScans): run inline so no goroutine
+		// outlives the test boundary, matching the deferred-scan branch a few
+		// hundred lines up and for the same reason.
 		return binlag.Advisory(binlag.Evaluate(ctx, req))
 	}
 

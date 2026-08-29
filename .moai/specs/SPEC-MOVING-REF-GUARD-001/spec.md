@@ -1,10 +1,10 @@
 ---
 id: SPEC-MOVING-REF-GUARD-001
 title: "Moving-ref invariant guard: warn on unpinned invariant claims, with the anchor-or-subject exemption predicate shipped alongside"
-version: "0.7.0"
-status: in-progress
+version: "0.8.0"
+status: completed
 created: 2026-08-28
-updated: 2026-08-28
+updated: 2026-08-29
 author: manager-spec
 priority: P2
 phase: "v3.2.0 target"
@@ -22,6 +22,7 @@ related_specs: [SPEC-GRAPH-FRESHNESS-CADENCE-001, SPEC-VERIFICATION-COMPLETENESS
 
 | Version | Date | Change | Author |
 |---------|------|--------|--------|
+| 0.8.0 | 2026-08-29 | **Retraction of REQ-MRG-009's `--strict` gating clause; the finding ships advisory.** Post-close body amendment on a `completed` SPEC, forced by measurement rather than by review. The run-phase merge `84b3b7949` turned `develop`'s SPEC Lint job from success to failure and it stayed red across `1a635aea8`, `91ec14dbe` and `a6bbbf82b`; the preceding head `c48e8aaa2`, which does not contain this card, was green, so the attribution is unambiguous. At `a6bbbf82b`: `0 error(s), 155 warning(s)` → exit 1, **110 of them `MovingRefUnpinned`** (the other 45 carry `[grandfathered era — downgraded to warning]` and are advisory, so they do not gate). `.github/workflows/spec-lint.yml` runs the linter with `--strict`. Reproduced in this worktree at `a7763666d`: `moai spec lint --strict` → rc 1, `0 error(s), 174 warning(s)`. **The defect is a composition nobody ran**: §D.5 reasoned to `warning` precisely so the corpus would not red on day one, and REQ-MRG-009 then required the `--strict` escalation that reds it — two clauses written against each other, with AC-MRG-005 asserting the same `--strict` non-zero and therefore agreeing with the defect instead of catching it. **The mechanism is emission-site advisory, not the era map**: `eraDemotableCodes` is consulted only for `SeverityError` findings, so a warning never reaches it and adding the code there would do nothing; the gating findings are on modern-era (V3R6) SPECs, which no era path can demote. The rule sets `Advisory: true` on its own findings, as `StatusGitConsistency` already does. **Applied**: REQ-MRG-009 rewritten (exit 0 with and without `--strict`, findings still reported, retraction and mechanism recorded inline); §D.5 extended to name the hole in its own argument, where it was found (develop CI, not this SPEC's tests), and advisory emission as the completion of §D.5's intent rather than a retreat from it; **new §D.7** carrying the three-part disclosure — (a) why advisory now (110 findings make bulk suppression the rational response to a day-one gate, the outcome §A exists to prevent), (b) the promotion condition (the `.moai/reports/t342/corpus-triage.md` findings remediated or R3-exempted by their owning SPECs, at which point the retracted clause returns verbatim), and (c) the failure mode of forgetting, stated without softening: an advisory-forever guard is **the same shape this SPEC exists to detect** — a claim true when written, quietly emptied afterwards, with nothing signalling the change, and by `acceptance.md` §A's own words indistinguishable from a guard that is switched off. AC-MRG-005 rewritten to decide the advisory behaviour and made falsifiable in **both** directions — exit 0 under `--strict` **and** a non-zero reported finding count — with a separate mutation per half (drop `Advisory: true` → strict exit reds; unregister the rule → count drops to 0 while both exits stay 0), because exit 0 alone passes vacuously against a rule that emits nothing. Also swept: `acceptance.md` §A's fixture-era precondition, whose stated reason was the retracted `--strict` half and which now holds for the opposite reason (an era-demoted fixture would be advisory twice over and could not observe the rule's own flag); `plan.md` §B, which claimed `warning` alone was sufficient and mis-attributed the severity fix to REQ-MRG-009. `status:` deliberately unchanged — recorded in HISTORY rather than by reopening the lifecycle. No Go source, no test, no doctrine file, no template mirror, no `progress.md` touched; the implementation is a separate delegation. | manager-spec |
 | 0.7.0 | 2026-08-28 | Acceptance-criteria repair round, on six defects the run-phase agents raised and deliberately did not patch themselves (`acceptance.md` body is manager-spec's). Every one is a criterion that was true when written and became false or vacuous later; none is a criterion reshaped to fit the artifact it decides. **(a) AC-MRG-011's second half replaced.** `grep -c 'ANCHOR' ≥ 1` guarded nothing — `ANCHOR` is one of the predicate's two class names, so with L7 deleted the count half correctly drops 7 → 6 while the ANCHOR half returns **9**. Re-keyed on L7's distinguishing phrase (`the ANCHOR branch of the predicate is unvalidated`), deliberately not on `L7 —`, which would re-measure the count half's axis. Mutation re-planted: count `7 → 6`, phrase `1 → 0`, retired key steady at 9. **(b) AC-MRG-011's stale figure** corrected 5 → **6**: the limit set grew 5 → 6 → 7 across revisions and the mutation text was not swept with it. **(c) AC-MRG-002's fixture wording** corrected from "`origin/main` **replaced by** a SHA" — which deletes the token, fails conjuncts 1+2 rather than being exempted, and makes the criterion's own mutation unable to redden it — to the **retaining** form the implementation already used and REQ-MRG-008 is worded for. Mutation re-planted (delete the hex-SHA branch): RED. **(d) AC-MRG-009's separation clause KEPT, by re-placing the fixture rather than deleting the clause.** At M3 the body-only mutant took seven criteria red together, AC-MRG-001 among them, because its fixture row sat in `acceptance.md` while `SPECDoc.Body` carries `spec.md` alone. The row was moved into the fixture's `spec.md` and the mutant re-run: **AC-MRG-009 red, AC-MRG-001 green** (with -002, -005, -008, -014 also green; -003/-004/-006 collateral-red on the same sibling property). The separation is now measured rather than asserted. **(e) §H Q0 answered — option C, operator decision**: REQ-MRG-010, AC-MRG-013, CM-1 and CM-2 deferred out of scope, with grounds (R4's reachable class measured empty twice — 0 of 42 by §B.7's probes, external occupancy 0 against M4's 97 findings — so the exclusion can only over-exempt, and the iter-1 audit measured a token-keyed exclusion passing all thirteen criteria while silencing 76 of 117 real divergence lines), and with a resume condition M4 sharpened: 0 external S2 lines but **2 S2 lines in this SPEC's own directory**, both R4-form, the class filling prospectively from this card's own output exactly as §B.7 predicted. R4 stays in the doctrine and in the finding message; only its lint exclusion defers. The unrun counter-mutation obligation travels with the requirement rather than being discharged. **(f) AC-MRG-010's decider re-anchored** from `$BASELINE_SHA` to a second frozen literal `MERGE_BASELINE_SHA`, recorded at `plan.md` §C step 5. The old range starts before this branch diverged, so it spanned mainline and returned four paths from cards t322/t303 at every measurement — a wrong-reason red that also could not distinguish its own stated mutation from a routine merge. The new anchor stays a *recorded* value, never computed at read time, and carries a [HARD] re-recording obligation on any further mainline absorption (limit L6 acting on this SPEC's own evidence, handled by R2 + R4). Also swept: AC-MRG-001's fixture location, §B's baseline anchor (two literals, two questions), §D DoD, `plan.md` M3 and §C, and §F L6 marked prospective while the exclusion is deferred. `verification-claim-integrity.md`, its template mirror, and `lint_movingref.go` are byte-identical to their pre-round state; `lint_movingref_test.go` carries one assertion change (`acceptance.md` → `spec.md`) that the (d) re-placement makes necessary. | manager-spec |
 | 0.6.0 | 2026-08-28 | Run-phase M1-M2. **M1**: the doctrine section landed as `### 2.1 Moving-ref attribution — the anchor-or-subject predicate` inside `.claude/rules/moai/core/verification-claim-integrity.md`, placed directly under §2 as a specialization of the baseline-attribution invariant it enforces. It carries the four predicate tests with Test 1's read-time evaluation and the tie-break routing a Test 1 / Test 3 disagreement to Test 4 (never to ANCHOR), the two-classes-four-remedies statement, R1-R4 with the §D.4 pricing table, the five grounded instances with the classification skew in both readings, the marker surface, all seven limits L1-L7, and the divergence-figure carrier split. Deciding greps recorded verbatim in `progress.md` §E.2. **M2**: the marker surface is fixed — syntax, mandatory non-empty reason, line scope (flagged line or the line immediately above), and the incomplete-marker finding of REQ-MRG-003. **Q1 resolved**: the invisible HTML-comment form is adopted on the grounds that the marker is an author-to-linter annotation rather than rendered content, with the reviewer-visibility concern met by the reason's visibility in the source diff. **Finding raised for the operator, not silently patched**: AC-MRG-011's third mutation (delete L7 → the limit count drops **and** `grep -c 'ANCHOR'` returns 0) is only half-falsifying against this doctrine. `ANCHOR` is a class name used throughout the predicate, so deleting L7 moves the count 10 → 9, never to 0; the `≥ 1` half of that criterion is satisfied by the predicate regardless of L7 and therefore guards nothing. The count half (`grep -c 'L[1-7] —'` 7 → 6) does go red as specified. M3 (detector), M4 (corpus triage) and M5 (template mirror) are untouched; Q0 remains with the operator and M3 cannot be implemented without it. | manager-develop |
 | 0.5.0 | 2026-08-28 | D13 closed on its second condition — R4's scope characterized by measurement instead of asserted. **The reachable scope is empty: 0 of the 42 candidate lines** (§B.7, two independent probes). R4 is one day old, so no corpus line is written in its form, and the class is populated only by remediations the doctrine itself will produce. REQ-MRG-010's "does real work on exactly one class" is therefore corrected to the measured truth — the class is nameable but currently unoccupied, and AC-MRG-013 is a synthetic-only criterion with no live counterpart. Per the lead's instruction not to manufacture a scope to keep a clause alive, **§H Q0 is answered on that basis and now carries a scope decision for the operator**: option C (ship R4 as doctrine, defer the exclusion, silence early R4 lines with the R3 marker) eliminates the D11 bypass entirely and converts Q0's unsolved shape-recognition problem into the already-solved marker problem, at the cost of one marker per line until volume justifies the exclusion. Recommended, not taken — it changes scope. §B.7 also records that the earlier `81` re-cited as current had drifted to `86`, this card's own subject recurring a fourth time. | manager-spec |
@@ -533,6 +534,28 @@ first run and the rational response would be a bulk suppression — the outcome 
 to prevent. `SeverityWarning` is non-blocking by default in the existing engine (`internal/spec/lint.go`,
 the `Strict` branch of the exit-code computation) and escalates only under `--strict`.
 
+**The argument above is correct and was incomplete (recorded at v0.8.0).** Its last clause names
+the hole: `--strict` escalates any non-advisory warning, so choosing `SeverityWarning` did not
+achieve what this section wanted. REQ-MRG-009 then went further and *required* the `--strict`
+escalation, so the two clauses were written against each other — §D.5 reasoning that the corpus
+must not red on day one, REQ-MRG-009 specifying the invocation under which it would. Nobody ran the
+composition, and no criterion in this SPEC could have caught it: AC-MRG-005 asserted the same
+`--strict` non-zero as REQ-MRG-009, so the suite agreed with the defect.
+
+**Where it was found: `develop`'s CI, not this SPEC's own tests.** The run-phase merge `84b3b7949`
+turned `develop`'s SPEC Lint job from success to failure, and it stayed red across the three
+following heads. At `a6bbbf82b` the run reported `0 error(s), 155 warning(s)` → exit 1, of which
+**110** are `MovingRefUnpinned`; the other 45 carry `[grandfathered era — downgraded to warning]`
+and are advisory, so they do not gate. `.github/workflows/spec-lint.yml` invokes the linter with
+`--strict`. The rule behaved exactly as designed; the design was wrong.
+
+**Advisory emission completes this section's intent rather than retreating from it.** What §D.5
+wanted was a finding that is seen and does not block. `SeverityWarning` delivers half of that and
+`--strict` takes it back; emitting the finding advisory delivers the whole of it, under every
+invocation, without touching severity. The finding stays a `warning`, stays in the report, and
+stops deciding an exit code. §D.7 records why that state is provisional and what must be true
+before the gate returns.
+
 ### D.6 — Disposition of the side-discipline (divergence figures)
 
 The card asks whether "a divergence value measured once (`0 0`) must not keep being cited without
@@ -557,6 +580,35 @@ transformation the lead applied to the dispatch base line (§B.5).
 
 The split is recorded rather than resolved silently because the two carriers look identical in
 prose and are not identical to any mechanism.
+
+### D.7 — The finding ships advisory, and that is a deferral with a stated cost
+
+**(a) Why advisory now.** The corpus carries **110 `MovingRefUnpinned` findings** that the rule
+correctly identifies — it is not over-firing, and the count is what the shape actually costs the
+corpus today. A gate on day one leaves an author two choices: remediate 110 lines before anything
+else can merge, or suppress in bulk. Bulk suppression is the rational one, and it is the exact
+outcome §A names as this SPEC's reason for existing. Shipping the finding advisory buys the corpus
+the interval in which remediation is cheaper than silencing.
+
+**(b) The promotion condition.** The gate returns when the corpus is dealt with: every finding
+triaged in `.moai/reports/t342/corpus-triage.md` either remediated by its owning SPEC through one
+of the four §D.2 branches, or exempted through the R3 marker with a reason. At that point the
+retracted clause returns verbatim — `MovingRefUnpinned` stops being advisory, and `--strict` exits
+non-zero on it. The condition is a state of the corpus, not a date and not a judgment call: it is
+readable by re-running the linter and comparing against the triage record.
+
+**(c) The failure mode of forgetting.** A guard that declares a gate, ships advisory, and never
+promotes has declared a rule and enforced nothing. Say it plainly: **that state is the same shape
+this SPEC exists to detect.** REQ-MRG-009's gating clause was true when it was written, was
+quietly emptied by what happened afterwards — a corpus that turned out to carry 110 violations —
+and nothing in the requirement's text signals the change. A reader meets a requirement that reads
+like a gate and a linter that gates on nothing, with no marker between them. In `acceptance.md`
+§A's own words: **an advisory-forever guard is indistinguishable from a guard that is switched
+off.** The report reads green and nothing is being detected.
+
+This clause is the marker the retracted requirement would otherwise lack. It is not a note about
+future work; it is the record that the enforcement claim is currently unbacked, placed where the
+enforcement claim is read.
 
 ## §E. Requirements
 
@@ -584,8 +636,27 @@ prose and are not identical to any mechanism.
 - **REQ-MRG-008**: While a line's moving ref carries a resolved SHA pin or a frozen-baseline
   variable reference (`$BASELINE_SHA` or equivalent), the linter shall not emit
   `MovingRefUnpinned` for that line.
-- **REQ-MRG-009**: While only `MovingRefUnpinned` findings are present, `moai spec lint` shall exit
-  0; under `--strict` it shall exit non-zero.
+- **REQ-MRG-009** *(amended at v0.8.0 — the `--strict` gating half is retracted; §D.7)*: The
+  `MovingRefUnpinned` finding shall be emitted **advisory** — that is, excluded from exit-code
+  gating while remaining present in the report. While only `MovingRefUnpinned` findings are
+  present, `moai spec lint` shall exit 0 **both with and without `--strict`**, and the findings
+  shall remain visible in the report under both invocations.
+
+  **What was retracted, and why it is recorded rather than edited away.** The original text read
+  "While only `MovingRefUnpinned` findings are present, `moai spec lint` shall exit 0; under
+  `--strict` it shall exit non-zero." That second clause shipped and broke `develop`'s SPEC Lint
+  job — `.github/workflows/spec-lint.yml` runs the linter with `--strict`, and the corpus carried
+  110 `MovingRefUnpinned` findings on the day the rule landed. The requirement declared a gate
+  without asking what the gate would do to the corpus it was pointed at.
+
+  **The mechanism is emission-site advisory, not era demotion.** `internal/spec/lint.go` consults
+  `eraDemotableCodes` only for findings already at `SeverityError`; a warning never reaches it, so
+  adding the code there would change nothing. Era demotion (`applyEraDemotion`) already marks
+  warnings advisory on grandfathered SPECs — the findings that gate are precisely the ones on
+  modern-era (V3R6) SPECs, which no era path can demote. The rule therefore sets `Advisory: true`
+  on its own findings at emission, the mechanism `StatusGitConsistency` already uses for the same
+  purpose. `Report.HasErrors` escalates a warning under `--strict` only when it is **not**
+  advisory, so this is sufficient and is the only available route.
 - **REQ-MRG-010** *(DEFERRED out of this SPEC at v0.7.0 — §H Q0, option C, operator decision)*:
   While a line is written in the R4 form — a measuring command stated as the criterion in
   imperative structure, with any value syntactically demoted to a labelled reference — the linter
