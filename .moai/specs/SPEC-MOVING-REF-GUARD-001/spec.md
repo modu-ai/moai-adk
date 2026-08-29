@@ -2,9 +2,9 @@
 id: SPEC-MOVING-REF-GUARD-001
 title: "Moving-ref invariant guard: warn on unpinned invariant claims, with the anchor-or-subject exemption predicate shipped alongside"
 version: "0.7.0"
-status: in-progress
+status: completed
 created: 2026-08-28
-updated: 2026-08-28
+updated: 2026-08-29
 author: manager-spec
 priority: P2
 phase: "v3.2.0 target"

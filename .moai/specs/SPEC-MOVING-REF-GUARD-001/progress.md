@@ -1197,8 +1197,67 @@ guard's two steps, not from the step whose name is "neutrality".
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+**Gap — not written by run-phase; recorded here at sync rather than fabricated.** This section is
+`manager-develop`'s own signal, and run-phase closed on commit `3b71281e7` (the document round)
+without emitting it. Per `verification-claim-integrity.md` §1.1, sync-phase does not author a
+run-phase audit-ready signal it did not itself observe — doing so would be an unobserved completion
+claim on manager-develop's behalf.
+
+The run-phase evidence that does exist is recorded verbatim in §E.2 above, across five dated
+records: the M1-M2 doctrine-and-marker section (claims 1-4, the four planted mutations observed red
+and reverted), the M3 detector record, the M4 corpus-triage record, the M5 template-mirror record,
+and the document round's four-criteria repair. `.moai/reports/t342/verdict.md` is the lane
+orchestrator's independent re-verification of all five (nine V1-V9 checks re-executed, two
+additional mutations planted by the orchestrator itself) — that verdict is the closest thing to a
+run-phase audit-ready signal this SPEC has, and it precedes rather than substitutes for §E.3.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+**Claim.** Sync-phase closed SPEC-MOVING-REF-GUARD-001 on 2026-08-29: the four-artifact frontmatter
+transition `in-progress → implemented → completed` was applied (spec.md is the only artifact
+carrying a `status:` field; plan.md/acceptance.md/progress.md carry none), the CHANGELOG
+`[Unreleased]` section gained one entry naming the delivered rule, doctrine, template mirror, and
+corpus-triage record, and the regression check below confirms no code regression from the
+documentation-only sync commit.
+
+**Evidence.**
+
+```
+$ grep -c 'SPEC-MOVING-REF-GUARD-001' CHANGELOG.md      (pre-emission dup check)
+0
+$ grep -oE 'AC-MRG-[0-9]+' .moai/specs/SPEC-MOVING-REF-GUARD-001/acceptance.md | sort -u | wc -l
+14
+$ go test ./internal/spec/... -count=1
+ok  	github.com/modu-ai/moai-adk/internal/spec	33.083s
+```
+
+**Baseline-attribution.** Commands run in this turn, against this tree, at worktree HEAD `cf8888bf6`
+(pre-sync-commit), branch `WT-moving-ref-guard`. The regression check is package-scoped to
+`internal/spec` — the package this SPEC's own deliverable (the `MovingRefUnpinned` lint rule) lives
+in — per this repository's local-full-suite prohibition (`CLAUDE.local.md` §6); a full-suite
+verdict is CI's, not a local one.
+
+**Gaps.**
+
+- §E.3 is not authored by this section (see above) — it is a recorded gap, not a fabricated PASS.
+- This run covers `internal/spec` only. Two known reds exist elsewhere in the tree, neither observed
+  by this package-scoped run and neither attributable to this SPEC's own change (a documentation-only
+  sync touching no Go source): `TestBinaryLag_OneSeamServesBothSurfaces` (`internal/cli`, card
+  t361) and `TestConcurrencyStress` (`internal/kanban`, card t354). A package-scoped green says
+  nothing about either.
+- `go vet ./internal/spec/...` and `go build ./...` were not re-run in this sync commit — both were
+  observed green by the run-phase verdict (`.moai/reports/t342/verdict.md`) at a later HEAD than
+  this sync commit's parent, and no Go source changes in this sync commit.
+- `sync_commit_sha` cannot be written in this commit — a commit cannot cite its own hash. The field
+  is omitted below and backfilled with the real SHA in the immediately following commit.
+
+**Residual-risk.** The sync-phase transition and CHANGELOG entry are documentation-only; nothing in
+this commit changes the `MovingRefUnpinned` rule's behavior or the doctrine's content. The residual
+risks named in `.moai/reports/t342/verdict.md` § Residual risk (synthetic fixtures, lexical
+`shaPinPattern`, the divergence-figure heuristic, the 35-row instruction-line triage call, the
+doctrine's always-loaded size) carry forward unchanged by this sync.
+
+```yaml
+sync_status: completed
+sync_complete_at: 2026-08-29
+```
