@@ -469,7 +469,7 @@ CI-JUDGED: AC-ILA-007(b) — deferred to CI, not claimed.
 
 ```yaml
 run_complete_at: 2026-08-30
-run_commit_sha: pending-backfill-m6
+run_commit_sha: 4c080319b   # the M6 commit; backfilled in the follow-up per the SHA-placeholder exemption
 run_status: complete
 ac_pass_count: 9          # 8 local PASS + AC-ILA-007 counted once; 007(b) deferred
 ac_fail_count: 0
