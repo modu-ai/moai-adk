@@ -57,28 +57,59 @@ Mutation: truncate the snapshot by 10 rows → the counts diverge and the criter
 
 ### AC-BH-002 — no picked or dropped card was swept
 
-**Given** the picked id list `t278 t333 t338 t341 t346 t350 t354 t356 t357 t358` and the 18
-`dropped` ids,
+**Given** the picked id list and the dropped id list **as recorded in `$R/01-scope.md` §5 from the
+run-phase snapshot**,
 **when** the report's per-card entry ids are intersected with each list,
 **then** both intersections are **empty**.
+
+> **v0.3.0 scope note (run phase, 2026-08-30).** v0.2.0 inlined the plan-phase picked list of 10
+> ids. The lead dispatched seven more cards between plan and run, so the run-phase picked list is
+> **17 ids** — a strict superset containing all 10. Quantifying over the recorded run-phase list is
+> therefore the **stricter** reading, not a relaxation, and it is the only one that excludes the
+> seven live lanes. `$R/01-scope.md` §5 carries both lists verbatim with the delta reconciled.
 
 ### AC-BH-003 — the report has exactly one entry per in-scope card
 
 **Given** the consolidated `$R/report.md` and the per-batch files under `$R/cards/`,
 **when** the per-card entry ids are extracted and counted,
-**then** the count equals (snapshot queued count − 1), i.e. **67** at the recorded snapshot, and the
-extracted id set equals the queued id set minus `t332`.
+**then** the count equals the size of the set difference `queued` minus `{t332}` for the recorded
+snapshot — **62** at the run-phase snapshot — and the extracted id set equals that same set.
 
-Both halves are required: a count alone passes against 67 entries for the wrong cards.
+Both halves are required: a count alone passes against 62 entries for the wrong cards.
+
+> **v0.3.0 scope note (run phase, 2026-08-30).** v0.2.0 wrote the arithmetic as
+> "(snapshot queued count − 1), i.e. **67**", where the "− 1" term is the **self-exclusion of
+> `t332`** and rests on `t332` sitting in the queued set. It no longer does: the lead moved `t332`
+> to `picked` before the run phase, so the queued set already excludes it and the term evaluates to
+> zero. The criterion is restated as the set difference it always meant — `queued` minus `{t332}` —
+> which is arithmetic-independent of `t332`'s own state and gives **62** at the run-phase snapshot
+> (62 queued, `t332` not among them). The intent is unchanged: one entry per queued card other than
+> this one.
 
 ### AC-BH-004 — zero card-mutating `moai todo` invocations
 
 **Given** `$R/invocations.log`,
 **when** it is scanned for `moai todo (drop|edit|done|undrop|move|unpick)` and for
 `moai todo next <id>` (a `next` carrying any argument),
-**then** the match count is **0**, and the log is non-empty (`wc -l` ≥ the number of cards read).
+**then** the match count is **0**; **and** the log is non-empty, carrying at least the one
+snapshot-capture invocation REQ-BH-001 mandates plus one line per `relate` recorded at M4; **and**
+its line count **equals** the number of `moai todo` invocations the sweep actually issued, verified
+against the M4 relation count.
 
 Both conjuncts are required: an empty log also returns 0 matches, and would pass vacuously.
+
+> **v0.3.0 repair (run phase, 2026-08-30).** v0.2.0's non-emptiness conjunct read
+> "`wc -l` ≥ the number of cards read" — **which REQ-BH-001 makes unsatisfiable.** REQ-BH-001
+> requires the sweep to work from *a single captured queue snapshot* and forbids reading the queue
+> "through a live per-card invocation"; a log with one line per card read is exactly the per-card
+> invocation pattern the requirement prohibits. A compliant sweep issues **one** snapshot capture
+> plus one `relate` per confirmed overlap — far fewer lines than cards — so v0.2.0's criterion
+> could be satisfied only by breaching the requirement it sits beside. This is the same class of
+> defect as the AC-BH-006 repair above, in the opposite direction: there a criterion could never
+> red, here one could never green. The anti-vacuity **intent** — an empty log must not pass — is
+> preserved and strengthened: the count is now pinned to the invocations that actually occurred
+> rather than to an unrelated magnitude, so a log padded with comment lines fails as surely as an
+> empty one.
 
 ### AC-BH-005 — every relation record is well-formed
 
@@ -89,6 +120,18 @@ Both conjuncts are required: an empty log also returns 0 matches, and would pass
 after the sweep shows the same queued/picked/dropped counts as the snapshot.
 
 ### AC-BH-006 — the card-row digest is unchanged across the sweep
+
+> **v0.3.0 repair (run phase, 2026-08-30).** v0.2.0 named `backlog.json` as the digest target. That
+> file **stopped being written at the t306 SQLite migration** (`3cb258d62 merge(WT-todo-sqlite):
+> SPEC-TODO-SQLITE-001`), so the criterion could not red: measured in the run phase it returned
+> v0.2.0's own recorded figure `56e1387e…b346b` **unchanged**, after the queue had already moved
+> seven cards to `picked` and admitted `t363`. A criterion whose observable is a dead file is the
+> failure this SPEC exists to catch, reproducing inside the SPEC's own acceptance criteria. The
+> observable is moved to the live store and **all four controls were re-measured there**; the
+> evidence, including the JSON-vs-SQLite divergence probes, is
+> `.moai/reports/t332/00-tooling-baseline.md` § Finding B1'. The criterion's *intent* — a third
+> observable, not authored by the run phase about itself, that catches a `moai todo edit` the count
+> comparison cannot see — is unchanged.
 
 **Given** the card-row digest produced by **this exact command**, captured into `$R/01-scope.md` at
 M2 and re-captured at M5:
@@ -101,59 +144,88 @@ git rev-parse --path-format=absolute --git-common-dir
 
 This prints the **common** git dir, which every linked worktree shares with the primary checkout
 (e.g. `<primary>/.git`). Its **parent directory is the primary checkout**, and the store sits at
-`<parent>/.moai/state/todo/backlog.json`. Do NOT use `git rev-parse --show-toplevel`: inside a
-worktree that resolves to the *worktree* root, where no queue store exists — measured in the t332
-worktree, `ls` on that path returns `No such file or directory`, rc=1. The queue is
+`<parent>/.moai/state/todo/backlog.db`. Do NOT use `git rev-parse --show-toplevel`: inside a
+worktree that resolves to the *worktree* root, where no queue store exists. The queue is
 primary-checkout-only, so a worktree-relative resolution reads nothing exactly where the run phase
 executes.
 
 **Step 2 — digest, taking the resolved path as a literal argument**:
 
 ```bash
-jq -S -c '[.items[] | {id, state, text}] | sort_by(.id)' \
-  <resolved-primary-checkout>/.moai/state/todo/backlog.json | shasum -a 256
+sqlite3 -json <resolved-primary-checkout>/.moai/state/todo/backlog.db \
+  "select id,state,text from items order by id;" | shasum -a 256
 ```
 
-**Why this is two steps and not one.** The obvious one-liner —
-`P="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/…"; jq … "$P"` — is
-**refused** by the worktree-isolation guard: *"this command is too complex to verify that it stays
-inside the worktree"*. A compound command embedding a `git` call inside a substitution does not run
-in a worktree session, which is where this card's run phase executes. Reproduced in the t332
-worktree, 2026-08-29. Both captures (M2 and M5) therefore use the same two-step form, and the
-resolved path is pasted as a literal rather than recomputed inline. The SPEC records the
-**derivation**, never a machine-specific literal path.
+**Why this is two steps and not one.** The obvious one-liner — computing the path inline inside a
+command substitution — is **refused** by the worktree-isolation guard: *"this command is too complex
+to verify that it stays inside the worktree"*. Reproduced in the t332 worktree, both at v0.2.0
+authoring (2026-08-29) and again in the run phase (2026-08-30). Both captures therefore use the same
+two-step form, and the resolved path is pasted as a literal rather than recomputed inline. The SPEC
+records the **derivation**, never a machine-specific literal path.
 
 **when** the two recorded digests are compared,
-**then** they are **byte-identical**; **and** the M4 `relate` invocations, which run between the two
-captures, are confirmed to have left them so; **and** each capture records the Step 1 output it
-resolved, so a digest taken against the wrong tree is visible rather than silent.
+**then** either they are **byte-identical**, or every card accounting for the difference is
+**attributed to an actor other than this sweep** by the procedure below; **and** the M4 `relate`
+invocations, which run between the two captures, are confirmed to have left the digest unmoved;
+**and** each capture records the Step 1 output it resolved, so a digest taken against the wrong tree
+is visible rather than silent.
 
-**Why the projection is exactly this.** Verified against the on-disk store at
-`.moai/state/todo/backlog.json`, 2026-08-29 (`jq -r 'keys'` → `findings`, `items`, `last_seq`,
-`version`; `jq -r '[.items[]|keys]|add|unique'` → `added_at`, `id`, `spec_id`, `state`, `text`;
-`jq -r '.items|length'` → 96, matching §B.4's card count). **`findings` is a top-level sibling of
-`items`, not a per-item field** — `internal/kanban/backlog_store.go:191`
-(`Findings []BacklogFinding \`json:"findings"\``) — so projecting `.items[]` excludes the
-relate-appended findings **structurally**, not by an exclusion clause a reader has to honour.
-`added_at` and `spec_id` are dropped deliberately: neither is what REQ-BH-005 protects. A wholesale
-hash of the file would red on the sweep's own mandated `relate`, and on `last_seq` movement; that is
-the wrong observable, not a stricter one.
+**The attribution branch (v0.3.0).** The queue is a shared, live store: while this sweep runs, the
+lead continues to admit and dispatch cards, and nine other lanes are working. A moved digest is
+therefore **the expected state, not a failure**, and reading it as one would fail the sweep for
+another session's legitimate work. What the criterion actually decides is *whether this sweep moved
+a card*, which requires naming the movers rather than hashing them:
 
-**Both directions were measured before this criterion was written** (scratch copies via `jq`; the
-real store was never written):
+```bash
+sqlite3 -json <primary>/.moai/state/todo/backlog.db \
+  "select id,state,text from items order by id;" > $R/cardrows-close.json
+# diff against the M2 capture, then per differing id:
+sqlite3 <primary>/.moai/state/todo/backlog.db "select id,state from items where id='<id>';"
+```
+
+On a difference, M5 lists **every** differing card id with (a) its M2 value, (b) its M5 value, and
+(c) the actor it is attributed to, and the criterion passes **only if no differing card is in-scope
+for a mutation this sweep could have performed**. Concretely: a card moving `queued → picked` is the
+lead dispatching it; a newly present id is the lead admitting it; a card moving to `dropped`, or any
+change to an in-scope card's `text`, has no other actor in this batch and **reds the criterion**.
+
+An unattributed difference is a **red**, not a shrug — "some other session probably did it" is
+exactly the unobserved claim this criterion exists to refuse. The digest still does the work: it
+tells you *whether* to look, and it is cheap enough to be taken unconditionally. The id-level diff
+tells you *what moved*, which is the question.
+
+**Why the projection is exactly this.** Verified against the live store
+`.moai/state/todo/backlog.db`, 2026-08-30 (`.tables` → `findings`, `items`, `meta`;
+`select count(*) from items;` → 97, matching the run-phase snapshot's card count exactly). **`findings`
+is a separate TABLE from `items`** — `internal/kanban/backlog_sqlite.go`, schema
+`findings(subject_id, related_id, relation, source, score, note, at)` — so selecting from `items`
+excludes the relate-appended findings **structurally**, not by an exclusion clause a reader has to
+honour. This is the same property v0.2.0's `.items[]` projection had, now enforced by the schema
+rather than by a jq path. `added_at` and `spec_id` are dropped deliberately: neither is what
+REQ-BH-005 protects. A wholesale hash of the database file would red on the sweep's own mandated
+`relate`, and on SQLite page churn that changes no card; that is the wrong observable, not a
+stricter one.
+
+**Both directions were measured on the live observable before this criterion was rewritten**
+(scratch copies of the store under the session scratchpad; the real store was read and never
+written):
 
 | Probe | Digest | Verdict |
 |---|---|---|
-| baseline, run twice | `56e1387e…b346b` | stable |
-| **negative control** — append a `relate`-shaped finding | `56e1387e…b346b` | **unchanged**, as required |
-| positive control — append ` MUTANT` to one card's `text` | `46e61f16…5fd28` | changed |
-| positive control — flip one card's `state` to `dropped` | `fd9964a7…fb5a4` | changed |
-| **two-step form, run from inside the t332 worktree** | `56e1387e…b346b` | reproduces the baseline — the procedure works where the run phase executes |
+| live baseline, run twice | `86a3fb05…dc20` | stable |
+| **negative control** — insert a `relate`-shaped row into `findings` | `86a3fb05…dc20` | **unchanged**, as required |
+| positive control — append ` MUTANT` to one card's `text` | `010e05a6…fa20` | changed |
+| positive control — flip one card's `state` to `dropped` | `9024d77c…d270` | changed |
+| **the superseded v0.2.0 command**, run in the same session | `56e1387e…b346b` | **unchanged by construction** — the file is not written |
 
 The negative control is what makes this criterion fail in **both** directions. Without it, an
 extraction that wrongly included `findings` would satisfy the positive probe perfectly and then red
 on the sweep's own legitimate `relate` — a criterion that punishes compliance. M4 runs `relate`
 between M2 and M5, so the control is observed by the sweep's own ordering at no extra cost.
+
+The last row is the one that decides this repair rather than merely motivating it: the superseded
+command's digest is stable **for a reason that has nothing to do with the sweep's restraint**, which
+is precisely what disqualifies it as evidence of that restraint.
 
 This is the third observable, and the only one not authored by the run phase about itself:
 `$R/invocations.log` is written by the worker whose restraint it certifies, and AC-BH-005's count
