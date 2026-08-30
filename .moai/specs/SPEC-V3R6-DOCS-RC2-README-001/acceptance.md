@@ -2,7 +2,6 @@
 id: SPEC-V3R6-DOCS-RC2-README-001
 title: "Acceptance Criteria — v3.0.0-rc2 README + CHANGELOG factual-alignment"
 version: "0.3.0"
-status: completed
 created: 2026-06-19
 updated: 2026-06-22
 author: manager-spec
