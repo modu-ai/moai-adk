@@ -227,7 +227,7 @@ go test ./internal/hook/perf/... -count=1                               → 32.1
 
 ```yaml
 sync_complete_at: "2026-08-30"
-sync_commit_sha: ""   # 빈 슬롯으로 sync 커밋에 들어가고 바로 다음 커밋에서 채운다 — 커밋은 자기 해시를 인용할 수 없다. placeholder 문자열을 브랜치에 한 번도 남기지 않는 형태(리드 지시)
+sync_commit_sha: "8cfa560b4"   # sync 커밋에는 빈 슬롯으로 들어갔고 바로 다음 커밋(이 편집)에서 채웠다 — 커밋은 자기 해시를 인용할 수 없다. placeholder 문자열을 브랜치에 한 번도 남기지 않는 형태(리드 지시)
 sync_status: completed
 b12_self_test_a: "grep -c 'SPEC-PERF-FIXTURE-WRITE-001' CHANGELOG.md → 0 (append 이전 실측)"
 b12_self_test_b: "acceptance.md 의 고유 AC 식별자 7개(AC-PFW-001..007) == CHANGELOG 항목이 인용한 AC 수 7"
