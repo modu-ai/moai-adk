@@ -110,6 +110,48 @@ P1(캡처 본문에 다른 REQ 토큰이 등장 — 매핑 행 후보) 22건이 
 `TestReqIDPattern_ExtractionRejectionClassIsReachable`(실규칙 경유)이 함께 강제한다.
 추출과 검증을 정합시킨 뮤턴트는 전자에서 RED가 된다.
 
+**공허성은 추론이 아니라 코퍼스 뮤테이션으로 관측했다.** 채택한 패턴의 모양에서 "거부 클래스가
+남아 있으니 공허하지 않다"고 추론하는 것으로는 부족하다 — 그 클래스에 실제 문서가 도달하는지는
+별개의 사실이다. Gate 0 `[F]`에 option (ii) 뮤턴트(검증을 추출과 **정확히** 정합시킨
+`^REQ-[A-Z0-9]+(?:-[A-Z0-9]+)*-\d+$`)를 같은 스캔 안에서 함께 재도록 넣었다:
+
+```
+blast_InvalidREQID_error_proposedPattern  narrow=0  wide=6   ← 채택 패턴 (현재 shipped)
+blast_InvalidREQID_vacuousMutant          narrow=0  wide=0   ← option (ii) 뮤턴트
+mutant_probe_delta_wide=6
+```
+
+델타 0이었다면 채택 패턴의 거부 클래스는 정규식이 뭐라고 적혀 있든 **실제 문서로는 도달 불가**,
+즉 공허한 규칙이었을 것이다. 델타는 6이다.
+
+**발화하는 6건과, 그것이 진짜 위반이라는 근거.** M3 전 코퍼스 실행에서 실제로 나온 finding
+(`jq -r '.[] | select(.code=="InvalidREQID")' .moai/reports/t362/m3-lint-corpus.json`):
+
+```
+warning  advisory=true  .moai/specs/SPEC-HANDOFF-CTXGUIDE-001/spec.md:40  REQ ID "REQ-256K-001" does not match pattern …
+…                                                                  :41  "REQ-256K-002"
+…                                                                  :42  "REQ-256K-003"
+…                                                                  :43  "REQ-256K-004"
+…                                                                  :44  "REQ-256K-005"
+…                                                                  :45  "REQ-256K-006"
+```
+
+전부 한 SPEC의 도메인 분절 `256K` — 숫자로 시작한다. 이것이 규약 위반이라는 근거도 측정이다:
+`ls -d .moai/specs/SPEC-* | sed 's|.*/SPEC-||' | grep -cE '^[0-9]'` → **0** (706개 중 0개).
+숫자로 시작하는 도메인 분절은 SPEC ID 수준에서도 코퍼스 전체에 존재하지 않으며,
+`specIDPattern`(`^SPEC(-[A-Z][A-Z0-9]*)+-\d{3}$`)이 같은 글자-시작 규칙을 기계적으로 못박고
+있다. REQ 정의 1,085건 중 숫자-시작 도메인은 이 6건뿐 — 표현되지 않은 규약이 아니라 이상치다.
+AC-CRS-001-003의 "0이 아닌 경우 각 건이 실제 규약 위반임을 개별 근거와 함께 제시한다"를
+이로써 만족한다.
+
+**삭제 후보 판정: 해당 없음.** 리드의 addendum은 option (ii)를 택해 잔여 가치가 0일 때
+`InvalidREQIDRule`을 **삭제 후보로 명시**하라고 요구한다. 이 카드는 option (i)를 택했고 잔여
+발화가 6건이므로 그 조항은 발동하지 않는다. 근거를 남기는 이유는 판정이 보이게 하기 위해서다:
+만약 델타가 0이었다면 `moai spec lint --help`가 광고하는 "REQ ID uniqueness"가 아무것도 검사하지
+않는 규칙 위에서 계속 돌게 되고, **공허한 파서를 고치면서 공허한 규칙을 남기는 것은 수리 안에서
+같은 결함을 재생산하는 일**이다. 삭제 자체는 이 카드의 결정이 아니며 리드 소관이다. 같은 취지를
+`internal/spec/lint.go`의 `reqIDPattern` 헤더에도 기록했다.
+
 `DuplicateREQIDRule`은 공허하지 않으며 계속 동작한다 —
 `TestDuplicateREQIDRule_StillFiresOnWidenedShapes`가 넓어진 형태(`REQ-HOOK-001`)에 대해
 중복 탐지가 실제로 발화함을 강제한다(검증을 넓히기 전에는 `continue`에 걸려 0건이었다).

@@ -130,6 +130,14 @@ func pctOf(n, d int) float64 {
 // two groups of three digits (REQ-ABC-1, REQ-ABC-0001, REQ-ABC-001-001-001).
 var reqIDPatternProposed = regexp.MustCompile(`^REQ-[A-Z][A-Z0-9]*(?:-[A-Z][A-Z0-9]*)?-\d{3}(?:-\d{3})?$`)
 
+// reqIDPatternVacuousMutant is the option-(ii) mutant: validation aligned
+// EXACTLY to reqLineWidePattern's capture group. It is measured against the live
+// corpus alongside the shipped pattern so the claim "InvalidREQIDRule is not
+// vacuous" is an observation rather than an inference from the shipped pattern's
+// shape. A rule whose corpus firing count is identical under both is a rule
+// whose rejection class no real document reaches.
+var reqIDPatternVacuousMutant = regexp.MustCompile(`^REQ-[A-Z0-9]+(?:-[A-Z0-9]+)*-\d+$`)
+
 // measureWiringBlastRadius simulates EVERY doc.REQs consumer under the narrow
 // and the wide extraction. CoverageRule is not the only consumer:
 // EARSModalityRule emits ModalityMalformed at SeverityError, and
@@ -142,8 +150,9 @@ func measureWiringBlastRadius(t *testing.T, paths []string, root string) string 
 	type counts struct {
 		modality  int
 		legacy    int
-		invalidNo int // InvalidREQID under the CURRENT reqIDPattern
+		invalidNo int // InvalidREQID under the CURRENT (shipped) reqIDPattern
 		invalidPr int // InvalidREQID under reqIDPatternProposed
+		invalidMu int // InvalidREQID under reqIDPatternVacuousMutant (option (ii))
 		dupCur    int // DuplicateREQID reachable under the CURRENT reqIDPattern
 		dupPr     int // DuplicateREQID reachable under reqIDPatternProposed
 		coverage  int
@@ -181,6 +190,9 @@ func measureWiringBlastRadius(t *testing.T, paths []string, root string) string 
 				}
 			} else {
 				seenCur[r.ID] = r.Line
+			}
+			if !reqIDPatternVacuousMutant.MatchString(r.ID) && !skip["InvalidREQID"] {
+				c.invalidMu++
 			}
 			if !reqIDPatternProposed.MatchString(r.ID) {
 				if !skip["InvalidREQID"] {
@@ -238,6 +250,12 @@ func measureWiringBlastRadius(t *testing.T, paths []string, root string) string 
 	fmt.Fprintf(&b, "blast_LegacyEARSKeyword_warning narrow=%d wide=%d\n", narrowC.legacy, wideC.legacy)
 	fmt.Fprintf(&b, "blast_InvalidREQID_error_currentPattern narrow=%d wide=%d\n", narrowC.invalidNo, wideC.invalidNo)
 	fmt.Fprintf(&b, "blast_InvalidREQID_error_proposedPattern narrow=%d wide=%d\n", narrowC.invalidPr, wideC.invalidPr)
+	fmt.Fprintf(&b, "\n# Corpus-level mutant probe (option (ii) vacuity check). The mutant aligns\n")
+	fmt.Fprintf(&b, "# validation EXACTLY to the extraction. A shipped-vs-mutant delta of 0 would\n")
+	fmt.Fprintf(&b, "# mean the shipped rejection class is unreachable in practice — i.e. the rule\n")
+	fmt.Fprintf(&b, "# is vacuous on real documents whatever its regexp says.\n")
+	fmt.Fprintf(&b, "blast_InvalidREQID_vacuousMutant narrow=%d wide=%d\n", narrowC.invalidMu, wideC.invalidMu)
+	fmt.Fprintf(&b, "mutant_probe_delta_wide=%d\n", wideC.invalidPr-wideC.invalidMu)
 	fmt.Fprintf(&b, "blast_DuplicateREQID_error_currentPattern narrow=%d wide=%d\n", narrowC.dupCur, wideC.dupCur)
 	fmt.Fprintf(&b, "blast_DuplicateREQID_error_proposedPattern narrow=%d wide=%d\n", narrowC.dupPr, wideC.dupPr)
 	fmt.Fprintf(&b, "blast_CoverageIncomplete_error narrow=%d wide=%d\n", narrowC.coverage, wideC.coverage)

@@ -491,10 +491,29 @@ type SPECDoc struct {
 // TestReqIDPattern_RejectsShapesTheExtractionAccepts is the mutant probe that
 // keeps it reachable.
 //
-// Measured residual on the live corpus under the widened extraction: 6 findings,
-// all REQ-256K-001..006 in SPEC-HANDOFF-CTXGUIDE-001, whose domain segment
-// starts with a digit — genuine violations of the letter-initial domain
-// convention the SPEC-ID schema also carries, not pattern false positives.
+// The rejection class is REACHABLE, and that is measured rather than inferred
+// from this pattern's shape. Corpus-level mutant probe
+// (TestCorpusRejectedREQIDDecomposition section [F]): validation aligned exactly
+// to the extraction — the option-(ii) mutant — fires InvalidREQID 0 times across
+// the corpus, while this pattern fires 6. A delta of 0 would have meant the
+// rejection class is unreachable on real documents whatever the regexp says;
+// the delta is 6.
+//
+// Those 6 are REQ-256K-001..006 in SPEC-HANDOFF-CTXGUIDE-001, whose domain
+// segment starts with a digit. They are genuine convention violations, also
+// measured: 0 of 706 SPEC directories carry a digit-initial domain segment, and
+// specIDPattern codifies the same letter-initial rule for SPEC IDs. Six
+// digit-initial domain tokens out of 1,085 REQ definitions is an outlier, not an
+// unrepresented convention.
+//
+// Consequently InvalidREQIDRule is NOT a deletion candidate: it fires on real
+// input, and `moai spec lint --help` advertises "REQ ID uniqueness" against a
+// rule that still checks something. Had the residual been 0, the rule would have
+// been a deletion candidate — an advertised check that cannot fire is the exact
+// defect SPEC-COVERAGE-RULE-SCOPE-001 was opened to document, and leaving one in
+// place while repairing a vacuous parser would reproduce the defect inside its
+// own repair. Deletion is not this SPEC's decision to make either way; the
+// disposition is recorded so it stays visible.
 var reqIDPattern = regexp.MustCompile(`^REQ-[A-Z][A-Z0-9]*(?:-[A-Z][A-Z0-9]*)?-\d{3}(?:-\d{3})?$`)
 
 // REQ-SPC-003-001: The system SHALL do X."
