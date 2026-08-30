@@ -2,7 +2,6 @@
 id: SPEC-CLI-WIZARD-RESTRUCTURE-001
 title: "Design — Page-3 answer persistence architecture"
 version: "0.2.1"
-status: completed
 created: 2026-07-25
 updated: 2026-07-25
 author: manager-spec
