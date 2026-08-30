@@ -122,7 +122,7 @@ m1_to_mN_commit_strategy: "단일 커밋 — M1(필터+주석)·M2(보존 확인
 
 ```yaml
 sync_complete_at: 2026-08-30
-sync_commit_sha: pending-backfill-t294   # 자기 SHA는 그 커밋 안에서 쓸 수 없어 후속 커밋에서 backfill
+sync_commit_sha: f36f65f44   # backfilled — sync 커밋 자체 SHA
 sync_status: complete
 b12_self_test_a: "grep -c 'SPEC-CI-PR-TRIGGER-FILTER-001' CHANGELOG.md → 0 (사전 중복 없음, emission 진행)"
 b12_self_test_b: "grep -oE 'AC-PTF-[0-9]+' spec.md | sort -u | wc -l → 6 (spec.md §3 인라인 AC, acceptance.md 없음 — Tier S). CHANGELOG 엔트리는 6개 AC(AC-PTF-001~006) 전부를 이름으로 인용한다"
