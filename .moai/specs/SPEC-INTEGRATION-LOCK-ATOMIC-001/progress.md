@@ -126,6 +126,241 @@ regression would surface as this test passing where it should fail — which is 
 AC-ILA-006's mutation guard exists to catch.
 
 
+### M2 — GREEN: the record's read-modify-write is serialized
+
+**Claim.** With the mutation lock in place, the identical deterministic interleaving yields exactly
+one holder; the loser is refused with `ErrIntegrationLockHeld`, and the persisted record names the
+winner. A non-conflicting concurrent pair still both succeed. Single-threaded semantics are
+unchanged.
+
+**Evidence.**
+
+```
+$ go test ./internal/kanban/... -run TestIntegrationLock -count=1 -v
+=== RUN   TestIntegrationLockAcquire_SerializedAcrossProcesses
+    integration_lock_cross_test.go:266: A: RESULT=acquired REPLACED=none SESSION=lane-a
+    integration_lock_cross_test.go:267: B: RESULT=held REPLACED=none SESSION=lane-b
+    integration_lock_cross_test.go:268: round: successes=1 refusals=1 other=0 sessions_differ=true mid_record_held=false mid_record_stale=false final_holder="lane-a" final_record_stale=false
+--- PASS: TestIntegrationLockAcquire_SerializedAcrossProcesses (0.55s)
+=== RUN   TestIntegrationLockAcquire_ConcurrencyPositiveControl
+    integration_lock_cross_test.go:341: positive control: both children acquired as lane-same; record holder="lane-same"
+--- PASS: TestIntegrationLockAcquire_ConcurrencyPositiveControl (0.02s)
+=== RUN   TestIntegrationLockBusy_IsNotHeld
+--- PASS: TestIntegrationLockBusy_IsNotHeld (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/kanban	1.036s
+```
+
+```
+$ go test ./internal/kanban/... -run IntegrationLock -count=1 -v
+--- PASS: TestIntegrationLockAcquire_SerializedAcrossProcesses (0.53s)
+--- PASS: TestIntegrationLockAcquire_ConcurrencyPositiveControl (0.02s)
+--- PASS: TestIntegrationLockBusy_IsNotHeld (0.00s)
+--- PASS: TestAcquireIntegrationLock_RecordsHolder (0.00s)
+--- PASS: TestAcquireIntegrationLock_RecordsTheCallersOwnerPID (0.00s)
+--- PASS: TestAcquireIntegrationLock_AnchoredPIDZeroIsLiveNotStale (0.00s)
+--- PASS: TestReadIntegrationLock_LegacyRecordWithoutPIDSource (0.00s)
+--- PASS: TestAcquireIntegrationLock_RefusesASecondLiveSession (0.00s)
+--- PASS: TestAcquireIntegrationLock_SameSessionReacquires (0.00s)
+--- PASS: TestAcquireIntegrationLock_TakesOverAStaleHolder (0.00s)
+--- PASS: TestAcquireIntegrationLock_ForceTakesOverALiveHolder (0.00s)
+--- PASS: TestReadIntegrationLock_CorruptRecordIsNotAFreeWindow (0.00s)
+--- PASS: TestReleaseIntegrationLock_HolderAndForeign (0.00s)
+--- PASS: TestReleaseIntegrationLock_EmptyIsReported (0.00s)
+--- PASS: TestReadIntegrationLock_AbsentRecord (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/kanban	0.795s
+
+$ git diff --stat 15453140a -- internal/kanban/integration_lock_test.go
+(no output; exit 0)
+```
+
+**Baseline-attribution.** Measured in this run, against this tree at the M2 commit `06290a314`.
+The comparison that matters is against M1's own output on the SAME test function: `successes=2
+refusals=0` became `successes=1 refusals=1`, and `mid_record_held` flipped `true` to `false`. That
+flip is the mechanism showing itself rather than an incidental difference — under the unrepaired
+path B had already written by the time the parent read the record between the two acquires; under
+the repair B is still blocked on the mutation lock and writes only after A releases. B's decision
+is therefore made against what A published, which is REQ-ILA-003 — the requirement the criteria
+previously traced but had no mechanism to force.
+
+**Design decision, restated where the code lands.** Option (b), a dedicated short-lived mutation
+lock at `.moai/state/integration-mutation.lock`, reusing `acquireBoardLockImpl` and
+`board_store.go`'s bounded jittered budget. No new primitive; a second SCOPE over the same
+substrate. The artifact's filename stem is deliberately not the record's, so
+`.moai/state/integration-lock*` cannot glob the two lifetimes back together.
+
+**Gaps.** `RESULT=busy` was never produced in any round, so the busy PATH through
+`acquireIntegrationMutationLock` is unexercised end-to-end; AC-ILA-004 asserts the sentinel's
+predicates directly (all three directions: busy satisfies its own, not held, not board-held) rather
+than by provoking a real 1.65 s timeout. That is deliberate — provoking it would mean holding the
+lock for the whole budget, which is a slow test that measures the clock.
+
+**Residual risk.** One observable behaviour change not required by any AC: `ReleaseIntegrationLock`
+now creates `.moai/state/` if absent, because the mutation lock cannot be taken before its
+directory exists. Acquire already created it, so the new case is an empty release in a project that
+never held a window; the directory created is the record's own, not a foreign scope. Disclosed
+rather than left for a reader to find.
+
+### M3 — Windows substrate: a killed holder must not wedge the mutation lock
+
+**Claim.** On the atomic-create substrate, a mutation-lock holder killed mid-section does not wedge
+the record permanently: a contender that exhausts its budget clears the artifact only when the
+recorded owner is positively observed absent, re-reading the identity immediately before removal,
+and retries once. `ClearStaleBoardLock` keeps its exact signature and behaviour.
+
+**Evidence.**
+
+```
+$ GOOS=windows go vet ./internal/kanban/...
+exit=0
+(no output)
+
+$ go test ./internal/kanban/... -run IntegrationLock -count=1
+ok  	github.com/modu-ai/moai-adk/internal/kanban	0.985s
+```
+
+**Baseline-attribution.** Measured in this run, against this tree at the M3 commit `7f27a8ab9`.
+The `go vet` result is COMPILATION ONLY and is cited as nothing more.
+
+**Gaps — named rather than papered over.** `board_lock_clear_windows.go`,
+`integration_lock_mutation_windows.go`, and `integration_lock_mutation_windows_test.go` are all
+`//go:build windows`. No darwin-lane command compiles them, so this lane observed ZERO of their
+runtime behaviour: not the dead-owner clear, not the live-owner refusal, and not the
+non-regression of `ClearStaleBoardLock` itself. AC-ILA-007(b) is CI-judged, and no local command is
+offered as evidence for it. The `go test -run IntegrationLock` line above is cited only as evidence
+that the Unix side did not regress — it cannot speak to the Windows code M3 edits.
+
+**Residual risk.** The extraction re-labels six error messages via a `label` parameter so the board
+caller's strings stay byte-identical; that was verified by reading the diff, not by a test asserting
+the strings. The shared `ErrBoardLockChangedHands` sentinel is now reachable from the integration
+mutation path, where its text names the board — the integration caller discards the error and falls
+through to busy, so it never reaches a user, but the sentinel is shared rather than scoped.
+
+### M4 — Unique staging path
+
+**Claim.** The record's staging path is unique per call, no residue survives a write, and the
+record keeps the 0644 mode other sessions read it with.
+
+**Evidence.**
+
+```
+$ grep -n 'path + "\.tmp"' internal/kanban/integration_lock.go
+current-tree grep exit=1 (prints nothing)
+
+$ git show 15453140a:internal/kanban/integration_lock.go | grep -n 'path + "\.tmp"'
+257:	tmp := path + ".tmp"
+baseline grep exit=0 (the zero-baseline this criterion is measured against)
+
+$ go test ./internal/kanban/... -run IntegrationLock -count=1 -v
+--- PASS: TestWriteIntegrationLock_UniqueStagingPath (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/kanban	1.018s   (16/16 selected criteria)
+```
+
+**Baseline-attribution.** Both grep directions measured in this run: the retired form present at
+`15453140a` line 257, absent on this tree at the M4 commit `445ec5f8f`. A one-directional grep
+would have proven nothing — a pattern that never matched anywhere reads identically to one that was
+successfully removed.
+
+**Honest scope (REQ-ILA-010).** Under M2's lock two concurrent writers cannot reach
+`writeIntegrationLock` at all, so this observes the PROPERTY and never a torn record. No claim of
+an observed tear is made anywhere.
+
+**One non-cosmetic detail.** `os.CreateTemp` opens at 0600 where the fixed path wrote 0644. The
+record is read by every other session's PreToolUse guard, so the mode is restored explicitly and
+the test asserts it. Left unhandled this would have shipped silently as a guard failing closed for
+the wrong reason.
+
+### M5 — Mutation guard (both directions), header truth, boundary checks
+
+**Claim.** The GREEN criterion is not vacuous: disabling exactly mutual exclusion returns the
+attributed double-hold, and restoring it returns the refusal. The package header no longer
+describes an absent mechanism. Neither the t320 surface nor the deny layer was touched.
+
+**Evidence — direction 1, critical section DISABLED** (`return fn()` inserted as the first
+statement of `withIntegrationLockMutation`; one line, `fn` stays used so the package compiles, and
+it subtracts exactly mutual exclusion — REQ-ILA-003's in-section re-read lives inside `fn` and
+survives the revert). Attempt 1 of a permitted 3:
+
+```
+$ go test ./internal/kanban/... -run TestIntegrationLockAcquire_SerializedAcrossProcesses -count=1 -v
+=== RUN   TestIntegrationLockAcquire_SerializedAcrossProcesses
+    integration_lock_cross_test.go:266: A: RESULT=acquired REPLACED=none SESSION=lane-a
+    integration_lock_cross_test.go:267: B: RESULT=acquired REPLACED=none SESSION=lane-b
+    integration_lock_cross_test.go:268: round: successes=2 refusals=0 other=0 sessions_differ=true mid_record_held=true mid_record_stale=false final_holder="lane-a" final_record_stale=false
+    integration_lock_cross_test.go:279: successes=2 refusals=0, want exactly 1 and 1 — the record's read-modify-write is NOT serialized across processes.
+          A: RESULT=acquired REPLACED=none SESSION=lane-a
+          B: RESULT=acquired REPLACED=none SESSION=lane-b
+          attributed_double_hold=true (REPLACED=none on both: true; session ids differ: true; record non-Stale at the second acquire: mid_held=true mid_stale=false; final record non-Stale: true)
+          final record: holder="lane-a" pid=7713 pid_source="session-owner"
+--- FAIL: TestIntegrationLockAcquire_SerializedAcrossProcesses (0.02s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/kanban	0.492s
+FAIL
+```
+
+**Evidence — direction 2, critical section RESTORED** (restoration verified byte-exact: a
+`git diff --stat` of `internal/kanban/integration_lock_mutation.go` against the M3 commit is
+empty):
+
+```
+$ go test ./internal/kanban/... -run TestIntegrationLockAcquire_SerializedAcrossProcesses -count=1 -v
+=== RUN   TestIntegrationLockAcquire_SerializedAcrossProcesses
+    integration_lock_cross_test.go:266: A: RESULT=acquired REPLACED=none SESSION=lane-a
+    integration_lock_cross_test.go:267: B: RESULT=held REPLACED=none SESSION=lane-b
+    integration_lock_cross_test.go:268: round: successes=1 refusals=1 other=0 sessions_differ=true mid_record_held=false mid_record_stale=false final_holder="lane-a" final_record_stale=false
+--- PASS: TestIntegrationLockAcquire_SerializedAcrossProcesses (0.55s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/kanban	0.945s
+```
+
+Saved verbatim at `.moai/state/verify/t336/m5-guard-disabled.txt` and `m5-guard-restored.txt`.
+
+**Closure gates 3, 4 and 6.**
+
+```
+$ git diff 15453140a -- internal/cli/integration.go
+(no output — the release verb's strings and error classification are byte-unchanged; card t320
+ lands on top of this work untouched)
+
+$ git diff --stat 15453140a -- internal/hook internal/config
+(no output — the deny layer and its config are untouched, and the repair is gated by no flag)
+
+$ grep -rn 'integrationLockMutationTestHook\s*=' internal/ | grep -v '_test\.go'
+exit=1 (prints nothing — no production setter)
+
+$ grep -rnE 'integrationLockMutationTestHook[[:space:]]*=' internal/ | grep -v '_test\.go'
+exit=1 (POSIX bracket form, run as corroboration because \s is a GNU extension; same result)
+
+$ grep -rn 'integrationLockMutationTestHook' internal/
+internal/kanban/integration_lock.go:83:// integrationLockMutationTestHook is a nil-by-default, TEST-ONLY interleaving
+internal/kanban/integration_lock.go:95:var integrationLockMutationTestHook func()
+internal/kanban/integration_lock.go:239:		if integrationLockMutationTestHook != nil {
+internal/kanban/integration_lock.go:240:			integrationLockMutationTestHook()
+internal/kanban/kanban_helper_test.go:135:			integrationLockMutationTestHook = func() {
+```
+
+The three non-test occurrences are the doc comment, the `var … func()` declaration with no
+assignment, and the nil-guarded invocation. The only assignment in the repository is in a
+`_test.go` file.
+
+**Closure gate 5 — header truth (REQ-ILA-011).** `integration_lock.go`'s header claimed since t194
+that "the flock discipline is borrowed only to serialize mutations of that record". No exclusion
+primitive existed anywhere in the file. The header now records that the clause described nothing
+for the whole of the file's first life, names the specific damage — a reader who believed the
+record was already serialized stopped looking — and points at the mechanism that finally makes it
+true. This is verified by diff review, not by a test: no command can decide whether prose matches a
+mechanism, and `acceptance.md` §D.4 says so rather than dressing it as an AC.
+
+**Gaps.** The guard was run once in each direction. The 3-attempt escalation ceiling exists for a
+zero-observation run and was not approached: the disabled direction produced the attributed
+double-hold on attempt 1, as it did at M1.
+
+**Residual risk.** The guard subtracts mutual exclusion at ONE call site. A future regression that
+removes serialization by a different route — say, a second write path around
+`withIntegrationLockMutation` — would not be caught by re-running this guard; it would be caught by
+the criterion itself, which is why the shipped test asserts the invariant rather than the guard.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

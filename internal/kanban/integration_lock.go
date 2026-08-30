@@ -19,6 +19,16 @@
 // recorded holder's liveness, and the flock discipline is borrowed only to
 // serialize mutations of that record.
 //
+// That last clause described nothing for the whole of this file's first life
+// (card t194 through t298): no exclusion primitive was taken anywhere in it,
+// and the read → decide → write below ran unserialized, so two processes could
+// each be told they held the window. Anyone who read the sentence believed the
+// record was already serialized, which is the specific way a comment describing
+// an absent mechanism does damage — it is not merely uninformative, it stops
+// the next reader looking. Card t336 built the mechanism the sentence names:
+// integration_lock_mutation.go borrows exactly that discipline, at a scope of
+// its own, and the clause is true from that commit onward.
+//
 // What this does NOT do: it does not make the release worktree unwritable, and
 // it cannot. A lock that a determined caller may remove is a coordination
 // signal, not a capability boundary. Its value is that skipping the
