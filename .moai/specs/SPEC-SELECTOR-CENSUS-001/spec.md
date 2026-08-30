@@ -86,7 +86,9 @@ evidence_writer.go:74   if pass, fail, ok := deriveFromOutputText(result); ok { 
 
 > Test name does not exist → suite failure ("no tests to run" surfaces red).
 
-§1 의 측정이 이를 반증한다 — 붉지 않다. 같은 표의 형제 기준 6건(AC-TOSQ-002..005, 007, 008)이 같은 문구 "Red via missing test" 위에 서 있다.
+§1 의 측정이 이를 반증한다 — 붉지 않다. 같은 거짓 전제 위에 선 기준은 그 표에서 모두 **9건**이다: AC-TOSQ-001, 002, 003, 004, 005, 007, 008, 017, 018.
+
+**이 숫자의 출처는 두 갈래이며, 갈래를 밝히지 않은 수치는 이 SPEC 이 겨누는 바로 그 결함이다**(`verification-completeness.md` §4, baseline 귀속 조항). 001 과 형제 6건(002-005, 007, 008)은 **이 레인이 이 워크트리에서 해당 셀을 직접 읽어** 확인했다. 017·018 두 건은 **카드 t343(lane-7) 레인의 재측정에서 온 것**이며, 이 SPEC 은 그 두 건을 스스로 재지 않았다. 017·018 을 이 레인의 관측으로 읽어서는 안 된다. AC-TOSQ-011 은 t343 이 **의도적으로 제외**했다 — 기제가 다르고(존재하지 않는 verb 의 비-0 종료), 재측정 대상도 아니었으므로 이 9건에 들어가지 않는다.
 
 **[HARD] 교차 카드 결속.** t343(lane-7)이 **반대 축**에서 같은 셀을 인용한다("사실과 어긋난 RED 칸이 감사를 통과했다"). 그 셀을 먼저 편집하는 쪽이 다른 카드의 증거를 조용히 없앤다. `SPEC-TODO-SQLITE-001/acceptance.md:13` 에 손대는 변경은 **같은 변경 안에서 두 SPEC 을 함께 갱신**해야 한다. 이 SPEC 의 범위 안에서 그 셀은 **읽기 전용 증거**이며, 이 SPEC 은 그것을 고치지 않는다.
 
@@ -144,7 +146,7 @@ evidence_writer.go:74   if pass, fail, ok := deriveFromOutputText(result); ok { 
 
 ### Out of Scope — 착지한 SPEC 문면 수리
 
-- `SPEC-TODO-SQLITE-001/acceptance.md:13` 및 형제 기준 6건의 문면 수리. §2.4 의 결속 때문에 t343 과 같은 변경에서만 다뤄야 하며, 이 SPEC 에서 그 셀은 읽기 전용 증거다.
+- `SPEC-TODO-SQLITE-001/acceptance.md:13` 및 §2.4 가 세는 나머지 8건(합 9건)의 문면 수리. §2.4 의 결속 때문에 t343 과 같은 변경에서만 다뤄야 하며, 이 SPEC 에서 그 셀은 읽기 전용 증거다.
 
 ### Out of Scope — 어휘·시제 판별자
 
