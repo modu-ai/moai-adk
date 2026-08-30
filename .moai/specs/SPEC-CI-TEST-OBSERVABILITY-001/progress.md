@@ -174,7 +174,7 @@ deliberate_breakages_reverted:
 
 ```yaml
 sync_complete_at: 2026-08-30
-sync_commit_sha: SYNC_COMMIT_SHA_PLACEHOLDER
+sync_commit_sha: 022ec0923
 sync_status: complete-with-open-gap
 b12_self_test_a: "grep -c 'SPEC-CI-TEST-OBSERVABILITY-001' CHANGELOG.md -> 0 (no duplicate entry)"
 b12_self_test_b: "canonical AC regex -> 8 distinct ids; TRUE distinct AC count is 10 (the regex cannot see the 'b'/'a' suffixes, so AC-CTO-003b collapses onto AC-CTO-003 and AC-CTO-005a/-005b onto AC-CTO-005). Reported as a regex limitation, not adjusted away."
