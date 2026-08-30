@@ -173,3 +173,111 @@ deliberate_breakages_reverted:
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+---
+
+## §E.5 AC-CTO-007 — positive-control observation (TERMINAL AC)
+
+**Status: PASS.** Observed on ONE dispatched run, as the [HARD] constraint requires.
+No re-run was performed.
+
+### The four required items
+
+1. **Run URL and job ids** —
+   `https://github.com/modu-ai/moai-adk/actions/runs/33308057570`
+   (event `workflow_dispatch`, branch `WT-ci-test-observability`, head `09dd1bee9`).
+   Jobs: `99248050305` Release Verify (ubuntu-latest), `99248050297` (macos-latest),
+   `99248050298` (windows-latest).
+
+2. **Verbatim census lines naming the skipping test** — present on ALL THREE OS legs:
+
+   ```
+   SKIPPED TEST  github.com/modu-ai/moai-adk/internal/statusline  TestProfilePhaseDistributions
+   SKIPPED TEST  github.com/modu-ai/moai-adk/internal/statusline  TestReadOAuthToken_Keychain
+   ```
+
+   Both are pre-existing skips measured in `spec.md` §A.1. Nothing was planted, so
+   nothing needs reverting.
+
+3. **Where the identification was made** — the job console log of the
+   `Run tests with race detector` step, and independently the uploaded artifacts
+   `test-stream-release-verify-{ubuntu,macos,windows}-latest`.
+
+4. **Observation path** — the **pre-merge dispatch path**
+   (`release-pr-multi-os.yml` dispatched against the pushed card branch). NOT the
+   post-merge `ci.yml` fallback. Stated plainly per `spec.md` §G.
+
+### Per-OS census totals, as dispatched
+
+| OS | job | conclusion | packages | passed | skipped | nothing-ran | failed | build-failed |
+|---|---|---|---|---|---|---|---|---|
+| ubuntu-latest | 99248050305 | success | 136 | 19513 | 100 | 3 | 0 | 0 |
+| macos-latest | 99248050297 | failure | 136 | 19512 | 91 | 3 | 1 | 0 |
+| windows-latest | 99248050298 | failure | 136 | 18854 | 332 | 4 | 146 | 0 |
+
+The census ran, printed, and classified correctly on all three, including on the
+two RED legs. The `NOTHING RAN` baseline predicted in `plan.md` §D M1 — exactly
+`cmd/moai`, `internal/template/scripts`, `scripts/convert-nextra-to-hextra` — held
+on ubuntu and macOS.
+
+### Debts discharged by this run
+
+- **AC-CTO-005b** (artifact present on a FAILED run) was recorded as debt on the
+  grounds that ONE run could not produce it. The run was red on two legs and both
+  artifacts uploaded: `test-stream-release-verify-macos-latest` 1,496,723 B and
+  `test-stream-release-verify-windows-latest` 1,286,458 B. The `Upload test event
+  stream` step reports `success` on both failing jobs. Debt discharged by
+  observation, not by argument.
+- **AC-CTO-003's CI-level red path** was recorded as debt (verified locally only).
+  Both red legs printed the census with `FAILED` rows carrying the test name and
+  its captured output, and the job still exited non-zero. Discharged.
+- **The full-suite artifact size was an extrapolation** (`spec.md` §A.1). It is now
+  measured, gzipped: ubuntu 1,733,669 B · macOS 1,496,723 B · windows 1,286,458 B.
+  The extrapolation is superseded.
+- **The windows/macOS portability gap** (`spec.md` §J) is closed for the census
+  toolchain: `jq`, `gzip`, and the upload all worked on all three runners. This was
+  the dispatch's stated purpose and the reason the risk was worth taking.
+
+### What this run FOUND that no prior CI run could have
+
+`internal/lockfile` reports **NOTHING RAN on windows-latest** while running tests
+on ubuntu and macOS. A package executing zero tests on exactly one OS is invisible
+under rc-only reporting — the package is not red, and the job's `ok`-line shape is
+identical to a package that ran and passed. This is the defect class the SPEC was
+written to surface, found on the census's first real run.
+
+Out of scope for this card: not investigated, not fixed, reported to the lead as
+card material.
+
+### Attribution of the two red legs — NOT this card's change
+
+- **macOS, 1 failure**: `internal/graph  TestGitDiffNameCount_Predicate`, a
+  `t.TempDir` cleanup race (`unlinkat …/.git/objects/pack: directory not empty`).
+  Pre-existing; `SPEC-TEMPDIR-CLEANUP-RACE-001` explicitly excluded it from scope,
+  so it is unrepaired. It was absent from the most recent quiet-head reading
+  (`15453140a`), so its appearance here adds one datum for intermittency and
+  nothing else.
+- **windows, 146 failures**: concentrated in `internal/cli`. The windows leg
+  carries a known pre-existing failure population (see the `continue-on-error`
+  history noted in `release-pr-multi-os.yml`). Not attributed to this change.
+- **Both legs' failures are in test bodies, not in the census.** On both, the
+  `Compress test event stream` and `Upload test event stream` steps report
+  `success`; only `Run tests with race detector` is red, and its census output is
+  present and well-formed.
+
+### Gaps — explicitly NOT observed
+
+- The `ci.yml` call sites (`test`, `test-race`, `test-integration`) have NOT run in
+  CI. This dispatch exercised `release-pr-multi-os.yml` only. `ci.yml` has no
+  `workflow_dispatch` on the default branch, so its first real execution is the
+  `develop` push after this card integrates.
+- No second dispatch was performed, and none is authorized.
+- `shellcheck` was not run against the census script; no shell linter exists in
+  this repo's CI.
+
+### Residual risk
+
+The census is now exercised on three runners, but only through one workflow. A
+later editor simplifying `|| rc=$?` to `; rc=$?`, or deleting the `BUILD FAILED`
+row, still produces a change no green run contradicts. The defence remains the
+comments at the four call sites and `plan.md` §B.1-B.2.
