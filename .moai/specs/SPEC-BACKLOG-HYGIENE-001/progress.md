@@ -236,7 +236,7 @@ invocation log is the orchestrator's alone and carries two lines.
 ## §E.4 Sync-phase Audit-Ready Signal
 
 sync_complete_at: "2026-08-30"
-sync_commit_sha: "pending-backfill-t332"  # a commit cannot cite its own SHA — backfilled in the commit immediately following the sync commit
+sync_commit_sha: "95039fbef"  # a commit cannot cite its own SHA — backfilled in the commit immediately following the sync commit
 sync_status: completed
 frontmatter_status_transitions:
   spec_md: "in-progress → completed"
