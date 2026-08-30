@@ -2,7 +2,7 @@
 id: SPEC-CI-PR-TRIGGER-FILTER-001
 title: "graph-freshness.yml pull_request 트리거의 무필터 생략 교정 — 발화 집합을 선언으로 고정"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-08-29
 updated: 2026-08-30
 author: manager-spec

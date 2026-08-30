@@ -120,3 +120,27 @@ directly, with no card PR to carry the pull_request trigger"*). 두 곳 모두 *
 - **범위 확장 판단은 운영자 몫**: 카드 본건은 graph-freshness 1개다. 위 표에서 새로 드러난 3개
   (paths-scoped 무필터)를 같은 카드에서 함께 고칠지는 범위 결정이므로 이 조사에서 정하지 않는다.
 - `e4eb15ea4`(t291 M2)가 같은 파일을 수정했으나 트리거 블록은 건드리지 않았다 — 이 카드와 충돌 없음.
+
+## 6. Sync-phase tooling note (2026-08-30) — `moai spec lint` scope, not a directory error
+
+`moai spec lint`가 받는 인자는 항상 **파일**로 취급된다 — 디렉터리를 넘기면 즉시
+`ParseFailure: is a directory`로 실패한다(초 단위, 예산 소진 없음). 캡슐화 SPEC이 서술한
+"디렉터리를 주면 카탈로그 전체를 훑는다"는 정정이 필요하다: 실제로 카탈로그 전체를 훑어 예산을
+소진하는 경로는 **인자 없이 실행하는 것**이다.
+
+```console
+$ time timeout 15 moai spec lint .moai/specs/SPEC-CI-PR-TRIGGER-FILTER-001/
+ERROR  ParseFailure  .../SPEC-CI-PR-TRIGGER-FILTER-001/  1  ... is a directory
+1 error(s), 0 warning(s)
+# 0.02s user — 디렉터리는 즉시 실패, 카탈로그를 훑지 않는다
+
+$ time timeout 125 moai spec lint     # 인자 없음 — 전체 카탈로그(~700 SPEC) 스캔
+# 101.38s user 21.49s system, wall 2:05.01 — 120s 예산을 초과해 timeout에 의해 종료됨
+
+$ time timeout 15 moai spec lint .moai/specs/SPEC-CI-PR-TRIGGER-FILTER-001/spec.md
+✓ No findings — all SPEC documents are valid
+# 0.45s user — 파일 경로를 직접 주면 즉시 반환
+```
+
+다른 레인이 들고 가도록 남기는 실전 규칙: **디렉터리 경로도, 무인자 실행도 피하고 항상 `spec.md`
+파일 경로를 직접 지정한다.**
