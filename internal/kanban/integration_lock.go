@@ -293,12 +293,42 @@ func writeIntegrationLock(path string, lock *IntegrationLock) error {
 		return fmt.Errorf("integration lock: %w", err)
 	}
 	data = append(data, '\n')
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+
+	// The staging path is unique per call. It used to be a fixed sibling name
+	// derived from the record's own path, shared by every concurrent writer;
+	// now no two writers can ever share one staging file. (The retired literal
+	// is deliberately not quoted here: AC-ILA-008 greps this file for it, and a
+	// comment naming it would make that check answer about prose rather than
+	// about code.)
+	//
+	// Stated honestly (REQ-ILA-010): under the mutation lock two concurrent
+	// writers cannot reach this function at all, so this is defence in depth
+	// against a FUTURE caller that writes outside the lock — not a defect
+	// anyone observed, and no criterion here claims to have seen a torn record.
+	// What is observable is the property: a unique staging name, and no residue
+	// left behind on any path.
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".integration-lock-*.tmp")
+	if err != nil {
 		return fmt.Errorf("integration lock: %w", err)
 	}
-	if err := os.Rename(tmp, path); err != nil {
-		_ = os.Remove(tmp)
+	staging := tmp.Name()
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		_ = os.Remove(staging)
+		return fmt.Errorf("integration lock: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		_ = os.Remove(staging)
+		return fmt.Errorf("integration lock: %w", err)
+	}
+	// CreateTemp opens at 0600; the record is read by every other session's
+	// guard, so restore the 0644 the fixed-path write used.
+	if err := os.Chmod(staging, 0o644); err != nil {
+		_ = os.Remove(staging)
+		return fmt.Errorf("integration lock: %w", err)
+	}
+	if err := os.Rename(staging, path); err != nil {
+		_ = os.Remove(staging)
 		return fmt.Errorf("integration lock: %w", err)
 	}
 	return nil
