@@ -76,7 +76,7 @@ mtime `Aug 27 23:09` 로 동일하다. 재현 바이너리는 세션 전용 임�
 
 - sync_status: `completed`
 - sync_complete_at: 2026-08-31
-- sync_commit_sha: pending-backfill-t366
+- sync_commit_sha: 57a6df488
 - changelog_entry_position: `[Unreleased]` → `### Added`, first entry (card t366, `SPEC-BINLAG-INVOCATION-001`)
 - frontmatter_status_transitions.spec_md: `in-progress → completed` (merged into this sync commit; `updated:` refreshed to 2026-08-31)
 - b12_self_test_a (pre-emission grep): `grep -c 'BINLAG' CHANGELOG.md` → `0` before emission (checked; single entry now present)
