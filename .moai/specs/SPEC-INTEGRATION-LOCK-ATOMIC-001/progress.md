@@ -499,4 +499,94 @@ exemption.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+### Sync-audit verdict
+
+The audit is independent: `sync-auditor` ran in this tree, at `3c7886d9a`, and decided every AC on
+evidence it produced itself. It did not inherit §E.2/§E.3. The record is
+`.moai/reports/t336/sync-audit.md`.
+
+| Dimension | Weight | Score | Verdict |
+|---|---|---|---|
+| Functionality | 40% | 95/100 | PASS |
+| Security | 25% | 90/100 | PASS |
+| Craft | 20% | 92/100 | PASS |
+| Consistency | 15% | 95/100 | PASS |
+
+Overall **PASS**, harmonic mean **0.93** (92.95). Must-pass firewall: Functionality and Security each
+clear their thresholds independently. **No blocking finding.**
+
+The load-bearing re-measurement: the auditor inserted the AC-ILA-006 revert itself, ran the criterion,
+observed `successes=2 refusals=0 attributed_double_hold=true` on attempt 1, restored the line, re-ran
+to `successes=1 refusals=1 --- PASS`, and proved the restoration byte-exact with an empty
+`git diff --stat` and a clean `git status --short`. The GREEN is therefore not an artefact of the
+interleaving hook.
+
+### Findings disposition
+
+| Finding | Severity | Disposition |
+|---|---|---|
+| F1 — AC-ILA-002's `REPLACED` condition is evaluated only inside the failure branch | Low, optional | **Carried forward, not fixed.** The auditor itself records the reachability: the round starts from a fresh `t.TempDir()` with no prior record, so no takeover is constructible. Acceptance-text-vs-assertion gap, not a live hole. Fixing it in sync phase would be a run-phase code edit outside this phase's ownership |
+| F2 — release's cross-process serialization is inferred, not measured | Low, optional | **Accepted as a stated limit and disclosed in the CHANGELOG entry.** Release is under the same `withIntegrationLockMutation` wrapper as acquire, and AC-ILA-006 measures that wrapper; the inference is sound and is reported as an inference |
+| F3 — release now creates `.moai/state/` and an inert lock artifact before the holder check | Low, optional | **Disclosed trade-off, not a defect** (auditor's own judgment). Sentinel, message, and return value unchanged; `.moai/state/` exists in every real project |
+| F4 — the run phase's `ErrBoardLockChangedHands` residual over-states the risk | Info, optional | **Accepted as a downward correction of the author's own disclosure.** `clearErr` is discarded wholesale, so board-lock text cannot surface through an integration verb. Recorded in the CHANGELOG entry as such |
+| F5 — `integrationStallReleaseTimeout = 500ms` couples a MUST-PASS criterion to wall-clock | Low, optional | **Disclosed trade-off, correctly sized** (margin 500ms / 1.65s = 30.3%; the coupling fails loudly via a named Fatalf rather than silently) |
+
+### Sync-phase self-test (B12)
+
+| Test | Command | Result |
+|---|---|---|
+| Pre-emission duplicate grep | `grep -c 'SPEC-INTEGRATION-LOCK-ATOMIC-001' CHANGELOG.md` | `0` before emission — no parallel session had already written this entry |
+| AC count | the `[RETIRED]`/`[REF]`-aware counter (`manager-docs.md` §B12) against `acceptance.md` | `live=9 excluded=0 ambiguous=0` → **9**, non-zero and matching the `AC-ILA-001..009` series. Not a vacuous `0 == 0` |
+| File-path verification | `ls -1` on every path claimed in the CHANGELOG entry | all six resolve; none fabricated |
+
+### Audit-ready signal
+
+```yaml
+sync_complete_at: 2026-08-30
+sync_commit_sha: pending-backfill-sync   # backfilled in the commit immediately following this one
+sync_status: complete
+sync_audit_verdict: PASS
+sync_audit_harmonic_mean: 0.93
+sync_audit_dimension_scores:
+  functionality: 95
+  security: 90
+  craft: 92
+  consistency: 95
+sync_audit_blocking_findings: 0
+sync_audit_optional_findings: 5   # F1..F5, all Low/Info, all carried forward with a stated disposition
+b12_self_test_a: pass   # pre-emission grep → 0
+b12_self_test_b: pass   # AC count → 9 (live=9 excluded=0 ambiguous=0)
+b12_self_test_c: pass   # every claimed file path resolves via ls -1
+changelog_entry_position: "CHANGELOG.md [Unreleased] → ### Added, first entry"
+ac_pass_count: 9
+ac_fail_count: 0
+ac_ci_judged_count: 1   # AC-ILA-007(b), windows runtime
+frontmatter_status_transitions:
+  spec_md: "in-progress → implemented"
+  completed_withheld: true
+  completed_withheld_reason: >
+    The branch is unpushed, no CI has judged any of its commits, and the lead integrates the card
+    under a later integration window. Marking completed would assert a close no integration has
+    confirmed. Same reasoning as the neighbouring t333 precedent.
+readme_or_docs_site_touched: false
+readme_or_docs_site_reason: >
+  The card adds no hook event, settings key, CLI verb, or wrapper script. It changes the internal
+  behaviour of two existing internal/kanban functions; internal/cli/integration.go is byte-identical
+  to 15453140a. There is no operator-facing surface to document.
+canary_compliance_check: n/a   # this SPEC defines no forward-looking policy for its own sync to test
+```
+
+### What was NOT observed in this sync phase
+
+- **The full test suite.** `go test ./...` is prohibited locally in this repository; every run cited
+  here and in the audit was scoped to `./internal/kanban/...`. CI is the full-suite judge, and the
+  branch is unpushed, so no CI verdict exists for any commit on it.
+- **Windows runtime behaviour** — the whole of AC-ILA-007(b), unchanged from run phase. `GOOS=windows
+  go vet` proves compilation and nothing more.
+- **Release's cross-process serialization** (F2) — inferred from the shared wrapper, never measured.
+- **The busy path end to end** on Unix — `TestIntegrationLockBusy_IsNotHeld` constructs the sentinel
+  by hand rather than provoking budget exhaustion.
+- **No fresh test execution was performed in this sync phase.** Every figure above is either the
+  auditor's own re-measurement (recorded in `.moai/reports/t336/sync-audit.md`, attributed to tree
+  `3c7886d9a`) or a §E.2/§E.3 run-phase figure the auditor independently reproduced. Nothing here is
+  a new claim measured by the sync phase itself.

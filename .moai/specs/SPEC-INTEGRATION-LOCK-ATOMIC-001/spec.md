@@ -2,7 +2,7 @@
 id: SPEC-INTEGRATION-LOCK-ATOMIC-001
 title: "Release-integration lock: serialize the record's read-modify-write across processes (card t336)"
 version: "0.1.2"
-status: in-progress
+status: implemented
 created: 2026-08-29
 updated: 2026-08-30
 author: manager-spec
