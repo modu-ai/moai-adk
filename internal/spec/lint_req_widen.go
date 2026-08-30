@@ -30,9 +30,9 @@ import (
 //     rather than assumed.
 //  2. It tolerates the bold marker (`**REQ-...**:`) commonly used in the corpus.
 //
-// This pattern is measurement-capable and deliberately NOT wired into
-// parseSPECDoc: enabling it in the live lint path changes corpus behavior and is
-// a separate, severity-gated decision.
+// M3 wired this into parseSPECDoc via parseREQsWithProvenance. The corpus
+// behavior change it carries is absorbed by the widened-only advisory treatment
+// documented on REQEntry.Widened and at each affected emission site.
 var reqLineWidePattern = regexp.MustCompile(`^\s*[-*]\s+\**\s*(REQ-[A-Z0-9]+(?:-[A-Z0-9]+)*-\d+)\s*\**\s*:\s*(.*)$`)
 
 // parseREQsWide mirrors parseREQs but uses reqLineWidePattern. It returns one
@@ -52,4 +52,31 @@ func parseREQsWide(body string) []REQEntry {
 		}
 	}
 	return reqs
+}
+
+// parseREQsWithProvenance is the live-path collector. It returns the WIDE REQ
+// set with each entry marked according to whether the NARROW reqLinePattern
+// would also have collected it at the same line.
+//
+// The provenance is what lets the widening land without reddening the corpus.
+// doc.REQs feeds four error-severity findings — ModalityMalformed,
+// InvalidREQID, DuplicateREQID, CoverageIncomplete — and none of those codes is
+// in eraDemotableCodes, so widening the collector turns them on across a corpus
+// that was never linted against them. Measured live before the wiring: 25
+// ModalityMalformed and 6 InvalidREQID errors appear that CoverageRule's own
+// severity treatment does not touch. Marking the newly-reachable entries lets
+// each emission site report the finding while declining to gate on it, and
+// leaves every pre-existing narrow entry byte-identical in behavior.
+func parseREQsWithProvenance(body string) []REQEntry {
+	narrow := parseREQs(body)
+	narrowAt := make(map[int]string, len(narrow))
+	for _, r := range narrow {
+		narrowAt[r.Line] = r.ID
+	}
+
+	wide := parseREQsWide(body)
+	for i := range wide {
+		wide[i].Widened = narrowAt[wide[i].Line] != wide[i].ID
+	}
+	return wide
 }
