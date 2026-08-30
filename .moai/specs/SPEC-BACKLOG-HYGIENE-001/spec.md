@@ -2,7 +2,7 @@
 id: SPEC-BACKLOG-HYGIENE-001
 title: "Backlog hygiene sweep: read the live queue, falsify each card's premise, record relations — and mutate no card"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-08-29
 updated: 2026-08-30
 author: manager-spec

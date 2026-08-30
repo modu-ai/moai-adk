@@ -235,7 +235,36 @@ invocation log is the orchestrator's alone and carries two lines.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_complete_at: "2026-08-30"
+sync_commit_sha: "pending-backfill-t332"  # a commit cannot cite its own SHA — backfilled in the commit immediately following the sync commit
+sync_status: completed
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed"
+
+Sync-phase report additions (`.moai/reports/t332/report.md`):
+
+- **§3, new item 4** — the fourth instance of the same shape this card exists to catch: plan.md B5
+  and spec.md §E both assert evidence under `.moai/reports/t332/` is gitignored, which
+  `git check-ignore -v` (rc=1) refutes. Repair scoped to the report only — the false sentences in
+  plan.md B5 / spec.md §E body are out of this card's scope and stay a disposition item for the
+  operator.
+- **§5, t281 row** — the evidence column now names the deciding commit as a literal SHA
+  (`11216d13f`, full `11216d13f612f7e7161487a4e1369a47612f0b4c`), on pinned `origin/develop`.
+- **§5.1, new grouped paragraph** — the `t313 contains t295` relation cannot be annotated with the
+  measured fact that t313 landed without resolving t295; the append attempt was refused
+  (`invocations.log`), and no verb in this card's deliverables can update a recorded relation.
+  Stated as an operator disposition proposal; the §5 table stays at exactly 62 rows.
+
+**Quality-gate measurement (not an assertion).** Branch diff vs merge-base
+`ee50984abe4f11ac337382b48a26328f091e200a`: `git diff --stat ee50984abe4f11ac337382b48a26328f091e200a...HEAD -- '*.go' | wc -l` → `0`. The full diff is 46 files, all markdown/TSV under
+`.moai/reports/t332/` and `.moai/specs/SPEC-BACKLOG-HYGIENE-001/`. Lint / test / MX-tag / coverage
+gates have no `.go` surface to run against in this SPEC — this is a stated **GAP**, never a claimed
+PASS.
+
+changelog_entry_position: "[Unreleased] → Added (this sync commit)"
+
+**B12 self-test (pre-append)**: `grep -c 'SPEC-BACKLOG-HYGIENE-001' CHANGELOG.md` → `0` (measured
+before the CHANGELOG append in this same sync commit).
 
 ## §F Phase 4 Mode Selection
 

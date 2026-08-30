@@ -57,7 +57,7 @@ operator would then act on. Detail and the full candidate table: `02-overlaps.md
 
 ## §3 Findings the sweep produced about its own instruments
 
-Three, and all three are the shape this card exists to catch, reproducing inside the card:
+Four, and all four are the shape this card exists to catch, reproducing inside the card:
 
 1. **AC-BH-006 was measuring a dead file.** The queue migrated to SQLite at `3cb258d62`
    (`SPEC-TODO-SQLITE-001`, card t306); `backlog.json` has not been written since. The criterion's
@@ -73,6 +73,28 @@ Three, and all three are the shape this card exists to catch, reproducing inside
    `gitWorktreeAddArgs` still hardcodes `-b <branch>`, so no existing-branch checkout path exists.
    The attempt to append that measurement was refused: *"t313 contains t295 is already recorded."*
    The relation stays frozen at its original claim. (`02-overlaps.md` §3.)
+4. **plan.md's own gitignore premise is false.** plan.md B5 and spec.md §E both state that evidence
+   written under `.moai/reports/t332/` inside this worktree "is gitignored and is lost on
+   disposal", making an out-of-band recovery copy to the primary checkout an explicit M5 step.
+   Measured at M5, and re-measured in this sync phase:
+
+   ```
+   $ git check-ignore -v .moai/reports/t332/report.md
+   (no output)
+   $ echo $?
+   1
+   ```
+
+   **Not ignored.** `git status --short` lists the tree as untracked-but-trackable, so the evidence
+   is committed on the card branch and travels with it. No `cp` + `cmp` recovery was performed and
+   none was needed. This is the **fourth** instance of the same shape in this card's own lifecycle.
+   The lead flagged the second: the plan-audit iter-1/iter-2 reports asserted their own output was
+   gitignored, which the same one-line command refutes. That correction closed the instance in
+   front of it and left the identical sentence standing one file over, in plan.md B5 and spec.md
+   §E, where nothing re-ran the deciding command. The false sentences in plan.md B5 and spec.md §E
+   were **not** repaired by this sweep — repairing SPEC body content is out of this card's scope
+   (spec.md §C "Out of Scope — repairing what the sweep finds"), so the correction is a disposition
+   item for the operator, not a performed act.
 
 Two smaller observations, reported and not acted on: the `relate` error message names `backlog.json`
 — the dead file — rather than the live `backlog.db`; and three fan-out workers wrote compound
@@ -132,7 +154,7 @@ No row proposes an un-drop, and no row proposes a fold whose counterpart is a `d
 | t263 | `falsified` | `not-landed` | **`needs-operator-decision`** | `needs-operator-decision` — the premise as stated is false today (t216 hasn't landed), but the underlying direction may still be correct once t216 does land; the operator should decide whether to defer this card behind t216 or dro |
 | t264 | `holds` | `not-landed` | **`keep`** | `keep` — premise holds and has strengthened; rests on the branch-count and worktree-occupancy comparison above. |
 | t280 | `holds` | `not-landed` | **`keep`** | `keep` — premise holds; well-evidenced structural gap between what ships and what doesn't. |
-| t281 | `falsified` | `not-landed` | **`drop`** | `drop` — the decision the card documents and proposes to formalize has already been explicitly reversed by a later, more comprehensive operator decision recorded in the same file the card would have edited. |
+| t281 | `falsified` | `not-landed` | **`drop`** | `drop` — commit `11216d13f` on pinned `origin/develop` states in its own message it is the "Operator-directed reversal of the 2026-08-26 t281 decision", recorded in the same file the card would have edited. |
 | t284 | `holds` | `not-landed` | **`keep`** | `keep` — premise holds on direct code read. |
 | t286 | `unverified` | `not-landed` | **`needs-operator-decision`** | `needs-operator-decision` — rests on: the found candidate guard already documents the false-positive fix and explicitly accepts the flag-order gap as correct-by-design; the operator should confirm whether issue #1658 targets this  |
 | t287 | `unverified` | `not-landed` | **`needs-operator-decision`** | `needs-operator-decision` — rests on: this session's own two directly-observed refusals of non-git compound commands, matching the "Claude Code worktree isolation guard" that `branch_guard.go` itself says is external to this repo' |
@@ -188,6 +210,27 @@ be redundant with it (t154, t216, t337).
 
 **Keep, unchanged (34).** The remaining cards' premises hold, nothing has landed against them, and
 no overlap displaces them.
+
+**A recorded relation cannot be annotated with later evidence — a disposition proposal for the
+relation itself, not for any card.** `t313 contains t295` was recorded 2026-08-27. This sweep
+measured that t313 has since landed and did **not** resolve t295. The attempt to append that
+measurement was refused (`invocations.log`, 2026-08-30T11:41:00Z, cwd
+`/Users/goos/MoAI/moai-adk-go`):
+
+```
+$ moai todo relate t313 t295 --relation contains --note "<M4 measurement note, full text in 02-overlaps.md §3>"
+mutation refused: todo relate: t313 contains t295 is already recorded.
+```
+
+No write occurred; zero relations were recorded by this sweep. The guard keys on the ordered triple
+(subject, related, relation) and refuses regardless of the note, so **a relation is frozen at its
+original claim from the moment it is recorded** — later evidence cannot be attached to it. There is
+no verb in this card's own deliverables that can update it: the sweep is read-only by construction
+(spec.md §C), and no non-mutating update path exists. Whether to delete the relation and re-record
+it with the measured substance is therefore an operator decision, stated here as a proposal and
+nothing more — it does **not** add a 63rd row to §5's table, which stays at exactly 62 (AC-BH-016).
+Smaller observation kept alongside it: the refusal message names `backlog.json`, the file the queue
+stopped writing at the SQLite migration `3cb258d62`, rather than the live `backlog.db`.
 
 ## §6 Evidence sections
 
