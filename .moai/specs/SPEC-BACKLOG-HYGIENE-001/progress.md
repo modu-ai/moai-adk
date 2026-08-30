@@ -266,6 +266,27 @@ changelog_entry_position: "[Unreleased] → Added (this sync commit)"
 **B12 self-test (pre-append)**: `grep -c 'SPEC-BACKLOG-HYGIENE-001' CHANGELOG.md` → `0` (measured
 before the CHANGELOG append in this same sync commit).
 
+### Integration-window addendum (2026-08-30, lead-assigned window)
+
+The sync commit `95039fbef` closed the SPEC; this addendum records work the lead directed inside the
+integration window, and adds no requirement or criterion.
+
+- **Absorption**: `git merge origin/develop` at `52c3fe590e3ea11b37389d4248162055f22f1c59` → merge
+  commit `94d234c61`. One conflict, `CHANGELOG.md`, both `[Unreleased] → Added` entries prepended in
+  the same position; resolved by keeping **both** (`SPEC-BACKLOG-HYGIENE-001` then
+  `SPEC-RED-NOW-THRESHOLD-001`), no entry dropped or reordered below them.
+- **Pin re-measurement**: `report.md` §7. The 33-commit delta `ee50984ab..52c3fe590` was searched
+  for all 62 in-scope ids; **0 verdicts flipped**. The original verdicts stay in §5 and are not
+  overwritten — §7 sits beside them. One grep hit (`t363`) was read in full and ruled a mention.
+- **Store delta**, attributed rather than treated as a failure: 96 → 100 rows, `t364`–`t367`
+  admitted and `t347` moved `queued → picked`, all by the lead per its own window message. Digest at
+  re-measurement `5892574384191c85d58917b224955e5bda8b4e15dfee24f6e4d5f1aacb131e94`. This sweep
+  issued no `moai todo` invocation in the window; `invocations.log` still carries two lines.
+- **Not measured here**: the repository-wide CI verdict for the merged tree, which belongs to the
+  push of `develop`. The lead reported `52c3fe590` attempt=1 with two `Race Test` failures
+  (`TestConcurrencyStress`, `TestGitDiffNameCount_Predicate`), neither attributable to this card —
+  this SPEC's diff carries 0 `.go` files.
+
 ## §F Phase 4 Mode Selection
 
 **Input parameters**

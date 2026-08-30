@@ -292,3 +292,103 @@ resolved both times via `git rev-parse --path-format=absolute --git-common-dir` 
   observables. Only the card-row digest is independent of it, and that one is now a SQLite read
   whose correctness rests on the four controls in `00-tooling-baseline.md` rather than on this
   report's own assertion.
+
+## §7 Post-merge re-measurement against a moved pin (integration window, 2026-08-30)
+
+The landing verdicts of §5 were decided against pinned `origin/develop`
+`ee50984abe4f11ac337382b48a26328f091e200a`. By the time this card reached its integration window
+that ref had advanced to `52c3fe590e3ea11b37389d4248162055f22f1c59` — **33 commits**. The lead
+directed a re-run inside the merge tree, with the result recorded **beside** the original verdict
+rather than over it: which card flipped in which interval is itself an output of this sweep.
+
+**Nothing in §5 is rewritten by this section.** §5 remains the reading as of the original pin, and
+this section is the reading as of the new one.
+
+### §7.1 Monotonicity, and why only one direction needed re-running
+
+```
+$ git merge-base --is-ancestor ee50984abe4f11ac337382b48a26328f091e200a 52c3fe590e3ea11b37389d4248162055f22f1c59
+$ echo $?
+0
+```
+
+The old pin is an ancestor of the new one, so a commit that was reachable from the old pin is still
+reachable from the new one: **no `landed` verdict can flip to `not-landed`.** Only the
+`not-landed` → `landed` direction was re-measured. Deductive claims are not left un-probed, so one
+control was re-run against the new pin: t313's landing commit `62ff3c2e6` → exit **0**, still landed.
+
+### §7.2 Method — the same method A, dumped once instead of looped
+
+The deciding query is unchanged (`git log <pinned-sha> --grep` per card id, plus
+`merge-base --is-ancestor` for in-flight tips). One mechanical deviation, stated because it changes
+how the evidence is reproduced and not what it decides: this session runs inside a worktree whose
+guard refuses a `git` call placed inside a shell loop, so the delta's commit messages were dumped
+once —
+
+```
+$ git log --format='COMMIT %h%n%s%n%b%n---END---' \
+    ee50984abe4f11ac337382b48a26328f091e200a..52c3fe590e3ea11b37389d4248162055f22f1c59 \
+    > .moai/reports/t332/03-delta-commits.txt
+$ grep -c '^COMMIT ' .moai/reports/t332/03-delta-commits.txt
+33
+```
+
+— and each of the 62 in-scope ids searched in that file with a word-boundary regex (`\bt<NNN>\b`).
+The corpus is the same set of commit messages `--grep` reads; only the number of `git` invocations
+differs. `03-delta-commits.txt` is committed alongside this report, so the search is re-runnable.
+
+### §7.3 Result — 0 flips of 62
+
+| Card | §5 landing verdict (pin `ee50984ab`) | §7 re-measurement (pin `52c3fe590`) | Deciding evidence |
+|---|---|---|---|
+| t201, t313, t347 | `landed` | **`landed`** (unchanged) | monotonic under §7.1; control re-run for t313 → `--is-ancestor 62ff3c2e6 52c3fe590` exit `0` |
+| t154 | `in-flight-unlanded` | **unchanged** | `--is-ancestor dbb87f14f 52c3fe590` → exit `1`; `git worktree list` tip still `dbb87f14f` (`WT-lint-heading`) |
+| t216 | `in-flight-unlanded` | **unchanged** | `--is-ancestor 8aa96bfb1 52c3fe590` → exit `1`; tip still `8aa96bfb1` (`WT-hook-wiring-drift`) |
+| t337 | `in-flight-unlanded` | **unchanged** | `--is-ancestor c72a517c3 52c3fe590` → exit `1`; tip still `c72a517c3` (`WT-windows-stamp-liveness`) |
+| t224 | `unknown` | **unchanged** | no commit in the 33-commit delta references `t224`; the reason recorded in §5 (the requested doctrine text may predate the card) is untouched by the delta |
+| t363 | `not-landed` | **`not-landed`** — one grep hit, ruled a mention | see §7.4 |
+| the other 55 | `not-landed` | **unchanged** | zero grep hits across the 33-commit delta |
+
+**Flips: 0 of 62.** The batch's 33 commits closed `picked` cards (t294, t343, t357, t358 and
+siblings), and the in-scope set is the `queued` cards — a flip would require a queued card's work to
+land incidentally, which none did.
+
+### §7.4 The one grep hit, read in full and ruled a mention
+
+`t363` matched two commits. Reading them rather than counting them:
+
+```
+$ git log -1 --format='%h %s%n%b' 66a44c278
+66a44c278 docs(SPEC-CI-PR-TRIGGER-FILTER-001): name t363 as the axis-B inheritor in CHANGELOG (t294)
+The deferral was recorded without the receiving card id, so a reader
+could not follow the duplicate-run work to where it actually lives.
+```
+
+The commit names t363 as the card that will **receive** deferred work — it records where the work
+lives, and does not do it. The second hit, `d7010f86a`, is the merge commit carrying the first. Same
+discipline as §5's three mention-only hits: a card-id match is a mention until the commit is read.
+`t363` stays `not-landed`, disposition `keep`.
+
+### §7.5 Queue movement during the window, attributed
+
+The closing capture recorded 96 store rows; at re-measurement the store holds **100**.
+
+```
+$ sqlite3 -json /Users/goos/MoAI/moai-adk-go/.moai/state/todo/backlog.db \
+    "select id,state,text from items order by id;" | shasum -a 256
+5892574384191c85d58917b224955e5bda8b4e15dfee24f6e4d5f1aacb131e94  -
+```
+
+| Difference | Rows | Attribution |
+|---|---|---|
+| admitted | `t364` `t365` `t366` `t367` | the lead, in its integration-window message: five cards `t363`–`t367` admitted (`t363` was already present at the closing capture) |
+| state change | `t347` `queued` → `picked` | the lead, same message: it moved `t347` and `t366` to `picked` |
+| removed | none | — |
+
+**This is queue movement by another actor, not a mutation by this sweep.** The sweep issued no
+`moai todo` invocation in the integration window; `invocations.log` still carries exactly two lines,
+and the no-mutation observables of §4 are unaffected by rows this sweep never touched.
+
+One consequence for the operator reading §5: **`t347`'s row proposes `already-landed` while the card
+was `queued`, and it is now `picked`.** The proposal is overtaken by the lead's own act — no action
+is required on it.
