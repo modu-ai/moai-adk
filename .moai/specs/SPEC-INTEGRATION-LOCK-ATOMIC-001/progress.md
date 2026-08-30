@@ -543,7 +543,7 @@ interleaving hook.
 
 ```yaml
 sync_complete_at: 2026-08-30
-sync_commit_sha: pending-backfill-sync   # backfilled in the commit immediately following this one
+sync_commit_sha: 92e1f211b   # the sync commit; backfilled here per the SHA-placeholder exemption
 sync_status: complete
 sync_audit_verdict: PASS
 sync_audit_harmonic_mean: 0.93
