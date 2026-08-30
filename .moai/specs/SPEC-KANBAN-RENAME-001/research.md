@@ -2,7 +2,6 @@
 id: SPEC-KANBAN-RENAME-001
 title: "Research — measurements underlying the Factory Mode to Kanban Mode rename"
 version: "0.3.0"
-status: draft
 created: 2026-08-10
 updated: 2026-08-11
 author: manager-spec

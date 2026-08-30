@@ -2,7 +2,6 @@
 id: SPEC-V3R6-LIFECYCLE-REDESIGN-001
 acceptance_version: "0.2.0"
 spec_version: "0.2.0"
-status: draft
 created: 2026-06-18
 updated: 2026-06-19
 author: manager-spec

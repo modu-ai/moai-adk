@@ -2,7 +2,6 @@
 id: SPEC-V3R6-WORKTREE-TEAM-LAUNCH-001-plan
 title: "Implementation plan — Worktree --team contextual launch"
 version: "0.1.0"
-status: draft
 created: 2026-05-23
 updated: 2026-05-23
 author: manager-spec
