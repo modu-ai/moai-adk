@@ -1,7 +1,7 @@
 ---
 id: SPEC-PERF-FIXTURE-WRITE-001
 title: "perf 리포트 무조건 쓰기 차단 — 구현 계획"
-version: "0.3.1"
+version: "0.3.2"
 created: 2026-08-29
 updated: 2026-08-30
 author: manager-spec
@@ -73,7 +73,7 @@ var updatePerfReports = os.Getenv("MOAI_HOOK_PERF_UPDATE") == "1"
 
 | 단계 | 자식 명령 | 세우는 환경변수 | 기대 |
 |---|---|---|---|
-| 음성 방향 | `go test ./internal/hook/perf/... -count=1` | 센티널만 | 두 파일 해시 **불변** |
+| 음성 방향 | `go test ./internal/hook/perf/... -count=1` | 부모 환경 − {`MOAI_HOOK_PERF_UPDATE`, `MOAI_HOOK_PERF_SKIP`, `GOFLAGS`} + 센티널 | 두 파일 해시 **불변** |
 | 양성 방향 | `go test ./internal/hook/perf/... -run '^TestPreToolProfiling' -count=1` | 센티널 + `MOAI_HOOK_PERF_UPDATE=1` | 두 파일 해시 **변함** |
 
 음성 방향이 **패키지 글롭 그대로**인 것은 REQ-PFW-005 다 — 오늘 CI 가 실제로 파일을 다시 쓰는 그 모양이 이것이고, 손으로 좁힌 `-run` 은 그 모양을 검사하지 못한다. 양성 방향은 "쓰기가 일어나는가"만 보면 되므로 좁혀서 비용을 아낀다.
@@ -180,7 +180,7 @@ golangci-lint run internal/hook/perf/... 2>&1 | tail -20
 | 순서 | 내용 | REQ |
 |---|---|---|
 | 1 | 게이트 `var` 선언(§A.2 권고 형태) + 두 `os.WriteFile` 호출을 `if updatePerfReports { … }` 안으로. "썼다" 로그도 같은 블록 안으로. `t.Log(report.format())` 은 블록 **밖**에 남긴다 | REQ-PFW-001, 002 |
-| 2 | 회귀 가드 신규 파일 `internal/hook/perf/report_write_guard_test.go` — **경로와 함수명 둘 다 REQ-PFW-007(a) 가 못 박는다**(구현자 재량 아님), **`t.Parallel()` 을 쓰지 않는다**(§F.1). 순서: 자가 스킵 판정(센티널 / `testing.Short()` / 외부 `MOAI_HOOK_PERF_SKIP`) → 두 픽스처 존재 확인(없으면 실패) → 원본 바이트 캡처 + `t.Cleanup` 복원 등록 → 음성 자식(패키지 글롭, 환경을 **명시적으로 구성** — 센티널만) → 해시 불변 단언(불일치 시 `perf-guard: fixture content changed`) → 양성 자식(좁힘 + 센티널 + 게이트 ON) → 해시 변화 단언. 자식 rc 와 결합 출력은 언제나 부모로 흘리고, 음성 자식 rc 는 `perf-guard: negative child rc=<n>` 으로 남긴다 | REQ-PFW-003, 004, 005, 006, 007 |
+| 2 | 회귀 가드 신규 파일 `internal/hook/perf/report_write_guard_test.go` — **경로와 함수명 둘 다 REQ-PFW-007(a) 가 못 박는다**(구현자 재량 아님), **`t.Parallel()` 을 쓰지 않는다**(§F.1). 순서: 자가 스킵 판정(센티널 / `testing.Short()` / 외부 `MOAI_HOOK_PERF_SKIP`) → 두 픽스처 존재 확인(없으면 실패) → 원본 바이트 캡처 + `t.Cleanup` 복원 등록 → 음성 자식(패키지 글롭, 환경은 **부모 상속 − 지목 변수 3개 + 센티널** — 허용목록 열거 금지, REQ-PFW-005) → 해시 불변 단언(불일치 시 `perf-guard: fixture content changed`) → 양성 자식(좁힘 + 센티널 + 게이트 ON) → 해시 변화 단언. 자식 rc 와 결합 출력은 언제나 부모로 흘리고, 음성 자식 rc 는 `perf-guard: negative child rc=<n>` 으로 남긴다 | REQ-PFW-003, 004, 005, 006, 007 |
 | 3 | 뮤턴트 2건(①′·②)을 심어 가드가 붉어지는지 확인하고, **붉은 상태에서 AC-PFW-005 를 잰 뒤** 되돌린다 | §D.2 |
 | 4 | `harness_test.go:24-25` 거짓 주석 정정 | REQ-PFW-008 |
 | 5 | §E 자가검증 실행, 증거 인용(E5 포함) | — |
