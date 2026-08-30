@@ -70,6 +70,20 @@ func IsIntegrationLockForeign(err error) bool { return errors.Is(err, ErrIntegra
 // exactly as it always was.
 const PIDSourceSessionOwner = "session-owner"
 
+// integrationLockMutationTestHook is a nil-by-default, TEST-ONLY interleaving
+// point invoked once between the acquire decision and the write. It exists so
+// the cross-process criterion can CONSTRUCT the read-modify-write interleaving
+// instead of waiting for it: the unserialized window is one read, a branch, and
+// one write — tens of microseconds — so a barrier-released pair hits it only by
+// luck, and a criterion that waits for luck has no stop rule.
+//
+// It is unexported and package-level, so only `package kanban` can assign it,
+// and no non-test file does (the closure gate greps for the assignment). Every
+// production path leaves it nil, and the call site below is nil-guarded — a
+// nil func() invoked in Go panics, so the guard is what makes "with the hook
+// nil, behavior is byte-for-byte unchanged" true rather than merely intended.
+var integrationLockMutationTestHook func()
+
 // IntegrationLock is the recorded holder of the release integration window.
 //
 // SessionID is the address a human and a peer both use; PID is what makes
@@ -201,6 +215,12 @@ func AcquireIntegrationLock(projectRoot string, want IntegrationLock, force bool
 
 	if want.AcquiredAt == "" {
 		want.AcquiredAt = time.Now().UTC().Format(time.RFC3339)
+	}
+	// Between the decision and the write — the exact window this file's
+	// serialization discipline is about. Nil in production; see the hook's
+	// declaration for why the guard is load-bearing rather than defensive.
+	if integrationLockMutationTestHook != nil {
+		integrationLockMutationTestHook()
 	}
 	if err := writeIntegrationLock(path, &want); err != nil {
 		return nil, err

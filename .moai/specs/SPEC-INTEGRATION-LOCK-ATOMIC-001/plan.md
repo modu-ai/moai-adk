@@ -1,10 +1,10 @@
 ---
 id: SPEC-INTEGRATION-LOCK-ATOMIC-001
 title: "Implementation plan — integration lock mutation atomicity (card t336)"
-version: "0.1.1"
-status: draft
+version: "0.1.2"
+status: in-progress
 created: 2026-08-29
-updated: 2026-08-29
+updated: 2026-08-30
 author: manager-spec
 priority: P1
 phase: "v3.1.4 target"
@@ -132,8 +132,10 @@ Files touched:
   `integration-acquire`) reading `HELPER_ROOT`, `HELPER_SESSION`, `HELPER_OWNER_PID`, and an
   optional `HELPER_STALL_FLAG`. When the stall flag is set, the child installs the hook so it
   blocks (bounded poll) until the parent touches the proceed flag. It calls
-  `AcquireIntegrationLock` and prints an outcome line carrying BOTH the result and the
-  discriminator: `RESULT=<acquired|held|busy|error> REPLACED=<none|session-id>`.
+  `AcquireIntegrationLock` and prints an outcome line carrying the result AND both
+  discriminators: `RESULT=<acquired|held|busy|error> REPLACED=<none|session-id> SESSION=<own id>`.
+  The `SESSION=` field is what lets the parent ASSERT the two children's ids differ rather than
+  assume it from its own setup (v0.1.2, audit finding N2).
 - `internal/kanban/integration_lock_cross_test.go` — NEW. One test function,
   `TestIntegrationLockAcquire_SerializedAcrossProcesses`, driving the deterministic interleaving
   described below. This is the ONLY cross-process test this card ships; there is no separate
@@ -152,10 +154,18 @@ no observation because it looks like success. The parent's pid is alive for the 
 construction. (`PID: 0` is the acceptable alternative — `Stale()` treats it as live by design —
 but it discards the marker parity with production, so the parent pid is preferred.)
 
-**[HARD] Attribution discriminator.** Outcome collection records `REPLACED` per child. A
-double-hold counts as the read-write race ONLY when BOTH children report `REPLACED=none`; any
-round where either child reports a takeover is a stale-reclaim and is reported as a harness fault,
-never as RED. AC-ILA-001 and AC-ILA-002 both assert on this field.
+**[HARD] Attribution discriminator (two fields, both asserted).** Outcome collection records
+`REPLACED` and `SESSION` per child. A double-hold counts as the read-write race ONLY when BOTH
+children report `REPLACED=none` AND the two `SESSION` values DIFFER; any round where either child
+reports a takeover is a stale-reclaim, and any round where the two ids are equal is the legal
+same-session re-acquire (`integration_lock.go:156-159`) — both are harness faults, never RED.
+AC-ILA-001 and AC-ILA-002 both assert on BOTH fields.
+
+The session-id half is the v0.1.2 repair of audit finding N2: the distinctness previously lived
+only in `acceptance.md` §D.2's setup prose, so a harness bug passing one id to both children would
+have produced `successes=2`, `REPLACED=none` on both, and a non-`Stale()` winner — passing every
+stated check while exercising the re-acquire path instead of the race. The test now reads the ids
+back off the children's own outcome lines and fails when they match.
 
 **Deterministic interleaving (D2), and why it needs a timeout.** Child A is started with the stall
 flag and blocks inside the hook between its decision and its write. The parent waits for A's

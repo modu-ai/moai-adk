@@ -1,10 +1,10 @@
 ---
 id: SPEC-INTEGRATION-LOCK-ATOMIC-001
 title: "Release-integration lock: serialize the record's read-modify-write across processes (card t336)"
-version: "0.1.1"
-status: draft
+version: "0.1.2"
+status: in-progress
 created: 2026-08-29
-updated: 2026-08-29
+updated: 2026-08-30
 author: manager-spec
 priority: P1
 phase: "v3.1.4 target"
@@ -288,6 +288,7 @@ second, phantom test name.
 | Version | Date | Change |
 |---|---|---|
 | 0.1.0 | 2026-08-29 | Initial draft (plan phase, card t336). Status set to `draft` on creation across all plan-phase artifacts. Race stated as a code-path hypothesis pending run-phase RED, per `.moai/reports/t336/preflight.md` §6. |
+| 0.1.2 | 2026-08-30 | Run-phase M1 opening repair of plan-audit iteration-2 finding N2 (`ILA-SAME-SESSION-UNASSERTED`), plus the `draft → in-progress` transition on the M1 commit. N2: the two children's session ids must DIFFER, and the requirement moved out of `acceptance.md` §D.2's setup prose into the criterion itself — AC-ILA-001 and AC-ILA-002 now assert it from the children's own reported `SESSION=<id>` outcome field. Without it, the same-session path satisfies all three prior discriminator parts (`successes=2`, `REPLACED=none` on both, non-`Stale()` winner) while exercising the legal re-acquire of `:156-159` rather than the race — the same misattribution class as the iteration-1 D1 `os.Getpid()` trap. No other clause changed; 0.1.1 remains the audited text everywhere else. |
 | 0.1.1 | 2026-08-29 | plan-audit iteration-1 repair (FAIL 0.803, six blocking findings). D1: the M1 helper's recorded PID fixed (never `os.Getpid()`) and a stale-takeover discriminator added to AC-ILA-001/002. D2: deterministic-interleaving hook adopted — REQ-ILA-005 amended with a nil-by-default carve-out, §G risk 1 rewritten, zero-observation clause given a 3-attempt ceiling and extended to AC-ILA-006. D3+D4: one shipped test function; AC-ILA-001 restated at HEAD-with-section-disabled with a positive pass condition. D5: `plan.md` §B item 1 corrected (`acquireBoardLockSerialized`, 1.65 s budget) and item 3 promoted to the deciding argument. D6: §G risk 3 mitigation restated as `GOOS=windows go vet` (compilation) + CI windows job (behavior). D7-D9 applied: pgrep self-match excluded, AC-ILA-001 Claim mood hedged, mutation artifact renamed off the record's stem. |
 
 ## Exclusions

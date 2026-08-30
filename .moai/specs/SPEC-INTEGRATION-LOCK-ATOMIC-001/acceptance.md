@@ -1,10 +1,10 @@
 ---
 id: SPEC-INTEGRATION-LOCK-ATOMIC-001
 title: "Acceptance criteria — integration lock mutation atomicity (card t336)"
-version: "0.1.1"
-status: draft
+version: "0.1.2"
+status: in-progress
 created: 2026-08-29
-updated: 2026-08-29
+updated: 2026-08-30
 author: manager-spec
 priority: P1
 phase: "v3.1.4 target"
@@ -28,8 +28,8 @@ at the end of a test body is explicitly NOT acceptable — every early-return pa
 
 | AC | Requirement(s) | Claim | Deciding command | Observable that decides it |
 |---|---|---|---|---|
-| AC-ILA-001 | REQ-ILA-001, 002 | RED — the criterion asserts that on the unrepaired mutation path, two concurrent acquires from two SEPARATE OS processes **shall both be** told they hold the window, and that the double-hold **shall be attributable** to the read-modify-write window rather than to a stale takeover | `go test ./internal/kanban/... -run TestIntegrationLockAcquire_SerializedAcrossProcesses -count=1 -v` at **HEAD with M2's critical section disabled** (the AC-ILA-006 one-line revert; before M2 exists, HEAD itself is that state) — NOT at `15453140a`, where neither the test nor the interleaving hook exists | The test log reports a round with `successes=2` AND `REPLACED=none` for BOTH children AND the first winner's record reading non-`Stale()` at the second acquire. That positive report is the pass condition; the test's non-zero exit is a by-product, not the signal |
-| AC-ILA-002 | REQ-ILA-001, 002, 003 | GREEN — with the critical section restored, the same deterministic interleaving yields exactly one holder and the loser is refused with `ErrIntegrationLockHeld` | `go test ./internal/kanban/... -run TestIntegrationLockAcquire_SerializedAcrossProcesses -count=1` | PASS reporting `RESULT=acquired REPLACED=none` for one child and `RESULT=held REPLACED=none` for the other; the on-disk record names the winner. A `RESULT=busy` is a misconfigured harness (stall-release timeout ≥ the mutation-lock budget) and FAILS the criterion; a `REPLACED=<session>` on either child means a takeover was observed instead of serialization and also FAILS |
+| AC-ILA-001 | REQ-ILA-001, 002 | RED — the criterion asserts that on the unrepaired mutation path, two concurrent acquires from two SEPARATE OS processes **shall both be** told they hold the window, and that the double-hold **shall be attributable** to the read-modify-write window rather than to a stale takeover | `go test ./internal/kanban/... -run TestIntegrationLockAcquire_SerializedAcrossProcesses -count=1 -v` at **HEAD with M2's critical section disabled** (the AC-ILA-006 one-line revert; before M2 exists, HEAD itself is that state) — NOT at `15453140a`, where neither the test nor the interleaving hook exists | The test log reports a round with `successes=2` AND `REPLACED=none` for BOTH children AND the two children's reported session ids DIFFER (`SESSION=<id>` on each outcome line, asserted by the test, not merely arranged by its setup) AND the first winner's record reading non-`Stale()` at the second acquire. That positive report is the pass condition; the test's non-zero exit is a by-product, not the signal |
+| AC-ILA-002 | REQ-ILA-001, 002, 003 | GREEN — with the critical section restored, the same deterministic interleaving yields exactly one holder and the loser is refused with `ErrIntegrationLockHeld` | `go test ./internal/kanban/... -run TestIntegrationLockAcquire_SerializedAcrossProcesses -count=1` | PASS reporting `RESULT=acquired REPLACED=none` for one child and `RESULT=held REPLACED=none` for the other, with the two children's `SESSION=<id>` values asserted DIFFERENT; the on-disk record names the winner. A `RESULT=busy` is a misconfigured harness (stall-release timeout ≥ the mutation-lock budget) and FAILS the criterion; a `REPLACED=<session>` on either child means a takeover was observed instead of serialization and also FAILS |
 | AC-ILA-003 | REQ-ILA-005 | Positive control — a NON-CONFLICTING concurrent pair (both children acquire as the SAME session id) BOTH succeed | `go test ./internal/kanban/... -run TestIntegrationLockAcquire_ConcurrencyPositiveControl -count=1` | PASS with both children reporting `RESULT=acquired`; refusal is therefore conditional on contention, not on concurrency itself |
 | AC-ILA-004 | REQ-ILA-004 | Mutation-lock contention is distinguishable from window contention | `go test ./internal/kanban/... -run TestIntegrationLockBusy_IsNotHeld -count=1` | PASS: the busy sentinel satisfies its own predicate and `IsIntegrationLockHeld(busy)` is false |
 | AC-ILA-005 | REQ-ILA-005, 009 | Single-threaded semantics unchanged (re-acquire by holder, stale takeover, `--force`, foreign-release refusal, empty release) | `go test ./internal/kanban/... -run IntegrationLock -count=1` and `git diff --stat 15453140a -- internal/kanban/integration_lock_test.go` | Tests PASS and the diff is EMPTY — the pre-existing criteria are met without editing them |
@@ -59,18 +59,27 @@ CI-JUDGED (not claimable from a local run): AC-ILA-007(b).
 - **When** child A is held inside the deterministic interleaving hook between its decision and its
   write, child B runs its entire acquire with a DIFFERENT session id, and A is then released (on
   B's completion or on the bounded stall-release timeout, whichever comes first)
-- **Then** the run reports `successes=2` with `REPLACED=none` for BOTH children, and the winner's
-  record reads non-`Stale()` at the moment of the second acquire. All three parts are required:
-  `successes=2` alone is also what a stale takeover produces, and `REPLACED=none` on both is what
-  attributes the double-hold to the unserialized read-modify-write. A round where either child
-  reports `REPLACED=<session>` is a harness fault to fix, never the RED observation
+- **Then** the run reports `successes=2` with `REPLACED=none` for BOTH children, the two
+  children's reported `SESSION=<id>` values DIFFER, and the winner's record reads non-`Stale()` at
+  the moment of the second acquire. All four parts are required: `successes=2` alone is also what a
+  stale takeover produces; `REPLACED=none` on both is what attributes the double-hold to the
+  unserialized read-modify-write; and the differing session ids are what exclude the SAME-SESSION
+  path, which produces `successes=2`, `REPLACED=none` on both, and a non-`Stale()` winner while
+  exercising the legal re-acquire of `integration_lock.go:156-159` rather than the race. The
+  distinctness is ASSERTED by the test from the children's own reported ids, never assumed from the
+  setup: a harness bug passing one id to both children would otherwise yield a false RED that
+  survives every other check. A round where either child reports `REPLACED=<session>`, or where the
+  two ids are equal, is a harness fault to fix, never the RED observation
 
 **AC-ILA-002 — GREEN, exactly one holder**
 
 - **Given** the repaired record layer with the mutation lock in place, and the same PID discipline
 - **When** the identical deterministic interleaving runs
 - **Then** one child reports `RESULT=acquired REPLACED=none`, the other `RESULT=held REPLACED=none`
-  (its error satisfying `IsIntegrationLockHeld`), and the persisted record names the winner. A
+  (its error satisfying `IsIntegrationLockHeld`), the two children's reported `SESSION=<id>` values
+  are asserted DIFFERENT (same reason as AC-ILA-001: the same-session path is a legal re-acquire,
+  not a refusal, so an undetected id collision would silently change what this criterion measures),
+  and the persisted record names the winner. A
   `RESULT=busy` fails the criterion: it means the stall-release timeout was not shorter than the
   mutation-lock wait budget, so the harness measured its own configuration rather than the lock
 
