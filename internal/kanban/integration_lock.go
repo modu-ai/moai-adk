@@ -197,33 +197,41 @@ func AcquireIntegrationLock(projectRoot string, want IntegrationLock, force bool
 		return nil, fmt.Errorf("integration lock: %w", err)
 	}
 
-	current, err := ReadIntegrationLock(projectRoot)
-	if err != nil && !force {
-		return nil, err
-	}
-	if current.Held() && current.SessionID != want.SessionID {
-		switch {
-		case force:
-			replaced = current
-		case current.Stale():
-			replaced = current
-		default:
-			return nil, fmt.Errorf("%w: %s (pid %d) since %s on %s",
-				ErrIntegrationLockHeld, current.holderLabel(), current.PID, current.AcquiredAt, current.Branch)
+	// The read → decide → write sequence runs inside the mutation lock, so at
+	// most one process at a time is inside it for a given project root
+	// (integration_lock_mutation.go). The READ is INSIDE the section, not
+	// duplicated outside it: a caller serialized behind another must decide
+	// against the state the previous mutation published, never against a read
+	// taken before the wait.
+	if mutErr := withIntegrationLockMutation(projectRoot, func() error {
+		current, readErr := ReadIntegrationLock(projectRoot)
+		if readErr != nil && !force {
+			return readErr
 		}
-	}
+		if current.Held() && current.SessionID != want.SessionID {
+			switch {
+			case force:
+				replaced = current
+			case current.Stale():
+				replaced = current
+			default:
+				return fmt.Errorf("%w: %s (pid %d) since %s on %s",
+					ErrIntegrationLockHeld, current.holderLabel(), current.PID, current.AcquiredAt, current.Branch)
+			}
+		}
 
-	if want.AcquiredAt == "" {
-		want.AcquiredAt = time.Now().UTC().Format(time.RFC3339)
-	}
-	// Between the decision and the write — the exact window this file's
-	// serialization discipline is about. Nil in production; see the hook's
-	// declaration for why the guard is load-bearing rather than defensive.
-	if integrationLockMutationTestHook != nil {
-		integrationLockMutationTestHook()
-	}
-	if err := writeIntegrationLock(path, &want); err != nil {
-		return nil, err
+		if want.AcquiredAt == "" {
+			want.AcquiredAt = time.Now().UTC().Format(time.RFC3339)
+		}
+		// Between the decision and the write — the exact window this file's
+		// serialization discipline is about. Nil in production; see the hook's
+		// declaration for why the guard is load-bearing rather than defensive.
+		if integrationLockMutationTestHook != nil {
+			integrationLockMutationTestHook()
+		}
+		return writeIntegrationLock(path, &want)
+	}); mutErr != nil {
+		return nil, mutErr
 	}
 	return replaced, nil
 }
@@ -233,20 +241,31 @@ func AcquireIntegrationLock(projectRoot string, want IntegrationLock, force bool
 // force releases a foreign window, for the same wedged-holder reason acquire
 // carries it.
 func ReleaseIntegrationLock(projectRoot, sessionID string, force bool) (released *IntegrationLock, err error) {
-	current, err := ReadIntegrationLock(projectRoot)
-	if err != nil && !force {
-		return nil, err
+	// Same critical section as acquire, for the same reason: read → holder
+	// check → remove is a read-modify-write too. Every sentinel and every
+	// message below is byte-identical to what it was before the section
+	// existed — this changes WHEN mutations interleave, never WHAT a given
+	// single-threaded call decides or says.
+	if mutErr := withIntegrationLockMutation(projectRoot, func() error {
+		current, readErr := ReadIntegrationLock(projectRoot)
+		if readErr != nil && !force {
+			return readErr
+		}
+		if current == nil || !current.Held() {
+			return ErrIntegrationLockNotHeld
+		}
+		if current.SessionID != sessionID && !force {
+			return fmt.Errorf("%w: %s (pid %d) holds it", ErrIntegrationLockForeign, current.holderLabel(), current.PID)
+		}
+		if remErr := os.Remove(integrationLockPath(projectRoot)); remErr != nil && !errors.Is(remErr, os.ErrNotExist) {
+			return fmt.Errorf("integration lock: %w", remErr)
+		}
+		released = current
+		return nil
+	}); mutErr != nil {
+		return nil, mutErr
 	}
-	if current == nil || !current.Held() {
-		return nil, ErrIntegrationLockNotHeld
-	}
-	if current.SessionID != sessionID && !force {
-		return nil, fmt.Errorf("%w: %s (pid %d) holds it", ErrIntegrationLockForeign, current.holderLabel(), current.PID)
-	}
-	if err := os.Remove(integrationLockPath(projectRoot)); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return nil, fmt.Errorf("integration lock: %w", err)
-	}
-	return current, nil
+	return released, nil
 }
 
 // holderLabel prefers the human-facing session name and falls back to the id.

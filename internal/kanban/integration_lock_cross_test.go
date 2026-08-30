@@ -33,6 +33,7 @@ package kanban
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -83,6 +84,8 @@ func integrationAcquireOutcome(err error) string {
 		return "acquired"
 	case IsIntegrationLockHeld(err):
 		return "held"
+	case IsIntegrationLockBusy(err):
+		return "busy"
 	default:
 		return "error"
 	}
@@ -291,6 +294,78 @@ func TestIntegrationLockAcquire_SerializedAcrossProcesses(t *testing.T) {
 	}
 	if finalStale {
 		t.Fatalf("persisted record reads STALE (holder %q pid %d) — the round exercised the stale-reclaim path, not serialization", final.SessionID, final.PID)
+	}
+}
+
+// TestIntegrationLockAcquire_ConcurrencyPositiveControl — AC-ILA-003. Two child
+// processes acquire concurrently as the SAME session id — a lane re-entering its
+// own window after a /clear, which integration_lock.go documents as legal — and
+// BOTH must succeed.
+//
+// Without this control the refusal above is indistinguishable from a lock that
+// refuses everything: a mutation lock that never released, or a decision branch
+// that returned held unconditionally, would pass the serialization criterion
+// perfectly. This is what makes the refusal conditional on CONTENTION rather
+// than on concurrency itself.
+func TestIntegrationLockAcquire_ConcurrencyPositiveControl(t *testing.T) {
+	if runtimeIsWindows() {
+		t.Skip("helper re-exec plumbing exercised on unix; windows substrate covered by GOOS=windows build")
+	}
+	root := t.TempDir()
+	ownerPID := os.Getpid()
+
+	results := make(chan integrationChildResult, 2)
+	for i := 0; i < 2; i++ {
+		go func() {
+			o, err := runIntegrationAcquireHelper(t, root, "lane-same", ownerPID, "", "")
+			results <- integrationChildResult{out: o, err: err}
+		}()
+	}
+	first := <-results
+	second := <-results
+
+	for label, r := range map[string]integrationChildResult{"first": first, "second": second} {
+		if r.out.result != "acquired" {
+			t.Fatalf("%s child reported %q, want acquired — re-acquiring a window the caller already holds must succeed, so a refusal here means the lock refuses concurrency rather than contention. output: %q (err %v)",
+				label, r.out.result, r.out.raw, r.err)
+		}
+	}
+
+	rec, err := ReadIntegrationLock(root)
+	if err != nil {
+		t.Fatalf("reading the persisted record: %v", err)
+	}
+	if rec.SessionID != "lane-same" {
+		t.Fatalf("record names %q, want lane-same", rec.SessionID)
+	}
+	t.Logf("positive control: both children acquired as lane-same; record holder=%q", rec.SessionID)
+}
+
+// TestIntegrationLockBusy_IsNotHeld — AC-ILA-004. Mutation-lock contention is
+// not window possession.
+//
+// A lane told "held" goes and asks a peer to release a window that peer may not
+// own; a lane told "busy" retries. Conflating them makes the tool say a false
+// thing about the board, so the two predicates must not answer for each other.
+func TestIntegrationLockBusy_IsNotHeld(t *testing.T) {
+	busy := fmt.Errorf("%w (waited %s): %v", ErrIntegrationLockBusy, boardLockWaitBudget, ErrBoardLockHeld)
+
+	if !IsIntegrationLockBusy(busy) {
+		t.Fatalf("IsIntegrationLockBusy(busy) = false, want true")
+	}
+	if IsIntegrationLockHeld(busy) {
+		t.Fatalf("IsIntegrationLockHeld(busy) = true — a transient mutation timeout would be reported to a lane as another session owning the window, which is false")
+	}
+	// The board's own sentinel must not travel out of this scope either: a
+	// caller seeing ErrBoardLockHeld from an integration verb would conclude
+	// the kanban board is locked, which is a different subsystem.
+	if IsBoardLockHeld(busy) {
+		t.Fatalf("IsBoardLockHeld(busy) = true — the board sentinel leaked across the scope boundary; wrap the cause with %%v, not %%w")
+	}
+
+	held := fmt.Errorf("%w: peer (pid 1) since t on b", ErrIntegrationLockHeld)
+	if IsIntegrationLockBusy(held) {
+		t.Fatalf("IsIntegrationLockBusy(held) = true — the discriminator does not hold in the other direction")
 	}
 }
 
