@@ -15,11 +15,15 @@ open_clarifications: 2   # plan.md §C.1 방향, §D 심각도 안
 
 ### 측정 기준 트리 — 이 절의 모든 수치는 여기 적힌 트리에서 잰 것이다
 
-이 절의 코퍼스 수치는 **`origin/develop`을 흡수하기 전** 트리에서 쟀다. 흡수 후 재측정값은
-아래 값들과 **다를 수 있으며, 그것은 이 카드의 결함이 아니다** — 예컨대 t336이 `plan.md` /
-`acceptance.md`에 `status:`를 담은 SPEC을 착지시켰고, `ArtifactStatusFieldForbiddenRule`이
-이를 error 2건으로 잡는다. 따라서 아래 `error 0`은 **명시된 트리에 대한 참**이며, 병합 후
-재측정값은 이 값과 **대조**되어야지 이 값을 **대체**해서는 안 된다.
+이 절의 코퍼스 수치는 **`origin/develop`을 흡수하기 전** 트리에서 쟀다. 흡수는 이후 실제로
+일어났고(병합 커밋 `d5ca9582d`), 재측정 결과는 **§병합 트리 재측정 — 상속 대 귀속 분리**에
+있다. 예측이 아니라 관측이다: 병합 트리에서 `--strict`는 **rc=1 / error 2**로 끝나며, 그 2건은
+t336이 착지시킨 SPEC의 `ArtifactStatusFieldForbidden`으로 **t362 귀속이 아니다**.
+
+따라서 아래 표의 `error 0` · `rc 0` 값들은 **명시된 트리에 대한 참**이고 **현재 상태의 서술이
+아니다.** 병합 후 값과 **대조**하되 이 값을 **대체**해서는 안 되며, 반대로 병합 후의 적색을
+이 카드에 귀속시켜서도 안 된다. 그 둘을 가르는 검사는 `doc.REQs` 소비 4개 코드의 병합 가로지르기
+불변성이며, 아래 절에 기록돼 있다.
 
 | 수치 | 측정 트리 | 근거 |
 |---|---|---|
@@ -202,7 +206,7 @@ AC-CRS-001-003의 "0이 아닌 경우 각 건이 실제 규약 위반임을 개�
 
 | AC | 상태 | 검증 명령 | 실제 출력 |
 |---|---|---|---|
-| AC-CRS-001-003 | PASS | `moai spec lint --json` (M2 바이너리, 전 코퍼스) | `InvalidREQID` 0건 / 총 177건 / rc=0 · `--strict` rc=0 — 병합 전 baseline과 코드별 건수 동일 |
+| AC-CRS-001-003 | PASS **(`130846ab2` 트리 기준, 병합 전)** | `moai spec lint --json` (M2 바이너리, 전 코퍼스) | `InvalidREQID` 0건 / 총 177건 / rc=0 · `--strict` rc=0 — 그 트리의 baseline과 코드별 건수 동일. 현재 상태 서술 아님 |
 | AC-CRS-001-004 | PASS | `go test ./internal/spec/ -run 'TestReqIDPattern\|TestDuplicateREQIDRule_StillFires' -v` | RED 증거 `.moai/reports/t362/m2-red-evidence.txt`, 이후 4/4 PASS |
 
 **M2 단독 착지 시 코퍼스 무변화**: `moai spec lint --json` 177건, 코드별 내역
@@ -212,7 +216,10 @@ LegacyEARSKeyword 7 / OwnershipTransitionInvalid 1 — baseline과 동일. `doc.
 
 ### M3 — 넓힌 파서 배선 + 심각도 처리 (2026-08-30)
 
-측정 트리: HEAD `0d102d7c7`. 바이너리는 이 트리에서 빌드(`go build -o <scratch>/moai-m3 ./cmd/moai`, rc=0).
+측정 트리: **커밋 `130846ab2`의 트리** (빌드 시점 HEAD는 `0d102d7c7`였고 미커밋 M2+M3 변경이
+얹혀 있었으며, 그 워킹트리가 `130846ab2`가 되었다 — `git diff --stat 130846ab2 -- internal/ cmd/ pkg/`
+공집합으로 확인). 바이너리는 그 트리에서 빌드(`go build -o <scratch>/moai-m3 ./cmd/moai`, rc=0).
+**이 절의 코퍼스 수치는 전부 병합 전 값이며 현재 상태의 서술이 아니다** — §병합 트리 재측정 참조.
 
 **배선 전에 드러난 사실: `CoverageRule`은 `doc.REQs`의 유일한 소비자가 아니다.**
 Gate 0의 `[F]` 절에서 전 소비자를 좁힘/넓힘으로 시뮬레이션했다:
@@ -248,7 +255,7 @@ option A로는 31건의 error가 남아 `develop`을 붉힌다** — REQ-CRS-001
 |---|---|---|---|
 | AC-CRS-001-001 | PASS | `go test ./internal/spec/ -run TestParseSPECDoc_CollectsWidenedShapes -v` | PASS — 여섯 형태가 **실경로** `doc.REQs`에 도달 |
 | AC-CRS-001-002 | PASS | `moai spec lint --json` (M3 바이너리, 전 코퍼스) | 총 **1,090**건. `CoverageIncomplete` 846은 M1 시뮬레이션값과 **일치**(846) |
-| AC-CRS-001-005 | PASS | `moai spec lint --json` / `moai spec lint --strict --json` | **plain rc=0, strict rc=0.** 심각도 분포: warning 1,090 / error **0**. 비자문 warning **0**건 |
+| AC-CRS-001-005 | PASS **(`130846ab2` 트리 기준, 병합 전)** | `moai spec lint --json` / `moai spec lint --strict --json` | **그 트리에서** plain rc=0, strict rc=0. 심각도 분포: warning 1,090 / error **0**. 비자문 warning **0**건. **이 값은 현재 상태의 서술이 아니다** — `origin/develop` 흡수 후 값은 아래 §병합 트리 재측정 참조 (그 트리에서 rc=1, error 2, 단 **둘 다 t362 귀속 아님**) |
 
 **M3 전 코퍼스 finding 내역** (`.moai/reports/t362/m3-lint-corpus.json`):
 
@@ -315,6 +322,72 @@ ok 36.755s · `golangci-lint run ./internal/spec/...` `0 issues.`
 modern-era SPEC에 좁은 항목이 새로 생기면 `--strict`가 붉어질 수 있으나, 이는 M3 이전에도
 참이었으므로 회귀가 아니다. ② M4(형제 `acceptance.md` 판독)는 미착수다. ③ CI 판정은 아직 없다 —
 위 rc는 이 트리의 로컬 실행이며, 조용한 head에서의 CI 완주는 병합 후에 판정한다.
+
+### 병합 트리 재측정 — 상속 대 귀속 분리 (2026-08-31)
+
+리드가 `origin/develop`를 이 브랜치에 흡수하고 병합 트리에서 재측정했다. 아래 수치는 **리드가
+이번 실행에서 직접 잰 값**이며, 이 카드가 재도출한 것이 아니다.
+
+**병합**
+
+| 항목 | 값 |
+|---|---|
+| 병합 커밋 | `d5ca9582d` (`git merge --no-edit origin/develop`, 충돌 0, 이후 `git rev-parse -q --verify MERGE_HEAD` 빈 출력) |
+| 흡수된 head | `d8a1a8e4e` (t318) — t332 `1728136c7`, t336 `34cc70a90`을 포함 |
+| 병합 전 브랜치 head | `523ce9d1b` |
+
+**병합 트리 측정** (병합 트리에서 빌드, `go build -o <scratch>/moai-t362-merged ./cmd/moai` rc=0)
+
+| 명령 | 결과 |
+|---|---|
+| `moai spec lint --strict --json` | **rc=1 · error 2 · warning 1,091 · 총 1,093** · 비자문 warning **0** |
+| `moai spec lint` (plain) | **rc=1** · `2 error(s), 1091 warning(s)` |
+| `go vet ./internal/spec/...` | rc=0 |
+| `go test ./internal/spec/... -count=1` | ok 38.4s |
+
+증거: `.moai/state/verify/t362/merge-tree-strict.json`, `.moai/state/verify/t362/merge-tree-plain.txt`.
+
+**귀속 분리 — 이 문단의 요점**
+
+error 2건은 **상속분이며 t336 귀속**이다. t362 귀속이 아니다.
+
+```
+ArtifactStatusFieldForbidden  .moai/specs/SPEC-INTEGRATION-LOCK-ATOMIC-001/plan.md:5
+ArtifactStatusFieldForbidden  .moai/specs/SPEC-INTEGRATION-LOCK-ATOMIC-001/acceptance.md:5
+```
+
+두 건은 리드가 병합 **전** `d8a1a8e4e`에서 읽은 두 건과 **파일·행 단위로 일치**한다. 그리고
+`ArtifactStatusFieldForbiddenRule`은 `doc.REQs`를 읽지 않으므로, **이 카드의 어떤 변경으로도
+이 finding을 만들거나 억누를 수 없다.**
+
+**두 방향을 가르는 검사는 이것이다 — `doc.REQs` 소비 4개 코드가 병합을 가로질러 불변인가.**
+
+| 코드 | 병합 전 (`523ce9d1b`) | 병합 후 (`d5ca9582d`) |
+|---|---|---|
+| `CoverageIncomplete` | 846 | **846** |
+| `ModalityMalformed` | 25 | **25** |
+| `InvalidREQID` | 6 | **6** |
+| `DuplicateREQID` | 0 | **0** |
+
+네 코드가 전부 불변이므로 **흡수는 이 카드의 파급에 아무것도 더하지 않았다.** 총 +3의 델타는
+전부 다른 곳이다 — `MovingRefUnpinned` 113→114, `ArtifactStatusFieldForbidden` 0→2, 둘 다
+develop이 가져온 새 SPEC 디렉터리와 함께 들어왔다.
+
+**따라서 t362 귀속 error = 0.** 이 카드 자신의 기여는 여전히 error 0 · 비자문 warning 0이고,
+`--strict`가 1로 끝나는 것은 **오직 상속된 두 건 때문**이다.
+
+**분리는 양방향으로 명시한다.** 상속된 적색을 이 카드에 귀속시키는 것과, 진짜 이 카드의 적색을
+"상속분"이라며 미루는 것은 **같은 결함**이다. 위 4-코드 불변 검사가 그 둘을 가르는 근거이며,
+"관련 없어 보인다"는 인상이 아니다. 만약 네 코드 중 하나라도 병합을 가로질러 움직였다면 그
+증분은 이 카드가 해명해야 할 몫이다.
+
+**미검증 (정직하게 남김)**: `d8a1a8e4e`만으로 빌드한 바이너리로 그 head를 **단독 측정하지
+않았다.** 상속 귀속은 (a) 리드가 그 head를 직접 판독한 것과 (b) 위 규칙 독립성 논거 —
+`ArtifactStatusFieldForbiddenRule`이 `doc.REQs`를 읽지 않는다는 사실 — 에 근거한다. 격리
+측정으로 확인한 것이 아니다.
+
+**범위 밖**: `SPEC-INTEGRATION-LOCK-ATOMIC-001/`은 다른 카드 소관이며 이 카드는 건드리지
+않았다. 리드가 운영자에게 별도로 라우팅한다.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
