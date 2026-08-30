@@ -52,7 +52,7 @@ push는 CI-inert다(조사 §5). 위 AC 판정은 전부 파서·린터 단언�
 
 ```yaml
 run_complete_at: 2026-08-30
-run_commit_sha: pending-backfill-run
+run_commit_sha: df4466d12   # M1 커밋 — 자기 SHA는 그 커밋 안에서 쓸 수 없어 후속 커밋에서 backfill
 run_status: complete
 ac_pass_count: 6          # AC-PTF-001~006 (003은 a·b 두 셀 모두 PASS)
 ac_fail_count: 0
