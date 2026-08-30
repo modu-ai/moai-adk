@@ -3,7 +3,7 @@ id: SPEC-PERF-FIXTURE-WRITE-001
 title: "perf 리포트 무조건 쓰기 차단 — 수락 기준"
 version: "0.3.1"
 created: 2026-08-29
-updated: 2026-08-29
+updated: 2026-08-30
 author: manager-spec
 priority: P2
 phase: "v3.1.4 target"

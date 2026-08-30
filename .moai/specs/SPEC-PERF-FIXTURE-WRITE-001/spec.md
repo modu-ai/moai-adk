@@ -2,9 +2,9 @@
 id: SPEC-PERF-FIXTURE-WRITE-001
 title: "perf 하네스 테스트가 추적 파일을 무조건 덮어쓰는 결함 — 명시적 opt-in 게이트로 좁힌다"
 version: "0.3.1"
-status: in-progress
+status: completed
 created: 2026-08-29
-updated: 2026-08-29
+updated: 2026-08-30
 author: manager-spec
 priority: P2
 phase: "v3.1.4 target"

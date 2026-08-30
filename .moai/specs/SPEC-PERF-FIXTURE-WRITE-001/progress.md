@@ -2,9 +2,9 @@
 id: SPEC-PERF-FIXTURE-WRITE-001
 title: "perf 리포트 무조건 쓰기 차단 — 진행 기록"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-08-29
-updated: 2026-08-29
+updated: 2026-08-30
 author: manager-develop
 priority: P2
 phase: "v3.1.4 target"
@@ -220,3 +220,44 @@ go test ./internal/hook/perf/... -count=1                               → 32.1
 - **CI 미관측.** 푸시가 없으므로 전 패키지 판정과 darwin/windows 매트릭스는 미측정이다. `scripts/ci-mirror/lib/go.sh:25` 가 `-short` 를 붙여 로컬 미러는 이 가드를 아예 돌리지 않으므로 **실제 CI 가 유일한 실행 면**이다.
 - **조정자는 뮤턴트 ②·③ 과 §D.3 다섯 행을 재현하지 않았다.** 그 셋은 **이 레인의 보고에만 근거한다** — 교차 확인된 항목(①′·비용·게이트 실효성)과 구분해서 읽어야 한다.
 - **`t.Cleanup` 패닉 경로는 여전히 미관측.** 두 행위자 모두 `t.Fatal` 실패 경로만 실측했다.
+
+## §E.4 Sync-phase Audit-Ready Signal (canonical)
+
+> **번호 충돌을 기록해 둔다 — 고치지 않았다.** 이 문서의 §E.0–§E.9 는 레인이 자체 번호로 매긴 것이라, 위쪽 `§E.4 자가검증` 이 정본 섹션 맵(`spec-frontmatter-schema.md` § progress.md Section Map)의 `§E.4 Sync-phase Audit-Ready Signal` 자리를 이미 쓰고 있다. 레인이 쓴 §E.2–§E.4 본문은 manager-develop 소관이라 sync 단계가 개명하지 않는다 — 보고만 한다. **이 블록이 정본 §E.4** 이며, era 분류가 찾는 리터럴 토큰(`§E.4` + `sync_commit_sha`)은 여기서 충족된다.
+
+```yaml
+sync_complete_at: "2026-08-30"
+sync_commit_sha: ""   # 빈 슬롯으로 sync 커밋에 들어가고 바로 다음 커밋에서 채운다 — 커밋은 자기 해시를 인용할 수 없다. placeholder 문자열을 브랜치에 한 번도 남기지 않는 형태(리드 지시)
+sync_status: completed
+b12_self_test_a: "grep -c 'SPEC-PERF-FIXTURE-WRITE-001' CHANGELOG.md → 0 (append 이전 실측)"
+b12_self_test_b: "acceptance.md 의 고유 AC 식별자 7개(AC-PFW-001..007) == CHANGELOG 항목이 인용한 AC 수 7"
+b12_self_test_c: "인용 경로 2개(internal/hook/perf/harness_test.go, internal/hook/perf/report_write_guard_test.go)를 ls 로 확인한 뒤 커밋"
+changelog_entry_position: "[Unreleased] → Fixed (이 sync 커밋)"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed"
+  progress_md: "in-progress → completed"
+  plan_md: "status 필드 없음(금지 필드) — updated 만 2026-08-30 으로 갱신"
+  acceptance_md: "status 필드 없음(금지 필드) — updated 만 2026-08-30 으로 갱신"
+canary_compliance_check: "해당 없음 — 이 SPEC 은 테스트 하네스의 쓰기 표면을 좁힐 뿐 전방위 정책을 정의하지 않는다"
+```
+
+### sync 단계 재측정 (이 실행, 이 트리 — 워크트리 `.claude/worktrees/t318`, 브랜치 `WT-fixture-write`, HEAD `d7fec6686`, darwin/arm64, 2026-08-30)
+
+| 항목 | 명령 | 관측 |
+|---|---|---|
+| 패키지 테스트 | `go test ./internal/hook/perf/... -count=1` | `rc=0` · `ok github.com/modu-ai/moai-adk/internal/hook/perf 32.544s` |
+| vet | `go vet ./internal/hook/perf/...` | `rc=0` · 출력 없음 |
+| SPEC lint | `moai spec lint .moai/specs/SPEC-PERF-FIXTURE-WRITE-001/spec.md --strict` | `rc=0` · `✓ No findings — all SPEC documents are valid` |
+| 픽스처 불변 | `shasum -a 256` 두 픽스처 (테스트 실행 **뒤**) | `7b344c902ebddbd56f6f26c98dfb45f3569b47286cd6e59b36eadd1f228d7df2` · `94b51746e746d6054894b561d70ff4a9490bbf76560f18da87a2fe7c2e3aca37` — 배차문이 건넨 커밋본 해시 2건과 일치 |
+| 픽스처 트리 | `git status --porcelain -- .moai/specs/SPEC-HOOK-PRETOOL-PERF-001/` | 0행 |
+
+게이트의 실효성이 여기서 한 번 더 관측된다: 위 테스트 실행은 두 프로파일링 테스트를 **실제로 돌렸는데도**(§E.2 AC-PFW-001 과 같은 성질) 그 뒤 두 픽스처 해시가 움직이지 않았다.
+
+### 판정 — docs-site / README 미변경
+
+`MOAI_HOOK_PERF_UPDATE` 는 `internal/hook/perf` 테스트 전용 게이트이고 배포 바이너리의 사용자 표면이 아니다. **부재 주장의 스캔 범위를 못 박는다**: 리포 전역 `*.md`·`*.yaml`·`*.yml`·`*.json` 에서 `MOAI_HOOK_PERF` 를 찾아 `.moai/specs/`·`.moai/reports/` 를 제외한 결과 히트는 `CHANGELOG.md:658`(SPEC-HOOK-PRETOOL-PERF-001 의 과거 기록) 한 줄뿐이며, `docs-site/` 와 README 4종에는 **0건**이다. 따라서 두 곳 모두 손대지 않는다.
+
+### 잔여 gap (sync 단계 기준)
+
+- **CI 미관측.** 이 세션은 푸시하지 않는다(리드가 통합 창을 배정한다). 전 패키지 판정과 darwin/windows 매트릭스는 여전히 미측정이며, `scripts/ci-mirror/lib/go.sh` 의 `-short` 때문에 로컬 CI 미러도 이 가드를 돌리지 않으므로 **실제 CI 가 가드의 유일한 실행 면**이라는 §E.8 의 서술은 그대로 유효하다.
+- **§E.7 이 남긴 `spec.md` HISTORY 0.3.1 행 부재는 이 단계에서도 고치지 않았다.** HISTORY 는 `spec.md` 본문이라 sync 단계의 편집 금지 범위다(frontmatter `status:`/`updated:` 만 허용). manager-spec 몫으로 남긴다.
