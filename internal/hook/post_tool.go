@@ -224,6 +224,16 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 		logEvidence(input)
 	}
 
+	// Surface a test call that executed nothing (SPEC-SELECTOR-CENSUS-001
+	// REQ-SEC-004). Silence is the disease this guard treats: a zero-execution
+	// run is already withheld from the ledger's pass column, but withholding
+	// alone leaves the author believing the suite ran. Advisory-only and
+	// fail-open — appends to systemMessage, never sets Decision, and returns the
+	// message untouched for every non-Bash or non-test event.
+	if input.ToolName == "Bash" {
+		systemMessage = maybeZeroExecutionAdvisory(input, systemMessage)
+	}
+
 	// Navigator Detect branch (SPEC-NAVIGATOR-SYNC-002 REQ-NS2-009b / AC-NS2-001b).
 	// Dispatches runNavigatorDetectSafe for Write/Edit/NotebookEdit tools so the
 	// navigator graph can surface affected rows as an advisory systemMessage
