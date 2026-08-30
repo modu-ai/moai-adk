@@ -2,7 +2,6 @@
 id: SPEC-V3R6-AGENT-MODEL-ROUTING-001-PLAN
 title: "Plan — Agent 23개 모델 명시 라우팅 (Tier L Section A-E)"
 version: "0.2.0"
-status: draft
 created: 2026-05-23
 updated: 2026-05-23
 author: manager-spec

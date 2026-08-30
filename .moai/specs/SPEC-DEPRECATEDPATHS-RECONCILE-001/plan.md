@@ -2,7 +2,6 @@
 id: SPEC-DEPRECATEDPATHS-RECONCILE-001
 title: "Reconcile DeprecatedPaths — implementation plan (Tier S)"
 version: "0.1.0"
-status: draft
 tier: S
 era: V3R6
 ---

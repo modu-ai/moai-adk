@@ -2,7 +2,6 @@
 id: SPEC-CLI-TUI-MODERNIZE-001
 title: "Research — interactive TUI surface modernization"
 version: "0.1.3"
-status: draft
 created: 2026-07-25
 updated: 2026-07-25
 author: manager-spec

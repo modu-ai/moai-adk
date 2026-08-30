@@ -2,7 +2,6 @@
 id: SPEC-CODEX-VERDICT-SYNTH-001
 title: "인수 기준 — 미인식 서식이 통과로 떨어지지 않는다"
 version: "0.5.0"
-status: draft
 created: 2026-08-24
 updated: 2026-08-25
 author: manager-spec

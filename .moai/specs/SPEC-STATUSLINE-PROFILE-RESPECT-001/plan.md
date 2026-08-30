@@ -2,7 +2,6 @@
 id: SPEC-STATUSLINE-PROFILE-RESPECT-001
 title: "Plan — statusline forge/github opt-out honored end-to-end + subtree-aware profile resolution"
 version: "0.2.0"
-status: in-progress
 created: 2026-08-27
 updated: 2026-08-27
 author: manager-spec
