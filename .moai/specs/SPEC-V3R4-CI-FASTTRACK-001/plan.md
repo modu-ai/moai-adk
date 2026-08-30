@@ -2,7 +2,6 @@
 id: SPEC-V3R4-CI-FASTTRACK-001
 title: "CI/CD Fast Track for Single-Developer Workflow (Path-Filter + Review Bot Consolidation)"
 version: "0.1.0"
-status: completed
 created: 2026-05-17
 updated: 2026-05-17
 author: manager-spec

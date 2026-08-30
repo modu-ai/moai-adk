@@ -2,7 +2,6 @@
 spec_id: SPEC-V3R3-DEF-001
 title: Implementation Plan — ORC Dependency Cycle Resolution
 version: "1.0.0"
-status: draft
 created: 2026-04-25
 related_spec: .moai/specs/SPEC-V3R3-DEF-001/spec.md
 ---

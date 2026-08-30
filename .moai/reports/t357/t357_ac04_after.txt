@@ -1,0 +1,5 @@
+SEVERITY  CODE                          FILE                                             LINE  MESSAGE
+--------  ----                          ----                                             ----  -------
+ERROR     ArtifactStatusFieldForbidden  .moai/specs/SPEC-ARTIFACT-STATELESS-001/plan.md  2     `plan.md` carries `status: draft` in its frontmatter. Non-`spec.md` SPEC artifacts are stateless on the status axis: a SPEC's lifecycle state lives in `spec.md` alone, which is the file every lint, audit, and close path reads it from. Remove the `status:` line; every other frontmatter field (`id`, `title`, `version`, `created`) stays — frontmatter itself is permitted here, and this rule governs the status axis only. See `.claude/rules/moai/development/spec-frontmatter-schema.md` § Artifact Statelessness.
+
+1 error(s), 0 warning(s)

@@ -2,7 +2,6 @@
 id: SPEC-INTERNAL-TEST-003
 title: "Add missing i18n dictionary entries for workflow.agentic_loop.max_iterations"
 version: "0.1.0"
-status: completed
 created: 2026-07-09
 updated: 2026-07-09
 author: manager-spec
