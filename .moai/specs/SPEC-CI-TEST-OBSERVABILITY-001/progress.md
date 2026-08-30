@@ -172,7 +172,65 @@ deliberate_breakages_reverted:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-30
+sync_commit_sha: SYNC_COMMIT_SHA_PLACEHOLDER
+sync_status: complete-with-open-gap
+b12_self_test_a: "grep -c 'SPEC-CI-TEST-OBSERVABILITY-001' CHANGELOG.md -> 0 (no duplicate entry)"
+b12_self_test_b: "canonical AC regex -> 8 distinct ids; TRUE distinct AC count is 10 (the regex cannot see the 'b'/'a' suffixes, so AC-CTO-003b collapses onto AC-CTO-003 and AC-CTO-005a/-005b onto AC-CTO-005). Reported as a regex limitation, not adjusted away."
+b12_self_test_c: "every path claimed in the CHANGELOG entry verified with ls before commit"
+changelog_entry_position: "[Unreleased] -> Changed, first entry"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed"
+  plan_md: "no status field (artifact-stateless per SPEC-ARTIFACT-STATELESS-001)"
+  acceptance_md: "no status field (artifact-stateless)"
+  progress_md: "no frontmatter"
+ac_final:
+  pass: [AC-CTO-001, AC-CTO-002, AC-CTO-003, AC-CTO-003b, AC-CTO-004, AC-CTO-005a, AC-CTO-005b, AC-CTO-006, AC-CTO-007, AC-CTO-008]
+  debt_remaining: []          # both plan-time debts discharged by observation on run 33308057570
+  open_gaps:
+    - "3 of 4 converted call sites have never run in CI; first verdict is the post-merge develop push"
+    - "census sort -u dedup is locale-dependent (latent; CI unaffected today)"
+    - "internal/lockfile runs zero tests on windows-latest (found, not investigated)"
+debts_discharged_by_observation:
+  - AC-CTO-005b
+  - "AC-CTO-003 CI-level red path"
+  - "spec.md A.1 full-suite size extrapolation (now measured)"
+  - "spec.md J windows/macOS census portability gap"
+second_dispatch_performed: false     # the ONE-run constraint held
+docs_changed: none                   # checked, not assumed - see below
+template_mirror_required: false      # checked: .github/workflows/ and scripts/ are not template roots
+new_reports:
+  - .moai/reports/t358/lockfile-windows-nothing-ran.md
+  - .moai/reports/t358/census-sort-locale-drops-cjk-subtests.md
+```
+
+### Documentation decision — checked, none warranted
+
+Three surfaces were inspected rather than assumed:
+
+- **README (4 locales)** — the only `go test` occurrence in `README.md` is inside a
+  `/moai goal` example string (line 545). No README describes CI invocation, so
+  nothing here is stale. **No change**, and therefore no 4-locale obligation is
+  triggered.
+- **docs-site** — `grep -rln 'ci.yml|go test -json' docs-site/content` returns
+  nothing. The change has no user-facing surface: neither workflow is distributed
+  (`internal/template/templates/.github/workflows/` contains only
+  `label-sync.yml`), and `scripts/` is not a template root at all. **No change.**
+- **`CONTRIBUTING.md`** — documents the local developer loop (`make test`,
+  `go test -race ./...`), not CI internals. Unaffected. **No change.**
+- **`scripts/ci-census/` README** — **not added.** No sibling script directory has
+  one (`ci-watch`, `ci-autofix`, `ci-mirror`, `i18n-validator`, `docs-version-snapshot`
+  all carry header comments only), and both census scripts already carry headers
+  covering WHY, the single-predicate property, the build-failure finding, and the
+  output contract. A README would duplicate them and add a second place to drift.
+
+Template-First was checked, not assumed: `internal/template/templates/.github/workflows/`
+holds `label-sync.yml` only, and `internal/template/templates/scripts` does not
+exist — so no mirror and no `make build` are required for this card. The root
+`.gitignore` additions (`/test-stream.json{,.gz}`) are likewise repo-local: the
+census is not distributed, so the template `.gitignore` would gain a rule for a
+file its users never produce.
 
 ---
 
@@ -265,15 +323,63 @@ card material.
   `success`; only `Run tests with race detector` is red, and its census output is
   present and well-formed.
 
+### [HARD] The coverage asymmetry — ONE of four call sites has actually run
+
+This card converted **four** `go test` call sites. **One** of them has executed in
+CI. Stated as a table so it cannot be read as resolved:
+
+| Call site | Job | Has run in CI with this change? | First verdict |
+|---|---|---|---|
+| `release-pr-multi-os.yml:189` | `Release Verify` (3-OS) | **YES** — run `33308057570`, all three legs | obtained |
+| `ci.yml:183` | `test` (required; the only site with `-coverprofile`) | **NO** | the `develop` push after this card integrates |
+| `ci.yml:238` | `test-race` | **NO** | same |
+| `ci.yml:329` | `test-integration` (3-OS) | **NO** | same |
+
+Why no pre-merge dispatch of `ci.yml` was possible, measured rather than assumed:
+`git show origin/develop:.github/workflows/ci.yml` carries `on: push` /
+`pull_request` and **no** `workflow_dispatch`. This card adds one, but a
+`workflow_dispatch` trigger becomes dispatchable only once the file carrying it
+exists on the **default branch** — so it does nothing for this card and is an
+enabling change for a future one. The three sites therefore ship on YAML
+inspection plus the local shell-semantics verification of §E.2, with no CI
+execution of their own.
+
+**The post-merge `develop` CI run is the first verdict for those three.** This is
+not resolved, not deferred to a debt that discharges automatically, and not
+covered by the dispatch: it is an open gap in the evidence, and it includes the
+required `test` job — the one whose coverage behaviour AC-CTO-004 asserts.
+
+### Second finding, in sync-phase — the census dedup is locale-dependent
+
+Found while running AC-CTO-005a's re-parse check against the downloaded ubuntu
+artifact. `test-census.sh` uses bare `sort -u` at all six of its dedup sites; the
+collation is therefore ambient. Same stream, same script, two locales:
+`en_US.UTF-8` → `passed=19507`, `LC_ALL=C` → `passed=19513` (the raw event count,
+and the runner's console figure exactly). The six lost lines are all CJK-named
+subtests.
+
+CI is **not** affected today — all three runners produced C-consistent figures —
+so this is a latent defect, recorded as a Gap in `spec.md` §J and **not fixed
+here**: sync-phase does not modify the run-phase deliverable, and the ONE-run
+constraint means a fix could not be re-observed in CI on this card. Full record:
+`.moai/reports/t358/census-sort-locale-drops-cjk-subtests.md`. Carried to the lead
+as follow-up card material.
+
 ### Gaps — explicitly NOT observed
 
 - The `ci.yml` call sites (`test`, `test-race`, `test-integration`) have NOT run in
-  CI. This dispatch exercised `release-pr-multi-os.yml` only. `ci.yml` has no
-  `workflow_dispatch` on the default branch, so its first real execution is the
-  `develop` push after this card integrates.
+  CI — see the asymmetry table above, which is the load-bearing statement of this
+  gap rather than this bullet.
 - No second dispatch was performed, and none is authorized.
 - `shellcheck` was not run against the census script; no shell linter exists in
   this repo's CI.
+- **Only the ubuntu artifact was downloaded** in sync-phase. The macOS and windows
+  artifacts are attested by the artifact-list entry (name, size, `expired=false`)
+  and were not decompressed, so their streams were not re-parsed.
+- **No runner locale was read directly.** "The runners behave as C" is inferred
+  from their totals matching the raw event count, not from an environment dump.
+- **`internal/lockfile`'s windows zero-test cause was not investigated** — see
+  `.moai/reports/t358/lockfile-windows-nothing-ran.md`.
 
 ### Residual risk
 

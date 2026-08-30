@@ -123,13 +123,20 @@ Every claim in the closing report carries the command that produced it and that 
 
 | Risk | Mitigation |
 |---|---|
-| Redirect hides a failure that used to be console-visible | M2's terminal check is a deliberately-failing run, not a passing one |
+| Redirect hides a failure that used to be console-visible | M2's terminal check is a deliberately-failing run, not a passing one. **Retired by observation** — run `33308057570` was red on two legs and the census printed the failing test and its captured output on both. |
 | `pipefail` / `tee` masks a red suite | explicit `rc` capture (§B.1); reviewed in M1 |
-| Windows leg breaks on the summary implementation | portability constraint stated in §B.3; the 3-OS matrix is the observation vehicle, so a break surfaces in M4 |
+| Windows leg breaks on the summary implementation | portability constraint stated in §B.3; the 3-OS matrix is the observation vehicle, so a break surfaces in M4. **Retired by observation** — the windows leg's census ran and printed; its 146 failures are pre-existing test failures, and `Compress` / `Upload` both report `success` (job `99248050298`). |
 | Artifact-name collision across matrix legs | per-OS artifact names in M3 |
-| Census tooling (`jq`, `gzip`, `sed`, `sort`) unverified on windows/macOS runners | named Gap in `spec.md` §J — all four existing `jq` workflows are ubuntu-only, so the dispatch is first exposure; a tooling failure on a non-ubuntu leg is a diagnosis to establish, not a re-run to attempt |
+| Census tooling (`jq`, `gzip`, `sed`, `sort`) unverified on windows/macOS runners | named Gap in `spec.md` §J — all four existing `jq` workflows are ubuntu-only, so the dispatch is first exposure; a tooling failure on a non-ubuntu leg is a diagnosis to establish, not a re-run to attempt. **Closed for availability** on run `33308057570`: `jq`, `gzip`, and the upload worked on all three runners. **A residual remains on `sort`** — its dedup is locale-dependent and drops CJK subtest names under a UTF-8 collation; the runners matched `LC_ALL=C`, so CI is unaffected today (`spec.md` §J, third Gap). |
 | `test-stream.json` visible in the repo root mid-run to a filesystem-walking test | residual risk in `spec.md` §J — gitignored, so git-based checks are unaffected; unmeasured, mitigation is to write outside the repo root |
-| Full-suite stream size is unknown (extrapolated) | gzip measured at ~15.5×; if the artifact proves oversized, the fallback is per-package artifacts, not dropping the census |
+| Full-suite stream size is unknown (extrapolated) | gzip measured at ~15.5×; if the artifact proves oversized, the fallback is per-package artifacts, not dropping the census. **Retired by measurement** — ubuntu full suite: 23,256,287 B uncompressed → 1,733,071 B gzipped (13.4×), artifact zip 1,733,669 B. Not oversized; the fallback is unneeded. |
+
+**Risks that remain open at close** — neither is retired, and both are stated rather than folded away:
+
+| Open risk | Status |
+|---|---|
+| Three of the four converted call sites (`ci.yml:183`, `:238`, `:329`) have never run in CI | The dispatch exercised `release-pr-multi-os.yml` only, and `ci.yml` carries no dispatchable trigger until it lands on the default branch. First verdict is the post-integration `develop` push — including for the required `test` job, the only site carrying `-coverprofile`. |
+| Census `sort -u` dedup is locale-dependent | Latent, not active: reproduced on darwin/arm64 (`en_US.UTF-8` → `passed=19507` vs `LC_ALL=C` → `19513`, six CJK subtests lost). All three runners matched the C figures. Carried as follow-up card material; not fixed in sync-phase. |
 
 ## G. Anti-patterns
 

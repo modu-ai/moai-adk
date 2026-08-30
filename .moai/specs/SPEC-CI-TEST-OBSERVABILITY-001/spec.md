@@ -2,9 +2,9 @@
 id: SPEC-CI-TEST-OBSERVABILITY-001
 title: "CI per-test evidence: make a skipped test identifiable from CI artifacts alone"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-08-28
-updated: 2026-08-29
+updated: 2026-08-30
 author: manager-spec
 priority: P1
 phase: "v3.1.4 target"
@@ -48,7 +48,21 @@ CI runs `go test` without `-v` or `-json`, so CI artifacts carry **no per-test e
 | **Build diagnostics travel in-stream, NOT on stderr** | throwaway module outside the repo, one package with a deliberate syntax error, `go test -json ./...` | rc=1; **stdout 666 bytes, stderr 0 bytes**; action sequence `build-output build-output build-fail start output fail`, the compiler diagnostic carried inside the `build-output` events. Measured twice independently (coordinator, then this agent on darwin/arm64 · go 1.26.4) with the same shape. **Falsifies the original brief's premise that stderr carries build errors.** |
 | Failure bodies survive in the stream | a path typo — `./internal/version/...`, not a package here | rc=1; the stream carried `Action=="fail"` plus the verbatim body `FAIL\t./internal/version/... [setup failed]`. Observed, not assumed. |
 
-**Extrapolation, stated as such**: the full-suite artifact size is **not measured**. It is an extrapolation from two packages (785,790 B and 1,178,655 B for one package each, over 135 packages) and is expected to be in the tens of megabytes uncompressed, ~15× smaller gzipped. No requirement below depends on a specific full-suite byte figure.
+**Extrapolation, stated as such** *(authored 2026-08-28; **SUPERSEDED by measurement 2026-08-30** — see the next paragraph. The original wording is kept rather than rewritten, per `verification-claim-integrity.md` §2: the record that this figure was once an extrapolation is itself worth keeping)*: the full-suite artifact size is **not measured**. It is an extrapolation from two packages (785,790 B and 1,178,655 B for one package each, over 135 packages) and is expected to be in the tens of megabytes uncompressed, ~15× smaller gzipped. No requirement below depends on a specific full-suite byte figure.
+
+**Measured, superseding the extrapolation** — run [`33308057570`](https://github.com/modu-ai/moai-adk/actions/runs/33308057570) (`workflow_dispatch`, head `09dd1bee9`), the single approved dispatch:
+
+| OS | job | uploaded artifact size (zip) | `test-stream.json.gz` inside it | uncompressed | ratio |
+|---|---|---|---|---|---|
+| ubuntu-latest | 99248050305 | 1,733,669 B | **1,733,071 B** | **23,256,287 B** | **13.4×** |
+| macos-latest | 99248050297 | 1,496,723 B | not downloaded | not measured | — |
+| windows-latest | 99248050298 | 1,286,458 B | not downloaded | not measured | — |
+
+Two precision notes, because the two numbers are easy to conflate. The artifact-list figure is the size of the **zip GitHub wraps around the upload**, not the gzip itself; for ubuntu the zip adds 598 B over the `.gz` it contains. And only the ubuntu artifact was downloaded and decompressed — the macOS and windows rows carry the zip size only, and their uncompressed sizes remain unmeasured.
+
+The extrapolation's *shape* held: tens of megabytes uncompressed (23.3 MB), compressing an order of magnitude (13.4×, against the ~15× predicted from two packages).
+
+Measurement commands, run in the sync phase against this tree: `gh api repos/modu-ai/moai-adk/actions/runs/33308057570/artifacts`, then `gh api …/artifacts/9731222717/zip`, `unzip`, `gzip -dc … | wc -c`. The decompressed stream re-parsed cleanly — `grep -vc '^{'` → **0** non-JSON lines, and the census returned rc=0 on it, which is the download half of AC-CTO-005a.
 
 ## B. Why this matters
 
@@ -164,15 +178,17 @@ The scope is **exactly these four sites**. `ci.yml:329` was missed in the first 
 
 ## I. Closure ordering — what may close post-merge, and what is debt
 
-Two ACs cannot be satisfied from the single approved dispatch, and this SPEC says so rather than asserting them:
+Two ACs were planned as debt on the reasoning that neither could be satisfied from a **green** single dispatch. **The dispatch was not green.** It ran three OS legs, two of them red for pre-existing reasons unrelated to this change, and both debts were therefore discharged **by observation on that same one run** — no second dispatch, no argument from `if: always()` being declared.
 
-| Item | Status at close | Why |
+| Item | Status at close | Basis |
 |---|---|---|
-| AC-CTO-001, -002, -003, -003b, -004, -005a, -006, -007 (dispatch path), -008 | MUST PASS pre-close | obtainable locally or from the one green dispatch |
-| AC-CTO-003 CI-level red-path confirmation | **DEBT** | needs a second, deliberately-red CI run; the ONE-run constraint forbids it. The shell semantics it guards are verified locally instead (AC-CTO-003). |
-| AC-CTO-005b (artifact present on a FAILED run) | **DEBT** | same reason; the `if: always()` declaration and re-parseability are verified on the green run |
+| AC-CTO-001, -002, -003, -003b, -004, -005a, -006, -007 (dispatch path), -008 | PASS pre-close | obtainable locally or from the one dispatch |
+| AC-CTO-003 CI-level red-path confirmation | **DISCHARGED by observation** (was: DEBT) | run `33308057570`: both red legs (`99248050297` macOS, `99248050298` windows) printed the census with `FAILED` rows naming the test and carrying its captured output, and the job still exited non-zero. The step-level split is the evidence — `Run tests with race detector` is the only red step; `Compress test event stream` and `Upload test event stream` both report `success`. |
+| AC-CTO-005b (artifact present on a FAILED run) | **DISCHARGED by observation** (was: DEBT) | same run: `test-stream-release-verify-macos-latest` 1,496,723 B and `test-stream-release-verify-windows-latest` 1,286,458 B are both present in the run's artifact list, from jobs whose conclusion is `failure`. Behaviour observed, not intent inferred. |
 
-Both debts discharge on the first genuinely red CI run after this lands — an ordinary event, not a scheduled task.
+The debt classification is preserved above rather than deleted, because it was correct when written: at plan time nobody could know the dispatch would be red, and recording it as an assumed pass would have been the unobserved claim this SPEC exists to prevent. What changed is the evidence, not the standard.
+
+Discharge verified in sync-phase against this tree: `gh api repos/modu-ai/moai-adk/actions/runs/33308057570/artifacts` for the artifact list, and `gh api repos/modu-ai/moai-adk/actions/jobs/<id>` for the per-step conclusions of all three legs.
 
 If the fallback observation path is taken (post-merge `ci.yml` on the `develop` push), AC-CTO-007 closes **post-merge** and taking the fallback is recorded as **debt**, never as a pre-merge pass. The rule at §G — never present the fallback as a pre-merge observation — is unchanged and binding.
 
@@ -186,11 +202,29 @@ Recorded per `verification-claim-integrity.md` §3 — these are **not** defects
 
 `test-stream.json` is written to the repository root *while* `go test ./...` is executing. It is gitignored, so every git-based check stays clean; but a test that walks the repo root **through the filesystem** rather than through git would see a file that did not exist when its expectations were written. **Unmeasured** — no such test is known to exist, and none was searched for. Recorded as residual risk rather than as a defect. Mitigation if it ever bites: write the stream to a path outside the repo root (e.g. `$RUNNER_TEMP`) and upload from there.
 
-### Gap — the census has run on darwin/arm64 only
+### Gap — the census has run on darwin/arm64 only — **CLOSED 2026-08-30**
 
 Every local verification of the census (AC-CTO-002, -003, -003b) ran on **darwin/arm64**. The census depends on `jq`, and on `gzip` / `sed` / `sort` in the surrounding step. Measured precedent in this repo: **all four** workflows that use `jq` (`auto-merge.yml`, `graph-freshness.yml`, `release-drafter-cleanup.yml`, `review-quality-gate.yml`) are `runs-on: ubuntu-latest` — so there is **no** existing evidence of `jq` on the windows or macOS runners, and none for `gzip`/`sed`/`sort` under git-bash.
 
 Two of the four call sites are 3-OS matrices (`ci.yml:329`, `release-pr-multi-os.yml:189`), so **the approved dispatch is the first exposure of the census to windows and macOS**. This is a named Gap, not a predicted failure and not a pass: if a non-ubuntu leg fails on tooling, that is the ONE-run dispatch doing its job, and the cause is established before any re-run (`acceptance.md` AC-CTO-007).
+
+**Closed by run `33308057570`.** The census executed on all three runners. `jq` resolved, `gzip` ran, and `actions/upload-artifact@v7` uploaded on every leg — including under the windows `shell: bash`. The step-level split is what carries this: on both red legs only `Run tests with race detector` is red, while `Compress test event stream` and `Upload test event stream` both report `success`, so the failures are in test bodies rather than in the census toolchain. Verified in sync-phase via `gh api repos/modu-ai/moai-adk/actions/jobs/{99248050305,99248050297,99248050298}`.
+
+What the closure does **not** cover: the census ran through **one workflow** (`release-pr-multi-os.yml`). Portability of the identical step body in `ci.yml`'s 3-OS `test-integration` job is inferred from the shared toolchain, not observed — see § Gap — three of the four call sites have never run in CI.
+
+### Gap — three of the four call sites have never run in CI
+
+The dispatch exercised `release-pr-multi-os.yml:189` **only**. The three `ci.yml` sites — `test` (`ci.yml:183`), `test-race` (`ci.yml:238`), `test-integration` (`ci.yml:329`) — have never executed with this change. `ci.yml` on `origin/develop` carries no `workflow_dispatch` trigger, and the one this card adds becomes dispatchable only once the file exists on the default branch, so no pre-merge dispatch of `ci.yml` against the card branch was possible.
+
+**Their first real verdict is the `ci.yml` run on the `develop` push after this card integrates.** That is a genuine open gap, not a resolved item: three of the four converted sites — including the required `test` job, the only one carrying `-coverprofile`, and the only 3-OS `ci.yml` matrix — are shipping on YAML inspection plus local shell-semantics verification, without a CI execution of their own.
+
+Verified in sync-phase: `git show origin/develop:.github/workflows/ci.yml` has `on: push / pull_request` and no `workflow_dispatch`; the working tree adds it.
+
+### Gap — the census dedup is locale-dependent, and drops CJK subtest names
+
+Found in sync-phase while re-running the census against the downloaded ubuntu artifact, as the AC-CTO-005a re-parse check. `test-census.sh` pipes every total and every listed row through `sort -u` with no `LC_ALL` pin, so deduplication follows the ambient collation. Under `en_US.UTF-8` on darwin/arm64 the same stream yields `passed=19507`; under `LC_ALL=C` it yields **19513**, which matches the runner's console byte-for-byte. The six lost lines are all CJK-named subtests (`TestDetectPromptLang/こんにちは`, `TestExtractSpecIDs/여러_SPEC_ID`, `TestFillRight/已知`, …) — distinct byte strings that a UTF-8 collation treats as equal.
+
+CI is **not currently affected** — the three runners all reproduced the C-locale figures — so this is a Gap and a latent defect, not an active miscount. But the failure mode is exactly the one this SPEC exists to remove: a silently wrong count with no signal. Full record and reproduction: `.moai/reports/t358/census-sort-locale-drops-cjk-subtests.md`. **Not fixed here** — sync-phase does not modify the run-phase deliverable; carried to the lead as follow-up card material.
 
 ---
 
