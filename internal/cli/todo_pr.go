@@ -68,24 +68,33 @@ var todoRunCommand kanban.CommandRunner = func(name string, args ...string) (str
 // landed state. Read-only, fail-open, one `gh` query.
 func newTodoPRCmd() *cobra.Command {
 	var jsonOutput bool
+	// The landed ref is RESOLVED, not constant: a project that integrates on
+	// a branch other than the default asks the question about its own branch,
+	// and the help text names the ref the check will actually use rather than
+	// a default that may not apply here.
+	landedRef := todoLandedRef()
 	cmd := &cobra.Command{
 		Use:   "pr [<id>]",
 		Short: "Report each card's open pull request or landed state (read-only)",
 		Long: `Report, for every queued card, whether an open pull request already
-delivers it or whether its work has already landed on ` + kanban.LandedRef + `.
+delivers it or whether its work has already landed on ` + landedRef + `.
 
 The verb writes NOTHING: no card field, no finding, no cache, no lock. It
 computes every outcome live and prints it.
 
-Four outcomes, distinguishable by kind alone:
+Five outcomes, distinguishable by kind alone:
 
   linked     one open pull request carries the card id
              confidence exact    — read off the PR title
              confidence inferred — read off a single PR body
   ambiguous  several open PR bodies carry it; every candidate is listed and
              none is chosen
-  landed     no open PR carries it, and ` + kanban.LandedRef + ` history names it
+  landed     no open PR carries it, and ` + landedRef + ` history names it.
+             It means SOMETHING naming the card landed on that ref — NOT that
+             the card's last step landed
   no-link    nobody has started this
+  unknown    the landing question could not be asked (no such ref, no git, a
+             failed query). This is NOT evidence of not-landed
 
 The landed check is local git and keeps working when gh does not. When gh is
 absent, unauthenticated, or offline the link column renders empty, the
@@ -131,7 +140,8 @@ func runTodoPR(cmd *cobra.Command, only string, jsonOutput bool) error {
 		prs = nil
 	}
 
-	landed := kanban.GitLandedQuerier{Run: todoRunCommand}
+	landedRef := todoLandedRef()
+	landed := kanban.GitLandedQuerier{Run: todoRunCommand, Ref: landedRef}
 	outcomes := make([]kanban.PRLinkOutcome, 0, len(rec.Items))
 	var degraded []string
 	for _, it := range rec.Items {
@@ -146,8 +156,8 @@ func runTodoPR(cmd *cobra.Command, only string, jsonOutput bool) error {
 	}
 	if len(degraded) > 0 {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
-			"note: landed check degraded for %s; those cards report no-link without having been checked\n",
-			strings.Join(degraded, " "))
+			"note: the landed check against %s could not answer for %s; those cards report unknown rather than no-link, because an unanswerable query is not evidence of not-landed\n",
+			landedRef, strings.Join(degraded, " "))
 	}
 
 	out := cmd.OutOrStdout()
@@ -164,16 +174,29 @@ func runTodoPR(cmd *cobra.Command, only string, jsonOutput bool) error {
 		return nil
 	}
 	text := map[string]string{}
+	state := map[string]kanban.BacklogState{}
 	for _, it := range rec.Items {
 		text[it.ID] = it.Text
+		state[it.ID] = it.State
 	}
 	for _, o := range outcomes {
-		// Five columns, always present. The link column is BLANK rather than
+		// SIX columns, always present. The link column is BLANK rather than
 		// omitted when there is nothing to show, so a degraded run and a
 		// genuinely unlinked card render the same shape and differ only in
 		// the stderr note (AC-005).
-		_, _ = fmt.Fprintf(out, "%s\t%s\t%s\t%s\t%s\n",
-			o.CardID, o.Kind, formatPRLinks(o.PRs), o.Confidence, text[o.CardID])
+		//
+		// The queue STATE sits between Confidence and the free-text tail: a
+		// `picked` card with no commits and a `queued`, never-started one both
+		// resolve to `no-link`, and without the state they rendered as the
+		// same row. It is a column-count change on a machine-readable
+		// surface — a consumer doing `cut -f5` now gets the state where it
+		// used to get the text — but a consumer reading the LAST field still
+		// reads the card text.
+		//
+		// No new subprocess and no new query: the value is already in hand
+		// from the record this render already loaded.
+		_, _ = fmt.Fprintf(out, "%s\t%s\t%s\t%s\t%s\t%s\n",
+			o.CardID, o.Kind, formatPRLinks(o.PRs), o.Confidence, state[o.CardID], text[o.CardID])
 	}
 	return nil
 }

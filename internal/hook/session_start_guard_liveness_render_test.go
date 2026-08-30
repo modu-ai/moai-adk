@@ -230,7 +230,7 @@ func TestGuardLivenessRenderIssuesNoForgeQuery(t *testing.T) {
 	t.Cleanup(func() { guardLivenessProducer = orig })
 	guardLivenessProducer = unreachable
 
-	text := guardLivenessAdvisory(root)
+	text := guardLivenessAdvisory(root, deferredScansAsyncEnabled())
 	if !strings.Contains(text, "subject-fires") {
 		t.Fatalf("the render did not produce an advisory from the persisted result:\n%s", text)
 	}
@@ -256,7 +256,7 @@ func TestGuardLivenessRenderJoinBoundIsDeclaredAndHonoured(t *testing.T) {
 	}
 
 	start := time.Now()
-	text := guardLivenessAdvisory(root)
+	text := guardLivenessAdvisory(root, deferredScansAsyncEnabled())
 	elapsed := time.Since(start)
 	if text == "" {
 		t.Fatal("the render produced nothing on a result carrying a non-clean entry")
@@ -270,7 +270,7 @@ func TestGuardLivenessRenderJoinBoundIsDeclaredAndHonoured(t *testing.T) {
 // the honest outcome — an advisory would be reporting a set nothing evaluated.
 func TestGuardLivenessRenderIsSilentWithNoPersistedResult(t *testing.T) {
 	stubGuardLivenessStore(t)
-	if text := guardLivenessAdvisory(t.TempDir()); text != "" {
+	if text := guardLivenessAdvisory(t.TempDir(), deferredScansAsyncEnabled()); text != "" {
 		t.Fatalf("the render spoke with nothing persisted: %q", text)
 	}
 }

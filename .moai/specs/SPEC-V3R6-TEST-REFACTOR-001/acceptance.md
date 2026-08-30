@@ -2,7 +2,6 @@
 id: SPEC-V3R6-TEST-REFACTOR-001
 title: "Go test suite refactor — acceptance criteria"
 version: "0.1.3"
-status: completed
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec
