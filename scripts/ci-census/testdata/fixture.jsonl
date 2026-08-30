@@ -1,0 +1,31 @@
+{"ImportPath":"example.com/censusfix/delta","Action":"build-output","Output":"# example.com/censusfix/delta\n"}
+{"ImportPath":"example.com/censusfix/delta","Action":"build-output","Output":"delta/broken.go:3:14: syntax error: unexpected {, expected )\n"}
+{"ImportPath":"example.com/censusfix/delta","Action":"build-fail"}
+{"Time":"2026-08-29T00:00:00.000000+09:00","Action":"start","Package":"example.com/censusfix/alpha"}
+{"Time":"2026-08-29T00:00:00.000001+09:00","Action":"start","Package":"example.com/censusfix/beta"}
+{"Time":"2026-08-29T00:00:00.000002+09:00","Action":"output","Package":"example.com/censusfix/beta","Output":"?   \texample.com/censusfix/beta\t[no test files]\n"}
+{"Time":"2026-08-29T00:00:00.000003+09:00","Action":"skip","Package":"example.com/censusfix/beta","Elapsed":0}
+{"Time":"2026-08-29T00:00:00.000004+09:00","Action":"start","Package":"example.com/censusfix/delta"}
+{"Time":"2026-08-29T00:00:00.000005+09:00","Action":"output","Package":"example.com/censusfix/delta","Output":"FAIL\texample.com/censusfix/delta [build failed]\n"}
+{"Time":"2026-08-29T00:00:00.000006+09:00","Action":"fail","Package":"example.com/censusfix/delta","Elapsed":0,"FailedBuild":"example.com/censusfix/delta"}
+{"Time":"2026-08-29T00:00:00.000007+09:00","Action":"run","Package":"example.com/censusfix/alpha","Test":"TestAlphaPasses"}
+{"Time":"2026-08-29T00:00:00.000008+09:00","Action":"output","Package":"example.com/censusfix/alpha","Test":"TestAlphaPasses","Output":"=== RUN   TestAlphaPasses\n"}
+{"Time":"2026-08-29T00:00:00.000009+09:00","Action":"output","Package":"example.com/censusfix/alpha","Test":"TestAlphaPasses","Output":"--- PASS: TestAlphaPasses (0.00s)\n"}
+{"Time":"2026-08-29T00:00:00.000010+09:00","Action":"pass","Package":"example.com/censusfix/alpha","Test":"TestAlphaPasses","Elapsed":0}
+{"Time":"2026-08-29T00:00:00.000011+09:00","Action":"run","Package":"example.com/censusfix/alpha","Test":"TestAlphaSkips"}
+{"Time":"2026-08-29T00:00:00.000012+09:00","Action":"output","Package":"example.com/censusfix/alpha","Test":"TestAlphaSkips","Output":"=== RUN   TestAlphaSkips\n"}
+{"Time":"2026-08-29T00:00:00.000013+09:00","Action":"output","Package":"example.com/censusfix/alpha","Test":"TestAlphaSkips","Output":"    alpha_test.go:7: environment not available\n"}
+{"Time":"2026-08-29T00:00:00.000014+09:00","Action":"output","Package":"example.com/censusfix/alpha","Test":"TestAlphaSkips","Output":"--- SKIP: TestAlphaSkips (0.00s)\n"}
+{"Time":"2026-08-29T00:00:00.000015+09:00","Action":"skip","Package":"example.com/censusfix/alpha","Test":"TestAlphaSkips","Elapsed":0}
+{"Time":"2026-08-29T00:00:00.000016+09:00","Action":"run","Package":"example.com/censusfix/alpha","Test":"TestAlphaFails"}
+{"Time":"2026-08-29T00:00:00.000017+09:00","Action":"output","Package":"example.com/censusfix/alpha","Test":"TestAlphaFails","Output":"=== RUN   TestAlphaFails\n"}
+{"Time":"2026-08-29T00:00:00.000018+09:00","Action":"output","Package":"example.com/censusfix/alpha","Test":"TestAlphaFails","Output":"    alpha_test.go:10: expected 7, got 3\n"}
+{"Time":"2026-08-29T00:00:00.000019+09:00","Action":"output","Package":"example.com/censusfix/alpha","Test":"TestAlphaFails","Output":"--- FAIL: TestAlphaFails (0.00s)\n"}
+{"Time":"2026-08-29T00:00:00.000020+09:00","Action":"fail","Package":"example.com/censusfix/alpha","Test":"TestAlphaFails","Elapsed":0}
+{"Time":"2026-08-29T00:00:00.000021+09:00","Action":"output","Package":"example.com/censusfix/alpha","Output":"FAIL\n"}
+{"Time":"2026-08-29T00:00:00.000022+09:00","Action":"output","Package":"example.com/censusfix/alpha","Output":"FAIL\texample.com/censusfix/alpha\t0.341s\n"}
+{"Time":"2026-08-29T00:00:00.000023+09:00","Action":"fail","Package":"example.com/censusfix/alpha","Elapsed":0.341}
+{"Time":"2026-08-29T00:00:00.000024+09:00","Action":"start","Package":"example.com/censusfix/gamma"}
+{"Time":"2026-08-29T00:00:00.000025+09:00","Action":"output","Package":"example.com/censusfix/gamma","Output":"exit status 1\n"}
+{"Time":"2026-08-29T00:00:00.000026+09:00","Action":"output","Package":"example.com/censusfix/gamma","Output":"FAIL\texample.com/censusfix/gamma\t0.393s\n"}
+{"Time":"2026-08-29T00:00:00.000027+09:00","Action":"fail","Package":"example.com/censusfix/gamma","Elapsed":0.394}

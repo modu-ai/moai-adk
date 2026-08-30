@@ -1,0 +1,6 @@
+{"ImportPath":"./nonexistent/...","Action":"build-output","Output":"# ./nonexistent/...\n"}
+{"ImportPath":"./nonexistent/...","Action":"build-output","Output":"pattern ./nonexistent/...: lstat ./nonexistent/: no such file or directory\n"}
+{"ImportPath":"./nonexistent/...","Action":"build-fail"}
+{"Time":"2026-08-29T18:08:29.360868+09:00","Action":"start","Package":"./nonexistent/..."}
+{"Time":"2026-08-29T18:08:29.360914+09:00","Action":"output","Package":"./nonexistent/...","Output":"FAIL\t./nonexistent/... [setup failed]\n"}
+{"Time":"2026-08-29T18:08:29.360918+09:00","Action":"fail","Package":"./nonexistent/...","Elapsed":0,"FailedBuild":"./nonexistent/..."}
