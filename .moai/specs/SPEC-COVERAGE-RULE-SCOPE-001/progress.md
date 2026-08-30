@@ -13,6 +13,28 @@ open_clarifications: 2   # plan.md §C.1 방향, §D 심각도 안
 
 ## §E.2 Run-phase Evidence
 
+### 측정 기준 트리 — 이 절의 모든 수치는 여기 적힌 트리에서 잰 것이다
+
+이 절의 코퍼스 수치는 **`origin/develop`을 흡수하기 전** 트리에서 쟀다. 흡수 후 재측정값은
+아래 값들과 **다를 수 있으며, 그것은 이 카드의 결함이 아니다** — 예컨대 t336이 `plan.md` /
+`acceptance.md`에 `status:`를 담은 SPEC을 착지시켰고, `ArtifactStatusFieldForbiddenRule`이
+이를 error 2건으로 잡는다. 따라서 아래 `error 0`은 **명시된 트리에 대한 참**이며, 병합 후
+재측정값은 이 값과 **대조**되어야지 이 값을 **대체**해서는 안 된다.
+
+| 수치 | 측정 트리 | 근거 |
+|---|---|---|
+| M1 전 코퍼스 실측 (704 / 63 / 1,085 / 846 / 825) | `68ecbfe4a` | `.moai/reports/t362/m1-corpus-measurement.txt` |
+| M2 단독 코퍼스 무변화 (177건, plain rc 0, strict rc 0) | `130846ab2`의 트리 (빌드 시점 HEAD `0d102d7c7` + 미커밋 M2 변경 = 그 커밋의 트리; `git diff --stat 130846ab2 -- internal/ cmd/ pkg/` 공집합으로 확인) | `.moai/reports/t362/m2-lint-corpus{,-strict}.json` |
+| **M3 전 코퍼스 (1,090건 / warning 1,090 / error 0 / 비자문 warning 0 / plain rc 0 / strict rc 0)** | **`130846ab2`의 트리** (위와 동일 근거) | `.moai/reports/t362/m3-lint-corpus{,-strict}.json` |
+| M3 코드별 내역 (846 / 113 / 43 / 25 / 24 / 18 / 14 / 6 / 1) | `130846ab2`의 트리 | 위와 동일 |
+| 6건 `InvalidREQID` 원문 (REQ-256K-001..006) | `130846ab2`의 트리 | `m3-lint-corpus.json` |
+| 코퍼스 뮤테이션 탐침 (shipped 6 / mutant 0 / delta 6) | `2f3bd1a31`의 트리 (모집단 동결 후 재생성) | `.moai/reports/t362/m2-gate0-decomposition.txt` `[F]` |
+| Gate 0 분해 (825 / 519 / 200 / 106 / 22 / 21) | `2f3bd1a31`의 트리 (모집단은 동결 리터럴이므로 트리와 무관하게 재현) | 같은 보고서 `[A]`~`[E]` |
+| 숫자-시작 도메인 0/706 | `7ba784171`의 트리 | `ls -d .moai/specs/SPEC-* \| sed 's\|.*/SPEC-\|\|' \| grep -cE '^[0-9]'` |
+| C2 미러 유/무 대조 (0건 vs 8 advisory warning, 양쪽 rc 0) | `130846ab2`의 트리 | `.moai/reports/t362/c2-nomirror-strict.txt` |
+| 패키지 게이트 (`go test` ok / `golangci-lint` 0 issues / `go vet` rc 0 / 커버리지 89.4%) | `130846ab2` 이후 매 커밋에서 재실행, 최종 `2f3bd1a31` | 본문 각 항목 |
+
+
 ### M1 — 넓힌 REQ 파서 구현 + 전 코퍼스 실측 (2026-08-30)
 
 측정 트리: 워크트리 `.claude/worktrees/t362`, 브랜치 `WT-coverage-rule-scope`, HEAD `68ecbfe4a`.
@@ -244,7 +266,37 @@ baseline 177 → 1,090 (+913 = 846 + 25 + 6 + 36). **기존 6개 코드의 건�
 **품질 게이트**: `go vet ./internal/spec/...` rc=0 · `go test ./internal/spec/... -count=1`
 ok 36.755s · `golangci-lint run ./internal/spec/...` `0 issues.`
 
-**부채 기록 (REQ-CRS-001-003의 자문 처리가 남기는 것).** 이 처리로 두 개의 가드가 **선언만 하고
+**부채 기록 ① — `REQEntry.Widened`가 심각도를 결정한다.**
+
+비준된 기제는 **출처 플래그가 심각도를 결정하게** 만든다. 그것이 부채다.
+
+- **부채**: 심각도가 `REQEntry.Widened`에 걸려 있으므로, **자문 범위는 그 플래그를 세울 수 있는
+  경로의 집합만큼만 좁다.** 다른 이유로 `Widened = true`를 세우는 코드 경로가 새로 생기면
+  자문 범위가 조용히 넓어지고, 그 사실을 알리는 것은 아무것도 없다. 그 경로가 만드는 finding은
+  error였어야 할 것이 warning으로 나가고, 리포트에는 그대로 보이므로 억제된 티도 나지 않는다.
+- **현재 이를 묶고 있는 불변식 (측정함)**: 비테스트 코드에서 이 플래그를 세우는 경로는
+  **정확히 하나**다 — `parseREQsWithProvenance`(`internal/spec/lint_req_widen.go:79`), 그리고
+  **좁은 패턴이 같은 줄에서 같은 ID를 수집하지 못했을 때에만** 세운다. 읽어서 심각도를 정하는
+  곳도 하나다 — `reqFindingSeverity`(`internal/spec/lint.go:626`). 확인 명령과 출력:
+
+  ```
+  $ grep -rn "Widened" internal/ | grep -v "_test.go"
+  internal/spec/lint.go:444      # REQEntry 필드 주석
+  internal/spec/lint.go:452      #   Widened bool          ← 선언
+  internal/spec/lint.go:621      # reqFindingSeverity 주석
+  internal/spec/lint.go:626      #   if req.Widened        ← 유일한 판독
+  internal/spec/lint_req_widen.go:35, :79                  ← :79 이 유일한 기록
+  internal/spec/lint_artifact_status.go:156                # 무관 (영어 단어 "Widened")
+  internal/cli/mode_migrate.go:240                         # 무관 (출력 문자열)
+  ```
+
+  `_test.go`의 `REQEntry{… Widened: true}` 리터럴은 픽스처이며 실행 경로가 아니다. 위 grep이
+  비테스트에서 두 번째 기록 지점을 보이는 순간 이 불변식은 깨진 것이다.
+- **왜 불변식을 적어 두는가**: 나중에 두 번째 경로를 추가하는 사람이 **자기가 자문 범위를 넓히고
+  있다는 사실을 그 시점에 보게 하려고** 적는다. 적어 두지 않으면 그 사실은 넓어진 뒤에야, 그것도
+  누군가 error를 기대했던 finding이 warning으로 나온 것을 눈치챘을 때에만 드러난다.
+
+**부채 기록 ② (REQ-CRS-001-003의 자문 처리가 남기는 것).** 이 처리로 두 개의 가드가 **선언만 하고
 집행하지 않는 상태**가 되었다.
 
 - **왜 지금 자문인가**: 넓힌 파서가 켜지는 순간 이 코퍼스는 한 번도 검사받은 적 없는 규칙
