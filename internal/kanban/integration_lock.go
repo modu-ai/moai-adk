@@ -19,6 +19,16 @@
 // recorded holder's liveness, and the flock discipline is borrowed only to
 // serialize mutations of that record.
 //
+// That last clause described nothing for the whole of this file's first life
+// (card t194 through t298): no exclusion primitive was taken anywhere in it,
+// and the read → decide → write below ran unserialized, so two processes could
+// each be told they held the window. Anyone who read the sentence believed the
+// record was already serialized, which is the specific way a comment describing
+// an absent mechanism does damage — it is not merely uninformative, it stops
+// the next reader looking. Card t336 built the mechanism the sentence names:
+// integration_lock_mutation.go borrows exactly that discipline, at a scope of
+// its own, and the clause is true from that commit onward.
+//
 // What this does NOT do: it does not make the release worktree unwritable, and
 // it cannot. A lock that a determined caller may remove is a coordination
 // signal, not a capability boundary. Its value is that skipping the
@@ -69,6 +79,20 @@ func IsIntegrationLockForeign(err error) bool { return errors.Is(err, ErrIntegra
 // not "no pid"), while a record without it predates the anchor and is read
 // exactly as it always was.
 const PIDSourceSessionOwner = "session-owner"
+
+// integrationLockMutationTestHook is a nil-by-default, TEST-ONLY interleaving
+// point invoked once between the acquire decision and the write. It exists so
+// the cross-process criterion can CONSTRUCT the read-modify-write interleaving
+// instead of waiting for it: the unserialized window is one read, a branch, and
+// one write — tens of microseconds — so a barrier-released pair hits it only by
+// luck, and a criterion that waits for luck has no stop rule.
+//
+// It is unexported and package-level, so only `package kanban` can assign it,
+// and no non-test file does (the closure gate greps for the assignment). Every
+// production path leaves it nil, and the call site below is nil-guarded — a
+// nil func() invoked in Go panics, so the guard is what makes "with the hook
+// nil, behavior is byte-for-byte unchanged" true rather than merely intended.
+var integrationLockMutationTestHook func()
 
 // IntegrationLock is the recorded holder of the release integration window.
 //
@@ -183,27 +207,41 @@ func AcquireIntegrationLock(projectRoot string, want IntegrationLock, force bool
 		return nil, fmt.Errorf("integration lock: %w", err)
 	}
 
-	current, err := ReadIntegrationLock(projectRoot)
-	if err != nil && !force {
-		return nil, err
-	}
-	if current.Held() && current.SessionID != want.SessionID {
-		switch {
-		case force:
-			replaced = current
-		case current.Stale():
-			replaced = current
-		default:
-			return nil, fmt.Errorf("%w: %s (pid %d) since %s on %s",
-				ErrIntegrationLockHeld, current.holderLabel(), current.PID, current.AcquiredAt, current.Branch)
+	// The read → decide → write sequence runs inside the mutation lock, so at
+	// most one process at a time is inside it for a given project root
+	// (integration_lock_mutation.go). The READ is INSIDE the section, not
+	// duplicated outside it: a caller serialized behind another must decide
+	// against the state the previous mutation published, never against a read
+	// taken before the wait.
+	if mutErr := withIntegrationLockMutation(projectRoot, func() error {
+		current, readErr := ReadIntegrationLock(projectRoot)
+		if readErr != nil && !force {
+			return readErr
 		}
-	}
+		if current.Held() && current.SessionID != want.SessionID {
+			switch {
+			case force:
+				replaced = current
+			case current.Stale():
+				replaced = current
+			default:
+				return fmt.Errorf("%w: %s (pid %d) since %s on %s",
+					ErrIntegrationLockHeld, current.holderLabel(), current.PID, current.AcquiredAt, current.Branch)
+			}
+		}
 
-	if want.AcquiredAt == "" {
-		want.AcquiredAt = time.Now().UTC().Format(time.RFC3339)
-	}
-	if err := writeIntegrationLock(path, &want); err != nil {
-		return nil, err
+		if want.AcquiredAt == "" {
+			want.AcquiredAt = time.Now().UTC().Format(time.RFC3339)
+		}
+		// Between the decision and the write — the exact window this file's
+		// serialization discipline is about. Nil in production; see the hook's
+		// declaration for why the guard is load-bearing rather than defensive.
+		if integrationLockMutationTestHook != nil {
+			integrationLockMutationTestHook()
+		}
+		return writeIntegrationLock(path, &want)
+	}); mutErr != nil {
+		return nil, mutErr
 	}
 	return replaced, nil
 }
@@ -213,20 +251,31 @@ func AcquireIntegrationLock(projectRoot string, want IntegrationLock, force bool
 // force releases a foreign window, for the same wedged-holder reason acquire
 // carries it.
 func ReleaseIntegrationLock(projectRoot, sessionID string, force bool) (released *IntegrationLock, err error) {
-	current, err := ReadIntegrationLock(projectRoot)
-	if err != nil && !force {
-		return nil, err
+	// Same critical section as acquire, for the same reason: read → holder
+	// check → remove is a read-modify-write too. Every sentinel and every
+	// message below is byte-identical to what it was before the section
+	// existed — this changes WHEN mutations interleave, never WHAT a given
+	// single-threaded call decides or says.
+	if mutErr := withIntegrationLockMutation(projectRoot, func() error {
+		current, readErr := ReadIntegrationLock(projectRoot)
+		if readErr != nil && !force {
+			return readErr
+		}
+		if current == nil || !current.Held() {
+			return ErrIntegrationLockNotHeld
+		}
+		if current.SessionID != sessionID && !force {
+			return fmt.Errorf("%w: %s (pid %d) holds it", ErrIntegrationLockForeign, current.holderLabel(), current.PID)
+		}
+		if remErr := os.Remove(integrationLockPath(projectRoot)); remErr != nil && !errors.Is(remErr, os.ErrNotExist) {
+			return fmt.Errorf("integration lock: %w", remErr)
+		}
+		released = current
+		return nil
+	}); mutErr != nil {
+		return nil, mutErr
 	}
-	if current == nil || !current.Held() {
-		return nil, ErrIntegrationLockNotHeld
-	}
-	if current.SessionID != sessionID && !force {
-		return nil, fmt.Errorf("%w: %s (pid %d) holds it", ErrIntegrationLockForeign, current.holderLabel(), current.PID)
-	}
-	if err := os.Remove(integrationLockPath(projectRoot)); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return nil, fmt.Errorf("integration lock: %w", err)
-	}
-	return current, nil
+	return released, nil
 }
 
 // holderLabel prefers the human-facing session name and falls back to the id.
@@ -254,12 +303,42 @@ func writeIntegrationLock(path string, lock *IntegrationLock) error {
 		return fmt.Errorf("integration lock: %w", err)
 	}
 	data = append(data, '\n')
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+
+	// The staging path is unique per call. It used to be a fixed sibling name
+	// derived from the record's own path, shared by every concurrent writer;
+	// now no two writers can ever share one staging file. (The retired literal
+	// is deliberately not quoted here: AC-ILA-008 greps this file for it, and a
+	// comment naming it would make that check answer about prose rather than
+	// about code.)
+	//
+	// Stated honestly (REQ-ILA-010): under the mutation lock two concurrent
+	// writers cannot reach this function at all, so this is defence in depth
+	// against a FUTURE caller that writes outside the lock — not a defect
+	// anyone observed, and no criterion here claims to have seen a torn record.
+	// What is observable is the property: a unique staging name, and no residue
+	// left behind on any path.
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".integration-lock-*.tmp")
+	if err != nil {
 		return fmt.Errorf("integration lock: %w", err)
 	}
-	if err := os.Rename(tmp, path); err != nil {
-		_ = os.Remove(tmp)
+	staging := tmp.Name()
+	if _, err := tmp.Write(data); err != nil {
+		_ = tmp.Close()
+		_ = os.Remove(staging)
+		return fmt.Errorf("integration lock: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		_ = os.Remove(staging)
+		return fmt.Errorf("integration lock: %w", err)
+	}
+	// CreateTemp opens at 0600; the record is read by every other session's
+	// guard, so restore the 0644 the fixed-path write used.
+	if err := os.Chmod(staging, 0o644); err != nil {
+		_ = os.Remove(staging)
+		return fmt.Errorf("integration lock: %w", err)
+	}
+	if err := os.Rename(staging, path); err != nil {
+		_ = os.Remove(staging)
 		return fmt.Errorf("integration lock: %w", err)
 	}
 	return nil
