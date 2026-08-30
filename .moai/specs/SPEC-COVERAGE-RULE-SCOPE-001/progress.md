@@ -514,6 +514,56 @@ AC id만 적고 매핑을 적지 않으며, 나머지는 둘 다 없다). 반대
 미커버로 읽히는 것은 규칙이 **작동하는** 모습이다. 잔여는 코퍼스 작성 방식의 문제이지 이 술어의
 좁음이 아니다.
 
+**모든 코퍼스 수치는 로컬 측정이며, CI보다 체계적으로 19 높다.**
+
+이 §E.2에 적힌 warning 수치는 **전부 local**이다. CI의 `SPEC Lint` 워크플로는
+`actions/checkout@v7`를 `fetch-depth` 없이 쓰므로 히스토리 없는 depth-1 셸로 클론을 받고,
+`StatusGitConsistencyRule`과 `OwnershipTransitionRule`은 둘 다 `git log --follow`로 판정하므로
+CI에서는 **볼 것이 없어 아무것도 내지 않는다**. 그래서 같은 트리에서도
+
+- local = CI + `StatusGitConsistency` 18 + `OwnershipTransitionInvalid` 1 = **CI + 19**
+
+이 성립한다. 리드가 CI 로그에서 잰 값(트리 `1e5199b88`): warning 1,072 + error 2.
+이 카드가 로컬에서 잰 값(트리 `9610e013e`): warning 1,091 + error 2. 차이는 정확히 19다.
+
+**따라서 CI에서 1,091을 찾다가 1,072를 보고 회귀로 읽어서는 안 된다.** 둘은 같은 측정이 아니며
+출처 없이 비교해서는 안 된다. CI 체크아웃 자체는 **다른 카드 소관**이고 이 카드는 건드리지
+않았다.
+
+**846 델타는 이 오프셋에 오염되지 않는다.** `CoverageIncomplete`는 git 히스토리에 의존하지
+않으므로 CI와 로컬이 **동일하게 846**을 읽는다(리드의 CI 로그 판독: CI `1e5199b88`에서 846).
+오프셋을 만드는 두 규칙은 `StatusGitConsistency`와 `OwnershipTransition` 둘뿐이다.
+
+**flag 축은 무해함이 이 트리에서도 재확인됐다.** 같은 바이너리·같은 트리에서 plain과
+`--strict`의 JSON을 각각 뽑아 `cmp` 했다 — 세 쌍 모두 **바이트 동일**:
+
+| 비교 | 명령 | 결과 |
+|---|---|---|
+| M4 이전 plain vs `--strict` | `/tmp/moai-t362-m4-base spec lint [--strict] --json` | `cmp` rc=0 |
+| M4 이후 plain vs `--strict` | `/tmp/moai-t362-m4-committed spec lint [--strict] --json` | `cmp` rc=0 |
+| M4 이전 `--strict` vs 이후 `--strict` | 위 두 바이너리 | `cmp` rc=0 → **델타 0** |
+
+코드가 예측하는 그대로다: `Strict`는 `HasErrors()` 안에서만 소비되며 finding 방출 경로에
+닿지 않는다(`lint.go:56-66`). 다른 레인이 보고한 178 vs 159 불일치는 **이 트리에서 재현되지
+않는다.**
+
+**라벨을 붙인 최종 수치** (전부 `local`, 트리 `9610e013e`, `spec.md` 분모 710 —
+`glob .moai/specs/SPEC-*/spec.md`로 이 트리에서 잰 값이며, 계획 단계의 704는 더 이른 트리
+`68ecbfe4a`의 값이다):
+
+| 수치 | 값 |
+|---|---|
+| `CoverageIncomplete` (local, `spec lint --strict --json`, `9610e013e`, 분모 710) | **846** |
+| 같은 값, M4 **이전** (local, `spec lint --strict --json`, `706e2ae4e`, 분모 710) | **846 → 델타 0** |
+| finding 총수 (local, `--strict --json`, `9610e013e`) | 1,093 |
+| warning / error 분해 (local, plain 사람용 출력, `9610e013e`) | `2 error(s), 1091 warning(s)` |
+| 비자문 warning (local, `--strict --json`, `9610e013e`) | 0 |
+| plain rc / `--strict` rc (local, `9610e013e`) | 1 / 1 — 양쪽 모두 상속 error 2건 때문 |
+| CI 환산값 (위 오프셋 적용, **미관측 — 산출값**) | warning 1,072 + error 2 |
+
+마지막 행은 **관측이 아니라 산출**이다. 이 커밋은 아직 푸시되지 않았으므로 CI가 이 트리를
+본 적이 없다.
+
 **살아있는 문서에서의 증거 — §2.3 미러 제거 시뮬레이션 (8 → 0)**
 
 `.moai/reports/t362/m4-mirror-removal-sim-{before,after}.json`. 코퍼스는 건드리지 않았다:
@@ -559,7 +609,11 @@ total_run_phase_files: 10             # lint.go, lint_req_widen.go, lint_coverag
                                       # + 4 test files + 3 M4 fixture dirs
 m1_to_mN_commit_strategy: milestone-per-commit
 open_amendments: 1                    # C2 (§2.3 미러 삭제) — manager-spec 소관, 이 커밋 뒤 순서
-corpus_coverage_incomplete_delta: 0   # 846 -> 846; 모집단 서로소, m4-population-measurement.txt
+corpus_coverage_incomplete_delta: 0   # 846 -> 846 (local, spec lint --strict --json,
+                                      # 706e2ae4e -> 9610e013e, spec.md 분모 710)
+                                      # 모집단 서로소 — m4-population-measurement.txt
+corpus_figures_source: local          # CI는 shallow checkout이라 warning이 19 낮다(§E.2)
+plain_vs_strict_byte_identical: true  # cmp rc=0, 3쌍 모두
 ```
 
 ## §E.4 Sync-phase Audit-Ready Signal
