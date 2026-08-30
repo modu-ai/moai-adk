@@ -1,7 +1,6 @@
 ---
 spec_id: SPEC-V3R2-MIG-002
 phase: plan
-status: audit-ready
 plan_complete_at: 2026-05-18
 ---
 

@@ -2,7 +2,6 @@
 id: SPEC-KANBAN-BOOTSTRAP-001
 title: "Research — Kanban session topology, bootstrap, and dispatch"
 version: "0.4.0"
-status: draft
 created: 2026-08-10
 updated: 2026-08-11
 author: manager-spec

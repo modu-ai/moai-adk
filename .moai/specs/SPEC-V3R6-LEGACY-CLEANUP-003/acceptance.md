@@ -2,7 +2,6 @@
 id: SPEC-V3R6-LEGACY-CLEANUP-003
 title: "SPEC-V3R6-LEGACY-CLEANUP-003 — Acceptance Criteria"
 version: "0.2.0"
-status: implemented
 created: 2026-05-24
 updated: 2026-05-24
 author: manager-spec
