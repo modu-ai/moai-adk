@@ -44,8 +44,9 @@
 **AC-CRS-001-006b** *(maps REQ-CRS-001-007)* — 회귀 쌍의 뒤쪽 (필수)
 - **Given** REQ 한 줄이 `spec.md`에 있고 그 REQ를 참조하는 AC가 `spec.md`에도 `acceptance.md`에도 **없는** 픽스처가 있을 때
 - **When** 같은 바이너리로 lint를 실행하면
-- **Then** `CoverageIncomplete`가 여전히 발화하고 종료코드가 1이다.
-- **왜 쌍이어야 하는가**: 앞쪽만 관측하면 "규칙을 껐다"와 "규칙이 올바르게 읽는다"를 구분할 수 없다. 두 결과가 갈려야만 수리가 확인된다.
+- **Then** `CoverageIncomplete`가 여전히 발화한다(**발화 여부로 판정한다** — A안 채택으로 종료코드는 양쪽 모두 0이므로 rc는 판정 기준이 아니다).
+- **판정 기준이 rc에서 발화 여부로 옮겨간 이유**: §D에서 A안(`warning` + 발화 지점 `Advisory: true`)이 채택되면서 이 기준이 원래 쓰던 기제가 사라졌다. `internal/spec/lint.go:61`은 `if r.Strict && f.Severity == SeverityWarning && !f.Advisory`이므로, 자문 등급 warning은 `--strict`에서도 error로 올라가지 않는다. 따라서 이 픽스처는 plain에서도 `--strict`에서도 rc=0으로 끝나며, rc를 판정에 쓰면 **어떤 올바른 구현으로도 이 기준을 통과시킬 수 없다.** 기준의 의도(규칙이 여전히 돌고, 회귀 쌍의 두 결과가 갈린다)는 그대로이고 판정 수단만 finding 발화로 옮긴다.
+- **왜 쌍이어야 하는가**: 앞쪽만 관측하면 "규칙을 껐다"와 "규칙이 올바르게 읽는다"를 구분할 수 없다. 두 결과가 갈려야만 수리가 확인된다. 판정이 rc에서 발화 여부로 옮겨간 것은 바로 이 구분을 유지하기 위해서다 — rc는 두 경우에 같은 값을 내므로 더 이상 갈라 세지 못한다.
 
 **AC-CRS-001-007** *(maps REQ-CRS-001-006)*
 - **Given** `acceptance.md`가 존재하지 않는 Tier S SPEC 픽스처가 있을 때
