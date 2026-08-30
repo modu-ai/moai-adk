@@ -317,3 +317,10 @@ e2e/web/
 main-fork/
 .omp/
 .vercel
+
+# `go test -json` event stream written by the CI test steps (and by the same
+# command run locally). The uploaded artifact is the durable copy; the file at
+# the repo root is scratch, and keeping it ignored means a test that shells out
+# to `git status` still sees a clean tree while the suite is running.
+/test-stream.json
+/test-stream.json.gz
