@@ -150,6 +150,23 @@ A divergence figure measured once — `git rev-list --count --left-right` return
 - **A requirement for the document carrier.** A progress or plan record citing a divergence figure with no accompanying SHA or timestamp is in scope and mechanically detectable in the same place as the ref form.
 - **Guidance only for the dispatch carrier.** A dispatch message is not a file in the tree; no detector sees it. It is doctrine and nothing more — stated so, because the two carriers look identical in prose and are not identical to any mechanism.
 
+### 2.2 Tool-provenance attribution — which build judged the tree
+
+[ZONE:Evolvable] [HARD] A measurement produced by the project's own tooling is attributed to **two** coordinates, not one: the tree it read, and the build that judged it. §2 binds the first. This clause binds the second, because a tool invoked through a shell path resolves to an *installed* build, which need not be the build the tree describes.
+
+The failure is silent by construction, and its silence is **symmetric**. Where the judging build is behind the tree, rules that landed after that build simply do not run: the output is a clean pass, the exit status is zero, the error stream is empty. Where the judging build matches the tree, the output is *also* a clean pass, the exit status is *also* zero, the error stream is *also* empty. Nothing in either result says which case occurred — so a green result is not evidence that the checks passed, only that whatever checks the invoked build happens to carry reported nothing.
+
+**The obligation.** A tool measurement cited as evidence MUST have been produced by a build made from the tree under measurement. Concretely, either:
+
+- build the tool from the tree and invoke that build **by its path**, rather than letting a shell path resolve to an installed one; or
+- verify — and state alongside the citation — that the installed build's commit is not a strict ancestor of the tree's HEAD.
+
+**What the citation carries.** A cited tool measurement names the judging build's commit next to the tree's HEAD. A measurement citing only the tree is unattributed under §2: a Gap, not a Claim.
+
+**Where it does not bind.** A build with no repository to compare against — a released artifact inside a user's project, a checkout without history — has no lag to state, and this clause requires nothing of it. A missing second coordinate is a defect only where the coordinate exists.
+
+**Not a substitute for the tooling's own verdict.** Where the tooling already computes a freshness verdict, that verdict is the mechanism; this clause governs the **citation**, and holds whether or not the invoked build is one that reports it. A build old enough to predate the freshness check is exactly the build that cannot warn you about itself.
+
 ## 3. The 5-Section Evidence-Bearing Report Format
 
 [ZONE:Evolvable] [HARD] Verification and completion reports — on either binding surface (§1.1) — SHOULD be structured as the following five sections. The format is the operational mechanism that enforces §1 and §2: it forces the actor to separate what is claimed from what was observed, and to make the unobserved explicit. Apply the format to every report, not only the first.
@@ -172,5 +189,5 @@ failure.
 
 ---
 
-Version: 1.2.0
+Version: 1.3.0
 Classification: Canonical Reference (policy-layer codification) — do not duplicate cross-referenced content; cross-reference this file instead.
