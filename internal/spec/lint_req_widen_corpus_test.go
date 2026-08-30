@@ -153,9 +153,16 @@ func TestCorpusREQWideningMeasurement(t *testing.T) {
 			})
 		}
 
-		// InvalidREQID the WIDE set would produce against the CURRENT reqIDPattern.
+		// InvalidREQID the WIDE set would produce against the PRE-M2 validation
+		// pattern, frozen as reqIDPatternPreM2.
+		//
+		// It must NOT read the live reqIDPattern. M1's figure is a statement
+		// about the pre-M2 world, and reading the live pattern silently rewrote
+		// it from 825 to 6 the moment M2 shipped — mutating committed evidence
+		// that M1's own prose cites, under an unchanged label. Same defect the
+		// Gate-0 harness carried; frozen here for the same reason.
 		for _, r := range wide {
-			if !reqIDPattern.MatchString(r.ID) {
+			if !reqIDPatternPreM2.MatchString(r.ID) {
 				invalidREQID++
 			}
 		}
@@ -214,7 +221,8 @@ func TestCorpusREQWideningMeasurement(t *testing.T) {
 		}
 		fmt.Fprintf(&b, "sim_top=%4d  %s\n", e.n, e.spec)
 	}
-	fmt.Fprintf(&b, "\n[6] InvalidREQID the WIDE set would produce against current reqIDPattern\n")
+	fmt.Fprintf(&b, "\n[6] InvalidREQID the WIDE set would produce against the frozen PRE-M2 pattern\n")
+	fmt.Fprintf(&b, "measured_against_pattern=%s\n", reqIDPatternPreM2.String())
 	fmt.Fprintf(&b, "invalid_req_id_count=%d\n", invalidREQID)
 	fmt.Fprintf(&b, "\n[7] tier breakdown of newly-collecting files (wide>0 AND narrow==0)\n")
 	fmt.Fprintf(&b, "newly_collecting_files=%d\n", newlyCollecting)

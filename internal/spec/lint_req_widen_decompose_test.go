@@ -18,15 +18,51 @@ const decomposeReportRelPath = ".moai/reports/t362/m2-gate0-decomposition.txt"
 //
 // A "misread" is an extraction the widened pattern collects whose SOURCE LINE is
 // not a REQ definition at all — a mapping row, a cross-reference list item, or a
-// bullet that merely mentions a REQ. Each predicate below is decidable on the
-// line and its enclosing heading; none is an eyeball judgment. They are counted
-// separately AND as a union, so a reader can disagree with any one of them
-// without losing the others.
+// bullet that merely mentions a REQ. Each predicate is decidable on the line and
+// its enclosing heading; none is an eyeball judgment.
+//
+// P1 exists in two readings. P1-raw over-fires (every corpus hit is a definition
+// citing another REQ) and P1-corrected supersedes it. BOTH are reported and
+// P1-raw's hits are enumerated in full: an adjudication that discards a
+// predicate is only checkable if its input survives, and a report that emits
+// only the corrected count reads identically whether the adjudication was sound
+// or wrong. The misread verdict is the union of P1-corrected, P2 and P3.
+
+// reqIDPatternPreM2 is the Gate-0 population definition, FROZEN as a literal.
+//
+// It is the validation pattern as it stood before SPEC-COVERAGE-RULE-SCOPE-001
+// M2 widened `reqIDPattern`. Freezing it is not stylistic: the harness
+// originally defined its rejected population as `!reqIDPattern.MatchString(...)`
+// against the LIVE pattern, so when M2 shipped, the whole decomposition silently
+// re-based from 825 rejections in three shape classes to 6 in one — same
+// section headings, same file, different subject. A reader comparing this
+// artifact against the prose that cites it would have found the 825, the three
+// shape classes, and the 22 misread candidates simply gone, with nothing saying
+// they had ever been measured.
+//
+// That is a measurement decided against a moving definition, which is the
+// defect class this SPEC exists to document, reproduced inside its own evidence
+// instrument. The literal below cannot move.
+var reqIDPatternPreM2 = regexp.MustCompile(`^REQ-[A-Z]{2,5}-\d{3}-\d{3}$`)
+
 var (
-	// P1: the captured text names one or more FURTHER REQ tokens. A definition
-	// line defines exactly one REQ; a line carrying several is a mapping or an
-	// index row.
+	// P1-raw: the captured text names one or more FURTHER REQ tokens.
+	//
+	// The intent was to catch a mapping or index row. It does not: a REQ
+	// definition may legitimately cite another REQ in its body, and all 22
+	// corpus hits are exactly that. Retained and reported because the
+	// adjudication that discarded it is only checkable if its input survives.
 	reqTokenAnywhere = regexp.MustCompile(`REQ-[A-Z0-9]+(?:-[A-Z0-9]+)*-\d+`)
+
+	// P1-corrected narrows P1-raw mechanically rather than by reading. A
+	// genuine mapping row carries REQ tokens and essentially nothing else; a
+	// definition carries a requirement sentence around them. Strip every REQ
+	// token plus punctuation and whitespace from the captured text: a mapping
+	// row leaves nothing behind, a definition leaves its prose.
+	//
+	// This is what "corrected P1" means in the report — a stated predicate a
+	// reader can disagree with, not a private judgment call.
+	nonSubstantiveChars = regexp.MustCompile(`[\s\p{P}\p{S}]+`)
 
 	// P3: the nearest preceding markdown heading names a section that by
 	// construction does not hold requirement definitions.
@@ -148,14 +184,15 @@ func measureWiringBlastRadius(t *testing.T, paths []string, root string) string 
 	t.Helper()
 
 	type counts struct {
-		modality  int
-		legacy    int
-		invalidNo int // InvalidREQID under the CURRENT (shipped) reqIDPattern
-		invalidPr int // InvalidREQID under reqIDPatternProposed
-		invalidMu int // InvalidREQID under reqIDPatternVacuousMutant (option (ii))
-		dupCur    int // DuplicateREQID reachable under the CURRENT reqIDPattern
-		dupPr     int // DuplicateREQID reachable under reqIDPatternProposed
-		coverage  int
+		modality   int
+		legacy     int
+		invalidNo  int // InvalidREQID under the shipped reqIDPattern (post-M2)
+		invalidPre int // InvalidREQID under the frozen pre-M2 pattern
+		invalidPr  int // InvalidREQID under reqIDPatternProposed
+		invalidMu  int // InvalidREQID under reqIDPatternVacuousMutant (option (ii))
+		dupCur     int // DuplicateREQID reachable under the CURRENT reqIDPattern
+		dupPr      int // DuplicateREQID reachable under reqIDPatternProposed
+		coverage   int
 	}
 	var narrowC, wideC counts
 	var modalitySamples []rejectedSample
@@ -193,6 +230,9 @@ func measureWiringBlastRadius(t *testing.T, paths []string, root string) string 
 			}
 			if !reqIDPatternVacuousMutant.MatchString(r.ID) && !skip["InvalidREQID"] {
 				c.invalidMu++
+			}
+			if !reqIDPatternPreM2.MatchString(r.ID) && !skip["InvalidREQID"] {
+				c.invalidPre++
 			}
 			if !reqIDPatternProposed.MatchString(r.ID) {
 				if !skip["InvalidREQID"] {
@@ -248,13 +288,21 @@ func measureWiringBlastRadius(t *testing.T, paths []string, root string) string 
 	fmt.Fprintf(&b, "# lint.skip is honored; era demotion is not (it does not reach these codes).\n")
 	fmt.Fprintf(&b, "blast_ModalityMalformed_error narrow=%d wide=%d\n", narrowC.modality, wideC.modality)
 	fmt.Fprintf(&b, "blast_LegacyEARSKeyword_warning narrow=%d wide=%d\n", narrowC.legacy, wideC.legacy)
-	fmt.Fprintf(&b, "blast_InvalidREQID_error_currentPattern narrow=%d wide=%d\n", narrowC.invalidNo, wideC.invalidNo)
-	fmt.Fprintf(&b, "blast_InvalidREQID_error_proposedPattern narrow=%d wide=%d\n", narrowC.invalidPr, wideC.invalidPr)
+	fmt.Fprintf(&b, "# Each InvalidREQID row names the pattern literal it measured, because\n")
+	fmt.Fprintf(&b, "# \"current\" moved across the M2 boundary: the same label read 825 before M2\n")
+	fmt.Fprintf(&b, "# and 6 after. A label that does not carry its own attribution is not one.\n")
+	fmt.Fprintf(&b, "blast_InvalidREQID_shippedPattern_postM2 narrow=%d wide=%d  pattern=%s\n",
+		narrowC.invalidNo, wideC.invalidNo, reqIDPattern.String())
+	fmt.Fprintf(&b, "blast_InvalidREQID_preM2Pattern narrow=%d wide=%d  pattern=%s\n",
+		narrowC.invalidPre, wideC.invalidPre, reqIDPatternPreM2.String())
+	fmt.Fprintf(&b, "blast_InvalidREQID_proposedPattern narrow=%d wide=%d  pattern=%s\n",
+		narrowC.invalidPr, wideC.invalidPr, reqIDPatternProposed.String())
 	fmt.Fprintf(&b, "\n# Corpus-level mutant probe (option (ii) vacuity check). The mutant aligns\n")
 	fmt.Fprintf(&b, "# validation EXACTLY to the extraction. A shipped-vs-mutant delta of 0 would\n")
 	fmt.Fprintf(&b, "# mean the shipped rejection class is unreachable in practice — i.e. the rule\n")
 	fmt.Fprintf(&b, "# is vacuous on real documents whatever its regexp says.\n")
-	fmt.Fprintf(&b, "blast_InvalidREQID_vacuousMutant narrow=%d wide=%d\n", narrowC.invalidMu, wideC.invalidMu)
+	fmt.Fprintf(&b, "blast_InvalidREQID_vacuousMutant narrow=%d wide=%d  pattern=%s\n",
+		narrowC.invalidMu, wideC.invalidMu, reqIDPatternVacuousMutant.String())
 	fmt.Fprintf(&b, "mutant_probe_delta_wide=%d\n", wideC.invalidPr-wideC.invalidMu)
 	fmt.Fprintf(&b, "blast_DuplicateREQID_error_currentPattern narrow=%d wide=%d\n", narrowC.dupCur, wideC.dupCur)
 	fmt.Fprintf(&b, "blast_DuplicateREQID_error_proposedPattern narrow=%d wide=%d\n", narrowC.dupPr, wideC.dupPr)
@@ -296,14 +344,17 @@ func TestCorpusRejectedREQIDDecomposition(t *testing.T) {
 		shapeCount     = map[string]int{}
 		shapeSamples   = map[string][]rejectedSample{}
 		p1Count        int
+		p1CorrCount    int
 		p2Count        int
 		p3Count        int
 		unionCount     int
 		p1Samples      []rejectedSample
+		p1CorrSamples  []rejectedSample
 		p2Samples      []rejectedSample
 		p3Samples      []rejectedSample
 		narrowValidNot []rejectedSample
 		wideNotNarrow  int
+		shippedReject  int
 	)
 
 	for _, p := range paths {
@@ -333,6 +384,10 @@ func TestCorpusRejectedREQIDDecomposition(t *testing.T) {
 			s := rejectedSample{loc: fmt.Sprintf("%s:%d", rel, r.Line), line: src, id: r.ID}
 
 			if !reqIDPattern.MatchString(r.ID) {
+				shippedReject++
+			}
+
+			if !reqIDPatternPreM2.MatchString(r.ID) {
 				rejected++
 				k := classifyREQID(r.ID).key()
 				shapeCount[k]++
@@ -346,6 +401,16 @@ func TestCorpusRejectedREQIDDecomposition(t *testing.T) {
 					hit = true
 					if len(p1Samples) < 60 {
 						p1Samples = append(p1Samples, s)
+					}
+					// P1-corrected: strip every REQ token, then every
+					// punctuation/space rune. A mapping row leaves nothing.
+					residue := nonSubstantiveChars.ReplaceAllString(
+						reqTokenAnywhere.ReplaceAllString(r.Text, ""), "")
+					if residue == "" {
+						p1CorrCount++
+						if len(p1CorrSamples) < 60 {
+							p1CorrSamples = append(p1CorrSamples, s)
+						}
 					}
 				}
 				if strings.TrimSpace(r.Text) == "" {
@@ -396,12 +461,21 @@ func TestCorpusRejectedREQIDDecomposition(t *testing.T) {
 	fmt.Fprintf(&b, "# SPEC-COVERAGE-RULE-SCOPE-001 M2 Gate 0 — rejected-REQ-ID decomposition\n")
 	fmt.Fprintf(&b, "# produced by: MOAI_T362_CORPUS_SCAN=1 go test ./internal/spec/... -run TestCorpusRejectedREQIDDecomposition -v\n")
 	fmt.Fprintf(&b, "scan_glob=%s\n", corpusSpecGlobRel)
-	fmt.Fprintf(&b, "\n[A] totals\n")
-	fmt.Fprintf(&b, "wide_extractions_total=%d\n", wideTotal)
-	fmt.Fprintf(&b, "rejected_by_reqIDPattern=%d\n", rejected)
-	fmt.Fprintf(&b, "accepted_by_reqIDPattern=%d\n", accepted)
+	fmt.Fprintf(&b, "\n# POPULATION DEFINITION — frozen, and deliberately not the live pattern.\n")
+	fmt.Fprintf(&b, "# Sections [A]-[E] decompose the ids the widened extraction collects that the\n")
+	fmt.Fprintf(&b, "# PRE-M2 validation pattern rejected. That pattern is frozen as a literal here:\n")
+	fmt.Fprintf(&b, "population_pattern_preM2=%s\n", reqIDPatternPreM2.String())
+	fmt.Fprintf(&b, "# An earlier revision defined this population against the LIVE reqIDPattern, so\n")
+	fmt.Fprintf(&b, "# shipping M2 silently re-based every count below from 825 to 6 under unchanged\n")
+	fmt.Fprintf(&b, "# headings. The post-M2 residual is reported separately, at the end of [D].\n")
+	fmt.Fprintf(&b, "shipped_pattern_now=%s\n", reqIDPattern.String())
 
-	fmt.Fprintf(&b, "\n[B] shape histogram of REJECTED ids\n")
+	fmt.Fprintf(&b, "\n[A] totals (population: rejected by the frozen PRE-M2 pattern)\n")
+	fmt.Fprintf(&b, "wide_extractions_total=%d\n", wideTotal)
+	fmt.Fprintf(&b, "rejected_by_preM2Pattern=%d\n", rejected)
+	fmt.Fprintf(&b, "accepted_by_preM2Pattern=%d\n", accepted)
+
+	fmt.Fprintf(&b, "\n[B] shape histogram of REJECTED ids (frozen PRE-M2 population)\n")
 	fmt.Fprintf(&b, "# key: segs=<total '-' segments>  domain=<alpha|alnum>  domainSegs=<n>  tailSegs=<n>  tailWidth=<digit widths>\n")
 	for _, s := range shapes {
 		fmt.Fprintf(&b, "shape=%-70s count=%d\n", s.k, s.n)
@@ -416,17 +490,38 @@ func TestCorpusRejectedREQIDDecomposition(t *testing.T) {
 	}
 
 	fmt.Fprintf(&b, "\n[D] misread predicates (each decidable on the source line)\n")
-	fmt.Fprintf(&b, "# P1 = captured text names >=1 FURTHER REQ token (mapping/index row, not a definition)\n")
-	fmt.Fprintf(&b, "# P2 = captured text empty after trim (no requirement body)\n")
-	fmt.Fprintf(&b, "# P3 = nearest preceding heading matches a non-requirements section pattern\n")
-	fmt.Fprintf(&b, "misread_p1_extra_req_tokens=%d\n", p1Count)
+	fmt.Fprintf(&b, "# A misread is an extraction whose SOURCE LINE is not a REQ definition at all.\n")
+	fmt.Fprintf(&b, "#\n")
+	fmt.Fprintf(&b, "# P1-raw       = captured text names >=1 FURTHER REQ token.\n")
+	fmt.Fprintf(&b, "#                Intended to catch a mapping/index row. It does NOT: a definition\n")
+	fmt.Fprintf(&b, "#                may legitimately cite another REQ in its body. Reported, and every\n")
+	fmt.Fprintf(&b, "#                hit enumerated below, so the narrowing that discarded it is checkable.\n")
+	fmt.Fprintf(&b, "# P1-corrected = of the P1-raw hits, those whose captured text is NOTHING BUT REQ\n")
+	fmt.Fprintf(&b, "#                tokens once punctuation and whitespace are stripped — a real mapping\n")
+	fmt.Fprintf(&b, "#                row leaves an empty residue, a definition leaves its prose.\n")
+	fmt.Fprintf(&b, "# P2           = captured text empty after trim (no requirement body)\n")
+	fmt.Fprintf(&b, "# P3           = nearest preceding heading matches a non-requirements section pattern\n")
+	fmt.Fprintf(&b, "#\n")
+	fmt.Fprintf(&b, "# The misread verdict is the UNION of P1-corrected, P2 and P3. P1-raw is a\n")
+	fmt.Fprintf(&b, "# superseded candidate and is NOT counted in it.\n")
+	fmt.Fprintf(&b, "misread_p1_raw_extra_req_tokens=%d\n", p1Count)
+	fmt.Fprintf(&b, "misread_p1_corrected_tokens_only=%d\n", p1CorrCount)
 	fmt.Fprintf(&b, "misread_p2_empty_text=%d\n", p2Count)
 	fmt.Fprintf(&b, "misread_p3_non_req_heading=%d\n", p3Count)
-	fmt.Fprintf(&b, "misread_union=%d\n", unionCount)
-	fmt.Fprintf(&b, "misread_union_pct_of_rejected=%.1f\n", pctOf(unionCount, rejected))
+	fmt.Fprintf(&b, "misread_verdict_union_corrected=%d\n", p1CorrCount+p2Count+p3Count)
+	fmt.Fprintf(&b, "misread_union_raw_upper_bound=%d\n", unionCount)
+	fmt.Fprintf(&b, "misread_verdict_pct_of_rejected=%.1f\n", pctOf(p1CorrCount+p2Count+p3Count, rejected))
+
+	fmt.Fprintf(&b, "\n-- every P1-raw hit, enumerated (n=%d)\n", p1Count)
 	for _, e := range p1Samples {
-		fmt.Fprintf(&b, "misread_sample_P1=%s\n   | %s\n", e.loc, e.line)
+		fmt.Fprintf(&b, "p1_raw=%s %s\n   | %s\n", e.loc, e.id, e.line)
 	}
+	fmt.Fprintf(&b, "\n-- every P1-corrected hit, enumerated (n=%d)\n", p1CorrCount)
+	for _, e := range p1CorrSamples {
+		fmt.Fprintf(&b, "p1_corrected=%s %s\n   | %s\n", e.loc, e.id, e.line)
+	}
+	fmt.Fprintf(&b, "\n-- post-M2 residual, reported here so it is not mistaken for the population above\n")
+	fmt.Fprintf(&b, "rejected_by_shippedPattern_postM2=%d\n", shippedReject)
 	for _, e := range p2Samples {
 		fmt.Fprintf(&b, "misread_sample_P2=%s\n   | %s\n", e.loc, e.line)
 	}

@@ -32,7 +32,8 @@ sim_top=  27  SPEC-V3R2-RT-004
 sim_top=  27  SPEC-V3R2-RT-005
 sim_top=  25  SPEC-CC2219-UPSTREAM-ALIGN-001
 
-[6] InvalidREQID the WIDE set would produce against current reqIDPattern
+[6] InvalidREQID the WIDE set would produce against the frozen PRE-M2 pattern
+measured_against_pattern=^REQ-[A-Z]{2,5}-\d{3}-\d{3}$
 invalid_req_id_count=825
 
 [7] tier breakdown of newly-collecting files (wide>0 AND narrow==0)

@@ -84,12 +84,34 @@ M3 배선 후에만 관측된다. ② 825건 `InvalidREQID`는 M2가 닫아야 �
 관측된 형태는 이 셋뿐이다. 도메인 분절은 1개 또는 2개, 숫자 꼬리는 3자리 그룹 1개 또는 2개
 — 코퍼스 전체가 이 범위 안에 있다.
 
-**오독(misread) 건수 = 0.** 세 가지 기계적 술어로 쟀다. P2(캡처된 본문이 빈 줄) 0건,
-P3(가장 가까운 상위 표제가 교차참조·Gaps·이력 등 요구사항 절이 아님) 0건.
-P1(캡처 본문에 다른 REQ 토큰이 등장 — 매핑 행 후보) 22건이 걸렸으나, **22건을 전수 열람한
-결과 모두 다른 REQ를 본문에서 인용하는 진짜 정의 줄이었다.** 따라서 P1은 위양성률 100%인
-과대 술어이고, 교정된 판정으로는 오독 0건이다. 넓힌 추출이 정의 아닌 줄을 정의로 읽는 사례는
-코퍼스에 없다. (술어별 전수 목록은 보고서 `[D]` 절.)
+**오독(misread) 건수 = 0.** 보고서 `[D]` 절에 **두 판독을 모두** 방출한다:
+
+```
+misread_p1_raw_extra_req_tokens=22      ← P1-raw (과대 술어, 폐기됨)
+misread_p1_corrected_tokens_only=0      ← P1-corrected (교정 술어)
+misread_p2_empty_text=0
+misread_p3_non_req_heading=0
+misread_verdict_union_corrected=0       ← 판정 = P1-corrected ∪ P2 ∪ P3
+misread_union_raw_upper_bound=22        ← 교정 전 상한 (판정 아님)
+```
+
+P1-raw(캡처 본문에 다른 REQ 토큰이 등장)는 매핑 행을 잡으려던 술어인데, REQ 정의가 본문에서
+다른 REQ를 인용하는 것은 정상이므로 잡히지 않는다 — 22건 전부가 그런 정의 줄이다.
+**교정 술어 P1-corrected는 사람이 읽어 버린 것이 아니라 기계적으로 좁힌 것이다**: 캡처 본문에서
+REQ 토큰을 전부 제거하고 이어서 구두점·공백을 제거했을 때 잔여가 **빈 문자열**이면 매핑 행,
+산문이 남으면 정의. 진짜 매핑 행은 아무것도 남기지 않는다. 이 술어로 0건이다.
+
+**22건은 `[D]` 절에 `p1_raw=<file>:<line> <ID>` + 원문 줄로 전수 열거된다**(`[E]` 절이 21건
+bold-marker 항목을 열거하는 것과 같은 모양). 교정 술어만 방출하면 그 0이 판단이 옳아서 0인지
+틀려서 0인지 읽는 쪽에서 구분할 수 없다 — 폐기한 술어의 입력이 남아 있어야 폐기가 검증 가능하다.
+
+**모집단 정의가 얼어 있다는 점이 중요하다.** `[A]`~`[E]`의 모집단은 **M2 이전 검증 패턴**
+(`^REQ-[A-Z]{2,5}-\d{3}-\d{3}$`, 보고서에 리터럴로 고정)이 거부한 집합이다. 초기 판본은 이
+모집단을 **살아 있는 `reqIDPattern`** 으로 정의했고, 그래서 M2가 착지하는 순간 `[A]`~`[D]`의
+모든 수치가 825/519/200/106/22에서 6/6/0으로 **표제를 그대로 둔 채 조용히 재기준화**됐다.
+움직이는 정의에 대고 잰 측정이며, 이 SPEC이 문서화하려는 결함을 증거 도구 안에서 재생산한
+것이다. 이제 리터럴로 얼어 있어 움직이지 않는다. M2 이후 잔여(6건)는
+`rejected_by_shippedPattern_postM2`로 `[D]` 끝에 **따로** 보고한다.
 
 **21행 차이의 원인 = 굵게 표시 마커.** 넓힘 1,085 − 좁힘 239 = 846인데 `InvalidREQID`는
 825다. 차이 21은 "형태상 좁은 패턴에 맞지만 좁은 **줄** 패턴이 수집하지 못한" ID이며,
@@ -116,8 +138,8 @@ P1(캡처 본문에 다른 REQ 토큰이 등장 — 매핑 행 후보) 22건이 
 `^REQ-[A-Z0-9]+(?:-[A-Z0-9]+)*-\d+$`)를 같은 스캔 안에서 함께 재도록 넣었다:
 
 ```
-blast_InvalidREQID_error_proposedPattern  narrow=0  wide=6   ← 채택 패턴 (현재 shipped)
-blast_InvalidREQID_vacuousMutant          narrow=0  wide=0   ← option (ii) 뮤턴트
+blast_InvalidREQID_proposedPattern  narrow=0  wide=6   ← 채택 패턴 (현재 shipped)
+blast_InvalidREQID_vacuousMutant    narrow=0  wide=0   ← option (ii) 뮤턴트
 mutant_probe_delta_wide=6
 ```
 
@@ -177,7 +199,7 @@ Gate 0의 `[F]` 절에서 전 소비자를 좁힘/넓힘으로 시뮬레이션�
 |---|---|---|---|
 | `CoverageIncomplete` | error | 0 | **846** |
 | `ModalityMalformed` | error | 0 | **25** |
-| `InvalidREQID` (M2 후 패턴) | error | 0 | **6** |
+| `InvalidREQID` (M2 후 shipped 패턴) | error | 0 | **6** |
 | `DuplicateREQID` | error | 0 | 0 |
 | `LegacyEARSKeyword` | warning | 7 | **43** |
 

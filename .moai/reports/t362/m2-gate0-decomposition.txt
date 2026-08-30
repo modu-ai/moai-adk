@@ -2,117 +2,170 @@
 # produced by: MOAI_T362_CORPUS_SCAN=1 go test ./internal/spec/... -run TestCorpusRejectedREQIDDecomposition -v
 scan_glob=.moai/specs/SPEC-*/spec.md
 
-[A] totals
-wide_extractions_total=1085
-rejected_by_reqIDPattern=6
-accepted_by_reqIDPattern=1079
+# POPULATION DEFINITION — frozen, and deliberately not the live pattern.
+# Sections [A]-[E] decompose the ids the widened extraction collects that the
+# PRE-M2 validation pattern rejected. That pattern is frozen as a literal here:
+population_pattern_preM2=^REQ-[A-Z]{2,5}-\d{3}-\d{3}$
+# An earlier revision defined this population against the LIVE reqIDPattern, so
+# shipping M2 silently re-based every count below from 825 to 6 under unchanged
+# headings. The post-M2 residual is reported separately, at the end of [D].
+shipped_pattern_now=^REQ-[A-Z][A-Z0-9]*(?:-[A-Z][A-Z0-9]*)?-\d{3}(?:-\d{3})?$
 
-[B] shape histogram of REJECTED ids
+[A] totals (population: rejected by the frozen PRE-M2 pattern)
+wide_extractions_total=1085
+rejected_by_preM2Pattern=825
+accepted_by_preM2Pattern=260
+
+[B] shape histogram of REJECTED ids (frozen PRE-M2 population)
 # key: segs=<total '-' segments>  domain=<alpha|alnum>  domainSegs=<n>  tailSegs=<n>  tailWidth=<digit widths>
-shape=segs=3 domain=alnum domainSegs=1 tailSegs=1 tailWidth=3                count=6
+shape=segs=3 domain=alpha domainSegs=1 tailSegs=1 tailWidth=3                count=519
+shape=segs=5 domain=alnum domainSegs=2 tailSegs=2 tailWidth=3.3              count=200
+shape=segs=3 domain=alnum domainSegs=1 tailSegs=1 tailWidth=3                count=106
 
 [C] up to 3 verbatim source lines per shape class
 
--- shape: segs=3 domain=alnum domainSegs=1 tailSegs=1 tailWidth=3 (n=6)
-   .moai/specs/SPEC-HANDOFF-CTXGUIDE-001/spec.md:40
-   | - **REQ-256K-001**: Where `shouldShowHandoffGuide`가 컨텍스트 윈도우 사용률을 판정할 때, the system shall 정확히-일치 switch 대신 **크기 무관 밴드 로직**을 사용해야 한다.
-   .moai/specs/SPEC-HANDOFF-CTXGUIDE-001/spec.md:41
-   | - **REQ-256K-002**: While 컨텍스트 윈도우 크기가 256,000일 때, When raw 사용률이 90% 이상이면, the system shall 핸드오프 안내를 표시해야 한다.
-   .moai/specs/SPEC-HANDOFF-CTXGUIDE-001/spec.md:42
-   | - **REQ-256K-003**: Where 윈도우 크기가 500,000 이상이면 the system shall 50% 임계를, 0 초과 500,000 미만이면 90% 임계를 적용해야 한다.
+-- shape: segs=3 domain=alpha domainSegs=1 tailSegs=1 tailWidth=3 (n=519)
+   .moai/specs/SPEC-AGENT-MODEL-ENFORCE-001/spec.md:54
+   | - **REQ-AME-001**: 구현은 Agent/Task 도구 spawn에 대한 PreToolUse stdin 페이로드를 **실제로 1건 이상 포획**해야 한다(shall). 포획 결과는 `internal/hook/testdata/` 하위의 픽스처 파일로 커밋되어야 한다.
+   .moai/specs/SPEC-AGENT-MODEL-ENFORCE-001/spec.md:55
+   | - **REQ-AME-002**: 포획 결과는 다음 세 질문에 대한 관측된 답을 산출물에 기록해야 한다(shall): (a) PreToolUse가 Agent/Task에 대해 발화하는가, (b) `tool_input`이 `subagent_type`을 담는가, (c) `tool_input`이 `model` 키를 담을 수 있는가.
+   .moai/specs/SPEC-AGENT-MODEL-ENFORCE-001/spec.md:56
+   | - **REQ-AME-003**: **When** M1 측정 결과 PreToolUse가 Agent/Task에 대해 발화하지 않는 것이 관측되면, 구현은 M2 이후를 진행하지 않고 대체 관측 지점(SubagentStart / PostToolUse 배선 확장)으로 설계를 재라우팅하고 그 사유를 산출물에 기록해야 한다(shall). 관측되지 않은 능력 위에 후속 밀스톤을 쌓지 **않아야 한다(shall not)**.
+
+-- shape: segs=5 domain=alnum domainSegs=2 tailSegs=2 tailWidth=3.3 (n=200)
+   .moai/specs/SPEC-V3R2-RT-001/spec.md:88
+   | - REQ-V3R2-RT-001-001: The `HookResponse` Go struct SHALL expose every top-level field named in master §4.3 Layer 3 type block (`AdditionalContext`, `PermissionDecision`, `UpdatedInput`, `SystemMessage`, `Continue`, `WatchPaths`, `Retry`) with `json:",omitempty"` tags matching Claude Code's HookJSONOutput schema byte-for-byte.
+   .moai/specs/SPEC-V3R2-RT-001/spec.md:89
+   | - REQ-V3R2-RT-001-002: The `PermissionDecision` type SHALL be a string enum with values `"allow"`, `"ask"`, `"deny"`, and the zero value `""` representing "no opinion" (delegate to stack resolver).
+   .moai/specs/SPEC-V3R2-RT-001/spec.md:90
+   | - REQ-V3R2-RT-001-003: The system SHALL provide concrete per-event variant types for all 27 Claude Code hook events enumerated in master §7.3 Table.
+
+-- shape: segs=3 domain=alnum domainSegs=1 tailSegs=1 tailWidth=3 (n=106)
+   .moai/specs/SPEC-CC2219-UPSTREAM-ALIGN-001/spec.md:34
+   | - **REQ-GD1-001**: When the nesting doctrine surfaces are rewritten, the doctrine shall state that on Claude Code v2.1.219+ subagent nesting is **enabled by default** (changelog: depth 3), that `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH=1` disables nesting, and that the former "defaults to 0 = off" claim applied only to v2.1.217–2.1.218.
+   .moai/specs/SPEC-CC2219-UPSTREAM-ALIGN-001/spec.md:35
+   | - **REQ-GD1-002**: The doctrine shall state that for an `Agent`-carrying subagent, **omission of the `Agent` tool is the sole remaining flat-hierarchy guarantee** — the "double guarantee" framing shall be removed from every surface that carries it.
+   .moai/specs/SPEC-CC2219-UPSTREAM-ALIGN-001/spec.md:36
+   | - **REQ-GD1-003**: The rewrite shall update the following live doctrine files and their template mirrors (report §4 GD-1, line numbers indicative — anchor by quoted stale text), keeping live/template byte-parity where the mirror is byte-identical class:
 
 [D] misread predicates (each decidable on the source line)
-# P1 = captured text names >=1 FURTHER REQ token (mapping/index row, not a definition)
-# P2 = captured text empty after trim (no requirement body)
-# P3 = nearest preceding heading matches a non-requirements section pattern
-misread_p1_extra_req_tokens=0
+# A misread is an extraction whose SOURCE LINE is not a REQ definition at all.
+#
+# P1-raw       = captured text names >=1 FURTHER REQ token.
+#                Intended to catch a mapping/index row. It does NOT: a definition
+#                may legitimately cite another REQ in its body. Reported, and every
+#                hit enumerated below, so the narrowing that discarded it is checkable.
+# P1-corrected = of the P1-raw hits, those whose captured text is NOTHING BUT REQ
+#                tokens once punctuation and whitespace are stripped — a real mapping
+#                row leaves an empty residue, a definition leaves its prose.
+# P2           = captured text empty after trim (no requirement body)
+# P3           = nearest preceding heading matches a non-requirements section pattern
+#
+# The misread verdict is the UNION of P1-corrected, P2 and P3. P1-raw is a
+# superseded candidate and is NOT counted in it.
+misread_p1_raw_extra_req_tokens=22
+misread_p1_corrected_tokens_only=0
 misread_p2_empty_text=0
 misread_p3_non_req_heading=0
-misread_union=0
-misread_union_pct_of_rejected=0.0
+misread_verdict_union_corrected=0
+misread_union_raw_upper_bound=22
+misread_verdict_pct_of_rejected=0.0
+
+-- every P1-raw hit, enumerated (n=22)
+p1_raw=.moai/specs/SPEC-CC2219-UPSTREAM-ALIGN-001/spec.md:45 REQ-GD1-006
+   | - **REQ-GD1-006**: The doctrine shall record that this SPEC partially supersedes the nesting encoding of SPEC-SUBAGENT-NESTING-DOCTRINE-001 (REQ-SND-015/AC-SND-012 "shipped default stays flat" premise), via a cross-reference note — the prior SPEC's frontmatter is NOT rewritten by this SPEC.
+p1_raw=.moai/specs/SPEC-CLI-TUX-V3-001/spec.md:26 REQ-CTX-002
+   | - **REQ-CTX-002**: While `huh` v1.0.0 remains a direct dependency, the module graph shall retain `github.com/charmbracelet/lipgloss` v1 (and `github.com/charmbracelet/bubbletea` v1 per the REQ-CTX-023 deferral) as coexisting major versions without build conflict; full v1 removal is a stretch goal, not a requirement of this SPEC.
+p1_raw=.moai/specs/SPEC-CLI-TUX-V3-001/spec.md:52 REQ-CTX-019
+   | - **REQ-CTX-019**: While a trivial fast-path command runs (`version`/`help`/`completion` per the `trivialCommands` map, root.go), the lazy dependency-initialization semantics (REQ-PERF-003-A: `initLightDeps` instead of `InitDependencies`) shall be preserved.
+p1_raw=.moai/specs/SPEC-CLI-TUX-V3-002/spec.md:52 REQ-TUX2-014
+   | - **REQ-TUX2-014**: The init command shall not write any warning text to stdout — stdout carries data only (channel discipline inherited from REQ-CTX-012/016).
+p1_raw=.moai/specs/SPEC-CLI-TUX-V3-002/spec.md:65 REQ-TUX2-018
+   | - **REQ-TUX2-018**: The count of direct `fmt.Printf`/`fmt.Println`/`fmt.Print(` calls in non-test `internal/cli` sources shall be strictly lower than the re-measured pre-flight baseline (2026-07-13 실측 40) as init/wizard call sites migrate to the Printer (ratchet 승계 — REQ-CTX-017).
+p1_raw=.moai/specs/SPEC-CLI-TUX-V3-003/spec.md:53 REQ-TUX3-008
+   | - **REQ-TUX3-008**: When update analysis completes on a TTY without `--yes`, the confirmation surface shall present a Bubble Tea v2 table classifying changes per the REQ-TUX3-001 model, with per-class counts and keyboard navigation.
+p1_raw=.moai/specs/SPEC-CLI-TUX-V3-003/spec.md:74 REQ-TUX3-017
+   | - **REQ-TUX3-017**: The go.mod dependency set shall include `charm.land/bubbletea/v2` and `charm.land/bubbles/v2` as direct dependencies (resolving the M1 residual debt if SPEC-CLI-TUX-V3-002 has not already landed them); the `github.com/charmbracelet/bubbletea` v1 direct dependency shall be removed once `internal/merge/confirm.go` is promoted (REQ-TUX3-011), unless a remaining v1 consumer is documented in progress.md §E.2.
+p1_raw=.moai/specs/SPEC-CLI-TUX-V3-003/spec.md:80 REQ-TUX3-020
+   | - **REQ-TUX3-020**: The count of direct `fmt.Printf`/`fmt.Println`/`fmt.Print(` calls in non-test `internal/cli` sources shall be strictly lower than the re-measured pre-flight baseline as update-surface call sites migrate to the Printer (ratchet 승계 — REQ-CTX-017).
+p1_raw=.moai/specs/SPEC-CONTEXT-INJ-001/spec.md:106 REQ-CI-013
+   | - **REQ-CI-013**: THE ORCHESTRATOR SHALL NOT inject raw memory file contents that exceed the 5000-token cap (truncation per REQ-CI-011 mandatory).
+p1_raw=.moai/specs/SPEC-HARNESS-CADENCE-BUILD-001/spec.md:62 REQ-HCB-033
+   | - **REQ-HCB-033**: **When** `moai harness doctor` scans a harness whose manifest declares a schema-invalid schedule (REQ-HCB-012/013), it shall report an ERROR-severity finding (achieved via the existing axis-2 `v4manifest.Validate` reuse) and exit non-zero.
+p1_raw=.moai/specs/SPEC-HARNESS-CADENCE-BUILD-001/spec.md:77 REQ-HCB-051
+   | - **REQ-HCB-051**: The Schedule Retrofit branch shall run the same recurrence question round (REQ-HCB-002/005); **When** the target harness is manifest-bearing, the orchestrator shall apply an orchestrator-mediated edit adding the `schedule` object to its manifest.json, then register per REQ-HCB-030 (with `moai harness edit` as the path-discovery surface).
+p1_raw=.moai/specs/SPEC-MEM-SCOPE-001/spec.md:122 REQ-MS-016
+   | - **REQ-MS-016**: THE `audit.jsonl` FILE SHALL NOT record memory file content directly (only timestamp/agent/action/file/hashes); raw content is stored exclusively in the CAS store at `<scope>/.cas/<hash>` (see REQ-MS-003b, REQ-MS-007).
+p1_raw=.moai/specs/SPEC-STOP-HOOK-001/spec.md:105 REQ-SH-016
+   | - **REQ-SH-016**: THE STOP HOOK SHALL NOT block on missing language markers (silent pass per REQ-SH-008).
+p1_raw=.moai/specs/SPEC-STOP-HOOK-001/spec.md:106 REQ-SH-017
+   | - **REQ-SH-017**: THE STOP HOOK SHALL NOT recurse if `stop_hook_active` is true (per REQ-SH-009).
+p1_raw=.moai/specs/SPEC-V3R5-CORE-SLIM-B-001/spec.md:48 REQ-CSB-005
+   | - **REQ-CSB-005**: The system SHALL remove all `moai-platform-deployment` cross-references from 2 language rules (`.claude/rules/moai/languages/elixir.md`, `.claude/rules/moai/languages/csharp.md`) AND their template-tree mirrors (`internal/template/templates/.claude/rules/moai/languages/elixir.md`, `internal/template/templates/.claude/rules/moai/languages/csharp.md`). The references are removed entirely (not renamed) because the underlying skill is retired by REQ-CSB-004. Verified at plan-time: only elixir and csharp carry the reference; kotlin, swift, and flutter have zero matches (full-tree grep at iter 2).
+p1_raw=.moai/specs/SPEC-V3R5-CORE-SLIM-B-001/spec.md:50 REQ-CSB-007
+   | - **REQ-CSB-007**: WHEN `make build` is invoked after the deletions in REQ-CSB-001..004, the regenerated `internal/template/embedded.go` SHALL NOT contain any file path or file content from the 4 retired skill directories.
+p1_raw=.moai/specs/SPEC-WEB-CONSOLE-007/spec.md:68 REQ-WC7-009
+   | - **REQ-WC7-009**: **While** htmx is loaded, the form submission **shall** remain an `hx-boost` full-page swap returning the SAME full HTML page (006 REQ-WC6-014/015 contract preserved) — **no** section-scoped partial-swap fragment is introduced (that remains deferred per 006).
+p1_raw=.moai/specs/SPEC-WEB-CONSOLE-014/spec.md:56 REQ-WC14-010
+   | - **REQ-WC14-010**: 콘솔은 3개 mode profile(manual/personal/team) 각각의 `git_strategy.<mode>.merge_method`를 닫힌 enum select 편집 필드로 노출하고(shall), 기존 git-strategy typed 저장 경로(dirty-flag Save)로 영속화해야 한다. **While** live git-strategy.yaml에 `merge_method` 키가 부재한 동안(컴파일 기본 `squash` — REQ-MMC-003 partial-override 계약; 실측: live 0건 vs 템플릿 .tmpl 3건), 콘솔은 검증 실패 없이 select를 렌더하고 유효 컴파일 기본값을 표시해야 한다(shall). 빈 문자열은 enum 멤버가 **아니므로**(empty NOT a member), 저장은 항상 명시적 enum 값을 기록해야 한다.
+p1_raw=.moai/specs/SPEC-WEB-CONSOLE-REDESIGN-001/spec.md:51 REQ-WCR-003
+   | - **REQ-WCR-003**: REQ-WCR-001과 REQ-WCR-002의 필드 철거는 `.moai/config/sections/workflow.yaml`의 해당 yaml 키, `internal/config`의 struct 멤버, 그리고 그 접근자 함수를 제거하지 **않아야 한다(shall not)**. **When** 철거 이후 기존 `workflow.yaml`이 로드되면, 로더는 해당 키를 오류 없이 읽어야 한다(shall).
+p1_raw=.moai/specs/SPEC-WEB-CONSOLE-REDESIGN-001/spec.md:57 REQ-WCR-011
+   | - **REQ-WCR-011**: 워크플로우 탭은 `workflow.execution_mode`, `workflow.default_mode`, `workflow.agentic_loop.max_iterations`, `workflow.loop_prevention.*`를 편집 필드로 유지해야 한다(shall). 이 키들은 산문 소비자가 실존하므로 REQ-WCR-001/002의 철거 대상이 **아니다**.
+p1_raw=.moai/specs/SPEC-WEB-CONSOLE-REDESIGN-001/spec.md:64 REQ-WCR-021
+   | - **REQ-WCR-021**: REQ-WCR-020의 위젯 변경은 hidden companion 입력(`<name>__present`)을 보존해야 한다(shall). **When** bool 필드가 제출되지 않은 상태로 저장 요청이 도착하면, 파서는 이를 "미제출 → 값 보존"으로 해석해야 하며 `parseSchemaForm`의 파싱 로직은 변경되지 않아야 한다(shall not).
+p1_raw=.moai/specs/SPEC-WEB-CONSOLE-REDESIGN-001/spec.md:72 REQ-WCR-032
+   | - **REQ-WCR-032**: REQ-WCR-030/031의 티어 라벨은 Claude 대응 이름(Opus / Sonnet / Haiku / Fable)으로 표시되어야 하며(shall), 내부 키(`high` / `medium` / `low` / `fable`)는 변경되지 않아야 한다(shall not).
+
+-- every P1-corrected hit, enumerated (n=0)
+
+-- post-M2 residual, reported here so it is not mistaken for the population above
+rejected_by_shippedPattern_postM2=6
 
 [E] narrow-shape-VALID ids the NARROW LINE pattern did NOT collect
-wide_accepted_not_collected_by_narrow_line=840
-residual=.moai/specs/SPEC-AGENT-MODEL-ENFORCE-001/spec.md:54 REQ-AME-001
-   | - **REQ-AME-001**: 구현은 Agent/Task 도구 spawn에 대한 PreToolUse stdin 페이로드를 **실제로 1건 이상 포획**해야 한다(shall). 포획 결과는 `internal/hook/testdata/` 하위의 픽스처 파일로 커밋되어야 한다.
-residual=.moai/specs/SPEC-AGENT-MODEL-ENFORCE-001/spec.md:55 REQ-AME-002
-   | - **REQ-AME-002**: 포획 결과는 다음 세 질문에 대한 관측된 답을 산출물에 기록해야 한다(shall): (a) PreToolUse가 Agent/Task에 대해 발화하는가, (b) `tool_input`이 `subagent_type`을 담는가, (c) `tool_input`이 `model` 키를 담을 수 있는가.
-residual=.moai/specs/SPEC-AGENT-MODEL-ENFORCE-001/spec.md:56 REQ-AME-003
-   | - **REQ-AME-003**: **When** M1 측정 결과 PreToolUse가 Agent/Task에 대해 발화하지 않는 것이 관측되면, 구현은 M2 이후를 진행하지 않고 대체 관측 지점(SubagentStart / PostToolUse 배선 확장)으로 설계를 재라우팅하고 그 사유를 산출물에 기록해야 한다(shall). 관측되지 않은 능력 위에 후속 밀스톤을 쌓지 **않아야 한다(shall not)**.
-residual=.moai/specs/SPEC-AGENT-MODEL-ENFORCE-001/spec.md:60 REQ-AME-010
-   | - **REQ-AME-010**: PreToolUse 훅 설정은 Agent/Task를 관측하는 **별도 matcher 블록**을 가져야 한다(shall). 기존 `Write|Edit|Bash` 블록의 matcher 문자열은 변경되지 **않아야 한다(shall not)** — Write/Edit/Bash 경로의 지연·타임아웃 특성이 바뀌지 않아야 한다.
-residual=.moai/specs/SPEC-AGENT-MODEL-ENFORCE-001/spec.md:61 REQ-AME-011
-   | - **REQ-AME-011**: **When** Agent 또는 Task 도구에 대한 PreToolUse 이벤트가 감지되면, 훅 핸들러는 `tool_input`에서 에이전트 식별자(`subagent_type`)와 선언된 모델(`model`, 부재 가능)을 추출해야 한다(shall).
-residual=.moai/specs/SPEC-AGENT-MODEL-ENFORCE-001/spec.md:62 REQ-AME-012
-   | - **REQ-AME-012**: 핸들러는 추출한 에이전트 식별자를 `template.ResolveAgentModelEffort`에 전달해 해석된 모델 별칭을 얻어야 하며(shall), 프로파일 매트릭스를 재선언하거나 모델 별칭을 리터럴로 하드코딩하지 **않아야 한다(shall not)**.
-residual=.moai/specs/SPEC-AGENT-MODEL-ENFORCE-001/spec.md:63 REQ-AME-013
-   | - **REQ-AME-013**: 핸들러는 각 spawn에 대해 `.moai/logs/agent-model-audit.jsonl`에 한 줄의 구조화 레코드를 추가해야 한다(shall). 레코드는 최소한 타임스탬프, session_id, 에이전트 식별자, 선언 모델(부재 시 빈 값), 해석 모델, 판정(`ok` / `missing` / `mismatch` / `unmapped`)을 담아야 한다.
-residual=.moai/specs/SPEC-AGENT-MODEL-ENFORCE-001/spec.md:64 REQ-AME-014
-   | - **REQ-AME-014**: 판정은 다음과 같이 정의되어야 한다(shall): 해석 결과가 매핑되지 않은 에이전트(`inherit` 센티널)면 `unmapped`; 해석 모델이 구체적 별칭인데 선언이 부재하면 `missing`; 선언과 해석이 다르면 `mismatch`; 같으면 `ok`.
-residual=.moai/specs/SPEC-AGENT-MODEL-ENFORCE-001/spec.md:65 REQ-AME-015
-   | - **REQ-AME-015**: M2 단계에서 훅은 **어떤 경우에도** deny 또는 ask 결정을 반환하지 **않아야 한다(shall not)** — 판정 결과와 무관하게 allow 폴스루해야 한다(shall).
-residual=.moai/specs/SPEC-AGENT-MODEL-ENFORCE-001/spec.md:66 REQ-AME-016
-   | - **REQ-AME-016**: **When** 로그 파일 쓰기가 실패하면(권한 부재, 디스크 부족, 프로젝트 루트 미해석), 핸들러는 오류를 전파하지 않고 allow 폴스루해야 한다(shall) — 관측 실패가 spawn을 막지 **않아야 한다(shall not)**.
-residual=.moai/specs/SPEC-AGENT-MODEL-ENFORCE-001/spec.md:70 REQ-AME-020
-   | - **REQ-AME-020**: **When** 판정이 `missing` 또는 `mismatch`인 spawn이 감지되면, 훅은 비차단 권고 메시지를 방출해야 한다(shall). 메시지는 에이전트 이름, 해석된 모델 별칭, 그리고 취해야 할 시정(해당 별칭을 per-spawn `model` 인자로 주입)을 담아야 한다.
-residual=.moai/specs/SPEC-AGENT-MODEL-ENFORCE-001/spec.md:71 REQ-AME-021
-   | - **REQ-AME-021**: 권고 방출은 훅의 종료 코드를 바꾸지 **않아야 한다(shall not)** — allow 폴스루가 유지되어야 한다.
-residual=.moai/specs/SPEC-AGENT-MODEL-ENFORCE-001/spec.md:72 REQ-AME-022
-   | - **REQ-AME-022**: 훅은 `AskUserQuestion` 또는 `mcp__askuser__*`를 호출하지 **않아야 한다(shall not)**. 사용자 상호작용은 오케스트레이터 전용 채널이다.
-residual=.moai/specs/SPEC-AGENT-MODEL-ENFORCE-001/spec.md:76 REQ-AME-030
-   | - **REQ-AME-030**: 설정은 `workflow.agent_model_guard.enabled` 불리언 키를 제공해야 하며(shall), 배포 기본값은 `false`여야 한다. 이는 `workflow.branch_guard.enabled`의 선례를 그대로 따른다.
-residual=.moai/specs/SPEC-AGENT-MODEL-ENFORCE-001/spec.md:77 REQ-AME-031
-   | - **REQ-AME-031**: **Where** `workflow.agent_model_guard.enabled`가 `false`인 동안, 훅은 차단 판정을 산출하지 **않아야 한다(shall not)**. 관측(M2)과 권고(M3)는 게이트와 무관하게 계속 동작해야 한다(shall).
-residual=.moai/specs/SPEC-AGENT-MODEL-ENFORCE-001/spec.md:78 REQ-AME-032
-   | - **REQ-AME-032**: **Where** 게이트가 `true`인 동안, **When** 판정이 `mismatch`인 spawn이 감지되면 훅은 deny 결정과 `AGENT_MODEL_VIOLATION:` 접두사를 가진 사유를 반환해야 한다(shall).
-residual=.moai/specs/SPEC-AGENT-MODEL-ENFORCE-001/spec.md:79 REQ-AME-033
-   | - **REQ-AME-033**: 차단은 **긍정적 증거에만** 발화해야 한다(shall) — 에이전트 식별자를 추출했고, 해석이 매핑됐고, 선언 모델이 존재하며, 두 값이 다른 경우에 한한다. 그 외 모든 불확실(페이로드 파싱 실패, 에이전트 미매핑, 설정 미해석, 프로젝트 루트 미해석)에서는 allow 폴스루해야 한다(shall).
-residual=.moai/specs/SPEC-AGENT-MODEL-ENFORCE-001/spec.md:80 REQ-AME-034
-   | - **REQ-AME-034**: 게이트가 `true`이더라도 판정 `missing`은 차단되지 **않아야 한다(shall not)** — 155/156 누락 실측(§A.1 F6)을 감안하면 `missing` 차단은 모든 spawn을 사실상 봉쇄한다. `missing`은 권고 대상에 머물러야 한다.
-residual=.moai/specs/SPEC-AGENT-MODEL-ENFORCE-001/spec.md:81 REQ-AME-035
-   | - **REQ-AME-035**: 게이트가 `false`인 경로에서는 프로파일 해석 이외의 추가 비용(파일 I/O를 유발하는 설정 재로드 등)이 발생하지 **않아야 한다(shall not)**.
-residual=.moai/specs/SPEC-AGENT-MODEL-ENFORCE-001/spec.md:85 REQ-AME-040
-   | - **REQ-AME-040**: per-spawn 모델 주입 의무를 기술하는 규칙 조각은 세션에 **항상 로드되는** 표면에 존재해야 한다(shall) — 즉 `paths:` frontmatter로 스코프되지 않아야 한다.
-residual=.moai/specs/SPEC-AGENT-MODEL-ENFORCE-001/spec.md:86 REQ-AME-041
-   | - **REQ-AME-041**: **Where** 항상 로드되는 조각을 신설하는 경우, 그 조각은 압축된 스텁이어야 하며(shall) 기존 `model-policy.md` 본문(27.5KB)을 통째로 항상 로드로 전환하지 **않아야 한다(shall not)** — 현재 항상 로드 규칙 총량은 13개 파일 197KB이며 전체 전환은 이를 14% 증가시킨다.
-residual=.moai/specs/SPEC-AGENT-MODEL-ENFORCE-001/spec.md:87 REQ-AME-042
-   | - **REQ-AME-042**: 신설 스텁은 상세 규칙(`model-policy.md`)을 교차 참조해야 하며(shall), 프로파일 매트릭스 셀 값이나 모델 별칭 목록을 재선언하지 **않아야 한다(shall not)**.
-residual=.moai/specs/SPEC-AGENT-MODEL-ENFORCE-001/spec.md:88 REQ-AME-043
-   | - **REQ-AME-043**: `model-policy.md`의 기존 `paths:` 스코프는 유지되어야 한다(shall) — 에이전트 파일 편집 시의 상세 규칙 로드 동작은 회귀하지 않아야 한다.
-residual=.moai/specs/SPEC-AGENT-MODEL-ENFORCE-001/spec.md:92 REQ-AME-050
-   | - **REQ-AME-050**: **When** `.claude/` 하위 파일에 대한 편집이 발생하면, 동일 커밋이 `internal/template/templates/` 하위의 대응 미러 편집과 `make build` 재생성 산출물을 함께 담아야 한다(shall).
-residual=.moai/specs/SPEC-AGENT-MODEL-ENFORCE-001/spec.md:93 REQ-AME-051
-   | - **REQ-AME-051**: `internal/template/templates/` 하위로 배포되는 산출물은 SPEC ID, REQ/AC 토큰, 내부 작업 날짜, commit SHA를 포함하지 **않아야 한다(shall not)**.
-residual=.moai/specs/SPEC-AGENT-MODEL-ENFORCE-001/spec.md:94 REQ-AME-052
-   | - **REQ-AME-052**: 신설 훅 배선은 셸 래퍼 → `moai hook <event>` 서브커맨드 형태를 따라야 하며(shall), `$CLAUDE_PROJECT_DIR`는 항상 따옴표로 감싸야 하고 타임아웃은 5초여야 한다.
-residual=.moai/specs/SPEC-AGENT-MODEL-ENFORCE-001/spec.md:95 REQ-AME-053
-   | - **REQ-AME-053**: `internal/hook` 패키지의 구문 커버리지는 90% 이상이어야 한다(shall).
-residual=.moai/specs/SPEC-AGENT-MODEL-ENFORCE-001/spec.md:96 REQ-AME-054
-   | - **REQ-AME-054**: 신설 로그 파일 `.moai/logs/agent-model-audit.jsonl`은 SessionEnd 로그 age-out 대상에 등록되어야 한다(shall) — 무한 성장하지 않아야 한다.
-residual=.moai/specs/SPEC-ASTGREP-MULTILANG-001/spec.md:58 REQ-AMR-001
-   | - **REQ-AMR-001**: The template ast-grep ruleset shall constitute a curated production baseline — every shipped rule file shall be production-vetted, not demonstrative or empty.
-residual=.moai/specs/SPEC-ASTGREP-MULTILANG-001/spec.md:59 REQ-AMR-002
-   | - **REQ-AMR-002**: Every shipped rule file, `sgconfig.yml`, message, note, and comment shall be written in English (template neutrality per CLAUDE.local.md §15/§25).
-residual=.moai/specs/SPEC-ASTGREP-MULTILANG-001/spec.md:60 REQ-AMR-003
-   | - **REQ-AMR-003**: No shipped file or comment shall contain an internal SPEC ID, REQ/AC token, audit citation, internal date, or commit SHA (§25 forbidden content classes).
-residual=.moai/specs/SPEC-ASTGREP-MULTILANG-001/spec.md:61 REQ-AMR-004
-   | - **REQ-AMR-004**: The shipped baseline shall not elevate any single language as PRIMARY; within each security pattern-family every covered language shall be treated with equal opportunity (§15).
-residual=.moai/specs/SPEC-ASTGREP-MULTILANG-001/spec.md:65 REQ-AMR-005
-   | - **REQ-AMR-005**: When `sg scan --config <shipped-sgconfig.yml> <tree>` is run, the scan shall complete without a config-parse error and without a missing-ruleDir error.
-residual=.moai/specs/SPEC-ASTGREP-MULTILANG-001/spec.md:66 REQ-AMR-006
-   | - **REQ-AMR-006**: When a user runs `moai init` or `moai update`, the curated `astgrep-rules` baseline shall be deployed to `.moai/config/astgrep-rules/` in the user's project.
-residual=.moai/specs/SPEC-ASTGREP-MULTILANG-001/spec.md:67 REQ-AMR-007
-   | - **REQ-AMR-007**: When `moai ast-grep <path>` is run with `sg` installed, the deployed baseline shall produce findings only from vetted rules — never from a demonstrative scaffold or an empty stub.
-residual=.moai/specs/SPEC-ASTGREP-MULTILANG-001/spec.md:71 REQ-AMR-008
-   | - **REQ-AMR-008**: While the shipped `sgconfig.yml` declares any `ruleDirs` entry, that entry shall correspond to a directory that exists in the shipped baseline and contains at least one vetted rule.
-residual=.moai/specs/SPEC-ASTGREP-MULTILANG-001/spec.md:75 REQ-AMR-009
-   | - **REQ-AMR-009**: Where a language has no vetted rule in this baseline, the shipped baseline shall omit that language's directory entirely rather than ship an empty `.gitkeep` stub.
-residual=.moai/specs/SPEC-ASTGREP-MULTILANG-001/spec.md:76 REQ-AMR-010
-   | - **REQ-AMR-010**: Where the local dogfood set diverges from the shipped template baseline, that divergence shall be permitted per CLAUDE.local.md §2 and §2.2; this SPEC shall not require the local set to match the template.
-residual=.moai/specs/SPEC-ASTGREP-MULTILANG-001/spec.md:80 REQ-AMR-011
-   | - **REQ-AMR-011**: The shipped `sgconfig.yml` shall not declare a `utils` ruleDir, nor any ruleDir that does not exist in the shipped baseline.
-residual=.moai/specs/SPEC-ASTGREP-MULTILANG-001/spec.md:81 REQ-AMR-012
-   | - **REQ-AMR-012**: The shipped baseline shall not include demonstrative or placeholder rules (e.g. `todo-marker`, `unused-var`, `null-deref` scaffolds) unless each is individually re-vetted and confirmed to be a true-positive production rule.
+wide_accepted_not_collected_by_narrow_line=21
+residual=.moai/specs/SPEC-UTIL-002/spec.md:87 REQ-UTIL-002-001
+   | - **REQ-UTIL-002-001**: The Rule struct in `internal/astgrep/models.go` SHALL declare a `Note string` field with YAML tag `yaml:"note,omitempty"` and JSON tag `json:"note,omitempty"`.
+residual=.moai/specs/SPEC-UTIL-002/spec.md:89 REQ-UTIL-002-002
+   | - **REQ-UTIL-002-002**: The Rule struct in `internal/astgrep/models.go` SHALL declare a `Metadata map[string]string` field with YAML tag `yaml:"metadata,omitempty"` and JSON tag `json:"metadata,omitempty"`.
+residual=.moai/specs/SPEC-UTIL-002/spec.md:93 REQ-UTIL-002-003
+   | - **REQ-UTIL-002-003**: When `scanWithRules` in `internal/astgrep/scanner.go` iterates findings returned from `runSingleRule`, it SHALL copy `rule.Note` into `findings[i].Note` if and only if the finding's Note is empty.
+residual=.moai/specs/SPEC-UTIL-002/spec.md:95 REQ-UTIL-002-004
+   | - **REQ-UTIL-002-004**: When `scanWithRules` in `internal/astgrep/scanner.go` iterates findings returned from `runSingleRule`, it SHALL copy `rule.Metadata` into `findings[i].Metadata` if and only if the finding's Metadata is nil.
+residual=.moai/specs/SPEC-UTIL-002/spec.md:99 REQ-UTIL-002-005
+   | - **REQ-UTIL-002-005**: When `internal/astgrep/sarif.go` generates a SARIF result from a Finding whose Metadata map contains an `owasp` key, the generator SHALL emit an entry `external/owasp/<lowercased-sanitized-value>` into the result's `properties.tags` array.
+residual=.moai/specs/SPEC-UTIL-002/spec.md:101 REQ-UTIL-002-006
+   | - **REQ-UTIL-002-006**: When `internal/astgrep/sarif.go` generates a SARIF result from a Finding whose Metadata map contains a `cwe` key, the generator SHALL emit an entry `external/cwe/<lowercased-sanitized-value>` into the result's `properties.tags` array.
+residual=.moai/specs/SPEC-UTIL-002/spec.md:105 REQ-UTIL-002-007
+   | - **REQ-UTIL-002-007**: When `ScanMultiple` in `internal/hook/security/ast_grep.go` is called with N input files, it SHALL cap the number of concurrently active `Scan` invocations at `runtime.NumCPU() * 2` via a buffered channel semaphore acquired before `s.Scan` and released after `s.Scan` returns.
+residual=.moai/specs/SPEC-UTIL-002/spec.md:109 REQ-UTIL-002-008
+   | - **REQ-UTIL-002-008**: When `detectSGVersion` in `internal/cli/astgrep.go` is invoked, it SHALL execute `sg --version` with a 5-second context timeout, parse the trimmed stdout, and return the parsed value. On any error (binary missing, timeout, non-zero exit, empty stdout), it SHALL return the literal string `"unknown"`.
+residual=.moai/specs/SPEC-UTIL-002/spec.md:111 REQ-UTIL-002-009
+   | - **REQ-UTIL-002-009**: `detectSGVersion` SHALL cache its result via `sync.Once` so that repeated calls within the same process invoke `sg --version` exactly once.
+residual=.moai/specs/SPEC-UTIL-002/spec.md:115 REQ-UTIL-002-010
+   | - **REQ-UTIL-002-010**: When a source file contains a comment matching `// ast-grep-ignore` on its own line (case-sensitive, language-prefix-aware for `#` Ruby/Python/Elixir and `--` Haskell), the suppression policy lint SHALL require a second comment matching `// @MX:REASON <non-empty-text>` (with appropriate language prefix substitution) on the next non-blank line or within 1 intervening blank line.
+residual=.moai/specs/SPEC-UTIL-002/spec.md:117 REQ-UTIL-002-011
+   | - **REQ-UTIL-002-011**: Where an `// ast-grep-ignore` comment exists without a paired `// @MX:REASON` within the allowed distance, the suppression policy lint SHALL emit a structured error with fields `type: "SUPPRESSION_WITHOUT_REASON"`, `file: <path>`, `line: <line-number>`, and `message: "ast-grep suppression at <file>:<line> requires adjacent '// @MX:REASON <rationale>' on next line"`.
+residual=.moai/specs/SPEC-UTIL-002/spec.md:119 REQ-UTIL-002-012
+   | - **REQ-UTIL-002-012**: When the suppression policy lint detects one or more `SUPPRESSION_WITHOUT_REASON` violations during a quality gate run, `RunAstGrepGateV2` SHALL return `(false, <formatted-violation-list>)` causing the gate to exit with code 2.
+residual=.moai/specs/SPEC-UTIL-002/spec.md:123 REQ-UTIL-002-013
+   | - **REQ-UTIL-002-013**: The directory `.moai/config/astgrep-rules/ruby/` SHALL contain exactly three YAML rule files: `unused-var.yml`, `null-deref.yml` (or the Ruby-idiomatic equivalent `nil-method-call.yml`), and `todo-marker.yml`. Each file SHALL declare `language: ruby`, a valid `pattern:`, a `severity:` value from `{info, warning, error}`, a `message:`, a `note:`, and a `metadata:` map containing at least keys `owasp` and `cwe`.
+residual=.moai/specs/SPEC-UTIL-002/spec.md:125 REQ-UTIL-002-014
+   | - **REQ-UTIL-002-014**: The directory `.moai/config/astgrep-rules/php/` SHALL contain exactly three YAML rule files analogous to REQ-UTIL-002-013 with `language: php`.
+residual=.moai/specs/SPEC-UTIL-002/spec.md:127 REQ-UTIL-002-015
+   | - **REQ-UTIL-002-015**: The directory `.moai/config/astgrep-rules/elixir/` SHALL contain exactly three YAML rule files analogous to REQ-UTIL-002-013 with `language: elixir`. The null-deref equivalent SHALL use an Elixir pattern-matching idiom (e.g., unsafe map field access) rather than the literal `null` concept.
+residual=.moai/specs/SPEC-UTIL-002/spec.md:129 REQ-UTIL-002-016
+   | - **REQ-UTIL-002-016**: The directory `.moai/config/astgrep-rules/csharp/` SHALL contain exactly three YAML rule files analogous to REQ-UTIL-002-013 with `language: csharp`.
+residual=.moai/specs/SPEC-UTIL-002/spec.md:131 REQ-UTIL-002-017
+   | - **REQ-UTIL-002-017**: The directory `.moai/config/astgrep-rules/kotlin/` SHALL contain exactly three YAML rule files analogous to REQ-UTIL-002-013 with `language: kotlin`. The null-deref rule SHALL specifically target the `!!` non-null assertion operator.
+residual=.moai/specs/SPEC-UTIL-002/spec.md:135 REQ-UTIL-002-018
+   | - **REQ-UTIL-002-018**: For each of the 5 new languages, the repository SHALL provide a fixture directory `internal/astgrep/testdata/fixtures/<lang>/` containing `valid.<ext>`, `violation.<ext>`, and `suppressed.<ext>` files used by `internal/astgrep/rule_seed_test.go`.
+residual=.moai/specs/SPEC-UTIL-002/spec.md:137 REQ-UTIL-002-019
+   | - **REQ-UTIL-002-019**: `internal/astgrep/rule_seed_test.go` SHALL contain per-language test cases that (a) assert the violation fixture produces at least one finding, (b) assert the valid fixture produces zero findings, and (c) assert that each finding from the violation fixture carries a non-empty `Metadata["cwe"]` value.
+residual=.moai/specs/SPEC-UTIL-002/spec.md:139 REQ-UTIL-002-020
+   | - **REQ-UTIL-002-020**: `internal/hook/quality/astgrep_gate_suppression_test.go` SHALL contain at minimum three test cases: a correctly paired suppression producing zero violations, an unpaired `// ast-grep-ignore` producing one `SUPPRESSION_WITHOUT_REASON` violation, and a suppression separated from its `@MX:REASON` by an intervening non-blank comment producing one `SUPPRESSION_WITHOUT_REASON` violation.
+residual=.moai/specs/SPEC-UTIL-002/spec.md:143 REQ-UTIL-002-021
+   | - **REQ-UTIL-002-021**: All changes SHALL be non-breaking per the release plan §1.2 three-way gate: no user-visible API change, no user-visible config key change, no user-visible wire format change. SARIF additions (REQ-UTIL-002-005, REQ-UTIL-002-006) SHALL only add properties, never rename or remove existing ones.
 
 [F] FULL wiring blast radius — every doc.REQs consumer, narrow vs wide
 # CoverageRule is NOT the only consumer. ModalityMalformed / InvalidREQID /
@@ -121,14 +174,18 @@ residual=.moai/specs/SPEC-ASTGREP-MULTILANG-001/spec.md:81 REQ-AMR-012
 # lint.skip is honored; era demotion is not (it does not reach these codes).
 blast_ModalityMalformed_error narrow=0 wide=25
 blast_LegacyEARSKeyword_warning narrow=7 wide=43
-blast_InvalidREQID_error_currentPattern narrow=0 wide=6
-blast_InvalidREQID_error_proposedPattern narrow=0 wide=6
+# Each InvalidREQID row names the pattern literal it measured, because
+# "current" moved across the M2 boundary: the same label read 825 before M2
+# and 6 after. A label that does not carry its own attribution is not one.
+blast_InvalidREQID_shippedPattern_postM2 narrow=0 wide=6  pattern=^REQ-[A-Z][A-Z0-9]*(?:-[A-Z][A-Z0-9]*)?-\d{3}(?:-\d{3})?$
+blast_InvalidREQID_preM2Pattern narrow=0 wide=825  pattern=^REQ-[A-Z]{2,5}-\d{3}-\d{3}$
+blast_InvalidREQID_proposedPattern narrow=0 wide=6  pattern=^REQ-[A-Z][A-Z0-9]*(?:-[A-Z][A-Z0-9]*)?-\d{3}(?:-\d{3})?$
 
 # Corpus-level mutant probe (option (ii) vacuity check). The mutant aligns
 # validation EXACTLY to the extraction. A shipped-vs-mutant delta of 0 would
 # mean the shipped rejection class is unreachable in practice — i.e. the rule
 # is vacuous on real documents whatever its regexp says.
-blast_InvalidREQID_vacuousMutant narrow=0 wide=0
+blast_InvalidREQID_vacuousMutant narrow=0 wide=0  pattern=^REQ-[A-Z0-9]+(?:-[A-Z0-9]+)*-\d+$
 mutant_probe_delta_wide=6
 blast_DuplicateREQID_error_currentPattern narrow=0 wide=0
 blast_DuplicateREQID_error_proposedPattern narrow=0 wide=0
