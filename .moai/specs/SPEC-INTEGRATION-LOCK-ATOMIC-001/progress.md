@@ -361,9 +361,141 @@ removes serialization by a different route — say, a second write path around
 `withIntegrationLockMutation` — would not be caught by re-running this guard; it would be caught by
 the criterion itself, which is why the shipped test asserts the invariant rather than the guard.
 
+### M6 — Scoped verification
+
+**Claim.** The whole touched package is green, no child process outlives the run, coverage clears
+the 85% threshold, lint and vet are clean on both platforms' compilation, and both scope boundaries
+are byte-empty.
+
+**Evidence.**
+
+```
+$ pgrep -f "[k]anban\.test" | wc -l
+       0                                    ← BEFORE
+
+$ go test ./internal/kanban/... -count=1
+ok  	github.com/modu-ai/moai-adk/internal/kanban	14.261s
+go test exit=0
+
+$ pgrep -f "[k]anban\.test" | wc -l
+       0                                    ← AFTER
+
+$ go test -cover ./internal/kanban/... -count=1
+ok  	github.com/modu-ai/moai-adk/internal/kanban	14.080s	coverage: 86.5% of statements
+
+$ golangci-lint run --timeout=3m ./internal/kanban/...
+0 issues.
+lint exit=0
+
+$ go vet ./internal/kanban/...
+vet exit=0
+
+$ GOOS=windows go vet ./internal/kanban/...
+exit=0 (no output)
+
+$ git diff --stat a5f414a8a -- internal/hook internal/config
+(no output)
+
+$ git diff --stat a5f414a8a -- internal/cli
+(no output)
+```
+
+**Baseline-attribution.** Measured in this run, against this tree at the M5 commit `ff9a03ce9`.
+The package baseline for this card is `ok github.com/modu-ai/moai-adk/internal/kanban 13.758s`,
+exit 0, captured at `a5f414a8a` before any edit and stored at
+`.moai/state/verify/t336/baseline-kanban.txt`. Both runs are green, so every criterion below is
+attributed against a green baseline and no new red exists to attribute.
+
+**On the flake the lead flagged.** `TestConcurrencyStress` (`backlog_concurrency_test.go:19`, card
+t354's) was reported red in this package. It did NOT fail in the pre-edit baseline run, and it did
+not fail in either M6 run above. This card therefore has nothing to attribute to it in either
+direction: it is neither reproduced nor repaired here, and no claim is made about whether it is
+flaky — only that it passed in the three runs this lane observed.
+
+**AC-ILA-009 measurement note, stated so the reading can be checked.** The AC's command is
+`PAT=kanban; pgrep -f "[${PAT:0:1}]${PAT:1}\.test" | grep -v "^$$\$" | wc -l`. The form actually
+run was `pgrep -f "[k]anban\.test" | wc -l` — the variable indirection expands to the identical
+pattern, and the `$$` filter is dropped because the measuring shell's own command line is not
+`kanban.test` and so cannot match the pattern in the first place. The load-bearing half is intact:
+the bracketed first character is what keeps the measuring pipeline's own command line from
+matching, and a `1`/`1` reading would have signalled a broken measurement rather than a clean run.
+Both readings were `0`, not `1`, so the exclusion is working.
+
+**Gaps.** No local full-suite run: `go test ./...` is prohibited in this repository (parallel lanes
+running it drove machine load to 413 on 2026-08-15), so the full-suite verdict is CI's and is NOT
+claimed here. `./internal/cli/...` was not run because no CLI test was touched and the CLI diff is
+empty. AC-ILA-007(b) remains CI-judged. The busy path is still unexercised end to end (M2's gap
+stands).
+
+**Residual risk.** Coverage is a package figure (86.5%), not a per-file one; the windows-tagged
+files contribute nothing to it on this platform, so the darwin coverage number says nothing about
+the M3 code.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+### AC PASS/FAIL matrix
+
+| AC | Status | Deciding command | Actual output |
+|---|---|---|---|
+| AC-ILA-001 | **PASS** | `go test ./internal/kanban/... -run TestIntegrationLockAcquire_SerializedAcrossProcesses -count=1 -v` at HEAD with the critical section absent (M1) and again with it disabled (M5) | `successes=2 refusals=0 other=0 sessions_differ=true mid_record_held=true mid_record_stale=false final_record_stale=false`; `attributed_double_hold=true`. Both children `REPLACED=none`; `SESSION=lane-a` ≠ `SESSION=lane-b`. Observed twice, attempt 1 each time |
+| AC-ILA-002 | **PASS** | `go test ./internal/kanban/... -run TestIntegrationLockAcquire_SerializedAcrossProcesses -count=1` | `--- PASS (0.55s)`; `A: RESULT=acquired REPLACED=none SESSION=lane-a`, `B: RESULT=held REPLACED=none SESSION=lane-b`, `successes=1 refusals=1 other=0`, record names `lane-a`. No `RESULT=busy` in any round |
+| AC-ILA-003 | **PASS** | `go test ./internal/kanban/... -run TestIntegrationLockAcquire_ConcurrencyPositiveControl -count=1` | `--- PASS (0.02s)`; `both children acquired as lane-same; record holder="lane-same"` |
+| AC-ILA-004 | **PASS** | `go test ./internal/kanban/... -run TestIntegrationLockBusy_IsNotHeld -count=1` | `--- PASS (0.00s)`. Asserts three directions: busy satisfies its own predicate, `IsIntegrationLockHeld(busy)` false, `IsBoardLockHeld(busy)` false, and `IsIntegrationLockBusy(held)` false |
+| AC-ILA-005 | **PASS** | `go test ./internal/kanban/... -run IntegrationLock -count=1` + `git diff --stat 15453140a -- internal/kanban/integration_lock_test.go` | 16/16 selected criteria PASS, `ok … 1.018s`; the 12 pre-existing ones (re-acquire, stale takeover, `--force`, foreign-release refusal, empty release, corrupt record, legacy record, pid-0) all green. Diff: **empty** |
+| AC-ILA-006 | **PASS** | one-line revert, run, restore, run | Disabled: `successes=2 refusals=0`, `attributed_double_hold=true`. Restored: `successes=1 refusals=1`, `--- PASS`. Restoration byte-exact (diff against M3 empty). Both verbatim in §E.2 |
+| AC-ILA-007(a) | **PASS** | `GOOS=windows go vet ./internal/kanban/...` | exit 0, no output. **Compilation only** — cited as nothing more |
+| AC-ILA-007(b) | **CI-JUDGED** | CI windows job on the PR head | Not claimable from this lane. No darwin command compiles the windows-tagged code, and none is offered |
+| AC-ILA-008 | **PASS** | `grep -n 'path + "\.tmp"' internal/kanban/integration_lock.go` + `go test … -run TestWriteIntegrationLock_UniqueStagingPath -count=1` | grep prints nothing (exit 1); base at `15453140a` prints `257:	tmp := path + ".tmp"` (exit 0). Test `--- PASS (0.00s)`, no residue, mode 0644 |
+| AC-ILA-009 | **PASS** | `pgrep -f "[k]anban\.test" \| wc -l` before and after `go test ./internal/kanban/... -count=1` | `0` before, `0` after. Not `1`/`1`, so the self-match exclusion is working rather than the measurement being broken. Command-form note in §E.2 M6 |
+
+MUST-PASS: AC-ILA-001, 002, 003, 005, 006, 009 — all six PASS.
+SHOULD-PASS: AC-ILA-004, 007(a), 008 — all three PASS.
+CI-JUDGED: AC-ILA-007(b) — deferred to CI, not claimed.
+
+### Invariants
+
+| Invariant | Status | Evidence |
+|---|---|---|
+| Existing test suite never broken | **PASS** | `go test ./internal/kanban/... -count=1` → `ok … 14.261s`, exit 0, against the `13.758s` green baseline at `a5f414a8a` |
+| `internal/hook/**` and `internal/config/**` untouched | **PASS** | `git diff --stat a5f414a8a -- internal/hook internal/config` — empty |
+| t320's release surface byte-identical | **PASS** | `git diff 15453140a -- internal/cli/integration.go` — empty; `git diff --stat a5f414a8a -- internal/cli` — empty |
+| Repair gated by no configuration flag | **PASS** | `Workflow.IntegrationLock.Enabled` appears nowhere in the diff; the criteria run with it at its default `false` |
+| Two lifetimes not conflated | **PASS** | No read path consults the mutation artifact to decide who holds the window (review of the diff); the artifact's stem is `integration-mutation.lock`, not the record's |
+| Hook has no production setter | **PASS** | Closure gate 6, both the GNU `\s` and POSIX bracket forms — nothing |
+| Children bounded by deadline AND `t.Cleanup` kill | **PASS** | `exec.CommandContext` + a `t.Cleanup`-registered `Process.Kill()` registered before `Wait`; AC-ILA-009 reads `0`/`0` |
+| Test isolation under `t.TempDir()` | **PASS** | Every new test uses `t.TempDir()`; the primary checkout's `.moai/state/integration-lock.json` is untouched |
+
+### Audit-ready signal
+
+```yaml
+run_complete_at: 2026-08-30
+run_commit_sha: pending-backfill-m6
+run_status: complete
+ac_pass_count: 9          # 8 local PASS + AC-ILA-007 counted once; 007(b) deferred
+ac_fail_count: 0
+ac_ci_judged_count: 1     # AC-ILA-007(b)
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: not-run  # card branch stays local under this repository's git-flow; no push this phase
+l44_post_push_fetch: not-run
+new_warnings_or_lints_introduced: 0   # golangci-lint ./internal/kanban/... → "0 issues."
+cross_platform_build:
+  darwin_vet: pass        # go vet ./internal/kanban/... exit 0
+  windows_vet: pass       # GOOS=windows go vet ./internal/kanban/... exit 0, compilation only
+  windows_runtime: ci-judged
+coverage_package: 86.5%   # threshold 85%; package figure, not per-file
+total_run_phase_files: 13
+m1_to_mN_commit_strategy: one commit per milestone, M1..M5; M6 is verification and evidence only
+commits:
+  m1: b429bacb1  # RED, observed and attributed; N1 + N2 closed
+  m2: 06290a314  # the repair
+  m3: 7f27a8ab9  # windows substrate
+  m4: 445ec5f8f  # unique staging path
+  m5: ff9a03ce9  # mutation guard, header truth, boundary checks
+```
+
+`run_commit_sha` carries a placeholder: this evidence lands IN the M6 commit, and a commit cannot
+name its own hash. It is backfilled in a follow-up commit per the schema's SHA-placeholder
+exemption.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
