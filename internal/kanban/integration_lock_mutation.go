@@ -105,6 +105,21 @@ func acquireIntegrationMutationLock(path string) (boardLockImpl, error) {
 		}
 		lastErr = err
 		if !time.Now().Before(deadline) {
+			// Budget exhausted. On Windows the artifact IS the lock, so a
+			// holder killed inside the critical section wedges every later
+			// mutation permanently; the recovery clears the artifact ONLY when
+			// its recorded owner is positively observed absent, re-reading the
+			// identity immediately before the unlink. On Unix this is a no-op:
+			// the kernel drops flock on exit, so there is no wedge to clear.
+			//
+			// One retry, never a loop. Any error, any not-removed report, and
+			// any failure of the single retry all fall through to busy —
+			// uncertainty resolves toward leaving the artifact alone.
+			if report, clearErr := clearWedgedIntegrationMutationLock(path); clearErr == nil && report != nil && report.Removed {
+				if impl, retryErr := acquireBoardLockImpl(path); retryErr == nil {
+					return impl, nil
+				}
+			}
 			// %v, never %w: the board's sentinel must not travel out of this
 			// scope, or a caller's IsBoardLockHeld would report true for a
 			// lock that has nothing to do with the board.

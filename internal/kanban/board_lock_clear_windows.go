@@ -73,14 +73,29 @@ func parseLockOwner(raw []byte) (*BoardLockOwner, error) {
 // reports what it removed, so a rare bad outcome is attributable rather than
 // silent.
 func ClearStaleBoardLock(root string) (*ClearStaleReport, error) {
-	path := boardLockPath(root)
+	return clearStaleLockAtPath(boardLockPath(root), "board lock")
+}
 
+// clearStaleLockAtPath is the path-keyed core of the clear above, extracted so
+// a SECOND short-lived lock over the same atomic-create substrate — the
+// integration-window mutation lock (integration_lock_mutation.go) — reuses this
+// discipline rather than growing a subtly different copy of it: probe first,
+// remove only a positively-dead owner, re-read the identity immediately before
+// the unlink, abort on any mismatch, and give an empty artifact the
+// interrupted-acquisition grace.
+//
+// label names the lock in the error text, so the board caller's messages stay
+// byte-identical to what they were before the extraction. Nothing else changes:
+// ClearStaleBoardLock keeps its exact signature and behaviour and is now a
+// caller of this function. The TOCTOU residual documented above is inherited
+// unchanged and is not narrowed further here.
+func clearStaleLockAtPath(path, label string) (*ClearStaleReport, error) {
 	rawFirst, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return &ClearStaleReport{Removed: false, Reason: "no lock artifact present"}, nil
 		}
-		return nil, fmt.Errorf("clear stale board lock: reading artifact: %w", err)
+		return nil, fmt.Errorf("clear stale %s: reading artifact: %w", label, err)
 	}
 	ownerFirst, err := parseLockOwner(rawFirst)
 	if err != nil {
@@ -96,7 +111,7 @@ func ClearStaleBoardLock(root string) (*ClearStaleReport, error) {
 		// meantime means one is, and the clear aborts as changed hands
 		// (sync-audit F3).
 		if !isEmptyLockArtifact(rawFirst) {
-			return nil, fmt.Errorf("clear stale board lock: artifact identity unparseable — cannot positively observe an unknown owner absent: %w", err)
+			return nil, fmt.Errorf("clear stale %s: artifact identity unparseable — cannot positively observe an unknown owner absent: %w", label, err)
 		}
 		time.Sleep(interruptedAcquisitionGrace)
 		rawSecond, rerr := os.ReadFile(path)
@@ -104,13 +119,13 @@ func ClearStaleBoardLock(root string) (*ClearStaleReport, error) {
 			if os.IsNotExist(rerr) {
 				return &ClearStaleReport{Removed: false, Reason: "artifact disappeared before removal"}, nil
 			}
-			return nil, fmt.Errorf("clear stale board lock: re-reading empty artifact: %w", rerr)
+			return nil, fmt.Errorf("clear stale %s: re-reading empty artifact: %w", label, rerr)
 		}
 		if !isEmptyLockArtifact(rawSecond) {
 			return nil, fmt.Errorf("%w: an identity appeared in the empty artifact during the grace — a live acquirer is publishing", ErrBoardLockChangedHands)
 		}
 		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
-			return nil, fmt.Errorf("clear stale board lock: removing interrupted-acquisition artifact: %w", err)
+			return nil, fmt.Errorf("clear stale %s: removing interrupted-acquisition artifact: %w", label, err)
 		}
 		return &ClearStaleReport{
 			Removed: true,
@@ -136,7 +151,7 @@ func ClearStaleBoardLock(root string) (*ClearStaleReport, error) {
 				Reason:  "artifact disappeared before removal",
 			}, nil
 		}
-		return nil, fmt.Errorf("clear stale board lock: re-reading artifact: %w", err)
+		return nil, fmt.Errorf("clear stale %s: re-reading artifact: %w", label, err)
 	}
 	ownerSecond, err := parseLockOwner(rawSecond)
 	if err != nil || *ownerSecond != *ownerFirst {
@@ -151,7 +166,7 @@ func ClearStaleBoardLock(root string) (*ClearStaleReport, error) {
 				Reason:  "artifact disappeared before removal",
 			}, nil
 		}
-		return nil, fmt.Errorf("clear stale board lock: removing artifact: %w", err)
+		return nil, fmt.Errorf("clear stale %s: removing artifact: %w", label, err)
 	}
 	return &ClearStaleReport{
 		Removed: true,
