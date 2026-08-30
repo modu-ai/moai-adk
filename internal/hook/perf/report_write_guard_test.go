@@ -28,17 +28,34 @@ var guardFixtures = []string{
 	filepath.Join(".moai", "specs", "SPEC-HOOK-PRETOOL-PERF-001", "postchange.md"),
 }
 
-// childEnvPassthrough names the variables the guard copies into a child `go
-// test` environment. The child environment is built from this list rather than
-// inherited from os.Environ(), so a MOAI_HOOK_PERF_UPDATE value set in the
-// parent cannot leak into the negative leg and turn the guard red for a reason
-// that is not a regression. GOFLAGS is deliberately absent: it can carry -short
-// or -count and would silently reshape the child invocation.
-var childEnvPassthrough = []string{
-	"PATH", "HOME", "TMPDIR", "USER", "LOGNAME",
-	"GOROOT", "GOPATH", "GOCACHE", "GOMODCACHE", "GOTMPDIR",
-	"GOTOOLCHAIN", "GOPROXY", "GOSUMDB", "GOPRIVATE", "GONOSUMDB",
-	"CGO_ENABLED", "CC",
+// childEnvDenied names the variables the guard REMOVES from the inherited
+// environment when building a child environment. Everything else passes through.
+//
+// This is deliberately a denylist, not an allowlist. An earlier revision
+// enumerated the ~17 variables to copy, which named only POSIX ones and so
+// could not hand a Windows child LOCALAPPDATA, TMP, TEMP, USERPROFILE or
+// SystemRoot — with GOCACHE unset, os.UserCacheDir reads LocalAppData and the
+// toolchain fails with "GOCACHE is not defined". An allowlist breaks silently
+// whenever a platform or toolchain needs a variable nobody enumerated, and
+// Windows was merely the first instance. A denylist targets the actual hazard
+// by name instead of hoping the enumeration never omits something.
+//
+// Do NOT "tighten" this back into an allowlist.
+//
+// What is removed and why:
+//   - MOAI_HOOK_PERF_UPDATE: the reason REQ-PFW-005 exists. A parent-set gate
+//     leaking into the NEGATIVE child makes it write, turning the guard red for
+//     a reason that is not a regression.
+//   - MOAI_HOOK_PERF_SKIP: belt-and-braces. Unreachable today, because the
+//     guard self-skips when it sees this variable and so never reaches child
+//     construction with it set; removed anyway so the child stays correct if
+//     that ordering ever changes.
+//   - GOFLAGS: can carry -short or -count and would silently reshape the child
+//     invocation out from under the assertions.
+var childEnvDenied = []string{
+	perfUpdateEnv,
+	perfSkipEnv,
+	"GOFLAGS",
 }
 
 // TestPerfReportWriteGuard is the regression guard for SPEC-PERF-FIXTURE-WRITE-001.
@@ -54,9 +71,15 @@ var childEnvPassthrough = []string{
 // whose bytes are unchanged cannot be swept into a commit. A no-op rewrite that
 // only touches mtime is deliberately NOT detected; it is not the defect.
 //
-// The guard restores the captured original bytes on every exit path, including
-// the path where its own assertion fails, so a RED guard never becomes a fresh
-// instance of the defect it exists to detect.
+// The guard restores the captured original bytes on every NORMAL exit path,
+// including the path where its own assertion fails, so a RED guard never becomes
+// a fresh instance of the defect it exists to detect. Two residuals are known and
+// accepted:
+//
+//   - t.Cleanup does not run on a kill (SIGINT/SIGKILL) or on a `go test -timeout`
+//     panic. On those paths the fixtures stay modified.
+//   - While the positive leg runs (~10s) the two tracked fixtures are genuinely
+//     modified. A concurrent lane reading the tree in that window sees them as `M`.
 func TestPerfReportWriteGuard(t *testing.T) {
 	// Deliberately NOT t.Parallel(): the restore contract below assumes this
 	// test's t.Cleanup fires before any later test in the package begins.
@@ -159,14 +182,24 @@ func runGuardChild(t *testing.T, root string, gateOn bool) (string, int) {
 	return string(out), guardChildExitCode(t, err)
 }
 
-// guardChildEnvironment builds a child environment explicitly from
-// childEnvPassthrough plus the sentinel, never by inheriting os.Environ().
+// guardChildEnvironment builds a child environment by inheriting the parent's
+// and removing every variable in childEnvDenied, then appending the sentinel.
 func guardChildEnvironment(gateOn bool) []string {
-	env := make([]string, 0, len(childEnvPassthrough)+2)
-	for _, key := range childEnvPassthrough {
-		if v, ok := os.LookupEnv(key); ok {
-			env = append(env, key+"="+v)
+	denied := make(map[string]struct{}, len(childEnvDenied))
+	for _, key := range childEnvDenied {
+		denied[key] = struct{}{}
+	}
+	parent := os.Environ()
+	env := make([]string, 0, len(parent)+2)
+	for _, entry := range parent {
+		key, _, ok := strings.Cut(entry, "=")
+		if !ok {
+			continue
 		}
+		if _, blocked := denied[key]; blocked {
+			continue
+		}
+		env = append(env, entry)
 	}
 	env = append(env, guardChildEnv+"=1")
 	if gateOn {

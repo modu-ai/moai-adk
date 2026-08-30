@@ -1,7 +1,7 @@
 ---
 id: SPEC-PERF-FIXTURE-WRITE-001
 title: "perf 리포트 무조건 쓰기 차단 — 진행 기록"
-version: "0.2.0"
+version: "0.3.0"
 status: completed
 created: 2026-08-29
 updated: 2026-08-30
@@ -261,3 +261,78 @@ canary_compliance_check: "해당 없음 — 이 SPEC 은 테스트 하네스의 
 
 - **CI 미관측.** 이 세션은 푸시하지 않는다(리드가 통합 창을 배정한다). 전 패키지 판정과 darwin/windows 매트릭스는 여전히 미측정이며, `scripts/ci-mirror/lib/go.sh` 의 `-short` 때문에 로컬 CI 미러도 이 가드를 돌리지 않으므로 **실제 CI 가 가드의 유일한 실행 면**이라는 §E.8 의 서술은 그대로 유효하다.
 - **§E.7 이 남긴 `spec.md` HISTORY 0.3.1 행 부재는 이 단계에서도 고치지 않았다.** HISTORY 는 `spec.md` 본문이라 sync 단계의 편집 금지 범위다(frontmatter `status:`/`updated:` 만 허용). manager-spec 몫으로 남긴다.
+
+## §E.10 sync-audit FAIL 대응 (감사 84.75 / F1 차단 1건)
+
+sync-audit 판정 **FAIL**, 점수 84.75(Functionality 82 / Security 92 / Craft 80 / Consistency 88). 품질 붕괴가 아니라 High 1건이며, 보고서는 `.moai/reports/t318/sync-audit.md`.
+
+### F1 [High, 차단] — 자식 환경 허용목록이 POSIX 전용이었다
+
+**결함.** `childEnvPassthrough` 가 열거한 17개는 전부 POSIX 이름이라, Windows 자식에게 `LOCALAPPDATA`·`TMP`·`TEMP`·`USERPROFILE`·`SystemRoot` 를 **구조상 건넬 수 없었다**. `GOCACHE` 가 unset 이면 `os.UserCacheDir` 가 `LocalAppData` 를 읽으므로 툴체인이 `GOCACHE is not defined` 로 죽는다. 목록을 읽는 것만으로 결정되는 사안이라 Windows 실행이 필요 없다.
+
+**왜 차단이었나 — 이 카드의 CI 는 이것을 볼 수 없다.** 조정자 주장을 이 트리에서 직접 재확인했다:
+
+| 근거 | 관측 |
+|---|---|
+| `release-pr-multi-os.yml:91` | `os: [ubuntu-latest, macos-latest, windows-latest]` |
+| `release-pr-multi-os.yml:189` | `run: go test -race -timeout 25m ./...` |
+| `ci.yml:41` | PR 필수 `detect` 잡이 `runs-on: ubuntu-latest` |
+
+곧 **PR CI 는 초록으로 돌아오고 파손은 릴리스에서 터진다**. 부채가 아니라 차단인 이유가 이것이다.
+
+**수리 — 목록을 늘리지 않고 뒤집었다.** 허용목록(allowlist) → 거부목록(denylist). `os.Environ()` 을 상속하되 `MOAI_HOOK_PERF_UPDATE`·`MOAI_HOOK_PERF_SKIP`·`GOFLAGS` 세 개만 제거한 뒤 센티널을 덧붙인다.
+
+REQ-PFW-005 의 목적은 보존되고 오히려 강해진다. 그 요구는 **부모가 세운 게이트가 음성 자식으로 새지 않게** 하려고 있는 것이고, 거부목록은 그 위험을 **이름으로 겨냥**한다 — 허용목록은 "열거가 우연히 그 이름을 포함하지 않기를" 바라는 형태였다. 허용목록이 이 자리에서 취약한 이유는 **플랫폼이나 툴체인이 아무도 열거하지 않은 변수를 필요로 할 때마다 조용히 깨지기** 때문이며, Windows 는 그 첫 사례일 뿐이다. 나중에 이것을 허용목록으로 "조여" 되돌리지 않도록 그 이유를 소스 주석에 남겼다.
+
+`GOFLAGS` 제거는 유지했다 — `-short`·`-count` 를 실어 자식 모양을 바꿀 수 있다.
+
+**수리가 §D.3 (d) 를 공허하게 만들지 않았음을 확인했다.** 거부 필터만 무력화한 뮤턴트(`blocked && false`)를 심어 부모 게이트 ON 조건에서 재실행:
+
+| | rc | RUN | 불일치 문구 |
+|---|---|---|---|
+| 거부목록 무력화 | **1** | 1 | 1 |
+| 되돌린 뒤 | **0** | 1 | 0 |
+
+즉 (d) 는 새 형태에서도 살아 있는 검사다. 이 뮤턴트는 계약에 없는 추가분이며, 수리가 검사를 죽이지 않았음을 확인하려고 심었다.
+
+**검증 재실행** (수리 후, 이 트리):
+
+| 항 | 명령 | rc / 출력 |
+|---|---|---|
+| 패키지 | `go test ./internal/hook/perf/... -count=1` | `rc=0` · `ok … 31.771s` |
+| vet | `go vet ./internal/hook/perf/...` | `rc=0` |
+| lint | `golangci-lint run internal/hook/perf/...` | `rc=0` · `0 issues.` |
+| gofmt | `gofmt -l internal/hook/perf/report_write_guard_test.go` | 출력 없음 |
+| 픽스처 | `shasum -a 256` ×2 | `7b344c90…8d7df2` · `94b51746…c3aca37` — 불변 |
+
+rc 는 파이프와 분리해 잡았다.
+
+### F2 [Medium, 비차단] — "모든 종료 경로에서 복원"은 과장이었다
+
+감사 지적이 옳다. `t.Cleanup` 은 **kill(SIGINT/SIGKILL)과 `go test -timeout` 패닉에서는 발화하지 않으며**, 그 경로에서는 양성 다리가 남긴 수정 상태가 남는다. 더해 **양성 다리가 도는 약 10초 동안 두 추적 파일은 실제로 수정 상태다**(§E.2 의 `after-positive` 해시가 그 증거다) — 그 창에 다른 레인이 트리를 읽으면 남의 픽스처가 `M` 으로 보인다.
+
+둘 다 사실이고 합리적 비용으로는 고칠 수 없다. 따라서 **고치지 않고 문면을 좁혔다.** 감사의 `Required fix` 자체가 코드 변경 없는 문면 수리였고, 가드 doc comment 에 "every NORMAL exit path" + 잔여 2건을 명시했다. 소스에 거짓 서술을 남기는 것은 이 SPEC 이 REQ-PFW-008 로 고친 결함과 같은 부류이므로, 문면 수리는 드라이브-바이가 아니다.
+
+§E.4 와 §E.8 의 종전 서술도 이 좁힘에 맞춰 읽어야 한다 — 실측한 것은 `t.Fatal`/`t.Errorf` 두 경로뿐이다.
+
+### F3 [Low, 비차단] — 비용 수치는 하한이지 상한이 아니다
+
+감사자가 같은 기계에서 잰 델타는 **≈37.8s** 로, 이 카드가 기록한 ≈20-21s 의 약 1.8배다. 부하가 달랐다.
+
+| 행위자 | 델타 |
+|---|---|
+| 이 레인 (§E.5) | ≈20.4s |
+| 조정자 (§E.9) | ≈21.4s |
+| sync-auditor | ≈37.8s |
+
+**평균 내지 않고, 유리한 값을 고르지도 않는다.** ≈20-21s 는 **하한**으로 읽어야 한다. 감사 보고서가 덧붙인 사실 하나를 함께 남긴다: 이 가드는 CI 에서 **5회** 실행된다(`ci.yml:183` 커버리지, `ci.yml:238` race, `release-pr-multi-os.yml:189` × 3 OS). 비례성 판단(§E.6)의 입력이 그만큼 커진다 — 리드 몫이다.
+
+### F5 [비차단] — SPEC 폴더 안의 `.moai/`·`.claude/` 잔여
+
+gitignore 대상이라 범위 위반이 아니다. 지시대로 그대로 둔다.
+
+### 여전히 gap
+
+- **CI 미관측.** 푸시하지 않았으므로 전 패키지 판정과 darwin/windows 매트릭스는 여전히 미측정이다. **F1 이 정확히 그 미관측 면에서 터질 결함이었다는 점이 이 gap 의 무게를 보여 준다** — 로컬 초록은 Windows 에 대해 아무것도 말하지 않는다.
+- **Windows 자식 환경은 실행으로 확인하지 않았다.** 거부목록이 옳다는 근거는 "상속하므로 플랫폼 변수가 자동으로 따라온다"는 구조적 논증이지 Windows 실행 관측이 아니다. 실제 확인은 릴리스 매트릭스가 처음이다.
+- **`t.Cleanup` 패닉 경로 미관측** (F2 로 문면에 명시).
