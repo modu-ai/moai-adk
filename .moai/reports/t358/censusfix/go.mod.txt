@@ -1,0 +1,3 @@
+module example.com/censusfix
+
+go 1.21
