@@ -158,6 +158,52 @@ by a single-direction criterion admits a mutant on the other direction.
 > all-matching mutant while a valid-cases-only rule admitted a nothing-matching one, each
 > direction passing its own one-sided criterion.
 
+### 2.1 RED-now cell content — the four elements
+
+[ZONE:Evolvable] [HARD] Where a criterion is classified **release-blocking**, its RED-now cell
+carries four elements together, and a cell carrying three of them is unadopted:
+
+- **the command** — a read-only shell invocation that completes in a **single invocation**. Pipes,
+  redirection, `&&`, `;` chaining, and subshells are outside the form. A citation that is not of
+  this form is not an error; it takes the undecidable disposition below, and no reader is ever
+  obliged to execute it.
+- **that command's verbatim stdout** — **verbatim** means the **raw file** bytes, not the rendered
+  view. A command is verbatim when it runs unmodified as read from the source.
+- **that command's exit code**, recorded as its own field. It is separate precisely because the
+  single-invocation form forbids `; echo $?`, so the exit code cannot ride inside the command. An
+  empty stdout with a non-zero exit is a complete and common observation.
+- **the tree SHA** the measurement was taken on — a commit SHA, never a branch name (§4). A
+  document-level pin is permitted and **explicitly binds every criterion carrying no pin of its
+  own**; a criterion-level pin wins wherever present.
+
+**The carrier** — where in the document the four elements physically live — is one of exactly two:
+a **table cell**, or a fenced **evidence-ledger** entry that a table cell cites by id. The ledger
+is the recommended carrier, because a table cell mangles shell metacharacters and that mangling
+has already produced both a vacuous green and an unrunnable command. Admitting the ledger here is
+what keeps it a carrier rather than an exemption: a check of this obligation follows the elements
+to whichever carrier holds them, and neither demotion nor relocation removes a command from its
+scope.
+
+[ZONE:Evolvable] [HARD] **The obligation is structural, not lexical.** It is a test over the
+criterion's content — is a command present, is its stdout present, is its exit code present, is a
+SHA pinned — and neither this rule nor any check built on it keys on the grammar, the modality, or
+a word list of the prose. A discriminator over vocabulary is unsound in both directions: it
+classifies live criteria as dead on wording alone, and it misses a false cell written as an
+assertive observation report.
+
+[ZONE:Evolvable] [HARD] **The undecidable disposition.** Where a cited RED cannot be re-executed on
+the current tree — a historical event, an already-merged state, or an externally observed CI
+result — the criterion **loses release-blocking eligibility**, is classified as a
+**regression-guard**, and is **not recorded as a pass**. This is the disposition, not one option
+among several: a criterion whose starting observation cannot be reproduced does not become a
+release gate by being written more confidently.
+
+> Evidence: observed as nine release-blocking criteria in one landed SPEC resting on a single
+> premise — that an absent test turns its suite red — where a runner given a selector matching zero
+> tests exits 0 and prints `ok`. The cells pinned a tree and carried no output, so the pin named a
+> measurement that had never been taken; the audit that passed them had no criterion that read a
+> RED cell at all.
+
 ## 3. Cross-layer revision sweep
 
 [ZONE:Evolvable] [HARD] The layer a rule constrains is its blind spot. When a criterion is
