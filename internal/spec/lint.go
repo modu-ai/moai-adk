@@ -821,7 +821,14 @@ func (r *CoverageRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 		return nil
 	}
 
+	// The covered set is the UNION of the inline AC section and the sibling
+	// acceptance.md, which is the AC SSOT for Tier M/L. See
+	// lint_coverage_sibling.go for why the sibling is read here rather than
+	// merged into doc.Criteria, and why it is read whole.
 	covered := collectAllREQIDs(doc.Criteria)
+	for id := range siblingAcceptanceCoveredREQIDs(doc.Path) {
+		covered[id] = true
+	}
 
 	var findings []Finding
 	for _, req := range doc.REQs {
