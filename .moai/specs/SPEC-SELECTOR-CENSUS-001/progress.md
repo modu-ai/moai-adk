@@ -154,7 +154,7 @@ M1 로 진행한 근거는 (a) 다: 판정 키(출력 토큰)가 실제로 도�
 
 ```yaml
 run_complete_at: 2026-08-31
-run_commit_sha: pending-backfill-t341-m1
+run_commit_sha: c6371085c
 run_status: complete-with-debt
 ac_pass_count: 7
 ac_fail_count: 0
