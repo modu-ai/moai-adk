@@ -74,4 +74,14 @@ mtime `Aug 27 23:09` 로 동일하다. 재현 바이너리는 세션 전용 임�
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- sync_status: `completed`
+- sync_complete_at: 2026-08-31
+- sync_commit_sha: pending-backfill-t366
+- changelog_entry_position: `[Unreleased]` → `### Added`, first entry (card t366, `SPEC-BINLAG-INVOCATION-001`)
+- frontmatter_status_transitions.spec_md: `in-progress → completed` (merged into this sync commit; `updated:` refreshed to 2026-08-31)
+- b12_self_test_a (pre-emission grep): `grep -c 'BINLAG' CHANGELOG.md` → `0` before emission (checked; single entry now present)
+- b12_self_test_b (AC count match): `grep -oE 'AC-BLI-[0-9]+' acceptance.md \| sort -u \| wc -l` → **8**; CHANGELOG cites 4 judged-PASS + 4 vacuously-satisfied-excluded, matching `acceptance.md` §D exactly
+- b12_self_test_c (file path verification): all paths cited in the CHANGELOG entry verified to exist via `ls` before commit (`spec.md`, both `verification-claim-integrity.md` copies, `root.go`, `acceptance.md`, `run-observation.md`, `evidence/`, `progress.md`, `internal/binlag`)
+- canary_compliance_check: not applicable — this SPEC defines a doctrine clause (§2.2 tool-provenance attribution), not a forward-looking policy with its own canary test
+- Scope discipline: this sync commit modifies ONLY `CHANGELOG.md`, this file's §E.4, and `spec.md` frontmatter (`status:` + `updated:`). No body content in `spec.md`/`plan.md`/`acceptance.md` was touched.
+- Not pushed by this session — the integration window is the lead's, per `.claude/rules/local/gitflow-lane-protocol.md`.

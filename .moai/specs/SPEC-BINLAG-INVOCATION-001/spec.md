@@ -2,7 +2,7 @@
 id: SPEC-BINLAG-INVOCATION-001
 title: 트리를 읽는 CLI 호출이 자기 지연을 밝힌다 — PATH 바이너리의 초록을 비실행과 구별하기
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-08-30
 updated: 2026-08-31
 author: manager-spec
