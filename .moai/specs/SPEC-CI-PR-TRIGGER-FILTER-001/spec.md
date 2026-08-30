@@ -1,10 +1,10 @@
 ---
 id: SPEC-CI-PR-TRIGGER-FILTER-001
 title: "graph-freshness.yml pull_request 트리거의 무필터 생략 교정 — 발화 집합을 선언으로 고정"
-version: "0.1.0"
-status: draft
+version: "0.2.0"
+status: in-progress
 created: 2026-08-29
-updated: 2026-08-29
+updated: 2026-08-30
 author: manager-spec
 priority: P3
 phase: "v3.1.4 target"
@@ -18,11 +18,35 @@ related_specs: [SPEC-GRAPH-FRESHNESS-CADENCE-001, SPEC-GITFLOW-DOCTRINE-ALIGN-00
 
 # SPEC: `Graph Freshness` 워크플로 `pull_request` 트리거 필터 명시화
 
+## 0. 이 SPEC이 배달하지 않는 것 — 먼저 읽을 것
+
+**카드 t294의 제목과 본문은 develop→main PR의 이중 발화(같은 head 커밋에 push 런 1개 + pull_request 런
+1개)를 해소하겠다고 적는다. 이 SPEC은 그것을 배달하지 않는다.** kickoff에서 운영자가 결정 축 B를
+"별도 카드로 분리"로 닫았고, 그에 따라 `concurrency.group` 재키잉은 본 SPEC의 범위 밖이다(§4 축 B).
+이 SPEC이 착지해도 이중 발화는 **그대로 남는다**.
+
+이 문서를 나중에 여는 사람이 "필터가 들어갔으니 이중 발화 결함은 닫혔다"고 읽으면 안 된다. 필터는
+base 브랜치를 거르고 이중 발화의 원인은 ref 키 concurrency 그룹이라, 두 사안은 같은 파일에 있을 뿐
+같은 결함이 아니다(근거: §1.3). 이중 발화를 실제로 닫는 작업 — `concurrency.group`을 head SHA 키로
+바꾸고 그로 인한 브랜치-보호 취소 위험을 측정하는 일 — 은 **리드가 발행하는 별도 카드**의 소관이다.
+
+### 0.1 그럼 이 카드는 무엇을 하는가
+
+- 누락된 필터가 **오늘 실제로 만드는 효과**는 base가 `main`도 `develop`도 아닌 PR에서의 무조건 발화이며,
+  그런 PR은 오늘 기준 0건이다.
+- `branches: [main, develop]`는 **오늘의 발화를 하나도 제거하지 않으면서** develop-base PR(오늘 1건 —
+  PR #1677)의 병합 전 검사를 보존한다.
+
+즉 이 카드의 성과는 발화 집합의 축소가 아니라 **선언의 명시화**다 — 오늘의 동작을 바꾸지 않은 채,
+상속돼 있던 발화 집합을 선언문 안으로 끌어들인다.
+
+
 ## HISTORY
 
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-08-29 | manager-spec | 최초 작성 — 카드 t294. 근거는 `.moai/reports/t294/investigation.md`(측정 트리 `.claude/worktrees/t294`, HEAD `51daada00`) + 본 세션에서 추가로 실행한 실측 5건(§1.3·§1.4) |
+| 0.2.0 | 2026-08-30 | manager-spec | kickoff 결정 반영 — 축 A=좁은 범위(graph-freshness 단독), 축 B=별도 카드로 연기. 비배달 선언(§0) 추가, 카드 범위 주장 정정(§1.6), 미판정 관측 기록(§1.7) 추가 |
 
 ---
 
@@ -45,8 +69,8 @@ on:
 
 조사 보고서 §2.2(`git blame -L 1,8`)의 귀속:
 
-- `6786c3fa4` (2026-08-26) 파일 최초 작성. 당시 PR base는 `main` 하나뿐이라 무필터 `pull_request:`와
-  `branches: [main]`은 **동치**였다.
+- `6786c3fa4` (2026-08-26) 파일 최초 작성. **develop이 PR base로 존재하기 하루 전**이다. 당시 PR base는
+  `main` 하나뿐이라 무필터 `pull_request:`와 `branches: [main]`은 **동치**였다.
 - `11216d13f` (2026-08-27) git-flow 전환. 커밋 메시지가 스스로 범위를 못박는다 —
   *"6 CI workflows: push trigger branches [main] -> [main, develop]"*. `push:` 줄만 손댔고,
   6개 워크플로 어디에서도 `pull_request` 블록을 건드리지 않았다.
@@ -100,6 +124,37 @@ $ gh pr list --state all --limit 100 --json baseRefName \
 card PR to carry the pull_request trigger above."* 두 곳 모두 `pull_request` 필터는 손대지 않았다
 (`paths:`로만 좁혀져 있다). 본 SPEC이 채택하는 형태는 **그 주석 관행은 따르되, 필터는 명시**하는 쪽이다 —
 graph-freshness는 `paths:`조차 없어 노출 폭이 그 둘보다 넓기 때문이다(§4 결정 축 A 참조).
+
+### 1.6 [정정] 카드의 범위 서술 — `branches: [main]`을 가진 워크플로는 정확히 5개다
+
+카드는 `lsel-leak-guard.yaml`이 `pull_request`에 `branches: [main]`을 명시하고 있다고 적었다. **반증됐다** —
+그 파일의 `pull_request`는 `paths:`로만 좁혀져 있고 `branches:`가 없다(조사 §4 표).
+
+`pull_request`에 `branches: [main]`을 실제로 가진 워크플로는 다음 **5개**다:
+
+- `ci.yml`
+- `codeql.yml`
+- `release-pr-multi-os.yml`
+- `template-neutrality-check.yaml`
+- `test-install.yml`
+
+카드가 "다른 5개는 명시돼 있다"고 적은 숫자 자체는 맞지만, 그 집합의 구성원 하나가 틀렸다. 이 정정이
+없으면 후속 작업이 `lsel-leak-guard.yaml`을 "이미 정규화된 선례"로 오독한다.
+
+### 1.7 관측했으나 판정하지 않은 것 — 무필터 3종 추가 (리드 스윕)
+
+리드가 `.github/workflows/` 18개 파일을 독립적으로 훑은 결과, 본 세션이 열거한 4종(graph-freshness +
+paths-scoped 3종)에 대해서는 결론이 일치했고, **추가로 3개** 워크플로의 `pull_request` 계열 트리거에
+브랜치 필터가 없다고 보고했다:
+
+- `claude.yml`
+- `community.yml`
+- `spec-status-auto-sync.yml`
+
+셋 다 봇/자동화 워크플로이며, 그 자리에서 무필터가 **의도일 수 있다**. 리드도 본 세션도 이 셋을 다시
+측정하지 않았고 판정하지도 않았다. 따라서 여기 적는 것은 **관측 기록이지 결함 주장이 아니다** — 이 셋이
+결함이라고 주장하지 않으며, 올바르다고도 주장하지 않는다. 축 B 카드가 이 관측을 물려받아, 필요하다면
+그때 측정하고 판정한다. 기록해 두지 않으면 관측이 그냥 사라진다.
 
 ---
 
@@ -186,18 +241,21 @@ Verified by: `grep -c 'DEFERRED-OBS' .moai/specs/SPEC-CI-PR-TRIGGER-FILTER-001/p
 
 ## 4. 범위 밖 (exclusions)
 
-### Out of Scope — paths-scoped 무필터 3종 (kickoff 결정 축 A)
+### Out of Scope — paths-scoped 무필터 3종 (축 A — 운영자 결정 완료: 좁은 범위)
+- **결정(kickoff, 2026-08-30): 좁은 범위.** 본 카드는 `graph-freshness.yml` **1개만** 고친다.
 - `lsel-leak-guard.yaml` · `spec-lint.yml` · `docs-i18n-check.yml` 도 `pull_request`에 `branches:`가
-  없다(조사 §4 표 — 카드가 `lsel-leak-guard.yaml`에 `branches: [main]`이 있다고 적은 것은 반증됐다).
-- 본 SPEC은 이 셋을 건드리지 않는다. 셋 다 `paths:`로 좁혀져 있어 노출 폭이 graph-freshness(무조건 발화)보다
-  작고, 한 카드에서 4개 워크플로를 함께 바꾸면 diff 귀속이 흐려진다.
-- 함께 정규화할지는 **운영자 결정**이며 kickoff에 올린다(권고: 좁은 범위 — graph-freshness 1개).
+  없다(조사 §4 표 — 카드의 `lsel-leak-guard.yaml` 서술은 반증됐다, §1.6).
+- 근거: 셋 다 `paths:`로 좁혀져 있어 노출 폭이 graph-freshness(무조건 발화)보다 작고, 1파일 diff가
+  이 카드를 Class A로 유지시킨다. 4개 워크플로 동시 변경은 diff 귀속을 흐린다.
 
-### Out of Scope — 이중 발화 제거 (kickoff 결정 축 B)
-- develop-head PR의 중복 런은 `concurrency.group`을 head SHA 키
+### Out of Scope — 이중 발화 제거 (축 B — 운영자 결정 완료: 별도 카드로 연기)
+- **결정(kickoff, 2026-08-30): 별도 카드.** `concurrency.group` 재키잉은 본 카드에서 **하지 않는다**.
+  그 카드는 리드가 발행한다. 결과적으로 본 SPEC은 카드가 약속한 이중 발화 해소를 배달하지 않는다 — §0.
+- 미뤄진 내용: 중복 런은 `concurrency.group`을 head SHA 키
   (`${{ github.event.pull_request.head.sha || github.sha }}`)로 바꾸면 닫히지만, 그러면 push 런이
   브랜치 보호가 요구하는 PR 런을 취소해 체크가 `cancelled`로 남을 수 있다 — 미측정 위험이다.
-- 본 SPEC은 concurrency 블록을 건드리지 않는다(REQ-PTF-004). 채택 여부는 kickoff 결정.
+- 본 SPEC은 concurrency 블록을 바이트 단위로 보존한다(REQ-PTF-004 · AC-PTF-004).
+- 축 B 카드가 물려받을 관측: §1.7의 무필터 3종(판정하지 않음).
 
 ### Out of Scope — push 트리거
 - `push: branches: [main, develop]`은 그대로 둔다. develop은 카드 PR 없이 직접 병합되는 통합 브랜치라
@@ -224,4 +282,5 @@ Verified by: `grep -c 'DEFERRED-OBS' .moai/specs/SPEC-CI-PR-TRIGGER-FILTER-001/p
   아니라고 보나, run-phase에서 `ls internal/template/templates/.github` 로 직접 확인한 뒤 진행한다.
 - **카드 브랜치는 CI-inert**: 이 변경의 판정 주체는 develop 통합 후의 CI다. 레인 로컬 검증은
   `actionlint` + `yq` 파서 단언까지가 전부이며, 그 이상을 실행 증거로 주장하지 않는다.
-- **결정 축 2개가 kickoff 전에 닫혀야 한다**(§4 축 A·B). 닫히기 전 run-phase 진입 금지.
+- **결정 축 2개는 닫혔다**(kickoff 2026-08-30 — 축 A=좁은 범위, 축 B=별도 카드). run-phase 범위는
+  `.github/workflows/graph-freshness.yml` 단일 파일로 확정이며, 이를 스스로 넓히지 않는다.
