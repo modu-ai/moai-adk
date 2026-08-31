@@ -217,4 +217,48 @@ push_state: not pushed — 통합은 리드가 별도로 잡는다
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-01
+sync_entry_head: 62ea21945
+sync_commit_sha: "<backfilled in the immediately following commit — a commit cannot cite its own SHA>"
+sync_status: complete
+b12_self_test_a: "grep -c 'SPEC-VERSION-STAMP-GUARD-001' CHANGELOG.md -> 0 (rc=1) before emission; no duplicate entry from a parallel session"
+b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u -> 6 distinct (AC-VSG-001..006), non-zero; the CHANGELOG entry claims no AC count, and §E.2 reports 6/6 PASS"
+b12_self_test_c: "every path named in the CHANGELOG entry resolved with ls: spec.md, .moai/docs/version-management.md, internal/cli/version_sync_list_test.go, internal/template/templates/.moai/config/sections/system.yaml.tmpl, Makefile, .goreleaser.yml, cmd/moai/main.go, README.ja.md, README.zh.md, docs-site/hugo.toml, pkg/version/version.go. The one path the entry asserts is ABSENT was checked in that direction: ls internal/template/templates/.moai/config/config.yaml -> rc=1. Line citations re-read in this tree: .goreleaser.yml:22 and Makefile:20 both carry the -X pkg/version.Version injection"
+changelog_entry_position: "[Unreleased] -> ### Fixed, appended as the last bullet (line 403 in the post-edit file). Placed under Fixed rather than Added because the deliverable is a documentation-defect repair; the guard test exists to hold that repair, not as a feature"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented -> completed (merged onto this single sync commit per the 3-phase close); updated: 2026-09-01"
+  plan_md: "no frontmatter — not applicable"
+  acceptance_md: "no frontmatter — not applicable"
+  progress_md: "no frontmatter — not applicable"
+  note: "only spec.md carries frontmatter in this SPEC. That is the intended shape, not an omission: SPEC Lint reports a status: line on a non-spec.md artifact as an error (card t369)"
+canary_compliance_check: "not applicable — this SPEC defines no forward-looking policy that its own sync would have to test"
+sync_verification:
+  guard_test: "go test ./internal/cli/ -run VersionSyncList -> PASS (exit 0), re-run in this tree at HEAD 62ea21945"
+  package_suite: "go test ./internal/cli/... -> exit 0, all packages ok (.moai/reports/t388/sync-test.log)"
+  spec_lint: "moai spec lint (whole catalogue) -> 8 error(s), 64 warning(s), NONE of them naming this SPEC (grep -c 'VERSION-STAMP-GUARD' over the ERROR lines -> 0; the SPEC does not appear anywhere in the output). The 8 are inherited from other SPECs and are not this card's to close (.moai/reports/t388/sync-spec-lint.log)"
+  full_suite: "not run locally — per-package judgment is CI's (CLAUDE.local.md §4)"
+  non_vacuity_remeasured: "the existence assertion was re-observed failing in THIS phase, not carried over from run-phase: substituting the listed docs-site/hugo.toml for docs-site/NOPE-sync-mutant.toml made the check exit 1 with 'version-sync list names a path that does not exist: docs-site/NOPE-sync-mutant.toml' and NO parsed= line (grep -c 'parsed=' -> 0), so the count stayed at 7 and the existence assertion fired alone (.moai/reports/t388/sync-mutation-red.log). Reverted; git status --short showed no entry for the document, i.e. byte-identical; green again"
+half_guarantee_wording_intact:
+  spec_md: "§4 [HARD] '이 카드가 착지해도 목록은 여전히 썩을 수 있다' + the two-direction table; 13 mentions of t392, 3 of 절반"
+  documentation: ".moai/docs/version-management.md — 'The guarantee it establishes is partial' + 'does not detect' + 'Closing that direction is card t392' (grep -c partial -> 1, does not detect -> 1, t392 -> 1)"
+  guard_test_header: "internal/cli/version_sync_list_test.go — 'PARTIAL' + the CAUGHT / NOT CAUGHT pair + t392 (grep -c PARTIAL -> 1, NOT CAUGHT -> 1, t392 -> 1)"
+  changelog_entry: "the last sub-bullet is the half-guarantee statement; it names the omission direction as the one that caused the card and closes with 'Nothing here should be read as the list no longer being able to rot'"
+push_state: "not pushed — integration is scheduled by the lead"
+```
+
+### Sync-phase finding — out of scope, reported not repaired
+
+`.claude/skills/hns-moaiadk-dev-reference/SKILL.md` §Version Management carries a **second copy** of
+the same material, and that copy still says what this card corrected: `pkg/version/version.go` reads
+from git tags at build time (18·22행), a stamp list that omits `README.ja.md` / `README.zh.md` /
+`docs-site/hugo.toml` / `pkg/version/version.go`, `CHANGELOG.md` filed as a stamp, and
+`internal/template/templates/.moai/config/sections/system.yaml.tmpl` named as a stamp — which §1.2
+establishes it is not. Its Release Process section is also the retired manual `git tag` +
+`make release` flow that `.moai/docs/version-management.md` explicitly marks as NOT the release path.
+
+This drift **predates this card** and reaches beyond it, so it was not repaired here — a partial fix
+would leave the section looking freshly reviewed while half of it stayed wrong. The guard test does
+not read this file, so the copy is unguarded either way. Recommended follow-up: replace the
+duplicated section with a pointer to `.moai/docs/version-management.md` as its single source, on its
+own card.
