@@ -206,7 +206,7 @@ m1_to_mN_commit_strategy: single-commit   # M1~M6이 서로 의존해 중간 커
 
 ```yaml
 sync_complete_at: 2026-08-31
-sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash; backfilled in the immediately following commit
+sync_commit_sha: "cfd460df0"
 sync_status: completed
 changelog_entry: added
 changelog_entry_position: "CHANGELOG.md [Unreleased] -> ### Added, first entry (line 12), inserted above SPEC-SELECTOR-CENSUS-001"
