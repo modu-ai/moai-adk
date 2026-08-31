@@ -671,6 +671,53 @@ depth-1 체크아웃이라 `StatusGitConsistencyRule`이 `git log --follow`로 �
 규칙의 초록이 미실행과 구별되지 않는다** — 로컬 관측만이 이 부작용에 대한 증거다. CI 체크아웃
 자체는 다른 카드(t371) 소관이며 이 카드는 건드리지 않았다.
 
+**흡수 후 재측정 — 병합 트리 `01087360b`**
+
+통합 창(lane-8) 안에서 `origin/develop` `3603c155b` 를 흡수했다. **충돌 0** (CHANGELOG 는
+`ort` 자동 병합). 흡수분은 `internal/hook` / `internal/telemetry` / 새 SPEC
+`SPEC-SELECTOR-CENSUS-001` 4종이며, **`internal/spec` 은 건드리지 않았다**
+(`git diff --name-only feb0eeb5d HEAD -- internal/spec` → 공집합). 그럼에도 바이너리를
+병합 트리에서 새로 빌드해(`go build -o /tmp/moai-t362-postabsorb ./cmd/moai` rc=0) 판정 도구의
+출처를 병합 트리로 고정했다.
+
+| 검증 | 명령 | 결과 |
+|---|---|---|
+| `8 → 0` 재현 | `<binary> spec lint --json .moai/specs/SPEC-COVERAGE-RULE-SCOPE-001/spec.md` | before(M4 이전 바이너리) **8** `CoverageIncomplete` / after(병합 트리 빌드) **0**, 양쪽 rc=0 |
+| 전 코퍼스 | `<postabsorb> spec lint --json .moai/specs/SPEC-*/spec.md` | **0 error, 1,091 warning** (local) |
+| `go vet` | `go vet ./internal/spec/...` | 무출력, rc=0 |
+| `go test` | `go test ./internal/spec/...` | `ok … 46.395s` |
+
+**`8 → 0 (post-absorb, 01087360b)` 은 pre-absorb `c4a0c967d` 값과 같다.** 두 측정은 다른
+질문에 답한다 — pre-absorb 는 M4 효과 격리, post-absorb 는 착지 상태 확인 — 그리고 갈리지
+않았으므로 화해할 것이 없다. 8건은 `REQ-CRS-001-001..008` 이고 전부 `advisory: true` /
+`severity: warning` 이라 rc 는 양쪽 모두 0이다. **판정은 rc 가 아니라 발화 여부로 한다.**
+
+**`CoverageIncomplete` 846 이 흡수 후에도 그대로인 이유를 댈 수 있다.** 흡수가 새 SPEC
+(`SPEC-SELECTOR-CENSUS-001`)을 들여왔으므로 총계가 흔들릴 수 있었다. 코퍼스 findings 를 파일별로
+귀속시켜 확인했다 — 그 SPEC 의 기여 **0건**, 이 카드 SPEC 의 기여 **0건**. 즉 846 불변은
+관측일 뿐 아니라 설명되는 값이며, 미러 삭제 판정의 전제는 흔들리지 않았다.
+
+**전 코퍼스 수치는 local 라벨이다.** CI 는 depth-1 체크아웃이라 히스토리 의존 두 규칙이
+발화하지 않아 체계적으로 19 낮다(§E.2). 리드가 다른 두 레인에서 받은 병합-트리 관측값
+(`0 error, 1091 warning`, local)과 이 카드 측정이 일치한다.
+
+**Graph Freshness — 재생성하지 않았다.** 병합 트리에서 `graph check` rc=1,
+`layer codemaps verdict=stale value=44 threshold=40`. 운영자 판정(배치 끝에 일괄 재생성)에
+따라 codemaps 를 재생성하지 않았고, 기여분만 분리해 둔다:
+
+- **이 카드가 원인인 Go 파일은 3개** — `internal/spec/lint.go`,
+  `internal/spec/lint_coverage_sibling.go`, `internal/spec/lint_coverage_sibling_test.go`
+  (`git diff --name-only origin/develop...feb0eeb5d -- 'internal/**/*.go'`).
+- 도구가 스스로 내는 `contribution: 5 … vs first parent feb0eeb5d` 는 **분모가 다르다** —
+  first parent 가 이 카드의 브랜치 head 이므로 그 5는 흡수로 들어온 쪽이다. 위 3개와 더하거나
+  같은 수로 읽어서는 안 된다.
+- 44 중 나머지는 이 카드 이전에 누적된 드리프트이며 이 카드가 재지 않았다.
+
+**미러 두 종을 혼동하지 않는다.** 흡수분에 t287 의 **템플릿 미러**
+(`internal/template/templates/.claude/rules/moai/workflow/worktree-integration.md`)가 들어왔다.
+이 카드가 `c4a0c967d` 에서 지운 것은 **SPEC 내부의 §2.3 AC 미러 표**로, 서로 다른 파일이고
+서로 다른 층이다. CHANGELOG 문면에서도 이 카드 항목은 AC 미러 표를 가리킨다.
+
 **sync 단계에서 새로 재지 않은 것(Gap)**
 - 전 코퍼스 수치(846 / 1,093 / 25 / 6) — §E.2의 run-phase 측정을 승계했고 sync에서 재측정하지
   않았다. 승계값임을 CHANGELOG와 여기 양쪽에 명시했다.
