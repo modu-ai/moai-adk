@@ -56,9 +56,31 @@
 `echo` 로 문자열만 출력하는 2형태, `printf` 로 SQL 문자열 출력, 그리고 임시경로 정리
 `rm -rf /tmp/moai-test-123`, `rm -rf /var/folders/…/build`, `rm -rf ~/go/pkg/mod/cache/tmp`.
 
-**세션 내 실기 관측**: 이 테스트 파일을 heredoc 으로 쓰려던 명령 자체가
-`Dangerous command blocked: (?i)DROP\s+DATABASE` 로 거절됐다. 이슈 본문의 문제 3
-(가드가 자기 자신에 관한 기록을 막는다)이 수리 작업 중에 그대로 재현된 것이다.
+**세션 내 실기 관측 — 거절 2건, 서로 다른 가드, 문면으로 귀속됨**
+
+작업 중 두 번 거절당했고 문면이 서로 다르다. 둘을 구분해 적는다.
+
+1. 이 테스트 파일을 heredoc 으로 쓰려던 명령이 거절됐다. 문면:
+   `Dangerous command blocked: (?i)DROP\s+DATABASE`
+   이슈 본문의 문제 3(가드가 자기 자신에 관한 기록을 막는다)이 수리 작업 중에 그대로
+   재현된 것이다.
+2. 뮤테이션 4건을 한 스크립트로 묶어 돌리려던 명령이 거절됐다. 문면:
+   `this command is too complex to verify that it stays inside the worktree`
+   이건 워크트리 격리 가드이며 t287 계열이다. 뮤테이션은 단순 명령으로 쪼개 돌렸다.
+
+**귀속은 미확정이 아니다.** 두 문면은 각각 유일한 발신처를 갖는다:
+
+    grep -rn 'Dangerous command blocked' --include='*.go' internal/ | grep -v _test.go
+      → internal/hook/pre_tool.go:938, 951   (이 카드가 고친 가드)
+    grep -rn 'too complex to verify' --include='*.go' internal/ pkg/ cmd/ | wc -l
+      → 0                                     (moai 소스 아님 = Claude Code 바이너리 소관)
+
+`Dangerous command blocked: %s` 는 `pre_tool.go:951` 의 포맷이고, `%s` 자리에 들어간
+`(?i)DROP\s+DATABASE` 는 `compilePatterns` 가 `(?i)` 를 붙여 컴파일한 패턴의 `String()`
+이다. 즉 1번은 **moai 자신의 pre-tool 가드**가 낸 것이고, 2번과는 다른 가드다.
+
+수리 후에도 이 세션에서는 1번이 계속 재현된다 — 설치본 바이너리가 아직 옛것이라
+반영은 재빌드·재설치 이후이며, 그건 여기서 재지 않았다(Gaps 참조).
 
 ### 수리 후 (GREEN)
 
