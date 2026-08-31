@@ -144,7 +144,7 @@ authoring time — see `sync_commit_sha` placeholder below).
 
 ```yaml
 sync_complete_at: 2026-08-31
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 58e6848a1
 sync_status: complete
 b12_self_test_a: 0 (grep -c 'SPEC-GITIGNORE-ROOT-GUARD-001' CHANGELOG.md — no prior entry, no duplicate)
 b12_self_test_b: 7 (AC count in spec.md matches AC PASS/FAIL matrix row count)
