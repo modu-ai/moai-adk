@@ -1,7 +1,7 @@
 ---
 id: SPEC-ERA-H3-NARROWING-001
 title: "H-3 시대 분류 술어 축소 — 진행 중 SPEC의 V3R5 오분류 차단"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-08-31
 updated: 2026-08-31
@@ -22,6 +22,7 @@ tier: S
 |---------|------|--------|--------|
 | 0.1.0 | 2026-08-31 | manager-spec | 최초 작성 (Tier M). 카드 t382 |
 | 0.2.0 | 2026-08-31 | manager-spec | **Tier M → S 정정** (LOC·파일 수 기준 미달, AC 8개가 S 상한에 부합 — acceptance.md 폐기하고 AC를 §3으로 인라인). 무게중심을 lint 심각도에서 **drift 면제**로 이동 |
+| 0.4.0 | 2026-08-31 | manager-spec | **plan-audit iter1 부채 상환** (PASS-WITH-DEBT 0.825, blocking 4 + optional 6). D1 무게중심 축에 원장 **R4** 신설 + AC-007 산술 23행→22행 정정. D2 AC-002의 코퍼스 RED가 phase 경로에 공허함을 명시하고 「날짜만으로 축소」 뮤테이션을 판정 본체로 승격. D3 AC-008의 H-5 술어 평가를 독립 리터럴 + rationale 접두로 못박음. D4 §3.6에 REQ-EH3-004 판정 줄 신설. D5 좌측 열 「오늘」 서술 3곳 정정. D6 R1 귀속 `f72c0bf0f`→`1f10f5e8d`. D7 옵션 D 근거를 측정된 기제로 교체. D8 REQ-002 라벨 `Where`→`While`. D9 테스트 이름 정정. D10 원장에 빌드 좌표 명시 |
 | 0.3.0 | 2026-08-31 | manager-spec | RED 증거를 `verification-completeness.md` §2.1 4요소(명령·축자 stdout·exit code·트리 SHA)로 승격 — 원장 `.moai/reports/t382/red-evidence.md` R1~R3 신설, 기준선을 트리 `f72c0bf0f`에서 **재측정**(V3R5 23→24, grandfathered 285→286). AC-001의 단위 판정 명령이 오늘 초록이라는 사실을 명시하고 RED를 코퍼스로 이관. `matchesModernPhase`의 좁은 술어(`v3.0` 접두 / `v3r6`) 실측 반영. 가드를 2층으로 분리하고 코퍼스 층이 상시 가드가 아님을 명시. t371 무충돌 주장을 「절반만 검증됨」으로 정정 |
 
 ## 1. 배경
@@ -42,15 +43,17 @@ if hasSyncSection && syncSHA == "" {
 
 따라서 이 술어는 "이 SPEC이 언제 쓰였는가"가 아니라 **"이 SPEC이 아직 안 닫혔는가"** 를 재고 있다. 걸리는 순간 `return`이므로 `created` 날짜를 읽었을 H-5에 도달하지 못한다.
 
-실측 (트리 `9328a5242`, `./bin/moai spec audit`): V3R5로 분류된 **23건 중 22건이 `created >= 2026-04-01`**, `created < 2026-04-01`인 것은 **0건**. 오늘의 V3R5 버킷에 진짜로 오래된 SPEC은 한 건도 없다.
+실측은 **원장 R1**(트리 `f967089ba` 재현, exit 1): V3R5로 분류된 **24건 중 23건이 modern-era 신호를 갖고**(`created >= 2026-04-01` 또는 modern `phase`), 신호가 없는 것은 **1건**(INIT-WIZARD)뿐이다. `created < 2026-04-01`인 것은 **0건**. 오늘의 V3R5 버킷에 진짜로 오래된 SPEC은 한 건도 없다.
 
 ### 1.2 무게중심 — 오늘 실제로 무는 곳은 drift 면제다
 
 이 결함의 값을 정확히 매기기 위해 세 소비 축을 따로 잰다. 셋의 크기는 서로 크게 다르다.
 
-**축 1 — `spec drift`의 status↔git 대조 면제. 오늘 22건에 걸려 있다. 여기가 무게중심이다.**
+**축 1 — `spec drift`의 status↔git 대조 면제. 오늘 22건이 부당하게 면제돼 있다. 여기가 무게중심이다.**
 
-`internal/spec/drift.go`의 ④ 정렬 단계는 `EraFinal()`이 참이면 `GitImpliedStatus: "era-exempt"`, `Drifted: false`를 박고 그 SPEC을 git 분류 대상에서 뺀다. `./bin/moai spec drift` 실측(M13): 23건 중 **22행이 `era-exempt`**, 1행은 `terminal-exempt`. 즉 22건의 frontmatter status가 git 이력과 한 번도 대조되지 않는다.
+`internal/spec/drift.go`의 ④ 정렬 단계는 `EraFinal()`이 참이면 `GitImpliedStatus: "era-exempt"`, `Drifted: false`를 박고 그 SPEC을 git 분류 대상에서 뺀다. 실측은 **원장 R4**(트리 `f967089ba`): 스윕 24건 중 `era-exempt` **23**행 + `terminal-exempt` 1행이고, 그 23행 중 **22행이 modern-era 신호를 가진 부당 면제**다(나머지 1행 INIT-WIZARD는 신호가 없어 정당하다). 즉 **22건의 frontmatter status가 근거 없이 git 이력과 한 번도 대조되지 않는다.**
+
+> 수치 라벨 주의(감사 D5): 배경 측정 M13(트리 `9328a5242`)은 「23건 중 22행 `era-exempt`」였다. 그 22는 **`era-exempt` 총계**이고, 위의 22는 **부당 면제 수**다 — 우연히 같은 값이라 더 헷갈린다. 판정에 쓰는 것은 R4 쪽뿐이다.
 
 면제가 걸리는 창이 정확히 **작업 중인 창**이라는 점이 이 축이 무게중심인 이유다. H-3은 `sync_commit_sha`가 비어 있는 동안만 발화하고, 그 구간이 곧 SPEC이 실제로 편집되고 status가 손으로 옮겨지는 구간 — status가 git과 어긋날 가능성이 가장 큰 구간이다. 검사는 정확히 그동안 꺼져 있다가, SPEC이 닫혀 status가 더 이상 움직이지 않게 된 뒤에야 켜진다.
 
@@ -68,7 +71,7 @@ if hasSyncSection && syncSHA == "" {
 
 **이것은 분류의 정확성 결함이다.** 게이트가 지금 실패를 통과시키고 있다는 주장이 **아니다** — 축 3의 측정이 그 주장을 반증한다. 고치는 이유는 둘이다.
 
-1. **22건이 "너는 옛 시대라 검사에서 빼 준다"는 통보를 받고 있는데, 그중 오래된 것은 0건이다**(M4). 면제의 근거가 사실과 다르다.
+1. **22건이 "너는 옛 시대라 검사에서 빼 준다"는 통보를 받고 있는데, 그중 오래된 것은 0건이다**(원장 R4 `unearned exemption: 22`, 트리 `f967089ba`). 면제의 근거가 사실과 다르다.
 2. **면제 집합이 조용히 자란다.** plan-phase 골격이 `§E.2`를 찍는 한, 새로 만드는 모든 SPEC이 sync를 닫을 때까지 이 버킷에 들어간다. 이 SPEC 자신이 그 증거다 — `./bin/moai spec audit --filter-spec SPEC-ERA-H3-NARROWING-001`이 `Grandfathered: 1`, `[INFO] SPEC-ERA-H3-NARROWING-001 (V3R5)`를 낸다. 기준선은 이 산출물이 커밋되면서 V3R5 23 → 24로 이미 움직였다.
 
 축 3의 이득은 **잠재적**이다: 지금 걸리는 게이트는 없고, 되살아나는 것은 앞으로 걸릴 능력이다. 이 문장을 완화하거나 반대로 부풀리지 않는다.
@@ -101,7 +104,7 @@ V3R5 23건 중 유일하게 `created`를 읽을 수 없는 건이다. frontmatte
 ## 2. 요구사항 (GEARS)
 
 - **REQ-EH3-001** (unwanted): `ClassifyEra`는 modern-era 신호를 가진 SPEC을 H-3 경로로 `EraV3R5`로 분류해서는 안 된다(shall not). modern-era 신호는 H-5가 쓰는 것과 **동일한 술어**로 정의한다 — `matchesModernPhase(FrontmatterPhase)` 또는 `isAfterModernThreshold(FrontmatterCreated)`.
-- **REQ-EH3-002** (capability-gate): Where a SPEC이 modern-era 신호를 하나도 갖지 않는 경우, `ClassifyEra`는 수정 이전과 동일한 시대와 rationale 문자열을 반환해야 한다(shall).
+- **REQ-EH3-002** (state-driven): While a SPEC이 modern-era 신호를 하나도 갖지 않는 상태인 동안, `ClassifyEra`는 수정 이전과 동일한 시대와 rationale 문자열을 반환해야 한다(shall). *(감사 D8: 초판 라벨 `capability-gate`/`Where`는 틀렸다 — GEARS의 `Where`는 기능 플래그·정적 설정 같은 **능력 게이트**를 가리키는데, 「신호 없음」은 입력의 **상태 조건**이므로 `While`이 맞다.)*
 - **REQ-EH3-003** (event-driven): When H-3이 유예되면, `ClassifyEra`는 H-4 → H-4-legacy → H-5 → H-6 체인을 원래 순서 그대로 이어서 평가해야 한다(shall). 어떤 휴리스틱도 재배치하지 않는다.
 - **REQ-EH3-004** (unwanted): 이 수정은 `eraDemotableCodes`, `applyEraDemotion`, `Era.EraFinal()`, `Era.IsModern()`을 변경해서는 안 된다(shall not). 변경 지점은 H-3 술어 한 곳이다.
 - **REQ-EH3-005** (ubiquitous): `internal/spec/era_test.go`는 회귀 가드를 실어야 한다(shall) — 어떤 `EraSignals` 조합에서도 「H-5 술어가 참인데 결과가 `EraV3R5`」가 성립하지 않음을 단언하는 불변식 테스트.
@@ -155,8 +158,24 @@ Given `ProgressMDExists: true` + `ProgressMDContent`에 `## §E.2 Run-phase Evid
 
 **AC-EH3-002 — phase 신호가 있으면 H-3을 통과한다** (오분류 중단)
 Given 같은 progress 신호에 `FrontmatterCreated: ""`, `FrontmatterPhase: "v3.0.0"`, When 호출하면, Then `era == EraV3R6` 이고 rationale이 `"H-5"`로 시작한다.
-*오늘의 RED — 원장 R1.* 현행 H-3은 `phase`를 읽지 않아 `EraV3R5`를 낸다. R1의 판정 술어는 `phase`와 `created`를 **둘 다** 포함하므로 이 AC도 R1의 exit 1에 실린다. 배경: 23건 중 `matchesModernPhase` 참이 5건(M8).
-*주의 — `matchesModernPhase`는 좁다.* 코드는 `v3r6` 포함 또는 `v3.0` **접두**만 참으로 낸다(`era.go:265`). 따라서 `"v3.2.0 target"`는 거짓이며, 이 SPEC 자신도 `phase`가 아니라 `created`로만 재분류된다(원장 R3). AC 픽스처에 `"v3.0.0"`을 쓰는 것은 이 좁은 술어를 통과시키기 위해서다.
+*[HARD] R1은 이 AC를 판정하지 못한다 — 뮤테이션이 판정 본체다 (감사 D2).*
+
+이 AC의 구별 특징은 **phase 경로 단독**이다. 그런데 R1의 술어는 phase와 created를 OR로 묶고, 현재 카탈로그에서 **phase 매치 집합은 날짜 매치 집합의 부분집합이라 교집합 밖이 공집합이다.** 실측(`.moai/reports/t382/d2_check.py`, 트리 `f967089ba`, exit 1):
+
+```
+phase-match: 5  ['SPEC-DWF-CODEMAPS-PILOT-001', 'SPEC-HOOK-PREEDIT-INVESTIGATE-001', 'SPEC-INTERNAL-ARCH-001', 'SPEC-LSPMCP-RETIRE-001', 'SPEC-V3R6-SESSION-HANDOFF-AUTO-001']
+date-match:  23
+phase-match AND NOT date-match (the set R1 needs to be non-vacuous): 0  []
+verdict: R1 CANNOT distinguish the phase path
+```
+
+따라서 **`hasModernEraSignal`을 날짜만으로 구현해도 R1은 `misclassified: 0` · exit 0으로 뒤집힌다.** R1의 초록은 이 AC가 검사해야 할 바로 그 경로에 대해 공허하다.
+
+*판정 본체 — 「헬퍼를 날짜만으로 축소」 뮤테이션.* `hasModernEraSignal`에서 `matchesModernPhase(...) ||` 항을 지워 날짜 비교만 남긴 뒤, 이 AC의 단위 서브테스트(`FrontmatterCreated: ""` + `FrontmatterPhase: "v3.0.0"`)가 **반드시 실패**함을 관측하고 되돌린다. 실패 출력을 남긴다. plan §F M2가 이 뮤테이션을 열거하고는 있었으나 **어떤 AC에도 묶여 있지 않았다** — 그래서 여기로 승격한다.
+
+*자기 인지의 실패로 기록해 둔다.* 배경 측정 M8은 「phase 매치 5건이 모두 POST 22건 안에 포함」이라고 **이미 적어 놓았다.** 사실은 손에 있었고, 그것이 「그러므로 코퍼스 RED가 phase 경로를 판정하지 못한다」로 이어지지 않았다. 측정해 적어 두는 것과 그 함의를 판정 설계까지 옮기는 것은 별개의 작업이다.
+
+*주의 — `matchesModernPhase`는 좁다.* 코드는 `v3r6` 포함 또는 `v3.0` **접두**만 참으로 낸다(`era.go:265`). 따라서 `"v3.2.0 target"`는 거짓이며, 이 SPEC 자신도 `phase`가 아니라 `created`로만 재분류된다(원장 R3). 픽스처에 `"v3.0.0"`을 쓰는 것은 이 좁은 술어를 통과시키기 위해서다.
 
 **AC-EH3-003 — 임계 이전 SPEC은 보호를 잃지 않는다** (보호 유지)
 Given 같은 progress 신호에 `FrontmatterCreated: "2026-03-15"`, `FrontmatterPhase: ""`, When 호출하면, Then `era == EraV3R5` 이고 rationale이 `"H-3"`로 시작한다.
@@ -196,17 +215,23 @@ Given 재분류 대상 중 하나(예: `SPEC-KANBAN-WORKTREE-001`)의 SPEC 디�
 *주의:* 결함 주입은 반드시 임시 사본에서. 실제 `.moai/specs/` 파일을 훼손하지 않는다. 수정 전 바이너리는 M1 착수 전 `bin/moai-pre-t382`로 보존한다.
 
 **AC-EH3-007 — drift 축의 비용을 잰다** (비용 측정 — 무게중심 축)
-Given `.moai/reports/t382/drift-before-9328a5242.txt`(23행: `era-exempt` 22 + `terminal-exempt` 1), When 수정 후 `./bin/moai spec drift`로 같은 SPEC들의 행을 뽑으면, Then:
-1. `era-exempt`였던 22행 중 **21행**이 git 대조 결과(`completed` / `in-progress` / `implemented` 등)로 바뀐다. 남는 1행은 INIT-WIZARD(V3R5 유지). `SPEC-HOOK-PREEDIT-INVESTIGATE-001`은 이미 `terminal-exempt`라 변화 없다. 이 SPEC 자신의 행도 함께 확인한다.
+Given 원장 **R4**(트리 `f967089ba`: 스윕 24건 = `era-exempt` **23** + `terminal-exempt` 1, 그 23행 중 **22행이 부당 면제**), When 수정 후 R4의 프로브를 다시 돌리면, Then:
+1. **`unearned exemption: 0` · exit 0.** 부당 면제 22행이 git 대조 결과(`completed` / `in-progress` / `implemented` 등)로 바뀐다. 남는 두 행은 그대로다 — INIT-WIZARD(신호 없음 → 정당한 era 면제)와 `SPEC-HOOK-PREEDIT-INVESTIGATE-001`(superseded → `terminal-exempt`이므로 시대가 V3R6이 돼도 행이 안 움직인다). 이 SPEC 자신의 행은 바뀌는 22행 안에 있다.
 2. 새로 `DRIFT`로 표시된 행이 있으면 **각각에 대해** frontmatter status와 git 이력을 직접 대조해 진짜 불일치인지 판정하고 건별 결과를 남긴다. 진짜 불일치는 이 카드의 결함이 아니라 **드러난 기존 상태**이며, 오탐이면 이 수정이 만든 비용이다.
 3. **오탐이 1건이라도 확인되면 이 AC는 실패**이고 설계를 다시 연다.
 
-*오늘의 RED:* 위 파일의 22행이 전부 `era-exempt`인 것이 기준선이다.
+*오늘의 RED — 원장 R4.* exit **1**, `unearned exemption: 22`.
+
+*[HARD] 비교 대상 정정 (감사 D1).* 초판은 `drift-before-9328a5242.txt`(왼쪽 열)를 기준으로 「22행 중 21행」이라 적었다. §3.2가 [HARD]로 금지한 좌측 열 재사용을 **무게중심 축에서** 저지른 것이고, 산술도 전 항목이 한 칸씩 어긋나 있었다(옳은 값은 23행 중 22행). 게다가 그 파일은 §3이 판정 근거에서 배제한 배경 등급이라, **여덟 AC 중 이 하나만 4요소 RED 없이 서 있었다** — 하필 SPEC이 스스로 무게중심이라 부른 축에서. R4가 그 자리를 메운다. `drift-before-9328a5242.txt`는 더 이상 어떤 AC의 근거도 아니다.
 
 ### 3.5 회귀 가드
 
 **AC-EH3-008 — 불변식 가드가 known-bad 입력에서 실패한다**
-Given `era_test.go`에 불변식 테스트 `TestClassifyEra_NoV3R5WhileModernSignal`을 심는다 — `{§E.2 유무} × {sync_commit_sha 유무} × {created ∈ (빈값, 임계 이전, 임계 이후)} × {phase ∈ (빈값, "v3.0.0", "v3.2.0 target")}` 곱집합을 순회하며 **「H-5 술어가 참인데 결과가 `EraV3R5`」인 조합이 하나도 없음**을 단언한다. When `go test -run TestClassifyEra_NoV3R5WhileModernSignal ./internal/spec/`를 돌리면, Then 수정 후 통과하고 **뮤테이션에서 반드시 실패한다** — H-3 술어에서 `&& !hasModernEraSignal(signals)`를 제거하면(=수정 이전 상태) 이 테스트가 실패해야 한다.
+Given `era_test.go`에 불변식 테스트 `TestClassifyEra_NoV3R5WhileModernSignal`을 심는다 — `{§E.2 유무} × {sync_commit_sha 유무} × {created ∈ (빈값, 임계 이전, 임계 이후)} × {phase ∈ (빈값, "v3.0.0", "v3.2.0 target")}` 곱집합을 순회하며 **「H-5 술어가 참인데 결과가 `EraV3R5`」인 조합이 하나도 없음**을 단언한다.
+
+*[HARD] 「H-5 술어가 참」의 평가 방식을 못박는다 (감사 D3).* 테스트는 이 값을 **`hasModernEraSignal`을 호출해 얻지 않는다.** 호출하면 헬퍼와 H-5 조건절이 나중에 갈라져도 불변식이 계속 통과한다 — **자기가 검사해야 할 동일성을 가정하는 가드**가 되고, M1이 명시 가치로 선언한 「두 지점이 같은 술어를 쓴다」가 동어반복으로 무너진다. 대신 둘을 **함께** 요구한다:
+1. 판정 입력은 테스트 파일 안의 **독립 리터럴** — 자체 날짜 비교(`created >= "2026-04-01"`)와 자체 phase 접두 검사(`v3.0` 접두 또는 `v3r6` 포함)를 테스트가 직접 계산한다. 프로덕션 헬퍼를 재사용하지 않는다.
+2. 그 입력이 참인 조합에서는 결과 era가 `EraV3R5`가 아닐 뿐 아니라 **rationale이 `"H-5"`로 시작**함을 함께 단언한다. era만 보면 H-4 등 다른 갈래로 빠져도 통과하므로, 갈래까지 묶어야 H-5 도달을 실제로 검사한다. When `go test -run TestClassifyEra_NoV3R5WhileModernSignal ./internal/spec/`를 돌리면, Then 수정 후 통과하고 **뮤테이션에서 반드시 실패한다** — H-3 술어에서 `&& !hasModernEraSignal(signals)`를 제거하면(=수정 이전 상태) 이 테스트가 실패해야 한다.
 *뮤테이션이 이 AC의 본체다.* 통과 관측만으로는 가드가 공허한지 알 수 없다. run-phase는 절을 실제로 지워 실패를 관측하고, 되돌린 뒤 재통과까지 기록한다.
 *가드 선택 근거:* 이 결함의 본질은 「첫 매치 승리 체인에서 앞선 절이 뒤 절을 굶긴다」이고 재발 경로는 유예 조건이 리팩터링에서 조용히 사라지는 것이다. 개별 케이스 테스트(AC-001~004)는 **테스트에 없는 조합**으로 재발하면 못 잡는다. 조합 순회 불변식이 그 구멍을 닫는다. `lint_movingref_test.go` · `lint_artifact_status_test.go`가 이미 「이 표식을 지우면 어떤 테스트가 실패해야 하는가」를 주석으로 명시하는 관행을 쓴다.
 
@@ -220,6 +245,7 @@ Given `era_test.go`에 불변식 테스트 `TestClassifyEra_NoV3R5WhileModernSig
 - [ ] 원장 R1이 exit **1 → 0** 으로 뒤집힌 것을 축자 출력으로 관측했고, 판정 전 스윕 모집단 N ≥ 1을 확인했다
 - [ ] 기준선 표(§3.2 오른쪽 열)를 M1 착수 직전 트리에서 갱신했고, 대조는 갱신본에 대고 했다
 - [ ] AC-003 · 004 · 008의 **뮤테이션 실패 관측**이 출력과 함께 기록되고 뮤테이션이 되돌려졌다
+- [ ] **REQ-EH3-004 판정 (감사 D4).** `git diff --stat <M1 착수 전 SHA>..HEAD -- internal/ .claude/` 출력이 정확히 세 파일 — `internal/spec/era.go` · `internal/spec/era_test.go` · `.claude/rules/local/lifecycle-sync-gate.md` — 로 한정됨을 확인하고 축자 출력을 남긴다. 네 번째 파일이 나타나면 실패다. 특히 `internal/spec/lint.go` · `audit.go` · `drift.go`가 목록에 있으면 `eraDemotableCodes` · `applyEraDemotion` · `EraFinal()` · `IsModern()` 중 하나가 건드려졌다는 뜻이므로 **되돌린다.** (초판은 이 요구를 plan §D의 「읽되 고치지 않는다」라는 **지시**로만 두었다 — 지시는 판정이 아니다.)
 - [ ] `go test ./internal/spec/...` 통과 (로컬 전체 스위트 금지)
 - [ ] `go vet ./internal/spec/...` · `golangci-lint run` 통과
 - [ ] `.claude/rules/local/lifecycle-sync-gate.md` H-3 행 갱신 (REQ-EH3-006)
@@ -284,7 +310,9 @@ if hasSyncSection && syncSHA == "" && !hasModernEraSignal(signals) {
 
 두 가지가 이 기각을 지탱한다.
 
-첫째, **범위가 1건이다.** 46건 중 V3R5 버킷에 있는 것은 INIT-WIZARD뿐이다(M7). 나머지 45건은 다른 경로로 이미 올바르게 분류돼 있다 — `created_at`이 era 엔진에 실제로 손해를 끼치는 사례는 단 하나이며, 그 하나를 위해 엔진의 입력 계약을 넓히는 것은 비례하지 않는다.
+첫째, **나머지 45건은 날짜 휴리스틱에 도달조차 하지 않는다.** 실측(`.moai/reports/t382/d7_check.py`, 트리 `f967089ba`): `created_at:`을 쓰는 46건의 시대 분포는 **V2.x 31 · V3R2-R4 14 · V3R5 1**이다. V2.x는 H-1(progress.md 부재)에서, V3R2-R4는 H-2(`§E.*` 마커 부재)에서 잡히며 **둘 다 날짜를 읽는 H-5보다 앞에서 return 한다.** 따라서 엔진이 `created_at`을 읽게 만들어도 이 45건의 분류는 **원리상** 바뀌지 않는다. 영향이 있는 것은 V3R5 버킷의 1건(INIT-WIZARD)뿐이고, 그 하나를 위해 엔진의 입력 계약을 넓히는 것은 비례하지 않는다.
+
+> 근거 문장 교체(감사 D7). 초판은 「나머지 45건은 다른 경로로 이미 **올바르게** 분류돼 있다」고 적었다. 버킷 밖이라는 사실은 분류가 옳다는 증거가 아니므로 그것은 **측정하지 않은 정확성 주장**이었다. 결론은 그대로 두고 근거만 측정된 기제로 바꾼다.
 
 둘째, 그리고 더 중요하게 — **이 변경은 스키마 위반을 era 엔진에게 보이지 않게 만들어 `FrontmatterInvalid`가 존재해야 할 이유를 지운다.** §1.5의 자기차폐를 **영구화**하는 방향이다. 옳은 처리는 반대다: 옵션 C 아래에서 INIT-WIZARD는 신호가 없어 V3R5로 남고 7건의 `FrontmatterInvalid`가 계속 보인 채 남는다. 그 frontmatter가 별도 카드로 수리되는 순간 `created: 2026-05-22`가 읽히고, 그때 H-5가 자동으로 V3R6으로 올린다. **결함의 수리가 분류의 수리를 낳는다** — 엔진에 관용을 넣으면 이 연결이 끊긴다.
 

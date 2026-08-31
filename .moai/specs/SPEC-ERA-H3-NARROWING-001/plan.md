@@ -31,6 +31,8 @@ make build                         # rc=0, 이후 모든 측정은 ./bin/moai �
 cp bin/moai bin/moai-pre-t382      # AC-EH3-006이 쓸 수정 전 바이너리 보존
 ./bin/moai spec audit              # 기준선 재측정 → spec.md §3.2 오른쪽 열 갱신
 ./bin/moai spec audit --json | python3 .moai/reports/t382/red_probe.py   # exit 1 이어야 착수 가능
+./bin/moai spec drift > .moai/reports/t382/drift-at-<SHA>.txt            # R4 1단계
+./bin/moai spec audit --json | python3 .moai/reports/t382/drift_probe.py .moai/reports/t382/drift-at-<SHA>.txt   # exit 1 이어야 착수 가능
 ```
 
 `make build`를 건너뛰고 PATH 바이너리로 재면 이 트리를 재는 것이 아니다.
@@ -69,18 +71,24 @@ cp bin/moai bin/moai-pre-t382      # AC-EH3-006이 쓸 수정 전 바이너리 �
 
 **파일: `internal/spec/era_test.go`**
 
-- `TestClassifyEra` 테이블에 AC-EH3-001 ~ AC-EH3-004 네 서브테스트를 추가한다. 기존 테이블 관행(`[]struct{ name string; signals EraSignals; wantEra Era; wantRule string }`)을 그대로 따른다.
+- **`TestClassifyEra_HeuristicTable`**(`era_test.go:11` — 감사 D9: 초판이 적은 `TestClassifyEra`라는 이름의 테스트는 존재하지 않는다. 판정 명령 `go test -run TestClassifyEra ./internal/spec/`는 접두 매치라 그대로 동작한다) 테이블에 AC-EH3-001 ~ AC-EH3-004 네 서브테스트를 추가한다. 기존 테이블 관행(`[]struct{ name string; signals EraSignals; wantEra Era; wantRule string }`, `era_test.go:15-18`)을 그대로 따른다.
 - `TestClassifyEra_NoV3R5WhileModernSignal` 불변식 테스트를 추가한다(AC-EH3-008). 조합 순회는 spec.md §3.5에 열거된 4축 곱집합.
 - 각 새 서브테스트 위에 **어떤 뮤테이션이 그것을 깨뜨려야 하는지**를 주석으로 적는다 — `lint_movingref_test.go`·`lint_artifact_status_test.go`의 기존 관행.
 
-**판정:** `go test -run TestClassifyEra ./internal/spec/` 통과. 이어서 뮤테이션 3종(H-3 무조건 스킵 / 유예절 제거 / 헬퍼를 날짜만으로 축소)을 하나씩 심어 각각 어떤 테스트가 깨지는지 관측하고 되돌린다. 관측 출력을 남긴다.
+**판정:** `go test -run TestClassifyEra ./internal/spec/` 통과. 이어서 뮤테이션 3종을 하나씩 심어 각각 **어느 AC가 깨지는지** 관측하고 되돌린다. 관측 출력을 남긴다. 뮤테이션은 이제 전부 AC에 묶여 있다 — 초판은 「헬퍼를 날짜만으로 축소」가 어디에도 안 묶여 있었다(감사 D2):
+
+| 뮤테이션 | 반드시 깨져야 하는 것 |
+|---|---|
+| H-3 무조건 스킵 | AC-EH3-003 · AC-EH3-004 |
+| 유예절(`&& !hasModernEraSignal(...)`) 제거 | AC-EH3-008 불변식, 원장 R1(exit 0 → 1), 원장 R4 |
+| **헬퍼를 날짜만으로 축소**(`matchesModernPhase(...) \|\|` 제거) | **AC-EH3-002** — 코퍼스 R1은 이 뮤턴트를 **못 잡는다**(phase 매치 ⊂ 날짜 매치, 교집합 밖 공집합). 단위 서브테스트만이 잡는다 |
 
 ### M3 — 코퍼스 귀속과 비용 측정
 
 코드 변경 없음. 측정과 귀속만.
 
 - `make build` 후 원장 R1을 다시 돌려 **exit 1 → 0** 뒤집힘과 `misclassified: 0`을 관측한다. 이어서 `./bin/moai spec audit --json`으로 SPEC별 era를 뽑아 §3.2 갱신본과 대조 → AC-EH3-005 (총계 + 23건 원소 일치 + 건별 근거 + 표본 5건). 원소 비교 대상은 R1의 이름 집합 출력이다.
-- `./bin/moai spec drift`를 돌려 `drift-before-9328a5242.txt`와 23행 대조 → AC-EH3-007. **이 카드의 무게중심 축이므로 M3에서 가장 먼저 잰다**(spec.md §1.2 축 1). 새 `DRIFT` 행이 있으면 **건별로** 진짜/오탐 판정.
+- **원장 R4의 프로브를 다시 돌려** `unearned exemption: 22 → 0` · exit 1 → 0 뒤집힘을 관측 → AC-EH3-007. **이 카드의 무게중심 축이므로 M3에서 가장 먼저 잰다**(spec.md §1.2 축 1). 새 `DRIFT` 행이 있으면 **건별로** 진짜/오탐 판정. 폐기된 `drift-before-9328a5242.txt`와는 대조하지 않는다(감사 D1).
 - 결함 주입 실험 → AC-EH3-006. 수정 전 바이너리와 수정 후 바이너리 양쪽으로 각각 돌린다(수정 전 바이너리는 M1 착수 전에 `bin/moai-pre-t382`로 보존해 둔다).
 
 **오탐이 1건이라도 나오면 M1으로 돌아간다.**
@@ -105,7 +113,8 @@ cp bin/moai bin/moai-pre-t382      # AC-EH3-006이 쓸 수정 전 바이너리 �
 
 ## §H 상호 참조
 
-- `.moai/reports/t382/red-evidence.md` (R1~R3) — 판정 근거 원장; `.moai/reports/t382/red_probe.py` — R1의 프로브 본체
+- `.moai/reports/t382/red-evidence.md` (R1~R4) — 판정 근거 원장. 프로브 본체: `red_probe.py`(R1) · `drift_probe.py`(R4). 보조 측정: `d2_check.py`(감사 D2 — phase 매치 ⊂ 날짜 매치) · `d7_check.py`(감사 D7 — `created_at` 46건 시대 분포)
+- `.moai/reports/t382/plan-audit-iter1.md` — 감사 보고서(PASS-WITH-DEBT 0.825). 감사자 소유이며 이 카드가 수정하지 않는다
 - `internal/spec/era.go` — 수정 대상
 - `internal/spec/lint.go` `applyEraDemotion` / `eraDemotableCodes` / `terminalStatusEnum` — 읽기 전용, 결과 해석의 근거
 - `internal/spec/audit.go` `auditSpec` / `internal/spec/drift.go` ④ — 읽기 전용, `unclassified` 비용 판정의 근거
