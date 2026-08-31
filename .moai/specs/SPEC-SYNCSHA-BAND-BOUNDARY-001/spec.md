@@ -2,7 +2,7 @@
 id: SPEC-SYNCSHA-BAND-BOUNDARY-001
 title: "sync_commit_sha length-band boundary fixtures"
 version: "0.2.0"
-status: draft
+status: in-progress
 created: 2026-08-31
 updated: 2026-08-31
 author: manager-spec

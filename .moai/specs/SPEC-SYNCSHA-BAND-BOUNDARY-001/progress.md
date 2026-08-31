@@ -91,13 +91,221 @@ Kickoff Approval.
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+All measurements below were taken by this author (manager-develop, run phase) in
+this tree. **Document-level tree pin for every cell: `f28a7424f`** (the M4 commit)
+unless a cell names its own. The working tree at measurement time carried no
+tracked modification — only the untracked evidence directory
+`.moai/reports/t380/verify-run/`. Nothing here is carried over from the plan audit
+or from t299; where a figure originates elsewhere, it says so.
+
+### Commits
+
+| Milestone | SHA | Subject |
+|---|---|---|
+| M3 | `971e8b480` | `test(SPEC-SYNCSHA-BAND-BOUNDARY-001): M3 band-boundary fixtures (t380)` |
+| M4 | `f28a7424f` | `test(SPEC-SYNCSHA-BAND-BOUNDARY-001): M4 register the band boundary cases (t380)` |
+
+M5 planted and reverted four transient mutants and produced no commit of its own;
+M6 carries the evidence export and this write-up.
+
+### The four-element mutation observations (completing ledger R-1..R-4)
+
+Each mutant replaced the `isCommitSHAToken(token)` call at
+`internal/spec/lint_syncsha.go:103` with an inlined
+`regexp.MustCompile("^[0-9a-fA-F]{N,M}$").MatchString(token)` and added the
+`regexp` import. **One mutant was in the tree at a time**; each was reverted by
+restoring `internal/spec/lint_syncsha.go` from HEAD before the next was planted,
+and the revert was confirmed by `grep -c 'regexp' internal/spec/lint_syncsha.go`
+returning `0` plus an empty diff against HEAD.
+
+| Id | Mutant | Direction | Command | Verbatim stdout (FAIL lines) | Exit code | Revert confirmed |
+|---|---|---|---|---|---|---|
+| R-1 | `{8,40}` | floor narrowed — the t299 surviving mutant, verbatim | `go test ./internal/spec/ -run 'TestSyncSHASlot' -count=1` | `--- FAIL: TestSyncSHASlot_SilentOnSHA (1.53s)` — `lint_syncsha_test.go:140: sha-min7: expected 0 findings on a well-formed SHA, got 1: [{testdata/syncsha/sha-min7/progress.md 9 warning SyncSHASlotFormat ...}]` — `FAIL ... internal/spec 3.498s` | `1` | yes — `grep -c 'regexp'` → `0`; empty diff |
+| R-2 | `{7,39}` | ceiling narrowed | same | `--- FAIL: TestSyncSHASlot_SilentOnSHA (1.60s)` — `lint_syncsha_test.go:140: sha-full: expected 0 findings on a well-formed SHA, got 1: [{testdata/syncsha/sha-full/progress.md 9 warning SyncSHASlotFormat ...}]` — `FAIL ... internal/spec 3.652s` | `1` | yes — same two checks |
+| R-3 | `{6,40}` | floor widened | same | `--- FAIL: TestSyncSHASlot_FlagsOutOfBand (0.71s)` — `lint_syncsha_test.go:191: sha-below6: expected exactly 1 SyncSHASlotFormat finding, got 0: []` — `FAIL ... internal/spec 3.450s` | `1` | yes — same two checks |
+| R-4 | `{7,41}` | ceiling widened | same | `--- FAIL: TestSyncSHASlot_FlagsOutOfBand (0.69s)` — `lint_syncsha_test.go:191: sha-above41: expected exactly 1 SyncSHASlotFormat finding, got 0: []` — `FAIL ... internal/spec 3.475s` | `1` | yes — same two checks |
+
+Full untruncated output per mutant:
+`.moai/reports/t380/verify-run/mutant-01-floor-narrow-8-40.txt`,
+`mutant-02-ceiling-narrow-7-39.txt`, `mutant-03-floor-widen-6-40.txt`,
+`mutant-04-ceiling-widen-7-41.txt` — each carrying an `exit_code:` line as its own
+field.
+
+Ledger entries R-3 and R-4, which `acceptance.md` §B recorded as three-element
+(verbatim stdout and exit code absent, attributed to the plan audit), are
+**completed here** by this author's own measurement. Nothing from the audit's
+table was carried forward as if it were mine — note that the audit's R-2 output
+named `TestSyncSHASlot_FlagsProse` under its pre-ruling design, whereas the
+observation above lands in `TestSyncSHASlot_FlagsOutOfBand`, the delivered design.
+
+Each mutant killed **exactly one** fixture, which is `spec.md` §B.1's per-fixture
+mapping confirmed rather than assumed: R-1 killed `sha-min7` and left `sha-full`
+silent; R-2 the reverse; R-3 and R-4 each dropped exactly one outside-band
+fixture's count to 0.
+
+### Test-first evidence (RED before GREEN)
+
+The new function and the `sha-min7` registration were written **before** the
+fixtures existed, and observed red:
+
+```
+--- FAIL: TestSyncSHASlot_FlagsOutOfBand (0.00s)
+    lint_syncsha_test.go:191: sha-below6: expected exactly 1 SyncSHASlotFormat finding, got 0: []
+    lint_syncsha_test.go:191: sha-above41: expected exactly 1 SyncSHASlotFormat finding, got 0: []
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	2.618s
+```
+
+Command `go test ./internal/spec/ -run 'TestSyncSHASlot' -count=1`, exit code `1`,
+file `.moai/reports/t380/verify-run/red-01-fixtures-absent.txt`. After the
+fixtures were created the same selector returned `ok ... 3.645s`, exit `0`, with
+all four `TestSyncSHASlot_*` functions PASS.
+
+**What that RED also revealed, stated rather than buried**: the `sha-min7`
+registration did **not** turn red with its fixture absent. `syncSHAFindings`
+returns zero findings without error when the fixture directory does not exist, and
+`TestSyncSHASlot_SilentOnSHA` expects zero — so a deleted case directory is
+indistinguishable there from a passing one. This is a pre-existing property of
+that function (it applies equally to the four fixtures t299 registered), not one
+introduced by this card, and repairing it would mean changing an existing
+function's assertions, which this card's scope forbids. It is recorded as a
+residual risk in §E.3, and it is why AC-SBB-001's real evidence is the R-1
+mutation observation rather than the green run.
+
+### AC PASS/FAIL matrix — four-element cells
+
+| AC | Verdict | Command | Verbatim observation | Exit code | Tree |
+|---|---|---|---|---|---|
+| AC-SBB-001 — band floor inside is silent | **PASS** | `go test ./internal/spec/ -run TestSyncSHASlot_SilentOnSHA -count=1` (clean tree); mutation evidence R-1 | clean tree: `ok ... internal/spec 3.645s` with `--- PASS: TestSyncSHASlot_SilentOnSHA (1.68s)`. Under the `{8,40}` mutant: `sha-min7: expected 0 findings on a well-formed SHA, got 1` | `0` clean / `1` mutant | `f28a7424f` |
+| AC-SBB-002 — band ceiling inside is silent | **PASS** | same selector; mutation evidence R-2 | clean tree as above. Under the `{7,39}` mutant: `sha-full: expected 0 findings on a well-formed SHA, got 1` | `0` clean / `1` mutant | `f28a7424f` |
+| AC-SBB-003 — one below the floor is flagged | **PASS** | `go test ./internal/spec/ -run TestSyncSHASlot_FlagsOutOfBand -count=1`; mutation evidence R-3 | clean tree: `--- PASS: TestSyncSHASlot_FlagsOutOfBand (0.57s)`. Under the `{6,40}` mutant: `sha-below6: expected exactly 1 SyncSHASlotFormat finding, got 0: []` | `0` clean / `1` mutant | `f28a7424f` |
+| AC-SBB-004 — one above the ceiling is flagged | **PASS** | same selector; mutation evidence R-4 | clean tree as above. Under the `{7,41}` mutant: `sha-above41: expected exactly 1 SyncSHASlotFormat finding, got 0: []` | `0` clean / `1` mutant | `f28a7424f` |
+| AC-SBB-005 — delivery shape + no production source change | **PASS** | diff-stat against base `3f03d9c36`, first scoped to the three production files, then to `internal/spec/` | Production-scoped diff produced **empty output** — none of `syncsha.go` / `lint_syncsha.go` / `closer.go` appears. Package-scoped diff: 7 files, `213 insertions(+), 3 deletions(-)`, every path under `internal/spec/testdata/syncsha/` except `internal/spec/lint_syncsha_test.go`. Clause 2 (no duplicated assertion body): `TestSyncSHASlot_FlagsOutOfBand` carries its own `[]struct{fixture, prefix string}` case list against `syncSHAFindings` and parameterizes the flagged-line prefix, where `TestSyncSHASlot_FlagsProse` hardcodes `"sync_commit_sha: TBD"` — read off the diff, not counted by lines. Clause 3: the test-file diff shows the prose function's body unchanged; only its neighbours and the doc comment above `TestSyncSHASlot_SilentOnSHA` moved | `0` | `f28a7424f` |
+| AC-SBB-006 — a band-WIDENING mutant is observed red across the outside pair | **PASS** | R-3 (`{6,40}`) and R-4 (`{7,41}`), planted and observed **separately**, one run per direction | Both FAIL blocks quoted above; both exit `1`; both reverted with `grep -c 'regexp'` → `0`; suite re-observed GREEN after the final revert (`ok ... 39.898s`, exit `0`, full package) | `1` each | `f28a7424f` |
+| AC-SBB-007 — a band-NARROWING mutant is observed red across the inside pair | **PASS** | R-1 (`{8,40}`) and R-2 (`{7,39}`), planted and observed separately | Both FAIL blocks quoted above; both exit `1`; both reverted and confirmed. R-1 is the t299 surviving mutant verbatim — observing it red is what closes debt D1 | `1` each | `f28a7424f` |
+| AC-SBB-008 — AC-SSF-007 untouched, distinction preserved | **PASS** | diff-stat against base scoped to `.moai/specs/SPEC-SYNC-SHA-SLOT-FORMAT-001/` | **Empty output** — that SPEC directory, `acceptance.md` included, is unchanged. `spec.md` §C's "Out of Scope — AC-SSF-007" topic records the CI-automation gap as distinct from the fixture-corpus gap, unedited by this card | `0` | `f28a7424f` |
+
+**8 PASS, 0 FAIL, 0 PASS-WITH-DEBT.**
+
+### Close-out measurements (clean tree, `f28a7424f`)
+
+| Claim | Command | Observed | Exit | Evidence file |
+|---|---|---|---|---|
+| Affected-package suite GREEN | `go test ./internal/spec/... -count=1` | `ok ... internal/spec 39.898s` | `0` | `m6-gotest-internal-spec.txt` |
+| Vet clean | `go vet ./internal/spec/...` | no output | `0` | `m6-govet-internal-spec.txt` |
+| Cross-platform build | `GOOS=windows GOARCH=amd64 go build ./...` | no output | `0` | `m6-build-windows.txt` |
+| Cross-platform vet (test files compile) | `GOOS=windows GOARCH=amd64 go vet ./internal/spec/...` | no output | `0` | `m6-vet-windows-internal-spec.txt` |
+| Binary builds | `go build -o bin/moai ./cmd/moai` | no output | `0` | `m6-gobuild.txt` |
+| The delivered test file is gofmt-clean | `gofmt -l internal/spec/` | 12 files listed; **`lint_syncsha_test.go` is NOT among them**. All 12 are unchanged by this card — the diff against base scoped to `internal/spec/*.go` names `internal/spec/lint_syncsha_test.go` alone — so they are pre-existing and not attributable here | — | — |
+
+### §G prediction — CONFIRMED, and by a stronger check than the total
+
+| Claim | Command | Observed |
+|---|---|---|
+| `moai spec lint` total | `./bin/moai spec lint` | `0 error(s), 1096 warning(s)`, exit `0` |
+| By-rule split | `grep -E '^(ERROR\|WARNING)' <out>` piped through `awk '{print $1, $2}'`, `sort`, `uniq -c`, `sort -rn` | `846 CoverageIncomplete` / `114 MovingRefUnpinned` / `43 LegacyEARSKeyword` / `25 ModalityMalformed` / `24 MissingExclusions` / `18 StatusGitConsistency` / `14 FrontmatterInvalid` / `6 InvalidREQID` / `5 SyncSHASlotFormat` / `1 OwnershipTransitionInvalid` — summing to 1096 |
+| The new fixtures are outside the linted corpus | `grep -c 'testdata' <out>` and `grep -c 'SSFA' <out>` | `0` and `0` |
+
+The zero-occurrence check is the load-bearing one. An unmoved total is consistent
+BOTH with the fixtures being outside the corpus AND with their being inside it and
+clean; zero occurrences of `testdata` and of the fixtures' shared id `SSFA` across
+the whole output establishes that `moai spec lint` never reached them, so this
+card **cannot** have moved the count. `plan.md` §G's prediction is confirmed on
+that ground rather than on a coincidence of totals.
+
+**Attribution note**: `1096` is this author's own measurement on this tree at
+`f28a7424f`. The delegation prompt supplied the same figure as an expectation; it
+was not carried forward — the run produced it independently, and the two `grep -c`
+checks are what decide the prediction either way.
+
+### Evidence export
+
+Everything cited above lives under `.moai/reports/t380/verify-run/` (tracked), NOT
+`.moai/state/verify/` (gitignored, and disposed with this worktree). File count by
+`find .moai/reports/t380/verify-run -maxdepth 1 -mindepth 1 | wc -l`: **11**.
+
+One exception, handled by extract rather than by export: the raw `moai spec lint`
+output is 341,577 bytes / 1,101 lines, too large to commit whole. It is NOT
+committed. `m6-speclint-after-extract.txt` records its sha256
+(`178729c73535a25de9a35c2b127ad8d8d07ae2259975388a261288a5d1ada689`), its byte and
+line counts, its exit code, the command that produced it, the command to
+regenerate and re-verify it, and the three extracts actually cited above.
 
 ---
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-08-31
+run_commit_sha: pending-backfill-run     # the M5/M6 evidence commit; backfilled once it lands
+run_status: complete
+ac_pass_count: 8
+ac_fail_count: 0
+ac_pass_with_debt_count: 0
+preserve_list_post_run_count: 0          # no production source file modified at close
+l44_pre_commit_fetch: not-performed      # isolated worktree, no push; the lead owns integration
+l44_post_push_fetch: not-applicable      # this lane does not push (dispatch constraint)
+new_warnings_or_lints_introduced: 0      # spec lint 0 error / 1096 warning; 0 testdata + 0 SSFA occurrences
+cross_platform_build:
+  darwin_build: pass                     # go build -o bin/moai ./cmd/moai, exit 0
+  windows_build: pass                    # GOOS=windows GOARCH=amd64 go build ./..., exit 0
+  windows_vet: pass                      # GOOS=windows GOARCH=amd64 go vet ./internal/spec/..., exit 0
+total_run_phase_files: 7                 # 6 fixture files + lint_syncsha_test.go
+m1_to_mN_commit_strategy: one-commit-per-milestone-not-pushed
+mutants_planted: 4
+mutants_observed_red: 4
+mutants_reverted: 4
+production_source_diff_vs_base: empty    # base 3f03d9c36, scoped to syncsha.go + lint_syncsha.go + closer.go
+```
+
+### Gaps — what was NOT observed
+
+- **Full-tree suite.** `go test ./...` was NOT run; only `./internal/spec/...`.
+  The whole-tree verdict belongs to CI, on a clean environment against the pushed
+  head.
+- **Lint before/after delta.** No `moai spec lint` run was taken on the base tree
+  `3f03d9c36`, so no measured delta exists. What was measured is the after-total
+  (1096) plus zero occurrences of the fixtures in the output — which settles §G's
+  prediction without a delta, but is not the same thing as one.
+- **`golangci-lint`.** Not run. Only `go vet` and `gofmt -l`.
+- **Coverage.** Not measured. The delivery adds no production statements, so a
+  package coverage figure would move for reasons unrelated to this card.
+- **The alphabet clause.** Declared out of scope in `spec.md` §C and not
+  re-measured here; the audit's `^[0-9a-f]{7,40}$` survival figure stays
+  attributed to the audit.
+- **Anchor-dropping mutant.** `spec.md` §C's "observed bonus" was not re-measured
+  under this author's hands; it remains attributed to the plan audit, and no
+  criterion rests on it.
+- **Push / integration / CI.** Nothing pushed, nothing merged, no CI observed.
+
+### Residual risk — what could still be wrong despite what was observed
+
+- **`TestSyncSHASlot_SilentOnSHA` passes vacuously on a deleted fixture.**
+  Measured in the M4 RED run: with `sha-min7` absent, `syncSHAFindings` returned
+  zero findings without error and the function stayed green. Any of its five case
+  directories could be deleted and the suite would not notice — the empty-sweep
+  shape of `verification-completeness.md` §1.1. Pre-existing (it applies to the
+  four cases t299 registered), not introduced here, and not repaired: fixing it
+  means changing an existing function's assertions, outside this card's scope.
+  Consequence to hold: the two band-INSIDE cases are guarded by the R-1 / R-2
+  mutation observations, not by the green run.
+- **The mutants were planted at the call site only.** Each replaced the
+  `isCommitSHAToken` call in `lint_syncsha.go`; none altered
+  `commitSHATokenPattern` itself. A change to the pattern would be caught by
+  `TestIsCommitSHAToken_LengthBand` at the predicate level, but this card measured
+  that layer not at all.
+- **The write-side gate is unmeasured.** `needsSHABackfill`
+  (`internal/spec/closer.go:421`) shares the predicate and was neither mutated nor
+  exercised here. A rule-level band change and a write-side band change remain
+  independently expressible; this card closes the read side only.
+- **Fixture era classification is asserted per run, not pinned.** The fixtures
+  rely on era heuristic H-4 holding (`§E.2` + `§E.4` + non-empty
+  `sync_commit_sha`). The criteria assert `Advisory == false`, so a demotion
+  surfaces as a failure rather than a silent pass — but a change to `era.go`'s
+  heuristics would break these fixtures for a reason unrelated to the band.
+- **`19b6f76` is a real commit prefix today** (`19b6f7625` shortened). Should that
+  object ever cease to resolve, the fixture is unaffected — the rule reads shape,
+  not existence — but the value's stated provenance stops being true.
 
 ---
 
