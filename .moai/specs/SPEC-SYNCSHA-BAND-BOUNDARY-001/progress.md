@@ -311,4 +311,152 @@ production_source_diff_vs_base: empty    # base 3f03d9c36, scoped to syncsha.go 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+Authored by manager-docs at sync phase, in this tree
+(`.claude/worktrees/t380`, branch `WT-shared-predicate-guard`).
+**Document-level tree pin for every cell below: `6672fd40f`** — the run-phase
+HEAD this sync phase measured against. Figures produced by another actor say so
+and name that actor; nothing from §E.2, from the plan audit, or from t299 is
+re-served here as a sync-phase measurement.
+
+### Claim
+
+The 3-phase close (`in-progress → implemented → completed`) is carried on this
+single sync commit, together with the `CHANGELOG.md` `[Unreleased] → Added`
+entry and this signal. The delivery is test-only: the production source diff
+against the base `3f03d9c36` is empty, and the SPEC's own acceptance set is
+**8 criteria (AC-SBB-001..008), 8 PASS / 0 FAIL** as recorded in §E.2 by
+manager-develop.
+
+### Evidence
+
+Commands run by this author at sync phase, with their observed output:
+
+| # | Claim | Command | Observed | Exit |
+|---|---|---|---|---|
+| S-1 | Production source unchanged | `diff --stat` against `3f03d9c36`, scoped to the three production files `internal/spec/syncsha.go`, `internal/spec/lint_syncsha.go`, `internal/spec/closer.go` | **empty output** — none of the three appears in the diff | `0` |
+| S-2 | Delivery scope | `diff --stat` against `3f03d9c36` for `HEAD` | `28 files changed, 1802 insertions(+), 3 deletions(-)`; the only `.go` path is `internal/spec/lint_syncsha_test.go` (`66 ++++-`), the rest being the three fixture directories, the four SPEC artifacts, and `.moai/reports/t380/**` | `0` |
+| S-3 | Criterion count (B12 self-test) | `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' .moai/specs/SPEC-SYNCSHA-BAND-BOUNDARY-001/acceptance.md` piped through `sort -u` and `wc -l` | `10` — of which **8** are this SPEC's own (`AC-SBB-001` … `AC-SBB-008`, contiguous) and 2 are cross-references to the completed t299 SPEC (`AC-SSF-001`, `AC-SSF-007`). The count written into the CHANGELOG is the SPEC-scoped **8**, from the same pipeline anchored on `AC-SBB-[0-9]+`. Non-zero on both counters, so neither is the vacuous `0 == 0` shape | `0` |
+| S-4 | No `[RETIRED]` / `[REF]` markers to adjudicate | `grep -cE` for those two tokens over `acceptance.md` | `0` — every identifier occurrence is live, so the B12 ambiguity halt does not fire | `1` (no match) |
+| S-5 | No duplicate CHANGELOG entry (B12 pre-emission grep) | `grep -c 'SPEC-SYNCSHA-BAND-BOUNDARY-001' CHANGELOG.md` | `0` before the write — no parallel BATCH-SYNC session had already emitted for this SPEC | `1` (no match) |
+| S-6 | Evidence files exist and are tracked | `find .moai/reports/t380/verify-run -maxdepth 1 -mindepth 1` piped to `wc -l` | `11`, matching §E.2's count. (`ls` is aliased in this environment and miscounts; `find` is the counter used) | `0` |
+| S-7 | This SPEC produces no lint findings of its own | `./bin/moai spec lint` (redirected; 1,101 lines) then `grep -c 'SPEC-SYNCSHA-BAND-BOUNDARY-001'` over that output | total `0 error(s), 1096 warning(s)`; **`0`** occurrences of this SPEC id anywhere in the output | `0` / `1` (no match) |
+| S-8 | Sibling artifacts carry no frontmatter to transition | `head -1` on `plan.md`, `acceptance.md`, `progress.md` | each begins with its `#` H1 heading, not `---`; the status axis lives in `spec.md` alone, per `spec-frontmatter-schema.md` § Artifact Statelessness | `0` |
+| S-9 | The lint-discovery citation used in the CHANGELOG is real | `sed -n '325,340p' internal/spec/lint.go` | `discoverSPECs` is declared at `internal/spec/lint.go:333` (doc comment at `:332`) and matches `SPEC-*/spec.md` under `.moai/specs/` or directly under the base dir — the fixture dirs are `sha-*` under `internal/spec/testdata/syncsha/` and are therefore unreachable to it | `0` |
+
+Frontmatter transition applied to `spec.md` in this commit: `status: in-progress`
+→ `status: completed`, `version: "0.2.0"` → `"0.3.0"`, `updated: 2026-08-31`
+(already today's date, unchanged). No body section of `spec.md`, `plan.md`, or
+`acceptance.md` was touched — the ownership boundary of
+`spec-frontmatter-schema.md` § Forbidden ownership crossings holds.
+
+### Baseline-attribution
+
+- **S-1 … S-9 above** — measured by this author, at sync phase, on this tree at
+  `6672fd40f`. S-7's total of `1096` is this author's own run; §E.2 reports the
+  same figure measured independently at `f28a7424f` by manager-develop, and the
+  two agreeing is a corroboration, not a carry-over.
+- **The mutation table (R-1..R-4), the AC PASS/FAIL matrix, the close-out
+  measurements (`go test ./internal/spec/... -count=1` → `ok … 39.898s` exit `0`,
+  `go vet` clean, `GOOS=windows` build and vet clean), and the test-first RED
+  output** — measured by manager-develop at run phase, tree pin `f28a7424f`,
+  recorded in §E.2 with per-cell commands and exit codes and exported to
+  `.moai/reports/t380/verify-run/`. **Not re-measured at sync phase.**
+- **Plan audit verdict PASS-WITH-DEBT `0.9216`** (Tier S threshold 0.75), the
+  four-mutant independent reproduction, the alphabet-residual survival
+  (`^[0-9a-f]{7,40}$`, `ok … 3.082s` exit `0`) and the anchor-dropping bonus —
+  attributed to `.moai/reports/t380/plan-audit.md`. **Not measured by this
+  author.**
+- **`go test ./internal/spec/... -count=1` GREEN at exit `0` in 34.439s under the
+  surviving mutant** — quoted from SPEC-SYNC-SHA-SLOT-FORMAT-001 §E.4 (card
+  t299), where it originated. Not re-measured at any phase of this card.
+
+### Gaps — what was explicitly NOT observed at sync phase
+
+- **No CI verdict.** The branch `WT-shared-predicate-guard` is unpushed and no
+  pull request exists, so no check has run against any of these four commits.
+  The lead owns integration; this lane does not push.
+- **No full-tree test run.** `go test ./...` was not run at sync phase (nor at
+  run phase, by dispatch instruction). Verification was scoped to
+  `./internal/spec/...`, and that scoping is a deliberate constraint rather than
+  an omission — but it means the whole-tree verdict is unobserved here.
+- **No coverage measurement**, at either phase. The delivery adds no production
+  statements, so a package coverage figure would move for reasons unrelated to
+  this card.
+- **No `golangci-lint` run**, at either phase. Only `go vet` and `gofmt -l`.
+- **No before/after `moai spec lint` delta.** No lint run was ever taken on the
+  base tree `3f03d9c36`, so no delta exists to report. What exists is the
+  after-total (`1096`) plus §E.2's two zero-occurrence checks (`testdata` → `0`,
+  `SSFA` → `0`), which settle `plan.md` §G's prediction without a delta and are
+  not the same thing as one.
+- **No codemaps regeneration**, and none attempted.
+- **The write-side gate is unmeasured.** `needsSHABackfill`
+  (`internal/spec/closer.go:421`) shares the predicate and was neither mutated
+  nor exercised at any phase of this card.
+- **The alphabet clause and the anchor-dropping mutant were not re-measured**
+  under this author's hands; both stay attributed to the plan audit.
+- **`sync_commit_sha` below is a placeholder at write time.** By construction a
+  commit cannot name its own hash; the real SHA is backfilled in the immediately
+  following commit, per the SHA placeholder backfill exemption in
+  `spec-frontmatter-schema.md`.
+
+### Residual-risk — what could still be wrong despite what was observed
+
+- **`TestSyncSHASlot_SilentOnSHA` passes vacuously on a deleted fixture.**
+  Measured by manager-develop during the M4 RED run: with `sha-min7` absent,
+  `syncSHAFindings` returned zero findings without error and the function stayed
+  green, so any of its case directories could be deleted and the suite would not
+  notice — the empty-sweep shape of `verification-completeness.md` §1.1. This is
+  **pre-existing** (it applies equally to the four fixtures t299 registered) and
+  was **not repaired**, by operator ruling: repairing it means changing an
+  existing function's assertions, outside this card's approved scope. The
+  consequence to hold: the real guarantee for the two band-INSIDE cases
+  (`sha-min7`, `sha-full`) is the R-1 / R-2 mutation observation, **not** the
+  green run. **Follow-up card candidate.**
+- **§E.1's closing line still reads `Status: draft`.** §E.1 is
+  plan-phase-authored and manager-spec owns it; by operator ruling it is left
+  as-is. It is a **plan-phase record of what was true when that section was
+  written**, not a current-state claim — the `spec.md` frontmatter (`completed`)
+  is the authoritative status axis, per `spec-frontmatter-schema.md`. A reader
+  comparing the two is looking at two different points in time, not at a
+  contradiction.
+- **The alphabet clause of the grammar stays uncovered at the rule level.** An
+  alphabet-narrowing mutant survives the delivered fixture set because every
+  fixture value is lowercase (plan audit, `spec.md` §C). This card closes the
+  length-band slice and no other slice.
+- **The mutants were planted at the call site only.** None altered
+  `commitSHATokenPattern` itself; a change to the pattern would be caught by
+  `TestIsCommitSHAToken_LengthBand` at the predicate level, a layer this card
+  measured not at all.
+- **Fixture era classification is asserted per run, not pinned.** The fixtures
+  rely on era heuristic H-4 continuing to hold. The criteria assert
+  `Advisory == false`, so a demotion surfaces as a failure rather than a silent
+  pass — but a change to `era.go`'s heuristics would break these fixtures for a
+  reason having nothing to do with the band.
+- **AC-SSF-007's CI-automation gap is still open.** It is a **different** gap
+  from the fixture-corpus gap this card closes, and closing this card neither
+  satisfies nor supersedes it.
+
+```yaml
+sync_complete_at: 2026-08-31
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+b12_self_test_a: pass          # pre-emission grep -c on CHANGELOG.md -> 0 (no duplicate entry)
+b12_self_test_b: pass          # AC count 8 (AC-SBB-*, SPEC-scoped) / 10 (incl. 2 cross-SPEC refs); non-zero, not vacuous
+b12_self_test_c: pass          # every path claimed in the CHANGELOG entry verified present in this tree
+changelog_entry_position: "[Unreleased] -> Added, first entry"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented -> completed (merged into this sync commit)"
+  plan_md: not-applicable      # no frontmatter block (artifact statelessness)
+  acceptance_md: not-applicable
+  progress_md: not-applicable  # phase state recorded in body sections, not frontmatter
+  version_bump: "0.2.0 -> 0.3.0"
+  updated_field: 2026-08-31
+canary_compliance_check: not-applicable   # this SPEC defines no forward-looking policy that its own sync tests
+ac_pass_count: 8
+ac_fail_count: 0
+production_source_diff_vs_base: empty     # base 3f03d9c36, scoped to syncsha.go + lint_syncsha.go + closer.go
+spec_lint_total: "0 error(s), 1096 warning(s)"
+spec_lint_findings_for_this_spec: 0
+evidence_dir: .moai/reports/t380/verify-run   # 11 files, tracked
+ci_verdict: not-observed                  # branch unpushed; the lead owns integration
+```
