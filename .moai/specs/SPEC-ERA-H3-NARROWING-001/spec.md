@@ -2,7 +2,7 @@
 id: SPEC-ERA-H3-NARROWING-001
 title: "H-3 시대 분류 술어 축소 — 진행 중 SPEC의 V3R5 오분류 차단"
 version: "0.4.0"
-status: draft
+status: in-progress
 created: 2026-08-31
 updated: 2026-08-31
 author: manager-spec

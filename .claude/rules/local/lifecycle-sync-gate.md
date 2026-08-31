@@ -43,9 +43,9 @@ except for H-override which takes absolute precedence when the optional frontmat
 | H-override | `spec.md` frontmatter `era:` field non-empty and valid → returned verbatim (no auto-detection) | (explicit override) |
 | H-1 | `.moai/specs/SPEC-*/progress.md` absent | V2.x |
 | H-2 | `progress.md` present, no `§E.2` / `§E.3` / `§E.4` section markers | V3R2-R4 |
-| H-3 | `progress.md` `§E.2` present, `sync_commit_sha` field absent or null | V3R5 |
+| H-3 | `progress.md` `§E.2` present, `sync_commit_sha` field absent or null, **AND no modern-era signal** (`phase:` referencing `"v3.0"` or `"v3R6"`, or `created:` >= 2026-04-01) | V3R5 |
 | H-4 | `progress.md` `§E.2` present + `§E.4` present + `sync_commit_sha` SHA value (the new 3-phase predicate; a legacy-layout SPEC carrying the retired `§E.5 + mx_commit_sha` also classifies as V3R6 via a migration-window dual predicate) | V3R6 |
-| H-5 | H-4 ambiguous; `spec.md` frontmatter `phase:` field references `"v3.0"` or `"v3R6"` OR `created:` date >= 2026-04-01 (tie-breaker) | V3R6 |
+| H-5 | H-4 ambiguous; `spec.md` frontmatter `phase:` field references `"v3.0"` or `"v3R6"` OR `created:` date >= 2026-04-01 (tie-breaker). **The modern-era signal H-3 defers on is this same predicate** — both call `hasModernEraSignal`, so no SPEC can be H-3-eligible and modern by H-5 at once | V3R6 |
 | H-6 | No heuristic matched | unclassified |
 
 ### Canonical Go Implementation
@@ -114,6 +114,26 @@ provides no production value. The grandfather clause acknowledges that era-speci
 lifecycle standards were legitimate at their time of authorship. Applying V3R6
 invariants retroactively would produce false findings on SPECs that were correctly
 managed under their respective era's conventions.
+
+### Conservative default — no signal means no reclassification
+
+H-3's deferral is gated on a **positive** modern-era signal, never on the absence of one. A SPEC
+that carries no readable era evidence — no `phase:` in the V3R6 family, no `created:` date, or a
+frontmatter the YAML decoder rejects — still falls to V3R5 and keeps its grandfather protection.
+
+This asymmetry is deliberate. The alternative (defer H-3 unless the SPEC proves it is old) would
+push unreadable SPECs down the chain to H-6 `unclassified`, which is a strictly worse state than
+V3R5: `unclassified` is not grandfather-protected, so it loses the era demotion in `lint.go` AND
+the drift exemption in `drift.go`, while `audit.go` returns early on it and never runs
+`checkV3R6Drift` — exposed on two axes and silent on the third. Gating on a positive signal makes
+that outcome unreachable by construction.
+
+The practical case is a SPEC whose frontmatter uses the rejected snake_case aliases
+(`created_at:` / `updated_at:`), which the decoder drops, leaving both H-5 signals empty. Such a
+SPEC stays V3R5, and its `FrontmatterInvalid` findings stay visible. When the frontmatter is
+repaired, `created:` becomes readable and H-5 promotes it to V3R6 on its own — repairing the
+defect repairs the classification, which is why the era engine deliberately does NOT learn to read
+the aliases.
 
 ### `modernEraThreshold` as boundary
 
@@ -261,7 +281,7 @@ sync_commit_sha: "a1b2c3d4e5f6"
 5. `hasAnyProgressMarker()` returns `true` (`§E.2` present) (H-2 does not fire).
 6. `hasSyncSection = true` (`§E.2` marker present — note: `hasSyncSection` is a misnomer; it tests the literal `§E.2` run-evidence start marker, not the sync phase, which lives at `§E.4`).
 7. `syncSHA = "a1b2c3d4e5f6"` (non-empty — field extracted from the `§E.4 Sync-phase Audit-Ready Signal` section).
-8. H-3 check: `hasSyncSection && syncSHA == ""` → **false** (H-3 does not fire).
+8. H-3 check: `hasSyncSection && syncSHA == "" && !hasModernEraSignal(signals)` → **false** on the first conjunct alone (H-3 does not fire). Had `sync_commit_sha` still been empty — the shape of every in-flight SPEC — the third conjunct would also be false here, since `phase: "v3.0.0"` is a modern-era signal, and the chain would continue to H-5 rather than freezing at V3R5.
 9. H-4 check (new 3-phase predicate): `hasSyncSection && hasMxSection4Phase && syncSHA != ""` where `hasMxSection4Phase` detects the `§E.4` sync marker → **true**. (Legacy-layout SPECs carrying the retired `§E.5 + mx_commit_sha` also match via the dual-predicate migration window.)
 10. `ClassifyEra()` returns `(EraV3R6, "H-4 (§E.2 + §E.4 + sync_commit_sha present)")`.
 

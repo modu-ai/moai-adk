@@ -1,0 +1,7 @@
+SPEC-ASTGREP-BREADTH-001                 created=2026-08-25  HISTORY-first=-           git-added=2026-08-25  MODERN
+SPEC-KANBAN-TODO-CLI-001                 created=2026-08-14  HISTORY-first=2026-08-14  git-added=2026-08-15  MODERN
+SPEC-LSPMCP-RETIRE-001                   created=2026-06-03  HISTORY-first=-           git-added=2026-06-03  MODERN
+SPEC-PREPUSH-WIRING-001                  created=2026-06-08  HISTORY-first=2026-06-08  git-added=2026-06-08  MODERN
+SPEC-HOOK-DISCIPLINE-WIRING-001          created=2026-06-11  HISTORY-first=2026-06-11  git-added=2026-06-15  MODERN
+SPEC-CLOCAL-AUDIT-001                    created=2026-08-27  HISTORY-first=-           git-added=2026-08-27  MODERN
+SPEC-DWF-CODEMAPS-PILOT-001              created=2026-06-05  HISTORY-first=2026-06-05  git-added=2026-06-11  MODERN
