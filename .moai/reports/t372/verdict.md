@@ -342,3 +342,141 @@ in this SPEC**:
 | `.moai/reports/t370/{verdict,measurements,preflight-t354-overlap}.md` | **no** | another card's artifacts. Committing them under this card's SHA would misattribute provenance. Reported as §7 item 4 |
 
 `.moai/reports/t372/run-evidence.md` was already committed by run-phase (`0fa8606fe`).
+
+---
+
+## 9. Post-sync 리드 판정 반영 (창 대기 중 추가)
+
+sync 커밋 이후 리드가 §7 의 판정 요청 3건에 답했다. 그 판정과, 판정이 요구한
+재현 근거를 여기에 남긴다. 이 절의 관측은 전부 **오케스트레이터가 이 트리에서
+직접 실행**한 것이다(트리 `.claude/worktrees/t372`, 브랜치 `WT-stress-invariant-guard`,
+측정 시점 HEAD `bdbd3c3f4`).
+
+### 9.1 기준점 인용 결함 — 자기 보고
+
+통합 요청 메시지에 `origin/develop = c36d2672b` 라고 적었으나, **이 값은 내가 잰 것이
+아니라 리드의 kickoff 메시지 본문에서 옮겨 적은 것**이다. 출처 라벨 없이 옮긴 순간
+내 측정처럼 읽혔고, 리드가 그렇게 읽고 정정했다.
+
+재측정:
+
+```
+$ git fetch origin develop && git rev-parse --short origin/develop
+94a1b0552
+$ git rev-list --count --left-right origin/develop...HEAD
+33	8
+$ git cat-file -t c36d2672b
+commit
+$ git merge-base --is-ancestor c36d2672b origin/develop && echo YES
+YES
+```
+
+`c36d2672b` 는 **존재하지 않는 SHA 가 아니라 낡은 SHA** 다 — `origin/develop` 의
+조상이다. 그래서 더 위험하다: 존재하지 않는 값은 즉시 터지지만, 조상인 낡은 값은
+조용히 통과한다. 결함은 값이 낡은 것이 아니라 **건네받은 값과 잰 값을 구별하지 않고
+인용한 것**이다.
+
+리드의 `b64043481` 도 이미 낡았다(내 fetch 시점 `94a1b0552`). 창 순번이 오는 시점에
+다시 잰다.
+
+### 9.2 판정 1 — 가드 이름 유지, 마찰은 기록
+
+리드 판정: `TestBoardLockWaitBudgetCoversSerializedMutations` **유지**. REQ-SIV-009 이
+금지한 것은 가드 **메시지**의 "covers" 표현이고 테스트 이름은 메시지가 아니므로,
+현행 이름은 요구사항 문면을 위반하지 않는다. `plan.md` 가 이름을 못박은 이상 단독
+개명은 아티팩트와 코드를 어긋나게 만들며, 개명하려면 `plan.md` 부터 고쳐야 하고
+그것은 이 카드 범위 밖이다.
+
+**남는 마찰(기록)**: CI 로그를 읽는 사람은 실패 줄에서 "Covers" 를 본다. 메시지 본문은
+소거 사실을 명시하므로 오해가 정정되지만, 실패 줄만 스캔하는 독자에게는 "예산이
+충분함을 검사한다"로 읽힐 여지가 남는다. 개명하려면 `plan.md` §F M1 step 2 와 함께
+고쳐야 한다.
+
+### 9.3 판정 2 — 후속 후보 2건, 재현 근거 포함 (수집만, 발행은 운영자)
+
+#### 후보 A — 구조적으로 붉어질 수 없는 선행 가드
+
+`internal/kanban/board_lock_wait_test.go` 의 `TestBoardLockWaitBudgetDerivedFromNamedInputs`
+안에서, `floor` 가 12 줄 위 `recomputed` 와 **완전히 같은 식**이다:
+
+```
+$ sed -n '26,41p' internal/kanban/board_lock_wait_test.go
+	recomputed := time.Duration(boardLockSupportedWriters) *
+		boardLockCIMutationCost * boardLockHeadroom
+	if boardLockWaitBudget != recomputed {
+		...
+	}
+	floor := time.Duration(boardLockSupportedWriters) *
+		boardLockCIMutationCost * boardLockHeadroom
+	if boardLockWaitBudget < floor {
+		t.Errorf("budget %v < headroom floor %v", boardLockWaitBudget, floor)
+	}
+```
+
+`budget == recomputed` 는 바로 위에서 이미 단언됐고 `floor == recomputed` 이므로,
+`budget < floor` 는 **어떤 입력값 조합으로도 참이 될 수 없다.** 이 `t.Errorf` 는
+도달 불가다.
+
+관측된 뒷받침 — `boardLockHeadroom` 을 5→4 로 낮춘 뮤턴트(예산이 실제로 얇아진 상태)
+에서도 이 테스트는 초록으로 남았다:
+
+```
+--- PASS: TestBoardLockWaitBudgetDerivedFromNamedInputs (0.00s)
+--- FAIL: TestBoardLockWaitBudgetCoversSerializedMutations (0.00s)
+```
+
+(전문: `.moai/reports/t372/mutant-headroom4-orchestrator.md`)
+
+성격: **가드가 있는데 구조적으로 못 붉어지는** 형태 — t241 계열의 정확한 사례다.
+이 카드는 새 가드에서 floor 를 예산 식에 없는 항(직렬화 변이 수 48)에서 뽑아
+공허성을 재생산하지 않았지만, **옛 분기는 그대로 남았다**(t354-era 코드, 범위 밖).
+
+#### 후보 B — Unix 에서 경합보다 넓은 관용 술어
+
+```
+$ sed -n '41,44p' internal/kanban/board_lock_unix.go
+	if err := unix.Flock(fd, unix.LOCK_EX|unix.LOCK_NB); err != nil {
+		_ = unix.Close(fd)
+		return nil, ErrBoardLockHeld
+	}
+$ grep -n -A2 'func IsBoardLockHeld' internal/kanban/board_lock.go
+28:func IsBoardLockHeld(err error) bool {
+29-	return errors.Is(err, ErrBoardLockHeld)
+30-}
+```
+
+`unix.Flock` 이 **어떤 errno 로 실패하든** 맨 `ErrBoardLockHeld` 로 매핑된다 — 경합
+(`EWOULDBLOCK`)뿐 아니라 `ENOLCK`·`EINTR`·`EBADF` 도 같다. Windows 쪽은
+`os.IsExist` 로 구분해 좁다(`board_lock_windows.go`). **CI 가 도는 쪽이 넓은 쪽이다.**
+게다가 `IsBoardLockHeld` 는 `errors.Is` 라 `Mutate` 가 반환하는 `errors.Join` 을
+관통하므로, 락-held 분기와 실제 결함이 함께 묶인 에러가 미래에 생기면 흡수된다.
+
+이 카드가 관용 클래스를 판정에서 빼면서 **이 폭이 그대로 관용 범위가 됐다** — 이
+변경이 들여온 가장 큰 약화이고, 수리하지 않고 비주장으로만 기록했다(§5).
+
+### 9.4 판정 3 — t370 증거 착지 (지시대로 별도 커밋)
+
+리드 판정: 인용이 영구히 해소되지 않는 것이 출처 오귀속보다 큰 결함이므로, **커밋
+메시지가 출처를 명시하면 오귀속이 아니다.** t370 보고 3파일을 이 병합에 포함하되
+별도 커밋으로 분리했다.
+
+```
+$ git log --all --oneline -- .moai/reports/t370   → (빈 출력)
+$ git ls-files .moai/reports/t370 | wc -l          → 0
+$ cmp <primary>/.moai/reports/t370/verdict.md .moai/reports/t370/verdict.md
+(무출력 = 바이트 동일; measurements.md · preflight-t354-overlap.md 도 동일)
+```
+
+착지 커밋: `6b9c74a3e` — `docs(t370): land investigation evidence cited by t372
+(originating card t370, no live lane)`. 카드 커밋과 섞지 않았다.
+
+**규약이 답해야 할 질문(lane-8 t375 소관)**: 발행 레인이 없는 카드의 증거를 누가
+착지시키는가. 이 사례의 형태는 — 저작은 t370, 착지는 t372, 출처는 커밋 메시지가
+보존, 카드 커밋과 분리. 일반화 여부는 그 규약의 몫이다.
+
+### 9.5 리드가 승인한 구조 — AC-SIV-013
+
+`implemented` 에서 멈추고 `completed` 로 가지 않는 것, 그대로 유지한다. **이 카드는
+병합만으로 종결되지 않는다.** 종결 선언은 리드가 관측 창(착지 후 develop head 5개
+이상)을 채운 뒤 한다. 로컬 초록이 근거가 아니라는 것(실측 14.8ms, CI 붉음 42~105ms
+미재현·미시도)도 그대로 유지한다.
