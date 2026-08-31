@@ -204,4 +204,38 @@ m1_to_mN_commit_strategy: single-commit   # M1~M6이 서로 의존해 중간 커
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-31
+sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash; backfilled in the immediately following commit
+sync_status: completed
+changelog_entry: added
+changelog_entry_position: "CHANGELOG.md [Unreleased] -> ### Added, first entry (line 12), inserted above SPEC-SELECTOR-CENSUS-001"
+b12_self_test_a: "grep -c 'SPEC-EVIDENCE-CITATION-CANON-001' CHANGELOG.md -> 0 before emission (no duplicate entry from a parallel session); 1 after"
+b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l -> 15 (AC-ECC-001..015). Non-zero and plausible; matches the 15/15 PASS matrix in progress.md §E.2 and the count the CHANGELOG entry states"
+b12_self_test_c: "ls/find on every path claimed in the entry -> all present: .claude/rules/moai/core/agent-common-protocol{,-reference}.md, .claude/agents/moai/manager-lead.md, .claude/output-styles/moai/moai.md, .claude/skills/moai/workflows/run.md and their internal/template/templates/ mirrors, internal/template/templates/.codex/agents/moai/manager-lead.toml, internal/template/catalog.yaml, internal/template/evidence_citation_guard_test.go, internal/hook/evidence_writer_zeroexec_test.go, internal/verify/store.go, internal/web/events.go, internal/navigator/fix/, internal/cli/navigator_fix.go, internal/cli/chain.go, .moai/reports/t375/guard-{six-directions,red-empty-allowlist}.txt, .moai/specs/SPEC-HIERARCHICAL-TEAM-001/acceptance.md, and the 5 docs-site/content/en/{advanced,utility-commands}/*.md paths cited in the docs-surface finding (checked ko/ja/zh siblings too, via grep -rln)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (merged 3-phase close on this sync commit); updated: already 2026-08-31, re-affirmed"
+  progress_md: "this file, gaining §E.4 in this commit"
+  plan_md: "NOT transitioned — carries no `status:` field (grep '^status:' -> no match). ArtifactStatusFieldForbidden holds (card t357)"
+  acceptance_md: "NOT transitioned — same as plan_md; no `status:` field, none added"
+docs_surfaces_touched:
+  changelog: "CHANGELOG.md — one entry added under [Unreleased] -> Added"
+  readme: "none. grep -n 'state/verify' README{,.ko,.ja,.zh}.md -> 0 matches (all 4)"
+  docs_site: "FOUND, NOT FIXED — grep -rln 'state/verify' docs-site/content -> 19 files across all 4 locales: {advanced/manager-lead,advanced/agent-guide,advanced/token-budget,advanced/moai-web-console,utility-commands/moai-gate}.md x {en,ko,ja,zh}. Each describes .moai/state/verify/<session>/ as the evidence-persistence target in the pre-repair language this SPEC withdrew. Reported as a blocker-shaped finding to the lead, not corrected here: it sits outside this SPEC's module: scope (.claude/rules, .claude/agents, .claude/output-styles, .gitignore) and outside this sync agent's docs-authoring boundary for a SPEC that does not itself touch user-facing product surface"
+  rationale: "the doctrine repair changes internal citation convention with no operator-facing CLI verb, settings key, or hook event of its own — the sole user-facing surface owed is the CHANGELOG entry. The docs-site drift found above predates this SPEC and is a separate correction, not owed by this sync commit"
+mx_tag_validation: "not performed in this sync commit. The sync commit touches only CHANGELOG.md, this file's frontmatter + §E.4, and spec.md frontmatter — no .go file is modified here, and internal/template/evidence_citation_guard_test.go (the run phase's sole Go surface) was not re-scanned for @MX annotations by this session"
+canary_compliance_check:
+  applicable: true
+  reason: "this SPEC defines a forward-looking rule (a citation must name an exported tracked file, never the gitignored scratch directory) and its own run-phase evidence practice is a live test of that rule"
+  result: "every evidence citation this SPEC's own progress.md makes points at a tracked, exported path (.moai/reports/t375/guard-six-directions.txt, .moai/reports/t375/guard-red-empty-allowlist.txt) — grep -n 'evidence:\\|반출:' progress.md -> both hits name .moai/reports/t375/, neither names .moai/state/verify as a citation target. Consumed from §E.2; NOT re-executed by this sync session"
+verification_re_execution: "none. This sync session ran no test, no lint, and no build. Every numeric claim in the CHANGELOG entry (86.3%/91.3% coverage, the six-direction guard demonstration, the 15/15 AC matrix, the plan-audit 0.70->0.85 convergence, the darwin/windows build exits, golangci-lint 0 issues) is CONSUMED from progress.md §E.2/§E.3 as run-phase evidence, not re-measured here. Independently re-verified in this session, ahead of writing the CHANGELOG entry: the CHANGELOG's own file-path and grep claims (§B12 self-test c above), the 5-locale docs-site grep, the README 4-file grep, the internal/cli/chain.go os.Remove(src) disposal claim, and the acceptance.md:9 / progress.md:25 SPEC-HIERARCHICAL-TEAM-001 citation pairing — all against this tree, in this session"
+not_observed:
+  ci: "no CI run on this branch has been read by this session. WT-state-evidence-canon is unpushed; whether origin/develop's own CI is green is the lead's read, not this session's"
+  full_suite: "`go test ./...` NOT run — prohibited locally in this repository. The full-suite verdict is CI's"
+  audit: "no sync-auditor pass has been run against this sync commit"
+  spec_audit: "mcp__moai__spec_audit / `moai spec lint` NOT run by this session against this worktree"
+  go_surface_residual: "the .go (13/21 depending on the guard-fixture exclusion), .txt (1, on origin/develop), and .html (3) citation leaks recorded in plan.md §D.6 remain open — the guard's green covers only the .md doctrine surface. Card t381 (named in spec.md §5) owns the .go extension; this sync commit does not attempt either"
+push_state: "not pushed, not merged, no PR opened by this session. The lead owns the integration window"
+scope_discipline: "this sync commit modifies ONLY CHANGELOG.md, this file (frontmatter + §E.4), and spec.md frontmatter (`status:` + `updated:` — updated left unchanged, already 2026-08-31). No body content of spec.md / plan.md / acceptance.md was touched, and no `status:` field was added to plan.md or acceptance.md. The docs-site drift found above was deliberately left unedited rather than silently expanding scope"
+```
+

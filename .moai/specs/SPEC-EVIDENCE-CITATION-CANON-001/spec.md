@@ -2,7 +2,7 @@
 id: SPEC-EVIDENCE-CITATION-CANON-001
 title: "증거 인용 경로 정본화 — gitignore된 경로를 감사 시점 근거로 쓰지 않는다"
 version: "0.3.0"
-status: in-progress
+status: completed
 created: 2026-08-31
 updated: 2026-08-31
 author: manager-spec
