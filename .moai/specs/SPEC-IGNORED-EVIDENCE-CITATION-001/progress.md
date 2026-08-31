@@ -393,6 +393,164 @@ scope.
   integration window. Verified the five repair targets are unchanged across that range, so this base
   is sound: `git diff --stat 3f03d9c36 origin/develop -- <5 in-scope files>` → *(empty)*.
 
+### Sync-audit follow-through (2026-09-01) — four records
+
+Sync-audit returned **PASS-WITH-DEBT, harmonic mean 0.897** — zero blocking findings, six optional
+(`.moai/reports/t381/sync-audit.md`, committed with this entry so the verdict is **tracked** rather
+than vanishing with the worktree, which would be this card's own defect). Every figure below was
+re-measured here before being written; where a relayed value differed from what I observed, the
+observation is what is recorded and the difference is named.
+
+#### Record 1 — the empty-slot instruction was wrong; the placeholder is canonical
+
+The dispatch told me to leave `sync_commit_sha` **empty** in the sync commit and backfill it. That
+was wrong. The operator ruled against it with the source in hand, and I re-read that source here:
+
+| `internal/spec/syncsha.go` | What it says |
+|---|---|
+| `:23` | `token := SHA \| PLACEHOLDER` — the slot grammar admits **no empty token** |
+| `:78` | `syncSHAPlaceholderPattern = ^pending-backfill(-[A-Za-z0-9-]+)?$` |
+| `:67` | the schema's placeholder-backfill exemption ("D3") that pattern implements |
+| `:115` | *"a placeholder is precisely a slot still owed a real SHA"* |
+
+**Why the empty form is worse is in the diagnostic itself.** An empty value **triggers no close, so
+the repair is never scheduled**, and a reader cannot tell what the slot was meant to say. A
+placeholder says out loud that it is a slot still owed a SHA — it carries both the obligation and
+the schedule. Emptiness carries neither, and is indistinguishable from a field nobody thought about.
+
+**Cost, measured rather than predicted.** The transient state is visible in history:
+
+```
+$ git show 4f2eee332:…/progress.md | grep -n '^sync_commit_sha'
+440:sync_commit_sha: ""   # empty slot — …
+$ git show dc0956728:…/progress.md | grep -n '^sync_commit_sha'
+440:sync_commit_sha: 4f2eee332   # …
+$ git merge-base --is-ancestor 4f2eee332 origin/develop   → exit=1   (never reached develop)
+```
+
+The warning therefore lived **exactly one commit**, and that commit is unpushed and not an ancestor
+of `origin/develop`, so **real exposure was zero**. Attribution split honestly: the **endpoint** is
+mine — `./bin/moai spec lint` (tree-built binary) → `0 error(s), 1096 warning(s)`, with
+`SyncSHASlotFormat` hits attributable to this SPEC = **0** (five hits exist repo-wide, all on other
+SPECs) and targeted lint → `No findings`. The **intermediate `1097`** is the auditor's reading,
+relayed and **not re-measured here**; the one-commit lifetime and the zero exposure are measured
+above.
+
+**The fault is dispatch-side, and it is mine.** I put a general convention — "a commit cannot cite
+its own hash, so leave it blank" — ahead of a rule this repository landed **specifically to forbid
+that**. The convention was right about the constraint and wrong about the remedy, and the remedy was
+already decided here. The next person handed the same instruction should find this record first:
+**write `pending-backfill`, never `""`.**
+
+> `§E.4` is manager-docs's and I did not edit it. Its `sync_commit_sha` annotation currently reads
+> "No `pending-backfill` placeholder was ever written to the branch" as though that were a positive.
+> Under this ruling it inverts: no placeholder was written **and that is the defect**. Flagged for
+> manager-docs, not corrected here.
+
+#### Record 2 — why the AC-count discrepancy is open, and that it is not an oversight
+
+The mechanical self-test reads **12** distinct AC identifiers while **10** actually gate:
+`AC-IEC-008` and `AC-IEC-009` were demoted to the non-gating §D structural checks S-1/S-2 at
+plan-audit iter2, and `acceptance.md` carries **no `[RETIRED]` / `[REF]` adjacency marker** on
+either id, so a counter reading identifiers sees both as live.
+
+**Operator decision: do not fix.** `acceptance.md` is `completed`; a body edit after close is an
+amendment procedure, disproportionate to one adjacency marker. Routed to a follow-up card.
+
+State plainly what this is, so no later auditor reads it as something missed: **this is the card's
+own defect class** — an identifier that resolves while the sentence around it is no longer true —
+**held open for procedural cost, not for lack of detection.** It is plan-audit F1's shape one layer
+up. The sync-auditor judged the disclosure sufficient **because it is disclosed at three layers**
+(CHANGELOG, `§E.4`, and here), which is exactly what separates a disclosed debt from an undetected
+one. A follow-up card needs only to add the two markers; the analysis is already here.
+
+#### Record 3 — the three-dot form, validated by a base that moved five times
+
+`origin/develop` advanced **five times** during this card, none of them fetched by this lane — the
+shared object store moved it underneath:
+
+```
+9328a5242 → 297a21ea7 → 59e898b31 → e79272713 → 5928095ea
+```
+
+Measured now: `git rev-parse --short origin/develop` → `5928095ea`;
+`git merge-base origin/develop HEAD` → `3f03d9c36…`, **unchanged throughout**;
+`git rev-list --count --left-right origin/develop...HEAD` → `42 7`, measured 2026-09-01 with
+`origin/develop` resolved to `5928095ea` and `HEAD` `dc0956728`.
+<!-- moving-ref-ok: the moving ref is the SUBJECT of this record, not its anchor — record 3 exists precisely to document that origin/develop moved five times, so pinning it would erase the claim. The resolved SHA and date are stated inline above, which is the R4 disposition (measuring command as the criterion, value demoted to a dated reference). -->
+
+
+Every three-dot criterion absorbed all five moves **with no edit to any criterion**. A frozen SHA
+would have needed **five re-pins inside one card**. This is measured evidence for the P3 decision,
+not an anecdote: the base moved on its own, repeatedly, and the criteria that re-resolve their merge
+base kept answering — while the one criterion that asserted fixed tree state (the retired `ls` half,
+iter5 record 1) is the one that broke.
+
+#### Record 4 — the card amplified the corpus it measured
+
+Both figures confirmed here:
+
+```
+$ git grep -n '\.moai/state/verify' -- . ':!*.md'      → 73    (census measured 25)
+$ git grep -n '\.moai/state/verify' -- .moai/reports/t381/  → 96
+```
+
+The card's own tracked evidence — commands and their verbatim output — **contains the very string
+the census counts**, so measuring the corpus grew it.
+
+**Why this is not a fresh instance of the defect**: these are **quotations of commands and their
+output**, not unattributed provenance claims. Nothing here cites a `.moai/state/` path as the basis
+of a verdict; the paths appear inside recorded invocations, which is what evidence looks like.
+
+**But it is a boundary note the census does not carry.** `spec.md` §C.7 discloses six blind spots
+(B1-B6), and none is *"the measuring card's own evidence enters the population"*. A future census
+over this repository will find these 96 lines and must classify them as quotation, not citation —
+otherwise it opens a card against its own predecessor's evidence. Recorded here so the next census
+is not surprised by this one.
+
+### Sync-audit findings recorded as residual, NOT fixed
+
+Both are `acceptance.md` **body** edits on a `completed` artifact, so record 2's amendment-cost
+reasoning governs them identically. Both were re-measured here.
+
+- **F3 [Low] — the DoD self-description is false at HEAD.** `acceptance.md` §F item 3 says no file
+  outside the SPEC directory and the evidence directory is modified. Measured:
+  `git diff --stat origin/develop...HEAD -- CHANGELOG.md` → `1 file changed, 19 insertions(+)`.
+  `CHANGELOG.md` **is** modified, and correctly so — it is part of the sync close. The DoD sentence
+  was written before this card had a sync phase and was never widened. Left standing, recorded as
+  inaccurate.
+- **F4 [Low] — a stale control value inside this card's own criteria.** AC-IEC-007's RED-capability
+  control records `1 file changed, 594 insertions(+)`; re-measured now it is **`634`**. The figure
+  counts insertions against a base that moves and a `spec.md` that grew, so it is a moving
+  coordinate recorded as a stable one — **the same hazard REQ-IEC-009 forbids one class over**,
+  committed inside the criteria of the card that forbids it. The control's *verdict* (`exit=1`, the
+  command can fail) is unaffected and was re-verified; only the quoted magnitude is stale. It
+  appears in **four** places (`acceptance.md:286`, `progress.md:218`, `ac-iec-007.txt:35` and
+  `:97`) — one stale figure copied four times, which is rule 4's shape again.
+
+### Sync-audit findings recorded briefly
+
+- **F1 [Medium] — the adjacency gap is now REPRODUCED, not merely reasoned.** The auditor built a
+  synthetic file with the citation on line 1 and an unrelated marker on line 21, and the gate
+  passed. **I reproduced it independently** in a scratch directory — same construction, and
+  `grep -l … | xargs grep -LiE …` → empty output, `exit=0`: the gate accepts a marker 20 lines from
+  the citation. REQ-IEC-001 requires an **adjacent** statement; the gate is file-granular. The
+  requirement is broader than its gate, and that is now demonstrated rather than argued. The §E.3
+  residual-risk entry is updated to say so.
+- **Both vacuity checks held under independent re-measurement.** AC-IEC-001 reproduces **RED**
+  against pre-repair blobs from `origin/develop` (three files, `exit=1`), so the green is not
+  vacuous. AC-IEC-007's merged-tree SHA differed from the recorded one **because develop moved** —
+  the expected behaviour of a coordinate that is a function of both parents — while the guard file's
+  blob stayed `9b1970fe32f0…`. A moved tree hash with a stable blob hash is the signature of "the
+  tree around the file changed, the file did not".
+- **Three dispatch-side inaccuracies the auditor caught**, recorded because they will recur:
+  (1) `make build` **rewrites `catalog.yaml`** — byte-identical in this tree, but an auditor told to
+  build can dirty the tree it is auditing, so the instruction needs a re-read-`git status` clause
+  after the build; (2) `moai spec lint <spec-dir>` fails with `ParseFailure … is a directory` — it
+  needs `spec.md` on argv, not the directory; (3) full-catalogue lint took **well over four minutes**
+  here, so "over two minutes" is a **lower bound**, not an estimate, and a 120s tool timeout moves it
+  to the background mid-audit.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
@@ -419,10 +577,15 @@ m1_to_mN_commit_strategy: "M1-M5 landed as ONE commit (ee77a6c88), followed by t
 - **The C4 instruction is untouched** (`spec.md` §C.8). The same citations can be re-produced by the
   agents still instructed to write into `.moai/state/verify/$MOAI_SESSION_ID/`. This card cleans a
   corpus; it does not close the axis that fills it. t375 owns that axis.
-- **Adjacency is not enforced** (P7, `spec.md` §E.1). AC-IEC-001 is file-granular — `grep -L` accepts
-  a marker anywhere in the file, so a marker five hundred lines from the citation would pass. All
-  four surviving repairs place the marker **at** the citation site, so the gap is latent today, not
-  live. It goes live the moment someone "satisfies" AC-IEC-001 from a distance.
+- **Adjacency is not enforced** (P7, `spec.md` §E.1) — and the gap is now **DEMONSTRATED, not
+  reasoned** (sync-audit F1 [Medium]). AC-IEC-001 is file-granular: `grep -L` accepts a marker
+  anywhere in the file, so a marker five hundred lines from the citation would pass. Reproduced
+  twice independently — the auditor built a synthetic file with the citation on line 1 and an
+  unrelated marker on line 21 and the gate passed; I rebuilt the same construction in a scratch
+  directory and `grep -l … | xargs grep -LiE …` returned empty output, `exit=0`. REQ-IEC-001
+  requires an **adjacent** statement, so the requirement is provably broader than its gate. All four
+  surviving repairs place the marker **at** the citation site, so the gap is latent today, not live.
+  It goes live the moment someone "satisfies" AC-IEC-001 from a distance.
 - **B2-B6 blind spots** (`spec.md` §C.7) are disclosed, not investigated. B2 alone — `.moai/state/`
   outside `/verify` — is 467 lines, 18× this card's scope.
 - **`origin/develop` is 11 ahead and unabsorbed.** The three-dot baseline re-resolves the merge base,
