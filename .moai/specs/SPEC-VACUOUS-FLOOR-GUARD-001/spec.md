@@ -77,10 +77,16 @@ participate in:
 
 | REQ-BLB-002 clause | Where it is actually enforced today | Line |
 |---|---|---|
-| accounts for the ten-lane contender count | `boardLockSupportedWriters != 10` | 45 |
-| exceeds the CI-class per-mutation cost | `boardLockCIMutationCost < 33*time.Millisecond` | 54 |
-| by at least the stated headroom factor | `boardLockHeadroom < 2` | 59 |
+| accounts for the ten-lane contender count | `boardLockSupportedWriters != 10` | 65 |
+| exceeds the CI-class per-mutation cost | `boardLockCIMutationCost < 33*time.Millisecond` | 74 |
+| by at least the stated headroom factor | `boardLockHeadroom < 2` | 79 |
 | the budget IS that product (no bare literal) | `boardLockWaitBudget != recomputed`, `t.Fatalf` | 28 |
+
+Those line numbers are in `internal/kanban/board_lock_wait_test.go` and resolve against tree
+`c3208b08f` — the M1 commit that deleted the dead branch and produced the current layout. They are
+a forward citation into a file this SPEC itself edits, so a reader at any later commit should
+re-measure (`grep -n` on the four assertion expressions) rather than assume they are still current:
+the deletion shifted the three assertions below it by +20, and the equality at 28 did not move.
 
 Those four assertions compose into a real, non-vacuous floor:
 `budget == 10 * cost * headroom`, `cost >= 33ms`, `headroom >= 2` together imply
