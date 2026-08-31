@@ -1,6 +1,7 @@
 package spec
 
 import (
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -512,6 +513,106 @@ func TestStatusTransitionCheckOrder(t *testing.T) {
 			t.Errorf("token check must precede the pair check, got: %+v", got)
 		}
 	})
+}
+
+// TestStatusTransitionRuleGuards covers the rule's skip guards at the unit
+// seam, using the same injected-lookup hook the sibling ownership rule's tests
+// use. Each case is a shape the corpus actually contains.
+func TestStatusTransitionRuleGuards(t *testing.T) {
+	rule := &StatusTransitionValidityRule{}
+
+	t.Run("closed_sibling_with_no_detected_transition", func(t *testing.T) {
+		// Module convention (internal/spec/CLAUDE.md): a new rule must not
+		// false-flag a sibling SPEC closed before the rule shipped. Mirrors
+		// TestOwnershipTransitionRule_NoTransition.
+		defer withFakeOwnershipLookup(t, nil, nil)()
+		doc := &SPECDoc{
+			Path:        ".moai/specs/SPEC-CLOSED-001/spec.md",
+			Frontmatter: SPECFrontmatter{ID: "SPEC-CLOSED-001", Status: "completed"},
+		}
+		if got := rule.Check(doc, nil); len(got) != 0 {
+			t.Errorf("want zero findings for a closed SPEC with no detected transition, got %+v", got)
+		}
+	})
+
+	t.Run("git_unreachable_is_silent", func(t *testing.T) {
+		// REQ-STV-007. OwnershipTransitionRule already reports unreachable git
+		// as an Info finding; this rule must not report the same fact twice.
+		defer withFakeOwnershipLookup(t, nil, errors.New("git unreachable"))()
+		doc := &SPECDoc{
+			Path:        ".moai/specs/SPEC-NOGIT-001/spec.md",
+			Frontmatter: SPECFrontmatter{ID: "SPEC-NOGIT-001", Status: "draft"},
+		}
+		if got := rule.Check(doc, nil); len(got) != 0 {
+			t.Errorf("want zero findings when git is unreachable, got %+v", got)
+		}
+	})
+
+	t.Run("unreadable_frontmatter_id_defers_to_frontmatter_rule", func(t *testing.T) {
+		// Measured on the live corpus: SPEC-V3R6-LINK-FIX-001 carries the
+		// rejected snake_case alias `spec_id:` instead of `id:`, so the YAML
+		// decoder yields an empty ID. Its git history DOES record
+		// `draft → completed`, which is why the corpus census counts 50 of that
+		// edge while the linter reports 49 — this document is the difference.
+		//
+		// Skipping it is the correct behavior, not a gap to close here:
+		// FrontmatterInvalid already reports the missing `id`, and naming a
+		// transition on a SPEC whose identity cannot be read would report a
+		// second fact resting on a broken premise.
+		defer withFakeOwnershipLookup(t, &ownershipTransitionRecord{
+			PreviousStatus: "draft",
+			CurrentStatus:  "completed",
+			CommitSHA:      "deadbeef",
+		}, nil)()
+		doc := &SPECDoc{
+			Path:        ".moai/specs/SPEC-ALIASED-ID-001/spec.md",
+			Frontmatter: SPECFrontmatter{ID: "", Status: "completed"},
+		}
+		if got := rule.Check(doc, nil); len(got) != 0 {
+			t.Errorf("want zero findings when the frontmatter ID is unreadable, got %+v", got)
+		}
+	})
+}
+
+// TestIsCanonicalStatusTransition exercises the edge set directly, so a change
+// to the table is visible as a test change rather than only as a corpus delta.
+func TestIsCanonicalStatusTransition(t *testing.T) {
+	tests := []struct {
+		prev, curr string
+		want       bool
+		why        string
+	}{
+		// canonical (spec.md §A.7)
+		{"draft", "in-progress", true, "matrix row 2"},
+		{"in-progress", "implemented", true, "matrix row 3"},
+		{"implemented", "completed", true, "matrix row 3"},
+		{"in-progress", "completed", true, "single-sync-commit close (D4)"},
+		{"completed", "in-progress", true, "declared amendment (matrix row 7)"},
+		{"draft", "implemented", true, "adopted from lint_ownership.go (D1)"},
+		// terminal targets — * → X (matrix rows 4-6)
+		{"draft", "superseded", true, "* → superseded"},
+		{"completed", "archived", true, "* → archived"},
+		{"in-progress", "rejected", true, "* → rejected"},
+		// planned — legacy-optional, no active-flow owner
+		{"planned", "completed", true, "planned tolerated on the left"},
+		{"draft", "planned", true, "planned tolerated on the right"},
+		// invalid
+		{"draft", "completed", false, "skips both run and sync"},
+		{"completed", "draft", false, "reversal"},
+		{"completed", "implemented", false, "reversal, 48 census occurrences"},
+		{"implemented", "in-progress", false, "reversal"},
+		{"implemented", "draft", false, "reversal"},
+		{"draft", "draft", false, "self-edge is not a transition"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.prev+"_to_"+tt.curr, func(t *testing.T) {
+			if got := isCanonicalStatusTransition(tt.prev, tt.curr); got != tt.want {
+				t.Errorf("isCanonicalStatusTransition(%q, %q) = %v, want %v (%s)",
+					tt.prev, tt.curr, got, tt.want, tt.why)
+			}
+		})
+	}
 }
 
 // TestStatusTransitionRuleIsObservationOnly discharges the first half of
