@@ -54,6 +54,12 @@ SPEC-CODEX-LAUNCHER-001 은 `status: completed` 이므로 그 본문은 이 카�
 
 | B8 | codex 최상위 help 에 **워크트리 플래그가 없다** — 같은 출력을 `worktree` 와 `-w,` 로 grep 하면 0행이다. 서브커맨드별 플래그와 숨은 플래그는 훑지 않았으므로 이 부재 주장은 최상위 표면에 한정된다 | 이 SPEC (2026-08-31 실측) |
 
+| B9 | codex 에는 작업 디렉터리를 받는 **`-C, --cd <DIR>` 플래그가 있다** (`codex --help` L105). 작업 디렉터리의 대체 전달 수단이 존재한다는 뜻이며, B8 의 "워크트리 플래그가 없다"는 전제는 그대로 참이다 — 둘은 다른 것이다 | run-phase 실측, 이 SPEC 이 재확인 (2026-09-01) |
+
+> **그럼에도 `-C` 를 쓰지 않는 이유 — 나중에 "이쪽이 깔끔하다"로 뒤집지 말 것.** 이 카드는 strip-and-set-Dir(판정 (가))를 택했고 `-C` 를 쓰지 않는다. 근거는 REQ-CLV-004 와 **같은 규율**이다: moai 가 합성한 어떤 토큰도 자식의 argv 에 들어가지 않는다. `-C <dir>` 를 넣는 것은 운영자가 치지 않은 두 토큰을 moai 가 지어내 argv 앞에 붙이는 일이고, 그것이 바로 이 SPEC 이 `cli` 토큰에서 걷어낸 행동이다. 작업 디렉터리는 argv 가 아니라 프로세스 속성(`exec.Cmd.Dir`)으로 넘기는 편이 그 규율과 일관되며, 자식이 보는 argv 를 운영자가 친 것과 똑같게 유지한다.
+>
+> 따라서 `-C` 로 바꾸자는 논증은 **REQ-CLV-004 의 예외를 요청하는 것**이지 구현 치장이 아니다.
+
 B7·B8 은 이 SPEC 이 직접 잰 두 항목이며 판독본에는 없다 — 판독본 G5 가 "codex 바이너리를 실행하지 않았다"로 남긴 자리다. 이것이 REQ-CLV-004 의 근거다.
 
 현행 구현은 `req.Args = append([]string{verb}, tail...)` 로 moai 쪽 동사 토큰을 자식 argv 첫 자리에 그대로 실어 보낸다(`codex_launcher.go:246`; 시험 `codex_launcher_test.go:465` 가 `want := append([]string{"cli"}, tail...)` 로 이를 고정하고 있다). `app` 은 실제 codex 서브커맨드라 성립하지만 `cli` 는 성립하지 않는다. 기본값을 기동으로 옮기는 일은 이 토큰 결함을 맨몸 경로로 승격시키므로, 함께 닫지 않으면 카드가 목표한 "맨몸이 기동한다"가 "맨몸이 프롬프트 `cli` 로 기동한다"가 된다.
@@ -123,6 +129,12 @@ B7·B8 은 이 SPEC 이 직접 잰 두 항목이며 판독본에는 없다 — �
 ### D.4 게이트·플랫폼 상속
 
 - **REQ-CLV-009** — The SPEC-CODEX-INIT-001 offer gate shall remain the single choke point every launching form passes through, the bare form included; while the project wiring is incomplete and the session is non-interactive, the system shall issue no prompt and launch nothing.
+> **Normative property — the gate's argument under `-w` (run-phase decision, operator-approved 2026-09-01).** Where `-w` moves the child's working directory, the wiring classification handed to the INIT-001 gate shall remain the **PROJECT ROOT**, not the worktree: only the child's `Dir` follows `-w`.
+>
+> The reason must travel with the rule. The wiring the gate classifies (`.codex/hooks.json` + `.codex/config.toml`) is a property of the **project**, not of a working directory. A linked worktree is not guaranteed to carry a `.codex` copy — nothing generates one per tree — so classifying the worktree would report a wired project as unwired and, under REQ-CLV-009, block the launch outright. Passing the project root is therefore what makes the gate answer the question it was built to answer.
+>
+> A later reader who "fixes" this to pass the worktree for consistency with the `Dir` argument would reintroduce exactly that false-negative. The two arguments are deliberately different because they answer different questions: `Dir` asks *where does the child run*, the gate asks *is this project wired*.
+
 - **REQ-CLV-010** — The codex launch path shall remain an `os/exec` child with verbatim exit-code propagation, and shall carry zero OS build tags and zero `syscall` imports, preserving the cross-platform property established by SPEC-CODEX-LAUNCHER-001 HISTORY 0.8.0.
 
 ### D.5 대조 시험과 배포 표면
