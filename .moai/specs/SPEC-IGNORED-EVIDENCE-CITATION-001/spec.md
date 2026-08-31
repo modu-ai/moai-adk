@@ -2,7 +2,7 @@
 id: SPEC-IGNORED-EVIDENCE-CITATION-001
 title: "Repair tracked citations that name gitignored evidence paths"
 version: "0.5.0"
-status: in-progress
+status: completed
 created: 2026-08-31
 updated: 2026-08-31
 author: manager-spec

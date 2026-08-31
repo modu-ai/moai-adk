@@ -435,4 +435,50 @@ m1_to_mN_commit_strategy: "M1-M5 landed as ONE commit (ee77a6c88), followed by t
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-31
+sync_commit_sha: ""   # empty slot — a commit cannot cite its own hash; filled in the immediately following commit. No `pending-backfill` placeholder is ever written to the branch.
+sync_status: complete
+b12_self_test_a: "grep -c 'SPEC-IGNORED-EVIDENCE-CITATION-001' CHANGELOG.md -> 0 (exit=1), measured before emission at HEAD 2c566eaf3. No duplicate entry; emission proceeds."
+b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l -> 12 DISTINCT identifiers (AC-IEC-001..012), NOT 10. The CHANGELOG entry states TEN and names the range explicitly as 001..007 + 010..012. The gap is real and explained, not softened: AC-IEC-008 and AC-IEC-009 were demoted to non-gating §D structural checks S-1/S-2 at plan-audit iter2, and acceptance.md carries NO reserved [RETIRED]/[REF] adjacency marker on either id, so the mechanical counter reads both as live. Under the marker convention this is not the 'ambiguous' case (no occurrence of either id is marked), so the counter emits 12 rather than halting. REPORTED to the lead rather than reconciled here: adding the markers would be a body edit to acceptance.md, forbidden to manager-docs."
+b12_self_test_c: "ls over every path claimed in the CHANGELOG entry -> exit=0. Verified present: internal/cli/mcp_glm.go, internal/cli/audit_pin_live_test.go, internal/hook/evidence_writer_zeroexec_test.go, .moai/reports/t299/verify-sync/e2e-lint-4paths.extract.txt, .moai/reports/template-skill-improvement-plan-20260710.html, .moai/reports/t381/census.md, .moai/reports/t381/verify/ (all ten ac-iec-<nnn>.txt present)."
+changelog_entry_position: "CHANGELOG.md [Unreleased] -> ### Fixed, first entry (inserted immediately after the heading, ahead of the card t373 entry, matching the section's newest-first ordering)."
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (merged close; the single sync commit carries implemented and completed together). updated: 2026-08-31 — already the correct value, unchanged."
+  plan_md: "NOT touched. Carries no `status:` and no `updated:` field. Per spec-frontmatter-schema.md § Artifact Statelessness, non-spec.md artifacts are stateless on the status axis; adding either field would create the exact defect card t369 removed from SPEC-INTEGRATION-LOCK-ATOMIC-001."
+  acceptance_md: "NOT touched. Carries no `status:` (correct, same rule). `updated: 2026-08-31` already holds the sync-commit date, so no refresh was needed."
+  progress_md: "no frontmatter block; §E.4 (this section) is the sync-phase record."
+canary_compliance_check:
+  applicable: false
+  reason: "This SPEC defines no forward-looking policy that its own sync would test. It repairs a five-line corpus under an already-landed sibling canon (SPEC-EVIDENCE-CITATION-CANON-001) and explicitly builds no guard (spec.md §C.8 'Out of Scope — guard construction')."
+mx_tag_validation:
+  status: "no-op, verified rather than assumed"
+  reason: "Every hunk in the run-phase diff is a comment, a header, or a footer. No exported function was created or changed, no fan_in changed, no goroutine or dangerous pattern introduced — so no @MX:NOTE / @MX:ANCHOR / @MX:WARN obligation is triggered. No @MX:TODO was left outstanding by run-phase."
+docs_sync:
+  readme_4_locale: "not applicable — measured, not assumed. grep -rln over README.md / README.ko.md / README.ja.md / README.zh.md / docs-site/ for the five in-scope filenames returns ZERO hits (exit=1)."
+  template_mirror: "not applicable — `ls internal/template/templates/internal` -> No such file or directory. The template tree carries no mirror for `internal/`, and the two report files live under .moai/reports/ (internal evidence, never shipped)."
+sync_verification:
+  binary: "built from THIS tree — `make build` at HEAD 2c566eaf3 -> bin/moai, BuildID v3.1.2-948-g2c566eaf3. Invoked as ./bin/moai, never the PATH-resolved binary (which may predate this tree's rules and return a meaningless green)."
+  spec_lint_repo_wide: "TWO figures, and the second is the one this commit ships. Pre-edit, at HEAD 2c566eaf3: `0 error(s), 1096 warning(s)`, exit=0. Post-edit, with this §E.4 block in place: `0 error(s), 1097 warning(s)`, exit=0. Both measured IN THIS TREE with the tree-built binary and reported as this tree's own figures, not as agreement with a count measured elsewhere. The +1 is named below and self-heals at the backfill commit."
+  new_warning_introduced: "ONE, deliberate and transient — reported rather than absorbed. `SyncSHASlotFormat` at progress.md:440: the rule landed by SPEC-SYNC-SHA-SLOT-FORMAT-001 (card t299) admits a commit SHA or the canonical `pending-backfill` family, and does NOT admit the empty string. The dispatch for this card explicitly instructs the empty-slot form and explicitly forbids leaving a `pending-backfill` placeholder on the branch, so the two rules genuinely conflict on this one line. The dispatch was followed; the cost is one WARNING (never an error) living for exactly one commit, and it disappears when the backfill writes the real SHA. CONFLICT REPORTED to the lead — reconciling it is a doctrine decision (which of the two close conventions is canonical), not a manager-docs edit."
+  ac_rerun: "All ten MUST criteria re-executed at the sync commit's parent state: 001 (empty output, exit=0) + companion (four files at 1, mcp_glm.go absent by treatment (a)); 002 (0 / 1); 003 (5); 004 (1 / 1); 005 (1 / 1, PASS via the recorded-inability branch); 006 (diff exit=0, positive control sums to 12); 007 (eight-path diff exit=0); 010 (all ten evidence files listed exit=0, check-ignore exit=1 i.e. NOT ignored, `ls .moai/state/verify` -> No such file or directory); 011 build half (`go build ./internal/cli/... ./internal/hook/...` exit=0); 012 (0 / 2)."
+  ac_011_test_half: "NOT re-run at sync, and the reason is stated rather than elided: the sync diff touches CHANGELOG.md, spec.md frontmatter, and this progress.md section — zero Go files, so no Go behaviour can have changed. The build half WAS re-run (exit=0). The test half stands on the run-phase measurement (28 packages ok, internal/cli 473.9s, internal/hook 83.7s, exit=0). Full-suite and cross-platform judgment belongs to CI, per CLAUDE.local.md §4."
+  moving_base_note: "origin/develop moved AGAIN during this card, unfetched, through the shared object store: 9328a5242 -> 297a21ea7 -> 59e898b31 -> e79272713 (four readings, three moves). The merge base is unchanged at 3f03d9c36. Every three-dot criterion absorbed all three moves with no edit — the fourth independent confirmation of the iter4 P3 decision, and a fourth re-pin a frozen SHA would have needed."
+integration:
+  pushed: false
+  reason: "Lane does not push. Integration into develop and the repository-wide CI verdict belong to the lead-assigned window; origin/develop is NOT absorbed here."
+```
+
+### Sync-phase residual risk
+
+- **`sync_commit_sha` is empty until the backfill commit lands.** Between the sync commit and its
+  successor, a reader of this block sees an empty slot. That is deliberate — the alternative, a
+  `pending-backfill` placeholder, is a value that can survive un-backfilled and be mistaken for one.
+- **The AC-count self-test disagrees with the SPEC's own prose (B12-b above), and the disagreement is
+  shipped rather than resolved.** `acceptance.md` says ten MUST criteria; the mechanical counter says
+  twelve identifiers. Both are correct about different questions, and the CHANGELOG names the range
+  so a reader can tell which. Reconciling it needs `[RETIRED]` markers on the two demoted ids in
+  `acceptance.md` — a body edit outside this agent's ownership, so it is reported to the lead.
+- **Everything §E.3 records as residual is unchanged by this close** — the C4 instruction axis, the
+  unenforced adjacency, the B2-B6 probe blind spots, and the eight unexported `eb01063e` JSONs. The
+  sync phase repaired no residual and closed no axis; it recorded them.
