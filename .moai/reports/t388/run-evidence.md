@@ -37,7 +37,7 @@ Tree: HEAD `6854a9306` + the untracked `internal/cli/version_sync_list_test.go`.
 is backfilled below once the commit exists; the run is the pre-commit working tree, whose test file
 is byte-identical to what that commit carries.
 
-M1 commit: `<backfilled>`
+M1 commit: `f270d2df5`
 
 ```
 $ go test ./internal/cli/... -run TestVersionSyncList -v      # exit 1
@@ -67,3 +67,39 @@ Supporting checks on the same tree:
 $ gofmt -l internal/cli/version_sync_list_test.go   # (empty) exit 0
 $ go vet ./internal/cli/...                         # exit 0, no output
 ```
+
+---
+
+## M2.1 — subheadings created, omissions filled, ghost deliberately left in place
+
+### Expectation, written BEFORE measurement
+
+Replacing the documentation/configuration axis with the stamp/artifact axis moves both entries
+under `**Configuration Files:**` into the stamp list, and one of them is the ghost. The stamp list
+therefore holds **8** entries, not 7.
+
+- Count assertion fires: `version-stamp entries: parsed=8 expected=7`.
+- Existence assertion fires and names `internal/template/templates/.moai/config/config.yaml`.
+- Both appear in **one** run, because reporting is non-fatal.
+
+**Two causes.** This is a supporting observation (plan.md E3-b) and is the single evidence of
+neither AC — AC-VSG-004 needs a red whose only cause is the existence assertion, which M2.3
+produces.
+
+### Observation — E3-b
+
+Tree: M1 commit `f270d2df5` + the M2.1 documentation edit (committed as the M2.1 commit below).
+
+```
+$ go test ./internal/cli/ -run TestVersionSyncList -v      # exit 1
+=== RUN   TestVersionSyncListNamesOnlyExistingPaths
+    version_sync_list_test.go:83: version-stamp entries: parsed=8 expected=7 (anchor "**Version Stamps:**" in .moai/docs/version-management.md)
+    version_sync_list_test.go:91: version-sync list names a path that does not exist: internal/template/templates/.moai/config/config.yaml
+--- FAIL: TestVersionSyncListNamesOnlyExistingPaths (0.00s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.865s
+```
+
+Full output: `.moai/reports/t388/m2-1-red.log`.
+
+**Expected vs observed: identical**, both literals verbatim. This is the only moment the check
+meets the real ghost, which is why the step is committed rather than folded into M2.2.
