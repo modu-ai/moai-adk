@@ -1,7 +1,7 @@
 ---
 id: SPEC-SPECLINT-GITBLIND-001
 title: "SPEC Lint 의 git 눈멂 — 조용한 skip 을 관측 가능하게 만들고 기준 ref 를 해소한다"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-08-31
 updated: 2026-08-31
@@ -24,6 +24,7 @@ era: V3R6
 | 0.1.0 | 2026-08-31 | manager-spec | 최초 작성 — 카드 t371 의 사전 측정(A/B 3회)을 근거로 M1(관측 가능화) → M2(ref 해소 체인) → M3(CI 체크아웃) 순서 고정 |
 | 0.2.0 | 2026-08-31 | manager-spec | plan-audit iter-1(PASS-WITH-DEBT 0.75) 차단 결함 5건 반영 — error 모양을 **3종**으로 정정하고 모양별 발화 여부 명시(D1), Unreachable 을 **lint 실행당 1건**으로 결정·상한 AC 신설(D2), ref 이름 추적 AC 신설(D4), AC-003 에 non-terminal status 제약 명시(D7), AC-003/006 에 mutation 절차 추가(D8). 범위 추가: 워크플로 trigger paths 확대(REQ-SLGB-009). §1.2 인용 `:1310-1313` → `:1305-1308` 정정(D5a), `DetectDrift` 결과를 §4 잔여 위험으로 승격(D6). AC 11건·대상 파일 6개로 **Tier S → M** 상향 |
 | 0.3.0 | 2026-08-31 | manager-spec | iter-1 정정 2건 반영 — D12 를 필수로 승격: `printTable` 의 zero-finding short-circuit(`✓ No findings`, `internal/cli/spec_lint.go:115-118`)이 곧 눈감긴 상태의 출력이라는 사실을 §1.2 서사에 편입하고, 관측 표면을 기본 표 출력으로 못박음(AC-SLGB-001 / 004 에 해당 줄 부재 단언 추가). `cachedMainBranch` 의 cwd 의존은 시그니처 변경이 아니라 기존 `chdirForTest` 선례로 해소됨을 확인 — plan.md M2 단계 0(디렉터리 파라미터 분기) 철회. `--json` / `--sarif` 동작에 기대는 AC 를 금지하는 조항을 §4 에 명시 |
+| 0.4.0 | 2026-08-31 | manager-spec | 인용 갱신 + 기준값 재측정 — `origin/develop`(`9328a5242`) 흡수 후 HEAD `35bc0715f` 에서 인용 좌표를 전량 재측정해 `internal/spec/lint.go` 5개 인용을 갱신(`:1287`→`:1306`, `:1305-1308`→`:1324-1327`, `:1316`→`:1335`, `:284-300`→`:296-312`, `plan.md` `:1287-1323`→`:1306-1342`, `acceptance.md` `:1299-1301`→`:1318-1320`). 그 밖의 파일 인용은 불변으로 확인. 린트 기준값을 `0 error / 1096 warning` 으로 재귀속하고 종전 "1098"이 warning 수가 아니라 `wc -l` 이었다는 단위 오류를 정정, `SyncSHASlotFormat` +5 델타와 t382 무영향 반증을 `progress.md` §E.1 iter-3 에 기록. **요구사항 · AC 의미 변경 없음** |
 
 ## 1. 문제 — 측정된 형태
 
@@ -47,7 +48,7 @@ CI 잡 `SPEC Lint`(`.github/workflows/spec-lint.yml`)은 `actions/checkout@v7` �
 
 - **축 A — 이력 깊이**: 1건(`OwnershipTransitionInvalid`). `OwnershipTransitionRule`
   (`internal/spec/lint_ownership.go`)이 SPEC 파일에 `git log --follow` 를 걸기 때문이다.
-- **축 B — `main` ref**: 18건(`StatusGitConsistency`). `internal/spec/lint.go:1287` 의
+- **축 B — `main` ref**: 18건(`StatusGitConsistency`). `internal/spec/lint.go:1306` 의
   `StatusGitConsistencyRule.Check` 가 `getGitImpliedStatus`(`internal/spec/drift.go:300`)를 부르고,
   그 안에서 `git log <branch> --oneline --no-merges --grep=<specID> -50` 를 돌린다. 여기서
   `branch = cachedMainBranch()`(`internal/spec/gitquery_cache.go:88-118`)인데, 이 헬퍼는
@@ -60,7 +61,7 @@ CI 잡 `SPEC Lint`(`.github/workflows/spec-lint.yml`)은 `actions/checkout@v7` �
 
 `cachedMainBranch()` 가 존재하지 않는 `"master"` 를 돌려주면 `git log` 가 실패하고,
 `getGitImpliedStatus` 는 error 를 반환하며, `StatusGitConsistencyRule.Check` 는
-`internal/spec/lint.go:1305-1308` 에서 `return nil` 한다. **"일치함"과 "관측 못 함"이 같은 출력**이다.
+`internal/spec/lint.go:1324-1327` 에서 `return nil` 한다. **"일치함"과 "관측 못 함"이 같은 출력**이다.
 게다가 이 실패는 SPEC 하나가 아니라 전 코퍼스에 동시에 걸린다 — 기준 ref 하나가 없으면 규칙 전체가 눈을 감는다.
 
 **그리고 그 침묵은 침묵으로 끝나지 않는다.** `printTable` 은 finding 이 0건이면
@@ -88,8 +89,8 @@ short-circuit 이 발화하지 않으며, 그 한 줄이 사라진다.
 ### 1.3 지금은 붉어지지 않는다 (그리고 그것이 위험을 없애지는 않는다)
 
 두 규칙 모두 `--strict` 에서 error 로 승격되지 않는다. `StatusGitConsistency` 는 emission 시점에
-`Advisory: true`(`internal/spec/lint.go:1316`), 유일한 `OwnershipTransitionInvalid` 대상
-SPEC-LSPMCP-001 은 terminal status 라 `applyEraDemotion`(`internal/spec/lint.go:284-300`)이 advisory 로 낮춘다.
+`Advisory: true`(`internal/spec/lint.go:1335`), 유일한 `OwnershipTransitionInvalid` 대상
+SPEC-LSPMCP-001 은 terminal status 라 `applyEraDemotion`(`internal/spec/lint.go:296-312`)이 advisory 로 낮춘다.
 run (3)은 19건이 모두 보이는 상태에서 `rc=0` 으로 측정됐다.
 
 **잔여 위험**: 앞으로 grandfather 가 아닌 SPEC 이 `OwnershipTransitionInvalid` 를 맞으면 승격된다 —

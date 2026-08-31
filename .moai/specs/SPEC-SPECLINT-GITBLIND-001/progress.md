@@ -2,6 +2,36 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
+### iter-3 (v0.4.0) — develop 흡수 후 인용 재측정 · 린트 기준값 재귀속
+
+측정 트리: 이 워크트리 HEAD **`35bc0715f`**. 흡수: `git merge origin/develop`(`9328a5242`), 91커밋, 충돌 0.
+판정 도구는 트리에서 빌드한 `./bin/moai`(PATH 바이너리 미사용). 원문: `.moai/reports/t371/remeasure-35bc0715f.md`.
+
+- **인용 좌표 전량 재측정.** 이동은 `internal/spec/lint.go` 한 파일에 국한된다(총 행수 1323 → 1342).
+  `StatusGitConsistencyRule.Check` `:1287-1323` → **`:1306-1342`**, 조용한 skip 블록 `:1305-1308` → **`:1324-1327`**,
+  `Advisory: true` `:1316` → **`:1335`**, `terminalStatusEnum` 조기 반환 `:1299-1301` → **`:1318-1320`**,
+  `applyEraDemotion` `:284-300` → **`:296-312`**. `lint.go:33-45` · `lint.go:61` 은 불변이고,
+  `lint_ownership.go` · `drift.go` · `gitquery_cache.go` · `cli/spec_lint.go` · `drift_characterization_test.go` ·
+  `spec-lint.yml` · `ci.yml` 인용은 흡수 전후 동일하다.
+- **린트 기준값 = `0 error / 1096 warning`**(`35bc0715f`). **종전에 돌던 "1098"은 warning 수가 아니라
+  보고서 파일의 `wc -l` 값이었다** — 단위가 달라 비교 자체가 성립하지 않았다. 흡수 전 트리(`1e5199b88`)가
+  스스로 선언한 총계는 `2 error / 1091 warning` 이다.
+- **차분 귀속.** rule별 대조에서 움직인 것은 `SyncSHASlotFormat` 0 → **5**(+5, 흡수와 함께 도착한 새 규칙)
+  하나뿐이고 나머지 9종은 전부 0 델타다. 검산: 1091 + 5 = 1096. 사라진 error 2건은 둘 다
+  `ArtifactStatusFieldForbidden`, 대상은 `SPEC-INTEGRATION-LOCK-ATOMIC-001` 의 `plan.md` / `acceptance.md` —
+  **이 카드 소관이 아니며** develop 쪽에서 이미 수리됐다.
+- **18건은 개수가 아니라 집합으로 동일하다.** `StatusGitConsistency` 는 18 그대로이고,
+  SPEC ID 정렬 목록의 diff 가 비었다. 따라서 `.moai/reports/t371/classification-18.md` 의 분류는 흡수 후에도 유효하다.
+- **전제 반증 — t382 는 이 18건을 움직이지 못한다.** `StatusGitConsistency` 는 발화 지점에서 **무조건**
+  `Advisory: true` 로 나오고(`internal/spec/lint.go:1335`), `applyEraDemotion`(`:296-312`)의 warning 분기는
+  이미 true 인 플래그를 다시 true 로 **설정**할 뿐이며, `eraDemotableCodes`(`:272-275`)에
+  `StatusGitConsistency` 는 없다. era 분류는 발화 **이후**에 적용되므로 개수도 억제하지 못한다.
+  즉 t382(era.go H-3)가 어느 방향으로 착지하든 이 카드의 18건은 개수도 advisory 여부도 변하지 않으며,
+  **병합 순서 제약의 근거로 쓸 수 없다.** 같은 논리가 이 카드가 신설할 `StatusGitUnreachable`(Info)에도 걸린다 —
+  `applyEraDemotion` 의 switch 는 Error 와 Warning 만 다루고 Info 는 통과시킨다.
+- **잔여 위험.** `internal/spec/lint.go` 를 세 카드가 동시에 만진다(이 카드 M1 ≈ `:1324`, t382 `:272-275`,
+  t376 rule 등록부 `:137`). 텍스트 충돌 가능성은 낮으나 **어느 쪽이 먼저 착지하든 나머지의 인용 행번호가 다시 밀린다.**
+
 ### iter-2 정정 (v0.3.0)
 
 - **D12 를 필수로 승격**(감사자는 minor 로 접수, 리드가 상향). `printTable` 의 zero-finding

@@ -98,7 +98,7 @@ M3 종료 시 `.github/workflows/spec-lint.yml` 을 AC-SLGB-009 / 010 의 술어
 3. per-run 캐시에 **발화 여부 플래그**를 추가한다 — `StatusGitUnreachable` 은 실행당 최대 1건
    (`spec.md` §2.2). 캐시 비활성 경로에서는 억제하지 않는다.
 4. `StatusGitConsistencyRule.Check` 의 `err != nil → return nil`
-   (`internal/spec/lint.go:1305-1308`) 자리를 분기로 바꾼다:
+   (`internal/spec/lint.go:1324-1327`) 자리를 분기로 바꾼다:
    - shape ① → 발화
    - shape ② 또는 ③ AND shallow → 발화
    - 그 외 → 기존대로 침묵
@@ -166,7 +166,7 @@ M3 종료 시 `.github/workflows/spec-lint.yml` 을 AC-SLGB-009 / 010 의 술어
 - `acceptance.md` — AC-SLGB-001..011 과 REQ→AC 커버리지 표
 - `.moai/reports/t371/classification-18.md` — 18건 전수 분류(범위 밖 근거), C-2 가 shape ③ 형태
 - `.moai/reports/t371/plan-audit-iter-1.md` — 이 개정이 닫는 결함 목록
-- `internal/spec/lint.go:1287-1323` — `StatusGitConsistencyRule.Check`
+- `internal/spec/lint.go:1306-1342` — `StatusGitConsistencyRule.Check`
   (terminal 조기반환 `:1299-1301`, err skip `:1305-1308`, emission `:1310-1319`)
 - `internal/spec/drift.go:300-367` — `getGitImpliedStatus`, 세 error 반환 지점 `:312` `:316` `:366`
 - `internal/spec/gitquery_cache.go:88-118` — `cachedMainBranch`(캐시 조기반환 `:96-100`)

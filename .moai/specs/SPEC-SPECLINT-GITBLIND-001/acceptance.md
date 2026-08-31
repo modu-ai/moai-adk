@@ -83,7 +83,7 @@ Tier M. 11개 AC 전부 명령과 관측 대상을 명시한다. 주관적 판�
 - **When** lint 를 실행하면
 - **Then** `StatusGitUnreachable` finding 은 **0건**이다.
 - **[HARD] 제약**: 픽스처의 `status` 는 반드시 비-terminal 이어야 한다.
-  `Check` 는 `internal/spec/lint.go:1299-1301` 에서 `terminalStatusEnum` 인 문서에 대해
+  `Check` 는 `internal/spec/lint.go:1318-1320` 에서 `terminalStatusEnum` 인 문서에 대해
   git 에 닿기 **전에** `return nil` 하므로, `completed` 픽스처는 규칙이 한 번도 돌지 않은 채
   "0건"을 만족시킨다 — 즉 공허하게 통과한다.
 - **[HARD] mutation 확인**: 구현에서 shallow 술어 가드를 제거해
