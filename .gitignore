@@ -229,6 +229,11 @@ secret-*.*
 .moai/evolution/telemetry/*.jsonl
 !.moai/evolution/telemetry/.gitkeep
 
+# Hook duration metrics (local-only). No .gitkeep and no directory scaffold:
+# creating the directory is what opts a machine in to hook recording, so
+# shipping one would flip that opt-in to opt-out for every deployed project.
+.moai/observability/*.jsonl
+
 # ===========================================
 # Generated Code-Graph Layer (rebuilt on demand, never committed)
 # `moai graph build` writes edges.jsonl + edges.meta.json here. edges.jsonl is

@@ -1,0 +1,61 @@
+# Citation corpus re-measurement AFTER the run-phase commit
+# tree: /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t375
+# HEAD: 46d27faa9  (run-phase commit; the plan-phase figures were taken at b64043481)
+#
+# Command:
+#   git grep -l '\.moai/state/verify' -- '*.md' > /tmp/citers-t375.txt
+#   python3 .moai/reports/t375/measure_citations.py /tmp/citers-t375.txt
+#
+# Observed:
+#   files scanned (tracked *.md matching the string): 180
+#   path occurrences: 499
+#   concrete occurrences: 348
+#   files carrying >=1 concrete citation: 126
+#   distinct concrete cited paths: 231
+
+| figure                     | spec.md 1.1 (b64043481) | now (46d27faa9) | delta |
+|----------------------------|-------------------------|-----------------|-------|
+| files scanned              | 184                     | 180             |  -4   |
+| path occurrences           | 515                     | 499             | -16   |
+| concrete occurrences       | 346                     | 348             |  +2   |
+| files with >=1 concrete    | 124                     | 126             |  +2   |
+| distinct concrete paths    | 231                     | 231             |   0   |
+
+Every delta is attributable to this card's own doctrine edits. None of it comes
+from a new artifact entering its own measurement population: the guard is a
+`.go` file (the script reads `*.md` only) and the exported evidence is `.txt`
+under `.moai/reports/t375/`, which OWN_DIRS already excludes.
+
+-4 files scanned. Four files no longer contain the string at all — the
+  output-style (`output-styles/moai/moai.md`) and `skills/moai/workflows/run.md`,
+  each in both the repository copy and the template mirror.
+
+-16 occurrences. manager-lead.md went from 7 occurrences to 3 (lines 61, 85,
+  150, 157 now name the tracked path) = -4 per copy = -8; the output-style lost
+  3 per copy = -6; run.md lost 1 per copy = -2. protocol.md stayed at 1 and
+  reference.md stayed at 2 (the old paragraph carried two `<session>/` mentions;
+  the new one carries one `<session>/` and one `snapshots`). Sum: -16.
+
++2 concrete occurrences / +2 concrete files. Both are the same edit seen twice.
+  `agent-common-protocol-reference.md` now names the carve-out
+  `.moai/state/verify/snapshots`, whose tail begins with an alphanumeric and is
+  therefore CONCRETE by the script's predicate, where the two paths it replaced
+  (`<session>/`) were placeholders. That file — in the repository copy and in
+  the mirror — is newly concrete-carrying, hence +2 on both counters.
+
+  This is expected, not a regression. The carve-out is a naming of a machine
+  consumer, not a citation offered to a human reader; the predicate measures
+  path shape and cannot make that distinction. Verified rather than reasoned:
+
+      git grep -c '\.moai/state/verify/snapshots' -- '*.md'
+      -> the reference.md pair, plus 6 pre-existing files
+
+0 change in distinct concrete paths. `.moai/state/verify/snapshots` was ALREADY
+  in the corpus before this card (`.moai/reports/t36/report.md`, three
+  SPEC-WORKFLOW-CACHE-OPT-001 artifacts, and others), so adding it to
+  reference.md introduced no new distinct path.
+
+CONSEQUENCE FOR THE SPEC. spec.md 1.1's table and 5's debt figures
+(124 / 231 / 189) were true of HEAD b64043481 and are now stale at
+HEAD 46d27faa9. This agent does not own spec.md body content, so the figures
+are reported to the lead rather than edited here.
