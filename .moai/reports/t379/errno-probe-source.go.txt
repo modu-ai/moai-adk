@@ -1,0 +1,97 @@
+//go:build !windows
+
+package kanban
+
+import (
+	"errors"
+	"path/filepath"
+	"testing"
+
+	"golang.org/x/sys/unix"
+)
+
+// zz_errno_probe_test.go — MEASUREMENT PROBE (card t379), not a deliverable.
+//
+// The card says the Unix ErrBoardLockHeld predicate is over-broad. That is a
+// claim about SHAPE. This probe measures the SET, which is a different thing:
+//
+//	(1) which errnos does the current mapping convert to ErrBoardLockHeld?
+//	(2) which of those are reachable at the real call site, where the fd came
+//	    from a unix.Open that already succeeded?
+//
+// Narrowing without (2) trades one direction of failure for the other.
+func TestProbe_FlockErrnoSurface(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "probe.lock")
+
+	// Case A — genuine contention. Two separate open file descriptions in one
+	// process: flock is per-description, so the second must fail.
+	fd1, err := unix.Open(path, unix.O_CREAT|unix.O_RDWR|unix.O_CLOEXEC, 0o644)
+	if err != nil {
+		t.Fatalf("open fd1: %v", err)
+	}
+	defer unix.Close(fd1)
+	if err := unix.Flock(fd1, unix.LOCK_EX|unix.LOCK_NB); err != nil {
+		t.Fatalf("first flock must succeed: %v", err)
+	}
+	fd2, err := unix.Open(path, unix.O_CREAT|unix.O_RDWR|unix.O_CLOEXEC, 0o644)
+	if err != nil {
+		t.Fatalf("open fd2: %v", err)
+	}
+	defer unix.Close(fd2)
+	errA := unix.Flock(fd2, unix.LOCK_EX|unix.LOCK_NB)
+	t.Logf("A contention   errno=%-16v EWOULDBLOCK=%v EAGAIN=%v",
+		errA, errors.Is(errA, unix.EWOULDBLOCK), errors.Is(errA, unix.EAGAIN))
+
+	// Case B — EBADF. NOT reachable at the call site (the open succeeded
+	// there), but it shows what the mapping would do with a non-contention
+	// errno if one arrived.
+	fd3, err := unix.Open(path, unix.O_RDWR, 0o644)
+	if err != nil {
+		t.Fatalf("open fd3: %v", err)
+	}
+	_ = unix.Close(fd3)
+	errB := unix.Flock(fd3, unix.LOCK_EX|unix.LOCK_NB)
+	t.Logf("B closed fd    errno=%-16v EBADF=%v", errB, errors.Is(errB, unix.EBADF))
+
+	// Case C — EINVAL via an invalid operation. Also not reachable: the call
+	// site passes a compile-time constant.
+	fd4, err := unix.Open(path, unix.O_RDWR, 0o644)
+	if err != nil {
+		t.Fatalf("open fd4: %v", err)
+	}
+	defer unix.Close(fd4)
+	errC := unix.Flock(fd4, 0x99)
+	t.Logf("C invalid how  errno=%-16v EINVAL=%v", errC, errors.Is(errC, unix.EINVAL))
+
+	// The current mapping discards the errno, so all three collapse to one
+	// sentinel. Mirrors board_lock_unix.go:41-44.
+	for _, c := range []struct {
+		name string
+		err  error
+	}{{"A contention", errA}, {"B closed fd", errB}, {"C invalid how", errC}} {
+		if c.err == nil {
+			t.Logf("mapping %-14s -> no error produced; nothing to map", c.name)
+			continue
+		}
+		mapped := ErrBoardLockHeld // what board_lock_unix.go returns, errno discarded
+		t.Logf("mapping %-14s -> IsBoardLockHeld=%v", c.name, IsBoardLockHeld(mapped))
+	}
+}
+
+// TestProbe_RealCallSiteReachability asks whether a NON-contention failure can
+// actually be produced through AcquireBoardLock itself on this machine.
+func TestProbe_RealCallSiteReachability(t *testing.T) {
+	root := t.TempDir()
+	l1, err := AcquireBoardLock(root)
+	if err != nil {
+		t.Fatalf("first acquire: %v", err)
+	}
+	defer func() { _ = l1.Release() }()
+
+	_, err2 := AcquireBoardLock(root)
+	t.Logf("second AcquireBoardLock -> err=%v IsBoardLockHeld=%v", err2, IsBoardLockHeld(err2))
+	if !IsBoardLockHeld(err2) {
+		t.Fatalf("contention must classify as held, got %v", err2)
+	}
+}

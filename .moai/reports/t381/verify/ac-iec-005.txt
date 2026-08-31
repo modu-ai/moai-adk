@@ -1,0 +1,13 @@
+$ grep -c 'skill-audit/\*' .moai/reports/template-skill-improvement-plan-20260710.html
+1
+exit=0
+$ grep -ciE 'not exported|반출되지|cannot be named|식별 불가' .moai/reports/template-skill-improvement-plan-20260710.html
+1
+exit=0
+
+--- iter5 re-verification (2026-08-31, HEAD 0e903d464) ---
+$ grep -c 'skill-audit/\*' .moai/reports/template-skill-improvement-plan-20260710.html
+1
+$ grep -ciE 'not exported|반출되지|cannot be named|식별 불가' .moai/reports/template-skill-improvement-plan-20260710.html
+1
+PASS via the second branch (glob retained WITH an explicit inability marker). Unchanged.
