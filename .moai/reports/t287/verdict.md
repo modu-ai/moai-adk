@@ -129,3 +129,24 @@ README·docs-site 의 사용자 문서 표면을 만들지 않는다.
   재배포 경로가 로컬을 템플릿에서 복원하는지는 관측하지 않았다.
 - `golangci-lint` 및 전체 스위트 미실행 — 변경이 마크다운 2 파일뿐이라는 것은
   논증이지 측정이 아니다.
+
+### 7.5 CI 귀속 — Graph Freshness (관측)
+
+§7.4 를 쓸 당시 "described-worthy 소스 0" 은 diff 구성에서 나온 **예측**이었다. 병합 head
+`3603c155b` 의 워크플로 런(id 33358425797, event=push)을 직접 읽어 관측으로 바꾼다.
+
+```
+$ gh run view 33358425797 --log | grep -iE 'contribution|described-source-diff'
+codemaps  metric=described-source-diff value=43 threshold=40 verdict=stale
+  contribution: 0 described-worthy file(s) vs first parent c36d2672b (inherited — this change contributed none of it)
+mx-index  metric=inventory-content-diff value=0 threshold=1 verdict=fresh
+edges     metric=source-fingerprint-mismatch value=0 threshold=0 verdict=fresh
+```
+
+판정: **순수 상속.** 이 카드의 기여분은 0 이고, 도구가 스스로 `(inherited — this change
+contributed none of it)` 로 라벨한다. 총계 43 은 이 카드로 귀속되지 않는다.
+
+누적 추이(리드 판독, 이 세션 미검증): `b9149857c` 41 → `c36d2672b` 43(+2) → `3603c155b`
+43(+0). 마지막 항만 위 명령으로 이 세션이 직접 확인했다.
+
+codemaps 재생성은 하지 않았다 — 범위 밖이며 배치 종료 시점에 일괄 처리하기로 운영자가 정했다.
