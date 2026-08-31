@@ -1,0 +1,10 @@
+✓ No findings — all SPEC documents are valid
+
+provenance: binary built from tree 9328a5242 via `go build -o /tmp/t388-moai4 ./cmd/moai`
+            (NOT the PATH install /Users/goos/go/bin/moai, which reports v3.1.2 / 343399d2f)
+            no uncommitted tracked change under cmd/ internal/ pkg/ at build time
+command:    /tmp/t388-moai4 spec lint .moai/specs/SPEC-VERSION-STAMP-GUARD-001/spec.md
+exit:       0
+spec:       SPEC-VERSION-STAMP-GUARD-001 v0.3.0 (iter-3, card split — guard axis moved to t392)
+counts:     6 REQ / 6 AC / 5 Out-of-Scope sub-headings (Tier S ceiling 8/8)
+note:       re-run after scoping R-1 fetch-depth ground (ci.yml 6-of-7 fetch-depth:0 remeasured)
