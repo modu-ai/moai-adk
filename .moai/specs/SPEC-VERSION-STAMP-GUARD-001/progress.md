@@ -197,7 +197,7 @@ run-phase 진입 HEAD `6854a9306`, 착지 HEAD는 §E.3.
 ```yaml
 run_complete_at: 2026-09-01
 run_entry_head: 6854a9306
-run_commit_sha: <backfilled — M2.3 evidence commit>
+run_commit_sha: c161c8965   # M2.3 증거 + 이 기록. 아래 backfill 커밋이 최종 착지
 milestone_commits:
   m1: f270d2df5   # 검사 착지 (개수 단언 RED, E3-a) + status draft -> in-progress
   m2_1: d595faa9d # 소제목 신설 + 누락 4건, 유령 잔존 (의도적 RED, E3-b)
