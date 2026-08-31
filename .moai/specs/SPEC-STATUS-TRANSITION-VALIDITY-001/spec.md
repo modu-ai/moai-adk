@@ -4,7 +4,7 @@ title: "Status-transition validity lint — a transition is judged on the pair, 
 version: "0.1.0"
 status: in-progress
 created: 2026-08-31
-updated: 2026-08-31
+updated: 2026-09-01
 author: manager-spec
 priority: P2
 phase: "v3.1.3 target"
@@ -364,12 +364,20 @@ closes this card.
   `Advisory = true` on every warning of a demoted document (layer 4) stay as they are. Only the
   *message* is corrected (REQ-STV-008).
 - **Stated, accepted limitation.** Because that path is untouched, a `StatusTransitionInvalid`
-  finding on a SPEC whose frontmatter says `status: completed` will be marked `Advisory = true` and
-  will therefore not be escalated by `--strict`. Concretely: `draft → completed` — one of the two
-  edges this card exists to catch — is reported but does not gate, because the very status it
-  transitioned into shelters it. The finding is visible in `--json` output and in the per-code
-  baseline; it is not a gate. This is a known consequence of the scope boundary, recorded here
-  rather than left as a silent gap.
+  finding on a demoted document is marked `Advisory = true` and is therefore not escalated by
+  `--strict`. Two distinct mechanisms demote, and both shelter findings this card exists to catch.
+  The first is **terminal lifecycle status**: a SPEC whose frontmatter says `status: completed` is
+  demoted by the terminal-status branch, so `draft → completed` is reported but does not gate,
+  because the very status it transitioned into shelters it. The second is the **grandfathered-era
+  exemption**, a policy carve-out rather than a lifecycle property: a document on a grandfathered-era
+  directory is demoted regardless of its frontmatter status, including statuses such as `implemented`
+  that are not in `terminalStatusEnum`. Measured on this corpus at commit `b1bcce4f4`, the 97
+  `StatusTransitionInvalid` findings split **49** sheltered by terminal status and **48** sheltered
+  *solely* by the era exemption. That split is a state of one tree at one moment, not a permanent
+  property of the design: card t382 (`SPEC-ERA-H3-NARROWING-001`) is narrowing the era exemption, and
+  if it narrows, the era-sheltered 48 are the population that begins gating. Every such finding stays
+  visible in `--json` output and in the per-code baseline; it is not a gate. This is a known
+  consequence of the scope boundary, recorded here rather than left as a silent gap.
 
 ### Out of Scope — spec-lint.yml fetch-depth
 
