@@ -2,7 +2,7 @@
 id: SPEC-GITIGNORE-ROOT-GUARD-001
 title: "Root .gitignore regression guard: the generated-artifact rules are asserted on both surfaces, not only the embedded template (card t377)"
 version: "0.1.0"
-status: draft
+status: completed
 created: 2026-08-31
 updated: 2026-08-31
 author: manager-spec
