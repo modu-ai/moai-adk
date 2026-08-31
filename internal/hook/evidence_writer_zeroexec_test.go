@@ -7,7 +7,13 @@
 // Every runner string below was captured from the runner itself, in this
 // worktree, on 2026-08-30 — none is guessed. Runner versions: go1.25
 // (`go test`), pytest 8.4.2, cargo 1.94.1, jest 30.4.2, vitest 3.2.7, node
-// v22.14.0. Raw captures live under .moai/state/verify/t341/.
+// v22.14.0.
+//
+// Origin note, NOT evidence: the raw captures behind those versions were
+// written to .moai/state/verify/t341/, which is gitignored. Card t341 chose
+// not to export them, so they do not resolve outside the authoring worktree
+// and no single file can be named for them. The claim above stands on the
+// versions and runner strings recorded here, not on that path.
 package hook
 
 import (

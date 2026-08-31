@@ -1,0 +1,4 @@
+$ grep -cE '\.moai/reports/|\.moai/state/verify' internal/hook/evidence_writer_zeroexec_test.go .moai/reports/template-skill-improvement-plan-20260710.html
+internal/hook/evidence_writer_zeroexec_test.go:1
+.moai/reports/template-skill-improvement-plan-20260710.html:1
+exit=0
