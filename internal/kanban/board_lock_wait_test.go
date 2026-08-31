@@ -32,13 +32,33 @@ func TestBoardLockWaitBudgetDerivedFromNamedInputs(t *testing.T) {
 			boardLockHeadroom, recomputed)
 	}
 
-	// The inequality REQ-BLB-002 states: at least headroom x per-mutation
-	// cost x supported contender count.
-	floor := time.Duration(boardLockSupportedWriters) *
-		boardLockCIMutationCost * boardLockHeadroom
-	if boardLockWaitBudget < floor {
-		t.Errorf("budget %v < headroom floor %v", boardLockWaitBudget, floor)
-	}
+	// Where REQ-BLB-002's floor is enforced: INPUT-WISE, by the equality
+	// above plus the three assertions below — never by a comparison against
+	// boardLockWaitBudget.
+	//
+	//	budget == writers * cost * headroom   (the equality above, t.Fatalf)
+	//	writers  == 10                        (below)
+	//	cost     >= 33ms                      (below)
+	//	headroom >= 2                         (below)
+	//	==> budget >= 10 * 33ms * 2 = 660ms
+	//
+	// Each conjunct is falsifiable by a change to exactly one constant, so
+	// the composed floor is real.
+	//
+	// Why no floor-versus-budget comparison appears here, and why
+	// reinstating one is a regression rather than an improvement:
+	// boardLockWaitBudget IS declared as that same three-constant product
+	// (board_store.go), and the equality above is a t.Fatalf hard stop, so
+	// any floor built from those terms is the identical expression to the
+	// budget and evaluates false on every assignment — an identity wearing
+	// an inequality's clothing, which reads as coverage and can never fire.
+	// Exactly such a branch was removed here for that reason
+	// (SPEC-VACUOUS-FLOOR-GUARD-001, card t378).
+	//
+	// The file's one legitimate floor comparison is
+	// TestBoardLockWaitBudgetCoversSerializedMutations below: it derives its
+	// floor from the stress constants, terms the budget expression does not
+	// supply, so it is a real comparison (REQ-SIV-010).
 
 	// The supported contender count is the ten-lane figure of record in
 	// backlog_concurrency_test.go's header comment (REQ-BLB-002).
