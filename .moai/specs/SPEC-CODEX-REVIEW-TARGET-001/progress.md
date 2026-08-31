@@ -105,7 +105,7 @@ RED 는 프로덕션 변경 **이전** 트리에서 신규 검사만 추가해 �
 
 ```yaml
 run_complete_at: 2026-09-01
-run_commit_sha: pending-backfill-run
+run_commit_sha: 83e50141a  # 선행 커밋 37caf4343 = plan-phase 산출물 착지
 run_status: complete
 ac_pass_count: 11
 ac_fail_count: 0
