@@ -72,10 +72,15 @@ Steps:
 
 Record each command with its full output to `.moai/reports/t378/census.md`, and for each constant
 write the **predicted** set of guards that will redden, with the reason (cost cancels in t372's
-guard; policy-product breach reddens it; a 330ms budget may starve `TestConcurrencyStress`).
+guard; policy-product breach reddens it; a 330ms budget may starve `TestConcurrencyStress`; the
+`1400ms` budget literal reddens t372's guard too, since `1400 < 48 x 33 = 1584`).
 Predictions are written before the mutants run, so a surprise is visible as a surprise.
 
-Exit: four censuses recorded, four predictions written down.
+Alongside the censuses, record the per-mutant budget arithmetic against the 660ms composed floor —
+M1 1000ms, M2 330ms, M3 1320ms — because M4 (§M4 below) is only meaningful under the one mutant that
+lands below it.
+
+Exit: four censuses recorded, four predictions written down, the budget arithmetic recorded.
 
 ### M3 — Mutant evidence for the retained assertions (AC-VFG-003..006)
 
@@ -93,19 +98,25 @@ Exit: `git status --short` shows `board_store.go` clean; four RED/GREEN pairs in
 
 ### M4 — The deletion's negative evidence (AC-VFG-007)
 
-With the branch still present (pre-edit) and mutant M1 planted, run the scoped selector with `-v`
-and show the branch's message absent from the output while the cost-floor message is present.
-Revert the mutant. This is the observation the deletion rests on, and it is cheapest to take
-before the branch is gone.
+With the branch still present (pre-edit) and **mutant M2** (`boardLockHeadroom` 5 -> 1) planted, run
+the scoped selector with `-v` and show the branch's message absent from the output while
+`headroom factor 1 states no headroom` is present. Revert the mutant. This is the observation the
+deletion rests on, and it is cheapest to take before the branch is gone.
+
+M2 is the required mutant and the choice is not interchangeable: only M2 drives the budget below the
+660ms floor the four retained assertions compose (330ms). Under M1 the budget is 1000ms and under M3
+it is 1320ms, both above 660ms, so a genuine floor would have been silent there too and the run
+would evidence nothing (spec.md §A.5).
 
 Exit: recorded in `.moai/reports/t378/negative-evidence.md`, with the stated limit that a deletion
 carries no positive mutant evidence of its own.
 
 ### M5 — The edit (mechanical, lowest change likelihood)
 
-1. Delete lines 35-41 of `internal/kanban/board_lock_wait_test.go` (the comment block and the
-   `budget < floor` branch).
-2. Rewrite the surrounding comment to state REQ-BLB-002's actual enforcement site — the four
+1. Delete the `floor :=` declaration and the `if boardLockWaitBudget < floor` block that follows it
+   in `internal/kanban/board_lock_wait_test.go`. The comment above them is NOT deleted — step 2
+   rewrites it in place (REQ-VFG-001 scope clause + REQ-VFG-004).
+2. Rewrite that comment to state REQ-BLB-002's actual enforcement site — the four
    retained assertions — and why no floor-versus-budget comparison appears in this function
    (REQ-VFG-004), naming t372's guard as the file's one legitimate floor comparison.
 3. `gofmt -l internal/kanban/` returns empty; `go vet ./internal/kanban/` exits 0.
@@ -131,7 +142,8 @@ subject carries `t378` and the SPEC ID.
 | compiles | `go vet ./internal/kanban/` | exit 0 |
 | guard green | `go test -timeout 600s -count=1 -v -run TestBoardLockWaitBudgetDerivedFromNamedInputs ./internal/kanban/` | `--- PASS`, `=== RUN` present (non-zero selector match) |
 | package green | `go test -timeout 600s -count=1 ./internal/kanban/` | `ok` |
-| lint | `moai spec lint --strict` scoped to this SPEC | 0 errors |
+| verification load | `grep -rn 'go test' .moai/reports/t378/` | every invocation scoped to `./internal/kanban/`; no `./...`, no `-race`, no trailing `&` |
+| lint | `./bin/moai spec lint --strict` scoped to this SPEC (tree binary, not the PATH one) | 0 errors |
 
 ## §F Risks
 

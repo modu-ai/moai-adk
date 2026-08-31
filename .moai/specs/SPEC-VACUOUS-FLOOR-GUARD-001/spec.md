@@ -1,7 +1,7 @@
 ---
 id: SPEC-VACUOUS-FLOOR-GUARD-001
 title: "Remove the unreachable self-comparison floor branch in the queue lock-wait derivation guard (card t378)"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-08-31
 updated: 2026-08-31
@@ -12,7 +12,6 @@ module: "internal/kanban"
 lifecycle: spec-anchored
 tags: "kanban, lock, vacuous-guard, mutation-evidence, t241-class, t378"
 tier: S
-related_specs: [SPEC-BACKLOG-LOCK-BUDGET-001, SPEC-STRESS-INVARIANT-VERDICT-001]
 ---
 
 # SPEC-VACUOUS-FLOOR-GUARD-001 — Vacuous Floor Branch in the Lock-Wait Derivation Guard
@@ -22,6 +21,7 @@ related_specs: [SPEC-BACKLOG-LOCK-BUDGET-001, SPEC-STRESS-INVARIANT-VERDICT-001]
 | Date | Version | Change |
 |------|---------|--------|
 | 2026-08-31 | 0.1.0 | Initial plan-phase draft (card t378). Repair direction resolved to **deletion**, argued in §A.4 from REQ-BLB-002 coverage analysis rather than assumed. Tier S: 7 REQ / 8 AC, both inside the Tier S ceiling of 8/8. |
+| 2026-08-31 | 0.2.0 | Plan-audit FAIL fix round. AC-VFG-007's mutant switched M1 -> M2 (under M1 the budget stays above the composed 660ms floor, so the reinstated branch's silence evidenced nothing); §A.4's exhaustiveness claim narrowed after the retry-policy constants were found in the same `const` block, with a matching Out-of-Scope entry; REQ-VFG-007 given AC coverage inside AC-VFG-008; AC-VFG-006 given its pre-plant prediction; the REQ-VFG-001 / REQ-VFG-004 comment-fate conflict reconciled; `related_specs` dropped (not in the canonical frontmatter schema). Counts unchanged at 7 REQ / 8 AC. |
 
 ## §A Context and Problem
 
@@ -99,18 +99,29 @@ Applying that test to the two candidate repairs:
 
 - **Repair the inequality.** Any floor built from `boardLockSupportedWriters`,
   `boardLockCIMutationCost`, or `boardLockHeadroom` reproduces the vacuity, because the equality at
-  line 28 pins `budget` to exactly the product of those three. Any floor built from terms *outside*
-  the budget expression would have to reach for the stress constants — which is precisely the
-  relation t372's guard already pins, in the same file, sixty lines below. Manufacturing a second
-  outside-term inequality here would duplicate a landed guard and add a second thing to keep
-  coherent, covering no failure mode that is not already covered.
+  line 28 pins `budget` to exactly the product of those three. Terms *outside* the budget
+  expression do exist, and they are two families rather than one. The **stress constants**
+  (`stressWriters * stressAddsPerWriter`) are the first, and that relation is precisely what t372's
+  guard already pins, in the same file, sixty lines below — restating it here would duplicate a
+  landed guard and add a second thing to keep coherent. The **retry-policy constants** are the
+  second: `boardLockWaitMin` (5ms), `boardLockWaitMax` (50ms), and `boardLockWaitStep` (10ms) are
+  declared in the same `const` block as the three budget inputs (`internal/kanban/board_store.go`
+  lines 131-136 at base `3f03d9c36`), are independently authored, and are neither budget inputs nor
+  stress constants. A floor of the shape `budget >= K * boardLockWaitMax` would therefore be a real
+  comparison over terms the budget expression does not supply — not a reproduction of the vacuity.
+  Whether such a floor is worth having is a separate question: it needs a defensible `K`, which this
+  card has neither established nor measured. It is recorded as out of scope (§D), not argued away.
 - **Delete the branch.** REQ-BLB-002's intent is fully discharged elsewhere (§A.3), so deletion
   removes a check that verifies nothing and loses no coverage. This is the honest repair: the
   branch is dead weight, not an under-specified guard.
 
 **Chosen: deletion.** The branch is removed; the comment that carried REQ-BLB-002's intent is
 rewritten to record *where* the floor is actually enforced and why no floor-versus-budget
-comparison exists here, so a later reader does not reinstate it.
+comparison exists here, so a later reader does not reinstate it. The choice rests on REQ-BLB-002's
+intent already being discharged (§A.3), NOT on an outside-term floor being unconstructible — the
+retry-policy family above shows one could be constructed. Deleting a check that verifies nothing is
+separable from deciding whether a different check is worth adding, and this card does only the
+first.
 
 ### A.5 This SPEC is itself in the t241 class
 
@@ -118,17 +129,29 @@ Card t241's finding is that a guard which catches vacuous guards is worthless if
 vacuous. This SPEC is squarely inside that class, and the hazard survives the choice of deletion:
 a deletion that quietly removes coverage, or that leaves behind assertions nobody has shown can
 fail, is the same failure in a different shape. It is discharged not by saying so but by
-REQ-VFG-005 — every retained assertion is shown capable of RED by a planted-and-reverted mutant,
-and the deletion's negative evidence (AC-VFG-007) shows the removed branch could not be made RED
-even under a mutant that a real floor would have caught.
+REQ-VFG-005 — every retained assertion is shown capable of RED by a planted-and-reverted mutant —
+and by AC-VFG-007's negative evidence, which plants the headroom mutant (`boardLockHeadroom`
+5 -> 1) and observes the reinstated branch stay silent while the budget falls to 330ms, below the
+660ms floor the four retained assertions compose (§A.3). A floor that did not move with the
+mutation would have fired there; this one tracks the mutation down and cannot. The mutant choice is
+load-bearing: under M1 (cost 33ms -> 20ms) the budget is 1000ms and under M3 (writers 10 -> 8) it is
+1320ms, both **above** 660ms, so a genuine floor would have been silent under either and the
+observation would have established nothing.
+
+The unreachability claim itself rests on the static argument in §A.1, which holds for every
+assignment of the three constants. AC-VFG-007 corroborates it on one assignment; it is not offered
+as proof on its own, and a single observation of silence never establishes that a branch could not
+be made RED.
 
 ## §B Requirements (GEARS)
 
 **REQ-VFG-001** (Ubiquitous — removal).
 `TestBoardLockWaitBudgetDerivedFromNamedInputs` shall carry no assertion whose two comparison
 operands are constructed from the same expression as an equality the same function has already
-asserted. The `budget < floor` branch at lines 35-41 of
-`internal/kanban/board_lock_wait_test.go` shall be removed.
+asserted. Concretely, in `internal/kanban/board_lock_wait_test.go` the `floor :=` declaration and
+the `if boardLockWaitBudget < floor` block that follows it shall be removed. The removal is scoped
+to that declaration and that block: the comment above them is NOT deleted but rewritten in place per
+REQ-VFG-004, so the function keeps a record of where REQ-BLB-002's floor is enforced.
 
 **REQ-VFG-002** (Ubiquitous — coverage preservation).
 The guard shall retain, unweakened, the four assertions that jointly enforce REQ-BLB-002's floor:
@@ -182,7 +205,10 @@ owns the full-suite verdict.
 | AC-VFG-005 | REQ-VFG-005 | MUST — mutant evidence |
 | AC-VFG-006 | REQ-VFG-005 | MUST — mutant evidence |
 | AC-VFG-007 | REQ-VFG-005, REQ-VFG-001 | MUST — deletion's negative evidence |
-| AC-VFG-008 | REQ-VFG-004, REQ-VFG-006 | MUST |
+| AC-VFG-008 | REQ-VFG-004, REQ-VFG-006, REQ-VFG-007 | MUST |
+
+Every requirement carries at least one criterion; REQ-VFG-007 (verification load) is verified inside
+AC-VFG-008 rather than by a ninth criterion, because the artifact is at the Tier S 8/8 ceiling.
 
 **AC-VFG-001** — the dead branch is gone and nothing of its shape replaced it
 Given the repaired `internal/kanban/board_lock_wait_test.go`,
@@ -244,7 +270,12 @@ And after reverting, the same command is GREEN.
 Evidence: as AC-VFG-003.
 
 **AC-VFG-006** — mutant M4: the derivation equality can fire
-Given the pre-plant census for `boardLockWaitBudget`, recorded with its command,
+Given the pre-plant census for `boardLockWaitBudget`, recorded with its command, and the prediction
+stated in advance that the `1400 * time.Millisecond` form reddens **two** guards rather than one —
+the derivation equality here, and t372's `TestBoardLockWaitBudgetCoversSerializedMutations`, because
+`1400ms < 48 x 33ms = 1584ms` — while the numerically-identical `1650 * time.Millisecond` form
+reddens neither; attribution therefore rests on the verbatim failure message of the named assertion
+and never on the count of failing tests (REQ-VFG-005),
 When the `boardLockWaitBudget` declaration is temporarily replaced by the bare literal
 `1650 * time.Millisecond` — numerically identical to the landed value, so only the *derivability*
 changes — and then by `1400 * time.Millisecond`, and the whole package is run once for the second
@@ -257,21 +288,28 @@ known gap, not hidden,
 And after reverting, the whole-package run is GREEN.
 Evidence: as AC-VFG-003, plus the explicit gap statement.
 
-**AC-VFG-007** — the deletion's negative evidence: the removed branch could not have fired
+**AC-VFG-007** — the deletion's negative evidence: the removed branch stays silent where a real floor fires
 Given the deleted branch temporarily reinstated verbatim beside the retained assertions, in a
 working copy that is discarded and never committed,
-When mutant M1 (AC-VFG-003) is planted alongside it and
+And mutant **M2** (`boardLockHeadroom` 5 -> 1, per AC-VFG-004) chosen for this observation because it
+is the only one of the four that drives the budget BELOW the 660ms floor the four retained
+assertions compose (`10 x 33ms x 1 = 330ms`); M1 (cost 33ms -> 20ms) leaves it at 1000ms and M3
+(writers 10 -> 8) at 1320ms, both above 660ms, so under either of those a genuine floor would have
+stayed silent too and the observation would establish nothing,
+When M2 is planted alongside the reinstated branch and
 `go test -timeout 600s -count=1 -v -run TestBoardLockWaitBudgetDerivedFromNamedInputs ./internal/kanban/`
 is run,
 Then the reinstated branch's message `budget` / `< headroom floor` does NOT appear in the output
-while the cost-floor message does — the branch staying silent under a mutant that genuinely thins
-the budget, which is the deletion's evidence,
-And the reinstatement is discarded, `git diff` on the test file then showing only the deletion,
-And the honest limit is stated in the evidence record: a deletion cannot carry positive mutant
-evidence of its own, because it adds no assertion that could redden. This criterion evidences that
-the removed code was inert, and nothing more.
-Evidence: the reinstated-plus-mutant run output, the grep showing the branch message absent from
-it, and the post-discard `git diff --stat`.
+while `headroom factor 1 states no headroom` does — the branch silent at a budget a genuine floor
+would reject, because its own `floor` term tracks the mutation down to 330ms alongside the budget,
+And both the reinstatement and the mutant are discarded, `git diff` then showing only the deletion on
+the test file and nothing on `board_store.go`,
+And the honest limit is stated in the evidence record: this criterion corroborates §A.1's static
+unreachability argument on ONE assignment of the constants — §A.1 carries the every-assignment
+claim, and a single observation of silence never establishes it. A deletion also carries no positive
+mutant evidence of its own, because it adds no assertion that could redden.
+Evidence: the reinstated-plus-mutant run output, the grep showing the branch message absent while the
+headroom message is present, and the post-discard `git diff --stat`.
 
 **AC-VFG-008** — the record is written and the scope held
 Given the committed change,
@@ -281,8 +319,14 @@ And `git diff` shows no change to `TestBoardLockWaitBudgetCoversSerializedMutati
 to any constant in `internal/kanban/board_store.go`,
 And the rewritten comment names the four retained assertions as REQ-BLB-002's enforcement site and
 states why no floor-versus-budget comparison appears in the function,
+And the verification load REQ-VFG-007 constrains is verified from the evidence record itself:
+`grep -rn 'go test' .moai/reports/t378/` shows every recorded invocation scoped to
+`./internal/kanban/`, with zero occurrences of `./...`, zero of `-race`, and zero trailing `&`
+backgrounding — the grep output quoted in full, so an empty match set is distinguishable from an
+unrun check,
 And `moai spec lint --strict` scoped to `SPEC-VACUOUS-FLOOR-GUARD-001` reports 0 errors.
-Evidence: `git diff --stat`, the targeted `git diff` hunks, the comment quoted, the lint output.
+Evidence: `git diff --stat`, the targeted `git diff` hunks, the comment quoted, the
+verification-load grep with its full output, the lint output.
 
 ## §D Exclusions — what this SPEC does NOT build
 
@@ -308,6 +352,15 @@ Evidence: `git diff --stat`, the targeted `git diff` hunks, the comment quoted, 
 - Any change to `internal/kanban/board_store.go` beyond comments, and any change at all to the lock
   implementation files or to `backlog_store.go`.
 - The lock's fairness, its substrate, or the retry-loop shape.
+
+### Out of Scope — a retry-policy-derived floor
+
+- Constructing a replacement floor from the retry-policy constants (`boardLockWaitMin`,
+  `boardLockWaitMax`, `boardLockWaitStep`). §A.4 establishes that such a floor would be a real
+  comparison over terms the budget expression does not supply, so the option is left open rather
+  than argued away — but choosing a defensible multiplier needs evidence about how many worst-case
+  per-attempt waits a contender must absorb, which this card neither holds nor measures. Whether
+  that guard is worth adding is a separate card.
 
 ### Out of Scope — other vacuous guards
 
