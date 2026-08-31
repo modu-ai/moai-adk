@@ -392,4 +392,46 @@ sync_session_gaps: >
   재인용했을 뿐, 재측정하지 않았다. golangci-lint·go test·coverage·크로스빌드는 재실행하지 않았다.
   plan-audit 재실행도 없다(§E.3 이 이미 "감사 재실행 없음"으로 기록). 리눅스·Windows 런타임 관측은
   여전히 없다 — CI(ubuntu) 몫이다.
+
+ordering_record_body_correction_after_close: >
+  This record exists because the close commit and the body correction landed out of the order the
+  Status Transition Ownership Matrix assumes, and it states why that was accepted rather than
+  reverted.
+
+  What happened, in order: the sync commit `9174f4dd7` carried `status: completed` (the
+  `in-progress → completed` transition, per the matrix) BEFORE the AC-BLE-003 body correction —
+  replacing the `/dev/fd` judgment-mechanism description with the POSIX `open(2)`
+  lowest-numbered-descriptor contract the run phase actually built, plus converting present-tense
+  "this debt is still open" language to past tense across spec.md/plan.md/acceptance.md (spec.md
+  bumped to 0.5.0 with a HISTORY row) — was committed. The hold instruction that would have
+  sequenced the correction ahead of the close reached this agent only after `9174f4dd7` had already
+  landed.
+
+  Why it was not reverted, all three reasons together:
+  1. The branch (`WT-boardlock-errno`) is unpushed, so the lifecycle event that matters is the
+     eventual `develop` merge, not any individual local commit on this branch — the sequence a
+     drift detector or a later auditor reads is the branch's state at integration, not the
+     intermediate commit order inside it.
+  2. What a drift detector or auditor actually reads is the branch's FINAL state at integration
+     time. By the time this branch merges, `status: completed` and the corrected body co-exist on
+     the same tree — indistinguishable from having been authored in the "correct" order from the
+     start.
+  3. The Status Transition Ownership Matrix (`.claude/rules/moai/development/spec-frontmatter-schema.md`)
+     defines no row for a plain `completed → in-progress` walk-back. The only documented path back
+     from `completed` is the full amendment procedure — `amendment_of:` frontmatter + a HISTORY
+     `## Amendments` section + plan-audit cache invalidation — which exists for substantive
+     amendments, not for reordering two commits that both landed in the same session. Invoking that
+     procedure here would invent an owner and a transition the matrix does not define, which is a
+     worse departure from the matrix than the ordering issue it would fix.
+
+  This is NOT the normal path. It happened because the hold instruction arrived after the sync
+  agent had already committed the close. Repeating this pattern on a future card pays the full
+  revert-and-redo cost instead — the correct sequencing is: hold the body-correction instruction
+  BEFORE the sync commit lands, not after.
+
+  status: is unchanged by this correction commit — it still reads `completed`, matching the matrix's
+  scope (`updated:` refresh only; no other frontmatter field, no body content is claimed as owned by
+  this note).
+
+  correction_commit_sha: pending-backfill-t379-ordering-record   # backfilled in a follow-up commit, same pattern as sync_commit_sha
 ```

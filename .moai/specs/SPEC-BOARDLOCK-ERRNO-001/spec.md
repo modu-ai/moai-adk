@@ -1,7 +1,7 @@
 ---
 id: SPEC-BOARDLOCK-ERRNO-001
 title: "Unix board-lock 획득의 errno 보존 — 경합만 ErrBoardLockHeld 로 분류"
-version: "0.4.0"
+version: "0.5.0"
 status: completed
 created: 2026-08-31
 updated: 2026-08-31
@@ -26,6 +26,7 @@ related_specs: [SPEC-STRESS-INVARIANT-VERDICT-001, SPEC-KANBAN-BOARD-001]
 | 0.2.0 | 2026-08-31 | manager-spec | plan-audit iter-1(`plan-audit-iter1.md`, PASS-WITH-DEBT 0.85) 지적 반영. §1.3-4 를 전수 주장에서 **측정 진술**로 좁힘, `EINTR` 을 미측정 목록에 추가하고 §1.3.1 로 그 재분류가 행동 중립이 **아님**을 받아들이는 변화로 기록, **REQ-BLE-005 의 범위를 "측정된 도달 가능"으로 좁힘**(D1). §3 대조표에서 AC-BLE-005 의 피복 REQ 에 004 추가(D4). `board_lock_unix.go` 인용 2건 교정(D5) |
 | 0.3.0 | 2026-08-31 | manager-spec | plan-audit iter-2(`plan-audit-iter2.md`, 0.83 — iter-1 의 0.85 에서 하락) 반영. iter-2 진단: *"iter-2 가 누락을 확언으로 바꿨고 그중 셋이 성립하지 않는다"*. 따라서 이 pass 는 **뺄셈 전용**이다 — 새 보증·새 가드·새 주장을 더하지 않고 철회·축소·부채 기록만 한다. `plan.md` 에 살아남아 있던 전수 주장 3곳(§A, §A.1 표, §D) 철회(N1), `acceptance.md` 의 `3f03d9c36` RED-now pin 철회(잴 수 없는 트리를 가리키고 있었다 — 측정 트리 구성은 M1 소관), AC-BLE-004 를 덮는다고 적혀 있던 일괄 비공허성 주장 축소(N5), `§E` E8 의 "RED-now 셀 6개" 요구를 3개+등급보고 3개로 축소(N7). N2(M-leak 발화 불가)·N6(`/dev/fd` 기제)는 **닫지 않고** `plan.md §B.1` 에 M1 부채로 기록 |
 | 0.4.0 | 2026-08-31 | manager-spec | plan-audit iter-3 반영. **이 pass 도 뺄셈 전용이다.** (P1) `plan.md §F M2` 에 살아 있던 "M2 착수 전 `3f03d9c36` 에서 RED-now 를 재라"는 지시를 철회된 pin 에 맞춰 교정 — 측정 트리는 M1 이 만들고 SHA 는 실측 시점에 기록한다. (P2) M-leak 정의 철회 뒤에도 남아 있던 **뮤턴트 3종 요구 5곳**을 정의된 2종(M-broad·M-narrow)으로 축소, M-leak 행은 철회 상태로 보존. (P3) 이 표 아래 자기 철회 기록에 있던 **"이 배치에서 세 번째 사례"** 라는 배치 전역 집계 삭제 — 이 SPEC 이 검증할 수 없는 전언이었다. 추가로 AC-BLE-004 등급 칸의 "유일한 조건" 보편 주장 축소, `acceptance.md §D.0` 의 "측정 트리는 X **이다**"를 미래형으로 축소, `verification-completeness.md` §2.1 인용과 충돌하던 **"6개 전부 PASS" 착지 조건을 착지 차단 셋(001b·002·005)으로 축소**(회귀-가드 셋은 등급 보고 대상이며 PASS 로 세지 않는다) |
+| 0.5.0 | 2026-08-31 | manager-spec | run-phase 반영 — **본문이 구현을 뒤따랐다**. run 은 부채를 땜질한 것이 아니라 **교체**했다: AC-BLE-003 의 판정 기제를 `/dev/fd` 엔트리 수 세기에서 **POSIX `open(2)` 최저번호 계약**으로 갈아탔고(부채-2 종결 — `progress.md §E.2.2`), M-leak 을 **실패 분기의 공유 `unix.Close(fd)` 제거**로 재규정해 발화시켰다(부채-1 종결 — `progress.md §E.2.3`·`§E.2.5`). `manager-develop` 은 SPEC 본문을 편집할 수 없으므로(소유권 경계 — `spec-frontmatter-schema.md` § Forbidden ownership crossings) 그 교체가 본문에 반영되지 못한 채 남아 있었다. **이 pass 는 그 괴리만 닫는다**: (1) `acceptance.md` AC-BLE-003 과 `plan.md §F M2` 의 기제를 실제로 지은 것으로 교체(`attempts = 200` · `slack = 16` · 빈 스윕 두 치명 조건 명기), (2) 두 부채가 **열려 있다고 현재형으로 적힌 문장 전부**를 과거형 기록 + 종결 표시로 교정(`acceptance.md` §D 표·§D.0·§D.1·AC-BLE-003·AC-BLE-005, `plan.md §B.1` 머리말·§E·§F M3, `spec.md §3` 대조표), (3) REQ-BLE-004 를 AC-BLE-005 의 피복 REQ 로 복원. `plan.md §B.1` 의 부채 두 항목 원문과 위 0.3.0·0.4.0 행은 **계획 단계 기록이므로 원문 보존**한다 |
 
 ### 감사 자기 철회 기록 (iter-1 → iter-2)
 
@@ -163,7 +164,7 @@ AC 본문은 `acceptance.md` 가 단일 보유처다(중복 기재하지 않는�
 | REQ-BLE-003 | AC-BLE-002 |
 | REQ-BLE-004 | AC-BLE-003 |
 | REQ-BLE-005 | AC-BLE-004 |
-| (비공허성 — REQ-BLE-001·002 공동. **004 는 M-leak 정의 철회로 현재 미피복** — `acceptance.md §D.0`, `plan.md §B.1` 부채-1) | AC-BLE-005 |
+| (비공허성 — REQ-BLE-001·002·004 공동. **004 는 M1 이 M-leak 을 공유 close 대상으로 재규정하면서 피복됐다** — `acceptance.md §D.0`, `progress.md §E.2.3`) | AC-BLE-005 |
 
 미피복 REQ 0건, 고아 AC 0건. **양방향 짝은 AC-BLE-001a ↔ AC-BLE-001b** 이며, 둘은 함께여야만 판정을 이룬다.
 

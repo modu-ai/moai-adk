@@ -44,6 +44,8 @@ Tier S 는 통상 AC 를 `spec.md §3` 에 인라인하고 `acceptance.md` 를 �
 
 두 항목은 M1 의 A/B 설계 결정과 얽혀 있어 그 결정 이전에 확정할 수 없다. **이 절은 부채 기록이지 가드가 아니다** — 여기 적혀 있다는 사실이 아래 성질을 보증하지 않는다.
 
+> **M1 종결 — 아래 두 부채는 run-phase 에서 닫혔다.** 부채-1 은 M-leak 을 실패 분기의 **공유 `unix.Close(fd)` 제거**로 재규정해(`progress.md §E.2.3`), 부채-2 는 판정 기제를 **POSIX `open(2)` 최저번호 계약**으로 교체해(`progress.md §E.2.2`) 닫았다. **아래 두 항목은 계획 단계의 부채 기록으로 원문 그대로 보존한다** — 현재 상태에 대한 진술로 읽지 않는다.
+
 - **부채-1 (M-leak 이 발화하지 못한다).** `§F M1` 은 `unix.Close(fd)` 를 분류 분기 앞의 **공유 1회 호출**로 규정한다(`양쪽 → 반환 전에 unix.Close(fd)`). 그런데 M-leak 은 "**비경합 분기**에서 `unix.Close(fd)` 제거"로 정의돼 있어, 그 모양에는 제거할 분기가 없다 — 뮤턴트를 적어 넣을 자리가 없다. 게다가 `acceptance.md` AC-BLE-003 의 유도는 같은 root 반복 획득, 즉 **경합만** 만든다. 따라서 **AC-BLE-003 의 비공허성 가드가 실제로 작동하는지는 미확정이며, 현재로선 AC-BLE-003 을 비공허성 근거 없는 AC 로 읽어야 한다.** M1 에서 A/B 결정과 함께 (a) M-leak 을 공유 close 대상으로 다시 규정할지, (b) 그 경우 REQ-BLE-004 의 경합 절반만 덮인다는 사실을 어떻게 적을지 결정한다.
 - **부채-2 (`/dev/fd` 기제).** `acceptance.md` AC-BLE-003 의 판정 기제에 세 구멍이 있다. (a) "고정 여유"에 값이 없어 임계값을 구현자가 정하게 된다. (b) "darwin·리눅스 모두 이 경로가 프로세스 자신의 열린 디스크립터를 노출한다"는 **어느 플랫폼에서도 측정되지 않은 추론**인데 사실처럼 적혀 있다(이 문서가 다른 곳에서는 추론/측정을 구분해 적는 것과 어긋난다). 리눅스에서 `/dev/fd` 는 `/proc` 경유이고 그 가용성은 환경 의존이며, **CI 러너는 ubuntu 다**. (c) AC-BLE-001a 가 가진 선택자-매치-수 절이 여기엔 없어, `/dev/fd` 를 못 읽는 러너에서 **조용히 `ok` 로 통과하고 이 AC 는 아무것도 단언하지 않는다**(빈 스윕). M1 에서 플랫폼 라벨과 빈-스윕 절을 **함께** 정한다.
 
@@ -70,7 +72,7 @@ go vet ./internal/kanban/
 
 ## §E Self-Verification (manager-develop 보고 양식)
 
-E1 AC 매트릭스(AC-BLE-001a·001b·002·003·004·005 — 명령 + 출력 전문 + 선택자 매치 수) / E2 `GOOS=windows GOARCH=amd64 go build ./...` / E3 `go test -cover ./internal/kanban/...` / E4 서브에이전트 경계(해당 시) / E5 `golangci-lint run --timeout=5m ./internal/kanban/...` (신규 vs baseline 구분) / E6 커밋 SHA + push 상태 / E7 blocker / E8 수리 전 기준선 전문 + `acceptance.md §D.0` **RED-now 셀 3개(001b·002·005)의 실측 전문 + 회귀-가드 3개(001a·003·004)의 등급 보고**(RED-now 를 가진 척하지 않는다) + **정의된 뮤턴트 2종(M-broad·M-narrow)** 의 RED 전문과 되돌린 뒤 GREEN. **M-leak 은 정의가 철회돼 있어 보고 대상이 아니다**(§B.1 부채-1) — 3종을 요구하면 정의되지 않은 뮤턴트를 지어내거나 허수로 보고하게 된다. **"RED-now 셀 6개" 요구는 철회됐다** — `§D.0` 6행 중 시작 색이 RED 인 것은 3개뿐이므로 6개를 요구하면 존재하지 않는 셋을 과대 보고하게 된다.
+E1 AC 매트릭스(AC-BLE-001a·001b·002·003·004·005 — 명령 + 출력 전문 + 선택자 매치 수) / E2 `GOOS=windows GOARCH=amd64 go build ./...` / E3 `go test -cover ./internal/kanban/...` / E4 서브에이전트 경계(해당 시) / E5 `golangci-lint run --timeout=5m ./internal/kanban/...` (신규 vs baseline 구분) / E6 커밋 SHA + push 상태 / E7 blocker / E8 수리 전 기준선 전문 + `acceptance.md §D.0` **RED-now 셀 3개(001b·002·005)의 실측 전문 + 회귀-가드 3개(001a·003·004)의 등급 보고**(RED-now 를 가진 척하지 않는다) + **뮤턴트 3종(M-broad·M-narrow·M1 이 재규정한 M-leak)** 의 RED 전문과 되돌린 뒤 GREEN. **M-leak 은 계획 단계 정의가 철회된 상태로 M1 에 넘어갔고**(§B.1 부채-1), M1 이 공유 close 대상으로 재규정하면서 보고 대상이 됐다 — 재규정 이전 정의로 3종을 요구했다면 정의되지 않은 뮤턴트를 지어내거나 허수로 보고하게 됐을 것이다. **"RED-now 셀 6개" 요구는 철회됐다** — `§D.0` 6행 중 시작 색이 RED 인 것은 3개뿐이므로 6개를 요구하면 존재하지 않는 셋을 과대 보고하게 된다.
 
 ## §F Milestones — 결정 가역성 순 (바뀔 가능성이 큰 결정이 앞선다)
 
@@ -106,7 +108,7 @@ A 를 고르면 **공허성 위험**이 하나 생긴다 — 분류 함수는 �
 - AC-BLE-001a: 실호출 경로(`AcquireBoardLock` 두 번)로 경합 → held=true.
 - AC-BLE-001b: 합성 errno 2종 이상(`unix.ENOLCK`, `unix.EBADF`) → held=false, `err != nil`.
 - AC-BLE-002: `errors.Is(err, <errno>)` + 메시지에 lock 경로.
-- AC-BLE-003: 실패 경로 fd 위생 — **판정 기제는 하나로 고정한다**(감사 D4 교정): 같은 root 에 대해 반복 획득 실패를 N회 유도한 전후로 `/dev/fd` 하위 엔트리 수를 세고 단조 증가하지 않음을 단언한다. "코드 경로 단언" 같은 기제 없는 대안은 삭제됐다.
+- AC-BLE-003: 실패 경로 fd 위생 — **판정 기제는 하나로 고정한다**(감사 D4 교정). 그 하나는 **POSIX `open(2)` 의 최저번호 계약**이다(M1 이 종전의 `/dev/fd` 엔트리 수 세기를 이것으로 교체했다 — `progress.md §E.2.2`): 같은 root 에 대해 반복 획득 실패를 `attempts = 200` 회 유도한 전후로 프로브 디스크립터를 하나 열고 닫아 그 **번호**를 비교하고, `after > before + slack`(`slack = 16`, `attempts` 의 8%)이면 실패로 판정한다. **빈 스윕은 두 방향 모두 치명이다** — 프로브 `open` 실패도, `induced != attempts` 도 `t.Fatalf`. "코드 경로 단언" 같은 기제 없는 대안은 삭제됐다. 기제 상세는 `acceptance.md` AC-BLE-003 이 단일 보유처다.
 - 새 테스트 파일은 `//go:build !windows` 를 단다.
 - **각 AC 의 시작 색(RED-now / 회귀-가드)은 `acceptance.md §D.0` 이 단일 보유처다.** RED-now 셀을 잴 수 있는 트리는 `3f03d9c36` 자체가 아니라 거기에 새 계약 테스트(분류 수리 이전 상태)를 얹은 트리이며, **그 트리를 만드는 것이 M1 의 일이다**(`acceptance.md §D.0` 의 pin 철회). 따라서 RED-now 실측은 그 트리가 생긴 뒤에 하고, **SHA 는 실측 시점에 그때의 트리 SHA 로 기록한다** — 미리 어떤 SHA 도 적지 않고, 사후에 만들어 붙이지도 않는다.
 
@@ -114,8 +116,8 @@ A 를 고르면 **공허성 위험**이 하나 생긴다 — 분류 함수는 �
 
 - 뮤턴트 M-broad(전부 held) → AC-BLE-001b 가 RED. 되돌림 후 GREEN. **분류 함수의 넓은 방향**을 잰다.
 - 뮤턴트 M-narrow(전부 비경합) → AC-BLE-001a 가 RED. 되돌림 후 GREEN. **호출 지점 배선**을 잰다(M1 §A 위험의 유일한 검출기 — 배선이 없으면 001a 가 초록으로 살아남고, 그 생존이 신호다).
-- 뮤턴트 M-leak — **현 정의(비경합 분기에서 `unix.Close(fd)` 제거)로는 심을 자리도, 도달할 유도도 없다(§B.1 부채-1).** M1 이 그 정의를 다시 놓기 전까지 이 항목은 미확정이며, **AC-BLE-003 이 M-leak 으로 보증된다고 적지 않는다**. 그때까지 REQ-BLE-004 는 비공허성 가드가 없는 요구다.
-- **정의된 두 뮤턴트**(M-broad·M-narrow)가 **서로 다른** AC 를 RED 로 만드는지 확인 — 같은 AC 가 둘 다에 반응하면 짝이 방향 하나만 재고 있는 것이다.
+- 뮤턴트 M-leak — 계획 단계 정의(비경합 분기에서 `unix.Close(fd)` 제거)로는 **심을 자리도, 도달할 유도도 없었다**(§B.1 부채-1). **M1 이 (a) 안을 택해 실패 분기의 공유 `unix.Close(fd)` 제거로 재규정했고**, 그 뮤턴트가 AC-BLE-003 을 RED 로 만들었다(`descriptor leak: probe fd 6 before, 206 after 200 failed acquisitions (slack 16)`, 되돌린 뒤 GREEN — `progress.md §E.2.3`·`§E.2.5`). REQ-BLE-004 는 그 공유 close **지점**에서 비공허하게 잠긴다 — 비경합 반환 경로를 독립적으로 지나가지는 않는다.
+- **M-broad 와 M-narrow** 가 **서로 다른** AC 를 RED 로 만드는지 확인 — 같은 AC 가 둘 다에 반응하면 짝이 방향 하나만 재고 있는 것이다. (재규정된 M-leak 은 이 짝 판정의 대상이 아니라 AC-BLE-003 전용 가드다.)
 - 되돌림은 `git status --short` 로 확인.
 - 게이트: `go vet` · `golangci-lint` · `go test ./internal/kanban/... -count=1 -cover` · `GOOS=windows GOARCH=amd64 go build ./...`.
 - AC-BLE-004: M1 이전 기준선과 실패 집합 대조.
