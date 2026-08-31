@@ -1,7 +1,7 @@
 ---
 id: SPEC-ERA-H3-NARROWING-001
 title: "H-3 시대 분류 술어 축소 — 진행 중 SPEC의 V3R5 오분류 차단"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-08-31
 updated: 2026-08-31
@@ -22,6 +22,7 @@ tier: S
 |---------|------|--------|--------|
 | 0.1.0 | 2026-08-31 | manager-spec | 최초 작성 (Tier M). 카드 t382 |
 | 0.2.0 | 2026-08-31 | manager-spec | **Tier M → S 정정** (LOC·파일 수 기준 미달, AC 8개가 S 상한에 부합 — acceptance.md 폐기하고 AC를 §3으로 인라인). 무게중심을 lint 심각도에서 **drift 면제**로 이동 |
+| 0.3.0 | 2026-08-31 | manager-spec | RED 증거를 `verification-completeness.md` §2.1 4요소(명령·축자 stdout·exit code·트리 SHA)로 승격 — 원장 `.moai/reports/t382/red-evidence.md` R1~R3 신설, 기준선을 트리 `f72c0bf0f`에서 **재측정**(V3R5 23→24, grandfathered 285→286). AC-001의 단위 판정 명령이 오늘 초록이라는 사실을 명시하고 RED를 코퍼스로 이관. `matchesModernPhase`의 좁은 술어(`v3.0` 접두 / `v3r6`) 실측 반영. 가드를 2층으로 분리하고 코퍼스 층이 상시 가드가 아님을 명시. t371 무충돌 주장을 「절반만 검증됨」으로 정정 |
 
 ## 1. 배경
 
@@ -108,7 +109,11 @@ V3R5 23건 중 유일하게 `created`를 읽을 수 없는 건이다. frontmatte
 
 ## 3. 인수 기준
 
-Tier S이므로 AC는 여기에 인라인한다. 기준선 수치는 모두 트리 **`9328a5242`** 에서 이 트리의 `./bin/moai`(`make build` 산출물)로 실측했다. PATH 바이너리는 쓰지 않았다.
+Tier S이므로 AC는 여기에 인라인한다. 측정은 모두 이 트리의 `./bin/moai`(`make build` 산출물)로 했고 PATH 바이너리는 쓰지 않았다.
+
+**RED 증거의 소재.** `verification-completeness.md` §2.1은 release-blocking 기준의 RED 셀에 네 요소를 요구한다 — 명령 · 축자 stdout · exit code · 트리 SHA. 그 네 요소를 갖춘 항목은 `.moai/reports/t382/red-evidence.md`에 **R1 · R2 · R3**으로 있고, 트리 `f72c0bf0f`에서 측정했다. 아래 AC는 그 원장을 id로 인용한다.
+
+`.moai/reports/t382/measurements-9328a5242.md`의 **M1~M13은 축자 stdout과 exit code를 갖지 않는다.** 그래서 배경 측정으로만 인용하고, 판정이 실제로 기대는 RED는 R1~R3뿐이다. M-번호가 아래에 나오면 그것은 배경이지 판정 근거가 아니다.
 
 ### 3.1 방향 선언
 
@@ -123,9 +128,21 @@ Tier S이므로 AC는 여기에 인라인한다. 기준선 수치는 모두 트�
 
 AC-EH3-005는 양쪽에 동시에 선다 — 시대가 바뀐 SPEC과 **바뀌지 않은 SPEC**을 같은 표에서 한 건씩 귀속시키기 때문이다.
 
-### 3.2 [HARD] 기준선이 이 SPEC 자신 때문에 움직인다
+### 3.2 [HARD] 기준선이 이 SPEC 자신 때문에 움직였다 — 그래서 다시 쟀다
 
-285 / 23 / 429는 이 SPEC 디렉터리가 생기기 **전**의 트리 `9328a5242`에서 잰 값이다. 그런데 이 SPEC 자신이 결함의 표본이라(§1.3), plan 산출물 커밋 후 기준선은 **V3R5 24 / grandfathered 286 / V3R6 429**가 된다. run-phase는 M1 착수 직전에 자기 트리에서 다시 재어 아래 기대값을 갱신한 뒤 대조한다. 재측정 없이 `9328a5242`의 수를 사후 근거로 재사용하면 그 자체가 baseline 귀속 위반이다.
+285 / 23 / 429는 이 SPEC 디렉터리가 생기기 **전**의 트리 `9328a5242`에서 잰 값이다. 이 SPEC 자신이 결함의 표본이므로(§1.3) 산출물이 커밋되면서 기준선이 움직였고, **plan-phase에서 트리 `f72c0bf0f`에 대고 다시 쟀다**(원장 R2 · R3):
+
+| 값 | `9328a5242` (SPEC 생성 전) | **`f72c0bf0f` (현재 기준선)** |
+|---|---|---|
+| Total SPECs | 714 | **715** |
+| Grandfathered | 285 | **286** |
+| V3R5 | 23 | **24** |
+| V3R6 (뺄셈 도출) | 429 | **429** |
+| `EraUnclassified` | 0 | **0** |
+
+아래 AC의 기대값은 전부 오른쪽 열 기준이다. **왼쪽 열의 수를 사후 근거로 재사용하지 않는다** — 그것이 baseline 귀속 위반이다.
+
+이 표 자체도 만료된다. run-phase는 M1 착수 직전 자기 트리에서 R1·R2를 다시 돌려 오른쪽 열을 갱신하고, 갱신본에 대고 대조한다. 착수와 측정 사이에 다른 SPEC이 하나라도 추가되면 715와 286은 함께 움직인다.
 
 ### 3.3 단위 기준 — `internal/spec/era_test.go`
 
@@ -133,11 +150,13 @@ AC-EH3-005는 양쪽에 동시에 선다 — 시대가 바뀐 SPEC과 **바뀌�
 
 **AC-EH3-001 — 날짜 신호가 있으면 H-3을 통과한다** (오분류 중단)
 Given `ProgressMDExists: true` + `ProgressMDContent`에 `## §E.2 Run-phase Evidence`가 있고 `sync_commit_sha`는 빈 값이며 `FrontmatterCreated: "2026-08-25"`, When `ClassifyEra(signals)`를 호출하면, Then `era == EraV3R6` 이고 rationale이 `"H-5"`로 시작한다.
-*오늘의 RED:* 코퍼스 등가 RED가 이미 관측돼 있다 — `spec audit --json`이 `created >= 2026-04-01`인 SPEC 22건을 `era: "V3R5"`로 보고한다(M2·M4). 이 명제는 오늘 22번 거짓이다.
+*오늘의 RED — 원장 R1.* 판정 명령 `go test -run TestClassifyEra ./internal/spec/`는 **오늘 초록이다**. 그 서브테스트가 아직 없기 때문이며, 셀렉터가 0건을 매치한 초록과 구별되지 않는다. 그래서 이 AC의 RED는 단위 명령이 아니라 **코퍼스 등가**로 세운다: 원장 R1이 exit **1** 과 `carrying a modern-era signal (misclassified): 23`을 낸다. 이 명제는 오늘 23번 거짓이다.
+*green path:* M1의 유예절이 들어가면 R1이 exit 0 · `misclassified: 0`으로 뒤집히고, 새 서브테스트가 단위 층에서 같은 명제를 잡는다.
 
 **AC-EH3-002 — phase 신호가 있으면 H-3을 통과한다** (오분류 중단)
 Given 같은 progress 신호에 `FrontmatterCreated: ""`, `FrontmatterPhase: "v3.0.0"`, When 호출하면, Then `era == EraV3R6` 이고 rationale이 `"H-5"`로 시작한다.
-*오늘의 RED:* 현행 H-3은 `phase`를 읽지 않아 `EraV3R5`를 낸다. 코퍼스 등가: 23건 중 `matchesModernPhase` 참이 5건(M8).
+*오늘의 RED — 원장 R1.* 현행 H-3은 `phase`를 읽지 않아 `EraV3R5`를 낸다. R1의 판정 술어는 `phase`와 `created`를 **둘 다** 포함하므로 이 AC도 R1의 exit 1에 실린다. 배경: 23건 중 `matchesModernPhase` 참이 5건(M8).
+*주의 — `matchesModernPhase`는 좁다.* 코드는 `v3r6` 포함 또는 `v3.0` **접두**만 참으로 낸다(`era.go:265`). 따라서 `"v3.2.0 target"`는 거짓이며, 이 SPEC 자신도 `phase`가 아니라 `created`로만 재분류된다(원장 R3). AC 픽스처에 `"v3.0.0"`을 쓰는 것은 이 좁은 술어를 통과시키기 위해서다.
 
 **AC-EH3-003 — 임계 이전 SPEC은 보호를 잃지 않는다** (보호 유지)
 Given 같은 progress 신호에 `FrontmatterCreated: "2026-03-15"`, `FrontmatterPhase: ""`, When 호출하면, Then `era == EraV3R5` 이고 rationale이 `"H-3"`로 시작한다.
@@ -167,7 +186,9 @@ Given 수정 전후 각 트리에서, When `./bin/moai spec audit --json`으로 
 3. **바뀐 건마다 근거 제시** — 23건 각각에 `created >= 2026-04-01` 또는 `matchesModernPhase(phase)` 참이 성립함을 SPEC별 표로 보인다. **근거 없이 시대가 바뀐 SPEC이 한 건이라도 있으면 실패** — 이것이 grandfather 손실 벡터를 매번 재는 장치다.
 4. **표본 검증** — 23건 중 최소 5건을 뽑아 `created` 값과 본문 HISTORY 첫 행 날짜를 대조해 진짜 V3R6임을 확인하고, 표본 목록을 이름으로 남긴다.
 
-*오늘의 RED:* `./bin/moai spec audit`이 `Grandfathered: 285`를 낸다(커밋 후 286). 명제 1은 오늘 거짓이다.
+*오늘의 RED — 원장 R2 · R1.* R2가 `Grandfathered: 286`을, R1이 재분류 대상 23건과 잔류 1건의 **이름 집합**을 낸다. 명제 1은 오늘 거짓이고, 명제 2의 원소 비교 대상은 R1의 `no-signal set` 출력이다(총계만으로는 만족되지 않는다).
+
+*빈 스윕 방어:* R1의 첫 줄 `V3R5-classified SPECs: N`이 스윕 모집단이다. N = 0이면 조사 대상이 없었다는 뜻이므로 exit 0을 통과로 읽지 않는다 — 판정 전에 N ≥ 1을 확인한다.
 
 **AC-EH3-006 — 게이트 복원을 주입 결함으로 증명한다** (오분류 중단)
 「오늘 이미 통과하는 기준은 아무것도 결정하지 않는다」를 이 AC가 정면으로 다룬다. **코퍼스 lint rc 델타로는 쓸 수 없다** — §1.2 축 3에서 보였듯 수정 전후 모두 rc 0이다. 그러므로 결함을 심어 잰다.
@@ -189,9 +210,15 @@ Given `era_test.go`에 불변식 테스트 `TestClassifyEra_NoV3R5WhileModernSig
 *뮤테이션이 이 AC의 본체다.* 통과 관측만으로는 가드가 공허한지 알 수 없다. run-phase는 절을 실제로 지워 실패를 관측하고, 되돌린 뒤 재통과까지 기록한다.
 *가드 선택 근거:* 이 결함의 본질은 「첫 매치 승리 체인에서 앞선 절이 뒤 절을 굶긴다」이고 재발 경로는 유예 조건이 리팩터링에서 조용히 사라지는 것이다. 개별 케이스 테스트(AC-001~004)는 **테스트에 없는 조합**으로 재발하면 못 잡는다. 조합 순회 불변식이 그 구멍을 닫는다. `lint_movingref_test.go` · `lint_artifact_status_test.go`가 이미 「이 표식을 지우면 어떤 테스트가 실패해야 하는가」를 주석으로 명시하는 관행을 쓴다.
 
+*가드는 두 층이며, 두 층인 이유가 있다.* 단위 불변식은 **합성 입력**을 돌고 코퍼스 프로브(원장 R1)는 **실제 카탈로그**를 돈다. 단위 층만 두면 술어는 맞는데 `LoadEraSignalsFromDir`가 frontmatter를 다르게 읽어 실트리에서 어긋나는 경우를 못 잡고, 코퍼스 층만 두면 오늘 카탈로그에 없는 조합의 재발을 못 잡는다. 두 층 모두 known-bad 입력에서 실패가 관측돼야 채택된다 — 단위는 뮤테이션으로, 코퍼스는 이미 관측된 exit 1(R1)로.
+
+*코퍼스 층의 계속 발화 여부.* `red_probe.py`는 CI에 배선되지 않는다. 그래서 이 층은 **run-phase 1회 판정 도구**이지 상시 가드가 아니며, 그렇게만 주장한다. 상시로 재발을 잡는 것은 단위 불변식(`go test ./internal/spec/...`, CI가 매번 실행)이다. 코퍼스 층을 상시 가드로 소개하면 「멈춘 검사가 성공과 구별되지 않는」 결함을 새로 만드는 셈이다.
+
 ### 3.6 완료 정의
 
 - [ ] AC-EH3-001 ~ 008 전부 통과, 각 AC마다 판정 명령과 축자 출력이 `.moai/reports/t382/` 아래에 있다
+- [ ] 원장 R1이 exit **1 → 0** 으로 뒤집힌 것을 축자 출력으로 관측했고, 판정 전 스윕 모집단 N ≥ 1을 확인했다
+- [ ] 기준선 표(§3.2 오른쪽 열)를 M1 착수 직전 트리에서 갱신했고, 대조는 갱신본에 대고 했다
 - [ ] AC-003 · 004 · 008의 **뮤테이션 실패 관측**이 출력과 함께 기록되고 뮤테이션이 되돌려졌다
 - [ ] `go test ./internal/spec/...` 통과 (로컬 전체 스위트 금지)
 - [ ] `go vet ./internal/spec/...` · `golangci-lint run` 통과
@@ -265,6 +292,6 @@ if hasSyncSection && syncSHA == "" && !hasModernEraSignal(signals) {
 
 **t371**(spec-lint CI 체크아웃 + 18건 finding 재분류)은 이 카드의 영향을 받는다. SPEC의 grandfather 여부가 바뀌면 그 SPEC 위에서 `StatusGitConsistency`가 advisory인지도 함께 바뀌기 때문이다.
 
-- **겹치는 파일: 없다.** 이 SPEC은 `era.go`만 수정하고 `lint.go`는 손대지 않는다(REQ-EH3-004). t371이 `lint.go`를 만져도 텍스트 충돌은 없다.
+- **겹치는 파일: 없다 — 단, 절반만 검증된 주장이다.** 검증된 쪽: 이 SPEC의 수정 파일은 `era.go` · `era_test.go` · `lifecycle-sync-gate.md` 3개로 §5·§F가 고정하고 REQ-EH3-004가 못박는다. 검증 못 한 쪽: **t371의 산출물은 이 트리에 없다** — `find .moai/reports -maxdepth 1 -name 't371'`이 빈 결과를 내고 (`t370` · `t372` · `t375` · `t382`만 있다) SPEC 디렉터리도 없다. 따라서 「t371이 `lint.go`를 만진다」는 카드 설명에서 온 전언이지 이 트리에서 읽은 사실이 아니다. 무충돌은 **이쪽 3파일이 t371의 실제 수정 집합과 겹치지 않을 때만** 성립하며, 그 확인은 t371 산출물이 존재하는 트리에서 해야 한다.
 - **겹치는 것은 행동이다.** 재분류 대상 중 현재 `StatusGitConsistency` finding 보유는 **1건** — `SPEC-KANBAN-TODO-CLI-001`(M11). 다만 이 rule은 발화 지점에서 `Advisory: true`를 세우므로(`lint.go:1335`) grandfather 상태가 바뀌어도 `--strict` 결과는 변하지 않는다. **측정상 실제 충돌 위험은 0이다.**
 - **순서 권고:** 두 카드는 서로를 막지 않는다. 다만 t371이 finding 수 기준선을 갖는다면 그 기준선은 이 카드의 착지 전후로 달라질 수 있으므로 **어느 쪽이 나중이든 병합 트리에서 재측정**해야 한다. 그 조건이면 병렬 진행이 가능하며, 순서 지명은 리드의 몫이다.

@@ -4,7 +4,9 @@ Tier S (spec.md + plan.md; AC는 spec.md §3에 인라인). 마일스톤은 **�
 
 ## §A 맥락
 
-`spec.md` §1(배경·무게중심)·§3(AC)·§5(설계 선택)이 정본이다. 기준선 측정은 `.moai/reports/t382/measurements-9328a5242.md`(M1~M13). 여기서는 반복하지 않는다.
+`spec.md` §1(배경·무게중심)·§3(AC)·§5(설계 선택)이 정본이다. 여기서는 반복하지 않는다.
+
+측정 자료는 두 벌이고 **지위가 다르다**. `.moai/reports/t382/red-evidence.md`(R1~R3, 트리 `f72c0bf0f`)는 명령·축자 stdout·exit code·트리 SHA를 갖춘 판정 근거다. `.moai/reports/t382/measurements-9328a5242.md`(M1~M13, 트리 `9328a5242`)는 축자 출력과 exit code가 없어 **배경 측정**으로만 쓴다. 판정에 M-번호를 근거로 인용하지 않는다.
 
 **Tier S 판정 근거.** `spec-workflow.md` § SPEC Complexity Tier의 기준은 LOC와 파일 수다 — S는 `< 300 LOC` 이고 `< 5 files`. 이 변경은 `era.go` 약 15 LOC, `era_test.go` 약 120 LOC, 문서 몇 줄, **총 3 파일**로 양쪽 기준을 모두 만족한다. REQ 6개 · AC 8개도 Tier S 상한(각 8)에 들어간다. 초안은 Tier M으로 잡았는데, 그 근거가 「AC 집합이 크다」였다 — Tier 표가 키로 삼지 않는 축이고, **측정에 들인 노력에 맞춰 Tier를 올린 것**이었다. 정정한다.
 
@@ -26,9 +28,14 @@ git branch --show-current          # → WT-era-plan-phase
 git fetch origin develop
 git rev-list --count --left-right origin/develop...HEAD
 make build                         # rc=0, 이후 모든 측정은 ./bin/moai 로만
+cp bin/moai bin/moai-pre-t382      # AC-EH3-006이 쓸 수정 전 바이너리 보존
+./bin/moai spec audit              # 기준선 재측정 → spec.md §3.2 오른쪽 열 갱신
+./bin/moai spec audit --json | python3 .moai/reports/t382/red_probe.py   # exit 1 이어야 착수 가능
 ```
 
 `make build`를 건너뛰고 PATH 바이너리로 재면 이 트리를 재는 것이 아니다.
+
+[HARD] 마지막 명령이 **exit 1이 아니면 착수하지 않는다.** exit 0이면 둘 중 하나다 — 결함이 이미 없거나(다른 카드가 먼저 고쳤다), 프로브가 아무것도 스윕하지 못했거나(첫 줄 N = 0). 어느 쪽인지 가르기 전에 M1을 시작하면 고칠 것 없는 것을 고치게 된다.
 
 ## §D 제약
 
@@ -72,7 +79,7 @@ make build                         # rc=0, 이후 모든 측정은 ./bin/moai �
 
 코드 변경 없음. 측정과 귀속만.
 
-- `make build` 후 `./bin/moai spec audit --json`으로 SPEC별 era를 뽑아 기준선과 대조 → AC-EH3-005 (총계 + 22건 원소 일치 + 건별 근거 + 표본 5건).
+- `make build` 후 원장 R1을 다시 돌려 **exit 1 → 0** 뒤집힘과 `misclassified: 0`을 관측한다. 이어서 `./bin/moai spec audit --json`으로 SPEC별 era를 뽑아 §3.2 갱신본과 대조 → AC-EH3-005 (총계 + 23건 원소 일치 + 건별 근거 + 표본 5건). 원소 비교 대상은 R1의 이름 집합 출력이다.
 - `./bin/moai spec drift`를 돌려 `drift-before-9328a5242.txt`와 23행 대조 → AC-EH3-007. **이 카드의 무게중심 축이므로 M3에서 가장 먼저 잰다**(spec.md §1.2 축 1). 새 `DRIFT` 행이 있으면 **건별로** 진짜/오탐 판정.
 - 결함 주입 실험 → AC-EH3-006. 수정 전 바이너리와 수정 후 바이너리 양쪽으로 각각 돌린다(수정 전 바이너리는 M1 착수 전에 `bin/moai-pre-t382`로 보존해 둔다).
 
@@ -98,6 +105,7 @@ make build                         # rc=0, 이후 모든 측정은 ./bin/moai �
 
 ## §H 상호 참조
 
+- `.moai/reports/t382/red-evidence.md` (R1~R3) — 판정 근거 원장; `.moai/reports/t382/red_probe.py` — R1의 프로브 본체
 - `internal/spec/era.go` — 수정 대상
 - `internal/spec/lint.go` `applyEraDemotion` / `eraDemotableCodes` / `terminalStatusEnum` — 읽기 전용, 결과 해석의 근거
 - `internal/spec/audit.go` `auditSpec` / `internal/spec/drift.go` ④ — 읽기 전용, `unclassified` 비용 판정의 근거
