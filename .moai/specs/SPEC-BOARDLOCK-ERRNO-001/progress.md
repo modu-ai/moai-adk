@@ -433,5 +433,5 @@ ordering_record_body_correction_after_close: >
   scope (`updated:` refresh only; no other frontmatter field, no body content is claimed as owned by
   this note).
 
-  correction_commit_sha: pending-backfill-t379-ordering-record   # backfilled in a follow-up commit, same pattern as sync_commit_sha
+  correction_commit_sha: be812f401   # backfilled — docs(SPEC-BOARDLOCK-ERRNO-001): correct AC-BLE-003 mechanism description + record close ordering (t379)
 ```
