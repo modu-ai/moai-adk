@@ -437,15 +437,167 @@ develop이 가져온 새 SPEC 디렉터리와 함께 들어왔다.
 **범위 밖**: `SPEC-INTEGRATION-LOCK-ATOMIC-001/`은 다른 카드 소관이며 이 카드는 건드리지
 않았다. 리드가 운영자에게 별도로 라우팅한다.
 
+### M4 — `CoverageRule`가 형제 `acceptance.md`를 읽는다
+
+**측정 기준 트리**: 워크트리 `.claude/worktrees/t362`, 브랜치 `WT-coverage-rule-scope`,
+기준 HEAD `706e2ae4e`(이 절의 모든 수치는 그 HEAD 위의 작업 트리에서 잰 것이고, 바이너리도
+같은 트리에서 빌드했다 — `go build -o /tmp/moai-t362-m4-{base,after} ./cmd/moai`, 양쪽 rc=0).
+
+**수리 모양**: plan.md §C.2 (ii)안. `CoverageRule.Check`가 `filepath.Dir(doc.Path)`의 형제
+`acceptance.md`를 직접 읽어 커버 집합을 합집합한다. `parseSPECDoc`은 건드리지 않았으므로
+`doc.Criteria` 소비자는 영향을 받지 않는다. 신규 파일 `internal/spec/lint_coverage_sibling.go`,
+`lint.go` 변경은 3줄 + 주석 4줄.
+
+**커버 집합 술어**: 형제 파일 전문에 `ExtractRequirementMappings`를 적용한다. 인라인 경로
+(`ParseAcceptanceCriteria`)의 두 좁힘 — `##`+"acceptance" 표제 요구와 `AC-…:` 콜론 줄 요구 —
+는 **spec.md가 혼합 문서라서** 존재하는 것이고 `acceptance.md`에는 근거가 넘어오지 않는다.
+실측이 이를 강제했다: `acceptance.md` 622개 중 표제 조건 충족 169개, 인라인 파싱 가능한
+`- AC-…:` 줄 보유 **3개**. 이 SPEC 자신의 `acceptance.md`도 3개에 들지 않는다 — 인라인 술어를
+그대로 가져왔다면 **자기를 낳은 문서를 커버하지 못하는 수리**가 됐다.
+
+**AC 판정**
+
+| AC | 결과 | 근거 |
+|---|---|---|
+| AC-CRS-001-006a | PASS | `TestCoverageSibling_CoveredByAcceptanceMD` — 형제에만 AC가 있는 픽스처에서 `CoverageIncomplete` 0건 |
+| AC-CRS-001-006b | PASS | `TestCoverageSibling_UncoveredStillFires` — 양쪽 어디에도 AC가 없는 REQ에 대해 여전히 1건 발화. **rc가 아니라 발화 여부로 판정**(개정 문구) |
+| AC-CRS-001-007 | PASS | `TestCoverageSibling_NoAcceptanceArtifact` — `acceptance.md` 부재 Tier S 픽스처, 오류·패닉 없이 인라인 AC만으로 판정 |
+| AC-CRS-001-008 | PASS | 인라인 집합과 형제 집합의 **합집합**이므로 spec.md 중복 기재를 새로 요구하지 않는다. `spec.md` 코퍼스 무변경 |
+
+**RED 선행 확립** (`.moai/reports/t362/m4-red-before.txt`, 구현 전):
+
+```
+--- FAIL: TestCoverageSibling_CoveredByAcceptanceMD
+    CoverageIncomplete findings = 1, want 0
+--- FAIL: TestCoverageSibling_UncoveredStillFires
+    CoverageIncomplete findings = 2, want 1
+--- PASS: TestCoverageSibling_NoAcceptanceArtifact
+```
+
+007이 구현 전에도 GREEN인 것은 **회귀 방지 기준**이기 때문이다(부재 경로가 깨지지 않았는지를
+본다). 공허하지 않다는 것은 아래 뮤테이션 M2·M3가 보인다.
+
+**뮤테이션 3종 — 쌍이 실제로 갈라 세는지**
+
+| 뮤턴트 | 006a | 006b | 007 | 증거 |
+|---|---|---|---|---|
+| M1 형제 무시(합집합 제거) | **RED** (0→1) | **RED** (1→2) | PASS | `m4-mutant-ignore-sibling.txt` |
+| M2 규칙 끄기(`return nil`) | **PASS(공허)** | **RED** (1→0) | **RED** (1→0) | `m4-mutant-rule-off.txt` |
+| M3 부재를 하드 실패로 | — | — | **RED**(panic) | `m4-mutant-absent-hard-fail.txt` |
+
+**M2가 쌍의 존재 이유다.** 규칙을 꺼도 006a는 통과한다 — 앞쪽만 보면 "올바로 읽는다"와
+"규칙을 껐다"가 구분되지 않는다. 그 구분을 만드는 것은 006b뿐이다. M3은 007의 픽스처가 실제로
+부재 분기를 지난다는 것을 보인다(부재 파일 경로가 panic 메시지에 그대로 찍혔다).
+
+**코퍼스 실측 — 델타 0이며, 그것은 코퍼스가 정한 값이다**
+
+| 측정 | 값 |
+|---|---|
+| `CoverageIncomplete` (M4 전 / 후) | **846 / 846 — 델타 0** |
+| finding 총수 (전 / 후) | 1,093 / 1,093 |
+| 비자문 warning | 0 / 0 |
+| error | 2 / 2 (상속분, 아래) |
+| plain rc / `--strict` rc | 1 / 1 (양쪽 모두 상속 error 2건 때문) |
+
+`jq -S` 정규화 후 before/after finding 배열이 **바이트 동일**(diff exit 0).
+
+**델타 0의 원인을 재봤다 — 구현이 아니라 코퍼스다.** 846건은 47개 SPEC에 얹혀 있다. 그중 43개는
+`acceptance.md`를 **가지고 있고**, 그 43개 중 `maps REQ-` 매핑을 선언한 것은 **0개**다(23개는
+AC id만 적고 매핑을 적지 않으며, 나머지는 둘 다 없다). 반대로 `maps REQ-`를 가진
+`acceptance.md` 14개는 전부 finding 0건인 SPEC의 것이다. **두 모집단이 서로소이므로 코퍼스
+수치는 구현이 무엇을 하든 움직일 수 없다.** 근거:
+`.moai/reports/t362/m4-population-measurement.txt`, `m4-residual-measurement.txt`.
+
+**여기서 더 넓히지 않은 이유**: `acceptance.md`의 맨 `REQ-…` 토큰을 커버로 세면 846건 대부분이
+조용히 사라진다. 그것은 M3이 자문 부채로 **일부러 드러낸** 수치를 지우는 일이고, "이 REQ는 범위
+밖"이라고 적힌 산문까지 커버로 세게 된다. 매핑 선언이 곧 커버 선언이며, 선언이 없는 문서가
+미커버로 읽히는 것은 규칙이 **작동하는** 모습이다. 잔여는 코퍼스 작성 방식의 문제이지 이 술어의
+좁음이 아니다.
+
+**모든 코퍼스 수치는 로컬 측정이며, CI보다 체계적으로 19 높다.**
+
+이 §E.2에 적힌 warning 수치는 **전부 local**이다. CI의 `SPEC Lint` 워크플로는
+`actions/checkout@v7`를 `fetch-depth` 없이 쓰므로 히스토리 없는 depth-1 셸로 클론을 받고,
+`StatusGitConsistencyRule`과 `OwnershipTransitionRule`은 둘 다 `git log --follow`로 판정하므로
+CI에서는 **볼 것이 없어 아무것도 내지 않는다**. 그래서 같은 트리에서도
+
+- local = CI + `StatusGitConsistency` 18 + `OwnershipTransitionInvalid` 1 = **CI + 19**
+
+이 성립한다. 리드가 CI 로그에서 잰 값(트리 `1e5199b88`): warning 1,072 + error 2.
+이 카드가 로컬에서 잰 값(트리 `9610e013e`): warning 1,091 + error 2. 차이는 정확히 19다.
+
+**따라서 CI에서 1,091을 찾다가 1,072를 보고 회귀로 읽어서는 안 된다.** 둘은 같은 측정이 아니며
+출처 없이 비교해서는 안 된다. CI 체크아웃 자체는 **다른 카드 소관**이고 이 카드는 건드리지
+않았다.
+
+**846 델타는 이 오프셋에 오염되지 않는다.** `CoverageIncomplete`는 git 히스토리에 의존하지
+않으므로 CI와 로컬이 **동일하게 846**을 읽는다(리드의 CI 로그 판독: CI `1e5199b88`에서 846).
+오프셋을 만드는 두 규칙은 `StatusGitConsistency`와 `OwnershipTransition` 둘뿐이다.
+
+**flag 축은 무해함이 이 트리에서도 재확인됐다.** 같은 바이너리·같은 트리에서 plain과
+`--strict`의 JSON을 각각 뽑아 `cmp` 했다 — 세 쌍 모두 **바이트 동일**:
+
+| 비교 | 명령 | 결과 |
+|---|---|---|
+| M4 이전 plain vs `--strict` | `/tmp/moai-t362-m4-base spec lint [--strict] --json` | `cmp` rc=0 |
+| M4 이후 plain vs `--strict` | `/tmp/moai-t362-m4-committed spec lint [--strict] --json` | `cmp` rc=0 |
+| M4 이전 `--strict` vs 이후 `--strict` | 위 두 바이너리 | `cmp` rc=0 → **델타 0** |
+
+코드가 예측하는 그대로다: `Strict`는 `HasErrors()` 안에서만 소비되며 finding 방출 경로에
+닿지 않는다(`lint.go:56-66`). 다른 레인이 보고한 178 vs 159 불일치는 **이 트리에서 재현되지
+않는다.**
+
+**라벨을 붙인 최종 수치** (전부 `local`, 트리 `9610e013e`, `spec.md` 분모 710 —
+`glob .moai/specs/SPEC-*/spec.md`로 이 트리에서 잰 값이며, 계획 단계의 704는 더 이른 트리
+`68ecbfe4a`의 값이다):
+
+| 수치 | 값 |
+|---|---|
+| `CoverageIncomplete` (local, `spec lint --strict --json`, `9610e013e`, 분모 710) | **846** |
+| 같은 값, M4 **이전** (local, `spec lint --strict --json`, `706e2ae4e`, 분모 710) | **846 → 델타 0** |
+| finding 총수 (local, `--strict --json`, `9610e013e`) | 1,093 |
+| warning / error 분해 (local, plain 사람용 출력, `9610e013e`) | `2 error(s), 1091 warning(s)` |
+| 비자문 warning (local, `--strict --json`, `9610e013e`) | 0 |
+| plain rc / `--strict` rc (local, `9610e013e`) | 1 / 1 — 양쪽 모두 상속 error 2건 때문 |
+| CI 환산값 (위 오프셋 적용, **미관측 — 산출값**) | warning 1,072 + error 2 |
+
+마지막 행은 **관측이 아니라 산출**이다. 이 커밋은 아직 푸시되지 않았으므로 CI가 이 트리를
+본 적이 없다.
+
+**살아있는 문서에서의 증거 — §2.3 미러 제거 시뮬레이션 (8 → 0)**
+
+`.moai/reports/t362/m4-mirror-removal-sim-{before,after}.json`. 코퍼스는 건드리지 않았다:
+이 SPEC의 `spec.md`·`acceptance.md`를 `/tmp/m4sim/`으로 복사한 뒤 §2.3 미러 표 13줄만 지우고
+단일 경로로 lint 했다.
+
+- M4 **이전** 바이너리: `CoverageIncomplete` **8건**(REQ-CRS-001-001..008)
+- M4 **이후** 바이너리: **0건**
+
+§E.2가 M4에 걸어둔 재측정 의무는 이로써 이행됐다. 다만 **이것은 스크래치 사본 측정**이며,
+실제 트리의 미러 삭제는 manager-spec 소관으로 이 커밋 **뒤에** 순서 지어져 있다 — 실트리
+8→0 확인은 그 삭제 뒤 오케스트레이터가 재측정한다.
+
+**상속 error 2건은 그대로 2건**: `SPEC-INTEGRATION-LOCK-ATOMIC-001`의 `plan.md`·`acceptance.md`
+`ArtifactStatusFieldForbidden`. 다른 카드 소관이고 이 카드는 건드리지 않았다.
+
+**품질 게이트**: `go vet ./internal/spec/...` rc=0 · `go test ./internal/spec/...` rc=0(38.2s) ·
+`golangci-lint run ./internal/spec/...` **0 issues**. 전체 스위트는 로컬에서 돌리지 않았다(CI 몫).
+
+**미검증으로 남는 것(Gap)**
+- windows/linux 빌드 — 미측정. darwin `go build ./cmd/moai` rc=0만 관측.
+- 실트리 미러 삭제 후의 8→0 — 위 시뮬레이션은 스크래치 사본이다. 실트리 확인은 미이행.
+- 매핑을 선언하지 않는 43개 `acceptance.md`의 커버리지 — 이 카드가 닫지 않는다. 코퍼스 작성
+  문제이며 별도 카드 소관이다.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
-run_status: audit-ready-partial   # M2 + M3 완료, M4 미착수
-run_complete_at: 2026-08-30
-run_commit_sha: pending-backfill-m2-m3
-ac_pass_count: 5                  # AC-CRS-001-001..005
+run_status: audit-ready           # M1-M4 완료
+run_complete_at: 2026-08-31
+run_commit_sha: pending-backfill-m4
+ac_pass_count: 9                  # AC-CRS-001-001..005 + 006a + 006b + 007 + 008
 ac_fail_count: 0
-ac_deferred_count: 3              # AC-CRS-001-006a/006b/007 (M4 소관)
+ac_deferred_count: 0
 preserve_list_post_run_count: 0
 l44_pre_commit_fetch: pending
 l44_post_push_fetch: pending
@@ -453,11 +605,124 @@ new_warnings_or_lints_introduced: 0   # golangci-lint 0 issues
 cross_platform_build:
   darwin: pass                        # go build ./cmd/moai rc=0
   windows: not-measured
-total_run_phase_files: 5              # lint.go, lint_req_widen.go + 3 test files
+total_run_phase_files: 10             # lint.go, lint_req_widen.go, lint_coverage_sibling.go
+                                      # + 4 test files + 3 M4 fixture dirs
 m1_to_mN_commit_strategy: milestone-per-commit
-open_amendments: 2                    # C1 (AC-CRS-001-006b 기계 서술), C2 (§2.3 미러) — manager-spec 소관
+open_amendments: 1                    # C2 (§2.3 미러 삭제) — manager-spec 소관, 이 커밋 뒤 순서
+corpus_coverage_incomplete_delta: 0   # 846 -> 846 (local, spec lint --strict --json,
+                                      # 706e2ae4e -> 9610e013e, spec.md 분모 710)
+                                      # 모집단 서로소 — m4-population-measurement.txt
+corpus_figures_source: local          # CI는 shallow checkout이라 warning이 19 낮다(§E.2)
+plain_vs_strict_byte_identical: true  # cmp rc=0, 3쌍 모두
 ```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-31
+sync_commit_sha: 8d888fc5d   # 백필 완료 (커밋은 자기 해시를 알 수 없어 자리표시자로 두었다 — D3 self-referential 예외)
+sync_status: complete
+b12_self_test_a: pass          # grep -c 'SPEC-COVERAGE-RULE-SCOPE-001' CHANGELOG.md -> 0 (추가 전)
+b12_self_test_b: pass          # acceptance.md 고유 AC id 9건 = CHANGELOG 인용 9건
+b12_self_test_c: pass          # 인용한 구현 경로 9개 전부 ls 확인
+changelog_entry_position: "[Unreleased] ### Changed 최상단 (line 168)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented -> completed"   # 3-phase close, 이 sync 커밋 1개에 병합
+  plan_md: none          # status 필드 없음 — ArtifactStatusFieldForbidden 규칙이 금지
+  acceptance_md: none    # 위와 같음
+  progress_md: none      # 위와 같음
+canary_compliance_check:
+  applicable: false      # 이 SPEC은 전방위 정책을 정의하지 않는다
+docs_surface_review:
+  readme: no-change      # 'spec lint' 미언급
+  docs_site: no-change   # content/*/cli-reference/spec.md 는 플래그만 문서화, 룰/코드/심각도 미열거
+mx_tag_validation: no-change   # 이 SPEC은 @MX 주석을 추가·변경하지 않았다
+```
+
+**실트리 8 → 0 — §E.2가 미이행으로 남긴 gap을 sync에서 닫았다**
+
+§E.2의 미러 제거 시뮬레이션은 `/tmp/m4sim/` 스크래치 사본 측정이었고, "실트리 확인은
+미이행"으로 기록돼 있었다. §2.3 미러 표가 `c4a0c967d`에서 실제로 삭제된 뒤, **같은 실트리
+파일**에 두 바이너리를 걸어 다시 쟀다.
+
+| 바이너리 | 트리 | `CoverageIncomplete` | rc |
+|---|---|---|---|
+| `/tmp/moai-t362-m4-base` (M4 이전, run-phase 산물 — 출처는 §E.2에서 승계) | `c4a0c967d` 작업트리 | **8** (REQ-CRS-001-001..008) | 0 |
+| `/tmp/moai-t362-sync` (`go build ./cmd/moai` rc=0, 이 트리에서 새로 빌드) | `c4a0c967d` 작업트리 | **0** | 0 |
+
+명령: `<binary> spec lint --json .moai/specs/SPEC-COVERAGE-RULE-SCOPE-001/spec.md`.
+양쪽 rc가 모두 0인 것은 A안(자문 등급)의 예상된 결과이며, 판정은 발화 여부로 한다.
+`after` 쪽 바이너리만 이 트리에서 빌드했고, `before` 쪽은 run-phase가 남긴 산물이라
+**그 출처는 승계값**이다 — 이 절이 새로 관측한 것은 두 값이 갈린다는 사실이다.
+
+**`status: completed` 전이의 부작용을 재측정했다 — 다만 이 초록은 로컬에서만 뜻이 있다**
+
+3-phase close가 `spec.md`를 `completed`로 바꾸므로 `StatusGitConsistency`가 반응할 수 있다.
+백필 커밋 직전 작업트리(HEAD `8d888fc5d`)에서 다시 쟀다.
+
+```
+/tmp/moai-t362-sync spec lint --json .moai/specs/SPEC-COVERAGE-RULE-SCOPE-001/spec.md
+→ rc=0, findings 0건 (rule 집계 공집합)
+```
+
+**이 초록을 CI로 옮겨 읽어서는 안 된다.** `SPEC Lint` 워크플로는 `fetch-depth` 없는
+depth-1 체크아웃이라 `StatusGitConsistencyRule`이 `git log --follow`로 볼 히스토리가 없고,
+워커가 findings 없이 조용히 반환한다(§E.2의 CI+19 오프셋과 같은 원인). 즉 **CI에서는 이
+규칙의 초록이 미실행과 구별되지 않는다** — 로컬 관측만이 이 부작용에 대한 증거다. CI 체크아웃
+자체는 다른 카드(t371) 소관이며 이 카드는 건드리지 않았다.
+
+**흡수 후 재측정 — 병합 트리 `01087360b`**
+
+통합 창(lane-8) 안에서 `origin/develop` `3603c155b` 를 흡수했다. **충돌 0** (CHANGELOG 는
+`ort` 자동 병합). 흡수분은 `internal/hook` / `internal/telemetry` / 새 SPEC
+`SPEC-SELECTOR-CENSUS-001` 4종이며, **`internal/spec` 은 건드리지 않았다**
+(`git diff --name-only feb0eeb5d HEAD -- internal/spec` → 공집합). 그럼에도 바이너리를
+병합 트리에서 새로 빌드해(`go build -o /tmp/moai-t362-postabsorb ./cmd/moai` rc=0) 판정 도구의
+출처를 병합 트리로 고정했다.
+
+| 검증 | 명령 | 결과 |
+|---|---|---|
+| `8 → 0` 재현 | `<binary> spec lint --json .moai/specs/SPEC-COVERAGE-RULE-SCOPE-001/spec.md` | before(M4 이전 바이너리) **8** `CoverageIncomplete` / after(병합 트리 빌드) **0**, 양쪽 rc=0 |
+| 전 코퍼스 | `<postabsorb> spec lint --json .moai/specs/SPEC-*/spec.md` | **0 error, 1,091 warning** (local) |
+| `go vet` | `go vet ./internal/spec/...` | 무출력, rc=0 |
+| `go test` | `go test ./internal/spec/...` | `ok … 46.395s` |
+
+**`8 → 0 (post-absorb, 01087360b)` 은 pre-absorb `c4a0c967d` 값과 같다.** 두 측정은 다른
+질문에 답한다 — pre-absorb 는 M4 효과 격리, post-absorb 는 착지 상태 확인 — 그리고 갈리지
+않았으므로 화해할 것이 없다. 8건은 `REQ-CRS-001-001..008` 이고 전부 `advisory: true` /
+`severity: warning` 이라 rc 는 양쪽 모두 0이다. **판정은 rc 가 아니라 발화 여부로 한다.**
+
+**`CoverageIncomplete` 846 이 흡수 후에도 그대로인 이유를 댈 수 있다.** 흡수가 새 SPEC
+(`SPEC-SELECTOR-CENSUS-001`)을 들여왔으므로 총계가 흔들릴 수 있었다. 코퍼스 findings 를 파일별로
+귀속시켜 확인했다 — 그 SPEC 의 기여 **0건**, 이 카드 SPEC 의 기여 **0건**. 즉 846 불변은
+관측일 뿐 아니라 설명되는 값이며, 미러 삭제 판정의 전제는 흔들리지 않았다.
+
+**전 코퍼스 수치는 local 라벨이다.** CI 는 depth-1 체크아웃이라 히스토리 의존 두 규칙이
+발화하지 않아 체계적으로 19 낮다(§E.2). 리드가 다른 두 레인에서 받은 병합-트리 관측값
+(`0 error, 1091 warning`, local)과 이 카드 측정이 일치한다.
+
+**Graph Freshness — 재생성하지 않았다.** 병합 트리에서 `graph check` rc=1,
+`layer codemaps verdict=stale value=44 threshold=40`. 운영자 판정(배치 끝에 일괄 재생성)에
+따라 codemaps 를 재생성하지 않았고, 기여분만 분리해 둔다:
+
+- **이 카드가 원인인 Go 파일은 3개** — `internal/spec/lint.go`,
+  `internal/spec/lint_coverage_sibling.go`, `internal/spec/lint_coverage_sibling_test.go`
+  (`git diff --name-only origin/develop...feb0eeb5d -- 'internal/**/*.go'`).
+- 도구가 스스로 내는 `contribution: 5 … vs first parent feb0eeb5d` 는 **분모가 다르다** —
+  first parent 가 이 카드의 브랜치 head 이므로 그 5는 흡수로 들어온 쪽이다. 위 3개와 더하거나
+  같은 수로 읽어서는 안 된다.
+- 44 중 나머지는 이 카드 이전에 누적된 드리프트이며 이 카드가 재지 않았다.
+
+**미러 두 종을 혼동하지 않는다.** 흡수분에 t287 의 **템플릿 미러**
+(`internal/template/templates/.claude/rules/moai/workflow/worktree-integration.md`)가 들어왔다.
+이 카드가 `c4a0c967d` 에서 지운 것은 **SPEC 내부의 §2.3 AC 미러 표**로, 서로 다른 파일이고
+서로 다른 층이다. CHANGELOG 문면에서도 이 카드 항목은 AC 미러 표를 가리킨다.
+
+**sync 단계에서 새로 재지 않은 것(Gap)**
+- 전 코퍼스 수치(846 / 1,093 / 25 / 6) — §E.2의 run-phase 측정을 승계했고 sync에서 재측정하지
+  않았다. 승계값임을 CHANGELOG와 여기 양쪽에 명시했다.
+- windows/linux 빌드 — 여전히 미측정.
+- CI 판정 — 이 브랜치는 미푸시이므로 CI가 이 트리를 본 적이 없다. 통합은 리드 소관.
+- 독립 sync-audit — 이 카드는 수행하지 않았다.
+- `StatusGitConsistency`의 CI측 동작 — 위 초록은 로컬 한정이며, CI에서 이 규칙이 실제로
+  실행되는지는 이 카드가 재지 않았다(t371 소관).

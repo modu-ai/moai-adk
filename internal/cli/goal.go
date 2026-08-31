@@ -28,18 +28,33 @@ import (
 // literal words "exits 0" as command arguments.
 var trailingExitClause = regexp.MustCompile(`(?i)^(.*\S)\s+exits?\s+(\d+)\s*$`)
 
+// modelConditionReferents are the literal tokens (case-insensitive) that mark a
+// condition string as a claim about the conversation transcript, per REQ-GLE-032
+// ("a natural-language claim that references the conversation transcript").
+// BOTH referents in that phrase count: the canonical CLI form says "in the
+// transcript", while the canonical ac_converge condition in run.md § Run-phase
+// Autonomy says "surfaced in the conversation". Keying on "transcript" alone
+// routed the whole ac_converge paragraph into the mechanical path, where it ran
+// as a shell command, exited 2, and blocked every turn-end to the ceiling
+// (issue #1660). Both the CLI arm path and the MCP goal_arm wrapper classify
+// through this one function, so the miss was shared by both.
+var modelConditionReferents = []string{"transcript", "conversation"}
+
 // parseCondition classifies a single condition string by the EXPLICIT rule of
 // REQ-GLE-032: a claim that references the conversation transcript becomes a
 // model condition; any other string is a runnable shell command (mechanical).
 //
-// The discriminator is the literal token "transcript" (case-insensitive) — the
-// canonical model form is "all AC rows show PASS in the transcript". A mechanical
-// condition may carry a trailing "exits <N>" clause setting the expected exit
-// code; absent it, expect_exit defaults to 0.
+// The discriminator is a literal token from modelConditionReferents
+// (case-insensitive) — it stays an explicit rule, never an implicit heuristic.
+// A mechanical condition may carry a trailing "exits <N>" clause setting the
+// expected exit code; absent it, expect_exit defaults to 0.
 func parseCondition(s string) goal.Condition {
 	s = strings.TrimSpace(s)
-	if strings.Contains(strings.ToLower(s), "transcript") {
-		return goal.Condition{Type: goal.ConditionModel, Claim: s}
+	lower := strings.ToLower(s)
+	for _, referent := range modelConditionReferents {
+		if strings.Contains(lower, referent) {
+			return goal.Condition{Type: goal.ConditionModel, Claim: s}
+		}
 	}
 	cmd := s
 	expect := 0
