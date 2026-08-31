@@ -151,8 +151,47 @@ carve-out(§C.3에서 확정될 기계 소비 문맥)은 허용목록으로 표�
 
 ### D.6 가드가 지키지 못하는 것 (알려진 잔여 위험)
 
-- `.codex/agents/moai/manager-lead.toml`은 `.toml`이라 범위 밖이다. 오늘 그 파일에 `canonical persistence location` 문장이 있고, M6의 `make agents-emit`이 전이적으로 고치지만 **가드가 지키는 것은 아니다**.
-- `internal/cli/mcp_glm.go:110`의 **코드 주석**이 `.moai/state/verify/t225/…`를 측정 근거로 인용한다 — 이 SPEC이 없애려는 결함의 살아 있는 실례인데 `.go`는 범위 밖이다. spec.md §5의 후속 카드 후보.
+#### D.6.1 [HARD] 확장자를 열거하는 것이 경계의 잘못된 모양이다
+
+가드 범위는 `.md`다. 초판은 범위 밖 누출을 확장자별로 하나씩 적었다 — `.toml` 하나, `.go` 하나. **둘일 때는 "이 확장자는 범위 밖"이 공정한 서술이지만, 넷이 되면 그것은 추론이 아니라 관측이다**: 새 산출물 종류가 생길 때마다 같은 방식으로 다시 누출된다. 잔여 위험의 일반형은 개별 확장자가 아니라 **경계를 확장자 열거로 그은 것 자체**다.
+
+관측된 넷 (측정 위치를 함께 적는다):
+
+| 확장자 | 실례 | 건수 | 측정 |
+|---|---|---|---|
+| `.md` | — | — | **가드 범위 안**(유일하게 지켜지는 표면) |
+| `.go` | `internal/cli/mcp_glm.go:110`, `internal/hook/evidence_writer_zeroexec_test.go:10` | 13 | 이 트리, 아래 D.6.2의 배제 적용 |
+| `.txt` | `.moai/reports/t299/verify-sync/e2e-lint-4paths.extract.txt:3` — `# Source runs live at .moai/state/verify/t299-sync/0{2,3,4,5}-*.txt inside the` | 1 | **`origin/develop`에서 확인**. 이 워크트리(base `b64043481`)에는 그 파일이 없다 — 리드 보고를 이 카드가 `git grep … origin/develop`으로 재확인한 것이고, 작업 트리 관측이 아니다 |
+| `.html` | `.moai/reports/`의 3개 보고서(`moai-autonomy-workflow-redesign-20260803`, `model-tier-redesign-20260712`, `template-skill-improvement-plan-20260710`) | 각 1 | 이 트리, `git grep -c … -- '*.html'` |
+
+**이 SPEC은 여기서 아무것도 하지 않는다.** 스캐너를 모든 텍스트 파일로 넓히는 것은 오탐 비용을 동반한 별개 판단이고 후속 카드 소관이다. 이 절이 지는 의무는 하나뿐이다 — **가드의 초록이 어디까지만 참인지 정직하게 적어 두어, 나중에 누구도 그 초록을 "코퍼스가 깨끗하다"로 읽지 않게 하는 것**.
+
+#### D.6.2 측정 패턴이 과소보고하는 두 가지 방식
+
+누출을 세는 쪽도 조용히 틀린다. 둘 다 이 카드가 실측했다.
+
+1. **카드 범위 경로 패턴은 `snapshots/`를 놓친다.** `\.moai/state/[a-z-]+/t[0-9]+` 꼴로 훑는 스윕은 `.moai/state/verify/t341/…`는 잡지만 `.moai/state/verify/snapshots/…`는 잡지 못한다(2행 중 1행만 매치). 카드 id를 전제한 패턴이라 기계 소비자 경로가 통째로 빠지고, 그렇게 만든 스윕은 과소보고한다.
+2. **센서스가 자기 자신을 센다.** `git grep -n '\.moai/state/verify' -- '*.go' | wc -l`은 이 카드의 가드 픽스처가 추적 집합에 들어온 뒤 **21**을 낸다. 기존 코퍼스 값 **13**은 가드 파일을 배제해야 나온다(`':!internal/template/evidence_citation_guard_test.go'`, 그 파일 단독 8건). **§1.1.1이 기록한 실패가 세 번째로 반복된 것이고, 세 번 다 재측정이 잡았으며 세 번 다 추론은 잡지 못했다.** `.go` 센서스를 인용할 때는 배제를 함께 적는다.
+
+#### D.6.3 [HARD] 착지·종결된 SPEC이 **통과한 인수 기준 안에** 거짓 전제를 담고 있다 — 그대로 둔다
+
+`SPEC-HIERARCHICAL-TEAM-001`(이 트리에서 확인, `status: completed`):
+
+```
+acceptance.md:9   ... verbatim output redirects to `.moai/state/verify/<session>/M<n>.<AC-id>.{log,out}`
+                  per REQ-FOLD-002. Cited paths MUST resolve at audit time.
+progress.md:25    M3: AC-FOLD-001=PASS, AC-FOLD-002=PASS, AC-FOLD-003=PASS
+```
+
+**이것이 지금까지 발견된 가장 강한 실례다 — `manager-lead.md:150`의 단정보다 강하다.** 한 문장 안에서 스크래치 경로를 지목하면서 동시에 "인용 경로는 감사 시점에 해석돼야 한다"를 요구한다. 즉 이 SPEC이 반박하는 거짓 전제가 산문이 아니라 **통과 처리된 인수 기준**으로 굳어 있고, 인수 기준은 서술이 아니라 관문이다.
+
+**이 SPEC은 그 SPEC을 고치지 않는다.** 착지·종결된 문서를 소급 수정하는 것은 이 SPEC 자신의 전방 구속 원칙(§5)과 충돌하고, 운영자가 범위 밖으로 판정했다.
+
+**후속이 이것을 문서 정리로 잡으면 범위를 잘못 잡는다.** 닫으려면 **착지한 SPEC을 개정**해야 하고, 그것은 절차가 따로 있는 다른 종류의 행위다. 이 문장을 미리 적어 두는 이유는 다음 사람이 그 사실을 잘못된 시점에 발견하지 않게 하기 위해서다.
+
+#### D.6.4 방출물
+
+- `.codex/agents/moai/manager-lead.toml`은 `.toml`이라 범위 밖이다. M6의 `make agents-emit`이 전이적으로 고치지만 **가드가 지키는 것은 아니다** — 손편집이나 방출 누락은 가드가 보지 못한다.
 
 ## E. 자체 검증
 

@@ -1,7 +1,7 @@
 === RUN   TestEvidenceCitation_Corpus
     evidence_citation_guard_test.go:241: tree repo-root: scanned 363 .md files across [agents output-styles rules skills], 0 violation(s)
     evidence_citation_guard_test.go:241: tree template-mirror: scanned 338 .md files across [agents output-styles rules skills], 0 violation(s)
---- PASS: TestEvidenceCitation_Corpus (0.02s)
+--- PASS: TestEvidenceCitation_Corpus (0.03s)
 === RUN   TestEvidenceCitation_Visitation
 --- PASS: TestEvidenceCitation_Visitation (0.02s)
 === RUN   TestEvidenceCitation_TreeVisitMutant
@@ -19,4 +19,4 @@
     --- PASS: TestEvidenceCitation_Allowlist/AllowlistUnit (0.00s)
     --- PASS: TestEvidenceCitation_Allowlist/AllowlistSize (0.00s)
 PASS
-ok  	github.com/modu-ai/moai-adk/internal/template	0.338s
+ok  	github.com/modu-ai/moai-adk/internal/template	0.329s
