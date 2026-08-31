@@ -19,7 +19,7 @@ load-bearing: an exclusion list silently miscounts any placeholder spelling it
 forgot, and three earlier hand-run variants of this measurement disagreed
 (129 / 131 / 132) for exactly that reason.
 
-Population exclusion: this SPEC's own directory is excluded. Without it the
+Population exclusion: this card's own output directories are excluded. Without it the
 figures move the moment the plan-close commit lands, because `git grep` reads
 the tracked set and the SPEC's own artifacts cite the path they are about
 (measured: 184 -> 187, 124 -> 127, 231 -> 234). Excluding the SPEC's own
@@ -29,14 +29,21 @@ import io
 import re
 import sys
 
-SPEC_OWN_DIR = '.moai/specs/SPEC-EVIDENCE-CITATION-CANON-001/'
+# Both of this card's own output directories. Excluding only the SPEC
+# directory was not enough: the plan-close commit tracked the audit reports
+# too, and those cite the path they are about, so the figures moved anyway
+# (184 -> 185, 124 -> 125, 231 -> 232 -- measured after that commit).
+OWN_DIRS = (
+    '.moai/specs/SPEC-EVIDENCE-CITATION-CANON-001/',
+    '.moai/reports/t375/',
+)
 PATH_RE = re.compile(r'\.moai/state/verify/([^\s`)\]\'",;]*)')
 CONCRETE_RE = re.compile(r'^[A-Za-z0-9]')
 
 
 def main(list_path):
     files = [line.strip() for line in open(list_path) if line.strip()]
-    files = [f for f in files if not f.startswith(SPEC_OWN_DIR)]
+    files = [f for f in files if not f.startswith(OWN_DIRS)]
     occurrences = 0
     concrete_occurrences = 0
     concrete_files = []
