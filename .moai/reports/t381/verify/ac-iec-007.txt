@@ -1,0 +1,6 @@
+$ git diff --exit-code --stat origin/develop...HEAD -- <7 t375-owned paths>
+exit=0
+
+$ ls internal/template/evidence_citation_guard_test.go
+ls: internal/template/evidence_citation_guard_test.go: No such file or directory
+exit=1 (file absent = PASS)

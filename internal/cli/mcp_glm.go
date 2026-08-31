@@ -106,9 +106,9 @@ type glmMessagesRequest struct {
 	// reasoning_effort control — the delivery field SELECTED BY LIVE EVIDENCE
 	// (AC-AMP-006's first differential ran hypothesis A, the Anthropic-style
 	// thinking object, and measured budget_tokens IGNORED — output tokens
-	// 3667 vs 3480 under budgets 3072 vs 1024, ratio 1.02; evidence
-	// .moai/state/verify/t225/ac-amp-006-glm-differential-attempt1.md). The
-	// state name is transmitted VERBATIM; empty omits the field.
+	// 3667 vs 3480 under budgets 3072 vs 1024, ratio 1.02; measured by card
+	// t225's AC-AMP-006 differential). The state name is transmitted
+	// VERBATIM; empty omits the field.
 	ReasoningEffort string       `json:"reasoning_effort,omitempty"`
 	MaxTokens       int          `json:"max_tokens"`
 	System          string       `json:"system"`

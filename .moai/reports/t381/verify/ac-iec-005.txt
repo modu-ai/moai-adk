@@ -1,0 +1,6 @@
+$ grep -c 'skill-audit/\*' .moai/reports/template-skill-improvement-plan-20260710.html
+1
+exit=0
+$ grep -ciE 'not exported|반출되지|cannot be named|식별 불가' .moai/reports/template-skill-improvement-plan-20260710.html
+1
+exit=0
