@@ -220,7 +220,7 @@ push_state: not pushed — 통합은 리드가 별도로 잡는다
 ```yaml
 sync_complete_at: 2026-09-01
 sync_entry_head: 62ea21945
-sync_commit_sha: "<backfilled in the immediately following commit — a commit cannot cite its own SHA>"
+sync_commit_sha: 5e18e6499   # backfilled here; the sync commit cannot name its own hash
 sync_status: complete
 b12_self_test_a: "grep -c 'SPEC-VERSION-STAMP-GUARD-001' CHANGELOG.md -> 0 (rc=1) before emission; no duplicate entry from a parallel session"
 b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u -> 6 distinct (AC-VSG-001..006), non-zero; the CHANGELOG entry claims no AC count, and §E.2 reports 6/6 PASS"
