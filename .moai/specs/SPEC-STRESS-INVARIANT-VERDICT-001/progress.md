@@ -53,11 +53,60 @@ is recorded as out of scope.
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Full evidence, with every command and its verbatim output, lives at
+`.moai/reports/t372/run-evidence.md`. Measured in this run, against this tree, run-phase start
+HEAD `3cd1a09f1`. The t370 measurements are consumed as ground truth and re-measured nowhere.
+
+| AC | Status | Verification command | Actual output |
+|---|---|---|---|
+| AC-SIV-001 | PASS | `go test -race -count=1 -v -run '…' ./internal/kanban/` | `--- PASS: TestStressAddClassificationToleratesStarvation (3.37s)` — `2/2 adds starved under a seeded holder, all satisfying IsBoardLockHeld, 0 hard failures` |
+| AC-SIV-002 | PASS | `grep -n 'strings.Contains' internal/kanban/backlog_concurrency_test.go` | one hit, line 343, inside the AC-SIV-005 sub-test's **message** assertion; the classification path (`classifyStressAdd`) decides on `err == nil` / `IsBoardLockHeld(err)` only |
+| AC-SIV-003 | PASS | source read `backlog_concurrency_test.go:205-231` | four assertions anchored to `issuedCount := len(issued)`; `wantTotal` no longer exists in the file |
+| AC-SIV-004 | PASS | `grep -n 't.Skip' internal/kanban/backlog_concurrency_test.go` | one hit, line 202, in a **comment**; no `t.Skip` call, no starvation conditional |
+| AC-SIV-005 | PASS | `go test -race -count=1 -v -run '…' ./internal/kanban/` | `--- PASS: TestStressZeroProgressFloorFailsTotalStarvation (1.68s)` — zero-success outcome rejected, 1-success outcome admitted |
+| AC-SIV-014 | PASS | source read + `go test -race -count=1 ./internal/kanban/` | `successes + starved + len(hardFailures) == stressWriters * stressAddsPerWriter`; no clock, no fraction, no percentage |
+| AC-SIV-006 | PASS | `go test -count=1 -v -run 'TestBoardLockWaitBudget' ./internal/kanban/` | `--- PASS: TestBoardLockWaitBudgetCoversSerializedMutations (0.00s)`; message claims coherence only |
+| AC-SIV-007 | PASS | `sed -n '95,120p' internal/kanban/board_lock_wait_test.go \| grep -nE 'time\.(Now\|Since\|Sleep)\|go func'` | **no output** — constants only; floor built from the two stress constants |
+| **AC-SIV-008** | **PASS** | `go test -count=1 -v -run 'TestBoardLockWaitBudget' ./internal/kanban/` under `boardLockHeadroom 5→4` | new guard `--- FAIL` (`1.32s budget < 1.584s floor`), old guard `--- PASS` same run; selector matched 2; whole-package run fired exactly 1 test; reverted → both `--- PASS` |
+| **AC-SIV-009** | **PASS** | `go test -race -count=1 -v -run TestConcurrencyStress ./internal/kanban/` under two reverted invariant mutants | mutant 1 (upward `last_seq`): RED at **invariant (d) mark consistency**, `backlog_concurrency_test.go:228`, `last_seq = 56, want 48`. mutant 2 (dropped item): RED at **(b)** line 218 and **(c)** line 223, in a run that also tolerated 1 real starved add. Selector matched 1 each; whole-package run fired exactly 1 test; both reverted → `--- PASS` |
+| AC-SIV-010 | PASS | the `TestConcurrencyStress` `t.Logf` line | starved count + back-derived per-mutation cost logged; no verdict gated on either |
+| AC-SIV-011 | PASS | `.moai/reports/t372/run-evidence.md` §8 | all four REQ-SIV-014 limits stated |
+| AC-SIV-012 | PASS | `git diff --stat HEAD` (taken after both mutants reverted) | 3 files: `backlog_concurrency_test.go`, `board_lock_wait_test.go`, `board_store.go` (comment-only, verified by a non-comment-line grep returning empty) |
+| AC-SIV-013 | **OPEN at merge** | — | needs ≥5 post-landing develop heads; deliberately unclaimed |
+
+Invariants (PRESERVE list, post-run): `board_lock_unix.go`, `board_lock_windows.go`,
+`board_lock.go`, `backlog_store.go` — `git diff --stat` against base returns **empty** for all four.
+`boardLockCIMutationCost`, `boardLockHeadroom`, `boardLockSupportedWriters`,
+`boardLockWaitMin/Max/Step`, `boardLockRetryWait`: unchanged in value and behaviour.
+
+This run's own figures (local darwin `-race`, observability only, not a verdict input):
+**0 starved of 48**, back-derived per-mutation cost **15.696085ms**.
+
+Non-claims carried (REQ-SIV-014, full text in the evidence file §8): no before/after comparison
+exists in any quantity; a single green run cannot close the card; a green observation window
+evidences only that no new failure mode was introduced; the tolerated class is every `unix.Flock`
+failure on Unix, and `errors.Is` traverses `errors.Join`.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-08-31
+run_commit_sha: pending-backfill-run
+run_status: audit-ready
+ac_pass_count: 13
+ac_fail_count: 0
+ac_open_count: 1          # AC-SIV-013, closure-gate, open at merge by design
+preserve_list_post_run_count: 4   # board_lock_unix.go, board_lock_windows.go, board_lock.go, backlog_store.go — all diff-empty
+l44_pre_commit_fetch: not-run     # lane-local worktree; the lead holds the integration window
+l44_post_push_fetch: not-run      # no push performed this phase
+new_warnings_or_lints_introduced: 0   # go vet ./internal/kanban/... clean; gofmt -l clean; golangci-lint NOT run (gap)
+cross_platform_build:
+  darwin_arm64: pass              # go test -race -count=1 ./internal/kanban/ → ok 24.890s
+  linux_amd64: not-run
+  windows_amd64: not-run
+total_run_phase_files: 3
+m1_to_mN_commit_strategy: single-commit   # M1-M5 land as one commit; the milestones are one indivisible verdict-criterion change
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

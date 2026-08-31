@@ -2,7 +2,7 @@
 id: SPEC-STRESS-INVARIANT-VERDICT-001
 title: "Separate the stress test's verdict criterion from lock acquisition: invariants decide, latency gets its own derivation guard (card t372)"
 version: "0.4.0"
-status: draft
+status: in-progress
 created: 2026-08-31
 updated: 2026-08-31
 author: manager-spec
