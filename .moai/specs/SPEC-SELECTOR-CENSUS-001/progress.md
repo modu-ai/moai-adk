@@ -177,7 +177,7 @@ m1_to_mN_commit_strategy: single-commit   # M1~M4 를 한 커밋에 담는다 (�
 
 ```yaml
 sync_complete_at: 2026-08-31
-sync_commit_sha: "<pending>"   # a commit cannot cite its own hash; backfilled in the immediately following commit
+sync_commit_sha: "c56bba789"   # a commit cannot cite its own hash; backfilled in the immediately following commit
 sync_status: completed
 changelog_entry: added
 changelog_entry_position: "CHANGELOG.md [Unreleased] -> ### Added, first entry (line 12), inserted above SPEC-BINLAG-INVOCATION-001"
