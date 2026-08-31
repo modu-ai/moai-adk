@@ -96,9 +96,15 @@ func seedBaseBranchRepo(t *testing.T) string {
 	return repo
 }
 
-// liveWriteTranscript persists the verbatim NDJSON both directions under the
-// card's evidence directory, so the path cited from progress.md §E.2 still
-// resolves at audit time.
+// liveWriteTranscript persists the verbatim NDJSON both directions.
+//
+// It writes under .moai/state/verify/, NOT under .moai/reports/: this test runs
+// on any plain `go test ./internal/cli/...` where a working codex is present, so
+// a tracked destination would be rewritten on every run and show up as a dirty
+// file that is never a change anyone made. The two transcripts the card cites as
+// evidence — the pre-fix rejection and the post-fix acceptance — are copies
+// pinned under .moai/reports/t399/, which is what keeps those paths resolvable
+// at audit time while this one stays disposable.
 func liveWriteTranscript(t *testing.T, name string, tap *probeTap) {
 	t.Helper()
 	if tap == nil {
@@ -106,7 +112,7 @@ func liveWriteTranscript(t *testing.T, name string, tap *probeTap) {
 		return
 	}
 	lines := tap.dump()
-	dir := filepath.Join("..", "..", ".moai", "reports", "t399", "live")
+	dir := filepath.Join("..", "..", ".moai", "state", "verify", "t399-live")
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Logf("transcript dir: %v", err)
 		return
@@ -131,6 +137,13 @@ func TestCodexLive_ReviewStartBaseBranchIsNotRejected(t *testing.T) {
 	bin := liveCodexBinary(t)
 	tap := probeInstallRunner(t)
 	repo := seedBaseBranchRepo(t)
+
+	// NOTE ON COST: unlike the opt-in probe in codex_live_protocol_probe_test.go,
+	// this test's skip guard is the three conditions acceptance.md AC-CRT-010
+	// names, so it RUNS on a plain `go test ./internal/cli/...` wherever a
+	// working codex is installed. That is deliberate — a round trip nobody runs
+	// verifies nothing — and it is bounded: the session is cut at turn/started,
+	// so what is spent is a handshake and a turn start, not a review.
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
