@@ -80,6 +80,19 @@ verbatim output. The floor's predicate is exercised directly against a zero-succ
 sub-test asserts that the predicate reports failure, so the parent test need not itself be made to
 fail. No load generation, no background process, no CI run (`spec.md` §E).
 
+**AC-SIV-014** — attempt conservation
+Given a completed stress-test run,
+When the accounting is checked,
+Then the test asserts `successes + starved + hardFailures == stressWriters * stressAddsPerWriter`,
+and fails naming the discrepancy when the identity does not hold (REQ-SIV-008),
+where `successes` is the dedicated counter defined in REQ-SIV-008 — incremented once per `Add` call
+returning a nil error — and is **not** `len(issued)` / `issuedCount`, which remains the separate
+distinct-id quantity the AC-SIV-003 invariants are anchored to.
+And the assertion references no wall-clock value, no elapsed duration, and no fractional or
+percentage success threshold — it counts outcomes only.
+Verification: reading the assertion's source, plus the `go test -race -count=1
+./internal/kanban/` run in §D.5 exercising it on a real run.
+
 **AC-SIV-006** — the budget guard exists, reads the stress figures, and claims only coherence
 Given `internal/kanban/board_lock_wait_test.go`,
 When the new guard runs,
@@ -135,8 +148,10 @@ Given the tree with a queue invariant deliberately broken by one of:
 
 When `go test -race -run TestConcurrencyStress ./internal/kanban/` runs,
 Then `TestConcurrencyStress` FAILS,
-And the RED **originates at a named assertion inside the invariant block** — the recorded output
-cites that assertion's message text and its source line,
+And the RED **originates at a named assertion inside the invariant block** — that is, at one of the
+four REQ-SIV-005 assertions (a) no id collision, (b) no lost update, (c) count consistency,
+(d) mark consistency — and the recorded evidence **names which of the four** it is, and cites that
+assertion's message text and its source line,
 And when the mutant is reverted and the same command re-runs, the test PASSES.
 Evidence recorded: the mutant diff, the RED output verbatim with the failing assertion's message and
 source line, the restoring GREEN output verbatim.
@@ -148,7 +163,12 @@ fires and proves nothing about the invariants:
 - the REQ-SIV-002 hard-failure gate (a non-sentinel error);
 - the REQ-SIV-007 zero-progress floor;
 - the REQ-SIV-008 conservation assertion;
-- a storage-layer rejection.
+- a storage-layer rejection;
+- a failure of `store.Load()` itself (`t.Fatalf("Load after stress: ...")`) — it is a named assertion
+  that sits textually among the invariants, but it is not one of the four, so a RED there evidences a
+  broken read path and nothing about the invariants;
+- a `-race` DATA RACE report;
+- a panic.
 
 **Two mutant shapes are excluded, with their reasons**, so an implementer does not spend a cycle on
 a branch that cannot discriminate:
@@ -207,19 +227,13 @@ Then the changed paths are limited to `internal/kanban/backlog_concurrency_test.
 `internal/kanban/board_store.go` (REQ-SIV-016).
 And `boardLockCIMutationCost`, `boardLockHeadroom`, `boardLockSupportedWriters`,
 `boardLockWaitMin/Max/Step`, and `boardLockRetryWait` are unchanged in value and behaviour
-(a temporary mutant under AC-SIV-008 is reverted before the diff is taken).
-And no change is made to `board_lock_unix.go`, `board_lock_windows.go`, `board_lock.go`, or
-`backlog_store.go`.
-
-**AC-SIV-014** — attempt conservation
-Given a completed stress-test run,
-When the accounting is checked,
-Then the test asserts `successes + starved + hardFailures == stressWriters * stressAddsPerWriter`,
-and fails naming the discrepancy when the identity does not hold (REQ-SIV-008).
-And the assertion references no wall-clock value, no elapsed duration, and no fractional or
-percentage success threshold — it counts outcomes only.
-Verification: reading the assertion's source, plus the `go test -race -count=1
-./internal/kanban/` run in §D.5 exercising it on a real run.
+(every temporary mutant planted under AC-SIV-008 **or AC-SIV-009** is reverted before the diff is
+taken; the post-revert `git diff --stat` is the evidence, and the AC-SIV-009 mutants live in
+`backlog_store.go`/`backlog_sqlite.go` by construction, so this carve-out is what keeps the criterion
+below from contradicting AC-SIV-009).
+And no **surviving** change is made to `board_lock_unix.go`, `board_lock_windows.go`,
+`board_lock.go`, or `backlog_store.go` — the reverted AC-SIV-009 mutant is the sole permitted
+transient, and the diff is taken after its revert.
 
 ---
 

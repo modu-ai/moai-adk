@@ -23,6 +23,7 @@ depends_on: [SPEC-BACKLOG-LOCK-BUDGET-001]
 |---|---|---|
 | 2026-08-31 | 0.1.0 | Plan-phase authoring. Remediation branch C of card t370's three-branch finding, selected by the operator. |
 | 2026-08-31 | 0.2.0 | Plan-audit fix round (audit FAIL 0.69, `.moai/reports/t372/plan-audit.md`). Tier reclassified S → M with the requirement layer consolidated 17 → 16 REQ; attempt-conservation requirement added; the budget guard's verb corrected from *covers* to *coherent with, at the declared cost*; the guard's non-tautology shape made a requirement; the Unix sentinel's width and the closure gate's discriminating power added as non-claims; one misquoted CI run corrected. |
+| 2026-08-31 | 0.3.0 | Plan-audit iteration-2 fix round (audit PASS-WITH-DEBT 0.83, `.moai/reports/t372/plan-audit.md`, findings N1-N5). "The invariant block" bounded to the four REQ-SIV-005 assertions by identity; `successes` defined as a nil-error `Add` counter, distinct from `issuedCount`; REQ-SIV-009's cost-cancellation stated in the requirement and its mandated message wording corrected to a cost-independent relation; AC-SIV-012's mutant carve-out extended to AC-SIV-009; AC-SIV-014 relocated from §D.3 to §D.1. Finding N6 declined with evidence (`Event-detected` is the canonical GEARS label). |
 
 ## §A Context — what was measured, and by whom
 
@@ -134,6 +135,13 @@ issued set, on every run:
 | c | count consistency | `len(rec.Items)` equals the number of distinct issued ids |
 | d | mark consistency | `rec.LastSeq` equals the number of distinct issued ids |
 
+**The invariant block** means exactly these four assertions (a)-(d), by name, and nothing else.
+Membership is by identity, not by textual position: a statement that sits between two of them in
+the source is still outside the block unless it is one of the four. In particular the `store.Load()`
+error check, the REQ-SIV-002 hard-failure gate, the REQ-SIV-007 zero-progress floor, and the
+REQ-SIV-008 conservation assertion are **outside** the invariant block. Every artifact in this SPEC
+uses the term in this sense.
+
 **REQ-SIV-006** (Unwanted) — The stress test shall not weaken, skip, or make conditional any of the
 four invariant assertions in REQ-SIV-005 on the basis that adds were starved. Starvation tolerance
 applies to the failure **count** only, never to the invariant **checks**.
@@ -146,6 +154,16 @@ shall fail. Total starvation is a broken lock, not tolerable contention.
 **REQ-SIV-008** (Ubiquitous) — The stress test shall assert that every attempted add is accounted
 for in exactly one class:
 `successes + starved + hardFailures == stressWriters * stressAddsPerWriter`.
+
+`successes` is a dedicated counter incremented **once per `Add` call that returned a nil error** —
+explicitly **not** `len(issued)`, and explicitly not `issuedCount`. The two quantities are distinct
+and both are needed: `issuedCount` (the number of **distinct** issued ids) is what the four
+REQ-SIV-005 invariants are anchored to, while `successes` (the number of **successful attempts**) is
+what makes conservation mean "every attempt landed in exactly one class". Reading `successes` as
+`len(issued)` would break that: a duplicate issuance would collapse two successes into one distinct
+id and fail conservation for a reason that has nothing to do with accounting, while also turning the
+identity into a second collision detector competing with REQ-SIV-005(a) for the RED. Keeping them
+separate is what leaves `issuedCount < successes` as the collision invariant's own signal to catch.
 
 This assertion replaces the `len(issued) != wantTotal` check the tolerance change removes, and it is
 the only thing tying the invariant set back to the work the test actually attempted. It is
@@ -163,16 +181,27 @@ floor itself is stated as a non-claim in §D.
 ### B.4 — The latency budget guard, machine-independent
 
 **REQ-SIV-009** (Ubiquitous) — A dedicated budget guard shall assert that `boardLockWaitBudget` is
-**coherent with** the mutation count the stress test serializes, **at the declared per-mutation cost
-`boardLockCIMutationCost`**:
+**coherent with** the mutation count the stress test serializes, as written in terms of the declared
+per-mutation cost `boardLockCIMutationCost`:
 `boardLockWaitBudget >= stressWriters * stressAddsPerWriter * boardLockCIMutationCost`.
 
-The guard's own failure and success messages shall state that this is a coherence relation at a
-declared cost, and shall never claim that the budget suffices on any real machine. The distinction
-is not pedantic: t370 back-derived the CI `-race` per-mutation cost at 42-105ms
-(`.moai/reports/t370/verdict.md`), so the wait actually required on that machine is
-`48 * 42..105ms = 2.0..5.0s` against a 1.65s budget. The relation holds only at the *declared* 33ms.
-A message claiming coverage would tell a CI reader something no observed machine has ever satisfied.
+`boardLockCIMutationCost` appears on **both** sides of this inequality and cancels, so the relation
+the guard actually enforces is `boardLockSupportedWriters * boardLockHeadroom >= stressWriters *
+stressAddsPerWriter` (50 >= 48) — **cost-independent**. The guard's value is that 48 and 50 are two
+independently-authored figures, so the inequality binds a real coupling between the stress test and
+the lock policy; its limitation is that no change to `boardLockCIMutationCost`, and no per-mutation
+cost regression of any size, can ever make it fire.
+
+The guard's own failure and success messages shall therefore state what the guard enforces: a
+cost-independent ratio between the lock policy's supported-lane budget and the stress test's
+serialized mutation count. They shall never claim that the budget suffices on any real machine, and
+shall not imply that the declared 33ms figure conditions the verdict or that a change to
+`boardLockCIMutationCost` would be caught here.
+
+The no-sufficiency half of that is not pedantic: t370 back-derived the CI `-race` per-mutation cost
+at 42-105ms (`.moai/reports/t370/verdict.md`), so the wait actually required on that machine is
+`48 * 42..105ms = 2.0..5.0s` against a 1.65s budget. A message claiming coverage would tell a CI
+reader something no observed machine has ever satisfied.
 
 **REQ-SIV-010** (Ubiquitous) — The guard's floor shall be computed from constants only — no
 `time.Now`, no `time.Since`, no `time.Sleep`, no goroutine — and shall be derived from terms the
@@ -225,7 +254,7 @@ not sufficient:
 | Direction | Mutant | Must go RED | Attribution requirement |
 |---|---|---|---|
 | latency budget | lower `boardLockHeadroom` from 5 to 4 (budget 1.65s -> 1.32s, below the 48 x 33ms = 1.584s floor) | the **new** budget guard | the evidence names which test failed, and records that `TestBoardLockWaitBudgetDerivedFromNamedInputs` stayed GREEN under the same mutant |
-| invariant | break a queue invariant in a way that reaches the invariant block (see AC-SIV-009) | `TestConcurrencyStress` | the RED originates at a named assertion **inside the invariant block**, and the evidence cites that assertion's message and source line |
+| invariant | break a queue invariant in a way that reaches the invariant block (see AC-SIV-009) | `TestConcurrencyStress` | the RED originates at a named assertion **inside the invariant block** — one of REQ-SIV-005 (a)-(d), named — and the evidence cites that assertion's message and source line |
 
 Both attribution requirements exist because a RED alone is not discrimination. On the latency side,
 the two guards share a `-run 'TestBoardLockWaitBudget'` prefix, so a RED that did not name its test

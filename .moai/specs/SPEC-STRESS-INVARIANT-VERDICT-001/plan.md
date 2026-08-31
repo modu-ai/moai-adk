@@ -112,11 +112,14 @@ sole evidence the guard is not vacuous.
    `TestBoardLockWaitBudgetDerivedFromNamedInputs`. It asserts
    `boardLockWaitBudget >= time.Duration(stressWriters*stressAddsPerWriter) *
    boardLockCIMutationCost`.
-3. Its messages state that this is **coherence at the declared `boardLockCIMutationCost`**, and
-   claim no sufficiency on any real machine (REQ-SIV-009). Wording to avoid: "covers", "is enough",
-   "suffices". Wording that is accurate: "the budget is coherent with the 48 mutations the stress
-   test serializes, at the declared 33ms per mutation; the CI `-race` cost observed by t370 was
-   42-105ms, which this relation does not and cannot assert."
+3. Its messages state what the guard actually enforces — a **cost-independent** ratio between the
+   lock policy's supported-lane budget and the stress test's serialized mutation count — and claim no
+   sufficiency on any real machine (REQ-SIV-009). Wording to avoid: "covers", "is enough",
+   "suffices", and any phrasing implying the 33ms figure conditions the verdict. Wording that is
+   accurate: "the lock policy budgets 10 supported writers x 5 headroom = 50 serialized mutations;
+   the stress test serializes 8 x 6 = 48. The per-mutation cost cancels on both sides, so this
+   relation is cost-independent and asserts nothing about the wait any real machine needs — the CI
+   `-race` cost observed by t370 was 42-105ms against a declared 33ms."
 4. No clock, no sleep, no goroutine, and the floor built from the two stress constants rather than
    from the budget's own inputs (REQ-SIV-010 / AC-SIV-007).
 5. Discharge **AC-SIV-008**: mutate `boardLockHeadroom` 5 -> 4, run
@@ -164,15 +167,21 @@ cited commands and verbatim output.
 **Why third**: mechanically implied by M2 (once `wantTotal` is no longer the expected count), but
 it carries the SPEC's strictness obligation, so it is reviewed as a unit rather than folded in.
 
-1. Compute `issuedCount := len(issued)` after the join.
+1. Compute `issuedCount := len(issued)` after the join. Keep a **separate** `successes` counter,
+   incremented once per `Add` call that returned a nil error (REQ-SIV-008). The two are different
+   quantities and neither substitutes for the other: `issuedCount` is the distinct-id count the four
+   invariants are anchored to, `successes` is the successful-attempt count conservation is checked
+   against. `successes := len(issued)` is specifically forbidden — under it a duplicate issuance
+   collapses two successes into one id and breaks conservation for a reason that is not an accounting
+   fault, which is REQ-SIV-005(a)'s job to report, not this identity's.
 2. Rewrite the four assertions against `issuedCount` (REQ-SIV-005 a-d):
    collision (`n != 1` per id — unchanged), presence-in-queue (unchanged),
    `len(rec.Items) != issuedCount`, `rec.LastSeq != issuedCount`.
 3. Delete the `len(issued) != wantTotal` assertion — it is exactly the criterion M2 removed, and
    leaving it would silently re-fail on starvation.
 4. **Replace it with the conservation assertion** (REQ-SIV-008 / AC-SIV-014):
-   `successes + starved + hardFailures == stressWriters * stressAddsPerWriter`, failing with the
-   discrepancy named. Step 3 without step 4 leaves the `> 0` floor as the only remaining tie between
+   `successes + starved + hardFailures == stressWriters * stressAddsPerWriter` — `successes` being the
+   step-1 counter, never `issuedCount` — failing with the discrepancy named. Step 3 without step 4 leaves the `> 0` floor as the only remaining tie between
    the invariant set and the work attempted, which would admit 1 success in 48 — t370 measured real
    starvation at 3-7 of 48, so that floor is roughly 40x weaker than observed behaviour. Conservation
    is machine-independent (it counts outcomes, not milliseconds) and therefore does not reintroduce
@@ -182,8 +191,11 @@ it carries the SPEC's strictness obligation, so it is reviewed as a unit rather 
 6. Discharge **AC-SIV-009**: plant an invariant mutant that **reaches the invariant block** —
    either a dropped item after its id was issued (lost update), or a `last_seq` advance **above**
    the item count. Observe `TestConcurrencyStress` RED where the failure originates at a named
-   assertion **inside the invariant block**, cite that assertion's message and source line, revert,
-   observe GREEN. Record diff, RED, restoring GREEN.
+   assertion **inside the invariant block** — one of the four REQ-SIV-005 assertions (a)-(d), named
+   in the evidence — cite that assertion's message and source line, revert, observe GREEN. Record
+   diff, RED, restoring GREEN. A RED at the `store.Load()` error check, a DATA RACE, or a panic does
+   **not** discharge it (AC-SIV-009's non-qualifying list). The mutant lives in
+   `backlog_store.go`/`backlog_sqlite.go` and is reverted before the AC-SIV-012 scope diff is taken.
 
    **Two shapes will not discharge it, and cost a wasted cycle if attempted** (both stated in
    `acceptance.md` AC-SIV-009 with their source evidence):
