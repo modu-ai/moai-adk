@@ -14,7 +14,7 @@ graph TD
     cmd["cmd/moai<br/>main()"]
     
     subgraph P["Presentation Layer"]
-        cli["internal/cli<br/>(260 non-test)<br/>61 root 등록"]
+        cli["internal/cli<br/>(261 non-test)<br/>61 root 등록"]
         tui["internal/tui"]
         statusline["internal/statusline"]
         web["internal/web"]
@@ -137,6 +137,16 @@ graph TD
 | `internal/chain` | 훅 이벤트 체인 코어 |
 
 > 이 패키지들은 `merge`/`manifest`/`session` 등 기존 인프라와 협력합니다. `goal`은 self-contained (의존성 없음), `lockfile`은 `session`이, `atomicfile`은 `merge`/`manifest`가 사용합니다.
+
+## 신규 인프라 패키지 (2026-08 기준)
+
+| 패키지 | 역할 |
+|---|---|
+| `internal/guardstate` | 가드 발화 이벤트를 8행 상태표로 분류하는 상태 모델 (SPEC-GUARD-STATE-MODEL-001) — 닫힌 7값 `Classification` 어휘, `Classify()`/`Evaluate()`/`Produce()` |
+| `internal/guardliveness` | guardstate 판정을 운영자에게 표면화하는 계층 (SPEC-GUARD-LIVENESS-001) — 3-clause 계약만 소비, 어휘는 소유하지 않음. `internal/guardstate`가 이 패키지의 `Entry`/`Store`를 참조 |
+| `internal/binlag` | 설치된 `moai` 바이너리의 commit lag 판정 (SPEC-BINARY-LAG-VISIBILITY-001) — `moai doctor`와 SessionStart 어드바이저가 같은 구현을 공유 |
+
+> `guardstate` → `guardliveness` 참조는 `internal/hook/session_start_guard_liveness.go`가 양쪽을 조립하는 지점에서만 성립 — 두 패키지 사이에 직접 순환 의존은 없다 (`guardstate/produce.go`가 `guardliveness` 타입을 반환값으로 참조).
 
 ---
 

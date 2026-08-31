@@ -4,8 +4,8 @@
 
 **모듈**: `github.com/modu-ai/moai-adk`  
 **Go 버전**: go 1.26.4  
-**코드 규모**: 1041개 non-test Go 소스 파일 + 1595개 테스트 파일 (~220k non-test LOC, 2026-08-28 실측)  
-**패키지 수**: internal 최상위 61개 디렉터리 (Go 코드 보유 패키지 143개) + 2 pkg (`models`, `version`) + 1 cmd
+**코드 규모**: 1064개 non-test Go 소스 파일 + 1658개 테스트 파일 (~225.9k non-test LOC, 2026-08-31 실측)  
+**패키지 수**: internal 최상위 64개 디렉터리 (Go 코드 보유 패키지 148개) + 2 pkg (`models`, `version`) + 1 cmd
 
 ---
 
@@ -17,9 +17,9 @@ moai-adk-go는 Claude Code 내에서 AI 기반 개발 워크플로우를 오케�
 
 | 계층 | 책임 | 주요 패키지 |
 |------|------|-----------|
-| **프레젠테이션** | CLI 명령, 터미널 UI, HTTP 인터페이스 | `cmd/moai`, `internal/cli` (260 non-test, 하위 포함), `internal/tui`, `internal/statusline`, `internal/web` |
+| **프레젠테이션** | CLI 명령, 터미널 UI, HTTP 인터페이스 | `cmd/moai`, `internal/cli` (261 non-test, 하위 포함), `internal/tui`, `internal/statusline`, `internal/web` |
 | **비즈니스/도메인** | 개발 워크플로우, SPEC 라이프사이클, 정책 | `internal/spec`, `internal/workflow`, `internal/loop`, `internal/harness`, `internal/constitution`, `internal/permission`, `internal/merge` |
-| **인프라** | Git 추상화, 템플릿 배포, 설정, 훅, 세션 | `internal/core/git`, `internal/template`, `internal/config`, `internal/hook`, `internal/session`, `internal/lsp/*`, `internal/mx` |
+| **인프라** | Git 추상화, 템플릿 배포, 설정, 훅, 세션 | `internal/core/git`, `internal/template`, `internal/config`, `internal/hook`, `internal/session`, `internal/lsp/*`, `internal/mx`, `internal/guardstate`, `internal/guardliveness`, `internal/binlag` |
 | **계측/지원** | 성능 측정, LSP 통합, 셸, 재시도 | `internal/measure`, `internal/astgrep`, `internal/shell`, `internal/resilience` |
 
 ---
@@ -28,7 +28,7 @@ moai-adk-go는 Claude Code 내에서 AI 기반 개발 워크플로우를 오케�
 
 ### Presentation (프레젠테이션)
 - **cmd/moai**: 바이너리 진입점 → `cli.Execute()`
-- **internal/cli** (260 non-test 파일, 하위 포함): Cobra 커맨드 트리, composition root, root 등록 61개 (201 non-test `.AddCommand()` 호출). `moai codex` 런처(`codex_launcher.go`)와 두 기동 동사가 통과하는 init-offer 게이트(`codex_init.go`)·AGENTS.md ↔ CLAUDE.md 지시 계약(`codex_contract.go`) 포함
+- **internal/cli** (261 non-test 파일, 하위 포함): Cobra 커맨드 트리, composition root, root 등록 61개 (201 non-test `.AddCommand()` 호출). `moai codex` 런처(`codex_launcher.go`)와 두 기동 동사가 통과하는 init-offer 게이트(`codex_init.go`)·AGENTS.md ↔ CLAUDE.md 지시 계약(`codex_contract.go`) 포함
 - **internal/tui**: Catppuccin 색상 토큰, Box/Pill/Table/Status 컴포넌트, 테마 선택
 - **internal/statusline**: Claude Code 상태 렌더러, 3L/5L 레이아웃, pluggable 데이터 제공자
 - **internal/web**: loopback HTTP 콘솔, Templ 컴파일 핸들러, 5s 드레인 종료
@@ -36,7 +36,7 @@ moai-adk-go는 Claude Code 내에서 AI 기반 개발 워크플로우를 오케�
 
 ### Business/Domain (비즈니스 영역)
 - **pkg/models**: 공유 config 타입 (매우 높은 팬-인) — ProjectType, DevelopmentMode, ProjectConfig
-- **internal/spec** (24 non-test 파일): SPEC 라이프사이클 — Linter (13+3 규칙), Audit(), ClassifyEra(), DetectDrift(), ClassifyPRTitle()
+- **internal/spec** (30 non-test 파일): SPEC 라이프사이클 — Linter (18 규칙: 14 단일-문서 + 4 크로스-SPEC), Audit(), ClassifyEra(), DetectDrift(), ClassifyPRTitle()
 - **internal/workflow**: Plan-Run-Sync 워크트리 오케스트레이션
 - **internal/loop** (18파일): 진단 피드백 루프 — LoopController, DecisionEngine, RalphEngine
 - **internal/harness** (80 non-test 파일): 하네스 자가학습 — Observer, Learner (4-tier), Applier (45KB), v4manifest, routing(위임 관측 원장), delegationmap(위임 맵 분석기), 5-phase safety
@@ -52,7 +52,10 @@ moai-adk-go는 Claude Code 내에서 AI 기반 개발 워크플로우를 오케�
 - **internal/hook**: 컴파일된 훅 시스템, 30개 Claude Code 이벤트 (35개 `handle-*.sh` 래퍼), branch-state guard, JSON 디스패치
 - **internal/session** (25파일): 다중 세션 레지스트리, active-sessions.json, Heartbeat/Purge
 - **internal/lsp** (8 sub-packages): aggregator, cache, config, core, gopls, hook, subprocess, transport — JSON-RPC 클라이언트, 16-언어 자동감지, 회로 차단기
-- **internal/mx**: @MX 태그 스캐너, FanInCounter, 사이드카 JSON 인덱스
+- **internal/mx**: @MX 태그 스캐너, FanInCounter, 사이드카 JSON 인덱스, `IsDescribedWorthy()` (codemaps 신선도 게이트가 비교하는 "설명 대상" Go 소스 판정)
+- **internal/guardstate**: 가드 이벤트를 8행 상태표로 분류하는 상태 모델 — `Classification`(닫힌 7값 어휘, `ClassOK`가 유일한 clean 값), `Classify()`/`Evaluate()`/`Produce()`가 판정·집계·산출물 조립을 각각 담당
+- **internal/guardliveness**: guardstate 판정 결과를 운영자에게 "묻지 않아도" 드러내는 표면화 계층 — 3-clause 계약(entry당 정확히 1개 분류, clean 값 1개, 결과가 그 값을 기계가 읽을 수 있게 표시)만 소비하고 어휘 자체는 소유하지 않음
+- **internal/binlag**: 설치된 `moai` 바이너리가 현재 소스 트리보다 뒤처졌는지 판정하는 단일 비교 지점 — `moai doctor`와 SessionStart 어드바이저 양쪽이 같은 구현을 공유
 
 ---
 
