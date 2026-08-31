@@ -77,7 +77,15 @@ That is a weaker claim than "the file gets reverted", and it is the one the code
 
 ## §B Measurement — what the guard can and cannot be
 
-Measured in this worktree, HEAD `3f03d9c36` (`== origin/develop`), over non-comment non-blank lines:
+Three measurements are recorded below, each pinned to the tree it was taken on. They are cumulative
+rather than superseding: §B.1 is the state the plan-audit iterations judged against, §B.2 is what
+the base moved to, and §B.3 is the current tree after this SPEC's own run phase.
+
+### §B.1 — plan-phase baseline, HEAD `3f03d9c36`
+
+Measured in this worktree at HEAD `3f03d9c36` (`== origin/develop` at the time), over non-comment
+non-blank lines. **Preserved verbatim**: this is the measurement both plan-audit iterations were
+written against, so the later figures below extend it rather than replace it.
 
 ```
 $ grep -vE '^\s*#|^\s*$' .gitignore | sort -u | wc -l                                   → 177
@@ -86,8 +94,42 @@ $ comm -23 <root> <template> | wc -l   # rules only in root                     
 $ comm -13 <root> <template> | wc -l   # rules only in template                          →  2
 ```
 
-**A full rule-set parity assertion is therefore not available.** The two files diverge by 46 rules
-by design: the root carries repository-specific entries (`.codex/`, `/i18n-validator`,
+### §B.2 — merged base, HEAD `9328a5242`
+
+`origin/develop` advanced after the plan-phase measurement: card t375 added
+`.moai/observability/*.jsonl` to **both** the root and the template `.gitignore`. Re-measured on
+that merged tree (HEAD `9328a5242`), same four commands:
+
+```
+root                                                                                    → 178
+template                                                                                → 136
+root-only                                                                               →  44
+template-only                                                                           →   2
+```
+
+One rule was added on each surface, so both totals rose by one while the divergence sets were
+unchanged. The counts moved; the argument resting on them did not.
+
+### §B.3 — post-run tree, HEAD `9a8a99667` (current)
+
+This SPEC's own run phase added `**/.mink/auth/` to the root `.gitignore` (REQ-GRG-007). That
+brought the rule level with the template and so removed it from the template-only set — this
+measurement is the one that reflects what the card changed. Measured on the current tree,
+HEAD `9a8a99667`:
+
+```
+$ grep -vE '^\s*#|^\s*$' .gitignore | sort -u | wc -l                                   → 179
+$ grep -vE '^\s*#|^\s*$' internal/template/templates/.gitignore | sort -u | wc -l        → 136
+$ comm -23 <root> <template> | wc -l   # rules only in root                              → 44
+$ comm -13 <root> <template> | wc -l   # rules only in template                          →  1
+```
+
+The sole remaining template-only rule is `.agents/skills/moai*`, which the root's broader
+`.agents/` rule (`.gitignore:130`) already covers.
+
+**A full rule-set parity assertion is therefore not available.** The two files diverge by **46 rules
+on the plan-phase baseline tree `3f03d9c36`** (§B.1: 44 root-only + 2 template-only) and by **45 on
+the current tree `9a8a99667`** (§B.3: 44 + 1) — by design: the root carries repository-specific entries (`.codex/`, `/i18n-validator`,
 `docs-site/public/`, `.moai/logs/`, harness runtime files, …) that have no business shipping to a
 user project. A test asserting set equality would fail on the day it was written.
 
@@ -137,24 +179,33 @@ decided must exist everywhere; everything else about either file stays free to d
 
 ### The `**/.mink/auth/` rule — in scope by operator judgment, deliberately outside the guard
 
-Of the 2 template-only rules, one is covered by a broader root rule (`.agents/skills/moai*` ⊂
-`.agents/`). The other is not:
+**This subsection's premise describes a state this card has since consumed — read it in two tenses.**
+At the plan-phase baseline (§B.1, HEAD `3f03d9c36`) there were 2 template-only rules: one covered by
+a broader root rule (`.agents/skills/moai*` ⊂ `.agents/`), and `**/.mink/auth/`, which was not
+covered by anything:
 
 ```
+# on HEAD 3f03d9c36 — plan-phase state, the premise this subsection argues from
 $ grep -c "mink" .gitignore    → 0
 ```
 
-`**/.mink/auth/` — commented in the template as MINK agent credentials, plaintext API keys — is
+`**/.mink/auth/` — commented in the template as MINK agent credentials, plaintext API keys — was
 present in every deployed project and **absent from this repository's own `.gitignore`**. Measured
-state: no `.mink` directory exists here today (`ls -d .mink` → no such file) and no `mink` path is
-tracked, so nothing is currently exposed.
+state at the time: no `.mink` directory existed here (`ls -d .mink` → no such file) and no `mink`
+path was tracked, so nothing was exposed.
+
+**Current state (HEAD `9a8a99667`)**: the rule is now on both surfaces, because this card put it on
+the root — `.gitignore:182` alongside the template's `internal/template/templates/.gitignore:169`.
+It is consequently no longer template-only, which is why §B.3 measures 1 template-only rule where
+§B.1 measured 2. The gap this subsection describes is closed by REQ-GRG-007, not still open.
 
 An earlier draft placed this out of scope on scope-discipline grounds. **Operator judgment relayed
 2026-08-31 put the one-line rule in scope, while holding the guard's own scope unchanged.** Both
 halves are load-bearing and are recorded separately:
 
 - **In scope**: add `**/.mink/auth/` to the repository's root `.gitignore`, bringing it level with
-  the template. One line; no template change (the template already carries it).
+  the template. One line; no template change (the template already carries it). *Landed in the run
+  phase — `.gitignore:182` on HEAD `9a8a99667`.*
 - **NOT in scope**: adding it to `generatedArtifactIgnoreRules`. The declared list is the set of
   **generated-artifact** rules the guard asserts on both surfaces; a credential rule is a different
   class, and whether credential rules should also be guarded is a separate judgment. Widening the
