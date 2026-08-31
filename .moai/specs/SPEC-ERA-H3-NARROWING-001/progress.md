@@ -3,8 +3,8 @@
 ## §E.1 Plan-phase Audit-Ready Signal
 
 - plan_status: audit-ready
-- tier: M
-- artifacts: spec.md + plan.md + acceptance.md (+ progress.md)
+- tier: S
+- artifacts: spec.md + plan.md (+ progress.md) — AC는 spec.md §3에 인라인
 - baseline_tree: 9328a5242 (worktree `.claude/worktrees/t382`, branch `WT-era-plan-phase`)
 - measurement_tool: `./bin/moai` (this tree, `make build` rc=0)
 - evidence: `.moai/reports/t382/measurements-9328a5242.md`, `v3r5-population.txt`, `drift-before-9328a5242.txt`

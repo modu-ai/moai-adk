@@ -1,10 +1,12 @@
 # SPEC-ERA-H3-NARROWING-001 — 구현 계획
 
-Tier M. 마일스톤은 **되돌리기 어려운 결정을 앞에** 둔다 — 술어 정의가 먼저, 기계적 문서 갱신이 마지막이다.
+Tier S (spec.md + plan.md; AC는 spec.md §3에 인라인). 마일스톤은 **되돌리기 어려운 결정을 앞에** 둔다 — 술어 정의가 먼저, 기계적 문서 갱신이 마지막이다.
 
 ## §A 맥락
 
-`.moai/specs/SPEC-ERA-H3-NARROWING-001/spec.md` §1·§5가 배경과 설계 선택의 정본이다. 기준선 측정은 `.moai/reports/t382/measurements-9328a5242.md`(M1~M13). 여기서는 반복하지 않는다.
+`spec.md` §1(배경·무게중심)·§3(AC)·§5(설계 선택)이 정본이다. 기준선 측정은 `.moai/reports/t382/measurements-9328a5242.md`(M1~M13). 여기서는 반복하지 않는다.
+
+**Tier S 판정 근거.** `spec-workflow.md` § SPEC Complexity Tier의 기준은 LOC와 파일 수다 — S는 `< 300 LOC` 이고 `< 5 files`. 이 변경은 `era.go` 약 15 LOC, `era_test.go` 약 120 LOC, 문서 몇 줄, **총 3 파일**로 양쪽 기준을 모두 만족한다. REQ 6개 · AC 8개도 Tier S 상한(각 8)에 들어간다. 초안은 Tier M으로 잡았는데, 그 근거가 「AC 집합이 크다」였다 — Tier 표가 키로 삼지 않는 축이고, **측정에 들인 노력에 맞춰 Tier를 올린 것**이었다. 정정한다.
 
 ## §B 알려진 함정
 
@@ -61,7 +63,7 @@ make build                         # rc=0, 이후 모든 측정은 ./bin/moai �
 **파일: `internal/spec/era_test.go`**
 
 - `TestClassifyEra` 테이블에 AC-EH3-001 ~ AC-EH3-004 네 서브테스트를 추가한다. 기존 테이블 관행(`[]struct{ name string; signals EraSignals; wantEra Era; wantRule string }`)을 그대로 따른다.
-- `TestClassifyEra_NoV3R5WhileModernSignal` 불변식 테스트를 추가한다(AC-EH3-008). 조합 순회는 acceptance.md §D에 열거된 4축 곱집합.
+- `TestClassifyEra_NoV3R5WhileModernSignal` 불변식 테스트를 추가한다(AC-EH3-008). 조합 순회는 spec.md §3.5에 열거된 4축 곱집합.
 - 각 새 서브테스트 위에 **어떤 뮤테이션이 그것을 깨뜨려야 하는지**를 주석으로 적는다 — `lint_movingref_test.go`·`lint_artifact_status_test.go`의 기존 관행.
 
 **판정:** `go test -run TestClassifyEra ./internal/spec/` 통과. 이어서 뮤테이션 3종(H-3 무조건 스킵 / 유예절 제거 / 헬퍼를 날짜만으로 축소)을 하나씩 심어 각각 어떤 테스트가 깨지는지 관측하고 되돌린다. 관측 출력을 남긴다.
@@ -71,7 +73,7 @@ make build                         # rc=0, 이후 모든 측정은 ./bin/moai �
 코드 변경 없음. 측정과 귀속만.
 
 - `make build` 후 `./bin/moai spec audit --json`으로 SPEC별 era를 뽑아 기준선과 대조 → AC-EH3-005 (총계 + 22건 원소 일치 + 건별 근거 + 표본 5건).
-- `./bin/moai spec drift`를 돌려 `drift-before-9328a5242.txt`와 23행 대조 → AC-EH3-007. 새 `DRIFT` 행이 있으면 **건별로** 진짜/오탐 판정.
+- `./bin/moai spec drift`를 돌려 `drift-before-9328a5242.txt`와 23행 대조 → AC-EH3-007. **이 카드의 무게중심 축이므로 M3에서 가장 먼저 잰다**(spec.md §1.2 축 1). 새 `DRIFT` 행이 있으면 **건별로** 진짜/오탐 판정.
 - 결함 주입 실험 → AC-EH3-006. 수정 전 바이너리와 수정 후 바이너리 양쪽으로 각각 돌린다(수정 전 바이너리는 M1 착수 전에 `bin/moai-pre-t382`로 보존해 둔다).
 
 **오탐이 1건이라도 나오면 M1으로 돌아간다.**
@@ -90,7 +92,7 @@ make build                         # rc=0, 이후 모든 측정은 ./bin/moai �
 
 - **총계만 맞추고 귀속을 생략하기.** `Grandfathered: 263`이 나왔다는 사실은 **어느** 22건이 움직였는지 말해 주지 않는다. AC-EH3-005는 원소 단위 일치를 요구한다.
 - **뮤테이션 없이 "가드가 통과했다"고 보고하기.** 셀렉터가 0건을 매치해도 초록이다. AC-EH3-003·004·008은 실패 관측을 본체로 갖는다.
-- **오늘의 lint rc 0을 이득의 부재로 읽거나, 반대로 이득의 증거로 읽기.** 둘 다 틀렸다 — 오늘의 rc 델타는 0이고(spec.md §1.3), 그것은 이 수정이 **잠재 게이트**를 되살린다는 사실과 모순되지 않는다. AC-EH3-006이 주입 결함으로 그 잠재력을 실측한다.
+- **이 수정을 "게이트가 실패를 통과시키고 있다"로 소개하기.** 측정이 그 주장을 반증한다 — lint rc 델타는 오늘 0이고 강등된 ERROR를 실제로 가진 SPEC은 1건뿐이다(spec.md §1.2 축 3). 이것은 **분류의 정확성 결함**이고, 오늘 실제로 무는 곳은 drift 면제다(축 1, 22건). 반대로 "그러니 별것 아니다"로 흘리는 것도 틀렸다 — 면제 집합이 새 SPEC마다 자란다(축 1 + §1.3).
 - **`created_at:` 별칭을 era 엔진이 읽게 만들기.** spec.md §5 옵션 D에서 근거를 적어 기각했다.
 - **INIT-WIZARD의 frontmatter를 "지나는 김에" 고치기.** 범위 밖(spec.md §4).
 
