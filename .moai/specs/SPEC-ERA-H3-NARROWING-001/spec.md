@@ -290,8 +290,18 @@ if hasSyncSection && syncSHA == "" && !hasModernEraSignal(signals) {
 
 ## 6. 형제 카드 의존 — t371
 
-**t371**(spec-lint CI 체크아웃 + 18건 finding 재분류)은 이 카드의 영향을 받는다. SPEC의 grandfather 여부가 바뀌면 그 SPEC 위에서 `StatusGitConsistency`가 advisory인지도 함께 바뀌기 때문이다.
+**t371**(spec-lint CI 체크아웃 + finding 재분류)은 **이 카드의 영향을 받지 않는다.**
 
-- **겹치는 파일: 없다 — 단, 절반만 검증된 주장이다.** 검증된 쪽: 이 SPEC의 수정 파일은 `era.go` · `era_test.go` · `lifecycle-sync-gate.md` 3개로 §5·§F가 고정하고 REQ-EH3-004가 못박는다. 검증 못 한 쪽: **t371의 산출물은 이 트리에 없다** — `find .moai/reports -maxdepth 1 -name 't371'`이 빈 결과를 내고 (`t370` · `t372` · `t375` · `t382`만 있다) SPEC 디렉터리도 없다. 따라서 「t371이 `lint.go`를 만진다」는 카드 설명에서 온 전언이지 이 트리에서 읽은 사실이 아니다. 무충돌은 **이쪽 3파일이 t371의 실제 수정 집합과 겹치지 않을 때만** 성립하며, 그 확인은 t371 산출물이 존재하는 트리에서 해야 한다.
-- **겹치는 것은 행동이다.** 재분류 대상 중 현재 `StatusGitConsistency` finding 보유는 **1건** — `SPEC-KANBAN-TODO-CLI-001`(M11). 다만 이 rule은 발화 지점에서 `Advisory: true`를 세우므로(`lint.go:1335`) grandfather 상태가 바뀌어도 `--strict` 결과는 변하지 않는다. **측정상 실제 충돌 위험은 0이다.**
-- **순서 권고:** 두 카드는 서로를 막지 않는다. 다만 t371이 finding 수 기준선을 갖는다면 그 기준선은 이 카드의 착지 전후로 달라질 수 있으므로 **어느 쪽이 나중이든 병합 트리에서 재측정**해야 한다. 그 조건이면 병렬 진행이 가능하며, 순서 지명은 리드의 몫이다.
+초안은 반대로 적었다 — 「SPEC의 grandfather 여부가 바뀌면 그 위에서 `StatusGitConsistency`가 advisory인지도 함께 바뀐다」. 그 전제가 코드 판독으로 반증됐고, 아래가 그 판독이다.
+
+- **의미적 의존은 없다 — 기제로 반증된다** (트리 `1f10f5e8d`에서 코드 판독). 결론이 아니라 기제를 적는다. 다음 읽는 사람이 파일을 열어 확인할 수 있어야 하기 때문이다.
+
+  1. **`StatusGitConsistency`는 발화 지점에서 이미 `Advisory: true`다** — `lint.go:1335`, 주석까지 그렇게 적혀 있다(`heuristic git-implied signal — never strict-escalated`). 심각도는 `SeverityWarning`.
+  2. **`applyEraDemotion`의 갈래는 둘이고, 둘 다 이 finding을 바꾸지 못한다** (`lint.go:296-312`). 첫 갈래 `f.Severity == SeverityError && eraDemotableCodes[f.Code]`는 **심각도가 error일 것**을 요구하므로 warning인 이 finding에 닿지 않고, 애초에 `eraDemotableCodes`는 `MissingExclusions` · `FrontmatterInvalid` 둘뿐이라 이 코드가 없다(`lint.go:272-275`). 둘째 갈래 `f.Severity == SeverityWarning`은 **코드로 게이트되지 않아 이 finding에 실제로 닿지만**, 하는 일이 `Advisory = true` 대입뿐이고 그 값은 (1)에 의해 이미 참이다 — **멱등이라 관측 가능한 변화가 없다.**
+  3. 따라서 이 SPEC이 H-3을 어느 방향으로 좁히든, grandfather 여부는 `StatusGitConsistency`의 **개수도 advisory 상태도** 바꾸지 못한다. 한 방향이 아니라 양방향으로 그렇다.
+
+  **「demotable 코드가 아니라서 era 분류가 닿지 못한다」는 요약은 쓰지 않는다** — 둘째 갈래가 실제로 닿기 때문에, 그렇게 적으면 `applyEraDemotion`을 열어 본 다음 읽는 사람에게 반증된다. 닿지 않는 것이 아니라 **닿아도 이미 그 상태라 아무것도 안 바뀌는 것**이다.
+
+- **남는 것은 인용 좌표의 부패다.** 두 카드가 같은 `internal/spec` 파일들을 인용하므로, 한쪽이 착지하면 다른 쪽의 `file:line` 참조가 조용히 어긋난다(이 절의 `lint.go:1335`·`lint.go:272-275`가 그 대상이다 — 그래서 트리 SHA를 붙였다). 이것은 설계의 의미적 결합이 아니라 **리드의 순서 지정이 다루는 조율 사안**이다. 나중에 착지하는 쪽이 병합 트리에서 좌표를 재확인한다.
+- **모집단 배경.** 재분류 대상 중 현재 `StatusGitConsistency` 보유는 **1건**(`SPEC-KANBAN-TODO-CLI-001`, 배경 측정 M11)이다. 위 기제에 따라 이 1건도 시대가 바뀌든 말든 그대로다 — 모집단이 작아서가 아니라 기제상 그렇다. **모집단이 컸어도 결론은 같다.**
+- **순서 권고:** 두 카드는 서로를 막지 않으며, finding 수 기준선도 이 카드의 착지로 움직이지 않는다(위 3). 병렬 진행이 가능하고, 순서 지명은 리드의 몫이다. 나중에 착지하는 쪽이 병합 트리에서 확인할 것은 **수치가 아니라 인용 좌표**다.
