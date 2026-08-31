@@ -354,7 +354,7 @@ debt_remaining:
 
 ```yaml
 sync_complete_at: 2026-08-31
-sync_commit_sha: pending-backfill-sync   # 이 커밋은 자기 SHA 를 알 수 없다 — 후속 백필 커밋에서 채운다
+sync_commit_sha: 9174f4dd7               # 백필됨 — docs(SPEC-BOARDLOCK-ERRNO-001): sync-phase close
 sync_status: complete
 changelog_entry: added                   # CHANGELOG.md [Unreleased] → ### Added (파일 자체 관행을 따름; 이 SPEC 은 새 기능이 아니라 방어적 좁히기이지만, 이웃 SPEC-close 항목 전부가 ### Added 아래 있어 그 관행을 따랐다)
 changelog_dedup_check: "grep -c -i 'BOARDLOCK-ERRNO' CHANGELOG.md → 0 (편집 전, 이 세션이 직접 실행)"
