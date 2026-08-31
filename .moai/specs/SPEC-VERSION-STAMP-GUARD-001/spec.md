@@ -2,7 +2,7 @@
 id: SPEC-VERSION-STAMP-GUARD-001
 title: 버전 스탬프 목록의 유령을 잡는다 — 절반의 회귀 보장과 그 절반을 밝히는 일
 version: "0.5.0"
-status: draft
+status: in-progress
 created: 2026-08-31
 updated: 2026-09-01
 author: manager-spec
