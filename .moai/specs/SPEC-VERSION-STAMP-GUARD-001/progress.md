@@ -132,7 +132,7 @@
 - AC-VSG-006 리터럴 재측정: (a) `partial`·`does not detect` → 절 범위 rc=1, 문서 전체 rc=1.
   (b) 거부 5리터럴 → 절 범위 rc=1, 문서 전체 rc=1. 두 범위가 같은 답을 준다.
 
-상태: `draft` — Implementation Kickoff Approval 대기
+상태: `in-progress` — Implementation Kickoff Approval 승인됨, run-phase 착지(§E.2/§E.3)
 
 plan_status: audit-ready
 plan_complete_at: 2026-09-01
@@ -141,11 +141,79 @@ plan_artifacts_commit: `c6aed3c36`
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+증거 전문: `.moai/reports/t388/run-evidence.md` (명령·출력·종료 코드 전량 + 로그 6건).
+run-phase 진입 HEAD `6854a9306`, 착지 HEAD는 §E.3.
+
+### AC 판정 매트릭스
+
+| AC | 판정 명령 | Actual Output | Status |
+|---|---|---|---|
+| AC-VSG-001 | `grep -c '<유령 경로>' .moai/docs/version-management.md` | `0` (rc=1) | PASS |
+| AC-VSG-001 | 스탬프 불릿에서 괄호 제거 후 정렬 | 리터럴 7경로와 일치, 양방향 차집합 공집합 | PASS |
+| AC-VSG-002 | 스탬프 절에 `CHANGELOG.md\|release-notes` grep | `0` (rc=1) | PASS |
+| AC-VSG-002 | 두 절 경로 집합 `comm -12` | 빈 출력 (교집합 공집합) | PASS |
+| AC-VSG-003 (1) | `grep -nE 'reads from git tags at build time\|via .git describe.'` | rc=1 (파생값 단언 0건) | PASS |
+| AC-VSG-003 (2) | `grep -n 'Makefile:20\|goreleaser.yml:22\|fallback'` | 8·12·13·80행 — 폴백 서술 + 주입 지점 2건 인용 | PASS |
+| AC-VSG-003 (3) | `grep -niE 'constant\|상수'` | rc=1 | PASS |
+| AC-VSG-004 | E3-c (치환 → 실패 → 되돌림 → 통과) | 아래 E3-c | PASS |
+| AC-VSG-005 | E3-a (`parsed=0`) → E4 (7에서 통과) | 아래 E3-a / E4 | PASS |
+| AC-VSG-006 (a) | 절 범위에 `partial` / `does not detect` grep | `1` / `1` | PASS |
+| AC-VSG-006 (2) | 절 범위에 `t392` grep | `1` | PASS |
+| AC-VSG-006 (b) | 거부 5리터럴 `grep -cF` | `0` (rc=1) | PASS |
+
+### 단언별 RED 관측 — 어느 빨강도 다른 단언의 증거로 겸용되지 않음
+
+| 관측 | 트리 | 운 단언 | 원인 | 소용 |
+|---|---|---|---|---|
+| E3-a | `6854a9306` + 검사 (= `f270d2df5`) | 개수 단독 — `version-stamp entries: parsed=0 expected=7` | **앵커 소제목 부재**로 파싱 0건. 유령 아님 — 존재 단언은 이 실행에서 아무 경로도 출력하지 않았고(`grep -c "does not exist"` → 0, rc=1), 유령은 앵커가 읽지 않는 `**Configuration Files:**` 아래에 있었다 | AC-VSG-005 RED |
+| E3-b | `d595faa9d` | 둘 다 — `parsed=8 expected=7` + 유령 경로 이름 지목 | **둘**: 항목이 하나 많고, 그중 하나가 유령 | 보조 관측. 어느 AC의 단일 증거도 아님 |
+| E4 | `d7af3d22d` | 없음 (통과) | 항목 7 전부 실재. 통과는 출력이 없으므로 불릿 수 별도 계수(`7`)와 E3-c의 개수 단언 침묵으로 교차 확인 | AC-VSG-005 GREEN |
+| E3-c | `d7af3d22d` + 치환(미커밋) | 존재 단독 — `version-sync list names a path that does not exist: docs-site/nonexistent-stamp.toml` | **하나**: 심은 경로. `grep -c "parsed=" m2-3-red.log` → `0` (rc=1)로 치환이 추가가 아님을 기계 확인 | AC-VSG-004 RED → GREEN |
+
+되돌림은 눈이 아니라 `git status --short` 빈 출력(= `d7af3d22d`와 바이트 동일)으로 증명했다.
+
+### 검증
+
+| 항목 | 명령 | 결과 |
+|---|---|---|
+| 패키지 스위트 | `go test ./internal/cli/...` | exit 0, 17개 패키지 ok (`final-test.log`) |
+| vet | `go vet ./internal/cli/...` | exit 0 (`final-vet.log`) |
+| 포맷 | `gofmt -l internal/cli/version_sync_list_test.go` | 빈 출력, exit 0 |
+| 새 패키지 | `git diff --name-only --diff-filter=A 6854a9306 HEAD -- internal/` | `internal/cli/version_sync_list_test.go` 1건 — 기존 패키지, 새 디렉터리 0 |
+| 새 CI job · 템플릿 미러 | `git diff --name-only 6854a9306 HEAD -- .github/ internal/template/ .claude/` | 빈 출력 — Template-First 비해당을 가정이 아니라 측정으로 확인 |
+
+로컬 전체 스위트(`go test ./...`)는 돌리지 않았다 — 전 패키지 판정은 CI 몫(`CLAUDE.local.md` §4).
+
+### §7 잔여 위험 갱신
+
+- **R-4는 실제로 발생했고 잡혔다.** M1 실행이 정확히 R-4가 경고한 모양(파싱 0건)이며, 개수
+  단언이 그것을 통과가 아니라 실패로 만들었다.
+- **R-5는 그대로 열려 있다.** 목록이 정당하게 8건이 되면 `expectedVersionStampEntries`를 사람이
+  함께 고쳐야 하고, 그 짝맞춤을 강제하는 것은 없다.
+- **닫지 못한 절반은 불변.** 누락 방향은 여전히 보이지 않으며 카드 t392 소관이다(§4).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-01
+run_entry_head: 6854a9306
+run_commit_sha: <backfilled — M2.3 evidence commit>
+milestone_commits:
+  m1: f270d2df5   # 검사 착지 (개수 단언 RED, E3-a) + status draft -> in-progress
+  m2_1: d595faa9d # 소제목 신설 + 누락 4건, 유령 잔존 (의도적 RED, E3-b)
+  m2_2: d7af3d22d # 유령 제거 (GREEN, E4)
+run_status: implemented
+ac_pass_count: 6
+ac_fail_count: 0
+red_observations: 3   # E3-a (개수 단독) / E3-b (보조, 원인 둘) / E3-c (존재 단독)
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  note: 순수 Go 테스트 파일 1건 + 마크다운. OS 분기 코드 없음. 매트릭스 판정은 CI.
+total_run_phase_files: 8   # Go 1 + 문서 1 + SPEC 2 + 증거 4(+로그)
+m1_to_mN_commit_strategy: 마일스톤당 1커밋. M2.1은 의도적 적색으로 커밋한다 — 한 커밋에 접으면
+  검사가 실제 유령을 만나는 유일한 관측(E3-b)이 사라진다(`plan.md` M2).
+push_state: not pushed — 통합은 리드가 별도로 잡는다
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 

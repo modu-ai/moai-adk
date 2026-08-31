@@ -137,3 +137,122 @@ $ sed -n '/^\*\*Version Stamps:\*\*$/,/^\*\*Release Artifacts:\*\*$/p' \
 
 and by M2.3 below, where the count assertion stays silent while the existence assertion fires —
 which it could not do if the parse had drifted off 7.
+
+M2.2 commit: `d7af3d22d`
+
+---
+
+## M2.3 — the existence assertion's single-cause RED
+
+### Expectation, written BEFORE measurement
+
+One stamp line is **substituted**, not added: `docs-site/hugo.toml` →
+`docs-site/nonexistent-stamp.toml`. The entry count stays 7, so the count assertion stays silent
+and the only cause of the red is the existence assertion.
+
+- Existence assertion fires with the pinned literal:
+  `version-sync list names a path that does not exist: docs-site/nonexistent-stamp.toml`
+- **No `parsed=` line appears.** If one did, the edit was an addition rather than a substitution
+  and the observation would not be this AC's evidence.
+- Reverting the substitution returns the check to green.
+
+This is AC-VSG-004's RED → GREEN evidence (plan.md E3-c).
+
+### Observation — E3-c
+
+Tree: M2.2 commit `d7af3d22d` + the one-token substitution in the working tree. The substituted
+state is deliberately **not committed**; the revert is proven below by `git status`, not by eye.
+
+Precondition — the planted path is genuinely absent:
+
+```
+$ test -e docs-site/nonexistent-stamp.toml      # exit 1
+```
+
+RED:
+
+```
+$ go test ./internal/cli/ -run TestVersionSyncList -v      # exit 1
+=== RUN   TestVersionSyncListNamesOnlyExistingPaths
+    version_sync_list_test.go:91: version-sync list names a path that does not exist: docs-site/nonexistent-stamp.toml
+--- FAIL: TestVersionSyncListNamesOnlyExistingPaths (0.00s)
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.892s
+```
+
+Single cause confirmed mechanically:
+
+```
+$ grep -c "parsed=" .moai/reports/t388/m2-3-red.log
+0                                               # rc=1 — no count line, as pinned
+```
+
+GREEN after revert:
+
+```
+$ go test ./internal/cli/ -run TestVersionSyncList -v      # exit 0
+--- PASS: TestVersionSyncListNamesOnlyExistingPaths (0.00s)
+$ git status --short                                        # (empty) — tree byte-identical to d7af3d22d
+```
+
+**Expected vs observed: identical** on all three points (literal, absent count line, return to
+green). Logs: `m2-3-red.log`, `m2-3-green.log`.
+
+The two mutants AC-VSG-004 names are dead: an always-empty implementation cannot produce the RED,
+an always-failing one cannot produce the GREEN, and one that fails without naming the path is
+killed by the literal grep above.
+
+---
+
+## Which red belongs to which assertion
+
+| Observation | Tree | Assertion that fired | Cause | Serves |
+|---|---|---|---|---|
+| E3-a | `6854a9306` + test | count only (`parsed=0 expected=7`) | anchor subheading absent — the scan read nothing | AC-VSG-005 RED |
+| E3-b | `d595faa9d` | both (`parsed=8 expected=7` + ghost named) | two: the extra entry, and the ghost | supporting only, neither AC's single evidence |
+| E4 | `d7af3d22d` | neither (pass) | list correct at 7, all present | AC-VSG-005 GREEN |
+| E3-c | `d7af3d22d` + substitution | existence only | one: the planted path | AC-VSG-004 RED → GREEN |
+
+No red is used as evidence for an assertion other than the one that produced it.
+
+---
+
+## AC matrix
+
+| AC | Judgment command | Output | Verdict |
+|---|---|---|---|
+| AC-VSG-001 | `grep -c '<ghost>' .moai/docs/version-management.md` | `0`, rc=1 | PASS — ghost gone |
+| AC-VSG-001 | stamp bullets, parenthetical stripped, sorted | the 7 literal paths, both set differences empty | PASS |
+| AC-VSG-002 | stamp section grepped for `CHANGELOG.md\|release-notes` | `0`, rc=1 | PASS |
+| AC-VSG-002 | `comm -12` over the two sections' path sets | (empty) | PASS — disjoint |
+| AC-VSG-002 | release-artifact heading states a bump does not touch it | prose above the two lists | PASS |
+| AC-VSG-003 (1) | `grep -nE 'reads from git tags at build time\|via .git describe.'` | rc=1 | PASS — 0 derived-value assertions |
+| AC-VSG-003 (2) | `grep -n 'Makefile:20\|goreleaser.yml:22\|fallback'` | lines 8, 12, 13, 80 | PASS — fallback stated, both injection points cited |
+| AC-VSG-003 (3) | `grep -niE 'constant\|상수'` | rc=1 | PASS |
+| AC-VSG-004 | E3-c above | RED names the path, GREEN on revert | PASS |
+| AC-VSG-005 | E3-a (`parsed=0`) → E4 (pass at 7) | pinned literal, then silence | PASS |
+| AC-VSG-006 (a) | `grep -c` for `partial` / `does not detect` over the section | `1` / `1` | PASS |
+| AC-VSG-006 (2) | `grep -c t392` over the section | `1` | PASS |
+| AC-VSG-006 (b) | `grep -cF` over the five rejection literals | `0`, rc=1 | PASS — none present |
+
+## Scope and closing checks
+
+| Check | Command | Output |
+|---|---|---|
+| Files changed by the card | `git diff --name-only 6854a9306 HEAD` | 1 Go file, 1 doc, 1 SPEC frontmatter, 6 evidence files |
+| New packages | `git diff --name-only --diff-filter=A ... -- internal/` | `internal/cli/version_sync_list_test.go` only — existing package, no new directory |
+| New CI job / template mirror | `git diff --name-only ... -- .github/ internal/template/ .claude/` | (empty) — Template-First does not apply, verified rather than assumed |
+| Package suite | `go test ./internal/cli/...` | exit 0, all 17 packages ok (`final-test.log`) |
+| Vet | `go vet ./internal/cli/...` | exit 0 (`final-vet.log`) |
+| Format | `gofmt -l internal/cli/version_sync_list_test.go` | (empty), exit 0 |
+
+Not run locally: `go test ./...`. The full-suite verdict is CI's on the pushed head
+(`CLAUDE.local.md` §4).
+
+## Residual risk, updated from run-phase observation
+
+- **R-4 / R-5 held up under measurement.** The M1 run is exactly the shape R-4 warns about — a
+  parse that matched nothing — and the count assertion turned it into a failure rather than a
+  silent pass. What stays open is R-5's human half: if the list legitimately grows to eight
+  entries, `expectedVersionStampEntries` has to move with it, and nothing enforces that pairing.
+- **The half this card does not close is unchanged.** An omitted stamp site is still invisible;
+  card t392 owns it.
