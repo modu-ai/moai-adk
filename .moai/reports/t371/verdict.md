@@ -61,3 +61,117 @@
 - statusline 이 그 cwd 를 어디서 받았는지(훅 입력의 `cwd` 필드인지, `os.Getwd()` 폴백인지)는 미확인. `input.CWD` 빈 값 → `os.Getwd()` 폴백은 알려진 형태이나, **이 사건이 그 형태라고 단정할 근거는 아직 없다.** 가설이지 관측이 아니다.
 
 후속 카드 재료로 남긴다.
+
+---
+
+## iter-3 감사 결과 — FAIL 0.79 (Tier M 문턱 0.80)
+
+판정문: `.moai/reports/t371/plan-audit-iter-3.md`. 감사 트리 `bff12c54d`.
+
+차원: Clarity 0.85 · Completeness 0.80 · **Testability 0.68** · Traceability 0.90 → 조화평균 0.7987.
+MUST-PASS 7종 실패 없음 — FAIL 은 점수와 결함 목록이 만든 판정이다.
+
+### 차단 3건
+
+| ID | 내용 |
+|---|---|
+| D1 | AC-SLGB-001/004 가 지목한 픽스처 선례가 RED 기준선을 깬다 — 그 픽스처는 `MissingExclusions` 경고를 내어 `✓ No findings` 줄이 애초에 안 찍히고, 두 AC 의 "그 줄 부재" 단언이 공허해진다. 도달 불가는 아니다(Out of Scope 절을 넣으면 찍힌다) |
+| D2 | `verification-completeness.md` §2 의 2-cell 채택 규율을 11개 AC 중 **0건**이 만족. RED-now 셀·green-path 셀·트리 핀 전부 부재 |
+| D3 | **iter-3 의 "인용 좌표 전량 재측정" 주장이 거짓** — `plan.md:170` 괄호 안 3개가 스테일. `plan.md:16` 도 흡수 전 기준점 |
+
+### D3 귀속 — 왜 두 겹의 검증이 함께 놓쳤나
+
+오케스트레이터의 V2 검증과 manager-spec 의 사후 스윕이 **같은 형태의 패턴**을 썼다:
+
+```
+오케스트레이터 V2:   grep -rn 'lint\.go:1299-1301' …   → rc=1 (무매치)
+manager-spec 스윕:   grep -rn 'spec/lint\.go:' …       → 잔여 0 보고
+접두사 없이 재검색:  grep -rn ':1299-1301' …           → plan.md:170 적발
+```
+
+둘 다 **파일 접두사에 앵커**했는데, `plan.md:170` 의 좌표는 앞 줄이 파일명을 이미 밝힌 뒤의 **연속 표기**라 접두사가 없다:
+
+```
+169:- `internal/spec/lint.go:1306-1342` — `StatusGitConsistencyRule.Check`
+170:  (terminal 조기반환 `:1299-1301`, err skip `:1305-1308`, emission `:1310-1319`)
+```
+
+접두사 앵커 스윕은 이 형태를 **원리상 볼 수 없다**. 게다가 앞의 둘은 바로 윗줄이 선언한 부모 범위 `:1306-1342` **바깥**이라, 트리를 열지 않고도 모순이 보이는 값이었다 — 범위 포함 관계라는 더 싼 검사가 있었는데 쓰지 않았다.
+
+실측 정답: `:1318-1320` / `:1324-1327` / `:1331-1340`. `plan.md` §F M1.4 는 이미 옳은 값을 써서 파일이 자기모순 상태다.
+
+교훈: 인용 갱신 스윕은 접두사가 아니라 **좌표 모양**(`` `:NNNN` `` / `` `:NNNN-NNNN` ``)으로 훑고, 부모 범위와의 포함 관계를 함께 본다.
+
+### iter-1 차단 5건 개별 판정
+
+D1 닫힘 · D2 닫힘 · D4 닫힘 · D7 닫힘 · **D8 부분 닫힘** — 지목된 두 사례는 닫혔으나 결함 부류는 열려 있다(관측된 red 기록 전무, 같은 형태의 새 사례를 AC-001/004 에서 실측).
+
+### 절차 — 운영자 판단 필요
+
+`harness.yaml` 의 `plan_audit_tier_ceilings` 는 Tier M = **2**. 이번이 iter-3 라 이미 Tier 상한 초과이며, 수정 후 재감사(iter-4)는 재시도 계약의 **명시적 사용자 override** 분기에 해당한다. 레인은 이 게이트를 열 수 없어 리드에 보고했다.
+
+점수 회귀는 없다(0.75 → 0.79). 문턱이 0.75 → 0.80 으로 멀어졌을 뿐이다.
+
+---
+
+## 보류 — 운영자 판정 (t376 → t382 착지 후 재개)
+
+리드 지명 대기. **문서는 지금 고치지 않는다** — t376(rule 등록부 `:137`)과 t382(`era.go` + `lint.go:272-275`)가 착지하면 `lint.go` 좌표가 다시 밀린다. 특히 D2 의 2-cell RED 셀에 적을 트리 SHA 는 그 뒤라야 최종값이 되며, 지금 채우면 **스테일한 트리를 가리키는 RED 셀** — D1 이 지적한 바로 그 형태 — 을 새로 만든다.
+
+보존 상태: 워크트리 `.claude/worktrees/t371`, 브랜치 `WT-lint-shallow-clone`, 보존 커밋 `3b637a290`, 흡수 `35bc0715f`, 인용 갱신 `bff12c54d`. 통합 창 미획득.
+
+### 재개 시 처리할 수정 목록 (확정)
+
+**D3 — 좌표 (기계적)**
+
+| 위치 | 현재 | 정정 |
+|---|---|---|
+| `plan.md:170` | `:1299-1301` | `:1318-1320` |
+| `plan.md:170` | `:1305-1308` | `:1324-1327` |
+| `plan.md:170` | `:1310-1319` | `:1331-1340` |
+| `plan.md:16` | `develop 1e5199b88` | 재개 시점 흡수 HEAD |
+
+재개 시 위 값도 **다시 재야 한다** — t376/t382 착지가 `lint.go` 를 또 밀기 때문에 위 표는 정정 대상의 목록이지 최종값이 아니다.
+
+스윕 방법 [HARD]: 파일 접두사(`lint\.go:`)가 아니라 **좌표 모양**으로 훑는다.
+```
+grep -rnE '`:[0-9]+(-[0-9]+)?`' .moai/specs/SPEC-SPECLINT-GITBLIND-001/
+```
+그리고 각 좌표가 같은 항목이 선언한 **부모 범위 안에 드는지** 확인한다. `plan.md:170` 의 두 값은 윗줄 부모 범위 `:1306-1342` 밖이었으므로, 이 검사만으로 트리를 열지 않고 잡혔을 결함이다.
+
+**D1 — AC-SLGB-001 / 004 에 픽스처 조건 명시**
+
+RED 기준선이 성립하려면 픽스처가 `MissingExclusions` 를 내지 않아야 한다. 두 AC 에 "픽스처는 Out of Scope 절을 포함한다"는 전제를 명시하면 닫힌다. 도달 불가가 아니다(아래 재현 B).
+
+**D2 — 11개 AC 전부 2-cell 채택**
+
+`verification-completeness.md` §2 대로 RED-now 셀(명령 + 원문 출력 + exit code + 트리 SHA, 그리고 **왜 red 인지**) + green-path 셀(어느 마일스톤이 뒤집고 통과 출력이 무엇이 되는지). 좌표가 최종값이 된 뒤에 채운다.
+
+### D1 재현 — 이 세션이 직접 실행
+
+측정 트리 `bff12c54d`, 판정 도구 트리 빌드 `./bin/moai`. 픽스처는 `.moai/reports/t371/repro/{noscope,withscope}/spec.md` (두 파일은 `## 4. Scope` / `### 4.1 Out of Scope` 절 유무만 다르다).
+
+```
+$ ./bin/moai spec lint .moai/reports/t371/repro/noscope/spec.md
+SEVERITY  CODE               FILE                                      LINE  MESSAGE
+--------  ----               ----                                      ----  -------
+WARNING   MissingExclusions  .moai/reports/t371/repro/noscope/spec.md  1     'Out of Scope' section missing — minimum one item in Out of Scope subsection required [grandfathered era — downgraded to warning]
+
+0 error(s), 1 warning(s)
+rc=0
+
+$ ./bin/moai spec lint .moai/reports/t371/repro/withscope/spec.md
+✓ No findings — all SPEC documents are valid
+rc=0
+```
+
+**A**: `✓ No findings` 줄이 찍히지 않는다 → AC-SLGB-001/004 의 "그 줄 부재" 단언이 구현과 무관하게 성립 → 공허.
+**B**: 같은 픽스처에 Out of Scope 절만 넣으면 그 줄이 찍힌다 → 도달 가능. AC 를 픽스처 조건까지 명시하도록 고치면 닫힌다.
+
+부수 관측 — A 의 메시지 꼬리 `[grandfathered era — downgraded to warning]`. 오늘 날짜(`created: 2026-08-31`)로 만든 픽스처가 grandfathered 로 분류됐다. 다만 이것은 **t382 가 지목한 H-3 이 아니라 H-1** 이다(이 픽스처에는 `progress.md` 자체가 없어 H-1 이 먼저 매치한다). 형태가 닮았다고 t382 사례로 세지 않는다.
+
+### 재현하지 못한 것 — 감사자 귀속으로 남긴다
+
+감사자가 관측한 *"`main` ref 없는 저장소에서 `StatusGitConsistency` 가 침묵하고 도구가 전 문서 유효를 선언했다"* 는 이 세션에서 재현하지 못했다. `cachedMainBranch` 가 **cwd 의존**이라 `main` 이 없는 저장소를 cwd 로 삼아야 하는데, 이 세션은 워크트리 격리 가드가 cwd 변경(`cd` / 서브셸 / `env -C`)을 거부한다. 위 재현 A/B 는 `main` 이 존재하는 이 워크트리에서 돌았으므로 그 조건을 만들지 못한다.
+
+따라서 이 관측은 **감사자 귀속**이며 이 verdict 의 자체 측정이 아니다. 재개 시 in-package 테스트 시드(`drift_characterization_test.go:55` `chdirForTest`)로 재현하는 것이 옳은 경로이고, 그것이 이 SPEC 의 M2 가 세우려는 seam 과 같다.
