@@ -1,0 +1,54 @@
+=== RUN   TestReqIDPattern_AcceptsObservedCorpusShapes
+=== RUN   TestReqIDPattern_AcceptsObservedCorpusShapes/four-segment_canonical_(pre-M2_shape)
+=== RUN   TestReqIDPattern_AcceptsObservedCorpusShapes/three-segment
+    lint_req_idpattern_test.go:54: reqIDPattern rejected "REQ-HOOK-001"; the widened extraction collects it, so InvalidREQID would fire corpus-wide
+=== RUN   TestReqIDPattern_AcceptsObservedCorpusShapes/digits_inside_the_domain_segment
+    lint_req_idpattern_test.go:54: reqIDPattern rejected "REQ-WF001-001"; the widened extraction collects it, so InvalidREQID would fire corpus-wide
+=== RUN   TestReqIDPattern_AcceptsObservedCorpusShapes/five-segment,_two-part_alnum_domain
+    lint_req_idpattern_test.go:54: reqIDPattern rejected "REQ-VNRN-RT-001-001"; the widened extraction collects it, so InvalidREQID would fire corpus-wide
+=== RUN   TestReqIDPattern_AcceptsObservedCorpusShapes/two-part_alpha_domain
+    lint_req_idpattern_test.go:54: reqIDPattern rejected "REQ-HRN-FND-001"; the widened extraction collects it, so InvalidREQID would fire corpus-wide
+=== RUN   TestReqIDPattern_AcceptsObservedCorpusShapes/domain_ending_in_a_digit
+    lint_req_idpattern_test.go:54: reqIDPattern rejected "REQ-TUX1-001"; the widened extraction collects it, so InvalidREQID would fire corpus-wide
+=== RUN   TestReqIDPattern_AcceptsObservedCorpusShapes/alphanumeric_domain
+    lint_req_idpattern_test.go:54: reqIDPattern rejected "REQ-WC01-001"; the widened extraction collects it, so InvalidREQID would fire corpus-wide
+=== RUN   TestReqIDPattern_AcceptsObservedCorpusShapes/five-segment_with_alnum_first_domain_part
+    lint_req_idpattern_test.go:54: reqIDPattern rejected "REQ-V3R2-RT-001-001"; the widened extraction collects it, so InvalidREQID would fire corpus-wide
+=== RUN   TestReqIDPattern_AcceptsObservedCorpusShapes/three-segment_alnum
+    lint_req_idpattern_test.go:54: reqIDPattern rejected "REQ-GD1-001"; the widened extraction collects it, so InvalidREQID would fire corpus-wide
+=== RUN   TestReqIDPattern_AcceptsObservedCorpusShapes/long_alpha_domain_beyond_the_old_5-char_cap
+    lint_req_idpattern_test.go:54: reqIDPattern rejected "REQ-COVERAGE-001"; the widened extraction collects it, so InvalidREQID would fire corpus-wide
+--- FAIL: TestReqIDPattern_AcceptsObservedCorpusShapes (0.00s)
+    --- PASS: TestReqIDPattern_AcceptsObservedCorpusShapes/four-segment_canonical_(pre-M2_shape) (0.00s)
+    --- FAIL: TestReqIDPattern_AcceptsObservedCorpusShapes/three-segment (0.00s)
+    --- FAIL: TestReqIDPattern_AcceptsObservedCorpusShapes/digits_inside_the_domain_segment (0.00s)
+    --- FAIL: TestReqIDPattern_AcceptsObservedCorpusShapes/five-segment,_two-part_alnum_domain (0.00s)
+    --- FAIL: TestReqIDPattern_AcceptsObservedCorpusShapes/two-part_alpha_domain (0.00s)
+    --- FAIL: TestReqIDPattern_AcceptsObservedCorpusShapes/domain_ending_in_a_digit (0.00s)
+    --- FAIL: TestReqIDPattern_AcceptsObservedCorpusShapes/alphanumeric_domain (0.00s)
+    --- FAIL: TestReqIDPattern_AcceptsObservedCorpusShapes/five-segment_with_alnum_first_domain_part (0.00s)
+    --- FAIL: TestReqIDPattern_AcceptsObservedCorpusShapes/three-segment_alnum (0.00s)
+    --- FAIL: TestReqIDPattern_AcceptsObservedCorpusShapes/long_alpha_domain_beyond_the_old_5-char_cap (0.00s)
+=== RUN   TestReqIDPattern_RejectsShapesTheExtractionAccepts
+=== RUN   TestReqIDPattern_RejectsShapesTheExtractionAccepts/purely_numeric_domain
+=== RUN   TestReqIDPattern_RejectsShapesTheExtractionAccepts/domain_starting_with_a_digit
+=== RUN   TestReqIDPattern_RejectsShapesTheExtractionAccepts/three-part_domain
+=== RUN   TestReqIDPattern_RejectsShapesTheExtractionAccepts/one-digit_tail
+=== RUN   TestReqIDPattern_RejectsShapesTheExtractionAccepts/four-digit_tail
+=== RUN   TestReqIDPattern_RejectsShapesTheExtractionAccepts/three-group_tail
+--- PASS: TestReqIDPattern_RejectsShapesTheExtractionAccepts (0.00s)
+    --- PASS: TestReqIDPattern_RejectsShapesTheExtractionAccepts/purely_numeric_domain (0.00s)
+    --- PASS: TestReqIDPattern_RejectsShapesTheExtractionAccepts/domain_starting_with_a_digit (0.00s)
+    --- PASS: TestReqIDPattern_RejectsShapesTheExtractionAccepts/three-part_domain (0.00s)
+    --- PASS: TestReqIDPattern_RejectsShapesTheExtractionAccepts/one-digit_tail (0.00s)
+    --- PASS: TestReqIDPattern_RejectsShapesTheExtractionAccepts/four-digit_tail (0.00s)
+    --- PASS: TestReqIDPattern_RejectsShapesTheExtractionAccepts/three-group_tail (0.00s)
+=== RUN   TestReqIDPattern_ExtractionRejectionClassIsReachable
+    lint_req_idpattern_test.go:114: expected exactly 1 InvalidREQID finding (for REQ-123-001), got 2: []spec.Finding{spec.Finding{File:"SPEC-X/spec.md", Line:1, Severity:"error", Code:"InvalidREQID", Message:"REQ ID \"REQ-ABC-001\" does not match pattern REQ-[A-Z]{{2,5}}-NNN-NNN", Advisory:false}, spec.Finding{File:"SPEC-X/spec.md", Line:2, Severity:"error", Code:"InvalidREQID", Message:"REQ ID \"REQ-123-001\" does not match pattern REQ-[A-Z]{{2,5}}-NNN-NNN", Advisory:false}}
+--- FAIL: TestReqIDPattern_ExtractionRejectionClassIsReachable (0.00s)
+=== RUN   TestDuplicateREQIDRule_StillFiresOnWidenedShapes
+    lint_req_idpattern_test.go:144: expected exactly 1 DuplicateREQID finding for the widened shape REQ-HOOK-001, got 0
+--- FAIL: TestDuplicateREQIDRule_StillFiresOnWidenedShapes (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	0.549s
+FAIL

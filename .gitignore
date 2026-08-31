@@ -230,6 +230,20 @@ secret-*.*
 !.moai/evolution/telemetry/.gitkeep
 
 # ===========================================
+# Generated Code-Graph Layer (rebuilt on demand, never committed)
+# `moai graph build` writes edges.jsonl + edges.meta.json here. edges.jsonl is
+# a machine-generated index that runs to six figures of lines on this
+# repository, so a single `git add -A` turns it into an unreviewable diff —
+# which already happened once, on an unmerged branch (59a622c5a, +180,178).
+# Rebuild it with `moai graph build` instead of tracking it.
+#
+# Deliberately NOT a blanket `.moai/project/` rule: product.md, structure.md,
+# tech.md, and the codemaps/ set under the same parent ARE tracked.
+# Mirrored from internal/template/templates/.gitignore (Template-First).
+# ===========================================
+.moai/project/graph/
+
+# ===========================================
 # Harness Auto-Generated Data (local-only)
 # observations / usage-log / learning-history are runtime artifacts
 # ===========================================
