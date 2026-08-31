@@ -2,7 +2,7 @@
 id: SPEC-SELECTOR-CENSUS-001
 title: "0-실행 테스트 판정 — 진행 기록"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-08-29
 updated: 2026-08-31
 author: manager-spec
@@ -175,4 +175,37 @@ m1_to_mN_commit_strategy: single-commit   # M1~M4 를 한 커밋에 담는다 (�
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-31
+sync_commit_sha: "<pending>"   # a commit cannot cite its own hash; backfilled in the immediately following commit
+sync_status: completed
+changelog_entry: added
+changelog_entry_position: "CHANGELOG.md [Unreleased] -> ### Added, first entry (line 12), inserted above SPEC-BINLAG-INVOCATION-001"
+b12_self_test_a: "grep -c 'SELECTOR-CENSUS' CHANGELOG.md -> 0, exit 1 (pre-emission; no duplicate entry from a parallel session). Post-emission the same command returns 1"
+b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l -> 8 (AC-SEC-000..007). Non-zero and plausible; matches the 8-row PASS/FAIL matrix in §E.2 and the count the CHANGELOG entry states (7 PASS + 1 PASS-WITH-DEBT)"
+b12_self_test_c: "ls on every path claimed in the entry -> all present: .moai/specs/SPEC-SELECTOR-CENSUS-001/spec.md, internal/hook/evidence_writer.go, internal/hook/evidence_writer_zeroexec_test.go, internal/hook/post_tool.go, internal/telemetry/types.go, .claude/rules/moai/development/verification-completeness.md, internal/template/templates/.claude/rules/moai/development/verification-completeness.md, .moai/reports/t341/{discovery,m0-live-payload-observation,plan-audit-iter1,plan-audit-iter2}.md"
+frontmatter_status_transitions:
+  spec_md: "draft -> completed (merged 3-phase close on this sync commit); updated: 2026-08-29 -> 2026-08-31. NOTE: the source state was `draft`, not `in-progress` — the run phase never performed the `draft -> in-progress` step. Recorded as it happened rather than as the canonical path"
+  progress_md: "in-progress -> completed; updated: already 2026-08-31, re-affirmed"
+  plan_md: "NOT transitioned — carries no `status:` field (grep '^status:' -> no match). Removed at 97dc597bf under ArtifactStatusFieldForbidden (SPEC-ARTIFACT-STATELESS-001, card t357). Re-adding one to satisfy an 'all four artifacts' reading would create the exact drift that rule forbids"
+  acceptance_md: "NOT transitioned — same as plan_md; no `status:` field, none added"
+docs_surfaces_touched:
+  changelog: "CHANGELOG.md — one entry added under [Unreleased] -> Added"
+  readme: "none. grep -rlniE 'zero-swept|no tests to run|evidence_writer' README{,.ko,.ja,.zh}.md -> 0 files"
+  docs_site: "none. Same grep across docs-site/content/** and .moai/docs/** -> 0 files. Control grep for 'moai' across README.md + docs-site/content matched 637 files, so the scanned surface is live and the 0 is a measured zero rather than a mis-scoped scan"
+  rationale: "the deliverable changes internal hook classification behaviour and adds no operator-facing CLI verb, settings key, hook event, or wrapper script, so no user-facing surface is owed"
+mx_tag_validation: "not performed in this sync commit. The sync commit touches only CHANGELOG.md, this file's frontmatter + §E.4, and spec.md frontmatter — no .go file is modified here, and the run-phase Go surface (evidence_writer.go, post_tool.go, types.go, evidence_writer_zeroexec_test.go) was not re-scanned for @MX annotations by this session. Reported as an unperformed step, not as a clean result"
+canary_compliance_check:
+  applicable: true
+  reason: "this SPEC defines a forward-looking rule (a zero-execution invocation is not an observed pass) and the run phase applied it to its own verification run"
+  result: "`go test ./internal/hook/ -run TestZeroExecution -count=1 -v` enumerated 8 top-level tests and 11 subtests as `--- PASS`, with no `[no tests to run]` line — this SPEC's own verification is not a zero-execution run under its own predicate. Consumed from §E.2; NOT re-executed by this sync session"
+verification_re_execution: "none. This sync session ran no test, no lint, and no build. Every numeric claim in the CHANGELOG entry (85.1% / 82.7% coverage, the seven mutant verdicts, the five-runner token measurements, the 8+11 self-application count, `make build` rc 0, the darwin/windows exits) is CONSUMED from §E.2/§E.3 as run-phase evidence at commit c6371085c, not re-measured here. `git merge-base --is-ancestor c6371085c HEAD` -> exit 0 confirms that evidence's commit is an ancestor of this tree"
+not_observed:
+  ci: "no CI run on this branch has been read by this session. WT-selector-census is unpushed; whether origin/develop's own CI is green at b9149857c is the lead's read, not this session's"
+  full_suite: "`go test ./...` NOT run — prohibited locally in this repository. The full-suite verdict is CI's"
+  audit: "no sync-auditor pass has been run against this sync commit"
+  spec_audit: "mcp__moai__spec_audit / `moai spec lint` NOT run by this session against this worktree"
+  ac_sec_000_debt: "carried forward unchanged and unrepaired — .moai/reports/t341/live-payload.json still does not exist, and questions (b) exit_code position/presence and (c) wrapped-JSON vs plain payload shape remain undetermined. This sync phase did not attempt to close them"
+push_state: "not pushed, not merged, no PR opened by this session. The lead owns the integration window"
+scope_discipline: "this sync commit modifies ONLY CHANGELOG.md, this file (frontmatter + §E.4), and spec.md frontmatter (`status:` + `updated:`). No body content of spec.md / plan.md / acceptance.md was touched, and no `status:` field was added to plan.md or acceptance.md"
+```
