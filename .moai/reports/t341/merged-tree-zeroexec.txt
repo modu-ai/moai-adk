@@ -1,0 +1,54 @@
+=== RUN   TestZeroExecution_GoZeroMatchIsNotAnObservedPass
+=== PAUSE TestZeroExecution_GoZeroMatchIsNotAnObservedPass
+=== RUN   TestZeroExecution_ExitCodeZeroDoesNotCarryItPast
+=== PAUSE TestZeroExecution_ExitCodeZeroDoesNotCarryItPast
+=== RUN   TestZeroExecution_CorpusSamplesAreVetoed
+=== PAUSE TestZeroExecution_CorpusSamplesAreVetoed
+=== RUN   TestZeroExecution_CorpusCoversEveryRunnerSignature
+=== PAUSE TestZeroExecution_CorpusCoversEveryRunnerSignature
+=== RUN   TestZeroExecution_GenuinePassIsUnchanged
+=== PAUSE TestZeroExecution_GenuinePassIsUnchanged
+=== RUN   TestZeroExecution_MixedOutputKeepsItsSignal
+=== PAUSE TestZeroExecution_MixedOutputKeepsItsSignal
+=== RUN   TestZeroExecution_SurfacesAsPostToolAdvisory
+--- PASS: TestZeroExecution_SurfacesAsPostToolAdvisory (0.00s)
+=== RUN   TestZeroExecution_AdvisoryAppendsToExistingMessage
+=== PAUSE TestZeroExecution_AdvisoryAppendsToExistingMessage
+=== CONT  TestZeroExecution_GoZeroMatchIsNotAnObservedPass
+=== CONT  TestZeroExecution_GenuinePassIsUnchanged
+--- PASS: TestZeroExecution_GoZeroMatchIsNotAnObservedPass (0.00s)
+=== CONT  TestZeroExecution_AdvisoryAppendsToExistingMessage
+--- PASS: TestZeroExecution_AdvisoryAppendsToExistingMessage (0.00s)
+=== CONT  TestZeroExecution_CorpusCoversEveryRunnerSignature
+--- PASS: TestZeroExecution_CorpusCoversEveryRunnerSignature (0.00s)
+=== CONT  TestZeroExecution_CorpusSamplesAreVetoed
+=== RUN   TestZeroExecution_GenuinePassIsUnchanged/go/text_only
+=== CONT  TestZeroExecution_ExitCodeZeroDoesNotCarryItPast
+=== CONT  TestZeroExecution_MixedOutputKeepsItsSignal
+--- PASS: TestZeroExecution_ExitCodeZeroDoesNotCarryItPast (0.00s)
+=== RUN   TestZeroExecution_GenuinePassIsUnchanged/go/with_exit_zero
+--- PASS: TestZeroExecution_CorpusSamplesAreVetoed (0.00s)
+=== RUN   TestZeroExecution_GenuinePassIsUnchanged/cargo/text_only
+--- PASS: TestZeroExecution_MixedOutputKeepsItsSignal (0.00s)
+=== RUN   TestZeroExecution_GenuinePassIsUnchanged/cargo/with_exit_zero
+=== RUN   TestZeroExecution_GenuinePassIsUnchanged/pytest/text_only
+=== RUN   TestZeroExecution_GenuinePassIsUnchanged/pytest/with_exit_zero
+=== RUN   TestZeroExecution_GenuinePassIsUnchanged/jest_single_digit/text_only
+=== RUN   TestZeroExecution_GenuinePassIsUnchanged/jest_single_digit/with_exit_zero
+=== RUN   TestZeroExecution_GenuinePassIsUnchanged/jest_double_digit/text_only
+=== RUN   TestZeroExecution_GenuinePassIsUnchanged/jest_double_digit/with_exit_zero
+=== RUN   TestZeroExecution_GenuinePassIsUnchanged/node_builtin/with_exit_zero
+--- PASS: TestZeroExecution_GenuinePassIsUnchanged (0.00s)
+    --- PASS: TestZeroExecution_GenuinePassIsUnchanged/go/text_only (0.00s)
+    --- PASS: TestZeroExecution_GenuinePassIsUnchanged/go/with_exit_zero (0.00s)
+    --- PASS: TestZeroExecution_GenuinePassIsUnchanged/cargo/text_only (0.00s)
+    --- PASS: TestZeroExecution_GenuinePassIsUnchanged/cargo/with_exit_zero (0.00s)
+    --- PASS: TestZeroExecution_GenuinePassIsUnchanged/pytest/text_only (0.00s)
+    --- PASS: TestZeroExecution_GenuinePassIsUnchanged/pytest/with_exit_zero (0.00s)
+    --- PASS: TestZeroExecution_GenuinePassIsUnchanged/jest_single_digit/text_only (0.00s)
+    --- PASS: TestZeroExecution_GenuinePassIsUnchanged/jest_single_digit/with_exit_zero (0.00s)
+    --- PASS: TestZeroExecution_GenuinePassIsUnchanged/jest_double_digit/text_only (0.00s)
+    --- PASS: TestZeroExecution_GenuinePassIsUnchanged/jest_double_digit/with_exit_zero (0.00s)
+    --- PASS: TestZeroExecution_GenuinePassIsUnchanged/node_builtin/with_exit_zero (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	0.447s
