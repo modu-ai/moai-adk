@@ -438,7 +438,7 @@ Frontmatter transition applied to `spec.md` in this commit: `status: in-progress
 
 ```yaml
 sync_complete_at: 2026-08-31
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 7f8b607dd
 sync_status: complete
 b12_self_test_a: pass          # pre-emission grep -c on CHANGELOG.md -> 0 (no duplicate entry)
 b12_self_test_b: pass          # AC count 8 (AC-SBB-*, SPEC-scoped) / 10 (incl. 2 cross-SPEC refs); non-zero, not vacuous
