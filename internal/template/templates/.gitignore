@@ -231,6 +231,18 @@ secret-*.*
 !.moai/evolution/telemetry/.gitkeep
 
 # ===========================================
+# Generated Code-Graph Layer (rebuilt on demand, never committed)
+# `moai graph build` writes edges.jsonl + edges.meta.json here. edges.jsonl is
+# a machine-generated index that runs to six figures of lines on a mid-sized
+# repository, so a single `git add -A` turns it into an unreviewable diff.
+# Rebuild it with `moai graph build` instead of tracking it.
+#
+# Deliberately NOT a blanket `.moai/project/` rule: product.md, structure.md,
+# tech.md, and the codemaps/ set under the same parent ARE meant to be tracked.
+# ===========================================
+.moai/project/graph/
+
+# ===========================================
 # Node.js (for docs/Nextra)
 # ===========================================
 node_modules/
