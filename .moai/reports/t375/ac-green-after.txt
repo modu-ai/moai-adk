@@ -1,0 +1,33 @@
+# AC GREEN re-run — after M1/M2/M3/M4/M5/M6, before the run-phase commit
+# tree: /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t375
+# branch: WT-state-evidence-canon
+# Pre-edit values for the same commands are in ac-red-baseline.txt.
+# Format: <AC> <observed>  (was <pre-edit>)
+
+AC-ECC-001a  grep -c 'SHALL be persisted under'            reference.md      = 0   (was 1)
+AC-ECC-001b  grep -c 'evidence is persisted under'         protocol.md       = 0   (was 1)
+AC-ECC-002a  grep -c 'machine-local scratch'               protocol.md       = 1   (was 0)
+AC-ECC-002b  grep -c 'export before citing'                protocol.md       = 1   (was 0)
+AC-ECC-002c  grep -c '\.moai/reports/<card-id>'            protocol.md       = 1   (was 0)
+AC-ECC-003a  grep -c 'names one file'                      reference.md      = 1   (was 0)
+AC-ECC-003b  grep -c -i 'never the directory\|wholesale'   reference.md      = 1   (was 0)
+AC-ECC-004   grep -c -i 'residual-risk'                    reference.md      = 1   (was 0)
+AC-ECC-005a  grep -c 'state/verify/snapshots'              reference.md      = 1   (was 0)
+AC-ECC-005b  grep -c 'internal/web/events.go'              reference.md      = 1   (was 0)
+AC-ECC-007a  grep -c 'canonical persistence location'      manager-lead.md   = 0   (was 1)
+AC-ECC-007b  grep -c 'machine-local scratch'               manager-lead.md   = 2   (was 0)
+AC-ECC-008   grep -c 'state/verify'                        moai.md           = 0   (was 3)
+
+# AC-ECC-014, four conditions:
+grep -n 'moai/observability' .gitignore                          -> 235:.moai/observability/*.jsonl
+grep -n 'moai/observability' templates/.gitignore                -> 236:.moai/observability/*.jsonl
+  (one line each; no '!' exception line in either)
+grep -c 'navigator' .gitignore                                   -> 0
+grep -c 'navigator' templates/.gitignore                         -> 0
+find . internal/template/templates -maxdepth 3 -type d -name observability  -> (no output)
+
+# AC-ECC-006:
+go test ./internal/verify/... ./internal/web/...                 -> ok, ok  (rc=0)
+
+# Guard directions 1-6: guard-six-directions.txt
+# Guard RED (empty allowlist, real corpus): guard-red-empty-allowlist.txt

@@ -229,6 +229,11 @@ secret-*.*
 .moai/evolution/telemetry/*.jsonl
 !.moai/evolution/telemetry/.gitkeep
 
+# Hook duration metrics (local-only). No .gitkeep and no directory scaffold:
+# creating the directory is what opts a machine in to hook recording, so
+# shipping one would flip that opt-in to opt-out for every deployed project.
+.moai/observability/*.jsonl
+
 # ===========================================
 # Harness Auto-Generated Data (local-only)
 # observations / usage-log / learning-history are runtime artifacts

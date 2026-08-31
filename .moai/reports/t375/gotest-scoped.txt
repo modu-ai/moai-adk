@@ -1,0 +1,5 @@
+ok  	github.com/modu-ai/moai-adk/internal/template	23.568s
+ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	0.823s
+?   	github.com/modu-ai/moai-adk/internal/template/scripts	[no test files]
+ok  	github.com/modu-ai/moai-adk/internal/verify	(cached)
+ok  	github.com/modu-ai/moai-adk/internal/web	(cached)

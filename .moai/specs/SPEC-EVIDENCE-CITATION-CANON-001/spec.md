@@ -2,7 +2,7 @@
 id: SPEC-EVIDENCE-CITATION-CANON-001
 title: "증거 인용 경로 정본화 — gitignore된 경로를 감사 시점 근거로 쓰지 않는다"
 version: "0.3.0"
-status: draft
+status: in-progress
 created: 2026-08-31
 updated: 2026-08-31
 author: manager-spec
@@ -280,7 +280,33 @@ grep -rn 'RemoveAll' internal/navigator/fix/ internal/cli/navigator_fix.go   (�
 
 **부채를 닫으려면**: 124개 문서를 훑어 각 인용마다 (a) 원본이 아직 `.moai/state/verify/`에 남아 있으면 추려서 `.moai/reports/<card-id>/`로 반출하고 인용을 갈아끼우거나, (b) 남아 있지 않으면 그 인용을 미귀속으로 표시한다 — 후속 배치의 카드 후보.
 
-**별건 후속 후보 하나 더**: `internal/cli/mcp_glm.go:110`의 **코드 주석**이 측정 근거로 `.moai/state/verify/t225/ac-amp-006-glm-differential-attempt1.md`를 인용한다. 이 SPEC이 없애려는 결함의 살아 있는 실례인데, 가드 범위가 `.md` 한정이라 잡히지 않는다. `.go` 주석까지 스캔 범위를 넓히는 것은 별개 판단이므로 카드로 넘긴다.
+**별건 후속 — 카드 t381이 소유한다.** `internal/cli/mcp_glm.go:110`의 **코드 주석**이 측정 근거로 `.moai/state/verify/t225/ac-amp-006-glm-differential-attempt1.md`를 인용한다. 이 SPEC이 없애려는 결함의 살아 있는 실례인데, 가드 범위가 `.md` 한정이라 잡히지 않는다.
+
+리드가 `.go` 표면을 조사해 출현 8건 / 6파일을 보고했다. **이 카드가 재측정한 결과는 13건 / 9파일이다** — 아래 표가 재측정본이고, 리드 census에 없던 3파일 5건을 ★로 표시했다.
+
+```
+git grep -n '\.moai/state/verify' -- '*.go' | wc -l   # 13  (t375 트리, plan-close 이후)
+```
+
+| 위치 | 성격 |
+|---|---|
+| `internal/verify/store.go:15` (`SnapshotDir`) | 기계 소비자 |
+| `internal/verify/schema.go:44` | 기계 소비자 |
+| `internal/web/events.go:29` | 기계 소비자 |
+| `internal/verify/store_test.go:26,44,45` | 분류 필요 |
+| `internal/cli/audit_pin_live_test.go:32` | 분류 필요 |
+| ★ `internal/goal/evaluate_snapshot_test.go:48,71,166` | 분류 필요 — 셋 다 `snapshots/` 경로를 담은 테스트 픽스처 문자열 |
+| ★ `internal/session/ignored_content_test.go:26` | 분류 필요 — `git status` porcelain 픽스처 |
+| `internal/cli/mcp_glm.go:110` | **실제 인용** |
+| ★ `internal/hook/evidence_writer_zeroexec_test.go:10` | **실제 인용** — 주석 "Raw captures live under `.moai/state/verify/t341/`" |
+
+`pkg/`·`cmd/`에는 출현이 없다(0건). 세 파일이 census에서 빠진 원인은 확인하지 않았다.
+
+**빠진 것 중 하나가 두 번째 진짜 인용이다.** `evidence_writer_zeroexec_test.go:10`은 원본 캡처가 `.moai/state/verify/t341/`에 있다고 적는데, 그 경로는 §3.1이 이미 반출되지 않은 사례로 다루는 바로 그 카드의 것이다. 즉 t381이 상대할 실제 인용은 1건이 아니라 **2건**이다.
+
+앞의 셋(`store.go` / `schema.go` / `events.go`)은 §1.4가 carve-out으로 지목한 바로 그 셋이다 — 독립적으로 잰 census가 같은 경계선을 그었다는 뜻이므로, carve-out이 선을 옳게 그었다는 방증으로 읽을 수 있다. 이 확인은 census가 넓어져도 흔들리지 않는다: 추가된 3파일은 전부 테스트이고 기계 소비자가 아니다.
+
+[HARD] **t375가 착지해도 이 축은 닫히지 않는다.** 이 SPEC이 세우는 가드는 `.md` 범위이므로, 위 13건은 **머지 이후에도 전부 가드 밖에 남는다** — 진짜 인용 2건(`mcp_glm.go:110`, `evidence_writer_zeroexec_test.go:10`)까지 포함해서다. 이 문장을 추론에 맡기지 않고 적어 두는 이유는 하나다: 나중에 누가 **초록 가드를 코퍼스가 깨끗하다는 증거로 읽는 것**을 막기 위해서다. 가드의 초록은 `.md` 표면에 대해서만 참이고, `.go` 표면에 대해서는 아무것도 말하지 않는다.
 
 ---
 
@@ -290,7 +316,7 @@ grep -rn 'RemoveAll' internal/navigator/fix/ internal/cli/navigator_fix.go   (�
 
 - 기존 124개 인용 문서의 경로 교체·반출.
 - `.moai/state/verify/` 아래 현존 905개 파일의 이관·삭제·정리.
-- `internal/cli/mcp_glm.go:110`의 코드 주석 인용, 그리고 가드 범위를 `.go`로 넓히는 것.
+- `.go` 표면의 `.moai/state/verify` 출현 13건(§5의 census — 실제 인용 2건 포함)과 가드 범위를 `.go`로 넓히는 것. **카드 t381 소유.** t375 머지 이후에도 이 13건은 가드 밖에 남는다 — 이 SPEC의 가드는 `.md` 범위이고, 그 초록은 `.go` 표면에 대해 아무것도 말하지 않는다.
 
 ### Out of Scope — 메커니즘 변경
 
