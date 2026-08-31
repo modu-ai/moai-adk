@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/guardliveness"
+	"github.com/modu-ai/moai-adk/internal/guardstate"
 )
 
 // guardLivenessJoinBound caps how long session start waits for the persisted
@@ -30,12 +31,22 @@ import (
 const guardLivenessJoinBound = 250 * time.Millisecond
 
 // guardLivenessProducer is the seam to the state model
-// (SPEC-GUARD-STATE-MODEL-001), which has not landed. Until it does, the wired
-// producer reports that it is unwired — reached on every activation, so the
-// count at the query layer stays the count of activations rather than dropping
-// silently to zero. When the state model lands, this one line names its
-// producer instead.
-var guardLivenessProducer guardliveness.Producer = guardliveness.Unwired()
+// (SPEC-GUARD-STATE-MODEL-001, card t347), which has landed: this line names
+// its producer, replacing the guardliveness.Unwired() stub that stood here
+// until it did.
+//
+// It is an UNCONDITIONAL naming, and that is the whole design of the seam. The
+// stub was a producer rather than a nil check so that replacing it could not
+// introduce a branch short of the query layer; wiring it as
+// `if p != nil { … }` would make the production path conditional on the seam
+// existing, which is the absent-execution shape this family is about, rebuilt
+// inside its own fix.
+//
+// A variable rather than a constructor call at each use so a test can watch
+// the join. What travels through it is guardstate's decision of every declared
+// entry into exactly one classification, plus the machine-readable designation
+// of which value means nothing to report — this package names none of them.
+var guardLivenessProducer guardliveness.Producer = guardstate.NewProducer()
 
 // newGuardLivenessStore resolves where verdicts persist between activations.
 //

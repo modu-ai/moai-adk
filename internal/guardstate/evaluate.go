@@ -18,6 +18,22 @@ type Decision struct {
 	Row     int
 	Class   Classification
 	Surface Surface
+
+	// Expectation is what this subject was declared to do and did not, carried
+	// only by the rows whose implied action needs it (axisRule.CarriesExpectation)
+	// and nil everywhere else.
+	//
+	// nil is "nothing was missed", never "the expectation was blank". A value
+	// struct could not tell those apart, and an expectation present on every
+	// entry says nothing about any of them.
+	Expectation *Expectation
+}
+
+// Expectation is a declared firing expectation, copied from the manifest entry
+// that declared it so it compares equal field-against-field against the source.
+type Expectation struct {
+	Window  string
+	Measure Measure
 }
 
 // Evaluation is one evaluation run: what was measured, how much of it was
@@ -81,6 +97,15 @@ type Evaluation struct {
 func Evaluate(ctx context.Context, m *Manifest, enum Enumerator, q RunQuerier, now time.Time) Evaluation {
 	ev := Evaluation{MeasuredAt: now, Counts: map[Classification]int{}}
 
+	// Seed a count for EVERY value of the closed vocabulary, including the ones
+	// this run produces none of. A map that acquires a key only when the
+	// classifier emits that value carries "no count" and "zero" identically —
+	// the same two-states-one-representation defect this SPEC exists to close,
+	// one layer down in the reporting.
+	for _, c := range Classifications() {
+		ev.Counts[c] = 0
+	}
+
 	var entries []Entry
 	if m != nil {
 		entries = m.Entries
@@ -108,7 +133,7 @@ func Evaluate(ctx context.Context, m *Manifest, enum Enumerator, q RunQuerier, n
 	switch {
 	case enumErr != nil:
 		ev.IntegrityFailure = fmt.Sprintf("the disk enumeration failed: %v", enumErr)
-	case len(enumerated) == 0:
+	case ev.Enumerated == 0:
 		// Stated as an INTEGRITY failure rather than only as an all-clear
 		// refusal, so row 8 is suppressed here too: a wrong working directory
 		// enumerates nothing, every locator corroborates as absent against the
@@ -143,8 +168,11 @@ func Evaluate(ctx context.Context, m *Manifest, enum Enumerator, q RunQuerier, n
 	for _, e := range entries {
 		entry := e
 		obs := &entryObservation{
-			entry:           entry,
-			now:             now,
+			entry: entry,
+			// The CARRIED timestamp, not the parameter. Every window
+			// comparison is taken against it, which is what makes it an input
+			// with a consumer rather than an annotation on the report.
+			now:             ev.MeasuredAt,
 			integrityOK:     ev.IntegrityOK,
 			absentFromEnum:  !enumerated[entry.Locator],
 			pointTestAbsent: pointTestAbsent[entry.Locator],
@@ -177,14 +205,82 @@ func Evaluate(ctx context.Context, m *Manifest, enum Enumerator, q RunQuerier, n
 	}
 
 	// ---- Counts and the all-clear ---------------------------------------
-	nonClean := 0
 	for _, d := range ev.Decisions {
 		ev.Counts[d.Class]++
-		if !d.Class.IsClean() {
-			nonClean++
-		}
 	}
-	ev.AllClear = ev.IntegrityOK && ev.Queried > 0 && nonClean == 0
+	ev.AllClear = len(ev.Refusals()) == 0
 
 	return ev
+}
+
+// rowUndeclared is the disk axis's row. Decisions carrying it are the files no
+// entry declared, which is why they are excluded when the declared set's
+// coverage is checked.
+const rowUndeclared = 7
+
+// Refusals names every reason this result is refused its all-clear, reading the
+// CARRIED counts rather than recomputing from the decisions.
+//
+// Reading the carried values is the point, not an implementation detail. Every
+// count this evaluation reports is required to have a consumer that READS it —
+// a decision it changes or a guard condition it feeds — because the parent
+// card's audit found two counts that were required, rendered, and read by
+// nothing. A count recomputed from the decisions here would leave the carried
+// field inert while looking consumed.
+//
+// It returns reasons rather than a boolean for the same reason IntegrityFailure
+// carries text: an unexplained refusal is not a report.
+func (e Evaluation) Refusals() []string {
+	var out []string
+
+	if !e.IntegrityOK {
+		reason := e.IntegrityFailure
+		if reason == "" {
+			reason = "the disk enumeration failed its integrity check"
+		}
+		out = append(out, reason)
+	}
+
+	// The enumerated-files count. Zero files is not a complete census of an
+	// empty repository — it is indistinguishable from never having looked.
+	if e.Enumerated == 0 {
+		out = append(out, "the enumeration returned zero files, so an all-clear would be about a set nothing read")
+	}
+
+	// The queried count. Counting only queries that SUCCEEDED is what makes
+	// this a guard: a run in which every query errored asked nothing.
+	if e.Queried == 0 {
+		out = append(out, "zero subjects were queried successfully")
+	}
+
+	// The declared count, against the entries actually decided. An evaluator
+	// that silently drops a declared entry emits fewer findings, none of them
+	// wrong, and would otherwise report all-clear about a smaller set than it
+	// was given.
+	decided := 0
+	for _, d := range e.Decisions {
+		if d.Row != rowUndeclared {
+			decided++
+		}
+	}
+	if decided != e.Declared {
+		out = append(out, fmt.Sprintf(
+			"%d entries were declared and %d were decided: the evaluation does not cover the declared set",
+			e.Declared, decided))
+	}
+
+	// The per-value counts. Summing the non-clean values is what gives every
+	// one of the seven a reading consumer, rather than only the values this
+	// run happened to produce.
+	nonClean := 0
+	for class, n := range e.Counts {
+		if !class.IsClean() {
+			nonClean += n
+		}
+	}
+	if nonClean > 0 {
+		out = append(out, fmt.Sprintf("%d subject(s) are not clean", nonClean))
+	}
+
+	return out
 }

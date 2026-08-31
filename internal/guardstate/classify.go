@@ -240,6 +240,17 @@ type axisRule struct {
 	Row   int
 	Class Classification
 	When  func(o *entryObservation) bool
+
+	// CarriesExpectation marks the row whose implied action is not actionable
+	// without the expectation the subject missed. Row 4 says "the subject
+	// stopped firing"; without the declared window and measured quantity the
+	// operator is told to investigate and is not told what it missed, which is
+	// half a comparison.
+	//
+	// It is a column of the table rather than a row-number comparison in the
+	// carrier, so a mutant that drops the obligation is visible HERE, next to
+	// the row it belongs to, instead of hidden in a `== 4` somewhere else.
+	CarriesExpectation bool
 }
 
 // entryAxis is the entry axis of spec.md §C.2, in its normative order.
@@ -283,7 +294,7 @@ func entryAxis() []axisRule {
 		{Row: 5, Class: ClassOK, When: func(o *entryObservation) bool {
 			return o.entry.IsConditional()
 		}},
-		{Row: 4, Class: ClassStale, When: func(o *entryObservation) bool {
+		{Row: 4, Class: ClassStale, CarriesExpectation: true, When: func(o *entryObservation) bool {
 			return o.hasQualifyingRunsAtAll()
 		}},
 		// Row 6 is the terminal branch. The axis is total by construction
@@ -298,12 +309,19 @@ func entryAxis() []axisRule {
 func classifyEntry(o *entryObservation) Decision {
 	for _, rule := range entryAxis() {
 		if rule.When(o) {
-			return Decision{
+			d := Decision{
 				Subject: o.entry.Locator,
 				Row:     rule.Row,
 				Class:   rule.Class,
 				Surface: rule.Class.Fold(),
 			}
+			if rule.CarriesExpectation {
+				// COPIED from the entry, not described. A constant string or a
+				// paraphrase satisfies a presence check while telling the
+				// operator nothing they can compare against the manifest.
+				d.Expectation = &Expectation{Window: o.entry.Window, Measure: o.entry.Measure}
+			}
+			return d
 		}
 	}
 	// Unreachable while row 6's predicate is unconditional. Stated rather than
