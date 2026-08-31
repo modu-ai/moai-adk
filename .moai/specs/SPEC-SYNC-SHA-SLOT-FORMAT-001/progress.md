@@ -264,7 +264,7 @@ full local suite was NOT run; CI decides the whole tree.
 
 ```yaml
 run_complete_at: 2026-08-29
-run_commit_sha: pending-backfill-run
+run_commit_sha: 19b6f7625
 run_status: complete
 ac_pass_count: 10
 ac_fail_count: 0
@@ -410,7 +410,7 @@ are not offered as CI figures.
 
 ```yaml
 sync_complete_at: 2026-08-31
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: bd8c9fc2b
 sync_status: complete
 bidirectional_observation: 4 paths through the real CLI (prose / SHA+annotation / placeholder / blank)
 mutants_executed: 3
