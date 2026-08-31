@@ -17,3 +17,12 @@ exit=1 (1 = NOT ignored = PASS)
 $ ls .moai/state/verify
 ls: .moai/state/verify: No such file or directory
 exit=1
+
+--- iter5 re-verification (2026-08-31, HEAD 0e903d464) ---
+$ ls <ten named per-criterion evidence files>
+exit=0                    <- all ten still present
+$ git check-ignore -v .moai/reports/t381/verify
+exit=1                    <- NOT ignored (tracked path) = PASS
+$ ls .moai/state/verify
+ls: .moai/state/verify: No such file or directory
+                          <- nothing written under .moai/state/ by this card, including in iter5

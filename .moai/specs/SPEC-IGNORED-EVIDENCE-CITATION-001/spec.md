@@ -1,7 +1,7 @@
 ---
 id: SPEC-IGNORED-EVIDENCE-CITATION-001
 title: "Repair tracked citations that name gitignored evidence paths"
-version: "0.4.0"
+version: "0.5.0"
 status: in-progress
 created: 2026-08-31
 updated: 2026-08-31
@@ -24,6 +24,7 @@ tier: M
 | 2026-08-31 | 0.1.0 | Initial draft. Scope fixed to the 5 class-C3 lines of `.moai/reports/t381/census.md` (measured tree `3f03d9c36`). t375 canon folded in as measured, not assumed. | manager-spec |
 | 2026-08-31 | 0.2.0 | plan-audit iter1 (FAIL 0.74) revision. Added two requirements — stale coordinates + behavior preservation, numbered REQ-IEC-010 and REQ-IEC-011 at the time, renumbered to REQ-IEC-009 and REQ-IEC-010 in iter4; corrected the phantom `.codex/…` do-not-touch path; corrected t375 `status:` to `in-progress` with a read date; narrowed the in-scope pattern to `.moai/state/verify` after measuring a second, out-of-scope `.moai/state/` occurrence in the html; showed the `492 − 25 = 467` derivation; relabelled the lane-8 convergence claim as relayed; re-argued the brace-glob exemption against the REQ-ECC-004+005 pair. | manager-spec |
 | 2026-08-31 | 0.3.0 | plan-audit iter2 (FAIL 0.78) delta revision, operator-approved iter3. Demoted the probe-boundary requirement (then numbered REQ-IEC-008; that id was reassigned by the iter4 renumber) to a §D constraint (its only coverage had been demoted to a non-gating check, orphaning it). Updated every t375 citation from unmerged-draft to landed (`status: completed`, `origin/develop` `9328a5242`), including the rule-body sentence — now verified at `manager-lead.md:150` rather than anticipated — and upgraded the lane-8 convergence claim from relayed to verified against `manager-lead.md:152`. `acceptance.md` carries the N1/N2 criterion fixes. | manager-spec |
+| 2026-08-31 | 0.5.0 | Post-run correction (iter5), scoped to two statements the implementation falsified. **(1)** `plan.md` M3 branched on whether the `eb01063e` scratch tree exists; §C.3's test is **identifiability**. Measured: the tree exists in the primary checkout (8 per-category audit files, 244K) but NOT in this worktree, so a tree-existence test both picks the wrong branch AND answers differently per tree — a milestone gated on a gitignored path, this card's own defect class. `plan.md` §B item 3 carried the same false fact and was corrected with it. **(2)** REQ-IEC-005 named one cause for un-identifiability ("the scratch tree no longer exists"); here the tree exists and the cause is that the citation is report-wide over eight per-category audits. The cause is de-specified and the obligation slightly strengthened — the reason must now be recorded, not assumed. Also **P6**: §C.5 re-framed from lane-race avoidance to scope discipline (t375 landed), and an absorb hazard on AC-IEC-007's `ls` half raised but deliberately not repaired. | manager-spec |
 | 2026-08-31 | 0.4.0 | plan-audit iter3 (FAIL on MP-1 firewall; score 0.83 cleared) delta revision, operator-approved iter4, scoped to P1-P5. **P1**: renumbered REQ-IEC-009/010/011 → 008/009/010, closing the numbering gap the iter3 demotion opened — measured 18 occurrence-lines across the 4 SPEC artifacts (the 3 historical audit reports were deliberately NOT rewritten). **P2**: retargeted the two dangling probe-boundary references to the §D constraint by name; the renumber had turned them into a worse defect than dangling, since `REQ-IEC-008` now names Collision avoidance. **P3**: replaced the frozen diff baseline with the three-dot `origin/develop...HEAD` form in AC-IEC-006/007 — the frozen SHA would have failed at integration for t375's landed edits. **P4**: retired the last two "will add" sentences. **P5**: repaired the corrupted plan.md §H. | manager-spec |
 
 ---
@@ -195,9 +196,19 @@ explicitly-non-resolving origin note that is **not** presented as the evidence f
 
 **Where** a repaired citation names a directory or a glob rather than one file, the repair **shall**
 name the single file that decided the claim, per REQ-ECC-004. **When** that file cannot be identified
-— because the scratch tree no longer exists on this machine — the repair **shall** record the
-inability explicitly at the citation site, and **shall not** silently retain the glob or directory as
-though it were a valid citation.
+— for any reason — the repair **shall** record the inability, **and its reason**, explicitly at the
+citation site, and **shall not** silently retain the glob or directory as though it were a valid
+citation.
+
+> **iter5 (correction 2): the cause was over-specified, not the obligation.** The clause previously
+> named one cause — "because the scratch tree no longer exists on this machine". The run phase found
+> a different one: for
+> `.moai/reports/template-skill-improvement-plan-20260710.html` the scratch tree **does** exist, and
+> the file is unidentifiable because the citation is report-wide while the eight JSONs are
+> per-category batch audits. Writing the requirement's stated cause into that file would have made
+> the repaired file assert something false — the defect this card exists to repair — so the
+> implementer correctly declined to. The obligation is unchanged and is in fact slightly stronger:
+> the reason must now be recorded, rather than assumed to be the one the requirement named.
 
 ### REQ-IEC-006 — Carve-out immutability
 
@@ -395,13 +406,21 @@ captures, so REQ-IEC-004 still applies — but "no values in the body" is false.
 application to `audit_pin_live_test.go` is an open question (citation vs output-location statement)
 routed to the lead rather than decided here.
 
-### C.5 Do-not-touch — files owned by t375 (lane-8)
+### C.5 Do-not-touch — files delivered by SPEC-EVIDENCE-CITATION-CANON-001 (t375)
 
-- `internal/template/evidence_citation_guard_test.go` — t375 creates it; its filename is asserted
-  literally by t375's own acceptance criterion. (Verified absent in this tree.)
+t375 has **landed** (`status: completed` in `origin/develop`), so this is no longer race avoidance
+between concurrent lanes — no concurrent lane exists. It is **scope discipline**: these files are
+another card's deliverables, and this card's 5-line scope does not reach them. The exclusion is
+unchanged; only its reason is (iter5, P6).
+
+- `internal/template/evidence_citation_guard_test.go` — t375 **created** it; its filename is asserted
+  literally by t375's own acceptance criterion. Absent in this worktree, present in `origin/develop`
+  (measured 2026-08-31: `ls` → `No such file or directory`;
+  `git show origin/develop:internal/template/evidence_citation_guard_test.go` → exit 0). See the
+  absorb note below.
 - `.claude/rules/moai/core/agent-common-protocol.md` **and** its detail companion
   `.claude/rules/moai/core/agent-common-protocol-reference.md`, plus both template originals under
-  `internal/template/templates/` — lane-8 edits the summary and detail companions as a pair.
+  `internal/template/templates/` — t375 **edited** the summary and detail companions as a pair.
 - `.claude/agents/moai/manager-lead.md`, its template original, and the machine-emitted
   `internal/template/templates/.codex/agents/moai/manager-lead.toml`.
 
@@ -411,6 +430,27 @@ routed to the lead rather than decided here.
 > `internal/template/templates/` one above. A do-not-touch entry naming a non-existent path asserts
 > nothing, and the AC diffing it exited 0 with empty output for the wrong reason. Corrected here and
 > in `acceptance.md` AC-IEC-007. Every other entry in this list was re-measured and does exist.
+
+> **Absorb hazard — RESOLVED (iter5, operator judgment (a)).** AC-IEC-007's second half used to assert
+> that `internal/template/evidence_citation_guard_test.go` is **absent from the tree**, as evidence
+> that this card did not create t375's guard file. t375 landed that file into `origin/develop`, so the
+> assertion answered "absent" in this worktree and would have answered "present" after absorption —
+> failing the criterion for a file this card never touched.
+>
+> It was first raised here as an open hazard, on the ground that AC-IEC-007 was passing and passing
+> criteria should not be rewritten. The operator overturned that premise, and the reasoning is worth
+> keeping: **the stop rule protects a criterion passing on its judgment, and this half was not passing
+> on judgment — it passed because this worktree happens not to contain the file while
+> `origin/develop` does. A criterion whose answer flips when you change trees is not passing; it is
+> unjudged.** Correcting it is therefore not a rewrite of a passing criterion but a repair of an
+> unjudged one.
+>
+> The fix folds the guard file into AC-IEC-007's existing three-dot diff as its eighth path, changing
+> the question from *is it absent from the tree* to *is it absent from this card's own diff* — a
+> property this card controls. Both states were verified without absorbing, using
+> `git merge-tree --write-tree` to compute the merged tree; see `acceptance.md` AC-IEC-007 for the
+> four measurements. This closes the half of the P3 hazard that P3's three-dot form could not reach,
+> because file existence is not a diff.
 
 ### C.6 Carve-outs — 12 lines that MUST NOT be modified (REQ-IEC-006)
 

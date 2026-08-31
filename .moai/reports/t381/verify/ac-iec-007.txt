@@ -1,6 +1,101 @@
-$ git diff --exit-code --stat origin/develop...HEAD -- <7 t375-owned paths>
-exit=0
+AC-IEC-007 — every t375-owned file is untouched (REQ-IEC-008)
+Corrected in iter5: "absent from the tree" -> "absent from this card's own diff".
+The guard file is now the eighth path of the same three-dot diff; there is no second command.
 
-$ ls internal/template/evidence_citation_guard_test.go
-ls: internal/template/evidence_citation_guard_test.go: No such file or directory
-exit=1 (file absent = PASS)
+$ git diff --exit-code --stat origin/develop...HEAD -- \
+    .claude/rules/moai/core/agent-common-protocol.md \
+    .claude/rules/moai/core/agent-common-protocol-reference.md \
+    .claude/agents/moai/manager-lead.md \
+    internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md \
+    internal/template/templates/.claude/rules/moai/core/agent-common-protocol-reference.md \
+    internal/template/templates/.claude/agents/moai/manager-lead.md \
+    internal/template/templates/.codex/agents/moai/manager-lead.toml \
+    internal/template/evidence_citation_guard_test.go
+(no output)
+exit=0                                   <- PASS
+
+--- post-absorption case, verified WITHOUT absorbing origin/develop ---
+
+$ git merge-tree --write-tree origin/develop HEAD
+1a137719261af5b9e3c1d7fcb6ae95e8de3ce5b2
+
+$ git diff --exit-code --stat origin/develop 1a137719261af5b9e3c1d7fcb6ae95e8de3ce5b2 -- <same eight paths>
+(no output)
+exit=0                                   <- PASS (this is the case the old `ls` form FAILED)
+
+$ git ls-tree 1a137719261af5b9e3c1d7fcb6ae95e8de3ce5b2 -- internal/template/evidence_citation_guard_test.go
+100644 blob 9b1970fe32f02b1873e2eb18c2b0d24c7cea4bc3	internal/template/evidence_citation_guard_test.go
+                                         <- file IS present in the merged tree, so the PASS above is
+                                            the real "present in tree, absent from diff" case
+
+--- RED-capability (the command is not vacuously empty) ---
+
+$ git diff --exit-code --stat origin/develop...HEAD -- .moai/specs/SPEC-IGNORED-EVIDENCE-CITATION-001/spec.md
+ .../SPEC-IGNORED-EVIDENCE-CITATION-001/spec.md     | 594 +++++++++++++++++++++
+ 1 file changed, 594 insertions(+)
+exit=1                                   <- same form fails on a path this card did change
+
+Superseded (iter5) — the former second half, recorded so the change is traceable:
+  $ ls internal/template/evidence_citation_guard_test.go
+  ls: internal/template/evidence_citation_guard_test.go: No such file or directory
+  exit=1 (file absent = PASS)
+  Retired because it asserted tree state, not this card's diff: t375 landed the file into
+  origin/develop, so it answered "absent" here and "present" post-absorption.
+
+--- moving-ref check (unplanned, and it validates the fix) ---
+
+origin/develop advanced during iter5 from 9328a5242 to 297a21ea7 (+5 commits, card t377
+SPEC-GITIGNORE-ROOT-GUARD-001) via the shared object store. Both checks were re-run against the
+moved ref:
+
+$ git diff --exit-code --stat origin/develop...HEAD -- <the eight paths>     -> exit=0  PASS
+$ git merge-tree --write-tree origin/develop HEAD                            -> 1a137719261af5b9e3c1d7fcb6ae95e8de3ce5b2  (unchanged)
+$ git diff --exit-code --stat origin/develop 1a13771926… -- <the eight paths> -> exit=0  PASS
+
+The criterion survived a base move of five commits with no edit, which is precisely what the
+three-dot form was adopted for. A frozen-SHA baseline would have needed re-pinning again here.
+
+--- iter5 re-verification by manager-develop, appended not rewritten (2026-08-31) ---
+
+The base moved AGAIN between the iter5 correction above and this re-run, through the same shared
+object store and again without this lane fetching:
+
+  9328a5242  (iter3/iter4)  ->  297a21ea7  (+5, recorded above)  ->  59e898b31  (+9 more)
+
+$ git rev-parse --short origin/develop
+59e898b31
+
+Consequence for the record above: the line "merged-tree SHA unchanged -> 1a137719261af5b9e3c1d7fcb6
+ae95e8de3ce5b2" was true across 9328a5242 -> 297a21ea7 and is NOT true across 297a21ea7 ->
+59e898b31. A merged-tree SHA is a function of BOTH parents, so it is itself a moving coordinate.
+The earlier entry is left standing verbatim as the record of what was measured then; this entry
+supersedes only its SHA, not its verdict.
+
+$ git merge-tree --write-tree origin/develop HEAD
+2acdfbf8813809cb531bf0c66307393f3c0c57eb          <- was 1a13771926... at origin/develop 297a21ea7
+
+Both halves re-run against the CURRENT base. Both still PASS, with no edit to the criterion:
+
+$ git diff --exit-code --stat origin/develop...HEAD -- <the eight paths>
+(no output)
+exit=0                                   <- PASS  (today)
+
+$ git diff --exit-code --stat origin/develop 2acdfbf8813809cb531bf0c66307393f3c0c57eb -- <the eight paths>
+(no output)
+exit=0                                   <- PASS  (post-absorption)
+
+$ git ls-tree 2acdfbf8813809cb531bf0c66307393f3c0c57eb -- internal/template/evidence_citation_guard_test.go
+100644 blob 9b1970fe32f02b1873e2eb18c2b0d24c7cea4bc3	internal/template/evidence_citation_guard_test.go
+                                         <- still non-vacuous: present in the merged tree, absent
+                                            from this card's diff. Note the BLOB hash is identical
+                                            to the 297a21ea7 reading while the TREE hash moved --
+                                            the file did not change, the tree around it did. Cite
+                                            the blob, not the tree, when the claim is about a file.
+
+$ git diff --exit-code --stat origin/develop...HEAD -- .moai/specs/SPEC-IGNORED-EVIDENCE-CITATION-001/spec.md
+ .../SPEC-IGNORED-EVIDENCE-CITATION-001/spec.md     | 594 +++++++++++++++++++++
+ 1 file changed, 594 insertions(+)
+exit=1                                   <- RED-capability holds on the moved base too
+
+Net: two independent base moves (+5, then +9) in one card, neither fetched by this lane, and the
+criterion absorbed both with zero edits. A frozen SHA would have needed re-pinning twice.

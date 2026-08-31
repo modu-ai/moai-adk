@@ -7,3 +7,7 @@ $ git grep -c '\.moai/state/verify' -- <5 in-scope files>
 internal/cli/audit_pin_live_test.go:1
 internal/hook/evidence_writer_zeroexec_test.go:1
 exit=0
+
+--- iter5 re-verification (2026-08-31, HEAD 0e903d464) ---
+$ grep -l '\.moai/state/verify' <5 in-scope files> | xargs grep -LiE 'gitignored|does not resolve|not exported|machine-local|scratch'
+exit=0 (empty output above = PASS, unchanged by the iter5 SPEC-artifact corrections)

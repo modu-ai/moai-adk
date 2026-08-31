@@ -1,7 +1,7 @@
 ---
 id: SPEC-IGNORED-EVIDENCE-CITATION-001
 title: "Implementation plan — ignored evidence citation repair"
-version: "0.4.0"
+version: "0.5.0"
 created: 2026-08-31
 ---
 
@@ -33,10 +33,12 @@ Parallel card t375 (lane-8) owns the guard, the C4 instruction, and the files of
    landed, the question has an **owner to ask** rather than a moving document to wait on — but it is
    NOT resolved here. M1 keeps the conservative default below (§F M1 step 2): repair only the false
    assertion, which is the narrower change.
-3. **One treatment is conditional on a machine-local fact.** The repair for
-   `.moai/reports/template-skill-improvement-plan-20260710.html` depends on whether the `eb01063e`
-   scratch tree still exists on the authoring machine. The decision rule is written; the branch
-   taken is discovered at M3.
+3. **One treatment is conditional on whether a single file can be identified** — NOT on whether the
+   scratch tree exists. The repair for `.moai/reports/template-skill-improvement-plan-20260710.html`
+   turns on whether one file can be named that decided the claim (spec.md §C.3). It cannot: the
+   citation is the report's report-wide footer and the eight `eb01063e` JSONs are per-category batch
+   audits, so treatment (b) applies. Resolved at M3; see the correction note there for why a
+   tree-existence test both picks the wrong branch and answers differently in different trees.
 4. **The stale-coordinate hazard is recursive.** `e2e-lint-4paths.extract.txt` broke by citing a
    `.gitignore` line number. The repair should prefer removing the coordinate over updating it,
    or it breaks again the same way.
@@ -122,12 +124,31 @@ resolvability, which is the highest-consequence part of the diff.
   `.moai/state/verify/t341/` to an explicitly non-resolving origin note, stating that t341 decided
   not to export the raw captures. Keep the runner versions untouched. Record at the site that a
   single file cannot be named (REQ-IEC-005). Gates: AC-IEC-004, AC-IEC-005 spirit, AC-IEC-001.
-- `.moai/reports/template-skill-improvement-plan-20260710.html` — **branch on discovery**:
-  - if the `eb01063e` scratch tree exists on this machine → treatment (c): export the one JSON that
-    decided the claim into `.moai/reports/`, cite that file, drop the glob;
-  - if it does not → treatment (b): mark the raw data as never exported and not per-file nameable.
-    Silently keeping the glob is prohibited.
+- `.moai/reports/template-skill-improvement-plan-20260710.html` — **branch on identifiability**, per
+  spec.md §C.3 ("(c) if the file can be identified, otherwise (b)"):
+  - if a **single** file can be named that decided the claim → treatment (c): export that one file
+    into `.moai/reports/`, cite it, drop the glob;
+  - if no single file decides it → treatment (b): record at the site that the raw data was not
+    exported and cannot be named per-file. Silently keeping the glob is prohibited.
   Gates: AC-IEC-005, AC-IEC-004, AC-IEC-001.
+
+  > **iter5 correction — the branch test was wrong, and wrong in a way this card is about.** Earlier
+  > wording branched on whether the `eb01063e` scratch tree *exists on this machine*. That is not
+  > §C.3's test, and substituting it selects the wrong treatment here: the tree **does** exist (8
+  > files, 244K) — so a tree-existence test picks (c) — yet (c) is unavailable, because the citation
+  > is the report's **report-wide raw-data footer** and the eight JSONs are **per-category batch
+  > audits** (`domain`, `foundation-core`, `foundation-quality-thinking-moai`,
+  > `moai-subworkflows-team`, `ref-harness`, `workflow-project-worktree`,
+  > `workflow-spec-tdd-ddd-loop`, `workflow-testing`). No single one decides a report-wide claim, and
+  > exporting all eight is prohibited by REQ-ECC-004. Treatment (b) is correct.
+  >
+  > **The existence test is additionally unstable, which is the sharper reason to drop it.** It was
+  > measured in the **primary checkout** (`/Users/goos/MoAI/moai-adk-go/.moai/state/verify/eb01063e`);
+  > in *this* worktree the same path does not exist (`ls .moai/state/verify` → `No such file or
+  > directory`). `.moai/state/` is gitignored and therefore tree-local, so a plan branching on its
+  > existence answers differently depending on which tree runs it — a milestone gated on a
+  > non-resolving path, which is the exact defect class this SPEC exists to repair. Identifiability
+  > is a property of the evidence and does not vary by tree.
 
 ### M4 — Correct the recursive stale coordinate (Priority: Low · mechanical)
 

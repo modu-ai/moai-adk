@@ -1,7 +1,7 @@
 ---
 id: SPEC-IGNORED-EVIDENCE-CITATION-001
 title: "Acceptance criteria — ignored evidence citation repair"
-version: "0.4.0"
+version: "0.5.0"
 created: 2026-08-31
 updated: 2026-08-31
 ---
@@ -250,24 +250,51 @@ Observed today: `store.go:1`, `schema.go:1`, `store_test.go:3`, `events.go:1`,
 
 ### AC-IEC-007 — every t375-owned file is untouched (REQ-IEC-008)
 
-**Given** the t375-owned file list of spec.md §C.5 (path-corrected per iter2 D5),
-**When** their diff against the baseline is taken and the guard file's absence is checked,
-**Then** the diff is empty and the guard file does not exist.
+**Given** the t375-owned file list of spec.md §C.5, **including** the guard file
+`internal/template/evidence_citation_guard_test.go`,
+**When** this card's own diff over all eight paths is taken,
+**Then** it is empty — none of them appears in this card's changes.
 
 ```bash
-git diff --exit-code --stat origin/develop...HEAD -- .claude/rules/moai/core/agent-common-protocol.md .claude/rules/moai/core/agent-common-protocol-reference.md .claude/agents/moai/manager-lead.md internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md internal/template/templates/.claude/rules/moai/core/agent-common-protocol-reference.md internal/template/templates/.claude/agents/moai/manager-lead.md internal/template/templates/.codex/agents/moai/manager-lead.toml
+git diff --exit-code --stat origin/develop...HEAD -- .claude/rules/moai/core/agent-common-protocol.md .claude/rules/moai/core/agent-common-protocol-reference.md .claude/agents/moai/manager-lead.md internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md internal/template/templates/.claude/rules/moai/core/agent-common-protocol-reference.md internal/template/templates/.claude/agents/moai/manager-lead.md internal/template/templates/.codex/agents/moai/manager-lead.toml internal/template/evidence_citation_guard_test.go
 echo "exit=$?"
 ```
 
 Observed today: empty output, `exit=0`.
 
-```bash
-ls internal/template/evidence_citation_guard_test.go
-```
+PASS when the diff exits 0 with empty output. There is no second command: the guard file is now the
+eighth path of the same diff.
 
-Observed today: `No such file or directory`, `exit=1` (BSD `ls`; the PASS condition is the file being absent, not a numeric rc).
+> **iter5 correction — "absent from the tree" → "absent from this card's own diff".** The former
+> second half was `ls internal/template/evidence_citation_guard_test.go`, passing when the file was
+> absent. That asserted a property of **tree state**, which this card does not control, rather than of
+> **this card's diff**, which it does. t375 has landed and the file now exists in `origin/develop`
+> (`git cat-file -e origin/develop:internal/template/evidence_citation_guard_test.go` → rc 0), so the
+> `ls` form answered "absent" here and "present" after absorption — **the same question returning
+> different answers in different trees is not a passing criterion, it is an unjudged one**. Folding
+> the path into the three-dot diff asks the question the criterion was written to ask: *did this card
+> create or modify it?* This is the other half of the P3 hazard — P3's three-dot form fixed the diff
+> half, and file existence is not a diff, so it was not covered.
 
-PASS when the diff exits 0 with empty output **and** the `ls` reports the file absent.
+**Both states verified, without absorbing `origin/develop`** (measured 2026-08-31):
+
+| State | Command | Observed |
+|---|---|---|
+| Today | the eight-path diff above | empty, `exit=0` — **PASS** |
+| Post-absorption | `git merge-tree --write-tree origin/develop HEAD` → `1a137719261af5b9e3c1d7fcb6ae95e8de3ce5b2`, then `git diff --exit-code --stat origin/develop 1a13771926… -- <same eight paths>` | empty, `exit=0` — **PASS** |
+| Guard file genuinely present in that merged tree | `git ls-tree 1a13771926… -- internal/template/evidence_citation_guard_test.go` | `100644 blob 9b1970fe32f0…` — present, so the post-absorption PASS is the real "present in tree, absent from diff" case and not a vacuous match |
+| RED-capable | same three-dot form over a path this card **did** change (`spec.md`) | `1 file changed, 594 insertions(+)`, `exit=1` — the command can fail |
+
+`git merge-tree --write-tree` computes the merged tree **without performing the merge** and without
+touching the working tree, index, or `HEAD` — which is how the post-absorption case is verified while
+`origin/develop` stays unabsorbed (absorption belongs to the integration window).
+
+> **Unplanned moving-ref check, and it validates the form.** `origin/develop` advanced during iter5
+> from `9328a5242` to `297a21ea7` (+5 commits, card t377) through the shared object store, without
+> this lane fetching. Both checks were re-run against the moved ref and both still passed, with the
+> merged-tree SHA unchanged. The criterion absorbed a five-commit base move with no edit — which is
+> exactly what the three-dot form was adopted for, and what a frozen SHA would have required
+> re-pinning for a second time.
 
 > **iter2 D5 correction**: iter1 diffed the top-level `.codex/agents/moai/manager-lead.toml`, which
 > does not exist in this tree — `git ls-files '*manager-lead.toml'` returns exactly one path,

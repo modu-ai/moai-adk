@@ -212,8 +212,11 @@ never `.moai/state/` (REQ-IEC-007; the card would be self-refuting otherwise).
 | AC-IEC-005 | `grep -c 'skill-audit/\*' …html` / `grep -ciE 'not exported\|반출되지\|cannot be named\|식별 불가' …html` | `1` / `1` | **PASS** via the second branch (glob retained **with** an explicit inability marker — never silently) |
 | AC-IEC-006 | `git diff --exit-code --stat origin/develop...HEAD -- <8 carve-out files>` <!-- moving-ref-ok: the moving ref is the SUBJECT of the criterion, not its anchor. The three-dot form re-resolves merge-base(origin/develop, HEAD) at verification time; that is the iter4 P3 fix (acceptance.md §A). Pinning a SHA here reinstates the exact defect P3 removed — after absorbing origin/develop the frozen base reports t375's landed edits as this card's. Anchor: HEAD 3f03d9c36, merge base 3f03d9c369, run 2026-08-31. --> | *(empty)*, `exit=0` | **PASS** |
 | AC-IEC-006 positive control | `git grep -c '\.moai/state/verify' -- <carve-out paths>` | `1+1+3+1+1+1+3+1` = **12** | **PASS** (unchanged is not satisfied by deletion) |
-| AC-IEC-007 | `git diff --exit-code --stat origin/develop...HEAD -- <7 t375-owned paths>` <!-- moving-ref-ok: same as AC-IEC-006 — the three-dot merge-base resolution is the criterion's subject and must stay moving (iter4 P3). Anchor: HEAD 3f03d9c36, merge base 3f03d9c369, run 2026-08-31. --> | *(empty)*, `exit=0` | **PASS** |
-| AC-IEC-007 (guard file) | `ls internal/template/evidence_citation_guard_test.go` | `No such file or directory`, `exit=1` | **PASS** (absent, as required) |
+| AC-IEC-007 | `git diff --exit-code --stat origin/develop...HEAD -- <**8** t375-owned paths — the guard file folded in by the iter5 correction>` <!-- moving-ref-ok: same as AC-IEC-006 — the three-dot merge-base resolution is the criterion's subject and must stay moving (iter4 P3). Anchor: HEAD 0e903d464, merge base 3f03d9c369, re-run 2026-08-31 against origin/develop 59e898b31. --> | *(empty)*, `exit=0` | **PASS** |
+| AC-IEC-007 (post-absorption, verified WITHOUT absorbing) | `git merge-tree --write-tree origin/develop HEAD` → `2acdfbf88`, then `git diff --exit-code --stat origin/develop 2acdfbf88 -- <same 8 paths>` | *(empty)*, `exit=0` | **PASS** — the case the retired `ls` form would have FAILED |
+| AC-IEC-007 (non-vacuity) | `git ls-tree 2acdfbf88 -- internal/template/evidence_citation_guard_test.go` | `100644 blob 9b1970fe32f0…` | **PASS is real** — present in the merged tree, absent from this card's diff |
+| AC-IEC-007 (RED-capability) | same three-dot form over a path this card **did** change (`spec.md`) | `1 file changed, 594 insertions(+)`, `exit=1` | **can fail** — not a vacuously-empty command |
+| ~~AC-IEC-007 (guard file, RETIRED iter5)~~ | ~~`ls internal/template/evidence_citation_guard_test.go`~~ | ~~`No such file or directory`, `exit=1`~~ | **SUPERSEDED** — asserted tree state, not this card's diff; see §E.2 record 1 |
 | AC-IEC-010 | `ls <ten named evidence files>` / `git check-ignore -v .moai/reports/t381/verify` / `ls .moai/state/verify` | all ten listed, `exit=0` / `exit=1` (**not** ignored) / `No such file or directory` | **PASS** (all three sub-checks) |
 | AC-IEC-011 | `go build ./internal/cli/... ./internal/hook/...` | `exit=0` | **PASS** |
 | AC-IEC-011 | `go test ./internal/cli/... ./internal/hook/...` | 28 packages `ok` (`internal/cli` 473.9s, `internal/hook` 83.7s), `exit=0`, `grep -c FAIL` = `0` | **PASS** |
@@ -240,6 +243,98 @@ never `.moai/state/` (REQ-IEC-007; the card would be self-refuting otherwise).
 The lint binary was **built from this tree** (`make build` → `bin/moai`, `BuildID
 v3.1.2-943-g3f03d9c36-dirty`) and invoked as `./bin/moai`. A PATH-resolved binary may predate the
 rules in this tree, and a green from it would mean nothing.
+
+### Post-run corrections (iter5) — four records
+
+manager-spec corrected `spec.md` / `plan.md` / `acceptance.md` after the run-phase commits landed.
+These four records are what run-phase owes the record; they are defects this card produced or
+judgments it made, not commentary.
+
+#### Record 1 — the unjudged-criterion distinction (P3's uncovered half)
+
+AC-IEC-007's second half used to require `internal/template/evidence_citation_guard_test.go` to be
+**absent from the tree**, as evidence that this card did not create t375's guard file. t375 landed
+that file into `origin/develop` (`46d27faa9` / `2b00bf0b4`), so absorbing would have failed the
+criterion for a file this card never touched.
+
+I first raised it as an open hazard rather than fixing it, on the ground that AC-IEC-007 was passing
+and passing criteria should not be rewritten. **The operator overturned that premise**, and the
+reasoning is the record:
+
+> The stop rule protects a criterion passing **on its judgment**. This half passed because this
+> worktree happens not to contain that file, while develop does. **A criterion whose answer flips
+> when you change trees is not passing — it is unjudged.**
+
+So the fix is not a rewrite of a passing criterion; it repairs an unjudged one to measure what it
+was written to measure. The guard file is now simply the eighth path of the same three-dot diff,
+changing the question from *is it absent from the tree* to *is it absent from this card's own diff*
+— a property this card controls.
+
+**This is the half of the P3 hazard that P3 could not reach.** P3 replaced a frozen SHA with the
+three-dot form, which fixed every criterion decided by a **diff**. File existence is not a diff, so
+the `ls` half sat outside P3's reach and kept the original defect in a different shape. A repair
+that fixes a hazard on one axis and leaves the same hazard standing on another is the same
+stop-at-the-boundary form recorded in rule 4 below.
+
+#### Record 2 — this card's own milestone branched on the defect it repairs
+
+`plan.md` M3 keyed the html treatment on whether the `.moai/state/verify/eb01063e` scratch tree
+**exists**. Measured, both directions:
+
+```
+$ ls -d /Users/goos/MoAI/moai-adk-go/.moai/state/verify/eb01063e   → exists (8 files, 244K)
+$ ls .moai/state/verify                                            → No such file or directory
+```
+
+The same test answers **(c) in the primary checkout and (b) in this worktree**. `.moai/state/` is
+gitignored and therefore tree-local, so a milestone gated on its existence is a milestone gated on
+a non-resolving path — precisely the defect class this SPEC exists to repair, committed by the SPEC's
+own plan. Identifiability — the discriminator `spec.md` §C.3 states correctly — is a property of the
+**evidence**, not of the tree asking, so it does not vary. It also selects the right branch here
+independently: the tree exists, yet no single file decides a report-wide footer drawn from eight
+per-category batch audits.
+
+**Provenance, stated honestly rather than as a clean catch.** I relayed that tree's existence to the
+lead **without carrying which tree measured it** — the same defect the lead had just flagged in my
+own reporting, committed in the act of reporting the correction. The correction is stronger for
+having been found that way: it was caught because the missing tree-attribution made the reading
+ambiguous, which is the mechanism working, not the author being careful.
+
+#### Record 3 — why the first commit carries the whole lifecycle
+
+`ee77a6c88` carries `(none) → draft → in-progress`, so **no `draft → in-progress` edge appears in
+git history**. The reason, stated next to the fact so a later auditor does not read the missing edge
+as a lost transition: the plan phase never committed — both `.moai/specs/SPEC-IGNORED-EVIDENCE-CITATION-001/`
+and `.moai/reports/t381/` were untracked at run-phase entry (`git status` showed two `??` lines), so
+the run-phase commit is also the SPEC's first commit.
+
+A retroactive split was rejected. Reconstructing a plan-phase commit that never happened would
+fabricate the record — the same hazard as rule 3 below, which forbids rewriting the record of a past
+judgment. **The operator approved this explicitly.**
+
+#### Record 4 — a moving base validated the three-dot choice, twice, by accident
+
+`origin/develop` advanced **during** the session through the shared object store, with this lane
+never fetching — and it did so twice:
+
+```
+9328a5242  (iter3/iter4)  →  297a21ea7  (+5, card t377)  →  59e898b31  (+9 more)
+```
+
+Every three-dot measurement survived both moves **with no edit to any criterion**. A frozen SHA
+would have needed re-pinning twice in a single card. This is measured evidence for the P3 decision,
+not an anecdote: the base moved on its own and the criteria that re-resolve their merge base kept
+answering, while the one criterion that asserted fixed tree state (record 1) is exactly the one that
+broke.
+
+**One figure did move, and the record says so.** manager-spec's iter5 note recorded "the merged-tree
+SHA unchanged → `1a137719…`" — true across `9328a5242 → 297a21ea7`, false across
+`297a21ea7 → 59e898b31`, where the merged tree is now `2acdfbf88`. A merged-tree SHA is a function
+of **both** parents, so it is itself a moving coordinate and cannot be quoted as a stable one. The
+`ac-iec-007.txt` entry is **appended to, never rewritten**: the earlier reading stands as the record
+of what was measured then, and the appended entry supersedes only its SHA, not its verdict. Note the
+useful split the re-measurement exposes — the guard file's **blob** hash is identical across both
+bases (`9b1970fe32f0…`) while the **tree** hash moved. When the claim is about a file, cite the blob.
 
 ### The four rules this card earned
 
@@ -302,7 +397,7 @@ scope.
 
 ```yaml
 run_complete_at: 2026-08-31
-run_commit_sha: ee77a6c88   # backfilled: a commit cannot name its own hash
+run_commit_sha: ee77a6c88   # the M1-M5 commit; backfilled in 343bb4bd4 because a commit cannot name its own hash. Later run-phase commits on this branch: 343bb4bd4 (backfill), 0e903d464 (header reflow), plus the iter5 post-run correction commit that carries this line.
 run_status: complete
 ac_pass_count: 10
 ac_fail_count: 0
@@ -316,7 +411,7 @@ cross_platform_build:
   windows_amd64: not-run             # comment-only diff, no syscall surface touched; CI owns the matrix
   status: scoped-to-change
 total_run_phase_files: 5             # the 5 in-scope citation files; + this SPEC directory and .moai/reports/t381/ (both first-commit)
-m1_to_mN_commit_strategy: "ONE commit carrying M1-M5. The plan phase never committed — the SPEC directory and .moai/reports/t381/ were both untracked at run-phase entry (git status: two '??' lines) — so this commit is also the SPEC's first. It therefore carries (none) -> draft -> in-progress and lands at in-progress; no draft->in-progress edge appears in git history, because no draft commit ever existed. A retroactive split was rejected: reconstructing a plan-phase commit that never happened would fabricate the record, which is the same hazard as rule 3 (never rewrite the record of a past judgment). Flagged for the lead."
+m1_to_mN_commit_strategy: "M1-M5 landed as ONE commit (ee77a6c88), followed by two mechanical commits (343bb4bd4 SHA backfill, 0e903d464 header reflow) and one iter5 post-run correction commit. The M1-M5 commit is also the SPEC's FIRST commit: the plan phase never committed — the SPEC directory and .moai/reports/t381/ were both untracked at run-phase entry (git status: two '??' lines) — so it carries (none) -> draft -> in-progress and lands at in-progress, and NO draft->in-progress edge appears in git history because no draft commit ever existed. A retroactive split was rejected: reconstructing a plan-phase commit that never happened would fabricate the record, the same hazard as rule 3 (never rewrite the record of a past judgment). Operator-approved explicitly; see §E.2 record 3."
 ```
 
 ### Residual risk
