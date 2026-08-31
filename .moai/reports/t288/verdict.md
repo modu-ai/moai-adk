@@ -105,6 +105,28 @@ $ golangci-lint run ./internal/cli/...  → 0 issues.
 
 즉 조건 타입 오분류를 고쳐도 워크트리 분열은 그대로 남고, 그 반대도 마찬가지입니다. **범위를 넓히지 않았습니다** — 별도 카드 소관으로 보고합니다.
 
+## 6b. 통합 창 재측정 (병합 트리)
+
+창 지명 후 lane-9 단독으로 `origin/develop` `f94326b4c` 를 흡수했습니다. 카드 기준(`1e5199b88`)에서 develop 이 다섯 번 움직인 뒤라 흡수량이 30커밋입니다.
+
+- 창 안 재측정: `git rev-list --count --left-right origin/develop...HEAD` → `30 2` (흡수 전) → `0 3` (흡수 후, 병합 커밋 `23054f9f0`)
+- 충돌 1건: `CHANGELOG.md` — 양쪽 모두 `### Fixed` 최상단에 추가. **양쪽 보존**(t288 항목 먼저, t286/t369 항목 이어서). 다른 파일 충돌 0.
+- **판정 도구 출처를 병합 트리로 고정**: `make build` 재실행 (`BuildID=v3.1.2-896-g23054f9f0`). PATH 설치본으로는 재지 않았습니다. 빌드 후 워킹트리 dirty 0.
+
+병합 트리 측정값:
+
+```
+$ go test ./internal/cli/... ./internal/goal/... -count=1 -timeout 900s   → exit 0, 18/18 ok
+  internal/cli 292.989s  (흡수 전 331.449s)
+  전문: .moai/reports/t288/merged-tree-tests.txt
+$ go vet ./internal/cli/            → 출력 없음
+$ ./bin/moai spec lint              → 0 error(s), 1091 warning(s)   [로컬 라벨; CI 는 -19 = 1072 (t371 소관)]
+```
+
+SPEC Lint error 0 은 리드가 준 기대값(lane-4·lane-6·lane-8 병합 트리 일치값)과 같습니다.
+
+**Graph Freshness 분모 구별**: 이 카드 자체 기여분은 `origin/develop...HEAD` 직접 측정으로 **5 파일**(Go 2, CHANGELOG 1, 증거 2)입니다. 흡수 병합 후 도구가 내는 `contribution:` 줄은 first parent 기준이라 **흡수분**을 세므로 이 수와 더하거나 같게 읽으면 안 됩니다. codemaps 재생성은 하지 않았습니다(배치 끝 일괄).
+
 ## 7. Gaps / 잔여 위험
 
 - **Gaps**: CI 미판독(이 카드는 아직 push 전). darwin 로컬 단일 플랫폼에서만 측정 — windows/linux 미관측. `moai` 바이너리 재빌드/재설치 후 실경로 arm 은 하지 않음(격리 의무 준수).
