@@ -2,7 +2,6 @@
 id: SPEC-INTEGRATION-LOCK-ATOMIC-001
 title: "Acceptance criteria — integration lock mutation atomicity (card t336)"
 version: "0.1.2"
-status: in-progress
 created: 2026-08-29
 updated: 2026-08-30
 author: manager-spec
