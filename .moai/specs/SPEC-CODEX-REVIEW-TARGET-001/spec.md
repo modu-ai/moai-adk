@@ -2,7 +2,7 @@
 id: SPEC-CODEX-REVIEW-TARGET-001
 title: "codex native review/start 의 target 객체를 스키마 계약대로 채운다"
 version: "0.3.0"
-status: in-progress
+status: completed
 created: 2026-09-01
 updated: 2026-09-01
 author: manager-spec

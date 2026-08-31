@@ -126,4 +126,61 @@ operator_decision_pending: "plan.md §B (가)/(나) — (가)로 진행. 운영�
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+### 착지한 sync-phase 변경
+
+| 파일 | 변경 |
+|---|---|
+| `CHANGELOG.md` | `[Unreleased] → Fixed` 최상단 항목. 이슈 #1632 링크, 라이브 왕복 관측(예측→관측 전환), variant 인지형 조립, 서버 해석, §A.7 정렬 결정, 미해결 축(t284 · 정책 질문) 명시 |
+| `.claude/skills/moai-ref-cross-model-audit/SKILL.md` | `target` 행의 "Passed through unchanged" 가 codex 쪽 서버 해석을 가림 — 문자열이 두 백엔드에 그대로 닿되 codex 는 그 뒤 브랜치 이름을 서버에서 해석한다는 절 추가 |
+| `internal/template/templates/.claude/skills/moai-ref-cross-model-audit/SKILL.md` | 위의 템플릿 미러 (Template-First) |
+| `internal/template/catalog.yaml` | `make build` 재생성 — 위 스킬 1행 hash 만 변경 |
+| `.moai/reports/t399/issue-reply.md` | #1632 회신 초안 (신규, 미게시 — 게시는 리드 몫). DoD 6 의 3상태 구별 + 제보 5항목 재측정 상태 표 포함 |
+| `spec.md` frontmatter | `status: in-progress → completed`, `updated: 2026-09-01` |
+| `progress.md` | 이 §E.4 |
+
+### 문서 스윕 결과 (근거 포함)
+
+- **docs-site · README: 해당 없음.** `grep -rn 'baseBranch\|uncommittedChanges' README.md README.ko.md README.ja.md README.zh.md docs-site/content/` → **0 히트**. 4개 README 와 8개 docs-site 페이지가 `codex_audit` 를 언급하지만 전부 도구 카탈로그 행 / `project_root` 절 / fail-open 절이며, `target` 파라미터의 값이나 그 의미를 서술하는 문장은 어디에도 없다. 따라서 4-locale 의무가 발동할 문서가 없고 **아무것도 고치지 않았다** — 이것이 스윕의 결과이지 스윕을 건너뛴 것이 아니다.
+- **스킬 표면: 2건 중 1건 변경.** `.claude/skills/moai/workflows/review.md:179` 은 리뷰 범위 → `target` 값 매핑(`--branch B` → `baseBranch`)이며 이 변경에 영향받지 않는다(값 자체는 그대로). `moai-ref-cross-model-audit/SKILL.md:64` 만 갱신했다.
+- **범위 밖으로 남긴 관측 1건**: `docs-site/content/{en,ko,ja,zh}/guides/mcp-server.md` 가 `project_root` 를 받는 도구를 **6개**로 적는데, `.claude/rules/moai/core/moai-mcp-tools.md` 는 **9개**로 적는다. 이 카드와 무관한 별개 드리프트이므로 손대지 않았다. 후속 카드 재료.
+
+### 템플릿 미러 검사 결과
+
+- run-phase 변경 4파일은 전부 `internal/cli/` — `find internal/template/templates -name 'mcp_*'` → **0 히트**. 템플릿은 Go 소스를 미러하지 않으므로 **미러 대상 없음**.
+- sync-phase 가 만든 미러 의무는 스킬 1건뿐이며 위 표대로 이행 + `make build` 로 `catalog.yaml` 재생성.
+
+### B12 CHANGELOG 방출 자가검사
+
+| 검사 | 명령 | 관측 |
+|---|---|---|
+| 중복 방출 | `grep -c 'SPEC-CODEX-REVIEW-TARGET-001' CHANGELOG.md` | `0` (방출 전) — 중복 없음 |
+| AC 수 일치 | `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md \| sort -u \| wc -l` | `10`. **0 아님(공허 아님).** 정본은 **11** — 정규식이 `AC-CRT-006b` 의 후행 문자를 못 잡아 `006` 으로 접기 때문이며, `grep -c 'AC-CRT-006b'` → `2` 로 그 항목의 실재를 별도 확인했다. §E.3 의 `ac_pass_count: 11` 과 CHANGELOG 본문의 "Eleven acceptance criteria" 가 일치 |
+| 파일 경로 실재 | `ls` (6경로) | CHANGELOG 가 인용하는 `internal/cli/mcp_codex.go` · `mcp_review_material.go` · `mcp_server.go` · `.moai/reports/t399/red/live-roundtrip-red.txt` · 신규 테스트 2본 전부 실재 |
+
+### 이 세션이 관측하지 않은 것
+
+- 테스트를 재실행하지 않았다. §E.3 의 빌드·vet·테스트·lint 수치와 라이브 왕복 관측은 **run-phase 및 리드의 독립 검증이 이번 실행에서 얻은 것**을 인용한 것이며 sync-phase 의 재측정이 아니다. 이 세션의 변경은 CHANGELOG·스킬 문서·SPEC 산출물뿐이라 Go 동작을 건드리지 않는다(단, `make build` 는 exit 0 으로 컴파일을 관측했다).
+- CI 판정. push 하지 않았으므로 이 커밋에 대한 CI 는 존재하지 않는다.
+- #1632 회신은 **작성만 했고 게시하지 않았다.**
+
+```yaml
+sync_complete_at: 2026-09-01
+sync_commit_sha: <this-commit>
+sync_status: complete
+b12_self_test_a: "grep -c 'SPEC-CODEX-REVIEW-TARGET-001' CHANGELOG.md → 0 (pre-emission); no duplicate"
+b12_self_test_b: "AC regex count 10 (non-zero); canonical 11 — regex folds AC-CRT-006b into 006, verified separately via grep -c 'AC-CRT-006b' → 2. Matches §E.3 ac_pass_count: 11"
+b12_self_test_c: "ls over all 6 CHANGELOG-cited paths → all exist"
+changelog_entry_position: "[Unreleased] → ### Fixed, first item"
+docs_sweep: "docs-site + README: 0 hits for baseBranch/uncommittedChanges → nothing stale, nothing changed. Skills: 1 of 2 updated (moai-ref-cross-model-audit); review.md unaffected"
+template_mirror: "run-phase files are all internal/cli/ → no template mirror exists (find → 0 hits). sync-phase skill edit mirrored + catalog.yaml regenerated via make build"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (updated: 2026-09-01)"
+  plan_md: "no status/updated fields in frontmatter — nothing to transition (id/title/version/created only)"
+  acceptance_md: "no status/updated fields in frontmatter — nothing to transition (id/title/version/created only)"
+  progress_md: "no frontmatter block — nothing to transition"
+mx_tag_validation: "no @MX annotation added or changed; sync-phase touched no Go source"
+canary_compliance_check: not-applicable
+push_state: "not pushed — integration is a lead-granted window (per dispatch constraints)"
+issue_reply: ".moai/reports/t399/issue-reply.md (drafted, NOT posted)"
+```
+
