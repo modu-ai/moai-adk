@@ -302,7 +302,7 @@ scope.
 
 ```yaml
 run_complete_at: 2026-08-31
-run_commit_sha: pending-backfill-m1
+run_commit_sha: ee77a6c88   # backfilled: a commit cannot name its own hash
 run_status: complete
 ac_pass_count: 10
 ac_fail_count: 0
