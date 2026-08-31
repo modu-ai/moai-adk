@@ -1,0 +1,6 @@
+--- FAIL: TestSyncSHASlot_SilentOnSHA (1.60s)
+    lint_syncsha_test.go:140: sha-full: expected 0 findings on a well-formed SHA, got 1: [{testdata/syncsha/sha-full/progress.md 9 warning SyncSHASlotFormat `sync_commit_sha` holds "a6bbbf82b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6", which is neither a commit SHA nor a recognized backfill placeholder, so no close will be triggered to repair it and no reader can tell what the slot was meant to say. Write the commit SHA that carried the sync phase, or — while the backfill is genuinely still owed — the canonical placeholder `pending-backfill` (a `-`-suffixed member of that family, e.g. `pending-backfill-sync`, is equally admitted). A trailing annotation after the value is ignored and needs no removal. false}]
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	3.652s
+FAIL
+exit_code: 1
