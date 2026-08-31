@@ -26,7 +26,7 @@ Auto memory (level 6 above) is a native Claude Code feature (requires v2.1.59 or
 | Default | ON. Disable via the `/memory` toggle, `autoMemoryEnabled: false` in settings.json (any scope), or env `CLAUDE_CODE_DISABLE_AUTO_MEMORY=1` |
 | Storage | `~/.claude/projects/<project>/memory/`. The `<project>` path is derived from the **git repository root**, so all worktrees and subdirectories of the same repo share ONE memory directory. Outside a git repo, the project root is used |
 | Override | `autoMemoryDirectory` in settings.json (absolute or `~/` path; honored only after the workspace trust dialog) |
-| Index loading | `MEMORY.md` is loaded every session — the first **200 lines OR 25KB, whichever comes first**. Content beyond either limit is not loaded at session start |
+| Index loading | `MEMORY.md` is loaded at the start of every session. A large index is truncated at some point, but **the cut's shape is not settled** — re-measure rather than quoting a figure. See § MEMORY.md Index Budget |
 | Topic files | `debugging.md`, `api-conventions.md`, etc. are NOT loaded at startup; Claude reads them on demand. They are plain markdown with **no mandated frontmatter schema** |
 | Subagents | Subagents can maintain their own auto memory (see the Claude Code sub-agents documentation) |
 | Inspect | `/memory` lists the loaded CLAUDE.md and rules files, toggles auto memory, and links to the auto-memory folder |
@@ -112,9 +112,64 @@ The type set is immutable — no types beyond these four are accepted.
 
 Files of type `user` and `reference` do not require this structure.
 
-### MEMORY.md Line Cap
+### MEMORY.md Index Budget
 
-`MEMORY.md` (the auto-memory index) is loaded each session up to the first **200 lines OR 25KB, whichever the Claude Code loader reaches first**. Content beyond either limit is silently truncated at session start — entries past the cap are NOT loaded. Keep each entry to a single line under 150 characters, and archive older entries so the index stays within both the 200-line and 25KB limits.
+`MEMORY.md` (the auto-memory index) is loaded at the start of every session, and a sufficiently
+large index is truncated. **The cut's shape is not asserted here.** The loader is not part of this
+repository, so its behaviour cannot be read from source, and a figure written into doctrine cannot
+be re-measured by the reader who later relies on it. Measure your own store instead:
+
+```bash
+# `moai memory doctor` reports every candidate store it resolved, and whether each exists.
+# Pass the resolved path back with --dir, and read a count only when the JSON says exists: true.
+moai memory doctor
+moai memory doctor --json --dir "<the store path the line above printed>"
+```
+
+Keep each index entry to a single line, short enough to scan.
+
+#### Compressing the index means making entries shorter — never fewer
+
+[HARD] When the index needs to shrink, rewrite entries to be **shorter**. Do **not** remove an
+entry, and do not fold several entries into one grouped line to save space.
+
+Removing an index entry does not archive its topic file; it makes that file **unreadable to every
+future session**. Topic files are loaded on demand and are discovered *only* through the index, so
+an unindexed file is not "still there for later" — it is unreachable. A shorter entry costs a few
+characters of detail; a removed entry costs the whole memory.
+
+Two consequences worth stating because both have been observed:
+
+- **A dead index line is worse than a long one.** An entry pointing at a file that is not in the
+  store gives a session nothing at all, not a degraded result. Repair the direction that restores
+  reachability — put the file back — never the one that deletes the line.
+- **Entry-count metrics do not see grouped lines.** A count of `^- \[`-anchored lines misses link
+  targets carried on other line shapes, so folding entries into a grouped line can delete live
+  references while the count reports no change. When measuring before and after an index edit,
+  count unique link targets file-wide as well as anchored entry lines, and treat a decrease in
+  **either** as a failure rather than a saving.
+
+#### Two stores, and only one of them is loaded
+
+[HARD] More than one memory store can exist for the same project, and a session loads exactly one
+of them. The other is invisible from the index alone: its files are absent from the loaded store,
+so every index line naming one reads as a broken link with no indication that the file exists
+elsewhere and could simply be copied back.
+
+`moai memory doctor` is the tool that surfaces this — it enumerates **every** candidate store, not
+just the active one, and reports `exists`, the topic-file count, and the index-line count for each.
+
+[HARD] Two rules bind every reading taken from it:
+
+- **Always pass `--dir`.** A bare invocation resolves the store path for itself, and the resolved
+  path is observably sensitive to where the command is run from: invoked from a worktree or another
+  subdirectory, it can resolve a store that does not exist. Run the bare form once to see which
+  paths it resolved, then pass the one you mean back with `--dir`. (Exactly how the path is derived
+  is not settled — this file's own description of the derivation and the observed behaviour do not
+  agree, so rely on what the tool reports rather than on either account.)
+- **Check `exists: true` and a non-zero index-line count before reading any finding count.** An
+  absent store reports zero findings. That zero means *nothing was measured*, not that nothing is
+  wrong, and it will otherwise satisfy a check written to look for zero.
 
 ### Excluded Categories
 
@@ -172,8 +227,8 @@ These operating rules prevent the memory store from degrading into an unread, ov
 
 **Topic-file `description` is a one-line recall summary.** Keep each `description:` under ~150 characters. It is the string the recall layer matches against — a long description defeats relevance matching; an empty one defeats discovery. If a topic needs more detail, put it in the body, not the description.
 
-**MEMORY.md index is the discovery surface.** Every active topic file SHOULD have a one-line entry in `MEMORY.md` (`- [title](file) — short-summary`), because topic files are loaded on demand — an index entry is how a future session discovers the file exists. When the index approaches the 200-line / 25KB ceiling, prefer promoting the most-recent active topics over retaining stale ones.
+**MEMORY.md index is the discovery surface.** Every active topic file SHOULD have a one-line entry in `MEMORY.md` (`- [title](file) — short-summary`), because topic files are loaded on demand — an index entry is how a future session discovers the file exists. When the index grows long, shorten entries rather than dropping them (§ Compressing the index means making entries shorter — never fewer).
 
-**MEMORY.md diet procedure (when the index exceeds limits).** Rewrite each entry as `[title](file) — <topic description>` (single line, ≤~150 chars), drawing the summary from the topic file's `description` field. The body of detail belongs in the topic file, NOT the index entry. This collapses oversized index entries without losing information.
+**MEMORY.md diet procedure (when the index grows long).** Rewrite each entry as `[title](file) — <topic description>` (single line, ≤~150 chars), drawing the summary from the topic file's `description` field. The body of detail belongs in the topic file, NOT the index entry. This collapses oversized index entries without losing information — which is the point: the procedure shortens entries and keeps every one of them.
 
 **Stale completed records move to `_archive/`, never deleted.** When a topic is a completed/superseded one-time incident with no ongoing relevance, move the file into a `memory/_archive/` subdirectory (reversible) and drop its index entry. Do NOT delete — archive preserves the audit trail. Conservatively keep anything that holds an enduring lesson.

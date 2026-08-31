@@ -148,9 +148,16 @@ Rules:
 Capture and reuse learnings from user corrections and agent failures across sessions.
 
 - When the user corrects agent behavior, capture the pattern in auto-memory as a topic file — one
-  fact per `feedback_*.md` under `~/.claude/projects/{project-hash}/memory/`, indexed by
-  `MEMORY.md`. That convention is the single designated lesson store; the legacy `lessons.md` is
-  superseded.
+  fact per `feedback_*.md` in the project's auto-memory store (resolve it with
+  `moai memory doctor`), indexed by `MEMORY.md`. That convention is the single designated lesson
+  store; the legacy `lessons.md` is superseded.
+- [ZONE:Evolvable] [HARD] **A long index never justifies dropping a lesson.** Write the topic file
+  **and** its `MEMORY.md` index line — both, always. Not "write the file, skip the index line": a
+  topic file loads on demand and is found only through the index, so an unindexed one is
+  unreachable, not merely unlisted. Not "skip the lesson": that loss is permanent and silent. If
+  the index must shrink, make entries shorter, never fewer — see
+  `.claude/rules/moai/workflow/moai-memory.md` § MEMORY.md Index Budget, which states no loading
+  limit and tells you to measure with `moai memory doctor` instead of estimating.
 - Each entry records category, the incorrect pattern, the correct approach, and the date. Review
   the relevant ones before starting work in the same domain.
 - Lessons are additive: never overwrite one — append corrections as updates, and supersede by

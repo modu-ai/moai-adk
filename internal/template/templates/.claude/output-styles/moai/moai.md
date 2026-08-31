@@ -162,7 +162,7 @@ If everything's been "smooth" for a long stretch and no gate has rejected anythi
 
 This is the 2026 Anthropic-recommended persistence pattern for agentic coding.
 
-> Note: the memory directory (`~/.claude/projects/{hash}/memory/`) is a **native Claude Code auto-memory feature** (v2.1.59+, toggled via `/memory` or `autoMemoryEnabled`), not a MoAI-proprietary store. This section covers MoAI's session-handoff and persistence usage of it. For the feature itself (storage derivation, MEMORY.md 200-line/25KB loading, topic files), see `.claude/rules/moai/workflow/moai-memory.md` § Official Claude Code Auto-Memory Feature.
+> Note: the memory directory is a **native Claude Code auto-memory feature** (v2.1.59+, toggled via `/memory` or `autoMemoryEnabled`), not a MoAI-proprietary store. Resolve its location with `moai memory doctor`, which reports every candidate store and whether each exists, rather than assuming a literal path — more than one store can exist for a project and only one of them is loaded. This section covers MoAI's session-handoff and persistence usage of it. For the feature itself (storage derivation, index loading and its budget, topic files), see `.claude/rules/moai/workflow/moai-memory.md` § Official Claude Code Auto-Memory Feature.
 
 ### Session Boundary Handoff [HARD]
 

@@ -217,9 +217,9 @@ func TestAlwaysLoadedSurfaceEnumeration(t *testing.T) {
 	}
 
 	wantRuleCount := countNoPathsRuleFiles(t, root)
-	wantTotal := wantRuleCount + 4 // + CLAUDE.md + AGENTS.md + moai.md + MEMORY.md fixed slots
+	wantTotal := wantRuleCount + 3 // + CLAUDE.md + AGENTS.md + moai.md fixed slots
 	if len(surface) != wantTotal {
-		t.Errorf("surface has %d entries, want %d (= %d no-paths: rules + 4 fixed surfaces)", len(surface), wantTotal, wantRuleCount)
+		t.Errorf("surface has %d entries, want %d (= %d no-paths: rules + 3 fixed surfaces)", len(surface), wantTotal, wantRuleCount)
 	}
 
 	// AC-TEF-004: a known paths:-scoped rule (languages/go.md carries a paths:
@@ -282,16 +282,14 @@ func TestHasPathsRestriction(t *testing.T) {
 	}
 }
 
-// TestMeasureAlwaysLoaded_WithMemory verifies measureAlwaysLoaded sums the
-// no-paths: rule + fixed surfaces, applies the MEMORY.md head cap, and treats a
-// paths:-scoped rule as excluded — on a synthetic hermetic repo.
-func TestMeasureAlwaysLoaded_WithMemory(t *testing.T) {
+// TestMeasureAlwaysLoaded verifies measureAlwaysLoaded sums the no-paths: rule +
+// fixed surfaces and treats a paths:-scoped rule as excluded — on a synthetic
+// hermetic repo.
+func TestMeasureAlwaysLoaded(t *testing.T) {
 	root := t.TempDir()
 	// Fixed surfaces.
 	writeFile(t, filepath.Join(root, "CLAUDE.md"), strings.Repeat("a", 400))                                   // 100 tokens
 	writeFile(t, filepath.Join(root, ".claude", "output-styles", "moai", "moai.md"), strings.Repeat("b", 800)) // 200 tokens
-	// MEMORY.md with a body far exceeding the 25KB byte cap → head-capped.
-	writeFile(t, filepath.Join(root, "MEMORY.md"), strings.Repeat("m", 40*1024))
 	// One no-paths: rule (counted) + one paths:-scoped rule (excluded).
 	writeFile(t, filepath.Join(root, ".claude", "rules", "moai", "core", "keep.md"), "---\ntitle: x\n---\n"+strings.Repeat("c", 400)) // ~100+ tokens
 	writeFile(t, filepath.Join(root, ".claude", "rules", "moai", "languages", "scoped.md"), "---\npaths: \"**/*.go\"\n---\n"+strings.Repeat("d", 4000))
@@ -300,20 +298,18 @@ func TestMeasureAlwaysLoaded_WithMemory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("measureAlwaysLoaded: %v", err)
 	}
-	// Enumeration: 1 no-paths: rule + 4 fixed slots = 5. AGENTS.md is absent from this
+	// Enumeration: 1 no-paths: rule + 3 fixed slots = 4. AGENTS.md is absent from this
 	// temp tree and contributes 0 tokens (hermetic), but is still enumerated.
-	if len(surface) != 5 {
-		t.Errorf("surface len = %d, want 5 (1 no-paths: rule + 4 fixed)", len(surface))
+	if len(surface) != 4 {
+		t.Errorf("surface len = %d, want 4 (1 no-paths: rule + 3 fixed)", len(surface))
 	}
-	// MEMORY.md contributes head-capped tokens (25KB/4 = 6400), NOT the full 40KB.
-	memHeadTokens := memoryHeadByteCap / 4
-	// Lower bound: CLAUDE(100) + moai(200) + memHead(6400) = 6700, plus the rule.
-	if total < 100+200+memHeadTokens {
-		t.Errorf("total = %d, want ≥ %d (MEMORY.md head cap applied)", total, 100+200+memHeadTokens)
+	// Lower bound: CLAUDE(100) + moai(200), plus the rule.
+	if total < 100+200 {
+		t.Errorf("total = %d, want ≥ %d", total, 100+200)
 	}
-	// Upper bound guard: total must NOT include the full 40KB MEMORY.md (10240 tokens).
-	if total >= 100+200+(40*1024/4) {
-		t.Errorf("total = %d includes uncapped MEMORY.md; head cap not applied", total)
+	// Upper bound guard: the paths:-scoped rule (1000 tokens) must NOT be counted.
+	if total >= 100+200+1000 {
+		t.Errorf("total = %d includes the paths:-scoped rule; exclusion not applied", total)
 	}
 }
 
@@ -342,24 +338,48 @@ func TestEstimateTokens(t *testing.T) {
 	}
 }
 
-// TestMemoryHead verifies the MEMORY.md head cap (200 lines OR 25KB, whichever
-// first) matching the Claude Code auto-memory loader.
-func TestMemoryHead(t *testing.T) {
-	// 300 short lines → capped at 200 lines.
-	var b strings.Builder
-	for i := 0; i < 300; i++ {
-		b.WriteString("line\n")
+// TestFixedSlotsExistInRepoTree asserts that every FIXED surface slot names a path
+// that is PRESENT in this repository tree (REQ-MSR-006).
+//
+// Why this test exists. A fixed slot naming a path absent from this repository
+// measures nothing here, forever — it contributes 0 tokens on every run while
+// appearing in the enumeration as though it were being watched. That is what the
+// removed MEMORY.md slot did, and the reason it went unnoticed for so long is that
+// the hermetic temp-tree tests supplied their own fixture, so the vacuity was
+// invisible to the suite.
+//
+// Enumeration vs measurement. The guard's own doc comment says fixed slots are
+// enumerated even when absent, and that stays true — it is a statement about
+// MEASUREMENT, and a slot may legitimately be absent from a *user's* tree. This
+// test is about ENUMERATION, and it therefore asserts ONLY against the real
+// repository tree: run against a t.TempDir() fixture all three fixed slots would be
+// absent and the test would fail for a reason unrelated to the defect.
+func TestFixedSlotsExistInRepoTree(t *testing.T) {
+	root, ok := findRepoRoot(mustGetwd(t))
+	if !ok {
+		t.Skip("repo root (go.mod) not found; skipping fixed-slot existence check")
 	}
-	head := memoryHead([]byte(b.String()))
-	if got := strings.Count(string(head), "\n"); got != memoryHeadLineCap {
-		t.Errorf("memoryHead line count = %d, want %d (line cap)", got, memoryHeadLineCap)
+	if _, err := os.Stat(filepath.Join(root, "CLAUDE.md")); err != nil {
+		t.Skip("CLAUDE.md not found at repo root; skipping (not the real repo tree)")
 	}
 
-	// A single 30KB line (no newline before cap) → capped at 25KB bytes.
-	big := strings.Repeat("y", 30*1024)
-	head = memoryHead([]byte(big))
-	if len(head) != memoryHeadByteCap {
-		t.Errorf("memoryHead byte length = %d, want %d (byte cap)", len(head), memoryHeadByteCap)
+	surface, err := alwaysLoadedSurface(root)
+	if err != nil {
+		t.Fatalf("alwaysLoadedSurface: %v", err)
+	}
+
+	// The fixed slots are the tail of the surface: everything not under
+	// .claude/rules/moai/ is a fixed slot.
+	rulesPrefix := filepath.Join(root, ".claude", "rules", "moai") + string(filepath.Separator)
+	for _, p := range surface {
+		if strings.HasPrefix(p, rulesPrefix) {
+			continue // rule files are discovered by walking the tree, so they exist by construction
+		}
+		if _, err := os.Stat(p); err != nil {
+			t.Errorf("fixed surface slot %q names a path absent from the repository tree: %v\n"+
+				"A slot that names an absent path measures nothing here and always will. "+
+				"Remove the slot, or point it at a path this repository actually contains.", p, err)
+		}
 	}
 }
 
