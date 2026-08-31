@@ -138,6 +138,15 @@ load-bearing: under M1 (cost 33ms -> 20ms) the budget is 1000ms and under M3 (wr
 1320ms, both **above** 660ms, so a genuine floor would have been silent under either and the
 observation would have established nothing.
 
+That choice was got wrong once, in this SPEC's own 0.1.0 draft, which planted M1 — and the error is
+recorded here as a methodological note, because this card's subject is precisely a check that read
+as coverage and was not. Confirming that the dead branch evaluates false under every input
+assignment establishes that it is **vacuous**. It does not establish which mutant makes that
+vacuity **visible**. Those are two different questions, and the draft conflated them: under M1 a
+genuine floor would have stayed silent too, so the observation would have established nothing about
+the reinstated branch. Only M2 drives the budget below the floor the retained assertions compose,
+which is what makes the branch's continued silence a contrast rather than a coincidence.
+
 The unreachability claim itself rests on the static argument in §A.1, which holds for every
 assignment of the three constants. AC-VFG-007 corroborates it on one assignment; it is not offered
 as proof on its own, and a single observation of silence never establishes that a branch could not
@@ -386,6 +395,16 @@ verification-load grep with its full output, the lint output.
 - **Blast radius** — one test file, one function: roughly 10 lines removed and a comment rewritten.
 - **Evidence persistence** — mutant censuses, RED outputs, and post-revert GREENs are written under
   `.moai/reports/t378/` so the cited paths still resolve at audit time.
+- **A right answer reached through an unchecked premise** — recorded because the defect had the same
+  shape this card exists to repair. The 0.1.0 draft of §A.4 argued that terms outside the budget
+  expression would have to be the stress constants; that exhaustiveness claim was false, since
+  `boardLockWaitMin` / `boardLockWaitMax` / `boardLockWaitStep`
+  (`internal/kanban/board_store.go` lines 131-136) are a second, independently-authored family. The
+  conclusion — deletion — was correct, but the premise supporting it had never been verified, and a
+  right answer reached through an unchecked premise is not a verified answer: it is the same failure
+  mode as a guard that reads as coverage and never fires. The repair (0.2.0) was to move the
+  argument onto the ground that had been verified — REQ-BLB-002's intent is discharged input-wise,
+  §A.3 — rather than to keep an unverified exclusivity claim that happened to point the same way.
 
 ## §F Tier classification
 
