@@ -149,6 +149,18 @@ func NewLinter(opts LinterOptions) *Linter {
 		// Severity is warning only (spec.md §D.5) and the code is deliberately
 		// NOT in eraDemotableCodes.
 		&MovingRefUnpinnedRule{},
+		// SyncSHASlotFormatRule — SPEC-SYNC-SHA-SLOT-FORMAT-001 M3, REQ-SSF-004.
+		// Per-SPEC (not cross-SPEC): it reads the SPEC's own sibling progress.md
+		// via filepath.Dir(doc.Path), so lint.skip and era demotion both apply.
+		// Severity is warning only (spec.md §D.3) — all five corpus findings sit
+		// in `completed` SPECs, which terminalStatusEnum already shelters, so the
+		// rule contributes nothing to the --strict exit status on the corpus as
+		// it stands; an `error` would put five closed SPECs' history into the
+		// strict path with no shelter and make lint.skip the rational response.
+		// The code is deliberately NOT in eraDemotableCodes (REQ-SSF-007): that
+		// map demotes ERRORS, so the entry would be inert for a warning, and an
+		// inert entry in a policy map reads as intent. AC-SSF-010 guards it.
+		&SyncSHASlotFormatRule{},
 		// cross-SPEC rules
 		&DependencyCycleRule{},
 		&DuplicateSPECIDRule{},
