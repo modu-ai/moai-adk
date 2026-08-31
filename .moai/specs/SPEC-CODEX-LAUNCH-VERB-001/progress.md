@@ -104,4 +104,47 @@ m1_to_mN_commit_strategy: "M1 = 구현+시험+status 전이 (e33eeb93c), M2 = pr
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-01
+sync_commit_sha: pending-backfill-sync   # 커밋은 자기 해시를 인용할 수 없다
+sync_status: complete
+b12_self_test_a: pass    # grep -c 'SPEC-CODEX-LAUNCH-VERB-001' CHANGELOG.md → 0 (중복 없음, 방출 가능)
+b12_self_test_b: pass    # acceptance.md 의 AC 식별자 15건 = CHANGELOG 가 적은 15건
+b12_self_test_c: pass    # CHANGELOG 가 이름을 댄 경로 전부 ls 로 존재 확인
+changelog_entry_position: "[Unreleased] → ### Changed, 절 첫 항목"
+frontmatter_status_transitions:
+  spec_md: "in-progress → implemented → completed (이 sync 커밋 1건이 운반)"
+  plan_md: "n/a — 상태 필드 없음(artifact statelessness). 이 문서 축은 spec.md 가 단독 보유"
+  acceptance_md: "n/a — 같은 이유"
+  progress_md: "n/a — 상태는 본문 절(§E.*)로 기록, frontmatter 없음"
+canary_compliance_check:
+  applicable: false      # 이 SPEC 은 자기 sync 가 시험할 전방 정책을 정의하지 않는다
+supersession_pointer:
+  target: SPEC-CODEX-LAUNCHER-001
+  form: "frontmatter partially_superseded_by + HISTORY 1행 + REQ-CL-002 옆 승계 주석"
+  untouched: "REQ 본문 · version · status: completed 무변경"
+docs_sweep:
+  readme_locales: [README.md, README.ko.md, README.ja.md, README.zh.md]
+  codemaps: [entry-points.md, overview.md, modules.md, data-flow.md, dependencies.md, docs-truth.md]
+  template_paths_touched: 0   # 따라서 make build 불필요
+  docs_site_touched: 0        # 런처 계약을 적은 docs-site 페이지 없음
+verification:
+  spec_lint_launch_verb: 0     # moai spec lint --strict <이 SPEC>/spec.md
+  spec_lint_launcher_001: 0    # 승계 포인터를 단 뒤의 SPEC-CODEX-LAUNCHER-001/spec.md
+push_pr_merge: none            # 푸시·PR·병합 없음. 통합 창은 리드 몫
+```
+
+### 승계하는 Gap (sync 에서도 닫지 않는다 — 산문으로 해소하지 않는다)
+
+§E.2 의 Gap 표를 그대로 승계한다. 축자로 다시 적는다:
+
+- 설치본 `~/go/bin/moai --help` 문안은 **재측정하지 않았다**.
+- `codex app` 의 실제 기동 거동은 **미관측**이다 — `app` 토큰이 자식 argv 에 실린 것까지만 관측했다.
+- codex 는 **최상위 help 만** 훑었다. 따라서 "`cli` 없음"과 "`-w` 없음" 두 부재 주장은 그만큼 좁다.
+- 대화형 tty 왕복은 **구조적 미관측**이다 (SPEC-CODEX-LAUNCHER-001 0.8.0 승계).
+- `moai spec lint` 는 `spec.md` 만 판정하므로 `plan.md`·`acceptance.md` 는 **세어 본 구조**에 근거한다.
+- `-w` 절대경로 **ACCEPT 분기는 시험에서 구조적으로 도달 불가**하다 — 운영자 판정에 따라 gap 으로 보고하며, 지어낸 시험으로 우회하지 않는다.
+
+### 범위 밖 관측 (손대지 않음)
+
+`moai-mcp-tools-catalogue.md`(로컬·템플릿 두 사본)와 docs-site MCP 페이지가 `moai codex task` / `setup` / `job status` 를 "CLI equivalent" 로 적고 있으나 그런 CLI 동사는 없다. 이 카드 이전부터의 결함이며 리드가 별도 카드로 등록했다.

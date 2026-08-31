@@ -2,7 +2,7 @@
 id: SPEC-CODEX-LAUNCH-VERB-001
 title: "맨몸 moai codex 를 기동으로 — 기본 동사 역전, CODEX_HOME 명시 전달, -w 경로, 세 론처 규약 대조"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-08-31
 updated: 2026-09-01
 author: manager-spec
