@@ -2,9 +2,9 @@
 id: SPEC-COVERAGE-RULE-SCOPE-001
 title: "CoverageRule 파싱 경로 결함 두 건 — REQ 파서 협소성과 acceptance.md 미판독"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-08-30
-updated: 2026-08-30
+updated: 2026-08-31
 author: manager-spec
 priority: P2
 phase: "v3.2.0 target"
@@ -32,9 +32,30 @@ tier: M
 
 작성 직후 이 트리의 바이너리로 lint를 돌린 결과 `CoverageIncomplete` 8건, rc=1이 나왔다. 원인은 결함 ① 그 자체다 — 이 SPEC은 Tier M이라 AC를 `acceptance.md`에 두었고, 그것이 코퍼스에서 **관행을 실제로 따른 첫 SPEC**이었다. §1.2가 "코퍼스 위반 0건"이라 적은 이유가 여기서 확인된다: 0이었던 것은 아무도 규약을 따르지 않았기 때문이고, 따르는 순간 발화한다.
 
-착지 시 develop을 붉히지 않기 위해 §2.3에 최소 중복 표를 넣었다. 그 표는 관행 위반이며, 결함 ①이 수리되면 삭제 대상이다.
+착지 시 develop을 붉히지 않기 위해 당시 §2.3에 최소 중복 표를 넣었다. 그 표는 관행 위반이며, 결함 ①이 수리되면 삭제 대상이다(아래 2026-08-31 항목에서 삭제했다 — 그 절은 더 이상 존재하지 않는다).
 
 우회 과정에서 같은 파싱 경로의 **세 번째 협소성**도 드러났다(§4 참조). 자세한 경위: `### 1.2 … acceptance.md …`라는 산문 표제가 `findACSectionStart`의 첫 매치가 되어 AC 절을 가로챘고, 실제 AC 표는 영영 읽히지 않았다. 표제 문구를 바꾼 뒤에야 rc=0이 되었다.
+
+### 2026-08-31 — 설계 결정이 인수 기준 하나를 만료시켰다 (AC-CRS-001-006b)
+
+§D의 심각도 판정에서 A안(`warning` + 발화 지점 `Advisory: true`)이 채택되자, AC-CRS-001-006b가 판정 수단으로 쓰던 종료코드 1이 도달 불가능해졌다. `internal/spec/lint.go:61`의 strict 승격 조건은 `!f.Advisory`를 요구하므로, 자문 등급 warning은 plain에서도 `--strict`에서도 error가 되지 않는다. 이 기준을 rc로 판정하는 한, **올바른 구현으로도 GREEN을 낼 수 없다.**
+
+이 배치에서 반복 관측된 실패 모양은 **"붉어질 수 없는 기준"**(공허한 검사)이었다. 이번 건은 같은 축의 반대 부호 — **"초록이 될 수 없는 기준"**이다. 원인은 하나다: 판정이 기제에 묶여 있었고 기제가 바뀌었다.
+
+과장하지 않고 적는다. 이 기준은 공허하지 않았고, 작성 시점에 틀리지도 않았다. A안이 채택된 그 순간에 **만료**됐을 뿐이다. 기준의 의도(규칙이 여전히 발화하고 회귀 쌍의 두 결과가 갈린다)는 그대로 살아 있으며, 판정 수단만 rc에서 finding 발화 여부로 옮겼다.
+
+계획서의 누락으로 기록한다: plan.md는 §D를 "가장 바뀌기 쉬운 결정"으로 앞세우면서도, **A/B/C 심각도 판정이 인수 기준을 무효화할 수 있다는 점은 예상하지 못했다.** 이 누락은 이 SPEC이 문서화하는 결함과 같은 계열이다 — 판정 술어와 그 술어가 의존하는 기제가 따로 움직이는 자리를 계산에 넣지 않은 것.
+
+### 2026-08-31 — §2.3 AC 미러 표 삭제
+
+§2.3은 위 REQ들의 AC를 `spec.md`에 다시 적어 둔 표였다. 이 SPEC은 Tier M이고 AC 정본은 `acceptance.md`이므로 그 표는 처음부터 관행 위반이었으며, 본문에도 "결함 ①이 수리되면 삭제 대상"이라고 적힌 채로 유지돼 왔다. 이제 삭제한다.
+
+표의 정당화를 없앤 사건은 하나가 아니라 **둘이고, 둘은 서로 다른 근거다.**
+
+- **A안 채택** — `CoverageIncomplete`가 자문 등급 warning이 되면서 미러를 지워도 코퍼스를 붉힐 수 없게 됐다. 미러 없는 사본을 실제로 재서 확인했다: 8건 전부 WARNING, error 0, rc=0(`.moai/reports/t362/c2-nomirror-strict.txt`).
+- **M4(`9610e013e`)** — `CoverageRule`이 형제 `acceptance.md`를 읽게 되면서, 그 8건이 가리키던 커버리지가 정본 파일에서 읽히게 됐다. 이 SPEC의 `acceptance.md`는 `maps REQ-` 매핑 10건을 선언한다.
+
+즉 A안이 채택된 시점에 표의 **원래 정당화는 이미 만료돼 있었고**, 그 뒤로 표를 남긴 유일한 이유는 "지금 지우면 영구 자문 warning 8건이 남는다"는 것 — 원래 이유와는 다른, 삭제 **시점**의 문제였다. 그 기간 동안 이 문서는 근거가 이미 죽은 표를 달고 있었다. 한 문장으로 남긴다: **이유가 만료된 산출물은 이유가 살아 있는 산출물과 겉모습이 같다.** 그래서 그때 부채로 적어 두었지 기억에 맡기지 않았다(progress.md 부채 기록 ③).
 
 ---
 
@@ -106,19 +127,6 @@ A(관행대로 `acceptance.md`에만 AC를 둠)는 걸리고, B(같은 AC 줄을
 - REQ-CRS-001-006: **When** `CoverageRule`이 AC 집합을 수집할 때, 규칙은 해당 SPEC 디렉터리의 형제 파일 `acceptance.md`에 선언된 AC를 포함해야 한다(shall).
 - REQ-CRS-001-007: **When** 어떤 REQ를 참조하는 AC가 spec.md와 `acceptance.md` 어디에도 존재하지 않을 때, `CoverageRule`은 여전히 `CoverageIncomplete`를 내고 종료코드 1을 반환해야 한다(shall).
 - REQ-CRS-001-008: 이 SPEC의 수리는 Tier M/L SPEC이 spec.md에 AC를 중복 기재하도록 요구해서는 안 된다(shall not) — `acceptance.md`를 AC의 SSOT로 두는 기존 규약을 보존한다.
-
-### 2.3 Acceptance Criteria 대응표 (결함 ① 때문에 강제된 중복)
-
-> **이 표는 관행 위반이며, 그 사실 자체가 증거다.** 위 REQ들의 AC 정본은 `acceptance.md`이고 이 SPEC은 Tier M이므로, 규약대로라면 여기에 AC를 다시 적을 이유가 없다. 그러나 작성 직후 이 트리의 바이너리로 lint를 돌린 결과 `CoverageIncomplete` 8건이 나왔다 — `acceptance.md`를 읽지 않기 때문이다. 즉 **이 SPEC은 자기가 옹호하는 규약을 따르면 코퍼스를 붉힌다.** 아래 표는 착지 시 develop을 붉히지 않기 위한 최소 중복이며, 결함 ①이 수리되면 삭제 대상이다(REQ-CRS-001-006 참조).
-
-- AC-CRS-001-001: 여섯 가지 ID 형태 인식 (maps REQ-CRS-001-001)
-- AC-CRS-001-002: 전 코퍼스 수집량 실측 (maps REQ-CRS-001-004)
-- AC-CRS-001-003: `InvalidREQID` 오탐 부재 (maps REQ-CRS-001-002)
-- AC-CRS-001-004: 조용한 누락 없음, 뮤테이션 RED 확립 (maps REQ-CRS-001-005)
-- AC-CRS-001-005: 착지 시 미해소 error 0건 (maps REQ-CRS-001-003)
-- AC-CRS-001-006: 회귀 쌍 — 관행 픽스처 PASS + 진짜 부재 픽스처 rc=1 (maps REQ-CRS-001-006, REQ-CRS-001-007)
-- AC-CRS-001-007: `acceptance.md` 부재 Tier S 픽스처 무사 통과 (maps REQ-CRS-001-006)
-- AC-CRS-001-008: AC 중복 기재를 새로 요구하지 않음 (maps REQ-CRS-001-008)
 
 ---
 
