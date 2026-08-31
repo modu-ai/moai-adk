@@ -92,7 +92,19 @@ B7·B8 은 이 SPEC 이 직접 잰 두 항목이며 판독본에는 없다 — �
 - **REQ-CLV-001** — The bare `moai codex` command shall launch the Codex CLI, in the same manner as the explicit `cli` verb. This requirement supersedes REQ-CL-002 of SPEC-CODEX-LAUNCHER-001, whose bare-readout-and-launch-nothing clause it replaces in full.
 - **REQ-CLV-002** — The `status` token shall remain an explicit alias that renders the readiness readout and launches nothing, so the readout stays reachable without launching; the `cli` verb shall remain accepted as an explicit synonym of the bare launching form.
 - **REQ-CLV-003** — The verb-routing table shall remain the single closed set that decides routing: an unrouted token shall be rejected with the usage diagnostic, and no default branch shall route an unknown token to a launch.
-- **REQ-CLV-004** — The argv handed to the codex child shall carry only tokens the codex binary itself accepts; the moai-side launching verb shall not be forwarded to the child as a positional argument, because the codex binary exposes no `cli` subcommand and reads such a token as a prompt. The `app` verb, which names a real codex subcommand, shall continue to be forwarded.
+- **REQ-CLV-004** — [HARD] The system shall apply an argv-translation step downstream of verb routing, forwarding a routed verb to the codex child **only where that verb names a real codex subcommand**; a verb moai synthesized shall never reach the child's argv on any path. `app` names a real codex subcommand and shall be forwarded; the bare form and `cli` are moai-side synonyms and shall not be. The operator's tail after `--` shall pass through verbatim in every case.
+
+> **Why the translation table is separate from the routing table.** Routing answers *what did the operator ask for*; translation answers *what does codex accept*. Collapsing the two is what produced the current defect — the routed token was forwarded verbatim, and codex, whose usage is `codex [OPTIONS] [PROMPT]` with no `cli` subcommand (§B B7), read the synthesized verb as a prompt. Keeping them separate leaves the routing set closed (REQ-CLV-003) while letting the forwarded set be a strict subset of it.
+
+**Normative argv translation** — the five rows this SPEC fixes:
+
+| Operator invocation | Child argv | Note |
+|---|---|---|
+| `moai codex` | `codex` | zero tokens; only the operator's tail is passed |
+| `moai codex cli` | `codex` | `cli` is an accepted synonym, not forwarded |
+| `moai codex status` | *(no child)* | readout only, launch count 0 |
+| `moai codex app` | `codex app` | `app` IS a real subcommand, so it IS forwarded |
+| `moai codex -- <args>` | `codex <args>` | verbatim passthrough |
 
 ### D.2 환경 전달
 
@@ -101,8 +113,12 @@ B7·B8 은 이 SPEC 이 직접 잰 두 항목이며 판독본에는 없다 — �
 
 ### D.3 워크트리 경로
 
-- **REQ-CLV-007** — Where the operator passes `-w` (or `--worktree`) to a launching form, the launch shall occur with the named worktree root as its working directory, in place of the project root the launch would otherwise resolve.
-- **REQ-CLV-008** — The `-w` value shall be resolved by the same rules `moai cc` applies — absolute paths validated against the accepted worktree prefixes, short names normalized — and, when an absolute path falls outside those prefixes, the system shall fail with that resolution's diagnostic and launch nothing.
+- **REQ-CLV-007** — [HARD] Where the operator passes `-w` (or `--worktree`) to a launching form, the system shall interpret the flag itself — setting the child's working directory to the named worktree root in place of the project root — and shall not forward `-w` or `--worktree` to the codex child.
+- **REQ-CLV-008** — [HARD] The `-w` flag shall **resolve** an existing worktree and shall never **create** one; when the named worktree does not exist, the system shall emit a diagnostic and launch nothing. The value shall be resolved by the same rules `moai cc` applies — absolute paths validated against the accepted worktree prefixes, short names normalized — and an absolute path outside those prefixes shall fail with that resolution's diagnostic, launch count 0.
+
+> **Why codex's `-w` is deliberately asymmetric with `moai cc`'s — do not "make it consistent" later.** Under `moai cc` the flag is *forwarded* to `claude`, which creates the worktree and enters it. codex cannot be driven that way: its top-level help exposes no worktree flag and no `-w` short flag (§B B8), so a forwarded `-w` would be an unknown token — the same failure shape B7 already documents for `cli`, where an unrecognized token is read as a prompt. moai therefore consumes the flag itself, and consuming it means moai would have to implement worktree *creation* to match cc's behaviour, which is outside this card's scope and belongs to the worktree tooling that already owns it.
+>
+> The operator accepted this asymmetry knowingly (판정 2026-08-31). A later argument of the form "cc creates, so codex should too" is therefore a **scope change requiring a fresh operator judgment**, not a consistency fix — and it must first answer why forwarding an unknown token to codex is now acceptable.
 
 ### D.4 게이트·플랫폼 상속
 
