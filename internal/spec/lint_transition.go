@@ -33,8 +33,15 @@ import (
 // flag (REQ-STV-009), so a finding on a modern-era, non-terminal SPEC is
 // escalated by --strict.
 //
-// Observation-only: never mutates a SPEC, and reuses the existing git lookup
-// rather than adding a second history walk (REQ-STV-012).
+// Observation-only: never mutates a SPEC (REQ-STV-012). REQ-STV-012 says
+// nothing about history walks — it is the non-mutation requirement, and citing
+// it for anything else would make the comment misstate its own authority.
+//
+// The walk is separately accounted for: this rule reads the transition through
+// cachedOwnershipTransition, which memoizes the `git log --follow -p` walk per
+// document for the duration of one Lint() run. So the corpus pays one walk per
+// document rather than one per rule — a property of the memo in
+// gitquery_cache.go, holding only while both readers go through it.
 //
 // SPEC-STATUS-TRANSITION-VALIDITY-001 (card t376), REQ-STV-001..015.
 //
@@ -114,7 +121,7 @@ func (r *StatusTransitionValidityRule) Check(doc *SPECDoc, _ []*SPECDoc) []Findi
 		return nil
 	}
 
-	rec, err := getOwnershipTransitionRunner(doc.Path, fm.ID)
+	rec, err := cachedOwnershipTransition(doc.Path, fm.ID)
 	if err != nil || rec == nil {
 		// REQ-STV-007: unreachable git and no-transition are both silent here.
 		return nil
