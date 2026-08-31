@@ -176,6 +176,11 @@ secret-*.*
 .moai/**/credentials.yaml
 .moai/**/*.credentials
 
+# MINK agent credentials (plaintext API keys). Ignored anywhere in the tree so
+# per-project auth dirs are never committed. The template already carries this
+# rule; this line brings the repository's own tree level with it.
+**/.mink/auth/
+
 # ===========================================
 # Claude Code Configuration
 # ===========================================
