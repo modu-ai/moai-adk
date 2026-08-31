@@ -620,7 +620,7 @@ plain_vs_strict_byte_identical: true  # cmp rc=0, 3쌍 모두
 
 ```yaml
 sync_complete_at: 2026-08-31
-sync_commit_sha: pending-backfill-sync   # 커밋은 자기 해시를 알 수 없다 — 직후 커밋에서 백필
+sync_commit_sha: 8d888fc5d   # 백필 완료 (커밋은 자기 해시를 알 수 없어 자리표시자로 두었다 — D3 self-referential 예외)
 sync_status: complete
 b12_self_test_a: pass          # grep -c 'SPEC-COVERAGE-RULE-SCOPE-001' CHANGELOG.md -> 0 (추가 전)
 b12_self_test_b: pass          # acceptance.md 고유 AC id 9건 = CHANGELOG 인용 9건
@@ -655,9 +655,27 @@ mx_tag_validation: no-change   # 이 SPEC은 @MX 주석을 추가·변경하지 
 `after` 쪽 바이너리만 이 트리에서 빌드했고, `before` 쪽은 run-phase가 남긴 산물이라
 **그 출처는 승계값**이다 — 이 절이 새로 관측한 것은 두 값이 갈린다는 사실이다.
 
+**`status: completed` 전이의 부작용을 재측정했다 — 다만 이 초록은 로컬에서만 뜻이 있다**
+
+3-phase close가 `spec.md`를 `completed`로 바꾸므로 `StatusGitConsistency`가 반응할 수 있다.
+백필 커밋 직전 작업트리(HEAD `8d888fc5d`)에서 다시 쟀다.
+
+```
+/tmp/moai-t362-sync spec lint --json .moai/specs/SPEC-COVERAGE-RULE-SCOPE-001/spec.md
+→ rc=0, findings 0건 (rule 집계 공집합)
+```
+
+**이 초록을 CI로 옮겨 읽어서는 안 된다.** `SPEC Lint` 워크플로는 `fetch-depth` 없는
+depth-1 체크아웃이라 `StatusGitConsistencyRule`이 `git log --follow`로 볼 히스토리가 없고,
+워커가 findings 없이 조용히 반환한다(§E.2의 CI+19 오프셋과 같은 원인). 즉 **CI에서는 이
+규칙의 초록이 미실행과 구별되지 않는다** — 로컬 관측만이 이 부작용에 대한 증거다. CI 체크아웃
+자체는 다른 카드(t371) 소관이며 이 카드는 건드리지 않았다.
+
 **sync 단계에서 새로 재지 않은 것(Gap)**
 - 전 코퍼스 수치(846 / 1,093 / 25 / 6) — §E.2의 run-phase 측정을 승계했고 sync에서 재측정하지
   않았다. 승계값임을 CHANGELOG와 여기 양쪽에 명시했다.
 - windows/linux 빌드 — 여전히 미측정.
 - CI 판정 — 이 브랜치는 미푸시이므로 CI가 이 트리를 본 적이 없다. 통합은 리드 소관.
 - 독립 sync-audit — 이 카드는 수행하지 않았다.
+- `StatusGitConsistency`의 CI측 동작 — 위 초록은 로컬 한정이며, CI에서 이 규칙이 실제로
+  실행되는지는 이 카드가 재지 않았다(t371 소관).
