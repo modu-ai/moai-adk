@@ -2,7 +2,6 @@
 id: SPEC-SELECTOR-CENSUS-001
 title: "0-실행 테스트 판정 — 구현 계획"
 version: "0.1.0"
-status: draft
 created: 2026-08-29
 updated: 2026-08-29
 author: manager-spec
