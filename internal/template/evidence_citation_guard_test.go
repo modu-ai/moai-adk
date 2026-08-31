@@ -380,7 +380,7 @@ func TestEvidenceCitation_RealSentenceMutant(t *testing.T) {
 // --- Direction 6: allowlist unit + size (AC-ECC-013) ---
 
 func TestEvidenceCitation_Allowlist(t *testing.T) {
-	t.Run("Unit", func(t *testing.T) {
+	t.Run("AllowlistUnit", func(t *testing.T) {
 		if err := validateAllowlist(evidenceCitationAllowlist); err != nil {
 			t.Fatalf("the live allowlist is invalid: %v", err)
 		}
@@ -396,11 +396,12 @@ func TestEvidenceCitation_Allowlist(t *testing.T) {
 		}
 	})
 
-	t.Run("Size", func(t *testing.T) {
-		if got := len(evidenceCitationAllowlist); got != evidenceCitationAllowlistSize {
+	t.Run("AllowlistSize", func(t *testing.T) {
+		wantAllowlist := evidenceCitationAllowlistSize
+		if got := len(evidenceCitationAllowlist); got != wantAllowlist {
 			t.Errorf("allowlist has %d entries, want %d — growing the allowlist is the "+
 				"cheapest way to erase a violation, so its length is pinned",
-				got, evidenceCitationAllowlistSize)
+				got, wantAllowlist)
 		}
 	})
 }
