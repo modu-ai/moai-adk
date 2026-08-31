@@ -2,7 +2,7 @@
 id: SPEC-COVERAGE-RULE-SCOPE-001
 title: "CoverageRule 파싱 경로 결함 두 건 — REQ 파서 협소성과 acceptance.md 미판독"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-08-30
 updated: 2026-08-31
 author: manager-spec

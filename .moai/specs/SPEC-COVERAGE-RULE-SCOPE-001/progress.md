@@ -618,4 +618,46 @@ plain_vs_strict_byte_identical: true  # cmp rc=0, 3쌍 모두
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-31
+sync_commit_sha: pending-backfill-sync   # 커밋은 자기 해시를 알 수 없다 — 직후 커밋에서 백필
+sync_status: complete
+b12_self_test_a: pass          # grep -c 'SPEC-COVERAGE-RULE-SCOPE-001' CHANGELOG.md -> 0 (추가 전)
+b12_self_test_b: pass          # acceptance.md 고유 AC id 9건 = CHANGELOG 인용 9건
+b12_self_test_c: pass          # 인용한 구현 경로 9개 전부 ls 확인
+changelog_entry_position: "[Unreleased] ### Changed 최상단 (line 168)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented -> completed"   # 3-phase close, 이 sync 커밋 1개에 병합
+  plan_md: none          # status 필드 없음 — ArtifactStatusFieldForbidden 규칙이 금지
+  acceptance_md: none    # 위와 같음
+  progress_md: none      # 위와 같음
+canary_compliance_check:
+  applicable: false      # 이 SPEC은 전방위 정책을 정의하지 않는다
+docs_surface_review:
+  readme: no-change      # 'spec lint' 미언급
+  docs_site: no-change   # content/*/cli-reference/spec.md 는 플래그만 문서화, 룰/코드/심각도 미열거
+mx_tag_validation: no-change   # 이 SPEC은 @MX 주석을 추가·변경하지 않았다
+```
+
+**실트리 8 → 0 — §E.2가 미이행으로 남긴 gap을 sync에서 닫았다**
+
+§E.2의 미러 제거 시뮬레이션은 `/tmp/m4sim/` 스크래치 사본 측정이었고, "실트리 확인은
+미이행"으로 기록돼 있었다. §2.3 미러 표가 `c4a0c967d`에서 실제로 삭제된 뒤, **같은 실트리
+파일**에 두 바이너리를 걸어 다시 쟀다.
+
+| 바이너리 | 트리 | `CoverageIncomplete` | rc |
+|---|---|---|---|
+| `/tmp/moai-t362-m4-base` (M4 이전, run-phase 산물 — 출처는 §E.2에서 승계) | `c4a0c967d` 작업트리 | **8** (REQ-CRS-001-001..008) | 0 |
+| `/tmp/moai-t362-sync` (`go build ./cmd/moai` rc=0, 이 트리에서 새로 빌드) | `c4a0c967d` 작업트리 | **0** | 0 |
+
+명령: `<binary> spec lint --json .moai/specs/SPEC-COVERAGE-RULE-SCOPE-001/spec.md`.
+양쪽 rc가 모두 0인 것은 A안(자문 등급)의 예상된 결과이며, 판정은 발화 여부로 한다.
+`after` 쪽 바이너리만 이 트리에서 빌드했고, `before` 쪽은 run-phase가 남긴 산물이라
+**그 출처는 승계값**이다 — 이 절이 새로 관측한 것은 두 값이 갈린다는 사실이다.
+
+**sync 단계에서 새로 재지 않은 것(Gap)**
+- 전 코퍼스 수치(846 / 1,093 / 25 / 6) — §E.2의 run-phase 측정을 승계했고 sync에서 재측정하지
+  않았다. 승계값임을 CHANGELOG와 여기 양쪽에 명시했다.
+- windows/linux 빌드 — 여전히 미측정.
+- CI 판정 — 이 브랜치는 미푸시이므로 CI가 이 트리를 본 적이 없다. 통합은 리드 소관.
+- 독립 sync-audit — 이 카드는 수행하지 않았다.
