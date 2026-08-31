@@ -181,7 +181,8 @@ it carries the SPEC's strictness obligation, so it is reviewed as a unit rather 
    leaving it would silently re-fail on starvation.
 4. **Replace it with the conservation assertion** (REQ-SIV-008 / AC-SIV-014):
    `successes + starved + hardFailures == stressWriters * stressAddsPerWriter` — `successes` being the
-   step-1 counter, never `issuedCount` — failing with the discrepancy named. Step 3 without step 4 leaves the `> 0` floor as the only remaining tie between
+   step-1 counter, never `issuedCount` — failing with the discrepancy named. Step 3 without step 4
+   leaves the `> 0` floor as the only remaining tie between
    the invariant set and the work attempted, which would admit 1 success in 48 — t370 measured real
    starvation at 3-7 of 48, so that floor is roughly 40x weaker than observed behaviour. Conservation
    is machine-independent (it counts outcomes, not milliseconds) and therefore does not reintroduce
