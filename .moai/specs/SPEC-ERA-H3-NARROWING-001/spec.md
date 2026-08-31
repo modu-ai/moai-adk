@@ -1,7 +1,7 @@
 ---
 id: SPEC-ERA-H3-NARROWING-001
 title: "H-3 시대 분류 술어 축소 — 진행 중 SPEC의 V3R5 오분류 차단"
-version: "0.4.0"
+version: "0.5.0"
 status: in-progress
 created: 2026-08-31
 updated: 2026-08-31
@@ -23,6 +23,7 @@ tier: S
 | 0.1.0 | 2026-08-31 | manager-spec | 최초 작성 (Tier M). 카드 t382 |
 | 0.2.0 | 2026-08-31 | manager-spec | **Tier M → S 정정** (LOC·파일 수 기준 미달, AC 8개가 S 상한에 부합 — acceptance.md 폐기하고 AC를 §3으로 인라인). 무게중심을 lint 심각도에서 **drift 면제**로 이동 |
 | 0.4.0 | 2026-08-31 | manager-spec | **plan-audit iter1 부채 상환** (PASS-WITH-DEBT 0.825, blocking 4 + optional 6). D1 무게중심 축에 원장 **R4** 신설 + AC-007 산술 23행→22행 정정. D2 AC-002의 코퍼스 RED가 phase 경로에 공허함을 명시하고 「날짜만으로 축소」 뮤테이션을 판정 본체로 승격. D3 AC-008의 H-5 술어 평가를 독립 리터럴 + rationale 접두로 못박음. D4 §3.6에 REQ-EH3-004 판정 줄 신설. D5 좌측 열 「오늘」 서술 3곳 정정. D6 R1 귀속 `f72c0bf0f`→`1f10f5e8d`. D7 옵션 D 근거를 측정된 기제로 교체. D8 REQ-002 라벨 `Where`→`While`. D9 테스트 이름 정정. D10 원장에 빌드 좌표 명시 |
+| 0.5.0 | 2026-08-31 | manager-spec | **§3.6 REQ-EH3-004 기준을 파일 정체성에서 심볼 경계로 정정.** run-phase가 네 번째 파일 `internal/spec/audit_test.go`를 바꿔 초판 기준이 실패했고, 확인 결과 **기준이 잘못 그어진 것**이었다 — 픽스처가 수정 이전 술어(`makeSpecMD`의 하드코딩된 `phase: "v3.0.0"`)를 인코딩하고 있어 술어를 좁히면 함께 갱신될 수밖에 없다. 완화가 아님을 세 가지로 측정 확인(금지 심볼 grep 0건 / 1줄 되돌리면 기존 테스트 rc 1 실패 / 세 파일로 끝낼 수리 경로 부재)하고 그 경위를 §3.6에 [HARD]로 기록. 범위 상한(`internal/spec/` + 룰 문서)은 유지 |
 | 0.3.0 | 2026-08-31 | manager-spec | RED 증거를 `verification-completeness.md` §2.1 4요소(명령·축자 stdout·exit code·트리 SHA)로 승격 — 원장 `.moai/reports/t382/red-evidence.md` R1~R3 신설, 기준선을 트리 `f72c0bf0f`에서 **재측정**(V3R5 23→24, grandfathered 285→286). AC-001의 단위 판정 명령이 오늘 초록이라는 사실을 명시하고 RED를 코퍼스로 이관. `matchesModernPhase`의 좁은 술어(`v3.0` 접두 / `v3r6`) 실측 반영. 가드를 2층으로 분리하고 코퍼스 층이 상시 가드가 아님을 명시. t371 무충돌 주장을 「절반만 검증됨」으로 정정 |
 
 ## 1. 배경
@@ -245,7 +246,20 @@ Given `era_test.go`에 불변식 테스트 `TestClassifyEra_NoV3R5WhileModernSig
 - [ ] 원장 R1이 exit **1 → 0** 으로 뒤집힌 것을 축자 출력으로 관측했고, 판정 전 스윕 모집단 N ≥ 1을 확인했다
 - [ ] 기준선 표(§3.2 오른쪽 열)를 M1 착수 직전 트리에서 갱신했고, 대조는 갱신본에 대고 했다
 - [ ] AC-003 · 004 · 008의 **뮤테이션 실패 관측**이 출력과 함께 기록되고 뮤테이션이 되돌려졌다
-- [ ] **REQ-EH3-004 판정 (감사 D4).** `git diff --stat <M1 착수 전 SHA>..HEAD -- internal/ .claude/` 출력이 정확히 세 파일 — `internal/spec/era.go` · `internal/spec/era_test.go` · `.claude/rules/local/lifecycle-sync-gate.md` — 로 한정됨을 확인하고 축자 출력을 남긴다. 네 번째 파일이 나타나면 실패다. 특히 `internal/spec/lint.go` · `audit.go` · `drift.go`가 목록에 있으면 `eraDemotableCodes` · `applyEraDemotion` · `EraFinal()` · `IsModern()` 중 하나가 건드려졌다는 뜻이므로 **되돌린다.** (초판은 이 요구를 plan §D의 「읽되 고치지 않는다」라는 **지시**로만 두었다 — 지시는 판정이 아니다.)
+- [ ] **REQ-EH3-004 판정 (감사 D4 / 심볼 기준으로 정정됨 — 아래 기록 참조).** 두 조건을 **함께** 확인하고 각각 축자 출력을 남긴다.
+  1. **금지 심볼 불변 (요구 그 자체).** `git diff <M1 착수 전 SHA>..HEAD -- internal/ | grep -E '^[+-].*(eraDemotableCodes|applyEraDemotion|EraFinal|IsModern)'` 이 **빈 출력**일 것. 한 줄이라도 나오면 실패이고 되돌린다.
+  2. **변경 범위 한정 (범위 규율).** 변경 파일이 `internal/spec/` 안과 `.claude/rules/local/lifecycle-sync-gate.md` 밖으로 나가지 않을 것. 이 둘 밖의 파일이 나타나면 실패다. 특히 `internal/spec/lint.go` · `audit.go` · `drift.go`는 이 SPEC이 읽기만 하는 파일이므로 목록에 나타나면 1번을 반드시 재확인한다.
+
+  `internal/spec/` 안에서 **어느 파일이 바뀌었는지는 판정 기준이 아니다.** 다만 세 파일(`era.go` · `era_test.go` · 룰 문서) 밖의 파일이 바뀌었다면 그 이유를 §E 증거에 한 줄로 적는다 — 자동 실패는 아니고 **설명 의무**다.
+
+> **[HARD] 이 기준을 고친 경위 (v0.5.0).** 초판은 「diff가 정확히 세 파일로 한정될 것」이었고, run-phase에서 **네 번째 파일 `internal/spec/audit_test.go`**(+8줄, 그중 코드 1줄)가 나와 실패했다. **기준을 실패한 뒤에 고치는 것은 기준이 조용히 약해지는 전형적인 경로이고, 이 카드의 감사가 D1에서 잡아낸 것이 정확히 그 모양이다**(SPEC이 스스로 폐기 선언한 기준선에 대고 판정하던 AC). 그래서 완화가 아니라는 것을 세 가지로 확인한 뒤에만 고쳤고, 그 확인을 여기 남긴다.
+>
+> 1. **요구를 위반하는가 — 아니다(측정).** `git diff f967089ba..d63ba309a -- internal/` 에 대한 위 1번 grep이 **빈 출력**이다. `lint.go` · `audit.go` · `drift.go`는 diff에 아예 없다. 금지된 네 심볼은 하나도 건드려지지 않았다.
+> 2. **편의가 아니라 필요인가 — 필요다(측정).** 문제의 1줄만 되돌리고 `go test -count=1 -run TestAudit_EraClassification5Buckets ./internal/spec/` 를 돌리면 **rc 1**로 실패한다 — `era V3R5 not observed in findings; got eraCounts=map[V2.x:2 V3R2-R4:2 V3R6:2 unclassified:1]` / `Grandfathered = 2, want 3` / `ModernEraClean = 2, want 1`. 복원하면 rc 0. 증거: `.moai/reports/t382/necessity-red.txt` · `necessity-green.txt`(트리 `d63ba309a`, 프로브 `revert_probe.py`).
+> 3. **기준이 잘못 그어졌는가 — 그렇다(내용이 보여 준다).** `audit_test.go`의 `makeSpecMD`가 `phase: "v3.0.0"`을 **하드코딩**하는데(`audit_test.go:52`), 그 값이 바로 `matchesModernPhase`가 modern 신호로 읽는 것이다. 좁혀진 H-3 아래에서 그 phase를 단 픽스처는 **더 이상 V3R5 픽스처가 아니라 이 SPEC이 제거하려는 오분류의 사례**가 된다. 즉 픽스처가 **수정 이전 술어를 인코딩하고 있었고**, 술어를 좁히면 그 인코딩도 함께 갱신되는 것이 술어 변경의 필연적 파급 범위다. 게다가 같은 테스트가 unclassified 픽스처에 **이미 동일한 override를 적용하고 있었다**(`audit_test.go:94-95`, 이 카드 이전부터 존재 — `f967089ba`에서 확인). 새 패턴이 아니라 기존 패턴의 두 번째 적용이다.
+> 4. **세 파일로 끝낼 길이 있었는가 — 없다.** 가능한 수리는 셋뿐이고(픽스처 phase override / 픽스처에 `era: V3R5` H-override 추가 / `makeSpecMD`의 하드코딩 제거) **셋 다 `audit_test.go`를 만진다.** 「세 파일」 기준은 만족 가능한 기준이 아니었다.
+>
+> **경계 — 이 정정이 열어 주지 않는 것.** 기준은 「정당화하면 어떤 파일이든」으로 넓어지지 않았다. 범위 상한(`internal/spec/` + 룰 문서 하나)은 그대로 있고, 판정의 본체는 **파일 정체성에서 심볼 경계로 옮겨갔을 뿐**이다 — 그것이 REQ-EH3-004가 애초에 말하던 것이다. 초판 기준은 그 요구의 **대리 지표**였고, 대리 지표가 요구보다 좁게 그어져 있었다.
 - [ ] `go test ./internal/spec/...` 통과 (로컬 전체 스위트 금지)
 - [ ] `go vet ./internal/spec/...` · `golangci-lint run` 통과
 - [ ] `.claude/rules/local/lifecycle-sync-gate.md` H-3 행 갱신 (REQ-EH3-006)
