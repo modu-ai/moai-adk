@@ -1,0 +1,83 @@
+# SPEC-CODEX-LAUNCH-VERB-001 — 수용 기준
+
+> 이 문서는 **검증 층**이다. 각 항목은 Given-When-Then 으로 쓰고 이분 판정한다. 요구(GEARS)는 `spec.md` §D 가 가지며 여기서 재기술하지 않는다.
+> Tier M — AC 상한 16, 아래 14행.
+
+## §D. AC 표
+
+| AC | REQ | 요지 |
+|---|---|---|
+| AC-CLV-001 | REQ-CLV-001 | 맨몸이 기동한다 |
+| AC-CLV-002 | REQ-CLV-002 | `status` 는 기동하지 않는다 |
+| AC-CLV-003 | REQ-CLV-002 | `cli` 는 맨몸과 같은 기동이다 |
+| AC-CLV-004 | REQ-CLV-003 | 표에 없는 토큰은 기동으로 새지 않는다 |
+| AC-CLV-005 | REQ-CLV-004 | 자식 argv 에 moai 쪽 기동 동사 토큰이 없다 |
+| AC-CLV-006 | REQ-CLV-004 | `app` 토큰은 계속 전달된다 |
+| AC-CLV-007 | REQ-CLV-005 | CODEX_HOME 이 자식에게 명시 전달된다 |
+| AC-CLV-008 | REQ-CLV-005 | 나머지 부모 환경이 보존된다 |
+| AC-CLV-009 | REQ-CLV-006 | 어느 동사도 파일을 쓰지 않는다 |
+| AC-CLV-010 | REQ-CLV-007 | `-w` 가 기동 작업 디렉터리를 바꾼다 |
+| AC-CLV-011 | REQ-CLV-008 | 접두사 밖 절대경로는 기동 0 |
+| AC-CLV-012 | REQ-CLV-009 | 게이트 상속 — 맨몸 + 미배선 + 비대화형 |
+| AC-CLV-013 | REQ-CLV-010 | 크로스 플랫폼 성질 무회귀 |
+| AC-CLV-014 | REQ-CLV-011, REQ-CLV-012 | 세 론처 맨몸 규약 한 자리 대조 + help 문안 |
+
+## §D.1 동사 표면
+
+**AC-CLV-001** — Given codex 바이너리가 PATH 에 있고 프로젝트 배선이 완전한 상태에서, When 사용자가 인자 없이 `moai codex` 를 부르면, Then 기동 seam 이 정확히 1회 호출되고 리드아웃 행은 stdout 에 나오지 않는다.
+
+**AC-CLV-002** — Given 같은 상태에서, When 사용자가 `moai codex status` 를 부르면, Then 리드아웃 6행이 stdout 에 나오고 기동 seam 호출 수는 0이며 rc 는 0이다.
+
+**AC-CLV-003** — Given 같은 상태에서, When 사용자가 `moai codex cli` 를 부르면, Then 기동 seam 이 받는 (program, args, dir) 세 값이 맨몸 호출이 만든 값과 **같다**. 두 경로가 같은 요청을 만드는지를 값으로 판정한다 — 각각 "기동했다"만 보는 것은 이 축을 판정하지 못한다.
+
+**AC-CLV-004** — Given 라우팅 표를 심볼로 읽는 시험에서, When 표에 없는 토큰(예: `launch`, `run`, 빈 문자열이 아닌 임의 토큰)으로 호출하면, Then 사용법 진단이 stderr 로 나오고 rc 는 1이며 기동 seam 호출 수는 0이다. 아울러 표에서 도출한 기동 클래스 토큰 집합과 리드아웃 토큰 집합이 각각 기대 집합과 일치한다.
+
+## §D.2 자식 argv
+
+**AC-CLV-005** — Given 기동 seam 이 자식 argv 를 포착하는 상태에서, When 맨몸 그리고 `cli` 로 각각 `-- --model o3` 를 붙여 호출하면, Then 자식이 받는 argv 는 `["--model", "o3"]` 이며 `cli` 도 빈 문자열도 그 앞에 없다.
+
+> 근거: 이 판정은 물려받은 시험 `codex_launcher_test.go:465` 의 기대값(`append([]string{"cli"}, tail...)`)을 **뒤집는다**. 그 기대값이 고정하고 있던 것이 결함이라는 판단이며(`spec.md` B7), 뒤집는 이유를 커밋에 남기는 것이 이 AC 의 통과 조건에 포함된다.
+
+**AC-CLV-006** — Given 같은 포착 상태에서, When `moai codex app` 을 호출하면, Then 자식 argv 의 첫 토큰은 `app` 이다 — `app` 은 실재하는 codex 서브커맨드이므로 전달 규칙이 다르다.
+
+## §D.3 환경
+
+**AC-CLV-007** — Given `CODEX_HOME` 이 환경변수로 주어진 경우와 주어지지 않아 `~/.codex` 로 떨어지는 경우 각각에서, When 맨몸으로 기동하면, Then 자식에게 지정된 환경에 `CODEX_HOME=<해석값>` 항목이 있고 그 값이 리드아웃이 보고하는 해석값과 같다. **부모 환경에 그 변수가 없는 경우에도 자식에는 있어야 한다** — 주변 상속에 기대는 구현은 이 셀에서 떨어진다.
+
+**AC-CLV-008** — Given 부모 환경에 임의의 표식 변수가 있는 상태에서, When 기동하면, Then 자식 환경에 그 표식이 그대로 있다. 직접 기동과 `--spawn` 두 경로 모두에서 `CODEX_HOME` 값이 동일하다.
+
+**AC-CLV-009** — Given 배선이 완전한 프로젝트 트리의 실행 전 스냅숏에서, When 맨몸 · `status` · `cli` · `app` 을 차례로 호출하면, Then `.claude/settings.local.json`, Claude 프로필 상태, `CODEX_HOME` 하위 파일 어느 것도 바이트가 바뀌지 않고 새로 생기지 않는다.
+
+## §D.4 워크트리
+
+**AC-CLV-010** — Given 허용 접두사 아래에 존재하는 워크트리에서, When `moai codex -w <name>` 으로 기동하면, Then 기동 요청의 작업 디렉터리가 그 워크트리 루트이고 프로젝트 루트가 아니며, 자식 argv 에 `-w` 도 `--worktree` 도 남아 있지 않다.
+
+**AC-CLV-011** — Given 허용 접두사 **밖**의 절대경로가 `-w` 값으로 주어진 상태에서, When 기동을 시도하면, Then `moai cc` 가 같은 입력에 내는 것과 같은 진단이 나오고 기동 seam 호출 수는 0이다. 아울러 존재하지 않는 워크트리를 가리키는 값은 조용히 프로젝트 루트로 떨어지지 않는다.
+
+## §D.5 상속과 무회귀
+
+**AC-CLV-012** — Given 프로젝트 배선이 불완전하고(디렉터리 부재 / 빈 디렉터리 / 한쪽 파일만 존재) 세션이 비대화형인 상태에서, When 사용자가 **인자 없이** `moai codex` 를 부르면, Then 프롬프트가 0회 발화되고 기동 seam 호출 수가 0이며 배선 상태와 조치를 담은 진단이 stderr 로 나온다. 배선이 완전할 때는 게이트가 기동을 막지 않는다.
+
+**AC-CLV-013** — Given codex 기동 경로에 속한 파일 집합에 대해, When 빌드 태그·`syscall` import·프로세스 교체 계열 식별자를 훑고 `GOOS=windows go vet ./internal/cli/...` 를 돌리면, Then 훑기 히트 0건이고 vet 은 성공하며, 자식의 비영 종료코드가 그대로 전파되는 시험이 계속 통과한다. **훑기의 0건은 그 패턴이 심은 위반을 실제로 잡는 것을 보인 뒤에만 근거가 된다.**
+
+## §D.6 대조와 표면
+
+**AC-CLV-014** — Given 세 론처를 한 자리에서 대조하는 기존 시험 위치에서, When 대조를 실행하면, Then `cc` · `glm` · `codex` 각각에 대해 "인자 없는 호출이 기동으로 이어지는가"가 한 표로 단언되고 세 값이 모두 참이다. 그 대조는 **기존 파일을 확장한 것이며 새 교차 시험 파일이 아니다**. 아울러 `moai codex --help` 의 문안이 역전된 기본값을 설명하고, 내부 식별자·SPEC ID·내부 날짜를 담지 않는다.
+
+## §D.7 완료 정의 (Definition of Done)
+
+- AC-CLV-001..014 전수 PASS, 각 행에 실행한 명령과 그 출력이 붙어 있다.
+- `go test ./internal/cli/...` 통과 — 출력 인용.
+- `golangci-lint run ./internal/cli/...` 통과 — 출력 인용.
+- `spec.md` §D 의 REQ-CLV-001..012 가 위 표에서 전수 참조된다.
+- `plan.md` §B.3 · §B.4 의 `[NEEDS CLARIFICATION]` 두 건이 **run 진입 전에** 해소돼 있다.
+- 물려받은 시험의 기대값을 바꾼 곳마다 그 이유가 커밋 본문에 있다.
+
+## §D.8 앞을 내다보는 확인 (판정 대상 아님)
+
+아래는 이 카드가 닫지 않는다. 기록만 한다.
+
+- tty 왕복 거동 — 구조적 미관측(0.8.0 이 남긴 Gap 승계).
+- 설치본 `~/go/bin/moai --help` 문안 — 이 세션에서 재측정하지 않았다(`plan.md` P1).
+- codex 서브커맨드별·숨은 플래그 표면 — 최상위 help 만 훑었다(`plan.md` P4).
+- `-k` / `-f` 를 codex 에 여는 문제 — 범위 밖 열린 질문.
