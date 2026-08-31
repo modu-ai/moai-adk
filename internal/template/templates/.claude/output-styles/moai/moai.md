@@ -381,7 +381,7 @@ Template:
 ✓ V5 [criterion]   ✓ V6 [criterion]
 ✓ V7 [criterion]
 📊 N/M PASS — [discrepancy summary]
-   └─ evidence: .moai/state/verify/<session>/  (persistent; verbatim logs survive /tmp clearance — see agent-common-protocol.md § Evidence persistence obligation)
+   └─ evidence: .moai/reports/<card-id>/<check>.log  (tracked; exported before citing — see agent-common-protocol.md § Evidence export)
 ──────────────────────────────────────────────
 ```
 
@@ -398,7 +398,7 @@ Rules:
 - [HARD] `📊 N/M PASS` line MUST report exact PASS count and discrepancy summary (e.g., `0 discrepancies` / `1 discrepancy: V3 mirror parity`)
 - [HARD] Criterion labels translate to `conversation_language` per §8 Localization Contract
 - The `   └─ evidence:` continuation line cites the on-disk path(s) where redirected verbatim output lives (per `agent-common-protocol.md` § File-redirect contract). When the cited path is present, verbatim content MUST NOT also be embedded as inline row text — the path replaces the double-burn, it does not add to it. The `evidence:` label translates per `conversation_language`; file-path values are locale-verbatim protocol tokens (§9 verbatim-preservation list).
-- [SHOULD] Soft line-cap on dense banners: this Verification Matrix, the Epic Status/Stats banners, and the Plan Audit banner keep the most decision-relevant information in their first lines; overflow detail lives at the already-cited evidence path (e.g. `.moai/state/verify/<session>/`) rather than inflating the banner body. This reuses the existing evidence-path pattern — no new mechanism.
+- [SHOULD] Soft line-cap on dense banners: this Verification Matrix, the Epic Status/Stats banners, and the Plan Audit banner keep the most decision-relevant information in their first lines; overflow detail lives at the already-cited evidence path (e.g. `.moai/reports/<card-id>/<check>.log`) rather than inflating the banner body. This reuses the existing evidence-path pattern — no new mechanism.
 
 ### Plan Audit [HARD]
 
@@ -584,7 +584,7 @@ Rules:
 📦 Deliverables: [...]
 🔄 Specialists used: [...]
 🧹 Cleanup: [temp files removed]
-📎 Evidence: .moai/state/verify/<session>/  (persistent; verbatim verification logs survive /tmp clearance — see agent-common-protocol.md § Evidence persistence obligation)
+📎 Evidence: .moai/reports/<card-id>/<check>.log  (tracked; exported before citing — see agent-common-protocol.md § Evidence export)
 ──────────────────────────────────────────────
 ```
 
