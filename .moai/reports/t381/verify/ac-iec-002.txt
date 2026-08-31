@@ -1,0 +1,6 @@
+$ grep -c 'still resolve at audit time' internal/cli/audit_pin_live_test.go
+0
+exit=1
+$ grep -c 'Evidence lands in' internal/cli/audit_pin_live_test.go
+1
+exit=0

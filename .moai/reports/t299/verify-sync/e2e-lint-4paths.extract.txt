@@ -1,10 +1,13 @@
 # t299 sync — bidirectional observation, extract (NOT a verbatim copy)
 #
 # Source runs live at .moai/state/verify/t299-sync/0{2,3,4,5}-*.txt inside the
-# card worktree. That path is gitignored (.gitignore:284) and vanishes with the
-# worktree, so this extract is the citable carrier. Each source is ~134KB of
-# whole-corpus lint output; only the probe's own lines and the totals line are
-# decision-bearing, so those are what is extracted here.
+# card worktree. That path is gitignored by the `.moai/state/` rule in
+# .gitignore and vanishes with the worktree, so this extract is the citable
+# carrier. The rule is named without a line number on purpose: a line number is
+# a moving coordinate, and the `:284` this header used to cite had already
+# moved. Each source is ~134KB of whole-corpus lint output; only the probe's own
+# lines and the totals line are decision-bearing, so those are what is extracted
+# here.
 #
 # Extraction command, per run:
 #   grep -n 'T299-E2E-PROBE' <run>.txt ; tail -1 <run>.txt
