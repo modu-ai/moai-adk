@@ -25,7 +25,7 @@ InitDependencies() // 모든 서브시스템 와이어링
 
 ---
 
-## CLI 명령 (root 등록 61개, non-test AddCommand 호출 201개 — 2026-08-28 실측)
+## CLI 명령 (root 등록 61개, non-test AddCommand 호출 201개 — 2026-08-31 재검증, 값 불변)
 
 **프로젝트**: init, update, doctor, config, version, web  
 **SPEC**: plan, run, sync, spec (audit/lint/close)  
