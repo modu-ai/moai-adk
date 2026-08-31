@@ -1,0 +1,163 @@
+# Guard-liveness manifest — SPEC-GUARD-STATE-MODEL-001 (card t347), M1.
+#
+# One entry per subject whose firing is watched. Each entry declares FIVE
+# fields — kind, locator, events, window, measure — plus the optional
+# `expected_when`, which records a subject that is legitimately quiet outside a
+# named condition rather than leaving its silence to be inferred.
+#
+# WHY IT LIVES HERE, and not under .moai/config/: `moai update` deletes that
+# root wholesale, so a manifest kept there would be a liveness record that
+# itself silently stops on the next update.
+#
+# WHY IT IS NOT MIRRORED into internal/template/templates/: it describes THIS
+# repository's .github/workflows/. It is repository state, not template
+# content, and a deliberate exception to the Template-First rule.
+#
+# `measure` is one of exactly three values, and the choice is a claim about the
+# subject, not a formality:
+#   fired-at-all      — any run record counts. For a subject whose runs
+#                       legitimately skip (a job-level `if:`, a responder that
+#                       decides not to act), where a stricter measure would
+#                       read a correct skip as a failure to fire.
+#   fired-with-effect — excludes `skipped` and `cancelled`. For a path-gated
+#                       check: when it does run it does work, and a skip is
+#                       what we want NOT to count.
+#   verdict-rendered  — additionally requires a terminal success or failure.
+#                       For a gate that always reaches a verdict when it runs.
+#
+# `window` is how long a silence may last before it is worth reporting. It is
+# sized from the subject's own trigger, not from a house default: a check that
+# fires on every push to develop has a short one, a path-gated check a long one.
+
+entries:
+  - kind: github-workflow
+    locator: .github/workflows/auto-merge.yml
+    events: [workflow_run]
+    window: 14d
+    # Runs on every CI completion but decides at job level whether to act, so a
+    # skip is normal and only "did it run" is a meaningful liveness signal.
+    measure: fired-at-all
+
+  - kind: github-workflow
+    locator: .github/workflows/ci.yml
+    events: [push, pull_request, workflow_dispatch]
+    window: 3d
+    measure: verdict-rendered
+
+  - kind: github-workflow
+    locator: .github/workflows/claude.yml
+    events: [issue_comment, pull_request_review_comment, issues, pull_request_review]
+    window: 30d
+    # Human-triggered and gated on a mention, so most runs skip by design.
+    measure: fired-at-all
+
+  - kind: github-workflow
+    locator: .github/workflows/codeql.yml
+    events: [push, pull_request, schedule]
+    window: 14d
+    measure: verdict-rendered
+
+  - kind: github-workflow
+    locator: .github/workflows/community.yml
+    events: [issues, pull_request_target, schedule]
+    window: 3d
+    # The daily schedule is the floor; the responder jobs skip when there is
+    # nothing to triage.
+    measure: fired-at-all
+
+  - kind: github-workflow
+    locator: .github/workflows/docs-i18n-check.yml
+    events: [pull_request, push]
+    window: 60d
+    # Path-gated on docs-site/content/**; it does work whenever it runs.
+    measure: fired-with-effect
+
+  - kind: github-workflow
+    locator: .github/workflows/graph-freshness.yml
+    events: [pull_request, push]
+    window: 3d
+    measure: verdict-rendered
+
+  - kind: github-workflow
+    locator: .github/workflows/label-sync.yml
+    events: [workflow_dispatch, push]
+    window: 180d
+    # Fires only when .github/labels.yml itself changes, which is rare and
+    # bursty; a shorter window would report a healthy subject every sweep.
+    measure: fired-at-all
+
+  - kind: github-workflow
+    locator: .github/workflows/lsel-leak-guard.yaml
+    events: [push, pull_request]
+    window: 3d
+    measure: verdict-rendered
+
+  - kind: github-workflow
+    locator: .github/workflows/release-drafter-cleanup.yml
+    events: [schedule, workflow_dispatch]
+    window: 14d
+    # Weekly cron; two consecutive misses is the signal.
+    measure: fired-with-effect
+
+  - kind: github-workflow
+    locator: .github/workflows/release-drafter.yml
+    events: [push, workflow_dispatch]
+    window: 30d
+    # Fires on pushes to main, which under git-flow means release-PR merges.
+    measure: fired-at-all
+
+  - kind: github-workflow
+    locator: .github/workflows/release-pr-multi-os.yml
+    events: [pull_request, workflow_dispatch]
+    window: 30d
+    # PRs to main are release PRs under git-flow, so its cadence follows the
+    # release rhythm without being release-gated: a card PR to main would also
+    # trigger it.
+    measure: verdict-rendered
+
+  - kind: github-workflow
+    locator: .github/workflows/release.yml
+    events: [push]
+    window: 90d
+    measure: verdict-rendered
+    # Tag-triggered. Between releases its silence is the expected observation,
+    # not an anomaly — this is the declaration that keeps it out of STALE.
+    expected_when: release-cycle
+
+  - kind: github-workflow
+    locator: .github/workflows/review-quality-gate.yml
+    events: [check_run]
+    window: 14d
+    # Fires whenever a review check run completes and filters at job level.
+    measure: fired-at-all
+
+  - kind: github-workflow
+    locator: .github/workflows/spec-lint.yml
+    events: [pull_request, push]
+    window: 14d
+    # Path-gated on .moai/specs/**.
+    measure: fired-with-effect
+
+  - kind: github-workflow
+    locator: .github/workflows/spec-status-auto-sync.yml
+    events: [pull_request]
+    window: 60d
+    measure: fired-with-effect
+    # Fires on PR close. Under git-flow the PRs that close against main are
+    # release PRs, so a long quiet stretch between releases is expected rather
+    # than a stopped guard.
+    expected_when: release-cycle
+
+  - kind: github-workflow
+    locator: .github/workflows/template-neutrality-check.yaml
+    events: [pull_request, push]
+    window: 60d
+    # Path-gated on internal/template/templates/**.
+    measure: fired-with-effect
+
+  - kind: github-workflow
+    locator: .github/workflows/test-install.yml
+    events: [push, pull_request]
+    window: 90d
+    # Path-gated on the install scripts, which change rarely.
+    measure: fired-with-effect

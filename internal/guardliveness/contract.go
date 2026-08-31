@@ -55,6 +55,39 @@ type Entry struct {
 	// representable — that is the fixture AC-GDL-001 clause (c) requires — not
 	// so the partition can read it.
 	Surface string `json:"surface"`
+
+	// Expectation is what this subject was declared to do and did not, carried
+	// so an operator reading a non-clean entry is told what it missed rather
+	// than only told to investigate.
+	//
+	// A POINTER, and nil means the entry carries no missed expectation. The
+	// distinction is the same one Result.Clean is a pointer for: a value struct
+	// would make "nothing was missed" indistinguishable from "the expectation
+	// was blank", and a later reader would have no way to tell an entry that
+	// was never a missed expectation from one whose producer filled the fields
+	// with nothing. It is also what lets a result persisted before this field
+	// existed decode as absent rather than as blank.
+	//
+	// Nothing in this package reads it. It is carried for the same reason
+	// Surface is — the producer's obligation is to emit it (its own
+	// AC-GSM-007 clause (d)); showing it is a render concern this package's
+	// two render sites do not yet cover.
+	Expectation *Expectation `json:"expectation"`
+}
+
+// Expectation is a declared firing expectation, copied from the producer's
+// manifest entry rather than described.
+//
+// Both fields are plain strings and this package attaches no meaning to either
+// value: it names no vocabulary, parses no window, and compares nothing. The
+// producer owns what they mean, which is what keeps a change to either
+// vocabulary off this package.
+type Expectation struct {
+	// Window is the declared expectation window, verbatim.
+	Window string `json:"window"`
+
+	// Measure is the declared measured quantity, verbatim.
+	Measure string `json:"measure"`
 }
 
 // Designation carries which value of the producer's vocabulary is the clean
