@@ -106,7 +106,7 @@ m1_to_mN_commit_strategy: "M1 = 구현+시험+status 전이 (e33eeb93c), M2 = pr
 
 ```yaml
 sync_complete_at: 2026-09-01
-sync_commit_sha: pending-backfill-sync   # 커밋은 자기 해시를 인용할 수 없다
+sync_commit_sha: 2f28bc394   # 커밋이 자기 해시를 인용할 수 없어 바로 다음 커밋에서 backfill
 sync_status: complete
 b12_self_test_a: pass    # grep -c 'SPEC-CODEX-LAUNCH-VERB-001' CHANGELOG.md → 0 (중복 없음, 방출 가능)
 b12_self_test_b: pass    # acceptance.md 의 AC 식별자 15건 = CHANGELOG 가 적은 15건
