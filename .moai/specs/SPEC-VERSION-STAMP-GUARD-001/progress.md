@@ -100,7 +100,44 @@
 - `spec-lint.yml` fetch-depth 없음(rc=1) · `ci.yml` checkout 7개 중 6개 `fetch-depth: 0`
 - 합성 입력 부재 확인: `test -e docs-site/nonexistent-stamp.toml` → 종료 1
 
+### iter-4 (0.5.0) — plan-audit iter-3 PASS-WITH-DEBT 부채 정리
+
+- 감사: `.moai/reports/t388/plan-audit-iter3.md` — **PASS-WITH-DEBT 0.90**(iter-1 0.77 →
+  iter-2 0.80 → iter-3 0.90, 단조). run-phase 진입 적격 판정.
+- F1(minor/blocking) 닫음 — `plan.md` M2.1에 「유령은 `**Version Stamps:**` 아래에 그대로
+  둔다(따라서 8건)」 [HARD] 절 추가. `parsed=8` 핀이 이제 재현 가능하다.
+- F2(minor/blocking) 닫음 — `plan.md` §B `항목 71-78행` → `항목 71-74·77-78행`.
+  재측정: 항목은 71-74·77-78행, 75행 공백, 76행 `**Configuration Files:**` 라벨.
+- F3(major/blocking) 닫음 — plan-phase 산출 4종이 `c6aed3c36`에 커밋됨(전반부). 후반부인
+  §E.1 완료 신호를 이 절 하단에 기록(후술).
+- F4(minor/optional) 닫음 — AC-VSG-006 3항의 grep 범위를 「Files Requiring Version Sync」
+  절 전체로 **한 번만** 고정하고, 판정 명령을 실행 가능한 `sed`+`grep` 조합으로 교체.
+- F5(minor/optional) 닫음 — `plan.md` §D에 **앵커 리터럴 계약** 신설.
+  `**Version Stamps:**` / `**Release Artifacts:**`를 측정 전에 못박았다. M1·M2가 같은
+  문자열을 참조하며 어느 쪽도 기억에서 재구성하지 않는다.
+- F6(minor/optional) 닫음 — `acceptance.md` 문서 핀에서 브랜치 등가 주장(「측정 시점
+  `origin/develop`과 동일」)을 제거하고 측정 트리 SHA 단일 핀으로 교체. 유효성 확인을
+  브랜치 머리 비교가 아니라 대상 경로 diff로 바꿨다.
+- F7 — 잔여 기록, 수리 불요.
+
+**iter-4 실측**(2026-09-01, 판정 트리 = 워크트리 HEAD `c6aed3c36`):
+
+- `origin/develop` = `2c18091d1`, `9328a5242`는 그 조상(rc=0). 감사 iter-3 시점의
+  `5928095ea`에서 더 나아갔다.
+- 측정 대상 8경로(`version-management.md` · `version.go` · `system.yaml` · `hugo.toml` ·
+  `README.md` · `README.ko.md` · `Makefile` · `.goreleaser.yml`) diff: `9328a5242`↔`c6aed3c36`
+  **빈 출력**, `9328a5242`↔`2c18091d1`도 **빈 출력**. RED-now 측정 전부 유효.
+- 예외 1건: `CHANGELOG.md`는 `9328a5242`↔`2c18091d1`에서 **29줄 추가**됐다. 존재만 판정
+  대상이고 내용은 어떤 기준도 읽지 않으므로 측정에 영향 없음 — 8경로 목록에서 제외한 이유다.
+- AC-VSG-006 리터럴 재측정: (a) `partial`·`does not detect` → 절 범위 rc=1, 문서 전체 rc=1.
+  (b) 거부 5리터럴 → 절 범위 rc=1, 문서 전체 rc=1. 두 범위가 같은 답을 준다.
+
 상태: `draft` — Implementation Kickoff Approval 대기
+
+plan_status: audit-ready
+plan_complete_at: 2026-09-01
+plan_audit_verdict: PASS-WITH-DEBT 0.90 (iter-3, `.moai/reports/t388/plan-audit-iter3.md`)
+plan_artifacts_commit: `c6aed3c36`
 
 ## §E.2 Run-phase Evidence
 

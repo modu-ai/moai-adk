@@ -3,10 +3,24 @@
 > `spec.md` §3의 요구를 기계적으로 판정 가능한 형태로 옮긴 것. 이 파일은 **검증 계층**이며
 > 각 항목은 Given-When-Then이다. GEARS 요구문은 `spec.md` §3에만 있다.
 
-문서 핀: 이 파일의 모든 RED-now 측정은 트리 **`9328a5242`**(카드 워크트리
-`WT-version-sync-list` HEAD, 측정 시점 `origin/develop`과 동일)에서 실행됐다. 항목별 핀이 없는
-기준은 이 문서 핀에 구속된다(`verification-completeness.md` §2.1). run-phase는 실행 시점의
-HEAD를 다시 적는다.
+문서 핀: 이 파일의 모든 RED-now 측정은 **측정 트리 `9328a5242`**(카드 워크트리
+`WT-version-sync-list`)에서 실행됐다. 항목별 핀이 없는 기준은 이 문서 핀에 구속된다
+(`verification-completeness.md` §2.1). run-phase는 실행 시점의 HEAD를 다시 적는다.
+
+[HARD] 이 핀은 **트리 SHA 하나**이며 브랜치 등가로 적지 않는다. 「측정 시점 `origin/develop`과
+동일」류의 서술은 브랜치가 움직이는 순간 조용히 거짓이 되고, 나중 독자가 확인할 방법도 없다.
+`origin/develop`은 이 핀과 무관하게 앞으로 나아간다 — 실측 2026-09-01 기준 `2c18091d1`이며
+`9328a5242`는 그 조상이다(`git merge-base --is-ancestor` rc=0). 핀이 아직 유효한지는 브랜치
+머리를 비교해서가 아니라 **측정 대상 경로를 이 트리에 대고 diff해서** 확인한다:
+
+    git diff --stat 9328a5242 <판정 트리> -- .moai/docs/version-management.md \
+      pkg/version/version.go .moai/config/sections/system.yaml docs-site/hugo.toml \
+      README.md README.ko.md Makefile .goreleaser.yml
+
+실측(2026-09-01, 판정 트리 = 이 워크트리 HEAD `c6aed3c36`): 빈 출력 — 위 경로가 모두
+`9328a5242`와 동일하므로 이 파일의 RED-now 측정은 전부 유효하다. 같은 명령을 `origin/develop`
+(`2c18091d1`)에 대고 돌리면 `CHANGELOG.md`가 29줄 추가로 나오므로 위 목록에서 뺐다 —
+`CHANGELOG.md`는 릴리스 산출물이라 **존재**만 판정 대상이고 내용은 어떤 기준도 읽지 않는다.
 
 RED-now / green path 두 셀은 `verification-completeness.md` §2의 채택 규율을 따른다 — RED-now
 하나만으로는 「이 작업이 그것을 뒤집을 수 있다」가 증명되지 않고, green path 하나만으로는
@@ -214,6 +228,13 @@ AC-VSG-001의 리터럴 7경로 집합에서 온 상수이고, 문서 항목 수
 
 [HARD] 3항의 판정 절차 — 「그런 취지의 서술이 없다」는 판단이 아니라 두 개의 명령이다.
 
+**판정 범위(아래 (a)·(b) 공통, 한 번만 정한다)**: 「Files Requiring Version Sync」 절 전체 —
+`### Files Requiring Version Sync` 제목 줄부터 다음 `###` 소제목 직전 줄까지. 아래 두 명령은
+모두 이 범위에 대고 돌린다. 문서 전체를 범위로 삼아도 판정은 같다 — 측정상 (a)의 두 리터럴과
+(b)의 다섯 리터럴 모두 현재 문서 **전체**에서 0건이므로(트리 `9328a5242`), 절 범위는 문서
+전체의 부분집합이고 두 범위가 오늘 같은 답을 준다. 절 범위를 정본으로 두는 이유는 문서의 다른
+절이 나중에 이 리터럴을 쓰더라도 이 AC의 판정이 흔들리지 않게 하기 위해서다.
+
 **(a) 양성 존재** — 문단이 아래 두 리터럴을 **모두** 포함한다(각 1건 이상). 부분성 선언은
 없는 것을 세는 대신 있는 것을 세어 판정한다.
 
@@ -224,7 +245,7 @@ AC-VSG-001의 리터럴 7경로 집합에서 온 상수이고, 문서 항목 수
 site absent from the list」에 해당하는 문장이 실제로 쓰여 있어야 한다. 문서가 영어이므로
 리터럴도 영어다.
 
-**(b) 리터럴 거부 목록** — 아래 문자열이 이 절 안에 **0건**이다.
+**(b) 리터럴 거부 목록** — 아래 문자열이 위 판정 범위 안에 **0건**이다.
 
     no longer rot
     can no longer
@@ -232,7 +253,8 @@ site absent from the list」에 해당하는 문장이 실제로 쓰여 있어�
     guarantees that the list
     ensures the list
 
-    판정: grep -nF -e '<각 리터럴>' <문서의 해당 절> → 전부 rc=1
+    판정: sed -n '/^### Files Requiring Version Sync$/,/^### /p' .moai/docs/version-management.md \
+            | grep -nF -e '<각 리터럴>' → 전부 rc=1
 
 (a)가 (b)보다 강한 계기다 — (b)는 열거하지 못한 표현을 놓치지만, (a)는 부분성을 적지 않은
 문단을 그 사실만으로 떨어뜨린다. 둘을 함께 두는 이유는 (a)를 만족시키면서 옆줄에 과다 주장을
