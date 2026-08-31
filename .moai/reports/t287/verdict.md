@@ -82,3 +82,50 @@ guard", L251 "opaque upstream dependency".
 쓸 수 없고, 우회(python 경유, 파일 분할)는 매번 사람이 기억해야 한다. **가드를 고치는
 카드가 아니라, 이 저장소 쪽 회피 관례를 문서화하는 카드**라면 성립한다 — 다만 그것은
 카드 t287이 적은 것과 다른 작업이므로 운영자 판정 사항이다.
+
+---
+
+## 7. sync 단계 기록
+
+- 산출물: `.claude/rules/moai/workflow/worktree-integration.md` 의 새 절
+  `## Refused Commands in a Worktree-Isolated Session` + 템플릿 미러
+  (`internal/template/templates/.claude/rules/moai/workflow/worktree-integration.md`).
+  양쪽 42줄씩, 기존 줄 수정 0.
+- SPEC 없음. 이 카드는 Class B 로 plan 을 건너뛰었고, 재정의 후에도 규칙 1건이라
+  SPEC 산출물을 만들지 않았다. 따라서 3단계 마감 대상이 아니며, sync 기록은 이 절이다.
+- CHANGELOG: `[Unreleased] / Added` 에 1건 추가. 핵심은 두 가드 구별이며,
+  관측 방아쇠 2행은 요약으로만 실었다.
+
+### 7.1 sync 시점 재측정
+
+| 검사 | 명령 | 결과 |
+|---|---|---|
+| 템플릿↔로컬 동일 | `diff <template> <local>` | exit 0, 출력 없음 |
+| 빌드 | `make build` | exit 0, `catalog.yaml` 재생성되나 바이트 무변경 |
+| 중립성 | `go test ./internal/template/ -run 'Neutrality|InternalContent|Leak'` | ok, exit 0 |
+| 선택자 비공허 | 같은 명령 `-v`, `grep -c '^=== RUN'` | 143 |
+| 절 본문 금칙어 | `grep -nE '/Users/|CLAUDE\.local|SPEC-|REQ-|AC-|t287|날짜|행번호'` | 본문 42줄 0건 |
+
+### 7.2 4-locale 판정
+
+**불필요.** 이 변경은 `.claude/rules/` 의 내부 운영 규칙과 그 템플릿 미러뿐이고,
+README·docs-site 의 사용자 문서 표면을 만들지 않는다.
+
+### 7.3 절차 이탈 (규칙 본문에는 넣지 않음)
+
+위임한 specialist 가 자신의 에이전트 워크트리에 격리돼 이 카드 워크트리에 도달하지
+못했다. `cd <카드트리> && git …` 와 `git -C <카드트리> …` 가 모두 거부됐고, 문면은
+이 카드가 다루는 워크트리 가드의 인접 규칙이다. 커밋은 에이전트 브랜치에 났고
+`git cherry-pick` 으로 이 브랜치에 옮겼다(충돌 0). §7.1 의 재측정은 전부 옮긴 뒤
+이 트리에서 잰 값이다.
+
+관측 1건이고 기제를 규명하지 않았으므로 **규칙 본문에는 싣지 않았다.**
+
+### 7.4 잔여 gap
+
+- 2 차 방아쇠(복합 명령) 미재현 — 타 레인 보고를 라벨과 함께 실었을 뿐이다.
+- 방아쇠 조건 미축소 — 회피 관례를 적는 데는 불필요해 수행하지 않았다.
+- `moai update` 미실행 — `diff` 는 두 파일이 오늘 같다는 것을 증명하지만,
+  재배포 경로가 로컬을 템플릿에서 복원하는지는 관측하지 않았다.
+- `golangci-lint` 및 전체 스위트 미실행 — 변경이 마크다운 2 파일뿐이라는 것은
+  논증이지 측정이 아니다.
