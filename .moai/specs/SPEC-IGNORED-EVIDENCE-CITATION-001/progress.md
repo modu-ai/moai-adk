@@ -634,9 +634,20 @@ integration:
 
 ### Sync-phase residual risk
 
-- **`sync_commit_sha` is empty until the backfill commit lands.** Between the sync commit and its
-  successor, a reader of this block sees an empty slot. That is deliberate — the alternative, a
-  `pending-backfill` placeholder, is a value that can survive un-backfilled and be mistaken for one.
+- **`sync_commit_sha` was written as an empty slot for one commit, and the empty slot was the wrong
+  form.** The dispatch instructed it and forbade the `pending-backfill` placeholder; **that
+  instruction was wrong, and the fault is dispatch-side.** `pending-backfill` is canonical: the slot
+  grammar at `internal/spec/syncsha.go:23` admits only `SHA := [0-9a-fA-F]{7,40}` or
+  `PLACEHOLDER := "pending-backfill" ( "-" [A-Za-z0-9-]+ )?`, so an empty token matches neither
+  (`:78` the placeholder regex, `:67` the schema exemption it implements, `:115` the rationale —
+  *a placeholder is precisely a slot still owed a real SHA*). Cost, measured rather than argued: one
+  `SyncSHASlotFormat` **WARNING**, never an error, alive for exactly one commit —
+  `git show 4f2eee332:.moai/specs/SPEC-IGNORED-EVIDENCE-CITATION-001/progress.md` carries
+  `sync_commit_sha: ""` at line 440, `git show dc0956728:…` carries `4f2eee332` at the same line, and
+  `git merge-base --is-ancestor 4f2eee332 origin/develop` exits **1**, so the warning never reached
+  the integration branch and real exposure was zero. The full ruling — including why an empty value
+  is the form that hides its own debt while a placeholder announces it — is §E.2 record 1; it is not
+  repeated here.
 - **The AC-count self-test disagrees with the SPEC's own prose (B12-b above), and the disagreement is
   shipped rather than resolved.** `acceptance.md` says ten MUST criteria; the mechanical counter says
   twelve identifiers. Both are correct about different questions, and the CHANGELOG names the range
