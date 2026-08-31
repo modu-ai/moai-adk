@@ -1,7 +1,7 @@
 ---
 id: SPEC-STRESS-INVARIANT-VERDICT-001
 title: "Separate the stress test's verdict criterion from lock acquisition: invariants decide, latency gets its own derivation guard (card t372)"
-version: "0.2.0"
+version: "0.4.0"
 status: draft
 created: 2026-08-31
 updated: 2026-08-31
@@ -24,6 +24,7 @@ depends_on: [SPEC-BACKLOG-LOCK-BUDGET-001]
 | 2026-08-31 | 0.1.0 | Plan-phase authoring. Remediation branch C of card t370's three-branch finding, selected by the operator. |
 | 2026-08-31 | 0.2.0 | Plan-audit fix round (audit FAIL 0.69, `.moai/reports/t372/plan-audit.md`). Tier reclassified S → M with the requirement layer consolidated 17 → 16 REQ; attempt-conservation requirement added; the budget guard's verb corrected from *covers* to *coherent with, at the declared cost*; the guard's non-tautology shape made a requirement; the Unix sentinel's width and the closure gate's discriminating power added as non-claims; one misquoted CI run corrected. |
 | 2026-08-31 | 0.3.0 | Plan-audit iteration-2 fix round (audit PASS-WITH-DEBT 0.83, `.moai/reports/t372/plan-audit.md`, findings N1-N5). "The invariant block" bounded to the four REQ-SIV-005 assertions by identity; `successes` defined as a nil-error `Add` counter, distinct from `issuedCount`; REQ-SIV-009's cost-cancellation stated in the requirement and its mandated message wording corrected to a cost-independent relation; AC-SIV-012's mutant carve-out extended to AC-SIV-009; AC-SIV-014 relocated from §D.3 to §D.1. Finding N6 declined with evidence (`Event-detected` is the canonical GEARS label). |
+| 2026-08-31 | 0.4.0 | Kickoff-approval amendment (card t372, three lead conditions). REQ-SIV-009 now leads with the positive characterization — a **constant-coherence guard, not a runtime budget guard**, whose firing condition is a constant-axis regression — with the cost-cancellation limitation stated after it, and the mandated message wording reordered to match (`plan.md` §B + M1 step 3). AC-SIV-008's mutant constrained to the **constant axis**, with the cost-axis mutant named as a non-qualifying shape and its reason. REQ-SIV-013 reworded to carry the **pre-plant guard-census** obligation binding both mutant ACs (census + enumerating command, RED test named, non-zero selector match count, old-guard GREEN on the latency direction). Frontmatter `version` realigned with HISTORY (drifted at 0.2.0). Counts unchanged: 16 REQ / 14 AC. |
 
 ## §A Context — what was measured, and by whom
 
@@ -185,18 +186,28 @@ floor itself is stated as a non-claim in §D.
 per-mutation cost `boardLockCIMutationCost`:
 `boardLockWaitBudget >= stressWriters * stressAddsPerWriter * boardLockCIMutationCost`.
 
-`boardLockCIMutationCost` appears on **both** sides of this inequality and cancels, so the relation
-the guard actually enforces is `boardLockSupportedWriters * boardLockHeadroom >= stressWriters *
-stressAddsPerWriter` (50 >= 48) — **cost-independent**. The guard's value is that 48 and 50 are two
+This is **not a runtime budget guard — it is a constant-coherence guard**, and that positive
+characterization is what answers "what kind of guard compares 50 to 48?".
+`boardLockCIMutationCost` appears on **both** sides of the inequality and cancels, so what the guard
+enforces is a relation between compile-time constants only:
+`boardLockSupportedWriters * boardLockHeadroom >= stressWriters * stressAddsPerWriter` (50 >= 48).
+**What it catches is a constant-axis regression** — someone lowering `boardLockSupportedWriters` or
+`boardLockHeadroom`, or raising `stressWriters` / `stressAddsPerWriter` past their product. That is
+its firing condition, stated exhaustively, and it is a real regression path: 48 and 50 are two
 independently-authored figures, so the inequality binds a real coupling between the stress test and
-the lock policy; its limitation is that no change to `boardLockCIMutationCost`, and no per-mutation
-cost regression of any size, can ever make it fire.
+the lock policy, and a future edit that quietly narrows the lock policy or widens the stress test
+turns it RED. Execution time, machine speed, and contention level are **not inputs to this guard**.
 
-The guard's own failure and success messages shall therefore state what the guard enforces: a
-cost-independent ratio between the lock policy's supported-lane budget and the stress test's
-serialized mutation count. They shall never claim that the budget suffices on any real machine, and
-shall not imply that the declared 33ms figure conditions the verdict or that a change to
-`boardLockCIMutationCost` would be caught here.
+The limitation follows from the same cancellation, and does not displace the above: no change to
+`boardLockCIMutationCost`, and no per-mutation cost regression of any size, can ever make this guard
+fire. "It protects the latency budget" therefore remains the overclaim to avoid.
+
+The guard's own failure and success messages shall accordingly lead with what the guard enforces —
+a **constant-coherence** relation between the lock policy's supported-lane budget and the stress
+test's serialized mutation count, cost-independent by construction — and state the limitation after
+it. They shall never claim that the budget suffices on any real machine, and shall not imply that
+the declared 33ms figure conditions the verdict or that a change to `boardLockCIMutationCost` would
+be caught here.
 
 The no-sufficiency half of that is not pedantic: t370 back-derived the CI `-race` per-mutation cost
 at 42-105ms (`.moai/reports/t370/verdict.md`), so the wait actually required on that machine is
@@ -246,15 +257,26 @@ floor) or on the derived cost.
 ## §C Mutant-provability (binding)
 
 **REQ-SIV-013** (Ubiquitous) — Both separated criteria shall be demonstrated capable of turning RED,
-by planting a mutant and observing the failure. Each planted mutant shall be reverted after its RED
-is observed, and the post-revert GREEN shall be recorded alongside the RED — a RED without its
-restoring GREEN does not establish that the guard discriminates. Evidence in one direction only is
-not sufficient:
+by planting a mutant and observing the failure. **Before any mutant is planted**, the guards
+covering the mutated point shall be enumerated — the census — and the enumerating command recorded;
+a pass observed without having disabled every guard in that census is not innocence, and a RED
+observed while several guards cover the same point is not attribution to one of them. Each planted
+mutant shall be reverted after its RED is observed, and the post-revert GREEN shall be recorded
+alongside the RED — a RED without its restoring GREEN does not establish that the guard
+discriminates. Evidence in one direction only is not sufficient:
 
 | Direction | Mutant | Must go RED | Attribution requirement |
 |---|---|---|---|
 | latency budget | lower `boardLockHeadroom` from 5 to 4 (budget 1.65s -> 1.32s, below the 48 x 33ms = 1.584s floor) | the **new** budget guard | the evidence names which test failed, and records that `TestBoardLockWaitBudgetDerivedFromNamedInputs` stayed GREEN under the same mutant |
 | invariant | break a queue invariant in a way that reaches the invariant block (see AC-SIV-009) | `TestConcurrencyStress` | the RED originates at a named assertion **inside the invariant block** — one of REQ-SIV-005 (a)-(d), named — and the evidence cites that assertion's message and source line |
+
+The census is what makes each attribution requirement checkable rather than asserted. For every
+mutant in the table above, the recorded evidence shall carry all of: (i) the census — which tests
+cover the mutated point, enumerated **before** the mutant is planted, with the command used to
+enumerate them; (ii) which test(s) actually went RED, **by name**; (iii) the `-run` selector's
+non-zero match count, so a zero-match selector cannot masquerade as a pass; and (iv) on the latency
+direction, that the pre-existing `TestBoardLockWaitBudgetDerivedFromNamedInputs` stayed GREEN under
+the same mutant — which is what attributes the RED to the new guard alone.
 
 Both attribution requirements exist because a RED alone is not discrimination. On the latency side,
 the two guards share a `-run 'TestBoardLockWaitBudget'` prefix, so a RED that did not name its test

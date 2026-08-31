@@ -120,9 +120,20 @@ and the floor expression is read and confirmed to reference the two stress const
 
 ## §D.2 Mutant evidence (binding — both directions required)
 
-**AC-SIV-008** — the latency budget guard can go RED, and the RED is attributable to it
+**AC-SIV-008** — the budget guard can go RED, and the RED is attributable to it
+
+[HARD] **The mutant must be on the constant axis.** Because `boardLockCIMutationCost` cancels
+(REQ-SIV-009), the qualifying mutant shapes are exactly: lowering `boardLockSupportedWriters`,
+lowering `boardLockHeadroom`, or raising `stressWriters` / `stressAddsPerWriter` past their product.
+**A cost-axis mutant does NOT qualify** — changing `boardLockCIMutationCost` in either direction, by
+any magnitude, cannot make this guard fire at all, because the term appears on both sides and
+cancels. Planting one, observing no RED, and reading that as the guard being broken is the specific
+misreading this clause forecloses: no-RED under a cost mutant is the guard being **cost-independent
+by construction**, which is what REQ-SIV-009 says it is.
+
 Given the tree with `boardLockHeadroom` mutated from `5` to `4` in
-`internal/kanban/board_store.go` (budget 1.65s -> 1.32s, below the `48 * 33ms = 1.584s` floor),
+`internal/kanban/board_store.go` (a constant-axis mutant: budget 1.65s -> 1.32s, below the
+`48 * 33ms = 1.584s` floor),
 When `go test -v -run 'TestBoardLockWaitBudget' ./internal/kanban/` runs,
 Then the **new** budget guard FAILS, and the failure names the shortfall,
 And the pre-existing `TestBoardLockWaitBudgetDerivedFromNamedInputs` remains **GREEN** under the
@@ -131,8 +142,12 @@ And the recorded output shows a **non-zero match count** for the `-run` selector
 names both matched tests by `=== RUN` / `--- PASS` / `--- FAIL` lines), so a zero-match selector
 cannot masquerade as a pass,
 And when the mutant is reverted and the same command re-runs, both guards PASS.
-Evidence recorded: the mutant diff, the RED output verbatim naming **which** test failed, the old
-guard's GREEN verbatim from the same run, and the restoring GREEN output verbatim.
+Evidence recorded (REQ-SIV-013 census obligation): (i) the **census** — the tests covering the
+mutated point, enumerated **before** the mutant was planted, with the enumerating command recorded
+verbatim (e.g. `grep -rn 'boardLockHeadroom' internal/kanban/*_test.go`); (ii) the mutant diff;
+(iii) the RED output verbatim, naming **by name** which test(s) failed; (iv) the `-run` selector's
+non-zero match count read off the `=== RUN` lines; (v) `TestBoardLockWaitBudgetDerivedFromNamedInputs`
+GREEN verbatim from the same run; (vi) the restoring GREEN output verbatim.
 
 > Why the old guard's GREEN is required: the `-run 'TestBoardLockWaitBudget'` selector matches both
 > guards by prefix, so a bare RED does not say which one discriminated. Under this mutant the old
@@ -153,8 +168,14 @@ four REQ-SIV-005 assertions (a) no id collision, (b) no lost update, (c) count c
 (d) mark consistency — and the recorded evidence **names which of the four** it is, and cites that
 assertion's message text and its source line,
 And when the mutant is reverted and the same command re-runs, the test PASSES.
-Evidence recorded: the mutant diff, the RED output verbatim with the failing assertion's message and
-source line, the restoring GREEN output verbatim.
+Evidence recorded (REQ-SIV-013 census obligation): (i) the **census** — the tests covering the
+mutated point, enumerated **before** the mutant was planted, with the enumerating command recorded
+verbatim (e.g. `grep -rn '<mutated symbol>' internal/kanban/*_test.go`), which is what separates
+"only `TestConcurrencyStress` covers this" from "several tests do, so the RED attributes to none of
+them"; (ii) the mutant diff; (iii) the RED output verbatim, naming **by name** which test(s) failed,
+with the failing assertion's message text and source line; (iv) the `-run` selector's non-zero match
+count read off the `=== RUN` lines, so a zero-match selector cannot masquerade as a pass; (v) the
+restoring GREEN output verbatim.
 At minimum one of (b)/(c) is planted; planting both strengthens the evidence.
 
 **A RED produced by any of the following does NOT discharge this AC** — each proves a different gate
@@ -263,10 +284,12 @@ Until that window closes, the card's status is `implemented`, never `completed`.
 ## §D.5 Definition of Done
 
 - [ ] AC-SIV-001 .. AC-SIV-007 and AC-SIV-014 pass, each with cited command + verbatim output.
-- [ ] AC-SIV-008 discharged with mutant diff + RED naming the failing test + the old guard's GREEN
-      from the same run + restoring GREEN.
-- [ ] AC-SIV-009 discharged with mutant diff + RED citing the invariant assertion's message and
-      source line + restoring GREEN.
+- [ ] AC-SIV-008 discharged with the pre-plant census (+ its enumerating command) + a
+      **constant-axis** mutant diff + RED naming the failing test + selector match count + the old
+      guard's GREEN from the same run + restoring GREEN.
+- [ ] AC-SIV-009 discharged with the pre-plant census (+ its enumerating command) + mutant diff +
+      RED naming the failing test and citing the invariant assertion's message and source line +
+      selector match count + restoring GREEN.
 - [ ] AC-SIV-010 .. AC-SIV-012 pass.
 - [ ] `go test -race -count=1 ./internal/kanban/` green locally, with the run's own starved-add
       count and derived cost logged in the evidence.

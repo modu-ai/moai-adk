@@ -26,8 +26,12 @@ Tier M (`spec.md` § Tier classification): threshold 0.80, 2 plan-audit iteratio
 
 ### What the new guard actually catches, and at what margin
 
-The margin is **66ms on 1.584s = 4.2%**. Stated plainly so nobody later reads the guard as coverage
-evidence: it is a narrow regression tripwire, not a broad guarantee.
+It is a **constant-coherence guard, not a runtime budget guard**: it fires when someone lowers
+`boardLockSupportedWriters` or `boardLockHeadroom`, or raises `stressWriters` /
+`stressAddsPerWriter` past their product — a constant-axis regression, and a real one. Execution
+time, machine speed, and contention level are not inputs to it. The margin on the cost reading is
+**66ms on 1.584s = 4.2%**, stated plainly so nobody later reads the guard as latency coverage: it
+is a narrow constant tripwire, not a broad guarantee.
 
 `boardLockCIMutationCost` appears on both sides of `boardLockWaitBudget >= stressWriters *
 stressAddsPerWriter * boardLockCIMutationCost` and cancels, so the relation the guard enforces
@@ -112,17 +116,22 @@ sole evidence the guard is not vacuous.
    `TestBoardLockWaitBudgetDerivedFromNamedInputs`. It asserts
    `boardLockWaitBudget >= time.Duration(stressWriters*stressAddsPerWriter) *
    boardLockCIMutationCost`.
-3. Its messages state what the guard actually enforces — a **cost-independent** ratio between the
-   lock policy's supported-lane budget and the stress test's serialized mutation count — and claim no
-   sufficiency on any real machine (REQ-SIV-009). Wording to avoid: "covers", "is enough",
+3. Its messages **lead with what the guard enforces** and state the limitation after it: this is a
+   **constant-coherence guard, not a runtime budget guard** — it catches a constant-axis regression
+   (`boardLockSupportedWriters` or `boardLockHeadroom` lowered, or `stressWriters` /
+   `stressAddsPerWriter` raised past their product), and execution time, machine speed, and
+   contention level are not inputs to it (REQ-SIV-009). Wording to avoid: "covers", "is enough",
    "suffices", and any phrasing implying the 33ms figure conditions the verdict. Wording that is
-   accurate: "the lock policy budgets 10 supported writers x 5 headroom = 50 serialized mutations;
-   the stress test serializes 8 x 6 = 48. The per-mutation cost cancels on both sides, so this
-   relation is cost-independent and asserts nothing about the wait any real machine needs — the CI
-   `-race` cost observed by t370 was 42-105ms against a declared 33ms."
+   accurate: "constant coherence: the lock policy budgets 10 supported writers x 5 headroom = 50
+   serialized mutations; the stress test serializes 8 x 6 = 48. Lowering either policy constant, or
+   raising either stress constant past that product, fails this guard. The per-mutation cost cancels
+   on both sides, so the relation is cost-independent and asserts nothing about the wait any real
+   machine needs — the CI `-race` cost observed by t370 was 42-105ms against a declared 33ms."
 4. No clock, no sleep, no goroutine, and the floor built from the two stress constants rather than
    from the budget's own inputs (REQ-SIV-010 / AC-SIV-007).
-5. Discharge **AC-SIV-008**: mutate `boardLockHeadroom` 5 -> 4, run
+5. Discharge **AC-SIV-008**: first take the **census** — enumerate the tests covering the mutated
+   constant and record the enumerating command — then plant a **constant-axis** mutant (a cost-axis
+   mutant cannot make this guard fire and does not qualify): mutate `boardLockHeadroom` 5 -> 4, run
    `go test -v -run 'TestBoardLockWaitBudget' ./internal/kanban/`, observe the **new** guard RED and
    the **old** guard GREEN in the same `-v` output (the `=== RUN` / `--- PASS` / `--- FAIL` lines
    also evidence a non-zero selector match), revert, observe both GREEN. Record the diff and all
@@ -189,7 +198,9 @@ it carries the SPEC's strictness obligation, so it is reviewed as a unit rather 
    the load-sensor verdict. **Do not** substitute a fractional or percentage success floor — that is
    a load sensor with an accounting label, and it recreates the flake on the next slower runner.
 5. Confirm no assertion is behind a starvation conditional (REQ-SIV-006 / AC-SIV-004).
-6. Discharge **AC-SIV-009**: plant an invariant mutant that **reaches the invariant block** —
+6. Discharge **AC-SIV-009**: first take the **census** — enumerate the tests covering the mutated
+   point and record the enumerating command, so the RED attributes to one guard rather than to an
+   unknown several — then plant an invariant mutant that **reaches the invariant block** —
    either a dropped item after its id was issued (lost update), or a `last_seq` advance **above**
    the item count. Observe `TestConcurrencyStress` RED where the failure originates at a named
    assertion **inside the invariant block** — one of the four REQ-SIV-005 assertions (a)-(d), named
