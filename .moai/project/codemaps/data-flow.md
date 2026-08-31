@@ -282,11 +282,11 @@ flowchart TD
 
 ---
 
-## 9. codex 런치 게이트 (moai codex cli/app)
+## 9. codex 런치 게이트 (moai codex 맨몸/cli/app)
 
 ```mermaid
 flowchart TD
-    A["moai codex cli / app"]
+    A["moai codex (맨몸) / cli / app"]
     B["classifyCodexWiring<br/>(런처 배선 판정 소비)"]
     C{"wired?"}
     D["직접 기동 또는<br/>tmux spawn 기동"]
@@ -315,7 +315,7 @@ flowchart TD
 ```
 
 **흐름**:
-1. 두 기동 동사(`cli`, `app`)가 기동 직전 같은 게이트 함수(`codexInitOfferGate`)를 통과 — 게이트는 `--spawn` 인자를 받지 않아 spawn 우회 경로가 존재하지 않음
+1. 세 기동 형태(맨몸, `cli`, `app`)가 기동 직전 같은 게이트 함수(`codexInitOfferGate`)를 통과 — 게이트는 `--spawn` 인자를 받지 않아 spawn 우회 경로가 존재하지 않음
 2. 배선 판정은 런처의 단일 분류기(`classifyCodexWiring`, `internal/cli/codex_readiness.go`) 반환값을 소비 — 게이트가 디스크를 재판정하지 않음
 3. `wired`면 즉시 기동, 그 외 상태는 상태와 처방을 stderr로 보고
 4. 비대화형 세션은 프롬프트를 발행하지 않고 보고 후 종료 (대답할 수 없는 프롬프트가 자동화를 매다는 것을 방지)
