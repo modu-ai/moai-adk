@@ -109,13 +109,31 @@ finding 내역: MovingRefUnpinned 113 / MissingExclusions 24 / StatusGitConsiste
 
 | 안 | 내용 | 대가 |
 |---|---|---|
-| **A** | t342 모양 — `warning` + `Advisory: true`를 발화 지점에서 | `--strict`가 warning을 error로 올리므로 strict 실행에서는 여전히 붉다. t357 카드(M2)가 같은 문제를 겪었다 |
+| **A** | t342 모양 — `warning` + `Advisory: true`를 발화 지점에서 | 코퍼스가 붉어지지는 않는다(아래 정정 참조). 대가는 다른 데 있다 — 약 846건이 **아무도 고칠 의무가 없는 조용한 자문 warning**으로 쌓인다 |
 | **B** | t357 모양 — `error` 유지 + 같은 SPEC 안에서 코퍼스 정리 | 47개 SPEC의 AC 매핑 작성. Tier를 L로 밀 가능성이 크다 |
 | **C** | 넓힘을 단계적으로 — 1차는 파서만 넓히고 `CoverageRule`은 기존 좁은 집합에만 적용, 2차에서 확대 | 두 단계로 나뉘어 카드가 길어진다. 다만 자릿수를 실측한 뒤 심각도를 정할 수 있다 |
 
 **권고: C → (실측 후) A 또는 B.** REQ-CRS-001-004가 재측정을 요구하는 이유가 이것이다. 741이 추정치인 이상, 심각도를 지금 확정하는 것은 재보지 않은 수 위에 정책을 세우는 일이다.
 
 [NEEDS CLARIFICATION: 심각도 안 A/B/C 선택 — 실측 결과를 본 뒤 운영자 판정]
+
+### D.3 [정정 2026-08-31] A안의 대가를 잘못 적었다
+
+위 표의 A안 대가 칸은 원래 "`--strict`가 warning을 error로 올리므로 strict 실행에서는 여전히 붉다"였다. **거짓이다.** 바로 위 §D.1이 t342 기제를 이미 정확히 서술하고 있었으므로(발화 지점에서 `Advisory: true`), 이 계획서는 스스로와 모순돼 있었다.
+
+측정 사실 — 전부 이 브랜치에서 잰 것:
+
+- `internal/spec/lint.go:61` — `if r.Strict && f.Severity == SeverityWarning && !f.Advisory { return true }`. 자문 등급 warning은 승격되지 않는다.
+- 병합 전 트리 `68ecbfe4a`: `moai spec lint --strict` → rc=0, `0 error(s), 177 warning(s)`, 177건 전부 `advisory=true`.
+- M3 이후 병합 트리 `1fb217db0`: finding 1,093건, 비자문 warning 0건. `--strict` rc=1은 오직 상속된 `ArtifactStatusFieldForbidden` error 2건 때문이며, 그 2건은 **다른 카드 소관**이다.
+
+**A안의 진짜 대가**: strict가 붉어지는 것이 아니라, 약 846건이 조용한 자문 warning으로 쌓여 **아무도 고치도록 강제되지 않는다는 것**이다. 승격 조건을 부채로 기록해 두는 이유가 이것이다.
+
+### D.4 [정정 2026-08-31] A안 판정을 `CoverageRule`로만 한정한 전제가 부족했다
+
+A안 판정은 애초에 `CoverageRule` 하나에 대해 내려졌다. 그 한정이 **불충분한 것으로 드러났다**: 넓힌 `doc.REQs`의 소비자는 4개이고, 넓힘이 `ModalityMalformed`(25건)와 `InvalidREQID`(6건)까지 error로 켰다. 리드가 넓힘으로 새로 생긴 finding에 한해 자문 처리를 그 규칙들로 확장하는 것을 승인했다.
+
+이것은 새 계획이 아니라 **계획서 전제에 대한 정정**이다. §D는 심각도를 규칙 하나의 속성으로 다뤘지만, 실제 축은 규칙이 아니라 **파서를 공유하는 소비자 집합**이었다.
 
 ## §E 마일스톤
 

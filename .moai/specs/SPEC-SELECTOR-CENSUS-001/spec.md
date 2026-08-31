@@ -2,9 +2,9 @@
 id: SPEC-SELECTOR-CENSUS-001
 title: "0-실행 테스트 판정 — 아무것도 쓸어담지 못한 실행을 관측된 pass 로 적지 않는다"
 version: "0.1.0"
-status: draft
+status: completed
 created: 2026-08-29
-updated: 2026-08-29
+updated: 2026-08-31
 author: manager-spec
 priority: P1
 phase: "v3.1.4 target"
