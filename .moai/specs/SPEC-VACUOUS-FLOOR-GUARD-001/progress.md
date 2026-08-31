@@ -55,7 +55,7 @@ vacuous guards (SPEC-excluded). A deletion carries no positive mutant evidence o
 
 ```yaml
 run_complete_at: 2026-08-31
-run_commit_sha: pending-backfill-t378-run
+run_commit_sha: c3208b08f
 run_status: complete
 ac_pass_count: 8
 ac_fail_count: 0
@@ -76,4 +76,56 @@ m1_to_mN_commit_strategy: single-commit   # Tier S: one file, one hunk, plus evi
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+Full sync verdict, in five evidence-bearing sections with per-measurement party attribution
+(`[MD]` manager-develop / `[ORCH]` orchestrator / `[DOCS]` manager-docs):
+`.moai/reports/t378/verdict.md`.
+
+```yaml
+sync_complete_at: 2026-08-31
+sync_commit_sha: pending-backfill-sync   # a commit cannot cite its own hash
+sync_status: complete
+b12_self_test_a: pass    # grep -c 'SPEC-VACUOUS-FLOOR-GUARD-001' CHANGELOG.md -> 0, no duplicate
+b12_self_test_b: pass    # 8 own AC (AC-VFG-001..008); the domain-agnostic pattern returns 9
+                         # because spec.md cites t372's AC-SIV-013 as a cross-reference. Non-zero
+                         # and plausible, so the test is satisfied rather than vacuous.
+b12_self_test_c: pass    # every path named in the entry resolves at HEAD (verdict.md §2.3)
+changelog_entry_position: "[Unreleased] -> ### Changed, first entry (section is newest-first)"
+frontmatter_status_transitions:
+  spec_md: in-progress -> implemented
+  plan_md: not-applicable        # Tier S: plan.md carries no status frontmatter
+  acceptance_md: not-applicable  # Tier S: AC inline in spec.md §C, no acceptance.md
+  progress_md: not-applicable    # no status frontmatter
+canary_compliance_check: not-applicable   # this SPEC defines no forward-looking policy
+docs_surfaces_checked:
+  readme_4_locale: no-change-warranted
+  docs_site: no-change-warranted
+  template_mirror: no-change-warranted
+  evidence: >-
+    grep -rln 'boardLockWaitBudget|boardLockHeadroom|BudgetDerivedFromNamedInputs|
+    VACUOUS-FLOOR-GUARD' README.md README.*.md docs-site/ -> rc=1 (no hits);
+    git diff --name-only 3f03d9c36..HEAD | grep -c 'internal/template/templates/' -> 0.
+    Checked, not assumed.
+sync_phase_reverification:
+  guards_green: "go test -timeout 600s -count=1 -v -run 'TestBoardLockWaitBudget'
+    ./internal/kanban/ -> 2 === RUN, both --- PASS, ok 0.393s [DOCS] at c3208b08f"
+  lint: "./bin/moai spec lint -> 0 error(s), 1096 warning(s); tree binary,
+    strings bin/moai | grep -c c3208b08f -> 4 [DOCS]"
+  scope_hold: "git diff --stat 3f03d9c36..HEAD -- internal/ -> 1 file, +27/-7;
+    git diff -- internal/kanban/board_store.go -> empty [DOCS]"
+coordinate_reverification:
+  groups_checked: 19        # 95 raw prose hits, 3 of them the 'baseline 2' false positive
+  drifted: 1                # spec.md §A.3 table Line column (45/54/59/28 -> 65/74/79/28 at HEAD)
+  corrected: 0              # the drifted group is spec.md §A body, outside manager-docs' boundary
+  blocker: B-1              # see verdict.md §6 — re-delegate to manager-spec if the fix is wanted
+status_closes_at: implemented   # NOT completed: branch unpushed, no CI verdict on any commit
+```
+
+**Non-claims carried forward (verdict.md §5), restated here so they survive a reader who reads
+only this file:** a deletion carries no positive mutant evidence of its own; AC-VFG-007's negative
+evidence is one observation on one assignment and corroborates the static argument rather than
+proving it; "660ms is looser than 1650ms" is an illusion the vacuous branch created, since 1650ms
+was the same expression as the budget and never functioned as a bound; AC-VFG-008 is **not** a
+clean zero (both prohibited tokens appear on `plan-audit.md` lines 71-72, inside prose stating the
+prohibition — all 12 recorded invocations comply); AC-VFG-006's form-A hole is documented, not
+closed; and one census prediction (`TestConcurrencyStress` under M2) missed, recorded because a
+miss must stay visible.
