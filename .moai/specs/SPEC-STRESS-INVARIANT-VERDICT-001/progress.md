@@ -110,4 +110,73 @@ m1_to_mN_commit_strategy: single-commit   # M1-M5 land as one commit; the milest
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+Full sync verdict, in the five evidence-bearing sections with per-measurement party attribution
+(`[MD]` = manager-develop run-phase, `[ORCH]` = orchestrator independent re-run):
+`.moai/reports/t372/verdict.md`.
+
+```yaml
+sync_complete_at: 2026-08-31
+sync_commit_sha: pending-backfill-sync
+sync_status: audit-ready
+b12_self_test_a: pass          # grep -c 'SPEC-STRESS-INVARIANT-VERDICT-001' CHANGELOG.md -> 0, no duplicate
+b12_self_test_b: pass          # acceptance.md distinct AC identifiers -> 14 (non-zero), matches the 14-row matrix
+b12_self_test_c: pass          # every path named in the CHANGELOG entry verified present
+changelog_entry_position: "[Unreleased] / ### Changed (top)"
+changelog_section_rationale: >
+  Changed, not Fixed. Fixed would assert the CI flake is fixed; it is not established as fixed
+  (AC-SIV-013 open, and no before/after comparison exists in any quantity). What changed is the
+  test's verdict criterion.
+ac_pass_count: 13
+ac_fail_count: 0
+ac_open_count: 1               # AC-SIV-013, closure gate, OPEN at merge by design
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented"   # NOT completed: AC-SIV-013 open (REQ-SIV-015)
+  plan_md: "n/a - no frontmatter (status-stateless per spec-frontmatter-schema.md)"
+  acceptance_md: "n/a - no frontmatter (status-stateless)"
+  progress_md: "n/a - phase state recorded in body sections"
+mx_tag_validation: "sync sub-step, no change - test-only diff plus one comment block; no exported production surface added or changed"
+independent_orchestrator_verification:
+  ac: AC-SIV-008
+  party: orchestrator
+  tree: 0fa8606fe
+  census_command: "grep -rln 'boardLockHeadroom\\|boardLockWaitBudget' --include='*_test.go' internal/"
+  census_files: 3
+  mutant: "boardLockHeadroom 5 -> 4 (constant axis)"
+  scope: whole-package            # deliberately wider than the run-phase selector
+  swept_count: 389                # '=== RUN' lines; non-zero, so no empty-sweep masquerade
+  failing_tests: 1
+  failing_test_name: TestBoardLockWaitBudgetCoversSerializedMutations
+  old_guard_same_run: PASS        # TestBoardLockWaitBudgetDerivedFromNamedInputs -> the attribution
+  reverted: true
+  restoring_green: true
+  tree_clean_after: true
+  evidence_path: .moai/reports/t372/mutant-headroom4-orchestrator.log
+  evidence_path_committed: false  # gitignored (.gitignore:106 *.log); decisive lines quoted verbatim in verdict.md 2.2
+readme_docs_site_change: none
+readme_docs_site_check: >
+  grep -rln 'TestConcurrencyStress|boardLockWaitBudget|boardLockHeadroom' README*.md docs-site/
+  -> no hits. Checked, not assumed.
+template_mirror_required: false  # no path under internal/template/templates/ touched
+golangci_lint_run: false         # gap, carried from run-phase; go vet + gofmt clean only
+ci_read_at_sync: false           # no CI run read or triggered; out of delegated scope
+l44_pre_commit_fetch: not-run    # lane-local worktree; the lead holds the integration window
+l44_post_push_fetch: not-run     # no push performed this phase
+closure_gate_open: AC-SIV-013    # >=5 non-cancelled post-landing develop heads; card stays implemented
+```
+
+Non-claims carried (REQ-SIV-014, verbatim in substance at `.moai/reports/t372/verdict.md` §5): no
+before/after improvement claim exists in any quantity; a single green run cannot close this card
+(two post-repair green observations already existed — this is where t354 stopped); a green
+observation window evidences only that no new failure mode was introduced, never that the
+invariants still fire; the tolerated error class is every `unix.Flock` failure on Unix, not only
+`EWOULDBLOCK`, and `errors.Is` traverses `errors.Join`. Local green is not the verdict — both local
+per-mutation figures (14.8 ms `[ORCH]`, 17.5 ms t370) sit far below the 34.4 ms threshold, so this
+machine was always in the passing band, and the 42-105 ms CI `-race` band was never reproduced
+locally.
+
+Follow-up candidates recorded, not fixed (verdict.md §7): the pre-existing unreachable
+`budget < floor` branch in `TestBoardLockWaitBudgetDerivedFromNamedInputs`
+(`board_lock_wait_test.go:36-41`); the over-broad `ErrBoardLockHeld` sentinel on Unix; the
+`…CoversSerializedMutations` guard name prescribed verbatim by `plan.md` while REQ-SIV-009 forbids
+"covers" framing in its messages; and `.moai/reports/t370/**` being untracked everywhere while
+serving as this SPEC's cited ground truth.
