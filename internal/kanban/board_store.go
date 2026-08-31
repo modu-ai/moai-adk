@@ -109,6 +109,15 @@ const (
 	// boardLockHeadroom is the stated headroom factor over the product
 	// above. Five means: survive roughly five consecutive rounds of losing
 	// to every peer before a stuck holder is declared.
+	//
+	// The product boardLockSupportedWriters * boardLockHeadroom = 50 is the
+	// serialized-mutation count this policy budgets for, and it sits barely
+	// above the 8 x 6 = 48 mutations TestConcurrencyStress serializes through
+	// one flock. That near-coincidence used to be accidental;
+	// TestBoardLockWaitBudgetCoversSerializedMutations (board_lock_wait_test.go,
+	// SPEC-STRESS-INVARIANT-VERDICT-001) now pins it, so lowering either
+	// constant here fails that guard. It is a constant-coherence relation and
+	// asserts nothing about the wait a real machine needs.
 	boardLockHeadroom = 5
 
 	// boardLockWaitBudget is the derived elapsed window a contender polls

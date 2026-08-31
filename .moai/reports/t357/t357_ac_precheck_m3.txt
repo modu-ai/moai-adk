@@ -1,0 +1,17 @@
+HEAD=cb473a1a4
+section bytes = 1327
+--- AC-AST-001-01 (three separate statements + negation proximity) ---
+S1 PASS
+S2 PASS
+S3 PASS
+--- AC-AST-001-02 (permission present + not negated, no blanket prohibition) ---
+permission=1 blanket_prohibition=0
+AC-02 PASS
+--- AC-AST-001-11 (template mirror) ---
+mirror identical: PASS
+anchor local:  PASS
+anchor mirror: PASS
+--- 3-guard base-value extraction (AC-07 / -08 / -10) ---
+BASE_SPEC=096aaf527 (rc=0)
+BASE_M3=30b8e3fef (rc=0)
+baseline_N=393 (rc=0)

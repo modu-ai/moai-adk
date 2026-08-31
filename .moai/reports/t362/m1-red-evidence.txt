@@ -1,0 +1,70 @@
+# SPEC-COVERAGE-RULE-SCOPE-001 M1 — RED evidence (test-first + mutation)
+# tree: worktree .claude/worktrees/t362, branch WT-coverage-rule-scope, HEAD 68ecbfe4a
+
+## RED-1 — tests written before the implementation existed
+
+$ go test ./internal/spec/... -run 'TestParseREQsWide'
+# github.com/modu-ai/moai-adk/internal/spec [github.com/modu-ai/moai-adk/internal/spec.test]
+internal/spec/lint_req_widen_test.go:33:12: undefined: parseREQsWide
+internal/spec/lint_req_widen_test.go:67:10: undefined: parseREQsWide
+internal/spec/lint_req_widen_test.go:98:10: undefined: parseREQsWide
+internal/spec/lint_req_widen_test.go:115:10: undefined: parseREQsWide
+FAIL	github.com/modu-ai/moai-adk/internal/spec [build failed]
+FAIL
+
+## RED-2 — mutation: multi-segment domain alternation removed from reqLineWidePattern
+##
+## intact:  ^\s*[-*]\s+\**\s*(REQ-[A-Z0-9]+(?:-[A-Z0-9]+)*-\d+)\s*\**\s*:\s*(.*)$
+## mutant:  ^\s*[-*]\s+\**\s*(REQ-[A-Z0-9]+-\d+)\s*\**\s*:\s*(.*)$
+
+$ go test ./internal/spec/... -run 'TestParseREQsWide'
+--- FAIL: TestParseREQsWide_SixObservedShapes (0.00s)
+    --- FAIL: TestParseREQsWide_SixObservedShapes/five-segment (0.00s)
+        lint_req_widen_test.go:35: expected 1 REQ from "- REQ-VNRN-RT-001-001: The system SHALL do X.", got 0 ([])
+    --- FAIL: TestParseREQsWide_SixObservedShapes/two-part-domain (0.00s)
+        lint_req_widen_test.go:35: expected 1 REQ from "- REQ-HRN-FND-001: The system SHALL do X.", got 0 ([])
+    --- FAIL: TestParseREQsWide_SixObservedShapes/narrow-current (0.00s)
+        lint_req_widen_test.go:35: expected 1 REQ from "- REQ-SPC-003-001: The system SHALL do X.", got 0 ([])
+--- FAIL: TestParseREQsWide_CountEqualsDefinitionLines (0.00s)
+    lint_req_widen_test.go:69: expected 7 REQ entries, got 4 ([{REQ-HOOK-001 first. 3} {REQ-WF001-001 second. 4} {REQ-TUX1-001 fifth. 7} {REQ-WC01-001 sixth. 8}])
+--- FAIL: TestParseREQsWide_NarrowSubsetOnFixture (0.00s)
+    lint_req_widen_test.go:123: narrow match "REQ-SPC-003-001" absent from wide set
+    lint_req_widen_test.go:123: narrow match "REQ-ABC-123-456" absent from wide set
+    lint_req_widen_test.go:127: expected 3 wide matches, got 1
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	0.422s
+FAIL
+
+## GREEN — pattern restored
+
+$ go test ./internal/spec/... -run 'TestParseREQsWide' -v   (tail)
+--- PASS: TestParseREQsWide_SixObservedShapes (0.00s)
+    --- PASS: TestParseREQsWide_SixObservedShapes/three-segment (0.00s)
+    --- PASS: TestParseREQsWide_SixObservedShapes/digits-in-domain (0.00s)
+    --- PASS: TestParseREQsWide_SixObservedShapes/five-segment (0.00s)
+    --- PASS: TestParseREQsWide_SixObservedShapes/two-part-domain (0.00s)
+    --- PASS: TestParseREQsWide_SixObservedShapes/trailing-digit-domain (0.00s)
+    --- PASS: TestParseREQsWide_SixObservedShapes/alnum-domain (0.00s)
+    --- PASS: TestParseREQsWide_SixObservedShapes/narrow-current (0.00s)
+    --- PASS: TestParseREQsWide_SixObservedShapes/bold-marker (0.00s)
+    --- PASS: TestParseREQsWide_SixObservedShapes/asterisk-bullet (0.00s)
+    --- PASS: TestParseREQsWide_SixObservedShapes/indented (0.00s)
+--- PASS: TestParseREQsWide_CountEqualsDefinitionLines (0.00s)
+--- PASS: TestParseREQsWide_ProseMentionsNotCollected (0.00s)
+--- PASS: TestParseREQsWide_NarrowSubsetOnFixture (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/spec	0.448s
+
+## Live-behavior invariance (widened pattern NOT wired into parseSPECDoc)
+
+$ go build -o <scratch>/moai-t362-m1 ./cmd/moai              → exit 0
+$ <scratch>/moai-t362-m1 spec lint --json > <scratch>/lint-post-m1.json   → exit 0, 140223 bytes
+$ cmp <scratch>/lint-post-m1.json .moai/reports/t362/lint-corpus-68ecbfe4a.json   → exit 0 (byte-identical)
+
+histogram (both files, identical):
+ 113 MovingRefUnpinned
+  24 MissingExclusions
+  18 StatusGitConsistency
+  14 FrontmatterInvalid
+   7 LegacyEARSKeyword
+   1 OwnershipTransitionInvalid

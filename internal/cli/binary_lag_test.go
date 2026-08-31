@@ -54,7 +54,13 @@ func TestBinaryLag_OneSeamServesBothSurfaces(t *testing.T) {
 
 	// Surface 2 — the unprompted session-start advisory.
 	projectDir := t.TempDir()
-	out, err := hook.NewSessionStartHandler(nil).Handle(context.Background(), &hook.HookInput{
+	// WithSynchronousDeferredScans: this test owns projectDir and t.TempDir
+	// deletes it the moment the test body returns. Without the option Handle's
+	// deferred MX cold-start scan writes .moai/state/mx-index.json from a
+	// goroutine that can outrun the join bound, and the write races that
+	// deletion ("unlinkat ... .moai/state: directory not empty").
+	// SPEC-TEMPDIR-CLEANUP-RACE-001 REQ-TCR-003.
+	out, err := hook.NewSessionStartHandler(nil, hook.WithSynchronousDeferredScans()).Handle(context.Background(), &hook.HookInput{
 		SessionID:     "sess-seam",
 		CWD:           projectDir,
 		ProjectDir:    projectDir,

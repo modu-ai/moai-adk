@@ -27,7 +27,26 @@ package spec
 // Severity is `warning`, NEVER `error` (spec.md §D.5): 42 candidate lines exist
 // in the corpus today, and reddening them on the first run makes bulk
 // suppression the rational response — the outcome this rule exists to prevent.
-// The code is deliberately absent from `eraDemotableCodes`.
+//
+// Every finding is ALSO emitted `Advisory: true` (REQ-MRG-009 as amended at
+// spec.md v0.8.0, §D.7), so `--strict` does not escalate it. `warning` alone
+// delivered half of §D.5's intent and `--strict` took it back: the run-phase
+// merge reddened `develop`'s SPEC Lint job, which invokes the linter with
+// `--strict`, on 110 findings the corpus already carried. Advisory emission is
+// the completion of §D.5's intent, not a retreat from it — the finding stays a
+// `warning`, stays in the report under every invocation, and gates nothing.
+//
+// The mechanism is deliberately the EMISSION SITE, not the era map. The code is
+// absent from `eraDemotableCodes` and must stay absent: that map is consulted
+// only for `SeverityError` findings, so a warning never reaches it, and the
+// gating findings sit on modern-era (V3R6) SPECs that no era path can demote.
+// `StatusGitConsistency` (lint.go) is the existing precedent for emission-site
+// advisory.
+//
+// The promotion condition is prose, in spec.md §D.7, and prose does not fire:
+// once the corpus findings are remediated or R3-exempted, the retracted
+// `--strict` clause returns verbatim. Until then this guard reports without
+// gating, which is the shape this SPEC itself exists to detect.
 //
 // Three shapes this rule deliberately does NOT treat as exemptions:
 //   - The three-dot form `A...B` (REQ-MRG-007). Merge-base is not stable under
@@ -195,6 +214,7 @@ func (r *MovingRefUnpinnedRule) scanLines(path string, lines []string) []Finding
 				File:     path,
 				Line:     i + 1,
 				Severity: SeverityWarning,
+				Advisory: true, // REQ-MRG-009 (v0.8.0): reports, never gates — see file header
 				Code:     r.Code(),
 				Message: fmt.Sprintf(
 					"incomplete `moving-ref-ok` marker: the exemption for %s carries no reason, so it does not suppress. "+
@@ -207,6 +227,7 @@ func (r *MovingRefUnpinnedRule) scanLines(path string, lines []string) []Finding
 				File:     path,
 				Line:     i + 1,
 				Severity: SeverityWarning,
+				Advisory: true, // REQ-MRG-009 (v0.8.0): reports, never gates — see file header
 				Code:     r.Code(),
 				Message: fmt.Sprintf(
 					"%s decides an invariant claim on this line with no SHA pin and no frozen-baseline variable, "+

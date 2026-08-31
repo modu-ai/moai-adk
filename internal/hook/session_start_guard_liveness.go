@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/guardliveness"
+	"github.com/modu-ai/moai-adk/internal/guardstate"
 )
 
 // guardLivenessJoinBound caps how long session start waits for the persisted
@@ -30,12 +31,22 @@ import (
 const guardLivenessJoinBound = 250 * time.Millisecond
 
 // guardLivenessProducer is the seam to the state model
-// (SPEC-GUARD-STATE-MODEL-001), which has not landed. Until it does, the wired
-// producer reports that it is unwired — reached on every activation, so the
-// count at the query layer stays the count of activations rather than dropping
-// silently to zero. When the state model lands, this one line names its
-// producer instead.
-var guardLivenessProducer guardliveness.Producer = guardliveness.Unwired()
+// (SPEC-GUARD-STATE-MODEL-001, card t347), which has landed: this line names
+// its producer, replacing the guardliveness.Unwired() stub that stood here
+// until it did.
+//
+// It is an UNCONDITIONAL naming, and that is the whole design of the seam. The
+// stub was a producer rather than a nil check so that replacing it could not
+// introduce a branch short of the query layer; wiring it as
+// `if p != nil { … }` would make the production path conditional on the seam
+// existing, which is the absent-execution shape this family is about, rebuilt
+// inside its own fix.
+//
+// A variable rather than a constructor call at each use so a test can watch
+// the join. What travels through it is guardstate's decision of every declared
+// entry into exactly one classification, plus the machine-readable designation
+// of which value means nothing to report — this package names none of them.
+var guardLivenessProducer guardliveness.Producer = guardstate.NewProducer()
 
 // newGuardLivenessStore resolves where verdicts persist between activations.
 //
@@ -67,11 +78,16 @@ var newGuardLivenessStore = guardliveness.DefaultStore
 //     Its result is persisted on completion and read by a LATER activation
 //     (guardLivenessAdvisory), which is what keeps the unconditional binding
 //     compatible with the bound.
-func guardLivenessRefresh(ctx context.Context, root string) {
+//
+// The async parameter is the CALLER's answer, not this function's: it is the
+// conjunction of the package-private test-binary seam and the per-handler
+// WithSynchronousDeferredScans option, which cannot be read from here because
+// the option lives on the handler value (SPEC-TEMPDIR-CLEANUP-RACE-001).
+func guardLivenessRefresh(ctx context.Context, root string, async bool) {
 	act := guardliveness.Activation{Root: root}
 	evaluator := guardliveness.New(guardLivenessProducer, guardLivenessSinkOption())
 
-	if !deferredScansAsyncEnabled() {
+	if !async {
 		// Test path (TestMain sets deferredScansAsync=false): run inline so no
 		// goroutine outlives the test boundary, matching the binary-lag
 		// contributor on this surface and for the same reason.
@@ -124,7 +140,9 @@ func guardLivenessSinkOption() guardliveness.Option {
 // clean. A verdict that could not be READ renders the contract violation by
 // name (guardliveness.Advisory), because reporting that as silence would be
 // this card's own subject at the consumer's layer.
-func guardLivenessAdvisory(root string) string {
+//
+// The async parameter is the CALLER's answer; see guardLivenessRefresh.
+func guardLivenessAdvisory(root string, async bool) string {
 	if root == "" {
 		return ""
 	}
@@ -161,9 +179,10 @@ func guardLivenessAdvisory(root string) string {
 		return text
 	}
 
-	if !deferredScansAsyncEnabled() {
-		// Test path (TestMain sets deferredScansAsync=false): run inline so no
-		// goroutine outlives the test boundary.
+	if !async {
+		// Test path (TestMain sets deferredScansAsync=false, or the caller
+		// passed WithSynchronousDeferredScans): run inline so no goroutine
+		// outlives the test boundary.
 		return read()
 	}
 

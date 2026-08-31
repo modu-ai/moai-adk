@@ -1,7 +1,12 @@
 name: Graph Freshness
 
 on:
+  # main was the only pull-request base when this trigger was authored (6786c3fa4),
+  # so the unfiltered form meant `branches: [main]`. The git-flow switch (11216d13f)
+  # widened the same statement without a recorded decision; naming the integration
+  # branches here declares the firing set already in force rather than changing it.
   pull_request:
+    branches: [main, develop]
   push:
     branches: [main, develop]
 

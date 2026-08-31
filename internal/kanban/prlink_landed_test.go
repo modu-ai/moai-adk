@@ -93,7 +93,7 @@ func TestLandedCheck_Controls(t *testing.T) {
 	// The card is landed AND the underlying query is non-empty. Without this
 	// half, an -E regression makes every card report no-link and the whole
 	// criterion passes on a result that observed nothing.
-	args, err := LandedGrepArgs("t199")
+	args, err := LandedGrepArgs(DefaultLandedRef, "t199")
 	if err != nil {
 		t.Fatalf("argv: %v", err)
 	}
@@ -108,8 +108,8 @@ func TestLandedCheck_Controls(t *testing.T) {
 	if err != nil {
 		t.Fatalf("landed t199: %v", err)
 	}
-	if !landed {
-		t.Errorf("t199 landed = false, want true (query returned %q)", strings.TrimSpace(raw))
+	if landed != LandingLanded {
+		t.Errorf("t199 landed = %q, want %q (query returned %q)", landed, LandingLanded, strings.TrimSpace(raw))
 	}
 
 	// --- negative control ------------------------------------------------
@@ -117,8 +117,8 @@ func TestLandedCheck_Controls(t *testing.T) {
 	if err != nil {
 		t.Fatalf("landed t205: %v", err)
 	}
-	if notLanded {
-		t.Error("t205 landed = true; the fixture names no such commit")
+	if notLanded != LandingNotLanded {
+		t.Errorf("t205 landed = %q, want %q; the fixture names no such commit", notLanded, LandingNotLanded)
 	}
 
 	// --- regex-engine tripwire -------------------------------------------
@@ -161,7 +161,10 @@ func TestLandedCheck_BooleanOnly(t *testing.T) {
 
 	// Establish the premise: the newest match IS the report commit, so any
 	// "first match is the delivering commit" reading attributes wrongly.
-	args, _ := LandedGrepArgs("t199")
+	args, argvErr := LandedGrepArgs(DefaultLandedRef, "t199")
+	if argvErr != nil {
+		t.Fatalf("argv: %v", argvErr)
+	}
 	raw, err := run("git", args...)
 	if err != nil {
 		t.Fatalf("query: %v", err)
@@ -192,7 +195,7 @@ func TestLandedCheck_BooleanOnly(t *testing.T) {
 // the git --grep pattern.
 func TestLandedGrepArgs_RefusesNonToken(t *testing.T) {
 	for _, bad := range []string{"", "t1 t2", `t1"`, "t1;rm -rf /", "t1\n"} {
-		if _, err := LandedGrepArgs(bad); err == nil {
+		if _, err := LandedGrepArgs(DefaultLandedRef, bad); err == nil {
 			t.Errorf("LandedGrepArgs(%q) = nil error, want a refusal", bad)
 		}
 	}
@@ -219,8 +222,11 @@ func TestLandedQuerier_GitFailureIsNotFalse(t *testing.T) {
 	if !errors.Is(err, boom) {
 		t.Errorf("err = %v, want it to wrap the runner's error", err)
 	}
-	if landed {
-		t.Error("landed = true on a failed query")
+	// A failed query is UNKNOWN, never not-landed: collapsing the two makes
+	// "the check could not run" and "the check ran and found nothing" the
+	// same value (REQ-TLS-003, REQ-TLS-004).
+	if landed != LandingUnknown {
+		t.Errorf("landed = %q on a failed query, want %q", landed, LandingUnknown)
 	}
 }
 

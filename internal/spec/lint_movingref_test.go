@@ -159,43 +159,70 @@ func TestMovingRef_ThreeDotNotExempt(t *testing.T) {
 	}
 }
 
-// TestMovingRef_SeverityWarningAndExitCode decides AC-MRG-005 (REQ-MRG-009 and
-// spec.md §D.5): the finding is a non-advisory `warning`, so `moai spec lint`
-// exits 0 while `--strict` exits non-zero.
+// TestMovingRef_AdvisoryAndStillReported decides AC-MRG-005 as amended at
+// spec.md v0.8.0 (REQ-MRG-009, spec.md §D.7): the finding is a `warning` that is
+// ALSO `Advisory`, so neither `moai spec lint` nor `moai spec lint --strict`
+// gates on it — while the finding stays in the report under both invocations.
 //
-// Severity above `warning` would red the 42 existing corpus candidates on the
-// first run, and the rational response to that is a bulk suppression — the exact
-// outcome this SPEC exists to prevent.
+// The prior form of this criterion asserted that `--strict` exits non-zero. That
+// clause is retracted: the live corpus carries 110 `MovingRefUnpinned` findings
+// on modern-era SPECs, so `--strict` reddened `develop`'s SPEC Lint job on the
+// run-phase merge and stayed red. A day-one gate over 110 findings makes bulk
+// suppression the rational response — the outcome this SPEC exists to prevent.
 //
-// Mutation that must turn it red: emit at SeverityError; the non-strict exit
-// becomes non-zero.
-func TestMovingRef_SeverityWarningAndExitCode(t *testing.T) {
-	report := lintMovingRef(t, "unpinned-anchor", false)
+// [HARD] Both halves are required and they falsify in OPPOSITE directions. Exit
+// 0 alone is produced just as readily by a rule that emits nothing, and an
+// advisory guard is separated from a switched-off guard only by whether the
+// finding is still reported.
+//
+// Mutations that must turn it red, one per half:
+//   - drop `Advisory: true` from the rule's emission → the `--strict` exit half
+//     reds, the count half is unchanged;
+//   - unregister the rule from `l.rules` → the count half reds, while BOTH exit
+//     assertions stay green.
+func TestMovingRef_AdvisoryAndStillReported(t *testing.T) {
+	plain := lintMovingRef(t, "unpinned-anchor", false)
+	strict := lintMovingRef(t, "unpinned-anchor", true)
 
 	// The criterion is stated over a corpus "whose only findings are
 	// MovingRefUnpinned". Info-severity findings do not enter HasErrors, so the
 	// binding check is that no OTHER error- or warning-severity finding exists.
-	for _, f := range report.Findings {
+	for _, f := range plain.Findings {
 		if f.Code != "MovingRefUnpinned" && (f.Severity == spec.SeverityError || f.Severity == spec.SeverityWarning) {
 			t.Fatalf("fixture is not clean: unexpected %s finding %s: %s", f.Severity, f.Code, f.Message)
 		}
 	}
 
-	got := findingsForCode(report.Findings, "MovingRefUnpinned")
-	if len(got) != 1 {
-		t.Fatalf("expected 1 MovingRefUnpinned finding, got %d", len(got))
-	}
-	if got[0].Severity != spec.SeverityWarning {
-		t.Errorf("expected severity %q, got %q", spec.SeverityWarning, got[0].Severity)
-	}
-	if got[0].Advisory {
-		t.Error("finding is Advisory — --strict would not escalate it; check the fixture's era classification")
-	}
-	if report.HasErrors() {
+	// Half 1 — does not gate, under EITHER invocation. Asserted first and with
+	// non-fatal errors so the count half below can redden independently.
+	if plain.HasErrors() {
 		t.Error("non-strict lint must exit 0 when the only findings are MovingRefUnpinned warnings")
 	}
-	if strictReport := lintMovingRef(t, "unpinned-anchor", true); !strictReport.HasErrors() {
-		t.Error("--strict lint must exit non-zero on a MovingRefUnpinned warning")
+	if strict.HasErrors() {
+		t.Error("--strict lint must ALSO exit 0: the finding is advisory and must not escalate")
+	}
+
+	// Half 2 — still reported, under EITHER invocation.
+	got := findingsForCode(plain.Findings, "MovingRefUnpinned")
+	gotStrict := findingsForCode(strict.Findings, "MovingRefUnpinned")
+	if len(got) == 0 {
+		t.Error("non-strict lint reported ZERO MovingRefUnpinned findings — exit 0 is vacuous; the guard is switched off")
+	}
+	if len(gotStrict) != len(got) {
+		t.Errorf("--strict reported %d MovingRefUnpinned findings, non-strict reported %d — the count must not depend on the flag",
+			len(gotStrict), len(got))
+	}
+	if len(got) != 1 {
+		t.Errorf("expected 1 MovingRefUnpinned finding on this fixture, got %d", len(got))
+	}
+	if len(got) == 0 {
+		return
+	}
+	if got[0].Severity != spec.SeverityWarning {
+		t.Errorf("expected severity %q, got %q — severity is unchanged by the advisory repair", spec.SeverityWarning, got[0].Severity)
+	}
+	if !got[0].Advisory {
+		t.Error("finding is NOT Advisory — `--strict` escalates it and the corpus gates; the rule must set Advisory at its emission site")
 	}
 }
 
