@@ -120,10 +120,22 @@ func TestSyncSHASlot_FlagsProse(t *testing.T) {
 // conforming values carry an annotation, so annotation intolerance would flag
 // nearly a third of a healthy corpus while this criterion reported success.
 //
-// Mutation that must turn it red: narrow the SHA pattern to {40} — `sha-short`
-// and `sha-quoted` must produce findings.
+// THE TWO BAND-INSIDE FIXTURES (SPEC-SYNCSHA-BAND-BOUNDARY-001, card t380).
+// `sha-min7` sits at the inside edge of the floor (7 characters) and `sha-full`
+// at the inside edge of the ceiling (40). Before `sha-min7` existed the corpus
+// sat at 9 / 40 / 9 / 9, so a floor narrowed by ONE ({7,40} -> {8,40}) was
+// invisible to every fixture while the {40} narrowing this comment already
+// anticipated was caught — the anticipated mutation killed, the one-step
+// mutation surviving. The outside-band half of the pair lives in
+// TestSyncSHASlot_FlagsOutOfBand; neither direction of an edge is observable
+// from one side alone.
+//
+// Mutations that must turn it red:
+//   - narrow the SHA pattern to {40} — `sha-short` and `sha-quoted` must produce findings
+//   - narrow the floor by one, {7,40} -> {8,40} — `sha-min7` must produce a finding
+//   - narrow the ceiling by one, {7,40} -> {7,39} — `sha-full` must produce a finding
 func TestSyncSHASlot_SilentOnSHA(t *testing.T) {
-	for _, c := range []string{"sha-short", "sha-full", "sha-quoted", "sha-annotated"} {
+	for _, c := range []string{"sha-min7", "sha-short", "sha-full", "sha-quoted", "sha-annotated"} {
 		if got := syncSHAFindings(t, c); len(got) != 0 {
 			t.Errorf("%s: expected 0 findings on a well-formed SHA, got %d: %v", c, len(got), got)
 		}
@@ -147,6 +159,54 @@ func TestSyncSHASlot_SilentOnPlaceholder(t *testing.T) {
 	for _, c := range []string{"placeholder", "placeholder-suffixed"} {
 		if got := syncSHAFindings(t, c); len(got) != 0 {
 			t.Errorf("%s: expected 0 findings on a sanctioned backfill placeholder, got %d: %v", c, len(got), got)
+		}
+	}
+}
+
+// TestSyncSHASlot_FlagsOutOfBand decides AC-SBB-003 and AC-SBB-004
+// (SPEC-SYNCSHA-BAND-BOUNDARY-001, card t380).
+//
+// It carries the OUTSIDE half of the band pair: one character below the floor
+// and one above the ceiling. It is a separate function rather than a case added
+// to TestSyncSHASlot_FlagsProse because that function's name is quoted verbatim
+// in a live criterion of a completed SPEC — overloading it would mean a failure
+// there no longer identifies AC-SSF-001, and renaming it would falsify that
+// criterion's command string. It asserts the same five properties that function
+// does, over its own case list, parameterized by the expected flagged-line
+// prefix rather than hardcoding one value.
+//
+// Mutations that must turn it red:
+//   - widen the floor by one, {7,40} -> {6,40} — `sha-below6`'s count drops to 0
+//   - widen the ceiling by one, {7,40} -> {7,41} — `sha-above41`'s count drops to 0
+func TestSyncSHASlot_FlagsOutOfBand(t *testing.T) {
+	for _, tc := range []struct {
+		fixture string
+		prefix  string
+	}{
+		{"sha-below6", "sync_commit_sha: 19b6f7"},
+		{"sha-above41", "sync_commit_sha: a6bbbf82b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f"},
+	} {
+		got := syncSHAFindings(t, tc.fixture)
+		if len(got) != 1 {
+			t.Errorf("%s: expected exactly 1 SyncSHASlotFormat finding, got %d: %v", tc.fixture, len(got), got)
+			continue
+		}
+		f := got[0]
+		if filepath.Base(f.File) != "progress.md" {
+			t.Errorf("%s: expected the finding against the sibling progress.md, got %s", tc.fixture, f.File)
+		}
+		if f.Severity != spec.SeverityWarning {
+			t.Errorf("%s: expected severity %q, got %q", tc.fixture, spec.SeverityWarning, f.Severity)
+		}
+		// The era precondition, measured rather than asserted in prose: a
+		// demoted fixture would carry Advisory == true and the criterion would
+		// be measuring the demotion path instead of the band.
+		if f.Advisory {
+			t.Errorf("%s: finding is advisory — the fixture is being demoted (grandfathered era or terminal status), which is not what this criterion measures", tc.fixture)
+		}
+		line := syncSHAFixtureLine(t, f.File, f.Line)
+		if !strings.HasPrefix(line, tc.prefix) {
+			t.Errorf("%s: finding points at %s:%d, whose content is not the flagged slot: %q", tc.fixture, f.File, f.Line, line)
 		}
 	}
 }
