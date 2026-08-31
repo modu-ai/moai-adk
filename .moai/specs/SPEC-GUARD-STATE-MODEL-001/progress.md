@@ -420,7 +420,7 @@ status_transition_performed: false   # see the note below
 
 ```yaml
 sync_complete_at: 2026-08-31
-sync_commit_sha: <backfill>            # a commit cannot know its own hash; backfilled in a follow-up commit
+sync_commit_sha: edb952b9a             # a commit cannot know its own hash; backfilled in this follow-up commit
 sync_baseline_head: 282dbfc38          # the M3 commit this phase was measured on
 sync_status: complete
 b12_self_test_a: "grep -c 'SPEC-GUARD-STATE-MODEL-001' CHANGELOG.md → 1 BEFORE emission. NOT a duplicate of this SPEC's entry: the single hit is inside card t333's entry, which names this SPEC as the producer that was out of scope there. Emission proceeded; see the F2 record below"
@@ -463,9 +463,32 @@ pr: false
 
 **How the SPEC is closed, stated rather than assumed.** `draft → completed` on this single commit. The intermediate transitions are not backdated and no artifact is edited to read as though they occurred; this record is the history.
 
-**The ownership lint is silent about that transition, and the silence is vacuous.** `expectedOwnerForTransition` (`internal/spec/lint_ownership.go`) has cells for `draft → in-progress`, `draft → implemented`, `in-progress → implemented` and `implemented → completed`. It has **no cell for `draft → completed`**, so it returns `ownerNone` and the rule cannot produce a finding — the transition passes by being unmatched, not by being judged sound. Worth noting in the other direction: had this commit chosen `draft → implemented`, the matrix *would* have expected `manager-develop` and flagged this `docs(` commit. A rule whose stricter reading fires and whose looser reading is silent is the wrong way round, and it is left as a finding rather than worked around.
+**The terminal value is correct and the path is not canonical — both, and they are separate statements.** This SPEC went `draft → completed` in one step: `in-progress` and `implemented` never existed in its history (F1's opening measurement). The canonical matrix row for a close is `implemented → completed`, so **the path taken is off-matrix** and a later reader must not take this for a regular 3-phase close. The terminal `completed` value is nevertheless the right one, for the reason below.
 
-**A divergence from the sibling card in the same batch, surfaced rather than settled here.** Card t333 (`SPEC-GUARD-LIVENESS-001`) deliberately withheld `completed` at its own sync on the ground that its branch was unpushed and no CI had judged any of its commits. That reasoning applies verbatim to this card. `completed` is taken here because the dispatch directed it and because the canonical 3-phase close merges the transition onto the sync commit — but the batch is now inconsistent between two adjacent cards, and reversing this one to `implemented` is a one-line change if the lead prefers parity.
+**`completed` and card closure are two different things, and conflating them was the error worth naming.** `completed` is an artifact-lifecycle frontmatter field that the 3-phase close carries on the sync commit — it is decided at commit time, by the agent that owns the transition. **Card closure** (`moai todo done`) is the lead's act, declared after reading evidence that includes CI. Tying `completed` to "CI has judged this" would mean no SPEC could ever close its sync before push, and the 3-phase close would not exist as a mechanism. So the two are decoupled here deliberately: `completed` stands on this commit, and **the card stays open** until the lead reads a quiet head and closes it.
+
+**The ownership lint is silent about that transition, and the defect is not the missing cell — it is that the named delegate cannot do what it was delegated.**
+
+The missing cell is deliberate. `expectedOwnerForTransition` (`internal/spec/lint_ownership.go`) has cells for `draft → in-progress`, `draft → implemented`, `in-progress → implemented` and `implemented → completed`, and none for `draft → completed`; its own comment at `lint_ownership.go:61` states that matrix-undefined transitions (its example: *`status` 역행*, a status regression) return `ownerNone` and are **another rule's responsibility — `StatusValueEnumRule`**. So the ownership rule is not failing to cover this transition; it is delegating it.
+
+**Measured, both sides.** `sed -n '78,96p' internal/spec/lint_ownership.go` shows the `draft` case admitting only `in-progress` and `implemented`, so `draft → completed` falls through to `return ownerNone`. `sed -n '961,981p' internal/spec/lint.go` shows what the delegate actually does:
+
+```go
+func (r *StatusValueEnumRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
+	fm := doc.Frontmatter
+	...
+	if !IsValidStatus(fm.Status) { ... }
+```
+
+**`StatusValueEnumRule` reads one field — this document's current `status` — and asserts only that its value is in the canonical 8-value enum** (`IsValidStatus` is `slices.Contains(ValidStatuses, status)`, `internal/spec/status.go:39`). It receives no previous status: it discards its second parameter, and a transition pair does not exist in its inputs at all. The ownership rule reconstructs `PreviousStatus` **from git log** (`lint_ownership.go:174`, `:239`), an input class this per-document frontmatter rule never touches. `completed` is a valid enum value, so it passes unconditionally, whatever it transitioned from.
+
+**The sharpest form: the delegation is vacuous for precisely the cases it was written to cover.** The delegating comment's own example is a status regression — and `completed → draft` is also a valid enum value, so the delegate passes that too. Every off-matrix transition is therefore checked by nobody, and the silence reads as a pass.
+
+**This is a defect in the linter, out of this card's scope, and separate-card material.** The reproduction is the two `sed` commands above. Its consequence here is stated plainly: **our own transition landed in exactly that unchecked gap, so the clean `moai spec lint` result recorded in `spec_lint_after` asserts nothing about this transition's soundness.**
+
+**Not observed:** `StatusValueEnumRule` was not run in isolation against a `draft → completed` fixture. The conclusion above rests on reading its signature and body, not on executing it.
+
+**A divergence from the sibling card in the same batch, surfaced rather than settled here.** Card t333 (`SPEC-GUARD-LIVENESS-001`) deliberately withheld `completed` at its own sync on the ground that its branch was unpushed and no CI had judged any of its commits. That reasoning applies verbatim to this card. `completed` is taken here because the dispatch directed it and because the canonical 3-phase close merges the transition onto the sync commit. **The lead has since ruled: keep `completed`**, on the ground stated above — `completed` is an artifact-lifecycle value decided at commit time, while the CI-judged question belongs to card closure, which the lead performs separately. The batch therefore remains inconsistent between two adjacent cards on the frontmatter axis, and that inconsistency is recorded rather than removed: t333 withheld `completed` for a reason this card judges to be about the wrong axis.
 
 ### F2 — a CHANGELOG statement became false when M3 landed, and the B12 grep is what surfaced it
 
