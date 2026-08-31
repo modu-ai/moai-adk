@@ -2,7 +2,7 @@
 id: SPEC-BOARDLOCK-ERRNO-001
 title: "Unix board-lock 획득의 errno 보존 — 경합만 ErrBoardLockHeld 로 분류"
 version: "0.4.0"
-status: in-progress
+status: completed
 created: 2026-08-31
 updated: 2026-08-31
 author: manager-spec

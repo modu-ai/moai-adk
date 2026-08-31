@@ -352,4 +352,44 @@ debt_remaining:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-08-31
+sync_commit_sha: pending-backfill-sync   # 이 커밋은 자기 SHA 를 알 수 없다 — 후속 백필 커밋에서 채운다
+sync_status: complete
+changelog_entry: added                   # CHANGELOG.md [Unreleased] → ### Added (파일 자체 관행을 따름; 이 SPEC 은 새 기능이 아니라 방어적 좁히기이지만, 이웃 SPEC-close 항목 전부가 ### Added 아래 있어 그 관행을 따랐다)
+changelog_dedup_check: "grep -c -i 'BOARDLOCK-ERRNO' CHANGELOG.md → 0 (편집 전, 이 세션이 직접 실행)"
+
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed"     # 이 세션이 수행
+  plan_md: "N/A — status: 필드 없음 (ArtifactStatusFieldForbidden, 카드 t357)"
+  acceptance_md: "N/A — status: 필드 없음 (ArtifactStatusFieldForbidden, 카드 t357)"
+  progress_md: "N/A — status: 필드 없음"
+
+docs_surfaces_checked:
+  - target: "README.md, docs-site/content/**"
+    command: "grep -rli 'boardlock\\|board.lock\\|flock' README.md docs-site/content"
+    result: "4 hits, 전부 docs-site/content/{en,ko,ja,zh}/guides/mcp-server.md 의 'flock' — mcp.json atomic-RWM seam 을 가리키는 무관한 문맥(board-lock 서브시스템과 무관)"
+    control: "같은 grep 이 무관 문맥에서 0 이 아닌 결과를 냈으므로, board-lock errno 분류에 대한 0건은 범위를 잘못 잡은 스캔이 아니라 실측 0 이다"
+  - target: "이 SPEC 이 소유한 docs 표면"
+    result: "없음 — internal/kanban 은 사용자 대면 문서 표면이 없는 내부 패키지"
+
+kickoff_approval_relay: >
+  이 레인(카드 t379 워크트리)은 이 토폴로지에서 운영자 채널을 리드 세션이 쥐고 있고 레인은
+  운영자에게 직접 물을 수 없다. run-phase 착수 승인이 이 레인에 도달한 경로는 **리드로부터의
+  중계**이며, 이 sync 세션이 직접 관측한 승인이 아니다. 이것은 이 토폴로지가 설계한 경로이지만,
+  1차 관측이 아니라 중계로 기록한다.
+
+plan_audit_verdict_carried_into_run:
+  final_verdict: "PASS-WITH-DEBT 0.83 (iter-3, Tier S 문턱 0.75)"
+  trajectory: "iter1 0.85 → iter2 0.83 → iter3 0.83 (iter-2 회귀는 회복되지 않음; iter2·iter3 는 뺄셈 전용)"
+  debts_carried_at_run_entry: 6   # plan.md §B.1 이 M1 로 넘긴 것
+  debts_closed_by_run: 2          # 부채-2(/dev/fd 기제 교체), 부채-3(M-leak 재규정) — progress.md §E.2.2/§E.2.3
+  debts_still_standing: 4         # progress.md §E.3 debt_remaining 4항목 그대로 유지 — 이 sync 세션은 추가로 닫은 것이 없다
+
+sync_session_gaps: >
+  이 sync 세션은 run-phase 이후 새로 실행한 검증이 없다 — CHANGELOG 중복 grep(§changelog_dedup_check) 과
+  docs 표면 grep(§docs_surfaces_checked) 두 건 외에는 progress.md §E.2/§E.3 이 이미 기록한 관측을
+  재인용했을 뿐, 재측정하지 않았다. golangci-lint·go test·coverage·크로스빌드는 재실행하지 않았다.
+  plan-audit 재실행도 없다(§E.3 이 이미 "감사 재실행 없음"으로 기록). 리눅스·Windows 런타임 관측은
+  여전히 없다 — CI(ubuntu) 몫이다.
+```
