@@ -133,7 +133,8 @@ Three new directories under `internal/spec/testdata/syncsha/`: `sha-min7`,
 ### M4 — Test registration
 
 Add `sha-min7` to `TestSyncSHASlot_SilentOnSHA`'s case list
-(`lint_syncsha_test.go:126`). Add the new `TestSyncSHASlot_FlagsOutOfBand`
+(`lint_syncsha_test.go:126`, resolved at base `3f03d9c36`; this card's M4 commit
+moved that line to `:138`). Add the new `TestSyncSHASlot_FlagsOutOfBand`
 carrying `sha-below6` and `sha-above41` per the M2 ruling; leave
 `TestSyncSHASlot_FlagsProse` untouched. Update the doc comments so each names the
 mutation it catches, matching the per-fixture table of `spec.md` §B.1 — the file's

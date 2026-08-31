@@ -111,7 +111,8 @@ Maps REQ-SBB-001, REQ-SBB-003.
 
 **Given** the EXISTING fixture `internal/spec/testdata/syncsha/sha-full/progress.md`,
 whose value token was measured in this tree at 40 hex characters and which is
-already registered in `TestSyncSHASlot_SilentOnSHA` (`lint_syncsha_test.go:126`),
+already registered in `TestSyncSHASlot_SilentOnSHA` (`lint_syncsha_test.go:126`,
+resolved at base `3f03d9c36`; this card's M4 commit moved that line to `:138`),
 **When** the same command runs,
 **Then** `SyncSHASlotFormatRule` produces **0** findings for that fixture.
 

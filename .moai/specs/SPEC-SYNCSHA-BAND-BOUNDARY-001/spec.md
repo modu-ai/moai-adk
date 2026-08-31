@@ -73,7 +73,8 @@ internal/spec/testdata/syncsha/sha-annotated/progress.md a6bbbf82b              
 The band is `[7,40]`. The fixtures sit at 9 / 40 / 9 / 9. **No fixture sits at
 the inside edge of the floor**, so a mutant that moves the floor by ONE
 (`7 → 8`) is invisible to every fixture. The existing test's own comment
-(`lint_syncsha_test.go:123-124`) anticipates a narrowing to `{40}` — which nine
+(`lint_syncsha_test.go:123-124`, resolved at base `3f03d9c36`; this card's M4
+commit moved that text to `:127` / `:134`) anticipates a narrowing to `{40}` — which nine
 characters DOES catch — so the anticipated mutation is caught and the one-step
 mutation is not.
 
@@ -178,7 +179,8 @@ This is the whole reason the deliverable is four fixtures rather than one.
 | `sha-above41` (new) | 41 | one above the ceiling | 1 | ceiling **widened**: `{7,40}` → `{7,41}` |
 
 `sha-full` already holds a 40-character value (measured in §A.1) and is already
-registered in `TestSyncSHASlot_SilentOnSHA` (`lint_syncsha_test.go:126`). It is
+registered in `TestSyncSHASlot_SilentOnSHA` (`lint_syncsha_test.go:126`, resolved
+at base `3f03d9c36`; this card's M4 commit moved that line to `:138`). It is
 **reused, not duplicated**: adding a second 40-character fixture would add a file
 and catch nothing the existing one does not.
 
