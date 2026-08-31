@@ -165,7 +165,7 @@ operator_decision_pending: "plan.md §B (가)/(나) — (가)로 진행. 운영�
 
 ```yaml
 sync_complete_at: 2026-09-01
-sync_commit_sha: <this-commit>
+sync_commit_sha: 390fb7f84  # backfilled in a follow-up commit (a commit cannot name its own hash)
 sync_status: complete
 b12_self_test_a: "grep -c 'SPEC-CODEX-REVIEW-TARGET-001' CHANGELOG.md → 0 (pre-emission); no duplicate"
 b12_self_test_b: "AC regex count 10 (non-zero); canonical 11 — regex folds AC-CRT-006b into 006, verified separately via grep -c 'AC-CRT-006b' → 2. Matches §E.3 ac_pass_count: 11"
