@@ -44,6 +44,11 @@ import (
 // 주의: 이 표면은 포화 상태다. 편집 전 여유가 예산의 0.26%(201/76,000)에 불과했고, 상향 뒤에도
 // 같은 수준이다. 다음에 always-loaded 파일을 늘리는 카드는 이 가드에 부딪힌다 — 근본 해결은
 // 위 문단이 가리키는 대형 룰 다이어트이며, 이 카드의 소관이 아니다.
+//
+// @MX:DEBT: [AUTO] temporary budget raise (76,000 -> 76,210) standing in for the always-loaded rule diet
+// @MX:CEILING: 0.26% headroom — 201 tokens of 76,210; one always-loaded clause consumes it
+// @MX:UPGRADE: drop this raise when the large always-loaded rule diet (stub + lazy loading) lands
+// @MX:SPEC: SPEC-MEMORY-STORE-RECONCILE-001
 const AlwaysLoadedTokenBudget = 76210
 
 // CodexContractByteCeiling는 루트 AGENTS.md(코덱스 계약층)에 허용되는 바이트 상한이다.

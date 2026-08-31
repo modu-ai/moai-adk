@@ -2,7 +2,7 @@
 id: SPEC-MEMORY-STORE-RECONCILE-001
 title: "Auto-memory store reconciliation and index-budget premise correction"
 version: "0.3.0"
-status: in-progress
+status: completed
 created: 2026-08-31
 updated: 2026-09-01
 author: manager-spec

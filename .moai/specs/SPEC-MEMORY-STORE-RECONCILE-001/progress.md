@@ -113,4 +113,146 @@ gaps_closed: [G2]
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-01
+sync_commit_sha: pending-backfill-sync
+sync_commit_sha_note: |
+    A commit cannot cite its own hash, and this card's dispatch bounds the sync
+    phase to a SINGLE commit (no push, no PR, no merge, no integration lock), so
+    no backfill commit is created here. The value is reported to the lead in the
+    sync-phase completion report instead. Run-phase commits, which §E.3 left as
+    `<backfill>` and which are NOT edited here (§E.2/§E.3 are manager-develop's):
+    36aa5bf4c (guard removal + doctrine) and 4064c7857 (run-phase close).
+sync_status: complete
+changelog_entry_position: "CHANGELOG.md [Unreleased] > ### Added, first entry (inserted above SPEC-EVIDENCE-CITATION-CANON-001)"
+b12_self_test_a: "pre-emission grep — `grep -c 'SPEC-MEMORY-STORE-RECONCILE-001' CHANGELOG.md` = 0 before writing (no duplicate from a parallel session)"
+b12_self_test_b: "AC count — `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l` = 16, non-zero and matching §E.2's 16-row PASS matrix; the CHANGELOG entry states 16/16"
+b12_self_test_c: "file-path verification — every path named in the CHANGELOG entry resolves in this tree (`ls` batch, all present); `TestFixedSlotsExistInRepoTree` confirmed present at token_budget_guard_test.go:357; `moai mx query --kind DEBT` confirmed as a real CLI contract (internal/cli/mx_query_debt_test.go)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (single sync commit, 3-phase close)"
+  plan_md: "none — no `status:` field (ArtifactStatusFieldForbidden, card t357)"
+  acceptance_md: "none — no `status:` field"
+  progress_md: "none — no frontmatter"
+  updated_field: "spec.md `updated:` already 2026-09-01 (sync-commit date); unchanged, not re-stamped"
+mx_tag_changes:
+  added_count: 1
+  detail: |
+    `@MX:DEBT` + `@MX:CEILING` + `@MX:UPGRADE` + `@MX:SPEC` on
+    `AlwaysLoadedTokenBudget` (internal/config/token_budget_guard.go). Judged
+    warranted: the raise is a deliberate, working simplification standing in for
+    the large always-loaded rule diet, correct within a named limit (0.26%
+    headroom) and carrying a known revisit trigger — the exact shape
+    mx-tag-protocol.md § When to Add Tags gives for DEBT. The marker also gives
+    G7 a machine-harvestable home (`moai mx query --kind DEBT`) rather than a
+    prose-only warning a future author must happen to read.
+  not_added: |
+    No tag on the head-cap TOMBSTONE. The @MX taxonomy annotates live
+    constructs (a constant, a function, an API boundary); the tombstone annotates
+    an ABSENCE, and there is no construct for a tag to hang on. Its re-addition
+    hazard is already mechanically guarded by TestFixedSlotsExistInRepoTree, which
+    is stronger than a comment marker. No @MX:WARN either: the removal eliminated
+    danger rather than introducing it, and WARN's stated triggers (goroutines,
+    complexity >= 15, global mutation, branch count) are all absent.
+canary_compliance_check: n/a — this SPEC defines no forward-looking policy that its own sync tests
+sync_phase_files_touched_count: 4
+sync_phase_files_touched:
+  changelog: "CHANGELOG.md — [Unreleased] > Added entry (repo convention: one prose entry per sync-phase close)"
+  spec_frontmatter: ".moai/specs/SPEC-MEMORY-STORE-RECONCILE-001/spec.md — `status:` only, zero body edits"
+  progress: ".moai/specs/SPEC-MEMORY-STORE-RECONCILE-001/progress.md — this §E.4 block only"
+  mx: "internal/config/token_budget_guard.go — @MX:DEBT marker only, no behavior change"
+docs_surfaces_judged_unwarranted:
+  - "README (4 locales) — carries no auto-memory / index-budget claim: `grep -c 'MEMORY\\.md' README{,.ko,.ja,.zh}.md` = 0 on all four, `grep -c '25KB'` = 0 on all four. Nothing to correct."
+  - "`.moai/project/{product,structure,tech}.md` — `grep -rn 'MEMORY.md' .moai/project/*.md` = no matches; no store-derivation or index-budget assertion"
+docs_surface_finding_not_fixed:
+  where: "docs-site/content/{en,ko,ja,zh}/claude-code/context-memory/{memory,context-window}.md"
+  measured: |
+    8 files, 16 lines assert the SAME unconfirmed cut this SPEC withdrew from the
+    in-repo surfaces — "first 200 lines or 25KB, whichever comes first" and its
+    ko/ja/zh renderings, including a mermaid node and a paragraph stating the limit
+    applies to MEMORY.md only. Command:
+    `grep -rn '200 lines or 25KB|앞 200줄|冒頭 200 行|前 200 行|first 200 lines' docs-site/content | wc -l` -> 16;
+    `grep -rl ... | sort` -> the 8 files above.
+  why_not_fixed: |
+    Same reasoning as G6 and one step stronger. (1) It is outside spec.md §A.5's
+    enumerated surface, so editing it is silent scope expansion — the exact move
+    the run phase declined. (2) This SPEC does not ASSERT the opposite claim; it
+    records the cut as UNCONFIRMED, so replacing 16 user-facing lines would trade
+    an unverified claim for another unverified claim on the surface with the widest
+    audience. (3) docs-site is a 4-locale surface under a same-PR i18n obligation
+    and a Vercel production binding; correcting it is a card, not a sync-phase
+    side-effect. Reported to the lead instead.
+  discovered_by: "sync-phase docs-surface sweep — NOT named by the run phase, which enumerated only the skills-reference pair (G6)"
+sync_verification:
+  go_test: |
+    `go test ./internal/config/...` after the @MX edit ->
+    ok internal/config 3.549s / ok internal/config/atomicfile 0.719s /
+    ok internal/config/toolpolicy (cached). The edit is comment-only.
+  go_vet: "`go vet ./internal/config/...` -> exit 0, no output"
+  gofmt: |
+    SCOPED, not a whole-package pass. `gofmt -l internal/config/token_budget_guard.go`
+    -> empty (the file this sync-phase edited is clean). `gofmt -l internal/config/`
+    lists SEVEN pre-existing unformatted files — audit_struct_yaml_symmetry_test.go,
+    model_routing_test.go, profile_test.go, slice.go, template_removed_key_test.go,
+    toolpolicy/codegen.go, toolpolicy/settings_region.go — none of which this card
+    touches (none appear in `git diff --name-only 297a21ea7..HEAD`). Recorded rather
+    than fixed: reformatting them is a drive-by outside this card's scope. An
+    unqualified "gofmt clean" here would have been false.
+  mirror_parity: "re-verified this phase, not inherited: `diff -q` x3 on moai-memory.md / moai-constitution.md / moai.md against their internal/template/templates/ mirrors -> rc1=0 rc2=0 rc3=0. Sync-phase touched none of the six."
+  spec_lint: |
+    Targeted: `./bin/moai spec lint <this spec.md>` (tree-built binary, not the
+    PATH one) -> exit 0, "No findings". Whole-repo: `./bin/moai spec lint` ->
+    "0 error(s), 1096 warning(s)", exit 0 — byte-identical to §E.3's run-phase
+    figure, so the status transition introduced no finding (delta 0).
+  store_files_committed: 0
+  evidence_exported:
+    - ".moai/reports/t383/sync-spec-lint.txt (verbatim targeted-lint output)"
+    - ".moai/reports/t383/sync-verification.txt (every sync-phase command with its observed output)"
+gaps_open: [G4, G6, G7, M0-sampling, G8-docs-site]
+gaps_detail:
+  G4: |
+    Doctrine-vs-code store-derivation divergence across three surfaces; neither
+    side was asserted, deliberately. A follow-up card should be scoped to the
+    DERIVATION, not to `memory doctor` alone — the same `os.Getwd()` path drives
+    `spec lint` too, so fixing one consumer leaves the other on the old rule.
+  G6: |
+    `claude-code-memory-official.md:125` still asserts the unconfirmed cut ("the
+    first 200 lines ... or the first 25KB, whichever comes first"). Sync-phase
+    measurement REFINES the run-phase statement of this gap: it is a PAIR, not one
+    file — `.claude/skills/moai-foundation-cc/reference/` carries it as well as the
+    `internal/template/templates/` mirror the run phase named, both at line 125.
+    Deliberately NOT edited: it sits outside spec.md §A.5's enumerated surface, and
+    editing it here would be silent scope expansion. Named as known residue; a
+    follow-up must move BOTH copies together (Template-First parity).
+  G7: |
+    The always-loaded surface is saturated at 0.26% headroom (201 tokens of
+    76,210). The next card that grows an always-loaded file hits this guard. The
+    @MX:DEBT marker above is where a future author meets this fact; the root fix is
+    the large always-loaded rule diet, out of this card's scope.
+  G8-docs-site: |
+    NEW, found in sync-phase: `docs-site/content/{en,ko,ja,zh}/claude-code/
+    context-memory/{memory,context-window}.md` — 8 files, 16 lines — assert the
+    same unconfirmed cut on the user-facing surface. Deliberately not fixed; see
+    `docs_surface_finding_not_fixed` above for the measurement and the three
+    reasons. Belongs in the same follow-up as G6, which should then cover THREE
+    surfaces: the local skill reference, its template mirror, and docs-site x4
+    locales.
+  M0-sampling: |
+    Sampling reached 12 of 58 (21%), so a superseded file among the 46 unsampled
+    copied targets is possible — reversible by deletion, since the copy was
+    `cp -n` and left the legacy store untouched. Concretely: sample entries 16 and
+    26 give OPPOSITE instructions about running the full test suite locally,
+    neither marked superseded, so BOTH were copied. This card's copy step is what
+    makes that contradiction reachable. Recorded as a finding, plausibly its own
+    follow-up card; not resolved here, because resolving it means adjudicating two
+    lessons' content, which is neither sync-phase work nor this card's scope.
+operator_decision_recorded:
+  what: "AlwaysLoadedTokenBudget 76,000 -> 76,210"
+  shape_disclosed: "conflict of interest — the card that trips a guard is the card that raises it"
+  operator_ruling: keep
+  rationale: |
+    The clause was cut by roughly 1,000 bytes FIRST and the constant raised by
+    only the residual 210, so prior headroom (201 tokens) is preserved rather than
+    inflated. The raise is documented in the constant's own comment and in
+    `.moai/reports/t383/verdict.md`, where a reviewer can object to it. Recorded,
+    not re-litigated.
+```
