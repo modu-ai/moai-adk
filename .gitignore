@@ -176,6 +176,11 @@ secret-*.*
 .moai/**/credentials.yaml
 .moai/**/*.credentials
 
+# MINK agent credentials (plaintext API keys). Ignored anywhere in the tree so
+# per-project auth dirs are never committed. The template already carries this
+# rule; this line brings the repository's own tree level with it.
+**/.mink/auth/
+
 # ===========================================
 # Claude Code Configuration
 # ===========================================
@@ -228,6 +233,11 @@ secret-*.*
 # ===========================================
 .moai/evolution/telemetry/*.jsonl
 !.moai/evolution/telemetry/.gitkeep
+
+# Hook duration metrics (local-only). No .gitkeep and no directory scaffold:
+# creating the directory is what opts a machine in to hook recording, so
+# shipping one would flip that opt-in to opt-out for every deployed project.
+.moai/observability/*.jsonl
 
 # ===========================================
 # Generated Code-Graph Layer (rebuilt on demand, never committed)

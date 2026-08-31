@@ -1,0 +1,2 @@
+ok  	github.com/modu-ai/moai-adk/internal/spec	39.898s
+exit_code: 0
