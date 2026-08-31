@@ -281,4 +281,143 @@ m1_to_mN_commit_strategy: one commit per milestone, three total (ccf307dac, d65e
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+
+### Claim
+
+The run-phase deliverable behaves as specified on both directions of the guard, observed through the
+real `moai spec lint` CLI rather than through unit tests alone; the card's representative mutant was
+executed and **survived**, which is recorded here as debt rather than repaired in sync phase.
+
+### Evidence — bidirectional observation, four paths through the real CLI
+
+A throwaway SPEC (`SPEC-T299-E2E-PROBE-001`) was created in this worktree, its `progress.md`
+`sync_commit_sha` slot rewritten four times, and `moai spec lint` (built from this tree at
+`19b6f7625`, not the PATH binary) run against the whole corpus each time. The probe was removed
+afterwards; `git status --porcelain | wc -l` → `0`.
+
+| slot value | `SyncSHASlotFormat` on the probe | corpus total |
+|---|---|---|
+| `see the merge commit on develop, whichever one it turns out to be` | 1 — quotes token `"see"` | 180 warning(s) |
+| `19b6f7625   # the run-phase head` | 0 | 179 warning(s) |
+| `pending-backfill-sync` | 0 | 179 warning(s) |
+| *(empty)* | 1 — quotes token `""` | 180 warning(s) |
+
+The corpus baseline is 179. The rule contributes exactly one warning, on exactly the two values it
+should, and nothing else among the 179 moves between runs — so "the rule was switched on" and "the
+normal path was blocked" are distinguishable rather than conflated. Runs 03 and 04 are byte-identical
+(`sha256 a22a858b…`): a real SHA with a trailing annotation and the canonical placeholder produce
+indistinguishable linter output, which is the intended result.
+
+Extract with source provenance: `.moai/reports/t299/verify-sync/e2e-lint-4paths.extract.txt`. The
+verbatim runs are ~134KB each of whole-corpus output and live at
+`.moai/state/verify/t299-sync/0{2,3,4,5}-*.txt`, which is gitignored (`.gitignore:284`) and vanishes
+with this worktree — the extract is the citable carrier, and it records each source's sha256 and byte
+count plus the extraction command.
+
+### Evidence — mutation, three mutants
+
+| mutant | result | file |
+|---|---|---|
+| placeholder exemption disabled (`if false && isSyncSHAPlaceholder`) | `TestSyncSHASlot_SilentOnPlaceholder` **RED** | `09-mutant2-no-placeholder-exemption.txt` |
+| rule made vacuous (`return nil` before the scan) | `TestSyncSHASlot_FlagsProse` **RED** | `10-mutant3-vacuous-rule.txt` |
+| **two gates given divergent criteria** — `^[0-9a-fA-F]{8,40}$` inlined in `lint_syncsha.go` in place of the shared predicate | **SURVIVES** | `07-mutant1-full-pkg.txt` |
+
+All three files are verbatim copies under `.moai/reports/t299/verify-sync/`, `cmp`-verified against
+the worktree-local originals.
+
+### Debt D1 — AC-SSF-007 has no mechanical carrier
+
+Recorded per the lead's judgment (blocker 1 → option B: record the debt, raise a follow-up card;
+option C, closing with no record, was explicitly rejected, and option A, adding the guard test here,
+was rejected as run-phase code entering sync phase). A follow-up card must be actionable from this
+record alone, so the five parts are written out:
+
+1. **The mutant's exact form.** In `internal/spec/lint_syncsha.go`, replace the call
+   `if isCommitSHAToken(token) {` with an inlined `if regexp.MustCompile("^[0-9a-fA-F]{8,40}$").MatchString(token) {`
+   (adding the `regexp` import). The two gates then hold different notions of a SHA.
+2. **Survival, observed.** `go test ./internal/spec/... -count=1` → `ok … 34.439s`, exit 0. The whole
+   package is green with the mutant in place.
+3. **The controls fired.** The two mutants above went red on their own tests, so this is not "the
+   tests catch nothing" — it is "the tests catch everything except this shape".
+4. **Why the only detector dies.** AC-SSF-007 is a grep criterion:
+   `grep -rn 'isCommitSHAToken' internal/spec --include='*.go' | grep -v _test`. Under the mutant,
+   `lint_syncsha.go` no longer appears in that output — the criterion goes red exactly as the AC says
+   it must, but a grep run by hand is not a CI carrier.
+5. **The concrete divergence.** For the 7-character SHA `19b6f76`, `needsSHABackfill` (band 7-40)
+   answers "no backfill needed" while the mutated lint (band 8-40) reports a finding. One slot, two
+   gates, opposite verdicts, no failing test.
+
+**What is and is not being claimed.** AC-SSF-007 is not vacuous: it turns red against the mutant by
+the very means it declares. What is missing is automation, not the criterion — a criterion that does
+not hold and a criterion with no CI carrier are different things, and this is the second.
+
+### Decision D2 — `pending-backfill-sync` is the recommended slot form, and it diverges from t318
+
+An empty slot is flagged. This is the design (`spec.md` §D.2 classifies `""` among the values still
+owed a SHA; the read-side exemption is the `pending-backfill*` family alone), and it does not violate
+the card's requirement that the pre-backfill path not be **blocked** — a warning is a signal, not a
+block, and the path still passes.
+
+The canonical placeholder is preferred over a bare blank because it documents its own intent: a blank
+cannot separate "not filled in yet" from "forgotten", while the explicit token can. That splits the
+card's "empty vs malformed" distinction into three: malformed / deliberately incomplete (declared) /
+accidentally blank.
+
+**Divergence, recorded not resolved.** Card t318's sync procedure leaves the slot **empty** in the
+sync commit and backfills in the next one. Under this rule that window emits a warning, where
+`pending-backfill-sync` would not. Reconciling the two is a separate matter and belongs to whoever
+owns it — t318's procedure is not touched here.
+
+This SPEC's own sync commit follows the recommended form: the slot below carries
+`pending-backfill-sync`, backfilled in the commit that follows.
+
+### Baseline-attribution
+
+Every figure above was measured in this run, in worktree `.claude/worktrees/t299` on branch
+`WT-sha-slot-format` at HEAD `19b6f7625`, against a binary built from that tree
+(`go build -o /tmp/moai-t299 ./cmd/moai`) rather than the PATH install. The 179/180 corpus totals are
+local measurements; local SPEC Lint is known to run ~19 warnings above CI on this machine (shallow
+checkout, card t371's concern), so the totals are comparable **to each other** within this run and
+are not offered as CI figures.
+
+### Gaps — what was explicitly NOT observed
+
+- **CI has not run.** The branch is unpushed; the lead owns integration. No clean-environment or
+  darwin/windows-matrix verdict exists for the sync commit.
+- **No `moai spec close` was executed end to end.** The bidirectional observation exercises the lint
+  read side. The closer's write side was exercised as units in run phase and is unchanged here.
+- **The debt D1 mutant was not run against packages outside `internal/spec`.** The full-package run
+  covers the package that owns both gates; a consumer elsewhere depending on the band was not swept.
+- **The t318 divergence was not measured against t318's own tree** — it is read from t318's stated
+  procedure, not from that branch's artifacts.
+- **The follow-up card for D1 was not created.** Card admission is the operator's act; the lead is
+  raising it with this record attached.
+
+### Residual-risk
+
+- **The extract is a derived artifact.** Four of the seven cited runs are represented by an extract
+  rather than a verbatim copy. Its provenance (sha256, byte count, extraction command) is recorded,
+  but a reader cannot re-derive it once the worktree is gone.
+- **D1's debt is now the only thing standing between the two gates.** Until a carrier exists, the
+  shared-predicate property is held by a grep a human must remember to run.
+- **The 179 baseline is this machine's.** If a later reader compares a CI total against it, the
+  ~19-warning local/CI gap will read as drift caused by this card.
+- **The probe SPEC was deliberately incomplete.** Its four `FrontmatterInvalid`/`MissingExclusions`
+  errors are the probe's own, not findings of this rule; a reader skimming the extract could
+  misattribute them.
+
+### Audit-ready block
+
+```yaml
+sync_complete_at: 2026-08-31
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+bidirectional_observation: 4 paths through the real CLI (prose / SHA+annotation / placeholder / blank)
+mutants_executed: 3
+mutants_caught: 2
+mutants_survived: 1 (D1 — divergent-band, debt recorded not repaired)
+evidence_exported_to: .moai/reports/t299/verify-sync/ (3 verbatim cmp-verified + 1 extract)
+new_warnings_or_lints_introduced: none beyond the rule's own intended finding
+l44_pre_commit_fetch: not-run (branch unpushed by instruction; lead owns integration)
+codemaps_regenerated: false (inherited Graph Freshness red on develop head; batch-end lane owns it)
+```
