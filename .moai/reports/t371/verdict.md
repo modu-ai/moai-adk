@@ -175,3 +175,18 @@ rc=0
 감사자가 관측한 *"`main` ref 없는 저장소에서 `StatusGitConsistency` 가 침묵하고 도구가 전 문서 유효를 선언했다"* 는 이 세션에서 재현하지 못했다. `cachedMainBranch` 가 **cwd 의존**이라 `main` 이 없는 저장소를 cwd 로 삼아야 하는데, 이 세션은 워크트리 격리 가드가 cwd 변경(`cd` / 서브셸 / `env -C`)을 거부한다. 위 재현 A/B 는 `main` 이 존재하는 이 워크트리에서 돌았으므로 그 조건을 만들지 못한다.
 
 따라서 이 관측은 **감사자 귀속**이며 이 verdict 의 자체 측정이 아니다. 재개 시 in-package 테스트 시드(`drift_characterization_test.go:55` `chdirForTest`)로 재현하는 것이 옳은 경로이고, 그것이 이 SPEC 의 M2 가 세우려는 seam 과 같다.
+
+### 순환 해소 — 리드 판정 (재개 시 재론 금지)
+
+앞 절이 "관측을 근거로 쓰려면 M2 를 먼저 세워야 하는 순환"이라 적었으나, 순환이 아니다. **M2 가 세우려는 seam 이 곧 그 관측을 측정 가능하게 만드는 장치**이므로, 그 관측은 M2 의 **입력이 아니라 산출**이다.
+
+SPEC 의 논지는 코드 판독만으로 이미 선다 — `cachedMainBranch` 가 cwd 의존이고(`gitquery_cache.go:89`, fallback `:103`/`:114`), `main` 부재 시 `getGitImpliedStatus` 가 실패해 `StatusGitConsistencyRule.Check` 가 skip 한다(`lint.go:1324-1327`). 실행 관측은 그 논지의 전제가 아니라 **M2 가 성립했음을 보이는 증거**다.
+
+재개 시 순서:
+```
+M1/M2 로 seam 을 세운다
+  → chdirForTest 시드로 main 없는 저장소를 만든다
+  → StatusGitConsistency 침묵을 관측한다        ← M2 의 AC 증거
+```
+
+[HARD] 이 관측을 M1 이전으로 끌어올리지 않는다. 끌어올리면 seam 없이 관측할 방법을 찾느라 워크트리 격리 가드와 싸우게 되고, 그것은 이 카드가 풀 문제가 아니다.
