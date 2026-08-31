@@ -1,0 +1,22 @@
+# SPEC-ERA-H3-NARROWING-001 — 진행 기록
+
+## §E.1 Plan-phase Audit-Ready Signal
+
+- plan_status: audit-ready
+- tier: M
+- artifacts: spec.md + plan.md + acceptance.md (+ progress.md)
+- baseline_tree: 9328a5242 (worktree `.claude/worktrees/t382`, branch `WT-era-plan-phase`)
+- measurement_tool: `./bin/moai` (this tree, `make build` rc=0)
+- evidence: `.moai/reports/t382/measurements-9328a5242.md`, `v3r5-population.txt`, `drift-before-9328a5242.txt`
+
+## §E.2 Run-phase Evidence
+
+_<pending run-phase>_
+
+## §E.3 Run-phase Audit-Ready Signal
+
+_<pending run-phase>_
+
+## §E.4 Sync-phase Audit-Ready Signal
+
+_<pending sync-phase>_
