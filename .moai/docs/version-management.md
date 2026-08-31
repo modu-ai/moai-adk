@@ -76,7 +76,6 @@ The two groups below are different kinds of work. A bump commit **rewrites** eve
 - README.ja.md (Version line)
 - README.zh.md (Version line)
 - .moai/config/sections/system.yaml (moai.version)
-- internal/template/templates/.moai/config/config.yaml (moai.version)
 - docs-site/hugo.toml (version + `releaseDate` — the date is not a version token, so no check reads it; it still has to be updated by hand)
 - pkg/version/version.go (the no-ldflags fallback — see Single Source of Truth above)
 

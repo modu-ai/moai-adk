@@ -103,3 +103,37 @@ Full output: `.moai/reports/t388/m2-1-red.log`.
 
 **Expected vs observed: identical**, both literals verbatim. This is the only moment the check
 meets the real ghost, which is why the step is committed rather than folded into M2.2.
+
+M2.1 commit: `d595faa9d`
+
+---
+
+## M2.2 — the ghost is removed
+
+### Expectation, written BEFORE measurement
+
+Seven entries remain and all exist, so both assertions go silent and the test passes.
+
+### Observation — E4
+
+Tree: M2.1 commit `d595faa9d` + the one-line deletion (committed as the M2.2 commit below).
+
+```
+$ go test ./internal/cli/ -run TestVersionSyncList -v      # exit 0
+=== RUN   TestVersionSyncListNamesOnlyExistingPaths
+--- PASS: TestVersionSyncListNamesOnlyExistingPaths (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.908s
+```
+
+Full output: `.moai/reports/t388/m2-2-green.log`.
+
+A pass prints nothing, so the parsed count is corroborated two ways rather than assumed:
+
+```
+$ sed -n '/^\*\*Version Stamps:\*\*$/,/^\*\*Release Artifacts:\*\*$/p' \
+    .moai/docs/version-management.md | grep -c '^- '
+7
+```
+
+and by M2.3 below, where the count assertion stays silent while the existence assertion fires —
+which it could not do if the parse had drifted off 7.
