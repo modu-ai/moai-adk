@@ -1,0 +1,5 @@
+files scanned (tracked *.md matching the string): 184
+path occurrences: 515
+concrete occurrences: 346
+files carrying >=1 concrete citation: 124
+distinct concrete cited paths: 231
