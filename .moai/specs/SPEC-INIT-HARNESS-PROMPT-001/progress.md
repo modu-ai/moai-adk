@@ -264,7 +264,7 @@ AC-IHP-003 leg (b) and AC-IHP-009, where it was observed failing (RED-2a above).
 | AC-IHP-008 | PASS | `go test ./internal/cli/wizard/ -run TestReconfigureQuestions_NoHarnessLeak -count=1` | green — no `agent_wiring` in `ReconfigureQuestions`, and the 12-ID sequence is byte-identical to the sequence pinned at HEAD `2c18091d1`. Non-vacuity proven by the relocation mutation at E.2.2. |
 | AC-IHP-009 | PASS | `go test ./internal/cli/ -run 'TestRunInit_WizardCodexDeclinesMCPProvisioning' -count=1` plus the wizard-`both` row | green — wizard harness `codex` + wizard `mcp_provision: yes` ⇒ announcement absent, AND `.codex/config.toml` carries `mcp_servers.moai`. The `both`-from-wizard row (forcing provisioning over an explicit decline) is asserted too, so the rule is shown independent of the selection's origin. RED at E.2.1 RED-2a. |
 | AC-IHP-010 | PASS | `go test ./internal/cli/ -run TestMCPPrecedenceComment -count=1` | green — `init.go` no longer contains the falsified justification string, and states the harness-selection rule. RED: the `grep -q` succeeded at HEAD. The behavioural test (AC-IHP-009) is the binding gate; this is its companion. |
-| AC-IHP-011 | PASS | `go test ./internal/cli/ -run 'TestInitAgentFlag\|TestValidateInitFlags_Agent\|TestRunInit_Agent\|TestRunInit_Codex\|TestRunInit_CallsCodexWiring' -count=1 -timeout 900s` | green — the closed set, the fail-loud `invalid --agent value "gemini"` rejection, and all landed `--agent` behaviour tests pass unmodified. `validateInitFlags` was not touched. |
+| AC-IHP-011 | PASS | see §E.2.7 evidence ledger — corrected plain-pipe selector (single invocation; verbatim stdout, exit code, and pinned tree SHA carried there) | green — the closed set, the fail-loud `invalid --agent value "gemini"` rejection, and all landed `--agent` behaviour tests pass unmodified. `validateInitFlags` was not touched. The original cell's inline command was vacuous as cited (table-cell pipe escaping produced a zero-match selector); repaired per sync-audit F1 — see §E.2.7. |
 | AC-IHP-012 | PASS | two §7 greps, re-run at close | `grep -rniE 'agent_wiring\|agent_harness\|harness_wiring' internal/template/templates/.moai/config/ \| wc -l` → `0`; `grep -rn "moai init" internal/template/templates/ \| grep -i agent \| wc -l` → `4` — identical to the spec.md §7 baseline, and the 4 hits are the same pre-existing ones (none documents `--agent` or enumerates the wizard's questions). Additionally `grep -rn 'agent_wiring' internal/template/templates/ \| wc -l` → `0`. Template-First determination holds; no mirror, no `make build`. |
 
 **13 / 13 PASS. 0 FAIL. 0 AC weakened.**
@@ -339,6 +339,40 @@ the count cannot fall below zero.)
 
 `gofmt -l` is clean on every file this change authored or modified; the single reported file
 (`mcp_audit_test.go`) is the pre-existing HEAD deviation described in §E.2.5.
+
+### E.2.7 AC-IHP-011 citation repair (sync-audit F1)
+
+The §E.2.3 AC-IHP-011 cell as originally written carried the `-run` selector through a markdown
+table with `\|` cell escapes. Go's RE2 reads `\|` as a LITERAL pipe character, so the cited
+command's selector matched zero tests and the runner printed a green `[no tests to run]` line with
+exit 0 — a vacuous pass as cited (report-not-verdict class; verification-completeness.md
+§1.1/§2.1 names this exact mangling). Sync-audit F1
+(`.moai/reports/t393/sync-audit-verdict-2026-09-01.md`, disposition: repair BEFORE develop
+integration). Repaired here: the citation moves into this fenced evidence-ledger entry (the
+§2.1-recommended carrier) and the §E.2.3 cell cites this entry instead of carrying an inline
+command.
+
+Corrected selector (single invocation, plain `|` separators), observed in this repair session:
+
+```
+$ go test ./internal/cli/ -run 'TestInitAgentFlag|TestValidateInitFlags_Agent|TestRunInit_Agent|TestRunInit_Codex|TestRunInit_CallsCodexWiring' -count=1
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.995s
+```
+
+- exit_code: 0
+- tree_sha: e6ef685bc24e8adaeaa3e248dc1a27b90e2007ba (commit SHA pinned, not a branch name; worktree `.claude/worktrees/t393`, branch `WT-init-harness-prompt`, 2026-09-01)
+- sweep: non-empty — the `[no tests to run]` token is absent from the output above.
+
+The defective form, re-observed for the record (the shape the original §E.2.3 cell cited —
+markdown table-cell pipe escaping):
+
+```
+$ go test ./internal/cli/ -run 'TestInitAgentFlag\|TestValidateInitFlags_Agent' -count=1
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.747s [no tests to run]
+```
+
+- exit_code: 0 — the runner's zero for an empty sweep is byte-identical to a fully-passing run's
+  zero, which is exactly why the cited form was vacuous rather than visibly broken.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
