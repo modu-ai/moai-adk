@@ -4,7 +4,7 @@ title: "Codex 전용 런처 — moai codex: 배선·CODEX_HOME·auth 상태 확�
 version: "0.8.1"
 status: completed
 created: 2026-08-24
-updated: 2026-08-27
+updated: 2026-09-01
 author: manager-spec
 priority: P1
 phase: "v3.2 target"
@@ -15,6 +15,7 @@ tier: M
 tags: "codex, launcher, codex-home, auth, dual-harness, cli"
 depends_on: [SPEC-CODEX-WIRING-001]
 related_specs: [SPEC-CODEX-DUAL-AGENTS-001, SPEC-CODEX-SKILLS-CANONICAL-001, SPEC-CODEX-HOOK-ADAPTER-001]
+partially_superseded_by: [SPEC-CODEX-LAUNCH-VERB-001]
 ---
 
 # SPEC-CODEX-LAUNCHER-001 — Codex 전용 런처
@@ -32,6 +33,7 @@ related_specs: [SPEC-CODEX-DUAL-AGENTS-001, SPEC-CODEX-SKILLS-CANONICAL-001, SPE
 | 0.7.0 | 2026-08-24 | 범위 조정 — 운영자 판정. 초기화 요구(구 REQ-CL-015/016 + AC)를 `SPEC-CODEX-INIT-001` 로 분리하고 14 REQ 로 복귀. 풀린 예산으로: 상한 맞추려 통합했던 AC 2건 복원(공유 러너 무회귀·앱 위임), REQ-CL-011 명시 참조 회복(14/14 전수), 4차 감사 커버리지 지적 중 런처 소속 흡수 — `tokens` **키 의미 검증**(무관 키·계정 메타데이터는 자격 재료 아님, 원시 타입 거부만으로는 `{"irrelevant":"x"}` 가 통과)과 리드아웃 배선 6상태 행렬. 산문-전사본 드리프트 정정(낡은 핀 `6bfb076bc`, 46초·롤아웃 31,525 잔존 수치) |
 | 0.8.0 | 2026-08-25 | 크로스 플랫폼 모순 해소 — 감사 지적 D3 (must-pass MP-6). `plan.md` §C.5 가 `cli` 를 프로세스 **교체** (`syscall.Exec`, unix 전용) 로 규정했는데 AC-CL-014 는 OS 빌드 태그 0건 + `GOOS=windows` 컴파일 통과를 함께 요구했다 — 양립 불가. **교체를 버리고 전 플랫폼 공통 `os/exec` + 종료코드 전파** 로 통일한다 (운영자 판정). REQ 는 손대지 않았다 — REQ-CL-002/012/013 의 "exec" 는 기동의 일반적 의미이며 어느 REQ 도 교체를 요구하지 않는다. 교체가 주던 네 성질의 대체물을 §C.5 표로 명시: 종료코드는 전파, 시그널은 부모가 중계, 트리 깊이 +1(무해), 대화형 stdio 는 부모 자신의 `os.Stdin`/`os.Stdout`/`os.Stderr` **값 항등** 전달. tty 왕복은 CI 에서 관측 불가하므로 단언하지 않고 명시적 Gap 으로 기록했다(측정 결과가 깨지면 빌드 태그 문제가 운영자에게 되돌아온다). AC-CL-014 는 약화되지 않았다 — 태그 0건 단언을 유지하면서 `syscall` import·교체 계열 식별자 0건을 **추가** 했다 |
 | 0.8.1 | 2026-08-25 | REQ-CL-003 의 남은 교체 서술 정정 — "instead of replacing the current process" → "instead of in the current terminal". 요구 자체(tmux 새 창 / `moai cc --spawn` 패리티 / tmux 부재 시 동일 진단)는 무변경이고, 사라진 전제만 걷어냈다. 0.8.0 이 REQ 를 손대지 않는 범위로 진행됐기 때문에 이 한 구절이 유일하게 남아 있었다 |
+| (본문 무변경) | 2026-09-01 | **부분 승계 표기 — sync-phase, 카드 t391.** `SPEC-CODEX-LAUNCH-VERB-001` 의 REQ-CLV-001 이 아래 **REQ-CL-002 를 대체한다**: 맨몸 `moai codex` 는 이제 Codex CLI 를 기동하고, 준비 상태 리드아웃은 `status` 명시 별칭으로 남는다. 대체되는 것은 그 한 요구뿐이며 나머지 13개 REQ 는 전부 유효하다 — 특히 REQ-CL-013(런처는 읽고 exec 할 뿐 쓰지 않는다), REQ-CL-011(`app` 위임), REQ-CL-003(`--spawn` 계약), REQ-CL-012(바이너리 부재 진단)는 무변경이다. 이 행은 승계 사실만 기록한다: REQ 본문도, `version:` 도, `status: completed` 도 바꾸지 않았다 (frontmatter 는 `partially_superseded_by` 추가와 `updated:` 갱신뿐) |
 
 ## §A. 측정 전제 (Verified baseline)
 
@@ -111,6 +113,7 @@ t88 (M4) 이 Codex 쪽 배선을 깔았지만, 그 배선을 **확인하고 그 
 
 - **REQ-CL-001** — The system shall provide a top-level `moai codex` command registered in the `launch` command group, so it appears alongside `cc` / `glm` / `cg` in `moai --help`.
 - **REQ-CL-002** — The bare `moai codex` command shall print the readiness readout and exec nothing; launching shall require an explicit verb — `cli` (Codex CLI in the current project directory) or `app` (desktop app). `status` shall be accepted as an explicit alias of the bare readout form.
+  > **[대체됨 / superseded — SPEC-CODEX-LAUNCH-VERB-001 REQ-CLV-001, 2026-09-01]** 위 REQ-CL-002 는 더 이상 살아 있는 요구가 아니다. 맨몸 `moai codex` 는 기동하며, 리드아웃은 `status` 로만 도달한다. 원문은 이력 보존을 위해 그대로 둔다.
 - **REQ-CL-003** — Where the operator passes `--spawn`, the system shall run the launch in a new tmux window instead of in the current terminal, matching the `moai cc --spawn` contract, and shall fail with the same diagnostic when tmux is absent.
 
 ### D.2 준비 상태 리드아웃

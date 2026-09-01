@@ -32,7 +32,7 @@ func TestCodexSentinel_CrossSurfacesCommandAndMCP(t *testing.T) {
 	t.Run("(a) launcher readout command", func(t *testing.T) {
 		t.Setenv(codexHomeEnvVar, t.TempDir())
 		withCodexProjectDir(t, codexWiringFixture(t, "wired"))
-		stdout, _, err := runCodexCmd(t)
+		stdout, _, err := runCodexCmd(t, "status")
 		if err != nil {
 			t.Fatalf("bare readout: %v", err)
 		}
