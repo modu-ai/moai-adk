@@ -197,7 +197,7 @@ coverage_note: "package root 80.1% (pre-existing level; SPEC delta bounded ≤ +
 
 ```yaml
 sync_complete_at: 2026-09-02
-sync_commit_sha: "pending-backfill-sync"   # a commit cannot cite its own hash; backfilled in one follow-up commit (canonical D3 exemption)
+sync_commit_sha: "918d65366"   # backfilled 2026-09-02 in the follow-up commit (canonical D3 exemption)
 sync_status: complete
 b12_self_test_a: pre_emission_grep_count_0 (grep -c 'SPEC-AUDIT-PARTICIPANT-COUNT-001' CHANGELOG.md → 0 before the edit; exit 1 = no match)
 b12_self_test_b: ac_count_match (acceptance.md distinct ACs = 8 = AC-APC-001..008; entry cites 8/8; no [RETIRED]/[REF] tokens → no ambiguity → count emitted)
