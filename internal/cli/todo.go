@@ -139,7 +139,7 @@ adds any text verbatim.`,
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
-				return runTodoList(cmd, false)
+				return runTodoList(cmd, false, false)
 			}
 			return runTodoAddAppend(cmd, strings.Join(args, " "), false)
 		},
@@ -287,7 +287,16 @@ func runTodoAddPick(cmd *cobra.Command, store *kanban.BacklogStore, text string,
 // runTodoList renders the backlog lock-free. It backs both entry points —
 // the bare `moai todo` and the explicit `moai todo list` — so the two cannot
 // drift apart in output.
-func runTodoList(cmd *cobra.Command, jsonOutput bool) error {
+//
+// The default view renders live cards only (queued + picked) and collapses
+// the dropped set into one count line naming the recovery path: a dropped
+// card never leaves rec.Items, so rendering it forever made the list length
+// diverge from the queue's actual load. `--dropped` renders the discarded
+// set instead — the surface `undrop` needs to find a card and its reason
+// (t153's exact-reversal contract is untouched; only the render filters).
+// `--json` stays the structured record with every card, so a machine
+// consumer filters by the state field rather than by absence.
+func runTodoList(cmd *cobra.Command, jsonOutput bool, droppedOnly bool) error {
 	store := newTodoStore()
 	rec, err := store.Load()
 	if err != nil {
@@ -307,7 +316,17 @@ func runTodoList(cmd *cobra.Command, jsonOutput bool) error {
 		_, _ = fmt.Fprintln(out, "queue is empty")
 		return nil
 	}
+	dropped := 0
+	rendered := 0
 	for _, it := range rec.Items {
+		isDropped := it.State == kanban.BacklogStateDropped
+		if isDropped {
+			dropped++
+		}
+		if isDropped != droppedOnly {
+			continue
+		}
+		rendered++
 		_, _ = fmt.Fprintf(out, "%s\t%s\t%s\n", it.ID, it.State, it.Text)
 		for _, f := range rec.Findings {
 			if !f.Names(it.ID) {
@@ -316,23 +335,34 @@ func runTodoList(cmd *cobra.Command, jsonOutput bool) error {
 			_, _ = fmt.Fprintln(out, todoFindingLine(rec, it.ID, f))
 		}
 	}
+	if droppedOnly && rendered == 0 {
+		_, _ = fmt.Fprintln(out, "no dropped cards")
+		return nil
+	}
+	if !droppedOnly && dropped > 0 {
+		_, _ = fmt.Fprintf(out, "%d dropped (hidden — see: moai todo list --dropped)\n", dropped)
+	}
 	return nil
 }
 
-// newTodoListCmd — `moai todo list [--json]` (REQ-TODO-003): render the
-// queue lock-free; --json emits the structured records.
+// newTodoListCmd — `moai todo list [--json] [--dropped]` (REQ-TODO-003):
+// render the queue lock-free; --json emits the structured records, --dropped
+// renders the discarded set the default view hides behind a count line.
 func newTodoListCmd() *cobra.Command {
 	var jsonOutput bool
+	var droppedOnly bool
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "Render the backlog queue (lock-free)",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runTodoList(cmd, jsonOutput)
+			return runTodoList(cmd, jsonOutput, droppedOnly)
 		},
 	}
 	cmd.Flags().BoolVar(&jsonOutput, "json", false,
 		"Emit the backlog records as JSON on stdout")
+	cmd.Flags().BoolVar(&droppedOnly, "dropped", false,
+		"Render only the dropped cards (the default view hides them behind a count line)")
 	return cmd
 }
 
