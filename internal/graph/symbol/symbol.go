@@ -36,6 +36,8 @@ type CallEdge struct {
 // confidence join consumes only data the walk already visits — no second
 // parse pass). Names are deduplicated and sorted for deterministic
 // consumption.
+//
+// @MX:NOTE: [AUTO] declares-side of the confidence join — names stay dedup+sorted so the callee→declaring-file match is deterministic (SPEC-GRAPH-EDGE-CONFIDENCE-001)
 type FileDecls struct {
 	// File is the repo-relative source file.
 	File string

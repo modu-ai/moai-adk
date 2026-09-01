@@ -144,4 +144,28 @@ full_suite_verdict: "deferred to CI per repo-local verification-load discipline"
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_commit_sha: "pending-backfill-t411-sync"
+sync_status: "complete"
+frontmatter_status_transitions:
+  spec.md: "in-progress -> implemented -> completed (merged close on the single sync commit)"
+  plan.md: "no frontmatter (body-only document) — no transition surface"
+  acceptance.md: "no frontmatter (body-only document) — no transition surface"
+  progress.md: "signal carrier only"
+docs_updated:
+  - "CHANGELOG.md [Unreleased] Added entry (AC count 12 matched)"
+  - "docs-site: SKIPPED — docs-site/content/*/cli-reference/graph.md documents the `moai graph build/query` CLI only; graph_find_code / graph_trace_calls response shape is not documented there (grep for graph_find_code|graph_trace_calls across docs-site/content/ = 0 hits). No docs-site parity obligation triggered."
+  - "README: SKIPPED — README.md / README.ko.md carry 0 references to graph_find_code / graph_trace_calls; no response-detail surface to sync."
+mx_tags_added:
+  - "internal/graph/symbol/symbol.go:40 — @MX:NOTE on new exported type FileDecls (dedup+sort contract of the confidence join)"
+mx_tags_verified_existing:
+  - "internal/graph/graph.go:95 — @MX:NOTE on ConfidenceFor (single-definition map)"
+  - "internal/graph/symbol/symbol.go:108 — @MX:NOTE on Extract (pre-existing, SPEC-V3R6-GRAPH-FRESHNESS-001)"
+mx_fan_in_measurement: "ConfidenceFor callers = 2 (graph.go, symbol.go) — below the >=3 @MX:ANCHOR threshold; no ANCHOR required"
+b12_self_test_a_changelog_grep: "grep -c 'SPEC-GRAPH-EDGE-CONFIDENCE-001' CHANGELOG.md -> 0 before emission (halt threshold not hit); 1 after"
+b12_self_test_b_ac_count: "acceptance.md AC-GEC identifiers = 12 (grep -c 'AC-GEC' = 18 raw matches / 12 distinct AC-GEC-001..012); CHANGELOG entry references the 12/12 AC PASS record"
+b12_self_test_c_file_paths: "all cited paths ls-verified: internal/graph/{graph,symbol,codequery}.go, internal/graph/symbol/symbol.go, internal/graph/testdata/edges-doc-golden.jsonl, internal/cli/mcp_server.go, 4 new internal/graph/*_test.go + internal/cli/mcp_confidence_test.go"
+build_gate: "go build ./... exit 0 (pre-commit, this tree, docs+comment-only delta)"
+spec_body_edits: "none — spec.md/plan.md/acceptance.md bodies untouched; frontmatter status/updated only"
+backfill_note: "sync_commit_sha backfilled in the follow-up chore commit per the SHA placeholder backfill exemption"
+```

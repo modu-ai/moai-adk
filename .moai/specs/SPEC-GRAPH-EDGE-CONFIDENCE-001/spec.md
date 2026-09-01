@@ -2,7 +2,7 @@
 id: SPEC-GRAPH-EDGE-CONFIDENCE-001
 title: "Per-edge resolution confidence on code-call edges via import-evidence promotion (graphify pattern P1-1)"
 version: "1.1.0"
-status: in-progress
+status: completed
 created: 2026-09-01
 updated: 2026-09-01
 author: manager-spec
