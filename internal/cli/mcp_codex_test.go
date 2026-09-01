@@ -235,6 +235,18 @@ func TestCodexAudit_AdversarialDispatchesTurnStart(t *testing.T) {
 	if !strContains(sess.sent[2], codexMethodTurnStart) {
 		t.Errorf("3rd request must be %q; got %s", codexMethodTurnStart, sess.sent[2])
 	}
+	// SPEC-CODEX-REVIEW-TARGET-001 AC-CRT-007. This was the ONLY codex test in
+	// the repository holding the string `baseBranch`, and it asserted nothing
+	// about it: turn/start carries no target at all, so the argument above was
+	// inert — a `baseBranch` that was never on the wire could not fail however
+	// malformed the review/start path was. Assert the fact that makes it inert,
+	// so the argument stops looking like coverage it never provided. The native
+	// baseBranch target shape is pinned in codex_review_target_test.go.
+	turnReq := sentRequest(t, sess.sent[2])
+	turnParams, _ := turnReq["params"].(map[string]any)
+	if _, has := turnParams["target"]; has {
+		t.Errorf("adversarial mode must not serialize a target (turn/start declares none); params=%v", turnParams)
+	}
 	if !jsonResultHasVerict(res, "fail") {
 		t.Errorf("adversarial result must surface verdict fail")
 	}

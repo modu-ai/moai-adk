@@ -5,11 +5,12 @@
 ### Single Source of Truth
 
 - [HARD] `go.mod` module version + git tags are the authoritative sources
-- [HARD] `pkg/version/version.go` reads from git tags at build time
+- [HARD] `pkg/version/version.go` holds the version a build falls back to when ldflags inject none. It is a package-level `var` (it has to be, for `-X` to reach it), and every bump commit rewrites it by hand — it is not derived from git tags.
 
 **Version Reference:**
 - Authoritative Source: Git tags (e.g., `v1.0.0`)
-- Runtime Access: `pkg/version/version.go` via `git describe`
+- Build-time injection: `Makefile:20` defines `-X .../pkg/version.Version=$(VERSION)`, used by `make build` (`Makefile:36`) and `make install` (`Makefile:72`); release builds inject the same symbol at `.goreleaser.yml:22`. A binary from either path never shows the fallback.
+- Fallback exposure: a bare `go install ./cmd/moai` carries no ldflags, so such a binary reports whatever `pkg/version/version.go` says. That hand-build is the only path where the fallback is user-visible, and it is why the line is a version stamp rather than a derived value.
 - Config Display: `.moai/config/sections/system.yaml` (updated by release process)
 
 ### [HARD] Pre-release Versioning — SemVer 2.0.0
@@ -67,15 +68,26 @@ Tagging is a separate, remote-facing act performed only by the release harness.
 
 When releasing new version, update:
 
-**Documentation Files:**
+The two groups below are different kinds of work. A bump commit **rewrites** every path under Version Stamps; it does not touch Release Artifacts, which are written fresh for each release.
+
+**Version Stamps:**
 - README.md (Version line)
 - README.ko.md (Version line)
-- CHANGELOG.md (New version entry — **English-only**; Korean lives in `.moai/release-notes/vX.Y.Z.ko.md`, NOT in CHANGELOG.md)
-- .moai/release-notes/vX.Y.Z.ko.md (Korean release notes — consumed by the GitHub release body and the docs-site `ko` changelog page)
-
-**Configuration Files:**
+- README.ja.md (Version line)
+- README.zh.md (Version line)
 - .moai/config/sections/system.yaml (moai.version)
-- internal/template/templates/.moai/config/config.yaml (moai.version)
+- docs-site/hugo.toml (version + `releaseDate` — the date is not a version token, so no check reads it; it still has to be updated by hand)
+- pkg/version/version.go (the no-ldflags fallback — see Single Source of Truth above)
+
+`internal/template/templates/.moai/config/sections/system.yaml.tmpl` is **not** a stamp: it renders `{{.Version}}` rather than carrying a literal version, so a bump leaves it alone. It is named here only so the next reader does not add it back.
+
+**Release Artifacts:**
+- CHANGELOG.md (New version entry — **English-only**; Korean lives in `.moai/release-notes/vX.Y.Z.ko.md`, NOT in CHANGELOG.md)
+- .moai/release-notes/vX.Y.Z.ko.md (Korean release notes — consumed by the GitHub release body and the docs-site `ko` changelog page; `vX.Y.Z` is a placeholder, not a path on disk)
+
+A guard test reads the Version Stamps list and fails when it names a path that is not in the working tree: `internal/cli/version_sync_list_test.go`, run by the existing `go test ./...` in CI.
+
+The guarantee it establishes is **partial**. It catches the list naming a path that does not exist. It **does not detect** a stamp site that is absent from the list — which is the direction that actually bit us: the v3.1.3 bump missed `docs-site/hugo.toml`, and nothing said so. Closing that direction is card t392.
 
 ### Release Process
 

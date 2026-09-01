@@ -1,0 +1,7 @@
+=== RUN   TestGitignoreDeclaredRulesOnBothSurfaces
+--- PASS: TestGitignoreDeclaredRulesOnBothSurfaces (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/template	0.423s
+exit=0
+$ grep -c 'SPEC-GITIGNORE-ROOT-GUARD-001' CHANGELOG.md
+0

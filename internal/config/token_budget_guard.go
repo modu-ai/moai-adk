@@ -12,7 +12,7 @@ import (
 
 // @MX:NOTE: [AUTO] SPEC-TOKEN-EFFICIENCY-001 P0-1 — always-loaded 토큰 예산 가드.
 // Claude Code가 매 턴 재주입하는 always-loaded 컨텍스트 표면(CLAUDE.md + no-paths: 규칙 +
-// output-style + MEMORY.md head)의 토큰 총량이 예산을 넘으면 회귀로 판정한다. CC 네이티브
+// output-style)의 토큰 총량이 예산을 넘으면 회귀로 판정한다. CC 네이티브
 // 압축/캐싱은 재구현하지 않는다(over-engineering guard, plan.md §G).
 
 // AlwaysLoadedTokenBudget는 always-loaded 컨텍스트 표면에 허용되는 추정 토큰 상한이다.
@@ -20,7 +20,7 @@ import (
 // 다이어트가 조용히 되돌아가는 것을 잡는다.
 //
 // 도출 근거: 측정 baseline(2026-07-02) ≈ 64,624 토큰(char/4 추정: CLAUDE.md + no-paths:
-// .claude/rules/moai/** 규칙 파일 + moai.md + MEMORY.md head 합계 258,498 bytes / 4) +
+// .claude/rules/moai/** 규칙 파일 + moai.md 합계 258,498 bytes / 4) +
 // 약 15% 여유(≈ 74,317)를 클린 상수로 올림. 여유분은 통상적 규칙 편집을 흡수하되 의미 있는
 // 증가에는 발화한다.
 //
@@ -29,7 +29,27 @@ import (
 // 트리거(main 전용) 밖이라 개별 카드 단계에서 미검출된 선결 결함이다. 근본 해결
 // (kanban-dispatch 등 대형 always-loaded 룰의 스텁+지연 로딩 다이어트)은 별도 카드로
 // 진행하며, 그 착지 전까지의 임시 상향으로 75,000 → 76,000으로 올린다.
-const AlwaysLoadedTokenBudget = 76000
+//
+// 상향 근거(2026-08-31, SPEC-MEMORY-STORE-RECONCILE-001): 이 SPEC은 세션이 인덱스가 길다는
+// 이유로 교훈 기록을 포기하는 것을 막는 [HARD] 조항을 always-loaded 표면(moai-constitution.md
+// § Lessons Protocol)에 넣어야 한다 — 그 조항을 paths-scoped 파일에 두면 대상 세션이 읽지
+// 못하므로(REQ-MSR-004 / C5) 위치를 옮길 수 없다. 측정: 편집 전 75,799 토큰(여유 201),
+// 편집 후 76,009. 이 카드가 더한 always-loaded 분량은 정확히 210 토큰이다.
+//
+// 76,000 → 76,210 은 그 210을 그대로 얹은 값이다. 임의의 여유를 새로 만들지 않고 기존 여유
+// 201 토큰을 보존하는 것이 목적이며, 조항 자체는 먼저 최소 길이로 줄인 뒤(초안 대비 약 1,000
+// 바이트 삭감) 남은 분량만 반영했다. 상세 서술은 paths-scoped 인 moai-memory.md 쪽에 두어
+// always-loaded 비용을 최소화했다.
+//
+// 주의: 이 표면은 포화 상태다. 편집 전 여유가 예산의 0.26%(201/76,000)에 불과했고, 상향 뒤에도
+// 같은 수준이다. 다음에 always-loaded 파일을 늘리는 카드는 이 가드에 부딪힌다 — 근본 해결은
+// 위 문단이 가리키는 대형 룰 다이어트이며, 이 카드의 소관이 아니다.
+//
+// @MX:DEBT: [AUTO] temporary budget raise (76,000 -> 76,210) standing in for the always-loaded rule diet
+// @MX:CEILING: 0.26% headroom — 201 tokens of 76,210; one always-loaded clause consumes it
+// @MX:UPGRADE: drop this raise when the large always-loaded rule diet (stub + lazy loading) lands
+// @MX:SPEC: SPEC-MEMORY-STORE-RECONCILE-001
+const AlwaysLoadedTokenBudget = 76210
 
 // CodexContractByteCeiling는 루트 AGENTS.md(코덱스 계약층)에 허용되는 바이트 상한이다.
 // codex는 프로젝트 지시문을 바이트 상한 아래에서 읽고 초과분을 **조용히** 잘라낸다 —
@@ -91,12 +111,25 @@ func MeasureContractBytes(repoRoot string) ([]ContractByteBreach, error) {
 	return breaches, nil
 }
 
-// memoryHeadLineCap / memoryHeadByteCap는 가드가 측정하는 MEMORY.md head 범위를 제한한다.
-// Claude Code auto-memory 로더 상한(첫 200줄 또는 25KB 중 먼저 도달하는 쪽)과 일치한다.
-const (
-	memoryHeadLineCap = 200
-	memoryHeadByteCap = 25 * 1024
-)
+// TOMBSTONE — there is deliberately no MEMORY.md fixed surface slot, and no head-cap
+// constants to go with it. Do not re-add them.
+//
+// Two independent reasons, both measured:
+//
+//  1. It measured nothing. The slot pointed at repoRoot/MEMORY.md, which this repository
+//     does not contain, so it contributed 0 tokens on every real run — forever. The unit
+//     tests passed only because they supplied their own fixture, which is what kept the
+//     vacuity invisible.
+//  2. Its head caps encoded an UNCONFIRMED premise. They asserted the Claude Code
+//     auto-memory loader truncates the index at a specific line count or byte size,
+//     whichever it reaches first. The loader is not part of this repository, and the one
+//     direct observation available contradicts a strict byte cut at the size that was
+//     encoded. Re-adding the caps would harden an unverified claim into code.
+//
+// Pointing the slot at the real auto-memory store is not the fix either: that store is
+// machine-specific and lives outside the repository, which breaks the hermeticity the
+// enumeration below depends on. The index is measured with `moai memory doctor` instead;
+// see .claude/rules/moai/workflow/moai-memory.md § MEMORY.md Index Budget.
 
 // estimateTokens는 char/4 rule-of-thumb(len(bytes)/4)로 b의 근사 토큰 수를 반환한다.
 // 실제 tokenizer 대비 ±약 15% 오차가 있는 의도적 무의존 근사다. 이 가드는 상대적 증가를
@@ -160,10 +193,15 @@ func hasPathsRestriction(path string) bool {
 }
 
 // alwaysLoadedSurface는 repoRoot 기준 always-loaded 컨텍스트 표면을 나열한다: frontmatter에
-// `paths:` 제한이 없는 모든 .claude/rules/moai/**/*.md 파일(정렬), 이어서 4개의 고정 표면
-// 슬롯(CLAUDE.md, AGENTS.md, .claude/output-styles/moai/moai.md, MEMORY.md). 4개 고정 슬롯은
-// 디스크에 파일이 없어도 항상 목록에 포함된다 — 없는 파일은 측정 시 0 토큰으로 계산한다
-// (hermetic: machine-specific auto-memory 사본이 아니라 repo-relative MEMORY.md만 측정).
+// `paths:` 제한이 없는 모든 .claude/rules/moai/**/*.md 파일(정렬), 이어서 3개의 고정 표면
+// 슬롯(CLAUDE.md, AGENTS.md, .claude/output-styles/moai/moai.md). 3개 고정 슬롯은
+// 디스크에 파일이 없어도 항상 목록에 포함된다 — 없는 파일은 측정 시 0 토큰으로 계산한다.
+//
+// 열거(enumeration)와 측정(measurement)은 다른 규칙을 따른다. 위 hermetic 처리는 *측정*에
+// 관한 것이다: 사용자 트리에 슬롯 파일이 없을 수 있고, 그때는 0 토큰으로 계산하면 된다.
+// *열거*에는 더 강한 규칙이 붙는다 — 이 저장소 트리에 존재하지 않는 경로를 가리키는 슬롯은
+// 여기서 영원히 아무것도 측정하지 못하므로 애초에 열거되어서는 안 된다. 위 TOMBSTONE 이
+// 제거한 슬롯이 정확히 그 경우였고, TestFixedSlotsExistInRepoTree 가 재발을 막는다.
 //
 // AGENTS.md 슬롯(SPEC-AGENTS-MD-CANON-001 REQ-AMC-008): 루트 AGENTS.md는 CLAUDE.md의
 // `@`-import이므로 존재하는 순간부터 always-loaded다. 이 슬롯이 없으면 규칙 파일에서
@@ -190,51 +228,27 @@ func alwaysLoadedSurface(repoRoot string) ([]string, error) {
 	}
 	sort.Strings(ruleFiles)
 
-	// 4개 고정 표면 슬롯을 항상 고정 순서로 추가한다. AGENTS.md는 CLAUDE.md의 `@`-import라
+	// 3개 고정 표면 슬롯을 항상 고정 순서로 추가한다. AGENTS.md는 CLAUDE.md의 `@`-import라
 	// 바로 뒤에 둔다.
 	fixed := []string{
 		filepath.Join(repoRoot, "CLAUDE.md"),
 		filepath.Join(repoRoot, "AGENTS.md"),
 		filepath.Join(repoRoot, ".claude", "output-styles", "moai", "moai.md"),
-		filepath.Join(repoRoot, "MEMORY.md"),
 	}
 	return append(ruleFiles, fixed...), nil
 }
 
-// memoryHead는 MEMORY.md 내용의 로드 head를 반환한다: memoryHeadLineCap번째 개행까지 또는
-// memoryHeadByteCap 바이트까지 중 먼저 도달하는 쪽 — Claude Code auto-memory 로더 상한과 일치.
-func memoryHead(data []byte) []byte {
-	if len(data) > memoryHeadByteCap {
-		data = data[:memoryHeadByteCap]
-	}
-	lines := 0
-	for i, c := range data {
-		if c == '\n' {
-			lines++
-			if lines == memoryHeadLineCap {
-				return data[:i+1]
-			}
-		}
-	}
-	return data
-}
-
 // measureAlwaysLoaded는 repoRoot 기준 always-loaded 표면의 추정 토큰을 합산한다. 총 토큰
-// 추정치와 나열된 표면(카운트 assertion용)을 반환한다. MEMORY.md 슬롯은 head만 측정한다
-// (memoryHeadLineCap 줄 또는 memoryHeadByteCap 바이트 중 먼저). 없는 파일은 0 토큰이다.
+// 추정치와 나열된 표면(카운트 assertion용)을 반환한다. 없는 파일은 0 토큰이다.
 func measureAlwaysLoaded(repoRoot string) (total int, surface []string, err error) {
 	surface, err = alwaysLoadedSurface(repoRoot)
 	if err != nil {
 		return 0, nil, err
 	}
-	memoryPath := filepath.Join(repoRoot, "MEMORY.md")
 	for _, path := range surface {
 		data, readErr := os.ReadFile(path)
 		if readErr != nil {
 			continue // 없는 파일 → 0 토큰(hermetic)
-		}
-		if path == memoryPath {
-			data = memoryHead(data)
 		}
 		total += estimateTokens(data)
 	}
