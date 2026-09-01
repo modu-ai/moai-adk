@@ -317,7 +317,7 @@ sync audit required none (its 4 findings were all optional and all closed in cod
 
 ```yaml
 sync_complete_at: 2026-09-01
-sync_commit_sha: pending-backfill  # backfilled in a follow-up commit (a commit cannot name its own hash)
+sync_commit_sha: 77550b1b0   # backfilled in a follow-up commit (a commit cannot name its own hash)
 sync_status: complete
 run_commit_sha_backfilled: 73bfba170
 sync_audit_verdict: "PASS 91.2/100 — committed in b43d4cb56 (.moai/reports/t376/sync-audit.md); audited HEAD ff8a7dcba; must-pass Functionality 93 + Security 95 cleared"
