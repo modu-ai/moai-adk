@@ -58,7 +58,7 @@ func Helper(s string, n int) (string, error) {
 		t.Fatal(err)
 	}
 	// Build the artifact so the query tools have their substrate.
-	edges, _, err := BuildWithCodeLayers(root)
+	edges, _, _, err := BuildWithCodeLayers(root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -252,7 +252,7 @@ func TestCodeQueries_PerTreeAnswers(t *testing.T) {
 		[]byte("package chain\n\nfunc D() {\n\tC()\n}\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	edges, _, err := BuildWithCodeLayers(treeB)
+	edges, _, _, err := BuildWithCodeLayers(treeB)
 	if err != nil {
 		t.Fatal(err)
 	}

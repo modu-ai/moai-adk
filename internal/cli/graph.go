@@ -157,7 +157,17 @@ Examples:
 			// round-2 3855149254), with the gate-calibrated drift red line.
 			if refreshNeeded := edgesRefreshNeeded(projectRoot, edgesFile, graph.DefaultThresholds().MXIndexChangedFiles); refreshNeeded {
 				if stats, rErr := refreshEdgesArtifact(projectRoot, edgesFile); rErr != nil {
-					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "graph refresh failed (answering from the existing artifact): %v\n", rErr)
+					// REQ-GR-009 fail-safe: a shrink refusal is stated as
+					// such (the removed edges and their unscanned sources
+					// are named by the report) and the answer below comes
+					// from the EXISTING artifact — never a shrunk write,
+					// never a lost artifact (AC-GR-014).
+					var refuse *graph.ShrinkRefusalError
+					if errors.As(rErr, &refuse) {
+						_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "graph refresh refused — unexplained shrink (answering from the existing artifact): %s\n", refuse.Report.Describe())
+					} else {
+						_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "graph refresh failed (answering from the existing artifact): %v\n", rErr)
+					}
 				} else if over := graphRefreshOverrun(projectRoot, stats.duration); over > 0 {
 					_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
 						"graph refresh cost %s exceeded the %dms update budget by %.0fms (warning only, answer follows)\n",
@@ -310,7 +320,7 @@ Examples:
 			if allDisagreements {
 				mode = graph.DisagreementAll
 			}
-			edges, matrix, err := graph.BuildWithCodeLayersMode(projectRoot, mode)
+			edges, scanned, matrix, err := graph.BuildWithCodeLayersMode(projectRoot, mode)
 			if err != nil {
 				return fmt.Errorf("build graph: %w", err)
 			}
@@ -324,6 +334,20 @@ Examples:
 					return fmt.Errorf("resolve --out: %w", absErr)
 				}
 				target = abs
+			}
+			// REQ-GR-008/AC-GR-012 (second clause): the explicit build path
+			// applies the same shrink guard pre-write — a refusal exits
+			// NON-ZERO naming the removed edges, with the prior artifact
+			// left byte-identical (zero writes). An unreadable prior
+			// artifact skips the guard: there is nothing to protect.
+			if existing, lErr := graph.LoadJSONL(target); lErr == nil {
+				scannedSet := make(map[string]bool, len(scanned))
+				for _, f := range scanned {
+					scannedSet[f] = true
+				}
+				if report := graph.DetectUnexplainedShrink(existing, edges, scannedSet, projectRoot); !report.Empty() {
+					return fmt.Errorf("refusing to overwrite %s — %s", target, report.Describe())
+				}
 			}
 			if err := graph.WriteJSONL(target, edges); err != nil {
 				return fmt.Errorf("write edges: %w", err)

@@ -14,7 +14,7 @@ import (
 // surface. Mirrors shortestpath_nocgo_test.go's pattern.
 func TestNoCGOArchitectureReportEmptySections(t *testing.T) {
 	root := tierFixture(t)
-	all, _, err := BuildWithCodeLayers(root)
+	all, _, _, err := BuildWithCodeLayers(root)
 	if err != nil {
 		t.Fatalf("BuildWithCodeLayers under !cgo: %v", err)
 	}

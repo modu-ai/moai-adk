@@ -16,7 +16,7 @@ import (
 // unavailable.
 func TestNoCGOTagEdgesSelfEdge(t *testing.T) {
 	root := tagFixture(t)
-	edges, _, err := BuildWithCodeLayers(root)
+	edges, _, _, err := BuildWithCodeLayers(root)
 	if err != nil {
 		t.Fatalf("BuildWithCodeLayers under !cgo: %v", err)
 	}

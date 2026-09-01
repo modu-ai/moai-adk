@@ -51,15 +51,33 @@ func edgesRefreshNeeded(projectRoot, edgesFile string, mxIndexChangedFiles int) 
 // edge extractor's input — and its inventory IS the described-source state
 // the code-derived layers consume), then rebuild (doc + code layers) and
 // re-stamp. Mechanical only — no LLM, no network (REQ-GF-007).
+//
+// REQ-GR-008: the shrink guard evaluates BETWEEN the build and the write —
+// pre-write, so a refusal performs ZERO writes and the prior artifact (and
+// its meta sidecar) stays byte-identical by construction. A typed
+// *graph.ShrinkRefusalError carries the report; the callers apply the
+// fail-safe shape (REQ-GR-009): answer from the existing artifact (query
+// path) or skip the refresh (deferred path). An unreadable prior artifact
+// (absent or corrupt) skips the guard — there is nothing to protect, and the
+// rebuild self-heals the corruption.
 func refreshEdgesArtifact(projectRoot, edgesFile string) (edgesRefreshStats, error) {
 	elapsed := edgesRefreshClock()
 
 	if _, err := mx.RefreshIndex(filepath.Join(projectRoot, ".moai", "state"), projectRoot, nil); err != nil {
 		return edgesRefreshStats{}, fmt.Errorf("refresh mx-index: %w", err)
 	}
-	edges, _, err := graph.BuildWithCodeLayers(projectRoot)
+	edges, scanned, _, err := graph.BuildWithCodeLayers(projectRoot)
 	if err != nil {
 		return edgesRefreshStats{}, fmt.Errorf("rebuild edges: %w", err)
+	}
+	if existing, lErr := graph.LoadJSONL(edgesFile); lErr == nil {
+		scannedSet := make(map[string]bool, len(scanned))
+		for _, f := range scanned {
+			scannedSet[f] = true
+		}
+		if report := graph.DetectUnexplainedShrink(existing, edges, scannedSet, projectRoot); !report.Empty() {
+			return edgesRefreshStats{}, &graph.ShrinkRefusalError{Report: report}
+		}
 	}
 	if err := graph.WriteJSONL(edgesFile, edges); err != nil {
 		return edgesRefreshStats{}, fmt.Errorf("write edges: %w", err)

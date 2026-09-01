@@ -83,7 +83,7 @@ func TestTagEdgeKindDomain(t *testing.T) {
 func TestTagEdgeEndpoints(t *testing.T) {
 	requireCodeExtraction(t)
 	root := tagFixture(t)
-	edges, _, err := BuildWithCodeLayers(root)
+	edges, _, _, err := BuildWithCodeLayers(root)
 	if err != nil {
 		t.Fatalf("BuildWithCodeLayers: %v", err)
 	}
@@ -168,7 +168,7 @@ func TestSingleScanPerBuild(t *testing.T) {
 
 	// The code-layer build is also a single pass (same doc layer inside).
 	scans = 0
-	if _, _, err := BuildWithCodeLayers(root); err != nil {
+	if _, _, _, err := BuildWithCodeLayers(root); err != nil {
 		t.Fatalf("BuildWithCodeLayers: %v", err)
 	}
 	if scans != 1 {
