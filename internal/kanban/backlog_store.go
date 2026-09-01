@@ -801,3 +801,12 @@ func parseBacklogSeq(id string) (int, bool) {
 	}
 	return n, true
 }
+
+// ParseBacklogSeq is the exported form of parseBacklogSeq, for read
+// surfaces outside this package that must interpret a card id against the
+// id-space accounting (SPEC-TODO-ARCHIVE-QUERY-001's history verb
+// qualifies an absent answer against the issued-id mark). A second parser
+// would be a second chance to drift from the id form the store issues.
+func ParseBacklogSeq(id string) (int, bool) {
+	return parseBacklogSeq(id)
+}
