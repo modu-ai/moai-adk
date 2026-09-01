@@ -691,3 +691,7 @@ Sections §18-27 were consolidated into external `.moai/docs/` files to reduce l
 ### PROPOSE는 archived 사본 판독
 
 세션 시작마다 드레인이 도는 체제에서 live `clusters.json`은 휘발성이다(no-op 드레인조차 `candidates: []`로 덮어쓴다). 후보 제안(PROPOSE)은 `.moai/state/lsel/clusters-history/`의 사본(최신순)을 읽는다. 검증 레시피·mutant guard 포함 전체 절차는 SKILL.md § Verification.
+
+### 인박스 유용성 범위 (경계 선언 — anchor: `.moai/docs/learning-channel-scope.md`)
+
+`.moai/lessons-inbox.jsonl`은 실패 이벤트 스텁만 기록한다 — 배선된 2패밀리 `tool_failure:<tool>:<sig>`와 `test_fail:<pkg>:`뿐이다. 도구 실패와 테스트 실패 어느 쪽으로도 나타나지 않는 결함 계열(공허 초록, 판정 전 skip, 빈 결과집합 통과, 형제 수리 누락, 이동 ref 고정, 스테일 값 인용)은 이 인박스에 담기지 않으며, 그 학습 채널은 인간 매개 루프다 — 레인 발견 → 리드 판정 → auto-memory `feedback_*.md` + `MEMORY.md` 기록. 측정 구성과 dated baseline은 anchor doc에만 두고 산문에 수치를 두지 않는다.
