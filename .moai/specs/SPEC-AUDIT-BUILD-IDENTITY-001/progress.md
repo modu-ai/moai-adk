@@ -43,6 +43,15 @@ lane이 수정 에이전트의 "이미 착지" 처분표 라벨을 불신했던 
 
 산출물 커밋: `311b1936b` (SPEC 4종 + 감사 보고서, 5파일 682줄). run 진입은 Implementation Kickoff 승인 후.
 
+## §F Phase 4 Mode Selection
+
+- 입력: tier S / scope 4-6파일(`mcp_codex.go`·`mcp_convergence.go`·신규 테스트) / 도메인 1(Go backend) / 병렬 이득 낮음(코딩 중심) / Agent Teams 미요청
+- 평가: direct 미해당(구현 존재) · fanout 미해당(단일 도메인 코딩 작업) · sweep 미해당(기계적 대량 변형 아님) · serial 해당(단일 스콥 구현)
+- Decision: serial
+- 근거: 코딩 중심 단일 도메인 구현 — Anthropic coding-task parallelism caveat상 serial이 기본이며, Tier S 단일 스콥이라 마일스톤 병렬화 이득이 없다.
+- 실행 모델: manager-develop GLM 상속(opus 주간 한도 2026-09-04 19:00 리셋 대기 — 프로필 이격, 완료 보고에 기록)
+- Kickoff: 운영자 승인(자율 모드), 리드 경유 전달. 판정 경로는 리드 판독 갈음(§E.1 기록). run 진입은 이 기록 이후 첫 spawn.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_
