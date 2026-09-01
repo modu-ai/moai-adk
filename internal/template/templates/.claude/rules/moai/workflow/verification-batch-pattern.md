@@ -60,19 +60,19 @@ Groups A-D issue as one parallel batch. Group E joins when benchmark is in AC.
 
 The orchestrator's response contains multiple Bash tool calls within a single assistant turn. The canonical 7-item example lives in `.claude/rules/moai/core/agent-common-protocol.md` §Parallel Execution (satisfies the canonical verification-batch acceptance criterion).
 
-## Attributable diff-check pattern (SPEC-SYNC-PARALLEL-DOCS-001 A9)
+## Attributable diff-check pattern
 
 > Thin pointer — the SSOT for the attributable diff-check doctrinal switch + its fallback contract lives in `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution → Attributable diff-check doctrinal switch. That section owns: the three-way attribution predicate (snapshot key / command / output), the CONSUME-vs-re-execute default-inversion, the mismatch-reason enum (`snapshot_key_drift` / `command_drift` / `missing_section_e` / `output_drift`), and the fallback-to-re-execution safety boundary. This file owns only the *why* (grouping rationale + class taxonomy above).
 
 ## Cross-references
 
 - `.claude/rules/moai/core/agent-common-protocol.md` §Parallel Execution (HARD batching obligation) + `agent-common-protocol-reference.md` (7-item canonical example).
-- `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution → Attributable diff-check doctrinal switch (SPEC-SYNC-PARALLEL-DOCS-001 A9 — the composition-time switch that selects consume-vs-re-execute).
-- `.claude/rules/moai/development/manager-develop-prompt-template.md` § Section E → Attribution discipline (SPEC-SYNC-PARALLEL-DOCS-001 A9 — the §E attribution triple the diff-check consults).
+- `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution → Attributable diff-check doctrinal switch (the composition-time switch that selects consume-vs-re-execute).
+- `.claude/rules/moai/development/manager-develop-prompt-template.md` § Section E → Attribution discipline (the §E attribution triple the diff-check consults).
 - `.claude/rules/moai/core/verification-claim-integrity.md` §1.1 + §2 (the invariant + attribution contract A9 preserves on every path).
 - reduces serial CI wait.
 
 ---
 
-Version: 1.1.0 (SPEC-SYNC-PARALLEL-DOCS-001 A9 — attributable diff-check pattern + A9 fallback contract added)
+Version: 1.1.0 (attributable diff-check pattern + fallback contract added)
 Classification: Evolvable operational rule, applies to all run-phase completion verifications

@@ -330,7 +330,7 @@ Execute each check in order against the full document — every REQ entry and ev
 
 ### Group 7: Cross-SPEC Reconciliation (D7)
 
-- D7-1: Extract every `SPEC-([A-Z][A-Z0-9]+-)+[0-9]+` reference from the SPEC body (supports multi-segment IDs like SPEC-DOMAIN-WO-001)
+- D7-1: Extract every `SPEC-([A-Z][A-Z0-9]+-)+[0-9]+` reference from the SPEC body (supports multi-segment IDs like SPEC-EXAMPLE-DOMAIN-001)
 - D7-2: For each referenced SPEC, verify `.moai/specs/<SPEC-ID>/spec.md` exists
 - D7-3: For each referenced SPEC that exists, read its `status:` frontmatter field
 - D7-4: If status ∈ {retired, superseded, archived}, require explicit reconciliation

@@ -272,7 +272,7 @@ This refines the inline step 3 ("do not retry the identical call") along the sid
 
 ## Attributable diff-check detail
 
-> Relocated from `agent-common-protocol.md` § Parallel Execution → Attributable diff-check doctrinal switch to keep the always-loaded file within its size budget. The switch rule, the three match conditions, the four mismatch names, and the never-silent-skip boundary remain inline there (SPEC-SYNC-PARALLEL-DOCS-001 A9).
+> Relocated from `agent-common-protocol.md` § Parallel Execution → Attributable diff-check doctrinal switch to keep the always-loaded file within its size budget. The switch rule, the three match conditions, the four mismatch names, and the never-silent-skip boundary remain inline there.
 
 The switch consults the shared diagnostic snapshot via `moai verify check --key-current` (the live snapshot surface wired at `.claude/skills/moai/workflows/sync/quality-gates-quality.md` Step 0.5.2, keyed by HEAD SHA) BEFORE re-executing; on all-three attribution match, it consumes the attributable §E evidence (`.claude/rules/moai/development/manager-develop-prompt-template.md` § Section E → attribution discipline clause) for that dimension INSTEAD of re-executing the corresponding command. This is a composition-time doctrinal switch — no mechanical "about to re-run command X" preamble token exists to intercept (the batch is orchestrator-composed single-turn multi-Bash; re-execution is implicit Bash); it binds the orchestrator's batch-composition discipline, not a runtime hook.
 
