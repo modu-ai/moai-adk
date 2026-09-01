@@ -410,7 +410,7 @@ template_first_reattached: false     # AC-IHP-012 re-verified at close: both gre
 
 ```yaml
 sync_complete_at: 2026-09-01
-sync_commit_sha: "pending-backfill-sync"   # placeholder — backfilled in the immediately following commit (a commit cannot cite its own hash)
+sync_commit_sha: bbc06cbe5               # backfilled — docs(SPEC-INIT-HARNESS-PROMPT-001): sync-phase artifacts — 3-phase close (card t393)
 sync_status: complete
 changelog_entry_position: "CHANGELOG.md [Unreleased] → ### Added, first bullet"
 changelog_dedup_check: "grep -c 'SPEC-INIT-HARNESS-PROMPT-001' CHANGELOG.md → 0 (pre-edit, run in this session)"
