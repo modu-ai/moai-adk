@@ -67,7 +67,7 @@ _sync-phase executed 2026-09-02 (manager-docs, worktree `WT-learn-channel-gap`, 
 
 ```yaml
 sync_complete_at: 2026-09-02
-sync_commit_sha: "pending-backfill-sync"   # D3 SHA-placeholder exemption (spec-frontmatter-schema.md) — 커밋은 자신의 해시를 인용할 수 없어 후속 chore 커밋에서 backfill
+sync_commit_sha: "af526f8c9"   # backfilled (D3 SHA-placeholder exemption, spec-frontmatter-schema.md) — docs(SPEC-LEARN-CHANNEL-SCOPE-001): sync-phase artifacts — 3-phase close (card t260)
 sync_status: complete
 frontmatter_status_transitions:
   spec.md: "in-progress -> completed (단일 sync 커밋의 3-phase close; implemented는 별도 단계로 존재한 적 없음 — merged-close 관례대로 정직 기록). status + updated만 변경, 본문 무변경. updated: 2026-09-02는 run 종료 시각에 이미 현재일이라 값 불변"
