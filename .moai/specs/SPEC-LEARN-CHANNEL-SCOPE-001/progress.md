@@ -46,7 +46,7 @@ _run-phase executed 2026-09-02 (manager-develop, cycle_type=tdd — docs-only SP
 
 ```yaml
 run_complete_at: 2026-09-02
-run_commit_sha: "pending-backfill-M3"   # M3 커밋 자기참조 — D3 면제 패턴, 후속 커밋에서 backfill
+run_commit_sha: "0ea123429"   # M3 커밋 (2026-09-02 후속 커밋에서 backfill — D3 면제 패턴)
 run_status: complete
 ac_pass_count: 7
 ac_fail_count: 0
