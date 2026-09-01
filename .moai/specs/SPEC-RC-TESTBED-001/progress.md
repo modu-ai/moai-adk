@@ -117,7 +117,7 @@ m1_to_mN_commit_strategy: one-commit-per-milestone (M1 ca62975b9 incl. draft→i
 
 ```yaml
 sync_complete_at: 2026-09-02
-sync_commit_sha: "pending-backfill-t281"   # backfilled in the immediately following commit
+sync_commit_sha: 2b87066bf   # backfilled in the immediately following commit
 sync_status: audit-ready
 changelog_entry_position: CHANGELOG.md [Unreleased] > Added
 frontmatter_status_transitions:
