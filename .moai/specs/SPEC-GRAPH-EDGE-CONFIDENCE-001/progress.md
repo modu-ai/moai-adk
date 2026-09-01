@@ -94,7 +94,7 @@ Run phase executed 2026-09-01 by manager-develop (cycle_type=tdd) in worktree
   from the committed golden (691 vs 817 bytes)`; B — ConfidenceFor(inferred)→0.9
   → `ConfidenceFor("inferred") = 0.9, want 0.85`; C3 — first-iterated declaring
   dir decides T2 → `edges.jsonl not byte-identical: build 0 vs build 2` (the
-  fixture's three-directory callee is the value-flip hazard). Emission-order
+  fixture's two-directory callee is the value-flip hazard). Emission-order
   mutants (sort removal) were normalized by the canonical sort — recorded as a
   non-finding, not a pass.
 - M3: `find match Finish confidence = 0, want 1.0 … trace edge missing

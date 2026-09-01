@@ -23,7 +23,7 @@ func TestEdgesJSONLDeterministic(t *testing.T) {
 	const builds = 5
 	paths := make([]string, 0, builds)
 	for i := 0; i < builds; i++ {
-		// tierFixture carries a callee (Dup) declared in THREE directories,
+		// tierFixture carries a callee (Dup) declared in TWO directories,
 		// only one of them caller-imported — the shape whose confidence
 		// value would flip if any map-iteration order reached a label.
 		root := tierFixture(t)

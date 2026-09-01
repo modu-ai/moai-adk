@@ -103,7 +103,7 @@ func (idx *declIndex) resolveConfidence(file, callee string) string {
 		}
 	}
 	if idx.dirsByName[callee][callerDir] {
-		return ResolutionIntraPackage // T3 same directory = same Go package
+		return ResolutionIntraPackage // T3 same-directory declaration — package proximity (a foo_test external test package shares the dir)
 	}
 	return ResolutionInferred // T4 name-only fallback
 }
