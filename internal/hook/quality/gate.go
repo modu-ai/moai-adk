@@ -207,6 +207,14 @@ var toolchains = []langToolchain{
 				"eslint.config.ts", "eslint.config.mts", "eslint.config.cts",
 				".eslintrc.js", ".eslintrc.cjs", ".eslintrc.yaml", ".eslintrc.yml", ".eslintrc.json", ".eslintrc",
 			},
+		}, {
+			// biome coverage (issue #1631): a biome project carries no eslint
+			// config, so the eslint entry above skips and the lint axis ran
+			// nothing — `npm run lint` exit 1 while `moai gate` exit 0. Gated
+			// on biome's own config files, the same pattern every other
+			// linter entry uses, so an eslint project never invokes biome.
+			name: "biome", binary: "npx", args: []string{"biome", "check", "."}, optional: true,
+			configFiles: []string{"biome.json", "biome.jsonc"},
 		}},
 		testStep: &gateStep{name: "npm test", binary: "npm", args: []string{"test", "--", "--passWithNoTests"}},
 	},
