@@ -66,16 +66,35 @@ or if the queue has not been moved onto the database yet." 옳은 서술이지�
 
 ### R5 — 같은 오지시가 배포 템플릿에도 그대로 있다
 
-```
-$ grep -rn 'state/todo/backlog\.json' internal/template/templates/
-internal/template/templates/.moai/docs/todo-queue-storage.md:55
-internal/template/templates/.claude/skills/moai/SKILL.md:170
-internal/template/templates/.claude/skills/moai/workflows/todo.md:17
-internal/template/templates/.claude/skills/moai-kanban-foreman/SKILL.md:95
-```
+> **정정 (plan-audit D7, 2026-09-02).** 이 절의 최초 인용은 결론을 뒷받침하지 못했다.
+> `grep -rn 'state/todo/backlog\.json' internal/template/templates/` 의 히트 4건을 그대로
+> "결함 4곳"으로 옮겨 적었는데, 그중 `todo-queue-storage.md:55` 는 `export-json` 이
+> canonical 경로에 쓴다는 **정상 서술**이고, 정작 결함인 `todo.md:21`(홈 폴백)은 경로 모양이
+> 달라 그 패턴에 안 걸린다. 결론("결함 지점이 템플릿에도 미러돼 있다")은 참이지만,
+> 근거는 아래로 교체한다.
+
+결함 지점(로컬 ↔ 템플릿, 각각 실측):
+
+| 지점 | 로컬 | 템플릿 | 성격 |
+|---|---|---|---|
+| foreman 감시 대상 | `.claude/skills/moai-kanban-foreman/SKILL.md:95` | 동일 경로 :95 | R1 — 죽은 감시 |
+| 상태 위치 단언 | `.claude/skills/moai/SKILL.md:170` | 동일 경로 :170 | R2 |
+| 상태 위치 단언(primary) | `.claude/skills/moai/workflows/todo.md:17` | 동일 경로 :17 | R2 |
+| 상태 위치 단언(홈 폴백) | `.claude/skills/moai/workflows/todo.md:21` | 동일 경로 :21 | R2 |
+
+정상이라 **건드리지 않는** 지점(대조군):
+
+- `.moai/docs/todo-queue-storage.md:20` — "Present only if you exported one … or if the queue
+  has not been moved onto the database yet." 옳다.
+- `.moai/docs/todo-queue-storage.md:55` — `moai todo export-json` 이 canonical 경로에 쓴다는
+  서술. 다운그레이드 경로의 설계된 동작이므로 옳다.
 
 R1(죽은 foreman 감시)과 R2(틀린 상태 위치 단언)가 **배포판 사용자에게도 나간다.**
 수리 범위는 로컬 `.claude/` 만이 아니라 템플릿 미러까지다(CLAUDE.local.md §2 Template-First).
+
+**[HARD] 완전성 검사에 쓸 패턴 주의.** `state/todo/backlog\.json` 은 홈 폴백 줄(`:21`)을
+구조적으로 못 본다 — 경로 모양이 `~/.moai/todo/<project-key>/backlog.json` 이라 매칭되지 않는다.
+이 패턴을 완전성 기준으로 쓰면 `:21` 이 안 고쳐진 채로도 통과한다(plan-audit D5).
 
 ## Baseline-attribution
 
