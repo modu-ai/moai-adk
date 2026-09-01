@@ -13,6 +13,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -281,12 +282,40 @@ func TestBacklogSQLitePath(t *testing.T) {
 	}
 }
 
+// REQ-TOSQ-002: the DSN must carry the database path as a URI path, never as
+// a URI authority. A Windows drive path therefore has to enter as a
+// root-absolute slash form (file:///C:/…) — the bare drive-colon form makes
+// the driver read `C:` as the authority and refuse the open ("invalid uri
+// authority"). The function is pure string logic, so the drive-colon case is
+// pinned on every platform; TestBacklogDSNWindowsDrivePath pins the real
+// backslash input on Windows itself.
+func TestBacklogDSNURIShape(t *testing.T) {
+	cases := []struct{ name, dbPath, wantPrefix string }{
+		{"posix path is unchanged", "/tmp/queue/backlog.db", "file:///tmp/queue/backlog.db?"},
+		{"windows drive path becomes root-absolute", "C:/proj/queue/backlog.db", "file:///C:/proj/queue/backlog.db?"},
+		{"hash is percent-encoded", "C:/with#hash/backlog.db", "file:///C:/with%23hash/backlog.db?"},
+		{"percent is percent-encoded", "C:/with%percent/backlog.db", "file:///C:/with%25percent/backlog.db?"},
+		{"space is percent-encoded", "C:/with space/backlog.db", "file:///C:/with%20space/backlog.db?"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := backlogDSN(tc.dbPath)
+			if !strings.HasPrefix(got, tc.wantPrefix) {
+				t.Errorf("backlogDSN(%q) = %q, want prefix %q", tc.dbPath, got, tc.wantPrefix)
+			}
+		})
+	}
+}
+
 // REQ-TOSQ-002 posture check: a path carrying the characters that break a
 // naively concatenated DSN (spaces, '?', '#', '%') must still open. macOS
 // user directories carry spaces routinely, so this is not a synthetic case.
 func TestBacklogEngineOpensAwkwardPaths(t *testing.T) {
 	for _, dir := range []string{"with space", "with?question", "with#hash", "with%percent"} {
 		t.Run(dir, func(t *testing.T) {
+			if runtime.GOOS == "windows" && dir == "with?question" {
+				t.Skip("'?' is not a legal NTFS filename character — mkdir fails before the DSN is reached")
+			}
 			root := filepath.Join(t.TempDir(), dir)
 			dbPath := filepath.Join(root, "backlog.db")
 			eng, err := openBacklogEngine(dbPath)

@@ -36,7 +36,8 @@ $ moai graph build
 |--------|------|-----|
 | `--callers <节点>` | 谁直接依赖这个包/SPEC？ | 反向邻居 —— 导入它的包、依赖它的 SPEC、带 `@MX:SPEC` 标签的代码文件 |
 | `--blast <节点>` | 从这里改起会波及多远？ | 沿反向边广度遍历 (BFS) 得到的影响半径。`@MX:SPEC` 边双向传播，能触及代码文件所实现的 SPEC |
-| `--fanin [--limit N]` | 被用得最多的包是哪些？ | 按导入扇入排名 —— @MX:DEBT 扇入查询的代用品（还没有按标签种类分的边） |
+| `--fanin [--limit N]` | 被用得最多的包是哪些？ | 按导入扇入排名 |
+| `--debt-fanin [--limit N]` | `@MX:DEBT` 标记的目标被调用了多少？ | 将 `@MX:DEBT` 标记的目标按有实证依据的调用扇入降序列出 —— 文件级 DEBT 以扇入 0 附 `(self)` 标记一并列出 |
 | `--specs-no-code` | 哪些 SPEC 没有和代码相连？ | edges.jsonl 中 `@MX:SPEC` 边为 0 条的 SPEC 清单 |
 | `--milestones-no-card` | 哪些里程碑没有卡片就过去了？ | 卡片交叉核对行未主张卡片、或主张的卡片不在存活积压队列里的里程碑 |
 
@@ -44,6 +45,7 @@ $ moai graph build
 $ moai graph query --callers SPEC-FOO-001
 $ moai graph query --blast internal/config
 $ moai graph query --fanin --limit 20
+$ moai graph query --debt-fanin
 $ moai graph query --specs-no-code
 $ moai graph query --milestones-no-card
 ```
