@@ -145,7 +145,7 @@ full_suite_verdict: "deferred to CI per repo-local verification-load discipline"
 ## §E.4 Sync-phase Audit-Ready Signal
 
 ```yaml
-sync_commit_sha: "pending-backfill-t411-sync"
+sync_commit_sha: "cb29d7c5c"
 sync_status: "complete"
 frontmatter_status_transitions:
   spec.md: "in-progress -> implemented -> completed (merged close on the single sync commit)"
