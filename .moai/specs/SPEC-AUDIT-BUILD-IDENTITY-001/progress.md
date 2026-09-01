@@ -178,7 +178,7 @@ m1_to_mN_commit_strategy: single implementation commit (M1-M3 combined; Tier S, 
 
 ```yaml
 sync_complete_at: 2026-09-01
-sync_commit_sha: "pending-backfill-sync-t248"   # a commit cannot cite its own hash — backfilled in the follow-up commit (canonical D3 exemption)
+sync_commit_sha: "b60ca5583"   # backfilled — the sync commit cannot cite its own hash (canonical D3 exemption)
 sync_status: complete
 b12_self_test_a: pre_emission_grep_count_0 (grep -c 'SPEC-AUDIT-BUILD-IDENTITY-001' CHANGELOG.md → 0)
 b12_self_test_b: ac_count_match (acceptance.md distinct ACs = 8 = AC-ABI-001..008; entry cites 8/8; no ambiguity → count emitted)
