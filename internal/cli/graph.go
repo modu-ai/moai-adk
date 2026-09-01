@@ -80,7 +80,7 @@ func liveQueueCards() (live map[string]bool, ok bool) {
 // @MX:NOTE: [AUTO] moai graph query — read-only consumer of edges.jsonl; agents use it instead of re-running go list -deps per question
 func newGraphQueryCmd() *cobra.Command {
 	var callersNode, blastNode, edgesPath, rootArg string
-	var fanin, specsNoCode, milestonesNoCard bool
+	var fanin, debtFanin, specsNoCode, milestonesNoCard bool
 	var limit int
 
 	cmd := &cobra.Command{
@@ -93,8 +93,12 @@ func newGraphQueryCmd() *cobra.Command {
   --blast <node>      transitive blast radius of a change at <node> (BFS over
                       reverse edges; mx-spec edges propagate both ways, so a
                       code file reaches the SPECs it implements)
-  --fanin             import fan-in ranking (stand-in for an @MX:DEBT fan-in
-                      query — edges.jsonl carries no tag-kind edges yet)
+  --fanin             import fan-in ranking (package-level dependency
+                      questions; for @MX:DEBT fan-in use --debt-fanin)
+  --debt-fanin        rank @MX:DEBT tag targets by graph fan-in
+                      (evidence-backed distinct caller files, descending,
+                      ties by target; file-scope DEBT ranks 0 and is listed
+                      with a (self) marker)
   --specs-no-code     SPEC ids (spec.md frontmatter universe) with zero
                       mx-spec edges in the artifact
   --milestones-no-card
@@ -106,17 +110,18 @@ Examples:
   moai graph query --callers SPEC-FOO-001
   moai graph query --blast internal/config
   moai graph query --fanin --limit 20
+  moai graph query --debt-fanin --limit 20
   moai graph query --specs-no-code
   moai graph query --milestones-no-card`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			selectors := 0
-			for _, on := range []bool{callersNode != "", blastNode != "", fanin, specsNoCode, milestonesNoCard} {
+			for _, on := range []bool{callersNode != "", blastNode != "", fanin, debtFanin, specsNoCode, milestonesNoCard} {
 				if on {
 					selectors++
 				}
 			}
 			if selectors != 1 {
-				return fmt.Errorf("exactly one of --callers, --blast, --fanin, --specs-no-code, --milestones-no-card is required")
+				return fmt.Errorf("exactly one of --callers, --blast, --fanin, --debt-fanin, --specs-no-code, --milestones-no-card is required")
 			}
 
 			projectRoot, err := resolveGraphRoot(rootArg)
@@ -188,6 +193,16 @@ Examples:
 				for _, r := range rows {
 					_, _ = fmt.Fprintf(out, "%d\t%s\n", r.FanIn, r.Package)
 				}
+			case debtFanin:
+				rows := graph.DebtFanIn(edges, limit)
+				_, _ = fmt.Fprintf(out, "debt fan-in (evidence-backed caller files): top %d\n", len(rows))
+				for _, r := range rows {
+					file := r.File
+					if r.Self {
+						file = "(self)"
+					}
+					_, _ = fmt.Fprintf(out, "%d\t%s\t%s\n", r.FanIn, r.Target, file)
+				}
 			case specsNoCode:
 				deps, err := mx.LoadSpecDependencies(projectRoot)
 				if err != nil {
@@ -244,6 +259,7 @@ Examples:
 	cmd.Flags().StringVar(&callersNode, "callers", "", "direct reverse neighbors of this node (package path, file path, or SPEC id)")
 	cmd.Flags().StringVar(&blastNode, "blast", "", "transitive blast radius of a change at this node")
 	cmd.Flags().BoolVar(&fanin, "fanin", false, "import fan-in ranking (default top 10, --limit 0 for all)")
+	cmd.Flags().BoolVar(&debtFanin, "debt-fanin", false, "rank @MX:DEBT targets by evidence-backed graph fan-in (default top 10, --limit 0 for all)")
 	cmd.Flags().BoolVar(&specsNoCode, "specs-no-code", false, "SPEC ids with zero mx-spec edges in the artifact")
 	cmd.Flags().BoolVar(&milestonesNoCard, "milestones-no-card", false, "milestones claiming no card, or whose claimed card is absent from the live backlog queue")
 	cmd.Flags().IntVar(&limit, "limit", 10, "rows to show for --fanin (0 = all)")

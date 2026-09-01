@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/modu-ai/moai-adk/internal/graph/symbol"
+	"github.com/modu-ai/moai-adk/internal/navigator/astx"
 )
 
 // Code-derived edge kinds (REQ-GF-014): additive to the five doc-derived
@@ -169,15 +170,25 @@ const (
 // BuildWithCodeLayersMode is BuildWithCodeLayers with the disagreement mode
 // selected (revival path for the suppressed code-found/doc-silent direction;
 // wired to `moai graph build --all-disagreements`).
+//
+// The code extraction runs FIRST so the doc layer's tag edges can join
+// body-anchored tags to their enclosing symbols via the retained ranges
+// (REQ-MTE-002 — retention, not a second parse). An extraction failure fails
+// open on the code layers AND on the range join: doc edges survive with the
+// self-edge tag form (REQ-MTE-015's no-range-data case).
 func BuildWithCodeLayersMode(projectRoot string, mode DisagreementMode) ([]Edge, map[string]string, error) {
-	docEdges, err := Build(projectRoot)
-	if err != nil {
-		return nil, nil, fmt.Errorf("graph: build doc edges: %w", err)
-	}
-	calls, imports, decls, matrix, err := symbol.Extract(projectRoot)
-	if err != nil {
+	calls, imports, decls, matrix, extractErr := symbol.Extract(projectRoot)
+	if extractErr != nil {
 		// Fail-open on the code layers ONLY: doc edges must survive.
+		docEdges, err := Build(projectRoot)
+		if err != nil {
+			return nil, GradeMatrix(), fmt.Errorf("graph: build doc edges: %w", err)
+		}
 		return docEdges, GradeMatrix(), nil
+	}
+	docEdges, err := buildDocLayers(projectRoot, rangesByFileFromDecls(decls))
+	if err != nil {
+		return nil, matrix, fmt.Errorf("graph: build doc edges: %w", err)
 	}
 	codeEdges := mapSymbolEdges(calls, imports, decls)
 	markImportDisagreements(docEdges, codeEdges, imports, mode)
@@ -187,6 +198,16 @@ func BuildWithCodeLayersMode(projectRoot string, mode DisagreementMode) ([]Edge,
 	all = append(all, codeEdges...)
 	sort.Slice(all, func(i, j int) bool { return EdgeLess(all[i], all[j]) })
 	return all, matrix, nil
+}
+
+// rangesByFileFromDecls indexes the seam's retained declaration ranges by
+// repo-relative file — the tag-edge join's lookup structure.
+func rangesByFileFromDecls(decls []symbol.FileDecls) map[string][]astx.FuncRange {
+	out := map[string][]astx.FuncRange{}
+	for _, d := range decls {
+		out[d.File] = d.Ranges
+	}
+	return out
 }
 
 // markImportDisagreements annotates doc import edges the code layer REFUTES.

@@ -148,5 +148,47 @@ func Beta() {
 	fmt.Println("beta")
 }
 `)
+	// Tag-kind golden coverage (SPEC-MX-TAG-EDGES-001 §B.5): every mx-*
+	// kind — a body-anchored ANCHOR/WARN/TODO pair, a file-scope LEGACY, and
+	// a DEBT pair with and without an @MX:UPGRADE sub-line (identical edge
+	// key sets either way).
+	write("internal/beta/tags.go", `package beta
+
+// @MX:LEGACY: [AUTO] file-scope legacy marker
+
+func Anchored() {
+	// @MX:ANCHOR: [AUTO] golden fixture anchor
+	// @MX:REASON: body-anchored for the range join
+	_ = 1
+}
+
+func Warned() {
+	// @MX:WARN: [AUTO] golden fixture warn
+	// @MX:REASON: danger below
+	go func() {}()
+}
+
+func Debted() {
+	// @MX:DEBT: golden fixture debt, with trigger
+	// @MX:CEILING: < 10k entries
+	// @MX:UPGRADE: swap to LRU past the ceiling
+	_ = map[string]int{}
+}
+
+func Rotting() {
+	// @MX:DEBT: golden fixture debt, no trigger
+	// @MX:CEILING: < 10k entries
+	_ = map[string]int{}
+}
+
+func Todoed() {
+	// @MX:TODO: golden fixture todo
+	_ = 1
+}
+`)
+	write("scripts/fix.py", `# @MX:NOTE: golden fixture python note
+def fix():
+    pass
+`)
 	return root
 }

@@ -36,7 +36,8 @@ One call takes **exactly one** selector.
 |--------|------|-----|
 | `--callers <node>` | What depends directly on this package/SPEC? | Reverse neighbors — importing packages, depending SPECs, and code files carrying the `@MX:SPEC` tag |
 | `--blast <node>` | If I edit here, how far does the shake travel? | The blast radius, swept wide over reverse edges (BFS). `@MX:SPEC` edges propagate in both directions, reaching the SPEC a code file implements |
-| `--fanin [--limit N]` | Which packages are used the most? | Import fan-in ranking — a stand-in for the @MX:DEBT fan-in query (per-tag-kind edges do not exist yet) |
+| `--fanin [--limit N]` | Which packages are used the most? | Import fan-in ranking |
+| `--debt-fanin [--limit N]` | How called-into are `@MX:DEBT` targets? | `@MX:DEBT` tag targets ranked descending by evidence-backed call fan-in — a file-scope DEBT is listed at fan-in 0 with a `(self)` marker |
 | `--specs-no-code` | Which SPECs are not connected to code? | SPECs with zero `@MX:SPEC` edges in edges.jsonl |
 | `--milestones-no-card` | Which milestones passed without a card? | Milestones whose card cross-check row claims no card, or whose claimed card is absent from the live backlog queue |
 
@@ -44,6 +45,7 @@ One call takes **exactly one** selector.
 $ moai graph query --callers SPEC-FOO-001
 $ moai graph query --blast internal/config
 $ moai graph query --fanin --limit 20
+$ moai graph query --debt-fanin
 $ moai graph query --specs-no-code
 $ moai graph query --milestones-no-card
 ```
