@@ -103,11 +103,114 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run phase executed 2026-09-02 in worktree `.claude/worktrees/t412`
+(branch `WT-mx-tag-edges`, TDD RED-GREEN-REFACTOR, serial, 5 milestones,
+one commit each — base `63435427c`, nothing pushed).
+
+### Milestones (commit SHA → landed content)
+
+| M | Commit | Content |
+|---|---|---|
+| M1 | `7443a3523` | Six `mx-*` kind constants (plan B.1, uniform over all six tag kinds); `(File, Kind, Line)`-only edge mapping (B.3); endpoint join = innermost retained `astx.FuncRange` containing the tag line, else self-edge (B.2); ONE `ScanDir` per build via the `scanDirFn` seam (REQ-MTE-006); `BuildWithCodeLayersMode` extracts FIRST so the doc layer joins against retained ranges (extraction failure fails open to the self-edge form); golden extended + regenerated, base `63435427c` named (B.5). `FileDecls` gains retained `Ranges` (retention, no second parse). |
+| M2 | `303b53524` | Determinism double-build lock incl. mx-* lines (AC-MTE-001); mx-less legacy artifact load (AC-MTE-005); DEBT-pair identical key sets + metadata-absence scan (AC-MTE-007); reverse-only traversal additivity (AC-MTE-008). Mutant probe: stamping `CreatedBy`+`RotRisk` into mx-debt targets turned `TestDocEdgesByteIdentical` RED (observed, then restored GREEN). |
+| M3 | `70025f7d1` | `SymbolFanIn` pure query (REQ-MTE-009: distinct caller files, evidence = extracted/intra-package, inferred itemized separately, declaring file excluded — B.7); `EdgeFanInSource` in `internal/graph/fanin_edge.go` (structurally compatible primitive-typed method — NO hook-layer import; hub exclusion via the shared `mx.IsTestFileWithPatterns` predicate, exported so ONE definition governs both counters — B.8); `FanInEvidenceSource` interface at the consumer + `NewValidatorWithSource` batch constructor; default constructor byte-identical (REQ-MTE-010); LAZY textual index (a source that answers never pays the project walk); REQ-MTE-013 reason shape `fan_in(graph)=N evidence-backed (+M inferred-only)`; parity fixture (graph 3 / inferred 1 / textual larger — AC-MTE-009) + hub exclusion fixture (AC-MTE-012); layering lock `go list -deps` test (acceptance §D.3). |
+| M4 | `9ffa524cc` | `session_end.go` constructs the validator with the edge-backed source via the `newFanInEvidenceSourceFn` seam — the SOLE batch injection site (REQ-MTE-010); static guard pins `post_tool.go` to `mx.NewValidator` only; race-free one-shot artifact load (parallel ValidateFiles workers share one source); label contract pinned: fresh=`edges`, unjudgeable sidecar=`edges(stale)` + stderr note, absent/unusable→textual labeled `textual-fallback` (REQ-MTE-011). |
+| M5 | `26ca94ad4` | `DebtFanIn` ranking + `moai graph query --debt-fanin` (REQ-MTE-014: desc, ties by target; file-scope DEBT at fan-in 0 LISTED with `(self)` marker — D7); `--fanin` behavior retained, help rewritten; stand-in strings retired to zero (grep + pinned static guard); AC-MTE-010 negative pinned as a test (`mx_scan.go` constructs no validator); CGO gate: `CGO_ENABLED=0` build, `!cgo` self-edge + zero-code-call + source-degrade test, untagged labeled-fallback validator test (REQ-MTE-015). |
+
+### AC matrix (14/14 PASS)
+
+| AC | Status | Verification command (verbatim) | Observed output (this run, HEAD `26ca94ad4`) |
+|---|---|---|---|
+| AC-MTE-001 | PASS | `go test ./internal/graph/ -run TestEdgesJSONLDeterministicWithTags -count=1` | `ok github.com/modu-ai/moai-adk/internal/graph 0.326s` |
+| AC-MTE-002 | PASS | `go test ./internal/graph/ -run TestTagEdgeKindDomain -count=1` | `ok github.com/modu-ai/moai-adk/internal/graph 0.348s` |
+| AC-MTE-003 | PASS | `go test ./internal/graph/ -run TestTagEdgeEndpoints -count=1` | `ok github.com/modu-ai/moai-adk/internal/graph 0.348s` |
+| AC-MTE-004 | PASS | `go test ./internal/graph/ -run TestDocEdgesByteIdentical -count=1` | `ok github.com/modu-ai/moai-adk/internal/graph 0.348s` |
+| AC-MTE-005 | PASS | `go test ./internal/graph/ -run TestLegacyArtifactLoad -count=1` | `ok github.com/modu-ai/moai-adk/internal/graph 0.371s` |
+| AC-MTE-006 | PASS | `go test ./internal/graph/ -run TestSingleScanPerBuild -count=1` | `ok github.com/modu-ai/moai-adk/internal/graph 0.347s` |
+| AC-MTE-007 | PASS | `go test ./internal/graph/ -run TestTagEdgesCarryNoMetadata -count=1` | `ok github.com/modu-ai/moai-adk/internal/graph 0.346s` |
+| AC-MTE-008 | PASS | `go test ./internal/graph/ -run TestTraversalAdditivityWithTags -count=1` | `ok github.com/modu-ai/moai-adk/internal/graph 0.350s` |
+| AC-MTE-009 | PASS | `go test ./internal/graph/ -run TestGraphFanInParityFixture -count=1` | `ok github.com/modu-ai/moai-adk/internal/graph 0.352s` |
+| AC-MTE-010 | PASS | `go test ./internal/hook/ -run TestPostToolUseKeepsTextualFanIn -count=1` + `go test ./internal/hook/mx/ -run TestConstructorDefaultsTextualSource -count=1` + `go test ./internal/hook/ -run TestSessionEndSelectsEdgeSource -count=1` + negative `go test ./internal/cli/ -run TestMxScanConstructsNoValidator -count=1` | all `ok` (0.426s / 0.197s / 0.428s / cli ok) |
+| AC-MTE-011 | PASS | `go test ./internal/hook/mx/ -run TestFanInFallbackLabeled -count=1` | `ok github.com/modu-ai/moai-adk/internal/hook/mx 0.196s` |
+| AC-MTE-012 | PASS | `go test ./internal/graph/ -run TestHubExclusionTestCallers -count=1` | `ok github.com/modu-ai/moai-adk/internal/graph 0.353s` |
+| AC-MTE-013 | PASS | `go test ./internal/cli/ -run TestGraphQueryDebtFanIn -count=1`; retirement `grep -rnE "stands in for\|stand-in\|no tag-kind edges yet" internal/graph/query.go internal/cli/graph.go` → exit 1 (0 matches, observed) | `ok github.com/modu-ai/moai-adk/internal/cli 0.869s` |
+| AC-MTE-014 | PASS | `CGO_ENABLED=0 go build ./...` + `CGO_ENABLED=0 go test ./internal/graph/ -run TestNoCGOTagEdgesSelfEdge -count=1` + `CGO_ENABLED=0 go test ./internal/hook/mx/ -run TestNoCGOFanInTextualFallback -count=1` | build exit 0; both `ok` (0.209s / 0.175s) |
+
+AC-MTE-004 artifact spot-check: `grep -E '"kind":"mx-' internal/graph/testdata/edges-doc-golden.jsonl | grep -cE 'resolution|confidence|rot_risk'` → `0`.
+
+### E-items
+
+- **E2 builds** (HEAD `26ca94ad4`): `go build ./...` → 0; `GOOS=windows
+  GOARCH=amd64 go build ./...` → 0; `CGO_ENABLED=0 go build ./...` → 0.
+- **E3 coverage**: `go test -cover ./internal/graph/... ./internal/mx/...
+  ./internal/hook/mx/ -count=1` → graph 85.7%, graph/symbol 87.8%,
+  mx 88.9%, hook/mx 90.0% — all ≥ 85%.
+- **E4 boundary grep**: `grep -rn 'AskUserQuestion' internal/mx
+  internal/graph internal/hook/mx | grep -v _test.go | grep -v "// "` →
+  empty (exit 1). Layering lock additionally pinned by
+  `TestHookMxLayeringLock` (`go list -deps`: neither internal/graph nor
+  internal/cli in hook/mx's dep set).
+- **E5 lint**: `golangci-lint run` over internal/mx, internal/graph,
+  internal/graph/symbol, internal/hook/mx, internal/hook, internal/cli →
+  `0 issues.` Baseline was `0 issues.` → NEW issues: 0.
+- **E6 push state**: branch `WT-mx-tag-edges` HEAD `26ca94ad4`;
+  `git ls-remote --heads origin WT-mx-tag-edges` → empty. NOTHING PUSHED
+  (integration via the lead's window, per repo git-flow lane protocol).
+- **E8 RED evidence** (verbatim, captured before GREEN):
+  - M1: `undefined: KindMXNote ... undefined: KindMXDebt ... FAIL
+    github.com/modu-ai/moai-adk/internal/graph [build failed]`
+  - M3 (graph): `undefined: EdgeFanInSource / undefined:
+    NewEdgeFanInSource ... [build failed]`; M3 (hook/mx, observed against
+    the reverted pre-seam tree): `v.fanInSource undefined ... undefined:
+    NewValidatorWithSource ... viol.Source undefined ...`
+  - M4: `undefined: newFanInEvidenceSourceFn ... [build failed]`
+  - M5: `unknown flag: --debt-fanin` (observed against the reverted
+    pre-M5 tree).
+  - M2: RED is the golden divergence itself (observed during M1 as the
+    pre-extension `TestDocEdgesByteIdentical` byte-compare failure); the
+    M2 locks GREEN on arrival after M1's golden extension, with the
+    mutant probe re-demonstrating RED sensitivity (above).
+  - AC-MTE-014 nocgo paths: RED structurally unreachable (t411 precedent
+    — tests observed RUNNING and sweeping non-empty under
+    `CGO_ENABLED=0 -v`; gap recorded).
+
+### Behavior notes for the sync phase
+
+- PostToolUse cost profile unchanged: the default constructor never
+  touches the artifact; the textual index now builds lazily only when a
+  P1 candidate actually needs it (identical results, no new cost).
+- Documented verdict flip (plan B.7 / acceptance §D.2): on same-file-only
+  callers the PostToolUse textual source can flag P1 while the SessionEnd
+  graph-backed authority does not — deliberate sharpening, batch verdict
+  is the enforced one.
+- Artifact growth: mx-* lines are the full tag population (accepted with
+  observation, plan B.1); this repo's next `moai graph build` will show
+  six new kind-count lines' worth of growth in `edges.jsonl`.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-02
+run_commit_sha: "26ca94ad4"
+run_status: "complete"
+ac_pass_count: 14
+ac_fail_count: 0
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: "not-run (worktree-isolated lane; pre-spawn absorption verified by the orchestrator)"
+l44_post_push_fetch: "not-run (nothing pushed — integration rides the lead's window)"
+new_warnings_or_lints_introduced: 0
+cross_platform_build.darwin: "pass"
+cross_platform_build.windows: "pass (GOOS=windows GOARCH=amd64 go build ./...)"
+cross_platform_build.cgo_off: "pass (CGO_ENABLED=0 go build ./...)"
+total_run_phase_files: 24
+m1_to_m5_commit_strategy: "per-milestone commits on WT-mx-tag-edges (5 commits, 7443a3523..26ca94ad4), no push, no --no-verify, no --amend"
+golden_regenerated_base_sha: "63435427c"
+gaps:
+  - "full-suite verdict NOT claimed locally — origin/develop CI owns it (repo-local verification-load discipline)"
+  - "golden pins the CGO-available output only (per plan B.5); CGO-off output covered by table assertions"
+  - "stale-artifact stderr note is per-EvidenceBacked-call slog.Warn (injected-sink tests assert the label; production note volume unmeasured on large batches)"
+```
+
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
