@@ -373,4 +373,44 @@ run-phase에서 반증·수정된 전제 1건: 합성 006 테스트의 초기 �
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: audit-ready
+sync_complete_at: 2026-09-01
+tier: M
+requirements: 15
+acceptance_criteria: 15
+sync_commit_sha: pending-backfill-sync
+sync_commit_sha_note: |
+    A commit cannot cite its own hash. Two-step backfill per the dispatch and
+    the D3 SHA-placeholder exemption: this sync commit lands first with the
+    placeholder, and the real SHA is backfilled into this field in the
+    immediately following commit on this branch. No push, no PR — develop
+    integration is the lead's window.
+branch: WT-version-stamp-predicate
+changelog_entry_position: "CHANGELOG.md [Unreleased] > ### Added, first entry (inserted above SPEC-MEMORY-STORE-RECONCILE-001)"
+b12_self_test_a: "pre-emission grep — `grep -c 'SPEC-VERSION-STAMP-PREDICATE-001' CHANGELOG.md` = 0 before writing (no duplicate from a parallel session)"
+b12_self_test_b: "AC count — `grep -c '^### AC-VSP-' acceptance.md` = 15, all live (no [RETIRED]/[REF] marks), matching spec.md §4.1 (요구 15 / 수락 15); the CHANGELOG entry states 15/15"
+b12_self_test_c: "file-path verification — every path named in the CHANGELOG entry resolves in this tree (internal/cli/version_stamp_registry_test.go, internal/cli/testdata/*.golden ×6, .moai/docs/version-management.md, pkg/version/version.go, docs-site/hugo.toml, .moai/config/sections/system.yaml, README×4)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (single sync commit, 3-phase close)"
+  plan_md: "none — no `status:` field (ArtifactStatusFieldForbidden, card t357)"
+  acceptance_md: "none — no `status:` field"
+  progress_md: "none — no frontmatter"
+  updated_field: "spec.md `updated:` already 2026-09-01 (sync-commit date); unchanged, not re-stamped"
+sync_phase_files_touched_count: 3
+sync_phase_files_touched:
+  changelog: "CHANGELOG.md — [Unreleased] > Added entry (repo convention: one prose entry per sync-phase close)"
+  spec_frontmatter: ".moai/specs/SPEC-VERSION-STAMP-PREDICATE-001/spec.md — `status:` only, zero body edits"
+  progress: ".moai/specs/SPEC-VERSION-STAMP-PREDICATE-001/progress.md — this §E.4 block only"
+mx_tag_changes:
+  added_count: 0
+  detail: "docs-only sync — no production code touched this phase; annotation state of the run-phase test files is run-phase's record, not edited here."
+docs_surfaces_this_phase: ".moai/docs/version-management.md untouched by sync — its partial-guarantee replacement was run-phase M5 (8c71cd423); this sync only describes it in the CHANGELOG entry."
+readme_4_locale: "README{,.ko,.ja,.zh}.md untouched — they are registered stamp entries and this card changes no version (dispatch HARD constraint)."
+remaining_for_lead: "origin CI verdict on the pushed head; develop integration window (sync made no push)"
+```
+
+sync-phase에서 반증·수정된 전제: 없다. plan/run이 남긴 수치와 상수(등록부 28 · stamp 7 ·
+스윕 34 불변)를 이 단계에서 다시 건드리지 않았고, 이 커밋의 전부는 CHANGELOG 항목 · 이
+§E.4 블록 · spec.md 프론트매터 전이 셋이다. 병합 트리에서의 재측정(R-7)은 통합 창의 몫으로
+남는다.
