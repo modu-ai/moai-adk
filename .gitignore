@@ -104,6 +104,9 @@ ehthumbs.db
 # Logs & Temporary Files
 # ===========================================
 *.log
+# Card evidence under .moai/reports/** is durable audit evidence, not operational
+# noise — cited evidence paths must resolve post-merge (sync-audit MAJOR-2, card t196).
+!.moai/reports/**/*.log
 logs/*
 !logs/.gitkeep
 *.tmp

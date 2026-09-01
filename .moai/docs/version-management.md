@@ -87,7 +87,45 @@ The two groups below are different kinds of work. A bump commit **rewrites** eve
 
 A guard test reads the Version Stamps list and fails when it names a path that is not in the working tree: `internal/cli/version_sync_list_test.go`, run by the existing `go test ./...` in CI.
 
-The guarantee it establishes is **partial**. It catches the list naming a path that does not exist. It **does not detect** a stamp site that is absent from the list — which is the direction that actually bit us: the v3.1.3 bump missed `docs-site/hugo.toml`, and nothing said so. Closing that direction is card t392.
+The registry check added by card t392 sweeps every tracked file for the authoritative version token and excludes six groups, each for its own reason. The counts below are observations pinned to tree `051f209b0`, not constants — the check holds none of them. When a group's measured count stops matching its reason, re-derive the enumeration and rewrite this table; the clause to watch is the changelog-pages one, which hides nothing today.
+
+| Excluded group | Why this group alone is excluded | Token files hidden |
+|---|---|---|
+| `.moai/reports/` | Session measurement records — time-pinned observations that a bump rewriting them would forge | 61 |
+| `.moai/specs/` | SPEC bodies — historical narrative, immutable once complete | 62 |
+| `.moai/release-notes/` | Written fresh for each release, not rewritten by a bump | 1 |
+| `CHANGELOG.md` | Same — absent from the numstat of bump commit `61921f1ba` | 1 |
+| `*_test.go` | Test header comments and SPEC frontmatter fixtures — no refresh obligation | 4 |
+| the per-locale changelog pages under the docs-site content tree (a `changelog*` glob) | Change-history pages | 0 |
+
+The six groups are disjoint and together hide 129 of the 163 tracked files carrying the authoritative token at that tree; the sweep sees the remaining 34.
+
+Two checks now stand side by side. One catches the list naming a **path that does not exist**
+(t388). The other catches a file carrying the authoritative version token that the **registry
+does not name**, and a registered stamp that **does not carry the authoritative token** (t392).
+The registry lives in `internal/cli/version_stamp_registry_test.go`.
+
+Things still go uncaught. **At least the following remain, and this list is not exhaustive.**
+
+1. A file that is neither in the registry nor carrying the authoritative token — an
+   unregistered site left holding only an aged-out token matches no predicate.
+2. A genuine stamp site registered as `prose` — completeness passes because it is registered,
+   freshness is skipped because it is `prose`, and the documentation cross-check passes because
+   it is in neither stamp set. All three assertions are blind to it.
+3. A stamp inlined inside a file the exclusion set hides — had the same fixture lived in a
+   `*_test.go` file rather than in `testdata/*.golden`, this predicate would not see it.
+4. A stamp that is not a version token at all, such as `releaseDate` in `docs-site/hugo.toml`.
+5. A site that renders the version rather than carrying it, such as
+   `internal/template/templates/.moai/config/sections/system.yaml.tmpl`.
+6. A file the repository does not track — outside the sweep's population.
+
+None of this means the list can no longer rot.
+
+Who maintains the registry, and when: the author of the commit that adds or removes a file
+edits the registry in that same commit. **A version bump does not touch the registry** — it
+rewrites the seven stamp files and adds or removes nothing. Between a file landing and the
+registry edit, the check fails naming the path: a new token-carrying file is reported as
+unregistered, and a deleted registered path is reported as unresolved.
 
 ### Release Process
 

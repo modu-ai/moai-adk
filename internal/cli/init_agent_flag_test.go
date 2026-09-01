@@ -78,11 +78,12 @@ func TestRunInit_AgentCodexWiresAndSkipsMCPProvisioning(t *testing.T) {
 }
 
 // TestRunInit_AgentBothWiresBothSides verifies the both semantics: Codex
-// wiring files exist (AC-CW-005).
+// wiring files AND the trust sidecar exist (AC-CW-005; sidecar assertion per
+// SPEC-CODEX-SIDECAR-GUARD-001).
 func TestRunInit_AgentBothWiresBothSides(t *testing.T) {
 	projectDir, _ := runInitForAutonomy(t, nil, map[string]string{"agent": "both"})
 
-	for _, rel := range []string{".codex/hooks.json", ".codex/config.toml"} {
+	for _, rel := range []string{".codex/hooks.json", ".codex/config.toml", ".moai/state/codex-wiring.json"} {
 		if _, err := os.Stat(filepath.Join(projectDir, rel)); err != nil {
 			t.Errorf("%s missing after --agent both init: %v", rel, err)
 		}
@@ -105,11 +106,13 @@ func TestRunInit_AgentAbsentLeavesNoCodexFiles(t *testing.T) {
 }
 
 // TestRunInit_AgentClaudeLeavesNoCodexFiles verifies --agent claude equals
-// flag-absent behavior (REQ-CW-001).
+// flag-absent behavior (REQ-CW-001): neither the Codex wiring files nor the
+// trust sidecar is created (sidecar assertion per
+// SPEC-CODEX-SIDECAR-GUARD-001).
 func TestRunInit_AgentClaudeLeavesNoCodexFiles(t *testing.T) {
 	projectDir, _ := runInitForAutonomy(t, nil, map[string]string{"agent": "claude"})
 
-	for _, rel := range []string{".codex/hooks.json", ".codex/config.toml"} {
+	for _, rel := range []string{".codex/hooks.json", ".codex/config.toml", ".moai/state/codex-wiring.json"} {
 		if _, err := os.Stat(filepath.Join(projectDir, rel)); err == nil {
 			t.Errorf("%s created by --agent claude init (must equal flag-absent)", rel)
 		}
