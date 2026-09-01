@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -96,6 +97,9 @@ func TestFileAPI_RejectsSymlinkEscapeAndFIFO(t *testing.T) {
 	})
 
 	t.Run("fifo-target-rejected", func(t *testing.T) {
+		if runtime.GOOS == "windows" {
+			t.Skip("windows runners carry Git-Bash coreutils, so exec mkfifo succeeds there — but the MSYS pipe it creates does not surface unix FIFO semantics to the containment check (observed: an escape-flavored rejection). The regularity premise is unix-scoped")
+		}
 		fifo := filepath.Join(root, "internal", "chain", "pipe.go")
 		if err := mkfifo(t, fifo); err != nil {
 			t.Skipf("fifo creation unavailable: %v", err)
@@ -123,6 +127,9 @@ func TestFileAPI_RejectsSymlinkEscapeAndFIFO(t *testing.T) {
 			t.Error("citation through an escaping symlink must not resolve")
 		}
 		fifo := filepath.Join(root, "internal", "chain", "pipe2.go")
+		if runtime.GOOS == "windows" {
+			t.Skip("windows runners carry Git-Bash coreutils mkfifo — see fifo-target-rejected for why the FIFO premise is unix-scoped")
+		}
 		if err := mkfifo(t, fifo); err != nil {
 			t.Skipf("fifo creation unavailable: %v", err)
 		}
