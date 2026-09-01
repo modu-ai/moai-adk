@@ -163,9 +163,6 @@ func parentStatus(t *testing.T, root string) (held, stale bool, lock kanban.Inte
 // parent reads the window as reclaimable and the owner-anchor marker
 // (pid_source) is absent from the record entirely.
 func TestIntegrationOwnerLiveness_AncestryPathHoldsAfterAcquireCLIExits(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("ancestry lookup is unavailable on windows (proc_info_other.go) — the documented fallback cannot name the owning session's pid, so the ancestry clause is untestable there")
-	}
 	bin := buildMoaiBinary(t)
 	root := t.TempDir()
 

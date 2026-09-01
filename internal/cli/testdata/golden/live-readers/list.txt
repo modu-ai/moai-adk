@@ -1,5 +1,4 @@
 t1	queued	write the parser for the config file
 	↳ conflicts t3 (agent) — needs a decision — moai todo drop t1 | moai todo edit t1 "<text>"
 t2	picked	polish the docs landing page
-t3	dropped	[DROPPED — superseded by the parser rewrite] drop the legacy cache layer
-	↳ conflicts t1 (agent) — needs a decision — moai todo drop t3 | moai todo edit t3 "<text>"
+1 dropped (hidden — see: moai todo list --dropped)

@@ -112,6 +112,28 @@ rm -f ~/go/bin/moai && cp bin/moai ~/go/bin/moai
 
 로컬 rc 시험을 통과하면 `release/vX.Y.Z`를 **`develop`에서** 분기하고, 이후는 `release` 하네스가 맡는다. `main`은 그 릴리스 PR로만 갱신된다(브랜치 보호 `enforce_admins: true`). 레인은 릴리스 브랜치를 만들지도, main PR을 내지도 않는다.
 
+## 11. develop 갱신 — 병합 후 로컬 develop 재생성 (SPEC-RC-TESTBED-001)
+
+다른 레인의 병합이 `origin/develop`에 올라가면 통합 워크트리의 로컬 `develop`은 뒤처진다. 언제 갱신할지의 **판정 기준**과 갱신하는 **경로**를 이 절이 정한다. rc.N 번호 정책(몇 번째 후보인가)은 `.moai/docs/version-management.md`의 Local RC Numbering 절이 소유한다.
+
+[HARD] **판정 기준은 `origin/develop`과의 ref 비교이고, 병합 모양을 전제하지 않는다.**
+
+```bash
+git fetch origin develop
+git rev-list --count --left-right origin/develop...develop
+# "0 0" = 로컬이 최신. "N M"(N≥1) = origin/develop 쪽에 흡수되지 않은 커밋 → 갱신 대상
+```
+
+- `git branch --merged`는 **충분한 기준이 아니다.** `--merged`는 브랜치 헤드의 도달성만 보고, squash 병합으로 들어온 변경은 커밋 그래프에 헤드를 남기지 않아 못 본다 — reachability blindness의 사례가 `SPEC-WORKTREE-SQUASH-MERGE-001` 이다. 이 리포의 develop 레인 병합은 `--no-ff`(§2가 가리키는 delivery.md Step 3.2 경로)로 규정되어 있지만, 그래서 *"--merged가 비어 있다"*를 이 레인의 확립된 사실로 단언하지도 않는다 — 판정식이 병합 모양과 무관해야 하므로, 위 rev-list 비교를 쓴다.
+- 기준은 언제나 `origin/develop`이다. 로컬 `main`이 아니고(§1), 카드 워크트리의 브랜치 상태도 아니다.
+
+[HARD] **갱신 경로는 BranchGuard-안전 경로 하나뿐이다 — 통합 워크트리로의 런처 진입.**
+
+- `moai cc -w develop` 또는 현재 세션에서 `EnterWorktree(<develop 워크트리 경로>)` 로 `.claude/worktrees/develop` 에 들어가 `git merge origin/develop` 로 흡수한다.
+- primary 체크아웃에서 `git branch` / `git checkout` 으로 갱신하지 않는다. BranchGuard(`workflow.yaml` `branch_guard.enabled`, 로컬 opt-in)가 해당 패턴을 차단하며, 면제 경로 두 개(`claude --agent` 직접 실행, `MOAI_BRANCH_GUARD_EXEMPT=1`)는 **도구로 spawn된 서브에이전트에서 도달 불가능하다.** 운영자 터미널 sentinel 경로를 서브에이전트에 권장하지 않는다 — 도달 불가능한 면제에 기대는 절차는 의존 가능한 절차가 아니다.
+- 자기 워크트리 안에서 `git -C .claude/worktrees/develop …` 로 원격 조작하는 것은 §2와 같은 이유로 worktree-session 가드가 거부한다. **들어가는 것이 유일한 인가 경로다.**
+- 갱신 창 조율은 §3의 메커니즘을 그대로 쓴다(병합 창과 갱신이 겹치지 않게 한다). 갱신 후의 rc 빌드·clean 재설치는 §9 런북이 소유한다 — 여기에 다시 적지 않는다.
+
 ---
 
 ## Cross-references
