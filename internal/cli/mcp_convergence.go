@@ -111,6 +111,20 @@ type ConvergenceResult struct {
 	DisagreementFlag bool     `json:"disagreement_flag"`
 	ResidualRiskNote string   `json:"residual_risk_note"`
 	FailOpenBackends []string `json:"fail_open_backends"`
+
+	// BuildCommit / BuildLag record the identity of the ONE binary that
+	// serviced all three backends (SPEC-AUDIT-BUILD-IDENTITY-001) —
+	// deliberately TOP-LEVEL, not on PerBackendVerdict: repeating the same
+	// value per backend would be triple bookkeeping of a single fact.
+	// Commit, not version: one version string names both a lagging build and
+	// a current one (REQ-ABI-003). Flat siblings, additive + omitempty (the
+	// SynthesisNote precedent): an absent identity changes no existing
+	// consumer's JSON. Because persistConvergenceResult marshals THIS struct
+	// verbatim, filling the returned result is all REQ-ABI-002 needs — the
+	// state file follows automatically. Assembled ONLY by auditBuildIdentity
+	// (REQ-ABI-007).
+	BuildCommit string `json:"build_commit,omitempty"`
+	BuildLag    string `json:"build_lag,omitempty"`
 }
 
 // ─── convergence algorithm (design.md §3) ───
@@ -516,6 +530,16 @@ func performGLMAudit(ctx context.Context, target, focus, projectRoot string) Rev
 // ConvergenceResult (fail-open identity, C2). The orchestrator translates any
 // inconclusive condition through its own AskUserQuestion channel (C5).
 func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focus string, cfg MultiAuditConfig, token mcp.ProgressToken) ConvergenceResult {
+	// Build identity is assembled ONCE for the whole convergence (REQ-ABI-007)
+	// and rides every result below — including the DQ-2 refusal, which is a
+	// structured verdict like any other and must name its binary. The
+	// comparison uses cfg.ProjectRoot when the caller named a tree; an absent
+	// one falls back to the process cwd INSIDE auditBuildIdentity, for the
+	// comparison only — the backends still receive exactly what
+	// resolveOptionalToolProjectRoot resolved (nothing, on an omitted
+	// project_root).
+	buildCommit, buildLag := auditBuildIdentity(ctx, cfg.ProjectRoot)
+
 	// ── DQ-2: claude_verdict anchor presence ──
 	if strings.TrimSpace(claudeVerdict.Verdict) == "" {
 		// REFUSE: claude_verdict is the always-available anchor per the fail-open
@@ -529,6 +553,8 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 			DisagreementFlag:   false,
 			ResidualRiskNote:   "claude_verdict anchor missing — refusing to synthesize (fail-open direction preserved; the in-session claude verdict is the always-available anchor)",
 			FailOpenBackends:   []string{},
+			BuildCommit:        buildCommit,
+			BuildLag:           buildLag,
 		}
 	}
 
@@ -609,6 +635,11 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	}
 
 	result := converge(verdicts)
+	// Set BEFORE persist: persistConvergenceResult marshals this struct
+	// verbatim, so filling the returned result is what makes the state file
+	// carry the same commit the verdict carried (REQ-ABI-002 — no separate
+	// persistence-side code).
+	result.BuildCommit, result.BuildLag = buildCommit, buildLag
 
 	// ── DQ-1: persist to .moai/state/audit-multi/<session>.json ──
 	// Best-effort: a write failure is logged via the returned error but MUST NOT
