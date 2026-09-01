@@ -78,6 +78,29 @@
     re-verified in this tree before applying (mx_scan.go:64-114;
     fanin.go:47-69; validator.go:132-138).
 
+## §F Phase 4 Mode Selection
+
+- Inputs: tier M · scope internal/mx + internal/graph + internal/hook/mx +
+  internal/hook (session_end) + internal/cli (mx_query/graph query) · domains
+  1-2 (Go backend + hook wiring) · language mix Go 100% · concurrency benefit
+  LOW (coding-heavy) · agent-team prereqs: not requested.
+- Mode evaluation: direct — not selected (semantic multi-milestone change);
+  fanout — not selected (coding-heavy, Anthropic caveat); sweep — not selected
+  (not mechanical-uniform, <30 files); agent-team — not selected (no operator
+  request).
+- Decision: serial
+- Justification: coding-heavy Tier M implementation across 5 milestones;
+  Anthropic's coding-task parallelism caveat favors one sequential
+  manager-develop delegation. Progression axis: AUTONOMOUS — Implementation
+  Kickoff Approval PASSED 2026-09-02 (operator selected TDD start + autonomous
+  goal arming, continuing the t411 pattern); `/moai goal` armed post-gate
+  (mechanical condition: scoped graph/hook-mx/hook/cli tag-edge + fan-in tests
+  exit 0; ceiling 30 turns). Semantic-failure escalation remains
+  operator-owned.
+- Baseline: origin/develop (5043acbd3) absorbed pre-spawn (CHANGELOG resolved
+  --theirs: develop's entry set was a strict superset) → HEAD 63435427c;
+  build OK; internal/graph+symbol+hook/mx tests green (this run, this tree).
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_
