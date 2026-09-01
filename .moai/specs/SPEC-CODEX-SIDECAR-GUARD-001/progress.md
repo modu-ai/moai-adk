@@ -121,7 +121,7 @@ FAIL
 
 ```yaml
 run_complete_at: 2026-09-01
-run_commit_sha: "pending-backfill-t405-run"  # 커밋은 자신의 SHA를 모른다 — 후속 커밋에서 백필 (D3 면제)
+run_commit_sha: "d528d8766"  # 백필 (D3 면제) — run 커밋 SHA (2026-09-01, sync-phase에서 기재)
 run_status: complete
 ac_pass_count: 8
 ac_fail_count: 0
@@ -148,7 +148,7 @@ M3 범위 한정 검증 (AC-CSG-008) — 본 SPEC의 지역 검증 전부이며,
 
 ```yaml
 sync_complete_at: 2026-09-01
-sync_commit_sha: "pending-backfill-t405-sync"  # 커밋은 자신의 SHA를 모른다 — 후속 커밋에서 백필 (D3 면제)
+sync_commit_sha: "5483eb4a6"  # 백필 (D3 면제) — 본 항목을 처음 기록한 sync 커밋의 SHA
 sync_status: complete
 sync_did: "CHANGELOG.md [Unreleased] Fixed 섹션에 close 항목 1건 추가 + spec.md frontmatter in-progress → completed (3-phase close — 본문 무변경, updated: 2026-09-01 유지)"
 files_touched:
