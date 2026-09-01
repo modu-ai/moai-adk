@@ -91,6 +91,63 @@ func TestDocEdgesByteIdentical(t *testing.T) {
 	}
 }
 
+// AC-GEC-008 — a pre-upgrade edges.jsonl (no resolution/confidence keys)
+// loads and serves without error: consumers treat absent confidence as
+// unknown (0/omitted), never a failure.
+func TestLegacyArtifactLoad(t *testing.T) {
+	requireCodeExtraction(t)
+	root := tierFixture(t)
+	dir := filepath.Join(root, ".moai", "project", "graph")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	legacy := `{"kind":"code-call","source":"internal/wire/wire.go:A","target":"B","line":6,"grade":"name-based"}
+{"kind":"code-import","source":"internal/wire/wire.go","target":"internal/helper","line":3,"grade":"name-based"}
+`
+	path := filepath.Join(dir, "edges.jsonl")
+	if err := os.WriteFile(path, []byte(legacy), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	loaded, err := LoadJSONL(path)
+	if err != nil {
+		t.Fatalf("legacy artifact must load: %v", err)
+	}
+	if len(loaded) != 2 {
+		t.Fatalf("loaded %d edges, want 2", len(loaded))
+	}
+	for _, e := range loaded {
+		if e.Resolution != "" || e.Confidence != 0 {
+			t.Errorf("legacy edge %s→%s gained confidence state: %q %v", e.Source, e.Target, e.Resolution, e.Confidence)
+		}
+	}
+
+	matches, _, err := FindCode(root, "B")
+	if err != nil {
+		t.Fatalf("FindCode over legacy artifact: %v", err)
+	}
+	if len(matches) == 0 {
+		t.Fatal("FindCode returned no matches — nothing was swept")
+	}
+	for _, m := range matches {
+		if m.Confidence != 0 {
+			t.Errorf("legacy match confidence = %v, want 0 (unknown)", m.Confidence)
+		}
+	}
+	callers, callees, err := TraceCalls(root, "B", 1)
+	if err != nil {
+		t.Fatalf("TraceCalls over legacy artifact: %v", err)
+	}
+	if len(callers) == 0 {
+		t.Fatal("TraceCalls returned no callers — nothing was swept")
+	}
+	for _, e := range append(callers, callees...) {
+		if e.Confidence != 0 {
+			t.Errorf("legacy trace edge confidence = %v, want 0 (unknown)", e.Confidence)
+		}
+	}
+}
+
 // AC-GEC-011 — provenance shape unchanged: the meta sidecar carries the
 // source fingerprints, and edges.jsonl itself stays wall-clock-free (the
 // RFC3339 generated_at lives only in the sidecar, never in the JSONL).
