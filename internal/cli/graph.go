@@ -35,6 +35,7 @@ func newGraphCmd() *cobra.Command {
 	cmd.AddCommand(newGraphQueryCmd())
 	cmd.AddCommand(newGraphCheckCmd())
 	cmd.AddCommand(newGraphStampCmd())
+	cmd.AddCommand(newGraphReportCmd())
 	return cmd
 }
 
@@ -358,6 +359,81 @@ Examples:
 	cmd.Flags().StringVar(&rootArg, "root", "", "project root (defaults to the auto-detected project root)")
 	cmd.Flags().BoolVar(&allDisagreements, "all-disagreements", false,
 		"also mark the suppressed direction: local code-import dependencies the doc layer does not record (revival path for the default's code-found/doc-silent suppression)")
+
+	return cmd
+}
+
+// newGraphReportCmd 'moai graph report' renders the rotating architecture
+// report (god nodes / surprising connections / import cycles) from the
+// persisted edges.jsonl. The output path is FIXED (D1 ADOPTED): the
+// regenerating derived artifact at <root>/.moai/reports/graph-report.md —
+// no --out flag exists, so the report can never land on a committed
+// location. Empty sections still emit with their stated reason and the
+// command exits 0 (REQ-GR-006); only an absent edges artifact errors, with
+// the build remedy named.
+//
+// @MX:NOTE: [AUTO] fixed rotating report path — D1 resolution: dated paths are for one-off analyses; this artifact regenerates in place and is never committed (SPEC-GRAPH-REPORT-001)
+func newGraphReportCmd() *cobra.Command {
+	var rootArg string
+	var limit int
+
+	cmd := &cobra.Command{
+		Use:   "report",
+		Short: "Render the architecture report (god nodes / surprising connections / import cycles)",
+		Long: `Render the architecture report from the persisted edges.jsonl (run 'moai graph build' first):
+
+  god nodes              targets ranked by distinct-source fan-in over the
+                         import + code-call layers (bare callees normalized
+                         to their package directory; ambiguous callees
+                         excluded), highest first, ties by node id
+  surprising connections INFERRED code-call edges crossing package
+                         directories, ranked by confidence then total order
+  import cycles          import-edge SCCs — the canonical member list per SCC
+                         (a simple cycle renders its rotation), SCC count as
+                         the primary datum
+
+The report is written to the FIXED rotating path
+<root>/.moai/reports/graph-report.md — a regenerating derived artifact,
+never committed; there is deliberately no --out flag.
+
+Empty sections are emitted with their reason (e.g. "code layer absent:
+CGO disabled or no extraction") and the command exits 0.
+
+Examples:
+  moai graph report
+  moai graph report --root /path/to/project --limit 20`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			projectRoot, err := resolveGraphRoot(rootArg)
+			if err != nil {
+				return err
+			}
+
+			edgesFile := filepath.Join(projectRoot, ".moai", "project", "graph", "edges.jsonl")
+			edges, err := graph.LoadJSONL(edgesFile)
+			// errors.Is (not os.IsNotExist): LoadJSONL wraps the open error
+			// with %w, and os.IsNotExist does not follow wrap chains.
+			if errors.Is(err, os.ErrNotExist) {
+				return fmt.Errorf("edges artifact not found at %s — run 'moai graph build' first", edgesFile)
+			}
+			if err != nil {
+				return fmt.Errorf("load edges: %w", err)
+			}
+
+			body := graph.RenderArchitectureReport(edges, limit)
+			target := filepath.Join(projectRoot, filepath.FromSlash(graph.GraphReportRelPath))
+			if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+				return fmt.Errorf("mkdir %s: %w", filepath.Dir(target), err)
+			}
+			if err := os.WriteFile(target, []byte(body), 0o644); err != nil {
+				return fmt.Errorf("write report: %w", err)
+			}
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "OK: wrote report to %s\n", target)
+			return nil
+		},
+	}
+
+	cmd.Flags().IntVar(&limit, "limit", 10, "god-nodes rows to show (0 = all)")
+	cmd.Flags().StringVar(&rootArg, "root", "", "project root (defaults to the auto-detected project root)")
 
 	return cmd
 }
