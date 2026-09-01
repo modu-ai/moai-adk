@@ -1,6 +1,7 @@
 # SPEC-AGENT-MEMORY-DRAIN-001 — Implementation Plan
 
-> Tier M · 3 milestones · card t223 · plan-phase v0.1.0 (2026-09-02)
+> Tier M · 3 milestones · card t223 · plan-phase v0.2.0 (2026-09-02; plan-audit iter-1
+> PASS-WITH-DEBT 0.94, fixes D1-D3/D5/D7/D8 applied)
 > Recommended direction: **(c) write-time mirror + backfill** — see §A.3. The operator
 > confirms the direction at the Implementation Kickoff gate; alternatives (a)/(b) and their
 > measured rejections are recorded in `spec.md` §B.3.
@@ -13,8 +14,8 @@
 |---|---|---|
 | Worktrees | 186 registered | `git worktree list \| wc -l` → 186 |
 | Trees with agent-memory content | 26 file-bearing (88 with skeleton dirs) | find under `.claude/worktrees`, maxdepth 3 |
-| Orphaned files | 70 (40 topic + 29 index + 1 topic) | filename classification |
-| Mirrored to primary | 0 of 40 topic files | `comm -12` vs primary's 203 topic files → 0 |
+| Orphaned files | 70 at snapshot (40 topic + 30 index; index breakdown: manager-develop 12, manager-spec 9, plan-auditor 6, sync-auditor/manager-lead/manager-docs 1 each) | filename classification; **drifting population** — re-count minutes later read 73 (42 topic + 31 index) |
+| Mirrored to primary | 0 of 40 topic files | `comm -12 /tmp/t223-wt-topics.txt /tmp/t223-primary-topics.txt` → empty output, exit 0 |
 | PostToolUse memory interception | Live in worktree sessions, observation-only | `internal/hook/post_tool.go` `runMemoryAudit` (lines ~571-620) |
 | `moai memory` command family | `doctor`, `archive` — no `drain` | `moai memory drain` → `Unknown command "drain" for "moai memory".` exit 1 |
 | Native auto-memory | NOT affected — worktrees share primary's store | 0 per-worktree `memory/` dirs under the profile's `projects/` |
@@ -26,10 +27,13 @@ Moai-owned removal points (5): `prMergeCleanup` (`internal/cli/session_worktree_
 `worktree clean --merged-only` (`internal/cli/worktree/clean.go:143` region), `clean --stale`
 (`clean.go:273` region), `worktree done` (`done.go:84,182`), `worktree remove`
 (`remove.go:60`). Outside moai code (unhookable): manual `git worktree remove`, the
-session-end keep/remove prompt, and OS-level tree deletion. **t209 died through one of the
-unhookable paths** — a drain covering only the 5 moai points is a partial fix measured
-against a proven loss. The write-time mirror covers every path because it runs before any
-disposal can occur.
+session-end keep/remove prompt, and OS-level tree deletion. **t209 is gone without any
+moai-owned sweep having removed it — consistent with death through an unhookable path**
+(inference, not observed fact: the actual disposal path is unobservable post hoc; the
+observed facts are the tree's absence and that the reaper's guards never fired on it). A
+drain covering only the 5 moai points is therefore a partial fix measured against that
+loss. The write-time mirror covers every path because it runs before any disposal can
+occur.
 
 ### A.3 — Decision record: directions
 
@@ -130,7 +134,13 @@ contract. Deliver as one reviewable unit:
 1. Extend the agent-memory interception in `internal/hook/post_tool.go` (the
    `runMemoryAudit` neighborhood): after the audit, if the session's project root is a
    worktree, copy the written `.md` to the primary store under the M1 reconciliation
-   rules (REQ-AM-002/003/004).
+   rules (REQ-AM-002/003/004). **Trigger anchoring (D7)**: the mirror's trigger predicate
+   is the path segment `.claude/agent-memory/` within the tool-input `file_path` —
+   anchored to that literal directory path, NOT the audit's existing unanchored
+   `strings.Contains(normalized, "agent-memory/")` substring predicate (a file at e.g.
+   `docs/agent-memory/x.md` must NOT trigger mirroring). The audit may keep its looser
+   predicate; the mirror defines and uses the stricter one, extracted as the shared
+   path-predicate constant from M1.
 2. Fail-open wiring: every failure path is a stderr notice, hook exit 0 (REQ-AM-005);
    primary-session no-op (REQ-AM-006).
 3. Unit tests with fixture `HookInput` JSON: mirror success, unresolvable primary
@@ -142,8 +152,11 @@ contract. Deliver as one reviewable unit:
    append race window) — recorded as evidence, not a new mechanism.
 2. moai-memory.md: add a short paragraph documenting the mirror + drain (worktree memory
    reaches primary) **with template mirror** if edited (CLAUDE.local.md §2 HARD) — the
-   only potential template-file touch in this SPEC; skip if the operator prefers a
-   docs-only mention in README/changelog.
+   only potential template-file touch in this SPEC. The alternative branch — documenting
+   it in README instead — carries its own cost: the README 4-locale set (README.ko.md
+   primary + en/ja/zh derivation) has a **same-PR 4-locale parity obligation**
+   (`.claude/skills/hns-oss-docs-readme-sync`), so that branch touches 4 files, not 1.
+   Both outcomes carry their true cost; the operator picks at kickoff (open question 3).
 3. Cross-check against SPEC-WORKTREE-REAPER-001: P2 guard still intact, no reaper file
    modified (`git diff --stat` evidence).
 

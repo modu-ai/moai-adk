@@ -1,7 +1,7 @@
 ---
 id: SPEC-AGENT-MEMORY-DRAIN-001
 title: "Worktree agent-memory drain: write-time mirror to the primary store plus one-shot backfill, so no agent memory dies with its tree"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-09-02
 updated: 2026-09-02
@@ -16,6 +16,7 @@ tier: M
 
 ## §A — History
 
+- **2026-09-02** — plan-phase v0.2.0 after plan-audit iteration 1 returned **PASS-WITH-DEBT 0.94** (Tier M threshold met; all load-bearing measurements reproduced by the auditor). Fixes folded in: **D1** — REQ-AM-001's purpose clause qualified to the design's actual coverage (mirror-mediated Write/Edit writes + drain backfill), naming the Bash-write residue as an accepted, doctor-detectable residual instead of asserting "no loss through any path". **D2** — the MEMORY.md index count corrected (30 at the audit snapshot, not 29; the v0.1.0 four-agent enumeration summed to 28 because the classification listing was truncated at `head -20`, dropping `manager-lead` ×1, `manager-docs` ×1, and undercounting `plan-auditor`); propagations fixed in §B.1/§B.4 and plan.md §A.1. A drift note added: a re-count minutes later reads 31 indices + 42 topics = 73 files — the population is live and drifting, so the figure is a snapshot, not a census. **D3** — RED-cell carrier forms fixed per verification-completeness §2.1 (AC-AM-002 split to single-invocation form; AC-AM-005 exit code recorded; AC-AM-006's design-only disposition replaced with the absent-mechanism grep probe). **D5** — the t209 death-path claim qualified as inference (the actual disposal path is unobservable post hoc). **D7** — M2's mirror trigger anchored to the `.claude/agent-memory/` path segment, not the audit's unanchored `agent-memory/` substring predicate. **D8** — M3's docs-decision branch now names the README 4-locale parity obligation. Requirements and criteria counts unchanged (10 / 9).
 - **2026-09-02** — plan-phase v0.1.0 authored from card t223 ("워크트리 안에서 만든 agent-memory 가 primary 에 도달하지 못하고 트리와 함께 죽는다", Class C design decision, Tier S~M judged **M** — see §C.3). Predecessor: SPEC-WORKTREE-REAPER-001 REQ-WR-025 records that its P2 keep-classification is a stopgap and drain-then-dispose is the correct fix; this SPEC is that fix. All scale figures re-measured on this tree (`c0c36c421`) — the card's 5-of-156 figure from 2026-08-24 is stale by an order of magnitude.
 
 ## §B — Problem
@@ -31,20 +32,29 @@ Measured on 2026-09-02 from the t223 worktree (tree `c0c36c421`):
 - `git worktree list | wc -l` → **186** worktrees.
 - Worktrees carrying a `.claude/agent-memory/` directory → **88** (find under
   `.claude/worktrees`, maxdepth 3).
-- File-bearing trees → **26**, holding **70 files** (29 per-agent `MEMORY.md` indices +
-  40 topic files + 1 sync-auditor topic; classification by filename:
-  `manager-develop/MEMORY.md` ×12, `manager-spec/MEMORY.md` ×9, `plan-auditor/MEMORY.md` ×6,
-  `sync-auditor/MEMORY.md` ×1, and 40 topic files, mostly `feedback_*`/`project_*` lessons).
-  The other 62 trees hold skeleton-only empty agent directories (auto-created at session
-  start).
+- File-bearing trees → **26**, holding **70 files** at the plan-phase snapshot
+  (2026-09-02): **30 per-agent `MEMORY.md` indices + 40 topic files**. Index breakdown by
+  agent: `manager-develop` ×12, `manager-spec` ×9, `plan-auditor` ×6,
+  `sync-auditor` ×1, `manager-lead` ×1, `manager-docs` ×1 (= 30). The 40 topic files are
+  mostly `feedback_*`/`project_*` lessons. The other 62 trees hold skeleton-only empty
+  agent directories (auto-created at session start). **Drift note**: the population is
+  live — a re-count in the same session minutes later reads 31 indices + 42 topics = 73
+  files (one new `plan-auditor/MEMORY.md` among them). The figure is a snapshot, not a
+  census; the defect's scale is order-of-magnitude.
 - Overlap with primary: of the 40 worktree topic files, **0** exist in the primary store
-  under the same `agent/filename` (`comm -12` against the primary's 203 topic files → 0).
+  under the same `agent/filename` (`comm -12 /tmp/t223-wt-topics.txt
+  /tmp/t223-primary-topics.txt` → empty output, exit 0, against the primary's 203 topic
+  files).
 - The card's concrete instance is already lost: `t209` no longer appears in
   `git worktree list` (0 matches), and its orphaned lesson
   `feedback_go_test_run_nonexistent_passes.md` is absent from the primary store
   (`find … -name '*nonexistent_passes*'` → no hit; the one `*falsifiab*` hit is an
-  unrelated sync-auditor file). P2's preserve-forever did not hold in practice — the tree
-  was disposed through a path the reaper does not own.
+  unrelated sync-auditor file). P2's preserve-forever did not hold in practice — the
+  tree is gone while no moai-owned sweep removed it. **The disposal path itself is
+  inference, not observed fact**: which path killed the tree is unobservable post hoc;
+  the observed facts are the tree's absence and that the reaper's guards never fired on
+  it, which is consistent with a manual `git worktree remove` or session-end-prompt
+  disposal — exactly the class a dispose-time-only drain cannot hook (§B.3).
 
 ### B.2 — Surface scoping: which memory store the defect reaches
 
@@ -67,9 +77,10 @@ Two distinct surfaces (`.claude/rules/moai/workflow/moai-memory.md` § Two Memor
   and `--stale` `internal/cli/worktree/clean.go`, `worktree done` and `remove`
   `internal/cli/worktree/{done,remove}.go`). **Rejected as the primary mechanism**: the
   enumerated moai-owned paths are 5, but manual `git worktree remove` and the session-end
-  keep/remove prompt are outside moai code entirely — and the t209 tree died through one of
-  those (§B.1). A drain that covers only the reaper's paths is a partial fix measured
-  against a proven loss.
+  keep/remove prompt are outside moai code entirely — and the t209 tree is gone without
+  any moai-owned sweep having removed it, consistent with death through one of those
+  unhookable paths (§B.1; inference, not observed fact). A drain that covers only the
+  reaper's paths is a partial fix measured against that loss.
 - **(b) Wire worktree sessions to write agent-memory to the primary path directly.**
   **Rejected as infeasible short-term**: the repo-local agent-memory path is injected by the
   Claude Code runtime from the session's project directory (worktree root); no override
@@ -87,7 +98,7 @@ Two distinct surfaces (`.claude/rules/moai/workflow/moai-memory.md` § Two Memor
 
 ### B.4 — The index problem, solved together
 
-The `MEMORY.md` index is per-agent per-tree (29 of the 70 orphaned files are indices). A
+The `MEMORY.md` index is per-agent per-tree (30 of the 70 snapshot files are indices). A
 naive drain that copies everything would clobber the primary's index; a drain that copies
 only topic files strands them (a topic file with no index line is stored and never
 recalled — the exact failure `moai memory doctor` exists to report). And `[[name]]` links
@@ -151,8 +162,12 @@ independent research.md needed — the research embedded here is already conclus
 
 - **REQ-AM-001** (Ubiquitous) — The drain mechanism shall copy every worktree-local
   `.claude/agent-memory/<agent>/` topic file into the primary checkout's
-  `.claude/agent-memory/<agent>/` store, such that no agent-written memory file is lost to
-  worktree disposal through any path, moai-owned or manual.
+  `.claude/agent-memory/<agent>/` store, such that memory written through the mirrored
+  surface (Write/Edit tool calls, REQ-AM-002) or harvested by the backfill (REQ-AM-007)
+  is no longer lost to worktree disposal through any path, moai-owned or manual. Memory
+  written by other means (e.g. a Bash `cp`/heredoc the PostToolUse mirror cannot see) is
+  an accepted residual — undrained until an operator-run `moai memory drain` harvests it,
+  and detectable by `moai memory doctor` (spec.md §C.2, §G).
 - **REQ-AM-002** (Event-driven) — **When** a Write or Edit tool call targets a `.md` file
   under `.claude/agent-memory/` inside a worktree, the memory mirror shall copy the written
   file to the same agent-relative path under the primary checkout's agent-memory store.

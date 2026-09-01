@@ -42,11 +42,23 @@
   `moai memory drain --yes` runs **Then** the file exists at the primary store's
   `agent-memory/manager-spec/feedback_x.md` byte-identical, and the worktree copy is
   unchanged.
-- RED-now (population-level, this run): 40 topic files exist under worktree
-  `.claude/agent-memory/` (`find … -name '*.md' ! -name 'MEMORY.md' | wc -l` → 40);
-  overlap with the primary's 203 topic files (`comm -12` → **0**). RED reason: **no
-  drain mechanism exists**, so nothing reaches primary — not wrong-reason red (no
-  unrelated pre-existing files block it).
+- RED-now (population-level, this run, single-invocation form per
+  verification-completeness §2.1; evidence ledger EV-002): the worktree topic-file
+  enumeration (40 files at the 2026-09-02 06:38 snapshot, drifting population — 42 at
+  re-count) and the primary enumeration (203 files) were written to
+  `/tmp/t223-wt-topics.txt` / `/tmp/t223-primary-topics.txt`; the discriminator below is
+  the single invocation.
+
+  ```text
+  # EV-002 — tree c0c36c421, 2026-09-02
+  command: comm -12 /tmp/t223-wt-topics.txt /tmp/t223-primary-topics.txt
+  stdout: (empty — 0 lines; no worktree topic filename exists in the primary store)
+  exit code: 0
+  ```
+
+  RED reason: **no drain mechanism exists**, so nothing reaches primary — not
+  wrong-reason red (no unrelated pre-existing files block it; the empty intersection is
+  drift-stable: new writes enlarge the worktree set, never the overlap).
 - Green path: M1 — fixture go test passes; plus the real-tree backfill run whose
   `--json` output is archived as run-phase evidence (post-run overlap > 0).
 
@@ -88,9 +100,17 @@
   `agent-memory/` path, and the file exists on disk **When** the PostToolUse memory path
   runs **Then** the file appears at the same agent-relative path in the resolved primary
   store.
-- RED-now: no mirror code exists — `grep -n "mirror" internal/hook/post_tool.go` returns
-  no match (the file's only memory machinery is `runMemoryAudit`, lines ~571-620,
-  observation-only). RED reason: absent mechanism, measured on the source.
+- RED-now (single-invocation form; evidence ledger EV-005, tree `c0c36c421`, 2026-09-02):
+
+  ```text
+  # EV-005 — tree c0c36c421, 2026-09-02
+  command: grep -n "mirror" /Users/goos/MoAI/moai-adk-go/internal/hook/post_tool.go
+  stdout: (empty — no match)
+  exit code: 1
+  ```
+
+  RED reason: absent mechanism, measured on the source — the file's only memory machinery
+  is `runMemoryAudit` (observation-only); no mirror code path exists to exercise.
 - Green path: M2 — unit test with fixture HookInput JSON; plus one live dogfood
   observation (a real worktree Write producing a primary copy) recorded as run-phase
   evidence.
@@ -102,12 +122,15 @@
 - **Given** a fixture HookInput in a worktree whose primary root cannot be resolved
   (fixture: no git common dir) **When** the PostToolUse memory path runs **Then** the
   hook exits 0, emits a non-blocking notice on stderr, and returns no block decision.
-- RED-now: design-only at plan time (the mechanism does not exist; nothing to fail open
-  yet) — verified at run phase per verification-completeness §2 (green-path cell with a
-  known-failing fixture input; the fixture IS the known-red input for the blocking
-  behavior: a naive implementation that returns a block decision on copy failure fails
-  this AC).
-- Green path: M2 — go test asserts exit 0 + no `decision` field + stderr notice.
+- RED-now (absent-mechanism probe — same discriminator as AC-AM-005, evidence ledger
+  EV-005, tree `c0c36c421`, 2026-09-02): `grep -n "mirror" internal/hook/post_tool.go` →
+  empty stdout, exit 1. RED reason: the mirror mechanism does not exist, so no fail-open
+  behavior exists to observe — the criterion is red at the source level. The
+  known-failing INPUT for the post-implementation behavior is named now so the run-phase
+  test is written against it: a fixture whose primary root cannot be resolved — a naive
+  implementation that returns a block decision on copy failure fails this AC.
+- Green path: M2 — go test asserts exit 0 + no `decision` field + stderr notice, with the
+  unresolvable-primary fixture as the known-red input.
 
 ### AC-AM-007 — Drain never deletes or mutates worktree content
 
