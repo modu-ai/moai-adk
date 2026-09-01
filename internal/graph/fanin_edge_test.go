@@ -359,3 +359,36 @@ func TestHubExclusionTestCallers(t *testing.T) {
 		t.Errorf("HOnly inferred-only count = %d, want 0", hOnly.inferred)
 	}
 }
+
+// REQ-MTE-011 — the source labels the artifact state it answered from: a
+// fresh artifact (meta sidecar stamped, fingerprints matching) labels
+// "edges"; an artifact without a judgeable sidecar is stale-by-probe and
+// labels "edges(stale)" while still answering (never silently).
+func TestFanInSourceLabelsFreshAndStale(t *testing.T) {
+	requireCodeExtraction(t)
+	root := parityFixture(t)
+	src := edgeSourceFor(t, root)
+
+	// No meta sidecar → the artifact cannot be judged fresh.
+	res := evidenceFor(t, src, "S", filepath.Join(root, "internal", "core", "core.go"))
+	if res.label != "edges(stale)" {
+		t.Errorf("label without a sidecar = %q, want edges(stale)", res.label)
+	}
+
+	// Stamp a matching provenance sidecar → fresh.
+	dir := filepath.Join(root, ".moai", "project", "graph")
+	edges, err := LoadJSONL(filepath.Join(dir, "edges.jsonl"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteEdgesMeta(filepath.Join(dir, MetaFileName), root, SourceFingerprintsForEdges(root), len(edges)); err != nil {
+		t.Fatal(err)
+	}
+	res = evidenceFor(t, src, "S", filepath.Join(root, "internal", "core", "core.go"))
+	if res.label != "edges" {
+		t.Errorf("label with a fresh sidecar = %q, want edges", res.label)
+	}
+	if res.evidence != 3 {
+		t.Errorf("fresh-label answer changed the count: %d, want 3", res.evidence)
+	}
+}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
+	"sync"
 
 	"github.com/modu-ai/moai-adk/internal/mx"
 )
@@ -29,6 +30,16 @@ import (
 type EdgeFanInSource struct {
 	projectRoot string
 	edgesFile   string
+
+	// loadMu guards the one-shot artifact load: ValidateFiles runs parallel
+	// workers over the SAME source instance, so the lazy cache must be
+	// race-free. The artifact is read once per source (per batch); staleness
+	// within one batch is irrelevant — the batch answers from one snapshot,
+	// labeled by its state at load time.
+	loadMu   sync.Mutex
+	loaded   bool
+	loadErr  error
+	loadEdge []Edge
 }
 
 // NewEdgeFanInSource builds a source over projectRoot's default edges
@@ -38,6 +49,18 @@ func NewEdgeFanInSource(projectRoot string) *EdgeFanInSource {
 		projectRoot: projectRoot,
 		edgesFile:   filepath.Join(projectRoot, ".moai", "project", "graph", "edges.jsonl"),
 	}
+}
+
+// load reads the artifact once per source instance and caches both outcomes
+// (edges or the load error) — a batch's later candidates reuse the snapshot.
+func (s *EdgeFanInSource) load() ([]Edge, error) {
+	s.loadMu.Lock()
+	defer s.loadMu.Unlock()
+	if !s.loaded {
+		s.loadEdge, s.loadErr = LoadJSONL(s.edgesFile)
+		s.loaded = true
+	}
+	return s.loadEdge, s.loadErr
 }
 
 // EvidenceBacked answers the fan-in of funcName as seen from currentFile
@@ -53,7 +76,7 @@ func (s *EdgeFanInSource) EvidenceBacked(ctx context.Context, funcName, currentF
 	if err := ctx.Err(); err != nil {
 		return 0, 0, "", fmt.Errorf("graph: fan-in source cancelled: %w", err)
 	}
-	edges, err := LoadJSONL(s.edgesFile)
+	edges, err := s.load()
 	if err != nil {
 		return 0, 0, "", fmt.Errorf("graph: load edges artifact: %w", err)
 	}
