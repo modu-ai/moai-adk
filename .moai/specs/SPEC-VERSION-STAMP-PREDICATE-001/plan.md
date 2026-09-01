@@ -97,7 +97,7 @@ AC-VSP-004 · 005 · 006 · 009 · 013 · 015의 RED을 각각 **자기 입력**
 | 등록부 ⇄ 문서(009) | 한쪽에만 있는 경로 하나 |
 | 유령 항목(013) | 등록부에 실재하지 않는 경로 하나 |
 | 도달 범위(015-가) | 등록부 경로 하나가 빠진 모집단 — 그 경로를 이름으로 불러야 한다 |
-| 도달 범위(015-나) | 코어가 받은 경로 일부를 건너뛴 상태 — `judged=N examined_of=M` 로 두 수를 함께 내야 한다 |
+| 도달 범위(015-나) | 코어가 받은 경로 일부를 건너뛴 상태 — `judged=N handed=M` 로 두 수를 함께 내야 한다 |
 
 RED 일곱을 각각 관측하고 verbatim 출력을 `progress.md §E.2` 에 기록한 뒤 GREEN으로 넘어간다.
 
@@ -216,6 +216,7 @@ RED을 관측하기 전에 기대 실패 문자열을 고정한다. 예측이 �
 | 내용-대-경로(006) | `<path>` 가 스윕 결과에 **없어야** 한다 |
 | 등록부 ⇄ 문서(009) | `stamp set differs from documentation list: <path>` |
 | 유령 항목(013) | `registry entry does not resolve to a file: <path>` |
+| 도달 범위(015) | `registry path missing from population: <path>` / `judged=<n> handed=<n>` |
 
 [HARD] 005의 세 문자열 어디에도 **스윕 개수의 기대값이 없다.** 스윕은 「스탬프 7개를 전부
 담고 있는가」로만 판정되며, 그 판정이 실패할 때 개수가 아니라 **빠진 경로**를 낸다.
@@ -290,7 +291,7 @@ REQ-VSP-003이 착지하면 **현재 토큰을 담은 경우에 한해** 거짓�
 > unregistered, and a deleted registered path is reported as unresolved.
 
 **판정 grep이 이 문안에만 걸리도록 하는 규율.** `_test.go` · `system.yaml.tmpl` 같은 토큰은
-문서의 **다른 절에 이미 존재하므로**(현 L83·L90), 그것들로 (b)를 판정하면 M5가 아무것도 안
+문서의 **다른 절에 이미 존재하므로**(현 L82·L88), 그것들로 (b)를 판정하면 M5가 아무것도 안
 써도 통과한다. 그래서 AC-VSP-011(b)는 위 문안에만 존재하는 **여섯 구절**로 못박고, 그 여섯이
 현재 문서에 **0건**임을 실측해 두었다(= 미리 못박은 RED). 목록은 `acceptance.md` AC-VSP-011.
 

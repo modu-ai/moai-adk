@@ -60,6 +60,8 @@ N1-N6 · D6에 답했다.
 못박았으며(현재 전부 0건 = 미리 못박은 RED), 닫힌-수 정규식을 구조형으로 바꿔 뮤턴트 여덟에
 전부 걸리고 열린 문안에 0건임을 이 세션에서 실측했다.
 
+iter-3 판정: **PASS-WITH-DEBT 0.90**(보고서 `.moai/reports/t392/plan-audit-iter3.md`, opus에서 작성 후 weekly-limit 중단으로 디스크에서 복구됨) — D1(015 카운트 키 이중 고정 `examined_of`/`handed` + §D.2 행 부재; 정본 키 `handed`로 통일)·D2(`현 L83·L90` → `현 L82·L88` 좌표 정정)는 이번 라운드에서 수리했고, D3-D5는 감사자 권고에 따라 선택적 부채로 남긴다.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_
