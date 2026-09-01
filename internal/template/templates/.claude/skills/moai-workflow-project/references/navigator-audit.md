@@ -1,7 +1,7 @@
 # Navigator Audit — Drift / Completeness Mode (`--audit`)
 
 > Level-3 reference for the Project Navigator audit. The deterministic core is
-> `${CLAUDE_SKILL_DIR}/scripts/navigator-audit.sh` (sibling to `navigator-regen.sh`).
+> `.claude/skills/moai-workflow-project/scripts/navigator-audit.sh` (sibling to `navigator-regen.sh`).
 > This document specifies the algorithm, the matching heuristic, the
 > header-driven column resolution, the override-file schema, and the fail-open
 > semantics. Invoke the audit via `/moai project --audit`.

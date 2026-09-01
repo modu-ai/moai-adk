@@ -82,6 +82,13 @@ type WizardResult struct {
 	AuditGateGLM      string // audit.gates.glm: off|advisory|required
 	CodexAuditEnabled bool   // codex.review_gate.enabled (M2 Stop-hook opt-in)
 	MCPProvision      bool   // moai MCP server provisioning (default-on per SPEC-MCP-DEFAULT-ON-001)
+
+	// AgentWiring (SPEC-INIT-HARNESS-PROMPT-001 REQ-IHP-001/002): the
+	// interactive agent-harness selection, reusing the --agent closed set
+	// {claude, codex, both}. Empty means the wizard did not run (or did not
+	// reach the question), which resolveAgentWiringWithWizard resolves to the
+	// claude fallback — the same fallback the flag path has always used.
+	AgentWiring string // agent harness: claude, codex, both
 }
 
 // QuestionType represents the type of wizard question.

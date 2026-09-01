@@ -45,11 +45,20 @@ import (
 // 같은 수준이다. 다음에 always-loaded 파일을 늘리는 카드는 이 가드에 부딪힌다 — 근본 해결은
 // 위 문단이 가리키는 대형 룰 다이어트이며, 이 카드의 소관이 아니다.
 //
-// @MX:DEBT: [AUTO] temporary budget raise (76,000 -> 76,210) standing in for the always-loaded rule diet
-// @MX:CEILING: 0.26% headroom — 201 tokens of 76,210; one always-loaded clause consumes it
+// 상향 근거(2026-09-01, t421): 흡수 트리(origin/develop 8c1d911df) 가드 실측 76,129
+// 토큰(여유 81) — t400 이 always-loaded cross-session-messaging.md 에 넣은 다섯째 가용성
+// 제약(공유 슬롯 축)이 여유를 소비한 뒤다(순증 +480 B: t400 +1,135 B, t409 스텁 다이어트
+// −655 B). 바로 뒤를 따르는 t196
+// (SPEC-CODEX-SKILL-NEUTRAL-001)은 AGENTS.md(측정 표면 고정 슬롯)에 능력 결속표를
+// 얹는다 — 브랜치 워크트리 실측 +545 B = +136 토큰. 76,129 + 136 = 76,265 로 현 예산
+// 76,210 을 넘어 트립하므로, 착지 후 여유 135(상향 직후 271 − t196 몫 136)를 남기는
+// 76,400 으로 올린다. 근본 해결은 여전히 위 문단의 대형 룰 다이어트다.
+//
+// @MX:DEBT: [AUTO] temporary budget raise (76,000 -> 76,400) standing in for the always-loaded rule diet
+// @MX:CEILING: 0.18% headroom — 135 tokens of 76,400 once t196 lands (271 before it); one always-loaded clause consumes it
 // @MX:UPGRADE: drop this raise when the large always-loaded rule diet (stub + lazy loading) lands
 // @MX:SPEC: SPEC-MEMORY-STORE-RECONCILE-001
-const AlwaysLoadedTokenBudget = 76210
+const AlwaysLoadedTokenBudget = 76400
 
 // CodexContractByteCeiling는 루트 AGENTS.md(코덱스 계약층)에 허용되는 바이트 상한이다.
 // codex는 프로젝트 지시문을 바이트 상한 아래에서 읽고 초과분을 **조용히** 잘라낸다 —
