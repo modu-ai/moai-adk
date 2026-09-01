@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -183,5 +184,62 @@ func TestMemoryDrainRejectsUnknownFlags(t *testing.T) {
 	_, _, execErr := runMemoryDrain(t, "--definitely-not-a-flag")
 	if execErr == nil {
 		t.Error("unknown flag accepted (fell through to help?)")
+	}
+}
+
+// gitRunIn runs a git command in dir, failing the test on error.
+func gitRunIn(t *testing.T, dir string, args ...string) {
+	t.Helper()
+	cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git -C %s %v: %v\n%s", dir, args, err, out)
+	}
+}
+
+// TestListWorktreesRealExcludesPrimary exercises the real git-backed
+// enumeration against a throwaway repository: linked trees are listed, the
+// main worktree is not.
+func TestListWorktreesRealExcludesPrimary(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not available")
+	}
+	primary := t.TempDir()
+	// git reports /private/var for /var on macOS; compare in git's spelling.
+	resolvedPrimary, evalErr := filepath.EvalSymlinks(primary)
+	if evalErr != nil {
+		t.Fatalf("eval symlinks: %v", evalErr)
+	}
+	primary = resolvedPrimary
+	gitRunIn(t, primary, "init", "-q")
+	gitRunIn(t, primary, "config", "user.email", "t@example.com")
+	gitRunIn(t, primary, "config", "user.name", "t")
+	gitRunIn(t, primary, "commit", "-q", "--allow-empty", "-m", "init")
+	wtParent := t.TempDir()
+	resolvedWtParent, evalErr := filepath.EvalSymlinks(wtParent)
+	if evalErr != nil {
+		t.Fatalf("eval symlinks (wt): %v", evalErr)
+	}
+	wt := filepath.Join(resolvedWtParent, "wt")
+	gitRunIn(t, primary, "worktree", "add", "-q", "--detach", wt)
+
+	trees, err := listWorktreesReal(primary)
+	if err != nil {
+		t.Fatalf("listWorktreesReal: %v", err)
+	}
+	found := false
+	for _, p := range trees {
+		if filepath.Clean(p) == filepath.Clean(primary) {
+			t.Fatalf("primary listed as a linked worktree: %v", trees)
+		}
+		if filepath.Clean(p) == filepath.Clean(wt) {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("linked worktree missing from enumeration: %v", trees)
+	}
+
+	if _, err := listWorktreesReal(t.TempDir()); err == nil {
+		t.Error("non-repo primary enumerated without error")
 	}
 }
