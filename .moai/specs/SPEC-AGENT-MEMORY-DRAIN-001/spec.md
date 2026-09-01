@@ -2,7 +2,7 @@
 id: SPEC-AGENT-MEMORY-DRAIN-001
 title: "Worktree agent-memory drain: write-time mirror to the primary store plus one-shot backfill, so no agent memory dies with its tree"
 version: "0.2.1"
-status: in-progress
+status: completed
 created: 2026-09-02
 updated: 2026-09-02
 author: manager-spec

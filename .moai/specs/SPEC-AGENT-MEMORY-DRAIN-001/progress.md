@@ -106,7 +106,21 @@ collisions, source worktrees untouched.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-02
+sync_commit_sha: "pending-backfill-t223"
+sync_status: audit-ready
+b12_self_test_a: 0 pre-emission grep hits for SPEC-AGENT-MEMORY-DRAIN-001 in CHANGELOG.md (grep -c, exit 1)
+b12_self_test_b: 9 distinct AC ids in acceptance.md (AC-AM-001..009) — CHANGELOG entry references all 9 (7 blocker + 1 major + 1 regression-guard)
+b12_self_test_c: all claimed file paths verified via ls (CHANGELOG.md, spec/plan/acceptance/progress.md, internal/hook/agentmemory.go, internal/cli/memory_drain.go)
+changelog_entry_position: [Unreleased] > ### Added > first bullet
+frontmatter_status_transitions:
+  spec_md: in-progress -> completed (updated: 2026-09-02; status+updated only, zero body modifications)
+mx_tag_compliance_check:
+  agentmemory_go: @MX:ANCHOR x2 (IsAgentMemoryMDPath predicate, DrainTree) + @MX:REASON x2 — present
+  memory_mirror_go: @MX:NOTE (write-time mirror wrapper) — present
+  additions_required: none
+```
 
 ## §F Phase 4 Mode Selection
 
