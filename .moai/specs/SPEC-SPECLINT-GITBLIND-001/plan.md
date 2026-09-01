@@ -26,7 +26,7 @@ Tier M · cycle_type=tdd · 대상 파일 6개(소스 4 + 테스트 2), 예상 3
   `withFakeOwnershipLookup` 같은 주입점 없이 `getGitImpliedStatus` 를 직접 부른다.
   AC 는 실제 git 픽스처로 검증한다 — `internal/spec/` 에 선례가 있다.
 - **per-run 캐시는 패키지 전역이다** — `gitQueryCacheMu` / `gitQueryCacheV`
-  (`internal/spec/gitquery_cache.go:21-23`). 이를 건드리는 새 테스트는 **`t.Parallel()` 을 쓰지 않는다**.
+  (`internal/spec/gitquery_cache.go:23-25`). 이를 건드리는 새 테스트는 **`t.Parallel()` 을 쓰지 않는다**.
   `t.Chdir` 도 프로세스 전역이라 같은 구속에 묶인다.
 - **`cachedMainBranch` 는 `.Dir` 을 설정하지 않는다**(`:121`, `:132`) — 해소는 프로세스 작업 디렉터리를 따른다.
   이것은 **시그니처 변경을 요구하지 않는다**: `chdirForTest`(`drift_characterization_test.go:55`)와

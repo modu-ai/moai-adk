@@ -90,3 +90,11 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+- 입력 파라미터: tier M · scope 파일 수 ~5(internal/spec 3-4파일 + .github/workflows/spec-lint.yml + 테스트) · 도메인 2(Go 런타임 + CI 워크플로 YAML) · 언어 혼합 Go+YAML · concurrency benefit LOW(coding-heavy) · agent-team 사전요구 없음
+- 모드 평가: direct 미선정(다중 파일·신규 테스트 seam) / fanout 미선정(research-heavy 아님, Anthropic coding-task caveat) / sweep 미선정(기계적 균일 변환 아님, ~30파일 미만) / **serial 선택**
+- Decision: serial
+- 정당화: 구현이 단일 도메인(internal/spec)의 인과 체인(M1 관측가능화 → M2 해소 체인 → M3 워크플로)이고 각 마일스톤이 이전 마일스톤의 seam 위에 세워지므로 병렬 이득이 없다. RED 우선 순서(M1의 픽스처 관측이 M2·M3의 기준선)가 직렬 의존을 만든다.
+- 킥오프: 운영자 승인 2026-09-02(lead-1 경유) — 자율 진행 + goal 무장. iter-4 plan-audit PASS 0.87(트리 06d908455) 후 진입.
