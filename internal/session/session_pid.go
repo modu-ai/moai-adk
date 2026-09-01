@@ -52,6 +52,11 @@ type procInfoFunc func(pid int) (ppid int, comm string, ok bool)
 var (
 	procInfo   procInfoFunc = platformProcInfo
 	pidIsAlive              = isProcessAlive
+	// probeLiveness is the three-valued liveness probe seam for the
+	// registry's liveness-aware purge: (alive, determined), where determined
+	// false means the platform measured nothing and the caller falls back to
+	// its own verdict (see Registry.Purge).
+	probeLiveness = probeProcessLiveness
 )
 
 // ResolveOwnerPID reports the PID of the long-lived session that owns this
@@ -95,6 +100,27 @@ func resolveSessionPID() int {
 		return pid
 	}
 	return os.Getpid()
+}
+
+// staleEntryDead reports whether a heartbeat-stale registry entry's session
+// is safe to remove. Removable when the recorded PID is positively dead
+// (ESRCH). An entry with no usable PID carries no liveness signal, and a
+// platform that cannot determine liveness (the Windows probe measures
+// nothing) both fall back to the heartbeat verdict that governed purges
+// before the liveness probe existed — preserving the existing stale-entry
+// hygiene on those paths. The asymmetry is deliberate: a wrongly kept entry
+// costs one harmless "other session active" notice, while a wrongly purged
+// live session hides a concurrent writer from the orchestrator's race
+// checks.
+func staleEntryDead(pid int) bool {
+	if pid <= 0 {
+		return true
+	}
+	alive, determined := probeLiveness(pid)
+	if determined {
+		return !alive
+	}
+	return true
 }
 
 // sessionPIDFromEnv parses an explicit PID override, accepting it only when it
