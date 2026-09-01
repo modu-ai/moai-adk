@@ -80,8 +80,16 @@ var permittedVerbAdditions = []string{"export-json", "undone", "history"}
 //     REQ-TDG-008 / REQ-TDG-009 (the mis-addressing guard and the opt-in
 //     landing seam). Both are opt-in: absent, `done` behaves exactly as the
 //     frozen surface says.
+//
+//   - list --dropped — card t384 (the dropped-render defect): the default
+//     render showed every dropped card forever, so the list length diverged
+//     from the queue's actual load. The default view now hides the dropped
+//     set behind one count line naming this flag, and the flag renders the
+//     discarded set — the recovery surface `undrop` reads. Opt-in: absent,
+//     `list` behaves as before MINUS the dropped rows, which is the repair.
 var permittedFlagAdditions = map[string][]string{
 	"done <n>": {"expect=string()", "require-landed=bool(false)"},
+	"list":     {"dropped=bool(false)"},
 }
 
 // isPermittedVerbAddition reports whether a live verb is a declared addition.
