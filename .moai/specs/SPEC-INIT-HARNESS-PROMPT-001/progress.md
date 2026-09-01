@@ -344,7 +344,7 @@ the count cannot fall below zero.)
 
 ```yaml
 run_complete_at: 2026-09-01
-run_commit_sha: pending-backfill-run-commit
+run_commit_sha: 2df3832f4   # final run-phase commit; M3+M5 landed at d71a120c7
 run_status: audit-ready
 ac_pass_count: 13
 ac_fail_count: 0
