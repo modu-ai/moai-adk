@@ -1,0 +1,49 @@
+Reading additional input from stdin...
+2026-08-31T16:45:28.498156Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("http/request failed: error sending request for url (https://app.post-bridge.com/mcp)")))
+OpenAI Codex v0.150.1
+--------
+workdir: /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t196
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a058b6-2806-76e0-b138-14e96ed8cb65
+--------
+user
+Invoke AskUserQuestion to ask the user whether they prefer option A or option B, then state plainly which tool you actually used. Do not read or write any files.
+2026-08-31T16:45:28.708029Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when UnexpectedServerResponse("HTTP 404: \n<!doctype html>\n<html lang=\"en\">\n<head>\n  <title>Not Found</title>\n</head>\n<body>\n  <h1>Not Found</h1><p>The requested resource was not found on this server.</p>\n</body>\n</html>\n")
+2026-08-31T16:45:28.718641Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: "Bearer resource_metadata=\"https://mcp.facebook.com/.well-known/oauth-protected-resource/ads\", scope=\"ads_management ads_read catalog_management business_management pages_show_list instagram_basic ads_mcp_management\"" })
+2026-08-31T16:45:28.729820Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("MCP HTTP redirect to a different origin is not allowed")))
+2026-08-31T16:45:28.752111Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("http/request failed: error sending request for url (https://app.post-bridge.com/mcp)")))
+2026-08-31T16:45:28.969287Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: "Bearer resource_metadata=\"https://mcp.slack.com/.well-known/oauth-protected-resource\"" })
+2026-08-31T16:45:29.123265Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("MCP HTTP redirect to a different origin is not allowed")))
+2026-08-31T16:45:29.265003Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: "Bearer error=\"invalid_request\", error_description=\"No access token was provided in this request\", resource_metadata=\"https://api.githubcopilot.com/.well-known/oauth-protected-resource/mcp/\"" })
+2026-08-31T16:45:29.416842Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when UnexpectedServerResponse("HTTP 404: \n<!doctype html>\n<html lang=\"en\">\n<head>\n  <title>Not Found</title>\n</head>\n<body>\n  <h1>Not Found</h1><p>The requested resource was not found on this server.</p>\n</body>\n</html>\n")
+2026-08-31T16:45:29.536176Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: "Bearer resource_metadata=\"https://mcp.facebook.com/.well-known/oauth-protected-resource/ads\", scope=\"ads_management ads_read catalog_management business_management pages_show_list instagram_basic ads_mcp_management\"" })
+2026-08-31T16:45:29.754807Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("http/request failed: error sending request for url (https://app.post-bridge.com/mcp)")))
+2026-08-31T16:45:30.268349Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("MCP HTTP redirect to a different origin is not allowed")))
+warning: Exceeded skills context budget. All skill descriptions were removed and 209 additional skills were not included in the model-visible skills list.
+hook: SessionStart
+hook: SessionStart
+hook: SessionStart Completed
+hook: SessionStart Completed
+hook: UserPromptSubmit
+hook: UserPromptSubmit
+hook: UserPromptSubmit Completed
+hook: UserPromptSubmit Completed
+2026-08-31T16:45:33.590732Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("http/request failed: error sending request for url (https://archhub-mcp.fly.dev/mcp)")))
+2026-08-31T16:45:39.001408Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("http/request failed: error sending request for url (https://archhub-mcp.fly.dev/mcp)")))
+codex
+Do you prefer option A or option B?
+
+I used no tool: `AskUserQuestion` is not available in this session.
+hook: Stop
+hook: Stop Completed
+tokens used
+17,519
+Do you prefer option A or option B?
+
+I used no tool: `AskUserQuestion` is not available in this session.
+2026-08-31T16:45:45.129849Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("http/request failed: error sending request for url (https://archhub-mcp.fly.dev/mcp)")))
