@@ -70,6 +70,8 @@ type mxValidator struct {
 // acceptance §D.3). currentFile is the file that DECLARES funcName (absolute
 // path). err != nil means the source cannot serve an evidence-backed answer;
 // the validator then falls back to the textual index and labels the verdict.
+//
+// @MX:NOTE: [AUTO] FanInEvidenceSource — structural-typing seam owned at the consumer: the implementation (internal/graph.EdgeFanInSource) never imports this package (SPEC-MX-TAG-EDGES-001)
 type FanInEvidenceSource interface {
 	EvidenceBacked(ctx context.Context, funcName, currentFile string) (evidence, inferredOnly int, label string, err error)
 }
@@ -91,6 +93,8 @@ func NewValidator(analyzer any, projectRoot string) Validator {
 // absent, unreadable, or code-evidence-free), the validator falls back to
 // the textual index and labels the violation "textual-fallback"
 // (REQ-MTE-011).
+//
+// @MX:NOTE: [AUTO] NewValidatorWithSource — batch-surface constructor (SessionEnd is the sole sanctioned caller); PostToolUse keeps the default textual constructor (SPEC-MX-TAG-EDGES-001)
 func NewValidatorWithSource(analyzer any, projectRoot string, source FanInEvidenceSource) Validator {
 	v := newValidatorWithConfig(analyzer, projectRoot, DefaultValidationConfig())
 	v.(*mxValidator).fanInSource = source

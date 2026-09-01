@@ -2,7 +2,7 @@
 id: SPEC-MX-TAG-EDGES-001
 title: "MX tag-kind edges in the code graph + graph-backed fan-in for the MX validator P1 rule (graphify pattern P1-2 + P1-3)"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-09-01
 updated: 2026-09-02
 author: manager-spec

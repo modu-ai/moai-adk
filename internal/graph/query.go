@@ -72,6 +72,8 @@ func (r FanInResult) InferredOnly() int { return len(r.InferredFiles) }
 //
 // declaringFiles are repo-relative file paths, the same shape code-call
 // edge sources carry.
+//
+// @MX:NOTE: [AUTO] SymbolFanIn — evidence-backed caller aggregation over code-call edges; blocking count = DISTINCT evidence files, declaration file excluded (SPEC-MX-TAG-EDGES-001)
 func SymbolFanIn(edges []Edge, symbolName string, declaringFiles ...string) FanInResult {
 	excluded := map[string]bool{}
 	for _, f := range declaringFiles {

@@ -50,6 +50,8 @@ func isTestFile(filePath string) bool {
 // Pattern semantics: each pattern uses filepath.Match rules; '**' segments
 // are matched against individual path components via path-prefix heuristic
 // (contains the segment in the slash-normalised path).
+//
+// @MX:NOTE: [AUTO] IsTestFileWithPatterns — single shared definition of the hard-coded test-pattern fallback set; graph fan-in and textual fan-in must not fork it (SPEC-MX-TAG-EDGES-001)
 func IsTestFileWithPatterns(filePath string, userPatterns []string) bool {
 	slashPath := filepath.ToSlash(filePath)
 

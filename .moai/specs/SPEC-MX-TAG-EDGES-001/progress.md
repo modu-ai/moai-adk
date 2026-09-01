@@ -214,4 +214,35 @@ gaps:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-02
+sync_commit_sha: "pending-backfill-t412-sync"
+sync_status: "complete"
+changelog_entry_position: "[Unreleased] §Added — first entry"
+b12_self_test_a: "pass — grep -c 'SPEC-MX-TAG-EDGES-001' CHANGELOG.md = 0 pre-emission"
+b12_self_test_b: "pass — distinct AC identifiers in acceptance.md = 14 (AC-MTE-001..014; grep pattern returned 15 only by matching the AC-GF-016 cross-reference, which belongs to SPEC-V3R6-GRAPH-FRESHNESS-001, not this SPEC's AC set)"
+b12_self_test_c: "pass — all 8 implementation paths cited in the entry ls-verified in this worktree"
+frontmatter_status_transitions.spec_md: "in-progress → completed (merged close, single sync commit)"
+frontmatter_status_transitions.plan_md: "none (no status: field)"
+frontmatter_status_transitions.acceptance_md: "none (no status: field)"
+frontmatter_status_transitions.progress_md: "none (no status: field)"
+mx_tag_changes:
+  added:
+    - "internal/graph/query.go — @MX:NOTE SymbolFanIn"
+    - "internal/hook/mx/validator.go — @MX:NOTE FanInEvidenceSource"
+    - "internal/hook/mx/validator.go — @MX:NOTE NewValidatorWithSource"
+    - "internal/mx/fanin.go — @MX:NOTE IsTestFileWithPatterns"
+  measured:
+    - "ConfidenceFor fan-in = 1 non-test caller (internal/graph/symbol.go:131) — below the >=3 @MX:ANCHOR trigger, no tag added"
+    - "EdgeFanInSource already carried @MX:NOTE (internal/graph/fanin_edge.go:29) — unchanged"
+canary_compliance_check.docs_site:
+  decision: "updated — 4 locales"
+  evidence: "ko/en/ja/zh docs-site/content/<locale>/cli-reference/graph.md gained a --debt-fanin selector row + example; the false 'stand-in / no per-tag-kind edges yet' phrasing removed from the --fanin row (ko canonical, section-count parity 1 row + 1 example line per locale)"
+canary_compliance_check.readme:
+  decision: "skipped — README.md / README.ko.md enumerate no graph query flags (grep 0 hits)"
+docs_site_ko_canonical: "ko edited first, en/ja/zh derived"
+verification:
+  build: "go build ./... pass (docs + comment-only delta)"
+gaps:
+  - "sync_commit_sha backfilled in the follow-up chore commit; the placeholder here is superseded by that SHA"
+```
