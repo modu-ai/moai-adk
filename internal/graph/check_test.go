@@ -32,12 +32,28 @@ func gitFix(t *testing.T, dir string, args ...string) string {
 // newCheckFixture creates a git repo with described sources (internal/, cmd/,
 // pkg/), commits them, and returns the root. The mx sidecar and edges
 // artifacts are NOT created — each test builds the state it needs.
+//
+// The fixture must not outlive the test: `git commit` unconditionally spawns
+// `git maintenance run --auto --quiet --detach` (observed via GIT_TRACE on
+// git 2.50), and a detached maintenance process that fires its gc task packs
+// the repo — writing pack-*.pack/.idx/.rev into .git/objects/pack AFTER the
+// test returned, racing t.TempDir's RemoveAll cleanup. That is the t423 CI
+// flake shape: "unlinkat .../.git/objects[/pack]: directory not empty".
+// gc.auto=0 removes the detached writer outright (need_to_gc returns early);
+// gc.autoDetach=false is the second lock — if the condition ever fires under
+// a future git default change, gc runs in the foreground and dies with the
+// test's own lifetime, never past it.
 func newCheckFixture(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
 	gitFix(t, root, "init", "-q")
 	gitFix(t, root, "config", "user.email", "fixture@example.com")
 	gitFix(t, root, "config", "user.name", "Fixture")
+	// Cleanup guarantee (AGENTS.md §4): a detached child cannot be killed by a
+	// cleanup hook (its PID is unknowable), so the guarantee is made by
+	// refusing the spawn itself.
+	gitFix(t, root, "config", "gc.auto", "0")
+	gitFix(t, root, "config", "gc.autoDetach", "false")
 
 	for _, p := range []string{
 		"internal/alpha/alpha.go",
@@ -85,6 +101,20 @@ func writeCodemapsProvenanceBlock(t *testing.T, root string, pv *mx.Provenance) 
 	}
 	if err := os.WriteFile(filepath.Join(dir, "provenance.json"), data, 0o644); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// TestNewCheckFixture_DisablesAutoGC pins the fixture's cleanup-guarantee
+// contract (t423): the two config lines are what keeps a detached maintenance
+// gc from writing .git/objects/pack after the test returns. Removing either
+// line reintroduces the writer — this assert is the mutation RED.
+func TestNewCheckFixture_DisablesAutoGC(t *testing.T) {
+	root := newCheckFixture(t)
+	if got := gitFix(t, root, "config", "gc.auto"); got != "0" {
+		t.Errorf("fixture gc.auto = %q, want 0 — a detached maintenance gc may write .git/objects/pack after the test returns", got)
+	}
+	if got := gitFix(t, root, "config", "gc.autoDetach"); got != "false" {
+		t.Errorf("fixture gc.autoDetach = %q, want false — a condition-triggered gc must run in the foreground, never past the test lifetime", got)
 	}
 }
 

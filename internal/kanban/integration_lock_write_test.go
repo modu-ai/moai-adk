@@ -15,6 +15,7 @@ package kanban
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -75,7 +76,13 @@ func TestWriteIntegrationLock_UniqueStagingPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat record: %v", err)
 	}
-	if perm := info.Mode().Perm(); perm != 0o644 {
+	// The write path's os.Chmod(staging, 0o644) is exercised by the nil-error
+	// checks above on every platform. The mode OBSERVATION is portable only
+	// where unix mode bits exist: NTFS stores no mode bits and reports 0666
+	// regardless (t426 windows census axis 6).
+	if perm := info.Mode().Perm(); runtime.GOOS == "windows" {
+		t.Logf("windows: NTFS reports perm %v; mode bits are not stored there", perm)
+	} else if perm != 0o644 {
 		t.Fatalf("record mode = %v, want 0644 — os.CreateTemp opens at 0600, and a record other sessions cannot read is a guard that fails closed for the wrong reason", perm)
 	}
 }

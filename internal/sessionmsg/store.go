@@ -190,10 +190,27 @@ func (s *Store) unknownAgentError(agentID, role string) error {
 	return &UnknownAgentError{AgentID: agentID, Role: role, Known: known}
 }
 
+// MailboxFullError is the structured error returned when a Send would push
+// the recipient's pending mailbox to config.DefaultSessionMsgMaxPending
+// (card t253): the recipient must poll before more can be delivered.
+type MailboxFullError struct {
+	AgentID string `json:"agentId"`
+	Limit   int    `json:"limit"`
+}
+
+// Error implements error with a compact rendering naming the recipient and
+// the ceiling.
+func (e *MailboxFullError) Error() string {
+	return fmt.Sprintf("sessionmsg: pending mailbox for %q is full (limit %d); the recipient must poll before more messages can be delivered", e.AgentID, e.Limit)
+}
+
 // Send validates and persists a message from one registered agent to another
 // (REQ-CSM-005): both counterparties must be registered, the built message
-// must pass envelope validation (text and part-count ceilings), and the
-// envelope is written atomically to the recipient's
+// must pass envelope validation (text and part-count ceilings), the
+// recipient's pending mailbox must be below the depth ceiling
+// (config.DefaultSessionMsgMaxPending — a full mailbox rejects with
+// MailboxFullError until the recipient polls), and the envelope is written
+// atomically to the recipient's
 // mailbox/<agentId>/pending/<messageId>.json under the recipient's advisory
 // lock. The sender's heartbeat is refreshed after the mailbox scope ends
 // (REQ-CSM-004) — locks are never nested, and the refresh is BEST-EFFORT: by
@@ -260,6 +277,17 @@ func (s *Store) Send(fromAgentID, toAgentID, text string, data json.RawMessage, 
 	}
 
 	err = s.withAgentLock(toAgentID, func() error {
+		// Pending-depth ceiling (card t253): counted inside the recipient's
+		// lock scope so concurrent senders cannot race past it. A send that
+		// lands exactly at the ceiling is rejected; the recipient's next
+		// Poll claims pending envelopes out of pending/ and frees depth.
+		n, err := countPendingFiles(s.pendingDir(toAgentID))
+		if err != nil {
+			return err
+		}
+		if n >= config.DefaultSessionMsgMaxPending {
+			return &MailboxFullError{AgentID: toAgentID, Limit: config.DefaultSessionMsgMaxPending}
+		}
 		return writeJSONAtomic(filepath.Join(s.pendingDir(toAgentID), msgID+".json"), env)
 	})
 	if err != nil {
@@ -428,6 +456,29 @@ func (s *Store) Poll(agentID string, ackIDs []string) (PollResult, error) {
 
 // listEnvelopes loads every *.json envelope in dir (deterministic directory
 // order; a missing directory is an empty mailbox).
+// countPendingFiles counts the envelope files in one directory without
+// parsing them — the pending-depth ceiling check (card t253) runs on every
+// Send, so it must not pay per-file unmarshal cost. A missing directory
+// counts as empty. Expired-but-unswept envelopes are counted too: the lazy
+// sweep that removes them runs inside Poll, which is exactly the path that
+// frees depth again.
+func countPendingFiles(dir string) (int, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("sessionmsg: read %s: %w", dir, err)
+	}
+	n := 0
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".json") {
+			n++
+		}
+	}
+	return n, nil
+}
+
 func listEnvelopes(dir string) ([]Envelope, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {

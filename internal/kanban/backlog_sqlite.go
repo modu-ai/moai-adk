@@ -216,12 +216,23 @@ func backlogSQLitePath(queuePath string) string {
 // backlogDSN builds the driver DSN applying the per-connection pragmas
 // (REQ-TOSQ-003) and immediate write transactions. Values ride url.Values so
 // paths carrying spaces or '?' survive encoding intact.
+//
+// A Windows drive path must enter the URI as a root-absolute slash form —
+// C:\dir\db.db becomes /C:/dir/db.db, rendering as file:///C:/dir/db.db.
+// Handed the raw path, url.URL.String() emits file://C:/… and the driver
+// parses the drive colon as the URI authority, refusing every open
+// ("invalid uri authority"). filepath.ToSlash is a no-op on POSIX, so unix
+// DSNs keep their exact historical bytes.
 func backlogDSN(dbPath string) string {
 	v := url.Values{}
 	v.Add("_pragma", fmt.Sprintf("busy_timeout(%d)", backlogBusyTimeoutMS))
 	v.Add("_pragma", "journal_mode(WAL)")
 	v.Add("_txlock", "immediate")
-	u := url.URL{Scheme: "file", Path: dbPath, RawQuery: v.Encode()}
+	p := filepath.ToSlash(dbPath)
+	if !strings.HasPrefix(p, "/") {
+		p = "/" + p
+	}
+	u := url.URL{Scheme: "file", Path: p, RawQuery: v.Encode()}
 	return u.String()
 }
 
