@@ -1,7 +1,7 @@
 ---
 id: SPEC-BACKLOG-JSON-DISCLOSURE-001
 title: "A backlog.json at the canonical path is not the queue — disclose it, and stop reading it"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-09-02
 updated: 2026-09-02
@@ -25,6 +25,7 @@ related_specs:
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.2.0 | 2026-09-02 | Plan-audit iter-1 repair (`.moai/reports/t395/plan-audit.md`, PASS-WITH-DEBT 0.85); five blocking-class defects closed, wording only, no redesign. **D5**: AC-BJD-015's single regex structurally could not see the fourth defect site — `~/.moai/todo/<project-key>/backlog.json` does not match `state/todo/backlog\.json`, so the template mirror's only BLOCKING completeness check passed while `todo.md:21` stayed unrepaired; the criterion now enumerates its sites and runs two greps. **D2**: AC-BJD-007 delegated a universal negative to human judgement; replaced with two runnable commands and their expected values. **D4**: AC-BJD-010's Given had no construction technique, so it could be satisfied by measuring an already-checkpointed state; the Given is now constructible and self-evidencing, and a construction that fails yields a Gap rather than a pass. **D3**: REQ-BJD-002 / AC-BJD-002 / plan M3 split three ways on verb breadth; unified at the read-surface floor, with the breadth recorded as an open operator decision that widens rather than contradicts. **D1**: AC-BJD-008's rebinding named a single `f=` variable, which the multi-target repair AC-BJD-010 permits would invalidate; rebinding is now directory-based. Optional **D6** (four sites live in three files; REQ-BJD-003 mislabelled `Where` for what is runtime disk state), **D7** (§A.2 inherited an R5 citation whose grep did not cover the site it was cited for — conclusion true, attribution wrong), and **D8** (an existing REQ-TAQ-013 stderr line could make "exactly one" ambiguous) also closed. |
 | 0.1.0 | 2026-09-02 | Initial plan-phase authoring (card t395), written against the card **as re-aimed by the lead** after its original premise was disproven. The dispatching card said "the SQLite migration failed to remove the original `backlog.json`". Measurement (`.moai/reports/t395/premise-verdict.md`) showed the original *was* quarantined correctly on 2026-08-27 and that the present file was **created separately on 2026-08-31**, by a writer the investigation could not identify. The SPEC therefore follows the measured damage (a non-authoritative file that answers every direct read silently, and repository instructions that tell readers to read it) rather than the dispatched cause (migration cleanup). |
 
 ## §A Context
@@ -69,9 +70,31 @@ All three are false after the SQLite cutover, and all three contradict
 whether they read the queue or a snapshot. This is the instruction that produced
 the lane-10 stale read.
 
-All four sites are mirrored under `internal/template/templates/`
-(`.moai/reports/t395/reader-surfaces.md` R5), so distributed users receive the
-same dead monitor and the same false assertion.
+**Four defect sites, three files, and a control that must not be edited.** The
+four sites above live in three files — `workflows/todo.md` carries two of them.
+Two further hits share the string but are **correct** and are the control:
+`.moai/docs/todo-queue-storage.md:20` (the JSON is present only if exported or
+not yet migrated) and `:55` (`export-json` writes the canonical path, which is
+designed behaviour). Neither is edited by this SPEC.
+
+All four defect sites are mirrored under `internal/template/templates/`, so
+distributed users receive the same dead monitor and the same false assertion.
+The attribution for that claim is **two** greps, not one, because the sites do
+not share a path shape:
+
+```
+$ grep -rn 'state/todo/backlog\.json' internal/template/templates/
+  .../.claude/skills/moai/SKILL.md:170 · .../workflows/todo.md:17 · .../moai-kanban-foreman/SKILL.md:95
+  (plus .../.moai/docs/todo-queue-storage.md:55 — the export-json control)
+$ grep -rn 'moai/todo/<project-key>/backlog\.json' internal/template/templates/
+  .../.claude/skills/moai/workflows/todo.md:21
+```
+
+`reader-surfaces.md` R5 originally transcribed the first grep's four hits as
+"four defect sites", which counted the `todo-queue-storage.md:55` control as a
+defect and missed `todo.md:21` entirely. Its conclusion was true and its
+attribution was not; the report now carries that correction, and the two greps
+above are what this SPEC stands on. AC-BJD-015 runs both.
 
 ### A.3 Why disclosure is the only durable defence
 
@@ -106,12 +129,21 @@ does not introduce a second one.
   fact about the queue layout, whether a `backlog.json` exists at the canonical
   queue path **while** the SQLite store is the one answering reads.
 
-- **REQ-BJD-002** (Event-driven) — **When** a `moai todo` invocation runs against
-  a queue layout in which both `backlog.db` and `backlog.json` are present, the
-  CLI shall emit one disclosure line naming the SQLite store as the store that
-  answered and naming the `backlog.json` as not authoritative.
+- **REQ-BJD-002** (Event-driven) — **When** a `moai todo` **read** command runs
+  against a queue layout in which both `backlog.db` and `backlog.json` are
+  present, the CLI shall emit one disclosure line naming the SQLite store as the
+  store that answered and naming the `backlog.json` as not authoritative.
 
-- **REQ-BJD-003** (Capability gate) — **Where** the queue layout has no
+  **Breadth is an open operator decision, and the read surface is the floor.**
+  Whether the disclosure also rides the write verbs was escalated to the operator
+  and is unanswered. The read surface is normative now and implementable now, so
+  nothing is blocked: a later answer **widens** this requirement rather than
+  contradicting it, and a widening changes no criterion below. The floor is
+  chosen rather than the ceiling because the write verbs already take the queue
+  lock and carry a different stdout contract, so extending to them is a decision
+  with consequences the read surface does not have. See `plan.md` §D.1.
+
+- **REQ-BJD-003** (State-driven) — **While** the queue layout has no
   `backlog.json` beside the database, the CLI shall emit no disclosure line.
 
 - **REQ-BJD-004** (Unwanted) — The disclosure shall not be written to stdout, so

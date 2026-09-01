@@ -20,10 +20,22 @@ Then it reports the SQLite store as the answering store **and** reports the
 presence of the non-authoritative `backlog.json` as a distinct field.
 
 **AC-BJD-002** — the disclosure reaches the operator.
-Given the same layout,
-When a `moai todo` read command is invoked against it,
-Then exactly one disclosure line is written naming the SQLite store as the store
-that answered and naming `backlog.json` as not authoritative.
+Given the same layout, **whose `backlog.db` has its archive tables present**,
+When a `moai todo` **read** command is invoked against it,
+Then exactly one **line introduced by this SPEC** is written, naming the SQLite
+store as the store that answered and naming `backlog.json` as not authoritative.
+
+Two clauses in that wording are load-bearing, not hedging:
+
+- **"read"** matches REQ-BJD-002's floor exactly. The wider breadth is an open
+  operator decision (`spec.md` REQ-BJD-002, `plan.md` §D.1); if it is later
+  answered wide, this criterion is **extended**, not rewritten.
+- **"introduced by this SPEC"** and the archive-tables Given together fix what is
+  counted. `internal/cli/todo_history.go:99-107` already writes a REQ-TAQ-013
+  store-identity line to stderr on two branches, so a fixture whose archive
+  tables are missing would produce two lines and make a bare "exactly one"
+  ambiguous. The Given removes the collision; the qualifier removes the ambiguity
+  even if it recurs on a surface not yet identified.
 
 **AC-BJD-003** — stdout is unpolluted (REQ-BJD-004).
 Given the same layout and invocation,
@@ -52,10 +64,28 @@ modified by the inspector's own execution.
 
 **AC-BJD-007** — the mechanism was extended, not duplicated (REQ-BJD-006).
 Given the post-repair tree,
-When `internal/kanban/` is searched for store-identity reporting,
-Then `InspectBacklogArchiveVouch` in `backlog_archive_vouch.go` is the only
-function reporting which backlog store answers reads, and the new fact is a field
-on its existing return type rather than a second inspector.
+When the two commands below are run from the repository root,
+Then both produce their stated result.
+
+```sh
+# 1. Exactly one backlog-store inspector exists, and it is the existing one.
+grep -c 'func Inspect.*Backlog.*\(Store\|Vouch\)' internal/kanban/*.go
+#    → the summed count across all files is 1, and the sole non-zero file is
+#      internal/kanban/backlog_archive_vouch.go
+
+# 2. The store-name constants are defined in that one file only.
+grep -rn 'BacklogStore\(SQLite\|LegacyJSON\|None\) *=' internal/kanban/ | grep -v _test.go
+#    → every hit is in internal/kanban/backlog_archive_vouch.go
+```
+
+And: the new fact is a **field on `BacklogArchiveVouch`**, verified by
+`grep -n 'type BacklogArchiveVouch struct' -A 8 internal/kanban/backlog_archive_vouch.go`
+showing it inside that struct — not a second return type and not a second
+inspector.
+
+A criterion that only said "is searched for store-identity reporting" would have
+delegated a universal negative to human judgement, which the preamble above
+forbids. These commands are what make it binary.
 
 ### D.2 The foreman queue watch (REQ-BJD-007..010)
 
@@ -64,9 +94,16 @@ Given an isolated fixture queue whose authoritative store is `backlog.db` and
 which has **no** `backlog.json` (the migrated-project layout of
 `.moai/reports/t395/r1-repro.md`),
 When the queue-watch script is taken **verbatim from
-`.claude/skills/moai-kanban-foreman/SKILL.md`** (only its queue path rebound to
-the fixture), armed, and the queue is mutated inside the watch window,
+`.claude/skills/moai-kanban-foreman/SKILL.md`**, rebound only so that **the queue
+directory its watch target or targets resolve against** is the fixture's, armed,
+and the queue is mutated inside the watch window,
 Then a change event is observed within the window.
+
+The rebinding is stated against the **directory**, not against a single `f=`
+variable, because AC-BJD-010 explicitly permits a repair whose watch covers more
+than one path (`backlog.db` plus `backlog.db-wal`). A rebinding instruction
+naming one variable would become undefined the moment that repair is chosen, and
+the two criteria would then invalidate each other.
 
 Falsifiability condition, which the check MUST itself demonstrate: reverting the
 script's watch target to `.moai/state/todo/backlog.json` makes this criterion
@@ -84,15 +121,44 @@ was run. This criterion is what closes that gap, and it is asserted here
 deliberately rather than inherited.
 
 **AC-BJD-010** — WAL deferral does not hide a mutation (REQ-BJD-010).
-Given a fixture queue mutated through the normal `moai todo` write path,
-When the mutation is committed but SQLite has not yet checkpointed into the main
-database file,
-Then the watch still emits a change event within the window.
 
-If the repaired watch cannot satisfy this against a WAL-deferred write, the
-run-phase records the measured checkpoint behaviour and the criterion is met by a
-watch target that covers the deferral — not by widening the window until it
-happens to pass.
+The premise is real, not hypothetical: `internal/kanban/backlog_sqlite.go:229`
+sets `_pragma journal_mode(WAL)` on every queue connection.
+
+Given a fixture queue in which a mutation has been **committed and not yet
+checkpointed**, established by a technique the run-phase names, and **evidenced
+before the watch is armed** by both of:
+
+- `backlog.db-wal` exists and its size is greater than zero, **and**
+- `cksum backlog.db` is byte-identical to its value captured before the mutation,
+
+When the watch is armed and the window elapses,
+Then a change event is observed within the window.
+
+**Establishing the Given is part of the criterion, not a preliminary.** If the
+two evidence values above are not both observed, the run has not built the state
+this criterion is about, and the result is recorded as a **Gap** — never as a
+pass. This closes a vacuity path distinct from the window-widening one below:
+`.moai/reports/t395/r1-repro.md` recorded `backlog.db`'s cksum moving
+immediately on a mutation (`1125950968` → `1188524958`), so a naive run that just
+calls `moai todo add` and then watches may measure an already-checkpointed state
+and pass **without the Given ever holding**.
+
+Note on technique, for the run-phase to resolve by measurement rather than
+assumption: `wal_autocheckpoint` is a **per-connection** setting, and no code in
+`internal/kanban` sets it, so setting it from a side connection does not restrain
+the connection `moai todo` opens. Two candidate techniques, neither yet measured
+here: hold an open read snapshot on the database from a second connection for the
+duration (a checkpoint cannot reclaim WAL past a live reader's mark), or perform
+the mutation on a directly-opened connection that sets `wal_autocheckpoint=0` and
+stays open. Whichever is used, the two evidence values above are what decide
+whether it worked — the technique is not credited on its reasoning.
+
+The two ways this criterion may **not** be satisfied: by widening the observation
+window until it happens to pass, or by measuring an already-checkpointed state.
+If the repaired watch genuinely cannot see a WAL-deferred write, the criterion is
+met by a watch target that covers the deferral, and the measured checkpoint
+behaviour is recorded either way.
 
 **AC-BJD-011** — both copies of the script agree.
 Given the post-repair tree,
@@ -104,20 +170,44 @@ Then the two watch targets are identical, and neither is `backlog.json`.
 
 **AC-BJD-012** — the false assertions are gone.
 Given the post-repair tree,
-When `.claude/skills/moai/SKILL.md` and `.claude/skills/moai/workflows/todo.md`
-are searched for `state/todo/backlog.json` and for
-`~/.moai/todo/<project-key>/backlog.json`,
-Then zero matches remain that assert either path is where queue state lives.
+When both commands below are run from the repository root,
+Then each produces its stated result.
 
-A residual mention is permitted only where it is explicitly labelled as an export
-artifact or a legacy pre-migration layout; the check distinguishes the two by
-requiring any surviving occurrence to sit on a line that also names the database
-or the word `export`.
+```sh
+# 1. The primary-checkout assertions (SKILL.md:170, todo.md:17, foreman :95).
+grep -rn 'state/todo/backlog\.json' .claude/skills/
+#    → zero matches
+
+# 2. The home-fallback assertion (todo.md:21). Pattern 1 cannot see this one.
+grep -rn 'moai/todo/<project-key>/backlog\.json' .claude/skills/
+#    → zero matches
+```
+
+Both are required, for the same reason AC-BJD-015 requires two: the four defect
+sites do not share a path shape, and a single pattern silently omits the fourth.
+
+**Stated result, precisely**: zero matches, **or** every surviving match sits on a
+line that also contains `backlog.db` or `export`. The alternative exists because
+a correct repair may legitimately keep a labelled mention — "a `backlog.json`
+here is an export, not the queue" is true and useful — and a bare zero-match rule
+would forbid the very sentence that prevents the next stale read. Mechanically:
+
+```sh
+grep -rn -e 'state/todo/backlog\.json' -e 'moai/todo/<project-key>/backlog\.json' \
+  .claude/skills/ | grep -v -e 'backlog\.db' -e 'export'
+#    → zero matches
+```
+
+What must not survive is the **assertion** that the JSON is where queue state
+lives; a mention that names it as an export or a legacy layout is not that.
 
 **AC-BJD-013** — the corrected assertions name the database.
 Given the post-repair tree,
-When the state-location sentence of each of the three sites in `spec.md` §A.2 is
-read,
+When the state-location sentence of each of the three **R2 assertion** sites is
+read — `.claude/skills/moai/SKILL.md:170`,
+`.claude/skills/moai/workflows/todo.md:17`, `.claude/skills/moai/workflows/todo.md:21`
+(the fourth site, foreman `SKILL.md:95`, is a watch target rather than a
+state-location sentence and is covered by AC-BJD-008 and AC-BJD-011) —
 Then each names `.moai/state/todo/backlog.db` (or the home-fallback form ending
 in `backlog.db`).
 
@@ -131,18 +221,47 @@ Then no corrected sentence contradicts it, and
 ### D.4 The distributed copy (REQ-BJD-014)
 
 **AC-BJD-015** — the mirror is complete.
+
+This is the only BLOCKING completeness check over the template mirror, so it
+**enumerates the sites it must cover** rather than trusting one pattern to find
+them. The four defect sites do not share a path shape: three are
+`state/todo/backlog.json`, and the fourth is the home fallback
+`~/.moai/todo/<project-key>/backlog.json`, which **does not match** the first
+pattern. A single-regex form of this criterion passes while the template's
+`workflows/todo.md:21` stays unrepaired — measured, not supposed.
+
 Given the post-repair tree,
-When `grep -rn 'state/todo/backlog\.json' internal/template/templates/` is run,
-Then the only surviving match is the `export-json` line of
-`internal/template/templates/.moai/docs/todo-queue-storage.md`, which is correct
-and out of scope.
+When both commands below are run from the repository root,
+Then each produces its stated result.
+
+```sh
+# 1. The three same-shape sites are gone; only the export control survives.
+grep -rn 'state/todo/backlog\.json' internal/template/templates/
+#    → exactly one match, and it is
+#      internal/template/templates/.moai/docs/todo-queue-storage.md:55
+#      (the export-json line — correct, out of scope, not edited)
+
+# 2. The home-fallback site is gone. Pattern 1 cannot see this one.
+grep -rn 'moai/todo/<project-key>/backlog\.json' internal/template/templates/
+#    → zero matches
+```
+
+Both commands are required. A run that reports only the first has checked three
+of the four sites and has not established completeness.
 
 **AC-BJD-016** — the binary carries the corrected templates.
 Given the post-repair tree,
 When `make build` has been run and the resulting binary's embedded template FS is
-queried for the four mirrored files,
+queried for the **three** mirrored files —
+`.claude/skills/moai/SKILL.md`, `.claude/skills/moai/workflows/todo.md`,
+`.claude/skills/moai-kanban-foreman/SKILL.md` —
 Then each embedded copy matches its `internal/template/templates/` source
 byte-for-byte.
+
+Three files, four sites: `workflows/todo.md` carries two of the four (`:17`
+primary-checkout, `:21` home-fallback). The unit is named explicitly here because
+a check written against "the four mirrored files" names a set that does not
+exist.
 
 ## §D.5 Severity
 

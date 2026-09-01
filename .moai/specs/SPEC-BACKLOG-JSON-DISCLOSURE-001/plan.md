@@ -26,6 +26,15 @@ Worktree `.claude/worktrees/t395`, branch `WT-stale-backlog-json`, based on
   mutation, but SQLite WAL means that is not guaranteed in general. AC-BJD-010
   is the criterion that decides whether the naive cksum-on-`backlog.db` repair is
   sufficient or whether the watch target must cover the WAL.
+- **The deferred state has to be built on purpose, and building it is not
+  obvious.** `wal_autocheckpoint` is per-connection and unset anywhere in
+  `internal/kanban`, so a side connection cannot restrain the one `moai todo`
+  opens; and a short-lived `moai todo` process may fold the WAL back on exit,
+  which would explain why the control arm saw the cksum move at all. Neither the
+  autocheckpoint default nor any checkpoint-on-close behaviour has been measured
+  in this tree — both are candidate explanations the run-phase settles. AC-BJD-010
+  therefore requires the Given be **evidenced**, not assumed, and treats a failure
+  to build it as a Gap.
 
 ## §C Pre-flight
 
@@ -49,6 +58,36 @@ Worktree `.claude/worktrees/t395`, branch `WT-stale-backlog-json`, based on
   the source of truth for distributed files; `make build` re-embeds.
 - **No engine, migration, schema, or downgrade-route change** (`spec.md` §C).
 - Verification is package-scoped locally; the full-suite verdict is CI's.
+
+### §D.1 Open operator decision — disclosure breadth
+
+**Status: escalated to the operator, unanswered. Not a blocker.**
+
+Whether the disclosure rides only the `moai todo` read verbs or every verb is the
+operator's call. The lead escalated it; no answer has been received, and the
+run-phase must not pick it.
+
+- **The floor is decided and normative.** REQ-BJD-002 binds the read surface.
+  AC-BJD-002 verifies exactly that surface. M3 implements exactly that surface.
+  The three now say the same thing at the same breadth — before this iteration
+  they said three different things, which is what made the deferral unsafe.
+- **A later answer widens; it never contradicts.** Answering "every verb" extends
+  REQ-BJD-002 and extends AC-BJD-002's invocation set. No criterion is rewritten
+  and no implemented behaviour is undone.
+- **Why the floor rather than the ceiling.** Write verbs already hold the queue
+  lock and carry a different stdout contract, so extending to them is a decision
+  with consequences the read surface does not have. Building the ceiling first
+  and trimming later would be the reversible-cost mistake.
+
+No clarification-gate marker is placed on this section, deliberately: that marker
+means the run cannot proceed without an answer, and this run can — completely —
+at the floor. If the lead would rather this hard-gate Implementation Kickoff
+Approval instead of widening afterwards, the marker belongs here, and that is a
+one-line change.
+
+(The marker's literal bracketed token is deliberately not written anywhere in
+this file: the plan-auditor's clarification-gate check greps for that token, so
+writing it even to say it is absent would trip the gate it describes.)
 
 ## §E Self-verification
 
@@ -90,19 +129,25 @@ AC-BJD-010 before committing to a target.
 - Repair `.claude/skills/moai-kanban-foreman/SKILL.md:95` to watch the
   authoritative store.
 - Run Case B (AC-BJD-009) — the gap `r1-repro.md` recorded and did not close.
-- Measure WAL behaviour (AC-BJD-010). If a committed-but-uncheckpointed write is
+- Measure WAL behaviour (AC-BJD-010). **Build the deferred state first and prove
+  it holds** — `backlog.db-wal` non-empty and `backlog.db` cksum unmoved — before
+  arming the watch; a run that skips this measures an already-checkpointed state
+  and passes having tested nothing. If a committed-but-uncheckpointed write is
   invisible to the chosen target, widen the target to cover the deferral. Do not
-  widen the observation window to make a marginal case pass.
+  widen the observation window, and do not report a pass whose Given never held.
 
 Criteria: AC-BJD-008 (BLOCKING), AC-BJD-009, AC-BJD-010.
 
 ### M3 — the disclosure surface
 
-- Emit the disclosure from the `moai todo` command surface, on stderr, following
-  the shape `internal/cli/todo_history.go:99` already established. Which verbs
-  carry it is a scoping decision to state explicitly in the run-phase report; the
-  criteria are written against "a `moai todo` read command", so at minimum the
-  read surface an operator reaches for must carry it.
+- Emit the disclosure from the `moai todo` **read** surface, on stderr, following
+  the shape `internal/cli/todo_history.go:99` already established. The read
+  surface is the decided scope (REQ-BJD-002); the breadth beyond it is §D.1's
+  open operator decision and is **not** the run-phase's to pick. Report which
+  read verbs carry it, and stop there.
+- Keep the fixture's `backlog.db` archive tables present, so the existing
+  REQ-TAQ-013 line at `todo_history.go:99-107` cannot co-fire and make
+  AC-BJD-002's count ambiguous.
 - Assert stdout parity against a no-JSON layout (AC-BJD-003) rather than merely
   asserting the line lands on stderr.
 - Assert the file is untouched by sha256 and mtime (AC-BJD-005).
@@ -124,10 +169,13 @@ Criteria: AC-BJD-012 (BLOCKING), AC-BJD-013, AC-BJD-014.
 
 ### M5 — the template mirror *(mechanical; lowest reversibility cost)*
 
-- Mirror the M2 and M4 edits into the four `internal/template/templates/` copies.
+- Mirror the M2 and M4 edits into the **three** `internal/template/templates/`
+  copies carrying the four sites (`workflows/todo.md` holds two of them).
 - `make build`.
-- Assert the mirror is complete by the grep of AC-BJD-015 and the embedded-parity
-  check of AC-BJD-016.
+- Assert the mirror is complete with **both** greps of AC-BJD-015 and the
+  embedded-parity check of AC-BJD-016. The second grep is not optional: the
+  home-fallback site's path shape does not match the first pattern, so a
+  single-grep run leaves `todo.md:21` unrepaired and still reports complete.
 
 Criteria: AC-BJD-011, AC-BJD-015 (BLOCKING), AC-BJD-016.
 
@@ -144,6 +192,21 @@ Criteria: AC-BJD-011, AC-BJD-015 (BLOCKING), AC-BJD-016.
   it demonstrably fails on the shipped block.
 - **Widening the window to pass AC-BJD-010.** A timing-sensitive pass is an
   unobserved claim about WAL behaviour.
+- **Passing AC-BJD-010 without its Given ever holding.** The more likely vacuity
+  path, and distinct from the one above: `moai todo add` followed by a watch may
+  measure an already-checkpointed state, so the criterion goes green having tested
+  nothing about deferral. The two evidence values (`backlog.db-wal` non-empty,
+  `backlog.db` cksum unmoved) are what establish the Given; without both observed
+  the result is a Gap.
+- **Checking the mirror with one grep.** The four sites do not share a path
+  shape. A single `state/todo/backlog\.json` pattern cannot see the home-fallback
+  site, so it reports completeness over three of four. A completeness check blind
+  to an item in its own scope is the defect, not the wording around it.
+- **Picking the disclosure breadth in run-phase.** §D.1 is the operator's, not
+  the implementer's. Build the floor; report it; do not widen unasked.
+- **Editing `.moai/docs/todo-queue-storage.md:20` or `:55`.** Both are correct
+  and are the control. They share a string with the defect sites, which is
+  exactly why a careless sweep reaches them.
 - **Editing `.claude/` without the template mirror**, or the mirror without
   `make build`. Both leave the distributed user with the defect this SPEC exists
   to remove.
