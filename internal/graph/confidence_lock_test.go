@@ -56,10 +56,11 @@ func TestEdgesJSONLDeterministic(t *testing.T) {
 }
 
 // AC-GEC-006 — the committed golden (testdata/edges-doc-golden.jsonl,
-// generated on base 5593e8cff per plan.md §G) pins every doc-kind and
-// code-import line byte-for-byte, with no resolution/confidence keys. The
-// golden is NEVER hand-edited; regenerate only when goldenFixture itself
-// changes, naming the new base SHA.
+// originally generated on base 5593e8cff, extended with mx-* lines on base
+// 63435427c per plan.md §G) pins every doc-kind and code-import line
+// byte-for-byte, with no resolution/confidence keys. The golden is NEVER
+// hand-edited; regenerate only when goldenFixture itself changes, naming
+// the new base SHA.
 func TestDocEdgesByteIdentical(t *testing.T) {
 	requireCodeExtraction(t)
 	golden, err := os.ReadFile(filepath.Join("testdata", "edges-doc-golden.jsonl"))

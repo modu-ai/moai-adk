@@ -225,11 +225,7 @@ func sessionState(lastHeartbeat time.Time, pid int, now time.Time) string {
 }
 
 func processAlive(pid int) bool {
-	p, err := os.FindProcess(pid)
-	if err != nil {
-		return false
-	}
-	return p.Signal(syscallZero) == nil
+	return session.IsProcessAlive(pid)
 }
 
 // roleOf 는 칸반 기록에서 역할을 읽는다. 기록이 없으면 빈 문자열을 돌려주고,

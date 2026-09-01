@@ -60,8 +60,11 @@ const PhaseNone = "(none)"
 const SpecIDNone = "(none)"
 
 // DefaultStaleMinutes is the default heartbeat threshold for PurgeStale.
-// Sessions whose last_heartbeat is older than this are considered zombie
-// and removed on the next PurgeStale call.
+// Entries whose last_heartbeat is older than this become purge candidates;
+// an entry is actually removed only when its recorded session process is
+// positively gone (see staleEntryDead) — heartbeat age alone is not
+// removal, because nothing sends heartbeats automatically and a live
+// session's heartbeat freezes at registration.
 const DefaultStaleMinutes = 30
 
 // LockTimeout is the default maximum wait for advisory lock acquisition.
@@ -278,7 +281,13 @@ func (r *Registry) Query(optSpecID string) ([]Entry, error) {
 }
 
 // PurgeStale removes entries whose LastHeartbeat is older than
-// thresholdMinutes. Returns the count of removed entries.
+// thresholdMinutes AND whose recorded session process is positively gone.
+// Live sessions survive the heartbeat floor: no component sends heartbeats
+// automatically, so a long-lived session's LastHeartbeat freezes at
+// registration and heartbeat age alone would purge every session still
+// running past 30 minutes — dropping it from `moai session list --json`
+// exactly when another session's pre-spawn sync check needs the entry.
+// Returns the count of removed entries.
 //
 // REQ-COORD-007.
 func PurgeStale(thresholdMinutes int) (int, error) {
@@ -286,6 +295,9 @@ func PurgeStale(thresholdMinutes int) (int, error) {
 }
 
 // Purge is the method form.
+//
+// @MX:ANCHOR: [AUTO] registry purge — liveness-aware zombie removal consumed by SessionStart protocol + CLI purge verb
+// @MX:REASON: fan_in >= 3 (internal/hook/session_start.go runMultiSessionProtocol, internal/cli/session.go purge verb, registry tests). Keeps live sessions past the heartbeat floor; changing removal semantics silently breaks the pre-spawn race check.
 func (r *Registry) Purge(thresholdMinutes int) (int, error) {
 	if thresholdMinutes <= 0 {
 		thresholdMinutes = DefaultStaleMinutes
@@ -295,7 +307,7 @@ func (r *Registry) Purge(thresholdMinutes int) (int, error) {
 	err := r.withLock(func(entries []Entry) ([]Entry, error) {
 		filtered := entries[:0]
 		for _, e := range entries {
-			if e.LastHeartbeat.Before(cutoff) {
+			if e.LastHeartbeat.Before(cutoff) && staleEntryDead(e.PID) {
 				purged++
 				continue
 			}

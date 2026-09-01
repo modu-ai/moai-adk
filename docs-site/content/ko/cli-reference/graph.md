@@ -36,7 +36,8 @@ $ moai graph build
 |--------|------|-----|
 | `--callers <노드>` | 이 패키지/SPEC을 직접 의존하는 대상은? | 역방향 이웃 — 임포트하는 패키지, 의존하는 SPEC, `@MX:SPEC` 태그가 붙은 코드 파일 |
 | `--blast <노드>` | 여기서 고치면 어디까지 흔들리는가? | 역방향 에지를 넓게 훑은(BFS) 영향 반경. `@MX:SPEC` 에지는 양방향으로 전파돼 코드 파일이 구현하는 SPEC까지 닿습니다 |
-| `--fanin [--limit N]` | 가장 많이 쓰이는 패키지는? | 임포트 팬인 순위 — @MX:DEBT 팬인 질의의 대용품(아직 태그 종류별 에지는 없음) |
+| `--fanin [--limit N]` | 가장 많이 쓰이는 패키지는? | 임포트 팬인 순위 |
+| `--debt-fanin [--limit N]` | `@MX:DEBT`가 붙은 대상은 얼마나 많이 호출되는가? | `@MX:DEBT` 태그 대상을 근거가 확인된 호출 팬인 기준 내림차순으로 나열 — 파일 스코프 DEBT는 팬인 0에 `(self)` 표시로 함께 나옵니다 |
 | `--specs-no-code` | 코드와 이어지지 않은 SPEC은? | edges.jsonl에 `@MX:SPEC` 에지가 0개인 SPEC 목록 |
 | `--milestones-no-card` | 카드 없이 지나간 마일스톤은? | 카드 교차검사 행이 카드를 주장하지 않거나, 주장한 카드가 살아 있는 백로그 큐에 없는 마일스톤 |
 
@@ -44,6 +45,7 @@ $ moai graph build
 $ moai graph query --callers SPEC-FOO-001
 $ moai graph query --blast internal/config
 $ moai graph query --fanin --limit 20
+$ moai graph query --debt-fanin
 $ moai graph query --specs-no-code
 $ moai graph query --milestones-no-card
 ```
