@@ -217,8 +217,13 @@ func InitDependencies() {
 	// Initialize ast-grep analyzer (ScanFile returns empty results if sg CLI is absent)
 	astAnalyzer := astgrep.NewAnalyzer(cwd)
 
-	// Register default hook handlers
-	deps.HookRegistry.Register(hook.NewSessionStartHandler(deps.Config))
+	// Register default hook handlers. SPEC-GRAPH-REPORT-001 REQ-GR-010: the
+	// SessionStart deferred step refreshes a stale edges layer through the
+	// DeferredEdgesRefresh DI seam — internal/hook must never import
+	// internal/cli (compile-time cycle), so the refresh arrives here as a
+	// thin wrapper around refreshEdgesArtifact.
+	deps.HookRegistry.Register(hook.NewSessionStartHandler(deps.Config,
+		hook.WithDeferredEdgesRefresh(deferredEdgesRefresh)))
 	// SessionEnd handler: use observability-aware variant when configured.
 	deps.HookRegistry.Register(buildSessionEndHandler(cwd))
 
