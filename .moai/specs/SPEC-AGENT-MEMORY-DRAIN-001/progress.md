@@ -48,3 +48,13 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+- Recorded: 2026-09-02, lane session (card t223; lead dispatch + operator kickoff decisions relayed 2026-09-02).
+- Implementation Kickoff Approval: GRANTED by the operator (2026-09-02, relayed via the lead) — run-phase entry approved, progression mode **AUTONOMOUS** (run→sync continuous; no inter-milestone approval pauses). Operator decisions recorded: (1) design (c) write-time mirror + backfill ADOPTED; (2) `phase` corrected to `"v3.1.4"` (card joins the v3.1.4 close, PR #1685) — applied at `f14f0c569`; (3) M3 docs surface = moai-memory.md WITH the Template-First mirror duty (template-source edit + `make build`); (4) backfill auto-runs immediately after M1 lands (the operator's literal "M1 착지 후" — M1 delivers `moai memory drain`, plan M1 step 4 already schedules the backfill with `--json` evidence archived).
+- Plan Audit Gate: SKIP taken — final verdict PASS 1.00 (iter-2 delta re-check at `f671d6f6b`; threshold Tier M 0.80). Artifact hash: plan artifacts changed AFTER iter-1 (the fix commits `f671d6f6b` + `f14f0c569`) but the iter-2 delta re-check ran ON the fixed artifacts and passed — the most-recent verdict (PASS 1.00) is on the current hash, so the three skip conditions hold.
+- Input parameters: tier M · scope ~2 Go packages (internal/cli new `memory drain` subcommand + internal/hook PostToolUse mirror) + docs (moai-memory.md + template mirror) · domains 2 (Go source, markdown docs+template) · language mix Go+markdown · concurrency benefit LOW (sequential dependency: M1 reconciliation core → M2 mirror shares the path predicate → M3 docs) · agent-teams prereqs: not requested.
+- Mode evaluation: `direct` — not selected (multi-file Go implementation with AC discipline); `serial` — SELECTED; `fanout` — not selected (2 domains, coding-heavy, M2 reuses M1's shared predicate — sequential dependency, write-capable parallel fan-out not sanctioned); `sweep` — not selected (authored code, not a mechanical-uniform transform).
+- Decision: serial
+- Justification: coding-heavy Go work with in-milestone sequential dependencies (M2's mirror anchor is M1's shared path-predicate constant; M3 documents both). Per Anthropic's coding-task caveat, one writer via a single sequential manager-develop delegation covering M1→M3. AUTONOMOUS progression honored by continuous in-session execution; the goal engine is deliberately NOT armed (worktree goal-keying friction on record) — progression is managed by the lane session across the run→sync boundary.
