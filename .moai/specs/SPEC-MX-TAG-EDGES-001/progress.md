@@ -216,7 +216,7 @@ gaps:
 
 ```yaml
 sync_complete_at: 2026-09-02
-sync_commit_sha: "pending-backfill-t412-sync"
+sync_commit_sha: "f800c8519"
 sync_status: "complete"
 changelog_entry_position: "[Unreleased] §Added — first entry"
 b12_self_test_a: "pass — grep -c 'SPEC-MX-TAG-EDGES-001' CHANGELOG.md = 0 pre-emission"
