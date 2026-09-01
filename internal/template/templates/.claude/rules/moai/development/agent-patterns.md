@@ -266,7 +266,7 @@ Agent(subagent_type: "Explore", prompt: "<investigation task description>")
 
 ## Orchestrator 4-Loop Mechanism → Catalog Mapping
 
-The MoAI orchestrator operates a 4-Loop mechanism (plan → decompose → direct → collect) that maps each loop step to specific 12-agent catalog roles. This mapping is the architectural rationale for the catalog composition (per SPEC-AGENT-ARCH-V2-001 SSOT §03/§06 M4).
+The MoAI orchestrator operates a 4-Loop mechanism (plan → decompose → direct → collect) that maps each loop step to specific 12-agent catalog roles. This mapping is the architectural rationale for the catalog composition (per the v2 architecture SSOT).
 
 | Loop step | Korean | Catalog roles invoked | Example |
 |-----------|--------|----------------------|---------|
@@ -281,7 +281,7 @@ The orchestrator owns all 4 loops — it is the sole L1 coordinator. No retained
 
 ## 4 Rejected Alternatives (per SSOT §06 M4)
 
-The v2 agent architecture (SPEC-AGENT-ARCH-V2-001) explicitly rejected 4 alternative design approaches. These are recorded for architectural traceability — future revision SPECs MUST understand why each was rejected before re-proposing it.
+The v2 agent architecture explicitly rejected 4 alternative design approaches. These are recorded for architectural traceability — future revision SPECs MUST understand why each was rejected before re-proposing it.
 
 ### 1. 전면 동적화 (Full Dynamization)
 
