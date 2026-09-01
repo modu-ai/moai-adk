@@ -184,6 +184,7 @@ Folding the convergence result into the review verdict:
 
 - `overall_verdict: fail` (a required backend failed, or the required gate split) → the review verdict FAILs, naming the failing required backend(s) from `per_backend_verdicts`.
 - `disagreement_flag: true` with overall pass → an advisory residual-risk row; the disagreement never blocks on its own.
+- `disagreement_flag: null` → undetermined, not agreement: `participant_count` reports fewer than 2 comparable verdicts and no divergence was observed (a single participant's observed divergence keeps the flag `true`). Standard pass, no disagreement row.
 - Surface `residual_risk_note` verbatim; name any `fail_open_backends` in the report.
 
 Fail-open fallback: unavailable, unauthenticated, or erroring backends return `inconclusive` and never block — when ALL non-Claude backends are inconclusive, convergence falls open to the in-session Claude verdict, which IS the pre-existing single-model path. When the `moai` MCP server or the `audit_multi` tool itself is absent, skip this phase and label the report single-model. This fail-open contract adds no hard dependency.

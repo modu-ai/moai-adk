@@ -195,4 +195,22 @@ coverage_note: "package root 80.1% (pre-existing level; SPEC delta bounded ≤ +
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-02
+sync_commit_sha: "pending-backfill-sync"   # a commit cannot cite its own hash; backfilled in one follow-up commit (canonical D3 exemption)
+sync_status: complete
+b12_self_test_a: pre_emission_grep_count_0 (grep -c 'SPEC-AUDIT-PARTICIPANT-COUNT-001' CHANGELOG.md → 0 before the edit; exit 1 = no match)
+b12_self_test_b: ac_count_match (acceptance.md distinct ACs = 8 = AC-APC-001..008; entry cites 8/8; no [RETIRED]/[REF] tokens → no ambiguity → count emitted)
+b12_self_test_c: file_paths_verified (spec.md link target; internal/cli/mcp_convergence.go; docs-site ×7; skills local ×2 + template mirrors ×2 — all ls-verified in this run)
+changelog_entry_position: "[Unreleased] → Added, first entry (above SPEC-AUDIT-BUILD-IDENTITY-001)"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (single sync commit; updated: 2026-09-02 already current; the schema's implemented-state rides the sync commit — run phase had landed draft → in-progress)"
+  plan_md: none (no status field — ArtifactStatusFieldForbidden, card t357)
+  acceptance_md: none (no status field)
+  progress_md: none (no status field)
+canary_compliance_check:
+  mx_tag_pass: pass — no tag changes required; ParticipantCount/DisagreementFlag carry the run-phase comments unchanged; markdown/docs surfaces carry no MX obligations
+  docs_scope_decision: updated — plan §G occurrence table followed: 11 surfaces (docs-site multi-model-audit ×4 locales, docs-site autonomous-loops ×3 locales, moai-ref-cross-model-audit SKILL.md + workflows/review.md + their 2 template mirrors); ko/autonomous-loops.md excluded as a pre-existing 4-locale parity gap (plan §G note — not silently repaired under this SPEC)
+  template_first: applied — local+template mirrors byte-identical post-edit (diff rc=0); make build exit 0; SPEC-ID grep over internal/template/templates/ = 0 hits (SV2)
+  push: not-performed (integration is the lead's develop merge window; lanes do not push card branches)
+```

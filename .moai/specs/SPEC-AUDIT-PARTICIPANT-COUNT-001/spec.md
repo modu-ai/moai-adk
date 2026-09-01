@@ -2,7 +2,7 @@
 id: SPEC-AUDIT-PARTICIPANT-COUNT-001
 title: "Convergence participant count — distinguish 'the participants agreed' from 'there were not enough participants to disagree'"
 version: "0.2.1"
-status: in-progress
+status: completed
 created: 2026-09-01
 updated: 2026-09-02
 author: manager-spec
