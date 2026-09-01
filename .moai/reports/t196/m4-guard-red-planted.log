@@ -1,0 +1,32 @@
+### 0. census BEFORE planting
+0
+
+### 1. census AFTER planting one line into internal/template/templates/.claude/skills/moai/SKILL.md
+1
+
+### 2. guard run against the degraded subject
+=== CONT  TestSkillTreeHasNoClaudeSkillDirToken
+    skill_dir_token_guard_test.go:87: census: 1 line(s) carrying CLAUDE_SKILL_DIR across 255 file(s) walked — expected 0.
+        Replace ${CLAUDE_SKILL_DIR}/X with the project-root-relative form .claude/skills/<skill-name>/X.
+          .claude/skills/moai/SKILL.md:393: For detailed orchestration: Read ${CLAUDE_SKILL_DIR}/workflows/plan.md
+--- FAIL: TestSkillTreeHasNoClaudeSkillDirToken (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	0.422s
+FAIL
+guard-exit=1
+
+### 3. census AFTER reverting the plant
+0
+
+### 4. guard run against the restored subject
+=== PAUSE TestSkillTreeHasNoClaudeSkillDirToken
+=== CONT  TestSkillTreeHasNoClaudeSkillDirToken
+    skill_dir_token_guard_test.go:94: census: 0 lines carrying CLAUDE_SKILL_DIR across 255 files walked under .claude/skills
+--- PASS: TestSkillTreeHasNoClaudeSkillDirToken (0.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/template	(cached)
+guard-exit=0
+
+### 5. target restored byte-for-byte (sha256 before planting vs after revert)
+before=b2f9178fce43d9ca04c0d0811b943e9534300346404b505bc234175afa74f87c
+after =b2f9178fce43d9ca04c0d0811b943e9534300346404b505bc234175afa74f87c

@@ -1,0 +1,237 @@
+=== t377 run-phase evidence — SPEC-GITIGNORE-ROOT-GUARD-001 ===
+worktree: .claude/worktrees/t377
+branch: WT-gitignore-parity
+HEAD at start: 9328a5242
+
+### PRE-1 — zero-selection baseline (guard does not exist yet)
+$ go test ./internal/template/ -run '^TestGitignoreDeclaredRulesOnBothSurfaces$' -count=1 -v
+testing: warning: no tests to run
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/template	0.436s [no tests to run]
+exit=0
+
+### PRE-2 — AC-GRG-007(a) RED-now (mink rule absent from root)
+$ git check-ignore -v .mink/auth/token
+exit=1
+$ grep -c mink .gitignore
+0
+
+### AC-GRG-001 — guard passes AND is actually selected
+$ go test ./internal/template/ -run '^TestGitignoreDeclaredRulesOnBothSurfaces$' -count=1 -v
+=== RUN   TestGitignoreDeclaredRulesOnBothSurfaces
+--- PASS: TestGitignoreDeclaredRulesOnBothSurfaces (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/template	0.419s
+exit=0
+
+### AC-GRG-002 — mutation, ROOT surface
+$ sed -i '' '254d' .gitignore   # remove '.moai/project/graph/' from root only
+$ go test ./internal/template/ -run '^TestGitignoreDeclaredRulesOnBothSurfaces$' -count=1 -v
+=== RUN   TestGitignoreDeclaredRulesOnBothSurfaces
+    embed_gitignore_generated_test.go:127: surface "root" (/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t377/.gitignore) is missing generated-artifact rule ".moai/project/graph/" — a `git add -A` on that surface would commit the artifact
+--- FAIL: TestGitignoreDeclaredRulesOnBothSurfaces (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	0.246s
+FAIL
+exit=1
+$ # restore: line reinserted
+$ git diff --stat .gitignore  # only the run-phase mink addition should remain
+ .gitignore | 5 +++++
+ 1 file changed, 5 insertions(+)
+$ git diff .gitignore
+diff --git a/.gitignore b/.gitignore
+index 94479284b..abbfdc43d 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -176,6 +176,11 @@ secret-*.*
+ .moai/**/credentials.yaml
+ .moai/**/*.credentials
+ 
++# MINK agent credentials (plaintext API keys). Ignored anywhere in the tree so
++# per-project auth dirs are never committed. The template already carries this
++# rule; this line brings the repository's own tree level with it.
++**/.mink/auth/
++
+ # ===========================================
+ # Claude Code Configuration
+ # ===========================================
+
+### AC-GRG-003 — mutation, TEMPLATE surface (+ make build re-embed)
+$ sed -i '' '248d' internal/template/templates/.gitignore
+$ make build
+ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	0.507s
+go run github.com/a-h/templ/cmd/templ generate -path ./internal/web
+(✓) Post-generation event received, processing... [ updates=0 needsRestart=true needsBrowserReload=true ]
+(✓) Complete [ updates=0 duration=67.88725ms ]
+Computing hashes for all 45 entries...
+  moai: 1eabaa9bf8d2834f8cc45f3dcde34952edafa357c7ce87ae2fe492d01cbf3c48
+  moai-foundation-cc: 3660b0f1cad233c282d74a22a4e32932ed101da3cdd54cea0c87fb717bff52d3
+  moai-foundation-core: f9abe12668904cc90c1cb424a00fa84e9db927ea5396ab852bbb10bf8a02c7fb
+  moai-foundation-quality: 10af2b7a9ec94a27913e562c4824357d00044a0fc1e736b620b1d1a75b8c17d1
+  moai-foundation-thinking: c11cee93d9cb943207c19fffb4a23eb82ad9762d4fc923801c808970bba39ef8
+  moai-harness-learner: fd82c49101e9a85057c765c0a3e81a7c643dbd8f039e1f5d860b20af988da1c0
+  moai-kanban-foreman: 563ea4326931003542bf967ee617d0b9224ec9188e658b38403f620054181fea
+  moai-meta-harness: 5886878a3f0a6d6282caa2912d201f785e3c70a175012731f05f194325d60acd
+  moai-ref-git-workflow: 36f24400e70b6fdbcbe1960e93cd3cfb28103468a09a719dae3fb1f1968584f9
+  moai-ref-testing-pyramid: 4e91eee5176af271e253392b2f5d427c328f15be2d417b4acee09990bb105e75
+  moai-workflow-ddd: 321e1ab6d8732377c7c58aeb591020faf07a93f99ad0bba99b5854ab20d19c3c
+  moai-workflow-docs-claim-check: 662166edc5f5d59e961e407214b1c87f1e67267405410da3660c920173d4300b
+  moai-workflow-loop: 3196f439da2cf2fdb9d31436abd01e3858cf2fbb76d45ceb4ab856ad7fb8748a
+  moai-workflow-project: 9e4f7a52b977e2a4014c321931aacdd8ebf04559b9e2b8ba26aa4ee9abb2dd16
+  moai-workflow-spec: 64b1537614d572d04cc13ca33969613df99fe24f83d940cb52e838627ba38e36
+  moai-workflow-tdd: 51cab869c223c80b91ff8bdf8f3f32971b091e9bc3b1173290628eba8d75de25
+  moai-workflow-testing: 782f65ab2926e3f4b8ebb3eff96e57bb18df9824d8f63813ae85f1884a447274
+  moai-workflow-worktree: 6d1f41f301538bad3bba547cef19e84d609991c15936e1f06c0ea769fd7935ed
+  moai-domain-html-report: 6f476ef31c000cb8468944fcdcb6e17da4454131b00810de7edd7b685f49b69d
+  moai-domain-svg-infographic: 1519337a5fa9f2b17add17fdf02340fadcc9d6918a143d287d5e5a127fc2e980
+  moai-domain-design-dna: b35f9264feec4c127b803acb29d150e82ab3affe694d8a65807316f1bd551a96
+  sync-auditor: f1b4487f7351e0da165545a152c4122b15ff5e1426772171b8fa70df196c55d0
+  manager-develop: ad390185637655a3b7e68ff5c0fd3c9258559a6bfc01aa72d3243838de94d2f0
+  manager-docs: 3606cc18c7ed3d13df290913fab2ff387034dbb0329c669e1ad8e538cb4b0954
+  manager-git: 56eb72557ec24c8907c8b260f1d829c2e0300c5f6eea352f898196db6a00e132
+  manager-lead: 8bbbc6576e083cd09dd98835f468778b9344c0dcf84c5fe1fc1ee93a6168bdca
+  manager-spec: 96b4099da6b52fc895136d27ed7647ff80e0824a81002e18d5326523f0d7edd9
+  plan-auditor: 81c0c1934924b44cfe8329a15c72252c03b95cbd5d7102db9f8fb9ea404c50ac
+  super-advisor: e47c17c3753b4bc85243b462c491dfef72b2bdf9918f947fdc5fcc5bd35ada1e
+  manager-design: fb7af236dc3ed0e95bd439f888c30e29318493dcd25e3dd5d12ac58db12a2a6a
+  e2e-tester: 910a13c9857493611eb0ee6f434bc2b5abd40c49bc25df5d48bb2ab88bea87d8
+  moai-domain-humanize: c7ffa13aaa66c78597286353789061b0b5c361c5b26d9b3e38707d945e9ce7f0
+  moai-ref-owasp-checklist: 9f3051bfda1638df83842e00228b7f81569400bc73c9d6268c3722d56f25474f
+  moai-ref-llm-security: 0d8ec550434e60de3cb44228e4a2d5370ab4556c3d9590ab2c4827f4a1379ccd
+  moai-ref-cross-model-audit: 2df2582dbd6d43cc717f3c011b5065de4552c1383cb276c413aaff89cc9afef3
+  moai-ref-supply-chain: fd443095ecc0600b8e8d7c91562fd4c3e68c12c7cd269b03ba91aabe4cd80f16
+  moai-ref-secops: 0853012f7d1a07ae2b71212ae53e427700bf07fdfd3ce29d8b58441ebc5a4a28
+  moai-domain-frontend: 2e040783c5cce34e08d4fd0aa87c3e025400172782b99fff1ec8b55b6e2bb2d4
+  moai-ref-react-patterns: f603a0f75408a3355ffb65d520b78e07c81f731f9f1de7d3a93e490bc7750e11
+  moai-ref-ui-polish: 874652c5e256c7d5756a19ec8e141df095b93521a2af64be519319ffa7aa2094
+  moai-ref-seo: 39d3ad2b348dc0748c7baa5912dba34865d3321b7c5a4b990cc047cb5a131065
+  moai-domain-backend: fdff72ab657265d07b3743e6f99bc783121d2617f9bc96f8f7c153402565ee05
+  moai-domain-database: 52c7b8a4ae91c8f454eca9ba2b5bc52e121d160885c838a9c74401cd0027ba02
+  moai-ref-api-patterns: 35a7941945589678e44cee880088e68942a75ef2ed04e5e3a2f18bc6d06a9971
+  builder-harness: 37ff28085c45bb19b86946ca32a2416bf0af7a040f062cfa744fa98ed9a92b24
+catalog.yaml updated successfully (12899 bytes)
+go build -ldflags "-s -w -X github.com/modu-ai/moai-adk/pkg/version.Version=v3.1.2 -X github.com/modu-ai/moai-adk/pkg/version.Commit=9328a5242 -X github.com/modu-ai/moai-adk/pkg/version.Date=2026-08-31T10:42:07Z -X github.com/modu-ai/moai-adk/pkg/version.BuildID=v3.1.2-954-g9328a5242-dirty" -o bin/moai ./cmd/moai
+exit=0
+$ go test ./internal/template/ -run '^TestGitignoreDeclaredRulesOnBothSurfaces$' -count=1 -v
+=== RUN   TestGitignoreDeclaredRulesOnBothSurfaces
+    embed_gitignore_generated_test.go:127: surface "embedded" (embedded template FS .gitignore) is missing generated-artifact rule ".moai/project/graph/" — a `git add -A` on that surface would commit the artifact
+--- FAIL: TestGitignoreDeclaredRulesOnBothSurfaces (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	0.419s
+FAIL
+exit=1
+$ # restore template line, then: make build
+ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	0.407s
+go run github.com/a-h/templ/cmd/templ generate -path ./internal/web
+(✓) Post-generation event received, processing... [ updates=0 needsRestart=true needsBrowserReload=true ]
+(✓) Complete [ updates=0 duration=66.98425ms ]
+Computing hashes for all 45 entries...
+  moai: 1eabaa9bf8d2834f8cc45f3dcde34952edafa357c7ce87ae2fe492d01cbf3c48
+  moai-foundation-cc: 3660b0f1cad233c282d74a22a4e32932ed101da3cdd54cea0c87fb717bff52d3
+  moai-foundation-core: f9abe12668904cc90c1cb424a00fa84e9db927ea5396ab852bbb10bf8a02c7fb
+  moai-foundation-quality: 10af2b7a9ec94a27913e562c4824357d00044a0fc1e736b620b1d1a75b8c17d1
+  moai-foundation-thinking: c11cee93d9cb943207c19fffb4a23eb82ad9762d4fc923801c808970bba39ef8
+  moai-harness-learner: fd82c49101e9a85057c765c0a3e81a7c643dbd8f039e1f5d860b20af988da1c0
+  moai-kanban-foreman: 563ea4326931003542bf967ee617d0b9224ec9188e658b38403f620054181fea
+  moai-meta-harness: 5886878a3f0a6d6282caa2912d201f785e3c70a175012731f05f194325d60acd
+  moai-ref-git-workflow: 36f24400e70b6fdbcbe1960e93cd3cfb28103468a09a719dae3fb1f1968584f9
+  moai-ref-testing-pyramid: 4e91eee5176af271e253392b2f5d427c328f15be2d417b4acee09990bb105e75
+  moai-workflow-ddd: 321e1ab6d8732377c7c58aeb591020faf07a93f99ad0bba99b5854ab20d19c3c
+  moai-workflow-docs-claim-check: 662166edc5f5d59e961e407214b1c87f1e67267405410da3660c920173d4300b
+  moai-workflow-loop: 3196f439da2cf2fdb9d31436abd01e3858cf2fbb76d45ceb4ab856ad7fb8748a
+  moai-workflow-project: 9e4f7a52b977e2a4014c321931aacdd8ebf04559b9e2b8ba26aa4ee9abb2dd16
+  moai-workflow-spec: 64b1537614d572d04cc13ca33969613df99fe24f83d940cb52e838627ba38e36
+  moai-workflow-tdd: 51cab869c223c80b91ff8bdf8f3f32971b091e9bc3b1173290628eba8d75de25
+  moai-workflow-testing: 782f65ab2926e3f4b8ebb3eff96e57bb18df9824d8f63813ae85f1884a447274
+  moai-workflow-worktree: 6d1f41f301538bad3bba547cef19e84d609991c15936e1f06c0ea769fd7935ed
+  moai-domain-html-report: 6f476ef31c000cb8468944fcdcb6e17da4454131b00810de7edd7b685f49b69d
+  moai-domain-svg-infographic: 1519337a5fa9f2b17add17fdf02340fadcc9d6918a143d287d5e5a127fc2e980
+  moai-domain-design-dna: b35f9264feec4c127b803acb29d150e82ab3affe694d8a65807316f1bd551a96
+  sync-auditor: f1b4487f7351e0da165545a152c4122b15ff5e1426772171b8fa70df196c55d0
+  manager-develop: ad390185637655a3b7e68ff5c0fd3c9258559a6bfc01aa72d3243838de94d2f0
+  manager-docs: 3606cc18c7ed3d13df290913fab2ff387034dbb0329c669e1ad8e538cb4b0954
+  manager-git: 56eb72557ec24c8907c8b260f1d829c2e0300c5f6eea352f898196db6a00e132
+  manager-lead: 8bbbc6576e083cd09dd98835f468778b9344c0dcf84c5fe1fc1ee93a6168bdca
+  manager-spec: 96b4099da6b52fc895136d27ed7647ff80e0824a81002e18d5326523f0d7edd9
+  plan-auditor: 81c0c1934924b44cfe8329a15c72252c03b95cbd5d7102db9f8fb9ea404c50ac
+  super-advisor: e47c17c3753b4bc85243b462c491dfef72b2bdf9918f947fdc5fcc5bd35ada1e
+  manager-design: fb7af236dc3ed0e95bd439f888c30e29318493dcd25e3dd5d12ac58db12a2a6a
+  e2e-tester: 910a13c9857493611eb0ee6f434bc2b5abd40c49bc25df5d48bb2ab88bea87d8
+  moai-domain-backend: fdff72ab657265d07b3743e6f99bc783121d2617f9bc96f8f7c153402565ee05
+  moai-domain-database: 52c7b8a4ae91c8f454eca9ba2b5bc52e121d160885c838a9c74401cd0027ba02
+  moai-ref-api-patterns: 35a7941945589678e44cee880088e68942a75ef2ed04e5e3a2f18bc6d06a9971
+  moai-domain-humanize: c7ffa13aaa66c78597286353789061b0b5c361c5b26d9b3e38707d945e9ce7f0
+  moai-ref-owasp-checklist: 9f3051bfda1638df83842e00228b7f81569400bc73c9d6268c3722d56f25474f
+  moai-ref-llm-security: 0d8ec550434e60de3cb44228e4a2d5370ab4556c3d9590ab2c4827f4a1379ccd
+  moai-ref-cross-model-audit: 2df2582dbd6d43cc717f3c011b5065de4552c1383cb276c413aaff89cc9afef3
+  moai-ref-supply-chain: fd443095ecc0600b8e8d7c91562fd4c3e68c12c7cd269b03ba91aabe4cd80f16
+  moai-ref-secops: 0853012f7d1a07ae2b71212ae53e427700bf07fdfd3ce29d8b58441ebc5a4a28
+  moai-domain-frontend: 2e040783c5cce34e08d4fd0aa87c3e025400172782b99fff1ec8b55b6e2bb2d4
+  moai-ref-react-patterns: f603a0f75408a3355ffb65d520b78e07c81f731f9f1de7d3a93e490bc7750e11
+  moai-ref-ui-polish: 874652c5e256c7d5756a19ec8e141df095b93521a2af64be519319ffa7aa2094
+  moai-ref-seo: 39d3ad2b348dc0748c7baa5912dba34865d3321b7c5a4b990cc047cb5a131065
+  builder-harness: 37ff28085c45bb19b86946ca32a2416bf0af7a040f062cfa744fa98ed9a92b24
+catalog.yaml updated successfully (12899 bytes)
+go build -ldflags "-s -w -X github.com/modu-ai/moai-adk/pkg/version.Version=v3.1.2 -X github.com/modu-ai/moai-adk/pkg/version.Commit=9328a5242 -X github.com/modu-ai/moai-adk/pkg/version.Date=2026-08-31T10:42:30Z -X github.com/modu-ai/moai-adk/pkg/version.BuildID=v3.1.2-954-g9328a5242-dirty" -o bin/moai ./cmd/moai
+make exit=0
+$ go test ./internal/template/ -run '^TestGitignoreDeclaredRulesOnBothSurfaces$' -count=1 -v
+=== RUN   TestGitignoreDeclaredRulesOnBothSurfaces
+--- PASS: TestGitignoreDeclaredRulesOnBothSurfaces (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/template	0.255s
+exit=0
+$ git status --porcelain internal/template/templates/.gitignore
+(empty above = clean restore)
+
+### AC-GRG-004 — false-positive proof (guard passes WHILE the two files diverge)
+$ grep -vE '^[[:space:]]*#|^[[:space:]]*$' .gitignore | sort -u | wc -l   (root rules)
+     179
+$ same for internal/template/templates/.gitignore   (template rules)
+     136
+$ comm -23 root tmpl | wc -l   (root-only)
+      44
+$ comm -13 root tmpl | wc -l   (template-only)
+       1
+$ cmp -s .gitignore internal/template/templates/.gitignore ; echo rc   (1 = not byte-identical)
+rc=1
+$ go test ./internal/template/ -run '^TestGitignoreDeclaredRulesOnBothSurfaces$' -count=1 -v
+=== RUN   TestGitignoreDeclaredRulesOnBothSurfaces
+--- PASS: TestGitignoreDeclaredRulesOnBothSurfaces (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/template	0.586s
+exit=0
+
+### AC-GRG-005 — exactly one declaration site
+$ grep -rn '^var generatedArtifactIgnoreRules' internal/template/ --include='*.go'
+internal/template/embed_gitignore_generated_test.go:28:var generatedArtifactIgnoreRules = []string{
+
+### AC-GRG-007 — (a) mink path ignored by root; (b) rule NOT in the declared set
+$ git check-ignore -v .mink/auth/token
+.gitignore:182:**/.mink/auth/	.mink/auth/token
+exit=0
+$ grep -c 'mink' internal/template/embed_gitignore_generated_test.go
+0
+
+### Preservation — existing single-surface guard still present and passing
+$ go test ./internal/template/ -run '^TestEmbeddedGitignoreCoversGeneratedArtifacts$' -count=1 -v
+=== RUN   TestEmbeddedGitignoreCoversGeneratedArtifacts
+--- PASS: TestEmbeddedGitignoreCoversGeneratedArtifacts (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/template	0.254s
+exit=0
+
+### Package suite — go test ./internal/template/...
+ok  	github.com/modu-ai/moai-adk/internal/template	24.648s
+ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	0.659s
+?   	github.com/modu-ai/moai-adk/internal/template/scripts	[no test files]
+exit=0
+
+### go vet ./internal/template/...
+exit=0
+
+### golangci-lint run ./internal/template/...
+0 issues.
+exit=0
+
+### Cross-platform test compile (windows) — GOOS=windows go vet ./internal/template/...
+exit=0

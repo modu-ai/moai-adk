@@ -14,6 +14,8 @@ import (
 // Keyed by query-kind per plan §H R1 (cross-rule isolation):
 //   - "git-dir": git rev-parse --git-dir (environment availability)
 //   - "main-branch": git rev-parse --verify main (branch existence → "main" or "master")
+//   - "transition": the most recent `status:` transition of one SPEC document,
+//     keyed additionally by that document (see transitions below)
 //
 // @MX:ANCHOR: [AUTO] gitQueryCache — REQ-PERF-001-A per-run git env cache
 // @MX:REASON: eliminates ~2×N redundant git rev-parse spawns in moai spec lint (441 SPECs × 2 env checks → 2 total)
@@ -33,12 +35,29 @@ type gitEnvCache struct {
 	// Keyed by "main-branch" (query-kind per R1).
 	mainBranch    string
 	mainBranchSet bool
+
+	// transitions memoizes the `git log --follow -p` history walk that finds a
+	// SPEC's most recent `status:` transition, keyed per document. Two rules
+	// ask the same question of the same document in one Lint() run —
+	// OwnershipTransitionRule (*did the right agent sign it?*) and
+	// StatusTransitionValidityRule (*is the pair itself legal?*) — and the walk
+	// is by far the most expensive query in the package, so serving the second
+	// asker from the first's result is what keeps corpus lint at one walk per
+	// document rather than one per rule.
+	transitions map[string]transitionMemo
+}
+
+// transitionMemo is one memoized history-walk outcome. Both return values are
+// stored, so a lookup that failed is not silently retried per rule.
+type transitionMemo struct {
+	rec *ownershipTransitionRecord
+	err error
 }
 
 // startGitQueryCache initializes a fresh per-run cache. Called at Lint() entry.
 func startGitQueryCache() {
 	gitQueryCacheMu.Lock()
-	gitQueryCacheV = &gitEnvCache{}
+	gitQueryCacheV = &gitEnvCache{transitions: make(map[string]transitionMemo)}
 	gitQueryCacheMu.Unlock()
 }
 
@@ -114,4 +133,48 @@ func cachedMainBranch() string {
 		branch = "master"
 	}
 	return branch
+}
+
+// cachedOwnershipTransition returns the most recent recorded `status:`
+// transition for one SPEC document, memoized for the duration of a Lint() run.
+//
+// The lookup itself stays behind getOwnershipTransitionRunner, so the test
+// injection hook keeps working and this function only decides whether the hook
+// is called or its previous answer reused.
+//
+// When no cache is active (any caller outside Lint()), every call reaches the
+// lookup — the pre-memoization behavior, preserved deliberately.
+//
+// @MX:ANCHOR: [AUTO] cachedOwnershipTransition — one history walk per document per Lint() run
+// @MX:REASON: the `git log --follow -p` walk is the package's most expensive query, and two registered rules read the same document's transition; without this memo the corpus pays one walk per rule per document
+func cachedOwnershipTransition(specPath, specID string) (*ownershipTransitionRecord, error) {
+	gitQueryCacheMu.RLock()
+	c := gitQueryCacheV
+	gitQueryCacheMu.RUnlock()
+
+	if c == nil {
+		// No cache — direct lookup (original behavior for non-Lint callers).
+		return getOwnershipTransitionRunner(specPath, specID)
+	}
+
+	// The document, not the rule, is the unit of the answer. NUL separates the
+	// two components so no (path, id) pair can spell another pair's key.
+	key := specPath + "\x00" + specID
+
+	gitQueryCacheMu.RLock()
+	memo, ok := c.transitions[key]
+	gitQueryCacheMu.RUnlock()
+	if ok {
+		return memo.rec, memo.err
+	}
+
+	rec, err := getOwnershipTransitionRunner(specPath, specID)
+
+	gitQueryCacheMu.Lock()
+	if c.transitions != nil {
+		c.transitions[key] = transitionMemo{rec: rec, err: err}
+	}
+	gitQueryCacheMu.Unlock()
+
+	return rec, err
 }

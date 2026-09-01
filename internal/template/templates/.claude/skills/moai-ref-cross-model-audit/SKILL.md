@@ -61,7 +61,7 @@ results.
 | Parameter | Type | Required | Notes |
 |---|---|---|---|
 | `claude_verdict` | object | YES | The in-session Claude review verdict. Object shape: `{verdict, summary, findings, next_steps}` — the same `review-output.schema.json` the single-backend tools return. |
-| `target` | string | no | What the secondary backends review (`uncommittedChanges`, `baseBranch`). Passed through unchanged. |
+| `target` | string | no | What the secondary backends review (`uncommittedChanges`, `baseBranch`). The string reaches both backends unchanged; for codex, `baseBranch`'s branch name is then resolved server-side from the reviewed tree (remote default head, then `main`) — it cannot be supplied here. |
 | `focus` | string | no | Optional focus area forwarded to the secondary backends (e.g. `concurrency`, `auth`). |
 | `gates` | object | no | Per-auditor gate map (`claude`/`codex`/`glm` ∈ `off`/`advisory`/`required`). When omitted, distributed defaults apply: claude required, codex required, glm advisory. |
 | `session_id` | string | no | When set, the result is persisted to `.moai/state/audit-multi/<session>.json` so the multi-review-gate Stop hook reads the most recent result rather than re-invoking convergence. |
@@ -80,6 +80,7 @@ The tool returns a `ConvergenceResult`:
   ],
   "overall_verdict": "fail",
   "disagreement_flag": true,
+  "participant_count": 3,
   "residual_risk_note": "cross-model disagreement (advisory, NOT a block): pass=[claude(required), glm(advisory)] fail=[codex(required)]",
   "fail_open_backends": []
 }
@@ -87,8 +88,20 @@ The tool returns a `ConvergenceResult`:
 
 - `overall_verdict` ∈ `{pass, fail}` — the existing review-output values. No
   new enum (disagreement is a flag, not a verdict value).
-- `disagreement_flag` is `true` when either a required split OR an advisory-only
-  conflict was detected.
+- `participant_count` is how many backends contributed a comparable verdict:
+  every entry whose gate is not `off` and whose verdict is `pass` or `fail`.
+  `inconclusive` entries (missing, unauthenticated, erroring) are
+  evidence-of-absence, not participants, and do not count. The field is always
+  present, 0 included — it reports the count; no minimum-participant policy
+  acts on it.
+- `disagreement_flag` is three-valued. `true` = a divergence was observed: a
+  required split, an advisory-only conflict, or a single participant's
+  intra-backend synthesis divergence (directly observed divergences are never
+  discarded, even below 2 participants). `false` = 2+ participants were
+  compared and none diverged. `null` = undetermined: fewer than 2 participants
+  were compared and no divergence was observed, so neither "they agreed" nor
+  "they disagreed" is a grounded claim. The null is explicit — the member is
+  always present in the JSON, never an absent key.
 - `residual_risk_note` describes the convergence outcome in prose (which
   backend(s) failed, or the shape of the split). Surface this in the audit
   report's residual-risk section.
@@ -159,6 +172,13 @@ Two invariants follow:
 - **Advisory backends never flip overall to fail.** Case 4 records the advisory
   conflict but keeps `overall_verdict: pass`. This is the fixed user-policy term:
   an advisory FAIL is reported, not enforced.
+- **Below 2 participants the flag is `null`, not `false` — unless a divergence
+  was observed.** The case table presumes a comparable field of 2+; when
+  `participant_count` is 0 or 1 (for example the only required backend to
+  produce a verdict is claude), "no disagreement detected" is not a grounded
+  claim and the flag reports `null`. The carve-out: an intra-backend synthesis
+  divergence observed by even a single participant keeps the flag `true` —
+  observed information is never discarded.
 
 ## Fail-open identity
 
@@ -178,6 +198,7 @@ The auditor's verdict and the convergence result relate as follows:
 | `overall_verdict` | `disagreement_flag` | Auditor action |
 |---|---|---|
 | `pass` | `false` | Standard PASS. No residual-risk row needed. |
+| `pass` | `null` | Standard PASS. The flag is undetermined (`participant_count` below 2, no observed divergence) — not an agreement claim. No residual-risk row needed. |
 | `pass` | `true` | PASS with a residual-risk row naming the advisory disagreement. |
 | `fail` | (any) | FAIL. Name the failing required backend(s) from `per_backend_verdicts`. The block is conservative (cases 2/3). |
 

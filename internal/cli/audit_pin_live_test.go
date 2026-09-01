@@ -30,7 +30,9 @@ import (
 // marker line in the evidence file (MF6) — never FAIL, never a silent pass.
 //
 // Evidence lands in <repo>/.moai/state/verify/t225/ (the card-scoped verify
-// directory) so the cited paths still resolve at audit time.
+// directory). That directory is gitignored and does not survive the worktree,
+// so it is a WRITE TARGET, not a citable path: extract whatever is
+// decision-bearing to .moai/reports/<card-id>/ before citing it.
 
 const (
 	auditPinLiveEnv = "MOAI_AUDIT_PIN_LIVE"

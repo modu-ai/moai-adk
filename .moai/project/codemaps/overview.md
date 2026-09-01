@@ -28,7 +28,7 @@ moai-adk-go는 Claude Code 내에서 AI 기반 개발 워크플로우를 오케�
 
 ### Presentation (프레젠테이션)
 - **cmd/moai**: 바이너리 진입점 → `cli.Execute()`
-- **internal/cli** (261 non-test 파일, 하위 포함): Cobra 커맨드 트리, composition root, root 등록 61개 (201 non-test `.AddCommand()` 호출). `moai codex` 런처(`codex_launcher.go`)와 두 기동 동사가 통과하는 init-offer 게이트(`codex_init.go`)·AGENTS.md ↔ CLAUDE.md 지시 계약(`codex_contract.go`) 포함
+- **internal/cli** (261 non-test 파일, 하위 포함): Cobra 커맨드 트리, composition root, root 등록 61개 (201 non-test `.AddCommand()` 호출). `moai codex` 런처(`codex_launcher.go`)와 세 기동 형태(맨몸·`cli`·`app`)가 통과하는 init-offer 게이트(`codex_init.go`)·AGENTS.md ↔ CLAUDE.md 지시 계약(`codex_contract.go`) 포함
 - **internal/tui**: Catppuccin 색상 토큰, Box/Pill/Table/Status 컴포넌트, 테마 선택
 - **internal/statusline**: Claude Code 상태 렌더러, 3L/5L 레이아웃, pluggable 데이터 제공자
 - **internal/web**: loopback HTTP 콘솔, Templ 컴파일 핸들러, 5s 드레인 종료
@@ -141,7 +141,7 @@ PreToolUse hook
 
 ### 6. codex 런치 게이트
 ```
-moai codex cli/app
+moai codex (맨몸) / cli / app
   → classifyCodexWiring (배선 판정 — 런처의 단일 판정 소비)
     → wired: 기동 (직접 또는 tmux spawn)
     → 불완전: 상태·처방 보고
@@ -206,7 +206,7 @@ moai hook <event>  # SessionStart, PostToolUse, Stop, etc.
 - `moai cc`: Claude 전용
 - `moai glm`: GLM 전용
 - `moai cg`: Claude leader + GLM teammates
-- `moai codex`: Codex CLI/데스크톱 앱 런처 — 준비 상태 리드아웃(`moai codex status`)과 명시적 기동 동사(`cli`/`app`, `--spawn`)로 구분되며, 배선이 불완전한 프로젝트에서 기동 시 init-offer 게이트가 배선 생성을 제안
+- `moai codex`: Codex CLI/데스크톱 앱 런처 — 인자 없이 부르면 Codex CLI 를 기동하고(`cli` 는 그 명시 별칭, `app` 은 데스크톱 앱, `--spawn` 은 새 tmux 창), 준비 상태 리드아웃은 `moai codex status` 로 분리돼 아무것도 띄우지 않으며, 배선이 불완전한 프로젝트에서 기동 시 init-offer 게이트가 배선 생성을 제안
 - GLM tier-models 테이블: Claude tier → GLM 모델 매핑
 
 ---

@@ -383,7 +383,7 @@ When the orchestrator generates prompts for agents spawned with `isolation: "wor
 | Category | Example | Absolute Path OK? | Reason |
 |----------|---------|-------------------|--------|
 | Write-target files | Source code, tests | NO — use relative | Agent CWD is worktree root; relative paths resolve correctly |
-| Read-only references | Skills, configs via `${CLAUDE_SKILL_DIR}` | YES | Content is identical in main repo; read-only access is safe |
+| Read-only references | Skills, configs via `.claude/skills/<name>/<file>` | NO — use project-root-relative | Worktree root is the project root, so the root-relative form resolves there; content is identical in the main repo |
 | SPEC documents | `.moai/specs/SPEC-XXX/spec.md` | Relative preferred | SPEC files are copied to worktree during checkout |
 | Bash commands | `go test ./...` | NO `cd` prefix | Agent CWD is already set to worktree root |
 

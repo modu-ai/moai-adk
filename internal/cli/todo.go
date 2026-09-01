@@ -139,7 +139,7 @@ adds any text verbatim.`,
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
-				return runTodoList(cmd, false)
+				return runTodoList(cmd, false, false, todoListDefaultLimit)
 			}
 			return runTodoAddAppend(cmd, strings.Join(args, " "), false)
 		},
@@ -149,7 +149,7 @@ adds any text verbatim.`,
 		newTodoUnpickCmd(), newTodoEditCmd(), newTodoMoveCmd(),
 		newTodoDropCmd(), newTodoUndropCmd(),
 		newTodoAnalyzeCmd(), newTodoRelateCmd(), newTodoUnrelateCmd(), newTodoWhyCmd(),
-		newTodoPRCmd(), newTodoExportJSONCmd())
+		newTodoPRCmd(), newTodoExportJSONCmd(), newTodoHistoryCmd())
 	return cmd
 }
 
@@ -284,10 +284,30 @@ func runTodoAddPick(cmd *cobra.Command, store *kanban.BacklogStore, text string,
 	return nil
 }
 
+// todoListDefaultLimit is the list render's default bound — the same shape
+// (and value) as the history verb's REQ-TAQ-007 contract: a bounded read is
+// the default, --limit raises or lowers it, --limit 0 lifts it entirely,
+// and a truncated listing states the withheld count on stderr because a
+// truncated read must never be mistaken for a complete one.
+const todoListDefaultLimit = 20
+
 // runTodoList renders the backlog lock-free. It backs both entry points —
 // the bare `moai todo` and the explicit `moai todo list` — so the two cannot
 // drift apart in output.
-func runTodoList(cmd *cobra.Command, jsonOutput bool) error {
+//
+// The default view renders live cards only (queued + picked) and collapses
+// the dropped set into one count line naming the recovery path: a dropped
+// card never leaves rec.Items, so rendering it forever made the list length
+// diverge from the queue's actual load. `--dropped` renders the discarded
+// set instead — the surface `undrop` needs to find a card and its reason
+// (t153's exact-reversal contract is untouched; only the render filters).
+//
+// The render is bounded at limit rows (t403): an unbounded render pushed the
+// truncation downstream to the reading harness, where rows vanished from the
+// visible output with no withheld count. `--json` ignores the limit — the
+// structured record is the full read, and a bounded JSON would be the same
+// silent truncation.
+func runTodoList(cmd *cobra.Command, jsonOutput bool, droppedOnly bool, limit int) error {
 	store := newTodoStore()
 	rec, err := store.Load()
 	if err != nil {
@@ -307,7 +327,26 @@ func runTodoList(cmd *cobra.Command, jsonOutput bool) error {
 		_, _ = fmt.Fprintln(out, "queue is empty")
 		return nil
 	}
+	if limit < 0 {
+		return fmt.Errorf("todo list: --limit must be >= 0 (got %d)", limit)
+	}
+	var visible []kanban.BacklogItem
+	dropped := 0
 	for _, it := range rec.Items {
+		isDropped := it.State == kanban.BacklogStateDropped
+		if isDropped {
+			dropped++
+		}
+		if isDropped != droppedOnly {
+			continue
+		}
+		visible = append(visible, it)
+	}
+	shown := len(visible)
+	if limit > 0 && limit < shown {
+		shown = limit
+	}
+	for _, it := range visible[:shown] {
 		_, _ = fmt.Fprintf(out, "%s\t%s\t%s\n", it.ID, it.State, it.Text)
 		for _, f := range rec.Findings {
 			if !f.Names(it.ID) {
@@ -316,23 +355,44 @@ func runTodoList(cmd *cobra.Command, jsonOutput bool) error {
 			_, _ = fmt.Fprintln(out, todoFindingLine(rec, it.ID, f))
 		}
 	}
+	if droppedOnly && shown == 0 {
+		_, _ = fmt.Fprintln(out, "no dropped cards")
+		return nil
+	}
+	if !droppedOnly && dropped > 0 {
+		_, _ = fmt.Fprintf(out, "%d dropped (hidden — see: moai todo list --dropped)\n", dropped)
+	}
+	if withheld := len(visible) - shown; withheld > 0 {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
+			"list: %d rows withheld — showing %d of %d (--limit 0 lists all)\n",
+			withheld, shown, len(visible))
+	}
 	return nil
 }
 
-// newTodoListCmd — `moai todo list [--json]` (REQ-TODO-003): render the
-// queue lock-free; --json emits the structured records.
+// newTodoListCmd — `moai todo list [--json] [--dropped] [--limit <n>]`
+// (REQ-TODO-003): render the queue lock-free; --json emits the structured
+// records, --dropped renders the discarded set the default view hides behind
+// a count line, and --limit bounds the row render (0 = unbounded; ignored
+// with --json).
 func newTodoListCmd() *cobra.Command {
 	var jsonOutput bool
+	var droppedOnly bool
+	var limit int
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "Render the backlog queue (lock-free)",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runTodoList(cmd, jsonOutput)
+			return runTodoList(cmd, jsonOutput, droppedOnly, limit)
 		},
 	}
 	cmd.Flags().BoolVar(&jsonOutput, "json", false,
 		"Emit the backlog records as JSON on stdout")
+	cmd.Flags().BoolVar(&droppedOnly, "dropped", false,
+		"Render only the dropped cards (the default view hides them behind a count line)")
+	cmd.Flags().IntVar(&limit, "limit", todoListDefaultLimit,
+		"Maximum rows to render (0 = unbounded; ignored with --json)")
 	return cmd
 }
 

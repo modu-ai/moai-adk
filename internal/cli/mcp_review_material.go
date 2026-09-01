@@ -101,6 +101,61 @@ func resolveReviewMergeBase(root string) (string, error) {
 	return "", fmt.Errorf("cannot resolve the base commit in %s: %w", root, lastErr)
 }
 
+// resolveReviewBaseBranchName returns the base branch NAME for the tree at root.
+//
+// It is the name-layer sibling of resolveReviewMergeBase, and reads the SAME
+// fallback chain in the same order (SPEC-CODEX-REVIEW-TARGET-001 §A.7): the
+// remote default head first, then `main`. The two functions exist separately
+// because they answer different questions — a merge base is a commit, and
+// codex's baseBranch review target is a branch name — not because the backends
+// disagree about which base to use. They must not diverge: a codex review and a
+// GLM review asked for the same target have to be looking at the same change,
+// and the asymmetry that produced this SPEC is exactly what a second chain
+// would recreate in the opposite direction.
+//
+// git_strategy.worktree_base_branch is deliberately NOT read here. If that key
+// should be the base, it should be the base for BOTH backends, which is a change
+// to resolveReviewMergeBase and a different card.
+//
+// resolveReviewMergeBase's chain lists origin/main and main as separate steps
+// because each names a different ref to compute a merge base FROM. At the name
+// layer both produce the same string, and two steps that no observation can tell
+// apart are one step, so they are merged here.
+//
+// [HARD] A name is returned only after it is confirmed to resolve as a ref in
+// this tree. Stripping the `origin/` prefix off a symbolic-ref yields a string,
+// not a guarantee: the remote-tracking ref can exist while nothing by that name
+// does. Returning an unconfirmed name would send codex to review against a
+// branch it cannot find, and that failure reappears as an `inconclusive` in the
+// very place this SPEC closed one.
+func resolveReviewBaseBranchName(root string) (string, error) {
+	// 1. the remote default head
+	if out, err := runReviewGit(root, "symbolic-ref", "--short", "refs/remotes/origin/HEAD"); err == nil {
+		name := strings.TrimPrefix(strings.TrimSpace(out), "origin/")
+		if name != "" && reviewRefResolves(root, name) {
+			return name, nil
+		}
+	}
+	// 2. main — as a remote-tracking ref or as a local branch
+	if reviewRefResolves(root, "main") {
+		return "main", nil
+	}
+	return "", fmt.Errorf("cannot resolve a base branch in %s", root)
+}
+
+// reviewRefResolves reports whether name resolves as a branch in the tree,
+// looking at local heads and origin's remote-tracking refs. The refs are named
+// in full rather than handed to git as a bare revision so a file or directory
+// sharing the name cannot be mistaken for a branch.
+func reviewRefResolves(root, name string) bool {
+	for _, ref := range []string{"refs/heads/" + name, "refs/remotes/origin/" + name} {
+		if _, err := runReviewGit(root, "rev-parse", "--verify", "--quiet", ref); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
 // runReviewGit runs one git command in the named tree and returns its stdout. It
 // uses -C rather than changing directory: a cd would apply to the process, and
 // two backends reviewing two trees run concurrently in this package.

@@ -1,0 +1,5 @@
+✓ No findings — all SPEC documents are valid
+
+provenance: binary built from tree 9328a5242 via `go build -o /tmp/t388-moai ./cmd/moai` (NOT the PATH install, which is 343399d2f / v3.1.2)
+command: /tmp/t388-moai spec lint .moai/specs/SPEC-VERSION-STAMP-GUARD-001/spec.md
+exit: 0

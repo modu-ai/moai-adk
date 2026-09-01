@@ -1,0 +1,6 @@
+--- FAIL: TestRuleTemplateMirrorDrift (0.00s)
+    --- FAIL: TestRuleTemplateMirrorDrift/worktree-integration.md (0.00s)
+        rule_template_mirror_test.go:169: RULE_TEMPLATE_MIRROR_DRIFT: source file .claude/rules/moai/workflow/worktree-integration.md differs from its mirror at /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t196/internal/template/templates/.claude/rules/moai/workflow/worktree-integration.md (source 46203 bytes, mirror 46296 bytes); run 'cp /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t196/.claude/rules/moai/workflow/worktree-integration.md /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t196/internal/template/templates/.claude/rules/moai/workflow/worktree-integration.md' and stage both files
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	24.216s
+FAIL

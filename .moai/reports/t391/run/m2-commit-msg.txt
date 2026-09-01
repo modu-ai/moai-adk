@@ -1,0 +1,33 @@
+docs(SPEC-CODEX-LAUNCH-VERB-001): run-phase evidence, 15/15 AC PASS (t391)
+
+progress.md sections E.2 and E.3, plus the raw command output the table cites.
+
+Every AC row names the test that judged it and what that test observed. The
+five verification commands were run in this tree (worktree t391, entry HEAD
+e445e3276, M1 e33eeb93c) and all exited 0 -- which also closes plan.md P2
+("zero builds and zero test runs in this tree").
+
+RED is preserved as evidence rather than described: red-01-new-tests.txt is the
+pre-implementation run, exit 1, 30 failing cells. green-01 and green-02 are the
+post-implementation runs, both exit 0.
+
+Gaps are carried forward, not resolved in prose: the installed
+~/go/bin/moai --help string was not re-measured; `codex app` launch behaviour
+is unobserved (the `app` token was seen reaching the child argv, no codex child
+was actually started); only codex's TOP-LEVEL help was swept, so both the
+"no cli" and "no -w" absence claims are exactly that narrow; the tty round trip
+stays structurally unobservable; and `moai spec lint` judges spec.md only, so
+the counts in this document are counted, not linted.
+
+Two further gaps recorded that are not inherited. The -w ACCEPTING
+absolute-path branch is not exercised by a test -- resolveWorktreeL2Path
+validates against prefixes derived from the real findProjectRoot(), so an
+absolute path under a t.TempDir project root is out-of-prefix by construction;
+the REJECTING branch is judged and its diagnostic shown byte-identical to cc's.
+And an out-of-scope observation: the template MCP catalogue lists
+`moai codex task` / `setup` / `job status` as CLI equivalents, but no such CLI
+verbs exist -- the routing set was already closed over {"", status, cli, app}
+before this card, so this is neither created nor changed here and was left
+alone.
+
+🗿 MoAI
