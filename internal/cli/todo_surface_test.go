@@ -68,7 +68,9 @@ var frozenTodoSurface = map[string][]string{
 //
 //   - export-json — SPEC-TODO-SQLITE-001 REQ-TOSQ-016 (the downgrade route)
 //   - undone      — SPEC-TODO-DESTRUCTIVE-GUARD-001 REQ-TDG-001 (done's inverse)
-var permittedVerbAdditions = []string{"export-json", "undone"}
+//   - history     — SPEC-TODO-ARCHIVE-QUERY-001 REQ-TAQ-001/006 (the archive
+//     read surface; read-only, LoadPure, flags: --limit)
+var permittedVerbAdditions = []string{"export-json", "undone", "history"}
 
 // permittedFlagAdditions records flags added to an ALREADY-FROZEN verb, which
 // is a re-flagging and therefore needs its own declaration rather than an edit

@@ -38,7 +38,7 @@ func C() {}
 // The seam extracts the A→B→C chain with callers joined by containment.
 func TestExtract_JoinsCallersByContainment(t *testing.T) {
 	root := seamFixture(t)
-	calls, imports, _, err := Extract(root)
+	calls, imports, _, _, err := Extract(root)
 	if err != nil {
 		t.Fatalf("Extract: %v", err)
 	}
@@ -91,7 +91,7 @@ func TestExtract_ModuleNormalization(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, imports, _, err := Extract(root)
+	_, imports, _, _, err := Extract(root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -126,6 +126,32 @@ func TestExtract_ModuleNormalization(t *testing.T) {
 	}
 	if m, isLocal := localizeModule("example.com/projish", "example.com/proj"); isLocal || m != "example.com/projish" {
 		t.Errorf("partial-prefix must not localize: %q %v", m, isLocal)
+	}
+}
+
+// REQ-GEC-002..004 — the walk retains each file's declared function/method
+// names (sorted, deduplicated), so the mapper can join callee names to
+// declaring files without a second parse pass.
+func TestExtract_RetainsDeclaredNames(t *testing.T) {
+	root := seamFixture(t)
+	_, _, decls, _, err := Extract(root)
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+	if len(decls) != 1 {
+		t.Fatalf("decls = %+v, want one record for wire.go", decls)
+	}
+	if decls[0].File != "internal/wire/wire.go" {
+		t.Errorf("decls[0].File = %q, want internal/wire/wire.go", decls[0].File)
+	}
+	want := []string{"A", "B", "C"}
+	if len(decls[0].Names) != len(want) {
+		t.Fatalf("names = %v, want %v", decls[0].Names, want)
+	}
+	for i, name := range want {
+		if decls[0].Names[i] != name {
+			t.Errorf("names[%d] = %q, want %q (sorted)", i, decls[0].Names[i], name)
+		}
 	}
 }
 

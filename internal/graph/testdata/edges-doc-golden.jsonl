@@ -1,0 +1,8 @@
+{"kind":"code-import","source":"internal/alpha/alpha.go","target":"fmt","line":3,"grade":"name-based"}
+{"kind":"code-import","source":"internal/beta/beta.go","target":"fmt","line":4,"grade":"name-based"}
+{"kind":"code-import","source":"internal/beta/beta.go","target":"internal/alpha","line":6,"grade":"name-based"}
+{"kind":"import","source":"internal/alpha","target":"b[\"internal/beta\"]"}
+{"kind":"milestone-card","source":"demo#S1","target":"t999"}
+{"kind":"mx-spec","source":"internal/beta/beta.go","target":"SPEC-GF-001","line":9}
+{"kind":"report-milestone","source":".moai/reports/demo.md","target":"demo#S1"}
+{"kind":"spec-depends","source":"SPEC-GF-001","target":"SPEC-GF-DEP-001"}

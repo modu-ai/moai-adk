@@ -14,7 +14,7 @@
 │    STATUS  CHECK                  MESSAGE                                                                                                            │
 │    warn    MoAI Config            .moai/ directory not found (run 'moai init')                                                                       │
 │    warn    Claude Config          .claude/ directory not found                                                                                       │
-│    ok      MoAI Version           moai-adk v3.1.3                                                                                                    │
+│    ok      MoAI Version           moai-adk v0.0.0-test                                                                                               │
 │    ok      Binary Freshness       development build (no commit metadata)                                                                             │
 │    ok      MCP Scope Duplicates   no MCP configuration found (project or global)                                                                     │
 │    ok      MCP Server Version     no running moai MCP server recorded                                                                                │

@@ -9,6 +9,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
 // updateDoctorGolden controls golden snapshot regeneration. Set via UPDATE_GOLDEN=1.
@@ -122,6 +123,13 @@ func TestDoctorGolden_Light(t *testing.T) {
 	t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
 	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
 
+	// Pin the version the snapshot renders (SPEC-VERSION-STAMP-PREDICATE-001
+	// REQ-VSP-008): the golden must not carry the build-time version token,
+	// or every bump breaks the suite through a fixture no bump owns.
+	origVersion := version.Version
+	version.Version = "v0.0.0-test"
+	defer func() { version.Version = origVersion }()
+
 	got, _ := captureDoctorCmd(t)
 	if len(got) == 0 {
 		t.Fatal("doctorCmd produced no output")
@@ -142,6 +150,13 @@ func TestDoctorGolden_Dark(t *testing.T) {
 	t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
 	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
 
+	// Pin the version the snapshot renders (SPEC-VERSION-STAMP-PREDICATE-001
+	// REQ-VSP-008): the golden must not carry the build-time version token,
+	// or every bump breaks the suite through a fixture no bump owns.
+	origVersion := version.Version
+	version.Version = "v0.0.0-test"
+	defer func() { version.Version = origVersion }()
+
 	got, _ := captureDoctorCmd(t)
 	if len(got) == 0 {
 		t.Fatal("doctorCmd produced no output")
@@ -160,6 +175,13 @@ func TestDoctorGolden_NoColor(t *testing.T) {
 	t.Setenv("MOAI_SG_VERSION_OVERRIDE", "ast-grep 9.99.99")
 	t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
 	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
+
+	// Pin the version the snapshot renders (SPEC-VERSION-STAMP-PREDICATE-001
+	// REQ-VSP-008): the golden must not carry the build-time version token,
+	// or every bump breaks the suite through a fixture no bump owns.
+	origVersion := version.Version
+	version.Version = "v0.0.0-test"
+	defer func() { version.Version = origVersion }()
 
 	got, gotErr := captureDoctorCmd(t)
 	if len(got) == 0 {

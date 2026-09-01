@@ -31,12 +31,21 @@ metadata:
 
 ## What this skill does
 
-The MoAI-ADK repo accumulates tool-failure stubs in `.moai/lessons-inbox.jsonl` (624 stubs at
-M1 start, re-measured — a moving target). The constitution names the orchestrator as the drain
-actor, but until this skill there was **zero mechanical drain code** — the drain existed only as
-a doctrine paragraph (`moai-constitution.md:147`). This skill closes that gap in user-owned
-surfaces, without touching the frozen Go applier (`internal/harness/applier.go:22` —
-its write-flag stays `false`; REQ-LSEL-003: bypass, never unfreeze).
+The MoAI-ADK repo accumulates failure-event stubs in `.moai/lessons-inbox.jsonl` — a moving
+target; the measured composition and its dated baseline live in the scope anchor document
+(`.moai/docs/learning-channel-scope.md`), never in prose here. The constitution names the
+orchestrator as the drain actor, but until this skill there was **zero mechanical drain code** —
+the drain existed only as a doctrine paragraph (`moai-constitution.md:147`). This skill closes
+that gap in user-owned surfaces, without touching the frozen Go applier
+(`internal/harness/applier.go:22` — its write-flag stays `false`; REQ-LSEL-003: bypass, never
+unfreeze).
+
+**Channel scope (bounded claim):** the inbox records failure-event stubs only — the two wired
+families `tool_failure:<tool>:<sig>` and `test_fail:<pkg>:` (the test-fail family is wired via
+the evidence writer's test-fail path; the writer itself is untouched here). It does not capture
+defect families that produce neither a tool failure nor a test failure — those travel through
+the human-mediated loop (lane discovery → lead judgment → auto-memory `feedback_*.md` +
+`MEMORY.md` record), which is their learning channel. Numbers live only in the anchor document.
 
 The drain is split into a **mechanical core** (`drain.sh`, deterministic, testable) and a
 **model-mediated layer** (this SKILL.md + your judgment, invoked for M2+ importance refinement
