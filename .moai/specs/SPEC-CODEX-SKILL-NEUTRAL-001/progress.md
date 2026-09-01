@@ -297,4 +297,54 @@ evidence_dir: .moai/reports/t196/
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- 작성: manager-docs (sync-phase, 2026-09-01), 측정 트리 HEAD `936adb4b0`. 단일 sync 커밋이 3-phase close 를 운반한다.
+
+sync_commit_sha: "pending-backfill-sync"   # 본 커밋은 자기 SHA 를 알 수 없다 — 후속 커밋이 백필한다 (D3 면제)
+
+### AC-CSN-010 sync 재판정 — diff 팔이 공허에서 실질로 전환됐다
+
+run-phase [주의]가 지적했듯 커밋 부재였던 run 시점에는 `<base>..HEAD` 가 아무 변경도 담을 수 없어 diff 팔이 공헌했다. 리드가 run 커밋 3건(`25422be77` · `bb14186d1` · `816acd104`)과 축 A 커밋(`936adb4b0`)을 착지시킨 지금, diff 팔이 비로소 실질 판정이 된다. sync 재측정 (명령 축자, 출력 축자):
+
+```
+$ git diff --stat 2c18091d1..HEAD -- internal/cli/codex_launcher.go internal/template/skill_mirror.go internal/template/renderer.go
+(출력 없음, exit 0)
+
+$ git status --short -- internal/cli/codex_launcher.go internal/template/skill_mirror.go internal/template/renderer.go
+(출력 없음, exit 0)
+```
+
+두 팔 모두 빈 출력 — 런처·미러 생산자·렌더러 3표면은 base `2c18091d1` 이후 단 한 줄도 변경되지 않았다(REQ-CSN-014 유지). 판정: **PASS** — 이제는 변경이 담길 수 있는 범위(diff 팔)가 비어 있는 것으로, run 시점과 달리 무조건-빈이 아니다. acceptance.md 본문의 AC-CSN-010 base SHA(`297a21ea…`)는 그 [HARD] 절 자신이 정한 구조(plan-phase 측정 기준 + 착수 시점 재측정을 progress.md 에 기록)대로 운영됐으므로 본문 수정 불요 — 본문은 건드리지 않는다.
+
+### 3-scoped-guard 배터리 (sync 재실행, HEAD `936adb4b0`)
+
+매치 수 명기는 AC-CSN-009 [HARD] 규율(0매치 셀렉터의 초록은 판정이 아니다)을 sync 가 상속한 것이다 — 3건 모두 1매치 이상이라 판정 유효.
+
+| 셀렉터 | 매치 수 | 결과 |
+|---|---|---|
+| `-run 'TestRuleTemplateMirrorDrift'` | 1 (서브테스트 8건 전원: hooks-system · spec-workflow · session-handoff · worktree-integration · session-handoff-examples · model-policy · default · frontend) | **PASS** |
+| `-run 'TestSkillTreeHasNoClaudeSkillDirToken'` | 1 | **PASS** — `census: 0 lines carrying CLAUDE_SKILL_DIR across 255 files walked` |
+| `-run 'TestGoldenCommittedArtifactsMatchEmission'` (agentemit 패키지) | 1 | **PASS** |
+
+### frontmatter 전이 이력 — draft → in-progress 가 건너뛰어졌다
+
+run 커밋 3건이 리드에 의해 착지될 때 `spec.md` 프론트매터는 손대지지 않았다(`status: draft` 유지). `draft → in-progress` 전이(manager-develop, M1 커밋)는 미시행됐고, 그 사실을 정장 없이 여기 기록한다. 이 sync 커밋이 `status: draft → completed` 를 **직접** 운반하며(3-phase close), `updated: 2026-09-01` 은 유지된다. 중간 상태 `in-progress` 는 역사상 한 번도 존재하지 않았다.
+
+### MX 스캔 — 아무것도 지불할 것이 없다
+
+"nothing owed"는 아래 명령의 출력으로 근거한다(주장이 아니다):
+
+```
+$ git diff --stat 2c18091d1..HEAD -- '*.go'
+ internal/template/skill_dir_token_guard_test.go | 103 ++++++++++++++++++++++++
+ 1 file changed, 103 insertions(+)
+   → 프로덕션 Go 변경 0줄 (유일한 .go 변경은 신규 테스트 파일)
+
+$ git diff --name-only 2c18091d1..HEAD -- '*.go' | xargs grep -n '@MX:'
+(출력 없음, exit 1)   → 변경 표면에 @MX 태그 0건
+```
+
+유일한 exported 심볼은 테스트 함수 `TestSkillTreeHasNoClaudeSkillDirToken` 하나 — 테스트 자신이며 그 RED 관측(AC-CSN-009, 독립 2회)이 이미 컨텍스트를 문서화했다. @MX:NOTE/ANCHOR 지불 대상 아니다. 나머지 변경 표면은 markdown/yaml 문서·설정이라 MX(코드 주석) 대상이 아니다. 결론: **MX 지불 0건.**
+
+### sync 커밋 범위
+
+이 커밋이 담는 것: `CHANGELOG.md` [Unreleased] 진입 · `progress.md` §E.4(본 절) · `spec.md` 프론트매터(`status` + `updated` 만). spec.md/plan.md/acceptance.md **본문은 0바이트** — blocker 검토 결과 본문 편집 사유 없음(위 AC-CSN-010 재판정 참조).

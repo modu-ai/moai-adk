@@ -2,7 +2,7 @@
 id: SPEC-CODEX-SKILL-NEUTRAL-001
 title: "하네스 중립 지시 계층 — 코덱스에서도 Claude 와 같은 신뢰로 지시를 실행할 수 있게 한다"
 version: "0.3.1"
-status: draft
+status: completed
 created: 2026-08-31
 updated: 2026-09-01
 author: manager-spec
