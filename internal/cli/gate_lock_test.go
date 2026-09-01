@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -225,6 +226,9 @@ func TestGateLock_DeadHolderArtifactAcquiresFarBelowBudget(t *testing.T) {
 // reports the lock as unavailable and the caller still receives a usable
 // result — the gate's own verdict decides the run, never the lock.
 func TestGateLock_ReadOnlyStateDirIsUnavailableNotFatal(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("posix permission bits are advisory on windows — os.Chmod cannot make the state directory read-only, so the fixture premise is unbuildable there")
+	}
 	dir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(dir, ".moai"), 0o755); err != nil {
 		t.Fatalf("create .moai: %v", err)

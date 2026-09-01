@@ -43,6 +43,11 @@ type FileDecls struct {
 	File string
 	// Names are the function/method names declared in File, sorted.
 	Names []string
+	// Ranges retains the same walk's declaration ranges (StartLine/EndLine
+	// inclusive, sorted by StartLine then Name for deterministic
+	// consumption). Retention only (REQ-MTE-002): the graph's tag-edge
+	// enclosing-symbol join consumes them without a second parse pass.
+	Ranges []astx.FuncRange
 }
 
 // ImportEdge is one extracted import: file → module.
@@ -170,16 +175,25 @@ func Extract(projectRoot string) (calls []CallEdge, imports []ImportEdge, decls 
 			if len(set.Functions) > 0 {
 				seenNames := map[string]bool{}
 				var names []string
+				ranges := make([]astx.FuncRange, 0, len(set.Functions))
 				for _, fn := range set.Functions {
-					if fn.Name == "" || seenNames[fn.Name] {
-						continue
+					if fn.Name != "" && !seenNames[fn.Name] {
+						seenNames[fn.Name] = true
+						names = append(names, fn.Name)
 					}
-					seenNames[fn.Name] = true
-					names = append(names, fn.Name)
+					ranges = append(ranges, fn)
 				}
 				if len(names) > 0 {
 					sort.Strings(names)
-					decls = append(decls, FileDecls{File: rel, Names: names})
+					// Retention (REQ-MTE-002): ranges ride the SAME walk
+					// output; sorted so the seam output stays deterministic.
+					sort.Slice(ranges, func(i, j int) bool {
+						if ranges[i].StartLine != ranges[j].StartLine {
+							return ranges[i].StartLine < ranges[j].StartLine
+						}
+						return ranges[i].Name < ranges[j].Name
+					})
+					decls = append(decls, FileDecls{File: rel, Names: names, Ranges: ranges})
 				}
 			}
 			return nil

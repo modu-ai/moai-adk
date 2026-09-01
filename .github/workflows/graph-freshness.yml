@@ -36,16 +36,31 @@ jobs:
         # codemaps stamp naming a branch-local HEAD is orphaned at merge time —
         # the stamped commit never reaches main's history and every later PR
         # inherits the not-comparable red. This step verifies the tracked
-        # provenance's commit_sha IS an ancestor of the PR base BEFORE any
-        # freshness verdict is reported (SPEC-STAMP-REACHABILITY-001
-        # acceptance.md §A.1 canonical text). It runs unconditionally on
+        # provenance's commit_sha IS reachable BEFORE any freshness verdict is
+        # reported (SPEC-STAMP-REACHABILITY-001 acceptance.md §A.1 canonical
+        # text, as redefined by card t407). It runs unconditionally on
         # pull_request AND push; the shell-internal base-ref emptiness test is
         # the ONLY PR/push divergence — a step-level `if:` conditioning on
         # pull_request would silently drop object-presence enforcement from
         # push-to-main runs. The step carries no silent-slip escape hatch: an
         # orphan-bound stamp must fail this job, not slip past it.
+        #
+        # Lane split (t407, measured on PR #1685): under git-flow the release
+        # lane merges with a MERGE COMMIT (release doctrine — "PR with merge
+        # commit NOT squash"), so a develop-anchored stamp survives the merge
+        # even though it is not a base ancestor until the merge lands — the
+        # base-ancestry test makes every release PR red by construction
+        # (CI run 33382844542). Re-anchoring cannot rescue that lane: a
+        # merge-base stamp passes the guard but then fails the freshness
+        # threshold (91 described-worthy files, threshold 40). For release/*
+        # heads the survival predicate is therefore reachability from HEAD —
+        # the pull_request checkout IS the merge preview, which carries the
+        # head branch's full history. Every other lane keeps the strict
+        # base-ancestry test: under a squash merge only base-reachable
+        # content survives (incident 0d15864ae90b).
         env:
           GITHUB_BASE_REF: ${{ github.base_ref }}
+          GITHUB_HEAD_REF: ${{ github.head_ref }}
         run: |
           REPO="$PWD"
           PROV=".moai/project/codemaps/provenance.json"
@@ -63,11 +78,17 @@ jobs:
             echo "guard: push event (no base ref) — object presence verified only"
             exit 0
           fi
-          if ! git -C "$REPO" merge-base --is-ancestor "$SHA" "origin/${GITHUB_BASE_REF}" 2>/dev/null; then
-            echo "::error::codemaps provenance stamp ${SHA} is NOT an ancestor of PR base origin/${GITHUB_BASE_REF} — orphan-bound stamp (a squash merge would strand it)"
+          if [ "${GITHUB_HEAD_REF#release/}" != "$GITHUB_HEAD_REF" ]; then
+            TARGET="HEAD"
+            echo "guard: release lane (${GITHUB_HEAD_REF}) — judging reachability from merge preview HEAD"
+          else
+            TARGET="origin/${GITHUB_BASE_REF}"
+          fi
+          if ! git -C "$REPO" merge-base --is-ancestor "$SHA" "$TARGET" 2>/dev/null; then
+            echo "::error::codemaps provenance stamp ${SHA} is NOT reachable from ${TARGET} — orphan-bound stamp (the merge would strand it)"
             exit 1
           fi
-          echo "guard: stamp ${SHA} reachable from origin/${GITHUB_BASE_REF}"
+          echo "guard: stamp ${SHA} reachable from ${TARGET}"
       - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
