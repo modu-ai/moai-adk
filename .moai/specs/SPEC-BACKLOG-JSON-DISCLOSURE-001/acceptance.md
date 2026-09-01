@@ -45,9 +45,17 @@ stdout, and stdout is byte-identical to the same command's stdout against a
 layout with no `backlog.json`.
 
 **AC-BJD-004** — no disclosure when there is nothing to disclose (REQ-BJD-003).
-Given a queue directory containing `backlog.db` and no `backlog.json`,
+Given a queue directory containing `backlog.db` and no `backlog.json`, **whose
+`backlog.db` has its archive tables present**,
 When the same command is invoked,
-Then no disclosure line is emitted on either stream.
+Then **no line introduced by this SPEC** is emitted on either stream.
+
+Both qualifiers are inherited from AC-BJD-002 deliberately. This criterion
+restates its Given rather than referencing it, so the archive-tables condition
+does not carry across on its own — and without it the existing REQ-TAQ-013 line
+at `internal/cli/todo_history.go:99-107` fires on an archive-less fixture,
+reintroducing on the negative side exactly the ambiguity AC-BJD-002 removed on
+the positive side.
 
 **AC-BJD-005** — the file is untouched (REQ-BJD-005).
 Given a queue directory containing both artifacts, with the `backlog.json`
