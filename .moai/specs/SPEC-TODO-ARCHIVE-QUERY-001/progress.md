@@ -341,7 +341,26 @@ envelope.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: "2026-09-01T23:27:00+09:00"
+sync_commit_sha: "pending-backfill"
+sync_status: complete
+changelog_entry_position: "CHANGELOG.md [Unreleased] > ### Added, first bullet (top insertion)"
+b12_self_test_a: "pre-emission grep -c 'SPEC-TODO-ARCHIVE-QUERY-001' CHANGELOG.md → 0 (halt condition not met; duplicate-entry halt not triggered)"
+b12_self_test_b: "AC count match — acceptance.md carries 15 live identifiers (AC-TAQ-001..015, zero RETIRED/REF markers); the CHANGELOG entry cites 15/15 — equal, and the count is non-zero"
+b12_self_test_c: "every path cited in the entry verified present by ls — internal/cli/todo_history.go, internal/cli/todo.go (registration, todo.go:152), internal/cli/todo_history_test.go, internal/kanban/backlog_archive_vouch.go, internal/kanban/backlog_archive_vouch_test.go, internal/kanban/backlog_schema_freeze_test.go, internal/cli/testdata/golden/live-readers/ (6 golden files), .claude/skills/moai/workflows/todo.md, internal/template/templates/.claude/skills/moai/workflows/todo.md"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (the implemented→completed close merged into this single sync commit per the 3-phase close; updated: 2026-09-01 already current — same-day, no change needed)"
+  plan_md: "no status: field to transition (ArtifactStatusFieldForbidden, per card t357)"
+  acceptance_md: "no status: field to transition"
+  progress_md: "no status: field to transition"
+canary_compliance_check:
+  mx_tag_validation: "grep '@MX' over the five SPEC-authored Go files (todo_history.go, todo.go, todo_history_test.go, backlog_archive_vouch.go, backlog_archive_vouch_test.go) → 0 matches; this SPEC added and removed no MX tags; new files carry SPEC-ID header comments and exported symbols carry godoc — no MX drift"
+  spec_lint: "0 error(s), 1 warning(s) — WARNING MovingRefUnpinned at plan.md:94 (plan BODY; reported to the lead per the ownership boundary, not repaired in sync)"
+  codemaps: "unchanged by decision — entry-points.md does not enumerate moai todo sub-verbs, and the verb joined an existing AddCommand call site (internal/cli/todo.go:150-152), so the recorded call-site and root-command counts stand; hand-editing a dated generated artifact is ceremony the next /moai codemaps --force would overwrite"
+  docs_site: "not touched — adk.mo.ai.kr is owned by a separate harness"
+  scoped_smoke: "go test -count=1 ./internal/cli/ -run TestTodoSkillDocumentsHistoryVerb → ok (both skill documents ≥1 mention, template-mirror neutrality regex clean)"
+```
 
 ## §F Phase 4 Mode Selection
 

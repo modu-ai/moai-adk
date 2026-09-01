@@ -2,7 +2,7 @@
 id: SPEC-TODO-ARCHIVE-QUERY-001
 title: "A read surface for the backlog archive — was this card ever issued, and what became of it"
 version: "0.2.2"
-status: in-progress
+status: completed
 created: 2026-09-01
 updated: 2026-09-01
 author: manager-spec (card t394)
