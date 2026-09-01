@@ -29,27 +29,105 @@ func ValidateGradeMatrix(matrix map[string]string) []string {
 // The seam (internal/graph/symbol) holds the astx consumption and stays free
 // of navigator-tier dependencies; this mapper owns the persisted shapes.
 func CodeEdges(projectRoot string) ([]Edge, map[string]string, error) {
-	calls, imports, matrix, err := symbol.Extract(projectRoot)
+	calls, imports, decls, matrix, err := symbol.Extract(projectRoot)
 	if err != nil {
 		return nil, matrix, fmt.Errorf("graph: extract code edges: %w", err)
 	}
-	return mapSymbolEdges(calls, imports), matrix, nil
+	return mapSymbolEdges(calls, imports, decls), matrix, nil
 }
 
-// mapSymbolEdges converts seam-typed extraction into persisted edges.
-func mapSymbolEdges(calls []symbol.CallEdge, imports []symbol.ImportEdge) []Edge {
+// declIndex is the deterministic lookup structure behind the confidence
+// tier pass: declared names per file, declaring directories per name, and
+// each file's Go-module (Local) import set — all derived from the single
+// Extract walk, all consumed by set lookup only (no map-iteration order
+// reaches an emitted value).
+type declIndex struct {
+	namesByFile  map[string]map[string]bool // file → declared names
+	dirsByName   map[string]map[string]bool // name → declaring directories
+	localImports map[string]map[string]bool // file → module-prefixed import dirs
+}
+
+// buildDeclIndex assembles the tier-join index from the seam's walk output.
+func buildDeclIndex(imports []symbol.ImportEdge, decls []symbol.FileDecls) *declIndex {
+	idx := &declIndex{
+		namesByFile:  map[string]map[string]bool{},
+		dirsByName:   map[string]map[string]bool{},
+		localImports: map[string]map[string]bool{},
+	}
+	for _, imp := range imports {
+		if !imp.Local {
+			continue
+		}
+		set := idx.localImports[imp.File]
+		if set == nil {
+			set = map[string]bool{}
+			idx.localImports[imp.File] = set
+		}
+		set[imp.Module] = true
+	}
+	for _, d := range decls {
+		set := idx.namesByFile[d.File]
+		if set == nil {
+			set = map[string]bool{}
+			idx.namesByFile[d.File] = set
+		}
+		dir := filepath.ToSlash(filepath.Dir(d.File))
+		for _, name := range d.Names {
+			set[name] = true
+			dirs := idx.dirsByName[name]
+			if dirs == nil {
+				dirs = map[string]bool{}
+				idx.dirsByName[name] = dirs
+			}
+			dirs[dir] = true
+		}
+	}
+	return idx
+}
+
+// resolveConfidence applies the promotion tiers to one code-call edge, first
+// match wins (plan.md §C): T1 same-file declaration → extracted; T2 the
+// callee declared in a Go-module-imported directory → extracted (Go-module
+// imports ONLY — the seam's Local flag marks exactly the strippable
+// specifiers); T3 declared in the caller's own directory → intra-package;
+// T4 otherwise → inferred. Evidence semantics, not scope-aware proof — that
+// remains the grade axis's unassigned full tier (REQ-GEC-007).
+func (idx *declIndex) resolveConfidence(file, callee string) string {
+	if idx.namesByFile[file][callee] {
+		return ResolutionExtracted // T1 same-file
+	}
+	callerDir := filepath.ToSlash(filepath.Dir(file))
+	for dir := range idx.dirsByName[callee] { // T2 import evidence (set membership only)
+		if idx.localImports[file][dir] {
+			return ResolutionExtracted
+		}
+	}
+	if idx.dirsByName[callee][callerDir] {
+		return ResolutionIntraPackage // T3 same directory = same Go package
+	}
+	return ResolutionInferred // T4 name-only fallback
+}
+
+// mapSymbolEdges converts seam-typed extraction into persisted edges,
+// stamping resolution confidence on code-call edges only (REQ-GEC-001,
+// REQ-GEC-006: doc-derived and code-import edges stay field-free).
+func mapSymbolEdges(calls []symbol.CallEdge, imports []symbol.ImportEdge, decls []symbol.FileDecls) []Edge {
+	idx := buildDeclIndex(imports, decls)
 	var edges []Edge
 	for _, c := range calls {
 		source := c.File
 		if c.Caller != "" {
 			source = c.File + ":" + c.Caller
 		}
+		resolution := idx.resolveConfidence(c.File, c.Callee)
 		edges = append(edges, Edge{
-			Kind:   KindCodeCall,
-			Source: source,
-			Target: c.Callee,
-			Line:   c.Line,
-			Grade:  c.Grade,
+			Kind:       KindCodeCall,
+			Source:     source,
+			Target:     c.Callee,
+			Line:       c.Line,
+			Grade:      c.Grade,
+			Resolution: resolution,
+			Confidence: ConfidenceFor(resolution),
 		})
 	}
 	for _, imp := range imports {
@@ -96,12 +174,12 @@ func BuildWithCodeLayersMode(projectRoot string, mode DisagreementMode) ([]Edge,
 	if err != nil {
 		return nil, nil, fmt.Errorf("graph: build doc edges: %w", err)
 	}
-	calls, imports, matrix, err := symbol.Extract(projectRoot)
+	calls, imports, decls, matrix, err := symbol.Extract(projectRoot)
 	if err != nil {
 		// Fail-open on the code layers ONLY: doc edges must survive.
 		return docEdges, GradeMatrix(), nil
 	}
-	codeEdges := mapSymbolEdges(calls, imports)
+	codeEdges := mapSymbolEdges(calls, imports, decls)
 	markImportDisagreements(docEdges, codeEdges, imports, mode)
 
 	all := make([]Edge, 0, len(docEdges)+len(codeEdges))
