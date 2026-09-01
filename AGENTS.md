@@ -13,6 +13,15 @@ Obligations are carried from `.claude/rules/moai/**` and `CLAUDE.md`, which rema
 truth; compression removed rationale and incident records, never an obligation. Claude-only
 mechanisms (the question channel, subagent spawning, skills, session handoff) stay there.
 
+**Capability bindings.** Names below are the neutral tool classes; a row exists only where a
+harness driving this contract lacks the capability.
+
+| Capability | Claude implementation | If this harness lacks it |
+|---|---|---|
+| question-channel | `AskUserQuestion` | Return a blocker report naming the missing input instead of asking in prose |
+| task-list | `TaskCreate` / `TaskUpdate` / `TaskList` / `TaskGet` | Track the work and report progress in prose |
+| design-sync | `DesignSync` | Skip the design-sync surface; say so in the report |
+
 ---
 
 ## 1. Evidence and verification claims

@@ -1,5 +1,5 @@
 ---
-description: "Detail companion for cross-session-messaging.md — the mechanism-selection table, addressing/reply frictions, and the full configuration surface (inbound controls, isolation, dialog expiry, deny rules, inbox burst refusal)"
+description: "Detail companion for cross-session-messaging.md — the mechanism-selection table, addressing/reply frictions, the full configuration surface (inbound controls, isolation, dialog expiry, deny rules, inbox burst refusal), and the shared feature-flag slot that decides whether the channel exists at all"
 paths: "**/cross-session-messaging*.md,**/kanban-dispatch*.md"
 ---
 
@@ -8,9 +8,11 @@ paths: "**/cross-session-messaging*.md,**/kanban-dispatch*.md"
 > Detail companion of `cross-session-messaging.md` (the always-loaded stub). The stub owns what the
 > channel is, its availability constraints, every rule, the concurrency-check integration, the
 > idle-notice clause, and the anti-pattern list. This file owns the mechanism-selection table, the
-> addressing and reply frictions observed in practice, and the configuration surface. Load it when
-> a send does not arrive, when choosing between messaging and a handoff, or when configuring how a
-> session accepts inbound messages.
+> addressing and reply frictions observed in practice, the configuration surface, and the shared
+> feature-flag slot behind the stub's fifth availability constraint. Load it when a send does not
+> arrive, when choosing between messaging and a handoff, when configuring how a session accepts
+> inbound messages, or when a third-party-backend session has lost the channel for no visible
+> reason.
 
 ## Where it sits among MoAI's existing mechanisms
 
@@ -55,8 +57,24 @@ The two ways a message is held do not expire alike. A message the inbound **defa
 
 Two further facts bear on unattended workers. A `claude -p` session binds an inbox socket like an interactive one, but a session started in **bare mode** binds none — it neither receives messages nor appears in listings. And the `/config` row that selects `crossSessionInbound` (v2.1.232+) does not appear while `--settings` or managed settings set the key — a companion session launched with an injected inbound value cannot change it from its own `/config`, only from the settings source that injected it.
 
-**Availability trap**: a session where the peer-listing command is unrecognized does not have the feature — see § Availability constraints for the OS, provider, version, and flag reasons; a session where listing works but a send never arrives is being blocked by something narrower — a deny rule, the receiver's inbound control, or, for a target beyond this machine, the version and listing conditions above.
+**Availability trap**: a session where the peer-listing command is unrecognized does not have the feature — see § Availability constraints for the OS, provider, version, flag-evaluation, and shared-slot reasons; a session where listing works but a send never arrives is being blocked by something narrower — a deny rule, the receiver's inbound control, or, for a target beyond this machine, the version and listing conditions above.
 
+
+## The shared flag slot
+
+The channel's gate reads one machine-global boolean, `cachedGrowthBookFeatures.tengu_harbor_kite` in `~/.claude.json`. Two facts turn it into a shared resource rather than a per-session setting, and together they produce a failure that looks like a backend fault and is not one.
+
+**Only a first-party session writes it.** The remote evaluation endpoint is `api.anthropic.com`, hardcoded — it does not follow `ANTHROPIC_BASE_URL`. What `ANTHROPIC_BASE_URL` contributes instead is its host, sent as a targeting attribute (`apiBaseUrlHost`) whenever that host is something other than `api.anthropic.com`. A session pointed at a third-party endpoint therefore receives no payload of its own to write, and the slot's write timestamp does not move while it runs; a first-party session started alongside it fetches and overwrites the same slot.
+
+**The gate is re-read on every call, not cached at startup.** A session that had the channel can lose it mid-run because another session wrote `false`, and can regain it the same way. Neither transition errors.
+
+**Diagnostic.** `python3 -c "import json,os;print(json.load(open(os.path.expanduser('~/.claude.json')))['cachedGrowthBookFeatures']['tengu_harbor_kite'])"` — `false` means the channel is off for every session on this machine that cannot write the slot.
+
+The consequence for MoAI is direct: `moai glm`, and the GLM panes of `moai cg`, read the slot and never write it, so their messaging tracks whatever a first-party session last left on this machine. Attributing an outage there to the GLM backend is the natural reading and the wrong one — the same session works or does not according to a value it has no part in setting.
+
+**The measurement this rests on.** Holding model and environment fixed and flipping only the slot, a session with `ANTHROPIC_BASE_URL` pointed at a third-party endpoint was started four times: `true` produced an inbox socket twice, `false` produced none twice, with no exception. Separately, a first-party session was observed overwriting the slot from `false` to `true`, while a third-party session left the write timestamp unchanged across six reads in 36 seconds — it never wrote the slot once.
+
+**The manual escape hatch.** The gate checks `CLAUDE_CODE_HARBOR_KITE` before it reads the slot, so exporting `CLAUDE_CODE_HARBOR_KITE=1` for a session turns the channel on whatever the slot holds. MoAI does not inject it. It is an upstream internal flag rather than a documented interface, so reaching for it is an operator decision taken knowing the name can change without notice — worth having when a session is cut off and the slot is out of reach, not something to wire in by default.
 
 ---
 

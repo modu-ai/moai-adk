@@ -1,0 +1,63 @@
+Reading additional input from stdin...
+2026-08-31T16:46:32.116140Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("http/request failed: error sending request for url (https://app.post-bridge.com/mcp)")))
+2026-08-31T16:46:32.346875Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: "Bearer resource_metadata=\"https://mcp.facebook.com/.well-known/oauth-protected-resource/ads\", scope=\"ads_management ads_read catalog_management business_management pages_show_list instagram_basic ads_mcp_management\"" })
+2026-08-31T16:46:32.361186Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("MCP HTTP redirect to a different origin is not allowed")))
+2026-08-31T16:46:32.370745Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("http/request failed: error sending request for url (https://app.post-bridge.com/mcp)")))
+2026-08-31T16:46:32.442844Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when UnexpectedServerResponse("HTTP 404: \n<!doctype html>\n<html lang=\"en\">\n<head>\n  <title>Not Found</title>\n</head>\n<body>\n  <h1>Not Found</h1><p>The requested resource was not found on this server.</p>\n</body>\n</html>\n")
+2026-08-31T16:46:32.575259Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: "Bearer resource_metadata=\"https://mcp.slack.com/.well-known/oauth-protected-resource\"" })
+2026-08-31T16:46:32.762187Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("MCP HTTP redirect to a different origin is not allowed")))
+2026-08-31T16:46:32.902360Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: "Bearer error=\"invalid_request\", error_description=\"No access token was provided in this request\", resource_metadata=\"https://api.githubcopilot.com/.well-known/oauth-protected-resource/mcp/\"" })
+OpenAI Codex v0.150.1
+--------
+workdir: /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t196
+model: gpt-5.6-sol
+provider: openai
+approval: never
+sandbox: read-only
+reasoning effort: high
+reasoning summaries: none
+session id: 01a058b7-1ede-7282-8776-efca6488d729
+--------
+user
+Read the file ${CLAUDE_SKILL_DIR}/workflows/plan.md and report its first heading. If you cannot, say exactly why.
+2026-08-31T16:46:33.246677Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when UnexpectedServerResponse("HTTP 404: \n<!doctype html>\n<html lang=\"en\">\n<head>\n  <title>Not Found</title>\n</head>\n<body>\n  <h1>Not Found</h1><p>The requested resource was not found on this server.</p>\n</body>\n</html>\n")
+2026-08-31T16:46:33.246868Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: "Bearer resource_metadata=\"https://mcp.facebook.com/.well-known/oauth-protected-resource/ads\", scope=\"ads_management ads_read catalog_management business_management pages_show_list instagram_basic ads_mcp_management\"" })
+2026-08-31T16:46:33.378135Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("http/request failed: error sending request for url (https://app.post-bridge.com/mcp)")))
+2026-08-31T16:46:33.510366Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: "Bearer resource_metadata=\"https://mcp.slack.com/.well-known/oauth-protected-resource\"" })
+2026-08-31T16:46:33.839271Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when AuthRequired(AuthRequiredError { www_authenticate_header: "Bearer error=\"invalid_request\", error_description=\"No access token was provided in this request\", resource_metadata=\"https://api.githubcopilot.com/.well-known/oauth-protected-resource/mcp/\"" })
+2026-08-31T16:46:33.898201Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("MCP HTTP redirect to a different origin is not allowed")))
+warning: Exceeded skills context budget. All skill descriptions were removed and 237 additional skills were not included in the model-visible skills list.
+hook: SessionStart
+hook: SessionStart
+hook: SessionStart Completed
+hook: SessionStart Completed
+hook: UserPromptSubmit
+hook: UserPromptSubmit
+hook: UserPromptSubmit Completed
+hook: UserPromptSubmit Completed
+2026-08-31T16:46:37.262641Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("http/request failed: error sending request for url (https://archhub-mcp.fly.dev/mcp)")))
+codex
+파일 위치와 환경 변수 값을 먼저 확인한 뒤, 실제 파일의 첫 번째 Markdown 제목을 읽겠습니다.
+2026-08-31T16:46:42.679110Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("http/request failed: error sending request for url (https://archhub-mcp.fly.dev/mcp)")))
+hook: PreToolUse
+hook: PreToolUse Completed
+exec
+/bin/zsh -c 'printenv CLAUDE_SKILL_DIR' in /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t196
+ exited 1 in 0ms:
+hook: PostToolUse
+hook: PostToolUse Completed
+2026-08-31T16:46:48.842738Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("http/request failed: error sending request for url (https://archhub-mcp.fly.dev/mcp)")))
+hook: PreToolUse
+hook: PreToolUse Completed
+exec
+/bin/zsh -lc 'printenv CLAUDE_SKILL_DIR' in /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t196
+ exited 1 in 0ms:
+hook: PostToolUse
+hook: PostToolUse Completed
+codex
+Cannot read it because `CLAUDE_SKILL_DIR` is not set in this environment, so `${CLAUDE_SKILL_DIR}/workflows/plan.md` cannot be resolved to a file path.
+hook: Stop
+hook: Stop Completed
+tokens used
+20,071
+Cannot read it because `CLAUDE_SKILL_DIR` is not set in this environment, so `${CLAUDE_SKILL_DIR}/workflows/plan.md` cannot be resolved to a file path.

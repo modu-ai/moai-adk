@@ -1,0 +1,100 @@
+population: 24
+  SPEC-ASTGREP-BREADTH-001
+    before: SPEC-ASTGREP-BREADTH-001       draft                era-exempt           aligned   
+    after : <absent>
+    flag  : -
+  SPEC-ASTGREP-LANG16-001
+    before: SPEC-ASTGREP-LANG16-001        in-progress          era-exempt           aligned   
+    after : <absent>
+    flag  : -
+  SPEC-CLOCAL-AUDIT-001
+    before: SPEC-CLOCAL-AUDIT-001          "in-progress"        era-exempt           aligned   
+    after : <absent>
+    flag  : -
+  SPEC-CONFIG-DEAD-SWEEP-001
+    before: SPEC-CONFIG-DEAD-SWEEP-001     in-progress          era-exempt           aligned   
+    after : SPEC-CONFIG-DEAD-SWEEP-001     in-progress          in-progress          aligned   
+    flag  : -
+  SPEC-DWF-CODEMAPS-PILOT-001
+    before: SPEC-DWF-CODEMAPS-PILOT-001    completed            era-exempt           aligned   
+    after : SPEC-DWF-CODEMAPS-PILOT-001    completed            completed            aligned   
+    flag  : -
+  SPEC-ERA-H3-NARROWING-001
+    before: SPEC-ERA-H3-NARROWING-001      draft                era-exempt           aligned   
+    after : <absent>
+    flag  : -
+  SPEC-GITFLOW-DOCTRINE-ALIGN-001
+    before: SPEC-GITFLOW-DOCTRINE-ALIGN-001 in-progress          era-exempt           aligned   
+    after : <absent>
+    flag  : -
+  SPEC-GLM-EFFORT-REBALANCE-001
+    before: SPEC-GLM-EFFORT-REBALANCE-001  in-progress          era-exempt           aligned   
+    after : <absent>
+    flag  : -
+  SPEC-HARNESS-LEARNING-EVO-001
+    before: SPEC-HARNESS-LEARNING-EVO-001  completed            era-exempt           aligned   
+    after : SPEC-HARNESS-LEARNING-EVO-001  completed            completed            aligned   
+    flag  : -
+  SPEC-HARNESS-LEARNING-EVO-002
+    before: SPEC-HARNESS-LEARNING-EVO-002  completed            era-exempt           aligned   
+    after : SPEC-HARNESS-LEARNING-EVO-002  completed            implemented          DRIFT     
+    flag  : DRIFT
+  SPEC-HOOK-DISCIPLINE-WIRING-001
+    before: SPEC-HOOK-DISCIPLINE-WIRING-001 completed            era-exempt           aligned   
+    after : SPEC-HOOK-DISCIPLINE-WIRING-001 completed            completed            aligned   
+    flag  : -
+  SPEC-HOOK-PREEDIT-INVESTIGATE-001
+    before: SPEC-HOOK-PREEDIT-INVESTIGATE-001 superseded           terminal-exempt      aligned   
+    after : SPEC-HOOK-PREEDIT-INVESTIGATE-001 superseded           terminal-exempt      aligned   
+    flag  : -
+  SPEC-INTERNAL-ARCH-001
+    before: SPEC-INTERNAL-ARCH-001         draft                era-exempt           aligned   
+    after : SPEC-INTERNAL-ARCH-001         draft                draft                aligned   
+    flag  : -
+  SPEC-KANBAN-BOOTSTRAP-001
+    before: SPEC-KANBAN-BOOTSTRAP-001      draft                era-exempt           aligned   
+    after : <absent>
+    flag  : -
+  SPEC-KANBAN-PR-CARD-TRACEABILITY-001
+    before: SPEC-KANBAN-PR-CARD-TRACEABILITY-001 in-progress          era-exempt           aligned   
+    after : <absent>
+    flag  : -
+  SPEC-KANBAN-QUEUE-PR-SYNC-001
+    before: SPEC-KANBAN-QUEUE-PR-SYNC-001  in-progress          era-exempt           aligned   
+    after : <absent>
+    flag  : -
+  SPEC-KANBAN-TODO-CLI-001
+    before: SPEC-KANBAN-TODO-CLI-001       in-progress          era-exempt           aligned   
+    after : SPEC-KANBAN-TODO-CLI-001       in-progress          implemented          DRIFT     
+    flag  : DRIFT
+  SPEC-KANBAN-WORKTREE-001
+    before: SPEC-KANBAN-WORKTREE-001       draft                era-exempt           aligned   
+    after : <absent>
+    flag  : -
+  SPEC-LSPMCP-RETIRE-001
+    before: SPEC-LSPMCP-RETIRE-001         completed            era-exempt           aligned   
+    after : SPEC-LSPMCP-RETIRE-001         completed            completed            aligned   
+    flag  : -
+  SPEC-PREPUSH-WIRING-001
+    before: SPEC-PREPUSH-WIRING-001        completed            era-exempt           aligned   
+    after : SPEC-PREPUSH-WIRING-001        completed            completed            aligned   
+    flag  : -
+  SPEC-SEC-SCAN-SURFACE-001
+    before: SPEC-SEC-SCAN-SURFACE-001      in-progress          era-exempt           aligned   
+    after : <absent>
+    flag  : -
+  SPEC-UPDATE-VERSION-FLAG-001
+    before: SPEC-UPDATE-VERSION-FLAG-001   completed            era-exempt           aligned   
+    after : SPEC-UPDATE-VERSION-FLAG-001   completed            implemented          DRIFT     
+    flag  : DRIFT
+  SPEC-V3R5-INIT-WIZARD-EXPANSION-001
+    before: SPEC-V3R5-INIT-WIZARD-EXPANSION-001 implemented          era-exempt           aligned   
+    after : SPEC-V3R5-INIT-WIZARD-EXPANSION-001 implemented          era-exempt           aligned   
+    flag  : -
+  SPEC-V3R6-SESSION-HANDOFF-AUTO-001
+    before: SPEC-V3R6-SESSION-HANDOFF-AUTO-001 completed            era-exempt           aligned   
+    after : SPEC-V3R6-SESSION-HANDOFF-AUTO-001 completed            in-progress          DRIFT     
+    flag  : DRIFT
+
+rows now flagged DRIFT: 4 ['SPEC-HARNESS-LEARNING-EVO-002', 'SPEC-KANBAN-TODO-CLI-001', 'SPEC-UPDATE-VERSION-FLAG-001', 'SPEC-V3R6-SESSION-HANDOFF-AUTO-001']
+MISSING from a drift output: ['SPEC-ASTGREP-BREADTH-001', 'SPEC-ASTGREP-LANG16-001', 'SPEC-CLOCAL-AUDIT-001', 'SPEC-ERA-H3-NARROWING-001', 'SPEC-GITFLOW-DOCTRINE-ALIGN-001', 'SPEC-GLM-EFFORT-REBALANCE-001', 'SPEC-KANBAN-BOOTSTRAP-001', 'SPEC-KANBAN-PR-CARD-TRACEABILITY-001', 'SPEC-KANBAN-QUEUE-PR-SYNC-001', 'SPEC-KANBAN-WORKTREE-001', 'SPEC-SEC-SCAN-SURFACE-001']
