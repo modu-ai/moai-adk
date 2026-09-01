@@ -289,6 +289,22 @@ type ReviewOutput struct {
 	// it. Additive + omitempty (the SynthesisNote precedent): no existing
 	// consumer's JSON changes, and the fail-open verdict itself is preserved.
 	GateUnmet string `json:"gate_unmet,omitempty"`
+
+	// BuildCommit records the commit the SERVING binary was built from
+	// (SPEC-AUDIT-BUILD-IDENTITY-001), so a verdict can be re-attributed to
+	// the binary that produced it after the fact. Deliberately NOT a version
+	// string: one version names both a lagging build and a current one
+	// (REQ-ABI-003). Flat sibling fields, additive + omitempty (the
+	// SynthesisNote/GateUnmet precedent): no existing consumer's JSON changes
+	// when the identity is absent. Assembled ONLY by auditBuildIdentity —
+	// one constructor serves all three audit entry points (REQ-ABI-007).
+	BuildCommit string `json:"build_commit,omitempty"`
+
+	// BuildLag carries the rebuild advisory on an ancestor build — the binary
+	// predates commits the reviewed tree already contains — naming both
+	// commits. Empty on every other verdict, so the advisory speaks only when
+	// the binary really is running code the tree has moved past (REQ-ABI-006).
+	BuildLag string `json:"build_lag,omitempty"`
 }
 
 // Finding is a single review finding (§G.4).
@@ -770,7 +786,15 @@ func (h *codexSessionHandle) sendTurnInterrupt(threadID, turnID string) error {
 // (the error arm in awaitCodexResponse surfaces a JSON-RPC rejection verbatim).
 func (h *codexSessionHandle) runTurn(ctx context.Context, method string, params map[string]any) (ReviewOutput, error) {
 	id := h.allocID()
-	finalParams := buildCodexReviewParams(method, params, h.threadID, h.effortResolver())
+	finalParams, buildErr := buildCodexReviewParams(method, params, h.threadID, h.effortResolver())
+	if buildErr != nil {
+		// The request could not be assembled to the schema's contract, so NOTHING
+		// is sent: no review/start, and no other variant's target in its place.
+		// The cause is named in the Summary so this fail-open exit is
+		// distinguishable from every other one — an inconclusive that cannot be
+		// told apart from "codex is missing" is a new silence, not a repair.
+		return inconclusiveReview("codex " + method + " not sent: " + buildErr.Error()), buildErr
+	}
 	if err := writeCodexRequest(h.conn, id, method, finalParams); err != nil {
 		return inconclusiveReview("codex " + method + " write failed: " + err.Error()), err
 	}
@@ -936,14 +960,22 @@ func extractThreadID(result json.RawMessage) string {
 // Before M1 this function built a fresh map that dropped the caller's `model`
 // entirely, so the `model` parameter advertised by codex_audit never reached
 // codex (spec.md §A.3 G3 — a live defect, not a missing feature).
-func buildCodexReviewParams(method string, params map[string]any, threadID string, resolve func(map[string]any) config.ModelEffort) map[string]any {
+// The error return is the review/start target's: a variant whose required
+// fields cannot be populated yields no request at all, rather than an
+// incomplete object or a quietly substituted one.
+func buildCodexReviewParams(method string, params map[string]any, threadID string, resolve func(map[string]any) config.ModelEffort) (map[string]any, error) {
 	if resolve == nil {
 		resolve = resolveCodexModelEffort
 	}
 	out := map[string]any{"threadId": threadID}
 	switch method {
 	case codexMethodReviewStart:
-		out["target"] = coerceCodexReviewTarget(params["target"])
+		root, _ := params["cwd"].(string)
+		target, err := coerceCodexReviewTarget(params["target"], root)
+		if err != nil {
+			return nil, err
+		}
+		out["target"] = target
 	case codexMethodTurnStart:
 		prompt, _ := params["prompt"].(string)
 		if strings.TrimSpace(prompt) == "" {
@@ -965,7 +997,7 @@ func buildCodexReviewParams(method string, params map[string]any, threadID strin
 			out["sandboxPolicy"] = policy
 		}
 	}
-	return out
+	return out, nil
 }
 
 // codexSandboxPolicy builds the internally-tagged SandboxPolicy object for a
@@ -988,20 +1020,53 @@ func codexSandboxPolicy(allowWrite bool) map[string]any {
 }
 
 // coerceCodexReviewTarget normalizes the target value to the internally-tagged
-// object shape codex requires ({"type":"uncommittedChanges"}). A bare string
-// ("uncommittedChanges" / "baseBranch") is lifted into the object; an
-// already-correct object is passed through; anything else defaults to reviewing
-// uncommitted changes.
-func coerceCodexReviewTarget(v any) map[string]any {
+// object codex requires, filling in the required fields of the variant the
+// caller named. root is the tree the review runs against; it is what the
+// baseBranch variant's branch name is resolved from.
+//
+// The lift it replaces produced {"type": s} for ANY bare string, and that shape
+// is well-formed for exactly ONE of the four variants the measured
+// ReviewStartParams schema declares (codex-cli 0.150.1):
+//
+//	uncommittedChanges  required [type]                 ← the lift is correct
+//	baseBranch          required [branch, type]          ← rejected: missing branch
+//	commit              required [sha, type]             ← rejected: missing sha
+//	custom              required [instructions, type]    ← rejected: missing instructions
+//
+// Observed live on 0.150.1: {"type":"baseBranch"} comes back as JSON-RPC -32600
+// "Invalid request: missing field `branch`", and the fail-open contract then
+// absorbed that rejection as an `inconclusive` — a request codex REFUSED and a
+// review that PASSED reported as the same value (issue #1632).
+//
+// The caller cannot supply a branch: `codex_audit`'s target is a bare string
+// enum with no companion parameter, so the name has to be resolved server-side.
+//
+// commit and custom carry required fields this server has no source for, and a
+// bare string naming one is an error rather than a target. Substituting a
+// different variant is specifically NOT the answer: reviewing uncommitted
+// changes when a commit review was asked for is the silent-other-review shape
+// this SPEC exists to close, one variant over.
+func coerceCodexReviewTarget(v any, root string) (map[string]any, error) {
 	if m, ok := v.(map[string]any); ok {
 		if _, has := m["type"]; has {
-			return m
+			return m, nil
 		}
 	}
-	if s, ok := v.(string); ok && s != "" {
-		return map[string]any{"type": s}
+	s, _ := v.(string)
+	switch strings.TrimSpace(s) {
+	case "":
+		return map[string]any{"type": codexTargetUncommitted}, nil
+	case codexTargetUncommitted:
+		return map[string]any{"type": codexTargetUncommitted}, nil
+	case codexTargetBaseBranch:
+		branch, err := resolveReviewBaseBranchName(root)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{"type": codexTargetBaseBranch, "branch": branch}, nil
+	default:
+		return nil, fmt.Errorf("review target %q needs fields this server cannot supply", s)
 	}
-	return map[string]any{"type": codexTargetUncommitted}
 }
 
 // awaitCodexTurnReview reads notifications until turn/completed for threadID,
@@ -1495,13 +1560,20 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 		return toolErr("codex_audit", rootErr), nil
 	}
 
+	// Build identity is assembled ONCE here (REQ-ABI-007) and rides every
+	// result this handler returns below, fail-open exits included — an
+	// inconclusive verdict is still a verdict that must name its binary.
+	buildCommit, buildLag := auditBuildIdentity(ctx, root)
+
 	notifyMCPProgress(ctx, token, 0, "codex 감사 시작 — 모드: "+mode+", target: "+target)
 	binaryPath, err := codexLookPath(codexBinaryName)
 	if err != nil {
 		// The gate annotation rides EVERY fail-open exit, including this early
 		// one — a missing binary is exactly the state where a required gate
 		// goes silently unmet (the review never ran at all).
-		return codexReviewToolResult(applyGateUnmet(inconclusiveReview("codex binary not found in PATH"), root)), nil
+		out := applyGateUnmet(inconclusiveReview("codex binary not found in PATH"), root)
+		out.BuildCommit, out.BuildLag = buildCommit, buildLag
+		return codexReviewToolResult(out), nil
 	}
 	notifyMCPProgress(ctx, token, 0.1, "codex 바이너리 확인 — 리뷰 요청 준비 중...")
 
@@ -1522,6 +1594,7 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	notifyMCPProgress(ctx, token, 0.2, "codex에 리뷰 요청 전송 중... (수분 소요 가능)")
 	out, _ := codexReviewRPC(ctx, binaryPath, method, params) // fail-open inside
 	out = applyGateUnmet(out, root)
+	out.BuildCommit, out.BuildLag = buildCommit, buildLag
 	notifyMCPProgress(ctx, token, 0.9, "codex 응답 수신 — 결과 조립 중...")
 	return codexReviewToolResult(out), nil
 }

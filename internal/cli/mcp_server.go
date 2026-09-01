@@ -252,7 +252,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		"codex_audit",
 		mcp.WithDescription("Run a codex code review. mode=native → codex review/start; mode=adversarial → codex turn/start + an adversarial-review prompt. Returns a review-output schema (verdict/summary/findings/next_steps). codex is OPTIONAL; a missing or unavailable codex yields verdict 'inconclusive' (fail-open)."),
 		mcp.WithString("mode", mcp.Enum(codexModeNative, codexModeAdversarial), mcp.Description("Audit mode: 'native' (codex review/start) or 'adversarial' (codex turn/start + red-team prompt). Defaults to native.")),
-		mcp.WithString("target", mcp.Enum(codexTargetUncommitted, codexTargetBaseBranch), mcp.Description("What codex reviews: 'uncommittedChanges' or 'baseBranch'.")),
+		mcp.WithString("target", mcp.Enum(codexTargetUncommitted, codexTargetBaseBranch), mcp.Description("What codex reviews: 'uncommittedChanges' or 'baseBranch'. For 'baseBranch' the branch name is resolved SERVER-SIDE and cannot be supplied here — it is read from the reviewed tree, the remote default head first and then 'main', the same chain the GLM backend uses so both review the same change. A tree where neither resolves returns 'inconclusive' naming that cause rather than reviewing something else.")),
 		mcp.WithString("focus", mcp.Description("Adversarial-only focus area (e.g. 'concurrency', 'auth').")),
 		mcp.WithString("model", mcp.Description("Optional model override (resolved via the model/effort SSOT in M3).")),
 		projectRootOption(),
@@ -493,7 +493,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 
 	add("graph_find_code", mcp.NewTool(
 		"graph_find_code",
-		mcp.WithDescription("Search the code-derived edge layer for a symbol: callee sites (where it is called) and caller observations, each with its resolution grade. Answer names the tree root + commit."),
+		mcp.WithDescription("Search the code-derived edge layer for a symbol: callee sites (where it is called) and caller observations, each with its resolution grade and per-edge resolution confidence (1.0 extracted / 0.95 intra-package / 0.85 inferred; absent on pre-upgrade artifacts). Answer names the tree root + commit."),
 		mcp.WithString("query", mcp.Required(), mcp.Description("Symbol name to search for (e.g. 'CheckFreshness').")),
 		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(true),
@@ -501,7 +501,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 
 	add("graph_trace_calls", mcp.NewTool(
 		"graph_trace_calls",
-		mcp.WithDescription("Traverse code-call edges from a symbol: callers (who reaches it) and callees (what it calls), up to depth hops over the code-derived layer. Answer names the tree root + commit."),
+		mcp.WithDescription("Traverse code-call edges from a symbol: callers (who reaches it) and callees (what it calls), up to depth hops over the code-derived layer, each edge carrying its resolution confidence (absent on pre-upgrade artifacts). Answer names the tree root + commit."),
 		mcp.WithString("symbol", mcp.Required(), mcp.Description("Symbol name to trace from (e.g. 'RefreshIndex').")),
 		mcp.WithInteger("depth", mcp.Description("Traversal depth in hops (default 1, capped at 8).")),
 		projectRootOption(),

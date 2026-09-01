@@ -93,6 +93,14 @@ func TestAudit_EraClassification5Buckets(t *testing.T) {
 	}
 	// Override phase for unclassified case to make truly ambiguous
 	fixtures[4].specMD = strings.Replace(fixtures[4].specMD, `phase: "v3.0.0"`, `phase: "legacy"`, 1)
+	// Override phase for the V3R5 case for the same reason: makeSpecMD hardcodes
+	// phase "v3.0.0", which matchesModernPhase reads as a modern-era signal. Since
+	// SPEC-ERA-H3-NARROWING-001 narrowed H-3 to fire only in the ABSENCE of a modern
+	// signal, a fixture carrying that phase is no longer a V3R5 fixture — it is the
+	// misclassification this fixture set is not trying to exercise. The V2.x and
+	// V3R2-R4 fixtures need no such override: H-1 and H-2 decide before H-3 or H-5
+	// ever reads the phase.
+	fixtures[2].specMD = strings.Replace(fixtures[2].specMD, `phase: "v3.0.0"`, `phase: "legacy"`, 1)
 
 	baseDir := buildAuditFixture(t, fixtures)
 	result, err := Audit(AuditOptions{BaseDir: baseDir, IncludeGrandfathered: true})

@@ -3,10 +3,20 @@ package cli
 // codex_launcher.go — SPEC-CODEX-LAUNCHER-001 M3+M4
 // (REQ-CL-001/002/003/012, REQ-CL-014 help copy):
 // the `moai codex` command surface. Cobra registration sits in the launch
-// group next to cc/glm/cg; the verb routing accepts exactly {bare, status}
-// for the readout forms and {cli, app} for the launch verbs (closed sets —
-// unknown tokens are rejected, never routed to a launch); --spawn moves the
-// launch to a new tmux window.
+// group next to cc/glm/cg; the verb routing accepts exactly {bare, cli, app}
+// for the launch forms and {status} for the readout (closed sets — unknown
+// tokens are rejected, never routed to a launch); --spawn moves the launch to
+// a new tmux window.
+//
+// Two tables, not one. ROUTING answers "what did the operator ask for" and
+// stays closed. ARGV TRANSLATION, downstream of it, answers "what does codex
+// accept": a routed verb reaches the child ONLY where it names a real codex
+// subcommand, so a verb moai synthesized never lands in the child's argv.
+//
+// -w/--worktree is consumed HERE and never forwarded: it points the child's
+// working directory at an EXISTING worktree and never creates one. CODEX_HOME
+// reaches the child as an explicit environment entry rather than by ambient
+// inheritance, on both the direct and the new-window path.
 //
 // The readout rows come from M2's codexReadiness VERBATIM (AC-CL-004 — the
 // command surface never re-words a row), and the binary/auth values come from
@@ -20,6 +30,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/execerr"
@@ -32,7 +43,12 @@ const (
 	// codexUsageDiag is the one-line usage diagnostic every unknown token
 	// receives (AC-CL-002). Byte-identical for all six probe tokens so the
 	// rejection cannot leak which token was seen.
-	codexUsageDiag = "unknown verb - usage: moai codex [status] | moai codex cli [codex-args...] | moai codex app"
+	codexUsageDiag = "unknown verb - usage: moai codex [cli] [-w <worktree>] [-- codex-args...] | moai codex status | moai codex app"
+
+	// codexWorktreeValueDiag rejects a -w with no value. moai cc lets a bare
+	// -w mean "auto-generate a name" because claude CREATES the worktree;
+	// this launcher only RESOLVES one, so there is nothing to resolve.
+	codexWorktreeValueDiag = "-w requires a worktree name or path - moai codex resolves an existing worktree and never creates one"
 
 	// codexInstallHint is the single diagnostic line the launch verbs print
 	// when the codex binary is unresolved (AC-CL-011: exactly one line, exact
@@ -50,20 +66,48 @@ const (
 type codexVerb int
 
 const (
-	codexVerbReadout codexVerb = iota // "" (bare) and "status"
-	codexVerbLaunchCli
+	codexVerbReadout   codexVerb = iota // "status"
+	codexVerbLaunchCli                  // "" (bare) and "cli"
 	codexVerbLaunchApp
 )
 
-// codexVerbRouting is the routing table the tests read symbolically
-// (AC-CL-002): the launch-verb set derived from it must equal {cli, app} and
-// the readout-token set must equal {"", status}. Absence from the table IS
-// the rejection — no default branch exists.
+// codexVerbRouting is the routing table the tests read symbolically: the
+// launch-token set derived from it must equal {"", cli, app} and the
+// readout-token set must equal {status}. Absence from the table IS the
+// rejection — no default branch exists.
+//
+// The bare token launches. The risk that argued for the opposite default —
+// an accidental invocation carrying the session away — does not apply to this
+// launcher: the launch is an os/exec CHILD whose exit code propagates, so the
+// shell is still there when codex exits.
 var codexVerbRouting = map[string]codexVerb{
-	"":       codexVerbReadout,
-	"status": codexVerbReadout,
+	"":       codexVerbLaunchCli,
 	"cli":    codexVerbLaunchCli,
+	"status": codexVerbReadout,
 	"app":    codexVerbLaunchApp,
+}
+
+// codexChildSubcommand is the ARGV TRANSLATION table — strictly downstream of
+// codexVerbRouting and a strict SUBSET of it. A class present here forwards
+// its subcommand token to the child; a class absent here forwards nothing but
+// the operator's own tail.
+//
+// app is the only entry, because app is the only routed verb naming a real
+// codex subcommand. codex's usage is `codex [OPTIONS] [PROMPT]` with no cli
+// subcommand, so forwarding a synthesized cli token would hand codex a PROMPT
+// reading "cli"; the bare form's token is the empty string, which is worse.
+var codexChildSubcommand = map[codexVerb]string{
+	codexVerbLaunchApp: "app",
+}
+
+// codexChildArgs assembles the child's argv tail: the translated subcommand
+// token where one exists, then the operator's tail verbatim.
+func codexChildArgs(kind codexVerb, tail []string) []string {
+	args := make([]string, 0, len(tail)+1)
+	if sub, ok := codexChildSubcommand[kind]; ok {
+		args = append(args, sub)
+	}
+	return append(args, tail...)
 }
 
 // launches reports whether the verb class starts a process (AC-CL-002's
@@ -108,9 +152,19 @@ func defaultCodexSpawnLaunch(dir, program string, args []string) error {
 }
 
 // buildCodexSpawnCommand renders the shell command string for the new tmux
-// window: the codex binary followed by its argv tail, every token quoted.
+// window: the resolved CODEX_HOME as a command-scoped assignment, then the
+// codex binary and its argv tail, every token quoted.
+//
+// The assignment is what makes the two launch paths agree. A tmux window
+// inherits the tmux SERVER's environment, not this process's, so without it
+// the new window could resolve a different CODEX_HOME than the direct path
+// put on its child.
 func buildCodexSpawnCommand(program string, args []string) string {
-	parts := make([]string, 0, len(args)+1)
+	parts := make([]string, 0, len(args)+2)
+	// resolveCodexHomeDir's second result is the source label, not an error.
+	if home, _ := resolveCodexHomeDir(); home != "" {
+		parts = append(parts, codexHomeEnvVar+"="+shellQuote(home))
+	}
 	parts = append(parts, shellQuote(program))
 	for _, a := range args {
 		parts = append(parts, shellQuote(a))
@@ -129,32 +183,143 @@ func splitCodexDashDash(args []string) (head, tail []string, hasTail bool) {
 	return args, nil, false
 }
 
+// codexWorktreeArg is the -w/--worktree value as the operator supplied it,
+// already removed from the token stream. present distinguishes "no flag" from
+// "flag with an empty value" — the second is an error, the first is not.
+type codexWorktreeArg struct {
+	present bool
+	value   string
+}
+
+// stripCodexWorktreeFlag removes -w/--worktree (and their =value forms) from
+// the verb-position tokens and returns the value. Only the head is scanned:
+// tokens after -- belong to codex and are never inspected. The four accepted
+// token shapes mirror normalizeWorktreeFlag's, so the two surfaces accept the
+// same spellings.
+func stripCodexWorktreeFlag(head []string) ([]string, codexWorktreeArg) {
+	rest := make([]string, 0, len(head))
+	arg := codexWorktreeArg{}
+	for i := 0; i < len(head); i++ {
+		token := head[i]
+		switch {
+		case token == "-w" || token == "--worktree":
+			arg.present = true
+			// The value is the next token unless that token is itself a flag
+			// (a bare -w, which this launcher rejects — see the diagnostic).
+			if i+1 < len(head) && !strings.HasPrefix(head[i+1], "-") {
+				arg.value = head[i+1]
+				i++
+			}
+		case strings.HasPrefix(token, "--worktree="):
+			arg.present = true
+			arg.value = strings.TrimPrefix(token, "--worktree=")
+		case strings.HasPrefix(token, "-w="):
+			arg.present = true
+			arg.value = strings.TrimPrefix(token, "-w=")
+		default:
+			rest = append(rest, token)
+		}
+	}
+	return rest, arg
+}
+
+// resolveCodexWorktreeDir turns the operator's -w value into the directory the
+// child starts in. It RESOLVES and never CREATES: a name that does not name an
+// existing directory is a diagnostic, and the directory is still absent
+// afterwards.
+//
+// The asymmetry with `moai cc` is deliberate. There the flag is FORWARDED to
+// claude, which creates the worktree and enters it; codex's top-level help
+// exposes no worktree flag, so a forwarded -w would be an unknown token — the
+// same failure shape a forwarded synthesized verb has. Consuming the flag
+// means moai would have to implement worktree CREATION to match cc, which
+// belongs to the worktree tooling that already owns it.
+//
+// Absolute values are validated by the SAME rule cc applies
+// (resolveWorktreeL2Path), so an out-of-prefix path fails with cc's own
+// diagnostic rather than a second, divergent one.
+func resolveCodexWorktreeDir(projectRoot, value string) (string, error) {
+	if strings.TrimSpace(value) == "" {
+		return "", fmt.Errorf("%s", codexWorktreeValueDiag)
+	}
+
+	path := value
+	if filepath.IsAbs(path) {
+		if err := resolveWorktreeL2Path([]string{"--worktree", value}); err != nil {
+			return "", err
+		}
+	} else {
+		if projectRoot == "" {
+			return "", fmt.Errorf("cannot resolve worktree %q: the project root is unresolved", value)
+		}
+		path = filepath.Join(projectRoot, ".claude", "worktrees", value)
+	}
+
+	info, err := os.Stat(path)
+	if err != nil || !info.IsDir() {
+		return "", fmt.Errorf(
+			"worktree %q does not exist at %s\n"+
+				"  moai codex resolves an existing worktree and never creates one\n"+
+				"  create it first, then re-run this command",
+			value, path,
+		)
+	}
+	return path, nil
+}
+
+// codexChildEnv is the environment handed to the codex child: the parent's own
+// environment with the RESOLVED CODEX_HOME appended. Appending (rather than
+// replacing) keeps the rest of the parent environment intact, and last-wins
+// makes the appended entry the value the child reads.
+//
+// Explicit rather than ambient: where the parent has no CODEX_HOME at all,
+// there is nothing to inherit, and the child would otherwise resolve its own
+// default independently of the value the readout reports.
+func codexChildEnv() []string {
+	env := os.Environ()
+	// resolveCodexHomeDir's second result is the source label, not an error.
+	if home, _ := resolveCodexHomeDir(); home != "" {
+		env = append(env, codexHomeEnvVar+"="+home)
+	}
+	return env
+}
+
 // codexCmd — the launcher-family sibling of cc/glm/cg (same group, same
 // DisableFlagParsing discipline: --spawn and -- passthrough are handled by
 // the launcher itself). SilenceErrors/SilenceUsage keep every diagnostic
 // byte-identical to the named constants above (cobra would otherwise prefix
 // "Error: " and append the usage block, breaking the exact-match cells).
 var codexCmd = &cobra.Command{
-	Use:   "codex [status | cli [codex-args...] | app]",
-	Short: "Codex launcher: readiness readout and explicit cli/app launch",
-	Long: "Readiness readout and explicit launch for Codex.\n" +
+	Use:   "codex [cli | status | app]",
+	Short: "Codex launcher: launch the Codex CLI, or print the readiness readout",
+	Long: "Launch Codex, or ask what is installed and wired.\n" +
 		"\n" +
-		"The readout reports six rows and never launches anything on its own:\n" +
-		"the codex binary, CODEX_HOME, the auth provider, the project wiring,\n" +
-		"the generated agent TOMLs, and the harness entry. Launching requires\n" +
-		"an explicit verb. An incomplete wiring row is informational, not an\n" +
+		"Called with no verb, this launches the Codex CLI at the project root.\n" +
+		"The readiness readout moved to an explicit alias: moai codex status\n" +
+		"reports six rows and starts nothing - the codex binary, CODEX_HOME,\n" +
+		"the auth provider, the project wiring, the generated agent TOMLs, and\n" +
+		"the harness entry. An incomplete wiring row is informational, not an\n" +
 		"error: moai init --agent codex generates the .codex wiring files.\n" +
 		"\n" +
-		"  moai codex [status]   print the readiness readout (no launch)\n" +
-		"  moai codex cli        launch the Codex CLI at the project root\n" +
+		"  moai codex            launch the Codex CLI at the project root\n" +
+		"  moai codex cli        the same launch, named explicitly\n" +
+		"  moai codex status     print the readiness readout (starts nothing)\n" +
 		"  moai codex app        launch the Codex desktop app (codex app)\n" +
-		"  --spawn               open the launch in a new tmux window (cli/app only)\n" +
+		"  -w <worktree>         launch in an EXISTING worktree instead of the\n" +
+		"                        project root; this never creates one\n" +
+		"  --spawn               open the launch in a new tmux window\n" +
 		"  -- <codex-args...>    arguments after -- pass to codex verbatim",
-	Example: "  # Show what is installed, resolved, and wired (no launch)\n" +
+	Example: "  # Launch the Codex CLI here\n" +
 		"  moai codex\n" +
 		"\n" +
-		"  # Launch the Codex CLI here, passing arguments through verbatim\n" +
-		"  moai codex cli -- --model o3\n" +
+		"  # Show what is installed, resolved, and wired (starts nothing)\n" +
+		"  moai codex status\n" +
+		"\n" +
+		"  # Launch, passing arguments through verbatim\n" +
+		"  moai codex -- --model o3\n" +
+		"\n" +
+		"  # Launch inside an existing worktree\n" +
+		"  moai codex -w feat-login\n" +
 		"\n" +
 		"  # Launch the desktop app in a new tmux window\n" +
 		"  moai codex app --spawn",
@@ -188,6 +353,9 @@ func runCodex(cmd *cobra.Command, args []string) error {
 
 	args, spawn := stripSpawnFlag(args)
 	head, tail, hasTail := splitCodexDashDash(args)
+	// -w is consumed before the verb lookup so its tokens can never be
+	// mistaken for a verb, and so the verb position keeps its one-token shape.
+	head, worktree := stripCodexWorktreeFlag(head)
 	if len(head) > 1 {
 		return codexUsageFailure(cmd)
 	}
@@ -201,7 +369,12 @@ func runCodex(cmd *cobra.Command, args []string) error {
 	}
 
 	if kind.launches() {
-		return runCodexLaunch(cmd, verb, tail, spawn)
+		return runCodexLaunch(cmd, kind, tail, spawn, worktree)
+	}
+	if worktree.present {
+		// A readout starts no process, so it has no working directory to
+		// point anywhere.
+		return codexUsageFailure(cmd)
 	}
 	if spawn {
 		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), codexSpawnReadoutDiag)
@@ -232,7 +405,7 @@ func runCodexReadout(cmd *cobra.Command) error {
 // runCodexLaunch resolves the binary and hands off to the direct or spawn
 // path. A missing binary is a single-line install hint, launch count 0
 // (AC-CL-011).
-func runCodexLaunch(cmd *cobra.Command, verb string, tail []string, spawn bool) error {
+func runCodexLaunch(cmd *cobra.Command, kind codexVerb, tail []string, spawn bool, worktree codexWorktreeArg) error {
 	binaryPath, err := codexLookPath(codexBinaryName)
 	if err != nil {
 		_, _ = fmt.Fprintln(cmd.ErrOrStderr(), codexInstallHint)
@@ -242,18 +415,32 @@ func runCodexLaunch(cmd *cobra.Command, verb string, tail []string, spawn bool) 
 	// The launch cwd is the PROJECT ROOT, not the process cwd (AC-CL-002):
 	// a call from a subdirectory still launches at the root. An unresolvable
 	// root degrades to the process cwd rather than refusing to launch.
-	dir := ""
+	projectRoot := ""
 	if root, rerr := findProjectRootFn(); rerr == nil && root != "" {
-		dir = root
+		projectRoot = root
 	} else if cwd, gerr := os.Getwd(); gerr == nil {
-		dir = cwd
+		projectRoot = cwd
 	}
 
-	req := codexLaunchRequest{Program: binaryPath, Args: append([]string{verb}, tail...), Dir: dir}
-	// SPEC-CODEX-INIT-001: the init-offer gate — the ONE call site both
-	// launch verbs pass through right before launching. The gate takes no
-	// spawn argument: both launch paths cross the same function (REQ-CI-002).
-	if err := codexInitOfferGate(cmd, dir); err != nil {
+	// -w moves the CHILD's working directory only. The gate below keeps
+	// reading the project root: the wiring it classifies is a property of the
+	// project, and a linked worktree need not carry a copy of it.
+	dir := projectRoot
+	if worktree.present {
+		resolved, werr := resolveCodexWorktreeDir(projectRoot, worktree.value)
+		if werr != nil {
+			_, _ = fmt.Fprintln(cmd.ErrOrStderr(), werr.Error())
+			return &exitCodeError{code: 1}
+		}
+		dir = resolved
+	}
+
+	req := codexLaunchRequest{Program: binaryPath, Args: codexChildArgs(kind, tail), Dir: dir}
+	// SPEC-CODEX-INIT-001: the init-offer gate — the ONE call site every
+	// launch form passes through right before launching, the bare form
+	// included. The gate takes no spawn argument: both launch paths cross the
+	// same function (REQ-CI-002).
+	if err := codexInitOfferGate(cmd, projectRoot); err != nil {
 		return err
 	}
 	if spawn {
@@ -269,6 +456,7 @@ func runCodexLaunch(cmd *cobra.Command, verb string, tail []string, spawn bool) 
 func codexDirectLaunch(req codexLaunchRequest) error {
 	c := exec.Command(req.Program, req.Args...)
 	c.Dir = req.Dir
+	c.Env = codexChildEnv()
 	c.Stdin = os.Stdin
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr

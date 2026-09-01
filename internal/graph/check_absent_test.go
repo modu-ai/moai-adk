@@ -3,6 +3,7 @@ package graph
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -114,6 +115,9 @@ func TestCheckCodemaps_Absent(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			if c.skipIfRoot && os.Geteuid() == 0 {
 				t.Skip("permission-denied branch is unreachable as root")
+			}
+			if c.skipIfRoot && runtime.GOOS == "windows" {
+				t.Skip("posix permission bits are advisory on windows — the unreadable-roots fixture cannot be built there")
 			}
 			root := newCheckFixture(t)
 			c.setup(t, root)

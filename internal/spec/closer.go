@@ -387,21 +387,39 @@ func relToBaseOrAbs(baseDir, abs string) string {
 const l60MxBackfillPlaceholder = "(this commit)"
 
 // needsSHABackfill reports whether a §E.2/§E.5 commit-SHA field value requires
-// backfill. A value needs backfill when it is empty OR a `(this commit)`-style
-// placeholder. `extractProgressField` (via cleanFieldValue) strips quotes but
-// does NOT normalize `(this commit)` to empty, so the dogfood SPEC's
-// `sync_commit_sha: "(this commit)"` arrives here as the literal placeholder.
+// backfill: the slot is still owed a real SHA whenever its value token is not
+// one (SPEC-SYNC-SHA-SLOT-FORMAT-001 M2, REQ-SSF-003).
+//
+// THE TEST IS INVERTED, AND THE INVERSION IS THE FIX. This predicate used to be
+// a CLOSED four-value allowlist — `"" / (this commit) / (pending) / <pending>` —
+// so whether a SPEC got repaired depended on how its placeholder happened to be
+// SPELLED. `spec-frontmatter-schema.md` §D3 prescribes the placeholder as
+// `pending-backfill-*`, and that family was absent from the allowlist: the blind
+// spot was aimed precisely at the sanctioned pattern, which is why
+// SPEC-BACKLOG-LOCK-BUDGET-001 has carried `pending-backfill-sync` permanently
+// (AC-SSF-004 reproduces it). A positive test for what a SHA IS needs no
+// maintenance; the enumeration of what a placeholder MIGHT be spelled as
+// provably does — 28 distinct spellings exist in the corpus today.
+//
+// On the previously-caught set this is STRICTLY a widening: all four retired
+// values fail isCommitSHAToken, so nothing that was repaired stops being
+// repaired (AC-SSF-005 measures it rather than asserting it). Note that
+// `(this commit)` carries a space, so its token is `(this` — the token split,
+// not a special case, is what keeps it caught.
+//
+// mx_commit_sha SHARES this predicate and inherits the widening deliberately
+// (spec.md §E): three corpus values are reasoned "not applicable" declarations
+// that a later close would now overwrite with l60MxBackfillPlaceholder. Accepted
+// on a measured basis — all three owning SPECs are already `completed`, so the
+// live blast radius is zero, and the Mx phase is itself retired. Recorded in
+// closer_syncsha_test.go; NO mx guard is added here, which would be scope this
+// card did not take.
 //
 // This predicate is transaction-local and does NOT alter cleanFieldValue, whose
-// `(this commit)`-as-value behavior the era classification heuristics rely on.
+// `(this commit)`-as-value behavior the era classification heuristics rely on
+// (REQ-SSF-008, AC-SSF-009).
 func needsSHABackfill(value string) bool {
-	v := strings.ToLower(strings.TrimSpace(value))
-	v = strings.Trim(v, `"'`+"`")
-	switch v {
-	case "", "(this commit)", "(pending)", "<pending>":
-		return true
-	}
-	return false
+	return !isCommitSHAToken(syncSHAValueToken(value))
 }
 
 // runGitInDir runs a git subcommand in dir, returning a wrapped error on failure.

@@ -1,0 +1,7 @@
+{
+  "total": 5,
+  "non_advisory": 5,
+  "severities": [
+    "error"
+  ]
+}

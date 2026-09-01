@@ -1,0 +1,13 @@
+=== RUN   TestT284AuditProbe
+    zz_audit_t284_probe_test.go:43: AllRequiredPass                  participants=3  currentFlag=false  overall=pass
+    zz_audit_t284_probe_test.go:43: AllRequiredFail                  participants=2  currentFlag=false  overall=fail
+    zz_audit_t284_probe_test.go:43: RequiredFailWithInconclusive     participants=1  currentFlag=false  overall=fail
+    zz_audit_t284_probe_test.go:43: RequiredSplit                    participants=3  currentFlag=true  overall=fail
+    zz_audit_t284_probe_test.go:43: AdvisoryOnlyConflict             participants=3  currentFlag=true  overall=pass
+    zz_audit_t284_probe_test.go:43: DisagreementAdvisoryNotBlock     participants=2  currentFlag=true  overall=pass
+    zz_audit_t284_probe_test.go:43: NoRequiredBackends_VacuousPass   participants=2  currentFlag=false  overall=pass
+    zz_audit_t284_probe_test.go:43: SurfacesSignalDivergence         participants=1  currentFlag=true  overall=pass
+    zz_audit_t284_probe_test.go:51: case2==case3 byte-identical? false (len 447 vs 235)
+--- PASS: TestT284AuditProbe (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	0.805s

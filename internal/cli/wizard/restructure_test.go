@@ -75,7 +75,7 @@ func TestInitPages_Membership(t *testing.T) {
 	}{
 		{pageBasic, []string{"conversation_language", "user_name", "project_name"}},
 		{pageModelReport, []string{"model_policy", "report_format"}},
-		{pageQualityWorkflw, []string{"project_mode", "worktree_auto_create", "todo_enabled", "feedback_auto_submit", "audit_model", "audit_gate_claude", "audit_gate_codex", "audit_gate_glm", "codex_audit_enabled", "mcp_provision"}},
+		{pageQualityWorkflw, []string{"project_mode", "worktree_auto_create", "todo_enabled", "feedback_auto_submit", "audit_model", "audit_gate_claude", "audit_gate_codex", "audit_gate_glm", "codex_audit_enabled", "agent_wiring", "mcp_provision"}},
 		{"Autonomy", []string{"autonomy_tier"}},
 	}
 	for _, tc := range cases {

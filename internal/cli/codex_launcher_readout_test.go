@@ -3,10 +3,10 @@ package cli
 // codex_launcher_readout_test.go — SPEC-CODEX-LAUNCHER-001 M3 command-level
 // legs of the readout ACs (the M2 assembly-level legs live in
 // codex_readiness_test.go; here the SAME rows must flow VERBATIM through the
-// bare/status command forms):
+// status command form — the bare form launches and renders no readout):
 //
-//   - AC-CL-004 — the ten informational cells, sentinel rows at the command
-//     surface, both forms reporting identical values
+//   - AC-CL-004 — the informational cells and the sentinel rows at the
+//     command surface
 //   - AC-CL-006 — rc 0, stdout-only, stderr 0 bytes, banned-word hits 0,
 //     action phrase present on all five incomplete states and absent wired
 //   - AC-CL-011 — binary-absent readout cells (label closed set), the launch
@@ -71,11 +71,15 @@ func codexBannedWordHits(text string) int {
 
 // ─── AC-CL-004 / AC-CL-006 — the ten informational cells ──────────────────
 
-// TestCodexReadout_CommandTenCells runs the five incomplete wiring states in
-// BOTH readout forms (10 cells): rc 0, the wiring row equal to the M2 named
+// TestCodexReadout_CommandTenCells runs the five incomplete wiring states
+// through the readout form: rc 0, the wiring row equal to the M2 named
 // constants (verbatim flow), the action phrase present, stdout-only output,
-// stderr exactly 0 bytes, banned-word hits 0 — and both forms reporting the
-// SAME six values.
+// stderr exactly 0 bytes, banned-word hits 0.
+//
+// The bare form is no longer a readout form — it launches — so the bare
+// column and the "both forms identical" cell that compared the two are gone.
+// The equivalence that replaced them (bare and cli build the SAME launch
+// request) is asserted in codex_launch_verb_test.go.
 func TestCodexReadout_CommandTenCells(t *testing.T) {
 	states := []struct {
 		name    string
@@ -88,7 +92,7 @@ func TestCodexReadout_CommandTenCells(t *testing.T) {
 		{"invalid hooks", wantWiringRowInvalid},
 	}
 	for _, st := range states {
-		for _, form := range []string{"bare", "status"} {
+		for _, form := range []string{"status"} {
 			t.Run(st.name+"/"+form, func(t *testing.T) {
 				t.Setenv(codexHomeEnvVar, t.TempDir())
 				withCodexSetupProbe(t, minimalProbeStub())
@@ -126,24 +130,6 @@ func TestCodexReadout_CommandTenCells(t *testing.T) {
 		}
 	}
 
-	// Both forms report identical values cell-for-cell (AC-CL-004).
-	t.Run("both forms identical", func(t *testing.T) {
-		t.Setenv(codexHomeEnvVar, t.TempDir())
-		withCodexSetupProbe(t, minimalProbeStub())
-		withCodexProjectDir(t, codexWiringFixture(t, "hooks only"))
-
-		bare, _, err := runCodexCmd(t)
-		if err != nil {
-			t.Fatalf("bare: %v", err)
-		}
-		status, _, err := runCodexCmd(t, "status")
-		if err != nil {
-			t.Fatalf("status: %v", err)
-		}
-		if bare != status {
-			t.Errorf("bare and status forms differ:\n bare   = %q\n status = %q", bare, status)
-		}
-	})
 }
 
 // TestCodexReadout_WiredStateOmitsAction — on the wired state the action
@@ -153,9 +139,9 @@ func TestCodexReadout_WiredStateOmitsAction(t *testing.T) {
 	withCodexSetupProbe(t, minimalProbeStub())
 	withCodexProjectDir(t, codexWiringFixture(t, "wired"))
 
-	stdout, _, err := runCodexCmd(t)
+	stdout, _, err := runCodexCmd(t, "status")
 	if err != nil {
-		t.Fatalf("bare: %v", err)
+		t.Fatalf("status: %v", err)
 	}
 	lines := strings.Split(strings.TrimSuffix(stdout, "\n"), "\n")
 	if len(lines) != 6 || lines[3] != wantWiringRowWired {
@@ -168,8 +154,8 @@ func TestCodexReadout_WiredStateOmitsAction(t *testing.T) {
 
 // TestCodexReadout_SentinelRowsAtCommandSurface — the three probe-supplied
 // rows (binary path, version, auth) surface EXACTLY (the M2 named constants)
-// in both command forms: a launcher printing "unknown" regardless of the
-// probe dies here.
+// on the readout form: a launcher printing "unknown" regardless of the probe
+// dies here.
 func TestCodexReadout_SentinelRowsAtCommandSurface(t *testing.T) {
 	t.Setenv(codexHomeEnvVar, t.TempDir())
 	withCodexSetupProbe(t, CodexSetupResult{
@@ -180,7 +166,7 @@ func TestCodexReadout_SentinelRowsAtCommandSurface(t *testing.T) {
 	})
 	withCodexProjectDir(t, codexWiringFixture(t, "wired"))
 
-	for _, form := range []string{"bare", "status"} {
+	for _, form := range []string{"status"} {
 		t.Run(form, func(t *testing.T) {
 			var args []string
 			if form == "status" {
@@ -286,7 +272,7 @@ func TestCodexReadout_UnknownAuthFourAxes(t *testing.T) {
 			ax.arrange(t)
 			withCodexProjectDir(t, codexWiringFixture(t, "wired"))
 
-			stdout, stderr, err := runCodexCmd(t)
+			stdout, stderr, err := runCodexCmd(t, "status")
 			if err != nil {
 				t.Fatalf("bare readout: %v", err)
 			}
@@ -326,7 +312,7 @@ func TestCodexReadout_BinaryAbsentFourCells(t *testing.T) {
 		{"wired", wantWiringRowWired},
 		{"absent", wantWiringRowNotWired},
 	} {
-		for _, form := range []string{"bare", "status"} {
+		for _, form := range []string{"status"} {
 			t.Run(wiring.state+"/"+form, func(t *testing.T) {
 				t.Setenv(codexHomeEnvVar, t.TempDir())
 				withCodexSetupProbe(t, minimalProbeStub()) // Installed=false
@@ -490,7 +476,7 @@ func TestCodexLauncher_NoWriteSnapshot(t *testing.T) {
 			t.Fatalf("%s exists after the runs (err=%v), want IsNotExist", absentCodexHome, err)
 		}
 		t.Setenv(codexHomeEnvVar, absentCodexHome)
-		stdout, _, err := runCodexCmd(t)
+		stdout, _, err := runCodexCmd(t, "status")
 		if err != nil {
 			t.Fatalf("bare: %v", err)
 		}

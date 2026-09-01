@@ -36,7 +36,8 @@ $ moai graph build
 |--------|------|-----|
 | `--callers <ノード>` | このパッケージ/SPEC を直接依存している対象は? | 逆方向の隣人 — インポートするパッケージ、依存する SPEC、`@MX:SPEC` タグの付いたコードファイル |
 | `--blast <ノード>` | ここを直すとどこまで揺れるか? | 逆方向エッジを幅優先で洗った(BFS)影響半径。`@MX:SPEC` エッジは双方向に伝播し、コードファイルが実装する SPEC まで届きます |
-| `--fanin [--limit N]` | 最もよく使われるパッケージは? | インポートのファンイン順位 — @MX:DEBT ファンイン問合せの代用品(タグ種別ごとのエッジはまだありません) |
+| `--fanin [--limit N]` | 最もよく使われるパッケージは? | インポートのファンイン順位 |
+| `--debt-fanin [--limit N]` | `@MX:DEBT` の付いた対象はどれだけ呼び込まれているか? | `@MX:DEBT` タグの対象を、根拠のある呼び出しファンインの降順で一覧 — ファイルスコープの DEBT はファンイン 0 に `(self)` 表示で併せて出ます |
 | `--specs-no-code` | コードとつながっていない SPEC は? | edges.jsonl に `@MX:SPEC` エッジが0個の SPEC の一覧 |
 | `--milestones-no-card` | カードなしで通過したマイルストーンは? | カード交差検査の行がカードを主張していないか、主張したカードが生存するバックログキューにないマイルストーン |
 
@@ -44,6 +45,7 @@ $ moai graph build
 $ moai graph query --callers SPEC-FOO-001
 $ moai graph query --blast internal/config
 $ moai graph query --fanin --limit 20
+$ moai graph query --debt-fanin
 $ moai graph query --specs-no-code
 $ moai graph query --milestones-no-card
 ```

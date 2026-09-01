@@ -162,7 +162,7 @@ If everything's been "smooth" for a long stretch and no gate has rejected anythi
 
 This is the 2026 Anthropic-recommended persistence pattern for agentic coding.
 
-> Note: the memory directory (`~/.claude/projects/{hash}/memory/`) is a **native Claude Code auto-memory feature** (v2.1.59+, toggled via `/memory` or `autoMemoryEnabled`), not a MoAI-proprietary store. This section covers MoAI's session-handoff and persistence usage of it. For the feature itself (storage derivation, MEMORY.md 200-line/25KB loading, topic files), see `.claude/rules/moai/workflow/moai-memory.md` § Official Claude Code Auto-Memory Feature.
+> Note: the memory directory is a **native Claude Code auto-memory feature** (v2.1.59+, toggled via `/memory` or `autoMemoryEnabled`), not a MoAI-proprietary store. Resolve its location with `moai memory doctor`, which reports every candidate store and whether each exists, rather than assuming a literal path — more than one store can exist for a project and only one of them is loaded. This section covers MoAI's session-handoff and persistence usage of it. For the feature itself (storage derivation, index loading and its budget, topic files), see `.claude/rules/moai/workflow/moai-memory.md` § Official Claude Code Auto-Memory Feature.
 
 ### Session Boundary Handoff [HARD]
 
@@ -381,7 +381,7 @@ Template:
 ✓ V5 [criterion]   ✓ V6 [criterion]
 ✓ V7 [criterion]
 📊 N/M PASS — [discrepancy summary]
-   └─ evidence: .moai/state/verify/<session>/  (persistent; verbatim logs survive /tmp clearance — see agent-common-protocol.md § Evidence persistence obligation)
+   └─ evidence: .moai/reports/<card-id>/<check>.log  (tracked; exported before citing — see agent-common-protocol.md § Evidence export)
 ──────────────────────────────────────────────
 ```
 
@@ -398,7 +398,7 @@ Rules:
 - [HARD] `📊 N/M PASS` line MUST report exact PASS count and discrepancy summary (e.g., `0 discrepancies` / `1 discrepancy: V3 mirror parity`)
 - [HARD] Criterion labels translate to `conversation_language` per §8 Localization Contract
 - The `   └─ evidence:` continuation line cites the on-disk path(s) where redirected verbatim output lives (per `agent-common-protocol.md` § File-redirect contract). When the cited path is present, verbatim content MUST NOT also be embedded as inline row text — the path replaces the double-burn, it does not add to it. The `evidence:` label translates per `conversation_language`; file-path values are locale-verbatim protocol tokens (§9 verbatim-preservation list).
-- [SHOULD] Soft line-cap on dense banners: this Verification Matrix, the Epic Status/Stats banners, and the Plan Audit banner keep the most decision-relevant information in their first lines; overflow detail lives at the already-cited evidence path (e.g. `.moai/state/verify/<session>/`) rather than inflating the banner body. This reuses the existing evidence-path pattern — no new mechanism.
+- [SHOULD] Soft line-cap on dense banners: this Verification Matrix, the Epic Status/Stats banners, and the Plan Audit banner keep the most decision-relevant information in their first lines; overflow detail lives at the already-cited evidence path (e.g. `.moai/reports/<card-id>/<check>.log`) rather than inflating the banner body. This reuses the existing evidence-path pattern — no new mechanism.
 
 ### Plan Audit [HARD]
 
@@ -584,7 +584,7 @@ Rules:
 📦 Deliverables: [...]
 🔄 Specialists used: [...]
 🧹 Cleanup: [temp files removed]
-📎 Evidence: .moai/state/verify/<session>/  (persistent; verbatim verification logs survive /tmp clearance — see agent-common-protocol.md § Evidence persistence obligation)
+📎 Evidence: .moai/reports/<card-id>/<check>.log  (tracked; exported before citing — see agent-common-protocol.md § Evidence export)
 ──────────────────────────────────────────────
 ```
 

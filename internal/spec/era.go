@@ -93,7 +93,8 @@ type EraSignals struct {
 //	H-override: FrontmatterEra non-empty + valid → returned verbatim
 //	H-1:        ProgressMDExists == false → V2.x
 //	H-2:        progress.md present but no §E.{2,3,4,5} markers → V3R2-R4
-//	H-3:        §E.2 run-evidence start marker present but sync_commit_sha empty/missing → V3R5
+//	H-3:        §E.2 run-evidence start marker present, sync_commit_sha empty/missing,
+//	            AND no modern-era signal (phase ~ v3.0|v3R6, created >= 2026-04-01) → V3R5
 //	H-4:        §E.2 + §E.4 present AND sync_commit_sha non-empty → V3R6 (new H-4, REQ-LR-005)
 //	H-4-legacy: §E.2 + §E.5 present AND sync_commit_sha + mx_commit_sha non-empty → V3R6
 //	            (REQ-LR-006 dual-predicate migration window — legacy 5-section layout)
@@ -147,7 +148,17 @@ func ClassifyEra(signals EraSignals) (Era, string) {
 	// H-3: §E.2 run-evidence start marker present but sync_commit_sha empty/missing → V3R5
 	// (hasSyncSection tests literal §E.2 string presence — the run-evidence start
 	// marker — not the sync phase, which lives at §E.4.)
-	if hasSyncSection && syncSHA == "" {
+	//
+	// H-3 is DEFERRED when the SPEC carries a modern-era signal. The plan-phase
+	// skeleton writes §E.1..§E.4 in one go, and sync_commit_sha stays empty until
+	// sync closes, so on its own this predicate measures "not yet closed" rather
+	// than "written in the V3R5 era" — every in-flight modern SPEC matches it and
+	// returns before H-5 ever reads its created date. Gating the deferral on a
+	// POSITIVE signal (never on the absence of one) means a SPEC with no readable
+	// era evidence still falls to V3R5 and keeps its grandfather protection, so
+	// this narrowing cannot create a new H-6 unclassified drop.
+	// SPEC-ERA-H3-NARROWING-001 REQ-EH3-001/002.
+	if hasSyncSection && syncSHA == "" && !hasModernEraSignal(signals) {
 		return EraV3R5, "H-3 (§E.2 present, sync_commit_sha missing)"
 	}
 
@@ -168,8 +179,7 @@ func ClassifyEra(signals EraSignals) (Era, string) {
 	}
 
 	// H-5: tie-breaker via phase or created date
-	if matchesModernPhase(signals.FrontmatterPhase) ||
-		isAfterModernThreshold(signals.FrontmatterCreated) {
+	if hasModernEraSignal(signals) {
 		return EraV3R6, "H-5 (modern phase or created date)"
 	}
 
@@ -259,6 +269,19 @@ func cleanFieldValue(raw string) string {
 		return ""
 	}
 	return v
+}
+
+// hasModernEraSignal reports whether the SPEC carries positive evidence of the
+// modern era: a V3R6-flavoured `phase:` label, or a `created:` date on/after
+// modernEraThreshold.
+//
+// This is the single definition of "modern-era signal" — H-5 decides with it, and
+// H-3 defers on it. Keeping both call sites on one helper is what makes the
+// invariant "no SPEC is both H-3-eligible and modern by H-5" hold by construction
+// rather than by coincidence. SPEC-ERA-H3-NARROWING-001 REQ-EH3-001.
+func hasModernEraSignal(signals EraSignals) bool {
+	return matchesModernPhase(signals.FrontmatterPhase) ||
+		isAfterModernThreshold(signals.FrontmatterCreated)
 }
 
 // matchesModernPhase reports whether phase string indicates V3R6 era.

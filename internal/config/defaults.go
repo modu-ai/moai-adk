@@ -438,6 +438,15 @@ var (
 	// most 2 parts (text + optional data); the headroom tolerates future
 	// part kinds without a schema change.
 	DefaultSessionMsgMaxParts = 8
+	// DefaultSessionMsgMaxPending is the depth ceiling on one agent's
+	// pending mailbox: Store.Send rejects a send that would push the
+	// recipient's pending count to it (card t253, PR #1606 review). Without
+	// a ceiling a looping or malfunctioning sender fills a mailbox until the
+	// 24h message TTL, and every subsequent Poll pays read-and-unmarshal
+	// cost for the whole backlog. Four polls' worth of headroom above
+	// DefaultSessionMsgPollBatch — a full mailbox therefore means a receiver
+	// that stopped polling, never ordinary traffic.
+	DefaultSessionMsgMaxPending = 64
 )
 
 // DefaultFactoryWorkers is the fan-out size the count-less `-k --name

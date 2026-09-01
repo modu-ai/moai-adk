@@ -1,0 +1,46 @@
+=== RUN   TestCodexRPC_InitializeFirstWithClientInfo
+--- PASS: TestCodexRPC_InitializeFirstWithClientInfo (0.00s)
+=== RUN   TestCodexRPC_TargetIsTaggedObject_BareStringLifted
+--- PASS: TestCodexRPC_TargetIsTaggedObject_BareStringLifted (0.00s)
+=== RUN   TestCodexRPC_BareStringTargetNotSentInReviewRequest
+--- PASS: TestCodexRPC_BareStringTargetNotSentInReviewRequest (0.00s)
+=== RUN   TestCodexAudit_NativeBaseBranchCarriesBranch
+--- PASS: TestCodexAudit_NativeBaseBranchCarriesBranch (0.55s)
+=== RUN   TestCodexAudit_BaseBranchResolutionChain
+=== RUN   TestCodexAudit_BaseBranchResolutionChain/step1_remote_default_head
+=== RUN   TestCodexAudit_BaseBranchResolutionChain/step2_main_when_remote_head_absent
+=== RUN   TestCodexAudit_BaseBranchResolutionChain/worktree_base_branch_is_not_read
+=== RUN   TestCodexAudit_BaseBranchResolutionChain/dangling_remote_head_falls_through
+--- PASS: TestCodexAudit_BaseBranchResolutionChain (2.14s)
+    --- PASS: TestCodexAudit_BaseBranchResolutionChain/step1_remote_default_head (0.56s)
+    --- PASS: TestCodexAudit_BaseBranchResolutionChain/step2_main_when_remote_head_absent (0.44s)
+    --- PASS: TestCodexAudit_BaseBranchResolutionChain/worktree_base_branch_is_not_read (0.59s)
+    --- PASS: TestCodexAudit_BaseBranchResolutionChain/dangling_remote_head_falls_through (0.55s)
+=== RUN   TestCodexAudit_UncommittedChangesShapeUnchanged
+--- PASS: TestCodexAudit_UncommittedChangesShapeUnchanged (0.45s)
+=== RUN   TestCodexAudit_UnresolvableBaseBranchIsNotASilentOtherReview
+--- PASS: TestCodexAudit_UnresolvableBaseBranchIsNotASilentOtherReview (0.45s)
+=== RUN   TestCodexAudit_IncompleteVariantsAreNotSerialized
+=== RUN   TestCodexAudit_IncompleteVariantsAreNotSerialized/commit
+=== RUN   TestCodexAudit_IncompleteVariantsAreNotSerialized/custom
+--- PASS: TestCodexAudit_IncompleteVariantsAreNotSerialized (0.45s)
+    --- PASS: TestCodexAudit_IncompleteVariantsAreNotSerialized/commit (0.00s)
+    --- PASS: TestCodexAudit_IncompleteVariantsAreNotSerialized/custom (0.00s)
+=== RUN   TestCodexReviewTarget_SerializableVariantsSatisfyRequiredSet
+=== RUN   TestCodexReviewTarget_SerializableVariantsSatisfyRequiredSet/uncommittedChanges
+=== RUN   TestCodexReviewTarget_SerializableVariantsSatisfyRequiredSet/baseBranch
+--- PASS: TestCodexReviewTarget_SerializableVariantsSatisfyRequiredSet (0.54s)
+    --- PASS: TestCodexReviewTarget_SerializableVariantsSatisfyRequiredSet/uncommittedChanges (0.00s)
+    --- PASS: TestCodexReviewTarget_SerializableVariantsSatisfyRequiredSet/baseBranch (0.11s)
+=== RUN   TestCodexReviewTarget_UnserializableVariantsLeaveNoTarget
+=== RUN   TestCodexReviewTarget_UnserializableVariantsLeaveNoTarget/commit
+=== RUN   TestCodexReviewTarget_UnserializableVariantsLeaveNoTarget/custom
+--- PASS: TestCodexReviewTarget_UnserializableVariantsLeaveNoTarget (0.55s)
+    --- PASS: TestCodexReviewTarget_UnserializableVariantsLeaveNoTarget/commit (0.00s)
+    --- PASS: TestCodexReviewTarget_UnserializableVariantsLeaveNoTarget/custom (0.00s)
+=== RUN   TestCodexAuditToolSurface_DescribesServerSideBranchResolution
+--- PASS: TestCodexAuditToolSurface_DescribesServerSideBranchResolution (0.00s)
+=== RUN   TestCodexAudit_AdversarialDispatchesTurnStart
+--- PASS: TestCodexAudit_AdversarialDispatchesTurnStart (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/cli	6.203s

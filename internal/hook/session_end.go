@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/internal/graph"
 	"github.com/modu-ai/moai-adk/internal/hook/handoff"
 	"github.com/modu-ai/moai-adk/internal/hook/mx"
 	"github.com/modu-ai/moai-adk/internal/hook/trace"
@@ -273,6 +274,17 @@ func getModifiedGoFiles(ctx context.Context, projectDir string) []string {
 	return goFiles
 }
 
+// newFanInEvidenceSourceFn is the batch fan-in evidence source seam
+// (REQ-MTE-010): SessionEnd is the SOLE non-PostToolUse validator
+// construction site, and the only one permitted to import internal/graph
+// (internal/hook/mx must not — layering lock). Tests override it to observe
+// the injection. The graph-backed source is the batch surface's AUTHORITY;
+// when the artifact is absent or code-evidence-free the validator falls
+// back to the textual index per candidate, labeled (REQ-MTE-011).
+var newFanInEvidenceSourceFn = func(projectRoot string) mx.FanInEvidenceSource {
+	return graph.NewEdgeFanInSource(projectRoot)
+}
+
 // validateMxTags validates @MX tag presence for the given Go files.
 // Observation-only: errors are logged with slog.Warn, never returned.
 // AC-SESSION-001: results are logged with slog.Info.
@@ -293,7 +305,7 @@ func validateMxTags(ctx context.Context, filePaths []string, projectRoot string)
 		return
 	}
 
-	validator := mx.NewValidator(nil, projectRoot)
+	validator := mx.NewValidatorWithSource(nil, projectRoot, newFanInEvidenceSourceFn(projectRoot))
 	report, err := validator.ValidateFiles(ctx, goFiles)
 	if err != nil {
 		slog.Warn("session_end: mx validation error",

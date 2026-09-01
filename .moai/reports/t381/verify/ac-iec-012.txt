@@ -1,0 +1,6 @@
+$ grep -c 'gitignore:284' .moai/reports/t299/verify-sync/e2e-lint-4paths.extract.txt
+0
+exit=1
+$ grep -ci 'gitignore' .moai/reports/t299/verify-sync/e2e-lint-4paths.extract.txt
+2
+exit=0

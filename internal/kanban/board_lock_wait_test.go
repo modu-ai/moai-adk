@@ -32,13 +32,33 @@ func TestBoardLockWaitBudgetDerivedFromNamedInputs(t *testing.T) {
 			boardLockHeadroom, recomputed)
 	}
 
-	// The inequality REQ-BLB-002 states: at least headroom x per-mutation
-	// cost x supported contender count.
-	floor := time.Duration(boardLockSupportedWriters) *
-		boardLockCIMutationCost * boardLockHeadroom
-	if boardLockWaitBudget < floor {
-		t.Errorf("budget %v < headroom floor %v", boardLockWaitBudget, floor)
-	}
+	// Where REQ-BLB-002's floor is enforced: INPUT-WISE, by the equality
+	// above plus the three assertions below — never by a comparison against
+	// boardLockWaitBudget.
+	//
+	//	budget == writers * cost * headroom   (the equality above, t.Fatalf)
+	//	writers  == 10                        (below)
+	//	cost     >= 33ms                      (below)
+	//	headroom >= 2                         (below)
+	//	==> budget >= 10 * 33ms * 2 = 660ms
+	//
+	// Each conjunct is falsifiable by a change to exactly one constant, so
+	// the composed floor is real.
+	//
+	// Why no floor-versus-budget comparison appears here, and why
+	// reinstating one is a regression rather than an improvement:
+	// boardLockWaitBudget IS declared as that same three-constant product
+	// (board_store.go), and the equality above is a t.Fatalf hard stop, so
+	// any floor built from those terms is the identical expression to the
+	// budget and evaluates false on every assignment — an identity wearing
+	// an inequality's clothing, which reads as coverage and can never fire.
+	// Exactly such a branch was removed here for that reason
+	// (SPEC-VACUOUS-FLOOR-GUARD-001, card t378).
+	//
+	// The file's one legitimate floor comparison is
+	// TestBoardLockWaitBudgetCoversSerializedMutations below: it derives its
+	// floor from the stress constants, terms the budget expression does not
+	// supply, so it is a real comparison (REQ-SIV-010).
 
 	// The supported contender count is the ten-lane figure of record in
 	// backlog_concurrency_test.go's header comment (REQ-BLB-002).
@@ -59,6 +79,64 @@ func TestBoardLockWaitBudgetDerivedFromNamedInputs(t *testing.T) {
 	if boardLockHeadroom < 2 {
 		t.Errorf("headroom factor %d states no headroom", boardLockHeadroom)
 	}
+}
+
+// AC-SIV-006 / REQ-SIV-009, REQ-SIV-010, REQ-SIV-011
+// (SPEC-STRESS-INVARIANT-VERDICT-001, card t372): the wait budget is COHERENT
+// with the mutation count TestConcurrencyStress serializes through one flock.
+//
+// What kind of guard this is. It is a CONSTANT-COHERENCE GUARD, NOT A RUNTIME
+// BUDGET GUARD. boardLockCIMutationCost appears on both sides of the
+// inequality and cancels, so what is actually enforced is a relation between
+// compile-time constants alone:
+//
+//	boardLockSupportedWriters * boardLockHeadroom >= stressWriters * stressAddsPerWriter
+//	                      10  *                 5  = 50  >=  8 * 6 = 48
+//
+// What it catches, stated exhaustively: a constant-axis regression — someone
+// lowering boardLockSupportedWriters or boardLockHeadroom, or raising
+// stressWriters / stressAddsPerWriter past their product. 48 and 50 are two
+// independently-authored figures, so the inequality binds a real coupling
+// between the stress test and the lock policy. Execution time, machine speed,
+// and contention level are NOT inputs to this guard.
+//
+// What it does NOT catch, from the same cancellation: no change to
+// boardLockCIMutationCost, and no per-mutation cost regression of any size,
+// can ever make it fire. It asserts nothing about the wait any real machine
+// needs — t370 back-derived the CI -race per-mutation cost at 42-105ms against
+// the declared 33ms, so the wait actually required there is 2.0-5.0s against a
+// 1.65s budget.
+//
+// It also must not reproduce the vacuity next door: the floor below is built
+// from the two stress constants, which the budget expression
+// (boardLockSupportedWriters * boardLockCIMutationCost * boardLockHeadroom)
+// does not itself supply, so this is a real comparison rather than a value
+// against itself (REQ-SIV-010).
+func TestBoardLockWaitBudgetCoversSerializedMutations(t *testing.T) {
+	t.Parallel()
+
+	const serialized = stressWriters * stressAddsPerWriter
+	const policyBudgetedMutations = boardLockSupportedWriters * boardLockHeadroom
+	floor := time.Duration(serialized) * boardLockCIMutationCost
+
+	if boardLockWaitBudget < floor {
+		t.Fatalf("constant coherence broken: the lock policy budgets %d supported writers x %d headroom = %d "+
+			"serialized mutations, while the stress test serializes %d x %d = %d (%v budget < %v floor). "+
+			"Lowering either policy constant, or raising either stress constant past that product, fails this "+
+			"guard. The per-mutation cost cancels on both sides, so the relation is cost-independent and "+
+			"asserts nothing about the wait any real machine needs — the CI -race per-mutation cost observed "+
+			"by t370 was 42-105ms against the declared %v.",
+			boardLockSupportedWriters, boardLockHeadroom, policyBudgetedMutations,
+			stressWriters, stressAddsPerWriter, serialized,
+			boardLockWaitBudget, floor, boardLockCIMutationCost)
+	}
+
+	t.Logf("constant coherence: the lock policy budgets %d supported writers x %d headroom = %d serialized "+
+		"mutations; the stress test serializes %d x %d = %d. The per-mutation cost cancels on both sides, so "+
+		"this relation is cost-independent — it states nothing about the wait any real machine needs, and a "+
+		"change to boardLockCIMutationCost (declared %v) would not be caught here.",
+		boardLockSupportedWriters, boardLockHeadroom, policyBudgetedMutations,
+		stressWriters, stressAddsPerWriter, serialized, boardLockCIMutationCost)
 }
 
 // AC-BLB-002 / REQ-BLB-003, REQ-BLB-004: the retry wait varies per contender,

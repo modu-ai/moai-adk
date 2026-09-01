@@ -42,10 +42,20 @@ while carrying no decision.
 > exiting zero; on the criterion side, review rounds stalled at an identical score with
 > comments of the form "invokes the check but never uses its result".
 
-*Evidence footnote (not a rule):* a selector that swept nothing still prints ok — a test-name
-regex matching zero tests, a zero-hit grep read as a pass. Counting what was actually swept is
-the same completion act as observing the failure: a pass whose swept set is empty asserts
-nothing.
+[ZONE:Evolvable] [HARD] **A pass whose swept set is empty asserts nothing.** A verification that
+selected nothing still reports success — a test-name selector matching zero tests, a zero-hit grep
+read as a pass, a suite filtered down to no cases — and the report is indistinguishable from one
+where everything passed. Counting what was actually swept is therefore part of the same completion
+act as observing the failure, not a refinement of it: a green with an empty swept set is
+uninterpreted output, and reading it as a pass is an unobserved-verification claim.
+
+The obligation this places on an actor is to establish the swept count before reading the verdict,
+and on a verification instrument to make an empty sweep visible rather than silent. The runner
+usually says so in its own words — go prints `[no tests to run]` or `[no test files]`, pytest
+`no tests ran`, jest `No tests found`, vitest `No test files found`, cargo a zero pass count — and
+those tokens are the cheapest available evidence. Where an instrument classifies runner output, the
+empty-sweep judgment is made ahead of every other signal, because the exit code of a run that swept
+nothing is the same zero a fully-passing run returns.
 
 ### 1.2 The three-part check spec
 

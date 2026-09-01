@@ -68,7 +68,9 @@ var frozenTodoSurface = map[string][]string{
 //
 //   - export-json — SPEC-TODO-SQLITE-001 REQ-TOSQ-016 (the downgrade route)
 //   - undone      — SPEC-TODO-DESTRUCTIVE-GUARD-001 REQ-TDG-001 (done's inverse)
-var permittedVerbAdditions = []string{"export-json", "undone"}
+//   - history     — SPEC-TODO-ARCHIVE-QUERY-001 REQ-TAQ-001/006 (the archive
+//     read surface; read-only, LoadPure, flags: --limit)
+var permittedVerbAdditions = []string{"export-json", "undone", "history"}
 
 // permittedFlagAdditions records flags added to an ALREADY-FROZEN verb, which
 // is a re-flagging and therefore needs its own declaration rather than an edit
@@ -78,8 +80,23 @@ var permittedVerbAdditions = []string{"export-json", "undone"}
 //     REQ-TDG-008 / REQ-TDG-009 (the mis-addressing guard and the opt-in
 //     landing seam). Both are opt-in: absent, `done` behaves exactly as the
 //     frozen surface says.
+//
+//   - list --dropped — card t384 (the dropped-render defect): the default
+//     render showed every dropped card forever, so the list length diverged
+//     from the queue's actual load. The default view now hides the dropped
+//     set behind one count line naming this flag, and the flag renders the
+//     discarded set — the recovery surface `undrop` reads. Opt-in: absent,
+//     `list` behaves as before MINUS the dropped rows, which is the repair.
+//
+//   - list --limit — card t403 (the silent-truncation defect): the render
+//     was unbounded, so a large queue pushed its truncation downstream to
+//     the reading harness, where rows vanished with no withheld count. The
+//     history verb's REQ-TAQ-007/008 contract (bounded default, --limit 0
+//     lifts it, withheld count on stderr) now holds on the list surface too.
+//     --json ignores the limit: the structured record stays the full read.
 var permittedFlagAdditions = map[string][]string{
 	"done <n>": {"expect=string()", "require-landed=bool(false)"},
+	"list":     {"dropped=bool(false)", "limit=int(20)"},
 }
 
 // isPermittedVerbAddition reports whether a live verb is a declared addition.

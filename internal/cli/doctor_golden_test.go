@@ -9,6 +9,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/config"
+	"github.com/modu-ai/moai-adk/pkg/version"
 )
 
 // updateDoctorGolden controls golden snapshot regeneration. Set via UPDATE_GOLDEN=1.
@@ -32,8 +33,10 @@ func doctorGoldenPath(name string) string {
 }
 
 // checkDoctorGolden compares got to a golden file, regenerating it if UPDATE_GOLDEN=1.
+// Both sides pass through normalizeAgentEmitRow first.
 func checkDoctorGolden(t *testing.T, name, got string) {
 	t.Helper()
+	got = normalizeAgentEmitRow(got)
 	path := doctorGoldenPath(name)
 	if updateDoctorGolden {
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -49,9 +52,39 @@ func checkDoctorGolden(t *testing.T, name, got string) {
 	if err != nil {
 		t.Fatalf("read golden %s: %v (run with UPDATE_GOLDEN=1 to generate)", path, err)
 	}
-	if got != string(want) {
+	if got != normalizeAgentEmitRow(string(want)) {
 		t.Errorf("doctor output mismatch for %s\ngot:\n%s\nwant:\n%s", name, got, string(want))
 	}
+}
+
+// normalizeAgentEmitRow pins the agent-emit applicability row, whose message
+// legitimately varies with the machine's home layout: nearestProjectRoot walks
+// the working directory's ancestors looking for a .moai marker, and a home
+// that owns the global ~/.moai (runner machines and real users alike) reads
+// as "in project". The golden tests the render, not the runner's home
+// directory, so both variants collapse onto one canonical row padded to the
+// box width (t426 windows census axis 3).
+func normalizeAgentEmitRow(out string) string {
+	lines := strings.Split(out, "\n")
+	boxWidth := 0
+	for _, ln := range lines {
+		if strings.HasSuffix(ln, "│") && len(ln) > boxWidth {
+			boxWidth = len(ln)
+		}
+	}
+	const marker = "Agent Emit Embed"
+	for i, ln := range lines {
+		if !strings.Contains(ln, marker) || !strings.Contains(ln, "not applicable: no committed") {
+			continue
+		}
+		head := ln[:strings.Index(ln, marker)+len(marker)]
+		row := head + "   not applicable: no committed agent-emit artifacts"
+		if pad := boxWidth - len(row) - len("│"); pad > 0 {
+			row += strings.Repeat(" ", pad)
+		}
+		lines[i] = row + "│"
+	}
+	return strings.Join(lines, "\n")
 }
 
 // captureDoctorCmd executes doctorCmd and returns (stdout, stderr) as
@@ -122,6 +155,13 @@ func TestDoctorGolden_Light(t *testing.T) {
 	t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
 	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
 
+	// Pin the version the snapshot renders (SPEC-VERSION-STAMP-PREDICATE-001
+	// REQ-VSP-008): the golden must not carry the build-time version token,
+	// or every bump breaks the suite through a fixture no bump owns.
+	origVersion := version.Version
+	version.Version = "v0.0.0-test"
+	defer func() { version.Version = origVersion }()
+
 	got, _ := captureDoctorCmd(t)
 	if len(got) == 0 {
 		t.Fatal("doctorCmd produced no output")
@@ -142,6 +182,13 @@ func TestDoctorGolden_Dark(t *testing.T) {
 	t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
 	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
 
+	// Pin the version the snapshot renders (SPEC-VERSION-STAMP-PREDICATE-001
+	// REQ-VSP-008): the golden must not carry the build-time version token,
+	// or every bump breaks the suite through a fixture no bump owns.
+	origVersion := version.Version
+	version.Version = "v0.0.0-test"
+	defer func() { version.Version = origVersion }()
+
 	got, _ := captureDoctorCmd(t)
 	if len(got) == 0 {
 		t.Fatal("doctorCmd produced no output")
@@ -160,6 +207,13 @@ func TestDoctorGolden_NoColor(t *testing.T) {
 	t.Setenv("MOAI_SG_VERSION_OVERRIDE", "ast-grep 9.99.99")
 	t.Setenv("MOAI_GOOS_OVERRIDE", "testos")
 	t.Setenv("MOAI_GOARCH_OVERRIDE", "testarch")
+
+	// Pin the version the snapshot renders (SPEC-VERSION-STAMP-PREDICATE-001
+	// REQ-VSP-008): the golden must not carry the build-time version token,
+	// or every bump breaks the suite through a fixture no bump owns.
+	origVersion := version.Version
+	version.Version = "v0.0.0-test"
+	defer func() { version.Version = origVersion }()
 
 	got, gotErr := captureDoctorCmd(t)
 	if len(got) == 0 {
