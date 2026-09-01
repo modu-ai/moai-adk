@@ -161,7 +161,7 @@ b12_self_test_c: "PASS — 항목이 주장하는 파일 경로 7종 전부 실�
 changelog_entry_position: "CHANGELOG.md [Unreleased] §Fixed 섹션 말미 — SPEC-VERSION-STAMP-GUARD-001(t388) 항목 다음, ## [3.1.3] 직전"
 frontmatter_status_transitions:
   spec_md: "in-progress → completed (단일 sync 커밋 병합 전환 — manager-docs 소관)"
-mx_scan_note: "시험 전용 diff (internal/cli/init_agent_flag_test.go +9/-2) — 프로덕션 심볼 변화 0건, @MX 태그 추가/갱신/제거 0건 (zero-change 기록)"
+mx_scan_note: "시험 전용 diff (internal/cli/init_agent_flag_test.go +7/-4) — 프로덕션 심볼 변화 0건, @MX 태그 추가/갱신/제거 0건 (zero-change 기록)"
 docs_site_and_readme: "변경 없음 — 이 시험 단언 강화를 다루는 README/docs-site 페이지 부재 (리드 지시: docs-site 불가)"
 ```
 
