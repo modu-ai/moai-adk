@@ -125,6 +125,13 @@ Binary: `gh run view <id> --json jobs` shows both jobs `conclusion: success` at 
 a log grep for `failed under contention` returns zero hits. `attempt=1` is required — a green
 re-run does not close a contention defect.
 
+**Resolved — 2026-09-02.** Observed by the lead's CI read: run `33564147725`, develop head
+`09bf452c0` (a descendant of this card's landing merge `728f91006`), `run_attempt=1`, both jobs
+success, on a run whose log proves the kanban package executed. The "PR head" surface became a
+develop head under the repo's git-flow transition — the evidence intent is unchanged. Full
+record: `progress.md` closure block. This SPEC closed `implemented → completed` on this read,
+jointly discharged with SPEC-STRESS-INVARIANT-VERDICT-001's AC-SIV-013.
+
 ## §D.1 Definition of Done
 
 - AC-BLB-001 … AC-BLB-005 pass locally, each cited as command + verbatim output.
