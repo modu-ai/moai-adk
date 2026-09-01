@@ -192,7 +192,42 @@ this worktree against the primary queue; no edit has been made yet.
 - Delivers REQ-TAQ-001/002/003/005/006/009; closes AC-TAQ-001/002/003/005/
   006/009 (E1 matrix commands in §E.3).
 
-_<pending run-phase evidence — M2 onward>_
+### M2 — the honest limits (2026-09-01)
+
+- REQ-TAQ-004: `absent` for an id at or below the issued-id mark carries a
+  stderr qualifier keyed on `rec.LastSeq` — never on archive emptiness.
+  Uses the exported `kanban.ParseBacklogSeq` (thin wrapper over
+  `parseBacklogSeq`; a second parser would drift from the issued id form).
+  Ordering coupling verified: every reachable degraded path completes
+  readRecord's `readLastSeq` (backlog_migrate.go:106-110), so the mark is
+  present where the note is most needed.
+- REQ-TAQ-013: new `kanban.InspectBacklogArchiveVouch(queuePath)`
+  (`internal/kanban/backlog_archive_vouch.go`) names which store answers —
+  SQLite / legacy backlog.json / none — and whether it can vouch for an
+  archive. **Load-bearing ordering**: the probe reads `sqlite_master` from
+  its own connection BEFORE any engine open, because the DDL's
+  `IF NOT EXISTS` recreates missing archive tables and would erase exactly
+  the fact the disclosure reports. The verb probes, then reads via
+  `LoadPure`; disclosures are stderr-only.
+- **Degraded shape is consumed by the first read**: a dropped-tables
+  database gets its tables recreated by the first history invocation's
+  engine open (the store's universal open behavior — `list` does the same),
+  so each AC scenario runs one fresh surgery per invocation. Recorded in
+  the test comment.
+- **Milestone-mapping deviation (documented)**: plan §F placed REQ-TAQ-008
+  (truncation notice) in M2, but its observable — the withheld count —
+  cannot fire before the bound exists (M3). The notice lands WITH `--limit`
+  in M3; AC-TAQ-008 closes there. M2 closes AC-TAQ-004 and AC-TAQ-013.
+- RED-2 (E8, verbatim): pre-implementation run — kanban
+  `undefined: InspectBacklogArchiveVouch / BacklogStoreSQLite /
+  BacklogStoreLegacyJSON` (build failed, 4 tests); cli
+  `history t3 stderr = "", want the at-or-below-the-mark qualifier`,
+  `history t1 stderr = "" / history (listing) stderr = ""`, want the store
+  disclosure, `legacy_json_only` stderr empty — 5 assertion failures, all
+  "missing disclosure" shaped. GREEN after the probe + wiring; one test
+  revision (fresh surgery per invocation) and one ineffassign fix.
+
+_<pending run-phase evidence — M3 onward>_
 
 ## §E.3 Run-phase Audit-Ready Signal
 

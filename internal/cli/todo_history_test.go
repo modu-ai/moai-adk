@@ -13,8 +13,13 @@
 package cli
 
 import (
+	"database/sql"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
 // seedHistoryFates builds the four-fates fixture: t1 queued, t2 picked,
@@ -172,4 +177,172 @@ func TestTodoHistoryEmptyArchiveIsExplicit(t *testing.T) {
 	if out != "archive is empty\n" {
 		t.Errorf("empty-archive render = %q, want the explicit line", out)
 	}
+}
+
+// seedFiveAndDeleteT3 builds the AC-TAQ-004 surgery: five cards issued
+// through the CLI, then t3's row deleted from items WITHOUT lowering
+// last_seq — the exact shape a pre-archive `done` left behind, which the
+// current CLI (which archives) cannot produce. This is the first of the
+// two storage surgeries acceptance.md names.
+func seedFiveAndDeleteT3(t *testing.T) (root string, store *kanban.BacklogStore) {
+	t.Helper()
+	root, store = todoFixture(t)
+	for _, text := range []string{"one", "two", "three", "four", "five"} {
+		if _, _, err := runTodo(t, "add", text); err != nil {
+			t.Fatalf("add %q: %v", text, err)
+		}
+	}
+	db, err := sql.Open("sqlite", store.EnginePath())
+	if err != nil {
+		t.Fatalf("open surgery db: %v", err)
+	}
+	defer func() { _ = db.Close() }()
+	res, err := db.Exec(`DELETE FROM items WHERE id = 't3'`)
+	if err != nil {
+		t.Fatalf("delete t3 row: %v", err)
+	}
+	if n, _ := res.RowsAffected(); n != 1 {
+		t.Fatalf("delete t3 row affected %d rows, want 1", n)
+	}
+	return root, store
+}
+
+// todoHistoryPreArchiveNote is the stderr qualifier REQ-TAQ-004 requires:
+// an absent id at or below the issued-id mark may have been issued and
+// destroyed, and absent does not establish never-issued.
+const todoHistoryPreArchiveNote = "may have been issued"
+
+// AC-TAQ-004 — `absent` is qualified for an id that was issued, and only
+// for one. The second clause is the regression guard against keying the
+// disclosure on archive emptiness: after one `done` the archive is NOT
+// empty anymore, and the note must STILL fire because t3 stays destroyed.
+func TestTodoHistoryDisclosesPreArchiveQueue(t *testing.T) {
+	_, store := seedFiveAndDeleteT3(t)
+
+	out, errOut, err := runTodo(t, "history", "t3")
+	if err != nil {
+		t.Fatalf("history t3: %v (stderr %q)", err, errOut)
+	}
+	if out != "t3\tabsent\n" {
+		t.Errorf("history t3 stdout = %q, want exactly the single absent line", out)
+	}
+	if !strings.Contains(errOut, "t3") || !strings.Contains(errOut, todoHistoryPreArchiveNote) {
+		t.Errorf("history t3 stderr = %q, want the at-or-below-the-mark qualifier naming t3", errOut)
+	}
+
+	// The same queue after one `done` on a different card: the archive now
+	// holds an entry, and the note must survive that fact.
+	if _, _, err := runTodo(t, "done", "t1"); err != nil {
+		t.Fatalf("done t1: %v", err)
+	}
+	out, errOut, err = runTodo(t, "history", "t3")
+	if err != nil {
+		t.Fatalf("history t3 (post-done): %v (stderr %q)", err, errOut)
+	}
+	if out != "t3\tabsent\n" {
+		t.Errorf("history t3 stdout (post-done) = %q, want exactly the single absent line", out)
+	}
+	if !strings.Contains(errOut, todoHistoryPreArchiveNote) {
+		t.Errorf("history t3 stderr (post-done) = %q — the qualifier went silent once the archive was non-empty; REQ-TAQ-004 is keyed on last_seq, not on emptiness", errOut)
+	}
+
+	// A never-issued id is not dressed up as a destroyed one: t9999 sits
+	// above the mark, so stdout reports absent and stderr stays silent.
+	out, errOut, err = runTodo(t, "history", "t9999")
+	if err != nil {
+		t.Fatalf("history t9999: %v", err)
+	}
+	if out != "t9999\tabsent\n" {
+		t.Errorf("history t9999 stdout = %q, want exactly the single absent line", out)
+	}
+	if errOut != "" {
+		t.Errorf("history t9999 stderr = %q, want empty — an id above the mark gets no destruction note", errOut)
+	}
+	_ = store
+}
+
+// todoHistoryDegradedStoreNote is what REQ-TAQ-013 requires a store that
+// cannot vouch for an archive to say: WHICH store answered, and that no
+// archive is available.
+const todoHistoryDegradedStoreNote = "no archive is available"
+
+// AC-TAQ-013 — a store that cannot vouch for an archive degrades with a
+// disclosure rather than answering silently. Clause 1: a database whose
+// archive tables were dropped. Clause 2: a legacy backlog.json with no
+// backlog.db — the second storage surgery acceptance.md names.
+func TestTodoHistoryDegradesWithoutArchiveTables(t *testing.T) {
+	t.Run("dropped archive tables", func(t *testing.T) {
+		_, store := todoFixture(t)
+		if _, _, err := runTodo(t, "add", "alpha work"); err != nil {
+			t.Fatalf("add: %v", err)
+		}
+		// Each scenario drops the tables FRESH: the first history read's
+		// engine open runs the DDL and recreates them (the store's universal
+		// open behavior — list would do the same), consuming the degraded
+		// shape for every later invocation. One surgery per invocation.
+		dropArchiveTables := func() {
+			t.Helper()
+			db, err := sql.Open("sqlite", store.EnginePath())
+			if err != nil {
+				t.Fatalf("open surgery db: %v", err)
+			}
+			for _, stmt := range []string{`DROP TABLE archived_items`, `DROP TABLE archived_findings`} {
+				if _, err := db.Exec(stmt); err != nil {
+					t.Fatalf("%s: %v", stmt, err)
+				}
+			}
+			if err := db.Close(); err != nil {
+				t.Fatalf("close surgery db: %v", err)
+			}
+		}
+
+		dropArchiveTables()
+		out, errOut, err := runTodo(t, "history", "t1")
+		if err != nil {
+			t.Fatalf("history t1: %v (stderr %q)", err, errOut)
+		}
+		if out != "t1\tlive\tqueued\talpha work\n" {
+			t.Errorf("history t1 stdout = %q, want the live line — the degraded lookup must still answer", out)
+		}
+		if !strings.Contains(errOut, todoHistoryDegradedStoreNote) {
+			t.Errorf("history t1 stderr = %q, want the store disclosure", errOut)
+		}
+
+		dropArchiveTables()
+		_, errOut, err = runTodo(t, "history")
+		if err != nil {
+			t.Fatalf("history (listing): %v (stderr %q)", err, errOut)
+		}
+		if !strings.Contains(errOut, todoHistoryDegradedStoreNote) {
+			t.Errorf("history (listing) stderr = %q, want the store disclosure", errOut)
+		}
+	})
+
+	t.Run("legacy json only", func(t *testing.T) {
+		root, store := todoFixture(t)
+		legacy := `{"version":1,"last_seq":7,"items":[{"id":"t1","text":"alpha work","added_at":"2026-01-01T00:00:00Z","spec_id":null,"state":"queued"}],"findings":[]}`
+		if err := os.MkdirAll(filepath.Dir(store.Path()), 0o755); err != nil {
+			t.Fatalf("mkdir: %v", err)
+		}
+		if err := os.WriteFile(store.Path(), []byte(legacy), 0o600); err != nil {
+			t.Fatalf("write legacy json: %v", err)
+		}
+
+		out, errOut, err := runTodo(t, "history", "t9999")
+		if err != nil {
+			t.Fatalf("history t9999: %v (stderr %q)", err, errOut)
+		}
+		if !strings.Contains(out, "t9999") || !strings.Contains(out, "absent") {
+			t.Errorf("history t9999 stdout = %q, want the absent answer", out)
+		}
+		if !strings.Contains(errOut, "legacy backlog.json") || !strings.Contains(errOut, todoHistoryDegradedStoreNote) {
+			t.Errorf("history t9999 stderr = %q, want the legacy-store disclosure", errOut)
+		}
+		// The read-only posture on this path: serving the JSON must not have
+		// migrated it into a database behind the verb's back.
+		if _, statErr := os.Stat(store.EnginePath()); !os.IsNotExist(statErr) {
+			t.Errorf("backlog.db exists after a history read on a JSON-only queue — the verb migrated the store (stat err %v)", statErr)
+		}
+		_ = root
+	})
 }

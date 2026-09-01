@@ -64,22 +64,59 @@ counts unchanged).`,
 
 // runTodoHistory renders the fate answer or the archive listing.
 func runTodoHistory(cmd *cobra.Command, args []string) error {
-	rec, err := newTodoStore().LoadPure()
+	store := newTodoStore()
+	// Which store is answering is probed BEFORE the read: opening a
+	// dropped-tables database runs the DDL, whose IF NOT EXISTS recreates
+	// the archive tables and would erase exactly the fact the REQ-TAQ-013
+	// disclosure reports. The probe runs on its own connection and runs no
+	// DDL.
+	vouch := kanban.InspectBacklogArchiveVouch(store.Path())
+
+	rec, err := store.LoadPure()
 	if err != nil {
 		if _, werr := fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err); werr != nil {
 			return werr
 		}
 		return err
 	}
+	errOut := cmd.ErrOrStderr()
+	// REQ-TAQ-013 — a store that cannot vouch for an archive says which
+	// store answered, on stderr only, so a machine reading stdout is
+	// unaffected and `absent` is never mistaken for an authoritative
+	// archive answer.
+	switch vouch.Store {
+	case kanban.BacklogStoreLegacyJSON:
+		if _, werr := fmt.Fprintf(errOut, "history: answered by %s; no archive is available\n", vouch.Store); werr != nil {
+			return werr
+		}
+	case kanban.BacklogStoreSQLite:
+		if !vouch.HasArchive {
+			if _, werr := fmt.Fprintf(errOut, "history: answered by %s; its archive tables are missing; no archive is available\n", vouch.Store); werr != nil {
+				return werr
+			}
+		}
+	}
+
 	out := cmd.OutOrStdout()
 	if len(args) == 0 {
 		return renderTodoHistoryListing(out, rec)
 	}
-	return renderTodoHistoryLookup(out, rec, normalizeTodoRef(args[0]))
+	return renderTodoHistoryLookup(out, errOut, rec, normalizeTodoRef(args[0]))
 }
 
-// renderTodoHistoryLookup prints the one fate line for id.
-func renderTodoHistoryLookup(out io.Writer, rec *kanban.BacklogRecord, id string) error {
+// renderTodoHistoryLookup prints the one fate line for id. An absent id at
+// or below the queue's issued-id mark additionally qualifies the answer on
+// stderr (REQ-TAQ-004): the mark is the queue's durable record of how many
+// ids were ever issued, so such an id MAY have been issued and destroyed —
+// keyed on last_seq, never on archive emptiness (an emptiness key would go
+// silent after the first done while destroyed cards stay destroyed).
+//
+// Ordering coupling (plan §F M2): rec.LastSeq is populated by readRecord's
+// readLastSeq (backlog_migrate.go:106-110), which runs after readArchive on
+// every completed read. Every reachable degraded path here — the probe-keyed
+// disclosure and the legacy-JSON load — completes that read, so the mark is
+// present exactly where the note is most needed.
+func renderTodoHistoryLookup(out, errOut io.Writer, rec *kanban.BacklogRecord, id string) error {
 	for _, it := range rec.Items {
 		if it.ID == id {
 			_, err := fmt.Fprintf(out, "%s\tlive\t%s\t%s\n", it.ID, it.State, it.Text)
@@ -92,6 +129,13 @@ func renderTodoHistoryLookup(out io.Writer, rec *kanban.BacklogRecord, id string
 		return err
 	}
 	_, err := fmt.Fprintf(out, "%s\tabsent\n", id)
+	if n, ok := kanban.ParseBacklogSeq(id); ok && n <= rec.LastSeq {
+		if _, werr := fmt.Fprintf(errOut,
+			"history: %s is at or below this queue's issued-id mark (last_seq %d) — it may have been issued and its record destroyed; absent does not establish never-issued\n",
+			id, rec.LastSeq); werr != nil {
+			return werr
+		}
+	}
 	return err
 }
 
