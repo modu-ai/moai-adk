@@ -239,7 +239,51 @@ this worktree against the primary queue; no edit has been made yet.
   --limit` (×2). GREEN after the flag + bound + notice.
 - Closes AC-TAQ-007, AC-TAQ-008.
 
-_<pending run-phase evidence — M4 onward>_
+### M4 — the invariant guards (2026-09-01)
+
+Tests: `TestLiveReadersUnchangedByHistoryVerb` (clause 3),
+`TestTodoHistoryLeavesStorageByteIdentical` (AC-TAQ-010),
+`TestTodoHistoryAddsNoSchemaChange` (AC-TAQ-012, `internal/kanban/
+backlog_schema_freeze_test.go`), `TestTodoHistoryNeverPrompts`
+(AC-TAQ-014).
+
+- **Clause 1 batch (verbatim results, this worktree @ HEAD `1a5d8664f`)**:
+  adding-commit count = **1**; `C = e7eec612213b1a6390ad627005a3066cb09b9a36`;
+  `C != HEAD` (HEAD `1a5d8664fc3eff0e03282b941ed80e726778cd61`);
+  `merge-base --is-ancestor` exit **0**; `cat-file -e C:internal/cli/
+  todo_history.go` exit **128** (absent → `!` passes); `git grep -q
+  newTodoHistoryCmd C -- internal/cli/` exit **1** (absent → `!` passes);
+  `git diff --exit-code C -- goldens` exit **0** (bytes unmoved).
+- **Clause 1 reasoned rows observed RED once** (throwaway repos, per
+  acceptance.md's obligation): orphaned-goldens repo — `test -n` exit **1**
+  and `merge-base --is-ancestor` exit **1** (unverifiable provenance does
+  not read as verified); single-commit repo standing in for a squash —
+  `cat-file` exit **0** and `grep -q` exit **0** with `C == HEAD`
+  (`test !=` exit 1), i.e. every `!` form correctly FAILS when C's tree
+  holds the verb.
+- **Clause 1 failure-mode observation on the real tree (guard bites)**:
+  mutating `list.txt` by one byte in the working tree turned clause 3 RED
+  with an exact got/want diff; `git restore` returned the golden, `git
+  status --short` clean, clause 3 GREEN again.
+- **Clause 2 regeneration (local DoD gate)**: binary built from C in a
+  throwaway detached worktree, run against a fresh FIXTURE with the M0 seed
+  sequence — `IDENTICAL list.txt / list-json.txt / next.txt / why_t3.txt /
+  analyze.txt` (cmp, with the capture-time RFC3339 normalization on
+  list-json). The state-counts stream is exercised by the clause-3
+  in-process comparison (`kanban.BacklogCountsForRoot` render). Worktree
+  removed after.
+- **AC-TAQ-014 plant-and-remove pair**: `bufio.NewReader(os.Stdin)`
+  planted at `todo_history.go:80` → the AC grep matched (exit 0 → the `!`
+  guard form fails) AND `TestTodoHistoryNeverPrompts` RED naming the exact
+  line; removed → `git diff` empty (byte-exact revert), grep exit **1**
+  (guard passes), test GREEN. Both observations recorded here.
+- AC-TAQ-010 note: the seed's `done` legitimately leaves `backlog.lock`
+  (flock Unlock does not unlink on Unix), so the test removes it before
+  the reads and asserts history does not recreate it — the mechanical form
+  of "no lock artifact remains" on this platform; the SHA-256 map over the
+  whole state dir additionally asserts no file changed and none appeared.
+
+_<pending run-phase evidence — M5 onward>_
 
 ## §E.3 Run-phase Audit-Ready Signal
 

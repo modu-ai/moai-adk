@@ -13,10 +13,16 @@
 package cli
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -419,3 +425,254 @@ func TestTodoHistoryStatesWithheldCount(t *testing.T) {
 		t.Errorf("history --limit 5 stdout = %q — the withheld note leaked onto stdout", out)
 	}
 }
+
+// goldenRFC3339 matches the RFC3339 UTC wall-clock stamps the fixture's
+// records carry. The goldens were captured with these normalized to
+// <RFC3339> (see progress.md §E.2 — the only normalization, and the only
+// way a wall-clock field is reproducible across processes); every golden
+// comparison applies the identical rule.
+var goldenRFC3339 = regexp.MustCompile(`\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z`)
+
+// normalizeGoldenTimestamps applies the capture-time normalization.
+func normalizeGoldenTimestamps(s string) string {
+	return goldenRFC3339.ReplaceAllString(s, "<RFC3339>")
+}
+
+// goldenDir is the live-reader golden directory (AC-TAQ-011 clause 1 pins
+// its introducing commit C).
+const goldenDir = "testdata/golden/live-readers"
+
+// replayGoldenFixture rebuilds the M0 capture fixture in-process: the SAME
+// seed sequence through the public CLI (progress.md §E.2 records it
+// verbatim), so the six readers see the same queue the pre-verb binary saw.
+func replayGoldenFixture(t *testing.T) string {
+	t.Helper()
+	root, _ := todoFixture(t)
+	for _, text := range []string{
+		"write the parser for the config file",
+		"polish the docs landing page",
+		"drop the legacy cache layer",
+		"wire the banner into the shell",
+	} {
+		if _, _, err := runTodo(t, "add", text); err != nil {
+			t.Fatalf("add %q: %v", text, err)
+		}
+	}
+	if _, _, err := runTodo(t, "next", "2", "--spec", "SPEC-X-001"); err != nil {
+		t.Fatalf("next 2: %v", err)
+	}
+	if _, _, err := runTodo(t, "drop", "3", "superseded by the parser rewrite"); err != nil {
+		t.Fatalf("drop 3: %v", err)
+	}
+	if _, _, err := runTodo(t, "relate", "t1", "t3", "--relation", "conflicts", "--note", "needs a decision"); err != nil {
+		t.Fatalf("relate: %v", err)
+	}
+	if _, _, err := runTodo(t, "done", "4"); err != nil {
+		t.Fatalf("done 4: %v", err)
+	}
+	return root
+}
+
+// goldenReplay renders the six live-reader streams against the fixture
+// queue, in the capture order (analyze records findings, so it runs after
+// the readers whose output it would otherwise alter). The returned map is
+// keyed by the golden file names.
+func goldenReplay(t *testing.T, root string) map[string]string {
+	t.Helper()
+	streams := map[string]string{}
+	for _, tc := range []struct {
+		name string
+		args []string
+	}{
+		{"list.txt", []string{"list"}},
+		{"list-json.txt", []string{"list", "--json"}},
+		{"next.txt", []string{"next"}},
+		{"why_t3.txt", []string{"why", "t3"}},
+		{"analyze.txt", []string{"analyze"}},
+	} {
+		out, _, err := runTodo(t, tc.args...)
+		if err != nil {
+			t.Fatalf("%s: %v", tc.args, err)
+		}
+		streams[tc.name] = normalizeGoldenTimestamps(out)
+	}
+	counts, err := json.Marshal(kanban.BacklogCountsForRoot(root))
+	if err != nil {
+		t.Fatalf("marshal state counts: %v", err)
+	}
+	streams["state-counts.txt"] = normalizeGoldenTimestamps(string(counts) + "\n")
+	return streams
+}
+
+// AC-TAQ-011 clause 3 — the six live readers are byte-identical to the
+// goldens captured at C (the pre-verb tree), so REQ-TDG-007's invisibility
+// cannot be relaxed silently. The goldens cannot have been produced by
+// this change: clause 1 (run at DoD, see progress.md §E.2) pins their
+// provenance to a commit whose tree lacked the verb.
+func TestLiveReadersUnchangedByHistoryVerb(t *testing.T) {
+	root := replayGoldenFixture(t)
+	streams := goldenReplay(t, root)
+
+	for _, name := range []string{
+		"list.txt", "list-json.txt", "next.txt", "why_t3.txt", "analyze.txt", "state-counts.txt",
+	} {
+		want, err := os.ReadFile(filepath.Join(goldenDir, name))
+		if err != nil {
+			t.Fatalf("read golden %s: %v", name, err)
+		}
+		if got := streams[name]; got != string(want) {
+			t.Errorf("live reader %s drifted from the golden.\n got: %q\nwant: %q", name, got, string(want))
+		}
+	}
+}
+
+// AC-TAQ-010 — the verb writes nothing: every file under the queue's state
+// directory hashes the same before and after, and no lock artifact remains.
+func TestTodoHistoryLeavesStorageByteIdentical(t *testing.T) {
+	root, store := todoFixture(t)
+	seedHistoryFatesQueue(t)
+
+	// The SEED's mutations legitimately left the lock artifact (flock
+	// Unlock does not unlink it on Unix). Remove it so the "no lock
+	// artifact remains" assertion is decidable: if a history read took the
+	// queue lock, acquiring recreates the artifact and this fails.
+	if err := os.Remove(store.LockPath()); err != nil && !os.IsNotExist(err) {
+		t.Fatalf("clear seed lock artifact: %v", err)
+	}
+	hashesBefore := hashStateDir(t, root)
+
+	for _, args := range [][]string{{"history"}, {"history", "t1"}, {"history", "--limit", "0"}} {
+		if _, _, err := runTodo(t, args...); err != nil {
+			t.Fatalf("history %v: %v", args, err)
+		}
+	}
+
+	hashesAfter := hashStateDir(t, root)
+	if len(hashesBefore) == 0 {
+		t.Fatal("no files hashed under the state directory — the assertion would pass on nothing")
+	}
+	for name, before := range hashesBefore {
+		after, ok := hashesAfter[name]
+		if !ok {
+			t.Errorf("state file %s vanished during history reads", name)
+			continue
+		}
+		if before != after {
+			t.Errorf("state file %s changed during history reads — a read verb mutated storage", name)
+		}
+	}
+	for name := range hashesAfter {
+		if _, ok := hashesBefore[name]; !ok {
+			t.Errorf("new state artifact %s appeared during history reads", name)
+		}
+	}
+	if _, err := os.Stat(store.LockPath()); !os.IsNotExist(err) {
+		t.Errorf("lock artifact remains after history reads — a read took the queue lock (stat err %v)", err)
+	}
+}
+
+// seedHistoryFatesQueue seeds cards so the state directory is populated
+// (the hash assertion must run over a real queue, not an absent one).
+func seedHistoryFatesQueue(t *testing.T) {
+	t.Helper()
+	for _, text := range []string{"alpha work", "beta work"} {
+		if _, _, err := runTodo(t, "add", text); err != nil {
+			t.Fatalf("add %q: %v", text, err)
+		}
+	}
+	if _, _, err := runTodo(t, "done", "t1"); err != nil {
+		t.Fatalf("done t1: %v", err)
+	}
+}
+
+// hashStateDir SHA-256s every regular file under the queue's state
+// directory, keyed by path relative to root.
+func hashStateDir(t *testing.T, root string) map[string]string {
+	t.Helper()
+	stateDir := filepath.Join(root, ".moai", "state", "todo")
+	hashes := map[string]string{}
+	err := filepath.WalkDir(stateDir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() || !d.Type().IsRegular() {
+			return nil
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		sum := sha256.Sum256(data)
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		hashes[rel] = hex.EncodeToString(sum[:])
+		return nil
+	})
+	if err != nil && !os.IsNotExist(err) {
+		t.Fatalf("hash state dir: %v", err)
+	}
+	return hashes
+}
+
+// AC-TAQ-014 — the verb never prompts. The scan subject is located by the
+// constructor symbol, not by an assumed filename, so the guard follows the
+// verb wherever it lives; an empty scan subject FAILS (the previous
+// wording's missing-path grep exited 2 and the leading ! inverted it into
+// a PASS). The negated grep is near-baseline-vacuous on its own, so its
+// failure was demonstrated by planting a prompting call and observing the
+// non-zero exit, then removing it — both observations are cited in
+// progress.md §E.2.
+func TestTodoHistoryNeverPrompts(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatalf("resolve repo root: %v", err)
+	}
+	gitgrep := func(args ...string) (string, int) {
+		t.Helper()
+		cmd := exec.Command("git", append([]string{"-C", root, "grep", "-l"}, args...)...)
+		var outBuf, errBuf bytes.Buffer
+		cmd.Stdout = &outBuf
+		cmd.Stderr = &errBuf
+		runErr := cmd.Run()
+		code := 0
+		if runErr != nil {
+			if exitErr, ok := runErr.(*exec.ExitError); ok {
+				code = exitErr.ExitCode()
+			} else {
+				t.Fatalf("git grep: %v", runErr)
+			}
+		}
+		return outBuf.String(), code
+	}
+
+	src, code := gitgrep("newTodoHistoryCmd", "--", "internal/cli/*.go", ":!internal/cli/*_test.go")
+	if code != 0 {
+		t.Fatalf("git grep for the verb symbol exited %d — the scan subject is empty", code)
+	}
+	files := strings.Fields(src)
+	if len(files) == 0 {
+		t.Fatal("no source file carries newTodoHistoryCmd")
+	}
+	for _, f := range files {
+		if _, err := os.Stat(filepath.Join(root, f)); err != nil {
+			t.Errorf("scan subject %s does not exist: %v", f, err)
+		}
+	}
+
+	for _, f := range files {
+		data, err := os.ReadFile(filepath.Join(root, f))
+		if err != nil {
+			t.Fatalf("read %s: %v", f, err)
+		}
+		for i, line := range strings.Split(string(data), "\n") {
+			if todoPromptingRe.MatchString(line) {
+				t.Errorf("%s:%d carries a prompting call: %s", f, i+1, line)
+			}
+		}
+	}
+}
+
+// todoPromptingRe matches the prompting shapes the boundary guard refuses.
+var todoPromptingRe = regexp.MustCompile(`AskUserQuestion|survey\.|promptui|bufio\.NewReader\(os\.Stdin\)`)
