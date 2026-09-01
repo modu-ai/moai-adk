@@ -14,6 +14,7 @@ package cli
 
 import (
 	"database/sql"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -345,4 +346,76 @@ func TestTodoHistoryDegradesWithoutArchiveTables(t *testing.T) {
 		}
 		_ = root
 	})
+}
+
+// seedArchivedCards archives n cards through the CLI and returns nothing —
+// the queue is left with n archived entries and an empty live queue.
+func seedArchivedCards(t *testing.T, n int) {
+	t.Helper()
+	_, _ = todoFixture(t)
+	for i := 1; i <= n; i++ {
+		text := fmt.Sprintf("work item %02d", i)
+		if _, _, err := runTodo(t, "add", text); err != nil {
+			t.Fatalf("add %q: %v", text, err)
+		}
+		if _, _, err := runTodo(t, "done", fmt.Sprintf("t%d", i)); err != nil {
+			t.Fatalf("done t%d: %v", i, err)
+		}
+	}
+}
+
+// countHistoryLines counts the listing lines on stdout.
+func countHistoryLines(out string) int {
+	trimmed := strings.TrimSuffix(out, "\n")
+	if trimmed == "" {
+		return 0
+	}
+	return len(strings.Split(trimmed, "\n"))
+}
+
+// AC-TAQ-007 — the listing is bounded by default, the bound is adjustable,
+// and 0 means unbounded.
+func TestTodoHistoryLimitBound(t *testing.T) {
+	seedArchivedCards(t, 25)
+
+	out, _, err := runTodo(t, "history")
+	if err != nil {
+		t.Fatalf("history: %v", err)
+	}
+	if got := countHistoryLines(out); got != 20 {
+		t.Errorf("default listing carries %d lines, want the default bound 20", got)
+	}
+
+	out, _, err = runTodo(t, "history", "--limit", "5")
+	if err != nil {
+		t.Fatalf("history --limit 5: %v", err)
+	}
+	if got := countHistoryLines(out); got != 5 {
+		t.Errorf("--limit 5 listing carries %d lines, want 5", got)
+	}
+
+	out, _, err = runTodo(t, "history", "--limit", "0")
+	if err != nil {
+		t.Fatalf("history --limit 0: %v", err)
+	}
+	if got := countHistoryLines(out); got != 25 {
+		t.Errorf("--limit 0 listing carries %d lines, want all 25 (0 = unbounded)", got)
+	}
+}
+
+// AC-TAQ-008 — truncation states the withheld count on stderr, and stdout
+// carries no such note (a machine reading stdout is unaffected).
+func TestTodoHistoryStatesWithheldCount(t *testing.T) {
+	seedArchivedCards(t, 25)
+
+	out, errOut, err := runTodo(t, "history", "--limit", "5")
+	if err != nil {
+		t.Fatalf("history --limit 5: %v", err)
+	}
+	if !strings.Contains(errOut, "20") || !strings.Contains(errOut, "withheld") {
+		t.Errorf("history --limit 5 stderr = %q, want it to state 20 entries withheld", errOut)
+	}
+	if strings.Contains(out, "withheld") {
+		t.Errorf("history --limit 5 stdout = %q — the withheld note leaked onto stdout", out)
+	}
 }

@@ -37,11 +37,17 @@ import (
 // silence is indistinguishable from a crash, so an empty listing says so.
 const todoHistoryEmptyArchive = "archive is empty"
 
+// todoHistoryDefaultLimit is the listing's default bound (REQ-TAQ-007):
+// a bounded read is the default, --limit raises or lowers it, and
+// --limit 0 lifts the bound entirely.
+const todoHistoryDefaultLimit = 20
+
 // newTodoHistoryCmd — `moai todo history [<id|n>]`. The constructor name is
 // a fixed contract: AC-TAQ-011 clause 1 and AC-TAQ-014 locate the verb by
 // grepping this exact symbol.
 func newTodoHistoryCmd() *cobra.Command {
-	return &cobra.Command{
+	var limit int
+	cmd := &cobra.Command{
 		Use:   "history [<id|n>]",
 		Short: "Look up a card's fate, or list the archive",
 		Long: `Answer what became of a card. 'moai todo history <id>' prints one
@@ -58,12 +64,17 @@ The verb is read-only: it takes no lock, writes nothing, and archived rows
 stay invisible to every other reader (list, next, why, analyze and the
 counts unchanged).`,
 		Args: cobra.MaximumNArgs(1),
-		RunE: runTodoHistory,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runTodoHistory(cmd, args, limit)
+		},
 	}
+	cmd.Flags().IntVar(&limit, "limit", todoHistoryDefaultLimit,
+		"Maximum archived entries to list (0 = unbounded)")
+	return cmd
 }
 
 // runTodoHistory renders the fate answer or the archive listing.
-func runTodoHistory(cmd *cobra.Command, args []string) error {
+func runTodoHistory(cmd *cobra.Command, args []string, limit int) error {
 	store := newTodoStore()
 	// Which store is answering is probed BEFORE the read: opening a
 	// dropped-tables database runs the DDL, whose IF NOT EXISTS recreates
@@ -99,7 +110,10 @@ func runTodoHistory(cmd *cobra.Command, args []string) error {
 
 	out := cmd.OutOrStdout()
 	if len(args) == 0 {
-		return renderTodoHistoryListing(out, rec)
+		if limit < 0 {
+			return fmt.Errorf("todo history: --limit must be >= 0 (got %d)", limit)
+		}
+		return renderTodoHistoryListing(out, errOut, rec, limit)
 	}
 	return renderTodoHistoryLookup(out, errOut, rec, normalizeTodoRef(args[0]))
 }
@@ -140,15 +154,30 @@ func renderTodoHistoryLookup(out, errOut io.Writer, rec *kanban.BacklogRecord, i
 }
 
 // renderTodoHistoryListing prints the archive newest-first (the record
-// stores archive order oldest-first, so the listing walks it backwards).
-func renderTodoHistoryListing(out io.Writer, rec *kanban.BacklogRecord) error {
-	if len(rec.Archived) == 0 {
+// stores archive order oldest-first, so the listing walks it backwards),
+// bounded at limit entries (0 = unbounded). A truncated listing states the
+// withheld count on stderr (REQ-TAQ-008) — a truncated read must never be
+// mistaken for a complete one.
+func renderTodoHistoryListing(out, errOut io.Writer, rec *kanban.BacklogRecord, limit int) error {
+	total := len(rec.Archived)
+	if total == 0 {
 		_, err := fmt.Fprintln(out, todoHistoryEmptyArchive)
 		return err
 	}
-	for i := len(rec.Archived) - 1; i >= 0; i-- {
-		entry := rec.Archived[i]
+	shown := total
+	if limit > 0 && limit < total {
+		shown = limit
+	}
+	for i := 0; i < shown; i++ {
+		entry := rec.Archived[total-1-i]
 		if _, err := fmt.Fprintf(out, "%s\tarchived\t%s\t%s\n", entry.Item.ID, entry.Item.State, entry.Item.Text); err != nil {
+			return err
+		}
+	}
+	if withheld := total - shown; withheld > 0 {
+		if _, err := fmt.Fprintf(errOut,
+			"history: %d archived entries withheld — showing %d of %d (--limit 0 lists all)\n",
+			withheld, shown, total); err != nil {
 			return err
 		}
 	}

@@ -227,7 +227,19 @@ this worktree against the primary queue; no edit has been made yet.
   "missing disclosure" shaped. GREEN after the probe + wiring; one test
   revision (fresh surgery per invocation) and one ineffassign fix.
 
-_<pending run-phase evidence — M3 onward>_
+### M3 — the bound (2026-09-01)
+
+- `--limit <n>` on the listing: default 20 (`todoHistoryDefaultLimit`),
+  0 = unbounded, negative refused with an error. Truncation states the
+  withheld count on stderr (`history: N archived entries withheld —
+  showing M of T (--limit 0 lists all)`), stdout unaffected — REQ-TAQ-007
+  + REQ-TAQ-008 together, per the M2 deviation note.
+- RED-3 (E8, verbatim): pre-implementation run — `default listing carries
+  25 lines, want the default bound 20`; `history --limit 5: unknown flag:
+  --limit` (×2). GREEN after the flag + bound + notice.
+- Closes AC-TAQ-007, AC-TAQ-008.
+
+_<pending run-phase evidence — M4 onward>_
 
 ## §E.3 Run-phase Audit-Ready Signal
 
