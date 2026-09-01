@@ -271,3 +271,45 @@ M1/M2 로 seam 을 세운다
 ```
 
 [HARD] 이 관측을 M1 이전으로 끌어올리지 않는다. 끌어올리면 seam 없이 관측할 방법을 찾느라 워크트리 격리 가드와 싸우게 되고, 그것은 이 카드가 풀 문제가 아니다.
+
+---
+
+## 재개 기록 — 2026-09-02 (lane-6, 리드 배차 재개)
+
+확정된 재개 순서 1-4를 전부 완료했다.
+
+| 단계 | 결과 |
+|---|---|
+| 1. t376·t382 착지 확인 | 완료 — 둘 다 origin/develop 조상 (`77550b1b0` / `123014952` 3-phase close) |
+| 2. develop 흡수 | 완료 — `git merge origin/develop`(09bf452c0) rc=0 충돌 0 → HEAD `d31bf744d` |
+| 3. 좌표 통일 후 라벨 | 완료 — 커밋 `322dffdf2`. 라벨은 커밋 직전 `git rev-parse origin/develop` 재판독값 `09bf452c0` 으로 찍음 |
+| 3.5 교차검산 | 통과 — `plan.md:101` 과 `:170` 의 err skip 좌표가 모두 `:1373-1376` 으로 일치 |
+| 4. 세 축 스윕 | 백틱 36 · 평문 0 · `file.go:N` 48 — 기준선과 동일(전부 제자리 값 교체였으므로 예상된 결과) |
+| 5. 완료 보고 | lead-1 에게 전송 |
+
+### 측정 내역 (트리 `d31bf744d`)
+
+- `lint.go` **+49**: `Check` `:1355-1391` · terminal `:1367-1369` · err skip `:1373-1376` · emission `:1379-1388`(if 블록 관례 통일) · `Advisory: true` `:1384` · `applyEraDemotion` `:344-361`(서명이 `grandfathered bool` → `cause demotionCause` 로 변해 +1행)
+- `gitquery_cache.go` **+20**: `cachedMainBranch` `:108-136` · 캐시 조기반환 `:115-119` · `exec.Command` 2곳 `:121`/`:132` · 전역 뮤텍스 `:23-25`(MX 주석 2행 추가로 +2)
+- **불변 실측 확인**: `lint.go:33-45`(Finding) · `:61` · `drift.go:300-367` + `:312/:316/:366` · `lint_ownership.go:380-400`/`:429` · `spec_lint.go:113/115-118/116/136-142` · `drift_characterization_test.go:55/98/103/280` — 전부 현재 트리에서 재측정해 이동 없음을 확인
+- **D3 표 밖 확장**: 스윕을 plan.md 밖 형제 표면(spec.md · acceptance.md)까지 훌려 스테일 전방 좌표 8건 추가 정정(`gitquery_cache.go:88-118`→`:108-136` 등) — progress.md 와 spec.md 버전 테이블은 역사 기록으로 접촉하지 않음(3분 분류 판별식 적용)
+- 본문 무변 증명: `git show 35bc0715f:internal/spec/lint.go | sed -n '1306,1342p'` 와 현재 `1355-1391` diff — IDENTICAL BODY
+
+### D1 — 닫음
+
+`fixtureSpecMD`(`drift_characterization_test.go:109`)의 본문이 절 없는 `# <ID>` 한 줄이라 선례 복사 시 `MissingExclusions` 가 나서 RED 기준선이 깨진다는 지적의 수리. AC-SLGB-001/004 의 [HARD] 픽스처 전제에 「선례는 전면만 따른다 + `### 4.1 Out of Scope` 절 의무」를 명시. 검증 형태: `repro/withscope/spec.md` — 현재 트리에서 `go run ./cmd/moai spec lint …` → `✓ No findings` rc=0 재실측.
+
+### D2 — 채택 (2-cell 대장)
+
+acceptance.md 에 「2-Cell 채택 대장」 절 신설, 11 AC 전부 채택: **실측 2**(AC-009 grep rc=1 원문, AC-010 paths 단독 원문 — 둘 다 트리 `d31bf744d` 핀) · **seam 8**(판정서 순환 해소 [HARD] 적용 — plan 시점 끌어올리지 않고 run-phase §E.2 에서 관측; AC-005 는 공허 초록이라 §2 뮤탄트 조항으로 RED 대체) · **CI 1**(AC-011 — §2.1 undecidable → regression-guard, release-blocking 아님).
+
+### 병합 금지 표식 해제 조건
+
+위 표의 3겹 귀속 분열은 커밋 `322dffdf2` 로 해소됐다 — 좌표가 전부 한 트리(`d31bf744d`, develop `09bf452c0` 흡수)로 통일됐고 라벨이 그 트리를 가리킨다. **병합 금지 표식은 해제**한다.
+
+### 잔여 — 운영자 게이트 (레인이 열 수 없음)
+
+1. **iter-4 plan-audit**: Tier M 상한 2 초과(iter-3 까지 수행) — `harness.yaml` 재시도 계약의 명시적 사용자 override 분기. 레인은 이 게이트를 열 수 없다.
+2. iter-4 통과 후: Implementation Kickoff Approval → run-phase 진입.
+
+보존 상태: 워크트리 `.claude/worktrees/t371`, 브랜치 `WT-lint-shallow-clone`, HEAD `322dffdf2`(origin/develop 대비 +11 미푸시), 미커밋 0. 통합 창 미획득.
