@@ -562,12 +562,14 @@ ac_pass_count: 9
 ac_fail_count: 0
 ac_ci_judged_count: 1   # AC-ILA-007(b), windows runtime
 frontmatter_status_transitions:
-  spec_md: "in-progress → implemented"
-  completed_withheld: true
+  spec_md: "in-progress → implemented → completed"
+  completed_withheld: false   # released 2026-09-02; see §E.5
   completed_withheld_reason: >
-    The branch is unpushed, no CI has judged any of its commits, and the lead integrates the card
-    under a later integration window. Marking completed would assert a close no integration has
-    confirmed. Same reasoning as the neighbouring t333 precedent.
+    WITHDRAWN 2026-09-02. The withholding was conditional on three facts that have all since been
+    falsified — see §E.5 for the measurements. Original reason, kept verbatim as the record of what
+    was withheld and why: "The branch is unpushed, no CI has judged any of its commits, and the lead
+    integrates the card under a later integration window. Marking completed would assert a close no
+    integration has confirmed. Same reasoning as the neighbouring t333 precedent."
 readme_or_docs_site_touched: false
 readme_or_docs_site_reason: >
   The card adds no hook event, settings key, CLI verb, or wrapper script. It changes the internal
@@ -590,3 +592,70 @@ canary_compliance_check: n/a   # this SPEC defines no forward-looking policy for
   auditor's own re-measurement (recorded in `.moai/reports/t336/sync-audit.md`, attributed to tree
   `3c7886d9a`) or a §E.2/§E.3 run-phase figure the auditor independently reproduced. Nothing here is
   a new claim measured by the sync phase itself.
+
+## §E.5 Post-integration close — the withheld `completed` transition, released
+
+The `completed` transition §E.4 withheld is taken here. Nothing about the deliverable changed; what
+changed is that the three facts the withholding rested on are no longer true. Each is re-measured
+below rather than assumed, by a session (lane-3) that inherited neither §E.2/§E.3 nor the sync
+audit.
+
+### Claim
+
+`spec.md` moves `implemented → completed`. The card's work is integrated, CI has judged a head
+containing it, and the integration window it was waiting for has passed.
+
+### Evidence — the three withholding premises, each falsified
+
+| Withheld premise (§E.4) | Re-measurement | Result |
+|---|---|---|
+| "The branch is unpushed" | `git merge-base --is-ancestor 34cc70a90 origin/develop` | rc=0. The merge commit is `34cc70a90` — "Merge WT-integration-lock-atomic into develop (card t336)" |
+| "no CI has judged any of its commits" | `gh run list --branch develop`, head `09bf452c0` (has `34cc70a90` as an ancestor) | `CI` success · `CodeQL` success · `lsel-leak-guard` success |
+| "the lead integrates the card under a later integration window" | that window has passed; the branch head is an ancestor of `origin/develop` (`git rev-list --count --left-right origin/develop...HEAD` → `423  0`) | integration confirmed |
+
+`Graph Freshness` reports `failure` on that head. It is NOT attributed to this card: the immediately
+preceding head `4ab96b9f7` carries the same failure, so it predates the landing and is recorded as a
+separate concern rather than folded in here.
+
+### Evidence — the deliverable still holds, re-measured not inherited
+
+The card's own text warned that a race criterion which cannot reproduce the race proves nothing. The
+AC-ILA-006 guard was therefore re-run in both directions by lane-3, on this tree, rather than cited
+from §E.2 or the sync audit:
+
+- **Section disabled** (`return fn()` inserted as the first statement of `withIntegrationLockMutation`):
+  `successes=2 refusals=0 other=0 sessions_differ=true mid_record_held=true mid_record_stale=false`,
+  `attributed_double_hold=true` — both children `REPLACED=none` (not a stale takeover), session ids
+  differ (not a same-session re-acquire), record non-`Stale()` at the second acquire (not two dead-record
+  reclaims). All three attribution directions hold, so the observed double hold IS the read-modify-write
+  race.
+- **Restored**: `successes=1 refusals=1`, `--- PASS`, `ok … 0.763s`.
+- **Restoration proven byte-exact**: `git diff --stat` empty, `git status --short` empty.
+- **Package scope**: `go test ./internal/kanban/...` → `ok … 15.296s`.
+
+### Baseline-attribution
+
+Document and code claims read from `origin/develop` at `09bf452c0` (fetched 2026-09-02). Test figures
+measured in the worktree at `ad4fa54eb`, with the disabled-state run carrying only the one-line
+AC-ILA-006 revert, removed and verified before any other measurement. Full record:
+`.moai/reports/t336/verdict.md`.
+
+### Gaps — unchanged from §E.4, and NOT closed by this transition
+
+- **Windows runtime** (AC-ILA-007(b)) — still CI's judgment; this lane is darwin and executed no
+  `//go:build windows` code.
+- **Release's cross-process serialization** (F2) — still inferred from the shared wrapper, still not
+  measured.
+- **The full test suite** — prohibited locally; `internal/kanban` scope only, CI is the full-suite judge.
+- **`moai spec lint` was not re-run on this tree**, which sits 423 commits behind `origin/develop`; any
+  corpus figure measured here would not represent develop.
+
+`completed` asserts that this card's close is confirmed by integration. It does not assert that the
+gaps above were closed — they are carried forward as stated limits, exactly as §E.4 left them.
+
+### Scope note — why this is one SPEC and not a sweep
+
+`origin/develop` carries 148 `spec.md` files at `status: implemented` against 530 at `completed`. The
+stalled transition is a corpus-wide condition, not a defect specific to this card. This SPEC is treated
+individually because its own §E.4 promised the transition and named the condition for taking it; the
+148-file backfill is card **t252**'s scope and is deliberately not widened into here.
