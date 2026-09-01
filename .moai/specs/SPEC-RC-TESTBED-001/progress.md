@@ -8,10 +8,11 @@ Tier M · card t281 · branch `WT-rc-testbed` · pre-work tree `fa8ff89ba`.
 - plan_status: audit-ready
 
 Plan-phase artifact set complete: spec.md (8 REQ, GEARS) + plan.md (M1-M4) + acceptance.md
-(8 two-cell ACs, RED-now pinned to `fa8ff89ba`) + this progress.md. research.md persisted
-earlier by the research fan-out. One [NEEDS CLARIFICATION] marker open in plan.md §A
-(primary 미커밋 §4.1 2026-08-29 체인의 착지 소관) — to be resolved at the Implementation
-Kickoff Approval gate by the lead.
+(8 two-cell ACs, RED-now pinned to `fa8ff89ba`; AC-RC-007 anchors re-measured red on the
+post-absorb tree `a04afea53`) + this progress.md. research.md persisted earlier by the
+research fan-out. D1 resolved (operator decision (b)): the §4.1 08-29 chain landed separately
+by the lead (`9a161687a` + `6b03e1757`, absorbed at `a04afea53`) — no open clarification
+markers remain; resolution record in plan.md §A.
 
 ## §E.2 Run-phase Evidence
 

@@ -18,16 +18,14 @@ numbering policy; develop refresh procedure), wire pointer-only references from
 | `CLAUDE.local.md` §4.1 | local-only, never mirrored | safe (root, not a managed root) | M3 |
 | `.moai/docs/git-workflow-doctrine.md` | tracked | safe | M4 verify-only (no edit planned) |
 
-**[NEEDS CLARIFICATION: primary 미커밋 §4.1 2026-08-29 체인의 착지 소관]** — the primary
-checkout's working copy of CLAUDE.local.md carries an UNCOMMITTED 2026-08-29 §4.1 chain
-formization (표준 체인, [SUPERSEDED] markings, plus a 2026-09-01 [HARD] WT-branch-push ban) that
-exists on NO branch (measured: `grep "2026-08-29"` = 0 hits on both the main and develop blobs;
-worktree copy is larger — 47,820 vs 40,545 bytes — and holds the 08-27 revisions the primary
-lacks). Resolution is the lead's at the Implementation Kickoff Approval gate: (a) this card's
-run-phase also lands that §4.1 text, or (b) it lands separately first and this card's M3 rebases
-its pointer lines onto the landed text. The SPEC codifies the procedure as it currently operates
-and does NOT absorb the uncommitted text silently. Until resolved, M3 adds pointer lines that are
-additive to either variant.
+**D1 — RESOLVED (operator decision (b), executed by the lead before this card's run-phase,
+2026-09-02).** The primary's formerly-uncommitted §4.1 chain (2026-08-29 formalization,
+표준 체인 + [SUPERSEDED] markings, plus the 2026-09-01 [HARD] WT-branch-push ban) landed
+separately onto develop as `9a161687a` (+ `6b03e1757` origin/main absorb); develop tip =
+`6b03e1757`. The lead absorbed origin/develop into this branch at `a04afea53` (clean, no
+conflicts; version-management.md and gitflow-lane-protocol.md untouched in
+`fa8ff89ba..6b03e1757`). M3's §4.1 pointer work targets the LANDED canonical text — the 08-29
+chain replaced the 08-27 version, and the 08-27 transition record lives in git history.
 
 **Superseded card premises (lead corrections 2026-09-02, honored throughout).**
 - "develop은 원격에 올리지 않는다 / 카드 브랜치는 main에서 분기 / PR은 카드별로 main" — SUPERSEDED:
@@ -47,10 +45,11 @@ additive to either variant.
   and does not edit the file. No AC is adopted on this (a criterion green at RED time is
   vacuous — verification-completeness §2); the verification is recorded in progress.md §E.2
   instead.
-- **B2 — CLAUDE.local.md byte budget.** Over the 40,000-char heuristic (47,820 worktree copy).
-  M3 additions are pointer lines only; byte delta measured before/after and stated in the M3
-  completion report (rule-authoring growth duty: <1,000 bytes single-edit → duty does not fire,
-  but state the number anyway).
+- **B2 — CLAUDE.local.md byte budget.** Over the 40,000-char heuristic (47,688 bytes on the
+  post-absorb tree `a04afea53`, carrying the landed 08-29 chain). M3 additions are pointer
+  lines only; byte delta measured before/after and stated in the M3 completion report
+  (rule-authoring growth duty: <1,000 bytes single-edit → duty does not fire, but state the
+  number anyway).
 - **B3 — C2 (who created v3.1.0-rc.0/.1 tags) is surfaced, not adjudicated.** The tag messages
   ("Local-only release candidate … NOT pushed") are primary evidence that they were local
   annotated tags — a counter-precedent PREDATING the current ldflags-only rule. REQ-RC-002
@@ -85,9 +84,9 @@ If a RED probe returns ≥1, another actor landed overlapping content — re-bas
   disciplines; `scripts/release.sh` and all release-harness surface.
 - PRESERVE: exact English evidence-anchor tokens (below) — the ACs grep them verbatim.
 - FORBIDDEN: creating git tags; pushing the WT branch (`git push origin WT-*` — operator
-  directive 2026-09-01); edits to `internal/`, `cmd/`, `.github/`; absorbing the primary's
-  uncommitted §4.1 chain (see [NEEDS CLARIFICATION], §A); duplicating the §9 runbook into any
-  other file.
+  directive 2026-09-01); edits to `internal/`, `cmd/`, `.github/`; re-landing or rewriting the
+  landed §4.1 chain (D1-resolved, §A — the chain arrived via `9a161687a`; M3 adds pointers
+  only); duplicating the §9 runbook into any other file.
 - Commit discipline: explicit pathspec only; re-read HEAD + branch immediately before commit.
 
 **Evidence-anchor tokens (prescribed literals — run-phase MUST emit them verbatim):**
@@ -131,8 +130,8 @@ directory (expect no error-severity findings).
   pointer lines: one to the Local RC Numbering section, one to the develop 갱신 section of the
   lane protocol (which itself cross-references §9 — §4.1's existing discipline 4 already
   delegates to §9, so no third pointer). Both pointers quote the section names verbatim — they
-  are the AC-007 grep anchors. Measure byte delta; report it. Sensitive to
-  the [NEEDS CLARIFICATION] outcome in §A — additive to either §4.1 variant.
+  are the AC-007 grep anchors. Measure byte delta; report it. Targets the LANDED canonical
+  §4.1 (08-29 chain, absorbed at `a04afea53` — D1 resolution §A).
 - **M4 — verification sweep + B1 re-measurement** (no doc edits planned). Re-run AC greps, byte
   measurement, doctrine-consistency probe, spec-lint; populate progress.md §E.2 evidence;
   report per the 5-section format.
@@ -149,7 +148,8 @@ directory (expect no error-severity findings).
   lane mandates `--no-ff`; state the criterion merge-shape-agnostically.
 - **AP-5: recommending the sentinel route** to subagents (C5) — both exemptions are unreachable
   from tool-spawned subagents.
-- **AP-6: silently absorbing the primary's uncommitted §4.1 chain** ([NEEDS CLARIFICATION]).
+- **AP-6: re-landing or rewriting the landed §4.1 chain** — D1 resolved via `9a161687a`
+  (option b); M3 adds pointers onto the landed text and touches nothing else in the chain.
 - **AP-7: ordering builds by version string** — BUILD_ID is the identity (REQ-RC-003).
 
 ## §H Cross-References

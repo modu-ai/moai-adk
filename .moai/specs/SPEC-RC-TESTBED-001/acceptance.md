@@ -3,8 +3,13 @@
 Tier M. All ACs are two-cell pairs per `.claude/rules/moai/development/verification-completeness.md`
 §2 (RED-now observed on the pre-work tree + green path naming the flipping milestone).
 
-**Document-level pin:** every RED-now cell below was measured on tree **`fa8ff89ba`** (branch
-`WT-rc-testbed`, card t281 worktree). A criterion-level pin is redundant with it and is omitted.
+**Document-level pin:** the RED-now cells were first measured on tree **`fa8ff89ba`** (branch
+`WT-rc-testbed`, card t281 worktree). Following the D1 resolution absorb (origin/develop into
+this branch at `a04afea53`, which replaced CLAUDE.local.md §4.1 with the landed 08-29 chain),
+the AC-RC-007 anchors were **re-measured on `a04afea53`** — both still 0, exit 1 — and that
+re-measurement supersedes the pre-absorb basis for CLAUDE.local.md. The other doc targets
+(version-management.md, gitflow-lane-protocol.md) were untouched in `fa8ff89ba..6b03e1757`, so
+their `fa8ff89ba` pins hold unchanged.
 
 **Empty-sweep convention (§1.1).** For every AC here the RED-now observation is a **0-hit grep**:
 stdout `0`, exit code `1`. That 0 is the *expected starting red* — the rule is missing today —
@@ -109,10 +114,10 @@ protocol, as pointer lines only.
 - RED-now command (i): `grep -c "Local RC Numbering" CLAUDE.local.md`
   · verbatim stdout: `0` · exit code: `1` · tree: `fa8ff89ba`
 - RED-now command (ii): `grep -c "develop 갱신" CLAUDE.local.md`
-  · verbatim stdout: `0` · exit code: `1` · measured at HEAD `856ed147b` on a tree whose
-  only delta from `fa8ff89ba` is the SPEC artifact files themselves (`git diff --stat
-  fa8ff89ba..HEAD` touches `.moai/specs/SPEC-RC-TESTBED-001/` only — the swept doc target is
-  byte-identical to the pinned pre-work tree).
+  · verbatim stdout: `0` · exit code: `1`. First measured at `856ed147b` (doc targets
+  byte-identical to `fa8ff89ba` at that point); **re-measured post-absorb at `a04afea53`**
+  after the D1 resolution replaced §4.1 with the landed 08-29 chain — still `0`, exit 1.
+  The re-measurement on `a04afea53` is the live basis for both anchors of this AC.
 - Green path (M3): both commands → stdout ≥1, exit 0.
 - Mutant probe: **the representative mutant** — amend §4.1 to declare develop standing while
   skipping the rc build + clean-reinstall documentation — leaves this AC red (the declaration
@@ -139,9 +144,9 @@ recorded as an AC. It is executed as M4 verification evidence in progress.md §E
 
 - CLAUDE.local.md byte growth: M3 delta must be reported even though a pointer-only edit is
   expected under the 1,000-byte single-edit threshold (rule-authoring duty (b)).
-- Post-merge primary/worktree copy divergence (C1): the [NEEDS CLARIFICATION] resolution in
-  plan.md §A determines whether M3 lands on the current §4.1 or a landed 08-29 chain; the AC
-  grep is copy-agnostic (token either way).
+- Post-merge primary/worktree copy divergence (C1): RESOLVED — D1 option (b); M3 lands on the
+  landed 08-29 chain (absorbed into this branch at `a04afea53`). The AC grep is anchor-token
+  based and unaffected by the §4.1 text version.
 - If a RED probe at run-phase start returns ≥1 (another actor landed overlapping content),
   re-baseline + blocker report to lead — never silent absorption (plan §C).
 
@@ -154,6 +159,6 @@ for the completion report.
 ## §D.5 Definition of Done
 
 All 8 ACs green on the final tree with verbatim evidence; M4 verification sweep recorded in
-progress.md §E.2; [NEEDS CLARIFICATION] resolved at the kickoff gate before M3 executes; commit
-on `WT-rc-testbed` with `card: t281` in the body; WT branch NOT pushed (integration is the
-lead's window).
+progress.md §E.2; D1 resolution recorded (chain landed via `9a161687a` + `6b03e1757`, absorbed
+at `a04afea53` — no open clarification markers remain); commit on `WT-rc-testbed` with
+`card: t281` in the body; WT branch NOT pushed (integration is the lead's window).

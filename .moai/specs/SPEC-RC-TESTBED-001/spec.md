@@ -24,8 +24,9 @@ standing REMOTE branch (`origin/develop` exists; CI triggers on `[main, develop]
 worktrees branch FROM develop, and card integration is `git merge --no-ff` inside the single
 integration worktree `.claude/worktrees/develop` through the `moai integration acquire/release`
 window (canonical rules: `.claude/rules/local/gitflow-lane-protocol.md`; model:
-`CLAUDE.local.md` §4.1, reversal provenance 2026-08-27). This SPEC acknowledges that reversal as
-landed and does NOT redo it.
+`CLAUDE.local.md` §4.1 — reversal provenance 2026-08-27, superseded by the landed 2026-08-29
+chain formalization `9a161687a`). This SPEC acknowledges that reversal as landed and does NOT
+redo it.
 
 What remains missing — confirmed by the 4-lens research (research.md §2-§4: "NONE found" on
 every lens that searched) — is exactly two authored rules plus the pointer wiring that makes
@@ -52,9 +53,10 @@ the cp-over exit-137 failure.
 - `.claude/rules/local/gitflow-lane-protocol.md` — new develop-refresh section (REQ-RC-004, 005).
 - `CLAUDE.local.md` §4.1 — pointer-only additions (REQ-RC-006, 007).
 
-**Verified-consistent, no edit planned (measured at tree `fa8ff89ba`):**
-`.moai/docs/git-workflow-doctrine.md` carries the 2026-08-27 git-flow revision with zero residual
-develop-prohibition lines (research C3 was a checkout-divergence artifact; see plan.md §B).
+**Verified-consistent, no edit planned (measured at tree `fa8ff89ba`; re-verified post-absorb
+on `a04afea53` — probe unchanged):** `.moai/docs/git-workflow-doctrine.md` carries the
+2026-08-27 git-flow revision with zero residual develop-prohibition lines (research C3 was a
+checkout-divergence artifact; see plan.md §B).
 
 ## §3 Requirements (GEARS)
 
@@ -135,11 +137,12 @@ reset by `moai update` to template defaults and must be re-applied after every u
   the release harness; this SPEC only cross-references them.
 - No new tags, no tag tooling, no release-branch work.
 
-### Out of Scope — landing the primary checkout's uncommitted §4.1 chain
+### Out of Scope — landing the primary checkout's uncommitted §4.1 chain (RESOLVED, D1)
 
-- The primary checkout's working copy carries an UNCOMMITTED 2026-08-29 §4.1 chain formalization
-  that exists on no branch; absorbing it into this SPEC's run-phase is the lead's call
-  ([NEEDS CLARIFICATION] marker in plan.md §A), never a silent side-effect.
+- The formerly-uncommitted 2026-08-29 §4.1 chain landed separately onto develop by the lead
+  (operator decision (b): `9a161687a` + `6b03e1757` origin/main absorb), absorbed into this
+  branch at `a04afea53`. This SPEC's run-phase does NOT re-land, rewrite, or extend the chain;
+  M3 adds pointer lines onto the landed text only (resolution record: plan.md §A).
 
 ### Out of Scope — docs-site Vercel production-branch binding
 
@@ -156,3 +159,4 @@ reset by `moai update` to template defaults and must be re-applied after every u
 |------|--------|--------|
 | 2026-09-02 | manager-spec | Plan-phase creation (card t281, Tier M). Research: 4-lens synthesis persisted as research.md. RED-now baselines measured at tree `fa8ff89ba`. |
 | 2026-09-02 | manager-spec | Plan-audit iter-1 fixes: D2 — REQ-RC-006 relaxed to the (numbering, develop-갱신) pointer pair via the refresh section's §9 cross-reference (option a; §4.1 discipline 4 already delegates to §9), AC-RC-007 now verifies both anchors; D3 — AC-RC-005 mutant-probe wording corrected to sync-audit disclosure form. |
+| 2026-09-02 | manager-spec | D1 resolution recorded: operator decision (b) — §4.1 08-29 chain landed separately by the lead (`9a161687a` + `6b03e1757`), absorbed at `a04afea53`; AC-RC-007 anchors re-measured red on the post-absorb tree; all clarification markers closed. |
