@@ -47,6 +47,14 @@ type mxValidator struct {
 	fanInThreshold int
 	transitionMode bool
 
+	// fanInSource is the optional evidence-backed fan-in source (REQ-MTE-010).
+	// nil — the default constructor's state — keeps the single-traversal
+	// textual fanInIndex (the PostToolUse 500ms budget path, byte-identical
+	// behavior). Batch surfaces (SessionEnd) inject a graph-backed source;
+	// when that source cannot answer, the textual index takes over and the
+	// verdict is labeled "textual-fallback" (REQ-MTE-011).
+	fanInSource FanInEvidenceSource
+
 	// testOnWorkerStart is an optional hook called when a ValidateFiles worker goroutine
 	// begins body execution. Used in tests to measure observed concurrency.
 	testOnWorkerStart func()
@@ -55,13 +63,38 @@ type mxValidator struct {
 	testOnWorkerDone func()
 }
 
+// FanInEvidenceSource supplies evidence-backed fan-in counts for the P1
+// rule (REQ-MTE-009). Defined at the consumer (this package) so the data
+// layer's implementation (internal/graph EdgeFanInSource) stays structurally
+// compatible without this package importing internal/graph (layering lock,
+// acceptance §D.3). currentFile is the file that DECLARES funcName (absolute
+// path). err != nil means the source cannot serve an evidence-backed answer;
+// the validator then falls back to the textual index and labels the verdict.
+type FanInEvidenceSource interface {
+	EvidenceBacked(ctx context.Context, funcName, currentFile string) (evidence, inferredOnly int, label string, err error)
+}
+
 // @MX:ANCHOR: [AUTO] MX tag validator factory. Entry point for the ValidateFile/ValidateFiles call chain.
 // @MX:REASON: fan_in=8, called frequently from mx hook handlers and CLI, interface changes have wide propagation scope
 // NewValidator creates a new MX Validator with default configuration.
 // analyzer may be nil (Go-native fallback is always used).
 // projectRoot is the base directory for fan_in reference counting.
+// The fan-in evidence source stays TEXTUAL (REQ-MTE-010): the PostToolUse
+// 500ms budget path is unchanged by construction.
 func NewValidator(analyzer any, projectRoot string) Validator {
 	return newValidatorWithConfig(analyzer, projectRoot, DefaultValidationConfig())
+}
+
+// NewValidatorWithSource creates an MX Validator whose P1 rule consumes the
+// injected FanInEvidenceSource instead of the built-in textual index — the
+// batch-surface constructor (REQ-MTE-010). When the source errors (artifact
+// absent, unreadable, or code-evidence-free), the validator falls back to
+// the textual index and labels the violation "textual-fallback"
+// (REQ-MTE-011).
+func NewValidatorWithSource(analyzer any, projectRoot string, source FanInEvidenceSource) Validator {
+	v := newValidatorWithConfig(analyzer, projectRoot, DefaultValidationConfig())
+	v.(*mxValidator).fanInSource = source
+	return v
 }
 
 // newValidatorWithConfig creates a new MX Validator with the given configuration.
@@ -256,7 +289,17 @@ func (v *mxValidator) analyzeFile(ctx context.Context, filePath, content, lang s
 			candidates = append(candidates, fn.name)
 		}
 	}
-	fanInIdx := v.buildFanInIndex(ctx, candidates)
+	// The textual index builds LAZILY when an evidence source is injected:
+	// a source that answers for every candidate never pays the project walk.
+	// With no source (the default constructor) the first P1 candidate builds
+	// it exactly as before.
+	var fanInIdx *fanInIndex
+	ensureIndex := func() *fanInIndex {
+		if fanInIdx == nil {
+			fanInIdx = v.buildFanInIndex(ctx, candidates)
+		}
+		return fanInIdx
+	}
 
 	for _, fn := range funcInfos {
 		// Check context cancellation between functions.
@@ -268,7 +311,7 @@ func (v *mxValidator) analyzeFile(ctx context.Context, filePath, content, lang s
 
 		// P1: exported function with fan_in >= threshold missing @MX:ANCHOR.
 		if fn.exported && !fn.hasAnchor {
-			fanIn := fanInIdx.fanIn(fn.name, filePath)
+			fanIn, reason, sourceLabel := v.p1FanIn(ensureIndex, fn.name, filePath)
 			if fanIn >= v.fanInThreshold {
 				violations = append(violations, Violation{
 					FuncName:   fn.name,
@@ -277,7 +320,8 @@ func (v *mxValidator) analyzeFile(ctx context.Context, filePath, content, lang s
 					Priority:   P1,
 					FanIn:      fanIn,
 					MissingTag: "@MX:ANCHOR",
-					Reason:     fmt.Sprintf("fan_in=%d >= threshold %d", fanIn, v.fanInThreshold),
+					Reason:     reason,
+					Source:     sourceLabel,
 					Blocking:   true,
 				})
 			}
@@ -385,6 +429,38 @@ func (v *mxValidator) analyzeFile(ctx context.Context, filePath, content, lang s
 	}
 
 	return violations
+}
+
+// p1FanIn computes the P1 fan-in for one candidate function through the
+// selected evidence source. With no injected source the textual index
+// answers with the pre-SPEC reason text and an empty label (the default
+// constructor's behavior is byte-identical — REQ-MTE-010). With a source:
+// a successful answer carries the REQ-MTE-013 reason shape
+// ("fan_in(graph)=N evidence-backed[ (+M inferred-only)]") plus the source's
+// label; a failed answer falls back to the textual index labeled
+// "textual-fallback" (REQ-MTE-011 — never an error surface).
+func (v *mxValidator) p1FanIn(ensureIndex func() *fanInIndex, funcName, filePath string) (fanIn int, reason, sourceLabel string) {
+	if v.fanInSource == nil {
+		idx := ensureIndex()
+		n := idx.fanIn(funcName, filePath)
+		return n, fmt.Sprintf("fan_in=%d >= threshold %d", n, v.fanInThreshold), ""
+	}
+
+	evidence, inferredOnly, label, err := v.fanInSource.EvidenceBacked(context.Background(), funcName, filePath)
+	if err == nil {
+		reason := fmt.Sprintf("fan_in(graph)=%d evidence-backed", evidence)
+		if inferredOnly > 0 {
+			reason += fmt.Sprintf(" (+%d inferred-only)", inferredOnly)
+		}
+		return evidence, reason, label
+	}
+
+	// Textual fallback, labeled — the injected source could not serve
+	// (REQ-MTE-011: stale artifacts answer from artifact with a labeled
+	// stderr note on the source side; absent/unusable artifacts fall back).
+	idx := ensureIndex()
+	fanIn = idx.fanIn(funcName, filePath)
+	return fanIn, fmt.Sprintf("fan_in=%d >= threshold %d", fanIn, v.fanInThreshold), "textual-fallback"
 }
 
 // funcInfo holds extracted information about a Go function or method.

@@ -10,9 +10,8 @@ type FanInEntry struct {
 
 // ImportFanIn ranks packages by the number of distinct importers (import
 // edges targeting the package), highest first, ties broken by package path.
-// limit <= 0 returns the full ranking.
-//
-// @MX:NOTE: [AUTO] ImportFanIn — import fan-in ranking stands in for an @MX:DEBT fan-in query until a tag-kind edge lands in edges.jsonl
+// limit <= 0 returns the full ranking. For @MX:DEBT fan-in use DebtFanIn /
+// SymbolFanIn — the tag-kind edge layer answers that question directly.
 func ImportFanIn(edges []Edge, limit int) []FanInEntry {
 	counts := map[string]map[string]bool{}
 	for _, e := range edges {
@@ -39,6 +38,72 @@ func ImportFanIn(edges []Edge, limit int) []FanInEntry {
 		entries = entries[:limit]
 	}
 	return entries
+}
+
+// FanInResult is the evidence-backed fan-in of one symbol name (REQ-MTE-009):
+// DISTINCT caller FILES of code-call edges targeting the name, split by
+// resolution confidence. EvidenceFiles carry extracted or intra-package
+// resolution; InferredFiles carry inferred resolution only — counted
+// separately, never added to the blocking count (REQ-MTE-013). Both lists
+// are sorted and exclude declaringFile.
+type FanInResult struct {
+	// EvidenceFiles are the evidence-backed caller files, sorted.
+	EvidenceFiles []string
+	// InferredFiles are the caller files whose calls are inferred-confidence
+	// only, sorted.
+	InferredFiles []string
+}
+
+// Evidence is the blocking fan-in: the number of distinct evidence-backed
+// caller files.
+func (r FanInResult) Evidence() int { return len(r.EvidenceFiles) }
+
+// InferredOnly is the number of distinct inferred-only caller files.
+func (r FanInResult) InferredOnly() int { return len(r.InferredFiles) }
+
+// SymbolFanIn answers REQ-MTE-009's pure query over the artifact: the
+// fan-in of symbolName is the set of DISTINCT caller files of code-call
+// edges targeting that name, EXCLUDING declaringFile (ANCHOR's semantics —
+// the tag records an invariant contract owed to EXTERNAL dependents; a
+// same-file call is not external blast radius). A caller file with any
+// evidence-backed call counts as evidence; only files whose every call is
+// inferred-confidence land in InferredFiles. Callers whose resolution is
+// unknown (pre-confidence artifacts) count nowhere.
+//
+// declaringFile is a repo-relative file path, the same shape code-call edge
+// sources carry.
+func SymbolFanIn(edges []Edge, symbolName, declaringFile string) FanInResult {
+	tier := map[string]int{} // 1 = inferred, 2 = evidence-backed
+	for _, e := range edges {
+		if e.Kind != KindCodeCall || e.Target != symbolName {
+			continue
+		}
+		file, _ := splitCodeNode(e.Source)
+		if file == "" || file == declaringFile {
+			continue
+		}
+		switch e.Resolution {
+		case ResolutionExtracted, ResolutionIntraPackage:
+			tier[file] = 2
+		case ResolutionInferred:
+			if tier[file] == 0 {
+				tier[file] = 1
+			}
+		}
+	}
+
+	res := FanInResult{}
+	for file, t := range tier {
+		switch t {
+		case 2:
+			res.EvidenceFiles = append(res.EvidenceFiles, file)
+		case 1:
+			res.InferredFiles = append(res.InferredFiles, file)
+		}
+	}
+	sort.Strings(res.EvidenceFiles)
+	sort.Strings(res.InferredFiles)
+	return res
 }
 
 // UnreferencedSpecs returns the sorted universe SPEC ids that no mx-spec

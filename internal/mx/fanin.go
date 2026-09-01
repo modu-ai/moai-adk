@@ -33,18 +33,24 @@ type TextualFanInCounter struct {
 
 // isTestFile verifies if the file path is a test file (REQ-SPC-004-040).
 // Test file detection based on: _test.go suffix or under tests/, fixtures/ directory.
-// Backward-compat wrapper: calls isTestFileWithPatterns with nil user patterns.
+// Backward-compat wrapper: calls IsTestFileWithPatterns with nil user patterns.
 func isTestFile(filePath string) bool {
-	return isTestFileWithPatterns(filePath, nil)
+	return IsTestFileWithPatterns(filePath, nil)
 }
 
-// isTestFileWithPatterns verifies if the file path is a test file, considering user-supplied glob patterns.
-// User patterns are checked first; if any match, returns true.
-// After user patterns, hard-coded fallbacks are checked: _test.go suffix, /tests/, /fixtures/, /testdata/ path components.
+// IsTestFileWithPatterns verifies if the file path is a test file, considering
+// user-supplied glob patterns. User patterns are checked first; if any match,
+// returns true. After user patterns, hard-coded fallbacks are checked:
+// _test.go suffix, /tests/, /fixtures/, /testdata/ path components.
 //
-// Pattern semantics: each pattern uses filepath.Match rules; '**' segments are matched against
-// individual path components via path-prefix heuristic (contains the segment in the slash-normalised path).
-func isTestFileWithPatterns(filePath string, userPatterns []string) bool {
+// It is the exported REQ-SPC-004-040 predicate so the graph-backed fan-in
+// source (internal/graph) shares ONE definition of the hard-coded fallback
+// set instead of duplicating it (SPEC-MX-TAG-EDGES-001 plan B.8).
+//
+// Pattern semantics: each pattern uses filepath.Match rules; '**' segments
+// are matched against individual path components via path-prefix heuristic
+// (contains the segment in the slash-normalised path).
+func IsTestFileWithPatterns(filePath string, userPatterns []string) bool {
 	slashPath := filepath.ToSlash(filePath)
 
 	// 1. Check user glob patterns first
@@ -149,7 +155,7 @@ func (c *TextualFanInCounter) Count(_ context.Context, tag Tag, projectRoot stri
 
 		// exclude test files (when excludeTests=true)
 		// If TestPaths is set, also evaluate the user glob patterns (REQ-SPC-004-040)
-		if excludeTests && isTestFileWithPatterns(path, c.TestPaths) {
+		if excludeTests && IsTestFileWithPatterns(path, c.TestPaths) {
 			return nil
 		}
 
