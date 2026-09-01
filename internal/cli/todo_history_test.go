@@ -523,6 +523,12 @@ func goldenReplay(t *testing.T, root string) map[string]string {
 // cannot be relaxed silently. The goldens cannot have been produced by
 // this change: clause 1 (run at DoD, see progress.md §E.2) pins their
 // provenance to a commit whose tree lacked the verb.
+//
+// Provenance update — card t384: list.txt was RE-CAPTURED after the default
+// list render changed to hide dropped cards behind one count line (the
+// deliberate repair that card dispatched). The other five goldens are
+// untouched pre-verb captures; list.txt now pins the post-t384 render, and
+// a future silent drift of the default render still fails here.
 func TestLiveReadersUnchangedByHistoryVerb(t *testing.T) {
 	root := replayGoldenFixture(t)
 	streams := goldenReplay(t, root)

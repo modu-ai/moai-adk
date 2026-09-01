@@ -59,6 +59,10 @@ const defaultEmbedCheckBinRel = "bin/moai"
 // projectRootMarker is the directory whose presence marks a project root.
 const projectRootMarker = ".moai"
 
+// homeDirFn resolves the user's home directory, injectable so tests can aim
+// the walk at a fake home instead of the running user's real one.
+var homeDirFn = os.UserHomeDir
+
 // emissionExtractor asks a binary to materialize its own embedded templates
 // and returns the directory they were written to, plus a cleanup func.
 type emissionExtractor func(binPath string) (dir string, cleanup func(), err error)
@@ -194,9 +198,32 @@ func findEmbedCheckRoot(start string) (string, bool) {
 }
 
 // nearestProjectRoot walks up to the nearest ancestor carrying a .moai/
-// directory. It phrases the not-applicable reason and decides nothing.
+// directory, EXCLUDING the user's home directory: every moai user's home owns
+// the global ~/.moai state directory, and letting it match reads any
+// non-project directory under home as "in project" — observed on CI runners,
+// where the runner home's ~/.moai flipped this check's not-applicable message
+// branch. It phrases the not-applicable reason and decides nothing.
+//
+// The exclusion compares directory identity (os.SameFile), not path strings:
+// the same home reaches the walk under spellings the home resolver does not
+// return — the windows 8.3 short-name form (TMP=RUNNER~1 vs
+// USERPROFILE=runneradmin), case-diverged spellings on case-insensitive
+// filesystems, and symlinked paths — and a string comparison silently misses
+// all of them.
 func nearestProjectRoot(start string) (string, bool) {
+	home, _ := homeDirFn() // an unresolvable home disables the exclusion, not the walk
+	var homeInfo os.FileInfo
+	if home != "" {
+		if info, statErr := os.Stat(home); statErr == nil {
+			homeInfo = info
+		}
+	}
 	return walkUp(start, func(dir string) bool {
+		if homeInfo != nil {
+			if info, statErr := os.Stat(dir); statErr == nil && os.SameFile(info, homeInfo) {
+				return false
+			}
+		}
 		info, err := os.Stat(filepath.Join(dir, projectRootMarker))
 		return err == nil && info.IsDir()
 	})

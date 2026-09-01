@@ -334,6 +334,11 @@ local/main
 - ~~"PR은 카드별로 main에 낸다"~~ — 지금은 release 브랜치 PR 하나로 낸다. 종전 근거(N개를 모으면 리뷰 품질 저하·CodeRabbit rate limit)는 여전히 참이므로, release PR의 크기를 줄이는 것은 배치 크기로 관리한다.
 - ~~"`develop`은 일회용"~~ — 상설이다.
 
+**관련 문서 포인터 (SPEC-RC-TESTBED-001)** — 절차 본문은 두지 않는다(위 규율 4의 delivery.md 위임과 마찬가지로, 두 벌이 되는 순간 갈라진다):
+
+- 로컬 rc 빌드의 `rc.N` 번호 정책·무태그 원칙·`BUILD_ID` 빌드 식별: `.moai/docs/version-management.md` — **Local RC Numbering** 절
+- 병합 후 로컬 develop 갱신(판정 기준·BranchGuard 안전 경로): `.claude/rules/local/gitflow-lane-protocol.md` — **develop 갱신** 절 (그 절이 §9 rc 런북을 교차참조한다)
+
 **[HARD] -k / -f 모드 레인 의무**
 
 Kanban(`moai cc -k`) / Factory(`moai cc -f N`) 모드에서 레인은 카드 작업이 끝나면 **반드시 리드에게 로컬 develop 병합을 요청한다.** 레인이 스스로 병합 창을 잡지 않는다.
