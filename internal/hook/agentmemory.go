@@ -40,6 +40,11 @@ const agentMemorySegment = ".claude/agent-memory/"
 // the drain or mirror; only appended to in the primary store.
 const agentMemoryIndexName = "MEMORY.md"
 
+// agentMemoryPrimaryRootFn is the seam over PrimaryRootOf the write-time
+// mirror resolves through — the drain CLI keeps the direct call (tests
+// inject fixture primaries here instead of building git repositories).
+var agentMemoryPrimaryRootFn = PrimaryRootOf
+
 // IsAgentMemoryMDPath reports whether path is a markdown file under the
 // literal `.claude/agent-memory/` path segment. This is the STRICT form —
 // the memory audit's unanchored `agent-memory/` substring predicate is a
@@ -468,7 +473,7 @@ func MirrorAgentMemoryFile(filePath string) (bool, error) {
 	if !ok {
 		return false, nil
 	}
-	primary, inWorktree, err := PrimaryRootOf(treeRoot)
+	primary, inWorktree, err := agentMemoryPrimaryRootFn(treeRoot)
 	if err != nil {
 		return false, fmt.Errorf("agent memory mirror: %w", err)
 	}
