@@ -13,7 +13,7 @@ Tier M · cycle_type=tdd · 대상 파일 6개(소스 4 + 테스트 2), 예상 3
 카드 t371. `SPEC Lint` CI 잡이 얕은 체크아웃 + `main` ref 부재 상태에서 lint 규칙 두 개를 눈감긴 채
 초록을 내고 있다. 측정 근거와 결함 형태는 `spec.md` §1 에 있으며 여기서 반복하지 않는다.
 
-기준 트리: `.claude/worktrees/t371` @ 브랜치 `WT-lint-shallow-clone`, develop `1e5199b88` 기준.
+기준 트리: `.claude/worktrees/t371` @ 브랜치 `WT-lint-shallow-clone`, develop `09bf452c0` 기준 (t376·t382 착지 흡수 후 재측정 — 2026-09-02).
 사전 A/B 측정은 develop `b9149857c` 에서 수행됐다.
 
 ## §B 알려진 이슈 / 전제
@@ -28,7 +28,7 @@ Tier M · cycle_type=tdd · 대상 파일 6개(소스 4 + 테스트 2), 예상 3
 - **per-run 캐시는 패키지 전역이다** — `gitQueryCacheMu` / `gitQueryCacheV`
   (`internal/spec/gitquery_cache.go:21-23`). 이를 건드리는 새 테스트는 **`t.Parallel()` 을 쓰지 않는다**.
   `t.Chdir` 도 프로세스 전역이라 같은 구속에 묶인다.
-- **`cachedMainBranch` 는 `.Dir` 을 설정하지 않는다**(`:102`, `:113`) — 해소는 프로세스 작업 디렉터리를 따른다.
+- **`cachedMainBranch` 는 `.Dir` 을 설정하지 않는다**(`:121`, `:132`) — 해소는 프로세스 작업 디렉터리를 따른다.
   이것은 **시그니처 변경을 요구하지 않는다**: `chdirForTest`(`drift_characterization_test.go:55`)와
   `setupDriftCorpusFixture`(`:98` → `:103`)가 이미 같은 성질을 다루는 확립된 선례다.
   M2 는 호출부를 건드리지 않는다(§F M2 단계 0).
@@ -98,7 +98,7 @@ M3 종료 시 `.github/workflows/spec-lint.yml` 을 AC-SLGB-009 / 010 의 술어
 3. per-run 캐시에 **발화 여부 플래그**를 추가한다 — `StatusGitUnreachable` 은 실행당 최대 1건
    (`spec.md` §2.2). 캐시 비활성 경로에서는 억제하지 않는다.
 4. `StatusGitConsistencyRule.Check` 의 `err != nil → return nil`
-   (`internal/spec/lint.go:1324-1327`) 자리를 분기로 바꾼다:
+   (`internal/spec/lint.go:1373-1376`) 자리를 분기로 바꾼다:
    - shape ① → 발화
    - shape ② 또는 ③ AND shallow → 발화
    - 그 외 → 기존대로 침묵
@@ -166,10 +166,10 @@ M3 종료 시 `.github/workflows/spec-lint.yml` 을 AC-SLGB-009 / 010 의 술어
 - `acceptance.md` — AC-SLGB-001..011 과 REQ→AC 커버리지 표
 - `.moai/reports/t371/classification-18.md` — 18건 전수 분류(범위 밖 근거), C-2 가 shape ③ 형태
 - `.moai/reports/t371/plan-audit-iter-1.md` — 이 개정이 닫는 결함 목록
-- `internal/spec/lint.go:1306-1342` — `StatusGitConsistencyRule.Check`
-  (terminal 조기반환 `:1299-1301`, err skip `:1305-1308`, emission `:1310-1319`)
+- `internal/spec/lint.go:1355-1391` — `StatusGitConsistencyRule.Check`
+  (terminal 조기반환 `:1367-1369`, err skip `:1373-1376`, emission `:1379-1388`)
 - `internal/spec/drift.go:300-367` — `getGitImpliedStatus`, 세 error 반환 지점 `:312` `:316` `:366`
-- `internal/spec/gitquery_cache.go:88-118` — `cachedMainBranch`(캐시 조기반환 `:96-100`)
+- `internal/spec/gitquery_cache.go:108-136` — `cachedMainBranch`(캐시 조기반환 `:115-119`)
 - `internal/spec/lint_ownership.go:380-400` — 모델로 삼을 `OwnershipTransitionUnreachable` 의 모양
 - `internal/cli/spec_lint.go:113` `printTable` — 관측 표면. zero-finding short-circuit `:115-118`(메시지 `:116`),
   요약 줄 `:136-142`(error/warning 만 집계)

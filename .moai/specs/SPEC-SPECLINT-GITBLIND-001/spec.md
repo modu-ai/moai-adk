@@ -48,10 +48,10 @@ CI 잡 `SPEC Lint`(`.github/workflows/spec-lint.yml`)은 `actions/checkout@v7` �
 
 - **축 A — 이력 깊이**: 1건(`OwnershipTransitionInvalid`). `OwnershipTransitionRule`
   (`internal/spec/lint_ownership.go`)이 SPEC 파일에 `git log --follow` 를 걸기 때문이다.
-- **축 B — `main` ref**: 18건(`StatusGitConsistency`). `internal/spec/lint.go:1306` 의
+- **축 B — `main` ref**: 18건(`StatusGitConsistency`). `internal/spec/lint.go:1355` 의
   `StatusGitConsistencyRule.Check` 가 `getGitImpliedStatus`(`internal/spec/drift.go:300`)를 부르고,
   그 안에서 `git log <branch> --oneline --no-merges --grep=<specID> -50` 를 돌린다. 여기서
-  `branch = cachedMainBranch()`(`internal/spec/gitquery_cache.go:88-118`)인데, 이 헬퍼는
+  `branch = cachedMainBranch()`(`internal/spec/gitquery_cache.go:108-136`)인데, 이 헬퍼는
   **로컬 브랜치만** `git rev-parse --verify main` 으로 확인하고 실패하면 리터럴 `"master"` 로 떨어진다.
 
 `fetch-depth: 0` 만으로는 18건 중 **0건**이 회복된다. 체크아웃된 ref 하나만 로컬 브랜치가 되고
@@ -61,7 +61,7 @@ CI 잡 `SPEC Lint`(`.github/workflows/spec-lint.yml`)은 `actions/checkout@v7` �
 
 `cachedMainBranch()` 가 존재하지 않는 `"master"` 를 돌려주면 `git log` 가 실패하고,
 `getGitImpliedStatus` 는 error 를 반환하며, `StatusGitConsistencyRule.Check` 는
-`internal/spec/lint.go:1324-1327` 에서 `return nil` 한다. **"일치함"과 "관측 못 함"이 같은 출력**이다.
+`internal/spec/lint.go:1373-1376` 에서 `return nil` 한다. **"일치함"과 "관측 못 함"이 같은 출력**이다.
 게다가 이 실패는 SPEC 하나가 아니라 전 코퍼스에 동시에 걸린다 — 기준 ref 하나가 없으면 규칙 전체가 눈을 감는다.
 
 **그리고 그 침묵은 침묵으로 끝나지 않는다.** `printTable` 은 finding 이 0건이면
@@ -89,8 +89,8 @@ short-circuit 이 발화하지 않으며, 그 한 줄이 사라진다.
 ### 1.3 지금은 붉어지지 않는다 (그리고 그것이 위험을 없애지는 않는다)
 
 두 규칙 모두 `--strict` 에서 error 로 승격되지 않는다. `StatusGitConsistency` 는 emission 시점에
-`Advisory: true`(`internal/spec/lint.go:1335`), 유일한 `OwnershipTransitionInvalid` 대상
-SPEC-LSPMCP-001 은 terminal status 라 `applyEraDemotion`(`internal/spec/lint.go:296-312`)이 advisory 로 낮춘다.
+`Advisory: true`(`internal/spec/lint.go:1384`), 유일한 `OwnershipTransitionInvalid` 대상
+SPEC-LSPMCP-001 은 terminal status 라 `applyEraDemotion`(`internal/spec/lint.go:344-361`)이 advisory 로 낮춘다.
 run (3)은 19건이 모두 보이는 상태에서 `rc=0` 으로 측정됐다.
 
 **잔여 위험**: 앞으로 grandfather 가 아닌 SPEC 이 `OwnershipTransitionInvalid` 를 맞으면 승격된다 —
@@ -201,7 +201,7 @@ Tier M — AC 는 `acceptance.md` 에 있다(AC-SLGB-001 … AC-SLGB-011).
   이 SPEC 은 어떤 AC 도 `--json` 이나 `--sarif` 동작 위에 세우지 않는다.
   관측 표면은 기본 표 출력(`printTable`) 하나로 고정한다 — §1.2 참조.
 - **`cachedMainBranch` 는 프로세스 작업 디렉터리를 따른다**: `exec.Command` 에 `.Dir` 을 설정하지 않는다
-  (`internal/spec/gitquery_cache.go:102`, `:113`). 이것은 시그니처 변경을 요구하지 않는다 —
+  (`internal/spec/gitquery_cache.go:121`, `:132`). 이것은 시그니처 변경을 요구하지 않는다 —
   같은 패키지의 기존 픽스처 테스트가 이미 `chdirForTest`
   (`internal/spec/drift_characterization_test.go:55`)로 이 성질을 다루고 있고,
   `setupDriftCorpusFixture`(`:98`)가 마지막에 그것을 호출한다(`:103`).
