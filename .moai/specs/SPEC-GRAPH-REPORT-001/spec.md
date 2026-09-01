@@ -1,7 +1,7 @@
 ---
 id: SPEC-GRAPH-REPORT-001
 title: "Graph report toolchain: shortest_path MCP query, moai graph report, edges shrink guard, deferred SessionStart edges refresh"
-version: "0.2.0"
+version: "0.2.1"
 status: draft
 created: 2026-09-02
 updated: 2026-09-02
@@ -35,7 +35,7 @@ Four milestones (M1 → M3 gated on the t412 absorb; M4 ungated — see §B.2):
 
 - **M1 — `graph_shortest_path` MCP tool (P2-4)**: a shortest-path A→B query over the code-derived edge layer, hop cap 8 (shared bound with `graph_trace_calls`), registered as the 4th code-graph MCP tool with `project_root` handling, read-only hint annotation, and `toolJSON`/`toolErr` result shaping per the existing three tools' pattern. Deterministic neighbor iteration (total order).
 - **M2 — `moai graph report` (P2-5)**: a new `moai graph` subcommand emitting a deterministic markdown report to the fixed rotating path `.moai/reports/graph-report.md` (a REGENERATING derived artifact — always the latest view, never committed; the repo `.gitignore` gains the entry so it never appears as untracked noise): god nodes (fan-in ranking over edge layers), surprising connections (INFERRED code-call edges crossing package boundaries, scored up), and import cycles. Labeled fan-in provenance; no MX-validator behavior change.
-- **M3 — edges shrink guard (P2-6)**: a graph-package guard that compares a rebuild's edge set against the existing artifact and refuses the overwrite when a removed edge's source lies outside the rebuild's scanned source set (graphify #1116 pattern), enforced on the automatic rebuild-write paths.
+- **M3 — edges shrink guard (P2-6)**: a graph-package guard that compares a rebuild's edge set against the existing artifact and refuses the overwrite when a removed file-sourced edge's source lies outside the rebuild's scanned source set (graphify #1116 pattern; scoped to edge kinds whose `Source` is a project-relative file path — REQ-GR-008), enforced on the automatic rebuild-write paths.
 - **M4 — deferred SessionStart edges refresh (P2-7)**: extends the `spawnDeferredAdvisoryScans` pattern so a stale edges layer is refreshed in the deferred goroutine after the advisory payload ships — buffered channel, join bound, fail-open, duration measured by the existing `edgesRefreshClock` seam, nothing staged or committed. The hook layer never imports `internal/cli` (compile-time cycle: cli imports hook); the refresh function is injected into the hook handler as a dependency-injection seam (the same option-pattern shape as the `edgesRefreshClock` duration seam), with the cli layer's existing wiring passing a thin wrapper around `refreshEdgesArtifact`.
 
 ### §B.2 Boundary decisions
@@ -52,6 +52,7 @@ Four milestones (M1 → M3 gated on the t412 absorb; M4 ungated — see §B.2):
 | 2026-09-01 | Graphify gap analysis report authored (read-only exploration + graphify v8 source review); P2 band identified as card t413 |
 | 2026-09-02 | Card t413 picked; SPEC-GRAPH-REPORT-001 authored (Tier M) against worktree base 9145806d8 |
 | 2026-09-02 | plan-audit iter-1 FAIL 0.625 → revision D1-D12, D14, D16 (D1 resolved: fixed rotating graph-report.md; D5 resolved: DI seam) |
+| 2026-09-02 | plan-audit iter-2 PASS-WITH-DEBT 0.9375 → focused revision D17-D21 + N1 |
 
 Revision disclosure (D1): the report-artifact naming question was resolved by the implementing lane as a fixed rotating `.moai/reports/graph-report.md` — the report is a REGENERATING derived artifact, so a dated `{TYPE}-{DATE}/` archival name would contradict the derived-artifacts-never-committed principle. The operator retains veto at the Implementation Kickoff Approval gate.
 
@@ -61,7 +62,7 @@ Revision disclosure (D1): the report-artifact naming question was resolved by th
 
 #### REQ-GR-001 — Fourth code-graph MCP tool (Ubiquitous)
 
-The code-graph MCP surface shall expose a fourth tool, `graph_shortest_path`, answering an A→B reachability query over the code-derived edge layer, registered alongside `graph_file_api` / `graph_find_code` / `graph_trace_calls` in the MCP server with the same contract: a supplied `project_root` is honored and a bad one REJECTED (never a silent fallback), read-only hint annotation set, results shaped by the package's `toolJSON`/`toolErr`, and every response carrying tree+commit provenance. Endpoint identity contract: A and B are addressed by node id in the graph's stored `function@file:line` shape; a bare symbol name is accepted only when it resolves to exactly one node in the edge set, and is otherwise rejected with the structured candidates result (REQ-GR-003) rather than silently joined against the bare-name caller index.
+The code-graph MCP surface shall expose a fourth tool, `graph_shortest_path`, answering an A→B reachability query over the code-derived edge layer, registered alongside `graph_file_api` / `graph_find_code` / `graph_trace_calls` in the MCP server with the same contract: a supplied `project_root` is honored and a bad one REJECTED (never a silent fallback), read-only hint annotation set, results shaped by the package's `toolJSON`/`toolErr`, and every response carrying tree+commit provenance. Endpoint identity contract: A and B are addressed by node id in the graph's stored `file:function` shape (the line number rides on the edge's `Line` field, not inside the node id); a bare symbol name is accepted only when it resolves to exactly one node in the edge set, and is otherwise rejected with the structured candidates result (REQ-GR-003) rather than silently joined against the bare-name caller index.
 
 #### REQ-GR-002 — Shared hop cap (Ubiquitous)
 
@@ -69,7 +70,7 @@ The shortest-path traversal shall be bounded at 8 hops, enforced by the same con
 
 #### REQ-GR-003 — Structured no-path result (When)
 
-**When** no path from A to B exists within the hop cap, the tool shall return a structured not-found result naming both endpoints, the cap, and the provenance — a valid answer shape, never a transport-level error. **When** a bare symbol-name endpoint resolves to more than one node (same name in different files/packages), the tool shall return a structured candidates list (name → matching node ids) and no path — the caller disambiguates and re-queries; an ambiguous name is never joined through the bare-name caller index into an unrelated package's node.
+**When** no path from A to B exists within the hop cap, the tool shall return a structured not-found result naming both endpoints, the cap, and the provenance — a valid answer shape, never a transport-level error. **When** a bare symbol-name endpoint resolves to more than one node (same name in different files/packages), the tool shall return a structured candidates list (name → matching node ids) and no path — the caller disambiguates and re-queries; an ambiguous name is never joined through the bare-name caller index into an unrelated package's node. **When** a bare symbol name matches no node id at all — a name appearing only as a `Target` callee (which persists a bare name and therefore has no node id in the artifact) — the tool shall return the same structured not-found result: the degraded honest answer, never a guessed join.
 
 #### REQ-GR-004 — Deterministic traversal (Ubiquitous)
 
@@ -93,7 +94,7 @@ The report's fan-in section shall name the edge kinds it counted, and this SPEC 
 
 #### REQ-GR-008 — Refuse unexplained shrink (When)
 
-**When** an edges rebuild produces a set smaller than the existing artifact and at least one removed edge's source file BOTH still exists on disk AND lies outside the rebuild's scanned source set, the rebuild path shall refuse the overwrite: the existing `edges.jsonl` and its meta sidecar remain byte-identical, and the refusal names the removed edges and their unscanned source files (the graphify #1116 pattern) so the partial failure is diagnosable rather than silent. The scanned source set is the file list the rebuild's own extraction loop actually processed (available at build time inside `BuildWithCodeLayers`), not a fingerprint aggregate. The existence discriminator is the guard's legitimacy test: a source file ABSENT from disk is a genuine deletion — its edges may legitimately vanish and the overwrite proceeds (file gone ⇒ not in the scanned set ⇒ not a shrink defect); a source file PRESENT but outside the scanned set means the rebuild partially failed — refuse.
+**When** an edges rebuild produces a set smaller than the existing artifact, the rebuild path shall evaluate the shrink guard and refuse the overwrite when at least one removed edge whose `Source` is a project-relative file path (the code-call kind and any other file-sourced kind) has a source file that BOTH still exists on disk (resolved under `projectRoot`) AND lies outside the rebuild's scanned source set: the existing `edges.jsonl` and its meta sidecar remain byte-identical, and the refusal names the removed edges and their unscanned source files (the graphify #1116 pattern) so the partial failure is diagnosable rather than silent. The scanned source set is the file list the rebuild's own extraction loop actually processed (available at build time inside `BuildWithCodeLayers`), not a fingerprint aggregate. The existence discriminator is the guard's legitimacy test: a source file ABSENT from disk is a genuine deletion — its edges may legitimately vanish and the overwrite proceeds (file gone ⇒ not in the scanned set ⇒ not a shrink defect); a source file PRESENT but outside the scanned set means the rebuild partially failed — refuse. **The guard is kind-scoped by the `Source` payload**: an edge's `Source` carries different payloads per kind — file paths for code-call edges, package/directory names for doc-import edges, SPEC IDs for spec-depends edges — and the existence discriminator is defined only on file-path payloads. Non-file-sourced kinds are therefore OUT of the guard's scope (removed edges of those kinds never trigger a refusal): their shrinkage is explained by their own rebuild inputs — the doc-dependency markdown and the SPEC dependency set the rebuild parsed — not by scanned Go sources, and inventing per-kind existence tests for them would fork the guard into divergent implementations.
 
 #### REQ-GR-009 — Guard on every automatic write path (Ubiquitous)
 
@@ -107,7 +108,7 @@ The shrink guard shall evaluate on every automatic rebuild-write path — the qu
 
 #### REQ-GR-011 — Derived artifacts never committed (Ubiquitous)
 
-The deferred refresh shall perform no git operation: `edges.jsonl` remains an untracked derived artifact, nothing is staged or committed, and a refused refresh performs zero writes (the guard evaluates BEFORE any write, so the prior artifact is byte-identical by construction), with the failure logged, never blocking session start. A failure occurring BETWEEN the two writes (edges artifact succeeded, meta sidecar failed) is a known limitation: the new edges artifact may transiently carry stale provenance — the fingerprint predicate self-heals this on the next staleness check, so it is not a shrink or data-loss defect; the fixed shared `.tmp` path of the meta write is hardened to a per-process suffix (trivial) so two concurrent refreshes cannot race on the temp file.
+The deferred refresh shall perform no git operation: `edges.jsonl` remains an untracked derived artifact, nothing is staged or committed, and a refused refresh performs zero writes (the guard evaluates BEFORE any write, so the prior artifact is byte-identical by construction), with the failure logged, never blocking session start. A failure occurring BETWEEN the two writes (edges artifact succeeded, meta sidecar failed) is a known limitation: the new edges artifact may transiently carry stale provenance — the fingerprint predicate self-heals this on the next staleness check, so it is not a shrink or data-loss defect; the meta write's temp path is hardened to a per-refresh unique suffix (an atomic counter or crypto/rand value — NOT a pid, which cannot separate two refreshes racing inside one process, e.g. the SessionStart goroutine and a query-time refresh in the same binary) so any two refreshes — same process or not — cannot collide on the temp file; an interleaved edges/meta publication between two refreshes remains inside the disclosed self-healing limitation above.
 
 #### REQ-GR-012 — Refresh cost observability (When)
 
@@ -150,7 +151,7 @@ The deferred refresh shall perform no git operation: `edges.jsonl` remains an un
 |---|---|
 | M1 | `graph_shortest_path` appears in the MCP tool registry tests; hop-cap, no-path, determinism, and project-root-rejection tests green; targeted internal/graph + internal/cli tests pass |
 | M2 | `moai graph report` emits the three-section report on a fixture (god nodes ranked, boundary-INFERRED edge scored up, SCC representative cycle listed); empty-section and nocgo paths emit with stated reasons; two runs byte-identical |
-| M3 | Injected partial-failure rebuild is refused with prior artifact byte-identical (SHA-compared) and a named-edges refusal message; genuinely deleted source overwrites normally; existing-but-unscanned source refuses; guard tests green on both automatic paths and the explicit build path |
+| M3 | Injected partial-failure rebuild is refused with prior artifact byte-identical (SHA-compared) and a named-edges refusal message; genuinely deleted source overwrites normally; existing-but-unscanned source refuses; guard tests green on the query-time refresh path (the deferred path exercises the same guarded wrapper once M4 lands) and the explicit build path |
 | M4 | Synchronous-deferred-scans test shows edges refreshed after session start when stale and skipped when fresh; no goroutine leak; no git staging; budget-overrun warning observed with injected duration |
 | Cross-cutting | Absorbed-tree re-measure (plan.md §F) recorded for M1-M3; `go vet` + `golangci-lint` clean on touched packages; windows cross-build green |
 
@@ -160,4 +161,4 @@ The deferred refresh shall perform no git operation: `edges.jsonl` remains an un
 - In-flight dependency: `.moai/specs/SPEC-MX-TAG-EDGES-001/` (branch `WT-mx-tag-edges`, card t412 — landed on develop before M1-M3 begin)
 - Predecessor pattern: `.moai/specs/SPEC-V3R6-GRAPH-FRESHNESS-001/` + `-002/` (MCP tool registration, refresh path, duration seam, query-time staleness predicate this SPEC extends)
 - Landed confidence layer: `.moai/specs/SPEC-GRAPH-EDGE-CONFIDENCE-001/` (Edge.Resolution/Confidence consumed by the report's INFERRED scoring)
-- Key code anchors: `internal/graph/codequery.go:21` (`maxTraceDepth`), `internal/cli/graph_refresh_cli.go:53` (`refreshEdgesArtifact` — guard insertion point + cli-side seam wrapper), `internal/hook/session_start.go:680` (`spawnDeferredAdvisoryScans` — deferred pattern), `internal/cli/mcp_server.go:486-509` (tool registration pattern), `internal/graph/meta.go:90` (fixed meta `.tmp` path — per-process suffix hardening)
+- Key code anchors: `internal/graph/codequery.go:21` (`maxTraceDepth`), `internal/cli/graph_refresh_cli.go:53` (`refreshEdgesArtifact` — guard insertion point + cli-side seam wrapper), `internal/hook/session_start.go:680` (`spawnDeferredAdvisoryScans` — deferred pattern), `internal/cli/mcp_server.go:486-509` (tool registration pattern), `internal/graph/meta.go:90` (fixed meta `.tmp` path — per-refresh unique-suffix hardening)

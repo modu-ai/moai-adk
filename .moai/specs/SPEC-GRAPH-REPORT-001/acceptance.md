@@ -1,7 +1,7 @@
 ---
 id: SPEC-GRAPH-REPORT-001
 title: "Acceptance criteria — graph report toolchain"
-version: "0.2.0"
+version: "0.2.1"
 created: 2026-09-02
 author: manager-spec
 ---
@@ -33,8 +33,8 @@ author: manager-spec
 
 ### M3 — shrink guard
 
-- **AC-GR-012** — Given an existing edges.jsonl and a rebuild whose scanned source set excludes one source file that still exists on disk and contributed edges to the existing artifact, When the refresh path reaches the write step, Then the overwrite is refused BEFORE any write: the existing edges.jsonl and meta sidecar are byte-identical before/after (SHA-compared), and the refusal names the removed edges and the unscanned source. And given the same shrink condition, When `moai graph build` runs explicitly, Then it exits non-zero naming the removed edges with the prior artifact SHA-identical. Verify: tests with injected partial rebuild; `sha256` equality asserted on both the refresh and build paths.
-- **AC-GR-013** — Given a legitimate rebuild where a source file was genuinely deleted from disk and its edges dropped, When the rebuild runs, Then the overwrite proceeds normally — the deleted source is absent from disk, therefore outside the scanned set by the existence discriminator, and is NOT reported as a shrink defect. Verify: test asserting the write succeeds and the artifact shrinks by exactly the departed source's edges.
+- **AC-GR-012** — Given an existing edges.jsonl and a rebuild whose scanned source set excludes one source file of a file-sourced (code-call) edge kind that still exists on disk and contributed edges to the existing artifact, When the refresh path reaches the write step with the guard invoked carrying `projectRoot` (the parameter the disk-existence test needs to resolve the relative source path), Then the overwrite is refused BEFORE any write: the existing edges.jsonl and meta sidecar are byte-identical before/after (SHA-compared), and the refusal names the removed edges and the unscanned source. And given the same shrink condition, When `moai graph build` runs explicitly, Then it exits non-zero naming the removed edges with the prior artifact SHA-identical. Verify: tests with injected partial rebuild using the kind-scoped code-call fixture; `sha256` equality asserted on both the refresh and build paths.
+- **AC-GR-013** — Given a legitimate rebuild where a source file of a file-sourced (code-call) edge kind was genuinely deleted from disk and its edges dropped, When the rebuild runs, Then the overwrite proceeds normally — the deleted source is absent from disk, therefore outside the scanned set by the existence discriminator, and is NOT reported as a shrink defect. And given a rebuild whose edge drop affects only non-file-sourced kinds (a doc-import edge whose `Source` is a package/directory name, or a spec-depends edge whose `Source` is a SPEC ID), When the rebuild runs, Then the guard skips those removed edges — no shrink refusal, no file-existence evaluation on their payloads. Verify: tests asserting the write succeeds and the artifact shrinks by exactly the departed source's edges; and the skip behavior on the doc-import and spec-depends kind fixtures.
 - **AC-GR-014** — Given the query-time refresh refused by AC-GR-012's condition, When the user runs a graph query, Then the answer is produced from the EXISTING artifact with a stated shrink-refusal warning on stderr, and exit code is 0. Verify: CLI-level test asserting answer + warning.
 
 ### M4 — deferred refresh
@@ -71,7 +71,7 @@ author: manager-spec
 
 ## §D.3 Edge cases covered
 
-- Exactly-8-hop chain (path found) vs >8-hop chain (structured not-found) and disconnected components (AC-GR-002/003); ambiguous bare-name endpoints (candidates list, no path — AC-GR-003); nocgo absence (AC-GR-010); genuine-source-deletion shrink vs existing-but-unscanned-source refusal (AC-GR-012/013) plus the explicit build-path refusal (AC-GR-012 second clause); ambiguous bare-callee edges excluded from surprising connections (AC-GR-008); fresh-layer no-op (AC-GR-015 second Given); tie-breaking determinism (AC-GR-007).
+- Exactly-8-hop chain (path found) vs >8-hop chain (structured not-found) and disconnected components (AC-GR-002/003); ambiguous bare-name endpoints (candidates list, no path — AC-GR-003); nocgo absence (AC-GR-010); genuine-source-deletion shrink vs existing-but-unscanned-source refusal (AC-GR-012/013) plus the explicit build-path refusal (AC-GR-012 second clause); non-file-sourced edge kinds (doc-import package names, spec-depends SPEC IDs) skipped by the guard's kind scope (AC-GR-013 second clause); ambiguous bare-callee edges excluded from surprising connections (AC-GR-008); fresh-layer no-op (AC-GR-015 second Given); tie-breaking determinism (AC-GR-007).
 
 ## §D.4 Closure gates
 
