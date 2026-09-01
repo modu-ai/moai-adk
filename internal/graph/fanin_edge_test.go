@@ -192,7 +192,7 @@ func writeParityHubFixture(t *testing.T, files map[string]string) string {
 		write(rel, src)
 	}
 
-	edges, _, err := BuildWithCodeLayers(root)
+	edges, _, _, err := BuildWithCodeLayers(root)
 	if err != nil {
 		t.Fatalf("BuildWithCodeLayers: %v", err)
 	}

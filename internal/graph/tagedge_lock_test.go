@@ -168,7 +168,7 @@ func TestTagEdgesCarryNoMetadata(t *testing.T) {
 func TestTraversalAdditivityWithTags(t *testing.T) {
 	requireCodeExtraction(t) // the mx-debt symbol target needs the range join
 	root := tagFixture(t)
-	full, _, err := BuildWithCodeLayers(root)
+	full, _, _, err := BuildWithCodeLayers(root)
 	if err != nil {
 		t.Fatalf("BuildWithCodeLayers: %v", err)
 	}

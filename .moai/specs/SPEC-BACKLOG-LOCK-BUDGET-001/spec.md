@@ -1,10 +1,10 @@
 ---
 id: SPEC-BACKLOG-LOCK-BUDGET-001
 title: "Queue lock-wait budget: break the retry lockstep under an unfair lock, and derive the wait budget (card t354)"
-version: "0.1.0"
-status: implemented
+version: "0.2.0"
+status: completed
 created: 2026-08-28
-updated: 2026-08-28
+updated: 2026-09-02
 author: manager-spec
 priority: P1
 phase: "v3.1.4 target"

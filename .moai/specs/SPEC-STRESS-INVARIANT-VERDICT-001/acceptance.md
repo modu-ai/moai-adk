@@ -279,6 +279,13 @@ Until that window closes, the card's status is `implemented`, never `completed`.
 > failure mode was introduced. It does not evidence that the invariants still fire — that is
 > AC-SIV-009's sole burden, and no number of green heads substitutes for it.
 
+**Resolved — 2026-09-02.** The window was observed by the lead's CI read and this SPEC closed
+`implemented → completed` on it: run `33564147725`, develop head `09bf452c0` (a descendant of the
+landing commit `0fa8606fe`), `run_attempt=1`, `Race Test = success`, with the kanban package
+demonstrably executed (the log's single SKIPPED line names an unrelated test). The full record
+and its establishment commands live in `progress.md` §E.4's closure block. This gate's
+discriminating-power limit above is unchanged and remains carried as a non-claim.
+
 ---
 
 ## §D.5 Definition of Done
@@ -295,4 +302,6 @@ Until that window closes, the card's status is `implemented`, never `completed`.
       count and derived cost logged in the evidence.
 - [ ] `go vet ./internal/kanban/...` clean.
 - [ ] Reports carry all four §D.3 non-claims.
-- [ ] AC-SIV-013 remains open at merge; the card is not closed on it.
+- [x] AC-SIV-013 remained open at merge and was closed after it — the window (run `33564147725`,
+      head `09bf452c0`, attempt 1, Race Test success, kanban executed) was observed 2026-09-02 by
+      lead-1; see §D.4 Resolved and `progress.md` §E.4.

@@ -30,7 +30,7 @@ func ValidateGradeMatrix(matrix map[string]string) []string {
 // The seam (internal/graph/symbol) holds the astx consumption and stays free
 // of navigator-tier dependencies; this mapper owns the persisted shapes.
 func CodeEdges(projectRoot string) ([]Edge, map[string]string, error) {
-	calls, imports, decls, matrix, err := symbol.Extract(projectRoot)
+	calls, imports, decls, _, matrix, err := symbol.Extract(projectRoot)
 	if err != nil {
 		return nil, matrix, fmt.Errorf("graph: extract code edges: %w", err)
 	}
@@ -149,7 +149,13 @@ func mapSymbolEdges(calls []symbol.CallEdge, imports []symbol.ImportEdge, decls 
 // its relationship fields unchanged. Doc/code disagreement on the same
 // relationship is EXPOSED via the disagrees_with marker — never a silent
 // pick (REQ-GF-015).
-func BuildWithCodeLayers(projectRoot string) ([]Edge, map[string]string, error) {
+//
+// The second return is the scanned-file list — the files the extraction walk
+// actually processed — which the shrink guard consumes as its scanned set
+// (REQ-GR-008): captured at build time inside the walk, never a second scan,
+// and never a fingerprint aggregate (those hash doc-side source SETS and do
+// not cover the source tree).
+func BuildWithCodeLayers(projectRoot string) ([]Edge, []string, map[string]string, error) {
 	return BuildWithCodeLayersMode(projectRoot, DisagreementRefuteOnly)
 }
 
@@ -176,19 +182,21 @@ const (
 // (REQ-MTE-002 — retention, not a second parse). An extraction failure fails
 // open on the code layers AND on the range join: doc edges survive with the
 // self-edge tag form (REQ-MTE-015's no-range-data case).
-func BuildWithCodeLayersMode(projectRoot string, mode DisagreementMode) ([]Edge, map[string]string, error) {
-	calls, imports, decls, matrix, extractErr := symbol.Extract(projectRoot)
+func BuildWithCodeLayersMode(projectRoot string, mode DisagreementMode) ([]Edge, []string, map[string]string, error) {
+	calls, imports, decls, scanned, matrix, extractErr := symbol.Extract(projectRoot)
 	if extractErr != nil {
-		// Fail-open on the code layers ONLY: doc edges must survive.
+		// Fail-open on the code layers ONLY: doc edges must survive — with an
+		// EMPTY scanned set: no file was processed, so the shrink guard (the
+		// caller's write path) sees every removed code edge as unexplained.
 		docEdges, err := Build(projectRoot)
 		if err != nil {
-			return nil, GradeMatrix(), fmt.Errorf("graph: build doc edges: %w", err)
+			return nil, nil, GradeMatrix(), fmt.Errorf("graph: build doc edges: %w", err)
 		}
-		return docEdges, GradeMatrix(), nil
+		return docEdges, nil, GradeMatrix(), nil
 	}
 	docEdges, err := buildDocLayers(projectRoot, rangesByFileFromDecls(decls))
 	if err != nil {
-		return nil, matrix, fmt.Errorf("graph: build doc edges: %w", err)
+		return nil, nil, matrix, fmt.Errorf("graph: build doc edges: %w", err)
 	}
 	codeEdges := mapSymbolEdges(calls, imports, decls)
 	markImportDisagreements(docEdges, codeEdges, imports, mode)
@@ -197,7 +205,7 @@ func BuildWithCodeLayersMode(projectRoot string, mode DisagreementMode) ([]Edge,
 	all = append(all, docEdges...)
 	all = append(all, codeEdges...)
 	sort.Slice(all, func(i, j int) bool { return EdgeLess(all[i], all[j]) })
-	return all, matrix, nil
+	return all, scanned, matrix, nil
 }
 
 // rangesByFileFromDecls indexes the seam's retained declaration ranges by

@@ -507,6 +507,19 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleGraphTraceCalls)
+
+	// SPEC-GRAPH-REPORT-001 REQ-GR-001: the A→B reachability query. The
+	// description restates the shared 8-hop cap exactly as graph_trace_calls
+	// does (REQ-GR-002) — a static string cannot reference the const, which
+	// remains the enforced bound (codequery.go maxTraceDepth).
+	add("graph_shortest_path", mcp.NewTool(
+		"graph_shortest_path",
+		mcp.WithDescription("Shortest call path from one symbol to another over code-call edges (capped at 8 hops), each hop carrying its line and resolution confidence (absent on pre-upgrade artifacts). Endpoints are file:function node ids or bare symbol names resolving to exactly one node; no-path and ambiguous-name answers are structured results naming both endpoints and the cap. Answer names the tree root + commit."),
+		mcp.WithString("from", mcp.Required(), mcp.Description("Path start: a node id (file:function) or a bare symbol name resolving to exactly one node.")),
+		mcp.WithString("to", mcp.Required(), mcp.Description("Path end: a node id (file:function) or a bare symbol name resolving to exactly one node.")),
+		projectRootOption(),
+		mcp.WithReadOnlyHintAnnotation(true),
+	), handleGraphShortestPath)
 }
 
 // readMCPToolEnablement reads the per-tool enablement map from

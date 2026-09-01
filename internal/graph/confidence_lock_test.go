@@ -28,7 +28,7 @@ func TestEdgesJSONLDeterministic(t *testing.T) {
 		// value would flip if any map-iteration order reached a label.
 		root := tierFixture(t)
 		path := filepath.Join(root, ".moai", "project", "graph", "edges.jsonl")
-		edges, _, err := BuildWithCodeLayers(root)
+		edges, _, _, err := BuildWithCodeLayers(root)
 		if err != nil {
 			t.Fatalf("build %d: %v", i, err)
 		}
@@ -68,7 +68,7 @@ func TestDocEdgesByteIdentical(t *testing.T) {
 		t.Fatalf("read golden: %v", err)
 	}
 	root := goldenFixture(t)
-	edges, _, err := BuildWithCodeLayers(root)
+	edges, _, _, err := BuildWithCodeLayers(root)
 	if err != nil {
 		t.Fatalf("BuildWithCodeLayers: %v", err)
 	}
@@ -154,7 +154,7 @@ func TestLegacyArtifactLoad(t *testing.T) {
 // RFC3339 generated_at lives only in the sidecar, never in the JSONL).
 func TestProvenanceShapeUnchanged(t *testing.T) {
 	root := goldenFixture(t)
-	edges, _, err := BuildWithCodeLayers(root)
+	edges, _, _, err := BuildWithCodeLayers(root)
 	if err != nil {
 		t.Fatalf("BuildWithCodeLayers: %v", err)
 	}
