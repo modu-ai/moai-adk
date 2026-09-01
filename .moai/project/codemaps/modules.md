@@ -17,7 +17,7 @@
 **역할**: Cobra 커맨드 트리, composition root  
 **팬-아웃**: ~61개 internal 패키지  
 **핵심**: `Execute()`, `InitDependencies()`, root 등록 61개 (201 non-test `.AddCommand()` 호출)  
-**codex 런처·게이트**: `codex_launcher.go` — `moai codex` 동사 라우팅(폐쇄 집합 {bare, status} × {cli, app}), 6행 리드아웃, 직접/tmux spawn 기동 · `codex_init.go` — init-offer 게이트(두 기동 동사의 단일 통과점, 런처 배선 판정 소비, 거절 rc 130 / 비대화형 rc 1, 수락 시 생성기 위임) · `codex_contract.go` — AGENTS.md ↔ CLAUDE.md 지시 계약(연결 전용, 경로 봉쇄 선행, per-file temp+rename, 멱등)
+**codex 런처·게이트**: `codex_launcher.go` — `moai codex` 동사 라우팅(폐쇄 집합 — 기동 {bare, cli, app} · 리드아웃 {status})과 그 하류의 argv 번역(실재 서브커맨드 `app` 만 자식에 전달), 6행 리드아웃, 직접/tmux spawn 기동 · `codex_init.go` — init-offer 게이트(세 기동 형태의 단일 통과점, 런처 배선 판정 소비, 거절 rc 130 / 비대화형 rc 1, 수락 시 생성기 위임) · `codex_contract.go` — AGENTS.md ↔ CLAUDE.md 지시 계약(연결 전용, 경로 봉쇄 선행, per-file temp+rename, 멱등)
 
 ### internal/tui (19 non-test 파일)
 **역할**: Bubbletea TUI 요소, 28개 색상 토큰  

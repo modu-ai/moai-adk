@@ -13,6 +13,7 @@ package cli
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -40,7 +41,8 @@ type codexLaunchRecord struct {
 	Program string
 	Argv    []string
 	Dir     string
-	Via     string // "direct" | "spawn"
+	Via     string   // "direct" | "spawn"
+	Env     []string // the child's exec.Cmd.Env AS ASSIGNED (nil = inherit)
 	Stdin   io.Reader
 	Stdout  io.Writer
 	Stderr  io.Writer
@@ -105,6 +107,7 @@ func withCodexLaunchCapture(t *testing.T) *codexLaunchCapture {
 	codexDirectLaunchFn = func(cmd *exec.Cmd) error {
 		cap.add(codexLaunchRecord{
 			Program: cmd.Path, Argv: cmd.Args, Dir: cmd.Dir, Via: "direct",
+			Env:   cmd.Env,
 			Stdin: cmd.Stdin, Stdout: cmd.Stdout, Stderr: cmd.Stderr,
 		})
 		return cap.failDirectWith
@@ -139,6 +142,9 @@ func runCodexCmd(t *testing.T, args ...string) (string, string, error) {
 	t.Helper()
 	var out, errB bytes.Buffer
 	c := &cobra.Command{Use: "codex"}
+	// A real cobra command always carries a context; a nil one panics inside
+	// the readiness probe's exec.CommandContext rather than failing the cell.
+	c.SetContext(context.Background())
 	c.SetOut(&out)
 	c.SetErr(&errB)
 	err := runCodex(c, args)
@@ -270,28 +276,13 @@ func TestCodexCommand_HelpExitsZero(t *testing.T) {
 
 // ─── AC-CL-002 — verb routing ──────────────────────────────────────────────
 
-// TestCodexVerbRouting_ClosedSets derives the two token sets from the routing
-// table SYMBOLICALLY and asserts the closed-set equations: launch == {cli,
-// app}, readout == {"", status}. An implementation routing unknown tokens to
-// a launch dies on set inequality.
-func TestCodexVerbRouting_ClosedSets(t *testing.T) {
-	launch, readout := map[string]bool{}, map[string]bool{}
-	for tok, kind := range codexVerbRouting {
-		if kind.launches() {
-			launch[tok] = true
-		} else {
-			readout[tok] = true
-		}
-	}
-	if !reflect.DeepEqual(launch, map[string]bool{"cli": true, "app": true}) {
-		t.Errorf("launch verb set = %v, want exactly {cli, app}", launch)
-	}
-	if !reflect.DeepEqual(readout, map[string]bool{"": true, "status": true}) {
-		t.Errorf("readout token set = %v, want exactly {\"\", status}", readout)
-	}
-}
+// The closed-set derivation that stood here moved to
+// codex_launch_verb_test.go (TestCodexLaunchVerb_RoutingSetsAfterReversal),
+// which asserts the post-reversal sets AND the unknown-token rejection in one
+// place. Keeping a second copy of the literal sets here would mean two
+// locations to update in step, which is how the two drift apart.
 
-// TestCodexVerbRouting_LaunchCountsPerVerb — bare/status never launch; cli
+// TestCodexVerbRouting_LaunchCountsPerVerb — status never launches; bare, cli
 // and app each launch exactly once (two-site sum).
 func TestCodexVerbRouting_LaunchCountsPerVerb(t *testing.T) {
 	withCodexSetupProbe(t, minimalProbeStub())
@@ -302,7 +293,7 @@ func TestCodexVerbRouting_LaunchCountsPerVerb(t *testing.T) {
 		wantDirect int
 		wantSpawn  int
 	}{
-		{"bare", nil, 0, 0, 0},
+		{"bare", nil, 1, 1, 0},
 		{"status", []string{"status"}, 0, 0, 0},
 		{"cli", []string{"cli"}, 1, 1, 0},
 		{"app", []string{"app"}, 1, 1, 0},
@@ -462,7 +453,10 @@ func TestCodexVerbRouting_PassthroughTailExact(t *testing.T) {
 		t.Fatalf("launches = %d, want 1", cap.count())
 	}
 	rec := cap.records[0]
-	want := append([]string{"cli"}, tail...)
+	// The expectation here was `append([]string{"cli"}, tail...)`. It pinned a
+	// defect: codex has no cli subcommand, so the forwarded token arrived as a
+	// PROMPT. The tail now reaches codex with nothing prepended.
+	want := tail
 	if !reflect.DeepEqual(rec.Argv[1:], want) {
 		t.Errorf("argv tail = %#v, want exactly %#v", rec.Argv[1:], want)
 	}
@@ -555,14 +549,17 @@ func TestCodexSpawn_TmuxAbsentDiagnosticBytes(t *testing.T) {
 	codexWantLaunches(t, cap, 0, 0, 0)
 }
 
-// TestCodexSpawn_RejectedOnReadoutForms — bare/status --spawn refuse with
-// rc non-zero and zero launches: a readout is not a new-window target.
+// TestCodexSpawn_RejectedOnReadoutForms — status --spawn refuses with rc
+// non-zero and zero launches: a readout is not a new-window target.
+//
+// The bare form left this table when it became a launch form: `moai codex
+// --spawn` now opens the launch in a new window, which is the point of the
+// flag. status is the whole readout surface, so it is the whole table.
 func TestCodexSpawn_RejectedOnReadoutForms(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		args []string
 	}{
-		{"bare", []string{"--spawn"}},
 		{"status", []string{"status", "--spawn"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -838,10 +835,19 @@ func TestCodexSpawn_RealAssemblyThroughStubTmux(t *testing.T) {
 	if gotDir != root {
 		t.Errorf("tmux cwd = %q, want the project root %q", gotDir, root)
 	}
-	// The command line is the shell-quoted token sequence: the codex path,
-	// the verb, and the verbatim tail — a token containing a space must
-	// arrive quoted, not split.
-	wantCommand := shellQuote(fixture) + " cli --flag=v " + shellQuote("a b")
+	// The command line is the shell-quoted token sequence: the resolved
+	// CODEX_HOME assignment, the codex path, and the verbatim tail — a token
+	// containing a space must arrive quoted, not split.
+	//
+	// Two expectations changed here. The `cli` token is gone: codex has no cli
+	// subcommand, so forwarding it handed codex a PROMPT. The CODEX_HOME
+	// assignment is new: a tmux window inherits the tmux SERVER's environment,
+	// so without it the new window could resolve a different home than the
+	// direct path assigns.
+	// resolveCodexHomeDir's second result is the source label, not an error.
+	codexHome, _ := resolveCodexHomeDir()
+	wantCommand := codexHomeEnvVar + "=" + shellQuote(codexHome) + " " +
+		shellQuote(fixture) + " --flag=v " + shellQuote("a b")
 	if gotCommand != wantCommand {
 		t.Errorf("tmux command = %q, want %q", gotCommand, wantCommand)
 	}
@@ -859,22 +865,28 @@ func TestCodexSpawn_RealAssemblyThroughStubTmux(t *testing.T) {
 }
 
 // TestCodexVerbRouting_HelpAfterDashDashIsNotHelp — a --help token AFTER the
-// passthrough marker belongs to codex, not to the launcher: no help
-// interception, the readout rejects the tail with the usage constant.
+// passthrough marker belongs to codex, not to the launcher: no launcher help
+// is rendered, and the token reaches the child verbatim.
+//
+// The expectation changed shape with the reversed default. The bare form used
+// to be a readout, which rejected any passthrough tail; it is now a launch
+// form, so the tail is delivered. The PROPERTY under test is unchanged and is
+// in fact asserted more directly than before: --help after -- is codex's, not
+// the launcher's.
 func TestCodexVerbRouting_HelpAfterDashDashIsNotHelp(t *testing.T) {
 	cap := withCodexLaunchCapture(t)
 	withCodexProjectRoot(t, t.TempDir())
 	stdout, stderr, err := runCodexCmd(t, "--", "--help")
-	if err == nil {
-		t.Fatal("bare readout with passthrough tail accepted, want usage rejection")
+	if err != nil {
+		t.Fatalf("bare launch with passthrough tail: %v", err)
 	}
-	if want := codexUsageDiag + "\n"; stderr != want {
-		t.Errorf("stderr = %q, want usage constant", stderr)
+	if stdout != "" || stderr != "" {
+		t.Errorf("launcher rendered output (stdout %q, stderr %q); --help after -- is codex's", stdout, stderr)
 	}
-	if stdout != "" {
-		t.Errorf("stdout = %q, want empty (no help rendered)", stdout)
+	codexWantLaunches(t, cap, 1, 1, 0)
+	if want := []string{"--help"}; !reflect.DeepEqual(cap.records[0].Argv[1:], want) {
+		t.Errorf("child argv tail = %#v, want %#v", cap.records[0].Argv[1:], want)
 	}
-	codexWantLaunches(t, cap, 0, 0, 0)
 }
 
 // TestCodexVerbRouting_UnresolvableRootFallsBackToCwd — when the project root
@@ -951,4 +963,81 @@ func TestCodexCommand_HelpCopyGuidance(t *testing.T) {
 			}
 		}
 	})
+}
+
+// ─── AC-CLV-014 — the three-launcher bare-invocation convention ────────────
+
+// TestLaunchers_BareInvocationConvention extends this file's cross-launcher
+// comparison (which already pins group membership, GroupID parity, and the
+// shared tmux-absent diagnostic bytes) with the axis it did not carry:
+// whether an ARGUMENT-FREE invocation leads to a launch. All three launchers
+// must answer the same way, and this is the one place that answer is compared
+// — a second cross-launcher file would let the three drift apart unnoticed.
+func TestLaunchers_BareInvocationConvention(t *testing.T) {
+	launched := map[string]bool{}
+
+	// cc and glm share the unifiedLaunchFunc seam; codex has its own.
+	prevUnified := unifiedLaunchFunc
+	t.Cleanup(func() { unifiedLaunchFunc = prevUnified })
+
+	for _, tc := range []struct {
+		name string
+		run  func(t *testing.T) error
+	}{
+		{"cc", func(t *testing.T) error {
+			unifiedLaunchFunc = func(string, string, []string) error { launched["cc"] = true; return nil }
+			c := &cobra.Command{Use: "cc"}
+			c.SetOut(io.Discard)
+			c.SetErr(io.Discard)
+			return runCC(c, nil)
+		}},
+		{"glm", func(t *testing.T) error {
+			unifiedLaunchFunc = func(string, string, []string) error { launched["glm"] = true; return nil }
+			c := &cobra.Command{Use: "glm"}
+			c.SetOut(io.Discard)
+			c.SetErr(io.Discard)
+			return runGLM(c, nil)
+		}},
+		{"codex", func(t *testing.T) error {
+			cap := withCodexLaunchCapture(t)
+			withCodexProjectRoot(t, t.TempDir())
+			_, _, err := runCodexCmd(t)
+			if cap.count() == 1 {
+				launched["codex"] = true
+			}
+			return err
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := tc.run(t); err != nil {
+				t.Fatalf("bare %s: %v", tc.name, err)
+			}
+		})
+	}
+
+	for _, name := range []string{"cc", "glm", "codex"} {
+		if !launched[name] {
+			t.Errorf("moai %s: bare invocation did not launch; all three launchers share the convention", name)
+		}
+	}
+}
+
+// TestCodexCommand_HelpDescribesReversedDefault — the help copy states the
+// reversed default rather than the retired one: the bare form is described as
+// launching, and the readout is named as the status alias. Judged on the
+// rendered Long/Use copy so a code change that forgets the copy is caught.
+func TestCodexCommand_HelpDescribesReversedDefault(t *testing.T) {
+	long := codexCmd.Long + "\n" + codexCmd.Use + "\n" + codexCmd.Short
+	if !strings.Contains(long, "moai codex status") {
+		t.Errorf("help copy does not name the status readout alias:\n%s", long)
+	}
+	// The retired sentence is gone: the bare form no longer "never launches".
+	for _, retired := range []string{"Launching requires\nan explicit verb", "print the readiness readout (no launch)"} {
+		if strings.Contains(codexCmd.Long, retired) {
+			t.Errorf("help copy still carries the retired guidance %q", retired)
+		}
+	}
+	if !strings.Contains(codexCmd.Example, "moai codex\n") {
+		t.Errorf("Example does not show the bare launching form:\n%s", codexCmd.Example)
+	}
 }

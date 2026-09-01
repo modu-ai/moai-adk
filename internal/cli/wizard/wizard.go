@@ -443,6 +443,10 @@ func saveAnswer(id, value string, result *WizardResult, locale *string) {
 		result.AuditGateCodex = value
 	case "audit_gate_glm":
 		result.AuditGateGLM = value
+	// SPEC-INIT-HARNESS-PROMPT-001 (REQ-IHP-002): the harness selection, read
+	// downstream by resolveAgentWiringWithWizard.
+	case "agent_wiring":
+		result.AgentWiring = value
 	}
 	_ = locale // locale is kept for GetLocalizedQuestion compatibility
 }
