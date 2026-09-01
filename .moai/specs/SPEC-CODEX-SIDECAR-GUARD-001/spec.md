@@ -2,7 +2,7 @@
 id: SPEC-CODEX-SIDECAR-GUARD-001
 title: "init --agent 경로 테스트의 trust sidecar 단언 결손 봉합 (존재·부재 양방향)"
 version: "0.1.3"
-status: in-progress
+status: completed
 created: 2026-09-01
 updated: 2026-09-01
 author: manager-spec

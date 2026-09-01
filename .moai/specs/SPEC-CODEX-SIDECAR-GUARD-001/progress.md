@@ -146,7 +146,24 @@ M3 범위 한정 검증 (AC-CSG-008) — 본 SPEC의 지역 검증 전부이며,
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-01
+sync_commit_sha: "pending-backfill-t405-sync"  # 커밋은 자신의 SHA를 모른다 — 후속 커밋에서 백필 (D3 면제)
+sync_status: complete
+sync_did: "CHANGELOG.md [Unreleased] Fixed 섹션에 close 항목 1건 추가 + spec.md frontmatter in-progress → completed (3-phase close — 본문 무변경, updated: 2026-09-01 유지)"
+files_touched:
+  - "CHANGELOG.md — [Unreleased] Fixed 섹션 말미에 항목 1건"
+  - ".moai/specs/SPEC-CODEX-SIDECAR-GUARD-001/spec.md — frontmatter status 필드만"
+  - ".moai/specs/SPEC-CODEX-SIDECAR-GUARD-001/progress.md — §E.4 신설"
+b12_self_test_a: "PASS — 사전 중복 검사: grep -c 'SPEC-CODEX-SIDECAR-GUARD-001' CHANGELOG.md → 0 (grep exit 1, 부합 없음)"
+b12_self_test_b: "PASS — AC 수 일치: acceptance.md 고유 AC 식별자 8건 (AC-CSG-001..008) ↔ CHANGELOG 항목 기재 8건"
+b12_self_test_c: "PASS — 항목이 주장하는 파일 경로 7종 전부 실존 확인 (ls)"
+changelog_entry_position: "CHANGELOG.md [Unreleased] §Fixed 섹션 말미 — SPEC-VERSION-STAMP-GUARD-001(t388) 항목 다음, ## [3.1.3] 직전"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (단일 sync 커밋 병합 전환 — manager-docs 소관)"
+mx_scan_note: "시험 전용 diff (internal/cli/init_agent_flag_test.go +9/-2) — 프로덕션 심볼 변화 0건, @MX 태그 추가/갱신/제거 0건 (zero-change 기록)"
+docs_site_and_readme: "변경 없음 — 이 시험 단언 강화를 다루는 README/docs-site 페이지 부재 (리드 지시: docs-site 불가)"
+```
 
 ## §F Phase 4 Mode Selection
 
