@@ -16,12 +16,13 @@ Three properties bound everything below:
 
 ## Availability constraints
 
-"On with nothing to enable" holds only where the platform provides the channel. Four constraints bound where it exists at all — and because Kanban Mode delegates through the queue on disk, using this channel only to nudge companions, they bound where its nudges reach:
+"On with nothing to enable" holds only where the platform provides the channel. Five constraints bound where it exists at all — and because Kanban Mode delegates through the queue on disk, using this channel only to nudge companions, they bound where its nudges reach:
 
 - **Operating system** — macOS and Linux (including Linux inside WSL 2) only. Claude Code does not provide cross-session messaging on native Windows.
 - **Providers** — unavailable on Amazon Bedrock, Claude Platform on AWS, Agent Platform on Google Cloud, and Microsoft Foundry.
 - **Versions** — v2.1.224+ for the channel itself; v2.1.225+ to open a cross-machine conversation first; v2.1.232+ for @mentions and the /config rows; v2.1.236+ for the `notify_when_idle` request.
 - **Flag evaluation** — any one of `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC`, `DISABLE_TELEMETRY`, `DO_NOT_TRACK`, `DISABLE_GROWTHBOOK` disables the feature-flag evaluation the channel depends on, turning messaging off silently. Diagnostic: `/list-agents` (alias `/peers`) recognized → present; unrecognized → absent.
+- **The shared flag slot** — the flag the channel reads lives in one machine-global slot, `cachedGrowthBookFeatures.tengu_harbor_kite` in `~/.claude.json`, and it is last-writer-wins. Only a session whose `ANTHROPIC_BASE_URL` host is `api.anthropic.com` fetches its own value and writes that slot; a session pointed at any other endpoint never writes it and runs on whatever a first-party session last left there. `moai glm`, and the GLM panes of `moai cg`, are exactly that configuration — so their messaging can be dead for a reason that has nothing to do with the GLM backend, and can come back without anything about them changing. The gate is re-read on every call, so a slot that flips under a running session takes the channel away mid-session. Diagnostic: `python3 -c "import json,os;print(json.load(open(os.path.expanduser('~/.claude.json')))['cachedGrowthBookFeatures']['tengu_harbor_kite'])"` — `false` means the channel is off for every session on this machine that cannot write the slot. Mechanism, the measurement behind it, and the manual escape hatch: `cross-session-messaging-detail.md` § The shared flag slot.
 
 Where a constraint bites, the failure is quiet — nothing errors, dispatch just has no channel. Surface the constraint to the operator instead of retrying or re-spawning.
 

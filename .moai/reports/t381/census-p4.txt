@@ -1,0 +1,25 @@
+.moai/config/sections/workflow.yaml:31:    # itself reuses existing primitives (/compact + .moai/state/verify/ redirect +
+.moai/reports/moai-autonomy-workflow-redesign-20260803.html:388:  <li><strong>milestone별 Context-Folding</strong>(arXiv:2510.11967): milestone Mn 완료 시 raw transcript를 <code>progress.md</code> 요약 행으로 폴딩, 검증 가능 증거(명령+출력)는 <code>.moai/state/verify/</code>에 영속. 오케스트레이터 컨텍스트가 누적 run 크기가 아니라 <strong>현재 milestone 크기</strong>로 bound → Tier L 다중-milestone run이 /clear 없이 생존.</li>
+.moai/reports/model-tier-redesign-20260712.html:57:<div class="warn"><b>한계 고지 (검증 불가 영역):</b> 리더보드에는 Claude 모델의 effort 변형(low/medium/high/xhigh) 데이터가 <b>없다</b>(전부 max). 따라서 "sonnet xhigh vs high 품질 차이", "fable low의 가성비"는 직접 실증 불가. 본 설계의 effort 하향은 (a) sonnet-5 max의 루프 낭비 실측, (b) Opus 4.8 기본 effort가 high라는 Anthropic 공식 포지셔닝, (c) effort는 출력토큰에 준선형이라는 일반 특성에서 <b>추정</b>한 것이다. 도입 후 `.moai/state/verify/` 실측으로 보정을 권장.</p></div>
+.moai/reports/t299/verify-sync/e2e-lint-4paths.extract.txt:3:# Source runs live at .moai/state/verify/t299-sync/0{2,3,4,5}-*.txt inside the
+.moai/reports/template-skill-improvement-plan-20260710.html:684:  원시 데이터(JSON): <code>.moai/state/verify/eb01063e/skill-audit/*.json</code> · 본 보고서: <code>.moai/reports/template-skill-improvement-plan-20260710.html</code><br>
+internal/cli/audit_pin_live_test.go:32:// Evidence lands in <repo>/.moai/state/verify/t225/ (the card-scoped verify
+internal/cli/mcp_glm.go:110:	// .moai/state/verify/t225/ac-amp-006-glm-differential-attempt1.md). The
+internal/goal/evaluate_snapshot_test.go:48:		attr:    "snapshot .moai/state/verify/snapshots/abc.json key head:digest cmd \"go test ./...\" exit 0",
+internal/goal/evaluate_snapshot_test.go:71:	attr := "snapshot .moai/state/verify/snapshots/abc.json key head:digest cmd \"go test ./...\" exit 0"
+internal/goal/evaluate_snapshot_test.go:166:		attr:    "snapshot .moai/state/verify/snapshots/abc.json key head:digest cmd \"go test ./...\" exit 1",
+internal/hook/evidence_writer_zeroexec_test.go:10:// v22.14.0. Raw captures live under .moai/state/verify/t341/.
+internal/session/ignored_content_test.go:26:			porcelain: "!! .moai/state/verify/t209/\n!! bin/moai\n!! .claude/settings.local.json\n",
+internal/template/templates/.codex/agents/moai/manager-lead.toml:54:- **Per-milestone Context-Folding** — REUSE existing primitives only: `/compact` + file-redirect to `.moai/state/verify/<session>/` + `progress.md` §E.2 fold-row append. No new Go mechanism, hook, or CLI. See § Context-Folding Procedure below.
+internal/template/templates/.codex/agents/moai/manager-lead.toml:78:| {id}  | PASS | FAIL | GAP | PASS | PARTIAL | FAIL | n/a | .moai/state/verify/{session}/M{n}.{id}.log |
+internal/template/templates/.codex/agents/moai/manager-lead.toml:136:For each AC in the milestone, redirect the verification command's verbatim output to `.moai/state/verify/<session>/M<n>.<AC-id>.{log,out}` (existing convention):
+internal/template/templates/.codex/agents/moai/manager-lead.toml:139:mkdir -p .moai/state/verify/$MOAI_SESSION_ID/
+internal/template/templates/.codex/agents/moai/manager-lead.toml:140:go test -run TestX ./pkg 2>&1 | tee .moai/state/verify/$MOAI_SESSION_ID/M1.AC-XXX-001.log
+internal/template/templates/.codex/agents/moai/manager-lead.toml:143:The path MUST resolve at audit time (per `.claude/rules/moai/core/verification-claim-integrity.md` §2 — a cited path that no longer resolves is an unattributed claim). `.moai/state/verify/` is the canonical persistence location (NOT `/tmp`). Any AC whose evidence could not be populated is marked `GAP` in Step 2 — never `PASS`.
+internal/template/templates/.codex/agents/moai/manager-lead.toml:150:M<n>: <AC-id-1>=PASS, <AC-id-2>=PASS, ... | evidence: .moai/state/verify/<session>/M<n>.* | fold-at: <ISO-8601>
+internal/verify/schema.go:44:// file per key under .moai/state/verify/snapshots/. RecordedAt tracks the
+internal/verify/store.go:15:const SnapshotDir = ".moai/state/verify/snapshots"
+internal/verify/store_test.go:26:// snapshot document under .moai/state/verify/snapshots/.
+internal/verify/store_test.go:44:	if !strings.Contains(filepath.ToSlash(path), ".moai/state/verify/snapshots/") {
+internal/verify/store_test.go:45:		t.Errorf("snapshot path must be under .moai/state/verify/snapshots/: %s", path)
+internal/web/events.go:29:	"verify":  {".moai/state/verify"},

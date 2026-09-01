@@ -1,0 +1,21 @@
+$ git diff --exit-code --stat origin/develop...HEAD -- <8 carve-out files>
+exit=0
+
+$ git grep -c '\.moai/state/verify' -- <carve-out paths>   (positive control: must still sum to 12)
+.moai/reports/moai-autonomy-workflow-redesign-20260803.html:1
+.moai/reports/model-tier-redesign-20260712.html:1
+internal/goal/evaluate_snapshot_test.go:3
+internal/session/ignored_content_test.go:1
+internal/verify/schema.go:1
+internal/verify/store.go:1
+internal/verify/store_test.go:3
+internal/web/events.go:1
+exit=0
+
+--- iter5 re-verification against the MOVED base (2026-08-31) ---
+origin/develop advanced 9328a5242 -> 297a21ea7 -> 59e898b31 during the session.
+$ git diff --exit-code --stat origin/develop...HEAD -- <8 carve-out files>
+(no output)
+exit=0                    <- PASS, no edit needed: the three-dot form re-resolves its merge base
+$ git grep -c '\.moai/state/verify' -- <carve-out paths>   (positive control)
+1+1+3+1+1+1+3+1 = 12      <- PASS, still 12

@@ -1,0 +1,369 @@
+internal/core/project/validator.go:57:// writes under .moai/state/ (internal/config cache.go cacheFileName). It is
+internal/core/project/validator.go:64:// config cache artifact (.moai/state/config-cache.json) — the exact litter a
+internal/core/project/validator_test.go:32:			// Issue #1568: a pre-fix moai command left .moai/state/config-cache.json
+internal/core/project/validator_test.go:37:				mkDir(t, root, ".moai/state")
+internal/core/project/validator_test.go:38:				writeFile(t, root, ".moai/state/config-cache.json", `{"schema_version":1}`)
+internal/core/project/validator_test.go:47:				mkDir(t, root, ".moai/state")
+internal/core/project/validator_test.go:48:				writeFile(t, root, ".moai/state/config-cache.json", `{"schema_version":1}`)
+internal/core/project/validator_test.go:58:				mkDir(t, root, ".moai/state")
+internal/core/project/validator_test.go:59:				writeFile(t, root, ".moai/state/other.json", `{}`)
+internal/sessionmsg/store.go:21:// messaging broker's file store. It is covered by the .moai/state/ blanket
+internal/sessionmsg/store.go:24:const DefaultStateRoot = ".moai/state/session-msg"
+internal/sessionmsg/envelope.go:9:// over a file store under .moai/state/session-msg/ (axis-(ii) design).
+internal/verify/store_test.go:26:// snapshot document under .moai/state/verify/snapshots/.
+internal/verify/store_test.go:44:	if !strings.Contains(filepath.ToSlash(path), ".moai/state/verify/snapshots/") {
+internal/verify/store_test.go:45:		t.Errorf("snapshot path must be under .moai/state/verify/snapshots/: %s", path)
+internal/verify/store.go:15:const SnapshotDir = ".moai/state/verify/snapshots"
+internal/verify/key_test.go:14:// .moai/state/, which MUST be ignored so recording a snapshot does not
+internal/verify/schema.go:44:// file per key under .moai/state/verify/snapshots/. RecordedAt tracks the
+internal/config/cache_test.go:271:// under .moai/state/ and has the fixed name config-cache.json.
+internal/config/cache_test.go:303:// created <dir>/.moai/state/config-cache.json via writeCache's MkdirAll, and
+internal/config/cache.go:132:	// <root>/.moai/state/ as a side effect, and `moai init` then fails its
+internal/config/resolver_test.go:678:	if err := os.WriteFile(filepath.Join(sectionsDir, "state.yml"), []byte("state:\n  state_dir: .moai/state\n"), 0o644); err != nil {
+internal/config/defaults.go:917:// The state directory itself is not configurable: the hardcoded ".moai/state"
+internal/web/screens_templ.go:1242:// .moai/state/todo/backlog.json 이라 이미 watchMap["kanban"] 이 보는
+internal/web/screens_templ.go:2537:			templ_7745c5c3_Err = panel("Goals", "armed "+itoa(len(m.Goals)), "", "", ".moai/state/goal/<session>.json", "roomy").Render(templ.WithChildren(ctx, templ_7745c5c3_Var117), templ_7745c5c3_Buffer)
+internal/web/events.go:7:// 고르도록 바꿨다. 원본은 map 순회 순서에 의존해서, `.moai/state/goal/x.json`
+internal/web/events.go:27:	"session": {".moai/state"},
+internal/web/events.go:28:	"goal":    {".moai/state/goal"},
+internal/web/events.go:29:	"verify":  {".moai/state/verify"},
+internal/web/events.go:32:	"kanban": {".moai/state/todo"},
+internal/web/events.go:171:// `.moai/state` 와 `.moai/state/goal` 이 모두 등록돼 있을 때, goal 하위 변경은
+internal/worktree/snapshot_io_test.go:60:	want := filepath.Join("/proj", ".moai/state/worktree-snapshot-snap-123.json")
+internal/runtime/audit_gate.go:150:	// T0 is the grace window start time. Read from .moai/state/audit-gate-merge-at.txt.
+internal/worktree/state_guard.go:27:	StateDirRel = ".moai/state"
+internal/worktree/state_guard.go:31:	SnapshotPathTemplate = ".moai/state/worktree-snapshot-%s.json"
+internal/worktree/state_guard.go:38:	SuspectFlagTemplate = ".moai/state/worktree-suspect-%s.flag"
+internal/worktree/state_guard.go:55:	".moai/state/",
+internal/worktree/state_guard.go:118:	// Filter out lines whose path is under DefaultExclusions (.moai/state/, .moai/reports/, ...).
+internal/statusline/context_usage.go:17:// <projectDir>/.moai/state/context-usage/<session-id>.json — one record per
+internal/statusline/context_usage.go:51:// it. stateDir is the project's .moai/state directory.
+internal/statusline/context_usage.go:84:// <projectDir>/.moai/state/context-usage/<session-id>.json (REQ-THRESHOLD-010,
+internal/statusline/context_usage.go:165:// <projDir>/.moai/state/context-usage/<sessionID>.json using the atomic temp-file +
+internal/worktree/divergence_log_test.go:132:			"untracked under .moai/state/ filtered",
+internal/worktree/divergence_log_test.go:133:			[]string{"?? .moai/state/snapshot.json", " M src/auth.go"},
+internal/worktree/divergence_log_test.go:134:			[]string{".moai/state/"},
+internal/worktree/divergence_log_test.go:145:			[]string{"R  old.go -> .moai/state/new.json"},
+internal/worktree/divergence_log_test.go:146:			[]string{".moai/state/"},
+internal/worktree/doc.go:16://   - Snapshots are persisted to .moai/state/ as JSON; they capture paths only,
+internal/statusline/metrics.go:17:// 3. Cache file (~/.moai/state/last-model.txt)
+internal/statusline/backlog.go:18:// This is NOT always the session's working directory. `.moai/state/` is
+internal/statusline/goal_armed.go:28:// projectRoot. It reads .moai/state/goal/<sessionID>.json and returns true only
+internal/statusline/types.go:281:	// (.moai/state/goal/<session-id>.json with Status=="armed"). While a goal is
+internal/statusline/context_usage_test.go:16:// <cwd>/.moai/state/context-usage.json as a best-effort side effect (D3).
+internal/statusline/model_cache_test.go:16:	// Create .moai/state directory structure
+internal/statusline/builder.go:252:	// own directory: `.moai/state/` is gitignored, so a worktree session would
+internal/statusline/session_identity_test.go:195:// A worktree session must read the PRIMARY checkout's board: `.moai/state/` is
+internal/statusline/task_test.go:21:	// statePath should contain ".moai/state/last-session-state.json"
+internal/statusline/session_telemetry_test.go:48:// The render persists to .moai/state/context-usage/<session-id>.json, and the
+internal/statusline/session_telemetry_test.go:49:// single-slot .moai/state/context-usage.json does NOT exist afterwards (the
+internal/statusline/session_telemetry_test.go:75:// project-wide .moai/state/current-session-id.txt sidecar (T), whose
+internal/statusline/model_cache.go:17:// Cache file location: <homeDir>/.moai/state/last-model.txt
+internal/statusline/profile_bench_test.go:62:// profTempStateScaffold creates the .moai/state subtree inside a scratch root
+internal/statusline/builder_test.go:1819:// builder.Build writes <projDir>/.moai/state/context-usage.json after
+internal/statusline/metrics_fallback_test.go:49:			// cacheModel will be written to tempDir/.moai/state/last-model.txt
+internal/template/navigator_audit_test.go:761:		".moai/state/lsel/clusters.json":       "LSEL_SENTINEL_CLUSTER\n",
+internal/template/navigator_audit_test.go:763:		".moai/state/tree-sitter/grammar.json": "SPEC003_SENTINEL\n",
+internal/template/embed_runtime_logs_contamination_test.go:30://     directory must be empty placeholder-only, matching .moai/state/).
+internal/template/embed_runtime_logs_contamination_test.go:56:		// .moai/state/ placeholder-only convention).
+internal/spec/lock_windows.go:7:// manual `del .moai/state/spec-close-*.lock`.
+internal/spec/migrate_3phase.go:12:// log at .moai/state/lifecycle-redesign-migration.json records each folded entry.
+internal/spec/migrate_3phase.go:35:// MigrationLog is the on-disk record at .moai/state/lifecycle-redesign-migration.json.
+internal/spec/drift_cache.go:23:// driftCacheFilename is the cache file stored under the project's .moai/state/
+internal/spec/closer_test.go:915:// .moai/state/ and .moai/logs/ entries filtered out. The per-SPEC close lock dir
+internal/spec/closer_test.go:916:// lands in .moai/state/, and the lifecycle-close audit log (NFR-LSG-004) lands in
+internal/spec/closer_test.go:928:		if strings.Contains(line, ".moai/state/") {
+internal/spec/closer_test.go:989:	// diff), excluding the runtime-managed .moai/state/ lock dir which is an
+internal/spec/lock.go:4:// `moai spec close SPEC-XXX` acquires .moai/state/spec-close-<SPEC-ID>.lock to
+internal/spec/lock.go:41:// .moai/state/spec-close-<SPEC-ID>.lock under stateRoot (project root by default).
+internal/spec/lock.go:49:// creates .moai/state/ if absent.
+internal/spec/drift_cache_test.go:134:// TestDriftCachePath pins the cache location under the gitignored .moai/state/
+internal/paths/paths.go:79:// StateDir returns ~/.moai/state.
+internal/chain/store_test.go:10:// (REQ-CHAIN-020). No test writes to the project's real .moai/state/chain/.
+internal/chain/store_test.go:152:// all chain store tests use t.TempDir, never the real .moai/state/chain/.
+internal/chain/store_test.go:157:	// The store path must NOT be under .moai/state/chain/.
+internal/chain/store_test.go:169:			t.Fatalf("store path under real project .moai/state/chain — isolation violated")
+internal/chain/prune.go:7:// .moai/state/chain/archived/node-summary.json, and compacts the active
+internal/chain/node.go:2:// append-only JSONL lineage tree persisted at .moai/state/chain/events.jsonl.
+internal/lsp/hook/tracker.go:31:// baselineDir is the directory where baseline files are stored (.moai/state/).
+internal/ciwatch/state.go:13:const StateFile = ".moai/state/ci-watch-active.flag"
+internal/cli/statusline.go:43:		"Project root holding .moai/state (internal; used with --refresh-github)")
+internal/cli/session_multisession_attribution_test.go:12:// side-channel hazard. The per-project .moai/state/current-session-id.txt file
+internal/cli/session_multisession_attribution_test.go:31:	dir := withTempRegistry(t) // chdir to tempdir + mkdir .moai/state (serial).
+internal/cli/inventory_test.go:616:	// QueryActiveWork reads .moai/state/active-sessions.json relative to cwd.
+internal/cli/launcher_blockcap_infinite.go:137:// the goal CLI's resolver so the inject reads the SAME .moai/state/goal/ tree.
+internal/cli/codex_jobs.go:6:// .moai/state/audit-multi/<session>.json precedent (mcp_convergence.go
+internal/cli/codex_jobs.go:7:// persistConvergenceResult) — per-entity JSON files under .moai/state/, no
+internal/cli/codex_jobs.go:64:	// codexJobsSubdir is the .moai/state subdirectory holding one JSON file per
+internal/cli/codex_jobs.go:65:	// job. .moai/state/ is runtime state and already gitignored, so no record
+internal/cli/codex_jobs.go:200:// .moai/state/codex-jobs/. The mutex serializes this process's own
+internal/cli/clean.go:26:		Long: `Clean up run artifacts in .moai/state/runs/ that are older than retention_days.
+internal/cli/clean.go:146:	// stateDir is .moai/state/, so navigate to .moai/config/sections/
+internal/cli/state_m2_test.go:37:// m2SetupState creates a temp .moai/state, chdirs the test there (so findStateDir
+internal/cli/codex_task_test.go:437:// With .moai/state occupied by a regular file the registry cannot write, the
+internal/cli/state_dir_bound_test.go:28:// asymmetry: a caller under $HOME silently resolved to ~/.moai/state while the
+internal/cli/audit_pin_live_test.go:32:// Evidence lands in <repo>/.moai/state/verify/t225/ (the card-scoped verify
+internal/cli/doctor_mcp_version.go:58:			check.Detail = "the server stamps .moai/state/mcp-server/<pid>.json while it runs"
+internal/cli/session_worktree.go:9:// checkout's `.moai/state/`, `.claude/settings.local.json`, and
+internal/cli/tokens.go:5:// @MX:NOTE: [AUTO] origin, and appends one JSON record to .moai/state/token-accounting.jsonl
+internal/cli/tokens.go:23:// .moai/state/token-accounting.jsonl.
+internal/cli/tokens.go:357:// resolveTokensStateDir returns the ledger's .moai/state directory: the shared
+internal/cli/tokens.go:359:// else <cwd>/.moai/state (created lazily on append) so a fresh checkout records
+internal/cli/tokens.go:412:			"record to .moai/state/token-accounting.jsonl",
+internal/cli/doctor_mcp_version_test.go:139:// under the project's .moai/state tree (not $HOME, not a relative path).
+internal/cli/chain_test.go:15:// setupChainTestDir creates a temp project root with .moai/state/chain/
+internal/cli/session_worktree_test.go:457:// the side-channel file (.moai/state/current-session-id.txt) under a temp
+internal/cli/session_worktree_test.go:607:	// therefore get two different .moai/state/ trees and two different
+internal/cli/codex_review_gate.go:36:	".moai/state/",
+internal/cli/codex_review_gate.go:166:// prefix the gate must ignore (otherwise every turn's .moai/state drift would
+internal/cli/session.go:35:		Long: `Manage the multi-session coordination registry at .moai/state/active-sessions.json.
+internal/cli/session.go:296:(.moai/state/current-session-id.txt). That file is one slot per project,
+internal/cli/session.go:375:  1. Whether .moai/state/active-sessions.json exists
+internal/cli/gate_lock_cli_test.go:313:	// the gate runs under the fixture's own config; creating .moai/state is
+internal/cli/mcp_session_msg.go:35:// ".moai/state/session-msg", silently re-anchoring the broker on whatever
+internal/cli/mcp_server_runtime_test.go:33:// lands under .moai/state/mcp-server/<pid>.json carrying this build's identity,
+internal/cli/mcp_convergence.go:28://   - DQ-1: ConvergenceResult is written to .moai/state/audit-multi/<session>
+internal/cli/mcp_convergence.go:73:// state files are written (DQ-1). Defaults to <projectDir>/.moai/state but
+internal/cli/mcp_convergence.go:74:// overridable for tests. The file path is .moai/state/audit-multi/<session>.json
+internal/cli/mcp_convergence.go:75:// — .moai/state/ is local-only (CLAUDE.local.md §2), so the state file never
+internal/cli/mcp_convergence.go:378:	SessionID string // for .moai/state/audit-multi/<session>.json (DQ-1)
+internal/cli/mcp_convergence.go:513://  5. DQ-1: persists the result to .moai/state/audit-multi/<session>.json.
+internal/cli/mcp_convergence.go:613:	// ── DQ-1: persist to .moai/state/audit-multi/<session>.json ──
+internal/cli/mcp_convergence.go:642:// the primary checkout's .moai/state left its verdict where that worktree's
+internal/cli/mcp_convergence.go:662:// convergenceStateDirFor returns the .moai/state directory the convergence
+internal/cli/mcp_convergence.go:674:// .moai/config/) and returns its .moai/state subdirectory. Falls back to an
+internal/cli/glm_jobs.go:25://   - atomic writes. Per-entity JSON files under .moai/state/glm-jobs/, one
+internal/cli/glm_jobs.go:59:	// glmJobsSubdir is the .moai/state subdirectory holding one JSON file per
+internal/cli/glm_jobs.go:60:	// job — the GLM sibling of codexJobsSubdir. .moai/state/ is runtime state
+internal/cli/glm_jobs.go:176:// .moai/state/glm-jobs/. The mutex serializes this process's own
+internal/cli/handoff.go:5:// pending record is written to <projectDir>/.moai/state/handoff/pending.json via
+internal/cli/handoff.go:34:			"(.moai/state/handoff/pending.json). When handoff.mode=auto, the next\n" +
+internal/cli/session_worktree_prmerge_lock_test.go:229:		regenerable:    "!! .moai/state/\n!! .claude/settings.local.json\n!! bin/\n",
+internal/cli/session_worktree_prmerge_lock_test.go:230:		agentMemory:    "!! .moai/state/\n!! .claude/agent-memory/\n",
+internal/cli/chain.go:30:const ChainStateDir = ".moai/state/chain"
+internal/cli/chain.go:62:// canonical chain directory, <project-root>/.moai/state/chain — the same path
+internal/cli/chain.go:83:// The canonical location is <project-root>/.moai/state/chain regardless of how
+internal/cli/chain.go:85:// depend on that: with CLAUDE_PROJECT_DIR set the CLI wrote to .moai/state/chain
+internal/cli/doctor_agentemit_embed_test.go:504:// a test side effect leaves a bare .moai/state/ directory there, so a walk
+internal/cli/init_agent_flag_test.go:73:	for _, rel := range []string{".codex/hooks.json", ".codex/config.toml", ".moai/state/codex-wiring.json"} {
+internal/cli/init_agent_flag_test.go:100:	for _, rel := range []string{".codex/hooks.json", ".codex/config.toml", ".moai/state/codex-wiring.json"} {
+internal/cli/harness_delegation.go:133:	f.StringVar(&ledgerPath, "ledger", "", "routing ledger path (default: the project's .moai/state ledger)")
+internal/cli/mx_scan.go:35:This builds .moai/state/mx-index.json in one pass. Run it once after checkout, or
+internal/cli/mx_scan.go:39:  moai mx scan                 # full project scan -> .moai/state/mx-index.json
+internal/cli/update_test.go:2649:					t.Error(".moai/state/ should exist after migration")
+internal/cli/update_test.go:2652:					t.Error("coverage.json should have been moved to .moai/state/")
+internal/cli/update_test.go:2684:					t.Error(".moai/state/new.json should be preserved")
+internal/cli/doctor_golden_test.go:64:// the "clean project" baseline (every .moai/state/, .moai/config/sections/
+internal/cli/doctor_golden_test.go:66:// writes <cwd>/.moai/state/config-cache.json (the cache's MkdirAll side
+internal/cli/doctor_golden_test.go:72:	// doctor run) does not create .moai/state/ as a write side effect.
+internal/cli/multi_review_gate.go:14:// (mcp_convergence.go DQ-1) at .moai/state/audit-multi/<session>.json rather
+internal/cli/multi_review_gate.go:105:// <projectDir>/.moai/state/audit-multi/<sessionID>.json (the DQ-1 path written
+internal/cli/goal_render_test.go:151:// temp root, not the real .moai/state/goal/ (CLAUDE.local.md §6 / B8).
+internal/cli/mcp_session_msg_test.go:22:// CLAUDE_PROJECT_DIR first). No test touches the real .moai/state tree.
+internal/cli/mcp_session_msg_test.go:281:	// claimed dir is <projectDir>/.moai/state/session-msg/mailbox/<id>/claimed
+internal/cli/integration.go:12:// The lock record lives in the PRIMARY checkout's .moai/state, not in the
+internal/cli/integration.go:31:// integrationLockRoot resolves the directory whose .moai/state holds the lock
+internal/cli/integration.go:113:worktree. The record lives in the primary checkout's .moai/state, visible
+internal/cli/update_preserve_reach_test.go:239:// selected by whether .moai/state/ exists, so the fixtures differ only in that.
+internal/cli/update_preserve_reach_test.go:241:	// Branch 1 — .moai/state/ absent: the legacy directory is renamed.
+internal/cli/update_preserve_reach_test.go:249:			t.Fatalf("fixture precondition failed: .moai/state must be absent to select the rename branch (stat err = %v)", err)
+internal/cli/update_preserve_reach_test.go:291:		writeFixture(t, root, ".moai/state/existing.json", "{}\n")
+internal/cli/mcp_glm.go:110:	// .moai/state/verify/t225/ac-amp-006-glm-differential-attempt1.md). The
+internal/cli/verify_test.go:15:// writes under .moai/state/, which must not invalidate its own key).
+internal/cli/state_test.go:15:// makeTestStateDir creates a .moai/state/ directory structure for tests.
+internal/cli/migration_m3_test.go:39:// seedMigrationDir creates a temp project root with .moai/state/migration-version
+internal/cli/doctor_agentemit_embed.go:186:// this repository: a package directory can carry a bare .moai/state/ left by a
+internal/cli/session_test.go:14:// test so that session.DefaultRegistryPath ('.moai/state/active-sessions.json')
+internal/cli/gate_lock.go:87:// <projectDir>/.moai/state/gate-run.lock, creating the state directory if
+internal/cli/tokens_state_dir_test.go:26:// the home directory and picked up any ~/.moai/state on the machine. On Linux
+internal/cli/state.go:4:// @MX:NOTE: [AUTO] State stored in .moai/state/ with blocker reports for unresolved issues
+internal/cli/state.go:215:// findStateDir resolves the project's .moai/state directory for read and
+internal/cli/state.go:267:		return "", fmt.Errorf(".moai/state/ directory not found in project root %s", root)
+internal/cli/state.go:298:// projectRootOf maps a .moai/state directory back to its project root.
+internal/cli/mcp_server.go:344:	// starts a model call and writes a job record under .moai/state/glm-jobs/.
+internal/cli/mcp_server.go:419:		mcp.WithString("session_id", mcp.Description("Optional session id for per-session convergence state persistence (.moai/state/audit-multi/<session>.json). Empty ⇒ persistence no-op.")),
+internal/cli/integration_lock_cli_test.go:25:// write into the developer's own .moai/state.
+internal/cli/codex_jobs_test.go:320:	// Occupy .moai/state with a regular FILE so the codex-jobs directory can
+internal/cli/multi_review_gate_test.go:8:// persistConvergenceResult (.moai/state/audit-multi/<session>.json, DQ-1)
+internal/cli/multi_review_gate_test.go:36:// <tmpDir>/.moai/state/audit-multi/<session>.json (the DQ-1 path the gate
+internal/cli/harness_ledger.go:15:// routingStateDir returns the .moai/state directory under root, where the
+internal/cli/session_env_attribution_test.go:26:// The defect: .moai/state/current-session-id.txt is ONE slot per project,
+internal/cli/doctor.go:889:// checkWorktreeState verifies the .moai/state/ directory exists.
+internal/cli/doctor.go:896:		check.Message = ".moai/state/ not found — worktree checkpoint storage unavailable"
+internal/cli/mcp_convergence_test.go:445:// DQ-1: ConvergenceResult is persisted to .moai/state/audit-multi/<session>.json
+internal/cli/mcp_convergence_test.go:447:// result. The path is session-scoped + gitignored (.moai/state/ is local-only).
+internal/cli/todo.go:96:		Long: `Operate the kanban backlog queue at .moai/state/todo/backlog.json.
+internal/cli/session_start_deferred_write_test.go:25:// "TempDir RemoveAll cleanup: unlinkat .../.moai/state: directory not empty".
+internal/cli/doctor_sandbox.go:127:		WritableScope:    []string{"/tmp/agent-worktree", ".moai/state"},
+internal/cli/mcp_audit_multi.go:59:	// .moai/state/audit-multi/<session>.json (DQ-1). The tool surface does NOT
+internal/cli/chain_state_dir_test.go:31:// .moai/state/chain and the discovery branch built .moai/chain — so one
+internal/cli/spec_close.go:85:Per-SPEC file lock (` + "`.moai/state/spec-close-<SPEC-ID>.lock`" + `) guards against
+internal/cli/goal.go:2:// @MX:REASON: fan_in via the goal-engine loop — `goal arm` writes .moai/state/goal/<session-id>.json
+internal/cli/goal.go:88:.moai/state/goal/<session-id>.json (one file per session). The Stop hook
+internal/cli/goal.go:172:// the stop-goal hook anchor to the same .moai/state/goal/ directory.
+internal/cli/goal.go:197:		// (.moai/state/current-session-id.txt) is per-project and unconditionally
+internal/cli/goal.go:447:// HTML file to goal.HTMLPath (<root>/.moai/state/goal/<session>.html). It reuses
+internal/cli/goal.go:512:// REQ-WIRE-009 / AC-WIRE-007). It reads `.moai/state/handoff/pending.json`
+internal/cli/factory_test.go:553:		root := blocker // .moai/state/factory/ resolves under a file → fails
+internal/cli/update/deploy/deploy_test.go:196:// TestMigrateLegacyMemoryDir verifies the migration from .moai/memory/ to .moai/state/.
+internal/cli/binary_lag_test.go:59:	// deferred MX cold-start scan writes .moai/state/mx-index.json from a
+internal/cli/binary_lag_test.go:61:	// deletion ("unlinkat ... .moai/state: directory not empty").
+internal/cli/codex_review_gate_test.go:334:// ignores runtime-managed paths (.moai/state, .moai/cache, agent-memory, etc.)
+internal/cli/codex_review_gate_test.go:344:		{"only runtime", " M .moai/state/active-sessions.json\n?? .moai/cache/x\n M .claude/agent-memory/manager-develop/foo.md\n", false},
+internal/cli/codex_review_gate_test.go:346:		{"mixed", " M .moai/state/x.json\n M internal/hook/codex_review_gate.go\n", true},
+internal/cli/update/deploy/deploy.go:4:// the update flow (stale-path cleanup, .moai/memory → .moai/state migration,
+internal/cli/update/deploy/deploy.go:206:	// Migrate legacy .moai/memory/ to .moai/state/.
+internal/cli/update/deploy/deploy.go:250:// MigrateLegacyMemoryDir handles the .moai/memory/ → .moai/state/ migration.
+internal/cli/update/deploy/deploy.go:253:// a no-op because template deployment will create .moai/state/.
+internal/cli/update/deploy/deploy.go:279:		// Rename .moai/memory/ → .moai/state/ (fast atomic move).
+internal/cli/update/deploy/deploy_memory_backup_test.go:15:// When both .moai/memory/ and .moai/state/ exist, the migration removes the
+internal/cli/worktree/done_anchor_test.go:17:// <tree>/.moai/state/active-sessions.json — the tree-LOCAL registry a
+internal/cli/worktree/clean_ignored_content_test.go:58:		"!! .claude/agent-memory/\n!! .moai/state/\n")
+internal/cli/worktree/clean_ignored_content_test.go:82:		"!! .moai/state/\n!! bin/\n!! .claude/settings.local.json\n")
+internal/cli/worktree/clean_ignored_content_test.go:212:		"!! .moai/state/\n!! bin/\n")
+internal/cli/worktree/done_anchor_registry_test.go:25:	// The tree itself has no .moai/state registry at all.
+internal/cli/worktree/guard.go:64:			"untracked under .moai/specs/) and write JSON to .moai/state/. " +
+internal/cli/worktree/guard.go:68:	cmd.Flags().String("out", "", "Output snapshot path (default: .moai/state/worktree-snapshot-<id>.json)")
+internal/cli/worktree/guard_test.go:26:	gitignore := []byte(".moai/state/\n.moai/reports/\n.moai/cache/\n.moai/logs/\n")
+internal/cli/preference/toggle_edge_test.go:100:// for NFR-ADM-005: the sentinel MUST live under .moai/state/, and the .moai/
+internal/cli/preference/cmd.go:81:.moai/state/preference-decay-last-run. Use --force to bypass the gate (e.g.
+internal/cli/preference/cmd.go:98:// stateDirFromProjectRoot resolves the .moai/state directory used for the
+internal/cli/preference/cmd.go:101:// project root's .moai/state/ rather than the memory dir.
+internal/cli/preference/cmd.go:193:	// root's .moai/state/, NOT under the memory dir (which is per-user).
+internal/cli/preference/toggle_test.go:14:// the project's .moai/state/ whose presence signals "personalization disabled
+internal/cli/preference/toggle_test.go:139:// under .moai/state/, NEVER under .moai/config/.
+internal/cli/preference/cmd_test.go:118:	// Verify the timestamp file was written under the project root's .moai/state/.
+internal/cli/preference/toggle.go:8://	<projectRoot>/.moai/state/session-preference-disabled
+internal/cli/preference/toggle.go:20:// The sentinel lives under .moai/state/ and MUST NOT leak into .moai/config/
+internal/cli/preference/toggle.go:44:// presence under <projectRoot>/.moai/state/ signals "personalization disabled
+internal/cli/preference/toggle.go:47:// @MX:NOTE: [AUTO] sentinel 이름 — design.md §A.5 정준 경로 (.moai/state/session-preference-disabled)
+internal/cli/preference/toggle.go:53:// (.moai/state/) so both runtime artifacts share one state dir.
+internal/cli/preference/toggle.go:54:const sentinelStateSubdir = ".moai/state"
+internal/cli/preference/toggle.go:173:// .moai/state/ case). A stale-lock timeout (toggleLockStaleTimeout) recovers
+internal/cli/preference/toggle.go:290:The sentinel lives at <projectRoot>/.moai/state/session-preference-disabled
+internal/feedback/queue.go:7:// The pre-submit draft (.moai/state/feedback-draft-<timestamp>.md) is a
+internal/feedback/queue.go:10:// two live in the same .moai/state tree and must never be conflated: re-send
+internal/feedback/queue_test.go:171:// draft (.moai/state/feedback-draft-<ts>.md) holds PRE-SCRUB raw text and is
+internal/feedback/queue_test.go:176:// same .moai/state tree is invisible to Load, and its raw content never
+internal/harness/curator_dispatch.go:32:	// RegistryPath is the .moai/state/negative-evidence.jsonl path (A7 consult).
+internal/harness/negative_evidence.go:277:// registryPath is the .moai/state/negative-evidence.jsonl path.
+internal/harness/curator/recall_test.go:82:		"k-42": {".moai/state/routing-ledger.jsonl:117", "lineage:entry-9"},
+internal/harness/routing/types.go:6:// .moai/state/routing-ledger.jsonl (schema v1, append-only JSONL). It is a
+internal/harness/routing/types.go:20:// LedgerFileName is the canonical ledger file name under .moai/state/. The full
+internal/harness/routing/types.go:21:// path .moai/state/routing-ledger.jsonl is covered by the existing .moai/state/
+internal/harness/routing/types.go:217:// .moai/state/routing-pending-<session>.json until finalized (REQ-HEV-011).
+internal/harness/routing/pending.go:15:// sweep (REQ-HEV-014). It lives alongside the ledger under .moai/state/.
+internal/harness/routing/pending.go:19:// ledger. Pending state lives at .moai/state/routing-pending-<session>.json —
+internal/harness/routing/pending.go:31:// NewStore constructs a Store rooted at stateDir (typically <root>/.moai/state).
+internal/sandbox/profile.go:55:		// .moai/state/ default writable scope
+internal/sandbox/profile.go:56:		lines = append(lines, `(allow file-write* (subpath ".moai/state"))`)
+internal/sandbox/context.go:58:	// Defaults to agent worktree root + .moai/state/ per REQ-V3R2-RT-003-007.
+internal/kanban/integration_lock.go:150:// `.moai/state` is shared by all of them.
+internal/kanban/board_test.go:123:// (REQ-KB-005, AP-24): `.moai/state/kanban-board/`, distinct from the session
+internal/kanban/board_test.go:128:// rename (SPEC-TODO-SQLITE-001 §F: only `.moai/state/kanban/` relocates), so
+internal/kanban/board.go:6:// tree's copy, because a worktree's .moai/state/ is gitignored and therefore
+internal/kanban/state_dir.go:7:// one for as long as the queue has existed. `.moai/state/kanban/` therefore
+internal/kanban/board_lock_clear_unix.go:9:// spec-close-*.lock files in this repository's .moai/state/ are the worked
+internal/kanban/integration_lock_mutation.go:14:// filename stem. A future reader globbing `.moai/state/integration-lock*` would
+internal/kanban/todo_root.go:55:// worktree holding its own .moai/state would fork that channel, so the
+internal/kanban/factory_slots_test.go:128:	t.Run("path helper lands under .moai/state/todo", func(t *testing.T) {
+internal/kanban/todo_root_convention_test.go:23:// directory that is already `.moai/state/kanban-board` is a different thing and stays
+internal/kanban/todo_root_contract_test.go:11:// resolve the store through BacklogPathForRoot — <root>/.moai/state/todo/
+internal/codexwiring/wire.go:17:// sidecarDoc is the JSON shape of the trust sidecar (.moai/state/codex-wiring.json).
+internal/codexwiring/wire.go:33://   - .moai/state/codex-wiring.json — trust sidecar (sha256 of the generated
+internal/codexwiring/wire.go:136:	// force-reinit resets .moai/state while an unchanged hooks.json survives)
+internal/kanban/factory_slots.go:43:// home. It lives under .moai/state/ beside the goal and kanban state, keyed
+internal/kanban/board_lock.go:69:// <root>/.moai/state/kanban-board/board.lock, creating the board directory if
+internal/codexwiring/sidecar_test.go:76:// lost sidecar (e.g. a force-reinit resets .moai/state while hooks.json is
+internal/codexwiring/codexwiring.go:34:	SidecarPath = ".moai/state/codex-wiring.json"
+internal/navigator/route/run.go:32:	detectStateDir     = ".moai/state/navigator-detect"
+internal/navigator/tiers/nonoverlap_test.go:87:		".moai/state/navigator-detect", // M1 state path.
+internal/navigator/fix/request.go:45:	detectStateDir   = ".moai/state/navigator-detect"
+internal/migration/version.go:12:// @MX:NOTE - SPEC-V3R2-RT-007 .moai/state/migration-version is the single source of truth for "applied migrations".
+internal/migration/runner_test.go:47:// markerTmpFile creates a migration-version.tmp file under <root>/.moai/state/
+internal/hook/session_start_kanban_test.go:410:// `moai todo` CLI operates (.moai/state/kanban/backlog.json), so the notice
+internal/hook/session_start_additional_context_test.go:58:// side-channel file (.moai/state/current-session-id.txt) so `moai session
+internal/hook/cwd_changed_relocate.go:23:// .moai/state/active-sessions.json that contains the session — the entry
+internal/hook/cwd_changed_relocate.go:69:// the first <dir>/.moai/state/active-sessions.json that exists, stopping at
+internal/hook/cwd_changed_relocate.go:95:		// Stop at the home directory — ~/.moai/state is global state, never a
+internal/hook/file_changed_test.go:197:	// The sidecar index lives under <CWD>/.moai/state/. Its exact
+internal/hook/file_changed_test.go:285:// RED(fix 전): 봉쇄 부재로 루트 밖 파일을 스캔하고 A/.moai/state 사이드카가 생성됨.
+internal/hook/file_changed_test.go:323:// RED(fix 전): 봉쇄 부재로 raw input.CWD(C) 아래 C/.moai/state 사이드카가 생성됨(루트 탈출).
+internal/hook/file_changed_test.go:379:	// 정상 경로는 사이드카가 갱신되어야 한다(루트 내부 .moai/state 존재).
+internal/hook/file_changed_test.go:393://	os.ReadFile로 링크를 따라 secret의 MX-tag를 읽어 root 내 .moai/state 사이드카에
+internal/hook/worktree_remove.go:1:// Resolution: KEEP — worktree registry cleanup at .moai/state/worktrees.json.
+internal/hook/teammate_idle.go:129:// coverageData represents the JSON structure of .moai/state/coverage.json.
+internal/hook/teammate_idle.go:142:// loadCoverageData reads coverage data from .moai/state/coverage.json.
+internal/hook/session_start_mx_test.go:124:	// Make .moai/state a FILE so mgr.Write cannot create the directory.
+internal/hook/compact.go:52:				"path", filepath.Join(projectDir, ".moai/state/session-memo.md"),
+internal/hook/compact.go:97:	// P2: active worktrees (read from .moai/state/worktrees.json).
+internal/hook/compact.go:130:// readWorktrees reads .moai/state/worktrees.json and returns a human-readable
+internal/hook/worktree_create.go:1:// Resolution: KEEP — worktree registry update at .moai/state/worktrees.json.
+internal/hook/navigator_detect.go:20:// .moai/state/navigator-detect/<session-id>.jsonl. The Detect layer performs
+internal/hook/navigator_detect.go:68:// to projectRoot (plan.md §C.3 — `<root>/.moai/state/navigator-detect/`).
+internal/hook/navigator_detect.go:70:const navigatorDetectStateDir = ".moai/state/navigator-detect"
+internal/hook/navigator_detect.go:393:		fmt.Fprintf(&b, "\n…and %d more (see .moai/state/navigator-detect/ JSONL for the full set)", omitted)
+internal/hook/navigator_detect.go:421:// `<projectRoot>/.moai/state/navigator-detect/<sessionID>.jsonl` (creating
+internal/hook/routing_ledger_test.go:246:		// Make .moai/state a regular FILE so every write beneath it fails.
+internal/hook/session_start_kanban.go:194:// under root — the same .moai/state/todo/backlog.json the `moai todo` CLI
+internal/hook/session_start_parallel_test.go:293:// mkStateDir ensures .moai/state exists under the project dir so the
+internal/hook/session_end.go:128:	// to .moai/state/session-handoff/pending.md during the session (SPEC-V3R6-SESSION-HANDOFF-AUTO-001).
+internal/hook/navigator_detect_test.go:418:// record at .moai/state/navigator-detect/<session-id>.jsonl, and (c) MUST
+internal/hook/session_start.go:61:// <ProjectDir>/.moai/state/mx-index.json from a goroutine joined with a bounded
+internal/hook/session_start.go:306:		// synchronous check — does .moai/state/mx-index.json exist AND is its
+internal/hook/session_start.go:373:	// side-channel file (.moai/state/current-session-id.txt) so `moai session
+internal/hook/session_start.go:1223:// .moai/state/goal/consumed/. Fail-open: a prune error is logged, NEVER returned
+internal/hook/session_start.go:1235:// registry (.moai/state/active-sessions.json) anchored to projectDir. On any
+internal/hook/evidence_writer_zeroexec_test.go:10:// v22.14.0. Raw captures live under .moai/state/verify/t341/.
+internal/hook/session_start_multisession_test.go:21:	// Ensure .moai/state exists for the registry to write into.
+internal/hook/navigator_detect_nonoverlap_test.go:168:// the JSONL append under .moai/state/navigator-detect/ and the log under
+internal/hook/cwd_changed_relocate_test.go:19:// writeRelocateRegistry seeds <root>/.moai/state/active-sessions.json with
+internal/hook/cwd_changed_relocate_test.go:111:// ~/.moai/state/active-sessions.json. Without the guard, a session whose
+internal/hook/session_start_factory_test.go:243:	for _, gone := range []string{"moai todo list", ".moai/state/kanban/backlog.json", "poll the backlog queue", "No model override", "ANTHROPIC_DEFAULT_*_MODEL"} {
+internal/hook/agent_stop_guard.go:99:// <root>/.moai/state/agent-stops/<session-id>.json. Never a global list —
+internal/hook/session_start_goal_prune_test.go:64:	// .moai/state/goal is a FILE, so goal.PruneOrphans' os.ReadDir errors.
+internal/hook/session_start_record.go:6:// project-wide .moai/state/current-session-id.txt slot instead — a single slot
+internal/hook/handoff/persist_test.go:47:// makeProjectDir constructs `<root>/.moai/state/session-handoff/` and writes the
+internal/hook/handoff/persist_test.go:71:// reads only `<projectDir>/.moai/state/session-handoff/pending.md` and does not
+internal/hook/memo/writer.go:12:const memoFileName = ".moai/state/session-memo.md"
+internal/hook/memo/writer.go:15:// {projectDir}/.moai/state/session-memo.md.
+internal/hook/handoff/persist.go:7://	<projectDir>/.moai/state/session-handoff/pending.md
+internal/hook/handoff/persist.go:62:// PersistIfPending reads <projectDir>/.moai/state/session-handoff/pending.md,
+internal/hook/handoff/persist.go:175:// REQ-SHA-001. The path is `<projectDir>/.moai/state/session-handoff/pending.md`
+internal/hook/handoff/pending.go:5:// on a SEPARATE tree — `<projectDir>/.moai/state/handoff/pending.json` (JSON) —
+internal/hook/handoff/pending.go:70:// handoffStateDir returns <projectDir>/.moai/state/handoff — the reverse-handoff
+internal/hook/handoff/pending.go:76:// PendingPath returns <projectDir>/.moai/state/handoff/pending.json.
+internal/hook/handoff/pending.go:81:// ConsumedDir returns <projectDir>/.moai/state/handoff/consumed — the audit-trail
+internal/hook/handoff/pending_test.go:210:	// Create .moai/state as a FILE so MkdirAll(.moai/state/handoff) fails.
+internal/hook/memo/writer_test.go:101:	// Ensure the .moai/state directory does NOT pre-exist.
+internal/hook/memo/reader.go:15:// Read reads the session memo from {projectDir}/.moai/state/session-memo.md
+internal/hook/perf/harness_test.go:424:		"state.yaml":         "state:\n  dir: .moai/state\n",
+internal/goal/evaluate_snapshot_test.go:48:		attr:    "snapshot .moai/state/verify/snapshots/abc.json key head:digest cmd \"go test ./...\" exit 0",
+internal/goal/evaluate_snapshot_test.go:71:	attr := "snapshot .moai/state/verify/snapshots/abc.json key head:digest cmd \"go test ./...\" exit 0"
+internal/goal/evaluate_snapshot_test.go:166:		attr:    "snapshot .moai/state/verify/snapshots/abc.json key head:digest cmd \"go test ./...\" exit 1",
+internal/goal/prune.go:27:// to .moai/state/goal/consumed/."
+internal/goal/schema.go:99:// .moai/state/goal/<session-id>.json. One file per session (never a single
+internal/goal/dashboard.go:133:				".moai/state/goal/%s.json.",
+internal/session/ignored_content_test.go:26:			porcelain: "!! .moai/state/verify/t209/\n!! bin/moai\n!! .claude/settings.local.json\n",
+internal/session/ignored_content_test.go:36:			porcelain: "!! .moai/state/\n!! .moai/specs/SPEC-X/.moai/\n!! bin/\n",
+internal/goal/evaluate.go:463:		BaselineAttribution: "measured against this session's goal state (.moai/state/goal/<session>.json)",
+internal/goal/verdict.go:16:// sidecar (.moai/state/goal/<session-id>.verdict.json). The sidecar is the
+internal/goal/verdict.go:22:// (.moai/state/goal/<session-id>.verdict.json). It derives from StatePath via
+internal/goal/state.go:17:const StateDir = ".moai/state/goal"
+internal/goal/state.go:20:const ConsumedDir = ".moai/state/goal/consumed"
+internal/goal/state.go:35:// (.moai/state/goal/<session>.html). It derives the .html path from the StatePath
+internal/session/anchor_relocate_test.go:12:	reg := NewRegistry(t.TempDir()+"/.moai/state/active-sessions.json", nil)
+internal/session/anchor_relocate_test.go:45:	reg := NewRegistry(t.TempDir()+"/.moai/state/active-sessions.json", nil)
+internal/session/anchor_relocate_test.go:66:	reg := NewRegistry(t.TempDir()+"/.moai/state/active-sessions.json", nil)
+internal/session/anchor.go:27://  1. the tree-LOCAL registry (<treePath>/.moai/state/active-sessions.json)
+internal/session/store.go:40:// SessionStore manages phase state persistence to .moai/state/.
+internal/session/store.go:66:// FileSessionStore implements SessionStore using .moai/state/ directory.
+internal/session/store.go:68:	stateDir string        // .moai/state/
+internal/session/store.go:183:// DetectInFlightTransition scans .moai/state/ for a SPECID where a phase checkpoint
+internal/session/registry.go:7:// operate on distinct files under .moai/state/.
+internal/session/registry.go:13:// gitignored, and lives at .moai/state/active-sessions.json.
+internal/session/registry.go:36:// multi-session coordination registry. It is gitignored via the .moai/state/
+internal/session/registry.go:39:const DefaultRegistryPath = ".moai/state/active-sessions.json"
+internal/session/registry.go:45:// gitignored .moai/state/ tree) and is overwritten on every SessionStart.
+internal/session/registry.go:52:const CurrentSideChannelFile = ".moai/state/current-session-id.txt"
+internal/session/ignored_content.go:32:	".moai/state",
