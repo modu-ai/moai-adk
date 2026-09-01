@@ -68,6 +68,8 @@ The channel's gate reads one machine-global boolean, `cachedGrowthBookFeatures.t
 
 **The gate is re-read on every call, not cached at startup.** A session that had the channel can lose it mid-run because another session wrote `false`, and can regain it the same way. Neither transition errors.
 
+**Diagnostic.** `python3 -c "import json,os;print(json.load(open(os.path.expanduser('~/.claude.json')))['cachedGrowthBookFeatures']['tengu_harbor_kite'])"` — `false` means the channel is off for every session on this machine that cannot write the slot.
+
 The consequence for MoAI is direct: `moai glm`, and the GLM panes of `moai cg`, read the slot and never write it, so their messaging tracks whatever a first-party session last left on this machine. Attributing an outage there to the GLM backend is the natural reading and the wrong one — the same session works or does not according to a value it has no part in setting.
 
 **The measurement this rests on.** Holding model and environment fixed and flipping only the slot, a session with `ANTHROPIC_BASE_URL` pointed at a third-party endpoint was started four times: `true` produced an inbox socket twice, `false` produced none twice, with no exception. Separately, a first-party session was observed overwriting the slot from `false` to `true`, while a third-party session left the write timestamp unchanged across six reads in 36 seconds — it never wrote the slot once.
