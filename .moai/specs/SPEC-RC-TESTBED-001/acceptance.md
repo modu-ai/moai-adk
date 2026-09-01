@@ -30,7 +30,7 @@ is accepted and routed to sync-audit human reading — noted per AC cluster, not
 | AC-RC-004 | REQ-RC-004 | develop 갱신 section exists (gitflow-lane-protocol.md) | M2 |
 | AC-RC-005 | REQ-RC-004 | squash-blindness citation exists (gitflow-lane-protocol.md) | M2 |
 | AC-RC-006 | REQ-RC-005 | BranchGuard route note exists (gitflow-lane-protocol.md) | M2 |
-| AC-RC-007 | REQ-RC-006/007 | §4.1 pointer to numbering policy exists (CLAUDE.local.md) | M3 |
+| AC-RC-007 | REQ-RC-006/007 | §4.1 pointers to numbering policy + refresh section exist (CLAUDE.local.md) | M3 |
 | AC-RC-008 | REQ-RC-008 | rc_version_format re-application note exists (version-management.md) | M1 |
 
 ## §D.1 Release-blocking ACs (evidence-ledger form)
@@ -85,8 +85,9 @@ a sufficient criterion (without asserting "--merged is empty" as a develop-lane 
 - verbatim stdout: `0` · exit code: `1` · tree: `fa8ff89ba`
 - Green path (M2): ≥1, exit 0.
 - Mutant probe: a criterion phrased as `git branch --merged origin/develop` alone (the exact
-  blind spot) would flip AC-004 while leaving the requirement violated — this AC forces the
-  citation and the merge-shape-agnostic phrasing; adopted.
+  blind spot) would flip AC-004 while leaving the requirement violated — this AC's grep forces
+  only the citation's presence; the merge-shape-agnostic phrasing itself is not grep-forceable
+  and is routed to sync-audit reading (same disclosure as AC-003/AC-006); adopted.
 
 **AC-RC-006 — BranchGuard-safe route named.**
 Given `fa8ff89ba`, When the route for develop regeneration is searched, Then the lane protocol
@@ -102,15 +103,20 @@ through launcher worktree entry (`moai cc -w develop` / `EnterWorktree`), never 
 
 **AC-RC-007 — §4.1 pointer wiring exists (MUTANT-KILLER for the card's representative mutant).**
 Given `fa8ff89ba`, When CLAUDE.local.md §4.1 (the declaration site of the standing develop) is
-searched for a pointer to the numbering policy, Then no pointer exists; after M3 the §4.1
-additions point to the Local RC Numbering section (and to the develop-refresh section of the
-lane protocol) as pointer lines only.
-- RED-now command: `grep -c "Local RC Numbering" CLAUDE.local.md`
-- verbatim stdout: `0` · exit code: `1` · tree: `fa8ff89ba`
-- Green path (M3): ≥1, exit 0.
+searched for the pointer pair, Then no pointers exist; after M3 the §4.1 additions point to the
+Local RC Numbering section of version-management.md AND to the develop 갱신 section of the lane
+protocol, as pointer lines only.
+- RED-now command (i): `grep -c "Local RC Numbering" CLAUDE.local.md`
+  · verbatim stdout: `0` · exit code: `1` · tree: `fa8ff89ba`
+- RED-now command (ii): `grep -c "develop 갱신" CLAUDE.local.md`
+  · verbatim stdout: `0` · exit code: `1` · measured at HEAD `856ed147b` on a tree whose
+  only delta from `fa8ff89ba` is the SPEC artifact files themselves (`git diff --stat
+  fa8ff89ba..HEAD` touches `.moai/specs/SPEC-RC-TESTBED-001/` only — the swept doc target is
+  byte-identical to the pinned pre-work tree).
+- Green path (M3): both commands → stdout ≥1, exit 0.
 - Mutant probe: **the representative mutant** — amend §4.1 to declare develop standing while
   skipping the rc build + clean-reinstall documentation — leaves this AC red (the declaration
-  site carries no pointer). Defeats it; adopted.
+  site carries no pointer pair). Defeats it; adopted.
 
 **AC-RC-008 — moai-update re-application note exists.**
 Given `fa8ff89ba`, When the git-strategy.yaml reset hazard is searched, Then version-

@@ -94,10 +94,10 @@ If a RED probe returns ≥1, another actor landed overlapping content — re-bas
 
 | Token | Target file | AC |
 |---|---|---|
-| `Local RC Numbering` (section heading) | version-management.md | AC-001, AC-007 |
+| `Local RC Numbering` (section heading) | version-management.md; CLAUDE.local.md | AC-001, AC-007 |
 | `counter-precedent` | version-management.md | AC-002 |
 | `BUILD_ID` | version-management.md | AC-003 |
-| `develop 갱신` (section heading) | gitflow-lane-protocol.md | AC-004 |
+| `develop 갱신` (section heading) | gitflow-lane-protocol.md; CLAUDE.local.md | AC-004, AC-007 |
 | `SPEC-WORKTREE-SQUASH-MERGE-001` (citation) | gitflow-lane-protocol.md | AC-005 |
 | `BranchGuard` (route note) | gitflow-lane-protocol.md | AC-006 |
 | `rc_version_format` | version-management.md | AC-008 |
@@ -128,8 +128,10 @@ directory (expect no error-severity findings).
   `git branch`, never `git -C` (worktree-session guard); cross-reference §3 window mechanics and
   §9 rc runbook; note the sentinel route is not dependable for subagents (C5).
 - **M3 — CLAUDE.local.md §4.1: pointer-only wiring** (REQ-RC-006/007; flips AC-007). At most 2
-  pointer lines: one to the Local RC Numbering section, one noting the develop-refresh procedure
-  lives in gitflow-lane-protocol.md's new section. Measure byte delta; report it. Sensitive to
+  pointer lines: one to the Local RC Numbering section, one to the develop 갱신 section of the
+  lane protocol (which itself cross-references §9 — §4.1's existing discipline 4 already
+  delegates to §9, so no third pointer). Both pointers quote the section names verbatim — they
+  are the AC-007 grep anchors. Measure byte delta; report it. Sensitive to
   the [NEEDS CLARIFICATION] outcome in §A — additive to either §4.1 variant.
 - **M4 — verification sweep + B1 re-measurement** (no doc edits planned). Re-run AC greps, byte
   measurement, doctrine-consistency probe, spec-lint; populate progress.md §E.2 evidence;

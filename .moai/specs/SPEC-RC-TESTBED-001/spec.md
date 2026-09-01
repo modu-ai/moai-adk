@@ -90,10 +90,12 @@ from tool-spawned subagents) nor through cross-tree `git -C` (denied by the work
 guard — entering is the only sanctioned path).
 
 **REQ-RC-006** (Ubiquitous, no-duplication) — The documentation set shall not duplicate the rc
-build + clean-reinstall runbook: `CLAUDE.local.md` §4.1 shall carry pointers to
-`.claude/rules/local/gitflow-lane-protocol.md` §9 (runbook, single source) and to the Local RC
-Numbering section of `.moai/docs/version-management.md` (numbering policy), and the runbook body
-shall remain single-sourced in §9 ("두 벌이 되는 순간 갈라진다").
+build + clean-reinstall runbook: `CLAUDE.local.md` §4.1 shall carry pointer lines to (i) the
+Local RC Numbering section of `.moai/docs/version-management.md` (numbering policy) and (ii) the
+develop 갱신 (refresh) section of `.claude/rules/local/gitflow-lane-protocol.md` — which itself
+cross-references §9, whose runbook body shall remain the single source ("두 벌이 되는 순간
+갈라진다"). A separate §4.1 → §9 pointer is NOT additionally required: §4.1's existing
+discipline 4 already delegates to §9, so a third pointer would be redundant indirection.
 
 **REQ-RC-007** (State-driven) — **While** `CLAUDE.local.md` exceeds its 40,000-character
 heuristic budget (47,820 bytes in the worktree copy at research time), §4.1 additions made for
@@ -153,3 +155,4 @@ reset by `moai update` to template defaults and must be re-applied after every u
 | Date | Author | Change |
 |------|--------|--------|
 | 2026-09-02 | manager-spec | Plan-phase creation (card t281, Tier M). Research: 4-lens synthesis persisted as research.md. RED-now baselines measured at tree `fa8ff89ba`. |
+| 2026-09-02 | manager-spec | Plan-audit iter-1 fixes: D2 — REQ-RC-006 relaxed to the (numbering, develop-갱신) pointer pair via the refresh section's §9 cross-reference (option a; §4.1 discipline 4 already delegates to §9), AC-RC-007 now verifies both anchors; D3 — AC-RC-005 mutant-probe wording corrected to sync-audit disclosure form. |
