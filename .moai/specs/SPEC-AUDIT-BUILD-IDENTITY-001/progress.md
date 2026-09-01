@@ -54,11 +54,125 @@ lane이 수정 에이전트의 "이미 착지" 처분표 라벨을 불신했던 
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+run 커밋: `1c3adc4d5` (branch `WT-audit-binary-sha`, 미푸시 — 통합은 리드 창). 아래 모든 판정은 **그 커밋 트리에서 재측정**한 값이다(커밋 시점 재측정 — 커밋 전 예비 측정과 구분).
+
+### E1 AC 매트릭스 (8/8 PASS)
+
+| AC | 판정 | 명령 (공통 접두: `go test ./internal/cli/ -run <TEST> -count=1`) | 실제 출력 (커밋 `1c3adc4d5`) |
+|---|---|---|---|
+| AC-ABI-001 | PASS | `-run TestAuditVerdictCarriesBuildCommit` | `ok github.com/modu-ai/moai-adk/internal/cli 1.832s` |
+| AC-ABI-002 | PASS | `-run TestPersistedConvergenceCarriesBuildCommit` | `ok github.com/modu-ai/moai-adk/internal/cli 0.752s` |
+| AC-ABI-003 | PASS | `-run TestBuildIdentityVersionAloneIsRejected` | `ok github.com/modu-ai/moai-adk/internal/cli 1.676s` |
+| AC-ABI-004 | PASS | `-run TestBuildIdentityOmittedWhenAbsent` | `ok github.com/modu-ai/moai-adk/internal/cli 0.738s` |
+| AC-ABI-005 | PASS | `-run TestAuditCompletesWithoutBuildIdentity` | `ok github.com/modu-ai/moai-adk/internal/cli 2.600s` |
+| AC-ABI-006 | PASS | `-run TestAuditLagAdvisoryNamesBothCommits` | `ok github.com/modu-ai/moai-adk/internal/cli 2.497s` |
+| AC-ABI-007 | PASS | `-run TestAuditLagUsesBinlagSeam` + 소스 스윕 | `ok ... 1.347s` + 스윕 히트 = 기준선 3좌표 정확 집합(`graph_stamp.go:68`/`:131`, `mcp_review_material.go:95`) — 아래 E-스윕 |
+| AC-ABI-008 | PASS | `-run 'TestConverge\|TestRunMultiAudit\|TestAuditMulti' -count=1` | `ok github.com/modu-ai/moai-adk/internal/cli 0.753s` — 기존 테스트 무수정 통과 |
+
+### RED 증거 (E8 — GREEN 이전 관측, 구현 전 트리 `fd26c6cf2`)
+
+```
+$ go test ./internal/cli/ -run 'TestAuditVerdictCarriesBuildCommit|...|TestAuditLagUsesBinlagSeam' -count=1
+--- FAIL: TestAuditVerdictCarriesBuildCommit (0.29s)
+    mcp_build_identity_test.go:281: codex_audit: "build_commit" key ABSENT — the verdict carries no build identity
+--- FAIL: TestPersistedConvergenceCarriesBuildCommit (77.27s)
+    mcp_build_identity_test.go:323: returned ConvergenceResult: "build_commit" key ABSENT — the verdict carries no build identity
+--- FAIL: TestBuildIdentityVersionAloneIsRejected (0.29s)
+    mcp_build_identity_test.go:364: codex_audit build A: "build_commit" key ABSENT — the verdict carries no build identity
+--- FAIL: TestBuildIdentityOmittedWhenAbsent (0.00s)
+    (테스트 버그 — 정렬되지 않은 기대 집합 비교. 정렬 후 재작성, 변경 전 상태 GREEN 확인 = 회귀 가드 성격 부합)
+--- FAIL: TestAuditLagAdvisoryNamesBothCommits (0.30s)
+    mcp_build_identity_test.go:511: codex_audit: "build_lag" empty/absent on a StatusBehind build — the lag advisory never fired
+--- FAIL: TestAuditLagUsesBinlagSeam (0.62s)
+    mcp_build_identity_test.go:573: codex_audit/glm_audit/audit_multi: counter 0 → 0 — the comparison never ran through the seam
+FAIL	github.com/modu-ai/moai-adk/internal/cli	81.752s
+```
+
+AC-ABI-004는 회귀 가드(변경 전 상태를 단언)라 RED가 구조적으로 불가능하다 — 최초 1회는 테스트 결함(기대 미정렬)으로 적색이었고 수정 후 변경 전 트리에서 GREEN을 관측했다.
+
+### E-스윕 (AC-ABI-007 관측 2)
+
+```
+$ grep -rn "merge-base\|is-ancestor" internal/cli --include='*.go' | grep -v _test.go
+internal/cli/graph_stamp.go:68:  moai graph stamp codemaps --commit "$(git merge-base HEAD origin/main)"
+internal/cli/graph_stamp.go:131:		`explicit commit anchor ... Use "$(git merge-base HEAD origin/main)" ...`)
+internal/cli/mcp_review_material.go:95:		out, err := runReviewGit(root, "merge-base", ref, "HEAD")
+```
+
+히트 집합 = 기준선(64bba61aa 실측) 3좌표와 정확히 동일. `mcp_review_material.go:95`는 리뷰 diff 기준점 해석(`resolveReviewMergeBase`)으로 D-1 판정대로 기준선에 남는다.
+
+### E2 크로스 플랫폼 빌드 (커밋 `1c3adc4d5`)
+
+```
+$ go build ./...                           → native_exit=0
+$ GOOS=windows GOARCH=amd64 go build ./... → windows_exit=0
+$ go vet ./internal/cli/... ./internal/binlag/... → vet_exit=0
+```
+
+### E3 커버리지 (커밋 `1c3adc4d5`)
+
+```
+$ go test -cover ./internal/cli/ ./internal/binlag/ -count=1
+ok  github.com/modu-ai/moai-adk/internal/cli   285.720s  coverage: 80.0% of statements
+ok  github.com/modu-ai/moai-adk/internal/binlag  3.071s  coverage: 90.9% of statements
+```
+
+변경 대상 함수 커버리지 (`go tool cover -func`): `auditBuildIdentity` 100%, `normalizeBuildCommit` 100%, `handleCodexAudit` 100%, `handleGLMAudit` 96%, `runMultiAudit` 100%. 패키지 전체 internal/cli 80.0%는 기존 수준이며(대형 패키지, 변경 전 baseline 미측정 — Gap 기록) 이 카드가 만진 함수는 전부 96% 이상.
+
+### E4 서브에이전트 경계 grep
+
+```
+$ grep -rn 'AskUserQuestion' internal/cli internal/binlag --include='*.go' | grep -v "_test.go" | grep -v "// "  → 18 matches
+```
+
+18건 전부 **기존 baseline**(문서 주석 연속 줄과 출력 메시지 문자열 리터럴 — 예: `harness.go:291`의 `Fprintln(..., "... skill calls AskUserQuestion ...")`). 본 변경이 추가한 AskUserQuestion 발생 0건: 3개 수정 파일 diff에서 토큰 2건은 모두 컨텍스트 줄(선행 공백, 기존 주석), 신규 2파일에서 0건.
+
+### E5 린트
+
+```
+$ golangci-lint run --timeout=5m ./internal/cli/... ./internal/binlag/...
+0 issues.   (변경 전 baseline도 0 issues — 신규 지적 0)
+```
+
+### E6 커밋
+
+- `1c3adc4d5` feat(SPEC-AUDIT-BUILD-IDENTITY-001): audit verdicts carry the producing binary's build commit (t248)
+- **푸시하지 않았다** — 통합은 리드의 develop 병합 창 소관. 브랜치 `WT-audit-binary-sha` 로컬에만 존재.
+
+### §D.1 체크리스트 대조
+
+- [x] AC 8건 PASS (E1)
+- [x] `go test ./internal/cli/ ./internal/binlag/ -count=1` 통과 (304.4s / 4.1s, 커밋 전 예비 측정 + 커밋 후 AC 전수 재측정)
+- [x] `go vet` 통과
+- [x] golangci-lint 신규 지적 0
+- [x] 새 MCP 도구 0 / 새 verdict 열거값 0 / 새 Go 패키지 0 / 중첩 신원 객체 0 / 버전 필드 0 (diff 상단 근거)
+- [x] `PerBackendVerdict` 무변경 — `git diff mcp_convergence.go`에서 해당 타입 본문 +/- 0건 (주석 언급 1건은 ConvergenceResult 문서)
+- [x] 폴백 cwd 미전달 — `git diff`에서 `performCodexAudit`/`performGLMAudit` 호출부 토큰 0건 변경; 폴백 디렉터리는 `auditBuildIdentity` 내부에서만 소비
+- [x] 모든 판정 인용에 커밋 SHA `1c3adc4d5` 부착
+
+### 실행 중 발견·수리 2건
+
+1. **테스트가 실제 codex를 켠 사고 (수리 완료)**: `TestPersistedConvergenceCarriesBuildCommit` 최초판이 `backendCall`을 스텁하지 않아 `defaultBackendCaller → performCodexAudit → 실제 codex 세션`이 뜨고 fail-open 타임아웃(~60-77s)까지 대기했다. §D.2(트리 빌드 바이너리만) + CLAUDE.local.md §13(dev 프로젝트 라이브 백엔드 금지) 위반 — 타임아웃 고루틴 덤프로 원인 확정 후 `withBackendCallStub` 추가. 수리 후 0.00s.
+2. **ast-grep 훅 룰 오탐 우회**: 로컬 룰 `go-error-ignored-blank`(`$_, $ERR = $FUNC(...)` 패턴)이 `:=`가 아닌 **plain `=`** 2값 대입 전부를 적중한다(공백 무관 — `res, err = f()` 도 차단). 테스트 코드를 `:=` 형태로 재구성해 우회했다. 룰 자체의 과다 매칭은 별도 소관(개선 필요 시 `/moai:feedback` 재료).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-01
+run_commit_sha: "1c3adc4d5"
+run_status: complete
+ac_pass_count: 8
+ac_fail_count: 0
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: not-run (worktree-isolated card branch; no shared-checkout commit)
+l44_post_push_fetch: not-run (NO PUSH — integration is the lead's window)
+new_warnings_or_lints_introduced: 0
+cross_platform_build.darwin_arm64: pass
+cross_platform_build.windows_amd64: pass
+total_run_phase_files: 6
+m1_to_mN_commit_strategy: single implementation commit (M1-M3 combined; Tier S, milestones implemented+verified as one unit)
+```
+
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
