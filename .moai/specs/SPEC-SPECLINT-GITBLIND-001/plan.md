@@ -13,7 +13,7 @@ Tier M · cycle_type=tdd · 대상 파일 6개(소스 4 + 테스트 2), 예상 3
 카드 t371. `SPEC Lint` CI 잡이 얕은 체크아웃 + `main` ref 부재 상태에서 lint 규칙 두 개를 눈감긴 채
 초록을 내고 있다. 측정 근거와 결함 형태는 `spec.md` §1 에 있으며 여기서 반복하지 않는다.
 
-기준 트리: `.claude/worktrees/t371` @ 브랜치 `WT-lint-shallow-clone`, develop `09bf452c0` 기준 (t376·t382 착지 흡수 후 재측정 — 2026-09-02).
+기준 트리: `.claude/worktrees/t371` @ 브랜치 `WT-lint-shallow-clone`, develop `ad272be20` 기준 (t376·t382 착지 흡수 후 재측정, t336·t372·t413 흡수 후 재검증 — 2026-09-02. 두 흡수 사이 11개 측정점 전부 이동 없음 실측).
 사전 A/B 측정은 develop `b9149857c` 에서 수행됐다.
 
 ## §B 알려진 이슈 / 전제
