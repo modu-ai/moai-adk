@@ -115,7 +115,17 @@ m1_to_mN_commit_strategy: one-commit-per-milestone (M1 ca62975b9 incl. draft→i
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase — owned by manager-docs>_
+```yaml
+sync_complete_at: 2026-09-02
+sync_commit_sha: "pending-backfill-t281"   # backfilled in the immediately following commit
+sync_status: audit-ready
+changelog_entry_position: CHANGELOG.md [Unreleased] > Added
+frontmatter_status_transitions:
+  spec_md: "in-progress -> completed (merged into the single sync commit; updated: 2026-09-02)"
+canary_compliance_check:
+  body_modification: none   # spec.md/plan.md/acceptance.md bodies untouched — frontmatter status+updated only on spec.md
+  mx_surface: n/a           # zero-code SPEC — no MX annotations
+```
 
 ## §F Phase 4 Mode Selection
 
