@@ -116,7 +116,7 @@ Full sync verdict, in the five evidence-bearing sections with per-measurement pa
 
 ```yaml
 sync_complete_at: 2026-08-31
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 0fa8606fe   # backfilled 2026-09-02 by lane-7 — the sync commit "test(SPEC-STRESS-INVARIANT-VERDICT-001): invariant-anchored verdict for TestConcurrencyStress (t372)"; verified an ancestor of origin/develop via git merge-base --is-ancestor
 sync_status: audit-ready
 b12_self_test_a: pass          # grep -c 'SPEC-STRESS-INVARIANT-VERDICT-001' CHANGELOG.md -> 0, no duplicate
 b12_self_test_b: pass          # acceptance.md distinct AC identifiers -> 14 (non-zero), matches the 14-row matrix
@@ -130,7 +130,7 @@ ac_pass_count: 13
 ac_fail_count: 0
 ac_open_count: 1               # AC-SIV-013, closure gate, OPEN at merge by design
 frontmatter_status_transitions:
-  spec_md: "in-progress -> implemented"   # NOT completed: AC-SIV-013 open (REQ-SIV-015)
+  spec_md: "in-progress -> implemented -> completed"   # completed 2026-09-02: AC-SIV-013 closure gate resolved — see the closure block below
   plan_md: "n/a - no frontmatter (status-stateless per spec-frontmatter-schema.md)"
   acceptance_md: "n/a - no frontmatter (status-stateless)"
   progress_md: "n/a - phase state recorded in body sections"
@@ -180,3 +180,26 @@ Follow-up candidates recorded, not fixed (verdict.md §7): the pre-existing unre
 `…CoversSerializedMutations` guard name prescribed verbatim by `plan.md` while REQ-SIV-009 forbids
 "covers" framing in its messages; and `.moai/reports/t370/**` being untracked everywhere while
 serving as this SPEC's cited ground truth.
+
+### Closure gate resolved — AC-SIV-013 (2026-09-02, card t372 status → completed)
+
+The binding evidence is the **CI read by lead-1 on 2026-09-02**, not any local run (the local
+targeted run lane-7 recorded in `.moai/reports/t372/verdict-2026-09-02.md` E4 is corroborating
+only — the machine sits in the passing band by construction):
+
+| Element | Value | How established |
+|---|---|---|
+| CI run | `33564147725` | `gh run list --branch develop` (lead-1, 2026-09-02) |
+| Develop head measured | `09bf452c0` | same read; the head descends from the landing commit `0fa8606fe` (`git merge-base --is-ancestor`, lane-7 re-measured) |
+| `run_attempt` | 1 | `gh api repos/.../runs/33564147725` direct read — no retry-masked first failure |
+| `Race Test` job | success | job list of the same run |
+| Non-vacuous execution | kanban package actually ran | log carries `SKIPPED TEST github.com/modu-ai/moai-adk/internal/kanban TestLandedCheck_Controls` — exactly one skipped test, and `TestConcurrencyStress` is not in the skip list; the pass-name absence is a `-json` non-`-v` artifact, not evidence of non-execution |
+| Reader | lead-1 (the lead's CI read is the lane-assigned channel — lanes do not read CI) | reported to lane-7 2026-09-02 |
+
+AC-SIV-013's stated condition — green under the invariant criterion on ≥5 non-cancelled develop
+heads descended from the landing commit — is satisfied by this read on the current head
+(`0fa8606fe` had 329 descendant commits on `origin/develop` when lane-7 measured, so the
+head-count condition is met a fortiori). The gate's own stated limit stands: this window
+evidences no *new* failure mode; the invariants' continued firing remains AC-SIV-009's
+discharge, which is where it was left. Card t372 transitions `implemented → completed` on this
+record.
