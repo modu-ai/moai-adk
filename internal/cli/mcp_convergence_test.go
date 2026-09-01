@@ -48,6 +48,10 @@ func pbvAdv(backend, verdict string) PerBackendVerdict {
 	return pbv(backend, config.AuditGateAdvisory, verdict)
 }
 
+// boolPtr returns a pointer to v — literal convenience for the nullable
+// DisagreementFlag (*bool) introduced by SPEC-AUDIT-PARTICIPANT-COUNT-001.
+func boolPtr(v bool) *bool { return &v }
+
 // claudeReview is a reusable in-session claude verdict.
 func claudeReview(verdict string) ReviewOutput {
 	return ReviewOutput{
@@ -72,8 +76,8 @@ func TestConverge_AllRequiredPass_Case1_AC_AMM_006(t *testing.T) {
 	if r.OverallVerdict != "pass" {
 		t.Errorf("overall = %q, want pass", r.OverallVerdict)
 	}
-	if r.DisagreementFlag {
-		t.Error("disagreement_flag = true, want false (all required agree on pass)")
+	if r.DisagreementFlag == nil || *r.DisagreementFlag {
+		t.Error("disagreement_flag = nil-or-true, want non-nil false (all required agree on pass; 3 participants)")
 	}
 	if r.ResidualRiskNote != "" {
 		t.Errorf("residual_risk_note = %q, want empty", r.ResidualRiskNote)
@@ -91,8 +95,8 @@ func TestConverge_AllRequiredFail_Case2_AC_AMM_007(t *testing.T) {
 	if r.OverallVerdict != "fail" {
 		t.Errorf("overall = %q, want fail", r.OverallVerdict)
 	}
-	if r.DisagreementFlag {
-		t.Error("disagreement_flag = true, want false (no split — all required agree on fail)")
+	if r.DisagreementFlag == nil || *r.DisagreementFlag {
+		t.Error("disagreement_flag = nil-or-true, want non-nil false (no split — all required agree on fail; 2 participants)")
 	}
 	if !strings.Contains(r.ResidualRiskNote, "claude") || !strings.Contains(r.ResidualRiskNote, "codex") {
 		t.Errorf("residual_risk_note = %q, want both failed backends named", r.ResidualRiskNote)
@@ -110,8 +114,8 @@ func TestConverge_RequiredFailWithInconclusive_Case2(t *testing.T) {
 	if r.OverallVerdict != "fail" {
 		t.Errorf("overall = %q, want fail (any required fail → fail)", r.OverallVerdict)
 	}
-	if r.DisagreementFlag {
-		t.Error("disagreement_flag = true, want false (fail vs inconclusive is not a split)")
+	if r.DisagreementFlag != nil {
+		t.Errorf("disagreement_flag = %s; want nil — a single participant cannot ground a false (fail vs inconclusive is not a split, REQ-APC-003: the deliberate false→null move of SPEC-AUDIT-PARTICIPANT-COUNT-001)", flagState(r.DisagreementFlag))
 	}
 }
 
@@ -128,8 +132,8 @@ func TestConverge_RequiredSplit_Case3_AC_AMM_008(t *testing.T) {
 	if r.OverallVerdict != "fail" {
 		t.Errorf("overall = %q, want fail (required-split resolves conservatively)", r.OverallVerdict)
 	}
-	if !r.DisagreementFlag {
-		t.Error("disagreement_flag = false, want true (required split)")
+	if r.DisagreementFlag == nil || !*r.DisagreementFlag {
+		t.Error("disagreement_flag = nil-or-false, want non-nil true (required split; 3 participants)")
 	}
 	if !strings.Contains(strings.ToLower(r.ResidualRiskNote), "split") &&
 		!strings.Contains(strings.ToLower(r.ResidualRiskNote), "disagree") {
@@ -160,8 +164,8 @@ func TestConverge_AdvisoryOnlyConflict_Case4_AC_AMM_009_EC3(t *testing.T) {
 	if r.OverallVerdict != "pass" {
 		t.Errorf("overall = %q, want pass (advisory FAIL never flips overall)", r.OverallVerdict)
 	}
-	if !r.DisagreementFlag {
-		t.Error("disagreement_flag = false, want true (advisory-vs-required conflict surfaced)")
+	if r.DisagreementFlag == nil || !*r.DisagreementFlag {
+		t.Error("disagreement_flag = nil-or-false, want non-nil true (advisory-vs-required conflict surfaced; 3 participants)")
 	}
 	if r.ResidualRiskNote == "" {
 		t.Error("residual_risk_note empty; want the advisory conflict described for the Verification Matrix")
@@ -177,8 +181,8 @@ func TestConverge_DisagreementAdvisoryNotBlock_Regression_EC3(t *testing.T) {
 		pbvAdv(BackendCodex, "fail"), // codex demoted to advisory; conflicts with claude
 	}
 	r := converge(verdicts)
-	if !r.DisagreementFlag {
-		t.Fatal("disagreement_flag = false; want true (prerequisite for the regression assertion)")
+	if r.DisagreementFlag == nil || !*r.DisagreementFlag {
+		t.Fatal("disagreement_flag = nil-or-false; want non-nil true (prerequisite for the regression assertion; 2 participants)")
 	}
 	// THE LOAD-BEARING ASSERTION: disagreement alone does NOT block.
 	if r.OverallVerdict != "pass" {
@@ -198,8 +202,8 @@ func TestConverge_NoRequiredBackends_VacuousPass(t *testing.T) {
 	if r.OverallVerdict != "pass" {
 		t.Errorf("overall = %q, want pass (no required gate to satisfy)", r.OverallVerdict)
 	}
-	if r.DisagreementFlag {
-		t.Error("disagreement_flag = true; want false (advisories agree)")
+	if r.DisagreementFlag == nil || *r.DisagreementFlag {
+		t.Error("disagreement_flag = nil-or-true, want non-nil false (advisories agree; 2 participants — the inclusive boundary)")
 	}
 }
 
@@ -454,7 +458,7 @@ func TestPersistConvergenceResult_WritesStateFile_DQ1(t *testing.T) {
 	r := ConvergenceResult{
 		PerBackendVerdicts: []PerBackendVerdict{pbvReq(BackendClaude, "pass")},
 		OverallVerdict:     "pass",
-		DisagreementFlag:   false,
+		DisagreementFlag:   boolPtr(false),
 		ResidualRiskNote:   "",
 		FailOpenBackends:   []string{},
 	}

@@ -408,7 +408,7 @@ func TestBuildIdentityOmittedWhenAbsent(t *testing.T) {
 	result := ConvergenceResult{
 		PerBackendVerdicts: []PerBackendVerdict{},
 		OverallVerdict:     "pass",
-		DisagreementFlag:   false,
+		DisagreementFlag:   boolPtr(false),
 		ResidualRiskNote:   "",
 		FailOpenBackends:   []string{},
 	}
@@ -420,7 +420,11 @@ func TestBuildIdentityOmittedWhenAbsent(t *testing.T) {
 	if err := json.Unmarshal(resultBytes, &cm); err != nil {
 		t.Fatalf("unmarshal ConvergenceResult: %v", err)
 	}
-	wantResult := []string{"per_backend_verdicts", "overall_verdict", "disagreement_flag", "residual_risk_note", "fail_open_backends"}
+	// participant_count joined the always-present key set with
+	// SPEC-AUDIT-PARTICIPANT-COUNT-001 (deliberately NOT omitempty — a
+	// visible 0 is REQ-APC-001 row a); the AC-ABI-004 subject remains the
+	// omitempty'd build_commit/build_lag, which stay absent here.
+	wantResult := []string{"per_backend_verdicts", "overall_verdict", "disagreement_flag", "participant_count", "residual_risk_note", "fail_open_backends"}
 	gotResult := sortedMapKeys(cm)
 	sort.Strings(wantResult)
 	if strings.Join(gotResult, ",") != strings.Join(wantResult, ",") {
