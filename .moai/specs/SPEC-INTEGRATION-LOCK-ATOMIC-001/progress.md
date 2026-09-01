@@ -611,7 +611,7 @@ containing it, and the integration window it was waiting for has passed.
 |---|---|---|
 | "The branch is unpushed" | `git merge-base --is-ancestor 34cc70a90 origin/develop` | rc=0. The merge commit is `34cc70a90` — "Merge WT-integration-lock-atomic into develop (card t336)" |
 | "no CI has judged any of its commits" | `gh run list --branch develop`, head `09bf452c0` (has `34cc70a90` as an ancestor) | `CI` success · `CodeQL` success · `lsel-leak-guard` success |
-| "the lead integrates the card under a later integration window" | that window has passed; the branch head is an ancestor of `origin/develop` (`git rev-list --count --left-right origin/develop...HEAD` → `423  0`) | integration confirmed |
+| "the lead integrates the card under a later integration window" | that window has passed; `git merge-base --is-ancestor <branch head> origin/develop` <!-- moving-ref-ok: the moving ref IS the subject — the claim is that this card's work reached mainline, which pinning to a SHA would weaken rather than strengthen (the ancestry only becomes more true as develop advances). The ahead/behind COUNT that a `rev-list` form would print is deliberately omitted: it expires on every develop advance and was already stale by the time this section was committed. --> | rc=0 — integration confirmed |
 
 `Graph Freshness` reports `failure` on that head. It is NOT attributed to this card: the immediately
 preceding head `4ab96b9f7` carries the same failure, so it predates the landing and is recorded as a
