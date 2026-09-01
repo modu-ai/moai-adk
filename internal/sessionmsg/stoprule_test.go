@@ -88,7 +88,12 @@ func TestPollerStopRule(t *testing.T) {
 		t.Fatalf("register sender: %v", err)
 	}
 
-	const total = 100
+	// total sits under config.DefaultSessionMsgMaxPending (64): the
+	// reproduction pre-sends every non-held-back message into an unpolling
+	// mailbox, and the depth ceiling (card t253) rejects a mailbox filled
+	// past that. The reproduction premise needs drained messages plus the
+	// held-back three, not any particular total.
+	const total = 60
 	const heldBack = 3
 
 	// The 97 messages the CI race straddled: fully sent and claimable BEFORE
