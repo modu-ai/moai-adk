@@ -194,16 +194,91 @@ run 에이전트는 커밋 없이 종료했고, 리드가 세 커밋으로 착�
 
 완료 보고 없이 유휴 전환 2회, 세 번째 전환은 세션 사용량 한도로 종결. 위 §E.2 의 모든 판정은 에이전트의 디스크 산출물을 리드가 독립 재측정해 채택한 것으로, "에이전트가 했다고 함" 수준의 인용은 없다.
 
+### 축 A 구현 — 11번째 어휘 클래스 + 능력 결속표 (2026-09-01, run 재위임 에이전트: manager-develop)
+
+**위 표의 "미실행 (축 A 동결)" 5행은 이 절로 대체된다** — 기존 행은 수정하지 않았다(축 B 세션의 기록 보존), 판독 시 이 절이 우선이다.
+
+귀속: HEAD `91f80cb6f` (워크트리 동일, 착지 시점 `2c18091d1` 이후 리드가 커밋 착지한 상태), 축 A 편집은 **미커밋** — 착지는 리드 소관. 증거 전문: `axis-a-verdicts.log`
+
+#### 어휘 보충 — `agents-codex.yaml` (편집 +12)
+
+- 매핑 행 `AskUserQuestion: question-channel` + `classes:` 처분 행(`documented-drop`)을 **연속 편집으로 함께** 반영했다 — 로더의 매핑↔처분 일관성 강제(`internal/template/agentemit/manifest.go:121-124`, 직접 판독으로 확인)를 통과하는 형태이며, golden 테스트가 그것을 증명한다.
+- rationale 이 클래스가 덮는 것을 서술한다: Claude 질문 채널(AskUserQuestion 및 미래 채널 변형 토큰), codex-cli 0.150.1 관측(도구 부재 명시 후 산문 질문 대체, 자체 `request_user_input` 은 Default 모드에서 불가 — approval-never 모드), per-agent TOML carrier 부재, 결속표가 지시하는 대체 행동(blocker 보고 반환).
+- **방출 불변 확인**: `AskUserQuestion` 은 어떤 에이전트의 `tools:` CSV 에도 없다(사전 재측정 — 본문 산문 3곳뿐: `plan-auditor.md:149`, `super-advisor.md:68`, `sync-auditor.md:141`; 프론트매터 3줄 전수 판독). `make build` 의 첫 단계 agents-emit-check(`TestGoldenCommittedArtifactsMatchEmission`, **1매치**) 통과 = 커밋된 `.codex` TOML 이 방출과 계속 일치한다. 부수 확인: `TestNoAskUserQuestionInSubagents`(**1매치**) PASS — 매핑 추가는 본문 `AskUserQuestion(` 괄호 형태를 만들지 않는다.
+
+#### 결속표 — 행 집합의 파생 (측정 결과, 초안 4행과 갈림)
+
+`AGENTS.md` 두 사본 서두(`:16-23`)에 3열 결속표를 실었다. 행 집합은 **11개 클래스 전수의 부재 판정**에서 파생했다:
+
+| 클래스 | 코덱스 판정 | 근거 |
+|---|---|---|
+| file-read / file-write / shell / moai-mcp | 보유 | 매니페스트 측정 기재(codex-cli 0.147.0: built-in read, workspace-write 위임 확인, built-in exec, `mcp_servers` 테이블 등록) + probe-b 의 셸 실행 축자 |
+| web | 보유 | 매니페스트 web rationale — "web access is a global Codex feature/config" (전역 존재, per-agent 부여만 불가) |
+| skill-loader | 보유 | probe-a/a2 로그: codex 자체 skills 시스템 가동 관측("model-visible skills list", skills context budget 경고) + `.agents/skills` 정규화 착지 |
+| subagent-spawn | 보유 | probe-a2: collab spawn 도구 발화 축자(`error=collab spawn failed: no thread with id`) + 매니페스트 "Codex delegation exists (internal collaboration* tools)" |
+| cross-session-messaging | 보유(동등물) | 매니페스트 — agent-TOML carrier 는 없으나 moai MCP 브로커(`session_msg_*`)가 server-level grant 로 동등 기능 제공 |
+| task-list | **부재** | 매니페스트 `documented_drops: task-tool-family` — "no Codex equivalent" |
+| design-sync | **부재** | 매니페스트 design-sync rationale — "no Codex equivalent" |
+| question-channel | **부재** | probe-a ("I used no tool: `AskUserQuestion` is not available in this session") + probe-a2 (`request_user_input is unavailable in Default mode`) |
+
+**최종 부재 집합 = {question-channel, task-list, design-sync} — 3행.** 초안 4행(question-channel, subagent-spawn, skill-loader, task-list)과 두 곳에서 갈렸다: subagent-spawn·skill-loader 는 측정상 보유라 행에서 빠지고, design-sync 는 부재라 행에 새로 들어왔다. 파생 기준이 초안을 이긴다.
+
+#### AC 판정 매트릭스 (축 A 5건)
+
+| AC | 판정 | 명령 / 관측 | 증거 |
+|---|---|---|---|
+| AC-CSN-001 | **PASS** | 관측 자체는 리드 M1(`m1-probe-{a,a2,b}.log`) — AC 본문이 지명하는 `codex-behavior.log` 가 디렉터리에 없어, **기존 관측의 축자 발췌 + 판정 문장 한 줄로 편찬**했다(재실행 없음, 관측 귀속은 리드). 판정 문장: 관측은 추론("조용히 대체한다")과 일치 — 도구 부재를 명시하면서 산문 질문으로 대체, blocker 보고 없음 | `codex-behavior.log` (신설 — 편집 표면 밖 증거 편찬) |
+| AC-CSN-002 | **PASS** | 표 이름 집합 {question-channel, task-list, design-sync} ⊆ `tool_classes` 값 집합(11개) — `comm -23` 차집합 **공집합** | `axis-a-verdicts.log` |
+| AC-CSN-003 | **PASS** | 3행 × (a)(b)(c) 전 칸 비어있지 않음 — 사람 판독 | `AGENTS.md:19-23` |
+| AC-CSN-004 | **PASS** | 질문 채널 행 (c) 칸 축자: "Return a blocker report naming the missing input instead of asking in prose" — blocker 반환 지시 O, 직접 질문 지시 X | `AGENTS.md:21` |
+| AC-CSN-005 | **PASS** | `cmp AGENTS.md internal/template/templates/AGENTS.md` 종료 0 + `TestCodexContractByteCeiling` PASS | `axis-a-verdicts.log` |
+| AC-CSN-012 | **PASS** | 5파일 사전/사후 쌍: 0/0/2/0/0 → 0/0/2/0/0 (yaml 사전값은 **구현 착수 시점** 측정 — 0). `skill-authoring.md` 잔여 2건의 위치가 AC 가 열거한 `:45`·`:89` 프론트매터 예시 날짜와 정확히 일치. 양성 대조(같은 명령, spec.md)는 **0 이 아님** — 수치는 자기참조라 여기에 적지 않고 판정 시점 재측정으로 갈음 | `axis-a-verdicts.log` |
+
+AC-CSN-013 은 축 B 세션의 판정이 유지된다 — 이 축은 `spec.md` 를 건드리지 않았다(§A.7 문면 무변경).
+
+#### 예산 차분 (plan §C 의무)
+
+| 측정 | 사전 | 사후 |
+|---|---|---|
+| always-loaded tokens | 75,799 (여유 201) | **75,935 (여유 65)** |
+| `AGENTS.md` 바이트 ×2 | 14,229 (천장 여유 10,347) | **14,774 (천장 여유 9,802)** |
+
+결속표 실비용 **+545 B/사본 = +136 tokens**. 첫 판(720 B, 여유 21)은 §B.D7 의 설계 의도 — 부재 형태가 여유를 예산 회피가 아니라 설계로 남긴다 — 에 맞춰 **문구만 압축**했다: (b) 칸을 도구 토큰 자체로 줄이고 (c) 칸의 행동 규칙은 온전히 유지했다. 기준(3행)은 불변이다.
+
+#### 검증 배터리 (셀렉터 매치 수 명기 — AC-CSN-009 [HARD] 규율 상속)
+
+| 명령 | 결과 |
+|---|---|
+| `make build` | exit **0** (첫 단계가 agents-emit-check — 방출 드리프트 0) |
+| `go vet ./internal/config/ ./internal/template/` | exit **0** |
+| `go test -count=1 ./internal/config/` | **ok 2.150s** (전 패키지) |
+| `go test ./internal/template/agentemit/ -run TestGoldenCommittedArtifactsMatchEmission` | **1매치** PASS |
+| `go test ./internal/template/ -run TestRuleTemplateMirrorDrift` | **1매치**(서브테스트 8건 전원 포함) PASS |
+| `go test ./internal/template/ -run TestSkillTreeHasNoClaudeSkillDirToken` | **1매치** PASS |
+
+`go test ./...` 는 돌리지 않았다 — 병렬 레인 사고 전례에 따른 기존 규율. 전 패키지 판정은 CI 몫이다.
+
+#### 변경 집합 (미커밋 — 리드 착지 대기)
+
+| 파일 | 델타 |
+|---|---|
+| `AGENTS.md` | +9 |
+| `internal/template/templates/AGENTS.md` | +9 |
+| `internal/template/agentemit/agents-codex.yaml` | +12 |
+| (증거 편찬, 편집 표면 아님) `.moai/reports/t196/codex-behavior.log` · `axis-a-verdicts.log` | 신설 |
+
+PRESERVE 유지 확인: `internal/cli/codex_launcher.go`, `internal/template/renderer.go`, 스킬 트리, 규칙 트리 — `git status --porcelain` 에 3파일만 상승(빌드 후 `catalog.yaml` 무차분).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
 run_complete_at: "2026-09-01"
 run_commit_sha: "25422be77 (축 B 본체, 리드 착지) · 816acd104 (미러 복원) — base 2c18091d1"
-run_status: partial-axis-b-only
-axis_a_status: unfrozen-lead-verdict-2026-09-01   # 어휘 축 판정(11번째 클래스 신설) + 예산 축 판정(1번 채택)으로 동결 해제됨; 구현은 manager-spec 재위임(REQ-CSN-003 문면 정정) 후 예정
-ac_pass_count: 8      # AC-CSN-006..013
+run_status: both-axes-implemented
+axis_a_status: implemented   # 11번째 클래스(question-channel) + 결속표 3행 — 축 A 편집은 미커밋(리드 착지 대기); 구현 run 재위임 에이전트 manager-develop, 근거 progress.md §E.2 축 A 절
+ac_pass_count: 13     # AC-CSN-001..013 (축 A 5건은 §E.2 축 A 절에서 판정)
 ac_fail_count: 0
-ac_not_run_count: 5   # AC-CSN-001..005 (축 A — 동결 해제됐으나 미실행, manager-spec 문면 정정 선행)
+ac_not_run_count: 0   # — (축 A 5건 판정 완료로 해소)
 preserve_list_post_run_count: 1   # 로컬 .claude/rules/.../skill-authoring.md:226,:301 — 범위 밖, 보고만
 l44_pre_commit_fetch: n/a          # 커밋은 리드가 착지 — 커밋 전 HEAD 재판독 수행
 l44_post_push_fetch: n/a           # 푸시 없음 (develop 통합은 창 소관)
@@ -213,7 +288,7 @@ cross_platform_build:
   darwin: pass        # make build exit 0 (host darwin/arm64)
   windows: not-observed
   linux: not-observed
-total_run_phase_files: 14   # 편집 13 (템플릿 스킬 9 + 템플릿 규칙 2 + 로컬 미러 1 + catalog.yaml 1) + 신규 가드 테스트 1
+total_run_phase_files: 17   # 축 B 14 (템플릿 스킬 9 + 템플릿 규칙 2 + 로컬 미러 1 + catalog.yaml 1 + 신규 가드 테스트 1) + 축 A 3 (AGENTS.md ×2 + agents-codex.yaml)
 m1_to_mN_commit_strategy: "리드가 run 종료 후 3커밋 착지 (25422be77 / bb14186d1 / 816acd104)"
 evidence_dir: .moai/reports/t196/
 ```
