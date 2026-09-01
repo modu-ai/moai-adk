@@ -77,7 +77,12 @@ func WriteEdgesMeta(metaPath, projectRoot string, sourceFingerprints map[string]
 	return writeMetaFile(metaPath, meta)
 }
 
-// writeMetaFile writes the meta sidecar atomically (temp + rename).
+// writeMetaFile writes the meta sidecar atomically (temp + rename). The temp
+// file carries a PER-REFRESH unique suffix (os.CreateTemp's random replace),
+// not a fixed name and not a pid: two racing refreshes can be SAME-PROCESS —
+// the SessionStart deferred goroutine and a query-time refresh inside one
+// binary — so neither a shared ".tmp" path nor the pid can separate them
+// (D20, SPEC-GRAPH-REPORT-001 M3).
 func writeMetaFile(metaPath string, meta edgesMeta) error {
 	data, err := json.MarshalIndent(meta, "", "  ")
 	if err != nil {
@@ -87,9 +92,25 @@ func writeMetaFile(metaPath string, meta edgesMeta) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("graph: mkdir %s: %w", dir, err)
 	}
-	tmp := metaPath + ".tmp"
-	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+	f, err := os.CreateTemp(dir, filepath.Base(metaPath)+".*.tmp")
+	if err != nil {
+		return fmt.Errorf("graph: create edges meta temp: %w", err)
+	}
+	tmp := f.Name()
+	if _, err := f.Write(data); err != nil {
+		_ = f.Close()
+		_ = os.Remove(tmp)
 		return fmt.Errorf("graph: write edges meta temp: %w", err)
+	}
+	if err := f.Close(); err != nil {
+		_ = os.Remove(tmp)
+		return fmt.Errorf("graph: close edges meta temp: %w", err)
+	}
+	// CreateTemp creates 0600; the published sidecar keeps the 0644 the
+	// fixed-name path wrote.
+	if err := os.Chmod(tmp, 0o644); err != nil {
+		_ = os.Remove(tmp)
+		return fmt.Errorf("graph: chmod edges meta temp: %w", err)
 	}
 	if err := os.Rename(tmp, metaPath); err != nil {
 		_ = os.Remove(tmp)

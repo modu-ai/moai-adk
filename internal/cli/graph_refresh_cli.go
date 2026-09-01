@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -50,15 +51,33 @@ func edgesRefreshNeeded(projectRoot, edgesFile string, mxIndexChangedFiles int) 
 // edge extractor's input — and its inventory IS the described-source state
 // the code-derived layers consume), then rebuild (doc + code layers) and
 // re-stamp. Mechanical only — no LLM, no network (REQ-GF-007).
+//
+// REQ-GR-008: the shrink guard evaluates BETWEEN the build and the write —
+// pre-write, so a refusal performs ZERO writes and the prior artifact (and
+// its meta sidecar) stays byte-identical by construction. A typed
+// *graph.ShrinkRefusalError carries the report; the callers apply the
+// fail-safe shape (REQ-GR-009): answer from the existing artifact (query
+// path) or skip the refresh (deferred path). An unreadable prior artifact
+// (absent or corrupt) skips the guard — there is nothing to protect, and the
+// rebuild self-heals the corruption.
 func refreshEdgesArtifact(projectRoot, edgesFile string) (edgesRefreshStats, error) {
 	elapsed := edgesRefreshClock()
 
 	if _, err := mx.RefreshIndex(filepath.Join(projectRoot, ".moai", "state"), projectRoot, nil); err != nil {
 		return edgesRefreshStats{}, fmt.Errorf("refresh mx-index: %w", err)
 	}
-	edges, _, err := graph.BuildWithCodeLayers(projectRoot)
+	edges, scanned, _, err := graph.BuildWithCodeLayers(projectRoot)
 	if err != nil {
 		return edgesRefreshStats{}, fmt.Errorf("rebuild edges: %w", err)
+	}
+	if existing, lErr := graph.LoadJSONL(edgesFile); lErr == nil {
+		scannedSet := make(map[string]bool, len(scanned))
+		for _, f := range scanned {
+			scannedSet[f] = true
+		}
+		if report := graph.DetectUnexplainedShrink(existing, edges, scannedSet, projectRoot); !report.Empty() {
+			return edgesRefreshStats{}, &graph.ShrinkRefusalError{Report: report}
+		}
 	}
 	if err := graph.WriteJSONL(edgesFile, edges); err != nil {
 		return edgesRefreshStats{}, fmt.Errorf("write edges: %w", err)
@@ -68,6 +87,27 @@ func refreshEdgesArtifact(projectRoot, edgesFile string) (edgesRefreshStats, err
 		return edgesRefreshStats{}, fmt.Errorf("write edges meta: %w", err)
 	}
 	return edgesRefreshStats{duration: elapsed()}, nil
+}
+
+// deferredEdgesRefresh is the cli-injected DeferredEdgesRefresh seam target
+// (SPEC-GRAPH-REPORT-001 REQ-GR-010): a thin wrapper around
+// refreshEdgesArtifact — the SINGLE rebuild path, wrapped never forked — that
+// refreshes the DEFAULT edges artifact of projectDir and applies the same
+// warning-only budget-overrun signal as the query-time refresh (REQ-GR-012).
+// Fail-open by contract: the hook layer logs the returned error and never
+// blocks session start (REQ-GR-011); the prior artifact stays intact.
+func deferredEdgesRefresh(projectDir string) error {
+	edgesFile := filepath.Join(projectDir, ".moai", "project", "graph", "edges.jsonl")
+	stats, err := refreshEdgesArtifact(projectDir, edgesFile)
+	if err != nil {
+		return err
+	}
+	if over := graphRefreshOverrun(projectDir, stats.duration); over > 0 {
+		_, _ = fmt.Fprintf(os.Stderr,
+			"deferred graph refresh cost %s exceeded the %dms update budget by %.0fms (warning only)\n",
+			stats.duration.Round(time.Millisecond), graphRefreshBudgetMS(projectDir), over.Seconds()*1000)
+	}
+	return nil
 }
 
 // graphRefreshBudget resolves the query-time update-cost budget (milliseconds)
