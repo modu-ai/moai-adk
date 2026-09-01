@@ -108,7 +108,7 @@ collisions, source worktrees untouched.
 
 ```yaml
 sync_complete_at: 2026-09-02
-sync_commit_sha: "pending-backfill-t223"
+sync_commit_sha: "e835f63a5"
 sync_status: audit-ready
 b12_self_test_a: 0 pre-emission grep hits for SPEC-AGENT-MEMORY-DRAIN-001 in CHANGELOG.md (grep -c, exit 1)
 b12_self_test_b: 9 distinct AC ids in acceptance.md (AC-AM-001..009) — CHANGELOG entry references all 9 (7 blocker + 1 major + 1 regression-guard)
