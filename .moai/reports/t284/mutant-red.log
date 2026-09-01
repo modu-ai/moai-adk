@@ -1,0 +1,29 @@
+--- FAIL: TestConverge_BelowTwo_NoDivergence_JSONNull_AC_APC_003 (0.00s)
+    --- FAIL: TestConverge_BelowTwo_NoDivergence_JSONNull_AC_APC_003/claude_only_(spec_§A.2_case_3) (0.00s)
+        mcp_convergence_participant_test.go:74: disagreement_flag = false (bool), want JSON null — a sub-2 no-divergence result is undetermined, not false (bytes: {"per_backend_verdicts":[{"backend":"claude","gate":"required","verdict":"pass","summary":"claude:pass","findings":[],"next_steps":[]}],"overall_verdict":"pass","disagreement_flag":false,"participant_count":1,"residual_risk_note":"","fail_open_backends":[]})
+        mcp_convergence_participant_test.go:77: raw bytes contain "disagreement_flag":false; forbidden below 2 participants (bytes: {"per_backend_verdicts":[{"backend":"claude","gate":"required","verdict":"pass","summary":"claude:pass","findings":[],"next_steps":[]}],"overall_verdict":"pass","disagreement_flag":false,"participant_count":1,"residual_risk_note":"","fail_open_backends":[]})
+    --- FAIL: TestConverge_BelowTwo_NoDivergence_JSONNull_AC_APC_003/claude_pass_+_two_inconclusive_(spec_§A.2_case_1) (0.00s)
+        mcp_convergence_participant_test.go:74: disagreement_flag = false (bool), want JSON null — a sub-2 no-divergence result is undetermined, not false (bytes: {"per_backend_verdicts":[{"backend":"claude","gate":"required","verdict":"pass","summary":"claude:pass","findings":[],"next_steps":[]},{"backend":"codex","gate":"advisory","verdict":"inconclusive","summary":"codex:inconclusive","findings":[],"next_steps":[]},{"backend":"glm","gate":"advisory","verdict":"inconclusive","summary":"glm:inconclusive","findings":[],"next_steps":[]}],"overall_verdict":"pass","disagreement_flag":false,"participant_count":1,"residual_risk_note":"","fail_open_backends":["codex","glm"]})
+        mcp_convergence_participant_test.go:77: raw bytes contain "disagreement_flag":false; forbidden below 2 participants (bytes: {"per_backend_verdicts":[{"backend":"claude","gate":"required","verdict":"pass","summary":"claude:pass","findings":[],"next_steps":[]},{"backend":"codex","gate":"advisory","verdict":"inconclusive","summary":"codex:inconclusive","findings":[],"next_steps":[]},{"backend":"glm","gate":"advisory","verdict":"inconclusive","summary":"glm:inconclusive","findings":[],"next_steps":[]}],"overall_verdict":"pass","disagreement_flag":false,"participant_count":1,"residual_risk_note":"","fail_open_backends":["codex","glm"]})
+    --- FAIL: TestConverge_BelowTwo_NoDivergence_JSONNull_AC_APC_003/empty_verdict_slice (0.00s)
+        mcp_convergence_participant_test.go:74: disagreement_flag = false (bool), want JSON null — a sub-2 no-divergence result is undetermined, not false (bytes: {"per_backend_verdicts":[],"overall_verdict":"pass","disagreement_flag":false,"participant_count":0,"residual_risk_note":"","fail_open_backends":[]})
+        mcp_convergence_participant_test.go:77: raw bytes contain "disagreement_flag":false; forbidden below 2 participants (bytes: {"per_backend_verdicts":[],"overall_verdict":"pass","disagreement_flag":false,"participant_count":0,"residual_risk_note":"","fail_open_backends":[]})
+--- FAIL: TestConverge_ParticipantCount_Table_AC_APC_001 (0.00s)
+    --- FAIL: TestConverge_ParticipantCount_Table_AC_APC_001/empty_slice:_null_flag_+_vacuous_pass_(acceptance_§B) (0.00s)
+        mcp_convergence_participant_test.go:174: disagreement_flag non-nil (points at false); want nil
+--- FAIL: TestConverge_BelowTwo_NoDivergence_FlagNilNotFalse_AC_APC_002 (0.00s)
+    --- FAIL: TestConverge_BelowTwo_NoDivergence_FlagNilNotFalse_AC_APC_002/claude_only_(spec_§A.2_case_3) (0.00s)
+        mcp_convergence_participant_test.go:216: disagreement_flag non-nil (points at false); want nil — below 2 participants false is a claim one participant cannot ground (REQ-APC-003)
+    --- FAIL: TestConverge_BelowTwo_NoDivergence_FlagNilNotFalse_AC_APC_002/claude_pass_+_two_inconclusive_(spec_§A.2_case_1) (0.00s)
+        mcp_convergence_participant_test.go:216: disagreement_flag non-nil (points at false); want nil — below 2 participants false is a claim one participant cannot ground (REQ-APC-003)
+    --- FAIL: TestConverge_BelowTwo_NoDivergence_FlagNilNotFalse_AC_APC_002/empty_verdict_slice (0.00s)
+        mcp_convergence_participant_test.go:216: disagreement_flag non-nil (points at false); want nil — below 2 participants false is a claim one participant cannot ground (REQ-APC-003)
+    --- FAIL: TestConverge_BelowTwo_NoDivergence_FlagNilNotFalse_AC_APC_002/all_entries_inconclusive_(acceptance_§B) (0.00s)
+        mcp_convergence_participant_test.go:216: disagreement_flag non-nil (points at false); want nil — below 2 participants false is a claim one participant cannot ground (REQ-APC-003)
+    --- FAIL: TestConverge_BelowTwo_NoDivergence_FlagNilNotFalse_AC_APC_002/RequiredFailWithInconclusive_(measured_count_1_—_the_one_existing_case_whose_asserted_false_becomes_null) (0.00s)
+        mcp_convergence_participant_test.go:216: disagreement_flag non-nil (points at false); want nil — below 2 participants false is a claim one participant cannot ground (REQ-APC-003)
+--- FAIL: TestConverge_SingleParticipantDivergence_CarveOut_AC_APC_008 (0.00s)
+    mcp_convergence_participant_test.go:423: disagreement_flag = non-nil false; want non-nil true — the carve-out keeps a directly-observed divergence, the one sub-2 case where null is forbidden
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.065s
+FAIL
