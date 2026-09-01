@@ -21,7 +21,7 @@ if [ -f "$MOAI_HOOK_STDERR_LOG" ]; then
     fi
 fi
 
-# SPEC-STOPCHAIN-TRIM-001 REQ-006 (A11 / AC-006b): at MOAI_AUTONOMY_TIER=
+# Stop-chain trim guard (tier gating): at MOAI_AUTONOMY_TIER=
 # fully-autonomous the subagent-lifecycle (SubagentStop) hooks are DORMANT
 # (observe-only). This wrapper dispatches by action suffix; only actions ending
 # in `-completion` are SubagentStop lifecycle events (develop-completion,
