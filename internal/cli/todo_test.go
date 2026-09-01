@@ -32,8 +32,18 @@ import (
 // runTodo executes the todo cobra command against args and returns
 // (stdout, stderr, error). Exit-code semantics: a non-nil error is the
 // command's failure (cobra maps it to exit 1).
+//
+// t422 fail-loud guard: without todoFixture(t) the queue root resolves
+// through the live checkout — CLAUDE_PROJECT_DIR falls back to the process
+// cwd, which is this repository — and the command would read or mutate the
+// operator's real backlog (the t394 incident: seven fixture cards landed in
+// the live queue through exactly this). The guard fails the test before
+// Execute touches any file.
 func runTodo(t *testing.T, args ...string) (string, string, error) {
 	t.Helper()
+	if reason := liveTodoQueueRootReason(); reason != "" {
+		t.Fatalf("todo queue isolation guard: %s", reason)
+	}
 	cmd := newTodoCmd()
 	var out, errBuf bytes.Buffer
 	cmd.SetOut(&out)
@@ -490,8 +500,10 @@ func todoPromptGuard(source string) (reason string, bad bool) {
 // The subcommand `moai todo list` stays valid — this widens the surface
 // rather than moving it.
 func TestTodoBareInvocationLists(t *testing.T) {
-	dir := t.TempDir()
-	t.Setenv("CLAUDE_PROJECT_DIR", dir)
+	// t422: todoFixture, not a bare CLAUDE_PROJECT_DIR — without the
+	// committed git repo the resolution falls through to the home-based
+	// queue, and this test's seed add would write there.
+	todoFixture(t)
 
 	if _, _, err := runTodo(t, "add", "first card"); err != nil {
 		t.Fatalf("seed add: %v", err)
@@ -520,8 +532,9 @@ func TestTodoBareInvocationLists(t *testing.T) {
 // TestTodoUnknownSubcommandStillErrors guards the widening above: making
 // the bare form do work must not turn a mistyped verb into a silent list.
 func TestTodoUnknownSubcommandStillErrors(t *testing.T) {
-	dir := t.TempDir()
-	t.Setenv("CLAUDE_PROJECT_DIR", dir)
+	// t422: todoFixture — same fallthrough-to-home shape as
+	// TestTodoSingleWordNaturalLanguageStillErrors.
+	todoFixture(t)
 
 	if _, _, err := runTodo(t, "lsit"); err == nil {
 		t.Error("mistyped subcommand was accepted, want an error")
@@ -566,8 +579,11 @@ func TestTodoMultiWordFallthroughAdds(t *testing.T) {
 // card, or a mistyped verb) stays an error, so a mistyped verb can never
 // silently become a card. One-word cards need the explicit add verb.
 func TestTodoSingleWordNaturalLanguageStillErrors(t *testing.T) {
-	dir := t.TempDir()
-	t.Setenv("CLAUDE_PROJECT_DIR", dir)
+	// t422: todoFixture, not a bare CLAUDE_PROJECT_DIR — without the
+	// committed git repo the resolution falls through to the home-based
+	// queue, which is exactly the unisolated shape the fail-loud guard
+	// rejects.
+	todoFixture(t)
 
 	if _, _, err := runTodo(t, "버그"); err == nil {
 		t.Error("single-word natural language was accepted, want an error")
