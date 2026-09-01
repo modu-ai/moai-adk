@@ -379,11 +379,11 @@ sync_complete_at: 2026-09-01
 tier: M
 requirements: 15
 acceptance_criteria: 15
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 9c0679098
 sync_commit_sha_note: |
-    A commit cannot cite its own hash. Two-step backfill per the dispatch and
-    the D3 SHA-placeholder exemption: this sync commit lands first with the
-    placeholder, and the real SHA is backfilled into this field in the
+    The sync commit could not cite its own hash, so it landed with the
+    `pending-backfill-sync` placeholder (D3 SHA-placeholder exemption) and this
+    field was backfilled to 9c0679098 — the sync commit itself — in the
     immediately following commit on this branch. No push, no PR — develop
     integration is the lead's window.
 branch: WT-version-stamp-predicate
