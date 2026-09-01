@@ -61,7 +61,7 @@ results.
 | Parameter | Type | Required | Notes |
 |---|---|---|---|
 | `claude_verdict` | object | YES | The in-session Claude review verdict. Object shape: `{verdict, summary, findings, next_steps}` — the same `review-output.schema.json` the single-backend tools return. |
-| `target` | string | no | What the secondary backends review (`uncommittedChanges`, `baseBranch`). Passed through unchanged. |
+| `target` | string | no | What the secondary backends review (`uncommittedChanges`, `baseBranch`). The string reaches both backends unchanged; for codex, `baseBranch`'s branch name is then resolved server-side from the reviewed tree (remote default head, then `main`) — it cannot be supplied here. |
 | `focus` | string | no | Optional focus area forwarded to the secondary backends (e.g. `concurrency`, `auth`). |
 | `gates` | object | no | Per-auditor gate map (`claude`/`codex`/`glm` ∈ `off`/`advisory`/`required`). When omitted, distributed defaults apply: claude required, codex required, glm advisory. |
 | `session_id` | string | no | When set, the result is persisted to `.moai/state/audit-multi/<session>.json` so the multi-review-gate Stop hook reads the most recent result rather than re-invoking convergence. |

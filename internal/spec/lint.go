@@ -136,6 +136,15 @@ func NewLinter(opts LinterOptions) *Linter {
 		&StatusCaseNormalizationRule{},
 		&StatusGitConsistencyRule{},
 		&OwnershipTransitionRule{},
+		// StatusTransitionValidityRule — SPEC-STATUS-TRANSITION-VALIDITY-001
+		// (card t376). Sits beside OwnershipTransitionRule and answers a
+		// different question: is the (prev, curr) pair itself a legal edge,
+		// regardless of who signed the commit. Emits two codes —
+		// StatusTransitionInvalid and StatusTokenUnrecognized — neither of
+		// which belongs in eraDemotableCodes: that map is consulted only for
+		// SeverityError findings, so an entry there would be inert while
+		// reading as intent.
+		&StatusTransitionValidityRule{},
 		// ArtifactStatusFieldForbiddenRule — SPEC-ARTIFACT-STATELESS-001 M2,
 		// REQ-AST-001-004. Per-SPEC: it reads the SPEC's own sibling artifacts
 		// via filepath.Dir(doc.Path). Severity is `error` and the code is
@@ -236,8 +245,14 @@ func (l *Linter) Lint(paths []string) (*Report, error) {
 			ruleFindings = applylintSkip(ruleFindings, doc.LintSkip)
 			docFindings = append(docFindings, ruleFindings...)
 		}
-		demote := isGrandfatheredSpecDir(filepath.Dir(doc.Path)) || terminalStatusEnum[doc.Frontmatter.Status]
-		findings = append(findings, applyEraDemotion(docFindings, demote)...)
+		// The two disjuncts are kept separate so the demotion annotation can
+		// name the one that fired (REQ-STV-008). The decision itself — demote
+		// when EITHER holds — is unchanged.
+		cause := demotionCause{
+			GrandfatheredEra: isGrandfatheredSpecDir(filepath.Dir(doc.Path)),
+			TerminalStatus:   terminalStatusEnum[doc.Frontmatter.Status],
+		}
+		findings = append(findings, applyEraDemotion(docFindings, cause)...)
 	}
 
 	for _, rule := range l.rules {
@@ -286,6 +301,35 @@ func isGrandfatheredSpecDir(specDir string) bool {
 	return era.EraFinal()
 }
 
+// demotionCause records WHY a SPEC's findings are being demoted. The two
+// reasons are independent and either alone is sufficient, so the annotation
+// appended to a demoted finding must be able to name the one that actually
+// fired: a document demoted solely because its status is terminal is not
+// grandfathered, and saying so misstates the finding's own cause
+// (REQ-STV-008, SPEC-STATUS-TRANSITION-VALIDITY-001).
+type demotionCause struct {
+	// GrandfatheredEra: the SPEC directory classifies as V2.x / V3R2-R4 / V3R5.
+	GrandfatheredEra bool
+	// TerminalStatus: the frontmatter status is in terminalStatusEnum.
+	TerminalStatus bool
+}
+
+// demoted reports whether any cause fired.
+func (c demotionCause) demoted() bool { return c.GrandfatheredEra || c.TerminalStatus }
+
+// String names the cause(s) that fired, for the demotion annotation.
+func (c demotionCause) String() string {
+	switch {
+	case c.GrandfatheredEra && c.TerminalStatus:
+		return "grandfathered era + terminal lifecycle status"
+	case c.TerminalStatus:
+		return "terminal lifecycle status"
+	case c.GrandfatheredEra:
+		return "grandfathered era"
+	}
+	return ""
+}
+
 // applyEraDemotion downgrades structural ERROR findings on protected SPECs
 // to advisory warnings, and marks the SPEC's remaining warnings advisory so
 // --strict does not escalate them. Protected = grandfather-era (V2.x /
@@ -293,17 +337,22 @@ func isGrandfatheredSpecDir(specDir string) bool {
 // history — retro-enforcing later structural rules on closed SPECs is the
 // same false-positive class the grandfather clause exists for). Active
 // modern-era SPECs pass through untouched — full enforcement.
-func applyEraDemotion(findings []Finding, grandfathered bool) []Finding {
-	if !grandfathered {
+//
+// The appended annotation names the cause that fired (REQ-STV-008). Only the
+// message changed; the demotion DECISION and its blanket Advisory marking are
+// unchanged (spec.md §C non-goal).
+func applyEraDemotion(findings []Finding, cause demotionCause) []Finding {
+	if !cause.demoted() {
 		return findings
 	}
+	annotation := " [" + cause.String() + " — downgraded to warning]"
 	for i := range findings {
 		f := &findings[i]
 		switch {
 		case f.Severity == SeverityError && eraDemotableCodes[f.Code]:
 			f.Severity = SeverityWarning
 			f.Advisory = true
-			f.Message += " [grandfathered era — downgraded to warning]"
+			f.Message += annotation
 		case f.Severity == SeverityWarning:
 			f.Advisory = true
 		}

@@ -384,7 +384,7 @@ func (r *OwnershipTransitionRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 		}
 	}
 
-	rec, err := getOwnershipTransitionRunner(doc.Path, fm.ID)
+	rec, err := cachedOwnershipTransition(doc.Path, fm.ID)
 	if err != nil {
 		// REQ-AAT-010: Info severity, never blocks
 		return []Finding{
