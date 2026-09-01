@@ -493,7 +493,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 
 	add("graph_find_code", mcp.NewTool(
 		"graph_find_code",
-		mcp.WithDescription("Search the code-derived edge layer for a symbol: callee sites (where it is called) and caller observations, each with its resolution grade. Answer names the tree root + commit."),
+		mcp.WithDescription("Search the code-derived edge layer for a symbol: callee sites (where it is called) and caller observations, each with its resolution grade and per-edge resolution confidence (1.0 extracted / 0.95 intra-package / 0.85 inferred; absent on pre-upgrade artifacts). Answer names the tree root + commit."),
 		mcp.WithString("query", mcp.Required(), mcp.Description("Symbol name to search for (e.g. 'CheckFreshness').")),
 		projectRootOption(),
 		mcp.WithReadOnlyHintAnnotation(true),
@@ -501,7 +501,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 
 	add("graph_trace_calls", mcp.NewTool(
 		"graph_trace_calls",
-		mcp.WithDescription("Traverse code-call edges from a symbol: callers (who reaches it) and callees (what it calls), up to depth hops over the code-derived layer. Answer names the tree root + commit."),
+		mcp.WithDescription("Traverse code-call edges from a symbol: callers (who reaches it) and callees (what it calls), up to depth hops over the code-derived layer, each edge carrying its resolution confidence (absent on pre-upgrade artifacts). Answer names the tree root + commit."),
 		mcp.WithString("symbol", mcp.Required(), mcp.Description("Symbol name to trace from (e.g. 'RefreshIndex').")),
 		mcp.WithInteger("depth", mcp.Description("Traversal depth in hops (default 1, capped at 8).")),
 		projectRootOption(),
