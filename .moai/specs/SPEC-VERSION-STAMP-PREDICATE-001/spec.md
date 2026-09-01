@@ -2,7 +2,7 @@
 id: SPEC-VERSION-STAMP-PREDICATE-001
 title: "권위 토큰 술어와 정확-경로 등록부 — 두 방향을 닫고, 닫지 못한 것들을 열린 채로 이름 붙인다"
 version: "0.3.0"
-status: draft
+status: in-progress
 created: 2026-09-01
 updated: 2026-09-01
 author: manager-spec
