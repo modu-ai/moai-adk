@@ -343,7 +343,7 @@ envelope.
 
 ```yaml
 sync_complete_at: "2026-09-01T23:27:00+09:00"
-sync_commit_sha: "pending-backfill"
+sync_commit_sha: "973832f94"
 sync_status: complete
 changelog_entry_position: "CHANGELOG.md [Unreleased] > ### Added, first bullet (top insertion)"
 b12_self_test_a: "pre-emission grep -c 'SPEC-TODO-ARCHIVE-QUERY-001' CHANGELOG.md → 0 (halt condition not met; duplicate-entry halt not triggered)"
