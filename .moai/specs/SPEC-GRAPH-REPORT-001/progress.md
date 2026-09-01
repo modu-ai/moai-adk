@@ -165,7 +165,7 @@ Run phase complete: all four milestones (M4 `258013d0a` → M1 `31566c117` → M
 ```yaml
 sync_status: complete
 sync_complete_at: 2026-09-02
-sync_commit_sha: "pending-backfill"
+sync_commit_sha: "00a911182"
 b12_self_test_a: "grep -c 'SPEC-GRAPH-REPORT-001' CHANGELOG.md → 0 before emission (rc=1), duplicate-entry gate passed"
 b12_self_test_b: "AC count in acceptance.md = 16 (grep -oE 'AC-[A-Z0-9-]+' | sort -u | wc -l = 16); CHANGELOG entry cites no per-AC count, matches SSOT"
 b12_self_test_c: "claimed file paths verified by ls (internal/graph/, internal/cli/, internal/hook/session_start.go present)"
@@ -184,7 +184,7 @@ New-code `@MX` annotations introduced by this branch's milestone commits (measur
 - **@MX:WARN × 0 new** — no new dangerous-pattern sites; `internal/hook/session_start.go`'s existing `@MX:WARN` lines predate this SPEC.
 - **M1 (`graph_shortest_path`, `internal/graph/shortestpath.go`) carries no @MX tag** — read-only query following the existing `graph_file_api`/`graph_find_code`/`graph_trace_calls` registration pattern, which likewise carries none; no exported-symbol fan-in ≥ 3 site, so the P1 ANCHOR rule does not trigger.
 
-Sync-phase deliverables: CHANGELOG `[Unreleased]` entry (4 deliverables, MCP tool count 28 measured via `grep -c 'add("' internal/cli/mcp_server.go` at `cfe86675c` — NOT the 29 claimed in the dispatch, which was not re-counted), spec.md frontmatter `completed` transition, codemaps skipped (no `codemaps/` directory exists in this tree). §E.4 `sync_commit_sha` carries the `pending-backfill` placeholder per the D3 backfill exemption — a commit cannot know its own SHA; the orchestrator backfills in a follow-up commit.
+Sync-phase deliverables: CHANGELOG `[Unreleased]` entry (4 deliverables, MCP tool total 29 catalog-pinned — 28 `add("` literals in `internal/cli/mcp_server.go` at `cfe86675c` plus `audit_multi`, which registers via the `auditMultiToolName` constant and is invisible to a literal-`add("` grep; the RegistrationMatchesCatalog guard passes at 29), spec.md frontmatter `completed` transition, codemaps skipped (no `codemaps/` directory exists in this tree). §E.4 `sync_commit_sha` initially carried the `pending-backfill` placeholder (a commit cannot know its own SHA) and was backfilled to `00a911182` in the follow-up chore commit.
 
 ## §F Phase 4 Mode Selection
 
