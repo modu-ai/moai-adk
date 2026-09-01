@@ -1,0 +1,8 @@
+It does not catch three cases.
+Three cases remain uncaught.
+The following three cases remain.
+There are three things it still does not catch.
+Still uncaught: three.
+The list below is exhaustive.
+It fails to detect 3 kinds of site.
+여전히 잡지 못하는 것이 셋이다.

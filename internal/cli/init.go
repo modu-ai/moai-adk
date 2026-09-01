@@ -134,8 +134,15 @@ func init() {
 
 // agentWiring is the SPEC-CODEX-WIRING-001 harness selection. The D3
 // semantics (claude = today, codex = skip .mcp.json + wire Codex, both = wire
-// both sides; flag beats the wizard answer) are resolved in ONE place —
-// resolveAgentWiring — so the decision stays a one-line reversible delta.
+// both sides) are resolved in ONE place, so the decision stays a one-line
+// reversible delta.
+//
+// SPEC-INIT-HARNESS-PROMPT-001 moved that place: the selection now has TWO
+// input sources — the --agent flag and the wizard's agent_wiring answer — so
+// the resolution point is resolveAgentWiringWithWizard, not resolveAgentWiring
+// (which is now only the flag-reading primitive). The flag still wins over the
+// wizard answer; that precedence is decided there, once, upstream of both
+// consumers.
 type agentWiring string
 
 const (
@@ -144,27 +151,45 @@ const (
 	agentWiringBoth   agentWiring = "both"
 )
 
-// resolveAgentWiring resolves the --agent selection, defaulting to claude.
-// An empty or unrecognized value falls back to claude rather than erroring
-// here — invalid values are rejected earlier, fail-loud, by
-// validateInitFlags.
-func resolveAgentWiring(cmd *cobra.Command) agentWiring {
-	switch agentWiring(getStringFlag(cmd, "agent")) {
+// normalizeAgentWiring maps a raw harness value onto the closed set, defaulting
+// to claude. It is the SINGLE definition of that mapping: resolveAgentWiring
+// (the flag-reading primitive) and resolveAgentWiringWithWizard (the
+// SPEC-INIT-HARNESS-PROMPT-001 resolution point, which also reads the wizard's
+// answer) both delegate here, so the two inputs cannot drift apart.
+func normalizeAgentWiring(value string) agentWiring {
+	switch agentWiring(value) {
 	case agentWiringCodex, agentWiringBoth:
-		return agentWiring(getStringFlag(cmd, "agent"))
+		return agentWiring(value)
 	default:
 		return agentWiringClaude
 	}
 }
 
+// resolveAgentWiring resolves the --agent selection, defaulting to claude.
+// An empty or unrecognized value falls back to claude rather than erroring
+// here — invalid values are rejected earlier, fail-loud, by
+// validateInitFlags.
+//
+// It is the flag-reading primitive only. The value the init tail actually acts
+// on is resolved once by resolveAgentWiringWithWizard, which additionally reads
+// the wizard's answer (SPEC-INIT-HARNESS-PROMPT-001 REQ-IHP-004).
+func resolveAgentWiring(cmd *cobra.Command) agentWiring {
+	return normalizeAgentWiring(getStringFlag(cmd, "agent"))
+}
+
 // wireCodexUnlessClaude wires the Codex side (.codex/hooks.json +
-// .codex/config.toml) for --agent codex|both, adjacent to the .mcp.json
-// provisioning call in the runInit tail. Best-effort (spec §F): a wiring
-// failure — including the REQ-CW-003 validation refusal, whose hard part
+// .codex/config.toml) for a codex|both harness selection, adjacent to the
+// .mcp.json provisioning call in the runInit tail. Best-effort (spec §F): a
+// wiring failure — including the REQ-CW-003 validation refusal, whose hard part
 // (no violating bytes on disk) is already guaranteed by the codexwiring
 // package — warns and init continues.
-func wireCodexUnlessClaude(cmd *cobra.Command, projectRoot string) {
-	if resolveAgentWiring(cmd) == agentWiringClaude {
+//
+// It takes the ALREADY-RESOLVED wiring rather than the command
+// (SPEC-INIT-HARNESS-PROMPT-001 REQ-IHP-004): re-reading the flag here would
+// put a second resolution behind the resolution point, which is exactly how a
+// wizard answer reaches one consumer and not the other.
+func wireCodexUnlessClaude(cmd *cobra.Command, wiring agentWiring, projectRoot string) {
+	if wiring == agentWiringClaude {
 		return
 	}
 	if _, err := codexwiring.Wire(projectRoot, cmd.OutOrStdout(), cmd.ErrOrStderr()); err != nil {
@@ -718,6 +743,18 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 		wizardResult, &opts,
 	)
 
+	// SPEC-INIT-HARNESS-PROMPT-001 (REQ-IHP-004): resolve the agent-harness
+	// selection ONCE, here, from the flag or the wizard answer. Both consumers
+	// in the init tail — the .mcp.json provisioning precedence switch and the
+	// Codex wiring call — read this local, so the selection cannot reach one
+	// and miss the other. wizardResult stays empty when the wizard did not run,
+	// which resolves to claude: the flag-absent non-interactive path is
+	// unchanged (REQ-IHP-007).
+	// @MX:SPEC: SPEC-INIT-HARNESS-PROMPT-001
+	agentWiringSelection := resolveAgentWiringWithWizard(
+		cmd.Flags().Changed("agent"), getStringFlag(cmd, "agent"), wizardResult,
+	)
+
 	// Default git provider to "github" for backward compatibility
 	if opts.GitProvider == "" {
 		opts.GitProvider = "github"
@@ -905,11 +942,29 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// SPEC-MCP-DEFAULT-ON-001 (default-on, REQ-A-3): turn the wizard's
 	// mcp_provision answer into the single neutral .mcp.json entry. Default is
 	// provision (true); an explicit decline is honored silently.
-	// SPEC-CODEX-WIRING-001 D3 stacks on top: --agent codex treats the
-	// provisioning as declined (the user declared their harness is Codex —
-	// the flag beats the wizard answer), --agent both forces it on.
+	// SPEC-CODEX-WIRING-001 D3 stacks on top, restated by
+	// SPEC-INIT-HARNESS-PROMPT-001 (REQ-IHP-009/010) now that the harness is
+	// itself a wizard axis: the harness selection is the more specific
+	// declaration about the MCP surface, and it wins WHEREVER IT CAME FROM —
+	// flag or wizard. codex declines provisioning (the user declared their
+	// harness is Codex, and the moai MCP server is registered for them through
+	// .codex/config.toml instead), both forces it on, claude leaves the
+	// mcp_provision answer intact.
+	//
+	// The former justification appealed to flag-over-wizard precedence, and is
+	// FALSIFIED: a wizard harness answer of codex now overrides a wizard
+	// mcp_provision answer of yes with no flag present at all, so what happens
+	// here is a wizard answer overriding a wizard answer. Flag-over-wizard
+	// precedence still holds, but it is a DIFFERENT rule, resolved upstream in
+	// resolveAgentWiringWithWizard rather than here.
+	//
+	// Accepted cost (plan.md §B Decision B1): a user selecting codex is still
+	// asked mcp_provision, and their answer is then overridden. Hiding the
+	// question would leave WizardResult.MCPProvision — a plain bool, unlike its
+	// *bool neighbours — indistinguishable between "not asked" and "declined".
+	// @MX:SPEC: SPEC-INIT-HARNESS-PROMPT-001
 	mcpDeclined := !opts.MCPProvision
-	switch resolveAgentWiring(cmd) {
+	switch agentWiringSelection {
 	case agentWiringCodex:
 		mcpDeclined = true
 	case agentWiringBoth:
@@ -922,7 +977,7 @@ func runInit(cmd *cobra.Command, args []string) (err error) {
 	// config.toml (mcp_servers.moai + tui.status_line), trust sidecar, and
 	// the Codex trust guidance. Adjacent to the .mcp.json provisioning call
 	// so both harness sides of the init tail read as one unit.
-	wireCodexUnlessClaude(cmd, opts.ProjectRoot)
+	wireCodexUnlessClaude(cmd, agentWiringSelection, opts.ProjectRoot)
 
 	// Deferred self-update notice (REQ-TUX2-002): non-blocking stderr notice
 	// with the `moai update` hint; a failed or in-flight check never affects
