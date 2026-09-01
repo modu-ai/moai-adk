@@ -41,6 +41,10 @@ var wrapperProcessNames = map[string]bool{
 	"sh": true, "bash": true, "zsh": true, "dash": true,
 	"ksh": true, "fish": true, "csh": true, "tcsh": true,
 	"env": true, "moai": true,
+	// Windows hook runners wrap the moai binary in cmd.exe (`cmd /c`) or
+	// PowerShell; proc_info_windows.go strips the ".exe" suffix, so these
+	// match the same lowercase bare-name keys.
+	"cmd": true, "powershell": true, "pwsh": true,
 }
 
 // procInfoFunc reports a process's parent PID and command name. It is a package
@@ -83,9 +87,11 @@ func ResolveOwnerPID() (pid int, resolved bool) {
 // resolveSessionPID reports the PID to record for a session registered from
 // this process: the owner PID when one resolves, else os.Getpid().
 //
-// The fallback is the pre-existing behavior, kept so a platform without
-// ancestry support (Windows) or an unreadable process table degrades to what
-// the registry recorded before rather than to nothing. A PID from the fallback
+// The fallback is the pre-existing behavior, kept so an unreadable process
+// table or a genuinely unsupported platform degrades to what the registry
+// recorded before rather than to nothing — every major platform now reports
+// ancestry (Linux via /proc, BSD/darwin via sysctl, Windows via Toolhelp32).
+// A PID from the fallback
 // may still be an ephemeral hook subprocess. That is a known residual limit,
 // not a silent one: it is reached only where the ancestry is genuinely
 // unavailable, and it belongs to the registry's cost profile alone — a caller
