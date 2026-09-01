@@ -5,6 +5,7 @@ package spec
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -90,6 +91,69 @@ mx_commit_sha: def4567890def4567890def4567890def4567890
 ## §E.4 Sync-phase Audit-Ready Signal
 sync_commit_sha:
 `,
+			},
+			wantEra:  EraV3R5,
+			wantRule: "H-3",
+		},
+		// SPEC-ERA-H3-NARROWING-001 — H-3 is deferred when a modern-era signal is
+		// present, so an in-flight modern SPEC (plan-phase §E.2 skeleton, sync not
+		// yet closed) reaches H-5 instead of being frozen at V3R5.
+		//
+		// Mutation contract: removing `&& !hasModernEraSignal(signals)` from the H-3
+		// predicate in era.go MUST break the next two cases (AC-EH3-001/002); removing
+		// the `matchesModernPhase(...) ||` term from hasModernEraSignal MUST break
+		// AC-EH3-002 alone (the corpus probe cannot distinguish the phase path).
+		{
+			name: "AC-EH3-001 H-3 deferred on created signal → V3R6 via H-5",
+			signals: EraSignals{
+				ProgressMDExists: true,
+				ProgressMDContent: `## §E.2 Run-phase Evidence
+sync_commit_sha:
+`,
+				FrontmatterCreated: "2026-08-25",
+			},
+			wantEra:  EraV3R6,
+			wantRule: "H-5",
+		},
+		{
+			name: "AC-EH3-002 H-3 deferred on phase signal → V3R6 via H-5",
+			signals: EraSignals{
+				ProgressMDExists: true,
+				ProgressMDContent: `## §E.2 Run-phase Evidence
+sync_commit_sha:
+`,
+				FrontmatterCreated: "",
+				FrontmatterPhase:   "v3.0.0",
+			},
+			wantEra:  EraV3R6,
+			wantRule: "H-5",
+		},
+		// Mutation contract: replacing the H-3 predicate with an unconditional skip
+		// MUST break the next two cases (AC-EH3-003/004) — AC-EH3-004 by falling to
+		// H-6 unclassified, which is the grandfather-loss vector.
+		{
+			name: "AC-EH3-003 pre-threshold created keeps grandfather protection → V3R5 via H-3",
+			signals: EraSignals{
+				ProgressMDExists: true,
+				ProgressMDContent: `## §E.2 Run-phase Evidence
+sync_commit_sha:
+`,
+				FrontmatterCreated: "2026-03-15",
+				FrontmatterPhase:   "",
+			},
+			wantEra:  EraV3R5,
+			wantRule: "H-3",
+		},
+		{
+			name: "AC-EH3-004 no signal at all stays V3R5, does not fall to H-6",
+			signals: EraSignals{
+				ProgressMDExists: true,
+				ProgressMDContent: `## §E.2 Run-phase Evidence
+sync_commit_sha:
+`,
+				FrontmatterCreated: "",
+				FrontmatterPhase:   "",
+				FrontmatterEra:     "",
 			},
 			wantEra:  EraV3R5,
 			wantRule: "H-3",
@@ -186,6 +250,92 @@ mx_commit_sha: def456
 				t.Errorf("ClassifyEra() rule = %q, want substring %q", gotRule, tt.wantRule)
 			}
 		})
+	}
+}
+
+// TestClassifyEra_NoV3R5WhileModernSignal — SPEC-ERA-H3-NARROWING-001 AC-EH3-008.
+//
+// Combinatorial invariant guard: across the product of {§E.2 present} ×
+// {sync_commit_sha present} × {created} × {phase}, no input that the H-5 predicate
+// calls modern may classify as V3R5.
+//
+// The modern predicate is recomputed here from independent literals — it deliberately
+// does NOT call hasModernEraSignal. Calling the production helper would make the test
+// assume the very identity it exists to check: if the helper and the H-5 condition
+// later diverge, a helper-driven guard keeps passing.
+//
+// The second assertion (rationale reaches H-5) is scoped to the H-3-eligible shape
+// (§E.2 present AND sync_commit_sha empty) — the shape H-3 would otherwise have
+// claimed. Outside that shape, earlier heuristics legitimately win (H-2 on a
+// marker-less progress.md, H-4 on a closed sync), and demanding "H-5" there would
+// require reordering the heuristic chain, which REQ-EH3-003 forbids.
+//
+// Mutation contract: removing `&& !hasModernEraSignal(signals)` from the H-3
+// predicate in era.go MUST make this test fail.
+func TestClassifyEra_NoV3R5WhileModernSignal(t *testing.T) {
+	t.Parallel()
+
+	sectionE2 := []bool{true, false}
+	syncSHAPresent := []bool{true, false}
+	createdValues := []string{"", "2026-03-15", "2026-08-25"}
+	phaseValues := []string{"", "v3.0.0", "v3.2.0 target"}
+
+	// Independent re-implementation of the H-5 predicate (test-local literals).
+	modernSignal := func(created, phase string) bool {
+		p := strings.ToLower(strings.TrimSpace(phase))
+		if strings.Contains(p, "v3r6") || strings.HasPrefix(p, "v3.0") {
+			return true
+		}
+		c := strings.TrimSpace(created)
+		return c != "" && c >= "2026-04-01"
+	}
+
+	covered := 0
+	for _, hasE2 := range sectionE2 {
+		for _, hasSHA := range syncSHAPresent {
+			for _, created := range createdValues {
+				for _, phase := range phaseValues {
+					content := "# Progress\n"
+					if hasE2 {
+						content += "## §E.2 Run-phase Evidence\n"
+					}
+					if hasSHA {
+						content += "sync_commit_sha: abc1234567890abc1234567890abc1234567890a\n"
+					} else {
+						content += "sync_commit_sha:\n"
+					}
+
+					signals := EraSignals{
+						ProgressMDExists:   true,
+						ProgressMDContent:  content,
+						FrontmatterCreated: created,
+						FrontmatterPhase:   phase,
+					}
+					if !modernSignal(created, phase) {
+						continue
+					}
+					covered++
+
+					gotEra, gotRule := ClassifyEra(signals)
+					if gotEra == EraV3R5 {
+						t.Errorf("modern signal (created=%q phase=%q e2=%v sha=%v) classified V3R5 (rule %q)",
+							created, phase, hasE2, hasSHA, gotRule)
+					}
+					// H-3-eligible shape: H-5 must actually be the branch that decides.
+					if hasE2 && !hasSHA && !strings.HasPrefix(gotRule, "H-5") {
+						t.Errorf("H-3-eligible modern input (created=%q phase=%q) resolved by %q, want H-5",
+							created, phase, gotRule)
+					}
+				}
+			}
+		}
+	}
+
+	// Empty-sweep guard: a selector matching zero combinations is green for the
+	// wrong reason. Of the 9 (created, phase) pairs, 5 are modern; times the 4
+	// {§E.2} × {sync_commit_sha} shapes = 20 expected combinations.
+	if covered != 20 {
+		t.Fatalf("swept %d modern-signal combinations, want 20 — the product changed", covered)
 	}
 }
 
