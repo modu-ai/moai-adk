@@ -1,13 +1,13 @@
 ---
 id: SPEC-AGENT-MEMORY-DRAIN-001
 title: "Worktree agent-memory drain: write-time mirror to the primary store plus one-shot backfill, so no agent memory dies with its tree"
-version: "0.2.0"
+version: "0.2.1"
 status: draft
 created: 2026-09-02
 updated: 2026-09-02
 author: manager-spec
 priority: P1
-phase: "v3.1.5 target"
+phase: "v3.1.4"
 module: "internal/cli"
 lifecycle: spec-anchored
 tags: "agent-memory,worktree,hook,mirror,drain,reaper,post-tool"
@@ -16,6 +16,13 @@ tier: M
 
 ## §A — History
 
+- **2026-09-02** — v0.2.1 non-transition correction after the Implementation Kickoff
+  approval (operator, relayed via the lead): design (c) adopted, AUTONOMOUS progression.
+  `phase` corrected `"v3.1.5 target"` → `"v3.1.4"` — the operator decided this card joins
+  the v3.1.4 close (PR #1685), retiring the v0.2.0 assumption that v3.1.4 would already
+  have closed. `status` untouched (stays `draft`; non-transition). Stale-target mentions
+  aligned in plan.md §E and progress.md §E.1. Requirements and criteria unchanged
+  (10 / 9).
 - **2026-09-02** — plan-phase v0.2.0 after plan-audit iteration 1 returned **PASS-WITH-DEBT 0.94** (Tier M threshold met; all load-bearing measurements reproduced by the auditor). Fixes folded in: **D1** — REQ-AM-001's purpose clause qualified to the design's actual coverage (mirror-mediated Write/Edit writes + drain backfill), naming the Bash-write residue as an accepted, doctor-detectable residual instead of asserting "no loss through any path". **D2** — the MEMORY.md index count corrected (30 at the audit snapshot, not 29; the v0.1.0 four-agent enumeration summed to 28 because the classification listing was truncated at `head -20`, dropping `manager-lead` ×1, `manager-docs` ×1, and undercounting `plan-auditor`); propagations fixed in §B.1/§B.4 and plan.md §A.1. A drift note added: a re-count minutes later reads 31 indices + 42 topics = 73 files — the population is live and drifting, so the figure is a snapshot, not a census. **D3** — RED-cell carrier forms fixed per verification-completeness §2.1 (AC-AM-002 split to single-invocation form; AC-AM-005 exit code recorded; AC-AM-006's design-only disposition replaced with the absent-mechanism grep probe). **D5** — the t209 death-path claim qualified as inference (the actual disposal path is unobservable post hoc). **D7** — M2's mirror trigger anchored to the `.claude/agent-memory/` path segment, not the audit's unanchored `agent-memory/` substring predicate. **D8** — M3's docs-decision branch now names the README 4-locale parity obligation. Requirements and criteria counts unchanged (10 / 9).
 - **2026-09-02** — plan-phase v0.1.0 authored from card t223 ("워크트리 안에서 만든 agent-memory 가 primary 에 도달하지 못하고 트리와 함께 죽는다", Class C design decision, Tier S~M judged **M** — see §C.3). Predecessor: SPEC-WORKTREE-REAPER-001 REQ-WR-025 records that its P2 keep-classification is a stopgap and drain-then-dispose is the correct fix; this SPEC is that fix. All scale figures re-measured on this tree (`c0c36c421`) — the card's 5-of-156 figure from 2026-08-24 is stale by an order of magnitude.
 

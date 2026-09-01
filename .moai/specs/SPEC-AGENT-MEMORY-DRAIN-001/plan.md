@@ -107,11 +107,12 @@ occur.
   exit code + tree SHA `c0c36c421`, all measured in this run on this tree.
 - Frontmatter validated against the canonical 12-field schema
   (`.claude/rules/moai/development/spec-frontmatter-schema.md`): id/title/version/status/
-  created/updated/author/priority/module/lifecycle/tags + `phase: "v3.1.5 target"` (release
-  target, not a stage) + `tier: M`.
+  created/updated/author/priority/module/lifecycle/tags + `phase: "v3.1.4"` (release
+  target — corrected at v0.2.1 per the operator's kickoff decision that this card joins
+  the v3.1.4 close, PR #1685; not a stage) + `tier: M`.
 - Gaps: plan-phase cannot measure the mirror's runtime behavior (design-only criteria are
-  run-phase fixture tests per verification-completeness §2 green-path cells); `phase` target
-  version assumes v3.1.4 closes with pending PR #1685 — operator confirm at kickoff.
+  run-phase fixture tests per verification-completeness §2 green-path cells). The v0.2.0
+  `phase`-version assumption was resolved by the kickoff decision (v3.1.4, above).
 
 ## §F — Milestones (decision-reversibility ordered)
 

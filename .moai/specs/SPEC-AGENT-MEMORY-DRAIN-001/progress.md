@@ -5,10 +5,12 @@
 ## §E.1 Plan-phase Audit-Ready Signal
 
 - **Claim**: plan-phase artifact set complete for SPEC-AGENT-MEMORY-DRAIN-001 (Tier M:
-  spec.md + plan.md + acceptance.md + progress.md) at v0.2.0, status `draft`, authored
+  spec.md + plan.md + acceptance.md + progress.md) at v0.2.1, status `draft`, authored
   2026-09-02 on card tree `c0c36c421` (branch `WT-agent-memory-drain`). Plan-audit
   iteration 1 returned **PASS-WITH-DEBT 0.94** (Tier M threshold 0.80 met); audit
-  defects D1-D3, D5, D7, D8 folded in at v0.2.0.
+  defects D1-D3, D5, D7, D8 folded in at v0.2.0. Kickoff approved 2026-09-02 (design (c)
+  adopted, AUTONOMOUS progression); v0.2.1 carries the non-transition `phase` correction
+  to `"v3.1.4"` (card joins the v3.1.4 close, PR #1685).
 - **Evidence**:
   - SPEC ID pre-write check: `SPEC-AGENT-MEMORY-DRAIN-001` → `PASS` (executed Bash).
   - Uniqueness: `ls .moai/specs | grep -c AGENT-MEMORY` → 0 pre-existing.
@@ -25,10 +27,11 @@
 - **Baseline-attribution**: all commands run 2026-09-02 from
   `.claude/worktrees/t223` at `c0c36c421`, outputs observed verbatim in this session.
 - **Gaps**: mirror runtime behavior and drain execution are design-only at plan phase
-  (green-path cells are run-phase fixture tests per verification-completeness §2);
-  `phase: "v3.1.5 target"` assumes v3.1.4 closes with pending PR #1685 — operator
-  confirmation at the kickoff gate; the t209 disposal path is inference (tree absent,
-  reaper never fired — which unhookable path killed it is unobservable post hoc).
+  (green-path cells are run-phase fixture tests per verification-completeness §2); the
+  former `phase`-target assumption was resolved at kickoff — `phase: "v3.1.4"` (operator
+  decision 2026-09-02, card joins the v3.1.4 close, PR #1685); the t209 disposal path is
+  inference (tree absent, reaper never fired — which unhookable path killed it is
+  unobservable post hoc).
 - **Residual-risk**: the write-time mirror sees Write/Edit tool calls only (Bash-written
   memory bypasses it — accepted blind spot, spec.md §G); the index-append race window is
   tolerated and doctor-detectable; the t209 concrete instance is already lost and this
