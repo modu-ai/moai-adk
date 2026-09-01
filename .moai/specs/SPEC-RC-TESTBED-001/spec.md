@@ -2,7 +2,7 @@
 id: SPEC-RC-TESTBED-001
 title: "Local develop RC testbed — rc.N numbering policy, develop refresh procedure, clean-reinstall procedure codification"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-02
 updated: 2026-09-02
 author: manager-spec

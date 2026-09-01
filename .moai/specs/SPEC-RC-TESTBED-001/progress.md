@@ -25,3 +25,13 @@ _<pending run-phase — owned by manager-develop>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase — owned by manager-docs>_
+
+## §F Phase 4 Mode Selection
+
+- Recorded: 2026-09-02, lane session (t281 inherited from dissolved lane-11; lead dispatch carrying operator judgment 2026-09-02).
+- Implementation Kickoff Approval: GRANTED by the operator (relayed via the lead dispatch, 2026-09-02) — run-phase entry approved, progression mode **AUTONOMOUS** (run→sync continuous; no inter-milestone approval pauses).
+- Plan Audit Gate: SKIP taken — iter-2 verdict PASS 1.00 (≥ Tier M threshold 0.80), artifact hash unchanged since the verdict (porcelain 0 at `c2721074e`). Three skip conditions all hold.
+- Input parameters: tier M · scope 3 doc files · domains 1 (markdown docs) · language mix 100% markdown · concurrency benefit LOW · agent-teams prereqs: not requested.
+- Mode evaluation: `direct` — not selected (multi-file authored content under AC anchor discipline, not a trivial edit); `serial` — SELECTED; `fanout` — not selected (single domain, 3 files, and M3's pointers depend on M1/M2 section names — sequential dependency, plus write-capable parallel fan-out is not sanctioned); `sweep` — not selected (3 files, authored content, not a mechanical-uniform transform).
+- Decision: serial
+- Justification: single-domain doc authoring with in-file sequential dependencies (M3 wires pointer lines into the M1/M2 section names; M4 sweeps all three files). Per Anthropic's coding-task caveat, one writer via a single sequential manager-develop delegation. AUTONOMOUS progression honored by continuous in-session execution; the goal engine is deliberately NOT armed (worktree goal-keying friction is on record) — progression is managed by the lane session across the run→sync boundary.

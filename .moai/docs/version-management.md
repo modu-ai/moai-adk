@@ -64,6 +64,53 @@ make release-local VERSION=v3.1.0-rc.0   # dist copy + version.json
 
 Tagging is a separate, remote-facing act performed only by the release harness.
 
+### Local RC Numbering
+
+Local (untagged, ldflags-injected) rc builds cut from `develop` — the RC testbed
+flow whose build commands live in `.claude/rules/local/gitflow-lane-protocol.md`
+§9 — carry their own `rc.N` policy. The release-tag progression above
+(`rc.0 … rc.N → vX.Y.Z`) governs release tags; this section governs the local
+candidate builds that never become tags. (SPEC-RC-TESTBED-001)
+
+**Increment / reset policy:**
+
+- `N` starts at `0` for each new target `vX.Y.Z`.
+- `N` increments by exactly 1 per candidate build cut for that target — every
+  `make build VERSION=vX.Y.Z-rc.N` (likewise `make install` /
+  `make release-local`) for that target is one candidate.
+- `N` resets to `0` only when the target `X.Y.Z` changes: the next release
+  line's `N` starts fresh regardless of how far the previous line climbed —
+  `v3.1.4-rc.7` is followed by `v3.1.5-rc.0`, never by `v3.1.5-rc.8`.
+
+**No git tags for local rc builds.** A local rc build creates no tag and pushes
+nothing; tagging remains a remote-facing act performed only by the release
+harness (see Release Process below).
+
+- **counter-precedent (predates this rule):** the `v3.1.0-rc.0` / `v3.1.0-rc.1`
+  local *annotated* tags ("Local-only release candidate … NOT pushed" in the tag
+  messages) were cut before the ldflags-only rule was codified. They are recorded
+  here rather than silently rewritten — the v3.1.3 line ran entirely tagless, and
+  every line since follows the no-tags rule.
+
+**The version string does not order builds.** The monotone build identity is
+`BUILD_ID` (`Makefile:19` — `git describe --tags --dirty`, injected via ldflags
+into `pkg/version.BuildID`), not `VERSION`. An explicit rc VERSION reads HIGHER
+than a later default build, so comparing version strings reaches the opposite
+conclusion about which binary is newer. Incident `SPEC-BINARY-LAG-VISIBILITY-001`:
+the installed `v3.1.2` binary was actually newer than the prior `v3.1.3-rc.5`
+build, while every version-string comparison says the reverse. Read `BUILD_ID`
+(and the embedded commit SHA) to decide which binary is newer; never order builds
+by version string.
+
+**`moai update` resets `git-strategy.yaml`.** The
+`.moai/config/sections/git-strategy.yaml` keys — `rc_version_format: vX.Y.Z-rc.N`
+among them, with `workflow: git-flow` and the develop/release branch keys — are
+reset to template defaults by every `moai update` and must be re-applied after
+each update (re-application procedure: CLAUDE.local.md §2.3).
+
+The clean-reinstall runbook (`rm -f` + `cp`, the exit-137 guard) is owned by
+`.claude/rules/local/gitflow-lane-protocol.md` §9 and is not duplicated here.
+
 ### Files Requiring Version Sync
 
 When releasing new version, update:
