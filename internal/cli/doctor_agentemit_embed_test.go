@@ -546,3 +546,169 @@ func TestAgentEmitEmbed_StrayMarkerStillJudges(t *testing.T) {
 			c.Status, c.Message)
 	}
 }
+
+// --- nearestProjectRoot: home exclusion ------------------------------------
+
+// newFakeHome builds a fake home directory carrying the global ~/.moai state
+// directory — every moai user's home has one — and points the homeDirFn seam
+// at it for the test's duration.
+func newFakeHome(t *testing.T) string {
+	t.Helper()
+	home := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(home, projectRootMarker), 0o755); err != nil {
+		t.Fatalf("mkdir fake ~/.moai: %v", err)
+	}
+	orig := homeDirFn
+	homeDirFn = func() (string, error) { return home, nil }
+	t.Cleanup(func() { homeDirFn = orig })
+	return home
+}
+
+// TestNearestProjectRoot_HomeWithGlobalMoaiIsNotARoot pins the home-impersonation
+// defect: the global ~/.moai state directory must not read any non-project
+// directory under home as "in project". A string-prefix exclusion is not
+// enough to assert here either — the exclusion must survive the same directory
+// reaching the walk under a different spelling (the windows 8.3 short-name
+// form: TMP=RUNNER~1 vs USERPROFILE=runneradmin), which the spelling tests
+// below cover.
+func TestNearestProjectRoot_HomeWithGlobalMoaiIsNotARoot(t *testing.T) {
+	home := newFakeHome(t)
+	nested := filepath.Join(home, "work", "scratch")
+	if err := os.MkdirAll(nested, 0o755); err != nil {
+		t.Fatalf("mkdir nested: %v", err)
+	}
+
+	root, ok := nearestProjectRoot(nested)
+	if ok {
+		t.Fatalf("nearestProjectRoot(%q) = %q, want not found — the global ~/.moai must not read as a project root", nested, root)
+	}
+}
+
+// TestNearestProjectRoot_HomeItselfIsNotARoot: running from the home directory
+// itself is not being in a project either, despite ~/.moai sitting right there.
+func TestNearestProjectRoot_HomeItselfIsNotARoot(t *testing.T) {
+	home := newFakeHome(t)
+
+	if _, ok := nearestProjectRoot(home); ok {
+		t.Errorf("nearestProjectRoot(%q) = found, want not found — the home directory is not a project root", home)
+	}
+}
+
+// TestNearestProjectRoot_RealProjectUnderHomeStillFound: the exclusion is
+// scoped to the home directory itself. A real project under home still anchors
+// the walk, from its own subdirectories included.
+func TestNearestProjectRoot_RealProjectUnderHomeStillFound(t *testing.T) {
+	home := newFakeHome(t)
+	proj := filepath.Join(home, "work", "proj")
+	if err := os.MkdirAll(filepath.Join(proj, projectRootMarker), 0o755); err != nil {
+		t.Fatalf("mkdir project .moai: %v", err)
+	}
+	sub := filepath.Join(proj, "internal", "cli")
+	if err := os.MkdirAll(sub, 0o755); err != nil {
+		t.Fatalf("mkdir sub: %v", err)
+	}
+
+	root, ok := nearestProjectRoot(sub)
+	if !ok {
+		t.Fatalf("nearestProjectRoot(%q) = not found, want the project root", sub)
+	}
+	if !embedSameDir(t, root, proj) {
+		t.Errorf("nearestProjectRoot(%q) = %q, want %q", sub, root, proj)
+	}
+}
+
+// TestNearestProjectRoot_SymlinkedSpellingStillExcluded: the same home
+// directory reached through a symlink must still be excluded. This is the
+// shape of the windows 8.3 problem in portable form — the walk sees one
+// spelling, the home resolver returns another, and only OS-level directory
+// identity can tell them apart.
+func TestNearestProjectRoot_SymlinkedSpellingStillExcluded(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("directory symlinks need symlink privilege on windows")
+	}
+	home := newFakeHome(t)
+	link := filepath.Join(t.TempDir(), "homelink")
+	if err := os.Symlink(home, link); err != nil {
+		t.Fatalf("symlink home: %v", err)
+	}
+	nested := filepath.Join(link, "work", "scratch")
+	if err := os.MkdirAll(nested, 0o755); err != nil {
+		t.Fatalf("mkdir nested under link: %v", err)
+	}
+
+	if _, ok := nearestProjectRoot(nested); ok {
+		t.Errorf("nearestProjectRoot(%q) = found, want not found — home spelled through a symlink is still home", nested)
+	}
+}
+
+// TestNearestProjectRoot_CaseFlippedSpellingStillExcluded is the 8.3 cousin on
+// case-insensitive filesystems: TMP=RUNNER~1 vs USERPROFILE=runneradmin name
+// the same directory in different casings. Gated to the shipped
+// case-insensitive defaults (darwin APFS, windows NTFS); on a case-sensitive
+// filesystem the flipped spelling is a genuinely different directory and the
+// scenario does not exist.
+func TestNearestProjectRoot_CaseFlippedSpellingStillExcluded(t *testing.T) {
+	if runtime.GOOS != "darwin" && runtime.GOOS != "windows" {
+		t.Skip("case-insensitive spelling divergence needs a case-insensitive filesystem")
+	}
+	home := newFakeHome(t)
+	flipped, ok := caseFlippedHomeSpelling(home)
+	if !ok {
+		t.Skip("no case-flippable component in the temp home path")
+	}
+	nested := filepath.Join(flipped, "work", "scratch")
+	if err := os.MkdirAll(nested, 0o755); err != nil {
+		t.Fatalf("mkdir nested under flipped spelling: %v", err)
+	}
+
+	if _, ok := nearestProjectRoot(nested); ok {
+		t.Errorf("nearestProjectRoot(%q) = found, want not found — home spelled with different case is still home", nested)
+	}
+}
+
+// caseFlippedHomeSpelling returns p with its deepest case-flippable component
+// uppercased, so the result names the same directory on a case-insensitive
+// filesystem while spelling differently. It reports false when no component
+// has a case to flip.
+func caseFlippedHomeSpelling(p string) (string, bool) {
+	parts := strings.Split(p, string(filepath.Separator))
+	for i := len(parts) - 1; i >= 0; i-- {
+		if parts[i] == "" {
+			continue
+		}
+		if upper := strings.ToUpper(parts[i]); upper != parts[i] {
+			parts[i] = upper
+			return strings.Join(parts, string(filepath.Separator)), true
+		}
+	}
+	return "", false
+}
+
+// TestAgentEmitEmbed_HomeOnlyReadsAsNotAProject pins the user-visible contract
+// the repair is for: doctor run from a non-project directory under a
+// ~/.moai-bearing home phrases the not-applicable reason as "not a MoAI
+// project root", not as a missing committed emission set inside a project.
+func TestAgentEmitEmbed_HomeOnlyReadsAsNotAProject(t *testing.T) {
+	home := newFakeHome(t)
+	nested := filepath.Join(home, "scratch")
+	if err := os.MkdirAll(nested, 0o755); err != nil {
+		t.Fatalf("mkdir nested: %v", err)
+	}
+	called := false
+	extract := func(string) (string, func(), error) {
+		called = true
+		return "", func() {}, nil
+	}
+
+	c := checkAgentEmitEmbedAgainst(nested, "", extract, false)
+
+	if c.Status != uikit.CheckOK {
+		t.Errorf("status = %q, want ok (not applicable); message: %s", c.Status, c.Message)
+	}
+	if called {
+		t.Error("extraction ran in a non-applicable tree")
+	}
+	if !strings.Contains(c.Message, "not a MoAI project root") {
+		t.Errorf("message = %q, want the not-a-project phrasing — a home-owned ~/.moai must not read as a project", c.Message)
+	}
+}
