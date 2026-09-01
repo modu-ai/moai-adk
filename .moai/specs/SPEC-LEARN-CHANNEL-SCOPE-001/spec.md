@@ -2,7 +2,7 @@
 id: SPEC-LEARN-CHANNEL-SCOPE-001
 title: "학습 채널 범위의 정직화 — lessons-inbox 유용성 범위의 경계 선언 + 인간 매개 루프의 학습 채널 인정"
 version: "0.1.2"
-status: in-progress
+status: completed
 created: 2026-09-01
 updated: 2026-09-02
 author: manager-spec

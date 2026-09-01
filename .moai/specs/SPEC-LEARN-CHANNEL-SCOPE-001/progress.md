@@ -63,4 +63,30 @@ m1_to_mN_commit_strategy: "M1 d1044d9d2 → M2 efe39e914 → M3(본 커밋) — 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+_sync-phase executed 2026-09-02 (manager-docs, worktree `WT-learn-channel-gap`, 시작 HEAD `3a6db9f16`)._
+
+```yaml
+sync_complete_at: 2026-09-02
+sync_commit_sha: "pending-backfill-sync"   # D3 SHA-placeholder exemption (spec-frontmatter-schema.md) — 커밋은 자신의 해시를 인용할 수 없어 후속 chore 커밋에서 backfill
+sync_status: complete
+frontmatter_status_transitions:
+  spec.md: "in-progress -> completed (단일 sync 커밋의 3-phase close; implemented는 별도 단계로 존재한 적 없음 — merged-close 관례대로 정직 기록). status + updated만 변경, 본문 무변경. updated: 2026-09-02는 run 종료 시각에 이미 현재일이라 값 불변"
+  plan.md: "n/a — status 전이 없음, 본문 무변경"
+  progress.md: "프론트매터 없음; §E.4 이번 커밋에서 작성"
+changelog_entry_position: "CHANGELOG.md [Unreleased] > ### Added (최신 우선 관례에 따라 첫 불릿으로 삽입, card t196 항목 위)"
+ac_count_verified: 7   # grep -o 'AC-LCS-00[0-9]' spec.md | sort -u | wc -l -> 7 (Tier S — acceptance는 spec.md §I 인라인, acceptance.md 없음); §E.2 매트릭스 7 PASS와 일치
+duplicate_guard: 0   # grep -c 'SPEC-LEARN-CHANNEL-SCOPE-001' CHANGELOG.md (발행 전) -> 0
+b12_self_test_a: "grep -c 'SPEC-LEARN-CHANNEL-SCOPE-001' CHANGELOG.md (pre-emission) -> 0/exit 1 -> PASS, 중복 없음"
+b12_self_test_b: "grep -o 'AC-LCS-00[0-9]' spec.md | sort -u | wc -l -> 7 == CHANGELOG 엔트리의 7/7 ACs PASS -> PASS (0은 적색 신호 규정대로 검사 — 실측 7)"
+b12_self_test_c: "ls .moai/docs/learning-channel-scope.md .claude/rules/moai/core/moai-constitution-detail.md .claude/skills/hns-lsel-curator/SKILL.md CLAUDE.local.md internal/template/templates/.claude/rules/moai/core/moai-constitution-detail.md -> 5종 전부 존재 -> PASS"
+canary_compliance_check:
+  documentation_locale: "ko — 단, CHANGELOG.md [Unreleased] 기존 엔트리 전체가 영어 산문이므로 하우스 스타일 우선으로 영어로 발행 (§E.4에 그 근거 기록)"
+  git_commit_messages: "en — 커밋 제목·본문 영어"
+mx_scan: "run 터치 8파일 + sync 터치 5파일(CHANGELOG, spec.md, progress.md, plan-audit 보고서 2종) 전부 markdown — MX 코드 주석 대상 아님. 추가 0 / 갱신 0 / 제거 0 (확인)"
+sync_phase_observations:
+  - "run-phase가 docs-only 변경에 feat(...) 커밋 제목을 채택 (리드 제안은 docs(...)) — internal/spec/lint_ownership.go M1 허용 집합 {feat|fix|refactor|perf|test}을 근거로, docs(는 ownerManagerDocs로 분류된다는 이유 제시. 이유 있는 소유권-린트 부합 선택으로 기록하며 수리하지 않음"
+  - "이 카드에는 오케스트레이터 증거 로그가 없다 — run 검증은 grep 기반이며 §E.2 매트릭스 + plan-audit 보고서(.moai/reports/t260/{plan-audit-iter1,plan-audit-iter2}.md, 이번 sync 커밋에서 추적 전환)에 기록돼 있다"
+sync_session_gaps: "오케스트레이터 증거 로그 부재(위 관측 2행과 동일 사실); CI 판정 부재 — 브랜치 미푸시(위임 제약, 통합은 리드 창 소관)"
+readme_review: "해당 없음 — 본 SPEC은 유지자 저장소 운영 문서(.moai/docs 앵커, rules 트리, dev-only 스킬, CLAUDE.local.md)만 건드린다. 인박스 포착 범위를 주장하는 README/docs-site 표면은 없음 (AC-LCS-004 스윕에서 확인 — claim 표면 4종+앵커 외 발산 claim 0)"
+known_residual_docs_drift: []
+```
