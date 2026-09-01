@@ -17,6 +17,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -303,6 +304,9 @@ func TestGateCmd_WaitExpiryRunsUnserializedWithOwnVerdict(t *testing.T) {
 // Propagating the lock error as the command's error is the criterion's named
 // mutant.
 func TestGateCmd_ReadOnlyLockDirReturnsGateVerdict(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("posix permission bits are advisory on windows — os.Chmod cannot make the state directory read-only, so the fixture premise is unbuildable there")
+	}
 	if _, err := exec.LookPath("go"); err != nil {
 		t.Skipf("go is not on PATH, so the Go toolchain's steps cannot run: %v", err)
 	}
