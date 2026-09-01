@@ -1,7 +1,7 @@
 ---
 id: SPEC-GRAPH-REPORT-001
 title: "Acceptance criteria — graph report toolchain"
-version: "0.2.1"
+version: "0.2.2"
 created: 2026-09-02
 author: manager-spec
 ---
@@ -27,7 +27,7 @@ author: manager-spec
 - **AC-GR-006** — Given a fixture edges.jsonl, When `moai graph report --root <fixture>` runs, Then the report file exists at the fixture's fixed rotating path `.moai/reports/graph-report.md` containing the three section headings (god nodes, surprising connections, import cycles) and exit code 0. Verify: command + file-content assertions in a targeted test.
 - **AC-GR-007** — Given a fixture where package X has 3 distinct importers and package Y has 3 distinct importers, When god nodes are rendered, Then both rank at the same tier and ties resolve by node id ascending. Verify: test asserts the deterministic ordering on the fixture.
 - **AC-GR-008** — Given an INFERRED code-call edge whose endpoints' source-file directories differ (cross-package via the directory proxy) and an INFERRED intra-package edge of equal confidence, When surprising connections are rendered, Then the boundary-crossing edge ranks first, and an ambiguous bare-callee edge (callee name matching 2+ nodes) is excluded from the section. Verify: fixture test asserting the ordering and the exclusion.
-- **AC-GR-009** — Given import edges forming cycle a→b→c→a, When the report renders, Then one SCC is reported with its representative cycle's members in the canonical rotation (smallest node id first), and the SCC count (not a simple-cycle enumeration) is what the section states. Verify: fixture test.
+- **AC-GR-009** — Given import edges forming cycle a→b→c→a, When the report renders, Then one SCC is reported with its member list in the canonical rotation (smallest node id first) — a branched SCC (e.g. edges A↔C, B↔C over members {A,B,C}) renders its member list, never a fabricated cycle through all members — and the SCC count (not a simple-cycle enumeration) is what the section states. Verify: fixture test.
 - **AC-GR-010** — Given a tree whose code layer is absent (nocgo fixture, no code edges), When `moai graph report` runs, Then the report is still emitted, the code-dependent sections are present-but-empty with the stated reason, and exit code is 0. Verify: command + assertions.
 - **AC-GR-011** — Given the same fixture tree, When `moai graph report` runs twice, Then the two report files are byte-identical. Verify: `cmp`, exit 0.
 
