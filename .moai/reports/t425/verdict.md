@@ -25,6 +25,7 @@
 - 원인 규명: `.github/workflows/ci.yml:208` `go test -json -coverprofile=coverage.out -covermode=atomic ./... > test-stream.json` — **stdout이 파일로 리다이렉트**돼 go test -json의 모든 테스트 이벤트(실행·pass·skip 포함)가 콘솔 로그에 찍히지 않는다. CI 콘솔에서 "이름 0회"는 미실행의 증거가 아니다(관측 부재 ≠ 부재).
 - 직접 증명: run 33529227921(fe121203e)의 artifact `test-stream-ci-test-ubuntu-latest`(test-stream.json.gz)를 `gh run download`로 회수 → grep 결과 **TestRunDoctor*/TestDoctorCmd* 이벤트 406건, Action=pass 고유 테스트 29개, Action=skip 0**.
 - **CI에서 29건 전부 실행·PASS.** 스킵 계열(t346) 개입 없음.
+- 사고 기록 (리드 회신, 2026-09-02): 리드의 1차 판독("CI 전문에서 이름 0회 = 미실행")이 같은 오류를 반복했다 — 콘솔 grep 재확인도 stdout이 리다이렉트된 test-stream.json을 보지 못한 채 콘솔 부재를 실행 부재로 읽었고, lane-1 관측에 잘못된 확신을 얹었다. 교훈: 출력을 어디로 보내는지(`> file`) 먼저 확인하고, 콘솔 부재 판독은 실행 부재의 증거가 못 된다.
 
 ### C3. lane-1 관측의 실체 — t349 로그 재인용으로 판정
 
@@ -51,6 +52,7 @@
 
 - 모든 측정은 본 run에서 직접 실행·관측함 (lane-11, 2026-09-02).
 - 트리: 워크트리 `.claude/worktrees/t425` @ origin/develop **9145806d8** (배차 시점 head와 동일, `git merge-base --is-ancestor` 확인), primary checkout @ main **48239c7dc**.
+- 반입 직전 흡수(origin/develop **0a9e37461** → 병합 트리 **c6aa43ac4**) 후 재측정: `go test ./internal/cli/ -run 'TestRunDoctor|TestDoctorCmd' -count=1` → `ok ... 49.775s`. 병합 트리에서도 초록 유지.
 - CI 원장: run **33529227921** @ **fe121203e**, artifact `test-stream-ci-test-ubuntu-latest` (다운로드: `/tmp/t425-ci/test-stream.json`).
 - 참조 로그: `.moai/reports/t349/doctor-base-attribution.log` (primary 측 저장본), `.moai/reports/t346/verdict.md`.
 
