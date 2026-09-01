@@ -97,6 +97,8 @@ grep -rn 'CLAUDE_SKILL_DIR' internal/template/templates/.claude/skills | wc -l
 
 판정: RED 관측 출력 + GREEN 복귀 출력 + 양쪽 census. **RED 를 보지 않은 가드는 이 AC 를 통과하지 못한다** — 초록은 감시가 작동한다는 증거가 아니라 위반이 없다는 증거일 뿐이고, 두 상태는 아무것도 안 보는 가드에서 구별되지 않는다.
 
+[HARD] **판정 기록은 실행한 셀렉터와 그 매치 수를 명시한다** [v0.3.1]. 접두 셀렉터 `-run TestSkillDirToken` 은 **0매치**다 — `testing: warning: no tests to run` 을 출력하고 PASS·exit 0 으로 끝난다(이 트리 실측; 축자 출력은 `.moai/reports/t196/req-csn-003-budget-remeasure.md` §5). 실제 테스트는 `TestSkillTreeHasNoClaudeSkillDirToken` 1건이며(`internal/template/skill_dir_token_guard_test.go:41`), `-run TestSkillTreeHasNoClaudeSkillDirToken` 은 **1매치**다. **0매치 셀렉터의 초록은 판정이 아니다** — 훑은 집합이 빈 통과는 아무것도 집지 못한 통과와 구별되지 않는다. 판정 기록에 셀렉터 문자열과 매치 수가 빠지면 이 AC 의 판정은 이루어지지 않은 것으로 본다.
+
 ### AC-CSN-010 — 범위 밖 표면이 실제로 안 건드려졌다 (MUST)
 
 **Given** 이 SPEC 이 런처와 미러 생산자와 생성기를 범위 밖에 뒀고,
@@ -137,10 +139,10 @@ grep -rn 'CLAUDE_SKILL_DIR' internal/template/templates/.claude/rules
 
 [HARD] **개수 판정이 아니라 집합 판정이다.** "4 → 1" 이라는 수는 근거가 되지 않는다 — 규범 문장 하나를 남기고 사실 기술 둘을 지워도 같은 수가 나오기 때문이다. 남은 **줄의 내용**이 판정 대상이다.
 
-### AC-CSN-012 — 이 SPEC 이 편집하는 무가드 파일 4개에 금지 토큰이 새로 들어오지 않았다 (MUST)
+### AC-CSN-012 — 이 SPEC 이 편집하는 무가드 파일 5개에 금지 토큰이 새로 들어오지 않았다 (MUST)
 
-**Given** 템플릿 중립성 CI 가드가 이 SPEC 자신의 토큰 형태(`SPEC-CODEX-…` / `REQ-CSN-…`)를 잡는 클래스를 `.claude/skills/` 아래로만 한정하고(§B.D1 정정), **이 SPEC 이 편집하는 파일 중 스킬 트리 밖에 있는 것이 4개**이며 — `AGENTS.md` 2 사본(M2) + 규칙 트리 2파일(M3, §B.D6 로 편입) — 근거를 인용하고 싶어지는 자리가 바로 그 넷이고,
-**When** M2·M3 편집 후 그 4개를 검사하면,
+**Given** 템플릿 중립성 CI 가드가 이 SPEC 자신의 토큰 형태(`SPEC-CODEX-…` / `REQ-CSN-…`)를 잡는 클래스를 `.claude/skills/` 아래로만 한정하고(§B.D1 정정), **이 SPEC 이 편집하는 파일 중 스킬 트리 밖에 있는 것이 5개**이며 — `AGENTS.md` 2 사본(M2) + 규칙 트리 2파일(M3, §B.D6 로 편입) + `internal/template/agentemit/agents-codex.yaml`(M2 어휘 보충 — spec.md §B.D7, 리드 판정 2026-09-01) — 근거를 인용하고 싶어지는 자리가 바로 그 다섯이고,
+**When** M2·M3 편집 후 그 5개를 검사하면,
 **Then** SPEC ID · REQ/AC 토큰 · 커밋 해시 · ISO 날짜가 **착수 시점보다 늘지 않았고**, 규칙 트리에 남은 매치는 열거된 기존 항목과 정확히 일치한다.
 
 ```bash
@@ -148,7 +150,8 @@ grep -cE 'SPEC-[A-Z0-9]+-[A-Z0-9-]*[0-9]{3}|\b(REQ|AC)-[A-Z0-9]+-[0-9]{3}\b|\b[0
   AGENTS.md \
   internal/template/templates/AGENTS.md \
   internal/template/templates/.claude/rules/moai/development/skill-authoring.md \
-  internal/template/templates/.claude/rules/moai/workflow/worktree-integration.md
+  internal/template/templates/.claude/rules/moai/workflow/worktree-integration.md \
+  internal/template/agentemit/agents-codex.yaml
 ```
 
 **착수 시점 측정값** (이 트리, HEAD `297a21ea73b24e6605280625e576555e4316263e`):
@@ -159,10 +162,13 @@ grep -cE 'SPEC-[A-Z0-9]+-[A-Z0-9-]*[0-9]{3}|\b(REQ|AC)-[A-Z0-9]+-[0-9]{3}\b|\b[0
 | `internal/template/templates/AGENTS.md` | 0 | 동일 |
 | `…/development/skill-authoring.md` | **2** | 기존 — `:45`·`:89` 의 프론트매터 예시 ISO 날짜 |
 | `…/workflow/worktree-integration.md` | 0 | — |
+| `internal/template/agentemit/agents-codex.yaml` | **구현 착수 시점 측정** | [v0.3.1] M2 어휘 보충으로 합류 — 이 파일의 사전값은 지금 재지 않고 **구현 착수 시점에 잰다**(그 전에 yaml 이 바뀔 수 있다) |
 
 [HARD] **단순 `0` 단언이 아니라 pre/post 쌍이다.** `skill-authoring.md` 의 사전값이 0 이 아니기 때문이다 — 그 2건은 프론트매터 예시 안의 날짜 리터럴이고, 정당한 문서 내용이며 **지울 대상이 아니다**(CI 가드도 S1 클래스의 날짜 carve-out 으로 통과시킨다). 판정은 AC-CSN-006/008/011 이 이미 쓰는 형태를 따른다: **사후값 ≤ 사전값**, 그리고 `skill-authoring.md` 에 남은 매치가 `:45`·`:89` 두 줄과 일치할 것.
 
-[HARD] **왜 이 4개인가 — 가드가 닿지 않는 정확한 집합이다.** 이 SPEC 의 다른 편집 대상은 전부 `templates/.claude/skills/**` 아래에 있고 거기서는 `skillBodyScoped` 클래스가 발화한다. 스킬 트리 밖 편집 대상은 이 4개뿐이므로, 이 AC 의 파일 목록이 REQ-CSN-013 의 실질 노출면을 덮는다. **M3 이 규칙 트리를 범위에 들이면서 생긴 구멍이며**, 그것을 닫지 않으면 "규범 문장을 왜 뒤집었는지"를 SPEC ID 로 적는 가장 자연스러운 수정이 아무 데도 안 걸린다.
+[HARD] **왜 이 5개인가 — 가드가 닿지 않는 정확한 집합이다.** 이 SPEC 의 다른 편집 대상은 전부 `templates/.claude/skills/**` 아래에 있고 거기서는 `skillBodyScoped` 클래스가 발화한다. 스킬 트리 밖 편집 대상은 이 5개뿐이므로, 이 AC 의 파일 목록이 REQ-CSN-013 의 실질 노출면을 덮는다. **M3 이 규칙 트리를 범위에 들이면서 생긴 구멍이며**, 그것을 닫지 않으면 "규범 문장을 왜 뒤집었는지"를 SPEC ID 로 적는 가장 자연스러운 수정이 아무 데도 안 걸린다.
+
+[v0.3.1] **다섯 번째 파일이 왜 생겼는가 — 범위 확장이 무가드 파일을 계속 만들어낸다.** 이 카드에서 두 번 그랬다: iter-2 D11 이 규칙 트리 2파일을, run-phase 리드 판정이 `agents-codex.yaml` 을 이 목록에 합류시켰다. **이 SPEC 의 범위가 다시 넓어지면 가드 커버리지 재확인이 편집보다 먼저다** — 새 편집 대상이 이 목록과 `skillBodyScoped` 클래스(`.claude/skills/` 한정) 어느 쪽에도 닿지 않는지 확인 없이 편집하지 않는다.
 
 [HARD] **정규식이 공허하지 않다는 것을 양성 대조로 확인한 뒤 판정한다.** 대조는 **판정과 같은 명령**(위 `grep -cE`)을 이 SPEC 의 `spec.md` 에 걸어 실행하며, 결과가 **0 이 아니면** 통과다. 대조가 0 이면 정규식이 죽은 것이므로 4개 파일의 값은 아무 의미가 없다.
 

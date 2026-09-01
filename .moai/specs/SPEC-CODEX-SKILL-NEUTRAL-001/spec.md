@@ -1,7 +1,7 @@
 ---
 id: SPEC-CODEX-SKILL-NEUTRAL-001
 title: "하네스 중립 지시 계층 — 코덱스에서도 Claude 와 같은 신뢰로 지시를 실행할 수 있게 한다"
-version: "0.3.0"
+version: "0.3.1"
 status: draft
 created: 2026-08-31
 updated: 2026-09-01
@@ -18,6 +18,13 @@ related_specs: [SPEC-CODEX-SKILLS-CANONICAL-001, SPEC-CODEX-DUAL-AGENTS-001]
 # SPEC-CODEX-SKILL-NEUTRAL-001 — 하네스 중립 지시 계층
 
 ## HISTORY
+
+- 2026-09-01 (run-phase 문면 정정 배치, v0.3.1) — run-phase 중 리드 판정(2026-09-01 verdict) 4건을 본문에 반영한다. **요구사항·판정 개수 불변**(REQ 15 / AC 13 — 범위·문면 정정이지 예산 변경이 아니다).
+  1. **REQ-CSN-003 문면 정정** — 결속표의 행 집합을 "각 중립 능력"(인벤토리)이 아니라 **이 표를 읽는 하네스에 존재하지 않는 모든 `tool_classes` 능력**(파생 기준)으로 못박는다. 오늘의 4행은 결과이지 기준이 아니다. 측정 근거는 신설 §B.D7, 증거 전문은 `.moai/reports/t196/req-csn-003-budget-remeasure.md`.
+  2. **AC-CSN-012 무가드 파일 4 → 5** — 어휘 축 리드 판정(11번째 클래스 신설 = `tool_classes` 에 대한 보충)으로 `internal/template/agentemit/agents-codex.yaml` 이 M2 편집 대상에 합류했다. 범위 확장이 무가드 파일을 만들어낸 두 번째 사례다(iter-2 D11 이 규칙 트리 2파일로 첫 번째) — AC 에 재확인 의무를 붙였다.
+  3. **AC-CSN-009 셀렉터 명기 의무** — 접두 셀렉터 `-run TestSkillDirToken` 은 **0매치**로 `no tests to run` PASS 를 냈고, 실제 테스트는 `TestSkillTreeHasNoClaudeSkillDirToken`(**1매치**, `internal/template/skill_dir_token_guard_test.go:41`)이다. 판정 기록이 셀렉터와 매치 수를 명시하도록 [HARD] 로 못박았다 — 0매치 셀렉터의 초록은 판정이 아니다.
+  4. **plan.md M2·M3 패리티 판별 메모** — `agents-codex.yaml` 은 `rule_template_mirror_test.go` 의 어느 바이트 패리티 목록에도 없다(단일 트리 편집). 판별축은 "로컬 vs 템플릿"이 아니라 **바이트 패리티 등재 여부**이며, 이 구분이 이 카드의 적색 스위트(`TestRuleTemplateMirrorDrift`)를 만든 축이다.
+  부수 정정: §A.5 의 `tool_classes` 값 목록 9개 → **10개**(`cross-session-messaging` 누락 — 이 트리 재측정), §E.1 파일 수 14 → **15**(위 2번의 합류). 리드가 준 후보 표 수치(11행 822 B / 4행 391 B)는 이 트리 재측정에서 재현되지 않아 **재측정값으로 갈아썼다**(§B.D7: 11행 797–814 B, 4행 373 B, 여유 201 tokens 는 가드 본인 측정으로 정확히 확인).
 
 - 2026-09-01 (plan-phase, iter-2 최종, v0.3.0) — plan-audit iter-2 **PASS-WITH-DEBT 0.800** 이 남긴 blocking 5건을 닫는다. 최종 반복이므로 이 판본이 run-phase 로 넘어간다. **요구사항·판정 개수는 불변**(REQ 15 / AC 13) — 전부 기존 항목의 범위·문면 수정이다.
 
@@ -117,7 +124,7 @@ HARD 6줄은 2개 스킬 · 3개 스크립트 대상에 걸쳐 있다. SOFT 40�
 
 ### A.5 중립 어휘는 이미 하나 존재한다 — 새로 만들지 않아도 된다
 
-`internal/template/agentemit/agents-codex.yaml` 의 `tool_classes` 가 Claude 도구 토큰을 하네스 중립 클래스로 이미 매핑한다: `file-read` · `file-write` · `shell` · `web` · `task-list` · `skill-loader` · `subagent-spawn` · `design-sync` · `moai-mcp`.
+`internal/template/agentemit/agents-codex.yaml` 의 `tool_classes` 가 Claude 도구 토큰을 하네스 중립 클래스로 이미 매핑한다: `file-read` · `file-write` · `shell` · `web` · `task-list` · `skill-loader` · `subagent-spawn` · `design-sync` · `cross-session-messaging` · `moai-mcp` — **값 집합 10개**(`awk '/^tool_classes:/{f=1;next} /^[^ ]/{f=0} f&&NF==2{gsub(":","",$2);print $2}' internal/template/agentemit/agents-codex.yaml | sort -u | wc -l` → 10, 이 트리 실측). [v0.3.1 정정] 종전 판본은 9개로 적었다 — `cross-session-messaging`(SendMessage·ListAgents 매핑)을 빠뜨린 누락이다.
 
 다만 이 어휘는 **`tools:` 프론트매터에만** 적용된다. 본문 산문은 이 매핑을 통과하지 않는다. 카드가 남긴 구멍이 정확히 여기다.
 
@@ -243,6 +250,20 @@ HARD 6줄은 **채택안에 포함**된다(REQ-CSN-006) — 기각한 것은 "�
 
 **따라서 REQ-CSN-010 의 가드는 스킬 트리에 그대로 둔다.** 전 트리로 넓히면 `219` 에 발화한다. 규칙 트리 쪽은 가드가 아니라 **잔존 줄 집합을 열거한 판정**(AC-CSN-011)으로 닫는다.
 
+### B.D7 — 채택: 결속표의 행 기준은 인벤토리가 아니라 부재다 [v0.3.1, run-phase 리드 판정]
+
+**판정 출처**: run-phase 중 리드 verdict (2026-09-01). 같은 판정이 어휘 축도 확정했다 — 신설 11번째 클래스 `question-channel` 은 `agents-codex.yaml` 의 `tool_classes` 에 대한 **보충**이지 두 번째 어휘가 아니다(REQ-CSN-002 의 금지 대상은 별개 어휘다; 확장은 기존 명명 관례를 따르는 매핑 행 + `classes:` 처분 행으로 들어가고, rationale 필드가 그 클래스가 무엇을 덮는지 서술한다 — 매니페스트 로더가 이 일관성을 강제한다, `internal/template/agentemit/manifest.go:121-124`).
+
+**REQ-CSN-003 을 "각 중립 능력에 대해"로 읽으면 결속표가 능력 인벤토리가 된다.** 그 표는 `AGENTS.md` 에 실리고, `AGENTS.md` 는 always-loaded 측정 표면의 고정 슬롯이다(`internal/config/token_budget_guard.go:195-200`). 이 트리에서 재측정한 예산:
+
+- **여유 201 tokens = 804 bytes** — 가드 본인의 측정: `always-loaded surface = 75799 tokens (budget 76000, headroom 201, 18 entries)` (`go test ./internal/config/ -run 'TestAlwaysLoadedTokenBudget$' -v` → `token_budget_guard_test.go:69` 로그). `estimateTokens` 는 `len/4`(`token_budget_guard.go:105-107`). `CodexContractByteCeiling`(§A.6 의 여유 10,347 B)은 이 표에 대해 먼저 걸리지 않는다 — **구속 기준은 토큰 예산이다.**
+- **인벤토리 형태(11행 = `tool_classes` 값 10개 + `question-channel`)는 문구와 무관하게 여유의 끝에 붙는다.** 3열 후보 표 실측: 가장 압축한 구성 **797 B = 199 tokens(여유 2)**, 보유 능력 행의 (c) 칸에 정직한 문구를 쓴 구성 **814 B = 203 tokens(75,799+203 = 76,002 — 가드 트립)**. 같은 11행이 17바이트 문구 차이로 트립과 비트립을 갈라놓는다는 것은, 인벤토리 형태의 가용성이 셀 문구 운에 맡겨진다는 뜻이다. 회귀 트립와이어의 남은 여유 전부를 오늘의 표 한 장이 소비하는 기준은 기준이 아니라 예산 회피권이다.
+- **부재 형태(4행 = 코덱스에 없는 능력만)는 같은 후보 형태로 373 B = 93 tokens — 여유 108 tokens.** 행 수가 부재를 따라가므로 능력 인벤토리가 늘어도 표는 늘지 않는다.
+
+측정 전문(후보 표 텍스트·명령·축자 출력): `.moai/reports/t196/req-csn-003-budget-remeasure.md` · `csn003-table-{11row,11row-honest,4row}.txt`. 바이트 수치는 셀 문구에 좌우되므로 **이 결정은 특정 바이트 수에 기대지 않는다** — 201 tokens 여유가 먼저고, 부재 형태만이 그 여유를 예산이 아니라 설계로 남겨 둔다.
+
+**교리 문장**: 결속표는 **부재를 채우기 위해 존재하는 것이지 능력 인벤토리를 복제하기 위해 존재하는 것이 아니다.** 예산이 무한대라도, 이 하네스에 없는 능력은 **없다는 이유 하나만으로** 정확히 한 행을 얻는다 — 그리고 이 하네스에 있는 능력은 행을 얻지 못한다. 표가 인벤토리를 복제하면 두 비용이 함께 온다: 능력이 바뀔 때마다 표도 고쳐야 하는 유지 부담과, AC-CSN-003 이 판정하는 (c) 칸을 빈 칸이나 "해당 없음"으로 채우는 행이다.
+
 ---
 
 ## §C. 요구사항 (GEARS)
@@ -251,7 +272,7 @@ HARD 6줄은 **채택안에 포함**된다(REQ-CSN-006) — 기각한 것은 "�
 
 - **REQ-CSN-001** — **While** 코덱스가 이름을 아는 도구 없이 지시를 만났을 때의 거동이 관측되지 않은 상태다, run-phase 는 축 A 의 어떤 본문도 편집하기 **전에** 그 거동을 최소 1건 관측하고 그 출력을 증거 경로에 남겨야 한다.
 - **REQ-CSN-002** — 하네스 중립 능력 어휘는 `internal/template/agentemit/agents-codex.yaml` 의 `tool_classes` 클래스 이름을 그대로 써야 하며, 두 번째 어휘를 새로 만들어서는 안 된다.
-- **REQ-CSN-003** — `AGENTS.md` 는 각 중립 능력에 대해 (a) 그 능력의 중립 이름, (b) Claude 하네스에서의 구현, (c) **그 능력이 없는 하네스에서 취할 행동** 세 가지를 담은 결속표를 실어야 한다.
+- **REQ-CSN-003** — `AGENTS.md` 는 결속표를 실어야 한다. 표의 행 집합은 **이 표를 읽는 하네스(코덱스)에 존재하지 않는 모든 `tool_classes` 능력**이다 — 파생 기준이지 고정 행 수가 아니다. 현재 측정값 4행은 결과이지 기준이 아니다: 미래의 하네스가 `file-read` 를 잃으면 표에 그 행이 새로 생기고, 코덱스가 어떤 능력을 얻으면 그 행은 표에서 사라진다. 각 행은 (a) 그 능력의 중립 이름, (b) Claude 하네스에서의 구현, (c) **그 능력이 없는 하네스에서 취할 행동** 세 칸을 담는다. 근거(예산 측정)는 §B.D7.
 - **REQ-CSN-004** — **When** 하네스에 질문 채널이 없다, 그 하네스의 실행자는 사용자에게 질문하는 대신 blocker 보고를 반환해야 한다. 결속표는 이 규칙을 명시해야 한다.
 - **REQ-CSN-005** — 결속표는 `AGENTS.md` 루트 사본과 `internal/template/templates/AGENTS.md` 사본 **양쪽**에 동일 내용으로 실려야 하며, 두 사본은 각각 `CodexContractByteCeiling` 이하로 유지되어야 한다.
 
@@ -312,10 +333,11 @@ HARD 6줄은 **채택안에 포함**된다(REQ-CSN-006) — 기각한 것은 "�
 | `AGENTS.md` (루트 + 템플릿 사본) | 2 |
 | `${CLAUDE_SKILL_DIR}` 보유 스킬 트리 파일 | 9 |
 | `${CLAUDE_SKILL_DIR}` 보유 규칙 트리 파일 (§A.8) | 2 |
+| `internal/template/agentemit/agents-codex.yaml` (M2 어휘 보충 — §B.D7) | 1 |
 | 회귀 가드 테스트 (신규) | 1 |
-| **합계** | **14** |
+| **합계** | **15** |
 
-Tier M 범위(5–15 파일)에 든다. 카드 등록값 `M~L` 에서 **M 으로 확정**한다. Tier L 로 넘겼을 항목(최대 25파일 산문 재작성)은 §D 에서 배제됐고, 배제 사유는 예산이 아니라 §B.D2 다.
+Tier M 범위(5–15 파일)의 **상한 한 자리**에 든다. [v0.3.1] 합계 14 → 15 는 run-phase 리드 판정(11번째 클래스 보충)으로 합류한 행이다 — 이로 Tier M 상한에 정확히 닿았으므로 **추가 범위 확장은 Tier 재판정 대상이다.** 카드 등록값 `M~L` 에서 **M 으로 확정**한다. Tier L 로 넘겼을 항목(최대 25파일 산문 재작성)은 §D 에서 배제됐고, 배제 사유는 예산이 아니라 §B.D2 다.
 
 ### E.2 완료 상태
 
@@ -335,7 +357,9 @@ Tier M 범위(5–15 파일)에 든다. 카드 등록값 `M~L` 에서 **M 으로
 - `SPEC-CODEX-DUAL-AGENTS-001` — 에이전트 이중 발행의 출처 SPEC
 - `internal/template/skill_mirror.go` — 미러 생산자 (`mirrorLinkTarget`, `WithSkillMirror`)
 - `internal/template/agentemit/agents-codex.yaml` — `tool_classes` 중립 어휘 (REQ-CSN-002 의 재사용 대상)
-- `internal/config/token_budget_guard.go` — `CodexContractByteCeiling`
+- `internal/config/token_budget_guard.go` — `CodexContractByteCeiling` (`:41`), `AlwaysLoadedTokenBudget` (`:32`), `estimateTokens` len/4 (`:105-107`), 고정 표면 슬롯의 AGENTS.md (`:195-200`) — §B.D7 의 예산 근거
+- `.moai/reports/t196/req-csn-003-budget-remeasure.md` — §B.D7·AC-CSN-009 셀렉터 정정의 명령·축자 출력 전문 (v0.3.1 배치)
+- `internal/template/agentemit/manifest.go:121-124` — 매핑 값↔처분 행 일관성 강제 (§B.D7 의 11번째 클래스 편집 형태)
 - `internal/template/renderer.go` — `claudeCodePassthroughTokens` (`:41`), 중괄호 재구성 (`:110-113`)
 - `internal/template/internal_content_leak_test.go` — 누출 클래스 표. 전 트리 클래스는 접두 한정(`:170-176`), 이 SPEC 의 토큰을 잡는 클래스는 `skillBodyScoped: true` (§B.D1 정정의 근거)
 - `internal/cli/codex_launcher.go:242-250` — 실행 cwd 를 프로젝트 루트로 잡는 분기와 그 강등 분기 (§A.7 의 근거)

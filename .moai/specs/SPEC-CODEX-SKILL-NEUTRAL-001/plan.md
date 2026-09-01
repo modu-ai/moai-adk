@@ -91,8 +91,9 @@
 **축**: A
 **바뀔 여지**: 큼 — 어휘 선택과 결속 규칙의 문면이 검토 대상이다.
 
-- `agents-codex.yaml` 의 `tool_classes` 클래스 이름을 그대로 가져와 어휘로 쓴다(새 어휘 신설 금지).
-- 능력별 3열 표를 쓴다: 중립 이름 / Claude 구현 / **능력 부재 시 행동**.
+- `agents-codex.yaml` 의 `tool_classes` 클래스 이름을 그대로 가져와 어휘로 쓴다. **[run-phase 리드 판정 반영, v0.3.1]** 11번째 클래스 `question-channel` 은 `tool_classes` 에 대한 **보충**이다 — REQ-CSN-002 가 금지하는 "두 번째 어휘"가 아니라 같은 어휘 안에서의 확장이며, 매핑 행 + `classes:` 처분 행(rationale 이 그 클래스가 무엇을 덮는지 서술)을 **한 편집에 함께** 넣는다. 로더가 이 일관성을 강제한다(`internal/template/agentemit/manifest.go:121-124` — 처분 행 없는 매핑 값은 로드 실패).
+- **[v0.3.1 패리티 판별 — 편집 전 확인 완료]** `agents-codex.yaml` 은 `rule_template_mirror_test.go` 의 어느 바이트 패리티 목록에도 없다(`workflowOptMirroredPaths` :42-98 · `lateBranchMirroredPaths` :109-127 모두 미등재; yaml 헤더가 "Build input only… NOT under templates/" 라고 스스로 선언한다). **단일 트리 편집** — 같은 커밋에 옮길 미러가 없다. 대신 `make build` 의 agents-emit-check 가 녹아야 하고, 이 매핑 추가는 방출물을 바꾸지 않는다(`AskUserQuestion` 은 어떤 에이전트의 `tools:` CSV 에도 없다 — 본문 산문 언급 3곳뿐, 이 트리 실측). **판별식은 "로컬 vs 템플릿"이 아니라 바이트 패리티 등재 여부다** — 이 구분이 이 카드의 적색 스위트(`TestRuleTemplateMirrorDrift` RED)를 만든 바로 그 축이다.
+- 3열 표를 쓴다: 중립 이름 / Claude 구현 / **능력 부재 시 행동**. 행 집합은 **코덱스에 존재하지 않는 능력**이다 — 파생 기준이지 고정 행 수가 아니다(REQ-CSN-003 v0.3.1, spec.md §B.D7).
 - 질문 채널 부재 시 행동은 명시적으로 "blocker 보고 반환"으로 적는다.
 - 루트와 템플릿 사본에 **동일 내용**으로 싣는다.
 - 중립성 가드 제약(SPEC ID·REQ 토큰·날짜·해시 금지)을 만족하는 문면으로 쓴다.
@@ -109,6 +110,7 @@
 - HARD 6줄(셸/노드 인자)과 SOFT 40줄(산문 경로)을 **같은 커밋 안에서** 함께 바꾼다. 시끄러운 쪽만 먼저 닫는 분할은 spec.md §B.D4 가 기각한 형태다.
 - **규칙 트리 4줄을 함께 처리한다**(spec.md §A.8 / §B.D6). `skill-authoring.md:226`·`:301` 의 규범적 선호와 `worktree-integration.md:386` 의 예시를 채택된 설계에 맞게 고치고, **`skill-authoring.md:219` 의 사실 기술은 유지한다.** 규칙 트리 목표는 토큰 0 이 **아니다** — 남은 줄의 내용이 판정 대상이다.
 - [HARD] **규칙 트리 2파일은 중립성 CI 가드가 이 SPEC 의 토큰 클래스를 잡지 않는 자리다**(§B.3). M3 이 규범 문장을 뒤집을 때 **왜 뒤집었는지를 SPEC ID 로 인용하는 것이 가장 자연스러운 덧붙임**인데, 그것이 REQ-CSN-013 위반이면서 아무 기계도 잡지 못한다. **AC-CSN-012 의 pre/post 쌍을 이 마일스톤 안에서 돌린다** — 사전값 `skill-authoring.md` 2 / `worktree-integration.md` 0.
+- **[v0.3.1 패리티 판별]** 규칙 트리 2파일의 편집 형태가 다르다: `worktree-integration.md` 은 **바이트 패리티 등재 파일**(`rule_template_mirror_test.go:57`) — 두 트리를 **같은 커밋에서** 같이 고친다. `skill-authoring.md` 은 어느 등재 목록에도 없고 두 사본이 다른 상태가 정상이다 — 템플릿 쪽만 고친다. **편집 전에 등재 여부부터 확인하는 순서다**: 등재 파일을 한 트리만 고치면 `TestRuleTemplateMirrorDrift` RED 다 — 이 카드가 그 적색을 실제로 봤다(progress.md §E.2 BLOCKER, `816acd104` 로 해소).
 - **[권장, 의무 아님] `skill-authoring.md:219` 에 한 절 덧붙이기.** 표 행에 "Claude 하네스 전용 — 다른 하네스에서는 빈 값이므로 프로젝트 루트 기준 상대 경로를 쓸 것" 정도를 달면 잔여가 완전히 닫힌다. REQ-CSN-015 는 순수 삭제도 허용하므로 **의무가 아니고**, AC-CSN-011 은 `:219` 를 `사실 기술` 로 분류하기만 하면 되므로 이 절을 달아도 달지 않아도 통과한다. 달지 않으면 남는 상태는 "변수가 존재한다는 참인 서술 + 쓰라는 규범 없음"이며, 그것을 따라간 저자는 REQ-CSN-010 의 가드를 만난다 — D10 이전보다 명백히 낫다.
 - 잔여 토큰 0건(스킬 트리)을 확인하고, 규칙 트리 잔존 줄을 열거해 사실 기술/규범 문장으로 분류한다.
 - **마감 단계에서 dogfood census 를 템플릿 census 옆에 pre/post 쌍으로 기록한다**: `grep -rn 'CLAUDE_SKILL_DIR' .claude/skills | wc -l` 과 템플릿 쪽 값을 나란히 적는다. 두 값이 어긋나면 **어긋난 사실과 두 수를 그대로 보고**하고 사람이 귀속하게 둔다 — 대개 설치된 바이너리가 트리보다 뒤처졌다는 뜻이다.
