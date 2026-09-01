@@ -153,11 +153,38 @@ Deviations from plan (justified, not silent):
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_status: audit-ready
+run_complete_at: 2026-09-02
+```
+
+Run phase complete: all four milestones (M4 `258013d0a` → M1 `31566c117` → M2 `2cea86ec2` → M3 `cfe86675c`, branch `WT-graph-report`, unpushed) carry their E1-E8 attribution matrices in §E.2 — every AC row PASS with command + verbatim output, both cross-platform builds exit 0, lint clean against the `0 issues.` baseline, and RED evidence captured pre-GREEN for each TDD cycle.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: complete
+sync_complete_at: 2026-09-02
+sync_commit_sha: "pending-backfill"
+b12_self_test_a: "grep -c 'SPEC-GRAPH-REPORT-001' CHANGELOG.md → 0 before emission (rc=1), duplicate-entry gate passed"
+b12_self_test_b: "AC count in acceptance.md = 16 (grep -oE 'AC-[A-Z0-9-]+' | sort -u | wc -l = 16); CHANGELOG entry cites no per-AC count, matches SSOT"
+b12_self_test_c: "claimed file paths verified by ls (internal/graph/, internal/cli/, internal/hook/session_start.go present)"
+canary_compliance_check:
+  changelog_entry_position: "top of [Unreleased] → ### Added, matching existing entry style"
+  frontmatter_status_transitions: "in-progress → implemented → completed merged into this single sync commit"
+  body_content_modified: "none (spec/plan/acceptance bodies untouched; frontmatter status: + updated: only)"
+```
+
+### §E.2-MX — MX tag change summary (sync sub-step)
+
+New-code `@MX` annotations introduced by this branch's milestone commits (measured: `git diff b6231290d..HEAD -- internal/graph internal/cli internal/hook | grep '^+' | grep '@MX:'` → 6 added lines):
+
+- **@MX:NOTE × 3** — `internal/cli/graph.go` (fixed rotating report path — D1: regenerates in place, never committed; SPEC-GRAPH-REPORT-001), `internal/graph/architecture_report.go` (determinism contract — stable sorts + total order, no wall-clock; REQ-GR-005), `internal/hook/session_start.go:769` (deferred edges refresh — fail-open, fire-and-forget at process lifetime; SPEC-GRAPH-REPORT-001).
+- **@MX:ANCHOR × 1** — `internal/graph/shrink.go:101` — single choke point for every automatic write path's shrink evaluation (refresh / build / deferred all consume one verdict), with `@MX:REASON` (forking the discriminator would let one path accept a shrink another refuses — the graphify #1116 incident shape) and `@MX:SPEC:SPEC-GRAPH-REPORT-001` sub-lines.
+- **@MX:WARN × 0 new** — no new dangerous-pattern sites; `internal/hook/session_start.go`'s existing `@MX:WARN` lines predate this SPEC.
+- **M1 (`graph_shortest_path`, `internal/graph/shortestpath.go`) carries no @MX tag** — read-only query following the existing `graph_file_api`/`graph_find_code`/`graph_trace_calls` registration pattern, which likewise carries none; no exported-symbol fan-in ≥ 3 site, so the P1 ANCHOR rule does not trigger.
+
+Sync-phase deliverables: CHANGELOG `[Unreleased]` entry (4 deliverables, MCP tool count 28 measured via `grep -c 'add("' internal/cli/mcp_server.go` at `cfe86675c` — NOT the 29 claimed in the dispatch, which was not re-counted), spec.md frontmatter `completed` transition, codemaps skipped (no `codemaps/` directory exists in this tree). §E.4 `sync_commit_sha` carries the `pending-backfill` placeholder per the D3 backfill exemption — a commit cannot know its own SHA; the orchestrator backfills in a follow-up commit.
 
 ## §F Phase 4 Mode Selection
 

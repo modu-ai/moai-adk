@@ -2,7 +2,7 @@
 id: SPEC-GRAPH-REPORT-001
 title: "Graph report toolchain: shortest_path MCP query, moai graph report, edges shrink guard, deferred SessionStart edges refresh"
 version: "0.2.2"
-status: in-progress
+status: completed
 created: 2026-09-02
 updated: 2026-09-02
 author: manager-spec
