@@ -56,6 +56,35 @@ Deviations from plan (justified, not silent):
 
 Full-suite regression: `go test -count=1 ./internal/hook/` → `ok github.com/modu-ai/moai-adk/internal/hook 35.533s` (post-change). `go test -count=1 ./internal/cli/` (full package, deps.go is shared) → `ok github.com/modu-ai/moai-adk/internal/cli 375.583s`, exit 0. `go vet ./internal/hook/ ./internal/cli/` → exit 0.
 
+### M1 — `graph_shortest_path` MCP tool (REQ-GR-001..004)
+
+Implemented 2026-09-02 (TDD RED→GREEN; tree = `7cad11efd` + M1 working-tree changes, pre-commit attribution — commit SHA rides the M1 commit itself). Absorb gate OPEN: t412 landed and was absorbed (`b6231290d`); plan anchors re-verified post-absorb (`maxTraceDepth` codequery.go:21, `splitCodeNode`/`loadCodeEdges`/`AnswerProvenance` intact; t412's fan-in migration touched no M1-named surface — traversal consumes `KindCodeCall` only, no conflict).
+
+Files: `internal/graph/shortestpath.go` (new — `ShortestPath` + `PathResult`/`PathHop`/`PathCandidate`; deterministic BFS over `KindCodeCall` edges indexed by caller node id, neighbor iteration in total order (node id, then line), depth bounded by the SHARED `maxTraceDepth`; ambiguous intermediate = no continuation) · `internal/cli/mcp_code_tools.go` (`handleGraphShortestPath`: from/to required, `resolveToolProjectRoot`, `toolJSON`/`toolErr`) · `internal/cli/mcp_server.go` (`add("graph_shortest_path", …)` with the cap restated in the description, read-only hint) · `internal/mcp/catalog.go` + `catalog_test.go` (29th entry, `wantCatalogSize` 28→29 — forced by the registration/catalog equality guard) · `.claude/rules/moai/core/moai-mcp-tools.md` + template mirror (Ten-tool `project_root` sentence — forced by `TestProjectRootDocMatchesServer`) · tests: `internal/graph/shortestpath_test.go` (9), `internal/graph/shortestpath_nocgo_test.go` (1, `!cgo`), `internal/cli/mcp_shortest_path_test.go` (7).
+
+| E-item | Command | Observed output |
+|---|---|---|
+| E1 AC-GR-001 | `go test -count=1 -v ./internal/cli/ -run TestMCPServer_GraphShortestPathRegistered` | `--- PASS: TestMCPServer_GraphShortestPathRegistered (0.00s)` — tool named in tools/list alongside the three existing graph tools, effective read-only true, `from`/`to` in `required`, `project_root` declared but not required, description contains "capped at 8" |
+| E1 AC-GR-002 | `go test -count=1 -v ./internal/graph/ -run 'TestShortestPath_EightHopChainFound|TestShortestPath_NineHopChainNotFound'` | both `--- PASS` — 8-hop chain found (HopCount=8 ≤ 8, Cap=8); 9-hop chain structured not-found naming both endpoints + "8", no hops |
+| E1 AC-GR-003 | `go test -count=1 -v ./internal/graph/ -run 'TestShortestPath_DisconnectedNotFound|TestShortestPath_AmbiguousEndpointCandidates|TestShortestPath_AmbiguousIntermediateNoContinuation|TestShortestPath_TargetOnlyNameNotFound'` | all `--- PASS` — not-found names endpoints+cap+provenance; candidates = name→sorted node ids, no path; ambiguous intermediate never joined through; target-only name → plain not-found |
+| E1 AC-GR-004 | `go test -count=1 -v ./internal/graph/ -run 'TestShortestPath_Deterministic|TestShortestPath_TieBreakTotalOrder'` | both `--- PASS` — 10× byte-identical serializations + `cmp` exit 0; tie breaks via node-id total order (b.go:B, not c.go:C) |
+| E1 AC-GR-005 | `go test -count=1 -v ./internal/cli/ -run TestHandleGraphShortestPath_BadRootRejected` | `--- PASS` — bad `project_root` → IsError result naming the rejected root, no fallback |
+| E2 | `go build ./...` | exit 0 (`BUILD_OK`) |
+| E2 | `GOOS=windows GOARCH=amd64 go build ./...` | exit 0 (`BUILD_OK`) |
+| E3 | `go test -count=1 -coverprofile ./internal/graph/ -run TestShortestPath` + `go tool cover -func` | `ShortestPath 92.7%`, `resolveName 100.0%`, `sortedNeighbors 88.9%`, `reconstruct 100.0%` (per-func, all ≥ 85%) |
+| E3 | same for `./internal/cli/ -run 'TestMCPServer_GraphShortestPathRegistered|TestHandleGraphShortestPath'` | `handleGraphShortestPath 92.3%` (per-func) |
+| E4 | `grep -rn 'AskUserQuestion\|mcp__askuser' <touched non-test files>` | 0 matches (exit 1) |
+| E5 | `golangci-lint run --timeout=2m ./internal/graph/... ./internal/cli/... ./internal/mcp/... ./internal/settings/... ./internal/template/...` | `0 issues.` (baseline `0 issues.` → 0 NEW) |
+| B5 nocgo | `CGO_ENABLED=0 go test -count=1 ./internal/graph/ -run 'TestNoCGOShortestPath|TestShortestPath'` | `ok github.com/modu-ai/moai-adk/internal/graph 0.767s` |
+| E8 RED | pre-GREEN `go test ./internal/graph/ -run TestShortestPath` | `undefined: ShortestPath` … `FAIL [build failed]`; pre-GREEN cli run: `undefined: handleGraphShortestPath` … `FAIL [build failed]` |
+
+Full-suite regression (post-change): `go test -count=1 ./internal/graph/ ./internal/mcp/` → both `ok`; `go test -count=1 ./internal/cli/ ./internal/settings/` → both `ok` (cli 330.004s — includes the doc-parity + catalog guard tests this milestone's cascades feed); `go test -count=1 ./internal/template/` → `ok` (template mirror parity). `go vet` on graph/cli/mcp → exit 0.
+
+Deviations from plan (justified, not silent):
+1. `internal/mcp/catalog.go` + `catalog_test.go` (`wantCatalogSize` 28→29) are not named in plan §F M1's key files, but the registration/catalog equality guard (`TestMoaiMCPServer_RegistrationMatchesCatalog`, plus `TestMoaiMCPTools_Count*`) mechanically fails without the 29th entry — the catalog_test comment itself instructs updating it together with registration. Mechanical cascade of REQ-GR-001.
+2. `.claude/rules/moai/core/moai-mcp-tools.md` + its template mirror (Nine→Ten-tool `project_root` sentence, 28→29 header, Code-queries family row) — forced by `TestProjectRootDocMatchesServer`, which checks BOTH copies against the live server schema. Edit kept identical in both copies (verified `diff` → identical); template content stays neutral (tool names only, no SPEC-IDs).
+3. Pre-existing drift observed, NOT fixed (out of M1 scope): `moai-mcp-tools-catalogue.md` header still says "each of the 21 tools" — stale from before the graph family landed (28→29). No test pins it; left for a docs sweep.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase>_

@@ -1,6 +1,6 @@
 # moai-mcp Tool Catalogue
 
-> Single source of truth for the 28 tools exposed by the self-hosted `moai` MCP
+> Single source of truth for the 29 tools exposed by the self-hosted `moai` MCP
 > server (`.mcp.json` → `{command: "moai", args: ["mcp-server"]}`). Each tool is
 > prefixed `mcp__moai__` at the call site. This rule tells agents and the
 > orchestrator WHEN to prefer an MCP tool over its CLI/slash equivalent.
@@ -19,10 +19,10 @@ the CLI form reads more naturally inline.
 
 ## The `project_root` input — name your own tree
 
-Nine tools accept an optional `project_root` string: `spec_progress`,
+Ten tools accept an optional `project_root` string: `spec_progress`,
 `spec_audit`, `spec_drift`, `codex_audit`, `glm_audit`, `audit_multi`,
-`graph_file_api`, `graph_find_code`, and `graph_trace_calls`. It names the tree
-the call should act on.
+`graph_file_api`, `graph_find_code`, `graph_shortest_path`, and
+`graph_trace_calls`. It names the tree the call should act on.
 
 [HARD] **An agent working inside a worktree MUST pass it**, and the value is its
 own `git rev-parse --show-toplevel`. This is not a convenience. The server cannot
@@ -69,7 +69,7 @@ about the same tree.
 | Cross-model audit | `audit_multi`, `codex_audit`, `glm_audit`, `audit_cache` | plan-auditor, sync-auditor |
 | Codex delegation | `codex_task`, `codex_setup`, `codex_job_{status,result,cancel}` | super-advisor |
 | GLM delegation | `glm_task`, `glm_job_{status,result,cancel}` | super-advisor |
-| Code queries | `graph_file_api`, `graph_find_code`, `graph_trace_calls` | any agent (signature-level code navigation from the code-derived edge layer; every answer carries tree+commit provenance) |
+| Code queries | `graph_file_api`, `graph_find_code`, `graph_trace_calls`, `graph_shortest_path` | any agent (signature-level code navigation from the code-derived edge layer; every answer carries tree+commit provenance) |
 
 Per-tool purpose, consumer, and CLI equivalent: `moai-mcp-tools-catalogue.md`. Both codex and GLM
 are OPTIONAL and fail open — an unavailable backend returns `inconclusive`, never a hard error.
