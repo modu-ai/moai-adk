@@ -112,6 +112,15 @@ git diff --stat 297a21ea73b24e6605280625e576555e4316263e..HEAD -- \
 
 [HARD] **기준은 브랜치 이름이 아니라 트리 SHA 로 못박는다.** 범위 밖 표면 단언은 불변식 주장이므로, 움직이는 ref 를 기준으로 삼으면 기준이 단언 아래에서 이동해 만든 적 없는 변경을 보고하거나 만든 변경을 감춘다. 기준값은 계획 단계 HEAD `297a21ea73b24e6605280625e576555e4316263e` 다. **run-phase 가 다른 HEAD 에서 착수하면 착수 시점 HEAD 를 재측정해 이 자리에 적고, 바꿨다는 사실을 progress.md 에 남긴다** — 조용히 교체하지 않는다.
 
+[v0.3.2, sync-audit MAJOR-1] **위 표면 목록은 plan-era 기록이다 — sync-phase 재판정은 승격 경로를 제외한 원래 표면 둘로 실행한다.** run-phase 리드 판정(2026-09-01, spec.md §B.D7)이 `internal/template/agentemit/agents-codex.yaml` 을 범위 안으로 승격했으므로, 위 명령을 plan-era 표면 목록 그대로 재실행하면 승격 경로의 정당한 범위 안 편집(`agents-codex.yaml` +12)이 잡혀 **비어 있지 않다 — 설계상 그렇다**. 올바른 재판정 형태는 원래 표면에서 승격 경로를 뺀 둘만 건넨다:
+
+```bash
+git diff --stat 2c18091d127cbc723074124e1015353e077300ca..HEAD -- \
+  internal/cli/codex_launcher.go internal/template/skill_mirror.go
+```
+
+출력은 비어 있다(이 트리 실측). 기준 SHA 는 위 [HARD] 가 요구하는 착수 시점 HEAD 재측정값이다. `progress.md` §E.4 가 승격 경로를 `internal/template/renderer.go` 로 조용히 갈아끼우고 재판정한 것은 **진행 기록 결함**으로 progress.md 쪽에 기록된다 — 이 정정은 AC 의 초록과 AC 의 문장이 다시 일치하게 만들기 위해 존재한다.
+
 판정: 출력이 비어 있다. `--stat` 을 쓰는 이유는 접두사 필터가 마크다운 목록 줄을 버리는 형태의 오판을 피하기 위해서다.
 
 ### AC-CSN-011 — 규칙 트리에 규범 문장이 남지 않았다 (MUST)

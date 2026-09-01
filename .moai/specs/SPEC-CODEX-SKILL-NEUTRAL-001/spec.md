@@ -1,7 +1,7 @@
 ---
 id: SPEC-CODEX-SKILL-NEUTRAL-001
 title: "하네스 중립 지시 계층 — 코덱스에서도 Claude 와 같은 신뢰로 지시를 실행할 수 있게 한다"
-version: "0.3.1"
+version: "0.3.2"
 status: completed
 created: 2026-08-31
 updated: 2026-09-01
@@ -18,6 +18,11 @@ related_specs: [SPEC-CODEX-SKILLS-CANONICAL-001, SPEC-CODEX-DUAL-AGENTS-001]
 # SPEC-CODEX-SKILL-NEUTRAL-001 — 하네스 중립 지시 계층
 
 ## HISTORY
+
+- 2026-09-01 (sync-audit 후속 본문 정정, v0.3.2) — sync-audit(**PASS-WITH-DEBT 0.89**, `.moai/reports/t196/sync-audit.md`)의 MAJOR-1·MINOR-1 두 건을 본문에 반영한다. **요구사항·판정 개수 불변**(REQ 15 / AC 13).
+  1. **AC-CSN-010 표면 목록 정정 노트 [v0.3.2]** — run-phase 리드 판정(§B.D7, 2026-09-01)이 `agents-codex.yaml` 을 범위에 승격했으므로 plan-era 표면 목록의 축자 재실행은 설계상 비어 있지 않다. AC 에 [v0.3.2, sync-audit MAJOR-1] 노트를 덧붙여 올바른 sync-phase 재판정 형태를 못박는다 — 승격 경로를 제외한 `codex_launcher.go`·`skill_mirror.go` 둘만, 착수 HEAD `2c18091d1` 기준(비어 있음을 이 트리 실측). §E.4 의 표면 치환(`renderer.go` ← `agentemit/`)은 진행 기록 결함으로 progress.md 소관이다.
+  2. **§A.5 값 집합 수치 시간 한정 [v0.3.2]** — `tool_classes` 값 집합 `10개` 는 v0.3.1 시점 측정임을 못박고, 현재값 **11**(`question-channel` 합류, HEAD `e93d1559d` 재측정)을 [v0.3.2 정정] 노트로 기록한다.
+  **status 는 completed 에 머문다** — 미푸시 브랜치 위 에피소드 내 수정이지 `completed → in-progress (amendment)` 전환이 아니므로 `amendment_of:` 나 HISTORY `## Amendments` 절을 만들지 않는다.
 
 - 2026-09-01 (run-phase 문면 정정 배치, v0.3.1) — run-phase 중 리드 판정(2026-09-01 verdict) 4건을 본문에 반영한다. **요구사항·판정 개수 불변**(REQ 15 / AC 13 — 범위·문면 정정이지 예산 변경이 아니다).
   1. **REQ-CSN-003 문면 정정** — 결속표의 행 집합을 "각 중립 능력"(인벤토리)이 아니라 **이 표를 읽는 하네스에 존재하지 않는 모든 `tool_classes` 능력**(파생 기준)으로 못박는다. 오늘의 4행은 결과이지 기준이 아니다. 측정 근거는 신설 §B.D7, 증거 전문은 `.moai/reports/t196/req-csn-003-budget-remeasure.md`.
@@ -124,7 +129,7 @@ HARD 6줄은 2개 스킬 · 3개 스크립트 대상에 걸쳐 있다. SOFT 40�
 
 ### A.5 중립 어휘는 이미 하나 존재한다 — 새로 만들지 않아도 된다
 
-`internal/template/agentemit/agents-codex.yaml` 의 `tool_classes` 가 Claude 도구 토큰을 하네스 중립 클래스로 이미 매핑한다: `file-read` · `file-write` · `shell` · `web` · `task-list` · `skill-loader` · `subagent-spawn` · `design-sync` · `cross-session-messaging` · `moai-mcp` — **값 집합 10개**(`awk '/^tool_classes:/{f=1;next} /^[^ ]/{f=0} f&&NF==2{gsub(":","",$2);print $2}' internal/template/agentemit/agents-codex.yaml | sort -u | wc -l` → 10, 이 트리 실측). [v0.3.1 정정] 종전 판본은 9개로 적었다 — `cross-session-messaging`(SendMessage·ListAgents 매핑)을 빠뜨린 누락이다.
+`internal/template/agentemit/agents-codex.yaml` 의 `tool_classes` 가 Claude 도구 토큰을 하네스 중립 클래스로 이미 매핑한다: `file-read` · `file-write` · `shell` · `web` · `task-list` · `skill-loader` · `subagent-spawn` · `design-sync` · `cross-session-messaging` · `moai-mcp` — **값 집합 10개**(`awk '/^tool_classes:/{f=1;next} /^[^ ]/{f=0} f&&NF==2{gsub(":","",$2);print $2}' internal/template/agentemit/agents-codex.yaml | sort -u | wc -l` → 10, v0.3.1 시점 실측). [v0.3.1 정정] 종전 판본은 9개로 적었다 — `cross-session-messaging`(SendMessage·ListAgents 매핑)을 빠뜨린 누락이다. [v0.3.2 정정] 위 `10개` 는 v0.3.1 시점 측정값이다 — run-phase 리드 판정이 `question-channel` 을 `tool_classes` 에 합류시킨 뒤(§B.D7) 같은 명령은 **11** 을 낸다(HEAD `e93d1559d` 재측정). §A.5 는 계획 시점 기준선이므로 열거와 수치는 v0.3.1 판본에 둔다.
 
 다만 이 어휘는 **`tools:` 프론트매터에만** 적용된다. 본문 산문은 이 매핑을 통과하지 않는다. 카드가 남긴 구멍이 정확히 여기다.
 

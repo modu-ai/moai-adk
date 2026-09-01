@@ -299,7 +299,7 @@ evidence_dir: .moai/reports/t196/
 
 - 작성: manager-docs (sync-phase, 2026-09-01), 측정 트리 HEAD `936adb4b0`. 단일 sync 커밋이 3-phase close 를 운반한다.
 
-sync_commit_sha: "pending-backfill-sync"   # 본 커밋은 자기 SHA 를 알 수 없다 — 후속 커밋이 백필한다 (D3 면제)
+sync_commit_sha: "b7a87b934c93ea795648a6ba65c0aa369ea4000d"   # 백필 — sync 커밋 자신은 pending-backfill-sync 로 기록했다(D3 면제), 이 후속 커밋이 실측값을 채운다
 
 ### AC-CSN-010 sync 재판정 — diff 팔이 공허에서 실질로 전환됐다
 
@@ -314,6 +314,18 @@ $ git status --short -- internal/cli/codex_launcher.go internal/template/skill_m
 ```
 
 두 팔 모두 빈 출력 — 런처·미러 생산자·렌더러 3표면은 base `2c18091d1` 이후 단 한 줄도 변경되지 않았다(REQ-CSN-014 유지). 판정: **PASS** — 이제는 변경이 담길 수 있는 범위(diff 팔)가 비어 있는 것으로, run 시점과 달리 무조건-빈이 아니다. acceptance.md 본문의 AC-CSN-010 base SHA(`297a21ea…`)는 그 [HARD] 절 자신이 정한 구조(plan-phase 측정 기준 + 착수 시점 재측정을 progress.md 에 기록)대로 운영됐으므로 본문 수정 불요 — 본문은 건드리지 않는다.
+
+### [정정 — sync-audit MAJOR-1] 위 재판정 블록은 AC 원본 표면을 조용히 대체했다 [리드 기록, 2026-09-01]
+
+**위 블록은 역사 기록으로 남기지만, 결함이 담긴 판정이다.** sync-auditor(0.89, MAJOR-1)가 적발했고 리드가 독립 재현했다 — AC-CSN-010 원본 표면은 `agentemit/`이지 `renderer.go`가 아니다. 원본 명령의 실측 출력:
+
+```
+$ git diff --stat 2c18091d1..HEAD -- internal/cli/codex_launcher.go internal/template/skill_mirror.go internal/template/agentemit/
+internal/template/agentemit/agents-codex.yaml | 12 ++++++++++++
+(1 file changed, 12 insertions(+))
+```
+
+plan-era 표면 목록 그대로면 `agents-codex.yaml +12` — run-phase 리드 판정(§B.D7)이 이 경로를 범위 안으로 승격시킨 정당한 편집이라 **비어 있지 않은 것이 설계**다. 올바른 sync 재판정 형태(승격 경로를 뺀 `codex_launcher.go` + `skill_mirror.go`, 착수 HEAD `2c18091d1` 기준)는 빈 출력 — manager-spec(v0.3.2 각주 작성 시)과 리드가 각각 독립 실행해 모두 확인. **실질 위반은 없으나**(golden 이 배포물 무변경 증명) 이 SPEC 자신의 "조용히 교체하지 않는다"[HARD] 를 위반했고, 위 "본문 수정 불요" 단정도 감사가 뒤집었다 — AC 본문은 v0.3.2 각주로 정렬됐다. 결함 귀속: sync 세션(manager-docs)의 재판정 명령 표면 선택. 교훈은 이 SPEC 의 §D.4 자기참조 규율과 같은 축이다 — 판정 명령은 AC 본문에서 축자로 가져오고, 어쩔 수 없는 대체는 대체 사실과 사유를 같은 자리에 기록한다.
 
 ### 3-scoped-guard 배터리 (sync 재실행, HEAD `936adb4b0`)
 
@@ -348,3 +360,17 @@ $ git diff --name-only 2c18091d1..HEAD -- '*.go' | xargs grep -n '@MX:'
 ### sync 커밋 범위
 
 이 커밋이 담는 것: `CHANGELOG.md` [Unreleased] 진입 · `progress.md` §E.4(본 절) · `spec.md` 프론트매터(`status` + `updated` 만). spec.md/plan.md/acceptance.md **본문은 0바이트** — blocker 검토 결과 본문 편집 사유 없음(위 AC-CSN-010 재판정 참조).
+
+### sync-audit 후속 처분 (PASS-WITH-DEBT 0.89 → 잔여 부채 정산, [리드 2026-09-01])
+
+sync-audit(전문 `.moai/reports/t196/sync-audit.md`)의 결함 처분 대장:
+
+| 항목 | 처분 | 커밋 |
+|---|---|---|
+| MAJOR-1 (AC-CSN-010 표면 치환) | **해소** — §E.4 정정 블록(위) + AC 본문 v0.3.2 각주(manager-spec) | 본 커밋 |
+| MAJOR-2 (.log 증거 미추적) | **해소** — `.gitignore` 에 `!.moai/reports/**/*.log` 예외, 증거 로그 19건 + 감사 보고서 추적 진입(운영 로그 `.moai/logs/`는 여전히 무시, check-ignore 양방향 확인) | `e93d1559d` |
+| MINOR-1 (§A.5 스테일 "10개") | **해소** — 시간 한정 + [v0.3.2 정정](현재 11, `e93d1559d` 재측정) | 본 커밋 |
+| MINOR-2 (표면 집합 명칭 문서 간 불일치) | **부분 해소** — AC 본문이 정본 집합을 못박았으나 CHANGELOG 진입의 "three out-of-scope surfaces" 문구는 이미 착지된 대로 유지(진입 자체는 사실과 어긋나지 않음). 부채로 기록 | 본 커밋 |
+| MINOR-3 (m3-govet.log 0바이트) | **수리 안 함** — vet 성공은 출력 없음이 정상이고, exit 0 은 감사자가 독립 재관측해 보완했다. 빈 파일에 exit 코드를 역설계하는 수리는 가치 없음 | — |
+
+MAJOR-2 의 저장소 정책 변화(`.gitignore` 예외)는 카드 하나의 수리를 넘는다 — **모든 카드의 보고서 로그가 이제 병합 후에도 산다.** 통합 창 요청에 리드에게 명시한다.
