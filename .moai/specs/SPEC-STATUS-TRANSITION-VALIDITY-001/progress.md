@@ -260,7 +260,7 @@ Full-suite verdict is CI's; the local run is scoped to the affected package per 
 
 ```yaml
 run_complete_at: 2026-08-31
-run_commit_sha: pending-backfill-final-run-commit
+run_commit_sha: 73bfba170      # M1+M4 implementation commit — the tree the §E.2 measurement binary was built from (strings bin/moai | grep -c 73bfba170 → 4); sync-audit independently re-measured at ff8a7dcba with its own make-build binary
 run_status: complete
 ac_pass_count: 20
 ac_fail_count: 0
@@ -278,4 +278,61 @@ m1_to_mN_commit_strategy: two commits (M1+M4 implementation; M2+M3+M5 measuremen
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+### Carried sync-audit verdict
+
+The sync audit **already ran** before this close: verdict **PASS, weighted 91.2/100**, both must-pass
+dimensions (Functionality 93, Security 95) cleared independently; 0 blocking findings, 4 optional
+findings (F1-F4). Committed record: `.moai/reports/t376/sync-audit.md` (landed in `b43d4cb56`;
+audited HEAD `ff8a7dcba`, base `a5d963db6`, measurement binary `make build` with
+`strings bin/moai | grep -c ff8a7dcba → 4`). This close records that audit plus the close —
+it does not order or run a new one.
+
+Finding disposition — nothing the audit asked for is left open:
+
+| Finding | Closed in | What landed |
+|---|---|---|
+| F1 (unmeasured doubling of the per-document git walk) | `b1bcce4f4` | `cachedOwnershipTransition` memoization — lookups 1428 → 714, findings byte-identical 1200 |
+| F3 (rule comment citing REQ-STV-012 for a claim it does not make) | `b1bcce4f4` | citation + claim corrected together |
+| F4 (AC-STV-016 mis-citation naming AC-STV-015's evidence) | `b1bcce4f4` | mis-citation struck from progress.md |
+| F2 (§C limitation statement incomplete on shelter composition) | `ab114b2cf` | both demotion shelters named (49 terminal-status / 48 era-exemption) |
+
+### Sync-phase changes (this close)
+
+| File | Change |
+|---|---|
+| `progress.md` §E.3 | `run_commit_sha` backfilled: `73bfba170` (tree the §E.2 measurement binary was built from) |
+| `progress.md` §E.4 | this section |
+| `spec.md` frontmatter | `status: in-progress → completed` (3-phase close, single sync commit), `updated: 2026-09-01` |
+| `.moai/reports/t376/sync-close.md` | close verdict report (this close) |
+
+No CHANGELOG / docs-site / README emission — this branch's precedent is zero doc files, and the
+sync audit required none (its 4 findings were all optional and all closed in code/record commits).
+
+### What this close did NOT observe
+
+- No tests, lint, or build were re-run. §E.2 / §E.3 figures and the sync-audit's measurements are
+  cited from those runs, not re-measured here. This close's diff is markdown-only (SPEC artifacts
+  + reports), touching no Go source.
+- No CI verdict — nothing was pushed; integration into `develop` is a lead-granted window.
+
+```yaml
+sync_complete_at: 2026-09-01
+sync_commit_sha: pending-backfill  # backfilled in a follow-up commit (a commit cannot name its own hash)
+sync_status: complete
+run_commit_sha_backfilled: 73bfba170
+sync_audit_verdict: "PASS 91.2/100 — committed in b43d4cb56 (.moai/reports/t376/sync-audit.md); audited HEAD ff8a7dcba; must-pass Functionality 93 + Security 95 cleared"
+sync_audit_findings_disposition: "F1/F3/F4 closed in b1bcce4f4; F2 closed in ab114b2cf; 0 blocking"
+b12_self_test_a: not-applicable — no CHANGELOG emission (branch precedent: zero doc files; audit required none)
+b12_self_test_b: not-applicable — no CHANGELOG emission
+b12_self_test_c: not-applicable — no CHANGELOG emission
+docs_sweep: "not applicable — no CHANGELOG/docs-site/README surface required by this SPEC"
+template_mirror: "not applicable — run-phase files are all internal/spec/ Go source; sync-phase touched SPEC artifacts only"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (3-phase close on the single sync commit; updated: 2026-09-01)"
+  plan_md: "no status/updated fields (no frontmatter block) — nothing to transition"
+  acceptance_md: "no status/updated fields (no frontmatter block) — nothing to transition"
+  progress_md: "no frontmatter block — nothing to transition"
+mx_tag_validation: "no @MX annotation added or changed; sync-phase touched no Go source"
+canary_compliance_check: not-applicable
+push_state: "not pushed — integration is a lead-granted window (per dispatch constraints)"
+```

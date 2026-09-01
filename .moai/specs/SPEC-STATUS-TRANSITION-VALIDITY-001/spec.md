@@ -2,7 +2,7 @@
 id: SPEC-STATUS-TRANSITION-VALIDITY-001
 title: "Status-transition validity lint — a transition is judged on the pair, not on who signed it"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-08-31
 updated: 2026-09-01
 author: manager-spec
