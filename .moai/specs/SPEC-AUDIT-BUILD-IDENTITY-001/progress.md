@@ -176,4 +176,21 @@ m1_to_mN_commit_strategy: single implementation commit (M1-M3 combined; Tier S, 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-01
+sync_commit_sha: "pending-backfill-sync-t248"   # a commit cannot cite its own hash — backfilled in the follow-up commit (canonical D3 exemption)
+sync_status: complete
+b12_self_test_a: pre_emission_grep_count_0 (grep -c 'SPEC-AUDIT-BUILD-IDENTITY-001' CHANGELOG.md → 0)
+b12_self_test_b: ac_count_match (acceptance.md distinct ACs = 8 = AC-ABI-001..008; entry cites 8/8; no ambiguity → count emitted)
+b12_self_test_c: file_paths_verified (spec.md link target, internal/cli/mcp_build_identity.go, internal/cli/mcp_build_identity_test.go — all ls-verified in this run)
+changelog_entry_position: "[Unreleased] → Added, first entry (above SPEC-MEMORY-STORE-RECONCILE-001)"
+frontmatter_status_transitions:
+  spec_md: "in-progress → implemented → completed (merged into single sync commit; updated: 2026-09-01)"
+  plan_md: none (no status field — ArtifactStatusFieldForbidden, card t357)
+  acceptance_md: none (no status field)
+  progress_md: none (no status field)
+canary_compliance_check:
+  mx_tag_pass: pass — no tag changes required; auditBuildIdentity carries @MX:NOTE (fail-open short-circuit) + @MX:SPEC; helper normalizeBuildCommit is unexported with dedicated tests; wiring files carry pre-existing @MX:SPEC anchors
+  docs_scope_decision: no-change — README.md/README.ko.md/README.ja.md/README.zh.md grep for build_commit/buildCommit/audit verdict = 0 hits; .moai/docs/ = 0 hits; additive internal MCP JSON fields need no user-facing doc edit
+  push: not-performed (integration is the lead's develop merge window)
+```
