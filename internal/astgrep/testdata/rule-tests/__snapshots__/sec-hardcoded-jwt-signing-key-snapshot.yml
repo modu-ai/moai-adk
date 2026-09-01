@@ -1,0 +1,9 @@
+id: sec-hardcoded-jwt-signing-key
+snapshots:
+  ? |
+    encoded, err := claims.SignedString([]byte("hunter2-secret"))
+  : labels:
+    - source: claims.SignedString([]byte("hunter2-secret"))
+      style: primary
+      start: 16
+      end: 61

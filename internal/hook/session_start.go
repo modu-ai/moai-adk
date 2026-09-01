@@ -35,11 +35,72 @@ import (
 // the execution environment (REQ-HOOK-030).
 type sessionStartHandler struct {
 	cfg ConfigProvider
+
+	// syncDeferredScans records that this handler's constructor was given
+	// WithSynchronousDeferredScans. Per-handler rather than a package-level
+	// setter: a process-global toggle would be mutable shared state and would
+	// race across parallel tests — the exact defect internal/hook's own
+	// TestMain seam exists to prevent (SPEC-TEMPDIR-CLEANUP-RACE-001
+	// REQ-TCR-001).
+	syncDeferredScans bool
+}
+
+// Option configures a SessionStart handler at construction time.
+//
+// The parameter is variadic so that the existing production call site
+// (internal/cli/deps.go) keeps compiling unchanged; a second positional
+// argument would have broken it (SPEC-TEMPDIR-CLEANUP-RACE-001 REQ-TCR-006).
+type Option func(*sessionStartHandler)
+
+// WithSynchronousDeferredScans makes every deferred step of Handle run inline,
+// so that nothing dispatched by Handle outlives its return.
+//
+// This exists for a caller that OWNS the directory it passes as ProjectDir and
+// destroys it when Handle returns — a cross-package test using t.TempDir is the
+// motivating case. Handle's deferred MX cold-start scan writes
+// <ProjectDir>/.moai/state/mx-index.json from a goroutine joined with a bounded
+// deadline, so on a tree large enough for the scan to outrun that bound the
+// write lands after the caller has begun deleting the directory, and the
+// deletion fails with "unlinkat ... directory not empty". internal/hook's own
+// test binary avoids this by flipping a package-private variable in TestMain,
+// which cannot cross a test-binary boundary; this option is the same capability
+// made reachable by a caller outside the package.
+//
+// It is OFF by default and changes nothing for a caller that does not pass it:
+// production keeps the async path and its bounded join, which is a deliberate
+// input-lag design (REQ-TCR-002).
+//
+// Scope: the option covers EVERY deferred step Handle dispatches — the advisory
+// scan and its MX cold-start write, the binary-lag comparison, the
+// guard-liveness refresh, and the guard-liveness advisory read. Only the first
+// of those writes into the caller's ProjectDir, but an option named
+// "synchronous deferred scans" that still left three goroutines running past
+// Handle would be misnamed, and those goroutines are a leak for any caller that
+// checks for one.
+//
+// @MX:NOTE: [AUTO] opt-in cross-package sync seam — a caller that owns and deletes ProjectDir needs this
+func WithSynchronousDeferredScans() Option {
+	return func(h *sessionStartHandler) { h.syncDeferredScans = true }
 }
 
 // NewSessionStartHandler creates a new SessionStart event handler.
-func NewSessionStartHandler(cfg ConfigProvider) Handler {
-	return &sessionStartHandler{cfg: cfg}
+func NewSessionStartHandler(cfg ConfigProvider, opts ...Option) Handler {
+	h := &sessionStartHandler{cfg: cfg}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(h)
+		}
+	}
+	return h
+}
+
+// asyncDeferredScans reports whether THIS handler's deferred steps run in a
+// background goroutine. It is the conjunction of the package-private
+// test-binary seam (deferredScansAsyncEnabled) and the per-handler option: a
+// caller that asked for synchronous scans gets them regardless of the seam, and
+// a caller that did not is unaffected by the option's existence.
+func (h *sessionStartHandler) asyncDeferredScans() bool {
+	return deferredScansAsyncEnabled() && !h.syncDeferredScans
 }
 
 // EventType returns EventSessionStart.
@@ -69,6 +130,20 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		"cwd", input.CWD,
 		"project_dir", input.ProjectDir,
 	)
+
+	// SPEC-GUARD-LIVENESS-001 REQ-GDL-002/003 (card t333 M1): initiate the
+	// guard firing-liveness refresh.
+	//
+	// Placed at the top of Handle deliberately. Everything below it can return
+	// early — the marshal failure a few hundred lines down does — and an
+	// invocation sitting after such a return is unconditional only on the
+	// activations that got that far. The refresh is never awaited, so entering
+	// here costs the input-lag budget nothing.
+	guardLivenessRoot := input.ProjectDir
+	if guardLivenessRoot == "" {
+		guardLivenessRoot = input.CWD
+	}
+	guardLivenessRefresh(ctx, guardLivenessRoot, h.asyncDeferredScans())
 
 	data := map[string]any{
 		"session_id": input.SessionID,
@@ -172,6 +247,16 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			return nil
 		})
 
+		// Task 5 — card-worktree base-branch alignment (SPEC-WORKTREE-BASEREF-001
+		// REQ-WBR-004). Touches only refs/remotes/origin/HEAD, shares no file
+		// with Tasks 1-4, and gates itself on the primary checkout before
+		// reading anything. Fail-open like the rest of the group.
+		var worktreeBaseData map[string]any
+		g.Go(func() error {
+			worktreeBaseData = RunWorktreeBaseAlignment(input.ProjectDir)
+			return nil
+		})
+
 		if err := g.Wait(); err != nil {
 			// Best-effort contract preserved: Handle never returns a non-nil
 			// error from these steps. errgroup.WithContext cancels on first
@@ -181,7 +266,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 				"error", err.Error())
 		}
 
-		mergeData(data, settingsData, registryData, skillData, migrationData)
+		mergeData(data, settingsData, registryData, skillData, migrationData, worktreeBaseData)
 
 		// (b) Defer heavy advisory scanning off the synchronous critical path.
 		// These four steps (telemetry prune, stale-memory wrap, pending-proposal
@@ -227,7 +312,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		// @MX:NOTE: [AUTO] MX index freshness — sync check gates deferred cold-start scan
 		mxScanNeeded := mxIndexNeedsRebuild(projectDir)
 
-		if deferredScansAsyncEnabled() {
+		if h.asyncDeferredScans() {
 			// Production path: spawn a background goroutine and join with a
 			// short bounded deadline.
 			//
@@ -447,6 +532,39 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			out.HookSpecificOutput.AdditionalContext += "\n\n" + banner
 		}
 	}
+
+	// SPEC-BINARY-LAG-VISIBILITY-001 REQ-BLV-001/002/008: the deployment-lag
+	// verdict, emitted without anyone asking for it.
+	//
+	// The comparison this renders already existed and was already correct; it
+	// simply had no caller but a human typing `moai doctor`, so on the day it
+	// mattered it reached nobody through five steps and three observers. This
+	// is the automatic caller. It runs before any lane observes anything,
+	// which is the only point in that sequence cheap enough to check on every
+	// session and early enough to matter.
+	//
+	// additionalContext, not systemMessage and not the Data map: Data carries
+	// json:"-" (see the attribution comment above), so a verdict placed there
+	// would be computed correctly and rendered by no one — reproducing the
+	// exact dead end this closes.
+	lagRoot := input.ProjectDir
+	if lagRoot == "" {
+		lagRoot = input.CWD
+	}
+	appendAdditionalContext(out, binaryLagAdvisory(ctx, lagRoot, h.asyncDeferredScans()))
+
+	// SPEC-GUARD-LIVENESS-001 REQ-GDL-004/005/010/011 (card t333 M2): the guard
+	// firing-liveness verdict, emitted without anyone asking for it.
+	//
+	// It joins THIS block through the same helper rather than opening a surface
+	// of its own. A second channel would split one concern across two, and a
+	// reader who learns to skip one has no reason to treat the other
+	// differently — which is the filtering mechanism this card is about,
+	// applied twice.
+	//
+	// The read is of a persisted verdict; the refresh that produces the next
+	// one was initiated at the top of Handle and is not waited on here.
+	appendAdditionalContext(out, guardLivenessAdvisory(guardLivenessRoot, h.asyncDeferredScans()))
 
 	return out, nil
 }

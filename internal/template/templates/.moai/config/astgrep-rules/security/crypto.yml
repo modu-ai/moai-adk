@@ -15,5 +15,8 @@ note: "MD5 is vulnerable to collision attacks and must not be used for integrity
 metadata:
   owasp: "A02:2021 - Cryptographic Failures"
   cwe: "CWE-327"
+  anchor: >-
+    cite: Go standard library, crypto/md5 - func New() hash.Hash, the MD5
+    constructor this pattern matches.
 rule:
   pattern: md5.New()

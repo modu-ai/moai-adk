@@ -21,7 +21,7 @@
   <a href="https://codecov.io/gh/modu-ai/moai-adk"><img src="https://codecov.io/gh/modu-ai/moai-adk/branch/main/graph/badge.svg" alt="Codecov"></a>
   <br>
   <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.26+-00ADD8?style=flat&logo=go&logoColor=white" alt="Go"></a>
-  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.3-blue.svg" alt="Release"></a>
+  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.4-blue.svg" alt="Release"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
 </p>
 
@@ -736,6 +736,7 @@ The [adk.mo.ai.kr](https://adk.mo.ai.kr) online documentation is organized into 
 | `moai update` | Update to latest version (pre-deletion backup · auto-rollback supported) |
 | `moai graph <build\|query>` | Build/query the codebase graph (edges.jsonl) — caller lookup, blast radius, milestone cross-checks |
 | `moai cc` / `moai glm` / `moai cg` | Claude-only / GLM-only / hybrid sessions |
+| `moai codex <status\|cli\|app>` | Codex readiness readout and explicit CLI/app launch |
 | `moai worktree <sync\|done\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree maintenance (entering a worktree is the launchers' job) |
 | `moai session <list\|register\|current>` | Multi-session coordination |
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC lifecycle tools |

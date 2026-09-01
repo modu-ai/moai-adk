@@ -104,7 +104,28 @@ func AggregateDescribedFingerprint(projectRoot string, roots []string) (string, 
 	return aggregateFingerprint(projectRoot, roots)
 }
 
+// AggregateDescribedFingerprintFiltered is AggregateDescribedFingerprint
+// restricted to described-worthy files (REQ-GFC-002). It is the codemaps
+// layer's fingerprint: the codemaps stamp writer produces it and the codemaps
+// checker recomputes it, so a dirty-stamped tree is judged against a
+// fingerprint computed the way it was stamped (REQ-GFC-003).
+//
+// Deliberately NOT the default: aggregateFingerprint stays unfiltered because
+// the edges layer hashes .moai/project/codemaps and .moai/specs through it,
+// and neither holds a .go file — a predicate there would collapse both to the
+// same empty-entry constant and green that layer permanently (REQ-GFC-003a).
+func AggregateDescribedFingerprintFiltered(projectRoot string, roots []string) (string, error) {
+	return aggregateFingerprintPred(projectRoot, roots, IsDescribedWorthy)
+}
+
 func aggregateFingerprint(projectRoot string, roots []string) (string, error) {
+	return aggregateFingerprintPred(projectRoot, roots, nil)
+}
+
+// aggregateFingerprintPred walks roots and folds the entries. admit, when
+// non-nil, filters by repo-relative slash path AFTER the regular-file guard;
+// a nil admit contributes every regular file (the unfiltered contract).
+func aggregateFingerprintPred(projectRoot string, roots []string, admit func(string) bool) (string, error) {
 	var entries []hashEntry
 	for _, root := range roots {
 		abs := filepath.Join(projectRoot, filepath.FromSlash(root))
@@ -126,6 +147,9 @@ func aggregateFingerprint(projectRoot string, roots []string) (string, error) {
 			}
 			rel, relErr := filepath.Rel(projectRoot, path)
 			if relErr != nil {
+				return nil
+			}
+			if admit != nil && !admit(filepath.ToSlash(rel)) {
 				return nil
 			}
 			sum, sumErr := HashFile(path)
@@ -173,6 +197,29 @@ func GitHead(root string) string {
 	return gitOut(root, "rev-parse", "HEAD")
 }
 
+// ResolveCommit resolves a user-supplied revision expression to a full commit
+// sha via `git rev-parse --verify <rev>^{commit}` (REQ-SR-005). The verify
+// form rejects anything that is not exactly one commit — tags, trees, and
+// ambiguous short revs all fail rather than resolving loosely. Errors are
+// deliberately path-free: they name the revision, never the absolute local
+// path (CR round-2 3855149248 discipline).
+//
+// @MX:NOTE: [AUTO] explicit-commit resolution — survivability is NOT decided here: a local machine cannot judge merge-survivability, so the CI reachability guard owns that half (SPEC-STAMP-REACHABILITY-001 §B.2)
+func ResolveCommit(root, rev string) (string, error) {
+	cmd := exec.Command("git", "-C", root, "rev-parse", "--verify", rev+"^{commit}")
+	var errBuf strings.Builder
+	cmd.Stderr = &errBuf
+	out, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("resolve revision %q: not a commit in this repository", rev)
+	}
+	sha := strings.TrimSpace(string(out))
+	if sha == "" {
+		return "", fmt.Errorf("resolve revision %q: not a commit in this repository", rev)
+	}
+	return sha, nil
+}
+
 // treeDirty reports whether any file under the given repo-relative roots has
 // uncommitted changes (staged, unstaged, or untracked) versus HEAD.
 func treeDirty(root string, roots []string) bool {
@@ -180,9 +227,17 @@ func treeDirty(root string, roots []string) bool {
 	return gitOut(root, args...) != ""
 }
 
+// fingerprintFunc computes a dirty-tree content fingerprint over described
+// roots. Passed per stamp writer so each layer's producer can be paired with
+// its own consumer (REQ-GFC-003).
+type fingerprintFunc func(projectRoot string, roots []string) (string, error)
+
 // baseProvenance stamps the fields shared by every layer's block: tree root,
-// commit-or-dirty anchoring, generation metadata.
-func baseProvenance(projectRoot, generatedBy string, describedRoots []string) *Provenance {
+// commit-or-dirty anchoring, generation metadata. fingerprint decides how the
+// dirty branch's ContentFingerprint is computed — the codemaps writer passes
+// the described-worthy-filtered aggregate, the mx-scan and graph-build writers
+// pass the unfiltered one.
+func baseProvenance(projectRoot, generatedBy string, describedRoots []string, fingerprint fingerprintFunc) *Provenance {
 	pv := &Provenance{
 		SchemaVersion: ProvenanceSchemaVersion,
 		TreeRoot:      projectRoot,
@@ -193,7 +248,7 @@ func baseProvenance(projectRoot, generatedBy string, describedRoots []string) *P
 	}
 	if treeDirty(projectRoot, describedRoots) {
 		pv.Dirty = true
-		if fp, err := aggregateFingerprint(projectRoot, describedRoots); err == nil {
+		if fp, err := fingerprint(projectRoot, describedRoots); err == nil {
 			pv.ContentFingerprint = fp
 		}
 		return pv
@@ -203,9 +258,23 @@ func baseProvenance(projectRoot, generatedBy string, describedRoots []string) *P
 }
 
 // StampCodemaps builds the provenance block for a codemaps regeneration over
-// the default described roots.
-func StampCodemaps(projectRoot string) (*Provenance, error) {
-	return baseProvenance(projectRoot, "codemaps-gen", DefaultDescribedRoots), nil
+// the default described roots. commitSHA, when non-empty, is an explicitly
+// named full sha (already resolved by the caller via ResolveCommit) recorded
+// verbatim instead of detected HEAD — the merge-surviving anchor mode
+// (REQ-SR-005). A named commit plus a dirty described-source tree is a
+// contradiction (two anchors, one schema slot) and is rejected pre-write
+// (REQ-SR-006): the schema's omitempty fields would silently blank whichever
+// anchor loses.
+func StampCodemaps(projectRoot, commitSHA string) (*Provenance, error) {
+	pv := baseProvenance(projectRoot, "codemaps-gen", DefaultDescribedRoots, AggregateDescribedFingerprintFiltered)
+	if commitSHA == "" {
+		return pv, nil
+	}
+	if pv.Dirty {
+		return nil, fmt.Errorf("--commit names a commit anchor but the described sources carry uncommitted changes — record either the named commit on a clean tree or the dirty content fingerprint, never both")
+	}
+	pv.CommitSHA = commitSHA
+	return pv, nil
 }
 
 // StampMXScan builds the provenance block for an mx sidecar write, carrying
@@ -213,7 +282,7 @@ func StampCodemaps(projectRoot string) (*Provenance, error) {
 func StampMXScan(projectRoot string, inventory map[string]string) *Provenance {
 	// The mx scanner reads source trees, not the described-roots universe:
 	// dirtiness is judged over the same roots the inventory lives under.
-	pv := baseProvenance(projectRoot, "mx-scan", DefaultDescribedRoots)
+	pv := baseProvenance(projectRoot, "mx-scan", DefaultDescribedRoots, AggregateDescribedFingerprint)
 	pv.FileInventory = make(map[string]string, len(inventory))
 	for k, v := range inventory {
 		pv.FileInventory[k] = v
@@ -224,7 +293,7 @@ func StampMXScan(projectRoot string, inventory map[string]string) *Provenance {
 // StampEdges builds the provenance block for an edges.jsonl build, carrying
 // the already-computed source-set fingerprints.
 func StampEdges(projectRoot string, sourceFingerprints map[string]string) *Provenance {
-	pv := baseProvenance(projectRoot, "graph-build", DefaultDescribedRoots)
+	pv := baseProvenance(projectRoot, "graph-build", DefaultDescribedRoots, AggregateDescribedFingerprint)
 	pv.SourceFingerprints = make(map[string]string, len(sourceFingerprints))
 	for k, v := range sourceFingerprints {
 		pv.SourceFingerprints[k] = v

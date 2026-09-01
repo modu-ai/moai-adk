@@ -8,7 +8,7 @@ name: lsel-leak-guard
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
     paths:
       - 'internal/template/templates/**'

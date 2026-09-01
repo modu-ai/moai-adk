@@ -15,9 +15,14 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
     branches: [main]  # main으로 향하는 모든 PR에서 CI 실행
+  # Enabling change only. A workflow_dispatch trigger becomes dispatchable
+  # only once the file carrying it exists on the default branch, so this does
+  # NOT make the workflow dispatchable against a feature branch today — it
+  # makes a future card able to run this workflow on demand.
+  workflow_dispatch:
 
 # Least-privilege baseline. Job-level overrides (none needed here — this
 # workflow only reads + uploads coverage to Codecov). Codecov upload does
@@ -60,6 +65,10 @@ jobs:
       #   .claude/rules/moai/**           internal/config/token_budget_guard.go (always-loaded budget walk)
       #   .claude/output-styles/moai/**   internal/config/token_budget_guard.go (fixed surface slot)
       #   CLAUDE.md                       internal/config/token_budget_guard.go (fixed surface slot)
+      #   scripts/ci-census/**            the test steps below shell out to it;
+      #                                    without it here, a PR that edits the
+      #                                    census alone gets the skip-marker
+      #                                    stub and the edit is never exercised
       # dorny/paths-filter matches with picomatch {dot: true}, so `**` also
       # traverses the dot-directories inside templates/ (.claude/, .moai/).
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
@@ -80,6 +89,7 @@ jobs:
               - '.claude/rules/moai/**'
               - '.claude/output-styles/moai/**'
               - 'CLAUDE.md'
+              - 'scripts/ci-census/**'
 
   # ---------------------------------------------------------------------------
   # Test: Run tests with coverage (fast — NO race detector). The race
@@ -178,9 +188,44 @@ jobs:
       # Moved to release-pr-multi-os.yml's windows leg at release time
       # (SPEC-V3R6-CI-PR-SPEEDUP-001).
 
+      # `-json` writes a per-test event stream to a FILE, so the console keeps
+      # its one-line-per-package shape while the run stops being unreadable
+      # after the fact: without it, rc=0 cannot distinguish "the test passed"
+      # from "the test skipped" from "the selector matched nothing".
+      #
+      # `|| rc=$?` is load-bearing and MUST NOT be "simplified" to `; rc=$?`.
+      # GitHub Actions runs this body under `bash --noprofile --norc -e -o
+      # pipefail`; under `-e` the shell exits AT a failing `go test`, so the
+      # census would never print on exactly the run where it is wanted. The
+      # two forms are indistinguishable on a green run.
+      #
+      # stdout ONLY. Redirecting `2>&1` would corrupt the stream.
+      # Coverage is unchanged: Codecov reads the coverage.out FILE, not stdout.
       - name: Run tests with coverage (fast — no race detector)
         shell: bash
-        run: go test -coverprofile=coverage.out -covermode=atomic ./...
+        run: |
+          rc=0
+          go test -json -coverprofile=coverage.out -covermode=atomic ./... > test-stream.json || rc=$?
+          bash scripts/ci-census/test-census.sh test-stream.json
+          exit $rc
+
+      # always() on both steps: the red run is the one whose stream is worth
+      # reading, and the house artifact convention (ci.yml build job) does not
+      # carry always() — that is this SPEC's own addition.
+      - name: Compress test event stream
+        if: always()
+        shell: bash
+        run: |
+          if [ -f test-stream.json ]; then gzip -f test-stream.json; fi
+
+      - name: Upload test event stream
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-stream-ci-test-ubuntu-latest
+          path: test-stream.json.gz
+          retention-days: 7
+          if-no-files-found: warn
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v7
@@ -233,9 +278,30 @@ jobs:
       - name: Install ast-grep (provides `sg`)
         run: npm install -g @ast-grep/cli@0.40.5
 
+      # See the `test` job's test step for why `|| rc=$?` (not `; rc=$?`) and
+      # why only stdout is redirected.
       - name: Run race detector across all packages
         shell: bash
-        run: go test -race -count=1 ./...
+        run: |
+          rc=0
+          go test -json -race -count=1 ./... > test-stream.json || rc=$?
+          bash scripts/ci-census/test-census.sh test-stream.json
+          exit $rc
+
+      - name: Compress test event stream
+        if: always()
+        shell: bash
+        run: |
+          if [ -f test-stream.json ]; then gzip -f test-stream.json; fi
+
+      - name: Upload test event stream
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-stream-ci-race-ubuntu-latest
+          path: test-stream.json.gz
+          retention-days: 7
+          if-no-files-found: warn
 
   # ---------------------------------------------------------------------------
   # Test Skip-Marker: For docs-only PRs, emit SUCCESS for required check names
@@ -324,9 +390,31 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
+      # See the `test` job's test step for why `|| rc=$?` (not `; rc=$?`) and
+      # why only stdout is redirected. 3-OS matrix: the artifact name carries
+      # matrix.os, or the three legs collide on upload.
       - name: Run harness integration tests
         shell: bash
-        run: go test -tags=integration -race -timeout 180s ./test/integration/harness/...
+        run: |
+          rc=0
+          go test -json -tags=integration -race -timeout 180s ./test/integration/harness/... > test-stream.json || rc=$?
+          bash scripts/ci-census/test-census.sh test-stream.json
+          exit $rc
+
+      - name: Compress test event stream
+        if: always()
+        shell: bash
+        run: |
+          if [ -f test-stream.json ]; then gzip -f test-stream.json; fi
+
+      - name: Upload test event stream
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-stream-ci-integration-${{ matrix.os }}
+          path: test-stream.json.gz
+          retention-days: 7
+          if-no-files-found: warn
 
   # ---------------------------------------------------------------------------
   # Lint: Static analysis with golangci-lint (always runs — fast, required check)

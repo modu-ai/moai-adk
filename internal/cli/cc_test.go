@@ -367,6 +367,14 @@ func TestParseKanbanFlag_SpecIsNotStolenFromAFlag(t *testing.T) {
 // --kanban nor -k, and the process environment carries the kanban signal at
 // the moment the launch happens (the signal REQ-FM-023 transports).
 func TestCC_KanbanFlagStrippedBeforeLaunch(t *testing.T) {
+	// SPEC-CLI-TEST-CWD-ISOLATION-001: the kanban launch claims the lead name
+	// through launchProjectRoot -> resolveProjectDir ($CLAUDE_PROJECT_DIR or
+	// cwd), a resolver the findProjectRootFn stub below does not cover — under
+	// it the claim lands in internal/cli/.moai. Pointing the env at a temp dir
+	// keeps the registry write in the test-owned sandbox (the same medicine
+	// TestCC_KanbanWritesNoStateRecord applies).
+	t.Setenv(config.EnvClaudeProjectDir, t.TempDir())
+
 	origLaunch := unifiedLaunchFunc
 	defer func() { unifiedLaunchFunc = origLaunch }()
 
@@ -460,7 +468,7 @@ func TestCC_KanbanWritesNoStateRecord(t *testing.T) {
 	// (leads.json) and the backlog queue live there too, and the launch
 	// legitimately writes the former. A RECORD is a file carrying session_id,
 	// and no such file may appear.
-	recordDir := filepath.Join(tmp, ".moai", "state", "kanban")
+	recordDir := kanban.StateDirForRoot(tmp)
 	entries, err := os.ReadDir(recordDir)
 	if err != nil && !os.IsNotExist(err) {
 		t.Fatalf("ReadDir: %v", err)
@@ -511,6 +519,13 @@ func TestCC_KanbanWritesNoStateRecord(t *testing.T) {
 // narrower trigger — and an initially-absent variable is restored to ABSENT,
 // not to the empty string.
 func TestCC_KanbanEnvMutationIsRestored(t *testing.T) {
+	// SPEC-CLI-TEST-CWD-ISOLATION-001: both subtests drive the real runCC kanban
+	// path, whose lead-name claim resolves via launchProjectRoot ->
+	// resolveProjectDir ($CLAUDE_PROJECT_DIR or cwd) — not the findProjectRootFn
+	// stub below. Redirect that resolver to a temp dir so the registry write
+	// stays out of the package working directory.
+	t.Setenv(config.EnvClaudeProjectDir, t.TempDir())
+
 	origFn := findProjectRootFn
 	findProjectRootFn = func() (string, error) { return t.TempDir(), nil }
 	defer func() { findProjectRootFn = origFn }()

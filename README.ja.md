@@ -21,7 +21,7 @@
   <a href="https://codecov.io/gh/modu-ai/moai-adk"><img src="https://codecov.io/gh/modu-ai/moai-adk/branch/main/graph/badge.svg" alt="Codecov"></a>
   <br>
   <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.26+-00ADD8?style=flat&logo=go&logoColor=white" alt="Go"></a>
-  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.3-blue.svg" alt="Release"></a>
+  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.4-blue.svg" alt="Release"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
 </p>
 
@@ -736,6 +736,7 @@ Claude の各ティアは `ANTHROPIC_DEFAULT_*_MODEL` 環境変数を通じて G
 | `moai update` | 最新版へ更新 (削除前バックアップ · 自動ロールバック対応) |
 | `moai graph <build\|query>` | コードベースグラフ (edges.jsonl) の生成・照会 — 呼び出し元の検索、影響半径、マイルストーンの交差検査 |
 | `moai cc` / `moai glm` / `moai cg` | Claude 専用 / GLM 専用 / ハイブリッドのセッション |
+| `moai codex <status\|cli\|app>` | Codex の準備状態表示と CLI/アプリの明示起動 |
 | `moai worktree <sync\|done\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree の保守 (ワークツリーへの出入りはランチャーの仕事) |
 | `moai session <list\|register\|current>` | マルチセッション調整 |
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC ライフサイクル・ツール |

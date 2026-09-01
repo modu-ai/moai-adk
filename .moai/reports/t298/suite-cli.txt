@@ -1,0 +1,4 @@
+ok  	github.com/modu-ai/moai-adk/internal/cli	247.154s
+real 248.86
+user 60.04
+sys 87.34

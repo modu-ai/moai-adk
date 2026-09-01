@@ -1,0 +1,43 @@
+=== INV-055 doc refs
+OK version-management
+OK hook-development
+OK git-workflow-doctrine
+OK dev-only-commands-isolation
+OK local-dev-settings-intent
+OK git-local-workflow-doctrine
+OK harness-namespace-doctrine
+OK template-internal-isolation-doctrine
+OK local-linear-integration
+OK docs-site-i18n-rules
+OK docs-site-design-components
+=== INV-059
+both-exist
+154:| Implementation Kickoff Approval already passed | Workflow agents cannot prompt the user mid-run (no mid-run user input). Therefore the one decision that MUST involve the user — the plan→run human gate — MUST already be cleared. A `sweep` launch before Implementation Kickoff Approval passes is prohibited (§E anti-pattern). |
+168:The official Claude Code documentation does not document a typed named-script Workflow API. This rule describes only the conceptual *coordinate-agents → intermediate results in script variables → final synthesis* model. No named Workflow-script function signatures — an `agent`-function, a `parallel`-function, a `pipeline`-function, or a `phase`-function — are asserted anywhere (§E anti-pattern; the asserted-API prohibition).
+211:## §E — Anti-Patterns
+=== INV-110 git-workflow-doctrine
+1:# Git Workflow Doctrine — Enhanced GitHub Flow
+5:> **[HARD] 상위 모델 변경 (2026-08-27) — GitHub Flow → git-flow.** 운영자 지시로 이 리포는 git-flow로 전환했다. 새 모델의 정본은 `CLAUDE.local.md` §4.1(모델·근거)과 `.claude/rules/local/gitflow-lane-protocol.md`(레인 운영 규칙)다.
+7:> - **초과분(superseded)**: 이 문서가 전제하는 "`develop` 없는 Enhanced GitHub Flow" 자체 — 즉 feature 브랜치가 `main`에서 분기해 `main`으로 PR을 낸다는 전제. 이제 카드 워크트리는 `develop`에서 분기하고, 카드 단위 PR은 없으며, 통합은 `origin/develop`에서 CI로 판정된다. 서두의 "Gitflow 기각" 판단도 이 전환으로 뒤집혔다.
+8:> - **여전히 구속력 있음**: `main` 브랜치 보호(`enforce_admins: true`, PR 필수 §18.7), `main`으로 가는 릴리스 PR, merge strategy(release = merge commit), label 3축, Release Drafter, hotfix 명명 규칙. 릴리스 브랜치가 `main` 대신 `develop`에서 분기한다는 점만 바뀐다.
+15:v2.14.0 릴리스 이후 공식 채택. Gitflow 대안 비교 분석 결과 (v2.14 후 세션) 이 프로젝트의 1-2명 팀 + 2일/릴리스 cadence + 단일 CLI 배포 환경에서 Gitflow의 `develop` 이중 관리 부담을 상회하는 장점이 부재. 현재 de-facto 패턴을 유지하되 **formalization + automation**으로 개선.
+23:| 1 | **Branch protection rule 강제** (`main` + `release/*`) | ✅ **적용 완료 (2026-07-20) — `enforce_admins: true`** (admin 포함 main direct push 완전 차단, PR-mandatory) | §18.7 |
+52:- ❌ `develop` 브랜치 생성 (Gitflow 패턴)
+109:SPEC tier에 따라 PR **ceremony 무게**가 다르며, 본 정책은 PR-mandatory 1-person OSS 운영의 기본 (default) 동작을 명문화한다. **(2026-07-20 개정) `enforce_admins: true`로 모든 tier가 PR을 경유한다** — tier는 더 이상 main-direct 여부를 가르지 않고 PR ceremony 무게(브랜치 수명 / CI 매트릭스 / 리뷰 깊이)만 결정:
+=== INV-111 git-local
+1:# Local Git Workflow Doctrine (PR-mandatory 1-person OSS) — extracted from CLAUDE.local.md §23
+5:> **[HARD] 상위 모델 변경 (2026-08-27) — GitHub Flow → git-flow.** 운영자 지시로 카드 작업은 `develop`에서 분기하고 카드 단위 PR 없이 `develop`으로 직접 병합되며, `origin/develop`의 CI가 통합을 판정한다. 정본: `CLAUDE.local.md` §4.1 + `.claude/rules/local/gitflow-lane-protocol.md`.
+12:## 23. Local Git Workflows + Hook Setup (PR-mandatory 1-person OSS)
+18:**변경 후 (2026-07-20 ~)**: `enforce_admins: true` → PR-mandatory. tier는 이제 main-direct 여부가 아니라 PR ceremony 무게(§23.9)에만 영향. 본 섹션은 정책 운영 시 마주치는 6가지 오류/경고 패턴과 처리 절차를 정리한다 (PR merge 후 로컬 동기화 패턴 A4/A5/A6는 PR-mandatory 체제에서 오히려 상시 적용).
+150:- [HARD] **(2026-07-20 신규) PR-mandatory: 모든 tier (S/M/L) 변경은 PR 경유.** `enforce_admins: true`로 main direct push는 admin 포함 완전 차단. self-merge 허용 (0 approvals) — 4개 CI status check 통과 시 리뷰어 대기 없이 본인 머지. tier는 main-direct 여부가 아니라 PR ceremony 무게(§23.9)에만 영향.
+154:### §23.9 Tier-based PR Routing (REQ-ATR-020 — SPEC-V3R6-AGENT-TEAM-REBUILD-001; 2026-07-20 PR-mandatory 개정)
+160:| Tier S (< 300 LOC, < 5 files) | `fix/*`·`chore/*`·`docs/*` 등 단기 브랜치 + `gh pr create` → self-merge (0 approvals) | **manager-git** (commit은 manager-develop/manager-docs) | 경량 — 3축 라벨 최소, Tier 1 CI (4 checks) 통과 즉시 self-merge |
+165:> **[RETIRED 2026-07-20]** 종전 이 표의 Tier S/M 행은 "main 직접 push (manager-develop/manager-docs commit 직접 수행)" 이었다. `enforce_admins: true` 로 main-direct가 불가능해지면서 두 행 모두 PR routing으로 통합. `manager-develop`/`manager-docs`는 여전히 commit을 수행하되, push·PR은 `manager-git`이 담당한다 (self-merge 흐름).
+=== INV-112 git-strategy.yaml HEAD
+8:        workflow: gitflow
+14:        main_branch: ""
+15:        develop_branch: develop
+38:        workflow: github-flow
+44:        main_branch: main
+65:        workflow: github-flow
+71:        main_branch: main

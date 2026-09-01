@@ -125,10 +125,10 @@ func TestBacklogQueuedCountSharedShape(t *testing.T) {
 		}
 	})
 
-	t.Run("path helper lands under .moai/state/kanban", func(t *testing.T) {
+	t.Run("path helper lands under .moai/state/todo", func(t *testing.T) {
 		t.Parallel()
 		root := t.TempDir()
-		want := filepath.Join(root, ".moai", "state", "kanban", "backlog.json")
+		want := filepath.Join(root, ".moai", "state", "todo", "backlog.json")
 		if got := BacklogPathForRoot(root); got != want {
 			t.Errorf("BacklogPathForRoot = %q, want %q", got, want)
 		}

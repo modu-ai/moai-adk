@@ -191,6 +191,15 @@ This setting governs **Claude-native** worktrees only, which is now every worktr
 
 That asymmetry is the reason to prefer the reset path for card work. `baseRef` is silent whether it lands right or wrong; the reset path ends in an exit code somebody read.
 
+**The stored setting: `git_strategy.worktree_base_branch`.** `baseRef` accepts only `"fresh"` or `"head"`, so it cannot name a branch — which leaves the branch choice resting on `refs/remotes/origin/HEAD`, local repository metadata that does not survive a fresh clone. The moai setting `git_strategy.worktree_base_branch` (in `.moai/config/sections/git-strategy.yaml`) is the reproducible handle on that choice, and it has two consumers:
+
+- **At session start**, from the primary checkout only, moai points `refs/remotes/origin/HEAD` at the configured branch and prints one line saying it did. Native worktrees created afterwards read the corrected symref. Inside a linked worktree the step does nothing at all — the symref is repository-global while the config file is tracked and follows each worktree's own branch, so one writer is both sufficient and the only way two lanes do not reverse each other's writes forever.
+- **When moai creates the worktree itself** (`moai cc -w <name>`), the configured branch is passed to `git worktree add` as the base operand, so the new tree is cut from it rather than from the invoking tree's HEAD. This half honours the setting from any working tree.
+
+The empty value — the shipped default — means take no action on both paths, reproducing the pre-setting behaviour exactly. A value naming a branch that has no remote-tracking counterpart is refused before either write: the session-start step prints one diagnostic line and leaves the symref alone, and worktree creation falls back to the no-operand form. Pointing `refs/remotes/origin/HEAD` at a ref that does not exist would be worse than the mismatch it was meant to fix.
+
+`moai doctor --check 'Worktree Base Branch'` reports the current comparison without writing anything, and distinguishes a plain mismatch (repaired by running the alignment) from an unresolvable value (repaired by correcting the setting). It reports metadata state only — worktrees already cut from the wrong base are not re-created by it.
+
 
 ### `.worktreeinclude` (Copy Gitignored Files into Native Worktrees)
 
@@ -459,6 +468,48 @@ The `--team` flag and its four launch patterns are retired. Entering a worktree 
 | Stale worktree branches | Incomplete cleanup | Run `git worktree prune` |
 | Hooks not firing | Missing wrapper script | Check `.claude/hooks/moai/` directory |
 | `--tmux` not working | Unsupported terminal | Use tmux or iTerm2 (not VS Code, Ghostty) |
+
+## Refused Commands in a Worktree-Isolated Session
+
+### Which guard refused — read the message, it is the only discriminator
+
+Two different guards refuse commands in the same worktree-isolated session, and nothing but the wording of the refusal tells them apart. Read the message first; everything else follows from it.
+
+| The refusal says | Whose guard | Can it be changed here? |
+|---|---|---|
+| `Dangerous command blocked:` … | **This project's own** pre-tool hook, in `internal/hook/pre_tool.go` | **Yes** — it is this repository's code |
+| … `too complex to verify that it stays inside the worktree` | **The Claude Code binary** | **No** — there is no source here that implements or configures it |
+
+A reader who confuses the two searches the wrong place. Hunting through this repository's source for the worktree guard finds only prose quoting the message and never the guard; treating the dangerous-command refusal as an untouchable upstream behaviour leaves a local hook unexamined when it is in fact the thing refusing.
+
+A third, separate guard also lives here: `internal/hook/branch_guard.go` defends branch-state mutation in the primary checkout. It neither implements nor configures the worktree guard, and editing it has no effect on a `too complex to verify` refusal.
+
+### What has been observed to trip the worktree guard
+
+The full refusal reads:
+
+> This session is isolated in the worktree `<worktree-path>`, but this command is too complex to verify that it stays inside the worktree.
+
+**This table is a record of what has been seen, not a specification.** It is explicitly non-exhaustive, and two observations do not establish a general rule — the trigger condition was never narrowed, so do not infer from it that "complex commands are refused", and do not infer a tokenization mechanism from the shape of these cases.
+
+| Observed trigger | Provenance | Notes |
+|---|---|---|
+| A quoted-delimiter heredoc (`<<'EOF'`) whose **body contains braces wrapping quoted key/value pairs** — a JSON line, for example | **First-hand** — measured by paired probes in a worktree-isolated session | Body size, pipes, backticks, and command substitution are **not** the trigger: a body of roughly 6.7 KB of prose was accepted, a ten-character JSON line in the same position was refused, and a command substitution in the body was folded correctly and passed |
+| **Several mutation steps bundled into one compound command** | **Second-hand** — reported by another working lane, not measured here | Recorded because it carried the same refusal sentence; it has not been reproduced by the session that wrote this section |
+
+**Gap**: the boundary between an accepted and a refused command is unmeasured in both rows. Anything outside these two observations is unknown, not permitted.
+
+### Workarounds — two situations, not two competing options
+
+Which one applies is decided by what you were trying to do, so identify the situation before reaching for a form.
+
+**Writing file content → use the `Write` tool.** This is the repository's convention. It reaches the filesystem without issuing a shell command, so the guard never parses the content and the body's shape stops mattering. Reach for it first rather than reshaping the heredoc.
+
+Ad-hoc detours happen to work — routing the content through an interpreter's own file-write call, or splitting the file into brace-free pieces — but they are **not** the convention and are not equal options. Two paths going their own way is not a convention: a reader who meets one detour in one commit and a different one elsewhere learns nothing reusable.
+
+**Running a compound command → split it into separate plain commands.** Issue the steps one at a time rather than chaining them. Note that this trades away one property worth keeping in mind: an environment scrub written as `unset … && <command>` is load-bearing as a single invocation, because each command runs in a fresh process, so that particular pairing is not one to split apart.
+
+**Version measured**: Claude Code 2.1.251. No other version was measured, so none of the behaviour above is known to hold before or after it.
 
 ## SPEC-to-Worktree Mapping
 

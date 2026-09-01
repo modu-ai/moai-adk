@@ -268,7 +268,7 @@ The label-level catalogue above governs **field keys and headers** (e.g., `What:
 
 Surfaces governed by this obligation:
 
-- Banner body prose (Discovery `Findings:` content, Gate `Summary:` content, Insight `Why:` / `Alternatives:` / `Implications:` content, Race Absorbed body, Epic Stats body, Epic Status body)
+- Banner body prose (Discovery `Findings:` content, Gate `Summary:` content, Insight `Why:` / `Alternatives:` / `Implications:` content, Race Absorbed body, Epic Stats body, Epic Status body, Lane Board `last observed` content)
 - `AskUserQuestion` `description` field (per-option prose explanation)
 - `AskUserQuestion` `preview` field (multi-line content rendered in side-by-side panel)
 - Response body prose outside banner blocks (status updates, transition narration, completion summaries, error explanations)
@@ -310,8 +310,8 @@ English content permitted in user-facing prose (preserve verbatim — DO NOT tra
 - [ ] Did I substitute placeholder syntax (`[Task]`, `<SPEC-ID>`, `[agent-name]`, `[N/M]`, ...) with actual values for this turn?
 - [ ] If `conversation_language: en`, did I emit the English skeleton verbatim without redundant "translation"?
 - [ ] For each surface I rendered, did I cross-check the Anti-pattern catalogue table — specifically Complete labels (`Files:` / `Tests:` / `Coverage:` / `Deliverables:` / `Specialists used:` / `Cleanup:`), Insight section headers (`What:` / `Why:` / `Alternatives:` / `Implications:`), Step labels (`Step 1: Clarify` / ... `Step 4: Verify`), and Recovery options (`Retry as-is` / `Alt approach` / `Pause` / `Abort+preserve`)?
-- [ ] For any new §8 banner (Verification Matrix / Plan Audit / Discovery / Race Absorbed / Epic Stats), did I consult the banner-specific translation table for the header and section labels?
-- [ ] Did I scan **banner body prose** (Discovery `Findings:`, Gate `Summary:`, Insight `Why:` content, Race Absorbed body, Epic Stats body, Epic Status body) for raw English noun-phrases / verb-phrases that should be in `conversation_language` with natural idiomatic phrasing per the Banner body prose Anti-pattern catalogue above?
+- [ ] For any new §8 banner (Verification Matrix / Plan Audit / Discovery / Race Absorbed / Epic Stats / Lane Board), did I consult the banner-specific translation table for the header and section labels?
+- [ ] Did I scan **banner body prose** (Discovery `Findings:`, Gate `Summary:`, Insight `Why:` content, Race Absorbed body, Epic Stats body, Epic Status body, Lane Board `last observed` content) for raw English noun-phrases / verb-phrases that should be in `conversation_language` with natural idiomatic phrasing per the Banner body prose Anti-pattern catalogue above?
 - [ ] Did I scan every `AskUserQuestion` `description` and `preview` field for raw English prose, ensuring only technical identifiers (SPEC IDs, file paths, command literals, protocol tokens, agent role tokens) remain in English while explanatory prose is naturalized to `conversation_language` with native idiomatic phrasing?
 
 ### AskUserQuestion Recommendation Placement
@@ -381,7 +381,7 @@ Template:
 ✓ V5 [criterion]   ✓ V6 [criterion]
 ✓ V7 [criterion]
 📊 N/M PASS — [discrepancy summary]
-   └─ evidence: .moai/state/verify/<session>/  (persistent; verbatim logs survive /tmp clearance — see agent-common-protocol.md § Evidence persistence obligation)
+   └─ evidence: .moai/reports/<card-id>/<check>.log  (tracked; exported before citing — see agent-common-protocol.md § Evidence export)
 ──────────────────────────────────────────────
 ```
 
@@ -398,7 +398,7 @@ Rules:
 - [HARD] `📊 N/M PASS` line MUST report exact PASS count and discrepancy summary (e.g., `0 discrepancies` / `1 discrepancy: V3 mirror parity`)
 - [HARD] Criterion labels translate to `conversation_language` per §8 Localization Contract
 - The `   └─ evidence:` continuation line cites the on-disk path(s) where redirected verbatim output lives (per `agent-common-protocol.md` § File-redirect contract). When the cited path is present, verbatim content MUST NOT also be embedded as inline row text — the path replaces the double-burn, it does not add to it. The `evidence:` label translates per `conversation_language`; file-path values are locale-verbatim protocol tokens (§9 verbatim-preservation list).
-- [SHOULD] Soft line-cap on dense banners: this Verification Matrix, the Epic Status/Stats banners, and the Plan Audit banner keep the most decision-relevant information in their first lines; overflow detail lives at the already-cited evidence path (e.g. `.moai/state/verify/<session>/`) rather than inflating the banner body. This reuses the existing evidence-path pattern — no new mechanism.
+- [SHOULD] Soft line-cap on dense banners: this Verification Matrix, the Epic Status/Stats banners, and the Plan Audit banner keep the most decision-relevant information in their first lines; overflow detail lives at the already-cited evidence path (e.g. `.moai/reports/<card-id>/<check>.log`) rather than inflating the banner body. This reuses the existing evidence-path pattern — no new mechanism.
 
 ### Plan Audit [HARD]
 
@@ -584,7 +584,7 @@ Rules:
 📦 Deliverables: [...]
 🔄 Specialists used: [...]
 🧹 Cleanup: [temp files removed]
-📎 Evidence: .moai/state/verify/<session>/  (persistent; verbatim verification logs survive /tmp clearance — see agent-common-protocol.md § Evidence persistence obligation)
+📎 Evidence: .moai/reports/<card-id>/<check>.log  (tracked; exported before citing — see agent-common-protocol.md § Evidence export)
 ──────────────────────────────────────────────
 ```
 
@@ -646,6 +646,60 @@ Rules:
 - [HARD] Put a 46-column `─` line (U+2500) above and below the board — NOT markdown `---`, which parses as a setext heading underline when it sits directly under a text line and mis-renders. The `─` line is a literal character run, always rendered verbatim
 - Maximum 12 items per board; if more, split into grouped sub-boards by phase or domain
 - When zero items remain in `⬜` and `⏸️`, announce readiness for Step 4 verification
+
+### Lane Board [HARD]
+
+When the session is the **lead** of a multi-lane run (Kanban Mode columns, or Factory Mode lanes), render a Lane Board snapshot that shows board state and per-lane progress in one block. Distinct from the Progress Board — the Progress Board tracks the steps of ONE task in THIS session, the Lane Board tracks cards distributed across OTHER sessions the lead cannot see inside.
+
+Triggers:
+- After dispatching a card to a lane
+- After reading a lane's completion evidence
+- After a merge into the integration branch
+- Before reporting board state to the operator
+
+Template (structural skeleton — translate the header and labels to `conversation_language`):
+```
+🤖 MoAI ★ Lane Board ────────────────────────
+📋 backlog [N] │ plan [N] │ run [N] │ sync [N] │ done [N]
+🎯 [Progress header]  ▓▓▓░░░░░░░  [N]/[M] ([P]%)
+
+[lane] [card] [phase] [state] [last observed]
+1      t-a    plan    🟡      [HH:MM] · [what was read]
+2      t-b    run     🟡      [HH:MM] · [what was read]
+3      —      —       ⬜      [idle]
+📎 evidence: [sources read]
+──────────────────────────────────────────────
+```
+
+Header translation table:
+
+| Block | English | Korean | Japanese | Chinese |
+|-------|---------|--------|----------|---------|
+| Banner | `Lane Board` | `레인 보드` | `レーンボード` | `泳道看板` |
+| lane column | `lane` | `레인` | `レーン` | `泳道` |
+| card column | `card` | `카드` | `カード` | `卡片` |
+| phase column | `phase` | `단계` | `フェーズ` | `阶段` |
+| state column | `state` | `상태` | `状態` | `状态` |
+| last observed column | `last observed` | `마지막 관측` | `最終観測` | `最后观测` |
+| idle value | `idle` | `대기` | `待機` | `空闲` |
+| evidence | `evidence:` | `근거:` | `根拠:` | `依据:` |
+
+Rules:
+- [HARD] **The lead cannot see inside a lane session.** Every row is derived ONLY from observable signals, and no other source is admissible:
+  - lane liveness — the peer-session agent listing
+  - card id — the lead's own dispatch record
+  - phase — the SPEC's progress record or its status frontmatter
+  - completion — the evidence file the phase declares
+  - branch / merge state — the version-control log
+  Anything beyond these five is a claim, not an observation, and MUST NOT be rendered as board state.
+- [HARD] The `last observed` column names WHAT was read and WHEN — it is the mechanism that stops a stale row from reading as current. A row with no observation renders `—` in that column, and its state MUST be `⬜` or `⏸️`, never a progress icon.
+- [HARD] A lane's own claim is not an observation. A lane reporting "done" whose evidence the lead has NOT yet read renders `🔵` (under review), never `🟢`. Rationale: `.claude/rules/moai/core/verification-claim-integrity.md` § The Invariant — an unread completion claim is an unobserved-verification claim.
+- [HARD] Icons reuse the §8 Progress Board legend (`⬜ 🟢 🟡 ⏸️ 🔵 ❌ 🔴`) — structural, never translated, never replaced by text like `[DONE]`. Each status still carries its text label so it is distinguishable without color (color-independence, same rule as the Progress Board).
+- [HARD] The completion bar is the SAME fixed 10-cell `▓`/`░` mechanic the Progress Board defines (`▓` × round(done ÷ total × 10), `░` for the remainder, then `done/total (pct%)` on the same line) — do NOT invent a second bar format. `▓` / `░` / digits / `%` verbatim; only the heading word translates.
+- [HARD] Card ids, branch names, lane names, and file paths are verbatim across all locales — they are addresses, and a translated address does not resolve. Only the labels translate.
+- [HARD] Put a 46-column `─` line (U+2500) as the banner's closing rule — NOT markdown `---`, which parses as a setext heading underline directly under a text line.
+- Maximum 12 lane rows per board; beyond that, split into grouped boards.
+- Column alignment is BEST-EFFORT only (CJK double-width glyphs break manual padding) — never force alignment with padding; when a `last observed` value runs long, wrap it onto a `   └─ ` continuation line.
 
 ### Session Handoff [HARD]
 

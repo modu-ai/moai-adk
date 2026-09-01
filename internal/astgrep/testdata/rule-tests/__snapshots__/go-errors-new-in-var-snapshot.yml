@@ -1,0 +1,9 @@
+id: go-errors-new-in-var
+snapshots:
+  ? |
+    var ErrNotFound = errors.New("not found")
+  : labels:
+    - source: var ErrNotFound = errors.New("not found")
+      style: primary
+      start: 0
+      end: 41

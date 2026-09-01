@@ -1,0 +1,12 @@
+SEVERITY  CODE                FILE                                                                 LINE  MESSAGE
+--------  ----                ----                                                                 ----  -------
+WARNING   CoverageIncomplete  .moai/reports/t362/c2/nomirror/SPEC-COVERAGE-RULE-SCOPE-001/spec.md  84    REQ REQ-CRS-001-001 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/reports/t362/c2/nomirror/SPEC-COVERAGE-RULE-SCOPE-001/spec.md  85    REQ REQ-CRS-001-002 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/reports/t362/c2/nomirror/SPEC-COVERAGE-RULE-SCOPE-001/spec.md  86    REQ REQ-CRS-001-003 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/reports/t362/c2/nomirror/SPEC-COVERAGE-RULE-SCOPE-001/spec.md  87    REQ REQ-CRS-001-004 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/reports/t362/c2/nomirror/SPEC-COVERAGE-RULE-SCOPE-001/spec.md  88    REQ REQ-CRS-001-005 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/reports/t362/c2/nomirror/SPEC-COVERAGE-RULE-SCOPE-001/spec.md  92    REQ REQ-CRS-001-006 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/reports/t362/c2/nomirror/SPEC-COVERAGE-RULE-SCOPE-001/spec.md  93    REQ REQ-CRS-001-007 is not referenced by any AC
+WARNING   CoverageIncomplete  .moai/reports/t362/c2/nomirror/SPEC-COVERAGE-RULE-SCOPE-001/spec.md  94    REQ REQ-CRS-001-008 is not referenced by any AC
+
+0 error(s), 8 warning(s)

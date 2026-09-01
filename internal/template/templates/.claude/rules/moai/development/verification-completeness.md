@@ -42,10 +42,20 @@ while carrying no decision.
 > exiting zero; on the criterion side, review rounds stalled at an identical score with
 > comments of the form "invokes the check but never uses its result".
 
-*Evidence footnote (not a rule):* a selector that swept nothing still prints ok — a test-name
-regex matching zero tests, a zero-hit grep read as a pass. Counting what was actually swept is
-the same completion act as observing the failure: a pass whose swept set is empty asserts
-nothing.
+[ZONE:Evolvable] [HARD] **A pass whose swept set is empty asserts nothing.** A verification that
+selected nothing still reports success — a test-name selector matching zero tests, a zero-hit grep
+read as a pass, a suite filtered down to no cases — and the report is indistinguishable from one
+where everything passed. Counting what was actually swept is therefore part of the same completion
+act as observing the failure, not a refinement of it: a green with an empty swept set is
+uninterpreted output, and reading it as a pass is an unobserved-verification claim.
+
+The obligation this places on an actor is to establish the swept count before reading the verdict,
+and on a verification instrument to make an empty sweep visible rather than silent. The runner
+usually says so in its own words — go prints `[no tests to run]` or `[no test files]`, pytest
+`no tests ran`, jest `No tests found`, vitest `No test files found`, cargo a zero pass count — and
+those tokens are the cheapest available evidence. Where an instrument classifies runner output, the
+empty-sweep judgment is made ahead of every other signal, because the exit code of a run that swept
+nothing is the same zero a fully-passing run returns.
 
 ### 1.2 The three-part check spec
 
@@ -68,6 +78,54 @@ in production and absent from traces: the failure was reached but not observed.
 > milestone where the ordering could not yet differ — a check incapable of failing that passed
 > anyway; and as a runner that logged its own failure at debug level, silent in production and
 > absent from traces — reachability designed, observability absent.
+
+### 1.3 Continued firing
+
+[ZONE:Evolvable] [HARD] A check's completion does not survive a change to its trigger, its
+deployment, or its branch model. §1.2(a) asks WHEN a check must run to be meaningful and answers
+it once, at authoring time; nothing in that answer keeps holding. A check correctly scheduled on
+Monday can stop firing on Friday because the event it subscribed to was abolished, because the
+binary carrying it is older than the fix it was supposed to run, or because a selector that once
+matched now matches nothing. The check is still in the tree, still correct, and no longer runs.
+
+**This is absent execution, not suppressed failure, and the distinction decides what to build.**
+§1.2(c) routes a red to someone who will see it; that clause presupposes a red exists. Here
+nothing ran, so nothing could go red, and there is no signal to route — no exit code, no log
+line, no trace. The accurate sentence is not "the check should have failed and did not"; it is
+**"nothing failed, and there was nothing there to fail."** A green that follows is true about the
+set that was selected and silent about the set that was intended, and nothing in the mechanism
+compares the two.
+
+Three ways a live check goes quiet, each observed:
+
+- **Trigger.** A branch-model change abolished the event two guards subscribed to; both stopped
+  running on the integration branch and neither announced it. Their absence from a default run
+  listing was indistinguishable from a path filter declining to match.
+- **Deployment.** A fix landed and the installed binary was built from an older commit, so the
+  fixed code never ran. Three observers each independently reproduced the pre-fix behaviour and a
+  card was issued for a defect that was already repaired.
+- **Selection.** A test-name selector named three tests of which one existed. The run printed a
+  passing line and a duration; the two absent tests never reached the exit code.
+
+**The completion act.** A check specification is unfinished until it also states its
+continued-firing answer: how a reader learns the check has stopped firing, as a stale-guard signal
+that arrives without being asked for.
+A verdict available only to whoever thinks to query it has relocated the problem into the person
+expected to already know the question, which is precisely the person who does not have it: the
+targeted query that recovers a missing guard can only be issued by someone who already suspects
+the answer. Liveness that answers on demand is not liveness; it is a second thing to remember to
+check.
+
+The general form, and the test to apply to any check: **any check whose non-execution is
+indistinguishable from its success has this defect.** Ask of each one — if this stopped running
+tomorrow, what would be different in what I see? Where the honest answer is "nothing", the check
+is complete against §1.1 and §1.2 and still unfinished here.
+
+> Evidence: observed as two guards silently unsubscribed by a branch-model change, their
+> non-firing indistinguishable from a non-matching path filter in the default listing; as a fix
+> that landed while the installed binary predated it, reproduced as a live defect by three
+> independent observers; and as a selector naming three tests of which one existed, the run
+> printing a pass whose swept set was two-thirds empty.
 
 ## 2. Two-cell adoption discipline
 
@@ -109,6 +167,52 @@ by a single-direction criterion admits a mutant on the other direction.
 > violated — and as a paired-rule review where an invalid-cases-only rule admitted an
 > all-matching mutant while a valid-cases-only rule admitted a nothing-matching one, each
 > direction passing its own one-sided criterion.
+
+### 2.1 RED-now cell content — the four elements
+
+[ZONE:Evolvable] [HARD] Where a criterion is classified **release-blocking**, its RED-now cell
+carries four elements together, and a cell carrying three of them is unadopted:
+
+- **the command** — a read-only shell invocation that completes in a **single invocation**. Pipes,
+  redirection, `&&`, `;` chaining, and subshells are outside the form. A citation that is not of
+  this form is not an error; it takes the undecidable disposition below, and no reader is ever
+  obliged to execute it.
+- **that command's verbatim stdout** — **verbatim** means the **raw file** bytes, not the rendered
+  view. A command is verbatim when it runs unmodified as read from the source.
+- **that command's exit code**, recorded as its own field. It is separate precisely because the
+  single-invocation form forbids `; echo $?`, so the exit code cannot ride inside the command. An
+  empty stdout with a non-zero exit is a complete and common observation.
+- **the tree SHA** the measurement was taken on — a commit SHA, never a branch name (§4). A
+  document-level pin is permitted and **explicitly binds every criterion carrying no pin of its
+  own**; a criterion-level pin wins wherever present.
+
+**The carrier** — where in the document the four elements physically live — is one of exactly two:
+a **table cell**, or a fenced **evidence-ledger** entry that a table cell cites by id. The ledger
+is the recommended carrier, because a table cell mangles shell metacharacters and that mangling
+has already produced both a vacuous green and an unrunnable command. Admitting the ledger here is
+what keeps it a carrier rather than an exemption: a check of this obligation follows the elements
+to whichever carrier holds them, and neither demotion nor relocation removes a command from its
+scope.
+
+[ZONE:Evolvable] [HARD] **The obligation is structural, not lexical.** It is a test over the
+criterion's content — is a command present, is its stdout present, is its exit code present, is a
+SHA pinned — and neither this rule nor any check built on it keys on the grammar, the modality, or
+a word list of the prose. A discriminator over vocabulary is unsound in both directions: it
+classifies live criteria as dead on wording alone, and it misses a false cell written as an
+assertive observation report.
+
+[ZONE:Evolvable] [HARD] **The undecidable disposition.** Where a cited RED cannot be re-executed on
+the current tree — a historical event, an already-merged state, or an externally observed CI
+result — the criterion **loses release-blocking eligibility**, is classified as a
+**regression-guard**, and is **not recorded as a pass**. This is the disposition, not one option
+among several: a criterion whose starting observation cannot be reproduced does not become a
+release gate by being written more confidently.
+
+> Evidence: observed as nine release-blocking criteria in one landed SPEC resting on a single
+> premise — that an absent test turns its suite red — where a runner given a selector matching zero
+> tests exits 0 and prints `ok`. The cells pinned a tree and carried no output, so the pin named a
+> measurement that had never been taken; the audit that passed them had no criterion that read a
+> RED cell at all.
 
 ## 3. Cross-layer revision sweep
 

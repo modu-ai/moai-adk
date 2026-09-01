@@ -6,7 +6,7 @@ catalog:
             - name: moai
               tier: core
               path: templates/.claude/skills/moai/
-              hash: d241503fa9d43d4273a5657c36264ccc4d80e7214c69cf8bfa0395b19763192e
+              hash: 1eabaa9bf8d2834f8cc45f3dcde34952edafa357c7ce87ae2fe492d01cbf3c48
               version: 1.0.0
             - name: moai-foundation-cc
               tier: core
@@ -36,7 +36,7 @@ catalog:
             - name: moai-kanban-foreman
               tier: core
               path: templates/.claude/skills/moai-kanban-foreman/
-              hash: 5c7681e02186eabfad10f8531c37702c89d47e661dbc69c235234ace56c7a6a6
+              hash: 563ea4326931003542bf967ee617d0b9224ec9188e658b38403f620054181fea
               version: 1.0.0
             - name: moai-meta-harness
               tier: core
@@ -117,12 +117,12 @@ catalog:
             - name: manager-develop
               tier: core
               path: templates/.claude/agents/moai/manager-develop.md
-              hash: 7872f2400dde416da12dc6c9d7842c1b2778798ced25d10c5a36ecff2c0bd90e
+              hash: ad390185637655a3b7e68ff5c0fd3c9258559a6bfc01aa72d3243838de94d2f0
               version: 1.0.0
             - name: manager-docs
               tier: core
               path: templates/.claude/agents/moai/manager-docs.md
-              hash: 27d6252a33131be637294ddced274213bb817012747731d08844becd7a3b7954
+              hash: 3606cc18c7ed3d13df290913fab2ff387034dbb0329c669e1ad8e538cb4b0954
               version: 1.0.0
             - name: manager-git
               tier: core
@@ -132,7 +132,7 @@ catalog:
             - name: manager-lead
               tier: core
               path: templates/.claude/agents/moai/manager-lead.md
-              hash: eceaee8c480855dfde7c8bd2bbdc46581e05b32c455864843619a384e9574020
+              hash: 8bbbc6576e083cd09dd98835f468778b9344c0dcf84c5fe1fc1ee93a6168bdca
               version: 1.0.0
             - name: manager-spec
               tier: core
@@ -142,7 +142,7 @@ catalog:
             - name: plan-auditor
               tier: core
               path: templates/.claude/agents/moai/plan-auditor.md
-              hash: ac56cfbce3c8128318e8ab6948563fa426effa4d16e374eb9fe05577a5a1567b
+              hash: 81c0c1934924b44cfe8329a15c72252c03b95cbd5d7102db9f8fb9ea404c50ac
               version: 1.0.0
             - name: super-advisor
               tier: core

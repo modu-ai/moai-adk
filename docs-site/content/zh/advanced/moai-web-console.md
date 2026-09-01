@@ -105,7 +105,7 @@ SPEC 区域顶部是搜索框与 status 筛选标签。紧接着，两个警示�
 | `session` | `.moai/state` |
 | `goal` | `.moai/state/goal` |
 | `verify` | `.moai/state/verify` |
-| `kanban` | `.moai/state/kanban` |
+| `kanban` | `.moai/state/todo` |
 | `config` | `.moai/config/sections` |
 
 只有 `config` 事件的处理方式不同。若在编辑设置的过程中界面被从底下改动，正在输入的值就会丢失，因此不做刷新，只弹出一条「配置文件已变更」的横幅。

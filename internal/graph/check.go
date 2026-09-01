@@ -64,7 +64,39 @@ type LayerReport struct {
 	Threshold int    `json:"threshold"`
 	Verdict   string `json:"verdict"`
 	Reason    string `json:"reason,omitempty"`
+
+	// Contribution is the change under judgment's OWN described-worthy count,
+	// measured against the checkout's first-parent predecessor (REQ-GFC-007).
+	// It is REPORTED, never gated on: gating it would eliminate the
+	// accumulated-drift signal the cumulative metric exists to carry
+	// (spec.md §D.3, third rejection).
+	//
+	// nil means the base does not exist — a root commit, or an unborn HEAD.
+	// That case is reported absent rather than defaulted to 0, because 0 is
+	// itself the inheriting signature: a fabricated 0 is indistinguishable
+	// from a measured one, and would report every such checkout as having
+	// inherited someone else's red.
+	Contribution *int `json:"contribution,omitempty"`
+	// ContributionBase is the first-parent sha Contribution was measured
+	// against, so the figure is attributable rather than merely asserted.
+	ContributionBase string `json:"contribution_base,omitempty"`
+	// ContributionAbsentReason names why Contribution is nil. Absent must be
+	// legible, not merely a missing field.
+	ContributionAbsentReason string `json:"contribution_absent_reason,omitempty"`
+
+	// DrivingPaths names the described-worthy paths driving Value on a stale
+	// verdict, bounded to drivingPathDisplayBound (REQ-GFC-008). Empty on a
+	// fresh verdict — nothing is driving anything.
+	DrivingPaths []string `json:"driving_paths,omitempty"`
+	// DrivingPathsOmitted is how many driving paths the bound cut. An
+	// explicit overflow count, never a silent truncation.
+	DrivingPathsOmitted int `json:"driving_paths_omitted,omitempty"`
 }
+
+// drivingPathDisplayBound caps how many described-worthy paths a stale report
+// lists, so a red naming 400 files stays readable. The overflow is declared in
+// DrivingPathsOmitted rather than dropped.
+const drivingPathDisplayBound = 10
 
 // CheckResult is the full per-layer report for one tree.
 type CheckResult struct {
@@ -178,7 +210,10 @@ func checkCodemaps(projectRoot string, th Thresholds) (LayerReport, error) {
 	if pv.Dirty {
 		rep.Metric = MetricGenerationFP
 		rep.Threshold = 1
-		cur, err := mx.AggregateDescribedFingerprint(projectRoot, roots)
+		// Filtered to described-worthy files, paired with the codemaps stamp
+		// writer which produces it the same way (REQ-GFC-003). The unfiltered
+		// aggregate stays the edges layer's (REQ-GFC-003a).
+		cur, err := mx.AggregateDescribedFingerprintFiltered(projectRoot, roots)
 		if err != nil {
 			rep.Verdict = VerdictAbsent
 			rep.Reason = "described roots unreadable: " + err.Error()
@@ -187,11 +222,17 @@ func checkCodemaps(projectRoot string, th Thresholds) (LayerReport, error) {
 		if cur == pv.ContentFingerprint {
 			rep.Value = 0
 			rep.Verdict = VerdictFresh
+			attachContribution(projectRoot, roots, &rep)
 			return rep, nil
 		}
 		rep.Value = 1
 		rep.Verdict = VerdictStale
 		rep.Reason = fmt.Sprintf("content moved past dirty-generation fingerprint %s", shortHash(pv.ContentFingerprint))
+		// The contribution is a property of the change, not of the stamp, so
+		// it is reported on the fingerprint path too. Driving paths are not:
+		// this path compares one hash against another and holds no path set,
+		// and inventing one would name files the metric never counted.
+		attachContribution(projectRoot, roots, &rep)
 		return rep, nil
 	}
 
@@ -200,7 +241,7 @@ func checkCodemaps(projectRoot string, th Thresholds) (LayerReport, error) {
 		rep.Reason = "clean stamp carries no commit sha — freshness-unjudgeable"
 		return rep, nil
 	}
-	count, err := gitDiffNameCount(projectRoot, pv.CommitSHA, roots)
+	driving, err := gitDiffNameList(projectRoot, pv.CommitSHA, roots)
 	if err != nil {
 		// Not-comparable (bad revision / shallow history): report the layer
 		// as unmeasured and surface the system error — never judge stale on
@@ -209,9 +250,14 @@ func checkCodemaps(projectRoot string, th Thresholds) (LayerReport, error) {
 		rep.Reason = "stamped commit not comparable (unmeasured, system error follows)"
 		return rep, fmt.Errorf("codemaps stamp %s not comparable in this checkout: %w", shortHash(pv.CommitSHA), err)
 	}
-	rep.Value = count
-	if count >= th.CodemapsChangedFiles {
+	rep.Value = len(driving)
+	attachContribution(projectRoot, roots, &rep)
+	if rep.Value >= th.CodemapsChangedFiles {
 		rep.Verdict = VerdictStale
+		// REQ-GFC-008 is guarded on the stale verdict: a fresh layer has
+		// nothing driving it, so listing paths there would name churn the
+		// gate deliberately tolerates.
+		attachDrivingPaths(&rep, driving)
 	} else {
 		rep.Verdict = VerdictFresh
 	}
@@ -407,19 +453,35 @@ func validateDescribedRoot(projectRoot, root string) error {
 	return nil
 }
 
-// gitDiffNameCount counts files under roots whose working-tree content
-// differs from commit — endpoint comparison, reverted churn counts zero.
-// A file untracked at HEAD counts too: its content (existence) differs from
-// the stamped commit, and `git diff <commit>` alone would silently skip it.
+// gitDiffNameCount counts DESCRIBED-WORTHY files under roots whose
+// working-tree content differs from commit — endpoint comparison, reverted
+// churn counts zero. A file untracked at HEAD counts too: its content
+// (existence) differs from the stamped commit, and `git diff <commit>` alone
+// would silently skip it.
+//
+// Both branches apply mx.IsDescribedWorthy (REQ-GFC-001/002): filtering only
+// the diff branch leaves an untracked fixture counted, which is the exact
+// shape of the noise this metric exists to stop counting.
 func gitDiffNameCount(projectRoot, commit string, roots []string) (int, error) {
+	paths, err := gitDiffNameList(projectRoot, commit, roots)
+	return len(paths), err
+}
+
+// gitDiffNameList is gitDiffNameCount's underlying measurement: the sorted set
+// of described-worthy paths differing from commit, unioned across the endpoint
+// diff and the untracked listing. The count and the list come from ONE
+// traversal, so a report can never name paths its own count disagrees with
+// (REQ-GFC-008). The order is sorted, so two runs over the same tree produce a
+// diffable listing.
+func gitDiffNameList(projectRoot, commit string, roots []string) ([]string, error) {
 	changed := map[string]bool{}
 
 	diffArgs := append([]string{"diff", "--name-only", commit, "--"}, roots...)
 	if out, err := gitOutput(projectRoot, diffArgs...); err != nil {
-		return 0, fmt.Errorf("git diff %s: %w", shortHash(commit), err)
+		return nil, fmt.Errorf("git diff %s: %w", shortHash(commit), err)
 	} else {
 		for _, line := range strings.Split(out, "\n") {
-			if p := strings.TrimSpace(line); p != "" {
+			if p := strings.TrimSpace(line); p != "" && mx.IsDescribedWorthy(p) {
 				changed[p] = true
 			}
 		}
@@ -427,15 +489,57 @@ func gitDiffNameCount(projectRoot, commit string, roots []string) (int, error) {
 
 	otherArgs := append([]string{"ls-files", "--others", "--exclude-standard", "--"}, roots...)
 	if out, err := gitOutput(projectRoot, otherArgs...); err != nil {
-		return 0, fmt.Errorf("git ls-files --others: %w", err)
+		return nil, fmt.Errorf("git ls-files --others: %w", err)
 	} else {
 		for _, line := range strings.Split(out, "\n") {
-			if p := strings.TrimSpace(line); p != "" {
+			if p := strings.TrimSpace(line); p != "" && mx.IsDescribedWorthy(p) {
 				changed[p] = true
 			}
 		}
 	}
-	return len(changed), nil
+
+	out := make([]string, 0, len(changed))
+	for p := range changed {
+		out = append(out, p)
+	}
+	sort.Strings(out)
+	return out, nil
+}
+
+// attachContribution measures the change under judgment's own described-worthy
+// contribution against the checkout's first-parent predecessor, so a reader can
+// tell an inherited red from an originated one (REQ-GFC-007). It uses the same
+// predicate and the same union as the cumulative count, differing only in the
+// comparison base.
+//
+// Where no first parent resolves, the contribution is reported ABSENT with a
+// reason. It is never defaulted to 0 — see the Contribution field comment for
+// why the fabricated 0 is the dangerous direction here.
+func attachContribution(projectRoot string, roots []string, rep *LayerReport) {
+	base, err := gitOutput(projectRoot, "rev-parse", "--verify", "--quiet", "HEAD^1")
+	base = strings.TrimSpace(base)
+	if err != nil || base == "" {
+		rep.ContributionAbsentReason = "no first parent — the change under judgment has no comparison base"
+		return
+	}
+	n, err := gitDiffNameCount(projectRoot, base, roots)
+	if err != nil {
+		rep.ContributionAbsentReason = fmt.Sprintf("first parent %s not comparable: %v", shortHash(base), err)
+		return
+	}
+	rep.Contribution = &n
+	rep.ContributionBase = base
+}
+
+// attachDrivingPaths records the paths driving a stale count, truncated to the
+// display bound with the overflow declared rather than dropped (REQ-GFC-008).
+func attachDrivingPaths(rep *LayerReport, paths []string) {
+	if len(paths) <= drivingPathDisplayBound {
+		rep.DrivingPaths = paths
+		return
+	}
+	rep.DrivingPaths = paths[:drivingPathDisplayBound]
+	rep.DrivingPathsOmitted = len(paths) - drivingPathDisplayBound
 }
 
 // gitOutput runs git in dir and returns stdout (errors carry stderr).

@@ -1,0 +1,17 @@
+# Test pair for the shell command-injection family (go / python variants under
+# one id).
+#
+# The go branch is exercised here. The python branch is deliberately absent:
+# ast-grep 0.40.x routes inline test snippets through a single language
+# selection, so python snippets inside this file never reach their rule (the
+# identical pattern DOES fire on real files -- verified against the pre-write
+# scan-corpus fixture carrying os.system, which asserts a deny through the
+# runtime gate). The successor breadth SPEC reintroduces per-language coverage
+# from real fixture files.
+id: sec-command-injection-shell
+valid:
+  - |
+    out, err := exec.Command("git", "status", "--porcelain").Output()
+invalid:
+  - |
+    exec.Command("sh", "-c", script)

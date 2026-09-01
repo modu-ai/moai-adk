@@ -38,15 +38,17 @@ const (
 	RungDegraded Rung = "DEGRADED"
 )
 
-// stateDirSegments is the record's home beneath the project root, matching the
-// per-subsystem layout the rest of .moai/state/ already uses.
-var stateDirSegments = []string{".moai", "state", "kanban"}
+// The record's home beneath the project root is the shared state directory
+// resolved by state_dir.go — the SAME directory the queue lives in, which is
+// why the two travel together through the rename (REQ-TOSQ-015). RecordPath
+// resolves it purely: reading or writing a session record must not trigger the
+// one-time relocation, which belongs to the `moai todo` command path.
 
 // @MX:ANCHOR: [AUTO] Kanban state record schema — the cross-actor contract for a kanban session
 // @MX:REASON: the launcher writes SessionID/SpecID/Backend/EnteredAt at launch while the orchestrator fills DeepScanDir/VerifyRung/VerifyReentries later; both sides plus the sync-phase dedup gate bind to these JSON keys, so a renamed key breaks readers this package cannot see
 //
 // Record is the per-session kanban state record persisted at
-// .moai/state/kanban/<session>.json.
+// <state-dir>/<session>.json (see state_dir.go for the directory).
 //
 // The three orchestrator-written fields (DeepScanDir, VerifyRung,
 // VerifyReentries) are filled in independently as the chain progresses, so a
@@ -184,8 +186,8 @@ func (r *Record) WithCard(cardID string) *Record {
 
 // RecordPath returns the on-disk path of a session's record.
 func RecordPath(projectRoot, sessionID string) string {
-	segments := append([]string{projectRoot}, stateDirSegments...)
-	return filepath.Join(append(segments, sessionID+".json")...)
+	dir, _ := resolveStateDir(projectRoot, false)
+	return filepath.Join(dir, sessionID+".json")
 }
 
 // Write persists rec under projectRoot, creating the state directory as needed.

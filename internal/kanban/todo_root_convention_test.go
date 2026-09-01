@@ -20,7 +20,7 @@ import (
 // A convention held in prose across files drifts; this holds it mechanically.
 //
 // What is forbidden is a bare join against a QUEUE ROOT. Joining against a
-// directory that is already `.moai/state/kanban` is a different thing and stays
+// directory that is already `.moai/state/kanban-board` is a different thing and stays
 // legal, so the pattern keys on the receiver's name rather than on the filename.
 func TestNoBareJoinBacklogPathSurvives(t *testing.T) {
 	// Package directories relative to this one, so the test is independent of

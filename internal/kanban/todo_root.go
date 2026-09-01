@@ -106,17 +106,20 @@ func primaryCheckoutRoot(base string) (string, bool) {
 // outright. Read-only.
 //
 // The directory is named for the command that owns the queue (`moai todo` —
-// no `moai kanban` command exists), deliberately NOT "kanban": the
-// .moai/state/kanban/ directory also holds per-session kanban records
-// (<uuid>.json), and a "kanban" fallback name would read as moving those too
-// — a scope this queue never touches.
+// no `moai kanban` command exists). The project-local state directory now
+// carries that same name (see state_dir.go); the per-session records
+// (<uuid>.json) share it and travel with it.
 func homeTodoQueueRoot(base string) (string, bool) {
 	if base == "" {
 		base = "."
 	}
 	home, err := HomeDirFn()
 	if err != nil {
-		return filepath.Join(base, ".moai", "state", "kanban"), false
+		// No home: fall back to the project-local state directory, resolved
+		// PURELY so a failed home lookup cannot trigger the one-time
+		// directory relocation as a side effect.
+		dir, _ := resolveStateDir(base, false)
+		return dir, false
 	}
 	return filepath.Join(home, ".moai", "todo", TodoQueueProjectKey(base)), true
 }

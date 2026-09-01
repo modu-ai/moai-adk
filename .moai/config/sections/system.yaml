@@ -41,11 +41,10 @@ document_management:
 github:
     auto_delete_branches: true
     enable_trust_5: true
-    spec_git_workflow: feature_branch
 moai:
-    template_version: v3.1.3
+    template_version: v3.1.4
     update_check_frequency: daily
-    version: v3.1.3
+    version: v3.1.4
     version_check:
         cache_ttl_hours: 24
         enabled: true

@@ -1,0 +1,838 @@
+2026/08/28 21:47:43 INFO session started session_id=sess-seam cwd=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestBinaryLag_OneSeamServesBothSurfaces961119473/001 project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestBinaryLag_OneSeamServesBothSurfaces961119473/001
+2026/08/28 21:47:43 WARN configuration not available, proceeding with defaults session_id=sess-seam
+2026/08/28 21:47:43 INFO teammateMode updated mode=auto in_tmux=false
+2026/08/28 21:47:43 INFO session start (deferred): MX index built via cold-start scan project_dir=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestBinaryLag_OneSeamServesBothSurfaces961119473/001 tags=0
+2026/08/28 21:47:44 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCCCmd_Execution_NoDeps650608528/001/.moai/config/sections
+Launching Claude Code...
+Launching Claude Code...
+Notice: profile "work" has no Claude Code configuration yet.
+  Claude Code will show the login / onboarding screen on this launch.
+  Account state is not inherited between profiles; sign in once and it
+  persists for this profile.
+CG mode: Lead (Claude) + Teammates (GLM)
+Launching Claude Code...
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestChainStatus1238971286/001
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestChainLineage296900439/001
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestChainBack16246065/001
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestChainBackAtRoot3506180423/001
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestChainList3079603291/001
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestChainList3079603291/001
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestChainStatusNoContext1922850608/001
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestChainPruneDryRun952018693/001
+warn: skipping symlink /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMigrateSymlinkSkip_Repro3448187263/001/src/link.txt
+install the desktop app from https://example.invalid/codex-desktop
+2026/08/28 21:48:37 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestResetTeamModeForCC_ConfigLoadError1055940913/001/.moai/config/sections
+--- FAIL: TestRunDoctor_WithExport (4.81s)
+    coverage_improvement_test.go:715: runDoctor error: doctor: 1 check(s) failed
+--- FAIL: TestRunDoctor_WithFix (4.37s)
+    coverage_improvement_test.go:737: runDoctor error: doctor: 1 check(s) failed
+--- FAIL: TestRunDoctor_Verbose (5.15s)
+    coverage_improvement_test.go:777: runDoctor error: doctor: 1 check(s) failed
+2026/08/28 21:48:52 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunCC_SuccessfulExecution4101412228/001/.moai/config/sections
+Launching Claude Code...
+2026/08/28 21:48:52 INFO gopls bridge disabled (lsp.yaml: enabled=false)
+2026/08/28 21:48:52 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t326/internal/cli/.moai/config/sections
+2026/08/28 21:48:52 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunCC_WithProjectRoot281409349/001/.moai/config/sections
+Launching Claude Code...
+2026/08/28 21:48:52 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t326/internal/cli/.moai/config/sections
+· Initializing MoAI project...
+  ● Detection: Analyzing project structure...
+  ✓ Detected project structure
+  ● Validation: Using mode: tdd...
+  ✓ Mode validated
+  ● Validation: Validating project structure...
+  ✓ Validation passed
+  ● Initialization: Creating project structure...
+  ✓ Created 2 files
+
+╭─────────────────────────────────────────────────╮
+│                                                 │
+│  ✓ MoAI project initialized                     │
+│   13 dirs    2 files                            │
+│                                                 │
+│  Next steps:                                    │
+│    1. cd test-project                           │
+│    2. moai cc                                   │
+│    3. /moai plan "describe your first feature"  │
+│                                                 │
+╰─────────────────────────────────────────────────╯
+  Pre-push hook installed (.git/hooks/pre-push)
+  Pre-commit hook installed (.git/hooks/pre-commit)
+2026/08/28 21:48:52 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunInit_DotArg_NonInteractive1400967483/001/.moai/config/sections
+· Initializing MoAI project...
+  ● Detection: Analyzing project structure...
+  ✓ Detected project structure
+  ● Validation: Using mode: tdd...
+  ✓ Mode validated
+  ● Validation: Validating project structure...
+  ✓ Validation passed
+  ● Initialization: Creating project structure...
+  ✓ Created 2 files
+
+╭─────────────────────────────────────────────────╮
+│                                                 │
+│  ✓ MoAI project initialized                     │
+│   13 dirs    2 files                            │
+│                                                 │
+│  Next steps:                                    │
+│    1. cd dot-project                            │
+│    2. moai cc                                   │
+│    3. /moai plan "describe your first feature"  │
+│                                                 │
+╰─────────────────────────────────────────────────╯
+  Pre-push hook installed (.git/hooks/pre-push)
+  Pre-commit hook installed (.git/hooks/pre-commit)
+  ○ Go Runtime
+  ✓ Go Runtime
+  ○ Git
+  ✓ Git
+  ○ Claude Code
+  ✓ Claude Code
+  ○ GitHub CLI
+  ✓ GitHub CLI
+  ○ ast-grep CLI
+  ✓ ast-grep CLI
+  ○ MoAI Config
+  ✓ MoAI Config
+  ○ Claude Config
+  ✓ Claude Config
+  ○ MoAI Version
+  ✓ MoAI Version
+  ○ Binary Freshness
+  ✓ Binary Freshness
+  ○ MCP Scope Duplicates
+  ✓ MCP Scope Duplicates
+  ○ MCP Server Version
+  ✓ MCP Server Version
+  ○ Agent Emit Embed
+  ✓ Agent Emit Embed
+  ○ Constitution Registry
+  ✓ Constitution Registry
+  ○ Harness 5-Layer
+  ✓ Harness 5-Layer
+  ○ Migration
+  ✓ Migration
+  ○ Plugin Deployment
+  ✓ Plugin Deployment
+  ○ Home Disk Usage
+  ✓ Home Disk Usage
+  ○ Hooks Config
+  ✓ Hooks Config
+  ○ Hook opt-in:
+  ✓ Hook opt-in:
+  ○ Slash Commands
+  ✓ Slash Commands
+  ○ Skills Allowlist
+  ✓ Skills Allowlist
+  ○ MX Tag Config
+  ✓ MX Tag Config
+  ○ Worktree State
+  ✓ Worktree State
+  ○ Worktree Base Branch
+  ✓ Worktree Base Branch
+  ○ BODP Config
+  ✓ BODP Config
+  ○ Telemetry Config
+  ✓ Telemetry Config
+  ○ Glamour Cache
+  ✓ Glamour Cache
+  ○ Codex Wiring
+  ✓ Codex Wiring
+  ○ Go Runtime
+  ✓ Go Runtime
+  ○ Git
+  ✓ Git
+  ○ Claude Code
+  ✓ Claude Code
+  ○ GitHub CLI
+  ✓ GitHub CLI
+  ○ ast-grep CLI
+  ✓ ast-grep CLI
+  ○ MoAI Config
+  ✓ MoAI Config
+  ○ Claude Config
+  ✓ Claude Config
+  ○ MoAI Version
+  ✓ MoAI Version
+  ○ Binary Freshness
+  ✓ Binary Freshness
+  ○ MCP Scope Duplicates
+  ✓ MCP Scope Duplicates
+  ○ MCP Server Version
+  ✓ MCP Server Version
+  ○ Agent Emit Embed
+  ✓ Agent Emit Embed
+  ○ Constitution Registry
+  ✓ Constitution Registry
+  ○ Harness 5-Layer
+  ✓ Harness 5-Layer
+  ○ Migration
+  ✓ Migration
+  ○ Plugin Deployment
+  ✓ Plugin Deployment
+  ○ Home Disk Usage
+  ✓ Home Disk Usage
+  ○ Hooks Config
+  ✓ Hooks Config
+  ○ Hook opt-in:
+  ✓ Hook opt-in:
+  ○ Slash Commands
+  ✓ Slash Commands
+  ○ Skills Allowlist
+  ✓ Skills Allowlist
+  ○ MX Tag Config
+  ✓ MX Tag Config
+  ○ Worktree State
+  ✓ Worktree State
+  ○ Worktree Base Branch
+  ✓ Worktree Base Branch
+  ○ BODP Config
+  ✓ BODP Config
+  ○ Telemetry Config
+  ✓ Telemetry Config
+  ○ Glamour Cache
+  ✓ Glamour Cache
+  ○ Codex Wiring
+  ✓ Codex Wiring
+  ○ Go Runtime
+  ✓ Go Runtime
+  ○ Git
+  ✓ Git
+  ○ Claude Code
+  ✓ Claude Code
+  ○ GitHub CLI
+  ✓ GitHub CLI
+  ○ ast-grep CLI
+  ✓ ast-grep CLI
+  ○ MoAI Config
+  ✓ MoAI Config
+  ○ Claude Config
+  ✓ Claude Config
+  ○ MoAI Version
+  ✓ MoAI Version
+  ○ Binary Freshness
+  ✓ Binary Freshness
+  ○ MCP Scope Duplicates
+  ✓ MCP Scope Duplicates
+  ○ MCP Server Version
+  ✓ MCP Server Version
+  ○ Agent Emit Embed
+  ✓ Agent Emit Embed
+  ○ Constitution Registry
+  ✓ Constitution Registry
+  ○ Harness 5-Layer
+  ✓ Harness 5-Layer
+  ○ Migration
+  ✓ Migration
+  ○ Plugin Deployment
+  ✓ Plugin Deployment
+  ○ Home Disk Usage
+  ✓ Home Disk Usage
+  ○ Hooks Config
+  ✓ Hooks Config
+  ○ Hook opt-in:
+  ✓ Hook opt-in:
+  ○ Slash Commands
+  ✓ Slash Commands
+  ○ Skills Allowlist
+  ✓ Skills Allowlist
+  ○ MX Tag Config
+  ✓ MX Tag Config
+  ○ Worktree State
+  ✓ Worktree State
+  ○ Worktree Base Branch
+  ✓ Worktree Base Branch
+  ○ BODP Config
+  ✓ BODP Config
+  ○ Telemetry Config
+  ✓ Telemetry Config
+  ○ Glamour Cache
+  ✓ Glamour Cache
+  ○ Codex Wiring
+  ✓ Codex Wiring
+  ○ MoAI Version
+  ✓ MoAI Version
+  ○ Version Check: Checking template version......
+  ✓ Version check complete
+  ○ Loading Templates: Reading embedded templates......
+  ✓ Templates loaded
+  ○ Loading Manifest: Reading project manifest......
+  ✓ Manifest loaded
+· Found 45 files to sync
+2026/08/28 21:48:59 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunInit_NamedDirectoryArg786295267/001/.moai/config/sections
+2026/08/28 21:48:59 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t326/internal/cli/.moai/config/sections
+Team mode disabled (was: glm)
+Launching Claude Code...
+Team mode disabled (was: cg)
+Launching Claude Code...
+2026/08/28 21:49:00 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t326/internal/cli/.moai/config/sections
+2026/08/28 21:49:00 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunInit_WithPositionalArg1803915406/001/.moai/config/sections
+2026/08/28 21:49:00 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunInit_WithDotArg873939991/001/.moai/config/sections
+  ○ Go Runtime
+  ✓ Go Runtime
+  ○ Git
+  ✓ Git
+  ○ Claude Code
+  ✓ Claude Code
+  ○ GitHub CLI
+  ✓ GitHub CLI
+  ○ ast-grep CLI
+  ✓ ast-grep CLI
+  ○ MoAI Config
+  ✓ MoAI Config
+  ○ Claude Config
+  ✓ Claude Config
+  ○ MoAI Version
+  ✓ MoAI Version
+  ○ Binary Freshness
+  ✓ Binary Freshness
+  ○ MCP Scope Duplicates
+  ✓ MCP Scope Duplicates
+  ○ MCP Server Version
+  ✓ MCP Server Version
+  ○ Agent Emit Embed
+  ✗ Error: no readable binary to judge at /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t326/bin/moai (11 committed artifacts to compare)
+  ○ Constitution Registry
+  ✓ Constitution Registry
+  ○ Harness 5-Layer
+  ✓ Harness 5-Layer
+  ○ Migration
+  ✓ Migration
+  ○ Plugin Deployment
+  ✓ Plugin Deployment
+  ○ Home Disk Usage
+  ✓ Home Disk Usage
+  ○ Hooks Config
+  ✓ Hooks Config
+  ○ Hook opt-in:
+  ✓ Hook opt-in:
+  ○ Slash Commands
+  ✓ Slash Commands
+  ○ Skills Allowlist
+  ✓ Skills Allowlist
+  ○ MX Tag Config
+  ✓ MX Tag Config
+  ○ Worktree State
+  ✓ Worktree State
+  ○ Worktree Base Branch
+  ✓ Worktree Base Branch
+  ○ BODP Config
+  ✓ BODP Config
+  ○ Telemetry Config
+  ✓ Telemetry Config
+  ○ Glamour Cache
+  ✓ Glamour Cache
+  ○ Codex Wiring
+  ✓ Codex Wiring
+--- FAIL: TestRunDoctor_AllFlags (1.58s)
+    coverage_improvement_test.go:4928: unexpected error: doctor: 1 check(s) failed
+--- FAIL: TestRunDoctor_VerboseAndDetail (1.57s)
+    coverage_improvement_test.go:5752: runDoctor error: doctor: 1 check(s) failed
+--- FAIL: TestRunDoctor_ExportMode (1.58s)
+    coverage_improvement_test.go:5802: runDoctor error: doctor: 1 check(s) failed
+2026/08/28 21:49:07 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestResetTeamModeForCC_NoConfig2281498803/001/.moai/config/sections
+2026/08/28 21:49:07 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t326/internal/cli/.moai/config/sections
+2026/08/28 21:49:07 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunInit_PositionalArg592204330/001/.moai/config/sections
+2026/08/28 21:49:07 WARN config sections directory not found, using defaults path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunInit_DotArg1875239957/001/.moai/config/sections
+moai hook PostToolUse: invalid stdin JSON (invalid JSON); emitting default output
+Launching Claude Code...
+2026/08/28 21:49:07 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunCC_NilConfig3152410530/001/.moai/config/sections
+Launching Claude Code...
+Launching Claude Code with GLM backend...
+Launching Claude Code with GLM backend...
+Launching Claude Code with GLM backend...
+2026/08/28 21:49:09 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t326/internal/cli/.moai/config/sections
+2026/08/28 21:49:09 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t326/internal/cli/.moai/config/sections
+2026/08/28 21:49:09 INFO gopls bridge disabled (lsp.yaml: enabled=false)
+2026/08/28 21:49:09 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t326/internal/cli/.moai/config/sections
+2026/08/28 21:49:09 INFO gopls bridge disabled (lsp.yaml: enabled=false)
+2026/08/28 21:49:09 WARN config sections directory not found, using defaults path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t326/internal/cli/.moai/config/sections
+WARN: validation skipped (MOAI_CONSTITUTION_SKIP_VALIDATE=1)
+--- FAIL: TestDoctorCmd_Execution (1.94s)
+    doctor_test.go:76: doctor command RunE error: doctor: 1 check(s) failed
+{
+  "epic": "X",
+  "epic_token": "T",
+  "milestones": [
+    {
+      "id": "M0",
+      "label": "M0",
+      "status": "in-progress",
+      "covered": true,
+      "spec_id": "SPEC-X-001",
+      "spec_status": "completed",
+      "sync_commit_sha": ""
+    }
+  ],
+  "done": 0,
+  "total": 1,
+  "pct": 0,
+  "extra_mx": [],
+  "untracked_specs": [],
+  "baseline_attribution": ""
+}
+Launching Claude Code with GLM backend...
+CG mode: Lead (Claude) + Teammates (GLM)
+Launching Claude Code...
+Launching Claude Code with GLM backend...
+Launching Claude Code with GLM backend...
+Launching Claude Code with GLM backend...
+Notice: profile "work" has no Claude Code configuration yet.
+  Claude Code will show the login / onboarding screen on this launch.
+  Account state is not inherited between profiles; sign in once and it
+  persists for this profile.
+Z.AI MCP tools auto-enabled (Vision, Web Search, Web Reader)
+  Disable: moai glm tools disable all
+harness-observe-stop: auto-classify 2 patterns → 1 promotions
+codex-adapter: dropped "systemMessage" on Stop (26 bytes): no delivery channel on this event
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+harness-observe-stop: auto-classify 1 patterns → 0 promotions
+harness-observe-stop: auto-classify 2 patterns → 1 promotions
+harness-observe-stop: auto-propose generated 1 proposal(s)
+moai hook PreToolUse: invalid stdin JSON (hook: invalid JSON input: unexpected end of JSON input); emitting default output
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.4   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.4   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.4   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.4   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+sandbox proof kind "docker" accepted as attestation (host GOOS=darwin); boundary not independently verified
+sandbox proof kind "docker" accepted as attestation (host GOOS=darwin); boundary not independently verified
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.4   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.4   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.4   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.4   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.4   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+███╗   ███╗          █████╗ ██╗       █████╗ ██████╗ ██╗  ██╗
+████╗ ████║ ██████╗ ██╔══██╗██║      ██╔══██╗██╔══██╗██║ ██╔╝
+██╔████╔██║██║   ██║███████║██║█████╗███████║██║  ██║█████╔╝
+██║╚██╔╝██║██║   ██║██╔══██║██║╚════╝██╔══██║██║  ██║██╔═██╗
+██║ ╚═╝ ██║╚██████╔╝██║  ██║██║      ██║  ██║██████╔╝██║  ██╗
+╚═╝     ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚═╝      ╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
+◆ MoAI-ADK Modu-AI's Agentic Development Kit w/ SuperAgent MoAI
+   v3.1.3   go 1.26.4   claude 
+Welcome to MoAI-ADK Project Initialization!
+
+This wizard will guide you through setting up your MoAI-ADK project.
+You can press Ctrl+C at any time to cancel.
+time=2026-08-28T21:50:20.249+09:00 level=WARN msg="config sections directory not found, using defaults" path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t326/internal/cli/.moai/config/sections
+time=2026-08-28T21:50:20.251+09:00 level=WARN msg="config sections directory not found, using defaults" path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t326/internal/cli/.moai/config/sections
+--- FAIL: TestDoctorCmd_ExportFlag (5.22s)
+    integration_test.go:176: doctor --export error: doctor: 1 check(s) failed
+--- FAIL: TestDoctorCmd_VerboseExecution (4.19s)
+    integration_test.go:202: doctor --verbose error: doctor: 1 check(s) failed
+time=2026-08-28T21:50:30.175+09:00 level=WARN msg="config sections directory not found, using defaults" path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestUnifiedLaunch_FreshProfileNoticeEmittedExactlyOnceA_explici3840914173/002/.moai/config/sections
+Launching Claude Code...
+time=2026-08-28T21:50:30.177+09:00 level=WARN msg="config sections directory not found, using defaults" path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestUnifiedLaunch_FreshProfileNoticeEmittedExactlyOnceB_bare_la4185059160/002/.moai/config/sections
+Launching Claude Code...
+time=2026-08-28T21:50:30.178+09:00 level=WARN msg="config sections directory not found, using defaults" path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestUnifiedLaunch_FreshProfileNoticeEmittedExactlyOnceC1_explic1015097677/002/.moai/config/sections
+Launching Claude Code...
+time=2026-08-28T21:50:30.180+09:00 level=WARN msg="config sections directory not found, using defaults" path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestUnifiedLaunch_FreshProfileNoticeEmittedExactlyOnceC2_bare_l2141601359/002/.moai/config/sections
+Launching Claude Code...
+Using project profile 'proj-one' (recorded for this project). Use -p default to override.
+time=2026-08-28T21:50:30.181+09:00 level=WARN msg="config sections directory not found, using defaults" path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestUnifiedLaunch_UsesProjectScopedResolution982349416/002/.moai/config/sections
+Launching Claude Code...
+Notice: profile "proj-one" has no Claude Code configuration yet.
+  Claude Code will show the login / onboarding screen on this launch.
+  Account state is not inherited between profiles; sign in once and it
+  persists for this profile.
+time=2026-08-28T21:50:30.182+09:00 level=WARN msg="config sections directory not found, using defaults" path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestUnifiedLaunch_FirstTimeNewProfileIsRecorded394464714/002/.moai/config/sections
+Launching Claude Code...
+Notice: profile "brand-new" has no Claude Code configuration yet.
+  Claude Code will show the login / onboarding screen on this launch.
+  Account state is not inherited between profiles; sign in once and it
+  persists for this profile.
+time=2026-08-28T21:50:30.184+09:00 level=WARN msg="config sections directory not found, using defaults" path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestUnifiedLaunch_RecordFailureDoesNotBlockLaunch1320530258/002/.moai/config/sections
+Launching Claude Code...
+time=2026-08-28T21:50:30.888+09:00 level=WARN msg="config sections directory not found, using defaults" path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestUnifiedLaunch_Claude74469954/001/.moai/config/sections
+Launching Claude Code...
+Notice: profile "myprofile" has no Claude Code configuration yet.
+  Claude Code will show the login / onboarding screen on this launch.
+  Account state is not inherited between profiles; sign in once and it
+  persists for this profile.
+Launching Claude Code with GLM backend...
+CG mode: Lead (Claude) + Teammates (GLM)
+Launching Claude Code...
+Launching Claude Code with GLM backend...
+Launching Claude Code with GLM backend...
+time=2026-08-28T21:50:30.912+09:00 level=WARN msg="config sections directory not found, using defaults" path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestUnifiedLaunch_GlobalLedgerDoesNotBleed50315765/001/.moai/config/sections
+Launching Claude Code...
+[1/5] Backing up .agency/ → .agency.archived/
+[2/5] .moai/research/observations/ already migrated — skipping
+[3/5] design.yaml already migrated — skipping
+[4/5] fork-manifest.yaml archived at .agency.archived/
+[5/5] Checking constitution.md relocation
+ no user constitution.md found, no-op
+
+Migration complete: 0 file(s) transferred
+Archive preserved at: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMigrateAgency_IdempotentOnAlreadyMigrated2488813143/001/.agency.archived
+[1/5] Backing up .agency/ → .agency.archived/
+[2/5] Migrating learnings/ → .moai/research/observations/
+[3/5] Converting config.yaml → design.yaml
+[4/5] fork-manifest.yaml archived at .agency.archived/
+[5/5] Checking constitution.md relocation
+ no user constitution.md found, no-op
+
+Migration complete: 2 file(s) transferred
+Archive preserved at: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMigrateAgency_POSIXPermission729616871/001/.agency.archived
+[1/5] Backing up .agency/ → .agency.archived/
+[2/5] Migrating learnings/ → .moai/research/observations/
+[3/5] Converting config.yaml → design.yaml
+[4/5] fork-manifest.yaml archived at .agency.archived/
+[5/5] Checking constitution.md relocation
+ no user constitution.md found, no-op
+
+Migration complete: 2 file(s) transferred
+Archive preserved at: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMigrateAgency_HappyPath1314629657/001/.agency.archived
+[dry-run] Expected migration actions:
+ /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMigrateAgency_DryRun528421711/001/.agency/config.yaml → /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMigrateAgency_DryRun528421711/001/.moai/config/sections/design.yaml
+ /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMigrateAgency_DryRun528421711/001/.agency/learnings → /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMigrateAgency_DryRun528421711/001/.moai/research/observations
+ /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMigrateAgency_DryRun528421711/001/.agency → /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMigrateAgency_DryRun528421711/001/.agency.archived
+[1/5] Backing up .agency/ → .agency.archived/
+[2/5] Migrating learnings/ → .moai/research/observations/
+[3/5] Converting config.yaml → design.yaml
+[4/5] fork-manifest.yaml archived at .agency.archived/
+[5/5] Checking constitution.md relocation
+ no user constitution.md found, no-op
+
+Migration complete: 2 file(s) transferred
+Archive preserved at: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMigrateAgency_ForceOverwrite3594332292/001/.agency.archived
+[1/5] Backing up .agency/ → .agency.archived/
+rollback: MIGRATE_ROLLBACK_OK
+[1/5] Backing up .agency/ → .agency.archived/
+[2/5] Migrating learnings/ → .moai/research/observations/
+[3/5] Converting config.yaml → design.yaml
+[4/5] fork-manifest.yaml archived at .agency.archived/
+[5/5] Checking constitution.md relocation
+ no user constitution.md found, no-op
+
+Migration complete: 2 file(s) transferred
+Archive preserved at: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMigrateAgency_Archive4155529447/001/.agency.archived
+Resuming migration from checkpoint test-tx-001 (completed phases: [1 2])
+[1/5] Backing up .agency/ → .agency.archived/
+[2/5] Migrating learnings/ → .moai/research/observations/
+[3/5] Converting config.yaml → design.yaml
+[4/5] fork-manifest.yaml archived at .agency.archived/
+[5/5] Checking constitution.md relocation
+ no user constitution.md found, no-op
+
+Migration complete: 1 file(s) transferred
+Archive preserved at: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMigrateAgency_EmptyAgencyDir4275925300/001/.agency.archived
+[1/5] Backing up .agency/ → .agency.archived/
+[2/5] Migrating learnings/ → .moai/research/observations/
+rollback: MIGRATE_ROLLBACK_OK
+[1/5] Backing up .agency/ → .agency.archived/
+[2/5] Migrating learnings/ → .moai/research/observations/
+[3/5] Converting config.yaml → design.yaml
+[4/5] fork-manifest.yaml archived at .agency.archived/
+[5/5] Checking constitution.md relocation
+ constitution.md relocated to .claude/rules/moai/design/
+
+Migration complete: 3 file(s) transferred
+Archive preserved at: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMigrateAgency_ConstitutionRelocation1718802278/001/.agency.archived
+[1/5] Backing up .agency/ → .agency.archived/
+[2/5] Migrating learnings/ → .moai/research/observations/
+[3/5] Converting config.yaml → design.yaml
+[4/5] fork-manifest.yaml archived at .agency.archived/
+[5/5] Checking constitution.md relocation
+ no user constitution.md found, no-op
+
+Migration complete: 2 file(s) transferred
+Archive preserved at: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestMigrateAgency_NoMergeConflict1563757477/001/.agency.archived
+[1/5] Backing up .agency/ → .agency.archived/
+[2/5] Migrating learnings/ → .moai/research/observations/
+[3/5] Converting config.yaml → design.yaml
+[4/5] fork-manifest.yaml archived at .agency.archived/
+[5/5] Checking constitution.md relocation
+ no user constitution.md found, no-op
+
+Migration complete: 2 file(s) transferred
+Archive preserved at: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestAgencyMigrationAdapter_ForceRunsRealMigration807555692/001/.agency.archived
+time=2026-08-28T21:50:36.650+09:00 level=WARN msg="version file ahead of known migrations" current=999999 highest=0
+moai hook agent test-validation: invalid stdin JSON (unexpected EOF); emitting default output
+navigator-astx: enriched 1 row(s) -> /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestNavigatorEnrich_EmitsFilesWhenCapabilityMapExists2670900162/001/.moai/project/codemaps
+navigator-astx: capability-map.md absent, skipping AST enrichment
+navigator-astx: enriched 1 row(s) -> /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestNavigatorEnrich_AtomicWriteBarrier1821765851/001/.moai/project/codemaps
+time=2026-08-28T21:50:44.593+09:00 level=WARN msg="config sections directory not found, using defaults" path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGateCmd_RunE_Behaviorvet-bad_fixture_returns_error_(exit-1_767927798/001/.moai/config/sections
+time=2026-08-28T21:50:44.668+09:00 level=WARN msg="config sections directory not found, using defaults" path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGateCmd_RunE_Behaviorno-toolchain_fixture_returns_nil_(exit266224093/001/.moai/config/sections
+time=2026-08-28T21:50:44.894+09:00 level=WARN msg="config sections directory not found, using defaults" path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunInit_WithSubdirectoryArg_NonInteractive3426139219/001/.moai/config/sections
+time=2026-08-28T21:50:45.072+09:00 level=WARN msg="config sections directory not found, using defaults" path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunInit_WithDotArg_UsesCwd1567496261/001/.moai/config/sections
+time=2026-08-28T21:50:45.294+09:00 level=WARN msg="config sections directory not found, using defaults" path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionDoctorRegistryPresentWithEntry3804392486/001/.moai/config/sections
+time=2026-08-28T21:50:45.300+09:00 level=WARN msg="config sections directory not found, using defaults" path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionRegisterSmoke595450701/001/.moai/config/sections
+time=2026-08-28T21:50:45.300+09:00 level=WARN msg="config sections directory not found, using defaults" path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionRegisterSmoke595450701/001/.moai/config/sections
+time=2026-08-28T21:50:45.300+09:00 level=WARN msg="config sections directory not found, using defaults" path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionListSmoke3267521971/001/.moai/config/sections
+time=2026-08-28T21:50:45.301+09:00 level=WARN msg="config sections directory not found, using defaults" path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionListSmoke3267521971/001/.moai/config/sections
+time=2026-08-28T21:50:45.301+09:00 level=WARN msg="config sections directory not found, using defaults" path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionListSmoke3267521971/001/.moai/config/sections
+time=2026-08-28T21:50:45.301+09:00 level=WARN msg="config sections directory not found, using defaults" path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionListSmoke3267521971/001/.moai/config/sections
+time=2026-08-28T21:50:45.301+09:00 level=WARN msg="config sections directory not found, using defaults" path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionListSmoke3267521971/001/.moai/config/sections
+time=2026-08-28T21:50:45.302+09:00 level=WARN msg="config sections directory not found, using defaults" path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionHeartbeatSmoke3237082629/001/.moai/config/sections
+time=2026-08-28T21:50:45.303+09:00 level=WARN msg="config sections directory not found, using defaults" path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionDeregisterSmoke3162881754/001/.moai/config/sections
+time=2026-08-28T21:50:45.304+09:00 level=WARN msg="config sections directory not found, using defaults" path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionDeregisterSmoke3162881754/001/.moai/config/sections
+time=2026-08-28T21:50:45.305+09:00 level=WARN msg="config sections directory not found, using defaults" path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionPurgeSmoke2010659416/001/.moai/config/sections
+time=2026-08-28T21:50:45.306+09:00 level=WARN msg="config sections directory not found, using defaults" path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestSessionListJSONParseability1532053533/001/.moai/config/sections
+OK action=register session_id=sessid spec_id=SPEC-X phase=run
+(no active sessions)
+time=2026-08-28T21:50:46.897+09:00 level=WARN msg="config sections directory not found, using defaults" path=/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPRMergeCleanup_OnTouchToggleOffSkipsAtSessionRegister2374870990/001/.moai/config/sections
+OK action=register session_id=sessid spec_id=SPEC-X phase=run
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestResolveTokensStateDirFallsBackToCwd3827175575/001
+WARN: checkpoint for run/SPEC-GOLDEN-001 is stale (age=5748h50m48s); loading anyway (--resume)
+WARN: checkpoint for run/SPEC-GOLDEN-001 is stale (age=5748h50m48s); loading anyway (--resume)
+  ○ Go Runtime
+  ✓ Go Runtime
+  ○ Git
+  ✓ Git
+  ○ Claude Code
+  ✓ Claude Code
+  ○ GitHub CLI
+  ✓ GitHub CLI
+  ○ ast-grep CLI
+  ✓ ast-grep CLI
+  ○ MoAI Config
+  ✓ MoAI Config
+  ○ Claude Config
+  ✓ Claude Config
+  ○ MoAI Version
+  ✓ MoAI Version
+  ○ Binary Freshness
+  ✓ Binary Freshness
+  ○ MCP Scope Duplicates
+  ✓ MCP Scope Duplicates
+  ○ MCP Server Version
+  ✓ MCP Server Version
+  ○ Agent Emit Embed
+  ✓ Agent Emit Embed
+  ○ Constitution Registry
+  ✓ Constitution Registry
+  ○ Harness 5-Layer
+  ✓ Harness 5-Layer
+  ○ Migration
+  ✓ Migration
+  ○ Plugin Deployment
+  ✓ Plugin Deployment
+  ○ Home Disk Usage
+  ✓ Home Disk Usage
+  ○ Hooks Config
+  ✓ Hooks Config
+  ○ Hook opt-in:
+  ✓ Hook opt-in:
+  ○ Slash Commands
+  ✓ Slash Commands
+  ○ Skills Allowlist
+  ✓ Skills Allowlist
+  ○ MX Tag Config
+  ✓ MX Tag Config
+  ○ Worktree State
+  ✓ Worktree State
+  ○ Worktree Base Branch
+  ✓ Worktree Base Branch
+  ○ BODP Config
+  ✓ BODP Config
+  ○ Telemetry Config
+  ✓ Telemetry Config
+  ○ Glamour Cache
+  ✓ Glamour Cache
+  ○ Codex Wiring
+  ✓ Codex Wiring
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunTokensRecordSessionResolver414594321/001
+resolved project root: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunTokensRecordSiblingSubagentFiles3837136921/001
+{"schema_version":1,"recorded_at":"2026-08-28T12:51:07Z","session_id":"44400e2f-bb9f-4a89-9831-2686c5b61050","card":"","role":"","cwd":"/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunTokensRecordSiblingSubagentFiles3837136921/001","transcript":"/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunTokensRecordSiblingSubagentFiles3837136921/002/44400e2f-bb9f-4a89-9831-2686c5b61050.jsonl","pools":{"glm":{"main":{"input_tokens":100,"cache_creation_tokens":0,"cache_read_tokens":0,"output_tokens":10},"subagent":{"input_tokens":110,"cache_creation_tokens":0,"cache_read_tokens":0,"output_tokens":12}}},"models":{"glm-5.3":{"main":{"input_tokens":100,"cache_creation_tokens":0,"cache_read_tokens":0,"output_tokens":10},"subagent":{"input_tokens":110,"cache_creation_tokens":0,"cache_read_tokens":0,"output_tokens":12}}},"messages":{"assistant":3,"sidechain":2},"skipped_lines":0}
+Warning: merge failed for user.yaml, restoring backup
+[1/5] Backing up .agency/ → .agency.archived/
+[2/5] Migrating learnings/ → .moai/research/observations/
+[3/5] Converting config.yaml → design.yaml
+[4/5] fork-manifest.yaml archived at .agency.archived/
+[5/5] Checking constitution.md relocation
+ no user constitution.md found, no-op
+
+Migration complete: 1 file(s) transferred
+Archive preserved at: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunUpdate_V3ProjectWithAgencyDir_MigratesIndependently3616791403/001/.agency.archived
+[1/5] Backing up .agency/ → .agency.archived/
+[2/5] Migrating learnings/ → .moai/research/observations/
+[3/5] Converting config.yaml → design.yaml
+[4/5] fork-manifest.yaml archived at .agency.archived/
+[5/5] Checking constitution.md relocation
+ no user constitution.md found, no-op
+
+Migration complete: 1 file(s) transferred
+Archive preserved at: /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunUpdate_ThreeRunIdempotency_V3Project1651288658/001/.agency.archived
+[1/5] Backing up .agency/ → .agency.archived/
+[2/5] Migrating learnings/ → .moai/research/observations/
+[3/5] design.yaml already migrated — skipping
+[4/5] fork-manifest.yaml archived at .agency.archived/
+[5/5] Checking constitution.md relocation
+ no user constitution.md found, no-op
+
+Migration complete: 0 file(s) transferred
+Archive preserved at: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestReproduction_MigrateTargetExistsLoop_Issue11324095783323/001/.agency.archived
+Warning: skipping symlink backup entry /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRestoreMoaiConfigLegacy_SkipsSymlinkEntry257558812/001/backup-legacy/leak.yaml (containment)
+Warning: skipping restore target /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRestoreMoaiConfigLegacy_RejectsTraversalTarget2115411033/001/.moai/config/evil.yaml escaping config dir (containment)
+Warning: skipping symlink backup entry /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRestoreMoaiConfig_SkipsSymlinkEntry765618276/001/backup/sections/leak.yaml (containment)
+Warning: skipping restore target /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRestoreMoaiConfig_RejectsSymlinkedParentDirmodern_walk2740951997/001/.moai/config/sections/linkdir/evil.yaml escaping config dir (containment)
+Warning: skipping restore target /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRestoreMoaiConfig_RejectsSymlinkedParentDirlegacy_walk2256791027/001/.moai/config/linkdir/evil.yaml escaping config dir (containment)
+Warning: skipping restore target /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRestoreMoaiConfig_RejectsDeepNonexistentUnderSymlinkedParent3180953168/001/.moai/config/sections/linkdir/sub/evil.yaml escaping config dir (containment)
+Warning: skipping restore target /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRestoreMoaiConfig_RejectsDeepNonexistentUnderSymlinkedParent1569756570/001/.moai/config/linkdir/sub/evil.yaml escaping config dir (containment)
+[dry-run] Expected migration actions:
+ /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunAgencyMigrationAdapter_DryRunFlagPropagatedCharacterizati1949030408/001/.agency/config.yaml → /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunAgencyMigrationAdapter_DryRunFlagPropagatedCharacterizati1949030408/001/.moai/config/sections/design.yaml
+ /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunAgencyMigrationAdapter_DryRunFlagPropagatedCharacterizati1949030408/001/.agency/learnings → /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunAgencyMigrationAdapter_DryRunFlagPropagatedCharacterizati1949030408/001/.moai/research/observations
+ /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunAgencyMigrationAdapter_DryRunFlagPropagatedCharacterizati1949030408/001/.agency → /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunAgencyMigrationAdapter_DryRunFlagPropagatedCharacterizati1949030408/001/.agency.archived
+[1/5] Backing up .agency/ → .agency.archived/
+[2/5] Migrating learnings/ → .moai/research/observations/
+[3/5] Converting config.yaml → design.yaml
+[4/5] fork-manifest.yaml archived at .agency.archived/
+[5/5] Checking constitution.md relocation
+ no user constitution.md found, no-op
+
+Migration complete: 2 file(s) transferred
+Archive preserved at: /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestResidueCleanup_PreservesAgencyMigrationPreStep3194983265/001/.agency.archived
+advisory: retained key "removed" absent from new template (preserved from user config)
+advisory: retained key "user_added" absent from new template (preserved from user config)
+advisory: retained key "old_only" absent from new template (preserved from user config)
+advisory: retained key "retired" absent from new template (preserved from user config)
+advisory: retained key "deprecated_field" absent from new template (preserved from user config)
+time=2026-08-28T21:51:23.717+09:00 level=WARN msg="config sections directory not found, using defaults" path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t326/internal/cli/.moai/config/sections
+time=2026-08-28T21:51:23.833+09:00 level=WARN msg="config sections directory not found, using defaults" path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t326/internal/cli/.moai/config/sections
+time=2026-08-28T21:51:23.833+09:00 level=WARN msg="config sections directory not found, using defaults" path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunWeb_AutoEntryOff_AdvisoryFires3326483621/001/.moai/config/sections
+time=2026-08-28T21:51:23.833+09:00 level=WARN msg="config sections directory not found, using defaults" path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t326/internal/cli/.moai/config/sections
+time=2026-08-28T21:51:23.833+09:00 level=WARN msg="config sections directory not found, using defaults" path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRunWeb_AutoEntryOn_FailBack_AdvisoryFires1531177383/001/.moai/config/sections
+WARN: checkpoint for run/SPEC-RESUME-CLI-001 is stale (age=1h0m0s); loading anyway (--resume)
+Error: rollback: snapshot not found (date: 9999-12-31T00-00-00.000000000Z). Run 'moai harness status' to check available snapshots
+Usage:
+  harness rollback <date> [flags]
+
+Flags:
+  -h, --help   help for rollback
+
+Global Flags:
+      --project-root string   project root path (default: current directory)
+
+Usage:
+  harness validate [flags]
+
+Flags:
+  -h, --help          help for validate
+      --path string   Path to harness.yaml (default: .moai/config/sections/harness.yaml)
+
+Global Flags:
+      --project-root string   project root path (default: current directory)
+
+time=2026-08-28T21:51:24.475+09:00 level=WARN msg="config sections directory not found, using defaults" path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestResolveRulesDirno_config_yields_empty,_not_a_guessed_path1268376853/001/.moai/config/sections
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	229.777s
+ok  	github.com/modu-ai/moai-adk/internal/cli/agentlint	4.406s
+ok  	github.com/modu-ai/moai-adk/internal/cli/harness	8.953s
+ok  	github.com/modu-ai/moai-adk/internal/cli/pr	5.742s
+ok  	github.com/modu-ai/moai-adk/internal/cli/preference	1.775s
+ok  	github.com/modu-ai/moai-adk/internal/cli/printer	4.262s
+ok  	github.com/modu-ai/moai-adk/internal/cli/specid	5.392s
+ok  	github.com/modu-ai/moai-adk/internal/cli/taskledger	3.681s
+ok  	github.com/modu-ai/moai-adk/internal/cli/uikit	0.403s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update	2.220s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/backup	5.241s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/deploy	3.440s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/merge	2.673s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/plan	2.962s
+ok  	github.com/modu-ai/moai-adk/internal/cli/update/report	4.694s
+ok  	github.com/modu-ai/moai-adk/internal/cli/wizard	8.849s
+ok  	github.com/modu-ai/moai-adk/internal/cli/worktree	9.455s
+FAIL

@@ -12,3 +12,12 @@
 ruleDirs:
   - go
   - security
+
+# Rule tests live OUTSIDE this distributed tree, repo-side, so the deliberate
+# dangerous constructs in their fixtures never ship to user projects and never
+# land inside the tree this ruleset scans. The relative path resolves from the
+# directory holding this file and traverses upward out of it; where that path
+# is absent (the state of every deployed project), `ast-grep scan` ignores the
+# missing test root and scans normally.
+testConfigs:
+  - testDir: ../../../../../../internal/astgrep/testdata/rule-tests

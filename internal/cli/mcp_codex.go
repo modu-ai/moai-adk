@@ -124,11 +124,17 @@ const (
 	codexTargetUncommitted = "uncommittedChanges"
 	codexTargetBaseBranch  = "baseBranch"
 
-	// codex_setup auth-provider classification tokens.
-	codexAuthChatGPT  = "ChatGPT"
-	codexAuthAPIKey   = "apiKey"
-	codexAuthProvider = "provider"
-	codexAuthUnknown  = "unknown"
+	// codex_setup auth-provider classification tokens. The spellings are the
+	// wire tokens the web console maps to display labels — they are lowercase
+	// on both sides so the two surfaces agree (internal/web/codex_state.go).
+	// The former "provider" token is gone: the two-stage ladder maps only the
+	// grammar's captured terms (chatgpt / api key) and treats a provider
+	// phrase outside the grammar as unknown rather than guessing
+	// (SPEC-CODEX-LAUNCHER-001, plan §C.1). internal/web keeps its own mirror
+	// constant for legacy display mapping.
+	codexAuthChatGPT = "chatgpt"
+	codexAuthAPIKey  = "apiKey"
+	codexAuthUnknown = "unknown"
 
 	// codex sandbox-policy variants (REQ-CX2-007). SandboxPolicy is an
 	// INTERNALLY-TAGGED UNION object — {"type":"readOnly"} — not a bare string,
@@ -268,6 +274,21 @@ type ReviewOutput struct {
 	// apart from a verdict the review stated plainly, which leaves the next
 	// person diagnosing an incident nothing to read.
 	SynthesisNote string `json:"synthesis_note,omitempty"`
+
+	// GateUnmet records that the project declared workflow.audit.gates.codex:
+	// required but THIS audit could not satisfy that requirement — the result
+	// is a fail-open inconclusive, not a review. Empty whenever the gate is
+	// not `required` or a real verdict exists.
+	//
+	// #1632 axis 3: "required reads as a guarantee but behaves as a
+	// suggestion". The tool layer cannot force a caller to invoke the audit,
+	// but it CAN refuse to let a mandatory gate's failure pass silently — an
+	// inconclusive result that looked byte-identical with or without a
+	// declared required gate now carries the unmet state as a structured
+	// field, so a machine consumer sees the gap instead of string-parsing for
+	// it. Additive + omitempty (the SynthesisNote precedent): no existing
+	// consumer's JSON changes, and the fail-open verdict itself is preserved.
+	GateUnmet string `json:"gate_unmet,omitempty"`
 }
 
 // Finding is a single review finding (§G.4).
@@ -1355,10 +1376,60 @@ func synthesizeReviewOutput(reviewText, method string) ReviewOutput {
 	return ReviewOutput{
 		Verdict:       verdict,
 		Summary:       strings.TrimSpace(reviewText),
-		Findings:      []Finding{},
+		Findings:      codexFindingsOf(reviewText),
 		NextSteps:     []string{},
 		SynthesisNote: describeSignalDivergence(signals, verdict),
 	}
+}
+
+// codexFindingLine matches ONE severity-tagged finding bullet ("- [P1] message")
+// and captures the indent, the severity token, and the message text. codex's
+// native review mode and the adversarial prompt both shape findings this way —
+// the shape #1632 axis 1 reports arriving in summary prose while the structured
+// arrays stayed empty. The severity token is kept VERBATIM (e.g. "P1"): codex
+// owns that vocabulary, and mapping it to a different scale would invent a
+// translation no consumer asked for.
+var codexFindingLine = regexp.MustCompile(`(?m)^([ \t]*)[-*][ \t]+\[([A-Za-z]+\d+)\][ \t]*(.*)$`)
+
+// codexPathLineRef matches a path:line anchor inside a finding message
+// ("internal/auth/keys.go:42"). The extension is matched GENERICALLY
+// (`\.[A-Za-z0-9]+`), not enumerated: moai is language-neutral, and an
+// extension allowlist would silently drop anchors for every language it forgot.
+var codexPathLineRef = regexp.MustCompile(`([\w./@+-]+\.[A-Za-z0-9]+):([0-9]+)`)
+
+// codexFindingsOf parses codex's review prose into structured findings
+// (#1632 axis 1). Each severity-tagged bullet becomes one Finding carrying the
+// verbatim severity, the message as title/body, and the first path:line anchor
+// found in the message as File/Line. Indented continuation lines following a
+// bullet are joined into that finding's body — codex commonly continues a
+// finding across the next lines, and truncating it to the headline would lose
+// the substance a reviewer needs. A body with no bullets returns an empty,
+// non-nil slice: the parser invents no structure from prose.
+func codexFindingsOf(reviewText string) []Finding {
+	findings := []Finding{}
+	var cur *Finding
+	var curIndent string
+	for _, ln := range strings.Split(reviewText, "\n") {
+		m := codexFindingLine.FindStringSubmatch(ln)
+		if m == nil {
+			if cur != nil && strings.TrimSpace(ln) != "" && strings.HasPrefix(ln, curIndent+" ") {
+				cur.Body += "\n" + strings.TrimSpace(ln)
+			}
+			continue
+		}
+		indent, sev, msg := m[1], m[2], strings.TrimSpace(m[3])
+		f := Finding{Severity: sev, Title: msg, Body: msg}
+		if pm := codexPathLineRef.FindStringSubmatch(msg); pm != nil && !strings.Contains(pm[1], "://") {
+			f.File = pm[1]
+			if line, err := strconv.Atoi(pm[2]); err == nil {
+				f.Line = line
+			}
+		}
+		findings = append(findings, f)
+		cur = &findings[len(findings)-1]
+		curIndent = indent
+	}
+	return findings
 }
 
 // describeSignalDivergence names every signal and the value adopted, but ONLY
@@ -1427,7 +1498,10 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	notifyMCPProgress(ctx, token, 0, "codex 감사 시작 — 모드: "+mode+", target: "+target)
 	binaryPath, err := codexLookPath(codexBinaryName)
 	if err != nil {
-		return codexReviewToolResult(inconclusiveReview("codex binary not found in PATH")), nil
+		// The gate annotation rides EVERY fail-open exit, including this early
+		// one — a missing binary is exactly the state where a required gate
+		// goes silently unmet (the review never ran at all).
+		return codexReviewToolResult(applyGateUnmet(inconclusiveReview("codex binary not found in PATH"), root)), nil
 	}
 	notifyMCPProgress(ctx, token, 0.1, "codex 바이너리 확인 — 리뷰 요청 준비 중...")
 
@@ -1447,8 +1521,26 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 
 	notifyMCPProgress(ctx, token, 0.2, "codex에 리뷰 요청 전송 중... (수분 소요 가능)")
 	out, _ := codexReviewRPC(ctx, binaryPath, method, params) // fail-open inside
+	out = applyGateUnmet(out, root)
 	notifyMCPProgress(ctx, token, 0.9, "codex 응답 수신 — 결과 조립 중...")
 	return codexReviewToolResult(out), nil
+}
+
+// applyGateUnmet annotates a fail-open inconclusive audit with the declared
+// codex gate when that gate is `required` (#1632 axis 3). The audit tree's own
+// workflow.yaml decides — the same project_root the review ran against — so a
+// named tree's gate follows the named tree, not the server's cwd. The verdict
+// itself is untouched: fail-open stays fail-open, and the annotation makes the
+// gap VISIBLE rather than relabeling an unknown as a pass or a fail.
+func applyGateUnmet(out ReviewOutput, projectDir string) ReviewOutput {
+	if out.Verdict != VerdictInconclusive {
+		return out
+	}
+	if workflowAuditPins(projectDir).Gates.Codex != config.AuditGateRequired {
+		return out
+	}
+	out.GateUnmet = "workflow.audit.gates.codex is `required`, but this audit returned no verdict (fail-open inconclusive)"
+	return out
 }
 
 // codexReviewToolResult shapes a ReviewOutput as the schema-typed MCP result
@@ -1518,7 +1610,11 @@ func ProbeCodexSetup(ctx context.Context) CodexSetupResult {
 // Read-only: it REPORTS the toggle state; mutating it is a heavier,
 // wizard-owned concern (M4).
 func handleCodexSetup(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	s := ProbeCodexSetup(ctx)
+	// Consumed through the codexSetupProbe seam (NOT the direct function) so
+	// the sentinel cross-bridge of AC-CL-007 can stub ONE probe and observe
+	// the value on every consuming surface — the launcher readout (a) and
+	// this tool's response (b) — through the same injection point.
+	s := codexSetupProbe(ctx)
 	result := map[string]any{
 		"installed":     s.Installed,
 		"auth_provider": s.AuthProvider,
@@ -1541,26 +1637,268 @@ func handleCodexSetup(ctx context.Context, _ mcp.CallToolRequest) (*mcp.CallTool
 	return toolJSON("codex_setup", result), nil
 }
 
-// classifyCodexAuth probes codex's auth state and maps it to one of the
-// ChatGPT / apiKey / provider / unknown tokens (AC-MCP-008). It runs
-// `codex login status` and pattern-matches the output; any error or
-// non-matching output degrades to codexAuthUnknown (fail-open, R1).
-func classifyCodexAuth(ctx context.Context, binaryPath string) string {
-	out, err := codexRunner.run(ctx, binaryPath, []string{"login", "status"}, "")
-	if err != nil || out == "" {
+// ─── two-stage auth classification ladder (SPEC-CODEX-LAUNCHER-001 M1) ───
+//
+// Stage 1 reads <CODEX_HOME>/auth.json — the structured source `codex doctor`
+// itself consults — and classifies ONLY when the mode is a known value AND the
+// credential material that mode implies is present. Stage 2 falls back to
+// `codex login status` and accepts a provider only from a WHOLE-LINE grammar
+// match. Everything else is a gap reported as unknown, never a verdict.
+//
+// The prior classifier substring-matched a SINGLE stream, so it read
+// "API key missing" as a successful apiKey login while discarding the stderr
+// the answer actually arrives on (spec §A.2).
+
+// codexAuthFileName is the credential file inside CODEX_HOME.
+const codexAuthFileName = "auth.json"
+
+// codexHomeEnvVar / codexHomeDirName drive CODEX_HOME resolution (REQ-CL-005).
+const (
+	codexHomeEnvVar  = "CODEX_HOME"
+	codexHomeDirName = ".codex"
+
+	codexHomeSourceEnv     = "env"
+	codexHomeSourceDefault = "default"
+)
+
+// codexAuthMode* are the auth_mode enum values stage 1 recognises. An
+// unrecognised mode descends to stage 2 rather than guessing.
+const (
+	codexAuthModeChatGPT = "chatgpt"
+	codexAuthModeAPIKey  = "apikey"
+)
+
+// errCodexAuthUnparseable is the SANITISED parse-failure reason. The
+// underlying encoding/json error is deliberately NOT wrapped: REQ-CL-008
+// forbids a credential being retained, logged, or wrapped, and a decoder error
+// can quote the offending bytes.
+var errCodexAuthUnparseable = errors.New("auth file is not valid JSON for the expected shape")
+
+// codexUserHomeDir is the home-resolution seam. Resolution goes through
+// os.UserHomeDir rather than reading $HOME directly, so it behaves on every
+// platform (spec §E cross-platform).
+var codexUserHomeDir = os.UserHomeDir
+
+// resolveCodexHomeDir returns the resolved CODEX_HOME and which source
+// supplied it. An env var that is unset, empty, or whitespace-only falls back
+// to the default — reading only LookupEnv's ok flag would accept a blank path.
+func resolveCodexHomeDir() (path string, source string) {
+	if v := os.Getenv(codexHomeEnvVar); strings.TrimSpace(v) != "" {
+		return v, codexHomeSourceEnv
+	}
+	home, err := codexUserHomeDir()
+	if err != nil {
+		return "", codexHomeSourceDefault
+	}
+	return filepath.Join(home, codexHomeDirName), codexHomeSourceDefault
+}
+
+// nonEmptyString records ONLY whether a JSON string field carried a non-blank
+// value; the value itself dies on the stack. Any other JSON type (null, false,
+// a number, an array, an object) counts as absent, and a type mismatch does
+// not fail the surrounding document.
+type nonEmptyString bool
+
+// UnmarshalJSON implements json.Unmarshaler, keeping the presence bit and
+// discarding the value.
+func (n *nonEmptyString) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		*n = false // not a string ⇒ not credential material
+		return nil
+	}
+	*n = nonEmptyString(strings.TrimSpace(s) != "")
+	return nil // s ends here — it is stored nowhere
+}
+
+// codexChatGPTCredentialKeys are the token keys that actually carry a login
+// credential. Account metadata such as account_id is deliberately absent: a
+// file holding only metadata is not a logged-in state.
+var codexChatGPTCredentialKeys = map[string]bool{
+	"access_token":  true,
+	"id_token":      true,
+	"refresh_token": true,
+}
+
+// codexTokenSet counts recognised credential keys whose value is a non-blank
+// JSON string. It stores a COUNT, never a token.
+type codexTokenSet struct{ credentialCount int }
+
+// UnmarshalJSON implements json.Unmarshaler. A non-object value yields a zero
+// count rather than an error, so a stale file descends instead of failing.
+// Each call counts ONLY its own payload: the reset up front keeps a reused
+// receiver (a second Unmarshal into the same value, or duplicate `tokens`
+// keys decoded per occurrence) from accumulating across calls.
+func (t *codexTokenSet) UnmarshalJSON(b []byte) error {
+	t.credentialCount = 0
+	var m map[string]nonEmptyString
+	if err := json.Unmarshal(b, &m); err != nil {
+		return nil // not an object ⇒ no credential material
+	}
+	for k, v := range m {
+		if codexChatGPTCredentialKeys[k] && bool(v) {
+			t.credentialCount++ // ignoring the key would let {"irrelevant":"x"} pass
+		}
+	}
+	return nil
+}
+
+// codexAuthFile is the deserialisation target. Every field is a value-free
+// kind except auth_mode, which is an enum rather than a secret — AC-CL-008
+// asserts that closed set by reflection over this type and its nested types.
+type codexAuthFile struct {
+	AuthMode string         `json:"auth_mode"`
+	APIKey   nonEmptyString `json:"OPENAI_API_KEY"`
+	Tokens   codexTokenSet  `json:"tokens"`
+}
+
+// classifyCodexAuthFile is stage 1: a PURE judgement over the file's bytes,
+// with no disk access. ok=false is a descent to stage 2, never an outcome.
+func classifyCodexAuthFile(raw []byte) (provider string, ok bool, err error) {
+	var f codexAuthFile
+	if uErr := json.Unmarshal(raw, &f); uErr != nil {
+		return "", false, errCodexAuthUnparseable
+	}
+	switch f.AuthMode {
+	case codexAuthModeChatGPT:
+		if f.Tokens.credentialCount >= 1 {
+			return codexAuthChatGPT, true, nil
+		}
+	case codexAuthModeAPIKey:
+		if bool(f.APIKey) {
+			return codexAuthAPIKey, true, nil
+		}
+	case "":
+		// Legacy auth.json written before codex started persisting auth_mode.
+		// codex itself keeps working on such a file — it infers the mode from
+		// the credential material — so the ladder rejecting it wholesale read
+		// a WORKING login as unknown (#1632 axis 4). Mirror codex's inference,
+		// with its precedence: an explicit API key wins, then token material.
+		if bool(f.APIKey) {
+			return codexAuthAPIKey, true, nil
+		}
+		if f.Tokens.credentialCount >= 1 {
+			return codexAuthChatGPT, true, nil
+		}
+	}
+	return "", false, nil
+}
+
+// readCodexAuthFile is the ONLY layer that knows the path. Its errors name the
+// path and a reason and nothing else — never the file's contents.
+func readCodexAuthFile(codexHome string) (provider string, ok bool, err error) {
+	path := filepath.Join(codexHome, codexAuthFileName)
+	raw, readErr := os.ReadFile(path) //nolint:gosec // path is the resolved CODEX_HOME, not user input
+	if readErr != nil {
+		return "", false, fmt.Errorf("codex auth file %s: %w", path, readErr)
+	}
+	provider, ok, cErr := classifyCodexAuthFile(raw)
+	if cErr != nil {
+		return "", false, fmt.Errorf("codex auth file %s: %w", path, cErr)
+	}
+	return provider, ok, nil
+}
+
+// codexLoginStatusRunnerFunc is the low-level execution seam for stage 2. It
+// returns the two streams SEPARATELY and on purpose: a seam handing back
+// pre-combined bytes cannot express "stdout empty, stderr carries the answer",
+// which is precisely the state this SPEC repairs — the regression test would
+// pass against the defective implementation.
+type codexLoginStatusRunnerFunc func(ctx context.Context, binaryPath string) (stdout, stderr []byte, exitCode int, err error)
+
+// codexLoginStatusRunner is the swappable seam (tests replace it with cleanup).
+var codexLoginStatusRunner codexLoginStatusRunnerFunc = defaultLoginStatusRunner
+
+// defaultLoginStatusRunner spawns `codex login status` and collects both
+// streams. A non-zero exit is DATA, not a failure: codex reports a logged-out
+// or degraded state that way and the status line still arrives.
+func defaultLoginStatusRunner(ctx context.Context, binaryPath string) ([]byte, []byte, int, error) {
+	cmd := exec.CommandContext(ctx, binaryPath, "login", "status")
+	var outBuf, errBuf bytes.Buffer
+	cmd.Stdout = &outBuf
+	cmd.Stderr = &errBuf
+	if runErr := cmd.Run(); runErr != nil {
+		var exitErr *exec.ExitError
+		if errors.As(runErr, &exitErr) {
+			return outBuf.Bytes(), errBuf.Bytes(), exitErr.ExitCode(), nil
+		}
+		return nil, nil, -1, runErr
+	}
+	return outBuf.Bytes(), errBuf.Bytes(), 0, nil
+}
+
+// combineCodexStreams merges both streams into a newline-joined block of the
+// non-blank lines, stdout first. Combining is a named, PURE function so the
+// combine rule itself is under test — the defect this SPEC repairs lived in a
+// production path that silently dropped one stream.
+func combineCodexStreams(stdout, stderr []byte) []byte {
+	var lines []string
+	for _, chunk := range [][]byte{stdout, stderr} {
+		for _, ln := range strings.Split(string(chunk), "\n") {
+			if strings.TrimSpace(ln) == "" {
+				continue
+			}
+			lines = append(lines, ln)
+		}
+	}
+	if len(lines) == 0 {
+		return nil
+	}
+	return []byte(strings.Join(lines, "\n"))
+}
+
+// codexAuthStatusLine is the WHOLE-LINE grammar of stage 2. Anchoring on
+// "logged in" alone is not enough: "Logged in state unavailable: API key
+// missing" starts that way and would still be misread. Only the captured term
+// classifies, so a line merely CONTAINING a provider word never does.
+var codexAuthStatusLine = regexp.MustCompile(`(?i)^[ \t]*logged in using (chatgpt|api key)[ \t]*\r?$`)
+
+// parseCodexAuthLine is stage 2: a PURE parser over the combined block.
+//
+// exitCode is accepted so callers pass the probe's full result, but it is
+// deliberately NOT a discriminator: REQ-CL-009 classifies a non-zero exit
+// exactly when a grammar-matching line is present, which is the same rule as
+// for a zero exit. Two matching lines naming DIFFERENT providers are a
+// conflict, and a conflict is a gap rather than a guess.
+func parseCodexAuthLine(combined []byte, exitCode int) string {
+	seen := map[string]bool{}
+	for _, ln := range strings.Split(string(combined), "\n") {
+		m := codexAuthStatusLine.FindStringSubmatch(ln)
+		if m == nil {
+			continue
+		}
+		seen[strings.ToLower(m[1])] = true
+	}
+	if len(seen) != 1 {
 		return codexAuthUnknown
 	}
-	low := strings.ToLower(out)
-	switch {
-	case strings.Contains(low, "chatgpt"):
+	if seen[codexAuthModeChatGPT] {
 		return codexAuthChatGPT
-	case strings.Contains(low, "api key"), strings.Contains(low, "apikey"):
-		return codexAuthAPIKey
-	case strings.Contains(low, "provider"):
-		return codexAuthProvider
-	default:
+	}
+	return codexAuthAPIKey
+}
+
+// classifyCodexAuth is the THIN assembly of the two-stage ladder, and the
+// single classification path every consumer shares (the codex_setup MCP tool,
+// the web console card, and the launcher readout — REQ-CL-010).
+//
+// Stage 1 is the structured file; a rejected file — unknown mode, blank
+// credential material, unparseable, or absent — is a DESCENT to stage 2, never
+// an outcome. Stage 2 reads BOTH streams, because codex writes the status line
+// entirely to stderr on this platform and the previous implementation
+// discarded it (spec §A.2). Anything unreadable degrades to
+// codexAuthUnknown: an unreadable probe is a gap, not a verdict.
+func classifyCodexAuth(ctx context.Context, binaryPath string) string {
+	if codexHome, _ := resolveCodexHomeDir(); codexHome != "" {
+		if provider, ok, _ := readCodexAuthFile(codexHome); ok {
+			return provider
+		}
+	}
+	stdout, stderr, exitCode, err := codexLoginStatusRunner(ctx, binaryPath)
+	if err != nil {
 		return codexAuthUnknown
 	}
+	return parseCodexAuthLine(combineCodexStreams(stdout, stderr), exitCode)
 }
 
 // ─── config gate reader (shared by codex_setup + the review-gate subcommand) ───

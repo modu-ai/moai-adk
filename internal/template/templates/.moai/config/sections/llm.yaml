@@ -183,7 +183,7 @@ llm:
       high: "glm-5.3-flash"   # 1M context — Opus slot (main session + inherit agents)
       medium: "glm-5.3-flash" # 1M context — Sonnet slot (balanced)
       low: "glm-5.3-flash"    # 1M context — Haiku slot (lightweight)
-      fable: "glm-5.3-flash"  # 1M context — Fable tier (ANTHROPIC_DEFAULT_FABLE_MODEL)
+      fable: "glm-5.3"        # 1M context — Fable tier (ANTHROPIC_DEFAULT_FABLE_MODEL)
 
     # ── GLM reasoning-effort mapping (documentation-only — the Go overlay at
     #    internal/template/glm_effort_overlay.go is the runtime SSOT) ──

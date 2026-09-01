@@ -50,6 +50,8 @@ func optionValues(f settings.FieldDef) []string {
 // TestGLMModelSelectOptions verifies AC-WCR-030: the four tier fields are
 // closed-set selects over exactly {glm-5.3-flash, glm-5.3, glm-5.1, glm-4.7,
 // glm-4.5-air} — flash first (the default), glm-5.3 retained as selectable.
+// glm-5.3-flash accepts reasoning_effort max only — the web client locks the
+// tier effort select to max when the slot holds it.
 func TestGLMModelSelectOptions(t *testing.T) {
 	want := []string{"glm-5.3-flash", "glm-5.3", "glm-5.1", "glm-4.7", "glm-4.5-air"}
 

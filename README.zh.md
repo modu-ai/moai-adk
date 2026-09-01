@@ -21,7 +21,7 @@
   <a href="https://codecov.io/gh/modu-ai/moai-adk"><img src="https://codecov.io/gh/modu-ai/moai-adk/branch/main/graph/badge.svg" alt="Codecov"></a>
   <br>
   <a href="https://go.dev/"><img src="https://img.shields.io/badge/Go-1.26+-00ADD8?style=flat&logo=go&logoColor=white" alt="Go"></a>
-  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.3-blue.svg" alt="Release"></a>
+  <a href="https://github.com/modu-ai/moai-adk/releases"><img src="https://img.shields.io/badge/Release-v3.1.4-blue.svg" alt="Release"></a>
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
 </p>
 
@@ -736,6 +736,7 @@ Claude 的每一档通过 `ANTHROPIC_DEFAULT_*_MODEL` 环境变量映射到 GLM 
 | `moai update` | 升级到最新版（删除前备份 · 支持自动回滚） |
 | `moai graph <build\|query>` | 生成/查询代码库图（edges.jsonl）—— 找调用方、波及范围、里程碑交叉检查 |
 | `moai cc` / `moai glm` / `moai cg` | Claude 专用 / GLM 专用 / 混合会话 |
+| `moai codex <status\|cli\|app>` | Codex 就绪状态显示与 CLI/应用显式启动 |
 | `moai worktree <sync\|done\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree 维护（进出工作树是启动器的职责） |
 | `moai session <list\|register\|current>` | 多会话协调 |
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC 生命周期工具 |

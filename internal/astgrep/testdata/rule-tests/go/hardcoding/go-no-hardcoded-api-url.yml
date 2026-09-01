@@ -1,0 +1,9 @@
+# Test pair for the hardcoded API URL rule. The valid sample uses a non-API
+# host; the invalid sample embeds an api. endpoint literal.
+id: go-no-hardcoded-api-url
+valid:
+  - |
+    var assetsBase = "https://cdn.example.com/assets"
+invalid:
+  - |
+    var endpoint = "https://api.example.com/v1"

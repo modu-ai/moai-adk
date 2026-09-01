@@ -14,6 +14,12 @@ import (
 	"time"
 )
 
+// updatePerfReports gates regeneration of the two tracked report fixtures under
+// .moai/specs/SPEC-HOOK-PRETOOL-PERF-001/. Set via MOAI_HOOK_PERF_UPDATE=1.
+// Default (unset) leaves both tracked files byte-identical; the profiling run
+// itself is unaffected.
+var updatePerfReports = os.Getenv("MOAI_HOOK_PERF_UPDATE") == "1"
+
 // TestPreToolProfilingBaseline is the SPEC-HOOK-PRETOOL-PERF-001 M0 profiling
 // milestone GATE. It spawns ≥8 parallel `moai hook pre-tool` invocations against
 // a fixture project, repeats across ≥5 batches, captures per-phase wall-time
@@ -21,8 +27,14 @@ import (
 //
 // Run with: go test -run=TestPreToolProfilingBaseline -v -timeout=300s ./internal/hook/perf/...
 //
-// This test is skipped in short mode (go test -short) and during normal CI
-// (MOAI_HOOK_PERF_SKIP=1) because it builds the binary and takes ~30s.
+// This test is skipped in short mode (go test -short) and when
+// MOAI_HOOK_PERF_SKIP is set. Neither escape hatch is engaged by CI: nothing in
+// this repository sets MOAI_HOOK_PERF_SKIP, and .github/workflows/ci.yml passes
+// neither it nor -short, so CI executes this test on every run. What CI does
+// NOT do is rewrite the tracked report file: that write happens only under the
+// opt-in gate MOAI_HOOK_PERF_UPDATE=1. The gate suppresses the write, not the
+// run — the profiling still executes and the rendered report still reaches the
+// test log.
 func TestPreToolProfilingBaseline(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping profiling baseline in short mode")
@@ -45,12 +57,14 @@ func TestPreToolProfilingBaseline(t *testing.T) {
 	report := aggregateResults(results, parallelism, batches)
 	t.Log(report.format())
 
-	baselinePath := filepath.Join(projectRoot(t), ".moai", "specs",
-		"SPEC-HOOK-PRETOOL-PERF-001", "baseline.md")
-	if err := os.WriteFile(baselinePath, []byte(report.markdown()), 0o644); err != nil {
-		t.Fatalf("write baseline.md: %v", err)
+	if updatePerfReports {
+		baselinePath := filepath.Join(projectRoot(t), ".moai", "specs",
+			"SPEC-HOOK-PRETOOL-PERF-001", "baseline.md")
+		if err := os.WriteFile(baselinePath, []byte(report.markdown()), 0o644); err != nil {
+			t.Fatalf("write baseline.md: %v", err)
+		}
+		t.Logf("baseline written to %s", baselinePath)
 	}
-	t.Logf("baseline written to %s", baselinePath)
 }
 
 // TestPreToolProfilingWarmCache measures the post-change (M1 cache) scenario
@@ -81,12 +95,14 @@ func TestPreToolProfilingWarmCache(t *testing.T) {
 	report := aggregateResults(results, parallelism, batches)
 	t.Log(report.format())
 
-	postchangePath := filepath.Join(projectRoot(t), ".moai", "specs",
-		"SPEC-HOOK-PRETOOL-PERF-001", "postchange.md")
-	if err := os.WriteFile(postchangePath, []byte(report.markdownPostChange()), 0o644); err != nil {
-		t.Fatalf("write postchange.md: %v", err)
+	if updatePerfReports {
+		postchangePath := filepath.Join(projectRoot(t), ".moai", "specs",
+			"SPEC-HOOK-PRETOOL-PERF-001", "postchange.md")
+		if err := os.WriteFile(postchangePath, []byte(report.markdownPostChange()), 0o644); err != nil {
+			t.Fatalf("write postchange.md: %v", err)
+		}
+		t.Logf("postchange written to %s", postchangePath)
 	}
-	t.Logf("postchange written to %s", postchangePath)
 }
 
 // timingResult holds the parsed per-phase timing for one invocation,

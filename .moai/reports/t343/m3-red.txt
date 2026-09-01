@@ -1,0 +1,45 @@
+--- FAIL: TestRuleClauseEnumeratesFourElements (0.00s)
+    red_now_cell_test.go:457: §2 span does not name "RED-now cell content"
+    red_now_cell_test.go:457: §2 span does not name "command"
+    red_now_cell_test.go:457: §2 span does not name "stdout"
+    red_now_cell_test.go:457: §2 span does not name "SHA"
+    red_now_cell_test.go:457: §2 span does not name "read-only"
+    red_now_cell_test.go:457: §2 span does not name "single invocation"
+    red_now_cell_test.go:457: §2 span does not name "raw file"
+    red_now_cell_test.go:462: §2 span does not admit the carrier "table cell"
+    red_now_cell_test.go:462: §2 span does not admit the carrier "evidence-ledger"
+--- FAIL: TestRuleClauseStatesDemotionNotPass (0.00s)
+    red_now_cell_test.go:471: §2 span does not name the regression-guard disposition
+    red_now_cell_test.go:475: §2 span does not state that an undecidable RED is not recorded as a pass
+    red_now_cell_test.go:478: §2 span does not state the demotion as the disposition
+--- FAIL: TestMP8SpanNamesReexecution (0.00s)
+    red_now_cell_test.go:505: .claude/agents/moai/plan-auditor.md: expected exactly one "<!-- MOAI-REDNOW-BEGIN -->" / "<!-- MOAI-REDNOW-END -->" sentinel pair, got begin=0 end=0
+--- FAIL: TestMP8SpanIsScoreIndependent (0.00s)
+    red_now_cell_test.go:519: .claude/agents/moai/plan-auditor.md: expected exactly one "<!-- MOAI-REDNOW-BEGIN -->" / "<!-- MOAI-REDNOW-END -->" sentinel pair, got begin=0 end=0
+--- FAIL: TestMP8SpanCarriesNABranch (0.00s)
+    red_now_cell_test.go:529: .claude/agents/moai/plan-auditor.md: expected exactly one "<!-- MOAI-REDNOW-BEGIN -->" / "<!-- MOAI-REDNOW-END -->" sentinel pair, got begin=0 end=0
+--- FAIL: TestMP8SpanCarriesExecutionDiscipline (0.00s)
+    red_now_cell_test.go:561: .claude/agents/moai/plan-auditor.md: expected exactly one "<!-- MOAI-REDNOW-BEGIN -->" / "<!-- MOAI-REDNOW-END -->" sentinel pair, got begin=0 end=0
+--- FAIL: TestMP8SpanKeysOnExecutedCount (0.00s)
+    red_now_cell_test.go:576: .claude/agents/moai/plan-auditor.md: expected exactly one "<!-- MOAI-REDNOW-BEGIN -->" / "<!-- MOAI-REDNOW-END -->" sentinel pair, got begin=0 end=0
+--- FAIL: TestMP8LivenessAnchors (0.00s)
+    red_now_cell_test.go:612: MP-8 liveness anchors absent on the live file: sentinel span: expected exactly one "<!-- MOAI-REDNOW-BEGIN -->" / "<!-- MOAI-REDNOW-END -->" sentinel pair, got begin=0 end=0
+--- FAIL: TestMP8SentinelMutantsAreDetected (0.00s)
+    red_now_cell_test.go:639: baseline extraction broken: expected exactly one "<!-- MOAI-REDNOW-BEGIN -->" / "<!-- MOAI-REDNOW-END -->" sentinel pair, got begin=0 end=0
+--- FAIL: TestRedNowViolatingFixtureIsReported (0.00s)
+    red_now_cell_test.go:665: .claude/agents/moai/plan-auditor.md: expected exactly one "<!-- MOAI-REDNOW-BEGIN -->" / "<!-- MOAI-REDNOW-END -->" sentinel pair, got begin=0 end=0
+--- FAIL: TestRedNowLegitimateFixtureIsClean (0.00s)
+    red_now_cell_test.go:682: .claude/agents/moai/plan-auditor.md: expected exactly one "<!-- MOAI-REDNOW-BEGIN -->" / "<!-- MOAI-REDNOW-END -->" sentinel pair, got begin=0 end=0
+--- FAIL: TestCommandScopeIsCarrierIndependent (0.00s)
+    red_now_cell_test.go:701: .claude/agents/moai/plan-auditor.md: expected exactly one "<!-- MOAI-REDNOW-BEGIN -->" / "<!-- MOAI-REDNOW-END -->" sentinel pair, got begin=0 end=0
+--- FAIL: TestClassLaunderingMutantIsDetected (0.00s)
+    red_now_cell_test.go:737: .claude/agents/moai/plan-auditor.md: expected exactly one "<!-- MOAI-REDNOW-BEGIN -->" / "<!-- MOAI-REDNOW-END -->" sentinel pair, got begin=0 end=0
+--- FAIL: TestRedNowFormCheckDivergesOnQuoting (0.00s)
+    red_now_cell_test.go:774: .claude/agents/moai/plan-auditor.md: expected exactly one "<!-- MOAI-REDNOW-BEGIN -->" / "<!-- MOAI-REDNOW-END -->" sentinel pair, got begin=0 end=0
+--- FAIL: TestMP8MirrorSpanIsByteEqual (0.00s)
+    red_now_cell_test.go:803: .claude/agents/moai/plan-auditor.md: expected exactly one "<!-- MOAI-REDNOW-BEGIN -->" / "<!-- MOAI-REDNOW-END -->" sentinel pair, got begin=0 end=0
+--- FAIL: TestMP8MirrorSpanIsNeutral (0.00s)
+    red_now_cell_test.go:827: internal/template/templates/.claude/agents/moai/plan-auditor.md: expected exactly one "<!-- MOAI-REDNOW-BEGIN -->" / "<!-- MOAI-REDNOW-END -->" sentinel pair, got begin=0 end=0
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	0.218s
+FAIL
