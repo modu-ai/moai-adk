@@ -60,6 +60,50 @@ type Edge struct {
 	// relationship (REQ-GF-015): the value names the other layer's claim.
 	// Both edges stay in the artifact — never a silent pick.
 	DisagreesWith string `json:"disagrees_with,omitempty"`
+
+	// Resolution is how strongly a code-call edge's callee resolution is
+	// believed (REQ-GEC-001): how the edge was matched, an EVIDENCE axis
+	// orthogonal to Grade's capability axis (REQ-GEC-007). Populated on
+	// code-call edges only; omitempty keeps doc-derived and code-import
+	// serialization byte-identical to the pre-field artifact (REQ-GEC-006).
+	// The appended-after-DisagreesWith position preserves every existing
+	// edge's key order.
+	Resolution string `json:"resolution,omitempty"`
+	// Confidence is the numeric confidence for Resolution, defined as a
+	// pure function of it at exactly one point (ConfidenceFor). All three
+	// domain values are non-zero, so omitempty never drops a populated
+	// confidence; absent on old artifacts (REQ-GEC-009: loaded as unknown).
+	Confidence float64 `json:"confidence,omitempty"`
+}
+
+// Resolution labels for code-call edges (REQ-GEC-001): the closed 3-value
+// domain. extracted = same-file declaration or Go-module import evidence;
+// intra-package = same-directory declaration (by-construction package
+// proximity, no import evidence); inferred = name-only fallback.
+const (
+	ResolutionExtracted    = "extracted"
+	ResolutionIntraPackage = "intra-package"
+	ResolutionInferred     = "inferred"
+)
+
+// ConfidenceFor maps a resolution label to its numeric confidence — the
+// SINGLE definition of that map (REQ-GEC-001), so the two fields cannot
+// drift. Total over the closed 3-value domain; any other label (including
+// the empty label of pre-upgrade artifacts) maps to 0, which serializes as
+// absent.
+//
+// @MX:NOTE: [AUTO] single-definition resolution→confidence map — stamp via this, never inline the numbers (SPEC-GRAPH-EDGE-CONFIDENCE-001)
+func ConfidenceFor(resolution string) float64 {
+	switch resolution {
+	case ResolutionExtracted:
+		return 1.0
+	case ResolutionIntraPackage:
+		return 0.95
+	case ResolutionInferred:
+		return 0.85
+	default:
+		return 0
+	}
 }
 
 // codemapsDepRelPath is the /moai codemaps dep-graph output (read-only seed;
