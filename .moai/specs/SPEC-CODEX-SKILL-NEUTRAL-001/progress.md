@@ -120,6 +120,9 @@ plan-phase 기준 트리는 `297a21ea73b24e6605280625e576555e4316263e` 였다. r
 | `moai codex` 를 거치지 않은 직접 코덱스 세션 | **미지지 — 부채** | 저장소 전체에서 cwd 를 강제하는 장치를 찾지 못했다(스윕 S4). 사용자 cwd 를 그대로 물려받는다. 이 SPEC 은 이 팔을 **닫지 않는다** |
 | CLI 패키지의 다른 `.Dir` 대입 | **무관** | 스윕 S3 이 열거한 비테스트 3파일 중 `launcher.go:602` 는 git 헬퍼(`runGitCommand`), `worktree/guard.go` 는 워크트리 가드, `doctor_agentemit_embed.go` 는 진단이다 — 어느 것도 스킬 본문을 읽는 프로세스를 띄우지 않는다 |
 | 이 세션 자신(워크트리 안 Claude) | **지지 — 실증** | cwd `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t196` 에서 `.claude/skills` 가 해석된다(스윕 S5). 워크트리 루트가 프로젝트 루트 역할을 하므로 루트 기준 형태가 성립한다 |
+| Claude Code Bash 도구의 환경 변수 | **강제 없음 — [리드 보강 실측 2026-09-01]** | `printenv CLAUDE_PROJECT_DIR` → exit 1 (**미설정**). `navigator-regen.sh` 의 `ROOT="${CLAUDE_PROJECT_DIR:-$PWD}"` 폴백은 이 하네스에서 `$PWD` 로 떨어진다 — Bash 도구 cwd 는 세션 중 지속되므로 이전 호출의 `cd` 가 남아 있으면 스크립트가 잘못된 뿌리에 쓴다(읽기 실패가 아니라 mkdir -p 로 조용한 오기록). 세션 시작 cwd=프로젝트 루트(위 행)가 전제를 세우지만 호출별 강제는 없다 |
+
+- 런 에이전트 기록 귀속: 위 §E.2 본문은 t196-run-b 가 작성했다. 에이전트는 완료 보고 없이 두 번 유휴 전환했고 세 번째 전환은 세션 사용량 한도로 끝났다 — 디스크 산출물로 회수했고 리드가 핵심 주장(미러 등재 :57, RED 46203/46296, 증거 파일 존재, `moai/SKILL.md` 복구 sha256)을 전부 독립 재측정해 채택했다.
 
 AC-CSN-013 의 (a)(b)(c) 세 항목은 spec.md §A.7 `:138`·`:149` 에 문면으로 존재한다(스윕 S6).
 
@@ -156,6 +159,8 @@ $ go test -count=1 ./internal/template/ -run TestRuleTemplateMirrorDrift
 
 **A 를 권고하며, 리드 판단 대기 중이다.** `.claude/skills/**` 로컬 사본은 지시대로 손대지 않았다 — 그쪽은 실제로 바이너리에서 재배포되는 파생물이라 리드의 전제가 참이다. 두 트리를 가르는 것은 "로컬이냐"가 아니라 **바이트 패리티 등재 여부**다.
 
+**[해소 — 리드 판정 A안 채택, 2026-09-01]** 리드가 세 단계로 독립 재측정한 뒤 채택했다: (1) 미러 등재 확인 — `rule_template_mirror_test.go:57` 에 `.claude/rules/moai/workflow/worktree-integration.md` 존재, (2) RED 재현 — `TestRuleTemplateMirrorDrift` FAIL, source 46,203 / mirror 46,296 바이트, (3) 테스트 메시지가 제안하는 `cp` 방향(로컬→템플릿)은 **AC-CSN-011 [HARD] 가 요구한 편집을 지우는 방향**이라 따르지 않고 템플릿→로컬로 정렬했다 — 방향은 AC가 정하고 테스트는 동일성만 본다. 결과: `cmp` 바이트 동일, `TestRuleTemplateMirrorDrift` GREEN, `go test -count=1 ./internal/template/` 전체 `ok 24.159s`. 커밋 `816acd104`. 사고 귀속: 되돌림은 리드(이전 턴의 정책 획일 적용 오류) — 해소도 리드, A안 권고는 런 에이전트. 교훈: 축은 "로컬 vs 템플릿"이 아니라 **바이트 패리티 등재 여부**이며, 등재 파일은 같은 커밋에서 함께 고친다.
+
 ### 검증 실행 (범위: 변경이 닿을 수 있는 패키지)
 
 | 명령 | 결과 | 증거 |
@@ -169,35 +174,51 @@ $ go test -count=1 ./internal/template/ -run TestRuleTemplateMirrorDrift
 
 `make build` 의 `gen-catalog-hashes --all` 이 `internal/template/catalog.yaml` 의 스킬 해시 3건을 재생성했다(편집한 `SKILL.md` 3종). 같은 SPEC 범위 안의 cascade 이며 별도 결정이 아니다.
 
-### 미커밋 상태
+### 커밋 기록 (리드가 run 종료 후 착지 — 리드의 안전망 지시에 따라)
 
-이 run-phase 는 **커밋하지 않았다**(리드 지시). 따라서 `spec.md` / `plan.md` / `acceptance.md` / `progress.md` 의 `status:` 는 `draft` 그대로이며, `draft → in-progress` 전이는 M1 커밋을 만드는 쪽이 수행한다. 새 파일 `internal/template/skill_dir_token_guard_test.go` 는 미추적 상태이므로 커밋 시 명시적 pathspec 으로 스테이징해야 한다.
+run 에이전트는 커밋 없이 종료했고, 리드가 세 커밋으로 착지했다(커밋 직전마다 HEAD·브랜치 재판독, 명시 pathspec 스테이징 + 같은 호출 status 재판독):
+
+| 커밋 | 내용 | 규모 |
+|---|---|---|
+| `25422be77` | 축 B 구현 — 템플릿 스킬 9 + 템플릿 규칙 2 + `catalog.yaml` + 신규 가드 테스트 | 13파일 +156/−53 |
+| `bb14186d1` | SPEC 계획 산출물 v0.3.0 (spec/plan/acceptance/progress) | 4파일 +958 |
+| `816acd104` | 로컬 미러 패리티 복원 (위 BLOCKER A안) | 1파일 +1/−1 |
+
+브랜치 `WT-codex-skill-neutral`, base `2c18091d1`. `draft → in-progress` 전이와 AC-CSN-010 의 sync 재판정은 sync 쪽 소관 그대로다. `.moai/reports/t196/` 증거 디렉터는 progress 갱신 커밋에 함께 스테이징한다.
+
+### 셀렉터 매치 수 (리드 관측 — AC 측 명기는 manager-spec 배치로 이월)
+
+`go test -run TestSkillDirToken` 은 **0매치** — `no tests to run` 문구와 함께 PASS 를 돌려준다(0매치 셀렉터의 초록은 판정이 아니다). 실제 테스트 이름은 `TestSkillTreeHasNoClaudeSkillDirToken` 이며 **1매치**다. 위 `go test -count=1 ./internal/template/` 전체 스위트(ok 24.159s)에는 이 테스트 1건이 실제로 포함돼 돈다. AC 측 기록(셀렉터가 실제로 몇 개를 잡는지 명기)은 REQ-CSN-003 문면 정정 배치와 함께 manager-spec 에 이월한다.
+
+### 런 에이전트 종료 상태
+
+완료 보고 없이 유휴 전환 2회, 세 번째 전환은 세션 사용량 한도로 종결. 위 §E.2 의 모든 판정은 에이전트의 디스크 산출물을 리드가 독립 재측정해 채택한 것으로, "에이전트가 했다고 함" 수준의 인용은 없다.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
 ```yaml
 run_complete_at: "2026-09-01"
-run_commit_sha: "<uncommitted — run-phase 는 커밋을 만들지 않았다; 착수·종료 HEAD 모두 2c18091d127cbc723074124e1015353e077300ca>"
+run_commit_sha: "25422be77 (축 B 본체, 리드 착지) · 816acd104 (미러 복원) — base 2c18091d1"
 run_status: partial-axis-b-only
-axis_a_status: frozen-by-lead-directive   # REQ-CSN-002..005 / AC-CSN-001..005 미실행, AGENTS.md 편집 0바이트
+axis_a_status: unfrozen-lead-verdict-2026-09-01   # 어휘 축 판정(11번째 클래스 신설) + 예산 축 판정(1번 채택)으로 동결 해제됨; 구현은 manager-spec 재위임(REQ-CSN-003 문면 정정) 후 예정
 ac_pass_count: 8      # AC-CSN-006..013
 ac_fail_count: 0
-ac_not_run_count: 5   # AC-CSN-001..005 (축 A 동결)
+ac_not_run_count: 5   # AC-CSN-001..005 (축 A — 동결 해제됐으나 미실행, manager-spec 문면 정정 선행)
 preserve_list_post_run_count: 1   # 로컬 .claude/rules/.../skill-authoring.md:226,:301 — 범위 밖, 보고만
-l44_pre_commit_fetch: n/a          # 커밋 없음
-l44_post_push_fetch: n/a           # 푸시 없음
+l44_pre_commit_fetch: n/a          # 커밋은 리드가 착지 — 커밋 전 HEAD 재판독 수행
+l44_post_push_fetch: n/a           # 푸시 없음 (develop 통합은 창 소관)
 new_warnings_or_lints_introduced: 0   # go vet exit 0
-blocking_test_failure: 1   # TestRuleTemplateMirrorDrift/worktree-integration.md — 로컬 미러 되돌림 결과, 리드 판단 대기
+blocking_test_failure: 0   # TestRuleTemplateMirrorDrift — 816acd104 로 해소, 스위트 ok 24.159s
 cross_platform_build:
   darwin: pass        # make build exit 0 (host darwin/arm64)
   windows: not-observed
   linux: not-observed
 total_run_phase_files: 14   # 편집 13 (템플릿 스킬 9 + 템플릿 규칙 2 + 로컬 미러 1 + catalog.yaml 1) + 신규 가드 테스트 1
-m1_to_mN_commit_strategy: "커밋 없음 — 리드가 통합 창에서 스테이징·커밋을 소유"
+m1_to_mN_commit_strategy: "리드가 run 종료 후 3커밋 착지 (25422be77 / bb14186d1 / 816acd104)"
 evidence_dir: .moai/reports/t196/
 ```
 
-**감사가 먼저 볼 것 4가지**: (1) **미해결 BLOCKER — `TestRuleTemplateMirrorDrift` 가 붉다**(로컬 미러 되돌림). (2) AC-CSN-010 의 diff 팔이 커밋 부재로 공허하다는 위 [주의] — 재판정 필요. (3) dogfood census 46 vs 템플릿 0 의 어긋남 — 바이너리 지연 가설이며 확정 아님. (4) 로컬 `skill-authoring.md` 규범 문장 잔존 — 의도적 범위 밖.
+**감사가 먼저 볼 것 4가지**: (1) ~~미해결 BLOCKER~~ → **해소됨** — `TestRuleTemplateMirrorDrift` 는 `816acd104` 로 GREEN 복귀, 전체 스위트 ok 24.159s(위 해소 절 참조). (2) AC-CSN-010 의 diff 팔이 커밋 부재로 공허하다는 위 [주의] — 커밋이 이제 존재하므로 sync-phase 재판정 시 diff 팔이 실질 판정으로 전환된다. (3) dogfood census 46 vs 템플릿 0 의 어긋남 — 바이너리 지연 가설이며 확정 아님. (4) 로컬 `skill-authoring.md` 규범 문장 잔존 — 의도적 범위 밖.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
