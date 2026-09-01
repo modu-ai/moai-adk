@@ -283,11 +283,61 @@ backlog_schema_freeze_test.go`), `TestTodoHistoryNeverPrompts`
   of "no lock artifact remains" on this platform; the SHA-256 map over the
   whole state dir additionally asserts no file changed and none appeared.
 
-_<pending run-phase evidence — M5 onward>_
+### M5 — documentation, both surfaces (2026-09-01)
+
+- `history` row added to `.claude/skills/moai/workflows/todo.md` and its
+  template mirror (inserted after the `why` row in each). Mirror text
+  carries no SPEC ID, REQ token, date, or SHA.
+- `make build` run (Template-First; exit 0, binary rebuilt).
+  `internal/template/catalog.yaml` unchanged BY DESIGN — its skill hashes
+  cover root SKILL.md only (`gen-catalog-hashes.go` hashes the directory's
+  SKILL.md, not workflows/*.md), so this edit does not move it.
+- Pre-existing drift observed and left alone (scope discipline): the local
+  `todo.md`'s `pr` row is an older rendering than the mirror's (the mirror
+  names the six-column shape and the text-LAST convention); reconciling
+  template→local propagation is `moai update`'s surface, not this SPEC's.
+- AC-TAQ-015: `TestTodoSkillDocumentsHistoryVerb` — both docs ≥ 1 mention,
+  neutrality regex clean over the mirror (grep counts: 1 and 1).
+
+### Post-M5 findings and repairs (2026-09-01)
+
+- **Verb-surface zero-delta guard** — the E3 coverage sweep surfaced
+  `TestTodoVerbSurfaceZeroDelta` (SPEC-TODO-SQLITE-001 AC-TOSQ-010) RED:
+  `history` was an undeclared post-freeze addition. Declared per the
+  guard's own convention in `permittedVerbAdditions` (commit `05cddca2b`);
+  the guard's mechanism is declaration-with-SPEC, not prohibition.
+- **Negative `--limit` refusal re-derived test-first** — the refusal branch
+  from M3 had no failing test (Invariant ii). Branch deleted, RED observed
+  (`history --limit -1 succeeded`), branch restored, GREEN (commit
+  `c39b9790d`).
+
+_<pending run-phase evidence — none; run phase complete>_
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: "2026-09-01T13:05:00+09:00"
+run_commit_sha: "c39b9790d"
+run_status: complete
+ac_pass_count: 15
+ac_fail_count: 0
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: "see §E.2 M0 — entry-time ff to e8ae9798a; divergence 0 0 re-read before every commit (staleness rule); no push performed (integration is the lead's window)"
+l44_post_push_fetch: "n/a — no push in run phase (gitflow: card branch stays local; origin/develop CI is the post-integration verdict)"
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  host: "go build ./... → exit 0 (c39b9790d)"
+  windows: "GOOS=windows GOARCH=amd64 go build ./... → exit 0 (c39b9790d)"
+total_run_phase_files: 13
+m1_to_mN_commit_strategy: "per-milestone commits on WT-todo-done-history: e7eec6122 (M0 goldens) → 95105fcad (M1 verb) → 244828510 (M2 disclosures) → 1a5d8664f (M3 limit) → 1b77fd7eb (M4 guards) → 2f92574cd (M5 docs) → 05cddca2b (surface-guard declaration) → c39b9790d (negative-limit RED/GREEN); C = e7eec6122 is a proper ancestor of HEAD (verified)"
+coverage_note: "todo_history.go per-function: newTodoHistoryCmd 100%, runTodoHistory 75%, renderTodoHistoryLookup 92.3%, renderTodoHistoryListing 86.7% — uncovered lines are io-write-error returns only; kanban backlog_archive_vouch.go: InspectBacklogArchiveVouch 100%, archiveTablesPresent 86.7%; package totals: internal/cli 80.2%, internal/kanban 86.5% (whole-package baselines, not this SPEC's subject)"
+```
+
+Milestone-mapping deviations (both recorded in §E.2): AC-TAQ-008 closed in
+M3 with REQ-TAQ-007 (the withheld count cannot fire before the bound
+exists); the verb-surface declaration and the negative-limit RED/GREEN are
+post-M5 hardening, both cascade follow-ups within the SPEC's scope
+envelope.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
