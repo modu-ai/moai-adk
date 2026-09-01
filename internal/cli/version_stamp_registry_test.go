@@ -36,6 +36,10 @@ package cli
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"testing"
@@ -616,4 +620,201 @@ func TestVersionStampSyntheticTracking(t *testing.T) {
 			t.Errorf("check did not emit expected failure: %s (got %v)", want, findings)
 		}
 	})
+}
+
+// --- population driver ------------------------------------------------------
+//
+// The one thin layer that touches the outside world: a single listing of the
+// checked-out index, one content read per listed path, and the token read
+// from its source file. Everything above this section is pure.
+
+// gitLsFilesArgv is the one external invocation this check makes. It lists
+// the checked-out index — no history, no other ref, no network — and it is
+// named as a single literal on purpose: the allowlist judgment over this file
+// holds that exactly one such argv exists and that it is exactly this one,
+// which is what keeps every other verb out.
+var gitLsFilesArgv = []string{"git", "ls-files"}
+
+// versionStampTokenSource is the working-tree file the authoritative token is
+// read from.
+const versionStampTokenSource = "pkg/version/version.go"
+
+// versionStampTokenLine extracts the Version assignment. Anchored on the
+// variable name so the sibling Commit, Date, and BuildID assignments never
+// match.
+var versionStampTokenLine = regexp.MustCompile(`(?m)^\s*Version = "([^"]+)"`)
+
+// versionStampExclusionGroups is the sweep's exclusion set as a literal
+// enumeration — one entry per group, each with its own reason, recorded
+// beside the measured number of token files it hides in the version-sync
+// document. Not one blanket clause: the groups hide different amounts for
+// different reasons, and a single clause would hide that.
+//
+// Matching follows the semantics the exclusion counts were measured with: a
+// trailing slash is a directory prefix, a bare name is an exact path, and a
+// star crosses path segments. The stars matter — a segment-bound star would
+// miss the nested _test.go files the measurement counted.
+var versionStampExclusionGroups = []string{
+	".moai/reports/",
+	".moai/specs/",
+	".moai/release-notes/",
+	"CHANGELOG.md",
+	"*_test.go",
+	"docs-site/content/*/changelog*",
+}
+
+// versionStampExclusionGlobRes holds the compiled forms of the groups that
+// carry a star.
+var versionStampExclusionGlobRes = compileVersionStampGlobs(versionStampExclusionGroups)
+
+// compileVersionStampGlobs turns each starred group into an anchored pattern
+// whose stars match across path segments, so the check sees exactly the set
+// the measurement pathspecs saw.
+func compileVersionStampGlobs(groups []string) []*regexp.Regexp {
+	var compiled []*regexp.Regexp
+	for _, group := range groups {
+		if !strings.Contains(group, "*") {
+			continue
+		}
+		pattern := strings.ReplaceAll(regexp.QuoteMeta(group), `\*`, ".*")
+		compiled = append(compiled, regexp.MustCompile("^"+pattern+"$"))
+	}
+	return compiled
+}
+
+// versionStampExcluded reports whether a tracked path sits inside one of the
+// exclusion groups.
+func versionStampExcluded(path string) bool {
+	for _, group := range versionStampExclusionGroups {
+		if strings.HasSuffix(group, "/") {
+			if strings.HasPrefix(path, group) {
+				return true
+			}
+			continue
+		}
+		if strings.Contains(group, "*") {
+			continue // handled by the compiled forms below
+		}
+		if path == group {
+			return true
+		}
+	}
+	for _, re := range versionStampExclusionGlobRes {
+		if re.MatchString(path) {
+			return true
+		}
+	}
+	return false
+}
+
+// authoritativeVersionToken reads the sweep predicate from its source. The
+// token is the Version assignment's literal — the value a build falls back to
+// when ldflags inject none — not a shape that would match everyone's versions
+// along with ours.
+func authoritativeVersionToken(t *testing.T, root string) string {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(versionStampTokenSource)))
+	if err != nil {
+		t.Fatalf("read %s: %v", versionStampTokenSource, err)
+	}
+	match := versionStampTokenLine.FindSubmatch(raw)
+	if match == nil {
+		t.Fatalf("no Version assignment found in %s", versionStampTokenSource)
+	}
+	return string(match[1])
+}
+
+// trackedPopulation lists the repository's tracked files once, through the
+// single allowed invocation, and drops the exclusion groups. The result is
+// what the sweep predicates on: the tracked set, never a walk of the
+// filesystem, which would read whatever this checkout happens to have lying
+// around and differ from every other checkout.
+func trackedPopulation(t *testing.T, root string) []string {
+	t.Helper()
+	cmd := exec.Command(gitLsFilesArgv[0], gitLsFilesArgv[1:]...)
+	cmd.Dir = root
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("list tracked files: %v", err)
+	}
+	var population []string
+	for _, line := range strings.Split(string(out), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || versionStampExcluded(line) {
+			continue
+		}
+		population = append(population, line)
+	}
+	sort.Strings(population)
+	return population
+}
+
+// readPopulationContents reads each population path's content. A path whose
+// file is absent from the working tree — an index entry mid-rebase, mid-merge
+// — is left out of the map and the core counts it unexamined, so the gap
+// surfaces as judged/handed instead of vanishing.
+func readPopulationContents(t *testing.T, root string, population []string) map[string]string {
+	t.Helper()
+	contents := make(map[string]string, len(population))
+	for _, relPath := range population {
+		raw, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(relPath)))
+		if err != nil {
+			continue
+		}
+		contents[relPath] = string(raw)
+	}
+	return contents
+}
+
+// TestVersionStampExclusionMatcher pins the exclusion semantics the sweep was
+// measured with: a trailing slash is a directory prefix, a bare name is an
+// exact path, and a star crosses path segments. The last two rows are the
+// shape of the -h trap: a file whose NAME carries a version token stays in
+// the population unless a group actually covers it — membership is decided
+// from content, and the exclusion set must not silently widen.
+func TestVersionStampExclusionMatcher(t *testing.T) {
+	tests := []struct {
+		path     string
+		excluded bool
+	}{
+		{path: ".moai/reports/t392/plan-audit.md", excluded: true},
+		{path: ".moai/specs/SPEC-VERSION-STAMP-PREDICATE-001/spec.md", excluded: true},
+		{path: ".moai/release-notes/v3.1.3.ko.md", excluded: true},
+		{path: "CHANGELOG.md", excluded: true},
+		{path: "CHANGELOG.md.bak", excluded: false},
+		{path: "internal/cli/version_stamp_registry_test.go", excluded: true},
+		{path: "cmd/moai/root_test.go", excluded: true},
+		{path: "docs-site/content/en/changelog.md", excluded: true},
+		{path: "docs-site/content/en/advanced/statusline.md", excluded: false},
+		{path: ".moai/release/v2.17.0.md", excluded: false},
+		{path: "pkg/version/version.go", excluded: false},
+	}
+	for _, tc := range tests {
+		if got := versionStampExcluded(tc.path); got != tc.excluded {
+			t.Errorf("versionStampExcluded(%q) = %v, want %v", tc.path, got, tc.excluded)
+		}
+	}
+}
+
+// TestVersionStampRegistry judges the working tree against the registry. The
+// population arrives from the driver above; the judgment core stays pure, so
+// every finding names a path or both sides of a count. Its silence after the
+// golden pin is the direction the t388 guard left open — a stamp site absent
+// from the document's list, carrying the current token.
+func TestVersionStampRegistry(t *testing.T) {
+	root := repoRootFromCLITest(t)
+
+	token := authoritativeVersionToken(t, root)
+	population := trackedPopulation(t, root)
+	contents := readPopulationContents(t, root, population)
+
+	docRaw, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(versionSyncDocPath)))
+	if err != nil {
+		t.Fatalf("read %s: %v", versionSyncDocPath, err)
+	}
+
+	findings := judgeVersionStampRegistry(token, population, contents, versionStampRegistry, parseVersionStampEntries(string(docRaw)))
+	for _, finding := range findings {
+		t.Errorf("%s", finding)
+	}
 }
