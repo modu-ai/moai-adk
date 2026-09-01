@@ -408,7 +408,68 @@ template_first_reattached: false     # AC-IHP-012 re-verified at close: both gre
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-01
+sync_commit_sha: "pending-backfill-sync"   # placeholder — backfilled in the immediately following commit (a commit cannot cite its own hash)
+sync_status: complete
+changelog_entry_position: "CHANGELOG.md [Unreleased] → ### Added, first bullet"
+changelog_dedup_check: "grep -c 'SPEC-INIT-HARNESS-PROMPT-001' CHANGELOG.md → 0 (pre-edit, run in this session)"
+
+b12_self_test:
+  a_pre_emission_grep: "0 hits — no duplicate entry; emission proceeded"
+  b_ac_count_match: >
+    acceptance.md canonical AC count is 13 (AC-IHP-001..012 with the 006a/006b split;
+    grep -c '^### AC-IHP-' → 13 per §E.1 D8) and the CHANGELOG entry states 13, matching
+    §E.2.3's 13/13. The raw token sweep (grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' | sort -u) returns
+    14 distinct tokens: AC-CI-004 and AC-CW-004 are cross-SPEC references carried in
+    acceptance.md prose, and the regex folds 006a/006b onto 006 — both effects accounted,
+    non-zero, plausible, no vacuous comparison.
+  c_file_path_verification: >
+    every file path cited in the CHANGELOG entry is a file of the run-phase diff
+    2c18091d1..HEAD and was read this session via that diff (init.go, init_agent_wizard.go,
+    wizard/{questions,translations,types,wizard}.go + the named test files).
+
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (merged 3-phase close on this sync commit; run-phase never took the `implemented` intermediate step — recorded as it happened)"
+  plan_md: "N/A — no status: field (ArtifactStatusFieldForbidden, card t357)"
+  acceptance_md: "N/A — no status: field"
+  progress_md: "N/A — body sections, not frontmatter"
+updated_field: "2026-09-01 — same-day close, value already current; no byte change (precedent: card t330)"
+
+mx_validation: >
+  Run-phase added three @MX:SPEC: SPEC-INIT-HARNESS-PROMPT-001 tags, all verified present at
+  HEAD this session: internal/cli/init_agent_wizard.go:20 (new file, package doc),
+  internal/cli/init.go:753 (the resolution-point call site), internal/cli/init.go:965 (the
+  MCP precedence comment). No tag removed; pre-existing tags (CATALOG-002,
+  SPEC-INIT-WIZARD-REPAIR-001) untouched. Sync adds no new tags beyond this validation.
+
+sync_phase_observation_ac_ihp_011: >
+  Citation defect in §E.2.3 AC-IHP-011 row (table-cell pipe escaping → zero-match selector →
+  vacuous cited green); substance independently proven by orchestrator re-verification
+  (unfiltered run exit 0 + corrected selector ok); citation-cell repair deferred to audit
+  disposition. Re-observed in this sync session, both directions: the cited form
+  (`go test ./internal/cli/ -run 'TestInitAgentFlag\|TestValidateInitFlags_Agent\|...'`)
+  printed `ok github.com/modu-ai/moai-adk/internal/cli 0.949s [no tests to run]`, and the
+  corrected plain-pipe selector ran 8 tests, all PASS (`ok ... 1.862s`). The §E.2.3 cell
+  itself is run-phase-owned and was NOT edited.
+
+docs_surfaces_checked:
+  - command: "grep -n -- '--agent' README.md README.ko.md README.ja.md README.zh.md"
+    result: "1 hit per locale (README.md:341), naming --agent codex|only as the dual-harness status-line limitation context — the flag's documented behaviour is unchanged by this SPEC"
+  - command: "grep -rln -- '--agent' docs-site/content"
+    result: "hits are codex-dual-harness / worktree reference pages describing the flag path — unchanged; no README/docs surface enumerates the wizard's per-question set, so the new question creates no docs-edit obligation"
+
+canary_compliance_check: "N/A — this SPEC defines no forward-looking policy exercised by its own sync tests"
+
+sync_session_gaps: >
+  This sync session re-ran only the B12 greps, the docs-surface greps, and the AC-IHP-011
+  selector pair above. go test (unfiltered), go vet, and golangci-lint were NOT re-run: the
+  orchestrator's independent re-verification of this same tree at HEAD 5b280204e covers them
+  (evidence exported to .moai/reports/t393/orchestrator-verify-20260901.log, tracked via the
+  sync commit; note it required git add -f — *.log is gitignored at .gitignore:106).
+  Cross-platform build not measured locally (GOOS=windows is CI's matrix). CI not observed —
+  nothing pushed; the integration window is the lead's. Full-catalog moai spec lint not run.
+```
 
 - plan_complete_at: 2026-09-01T03:46:10Z
 - plan_status: audit-ready

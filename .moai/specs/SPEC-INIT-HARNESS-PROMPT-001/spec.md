@@ -2,7 +2,7 @@
 id: SPEC-INIT-HARNESS-PROMPT-001
 title: "Ask the agent-harness selection in the init wizard, keeping the --agent flag as the non-interactive path"
 version: "0.1.3"
-status: in-progress
+status: completed
 created: 2026-09-01
 updated: 2026-09-01
 author: manager-spec
