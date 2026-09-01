@@ -98,7 +98,7 @@ chore(SPEC group C): Mx-phase close` 로 존재하나 그 subject 가 **결합 �
 
 ```yaml
 run_complete_at: 2026-08-31
-run_commit_sha: pending-backfill-run
+run_commit_sha: c0cdb2fd3   # 측정 트리(§E.2 첫 줄) — 증거가 실제로 잰 트리
 run_status: complete-with-one-ac-fail
 ac_pass_count: 7
 ac_fail_count: 1          # AC-EH3-007 (명제 3 — 오탐 1건, 원인은 선행 결함)
@@ -117,4 +117,47 @@ m1_to_mN_commit_strategy: single-commit   # Tier S, 4파일
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+### 착지한 sync-phase 변경
+
+| 파일 | 변경 |
+|---|---|
+| `spec.md` frontmatter | `status: in-progress → completed`, `updated: 2026-08-31 → 2026-09-01` (3-phase close — completed 전이는 단일 sync 커밋에 탑승) |
+| `progress.md` §E.3 | `run_commit_sha` backfill: `pending-backfill-run → c0cdb2fd3` (§E.2 첫 줄의 측정 트리) |
+| `progress.md` | 이 §E.4 |
+| `.moai/reports/t382/sync-close.md` | 5-섹션 종결 판정문 (신규) |
+
+### 문서 동기화 — 대상 없음 (t376 전례)
+
+카드 플로 전례(t376)에 따라 이 저장소의 sync는 문서 파일 0건이며, 이번 변경(시대 분류 술어)은 사용자 문서·README·docs-site·CHANGELOG 어디에도 서술되지 않는다. **아무것도 고치지 않았다 — 이것이 스윕의 결과이지 건너뛴 것이 아니다.** 템플릿 미러 대상 없음 (run-phase 변경 4파일 중 3개는 `internal/spec/` Go 소스, 1개는 `.claude/rules/local/` 로컬 전용 룰 — 어느 쪽도 템플릿에 미러하지 않는다).
+
+### 산출물 구성 (Tier S — acceptance.md 없음은 설계)
+
+artifacts: 3 — spec.md + plan.md + progress.md. AC는 spec.md §3에 인라인(Tier S). `acceptance.md`는 존재하지 않으며 이는 누락이 아니라 Tier S 구성이다.
+
+### 이 세션이 관측하지 않은 것
+
+- 테스트·빌드·lint를 재실행하지 않았다. §E.2·§E.3의 수치는 run-phase가 `c0cdb2fd3` 트리에서 얻은 것을 인용한 것이며 sync-phase 재측정이 아니다. 이 세션의 변경은 SPEC 산출물·판정문뿐이라 Go 동작을 건드리지 않는다.
+- CI 판정. push 하지 않았으므로 이 커밋에 대한 CI는 존재하지 않는다. 통합(병합 창)은 리드 소관으로 남아 있다 — §E.2가 기록한 발산 `5 6`(대 `origin/develop=297a21ea7`) 흡수 및 병합 트리 재측정 미이행.
+- AC-EH3-007 은 FAIL 로 닫힌다(§E.2). 오탐 1건의 원인은 선행 결함이며 후속 카드 재료다.
+
+```yaml
+sync_complete_at: 2026-09-01
+sync_commit_sha: pending-backfill-sync  # backfilled in a follow-up commit (a commit cannot name its own hash)
+sync_status: complete-with-one-ac-fail  # §E.3 run_status 와 동일 — AC-EH3-007 FAIL (명제 3, 선행 결함)
+ac_pass_count: 7
+ac_fail_count: 1
+artifact_count: 3   # Tier S: spec.md + plan.md + progress.md; acceptance.md 부재는 설계(AC는 spec.md §3 인라인)
+run_commit_sha: c0cdb2fd3   # §E.3 backfill — 측정 트리
+changelog_entry_position: not-emitted   # 카드 플로 전례(t376): 문서 파일 0건, CHANGELOG 방출 없음
+docs_sweep: "CHANGELOG/README/docs-site/template — 이 변경을 서술하는 문서 0건 → 수정 없음 (스윕 결과)"
+template_mirror: "run-phase 4파일 = internal/spec/** 3 + .claude/rules/local/** 1 — 미러 대상 없음"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (updated: 2026-09-01) — 단일 sync 커밋에 3-phase close 로 탑승"
+  plan_md: "frontmatter에 status/updated 필드 없음 — 전이 대상 없음 (id/title/version/created만)"
+  acceptance_md: "존재하지 않음(Tier S 설계)"
+  progress_md: "frontmatter 블록 없음 — 전이 대상 없음"
+mx_tag_validation: "sync-phase 가 Go 소스를 건드리지 않았으므로 @MX 주석 변경 없음"
+canary_compliance_check: not-applicable
+push_state: "not pushed — 통합 창은 리드 소관(배차 제약)"
+integration_pending: "origin/develop=297a21ea7 발산 5 6 흡수 + 병합 트리 재측정이 남아 있음(§E.2 기록)"
+
