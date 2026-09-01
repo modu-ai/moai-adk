@@ -471,11 +471,15 @@ frontmatter_status_transitions:
 updated_field: "2026-09-01 — same-day close, value already current; no byte change (precedent: card t330)"
 
 mx_validation: >
-  Run-phase added three @MX:SPEC: SPEC-INIT-HARNESS-PROMPT-001 tags, all verified present at
-  HEAD this session: internal/cli/init_agent_wizard.go:20 (new file, package doc),
+  Run-phase added SIX @MX:SPEC: SPEC-INIT-HARNESS-PROMPT-001 tags, all verified at HEAD —
+  production 3: internal/cli/init_agent_wizard.go:20 (new file, package doc),
   internal/cli/init.go:753 (the resolution-point call site), internal/cli/init.go:965 (the
-  MCP precedence comment). No tag removed; pre-existing tags (CATALOG-002,
-  SPEC-INIT-WIZARD-REPAIR-001) untouched. Sync adds no new tags beyond this validation.
+  MCP precedence comment); test-file 3: internal/cli/init_agent_wizard_test.go:16,
+  internal/cli/init_agent_wizard_precedence_test.go:11,
+  internal/cli/wizard/agent_wiring_question_test.go:11. Undercount of three discovered and
+  reconciled by sync-audit (verdict report F3). No tag removed; pre-existing tags
+  (CATALOG-002, SPEC-INIT-WIZARD-REPAIR-001) untouched. Sync adds no new tags beyond this
+  validation.
 
 sync_phase_observation_ac_ihp_011: >
   Citation defect in §E.2.3 AC-IHP-011 row (table-cell pipe escaping → zero-match selector →
