@@ -11,7 +11,7 @@
 # the gate silently.
 #
 # Behavior: BLOCKING by DEFAULT for the vet/build deterministic checks
-# (SPEC-OBSERVE-HYGIENE-001 REQ-OBH-004, D3=Promote). A failing vet/build emits
+# (observability hygiene policy, D3=Promote). A failing vet/build emits
 # {"decision":"block", ...} on stdout + exit 0 — which blocks the turn.
 # MOAI_SYNC_GATE_BLOCKING is the opt-OUT: set it to 0/off/false/advisory to
 # downgrade a failing check to a non-blocking {"systemMessage": ...} warning.
@@ -328,7 +328,7 @@ elif [ "$C2_EXIT" -ne 0 ]; then
 fi
 
 # Resolve the mode once (set -e safe) for both stdout and the audit log.
-# D3=Promote (SPEC-OBSERVE-HYGIENE-001 REQ-OBH-004): vet/build block by DEFAULT.
+# D3=Promote (observability hygiene policy): vet/build block by DEFAULT.
 # MOAI_SYNC_GATE_BLOCKING is the opt-OUT — set to 0/off/false/advisory/no to
 # downgrade a failing vet/build to a non-blocking warning. Default (unset) and
 # the legacy =1 value both select blocking. tests/coverage are NOT run here.
@@ -337,7 +337,7 @@ case "${MOAI_SYNC_GATE_BLOCKING:-1}" in
     *) MODE="blocking" ;;
 esac
 
-# SPEC-STOPCHAIN-TRIM-001 REQ-004 (A11): tier-aware mode override. Read
+# Stop-chain trim guard: tier-aware mode override. Read
 # $MOAI_AUTONOMY_TIER at the shell layer (no moai binary — the token is an
 # env-key per OQ-1/REQ-003 so shell can read it directly). The tier relaxes
 # ONLY the advisory-vs-blocking MODE of this gate, never the deny/ask denylist
