@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "ignoreCommand": "git rev-parse -q --verify \"${VERCEL_GIT_PREVIOUS_SHA}^{commit}\" >/dev/null 2>&1 && git diff --quiet \"$VERCEL_GIT_PREVIOUS_SHA\" HEAD -- ':(top)docs-site' || exit 1",
   "framework": "hugo",
   "buildCommand": "hugo --minify --gc",
   "outputDirectory": "public",
