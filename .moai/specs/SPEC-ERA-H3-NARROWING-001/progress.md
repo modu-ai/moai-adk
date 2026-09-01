@@ -142,7 +142,7 @@ artifacts: 3 — spec.md + plan.md + progress.md. AC는 spec.md §3에 인라인
 
 ```yaml
 sync_complete_at: 2026-09-01
-sync_commit_sha: pending-backfill-sync  # backfilled in a follow-up commit (a commit cannot name its own hash)
+sync_commit_sha: 123014952  # backfilled in a follow-up commit (a commit cannot name its own hash)
 sync_status: complete-with-one-ac-fail  # §E.3 run_status 와 동일 — AC-EH3-007 FAIL (명제 3, 선행 결함)
 ac_pass_count: 7
 ac_fail_count: 1
