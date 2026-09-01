@@ -409,6 +409,20 @@ func TestTodoHistoryLimitBound(t *testing.T) {
 	}
 }
 
+// A negative bound is a typo, not a wish: the verb refuses it rather than
+// silently reinterpreting it as unbounded.
+func TestTodoHistoryRefusesNegativeLimit(t *testing.T) {
+	seedArchivedCards(t, 3)
+
+	_, _, err := runTodo(t, "history", "--limit", "-1")
+	if err == nil {
+		t.Fatal("history --limit -1 succeeded — a negative bound must be refused, not reinterpreted")
+	}
+	if !strings.Contains(err.Error(), "--limit") {
+		t.Errorf("refusal = %v, want it to name --limit", err)
+	}
+}
+
 // AC-TAQ-008 — truncation states the withheld count on stderr, and stdout
 // carries no such note (a machine reading stdout is unaffected).
 func TestTodoHistoryStatesWithheldCount(t *testing.T) {
