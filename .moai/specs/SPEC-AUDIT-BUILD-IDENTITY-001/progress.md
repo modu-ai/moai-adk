@@ -27,6 +27,22 @@ plan-audit 판정 FAIL(점수 0.85, 반복 1/1, `.moai/reports/t248/plan-audit.m
 
 불변 확인(본 세션 관측): 평탄 형제 필드 유지(중첩 0, 버전 필드 0), `internal/binlag.Evaluate` 재사용 요구 유지, D-1 기준선 3좌표 유지. 미해결 마커(`[NEEDS` 로 시작하는 주석 토큰)와 낡은 AC 번호 잔존 참조 모두 grep 매치 0 — 증거는 아래 검증 배치에.
 
+### plan-audit 판정 경로 — 리드 판독 갈음 (2026-09-01)
+
+plan-audit FAIL(반복 1/1, Tier S 상한 소진) → 수리 v0.1.2 → 리드가 **재감사 없이 판독으로 갈음** 판정(수리 완료 인정). 반복 상한 1은 소진 상태 그대로 두고 판정 경로만 갈음했다.
+
+리드 실측 근거(트리 `311b1936b`):
+
+- 구조: AC 집합 = `AC-ABI-001..008` 정확히 8개(`009`·"9개 기준" 참조 grep 0건, exit 1) — D-5 해소
+- D-2: AC-ABI-001 `[HARD]` 비어있지 않음 선행 전제 존재(`acceptance.md:31`) + 공허화 메커니즘 설명(`:39`)
+- D-3: `os.Getwd()` 폴백 REQ-ABI-006 명시(`doctor.go:521` 선례) + 비전달 계약이 §D.1 체크리스트 항목으로 기계화(`performCodexAudit`/`performGLMAudit` 인자 `git diff`)
+- D-1: AC-ABI-008(구 009 회귀 건이 아니라 소스 스윕 건은 AC-ABI-007)이 거짓 기대에서 기준선 3좌표 정확 집합 술어로 교체
+- D-6: M2 뮤턴트 명명 확인(`acceptance.md:72`)
+
+lane이 수정 에이전트의 "이미 착지" 처분표 라벨을 불신했던 단서와 리드의 독자 실측이 서로 합치한다 — 판정 근거는 라벨이 아니라 실측이다. lane 독립 스팟체크 9항목(D-1 기준선 본 트리 재측정 포함)도 전부 합치.
+
+산출물 커밋: `311b1936b` (SPEC 4종 + 감사 보고서, 5파일 682줄). run 진입은 Implementation Kickoff 승인 후.
+
 ## §E.2 Run-phase Evidence
 
 _<pending run-phase>_
