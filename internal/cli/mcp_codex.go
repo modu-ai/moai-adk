@@ -289,6 +289,22 @@ type ReviewOutput struct {
 	// it. Additive + omitempty (the SynthesisNote precedent): no existing
 	// consumer's JSON changes, and the fail-open verdict itself is preserved.
 	GateUnmet string `json:"gate_unmet,omitempty"`
+
+	// BuildCommit records the commit the SERVING binary was built from
+	// (SPEC-AUDIT-BUILD-IDENTITY-001), so a verdict can be re-attributed to
+	// the binary that produced it after the fact. Deliberately NOT a version
+	// string: one version names both a lagging build and a current one
+	// (REQ-ABI-003). Flat sibling fields, additive + omitempty (the
+	// SynthesisNote/GateUnmet precedent): no existing consumer's JSON changes
+	// when the identity is absent. Assembled ONLY by auditBuildIdentity —
+	// one constructor serves all three audit entry points (REQ-ABI-007).
+	BuildCommit string `json:"build_commit,omitempty"`
+
+	// BuildLag carries the rebuild advisory on an ancestor build — the binary
+	// predates commits the reviewed tree already contains — naming both
+	// commits. Empty on every other verdict, so the advisory speaks only when
+	// the binary really is running code the tree has moved past (REQ-ABI-006).
+	BuildLag string `json:"build_lag,omitempty"`
 }
 
 // Finding is a single review finding (§G.4).
@@ -1495,13 +1511,20 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 		return toolErr("codex_audit", rootErr), nil
 	}
 
+	// Build identity is assembled ONCE here (REQ-ABI-007) and rides every
+	// result this handler returns below, fail-open exits included — an
+	// inconclusive verdict is still a verdict that must name its binary.
+	buildCommit, buildLag := auditBuildIdentity(ctx, root)
+
 	notifyMCPProgress(ctx, token, 0, "codex 감사 시작 — 모드: "+mode+", target: "+target)
 	binaryPath, err := codexLookPath(codexBinaryName)
 	if err != nil {
 		// The gate annotation rides EVERY fail-open exit, including this early
 		// one — a missing binary is exactly the state where a required gate
 		// goes silently unmet (the review never ran at all).
-		return codexReviewToolResult(applyGateUnmet(inconclusiveReview("codex binary not found in PATH"), root)), nil
+		out := applyGateUnmet(inconclusiveReview("codex binary not found in PATH"), root)
+		out.BuildCommit, out.BuildLag = buildCommit, buildLag
+		return codexReviewToolResult(out), nil
 	}
 	notifyMCPProgress(ctx, token, 0.1, "codex 바이너리 확인 — 리뷰 요청 준비 중...")
 
@@ -1522,6 +1545,7 @@ func handleCodexAudit(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallTo
 	notifyMCPProgress(ctx, token, 0.2, "codex에 리뷰 요청 전송 중... (수분 소요 가능)")
 	out, _ := codexReviewRPC(ctx, binaryPath, method, params) // fail-open inside
 	out = applyGateUnmet(out, root)
+	out.BuildCommit, out.BuildLag = buildCommit, buildLag
 	notifyMCPProgress(ctx, token, 0.9, "codex 응답 수신 — 결과 조립 중...")
 	return codexReviewToolResult(out), nil
 }

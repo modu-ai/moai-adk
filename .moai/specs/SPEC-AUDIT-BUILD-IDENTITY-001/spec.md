@@ -2,7 +2,7 @@
 id: SPEC-AUDIT-BUILD-IDENTITY-001
 title: 감사 판정이 자기를 낸 바이너리의 커밋을 밝힌다 — 259 커밋 뒤처진 판정을 사후에 가려내기
 version: "0.1.2"
-status: draft
+status: in-progress
 created: 2026-09-01
 updated: 2026-09-01
 author: manager-spec
