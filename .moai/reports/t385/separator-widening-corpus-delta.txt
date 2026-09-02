@@ -1,0 +1,30 @@
+# t385 — REQ parser separator/paren widening: corpus lint delta
+# measured in worktree WT-codemaps-accuracy (.moai/specs/SPEC-*/spec.md corpus)
+#
+# BEFORE capture (colon-only pattern):
+#   MOAI_T362_CORPUS_SCAN=1 go test ./internal/spec/ -run 'TestCorpusREQWideningMeasurement|TestCorpusRejectedREQIDDecomposition'
+#   go run ./cmd/moai spec lint --json
+# AFTER capture: same two commands with the widened reqLineWidePattern.
+#
+# Corpus harness (parse-level):
+lines_wide  1085 -> 3778  (+2693; exactly the census sum: 1085 Form A + 689 Form B + 2004 Form C)
+files_wide    63 ->  255  (census: 255 files)
+lines_narrow 239 ->  239  (unchanged; narrow containment narrow_not_in_wide=0 both runs)
+#
+# Full-corpus `moai spec lint --json` findings:
+#   code                          old    new   delta
+#   CoverageIncomplete            846   3518  +2672
+#   ModalityMalformed              25    407   +382
+#   LegacyEARSKeyword              43     48     +5
+#   InvalidREQID                    6      6      =   (new lines are all canonical-token shape)
+#   every other code                -      -      =   (FrontmatterInvalid 14, MovingRefUnpinned 115,
+#                                                   StatusTransitionInvalid 99, ... all unchanged)
+#   TOTAL                        1203   4262  +3059  (all warning severity — widened-only advisory
+#                                                   treatment held; zero error-severity findings added)
+#
+# Regression (both directions, per-file JSON diff):
+#   - files that LOST findings: 0 (additions only)
+#   - all 16 pure colon-form (narrow>0) SPEC files: NOT in changed set -> byte-identical lint output
+#   - probes SPEC-ARTIFACT-STATELESS-001 / SPEC-CLIFIX-CONCURRENCY-001 /
+#     SPEC-COVERAGE-RULE-SCOPE-001 / SPEC-GLM-KEY-INPUT-001: byte-identical
+#   - 197 files gained findings, all on formerly-invisible (Form B/C) definition lines

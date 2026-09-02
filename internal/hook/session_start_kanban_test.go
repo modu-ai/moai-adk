@@ -346,9 +346,12 @@ func TestKanbanCompanionNoticeFailOpen(t *testing.T) {
 	})
 }
 
-// TestKanbanCompanionNoticeJoinOnly is AC-FB-017: the companion notice is a
-// single line acknowledging the join (naming the label) and does NOT print the
-// three-companion launch block.
+// TestKanbanCompanionNoticeJoinOnly is AC-FB-017 (revised by card t224): the
+// companion notice acknowledges the join (naming the label) and does NOT print
+// the three-companion launch block. The original single-line assertion was the
+// mechanical proxy for "join-only"; the standing spawn authority is now the
+// one deliberate second block, so the proxy asserts exactly two blocks — join
+// line, blank separator, authority — and still no launch block.
 func TestKanbanCompanionNoticeJoinOnly(t *testing.T) {
 	clearKanbanEnv(t)
 	t.Setenv(config.EnvMoaiKanbanLabel, "run-abc123")
@@ -360,8 +363,11 @@ func TestKanbanCompanionNoticeJoinOnly(t *testing.T) {
 	if strings.Contains(got, "--name") {
 		t.Errorf("companion notice printed the launch block: %q", got)
 	}
-	if strings.Count(got, "\n") != 0 {
-		t.Errorf("companion notice should be a single line, got:\n%s", got)
+	if !strings.Contains(got, "Standing spawn authority") {
+		t.Errorf("companion notice lost the standing spawn authority (card t224): %q", got)
+	}
+	if strings.Count(got, "\n\n") != 1 {
+		t.Errorf("companion notice should be exactly two blocks (join + authority), got:\n%s", got)
 	}
 }
 
