@@ -180,7 +180,7 @@ with teeth evidence captured before each GREEN counted.
 
 ```yaml
 sync_complete_at: 2026-09-02
-sync_commit_sha: pending-backfill-sync   # placeholder — a commit cannot cite its own hash; backfilled in the follow-up commit (D3 exemption)
+sync_commit_sha: c6f8e7ede   # the sync close commit itself; backfilled per the D3 SHA-placeholder exemption
 sync_status: audit-ready
 b12_self_test_a: pass   # grep -c 'SPEC-LLMCFG-PRESERVE-001' CHANGELOG.md -> 0 before emission (no duplicate)
 b12_self_test_b: pass   # distinct AC ids in acceptance.md -> 7 raw matches, 6 live (AC-LCP-001..006; the 7th, AC-RIL-006, is a cross-SPEC reference to the protection class this SPEC joins, not an own AC) — entry states 6/6, matching §E.3 ac_pass_count
