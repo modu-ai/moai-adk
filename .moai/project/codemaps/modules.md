@@ -81,8 +81,10 @@
 **하위 패키지**: `astx` (그래프 빌더의 AST 추출 시임), `detect`, `fix`, `route`, `sync` (3개 Navigator 체인 통합 — regen/audit/sync), `tiers` (4-tier 주소 맵 오버레이, tiers.json OVERLAY 산출)
 
 ### internal/kanban (33 non-test 파일)
-**역할**: 칸반 백로그 큐 엔진 — `moai todo` 명령 백엔드  
-**핵심**: `backlog_analysis.go` (`moai todo add`/`analyze`의 기계적 텍스트 분석기), 큐 저장소, 카드 관계 분석
+**역할**: 칸반 백로그 큐 엔진 — `moai todo` 명령 백엔드 · Kanban/Factory 모드 상태 — `moai cc -k|-f` / `moai glm -k|-f`가 여는 plan→run→verify→sync 체인의 세션 기록과 중복 억제
+**핵심**: `backlog_analysis.go` (`moai todo add`/`analyze`의 기계적 텍스트 분석기), 큐 저장소, 카드 관계 분석 · `internal/kanban/record.go` (세션 레코드 기록, `validateSessionID`가 경로 조작 차단, 파일 0600), `internal/kanban/revision.go` (`Matches`/`RevisionMatch`/`SuppressStep0551` — 모든 실패 모드가 "검사 수행"으로 수렴하는 fail-safe, rung은 allow-list), `internal/kanban/integration_lock.go` (병합 창 직렬화 — `moai integration acquire|status|release`)
+**상태**: 세션 ID 파생 경로의 레코드 파일 + `revision.json`
+**진입점**: `internal/cli/factory.go` (플래그 파싱, env 진입/복원), `internal/cli/launcher_blockcap_infinite.go` (Stop-hook block cap 상향)
 
 ### internal/epic (5 non-test 파일)
 **역할**: 디스크 기반 에픽 진행 생산자 — `moai epic status <prefix>`
@@ -165,12 +167,6 @@
 ### internal/update (7 non-test 파일)
 **역할**: self-update
 **기능**: Checker, Updater, Rollback, 체크섬 gate, 원자적 replace
-
-### internal/factory
-**역할**: Factory 모드 상태 — `moai cc -f` / `moai glm -f`가 여는 plan→run→verify→sync 체인의 세션 기록과 중복 억제
-**핵심**: `record.go` (세션 레코드 기록, `validateSessionID`가 경로 조작 차단, 파일 0600), `revision.go` (`Matches`/`RevisionMatch`/`SuppressStep0551` — 모든 실패 모드가 "검사 수행"으로 수렴하는 fail-safe, rung은 allow-list)
-**상태**: 세션 ID 파생 경로의 레코드 파일 + `revision.json`
-**진입점**: `internal/cli/factory.go` (플래그 파싱, env 진입/복원), `internal/cli/launcher_blockcap_infinite.go` (Stop-hook block cap 상향)
 
 ### internal/goal (6 non-test 파일)
 **역할**: 목표 엔진 — 조건 선언형 에이전틱 루프 (`/moai goal`)  

@@ -194,7 +194,7 @@ flowchart TD
     B["session.Registry.Register<br/>(active-sessions.json)"]
     C["Heartbeat"]
     D["PreToolUse<br/>race check"]
-    E["ListActive"]
+    E["QueryActiveWork"]
     F["SessionEnd hook"]
     G["Deregister"]
     H["PurgeStale<br/>(zombies)"]
@@ -211,7 +211,7 @@ flowchart TD
 1. SessionStart 훅 → `Registry.Register()` 활성 세션 기록
 2. active-sessions.json 에 진입
 3. Heartbeat 주기적 갱신 (stale 방지)
-4. PreToolUse: ListActive 쿼리, 병렬 세션 race 감지
+4. PreToolUse: `QueryActiveWork` 쿼리, 병렬 세션 race 감지
 5. SessionEnd 훅 → `Deregister()` 제거
 6. `PurgeStale()` 좀비 세션 정리
 
@@ -351,12 +351,15 @@ type Deployer interface {
 
 ### Registry (Session)
 ```go
+// internal/session/registry.go — 리시버 메서드 (Registry)
 type Registry interface {
-    Register(spec, branch string) error
-    Heartbeat(spec string) error
-    ListActive(spec string) ([]Session, error)
-    Deregister(spec string) error
+    Register(sessionID, specID, phase string) error
+    Heartbeat(sessionID string) error
+    Deregister(sessionID string) error
+    Query(optSpecID string) ([]Entry, error)
 }
+// 패키지 함수 — 흐름 도식의 QueryActiveWork 노드가 여기로 연결된다
+func QueryActiveWork(optSpecID string) ([]Entry, error)
 ```
 
 ---

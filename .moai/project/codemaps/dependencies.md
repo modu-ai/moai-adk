@@ -182,7 +182,7 @@ graph TD
 | `internal/template/agentemit` | 에이전트 출력 에밋 |
 | `internal/config/toolpolicy` | 도구/권한 정책 SSOT (`moai tool-policy`) |
 
-> 참고: `internal/bodp`(Branch Origin Decision Protocol)는 worktree 표면 리디자인(#1278)에서 코드베이스에서 제거되었다 — 현재 트리에 존재하지 않는다.
+> **`internal/bodp`** — (Branch Origin Decision Protocol) worktree 표면 리디자인(#1278)에서 코드베이스에서 제거됨 — 현재 트리에 존재하지 않는다.
 
 ---
 
