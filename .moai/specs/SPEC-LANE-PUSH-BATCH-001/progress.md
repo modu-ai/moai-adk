@@ -2,7 +2,7 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-<pending plan-audit — populated by the plan-audit gate on PASS>
+- plan_status: audit-ready (2026-09-02) — plan-audit iter-1 PASS-WITH-DEBT 0.92 (D1-D4 delta fixes) → iter-2 delta re-audit **PASS 1.00**. 증거: `.moai/reports/t430/plan-audit-iter1.md` + `.moai/reports/t430/plan-audit-iter2.md` (tracked).
 
 ## §E.2 Run-phase Evidence
 
