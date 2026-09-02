@@ -262,13 +262,23 @@ func sessionIDSourceIsAuthoritative(source string) bool {
 // anchors the registry + side-channel file to input.ProjectDir; the CLI
 // runs in the same project context so this resolves identically.
 func resolveProjectDir() string {
+	dir, _ := resolveProjectDirWithSource()
+	return dir
+}
+
+// resolveProjectDirWithSource reports which tier produced the dir:
+// "env:CLAUDE_PROJECT_DIR", "server-cwd", or "unresolved" (t236 / issue
+// #1640). The MCP catalog tools surface this as response provenance so a
+// fallback resolution — which froze at server spawn — is distinguishable
+// from an explicit project_root argument instead of silent.
+func resolveProjectDirWithSource() (string, string) {
 	if dir := os.Getenv("CLAUDE_PROJECT_DIR"); dir != "" {
-		return dir
+		return dir, "env:CLAUDE_PROJECT_DIR"
 	}
 	if cwd, err := os.Getwd(); err == nil {
-		return cwd
+		return cwd, "server-cwd"
 	}
-	return ""
+	return "", "unresolved"
 }
 
 // newSessionCurrentCmd implements `moai session current` (P2 Stage 1,

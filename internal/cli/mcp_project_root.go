@@ -69,6 +69,11 @@ func projectRootPassthroughOption() mcp.ToolOption {
 	return mcp.WithString(projectRootArg, mcp.Description(projectRootPassthroughDesc))
 }
 
+// rootSourceParam names the provenance source of an explicit project_root
+// argument. The fallback tier names ("env:CLAUDE_PROJECT_DIR", "server-cwd",
+// "unresolved") come from resolveProjectDirWithSource (session.go).
+const rootSourceParam = "param"
+
 // resolveToolProjectRoot returns the project root a tool call should act on.
 //
 // An absent or empty project_root resolves exactly as the tool resolved it
@@ -81,11 +86,46 @@ func projectRootPassthroughOption() mcp.ToolOption {
 // parameter exists to fix: a caller who mistyped its own worktree path would be
 // silently returned to acting on the primary checkout, and told it succeeded.
 func resolveToolProjectRoot(req mcp.CallToolRequest) (string, error) {
+	root, _, err := resolveToolProjectRootWithSource(req)
+	return root, err
+}
+
+// resolveToolProjectRootWithSource is resolveToolProjectRoot plus the
+// provenance tier that produced the root (t236 / issue #1640): "param" for an
+// explicit argument, otherwise the fallback tier from
+// resolveProjectDirWithSource. Validation and reject-not-fallback semantics
+// are identical to resolveToolProjectRoot — this is the same resolver with
+// the source made observable, so catalog responses can carry it as "_root"
+// and warn when resolution did NOT come from the caller.
+func resolveToolProjectRootWithSource(req mcp.CallToolRequest) (string, string, error) {
 	raw := strings.TrimSpace(req.GetString(projectRootArg, ""))
 	if raw == "" {
-		return resolveProjectDir(), nil
+		dir, source := resolveProjectDirWithSource()
+		return dir, source, nil
 	}
-	return validateProjectRoot(raw)
+	root, err := validateProjectRoot(raw)
+	if err != nil {
+		return "", "", err
+	}
+	return root, rootSourceParam, nil
+}
+
+// rootProvenanceMap builds the "_root" block a catalog response carries:
+// which tree was read and where the resolution came from. A warning is
+// attached ONLY when the source is not "param" — a fallback resolution froze
+// at server spawn, and the caller must be told rather than left reading
+// another tree in silence (live gap L2 of the t236 reproduction).
+func rootProvenanceMap(root, source string) map[string]any {
+	prov := map[string]any{
+		"source": source,
+		"dir":    root,
+	}
+	if source != rootSourceParam {
+		prov["warning"] = "project_root not passed — resolved from " + source +
+			", which froze at server spawn; a session that moved worktrees is reading another tree; " +
+			"pass project_root = git rev-parse --show-toplevel"
+	}
+	return prov
 }
 
 // resolveOptionalToolProjectRoot is the pass-through variant, for a surface that
