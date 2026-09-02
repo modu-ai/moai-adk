@@ -309,6 +309,9 @@ const todoListDefaultLimit = 20
 // silent truncation.
 func runTodoList(cmd *cobra.Command, jsonOutput bool, droppedOnly bool, limit int) error {
 	store := newTodoStore()
+	// REQ-BJD-002 — probed before the read, because Load adopts (see
+	// todo_disclosure.go). stderr only: stdout is what the foreman reads.
+	_ = discloseQueueLayout(cmd, "todo")
 	rec, err := store.Load()
 	if err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
