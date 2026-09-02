@@ -178,4 +178,52 @@ with teeth evidence captured before each GREEN counted.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-02
+sync_commit_sha: pending-backfill-sync   # placeholder — a commit cannot cite its own hash; backfilled in the follow-up commit (D3 exemption)
+sync_status: audit-ready
+b12_self_test_a: pass   # grep -c 'SPEC-LLMCFG-PRESERVE-001' CHANGELOG.md -> 0 before emission (no duplicate)
+b12_self_test_b: pass   # distinct AC ids in acceptance.md -> 7 raw matches, 6 live (AC-LCP-001..006; the 7th, AC-RIL-006, is a cross-SPEC reference to the protection class this SPEC joins, not an own AC) — entry states 6/6, matching §E.3 ac_pass_count
+b12_self_test_c: pass   # both paths named in the entry ls-verified: internal/cli/update_llm_preserve_test.go, internal/cli/update_clean_install_config_preserve_test.go
+changelog_entry_position: "[Unreleased] -> ### Added, first bullet (CHANGELOG.md:12)"
+frontmatter_status_transitions:
+  spec.md: "in-progress -> completed (single sync commit; updated: already 2026-09-02, unchanged)"
+  plan.md: "n/a - frontmatter present, no status field (artifact statelessness per spec-frontmatter-schema.md)"
+  acceptance.md: "n/a - frontmatter present, no status field (artifact statelessness)"
+  progress.md: "n/a - no YAML frontmatter block"
+canary_compliance_check: n/a   # this SPEC defines no forward-looking policy that its own sync tests
+```
+
+### Documentation surface decisions
+
+| Surface | Decision | Rationale (evidence observed this run) |
+|---|---|---|
+| `CHANGELOG.md` | **Entry ADDED** — `[Unreleased] -> ### Added` first bullet | Repo convention is that every sync close adds an entry, including docs-only closes (SPEC-RC-TESTBED-001 `2b87066bf` added one; the only exclusion precedent, SPEC-LANE-PUSH-BATCH-001 `13b6248e7`, stated an explicit repo-local-maintainer-doctrine rationale that does not apply here). A regression contract that guards user config against update-wipe is maintainer-visible knowledge even with zero production diff. Entry kept brief (test-only scope) per the existing format. |
+| `docs-site` | **No change** — confirmed by read | `grep -rn 'llm\.yaml' docs-site/content/` hits only descriptive passages (where llm.yaml lives, profile-matrix values, routing behavior) — no update-preservation claim exists to make false, and zero production changes means nothing user-facing moved to document. |
+| `README*` | **No change** — confirmed by read | The SPEC adds tests only; no feature, flag, or user-facing behavior changed that any README locale describes. |
+| Codemaps | **No change** | Test files carry no new exported API surface for codemaps to describe. |
+
+### MX-tag outcome
+
+Delta: **0** — the run-phase change set is exactly 2 test files (`internal/cli/update_llm_preserve_test.go` new,
+`internal/cli/update_clean_install_config_preserve_test.go` extended) plus SPEC artifacts and
+evidence logs; no production source was touched, so no `@MX:NOTE`/`@MX:ANCHOR`/`@MX:WARN`
+annotations were added or removed this SPEC. MX validation as a sync sub-step: no tags to add
+(test-only), no stale tags introduced, existing tags in the touched packages untouched.
+
+### Sync-phase scope exclusions (with rationale)
+
+- **No push** — lane does not push; develop integration is the lead's batch window (gitflow lane protocol §4).
+- **No docs-site/README/codemaps edits** — documented in the table above.
+- **No `moai spec close` CLI invocation** — the frontmatter transition is carried by this sync
+  commit per the 3-phase close convention; `moai spec close` §E.5-era generation is retired.
+
+### Sync-phase verification
+
+| Check | Command | Output |
+|---|---|---|
+| Final combined contracts | `go test -run 'TestUpdateLLMYAML\|TestCleanReinstallLLMYAMLPreserved' -count=1 ./internal/cli/` | `ok github.com/modu-ai/moai-adk/internal/cli 2.088s`, exit 0 (re-observed by the lane at sync entry) |
+| CHANGELOG duplicate guard (B12-a) | `grep -c 'SPEC-LLMCFG-PRESERVE-001' CHANGELOG.md` | `0` before emission |
+| AC count (B12-b) | `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md \| sort -u` | 7 unique ids = 6 own (AC-LCP-001..006) + 1 cross-SPEC reference (AC-RIL-006) |
+| Path existence (B12-c) | `ls internal/cli/update_llm_preserve_test.go internal/cli/update_clean_install_config_preserve_test.go` | both present |
+
