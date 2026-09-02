@@ -182,7 +182,33 @@ go run ./cmd/moai spec audit --json  →  finding_type "AuditError", severity IN
 **베이스에서도 동일하게 34건**임을 확인했다 — 내 두 파일을 `git show HEAD:` 로 되돌린 뒤
 같은 테스트를 돌려 34를 셌고, 수리본 복원 후에도 34다. 내 diff는
 `internal/spec/lint.go` + `internal/spec/lint_test.go` 2파일뿐이고
-템플릿 `SKILL.md` 를 건드리지 않는다. develop 팁 `e45054c56` 의 선재 적색으로 리드에 보고한다.
+템플릿 `SKILL.md` 를 건드리지 않는다. develop 팁의 선재 적색이다.
+
+**흡수로는 풀리지 않는다.** 처음에는 해시 재생성 커밋 `86456663e` 가 내 base 에 없는 것이
+원인이라는 가설이 있었고, 조상 관계는 내 트리에서 맞았다
+(`git merge-base --is-ancestor 86456663e HEAD` → rc=1,
+ `… refs/heads/develop` → rc=0). 그러나 그 가설은 **틀렸다** — 조상 관계는
+"재생성 커밋이 내 base 에 없다"만 보일 뿐 34가 0이 된다를 보이지 않는다.
+
+실제 원인은 **세지 않은 세 번째 소비자**이고, 내 트리에서 직접 읽어 확인했다:
+
+- `internal/spec/catalog_hash_test.go` 의 `resolveHashSourcePath` 는 skill 디렉터리에 대해
+  `SKILL.md` / `skill.md` **단일 파일**만 돌려준다 — v1 해시 방식이다.
+- 같은 파일의 주석이 이미 자기 중복을 선언해 두고 있다: *"a deliberate duplicate kept here
+  because the script lives in `package main` and cannot be imported"*.
+- 그런데 `internal/template/catalog_tree_hash.go` 의 `ComputeDirTreeHash` 문서는
+  소비자를 **둘로** 센다 — *"Both consumers … the generator … and the audit test
+  (TestManifestHashFormat …)"*. `TestCatalogHashParity` 가 그 목록에 없다.
+
+즉 t323 이 없애려던 쌍 드리프트가, 세지 않은 세 번째 소비자에서 다시 났다.
+`catalog.yaml` 은 생성기 기준으로 옳고 붉은 것은 테스트 쪽이라는 것은 lane-14 의 실측이며
+(병합 트리에서 `gen-catalog-hashes --all` 이 diff 0), 나는 그 명령을 돌리지 않았다 —
+`catalog.yaml` 을 쓰는 명령이라 이 카드 범위 밖이다.
+
+**수리하지 않는다.** 카드 범위 밖이고, 수리 방향 자체가 결정을 요구한다
+(테스트를 `ComputeDirTreeHash` 로 옮길 것인지, 해시 개념 둘을 유지하기로 하고 그 사실을
+문서에 적을 것인지). 따라서 이 카드의 재측정은 **`TestCatalogHashParity` 를 이름을 밝혀
+제외**하고 나머지 `internal/spec` + 건드린 소비 패키지로 판정했다.
 
 ---
 
