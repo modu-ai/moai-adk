@@ -592,11 +592,23 @@ it is named as differing above.
    hook process's lifetime distribution is still unmeasured by either lane.
 
    What remains unmeasured on this axis: the `file_changed` twin. A figure of
-   `0/5` for it circulated in a dispatch; **it did not come from this SPEC.**
-   `.moai/reports/t216/d3-mx-cold-start.md` Gap 5 states the position this card
-   actually holds — *"`file_changed`'s identical structural bug is asserted from
-   code, not measured. No FileChanged event was fired."* — and no denominator
-   for it appears anywhere in these artifacts.
+   `0/5` for it circulated in a dispatch. **It is attributable to no
+   measurement.** It did not come from this SPEC — `.moai/reports/t216/`
+   `d3-mx-cold-start.md` Gap 5 states the position this card actually holds,
+   *"`file_changed`'s identical structural bug is asserted from code, not
+   measured. No FileChanged event was fired."*, and no denominator of 5 appears
+   anywhere in these artifacts. Asked directly, the lane that measured the
+   edges axis confirmed its own record carries no denominator of 5 either
+   (only 0/60, 4/60, and this SPEC's 153). Both lanes have discarded it as
+   unverified rather than inheriting it.
+
+   The shape is worth naming because it nearly propagated: a number with no
+   measurement behind it entered two cards' working context through a dispatch,
+   in the same sentence as two figures that DO have measurements. Had neither
+   lane asked where it came from, it would have been quoted forward as
+   field evidence. The denominators are being fixed per measurement kind before
+   the twin is measured — field readings count worktrees, probe readings count
+   event firings — so a future `file_changed` figure states which it is.
 3. **`golangci-lint` remains scoped to the touched packages**, not the repository.
 4. **Windows runtime is still unobserved** — `GOOS=windows go vet` proves
    compilation only.
