@@ -523,7 +523,7 @@ m1_to_mN_commit_strategy: per-milestone conventional commits (M1..M5), no push
 
 ```yaml
 sync_complete_at: 2026-08-24
-sync_commit_sha: "pending-backfill-sync"   # D3 self-reference exemption — a commit cannot know its own SHA; backfilled after the PR merges (lead owns the implemented → completed transition + this backfill)
+sync_commit_sha: baa100ce504c585f7eab31aad0c2ae2fb718c4a7
 sync_status: implemented-pending-merge
 b12_self_test_a: pass   # grep -c 'SPEC-V3R6-AUDIT-MODEL-PIN-001' CHANGELOG.md → 0 (pre-emission, rc=1) — no duplicate entry
 b12_self_test_b: pass   # acceptance.md §D distinct AC count = 8 (AC-AMP-001..008, §D.1 severity table rows); the grep's 9th token AC-MTP-032 is the AC-AMP-006 heading's "closes AC-MTP-032b" cross-reference, not a §D AC
