@@ -47,14 +47,14 @@ the directory wipe kills it regardless.
 
 The update pipeline already runs a full preservation cycle:
 
-1. **Backup** step (`update_template_sync.go:398`): `BackupMoaiConfig`
+1. **Backup** step (`internal/cli/update_template_sync.go:398`): `BackupMoaiConfig`
    (`internal/cli/update/backup/backup.go:27`) copies ALL of
    `.moai/config` (the `excludedDirs` list is empty — the "excluding sections"
    comment above it is stale) to `.moai-backups/<timestamp>/`, and
    `SaveTemplateBase` (`backup/base_loader.go`) provisions the merge base —
    template-base snapshot first (SPEC-UPDATE-TEMPLATE-BASE-SNAPSHOT-001),
    falling back to `SaveTemplateDefaults` (the current embedded defaults).
-2. **Restore Settings** step (`update_template_sync.go:472-524`):
+2. **Restore Settings** step (`internal/cli/update_template_sync.go:472-524`):
    `RestoreMoaiConfigRetained` (`backup/restore.go`) walks the backup's
    `sections/*.yaml` — llm.yaml included, no exclusion — and 3-way merges
    (new template + user backup + base) into the freshly deployed file.
