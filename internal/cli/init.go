@@ -298,6 +298,12 @@ func applyWizardPage3ToOpts(cmd *cobra.Command, result *wizard.WizardResult, opt
 	// then touches nothing.
 	opts.FeedbackAutoSubmit = result.FeedbackAutoSubmit
 
+	// /moai project completion continuation (SPEC-PROJECT-CONTINUATION-KEY-001
+	// REQ-PCK-010). Wizard-only select, no CLI flag. The empty string carries
+	// "was it asked" — --non-interactive leaves it empty and the writer then
+	// touches nothing, leaving the template-shipped `continuation: card` alone.
+	opts.ProjectContinuation = result.ProjectContinuation
+
 	// M4 audit + MCP opt-in (SPEC-MOAI-MCP-SERVER-001 REQ-MCP-015 / AC-MCP-020).
 	// The audit selection reuses the M3 typed-config vocabulary. AuditConfigSet
 	// is the opt-in tracker: it flips true ONLY when the wizard collected a
