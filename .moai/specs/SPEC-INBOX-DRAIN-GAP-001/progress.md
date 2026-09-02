@@ -4,7 +4,9 @@
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-_Pending plan-audit — plan-phase artifact set (spec.md / plan.md / acceptance.md / progress.md) created 2026-09-02 at worktree HEAD `131daa290`._
+- Plan-phase artifact set (spec.md / plan.md / acceptance.md / progress.md) created 2026-09-02 at worktree HEAD `131daa290`.
+- Plan-audit: iter-1 **FAIL 0.875** (D1 t239 boundary mischaracterization / D2 false offset re-sync mitigation / D3 marker-deletion transition unrecorded) → D1-D3 corrected at `918bacd2c` → iter-2 **PASS 0.99** (delta re-audit over D1-D3; skip-eligible at Tier M threshold 0.80), 2/2 iterations.
+- Reports: `.moai/reports/plan-audit/SPEC-INBOX-DRAIN-GAP-001-review-1.md` · `.moai/reports/plan-audit/SPEC-INBOX-DRAIN-GAP-001-review-2.md`.
 
 ## §E.2 Run-phase Evidence
 
