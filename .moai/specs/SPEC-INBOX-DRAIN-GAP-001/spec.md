@@ -131,7 +131,7 @@ The bound lives in the collector itself: a write-time size cap with archive-rota
 
 ### Out of Scope — update-path changes
 
-- No file under `internal/cli/update/` is edited; no opportunistic drain is added to `moai update`, `moai doctor`, or any other command. (Merge-judgment boundary with card t239/SPEC-LLMCFG-PRESERVE-001: that SPEC is test-only in a different subsystem — `internal/config` llm.yaml preservation — and shares no code path with this one; the boundary is recorded here for the lane's batch judgment.)
+- No file under `internal/cli/update/` is edited; no opportunistic drain is added to `moai update`, `moai doctor`, or any other command. (Merge-judgment boundary with card t239/SPEC-LLMCFG-PRESERVE-001: that SPEC is test-only — its one new file is a contract-test file at the `internal/cli` package root, `internal/cli/update_llm_preserve_test.go`, and the update-pipeline packages its plan exercises (`backup`/`merge`/`deploy`) are read-only test baselines to it, editing nothing under `internal/cli/update/`. No file-level collision with this SPEC; both t239 and this SPEC land files in the shared `internal/cli` package — different files, no collision. The boundary is recorded here for the lane's batch judgment.)
 
 ### Out of Scope — scheduling surfaces
 
