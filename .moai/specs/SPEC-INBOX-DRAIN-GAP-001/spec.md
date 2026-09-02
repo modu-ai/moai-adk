@@ -2,7 +2,7 @@
 id: SPEC-INBOX-DRAIN-GAP-001
 title: "Distributed lessons-inbox lifecycle — collector-side write-time cap, archive rotation, and CLI drain surface"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-02
 updated: 2026-09-02
 author: manager-spec

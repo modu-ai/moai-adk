@@ -114,12 +114,23 @@ func recordTestFailEvent(input *HookInput, pkg string) {
 // lessonsInboxStub is the JSONL schema for .moai/lessons-inbox.jsonl entries
 // (REQ-HRR-006 / D3: append-only JSONL, minimum fields). The orchestrator's
 // Lessons Protocol drains these stubs into auto-memory lesson entries.
+//
+// Version carries the stub schema version (REQ-IBX-008, SPEC-INBOX-DRAIN-GAP-001):
+// introduced at 1 simultaneously with the first consumer (the rotation / CLI
+// lifecycle code). Readers tolerate the field's absence — a pre-upgrade line
+// parses as version 1 (see InboxStubVersion).
 type lessonsInboxStub struct {
 	Timestamp string `json:"timestamp"`
 	EventKey  string `json:"event_key"`
 	Summary   string `json:"summary"`
 	Source    string `json:"source"`
+	Version   int    `json:"v"`
 }
+
+// lessonsInboxSchemaVersion is the stub schema version this binary marshals
+// (REQ-IBX-008). Bumped only when the stub schema itself changes shape; absence
+// in an existing line reads as 1, so the initial value must stay 1.
+const lessonsInboxSchemaVersion = 1
 
 // appendLessonsInboxStub appends one structured stub to
 // .moai/lessons-inbox.jsonl (REQ-HRR-006). The file is append-only JSONL
@@ -133,6 +144,7 @@ func appendLessonsInboxStub(root, eventKey, summary, source string) {
 		EventKey:  eventKey,
 		Summary:   summary,
 		Source:    source,
+		Version:   lessonsInboxSchemaVersion,
 	}
 	data, err := json.Marshal(stub)
 	if err != nil {
@@ -168,4 +180,16 @@ func truncateSummary(errorText, fallback string) string {
 		return string(runes[:200]) + "…"
 	}
 	return errorText
+}
+
+// InboxStubVersion resolves the stub schema version carried by a parsed
+// lessons-inbox line (REQ-IBX-008). A pre-upgrade line without the field reads
+// as version 1 — the field was introduced simultaneously with the first
+// consumer, so absence can only mean the original schema. Explicit versions
+// pass through unchanged; a non-numeric value is treated as absent.
+func InboxStubVersion(stub map[string]any) int {
+	if v, ok := stub["v"].(float64); ok {
+		return int(v)
+	}
+	return lessonsInboxSchemaVersion
 }
