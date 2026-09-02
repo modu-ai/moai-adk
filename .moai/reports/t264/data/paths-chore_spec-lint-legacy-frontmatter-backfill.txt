@@ -1,0 +1,4 @@
+.moai/specs/SPEC-V3R2-HRN-002/spec.md
+.moai/specs/SPEC-V3R2-SPC-004/spec.md
+.moai/specs/SPEC-V3R4-HOOK-HARDEN-001/spec.md
+.moai/specs/SPEC-V3R4-STATUS-LIFECYCLE-001/spec.md

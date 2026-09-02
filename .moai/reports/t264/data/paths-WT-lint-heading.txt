@@ -1,0 +1,3 @@
+internal/spec/CLAUDE.md
+internal/spec/lint.go
+internal/spec/lint_outofscope_heading_test.go

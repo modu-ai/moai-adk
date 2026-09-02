@@ -1,0 +1,10 @@
+internal/cli/preference/cmd.go
+internal/cli/preference/cmd_test.go
+internal/cli/preference/correction_test.go
+internal/cli/preference/home_isolation_test.go
+internal/hook/home_isolation_test.go
+internal/hook/navigator_detect.go
+internal/hook/session_start.go
+internal/hook/session_start_kanban.go
+internal/hook/session_start_kanban_surface_test.go
+internal/hook/types.go

@@ -1,0 +1,4 @@
+.claude/rules/moai/workflow/main-checkout-branch-guard.md
+internal/hook/branch_guard.go
+internal/hook/branch_guard_quoted_test.go
+internal/template/templates/.claude/rules/moai/workflow/main-checkout-branch-guard.md

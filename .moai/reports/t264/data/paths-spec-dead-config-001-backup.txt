@@ -1,0 +1,5 @@
+.claude/rules/moai/core/settings-management.md
+.moai/config/sections/runtime.yaml
+internal/config/audit_loader_completeness_test.go
+internal/template/templates/.claude/rules/moai/core/settings-management.md
+internal/template/templates/.moai/config/sections/runtime.yaml

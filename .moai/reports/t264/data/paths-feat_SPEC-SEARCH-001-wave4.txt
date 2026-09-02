@@ -1,0 +1,15 @@
+go.mod
+go.sum
+internal/defs/dirs.go
+internal/defs/files.go
+internal/search/db.go
+internal/search/db_test.go
+internal/search/indexer.go
+internal/search/parser.go
+internal/search/parser.go.bak2
+internal/search/parser_test.go
+internal/search/parser_test.go.bak3
+internal/search/parser_test.go.bak4
+internal/search/schema.go
+internal/search/schema_test.go
+internal/search/searcher.go

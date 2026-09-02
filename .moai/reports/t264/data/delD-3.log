@@ -1,0 +1,20 @@
+error: cannot delete branch 'feat/web-shell-chrome' used by worktree at '/Users/goos/MoAI/moai-adk-go/.claude/worktrees/web-shell-chrome'
+Deleted branch feat/SPEC-TOKEN-001-wave4 (was c15ce34db).
+Deleted branch feat/SPEC-V3R2-ORC-002-wave3 (was f36709c4c).
+Deleted branch feat/SPEC-V3R2-ORC-004-wave1 (was dbccddd4e).
+Deleted branch feat/SPEC-V3R2-RT-002-wave1 (was c19875d2b).
+Deleted branch feat/SPEC-V3R2-RT-003-wave2 (was 290a0f1d4).
+Deleted branch feat/SPEC-V3R2-RT-006-wave2 (was a1ede89fe).
+Deleted branch feat/SPEC-V3R5-ATOMIC-WRITE-001 (was d49a0a7db).
+Deleted branch feat/SPEC-V3R5-STATUSLINE-FMC-001 (was 5bf4a111e).
+Deleted branch feat/SPEC-V3R6-LIFECYCLE-CLOSE-THREEPHASE-001 (was 9ea16eeda).
+Deleted branch feat/v31-debt-emphasis-paren (was 51a81d850).
+Deleted branch feat/v31-m4-ko-content (was e850e7de6).
+Deleted branch feat/v31-m6-i18n (was 96a39c3ae).
+Deleted branch feat/v31-m65-mcp-kanban-docs (was 55acb7ae5).
+Deleted branch feat/v31-m7-final-build (was a352d5e42).
+Deleted branch feat/web-console-ds (was e1d943733).
+Deleted branch feat/wizard-f3-validation (was 0b885ce07).
+Deleted branch feature/a (was 486c19e0d).
+Deleted branch feature/dirty (was dc5460155).
+Deleted branch feature/in-worktree (was a7ca40d7e).

@@ -1,0 +1,9 @@
+.claude/rules/moai/workflow/kanban-dispatch.md
+.claude/skills/moai/workflows/project.md
+.claude/skills/moai/workflows/project/doc-generation.md
+.claude/skills/moai/workflows/todo.md
+CHANGELOG.md
+internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md
+internal/template/templates/.claude/skills/moai/workflows/project.md
+internal/template/templates/.claude/skills/moai/workflows/project/doc-generation.md
+internal/template/templates/.claude/skills/moai/workflows/todo.md
