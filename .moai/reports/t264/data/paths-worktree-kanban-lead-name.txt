@@ -1,0 +1,6 @@
+internal/cli/cc.go
+internal/cli/glm.go
+internal/cli/kanban.go
+internal/cli/kanban_lead_name_test.go
+internal/kanban/bootstrap.go
+internal/kanban/bootstrap_test.go

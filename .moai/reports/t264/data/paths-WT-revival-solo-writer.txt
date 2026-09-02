@@ -1,0 +1,10 @@
+.claude/rules/moai/core/agent-common-protocol.md
+.claude/rules/moai/workflow/cross-session-messaging.md
+.moai/reports/t269/research.md
+.moai/specs/SPEC-TEAMMATE-REVIVAL-SOLE-WRITER-001/plan.md
+.moai/specs/SPEC-TEAMMATE-REVIVAL-SOLE-WRITER-001/progress.md
+.moai/specs/SPEC-TEAMMATE-REVIVAL-SOLE-WRITER-001/spec-compact.md
+.moai/specs/SPEC-TEAMMATE-REVIVAL-SOLE-WRITER-001/spec.md
+CHANGELOG.md
+internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md
+internal/template/templates/.claude/rules/moai/workflow/cross-session-messaging.md

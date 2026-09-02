@@ -1,0 +1,10 @@
+.moai/config/sections/system.yaml
+internal/config/types.go
+internal/hook/audit_test.go
+internal/hook/config_change_test.go
+internal/hook/file_changed_test.go
+internal/hook/instructions_loaded_test.go
+internal/hook/observability.go
+internal/hook/post_tool_failure_test.go
+internal/hook/subagent_stop_test.go
+internal/template/templates/.moai/config/sections/system.yaml

@@ -1,0 +1,7 @@
+.claude/rules/moai/development/verification-completeness.md
+.moai/specs/SPEC-VERIFICATION-COMPLETENESS-001/acceptance.md
+.moai/specs/SPEC-VERIFICATION-COMPLETENESS-001/plan.md
+.moai/specs/SPEC-VERIFICATION-COMPLETENESS-001/progress.md
+.moai/specs/SPEC-VERIFICATION-COMPLETENESS-001/spec.md
+CHANGELOG.md
+internal/template/templates/.claude/rules/moai/development/verification-completeness.md

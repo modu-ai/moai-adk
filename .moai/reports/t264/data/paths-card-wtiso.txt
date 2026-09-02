@@ -1,0 +1,6 @@
+.moai/specs/SPEC-FACTORY-CARD-ISOLATION-001/acceptance.md
+.moai/specs/SPEC-FACTORY-CARD-ISOLATION-001/design.md
+.moai/specs/SPEC-FACTORY-CARD-ISOLATION-001/plan.md
+.moai/specs/SPEC-FACTORY-CARD-ISOLATION-001/progress.md
+.moai/specs/SPEC-FACTORY-CARD-ISOLATION-001/research.md
+.moai/specs/SPEC-FACTORY-CARD-ISOLATION-001/spec.md

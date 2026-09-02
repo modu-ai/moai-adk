@@ -1,0 +1,2 @@
+.claude/rules/moai/workflow/kanban-dispatch.md
+internal/template/templates/.claude/rules/moai/workflow/kanban-dispatch.md

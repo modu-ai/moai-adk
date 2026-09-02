@@ -1,0 +1,4 @@
+.moai/specs/SPEC-ALWAYS-LOADED-DIET-001/acceptance.md
+.moai/specs/SPEC-ALWAYS-LOADED-DIET-001/plan.md
+.moai/specs/SPEC-ALWAYS-LOADED-DIET-001/progress.md
+.moai/specs/SPEC-ALWAYS-LOADED-DIET-001/spec.md

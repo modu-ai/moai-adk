@@ -1,0 +1,24 @@
+warning: not deleting branch 'WT-web-sigterm-toctou' that is not yet merged to
+         'refs/remotes/origin/release/v3.1.3', even though it is merged to HEAD
+error: the branch 'WT-web-sigterm-toctou' is not fully merged
+hint: If you are sure you want to delete it, run 'git branch -D WT-web-sigterm-toctou'
+hint: Disable this message with "git config set advice.forceDeleteBranch false"
+Deleted branch WT-t55 (was ae7da8df1).
+Deleted branch WT-t56 (was 4419a3744).
+Deleted branch WT-t119 (was ddfa5eaf1).
+Deleted branch WT-t59 (was 548ca9504).
+Deleted branch WT-glm-effort-max (was a76cf4121).
+Deleted branch WT-skills-canonical (was 179978185).
+Deleted branch worktree-agent-a099178d284386869 (was 931e4138a).
+Deleted branch WT-backlog-hygiene (was a477709b5).
+Deleted branch WT-symlink-bound (was db1ac0afa).
+Deleted branch WT-cc236-docs (was 9d4fb0302).
+Deleted branch WT-graph-report (was 20bcbdd85).
+Deleted branch WT-guard-liveness (was e22f1b192).
+Deleted branch WT-codemaps-orphan-stamp (was 62c5be6cb).
+Deleted branch WT-glm-lanes (was cf67bac41).
+Deleted branch WT-ignored-evidence-cite (was 97e82abab).
+Deleted branch WT-strategy-key-unify (was afde6ebb3).
+Deleted branch WT-ac-count-sweep (was 4ae5b9829).
+Deleted branch WT-t121 (was 16899d982).
+Deleted branch worktree-t72-worktree-docs (was 1344d6ce9).

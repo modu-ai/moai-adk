@@ -1,0 +1,24 @@
+warning: not deleting branch 'WT-integration-lock' that is not yet merged to
+         'refs/remotes/origin/WT-integration-lock', even though it is merged to HEAD
+error: the branch 'WT-integration-lock' is not fully merged
+hint: If you are sure you want to delete it, run 'git branch -D WT-integration-lock'
+hint: Disable this message with "git config set advice.forceDeleteBranch false"
+Deleted branch WT-wrapper-contract (was 94cf892d8).
+Deleted branch WT-sha-slot-format (was 57d97b26a).
+Deleted branch WT-integration-lock-identity (was 02ec0a7b6).
+Deleted branch WT-state-walkup (was eab9c7399).
+Deleted branch WT-init-wizard-repair (was 8ab9a8f06).
+Deleted branch WT-gitflow-doc-align (was c1d491387).
+Deleted branch WT-tokens-ledger-path (was fb091d66d).
+Deleted branch worktree-t195 (was 76b2c4ece).
+Deleted branch WT-github-1568 (was 3f0077d60).
+Deleted branch WT-audit-worktree-blind (was aa1891f0c).
+Deleted branch worktree-t199 (was 62b900e65).
+Deleted branch worktree-t39 (was b06cec203).
+Deleted branch WT-t92 (was fa9f51efa).
+Deleted branch worktree-agent-af39f39d9c430af36 (was 4100d8767).
+Deleted branch WT-guard-latency (was 7a531fe86).
+Deleted branch WT-deploy-result-wire (was 59751c7a8).
+Deleted branch worktree-t130 (was 8bcfd506d).
+Deleted branch WT-t95 (was 8a6da2f66).
+Deleted branch WT-freshness-trigger (was c9d701594).
