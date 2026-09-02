@@ -4,7 +4,7 @@ Card **t191** · Tier **M** · Branch `WT-project-continuation` · Baseline tree
 
 | Field | Value |
 |---|---|
-| plan_status | revised (v0.2.0 — plan-audit iter-1 delta) |
+| plan_status | revised (v0.3.0 — plan-audit iter-2 delta fix; Tier M ceiling exhausted, no iteration 3) |
 | run_status | not started |
 | sync_status | not started |
 
@@ -29,7 +29,24 @@ Coordinator-proposed progression-mode reading for `pipeline`: **evaluated and re
 
 New-in-v0.2.0 measurements, all on tree `2660bcd09`: `grep -c "QuestionTypeSelect" questions.go` → `12`; `translations_completeness_test.go:120-124` `continue` ⇒ 3 errors not 9; `f.workflow.audit.model.opt.*` present and translated in all four i18n maps while `applyI18n` resolves `.opt.` against English; inventory row at 2922-2924 by two methods.
 
-Ready for plan audit iteration 2.
+## §E.1b Iteration-2 disposition (v0.3.0)
+
+Iteration-2 audit (`.moai/reports/t191/plan-audit-iter2.md`, PASS-WITH-DEBT 0.80). The Tier M iteration ceiling is exhausted; this is a scoped delta fix, not a third audit round.
+
+| Audit defect | Class | Disposition |
+|---|---|---|
+| iter2-D1 `REQ-PCK-007` contradicts `REQ-PCK-006` | critical | **Accepted.** `REQ-PCK-007` rewritten as invariant + three-item permitted-change list (recommended option / carry distance / wording); `AC-PCK-007` asserts both halves; `plan.md` M1 instructs the same sentence. Gate invariant strengthened, not weakened — it gained "pre-filled" and "bypassed". |
+| iter2-D5 `REQ-PCK-006` omits the clarification precondition | major | **Accepted.** `REQ-PCK-006` extended with the `plan.md:53,73` ordering; `AC-PCK-006` gains conjunct 4; `plan.md` M1 `pipeline` bullet and §D carry it. |
+| iter2-D2 `AC-PCK-011`'s `withOptionDesc` half has no red | major | **Accepted.** Verified in source: `allOptionDescFields` skips fields with no `OptionDesc` (`option_desc_test.go:27-28`), coverage tests compare locale maps to each other. M5 adds `TestProjectContinuationI18nKeysInAllLocales` asserting a non-empty `OptionDesc` on all three options — that assertion is the red. |
+| iter2-D3 `AC-PCK-015` cites an audit-scoped map | major | **Accepted.** Citation replaced with `TestEveryOptionDescKeyAvoidsOptGuard` (`option_desc_test.go:50`), driven by `allOptionDescFields` → `settings.AllSections()`. The `app.js` tripwire citation is retained — it asserts on the asset, not a field set. |
+| iter2-D4 header claim vs `AC-PCK-014` | minor | **Accepted.** Header qualified; the unfalsifiable criterion relocated to `plan.md` §D Constraints; ACs renumbered gapless (15 → 14). |
+| iter2-D6 `card` tightened beyond P1 | minor | **Accepted.** §3 D1.1 now states the gap is widened from both ends and labels it a decision. |
+
+Additional (not defects): the `AC-PCK-005`/`AC-PCK-006` differential pair is now named explicitly in `acceptance.md`; the three-segment settings write path is **RESOLVED** (measured — `schema_sections.go:380-384` ships 3- and 4-segment paths in this same section) and dropped from §5 Gaps; the 3-vs-9 error count is restated as scenario-dependent (3 = no `Options` slice, 9 = length-3 slice with empty `Desc`s, neither executed); `REQ-PCK-012`'s "guard shall not be modified" recorded as a scope observation.
+
+Both v0.2.0 disputes were upheld by the auditor: D5 (inventory line) recorded as auditor error, and the "3, not 9" control-flow reading confirmed.
+
+Ready for Implementation Kickoff Approval.
 
 ## §E.2 Run-phase Evidence
 

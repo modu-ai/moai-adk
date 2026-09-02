@@ -1,6 +1,6 @@
 # SPEC-PROJECT-CONTINUATION-KEY-001 — Implementation Plan
 
-Card: **t191** · Tier **M** · Branch `WT-project-continuation` · Baseline tree `2660bcd09` · **v0.2.0** (plan-audit iter-1 revision)
+Card: **t191** · Tier **M** · Branch `WT-project-continuation` · Baseline tree `2660bcd09` · **v0.3.0** (plan-audit iter-2 delta fix)
 
 ---
 
@@ -34,8 +34,10 @@ git rev-list --count --left-right origin/develop...HEAD
 ## §D Constraints
 
 - **Template-First**: `internal/template/templates/**` is edited first, then `make build`, then the local mirror — for the three byte-identical pairs only. `workflow.yaml` is edited on both sides independently.
-- **No gate relaxation**: REQ-PCK-007 / REQ-PCK-008 are prohibitions. Any milestone whose diff makes the Phase 14 question skippable is wrong regardless of what else it achieves.
+- **No gate relaxation**: `REQ-PCK-007` / `REQ-PCK-008` are prohibitions. Any milestone whose diff makes the Phase 14 question skippable, auto-answerable, pre-fillable, or defaulted-on-no-answer is wrong regardless of what else it achieves. `REQ-PCK-007` permits exactly three changes — recommended option, carry distance, wording — and permitting carry distance is what makes it consistent with `REQ-PCK-006`; it is not a loosening of the invariant.
+- **Ordering, not just presence**: `pipeline` carries to gate **emission**, and emission itself is ordered behind `[NEEDS CLARIFICATION]` resolution (`plan.md:53`, `plan.md:73`). A `pipeline` row that carries unconditionally breaches a [HARD] ordering clause even though it bypasses nothing.
 - **Local verification scope**: run `go test ./internal/config/... ./internal/settings/... ./internal/cli/wizard/... ./internal/core/project/... ./internal/web/...`. Never `go test ./...` locally (`CLAUDE.local.md` §6).
+- **Do not touch the three gate-owning files.** `.claude/rules/moai/workflow/orchestration-mode-selection.md`, `.claude/rules/moai/workflow/goal-directive.md`, and `.claude/skills/moai/workflows/goal.md` appear in no milestone's file list and must stay unmodified: `git diff --stat <merge-base>...HEAD` over those three paths is expected empty. This was `AC-PCK-014` in v0.2.0; it is a constraint rather than a criterion because it has no reachable red (it is already satisfied before any work begins), and an acceptance file is the set of things that decide closure.
 - **No push, no PR, no CI request from this lane.**
 
 ---
@@ -59,9 +61,9 @@ The three-way behaviour, written into `doc-generation.md` Step 4.1.5 and Step 4.
 - Step 4.2 gains a per-value recommended-option table. The three rows differ by **carry distance**, per `spec.md` §3 D1.1:
   - `none` → `Create SPEC` (the pre-P1 wording), and the option set omits `Create SPEC later` — there is no card for it to refer to. Four options, no `Other` routing.
   - `card` → `Create the SPEC and start now`, carrying **as far as `/moai plan` and no further** (the shipped text, unchanged).
-  - `pipeline` → carries **past `/moai plan` to emitting the Implementation Kickoff Approval gate**, and **must** carry the kickoff clause in the same terms as the `card` option. In Kanban Mode the row says the lead owns carry distance and `pipeline` changes nothing.
+  - `pipeline` → carries **past `/moai plan` to emitting the Implementation Kickoff Approval gate**; **must** carry the kickoff clause in the same terms as the `card` option; and **must** state the ordering precondition — the gate is emitted only once the plan phase's `[NEEDS CLARIFICATION]` markers are resolved (`plan.md:53`, `plan.md:73`: "Implementation Kickoff Approval proceeds only after all clarifications are resolved"), and where markers remain open the row stops at their resolution rather than at the gate. In Kanban Mode the row says the lead owns carry distance and `pipeline` changes nothing.
 - The two [HARD] clauses (four-option cap, "no branch is taken on the operator's behalf") are restated **unchanged** and explicitly scoped as value-independent.
-- A new [HARD] sentence states the key changes only which option is recommended, how far it carries, and how it is worded — never whether the question is asked or how it is answered.
+- A new [HARD] sentence states the operator-decision invariant in the terms `REQ-PCK-007` uses: at every value the question is asked, the operator answers, and nothing is skipped, auto-answered, pre-filled, defaulted-on-no-answer, or bypassed; within that invariant the key changes only which option is recommended, how far that option carries the session, and how it is worded. Write it as that pair — invariant first, then the three permitted changes — so it matches `REQ-PCK-007` and `AC-PCK-007` word for word.
 - `project.md:59` Phase Routing Table row for Phase 14 is updated to name the key.
 
 Verify: `grep -n "workflow.project.continuation" .claude/skills/moai/workflows/project/doc-generation.md` returns ≥1; `grep -c "Implementation Kickoff Approval"` returns ≥2 (one per run-phase-offering option: `card` and `pipeline`); `cmp` against the template twin returns rc=0.
@@ -104,6 +106,9 @@ Verify: `go test ./internal/cli/wizard/... ./internal/core/project/...`.
 
   Place it beside the `todo` row, with a comment recording that this key **does** ship in the template — unlike its two `branch_guard` / `todo` neighbours, whose comments say the opposite.
 - `internal/web/assets/i18n.js`: in each of `en` / `ko` / `ja` / `zh` — `.title`, `.desc`, three `.opt.<token>` labels, and three `.option.<token>` descriptions. **8 keys × 4 locales = 32 entries.**
+- **New test — `TestProjectContinuationI18nKeysInAllLocales` in `internal/web`.** This is not optional garnish: without it a missing `withOptionDesc` wrapper ships **silently green**, because `allOptionDescFields` skips fields carrying no `OptionDesc` (`option_desc_test.go:27-28`) and the i18n coverage tests compare locale maps to each other rather than schema to dictionary. Follow the repository's per-SPEC pattern — `crosssession_test.go:100` and `feedback_panel_test.go:33`, both using the `i18nKeyInAllLocales` helper (`schema_label_test.go:49-55`). Assert both:
+  1. the `workflow.project.continuation` `FieldDef` carries a non-empty `OptionDesc` on all three options — this is the conjunct that fires on the missing wrapper;
+  2. all eight keys resolve in all four locale maps.
 
 Verify: `go test ./internal/settings/... ./internal/web/...`.
 
