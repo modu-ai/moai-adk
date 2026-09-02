@@ -93,13 +93,14 @@ func newTodoCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "todo",
 		Short: "Operate the kanban backlog queue",
-		Long: `Operate the kanban backlog queue at .moai/state/todo/backlog.json.
+		Long: `Operate the kanban backlog queue at .moai/state/todo/backlog.db.
 
 The queue resolves against the PRIMARY checkout even when this command runs
 inside a linked worktree — one repository, one queue; a card worktree adds
-to and reads the same file the lead and the foreman loop see. A project
-without git metadata keeps its queue at ~/.moai/todo/<project-key>/backlog.json
-instead.
+to and reads the same store the lead and the foreman loop see. A project
+without git metadata keeps its queue at ~/.moai/todo/<project-key>/backlog.db
+instead. A backlog.json sitting beside the database is NOT the queue — it is
+an export or a legacy leftover, and its contents can be arbitrarily stale.
 
 The backlog is the operator's queue: entry into the board is the operator's
 act (add), and picking the next card is the operator's act too (next <n>).
