@@ -122,7 +122,7 @@ selected automatically.`,
 			return cmd.Help()
 		},
 	}
-	cmd.AddCommand(newMemoryDoctorCmd(), newMemoryArchiveCmd())
+	cmd.AddCommand(newMemoryDoctorCmd(), newMemoryArchiveCmd(), newMemoryDrainCmd())
 	return cmd
 }
 

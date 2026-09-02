@@ -28,6 +28,8 @@ paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/
 
 [HARD] **병합 절차의 정본은 여기가 아니다.** `WT-*` 브랜치의 통합 절차 — 병합 창 조율, 통합 워크트리 진입, no-ff 병합, 통합 브랜치 push(강제 push 금지), 퇴장 — 는 배포되는 `.claude/skills/moai/workflows/sync/delivery.md` Step 3.2 의 `git-flow` 전략 `WT-*` 경로가 소유한다. 레인은 그 절차를 그대로 따르고, 이 문서는 아래 리포 고유 사항만 덧붙인다. 절차를 여기에 다시 적지 않는다 — 두 벌이 되는 순간 갈라진다.
 
+[HARD] **리포 로컬 예외 — delivery.md Step 3.2 제6단계(통합 브랜치 push)는 이 리포에서 EXCLUDED다(2026-09-02 운영자 지시).** 배포 스킬의 WT-* 절차가 push 단계를 안내하더라도 이 리포의 레인은 그 단계를 수행하지 않는다 — develop push는 리드의 일괄 행위다(§4, §7). 배포 스킬 파일은 건드리지 않으며, 레인에게는 이 리포의 로컬 답이 우선한다.
+
 리포 고유 사항:
 
 - 통합 워크트리 경로는 `.claude/worktrees/develop` 이고, 리드가 배치 시작 시 provisioning 한다.
@@ -64,11 +66,11 @@ git branch --show-current
 
 가정과 다르면 진행하지 말고 발산을 보고한다.
 
-## 4. Push — `develop`을 원격에 올린다
+## 4. Push — 리드 일괄, 레인은 하지 않는다
 
-병합 후 레인이 직접 올린다: `git push origin develop`.
+**레인은 `develop`을 push하지 않는다(2026-09-02 운영자 지시).** 레인의 공개 소관은 로컬 병합에서 끝난다 — 병합 커밋 SHA(카드 id 포함)를 완료 보고로 리드에게 전달하는 것까지다. push는 리드가 **일괄**로 수행한다: 완료 보고에서 병합 SHA를 모아 배치를 닫고 한 번 push한다.
 
-거부되면 다른 레인이 먼저 올린 것이다: `git fetch` → 가져온 `develop`을 통합 → 다시 push. **절대 force 하지 않는다.**
+**리드의 원격 착지 검증.** push 뒤에 리드는 `git fetch origin develop` + `git rev-parse origin/develop`으로 원격이 움직였는지 확인하고, 그 뒤에야 카드 done과 워크트리 폐기 승인을 낸다.
 
 **원격 CI(`origin/develop`)가 통합 판정의 주체다.** 로컬 통과는 조기 신호일 뿐이다 — 깨끗한 환경도, darwin/windows 매트릭스도 아니다.
 
@@ -78,8 +80,8 @@ git branch --show-current
 
 ## 6. 병합 이후 — 레인은 카드를 스스로 고르지 않는다
 
-- 병합·push를 마치면 `ExitWorktree`로 primary 체크아웃에 돌아와, **리드가 다음 카드를 dispatch 할 때까지 기다린다.** 레인이 큐에서 카드를 집지 않는다.
-- [HARD] **카드 워크트리는 작업이 `origin/develop`에 올라간 뒤에야 폐기한다.** 그전까지 그 트리가 작업의 유일한 사본이다. L1 트리(`.claude/worktrees/…`)는 `moai worktree done`의 대상이 아니다 — 세션 종료 keep/remove 프롬프트나 `git worktree unlock` + `git worktree remove`로 닫는다.
+- 로컬 병합을 마치고 병합 SHA를 리드에게 보고하면 `ExitWorktree`로 primary 체크아웃에 돌아와, **리드가 다음 카드를 dispatch 할 때까지 기다린다.** 레인이 큐에서 카드를 집지 않는다.
+- [HARD] **카드 워크트리는 작업이 `origin/develop`에 올라간 뒤에야 폐기한다.** 그전까지 그 트리가 작업의 유일한 사본이다. 원격 착지는 리드의 일괄 push가 만든다(§4, §7). L1 트리(`.claude/worktrees/…`)는 `moai worktree done`의 대상이 아니다 — 세션 종료 keep/remove 프롬프트나 `git worktree unlock` + `git worktree remove`로 닫는다.
 
 ## 7. 리드 — 읽어서 판정한다
 
@@ -87,6 +89,7 @@ git branch --show-current
 - 병합 판정(무엇이 `develop`에 들어갔는가)은 리드의 것이다. 작업을 만든 레인에게 자기 결과를 판정하게 하지 않는다.
 - 증거 파일이 없거나 읽히지 않거나 낡았으면 **gap**이다 — 카드는 그대로 두고 이유를 보고한다.
 - 병합이 확인되면 다음 카드를 **지금 비어 있는 레인**에 dispatch 한다.
+- **develop push는 리드의 일괄 소관이다(2026-09-02).** 레인 완료 보고에서 카드 id와 로컬 병합 SHA를 모은다 → 배치를 닫을 시점을 리드가 판단한다 → `git push origin develop`을 **한 번** 실행한다 → `git fetch`와 `git rev-parse origin/develop`으로 원격 착지를 검증한다 → 그 뒤에야 카드 done과 워크트리 폐기 승인을 낸다.
 
 ## 8. 검증은 레인-로컬
 
