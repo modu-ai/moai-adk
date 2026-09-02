@@ -1,0 +1,2 @@
+AGENTEMIT_UPDATE=1 go test ./internal/template/agentemit/... -run TestGoldenCommittedArtifactsMatchEmission
+ok  	github.com/modu-ai/moai-adk/internal/template/agentemit	0.447s
