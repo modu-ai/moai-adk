@@ -116,6 +116,8 @@ degradation is noted on stderr, and the exit code stays 0.`,
 // runTodoPR renders the link view. Every exit path is exit 0 unless the queue
 // itself is unreadable — a degraded link lookup is a note, not an error.
 func runTodoPR(cmd *cobra.Command, only string, jsonOutput bool) error {
+	// REQ-BJD-002 — probed before the read (todo_disclosure.go).
+	_ = discloseQueueLayout(cmd, "pr")
 	rec, err := newTodoStore().Load()
 	if err != nil {
 		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)

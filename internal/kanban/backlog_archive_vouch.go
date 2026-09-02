@@ -41,6 +41,15 @@ const (
 type BacklogArchiveVouch struct {
 	Store      string
 	HasArchive bool
+	// NonAuthoritativeJSON reports that a backlog.json sits at the
+	// canonical queue path while the SQLite store is the one answering
+	// reads — State D (SPEC-BACKLOG-JSON-DISCLOSURE-001, REQ-BJD-001).
+	// The file answers a direct read silently and is not the queue.
+	//
+	// Meaningful ONLY on the SQLite branch: on BacklogStoreLegacyJSON the
+	// JSON *is* the answering store, and on BacklogStoreNone there is
+	// nothing at all — both keep it false.
+	NonAuthoritativeJSON bool
 }
 
 // InspectBacklogArchiveVouch reports which store answers reads for the
@@ -54,7 +63,13 @@ func InspectBacklogArchiveVouch(queuePath string) BacklogArchiveVouch {
 		}
 		return BacklogArchiveVouch{Store: BacklogStoreLegacyJSON}
 	}
-	return BacklogArchiveVouch{Store: BacklogStoreSQLite, HasArchive: archiveTablesPresent(backlogSQLitePath(queuePath))}
+	// layout.jsonExists is measured on every call and was previously
+	// discarded on this branch; it is the State D fact, not a new probe.
+	return BacklogArchiveVouch{
+		Store:                BacklogStoreSQLite,
+		HasArchive:           archiveTablesPresent(backlogSQLitePath(queuePath)),
+		NonAuthoritativeJSON: layout.jsonExists,
+	}
 }
 
 // archiveTablesPresent answers whether BOTH archive tables exist in the
