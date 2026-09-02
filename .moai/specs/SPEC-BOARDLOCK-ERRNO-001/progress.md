@@ -435,3 +435,13 @@ ordering_record_body_correction_after_close: >
 
   correction_commit_sha: be812f401   # backfilled — docs(SPEC-BOARDLOCK-ERRNO-001): correct AC-BLE-003 mechanism description + record close ordering (t379)
 ```
+
+## t396 vacuity-condition amendment
+
+카드 t396(lane-10, 브랜치 WT-ble4-vacuity-count)이 AC-BLE-004("실패 집합 불변")의 두 번째 공허화 조건을 acceptance.md `§AC-BLE-004` 등급 칸에 추가했다. 처우는 **조건 추가**다 — AC 재배치(신규 테스트 작성)가 아니다. 근거: mutation 락의 darwin 경합 테스트는 프로세스 재실행 plumbing 설계를 요하는 별개 작업이라 별도 카드 축으로 남긴다.
+
+Census (판정 플랫폼 기준, 축별 경합 테스트 계수 — this tree): board 락 축 4 · backlog 락 축 3 · mutation 락 축 windows 2 / darwin-linux 0. 세 축 중 mutation 락 축만 darwin/linux 스윕을 지나지 않으므로, AC가 단언하는 "세 소비자를 지나는" 실패 집합 기준으로 이 축에서 조건이 성립한다.
+
+판정 근거: `.moai/reports/t396/verdict.md` — 기록 시점 untracked(리드 반출본)로, 오케스트레이터 커밋이 이 브랜치에 함께 싣는 것을 전제로 인용한다. 선행 근거: t379의 AC-BLE-004 측정 방법은 패키지 전체 스윕(`go test ./internal/kanban/... -count=1`)이며, darwin에서 이 스윕은 mutation 락 축을 아무것도 지나지 않는다.
+
+첫 번째 조건(기준선 부재)은 그대로 두고 헤지 문구만 조정했다 — "지금 식별된 공허화 조건은 이것이다(전수 열거는 아니다)"에서 "공허화 조건은 둘이다(전수 열거는 아니다)"로. 조건이 2개가 된 시점부터 단수 진술은 더 이상 정확하지 않다.

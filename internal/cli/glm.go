@@ -57,6 +57,8 @@ Flags:
   -b, --bypass                  Shorthand for --permission-mode bypassPermissions
   -w, --worktree [name]         Launch in an isolated git worktree (.claude/worktrees/<name>/);
                                 name omitted = auto-generated (same as claude --worktree)
+      --branch <existing>         With -w <name>: check out an EXISTING branch in the
+                                new worktree (see moai cc --help)
       --spawn                   Run this command in a new tmux window instead of
                                 replacing the current session (requires tmux)
 
@@ -278,6 +280,11 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	if err := resolveWorktreeL2Path(filteredArgs); err != nil {
 		return err
 	}
+	// Card t295: see cc.go — `-w <name> --branch <existing>` creation path.
+	filteredArgs, err = resolveWorktreeExistingBranch(filteredArgs, cmd.ErrOrStderr())
+	if err != nil {
+		return err
+	}
 	filteredArgs = normalizeWorktreeFlag(filteredArgs)
 
 	// Auto mode is not available with third-party providers (GLM/Z.AI).
@@ -388,15 +395,14 @@ func setGLMEnv(glmConfig *GLMConfigFromYAML, apiKey string) {
 // (The settings.local.json twin of this wire point, injectGLMEnvForTeam, was
 // removed with its dead caller enableTeamMode in #1531.)
 //
-// Delivery status MEASURED (t175, .moai/reports/t175/measurements.md §3 —
-// closes the AC-MTP-032b residual of SPEC-MODEL-TIER-PLANTYPE-001): the z.ai
-// Anthropic-compat shim honors the Anthropic `thinking` parameter (thinking
-// blocks returned; depth scales with the budget) and silently IGNORES a
-// top-level z.ai-style `reasoning_effort` field, so the effective wire channel
-// is the thinking-budget mapping Claude Code derives from this env var, not a
-// z.ai-native reasoning_effort passthrough. The live session's thinking-block
-// responses are indirect end-to-end evidence the chain is live; delivered spend
-// per level remains unquantified (measurements §6).
+// Delivery status MEASURED, direction reversed post-close (SPEC-V3R6-AUDIT-MODEL-PIN-001
+// acceptance.md AC-AMP-006 amendment, 2026-08-24, lead-approved; closes the
+// AC-MTP-032b residual of SPEC-MODEL-TIER-PLANTYPE-001): the null-controlled
+// live differential proved the top-level `reasoning_effort` request field is
+// the effective delivery channel (ratios 1.34/1.85/1.48 against the 1.25 bound;
+// thinking-budget null 1.02). The earlier t175 probe
+// (.moai/reports/t175/measurements.md §3) reported the opposite direction and
+// is superseded by that record. Delivered spend per level remains unquantified.
 func glmReasoningEnvVars() map[string]string {
 	state := template.SessionGLMReasoningState()
 	out := make(map[string]string, 1)
@@ -422,11 +428,11 @@ func glmReasoningEnvVars() map[string]string {
 // empty); this helper is ADDITIVE and is consumed only by the main-session
 // launch path.
 //
-// Delivery status MEASURED (t175, .moai/reports/t175/measurements.md §3 —
-// closes the AC-MTP-032b residual of SPEC-MODEL-TIER-PLANTYPE-001): the z.ai
-// shim honors the Anthropic `thinking` parameter and ignores a top-level
-// z.ai-style `reasoning_effort` field, so this env reaches z.ai through the
-// thinking-budget mapping, not a native reasoning_effort passthrough.
+// Delivery status MEASURED, direction reversed post-close (SPEC-V3R6-AUDIT-MODEL-PIN-001
+// acceptance.md AC-AMP-006 amendment, 2026-08-24 — supersedes the t175 probe):
+// the top-level `reasoning_effort` request field is the effective delivery
+// channel, so this env reaches z.ai through that field, not a thinking-budget
+// mapping.
 func glmReasoningEnvVarsForModel(model, effort string) map[string]string {
 	state := template.SessionGLMReasoningStateForModel(model, effort)
 	out := make(map[string]string, 1)
