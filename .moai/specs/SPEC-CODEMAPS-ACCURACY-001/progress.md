@@ -66,7 +66,7 @@
 
 ```yaml
 run_complete_at: 2026-09-02
-run_commit_sha: "pending-backfill-97bff985c"   # M4 최종 커밋 이전 기준 head; 최종 run-phase head는 리드 판독 시점 git log로 확정
+run_commit_sha: "fa7b06bf0"   # sync-phase backfill (manager-docs): M4 최종 run-phase head — pending-backfill-97bff985c 플레이스홀더 대체
 run_status: complete
 ac_pass_count: 9
 ac_fail_count: 0
@@ -83,7 +83,23 @@ m1_to_mN_commit_strategy: per-milestone conventional commits, no push, no amend,
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-02
+sync_commit_sha: "pending-backfill-<parent-of-sync-commit>"   # 커밋은 자신의 SHA를 모른다 — 리드/lane 후속 백필 (D3 SHA placeholder exemption)
+sync_status: complete
+b12_self_test_a: "grep -c 'SPEC-CODEMAPS-ACCURACY-001' CHANGELOG.md → 0 (중복 없음, emission 진행)"
+b12_self_test_b: "grep -oE 'AC-CMA-[0-9]+' acceptance.md | sort -u | wc -l → 9; CHANGELOG entry cites 9 ACs (9 PASS)"
+b12_self_test_c: "모든 인용 경로 ls 검증 — internal/graph/check_citations.go · internal/graph/check.go · internal/cli/graph_check.go · codemaps.md 양 미러 존재 확인"
+changelog_entry_position: "CHANGELOG.md [Unreleased] → Added 선두 (SPEC-CODEMAPS-ACCURACY-001)"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (본 sync 커밋에서 3-phase close 병합 — 별도 Mx 커밋 없음)"
+  updated_bumped: "2026-09-02 (동일 — 당일 close)"
+canary_compliance_check:
+  spec_body_edits: 0   # spec.md/plan.md/acceptance.md 본문 무편집 (frontmatter status/updated만)
+  codemaps_regeneration: "not executed — accuracy는 run-phase 수리 + citations 축이 담당; 재생성은 범위 밖 (follow-up)"
+  docs_site_4locale: "not expanded — citations 축·스킬 규약은 user-facing이나 본 크기 문서화는 scope 밖으로 판정 (blocker/scope-estimate 불요 — 스킬 양미러가 사용자 면 커버)"
+mx_tag_changes: "added 0 / removed 0 / updated 0 — checkCitations에 @MX:NOTE [AUTO] 이미 존재(run-phase); LayerCitations·MetricPositiveCitedPathAbsence 상수는 fan-in 2(check.go·check_citations.go)로 ANCHOR 기준 미달, NOTE 추가 불요"
+```
 
 ## §F Phase 4 Mode Selection
 
