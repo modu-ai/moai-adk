@@ -73,7 +73,33 @@ no repair named.
 
 ### M2 — clean-reinstall parity (AC-LCP-005)
 
-_<pending>_
+Extended the `update_clean_install_config_preserve_test.go` fixture family:
+`makeConfigPreserveFixture` now seeds llm.yaml with the SAME user-edit pattern
+(value re-pin + agent_overrides entry + marker comment above a user-added
+key), and `overwritingDeployer.Deploy` clobbers llm.yaml with the REAL
+embedded template bytes (read via `readEmbeddedLLMYAML`, error-propagating) —
+so survival proves the restore's 3-way merge, not a clobber that never
+happened. The five existing family tests run unchanged (verified below with
+the widened fixture + clobber in place).
+
+**E2/M2 scoped GREEN** — commands and observed outputs (verbatim):
+
+- `go test -run 'TestCleanReinstallLLMYAMLPreserved' -count=1 ./internal/cli/`
+  → `ok github.com/modu-ai/moai-adk/internal/cli	1.002s`, exit 0
+  (`.moai/reports/t239/green-m2-clean-reinstall.log`).
+- Family re-run with the widened fixture: `go test -run 'TestCleanReinstall'
+  -count=1 ./internal/cli/` → `ok
+  github.com/modu-ai/moai-adk/internal/cli	1.106s`, exit 0
+  (`.moai/reports/t239/green-m2-clean-reinstall-family.log`).
+
+**E3/M2 mutant teeth** — mutation: clean-reinstall restore step bypassed in
+`internal/cli/update_clean_install.go` (`if false && configBackupPath != ""`
+scratch edit). Command: `go test -run 'TestCleanReinstallLLMYAMLPreserved'
+-count=1 ./internal/cli/`; exit 1; verbatim RED line: `clean-reinstall lost
+user llm.glm.models.high = "glm-5.3-flash"; want "glm-user-pinned-model"
+(clobbered to template default?)`. Evidence:
+`.moai/reports/t239/mutant-red-ac-lcp-005-clean-restore-bypass.log`.
+Reverted; GREEN re-observed across the whole family.
 
 ### M3 — negative constraint + verification batch (AC-LCP-006 + E1-E6)
 
