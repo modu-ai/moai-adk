@@ -12,6 +12,18 @@ workflow:
         after_run: false
         enabled: true
         token_threshold: 150000
+    # audit pins (SPEC-V3R6-AUDIT-MODEL-PIN-001): project-committed model+effort
+    # for the cross-model audit backends — audit entry points only (codex_audit /
+    # glm_audit / audit_multi), never codex_task / glm_task. Precedence per
+    # backend: this pin > llm.yaml sync-auditor SSOT cell > empty. codex effort
+    # vocabulary low|medium|high|xhigh|max; glm effort = z.ai states low|high|max.
+    audit:
+        codex:
+            model: gpt-5.6-sol
+            effort: high
+        glm:
+            model: glm-5.3
+            effort: max
     default_mode: ""
     execution_mode: auto
     # context_folding: manager-lead's per-milestone Context-Folding trigger policy
@@ -120,8 +132,16 @@ workflow:
     worktree:
         # 2026-05-22: auto_create false (user policy feedback_worktree_autonomous 정렬).
         # L1 worktree는 Claude Code runtime autonomous — MoAI orchestrator는 자동 생성 안함.
-        # auto_merge/auto_cleanup 유지 (사용자 수동 worktree 생성 시에만 자동 머지/정리).
-        auto_cleanup: true
+        # auto_merge 유지 (사용자 수동 worktree 생성 시에만 자동 머지).
+        #
+        # auto_cleanup: true → false (SPEC-WORKTREE-REAPER-001 M1 착지 조건).
+        # M1이 gh no-answer 경로에서 git fallback을 되살리면서, 이 저장소의
+        # 병합된 워크트리 ~98개가 `moai session list` 한 번에 제거 대상이 된다.
+        # 그 일괄 삭제는 SPEC §G에서 범위 밖으로 선언돼 있으므로, 첫 스윕은
+        # `moai session list`의 부수효과가 아니라 의도된 행위여야 한다.
+        # 재활성화는 제거 예정 트리를 먼저 열거한 뒤 운영자가 판단할 것
+        # (acceptance.md AC-WR-023(b)).
+        auto_cleanup: false
         auto_create: false
         auto_merge: true
         session_name_pattern: moai-{ProjectName}-{SPEC-ID}
@@ -133,4 +153,12 @@ workflow:
     # exempt via agent identity, allowing it to create worktrees even when
     # the guard is active.
     branch_guard:
+        enabled: true
+    # agent_stop_guard: SendMessage deny layer against revival of stopped
+    # teammates (TaskStop does not reclaim the name address; one message
+    # resumes a stopped agent from its transcript). Recording + observation +
+    # advisory always run regardless of this flag; this local opt-in enables
+    # the deny layer for dogfood. Shipped default-false in template
+    # (internal/config/defaults.go enforces this).
+    agent_stop_guard:
         enabled: true

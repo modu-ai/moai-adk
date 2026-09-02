@@ -1,0 +1,316 @@
+### 0. environment + prerequisites
+$ echo "bash=${BASH_VERSION}"
+bash=3.2.57(1)-release
+rc=0
+
+$ command -v codex
+/Users/goos/.local/bin/codex
+rc=0
+
+$ codex --version
+codex-cli 0.149.0
+rc=0
+
+# build the binary under measurement (into the probe temp dir)
+$ go build -o "$MOAI" ./cmd/moai
+rc=0
+
+# generate the doctor JSON this probe reads (timed, rc captured)
+$ START=$(date +%s); codex doctor --json > "$DOCTOR_JSON" 2>/dev/null; DRC=$?; END=$(date +%s); echo "codex doctor --json: rc=$DRC elapsed=$((END-START))s"; ( exit $DRC )
+codex doctor --json: rc=0 elapsed=67s
+rc=0
+
+### baseline
+$ git rev-parse --short HEAD
+1ed61e4ac
+rc=0
+
+$ git status --short
+ M .moai/reports/t197/probe-output.txt
+?? .moai/reports/t197/citation-sweep.sh
+rc=0
+
+$ git merge-base --is-ancestor 7b217da7c HEAD
+rc=0
+
+### M-1 no moai codex
+$ "$MOAI" --help 2>&1 | grep -ci "codex"; ( exit ${PIPESTATUS[1]} )
+0
+rc=1
+
+$ "$MOAI" --help 2>&1 | sed -n "/LAUNCH COMMANDS/,/PROJECT COMMANDS/p" | sed "s/ *$//"; ( exit ${PIPESTATUS[0]} )
+  LAUNCH COMMANDS:
+
+    cc [-p profile] [-k [SPEC-ID] | -k --name <role> | -f [N] | -f lane-<n>] [-- claude-args...]             Launch Claude Code with Claude backend
+    glm [command] [-p profile] [-k [SPEC-ID] | -k --name <role> | -f [N] | -f lane-<n>] [-- claude-args...]  Launch Claude Code with GLM backend
+    cg [-p profile]                                                                                          Launch Claude Code with Claude + GLM hybrid mode
+
+  PROJECT COMMANDS:
+rc=0
+
+$ grep -rn "Use: *\"codex" internal/cli/*.go
+internal/cli/hook.go:221:		Use:          "codex-review-gate",
+rc=0
+
+### M-2 auth stream
+$ codex login status
+Logged in using ChatGPT
+rc=0
+
+$ codex login status 2>/dev/null | wc -c; ( exit ${PIPESTATUS[0]} )
+       0
+rc=0
+
+$ codex login status 2>&1 1>/dev/null | wc -c; ( exit ${PIPESTATUS[0]} )
+      24
+rc=0
+
+$ sed -n "273,284p" internal/cli/mcp_codex.go
+func (realCodexRunner) run(ctx context.Context, binaryPath string, args []string, stdin string) (string, error) {
+	cmd := exec.CommandContext(ctx, binaryPath, args...)
+	cmd.Stdin = strings.NewReader(stdin)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	// Discard stderr so a noisy codex never corrupts the JSON-RPC stdout parse.
+	cmd.Stderr = &bytes.Buffer{}
+	if err := cmd.Run(); err != nil {
+		return "", err
+	}
+	return out.String(), nil
+}
+rc=0
+
+$ sed -n "1326,1343p" internal/cli/mcp_codex.go
+func classifyCodexAuth(ctx context.Context, binaryPath string) string {
+	out, err := codexRunner.run(ctx, binaryPath, []string{"login", "status"}, "")
+	if err != nil || out == "" {
+		return codexAuthUnknown
+	}
+	low := strings.ToLower(out)
+	switch {
+	case strings.Contains(low, "chatgpt"):
+		return codexAuthChatGPT
+	case strings.Contains(low, "api key"), strings.Contains(low, "apikey"):
+		return codexAuthAPIKey
+	case strings.Contains(low, "provider"):
+		return codexAuthProvider
+	default:
+		return codexAuthUnknown
+	}
+}
+
+rc=0
+
+$ grep -rn "AuthProvider" internal/web/*.go internal/cli/web.go | grep -v _test; ( exit ${PIPESTATUS[0]} )
+internal/web/codex_state.go:23:	AuthProvider     string // chatgpt | apiKey | provider | unknown
+internal/web/codex_state.go:28:// codexAuthProvider constants mirror the internal/cli classification tokens.
+internal/web/codex_state.go:35:	codexAuthProvider = "provider"
+internal/web/codex_state.go:45:	return CodexStateView{AuthProvider: codexAuthUnknown}
+internal/web/fieldsets_templ.go:3568:			templ_7745c5c3_Var169, templ_7745c5c3_Err = templ.JoinStringErrs(codexAuthProviderLabel(view.CodexState.AuthProvider))
+internal/web/fieldsets_templ.go:3580:			if view.CodexState.AuthProvider == "unknown" {
+internal/web/schemaform.go:110:// codexAuthProviderLabel maps the auth-provider token the probe emitted to a
+internal/web/schemaform.go:114:func codexAuthProviderLabel(provider string) string {
+internal/web/schemaform.go:120:	case codexAuthProvider:
+internal/cli/web.go:161:				AuthProvider:     s.AuthProvider,
+rc=0
+
+### M-2b structured auth source
+$ codex doctor 2>&1 | grep -iE "auth|login|account"; ( exit ${PIPESTATUS[1]} )
+  ✓ auth         auth is configured
+      auth storage mode        File
+      auth file                ~/.codex/auth.json
+      stored auth mode         chatgpt
+      auth mode                chatgpt
+      reachability mode        ChatGPT auth
+rc=0
+
+$ python3 -c "import json,sys;d=json.load(open(sys.argv[1]));print(json.dumps(d[\"checks\"][\"auth.credentials\"],indent=1))" "$DOCTOR_JSON"
+{
+ "id": "auth.credentials",
+ "category": "auth",
+ "status": "ok",
+ "summary": "auth is configured",
+ "details": {
+  "auth file": "/Users/goos/.codex/auth.json",
+  "auth storage mode": "File",
+  "stored API key": "false",
+  "stored ChatGPT tokens": "true",
+  "stored agent identity": "false",
+  "stored auth mode": "chatgpt"
+ },
+ "remediation": null,
+ "durationMs": 0
+}
+rc=0
+
+$ python3 -c "import json,sys;d=json.load(open(sys.argv[1]));print(chr(10).join(k+\": \"+v[\"summary\"] for k,v in d[\"checks\"].items() if \"rollout\" in k or \"thread\" in k))" "$DOCTOR_JSON"
+state.rollout_db_parity: rollout files and state DB thread inventory differ
+rc=0
+
+$ CODEX_HOME="${CODEX_HOME:-$HOME/.codex}" python3 .moai/reports/t197/authshape.py
+{
+ "auth_mode": "str",
+ "OPENAI_API_KEY": "NoneType",
+ "tokens": {
+  "id_token": "str",
+  "access_token": "str",
+  "refresh_token": "str",
+  "account_id": "str"
+ },
+ "last_refresh": "str"
+}
+auth_mode = 'chatgpt'
+OPENAI_API_KEY populated: False
+tokens present: True
+tokens non-empty values: 4
+rc=0
+
+### M-3 codex CLI surface (full Commands block + count)
+$ codex --help 2>&1 | sed -n "/^Commands:/,/^Arguments:/p" | sed "s/ *$//"; ( exit ${PIPESTATUS[0]} )
+Commands:
+  agents            Browse all agent sessions on the shared local app-server daemon
+  exec              Run Codex non-interactively [aliases: e]
+  review            Run a code review non-interactively
+  login             Manage login
+  logout            Remove stored authentication credentials
+  mcp               Manage external MCP servers for Codex
+  plugin            Manage Codex plugins
+  mcp-server        Start Codex as an MCP server (stdio)
+  app-server        [experimental] Run the app server or related tooling
+  remote-control    [experimental] Manage the app-server daemon with remote control enabled
+  app               Launch the Desktop app (opens the app installer if missing)
+  completion        Generate shell completion scripts
+  update            Update Codex to the latest version
+  doctor            Diagnose local Codex installation, config, auth, and runtime health
+  sandbox           Run commands within a Codex-provided sandbox
+  debug             Debugging tools
+  apply             Apply the latest diff produced by Codex agent as a `git apply` to your local
+                    working tree [aliases: a]
+  resume            Resume a previous interactive session (picker by default; use --last to continue
+                    the most recent)
+  queue             Queue a message for an existing session
+  archive           Archive a saved session by id or session name
+  delete            Permanently delete a saved session by id or session name
+  migrate-rollouts  Inspect or migrate legacy local sessions to paginated thread history
+  unarchive         Unarchive a saved session by id or session name
+  fork              Fork a previous interactive session (picker by default; use --last to fork the
+                    most recent)
+  cloud             [EXPERIMENTAL] Browse tasks from Codex Cloud and apply changes locally
+  exec-server       [EXPERIMENTAL] Run the standalone exec-server service
+  features          Inspect feature flags
+  help              Print this message or the help of the given subcommand(s)
+
+Arguments:
+rc=0
+
+$ codex --help 2>&1 | sed -n "/^Commands:/,/^Arguments:/p" | grep -cE "^  [a-z]"; ( exit ${PIPESTATUS[1]} )
+28
+rc=0
+
+### M-4 wiring surface
+$ grep -n "HooksRelPath =\|ConfigRelPath =" internal/codexwiring/codexwiring.go
+29:	HooksRelPath = ".codex/hooks.json"
+31:	ConfigRelPath = ".codex/config.toml"
+rc=0
+
+$ find internal/template/templates/.codex/agents/moai -name "*.toml" -type f | sort; ( exit ${PIPESTATUS[0]} )
+internal/template/templates/.codex/agents/moai/builder-harness.toml
+internal/template/templates/.codex/agents/moai/e2e-tester.toml
+internal/template/templates/.codex/agents/moai/manager-design.toml
+internal/template/templates/.codex/agents/moai/manager-develop.toml
+internal/template/templates/.codex/agents/moai/manager-docs.toml
+internal/template/templates/.codex/agents/moai/manager-git.toml
+internal/template/templates/.codex/agents/moai/manager-lead.toml
+internal/template/templates/.codex/agents/moai/manager-spec.toml
+internal/template/templates/.codex/agents/moai/plan-auditor.toml
+internal/template/templates/.codex/agents/moai/super-advisor.toml
+internal/template/templates/.codex/agents/moai/sync-auditor.toml
+rc=0
+
+$ find internal/template/templates/.codex/agents/moai -name "*.toml" -type f | wc -l; ( exit ${PIPESTATUS[0]} )
+      11
+rc=0
+
+$ grep -n "must be one of: claude, codex, both" internal/cli/init.go
+400:			return fmt.Errorf("invalid --agent value %q: must be one of: claude, codex, both", agent)
+rc=0
+
+$ grep -n "func checkCodexWiring" internal/cli/doctor_codex.go
+38:func checkCodexWiring(root string, verbose bool) DiagnosticCheck {
+rc=0
+
+$ grep -n "codexHarnessFlagValue = " internal/cli/hook_harness_codex.go
+25:const codexHarnessFlagValue = "codex"
+rc=0
+
+$ ls -a .codex
+ls: .codex: No such file or directory
+rc=1
+
+### M-5 CODEX_HOME readers
+$ grep -rn "CODEX_HOME" internal/ --include="*.go"
+rc=1
+
+### M-6 launcher convergence
+$ grep -n "func unifiedLaunch\|func unifiedLaunchDefault" internal/cli/launcher.go
+56:func unifiedLaunch(profileName, modeOverride string, extraArgs []string) error {
+129:func unifiedLaunchDefault(profileName, modeOverride string, extraArgs []string) error {
+rc=0
+
+$ grep -n "return unifiedLaunch(" internal/cli/cc.go internal/cli/cg.go internal/cli/glm.go
+internal/cli/cc.go:225:	return unifiedLaunch(profileName, "claude", filteredArgs)
+internal/cli/cg.go:103:	return unifiedLaunch(profileName, "claude_glm", filteredArgs)
+internal/cli/glm.go:294:	return unifiedLaunch(profileName, "glm", filteredArgs)
+rc=0
+
+$ grep -n "func spawnLaunch" internal/cli/spawn.go
+117:func spawnLaunch(out io.Writer, subcommand string, args []string) error {
+rc=0
+
+### M-7 runner implementations
+$ grep -rn ") run(" internal/cli/*.go internal/cli/*_test.go | grep -v glm | sort -u; ( exit ${PIPESTATUS[0]} )
+internal/cli/codex_rpc_error_test.go:31:func (stubCodexRunner) run(context.Context, string, []string, string) (string, error) {
+internal/cli/mcp_codex.go:273:func (realCodexRunner) run(ctx context.Context, binaryPath string, args []string, stdin string) (string, error) {
+internal/cli/mcp_codex_test.go:40:func (f *fakeCodexRunner) run(_ context.Context, binaryPath string, args []string, stdin string) (string, error) {
+rc=0
+
+### probe result
+PROBE OK: every command exited as expected
+
+### ADDENDUM A — claims whose cited range did not show them (iter7 F1)
+
+## A-1 branch name of the measured tree
+$ git rev-parse --abbrev-ref HEAD
+WT-codex-launcher
+rc=0
+
+## A-2 the generator writes both wiring files
+$ grep -n "func Wire(" internal/codexwiring/wire.go
+43:func Wire(projectRoot string, out, warn io.Writer) (Result, error) {
+rc=0
+
+$ grep -nE "(hooksPath|cfgPath) := filepath.Join\(projectRoot, (Hooks|Config)RelPath\)" internal/codexwiring/wire.go
+62:	hooksPath := filepath.Join(projectRoot, HooksRelPath)
+111:	cfgPath := filepath.Join(projectRoot, ConfigRelPath)
+rc=0
+
+$ grep -nE "writeAtomic\((hooksPath|cfgPath), " internal/codexwiring/wire.go
+101:			if err := writeAtomic(hooksPath, rendered); err != nil {
+119:			if err := writeAtomic(cfgPath, cfgNext); err != nil {
+125:			if err := writeAtomic(cfgPath, cfgNext); err != nil {
+rc=0
+
+$ grep -n "codexwiring.Wire(projectRoot" internal/cli/init.go
+170:	if _, err := codexwiring.Wire(projectRoot, cmd.OutOrStdout(), cmd.ErrOrStderr()); err != nil {
+rc=0
+
+## A-3 ChatGPT credential keys present in a real auth.json (shape only, no values)
+$ sed -n "150,166p" .moai/reports/t197/probe-output.txt | grep -E "id_token|access_token|refresh_token|account_id"
+  "id_token": "str",
+  "access_token": "str",
+  "refresh_token": "str",
+  "account_id": "str"
+rc=0
+
+### addendum result
+ADDENDUM OK: every command exited as expected

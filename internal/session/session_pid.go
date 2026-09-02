@@ -41,6 +41,10 @@ var wrapperProcessNames = map[string]bool{
 	"sh": true, "bash": true, "zsh": true, "dash": true,
 	"ksh": true, "fish": true, "csh": true, "tcsh": true,
 	"env": true, "moai": true,
+	// Windows hook runners wrap the moai binary in cmd.exe (`cmd /c`) or
+	// PowerShell; proc_info_windows.go strips the ".exe" suffix, so these
+	// match the same lowercase bare-name keys.
+	"cmd": true, "powershell": true, "pwsh": true,
 }
 
 // procInfoFunc reports a process's parent PID and command name. It is a package
@@ -52,30 +56,77 @@ type procInfoFunc func(pid int) (ppid int, comm string, ok bool)
 var (
 	procInfo   procInfoFunc = platformProcInfo
 	pidIsAlive              = isProcessAlive
+	// probeLiveness is the three-valued liveness probe seam for the
+	// registry's liveness-aware purge: (alive, determined), where determined
+	// false means the platform measured nothing and the caller falls back to
+	// its own verdict (see Registry.Purge).
+	probeLiveness = probeProcessLiveness
 )
 
-// resolveSessionPID reports the PID to record for a session registered from
-// this process. Resolution order:
+// ResolveOwnerPID reports the PID of the long-lived session that owns this
+// process, and whether it could be resolved at all. Resolution order:
 //
 //  1. MOAI_SESSION_PID, when it names a live process — the caller knew the
 //     session PID outright and said so.
 //  2. The nearest ancestor that is not a wrapper shell, when the platform can
 //     report ancestry and that ancestor is live.
-//  3. os.Getpid() — the pre-existing behavior, kept as the fallback so a
-//     platform without ancestry support (Windows) or an unreadable process
-//     table degrades to what it recorded before rather than to nothing.
 //
-// A PID from step 3 may still be an ephemeral hook subprocess. That is a known
-// residual limit, not a silent one: the fallback is reached only where the
-// ancestry is genuinely unavailable.
-func resolveSessionPID() int {
+// There is deliberately no os.Getpid() third step. This is the seam for
+// callers whose record outlives the process that writes it, and for them
+// os.Getpid() is not a degraded answer but a wrong one: it names a process
+// that is dead by the time any reader probes it, so every such record reads as
+// abandoned the instant it is written. A caller that cannot resolve an owner
+// gets (0, false) and decides for itself what an unknown owner means — see
+// resolveSessionPID below for the registry's answer, and
+// internal/kanban.IntegrationLock for the integration window's.
+func ResolveOwnerPID() (pid int, resolved bool) {
 	if pid, ok := sessionPIDFromEnv(os.Getenv(config.EnvMoaiSessionPID)); ok {
-		return pid
+		return pid, true
 	}
 	if pid := ancestorSessionPID(os.Getpid()); pid > 0 {
+		return pid, true
+	}
+	return 0, false
+}
+
+// resolveSessionPID reports the PID to record for a session registered from
+// this process: the owner PID when one resolves, else os.Getpid().
+//
+// The fallback is the pre-existing behavior, kept so an unreadable process
+// table or a genuinely unsupported platform degrades to what the registry
+// recorded before rather than to nothing — every major platform now reports
+// ancestry (Linux via /proc, BSD/darwin via sysctl, Windows via Toolhelp32).
+// A PID from the fallback
+// may still be an ephemeral hook subprocess. That is a known residual limit,
+// not a silent one: it is reached only where the ancestry is genuinely
+// unavailable, and it belongs to the registry's cost profile alone — a caller
+// that must not inherit it uses ResolveOwnerPID directly.
+func resolveSessionPID() int {
+	if pid, ok := ResolveOwnerPID(); ok {
 		return pid
 	}
 	return os.Getpid()
+}
+
+// staleEntryDead reports whether a heartbeat-stale registry entry's session
+// is safe to remove. Removable when the recorded PID is positively dead
+// (ESRCH). An entry with no usable PID carries no liveness signal, and a
+// platform that cannot determine liveness (the Windows probe measures
+// nothing) both fall back to the heartbeat verdict that governed purges
+// before the liveness probe existed — preserving the existing stale-entry
+// hygiene on those paths. The asymmetry is deliberate: a wrongly kept entry
+// costs one harmless "other session active" notice, while a wrongly purged
+// live session hides a concurrent writer from the orchestrator's race
+// checks.
+func staleEntryDead(pid int) bool {
+	if pid <= 0 {
+		return true
+	}
+	alive, determined := probeLiveness(pid)
+	if determined {
+		return !alive
+	}
+	return true
 }
 
 // sessionPIDFromEnv parses an explicit PID override, accepting it only when it

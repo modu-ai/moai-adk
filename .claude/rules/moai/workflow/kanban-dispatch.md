@@ -26,7 +26,11 @@ Five columns, fixed and ordered: `backlog → plan → run → sync → done`. `
 
 [HARD] **The lead is the queue's sole producer.** The operator asks; the lead turns the request into a card with `moai todo add "<description>"` (`moai todo` alone lists the queue). Production is the one queue mutation the lead performs on its own authority — translation, not invention: nothing enters the queue the operator did not ask for.
 
+[HARD] **A standing source is the one other producer, and it produces on the operator's prior authorization.** `/moai project` issues exactly one card when it completes, its text derived from that run's own `.moai/project/harness-spec.yaml` and prefixed `[PROJECT] `. This is not the lead admitting a card on its own initiative: the operator authorized the source in advance, and the workflow derives the card from what they already said in the interview rather than inventing work. The full conditions — one per run, derived not invented, marked, id reported, starting still a separate pick — are the SSOT at `.claude/skills/moai/workflows/todo.md` § Standing sources. Nothing else produces; a report milestone, an audit finding, or an open issue still reaches the queue only as a card request the operator approves.
+
 [HARD] **Promotion is the operator's act, always.** After a `/clear`, the lead presents the queued cards through `AskUserQuestion` and the operator picks; only then does the lead dispatch to `plan`. The lead never picks for the operator, never reorders by inferred priority, and never silently promotes a backlog item. An empty queue is a state to report, not a prompt to invent work.
+
+A card the operator chose to start at the moment it was issued is not a silent promotion. Where a workflow's completion question offers starting the card as one branch and the operator takes it, that answer is the promotion — given explicitly, in the operator's own words, before anything moved. The lead receiving that choice dispatches the card to `plan` as it would any picked card. What stays forbidden is unchanged: promoting because a card looks ready, because the queue holds only one, or because no answer came back.
 
 [HARD] **The lead may attach a finding; it may not act on one.** Analysis runs automatically and records a relation between two cards — a near-duplicate the machine measured on `add` or `analyze`, or a `contains` / `absorbs` / `replaces` / `conflicts` the lead judged and wrote with `moai todo relate`. The record is evidence the operator reads, never a mandate: the lead never folds the related card away, never reorders the queue around it, and never drops or edits it. Analysis changes exactly one thing on its own authority — it refuses the admission of a card whose normalized text is identical to one already queued or picked, which creates no card and leaves the queue file byte-identical. Everything a finding suggests beyond that refusal is the operator's act.
 
@@ -88,6 +92,16 @@ lens: --security --deep
 - **No explanatory prose.** Procedure, background, and justification live in the card text and the SPEC artifacts the block points at; a dispatch that restates them makes the operator read the same thing twice. What does not fit a field belongs in the card, not around the block.
 - **Ceiling: the block is at most 10 lines.** A dispatch that does not fit is trying to be a handoff; move the payload into the card and send the block.
 - **[HARD] The send is read, not assumed.** A `routing` object on the result means an in-process mailbox took the block and it is lost; re-send to `name [ref]`. Conditional: `cross-session-messaging.md`.
+
+## Deputy dispatch surface
+
+The `-k`/`-f` lead session MAY spawn manager-lead as its **coordination deputy** — an UNNAMED background `Agent()` that takes dispatch sends, bounded CI-watch polls, CodeRabbit two-condition reads, first-pass evidence reading, and summary reporting off the lead's serial turn loop. The deputy's full delegable/retained matrix lives in the agent itself (`manager-lead.md` § Deputy dispatch surface); this stub restates only the boundary that binds the board.
+
+[HARD] **The deputy never holds a power of consequence.** Final PASS/FAIL verdicts, final merge approval (`LEAD-MERGE-APPROVED`), operator gates, card issuance and `done` (`moai todo` mutations), CodeRabbit slot-wait adjudication, and cross-session dispute coordination stay with the lead session. A deputy recommendation (`RECOMMEND:`-prefixed) is never a verdict; a delegation requesting a retained act is refused and returned as a blocker report.
+
+[HARD] **Nothing structural moves with the delegation.** The queue on disk remains the delegation channel — a deputy's `SendMessage` is a nudge, never the delegation itself — completion remains evidence the lead read, and the verdict's home remains the lead. The deputy reads and reports; the lead decides.
+
+What the deputy does in the background, what returns to the lead's turn, and the delivery-shape verification it performs: `kanban-dispatch-detail.md` § The lead works through manager-lead.
 
 ## Completion is read, never trusted
 

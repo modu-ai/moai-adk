@@ -1,0 +1,46 @@
+=== RUN   TestRender_ForgePairFourStateContract
+=== PAUSE TestRender_ForgePairFourStateContract
+=== RUN   TestRender_ForgePairSuppressedRendersNoPair
+=== PAUSE TestRender_ForgePairSuppressedRendersNoPair
+=== RUN   TestRender_ForgePairIsIssuesOverPRs
+=== PAUSE TestRender_ForgePairIsIssuesOverPRs
+=== RUN   TestRender_ForgePairUnknownIsNotZero
+=== PAUSE TestRender_ForgePairUnknownIsNotZero
+=== RUN   TestRender_ForgePairSegmentGate
+=== PAUSE TestRender_ForgePairSegmentGate
+=== CONT  TestRender_ForgePairFourStateContract
+=== RUN   TestRender_ForgePairFourStateContract/fetched_counts_render_as_issues/PRs
+=== PAUSE TestRender_ForgePairFourStateContract/fetched_counts_render_as_issues/PRs
+=== RUN   TestRender_ForgePairFourStateContract/zeros_a_successful_fetch_produced_are_honest_zeros
+=== PAUSE TestRender_ForgePairFourStateContract/zeros_a_successful_fetch_produced_are_honest_zeros
+=== RUN   TestRender_ForgePairFourStateContract/stale_zeros_stay_honest_—_a_later_rate-limited_refresh_must_not_rewrite_them_as_unknown
+=== CONT  TestRender_ForgePairUnknownIsNotZero
+=== CONT  TestRender_ForgePairIsIssuesOverPRs
+=== PAUSE TestRender_ForgePairFourStateContract/stale_zeros_stay_honest_—_a_later_rate-limited_refresh_must_not_rewrite_them_as_unknown
+=== CONT  TestRender_ForgePairSuppressedRendersNoPair
+=== CONT  TestRender_ForgePairSegmentGate
+--- PASS: TestRender_ForgePairUnknownIsNotZero (0.00s)
+=== RUN   TestRender_ForgePairFourStateContract/absent_cache_is_unknown,_not_zero
+--- PASS: TestRender_ForgePairIsIssuesOverPRs (0.00s)
+--- PASS: TestRender_ForgePairSuppressedRendersNoPair (0.00s)
+--- PASS: TestRender_ForgePairSegmentGate (0.00s)
+=== PAUSE TestRender_ForgePairFourStateContract/absent_cache_is_unknown,_not_zero
+=== RUN   TestRender_ForgePairFourStateContract/corrupt_cache_is_unknown_too
+=== PAUSE TestRender_ForgePairFourStateContract/corrupt_cache_is_unknown_too
+=== RUN   TestRender_ForgePairFourStateContract/suppressed_from_an_explicit_no-forge_override_renders_no_pair
+=== PAUSE TestRender_ForgePairFourStateContract/suppressed_from_an_explicit_no-forge_override_renders_no_pair
+=== CONT  TestRender_ForgePairFourStateContract/fetched_counts_render_as_issues/PRs
+=== CONT  TestRender_ForgePairFourStateContract/absent_cache_is_unknown,_not_zero
+=== CONT  TestRender_ForgePairFourStateContract/stale_zeros_stay_honest_—_a_later_rate-limited_refresh_must_not_rewrite_them_as_unknown
+=== CONT  TestRender_ForgePairFourStateContract/zeros_a_successful_fetch_produced_are_honest_zeros
+=== CONT  TestRender_ForgePairFourStateContract/suppressed_from_an_explicit_no-forge_override_renders_no_pair
+=== CONT  TestRender_ForgePairFourStateContract/corrupt_cache_is_unknown_too
+--- PASS: TestRender_ForgePairFourStateContract (0.00s)
+    --- PASS: TestRender_ForgePairFourStateContract/absent_cache_is_unknown,_not_zero (0.00s)
+    --- PASS: TestRender_ForgePairFourStateContract/corrupt_cache_is_unknown_too (0.00s)
+    --- PASS: TestRender_ForgePairFourStateContract/zeros_a_successful_fetch_produced_are_honest_zeros (0.00s)
+    --- PASS: TestRender_ForgePairFourStateContract/suppressed_from_an_explicit_no-forge_override_renders_no_pair (0.00s)
+    --- PASS: TestRender_ForgePairFourStateContract/stale_zeros_stay_honest_—_a_later_rate-limited_refresh_must_not_rewrite_them_as_unknown (0.00s)
+    --- PASS: TestRender_ForgePairFourStateContract/fetched_counts_render_as_issues/PRs (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/statusline	0.459s

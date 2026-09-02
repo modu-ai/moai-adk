@@ -199,6 +199,47 @@ const (
 	// SessionStart hook to surface the address in the lead notice.
 	EnvMoaiKanbanLeadAddr = "MOAI_KANBAN_LEAD_ADDR"
 
+	// EnvMoaiKanbanBackend names the backend the launcher opened the session
+	// on: kanban.BackendClaude or kanban.BackendGLM.
+	//
+	// It exists because the backend is the one launch fact a session cannot
+	// observe for itself. Before this key the value reached the kanban record
+	// only as a literal argument at the launcher's call sites, which is fine
+	// while the launcher writes the record and impossible once the session
+	// does. It is deliberately carried rather than inferred: ANTHROPIC_BASE_URL
+	// is set by the GLM path but is settable by anyone, so deriving the backend
+	// from it would be a guess dressed as a measurement
+	// (SPEC-KANBAN-RECORD-SESSION-KEY-001 REQ-KRS-006).
+	EnvMoaiKanbanBackend = "MOAI_KANBAN_BACKEND"
+
+	// EnvMoaiKanbanCard names the queue card the session is working, and is
+	// the EXPLICIT OVERRIDE of the card identifier a session otherwise derives
+	// from its own worktree root. It is read by the session, not required of
+	// the launcher: an operator or a lead that knows the card exports it into
+	// the launch environment, and the launcher passes the environment through
+	// unchanged.
+	//
+	// An empty value is treated as unset, so an empty export never blanks a
+	// derivable value (REQ-KRS-005).
+	EnvMoaiKanbanCard = "MOAI_KANBAN_CARD"
+
+	// EnvMoaiKanbanLeadName carries the lead session's RESOLVED name — the value
+	// that actually reached the backend argv as `--name`, which is the operator's
+	// own name when they supplied one and the bare-or-bumped role otherwise.
+	//
+	// It exists because a session name and a session TITLE are two different
+	// registrations in Claude Code. `--name` registers the messaging address, and
+	// peers address the lead correctly by it; the title shown in the session list
+	// is a separate record, and a lead that never set one is given a generated
+	// title instead — which is how a lead came to be listed under an unrelated
+	// SPEC heading while messaging worked perfectly (issue #1596). The launcher is
+	// the only place that knows the resolved name, and the UserPromptSubmit hook
+	// is the only place that can register a title, so the value travels between
+	// them through the environment the child session already inherits.
+	//
+	// It is set on the LEAD only. A companion's title is not registered from here.
+	EnvMoaiKanbanLeadName = "MOAI_KANBAN_LEAD_NAME"
+
 	// EnvMoaiFactoryWorkers carries the Factory Mode signal and the run's
 	// worker count from the launcher entry point to the block-cap inject and
 	// the SessionStart hook. It is set on BOTH the factory lead and every

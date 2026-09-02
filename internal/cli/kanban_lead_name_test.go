@@ -307,8 +307,13 @@ func TestAppendLeadName_OperatorNameWins(t *testing.T) {
 	root := t.TempDir()
 
 	args := []string{"--name", "board-watch"}
-	got := appendLeadName(args, root, nil)
+	got, name := appendLeadName(args, root, nil)
 	if len(got) != len(args) {
 		t.Errorf("appendLeadName appended to an operator-named lead: %q", got)
+	}
+	// The operator's own name is still REPORTED, so the title registered
+	// downstream is the name the session actually answers to (issue #1596).
+	if name != "board-watch" {
+		t.Errorf("appendLeadName reported %q for an operator-named lead, want %q", name, "board-watch")
 	}
 }

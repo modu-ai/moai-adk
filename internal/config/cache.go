@@ -16,8 +16,13 @@ import (
 // between this constant and the cache file's schema_version field triggers
 // the fail-open re-merge path (REQ-PERF-004 / AC-PERF-004, C-EDGE-001).
 // Bump this when the Config struct's serialization changes in a way that
-// breaks backward compatibility with prior cache files.
-const configCacheSchemaVersion = 1
+// breaks backward compatibility with prior cache files — including field
+// ADDITIONS: a cache written by an older binary omits the new key, and the
+// serving binary's json.Unmarshal leaves the field at its zero value, so a
+// fingerprint-valid cache silently masks the file value (observed when
+// Workflow gained AgentStopGuard: an old-binary cache served enabled=false
+// over an enabled:true workflow.yaml).
+const configCacheSchemaVersion = 2
 
 // cacheFileName is the fixed cache file name under the state directory.
 // Fixed name ensures predictable gitignore and cleanup (REQ-PERF-009).

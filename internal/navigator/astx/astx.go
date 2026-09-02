@@ -138,6 +138,102 @@ func Extract(language string, sourcePath string) (SymbolSet, error) {
 	return extractImpl(language, sourcePath)
 }
 
+// Resolution grades for the per-language matrix (REQ-GF-016). A grade is a
+// claim about CALL-EDGE resolution capability: full means scope-aware target
+// resolution, name-based means edges are name-matched without scope, none
+// means no call/import capture is available for the language.
+const (
+	GradeFull      = "full"
+	GradeNameBased = "name-based"
+	GradeNone      = "none"
+)
+
+// callGradeLanguages carries seeded @code.caller/@func.node/@code.call/
+// @code.import captures (name-based grade this milestone). Every other
+// registered language grades none honestly — the matrix publishes what the
+// queries actually capture, and IsScaffolded-style placeholders never pass
+// silently.
+var callGradeLanguages = map[string]bool{
+	"go":         true,
+	"python":     true,
+	"javascript": true,
+	"typescript": true,
+	"java":       true,
+	"rust":       true,
+}
+
+// GradeFor returns the language's call-resolution grade. Unregistered
+// languages grade none.
+func GradeFor(language string) string {
+	if callGradeLanguages[language] {
+		return GradeNameBased
+	}
+	return GradeNone
+}
+
+// CallSite is one extracted call: the callee name as written in source.
+// Callers are resolved by containment against FuncRange (the consumer joins
+// by line range — the extractor stays language-neutral).
+type CallSite struct {
+	// Callee is the callee identifier text (last segment for selectors:
+	// x.Do → "Do").
+	Callee string
+	// File is the source file path.
+	File string
+	// Line is the 1-indexed line of the call.
+	Line int
+}
+
+// FuncRange brackets one function/method declaration so consumers can join
+// call sites to their enclosing caller by line containment.
+type FuncRange struct {
+	// Name is the declared function/method name.
+	Name string
+	// File is the source file path.
+	File string
+	// StartLine and EndLine bracket the declaration (1-indexed, inclusive).
+	StartLine int
+	EndLine   int
+}
+
+// ImportSite is one extracted import statement target.
+type ImportSite struct {
+	// Module is the imported module/package text as written (quotes stripped).
+	Module string
+	// File is the source file path.
+	File string
+	// Line is the 1-indexed line of the import.
+	Line int
+}
+
+// CallSet is the result of extracting call/import sites from one file.
+type CallSet struct {
+	// Supported is false when the language has no call captures seeded, is
+	// scaffolded, the build is CGO-disabled, or a read/parse/query error
+	// occurred (fail-open, never fatal).
+	Supported bool
+	// Calls lists extracted call sites.
+	Calls []CallSite
+	// Functions lists declaration ranges for caller joins.
+	Functions []FuncRange
+	// Imports lists extracted import targets.
+	Imports []ImportSite
+	// SourceBytes is the byte length of the parsed source.
+	SourceBytes int64
+}
+
+// ExtractCalls parses sourcePath and returns call/import sites plus function
+// ranges. Independent of Extract (symbol extraction) so the two concerns —
+// declaration inventory and relationship extraction — evolve separately.
+// Never panics; per-file errors are fail-open (Supported: false).
+//
+// @MX:ANCHOR: [AUTO] call-edge extraction entry point; consumed by the graph builder's code-derived layers
+// @MX:REASON: non-navigator consumer seam (REQ-GF-013) — internal/graph imports this without navigator-tier deps
+// @MX:SPEC:SPEC-V3R6-GRAPH-FRESHNESS-001
+func ExtractCalls(language string, sourcePath string) (CallSet, error) {
+	return extractCallsImpl(language, sourcePath)
+}
+
 // extractImpl is the build-tag-selected implementation:
 // measure_cgo.go (real tree-sitter) or measure_nocgo.go (stub).
 // It is defined in those files, not here.

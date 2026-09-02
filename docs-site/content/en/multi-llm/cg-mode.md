@@ -80,7 +80,7 @@ is where CG mode's cost savings come from — the expensive model never carries
 the implementation volume too.
 
 > **The model GLM teammates use**: the whole Claude tier net (Opus · Sonnet ·
-> Haiku · Fable) collapses into a single 1M-context `glm-5.3`. Claude Code
+> Haiku · Fable) collapses into a single 1M-context `glm-5.3-flash` (the default). Claude Code
 > sizes the auto-compact window once, based on the Opus slot, and agents
 > spawned in other slots inherit that value — so mixing in a smaller model
 > means compaction never kicks in even past its limit. Tier distinctions are

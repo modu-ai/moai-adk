@@ -19,7 +19,7 @@ draft: false
 기본 레이아웃은 세 줄이고, 세션 이름·백로그 관측이 있으면 넷째 줄(세션 라인)이 마지막에 조건부로 붙습니다. 아래 예시는 실제 렌더된 출력의 한 사례로, 각 세그먼트가 쓰는 글리프(glyph, 작은 그림 문자)까지 그대로 옮겼습니다.
 
 ```text
-🤖 Opus | 🧠 xhigh·t | ♻️ 87% | 🔅 v2.1.212 | 🗿 v3.1.2 | ⏳ 4h 52m | 💬 MoAI
+🤖 Opus | 🧠 xhigh·t | ♻️ 87% | 🔅 v2.1.212 | 🗿 v3.1.3 | ⏳ 4h 52m | 💬 MoAI
 🪫 CW: ███████░░░ 72% (⚠️/clear) | 🔋 5H: █████░░░░░ 56% (46m) | 🔋 7D: █░░░░░░░░░ 13% (May 28)
 📁 moai-adk-go | 📡 modu-ai/moai-adk, 12/3 | 🅱️ main +2 | 💾 +0 M1 ?1 | 💌 PR #1234 (⌥approved)
 🏷️ run | 👤 manager-develop | 🔄 TODO: 1/3
@@ -156,11 +156,11 @@ flowchart TD
 
 ### GLM 컨텍스트 게이지 보정 (Issue #653)
 
-한 가지 주의할 점이 있습니다. GLM-5.3는 실제로 1M 컨텍스트 모델인데, Claude Code는 제공자와 무관하게 Claude 슬롯 기준(Opus=1M, Sonnet/Haiku=200K)으로 `context_window_size`를 보고합니다. 그래서 GLM 세션에서는 원본 관측값이 약 180K로 잘못 나올 수 있습니다. MoAI는 두 지점에서 이 값을 바로잡습니다 — 런처가 `CLAUDE_CODE_MAX_CONTEXT_TOKENS` 환경변수로 세션에 1M 창을 선언하고, 상태표시줄은 `internal/statusline/memory.go`의 `ResolveGLMContextWindow`로 관측값을 보정합니다. `glm-5.3`는 1,000,000으로 매핑되며, `MOAI_STATUSLINE_CONTEXT_SIZE` 환경변수로 직접 덮어쓰거나 `llm.glm.context_windows` 테이블로 설정할 수도 있습니다. GLM 세션에서는 원본 값이 아니라 MoAI 상태표시줄의 CW%를 신뢰하세요.
+한 가지 주의할 점이 있습니다. GLM-5.3는 실제로 1M 컨텍스트 모델인데, Claude Code는 제공자와 무관하게 Claude 슬롯 기준(Opus=1M, Sonnet/Haiku=200K)으로 `context_window_size`를 보고합니다. 그래서 GLM 세션에서는 원본 관측값이 약 180K로 잘못 나올 수 있습니다. MoAI는 두 지점에서 이 값을 바로잡습니다 — 런처가 `CLAUDE_CODE_MAX_CONTEXT_TOKENS` 환경변수로 세션에 1M 창을 선언하고, 상태표시줄은 `internal/statusline/memory.go`의 `ResolveGLMContextWindow`로 관측값을 보정합니다. `glm-5.3`와 `glm-5.3-flash`(기본 모델)는 각자 자기 테이블 항목으로 1,000,000에 매핑되며, `MOAI_STATUSLINE_CONTEXT_SIZE` 환경변수로 직접 덮어쓰거나 `llm.glm.context_windows` 테이블로 설정할 수도 있습니다. GLM 세션에서는 원본 값이 아니라 MoAI 상태표시줄의 CW%를 신뢰하세요.
 
 ## 컨텍스트 사용량 스냅샷 — 다음 세션을 위해
 
-상태표시줄은 렌더할 때마다 관측값을 `.moai/state/context-usage.json`에도 기록합니다. 이 스냅샷은 다음 세션이 시작될 때 "직전에 창이 얼마나 찼는가"를 읽는 근거로 쓰입니다. `raw_pct`(원시 사용률)와 `stage`(none/soft/hard)가 핵심 필드이며, 어느 세션이 쓴 값인지 구분하려고 `session_id`, `writer_pid`, `captured_at`을 함께 남깁니다.
+상태표시줄은 렌더할 때마다 관측값을 `.moai/state/context-usage/<session-id>.json`에도 기록합니다. 세션마다 파일이 하나씩, 그 세션 이름으로 남기 때문에 한 프로젝트에서 여러 세션이 돌아도 서로 덮어쓰지 않습니다. 이 기록은 다음 세션이 시작될 때 "직전에 창이 얼마나 찼는가"를 읽는 근거로 쓰입니다. `raw_pct`(원시 사용률)와 `stage`(none/soft/hard)가 핵심 필드이고, 그 세션이 실제로 돌린 모델과 effort 값도 함께 들어갑니다. `session_id`, `writer_pid`, `captured_at`도 그대로 남습니다.
 
 왜 세션 구분이 필요할까요? 하나의 작업 디렉터리를 여러 세션이 함께 쓸 때, 한 세션이 다른 세션의 사용량을 이어받아 "창이 가득 찼다"고 잘못 판단하면 안 됩니다. 그래서 기록을 쓴 세션의 신원을 확인하고, 일치하지 않거나 오래된 기록은 무시하고 원본 관측값으로 폴백합니다. 보수적으로 행동하는 것이 목적이지, 빠진 값으로 거짓 확신을 주는 것이 아닙니다.
 

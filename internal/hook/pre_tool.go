@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/modu-ai/moai-adk/internal/defs"
 	"github.com/modu-ai/moai-adk/internal/hook/quality"
@@ -195,13 +196,10 @@ func DefaultSecurityPolicy() *SecurityPolicy {
 		`DROP\s+DATABASE`,
 		`DROP\s+SCHEMA`,
 		`TRUNCATE\s+TABLE`,
-		// Unix dangerous file operations
-		`rm\s+-rf\s+/`,
-		`rm\s+-rf\s+~`,
-		`rm\s+-rf\s+\*`,
-		`rm\s+-rf\s+\.\*`,
-		`rm\s+-rf\s+\.git\b`,
-		`rm\s+-rf\s+node_modules\s*$`,
+		// Unix file removal is checked structurally by dangerousRemovalTarget
+		// rather than by pattern, because a literal flag cluster is bypassed by
+		// reordering it and a trailing slash makes every absolute path a target
+		// (issue #1658). See dangerous_removal.go.
 		// Windows dangerous file operations (CMD)
 		`rd\s+/s\s+/q\s+[A-Za-z]:\\`,
 		`rmdir\s+/s\s+/q\s+[A-Za-z]:\\`,
@@ -340,10 +338,27 @@ type preToolHandler struct {
 	cfg     ConfigProvider
 	policy  *SecurityPolicy
 	scanner SecurityScanFacade
+	// rules resolves the ast-grep rules configuration and its covered-language
+	// set for the write-path gate. Tests may set it directly; production leaves
+	// it nil and lets ruleManager construct it on first use.
+	rules     security.RuleManager
+	rulesOnce sync.Once
 	// projectDir is the resolved project root. Tests may set it directly; the
 	// production constructors leave it empty and let projectRoot resolve it.
 	projectDir string
 	projectRootResolver
+}
+
+// ruleManager returns the handler's RuleManager, constructing the default one
+// on first use. The manager caches its derivation for its own lifetime, so the
+// short-lived hook process resolves the configuration once per invocation.
+func (h *preToolHandler) ruleManager() security.RuleManager {
+	h.rulesOnce.Do(func() {
+		if h.rules == nil {
+			h.rules = security.NewRuleManager()
+		}
+	})
+	return h.rules
 }
 
 // NewPreToolHandler creates a new PreToolUse event handler with the given security policy.
@@ -600,6 +615,27 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 			return NewDenyOutput(reason), nil
 		}
 		agentAdvisory = advisory
+
+		// Deliberate-revival escape hatch (stop-guard, REQ-TRG-005): a fresh
+		// spawn carrying a stopped teammate's name clears the registry entry
+		// BEFORE the spawn proceeds. Never denies; fail-open on removal error
+		// keeps the entry (the safe direction).
+		h.clearStoppedEntryOnRespawn(input)
+	}
+
+	// SendMessage stop-guard observation. Sibling of the agent-model branch:
+	// the observation layer always appends one send_observed audit row per
+	// issuance, and a recipient matching a live entry in this session's stop
+	// registry surfaces a non-blocking advisory. The deny layer is opt-in
+	// (M2) and fails open on every uncertainty — no deny path exists here in
+	// M1, so this branch can never displace an established decision either.
+	var stopAdvisory string
+	if input.ToolName == "SendMessage" {
+		decision, reason, advisory := h.checkStopGuard(input)
+		if decision == DecisionDeny {
+			return NewDenyOutput(reason), nil
+		}
+		stopAdvisory = advisory
 	}
 
 	out := NewSafeDefaultOutput(permissionModeOf(input))
@@ -608,6 +644,9 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 	}
 	if agentAdvisory != "" {
 		out.SystemMessage = agentAdvisory
+	}
+	if stopAdvisory != "" {
+		out.SystemMessage = stopAdvisory
 	}
 	return out, nil
 }
@@ -641,6 +680,49 @@ func (h *preToolHandler) scanWriteContent(ctx context.Context, toolInput json.Ra
 		return "", ""
 	}
 
+	// Resolve the rules configuration ONCE, here in the caller. Everything
+	// below this point is ordered cheapest-first, and every skip returns before
+	// the temp file is created: a skipped payload costs neither a file write nor
+	// an `sg` spawn.
+	coverage := h.ruleManager().ResolveCoverage(h.projectRoot())
+
+	// No configuration resolves, so no rule can produce a finding. Scanning
+	// would spawn `sg` only to be told there is no project configuration.
+	if coverage.ConfigPath == "" {
+		slog.Debug("no ast-grep rules configuration resolved; skipping security scan",
+			"file_path", filePath,
+		)
+		return "", ""
+	}
+
+	// The configuration declares no rule for this file's language. Skipped only
+	// when the derived set is authoritative — an unreadable, unwalkable, or
+	// empty derivation escalates below rather than skipping, because absence of
+	// evidence is not evidence of absence.
+	language := security.GetLanguageForExtension(ext)
+	if coverage.Known && !coverage.Covers(language) {
+		slog.Debug("no rules for this language in the resolved configuration; skipping security scan",
+			"file_path", filePath,
+			"language", language,
+		)
+		return "", ""
+	}
+
+	// The literal pre-filter (SPEC-SEC-SCAN-SURFACE-001 M2): the gate's only
+	// observable output is the deny, and a deny needs an error-severity
+	// finding, so a payload carrying none of the mandatory literal tokens of
+	// this language's error-severity rules cannot produce one. Every
+	// uncertainty — an unreadable ruleset, an unrecognized rule shape, a
+	// language whose derivation is incomplete — answers false here and
+	// escalates to the scan.
+	if security.DerivePrefilters(coverage.ConfigPath).CanSkip(language, content) {
+		slog.Debug("no error-severity rule can match this payload; skipping security scan",
+			"file_path", filePath,
+			"language", language,
+		)
+		return "", ""
+	}
+
 	// Create temporary file with the content
 	tmpFile, err := os.CreateTemp("", "moai-security-scan-*"+ext)
 	if err != nil {
@@ -657,7 +739,7 @@ func (h *preToolHandler) scanWriteContent(ctx context.Context, toolInput json.Ra
 	_ = tmpFile.Close() // Close before scanning
 
 	// Scan the temporary file
-	result, err := h.scanner.ScanFile(ctx, tmpFile.Name(), h.projectRoot())
+	result, err := h.scanner.ScanFile(ctx, tmpFile.Name(), coverage.ConfigPath)
 	if err != nil {
 		slog.Warn("security scan failed", "error", err)
 		return "", ""
@@ -772,6 +854,21 @@ func (h *preToolHandler) loadGateConfig() *quality.GateConfig {
 				BlockOnError: ag.BlockOnError,
 				WarnOnlyMode: ag.WarnOnlyMode,
 			}
+			// Graph-freshness step mapping mirrors mapConfigGateToQuality in
+			// internal/cli/gate.go (zero-value thresholds fall back to the
+			// quality-layer defaults so a partial gate.yaml cannot zero a red
+			// line).
+			gfg := gate.GraphFreshness
+			qgfg := quality.DefaultGraphFreshnessConfig()
+			qgfg.Enabled = gfg.Enabled
+			qgfg.Blocking = gfg.Blocking
+			if gfg.CodemapsChangedFiles > 0 {
+				qgfg.CodemapsChangedFiles = gfg.CodemapsChangedFiles
+			}
+			if gfg.MXIndexChangedFiles > 0 {
+				qgfg.MXIndexChangedFiles = gfg.MXIndexChangedFiles
+			}
+			qcfg.GraphFreshness = qgfg
 			// t50: an empty RulesDir maps through as empty — no hardcoded path
 			// fallback. gate.yaml ast_grep_gate.rules_dir is the SSOT for where
 			// a project keeps its ast-grep rules; the template ships the key
@@ -835,16 +932,29 @@ func (h *preToolHandler) checkBashCommand(toolInput json.RawMessage) (string, st
 		return "", ""
 	}
 
+	// File removal is decided on the resolved target, before the pattern scan,
+	// so that quoting a target cannot hide it (issue #1658).
+	if target := dangerousRemovalTarget(command); target != "" {
+		return DecisionDeny, fmt.Sprintf("Dangerous command blocked: removal of protected path %q", target)
+	}
+
+	// Collapse quoted spans to a placeholder before the pattern scan, matching
+	// what the branch guard already does (substituteQuotedArguments). Without
+	// this, a command that merely PRINTS or STORES a dangerous form — a commit
+	// message, a backlog card, a report about this very guard — is refused for
+	// text it never executes.
+	scanned := substituteQuotedArguments(command)
+
 	// Check dangerous patterns (deny)
 	for _, pattern := range h.policy.DangerousBashPatterns {
-		if pattern.MatchString(command) {
+		if pattern.MatchString(scanned) {
 			return DecisionDeny, fmt.Sprintf("Dangerous command blocked: %s", pattern.String())
 		}
 	}
 
 	// Check ask patterns (require confirmation)
 	for _, pattern := range h.policy.AskBashPatterns {
-		if pattern.MatchString(command) {
+		if pattern.MatchString(scanned) {
 			return DecisionAsk, "This command may have significant effects. Please confirm."
 		}
 	}

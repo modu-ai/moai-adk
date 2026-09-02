@@ -10,22 +10,41 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
-// queueDigest returns the SHA-256 of the fixture queue file. File-invariance
-// claims are judged on this digest: "looks the same" is not evidence.
+// queueStateBytes returns the STORED RECORD in its canonical document form —
+// the shape BacklogRecord's json tags define, which is the frozen contract
+// (five per-item fields, findings as an always-present array).
+//
+// The queue's bytes on disk are a database now, so digesting the file would
+// measure page layout and WAL checkpoint timing rather than the queue. What
+// the invariance tests below actually mean is "the refused verb changed
+// nothing about the queue", and that is a property of the record. Reading it
+// through LoadPure keeps the assertion honest AND keeps it pure: a
+// verification step must not migrate the fixture it is measuring.
+func queueStateBytes(t *testing.T, path string) []byte {
+	t.Helper()
+	rec, err := kanban.NewBacklogStore(path).LoadPure()
+	if err != nil {
+		t.Fatalf("read queue state at %s: %v", path, err)
+	}
+	raw, err := json.Marshal(rec)
+	if err != nil {
+		t.Fatalf("canonicalize queue state: %v", err)
+	}
+	return raw
+}
+
+// queueDigest returns the SHA-256 of the fixture queue's stored record.
+// Invariance claims are judged on this digest: "looks the same" is not
+// evidence.
 func queueDigest(t *testing.T, store *kanban.BacklogStore) string {
 	t.Helper()
-	raw, err := os.ReadFile(store.Path())
-	if err != nil {
-		t.Fatalf("read queue file: %v", err)
-	}
-	sum := sha256.Sum256(raw)
+	sum := sha256.Sum256(queueStateBytes(t, store.Path()))
 	return hex.EncodeToString(sum[:])
 }
 

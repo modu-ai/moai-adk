@@ -1,0 +1,14 @@
+id: sec-csrf-no-token-check
+snapshots:
+  ? |
+    func createUser(w http.ResponseWriter, r *http.Request) {
+        w.WriteHeader(http.StatusCreated)
+    }
+  : labels:
+    - source: |-
+        func createUser(w http.ResponseWriter, r *http.Request) {
+            w.WriteHeader(http.StatusCreated)
+        }
+      style: primary
+      start: 0
+      end: 97

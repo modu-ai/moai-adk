@@ -19,7 +19,7 @@ draft: false
 基本レイアウトは3行で、セッション名・バックログ観測があれば4行目(セッション行)が最後に条件付きで付きます。下の例は実際にレンダーされた出力の一例で、各セグメントが使うグリフ(glyph、小さな図形文字)までそのまま写しています。
 
 ```text
-🤖 Opus | 🧠 xhigh·t | ♻️ 87% | 🔅 v2.1.212 | 🗿 v3.1.2 | ⏳ 4h 52m | 💬 MoAI
+🤖 Opus | 🧠 xhigh·t | ♻️ 87% | 🔅 v2.1.212 | 🗿 v3.1.3 | ⏳ 4h 52m | 💬 MoAI
 🪫 CW: ███████░░░ 72% (⚠️/clear) | 🔋 5H: █████░░░░░ 56% (46m) | 🔋 7D: █░░░░░░░░░ 13% (May 28)
 📁 moai-adk-go | 📡 modu-ai/moai-adk, 12/3 | 🅱️ main +2 | 💾 +0 M1 ?1 | 💌 PR #1234 (⌥approved)
 🏷️ run | 👤 manager-develop | 🔄 TODO: 1/3
@@ -156,11 +156,11 @@ flowchart TD
 
 ### GLM コンテキストゲージの補正 (Issue #653)
 
-ひとつ注意点があります。GLM-5.3 は実際には 1M コンテキストモデルですが、Claude Code はプロバイダに関係なく Claude スロット基準(Opus=1M, Sonnet/Haiku=200K)で `context_window_size` を報告します。そのため GLM セッションでは元の観測値が約 180K と誤って出ることがあります。MoAI は2か所でこの値を正します — ランチャーが `CLAUDE_CODE_MAX_CONTEXT_TOKENS` 環境変数でセッションに 1M ウィンドウを宣言し、ステータスラインは `internal/statusline/memory.go` の `ResolveGLMContextWindow` で観測値を補正します。`glm-5.3` は 1,000,000 にマッピングされ、`MOAI_STATUSLINE_CONTEXT_SIZE` 環境変数で直接上書きしたり、`llm.glm.context_windows` テーブルで設定したりもできます。GLM セッションでは元の値ではなく、MoAI ステータスラインの CW% を信頼してください。
+ひとつ注意点があります。GLM-5.3 は実際には 1M コンテキストモデルですが、Claude Code はプロバイダに関係なく Claude スロット基準(Opus=1M, Sonnet/Haiku=200K)で `context_window_size` を報告します。そのため GLM セッションでは元の観測値が約 180K と誤って出ることがあります。MoAI は2か所でこの値を正します — ランチャーが `CLAUDE_CODE_MAX_CONTEXT_TOKENS` 環境変数でセッションに 1M ウィンドウを宣言し、ステータスラインは `internal/statusline/memory.go` の `ResolveGLMContextWindow` で観測値を補正します。`glm-5.3` と `glm-5.3-flash`（デフォルトモデル）はそれぞれ独自のテーブルエントリで 1,000,000 にマッピングされ、`MOAI_STATUSLINE_CONTEXT_SIZE` 環境変数で直接上書きしたり、`llm.glm.context_windows` テーブルで設定したりもできます。GLM セッションでは元の値ではなく、MoAI ステータスラインの CW% を信頼してください。
 
 ## コンテキスト使用量スナップショット — 次のセッションのために
 
-ステータスラインはレンダーのたびに観測値を `.moai/state/context-usage.json` にも記録します。このスナップショットは、次のセッションが始まるときに「直前に窓がどれだけ埋まっていたか」を読む根拠に使われます。`raw_pct`(生の使用率)と `stage`(none/soft/hard)が主要なフィールドで、どのセッションが書いた値か区別するために `session_id`, `writer_pid`, `captured_at` を併せて残します。
+ステータスラインはレンダーのたびに観測値を `.moai/state/context-usage/<session-id>.json` にも記録します。セッションごとに 1 ファイル、そのセッションの名前で残るので、同じプロジェクトで複数のセッションが動いても互いに上書きしません。この記録は、次のセッションが始まるときに「直前に窓がどれだけ埋まっていたか」を読む根拠に使われます。`raw_pct`(生の使用率)と `stage`(none/soft/hard)が主要なフィールドで、そのセッションが実際に動かしているモデルと effort も併せて入ります。`session_id`, `writer_pid`, `captured_at` もそのまま残ります。
 
 なぜセッション区別が要るのでしょう? ひとつの作業ディレクトリを複数のセッションが共有するとき、あるセッションが別のセッションの使用量を引き継いで「窓がいっぱいだ」と誤判断してはいけません。そこで記録を書いたセッションの身元を確認し、一致しない・古い記録は無視して元の観測値にフォールバックします。目的は保守的に振る舞うことであって、欠けた値で偽りの確信を与えることではありません。
 

@@ -224,11 +224,36 @@ secret-*.*
 !.moai/reports/plan-audit/.gitkeep
 
 # ===========================================
+# Architecture Report (regenerating derived artifact)
+# `moai graph report` rewrites this file on every run — it is the latest view
+# of the edge layers, never an analysis to keep. Rebuild it with
+# `moai graph report` instead of tracking it.
+# ===========================================
+.moai/reports/graph-report.md
+
+# ===========================================
 # Evolution Telemetry (local-only usage data)
 # Learnings and new-skills are git-tracked for team sharing.
 # ===========================================
 .moai/evolution/telemetry/*.jsonl
 !.moai/evolution/telemetry/.gitkeep
+
+# Hook duration metrics (local-only). No .gitkeep and no directory scaffold:
+# creating the directory is what opts a machine in to hook recording, so
+# shipping one would flip that opt-in to opt-out for every deployed project.
+.moai/observability/*.jsonl
+
+# ===========================================
+# Generated Code-Graph Layer (rebuilt on demand, never committed)
+# `moai graph build` writes edges.jsonl + edges.meta.json here. edges.jsonl is
+# a machine-generated index that runs to six figures of lines on a mid-sized
+# repository, so a single `git add -A` turns it into an unreviewable diff.
+# Rebuild it with `moai graph build` instead of tracking it.
+#
+# Deliberately NOT a blanket `.moai/project/` rule: product.md, structure.md,
+# tech.md, and the codemaps/ set under the same parent ARE meant to be tracked.
+# ===========================================
+.moai/project/graph/
 
 # ===========================================
 # Node.js (for docs/Nextra)

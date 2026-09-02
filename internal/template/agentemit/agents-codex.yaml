@@ -78,6 +78,9 @@ tool_classes:
   Skill: skill-loader
   Agent: subagent-spawn
   DesignSync: design-sync
+  SendMessage: cross-session-messaging
+  ListAgents: cross-session-messaging
+  AskUserQuestion: question-channel
   mcp__moai__: moai-mcp
 
 # Per-class dispositions — every semantic class carries exactly one, with
@@ -129,6 +132,26 @@ classes:
     rationale: >-
       DesignSync is a Claude-specific MCP-backed tool with no Codex
       equivalent.
+  - class: cross-session-messaging
+    disposition: documented-drop
+    rationale: >-
+      SendMessage/ListAgents are Claude Code runtime session tools with no
+      agent-TOML carrier on Codex. The Codex counterpart rides the moai MCP
+      broker (session_msg_register/list/send/poll) under the existing
+      server-level moai-mcp grant — manager-lead already carries
+      mcp__moai__* tokens, so its TOML grants the server; the deputy's
+      cross-session messaging doctrine lives in the agent body prose.
+  - class: question-channel
+    disposition: documented-drop
+    rationale: >-
+      Covers the Claude question channel: the AskUserQuestion tool and any
+      future tokens naming that channel. Measured on codex-cli 0.150.1 probes:
+      told to invoke the question tool, codex reported it unavailable and
+      substituted a prose question; its own request_user_input tool errors
+      "unavailable in Default mode" under the approval-never mode the project
+      launcher runs. No per-agent agent-TOML carrier exists; the AGENTS.md
+      capability-binding table directs the substitute behavior — return a
+      blocker report instead of asking the user directly.
   - class: moai-mcp
     disposition: emit-field
     field: mcp_servers

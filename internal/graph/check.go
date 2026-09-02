@@ -1,0 +1,571 @@
+package graph
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"sort"
+	"strings"
+
+	"github.com/modu-ai/moai-adk/internal/mx"
+)
+
+// Layer verdicts (REQ-GF-001). A layer without a provenance block is reported
+// absent with a distinguishing reason — unjudgeable, never silently fresh.
+const (
+	VerdictFresh  = "fresh"
+	VerdictStale  = "stale"
+	VerdictAbsent = "absent"
+)
+
+// Layer names.
+const (
+	LayerCodemaps = "codemaps"
+	LayerMXIndex  = "mx-index"
+	LayerEdges    = "edges"
+)
+
+// Metric kind tokens — the report names the metric each layer used, so a
+// reader can tell an endpoint git diff from a fingerprint comparison.
+const (
+	MetricDescribedSourceDiff  = "described-source-diff"
+	MetricInventoryContentDiff = "inventory-content-diff"
+	MetricSourceFingerprint    = "source-fingerprint-mismatch"
+	MetricGenerationFP         = "generation-fingerprint-mismatch"
+	MetricWrongTree            = "wrong-tree-anchor"
+)
+
+// Thresholds are the per-layer red lines (acceptance.md §D.7). The edges layer
+// has no numeric knob: any fingerprint mismatch is red by REQ-GF-002.
+type Thresholds struct {
+	// CodemapsChangedFiles: red when the endpoint-diff count is >= this value.
+	CodemapsChangedFiles int
+	// MXIndexChangedFiles: red when the inventory mismatch count is >= this.
+	MXIndexChangedFiles int
+}
+
+// DefaultThresholds carries the reasoned defaults (spec.md §D; calibrated per
+// acceptance §D.7 during M1 from this repository's own history).
+func DefaultThresholds() Thresholds {
+	return Thresholds{
+		CodemapsChangedFiles: 40,
+		MXIndexChangedFiles:  1,
+	}
+}
+
+// LayerReport is one gated layer's numeric staleness row (REQ-GF-001): layer
+// name, metric kind, measured value, threshold, verdict.
+type LayerReport struct {
+	Layer     string `json:"layer"`
+	Metric    string `json:"metric"`
+	Value     int    `json:"value"`
+	Threshold int    `json:"threshold"`
+	Verdict   string `json:"verdict"`
+	Reason    string `json:"reason,omitempty"`
+
+	// Contribution is the change under judgment's OWN described-worthy count,
+	// measured against the checkout's first-parent predecessor (REQ-GFC-007).
+	// It is REPORTED, never gated on: gating it would eliminate the
+	// accumulated-drift signal the cumulative metric exists to carry
+	// (spec.md §D.3, third rejection).
+	//
+	// nil means the base does not exist — a root commit, or an unborn HEAD.
+	// That case is reported absent rather than defaulted to 0, because 0 is
+	// itself the inheriting signature: a fabricated 0 is indistinguishable
+	// from a measured one, and would report every such checkout as having
+	// inherited someone else's red.
+	Contribution *int `json:"contribution,omitempty"`
+	// ContributionBase is the first-parent sha Contribution was measured
+	// against, so the figure is attributable rather than merely asserted.
+	ContributionBase string `json:"contribution_base,omitempty"`
+	// ContributionAbsentReason names why Contribution is nil. Absent must be
+	// legible, not merely a missing field.
+	ContributionAbsentReason string `json:"contribution_absent_reason,omitempty"`
+
+	// DrivingPaths names the described-worthy paths driving Value on a stale
+	// verdict, bounded to drivingPathDisplayBound (REQ-GFC-008). Empty on a
+	// fresh verdict — nothing is driving anything.
+	DrivingPaths []string `json:"driving_paths,omitempty"`
+	// DrivingPathsOmitted is how many driving paths the bound cut. An
+	// explicit overflow count, never a silent truncation.
+	DrivingPathsOmitted int `json:"driving_paths_omitted,omitempty"`
+}
+
+// drivingPathDisplayBound caps how many described-worthy paths a stale report
+// lists, so a red naming 400 files stays readable. The overflow is declared in
+// DrivingPathsOmitted rather than dropped.
+const drivingPathDisplayBound = 10
+
+// CheckResult is the full per-layer report for one tree.
+type CheckResult struct {
+	TreeRoot string        `json:"tree_root"`
+	Layers   []LayerReport `json:"layers"`
+}
+
+// Failed reports whether any layer verdict is not fresh (stale or absent) —
+// the binary observable REQ-GF-004's exit code consumes. A reporting-only
+// implementation that always returns false here is MUTANT A.
+func (r CheckResult) Failed() bool {
+	for _, l := range r.Layers {
+		if l.Verdict != VerdictFresh {
+			return true
+		}
+	}
+	return false
+}
+
+// OffendingLayers lists the layers whose verdict failed, with value and
+// threshold named — the stderr contract REQ-GF-004 requires.
+func (r CheckResult) OffendingLayers() []LayerReport {
+	var out []LayerReport
+	for _, l := range r.Layers {
+		if l.Verdict != VerdictFresh {
+			out = append(out, l)
+		}
+	}
+	return out
+}
+
+// CheckFreshness computes the per-layer staleness of the three gated layers
+// under projectRoot. A successful return carries all three layer reports; a
+// system error (exit 2 territory per the 0/1/2 contract) aborts the walk at
+// the failing layer, and the error-path report is PARTIAL by design — it
+// carries the layers measured so far (at most the failing codemaps row,
+// marked absent/unmeasured) and never fabricates the layers it never
+// reached (CR round-2 3855149289).
+//
+// No filesystem modification time is read anywhere in this function — mtime
+// is a banned staleness signal (REQ-GF-002): a fresh worktree checkout resets
+// every mtime, which an mtime metric would misread as freshly regenerated.
+func CheckFreshness(projectRoot string, th Thresholds) (CheckResult, error) {
+	res := CheckResult{TreeRoot: projectRoot}
+	codemapsRep, err := checkCodemaps(projectRoot, th)
+	if err != nil {
+		// Not-comparable stamped commit (e.g. shallow checkout missing the
+		// generation commit): epistemically distinct from stale — the layer
+		// was never measured. System error, exit 2 (spec-gap fix: the SPEC's
+		// verdict enum covers fresh|stale|absent and prescribes no
+		// not-comparable verdict; exit 2 names the missing commit).
+		res.Layers = append(res.Layers, codemapsRep)
+		return res, err
+	}
+	res.Layers = append(res.Layers, codemapsRep)
+	res.Layers = append(res.Layers, checkMXIndex(projectRoot, th))
+	res.Layers = append(res.Layers, checkEdges(projectRoot))
+	return res, nil
+}
+
+// checkCodemaps: count of described-source files whose working-tree content
+// differs from the content at the stamped generation commit (endpoint diff —
+// reverted churn counts zero). Dirty generation anchors on the stamped
+// content fingerprint instead of a named commit. A stamped commit git cannot
+// resolve (shallow history, vanished SHA) is NOT judged stale — the layer was
+// never measured; the error propagates as a system error (exit 2).
+func checkCodemaps(projectRoot string, th Thresholds) (LayerReport, error) {
+	rep := LayerReport{Layer: LayerCodemaps, Metric: MetricDescribedSourceDiff, Threshold: th.CodemapsChangedFiles}
+
+	dir := filepath.Join(projectRoot, ".moai", "project", "codemaps")
+	if info, err := os.Stat(dir); err != nil || !info.IsDir() {
+		rep.Verdict = VerdictAbsent
+		rep.Reason = "codemaps directory missing"
+		return rep, nil
+	}
+	pvPath := filepath.Join(dir, "provenance.json")
+	data, err := os.ReadFile(pvPath)
+	if err != nil {
+		rep.Verdict = VerdictAbsent
+		rep.Reason = "no provenance block — freshness-unjudgeable, not fresh"
+		return rep, nil
+	}
+	var pv mx.Provenance
+	if err := json.Unmarshal(data, &pv); err != nil || pv.SchemaVersion == 0 {
+		rep.Verdict = VerdictAbsent
+		rep.Reason = "provenance block unparseable — freshness-unjudgeable"
+		return rep, nil
+	}
+
+	// Provenance scope validation (CR round-2 3855002115 / 3855149192):
+	// DescribedRoots are repository-controlled and must not aim the endpoint
+	// diff (or the dirty-fingerprint hash) outside this project — an invalid
+	// root is unjudgeable (absent), never fresh. TreeRoot is deliberately
+	// NOT matched against this checkout: codemaps is a TRACKED artifact, one
+	// file replicated to every checkout, so a different tree root is the
+	// normal state on every machine but the stamper's — hard-matching it
+	// would disable the check everywhere (the mx-index/edges layers are
+	// untracked and DO match TreeRoot; see checkMXIndex).
+	roots := pv.DescribedRoots
+	if len(roots) == 0 {
+		roots = mx.DefaultDescribedRoots
+	}
+	for _, r := range roots {
+		if err := validateDescribedRoot(projectRoot, r); err != nil {
+			rep.Verdict = VerdictAbsent
+			rep.Reason = fmt.Sprintf("described root %q invalid: %v", r, err)
+			return rep, nil
+		}
+	}
+
+	if pv.Dirty {
+		rep.Metric = MetricGenerationFP
+		rep.Threshold = 1
+		// Filtered to described-worthy files, paired with the codemaps stamp
+		// writer which produces it the same way (REQ-GFC-003). The unfiltered
+		// aggregate stays the edges layer's (REQ-GFC-003a).
+		cur, err := mx.AggregateDescribedFingerprintFiltered(projectRoot, roots)
+		if err != nil {
+			rep.Verdict = VerdictAbsent
+			rep.Reason = "described roots unreadable: " + err.Error()
+			return rep, nil
+		}
+		if cur == pv.ContentFingerprint {
+			rep.Value = 0
+			rep.Verdict = VerdictFresh
+			attachContribution(projectRoot, roots, &rep)
+			return rep, nil
+		}
+		rep.Value = 1
+		rep.Verdict = VerdictStale
+		rep.Reason = fmt.Sprintf("content moved past dirty-generation fingerprint %s", shortHash(pv.ContentFingerprint))
+		// The contribution is a property of the change, not of the stamp, so
+		// it is reported on the fingerprint path too. Driving paths are not:
+		// this path compares one hash against another and holds no path set,
+		// and inventing one would name files the metric never counted.
+		attachContribution(projectRoot, roots, &rep)
+		return rep, nil
+	}
+
+	if pv.CommitSHA == "" {
+		rep.Verdict = VerdictAbsent
+		rep.Reason = "clean stamp carries no commit sha — freshness-unjudgeable"
+		return rep, nil
+	}
+	driving, err := gitDiffNameList(projectRoot, pv.CommitSHA, roots)
+	if err != nil {
+		// Not-comparable (bad revision / shallow history): report the layer
+		// as unmeasured and surface the system error — never judge stale on
+		// a diff that could not run.
+		rep.Verdict = VerdictAbsent
+		rep.Reason = "stamped commit not comparable (unmeasured, system error follows)"
+		return rep, fmt.Errorf("codemaps stamp %s not comparable in this checkout: %w", shortHash(pv.CommitSHA), err)
+	}
+	rep.Value = len(driving)
+	attachContribution(projectRoot, roots, &rep)
+	if rep.Value >= th.CodemapsChangedFiles {
+		rep.Verdict = VerdictStale
+		// REQ-GFC-008 is guarded on the stale verdict: a fresh layer has
+		// nothing driving it, so listing paths there would name churn the
+		// gate deliberately tolerates.
+		attachDrivingPaths(&rep, driving)
+	} else {
+		rep.Verdict = VerdictFresh
+	}
+	return rep, nil
+}
+
+// checkMXIndex: count of scanner-read files whose working-tree content hash
+// differs from the stamped scan inventory. Absent sidecar, corrupt sidecar,
+// or missing provenance all yield the absent verdict.
+func checkMXIndex(projectRoot string, th Thresholds) LayerReport {
+	rep := LayerReport{Layer: LayerMXIndex, Metric: MetricInventoryContentDiff, Threshold: th.MXIndexChangedFiles}
+
+	sidecar, ok := loadMXSidecarForCheck(projectRoot)
+	if !ok {
+		rep.Verdict = VerdictAbsent
+		rep.Reason = sidecarAbsentReason
+		return rep
+	}
+	pv := sidecar.Provenance
+
+	if pv.TreeRoot != "" && pv.TreeRoot != projectRoot {
+		rep.Metric = MetricWrongTree
+		rep.Value = len(pv.FileInventory)
+		rep.Verdict = VerdictStale
+		rep.Reason = fmt.Sprintf("index generated in a different tree (%s) — every inventory entry untrustworthy", shortRoot(pv.TreeRoot))
+		return rep
+	}
+
+	mismatch, missing, changed := MXIndexDrift(projectRoot, pv.FileInventory)
+	rep.Value = mismatch
+	if mismatch >= th.MXIndexChangedFiles {
+		rep.Verdict = VerdictStale
+		if len(missing) > 0 {
+			rep.Reason = fmt.Sprintf("%d inventoried file(s) vanished, %d changed content", len(missing), len(changed))
+		} else {
+			rep.Reason = fmt.Sprintf("%d inventoried file(s) changed content", len(changed))
+		}
+	} else {
+		rep.Verdict = VerdictFresh
+	}
+	return rep
+}
+
+// sidecarAbsentReason is the fixed reason the mx-index layer carries whenever
+// its sidecar cannot be judged fresh or stale: the three load failures
+// loadMXSidecarForCheck collapses — file absent, unparseable JSON, no
+// provenance block — all leave the layer unmeasured, so one immutable reason
+// serves that single unjudgeable state (CR round-2 3855149309).
+const sidecarAbsentReason = "mx-index absent (untracked runtime artifact — fresh worktree state)"
+
+// loadMXSidecarForCheck loads the sidecar and reports whether it carries a
+// provenance block (the freshness-judgeable precondition).
+func loadMXSidecarForCheck(projectRoot string) (*mx.Sidecar, bool) {
+	sidecarPath := filepath.Join(projectRoot, ".moai", "state", mx.SidecarFileName)
+	data, err := os.ReadFile(sidecarPath)
+	if err != nil {
+		return nil, false
+	}
+	var sidecar mx.Sidecar
+	if err := json.Unmarshal(data, &sidecar); err != nil {
+		return nil, false
+	}
+	if sidecar.Provenance == nil {
+		return nil, false
+	}
+	return &sidecar, true
+}
+
+// MXIndexDrift counts inventoried files whose current content hash differs
+// (vanished files count), returning (mismatch, missing, changed). Shared by
+// the check and the query-path refresh trigger: a moved scan source must
+// refresh the derived edges layer even though the mx-index FILE itself has
+// not been rewritten yet.
+func MXIndexDrift(projectRoot string, inventory map[string]string) (mismatch int, missing, changed []string) {
+	paths := make([]string, 0, len(inventory))
+	for rel := range inventory {
+		paths = append(paths, rel)
+	}
+	sort.Strings(paths)
+	for _, rel := range paths {
+		sum, err := mx.HashFile(filepath.Join(projectRoot, filepath.FromSlash(rel)))
+		if err != nil {
+			mismatch++
+			missing = append(missing, rel)
+			continue
+		}
+		if sum != inventory[rel] {
+			mismatch++
+			changed = append(changed, rel)
+		}
+	}
+	return mismatch, missing, changed
+}
+
+// MXIndexNeedsRefresh reports whether the mx-index layer needs a refresh
+// before a consumer answers from it: any inventoried content drift, a
+// wrong-tree anchor (answering from another tree's index is the wrong-tree
+// defect family), or NO sidecar at all — an absent index means the tree's
+// scan sources have never been indexed, so the edges layer's mx-spec input is
+// unindexed too. A sidecar WITHOUT a provenance block is deliberately NOT
+// refreshed: it is unjudgeable rather than stale, and pre-provenance indexes
+// keep answering exactly as they did before this SPEC.
+//
+// mxIndexChangedFiles is the drift red line, INJECTED BY THE CALLER (CR
+// round-2 3855149315): a drift count >= it needs a refresh. This function
+// applies no threshold policy of its own — callers state theirs (the
+// gate-calibrated value is DefaultThresholds().MXIndexChangedFiles).
+func MXIndexNeedsRefresh(projectRoot string, mxIndexChangedFiles int) bool {
+	sidecarPath := filepath.Join(projectRoot, ".moai", "state", mx.SidecarFileName)
+	data, err := os.ReadFile(sidecarPath)
+	if err != nil {
+		return true // absent sidecar: scan sources unindexed
+	}
+	var sidecar mx.Sidecar
+	if err := json.Unmarshal(data, &sidecar); err != nil {
+		return true // corrupt: unjudgeable, rescan is the only repair
+	}
+	pv := sidecar.Provenance
+	if pv == nil {
+		return false // pre-provenance index: answer as-is (legacy contract)
+	}
+	if pv.TreeRoot != "" && pv.TreeRoot != projectRoot {
+		return true
+	}
+	mismatch, _, _ := MXIndexDrift(projectRoot, pv.FileInventory)
+	return mismatch >= mxIndexChangedFiles
+}
+
+// checkEdges: recompute the four source-set fingerprints and compare against
+// the stamped ones. Any mismatch is red (threshold 0).
+func checkEdges(projectRoot string) LayerReport {
+	rep := LayerReport{Layer: LayerEdges, Metric: MetricSourceFingerprint, Threshold: 0}
+
+	edgesPath := filepath.Join(projectRoot, ".moai", "project", "graph", "edges.jsonl")
+	if _, err := os.Stat(edgesPath); err != nil {
+		rep.Verdict = VerdictAbsent
+		rep.Reason = "edges.jsonl absent (untracked derived artifact — fresh worktree state)"
+		return rep
+	}
+	pv, ok := ReadEdgesMeta(filepath.Join(projectRoot, ".moai", "project", "graph", MetaFileName))
+	if !ok {
+		rep.Verdict = VerdictAbsent
+		rep.Reason = "no provenance sidecar — freshness-unjudgeable, not fresh"
+		return rep
+	}
+
+	current := SourceFingerprintsForEdges(projectRoot)
+	moved := compareSourceFingerprints(pv.SourceFingerprints, current)
+	rep.Value = len(moved)
+	if len(moved) > 0 {
+		rep.Verdict = VerdictStale
+		rep.Reason = "source set(s) moved: " + strings.Join(moved, ", ")
+	} else {
+		rep.Verdict = VerdictFresh
+	}
+	return rep
+}
+
+// validateDescribedRoot rejects a described root that is empty, absolute,
+// or resolves outside the project root — the provenance block is repository
+// content and must not aim hashing/diffing past the tree it describes.
+// EXISTING roots are symlink-resolved before the containment comparison
+// (CR round-3 d60180c9): filepath.Rel is lexical, so an in-tree symlink
+// pointing outside would otherwise slip past and hand the fingerprint walk
+// a path that reads outside projectRoot. Absent roots stay absent
+// contributors downstream and are not resolved.
+func validateDescribedRoot(projectRoot, root string) error {
+	if root == "" {
+		return fmt.Errorf("empty")
+	}
+	if filepath.IsAbs(root) {
+		return fmt.Errorf("absolute path")
+	}
+	abs := filepath.Join(projectRoot, filepath.FromSlash(root))
+
+	// Lexical containment first (cheap, catches plain .. escapes).
+	if rel, err := filepath.Rel(projectRoot, abs); err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("resolves outside the project root")
+	}
+	// Symlink containment for roots that exist: resolve both ends and
+	// re-check. An absent root contributes nothing downstream (the
+	// fingerprint walk skips missing roots) and resolves to itself.
+	if _, statErr := os.Lstat(abs); statErr == nil {
+		resolvedRoot, rErr := filepath.EvalSymlinks(abs)
+		resolvedProject, pErr := filepath.EvalSymlinks(projectRoot)
+		if rErr != nil || pErr != nil {
+			return fmt.Errorf("resolves outside the project root")
+		}
+		if rel, err := filepath.Rel(resolvedProject, resolvedRoot); err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			return fmt.Errorf("symlink target resolves outside the project root")
+		}
+	}
+	return nil
+}
+
+// gitDiffNameCount counts DESCRIBED-WORTHY files under roots whose
+// working-tree content differs from commit — endpoint comparison, reverted
+// churn counts zero. A file untracked at HEAD counts too: its content
+// (existence) differs from the stamped commit, and `git diff <commit>` alone
+// would silently skip it.
+//
+// Both branches apply mx.IsDescribedWorthy (REQ-GFC-001/002): filtering only
+// the diff branch leaves an untracked fixture counted, which is the exact
+// shape of the noise this metric exists to stop counting.
+func gitDiffNameCount(projectRoot, commit string, roots []string) (int, error) {
+	paths, err := gitDiffNameList(projectRoot, commit, roots)
+	return len(paths), err
+}
+
+// gitDiffNameList is gitDiffNameCount's underlying measurement: the sorted set
+// of described-worthy paths differing from commit, unioned across the endpoint
+// diff and the untracked listing. The count and the list come from ONE
+// traversal, so a report can never name paths its own count disagrees with
+// (REQ-GFC-008). The order is sorted, so two runs over the same tree produce a
+// diffable listing.
+func gitDiffNameList(projectRoot, commit string, roots []string) ([]string, error) {
+	changed := map[string]bool{}
+
+	diffArgs := append([]string{"diff", "--name-only", commit, "--"}, roots...)
+	if out, err := gitOutput(projectRoot, diffArgs...); err != nil {
+		return nil, fmt.Errorf("git diff %s: %w", shortHash(commit), err)
+	} else {
+		for _, line := range strings.Split(out, "\n") {
+			if p := strings.TrimSpace(line); p != "" && mx.IsDescribedWorthy(p) {
+				changed[p] = true
+			}
+		}
+	}
+
+	otherArgs := append([]string{"ls-files", "--others", "--exclude-standard", "--"}, roots...)
+	if out, err := gitOutput(projectRoot, otherArgs...); err != nil {
+		return nil, fmt.Errorf("git ls-files --others: %w", err)
+	} else {
+		for _, line := range strings.Split(out, "\n") {
+			if p := strings.TrimSpace(line); p != "" && mx.IsDescribedWorthy(p) {
+				changed[p] = true
+			}
+		}
+	}
+
+	out := make([]string, 0, len(changed))
+	for p := range changed {
+		out = append(out, p)
+	}
+	sort.Strings(out)
+	return out, nil
+}
+
+// attachContribution measures the change under judgment's own described-worthy
+// contribution against the checkout's first-parent predecessor, so a reader can
+// tell an inherited red from an originated one (REQ-GFC-007). It uses the same
+// predicate and the same union as the cumulative count, differing only in the
+// comparison base.
+//
+// Where no first parent resolves, the contribution is reported ABSENT with a
+// reason. It is never defaulted to 0 — see the Contribution field comment for
+// why the fabricated 0 is the dangerous direction here.
+func attachContribution(projectRoot string, roots []string, rep *LayerReport) {
+	base, err := gitOutput(projectRoot, "rev-parse", "--verify", "--quiet", "HEAD^1")
+	base = strings.TrimSpace(base)
+	if err != nil || base == "" {
+		rep.ContributionAbsentReason = "no first parent — the change under judgment has no comparison base"
+		return
+	}
+	n, err := gitDiffNameCount(projectRoot, base, roots)
+	if err != nil {
+		rep.ContributionAbsentReason = fmt.Sprintf("first parent %s not comparable: %v", shortHash(base), err)
+		return
+	}
+	rep.Contribution = &n
+	rep.ContributionBase = base
+}
+
+// attachDrivingPaths records the paths driving a stale count, truncated to the
+// display bound with the overflow declared rather than dropped (REQ-GFC-008).
+func attachDrivingPaths(rep *LayerReport, paths []string) {
+	if len(paths) <= drivingPathDisplayBound {
+		rep.DrivingPaths = paths
+		return
+	}
+	rep.DrivingPaths = paths[:drivingPathDisplayBound]
+	rep.DrivingPathsOmitted = len(paths) - drivingPathDisplayBound
+}
+
+// gitOutput runs git in dir and returns stdout (errors carry stderr).
+func gitOutput(dir string, args ...string) (string, error) {
+	cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
+	var out, errBuf strings.Builder
+	cmd.Stdout = &out
+	cmd.Stderr = &errBuf
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("%v: %s", err, strings.TrimSpace(errBuf.String()))
+	}
+	return out.String(), nil
+}
+
+// shortRoot trims a tree root for one-line reasons.
+func shortRoot(root string) string {
+	if len(root) > 40 {
+		return "..." + root[len(root)-37:]
+	}
+	return root
+}
+
+// shortHash trims a digest for display.
+func shortHash(h string) string {
+	if len(h) > 12 {
+		return h[:12]
+	}
+	return h
+}

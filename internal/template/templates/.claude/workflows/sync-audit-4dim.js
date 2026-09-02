@@ -1,8 +1,8 @@
 // sync-audit-4dim.js — 4-dimension sync-phase quality verdict (Context → Judge → Verdict)
 //
 // VERDICT SCOPING (what this workflow IS and is NOT):
-//   This is an EXECUTION VEHICLE for a skeptical 4-dimension quality read. SPEC-AUDIT-SNAPSHOT-001
-//   (A3) PROMOTED its verdict to BINDING on the happy path: where the verdict is PASS with all
+//   This is an EXECUTION VEHICLE for a skeptical 4-dimension quality read. The audit-snapshot
+//   policy PROMOTED its verdict to BINDING on the happy path: where the verdict is PASS with all
 //   four dims above their floor, not INCOMPLETE, and no contested finding, the orchestrator treats
 //   this workflow's harmonic-mean verdict as the binding sync-phase verdict and does NOT spawn the
 //   cold `sync-auditor` subagent. The cold auditor remains the FALLBACK verdict owner for the

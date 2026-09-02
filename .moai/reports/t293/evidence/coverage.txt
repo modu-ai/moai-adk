@@ -1,0 +1,2 @@
+ok  	github.com/modu-ai/moai-adk/internal/statusline	17.278s	coverage: 90.6% of statements
+ok  	github.com/modu-ai/moai-adk/internal/profile	0.438s	coverage: 84.3% of statements

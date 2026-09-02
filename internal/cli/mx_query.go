@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/modu-ai/moai-adk/internal/graph"
 	"github.com/modu-ai/moai-adk/internal/mx"
 )
 
@@ -104,6 +105,30 @@ moai mx query --file-prefix internal/auth/ --format table`,
 						"SidecarUnavailable: could not build the sidecar index: %v\n", err)
 					return fmt.Errorf("SidecarUnavailable: index build failed: %w", err)
 				}
+			}
+
+			// REQ-GF-007: refresh the mx-index (a mechanical input layer)
+			// before answering when it is STALE by its metric — re-parsing
+			// only files whose content hash changed, reflecting uncommitted
+			// working-tree edits. No LLM, no network (mechanical surface
+			// only). Unjudgeable/absent indexes are not stale and keep the
+			// pre-existing behavior (absent errors above; unjudgeable answers
+			// as-is).
+			errs := cmd.ErrOrStderr()
+			if graph.MXIndexNeedsRefresh(projectRoot, graph.DefaultThresholds().MXIndexChangedFiles) {
+				if stats, rErr := mx.RefreshIndex(stateDir, projectRoot, nil); rErr != nil {
+					_, _ = fmt.Fprintf(errs, "mx refresh failed (answering from the existing index): %v\n", rErr)
+				} else if over := graphRefreshOverrun(projectRoot, stats.Duration); over > 0 {
+					// REQ-GF-009: warn naming measured cost and budget; still answer.
+					_, _ = fmt.Fprintf(errs, "mx refresh cost %s exceeded the %dms update budget by %.0fms (warning only, answer follows)\n",
+						stats.Duration.Round(time.Millisecond), graphRefreshBudgetMS(projectRoot), over.Seconds()*1000)
+				}
+			}
+
+			// REQ-GF-008: the answer names the tree root and commit it was
+			// computed from (per-tree anchoring; never repo-identity alone).
+			if sc, lErr := mgr.Load(); lErr == nil && sc != nil {
+				_, _ = fmt.Fprintln(errs, sc.Provenance.Describe())
 			}
 
 			// create Resolver

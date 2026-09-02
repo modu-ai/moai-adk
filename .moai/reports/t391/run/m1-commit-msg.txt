@@ -1,0 +1,128 @@
+feat(cli): bare `moai codex` launches; status keeps the readout (t391)
+
+SPEC-CODEX-LAUNCH-VERB-001 M1-M5. Supersedes REQ-CL-002 of
+SPEC-CODEX-LAUNCHER-001: the bare invocation launched nothing and printed the
+readiness readout. It now launches the Codex CLI, and `status` is the explicit
+readout alias.
+
+The risk that argued for the old default -- an accidental invocation carrying
+the session away -- does not apply here: since the 0.8.0 revision this launcher
+starts an os/exec CHILD with verbatim exit-code propagation, not a process
+replacement, so the shell is still there when codex exits.
+
+Two tables, not one. Routing (codexVerbRouting) answers "what did the operator
+ask for" and stays a closed set -- absence IS the rejection, no default branch.
+Argv translation (codexChildSubcommand), strictly downstream and a strict
+subset, answers "what does codex accept": only a verb naming a real codex
+subcommand reaches the child.
+
+-w/--worktree is consumed here and never forwarded: it points the child's
+working directory at an EXISTING worktree. It RESOLVES and never CREATES -- an
+absent name is a diagnostic with launch count 0 and the directory still absent
+afterwards. This is deliberately asymmetric with `moai cc`, where the flag is
+forwarded and claude creates the tree; the reason is recorded [HARD] in the SPEC
+so a later "make it consistent" argument has to answer it.
+
+CODEX_HOME now reaches the child as an explicit environment entry on both the
+direct path (exec.Cmd.Env) and the new-window path (a command-scoped assignment
+in the tmux command string), rather than by ambient inheritance. No file is
+written on any verb -- the entry is process-local, so REQ-CL-013 holds.
+
+Inherited test expectations flipped, with the reason each time:
+
+1. codex_launcher_test.go TestCodexVerbRouting_PassthroughTailExact pinned
+   `want := append([]string{"cli"}, tail...)`. That expectation fixed a defect
+   rather than a contract: `codex --help` lists no `cli` subcommand, and its
+   usage is `codex [OPTIONS] [PROMPT]`, so the forwarded token arrived as a
+   PROMPT reading "cli". Verbatim from `codex --help`
+   (/Users/goos/.local/bin/codex, measured 2026-09-01):
+
+     If no subcommand is specified, options will be forwarded to the interactive CLI.
+
+     Usage: codex [OPTIONS] [PROMPT]
+            codex [OPTIONS] <COMMAND> [ARGS]
+
+     Commands:
+       agents            Browse all agent sessions on the shared local app-server daemon
+       exec              Run Codex non-interactively [aliases: e]
+       review            Run a code review non-interactively
+       login             Manage login
+       logout            Remove stored authentication credentials
+       mcp               Manage external MCP servers for Codex
+       plugin            Manage Codex plugins
+       mcp-server        Start Codex as an MCP server (stdio)
+       app-server        [experimental] Run the app server or related tooling
+       remote-control    [experimental] Manage the app-server daemon with remote control enabled
+       app               Launch the Desktop app (opens the app installer if missing)
+       completion        Generate shell completion scripts
+       update            Update Codex to the latest version
+       doctor            Diagnose local Codex installation, config, auth, and runtime health
+       sandbox           Run commands within a Codex-provided sandbox
+       debug             Debugging tools
+       apply             Apply the latest diff produced by Codex agent as a `git apply` to your local
+                         working tree [aliases: a]
+       resume            Resume a previous interactive session (picker by default; use --last to continue
+                         the most recent)
+       queue             Queue a message for an existing session
+       archive           Archive a saved session by id or session name
+       delete            Permanently delete a saved session by id or session name
+       migrate-rollouts  Inspect or migrate legacy local sessions to paginated thread history
+       unarchive         Unarchive a saved session by id or session name
+       fork              Fork a previous interactive session (picker by default; use --last to fork the
+                         most recent)
+       cloud             [EXPERIMENTAL] Browse tasks from Codex Cloud and apply changes locally
+       exec-server       [EXPERIMENTAL] Run the standalone exec-server service
+       features          Inspect feature flags
+       help              Print this message or the help of the given subcommand(s)
+
+   `cli` does not appear; `app` does, which is why `app` is still forwarded.
+   The same output carries no `--worktree` and no `-w` short flag, which is why
+   -w is consumed rather than passed on. This sweep covers the TOP-LEVEL help
+   only; per-subcommand and hidden flags were not swept, so both absence claims
+   are exactly that narrow.
+
+2. TestCodexSpawn_RealAssemblyThroughStubTmux pinned the `cli` token in the
+   tmux command string -- same reason -- and now also expects the CODEX_HOME
+   assignment, because a tmux window inherits the tmux SERVER's environment and
+   would otherwise resolve a different home than the direct path assigns.
+
+3. TestCodexVerbRouting_LaunchCountsPerVerb: the bare row moves 0 -> 1.
+
+4. TestCodexSpawn_RejectedOnReadoutForms drops its bare row: `moai codex
+   --spawn` is now a launch in a new window, which is what the flag is for.
+
+5. TestCodexVerbRouting_HelpAfterDashDashIsNotHelp changes shape. The property
+   is unchanged -- `--help` after `--` belongs to codex -- but the bare form is
+   no longer a readout rejecting a tail, so the test now asserts the token
+   REACHES the child, which states the property more directly.
+
+6. TestCodexVerbRouting_ClosedSets is removed; the post-reversal set derivation
+   plus unknown-token rejection live in one place in codex_launch_verb_test.go.
+   Two copies of the literal sets would be two places to update in step.
+
+7. codex_launcher_readout_test.go / codex_launcher_cross_test.go: readout cells
+   move from the bare form to `status`, and the "both forms identical" cell is
+   dropped -- bare and status are no longer the same thing. The equivalence
+   that replaced it (bare and cli build the SAME launch request, compared by
+   value) is asserted in codex_launch_verb_test.go.
+
+Test-harness changes: the capture records the child's Env, and runCodexCmd
+gives its command a context (a nil one panicked inside the readiness probe's
+exec.CommandContext instead of failing the cell).
+
+The three-launcher bare-invocation convention (cc, glm, codex) is asserted in
+one place, extending the existing cross-launcher comparison in
+codex_launcher_test.go rather than forking a second cross-launcher file.
+
+Cross-platform property held and mutation-controlled: the scan reports zero on
+the launch-path files AND reports a finding for each planted violation, so the
+zero is not the zero of a scan that matches nothing.
+
+Verification (this tree, worktree t391):
+  go build ./cmd/moai                     exit 0
+  go test ./internal/cli/...              exit 0
+  GOOS=windows go vet ./internal/cli/...  exit 0
+  go vet ./internal/cli/...               exit 0
+  golangci-lint run ./internal/cli/...    exit 0, 0 issues
+
+🗿 MoAI

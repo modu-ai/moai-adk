@@ -71,7 +71,7 @@ const (
 	verdictAgentModelUnmapped agentModelVerdict = "unmapped"
 )
 
-// agentSpawn carries the two fields the guard reads out of an Agent spawn
+// agentSpawn carries the fields the guard reads out of an Agent spawn
 // payload. The prompt body is deliberately NOT captured — it never reaches the
 // audit log or a fixture.
 type agentSpawn struct {
@@ -79,6 +79,11 @@ type agentSpawn struct {
 	Agent string
 	// DeclaredModel is the model argument, empty when the spawn omitted it.
 	DeclaredModel string
+	// Name is the named-teammate spawn argument, empty when the spawn carried
+	// none. Read by the agent-stop guard's respawn-clear path: a fresh spawn
+	// carrying a stopped name clears the stop record before the spawn
+	// proceeds.
+	Name string
 }
 
 // extractAgentSpawn parses an Agent/Task tool_input payload. It returns ok=false
@@ -91,6 +96,7 @@ func extractAgentSpawn(toolInput json.RawMessage) (agentSpawn, bool) {
 	var parsed struct {
 		SubagentType string `json:"subagent_type"`
 		Model        string `json:"model"`
+		Name         string `json:"name"`
 	}
 	if err := json.Unmarshal(toolInput, &parsed); err != nil {
 		return agentSpawn{}, false
@@ -98,7 +104,7 @@ func extractAgentSpawn(toolInput json.RawMessage) (agentSpawn, bool) {
 	if parsed.SubagentType == "" {
 		return agentSpawn{}, false
 	}
-	return agentSpawn{Agent: parsed.SubagentType, DeclaredModel: parsed.Model}, true
+	return agentSpawn{Agent: parsed.SubagentType, DeclaredModel: parsed.Model, Name: parsed.Name}, true
 }
 
 // resolveAgentModel asks the profile-matrix resolver what model the given agent

@@ -38,15 +38,17 @@ const (
 	RungDegraded Rung = "DEGRADED"
 )
 
-// stateDirSegments is the record's home beneath the project root, matching the
-// per-subsystem layout the rest of .moai/state/ already uses.
-var stateDirSegments = []string{".moai", "state", "kanban"}
+// The record's home beneath the project root is the shared state directory
+// resolved by state_dir.go — the SAME directory the queue lives in, which is
+// why the two travel together through the rename (REQ-TOSQ-015). RecordPath
+// resolves it purely: reading or writing a session record must not trigger the
+// one-time relocation, which belongs to the `moai todo` command path.
 
 // @MX:ANCHOR: [AUTO] Kanban state record schema — the cross-actor contract for a kanban session
 // @MX:REASON: the launcher writes SessionID/SpecID/Backend/EnteredAt at launch while the orchestrator fills DeepScanDir/VerifyRung/VerifyReentries later; both sides plus the sync-phase dedup gate bind to these JSON keys, so a renamed key breaks readers this package cannot see
 //
 // Record is the per-session kanban state record persisted at
-// .moai/state/kanban/<session>.json.
+// <state-dir>/<session>.json (see state_dir.go for the directory).
 //
 // The three orchestrator-written fields (DeepScanDir, VerifyRung,
 // VerifyReentries) are filled in independently as the chain progresses, so a
@@ -97,6 +99,28 @@ type Record struct {
 
 	// VerifyReentries counts verify re-entries consumed so far.
 	VerifyReentries int `json:"verify_reentries"`
+
+	// Lane is a factory lane's number, and 0 means "not a lane". Lanes number
+	// from 1, so the zero value is unreachable by legitimate data and carries
+	// the distinction a pointer would otherwise be needed for.
+	//
+	// It is data BESIDE Role, never a role value: Role stays "lane" for every
+	// lane, and the number is what makes N lanes distinguishable. It
+	// deliberately does not travel through WithRole, whose drop-unknown guard
+	// exists so a consumer never has to defend against arbitrary launch-label
+	// text (SPEC-KANBAN-RECORD-SESSION-KEY-001 REQ-KRS-004).
+	Lane int `json:"lane,omitempty"`
+
+	// CardID is the queue card the session is working, distinct from SpecID
+	// because Class A and Class B cards never acquire a SPEC identifier.
+	//
+	// Empty means "not recorded" and is the correct answer rather than a
+	// degraded one: the value is taken from an explicit launch override, and
+	// otherwise from the session's worktree-root basename ONLY where that
+	// root's parent directory is named `worktrees`. Outside a card worktree
+	// the basename is a checkout name, not a card, so the field is left empty
+	// rather than guessed (REQ-KRS-005).
+	CardID string `json:"card_id,omitempty"`
 }
 
 // NewRecord builds a record for a session entering Kanban Mode, stamping
@@ -129,10 +153,41 @@ func (r *Record) WithRole(role string) *Record {
 	return r
 }
 
+// WithLane returns rec carrying a factory lane's number. A non-positive
+// number is ignored rather than stored: lanes number from 1, so 0 stays the
+// "not a lane" signal instead of being overwritten by an unparsed label.
+//
+// This is deliberately NOT part of WithRole. Widening the role setter to
+// pattern-match a `lane-<n>` label would reopen exactly what its drop-unknown
+// guard closes — arbitrary launch-label text reaching the role field.
+func (r *Record) WithLane(lane int) *Record {
+	if r == nil {
+		return nil
+	}
+	if lane > 0 {
+		r.Lane = lane
+	}
+	return r
+}
+
+// WithCard returns rec carrying the queue card identifier the session is
+// working. An empty value leaves the field unset — "not recorded" is the
+// correct reading, and a consumer must render it as that rather than guessing
+// a card.
+func (r *Record) WithCard(cardID string) *Record {
+	if r == nil {
+		return nil
+	}
+	if cardID = strings.TrimSpace(cardID); cardID != "" {
+		r.CardID = cardID
+	}
+	return r
+}
+
 // RecordPath returns the on-disk path of a session's record.
 func RecordPath(projectRoot, sessionID string) string {
-	segments := append([]string{projectRoot}, stateDirSegments...)
-	return filepath.Join(append(segments, sessionID+".json")...)
+	dir, _ := resolveStateDir(projectRoot, false)
+	return filepath.Join(dir, sessionID+".json")
 }
 
 // Write persists rec under projectRoot, creating the state directory as needed.

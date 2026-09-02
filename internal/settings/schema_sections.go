@@ -161,7 +161,14 @@ func gitStrategyFields() []FieldDef {
 	modeField := withRadio(typedField(SectionGitStrategy, "git_strategy", "mode", TypeRadio),
 		"f.git_strategy.mode.opt.", []string{"manual", "personal", "team"}, "", "")
 	modeField.Description = "fieldDesc.git_strategy.mode"
-	fields := []FieldDef{modeField}
+	// SPEC-WORKTREE-BASEREF-001 REQ-WBR-014: free text, NOT a closed option set.
+	// A select carrying main / develop would bake two repository-specific branch
+	// names into the shipped schema, so a user whose default branch is `trunk`
+	// could not pick their own. The two common names live in the description
+	// (prose), never in an option set.
+	baseBranch := typedField(SectionGitStrategy, "git_strategy", "worktree_base_branch", TypeText)
+	baseBranch.Description = "fieldDesc.git_strategy.worktree_base_branch"
+	fields := []FieldDef{modeField, baseBranch}
 	// merge_method 옵션은 config.ValidMergeMethods() SSOT에서 정렬 파생한다
 	// (REQ-WC14-011 — 리터럴 재선언 금지; B3 — map-range 비결정성 제거를 위해 정렬
 	// 후 사용. 정렬은 파생이지 재선언이 아님). 3개 profile 공유.
@@ -188,12 +195,14 @@ func glmTiers() []string {
 
 // glmDefaultTierEffort는 티어별 추론 강도 기본 선택값이다. 값은 z.ai 정규
 // reasoning-state 이름이며 template 패키지 상수에서 파생한다 — 리터럴 재선언
-// 없음. 이 값들은 저장만 되고 런타임에 적용되지 않는다 (아래 주석 참조).
+// 없음. RC3(glm-settings-persist)부터 메인 세션이 해당 슬롯을 쓰면 런타임에
+// 적용된다 (llmFields 주석 참조).
 //
 // GLM-5.3 기준 기본값: high=high, medium=high, low=low, fable=max. fable만 max인
 // 것은 z.ai가 코딩 과제에 max를 권고하기 때문이고, high/medium이 max가 아닌 것은
 // 세션 전역 값이 모든 spawn에 청구되기 때문이다(SessionGLMReasoningState의 근거와
 // 동일). low 티어는 5.3에서 thinking을 끌 수 없으므로 최저 단계인 low로 내려간다.
+// (주의: collapse 오버레이에 따라 저장된 high도 wire에서는 max로 수렴한다.)
 func glmDefaultTierEffort(tier string) string {
 	switch tier {
 	case "high", "medium":
@@ -211,13 +220,14 @@ func glmDefaultTierEffort(tier string) string {
 // 모델 슬롯은 닫힌 집합이므로 select로 렌더한다 — 옵션은 config.ValidGLMModels()
 // SSOT에서 파생하며 스키마 파일에서 리터럴을 재선언하지 않는다 (AP-2).
 //
-// 추론 강도 4종은 **저장 전용(store-only)** 이다. 런타임 추론 강도 전달 채널은
-// 세션 전역 ANTHROPIC_REASONING_EFFORT 하나뿐이고, 그 값은
-// internal/template/glm_effort_overlay.go가 세션 단위 llm.effort_level
-// 환경설정에서 파생한다 — 이 티어 맵과 무관하다. 따라서 어느 티어의 effort도
-// 런타임에 적용되지 않으며, 콘솔은 적용 원천을 명시하고 이 필드들을 저장 전용으로
-// 표시한다 (REQ-WCR-033). 기존 코드 주석은 z.ai가 해당 환경변수를 준수하는지를
-// UNVERIFIED로 표기하며, 그 표기는 그대로 유지된다.
+// 추론 강도 4종은 RC3(glm-settings-persist)부터 런타임에 적용된다:
+// internal/cli의 런처(resolveGLMMainSessionEffort)가 메인 세션 모델이 속한
+// 슬롯의 값을 읽어 prefs/model_policy 노력 강도 체인보다 우선 적용한다.
+// 서브 에이전트는 기존대로 세션 전역 ANTHROPIC_REASONING_EFFORT
+// (internal/template/glm_effort_overlay.go가 세션 단위 llm.effort_level에서
+// 파생)를 쓴다. 최종 wire 값은 collapse 오버레이가 계속 지배한다 — 저장된
+// high와 max는 모두 max로, low는 low로 전달되고 glm-5.3-flash는 모든 값을
+// max로 고정한다. 콘솔의 안내 문구(sec.llm.effortnote)도 이 내용을 따른다.
 //
 // legacy alias opus/sonnet/haiku는 SPEC-WEB-CONSOLE-012 REQ-WC12-002에서 웹
 // 편집면에서 제거되었다 — GLMModels legacy struct 멤버는 무접촉 보존되어 legacy
@@ -235,7 +245,6 @@ func llmFields() []FieldDef {
 			"f.llm.glm.effort.opt.", template.GLMReasoningStateNames(), "", "")
 		f.Description = "fieldDesc.llm.glm.effort." + tier
 		f.Default = glmDefaultTierEffort(tier)
-		f.StoreOnly = true
 		fields = append(fields, f)
 	}
 	return fields
@@ -380,6 +389,25 @@ func seamSectionFields() []FieldDef {
 		withOptionDesc(closedSeam(SectionWorkflow, "workflow", "f.workflow.audit.gate.opt.",
 			config.ValidAuditGates(), "", "", "workflow", "audit", "gates", "glm"),
 			"f.workflow.audit.gate.option."),
+		// SPEC-V3R6-AUDIT-MODEL-PIN-001 M4 (REQ-AMP-009 / AC-AMP-008): the
+		// per-backend {model, effort} pins, editable on the SAME Audit panel
+		// (the workflow.audit. prefix routes them there via isAuditFieldName)
+		// and persisted through the same workflow.yaml seam the audit
+		// resolvers read. codex.model is free-form text (a codex-servable id,
+		// e.g. gpt-*); the three selects are closed sets from the SSOT
+		// accessors (v4 effort vocabulary / ValidGLMModels /
+		// GLMReasoningStateNames — the z.ai state names, single reading).
+		// Empty = no pin: the resolver falls back to the SSOT sync-auditor
+		// cell (hence withEmptySubmits — clearing a pin must persist "").
+		// Unlike the llm tier effort map (stored-only, REQ-WCR-033), these
+		// efforts ARE runtime-applied — they ride the audit request builders.
+		s(SectionWorkflow, "workflow", TypeText, "workflow", "audit", "codex", "model"),
+		withEmptySubmits(withSelect(s(SectionWorkflow, "workflow", TypeSelect, "workflow", "audit", "codex", "effort"),
+			"f.workflow.audit.codex.effort.opt.", v4EffortValues(), emptyLabelUnset, "opt.unset")),
+		withEmptySubmits(withSelect(s(SectionWorkflow, "workflow", TypeSelect, "workflow", "audit", "glm", "model"),
+			"f.workflow.audit.glm.model.opt.", config.ValidGLMModels(), emptyLabelUnset, "opt.unset")),
+		withEmptySubmits(withSelect(s(SectionWorkflow, "workflow", TypeSelect, "workflow", "audit", "glm", "effort"),
+			"f.workflow.audit.glm.effort.opt.", template.GLMReasoningStateNames(), emptyLabelUnset, "opt.unset")),
 		// SPEC-MCP-CONSOLE-001 M3 (REQ-C-6 / AC-C-009): codex opt-in toggles written
 		// through the SAME seam the fail-closed readers consume. The path
 		// workflow.codex.review_gate.enabled / workflow.codex.task.allow_write in

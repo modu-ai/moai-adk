@@ -45,6 +45,12 @@ Three launch modes must be distinguished:
 
 ---
 
+## Gateway credential and telemetry scope
+
+Claude Code versions before 2.1.246 sent the credential configured for a third-party gateway (`ANTHROPIC_BASE_URL` and its auth token — under GLM, the z.ai key) along on Anthropic telemetry and metrics requests; 2.1.246 fixed this so a credential is only sent to its own host. A GLM session on an older runtime therefore leaked the z.ai key to Anthropic telemetry endpoints. Operators who want that path blocked entirely can set `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`, with the documented trade-off that it also disables the feature-flag evaluation cross-session messaging depends on (`cross-session-messaging.md` § Availability constraints — flag evaluation), turning that channel off silently.
+
+---
+
 ## CG Mode (Claude + GLM teammates)
 
 `moai cg` is the **hybrid** launcher named in the GLM-Backend Detection table above: the Claude leader pane keeps the Claude backend while GLM teammate panes route through z.ai. This section is the operational SSOT for how `moai cg` detects, configures, and recovers the hybrid mode. Only the CG operational mechanism is retained here; the retired static Agent Teams orchestration prose (team-spawn patterns, role assignments) is out of scope.

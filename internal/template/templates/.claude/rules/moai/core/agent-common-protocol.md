@@ -180,6 +180,14 @@ than forcing it. Pre-approved write paths in settings.json `permissions.allow` r
 Runtime-history rationale: `agent-common-protocol-reference.md` § Background Agent Execution
 rationale.
 
+[ZONE:Evolvable] [HARD] **While a worktree is being actively audited, it has exactly one writer.**
+The audit window runs from the opening measurement to the landed verdict, and the only session
+committing to that tree throughout it is the one that owns it. A previous audit session landing
+its own reports or scripts is itself a foreign commit, and every foreign commit — whoever writes
+it — waits until the window closes. Observing an unexpected HEAD move or a foreign commit on an
+actively audited worktree is a process defect: report it to the lead immediately and record it in
+the progress record — never continue quietly.
+
 ## Tool Usage Guidelines
 
 [ZONE:Evolvable] [HARD] Agents must follow tool usage patterns optimized for accuracy and efficiency.
@@ -257,7 +265,7 @@ Three obligations from that file bind here and are restated so they hold without
 
 - **Batch in one turn.** Independent read-only verifications are issued as separate Bash tool calls within a single assistant turn — never serialized across turns. Serialize only for genuine dependencies: one command's output feeding another, writes to the same path, or shared-state mutation.
 - **File-redirect contract.** When a command's verbatim output exceeds the bounded-tail ceiling (default: 50 lines or 2KB, whichever is smaller), redirect it to a file and surface only the exit code plus a bounded tail. Below the ceiling, inline quotation is fine. The contract removes the double-burn of quoting output twice, never the evidence itself.
-- **Evidence persistence.** The cited path must still resolve at audit time, so evidence is persisted under `.moai/state/verify/<session>/` rather than left in `/tmp`, which the OS clears. A claim whose cited evidence path no longer resolves is an unattributed claim (`verification-claim-integrity.md` §2).
+- **Evidence export.** The cited path must still resolve at audit time, and surviving `/tmp` clearance is not the same thing. `.moai/state/verify/<session>/` is **machine-local scratch**: it outlives `/tmp`, and it is gitignored, so it reaches no clone, no CI runner, and no other machine. The citation target is a tracked path — in this repository `.moai/reports/<card-id>/`. The obligation is therefore **export before citing**: an artifact is exported to that tracked path before it is cited as the basis of a verdict, and the citation names the exported file. The converse binds equally: material deliberately **not** exported MUST NOT be cited — it is named in Residual-risk as a known loss, never offered as a verdict basis. A claim whose cited evidence path no longer resolves is an unattributed claim (`verification-claim-integrity.md` §2). Export width, the selection criterion, and the machine-consumer carve-outs: `agent-common-protocol-reference.md` § Evidence export obligation.
 
 ### Attributable diff-check doctrinal switch
 

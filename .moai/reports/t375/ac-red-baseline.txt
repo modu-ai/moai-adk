@@ -1,0 +1,26 @@
+# AC RED baseline — measured before any M1/M3/M5 edit
+# tree: /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t375
+# branch: WT-state-evidence-canon
+# HEAD: 27df6bafbcffbd16bacb4434def0bdccd0be9428
+# Each line: <AC> <command> = <observed count>
+
+AC-ECC-001a  grep -c 'SHALL be persisted under'            .claude/rules/moai/core/agent-common-protocol-reference.md = 1
+AC-ECC-001b  grep -c 'evidence is persisted under'         .claude/rules/moai/core/agent-common-protocol.md           = 1
+AC-ECC-002a  grep -c 'machine-local scratch'               .claude/rules/moai/core/agent-common-protocol.md           = 0
+AC-ECC-002b  grep -c 'export before citing'                .claude/rules/moai/core/agent-common-protocol.md           = 0
+AC-ECC-002c  grep -c '\.moai/reports/<card-id>'            .claude/rules/moai/core/agent-common-protocol.md           = 0
+AC-ECC-003a  grep -c 'names one file'                      .claude/rules/moai/core/agent-common-protocol-reference.md = 0
+AC-ECC-003b  grep -c -i 'never the directory\|wholesale'   .claude/rules/moai/core/agent-common-protocol-reference.md = 0
+AC-ECC-004   grep -c -i 'residual-risk'                    .claude/rules/moai/core/agent-common-protocol-reference.md = 0
+AC-ECC-005a  grep -c 'state/verify/snapshots'              .claude/rules/moai/core/agent-common-protocol-reference.md = 0
+AC-ECC-005b  grep -c 'internal/web/events.go'              .claude/rules/moai/core/agent-common-protocol-reference.md = 0
+AC-ECC-007a  grep -c 'canonical persistence location'      .claude/agents/moai/manager-lead.md                        = 1
+AC-ECC-007b  grep -c 'machine-local scratch'               .claude/agents/moai/manager-lead.md                        = 0
+AC-ECC-008   grep -c 'state/verify'                        .claude/output-styles/moai/moai.md                         = 3
+AC-ECC-014a  grep -c 'moai/observability'                  .gitignore                                                 = 0
+AC-ECC-014b  grep -c 'moai/observability'                  internal/template/templates/.gitignore                     = 0
+AC-ECC-014c  grep -c 'navigator'                           .gitignore                                                 = 0
+AC-ECC-014d  grep -c 'navigator'                           internal/template/templates/.gitignore                     = 0
+
+# Every value above matches the expectation acceptance.md records for the
+# pre-repair tree. The post-edit re-run lives in ac-green-after.txt.

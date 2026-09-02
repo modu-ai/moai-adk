@@ -1,0 +1,141 @@
+constitution validate: FAILED — 67 error(s) found
+
+  [DRIFT] CONST-V3R2-001 @ .claude/rules/moai/workflow/spec-workflow.md #phase-overview
+    detail: clause "SPEC+EARS format" not found in source ".claude/rules/moai/workflow/spec-workflow.md"
+  [DRIFT] CONST-V3R2-003 @ .claude/rules/moai/workflow/mx-tag-protocol.md #mx-tag-types
+    detail: clause "@MX TAG protocol" not found in source ".claude/rules/moai/workflow/mx-tag-protocol.md"
+  [DRIFT] CONST-V3R2-004 @ .claude/rules/moai/development/coding-standards.md #language-policy
+    detail: clause "16-language neutrality" not found in source ".claude/rules/moai/development/coding-standards.md"
+  [DRIFT] CONST-V3R2-005 @ .claude/rules/moai/development/coding-standards.md #thin-command-pattern
+    detail: clause "Template-First discipline" not found in source ".claude/rules/moai/development/coding-standards.md"
+  [DRIFT] CONST-V3R2-006 @ .claude/rules/moai/core/agent-common-protocol.md #user-interaction-boundary
+    detail: clause "AskUserQuestion monopoly" not found in source ".claude/rules/moai/core/agent-common-protocol.md"
+  [DRIFT] CONST-V3R2-007 @ CLAUDE.md #1-core-identity
+    detail: clause "Claude Code substrate" not found in source "CLAUDE.md"
+  [DRIFT] CONST-V3R2-008 @ CLAUDE.md #1-hard-rules
+    detail: clause "Language-Aware Responses: All user-facing responses MUST be in user's conversati..." not found in source "CLAUDE.md"
+  [DRIFT] CONST-V3R2-009 @ CLAUDE.md #1-hard-rules
+    detail: clause "Parallel Execution: Execute all independent tool calls in parallel when no depen..." not found in source "CLAUDE.md"
+  [DRIFT] CONST-V3R2-010 @ CLAUDE.md #1-hard-rules
+    detail: clause "User Response Format: Use plain Markdown for all user-facing responses (XML tags..." not found in source "CLAUDE.md"
+  [DRIFT] CONST-V3R2-011 @ CLAUDE.md #1-hard-rules
+    detail: clause "Markdown Output: Use Markdown for all user-facing communication" not found in source "CLAUDE.md"
+  [DRIFT] CONST-V3R2-012 @ CLAUDE.md #8-user-interaction-architecture
+    detail: clause "AskUserQuestion-Only Interaction: ALL questions directed at the user MUST go thr..." not found in source "CLAUDE.md"
+  [DRIFT] CONST-V3R2-013 @ CLAUDE.md #7-safe-development-protocol
+    detail: clause "Context-First Discovery: Conduct Socratic interview via AskUserQuestion when con..." not found in source "CLAUDE.md"
+  [DRIFT] CONST-V3R2-014 @ CLAUDE.md #7-safe-development-protocol
+    detail: clause "Approach-First Development: Explain approach and get approval before writing cod..." not found in source "CLAUDE.md"
+  [DRIFT] CONST-V3R2-015 @ CLAUDE.md #7-safe-development-protocol
+    detail: clause "Multi-File Decomposition: Split work when modifying 3+ files" not found in source "CLAUDE.md"
+  [DRIFT] CONST-V3R2-016 @ CLAUDE.md #7-safe-development-protocol
+    detail: clause "Post-Implementation Review: List potential issues and suggest tests after coding" not found in source "CLAUDE.md"
+  [DRIFT] CONST-V3R2-017 @ CLAUDE.md #7-safe-development-protocol
+    detail: clause "Reproduction-First Bug Fix: Write reproduction test before fixing bugs" not found in source "CLAUDE.md"
+  [DRIFT] CONST-V3R2-018 @ CLAUDE.md #8-user-interaction-architecture
+    detail: clause "Every question directed at the user MUST be asked via AskUserQuestion. Free-form..." not found in source "CLAUDE.md"
+  [DRIFT] CONST-V3R2-019 @ CLAUDE.md #8-user-interaction-architecture
+    detail: clause "Deferred Tool Preload Requirement: AskUserQuestion is a deferred tool — its sc..." not found in source "CLAUDE.md"
+  [DRIFT] CONST-V3R2-020 @ CLAUDE.md #14-parallel-execution-safeguards
+    detail: clause "As of CC v2.1.198 subagents run in the background by default; permission prompts..." not found in source "CLAUDE.md"
+  [DRIFT] CONST-V3R2-021 @ CLAUDE.md #14-parallel-execution-safeguards
+    detail: clause "[SUPERSEDED by worktree-opt-in policy — see CLAUDE.md §14 + worktree-integrat..." not found in source "CLAUDE.md"
+  [DRIFT] CONST-V3R2-022 @ CLAUDE.md #14-parallel-execution-safeguards
+    detail: clause "[SUPERSEDED by worktree-opt-in policy — see CLAUDE.md §14 + worktree-integrat..." not found in source "CLAUDE.md"
+  [DRIFT] CONST-V3R2-023 @ CLAUDE.md #14-parallel-execution-safeguards
+    detail: clause "[SUPERSEDED by worktree-opt-in policy — see CLAUDE.md §14 + worktree-integrat..." not found in source "CLAUDE.md"
+  [DRIFT] CONST-V3R2-024 @ CLAUDE.md #14-parallel-execution-safeguards
+    detail: clause "[SUPERSEDED by worktree-opt-in policy — see CLAUDE.md §14 + worktree-integrat..." not found in source "CLAUDE.md"
+  [DRIFT] CONST-V3R2-025 @ .claude/rules/moai/core/moai-constitution.md #moai-orchestrator
+    detail: clause "All user-facing questions MUST go through AskUserQuestion — no free-form prose..." not found in source ".claude/rules/moai/core/moai-constitution.md"
+  [DRIFT] CONST-V3R2-026 @ .claude/rules/moai/core/moai-constitution.md #moai-orchestrator
+    detail: clause "AskUserQuestion is used ONLY by MoAI orchestrator; subagents must never prompt u..." not found in source ".claude/rules/moai/core/moai-constitution.md"
+  [DRIFT] CONST-V3R2-027 @ .claude/rules/moai/core/moai-constitution.md #moai-orchestrator
+    detail: clause "AskUserQuestion is a deferred tool — invoke ToolSearch(query: select:AskUserQu..." not found in source ".claude/rules/moai/core/moai-constitution.md"
+  [DRIFT] CONST-V3R2-028 @ .claude/rules/moai/core/moai-constitution.md #opus-47-prompt-philosophy
+    detail: clause "Principle 4 — Fewer subagents spawned by default: Opus 4.7+ / 4.8 does not aut..." not found in source ".claude/rules/moai/core/moai-constitution.md"
+  [DRIFT] CONST-V3R2-029 @ .claude/rules/moai/core/moai-constitution.md #opus-47-prompt-philosophy
+    detail: clause "Principle 5 — Fewer tool calls by default, more reasoning: Opus 4.7+ / 4.8 pre..." not found in source ".claude/rules/moai/core/moai-constitution.md"
+  [DRIFT] CONST-V3R2-030 @ .claude/rules/moai/core/moai-constitution.md #agent-core-behaviors
+    detail: clause "Surface Assumptions: Before implementing anything non-trivial, list assumptions ..." not found in source ".claude/rules/moai/core/moai-constitution.md"
+  [DRIFT] CONST-V3R2-031 @ .claude/rules/moai/core/moai-constitution.md #agent-core-behaviors
+    detail: clause "Manage Confusion Actively: When encountering inconsistencies, STOP and surface t..." not found in source ".claude/rules/moai/core/moai-constitution.md"
+  [DRIFT] CONST-V3R2-032 @ .claude/rules/moai/core/moai-constitution.md #agent-core-behaviors
+    detail: clause "Push Back When Warranted: Point out issues directly when an approach has clear p..." not found in source ".claude/rules/moai/core/moai-constitution.md"
+  [DRIFT] CONST-V3R2-033 @ .claude/rules/moai/core/moai-constitution.md #agent-core-behaviors
+    detail: clause "Enforce Simplicity: Actively resist overcomplexity." not found in source ".claude/rules/moai/core/moai-constitution.md"
+  [DRIFT] CONST-V3R2-034 @ .claude/rules/moai/core/moai-constitution.md #agent-core-behaviors
+    detail: clause "Maintain Scope Discipline: Touch only what you were asked to touch." not found in source ".claude/rules/moai/core/moai-constitution.md"
+  [DRIFT] CONST-V3R2-035 @ .claude/rules/moai/core/moai-constitution.md #agent-core-behaviors
+    detail: clause "Verify, Don't Assume: Every task requires evidence of completion." not found in source ".claude/rules/moai/core/moai-constitution.md"
+  [DRIFT] CONST-V3R2-037 @ .claude/rules/moai/core/agent-common-protocol.md #user-interaction-boundary
+    detail: clause "The orchestrator MUST preload AskUserQuestion via ToolSearch(query: select:AskUs..." not found in source ".claude/rules/moai/core/agent-common-protocol.md"
+  [DRIFT] CONST-V3R2-038 @ .claude/rules/moai/core/agent-common-protocol.md #user-interaction-boundary
+    detail: clause "All user-facing questions MUST go through AskUserQuestion — free-form prose qu..." not found in source ".claude/rules/moai/core/agent-common-protocol.md"
+  [DRIFT] CONST-V3R2-043 @ .claude/rules/moai/core/agent-common-protocol.md #agent-invocation-pattern
+    detail: clause "Agents are invoked through MoAI's natural language delegation pattern." not found in source ".claude/rules/moai/core/agent-common-protocol.md"
+  [DRIFT] CONST-V3R2-044 @ .claude/rules/moai/core/agent-common-protocol.md #background-agent-execution
+    detail: clause "Background subagents MAY perform Write/Edit; permission prompts surface in the m..." not found in source ".claude/rules/moai/core/agent-common-protocol.md"
+  [DRIFT] CONST-V3R2-049 @ .claude/rules/moai/core/agent-common-protocol.md #skeptical-evaluation-stance
+    detail: clause "Skeptical Evaluation Stance: reviewer operates as fresh-judgment auditor — tre..." not found in source ".claude/rules/moai/core/agent-common-protocol.md"
+  [DRIFT] CONST-V3R2-062 @ .claude/rules/moai/design/constitution.md #31-brand-context-constitutional-parent
+    detail: clause "[HARD] moai-domain-copywriting MUST adhere to brand voice, tone, and terminology..." not found in source ".claude/rules/moai/design/constitution.md"
+  [DRIFT] CONST-V3R2-063 @ .claude/rules/moai/design/constitution.md #31-brand-context-constitutional-parent
+    detail: clause "[HARD] moai-domain-brand-design MUST use brand color palette, typography, and vi..." not found in source ".claude/rules/moai/design/constitution.md"
+  [DRIFT] CONST-V3R2-064 @ .claude/rules/moai/design/constitution.md #31-brand-context-constitutional-parent
+    detail: clause "[HARD] [ARCHIVED] expert-frontend MUST implement design tokens derived from bran..." not found in source ".claude/rules/moai/design/constitution.md"
+  [DRIFT] CONST-V3R2-066 @ .claude/rules/moai/design/constitution.md #32-design-brief-execution-scope
+    detail: clause "[HARD] /moai design MUST auto-load human-authored design documents when present ..." not found in source ".claude/rules/moai/design/constitution.md"
+  [DRIFT] CONST-V3R2-068 @ .claude/rules/moai/design/constitution.md #32-design-brief-execution-scope
+    detail: clause "[HARD] moai-workflow-design continues to write machine-generated artifacts to .m..." not found in source ".claude/rules/moai/design/constitution.md"
+  [DRIFT] CONST-V3R2-069 @ .claude/rules/moai/design/constitution.md #32-design-brief-execution-scope
+    detail: clause "[HARD] Reserved file paths (canonical list): tokens.json, components.json, asset..." not found in source ".claude/rules/moai/design/constitution.md"
+  [DRIFT] CONST-V3R2-070 @ .claude/rules/moai/design/constitution.md #32-design-brief-execution-scope
+    detail: clause "[HARD] Token budget for auto-loading is bounded by design_docs.token_budget; whe..." not found in source ".claude/rules/moai/design/constitution.md"
+  [DRIFT] CONST-V3R2-072 @ .claude/rules/moai/design/constitution.md #33-relationship
+    detail: clause "Brand (.moai/project/brand/) = WHO the brand is; Design (.moai/design/) = WHAT e..." not found in source ".claude/rules/moai/design/constitution.md"
+  [DRIFT] CONST-V3R2-150 @ .claude/rules/moai/workflow/session-handoff.md #when-to-generate-5-triggers
+    detail: clause "[HARD] The orchestrator MUST emit a paste-ready resume message when ANY of the 5..." not found in source ".claude/rules/moai/workflow/session-handoff.md"
+  [DRIFT] CONST-V3R2-151 @ .claude/rules/moai/workflow/session-handoff.md #canonical-format-verbatim-spec
+    detail: clause "[HARD] Resume message MUST follow the exact 6-block structure (Block 1 ultrathin..." not found in source ".claude/rules/moai/workflow/session-handoff.md"
+  [DRIFT] CONST-V3R2-152 @ .claude/rules/moai/workflow/session-handoff.md #auto-memory-integration-mandatory
+    detail: clause "[HARD] When generating a resume message, the orchestrator MUST also persist it t..." not found in source ".claude/rules/moai/workflow/session-handoff.md"
+  [DRIFT] CONST-V3R2-153 @ .claude/rules/moai/workflow/session-handoff.md #canonical-format-verbatim-spec
+    detail: clause "[HARD] Resume message fenced text block MUST be bounded by cut-line markers: top..." not found in source ".claude/rules/moai/workflow/session-handoff.md"
+  [DRIFT] CONST-V3R5-001 @ .claude/rules/moai/core/askuser-protocol.md #orchestratorsubagent-boundary
+    detail: clause "Subagents MUST NOT invoke AskUserQuestion" not found in source ".claude/rules/moai/core/askuser-protocol.md"
+  [DRIFT] CONST-V3R5-022 @ .claude/rules/moai/workflow/context-window-management.md #context-window-targets
+    detail: clause "Operational threshold is model-specific: 1M context (Opus 5 / Opus 4.8 / GLM-5.3..." not found in source ".claude/rules/moai/workflow/context-window-management.md"
+  [DRIFT] CONST-V3R5-023 @ .claude/rules/moai/workflow/context-window-management.md #user-responsibilities
+    detail: clause "When usage crosses the model-specific threshold, user MUST save in-flight state,..." not found in source ".claude/rules/moai/workflow/context-window-management.md"
+  [DRIFT] CONST-V3R5-024 @ .claude/rules/moai/workflow/context-window-management.md #user-responsibilities
+    detail: clause "When usage crosses 95% on any model, the next action MUST be /clear — no furth..." not found in source ".claude/rules/moai/workflow/context-window-management.md"
+  [DRIFT] CONST-V3R5-025 @ .claude/rules/moai/workflow/context-window-management.md #orchestrator-responsibilities
+    detail: clause "Pre-clear announcement: When orchestrator detects context approaching model-spec..." not found in source ".claude/rules/moai/workflow/context-window-management.md"
+  [DRIFT] CONST-V3R5-026 @ .claude/rules/moai/workflow/context-window-management.md #orchestrator-responsibilities
+    detail: clause "Resume message format must include all fields so next session is self-sufficient" not found in source ".claude/rules/moai/workflow/context-window-management.md"
+  [DRIFT] CONST-V3R5-027 @ .claude/rules/moai/workflow/spec-workflow.md #spec-phase-discipline
+    detail: clause "Step ordering: Step 1 (plan) MUST execute in main checkout. NO L2/L3 worktree at..." not found in source ".claude/rules/moai/workflow/spec-workflow.md"
+  [DRIFT] CONST-V3R5-028 @ .claude/rules/moai/workflow/spec-workflow.md #spec-phase-discipline
+    detail: clause "Step ordering rules: Step 2 run, Step 3 sync, and Step 4 cleanup sequencing cons..." not found in source ".claude/rules/moai/workflow/spec-workflow.md"
+  [DRIFT] CONST-V3R5-029 @ .claude/rules/moai/workflow/worktree-state-guard.md #escalation-path
+    detail: clause "AskUserQuestion is invoked by the orchestrator only. The Go CLI returns exit cod..." not found in source ".claude/rules/moai/workflow/worktree-state-guard.md"
+  [DRIFT] CONST-V3R5-035 @ .claude/rules/moai/development/branch-origin-protocol.md #hard-rules
+    detail: clause "Skill body BODP gate MUST follow the askuser-protocol Socratic structure: (권\xec\x9e..." not found in source ".claude/rules/moai/development/branch-origin-protocol.md"
+  [DRIFT] CONST-V3R5-037 @ .claude/rules/moai/development/agent-authoring.md #frontmatter-format-rules
+    detail: clause "Field format constraints: tools Comma-separated string ONLY. YAML arrays NOT sup..." not found in source ".claude/rules/moai/development/agent-authoring.md"
+  [DRIFT] CONST-V3R5-038 @ .claude/rules/moai/development/skill-authoring.md #key-format-rules
+    detail: clause "allowed-tools format: Comma-separated string ONLY. Space-separated values are PR..." not found in source ".claude/rules/moai/development/skill-authoring.md"
+  [DRIFT] CONST-V3R5-039 @ .claude/rules/moai/workflow/session-handoff.md #worktree-anchored-resume-pattern
+    detail: clause "When the work happened inside a worktree, the resume message MUST prepend Block ..." not found in source ".claude/rules/moai/workflow/session-handoff.md"
+  [DRIFT] CONST-V3R5-040 @ .claude/rules/moai/core/glm-web-tooling.md #hard-routing-table
+    detail: clause "While a session is GLM-backed, MoAI agents and the orchestrator SHALL route web ..." not found in source ".claude/rules/moai/core/glm-web-tooling.md"
+  [DRIFT] CONST-V3R5-041 @ .claude/rules/moai/core/glm-web-tooling.md #hard-routing-table
+    detail: clause "While a session is GLM-backed, MoAI agents and the orchestrator SHALL NOT invoke..." not found in source ".claude/rules/moai/core/glm-web-tooling.md"
+  [DRIFT] CONST-V3R6-001 @ .claude/rules/moai/workflow/runtime-recovery-doctrine.md #4-anti-death-spiral-hook-carve-out-documentation-only-policy
+    detail: clause "Recovery-Signal Carve-Out: while a turn is itself a recovery signal (recovering ..." not found in source ".claude/rules/moai/workflow/runtime-recovery-doctrine.md"
+          
+   ERROR  
+          
+  Constitution validate: found 67 error(s).                                                                           
+

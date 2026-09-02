@@ -85,23 +85,30 @@ func TestMxQueryCmd_InvalidKind(t *testing.T) {
 	}
 }
 
-// TestMxQueryCmd_SidecarUnavailable tests the error when the sidecar file is absent.
-// AC-SPC-004-04: SidecarUnavailable error when the sidecar is missing.
-func TestMxQueryCmd_SidecarUnavailable(t *testing.T) {
-	// AC-SPC-004-04: sidecar file absent
+// TestMxQueryCmd_AbsentSidecarIsBuiltOnDemand pins the contract AC-HWD-012
+// replaced AC-SPC-004-04 with: an absent sidecar is no longer an error, it is
+// a build. The query answers AND leaves the index behind, in the process that
+// needed it, rather than failing and pointing at `moai mx scan`.
+func TestMxQueryCmd_AbsentSidecarIsBuiltOnDemand(t *testing.T) {
 	tmpDir := t.TempDir()
-	// Do not create the sidecar file
+	// Do not create the sidecar file.
 
 	oldFindProjectRootFn := findProjectRootFn
 	defer func() { findProjectRootFn = oldFindProjectRootFn }()
 	findProjectRootFn = func() (string, error) { return tmpDir, nil }
 
 	_, stderr, err := executeQueryCmd(t, []string{})
-	if err == nil {
-		t.Error("사이드카 없을 때 오류 기대, 실제 nil")
+	if err != nil {
+		t.Fatalf("absent sidecar should be built on demand, got error: %v (stderr: %s)", err, stderr)
+	}
+	if strings.Contains(stderr, "SidecarUnavailable") {
+		t.Errorf("stderr should not report SidecarUnavailable on the build-on-demand path, got: %s", stderr)
 	}
 
-	_ = stderr // In the GREEN phase, verify the message contains "SidecarUnavailable"
+	sidecarPath := filepath.Join(tmpDir, ".moai", "state", mx.SidecarFileName)
+	if _, statErr := os.Stat(sidecarPath); statErr != nil {
+		t.Errorf("query should leave the index behind at %s: %v", sidecarPath, statErr)
+	}
 }
 
 // TestMxQueryCmd_JSONOutput tests the JSON output format.

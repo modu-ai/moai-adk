@@ -16,6 +16,18 @@ const (
 	DefaultDocumentation            = "en"
 	DefaultErrorMessages            = "en"
 
+	// Graph-freshness gate thresholds (graph layer drift): reasoned defaults,
+	// recalibratable via gate.yaml. The codemaps line reflects how many
+	// described-source files must drift before the curated docs are judged
+	// wrong enough to demand regeneration; the mx line reds on any inventoried
+	// content drift (the index is cheap to rescan).
+	DefaultGraphFreshnessCodemapsChangedFiles = 40
+	DefaultGraphFreshnessMXIndexChangedFiles  = 1
+	// DefaultGraphFreshnessUpdateBudgetMS bounds a query-time refresh's
+	// measured cost before a warning fires. A hypothesis until measured on
+	// this repository (never a foreign figure); overrun warns, never blocks.
+	DefaultGraphFreshnessUpdateBudgetMS = 2000
+
 	DefaultTestCoverageTarget    = 85
 	DefaultMaxTransformationSize = "small"
 	DefaultMinCoveragePerCommit  = 80
@@ -117,8 +129,10 @@ const (
 	// agent spawned into a Sonnet or Haiku slot inherits that window. Give those
 	// slots smaller models and the window overstates what they can actually hold:
 	// the spawn runs past its real limit with compaction still waiting for a
-	// ceiling it will never reach. Pointing every slot at the same 1M model is
-	// what makes the single window true for all of them.
+	// ceiling it will never reach. Pointing every slot at a 1M model is what
+	// makes the single window true for all of them — the Fable slot holds
+	// glm-5.3 rather than glm-5.3-flash, and the invariant is the 1M context
+	// both carry, not model identity.
 	//
 	// Tier differentiation does not disappear — it moves to the effort axis,
 	// which is where z.ai actually implements it. See glm_effort_overlay.go: the
@@ -130,19 +144,31 @@ const (
 	// suffixed id as unknown, so the window comes from the resolved context
 	// window (glmAutoCompactWindow) instead.
 	//
+	// The default is glm-5.3-flash for the High, Medium, and Low slots and
+	// glm-5.3 for the Fable slot. Both stay named constants and ValidGLMModels()
+	// members so an explicit selection keeps loading — the offered set is derived
+	// from these constants, so the non-default ids need their own declarations to
+	// survive a default switch.
+	//
 	// glm-5.3 is reachable on the Anthropic-compatible endpoint this client uses.
 	// It is not granted on the native paas surface for every account, so a key
 	// that works here can still be refused there — the two surfaces carry
 	// different model grants.
-	DefaultGLMHigh   = "glm-5.3"
-	DefaultGLMMedium = "glm-5.3"
-	DefaultGLMLow    = "glm-5.3"
-	DefaultGLMFable  = "glm-5.3"
+	DefaultGLM53Flash = "glm-5.3-flash"
+	DefaultGLM53      = "glm-5.3"
+	DefaultGLMHigh    = DefaultGLM53Flash
+	DefaultGLMMedium  = DefaultGLM53Flash
+	DefaultGLMLow     = DefaultGLM53Flash
+	DefaultGLMFable   = DefaultGLM53
+	// DefaultGLM53Flash is the sparse-attention GLM-5.3-Flash variant (1M
+	// context). Unlike glm-5.3 it accepts reasoning_effort "max" only — the
+	// web console locks the tier effort select to max when a tier slot holds
+	// it, and the effort overlay branches per-model.
 	// Additional GLM models — those exposed by ValidGLMModels() (glm-5.1,
 	// glm-4.7, glm-4.5-air) are selectable in the tier slots; glm-4.5,
 	// glm-4.6, glm-5.2, and glm-5-turbo are named constants with no config
-	// surface. glm-5.2 left the offered set when glm-5.3 became every tier's
-	// default, but stays declared so an existing llm.yaml naming it still
+	// surface. glm-5.2 left the offered set when a single model became every
+	// tier's default, but stays declared so an existing llm.yaml naming it still
 	// loads and still resolves a context window.
 	DefaultGLM45     = "glm-4.5"
 	DefaultGLM46     = "glm-4.6"
@@ -152,9 +178,9 @@ const (
 	DefaultGLM52     = "glm-5.2"
 	DefaultGLM5Turbo = "glm-5-turbo"
 	// Legacy GLM model names (map to tiers)
-	DefaultGLMHaiku  = "glm-5.3"
-	DefaultGLMSonnet = "glm-5.3"
-	DefaultGLMOpus   = "glm-5.3"
+	DefaultGLMHaiku  = DefaultGLM53Flash
+	DefaultGLMSonnet = DefaultGLM53Flash
+	DefaultGLMOpus   = DefaultGLM53Flash
 	// Default1MContextTokens is the token count for Claude Code's 1M context
 	// mode. Used to populate CLAUDE_CODE_AUTO_COMPACT_WINDOW when the High slot
 	// model resolves to the 1M context tier.
@@ -376,6 +402,53 @@ var DefaultGLMTaskTimeout = 600 * time.Second
 // runaway generation cannot consume the job's whole budget.
 const DefaultGLMTaskMaxTokens = 8192
 
+// Session messaging broker thresholds (SPEC-CODEX-SESSION-MSG-001 REQ-CSM-012
+// — single source of truth; package code must reference these, never inline
+// literals). All are `var` so tests can shorten them, mirroring
+// DefaultCodexReviewGateTimeout.
+//
+// @MX:ANCHOR: [AUTO] session-msg threshold SSOT consumed by internal/sessionmsg
+// @MX:REASON: fan_in >= 5 (envelope validation, store send/poll/sweep, agent online reporting, M2 MCP handlers). Value changes here retime every broker TTL without code edits.
+var (
+	// DefaultSessionMsgMessageTTL is how long a pending or claimed message
+	// lives before the lazy sweep deletes it (REQ-CSM-008).
+	DefaultSessionMsgMessageTTL = 24 * time.Hour
+	// DefaultSessionMsgClaimTTL is how long a claimed message may stay
+	// unacknowledged before the sweep returns it to pending (REQ-CSM-007).
+	DefaultSessionMsgClaimTTL = 10 * time.Minute
+	// DefaultSessionMsgAgentOfflineMinutes is the heartbeat age past which
+	// session_msg_list reports an agent online:false (REQ-CSM-004).
+	DefaultSessionMsgAgentOfflineMinutes = 30
+	// DefaultSessionMsgPollBatch is the maximum number of messages one poll
+	// claims from pending (REQ-CSM-006).
+	DefaultSessionMsgPollBatch = 16
+	// DefaultSessionMsgMaxTextBytes bounds the total text carried by one
+	// message envelope (REQ-CSM-005).
+	DefaultSessionMsgMaxTextBytes = 65536
+	// DefaultSessionMsgMaxDataBytes bounds the total JSON data carried by one
+	// message envelope (REQ-CSM-005 body-size ceiling — a data part is body
+	// content too). The value deliberately mirrors
+	// DefaultSessionMsgMaxTextBytes: REQ-CSM-005 names ONE body ceiling, so a
+	// second, different number would be a second policy with nothing to
+	// anchor it to. Both payload kinds are bounded independently rather than
+	// as a joint sum, matching how Validate already accumulates text.
+	DefaultSessionMsgMaxDataBytes = 65536
+	// DefaultSessionMsgMaxParts bounds the number of parts in one message
+	// (REQ-CSM-005 part-count ceiling). The M2 tool surface constructs at
+	// most 2 parts (text + optional data); the headroom tolerates future
+	// part kinds without a schema change.
+	DefaultSessionMsgMaxParts = 8
+	// DefaultSessionMsgMaxPending is the depth ceiling on one agent's
+	// pending mailbox: Store.Send rejects a send that would push the
+	// recipient's pending count to it (card t253, PR #1606 review). Without
+	// a ceiling a looping or malfunctioning sender fills a mailbox until the
+	// 24h message TTL, and every subsequent Poll pays read-and-unmarshal
+	// cost for the whole backlog. Four polls' worth of headroom above
+	// DefaultSessionMsgPollBatch — a full mailbox therefore means a receiver
+	// that stopped polling, never ordinary traffic.
+	DefaultSessionMsgMaxPending = 64
+)
+
 // DefaultFactoryWorkers is the fan-out size the count-less `-k --name
 // lane-<n>` form takes when the operator supplies no count
 // (SPEC-FACTORY-WORKER-FANOUT-001 REQ-FF-001, t85 lead loop). The value 8 is
@@ -504,6 +577,10 @@ func NewDefaultGateConfig() GateConfig {
 			Lint:      60,
 			Test:      120,
 			Typecheck: 300,
+			// The gate-run lock's wait budget: a policy knob, not a step
+			// budget. 30s waits out a concurrently finishing run while never
+			// holding a starting run without bound.
+			LockWait: 30,
 		},
 		// The typecheck axis is ON by default. A project with no type-check
 		// surface reports the skip and passes, so enabling it costs nothing
@@ -517,6 +594,17 @@ func NewDefaultGateConfig() GateConfig {
 			Enabled:      true,
 			BlockOnError: false,
 			WarnOnlyMode: true,
+		},
+		// The graph-freshness step mirrors the ast-grep posture: ON and
+		// advisory by default. Thresholds are reasoned defaults, calibrated
+		// from this repository's own history (never foreign figures); the
+		// update budget bounds query-time refresh cost and only warns.
+		GraphFreshness: GraphFreshnessGateConfig{
+			Enabled:              true,
+			Blocking:             false,
+			CodemapsChangedFiles: DefaultGraphFreshnessCodemapsChangedFiles,
+			MXIndexChangedFiles:  DefaultGraphFreshnessMXIndexChangedFiles,
+			UpdateBudgetMS:       DefaultGraphFreshnessUpdateBudgetMS,
 		},
 	}
 }
@@ -772,6 +860,13 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// config. Template neutrality: no `enabled: true` anywhere under
 		// internal/template/templates/.
 		AgentModelGuard: AgentModelGuardConfig{
+			Enabled: false,
+		},
+		// The SendMessage stop-guard deny layer ships OFF the same way: stop
+		// recording and send observation + advisory always run; a maintainer
+		// opts into denial via local config. Template neutrality: no
+		// `enabled: true` anywhere under internal/template/templates/.
+		AgentStopGuard: AgentStopGuardConfig{
 			Enabled: false,
 		},
 		// SPEC-MOAI-MCP-SERVER-001 M2 (REQ-MCP-008 / C6): the codex review gate

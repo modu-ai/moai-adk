@@ -10,9 +10,9 @@
 
 | AC ID | Status | Reason |
 |-------|--------|--------|
-| AC-CDS-001 | RETIRED | Asserted `cache.yaml` removal. REQ-CDS-003 is retired — `SPEC-WEBCONF-SIMPLIFY-001` REQ-WC-003 retains the template `cache.yaml` (`internal/settings/sectionroute.go:88-89`). |
-| AC-CDS-002 | RETIRED | Asserted `LoadCacheConfig` / `CacheConfig` removal. Same reason. |
-| AC-CDS-006 | RETIRED | Asserted `ValidSessionTTLs` survives an extraction that is no longer performed — `cache_config.go` is untouched, so there is nothing to assert. |
+| AC-CDS-001 [RETIRED] | RETIRED | Asserted `cache.yaml` removal. REQ-CDS-003 is retired — `SPEC-WEBCONF-SIMPLIFY-001` REQ-WC-003 retains the template `cache.yaml` (`internal/settings/sectionroute.go:88-89`). |
+| AC-CDS-002 [RETIRED] | RETIRED | Asserted `LoadCacheConfig` / `CacheConfig` removal. Same reason. |
+| AC-CDS-006 [RETIRED] | RETIRED | Asserted `ValidSessionTTLs` survives an extraction that is no longer performed — `cache_config.go` is untouched, so there is nothing to assert. |
 
 A superseding criterion, AC-CDS-014, replaces them: it asserts the cache surface is **unchanged**.
 

@@ -132,7 +132,7 @@ An unsubstantiated PASS verdict is automatically downgraded to UNVERIFIED, which
 
 ### M5: Must-Pass Firewall
 
-Seven criteria cannot be compensated by high scores in other dimensions. ANY single must-pass failure = overall FAIL regardless of other scores.
+Eight criteria cannot be compensated by high scores in other dimensions. ANY single must-pass failure = overall FAIL regardless of other scores.
 
 **(MP-1) REQ Number Consistency**: REQ numbers must be sequential (REQ-001, REQ-002, ... REQ-N) with no gaps, no duplicates, and consistent zero-padding. Even one gap or duplicate = FAIL.
 
@@ -147,6 +147,32 @@ Seven criteria cannot be compensated by high scores in other dimensions. ANY sin
 **(MP-6) No unresolved D8 BLOCKING finding**: A BLOCKING finding emitted (unresolved) by Group 8 (D8 Cross-Platform Discipline) is **must-pass-equivalent**: it forces `Verdict: FAIL` regardless of aggregate score, and the finding MUST be folded into `## Defects Found` at severity=critical. A D8 BLOCKING finding can never be silently absorbed into the aggregate score. If the D8 verification verb is not executable, mark N/A following the MP-4 precedent (N/A auto-passes) and state the reason.
 
 **(MP-7) No unresolved [NEEDS CLARIFICATION] markers**: The SPEC's `plan.md` and `research.md` MUST NOT contain unresolved `[NEEDS CLARIFICATION: <topic>]` markers at audit time (marker convention: `.claude/skills/moai-workflow-spec/SKILL.md` § [NEEDS CLARIFICATION] Marker Convention; plan.md § [NEEDS CLARIFICATION] Marker Usage). Verification: `grep -rn '\[NEEDS CLARIFICATION' plan.md research.md` — any match is a must-pass failure that MUST be folded into `## Defects Found` at severity=critical and flagged as a "clarification gate" finding in the report. The orchestrator MUST resolve each marked topic via `AskUserQuestion` (preload `ToolSearch(query: "select:AskUserQuestion")`) before Implementation Kickoff Approval (plan→run HUMAN GATE). This gate is score-independent: a high aggregate score never auto-resolves an open clarification marker. When neither `plan.md` nor `research.md` exists (e.g., Tier S without `research.md`), mark N/A following the MP-4 precedent (N/A auto-passes) and state the reason.
+
+<!-- MOAI-REDNOW-BEGIN -->
+**(MP-8) RED-now cell re-execution**: For every acceptance criterion classified **release-blocking**, the RED-now cell must carry the four elements `.claude/rules/moai/development/verification-completeness.md` §2.1 requires — the command, that command's verbatim stdout, that command's exit code, and the tree SHA (a document-level pin is inherited by any criterion carrying no pin of its own). **Re-execute** the cited command against the **current tree** and confirm the **RED reproduces**. This check is possible at plan-phase and nowhere else: the cell pins the pre-implementation tree, and at plan-phase that tree is the working tree.
+
+A cited command whose RED does not reproduce is an unresolved MP-8 violation. Fold it into `## Defects Found` at `severity=critical` and set `Verdict: FAIL` **regardless of the aggregate score** — an aggregate never absorbs this finding.
+
+Where no acceptance criterion is classified release-blocking, or where `acceptance.md` is absent, mark MP-8 `N/A` and **state the reason**, following the **MP-4 precedent** (N/A auto-passes).
+
+**Execution discipline.** The commands re-executed here are strings a SPEC author typed, not strings you composed, so the form is constrained and the refusal branch is explicit. A conforming command is a read-only shell invocation completing in a single invocation; the machine-checkable half of that form is the metacharacter list below, and read-only-ness stays your judgment. When a cited command fails to run, is refused for not matching the form, names an operation this repository's execution discipline prohibits — a local full test suite being the standing example — or does not return within your existing Bash **timeout**, you **shall not execute it further**, **shall not record the criterion as a pass**, and shall apply the §2.1 demotion instead. **Repository execution discipline takes precedence** over a criterion's citation. The timeout branch adds no new machinery: your Bash tool already bounds every invocation, so a conforming-but-expensive command is refused on the same terms as a prohibited one rather than stalling the audit.
+
+**Verdict rule for a test-runner citation.** Where the cited command is a test runner, key the verdict on the **count of tests actually executed**, and **not treat the presence of an `ok` token** as evidence that the RED failed to reproduce. A selector matching zero tests exits 0 and prints `ok` alongside `no tests to run`: that run executed nothing and therefore reproduces nothing. Reading it as a pass inverts exactly what this criterion exists to detect.
+
+**Boundary, stated rather than implied.** Re-execution confirms a command's output. It does not confirm that the command measures the premise its author claims for it, and MP-8 makes no such claim.
+
+```
+forbidden-metacharacter: |
+forbidden-metacharacter: &&
+forbidden-metacharacter: ;
+forbidden-metacharacter: >
+forbidden-metacharacter: <
+forbidden-metacharacter: $(
+forbidden-metacharacter: (
+```
+
+Each token above is a violation only when it appears **outside** quotes: a quoted `|` inside a regex is a literal, and refusing it would reject commands that are in fact single invocations.
+<!-- MOAI-REDNOW-END -->
 
 ### M6: Finding-consumption discipline (over-engineering brake)
 
@@ -292,6 +318,7 @@ Execute each check in order against the full document — every REQ entry and ev
 - AC-3: No AC contains weasel words: "appropriate", "adequate", "reasonable", "good", "proper"
 - AC-4: Each AC references a valid REQ-XXX that exists in the document (Traceability)
 - AC-5: Each REQ-XXX has at least one corresponding AC (Traceability)
+- AC-6: Each release-blocking AC carries a RED-now cell with the command, its verbatim stdout, its exit code, and a pinned tree SHA, and that command re-executes to a reproducing RED on the current tree (MP-8)
 
 ### Group 5: Language Neutrality
 
@@ -307,7 +334,7 @@ Execute each check in order against the full document — every REQ entry and ev
 
 ### Group 7: Cross-SPEC Reconciliation (D7)
 
-- D7-1: Extract every `SPEC-([A-Z][A-Z0-9]+-)+[0-9]+` reference from the SPEC body (supports multi-segment IDs like SPEC-DOMAIN-WO-001)
+- D7-1: Extract every `SPEC-([A-Z][A-Z0-9]+-)+[0-9]+` reference from the SPEC body (supports multi-segment IDs like SPEC-EXAMPLE-DOMAIN-001)
 - D7-2: For each referenced SPEC, verify `.moai/specs/<SPEC-ID>/spec.md` exists
 - D7-3: For each referenced SPEC that exists, read its `status:` frontmatter field
 - D7-4: If status ∈ {retired, superseded, archived}, require explicit reconciliation
@@ -382,6 +409,7 @@ Overall Score: {0.0-1.0}
 - [PASS/FAIL/N/A] MP-5 D7 cross-SPEC reconciliation: {D7 verification evidence or "no BLOCKING finding"; N/A only when the D7 verb is not executable}
 - [PASS/FAIL/N/A] MP-6 D8 cross-platform discipline: {D8 verification evidence or "no BLOCKING finding"; N/A only when the D8 verb is not executable}
 - [PASS/FAIL/N/A] MP-7 clarification gate: {`grep -rn '\[NEEDS CLARIFICATION' plan.md research.md` evidence or "no [NEEDS CLARIFICATION] markers"; N/A only when neither plan.md nor research.md exists}
+- [PASS/FAIL/N/A] MP-8 RED-now cell re-execution: {per release-blocking AC, the re-executed command and its observed output; N/A only when no AC is release-blocking or acceptance.md is absent, with the reason stated}
 
 ## Category Scores (0.0-1.0, rubric-anchored)
 | Dimension | Score | Rubric Band | Evidence |

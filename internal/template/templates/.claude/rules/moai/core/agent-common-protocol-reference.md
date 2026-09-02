@@ -18,8 +18,8 @@ batch for a typical run-phase completion. The orchestrator SHOULD invoke all 7
 in parallel within a single response turn:
 
 ```bash
-# 1. Full test suite (Go)
-go test ./... > /tmp/moai-verify/1-go-test.log 2>&1; echo "exit=$?"; tail -50 /tmp/moai-verify/1-go-test.log
+# 1. Change-scoped tests (Go)
+go test ./internal/<pkg>/... > /tmp/moai-verify/1-go-test.log 2>&1; echo "exit=$?"; tail -50 /tmp/moai-verify/1-go-test.log
 
 # 2. Coverage report (per-package)
 go test -coverprofile=cover.out ./internal/<pkg>/... > /tmp/moai-verify/2-cover.log 2>&1; echo "exit=$?"; tail -50 /tmp/moai-verify/2-cover.log
@@ -53,11 +53,26 @@ This contract governs *how* verification output is represented in context, NOT *
 
 The contract is **"verbatim evidence lives on disk with a citable path; context carries exit code + bounded tail"** — NOT **"drop the evidence"**. Inline quotation is PERMITTED when verbatim output is below the ceiling (the redirect obligation triggers only on exceedance); the diet removes the *double-burn* (Bash inline output + banner re-quote), not the evidence itself. The exact ceiling value and directory scheme are tunable per-domain; the contract holds regardless of the specific numbers.
 
-### Evidence persistence obligation
+### Evidence export obligation
 
 The cited evidence path MUST remain reachable at audit time, including after `/tmp` directory clearance. `/tmp` is OS-cleared periodically (macOS reboot, Linux tmpfs re-mount, systemd-tmpfiles); a cited path that no longer resolves to a file violates `verification-claim-integrity.md` §1.1 surface 1 (orchestrator self-report) and surface 2 (manager-agent §E self-verification) — every claim row MUST remain attributable to a directly-observed command whose verbatim output is reachable at the cited file path.
 
-To satisfy this reachability obligation, evidence SHALL be persisted under `.moai/state/verify/<session>/` (gitignored runtime state, same directory family as `context-usage.json` and `active-sessions.json`). The exact persist mechanism — direct write to `.moai/state/verify/<session>/`, or `/tmp` write followed by a copy step — is a run-phase implementation detail; the contract states the OBLIGATION (evidence survives `/tmp` clearance), not the mechanism. **"Persist evidence" ≠ "drop evidence"**: the diet removes the *double-burn* (inline output + banner re-quote), NOT the evidence itself. The verbatim output MUST remain on disk at a citable, audit-time-reachable path.
+**Surviving `/tmp` is not the same as being reachable at audit time.** `.moai/state/verify/<session>/` is **machine-local scratch**: it outlives `/tmp` clearance, and it is gitignored, so it travels to no clone, no CI runner, and no other machine. A path under it resolves only on the machine that wrote it, and only until that machine's state is cleaned. Naming it as the audit-time citation target states an obligation its own storage cannot meet.
+
+The citation target is a **tracked** path — in this repository, `.moai/reports/<card-id>/`, the same location `kanban-dispatch.md` already fixes for a card's verdict. The obligation is therefore **export before citing**: before an artifact is cited as the basis of a verdict, it is exported to that tracked path, and the citation names the exported file. Scratch is where a command's raw output lands; the tracked path is what a document is allowed to point at.
+
+**Export width — a citation names one file.** A citation **names one file**, never the directory: `.moai/reports/<card-id>/gotest-ac-007.log`, not `.moai/reports/<card-id>/`. The export is bounded by that same name — export the file the citation names, **never the directory wholesale**. Without this ceiling the obligation does not remove the scratch tree, it only relocates it into version control, which is the outcome it exists to prevent.
+
+**Selection criterion — what belongs inside the named file.** Export the command that decided the verdict and the lines of its output that decided it: the exit code, the failure summary, the figure the claim quotes. The rest of the raw output stays in scratch, and the report records what was not exported, and its loss risk, under **Residual-risk**. A verdict is made checkable by the few lines that decided it, not by the whole log — and a report that says which lines it kept, and why, is auditable in a way an unexplained 300 KB attachment is not.
+
+**The converse, and it is half the rule: what was decided not to export MUST NOT be cited.** The criterion above means some raw output is deliberately left behind, so "export before citing" alone leaves a gap — a citation can still point at material that was rightly not exported, and it then names a path that resolves nowhere. Deciding not to export something is therefore also deciding not to cite it: it is named in **Residual-risk** as a known loss, never offered as the basis of a verdict. Without this half the two obligations contradict each other exactly at the boundary they share, and a reader following the criterion faithfully would produce an unattributed claim while believing the rule was satisfied.
+
+**Machine-consumer carve-out — there are two, and neither is a citation.** Two consumers read this directory by key rather than as evidence a human reads, and this obligation does not bind either:
+
+1. **The snapshot store** — `.moai/state/verify/snapshots` (`internal/verify/store.go`), which `moai verify record` and `moai verify check --key-current` write and read keyed by HEAD SHA. It is same-tree, same-machine by design, and its validity does not outlive either.
+2. **The SSE watch source** — `internal/web/events.go`, whose fsnotify map watches `.moai/state/verify` as a whole directory (not just `snapshots`) to emit web-console events.
+
+Both stay exactly where they are. What this obligation withdraws is one role only: the directory as the target a document cites to a human reader.
 
 ### Anti-pattern: serial verification across turns
 
@@ -257,7 +272,7 @@ This refines the inline step 3 ("do not retry the identical call") along the sid
 
 ## Attributable diff-check detail
 
-> Relocated from `agent-common-protocol.md` § Parallel Execution → Attributable diff-check doctrinal switch to keep the always-loaded file within its size budget. The switch rule, the three match conditions, the four mismatch names, and the never-silent-skip boundary remain inline there (SPEC-SYNC-PARALLEL-DOCS-001 A9).
+> Relocated from `agent-common-protocol.md` § Parallel Execution → Attributable diff-check doctrinal switch to keep the always-loaded file within its size budget. The switch rule, the three match conditions, the four mismatch names, and the never-silent-skip boundary remain inline there.
 
 The switch consults the shared diagnostic snapshot via `moai verify check --key-current` (the live snapshot surface wired at `.claude/skills/moai/workflows/sync/quality-gates-quality.md` Step 0.5.2, keyed by HEAD SHA) BEFORE re-executing; on all-three attribution match, it consumes the attributable §E evidence (`.claude/rules/moai/development/manager-develop-prompt-template.md` § Section E → attribution discipline clause) for that dimension INSTEAD of re-executing the corresponding command. This is a composition-time doctrinal switch — no mechanical "about to re-run command X" preamble token exists to intercept (the batch is orchestrator-composed single-turn multi-Bash; re-execution is implicit Bash); it binds the orchestrator's batch-composition discipline, not a runtime hook.
 

@@ -1,0 +1,9 @@
+--- FAIL: TestMP8MirrorSpanIsByteEqual (0.00s)
+    red_now_cell_test.go:804: internal/template/templates/.claude/agents/moai/plan-auditor.md: expected exactly one "<!-- MOAI-REDNOW-BEGIN -->" / "<!-- MOAI-REDNOW-END -->" sentinel pair, got begin=0 end=0
+--- FAIL: TestRuleMirrorIsByteIdentical (0.00s)
+    red_now_cell_test.go:819: .claude/rules/moai/development/verification-completeness.md and internal/template/templates/.claude/rules/moai/development/verification-completeness.md are not byte-identical
+--- FAIL: TestMP8MirrorSpanIsNeutral (0.00s)
+    red_now_cell_test.go:827: internal/template/templates/.claude/agents/moai/plan-auditor.md: expected exactly one "<!-- MOAI-REDNOW-BEGIN -->" / "<!-- MOAI-REDNOW-END -->" sentinel pair, got begin=0 end=0
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	32.766s
+FAIL

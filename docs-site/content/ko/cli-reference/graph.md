@@ -26,6 +26,8 @@ $ moai graph build
 
 임포트 에지 · `@MX:SPEC` 연결 · SPEC 간 의존을 모아 `.moai/project/graph/edges.jsonl`에 기록합니다. 같은 git HEAD에서 두 번 돌리면 같은 내용이 나오도록 결정적으로 작동합니다. 질의는 언제나 이 산출물을 읽으므로, **질의 전에 먼저 build를 돌려** 두어야 합니다.
 
+문서 계층 위에 코드에서 직접 뽑은 에지를 얹습니다 — 함수 호출 에지(code-call)와 임포트 에지(code-import)이며, 기존 문서 에지는 하나도 바뀌지 않습니다. 임포트 대상은 go.mod 모듈 경로를 덜어내 저장소 로컬 패키지로 정규화해서 codemaps의 임포트 그래프와 같은 영역을 가리키게 하고, 호출 해석이 어느 수준(등급)에서 이뤄졌는지 16개 언어 전부에 대해 공표합니다. 두 계층이 같은 관계에 대해 다르게 말하면 어느 한쪽을 버리지 않고 `disagrees_with` 표시와 함께 둘 다 남기며, `--all-disagreements`는 기본 모드에서 숨긴 방향(코드는 발견했는데 문서가 침묵한 로컬 의존)까지 표시합니다.
+
 ## moai graph query
 
 한 번의 호출에 셀렉터를 **정확히 하나**만 줍니다.
@@ -34,7 +36,8 @@ $ moai graph build
 |--------|------|-----|
 | `--callers <노드>` | 이 패키지/SPEC을 직접 의존하는 대상은? | 역방향 이웃 — 임포트하는 패키지, 의존하는 SPEC, `@MX:SPEC` 태그가 붙은 코드 파일 |
 | `--blast <노드>` | 여기서 고치면 어디까지 흔들리는가? | 역방향 에지를 넓게 훑은(BFS) 영향 반경. `@MX:SPEC` 에지는 양방향으로 전파돼 코드 파일이 구현하는 SPEC까지 닿습니다 |
-| `--fanin [--limit N]` | 가장 많이 쓰이는 패키지는? | 임포트 팬인 순위 — @MX:DEBT 팬인 질의의 대용품(아직 태그 종류별 에지는 없음) |
+| `--fanin [--limit N]` | 가장 많이 쓰이는 패키지는? | 임포트 팬인 순위 |
+| `--debt-fanin [--limit N]` | `@MX:DEBT`가 붙은 대상은 얼마나 많이 호출되는가? | `@MX:DEBT` 태그 대상을 근거가 확인된 호출 팬인 기준 내림차순으로 나열 — 파일 스코프 DEBT는 팬인 0에 `(self)` 표시로 함께 나옵니다 |
 | `--specs-no-code` | 코드와 이어지지 않은 SPEC은? | edges.jsonl에 `@MX:SPEC` 에지가 0개인 SPEC 목록 |
 | `--milestones-no-card` | 카드 없이 지나간 마일스톤은? | 카드 교차검사 행이 카드를 주장하지 않거나, 주장한 카드가 살아 있는 백로그 큐에 없는 마일스톤 |
 
@@ -42,11 +45,55 @@ $ moai graph build
 $ moai graph query --callers SPEC-FOO-001
 $ moai graph query --blast internal/config
 $ moai graph query --fanin --limit 20
+$ moai graph query --debt-fanin
 $ moai graph query --specs-no-code
 $ moai graph query --milestones-no-card
 ```
 
 `--edges <경로>`로 다른 edges.jsonl을 가리키거나, 루트 인자로 다른 프로젝트 루트를 지정할 수 있습니다.
+
+질의 전에 기계적인 층(@MX 인덱스 · edges.jsonl)이 오래되었으면 먼저 갱신하고 답합니다. 내용 해시가 달라진 파일만 다시 파싱하므로 커밋하지 않은 편집도 답에 반영되고, 갱신 비용이 gate.yaml의 `update_budget_ms`(기본 2000ms)를 넘으면 경고만 하고 답은 계속합니다. 답을 낸 트리 루트와 커밋(또는 dirty 지문)이 항상 stderr에 함께 찍히므로, 어떤 트리의 답인지 헷갈릴 일이 없습니다.
+
+## moai graph check
+
+```bash
+$ moai graph check
+codemaps  metric=described-source-diff value=0 threshold=40 verdict=fresh
+mx-index  metric=inventory-content-diff value=0 threshold=1 verdict=fresh
+edges     metric=source-fingerprint-mismatch value=0 threshold=0 verdict=fresh
+```
+
+그래프의 세 층 — codemaps · @MX 인덱스 · edges.jsonl — 이 코드를 제대로 따라가고 있는지 층마다 자기 지표로 측정해 `fresh` / `stale` / `absent`로 판정합니다. codemaps는 스탬프된 생성 커밋 이후 달라진 묘사 대상 파일 수(되돌린 변경은 0으로 셉니다), @MX 인덱스는 내용 해시가 달라진 파일 수, edges.jsonl은 소스 지문 불일치를 봅니다.
+
+각 산출물은 provenance 블록으로 어느 트리·커밋의 산물인지 밝힙니다. 블록이 없으면 판정은 `absent` — 판단할 수 없음을 fresh로 속이지 않고, absent도 실패입니다. 새 워크트리에는 해당 산출물이 애초에 없으므로 전부 absent로 보고됩니다. 종료 코드는 0(모두 fresh) · 1(stale 또는 absent) · 2(시스템 오류)이며, 사전 커밋 품질 게이트의 그래프 신선도 단계와 CI graph-freshness 작업이 이 값을 그대로 소비합니다. 문턱값은 gate.yaml의 `graph_freshness` 섹션에서 조정합니다.
+
+mtime은 어디에서도 읽지 않습니다. 새 체크아웃은 모든 mtime을 초기화하므로 mtime 기반 지표는 방금 재생성된 것으로 오판합니다 — 그래서 모든 지표는 내용 해시, git diff, 지문뿐입니다.
+
+stale 판정에는 원인 첨부가 함께 옵니다. `codemaps` 층이 stale이면 stderr에 이 변경이 기여한 파일 수(`contribution`)와 측정 기준 커밋(`contribution_base`, 보통 `HEAD^1`)이 먼저 찍히고, 드리프트를 일으킨 경로가 최대 10개까지 나열되며 그 이상은 `... and N more`로 요약됩니다. `--json`에서는 같은 정보가 `contribution` · `contribution_base` · `driving_paths` · `driving_paths_omitted` 필드로 노출됩니다. 이 red를 물려받았을 뿐인지(기여 0) 직접 만들었는지(기여 >0)를 stderr 한 줄로 구분할 수 있습니다.
+
+## moai graph stamp codemaps
+
+```bash
+$ moai graph stamp codemaps
+OK: stamped .moai/project/codemaps/provenance.json
+provenance: tree=/path/to/project commit=1a2b3c4d5e6
+```
+
+codemaps를 다시 생성한 다음 마지막 단계로 실행합니다. 문서 내용은 `/moai codemaps`가 다듬지만, 그 내용이 **어떤 트리 상태를 묘사하는지**는 이 명령이 `provenance.json`으로 기록합니다. `moai graph check`가 codemaps 층을 판정하는 근거가 이 기록입니다.
+
+### 머지를 살아남는 커밋 지정 (`--commit`)
+
+```bash
+$ moai graph stamp codemaps --commit "$(git merge-base HEAD origin/main)"
+OK: stamped .moai/project/codemaps/provenance.json
+provenance: tree=/path/to/project commit=1a2b3c4d5e6
+```
+
+플래그 없이 실행하면 스탬프는 현재 체크아웃된 HEAD를 기록합니다. 기능 브랜치에서는 이것이 함정입니다. 이 저장소는 풀 리퀘스트를 **스쿼시 머지**로 합치기 때문에, 브랜치의 커밋 — HEAD 포함 — 은 main 역사에 절대 들어가지 않습니다. 브랜치 로컬 HEAD를 가리키는 스탬프는 스쿼시 머지가 이루어지는 순간 고아가 되고, 이후 열리는 모든 풀 리퀘스트가 graph-freshness 빨간불(`not comparable`, exit 2)을 물려받습니다. 이 실패가 실제로 한 번 발생해 `0d15864ae90b` 인시던트로 추적된 사례가 있습니다.
+
+`--commit <rev>`는 `git rev-parse` 표현식(전체 sha, 짧은 해시, 레퍼런스 이름 모두 가능)을 받아 전체 sha로 풀어 그대로 기록합니다. 위의 merge-base 레시피가 안전한 형태입니다. `git merge-base HEAD origin/main`은 main의 조상이라 스쿼시를 살아남는 동시에, 분기점에서 브랜치의 described 소스와 내용이 같아서 다른 PR이 머지한 변경까지 내 드리프트로 세지 않습니다. 브랜치 로컬 HEAD로 재스탬프하지 마세요. 또 described 소스에 커밋되지 않은 변경이 있는 상태에서 `--commit`을 쓰면 그냥 거부됩니다 — 커밋 지정과 콘텐츠 핑거프린트는 서로 다른 정직성 주장이라 스키마에 앵커 자리는 하나뿐이기 때문입니다.
+
+이 규율은 CI가 기계적으로 받칩니다. graph-freshness 워크플로는 신선도 판정을 내리기 전에 추적된 스탬프의 커밋이 풀 리퀘스트 베이스 브랜치의 조상인지 검사하므로, 고아가 될 스탬프는 머지 뒤의 무명 exit 2가 아니라 이름을 갖고 그 자리에서 실패합니다.
 
 ## 두 셀렉터를 위한 주의문
 

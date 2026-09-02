@@ -1,0 +1,9 @@
+id: sec-weak-hash-md5
+snapshots:
+  ? |
+    digest := md5.New()
+  : labels:
+    - source: md5.New()
+      style: primary
+      start: 10
+      end: 19

@@ -642,6 +642,22 @@ func TestRunClean_MergedOnly(t *testing.T) {
 		return branch == "feature", nil
 	}
 
+	// The fixture paths do not exist on disk, so the ignored-content guard
+	// (REQ-WR-024) would read an unrunnable `git status --porcelain --ignored`
+	// and fail closed. Stub it clean: this test asserts the removal path, and
+	// the guard's own fail-closed behaviour is bound in
+	// clean_ignored_content_test.go.
+	origGitCmd := gitWorktreeCmd
+	gitWorktreeCmd = func(args ...string) (string, error) {
+		for _, a := range args {
+			if a == "--ignored" {
+				return "", nil
+			}
+		}
+		return origGitCmd(args...)
+	}
+	defer func() { gitWorktreeCmd = origGitCmd }()
+
 	var removedPath string
 	WorktreeProvider = &mockWorktreeManager{
 		listFunc: func() ([]git.Worktree, error) {

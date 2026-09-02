@@ -43,9 +43,9 @@ var expectedMCPCarriers = map[string]bool{
 
 // expectedEffort is the AC-008 inventory from the template frontmatter.
 var expectedEffort = map[string]string{
-	"builder-harness": "medium", "e2e-tester": "low", "manager-design": "medium",
-	"manager-develop": "high", "manager-docs": "low", "manager-git": "low",
-	"manager-lead": "xhigh", "manager-spec": "high", "plan-auditor": "high",
+	"builder-harness": "medium", "e2e-tester": "low", "manager-design": "high",
+	"manager-develop": "medium", "manager-docs": "low", "manager-git": "low",
+	"manager-lead": "high", "manager-spec": "medium", "plan-auditor": "high",
 	"super-advisor": "high", "sync-auditor": "high",
 }
 

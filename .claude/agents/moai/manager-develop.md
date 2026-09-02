@@ -8,7 +8,7 @@ description: |
   NOT for: SPEC body authoring (spec.md / plan.md / acceptance.md / design.md / research.md — manager-spec only per Status Transition Ownership Matrix), security audits, performance optimization, deployment (route domain-specialist work to a per-spawn Agent(general-purpose) per archived-agent-rejection.md §C)
 tools: Read, Write, Edit, Bash, Grep, Glob, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill, mcp__moai__verify_snapshot, mcp__moai__verify_trend, mcp__moai__goal_status
 model: inherit
-effort: high
+effort: medium
 color: green
 permissionMode: bypassPermissions
 memory: project
@@ -89,7 +89,6 @@ Selected by `development_mode` in quality.yaml: `ddd` for existing codebases wit
 
 - Read the SPEC document and extract scope — `ddd`: refactoring targets and behavior-preservation requirements; `tdd`: feature requirements and acceptance criteria.
 - Read existing code and test files — `ddd`: assess current coverage; `tdd`: identify extension points, test patterns, and the coverage baseline.
-- **`ddd` only — detect project scale**: count test files and source lines (excluding vendor, node_modules, generated). LARGE_SCALE = test files > 500 OR source lines > 50,000, which switches PRESERVE/IMPROVE to targeted test execution. Step 5 always runs the full suite regardless of scale.
 
 ### STEP 2 — Mode-specific entry phase
 
@@ -123,17 +122,17 @@ Repeat per unit of change — one atomic transformation (`ddd` IMPROVE), or one 
    - `tdd` GREEN: implement the general solution the test specifies — tests verify behavior, they do not define it. Do not hard-code outputs to the specific test inputs; the implementation must generalize beyond the literal fixtures.
    - `tdd` REFACTOR: one improvement at a time — remove duplication, improve naming, extract methods.
 2. **LSP verification**: compare against the Step 2.5 baseline. Errors above baseline → REVERT immediately.
-3. **Verify behavior**: run tests — targeted when `ddd` LARGE_SCALE, otherwise the full suite (memory guard: module-level batches when needed).
+3. **Verify behavior**: run the tests the change can affect (memory guard: module-level batches when needed).
 4. **Check completion**: all tests passing, LSP errors == 0, type errors == 0, no regression from baseline. Loop prevention: max 100 iterations, stale detection after 5 no-progress iterations.
 5. **Record progress**: document the change; update metrics (`ddd`) or coverage (`tdd`) and task status via TaskUpdate.
 
 ### STEP 5 — Complete and report (both)
 
-- Run the COMPLETE test suite (always full, regardless of LARGE_SCALE; memory guard: batches when needed)
+- Run the tests the change can affect (memory guard: batches when needed)
 - `ddd`: verify all behavior snapshots match, and compare before/after coupling metrics
 - `tdd`: verify coverage targets met (85% minimum per the quality.yaml SSOT — `.moai/config/sections/quality.yaml`)
-- Issue the independent read-only verifications (full suite, coverage, lint, boundary greps) as ONE single-turn parallel batch — see `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution and `.claude/rules/moai/workflow/verification-batch-pattern.md`.
-- Generate the completion report — `ddd`: transformations and metric deltas; `tdd`: all tests and design decisions
+- Issue the independent read-only verifications (change-scoped tests, coverage, lint, boundary greps) as ONE single-turn parallel batch — see `.claude/rules/moai/core/agent-common-protocol.md` § Parallel Execution and `.claude/rules/moai/workflow/verification-batch-pattern.md`.
+- Generate the completion report — `ddd`: transformations and metric deltas; `tdd`: all tests and design decisions. The report MUST name the CI run on the project's integration branch as the owner of the repository-wide test verdict and state that this verdict is PENDING at report time.
 - Commit changes, update SPEC status
 
 ### Checkpoint and resume (both)

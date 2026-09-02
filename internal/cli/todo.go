@@ -23,133 +23,52 @@
 package cli
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
+	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
 
-	gitcore "github.com/modu-ai/moai-adk/internal/core/git"
 	"github.com/modu-ai/moai-adk/internal/kanban"
 )
 
+// init wires internal/cli's existing userHomeDirFn test-injection seam
+// through to kanban.HomeDirFn, the equivalent seam the relocated queue-root
+// resolution owns (SPEC-WEB-TODO-QUEUE-001 M1). The closure closes over the
+// package-level var by reference, so a test that reassigns userHomeDirFn at
+// runtime is still observed by the resolution — the same pattern glm.go uses
+// for glmcred.HomeDirFn.
+func init() {
+	kanban.HomeDirFn = func() (string, error) { return userHomeDirFn() }
+}
+
 // todoBacklogPath returns the backlog file location under root — the same
-// .moai/state/kanban/backlog.json the todo skill and the dispatch protocol
-// name (REQ-TODO-001). The root itself is resolved by resolveTodoQueueRoot.
+// path the todo skill and the dispatch protocol name (REQ-TODO-001). The root
+// itself is resolved by resolveTodoQueueRoot.
+//
+// This is the ADOPTING form: the `moai todo` command path is where the
+// one-time relocation of the legacy state directory belongs, because it is
+// where the queue lock is already in play (REQ-TOSQ-015). The read-only
+// surfaces — the console, the statusline — use the pure form and move nothing.
 func todoBacklogPath(root string) string {
-	return filepath.Join(root, ".moai", "state", "kanban", "backlog.json")
+	return kanban.BacklogPathForRootAdopting(root)
 }
 
-// resolveTodoQueueRoot returns the directory the backlog queue hangs from:
-// the PRIMARY checkout of the repository the launch context sits in, or a
-// home-based fallback when git cannot answer.
+// resolveTodoQueueRoot returns the directory the backlog queue hangs from
+// for the `moai todo` command path: the PRIMARY checkout of the repository
+// the launch context sits in, or a home-based fallback when git cannot
+// answer — adopting a pre-existing project-local queue on that fallback
+// branch, exactly as before.
 //
-// The queue is the delegation channel between sessions — the lead, the
-// foreman loop, and the operator's picks all read and write one queue. A
-// linked worktree holding its own .moai/state would fork that channel: an
-// `add` from inside a card worktree lands in a queue file the primary
-// checkout never sees (measured 2026-08-17: 30 queued cards on the
-// primary, "queue is empty" from a linked worktree). The primary is
-// therefore resolved through the repository itself: git's common directory
-// is shared by every checkout and its parent IS the primary checkout's
-// root, from any worktree and from the primary alike (internal/core/git
-// checkout.go) — the same discrimination branch_guard.go applies, with no
-// file moving.
-//
-// Fail-open direction: an unresolvable git context (no git binary, not a
-// repository) keeps the queue usable via the home-based fallback rather
-// than erroring — a project without git metadata still gets exactly one
-// queue, keyed under ~/.moai/todo/ so two such projects cannot collide.
+// The resolution itself lives in internal/kanban since
+// SPEC-WEB-TODO-QUEUE-001 M1, so the command layer and the web console share
+// ONE resolution (a second implementation is a second chance to fork the
+// queue). The command path takes the ADOPTING entry point; the console takes
+// the pure one, which never writes.
 func resolveTodoQueueRoot() string {
-	base := resolveProjectDir()
-	if dirs, err := gitcore.ResolveGitDirs(base); err == nil && dirs.CommonDir != "" {
-		return filepath.Dir(dirs.CommonDir)
-	}
-	return fallbackTodoQueueRoot(base)
-}
-
-// fallbackTodoQueueRoot returns the home-based queue root for a launch
-// context git could not resolve to a primary checkout. userHomeDirFn is the
-// package's existing test-injection seam, so tests override the home
-// lookup instead of mutating the real HOME.
-//
-// The directory is named for the command that owns the queue (`moai todo` —
-// no `moai kanban` command exists), deliberately NOT "kanban": the
-// .moai/state/kanban/ directory also holds per-session kanban records
-// (<uuid>.json) owned by internal/kanban, and a "kanban" fallback name would
-// read as moving those too — a scope this queue never touches.
-//
-// Before the fallback's queue is created, adoptLocalTodoQueue carries an
-// existing project-local queue over (adopt-not-shadow): the fallback's first
-// run must present the cards the project already has, never an empty queue
-// shadowing them.
-func fallbackTodoQueueRoot(base string) string {
-	if base == "" {
-		base = "."
-	}
-	home, err := userHomeDirFn()
-	if err != nil {
-		// No home resolvable either: keep the queue inside the project
-		// directory rather than failing the command outright.
-		return filepath.Join(base, ".moai", "state", "kanban")
-	}
-	root := filepath.Join(home, ".moai", "todo", todoQueueProjectKey(base))
-	adoptLocalTodoQueue(base, root)
-	return root
-}
-
-// adoptLocalTodoQueue moves a pre-existing project-local queue into a fresh
-// fallback root, so the fallback's first run adopts the project's cards
-// instead of shadowing them behind an empty queue (the lossless-migration
-// requirement: item count and states must survive the cutover).
-//
-// Best-effort throughout — a failure leaves the local queue exactly where it
-// was and the fallback simply starts empty THIS run; the data is never
-// destroyed, so a later run can adopt it again once the obstruction clears.
-// When the fallback already has a queue file the local one is left untouched
-// (adopted on an earlier run; a local file reappearing after that is a
-// downgrade-era snapshot the populated fallback deliberately ignores).
-func adoptLocalTodoQueue(base, fallbackRoot string) {
-	local := todoBacklogPath(base)
-	target := filepath.Join(fallbackRoot, "backlog.json")
-	if _, err := os.Stat(target); err == nil {
-		return
-	}
-	if _, err := os.Stat(local); err != nil {
-		return
-	}
-	if err := os.MkdirAll(fallbackRoot, 0o755); err != nil {
-		return
-	}
-	// Same-volume rename is atomic and leaves no duplicate behind.
-	if err := os.Rename(local, target); err == nil {
-		return
-	}
-	// Cross-volume (EXDEV) or rename-refusing filesystem: copy the bytes and
-	// KEEP the original — deletion is the one outcome the lossless
-	// requirement forbids, and a leftover original is inert (the populated
-	// fallback wins on every later run).
-	data, err := os.ReadFile(local)
-	if err != nil {
-		return
-	}
-	_ = os.WriteFile(target, data, 0o600)
-}
-
-// todoQueueProjectKey derives the fallback queue's directory name from the
-// launch directory: a readable base name plus a short digest of the
-// absolute path. Two distinct projects sharing a base name still occupy
-// two keys, and the mapping is deterministic across runs.
-func todoQueueProjectKey(base string) string {
-	abs, err := filepath.Abs(base)
-	if err != nil {
-		abs = filepath.Clean(base)
-	}
-	sum := sha256.Sum256([]byte(abs))
-	return fmt.Sprintf("%s-%x", filepath.Base(abs), sum[:4])
+	return kanban.ResolveTodoQueueRootAdopting(resolveProjectDir())
 }
 
 // newTodoStore is the single constructor every todo verb goes through, so
@@ -158,12 +77,23 @@ func newTodoStore() *kanban.BacklogStore {
 	return kanban.NewBacklogStore(todoBacklogPath(resolveTodoQueueRoot()))
 }
 
+// todoLandedRef is the single place the todo surface resolves the ref the
+// landing question is asked about, so the help text, the flag description, the
+// refusal, and the query itself can never name different refs.
+//
+// It resolves against the SAME root the queue does — the primary checkout —
+// because the queue and the integration branch are properties of one
+// repository, not of whichever worktree the command happens to run in.
+func todoLandedRef() string {
+	return kanban.LandedRefFor(resolveTodoQueueRoot())
+}
+
 // newTodoCmd creates the `moai todo` parent command.
 func newTodoCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "todo",
 		Short: "Operate the kanban backlog queue",
-		Long: `Operate the kanban backlog queue at .moai/state/kanban/backlog.json.
+		Long: `Operate the kanban backlog queue at .moai/state/todo/backlog.json.
 
 The queue resolves against the PRIMARY checkout even when this command runs
 inside a linked worktree — one repository, one queue; a card worktree adds
@@ -180,7 +110,13 @@ workflows/todo.md both document; ` + "`moai todo list`" + ` remains valid and pr
 same thing. A single unknown token stays an error (a mistyped verb must not
 become a card), while a phrase of two or more words falls through to add:
 ` + "`moai todo fix the flaky gate`" + ` adds that card. A one-word card therefore
-needs the explicit add verb — the price of keeping typos loud.`,
+needs the explicit add verb — the price of keeping typos loud.
+
+One fallthrough shape is refused outright: a verb-shaped first token followed
+by a card id (` + "`moai todo pick t151`" + `) is a mistyped verb, not a card, and
+becomes an error naming the known verbs. A card text that merely mentions an
+id later in the sentence still falls through, and ` + "`moai todo add \"<text>\"`" + `
+adds any text verbatim.`,
 		Args: func(cmd *cobra.Command, args []string) error {
 			// t69 fallthrough: two or more words are natural language → add.
 			// Deliberate failure modes: a single token (the mistyped verb
@@ -189,6 +125,13 @@ needs the explicit add verb — the price of keeping typos loud.`,
 			// card needs the explicit add verb; conversely a mistyped verb
 			// followed by more words ("lst the queue") DOES become a card,
 			// the accepted cost of the fallthrough.
+			//
+			// t203 narrows that accepted cost where the cost is highest:
+			// a verb-shaped first token addressing a card id is a mistyped
+			// verb, not a card — see todoMistypedVerbGuard.
+			if err := todoMistypedVerbGuard(cmd, args); err != nil {
+				return err
+			}
 			if len(args) > 1 {
 				return nil
 			}
@@ -196,18 +139,74 @@ needs the explicit add verb — the price of keeping typos loud.`,
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
-				return runTodoList(cmd, false)
+				return runTodoList(cmd, false, false, todoListDefaultLimit)
 			}
 			return runTodoAddAppend(cmd, strings.Join(args, " "), false)
 		},
 		GroupID: "tools",
 	}
-	cmd.AddCommand(newTodoAddCmd(), newTodoListCmd(), newTodoDoneCmd(), newTodoNextCmd(),
+	cmd.AddCommand(newTodoAddCmd(), newTodoListCmd(), newTodoDoneCmd(), newTodoUndoneCmd(), newTodoNextCmd(),
 		newTodoUnpickCmd(), newTodoEditCmd(), newTodoMoveCmd(),
 		newTodoDropCmd(), newTodoUndropCmd(),
 		newTodoAnalyzeCmd(), newTodoRelateCmd(), newTodoUnrelateCmd(), newTodoWhyCmd(),
-		newTodoPRCmd())
+		newTodoPRCmd(), newTodoExportJSONCmd(), newTodoHistoryCmd())
 	return cmd
+}
+
+// todoVerbShaped matches a first token that reads as a command verb: one
+// lowercase ASCII word, optionally hyphenated. Bounded in length so a long
+// word in a card text cannot pass for a verb.
+var todoVerbShaped = regexp.MustCompile(`^[a-z][a-z-]{1,15}$`)
+
+// todoCardIDShaped matches the id form the queue issues (`t<decimal>`, see
+// kanban.BacklogStore). Deliberately NOT the looser reference form the verbs
+// accept (`done 151` normalizes a bare number): a bare number is ordinary
+// card text ("fix 3 flaky tests"), while an explicit `t151` in second
+// position is an address.
+var todoCardIDShaped = regexp.MustCompile(`^t\d+$`)
+
+// todoMistypedVerbGuard refuses the one fallthrough shape that is almost
+// never a card: a verb-shaped first token followed by a card id
+// (`moai todo pick t151`). Cobra routes a REGISTERED verb to its subcommand,
+// so anything reaching the parent is an unregistered word — and a word
+// addressing a card id is a mistyped verb whose silent conversion into a
+// card is the data pollution #1597 reports.
+//
+// The t69 usability trade-off is preserved everywhere else: a natural-language
+// card still falls through to add, including one that merely mentions a card
+// id later in the sentence ("fix the drift found in t151"). Only the exact
+// verb-then-id shape is refused, and `moai todo add "<text>"` remains the
+// escape hatch for a card that genuinely reads that way.
+func todoMistypedVerbGuard(cmd *cobra.Command, args []string) error {
+	if len(args) < 2 {
+		return nil
+	}
+	if !todoVerbShaped.MatchString(args[0]) || !todoCardIDShaped.MatchString(args[1]) {
+		return nil
+	}
+	phrase := strings.Join(args, " ")
+	return fmt.Errorf(
+		"todo: %q is not a todo verb and %q is a card id — refusing to create a card named %q.\n"+
+			"Known verbs: %s\nTo add this text as a card anyway: moai todo add %q",
+		args[0], args[1], phrase, strings.Join(todoVerbNames(cmd), ", "), phrase)
+}
+
+// todoVerbNames lists the registered verb names, so the guard's message is
+// derived from the command tree rather than from a hand-maintained list that
+// drifts as verbs are added.
+func todoVerbNames(cmd *cobra.Command) []string {
+	if cmd == nil {
+		return nil
+	}
+	names := make([]string, 0, len(cmd.Commands()))
+	for _, sub := range cmd.Commands() {
+		if sub.Name() == "help" || sub.Name() == "completion" || sub.Hidden {
+			continue
+		}
+		names = append(names, sub.Name())
+	}
+	sort.Strings(names)
+	return names
 }
 
 // newTodoAddCmd — `moai todo add "<text>"` (REQ-TODO-002): append under the
@@ -285,10 +284,30 @@ func runTodoAddPick(cmd *cobra.Command, store *kanban.BacklogStore, text string,
 	return nil
 }
 
+// todoListDefaultLimit is the list render's default bound — the same shape
+// (and value) as the history verb's REQ-TAQ-007 contract: a bounded read is
+// the default, --limit raises or lowers it, --limit 0 lifts it entirely,
+// and a truncated listing states the withheld count on stderr because a
+// truncated read must never be mistaken for a complete one.
+const todoListDefaultLimit = 20
+
 // runTodoList renders the backlog lock-free. It backs both entry points —
 // the bare `moai todo` and the explicit `moai todo list` — so the two cannot
 // drift apart in output.
-func runTodoList(cmd *cobra.Command, jsonOutput bool) error {
+//
+// The default view renders live cards only (queued + picked) and collapses
+// the dropped set into one count line naming the recovery path: a dropped
+// card never leaves rec.Items, so rendering it forever made the list length
+// diverge from the queue's actual load. `--dropped` renders the discarded
+// set instead — the surface `undrop` needs to find a card and its reason
+// (t153's exact-reversal contract is untouched; only the render filters).
+//
+// The render is bounded at limit rows (t403): an unbounded render pushed the
+// truncation downstream to the reading harness, where rows vanished from the
+// visible output with no withheld count. `--json` ignores the limit — the
+// structured record is the full read, and a bounded JSON would be the same
+// silent truncation.
+func runTodoList(cmd *cobra.Command, jsonOutput bool, droppedOnly bool, limit int) error {
 	store := newTodoStore()
 	rec, err := store.Load()
 	if err != nil {
@@ -308,7 +327,26 @@ func runTodoList(cmd *cobra.Command, jsonOutput bool) error {
 		_, _ = fmt.Fprintln(out, "queue is empty")
 		return nil
 	}
+	if limit < 0 {
+		return fmt.Errorf("todo list: --limit must be >= 0 (got %d)", limit)
+	}
+	var visible []kanban.BacklogItem
+	dropped := 0
 	for _, it := range rec.Items {
+		isDropped := it.State == kanban.BacklogStateDropped
+		if isDropped {
+			dropped++
+		}
+		if isDropped != droppedOnly {
+			continue
+		}
+		visible = append(visible, it)
+	}
+	shown := len(visible)
+	if limit > 0 && limit < shown {
+		shown = limit
+	}
+	for _, it := range visible[:shown] {
 		_, _ = fmt.Fprintf(out, "%s\t%s\t%s\n", it.ID, it.State, it.Text)
 		for _, f := range rec.Findings {
 			if !f.Names(it.ID) {
@@ -317,60 +355,166 @@ func runTodoList(cmd *cobra.Command, jsonOutput bool) error {
 			_, _ = fmt.Fprintln(out, todoFindingLine(rec, it.ID, f))
 		}
 	}
+	if droppedOnly && shown == 0 {
+		_, _ = fmt.Fprintln(out, "no dropped cards")
+		return nil
+	}
+	if !droppedOnly && dropped > 0 {
+		_, _ = fmt.Fprintf(out, "%d dropped (hidden — see: moai todo list --dropped)\n", dropped)
+	}
+	if withheld := len(visible) - shown; withheld > 0 {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
+			"list: %d rows withheld — showing %d of %d (--limit 0 lists all)\n",
+			withheld, shown, len(visible))
+	}
 	return nil
 }
 
-// newTodoListCmd — `moai todo list [--json]` (REQ-TODO-003): render the
-// queue lock-free; --json emits the structured records.
+// newTodoListCmd — `moai todo list [--json] [--dropped] [--limit <n>]`
+// (REQ-TODO-003): render the queue lock-free; --json emits the structured
+// records, --dropped renders the discarded set the default view hides behind
+// a count line, and --limit bounds the row render (0 = unbounded; ignored
+// with --json).
 func newTodoListCmd() *cobra.Command {
 	var jsonOutput bool
+	var droppedOnly bool
+	var limit int
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "Render the backlog queue (lock-free)",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runTodoList(cmd, jsonOutput)
+			return runTodoList(cmd, jsonOutput, droppedOnly, limit)
 		},
 	}
 	cmd.Flags().BoolVar(&jsonOutput, "json", false,
 		"Emit the backlog records as JSON on stdout")
+	cmd.Flags().BoolVar(&droppedOnly, "dropped", false,
+		"Render only the dropped cards (the default view hides them behind a count line)")
+	cmd.Flags().IntVar(&limit, "limit", todoListDefaultLimit,
+		"Maximum rows to render (0 = unbounded; ignored with --json)")
 	return cmd
 }
 
-// newTodoDoneCmd — `moai todo done <n>` (REQ-TODO-004): remove the
-// addressed row under the lock. A bare <n> is normalized to the item id
-// t<n>; the explicit id is the preferred form because queue positions move
-// under concurrent adds.
+// newTodoDoneCmd — `moai todo done <n>` (REQ-TODO-004): take the addressed
+// row out of the live queue under the lock. A bare <n> is normalized to the
+// item id t<n>; the explicit id is the preferred form because queue positions
+// move under concurrent adds.
+//
+// The row is ARCHIVED rather than discarded (SPEC-TODO-DESTRUCTIVE-GUARD-001
+// REQ-TDG-003), so `undone` can put it back. `done` keeps its plain meaning —
+// the card leaves the queue and no live reader sees it again — but it is no
+// longer the one destructive verb with no way back.
+//
+// Two opt-in guards refuse INSIDE the mutation callback, so each inherits
+// Mutate's byte-identity-on-refusal contract: `--expect <prefix>` follows the
+// convention `next`, `edit`, `drop` and `undrop` already carry, and
+// `--require-landed` asks the landing question with its limit stated.
 func newTodoDoneCmd() *cobra.Command {
-	return &cobra.Command{
+	var expect string
+	var requireLanded bool
+	landedRef := todoLandedRef()
+	cmd := &cobra.Command{
 		Use:   "done <n>",
-		Short: "Remove a card from the backlog queue by id",
-		Args:  cobra.ExactArgs(1),
+		Short: "Archive a card out of the backlog queue by id",
+		Long: `Move the addressed card out of the live queue as one locked write.
+
+The card and every finding naming it move into the archive rather than being
+discarded, so ` + "`moai todo undone <n>`" + ` restores both. Archived rows are invisible
+to every live-queue reader (` + "`list`, `next`, `why`, `analyze`" + `, the counts).
+
+` + "`--expect <prefix>`" + ` refuses unless the addressed card's text starts with the
+prefix — the guard against closing the wrong card.
+
+` + "`--require-landed`" + ` refuses unless a commit on ` + landedRef + ` names the card.
+It is OPT-IN and honestly limited: it answers "has anything naming this card
+landed on that ref", NOT "has this card's last step landed", so it cannot tell a
+run commit from a sync commit. Absent the flag no landing query runs at all.
+
+Every successful invocation prints one landing verdict on stdout —
+` + "`done <id> landing=landed|not-landed|unknown`" + `. Without the flag the verdict is
+` + "`unknown`" + `, because no query ran: "the guard passed" and "the guard did not
+run" are different facts and no longer the same bytes.`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := normalizeTodoRef(args[0])
 			store := newTodoStore()
+			// Unknown until a query answers otherwise. Absent the flag no
+			// query runs at all, and `unknown` is the honest report of that.
+			verdict := kanban.LandingUnknown
 			if err := store.Mutate(func(rec *kanban.BacklogRecord) error {
-				for i, it := range rec.Items {
-					if it.ID == id {
-						rec.Items = append(rec.Items[:i], rec.Items[i+1:]...)
-						// A finding outliving its subject points at a card
-						// the operator can no longer see, so the card and
-						// every finding naming it leave together.
-						rec.RemoveFindingsNaming(id)
-						return nil
+				// Refused mutations below: Mutate writes nothing, so the
+				// record stays byte-identical on every one of them.
+				at := -1
+				for i := range rec.Items {
+					if rec.Items[i].ID == id {
+						at = i
+						break
 					}
 				}
-				// Refused mutation: Mutate writes nothing, so the file stays
-				// byte-identical on a miss.
-				return fmt.Errorf("no backlog item %s", id)
+				if at < 0 {
+					return fmt.Errorf("no backlog item %s", id)
+				}
+				if expect != "" && !strings.HasPrefix(rec.Items[at].Text, expect) {
+					return fmt.Errorf("backlog item %s is %q, not matching --expect %q",
+						id, todoTextPrefix(rec.Items[at].Text), expect)
+				}
+				if requireLanded {
+					answer, err := todoRequireLanded(cmd, id)
+					if err != nil {
+						return err
+					}
+					verdict = answer
+				}
+				return rec.ArchiveCard(id)
 			}); err != nil {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "Error: %v\n", err)
 				return err
 			}
-			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "done %s\n", id)
+			// One line per act, carrying exactly one landing verdict — a second
+			// line would give an operator script two records for one event.
+			// The suffix preserves the `done <id>` prefix every existing
+			// reader keys off.
+			_, _ = fmt.Fprintf(cmd.OutOrStdout(), "done %s landing=%s\n", id, verdict)
 			return nil
 		},
 	}
+	cmd.Flags().StringVar(&expect, "expect", "",
+		"Refuse unless the card text starts with this prefix")
+	cmd.Flags().BoolVar(&requireLanded, "require-landed", false,
+		"Refuse unless a commit on "+landedRef+" names the card (opt-in; see --help for its limit)")
+	return cmd
+}
+
+// todoRequireLanded answers the opt-in landing question for id.
+//
+// It refuses ONLY on positive evidence of not-landed, and PROCEEDS when the
+// answer is inconclusive — no git, no such ref, a query error. That asymmetry
+// is the point: the guard exists to catch a card closed before its work
+// shipped, and a guard that also blocked every machine without the ref would
+// be refusing on the absence of evidence rather than on evidence.
+//
+// The limit is stated rather than hidden. The predicate asks whether ANY
+// commit on the ref names the card, so a card whose run commit landed reads as
+// landed even though its sync commit has not — the exact case that motivated
+// this SPEC. Making it answer the right question needs a persisted
+// landing-state field, which is a separate card's scope; this ships the seam
+// and says plainly what it can and cannot answer (spec.md §A.4).
+func todoRequireLanded(cmd *cobra.Command, id string) (kanban.LandingAnswer, error) {
+	q := kanban.GitLandedQuerier{Run: todoRunCommand, Ref: todoLandedRef()}
+	answer, err := q.Landed(id)
+	if err != nil {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
+			"note: --require-landed could not answer for %s against %s (%v) — proceeding, because an unanswerable query is not evidence of not-landed\n",
+			id, q.LandedRef(), err)
+		return kanban.LandingUnknown, nil
+	}
+	if answer == kanban.LandingNotLanded {
+		return answer, fmt.Errorf("backlog item %s is named by no commit on %s — --require-landed refuses "+
+			"(the check asks whether anything naming the card has landed on that ref, not whether the card's last step has)",
+			id, q.LandedRef())
+	}
+	return answer, nil
 }
 
 // newTodoNextCmd — `moai todo next [<n>] [--spec <SPEC-ID>]` (REQ-TODO-005).

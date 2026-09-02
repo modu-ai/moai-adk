@@ -77,10 +77,10 @@ llm:
   glm:
     base_url: "https://api.z.ai/api/anthropic"
     models:
-      high: "glm-5.3"          # 1M context — Opus 插槽
-      medium: "glm-5.3"        # 1M context   — Sonnet 插槽
-      low: "glm-5.3"          # 1M context   — 轻量插槽
-      fable: "glm-5.3"
+      high: "glm-5.3-flash"   # 1M context — Opus 插槽
+      medium: "glm-5.3-flash" # 1M context   — Sonnet 插槽
+      low: "glm-5.3-flash"    # 1M context   — 轻量插槽
+      fable: "glm-5.3-flash"
 ```
 
 | 键 | 说明 |
@@ -175,6 +175,48 @@ workflow:
 **例外与失败方向。** 需要创建分支的 git 负责代理按身份获得豁免，也可以通过 `MOAI_BRANCH_GUARD_EXEMPT=1` 环境变量绕过。判定不确定时（不是仓库、`git rev-parse` 执行失败等）不做拒绝而是放行，只写入审计日志 — 只有在证据确凿时才拒绝。
 
 需要切换分支的工作，正统做法是移到工作树而不是让它被拒绝。具体步骤请参阅 [moai worktree](/zh/cli-reference/worktree/)。
+
+## workflow.yaml — audit
+
+指定跨模型审计后端（`codex_audit` · `glm_audit` · `audit_multi`）实际以哪个模型和 effort 运行。每个后端取一组 `{model, effort}`，发布默认值全部为空。
+
+```yaml
+workflow:
+    audit:
+        codex:
+            model: ""   # 如 gpt-5.6-sol — codex 可提供的模型 id
+            effort: ""  # 如 high — low | medium | high | xhigh | max
+        glm:
+            model: ""   # 如 glm-5.3
+            effort: ""  # 如 max — low | high | max（z.ai 的 reasoning 状态名）
+```
+
+| 键 | 说明 |
+|----|------|
+| `audit.codex.{model, effort}` | codex 审计在会话开启与评审轮次上携带的一组。model 为空或 codex 无法提供时，丢弃该固定值并回到原有 SSOT 解析 |
+| `audit.glm.{model, effort}` | GLM 审计在 z.ai 请求上携带的一组。effort 只接受 z.ai 的 reasoning 状态名 `low` · `high` · `max`；其他值会去掉 reasoning 指令，仅应用模型固定值 |
+| 两组均为空 | 解析行为与该键出现之前完全一致 — 从未写入固定值的项目不会有任何变化 |
+
+固定值只作用于审计入口。任务委派路径（`codex_task` · `glm_task`）的模型解析不受影响，同样的字段也可以在网页控制台的 Audit 面板中直接编辑。
+
+## workflow.yaml — todo
+
+关掉待办队列(todo)**引导表面**的开关。会话启动时的队列摘要行、状态栏的 TODO 段、把自然语言请求推理路由到 todo 工作流 —— 这三样在这一个键下一起安静下来。
+
+```yaml
+workflow:
+    todo:
+        enabled: false   # 显式关闭 —— 键不存在时读作开启
+```
+
+| 键 | 值 | 含义 |
+|----|-----|------|
+| `todo.enabled` | (键不存在,默认) | 开启。发行模板里根本没有这个块,大多数项目就处在这个状态 |
+| `todo.enabled` | `false` | 会话启动摘要、状态栏 TODO 段、技能的自动路由全部关闭 |
+
+**关掉并不删除命令。** `moai todo` CLI 保持注册、所有动词照常工作,按名字直接调用的 `/moai todo` 也照常执行。这条边界是有意为之 —— 开关只让"没要队列的人看到队列"的那些表面安静下来,不碰真正在用队列的人的路径。读取不到配置文件的失败路径也解析为开启(fail-open)。
+
+在小型一次性项目里,每次会话都弹出的待办摘要读起来像噪音时,就用这个键。队列本身的用法在 [moai todo](/zh/utility-commands/moai-todo/) 页面。
 
 ## crosssession.yaml — 会话间消息
 

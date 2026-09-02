@@ -115,9 +115,9 @@ func DefaultQuestions(projectRoot string) []Question {
 			// for new projects (SPEC-CLI-WIZARD-RESTRUCTURE-001 REQ-WIZ-008). Max/High
 			// remains a fully selectable tier — only the DEFAULT moved.
 			Options: []Option{
-				{Label: "Max", Value: "high", Desc: "Opus 5 (max~low) + Sonnet (low, single-shot rows only) — Max $200 plan"},
-				{Label: "Medium (Recommended)", Value: "medium", Desc: "Opus 5 (high~low) + Sonnet (low, single-shot rows only) — Max $100 plan"},
-				{Label: "Low", Value: "low", Desc: "Opus 5 (medium~low) + Sonnet (low, docs/e2e/single-shot rows) — Plus $20 plan"},
+				{Label: "Max", Value: "high", Desc: "Opus 5 (high~medium) + Sonnet (low, docs/single-shot rows) — Max $200 plan"},
+				{Label: "Medium (Recommended)", Value: "medium", Desc: "Opus 5 (high~low) + Sonnet (low, docs/single-shot rows) — Max $100 plan"},
+				{Label: "Low", Value: "low", Desc: "Opus 5 (high~low) + Sonnet (low, docs/e2e/single-shot rows) — Plus $20 plan"},
 			},
 			Default:  "medium",
 			Required: true,
@@ -458,6 +458,28 @@ func Page3Questions(projectRoot string) []Question {
 			Title:       "Enable the codex review-gate Stop hook?",
 			Description: "Opt-in default-off. When enabled, the Stop hook runs codex on uncommitted changes.",
 			Default:     "false",
+		},
+		// SPEC-INIT-HARNESS-PROMPT-001 (REQ-IHP-001) — the agent-harness
+		// selector, previously reachable only through `moai init --agent`.
+		// It sits immediately before mcp_provision because the two answers
+		// jointly decide the MCP surface and the overriding one is given
+		// first: a codex selection declines .mcp.json provisioning whatever
+		// mcp_provision answered (spec.md §4 D2). Per plan.md §B Decision B1
+		// it carries NO Condition — mcp_provision is asked unconditionally,
+		// because WizardResult.MCPProvision is a plain bool and hiding the
+		// question would make "not asked" indistinguishable from "declined".
+		{
+			ID:          "agent_wiring",
+			Group:       "Quality & Workflow",
+			Type:        QuestionTypeSelect,
+			Title:       "Select the agent harness to wire",
+			Description: "Which agent harness MoAI wires for this project. 'claude' is the recommended default; the --agent flag overrides this answer.",
+			Options: []Option{
+				{Label: "Claude (Recommended)", Value: "claude", Desc: "Wire the Claude side only (.mcp.json provisioning)"},
+				{Label: "Codex", Value: "codex", Desc: "Wire the .codex/ hook layer + MCP config; skips .mcp.json provisioning"},
+				{Label: "Both", Value: "both", Desc: "Wire both harnesses; forces .mcp.json provisioning on"},
+			},
+			Default: "claude",
 		},
 		{
 			ID:          "mcp_provision",

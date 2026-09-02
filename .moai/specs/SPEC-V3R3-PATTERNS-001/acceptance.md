@@ -1,7 +1,6 @@
 ---
 id: SPEC-V3R3-PATTERNS-001
 version: "0.1.0"
-status: draft
 created_at: 2026-04-26
 updated_at: 2026-04-26
 author: manager-spec

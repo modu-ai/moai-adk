@@ -132,6 +132,7 @@ templ rail(vm ShellVM) {
 			@navRow(vm, "specs", "Specs", "/specs")
 			@navRow(vm, "monitor", "Monitor", "/monitor")
 			@navRow(vm, "settings", "Settings", "/settings")
+			@navRow(vm, "todo", "Todo", "/todo")
 			if vm.Area == "settings" && len(vm.Tabs) > 0 {
 				<li>
 					// 탭 순서는 schemaform.go consoleTabs() 가 소유한다 (C6).

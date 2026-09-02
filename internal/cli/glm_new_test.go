@@ -28,14 +28,14 @@ func TestLoadGLMConfig_FallbackDefaults(t *testing.T) {
 	}
 	// All slots share one model — the auto-compact window is sized once from the
 	// high slot and inherited by agents spawned into the others.
-	if cfg.Models.Low != "glm-5.3" {
-		t.Errorf("Models.Low = %q, want %q", cfg.Models.Low, "glm-5.3")
+	if cfg.Models.Low != "glm-5.3-flash" {
+		t.Errorf("Models.Low = %q, want %q", cfg.Models.Low, "glm-5.3-flash")
 	}
-	if cfg.Models.Medium != "glm-5.3" {
-		t.Errorf("Models.Medium = %q, want %q", cfg.Models.Medium, "glm-5.3")
+	if cfg.Models.Medium != "glm-5.3-flash" {
+		t.Errorf("Models.Medium = %q, want %q", cfg.Models.Medium, "glm-5.3-flash")
 	}
-	if cfg.Models.High != "glm-5.3" {
-		t.Errorf("Models.High = %q, want %q", cfg.Models.High, "glm-5.3")
+	if cfg.Models.High != "glm-5.3-flash" {
+		t.Errorf("Models.High = %q, want %q", cfg.Models.High, "glm-5.3-flash")
 	}
 	if cfg.EnvVar != "GLM_API_KEY" {
 		t.Errorf("EnvVar = %q, want %q", cfg.EnvVar, "GLM_API_KEY")
@@ -155,8 +155,8 @@ llm:
 		t.Errorf("Models.High = %q, want %q (disk models ignored with nil deps)", cfg.Models.High, "glm-PROBE-HIGH")
 	}
 	// medium/low omitted → defaults fill in.
-	if cfg.Models.Medium != "glm-5.3" {
-		t.Errorf("Models.Medium = %q, want default %q", cfg.Models.Medium, "glm-5.3")
+	if cfg.Models.Medium != "glm-5.3-flash" {
+		t.Errorf("Models.Medium = %q, want default %q", cfg.Models.Medium, "glm-5.3-flash")
 	}
 }
 
@@ -200,8 +200,8 @@ func TestLoadGLMConfig_AbsentLLMYAMLFallsToDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("loadGLMConfig should not error on absent llm.yaml, got: %v", err)
 	}
-	if cfg.Models.High != "glm-5.3" {
-		t.Errorf("Models.High = %q, want default %q", cfg.Models.High, "glm-5.3")
+	if cfg.Models.High != "glm-5.3-flash" {
+		t.Errorf("Models.High = %q, want default %q", cfg.Models.High, "glm-5.3-flash")
 	}
 	if cfg.BaseURL != "https://api.z.ai/api/anthropic" {
 		t.Errorf("BaseURL = %q, want default", cfg.BaseURL)

@@ -137,6 +137,12 @@ main:
           zh: 基于 SPEC 的开发
         ref: /core-concepts/spec-based-dev
       - name:
+          ko: SPEC 라이프사이클
+          en: SPEC Lifecycle
+          ja: SPEC ライフサイクル
+          zh: SPEC 生命周期
+        ref: /core-concepts/spec-lifecycle
+      - name:
           ko: 개발 방법론 (DDD/TDD)
           en: Development Methodology (DDD/TDD)
           ja: 開発方法論 (DDD/TDD)
@@ -715,6 +721,12 @@ main:
           zh: 看板模式
         ref: /advanced/kanban-mode
       - name:
+          ko: 팩토리 모드
+          en: Factory Mode
+          ja: ファクトリーモード
+          zh: 工厂模式
+        ref: /advanced/factory-mode
+      - name:
           ko: manager-lead 리드 코디네이터
           en: manager-lead Lead Coordinator
           ja: manager-lead リードコーディネーター
@@ -732,6 +744,12 @@ main:
           ja: マルチモデル監査収束
           zh: 多模型审计收敛
         ref: /advanced/multi-model-audit
+      - name:
+          ko: Codex 듀얼 하네스
+          en: Codex Dual Harness
+          ja: Codex デュアルハーネス
+          zh: Codex 双 harness
+        ref: /advanced/codex-dual-harness
       - name:
           ko: 자율성 티어 (MOAI_AUTONOMY_TIER)
           en: Autonomy Tier (MOAI_AUTONOMY_TIER)

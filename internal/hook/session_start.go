@@ -19,6 +19,7 @@ import (
 
 	"github.com/modu-ai/moai-adk/internal/config"
 	"github.com/modu-ai/moai-adk/internal/goal"
+	"github.com/modu-ai/moai-adk/internal/graph"
 	"github.com/modu-ai/moai-adk/internal/hook/memo/taxonomy"
 	"github.com/modu-ai/moai-adk/internal/migration"
 	"github.com/modu-ai/moai-adk/internal/paths"
@@ -34,11 +35,99 @@ import (
 // the execution environment (REQ-HOOK-030).
 type sessionStartHandler struct {
 	cfg ConfigProvider
+
+	// syncDeferredScans records that this handler's constructor was given
+	// WithSynchronousDeferredScans. Per-handler rather than a package-level
+	// setter: a process-global toggle would be mutable shared state and would
+	// race across parallel tests — the exact defect internal/hook's own
+	// TestMain seam exists to prevent (SPEC-TEMPDIR-CLEANUP-RACE-001
+	// REQ-TCR-001).
+	syncDeferredScans bool
+
+	// deferredEdgesRefresh is the cli-injected edges-layer refresh
+	// (SPEC-GRAPH-REPORT-001 REQ-GR-010). nil on every pre-M4 construction —
+	// the deferred edges step (probe included) is skipped, so existing call
+	// sites keep their exact behavior.
+	deferredEdgesRefresh DeferredEdgesRefresh
+}
+
+// DeferredEdgesRefresh rebuilds the derived edges layer of projectDir. It is
+// the dependency-injection seam that lets the deferred SessionStart step run
+// a refresh without internal/hook importing internal/cli (compile-time cycle
+// — cli imports hook): the cli layer populates it with a thin wrapper around
+// its own single rebuild path, never a fork of it.
+type DeferredEdgesRefresh func(projectDir string) error
+
+// WithDeferredEdgesRefresh injects the deferred edges-layer refresh. The
+// deferred step probes staleness through the EXPORTED graph predicates and
+// invokes this seam only when the edges layer moved (REQ-GR-010).
+//
+// Like every deferred step, the refresh is fire-and-forget at the
+// process-lifetime axis: the deferred goroutine may be killed when the hook
+// process exits (the pattern's own documented limitation), so the refresh is
+// best-effort — idempotent and self-healing on the next staleness check,
+// with the query-time refresh as the liveness guarantee. A durable-worker
+// redesign is deliberately out of scope.
+func WithDeferredEdgesRefresh(fn DeferredEdgesRefresh) Option {
+	return func(h *sessionStartHandler) { h.deferredEdgesRefresh = fn }
+}
+
+// Option configures a SessionStart handler at construction time.
+//
+// The parameter is variadic so that the existing production call site
+// (internal/cli/deps.go) keeps compiling unchanged; a second positional
+// argument would have broken it (SPEC-TEMPDIR-CLEANUP-RACE-001 REQ-TCR-006).
+type Option func(*sessionStartHandler)
+
+// WithSynchronousDeferredScans makes every deferred step of Handle run inline,
+// so that nothing dispatched by Handle outlives its return.
+//
+// This exists for a caller that OWNS the directory it passes as ProjectDir and
+// destroys it when Handle returns — a cross-package test using t.TempDir is the
+// motivating case. Handle's deferred MX cold-start scan writes
+// <ProjectDir>/.moai/state/mx-index.json from a goroutine joined with a bounded
+// deadline, so on a tree large enough for the scan to outrun that bound the
+// write lands after the caller has begun deleting the directory, and the
+// deletion fails with "unlinkat ... directory not empty". internal/hook's own
+// test binary avoids this by flipping a package-private variable in TestMain,
+// which cannot cross a test-binary boundary; this option is the same capability
+// made reachable by a caller outside the package.
+//
+// It is OFF by default and changes nothing for a caller that does not pass it:
+// production keeps the async path and its bounded join, which is a deliberate
+// input-lag design (REQ-TCR-002).
+//
+// Scope: the option covers EVERY deferred step Handle dispatches — the advisory
+// scan and its MX cold-start write, the binary-lag comparison, the
+// guard-liveness refresh, and the guard-liveness advisory read. Only the first
+// of those writes into the caller's ProjectDir, but an option named
+// "synchronous deferred scans" that still left three goroutines running past
+// Handle would be misnamed, and those goroutines are a leak for any caller that
+// checks for one.
+//
+// @MX:NOTE: [AUTO] opt-in cross-package sync seam — a caller that owns and deletes ProjectDir needs this
+func WithSynchronousDeferredScans() Option {
+	return func(h *sessionStartHandler) { h.syncDeferredScans = true }
 }
 
 // NewSessionStartHandler creates a new SessionStart event handler.
-func NewSessionStartHandler(cfg ConfigProvider) Handler {
-	return &sessionStartHandler{cfg: cfg}
+func NewSessionStartHandler(cfg ConfigProvider, opts ...Option) Handler {
+	h := &sessionStartHandler{cfg: cfg}
+	for _, opt := range opts {
+		if opt != nil {
+			opt(h)
+		}
+	}
+	return h
+}
+
+// asyncDeferredScans reports whether THIS handler's deferred steps run in a
+// background goroutine. It is the conjunction of the package-private
+// test-binary seam (deferredScansAsyncEnabled) and the per-handler option: a
+// caller that asked for synchronous scans gets them regardless of the seam, and
+// a caller that did not is unaffected by the option's existence.
+func (h *sessionStartHandler) asyncDeferredScans() bool {
+	return deferredScansAsyncEnabled() && !h.syncDeferredScans
 }
 
 // EventType returns EventSessionStart.
@@ -68,6 +157,20 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		"cwd", input.CWD,
 		"project_dir", input.ProjectDir,
 	)
+
+	// SPEC-GUARD-LIVENESS-001 REQ-GDL-002/003 (card t333 M1): initiate the
+	// guard firing-liveness refresh.
+	//
+	// Placed at the top of Handle deliberately. Everything below it can return
+	// early — the marshal failure a few hundred lines down does — and an
+	// invocation sitting after such a return is unconditional only on the
+	// activations that got that far. The refresh is never awaited, so entering
+	// here costs the input-lag budget nothing.
+	guardLivenessRoot := input.ProjectDir
+	if guardLivenessRoot == "" {
+		guardLivenessRoot = input.CWD
+	}
+	guardLivenessRefresh(ctx, guardLivenessRoot, h.asyncDeferredScans())
 
 	data := map[string]any{
 		"session_id": input.SessionID,
@@ -171,6 +274,16 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			return nil
 		})
 
+		// Task 5 — card-worktree base-branch alignment (SPEC-WORKTREE-BASEREF-001
+		// REQ-WBR-004). Touches only refs/remotes/origin/HEAD, shares no file
+		// with Tasks 1-4, and gates itself on the primary checkout before
+		// reading anything. Fail-open like the rest of the group.
+		var worktreeBaseData map[string]any
+		g.Go(func() error {
+			worktreeBaseData = RunWorktreeBaseAlignment(input.ProjectDir)
+			return nil
+		})
+
 		if err := g.Wait(); err != nil {
 			// Best-effort contract preserved: Handle never returns a non-nil
 			// error from these steps. errgroup.WithContext cancels on first
@@ -180,7 +293,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 				"error", err.Error())
 		}
 
-		mergeData(data, settingsData, registryData, skillData, migrationData)
+		mergeData(data, settingsData, registryData, skillData, migrationData, worktreeBaseData)
 
 		// (b) Defer heavy advisory scanning off the synchronous critical path.
 		// These four steps (telemetry prune, stale-memory wrap, pending-proposal
@@ -216,7 +329,21 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		driftTimeout := sessionStartDriftTimeout
 		projectDir := input.ProjectDir
 
-		if deferredScansAsyncEnabled() {
+		// SPEC-GRAPH-REPORT-001 REQ-GR-010: deferred edges-layer refresh
+		// staleness snapshot. Composed from the EXPORTED predicates —
+		// graph.EdgesSourcesMoved is EdgesSourcesMovedFor over the DEFAULT
+		// edges artifact, which is exactly the artifact the deferred path
+		// refreshes — and computed synchronously (cheap fingerprint probe,
+		// cheap stat + fingerprint only, never a full walk) so the goroutine
+		// reads a snapshot, never a racing re-probe. A nil seam (every
+		// pre-M4 construction) skips the probe AND the step.
+		edgesStale := false
+		if h.deferredEdgesRefresh != nil {
+			edgesStale = graph.EdgesSourcesMoved(projectDir) ||
+				graph.MXIndexNeedsRefresh(projectDir, graph.DefaultThresholds().MXIndexChangedFiles)
+		}
+
+		if h.asyncDeferredScans() {
 			// Production path: spawn a background goroutine and join with a
 			// short bounded deadline.
 			//
@@ -224,7 +351,7 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			// this goroutine) so the deferred goroutine never reads the
 			// package-level var. nil in production.
 			completed := snapshotDeferredScanCompleted()
-			advisoryCh := h.spawnDeferredAdvisoryScans(projectDir, driftFn, driftTimeout, completed)
+			advisoryCh := h.spawnDeferredAdvisoryScans(projectDir, driftFn, driftTimeout, completed, edgesStale)
 
 			// Timeout-bound join. On receive, merge the advisory keys into
 			// `data` before the final marshal so they ship in this session's
@@ -243,8 +370,8 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 				// this is a short-lived CLI process, so once Handle returns the
 				// process exits and the runtime tears the goroutine down
 				// wherever it happens to be. Nothing dispatched there may be
-				// relied on to finish, which is why no durable side effect is
-				// dispatched from it.
+				// relied on to finish — including the edges refresh, which is
+				// dispatched from it and is best-effort for that reason.
 				slog.Debug("session start: deferred advisory scan exceeded join bound (non-blocking)",
 					"bound", deferredScanJoinBound.String())
 			}
@@ -257,6 +384,13 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			advisory := h.computeDeferredAdvisory(projectDir, driftFn, driftTimeout)
 			if len(advisory) > 0 {
 				maps.Copy(data, advisory)
+			}
+			// Edges refresh runs after the advisory keys are merged — a
+			// durable side effect, never a delay on advisory delivery. On
+			// this inline path the process does not exit underneath it, so
+			// it runs to completion.
+			if edgesStale {
+				h.runDeferredEdgesRefresh(projectDir)
 			}
 		}
 	}
@@ -305,6 +439,14 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 			)
 		}
 	}
+
+	// SPEC-KANBAN-RECORD-SESSION-KEY-001: write THIS session's kanban record,
+	// keyed by the identifier its own runtime delivered. The launcher used to
+	// write it and could not key it correctly — it runs before the session it
+	// launches exists (see session_start_record.go). Non-kanban sessions get
+	// no record and nothing happens here; every failure is discarded, so the
+	// call returns nothing and the session start cannot gate on it.
+	writeKanbanSessionRecord(input)
 
 	// SPEC-STEERING-ALIGN-GUARDRAIL-HOOK-001: GLM 가드레일 리마인더 주입.
 	// GLM 백엔드 세션(PROCESS env ANTHROPIC_BASE_URL이 z.ai 포함)일 때만 z.ai MCP
@@ -427,6 +569,39 @@ func (h *sessionStartHandler) Handle(ctx context.Context, input *HookInput) (*Ho
 		}
 	}
 
+	// SPEC-BINARY-LAG-VISIBILITY-001 REQ-BLV-001/002/008: the deployment-lag
+	// verdict, emitted without anyone asking for it.
+	//
+	// The comparison this renders already existed and was already correct; it
+	// simply had no caller but a human typing `moai doctor`, so on the day it
+	// mattered it reached nobody through five steps and three observers. This
+	// is the automatic caller. It runs before any lane observes anything,
+	// which is the only point in that sequence cheap enough to check on every
+	// session and early enough to matter.
+	//
+	// additionalContext, not systemMessage and not the Data map: Data carries
+	// json:"-" (see the attribution comment above), so a verdict placed there
+	// would be computed correctly and rendered by no one — reproducing the
+	// exact dead end this closes.
+	lagRoot := input.ProjectDir
+	if lagRoot == "" {
+		lagRoot = input.CWD
+	}
+	appendAdditionalContext(out, binaryLagAdvisory(ctx, lagRoot, h.asyncDeferredScans()))
+
+	// SPEC-GUARD-LIVENESS-001 REQ-GDL-004/005/010/011 (card t333 M2): the guard
+	// firing-liveness verdict, emitted without anyone asking for it.
+	//
+	// It joins THIS block through the same helper rather than opening a surface
+	// of its own. A second channel would split one concern across two, and a
+	// reader who learns to skip one has no reason to treat the other
+	// differently — which is the filtering mechanism this card is about,
+	// applied twice.
+	//
+	// The read is of a persisted verdict; the refresh that produces the next
+	// one was initiated at the top of Handle and is not waited on here.
+	appendAdditionalContext(out, guardLivenessAdvisory(guardLivenessRoot, h.asyncDeferredScans()))
+
 	return out, nil
 }
 
@@ -533,17 +708,26 @@ func runMigration(ctx context.Context, projectDir string, cfg *config.Config) ma
 // `completed` is the test-only join seam (nil in production): when non-nil
 // the goroutine closes it on exit so a test can join for goleak hygiene.
 //
-// Nothing durable may be dispatched from this goroutine. The hook runs in a
-// short-lived CLI process that exits as soon as Handle returns, so work
-// started here is torn down mid-flight rather than completed in the
-// background. Advisory results are safe because they are only ever consumed
-// through the buffered channel before that point; a side effect that must
-// land belongs in the process that needs it.
+// Work dispatched from this goroutine is NOT guaranteed to finish. The hook
+// runs in a short-lived CLI process that exits as soon as Handle returns, so
+// the runtime tears the goroutine down wherever it happens to be. Advisory
+// results are safe because they are only ever consumed through the buffered
+// channel before that point; a side effect that must land belongs in the
+// process that needs it.
+//
+// `edgesStale` (computed synchronously by the caller via the exported graph
+// predicates, SPEC-GRAPH-REPORT-001 REQ-GR-010) gates the deferred
+// edges-layer refresh: after the advisory send, the goroutine invokes the
+// injected seam. Best-effort and fail-open — a failure logs and the session
+// proceeds. It is a durable side effect dispatched from this goroutine and
+// therefore subject to the tear-down above; see the SPEC-HOOK-WIRING-DRIFT-001
+// §G follow-up.
 func (h *sessionStartHandler) spawnDeferredAdvisoryScans(
 	projectDir string,
 	driftFn func(context.Context, string) (int, error),
 	driftTimeout time.Duration,
 	completed chan struct{},
+	edgesStale bool,
 ) <-chan map[string]any {
 	resultCh := make(chan map[string]any, 1)
 	go func() {
@@ -551,11 +735,35 @@ func (h *sessionStartHandler) spawnDeferredAdvisoryScans(
 			defer close(completed)
 		}
 		advisory := h.computeDeferredAdvisory(projectDir, driftFn, driftTimeout)
-		// Buffered channel → the send never blocks, even after the join bound
-		// has elapsed and Handle has already returned.
+		// Send advisories FIRST (buffered channel → never blocks even after
+		// the join bound elapses), THEN run the edges refresh as a
+		// best-effort durable side effect.
 		resultCh <- advisory
+		if edgesStale {
+			h.runDeferredEdgesRefresh(projectDir)
+		}
 	}()
 	return resultCh
+}
+
+// runDeferredEdgesRefresh invokes the injected edges-layer refresh,
+// best-effort and fail-open (SPEC-GRAPH-REPORT-001 REQ-GR-010/011): a failure
+// is logged and the session start proceeds — the prior artifact stays intact
+// and the next staleness check self-heals. A nil seam (pre-M4 construction)
+// is a no-op; callers gate on edgesStale but the guard lives here too so the
+// step is safe from any future call site.
+//
+// @MX:NOTE: [AUTO] deferred edges refresh — fail-open, fire-and-forget at process lifetime (SPEC-GRAPH-REPORT-001)
+func (h *sessionStartHandler) runDeferredEdgesRefresh(projectDir string) {
+	if h.deferredEdgesRefresh == nil {
+		return
+	}
+	if err := h.deferredEdgesRefresh(projectDir); err != nil {
+		slog.Warn("session start (deferred): edges refresh failed (fail-open)",
+			"error", err.Error(),
+			"project_dir", projectDir,
+		)
+	}
 }
 
 // computeDeferredAdvisory runs the four heavy advisory scans and returns

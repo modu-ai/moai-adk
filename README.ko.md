@@ -116,9 +116,21 @@ moai glm -f lane-3            # …GLM 백엔드로 띄운 레인 하나
 
 정의와 예시를 갖춘 정식 용어집: [칸반 보드 용어](https://adk.mo.ai.kr/ko/core-concepts/kanban-board-terms)
 
+카드도 모양에 따라 지나치는 칸이 갈린다. 리드는 카드가 `backlog`를 떠날 때 세 클래스로 분류해 배차문에 이름 붙인다.
+
+| 클래스 | 모양 | 지름길 |
+|---|---|---|
+| A — 바로 닫기 | 파일 하나·한 줄, 설계 판단 없음, 회귀는 CI가 잡음 | 한 세션이 PR까지 통째로 (`plan` 건너뜀) |
+| B — 원인 미확인 결함 | 잘못된 건 분명한데 원인이 아직 안 서 있음 | `run → sync` (`plan` 없이, SPEC 없음) |
+| C — 설계 변경 | 결정이 들어 있거나 하위 시스템에 걸침 | 세 칸 모두 |
+
+클래스 A는 주장이 아니라 확인된 증거로만 인정한다 — 파일 하나로 측정된 diff와 머지될 HEAD의 초록 CI를 인용하지 못하면 클래스 A가 아니다. 클래스 B는 `plan`만 건너뛰고 sync 게이트의 리뷰는 그대로 돌아가며, 원인 확립 증거(재현 명령과 출력)를 카드의 진행 기록에 남긴다.
+
+자세히: [칸반 모드 — 카드 클래스](https://adk.mo.ai.kr/ko/advanced/kanban-mode)
+
 ### 보드를 눈으로 보기
 
-`moai web`은 로컬 콘솔을 띄운다. 칸반 화면에서 칸반 체인과 SPEC 파이프라인을 함께 보고, Overview·Specs·Monitor·Settings 화면이 함께 붙는다.
+`moai web`은 로컬 콘솔을 띄운다. 칸반 화면에서 칸반 체인과 SPEC 파이프라인을 함께 보고, Overview·Specs·Monitor·Settings·Todo 화면이 함께 붙는다.
 
 <p align="center">
   <img src="./assets/images/moai-web-overview.png" alt="moai web 콘솔 Overview 화면 — SPEC 집계, 진행 중 SPEC 목록, 세션 레지스트리" width="90%">
@@ -349,7 +361,7 @@ SPEC마다 독립된 작업 트리를 준다. `moai cc -w <이름>`으로 진입
 | CWD 충돌 해결 | `(worktree_path, session_id)` 쌍으로 재사용 경로를 구분 |
 | 깊이 상한 | 중첩 복잡도를 제한 |
 
-> **지금 쓸 수 있다**: `moai cc -k`(또는 `moai glm -k`)로 리드를 띄우고, `-k --name <role>`로 동반 세션을 하나씩 붙인다 — 터미널당 하나씩 손으로 띄운다. `moai chain <status|lineage|back|list|prune>`으로 계보를 읽고, `moai todo`(인자 없이 대기열 보기, `add`·`list`·`next`·`done`·`unpick`·`drop`·`undrop`·`edit`·`move`, 두 단어 이상은 그대로 카드 추가)로 `backlog` 컬럼을 운영한다. 실행 순서는 위 "v3.1 새 기능 — 칸반 모드" 절에 있다.
+> **지금 쓸 수 있다**: `moai cc -k`(또는 `moai glm -k`)로 리드를 띄우고, `-k --name <role>`로 동반 세션을 하나씩 붙인다 — 터미널당 하나씩 손으로 띄운다. `moai chain <status|lineage|back|list|prune>`으로 계보를 읽고, `moai todo`(인자 없이 대기열 보기, `add`·`list`·`next`·`done`·`unpick`·`drop`·`undrop`·`edit`·`move`·`analyze`, 두 단어 이상은 그대로 카드 추가)로 `backlog` 컬럼을 운영한다. 실행 순서는 위 "v3.1 새 기능 — 칸반 모드" 절에 있다.
 
 > 자세히: [칸반 모드 가이드](https://adk.mo.ai.kr/ko/advanced/kanban-mode)
 
@@ -399,11 +411,15 @@ AI 에이전트끼리 컨텍스트·불변 계약·위험 구역을 주고받는
   <img src="./assets/images/moai-web-settings.png" alt="moai web 콘솔 설정 화면 — 프로파일 바와 11개 설정 탭" width="90%">
 </p>
 
-`moai web`이 로컬호스트에만 열리는 콘솔을 띄운다. 화면은 Overview·Kanban·Specs·Monitor·Settings 다섯 개이고, 설정 화면은 Identity·Language·LLM·3rd Party LLM·Workflow·Git & Worktree·Audit·Agents·Report·MCP·Cross-Session 열한 개 탭으로 나뉜다. 프로파일 생성·이름 변경·삭제도 같은 화면에서 한다.
+`moai web`이 로컬호스트에만 열리는 콘솔을 띄운다. 화면은 Overview·Kanban·Specs·Monitor·Settings·Todo 여섯 개이고, 설정 화면은 Identity·Language·LLM·3rd Party LLM·Workflow·Git & Worktree·Audit·Agents·Report·MCP·Cross-Session 열한 개 탭으로 나뉜다. 프로파일 생성·이름 변경·삭제도 같은 화면에서 한다.
 
 ### ref / domain 스킬
 
 ref 스킬 11개(`moai-ref-api-patterns`, `moai-ref-owasp-checklist`, `moai-ref-llm-security`, `moai-ref-react-patterns`, `moai-ref-testing-pyramid`, `moai-ref-ui-polish`, `moai-ref-secops`, `moai-ref-supply-chain`, `moai-ref-seo`, `moai-ref-git-workflow`, `moai-ref-cross-model-audit`)와 domain 스킬 7개(`moai-domain-backend`, `moai-domain-frontend`, `moai-domain-database`, `moai-domain-design-dna`, `moai-domain-html-report`, `moai-domain-humanize`, `moai-domain-svg-infographic`)가 에이전트에 현장 지식을 주입한다.
+
+### SVG 기술 인포그래픽
+
+`moai-domain-svg-infographic` 스킬이 편집 가능한 SVG 기술 인포그래픽을 만든다. 마크업을 쓰기 전에 좌표를 수치로 계산하고, 완성된 파일은 소스 린트와 2배 해상도 PNG 렌더 검증을 거친다. 승인 게이트 흐름, 전후 비교, KPI 카드 그리드, 의사결정 매트릭스, 레이어 스택, 중첩 스코프, 프로세스 흐름, 로드맵 타임라인, 토폴로지 구조 아홉 가지 형태를 외부 카탈로그 벤치마크로 실측해 모두 재현 가능함을 확인했다(형태별 산출물과 판정: `.moai/reports/t272/verdict.md`).
 
 ### 크로스 플랫폼
 
@@ -484,9 +500,9 @@ flowchart TD
 ### 스테이터스라인 읽기
 
 ```
-🤖 Opus | 🧠 xhigh·t | ♻️ 87% | 🔅 v2.1.212 | 🗿 v3.1.2 | ⏳ 2h 34m | 💬 MoAI
+🤖 Opus | 🧠 xhigh·t | ♻️ 87% | 🔅 v2.1.212 | 🗿 v3.1.3 | ⏳ 2h 34m | 💬 MoAI
 🪫 CW: ████████░░ 88% (⚠️/clear) | 🔋 5H: ████░░░░░░ 45% (4h 30m) | 🪫 7D: ████████░░ 82% (Jan 21)
-📁 moai-adk-go | 📡 modu-ai/moai-adk, 7/3 | 🅱️ [WT] release/v3.1.2 +3 | 💾 +1 M2 ?0 | 📋 [run SPEC-AUTH-001-run] | 💌 PR #1042 (⌥approved)
+📁 moai-adk-go | 📡 modu-ai/moai-adk, 7/3 | 🅱️ [WT] release/v3.1.3 +3 | 💾 +1 M2 ?0 | 📋 [run SPEC-AUTH-001-run] | 💌 PR #1042 (⌥approved)
 🏷️ run | 👤 manager-develop | 🔄 TODO: 1/3
 ```
 
@@ -668,16 +684,18 @@ z.ai GLM을 Claude Code의 대체 백엔드로 쓴다. 환경변수만 바꾸면
 | `moai glm` | GLM | GLM | 권장 | 약 70% |
 | `moai cg` | Claude | GLM | 필수 | 약 60% |
 
-GLM Coding Plan은 월 $10부터다. glm-5.3, glm-4.7, glm-4.5-air와 무료 모델(GLM-4.7-Flash, GLM-4.5-Flash)을 쓸 수 있다.
+GLM Coding Plan은 월 $10부터다. glm-5.3-flash(기본값), glm-5.3, glm-4.7, glm-4.5-air와 무료 모델(GLM-4.7-Flash, GLM-4.5-Flash)을 쓸 수 있다.
 
 Claude의 각 티어는 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수를 통해 GLM 모델로 매핑된다:
 
 | Claude 티어 | GLM 모델 | 컨텍스트 |
 |---|---|---|
-| Opus | glm-5.3 | 1M |
-| Sonnet | glm-5.3 | 1M |
-| Haiku | glm-5.3 | 1M |
-| Fable | glm-5.3 | 1M |
+| Opus | glm-5.3-flash | 1M |
+| Sonnet | glm-5.3-flash | 1M |
+| Haiku | glm-5.3-flash | 1M |
+| Fable | glm-5.3-flash | 1M |
+
+> glm-5.3은 여전히 어느 티어 슬롯에서든 선택할 수 있다(`llm.yaml`의 `llm.glm.models.*`). 슬롯을 되돌리는 것도 한 줄 설정 변경이다.
 
 > 자세히: [Multi-LLM 가이드](https://adk.mo.ai.kr/ko/multi-llm) · [z.ai 요금제](https://docs.z.ai/guides/overview/pricing)
 
@@ -718,6 +736,7 @@ Claude의 각 티어는 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수를 통해 GLM �
 | `moai update` | 최신 버전으로 업데이트 (삭제 전 백업 · 자동 롤백 지원) |
 | `moai graph <build\|query>` | 코드베이스 그래프(edges.jsonl) 생성·조회 — 호출자 찾기, 폭발 반경, 마일스톤 교차검사 |
 | `moai cc` / `moai glm` / `moai cg` | Claude 전용 / GLM 전용 / 하이브리드 세션 |
+| `moai codex [cli\|status\|app]` | Codex 런처 — 인자 없이 부르면 Codex CLI를 기동한다. `status`는 준비 상태만 보여주고 아무것도 띄우지 않는다 |
 | `moai worktree <sync\|done\|remove\|clean\|recover\|snapshot\|verify\|restore>` | Git worktree 유지 관리 (워크트리 진입은 런처의 몫) |
 | `moai session <list\|register\|current>` | 멀티 세션 조율 |
 | `moai spec <audit\|archive\|lint\|list\|new>` | SPEC 라이프사이클 도구 |
@@ -728,7 +747,7 @@ Claude의 각 티어는 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수를 통해 GLM �
 | `moai memory <doctor\|archive>` | 에이전트 메모리 점검과 오래된 항목 보관 |
 | `moai tokens record` | 풀별 토큰 사용 원장 기록 |
 | `moai clean [--home]` | 오래된 실행 산출물 정리. `--home`을 붙이면 `~/.moai`를 허용목록 범위 안에서 치운다. 기본은 dry-run이고 `--force`를 줘야 실제로 지운다 |
-| `moai web` | 웹 콘솔 — 5개 화면(Overview · Kanban · Specs · Monitor · Settings), 11-탭 설정 |
+| `moai web` | 웹 콘솔 — 6개 화면(Overview · Kanban · Specs · Monitor · Settings · Todo), 11-탭 설정 |
 
 > 전체 49개 커맨드: [CLI 레퍼런스](https://adk.mo.ai.kr/ko/cli-reference)
 
@@ -738,7 +757,7 @@ Claude의 각 티어는 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수를 통해 GLM �
 
 **domain (전문 영역) 7개**: `moai-domain-backend`, `moai-domain-frontend`, `moai-domain-database`, `moai-domain-design-dna`, `moai-domain-html-report`, `moai-domain-humanize`, `moai-domain-svg-infographic`
 
-`moai-domain-design-dna`는 v3.1.1에 새로 들어왔다. 스크린샷이든 이미지 묶음이든 살아 있는 URL이든 참고할 디자인 하나를 받아 색·간격·모서리·타이포 같은 잴 수 있는 값과 그 디자인의 결, 특수 렌더링 효과까지 Design DNA JSON 한 벌로 역추출한다. 그 JSON을 다시 넣으면 같은 결을 지닌 새 산출물을 만든다 — "이 화면처럼 만들어 줘"를 말로 옮기지 않고 값으로 옮기는 경로다.
+`moai-domain-design-dna`는 v3.1.1에 새로 들어왔다. 스크린샷이든 이미지 묶음이든 살아 있는 URL이든 참고할 디자인 하나를 받아 색·간격·모서리·타이포 같은 잴 수 있는 값과 그 디자인의 결, 특수 렌더링 효과까지 Design DNA JSON 한 벌로 역추출한다. 그 JSON을 다시 넣으면 같은 결을 지닌 새 산출물을 만든다 — "이 화면처럼 만들어 줘"를 말로 옮기지 않고 값으로 옮기는 경로다. 다이어그램 프로파일도 지원한다: 활성 프로파일 표식이 프로젝트 루트의 `.design-dna/` 아래 저장되어 `moai update`를 넘겨 살아남고, 옵트인 mermaid·drawio 임포터는 소스를 신뢰하지 않는 입력으로 다뤄 좌표·색·글꼴·레이아웃은 넘어오지 않는다.
 
 ### CHANGELOG
 
@@ -759,7 +778,7 @@ Claude의 각 티어는 `ANTHROPIC_DEFAULT_*_MODEL` 환경변수를 통해 GLM �
 ### 스테이터스라인의 버전 표시는 무슨 뜻인가?
 
 ```
-🗿 v3.1.1 -> 🗿 v3.1.2
+🗿 v3.1.2 -> 🗿 v3.1.3
 ```
 
 앞의 값이 현재 설치된 moai-adk 버전이고, 화살표는 올릴 수 있는 업데이트가 있다는 뜻이다. `moai update`를 실행하면 사라진다.

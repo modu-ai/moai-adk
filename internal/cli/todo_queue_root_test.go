@@ -9,6 +9,7 @@ package cli
 // the userHomeDirFn seam, which are process-global.
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -123,13 +124,13 @@ func TestResolveTodoQueueRoot_FallbackNoGit(t *testing.T) {
 	t.Cleanup(func() { userHomeDirFn = orig })
 
 	got := resolveTodoQueueRoot()
-	want := filepath.Join(home, ".moai", "todo", todoQueueProjectKey(dir))
+	want := filepath.Join(home, ".moai", "todo", kanban.TodoQueueProjectKey(dir))
 	if got != want {
 		t.Fatalf("fallback queue root = %q, want %q", got, want)
 	}
 
 	// The key is base name + 8 hex digest chars — readable and collision-safe.
-	key := todoQueueProjectKey(dir)
+	key := kanban.TodoQueueProjectKey(dir)
 	base := filepath.Base(dir)
 	if !strings.HasPrefix(key, base+"-") {
 		t.Fatalf("project key %q lacks base+%q prefix", key, base)
@@ -140,7 +141,7 @@ func TestResolveTodoQueueRoot_FallbackNoGit(t *testing.T) {
 
 	// Two distinct directories must not share a key.
 	other := t.TempDir()
-	if todoQueueProjectKey(dir) == todoQueueProjectKey(other) {
+	if kanban.TodoQueueProjectKey(dir) == kanban.TodoQueueProjectKey(other) {
 		t.Fatalf("distinct directories %q and %q share a project key", dir, other)
 	}
 }
@@ -161,7 +162,7 @@ func TestTodoQueue_FallbackAdoptsExistingLocalQueue(t *testing.T) {
 	// Seed a pre-fallback local queue: 2 queued + 1 picked, ids from an
 	// earlier high-water mark — the shape a v3.1.0-era project carries.
 	spec := "SPEC-EXAMPLE-001"
-	localDir := filepath.Join(dir, ".moai", "state", "kanban")
+	localDir := kanban.StateDirForRoot(dir)
 	if err := os.MkdirAll(localDir, 0o755); err != nil {
 		t.Fatalf("mkdir local queue dir: %v", err)
 	}
@@ -175,12 +176,12 @@ func TestTodoQueue_FallbackAdoptsExistingLocalQueue(t *testing.T) {
 
 	// First fallback-resolution run: the root computation itself adopts.
 	root := resolveTodoQueueRoot()
-	want := filepath.Join(home, ".moai", "todo", todoQueueProjectKey(dir))
+	want := filepath.Join(home, ".moai", "todo", kanban.TodoQueueProjectKey(dir))
 	if root != want {
 		t.Fatalf("fallback queue root = %q, want %q", root, want)
 	}
 
-	rec, err := kanban.NewBacklogStore(filepath.Join(root, "backlog.json")).Load()
+	rec, err := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root)).Load()
 	if err != nil {
 		t.Fatalf("load adopted queue: %v", err)
 	}
@@ -204,7 +205,7 @@ func TestTodoQueue_FallbackAdoptsExistingLocalQueue(t *testing.T) {
 	if again := resolveTodoQueueRoot(); again != want {
 		t.Fatalf("second fallback resolution = %q, want %q", again, want)
 	}
-	rec2, err := kanban.NewBacklogStore(filepath.Join(root, "backlog.json")).Load()
+	rec2, err := kanban.NewBacklogStore(kanban.BacklogPathForRoot(root)).Load()
 	if err != nil {
 		t.Fatalf("reload adopted queue: %v", err)
 	}
@@ -212,6 +213,102 @@ func TestTodoQueue_FallbackAdoptsExistingLocalQueue(t *testing.T) {
 		t.Fatalf("second adoption run changed item count: %d, want 3", len(rec2.Items))
 	}
 }
+
+// liveTodoQueueRootReason reports why the queue root currently resolved in
+// this test process is the operator's LIVE queue — the primary checkout of
+// the repository `go test` runs in — or "" when it is safely isolated.
+// Without a todoFixture(t) call the resolution falls back to the process
+// cwd (resolveProjectDir), which is this repository, and every todo command
+// the test runs would read or mutate the operator's real backlog — the
+// t394 incident, where seven fixture cards landed in the live queue this
+// way. The message names todoFixture so the failure says the fix, not just
+// the fault.
+func liveTodoQueueRootReason() string {
+	root := resolveTodoQueueRoot()
+	if queueRootInsideTemp(root) {
+		return ""
+	}
+	return fmt.Sprintf(
+		"queue root %q is the live repository, not an isolated fixture — running todo commands now would read or mutate the operator's real backlog (the t394 incident). Call todoFixture(t) before any todo command: it points CLAUDE_PROJECT_DIR at a committed temp repo so the queue resolves there.",
+		root)
+}
+
+// queueRootInsideTemp reports whether root lies under the OS temp tree —
+// where t.TempDir() fixtures and the fallback tests' userHomeDirFn override
+// both hang. The temp tree sits behind a symlink on macOS (/var/folders ->
+// /private/var/folders): a root whose full path exists resolves to the
+// /private spelling (paths that passed through git arrive in it too), while
+// a root whose tail no command has written yet keeps the literal /var
+// spelling — so both spellings of the temp root are tested.
+func queueRootInsideTemp(root string) bool {
+	p := filepath.Clean(root)
+	if resolved, err := filepath.EvalSymlinks(p); err == nil {
+		p = resolved
+	}
+	tmp := filepath.Clean(os.TempDir())
+	tmpResolved := tmp
+	if resolved, err := filepath.EvalSymlinks(tmp); err == nil {
+		tmpResolved = resolved
+	}
+	return underDir(p, tmp) || underDir(p, tmpResolved)
+}
+
+// underDir reports whether p lies inside dir (or equals it), via a
+// path-relative comparison — immune to sibling prefixes that a plain string
+// prefix would accept ("/tmp/x" vs "/tmp/xy").
+func underDir(p, dir string) bool {
+	rel, err := filepath.Rel(dir, p)
+	if err != nil {
+		return false
+	}
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
+}
+
+// TestTodoQueueRootGuard_FiresOnLiveRepository is the t422 RED observation
+// kept as a permanent test: with CLAUDE_PROJECT_DIR unset the resolution
+// falls back to the process cwd — this repository — and the guard must
+// flag it, naming todoFixture as the fix.
+func TestTodoQueueRootGuard_FiresOnLiveRepository(t *testing.T) {
+	t.Setenv("CLAUDE_PROJECT_DIR", "") // resolveProjectDir treats "" as unset → cwd fallback
+
+	reason := liveTodoQueueRootReason()
+	if reason == "" {
+		t.Fatalf("guard silent on the live repository: queue root %q must be flagged", resolveTodoQueueRoot())
+	}
+	if !strings.Contains(reason, "todoFixture") {
+		t.Errorf("guard message must name todoFixture as the fix:\n%s", reason)
+	}
+}
+
+// TestTodoQueueRootGuard_SilentOnFixture pins the GREEN side: a todoFixture
+// root — a committed temp repo reached through CLAUDE_PROJECT_DIR — is
+// isolated, and the guard stays silent.
+func TestTodoQueueRootGuard_SilentOnFixture(t *testing.T) {
+	todoFixture(t)
+
+	if reason := liveTodoQueueRootReason(); reason != "" {
+		t.Fatalf("guard fired on a fixture root:\n%s", reason)
+	}
+}
+
+// TestTodoQueueRootGuard_SilentOnHomeFallbackFixture covers the second
+// isolation shape: the fallback tests swap userHomeDirFn to a temp home and
+// resolve a root under it whose tail may not exist yet — the literal-spelling
+// comparison must keep the guard silent there too.
+func TestTodoQueueRootGuard_SilentOnHomeFallbackFixture(t *testing.T) {
+	dir := t.TempDir() // not a git repository → fallback branch
+	t.Setenv("CLAUDE_PROJECT_DIR", dir)
+
+	home := t.TempDir()
+	orig := userHomeDirFn
+	userHomeDirFn = func() (string, error) { return home, nil }
+	t.Cleanup(func() { userHomeDirFn = orig })
+
+	if reason := liveTodoQueueRootReason(); reason != "" {
+		t.Fatalf("guard fired on the home-fallback fixture root:\n%s", reason)
+	}
+}
+
 // TestTodoQueue_WorktreeSeesPrimaryQueue is the [HARD] acceptance pair in
 // code form: (1) a list from the worktree reports the primary's item count,
 // and (2) an add issued from the worktree lands in the primary's queue file.

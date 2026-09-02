@@ -9,7 +9,7 @@ description: |
   authoring (manager-spec).
 tools: Read, Write, Edit, Grep, Glob, Bash, DesignSync, TaskCreate, TaskUpdate, TaskList, TaskGet, Skill
 model: inherit
-effort: medium
+effort: high
 color: pink
 permissionMode: acceptEdits
 memory: project

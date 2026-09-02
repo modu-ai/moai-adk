@@ -5,6 +5,7 @@ package cli
 // @MX:NOTE: [AUTO] Binary freshness check detects stale builds via commit hash comparison
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,6 +19,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/modu-ai/moai-adk/internal/astgrep"
+	"github.com/modu-ai/moai-adk/internal/binlag"
 	"github.com/modu-ai/moai-adk/internal/cli/printer"
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/constitution"
@@ -44,8 +46,9 @@ var doctorCmd = &cobra.Command{
 	Use:     "doctor",
 	Short:   "Run system diagnostics",
 	GroupID: "project",
-	Long:    "Run comprehensive system health checks including Claude Code configuration, dependency verification, and environment diagnostics.",
-	RunE:    runDoctor,
+	Long: "Run comprehensive system health checks including Claude Code configuration, dependency verification, and environment diagnostics.\n\n" +
+		"Exit codes: 0=no failing checks (warnings are advisory and do not fail the run), 1=one or more checks reported Fail.",
+	RunE: runDoctor,
 }
 
 func init() {
@@ -97,12 +100,7 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 	// Render per-section pass/fail tables + counts + summary (REQ-TUX4-002).
 	_, _ = fmt.Fprintln(out, renderDoctorGroups(out, groups, verbose, th))
 
-	failCount := 0
-	for _, c := range allChecks {
-		if c.Status == uikit.CheckFail {
-			failCount++
-		}
-	}
+	failCount := countFailedChecks(allChecks)
 
 	if fix && failCount > 0 {
 		var fixes []string
@@ -122,7 +120,33 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 		_, _ = fmt.Fprintf(out, "\nDiagnostics exported to %s\n", exportPath)
 	}
 
-	return nil
+	return doctorExitStatus(failCount)
+}
+
+// countFailedChecks counts the checks whose verdict is Fail — the same number
+// the rendered summary prints as `Fail N`.
+func countFailedChecks(checks []DiagnosticCheck) int {
+	n := 0
+	for _, c := range checks {
+		if c.Status == uikit.CheckFail {
+			n++
+		}
+	}
+	return n
+}
+
+// doctorExitStatus maps a doctor run's failing-check count onto the process
+// exit code (#1593). A run that printed `Fail N` (N > 0) MUST NOT exit 0 —
+// callers (scripts, hooks, CI wrappers) read the exit code, not the summary
+// line. Warn-only runs stay exit 0: a warning is advisory, not a failure.
+func doctorExitStatus(failCount int) error {
+	if failCount == 0 {
+		return nil
+	}
+	return &exitCodeError{
+		code: 1,
+		msg:  fmt.Sprintf("doctor: %d check(s) failed", failCount),
+	}
 }
 
 // checkStatusToTUI converts a uikit.CheckStatus to the tui.CheckLine status string.
@@ -176,6 +200,11 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		{"MoAI Version", checkMoAIVersion},
 		{"Binary Freshness", checkBinaryFreshness},
 		{"MCP Scope Duplicates", func(v bool) DiagnosticCheck { return checkMCPScopeDuplicates(cwd, v) }},
+		{mcpServerVersionCheckName, func(v bool) DiagnosticCheck { return checkMCPServerVersion(cwd, v) }},
+		// SPEC-AGENT-EMIT-LINEAGE-001 REQ-AEL-004: embed-axis judgment point.
+		// Applicable only in a tree carrying the committed emission set — a
+		// deployed project sees one added `ok` row and the same exit status.
+		{agentEmitEmbedCheckName, func(v bool) DiagnosticCheck { return checkAgentEmitEmbed(cwd, v) }},
 		{"Constitution Registry", func(v bool) DiagnosticCheck {
 			registryPath := resolveRegistryPath(cwd)
 			strictMode := os.Getenv(constitutionStrictEnvKey) == "1"
@@ -200,6 +229,9 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		{"Skills Allowlist", func(v bool) DiagnosticCheck { return checkSkillsAllowlist(cwd, v) }},
 		{"MX Tag Config", func(v bool) DiagnosticCheck { return checkMXTagConfig(cwd, v) }},
 		{"Worktree State", func(v bool) DiagnosticCheck { return checkWorktreeState(cwd, v) }},
+		// SPEC-WORKTREE-BASEREF-001 REQ-WBR-012: the read-only counterpart of
+		// the SessionStart origin/HEAD alignment step.
+		{"Worktree Base Branch", func(v bool) DiagnosticCheck { return checkWorktreeBaseBranch(cwd, v) }},
 		{"BODP Config", func(v bool) DiagnosticCheck { return checkBODPConfig(cwd, v) }},
 		{"Telemetry Config", func(v bool) DiagnosticCheck { return checkTelemetryConfig(cwd, v) }},
 		{"Glamour Cache", checkGlamourCache},
@@ -470,54 +502,59 @@ func checkMoAIVersion(_ bool) DiagnosticCheck {
 // regressions where a fix has been committed but the user has not rebuilt
 // the binary, so hook handlers silently run the old code path.
 //
-// Skipped (reported OK) when:
+// The comparison itself lives in internal/binlag, shared with the unprompted
+// session-start advisory. This item renders that one verdict; it does not
+// carry a second copy of the comparison, so the two surfaces cannot drift
+// apart and a stub installed in the seam is observed by both.
+//
+// Reported OK (never Fail — a Fail here would promote every downstream
+// `moai doctor` run to exit 1) when:
 //   - version.GetCommit() is unset ("", "none", "unknown") — dev build
 //   - CWD is not inside a git working tree (git rev-parse walks upward)
 //   - binary commit is not an ancestor of HEAD (release/branch build)
+//
+// @MX:ANCHOR: renders the shared binlag verdict; never promotes to Fail
+// @MX:SPEC: SPEC-BINARY-LAG-VISIBILITY-001
+// @MX:REASON: the row name is fixed ("Binary Freshness") and AC-BLV-009 judges
+// mechanically that this SPEC added no new doctor check name; a Warn keeps
+// `doctorExitStatus` at 0, and raising it to Fail would break every downstream
+// project, which has no source tree to compare its binary against.
+// @MX:TEST: internal/cli/binary_lag_test.go
 func checkBinaryFreshness(verbose bool) DiagnosticCheck {
 	check := DiagnosticCheck{Name: "Binary Freshness"}
 
-	binCommit := strings.TrimSpace(version.GetCommit())
-	if binCommit == "" || binCommit == "none" || binCommit == "unknown" {
-		check.Status = uikit.CheckOK
-		check.Message = "development build (no commit metadata)"
-		return check
-	}
-
 	cwd, err := os.Getwd()
 	if err != nil {
-		check.Status = uikit.CheckOK
-		check.Message = "cannot determine working directory"
-		return check
+		// Reported through the seam's own not-applicable path so the message
+		// set stays in one place.
+		cwd = ""
 	}
 
-	headOut, err := exec.Command("git", "-C", cwd, "rev-parse", "HEAD").Output()
-	if err != nil {
-		check.Status = uikit.CheckOK
-		check.Message = "not in a git source tree (skipped)"
-		return check
-	}
-	sourceHead := strings.TrimSpace(string(headOut))
+	v := binlag.Evaluate(context.Background(), binlag.Request{
+		Dir:           cwd,
+		BinaryCommit:  version.GetCommit(),
+		BinaryVersion: version.GetVersion(),
+	})
 
-	if strings.HasPrefix(sourceHead, binCommit) {
-		check.Status = uikit.CheckOK
-		check.Message = fmt.Sprintf("binary matches source HEAD (%s)", binCommit)
-		return check
-	}
-
-	// Binary differs from HEAD. Check whether it is an ancestor (= stale).
-	ancestorErr := exec.Command("git", "-C", cwd, "merge-base", "--is-ancestor", binCommit, sourceHead).Run()
-	if ancestorErr == nil {
+	switch v.Status {
+	case binlag.StatusBehind:
 		check.Status = uikit.CheckWarn
-		check.Message = fmt.Sprintf("binary is behind source tree (binary: %s, HEAD: %s)", binCommit, shortCommit(sourceHead))
-		check.Detail = "Run 'make build && make install' to rebuild with the latest fixes"
-		return check
-	}
-
-	check.Status = uikit.CheckOK
-	check.Message = fmt.Sprintf("binary from a different branch (binary: %s, HEAD: %s)", binCommit, shortCommit(sourceHead))
-	if verbose {
-		check.Detail = "binary commit is not an ancestor of source HEAD (release or branch build)"
+		check.Message = fmt.Sprintf("binary is behind source tree (binary: %s, HEAD: %s)",
+			v.BinaryCommit, binlag.Short(v.SourceHead))
+		check.Detail = "Run '" + binlag.RemedyCommand + "' to rebuild with the latest fixes"
+	case binlag.StatusFresh:
+		check.Status = uikit.CheckOK
+		check.Message = fmt.Sprintf("binary matches source HEAD (%s)", v.BinaryCommit)
+	case binlag.StatusDivergent:
+		check.Status = uikit.CheckOK
+		check.Message = fmt.Sprintf("binary from a different branch (binary: %s, HEAD: %s)",
+			v.BinaryCommit, binlag.Short(v.SourceHead))
+		if verbose {
+			check.Detail = v.Reason
+		}
+	default:
+		check.Status = uikit.CheckOK
+		check.Message = v.Reason
 	}
 	return check
 }
@@ -613,11 +650,13 @@ func parseMCPJSON(path string) map[string]struct{} {
 const constitutionStrictEnvKey = "MOAI_CONSTITUTION_STRICT"
 
 // checkConstitution checks the zone registry status.
-// - registry file not found: Warn (optional feature)
-// - load error (duplicate ID, invalid YAML, etc.): Fail
-// - zero Frozen entries: Warn
-// - orphan warnings present + strictMode: Fail; otherwise Warn
-// - normal/OK: OK
+//   - registry file not found: Warn (optional feature)
+//   - load error (duplicate ID, invalid YAML, etc.): Fail
+//   - zero Frozen entries: Warn
+//   - orphan warnings present + strictMode: Fail; otherwise Warn
+//   - registry-vs-source validation errors (same check as `moai constitution
+//     validate`): Fail
+//   - normal/OK: OK
 func checkConstitution(projectDir, registryPath string, verbose, strictMode bool) DiagnosticCheck {
 	check := DiagnosticCheck{Name: "Constitution Registry"}
 
@@ -654,6 +693,15 @@ func checkConstitution(projectDir, registryPath string, verbose, strictMode bool
 		return check
 	}
 
+	// Registry-source drift check (#1594). Loading the registry proves it
+	// parses; it says nothing about whether the clauses still exist in their
+	// source files. Doctor runs the same constitution.Validate that
+	// `moai constitution validate` runs, so a check that a registry "is OK"
+	// cannot disagree with the dedicated command against the same checkout.
+	if vcheck, drifted := validateConstitutionRegistry(projectDir, registryPath, len(reg.Entries), verbose); drifted {
+		return vcheck
+	}
+
 	// Check Frozen entry count
 	frozen := reg.FilterByZone(constitution.ZoneFrozen)
 	if len(frozen) == 0 {
@@ -677,6 +725,48 @@ func checkConstitution(projectDir, registryPath string, verbose, strictMode bool
 	check.Message = fmt.Sprintf("registry OK — %d entries (%d Frozen, %d Evolvable)",
 		len(reg.Entries), len(frozen), len(reg.Entries)-len(frozen))
 	return check
+}
+
+// validateConstitutionRegistry runs the same drift validation as
+// `moai constitution validate` against the registry doctor just loaded.
+// It returns (check, true) when validation found errors — the caller surfaces
+// that check as the Constitution Registry verdict — and (zero, false) when the
+// registry validates clean or the validation was bypassed
+// (MOAI_CONSTITUTION_SKIP_VALIDATE=1), in which case doctor falls through to
+// its own structural verdict.
+func validateConstitutionRegistry(projectDir, registryPath string, entryCount int, verbose bool) (DiagnosticCheck, bool) {
+	check := DiagnosticCheck{Name: "Constitution Registry"}
+
+	result, err := constitution.Validate(constitution.ValidateOptions{
+		RegistryPath: registryPath,
+		ProjectDir:   projectDir,
+	})
+	if result.Skipped {
+		return DiagnosticCheck{}, false
+	}
+	if err == nil && result.Status != constitution.ValidateStatusDrift {
+		return DiagnosticCheck{}, false
+	}
+
+	check.Status = uikit.CheckFail
+	if len(result.Entries) == 0 {
+		// Validation could not complete (e.g. an unreadable source file).
+		// Report the error rather than a misleading error count of zero.
+		check.Message = fmt.Sprintf("registry validate error: %v", err)
+		return check, true
+	}
+
+	check.Message = fmt.Sprintf(
+		"registry loads (%d entries) but validate found %d error(s) — run `moai constitution validate`",
+		entryCount, len(result.Entries))
+	if verbose {
+		details := make([]string, 0, len(result.Entries))
+		for _, e := range result.Entries {
+			details = append(details, fmt.Sprintf("%s [%s] %s", e.ID, e.SentinelKey, e.Detail))
+		}
+		check.Detail = strings.Join(details, "\n")
+	}
+	return check, true
 }
 
 // checkHooksConfig verifies the Claude Code hooks configuration exists.

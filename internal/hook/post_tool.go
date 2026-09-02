@@ -216,12 +216,29 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 		runMemoryAudit(input)
 	}
 
+	// Mirror worktree agent-memory writes into the primary store
+	// (SPEC-AGENT-MEMORY-DRAIN-001 M2). Fail-open like the audit above:
+	// every failure is a stderr notice; the write is never blocked.
+	if input.ToolName == "Write" || input.ToolName == "Edit" {
+		mirrorAgentMemory(input)
+	}
+
 	// Record evidence-bearing tool events for the Stop evidence gate
 	// (SPEC-STOP-EVIDENCE-WRITER-001). Bash test results + Edit/Write path-kind
 	// feed the session ledger that GATE-001's runEvidenceGate already consumes.
 	// Best-effort, additive — never blocks, never alters HookOutput.
 	if input.ToolName == "Bash" || input.ToolName == "Edit" || input.ToolName == "Write" {
 		logEvidence(input)
+	}
+
+	// Surface a test call that executed nothing (SPEC-SELECTOR-CENSUS-001
+	// REQ-SEC-004). Silence is the disease this guard treats: a zero-execution
+	// run is already withheld from the ledger's pass column, but withholding
+	// alone leaves the author believing the suite ran. Advisory-only and
+	// fail-open — appends to systemMessage, never sets Decision, and returns the
+	// message untouched for every non-Bash or non-test event.
+	if input.ToolName == "Bash" {
+		systemMessage = maybeZeroExecutionAdvisory(input, systemMessage)
 	}
 
 	// Navigator Detect branch (SPEC-NAVIGATOR-SYNC-002 REQ-NS2-009b / AC-NS2-001b).

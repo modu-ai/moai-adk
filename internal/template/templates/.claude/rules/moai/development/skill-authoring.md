@@ -216,14 +216,14 @@ Variables available inside skill SKILL.md content:
 
 | Variable | Description | Available Since |
 |----------|-------------|-----------------|
-| `${CLAUDE_SKILL_DIR}` | Absolute path to the skill's own directory | v2.1.69 |
+| `${CLAUDE_SKILL_DIR}` | Absolute path to the skill's own directory. Claude Code only — a harness that does not export it expands the reference to nothing | v2.1.69 |
 | `${CLAUDE_SESSION_ID}` | Current session identifier | v2.1.9 |
 | `${CLAUDE_PLUGIN_ROOT}` | Plugin root directory (plugin skills only) | v2.0.12 |
 | `$ARGUMENTS` | All arguments passed when invoking skill | v2.1.0 |
 | `$ARGUMENTS[N]` | Specific argument by 0-based index (e.g., `$ARGUMENTS[0]`) | v2.1.0 |
 | `$N` | Shorthand for `$ARGUMENTS[N]` (e.g., `$0`, `$1`) | v2.1.0 |
 
-Use `${CLAUDE_SKILL_DIR}` for referencing files within the skill directory instead of relative paths. This is more reliable across different invocation contexts.
+Reference files inside your own skill directory by their project-root-relative path — `.claude/skills/<skill-name>/<file>`. That form names the file directly, so it resolves the same way under every harness that reads the skill and does not depend on a harness-specific environment variable.
 
 If skill content does not reference `$ARGUMENTS`, Claude Code automatically appends `ARGUMENTS: <value>` at the end of the skill content.
 
@@ -298,7 +298,7 @@ When the same skill name appears in more than one `.claude/skills/` directory al
 - Keep all metadata values as quoted strings
 - Use comma-separated format for allowed-tools (YAML arrays also supported since v2.1.0)
 - Mark MoAI extension fields with standardized comments
-- Use `${CLAUDE_SKILL_DIR}` for self-referencing paths within skill content
+- Use project-root-relative paths (`.claude/skills/<skill-name>/<file>`) for self-referencing paths within skill content
 - Keep skill descriptions concise for menu display, within the 1,536-character listing cap (combined `description` + `when_to_use`)
 
 ## Language Guidance Lives in Rules, Not Skills

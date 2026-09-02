@@ -41,7 +41,7 @@ $ moai tokens record --transcript <路径> --json
 
 - **按池用量** — 分成 `glm` / `claude` / `other` 的合计。哪个后端制造了账单，从池上一眼看出来。
 - **按来源用量** — 主对话与子智能体侧链。在开着多个 worker 的 run 里，它能分清“实现的那份是不是全被 worker 花掉了”。
-- **上下文快照** — 记录时点若存在上下文使用状态（`.moai/state/context-usage.json`），该值一并进入。
+- **上下文快照** — 记录时点若存在该会话的上下文使用状态（`.moai/state/context-usage/<session-id>.json`），该值一并进入。
 
 ## 什么时候记录
 

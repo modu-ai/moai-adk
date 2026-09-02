@@ -31,6 +31,170 @@ var testCommandSignatures = []string{
 	"jest", "vitest",
 }
 
+// ─────────────────────────────────────────────────────────────
+// SPEC-SELECTOR-CENSUS-001 (card t341): zero-execution veto.
+//
+// A `go test` invocation that selected nothing prints `ok  \tpkg\t0.4s [no
+// tests to run]` and exits 0. Both classifier branches below read that as an
+// observed pass, and the Stop evidence gate then goes quiet on a run that
+// executed nothing. The veto stands ahead of BOTH branches, because a
+// zero-match run's exit code is exactly 0 — a fix inside deriveFromOutputText
+// alone would never run on the live path.
+//
+// Zero execution is absence of signal, not failure (the same "부재 ≠ 실패"
+// contract as the no-signal path below).
+// ─────────────────────────────────────────────────────────────
+
+// zeroExecutionSentinel is the stable token the PostToolUse advisory carries so
+// a reader (or a grep) can find zero-execution runs by one fixed string.
+const zeroExecutionSentinel = "[moai:zero-swept]"
+
+// zeroExecutionLiterals are runner-emitted tokens that mean "the line reports a
+// run which executed nothing". Each string was captured from the runner itself
+// (go1.25, pytest 8.4.2, cargo 1.94.1, jest 30.4.2, vitest 3.2.7) rather than
+// guessed; extend it only from a measured output.
+var zeroExecutionLiterals = []string{
+	"[no tests to run]",   // go — the selector matched no test
+	"[no test files]",     // go — the package carries no _test.go
+	"no tests ran",        // pytest
+	"collected 0 items",   // pytest
+	"No tests found",      // jest (npm/pnpm/yarn wrappers surface it verbatim)
+	"No test files found", // vitest
+}
+
+// zeroExecutionSamples is the shared corpus: one or more measured zero-execution
+// outputs per testCommandSignatures entry. It is a SINGLE variable on purpose —
+// the veto test and the exhaustiveness test both read it, so a corpus that
+// quietly narrows cannot pass one while the other keeps asserting the old set.
+// Adding a runner signature without adding a sample here turns the
+// exhaustiveness test red.
+var zeroExecutionSamples = map[string][]string{
+	"go test": {
+		"ok  \tgithub.com/modu-ai/moai-adk/internal/kanban\t0.434s [no tests to run]\n",
+		"?   \tgithub.com/modu-ai/moai-adk/cmd/moai\t[no test files]\n",
+	},
+	"pytest": {
+		"collected 0 items\n\n============================ no tests ran in 0.01s =============================\n",
+	},
+	"cargo test": {
+		"running 0 tests\n\ntest result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s\n",
+	},
+	// The four wrapper signatures surface the underlying runner's output; the
+	// npm form below was measured end to end (`npm test` -> jest).
+	"npm test": {
+		"> jsempty@1.0.0 test\n> jest --passWithNoTests\n\nNo tests found, exiting with code 0\n",
+	},
+	"npm run test": {"No tests found, exiting with code 0\n"},
+	"pnpm test":    {"No tests found, exiting with code 0\n"},
+	"yarn test":    {" RUN  v3.2.7 /tmp/jsempty\n\nNo test files found, exiting with code 0\n"},
+	"jest":         {"No tests found, exiting with code 0\n"},
+	"vitest":       {" RUN  v3.2.7 /tmp/jsempty\n\nNo test files found, exiting with code 0\n"},
+}
+
+// detectZeroExecution reports whether the runner's own output says this run
+// executed no tests.
+//
+// The predicate is presence-gated and line-oriented, which is what keeps it
+// from becoming two different defects:
+//
+//   - Presence-gated: a zero-execution token must actually appear. An "the text
+//     shows no evidence of execution" formulation would instead swallow the
+//     genuine pass of any runner that emits no recognizable marker at all (the
+//     node built-in runner reached through `npm test`), whose only pass signal
+//     is the exit code.
+//   - Line-oriented: `go test ./...` over a repository holding one package with
+//     no test files prints `[no test files]` beside dozens of `ok` lines. That
+//     run did execute tests, so any line carrying execution evidence cancels the
+//     veto — including a failure, which must stay a failure.
+func detectZeroExecution(text string) bool {
+	zeroSeen := false
+	for _, line := range strings.Split(text, "\n") {
+		switch {
+		case isZeroExecutionLine(line):
+			zeroSeen = true
+		case hasExecutionEvidence(line):
+			return false
+		}
+	}
+	return zeroSeen
+}
+
+// isZeroExecutionLine reports whether one output line announces zero execution.
+func isZeroExecutionLine(line string) bool {
+	for _, lit := range zeroExecutionLiterals {
+		if strings.Contains(line, lit) {
+			return true
+		}
+	}
+	// cargo reports `test result: ok. 0 passed; ...` — a counted zero.
+	return hasZeroCount(line, " passed")
+}
+
+// hasExecutionEvidence reports whether one line shows that tests actually ran.
+// Called only for lines that are not themselves zero-execution lines, so a
+// surviving count word is a non-zero count.
+func hasExecutionEvidence(line string) bool {
+	return strings.Contains(line, "--- FAIL") ||
+		strings.Contains(line, "FAIL\t") ||
+		strings.Contains(line, "test result: FAILED") ||
+		strings.Contains(line, "ok  \t") ||
+		strings.Contains(line, "ok \t") ||
+		strings.Contains(line, "test result: ok") ||
+		strings.Contains(line, " passed") ||
+		strings.Contains(line, " failed")
+}
+
+// hasZeroCount reports whether line carries a literal zero count of unit — a
+// "0" immediately followed by unit whose "0" is not the last digit of a larger
+// number. The boundary is load-bearing: a bare substring test for "0 passed"
+// matches "10 passed, 10 total", so a genuine ten-test pass would be vetoed as
+// a zero-execution run.
+func hasZeroCount(line, unit string) bool {
+	needle := "0" + unit
+	for i := 0; i < len(line); {
+		j := strings.Index(line[i:], needle)
+		if j < 0 {
+			return false
+		}
+		pos := i + j
+		if pos == 0 || line[pos-1] < '0' || line[pos-1] > '9' {
+			return true
+		}
+		i = pos + 1
+	}
+	return false
+}
+
+// appendZeroExecutionAdvisory appends the advisory line to an existing
+// systemMessage without replacing it (the same append discipline the navigator
+// detect advisory uses).
+func appendZeroExecutionAdvisory(systemMessage, command string) string {
+	advisory := zeroExecutionSentinel + " the runner reported that this call executed no tests, " +
+		"so it is not recorded as an observed pass: " + command
+	if systemMessage == "" {
+		return advisory
+	}
+	return systemMessage + "\n" + advisory
+}
+
+// maybeZeroExecutionAdvisory surfaces a zero-execution Bash test call on the
+// PostToolUse return payload. Advisory only: it never sets Decision, and a
+// non-Bash or non-test event returns the message untouched.
+func maybeZeroExecutionAdvisory(input *HookInput, systemMessage string) string {
+	if input == nil || input.ToolName != "Bash" {
+		return systemMessage
+	}
+	rec, ok := buildEvidenceRecord(input) // pure — no write, no side effect.
+	if !ok || !rec.IsZeroExecution {
+		return systemMessage
+	}
+	var bi bashToolInput
+	if len(input.ToolInput) > 0 {
+		_ = json.Unmarshal(input.ToolInput, &bi)
+	}
+	return appendZeroExecutionAdvisory(systemMessage, bi.Command)
+}
+
 // codeExtensions 는 source-code 확장자 고정 taxonomy 다 (REQ-SEW-009).
 var codeExtensions = []string{
 	".go", ".py", ".ts", ".js", ".rs", ".java", ".kt", ".cs",
@@ -63,6 +227,13 @@ func classifyTestCommand(command string, result []byte) (isTest, isPass, isFail 
 	}
 	if !isTest {
 		return false, false, false
+	}
+
+	// (2a) 0-실행 거부권 — exit-code 분기와 텍스트 휴리스틱 어느 쪽보다도 앞
+	//      (SPEC-SELECTOR-CENSUS-001 REQ-SEC-002). 0-매치 실행의 종료코드가
+	//      정확히 0 이므로, 뒤에 놓으면 살아 있는 훅 경로에서 발화하지 못한다.
+	if text, _ := decodeToolResponse(result); detectZeroExecution(text) {
+		return true, false, false // 0-실행 = 신호 없음 (부재 ≠ 실패).
 	}
 
 	// (2) 구조화된 exit-code 신호 우선.
@@ -327,6 +498,15 @@ func buildBashRecord(input *HookInput, rec telemetry.UsageRecord) (telemetry.Usa
 
 	rec.IsTestPass = isPass
 	rec.IsTestFail = isFail
+	// SPEC-SELECTOR-CENSUS-001: record zero execution POSITIVELY. Without this
+	// field a zero-execution run and an unrecognizable output are the same row
+	// (both flags false), so "the veto stopped firing" would be indistinguishable
+	// from "nothing matched".
+	if !isPass && !isFail {
+		if text, _ := decodeToolResponse(result); detectZeroExecution(text) {
+			rec.IsZeroExecution = true
+		}
+	}
 	switch {
 	case isPass:
 		// 관측된 pass → BinaryPass=true → 게이트가 nil 반환 (올바름: 실제 pass).

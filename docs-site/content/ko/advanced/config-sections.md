@@ -77,10 +77,10 @@ llm:
   glm:
     base_url: "https://api.z.ai/api/anthropic"
     models:
-      high: "glm-5.3"          # 1M context — Opus 슬롯
-      medium: "glm-5.3"        # 1M context   — Sonnet 슬롯
-      low: "glm-5.3"          # 1M context   — 경량 슬롯
-      fable: "glm-5.3"
+      high: "glm-5.3-flash"   # 1M context — Opus 슬롯
+      medium: "glm-5.3-flash" # 1M context   — Sonnet 슬롯
+      low: "glm-5.3-flash"    # 1M context   — 경량 슬롯
+      fable: "glm-5.3-flash"
 ```
 
 | 키 | 설명 |
@@ -175,6 +175,48 @@ workflow:
 **예외와 실패 방향.** 브랜치를 만들어야 하는 git 담당 에이전트는 신원으로 예외 처리되며, `MOAI_BRANCH_GUARD_EXEMPT=1` 환경변수로도 우회할 수 있습니다. 판정이 불확실할 때(저장소가 아님, git 실행 실패 등)는 막지 않고 통과시킨 뒤 감사 로그만 남깁니다 — 확실한 근거가 있을 때만 거부합니다.
 
 브랜치를 바꿔야 하는 작업은 막는 대신 워크트리로 옮기는 것이 정석입니다. 자세한 절차는 [moai worktree](/ko/cli-reference/worktree/) 를 참조하세요.
+
+## workflow.yaml — audit
+
+크로스모델 감사 백엔드(`codex_audit` · `glm_audit` · `audit_multi`)가 실제로 어떤 모델과 effort로 돌지 지정합니다. 백엔드마다 `{model, effort}` 쌍 하나이고, 배포 기본값은 전부 비어 있습니다.
+
+```yaml
+workflow:
+    audit:
+        codex:
+            model: ""   # 예: gpt-5.6-sol — codex가 서빙할 수 있는 모델 id
+            effort: ""  # 예: high — low | medium | high | xhigh | max
+        glm:
+            model: ""   # 예: glm-5.3
+            effort: ""  # 예: max — low | high | max (z.ai reasoning 상태 이름)
+```
+
+| 키 | 설명 |
+|----|------|
+| `audit.codex.{model, effort}` | codex 감사가 세션 열기와 리뷰 턴에 실어 보내는 쌍. model이 비었거나 codex가 서빙할 수 없는 id면 핀을 버리고 기존 SSOT 해석으로 되돌아갑니다 |
+| `audit.glm.{model, effort}` | GLM 감사가 z.ai 요청에 실어 보내는 쌍. effort는 z.ai reasoning 상태 이름 `low` · `high` · `max`만 받으며, 그 외 값을 적으면 reasoning 지시어를 빼고 모델 핀만 적용합니다 |
+| 두 쌍 모두 비었을 때 | 이 키가 생기기 전과 동일하게 해석합니다. 핀을 적은 적 없는 프로젝트는 아무 것도 바뀌지 않습니다 |
+
+핀은 감사 진입점에만 적용됩니다. `codex_task` · `glm_task` 같은 작업 위임 경로의 모델 해석은 영향을 받지 않으며, 웹 콘솔의 Audit 패널에서 같은 필드를 직접 편집할 수도 있습니다.
+
+## workflow.yaml — todo
+
+백로그 큐(todo)의 **안내 표면**을 끄는 스위치입니다. 세션이 시작될 때 큐 요약 줄이 뜨는 것, 상태 표시줄의 TODO 세그먼트, 자연어 요청을 todo 워크플로우로 추론 라우팅하는 것 — 이 세 가지가 이 키 하나로 조용해집니다.
+
+```yaml
+workflow:
+    todo:
+        enabled: false   # 명시적 끔 — 키가 없으면 켜진 것으로 봅니다
+```
+
+| 키 | 값 | 설명 |
+|----|-----|------|
+| `todo.enabled` | (키 없음, 기본) | 켜짐. 배포 템플릿에는 이 블록이 아예 없어서, 대부분의 프로젝트가 사는 상태입니다 |
+| `todo.enabled` | `false` | 세션 시작 요약 · 상태 표시줄 TODO 세그먼트 · 스킬의 자동 라우팅이 꺼집니다 |
+
+**끄더라도 명령은 지워지지 않습니다.** `moai todo` CLI는 등록된 채로 남고 모든 동사가 동작하며, 이름으로 직접 부른 `/moai todo`도 그대로 실행됩니다. 이 경계는 의도된 것입니다 — 스위치는 "모르는 사용자에게 큐를 보여 주는 표면"만 끄고, 큐를 실제로 쓰는 사람의 경로는 건드리지 않습니다. 설정 파일을 읽지 못하는 실패 경로에서도 켜짐으로 해석됩니다(fail-open).
+
+크기가 크지 않은 일회성 프로젝트에서 세션마다 뜨는 백로그 요약이 소음으로 느껴질 때 이 키를 씁니다. 큐 자체의 운영법은 [moai todo](/ko/utility-commands/moai-todo/) 페이지에 있습니다.
 
 ## crosssession.yaml — 세션 간 메시지
 

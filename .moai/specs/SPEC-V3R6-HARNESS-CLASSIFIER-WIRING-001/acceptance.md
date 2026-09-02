@@ -2,7 +2,6 @@
 id: SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001
 title: "V3R4 Harness Classifier Runtime Wiring — Acceptance Criteria"
 version: "0.1.0"
-status: implemented
 created: 2026-05-24
 updated: 2026-05-24
 author: manager-spec

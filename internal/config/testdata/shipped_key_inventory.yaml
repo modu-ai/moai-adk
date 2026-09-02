@@ -1,6 +1,6 @@
 # Shipped key inventory for SPEC-CONFIG-KEY-HONESTY-001 M1
 # Code baseline: ed70e4354
-# Total entries: 958
+# Total entries: 963
 # Classification: W=wire, P=prose-consumed, R=reserved, D=delete
 # Evidence: 'reader' = Go production reader; prose file path = P consumer; 'none' = R/D
 
@@ -377,6 +377,21 @@
 - path: "gate.ast_grep_gate.warn_only_mode"
   class: R
   evidence: none
+- path: "gate.graph_freshness.blocking"
+  class: W
+  evidence: reader internal/hook/quality/gate.go (runGraphFreshnessStep) + internal/hook/pre_tool.go:840
+- path: "gate.graph_freshness.codemaps_changed_files"
+  class: W
+  evidence: reader internal/hook/quality/gate.go (runGraphFreshnessStep) + internal/hook/pre_tool.go:840
+- path: "gate.graph_freshness.enabled"
+  class: W
+  evidence: reader internal/hook/quality/gate.go (runGraphFreshnessStep) + internal/hook/pre_tool.go:840
+- path: "gate.graph_freshness.mx_index_changed_files"
+  class: W
+  evidence: reader internal/hook/quality/gate.go (runGraphFreshnessStep) + internal/hook/pre_tool.go:840
+- path: "gate.graph_freshness.update_budget_ms"
+  class: W
+  evidence: reader internal/cli/graph_refresh_cli.go:77 (graphRefreshBudgetMS)
 - path: "gate.enabled"
   class: R
   evidence: none
@@ -386,6 +401,9 @@
 - path: "gate.timeouts.lint"
   class: R
   evidence: none
+- path: "gate.timeouts.lock_wait"
+  class: W
+  evidence: reader
 - path: "gate.timeouts.test"
   class: R
   evidence: none
@@ -600,6 +618,9 @@
   class: W
   evidence: reader
 - path: "git_strategy.team.workflow"
+  class: W
+  evidence: reader
+- path: "git_strategy.worktree_base_branch"
   class: W
   evidence: reader
 - path: "handoff.guide"
@@ -963,6 +984,12 @@
 - path: "llm.profiles.high.manager-design.model"
   class: W
   evidence: reader
+- path: "llm.profiles.high.manager-lead.effort"
+  class: W
+  evidence: reader
+- path: "llm.profiles.high.manager-lead.model"
+  class: W
+  evidence: reader
 - path: "llm.profiles.high.manager-develop.effort"
   class: W
   evidence: reader
@@ -1029,6 +1056,12 @@
 - path: "llm.profiles.low.manager-design.model"
   class: W
   evidence: reader
+- path: "llm.profiles.low.manager-lead.effort"
+  class: W
+  evidence: reader
+- path: "llm.profiles.low.manager-lead.model"
+  class: W
+  evidence: reader
 - path: "llm.profiles.low.manager-develop.effort"
   class: W
   evidence: reader
@@ -1093,6 +1126,12 @@
   class: W
   evidence: reader
 - path: "llm.profiles.medium.manager-design.model"
+  class: W
+  evidence: reader
+- path: "llm.profiles.medium.manager-lead.effort"
+  class: W
+  evidence: reader
+- path: "llm.profiles.medium.manager-lead.model"
   class: W
   evidence: reader
 - path: "llm.profiles.medium.manager-develop.effort"
@@ -2466,9 +2505,6 @@
 - path: "github.enable_trust_5"
   class: R
   evidence: none
-- path: "github.spec_git_workflow"
-  class: R
-  evidence: none
 - path: "hook.observability_events"
   class: R
   evidence: none
@@ -2509,6 +2545,18 @@
   class: W
   evidence: reader
 - path: "workflow.auto_clear.token_threshold"
+  class: W
+  evidence: reader
+- path: "workflow.audit.codex.effort"
+  class: W
+  evidence: reader
+- path: "workflow.audit.codex.model"
+  class: W
+  evidence: reader
+- path: "workflow.audit.glm.effort"
+  class: W
+  evidence: reader
+- path: "workflow.audit.glm.model"
   class: W
   evidence: reader
 - path: "workflow.codex.review_gate.enabled"

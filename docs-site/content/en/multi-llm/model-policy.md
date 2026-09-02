@@ -88,9 +88,9 @@ column activates.
 
 | Profile | CLI flag | Character |
 |---------------|-----------|------|
-| **high** | `--model-policy high` | Quality first. `max` effort on the two rows with the lowest call frequency |
-| **medium** (default) | `--model-policy medium` | Balance of quality and cost. The inflection point of the cost/score curve |
-| **low** | `--model-policy low` | Lowest cost per task. Agentic rows drop to Opus `low` |
+| **high** | `--model-policy high` | Quality first. The auditing/advising/coordinating rows hold `high`; the authoring rows stay at `medium` |
+| **medium** (default) | `--model-policy medium` | Balance. Differs from `high` in exactly two rows (builder-harness · e2e-tester) |
+| **low** | `--model-policy low` | Lowest cost per task. Most agentic rows drop to Opus `medium` |
 
 {{< callout type="tip" >}}
 **Name mapping**: the `profile` field in `llm.yaml`, the legacy
@@ -109,28 +109,29 @@ nothing to migrate. `performance_tier` is read only when `profile` is absent.
 
 ## Per-agent assignment table
 
-The 33 cells below are the profile matrix (11 agents × 3 profiles). Each cell
+The 36 cells below are the profile matrix (12 agents × 3 profiles). Each cell
 holds the `{model, effort}` pair the resolver injects at spawn time. The
 orchestrator main session is not a spawned agent, so it is left out of the
 table.
 
-### Manager Agents (5)
+### Manager Agents (6)
 
 | Agent | high | medium | low |
 |---------|------|--------|-----|
-| manager-spec | opus / high | opus / medium | opus / low |
-| manager-develop | opus / max | opus / medium | opus / low |
-| manager-docs | opus / medium | opus / low | sonnet / low |
+| manager-spec | opus / medium | opus / medium | opus / medium |
+| manager-develop | opus / medium | opus / medium | opus / medium |
+| manager-docs | sonnet / low | sonnet / low | sonnet / low |
 | manager-git | sonnet / low | sonnet / low | sonnet / low |
-| manager-design | opus / high | opus / medium | opus / low |
+| manager-design | opus / high | opus / high | opus / medium |
+| manager-lead | opus / high | opus / high | opus / medium |
 
 ### Evaluator · Advisor · Builder · Specialist Agents (5)
 
 | Agent | high | medium | low |
 |---------|------|--------|-----|
-| plan-auditor | opus / high | opus / medium | opus / low |
-| sync-auditor | opus / high | opus / medium | opus / low |
-| super-advisor | opus / max | opus / high | opus / medium |
+| plan-auditor | opus / high | opus / high | opus / medium |
+| sync-auditor | opus / high | opus / high | opus / medium |
+| super-advisor | opus / high | opus / high | opus / high |
 | builder-harness | opus / high | opus / medium | opus / low |
 | e2e-tester | opus / medium | opus / low | sonnet / low |
 
@@ -154,21 +155,30 @@ table.
 
 ## Assignment principles
 
+- **The spend goes to the rows that judge**: the policy is settled operator
+  input, not a cost/score derivation. The auditing/advising rows
+  (`plan-auditor`, `sync-auditor`, `super-advisor`) and the coordinating rows
+  (`manager-design`, `manager-lead`) hold `high`, while the authoring and
+  implementing rows (`manager-spec`, `manager-develop`) sit at `medium` in all
+  three profiles.
 - **Every agentic row stays on Opus**: `manager-spec`, `manager-develop`,
-  `plan-auditor`, `sync-auditor`, `manager-design`, `builder-harness`,
-  `manager-docs`, `e2e-tester` — all multi-turn work remains on Opus, because
+  `plan-auditor`, `sync-auditor`, `manager-design`, `manager-lead`,
+  `builder-harness`, `e2e-tester` — all multi-turn work remains on Opus, because
   Opus at `low` outscores Sonnet at any effort while costing less per task.
-- **Sonnet only on single-shot rows**: the mechanical work of `manager-git` and
-  the exploration of `Explore` finish in one input-dominated pass, so
-  multi-step completion failure is never a concern, and there Sonnet's cheap
-  input price is decisive. These two rows are fixed across all three profiles.
-- **`max` in only two cells**: only `manager-develop` and `super-advisor` in
-  the `high` profile. These are rows with the lowest call frequency where a
-  single judgment steers a large share of downstream cost.
+- **Sonnet only on single-shot, input-dominated rows**: documentation synthesis
+  (`manager-docs`), the mechanical work of `manager-git`, and the exploration
+  of `Explore` finish in one input-dominated pass, so multi-step completion
+  failure is never a concern, and there Sonnet's cheap input price is decisive.
+  These three rows are fixed at `sonnet / low` across all three profiles.
+- **No row takes `max`**: `max` remains the only level above `high` in the
+  vocabulary, but no cell currently uses it.
 - **`xhigh` used nowhere**: on Opus it scores the same as `high` at 49% more
   cost.
-- **`low` lowers effort, not model class**: agentic rows drop to Opus `low`,
-  and only `manager-docs` and `e2e-tester` fall back as far as Sonnet.
+
+**`manager-lead` is now a row of the matrix.** It was previously absent
+entirely and resolved to the unmapped-agent `inherit` sentinel — the Tier L
+coordinator took whatever model the session happened to be on. It now holds
+its own row, injectable and overridable like every other retained agent.
 
 So that the agent that authored a plan never audits it, `plan-auditor` and
 `sync-auditor` are assigned separately from `manager-spec`. The bias-preventing
@@ -242,6 +252,35 @@ flowchart TD
     G --> H
     H --> I[".moai/logs/agent-model-audit.jsonl"]
 ```
+
+### The GLM backend's reasoning ceiling
+
+On the GLM backend (`moai glm`, or the GLM panes of `moai cg`), effort cannot
+use Claude's 5-step vocabulary as-is. GLM-5.3 reasons **always** — disabling
+reasoning is not supported, and a request asking for it fails. The control is a
+single 3-level `reasoning_effort` (low / high / max), and Claude effort
+collapses onto it:
+
+| Claude effort | GLM reasoning_effort |
+|--------------|---------------------|
+| `low` | `low` |
+| `medium` | `max` |
+| `high` | `max` |
+| `xhigh` | `max` |
+| `max` | `max` |
+| (unrecognized) | `max` — totality clause: never under-reason |
+
+So the **ceiling is `max`**: every Claude effort above `low` converges on
+reasoning-max, unrecognized values fall to reasoning-max, and a GLM session
+without an explicit override runs at reasoning-max by default. reasoning-high
+remains a legal wire value, but no Claude effort collapses onto it. The
+implementing agent `manager-develop` is forced to reasoning-max regardless of
+the collapse result (z.ai's "reasoning max for coding tasks" recommendation),
+and `manager-git`, at `low` effort in all three profiles, occupies the
+reasoning-low tier.
+
+The mapping's source is code, not this page — the runtime SSOT is
+`internal/template/glm_effort_overlay.go`.
 
 ## When declaration and resolution diverge (drift)
 
@@ -350,7 +389,7 @@ moai update
 ### Setting it directly with a CLI flag
 
 ```bash
-moai init my-project --model-policy high    # Highest quality (max effort on 2 rows)
+moai init my-project --model-policy high    # Quality first (auditing/advisory/coordinating rows high)
 moai init my-project --model-policy medium  # Balanced (default)
 moai init my-project --model-policy low     # Lowest cost per task
 ```
@@ -370,7 +409,7 @@ agent catalog, so unknown names are rejected.
 
 ## Next steps
 
-- [Profile Matrix](/en/advanced/profile-matrix/) — the derivation basis for the 33 cells (benchmarks) and resolver precedence in detail
+- [Profile Matrix](/en/advanced/profile-matrix/) — the placement basis for the 36 cells (judgment-weighted policy) and resolver precedence in detail
 - [CG Mode](/en/multi-llm/cg-mode) — cut costs with the Claude leader + GLM worker hybrid
 - [Autonomy Tier](/en/advanced/autonomy-tier/) — the `MOAI_AUTONOMY_TIER` cost/speed trade-off
 - [CLI Reference](/en/getting-started/cli) — moai init, moai update, moai model profile in detail

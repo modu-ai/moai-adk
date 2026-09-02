@@ -1,0 +1,1 @@
+ok  	github.com/modu-ai/moai-adk/internal/spec	34.899s	coverage: 89.3% of statements

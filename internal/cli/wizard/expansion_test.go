@@ -32,6 +32,9 @@ func TestPage3QuestionsStructure(t *testing.T) {
 		{"audit_gate_codex", QuestionTypeSelect, true, false},
 		{"audit_gate_glm", QuestionTypeSelect, true, false},
 		{"codex_audit_enabled", QuestionTypeConfirm, false, false},
+		// SPEC-INIT-HARNESS-PROMPT-001: the harness selector, immediately
+		// before mcp_provision (spec.md §4 D3) and ungated (plan.md §B B1).
+		{"agent_wiring", QuestionTypeSelect, true, false},
 		{"mcp_provision", QuestionTypeConfirm, false, false},
 		{"autonomy_tier", QuestionTypeSelect, true, false},
 	}
@@ -263,18 +266,20 @@ func TestTotalVisibleQuestions_Page3AlwaysCounted(t *testing.T) {
 	// DesignEnabled reveals the nested claude_design_enabled.
 	res := &WizardResult{DesignEnabled: true}
 	got := TotalVisibleQuestions(all, res)
-	// Page 1 (3) + Page 2 (2) + Quality & Workflow (10) + Autonomy (1) = 16.
-	if got != 16 {
-		t.Errorf("TotalVisibleQuestions = %d, want 16 (3 Basic + 2 Model & Report + 10 Quality & Workflow + 1 Autonomy)", got)
+	// Page 1 (3) + Page 2 (2) + Quality & Workflow (11) + Autonomy (1) = 17.
+	// SPEC-INIT-HARNESS-PROMPT-001 added agent_wiring to Quality & Workflow.
+	if got != 17 {
+		t.Errorf("TotalVisibleQuestions = %d, want 17 (3 Basic + 2 Model & Report + 11 Quality & Workflow + 1 Autonomy)", got)
 	}
-	// Quality & Workflow page membership (M4 audit + worktree + Issue-3 confirm).
+	// Quality & Workflow page membership (M4 audit + worktree + Issue-3 confirm
+	// + the agent_wiring harness selector).
 	n := 0
 	for _, q := range FilteredQuestions(all, res) {
 		if q.Group == "Quality & Workflow" {
 			n++
 		}
 	}
-	if n != 10 {
-		t.Errorf("visible Quality & Workflow questions = %d, want 10", n)
+	if n != 11 {
+		t.Errorf("visible Quality & Workflow questions = %d, want 11", n)
 	}
 }

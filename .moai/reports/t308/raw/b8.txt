@@ -1,0 +1,38 @@
+=== INV-090b configdir resolver
+internal/config/envkeys.go:24:	// EnvConfigDir overrides the MoAI configuration directory path.
+internal/config/envkeys.go:25:	EnvConfigDir = "MOAI_CONFIG_DIR"
+internal/config/manager.go:70:	if envDir := os.Getenv(EnvConfigDir); envDir != "" {
+internal/config/manager.go:106:	if envDir := os.Getenv(EnvConfigDir); envDir != "" {
+internal/config/manager.go:246:	if envDir := os.Getenv(EnvConfigDir); envDir != "" {
+=== INV-091 go-only
+go-grep-rc:1
+=== INV-092 sections
+total 416 drwxr-xr-x@ 33 goos  staff   1056 Aug 27 17:41 . drwxr-xr-x@  4 goos  staff    128 Aug 27 17:40 .. -rw-r--r--@  1 goos  staff   1099 Aug 27 17:40 archive.yaml -rw-r--r--@  1 goos  staff   1127 Aug 27 17:40 cache.yaml -rw-r--r--@  1 goos  staff   1566 Aug 27 17:40 constitution.yaml -rw-r--r--@  1 goos  staff    484 Aug 27 17:40 context.yaml -rw-r--r--@  1 goos  staff   1933 Aug 27 17:40 crosssession.yaml -rw-r--r--@  1 goos  staff   5092 Aug 27 17:40 delegation.yaml -rw-r--r--@  1 goos  staff   1394 Aug 27 17:40 design.yaml -rw-r--r--@  1 goos  staff    743 Aug 27 17:40 feedback.yaml -rw-r--r--@  1 goos  staff   4256 Aug 27 17:41 gate.yaml -rw-r--r--@  1 goos  staff    248 Aug 27 17:40 git-convention.yaml -rw-r--r--@  1 goos  staff   2598 Aug 27 17:41 git-strategy.yaml -rw-r--r--@  1 goos  staff    888 Aug 27 17:40 handoff.yaml -rw-r--r--@  1 goos  staff   8908 Aug 27 17:40 harness.yaml -rw-r--r--@  1 goos  staff   1603 Aug 27 17:40 interview.yaml -rw-r--r--@  1 goos  staff    200 Aug 27 17:40 language.yaml -rw-r--r--@  1 goos  staff   8244 Aug 27 17:40 lsp.yaml -rw-r--r--@  1 goos  staff   2104 Aug 27 17:40 mcp-matrix.yaml -rw-r--r--@  1 goos  staff   9034 Aug 27 17:40 mx.yaml -rw-r--r--@  1 goos  staff    977 Aug 27 17:40 observability.yaml -rw-r--r--@  1 goos  staff    153 Aug 27 17:40 project.yaml -rw-r--r--@  1 goos  staff   2170 Aug 27 17:40 quality.yaml -rw-r--r--@  1 goos  staff   3204 Aug 27 17:40 ralph.yaml -rw-r--r--@  1 goos  staff     26 Aug 27 17:40 report.yaml -rw-r--r--@  1 goos  staff    995 Aug 27 17:40 security.yaml -rw-r--r--@  1 goos  staff    270 Aug 27 17:40 state.yaml -rw-r--r--@  1 goos  staff   1685 Aug 27 17:41 statusline.yaml -rw-r--r--@  1 goos  staff   1047 Aug 27 17:40 sunset.yaml -rw-r--r--@  1 goos  staff   1894 Aug 27 17:40 system.yaml -rw-r--r--@  1 goos  staff  47901 Aug 27 17:40 tool-policy.yaml -rw-r--r--@  1 goos  staff     35 Aug 27 17:40 user.yaml -rw-r--r--@  1 goos  staff   8666 Aug 27 17:40 workflow.yaml 
+ls: .moai/config/config.yaml: No such file or directory
+=== INV-102 TemplateContext
+10:type TemplateContext struct {
+11-	// Project
+12-	ProjectName string
+13-	ProjectRoot string
+14-
+15-	// User
+16-	UserName string
+17-
+18-	// Language settings
+19-	ConversationLanguage     string // e.g., "ko", "en"
+20-	ConversationLanguageName string // e.g., "Korean", "English"
+21-	AgentPromptLanguage      string // e.g., "en"
+22-	GitCommitMessages        string // e.g., "en"
+85:func NewTemplateContext(opts ...ContextOption) *TemplateContext {
+230:func WithGoBinPath(path string) ContextOption {
+237:func WithHomeDir(dir string) ContextOption {
+=== INV-103 Deploy sig
+internal/template/deployer.go:137:func (d *deployer) Deploy(ctx context.Context, projectRoot string, m manifest.Manager, tmplCtx *TemplateContext) error {
+=== INV-105 renderer
+26:	// posixPath converts Windows backslash paths to forward-slash POSIX paths.
+27:	"posixPath": func(s string) string {
+36:// claudeCodePassthroughTokens are environment variables resolved at runtime
+39:var claudeCodePassthroughTokens = []string{
+43:	"$HOME",
+80:// @MX:REASON: [AUTO] fan_in=3, single entry point for missingkey=error mode and claudeCodePassthroughTokens validation logic
+112:	for _, tok := range claudeCodePassthroughTokens {

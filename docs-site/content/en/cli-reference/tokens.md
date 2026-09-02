@@ -41,7 +41,7 @@ Records accumulate **append-only** in `.moai/state/token-accounting.jsonl` — a
 
 - **Usage by pool** — totals split into `glm` / `claude` / `other`. Which backend wrote the invoice is visible straight from the pool.
 - **Usage by origin** — the main conversation versus subagent side-chains. In a run with several workers, this is what tells you whether the workers actually spent the implementation budget.
-- **Context snapshot** — when a context-usage state (`.moai/state/context-usage.json`) exists at record time, its value rides along.
+- **Context snapshot** — when the recorded session has a context-usage state (`.moai/state/context-usage/<session-id>.json`) at record time, its value rides along.
 
 ## When to record
 

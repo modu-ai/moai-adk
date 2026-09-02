@@ -31,6 +31,7 @@ import (
 	mcpcat "github.com/modu-ai/moai-adk/internal/mcp"
 	"github.com/modu-ai/moai-adk/internal/runtime"
 	"github.com/modu-ai/moai-adk/internal/session"
+	"github.com/modu-ai/moai-adk/internal/sessionmsg"
 	"github.com/modu-ai/moai-adk/internal/spec"
 	"github.com/modu-ai/moai-adk/internal/verify"
 	"github.com/modu-ai/moai-adk/pkg/version"
@@ -84,6 +85,12 @@ provision the entry (M4).`,
 // until the stdio stream closes). REQ-MCP-001. ServeStdio owns its context
 // internally (derived from os signals); there is no ctx to thread here.
 func runMCPServer() error {
+	// Stamp this process's build identity so `moai doctor` can detect a host
+	// still talking to a previously-installed build (mcp_server_runtime.go).
+	// Best-effort by contract: a failed stamp never blocks serving.
+	if recordPath, err := writeMCPServerRuntimeRecord(resolveProjectDir()); err == nil {
+		defer removeMCPServerRuntimeRecord(recordPath)
+	}
 	s := newMoaiMCPServer()
 	// ServeStdio blocks until the stdin stream closes; the goal.go blocking-RunE
 	// pattern. opts remain extensible (error logger, etc.) without API churn.
@@ -97,13 +104,34 @@ func runMCPServer() error {
 // REQ-C-2) from `.moai/config/sections/mcp.yaml` (default all-enabled) and a
 // disabled tool is not registered at all, so it never appears in tools/list.
 func newMoaiMCPServer() *server.MCPServer {
+	// The advertised version carries the FULL build stamp (semver + commit +
+	// build date), not the bare semver. A host that reconnects after a
+	// reinstall shows the same semver either way, so the commit is the only
+	// field that makes a version skew visible in the `initialize` result.
 	s := server.NewMCPServer(
 		moaiMCPServerName,
-		version.GetVersion(),
+		version.GetFullVersion(),
 		server.WithToolCapabilities(true),
+		server.WithInstructions(moaiMCPServerInstructions()),
 	)
 	registerMoaiMCPTools(s, resolveProjectDir())
 	return s
+}
+
+// moaiMCPServerInstructions returns the server `instructions` string sent in
+// the `initialize` result. It names the running build so an operator reading
+// the host's MCP panel can compare it against `moai version` without calling
+// a tool, and states the restart requirement explicitly — a rebuilt binary
+// does not replace an already-spawned server process.
+func moaiMCPServerInstructions() string {
+	return fmt.Sprintf(
+		"moai self-hosted MCP server, build %s (pid %d). "+
+			"This process was spawned by the host and keeps running the build it started with: "+
+			"after reinstalling the moai binary, reconnect the server so the host respawns it, "+
+			"otherwise newly added tools stay absent from tools/list. "+
+			"Run `moai doctor` to compare the running server against the installed binary.",
+		version.GetFullVersion(), os.Getpid(),
+	)
 }
 
 // registerMoaiMCPTools registers the M1 core read/status/audit tool surface
@@ -224,7 +252,7 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		"codex_audit",
 		mcp.WithDescription("Run a codex code review. mode=native → codex review/start; mode=adversarial → codex turn/start + an adversarial-review prompt. Returns a review-output schema (verdict/summary/findings/next_steps). codex is OPTIONAL; a missing or unavailable codex yields verdict 'inconclusive' (fail-open)."),
 		mcp.WithString("mode", mcp.Enum(codexModeNative, codexModeAdversarial), mcp.Description("Audit mode: 'native' (codex review/start) or 'adversarial' (codex turn/start + red-team prompt). Defaults to native.")),
-		mcp.WithString("target", mcp.Enum(codexTargetUncommitted, codexTargetBaseBranch), mcp.Description("What codex reviews: 'uncommittedChanges' or 'baseBranch'.")),
+		mcp.WithString("target", mcp.Enum(codexTargetUncommitted, codexTargetBaseBranch), mcp.Description("What codex reviews: 'uncommittedChanges' or 'baseBranch'. For 'baseBranch' the branch name is resolved SERVER-SIDE and cannot be supplied here — it is read from the reviewed tree, the remote default head first and then 'main', the same chain the GLM backend uses so both review the same change. A tree where neither resolves returns 'inconclusive' naming that cause rather than reviewing something else.")),
 		mcp.WithString("focus", mcp.Description("Adversarial-only focus area (e.g. 'concurrency', 'auth').")),
 		mcp.WithString("model", mcp.Description("Optional model override (resolved via the model/effort SSOT in M3).")),
 		projectRootOption(),
@@ -397,6 +425,101 @@ func registerMoaiMCPTools(s *server.MCPServer, projectDir string) {
 		// see the audit_cache note.
 		mcp.WithReadOnlyHintAnnotation(true),
 	), handleAuditMulti)
+
+	// --- Session messaging broker (SPEC-CODEX-SESSION-MSG-001 M2, design.md §6) ---
+	//
+	// Four SYMMETRIC tools over internal/sessionmsg: any session kind
+	// (claude|codex) registers, lists, sends, polls — the broker is the
+	// transport for Claude↔Codex messaging on one machine. Every description
+	// carries the discipline short-form (REQ-CSM-014): the tool description
+	// loads into the session context, so it is the surface a Codex reader
+	// actually sees. Read-only hints are stated explicitly, including the
+	// false ones — only session_msg_list is read-only.
+
+	// session_msg_register → handleSessionMsgRegister. Idempotent
+	// kind+name registration; mutates the agent record (heartbeat), so NOT
+	// read-only.
+	add("session_msg_register", mcp.NewTool(
+		"session_msg_register",
+		mcp.WithDescription("Register this session in the local message broker (kind: claude|codex + name) and get a stable agentId; re-registering the same kind+name refreshes the heartbeat and returns the same id. "+sessionMsgDisciplineShortForm),
+		mcp.WithString("kind", mcp.Required(), mcp.Enum(sessionmsg.KindClaude, sessionmsg.KindCodex), mcp.Description("Session kind: 'claude' or 'codex'.")),
+		mcp.WithString("name", mcp.Required(), mcp.Description("Short stable name identifying this session to peers (same kind+name re-registers idempotently).")),
+		mcp.WithString("description", mcp.Description("Optional human-readable description stored on the agent record.")),
+		mcp.WithReadOnlyHintAnnotation(false),
+	), handleSessionMsgRegister)
+
+	// session_msg_list → handleSessionMsgList. Reads the agent roster only.
+	add("session_msg_list", mcp.NewTool(
+		"session_msg_list",
+		mcp.WithDescription("List registered message-broker agents (agentId, name, kind, online flag, pending count). "+sessionMsgDisciplineShortForm),
+		mcp.WithReadOnlyHintAnnotation(true),
+	), handleSessionMsgList)
+
+	// session_msg_send → handleSessionMsgSend. Writes the recipient's
+	// pending mailbox; NOT read-only.
+	add("session_msg_send", mcp.NewTool(
+		"session_msg_send",
+		mcp.WithDescription("Send a short message to another registered agent's mailbox (they receive it on their next session_msg_poll). "+sessionMsgDisciplineShortForm),
+		mcp.WithString("from_agent_id", mcp.Required(), mcp.Description("Sender agentId (from session_msg_register).")),
+		mcp.WithString("to_agent_id", mcp.Required(), mcp.Description("Recipient agentId; an unknown id returns a structured error listing the known agents.")),
+		mcp.WithString("text", mcp.Required(), mcp.Description("Message text (bounded by the broker's text ceiling).")),
+		mcp.WithObject("data", mcp.Description("Optional structured JSON payload appended as a data part.")),
+		mcp.WithString("context_id", mcp.Description("Optional A2A contextId carried on the message envelope.")),
+		mcp.WithString("task_id", mcp.Description("Optional A2A taskId carried on the message envelope.")),
+		mcp.WithReadOnlyHintAnnotation(false),
+	), handleSessionMsgSend)
+
+	// session_msg_poll → handleSessionMsgPoll. Claims a batch out of the
+	// caller's mailbox and applies ack_ids deletions; mutates mailbox state,
+	// so NOT read-only.
+	add("session_msg_poll", mcp.NewTool(
+		"session_msg_poll",
+		mcp.WithDescription("Claim pending messages from this agent's mailbox (at-least-once; unacked claims return after the claim TTL) and optionally ack processed message ids. "+sessionMsgDisciplineShortForm),
+		mcp.WithString("agent_id", mcp.Required(), mcp.Description("Polling agent's agentId (from session_msg_register).")),
+		mcp.WithArray("ack_ids", mcp.Items(map[string]any{"type": "string"}), mcp.Description("Optional messageIds to acknowledge (delete from the claimed set).")),
+		mcp.WithReadOnlyHintAnnotation(false),
+	), handleSessionMsgPoll)
+	// --- M5 code-query tools (SPEC-V3R6-GRAPH-FRESHNESS-001 REQ-GF-017..019).
+	// Signature-level answers from the code-derived layer; every response
+	// carries tree+commit provenance. Read-only hints per the audit-family
+	// precedent.
+	add("graph_file_api", mcp.NewTool(
+		"graph_file_api",
+		mcp.WithDescription("List a source file's exported declarations with signatures — no source bodies. Answers name the tree root + commit they were computed from."),
+		mcp.WithString("file", mcp.Required(), mcp.Description("Repository-relative file path (e.g. internal/graph/check.go).")),
+		projectRootOption(),
+		mcp.WithReadOnlyHintAnnotation(true),
+	), handleGraphFileAPI)
+
+	add("graph_find_code", mcp.NewTool(
+		"graph_find_code",
+		mcp.WithDescription("Search the code-derived edge layer for a symbol: callee sites (where it is called) and caller observations, each with its resolution grade and per-edge resolution confidence (1.0 extracted / 0.95 intra-package / 0.85 inferred; absent on pre-upgrade artifacts). Answer names the tree root + commit."),
+		mcp.WithString("query", mcp.Required(), mcp.Description("Symbol name to search for (e.g. 'CheckFreshness').")),
+		projectRootOption(),
+		mcp.WithReadOnlyHintAnnotation(true),
+	), handleGraphFindCode)
+
+	add("graph_trace_calls", mcp.NewTool(
+		"graph_trace_calls",
+		mcp.WithDescription("Traverse code-call edges from a symbol: callers (who reaches it) and callees (what it calls), up to depth hops over the code-derived layer, each edge carrying its resolution confidence (absent on pre-upgrade artifacts). Answer names the tree root + commit."),
+		mcp.WithString("symbol", mcp.Required(), mcp.Description("Symbol name to trace from (e.g. 'RefreshIndex').")),
+		mcp.WithInteger("depth", mcp.Description("Traversal depth in hops (default 1, capped at 8).")),
+		projectRootOption(),
+		mcp.WithReadOnlyHintAnnotation(true),
+	), handleGraphTraceCalls)
+
+	// SPEC-GRAPH-REPORT-001 REQ-GR-001: the A→B reachability query. The
+	// description restates the shared 8-hop cap exactly as graph_trace_calls
+	// does (REQ-GR-002) — a static string cannot reference the const, which
+	// remains the enforced bound (codequery.go maxTraceDepth).
+	add("graph_shortest_path", mcp.NewTool(
+		"graph_shortest_path",
+		mcp.WithDescription("Shortest call path from one symbol to another over code-call edges (capped at 8 hops), each hop carrying its line and resolution confidence (absent on pre-upgrade artifacts). Endpoints are file:function node ids or bare symbol names resolving to exactly one node; no-path and ambiguous-name answers are structured results naming both endpoints and the cap. Answer names the tree root + commit."),
+		mcp.WithString("from", mcp.Required(), mcp.Description("Path start: a node id (file:function) or a bare symbol name resolving to exactly one node.")),
+		mcp.WithString("to", mcp.Required(), mcp.Description("Path end: a node id (file:function) or a bare symbol name resolving to exactly one node.")),
+		projectRootOption(),
+		mcp.WithReadOnlyHintAnnotation(true),
+	), handleGraphShortestPath)
 }
 
 // readMCPToolEnablement reads the per-tool enablement map from

@@ -2,7 +2,6 @@
 id: SPEC-V3R6-LOCAL-NAMESPACE-CONSOLIDATION-001
 title: "Local Agent Namespace Consolidation — Implementation Plan"
 version: "0.1.2"
-status: implemented
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec

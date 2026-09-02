@@ -1,0 +1,10 @@
+# Test pair for the sentinel-errors.New rule. The valid sample creates a local
+# error without declaring it as a package-level sentinel variable.
+id: go-errors-new-in-var
+valid:
+  - |
+    err := errors.New("transient")
+    log.Println(err)
+invalid:
+  - |
+    var ErrNotFound = errors.New("not found")

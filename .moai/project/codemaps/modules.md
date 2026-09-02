@@ -13,10 +13,11 @@
 진입점: `main()` → `cli.Execute()`  
 의존성: `internal/cli`
 
-### internal/cli (109 non-test 파일)
+### internal/cli (261 non-test 파일, 하위 패키지 포함 — 2026-08-31 실측)
 **역할**: Cobra 커맨드 트리, composition root  
-**팬-아웃**: ~48개 internal 패키지  
-**핵심**: `Execute()`, `InitDependencies()`, ~40 root verbs (152 non-test `.AddCommand()` 호출)
+**팬-아웃**: ~61개 internal 패키지  
+**핵심**: `Execute()`, `InitDependencies()`, root 등록 61개 (201 non-test `.AddCommand()` 호출)  
+**codex 런처·게이트**: `codex_launcher.go` — `moai codex` 동사 라우팅(폐쇄 집합 — 기동 {bare, cli, app} · 리드아웃 {status})과 그 하류의 argv 번역(실재 서브커맨드 `app` 만 자식에 전달), 6행 리드아웃, 직접/tmux spawn 기동 · `codex_init.go` — init-offer 게이트(세 기동 형태의 단일 통과점, 런처 배선 판정 소비, 거절 rc 130 / 비대화형 rc 1, 수락 시 생성기 위임) · `codex_contract.go` — AGENTS.md ↔ CLAUDE.md 지시 계약(연결 전용, 경로 봉쇄 선행, per-file temp+rename, 멱등)
 
 ### internal/tui (19 non-test 파일)
 **역할**: Bubbletea TUI 요소, 28개 색상 토큰  
@@ -51,9 +52,9 @@
 **기능**: `LanguageRegistry`, 16개 언어 지원  
 **팬-인 (High)**: 32+개 패키지
 
-### internal/spec (24 non-test 파일)
+### internal/spec (30 non-test 파일)
 **역할**: SPEC 라이프사이클 엔진  
-**핵심**: Linter (13+3 규칙), ClassifyEra(), Audit(), DetectDrift(), ClassifyPRTitle()
+**핵심**: Linter (18 규칙: 14 단일-문서 + 4 크로스-SPEC — `MovingRefUnpinnedRule`·`SyncSHASlotFormatRule`·`ArtifactStatusFieldForbiddenRule` 등 신규 포함), ClassifyEra(), Audit(), DetectDrift(), ClassifyPRTitle()
 
 ### internal/constitution (13 non-test 파일)
 **역할**: 동결/진화 구역 모델, 5단계 병합 안전  
@@ -190,6 +191,14 @@
 **역할**: CI 체크 분류  
 **기능**: Classifier.IsRequired(), Handoff/WatchState
 
+### internal/codexwiring (4 non-test 파일)
+**역할**: `moai init --agent codex` 배선 생성기  
+**기능**: `Wire()` — `.codex/hooks.json`·`config.toml` 생성, `InspectMCPTable()` — config.toml MCP 테이블 검사. 배선 상태 분류(`classifyCodexWiring`)는 이 패키지가 아니라 `internal/cli/codex_readiness.go` 소속이며, 런처 리드아웃과 init-offer 게이트가 그 반환값을 소비한다
+
+### internal/codexadapter (5 non-test 파일)
+**역할**: codex 하네스 어댑터 공통 계층  
+**기능**: config/diagnostics/events/output/stderr — codexwiring이 소비
+
 ### internal/resilience
 **역할**: circuit breaker FSM  
 **상태**: closed, open, half-open
@@ -226,6 +235,18 @@
 **역할**: zero-dependency 리프 파서  
 **기능**: ParseGoTestJSON(), ParseCoverageFile(), CountNonEmptyLines()
 
+### internal/guardstate
+**역할**: 가드 발화 이벤트를 8행 상태표(spec.md §C.2)로 분류하는 상태 모델 (SPEC-GUARD-STATE-MODEL-001)  
+**기능**: `Classification`(닫힌 7값 어휘, `ClassOK`가 유일한 clean 값), `Classify()`/`Evaluate()`/`Produce()`(판정→집계→산출물 조립), `KindGitHubWorkflow`(현재 리더를 갖춘 유일한 subject kind)
+
+### internal/guardliveness
+**역할**: guardstate 판정 결과를 운영자가 묻지 않아도 드러내는 표면화 계층 (SPEC-GUARD-LIVENESS-001, card t333)  
+**기능**: 3-clause 계약만 소비(entry당 정확히 1개 분류 / clean 값 1개 / 그 값의 기계 판독 가능 표시) — 분류 어휘 자체는 소유하지 않음. `Entry`, `Store`(평가 결과의 나중 활성화 시점 렌더용 왕복 저장)
+
+### internal/binlag
+**역할**: 설치된 `moai` 바이너리가 현재 소스 트리보다 뒤처졌는지(commit lag) 판정하는 단일 비교 지점 (SPEC-BINARY-LAG-VISIBILITY-001)  
+**기능**: `Status`(`not-applicable`/`fresh`/`divergent`/그 외), `moai doctor` 항목과 SessionStart 어드바이저 양쪽이 같은 `Comparer` 구현을 공유 — `internal/cli`가 `internal/hook`을 임포트하는 방향성 때문에 `internal/hook`보다 아래 계층에 위치
+
 ---
 
 ## 테스트 전용 패키지 (런타임 카탈로그 제외)
@@ -241,9 +262,9 @@
 ## 검증
 
 **순환 의존성**: 0개 (검증됨)  
-**패키지 수**: 49 internal 디렉터리 (323 중첩 디렉터리) + 2 pkg (`models`, `version`) + 1 cmd = 52개 경로
+**패키지 수**: 64 internal 디렉터리 (390 중첩 디렉터리) + 2 pkg (`models`, `version`) + 1 cmd = 67개 경로
 
-> 실측 명령: `ls -d internal/*/ | wc -l` → 49, `find internal -type d -mindepth 2 | wc -l` → 323. 종전 표기(46 / 318)는 갱신이 밀린 값이며, 세 패키지 차이 중 `internal/factory` 하나만 SPEC-FACTORY-MODE-001이 추가한 것이고 나머지 둘은 그 이전부터 있었다. `structure.md` 71행의 같은 수치도 함께 갱신했다.
+> 실측 명령: `ls -d internal/*/ | wc -l` → 64, `find internal -type d -mindepth 2 | wc -l` → 390 (2026-08-31). 종전 표기(49 / 323)는 갱신이 밀린 값이며, 세 디렉터리 차이는 `internal/binlag`·`internal/guardliveness`·`internal/guardstate` — 각각 SPEC-BINARY-LAG-VISIBILITY-001·SPEC-GUARD-LIVENESS-001·SPEC-GUARD-STATE-MODEL-001이 추가했다. `structure.md` 71행의 같은 수치도 함께 갱신 대상이나 이 SPEC의 설명 대상 루트(`internal`/`cmd`/`pkg`) 밖이라 이번 배치에서는 손대지 않았다.
 
 ---
 

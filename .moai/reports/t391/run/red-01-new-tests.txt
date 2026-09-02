@@ -1,0 +1,81 @@
+--- FAIL: TestCodexLaunchVerb_BareInvocationLaunches (0.00s)
+    codex_launch_verb_test.go:88: launches (both sites) = 0, want 1
+    codex_launch_verb_test.go:88: direct launches = 0, want 1
+    codex_launch_verb_test.go:90: bare stdout = "codex    not found\nhome     /Users/goos/.codex (default)\nauth     unknown — run codex login status\nwiring   not wired (.codex/hooks.json and .codex/config.toml absent) — run moai init --agent codex\nagents   0 TOML\nharness  moai hook --harness codex\n", want empty (the readout moved to the status alias)
+--- FAIL: TestCodexLaunchVerb_BareAndCliBuildTheSameRequest (0.00s)
+    codex_launch_verb_test.go:133: launches = 1, want 2
+--- FAIL: TestCodexLaunchVerb_RoutingSetsAfterReversal (0.00s)
+    codex_launch_verb_test.go:163: launch token set = map[app:true cli:true], want map[:true app:true cli:true]
+    codex_launch_verb_test.go:166: readout token set = map[:true status:true], want map[status:true]
+--- FAIL: TestCodexLaunchVerb_SynthesizedVerbNeverReachesChild (0.00s)
+    --- FAIL: TestCodexLaunchVerb_SynthesizedVerbNeverReachesChild/bare (0.00s)
+        codex_launch_verb_test.go:208: launches = 0, want exactly 1
+    --- FAIL: TestCodexLaunchVerb_SynthesizedVerbNeverReachesChild/cli (0.00s)
+        codex_launch_verb_test.go:210: cli child argv tail = []string{"cli"}, want empty
+        codex_launch_verb_test.go:214: cli: synthesized verb token "cli" reached the child argv
+--- FAIL: TestCodexLaunchVerb_TailPassesThroughVerbatim (0.00s)
+    --- FAIL: TestCodexLaunchVerb_TailPassesThroughVerbatim/bare (0.00s)
+        codex_launch_verb_test.go:249: bare: 
+    --- FAIL: TestCodexLaunchVerb_TailPassesThroughVerbatim/cli (0.00s)
+        codex_launch_verb_test.go:252: cli child argv tail = []string{"cli", "--model", "o3"}, want []string{"--model", "o3"}
+--- FAIL: TestCodexLaunchVerb_CodexHomeExplicitToChild (0.00s)
+    --- FAIL: TestCodexLaunchVerb_CodexHomeExplicitToChild/env-supplied (0.00s)
+        codex_launch_verb_test.go:273: launches = 0, want exactly 1
+    --- FAIL: TestCodexLaunchVerb_CodexHomeExplicitToChild/parent_unset_falls_back_to_the_default_and_is_still_explicit (0.00s)
+        codex_launch_verb_test.go:301: launches = 0, want exactly 1
+--- FAIL: TestCodexLaunchVerb_ParentEnvPreserved (0.00s)
+    codex_launch_verb_test.go:323: launches = 0, want exactly 1
+--- FAIL: TestCodexLaunchVerb_SpawnCarriesTheSameCodexHome (0.00s)
+    codex_launch_verb_test.go:341: launches = 0, want exactly 1
+--- FAIL: TestCodexLaunchVerb_WorktreeSetsDirAndIsNotForwarded (0.00s)
+    --- FAIL: TestCodexLaunchVerb_WorktreeSetsDirAndIsNotForwarded/short_name,_two_tokens (0.00s)
+        codex_launch_verb_test.go:387: [-w feat-login]: 
+    --- FAIL: TestCodexLaunchVerb_WorktreeSetsDirAndIsNotForwarded/short_name,_equals_form (0.00s)
+        codex_launch_verb_test.go:387: [-w=feat-login]: 
+    --- FAIL: TestCodexLaunchVerb_WorktreeSetsDirAndIsNotForwarded/long_flag (0.00s)
+        codex_launch_verb_test.go:387: [--worktree feat-login]: 
+    --- FAIL: TestCodexLaunchVerb_WorktreeSetsDirAndIsNotForwarded/after_an_explicit_verb (0.00s)
+        codex_launch_verb_test.go:387: [cli -w feat-login]: 
+    --- FAIL: TestCodexLaunchVerb_WorktreeSetsDirAndIsNotForwarded/absolute_path (0.00s)
+        codex_launch_verb_test.go:387: [-w /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexLaunchVerb_WorktreeSetsDirAndIsNotForwarded341221347/001/.claude/worktrees/feat-login]: 
+--- FAIL: TestCodexLaunchVerb_WorktreeResolvesNeverCreates (0.00s)
+    --- FAIL: TestCodexLaunchVerb_WorktreeResolvesNeverCreates/(i)_absolute_path_outside_the_accepted_prefixes (0.00s)
+        codex_launch_verb_test.go:433: diagnostic differs:
+             codex = ""
+             cc    = "worktree path \"/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCodexLaunchVerb_WorktreeResolvesNeverCreates(i)_absolute_pa3709815882/001/elsewhere\" is not under an accepted worktree prefix\n  accepted prefixes: ~/.moai/worktrees/ (L2 persistent), .claude/worktrees/ (L1 Claude-native)\n  use a short name to create a new worktree under .claude/worktrees/<name>, or an\n  absolute path under one of the accepted prefixes to re-enter an existing worktree"
+--- FAIL: TestCodexLaunchVerb_GateInheritedByBareForm (0.01s)
+    --- FAIL: TestCodexLaunchVerb_GateInheritedByBareForm/incomplete:_absent (0.00s)
+        codex_launch_verb_test.go:479: bare invocation on incomplete wiring succeeded, want the gate to stop it
+    --- FAIL: TestCodexLaunchVerb_GateInheritedByBareForm/incomplete:_empty_dir (0.00s)
+        codex_launch_verb_test.go:479: bare invocation on incomplete wiring succeeded, want the gate to stop it
+    --- FAIL: TestCodexLaunchVerb_GateInheritedByBareForm/incomplete:_hooks_only (0.00s)
+        codex_launch_verb_test.go:479: bare invocation on incomplete wiring succeeded, want the gate to stop it
+    --- FAIL: TestCodexLaunchVerb_GateInheritedByBareForm/incomplete:_config_only (0.00s)
+        codex_launch_verb_test.go:479: bare invocation on incomplete wiring succeeded, want the gate to stop it
+    --- FAIL: TestCodexLaunchVerb_GateInheritedByBareForm/wired_does_not_block (0.00s)
+        codex_launch_verb_test.go:501: launches (both sites) = 0, want 1
+        codex_launch_verb_test.go:501: direct launches = 0, want 1
+--- FAIL: TestLaunchers_BareInvocationConvention (0.00s)
+    codex_launcher_test.go:1014: moai codex: bare invocation did not launch; all three launchers share the convention
+--- FAIL: TestCodexCommand_HelpDescribesReversedDefault (0.00s)
+    codex_launcher_test.go:1026: help copy does not name the status readout alias:
+        Readiness readout and explicit launch for Codex.
+        
+        The readout reports six rows and never launches anything on its own:
+        the codex binary, CODEX_HOME, the auth provider, the project wiring,
+        the generated agent TOMLs, and the harness entry. Launching requires
+        an explicit verb. An incomplete wiring row is informational, not an
+        error: moai init --agent codex generates the .codex wiring files.
+        
+          moai codex [status]   print the readiness readout (no launch)
+          moai codex cli        launch the Codex CLI at the project root
+          moai codex app        launch the Codex desktop app (codex app)
+          --spawn               open the launch in a new tmux window (cli/app only)
+          -- <codex-args...>    arguments after -- pass to codex verbatim
+        codex [status | cli [codex-args...] | app]
+        Codex launcher: readiness readout and explicit cli/app launch
+    codex_launcher_test.go:1031: help copy still carries the retired guidance "Launching requires\nan explicit verb"
+    codex_launcher_test.go:1031: help copy still carries the retired guidance "print the readiness readout (no launch)"
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.034s
+FAIL

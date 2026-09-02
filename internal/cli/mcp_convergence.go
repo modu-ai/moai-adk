@@ -93,6 +93,11 @@ type PerBackendVerdict struct {
 	Summary   string    `json:"summary"`
 	Findings  []Finding `json:"findings"`
 	NextSteps []string  `json:"next_steps"`
+
+	// SynthesisNote carries forward ReviewOutput.SynthesisNote — the record that
+	// this backend's own verdict signals disagreed. It is forwarded rather than
+	// re-derived because converge sees only verdicts, never review bodies.
+	SynthesisNote string `json:"synthesis_note,omitempty"`
 }
 
 // ConvergenceResult is the synthesis output of converge(...) — the single
@@ -102,10 +107,44 @@ type ConvergenceResult struct {
 	PerBackendVerdicts []PerBackendVerdict `json:"per_backend_verdicts"`
 	// OverallVerdict ∈ {pass, fail} — the existing review-output.schema.json
 	// values. NO VerdictDisagreement enum is ever produced (REQ-AMM-008).
-	OverallVerdict   string   `json:"overall_verdict"`
-	DisagreementFlag bool     `json:"disagreement_flag"`
+	OverallVerdict string `json:"overall_verdict"`
+	// DisagreementFlag is a *bool (SPEC-AUDIT-PARTICIPANT-COUNT-001): the
+	// nullable third state is the point. nil = undetermined — fewer than 2
+	// participants were compared, so neither "they agreed" nor "they
+	// disagreed" is a grounded claim, and a bare `false` would assert a
+	// comparison that never happened. Non-nil = the three-pass derivation's
+	// boolean at ≥2 participants, or `true` below 2 when the intra-backend
+	// synthesis pass directly observed a divergence (REQ-APC-003 carve-out —
+	// observed information is never discarded, C3). NO omitempty: a nil
+	// pointer must serialize as an explicit JSON null, never vanish — an
+	// absent member is indistinguishable from an older binary's output
+	// (REQ-APC-003 / AC-APC-003).
+	DisagreementFlag *bool `json:"disagreement_flag"`
+	// ParticipantCount is how many on-target backends contributed a
+	// comparable verdict (REQ-APC-001): gate != off AND verdict pass|fail
+	// (REQ-APC-002). Inconclusive entries — missing, unauthenticated,
+	// errored — are evidence-of-absence, not participants (C2). Always
+	// present, 0 included, so a one-backend result is distinguishable from a
+	// three-backend agreement in the derived summary alone. This SPEC
+	// reports the count; it never acts on it (no minimum-participant
+	// policy, no gate — spec.md §E).
+	ParticipantCount int      `json:"participant_count"`
 	ResidualRiskNote string   `json:"residual_risk_note"`
 	FailOpenBackends []string `json:"fail_open_backends"`
+
+	// BuildCommit / BuildLag record the identity of the ONE binary that
+	// serviced all three backends (SPEC-AUDIT-BUILD-IDENTITY-001) —
+	// deliberately TOP-LEVEL, not on PerBackendVerdict: repeating the same
+	// value per backend would be triple bookkeeping of a single fact.
+	// Commit, not version: one version string names both a lagging build and
+	// a current one (REQ-ABI-003). Flat siblings, additive + omitempty (the
+	// SynthesisNote precedent): an absent identity changes no existing
+	// consumer's JSON. Because persistConvergenceResult marshals THIS struct
+	// verbatim, filling the returned result is all REQ-ABI-002 needs — the
+	// state file follows automatically. Assembled ONLY by auditBuildIdentity
+	// (REQ-ABI-007).
+	BuildCommit string `json:"build_commit,omitempty"`
+	BuildLag    string `json:"build_lag,omitempty"`
 }
 
 // ─── convergence algorithm (design.md §3) ───
@@ -180,6 +219,35 @@ func converge(verdicts []PerBackendVerdict) ConvergenceResult {
 		}
 	}
 
+	// ── Step 2b: intra-backend signal divergence (REQ-CVS-003) ──
+	// A backend whose OWN verdict signals contradicted each other is a
+	// disagreement too — one inside a single review rather than between two
+	// backends — and the reader of the Verification Matrix needs to see it.
+	// Setting the flag here changes nothing about overall_verdict, which was
+	// already derived in Step 1: disagreement is information, never a block (C3).
+	synthesisNotes := collectSynthesisNotes(verdicts)
+	if len(synthesisNotes) > 0 {
+		disagreement = true
+	}
+
+	// ── Step 2c: participant-count narrowing (REQ-APC-003 / REQ-APC-004) ──
+	// `false` is a positive claim — two or more participants were compared
+	// and none disagreed — and a single participant cannot ground it. Below
+	// 2 participants the flag becomes nil (undetermined), EXCEPT when the
+	// Step 2b pass directly observed an intra-backend divergence, whose
+	// `true` is kept rather than discarded (the REQ-APC-003 carve-out).
+	// At 2+ participants the boolean is exactly what the three-pass
+	// derivation above produced, unchanged (REQ-APC-004).
+	participantCount := countParticipants(verdicts)
+	var disagreementFlag *bool
+	switch {
+	case participantCount >= 2:
+		disagreementFlag = &disagreement
+	case len(synthesisNotes) > 0:
+		diverged := true // carve-out: observed information, never discarded (C3)
+		disagreementFlag = &diverged
+	}
+
 	// ── Step 3: residual_risk_note + fail_open_backends ──
 	// The note is surfaced for the Verification Matrix residual-risk row whenever
 	// there is something for a human reader to see: a disagreement (split or
@@ -193,11 +261,21 @@ func converge(verdicts []PerBackendVerdict) ConvergenceResult {
 	case len(requiredFails) > 0:
 		note = describeRequiredFails(requiredFails)
 	}
+	// The intra-backend notes are appended rather than substituted: a
+	// cross-backend split and a backend contradicting itself can hold at once,
+	// and dropping either of them loses the reason the other needs reading.
+	if len(synthesisNotes) > 0 {
+		if note != "" {
+			note += " | "
+		}
+		note += strings.Join(synthesisNotes, " | ")
+	}
 
 	return ConvergenceResult{
 		PerBackendVerdicts: verdicts,
 		OverallVerdict:     overall,
-		DisagreementFlag:   disagreement,
+		DisagreementFlag:   disagreementFlag,
+		ParticipantCount:   participantCount,
 		ResidualRiskNote:   note,
 		FailOpenBackends:   collectFailOpen(verdicts),
 	}
@@ -223,6 +301,25 @@ func filterVerdict(vs []PerBackendVerdict, want string) []PerBackendVerdict {
 		}
 	}
 	return out
+}
+
+// countParticipants returns how many entries actually contributed a
+// comparable verdict (SPEC-AUDIT-PARTICIPANT-COUNT-001 REQ-APC-002): a
+// participant is an entry whose gate is not `off` AND whose verdict is pass
+// or fail. An `inconclusive` entry — missing, unauthenticated, or errored —
+// is evidence-of-absence, not a participant, whatever its gate (C2); a
+// gate-`off` entry never counts, whatever verdict it carries.
+func countParticipants(vs []PerBackendVerdict) int {
+	n := 0
+	for _, v := range vs {
+		if v.Gate == config.AuditGateOff {
+			continue
+		}
+		if v.Verdict == "pass" || v.Verdict == "fail" {
+			n++
+		}
+	}
+	return n
 }
 
 // allPass reports whether vs is empty OR every entry is a pass. (Vacuous truth
@@ -311,6 +408,19 @@ func describeRequiredFails(fails []PerBackendVerdict) string {
 // the split for the Verification Matrix. It names the disagreeing backends and
 // their verdicts so a human reader of the Completion Report can see at a glance
 // which backend disagreed with which.
+// collectSynthesisNotes returns each backend's intra-review divergence note,
+// prefixed with the backend it came from so the combined residual-risk note
+// stays readable when more than one backend contradicted itself.
+func collectSynthesisNotes(vs []PerBackendVerdict) []string {
+	var out []string
+	for _, v := range vs {
+		if v.SynthesisNote != "" {
+			out = append(out, v.Backend+": "+v.SynthesisNote)
+		}
+	}
+	return out
+}
+
 func describeDisagreement(vs []PerBackendVerdict) string {
 	var passList, failList []string
 	for _, v := range vs {
@@ -392,12 +502,15 @@ func defaultBackendCaller(ctx context.Context, backend, target, focus, projectRo
 }
 
 // performCodexAudit wraps the existing codex handler path (binary resolution +
-// runCodexReviewRPC) as a plain function callable without the MCP request
+// the codexReviewRPC seam) as a plain function callable without the MCP request
 // ceremony. It uses adversarial mode (turn/start + the adversarial-review
 // prompt) — the super-review secondary backend produces an uncorrelated second
 // opinion, not a re-sample of the claude analysis.
 //
-// Reuses (does NOT fork) mcp_codex.go: codexLookPath, runCodexReviewRPC,
+// Reuses (does NOT fork) mcp_codex.go: codexLookPath, the codexReviewRPC seam
+// (wired to runCodexAuditReviewRPC — the pin-aware audit resolution per
+// SPEC-V3R6-AUDIT-MODEL-PIN-001 M2; the audit_multi leg IS an audit entry
+// point, so the workflow.audit.codex pin applies here),
 // codexAdversarialReviewPrompt, inconclusiveReview.
 // projectRoot (SPEC-MCP-WORKTREE-ROOT-001 REQ-1 / AC-1b) names the tree codex
 // should read. This path carried NO `cwd` at all before — unlike the
@@ -428,7 +541,7 @@ func performCodexAudit(ctx context.Context, target, focus, projectRoot string) R
 
 // performGLMAudit wraps the existing GLM handler path (key load + model resolve
 // + callGLMAudit). Reuses (does NOT fork) mcp_glm.go: glmKeyLoader,
-// resolveGLMAuditModel, callGLMAudit, glmInconclusive.
+// resolveGLMAuditModelEffort, callGLMAudit, glmInconclusive.
 //
 // It now also collects the change under review. codex is a subprocess inside the
 // tree and reads it for itself; GLM is an HTTPS call to z.ai with no filesystem,
@@ -457,7 +570,8 @@ func performGLMAudit(ctx context.Context, target, focus, projectRoot string) Rev
 	if strings.TrimSpace(diff) == "" {
 		return glmInconclusive("no reviewable change: target " + target + " produced an empty diff")
 	}
-	return callGLMAudit(ctx, key, resolveGLMAuditModel(), focus, diff, nil)
+	me := resolveGLMAuditModelEffort(root) // pin > SSOT, from the SAME tree as the diff (CR #8)
+	return callGLMAudit(ctx, key, me.Model, me.Effort, focus, diff, nil)
 }
 
 // runMultiAudit is the fan-out entry point invoked by the `audit_multi` MCP tool
@@ -474,6 +588,16 @@ func performGLMAudit(ctx context.Context, target, focus, projectRoot string) Rev
 // ConvergenceResult (fail-open identity, C2). The orchestrator translates any
 // inconclusive condition through its own AskUserQuestion channel (C5).
 func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focus string, cfg MultiAuditConfig, token mcp.ProgressToken) ConvergenceResult {
+	// Build identity is assembled ONCE for the whole convergence (REQ-ABI-007)
+	// and rides every result below — including the DQ-2 refusal, which is a
+	// structured verdict like any other and must name its binary. The
+	// comparison uses cfg.ProjectRoot when the caller named a tree; an absent
+	// one falls back to the process cwd INSIDE auditBuildIdentity, for the
+	// comparison only — the backends still receive exactly what
+	// resolveOptionalToolProjectRoot resolved (nothing, on an omitted
+	// project_root).
+	buildCommit, buildLag := auditBuildIdentity(ctx, cfg.ProjectRoot)
+
 	// ── DQ-2: claude_verdict anchor presence ──
 	if strings.TrimSpace(claudeVerdict.Verdict) == "" {
 		// REFUSE: claude_verdict is the always-available anchor per the fail-open
@@ -484,9 +608,14 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 		return ConvergenceResult{
 			PerBackendVerdicts: []PerBackendVerdict{},
 			OverallVerdict:     overallVerdictFail,
-			DisagreementFlag:   false,
-			ResidualRiskNote:   "claude_verdict anchor missing — refusing to synthesize (fail-open direction preserved; the in-session claude verdict is the always-available anchor)",
-			FailOpenBackends:   []string{},
+			// Zero participants: nobody was compared, so the flag is the
+			// zero-value nil (undetermined) rather than a `false` no
+			// comparison grounds, and participant_count rides as 0
+			// (SPEC-AUDIT-PARTICIPANT-COUNT-001, acceptance §B).
+			ResidualRiskNote: "claude_verdict anchor missing — refusing to synthesize (fail-open direction preserved; the in-session claude verdict is the always-available anchor)",
+			FailOpenBackends: []string{},
+			BuildCommit:      buildCommit,
+			BuildLag:         buildLag,
 		}
 	}
 
@@ -497,12 +626,13 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 	}
 	verdicts := []PerBackendVerdict{
 		{
-			Backend:   BackendClaude,
-			Gate:      claudeGate,
-			Verdict:   claudeVerdict.Verdict,
-			Summary:   claudeVerdict.Summary,
-			Findings:  claudeVerdict.Findings,
-			NextSteps: claudeVerdict.NextSteps,
+			Backend:       BackendClaude,
+			Gate:          claudeGate,
+			Verdict:       claudeVerdict.Verdict,
+			Summary:       claudeVerdict.Summary,
+			Findings:      claudeVerdict.Findings,
+			NextSteps:     claudeVerdict.NextSteps,
+			SynthesisNote: claudeVerdict.SynthesisNote,
 		},
 	}
 
@@ -553,18 +683,24 @@ func runMultiAudit(ctx context.Context, claudeVerdict ReviewOutput, target, focu
 		for _, p := range parts {
 			if p.backend == wantName {
 				verdicts = append(verdicts, PerBackendVerdict{
-					Backend:   p.backend,
-					Gate:      p.gate,
-					Verdict:   p.out.Verdict,
-					Summary:   p.out.Summary,
-					Findings:  p.out.Findings,
-					NextSteps: p.out.NextSteps,
+					Backend:       p.backend,
+					Gate:          p.gate,
+					Verdict:       p.out.Verdict,
+					Summary:       p.out.Summary,
+					Findings:      p.out.Findings,
+					NextSteps:     p.out.NextSteps,
+					SynthesisNote: p.out.SynthesisNote,
 				})
 			}
 		}
 	}
 
 	result := converge(verdicts)
+	// Set BEFORE persist: persistConvergenceResult marshals this struct
+	// verbatim, so filling the returned result is what makes the state file
+	// carry the same commit the verdict carried (REQ-ABI-002 — no separate
+	// persistence-side code).
+	result.BuildCommit, result.BuildLag = buildCommit, buildLag
 
 	// ── DQ-1: persist to .moai/state/audit-multi/<session>.json ──
 	// Best-effort: a write failure is logged via the returned error but MUST NOT

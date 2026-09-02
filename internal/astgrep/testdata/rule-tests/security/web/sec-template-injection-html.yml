@@ -1,0 +1,9 @@
+# Test pair for the template.HTML XSS rule. The valid sample escapes the input
+# through the standard escaper.
+id: sec-template-injection-html
+valid:
+  - |
+    w.Write([]byte(template.HTMLEscapeString(userReview)))
+invalid:
+  - |
+    w.Write(template.HTML(userReview))

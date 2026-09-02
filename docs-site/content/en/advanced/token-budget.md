@@ -97,7 +97,7 @@ This contract keeps verbatim evidence on disk while the context carries only exi
 
 Evidence written by the file-redirect contract to `/tmp` is periodically cleared by the OS (macOS reboot, Linux tmpfs remount, systemd-tmpfiles). When the cited path no longer resolves to a file, the evidence is unreachable at audit time.
 
-The persistence obligation solves this. Verification evidence MUST be persisted under `.moai/state/verify/<session>/`. This directory is a gitignored runtime-state area, the same family as `context-usage.json` and `active-sessions.json`.
+The persistence obligation solves this. Verification evidence MUST be persisted under `.moai/state/verify/<session>/`. This directory is a gitignored runtime-state area, the same family as `context-usage/` and `active-sessions.json`.
 
 The exact persistence mechanism (direct write or `/tmp` write followed by a copy) is an implementation detail. The contract states the obligation: evidence MUST survive `/tmp` clearance and remain at a citable, audit-time-reachable path.
 

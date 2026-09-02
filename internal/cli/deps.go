@@ -217,8 +217,13 @@ func InitDependencies() {
 	// Initialize ast-grep analyzer (ScanFile returns empty results if sg CLI is absent)
 	astAnalyzer := astgrep.NewAnalyzer(cwd)
 
-	// Register default hook handlers
-	deps.HookRegistry.Register(hook.NewSessionStartHandler(deps.Config))
+	// Register default hook handlers. SPEC-GRAPH-REPORT-001 REQ-GR-010: the
+	// SessionStart deferred step refreshes a stale edges layer through the
+	// DeferredEdgesRefresh DI seam — internal/hook must never import
+	// internal/cli (compile-time cycle), so the refresh arrives here as a
+	// thin wrapper around refreshEdgesArtifact.
+	deps.HookRegistry.Register(hook.NewSessionStartHandler(deps.Config,
+		hook.WithDeferredEdgesRefresh(deferredEdgesRefresh)))
 	// SessionEnd handler: use observability-aware variant when configured.
 	deps.HookRegistry.Register(buildSessionEndHandler(cwd))
 
@@ -242,6 +247,12 @@ func InitDependencies() {
 	secPolicy.MergeExtraPatterns(security.LoadExtraSecurityConfig(cwd))
 	deps.HookRegistry.Register(hook.NewPreToolHandlerWithScanner(deps.Config, secPolicy, securityScanner))
 	deps.HookRegistry.Register(hook.NewPostToolHandlerWithMxValidatorAndTimeout(diagnosticsCollector, astAnalyzer, cwd, 500*time.Millisecond))
+	// The regex security guardian runs in this process alongside the post-tool
+	// handler; the registry accumulates its additionalContext next to the
+	// post-tool handler's systemMessage, so neither advisory is dropped. It
+	// replaces the separate handle-security-scan.sh PostToolUse entry — the
+	// `moai hook security-scan` subcommand it fronted stays registered.
+	deps.HookRegistry.Register(hook.NewPostToolGuardianHandler())
 	deps.HookRegistry.Register(hook.NewCompactHandler())
 	deps.HookRegistry.Register(hook.NewPostToolUseFailureHandler())
 	deps.HookRegistry.Register(hook.NewNotificationHandlerWithConfig(deps.Config))

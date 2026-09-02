@@ -110,12 +110,26 @@ type ModeProfile struct {
 	PushToRemote      bool   `yaml:"push_to_remote"`
 
 	// Mode-conditional optional fields (zero value when the mode lacks the key).
-	AutoCheckpoint   string `yaml:"auto_checkpoint"`   // manual mode only
-	BranchPrefix     string `yaml:"branch_prefix"`     // personal/team modes only
-	MainBranch       string `yaml:"main_branch"`       // personal/team modes only
-	DraftPR          bool   `yaml:"draft_pr"`          // team mode only
-	RequiredReviews  int    `yaml:"required_reviews"`  // team mode only
-	BranchProtection bool   `yaml:"branch_protection"` // team mode only
+	AutoCheckpoint string `yaml:"auto_checkpoint"` // manual mode only
+	BranchPrefix   string `yaml:"branch_prefix"`   // personal/team modes only
+	MainBranch     string `yaml:"main_branch"`     // personal/team modes only
+	// Manual-mode git-flow keys. These have NO Go consumer — they are
+	// pass-through fields whose only job is to survive a typed load-and-save
+	// round trip (SPEC-WORKTREE-BASEREF-001 REQ-WBR-013 / AC-WBR-014).
+	//
+	// Measured before they existed: saving git_strategy through the typed path
+	// re-marshals this struct, so a `worktree_base_branch` edit made from the
+	// web console silently DELETED all three from git-strategy.yaml. Modelling
+	// them does not repair the wider schema divergence — no accessor and no
+	// consumer is added — it only stops the write path this SPEC introduces
+	// from newly exposing it.
+	DevelopBranch       string `yaml:"develop_branch"`        // manual mode, git-flow only
+	ReleaseBranchPrefix string `yaml:"release_branch_prefix"` // manual mode, git-flow only
+	RCVersionFormat     string `yaml:"rc_version_format"`     // manual mode, git-flow only
+
+	DraftPR          bool `yaml:"draft_pr"`          // team mode only
+	RequiredReviews  int  `yaml:"required_reviews"`  // team mode only
+	BranchProtection bool `yaml:"branch_protection"` // team mode only
 
 	// MergeMethod selects the PR merge method for this mode.
 	// One of "squash", "merge", "rebase". Empty unmarshals to the Go zero value
@@ -146,6 +160,18 @@ type GitStrategyConfig struct {
 	Provider       string       `yaml:"provider"` // "github", "gitlab"
 	GitHubUsername string       `yaml:"github_username"`
 	GitLab         GitLabConfig `yaml:"gitlab"`
+
+	// WorktreeBaseBranch names the branch card worktrees are cut from
+	// (SPEC-WORKTREE-BASEREF-001 REQ-WBR-001). It is a repository-wide fact,
+	// so it sits at the git_strategy root rather than inside a mode profile.
+	//
+	// The empty string is the neutral default and means "take no action"
+	// (REQ-WBR-002): the SessionStart origin/HEAD alignment step no-ops and
+	// `git worktree add` is invoked with no base operand, byte-identically to
+	// the pre-SPEC behavior. The shipped template ships it empty
+	// (REQ-WBR-003) — naming a branch there would not be neutral across
+	// downstream projects.
+	WorktreeBaseBranch string `yaml:"worktree_base_branch"`
 
 	// Mode profile forward-compat scaffolds.
 	Manual   ModeProfile `yaml:"manual"`
@@ -307,13 +333,15 @@ type GLMSettings struct {
 	ContextWindows map[string]int `yaml:"context_windows,omitempty"`
 	// Effort carries a per-tier reasoning-effort preference.
 	//
-	// STORED ONLY. No runtime path reads it. The GLM launcher injects exactly
-	// one session-global ANTHROPIC_REASONING_EFFORT, derived in
+	// LOAD-BEARING since RC3 (glm-settings-persist): the GLM launcher reads the
+	// slot serving the main session's model (internal/cli
+	// resolveGLMMainSessionEffort) and a non-empty stored value overrides the
+	// prefs/model_policy effort chain for that session. Sub-agents keep the
+	// session-global ANTHROPIC_REASONING_EFFORT derived in
 	// internal/template/glm_effort_overlay.go from the session-wide
-	// llm.effort_level preference — a value unrelated to this tier map. These
-	// four fields therefore record an intent the current single-channel runtime
-	// cannot honor per tier. They are persisted so the preference survives, and
-	// the console labels them stored-only rather than implying they apply.
+	// llm.effort_level preference, and the collapse overlay stays governing for
+	// the final wire value (stored high and max both wire as reasoning_effort
+	// max; low wires as low; glm-5.3-flash pins everything to max).
 	Effort GLMTierEffort `yaml:"effort,omitempty"`
 }
 
@@ -406,6 +434,13 @@ type WorkflowConfig struct {
 	// but no spawn is ever denied until a maintainer opts in via local config.
 	// Sibling of BranchGuard — same opt-in shape, same default-OFF neutrality.
 	AgentModelGuard AgentModelGuardConfig `yaml:"agent_model_guard"`
+
+	// AgentStopGuard gates the deny layer of the PreToolUse SendMessage
+	// stop-guard. Default false: TaskStop recording and SendMessage
+	// observation + advisory always run, but no send is ever denied until a
+	// maintainer opts in via local config. Sibling of BranchGuard /
+	// AgentModelGuard — same opt-in shape, same default-OFF neutrality.
+	AgentStopGuard AgentStopGuardConfig `yaml:"agent_stop_guard"`
 
 	// IntegrationLock gates the PreToolUse release-integration holder guard
 	// (card t194). Default false: a single-developer repository has no
@@ -614,6 +649,17 @@ type AgentModelGuardConfig struct {
 	Enabled bool `yaml:"enabled"`
 }
 
+// AgentStopGuardConfig mirrors workflow.agent_stop_guard.* — the opt-in deny
+// layer of the PreToolUse SendMessage stop-guard. When Enabled is false (the
+// distributed default) the guard still records every TaskStop completion and
+// still observes + advises on every SendMessage issuance, but it never denies
+// a send. Observation is not gated: the stop registry and its JSONL audit
+// record regardless of this flag, so flipping the gate on later finds the
+// registry already populated.
+type AgentStopGuardConfig struct {
+	Enabled bool `yaml:"enabled"`
+}
+
 // CodexConfig mirrors workflow.codex.* — the codex audit backend + review-gate
 // config surface (SPEC-MOAI-MCP-SERVER-001 M2, REQ-MCP-008/010). It is the
 // sibling of BranchGuard: an opt-in gate whose distributed default is OFF (C6).
@@ -771,6 +817,12 @@ type GateConfig struct {
 	// AstGrepGate configures the ast-grep domain rule scan step (SPEC-SLQG-001).
 	AstGrepGate AstGrepGateConfig `yaml:"ast_grep_gate"`
 
+	// GraphFreshness configures the graph-layer drift gate step
+	// (codemaps/mx-index/edges staleness check). Advisory by default, matching
+	// the ast-grep posture: pre-commit is the wrong place to force a codemaps
+	// regeneration.
+	GraphFreshness GraphFreshnessGateConfig `yaml:"graph_freshness"`
+
 	// DisabledSteps disables individual gate steps by step name, mirroring
 	// quality.GateConfig.DisabledSteps. Note the runner's inverted convention:
 	// an entry whose value is FALSE skips that step (issue #667 Fix 3). Before
@@ -804,12 +856,38 @@ type AstGrepGateConfig struct {
 	WarnOnlyMode bool `yaml:"warn_only_mode"`
 }
 
+// GraphFreshnessGateConfig configures the graph-layer freshness gate step:
+// per-layer staleness thresholds for codemaps / mx-index / edges, plus the
+// query-time update-cost budget the refresh paths compare against.
+type GraphFreshnessGateConfig struct {
+	// Enabled controls whether the graph-freshness step runs in moai gate.
+	Enabled bool `yaml:"enabled"`
+	// Blocking fails the gate on a red check; the default (false) keeps the
+	// step advisory — the verdict is always emitted, never silenced.
+	Blocking bool `yaml:"blocking"`
+	// CodemapsChangedFiles is the red line for the codemaps layer's
+	// endpoint-diff count (>= is stale). Zero falls back to the default.
+	CodemapsChangedFiles int `yaml:"codemaps_changed_files"`
+	// MXIndexChangedFiles is the red line for the mx-index layer's inventory
+	// mismatch count (>= is stale). Zero falls back to the default.
+	MXIndexChangedFiles int `yaml:"mx_index_changed_files"`
+	// UpdateBudgetMS bounds a query-time refresh's measured cost in
+	// milliseconds; an overrun warns (never blocks the answer). Zero falls
+	// back to the default.
+	UpdateBudgetMS int `yaml:"update_budget_ms"`
+}
+
 // GateTimeouts holds per-step timeout configuration in seconds.
 type GateTimeouts struct {
 	Vet       int `yaml:"vet"`
 	Lint      int `yaml:"lint"`
 	Test      int `yaml:"test"`
 	Typecheck int `yaml:"typecheck"`
+	// LockWait bounds how long a starting gate run waits for the gate-run
+	// lock — the advisory lock serializing concurrent manual `moai gate` runs
+	// in one project — before degrading to an unserialized run. In seconds,
+	// like its siblings; a policy knob, not a step budget.
+	LockWait int `yaml:"lock_wait"`
 }
 
 // VetTimeoutDuration converts the Vet timeout to time.Duration.
@@ -847,6 +925,17 @@ func (g *GateConfig) TypecheckTimeoutDuration() time.Duration {
 		return 300 * time.Second
 	}
 	return time.Duration(g.Timeouts.Typecheck) * time.Second
+}
+
+// LockWaitDuration converts the gate-run lock wait budget to time.Duration.
+// Returns 30s when the value is zero or negative — long enough that a
+// concurrent run finishing normally is waited out, short enough that a
+// starting run is not held hostage by one that will not.
+func (g *GateConfig) LockWaitDuration() time.Duration {
+	if g.Timeouts.LockWait <= 0 {
+		return 30 * time.Second
+	}
+	return time.Duration(g.Timeouts.LockWait) * time.Second
 }
 
 // SunsetConfig defines the Build-to-Delete framework configuration.

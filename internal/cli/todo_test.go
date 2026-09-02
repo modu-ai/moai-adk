@@ -19,6 +19,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
+	"sort"
 	"strings"
 	"sync"
 	"testing"
@@ -30,8 +32,18 @@ import (
 // runTodo executes the todo cobra command against args and returns
 // (stdout, stderr, error). Exit-code semantics: a non-nil error is the
 // command's failure (cobra maps it to exit 1).
+//
+// t422 fail-loud guard: without todoFixture(t) the queue root resolves
+// through the live checkout — CLAUDE_PROJECT_DIR falls back to the process
+// cwd, which is this repository — and the command would read or mutate the
+// operator's real backlog (the t394 incident: seven fixture cards landed in
+// the live queue through exactly this). The guard fails the test before
+// Execute touches any file.
 func runTodo(t *testing.T, args ...string) (string, string, error) {
 	t.Helper()
+	if reason := liveTodoQueueRootReason(); reason != "" {
+		t.Fatalf("todo queue isolation guard: %s", reason)
+	}
 	cmd := newTodoCmd()
 	var out, errBuf bytes.Buffer
 	cmd.SetOut(&out)
@@ -204,21 +216,15 @@ func TestTodoDone_MissReportedFileUntouched(t *testing.T) {
 	}
 	root := os.Getenv("CLAUDE_PROJECT_DIR")
 	real := todoBacklogPath(root)
-	before, err := os.ReadFile(real)
-	if err != nil {
-		t.Fatalf("read before: %v", err)
-	}
+	before := queueStateBytes(t, real)
 
-	_, _, err = runTodo(t, "done", "t3")
+	_, _, err := runTodo(t, "done", "t3")
 	if err == nil {
 		t.Fatal("done on a missing id must fail")
 	}
-	after, err := os.ReadFile(real)
-	if err != nil {
-		t.Fatalf("read after: %v", err)
-	}
+	after := queueStateBytes(t, real)
 	if !bytes.Equal(before, after) {
-		t.Error("file changed on a missed done; must be byte-identical")
+		t.Error("file changed on a missed done; must be record-identical")
 	}
 }
 
@@ -230,10 +236,7 @@ func TestTodoNextBare_ReadOnlyOldestFirst(t *testing.T) {
 		}
 	}
 	real := todoBacklogPath(root)
-	before, err := os.ReadFile(real)
-	if err != nil {
-		t.Fatalf("read before: %v", err)
-	}
+	before := queueStateBytes(t, real)
 
 	out, _, err := runTodo(t, "next")
 	if err != nil {
@@ -247,10 +250,7 @@ func TestTodoNextBare_ReadOnlyOldestFirst(t *testing.T) {
 		t.Errorf("bare next order wrong: %q", lines)
 	}
 
-	after, err := os.ReadFile(real)
-	if err != nil {
-		t.Fatalf("read after: %v", err)
-	}
+	after := queueStateBytes(t, real)
 	if !bytes.Equal(before, after) {
 		t.Error("bare next must leave the backlog byte-identical")
 	}
@@ -296,21 +296,15 @@ func TestTodoNext_OutOfRangeFileUntouched(t *testing.T) {
 		t.Fatalf("seed add: %v", err)
 	}
 	real := todoBacklogPath(root)
-	before, err := os.ReadFile(real)
-	if err != nil {
-		t.Fatalf("read before: %v", err)
-	}
+	before := queueStateBytes(t, real)
 
-	_, _, err = runTodo(t, "next", "99")
+	_, _, err := runTodo(t, "next", "99")
 	if err == nil {
 		t.Fatal("next on a missing id must fail")
 	}
-	after, err := os.ReadFile(real)
-	if err != nil {
-		t.Fatalf("read after: %v", err)
-	}
+	after := queueStateBytes(t, real)
 	if !bytes.Equal(before, after) {
-		t.Error("file changed on a missed next; must be byte-identical")
+		t.Error("file changed on a missed next; must be record-identical")
 	}
 }
 
@@ -506,8 +500,10 @@ func todoPromptGuard(source string) (reason string, bad bool) {
 // The subcommand `moai todo list` stays valid — this widens the surface
 // rather than moving it.
 func TestTodoBareInvocationLists(t *testing.T) {
-	dir := t.TempDir()
-	t.Setenv("CLAUDE_PROJECT_DIR", dir)
+	// t422: todoFixture, not a bare CLAUDE_PROJECT_DIR — without the
+	// committed git repo the resolution falls through to the home-based
+	// queue, and this test's seed add would write there.
+	todoFixture(t)
 
 	if _, _, err := runTodo(t, "add", "first card"); err != nil {
 		t.Fatalf("seed add: %v", err)
@@ -536,8 +532,9 @@ func TestTodoBareInvocationLists(t *testing.T) {
 // TestTodoUnknownSubcommandStillErrors guards the widening above: making
 // the bare form do work must not turn a mistyped verb into a silent list.
 func TestTodoUnknownSubcommandStillErrors(t *testing.T) {
-	dir := t.TempDir()
-	t.Setenv("CLAUDE_PROJECT_DIR", dir)
+	// t422: todoFixture — same fallthrough-to-home shape as
+	// TestTodoSingleWordNaturalLanguageStillErrors.
+	todoFixture(t)
 
 	if _, _, err := runTodo(t, "lsit"); err == nil {
 		t.Error("mistyped subcommand was accepted, want an error")
@@ -582,14 +579,114 @@ func TestTodoMultiWordFallthroughAdds(t *testing.T) {
 // card, or a mistyped verb) stays an error, so a mistyped verb can never
 // silently become a card. One-word cards need the explicit add verb.
 func TestTodoSingleWordNaturalLanguageStillErrors(t *testing.T) {
-	dir := t.TempDir()
-	t.Setenv("CLAUDE_PROJECT_DIR", dir)
+	// t422: todoFixture, not a bare CLAUDE_PROJECT_DIR — without the
+	// committed git repo the resolution falls through to the home-based
+	// queue, which is exactly the unisolated shape the fail-loud guard
+	// rejects.
+	todoFixture(t)
 
 	if _, _, err := runTodo(t, "버그"); err == nil {
 		t.Error("single-word natural language was accepted, want an error")
 	}
 	if _, _, err := runTodo(t, "lst"); err == nil {
 		t.Error("mistyped verb was accepted, want an error")
+	}
+}
+
+// TestTodoMistypedVerbWithCardIDErrors — t203 (#1597): `moai todo pick t151`
+// used to fall through to add and create a card named "pick t151". A
+// verb-shaped first token addressing a card id is a mistyped verb, so it is
+// an error naming the known verbs, and the queue stays untouched.
+func TestTodoMistypedVerbWithCardIDErrors(t *testing.T) {
+	for _, args := range [][]string{
+		{"pick", "t151"},
+		{"finish", "t20"},
+		{"un-pick", "t7"},
+	} {
+		t.Run(strings.Join(args, "_"), func(t *testing.T) {
+			_, store := todoFixture(t)
+
+			_, errOut, err := runTodo(t, args...)
+			if err == nil {
+				t.Fatalf("%v was accepted, want an error", args)
+			}
+			combined := err.Error() + errOut
+			if !strings.Contains(combined, args[0]) || !strings.Contains(combined, args[1]) {
+				t.Errorf("error must name the token and the id; got %q", combined)
+			}
+			// The message points at the real verbs and at the escape hatch.
+			for _, want := range []string{"next", "done", "moai todo add"} {
+				if !strings.Contains(combined, want) {
+					t.Errorf("error should mention %q; got %q", want, combined)
+				}
+			}
+
+			rec, loadErr := store.Load()
+			if loadErr != nil {
+				t.Fatalf("load: %v", loadErr)
+			}
+			if len(rec.Items) != 0 {
+				t.Errorf("refused invocation still mutated the queue: %+v", rec.Items)
+			}
+		})
+	}
+}
+
+// TestTodoNaturalLanguageCardsSurviveVerbGuard — the t69 trade-off is
+// preserved: the guard is the exact verb-then-id shape and nothing wider. A
+// natural-language card still falls through, including one carrying a bare
+// number or mentioning a card id later in the sentence.
+func TestTodoNaturalLanguageCardsSurviveVerbGuard(t *testing.T) {
+	for _, tc := range []struct {
+		args []string
+		want string
+	}{
+		{[]string{"fix", "the", "flaky", "gate"}, "fix the flaky gate"},
+		{[]string{"fix", "3", "flaky", "tests"}, "fix 3 flaky tests"},
+		{[]string{"fix", "the", "drift", "found", "in", "t151"}, "fix the drift found in t151"},
+		{[]string{"t151", "regression", "follow-up"}, "t151 regression follow-up"},
+	} {
+		t.Run(tc.want, func(t *testing.T) {
+			_, store := todoFixture(t)
+
+			if _, _, err := runTodo(t, tc.args...); err != nil {
+				t.Fatalf("natural-language fallthrough refused: %v", err)
+			}
+			rec, err := store.Load()
+			if err != nil {
+				t.Fatalf("load: %v", err)
+			}
+			if len(rec.Items) != 1 || rec.Items[0].Text != tc.want {
+				t.Errorf("card = %+v; want one card %q", rec.Items, tc.want)
+			}
+		})
+	}
+}
+
+// TestTodoVerbNamesDerivedFromCommandTree — the guard's message lists the
+// registered verbs rather than a hand-maintained copy, so a verb added later
+// appears without a second edit.
+func TestTodoVerbNamesDerivedFromCommandTree(t *testing.T) {
+	cmd := newTodoCmd()
+	names := todoVerbNames(cmd)
+
+	registered := 0
+	for _, sub := range cmd.Commands() {
+		if sub.Name() == "help" || sub.Name() == "completion" || sub.Hidden {
+			continue
+		}
+		registered++
+	}
+	if len(names) != registered {
+		t.Errorf("todoVerbNames returned %d names, want %d (one per registered verb)", len(names), registered)
+	}
+	if !sort.StringsAreSorted(names) {
+		t.Errorf("verb names should be sorted for a stable message: %v", names)
+	}
+	for _, want := range []string{"add", "done", "next"} {
+		if !slices.Contains(names, want) {
+			t.Errorf("verb list missing %q: %v", want, names)
+		}
 	}
 }
 
@@ -760,31 +857,22 @@ func TestTodoUnpick_RefusalsLeaveFileUntouched(t *testing.T) {
 		t.Fatalf("seed add: %v", err)
 	}
 	real := todoBacklogPath(root)
-	before, err := os.ReadFile(real)
-	if err != nil {
-		t.Fatalf("read before: %v", err)
-	}
+	before := queueStateBytes(t, real)
 
 	if _, _, err := runTodo(t, "unpick", "1"); err == nil {
 		t.Error("unpick on a queued (not picked) card must fail")
 	}
-	after, err := os.ReadFile(real)
-	if err != nil {
-		t.Fatalf("read after refused unpick: %v", err)
-	}
+	after := queueStateBytes(t, real)
 	if !bytes.Equal(before, after) {
-		t.Error("file changed on a refused unpick; must be byte-identical")
+		t.Error("file changed on a refused unpick; must be record-identical")
 	}
 
 	if _, _, err := runTodo(t, "unpick", "t9"); err == nil {
 		t.Error("unpick on a missing id must fail")
 	}
-	after2, err := os.ReadFile(real)
-	if err != nil {
-		t.Fatalf("read after missed unpick: %v", err)
-	}
+	after2 := queueStateBytes(t, real)
 	if !bytes.Equal(before, after2) {
-		t.Error("file changed on a missed unpick; must be byte-identical")
+		t.Error("file changed on a missed unpick; must be record-identical")
 	}
 }
 
@@ -826,20 +914,14 @@ func TestTodoNextPick_ExpectGuard(t *testing.T) {
 		}
 	}
 	real := todoBacklogPath(root)
-	before, err := os.ReadFile(real)
-	if err != nil {
-		t.Fatalf("read before: %v", err)
-	}
+	before := queueStateBytes(t, real)
 
 	if _, _, err := runTodo(t, "next", "2", "--expect", "alpha"); err == nil {
 		t.Fatal("next --expect must refuse when the card text does not match")
 	}
-	after, err := os.ReadFile(real)
-	if err != nil {
-		t.Fatalf("read after refused pick: %v", err)
-	}
+	after := queueStateBytes(t, real)
 	if !bytes.Equal(before, after) {
-		t.Error("file changed on a refused --expect pick; must be byte-identical")
+		t.Error("file changed on a refused --expect pick; must be record-identical")
 	}
 
 	out, _, err := runTodo(t, "next", "2", "--expect", "beta")

@@ -327,7 +327,7 @@ func enterKanbanCompanionMode(label string) func() {
 // something to consult — Claude Code owns the session-name namespace but
 // offers moai no query into it, so the claim set is moai's own state.
 func companionRegistryPath(root string) string {
-	return filepath.Join(root, ".moai", "state", "kanban", "companions.json")
+	return filepath.Join(kanban.StateDirForRoot(root), "companions.json")
 }
 
 // resolveCompanionName returns the label this companion session should launch
@@ -365,7 +365,7 @@ func resolveCompanionName(root, label string, notes io.Writer) string {
 // collide, and sharing one file would make each mode's launches contend on the
 // other's writes for no benefit. The shape and the machinery are identical.
 func leadRegistryPath(root string) string {
-	return filepath.Join(root, ".moai", "state", "kanban", "leads.json")
+	return filepath.Join(kanban.StateDirForRoot(root), "leads.json")
 }
 
 // resolveLeadName returns the label this lead session should launch under:
@@ -455,38 +455,52 @@ func captureEnvState(key string) func() {
 	}
 }
 
-// recordKanbanSession persists the session-scoped kanban state record the
-// orchestrator later fills in as the chain progresses.
+// exportKanbanLaunchFacts publishes the launch facts a launched session cannot
+// observe for itself, and returns the function that puts the environment back
+// on the same prior-presence contract the other enter*Mode helpers use.
 //
-// Best-effort throughout: an unresolvable session, an unwritable state
-// directory, or an encoding failure all degrade to a session with no record.
-// That is a launch the chain drives without stored state, and downstream the
-// missing record reads as "no evidence" — which resolves in the safe direction,
-// running the sync-phase check rather than skipping it.
-// role names the chain position this session occupies (kanban.RoleLead for the
-// lead, or the companion role parsed from the launch label — the bare role
-// name under the naming policy, or its bumped `<role>-<n>` form). It is
-// recorded so a reader can tell WHICH session is which — without it the five
-// records are indistinguishable and any chain view can only report "unknown".
-// An unrecognized role is dropped by WithRole rather than stored.
-func recordKanbanSession(specID, backend, role string) {
-	projectRoot := launchProjectRoot()
-	sessionID := resolveLaunchSessionID("")
-	if projectRoot == "" || sessionID == "" {
-		return
-	}
-	kanban.WriteBestEffort(projectRoot, kanban.NewRecord(sessionID, specID, backend).WithRole(role))
-}
+// It does NOT write the kanban record, and that absence is the point. The
+// launcher cannot key a record correctly under any implementation: the
+// identifier it would need belongs to a process that does not exist yet, so
+// the pre-change write landed under whichever session last wrote the
+// project-wide single-identifier sidecar slot (card t221's surface, untouched
+// by this change) — in practice the
+// LAUNCHING session, and never the launched one by design. The record is now
+// written by the session's own SessionStart, the first actor that holds the
+// described session's identifier (SPEC-KANBAN-RECORD-SESSION-KEY-001
+// REQ-KRS-001/002, decision D-6). There is exactly one writer, and it is the
+// session.
+//
+// Two facts travel here. The BACKEND, because nothing in the session's
+// environment names it and inferring it from ANTHROPIC_BASE_URL would be a
+// guess dressed as a measurement — that variable is set by the GLM path but is
+// settable by anyone. The SPEC identifier, because enterKanbanMode publishes it
+// for the kanban lead alone, so a companion or a factory lane had no way to
+// learn it. Re-exporting it on the lead path is harmless: the value is the same
+// one enterKanbanMode set, and the restores unwind in reverse order.
+//
+// The card-identifier override is deliberately NOT exported here. It is the
+// operator's or the lead's to set, and the launch environment carries it
+// through unchanged (config.EnvMoaiKanbanCard); the session reads it directly.
+//
+// Callers must defer the returned function so it also runs on the error path.
+func exportKanbanLaunchFacts(specID, backend string) func() {
+	restoreBackend := captureEnvState(config.EnvMoaiKanbanBackend)
+	restoreSpec := captureEnvState(config.EnvMoaiKanbanSpec)
 
-// companionRole extracts the role from a companion label (bare role name or
-// bumped `<role>-<n>`), returning "" when the label is absent or malformed —
-// the caller records no role rather than guessing one.
-func companionRole(label string) string {
-	role, _, ok := kanban.SplitCompanionLabel(label)
-	if !ok {
-		return ""
+	if backend != "" {
+		_ = os.Setenv(config.EnvMoaiKanbanBackend, backend)
 	}
-	return role
+	// An absent SPEC is not exported as an empty value: the session reads
+	// PRESENCE, and an empty export would announce a SPEC that is not there.
+	if specID != "" {
+		_ = os.Setenv(config.EnvMoaiKanbanSpec, specID)
+	}
+
+	return func() {
+		restoreSpec()
+		restoreBackend()
+	}
 }
 
 // The tokens claude uses to name a session. moai RECOGNIZES them; it never
@@ -634,13 +648,38 @@ func leadNameArgs(args []string) []string {
 // The bumped value must reach the backend argv: the session name is the address
 // the operator and the peers dispatch to, so a name resolved but not injected
 // leaves everyone addressing a session that answers to something else.
-func appendLeadName(args []string, root string, notes io.Writer) []string {
+func appendLeadName(args []string, root string, notes io.Writer) ([]string, string) {
 	nameArgs := leadNameArgs(args)
 	if len(nameArgs) == 0 {
-		return args
+		// The operator named the session themselves; that name is already in
+		// argv and is the one peers address. Report it so the title registered
+		// downstream is the name the session actually answers to, rather than
+		// the role moai would have chosen.
+		name, _ := parseNamedLabel(args, func(string) bool { return true })
+		return args, name
 	}
 	nameArgs[1] = resolveLeadName(root, nameArgs[1], notes)
-	return append(args, nameArgs...)
+	return append(args, nameArgs...), nameArgs[1]
+}
+
+// exportLeadSessionName publishes the lead's resolved session name to the child
+// session's environment and returns the restore func its callers defer.
+//
+// The name and the TITLE are two separate registrations in Claude Code: `--name`
+// makes the session addressable, and a title has to be set on its own or a
+// generated one takes the slot (issue #1596). Only the launcher knows the
+// resolved name and only a hook can set a title, so the value crosses that gap
+// through the environment the child already inherits.
+//
+// An empty name is a no-op that still returns a usable restore func, so a caller
+// can defer the result unconditionally.
+func exportLeadSessionName(name string) func() {
+	if name == "" {
+		return func() {}
+	}
+	restore := captureEnvState(config.EnvMoaiKanbanLeadName)
+	_ = os.Setenv(config.EnvMoaiKanbanLeadName, name)
+	return restore
 }
 
 // rejectKanbanOnCG returns the sentinel-bearing error when a kanban token

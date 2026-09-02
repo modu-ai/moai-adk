@@ -27,7 +27,7 @@ alone — no code changes.
 |------|------|
 | **GLM Coding Plan** | From **$10**/month ([sign-up link](https://z.ai/subscribe?ic=1NDV03BGWU)) |
 | **Compatibility** | Compatible with Claude Code — no code changes |
-| **Models** | glm-5.3, GLM-4.7, GLM-4.5-Air, free models |
+| **Models** | glm-5.3-flash (default), glm-5.3, GLM-4.7, GLM-4.5-Air, free models |
 
 ## Default model mapping
 
@@ -36,10 +36,12 @@ MoAI-ADK points all four Claude tiers at the same GLM model, through the
 
 | Claude tier | Environment variable | GLM model | Context |
 |-------------|----------|----------|----------|
-| Opus | `ANTHROPIC_DEFAULT_OPUS_MODEL` | glm-5.3 | 1M |
-| Sonnet | `ANTHROPIC_DEFAULT_SONNET_MODEL` | glm-5.3 | 1M |
-| Haiku | `ANTHROPIC_DEFAULT_HAIKU_MODEL` | glm-5.3 | 1M |
-| Fable | `ANTHROPIC_DEFAULT_FABLE_MODEL` | glm-5.3 | 1M |
+| Opus | `ANTHROPIC_DEFAULT_OPUS_MODEL` | glm-5.3-flash | 1M |
+| Sonnet | `ANTHROPIC_DEFAULT_SONNET_MODEL` | glm-5.3-flash | 1M |
+| Haiku | `ANTHROPIC_DEFAULT_HAIKU_MODEL` | glm-5.3-flash | 1M |
+| Fable | `ANTHROPIC_DEFAULT_FABLE_MODEL` | glm-5.3-flash | 1M |
+
+> glm-5.3 stays selectable in any tier slot — set the slot in `llm.yaml` (`llm.glm.models.*`) and it loads unchanged (1M context, standard effort collapse).
 
 > Claude Code sizes the auto-compact window once, from the Opus slot, and every agent spawned
 > into another slot inherits it. A smaller model in the Sonnet or Haiku slot would run past its

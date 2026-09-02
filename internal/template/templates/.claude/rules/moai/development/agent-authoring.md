@@ -51,7 +51,7 @@ All agent definitions use YAML frontmatter. The following fields are available:
 | disallowedTools | No | None | Tools to deny (denylist approach, alternative to tools) |
 | model | No | inherit | Model selection: sonnet, opus, haiku, or inherit |
 | permissionMode | No | default | Permission behavior for the agent |
-| maxTurns | No | Unlimited | Maximum agentic turns before stopping (current optional field) |
+| maxTurns | No | Unlimited | Maximum agentic turns before stopping (current optional field). Since Claude Code 2.1.246 a subagent stopping at its `maxTurns` limit returns its output marked as partial with a hint to continue it via `SendMessage`, instead of appearing finished |
 | skills | No | None | Skills injected into agent context at startup |
 | mcpServers | No | None | MCP servers available to this agent |
 | hooks | No | None | Lifecycle hooks scoped to this agent |
@@ -125,7 +125,7 @@ The `memory` field enables cross-session learning for agents. Three scope levels
 
 ## Agent Categories
 
-The MoAI agent catalog consists of exactly **12 retained agents** (11 MoAI-custom + 1 Anthropic built-in `Explore`), aligned with CLAUDE.md §4. The v2 architecture (SPEC-AGENT-ARCH-V2-001) added `super-advisor` (on-demand high-reasoning consultation) and `manager-design` (Claude Design collaboration) to the former 8-agent catalog; `manager-lead` (hierarchical-team Tier L coordination) was added later per the hierarchical-team SPEC. Previously-listed manager and expert agents beyond this set were archived during the catalog consolidation. Domain expertise formerly delivered by those static agents is now delivered through per-spawn `Agent(general-purpose)` parameter injection — see § Per-Spawn Domain Specialization below and `.claude/rules/moai/workflow/archived-agent-rejection.md` §C for the full archived-name enumeration and migration table.
+The MoAI agent catalog consists of exactly **12 retained agents** (11 MoAI-custom + 1 Anthropic built-in `Explore`), aligned with CLAUDE.md §4. The v2 architecture added `super-advisor` (on-demand high-reasoning consultation) and `manager-design` (Claude Design collaboration) to the former 8-agent catalog; `manager-lead` (hierarchical-team Tier L coordination) was added later per the hierarchical-team SPEC. Previously-listed manager and expert agents beyond this set were archived during the catalog consolidation. Domain expertise formerly delivered by those static agents is now delivered through per-spawn `Agent(general-purpose)` parameter injection — see § Per-Spawn Domain Specialization below and `.claude/rules/moai/workflow/archived-agent-rejection.md` §C for the full archived-name enumeration and migration table.
 
 ### Retained MoAI-custom Agents (11)
 

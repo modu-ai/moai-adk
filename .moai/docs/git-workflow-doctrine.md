@@ -1,11 +1,22 @@
-# Git Workflow Doctrine — Enhanced GitHub Flow
+# Git Workflow Doctrine — git-flow (2026-08-27 전환; 종전 모델: Enhanced GitHub Flow)
 
 > Externalized verbatim from CLAUDE.local.md §18 on 2026-05-20 (v2.20.0-rc1 release-readiness consolidation). Original section authored v2.14.0 onward.
+
+> **[HARD] 상위 모델 변경 (2026-08-27) — GitHub Flow → git-flow.** 운영자 지시로 이 리포는 git-flow로 전환했다. 새 모델의 정본은 `CLAUDE.local.md` §4.1(모델·근거)과 `.claude/rules/local/gitflow-lane-protocol.md`(레인 운영 규칙)다.
+>
+> - **초과분(superseded)**: 이 문서가 전제하는 "`develop` 없는 Enhanced GitHub Flow" 자체 — 즉 feature 브랜치가 `main`에서 분기해 `main`으로 PR을 낸다는 전제. 이제 카드 워크트리는 `develop`에서 분기하고, 카드 단위 PR은 없으며, 통합은 `origin/develop`에서 CI로 판정된다. 서두의 "Gitflow 기각" 판단도 이 전환으로 뒤집혔다.
+> - **여전히 구속력 있음**: `main` 브랜치 보호(`enforce_admins: true`, PR 필수 §18.7), `main`으로 가는 릴리스 PR, merge strategy(release = merge commit), label 3축, Release Drafter, hotfix 명명 규칙. 릴리스 브랜치가 `main` 대신 `develop`에서 분기한다는 점만 바뀐다.
+>
+> 아래 본문은 그 구분 아래 읽는다 — 통째로 폐기된 것이 아니다.
 
 ---
 
 
-v2.14.0 릴리스 이후 공식 채택. Gitflow 대안 비교 분석 결과 (v2.14 후 세션) 이 프로젝트의 1-2명 팀 + 2일/릴리스 cadence + 단일 CLI 배포 환경에서 Gitflow의 `develop` 이중 관리 부담을 상회하는 장점이 부재. 현재 de-facto 패턴을 유지하되 **formalization + automation**으로 개선.
+> **[RETIRED 2026-08-27]** 아래 단락은 v2.14 시점의 기각 판단이다 — 2026-08-27 운영자 지시로 git-flow 전환하면서 뒤집혔다(상단 고지 참조).
+
+~~v2.14.0 릴리스 이후 공식 채택. Gitflow 대안 비교 분석 결과 (v2.14 후 세션) 이 프로젝트의 1-2명 팀 + 2일/릴리스 cadence + 단일 CLI 배포 환경에서 Gitflow의 `develop` 이중 관리 부담을 상회하는 장점이 부재. 현재 de-facto 패턴을 유지하되 **formalization + automation**으로 개선.~~
+
+현재 모델: **git-flow** (2026-08-27 운영자 지시). 분기·통합·CI 판정 규칙은 상단 고지의 정본(`CLAUDE.local.md` §4.1 · `.claude/rules/local/gitflow-lane-protocol.md`)이 정한다.
 
 ### §18.0 [HARD] 운영 원칙 — 5가지 즉시 개선 Framework
 
@@ -42,7 +53,7 @@ v2.14.0 릴리스 이후 공식 채택. Gitflow 대안 비교 분석 결과 (v2.
 
 **금지 사항** (§18.10 전체 위반 금지):
 - ❌ `main` 직접 push
-- ❌ `develop` 브랜치 생성 (Gitflow 패턴)
+- ❌ `main`(또는 `origin/main`)에서 카드 브랜치 생성 — 카드 워크트리는 `develop`에서 분기한다
 - ❌ Release PR squash merge (history 손실)
 - ❌ `--rebase` merge 전략
 - ❌ 수동 `gh release create` (GoReleaser와 충돌)
@@ -50,25 +61,30 @@ v2.14.0 릴리스 이후 공식 채택. Gitflow 대안 비교 분석 결과 (v2.
 
 ### §18.1 브랜치 구조
 
+> **[HARD] 2026-08-27 개정 — git-flow.** 카드 작업은 `develop`에서 갈라져 `develop`으로 돌아오고, `main`을 갱신하는 유일한 경로는 릴리스 PR이다. 종전 구조(모든 단기 브랜치가 `main`에서 분기)는 `[RETIRED 2026-08-27]`.
+
 ```
-main ──●──●──●──●──●──  (protected, 항상 배포 가능, tags 부착)
-       ↑  ↑     ↑
-       │  │     release/vX.Y.Z (며칠 이내)
-       │  │
-       │  feat/SPEC-XXX-description (1-3일)
-       │  fix/issue-NNN-description (1일)
-       │  docs/topic-description (1일)
-       │  chore/task-description (1일)
-       │  plan/vX.Y-topic (SPEC 초안 모음)
-       │
-       hotfix/vX.Y.Z-description (main의 tag에서 분기)
+main ─────●───────────────●──  (protected, 릴리스 PR로만 갱신, tags 부착)
+          ↑               ↑
+          │               release/vX.Y.Z (develop에서 분기, 며칠 이내)
+          │
+develop ──●──●──●──●──●──●──  (통합 브랜치, origin/develop CI가 판정)
+             ↑  ↑     ↑
+             │  │     WT-<slug> (카드 워크트리 — PR 없이 --no-ff 병합)
+             │  WT-<slug>
+             WT-<slug>
+
+hotfix/vX.Y.Z-description (main의 tag에서 분기 → main 대상 PR)
 ```
 
 ### §18.2 [HARD] 브랜치 명명 규칙
 
+> **[HARD] 2026-08-27 개정.** 카드/SPEC 작업의 브랜치는 `WT-<slug>` 하나다(카드 워크트리, `develop`에서 분기, 카드 id는 브랜치가 아니라 워크트리 디렉터리가 운반한다 — `gitflow-lane-protocol.md` §1). 아래 표의 `feat/*`·`fix/*`·`docs/*`·`chore/*`·`plan/*` 등 단기 브랜치는 **카드 경로에서 더 이상 쓰이지 않으며**, 릴리스·hotfix 경로와 역사 기록으로만 남는다.
+
 | 접두사 | 용도 | 수명 | 예시 |
 |--------|------|------|------|
-| `feat/SPEC-XXX-*` | 기능 개발 (SPEC 기반) | 1-3일 | `feat/SPEC-AUTH-001-oauth2` |
+| `WT-<slug>` | **카드 워크트리 (현행)** — `develop`에서 분기 | 카드 통합까지 | `WT-gitflow-doc-align` |
+| `feat/SPEC-XXX-*` | 기능 개발 (SPEC 기반) — 카드 경로 무효 | 1-3일 | `feat/SPEC-AUTH-001-oauth2` |
 | `fix/issue-NNN-*` | 이슈 기반 버그 수정 | 1일 | `fix/issue-683-race-condition` |
 | `fix/*` | 이슈 없는 버그 수정 | 1일 | `fix/ci-lint-errcheck` |
 | `docs/*` | 문서 작업 | 1일 | `docs/v2.14-release-notes` |
@@ -84,9 +100,11 @@ main ──●──●──●──●──●──  (protected, 항상 배
 
 각 브랜치 유형별 머지 방식 **반드시** 준수:
 
+> **[HARD] 2026-08-27 개정 / 2026-09-02 push 소관 변경.** 카드 통합(`WT-<slug>` → `develop`)은 이 표의 대상이 **아니다** — PR도 squash도 없고, 통합 워크트리 안에서 `git merge --no-ff`로 합친 뒤 레인은 로컬 병합 SHA를 리드에게 보고하고 push는 하지 않는다. develop push는 리드가 일괄로 수행한다(`gitflow-lane-protocol.md` §2·§4, `CLAUDE.local.md` §4.1). 아래 표는 **`main`으로 가는 PR**에만 적용된다.
+
 | 머지 유형 | 전략 | gh 명령어 | 이유 |
 |-----------|------|-----------|------|
-| feature/fix/chore/docs → main | **squash** | `gh pr merge N --squash` | WIP commit 정리, 1 PR = 1 main commit |
+| ~~feature/fix/chore/docs → main~~ **[RETIRED 2026-08-27 — 카드는 main PR을 내지 않는다]** | ~~squash~~ | — | 종전 체제의 역사 기록 |
 | release/* → main | **merge commit** ⭐ | `gh pr merge N --merge` | 릴리스 마일스톤 + 개별 SPEC commit 보존 |
 | hotfix/* → main | **merge commit** | `gh pr merge N --merge` | 긴급 변경 이력 명확성 |
 | plan/* → main | **squash** | `gh pr merge N --squash` | 초안 commit 정리 |
@@ -99,7 +117,10 @@ main ──●──●──●──●──●──  (protected, 항상 배
 
 ### §18.3.1 [HARD] Tier-based PR Routing (SPEC-V3R6-AGENT-TEAM-REBUILD-001 REQ-ATR-020)
 
-SPEC tier에 따라 PR **ceremony 무게**가 다르며, 본 정책은 PR-mandatory 1-person OSS 운영의 기본 (default) 동작을 명문화한다. **(2026-07-20 개정) `enforce_admins: true`로 모든 tier가 PR을 경유한다** — tier는 더 이상 main-direct 여부를 가르지 않고 PR ceremony 무게(브랜치 수명 / CI 매트릭스 / 리뷰 깊이)만 결정:
+> **[HARD] POLICY CHANGE (2026-08-27) — 카드 단위 PR 폐지.** 이 표의 PR routing은 릴리스 경로(`release/vX.Y.Z` → `main`)에만 적용된다. 카드/SPEC 작업은 더 이상 PR을 만들지 않는다: 카드 워크트리는 `develop`에서 분기하고, 검증을 마친 카드는 통합 워크트리에서 로컬 `develop`에 `git merge --no-ff`로 직접 통합되며, `origin/develop`의 CI가 통합을 판정한다(정본: `CLAUDE.local.md` §4.1 · `.claude/rules/local/gitflow-lane-protocol.md`).
+> [RETIRED 2026-08-27 — 아래 tier routing 표와 본 섹션 나머지는 "모든 변경이 main 대상 PR" 체제의 역사 기록이다; 카드 적용에는 무효이며, ceremony 규격은 릴리스 경로에 계승된다]
+
+SPEC tier에 따라 PR **ceremony 무게**가 다르며, 본 정책은 PR-mandatory 1-person OSS 운영의 기본 (default) 동작을 명문화한다. ~~**(2026-07-20 개정) `enforce_admins: true`로 모든 tier가 PR을 경유한다** — tier는 더 이상 main-direct 여부를 가르지 않고 PR ceremony 무게(브랜치 수명 / CI 매트릭스 / 리뷰 깊이)만 결정~~ **[RETIRED 2026-08-27]**:
 
 | SPEC tier | Branch policy | Owner | Rationale |
 |-----------|---------------|-------|-----------|
@@ -130,7 +151,7 @@ Agent(subagent_type: "manager-git",
 
 | 타입 | 기준 | 주기 | 브랜치 |
 |------|------|------|--------|
-| **Patch (vX.Y.Z)** | 버그 수정만 | 필요 시 즉시 | `fix/*` PR (self-merge) 여러 개 → main → tag bump (2026-07-20: 직접 main push 불가, PR 경유) |
+| **Patch (vX.Y.Z)** | 버그 수정만 | 필요 시 즉시 | 카드 여러 개 → `develop` 병합 → `release/vX.Y.Z`(develop에서 분기) → main 릴리스 PR → tag bump (2026-08-27 개정) |
 | **Minor (vX.Y.0)** | SPEC cluster (2-4 SPECs) 또는 주요 feature | 1-2주 | `release/vX.Y.0` 경유 |
 | **Major (vX.0.0)** | Breaking changes | 3-6개월 | `release/vX.0.0` + migration guide |
 | **Hotfix (vX.Y.Z+1)** | 프로덕션 긴급 수정 | 24h 이내 | `hotfix/vX.Y.Z+1-*` → main |
@@ -289,7 +310,7 @@ lefthook install      # .git/hooks/pre-push 자동 등록
 
 ```bash
 # 1. release 브랜치 생성 + 작업
-git checkout -b release/v2.15.0 main
+git checkout -b release/v2.15.0 develop   # [2026-08-27] 분기점은 develop (종전 main)
 # CHANGELOG.md, SPEC status 업데이트, docs-site update 등
 
 # 2. PR + review + merge (merge commit 전략)
@@ -302,17 +323,18 @@ git checkout main && git pull
 # → tag 생성, push, GoReleaser 자동 실행, GitHub Release 생성
 ```
 
-**Patch Release (fix 브랜치 PR → main)** — (2026-07-20: 직접 main push 불가, PR self-merge 경유):
+**Patch Release** — (2026-08-27 개정: 카드 PR 없음, 릴리스 PR만 `main`으로 간다):
 
 ```bash
-# 1. fix 브랜치에서 수정 + PR + squash merge (self-merge, 0 approvals, 4 CI checks)
-# 2. main pull + tag + push (release 스크립트)
+# 1. 카드 워크트리(WT-<slug>)에서 수정 → 통합 워크트리에서 develop 에 --no-ff 병합 → 리드 일괄 push (CLAUDE.local.md §4.1)
+# 2. origin/develop CI green 확인 → release/vX.Y.Z 를 develop 에서 분기 → main 릴리스 PR (merge commit, self-merge 0 approvals)
+# 3. main pull + tag + push (release 스크립트)
 ./scripts/release.sh v2.14.1
 ```
 
 ### §18.9 자동화 도구
 
-**구성 완료된 도구 (Enhanced GitHub Flow 공식 인프라)**:
+**구성 완료된 도구 (공식 자동화 인프라 — 2026-08-27 git-flow 전환과 무관하게 유효)**:
 
 | 도구 | 역할 | 트리거 | 설정 파일 |
 |------|------|--------|-----------|
@@ -341,10 +363,10 @@ git checkout main && git pull
 ### §18.10 [HARD] 공식 위반 금지 사항
 
 - ❌ `main`에 직접 push (반드시 PR 경유)
-- ❌ `develop` 브랜치 생성 (Gitflow 패턴 금지)
+- ❌ `main`에서 따서 카드 작업 시작 (분기점은 `develop`) · 카드 단위 PR은 존재하지 않는다 — 통합은 로컬 `develop` 병합(`git merge --no-ff`)이다
 - ❌ release PR squash merge (merge commit 필수 — 개별 SPEC commit 보존)
 - ❌ tag 수동 push 없이 `gh release create` (GoReleaser와 충돌)
-- ❌ branch prefix 관례 위반 (`feat/SPEC-*` 대신 `add-something` 등)
+- ❌ branch prefix 관례 위반 (카드는 `WT-<slug>`, 릴리스는 `release/vX.Y.Z`, hotfix는 `hotfix/vX.Y.Z-*` — `add-something` 등 임의 명명 금지)
 - ❌ `--rebase` merge 전략 (history rewrite 방지)
 - ❌ CI fail 상태 PR merge (admin override 필요, 최소화)
 

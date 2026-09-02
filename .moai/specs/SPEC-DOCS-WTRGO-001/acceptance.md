@@ -2,7 +2,6 @@
 id: SPEC-DOCS-WTRGO-001
 title: "Fix inaccurate moai worktree go navigation examples — acceptance criteria"
 version: "0.1.0"
-status: completed
 created: 2026-07-19
 updated: 2026-07-20
 author: manager-spec

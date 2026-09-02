@@ -51,7 +51,7 @@ Relationships:
 
 [HARD] **`moai worktree` verbs are L2-only.** An L1 tree under `.claude/worktrees/` is never registered with `moai worktree`, so `done`, `clean`, and `recover` cannot act on it — `moai worktree done` on an L1 tree is a category error, not a disposal. L1 disposal is the session-end keep/remove prompt, or `git worktree unlock` + `git worktree remove` after the session releases its lock. The lock itself is designed behavior, not a defect: it is held while the session runs and released on exit, and a dead session's lock auto-releases on Claude Code 2.1.210+ — a locked tree at disposal time means a live session still owns it, and the remediation is the unlock guidance, not a cause investigation.
 
-[HARD] **An unpushed worktree branch is the work's only instance.** A card or lane worktree is created from inside the session with the Claude tool (`EnterWorktree(<name>)`) or launched by the operator (`moai cc -w <name>`) — never with a bare `git worktree add`. Until its branch has been integrated and the remote merge has landed, dispose of no worktree, L1 or L2: disposal before that destroys the only copy of the work.
+[HARD] **An unpushed worktree branch is the work's only instance.** A card or lane worktree is created from inside the session with the Claude tool (`EnterWorktree(<name>)`) or launched by the operator (`moai cc -w <name>`) — never with a bare `git worktree add`. Until its branch has been integrated and the remote merge has landed, dispose of no worktree, L1 or L2: disposal before that destroys the only copy of the work. Before Claude Code 2.1.246 the runtime's own background retention sweep could delete a user-created worktree under `.claude/worktrees/` when a stale background-session record pointed at it (fixed in 2.1.246) — an unpushed L1 tree could be lost with nobody disposing of it, which is one more reason this rule treats the pre-merge tree as the only copy.
 
 [HARD] **Kanban/team card worktree branches carry the `WT-` prefix followed by a descriptive slug.** `EnterWorktree(<name>)` auto-names its branch `worktree-<name>`; for card worktrees, rename immediately after creation with `git branch -m WT-<slug>` (renaming the checked-out branch inside a worktree is safe — the tree, its lock, and the session anchoring are unaffected — and `moai cc -w <name>` re-entry resolves by tree name, not branch name). `WT-` is the session-worktree branch convention (`SessionWorktreeBranchPrefix`, `internal/cli/session_worktree.go`).
 
@@ -65,6 +65,31 @@ The rename is also a disposal-path switch, and that is deliberate:
 - Renamed to `WT-<slug>`, the tree becomes a **sweep candidate**: where `Workflow.Worktree.AutoCleanup` is enabled (distributed default: off), the sweep removes a `WT-` worktree once its branch reads merged (gh `MERGED` state, or the `git branch --merged origin/main` fallback — squash-merge blind) and the tree is clean, re-checking dirtiness immediately before removal, and never while a live session is anchored in the tree.
 
 Either way the unpushed-branch rule above still governs timing — the sweep's merged-branch condition is the same "after the remote merge" boundary. The lane-side procedure that consumes `WT-` branches lives in `kanban-dispatch.md` § Integration into the release branch is self-served.
+
+## Disposing a Worktree the Automatic Sweep Does Not Reach
+
+Automatic disposal covers one shape only: the PR-merge auto-cleanup sweep enumerates `git worktree list` and treats a tree as a candidate solely when its branch carries the launcher's `WT-` prefix. Every other registered worktree — one named after the change it makes, one entered by hand, one whose branch was renamed — falls outside that sweep and stays on disk until someone disposes of it. That is the safe direction (nothing is removed unasked), but it is not a disposal plan.
+
+**Worktree-ness is a property of the checkout, not of the branch name.** A branch-name glob finds only the trees named a particular way; `git worktree list` finds all of them. Any inventory of what is actually on disk therefore starts from the listing, never from a name pattern.
+
+The shipped inventory is the `--stale` sweep's own evaluation, rendered as data:
+
+```bash
+moai worktree clean --stale --json
+```
+
+It emits one object per non-protected registered worktree, carrying the path, the branch, the keep-reason, and the four predicates behind that reason — dirty state, merge state, anchor state, and ignored-content state. It removes nothing: `--json` is a report, and it overrides `--yes` rather than combining with it. A predicate the sweep short-circuited before asking reads `not-checked`, which is deliberately distinct from `undetermined` — the latter means it asked and could not tell. Neither is a negative.
+
+Read the report, then dispose of what it shows as removable:
+
+```bash
+moai worktree clean --stale        # preview: names the trees it would remove
+moai worktree clean --stale --yes  # perform the removals
+```
+
+Both paths honour the same guards: a dirty tree, an unmerged branch, a tree anchoring a live session, a tree holding gitignored content that nothing regenerates, and a tree whose state could not be read are each kept and reported with the reason. The ignored-content guard matters because `git status --porcelain` and a non-forced `git worktree remove` both disregard gitignored files: without it a tree whose only remaining content is agent memory reads as clean and is destroyed silently. It shares one allowlist with the automatic sweep, so both agree on what is regenerable — runtime state, runtime-managed config, build output, test residue — and anything unclassified keeps the tree. Branches are never deleted — the commits stay reachable by branch name after the directory is gone. The merge comparison is against `origin/main` by default, the same ref the automatic sweep uses, so the two cannot reach opposite conclusions about the same tree; `--base` overrides it.
+
+For a tree outside the sweep entirely, the manual path is unchanged: `git worktree unlock <path>` when a dead session's lock is still on it, then `git worktree remove <path>`. The unpushed-branch rule above governs the timing in every case.
 
 ## Claude Code 2.1.50+ Worktree Features
 
@@ -165,6 +190,15 @@ This setting governs **Claude-native** worktrees only, which is now every worktr
 `"head"` carries a trap worth stating plainly, because the name invites the wrong reading: it is **the HEAD of the tree the launcher ran in**, not the branch you had in mind. Run `moai cc -w <name>` from the primary checkout while intending a release branch and the new worktree inherits whatever the primary happens to be sitting on — wrong in a quieter direction than the default was, because the reflog now names a plausible commit instead of an obviously-unrelated one. Using it correctly therefore adds a procedural requirement of its own: the launcher must be run from inside a tree already on the intended base.
 
 That asymmetry is the reason to prefer the reset path for card work. `baseRef` is silent whether it lands right or wrong; the reset path ends in an exit code somebody read.
+
+**The stored setting: `git_strategy.worktree_base_branch`.** `baseRef` accepts only `"fresh"` or `"head"`, so it cannot name a branch — which leaves the branch choice resting on `refs/remotes/origin/HEAD`, local repository metadata that does not survive a fresh clone. The moai setting `git_strategy.worktree_base_branch` (in `.moai/config/sections/git-strategy.yaml`) is the reproducible handle on that choice, and it has two consumers:
+
+- **At session start**, from the primary checkout only, moai points `refs/remotes/origin/HEAD` at the configured branch and prints one line saying it did. Native worktrees created afterwards read the corrected symref. Inside a linked worktree the step does nothing at all — the symref is repository-global while the config file is tracked and follows each worktree's own branch, so one writer is both sufficient and the only way two lanes do not reverse each other's writes forever.
+- **When moai creates the worktree itself** (`moai cc -w <name>`), the configured branch is passed to `git worktree add` as the base operand, so the new tree is cut from it rather than from the invoking tree's HEAD. This half honours the setting from any working tree.
+
+The empty value — the shipped default — means take no action on both paths, reproducing the pre-setting behaviour exactly. A value naming a branch that has no remote-tracking counterpart is refused before either write: the session-start step prints one diagnostic line and leaves the symref alone, and worktree creation falls back to the no-operand form. Pointing `refs/remotes/origin/HEAD` at a ref that does not exist would be worse than the mismatch it was meant to fix.
+
+`moai doctor --check 'Worktree Base Branch'` reports the current comparison without writing anything, and distinguishes a plain mismatch (repaired by running the alignment) from an unresolvable value (repaired by correcting the setting). It reports metadata state only — worktrees already cut from the wrong base are not re-created by it.
 
 
 ### `.worktreeinclude` (Copy Gitignored Files into Native Worktrees)
@@ -349,7 +383,7 @@ When the orchestrator generates prompts for agents spawned with `isolation: "wor
 | Category | Example | Absolute Path OK? | Reason |
 |----------|---------|-------------------|--------|
 | Write-target files | Source code, tests | NO — use relative | Agent CWD is worktree root; relative paths resolve correctly |
-| Read-only references | Skills, configs via `${CLAUDE_SKILL_DIR}` | YES | Content is identical in main repo; read-only access is safe |
+| Read-only references | Skills, configs via `.claude/skills/<name>/<file>` | NO — use project-root-relative | Worktree root is the project root, so the root-relative form resolves there; content is identical in the main repo |
 | SPEC documents | `.moai/specs/SPEC-XXX/spec.md` | Relative preferred | SPEC files are copied to worktree during checkout |
 | Bash commands | `go test ./...` | NO `cd` prefix | Agent CWD is already set to worktree root |
 
@@ -434,6 +468,48 @@ The `--team` flag and its four launch patterns are retired. Entering a worktree 
 | Stale worktree branches | Incomplete cleanup | Run `git worktree prune` |
 | Hooks not firing | Missing wrapper script | Check `.claude/hooks/moai/` directory |
 | `--tmux` not working | Unsupported terminal | Use tmux or iTerm2 (not VS Code, Ghostty) |
+
+## Refused Commands in a Worktree-Isolated Session
+
+### Which guard refused — read the message, it is the only discriminator
+
+Two different guards refuse commands in the same worktree-isolated session, and nothing but the wording of the refusal tells them apart. Read the message first; everything else follows from it.
+
+| The refusal says | Whose guard | Can it be changed here? |
+|---|---|---|
+| `Dangerous command blocked:` … | **This project's own** pre-tool hook, in `internal/hook/pre_tool.go` | **Yes** — it is this repository's code |
+| … `too complex to verify that it stays inside the worktree` | **The Claude Code binary** | **No** — there is no source here that implements or configures it |
+
+A reader who confuses the two searches the wrong place. Hunting through this repository's source for the worktree guard finds only prose quoting the message and never the guard; treating the dangerous-command refusal as an untouchable upstream behaviour leaves a local hook unexamined when it is in fact the thing refusing.
+
+A third, separate guard also lives here: `internal/hook/branch_guard.go` defends branch-state mutation in the primary checkout. It neither implements nor configures the worktree guard, and editing it has no effect on a `too complex to verify` refusal.
+
+### What has been observed to trip the worktree guard
+
+The full refusal reads:
+
+> This session is isolated in the worktree `<worktree-path>`, but this command is too complex to verify that it stays inside the worktree.
+
+**This table is a record of what has been seen, not a specification.** It is explicitly non-exhaustive, and two observations do not establish a general rule — the trigger condition was never narrowed, so do not infer from it that "complex commands are refused", and do not infer a tokenization mechanism from the shape of these cases.
+
+| Observed trigger | Provenance | Notes |
+|---|---|---|
+| A quoted-delimiter heredoc (`<<'EOF'`) whose **body contains braces wrapping quoted key/value pairs** — a JSON line, for example | **First-hand** — measured by paired probes in a worktree-isolated session | Body size, pipes, backticks, and command substitution are **not** the trigger: a body of roughly 6.7 KB of prose was accepted, a ten-character JSON line in the same position was refused, and a command substitution in the body was folded correctly and passed |
+| **Several mutation steps bundled into one compound command** | **Second-hand** — reported by another working lane, not measured here | Recorded because it carried the same refusal sentence; it has not been reproduced by the session that wrote this section |
+
+**Gap**: the boundary between an accepted and a refused command is unmeasured in both rows. Anything outside these two observations is unknown, not permitted.
+
+### Workarounds — two situations, not two competing options
+
+Which one applies is decided by what you were trying to do, so identify the situation before reaching for a form.
+
+**Writing file content → use the `Write` tool.** This is the repository's convention. It reaches the filesystem without issuing a shell command, so the guard never parses the content and the body's shape stops mattering. Reach for it first rather than reshaping the heredoc.
+
+Ad-hoc detours happen to work — routing the content through an interpreter's own file-write call, or splitting the file into brace-free pieces — but they are **not** the convention and are not equal options. Two paths going their own way is not a convention: a reader who meets one detour in one commit and a different one elsewhere learns nothing reusable.
+
+**Running a compound command → split it into separate plain commands.** Issue the steps one at a time rather than chaining them. Note that this trades away one property worth keeping in mind: an environment scrub written as `unset … && <command>` is load-bearing as a single invocation, because each command runs in a fresh process, so that particular pairing is not one to split apart.
+
+**Version measured**: Claude Code 2.1.251. No other version was measured, so none of the behaviour above is known to hold before or after it.
 
 ## SPEC-to-Worktree Mapping
 

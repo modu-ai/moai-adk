@@ -1854,12 +1854,12 @@ func TestBuild_WritesContextUsageWithSessionID(t *testing.T) {
 		t.Fatalf("Build() error: %v", err)
 	}
 
-	path := filepath.Join(proj, ".moai", "state", "context-usage.json")
+	path := filepath.Join(proj, ".moai", "state", "context-usage", "sess-build-011.json")
 	data, err := os.ReadFile(path)
 	if err != nil {
-		t.Fatalf("context-usage.json not written by Build: %v", err)
+		t.Fatalf("per-session telemetry record not written by Build: %v", err)
 	}
-	var rec contextUsageRecord
+	var rec SessionTelemetryRecord
 	if err := json.Unmarshal(data, &rec); err != nil {
 		t.Fatalf("unparseable record: %v", err)
 	}

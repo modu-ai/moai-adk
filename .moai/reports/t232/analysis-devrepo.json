@@ -1,0 +1,911 @@
+[
+ {
+  "id": "CONST-V3R2-001",
+  "file": ".claude/rules/moai/workflow/spec-workflow.md",
+  "anchor": "#phase-overview",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "SPEC+EARS format",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-002",
+  "file": ".claude/rules/moai/core/moai-constitution.md",
+  "anchor": "#quality-gates",
+  "clause_ok": true,
+  "anchor_ok": true,
+  "clause": "TRUST 5",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-003",
+  "file": ".claude/rules/moai/workflow/mx-tag-protocol.md",
+  "anchor": "#mx-tag-types",
+  "clause_ok": false,
+  "anchor_ok": false,
+  "clause": "@MX TAG protocol",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-004",
+  "file": ".claude/rules/moai/development/coding-standards.md",
+  "anchor": "#language-policy",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "16-language neutrality",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-005",
+  "file": ".claude/rules/moai/development/coding-standards.md",
+  "anchor": "#thin-command-pattern",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "Template-First discipline",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-006",
+  "file": ".claude/rules/moai/core/agent-common-protocol.md",
+  "anchor": "#user-interaction-boundary",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "AskUserQuestion monopoly",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-007",
+  "file": "CLAUDE.md",
+  "anchor": "#1-core-identity",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "Claude Code substrate",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-008",
+  "file": "CLAUDE.md",
+  "anchor": "#1-hard-rules",
+  "clause_ok": false,
+  "anchor_ok": false,
+  "clause": "Language-Aware Responses: All user-facing responses MUST be in user's conversation_language",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-009",
+  "file": "CLAUDE.md",
+  "anchor": "#1-hard-rules",
+  "clause_ok": false,
+  "anchor_ok": false,
+  "clause": "Parallel Execution: Execute all independent tool calls in parallel when no dependencies exist",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-010",
+  "file": "CLAUDE.md",
+  "anchor": "#1-hard-rules",
+  "clause_ok": false,
+  "anchor_ok": false,
+  "clause": "User Response Format: Use plain Markdown for all user-facing responses (XML tags are reserved for internal agent-to-agent data transfer)",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-011",
+  "file": "CLAUDE.md",
+  "anchor": "#1-hard-rules",
+  "clause_ok": false,
+  "anchor_ok": false,
+  "clause": "Markdown Output: Use Markdown for all user-facing communication",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-012",
+  "file": "CLAUDE.md",
+  "anchor": "#8-user-interaction-architecture",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "AskUserQuestion-Only Interaction: ALL questions directed at the user MUST go through AskUserQuestion",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-013",
+  "file": "CLAUDE.md",
+  "anchor": "#7-safe-development-protocol",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "Context-First Discovery: Conduct Socratic interview via AskUserQuestion when context is insufficient before executing non-trivial tasks",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-014",
+  "file": "CLAUDE.md",
+  "anchor": "#7-safe-development-protocol",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "Approach-First Development: Explain approach and get approval before writing code",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-015",
+  "file": "CLAUDE.md",
+  "anchor": "#7-safe-development-protocol",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "Multi-File Decomposition: Split work when modifying 3+ files",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-016",
+  "file": "CLAUDE.md",
+  "anchor": "#7-safe-development-protocol",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "Post-Implementation Review: List potential issues and suggest tests after coding",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-017",
+  "file": "CLAUDE.md",
+  "anchor": "#7-safe-development-protocol",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "Reproduction-First Bug Fix: Write reproduction test before fixing bugs",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-018",
+  "file": "CLAUDE.md",
+  "anchor": "#8-user-interaction-architecture",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "Every question directed at the user MUST be asked via AskUserQuestion. Free-form prose questions in regular response text are prohibited.",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-019",
+  "file": "CLAUDE.md",
+  "anchor": "#8-user-interaction-architecture",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "Deferred Tool Preload Requirement: AskUserQuestion is a deferred tool \u2014 its schema is NOT loaded at session start",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-020",
+  "file": "CLAUDE.md",
+  "anchor": "#14-parallel-execution-safeguards",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "As of CC v2.1.198 subagents run in the background by default; permission prompts surface in the main session naming the asking subagent (v2.1.186). MoAI aligns with the runtime default rather than forcing foreground for write-capable agents, and does not set the background frontmatter field. The retained safeguard is concurrency, not backgrounding.",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-021",
+  "file": "CLAUDE.md",
+  "anchor": "#14-parallel-execution-safeguards",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "[SUPERSEDED by worktree-opt-in policy \u2014 see CLAUDE.md \u00a714 + worktree-integration.md \u00a7 Terminology Glossary] Implementation teammates in team mode (role_profiles: implementer, tester, designer) MUST use isolation: worktree when spawned via Agent()",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-022",
+  "file": "CLAUDE.md",
+  "anchor": "#14-parallel-execution-safeguards",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "[SUPERSEDED by worktree-opt-in policy \u2014 see CLAUDE.md \u00a714 + worktree-integration.md \u00a7 Terminology Glossary] Read-only teammates (role_profiles: researcher, analyst, reviewer) MUST NOT use isolation: worktree",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-023",
+  "file": "CLAUDE.md",
+  "anchor": "#14-parallel-execution-safeguards",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "[SUPERSEDED by worktree-opt-in policy \u2014 see CLAUDE.md \u00a714 + worktree-integration.md \u00a7 Terminology Glossary] One-shot sub-agents making cross-file changes SHOULD use isolation: worktree",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-024",
+  "file": "CLAUDE.md",
+  "anchor": "#14-parallel-execution-safeguards",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "[SUPERSEDED by worktree-opt-in policy \u2014 see CLAUDE.md \u00a714 + worktree-integration.md \u00a7 Terminology Glossary] GitHub workflow fixer agents MUST use isolation: worktree for branch isolation",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-025",
+  "file": ".claude/rules/moai/core/moai-constitution.md",
+  "anchor": "#moai-orchestrator",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "All user-facing questions MUST go through AskUserQuestion \u2014 no free-form prose questions in response text",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-026",
+  "file": ".claude/rules/moai/core/moai-constitution.md",
+  "anchor": "#moai-orchestrator",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "AskUserQuestion is used ONLY by MoAI orchestrator; subagents must never prompt users",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-027",
+  "file": ".claude/rules/moai/core/moai-constitution.md",
+  "anchor": "#moai-orchestrator",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "AskUserQuestion is a deferred tool \u2014 invoke ToolSearch(query: select:AskUserQuestion) immediately before each AskUserQuestion call",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-028",
+  "file": ".claude/rules/moai/core/moai-constitution.md",
+  "anchor": "#opus-47-prompt-philosophy",
+  "clause_ok": false,
+  "anchor_ok": false,
+  "clause": "Principle 4 \u2014 Fewer subagents spawned by default: Opus 4.7+ / 4.8 does not auto-spawn subagents.",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-029",
+  "file": ".claude/rules/moai/core/moai-constitution.md",
+  "anchor": "#opus-47-prompt-philosophy",
+  "clause_ok": false,
+  "anchor_ok": false,
+  "clause": "Principle 5 \u2014 Fewer tool calls by default, more reasoning: Opus 4.7+ / 4.8 prefers reasoning over tool invocation.",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-030",
+  "file": ".claude/rules/moai/core/moai-constitution.md",
+  "anchor": "#agent-core-behaviors",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "Surface Assumptions: Before implementing anything non-trivial, list assumptions explicitly and wait for user confirmation.",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-031",
+  "file": ".claude/rules/moai/core/moai-constitution.md",
+  "anchor": "#agent-core-behaviors",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "Manage Confusion Actively: When encountering inconsistencies, STOP and surface the confusion before proceeding.",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-032",
+  "file": ".claude/rules/moai/core/moai-constitution.md",
+  "anchor": "#agent-core-behaviors",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "Push Back When Warranted: Point out issues directly when an approach has clear problems.",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-033",
+  "file": ".claude/rules/moai/core/moai-constitution.md",
+  "anchor": "#agent-core-behaviors",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "Enforce Simplicity: Actively resist overcomplexity.",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-034",
+  "file": ".claude/rules/moai/core/moai-constitution.md",
+  "anchor": "#agent-core-behaviors",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "Maintain Scope Discipline: Touch only what you were asked to touch.",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-035",
+  "file": ".claude/rules/moai/core/moai-constitution.md",
+  "anchor": "#agent-core-behaviors",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "Verify, Don't Assume: Every task requires evidence of completion.",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-036",
+  "file": ".claude/rules/moai/core/agent-common-protocol.md",
+  "anchor": "#user-interaction-boundary",
+  "clause_ok": true,
+  "anchor_ok": true,
+  "clause": "Subagents MUST NOT prompt the user. AskUserQuestion is reserved exclusively for the MoAI orchestrator.",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-037",
+  "file": ".claude/rules/moai/core/agent-common-protocol.md",
+  "anchor": "#user-interaction-boundary",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "The orchestrator MUST preload AskUserQuestion via ToolSearch(query: select:AskUserQuestion) before each call",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-038",
+  "file": ".claude/rules/moai/core/agent-common-protocol.md",
+  "anchor": "#user-interaction-boundary",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "All user-facing questions MUST go through AskUserQuestion \u2014 free-form prose questions in response text are prohibited",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-039",
+  "file": ".claude/rules/moai/core/agent-common-protocol.md",
+  "anchor": "#language-handling",
+  "clause_ok": true,
+  "anchor_ok": true,
+  "clause": "All agents receive and respond in user's configured conversation_language.",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-040",
+  "file": ".claude/rules/moai/core/agent-common-protocol.md",
+  "anchor": "#output-format",
+  "clause_ok": true,
+  "anchor_ok": true,
+  "clause": "User-Facing: Always use Markdown formatting. Never display XML tags to users.",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-041",
+  "file": ".claude/rules/moai/core/agent-common-protocol.md",
+  "anchor": "#output-format",
+  "clause_ok": true,
+  "anchor_ok": true,
+  "clause": "Internal Agent Data: XML tags are reserved for agent-to-agent data transfer only.",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-042",
+  "file": ".claude/rules/moai/core/agent-common-protocol.md",
+  "anchor": "#mcp-fallback-strategy",
+  "clause_ok": true,
+  "anchor_ok": true,
+  "clause": "Maintain effectiveness without MCP servers.",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-043",
+  "file": ".claude/rules/moai/core/agent-common-protocol.md",
+  "anchor": "#agent-invocation-pattern",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "Agents are invoked through MoAI's natural language delegation pattern.",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-044",
+  "file": ".claude/rules/moai/core/agent-common-protocol.md",
+  "anchor": "#background-agent-execution",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "Background subagents MAY perform Write/Edit; permission prompts surface in the main session and name the asking subagent (v2.1.186+). The retained safeguard is concurrency, not backgrounding: MoAI runs no two write-capable agents concurrently, and orchestrator work concurrent with a write-capable agent is read-only.",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-045",
+  "file": ".claude/rules/moai/core/agent-common-protocol.md",
+  "anchor": "#tool-usage-guidelines",
+  "clause_ok": true,
+  "anchor_ok": true,
+  "clause": "Agents must follow tool usage patterns optimized for accuracy and efficiency.",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-046",
+  "file": ".claude/rules/moai/core/agent-common-protocol.md",
+  "anchor": "#time-estimation",
+  "clause_ok": true,
+  "anchor_ok": true,
+  "clause": "Never use time predictions in plans or reports.",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-049",
+  "file": ".claude/rules/moai/core/agent-common-protocol.md",
+  "anchor": "#skeptical-evaluation-stance",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "Skeptical Evaluation Stance: reviewer operates as fresh-judgment auditor \u2014 treat claims as suspect until evidence shown, demand reproducible verification, reject when must-pass criteria fail.",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-051",
+  "file": ".claude/rules/moai/design/constitution.md",
+  "anchor": "#2-frozen-vs-evolvable-zones",
+  "clause_ok": true,
+  "anchor_ok": true,
+  "clause": "[FROZEN] This constitution file (.claude/rules/moai/design/constitution.md)",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-052",
+  "file": ".claude/rules/moai/design/constitution.md",
+  "anchor": "#2-frozen-vs-evolvable-zones",
+  "clause_ok": true,
+  "anchor_ok": true,
+  "clause": "[FROZEN] Section 3.1 Brand Context content",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-053",
+  "file": ".claude/rules/moai/design/constitution.md",
+  "anchor": "#2-frozen-vs-evolvable-zones",
+  "clause_ok": true,
+  "anchor_ok": true,
+  "clause": "[FROZEN] Section 3.2 Design Brief content",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-054",
+  "file": ".claude/rules/moai/design/constitution.md",
+  "anchor": "#2-frozen-vs-evolvable-zones",
+  "clause_ok": true,
+  "anchor_ok": true,
+  "clause": "[FROZEN] Section 3.3 Relationship rules",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-055",
+  "file": ".claude/rules/moai/design/constitution.md",
+  "anchor": "#2-frozen-vs-evolvable-zones",
+  "clause_ok": true,
+  "anchor_ok": true,
+  "clause": "[FROZEN] Safety architecture (Section 5)",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-056",
+  "file": ".claude/rules/moai/design/constitution.md",
+  "anchor": "#2-frozen-vs-evolvable-zones",
+  "clause_ok": true,
+  "anchor_ok": true,
+  "clause": "[FROZEN] GAN Loop contract (Section 11)",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-057",
+  "file": ".claude/rules/moai/design/constitution.md",
+  "anchor": "#2-frozen-vs-evolvable-zones",
+  "clause_ok": true,
+  "anchor_ok": true,
+  "clause": "[FROZEN] Evaluator leniency prevention mechanisms (Section 12)",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-058",
+  "file": ".claude/rules/moai/design/constitution.md",
+  "anchor": "#2-frozen-vs-evolvable-zones",
+  "clause_ok": true,
+  "anchor_ok": true,
+  "clause": "[FROZEN] Pipeline phase ordering constraints (manager-spec always first, sync-auditor always last in loop)",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-059",
+  "file": ".claude/rules/moai/design/constitution.md",
+  "anchor": "#2-frozen-vs-evolvable-zones",
+  "clause_ok": true,
+  "anchor_ok": true,
+  "clause": "[FROZEN] Pass threshold floor (minimum 0.60, cannot be lowered by evolution)",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-060",
+  "file": ".claude/rules/moai/design/constitution.md",
+  "anchor": "#2-frozen-vs-evolvable-zones",
+  "clause_ok": true,
+  "anchor_ok": true,
+  "clause": "[FROZEN] Human approval requirement for evolution (require_approval in design.yaml)",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-061",
+  "file": ".claude/rules/moai/design/constitution.md",
+  "anchor": "#31-brand-context-constitutional-parent",
+  "clause_ok": true,
+  "anchor_ok": true,
+  "clause": "[HARD] manager-spec MUST load brand context before generating BRIEF documents",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-062",
+  "file": ".claude/rules/moai/design/constitution.md",
+  "anchor": "#31-brand-context-constitutional-parent",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "[HARD] moai-domain-copywriting MUST adhere to brand voice, tone, and terminology from brand-voice.md [RETIRED \u2014 do not revive without a new SPEC; skill absent from current catalog, clause preserved as FROZEN-zone mirror source]",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-063",
+  "file": ".claude/rules/moai/design/constitution.md",
+  "anchor": "#31-brand-context-constitutional-parent",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "[HARD] moai-domain-brand-design MUST use brand color palette, typography, and visual language from visual-identity.md [RETIRED \u2014 do not revive without a new SPEC; skill absent from current catalog, clause preserved as FROZEN-zone mirror source]",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-064",
+  "file": ".claude/rules/moai/design/constitution.md",
+  "anchor": "#31-brand-context-constitutional-parent",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "[HARD] [ARCHIVED] expert-frontend MUST implement design tokens derived from brand context (archived name \u2014 resolves to Agent(general-purpose) with frontend whitelist per archived-agent-rejection.md \u00a7C; see design/constitution.md carve-out note)",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-065",
+  "file": ".claude/rules/moai/design/constitution.md",
+  "anchor": "#31-brand-context-constitutional-parent",
+  "clause_ok": true,
+  "anchor_ok": true,
+  "clause": "[HARD] sync-auditor MUST score brand consistency as a must-pass criterion",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-066",
+  "file": ".claude/rules/moai/design/constitution.md",
+  "anchor": "#32-design-brief-execution-scope",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "[HARD] /moai design MUST auto-load human-authored design documents when present and not _TBD_ (RETIRED route \u2014 /moai design is no longer a routed subcommand; design-language routes to /moai plan; historical mirror of the design/constitution.md FROZEN clause, see that file's retirement banner)",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-067",
+  "file": ".claude/rules/moai/design/constitution.md",
+  "anchor": "#32-design-brief-execution-scope",
+  "clause_ok": true,
+  "anchor_ok": true,
+  "clause": "[HARD] Design briefs MUST NOT override brand context \u2014 brand remains the constitutional parent",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-068",
+  "file": ".claude/rules/moai/design/constitution.md",
+  "anchor": "#32-design-brief-execution-scope",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "[HARD] moai-workflow-design continues to write machine-generated artifacts to .moai/design/",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-069",
+  "file": ".claude/rules/moai/design/constitution.md",
+  "anchor": "#32-design-brief-execution-scope",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "[HARD] Reserved file paths (canonical list): tokens.json, components.json, assets/, import-warnings.json, brief/BRIEF-*.md",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-070",
+  "file": ".claude/rules/moai/design/constitution.md",
+  "anchor": "#32-design-brief-execution-scope",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "[HARD] Token budget for auto-loading is bounded by design_docs.token_budget; when absent, MUST default to 20000",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-071",
+  "file": ".claude/rules/moai/design/constitution.md",
+  "anchor": "#32-design-brief-execution-scope",
+  "clause_ok": true,
+  "anchor_ok": true,
+  "clause": "[HARD] Priority order when truncation is needed: spec.md > system.md > research.md",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-072",
+  "file": ".claude/rules/moai/design/constitution.md",
+  "anchor": "#33-relationship",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "Brand (.moai/project/brand/) = WHO the brand is; Design (.moai/design/) = WHAT each iteration produces; brand constraints win on conflict.",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-150",
+  "file": ".claude/rules/moai/workflow/session-handoff.md",
+  "anchor": "#when-to-generate-5-triggers",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "[HARD] The orchestrator MUST emit a paste-ready resume message when ANY of the 5 trigger conditions activate (model-specific context threshold per context-window-management.md \u00a7 Context Window Targets / SPEC phase complete / user session-end request / PR creation success with pending SPECs / multi-milestone checkpoint)",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-151",
+  "file": ".claude/rules/moai/workflow/session-handoff.md",
+  "anchor": "#canonical-format-verbatim-spec",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "[HARD] Resume message MUST follow the exact 6-block structure (Block 1 ultrathink + SPEC-ID + phase, Block 2 applied lessons, Block 3 separator + \uc804\uc81c \uac80\uc99d/Preconditions header, Block 4 numbered preconditions, Block 5 separator + \uc2e4\ud589/run, Block 6 separator + \uba38\uc9c0 \ud6c4/after-merge)",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-152",
+  "file": ".claude/rules/moai/workflow/session-handoff.md",
+  "anchor": "#auto-memory-integration-mandatory",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "[HARD] When generating a resume message, the orchestrator MUST also persist it to a memory project entry (project_<wave>_<spec>_<status>.md), include verbatim under '## \ub2e4\uc74c \uc138\uc158 \uc2dc\uc791\uc810 (paste-ready resume message)' heading, update MEMORY.md index, and mark superseded entries with [SUPERSEDED by <new-file>] prefix",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R2-153",
+  "file": ".claude/rules/moai/workflow/session-handoff.md",
+  "anchor": "#canonical-format-verbatim-spec",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "[HARD] Resume message fenced text block MUST be bounded by cut-line markers: top marker '\u2702\u2500\u2500\u2500\u2500 \uc5ec\uae30\ubd80\ud130 \ubcf5\uc0ac \u2500\u2500\u2500\u2500\u2702' before Block 1 (or Block 0 if L3 worktree), bottom marker '\u2702\u2500\u2500\u2500\u2500 \uc5ec\uae30\uae4c\uc9c0 \ubcf5\uc0ac \u2500\u2500\u2500\u2500\u2702' after Block 6. \u2702 symbol (U+2702 BLACK SCISSORS) and \u2500 (U+2500) preserved verbatim across all locales; only the marker text translates per conversation_language. Markers sit inside the fenced block alongside content so they are copied verbatim with the message, providing an unambiguous copy boundary in long terminal scrollback.",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R5-001",
+  "file": ".claude/rules/moai/core/askuser-protocol.md",
+  "anchor": "#orchestratorsubagent-boundary",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "Subagents MUST NOT invoke AskUserQuestion",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R5-002",
+  "file": ".claude/rules/moai/core/askuser-protocol.md",
+  "anchor": "#orchestratorsubagent-boundary",
+  "clause_ok": true,
+  "anchor_ok": true,
+  "clause": "Subagents MUST NOT output free-form prose questions directed at the user",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R5-003",
+  "file": ".claude/rules/moai/core/askuser-protocol.md",
+  "anchor": "#orchestratorsubagent-boundary",
+  "clause_ok": true,
+  "anchor_ok": true,
+  "clause": "Subagents MUST NOT embed AskUserQuestion call syntax in their response body",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R5-004",
+  "file": ".claude/rules/moai/workflow/ci-autofix-protocol.md",
+  "anchor": "#ci-auto-fix-loop-entry-condition",
+  "clause_ok": true,
+  "anchor_ok": false,
+  "clause": "The CI auto-fix loop MUST be entered ONLY when the orchestrator hands off a failing required check",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R5-005",
+  "file": ".claude/rules/moai/workflow/ci-autofix-protocol.md",
+  "anchor": "#iteration-limit",
+  "clause_ok": true,
+  "anchor_ok": false,
+  "clause": "The auto-fix loop MUST attempt at most **3 iterations**. The iteration counter is persisted in `.moai/state/ci-autofix-<PR>.json`",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R5-006",
+  "file": ".claude/rules/moai/workflow/ci-autofix-protocol.md",
+  "anchor": "#iteration-limit",
+  "clause_ok": true,
+  "anchor_ok": false,
+  "clause": "The AskUserQuestion at iteration > 3 MUST be a blocking call with no silent timeout",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R5-007",
+  "file": ".claude/rules/moai/workflow/ci-autofix-protocol.md",
+  "anchor": "#commit-strategy",
+  "clause_ok": true,
+  "anchor_ok": false,
+  "clause": "Every auto-fix patch MUST be applied as a **new commit** on the PR branch. Do not force-push.",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R5-008",
+  "file": ".claude/rules/moai/workflow/ci-autofix-protocol.md",
+  "anchor": "#user-interaction-channel",
+  "clause_ok": true,
+  "anchor_ok": false,
+  "clause": "AskUserQuestion is the **exclusive user interaction channel** for the auto-fix loop",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R5-009",
+  "file": ".claude/rules/moai/workflow/ci-autofix-protocol.md",
+  "anchor": "#user-interaction-channel",
+  "clause_ok": false,
+  "anchor_ok": false,
+  "clause": "'The orchestrator MUST preload AskUserQuestion via `ToolSearch(query: \"select:AskUserQuestion\")` before every AskUserQuestion call'",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R5-010",
+  "file": ".claude/rules/moai/workflow/ci-autofix-protocol.md",
+  "anchor": "#semantic-failure-handling",
+  "clause_ok": true,
+  "anchor_ok": false,
+  "clause": "Semantic failures (data race, deadlock, panic, test assertion failure) MUST NOT be automatically patched",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R5-011",
+  "file": ".claude/rules/moai/workflow/ci-autofix-protocol.md",
+  "anchor": "#protected-files",
+  "clause_ok": true,
+  "anchor_ok": false,
+  "clause": "The auto-fix loop MUST NOT modify `.env`, `.env.*`, credentials files, API key files, or any file matching common secrets patterns",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R5-012",
+  "file": ".claude/rules/moai/workflow/ci-autofix-protocol.md",
+  "anchor": "#audit-log",
+  "clause_ok": true,
+  "anchor_ok": false,
+  "clause": "Every auto-fix iteration MUST be logged to",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R5-013",
+  "file": ".claude/rules/moai/workflow/ci-autofix-protocol.md",
+  "anchor": "#protected-files",
+  "clause_ok": true,
+  "anchor_ok": false,
+  "clause": "The auto-fix loop MUST NOT modify CI watch infrastructure scripts or workflow definitions",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R5-022",
+  "file": ".claude/rules/moai/workflow/context-window-management.md",
+  "anchor": "#context-window-targets",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "Operational threshold is model-specific: 1M context (Opus 5 / Opus 4.8 / GLM-5.3) = 50%, 256K context (Fable) = 90%, 200K context (Sonnet/Haiku) = 90%",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R5-023",
+  "file": ".claude/rules/moai/workflow/context-window-management.md",
+  "anchor": "#user-responsibilities",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "When usage crosses the model-specific threshold, user MUST save in-flight state, run /clear, then paste resume message",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R5-024",
+  "file": ".claude/rules/moai/workflow/context-window-management.md",
+  "anchor": "#user-responsibilities",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "When usage crosses 95% on any model, the next action MUST be /clear \u2014 no further large work in current session",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R5-025",
+  "file": ".claude/rules/moai/workflow/context-window-management.md",
+  "anchor": "#orchestrator-responsibilities",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "Pre-clear announcement: When orchestrator detects context approaching model-specific threshold, it MUST stop large tool calls, persist progress, emit resume message, and recommend /clear",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R5-026",
+  "file": ".claude/rules/moai/workflow/context-window-management.md",
+  "anchor": "#orchestrator-responsibilities",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "Resume message format must include all fields so next session is self-sufficient",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R5-027",
+  "file": ".claude/rules/moai/workflow/spec-workflow.md",
+  "anchor": "#spec-phase-discipline",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "Step ordering: Step 1 (plan) MUST execute in main checkout. NO L2/L3 worktree at this step",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R5-028",
+  "file": ".claude/rules/moai/workflow/spec-workflow.md",
+  "anchor": "#spec-phase-discipline",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "Step ordering rules: Step 2 run, Step 3 sync, and Step 4 cleanup sequencing constraints",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R5-029",
+  "file": ".claude/rules/moai/workflow/worktree-state-guard.md",
+  "anchor": "#escalation-path",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "AskUserQuestion is invoked by the orchestrator only. The Go CLI returns exit codes and JSON; the orchestrator translates these into user-facing prompts",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R5-035",
+  "file": ".claude/rules/moai/development/branch-origin-protocol.md",
+  "anchor": "#hard-rules",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "Skill body BODP gate MUST follow the askuser-protocol Socratic structure: (\uad8c\uc7a5) first, \u22644 options, conversation_language match, Other auto-appended",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R5-037",
+  "file": ".claude/rules/moai/development/agent-authoring.md",
+  "anchor": "#frontmatter-format-rules",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "Field format constraints: tools Comma-separated string ONLY. YAML arrays NOT supported for tools/disallowedTools",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R5-038",
+  "file": ".claude/rules/moai/development/skill-authoring.md",
+  "anchor": "#key-format-rules",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "allowed-tools format: Comma-separated string ONLY. Space-separated values are PROHIBITED",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R5-039",
+  "file": ".claude/rules/moai/workflow/session-handoff.md",
+  "anchor": "#worktree-anchored-resume-pattern",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "When the work happened inside a worktree, the resume message MUST prepend Block 0 (cwd anchoring) before the standard 6-block structure",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R5-040",
+  "file": ".claude/rules/moai/core/glm-web-tooling.md",
+  "anchor": "#hard-routing-table",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "While a session is GLM-backed, MoAI agents and the orchestrator SHALL route web search to mcp__web_search_prime__webSearchPrime, web fetch to mcp__web_reader__webReader, and image reading to a mcp__zai-mcp-server__* vision tool instead of the built-in WebSearch / WebFetch / Read-on-image",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R5-041",
+  "file": ".claude/rules/moai/core/glm-web-tooling.md",
+  "anchor": "#hard-routing-table",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "While a session is GLM-backed, MoAI agents and the orchestrator SHALL NOT invoke the built-in WebSearch or WebFetch, nor Read on an image file, because those route through the 529-prone api.z.ai/api/anthropic gateway and the base64->422 image path; the moai cg leader pane (Claude backend) is exempt",
+  "missing_file": false
+ },
+ {
+  "id": "CONST-V3R6-001",
+  "file": ".claude/rules/moai/workflow/runtime-recovery-doctrine.md",
+  "anchor": "#4-anti-death-spiral-hook-carve-out-documentation-only-policy",
+  "clause_ok": false,
+  "anchor_ok": true,
+  "clause": "Recovery-Signal Carve-Out: while a turn is itself a recovery signal (recovering from a compact, prompt_too_long, max_output_tokens, media_size, or compact-failure), Stop/PostToolUse hooks SHOULD exit 0 rather than exit 2, so that recovery turns are NOT placed into the error \u2192 stop-hook-blocks \u2192 retry \u2192 error death-spiral; documentation-only policy guidance (current hooks do not parse stopReason; mechanical enforcement deferred to a future recovery-signal SPEC)",
+  "missing_file": false
+ }
+]

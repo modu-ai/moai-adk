@@ -257,4 +257,35 @@ func TestScanWriteContentDifferential(t *testing.T) {
 			t.Errorf("%s: allow carried a non-empty reason: %q", fx.name, o.reason)
 		}
 	}
+
+	// AC-SSS-001 assertion (ii), added by M2: for every fixture that denies,
+	// the derived pre-filter would NOT have skipped it.
+	//
+	// The first assertion pins the decisions the gate reaches. This one guards
+	// the mechanism that decides whether the gate runs at all: a pre-filter
+	// that skipped a denying payload would suppress a deny while every recorded
+	// decision above still looked correct on a tree where the pre-filter was
+	// not consulted. It is asserted against the derivation directly rather than
+	// through the decision, so it keeps observing even if a later change alters
+	// where the pre-filter is consulted from.
+	prefilters := security.DerivePrefilters(security.NewRuleManager().FindRulesConfig(root))
+	if !prefilters.Known {
+		t.Fatal("the shipped ruleset derived no pre-filter; assertion (ii) would observe nothing")
+	}
+	observedDenies := 0
+	for _, fx := range scanCorpus {
+		if got[fx.name].decision != DecisionDeny {
+			continue
+		}
+		observedDenies++
+		language := security.GetLanguageForExtension(filepath.Ext(fx.virtualPath))
+		if prefilters.CanSkip(language, corpusFixtureContent(t, fx.file)) {
+			t.Errorf("%s: the pre-filter would have skipped a DENYING payload (language %q, tokens %q) — a skip that suppresses a deny is a correctness failure",
+				fx.name, language, prefilters.ByLanguage[language].Tokens)
+		}
+	}
+	if observedDenies == 0 {
+		t.Fatal("no fixture denied, so assertion (ii) observed nothing")
+	}
+	t.Logf("assertion (ii): %d denying fixtures, none skippable by the pre-filter", observedDenies)
 }

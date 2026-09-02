@@ -30,6 +30,7 @@ import (
 	"strings"
 
 	"github.com/modu-ai/moai-adk/internal/mx"
+	"github.com/modu-ai/moai-adk/internal/navigator/astx"
 	"github.com/modu-ai/moai-adk/internal/navigator/tiers"
 )
 
@@ -44,6 +45,58 @@ const (
 	KindSpecDepends = "spec-depends"
 )
 
+// Tag-kind edge kinds (REQ-MTE-001): one kind per standalone @MX tag kind,
+// named by lowercasing the tag kind and prefixing mx-. Uniform over the
+// closed mx.TagKind domain — a new scanner tag kind extends this table, it
+// does not carve out a special case. mx-* edges carry occurrence + endpoints
+// only (kind, source, target, line): tag content, rot state, provenance, and
+// wall-clock stay scanner-side (REQ-MTE-007), where the mx sidecar remains
+// the single source of truth.
+const (
+	// KindMXNote is a standalone @MX:NOTE tag occurrence.
+	KindMXNote = "mx-note"
+	// KindMXWarn is a standalone @MX:WARN tag occurrence.
+	KindMXWarn = "mx-warn"
+	// KindMXAnchor is a standalone @MX:ANCHOR tag occurrence.
+	KindMXAnchor = "mx-anchor"
+	// KindMXTodo is a standalone @MX:TODO tag occurrence.
+	KindMXTodo = "mx-todo"
+	// KindMXLegacy is a standalone @MX:LEGACY tag occurrence.
+	KindMXLegacy = "mx-legacy"
+	// KindMXDebt is a standalone @MX:DEBT tag occurrence.
+	KindMXDebt = "mx-debt"
+)
+
+// mxTagEdgeKind maps a scanner tag kind to its edge kind ("" for kinds
+// outside the standalone domain — sub-lines never reach the artifact).
+func mxTagEdgeKind(k mx.TagKind) string {
+	switch k {
+	case mx.MXNote:
+		return KindMXNote
+	case mx.MXWarn:
+		return KindMXWarn
+	case mx.MXAnchor:
+		return KindMXAnchor
+	case mx.MXTodo:
+		return KindMXTodo
+	case mx.MXLegacy:
+		return KindMXLegacy
+	case mx.MXDebt:
+		return KindMXDebt
+	default:
+		return ""
+	}
+}
+
+// scanDirFn is the mx scanner seam: one project scan feeds BOTH the mx-spec
+// layer and the tag layer (REQ-MTE-006 — no second project walk). Tests
+// replace it to count passes.
+var scanDirFn = func(projectRoot string) ([]mx.Tag, error) {
+	s := mx.NewScanner()
+	s.SetIgnorePatterns(mx.DefaultScanIgnore)
+	return s.ScanDir(projectRoot)
+}
+
 // Edge is one persisted graph edge. Line carries the 1-based line of the
 // @MX tag owning the SPEC sub-line (mx-spec edges only; the scanner records
 // the owning tag's line, not the sub-line's own position).
@@ -52,25 +105,90 @@ type Edge struct {
 	Source string `json:"source"`
 	Target string `json:"target"`
 	Line   int    `json:"line,omitempty"`
+
+	// Grade is the resolution grade used to derive a code-derived edge
+	// (full | name-based). Empty on doc-derived edges.
+	Grade string `json:"grade,omitempty"`
+	// DisagreesWith marks a doc/code layer disagreement on the same
+	// relationship (REQ-GF-015): the value names the other layer's claim.
+	// Both edges stay in the artifact — never a silent pick.
+	DisagreesWith string `json:"disagrees_with,omitempty"`
+
+	// Resolution is how strongly a code-call edge's callee resolution is
+	// believed (REQ-GEC-001): how the edge was matched, an EVIDENCE axis
+	// orthogonal to Grade's capability axis (REQ-GEC-007). Populated on
+	// code-call edges only; omitempty keeps doc-derived and code-import
+	// serialization byte-identical to the pre-field artifact (REQ-GEC-006).
+	// The appended-after-DisagreesWith position preserves every existing
+	// edge's key order.
+	Resolution string `json:"resolution,omitempty"`
+	// Confidence is the numeric confidence for Resolution, defined as a
+	// pure function of it at exactly one point (ConfidenceFor). All three
+	// domain values are non-zero, so omitempty never drops a populated
+	// confidence; absent on old artifacts (REQ-GEC-009: loaded as unknown).
+	Confidence float64 `json:"confidence,omitempty"`
+}
+
+// Resolution labels for code-call edges (REQ-GEC-001): the closed 3-value
+// domain. extracted = same-file declaration or Go-module import evidence;
+// intra-package = same-directory declaration (by-construction package
+// proximity, no import evidence); inferred = name-only fallback.
+const (
+	ResolutionExtracted    = "extracted"
+	ResolutionIntraPackage = "intra-package"
+	ResolutionInferred     = "inferred"
+)
+
+// ConfidenceFor maps a resolution label to its numeric confidence — the
+// SINGLE definition of that map (REQ-GEC-001), so the two fields cannot
+// drift. Total over the closed 3-value domain; any other label (including
+// the empty label of pre-upgrade artifacts) maps to 0, which serializes as
+// absent.
+//
+// @MX:NOTE: [AUTO] single-definition resolution→confidence map — stamp via this, never inline the numbers (SPEC-GRAPH-EDGE-CONFIDENCE-001)
+func ConfidenceFor(resolution string) float64 {
+	switch resolution {
+	case ResolutionExtracted:
+		return 1.0
+	case ResolutionIntraPackage:
+		return 0.95
+	case ResolutionInferred:
+		return 0.85
+	default:
+		return 0
+	}
 }
 
 // codemapsDepRelPath is the /moai codemaps dep-graph output (read-only seed;
 // same path contract as internal/navigator/tiers.blueprint).
 const codemapsDepRelPath = ".moai/project/codemaps/dependencies.md"
 
-// Build aggregates the three edge layers under projectRoot and returns the
-// sorted edge list. Every layer fails open: an absent codemaps artifact, an
-// empty @MX scan, or a missing .moai/specs/ tree yields zero edges of that
-// kind, never an error — the artifact reflects exactly what exists on disk.
+// Build aggregates the edge layers under projectRoot and returns the sorted
+// edge list. Every layer fails open: an absent codemaps artifact, an empty
+// @MX scan, or a missing .moai/specs/ tree yields zero edges of that kind,
+// never an error — the artifact reflects exactly what exists on disk.
+//
+// Without range data the tag layer emits the self-edge form for every tag
+// (REQ-MTE-015); BuildWithCodeLayersMode supplies the extractor's retained
+// ranges so body-anchored tags join to their enclosing symbol (REQ-MTE-002).
 func Build(projectRoot string) ([]Edge, error) {
+	return buildDocLayers(projectRoot, nil)
+}
+
+// buildDocLayers is Build over an optional repo-relative-file → declaration
+// range index. tags are scanned ONCE and feed both the mx-spec and the mx-*
+// layers (REQ-MTE-006).
+func buildDocLayers(projectRoot string, rangesByFile map[string][]astx.FuncRange) ([]Edge, error) {
 	imports, err := importEdges(projectRoot)
 	if err != nil {
 		return nil, err
 	}
-	specLinks, err := mxSpecEdges(projectRoot)
+	tags, err := scanDirFn(projectRoot)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("graph: scan @MX tags: %w", err)
 	}
+	specLinks := mxSpecEdgesFromTags(tags, projectRoot)
+	tagLinks := tagEdgesFromTags(tags, projectRoot, rangesByFile)
 	depends, err := specDependsEdges(projectRoot)
 	if err != nil {
 		return nil, err
@@ -80,13 +198,24 @@ func Build(projectRoot string) ([]Edge, error) {
 		return nil, err
 	}
 
-	edges := make([]Edge, 0, len(imports)+len(specLinks)+len(depends)+len(reportLinks))
+	edges := make([]Edge, 0, len(imports)+len(specLinks)+len(tagLinks)+len(depends)+len(reportLinks))
 	edges = append(edges, imports...)
 	edges = append(edges, specLinks...)
+	edges = append(edges, tagLinks...)
 	edges = append(edges, depends...)
 	edges = append(edges, reportLinks...)
 	sort.Slice(edges, func(i, j int) bool { return EdgeLess(edges[i], edges[j]) })
 	return edges, nil
+}
+
+// repoRel renders an absolute path as a repo-relative slash path when it sits
+// under projectRoot; the absolute form is the fallback (absolute paths are
+// machine-specific and would make the artifact non-diffable).
+func repoRel(projectRoot, abs string) string {
+	if rel, err := filepath.Rel(projectRoot, abs); err == nil && !strings.HasPrefix(rel, "..") {
+		return filepath.ToSlash(rel)
+	}
+	return abs
 }
 
 // EdgeLess is the canonical edge ordering: kind, then source, then target,
@@ -193,35 +322,67 @@ func importEdges(projectRoot string) ([]Edge, error) {
 	return edges, nil
 }
 
-// mxSpecEdges extracts code-location→SPEC edges from @MX:SPEC sub-lines via
-// the existing mx scanner. Source paths are repo-relative (the scanner
-// reports absolute paths; absolute paths are machine-specific and would make
-// the artifact non-diffable).
-func mxSpecEdges(projectRoot string) ([]Edge, error) {
-	s := mx.NewScanner()
-	s.SetIgnorePatterns(mx.DefaultScanIgnore)
-	tags, err := s.ScanDir(projectRoot)
-	if err != nil {
-		return nil, fmt.Errorf("graph: scan @MX tags: %w", err)
-	}
-
+// mxSpecEdgesFromTags extracts code-location→SPEC edges from the tags of ONE
+// scanner pass (the same pass the tag layer consumes — REQ-MTE-006).
+// Source paths are repo-relative (the scanner reports absolute paths;
+// absolute paths are machine-specific and would make the artifact
+// non-diffable).
+func mxSpecEdgesFromTags(tags []mx.Tag, projectRoot string) []Edge {
 	var edges []Edge
 	for _, tag := range tags {
 		if tag.SpecRef == "" {
 			continue
 		}
-		source := tag.File
-		if rel, relErr := filepath.Rel(projectRoot, tag.File); relErr == nil && !strings.HasPrefix(rel, "..") {
-			source = filepath.ToSlash(rel)
-		}
 		edges = append(edges, Edge{
 			Kind:   KindMXSpec,
-			Source: source,
+			Source: repoRel(projectRoot, tag.File),
 			Target: tag.SpecRef,
 			Line:   tag.Line,
 		})
 	}
-	return edges, nil
+	return edges
+}
+
+// tagEdgesFromTags maps the standalone tag occurrences of ONE scanner pass
+// into the mx-* edge layer (REQ-MTE-001). Endpoints (REQ-MTE-002): source =
+// repo-relative file, target = the innermost declared range containing the
+// tag line, else the file itself (self-edge — a file-scope tag or missing
+// range data is represented, never dropped). The mapping is a pure function
+// of (File, Kind, Line) plus the tree content behind rangesByFile: no
+// scanner-mutable metadata (Body, Reason, RotRisk, CreatedBy, LastSeenAt)
+// reaches an edge (REQ-MTE-003, REQ-MTE-007).
+func tagEdgesFromTags(tags []mx.Tag, projectRoot string, rangesByFile map[string][]astx.FuncRange) []Edge {
+	var edges []Edge
+	for _, tag := range tags {
+		kind := mxTagEdgeKind(tag.Kind)
+		if kind == "" {
+			continue
+		}
+		source := repoRel(projectRoot, tag.File)
+		target := source // self-edge fallback
+		if ranges, ok := rangesByFile[source]; ok {
+			if name := enclosingRangeName(ranges, tag.Line); name != "" {
+				target = name
+			}
+		}
+		edges = append(edges, Edge{Kind: kind, Source: source, Target: target, Line: tag.Line})
+	}
+	return edges
+}
+
+// enclosingRangeName returns the innermost range containing line — the same
+// innermost-wins rule as the seam's enclosingFunction (acceptance §D.2: a
+// tag inside a nested closure joins to the innermost declaration).
+func enclosingRangeName(ranges []astx.FuncRange, line int) string {
+	best := ""
+	bestStart := -1
+	for _, r := range ranges {
+		if line >= r.StartLine && line <= r.EndLine && r.StartLine >= bestStart {
+			bestStart = r.StartLine
+			best = r.Name
+		}
+	}
+	return best
 }
 
 // specDependsEdges extracts SPEC→SPEC edges from spec.md frontmatter

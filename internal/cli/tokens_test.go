@@ -9,6 +9,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/modu-ai/moai-adk/internal/statusline"
 )
 
 // fixtureSessionID matches the transcript filename stem used by the fixtures
@@ -280,8 +282,32 @@ func TestRunTokensRecordContextSnapshot(t *testing.T) {
 	if err := os.MkdirAll(stateDir, 0o755); err != nil {
 		t.Fatalf("mkdir state: %v", err)
 	}
-	snap := `{"schema_version":1,"session_id":"ctx-session","writer_pid":42,"captured_at":"2026-08-17T00:00:00Z","context_window_size":1000000,"tokens_used":500000,"raw_pct":50.0,"stage":"soft","band":"large"}`
-	if err := os.WriteFile(filepath.Join(stateDir, "context-usage.json"), []byte(snap), 0o644); err != nil {
+	// The record is addressed per session (SPEC-SESSION-TELEMETRY-001
+	// REQ-ST-001): it lives under state/context-usage/ named for the session
+	// being accounted for, which here is the transcript fixture's own id.
+	// The fixture is marshalled from the statusline record type rather than
+	// hand-authored, so this package declares no second copy of that schema
+	// (REQ-ST-005) — the duplicate declaration this test's fixture used to
+	// carry is exactly what the consolidation removed.
+	snap, err := json.Marshal(&statusline.SessionTelemetryRecord{
+		SchemaVersion:     1,
+		SessionID:         fixtureSessionID,
+		WriterPID:         42,
+		CapturedAt:        "2026-08-17T00:00:00Z",
+		ContextWindowSize: 1000000,
+		TokensUsed:        500000,
+		RawPct:            50.0,
+		Stage:             "soft",
+		Band:              "large",
+	})
+	if err != nil {
+		t.Fatalf("marshal context fixture: %v", err)
+	}
+	snapPath := statusline.SessionTelemetryPath(stateDir, fixtureSessionID)
+	if err := os.MkdirAll(filepath.Dir(snapPath), 0o755); err != nil {
+		t.Fatalf("mkdir context-usage: %v", err)
+	}
+	if err := os.WriteFile(snapPath, snap, 0o644); err != nil {
 		t.Fatalf("write context fixture: %v", err)
 	}
 
@@ -292,7 +318,7 @@ func TestRunTokensRecordContextSnapshot(t *testing.T) {
 	if rec.Context == nil {
 		t.Fatalf("record.context is nil, want embedded snapshot")
 	}
-	if rec.Context.SessionID != "ctx-session" ||
+	if rec.Context.SessionID != fixtureSessionID ||
 		rec.Context.ContextWindowSize != 1000000 ||
 		rec.Context.TokensUsed != 500000 ||
 		rec.Context.Stage != "soft" ||

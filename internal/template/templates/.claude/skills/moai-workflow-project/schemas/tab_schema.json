@@ -512,27 +512,6 @@
               ],
               "current_value_path": "git_strategy.personal.github_integration",
               "required": true
-            },
-            {
-              "question": "Auto-create branches for Personal mode? (current: {{git_strategy.personal.auto_branch}})",
-              "header": "Auto Branch",
-              "field": "git_strategy.personal.auto_branch",
-              "type": "select_single",
-              "multiSelect": false,
-              "options": [
-                {
-                  "label": "Enabled",
-                  "description": "Automatically create feature branches (recommended)",
-                  "value": true
-                },
-                {
-                  "label": "Disabled",
-                  "description": "Manual branch creation",
-                  "value": false
-                }
-              ],
-              "current_value_path": "git_strategy.personal.auto_branch",
-              "required": true
             }
           ]
         },
@@ -721,27 +700,6 @@
                 }
               ],
               "current_value_path": "git_strategy.team.github_integration",
-              "required": true
-            },
-            {
-              "question": "Auto-create branches for Team mode? (current: {{git_strategy.team.auto_branch}})",
-              "header": "Auto Branch",
-              "field": "git_strategy.team.auto_branch",
-              "type": "select_single",
-              "multiSelect": false,
-              "options": [
-                {
-                  "label": "Enabled",
-                  "description": "Automatically create feature branches (recommended)",
-                  "value": true
-                },
-                {
-                  "label": "Disabled",
-                  "description": "Manual branch creation",
-                  "value": false
-                }
-              ],
-              "current_value_path": "git_strategy.team.auto_branch",
               "required": true
             }
           ]
@@ -1003,30 +961,25 @@
               "required": false
             },
             {
-              "question": "How should SPEC implementations be committed? (current: {{github.spec_git_workflow}})",
-              "header": "SPEC Workflow",
-              "field": "github.spec_git_workflow",
+              "question": "Auto-create a branch for each SPEC implementation? (current: {{git_strategy.{mode}.automation.auto_branch}})",
+              "header": "SPEC Branching",
+              "field": "git_strategy.{mode}.automation.auto_branch",
               "type": "select_single",
               "multiSelect": false,
-              "note": "Only relevant when auto_branch is enabled. If auto_branch is disabled, commits go to current branch.",
+              "note": "Branch handling only. The delivery strategy is a separate axis, set by git_strategy.{mode}.workflow.",
               "options": [
                 {
-                  "label": "Direct Commit",
-                  "description": "Commit directly to base branch (main/develop) - fast for personal projects",
-                  "value": "develop_direct"
+                  "label": "Enabled",
+                  "description": "Create a feature branch per SPEC - better for code review",
+                  "value": true
                 },
                 {
-                  "label": "Feature Branch",
-                  "description": "Create feature/SPEC-xxx branch for each SPEC - better for code review",
-                  "value": "feature_branch"
-                },
-                {
-                  "label": "Per SPEC",
-                  "description": "Ask for branching strategy on each SPEC creation",
-                  "value": "per_spec"
+                  "label": "Disabled",
+                  "description": "Commit to the current branch - fast for personal projects",
+                  "value": false
                 }
               ],
-              "current_value_path": "github.spec_git_workflow",
+              "current_value_path": "git_strategy.{mode}.automation.auto_branch",
               "required": true
             }
           ]

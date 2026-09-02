@@ -49,6 +49,7 @@ package cli
 // Do not merge the two traversals into a shared helper.
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -185,8 +186,41 @@ func sandboxProfileBaseDir() func() {
 	}
 }
 
+// RESIDUE GUARD (SPEC-CLI-TEST-CWD-ISOLATION-001 REQ-3).
+//
+// Go test binaries run with cwd = the package directory, so any state write
+// whose project root resolves to an empty or relative value lands INSIDE the
+// repository tree as internal/cli/.moai (the name-claim registries
+// state/todo/leads.json and state/factory/workers.json were the measured
+// producers; the state subdirectory has already drifted once — kanban/ →
+// todo/ — so the guard watches the .moai DIRECTORY, never a file list). The
+// residue is gitignored and therefore invisible to git status, but it breaks
+// every .moai-marker upward walk that later starts below the repository root:
+// the walk stops at internal/cli/.moai and misjudges an applicable tree as
+// inapplicable — a different answer, not an error (the t317 D9 gate failure).
+//
+// The guard judges the existence DELTA across the run: .moai absent at
+// TestMain entry and present after m.Run() fails the run, naming the detected
+// path. A directory that already existed at entry is not a delta this run
+// produced, so the guard stays silent for it — the message tells the developer
+// to remove it, which re-arms the delta for the next run. Tree-wide detection
+// beyond the package directory is the AC's baseline-delta scan; the guard is
+// deliberately O(1) at the measured locus.
+//
+// TestMain always runs, so the guard rides every -run selector — including
+// selectors that match no tests, where a named guard test would be filtered
+// out and pass vacuously.
 func TestMain(m *testing.M) {
 	restoreProfileBaseDir := sandboxProfileBaseDir()
+
+	// Pin the watched path from the entry cwd (absolute) so a test that chdirs
+	// cannot move the locus out from under the post-run check.
+	entryWD, err := os.Getwd()
+	if err != nil {
+		entryWD = "."
+	}
+	residueDir := filepath.Join(entryWD, ".moai")
+	residueExistedAtStart := residueGuardDirExists(residueDir)
 
 	warmUpCommandTree(rootCmd)
 	// Serial, single-goroutine, immediately after the warm-up: these Commands()
@@ -194,8 +228,28 @@ func TestMain(m *testing.M) {
 	warmUpTreeSize = countCommandTree(rootCmd)
 
 	code := m.Run()
+
+	if !residueExistedAtStart && residueGuardDirExists(residueDir) {
+		fmt.Fprintf(os.Stderr, "RESIDUE GUARD FAIL: this test run created %s — "+
+			"internal/cli tests must not write .moai state into the package working "+
+			"directory (SPEC-CLI-TEST-CWD-ISOLATION-001 REQ-1/REQ-2/REQ-3). Isolate the "+
+			"producing test's project root (see the SPEC's mechanism ladder), then remove "+
+			"the directory so the guard re-arms for the next run.\n", residueDir)
+		if code == 0 {
+			code = 1
+		}
+	}
+
 	restoreProfileBaseDir()
 	os.Exit(code)
+}
+
+// residueGuardDirExists reports whether path names an existing directory. It is
+// deliberately separate from any other helper so the guard's judgment cannot be
+// redirected by a change to shared machinery.
+func residueGuardDirExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && info.IsDir()
 }
 
 // TestProfileBaseDirIsSandboxed is the guard for sandboxProfileBaseDir.

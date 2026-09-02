@@ -636,6 +636,8 @@ Thanks to this classification scheme, only the convention compliance of SPECs cu
 
 ## Related Documents
 
+- [SPEC Lifecycle](/en/core-concepts/spec-lifecycle) -- follow the document this page
+  describes through its plan/run/sync lifecycle, gates included
 - [What is MoAI-ADK?](/en/core-concepts/what-is-moai-adk) -- Understand the overall structure
   of MoAI-ADK
 - [Development Methodology (DDD/TDD)](/en/core-concepts/ddd) -- Learn the DDD/TDD methodologies for

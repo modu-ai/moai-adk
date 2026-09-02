@@ -5,6 +5,8 @@ index:
   title: "什么是 MoAI-ADK？"
 "spec-based-dev":
   title: "基于 SPEC 的开发"
+"spec-lifecycle":
+  title: "SPEC 生命周期"
 ddd:
   title: "MoAI-ADK 开发方法论"
 "trust-5":

@@ -367,6 +367,14 @@ func TestParseKanbanFlag_SpecIsNotStolenFromAFlag(t *testing.T) {
 // --kanban nor -k, and the process environment carries the kanban signal at
 // the moment the launch happens (the signal REQ-FM-023 transports).
 func TestCC_KanbanFlagStrippedBeforeLaunch(t *testing.T) {
+	// SPEC-CLI-TEST-CWD-ISOLATION-001: the kanban launch claims the lead name
+	// through launchProjectRoot -> resolveProjectDir ($CLAUDE_PROJECT_DIR or
+	// cwd), a resolver the findProjectRootFn stub below does not cover — under
+	// it the claim lands in internal/cli/.moai. Pointing the env at a temp dir
+	// keeps the registry write in the test-owned sandbox (the same medicine
+	// TestCC_KanbanWritesNoStateRecord applies).
+	t.Setenv(config.EnvClaudeProjectDir, t.TempDir())
+
 	origLaunch := unifiedLaunchFunc
 	defer func() { unifiedLaunchFunc = origLaunch }()
 
@@ -407,10 +415,17 @@ func TestCC_KanbanFlagStrippedBeforeLaunch(t *testing.T) {
 	}
 }
 
-// TestCC_KanbanWritesStateRecord is AC-FM-023a: entering Kanban Mode leaves a
-// session-keyed record under .moai/state/kanban/, and a state directory that
-// cannot be written never blocks the launch (fail-open).
-func TestCC_KanbanWritesStateRecord(t *testing.T) {
+// TestCC_KanbanWritesNoStateRecord supersedes the record-writing half of
+// AC-FM-023a. The launcher no longer writes the kanban record: it runs before
+// the session it launches exists, so the identifier it keyed on came from the
+// project-wide sidecar slot and named the LAUNCHING session
+// (SPEC-KANBAN-RECORD-SESSION-KEY-001 REQ-KRS-002, AC-KRS-003). The session's
+// own SessionStart writes it now, covered in internal/hook.
+//
+// What survives here is AC-FM-023a's other half, unchanged: entering Kanban
+// Mode must not fail the launch, including when the state directory cannot be
+// written.
+func TestCC_KanbanWritesNoStateRecord(t *testing.T) {
 	scrubSessionIDEnv(t) // the runtime stamps a real id into this process; the fixture is the sidecar
 	tmp := t.TempDir()
 	sessionID := "kanban-record-session"
@@ -443,33 +458,33 @@ func TestCC_KanbanWritesStateRecord(t *testing.T) {
 		t.Fatalf("AC-FM-023a: runCC should not error, got: %v", err)
 	}
 
-	rec, err := kanban.Read(tmp, sessionID)
-	if err != nil {
-		t.Fatalf("AC-FM-023a: kanban record not readable: %v", err)
+	// AC-KRS-003: no record is created by the launch, under the sidecar's
+	// identifier or any other. The sidecar holds sessionID, which is exactly
+	// what the pre-change writer keyed on.
+	if _, err := kanban.Read(tmp, sessionID); err == nil {
+		t.Errorf("AC-KRS-003: the launcher wrote a record under the sidecar identifier %q", sessionID)
 	}
-	if rec.SessionID != sessionID {
-		t.Errorf("AC-FM-023a: session_id = %q, want %q", rec.SessionID, sessionID)
+	// *.json in that directory is not a record glob — the lead-name registry
+	// (leads.json) and the backlog queue live there too, and the launch
+	// legitimately writes the former. A RECORD is a file carrying session_id,
+	// and no such file may appear.
+	recordDir := kanban.StateDirForRoot(tmp)
+	entries, err := os.ReadDir(recordDir)
+	if err != nil && !os.IsNotExist(err) {
+		t.Fatalf("ReadDir: %v", err)
 	}
-	if rec.SpecID != "SPEC-PLACEHOLDER" {
-		t.Errorf("AC-FM-023a: spec_id = %q, want %q", rec.SpecID, "SPEC-PLACEHOLDER")
-	}
-	if rec.Backend != kanban.BackendClaude {
-		t.Errorf("AC-FM-023a: backend = %q, want %q", rec.Backend, kanban.BackendClaude)
-	}
-	if rec.EnteredAt == "" {
-		t.Error("AC-FM-023a: entered_at must be stamped at launch")
-	}
-	// verify_rung is an orchestrator-written field: at launch it is deliberately
-	// unrecorded (nil), which is how a later reader tells "never written" from
-	// "written blank" (M3 record contract).
-	if rec.VerifyRung != nil {
-		t.Errorf("AC-FM-023a: verify_rung must be unrecorded at launch, got %q", *rec.VerifyRung)
+	for _, e := range entries {
+		raw, readErr := os.ReadFile(filepath.Join(recordDir, e.Name()))
+		if readErr != nil {
+			continue
+		}
+		if strings.Contains(string(raw), `"session_id"`) {
+			t.Errorf("AC-KRS-003: the launch created a record %q:\n%s", e.Name(), raw)
+		}
 	}
 
 	// Fail-open: a state directory that cannot be written into must not block
-	// the launch. The sidecar is written first, then the directory is sealed,
-	// so session resolution still succeeds and only the record write fails.
-	// Scoped to a subtest so the record-contract assertions above still run on
+	// the launch. Scoped to a subtest so the assertions above still run on
 	// Windows, where the seal cannot be applied.
 	t.Run("fail_open_unwritable_state_dir", func(t *testing.T) {
 		if runtime.GOOS == "windows" {
@@ -504,6 +519,13 @@ func TestCC_KanbanWritesStateRecord(t *testing.T) {
 // narrower trigger — and an initially-absent variable is restored to ABSENT,
 // not to the empty string.
 func TestCC_KanbanEnvMutationIsRestored(t *testing.T) {
+	// SPEC-CLI-TEST-CWD-ISOLATION-001: both subtests drive the real runCC kanban
+	// path, whose lead-name claim resolves via launchProjectRoot ->
+	// resolveProjectDir ($CLAUDE_PROJECT_DIR or cwd) — not the findProjectRootFn
+	// stub below. Redirect that resolver to a temp dir so the registry write
+	// stays out of the package working directory.
+	t.Setenv(config.EnvClaudeProjectDir, t.TempDir())
+
 	origFn := findProjectRootFn
 	findProjectRootFn = func() (string, error) { return t.TempDir(), nil }
 	defer func() { findProjectRootFn = origFn }()

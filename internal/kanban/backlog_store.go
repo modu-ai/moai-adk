@@ -18,16 +18,15 @@
 package kanban
 
 import (
-	"encoding/json"
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/modu-ai/moai-adk/internal/atomicfile"
 )
 
 // backlogLockFileName names the lock artifact sibling to the backlog file.
@@ -144,6 +143,34 @@ func (f BacklogFinding) SamePairAs(other BacklogFinding) bool {
 		(f.SubjectID == other.RelatedID && f.RelatedID == other.SubjectID)
 }
 
+// BacklogArchivedFinding is one archived finding plus the index it occupied
+// in Findings when its card was archived. The position is what makes a
+// restore return the record to the bytes it had rather than to an
+// equivalent-looking record with a different finding order.
+type BacklogArchivedFinding struct {
+	Finding  BacklogFinding `json:"finding"`
+	Position int            `json:"position"`
+}
+
+// BacklogArchiveEntry is one archived card: the row itself, the findings that
+// named it, and the position each occupied.
+//
+// The positions are load-bearing (REQ-TDG-002). `done` splices a row out of
+// the middle of the queue, so a restore that appended would return the same
+// SET of cards in a different ORDER — a record that reads correctly and is
+// not the record the operator had. Carrying the index costs one integer and
+// removes the whole class.
+//
+// The card's findings travel WITH it rather than in a parallel array: a
+// finding that outlives its subject points at nothing (the reason `done`
+// removed them in the first place), and keeping them inside the entry makes
+// "restore the card and everything recorded about it" one move.
+type BacklogArchiveEntry struct {
+	Item     BacklogItem              `json:"item"`
+	Position int                      `json:"position"`
+	Findings []BacklogArchivedFinding `json:"findings"`
+}
+
 // BacklogRecord is the backlog file's document shape. LastSeq is the
 // persisted id high-water mark — additive top-level, absent in files that
 // predate the field (derived from max present id on load). Findings is the
@@ -151,11 +178,137 @@ func (f BacklogFinding) SamePairAs(other BacklogFinding) bool {
 // older files, and always rendered as an array — never null, never an
 // omitted key — so a reader never has to tell "no findings" apart from "no
 // such feature".
+// Archived is the third additive top-level field, following the same
+// precedent again: absent in older files, always rendered as an array, and
+// invisible to every live-queue reader by CONSTRUCTION rather than by filter
+// — a reader that iterates Items cannot see an archived row, so no state
+// enum, no listing filter, and no analysis input had to change for it
+// (spec.md §B.1).
 type BacklogRecord struct {
-	Version  int              `json:"version"`
-	LastSeq  int              `json:"last_seq"`
-	Items    []BacklogItem    `json:"items"`
-	Findings []BacklogFinding `json:"findings"`
+	Version  int                   `json:"version"`
+	LastSeq  int                   `json:"last_seq"`
+	Items    []BacklogItem         `json:"items"`
+	Findings []BacklogFinding      `json:"findings"`
+	Archived []BacklogArchiveEntry `json:"archived"`
+}
+
+// ArchivedIndex returns the index of id in the archive, or -1.
+func (r *BacklogRecord) ArchivedIndex(id string) int {
+	for i, entry := range r.Archived {
+		if entry.Item.ID == id {
+			return i
+		}
+	}
+	return -1
+}
+
+// itemIndex returns the index of id among the live items, or -1.
+func (r *BacklogRecord) itemIndex(id string) int {
+	for i, it := range r.Items {
+		if it.ID == id {
+			return i
+		}
+	}
+	return -1
+}
+
+// ArchiveCard moves the addressed card and every finding naming it out of the
+// live queue and into the archive, recording the position each occupied.
+//
+// This is what `done` performs instead of discarding. The findings move with
+// the card for the reason they were previously deleted with it — a finding
+// that outlives its subject points at a card the operator can no longer see —
+// but moving rather than deleting is what makes the act reversible, and the
+// relations are operator judgment that a discard loses silently (spec.md §A.2).
+func (r *BacklogRecord) ArchiveCard(id string) error {
+	if r.ArchivedIndex(id) >= 0 {
+		return fmt.Errorf("backlog item %s is already archived", id)
+	}
+	at := r.itemIndex(id)
+	if at < 0 {
+		return fmt.Errorf("no backlog item %s", id)
+	}
+
+	entry := BacklogArchiveEntry{
+		Item:     r.Items[at],
+		Position: at,
+		Findings: []BacklogArchivedFinding{},
+	}
+	kept := make([]BacklogFinding, 0, len(r.Findings))
+	for i, f := range r.Findings {
+		if f.Names(id) {
+			entry.Findings = append(entry.Findings, BacklogArchivedFinding{Finding: f, Position: i})
+			continue
+		}
+		kept = append(kept, f)
+	}
+	r.Findings = kept
+	r.Items = append(r.Items[:at:at], r.Items[at+1:]...)
+	r.Archived = append(r.Archived, entry)
+	return nil
+}
+
+// RestoreCard moves an archived card and its findings back into the live
+// queue at the positions they held, and REMOVES the archive entry so each row
+// has exactly one home (REQ-TDG-016).
+//
+// It refuses when the id has since been reissued to a different live card
+// (REQ-TDG-013): overwriting the live row would destroy a card nobody asked
+// to lose, and splitting one id across two cards is worse than the mistake
+// the restore is undoing.
+func (r *BacklogRecord) RestoreCard(id string) error {
+	at := r.ArchivedIndex(id)
+	if at < 0 {
+		return fmt.Errorf("no archived backlog item %s", id)
+	}
+	if live := r.itemIndex(id); live >= 0 {
+		return fmt.Errorf("cannot restore %s: the id has been reissued to a live card %q — refusing rather than overwriting it",
+			id, r.Items[live].Text)
+	}
+
+	entry := r.Archived[at]
+	r.Items = insertBacklogItem(r.Items, entry.Item, entry.Position)
+	// Ascending position order: each insertion shifts the ones after it, so
+	// restoring low indexes first reproduces the original layout.
+	sorted := append([]BacklogArchivedFinding(nil), entry.Findings...)
+	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].Position < sorted[j].Position })
+	for _, af := range sorted {
+		r.Findings = insertBacklogFinding(r.Findings, af.Finding, af.Position)
+	}
+	r.Archived = append(r.Archived[:at:at], r.Archived[at+1:]...)
+	return nil
+}
+
+// insertBacklogItem inserts it at pos, clamping into range. Clamping rather
+// than failing is deliberate: the round trip this SPEC guarantees is
+// `done` immediately followed by `undone`, where the position is exact. A
+// restore taken after other cards moved has no exact answer, and refusing
+// there would make the archive unrecoverable for the operator who waited.
+func insertBacklogItem(items []BacklogItem, it BacklogItem, pos int) []BacklogItem {
+	if pos < 0 {
+		pos = 0
+	}
+	if pos > len(items) {
+		pos = len(items)
+	}
+	out := make([]BacklogItem, 0, len(items)+1)
+	out = append(out, items[:pos]...)
+	out = append(out, it)
+	return append(out, items[pos:]...)
+}
+
+// insertBacklogFinding inserts f at pos, clamping into range (see above).
+func insertBacklogFinding(findings []BacklogFinding, f BacklogFinding, pos int) []BacklogFinding {
+	if pos < 0 {
+		pos = 0
+	}
+	if pos > len(findings) {
+		pos = len(findings)
+	}
+	out := make([]BacklogFinding, 0, len(findings)+1)
+	out = append(out, findings[:pos]...)
+	out = append(out, f)
+	return append(out, findings[pos:]...)
 }
 
 // HasFindingTuple reports whether a finding carrying the same
@@ -242,14 +395,6 @@ func NewBacklogStore(path string) *BacklogStore {
 	return &BacklogStore{path: path}
 }
 
-// BacklogPathForRoot returns the backlog file's canonical location under a
-// project root — the one path shape every root-relative consumer (the kanban
-// SessionStart notice, the factory lead loop's queue poll) builds the store
-// from, so no two surfaces hand-roll their own join.
-func BacklogPathForRoot(root string) string {
-	return filepath.Join(root, ".moai", "state", "kanban", "backlog.json")
-}
-
 // QueuedCount returns the number of items in state "queued", failing open to
 // 0 (the store already reads a missing file as an empty queue). It is the
 // shared count shape both the kanban notice and the factory lead loop render
@@ -258,7 +403,28 @@ func BacklogPathForRoot(root string) string {
 // flight on another lane, a dropped card was discarded, and a finished card
 // is removed outright.
 func (s *BacklogStore) QueuedCount() int {
-	rec, err := s.load()
+	// PURE read (REQ-TOSQ-009): this is the statusline's per-render path and
+	// the SessionStart notice's, both of which run on surfaces that must never
+	// move operator bytes. It therefore reads whichever layout it finds and
+	// NEVER migrates — migration is the adopting path's act (Load / Mutate),
+	// which is where the queue lock is already in play.
+	layout := inspectBacklogLayout(s.path)
+	if layout.dbExists {
+		eng, err := openBacklogEngine(backlogSQLitePath(s.path))
+		if err != nil {
+			return 0
+		}
+		defer func() { _ = eng.close() }()
+		n, err := eng.countQueued(context.Background())
+		if err != nil {
+			return 0
+		}
+		return n
+	}
+	if !layout.jsonExists {
+		return 0
+	}
+	rec, err := loadLegacyBacklogJSON(s.path)
 	if err != nil {
 		return 0
 	}
@@ -269,6 +435,66 @@ func (s *BacklogStore) QueuedCount() int {
 		}
 	}
 	return n
+}
+
+// BacklogStateCounts is the queue reduced to what a glance needs: how much
+// work is in flight and how much is waiting. Dropped items are deliberately
+// not counted — they are history, and a number that only ever grows is noise.
+type BacklogStateCounts struct {
+	Picked    int
+	Queued    int
+	Available bool
+}
+
+// @MX:ANCHOR: [AUTO] BacklogCountsForRoot — the statusline's per-render read
+// @MX:REASON: expected fan_in >= 3 (statusline render, kanban notice, factory loop); it runs once per status render, so a non-constant-cost implementation here puts every render on a path that grows with the queue
+//
+// BacklogCountsForRoot counts items by state under a project root.
+//
+// PURE and fail-open, both load-bearing. Pure because this runs on a
+// per-render process that must never perform the one-time storage cutover or
+// directory relocation; fail-open because an unreadable queue must render
+// nothing rather than an authoritative-looking zero — "no cards" and "could
+// not read the cards" are different claims, and Available is what separates
+// them.
+//
+// Constant cost on the database layout: three aggregates over an indexed
+// column, not a whole-document parse (REQ-TOSQ-009, C-2).
+func BacklogCountsForRoot(root string) BacklogStateCounts {
+	if root == "" {
+		return BacklogStateCounts{}
+	}
+	path := BacklogPathForRoot(root)
+	layout := inspectBacklogLayout(path)
+	if layout.dbExists {
+		eng, err := openBacklogEngine(backlogSQLitePath(path))
+		if err != nil {
+			return BacklogStateCounts{}
+		}
+		defer func() { _ = eng.close() }()
+		picked, queued, err := eng.countByState(context.Background())
+		if err != nil {
+			return BacklogStateCounts{}
+		}
+		return BacklogStateCounts{Picked: picked, Queued: queued, Available: true}
+	}
+	if !layout.jsonExists {
+		return BacklogStateCounts{}
+	}
+	rec, err := loadLegacyBacklogJSON(path)
+	if err != nil {
+		return BacklogStateCounts{}
+	}
+	counts := BacklogStateCounts{Available: true}
+	for _, it := range rec.Items {
+		switch it.State {
+		case BacklogStatePicked:
+			counts.Picked++
+		case BacklogStateQueued:
+			counts.Queued++
+		}
+	}
+	return counts
 }
 
 // QueuedBacklogCountForRoot is the one-call form of QueuedCount under a
@@ -283,6 +509,12 @@ func QueuedBacklogCountForRoot(root string) int {
 
 // Path returns the backlog file's path.
 func (s *BacklogStore) Path() string { return s.path }
+
+// EnginePath returns the storage engine's artifact path — the queue file's
+// sibling database (diagnostics and tests). It is the physical carrier tests
+// stat when they mean "the queue's own file"; Path() still names the legacy
+// document the downgrade route regenerates.
+func (s *BacklogStore) EnginePath() string { return backlogSQLitePath(s.path) }
 
 // LockPath returns the sibling lock artifact's path (diagnostics and tests).
 func (s *BacklogStore) LockPath() string {
@@ -304,26 +536,91 @@ func (s *BacklogStore) Load() (*BacklogRecord, error) {
 	return rec, nil
 }
 
-// load is Load without the record copy — the shared read both the lock-free
-// verbs and the locked mutation path call.
-func (s *BacklogStore) load() (*BacklogRecord, error) {
-	raw, err := atomicfile.ReadFile(s.path)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
+// @MX:ANCHOR: [AUTO] LoadPure — the read that never moves bytes
+// @MX:REASON: expected fan_in >= 3 (web console read seam, statusline, future read-only surfaces); it is the pure half of the pure-vs-adopting split, and a read-only surface calling Load instead would migrate the operator queue from a page render
+//
+// LoadPure reads the queue WITHOUT adopting: it serves whichever layout it
+// finds and performs no migration, no quarantine, and no relocation on any
+// branch. It is the read for surfaces that must never mutate operator state —
+// the web console's page render and the statusline — mirroring the existing
+// ResolveTodoQueueRoot / ResolveTodoQueueRootAdopting split one layer down
+// (REQ-TOSQ-010, REQ-WTQ-001/004).
+//
+// Load, by contrast, adopts: the `moai todo` verbs are where the one-time
+// cutover belongs, because that is where the queue lock is already in play.
+func (s *BacklogStore) LoadPure() (*BacklogRecord, error) {
+	layout := inspectBacklogLayout(s.path)
+	if !layout.dbExists {
+		if !layout.jsonExists {
 			return &BacklogRecord{
 				Version:  backlogVersion,
 				Items:    []BacklogItem{},
 				Findings: []BacklogFinding{},
 			}, nil
 		}
-		return nil, fmt.Errorf("load backlog %s: %w", s.path, err)
+		return loadLegacyBacklogJSON(s.path)
 	}
-	var rec BacklogRecord
-	if err := json.Unmarshal(raw, &rec); err != nil {
-		return nil, fmt.Errorf("load backlog %s: parsing: %w", s.path, err)
+	eng, err := openBacklogEngine(backlogSQLitePath(s.path))
+	if err != nil {
+		return nil, err
 	}
-	normalizeBacklogRecord(&rec)
-	return &rec, nil
+	defer func() { _ = eng.close() }()
+	return eng.readRecord(context.Background())
+}
+
+// load is Load without the record copy — the shared read both the lock-free
+// verbs and the locked mutation path call. A missing queue in either layout is
+// an empty record, never an error.
+func (s *BacklogStore) load() (*BacklogRecord, error) {
+	eng, err := s.openEngine(false)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = eng.close() }()
+	return eng.readRecord(context.Background())
+}
+
+// @MX:ANCHOR: [AUTO] openEngine — the layout resolver every store operation enters through
+// @MX:REASON: expected fan_in >= 3 (load, Mutate, export); it is the single place the migration state machine fires, so a second entry point would let a queue be migrated outside the lock
+//
+// openEngine resolves the storage layout (design.md §4), performs the one-time
+// lazy migration when the legacy JSON is the only thing present, and returns
+// an open engine. lockHeld says whether the caller already holds the queue
+// lock; when it does not and a migration is required, this acquires the lock
+// for the migration's duration so concurrent factory lanes serialize on the
+// same artifact they always have (REQ-TOSQ-008).
+func (s *BacklogStore) openEngine(lockHeld bool) (*backlogEngine, error) {
+	switch layout := inspectBacklogLayout(s.path); {
+	case layout.dbExists && layout.jsonExists:
+		// State D — a database beside a backlog.json. The database is
+		// authoritative on every path either way, but the json's identity
+		// decides what happens to it: pre-cutover legacy left by a crash
+		// between the migration commit and the quarantine is finished
+		// best-effort (REQ-TOSQ-013), while an export written for a downgrade
+		// is left exactly where the operator put it. The in-flight marker
+		// inside the database is what tells them apart.
+		completeInterruptedQuarantine(s.path)
+	case !layout.dbExists && layout.jsonExists:
+		// State B — migrate under the lock.
+		if err := s.migrateUnderLock(lockHeld); err != nil {
+			return nil, err
+		}
+	}
+	return openBacklogEngine(backlogSQLitePath(s.path))
+}
+
+// migrateUnderLock runs the migration with the queue lock held, acquiring it
+// first when the caller does not already hold it.
+func (s *BacklogStore) migrateUnderLock(lockHeld bool) error {
+	if lockHeld {
+		return migrateLegacyBacklog(s.path)
+	}
+	lock, err := s.acquireLock()
+	if err != nil {
+		return err
+	}
+	migErr := migrateLegacyBacklog(s.path)
+	return joinBacklogReleaseErr(migErr, lock.Release(), s.path)
 }
 
 // @MX:WARN: [AUTO] Mutate — cross-process lock held across the entire read-modify-write
@@ -347,7 +644,14 @@ func (s *BacklogStore) Mutate(mutate func(*BacklogRecord) error) (err error) {
 		err = joinBacklogReleaseErr(err, lock.Release(), s.path)
 	}()
 
-	rec, err := s.load()
+	eng, err := s.openEngine(true)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = eng.close() }()
+
+	ctx := context.Background()
+	rec, err := eng.readRecord(ctx)
 	if err != nil {
 		return err
 	}
@@ -357,7 +661,7 @@ func (s *BacklogStore) Mutate(mutate func(*BacklogRecord) error) (err error) {
 	// Re-normalize post-mutate: a callback may append or rewrite items, and
 	// the written high-water mark must clear every present id.
 	normalizeBacklogRecord(rec)
-	return s.writeAtomic(rec)
+	return eng.writeRecord(ctx, rec)
 }
 
 // joinBacklogReleaseErr folds a lock-release failure into the mutation's own
@@ -411,17 +715,20 @@ func (s *BacklogStore) Add(text string) (*BacklogItem, int, error) {
 }
 
 // acquireBacklogLockSerialized acquires the backlog's sibling lock, retrying
-// contention for the same bounded window as the board lock (25ms x 40 ~ 1s):
-// a mutation racing a short-lived holder serializes behind it instead of
-// failing, while a genuinely stuck holder surfaces as an error rather than a
-// hang. The timeout error names the lock artifact so the operator can act on
-// the right file.
+// contention against the SAME shared wait policy as the board lock
+// (boardLockWaitBudget and boardLockRetryWait, board_store.go — REQ-BLB-006:
+// one policy, both call sites, so a change to either the budget or the
+// backoff applies here without a second edit): a mutation racing a
+// short-lived holder serializes behind it instead of failing, while a
+// genuinely stuck holder surfaces as an error rather than a hang. The timeout
+// error names the lock artifact so the operator can act on the right file.
 func (s *BacklogStore) acquireLock() (*BoardLock, error) {
 	if err := os.MkdirAll(filepath.Dir(s.path), 0o755); err != nil {
 		return nil, fmt.Errorf("mutate backlog %s: creating dir: %w", s.path, err)
 	}
 	var lastErr error
-	for attempt := 0; attempt <= boardLockRetries; attempt++ {
+	deadline := time.Now().Add(boardLockWaitBudget)
+	for attempt := 0; ; attempt++ {
 		impl, err := acquireBoardLockImpl(s.LockPath())
 		if err == nil {
 			return &BoardLock{path: s.LockPath(), impl: impl}, nil
@@ -430,44 +737,11 @@ func (s *BacklogStore) acquireLock() (*BoardLock, error) {
 			return nil, fmt.Errorf("mutate backlog %s: lock %s: %w", s.path, s.LockPath(), err)
 		}
 		lastErr = err
-		time.Sleep(boardLockRetryDelay)
+		if !time.Now().Before(deadline) {
+			return nil, fmt.Errorf("mutate backlog %s: lock %s: %w", s.path, s.LockPath(), lastErr)
+		}
+		time.Sleep(boardLockRetryWait(attempt))
 	}
-	return nil, fmt.Errorf("mutate backlog %s: lock %s: %w", s.path, s.LockPath(), lastErr)
-}
-
-// writeAtomic persists rec through the same-directory temp + atomic rename
-// (REQ-TODO-010): the rename must stay inside one filesystem to be atomic,
-// and no temp residue may survive the write.
-func (s *BacklogStore) writeAtomic(rec *BacklogRecord) error {
-	dir := filepath.Dir(s.path)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return fmt.Errorf("write backlog %s: creating dir: %w", s.path, err)
-	}
-	encoded, err := json.MarshalIndent(rec, "", "  ")
-	if err != nil {
-		return fmt.Errorf("write backlog %s: encoding: %w", s.path, err)
-	}
-	encoded = append(encoded, '\n')
-
-	tmp, err := os.CreateTemp(dir, ".backlog-*.tmp")
-	if err != nil {
-		return fmt.Errorf("write backlog %s: creating temp file: %w", s.path, err)
-	}
-	tmpName := tmp.Name()
-	if _, err := tmp.Write(encoded); err != nil {
-		_ = tmp.Close()
-		_ = os.Remove(tmpName)
-		return fmt.Errorf("write backlog %s: writing temp file: %w", s.path, err)
-	}
-	if err := tmp.Close(); err != nil {
-		_ = os.Remove(tmpName)
-		return fmt.Errorf("write backlog %s: closing temp file: %w", s.path, err)
-	}
-	if err := atomicfile.Replace(tmpName, s.path); err != nil {
-		_ = os.Remove(tmpName)
-		return fmt.Errorf("write backlog %s: replacing backlog file: %w", s.path, err)
-	}
-	return nil
 }
 
 // normalizeBacklogRecord establishes the invariants every in-memory record
@@ -484,8 +758,24 @@ func normalizeBacklogRecord(rec *BacklogRecord) {
 	if rec.Findings == nil {
 		rec.Findings = []BacklogFinding{}
 	}
+	if rec.Archived == nil {
+		rec.Archived = []BacklogArchiveEntry{}
+	}
+	for i := range rec.Archived {
+		if rec.Archived[i].Findings == nil {
+			rec.Archived[i].Findings = []BacklogArchivedFinding{}
+		}
+	}
+	// The mark must clear every id the record HOLDS, archived rows included:
+	// a hand-edited low last_seq beside an archived t7 would otherwise reissue
+	// t7 to a new card and make that card's restore unreachable (REQ-TDG-013).
 	if max := maxPresentBacklogSeq(rec.Items); max > rec.LastSeq {
 		rec.LastSeq = max
+	}
+	for _, entry := range rec.Archived {
+		if n, ok := parseBacklogSeq(entry.Item.ID); ok && n > rec.LastSeq {
+			rec.LastSeq = n
+		}
 	}
 }
 
@@ -510,4 +800,13 @@ func parseBacklogSeq(id string) (int, bool) {
 		return 0, false
 	}
 	return n, true
+}
+
+// ParseBacklogSeq is the exported form of parseBacklogSeq, for read
+// surfaces outside this package that must interpret a card id against the
+// id-space accounting (SPEC-TODO-ARCHIVE-QUERY-001's history verb
+// qualifies an absent answer against the issued-id mark). A second parser
+// would be a second chance to drift from the id form the store issues.
+func ParseBacklogSeq(id string) (int, bool) {
+	return parseBacklogSeq(id)
 }

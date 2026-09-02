@@ -2,7 +2,6 @@
 id: SPEC-V3R6-SESSION-LEGACY-COVERAGE-001
 title: "internal/session 패키지 test coverage 보강 — Acceptance Criteria"
 version: "0.2.0"
-status: implemented
 created: 2026-05-25
 updated: 2026-05-25
 author: manager-spec

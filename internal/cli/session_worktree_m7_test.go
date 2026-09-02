@@ -466,7 +466,7 @@ func TestEnterSessionWorktree_M7WiringInvokesHelper(t *testing.T) {
 		inWt:      func() bool { return false },
 		short:     func() string { return "abcdef12" },
 		commonDir: func() (string, error) { return "/repo/.git", nil },
-		add:       func(dest, branch string) (string, error) { return dest, nil },
+		add:       func(dest, branch, base string) (string, error) { return dest, nil },
 		configSet: func(string, string, string) error { return nil },
 	})
 	swapM7Seams(t, m7Seams{

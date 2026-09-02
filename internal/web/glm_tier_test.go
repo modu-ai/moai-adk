@@ -48,9 +48,12 @@ func optionValues(f settings.FieldDef) []string {
 }
 
 // TestGLMModelSelectOptions verifies AC-WCR-030: the four tier fields are
-// closed-set selects over exactly {glm-5.3, glm-5.1, glm-4.7, glm-4.5-air}.
+// closed-set selects over exactly {glm-5.3-flash, glm-5.3, glm-5.1, glm-4.7,
+// glm-4.5-air} — flash first (the default), glm-5.3 retained as selectable.
+// glm-5.3-flash accepts reasoning_effort max only — the web client locks the
+// tier effort select to max when the slot holds it.
 func TestGLMModelSelectOptions(t *testing.T) {
-	want := []string{"glm-5.3", "glm-5.1", "glm-4.7", "glm-4.5-air"}
+	want := []string{"glm-5.3-flash", "glm-5.3", "glm-5.1", "glm-4.7", "glm-4.5-air"}
 
 	// The set the schema renders is derived, not re-declared. Assert the derived
 	// accessor equals the SPEC set first, so a drift in the underlying constants
@@ -73,6 +76,40 @@ func TestGLMModelSelectOptions(t *testing.T) {
 		} else if f.Validate("not-a-glm-model") {
 			t.Errorf("%s Validate accepted an out-of-set model", name)
 		}
+	}
+}
+
+// TestGLMFlashOptionLabelsAllLocales pins the flash option labels: the two
+// option-key families (tier-slot selects + audit GLM-model select) must each
+// carry a non-empty "glm-5.3-flash" label in all four locales — exactly 8
+// entries across the dictionary, one per (key family × locale).
+func TestGLMFlashOptionLabelsAllLocales(t *testing.T) {
+	dict := readEmbeddedAsset(t, "i18n.js")
+	cat, err := parseI18nCatalogue(dict)
+	if err != nil {
+		t.Fatalf("parse i18n catalogue: %v", err)
+	}
+	keyFamilies := []string{
+		"f.llm.glm.models.opt.",
+		"f.workflow.audit.glm.model.opt.",
+	}
+	total := 0
+	for _, fam := range keyFamilies {
+		key := fam + "glm-5.3-flash"
+		for _, loc := range []string{"en", "ko", "ja", "zh"} {
+			v, ok := cat[loc][key]
+			if !ok {
+				t.Errorf("locale %q is missing the flash option label %q (blank/untranslated render risk)", loc, key)
+				continue
+			}
+			if strings.TrimSpace(v) == "" {
+				t.Errorf("locale %q defines %q as an EMPTY label", loc, key)
+			}
+			total++
+		}
+	}
+	if total != 8 {
+		t.Errorf("flash option label count = %d, want exactly 8 (2 key families x 4 locales)", total)
 	}
 }
 
@@ -160,10 +197,12 @@ func TestGLMTierLabelVsKey(t *testing.T) {
 	}
 }
 
-// TestGLMEffortScopeBadge verifies AC-WCR-033, the honesty requirement. The tab
-// must name the actual applied source (the session effort_level preference) and
-// mark the four per-tier values stored-only, and must NOT claim any tier's
-// effort is applied.
+// TestGLMEffortScopeBadge verifies the honesty requirement (AC-WCR-033
+// lineage, updated by RC3 glm-settings-persist): the tab names WHAT the
+// per-tier effort now does — applies at the next moai glm launch to the main
+// session's slot, overriding the session-wide effort_level preference, with
+// sub-agents keeping the session-wide value — and no longer marks the four
+// per-tier fields stored-only.
 func TestGLMEffortScopeBadge(t *testing.T) {
 	html := renderConsolePage(t)
 	dict := readEmbeddedAsset(t, "i18n.js")
@@ -185,23 +224,26 @@ func TestGLMEffortScopeBadge(t *testing.T) {
 		}
 	}
 
-	// The en text must name the actual source and must not claim tier application.
+	// The en text must name the application point (the moai glm launch), the
+	// preference it overrides (effort_level), and the sub-agent carve-out —
+	// and must not regress into the retired stored-only claim.
 	en := i18nEnLine(t, dict, badgeKey)
-	if !strings.Contains(en, "effort_level") {
-		t.Errorf("effort-scope note does not name the applied source (effort_level): %q", en)
+	for _, want := range []string{"moai glm", "effort_level", "Sub-agents"} {
+		if !strings.Contains(en, want) {
+			t.Errorf("effort-scope note does not name %q: %q", want, en)
+		}
 	}
-	for _, forbidden := range []string{"applied per tier", "each tier is applied", "per-tier effort is applied"} {
+	for _, forbidden := range []string{"stored only", "applied per tier", "each tier is applied", "per-tier effort is applied"} {
 		if strings.Contains(strings.ToLower(en), forbidden) {
-			t.Errorf("effort-scope note claims per-tier application (%q): %q", forbidden, en)
+			t.Errorf("effort-scope note carries the false claim %q: %q", forbidden, en)
 		}
 	}
 
-	// Every per-tier effort field carries a stored-only marker.
-	for _, tier := range glmTierKeys {
-		marker := `data-store-only="llm.glm.effort.` + tier + `"`
-		if !strings.Contains(html, marker) {
-			t.Errorf("tier effort field %q lacks the stored-only marker %s", tier, marker)
-		}
+	// The per-tier effort fields are load-bearing now — the stored-only badge
+	// must be gone. (One data-store-only render anywhere fails the probe; the
+	// schema sets StoreOnly on no field since RC3.)
+	if strings.Contains(html, `data-store-only="llm.glm.effort.`) {
+		t.Errorf("a per-tier effort field still renders the stored-only badge — the value is applied at the next moai glm launch")
 	}
 }
 

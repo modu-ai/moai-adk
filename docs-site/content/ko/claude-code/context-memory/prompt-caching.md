@@ -74,6 +74,8 @@ flowchart TD
 
 5분이 기본이고 구독 환경에서 1시간으로 자동 연장된다고 이해하면 됩니다.
 
+Claude Code 2.1.243에는 `promptCacheTtl`·`subagentPromptCacheTtl` 설정(환경변수 `CLAUDE_CODE_PROMPT_CACHE_TTL` / `CLAUDE_CODE_SUBAGENT_PROMPT_CACHE_TTL`)도 추가됐습니다. API 키·클라우드 제공자 세션이 메인 대화에 한해 1시간 캐시를 유지할 수 있고 서브에이전트는 5분에 남습니다. z.ai 같은 서드파티 게이트웨이에서 반영되는지는 측정되지 않았습니다.
+
 ## 비용: 읽기는 싸고, 쓰기는 살짝 비싸다
 
 캐시가 잘 돌고 있는지는 API가 매 응답에 보고하는 두 토큰 수치로 알 수 있습니다.

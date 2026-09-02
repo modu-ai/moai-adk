@@ -100,9 +100,9 @@ var translations = map[string]map[string]QuestionTranslation{
 			Title:       "모델 정책 선택",
 			Description: "각 에이전트에 할당되는 Claude 모델 등급을 제어합니다. Claude 플랜에 맞추세요.",
 			Options: []OptionTranslation{
-				{Label: "Max", Desc: "Opus 5 (max~low) + Sonnet (low, 단발성 작업만) — Max $200 플랜"},
-				{Label: "Medium (권장)", Desc: "Opus 5 (high~low) + Sonnet (low, 단발성 작업만) — Max $100 플랜"},
-				{Label: "Low", Desc: "Opus 5 (medium~low) + Sonnet (low, 문서/E2E/단발성 작업) — Plus $20 플랜"},
+				{Label: "Max", Desc: "Opus 5 (high~medium) + Sonnet (low, 문서/단발성 작업) — Max $200 플랜"},
+				{Label: "Medium (권장)", Desc: "Opus 5 (high~low) + Sonnet (low, 문서/단발성 작업) — Max $100 플랜"},
+				{Label: "Low", Desc: "Opus 5 (high~low) + Sonnet (low, 문서/E2E/단발성 작업) — Plus $20 플랜"},
 			},
 		},
 		"project_mode": {
@@ -174,6 +174,15 @@ var translations = map[string]map[string]QuestionTranslation{
 		"codex_audit_enabled": {
 			Title:       "Codex 검토 게이트 Stop 훅을 활성화할까요?",
 			Description: "기본 비활성화. 활성화하면 Stop 훅이 미커밋 변경 사항에 대해 codex를 실행합니다.",
+		},
+		"agent_wiring": {
+			Title:       "연결할 에이전트 하니스 선택",
+			Description: "이 프로젝트에 MoAI가 연결할 에이전트 하니스입니다. 'claude'가 권장 기본값이며, --agent 플래그가 이 답변보다 우선합니다.",
+			Options: []OptionTranslation{
+				{Label: "Claude (권장)", Desc: "Claude 쪽만 연결 (.mcp.json 프로비저닝)"},
+				{Label: "Codex", Desc: ".codex/ 훅 계층과 MCP 설정을 연결하고 .mcp.json 프로비저닝은 건너뜁니다"},
+				{Label: "Both", Desc: "두 하니스를 모두 연결하고 .mcp.json 프로비저닝을 강제로 켭니다"},
+			},
 		},
 		"mcp_provision": {
 			Title:       "moai MCP 서버를 프로비저닝할까요?",
@@ -250,9 +259,9 @@ var translations = map[string]map[string]QuestionTranslation{
 			Title:       "モデルポリシーを選択",
 			Description: "各エージェントに割り当てる Claude モデルのティアを制御します。ご利用の Claude プランに合わせてください。",
 			Options: []OptionTranslation{
-				{Label: "Max", Desc: "Opus 5 (max~low) + Sonnet (low, 単発タスクのみ) — Max $200 プラン"},
-				{Label: "Medium (推奨)", Desc: "Opus 5 (high~low) + Sonnet (low, 単発タスクのみ) — Max $100 プラン"},
-				{Label: "Low", Desc: "Opus 5 (medium~low) + Sonnet (low, ドキュメント/E2E/単発タスク) — Plus $20 プラン"},
+				{Label: "Max", Desc: "Opus 5 (high~medium) + Sonnet (low, ドキュメント/単発タスク) — Max $200 プラン"},
+				{Label: "Medium (推奨)", Desc: "Opus 5 (high~low) + Sonnet (low, ドキュメント/単発タスク) — Max $100 プラン"},
+				{Label: "Low", Desc: "Opus 5 (high~low) + Sonnet (low, ドキュメント/E2E/単発タスク) — Plus $20 プラン"},
 			},
 		},
 		"project_mode": {
@@ -324,6 +333,15 @@ var translations = map[string]map[string]QuestionTranslation{
 		"codex_audit_enabled": {
 			Title:       "Codex レビューゲート Stop フックを有効にしますか?",
 			Description: "デフォルト無効。有効化すると Stop フックが未コミット変更に codex を実行します。",
+		},
+		"agent_wiring": {
+			Title:       "接続するエージェントハーネスを選択",
+			Description: "このプロジェクトで MoAI が接続するエージェントハーネスです。'claude' が推奨デフォルトで、--agent フラグがこの回答より優先されます。",
+			Options: []OptionTranslation{
+				{Label: "Claude (推奨)", Desc: "Claude 側のみ接続 (.mcp.json のプロビジョニング)"},
+				{Label: "Codex", Desc: ".codex/ フック層と MCP 設定を接続し、.mcp.json のプロビジョニングはスキップ"},
+				{Label: "Both", Desc: "両方のハーネスを接続し、.mcp.json のプロビジョニングを強制的に有効化"},
+			},
 		},
 		"mcp_provision": {
 			Title:       "moai MCP サーバーをプロビジョニングしますか?",
@@ -400,9 +418,9 @@ var translations = map[string]map[string]QuestionTranslation{
 			Title:       "选择模型策略",
 			Description: "控制为每个智能体分配的 Claude 模型等级。请与您的 Claude 套餐匹配。",
 			Options: []OptionTranslation{
-				{Label: "Max", Desc: "Opus 5 (max~low) + Sonnet (low, 仅一次性任务) — Max $200 套餐"},
-				{Label: "Medium (推荐)", Desc: "Opus 5 (high~low) + Sonnet (low, 仅一次性任务) — Max $100 套餐"},
-				{Label: "Low", Desc: "Opus 5 (medium~low) + Sonnet (low, 文档/E2E/一次性任务) — Plus $20 套餐"},
+				{Label: "Max", Desc: "Opus 5 (high~medium) + Sonnet (low, 文档/一次性任务) — Max $200 套餐"},
+				{Label: "Medium (推荐)", Desc: "Opus 5 (high~low) + Sonnet (low, 文档/一次性任务) — Max $100 套餐"},
+				{Label: "Low", Desc: "Opus 5 (high~low) + Sonnet (low, 文档/E2E/一次性任务) — Plus $20 套餐"},
 			},
 		},
 		"project_mode": {
@@ -474,6 +492,15 @@ var translations = map[string]map[string]QuestionTranslation{
 		"codex_audit_enabled": {
 			Title:       "是否启用 Codex 审查关卡 Stop 钩子?",
 			Description: "默认关闭。启用后 Stop 钩子对未提交变更运行 codex。",
+		},
+		"agent_wiring": {
+			Title:       "选择要接入的代理框架",
+			Description: "MoAI 为本项目接入的代理框架。'claude' 是推荐默认值，--agent 参数优先于此答案。",
+			Options: []OptionTranslation{
+				{Label: "Claude (推荐)", Desc: "仅接入 Claude 一侧 (.mcp.json 供应)"},
+				{Label: "Codex", Desc: "接入 .codex/ 钩子层与 MCP 配置，跳过 .mcp.json 供应"},
+				{Label: "Both", Desc: "同时接入两侧框架，并强制开启 .mcp.json 供应"},
+			},
 		},
 		"mcp_provision": {
 			Title:       "是否供应 moai MCP 服务器?",

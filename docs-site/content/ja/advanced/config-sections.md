@@ -77,10 +77,10 @@ llm:
   glm:
     base_url: "https://api.z.ai/api/anthropic"
     models:
-      high: "glm-5.3"          # 1M context — Opusスロット
-      medium: "glm-5.3"        # 1M context   — Sonnetスロット
-      low: "glm-5.3"          # 1M context   — 軽量スロット
-      fable: "glm-5.3"
+      high: "glm-5.3-flash"   # 1M context — Opusスロット
+      medium: "glm-5.3-flash" # 1M context   — Sonnetスロット
+      low: "glm-5.3-flash"    # 1M context   — 軽量スロット
+      fable: "glm-5.3-flash"
 ```
 
 | キー | 説明 |
@@ -175,6 +175,48 @@ workflow:
 **例外と失敗の向き。** ブランチを作る必要のある git 担当エージェントは識別子で例外扱いされ、`MOAI_BRANCH_GUARD_EXEMPT=1` 環境変数でも回避できます。判定が不確実なとき（リポジトリでない、`git rev-parse` の失敗など）は拒否せず通し、監査ログだけを残します — 確かな根拠があるときにのみ拒否します。
 
 ブランチを変える必要のある作業は、拒否させるのではなくワークツリーに移すのが定石です。手順は [moai worktree](/ja/cli-reference/worktree/) を参照してください。
+
+## workflow.yaml — audit
+
+クロスモデル監査バックエンド（`codex_audit` · `glm_audit` · `audit_multi`）が実際にどのモデルと effort で動くかを指定します。バックエンドごとに `{model, effort}` の 1 組で、配布時の既定値はすべて空です。
+
+```yaml
+workflow:
+    audit:
+        codex:
+            model: ""   # 例: gpt-5.6-sol — codex が提供できるモデル id
+            effort: ""  # 例: high — low | medium | high | xhigh | max
+        glm:
+            model: ""   # 例: glm-5.3
+            effort: ""  # 例: max — low | high | max（z.ai の reasoning 状態名）
+```
+
+| キー | 説明 |
+|------|------|
+| `audit.codex.{model, effort}` | codex 監査がセッション開始とレビューターンに載せる 1 組。model が空か、codex が提供できない id ならピンを捨てて、既存の SSOT 解決に戻ります |
+| `audit.glm.{model, effort}` | GLM 監査が z.ai リクエストに載せる 1 組。effort は z.ai の reasoning 状態名 `low` · `high` · `max` のみを受け付けます。それ以外の値では reasoning 指示を外し、モデルのピンだけを適用します |
+| 両方の組が空 | このキーが存在する前とまったく同じ解決をします。ピンを書いたことのないプロジェクトは何も変わりません |
+
+ピンが適用されるのは監査の入口だけです。タスク委任経路（`codex_task` · `glm_task`）のモデル解決には影響せず、同じフィールドはウェブコンソールの Audit パネルでも編集できます。
+
+## workflow.yaml — todo
+
+バックログキュー (todo) の**案内表面**を切るスイッチです。セッション開始時のキュー要約行、ステータスラインの TODO セグメント、自然言語リクエストの todo ワークフローへの推論ルーティング — この 3 つがこのキー 1 つで静かになります。
+
+```yaml
+workflow:
+    todo:
+        enabled: false   # 明示的なオフ — キーがなければオンと読まれます
+```
+
+| キー | 値 | 説明 |
+|----|-----|------|
+| `todo.enabled` | (キーなし、既定) | オン。配布テンプレートにはこのブロックがそもそもなく、ほとんどのプロジェクトが置かれている状態です |
+| `todo.enabled` | `false` | セッション開始時の要約・ステータスラインの TODO セグメント・スキルの自動ルーティングが切れます |
+
+**切ってもコマンドは消えません。** `moai todo` CLI は登録されたまま全動詞が動作し、名前で直接呼んだ `/moai todo` もそのまま実行されます。この境界は意図されたものです — スイッチは「頼んでいない人にキューを見せる表面」だけを静かにし、キューを実際に使う人の経路には触れません。設定ファイルを読めない失敗経路でもオンと解釈されます (fail-open)。
+
+小さな一回きりのプロジェクトで、セッションごとに出るバックログ要約がノイズに感じられるときにこのキーを使います。キュー自体の運用方法は [moai todo](/ja/utility-commands/moai-todo/) のページにあります。
 
 ## crosssession.yaml — セッション間メッセージ
 
