@@ -567,10 +567,36 @@ it is named as differing above.
 1. **`internal/hook` was not re-run after the two test repairs.** Both repairs
    are in `internal/cli`; the `rc=0 / 35.376s` figure predates them and is
    unaffected by construction, but it was not re-executed.
-2. **The edges-refresh landing rate was not measured.** M4 measured the MX
-   cold-start scan's artifact in 2 of 153 worktrees. No equivalent measurement
-   exists for the edges refresh develop added to the same goroutine; the claim
-   that it shares the defect class is a **code reading**, not an observation.
+2. **The edges-refresh landing rate was not measured — CLOSED by another lane,
+   with its attribution kept separate.** When this section was written, M4 had
+   measured the MX cold-start scan's artifact in 2 of 153 worktrees and no
+   equivalent measurement existed for the edges refresh develop added to the
+   same goroutine, so the shared-defect-class claim was a **code reading**.
+
+   It is now an observation, made elsewhere: lane-8 measured the edges axis at
+   **0/60** (L1 worktrees, artifact-file presence, develop `2660bcd09`) for its
+   own card, and confirmed on request that all three comparability axes match
+   this section's measurement — denominator unit (worktrees), numerator test
+   (artifact absent on disk), and the fact that its tree already carried the
+   edges refresh. Its control group, the MX index measured the same way on the
+   same tree, came out **4/60** with the same read this section gave 2/153:
+   the survivors look like manual scans, not hook-produced writes.
+
+   **Two conditions ride with that closure, at the measuring lane's own
+   recommendation, and neither may be dropped when the numbers are quoted
+   together.** (a) The two figures have **different populations and different
+   points in time** — 2/153 was measured around `1e75032b3`, 0/60 at
+   `2660bcd09` — so each keeps its own attribution and they are never summed or
+   presented as one series. (b) Both are **field-indirect evidence**: they show
+   the artifact is absent, not that the goroutine was killed. The Claude Code
+   hook process's lifetime distribution is still unmeasured by either lane.
+
+   What remains unmeasured on this axis: the `file_changed` twin. A figure of
+   `0/5` for it circulated in a dispatch; **it did not come from this SPEC.**
+   `.moai/reports/t216/d3-mx-cold-start.md` Gap 5 states the position this card
+   actually holds — *"`file_changed`'s identical structural bug is asserted from
+   code, not measured. No FileChanged event was fired."* — and no denominator
+   for it appears anywhere in these artifacts.
 3. **`golangci-lint` remains scoped to the touched packages**, not the repository.
 4. **Windows runtime is still unobserved** — `GOOS=windows go vet` proves
    compilation only.
