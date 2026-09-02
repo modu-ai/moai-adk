@@ -60,7 +60,8 @@ func TestDrainTreeCollisionRefreshKeepsPlainIntact(t *testing.T) {
 // TestMirrorAgentMemoryNoOps walks every documented no-op input: the index
 // itself, a relative-but-resolvable path is still mirrored (path forms), and
 // a missing file is an error (fail-open at the wrapper).
-// Serial: swapMirrorPrimaryRoot mutates a package-level seam.
+//
+// NOT parallel: mutates the agentMemoryPrimaryRootFn package seam.
 func TestMirrorAgentMemoryNoOps(t *testing.T) {
 	primary := t.TempDir()
 	tree := t.TempDir()

@@ -3,7 +3,12 @@
 card: t439
 branch: WT-hook-race
 base: origin/develop `f7cabfc29`
-측정 트리: `f7cabfc29` (RED) / 수리 커밋 (GREEN)
+측정 트리:
+- RED: `f7cabfc29` (배차문이 지목한 develop 팁)
+- GREEN 1차: `d2cdb2dc9` (수리 커밋) — `race-green.log` / `race-green-count2.log` /
+  `race-green-subtree.log` / `mirror-swept.log` 는 **이 SHA** 에서 잰 값이다.
+- GREEN 2차: 주석 정합 커밋 (본 파일이 속한 커밋) — `race-green-recheck.log`.
+  주석 전용 diff(비주석 변경 0줄)이지만 병합될 트리가 다른 SHA 이므로 재측정했다.
 플랫폼: darwin/arm64, go1.26.4
 
 ---
@@ -50,10 +55,14 @@ Previous write at 0x000103d0a5e0 by goroutine 580:
 
 | 명령 | exit | DATA RACE | FAIL | 로그 |
 |---|---|---|---|---|
-| `go test -race -count=1 ./internal/hook/` | 0 | 0 | 0 | `race-green.log` |
+| `go test -race -count=1 ./internal/hook/` | 0 | 0 | 0 | `race-green.log` (@`d2cdb2dc9`) |
 | `go test -race -count=2 ./internal/hook/` | 0 | 0 | 0 | `race-green-count2.log` |
 | `go test -race -count=1 ./internal/hook/...` | 0 | 0 | 0 | `race-green-subtree.log` |
 | `go vet ./internal/hook/...` | 0 | — | — | — |
+| `go test -race -count=1 ./internal/hook/` (주석 정합 후 재측정) | 0 | 0 | 0 | `race-green-recheck.log` |
+
+`-count=2` 와 서브트리 실행은 `d2cdb2dc9` 에서만 쟀고 주석 정합 후에는 다시 돌리지
+않았다. 어느 SHA 에서 잰 값인지는 위 표와 "측정 트리" 절에 명시했다.
 
 ### 공허하지 않음 (swept set 비어 있지 않음)
 
@@ -103,6 +112,22 @@ go test -race -count=1 -v -run 'TestMirror' ./internal/hook/
 `TestMirrorAgentMemoryDispatchedInWriteEditBranch` 는 seam 을 바꾸지 않으므로
 `t.Parallel()` 을 유지했다.
 
+**주석 정합 (후속 커밋).** 이 패키지의 규약은 헬퍼 1곳이 아니라 **호출부마다 한 줄**이다
+(`handoff_inject_test.go` 는 같은 사유를 361/395/450/481/512 다섯 곳에 각각 반복한다).
+1차 수리는 `t.Parallel()` 을 지운 자리에 사유를 남기지 않아, 다음 편집자에게는
+"직렬인데 이유가 안 적힌 테스트" 3곳이 남았다 — 이 커밋이 만든 불일치다.
+다섯 곳 전부에 기존 형태를 그대로 붙였다 (문구 신설 없음):
+
+| 좌표 | 테스트 |
+|---|---|
+| `memory_mirror_test.go:43` | `TestMirrorAgentMemoryCopiesToPrimary` |
+| `memory_mirror_test.go:73` | `TestMirrorFailsOpenOnUnresolvablePrimary` (seam + os.Stderr 둘 다 명시) |
+| `memory_mirror_test.go:95` | `TestMirrorNoOpInPrimarySession` |
+| `memory_mirror_test.go:121` | `TestMirrorIgnoresUnanchoredPath` |
+| `agentmemory_coverage_test.go:64` | `TestMirrorAgentMemoryNoOps` |
+
+주석 전용 diff 임을 기계적으로 확인했다 — 변경된 13줄 중 비주석 줄 **0**.
+
 ## 형제 표면 스윕
 
 seam 을 **경유해서** 바꾸는 호출부까지 훑었다 (`grep 'swapMirrorPrimaryRoot('`) —
@@ -132,7 +157,8 @@ seam 을 **경유해서** 바꾸는 호출부까지 훑었다 (`grep 'swapMirror
 ## Residual-risk
 
 - 남은 `t.Parallel()` 테스트가 나중에 이 seam 을 다시 건드리면 레이스가 되살아난다.
-  방어는 헬퍼 주석(계약 명문화) 하나뿐이며, **기계적 가드는 없다.** 계약을 어겨도
-  컴파일·린트는 침묵한다.
+  방어는 **주석뿐이고 기계적 가드는 없다** — 계약을 어겨도 컴파일·린트는 침묵한다.
+  주석 정합으로 방어가 헬퍼 1곳에서 헬퍼 + 호출부 5곳으로 넓어졌지만, 성질은 그대로
+  주석이다. 실효 방어는 여전히 "다음 편집자가 읽는다"에 의존한다.
 - 같은 결함 계열(패키지 전역 상태 + `t.Parallel()`)이 `internal/hook` 밖의 다른
   패키지에 있는지는 측정하지 않았다 — 범위는 이 카드가 건드린 패키지로 한정했다.
