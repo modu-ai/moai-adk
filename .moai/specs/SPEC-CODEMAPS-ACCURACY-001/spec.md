@@ -2,7 +2,7 @@
 id: SPEC-CODEMAPS-ACCURACY-001
 title: "codemaps 유령 인용 정밀 수리 — internal/factory→kanban·internal/bodp·ListActive API + cited-path-existence 재발 방지 축"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-02
 updated: 2026-09-02
 author: manager-spec

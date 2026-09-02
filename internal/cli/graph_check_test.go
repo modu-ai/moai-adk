@@ -66,7 +66,11 @@ func newCheckCLIRepo(t *testing.T) string {
 	return root
 }
 
-// stampAllLayers stamps an in-sync provenance state for all three layers.
+// stampAllLayers stamps an in-sync provenance state for all four layers
+// (citations joined as the fourth, SPEC-CODEMAPS-ACCURACY-001 REQ-CMA-002).
+// The codemaps doc is part of a genuinely fully-stamped tree: the citations
+// layer judges the .md docs themselves, and a doc-less codemaps directory is
+// unjudgeable (absent), not fresh.
 func stampAllLayers(t *testing.T, root string) {
 	t.Helper()
 	head := checkFixtureGit(t, root, "rev-parse", "HEAD")
@@ -77,6 +81,11 @@ func stampAllLayers(t *testing.T, root string) {
 	}
 	pvJSON := marshalCodemapsProvenance(t, root, head)
 	if err := os.WriteFile(filepath.Join(cmDir, "provenance.json"), pvJSON, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// One accurate doc: cites only the fixture's real described source.
+	if err := os.WriteFile(filepath.Join(cmDir, "modules.md"),
+		[]byte("# modules\n\ninternal/alpha/alpha.go\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 

@@ -38,8 +38,8 @@ func newGraphCheckCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "check",
-		Short: "Report per-layer staleness (codemaps / mx-index / edges) numerically",
-		Long: `Check the freshness of the three gated graph layers and exit accordingly.
+		Short: "Report per-layer staleness (codemaps / mx-index / edges / citations) numerically",
+		Long: `Check the freshness of the gated graph layers and exit accordingly.
 
 Per layer the report names the layer, the metric kind used, the measured
 integer value, the configured threshold, and a verdict (fresh | stale |
@@ -49,13 +49,21 @@ for untracked layers (fresh-worktree state); the bootstrap a CI job performs
 (moai mx scan + moai graph build) refreshes those layers to head first.
 
 Metrics (per layer, by tracking status):
-  codemaps  described-source-diff        files whose content differs from the
-                                         stamped generation commit (endpoint
-                                         diff; reverted churn counts zero)
-  mx-index  inventory-content-diff       scanner-read files whose content hash
-                                         differs from the stamped inventory
-  edges     source-fingerprint-mismatch  source sets whose fingerprint moved
-                                         since the stamped build
+  codemaps   described-source-diff         files whose content differs from
+                                          the stamped generation commit
+                                          (endpoint diff; reverted churn
+                                          counts zero)
+  mx-index   inventory-content-diff        scanner-read files whose content
+                                          hash differs from the stamped
+                                          inventory
+  edges      source-fingerprint-mismatch   source sets whose fingerprint
+                                          moved since the stamped build
+  citations  positive-cited-path-absence   source paths positively cited in
+                                          .moai/project/codemaps/*.md that do
+                                          not exist in the working tree
+                                          (accuracy, not freshness — paths on
+                                          blockquote lines are negative
+                                          citations and exempt)
 
 No filesystem mtime is read anywhere — a fresh worktree checkout resets every
 mtime, which an mtime metric would misread as freshly regenerated.
