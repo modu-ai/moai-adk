@@ -6,7 +6,7 @@ Card **t191** · Tier **M** · Branch `WT-project-continuation` · Baseline tree
 |---|---|
 | plan_status | revised (v0.3.0 — plan-audit iter-2 delta fix; Tier M ceiling exhausted, no iteration 3) |
 | run_status | complete (M1-M6, 14/14 AC PASS; base `2660bcd09` → HEAD `7ea775a19`, unpushed) |
-| sync_status | not started |
+| sync_status | complete (single sync commit carrying the 3-phase close; CHANGELOG entry amended in place, not duplicated) |
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
@@ -115,4 +115,59 @@ m1_to_mN_commit_strategy: "one commit per milestone, M1..M6, each naming card t1
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+### B12 CHANGELOG emission discipline — the pre-emission grep was NOT clean, and the entry was amended rather than duplicated
+
+`grep -c 'SPEC-PROJECT-CONTINUATION-KEY-001' CHANGELOG.md` returned **1**, not 0. The hit is **self-authored, not a parallel-session duplicate**: `git log --oneline -- CHANGELOG.md` attributes it to `7ea775a19`, this branch's own M6 run-phase commit, which wrote the `[Unreleased] → Added` entry as part of the mirror-parity sweep. B12's halt clause exists to stop a second session appending a duplicate; appending a second entry here would have created exactly the duplication the clause forbids. The sync phase therefore **amended the existing entry in place** — phase marker `run-phase` → `sync-phase close (3-phase plan→run→sync, ...)`, the `shipped_key_inventory.yaml` citation given its full verifiable path, and the three sync-phase findings plus the residual-risk paragraph appended to the same bullet. No new bullet was created; no surrounding entry was restructured.
+
+The amendment is confined to the single existing line so that card **t315**'s unrelated CHANGELOG edit on `WT-release-notes-gitflow` — which both branches will bring to the `develop` merge — conflicts only if it touches that same line, which it does not. Both entries are intended to survive the merge; neither is to be resolved by deletion.
+
+### AC count verification
+
+Counted against `acceptance.md` (the SSOT), **not** `progress.md`. The token-level sweep is misleading here and the discrepancy is recorded rather than rounded away:
+
+| Method | Command | Result |
+|---|---|---|
+| Token sweep (over-counts) | `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md \| sort -u \| wc -l` | `15` |
+| Heading form (authoritative) | `grep -cE '^### AC-PCK-' acceptance.md` | `14` |
+
+The extra token is `AC-PCK-015`, which appears **once**, at `acceptance.md:30`, inside the prose note recording that the former `AC-PCK-015` was renumbered to `AC-PCK-014` when the unfalsifiable criterion was relocated to `plan.md` §D. It is a historical mention, not a criterion. `14` is the real count (13 blocking + 1 non-blocking), and it matches both the `acceptance.md` header line and the run-phase `ac_pass_count: 14`.
+
+### File-path verification
+
+Every path named in the CHANGELOG entry was checked to exist on this tree before commit. One correction was made rather than left standing: the entry cited `shipped_key_inventory.yaml` by basename, and no such file exists at a repository-root-relative path. Its real location is `internal/config/testdata/shipped_key_inventory.yaml` (the `workflow.project.continuation` row at line 2871 on this tree), and the citation now carries that path. The other fourteen cited paths resolved unchanged.
+
+### The three findings the plan phase had not measured
+
+1. **A fourth existing test fires on this field, on a different axis.** `TestI18nUntranslatedValues` (`internal/web/i18n_governance_test.go:221`) catches identical `.opt.` label *values* across locales — not the missing `OptionDesc`. It was satisfied by localizing the three labels per the `audit.gate.opt.*` precedent. Satisfying it leaves the `OptionDesc` hole **completely open**, so it is **not** a substitute enforcer for `TestProjectContinuationI18nKeysInAllLocales` and must not be read as one by a later reader.
+2. **The SPEC's §3 D6 mirror table omits `.claude/skills/moai/workflows/project.md`**, which M1 had to edit. That pair is a near-mirror (`cmp` rc=1) whose only divergence is a local-only trailing `Last Updated:` line. Both sides were edited by the same replacement rather than copied, and the divergence is unchanged by this SPEC.
+3. **The three-segment settings write path is now measured, not read.** The "upserts into a `workflow.yaml` carrying no `project:` block" case exercises the depth and passes. The SPEC had listed it as an assumption in §5.
+
+### Residual risks — recorded, not smoothed
+
+- **`pipeline` has no mechanical carrier.** Its behaviour lives entirely in orchestrator-read prose; nothing mechanically prevents an orchestrator from stopping at `/moai plan` under `pipeline`. This is a property of the carrier the SPEC chose (see `spec.md` §3 D1.3, where the `progression_mode` reading was evaluated and rejected), **not** a defect in the implementation. A later SPEC giving `pipeline` a mechanical carrier must re-derive `AC-PCK-006` conjunct 1 against that carrier.
+- **The prose criteria have no runtime harness.** `AC-PCK-004/005/006/007/013` and `AC-PCK-014` conjunct 1 are read from shipped instruction text — indirect verification by the SPEC's own §D.3, and re-reading them is the only way to re-verify them.
+- **No full-suite run happened locally.** Lane constraint: several lanes share this machine, so `go test ./...` was not run. The touched packages are green (§E.2) and `go build ./...` exits 0 on this tree. **CI owns the full-suite verdict**, after the lead pushes `develop`. Nothing here claims a full-suite pass.
+- **The gopls diagnostics visible in this worktree are the known worktree false-positive** ("this file is within module ../t191, not included in your workspace"). The compiler is the authority; `go build ./...` exit 0 is the measurement of record.
+
+```yaml
+sync_complete_at: 2026-09-02
+sync_commit_sha: PENDING-BACKFILL   # a commit cannot name its own SHA; filled by the follow-up backfill commit
+sync_status: complete
+b12_self_test_a: "grep -c 'SPEC-PROJECT-CONTINUATION-KEY-001' CHANGELOG.md -> 1 (NOT clean). Self-authored by this branch's M6 commit 7ea775a19, not a parallel session. Resolved by amending the existing entry in place; no duplicate bullet created."
+b12_self_test_b: "AC count 14, from `grep -cE '^### AC-PCK-' acceptance.md`. The token sweep returns 15; the extra token is the historical AC-PCK-015 renumbering note at acceptance.md:30. 14 matches ac_pass_count in E.3."
+b12_self_test_c: "All 15 CHANGELOG-cited paths verified present. One corrected: shipped_key_inventory.yaml -> internal/config/testdata/shipped_key_inventory.yaml."
+changelog_entry_position: "[Unreleased] > Added, first bullet (line 12). Amended in place; position unchanged from the run-phase write."
+frontmatter_status_transitions:
+  spec.md: "in-progress -> completed (updated: 2026-09-02, unchanged - same day)"
+  plan.md: "n/a - file carries no YAML frontmatter block (starts at '# SPEC-... - Implementation Plan')"
+  acceptance.md: "n/a - file carries no YAML frontmatter block"
+  progress.md: "n/a - file carries no YAML frontmatter block; the sync_status header-table row was updated instead"
+  note: "The 4-artifact atomic transition was applied where a frontmatter block exists. Only spec.md carries one on this SPEC; no frontmatter was fabricated in the other three."
+canary_compliance_check:
+  applicable: false
+  reason: "This SPEC defines a config key and its prose contract, not a forward-looking policy that its own sync would canary-test. No canary obligation is in scope."
+body_content_modifications: none   # spec.md/plan.md/acceptance.md bodies untouched; progress.md E.4 + sync_status row only
+push_performed: false              # lane constraint: the kanban lead batches develop pushes
+pr_opened: false
+ci_requested: false
+```
