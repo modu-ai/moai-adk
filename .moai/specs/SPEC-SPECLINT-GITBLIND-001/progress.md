@@ -266,7 +266,25 @@ m1_to_mN_commit_strategy: per-milestone       # M1 97e60f367 · M2 4647c1237 · 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-02T14:30:00+09:00
+sync_commit_sha: pending-backfill-sync-phase   # self-referential — backfilled by the sync commit's follow-up
+sync_status: sync-complete-3-phase-close
+b12_self_test_a: pass                          # grep -c 'SPEC-SPECLINT-GITBLIND-001' CHANGELOG.md = 0 before emission (no duplicate)
+b12_self_test_b: pass                          # 11 distinct AC-SLGB-### identifiers in acceptance.md; CHANGELOG entry states 11 ACs (10 PASS + AC-SLGB-011 pending) — count matches
+b12_self_test_c: pass                          # all cited paths verified via ls: internal/spec/{lint,drift,gitquery_cache}.go, internal/spec/lint_status_unreachable_test.go, .github/workflows/spec-lint.yml
+changelog_entry_position: CHANGELOG.md [Unreleased] / Added — top bullet
+frontmatter_status_transitions.in_progress_to_implemented: sync commit (merged close)
+frontmatter_status_transitions.implemented_to_completed: sync commit (merged close — single-commit terminal transition)
+frontmatter_status_transitions.updated_field: refreshed 2026-09-02 (sync commit date)
+canary_compliance_check.ac011: deferred-by-design — AC-SLGB-011 is CI-log-only and closes post-landing from the origin/develop CI run on a quiet head after the lead-batched push; recorded as the SPEC's post-landing verification item, not a sync blocker
+mx_validation: pass-with-no-edit — new code symbols observed are unexported helpers (statusGitUnreachableFinding, resolveMainBranch) plus the `StatusGitUnreachable` finding-code string; no new exported Go function was introduced, so no Go-source @MX additions are required; existing @MX:ANCHOR/@MX:NOTE tags on the touched files (lint.go, gitquery_cache.go) validated intact
+sync_scope_notes: |
+  Sync-phase touched only: CHANGELOG.md ([Unreleased] entry), progress.md §E.4 (this),
+  spec.md frontmatter (status + updated only — no body modification). No SPEC body content
+  (spec.md/plan.md/acceptance.md) was modified. Commits stay local on WT-lint-shallow-clone;
+  push and CI verdict remain lead-owned per B9/gitflow lane protocol.
+```
 
 ## §F Phase 4 Mode Selection
 
