@@ -2,7 +2,7 @@
 id: SPEC-CODEMAPS-REFRESH-001
 title: "Codemaps freshness closure: regeneration, accuracy verification, and provenance restamp"
 version: "0.1.1"
-status: in-progress
+status: completed
 created: 2026-09-02
 updated: 2026-09-02
 author: manager-spec

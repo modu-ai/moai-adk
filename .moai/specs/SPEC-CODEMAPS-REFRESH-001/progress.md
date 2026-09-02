@@ -92,4 +92,21 @@ m1_to_mN_commit_strategy: single-run-commit (M1-M4 통합) + progress.md 후속 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+sync_complete_at: 2026-09-02
+sync_commit_sha: "pending-backfill-t432" # 커밋은 자신의 SHA를 참조할 수 없음(D3 placeholder 규약) — 실제 SHA는 sync 완료 보고에 기록, 리드가 배치 판정
+sync_status: complete
+changelog_entry_position: not-applicable # 내부 프로젝트 문서 갱신 — 사용자 대면 릴리스 아티팩트 아님. AC-CMR-007 scope-hygiene이 CHANGELOG를 허용 경로 밖으로 제외하므로 항목을 쓰지 않음(쓰면 위반)
+b12_self_test_a: not-run # CHANGELOG 항목 미발행 — 사전 중복 grep 대상 없음
+b12_self_test_b: not-run # AC 카운트 대조는 CHANGELOG 발행 전제 하에서만 의미 — 미발행이라 미실행
+b12_self_test_c: not-run # CHANGELOG 기재 파일 경로 없음 — ls 검증 대상 없음
+frontmatter_status_transitions:
+  spec.md: "in-progress → completed" # 본 sync 커밋에 태움(3-phase close — 단일 커밋 병합)
+  plan.md: "전이 대상 아님 (artifact statelessness — status 필드 없음, 본문 무수정)"
+  acceptance.md: "전이 대상 아님 (artifact statelessness — status 필드 없음, 본문 무수정)"
+  updated: "2026-09-02 (spec.md — 동일일자라 값 불변)"
+docs_surface_assessment:
+  readme: not-affected # 4-locale README의 `codemaps` 언급은 전부 서브커맨드 기능 이름(README.md:322,715 / README.ko.md / README.ja.md:322,715 / README.zh.md:322,715) — `.moai/project/codemaps/` 경로 직접 참조 0건, 콘텐츠 재생성과 무충돌
+  docs_site: not-affected # content/{ko,en,ja,zh}/utility-commands/moai-codemaps.md는 `/moai codemaps` 명령어 사용법 문서(생성 경로·5문서 구조 서술) — 콘텐츠 재생성은 서술을 무효화하지 않음. cli-reference/graph.md:78,88의 `OK: stamped .../provenance.json`은 CLI 출력 예시로 현재 동작과 일치
+mx_tag_validation: not-applicable # Go 소스 변경 0(문서 전용 SPEC) — @MX 어노테이션 추가/갱신 대상 코드 없음. 기존 태그 변경도 없음
+canary_compliance_check: not-applicable # 본 SPEC이 forward-looking policy를 정의하지 않음
+sync_commit_scope: ".moai/specs/SPEC-CODEMAPS-REFRESH-001/** (frontmatter 전이 + §E.4) — codemaps 본문·리포트는 run 커밋에 이미 착지"
