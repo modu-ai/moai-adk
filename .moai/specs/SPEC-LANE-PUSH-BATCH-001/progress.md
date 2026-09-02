@@ -98,7 +98,7 @@ commit: 5e3ecd676
 
 - sync_status: **completed** (2026-09-02) — 3-phase close. frontmatter_status_transitions: `in-progress → implemented → completed` (spec.md `status:`, 본 sync 커밋이 운반 — merged close, 별도 Mx 커밋 없음). plan.md / acceptance.md는 artifact-statelessness 설계상 `status:` 필드를 갖지 않으므로 전이 대상이 아니다(spec-frontmatter-schema.md § Artifact Statelessness). `updated:`는 spec.md만 보유하며 이미 sync 커밋일(2026-09-02)과 일치해 갱신 불요.
 - sync_complete_at: 2026-09-02 (sync 커밋 착지일)
-- sync_commit_sha: "pending-backfill-sync-commit-sha" — backfill 커밋에서 실제 short SHA로 교체 (자기 참조 위험 회피, spec-frontmatter-schema.md D3 면제)
+- sync_commit_sha: "13b6248e7" — backfill 커밋에서 실제 short SHA로 교체 (자기 참조 위험 회피, spec-frontmatter-schema.md D3 면제)
 - run 커밋 SHA: `5e3ecd676` (§E.3 백필 완료, 본 sync 커밋에서 반영)
 - **AC 최종 판정 (acceptance.md §1, 6 AC): 6 GREEN / 0 PENDING / 0 RED** — AC-LPB-001..006 전부 PASS. 판정 명령·관측 출력·트리 SHA가 동반된 28/28 GREEN 배치는 progress.md §E.2 (tree `cca6cc2f0afba6ca1a92a81ff864837ed976b3a4` 기준, per-command `$?` 캡처); run-phase는 오케스트레이터 독립 검증 배치 7/7 PASS로 재관측됨(2026-09-02).
 - **sync 범위 배제 (근거 명시)**:
