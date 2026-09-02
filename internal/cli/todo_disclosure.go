@@ -42,6 +42,10 @@ func discloseNonAuthoritativeBacklogJSON(w io.Writer, verb string, vouch kanban.
 	return err
 }
 
+// @MX:ANCHOR fan_in=3 - SPEC-BACKLOG-JSON-DISCLOSURE-001 REQ-BJD-002 sole
+// disclosure entry point for the read verbs that do not already hold a vouch
+// (bare/list, why, pr); history calls discloseNonAuthoritativeBacklogJSON
+// directly with the vouch it already holds.
 // discloseQueueLayout probes the queue layout and discloses, for the read
 // verbs that do not already hold a vouch.
 //

@@ -248,4 +248,77 @@ files:
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-02
+sync_commit_sha: pending-backfill-lead-commits   # the lane does not commit; the lead commits
+sync_status: audit-ready
+b12_self_test_a: pass   # grep -c 'SPEC-BACKLOG-JSON-DISCLOSURE-001' CHANGELOG.md -> 0 before emission (no duplicate)
+b12_self_test_b: pass   # distinct AC ids in acceptance.md -> 16; CHANGELOG entry states "All 16 ACs green" (non-zero, not a vacuous 0 == 0)
+b12_self_test_c: pass   # every path named in the CHANGELOG entry verified present via ls
+changelog_entry_position: "[Unreleased] -> ### Added, first bullet (CHANGELOG.md:12)"
+frontmatter_status_transitions:
+  spec.md: "in-progress -> completed (single sync commit; updated: already 2026-09-02, unchanged)"
+  plan.md: "n/a - no YAML frontmatter block (file opens with an H1)"
+  acceptance.md: "n/a - no YAML frontmatter block (file opens with an H1)"
+  progress.md: "n/a - no YAML frontmatter block (file opens with an H1)"
+canary_compliance_check: n/a   # this SPEC defines no forward-looking policy that its own sync tests
+```
+
+### Documentation surfaces checked
+
+| Surface | Scope of the check | Finding |
+|---|---|---|
+| `README.md` / `.ko` / `.ja` / `.zh` | `grep -n -e 'backlog' -e 'state/todo' -e 'moai todo'` over all four files | **No statement about where queue state lives exists in any locale.** Every hit is either a board-column name (`backlog` the column), a `/moai todo` usage line, or a docs-site link. Nothing to repair. |
+| `docs-site/content/{en,ko,ja,zh}/utility-commands/moai-todo.md` §State file | read | **Already correct** — names `.moai/state/todo/backlog.db` as the one SQLite database and points at `.moai/docs/todo-queue-storage.md`. Not false, not edited. |
+| `docs-site/content/{en,ko,ja,zh}/utility-commands/moai-todo.md` `export-json` row | read | Not false but **incomplete after this SPEC**: it said later `todo` verbs leave the exported `backlog.json` where it was put, which is still true, but they now also disclose it. One clause appended in all four locales. |
+| `docs-site/content/{en,ko,ja,zh}/advanced/moai-web-console.md:108` | read | the `kanban` row names `.moai/state/todo` — the **directory**, not a file. Correct as written; untouched. |
+| `docs-site` repo-wide | `grep -rn 'state/todo\|backlog' docs-site/content/` | No remaining occurrence claims the queue is a JSON file. The only `backlog.json` mentions are the `export-json` rows, which describe it correctly as a legacy export. |
+| `.moai/docs/todo-queue-storage.md` (+ template mirror) | `git diff --exit-code` | exit 0 — byte-identical on both trees, AC-BJD-014 re-verified after all sync-phase edits. |
+
+### Sync-phase verification
+
+| Check | Command | Output |
+|---|---|---|
+| CHANGELOG duplicate guard (B12-a) | `grep -c 'SPEC-BACKLOG-JSON-DISCLOSURE-001' CHANGELOG.md` | `0` before emission, `1` after |
+| AC count (B12-b) | `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md \| sort -u \| wc -l` | `16` (AC-BJD-001..016) |
+| docs-site build | `hugo --source docs-site --destination /tmp/t395-hugo-out2` | exit 0, `Total in 3320 ms`, 187/185/185/185 pages; `grep -ci 'warn\|error'` over the log -> `0`; `sitemap.xml` present |
+| 4-locale heading parity | `grep -c '^#'` on the four `moai-todo.md` | `28` in every locale (unchanged — the edit added prose to an existing table row, no heading) |
+| frozen control doc | `git diff --exit-code -- .moai/docs/todo-queue-storage.md internal/template/templates/.moai/docs/todo-queue-storage.md` | exit 0 |
+| Go vet (MX edit) | `go vet ./internal/cli/` | exit 0, no output |
+| gofmt (MX edit) | `gofmt -l internal/cli/todo_disclosure.go` | no output |
+| disclosure ACs re-run | `go test ./internal/cli/ -run 'TestTodoReadSurface\|TestTodoDisclosure' -count=1` | `ok  github.com/modu-ai/moai-adk/internal/cli  7.434s` |
+
+### MX Tag validation (sync sub-step)
+
+`discloseQueueLayout` (`internal/cli/todo_disclosure.go`) has **three** non-test
+callers — `todo.go:314` (bare/`list`), `todo_why.go:28`, `todo_pr.go:120` —
+crossing the `fan_in >= 3` threshold at which the constitution requires an
+`@MX:ANCHOR`. One was added, in the established repo form
+(`// @MX:ANCHOR fan_in=3 - <SPEC-ID> <REQ> …`, matching
+`internal/runtime/gobin/resolver.go:9`). Comment-only; `go vet` and `gofmt`
+clean and the disclosure ACs re-run green above.
+
+Below threshold and deliberately not annotated:
+`discloseNonAuthoritativeBacklogJSON` (2 callers) and
+`InspectBacklogArchiveVouch` (2 non-test callers).
+
+### Sync-phase gaps — explicitly NOT observed
+
+- **The docs-site clause was not proof-read by a native reader in ja / zh / ko.**
+  It was authored as native prose rather than a word-for-word carry of the
+  English, and the page's own register was matched, but no second reader
+  confirmed it. The hugo build proves it renders, not that it reads well.
+- **The docs-site edit is not covered by any AC.** No criterion in
+  `acceptance.md` asserts it, so it carries no mechanical regression guard —
+  it is sync-phase documentation synchronisation, verified only by the build
+  and the parity counts above.
+- **`internal/cli` was not re-run in full after the MX comment edit.** Only the
+  disclosure ACs were re-run (7.4s). A comment cannot change behaviour and
+  `go vet` is clean, but that is reasoning, not a full-package measurement.
+- **`origin/develop`'s two `internal/web` i18n failures were not measured on
+  this branch**, in either direction. This branch has absorbed
+  `origin/develop`; whether the merge carries their fix is unknown here and
+  is deliberately not attributed to or away from this card.
+- **The CHANGELOG entry restates run-phase figures** (coverage, AC counts,
+  lint) from `§E.2`; they were not independently re-measured in sync-phase.
+  Their baseline attribution is `§E.2`, not this section.

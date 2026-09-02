@@ -2,7 +2,7 @@
 id: SPEC-BACKLOG-JSON-DISCLOSURE-001
 title: "A backlog.json at the canonical path is not the queue — disclose it, and stop reading it"
 version: "0.2.2"
-status: in-progress
+status: completed
 created: 2026-09-02
 updated: 2026-09-02
 author: manager-spec (card t395)
