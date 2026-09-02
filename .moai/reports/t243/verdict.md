@@ -128,14 +128,26 @@ rests on E1-E3, all of which are re-derivable from the current tree.
 
 ## Gaps
 
-1. **The "siblings restored 2 commits later" premise has no located source
-   record.** Searched: pickaxe over both settings paths (2 commits, neither
-   adds a sibling wiring), sibling file history (no deletion), t216 d2 full
-   text (no such claim), and the current tree's `.moai/reports/` mentions of
-   the hook (only t264 sweep path listings). Git history does not reproduce
-   the described shape. The lane-6 measurement the dispatch cites was not
-   found in the tree; if it exists as a session-local observation, it was
-   not persisted to a citable path.
+1. **RESOLVED after publication — the dispatch's source record located and
+   measured.** The lead reported the citation target as
+   `.moai/reports/t216/d2-unwired-scripts.md`, "existing only in the t216
+   worktree, uncommitted". Re-measured here: the file **is committed** —
+   `950cb4399` (2026-08-24 21:55:07, the t216 plan-phase investigation
+   commit) carries it — but that commit is **not an ancestor of develop**
+   (`git merge-base --is-ancestor` → rc=1), is contained only in
+   `WT-hook-wiring-drift` (`git branch --contains`), and develop's own
+   history has **zero** commits touching `.moai/reports/t216/`. The
+   worktree copy is byte-identical to the `950cb4399` blob (diff →
+   IDENTICAL). So the dispatch cited a real, committed record that is
+   simply unreachable from the integration branch until t216 merges —
+   the correct noun is "unmerged", not "uncommitted". With the source in
+   hand: d2 classifies the navigator hook "ambiguous — needs a decision"
+   with the wired-then-removed reading this verdict's E1 re-derived from
+   git history directly, and the "siblings were deleted and restored 2
+   commits later" shape appears **nowhere in d2** — it is not in the
+   11-script table, not in the compact row. That premise shape remains
+   unreproduced on both carriers (git history and the source document).
+   The verdict rests on E1-E3, unchanged.
 2. **AC-PN-009's real-session verification is not re-run here** — restoring
    the registration and passing the script-execution guard is the lane-scoped
    verification; observing `additionalContext` in a fresh session requires a
