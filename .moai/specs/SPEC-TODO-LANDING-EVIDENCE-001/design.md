@@ -70,10 +70,24 @@ moai todo landed <id> --clear
   (`REQ-TODO-004`).
 - `--ref` overrides the resolved ref; absent, the ref resolves exactly as `todo pr` resolves it, so
   the two surfaces agree by construction rather than by convention.
-- `--sha` is the only path by which a delivering SHA enters the store.
+- `--sha` is the only path by which a delivering SHA enters the store, and it is **validated before
+  it is stored** (REQ-TLE-020):
+
+  ```
+  git rev-parse --verify <sha>^{commit}          # existence; yields the full SHA
+  git merge-base --is-ancestor <resolved> <ref>  # reachability from the record's ref
+  ```
+
+  The **resolved full SHA** is stored, never the supplied abbreviated form, so a stored value cannot
+  become ambiguous as the repository grows. Either check failing is exit 1 with nothing written and
+  a stderr line naming which one failed. Neither command takes the card id as an input — that is the
+  structural reason this is a referential-integrity check and not the attribution REQ-1.10 forbids
+  (`spec.md` §B.3.1). A check that cannot be run (no git, unresolvable ref) is also exit 1: the
+  record needs `ref_head` from git anyway (REQ-TLE-005), so an unanswerable git is already fatal to
+  forming a record, and no new permissive-vs-refusing policy is introduced.
 - `--clear` is mutually exclusive with `--sha` / `--ref`; combining them is a usage error (exit 2).
-- Exit codes follow `internal/cli` convention: 0 written, 1 card not found or ref unresolvable,
-  2 usage.
+- Exit codes follow `internal/cli` convention: 0 written; 1 card not found, ref unresolvable, or a
+  `--sha` validation failure (existence or reachability); 2 usage.
 - The write is one `Mutate` under the queue lock, touching one row's one column.
 
 `--clear` exists because §B.5 requires a correction path; without it a mistyped `--sha` is permanent

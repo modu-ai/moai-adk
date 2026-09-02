@@ -35,7 +35,7 @@ REQ-TODO-009).
 (Line wrapped for display; the source is one line.) The requirement constrains the *manner* of
 change and names its own precedent. It does not freeze the field set.
 
-## §R.3 The two completed SPECs agree (D1, second half — the card's premise is FALSIFIED)
+## §R.3 The two SPECs agree (D1, second half — the card's premise is FALSIFIED)
 
 ```
 $ awk 'NR==51 {print}' .moai/specs/SPEC-TODO-ANALYSIS-001/spec.md
@@ -46,7 +46,9 @@ $ awk 'NR==51 {print}' .moai/specs/SPEC-TODO-ANALYSIS-001/spec.md
 
 The clause after 다만 is the whole point: §E is a scope-local declaration, not a permanent freeze,
 and the same REQ permits additive change. `SPEC-TODO-ANALYSIS-001` does **not** judge the opposite of
-§R.2 — it states the same reading. No completed SPEC was edited, and none needs to be.
+§R.2 — it states the same reading. Neither SPEC was edited, and neither needs to be. (Their
+measured statuses are `in-progress` and `completed` respectively — §R.10.1; v0.1.0 called both
+`completed`.)
 
 The precedent it names is present in the tree:
 
@@ -146,13 +148,19 @@ rather than assuming the reader supplies it.
 
 ## §R.8 The version gate rejects any bump
 
+The v0.1.0 revision labelled this block `NR>=292 && NR<=298` while showing only five of the seven
+lines — the leading and trailing braces were absent, so the "verbatim output" was not verbatim.
+Re-measured and re-pasted in full:
+
 ```
-$ awk 'NR>=292 && NR<=298' internal/kanban/backlog_sqlite.go
-	case backlogSchemaVersion:
-		// current layout
-	default:
-		return fmt.Errorf("schema %s: unsupported schema_version %q (want %q): %w",
-			e.dbPath, version, backlogSchemaVersion, ErrBacklogCorrupt)
+$ awk 'NR>=292 && NR<=298 {printf "%d: %s\n", NR, $0}' internal/kanban/backlog_sqlite.go
+292: 		}
+293: 	case backlogSchemaVersion:
+294: 		// current layout
+295: 	default:
+296: 		return fmt.Errorf("schema %s: unsupported schema_version %q (want %q): %w",
+297: 			e.dbPath, version, backlogSchemaVersion, ErrBacklogCorrupt)
+298: 	}
 ```
 
 A `schema_version` bump is a downgrade break for every operator queue in the field, not a feature —
@@ -168,3 +176,100 @@ ok  	github.com/modu-ai/moai-adk/internal/kanban	0.408s
 Scoped to the guard under discussion. A full pre-edit baseline over the two touched packages is
 `plan.md` §C's pre-flight obligation and belongs to run-phase entry, not to this document — running
 it here would produce a figure that has decayed by the time it is used.
+
+---
+
+## §R.10 Measurements added at v0.2.0 (plan-audit iteration 1 remediation)
+
+### §R.10.1 The cross-referenced SPEC statuses (D1)
+
+```
+$ grep -m1 '^status:' .moai/specs/SPEC-KANBAN-QUEUE-PR-SYNC-001/spec.md \
+    .moai/specs/SPEC-KANBAN-TODO-CLI-001/spec.md \
+    .moai/specs/SPEC-TODO-ANALYSIS-001/spec.md \
+    .moai/specs/SPEC-TODO-LANDING-STATE-001/spec.md
+SPEC-KANBAN-TODO-CLI-001/spec.md:status: in-progress
+SPEC-KANBAN-QUEUE-PR-SYNC-001/spec.md:status: in-progress
+SPEC-TODO-LANDING-STATE-001/spec.md:status: completed
+SPEC-TODO-ANALYSIS-001/spec.md:status: completed
+```
+
+v0.1.0 asserted `completed` for the first two. That was inherited from the card text and never
+measured — the document opened by claiming every figure in it was measured in this tree, and this
+one was not. `spec.md` §A.3b carries the correction and the re-grounded argument.
+
+### §R.10.2 `PRLinkOutcome` carries no delivering-commit field (§A.3b)
+
+```
+$ grep -n "type PRLinkOutcome" -A14 internal/kanban/prlink.go
+101:type PRLinkOutcome struct {
+102:	CardID string `json:"card_id"`
+104:	Kind PRLinkKind `json:"outcome"`
+107:	PRs []int `json:"pr,omitempty"`
+111:	PRState string `json:"pr_state,omitempty"`
+113:	Confidence PRLinkConfidence `json:"confidence,omitempty"`
+114:}
+```
+
+(Comment lines elided for width; the field lines are verbatim at their stated line numbers.) Five
+fields, none of them a delivering commit. This is one of the two live-in-the-tree properties §A.3b
+relies on in place of a lifecycle status.
+
+### §R.10.3 The `todo pr` git subprocess seam (D6)
+
+```
+$ sed -n '150,154p' internal/kanban/prlink_landed.go
+	args, err := LandedGrepArgs(ref, cardID)
+	if err != nil {
+		return LandingUnknown, err
+	}
+	out, err := q.Run("git", args...)
+
+$ sed -n '57,60p' internal/cli/todo_pr.go
+var todoRunCommand kanban.CommandRunner = func(name string, args ...string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), todoPRSubprocessTimeout)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, name, args...).Output()
+```
+
+`moai todo pr` executes `git` in the project working directory. Git may write inside `.git/` during
+a read, so AC-TLE-014's project-root byte-identity assertion excludes `.git/` and adds a
+non-empty + queue-directory-present positive control so the exclusion cannot hollow it out.
+
+### §R.10.4 The inherited prompt guard already covers the new verb (D10)
+
+```
+$ sed -n '451,480p' internal/cli/todo_test.go
+func TestTodoCmd_NoAskUserQuestion(t *testing.T) {
+	sources, err := filepath.Glob("todo*.go")
+	...
+	// Positive control on the scan itself: a glob that matched nothing
+	// would report every file clean without reading one.
+	if scanned < 2 {
+		t.Errorf("guard scanned %d todo sources, want the whole surface", scanned)
+	}
+
+	// Negative control: the guard must flag a synthetic violation.
+	if _, bad := todoPromptGuard("x := AskUserQuestion()"); !bad {
+		t.Error("guard must detect an AskUserQuestion reference (negative control)")
+	}
+}
+```
+
+The glob is `todo*.go`, so `todo_landed.go` is covered automatically once it exists — and the
+existing guard carries a `scanned < 2` positive control and a synthetic-violation negative control
+that a fresh grep conjunct in AC-TLE-007 would not. The conjunct was removed rather than kept as a
+weaker duplicate.
+
+### §R.10.5 What v0.2.0 did NOT measure
+
+- **The validation commands were not executed.** `git rev-parse --verify <sha>^{commit}` and
+  `git merge-base --is-ancestor` are named in REQ-TLE-020 and `design.md` §3 from their documented
+  semantics; neither was run against a fixture here, because the fixture they need (a commit
+  deliberately unreachable from the record's ref) is AC-TLE-020's to build in run-phase.
+- **The plan-audit's `archived_items` blindness probe was not re-run.** It is cited from
+  `.moai/reports/t359/plan-audit.md` Hunt 2 as an independent second observation beside this SPEC's
+  own `items` probe (§R.5). Both are recorded as decaying: the guard belongs to
+  `SPEC-TODO-ARCHIVE-QUERY-001`, and run-phase re-measures rather than citing either.
+- **No pre-change binary was run.** Unchanged from v0.1.0 and now stated as a standing gap in
+  `spec.md` §G rather than deferred to AC-TLE-018 (D7).

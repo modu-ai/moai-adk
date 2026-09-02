@@ -31,7 +31,14 @@ rows must be shown unchanged before the `ALTER` is introduced.
 2. **`ALTER TABLE` is new to this codebase** (`grep -rn "ALTER TABLE" internal/kanban/ internal/cli/`
    → `rc=1`). There is no in-tree idempotence pattern to copy; M1 establishes one.
 3. **The seventh column is the second contract change on this surface** and external consumers still
-   cannot be enumerated. Inherited from half A, recorded in `spec.md` §G, not closed here.
+   cannot be enumerated. Inherited from half A, recorded in `spec.md` §G, not closed here. M4's
+   criterion (AC-TLE-015) therefore pins all seven fields, not just the two it adds — leaving
+   fields 1-5 free would let a reorder ride along with the insertion.
+5. **`moai todo pr` shells out to `git` in the working directory**
+   (`internal/kanban/prlink_landed.go:150-154` via the `todoRunCommand` seam at
+   `internal/cli/todo_pr.go:57-65`), and git may write inside `.git/` during a read. Any
+   byte-identity assertion over the project root must exclude `.git/` or it flakes for reasons
+   unrelated to the property (AC-TLE-014).
 4. **`--json` currently marshals `PRLinkOutcome` alone** (`internal/cli/todo_pr.go:167`), which the
    render does not merge with queue state. M4 must decide whether the evidence rides on the outcome
    struct or on a render-time wrapper; the wrapper is preferred because `PRLinkOutcome` is the
@@ -88,15 +95,21 @@ The one decision a reviewer is most likely to want changed: **one nullable TEXT 
 record**, versus four scalar columns, versus a fifth table. `spec.md` §B.1 argues it; if the review
 overturns it, everything below changes shape and nothing below has been built yet.
 
-1. Extend `TestTodoHistoryAddsNoSchemaChange` with exact column-set assertions for `items` and
-   `archived_items` — written against the **current** sets, so it passes before the column exists and
-   fails the moment one is added without updating it (AC-TLE-019).
+1. Extend `TestTodoHistoryAddsNoSchemaChange` with exact ordered
+   `(name, type, notnull, dflt_value)` tuple assertions for `items` **and** `archived_items`,
+   asserted per table — written against the **current** tuples, so it passes before the column
+   exists and fails the moment one is added, retyped, or made non-nullable without updating it
+   (AC-TLE-019a/b/c). Both tables move in this step: a guard extended for `items` alone leaves half
+   of REQ-TLE-019 unbuilt, which AC-TLE-019b exists to catch.
 2. Add `landing TEXT` to `items` and `archived_items` via an idempotent `ALTER`, decided from
    `pragma_table_info`, executed at engine open immediately after the DDL and **before** the
    `schema_version` switch (AC-TLE-001/002/003).
-3. Update the guard's expected column sets in the same commit as the `ALTER`, so the two move
+3. Update the guard's expected column tuples in the same commit as the `ALTER`, so the two move
    together and the update is a visible act.
-4. Assert the CHECK and existing rows are untouched (AC-TLE-004 in part, AC-TLE-003).
+4. Assert the CHECK survives the ALTER and existing rows are untouched (AC-TLE-003). **AC-TLE-004
+   is NOT claimed here**: its Given-When requires the `moai todo landed` verb, which does not exist
+   until M3, so the criterion belongs wholly to M3. (`spec.md` §E maps REQ-TLE-004 → M3 for the same
+   reason.)
 
 Deliverables: `internal/kanban/backlog_sqlite.go`, `internal/kanban/backlog_schema_freeze_test.go`,
 new `internal/kanban/backlog_landing_test.go`.
@@ -125,6 +138,12 @@ does not edit them.
 3. Replace-and-clear semantics (AC-TLE-009).
 4. SPEC-status read at record time, unknown when unreadable, never defaulted (AC-TLE-010).
 5. No SHA is ever derived from the grep predicate (AC-TLE-012, planted mutant).
+6. **`--sha` referential-integrity validation** (AC-TLE-020): resolve with
+   `git rev-parse --verify <sha>^{commit}` (existence + full SHA) then
+   `git merge-base --is-ancestor <resolved> <ref>` (reachability); store the resolved full SHA;
+   exit 1 naming which check failed otherwise, writing nothing. The card id is passed to neither
+   command — that is what keeps this a referential-integrity check rather than attribution
+   (`spec.md` §B.3.1).
 
 Deliverables: `internal/cli/todo_landed.go` + tests; registration on the `todo` command.
 
@@ -150,6 +169,9 @@ Deliverables: `internal/cli/todo_pr.go` + tests.
    the `todo pr` row (`:57`), and one sentence placing the verb under the operator-act rule
    (`:59-63`). Mirror to `internal/template/templates/.claude/skills/moai/workflows/todo.md`, then
    `make build`.
+4. Mirror-parity + stated-column-count criterion (AC-TLE-021). The parity half guards the drift this
+   repository has already paid for once in the `.sh` / `.sh.tmpl` hook-wrapper pair; the count half
+   ties the prose to what M4 actually emits.
 
 ---
 

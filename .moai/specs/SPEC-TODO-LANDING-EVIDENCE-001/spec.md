@@ -1,7 +1,7 @@
 ---
 id: SPEC-TODO-LANDING-EVIDENCE-001
 title: "A card that knows its own landing state, half B — the evidence store: one additive column, an operator verb that records, and an attribution rule that survives REQ-1.10"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-09-03
 updated: 2026-09-03
@@ -28,7 +28,8 @@ related_specs:
 
 | Version | Date | Change |
 |---------|------|--------|
-| 0.1.0 | 2026-09-03 | Initial plan-phase authoring (card t359), measured in worktree `.claude/worktrees/t359`, branch `WT-landing-evidence`, at HEAD `e50964ad3`. Half A (`SPEC-TODO-LANDING-STATE-001`, card t331) is landed and `completed`; this SPEC builds the storage axis its §B.2 and §D handed over. Two premises the card carried were re-measured before being built on: the `REQ-TODO-013` reading (§B.1) and the claimed disagreement between two completed SPECs (§A.3 — **the disagreement does not exist**; the card's premise is falsified here rather than reconciled). The `REQ-1.10` tension is resolved on the provenance axis without amending, weakening, or reversing that completed requirement (§B.3). |
+| 0.1.0 | 2026-09-03 | Initial plan-phase authoring (card t359), measured in worktree `.claude/worktrees/t359`, branch `WT-landing-evidence`, at HEAD `e50964ad3`. Half A (`SPEC-TODO-LANDING-STATE-001`, card t331) is landed and `completed`; this SPEC builds the storage axis its §B.2 and §D handed over. Two premises the card carried were re-measured before being built on: the `REQ-TODO-013` reading (§B.1) and the claimed disagreement between the two SPECs carrying it (§A.3 — **the disagreement does not exist**; the card's premise is falsified here rather than reconciled). The `REQ-1.10` tension is resolved on the provenance axis without amending, weakening, or reversing that requirement (§B.3). *This row described both SPECs as `completed`; v0.2.0 measured them and corrected it — see D1 below and §A.3b.* |
+| 0.2.0 | 2026-09-03 | **Plan-audit iteration 1 remediation** (FAIL 0.80 vs the Tier L threshold 0.85; 9 blocking, all seven must-pass criteria passed — a score-driven FAIL concentrated in Testability 0.75). **D1**: three `completed` claims about two SPECs that measurably read `in-progress` are corrected, and the correction is followed through — §A.3b re-grounds why those requirements bind on two *measured* properties (the requirement is live in the tree; an `in-progress` SPEC makes reversal MORE disruptive, not less) instead of on a lifecycle field that was not read. **D2**: the ground for declining `--sha` validation was factually wrong — a referential-integrity check is not the card-token grep and makes no attribution claim. The false ground is withdrawn (§B.3.1), and the check is ADDED as REQ-TLE-020 / AC-TLE-020 rather than re-declined; §G now states plainly what a reachable-but-wrong operator typo costs. **D3**: §C.7's false claim that AC-TLE-015/016 verify the doctrine text is withdrawn and split into what is mechanically verified (mirror parity + stated column count, new REQ-TLE-021 / AC-TLE-021) and what is a DoD item with no criterion (the prose). **D4**: AC-TLE-015 now pins fields 1-5, not only the count and the two it adds. **D5**: AC-TLE-019 gains independent `archived_items` and tuple-drift plants (019a/b/c) — a guard extended for `items` alone previously satisfied it in full. **D6**: AC-TLE-014 excludes `.git/` (the `todo pr` git subprocess may write there during a read) and gains a non-empty + queue-present positive control so the exclusion cannot hollow it out. **D7**: the downgrade gap stops being deferred to a criterion that does not close it — AC-TLE-018 gains a reconstructed pre-change open path, and §G keeps REQ-TLE-018 listed as an argued claim with a partial demonstration. **D8**: §E maps REQ-TLE-004 → M3 (its criterion needs the M3 verb). **D9**: AC-TLE-005's Given gains the `spec_id` its Then asserts on. Non-blocking: **D10** redundant prompt-guard conjunct dropped in favour of the inherited `todo*.go` guard; **D11** §R.8's mis-labelled awk block re-pasted verbatim; **D12** REQ-TLE-001 reduced to the observable shape with the statement form left to `design.md` §2; **D13** the guard's remaining type/nullability blindness is closed by the REQ-TLE-019 tuple assertion rather than merely recorded. Counts: 19 → **21 requirements / 21 criteria** (Tier L ceiling 25/25). No source file was modified. |
 
 > **Provenance discipline.** Every `file:line` citation in this document was measured at HEAD
 > `e50964ad3` in the worktree `.claude/worktrees/t359`. Where a claim rests on a command rather
@@ -78,11 +79,11 @@ shape for a *question*, and the wrong shape for a *record*:
 Evidence is the missing half: a record of what was observed, when, against which ref, and on whose
 authority.
 
-### A.3 The card's D1 premise, re-measured — the two completed SPECs do NOT disagree
+### A.3 The card's D1 premise, re-measured — the two SPECs do NOT disagree
 
 The dispatching card states that prior reasoning misattributed `REQ-TODO-013`, and instructs that
 if the requirement's own text permits `ADD COLUMN`, the design is to be built on that reading. It
-further instructs reconciling a record in the completed `SPEC-TODO-ANALYSIS-001` "that judged the
+further instructs reconciling a record in `SPEC-TODO-ANALYSIS-001` (`status: completed`) "that judged the
 opposite".
 
 **The first half of the premise is confirmed. The second half is falsified.**
@@ -107,8 +108,8 @@ Translated to the claim it makes: the five fields are the contract REQ-TODO-013 
 SPEC's §E is a scope-local out-of-scope declaration rather than a permanent freeze, and the same REQ
 permits additive change — with the top-level `last_seq` field as the precedent.
 
-That is the same reading this SPEC builds on. There is no disagreement between the two completed
-SPECs to reconcile, and no edit to a completed SPEC is required or performed. What existed was a
+That is the same reading this SPEC builds on. There is no disagreement between the two SPECs to
+reconcile, and no edit to either is required or performed. What existed was a
 **summary** that dropped the qualifying clause after the first sentence. §B.1 records the reading
 once, with the verbatim text beside it, so the next reader does not re-derive it from a summary.
 
@@ -116,9 +117,49 @@ The `last_seq` precedent is present in the tree: `internal/kanban/backlog_store.
 `LastSeq int \`json:"last_seq"\`` as a top-level field of `BacklogRecord`, alongside the five-field
 `BacklogItem` at `:65-71`.
 
+### A.3b The measured status of every SPEC this one leans on, and why status is not the reason they bind
+
+Version 0.1.0 of this document called two of them `completed`. That was inherited from the card
+text and never measured, and it is wrong. Measured in this tree:
+
+```
+$ grep -m1 '^status:' .moai/specs/SPEC-KANBAN-QUEUE-PR-SYNC-001/spec.md \
+    .moai/specs/SPEC-KANBAN-TODO-CLI-001/spec.md \
+    .moai/specs/SPEC-TODO-ANALYSIS-001/spec.md \
+    .moai/specs/SPEC-TODO-LANDING-STATE-001/spec.md
+SPEC-KANBAN-TODO-CLI-001/spec.md:status: in-progress
+SPEC-KANBAN-QUEUE-PR-SYNC-001/spec.md:status: in-progress
+SPEC-TODO-LANDING-STATE-001/spec.md:status: completed
+SPEC-TODO-ANALYSIS-001/spec.md:status: completed
+```
+
+So `REQ-TODO-013` (§A.3), `REQ-1.10` (§B.3), and `REQ-2.1` (§A.4, §B.2) all come from SPECs that
+read `in-progress`, not `completed`.
+
+**This changes the argument, and the corrected argument is the stronger one.** Version 0.1.0
+leaned on "a completed SPEC's requirement cannot be quietly reversed", which made the binding a
+property of a *lifecycle field* — the weakest available ground, and one that was not even true.
+The two properties actually relied on are these, and both were measured rather than read off a
+frontmatter line:
+
+- **The requirement is live in the tree.** REQ-2.1's prohibition is a stated property of the file
+  that implements it (`internal/cli/todo_pr.go:1-15`), and REQ-1.10's shape is visible in
+  `PRLinkOutcome` carrying no delivering-commit field at all
+  (`internal/kanban/prlink.go:101-114`: `CardID`, `Kind`, `PRs`, `PRState`, `Confidence`).
+  Reversing either is a change to shipped behaviour that other code already depends on, whatever
+  its SPEC's frontmatter says.
+- **`in-progress` makes reversal *more* disruptive, not less.** A SPEC still being built out has
+  remaining milestones that may rest on the requirement, and its consumer set is still moving. A
+  closed SPEC at least has a stable, enumerable set of things that depend on it. "It is only
+  in-progress, so the requirement is soft" is precisely backwards, and is recorded here so the
+  inference is not available to a later reader.
+
+Neither property depends on a status, which is why this SPEC no longer cites one as a reason.
+
 ### A.4 The constraint the card did not name, and which decides the design
 
-`SPEC-KANBAN-QUEUE-PR-SYNC-001` REQ-2.1 (`spec.md:259-261`) is [HARD] and is *completed*:
+`SPEC-KANBAN-QUEUE-PR-SYNC-001` REQ-2.1 (`spec.md:259-261`) is [HARD] — and binds for the reasons
+in §A.3b, not because of its lifecycle status:
 
 > **REQ-2.1** — [HARD] The read surface shall leave `.moai/state/kanban/backlog.json`
 > byte-identical across an invocation, and shall write no field, no `findings[]` entry, and no
@@ -221,7 +262,7 @@ This answers the question §A.4 raises. Three candidates were considered:
 
 | Candidate | Verdict |
 |---|---|
-| `moai todo pr` records what it observed | **Rejected.** REQ-2.1 is [HARD] on a completed SPEC and forbids the read surface writing a field or a timestamp. Recording on a read would also make every read a write, so a reader's glance would mutate the queue — the precise shape `todo.md`'s operator-only rule exists to prevent. |
+| `moai todo pr` records what it observed | **Rejected.** REQ-2.1 is [HARD] and forbids the read surface writing a field or a timestamp. Recording on a read would also make every read a write, so a reader's glance would mutate the queue — the precise shape `todo.md`'s operator-only rule exists to prevent. |
 | `moai todo pr --record` | **Rejected.** The flag does not change what the surface is. REQ-2.1 binds the surface, not the invocation, and a write path reachable by a flag is a write path. |
 | A new explicit verb | **Adopted.** The operator asserts the landing; the queue records the assertion. `todo pr` stays byte-identical, keeps its one `gh` query, and gains no write path. |
 
@@ -239,7 +280,7 @@ in a lane's worktree.
 
 ### B.3 Decision 3 — REQ-1.10 is preserved, and the resolution is provenance, not permission
 
-`SPEC-KANBAN-QUEUE-PR-SYNC-001` REQ-1.10 (`spec.md:251-255`) is completed and reads, verbatim:
+`SPEC-KANBAN-QUEUE-PR-SYNC-001` REQ-1.10 (`spec.md:251-255`) reads, verbatim:
 
 > **REQ-1.10** — The resolver shall not name, return, or otherwise claim which commit delivered a
 > card. The `landed` outcome is a boolean fact about `origin/main` and nothing more. (Grounds: §C.2
@@ -272,6 +313,48 @@ The answer is **provenance, not permission**:
 
 So the design never claims delivery on the machine's authority. Where it names a commit, the
 operator named it; where the operator did not, it names a ref position and says that is what it is.
+
+#### B.3.1 Provenance is not enough on its own — the SHA is checked for referential integrity
+
+Provenance answers *who claimed it*. It does not answer *whether the claim names a real commit*,
+and version 0.1.0 of this document conflated the two: it declined all validation of `--sha` on the
+ground that "validating it against the grep predicate would reintroduce exactly the inference
+REQ-1.10 forbids". **That ground is false and is withdrawn.** Two different things were collapsed
+into one:
+
+| Check | What it asks | Does it attribute? |
+|---|---|---|
+| the card-token grep predicate | *which* commit delivered card `tX` | **Yes** — and wrongly, per REQ-1.10's own grounds |
+| `git rev-parse --verify <sha>^{commit}` | does this object exist, and is it a commit | No |
+| `git merge-base --is-ancestor <sha> <ref>` | is that commit reachable from this ref | No |
+
+The second and third are **referential-integrity** checks. They make no claim about which card a
+commit delivered — they cannot, because the card id is not an input to either. Refusing them
+alongside the grep predicate was a category error, and its consequence was that `sha_source:
+operator` became the only thing standing between the store and an arbitrary string: the marker
+recorded who typed it, and nothing recorded whether it named anything at all.
+
+Ruled: **a supplied `--sha` is validated for existence and reachability before it is stored**
+(REQ-TLE-020). Three reasons, in order of weight:
+
+1. **This SPEC's own §B.3 argument demands it.** "A stored mis-attribution is worse than a rendered
+   one, since it outlives the invocation that made it" is a property of **storage**, not of
+   authorship. An operator typo produces exactly the durable wrong record that sentence calls
+   worse. An argument that condemns machine mis-attribution and then waves through operator
+   mis-typing is not an argument; it is a preference.
+2. **The check costs nothing that is not already being paid.** It runs in the *write* verb, never
+   on a read path, so the §D no-new-read-cost exclusion is untouched. The verb already invokes git
+   to read `ref_head` (REQ-TLE-005), so the marginal cost is two local invocations on a path the
+   operator entered deliberately.
+3. **The record is otherwise internally incoherent.** A record asserts "this commit delivered the
+   card, observed against this ref". A SHA unreachable from that ref contradicts the record's own
+   `ref` field regardless of who typed it. Validating reachability is checking the record against
+   itself — not checking the operator against the machine.
+
+What the check explicitly does **not** establish is stated in REQ-TLE-020 itself and repeated here
+because it is the clause that keeps REQ-1.10 intact: it asserts **existence and reachability, never
+delivery**. A reachable commit that the operator named in error is stored, and is indistinguishable
+from a correct one. §G records what that residual costs.
 
 ### B.4 Decision 4 — what a record carries, and why the SPEC status is observed at record time
 
@@ -322,14 +405,15 @@ still reporting success."
 
 ## §C Requirements
 
-Nineteen requirements. Every one carries at least one acceptance criterion in `acceptance.md`, and
-§E maps them both ways.
+Twenty-one requirements (Tier L ceiling 25). Every one carries at least one acceptance criterion in
+`acceptance.md`, and §E maps them both ways.
 
 ### C.1 Storage
 
-- **REQ-TLE-001** (Ubiquitous) The backlog store shall carry landing evidence in one nullable `TEXT`
-  column named `landing` on the `items` table, added by `ALTER TABLE ... ADD COLUMN`, with no
-  `CHECK` constraint, no `DEFAULT`, no index, and no `schema_version` bump.
+- **REQ-TLE-001** (Ubiquitous) The backlog store shall carry landing evidence in one column named
+  `landing` on the `items` table, of type `TEXT`, nullable, with no `CHECK` constraint, no
+  `DEFAULT`, no index, and no `schema_version` bump. (The statement form that achieves this is
+  `design.md` §2's; the behavioural obligation not to rebuild or rewrite is REQ-TLE-003's.)
 - **REQ-TLE-002** (Ubiquitous) The `archived_items` table shall carry a `landing` column of the same
   shape, so a card's evidence survives its close.
 - **REQ-TLE-003** (Event-driven) **When** the engine opens a backlog database, it shall add each
@@ -375,6 +459,13 @@ Nineteen requirements. Every one carries at least one acceptance criterion in `a
   delivering SHA from the card-token grep predicate or from any other match set.
 - **REQ-TLE-013** (Ubiquitous) The ref head SHA a record carries shall be marked as an observed ref
   position and shall not be presented, keyed, or rendered as a delivering commit.
+- **REQ-TLE-020** (Event-driven) **When** the operator supplies `--sha`, the recording verb shall
+  store it only after resolving it to an existing commit object and confirming that commit is
+  reachable from the record's `ref`, storing the full resolved SHA rather than the supplied form;
+  **when** either check fails or cannot be run, the verb shall write nothing and exit 1, naming
+  which check failed. This asserts **existence and reachability, never delivery** — the card id is
+  not an input to either check, so neither can and neither does attribute a commit to a card
+  (§B.3.1).
 
 ### C.5 Read surfaces
 
@@ -397,16 +488,34 @@ Nineteen requirements. Every one carries at least one acceptance criterion in `a
 - **REQ-TLE-018** (Ubiquitous) A binary predating this change shall continue to open and serve a
   database carrying the `landing` columns: `schema_version` shall remain `"1"` and every production
   statement shall name its columns explicitly.
-- **REQ-TLE-019** (Ubiquitous) The schema-freeze guard shall assert the exact column set of `items`
-  and of `archived_items`, so a further column is a deliberate act rather than a silent one.
+- **REQ-TLE-019** (Ubiquitous) The schema-freeze guard shall assert, for `items` and for
+  `archived_items` independently, the exact ordered sequence of `(name, type, notnull, dflt_value)`
+  column tuples — so a further column, a removed column, a reordering, or a type / nullability /
+  default change to an existing column is each a deliberate act rather than a silent one.
 
 ### C.7 Doctrine
 
-Doctrine text is carried by REQ-TLE-007/008/015/016 as their surfaces' user-visible contract;
-`plan.md` M5 names the two files that must move together
-(`.claude/skills/moai/workflows/todo.md` and its template mirror) and `acceptance.md` AC-TLE-015 and
-AC-TLE-016 verify what those files must state. No separate requirement is spent on the prose, which
-would produce a criterion satisfiable by a grep for a sentence.
+- **REQ-TLE-021** (Ubiquitous) The two doctrine surfaces —
+  `.claude/skills/moai/workflows/todo.md` and its template mirror at
+  `internal/template/templates/.claude/skills/moai/workflows/todo.md` — shall carry byte-identical
+  `moai todo` verb-table and `todo pr` rows, and the column count those rows state shall equal the
+  count the rendered row actually carries.
+
+**What has a criterion behind it, and what does not.** Version 0.1.0 claimed AC-TLE-015 and
+AC-TLE-016 "verify what those files must state". That was false: AC-TLE-015 asserts a field split
+and a JSON key, AC-TLE-016 asserts a marker survives SHA substitution, and neither opens
+`todo.md`. The claim is withdrawn and replaced by an accurate split:
+
+- **Mechanically verified** (AC-TLE-021): mirror parity between the two files, and agreement
+  between the column count the doctrine *states* and the count the surface *emits*. Both are
+  cross-artifact comparisons with a reachable red — edit one file only, or leave the row saying
+  six columns, and the criterion fails.
+- **Not verified by any criterion** (`acceptance.md` §D.3 Definition of Done only): the doctrine
+  *prose* — the verb's description and the evidence-is-not-a-transition sentence. This is
+  deliberate. A criterion asserting that a sentence is present is satisfied by pasting the
+  sentence, which measures nothing; the behaviour that sentence describes is verified where it can
+  actually fail, by AC-TLE-008. Recording this as an uncovered DoD item is the honest position and
+  is repeated in §G.
 
 ---
 
@@ -477,7 +586,7 @@ requirement. Criterion bodies, their RED conditions, and the mutants that establ
 | REQ-TLE-001 | AC-TLE-001 | M1 |
 | REQ-TLE-002 | AC-TLE-002 | M1 |
 | REQ-TLE-003 | AC-TLE-003 | M1 |
-| REQ-TLE-004 | AC-TLE-004 | M1 |
+| REQ-TLE-004 | AC-TLE-004 | M3 |
 | REQ-TLE-005 | AC-TLE-005 | M2 |
 | REQ-TLE-006 | AC-TLE-006 | M2 |
 | REQ-TLE-007 | AC-TLE-007 | M3 |
@@ -492,7 +601,9 @@ requirement. Criterion bodies, their RED conditions, and the mutants that establ
 | REQ-TLE-016 | AC-TLE-016 | M4 |
 | REQ-TLE-017 | AC-TLE-017 | M5 |
 | REQ-TLE-018 | AC-TLE-018 | M5 |
-| REQ-TLE-019 | AC-TLE-019 | M1 |
+| REQ-TLE-019 | AC-TLE-019 (a/b/c) | M1 |
+| REQ-TLE-020 | AC-TLE-020 | M3 |
+| REQ-TLE-021 | AC-TLE-021 | M5 |
 
 ---
 
@@ -520,10 +631,17 @@ wrong despite what was.
 
 - No `moai todo landed` verb exists yet, so nothing about its runtime behaviour was measured — every
   claim about it is a design intent to be verified in run-phase against `acceptance.md`.
-- The downgrade claim (REQ-TLE-018) was reasoned from the measured absence of `SELECT *` on the
-  items path (§A.6), **not** by running a pre-change binary against a post-change database. That
-  execution is AC-TLE-018's job in run-phase; until it runs, REQ-TLE-018 is an argued claim, not a
-  demonstrated one.
+- **No pre-change binary is ever run against a post-change database, and no criterion in this SPEC
+  closes that.** Version 0.1.0 said the execution "is AC-TLE-018's job in run-phase", which was a
+  parking spot rather than a gap: AC-TLE-018 does not do that job. What AC-TLE-018 demonstrates,
+  after the D7 strengthening, is that (a) the pre-change *statements* still succeed verbatim against
+  a post-change database, and (b) the pre-change *open path* — the DDL const, the `schemaVersion`
+  read, and the version switch **as they stand at HEAD `e50964ad3`** — reconstructed in-test, opens
+  a post-change database without error. What it does **not** demonstrate is a genuinely older
+  build: the reconstruction is compiled from today's source, so a divergence between the reconstruction
+  and a real released binary would be invisible to it. REQ-TLE-018 therefore remains **an argued
+  claim with a partial demonstration**, not a demonstrated one, and it stays in this list after
+  AC-TLE-018 passes.
 - The migration parity path (`backlog_migrate.go:585-630`) was read, not exercised. Whether its
   comparison is reachable for every archived row was not measured here.
 - No external consumer of `moai todo pr` was enumerated. Half A recorded that they cannot be
@@ -540,10 +658,26 @@ wrong despite what was.
   surface — half A went five columns to six and recorded that external consumers cannot be
   enumerated — so the risk is inherited and compounded, not new. The card text staying last is the
   only mitigation available, and it protects only tail-readers.
-- **An operator can assert a wrong SHA.** Provenance (§B.3) makes the claim attributable, not
-  correct. `--clear` and replace (§B.5) are the correction path; nothing validates that a supplied
-  SHA exists on the named ref, and REQ-TLE-012 deliberately does not add such a check, because
-  validating it against the grep predicate would reintroduce exactly the inference REQ-1.10 forbids.
-- **This SPEC carries 19 of Tier L's 25 requirements.** It is under the ceiling with margin, but the
-  axis is not infinitely extensible: a follow-up that adds observation history or a phase-aware
-  predicate should be its own card rather than an amendment here.
+- **An operator can assert a SHA that is reachable and still wrong.** REQ-TLE-020 closes the
+  cheap half of this — a SHA that names no commit, or names one unreachable from the record's `ref`,
+  is refused at write time and nothing is stored. What survives is the expensive half: a **typo that
+  happens to land on another reachable commit** is stored, is marked `operator`, and is
+  indistinguishable from a correct record by any check the machine can run — because telling them
+  apart is exactly the card-to-commit attribution REQ-1.10 forbids the machine to attempt. Concretely,
+  what such a typo costs: the record renders on `todo pr` as an operator-asserted delivering commit
+  and is believed; nothing flags it; and it is corrected only when a human notices and runs
+  `--clear` or re-records (§B.5). This is the residual the provenance argument genuinely carries,
+  stated plainly in place of version 0.1.0's false claim that no validation was possible.
+- **The guard sees column tuples, not the whole schema.** REQ-TLE-019's
+  `(name, type, notnull, dflt_value)` assertion catches an added, removed, reordered, retyped, or
+  re-nullabled column. It does not catch a changed CHECK expression beyond the substring the
+  existing assertion already pins, a changed primary key, or a trigger. The axis §A.5 was written
+  to close is closed; the rest of the schema surface is not, and no criterion here claims it is.
+- **The doctrine prose has no criterion behind it** (§C.7). AC-TLE-021 verifies mirror parity and
+  the stated column count; the sentence describing the verb, and the evidence-is-not-a-transition
+  sentence, are Definition-of-Done items only. The behaviour those sentences describe is verified
+  by AC-TLE-008; the wording is not.
+- **This SPEC carries 21 of Tier L's 25 requirements** (up from 19 at v0.1.0: REQ-TLE-020 for the
+  D2 validation, REQ-TLE-021 for the D3 mirror parity). Four of headroom remain. The axis is not
+  infinitely extensible: a follow-up that adds observation history or a phase-aware predicate should
+  be its own card rather than an amendment here.
