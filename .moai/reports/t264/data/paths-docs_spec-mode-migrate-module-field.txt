@@ -1,0 +1,1 @@
+.moai/specs/SPEC-CONFIG-MODE-MIGRATE-001/spec.md

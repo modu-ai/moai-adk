@@ -1,0 +1,2 @@
+.claude/rules/moai/workflow/cross-session-messaging.md
+internal/template/templates/.claude/rules/moai/workflow/cross-session-messaging.md

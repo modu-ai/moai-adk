@@ -2,7 +2,7 @@
 id: SPEC-STATUSLINE-PROFILE-RESPECT-001
 title: "Progress — statusline opt-out honored end-to-end + subtree profile resolution"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-08-27
 updated: 2026-08-27
 author: manager-spec

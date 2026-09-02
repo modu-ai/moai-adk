@@ -1,0 +1,3 @@
+.moai/reports/t146/changelog-unreleased-draft.md
+.moai/reports/t146/release-notes-v3.1.3.bilingual.md
+.moai/reports/t146/version-stamp-map.md

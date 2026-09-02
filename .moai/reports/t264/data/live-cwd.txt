@@ -1,0 +1,12 @@
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/develop
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t223
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t223/internal/hook
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t223/internal/hook/perf
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t264
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t278
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t336
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t371
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t392
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t395
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t413
+/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t430

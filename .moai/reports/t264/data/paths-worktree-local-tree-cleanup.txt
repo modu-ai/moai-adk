@@ -1,0 +1,11 @@
+.claude/rules/local/ci-autofix-protocol.md
+.claude/rules/local/ci-watch-protocol.md
+.claude/skills/hns-workflow-ci-loop/SKILL.md
+.claude/skills/moai-domain-html-report/references/craft-fundamentals.md
+.claude/skills/moai-meta-harness/references/hierarchical-scoring.md
+.git_hooks/pre-commit
+.gitignore
+.moai/astgrep-rules/go/hardcoding.yml
+.moai/astgrep-rules/security/crypto.yml
+.moai/astgrep-rules/security/injection.yml
+.moai/astgrep-rules/sgconfig.yml

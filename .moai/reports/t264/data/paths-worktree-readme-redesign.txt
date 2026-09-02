@@ -1,0 +1,10 @@
+.claude/agents/harness/hns-oss-docs-content-author-specialist.md
+.claude/agents/harness/hns-oss-docs-locale-translator-specialist.md
+.claude/commands/harness/oss-docs/manifest.json
+.claude/skills/hns-oss-docs-i18n-rules/SKILL.md
+.claude/skills/hns-oss-docs-readme-sync/SKILL.md
+.claude/workflows/hns-oss-docs-run.js
+README.ja.md
+README.ko.md
+README.md
+README.zh.md

@@ -1,0 +1,10 @@
+internal/cli/agent_lint.go
+internal/cli/agent_lint_test.go
+internal/cli/workflow_lint.go
+internal/cli/workflow_lint_test.go
+internal/template/templates/.claude/agents/moai/expert-backend.md
+internal/template/templates/.claude/agents/moai/expert-frontend.md
+internal/template/templates/.claude/agents/moai/expert-refactoring.md
+internal/template/templates/.claude/agents/moai/manager-develop.md
+internal/template/templates/.claude/agents/moai/researcher.md
+internal/template/templates/.claude/rules/moai/workflow/worktree-integration.md

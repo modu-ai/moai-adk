@@ -1,0 +1,2 @@
+internal/astgrep/gar_rule_test.go
+internal/spec/drift_doctrine_test.go
