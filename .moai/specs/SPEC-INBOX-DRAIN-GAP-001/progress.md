@@ -97,4 +97,24 @@ m1_to_m4_commit_strategy: "4 milestone commits (M1..M3 landed, M4 this) + 1 run_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-03
+sync_commit_sha: "pending-backfill-t280-sync" # D3 placeholder — backfilled in the immediately following commit (a commit cannot cite its own SHA)
+sync_status: complete
+b12_self_test_a: "grep -c 'SPEC-INBOX-DRAIN-GAP-001' CHANGELOG.md → 0 (no duplicate; emission proceeded)"
+b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l → 10 (AC-IBX-001..010, non-zero, plausible); CHANGELOG entry cites 10 ACs (10 PASS)"
+b12_self_test_c: "all cited paths ls-verified — internal/cli/inbox.go · internal/hook/inbox_lifecycle.go · internal/hook/failure_observer.go (stub v field + InboxStubVersion reader) · internal/config/defaults.go (DefaultInboxMaxBytes 1<<20 line 235, DefaultInboxArchiveGenerations 2 line 236) exist"
+changelog_entry_position: "CHANGELOG.md [Unreleased] → Added, top position (SPEC-INBOX-DRAIN-GAP-001)"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (3-phase close merged into the single sync commit — no separate Mx commit)"
+  plan_acceptance_progress: "plan.md / acceptance.md carry no status field (artifact statelessness) — nothing to transition; progress.md is body-only"
+  updated_bumped: "2026-09-02 → 2026-09-03 (spec.md only)"
+canary_compliance_check:
+  spec_body_edits: 0   # spec.md / plan.md / acceptance.md body untouched — spec.md frontmatter status/updated only
+  codemaps_regeneration: "not executed — no API-surface shape change claims a codemap; internal/cli and internal/hook codemaps unaffected by two leaf verbs + one internal helper file"
+docs_site_decision: "DEFER (reasoned, not omitted). plan.md §F M4 decided no docs-site obligation — `moai inbox --help` is the self-explanatory surface. Comparator practice measured this session: t223 shipped `moai memory drain` with NO docs-site page (grep 'drain' over docs-site/content/en/cli-reference/memory.md → 0 hits); t394 shipped `moai todo history` documented in the workflow-skill surface only; cli-reference pages are added in batch doc-gap sweeps (v3.1.1 13-page ×4-locale landing), not per-SPEC. The standard user does nothing — the collector cap is automatic — and the inbox subsystem is dev-oriented (the curator is dev-only). Follow-up surface if user questions surface: docs-site/content/{en,ko,ja,zh}/cli-reference/inbox.md + 4-locale _meta.yaml wiring in the next doc-gap sweep; hugo verified available (/opt/homebrew/bin/hugo) for that future pass."
+readme_decision: "no change — grep 'lessons-inbox|moai inbox' over README.md + README.ko.md → 0 hits; the inbox is not a README-enumerated surface and this SPEC adds no feature section (comparators t223/t248/t394 also changed no README)."
+mx_tag_changes: "added 1 / removed 0 / updated 0 — @MX:ANCHOR [AUTO] + @MX:REASON fan_in=3 on LSELDrainMarkerPresent (internal/hook/inbox_lifecycle.go:58-59), verified: present, placed directly above the func, [AUTO] prefix and REASON mandatory fields present, and the 3 named callers (enforceInboxCap, moai inbox status, moai inbox drain) match the actual call sites. Other @MX hits in defaults.go (lines 239/424/508/766) are pre-existing tags from prior SPECs, not this one."
+nd1_nd2_advisories: "recorded, NOT fixed (acceptance.md body is manager-spec's, out of sync-phase scope). N-D1: acceptance.md §B cites 'spec.md §B' where the t259 figures (1.1MB / ~4.2k lines) actually live at plan.md §B (lines 23, 56) — cross-reference label only, content correct. N-D2: the mechanical compensation lives in the AC-IBX-002 test (state-dir byte-snapshot assertion) — lane-adopted strengthening already recorded in §E.2; no AC formula change."
+```
+
