@@ -35,7 +35,8 @@ The MoAI orchestrator collects all user preferences before delegating to subagen
 Three hook scripts mechanically enforce orchestrator-discipline obligations:
 `status-transition-ownership.sh` (PostToolUse on SPEC-artifact writes, advisory),
 `sync-phase-quality-gate.sh` (Stop hook on sync-phase commit, advisory unless
-`MOAI_SYNC_GATE_BLOCKING=1`), and `team-ac-verify.sh` (TaskCompleted in team mode, dormant). All
+`MOAI_SYNC_GATE_BLOCKING=1`), and `team-ac-verify.sh` (TaskCompleted in team mode — registered in no
+settings surface, so no configuration flag activates it; activation undecided). All
 three exit 0 always and signal through stdout JSON — exit-code semantics: stdout JSON is honored
 only on exit 0; on exit 2 it is discarded and only stderr is surfaced. Per-row triggers, JSON
 shapes, owning policy, and the subagent-boundary acceptance criterion:

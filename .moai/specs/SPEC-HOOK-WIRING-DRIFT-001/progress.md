@@ -600,6 +600,185 @@ it is named as differing above.
   whole-run exit code 1 for reasons unrelated to this SPEC. Any future criterion
   quoting a whole-run exit code will inherit that.
 
+### M3 — per-script dispositions recorded
+
+#### Claim
+
+`hook-independence.md` and its template twin carry one row per present-but-unwired
+wrapper, each with exactly one of the five disposition classes and the class the
+plan assigns it. The `team-ac-verify.sh` wording is corrected on **all six**
+surfaces to say *not registered* rather than *registered but gated*. The two
+counting corrections are recorded with their cause. Nothing was deleted.
+
+#### Evidence
+
+**Template-First order.** All three template files were edited first, `make build`
+ran (`rc=0`, `catalog.yaml updated successfully`, binary stamped
+`Commit=9a1434912…-dirty`), and only then were the mirrors updated.
+
+**AC-HWD-009 — machine-checked, name by name, on both sides of the pair.** The
+criterion is not "the names appear somewhere"; it is one own-row per wrapper,
+naming that wrapper and no other of the eleven, carrying exactly one class, and
+that class being the expected one. A checker asserts all four properties:
+`.moai/reports/t216/m3-evidence/ac009_check.py`, output in `ac009-result.txt`.
+
+```
+== .claude/rules/moai/development/hook-independence.md
+  ok   chain-event.sh                    line 109  reachable-via-template-settings
+  ok   handle-agent-hook.sh              line 110  reachable-via-agent-frontmatter
+  ok   handle-session-start-compact.sh   line 111  reachable-via-in-binary-registry
+  ok   handle-elicitation.sh             line 112  dead-by-decision
+  ok   handle-elicitation-result.sh      line 113  dead-by-decision
+  ok   handle-notification.sh            line 114  dead-by-decision
+  ok   handle-task-created.sh            line 115  dead-by-decision
+  ok   handle-worktree-create.sh         line 116  dead-by-decision
+  ok   handle-worktree-remove.sh         line 117  dead-by-decision
+  ok   handle-session-start-navigator.sh line 118  open-question
+  ok   team-ac-verify.sh                 line 119  open-question
+== internal/template/templates/.claude/rules/moai/development/hook-independence.md
+  (identical 11 rows, same line numbers)
+TOTAL FAILURES: 0
+```
+
+The checker was shown to have teeth before its zero was believed:
+
+| Mutation | Result |
+|---|---|
+| expect `dead-by-decision` for `team-ac-verify.sh` | FAIL, names the class mismatch (both sides) |
+| put two classes on the `handle-notification.sh` row | FAIL, names the row and both classes |
+
+Both reverted; the pair is byte-identical again and the checker returns 0.
+
+**AC-HWD-018 — all six surfaces, measured rather than assumed.** For each file,
+the count of lines that mention `team-ac-verify` AND contain "dormant":
+
+```
+0  .claude/rules/moai/development/hook-independence.md
+0  .claude/rules/moai/core/agent-common-protocol.md
+0  .claude/rules/moai/core/agent-common-protocol-reference.md
+0  internal/template/templates/.claude/rules/moai/development/hook-independence.md
+0  internal/template/templates/.claude/rules/moai/core/agent-common-protocol.md
+0  internal/template/templates/.claude/rules/moai/core/agent-common-protocol-reference.md
+```
+
+**Negative control — the word survived where it was correct.** The [HARD] warning
+against a blanket sweep was checked, not just obeyed: `hook-independence.md` still
+carries two uses of "dormant", at `:105` (naming the old shared label as the thing
+that conflated three states) and `:139` (the `moai hook spec-status` subcommand,
+which genuinely is dormant and is not one of the eleven wrappers). Neither was
+touched.
+
+**AC-HWD-010 — both corrections, with the cause.** The rule file now states the
+`statusLine` cause (`grep -c statusLine` → 1) and the frontmatter registration
+(`grep -c handle-agent-hook` → 2), against a pre-impl baseline of 0 for both.
+
+The independent basis was re-derived here rather than copied from the plan, and
+the first attempt at it was wrong in a way worth recording. Counting
+`len(hooks[event])` gives **23** — that is the number of *matcher groups*, not
+entries. The settings shape is `hooks[event] -> [ {matcher, hooks:[…]} ]`, so the
+entry count is the sum over groups of `len(group["hooks"])`:
+
+```
+$ python3 .moai/reports/t216/m3-evidence/count_entries.py
+events        : 20
+matcher groups: 23
+hook entries  : 33
+statusLine present: True
+
+$ grep -c '"type": "command"' .claude/settings.json
+34
+```
+
+33 entries across 20 events, grep 34, `statusLine` present — the documented
+claim and its stated cause both hold. The 23 is recorded because a reader
+re-deriving the number the obvious way will land on it and conclude the document
+is wrong.
+
+**AC-HWD-011 — nothing deleted, measured against the recorded pre-impl values.**
+
+```
+$ git ls-files .claude/hooks/moai/ | wc -l                                  43   (was 43)
+$ git ls-files internal/template/templates/.claude/hooks/moai/ | wc -l      47   (was 47)
+$ git status --porcelain <both paths>                                       (empty)
+$ find .claude/hooks/moai -name '*.sh' -size 0 | wc -l                       0
+```
+
+**AC-HWD-016 — neutrality.** On every template-side file M3 touched:
+
+```
+hook-independence.md              SPEC-/REQ- 0   card-number 0
+agent-common-protocol.md          SPEC-/REQ- 1   ← pre-existing, see below
+agent-common-protocol-reference.md SPEC-/REQ- 0
+$ go test ./internal/template/...  → ok 25.817s, ok 0.881s (agentemit)
+```
+
+The single hit is `agent-common-protocol.md:301`, the string `<SPEC-ID>` inside a
+command example (`moai session list --json --filter-spec=<SPEC-ID>`). It is a
+placeholder, not an internal identifier, and the count is **1 before and 1 after**
+this edit (`git show HEAD:<file> | grep -c` → 1), so M3 introduced nothing.
+
+**AC-HWD-015 — mirror identity, and where it cannot hold.**
+
+```
+IDENTICAL  hook-independence.md
+IDENTICAL  agent-common-protocol.md
+DIFFERS    agent-common-protocol-reference.md   (1 line)
+```
+
+The third pair differed **before this milestone touched it** and the difference is
+deliberate: the local file's provenance note cites a SPEC ID, which template
+neutrality forbids the template twin from carrying. The full residual diff is that
+one line and nothing else — M3's own edit landed identically on both sides, which
+is what the criterion exists to protect. Recorded as a criterion defect below
+rather than worked around silently.
+
+#### Baseline-attribution
+
+Measured in this tree (`.claude/worktrees/t216`), branch `WT-hook-wiring-drift`,
+at `9a1434912` plus this milestone's change set — six files, three template
+sources and their three mirrors. `bin/moai` rebuilt from this tree between the
+template edit and the mirror. Every number above was produced by a command run
+here; none is carried from the plan's pre-impl record except where explicitly
+compared against it.
+
+#### Gaps — what was explicitly NOT observed
+
+1. **The dispositions were transcribed from the plan, not re-derived.** The plan's
+   table came from the D-2 call-graph work; M3 records it. This milestone did not
+   independently re-trace the eleven call paths, so a wrong disposition upstream
+   stays wrong here.
+2. **`reachable-via-*` was not demonstrated by firing anything.** No wrapper was
+   observed actually executing through the named path; the classes rest on the
+   D-2 reading.
+3. **The two `open-question` rows record that nobody decided, which is a claim
+   about absence.** It was checked against settings surfaces only.
+4. **No runtime test asserts the disposition table.** The AC-HWD-009 checker is a
+   verification artifact under `.moai/reports/`, not a committed guard, so the
+   table can drift from the wrappers without anything failing.
+5. **`agent-common-protocol.md` is always-loaded**; its corrected line was read
+   but no measurement confirms the file still fits its size budget.
+
+#### Residual risk
+
+- **A criterion defect, not a measurement problem: AC-HWD-015 is unsatisfiable as
+  written.** It requires byte identity for every pair M3 touches, while template
+  neutrality requires the reference pair to differ. The two [HARD] rules conflict
+  on that one file. The reading applied here — M3's own edit must land on both
+  sides, and the only permitted residual delta is a pre-existing neutrality strip
+  — preserves what the criterion protects. It is an interpretation, and the plan
+  should say so explicitly.
+- **A second plan-side inconsistency, resolved toward the plan body.** AC-HWD-018
+  instructs leaving `:106` (the worktree wrappers' "dormant … activation
+  deferred") alone as accurate, while plan.md §F M3 replaces the block containing
+  it and assigns those wrappers `dead-by-decision`. Both cannot hold. The block
+  was replaced and the statement sharpened — "deregistered after a recorded
+  regression" is stronger and more accurate than "activation deferred", which
+  implies a pending activation that the regression record contradicts. Nothing
+  accurate was lost, but the criterion's own example is now stale.
+- **The table is prose, and prose drifts.** Nothing mechanically ties a row to the
+  wrapper's real reachability. The next wrapper added or retired will not update
+  this table, and no test will notice — see gap 4.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase — M2 and M4 complete AND re-measured on the merge tree;
@@ -607,8 +786,8 @@ M3 and M1 not started>_
 
 ```yaml
 run_status: in-progress
-milestones_complete: [M2, M4]
-milestones_remaining: [M3, M1]
+milestones_complete: [M2, M3, M4]
+milestones_remaining: [M1]
 measured_at_head: e8050c135
 measured_at_head_note: >-
   merge commit absorbing origin/develop (18ba3cddb) into WT-hook-wiring-drift,
