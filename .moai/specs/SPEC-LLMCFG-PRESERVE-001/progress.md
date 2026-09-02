@@ -103,11 +103,78 @@ Reverted; GREEN re-observed across the whole family.
 
 ### M3 — negative constraint + verification batch (AC-LCP-006 + E1-E6)
 
-_<pending>_
+**AC-LCP-006 (negative guard, grep form per acceptance.md)** — commands and
+observed outputs (verbatim):
+
+- `grep -rnE "\.moai-[a-z-]+\.sha256" internal/cli/update/ --include="*.go" |
+  grep -v _test | wc -l` → `0` (`.moai/reports/t239/ac-lcp-006-update-scope-zero.log`).
+- `grep -rlnE "\.moai-[a-z-]+\.sha256" internal/cli/ --include="*.go" | grep
+  -v _test` → `internal/cli/hook_install.go`,
+  `internal/cli/hook_install_precommit.go` — hook tier files only
+  (`.moai/reports/t239/ac-lcp-006-cli-scope-files.log`).
+- Teeth (pattern non-vacuity): the same scan that returns 0 in the update
+  scope matches the hook tier's own constant
+  `moaiPreCommitProvenanceName = ".moai-pre-commit.sha256"`
+  (`internal/cli/hook_install_precommit.go:19`).
+
+**E1 final re-measurement** — `go test -run
+'TestUpdateLLMYAML|TestCleanReinstallLLMYAMLPreserved' -count=1
+./internal/cli/` → `ok github.com/modu-ai/moai-adk/internal/cli	2.121s`,
+exit 0 (`.moai/reports/t239/e1-final-all-contracts.log`).
+
+**E2 scoped packages** — `go test -count=1 ./internal/cli/update/backup/
+./internal/cli/update/merge/` → `ok ... update/backup 0.624s` + `ok ...
+update/merge 0.774s`, exit 0 (`.moai/reports/t239/e2-scoped-packages.log`).
+
+**E4 vet + lint** — `go vet ./internal/cli/...` exit 0, no output
+(`.moai/reports/t239/e4-vet.log`); `golangci-lint run --timeout=2m
+./internal/cli/...` → `0 issues.`, exit 0 (`.moai/reports/t239/e4-lint-cli.log`)
+— 0 NEW findings vs the plan §C lint baseline.
+
+**E5 cross-platform** — `GOOS=windows GOARCH=amd64 go build ./...` exit 0
+(`.moai/reports/t239/e5-windows-build.log`); `GOOS=windows GOARCH=amd64 go vet
+./internal/cli/` exit 0 (test files compile cross-platform,
+`.moai/reports/t239/e5-windows-vet-cli.log`).
+
+**E6 PRESERVE-list adherence** — `git diff --stat ffdd024eb..HEAD` over the
+§A.5 paths (`internal/cli/update/backup/`, `internal/cli/update/merge/`,
+`internal/cli/update/deploy/deploy.go`,
+`internal/template/templates/.moai/config/sections/llm.yaml`,
+`internal/cli/hook_install_precommit.go`, `internal/settings/`,
+`.moai/specs/SPEC-V3R6-AUDIT-MODEL-PIN-001/`) is EMPTY — no §A.5 file
+modified (`.moai/reports/t239/e6-preserve-adherence-head-state.txt`). The
+change set is exactly: `internal/cli/update_llm_preserve_test.go` (new),
+`internal/cli/update_clean_install_config_preserve_test.go` (fixture family
+extension, M2-scope per plan §D), SPEC artifacts, and evidence logs.
+
+**Known minor defect D1 handoff (manager-spec ownership, noted not fixed)**:
+spec.md §A.2 cites `update_template_sync.go` without its package path — the
+file lives at `internal/cli/update_template_sync.go`. Same for §A.2's bare
+`update_clean_install.go` (`internal/cli/update_clean_install.go`). Left
+untouched per the ownership boundary; sync-phase should relay to manager-spec
+if a body correction round opens.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+run_complete_at: 2026-09-02
+run_commit_sha: pending-backfill-final-commit (this §E.3 block ships in the
+final M3 commit; the commit SHA cannot reference itself)
+run_status: complete
+ac_pass_count: 6
+ac_fail_count: 0
+preserve_list_post_run_count: 7
+l44_pre_commit_fetch: not-applicable (lane does not push; develop integration
+is the lead's window)
+l44_post_push_fetch: not-applicable (no push from this lane)
+new_warnings_or_lints_introduced: 0
+cross_platform_build.darwin_arm64: exit 0 (native run of all scoped tests)
+cross_platform_build.windows_amd64: exit 0 (go build ./... + go vet
+./internal/cli/)
+total_run_phase_files: 3 (2 test files + 5 evidence log groups under
+.moai/reports/t239/, plus SPEC artifacts)
+m1_to_mN_commit_strategy: one commit per milestone (M1 8bbd10a67, M2
+5b5561254, M3 = this commit) — contract-value-first ordering per plan §F
+with teeth evidence captured before each GREEN counted.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
