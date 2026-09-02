@@ -3,6 +3,7 @@ package spec
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -283,6 +284,32 @@ func detectDrift(baseDir string, deps driftDeps) (*DriftReport, error) {
 //	When changing N, see plan.md §7 OQ1.
 const gitLogWindowSize = 50
 
+// Sentinel errors classifying the three observation-failure shapes
+// getGitImpliedStatus can return (SPEC-SPECLINT-GITBLIND-001 §2.1). Callers
+// distinguish the shapes via errors.Is — never by matching message text.
+//
+// @MX:NOTE: [AUTO] three error shapes — the lint rule's emission decision is per-shape
+// @MX:REASON: shape ① is a repository-level blindness that must always surface, while
+//
+//	shapes ②/③ are harmless in a full repository and only become observation
+//	failures in a shallow clone; string-matching the messages would couple that
+//	decision to prose that other callers print verbatim.
+var (
+	// errGitQueryFailed (shape ①, the `git log failed` return site): the base
+	// ref did not resolve or git itself is unusable. A repository-level
+	// observation failure — fires unconditionally in every clone state.
+	errGitQueryFailed = errors.New("git log failed")
+	// errNoGitHistory (shape ②, the `no git history found` return site): git
+	// ran and the --grep window matched nothing. Harmless in a full
+	// repository (the SPEC simply has no lifecycle commits); in a shallow
+	// clone the truncated window can fabricate it.
+	errNoGitHistory = errors.New("no git history found")
+	// errNoClassifiableCommit (shape ③, the window-exhaustion return site):
+	// matches exist but none classify within the window. Same shallow-vs-full
+	// asymmetry as shape ②.
+	errNoClassifiableCommit = errors.New("no classifiable commit within window")
+)
+
 // getGitImpliedStatus analyzes the git log for a SPEC-ID and infers its lifecycle status.
 //
 // The walker applies two filters sequentially:
@@ -309,11 +336,13 @@ func getGitImpliedStatus(specID string) (string, error) {
 	if err != nil {
 		// execerr.StatusDetail, not %w: a raw *exec.ExitError chain would be
 		// mistaken for an intentional ExitCoder at the cmd/moai seam (t130).
-		return "", fmt.Errorf("git log failed: %s", execerr.StatusDetail(err))
+		// The sentinel leads the wrap so the rendered message stays
+		// byte-identical to the pre-sentinel form.
+		return "", fmt.Errorf("%w: %s", errGitQueryFailed, execerr.StatusDetail(err))
 	}
 
 	if len(output) == 0 {
-		return "", fmt.Errorf("no git history found for %s", specID)
+		return "", fmt.Errorf("%w for %s", errNoGitHistory, specID)
 	}
 
 	// Iterate line by line — newest first
@@ -360,10 +389,11 @@ func getGitImpliedStatus(specID string) (string, error) {
 	}
 
 	// All N commits exhausted without a meaningful classification → return an error
-	// StatusGitConsistencyRule::Check (lint.go:897-900) does not emit a finding when err != nil
+	// StatusGitConsistencyRule::Check treats this as skip in a full repository and as an
+	// unobservable-repository Info (StatusGitUnreachable) in a shallow clone.
 	// @MX:NOTE: [AUTO] walker exhaustion at N=50 signals "unknown" — the lint rule treats it as skip to prevent false positives
 	// @MX:REASON: SPECs whose commits all match skip patterns are excluded from git-consistency checks (fail-safe)
-	return "", fmt.Errorf("no classifiable commit within window of %d for %s", gitLogWindowSize, specID)
+	return "", fmt.Errorf("%w of %d for %s", errNoClassifiableCommit, gitLogWindowSize, specID)
 }
 
 // commitMatchesSPECID checks whether a commit title contains the exact SPEC-ID token.

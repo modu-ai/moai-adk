@@ -1,0 +1,7 @@
+docs-site/content/en/cli-reference/doctor.md
+docs-site/content/ja/cli-reference/doctor.md
+docs-site/content/ko/cli-reference/doctor.md
+docs-site/content/zh/cli-reference/doctor.md
+internal/cli/doctor.go
+internal/cli/doctor_constitution_test.go
+internal/cli/exitcode_contract_test.go

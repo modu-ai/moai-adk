@@ -1,0 +1,11 @@
+.moai/reports/t202/verdict.md
+CHANGELOG.md
+internal/cli/cc.go
+internal/cli/glm.go
+internal/cli/kanban.go
+internal/cli/kanban_lead_name_test.go
+internal/config/envkeys.go
+internal/hook/session_start_factory_i18n.go
+internal/hook/session_start_kanban_i18n.go
+internal/hook/user_prompt_submit.go
+internal/hook/user_prompt_submit_lead_title_test.go

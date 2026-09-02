@@ -1,0 +1,2 @@
+.moai/reports/t219/verdict.md
+internal/cli/glm_task_test.go

@@ -1,0 +1,254 @@
+### SPEC-FACTORY-WORKER-FANOUT-001
+frontmatter: status: implemented
+main-walk:
+6fc0d817d docs(specs): add Out of Scope to SPEC-FACTORY-WORKER-FANOUT-001 — spec-lint fix
+develop-walk:
+6fc0d817d docs(specs): add Out of Scope to SPEC-FACTORY-WORKER-FANOUT-001 — spec-lint fix
+
+### SPEC-GOAL-STOPFAILURE-CLEAR-001
+frontmatter: status: implemented
+main-walk:
+a4f6f1a3c docs(SPEC-GOAL-STOPFAILURE-CLEAR-001): stamp updated for the exclusions-heading edit
+973c88f39 docs(SPEC-GOAL-STOPFAILURE-CLEAR-001): put the exclusions section under an H3 sub-heading
+eb597b319 docs(spec): plan SPEC-GOAL-STOPFAILURE-CLEAR-001 — disarm a goal a dead turn left armed
+develop-walk:
+a4f6f1a3c docs(SPEC-GOAL-STOPFAILURE-CLEAR-001): stamp updated for the exclusions-heading edit
+973c88f39 docs(SPEC-GOAL-STOPFAILURE-CLEAR-001): put the exclusions section under an H3 sub-heading
+eb597b319 docs(spec): plan SPEC-GOAL-STOPFAILURE-CLEAR-001 — disarm a goal a dead turn left armed
+
+### SPEC-KANBAN-TODO-CLI-001
+frontmatter: status: in-progress
+main-walk:
+ed021015f feat(t207): moai web console — per-session telemetry, todo queue, per-lane factory progress (#1644)
+ebd828b5d feat(SPEC-TODO-ANALYSIS-001): analyse the queue, record what is found, change no card
+a84e48961 feat(SPEC-KANBAN-TODO-CLI-001): moai todo CLI with lock-guarded backlog store (#1529)
+develop-walk:
+ed021015f feat(t207): moai web console — per-session telemetry, todo queue, per-lane factory progress (#1644)
+ebd828b5d feat(SPEC-TODO-ANALYSIS-001): analyse the queue, record what is found, change no card
+a84e48961 feat(SPEC-KANBAN-TODO-CLI-001): moai todo CLI with lock-guarded backlog store (#1529)
+
+### SPEC-UPDATE-DOC-DRIFT-001
+frontmatter: status: draft
+main-walk:
+ddfe2253f feat(SPEC-UPDATE-DOC-DRIFT-001): v0.3.0 staleness rewrite — retire 4, re-anchor 3, keep 5 live (#1515)
+beeb0ebc2 fix(cli): end the release-user `moai update` clean-reinstall loop (SPEC-UPDATE-REINSTALL-LOOP-002) (#1261)
+9a6b6c854 docs(epic): update/config 4-lens audit Epic — 6 SPEC plan-phase artifacts (E1-E6) (#1258)
+develop-walk:
+ddfe2253f feat(SPEC-UPDATE-DOC-DRIFT-001): v0.3.0 staleness rewrite — retire 4, re-anchor 3, keep 5 live (#1515)
+beeb0ebc2 fix(cli): end the release-user `moai update` clean-reinstall loop (SPEC-UPDATE-REINSTALL-LOOP-002) (#1261)
+9a6b6c854 docs(epic): update/config 4-lens audit Epic — 6 SPEC plan-phase artifacts (E1-E6) (#1258)
+
+### SPEC-V3R6-CHANGELOG-CLEANUP-001
+frontmatter: status: implemented
+main-walk:
+23bd658a2 docs(CLAUDE.local.md): §23.7 [HARD] 룰 일반화 — 모든 tier main 직진 허용 (Hybrid Trunk 1-person OSS unified)
+d810e83a8 docs(SPEC-V3R6-CHANGELOG-CLEANUP-001): sync — CHANGELOG entry + status implemented v0.2.0 + B12 first self-test PASS
+87dd61564 chore(SPEC-V3R6-CHANGELOG-CLEANUP-001): M3 B12 standing-rule guard — sync-phase CHANGELOG emission discipline
+930eb9420 docs(SPEC-V3R6-CHANGELOG-CLEANUP-001): M2 sibling AC count reconciliation (HAE 12→8, HCWA 8→7)
+fdd30a94c docs(SPEC-V3R6-CHANGELOG-CLEANUP-001): M1 line 65 hallucination + duplicate entry deletion
+7cdc739aa docs(SPEC-V3R6-CHANGELOG-CLEANUP-001): plan-phase — Tier S minimal 4 artifacts (plan-auditor iter-2 PASS 0.812)
+develop-walk:
+23bd658a2 docs(CLAUDE.local.md): §23.7 [HARD] 룰 일반화 — 모든 tier main 직진 허용 (Hybrid Trunk 1-person OSS unified)
+d810e83a8 docs(SPEC-V3R6-CHANGELOG-CLEANUP-001): sync — CHANGELOG entry + status implemented v0.2.0 + B12 first self-test PASS
+87dd61564 chore(SPEC-V3R6-CHANGELOG-CLEANUP-001): M3 B12 standing-rule guard — sync-phase CHANGELOG emission discipline
+930eb9420 docs(SPEC-V3R6-CHANGELOG-CLEANUP-001): M2 sibling AC count reconciliation (HAE 12→8, HCWA 8→7)
+fdd30a94c docs(SPEC-V3R6-CHANGELOG-CLEANUP-001): M1 line 65 hallucination + duplicate entry deletion
+7cdc739aa docs(SPEC-V3R6-CHANGELOG-CLEANUP-001): plan-phase — Tier S minimal 4 artifacts (plan-auditor iter-2 PASS 0.812)
+
+### SPEC-V3R6-CLI-AUDIT-001
+frontmatter: status: implemented
+main-walk:
+8758fadd4 fix(SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001): M4.4 singleton + 11-extra leak cleanup (8 files actually modified)
+dd321ac6c docs(SPEC-V3R6-CLI-AUDIT-001): sync — CHANGELOG entry + B12 5th self-test PASS
+09d905bda chore(SPEC-V3R6-CLI-AUDIT-001): progress.md M4 commit SHA backfill
+631e4903e feat(SPEC-V3R6-CLI-AUDIT-001): M4 — Sprint 7 baseline + methodology + frontmatter sync
+123ddcb1a feat(SPEC-V3R6-CLI-AUDIT-001): M3 — integration map
+2464ece58 feat(SPEC-V3R6-CLI-AUDIT-001): M2 — dead-command classification
+develop-walk:
+8758fadd4 fix(SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001): M4.4 singleton + 11-extra leak cleanup (8 files actually modified)
+dd321ac6c docs(SPEC-V3R6-CLI-AUDIT-001): sync — CHANGELOG entry + B12 5th self-test PASS
+09d905bda chore(SPEC-V3R6-CLI-AUDIT-001): progress.md M4 commit SHA backfill
+631e4903e feat(SPEC-V3R6-CLI-AUDIT-001): M4 — Sprint 7 baseline + methodology + frontmatter sync
+123ddcb1a feat(SPEC-V3R6-CLI-AUDIT-001): M3 — integration map
+2464ece58 feat(SPEC-V3R6-CLI-AUDIT-001): M2 — dead-command classification
+
+### SPEC-V3R6-DOCS-CMD-CATALOG-001
+frontmatter: status: implemented
+main-walk:
+28f1e1ad4 docs(SPEC-V3R6-DOCS-CMD-CATALOG-001): 4-locale command catalog drift 정정 (Critical 4건) (#1045)
+d386cca0e plan(SPEC-V3R6-DOCS-USER-DRIFT-001): Wave 0 두번째 SPEC — F8 sync CI doctrine + PR #1045 non-overlap guard
+1030d9d93 chore(SPEC-V3R6-DOCS-CMD-CATALOG-001): plan-phase 산출물 acceptance.md + plan.md 추가
+3bde47acc docs(SPEC-V3R6-DOCS-CMD-CATALOG-001): 4-locale command catalog drift 정정 (Critical 4건)
+develop-walk:
+28f1e1ad4 docs(SPEC-V3R6-DOCS-CMD-CATALOG-001): 4-locale command catalog drift 정정 (Critical 4건) (#1045)
+d386cca0e plan(SPEC-V3R6-DOCS-USER-DRIFT-001): Wave 0 두번째 SPEC — F8 sync CI doctrine + PR #1045 non-overlap guard
+1030d9d93 chore(SPEC-V3R6-DOCS-CMD-CATALOG-001): plan-phase 산출물 acceptance.md + plan.md 추가
+3bde47acc docs(SPEC-V3R6-DOCS-CMD-CATALOG-001): 4-locale command catalog drift 정정 (Critical 4건)
+
+### SPEC-V3R6-DOCS-USER-DRIFT-001
+frontmatter: status: implemented
+main-walk:
+38973fa9d docs(SPEC-V3R6-DOCS-USER-DRIFT-001): 좌초 run-phase 구현 회수 — F8 sync CI doctrine 4-locale moai-sync.md 재적용
+d386cca0e plan(SPEC-V3R6-DOCS-USER-DRIFT-001): Wave 0 두번째 SPEC — F8 sync CI doctrine + PR #1045 non-overlap guard
+develop-walk:
+38973fa9d docs(SPEC-V3R6-DOCS-USER-DRIFT-001): 좌초 run-phase 구현 회수 — F8 sync CI doctrine 4-locale moai-sync.md 재적용
+d386cca0e plan(SPEC-V3R6-DOCS-USER-DRIFT-001): Wave 0 두번째 SPEC — F8 sync CI doctrine + PR #1045 non-overlap guard
+
+### SPEC-V3R6-GEARS-MIGRATION-001
+frontmatter: status: implemented
+main-walk:
+8758fadd4 fix(SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001): M4.4 singleton + 11-extra leak cleanup (8 files actually modified)
+e94321bec fix(SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001): M4.3 .claude/skills/ leak cleanup (19 files actually modified)
+d37d4ca49 fix(SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001): M4.1-redo .claude/agents/core/ leak cleanup (4 files actually modified)
+97e42eaf7 feat(SPEC-V3R6-WORKFLOW-ORCHESTRATION-FIX-001): plan-phase artifacts (Tier L Section A-G, 4 artifacts)
+7cd25e386 chore(SPEC-V3R6-PLAN-AUDITOR-GEARS-ALIGN-001): sync-phase 4-phase close (status implemented + CHANGELOG v0.2.0)
+906f9285e feat(SPEC-V3R6-PLAN-AUDITOR-GEARS-ALIGN-001): plan-phase artifacts (Tier S minimal, GEARS-aware rubric scope)
+develop-walk:
+8758fadd4 fix(SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001): M4.4 singleton + 11-extra leak cleanup (8 files actually modified)
+e94321bec fix(SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001): M4.3 .claude/skills/ leak cleanup (19 files actually modified)
+d37d4ca49 fix(SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001): M4.1-redo .claude/agents/core/ leak cleanup (4 files actually modified)
+97e42eaf7 feat(SPEC-V3R6-WORKFLOW-ORCHESTRATION-FIX-001): plan-phase artifacts (Tier L Section A-G, 4 artifacts)
+7cd25e386 chore(SPEC-V3R6-PLAN-AUDITOR-GEARS-ALIGN-001): sync-phase 4-phase close (status implemented + CHANGELOG v0.2.0)
+906f9285e feat(SPEC-V3R6-PLAN-AUDITOR-GEARS-ALIGN-001): plan-phase artifacts (Tier S minimal, GEARS-aware rubric scope)
+
+### SPEC-V3R6-HOOK-CWD-LEAK-AUDIT-001
+frontmatter: status: implemented
+main-walk:
+8630b40d0 feat(SPEC-V3R6-SPEC-LINT-CLEANUP-001): plan-phase iter-1 PASS 0.917 — Tier S minimal Section A baseline cleanup scope
+d457336c2 docs(SPEC-V3R6-HOOK-CWD-LEAK-AUDIT-001): progress.md M3 commit hash 0f4860e17
+0f4860e17 feat(SPEC-V3R6-HOOK-CWD-LEAK-AUDIT-001): M3 quality/gate.go cwd leak fix + status:implemented v0.2.0
+8a8ad3051 feat(SPEC-V3R6-HOOK-CWD-LEAK-AUDIT-001): M2 pre_tool + observability_master cwd leak fix
+e629afc9d feat(SPEC-V3R6-HOOK-CWD-LEAK-AUDIT-001): M1 subagent_start.go cwd leak fix via resolveProjectRootFromEnv
+d553d585b plan(SPEC-V3R6-HOOK-CWD-LEAK-AUDIT-001): v0.1.0 Tier S — hook cwd leak audit + resolveProjectRoot consistency
+develop-walk:
+8630b40d0 feat(SPEC-V3R6-SPEC-LINT-CLEANUP-001): plan-phase iter-1 PASS 0.917 — Tier S minimal Section A baseline cleanup scope
+d457336c2 docs(SPEC-V3R6-HOOK-CWD-LEAK-AUDIT-001): progress.md M3 commit hash 0f4860e17
+0f4860e17 feat(SPEC-V3R6-HOOK-CWD-LEAK-AUDIT-001): M3 quality/gate.go cwd leak fix + status:implemented v0.2.0
+8a8ad3051 feat(SPEC-V3R6-HOOK-CWD-LEAK-AUDIT-001): M2 pre_tool + observability_master cwd leak fix
+e629afc9d feat(SPEC-V3R6-HOOK-CWD-LEAK-AUDIT-001): M1 subagent_start.go cwd leak fix via resolveProjectRootFromEnv
+d553d585b plan(SPEC-V3R6-HOOK-CWD-LEAK-AUDIT-001): v0.1.0 Tier S — hook cwd leak audit + resolveProjectRoot consistency
+
+### SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001
+frontmatter: status: implemented
+main-walk:
+8758fadd4 fix(SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001): M4.4 singleton + 11-extra leak cleanup (8 files actually modified)
+146a268e7 feat(SPEC-V3R6-LEGACY-CLEANUP-003): plan-phase ready (Tier M per L40, iter-2 PASS 0.87)
+d553d585b plan(SPEC-V3R6-HOOK-CWD-LEAK-AUDIT-001): v0.1.0 Tier S — hook cwd leak audit + resolveProjectRoot consistency
+eaff5f272 plan(SPEC-V3R6-SESSION-HANDOFF-AUTO-001): v0.1.0 Tier S — paste-ready resume auto-persistence
+252428c72 docs(SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001): /moai sync — CHANGELOG Unreleased v3.0 Mega-Sprint HOI entry + spec frontmatter status:implemented v0.2.0
+adcb206f2 feat(SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001): M3 follow-up — audit test parity update for HOI cohabitation + pre-existing Worktree deregistration
+develop-walk:
+8758fadd4 fix(SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001): M4.4 singleton + 11-extra leak cleanup (8 files actually modified)
+146a268e7 feat(SPEC-V3R6-LEGACY-CLEANUP-003): plan-phase ready (Tier M per L40, iter-2 PASS 0.87)
+d553d585b plan(SPEC-V3R6-HOOK-CWD-LEAK-AUDIT-001): v0.1.0 Tier S — hook cwd leak audit + resolveProjectRoot consistency
+eaff5f272 plan(SPEC-V3R6-SESSION-HANDOFF-AUTO-001): v0.1.0 Tier S — paste-ready resume auto-persistence
+252428c72 docs(SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001): /moai sync — CHANGELOG Unreleased v3.0 Mega-Sprint HOI entry + spec frontmatter status:implemented v0.2.0
+adcb206f2 feat(SPEC-V3R6-HOOK-OBSERVE-OPT-IN-001): M3 follow-up — audit test parity update for HOI cohabitation + pre-existing Worktree deregistration
+
+### SPEC-V3R6-LEGACY-CLEANUP-001
+frontmatter: status: implemented
+main-walk:
+8630b40d0 feat(SPEC-V3R6-SPEC-LINT-CLEANUP-001): plan-phase iter-1 PASS 0.917 — Tier S minimal Section A baseline cleanup scope
+dbd318b66 docs(SPEC-V3R6-I18N-VALIDATOR-BUDGET-001): sync — CHANGELOG entry + B12 7th self-test PASS
+e2fd84d63 feat(SPEC-V3R6-I18N-VALIDATOR-BUDGET-001): plan — Tier S 4 artifacts + plan-auditor iter-1 PASS 0.87 + orchestrator-direct fix-forward
+2509de913 docs(race-mitigation): L1 pre-spawn fetch + L3 multi-session worktree opt-in (SPEC-V3R6-LEGACY-CLEANUP-001 race incident response)
+19bc873ff docs(SPEC-V3R6-LEGACY-CLEANUP-001): sync — CHANGELOG entry + AC-LCL-005 PASS-WITH-DEBT correction + B12 2nd self-test PASS
+aea0cf7b9 docs(SPEC-V3R6-LEGACY-CLEANUP-001): SPEC frontmatter status implemented + version 0.2.0
+develop-walk:
+8630b40d0 feat(SPEC-V3R6-SPEC-LINT-CLEANUP-001): plan-phase iter-1 PASS 0.917 — Tier S minimal Section A baseline cleanup scope
+dbd318b66 docs(SPEC-V3R6-I18N-VALIDATOR-BUDGET-001): sync — CHANGELOG entry + B12 7th self-test PASS
+e2fd84d63 feat(SPEC-V3R6-I18N-VALIDATOR-BUDGET-001): plan — Tier S 4 artifacts + plan-auditor iter-1 PASS 0.87 + orchestrator-direct fix-forward
+2509de913 docs(race-mitigation): L1 pre-spawn fetch + L3 multi-session worktree opt-in (SPEC-V3R6-LEGACY-CLEANUP-001 race incident response)
+19bc873ff docs(SPEC-V3R6-LEGACY-CLEANUP-001): sync — CHANGELOG entry + AC-LCL-005 PASS-WITH-DEBT correction + B12 2nd self-test PASS
+aea0cf7b9 docs(SPEC-V3R6-LEGACY-CLEANUP-001): SPEC frontmatter status implemented + version 0.2.0
+
+### SPEC-V3R6-LEGACY-CLEANUP-002
+frontmatter: status: implemented
+main-walk:
+136f58432 docs(SPEC-V3R6-LEGACY-CLEANUP-002): mx Step C skip justified + status matrix fix-forward
+26db0dc92 docs(SPEC-V3R6-LEGACY-CLEANUP-002): sync — CHANGELOG entry + Sync-phase Evidence + B12 3rd self-test PASS
+da5f9906b feat(SPEC-V3R6-LEGACY-CLEANUP-002): M1 — template mirror cascade (5 files cp -p)
+0f813831b plan(SPEC-V3R6-LEGACY-CLEANUP-002): Tier S minimal — template mirror cascade
+19bc873ff docs(SPEC-V3R6-LEGACY-CLEANUP-001): sync — CHANGELOG entry + AC-LCL-005 PASS-WITH-DEBT correction + B12 2nd self-test PASS
+aea0cf7b9 docs(SPEC-V3R6-LEGACY-CLEANUP-001): SPEC frontmatter status implemented + version 0.2.0
+develop-walk:
+136f58432 docs(SPEC-V3R6-LEGACY-CLEANUP-002): mx Step C skip justified + status matrix fix-forward
+26db0dc92 docs(SPEC-V3R6-LEGACY-CLEANUP-002): sync — CHANGELOG entry + Sync-phase Evidence + B12 3rd self-test PASS
+da5f9906b feat(SPEC-V3R6-LEGACY-CLEANUP-002): M1 — template mirror cascade (5 files cp -p)
+0f813831b plan(SPEC-V3R6-LEGACY-CLEANUP-002): Tier S minimal — template mirror cascade
+19bc873ff docs(SPEC-V3R6-LEGACY-CLEANUP-001): sync — CHANGELOG entry + AC-LCL-005 PASS-WITH-DEBT correction + B12 2nd self-test PASS
+aea0cf7b9 docs(SPEC-V3R6-LEGACY-CLEANUP-001): SPEC frontmatter status implemented + version 0.2.0
+
+### SPEC-V3R6-PLAN-AUDITOR-GEARS-ALIGN-001
+frontmatter: status: implemented
+main-walk:
+ebe492670 chore(SPEC-V3R6-PLAN-AUDITOR-GEARS-ALIGN-001): backfill HISTORY v0.2.0 plan+sync commit SHAs
+7cd25e386 chore(SPEC-V3R6-PLAN-AUDITOR-GEARS-ALIGN-001): sync-phase 4-phase close (status implemented + CHANGELOG v0.2.0)
+6366d7428 feat(SPEC-V3R6-PLAN-AUDITOR-GEARS-ALIGN-001): M1-M3 GEARS-aware rubric + template mirror parity
+906f9285e feat(SPEC-V3R6-PLAN-AUDITOR-GEARS-ALIGN-001): plan-phase artifacts (Tier S minimal, GEARS-aware rubric scope)
+develop-walk:
+ebe492670 chore(SPEC-V3R6-PLAN-AUDITOR-GEARS-ALIGN-001): backfill HISTORY v0.2.0 plan+sync commit SHAs
+7cd25e386 chore(SPEC-V3R6-PLAN-AUDITOR-GEARS-ALIGN-001): sync-phase 4-phase close (status implemented + CHANGELOG v0.2.0)
+6366d7428 feat(SPEC-V3R6-PLAN-AUDITOR-GEARS-ALIGN-001): M1-M3 GEARS-aware rubric + template mirror parity
+906f9285e feat(SPEC-V3R6-PLAN-AUDITOR-GEARS-ALIGN-001): plan-phase artifacts (Tier S minimal, GEARS-aware rubric scope)
+
+### SPEC-V3R6-RULES-COMPRESS-001
+frontmatter: status: implemented
+main-walk:
+c92a69411 chore(SPEC-V3R6-RULES-COMPRESS-001): update progress.md word counts post-fixup
+0c0d4534a fixup(SPEC-V3R6-RULES-COMPRESS-001): restore HARD clause verbatim tail in session-handoff
+5a1350900 feat(SPEC-V3R6-RULES-COMPRESS-001): always-loaded rule body 압축 3건 (-1,145w, -34%)
+12f9749a2 plan(SPEC-V3R6-RULES-COMPRESS-001): Wave 1 두번째 SPEC plan-phase 복구
+develop-walk:
+c92a69411 chore(SPEC-V3R6-RULES-COMPRESS-001): update progress.md word counts post-fixup
+0c0d4534a fixup(SPEC-V3R6-RULES-COMPRESS-001): restore HARD clause verbatim tail in session-handoff
+5a1350900 feat(SPEC-V3R6-RULES-COMPRESS-001): always-loaded rule body 압축 3건 (-1,145w, -34%)
+12f9749a2 plan(SPEC-V3R6-RULES-COMPRESS-001): Wave 1 두번째 SPEC plan-phase 복구
+
+### SPEC-V3R6-SKILL-COMPRESS-001
+frontmatter: status: implemented
+main-walk:
+e94321bec fix(SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001): M4.3 .claude/skills/ leak cleanup (19 files actually modified)
+fa658d927 chore(SPEC-V3R6-SKILL-COMPRESS-001): status implemented v0.2.0 + 2 stale link 제거
+0e5c70593 plan(SPEC-V3R6-SKILL-GEARS-ALIGN-001): moai-workflow-spec SKILL GEARS-first alignment plan-phase (Tier M)
+f9a802578 plan(SPEC-V3R6-SKILL-COMPRESS-001): Wave 1 네번째 SPEC plan-phase 복구
+develop-walk:
+e94321bec fix(SPEC-V3R6-TEMPLATE-INTERNAL-ISOLATION-001): M4.3 .claude/skills/ leak cleanup (19 files actually modified)
+fa658d927 chore(SPEC-V3R6-SKILL-COMPRESS-001): status implemented v0.2.0 + 2 stale link 제거
+0e5c70593 plan(SPEC-V3R6-SKILL-GEARS-ALIGN-001): moai-workflow-spec SKILL GEARS-first alignment plan-phase (Tier M)
+f9a802578 plan(SPEC-V3R6-SKILL-COMPRESS-001): Wave 1 네번째 SPEC plan-phase 복구
+
+### SPEC-V3R6-SKILL-GEARS-ALIGN-001
+frontmatter: status: implemented
+main-walk:
+97e42eaf7 feat(SPEC-V3R6-WORKFLOW-ORCHESTRATION-FIX-001): plan-phase artifacts (Tier L Section A-G, 4 artifacts)
+dd8a08a59 feat(SPEC-V3R6-FOUNDATION-CORE-GEARS-ALIGN-001): M5 references + template mirror parity + catalog.yaml regen via make build
+7cd25e386 chore(SPEC-V3R6-PLAN-AUDITOR-GEARS-ALIGN-001): sync-phase 4-phase close (status implemented + CHANGELOG v0.2.0)
+906f9285e feat(SPEC-V3R6-PLAN-AUDITOR-GEARS-ALIGN-001): plan-phase artifacts (Tier S minimal, GEARS-aware rubric scope)
+263db0600 chore(SPEC-V3R6-SKILL-GEARS-ALIGN-001): backfill sync_commit_sha + l44_post_push_fetch + HISTORY v0.2.0
+7b8f939b7 chore(SPEC-V3R6-SKILL-GEARS-ALIGN-001): sync-phase 4-phase close + CHANGELOG v0.2.0
+develop-walk:
+97e42eaf7 feat(SPEC-V3R6-WORKFLOW-ORCHESTRATION-FIX-001): plan-phase artifacts (Tier L Section A-G, 4 artifacts)
+dd8a08a59 feat(SPEC-V3R6-FOUNDATION-CORE-GEARS-ALIGN-001): M5 references + template mirror parity + catalog.yaml regen via make build
+7cd25e386 chore(SPEC-V3R6-PLAN-AUDITOR-GEARS-ALIGN-001): sync-phase 4-phase close (status implemented + CHANGELOG v0.2.0)
+906f9285e feat(SPEC-V3R6-PLAN-AUDITOR-GEARS-ALIGN-001): plan-phase artifacts (Tier S minimal, GEARS-aware rubric scope)
+263db0600 chore(SPEC-V3R6-SKILL-GEARS-ALIGN-001): backfill sync_commit_sha + l44_post_push_fetch + HISTORY v0.2.0
+7b8f939b7 chore(SPEC-V3R6-SKILL-GEARS-ALIGN-001): sync-phase 4-phase close + CHANGELOG v0.2.0
+
+### SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001
+frontmatter: status: implemented
+main-walk:
+5cb3c0e70 feat(SPEC-SKILL-BODY-NEUTRALITY-001): plan-phase artifacts
+1451ed1eb docs(SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001): evaluator D-1/D-2 remediation — AC-012/013 heading + frontmatter 정렬
+c7448879f docs(SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001): sync-phase M6 artifacts + status implemented + v0.2.0
+eeab1d0e6 fix(SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001): M5 catalog hash 재생성 — sanitized 3파일
+edbe2f091 feat(SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001): M5 C6 PR-refs + neutrality audit test + CI guard
+2c123143a feat(SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001): M4 C4 memory + C5 CLAUDE.local refs sanitization
+develop-walk:
+5cb3c0e70 feat(SPEC-SKILL-BODY-NEUTRALITY-001): plan-phase artifacts
+1451ed1eb docs(SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001): evaluator D-1/D-2 remediation — AC-012/013 heading + frontmatter 정렬
+c7448879f docs(SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001): sync-phase M6 artifacts + status implemented + v0.2.0
+eeab1d0e6 fix(SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001): M5 catalog hash 재생성 — sanitized 3파일
+edbe2f091 feat(SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001): M5 C6 PR-refs + neutrality audit test + CI guard
+2c123143a feat(SPEC-V3R6-TEMPLATE-NEUTRALITY-AUDIT-001): M4 C4 memory + C5 CLAUDE.local refs sanitization
+

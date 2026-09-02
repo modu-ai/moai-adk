@@ -1,0 +1,8 @@
+docs-site/content/en/advanced/kanban-mode.md
+docs-site/content/en/utility-commands/moai-todo.md
+docs-site/content/ja/advanced/kanban-mode.md
+docs-site/content/ja/utility-commands/moai-todo.md
+docs-site/content/ko/advanced/kanban-mode.md
+docs-site/content/ko/utility-commands/moai-todo.md
+docs-site/content/zh/advanced/kanban-mode.md
+docs-site/content/zh/utility-commands/moai-todo.md

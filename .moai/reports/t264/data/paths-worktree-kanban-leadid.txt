@@ -1,0 +1,14 @@
+internal/cli/cc.go
+internal/cli/cc_test.go
+internal/cli/glm.go
+internal/cli/kanban.go
+internal/cli/kanban_autonomy_test.go
+internal/cli/kanban_bootstrap_test.go
+internal/cli/kanban_dispatch_test.go
+internal/cli/kanban_lead_name_test.go
+internal/hook/session_start_kanban.go
+internal/hook/session_start_kanban_i18n.go
+internal/hook/session_start_kanban_i18n_test.go
+internal/hook/session_start_kanban_test.go
+internal/kanban/bootstrap.go
+internal/kanban/bootstrap_test.go

@@ -40,6 +40,7 @@ var projectRootDocToolName = regexp.MustCompile("`([a-z_]+)`")
 // tool list plausibly occupies is needed; an unmapped word fails loudly.
 var docCountWords = map[string]int{
 	"Three": 3, "Four": 4, "Five": 5, "Six": 6, "Seven": 7, "Eight": 8, "Nine": 9, "Ten": 10,
+	"Eleven": 11, "Twelve": 12, "Thirteen": 13,
 }
 
 // TestProjectRootDocMatchesServer asserts the rule file names exactly the tools

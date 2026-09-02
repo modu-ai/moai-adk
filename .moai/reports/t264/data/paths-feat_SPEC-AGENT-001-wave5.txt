@@ -1,0 +1,2 @@
+internal/template/agent_spec_test.go
+internal/template/templates/.claude/agents/moai/manager-cycle.md

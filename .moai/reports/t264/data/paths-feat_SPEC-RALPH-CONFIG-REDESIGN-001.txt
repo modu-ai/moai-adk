@@ -1,0 +1,10 @@
+.moai/specs/SPEC-RALPH-CONFIG-REDESIGN-001/progress.md
+CHANGELOG.md
+docs-site/content/en/advanced/hooks-guide.md
+docs-site/content/en/utility-commands/moai-loop.md
+docs-site/content/ja/advanced/hooks-guide.md
+docs-site/content/ja/utility-commands/moai-loop.md
+docs-site/content/ko/advanced/hooks-guide.md
+docs-site/content/ko/utility-commands/moai-loop.md
+docs-site/content/zh/advanced/hooks-guide.md
+docs-site/content/zh/utility-commands/moai-loop.md

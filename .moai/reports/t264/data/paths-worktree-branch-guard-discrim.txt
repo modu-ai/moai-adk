@@ -1,0 +1,12 @@
+.claude/rules/moai/workflow/main-checkout-branch-guard.md
+.moai/specs/SPEC-WORKTREE-BRANCH-GUARD-DISCRIM-001/acceptance.md
+.moai/specs/SPEC-WORKTREE-BRANCH-GUARD-DISCRIM-001/plan.md
+.moai/specs/SPEC-WORKTREE-BRANCH-GUARD-DISCRIM-001/progress.md
+.moai/specs/SPEC-WORKTREE-BRANCH-GUARD-DISCRIM-001/spec.md
+internal/hook/branch_guard.go
+internal/hook/branch_guard_test.go
+internal/hook/branch_guard_worktree_test.go
+internal/hook/pre_tool_branch_guard_integration_test.go
+internal/hook/pre_tool_branch_guard_optin_test.go
+internal/hook/pre_tool_test.go
+internal/template/templates/.claude/rules/moai/workflow/main-checkout-branch-guard.md
