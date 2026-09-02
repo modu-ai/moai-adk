@@ -99,7 +99,7 @@ m1_to_m4_commit_strategy: "4 milestone commits (M1..M3 landed, M4 this) + 1 run_
 
 ```yaml
 sync_complete_at: 2026-09-03
-sync_commit_sha: "pending-backfill-t280-sync" # D3 placeholder — backfilled in the immediately following commit (a commit cannot cite its own SHA)
+sync_commit_sha: "bc781690d" # D3 backfilled — the close commit bc781690d (docs(SPEC-INBOX-DRAIN-GAP-001): sync-phase 3-phase close)
 sync_status: complete
 b12_self_test_a: "grep -c 'SPEC-INBOX-DRAIN-GAP-001' CHANGELOG.md → 0 (no duplicate; emission proceeded)"
 b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l → 10 (AC-IBX-001..010, non-zero, plausible); CHANGELOG entry cites 10 ACs (10 PASS)"
