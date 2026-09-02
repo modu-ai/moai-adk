@@ -1,7 +1,7 @@
 ---
 id: SPEC-PROJECT-CONTINUATION-KEY-001
 title: "workflow.project.continuation — a three-value completion-continuation key for /moai project, narrowed to presentation so it cannot relax the kickoff gate"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-09-02
 updated: 2026-09-02
@@ -25,6 +25,7 @@ related_specs:
 | Version | Date | Author | Description |
 |---------|------|--------|-------------|
 | 0.1.0 | 2026-09-02 | manager-spec (card t191) | Initial plan-phase emission. Tier M. 11 GEARS REQs / 13 binary ACs. RED-now baselines measured on tree `2660bcd09` (worktree `.claude/worktrees/t191`, branch `WT-project-continuation`). Six delegated design calls resolved in §3: D1 `pipeline` narrowed to presentation-only; D2 plain `string`, absent ≡ `card`; D3 fall-back-and-report (neither silent default nor stop); D4 `none` reproduces the pre-P1 branch set measured from `e91def4ca` diff; D5 template SHIPS `continuation: card` and takes an inventory row; D6 mirror parity measured with `cmp`. |
+| 0.2.0 | 2026-09-02 | manager-spec (card t191) | Plan-audit iteration-1 revision per `.moai/reports/t191/plan-audit.md` (FAIL 0.78, three blocking). **audit-D1**: the v0.1.0 narrowing left `pipeline` behaviourally identical to `card` — the finding reproduces and is accepted. §3 D1 rewritten with a new § "What `pipeline` changes relative to `card`"; the delta is now the recommended option's **carry distance**, and `REQ-PCK-006` states it positively plus the kickoff-clause obligation. The coordinator's proposed progression-mode reading was evaluated and **rejected in writing** (§3 D1.3) with its measurement. **audit-D2**: accepted in full — the v0.1.0 wizard-localization gap was false; §5 corrected, `REQ-PCK-010` unchanged (it was already deliverable), `AC-PCK-010` strengthened. **audit-D3**: accepted — `AC-PCK-008` replaced with the per-branch kickoff-clause criterion; the diff-stat check re-filed as non-blocking `AC-PCK-014`. **audit-D4**: resolved toward the stronger reading (`withOptionDesc`, 32 entries); measuring it surfaced a finding the audit did not carry — the `applyI18n` `.opt.` guard keeps enum labels English by design — so `REQ-PCK-012` and `AC-PCK-015` were added to protect it. **audit-D6**: `REQ-PCK-004` extended to enumerate the four `none` options and omit `Create SPEC later`. **audit-D5 REJECTED** — the row is at 2922-2924 as v0.1.0 stated; evidence in §3 D5. Net: 12 GEARS REQs / 15 ACs (13 blocking). |
 
 ---
 
@@ -78,14 +79,15 @@ Canonical read path: `workflow.project.continuation` in `.moai/config/sections/w
 - **REQ-PCK-001** (Ubiquitous) — The `workflow.project.continuation` value domain shall be exactly `{none, card, pipeline}`.
 - **REQ-PCK-002** (Ubiquitous) — When the key is absent, the resolved value shall be `card`, which shall reproduce the behaviour PR #1601 established.
 - **REQ-PCK-003** (When an unrecognized value is detected) — When the configured value matches no token of the domain, the resolver shall resolve to `card` **and** the Phase 14 completion report shall name the offending value together with the canonical domain; the run shall not be stopped and the value shall not be applied.
-- **REQ-PCK-004** (While `continuation` resolves to `none`) — While the resolved value is `none`, the Phase 14 workflow shall skip the Step 4.1.5 card issuance entirely, shall add no backlog card, and shall present the pre-P1 next-steps option set with `Create SPEC` as the recommended option.
-- **REQ-PCK-005** (While `continuation` resolves to `card`) — While the resolved value is `card`, the Phase 14 workflow shall issue exactly one derived `[PROJECT] ` card under the five standing-source properties and shall present `Create the SPEC and start now` as the recommended option.
-- **REQ-PCK-006** (While `continuation` resolves to `pipeline`) — While the resolved value is `pipeline`, the Phase 14 workflow shall issue the card exactly as under `card`, and shall present as its recommended option the branch that names continuation through run-phase implementation and tests.
+- **REQ-PCK-004** (While `continuation` resolves to `none`) — While the resolved value is `none`, the Phase 14 workflow shall skip the Step 4.1.5 card issuance entirely, shall add no backlog card, and shall present the pre-P1 next-steps option set — `Create SPEC` (recommended) · `Review and Edit Documentation` · `Generate project-specific harness` · `Done` — omitting the `Create SPEC later` option, which has no queued card to refer to; the four-option cap shall be satisfied without routing any option to the `Other` path.
+- **REQ-PCK-005** (While `continuation` resolves to `card`) — While the resolved value is `card`, the Phase 14 workflow shall issue exactly one derived `[PROJECT] ` card under the five standing-source properties, and shall present as its recommended option a branch that carries the session **as far as `/moai plan` and no further**, leaving run-phase entry to a separately-initiated operator action.
+- **REQ-PCK-006** (While `continuation` resolves to `pipeline`) — While the resolved value is `pipeline`, the Phase 14 workflow shall issue the card under the same five standing-source properties as `card`, and shall present as its recommended option a branch that carries the session **past `/moai plan` to the emission of the Implementation Kickoff Approval gate**, so that the operator is asked the run-phase question in this session instead of having to initiate it separately; and the option text shall carry the Implementation Kickoff Approval clause in the same terms as the `card` option.
 - **REQ-PCK-007** (Ubiquitous — the gate invariant) — At every value of the domain, the Phase 14 next-steps question shall be asked, shall be answered by the operator, and shall not be skipped, auto-answered, defaulted-on-no-answer, or bypassed; the key shall change only which option is recommended and how that option is worded.
 - **REQ-PCK-008** (Ubiquitous — the kickoff invariant) — The key shall not alter Implementation Kickoff Approval: run-phase entry from any branch of the Phase 14 question shall pass that human gate unchanged, and no value of `continuation` shall be read as pre-authorizing run-phase entry.
 - **REQ-PCK-009** (Where the key is shipped in the distributed template) — Where the distributed template carries `workflow.project.continuation`, its shipped value shall be `card`, so that a fresh install behaves byte-identically to the current release, and the key shall carry a triage row in `internal/config/testdata/shipped_key_inventory.yaml`.
 - **REQ-PCK-010** (When the reconfigure wizard runs) — When the wizard presents the continuation question, it shall offer the three domain values as a closed select with `card` as the default, and shall render its title, description, and option descriptions in each of the four supported locales.
-- **REQ-PCK-011** (Ubiquitous) — The `moai web` settings console shall expose `workflow.project.continuation` as a closed-set field whose option values derive from the same Go accessor the config layer validates against, with labels and descriptions present in all four locales.
+- **REQ-PCK-011** (Ubiquitous) — The `moai web` settings console shall expose `workflow.project.continuation` as a closed-set field whose option values derive from the same Go accessor the config layer validates against, carrying in each of the four locale maps: a field title, a field description, an option label per token, and a **per-option description** per token.
+- **REQ-PCK-012** (Ubiquitous — the `.opt.` guard) — The option-label keys shall use the `.opt.` prefix and the per-option-description keys a prefix free of the `.opt.` substring, so that labels continue to resolve against the English dictionary under the existing `applyI18n` guard while the descriptions follow the active locale; the guard shall not be modified.
 
 ---
 
@@ -102,11 +104,50 @@ Canonical read path: `workflow.project.continuation` in `.moai/config/sections/w
 | "[HARD] No branch is taken on the operator's behalf. If no answer comes back, nothing starts … Starting work without that answer is a preselect, whatever the step is called." | `doc-generation.md:358` |
 | "[ZONE:Frozen] [HARD] All Phase 4 execution modes are strictly downstream of Implementation Kickoff Approval … Implementation Kickoff Approval is mandatory and score-independent." | `orchestration-mode-selection.md:18` |
 
-**Resolution — `pipeline` is narrowed to the presentation layer.** The key governs *which option occupies the recommended slot* in the Phase 14 question and *how that option is worded*. It never answers the question, never removes it, and never reaches Implementation Kickoff Approval. Under `pipeline` the recommended option reads as continuation-through-run; the operator still selects it, and run-phase entry still passes the kickoff gate. REQ-PCK-007 and REQ-PCK-008 encode this as prohibitions so a later reading cannot quietly widen it.
+**Resolution — `pipeline` changes how far the recommended branch carries, not who decides.** The key never answers the Phase 14 question, never removes it, and never answers Implementation Kickoff Approval. REQ-PCK-007 and REQ-PCK-008 encode that as prohibitions so a later reading cannot quietly widen it.
 
-**What is given up, stated honestly.** Under this narrowing `pipeline` delivers materially less than the card's literal words. It does not make anything proceed automatically; it makes the continuation branch the pre-selected, recommended one. The alternative that would honour the card literally — a value that answers the question on the operator's behalf — was rejected because it makes a [HARD] gate a config toggle, and a gate that a config file can switch off is not a gate.
+#### D1.1 — What `pipeline` changes relative to `card`
 
-**Kanban Mode.** The narrowing holds unchanged there. In Kanban Mode the Step 4.2 pick is reported to the lead rather than acted on locally; `pipeline` still only changes wording and pre-selection, and dispatch remains the lead's act.
+**The delta, in one sentence: the recommended branch's *carry distance*.** Under `card` the recommended option carries the session as far as `/moai plan` and stops; run-phase entry is a separately-initiated operator action in some later turn. Under `pipeline` the same branch continues past `/moai plan` to the *emission* of the Implementation Kickoff Approval gate, so the operator is asked the run-phase question in this session rather than having to come back and start it.
+
+This is measured against the shipped `card` option, not against the card brief's literal wording. `doc-generation.md:350` verbatim:
+
+```
+- Create the SPEC and start now (Recommended): Pick the card issued in Step 4.1.5 and begin
+  immediately. … continue in this same session with `/moai plan "<card text>"`. … Run-phase
+  entry still passes the Implementation Kickoff Approval gate …
+```
+
+The option's own instruction terminates at `/moai plan`. Its sentence about run-phase entry is a *disclaimer* about a later step, not an instruction to take one. That is the gap `pipeline` fills.
+
+**Why this is gate-respecting rather than a bypass.** `pipeline` causes one more gate to be *emitted*; it answers none. The operator is asked strictly more, never less. A value that made the session ask *fewer* questions would be the bypass D1 exists to prevent — this asks the run-phase question earlier, in the session that already has the context to answer it.
+
+**Why it is observable.** The two values produce different orchestrator action sequences after the same operator answer: under `card` the session ends when `/moai plan` returns; under `pipeline` it proceeds to emit the kickoff gate. `AC-PCK-006` goes red on a `pipeline` row that stops at `/moai plan` — i.e. on a `card`-behaving implementation.
+
+**v0.1.0 was wrong here and the audit was right.** The v0.1.0 `REQ-PCK-006` defined `pipeline` by reference to `card` plus a wording change, which made the two values synonyms: the shipped `card` option already occupies the recommended slot with a "begin immediately" continuation branch, so "present a continuation branch as recommended" described `card` too. A third enum value whose complete observable effect is one string is not a value.
+
+#### D1.2 — The gate reminder cannot vanish
+
+`REQ-PCK-006` authorizes new option text replacing the `card` text, and that text carries the file's **only** occurrence of the kickoff clause:
+
+```
+$ grep -c "Implementation Kickoff Approval" .claude/skills/moai/workflows/project/doc-generation.md
+1
+```
+
+Nothing in v0.1.0 obliged the replacement to carry it, so `pipeline` could have presented a carry-past-plan branch with the gate reminder silently removed — at exactly the position where `card` has one. `REQ-PCK-006` now requires the clause in the same terms, and `AC-PCK-008` counts it per branch rather than file-wide.
+
+#### D1.3 — The progression-mode reading, evaluated and REJECTED
+
+The coordinator proposed defining `pipeline` as *the autonomous progression mode is the pre-selected answer on the progression-mode axis*. The reading is coherent and gate-respecting — `goal.md:95` makes that axis explicitly DISTINCT from approve/decline, and `goal.md:97-101` binds approval in both modes. It is rejected on a measurement, not on principle:
+
+> `goal.md:112-113` — "The selected mode is persisted in goal state as `progression_mode` (**default `autonomous`** when the user declines to choose)."
+
+Autonomous is **already** the default, so "`pipeline` ⇒ autonomous is pre-selected" describes the status quo and reproduces exactly the synonym defect this revision exists to fix. The inverse assignment — `card` ⇒ semi-autonomous recommended, `pipeline` ⇒ autonomous — would give `pipeline` a real delta, but only by changing `card`, which REQ-PCK-002 pins to P1 behaviour. It is also unmeasurable: `grep -n "Recommended" .claude/skills/moai/workflows/goal.md` returns **no match**, so which option carries the recommendation on that axis is currently unspecified, and a requirement cannot pin `card` to an unspecified baseline.
+
+The state field is real (`internal/goal` `ProgressionMode`, `ProgressionAutonomous`; `internal/hook/handoff_inject.go:241` `goal.DefaultProgressionMode`), so the rejection is about the default's position, not about the mechanism's existence. Carry distance was adopted instead because it needs no change to `card` and no new state.
+
+**Kanban Mode scoping.** The delta is scoped to non-Kanban sessions. In Kanban Mode the Step 4.2 pick is reported to the lead, which dispatches the card to the `plan` session and later to `run`; carry distance is the lead's to decide, so `pipeline` changes nothing there and the option text says so.
 
 ### D2 — Type and absent-key semantics
 
@@ -136,7 +177,22 @@ Measured from the P1 diff (`git show e91def4ca --format="" -- .claude/skills/moa
 
 **Yes, with `continuation: card`.** `todo.enabled` ships no block because its polarity makes absence the normal state and a shipped `enabled: true` would add a line that changes nothing (`schema_sections.go:361-365`). That reasoning does not carry: a three-value enum's domain is not discoverable from the key's absence, so shipping it is how `none` and `pipeline` become visible at all. Shipping `card` is inert by REQ-PCK-002 — a fresh install behaves exactly as it does today.
 
-Shipping has a measured consequence. `TestShippedConfigKeysHaveReaders` (`internal/config/shipped_key_reader_test.go:70`) enumerates keys from git-tracked template section YAMLs and **fails** on any key absent from `internal/config/testdata/shipped_key_inventory.yaml`. The key therefore takes a row, class **P** (prose-consumed — the consumer is the orchestrator reading `doc-generation.md`, the same shape as `workflow.worktree.auto_cleanup` at inventory line 2922-2924, whose evidence is a skill path).
+Shipping has a measured consequence. `TestShippedConfigKeysHaveReaders` (`internal/config/shipped_key_reader_test.go:70`) enumerates keys from git-tracked template section YAMLs and **fails** on any key absent from `internal/config/testdata/shipped_key_inventory.yaml`. The key therefore takes a row, class **P** (prose-consumed — the consumer is the orchestrator reading `doc-generation.md`, the same shape as `workflow.worktree.auto_cleanup` at inventory lines **2922-2924**, whose evidence is a skill path).
+
+> **The audit's D5 (an off-by-one claim against this citation) is rejected.** Two independent measurements place the `- path:` line at 2922, so the three-line row spans 2922-2924 as originally written:
+>
+> ```
+> $ grep -n "workflow.worktree.auto_cleanup" internal/config/testdata/shipped_key_inventory.yaml
+> 2922:- path: "workflow.worktree.auto_cleanup"
+> $ awk 'NR>=2921 && NR<=2925 {print NR": "$0}' internal/config/testdata/shipped_key_inventory.yaml
+> 2921:  evidence: reader
+> 2922:- path: "workflow.worktree.auto_cleanup"
+> 2923:  class: P
+> 2924:  evidence: .claude/skills/moai-workflow-worktree/modules/moai-adk-integration.md
+> 2925:- path: "workflow.worktree.auto_create"
+> ```
+>
+> The audit derived 2921-2923 by counting within a `sed -n '2918,2926p'` window rather than reading absolute line numbers. The citation stands unchanged; nothing about the row's substance was in dispute.
 
 ### D6 — Template-First and mirror parity
 
@@ -183,6 +239,9 @@ So the three markdown/JSON pairs are edited template-first and mirrored verbatim
 - **`make build` was not run.** No claim is made about the embedded template's current contents versus `internal/template/templates/`.
 - **No test was executed.** `TestShippedConfigKeysHaveReaders` was read (`shipped_key_reader_test.go:40-115`) but not run; the RED baseline for AC-PCK-009 is the absence of the key from the template, not an observed test failure.
 - **`context_folding` was checked for Go readers** (`grep -rn "context_folding" internal/ --include='*.go'` → no output) and cited only as evidence that prose-read workflow keys exist. It was **not** checked against the inventory, and no claim is made about its triage class.
-- **The wizard select rendering was not exercised.** `QuestionTypeSelect` was read at `questions.go:65-75` (the `conversation_language` question) as the shape precedent; no select question with localized option descriptions was located, so REQ-PCK-010's option-description requirement may need a new helper rather than an existing one. Flagged in `plan.md` §B.
-- **The four locales in `translations.go` were confirmed for ko/ja/zh only** (lines 120, 279, 438); the English source lives in `questions.go` rather than in `translations.go`. No claim about a fourth map.
+- **A v0.1.0 gap entry here was factually false and is withdrawn.** It claimed no localized-select-option precedent existed and that `GetLocalizedQuestion` might need extending. Both are wrong, and the error was a sampling error: `conversation_language` is the *single* member of `optionTranslationExemptIDs` (`translations_completeness_test.go:13-15`), and v0.1.0 generalized that exemption into an absence. Measured now: `grep -c "QuestionTypeSelect" internal/cli/wizard/questions.go` → **12**; `GetLocalizedQuestion` already copies `trans.Options[i].Label` and `.Desc` (`translations.go:571-586`); the precedent REQ-PCK-010 needs is **`audit_model`** (`translations.go:137` ko, `:296` ja, `:455` zh) — a closed-set select carrying a per-option `Label` and `Desc` in every locale. `REQ-PCK-010` was therefore always deliverable as written and is unchanged.
+- **The withdrawn fallback would have failed an existing test.** `plan.md` §B item 1 (v0.1.0) authorized folding option descriptions into the question body; a non-exempt `QuestionTypeSelect` with zero option translations fails `TestWizardQuestionTranslationCompleteness`. **Correction to the audit's derivation**: the failure is **3 errors, not 9** — the `len(trans.Options) != len(q.Options)` branch `continue`s at `translations_completeness_test.go:123` before the per-option loop is reached, so exactly one `t.Errorf` fires per locale across ko/ja/zh. This is read from the control flow at `:120-124`; **the test was not run** (the question does not yet exist).
+- **The locale set is ko/ja/zh with English as source**, per `translations_completeness_test.go:7` `localizableLocales`. The four `internal/web/assets/i18n.js` maps (`en`/`ko`/`ja`/`zh`) are a separate surface with its own governance tests; the two were not cross-checked for key-naming consistency.
 - **PR #1601 / #1600 CHANGELOG collision** was taken from the card brief and not independently reproduced from git history.
+- **The settings write layer was not traced.** `plan.md` M5 asserts a `workflow → project → continuation` path resolves through `internal/settings`, and M4 asserts `yamlpatch.KeyEdit` handles a three-segment path. Neither was verified; `internal/settings/schema_sections.go` was read only around `seamSectionFields` (`:317-390`) and the `withOptionDesc` helper (`:143`). `internal/core/project/initializer_expansion.go` was read at `:110-145` (the `writeWorkflowTodoYAML` precedent, itself a three-segment `workflow/todo/enabled` edit), which makes the M4 assertion likely but not measured.
+- **`origin/develop` has advanced past this SPEC's declared baseline.** `git rev-list --count --left-right origin/develop...HEAD` reported `0	35` at audit time. All figures in §1.1 and §3 are attributed to tree `2660bcd09`; a rebase would require re-measuring them. No AC in v0.2.0 depends on an `origin/develop` diff (that dependency was removed with the old `AC-PCK-008`).

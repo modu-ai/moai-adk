@@ -1,6 +1,6 @@
 # SPEC-PROJECT-CONTINUATION-KEY-001 — Implementation Plan
 
-Card: **t191** · Tier **M** · Branch `WT-project-continuation` · Baseline tree `2660bcd09`
+Card: **t191** · Tier **M** · Branch `WT-project-continuation` · Baseline tree `2660bcd09` · **v0.2.0** (plan-audit iter-1 revision)
 
 ---
 
@@ -14,9 +14,10 @@ The prose is the product here. The Go code exists only so the prose has somethin
 
 ## §B Known issues carried into implementation
 
-1. **No localized-option-description precedent found.** The only `QuestionTypeSelect` located (`questions.go:65`, `conversation_language`) deliberately leaves its options untranslated: "Option labels carry the native language name and are never translated (GetLocalizedQuestion leaves them untouched because the translation entry supplies no options)." REQ-PCK-010 wants localized option descriptions. Either a `GetLocalizedQuestion` extension is needed, or the option descriptions collapse into the question `Description` (the shape `todo_enabled` already uses). **Decide in M4 before writing the question**; the fallback (descriptions in the question body) is acceptable and needs no new helper.
+1. **[WITHDRAWN in v0.2.0 — the v0.1.0 entry here was false.]** It claimed no localized-select-option precedent existed and authorized a fallback that folds option descriptions into the question body. There is no decision to make and that fallback is forbidden: it makes the new question a non-exempt `QuestionTypeSelect` with zero option translations, which fails `TestWizardQuestionTranslationCompleteness` with one error per locale (3 across ko/ja/zh — the count branch `continue`s at `translations_completeness_test.go:123` before the per-option loop). **The precedent to copy is `audit_model` at `translations.go:137` (ko), `:296` (ja), `:455` (zh)** — a closed-set select with a per-option `Label` and `Desc` in each locale. `GetLocalizedQuestion` already carries option translations (`translations.go:571-586`); no helper is needed. M4 follows that shape and nothing else.
 2. **`workflow.yaml` is a neutralized mirror** (`cmp` rc=1). The template gains a commented `project:` block; the local file gains the key without the template's comment prose. Editing them as a pair is a mistake this SPEC's own §D forbids.
 3. **The inventory is a hard gate, not a courtesy.** Shipping the key without a `shipped_key_inventory.yaml` row fails `TestShippedConfigKeysHaveReaders`. M3 is not optional.
+4. **The `pipeline` option text is the one place a gate can silently vanish.** It replaces the `card` option, which carries the file's only `Implementation Kickoff Approval` occurrence (`grep -c` → `1`). `REQ-PCK-006` obliges the replacement to carry the clause and `AC-PCK-008` counts it per branch. Writing the `pipeline` row without that sentence is the failure mode M1 exists to avoid.
 
 ---
 
@@ -55,12 +56,15 @@ The three-way behaviour, written into `doc-generation.md` Step 4.1.5 and Step 4.
 
 - Step 4.1.5 gains a leading resolution step: read `workflow.project.continuation`; resolve absent → `card`; resolve unmatched → `card` **and** record the offending value for the Step 4.2 report.
 - Step 4.1.5 gains a `none` short-circuit that skips issuance and says so in the report.
-- Step 4.2 gains a per-value recommended-option table (`none` → `Create SPEC`; `card` → `Create the SPEC and start now`; `pipeline` → the continuation-through-run wording).
+- Step 4.2 gains a per-value recommended-option table. The three rows differ by **carry distance**, per `spec.md` §3 D1.1:
+  - `none` → `Create SPEC` (the pre-P1 wording), and the option set omits `Create SPEC later` — there is no card for it to refer to. Four options, no `Other` routing.
+  - `card` → `Create the SPEC and start now`, carrying **as far as `/moai plan` and no further** (the shipped text, unchanged).
+  - `pipeline` → carries **past `/moai plan` to emitting the Implementation Kickoff Approval gate**, and **must** carry the kickoff clause in the same terms as the `card` option. In Kanban Mode the row says the lead owns carry distance and `pipeline` changes nothing.
 - The two [HARD] clauses (four-option cap, "no branch is taken on the operator's behalf") are restated **unchanged** and explicitly scoped as value-independent.
-- A new [HARD] sentence states the key changes only which option is recommended and how it is worded — never whether the question is asked.
+- A new [HARD] sentence states the key changes only which option is recommended, how far it carries, and how it is worded — never whether the question is asked or how it is answered.
 - `project.md:59` Phase Routing Table row for Phase 14 is updated to name the key.
 
-Verify: `grep -n "workflow.project.continuation" .claude/skills/moai/workflows/project/doc-generation.md` returns ≥1; `cmp` against the template twin returns rc=0.
+Verify: `grep -n "workflow.project.continuation" .claude/skills/moai/workflows/project/doc-generation.md` returns ≥1; `grep -c "Implementation Kickoff Approval"` returns ≥2 (one per run-phase-offering option: `card` and `pipeline`); `cmp` against the template twin returns rc=0.
 
 ### M2 — Value semantics in Go
 
@@ -81,8 +85,8 @@ Verify: `go test ./internal/config/ -run TestShippedConfigKeysHaveReaders`.
 
 ### M4 — Wizard question + 4 locales
 
-- `internal/cli/wizard/questions.go`: a `QuestionTypeSelect` question `project_continuation`, group `Quality & Workflow`, `Default: "card"`, three options derived from `config.ValidProjectContinuations()`. Resolve §B item 1 here before writing.
-- `internal/cli/wizard/translations.go`: ko / ja / zh entries.
+- `internal/cli/wizard/questions.go`: a `QuestionTypeSelect` question `project_continuation`, group `Quality & Workflow`, `Default: "card"`, three options whose `Value`s are `config.ValidProjectContinuations()`, each with an English `Label` and `Desc`.
+- `internal/cli/wizard/translations.go`: for each of ko / ja / zh, a `project_continuation` entry with a non-empty `Title`, `Description`, and **`Options: []OptionTranslation` of length 3**, each carrying a non-empty `Label` and `Desc` — matching the `audit_model` shape at `translations.go:137` / `:296` / `:455`. Do **not** fold the option descriptions into `Description`; that path fails `TestWizardQuestionTranslationCompleteness` (§B item 1).
 - `internal/cli/wizard/types.go` + `wizard.go`: a `ProjectContinuation string` result field and its capture branch (select answers, not `saveBoolAnswer`).
 - `internal/cli/init.go` + `internal/core/project/initializer{,_expansion}.go`: persist via `yamlpatch.KeyEdit{Path: []string{"workflow","project","continuation"}}`, following `writeWorkflowTodoYAML`.
 
@@ -90,8 +94,16 @@ Verify: `go test ./internal/cli/wizard/... ./internal/core/project/...`.
 
 ### M5 — `moai web` settings row + 4 locales
 
-- `internal/settings/schema_sections.go`: a `closedSeam(SectionWorkflow, "workflow", "f.workflow.project.continuation.opt.", config.ValidProjectContinuations(), "", "", "workflow", "project", "continuation")` row, placed beside the `todo` row, with a comment recording that this key **does** ship in the template (unlike its two neighbours).
-- `internal/web/assets/i18n.js`: `.title`, `.desc`, and three `.opt.*` entries in each of `en` / `ko` / `ja` / `zh`.
+- `internal/settings/schema_sections.go`: a row **wrapped in `withOptionDesc`** (`:143`) so the three tokens carry per-option descriptions, following the neighbouring `audit_model` rows at `:380-389` — `REQ-PCK-011` requires per-option descriptions, so a bare `closedSeam(...)` under-delivers:
+
+  ```go
+  withOptionDesc(closedSeam(SectionWorkflow, "workflow", "f.workflow.project.continuation.opt.",
+      config.ValidProjectContinuations(), "", "", "workflow", "project", "continuation"),
+      "f.workflow.project.continuation.option.")
+  ```
+
+  Place it beside the `todo` row, with a comment recording that this key **does** ship in the template — unlike its two `branch_guard` / `todo` neighbours, whose comments say the opposite.
+- `internal/web/assets/i18n.js`: in each of `en` / `ko` / `ja` / `zh` — `.title`, `.desc`, three `.opt.<token>` labels, and three `.option.<token>` descriptions. **8 keys × 4 locales = 32 entries.**
 
 Verify: `go test ./internal/settings/... ./internal/web/...`.
 
