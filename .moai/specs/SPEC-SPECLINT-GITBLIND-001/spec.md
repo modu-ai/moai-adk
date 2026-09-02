@@ -2,9 +2,9 @@
 id: SPEC-SPECLINT-GITBLIND-001
 title: "SPEC Lint 의 git 눈멂 — 조용한 skip 을 관측 가능하게 만들고 기준 ref 를 해소한다"
 version: "0.4.0"
-status: draft
+status: in-progress
 created: 2026-08-31
-updated: 2026-08-31
+updated: 2026-09-02
 author: manager-spec
 priority: P1
 phase: "v3.1.4 target"

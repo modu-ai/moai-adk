@@ -2,6 +2,7 @@ package spec
 
 import (
 	"os/exec"
+	"strings"
 	"sync"
 )
 
@@ -35,6 +36,21 @@ type gitEnvCache struct {
 	// Keyed by "main-branch" (query-kind per R1).
 	mainBranch    string
 	mainBranchSet bool
+
+	// shallowResult: result of git rev-parse --is-shallow-repository
+	// (true = shallow clone). Keyed by "shallow" (query-kind per R1,
+	// SPEC-SPECLINT-GITBLIND-001 M1): repository-level predicate, computed
+	// once per run so the per-SPEC shape ②/③ decision never spawns a
+	// per-SPEC subprocess.
+	shallowResult bool
+	shallowCached bool
+
+	// unreachableEmitted records whether the StatusGitUnreachable finding
+	// has already been emitted in this run (SPEC-SPECLINT-GITBLIND-001
+	// §2.2): the emission cap is one per Lint() run, because the cause is
+	// repository-wide and a per-SPEC flood would bury the signal in the very
+	// CI state the rule exists to expose.
+	unreachableEmitted bool
 
 	// transitions memoizes the `git log --follow -p` history walk that finds a
 	// SPEC's most recent `status:` transition, keyed per document. Two rules
@@ -133,6 +149,74 @@ func cachedMainBranch() string {
 		branch = "master"
 	}
 	return branch
+}
+
+// cachedIsShallowRepository reports whether the repository at the process
+// working directory is a shallow clone, using the per-run cache if active.
+// Equivalent to:
+//   exec.Command("git", "rev-parse", "--is-shallow-repository").Output()
+//     → err == nil && strings.TrimSpace(stdout) == "true"
+//
+// A git failure (not a repository, git unavailable) reports false: that state
+// surfaces through the shape ① error path (git log failed) instead, which
+// fires unconditionally, so a false shallow answer cannot mask blindness.
+//
+// SPEC-SPECLINT-GITBLIND-001 M1 (REQ-SLGB-003/004): repository-level
+// predicate deciding whether shapes ②/③ count as observation failures.
+func cachedIsShallowRepository() bool {
+	gitQueryCacheMu.RLock()
+	c := gitQueryCacheV
+	gitQueryCacheMu.RUnlock()
+
+	if c != nil {
+		gitQueryCacheMu.Lock()
+		if c.shallowCached {
+			result := c.shallowResult
+			gitQueryCacheMu.Unlock()
+			return result
+		}
+		result := queryIsShallowRepository()
+		c.shallowResult = result
+		c.shallowCached = true
+		gitQueryCacheMu.Unlock()
+		return result
+	}
+
+	// No cache — direct check (non-Lint callers).
+	return queryIsShallowRepository()
+}
+
+// queryIsShallowRepository performs the raw shallow check.
+func queryIsShallowRepository() bool {
+	out, err := exec.Command("git", "rev-parse", "--is-shallow-repository").Output()
+	if err != nil {
+		return false
+	}
+	return strings.TrimSpace(string(out)) == "true"
+}
+
+// takeUnreachableEmission records that StatusGitUnreachable is being emitted
+// for this run and reports whether this call holds the run's single emission
+// slot (true = emit; false = already emitted, suppress). With no per-run
+// cache active (any caller outside Lint()) there is no suppression state, so
+// it always reports true — the deliberate no-cache-path behavior of
+// SPEC-SPECLINT-GITBLIND-001 §2.2.
+func takeUnreachableEmission() bool {
+	gitQueryCacheMu.RLock()
+	c := gitQueryCacheV
+	gitQueryCacheMu.RUnlock()
+
+	if c == nil {
+		return true
+	}
+
+	gitQueryCacheMu.Lock()
+	defer gitQueryCacheMu.Unlock()
+	if c.unreachableEmitted {
+		return false
+	}
+	c.unreachableEmitted = true
+	return true
 }
 
 // cachedOwnershipTransition returns the most recent recorded `status:`
