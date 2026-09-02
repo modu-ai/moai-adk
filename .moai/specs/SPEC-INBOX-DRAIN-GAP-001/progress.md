@@ -77,7 +77,7 @@ No current AC mechanically checks the read-only discipline on `.moai/state/lsel/
 
 ```yaml
 run_complete_at: 2026-09-03
-run_commit_sha: pending-backfill-run
+run_commit_sha: "6e55a6166" # backfilled per the D3 placeholder pattern — terminal run-phase commit (M4)
 run_status: complete
 ac_pass_count: 10
 ac_fail_count: 0
