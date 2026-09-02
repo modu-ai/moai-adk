@@ -253,12 +253,14 @@ func ResolveGLMReasoningForModel(model, agentName, claudeEffort string) GLMReaso
 // unit-tested — the wire carries this session-level derived value (the documented
 // delivery-granularity limitation, research.md §D).
 //
-// Shim consumption is now MEASURED (t175, .moai/reports/t175/measurements.md §3):
-// the z.ai Anthropic-compat shim honors the Anthropic `thinking` parameter
-// (thinking blocks returned; depth scales with the budget) and silently IGNORES
-// a top-level z.ai-style `reasoning_effort` field. The live session's own
-// thinking-block responses are indirect end-to-end evidence that the
-// env→reasoning chain is live; no claim is made here about delivered spend.
+// Reasoning delivery is MEASURED, with a direction reversal recorded after this
+// SPEC closed: the null-controlled live differential (SPEC-V3R6-AUDIT-MODEL-PIN-001
+// acceptance.md AC-AMP-006 amendment, 2026-08-24, lead-approved; four runs)
+// proved the top-level `reasoning_effort` request field is the effective
+// delivery channel (ratios 1.34/1.85/1.48 against the 1.25 bound) while the
+// thinking-budget request object is IGNORED (null 1.02). The earlier t175 shim
+// probe (.moai/reports/t175/measurements.md §3) reported the opposite direction
+// and is superseded by that record. No claim is made here about delivered spend.
 func SessionGLMReasoningState() GLMReasoningState {
 	return glmReasoningMax
 }

@@ -399,7 +399,7 @@ SPEC-V3R3-CI-AUTONOMY-001 Wave 7 (T8) 도입 — 신규 SPEC plan 또는 worktre
 
 #### 알고리즘 (3-Signal Evaluation)
 
-`internal/bodp/relatedness.go` `Check()` 함수가 다음 3개 시그널을 평가한다:
+`.claude/rules/moai/development/branch-origin-protocol.md` § Algorithm (3-Signal Evaluation)이 다음 3개 시그널을 평가한다. 참고: `internal/bodp/` Go 패키지는 존재하지 않는다(2026-09-02 실측 `git ls-tree -r --name-only develop | grep -i bodp` → 추적 파일 0건) — 이 프로토콜의 유일한 배포 구현 표면은 위 룰 파일이다.
 
 | 시그널 | 출처 | 의미 |
 |-------|------|------|
@@ -409,7 +409,7 @@ SPEC-V3R3-CI-AUTONOMY-001 Wave 7 (T8) 도입 — 신규 SPEC plan 또는 worktre
 
 #### Decision Matrix (8 rows)
 
-`internal/bodp/relatedness.go` `applyMatrix()` — SignalB 우선순위 dominates A/C:
+`.claude/rules/moai/development/branch-origin-protocol.md` § Decision Matrix (verbatim 8-row truth table) — SignalB 우선순위 dominates A/C. 기본값(`origin/main`)의 근거는 같은 파일 :26의 [HARD] 항. 유일한 Go 접점은 `internal/cli/doctor.go` `checkBODPConfig`(:908)로 `.moai/branches/` 존재만 확인하고 base 선택 로직은 갖지 않는다.
 
 | ¬a ¬b ¬c | → main      @ origin/main |
 | a  ¬b ¬c | → stacked   @ currentBranch |

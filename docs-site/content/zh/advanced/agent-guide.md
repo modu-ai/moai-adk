@@ -176,15 +176,15 @@ flowchart TD
 
 当里程碑 Mn 的所有 AC 行都是 PASS、且这些行的交叉验证同样返回 PASS 后，`manager-lead` 会在进入下一个里程碑之前走完三步。该流程**只组合已有工具** —— 不新增 Go 代码，不新增钩子，也不新增 CLI 子命令。
 
-1. **持久化证据** —— 把每个 AC 的验证命令输出重定向到 `.moai/state/verify/<session>/M<n>.<AC-id>.{log,out}`。不使用 `/tmp`，因为操作系统会清空它。只有审计时这个路径确实能打开，所引用的证据才算有效。未能采集到证据的 AC 标记为 `GAP`，而不是 `PASS`。
-2. **追加折叠行** —— 按既有行格式在 `progress.md` §E.2 追加一行：`M<n>: <AC-id-1>=PASS, ... | evidence: .moai/state/verify/<session>/M<n>.* | fold-at: <ISO-8601>`。`M<n>:` 前缀是特意选来避免与 `internal/spec/era.go` 中 §E 标题匹配器冲突的，因此两者无需改动匹配器即可共存。
+1. **先采集，再导出** —— 把每个 AC 的验证命令输出重定向到 `.moai/state/verify/<session>/M<n>.<AC-id>.{log,out}`。不使用 `/tmp`，因为操作系统会清空它；但熬过 `/tmp` 的清理，并不等于审计时够得着：那个目录在 gitignore 之列，只是**本机暂存区**。在某条 AC 行引用证据之前，要把决定判定的那几行导出到受版本跟踪的路径 `.moai/reports/<card-id>/`，引用也只点名这一个文件。未能采集到证据的 AC 标记为 `GAP`，而不是 `PASS`。
+2. **追加折叠行** —— 按既有行格式在 `progress.md` §E.2 追加一行：`M<n>: <AC-id-1>=PASS, ... | evidence: .moai/reports/<card-id>/M<n>-report.md | fold-at: <ISO-8601>`。`M<n>:` 前缀是特意选来避免与 `internal/spec/era.go` 中 §E 标题匹配器冲突的，因此两者无需改动匹配器即可共存。
 3. **执行 `/compact`** —— 压缩时明确给出保留指令：retain-current-milestone（刚完成的里程碑及其折叠行）、retain-fold-rows（§E.2 中此前的全部折叠行）、retain-armed-goal（若通过 `/moai goal` 挂载了条件，则保留该条件）。
 
 折叠之后有两条不变式：压缩后的 token 用量必须低于压缩前，并且同时低于按模型划分的移交阈值（1M 级别为 50%，200K/256K 级别为 90%）。若用量没有下降，就按折叠失败处理并重新规划。当子智能体上下文中无法使用 `/compact` 时，返回 blocker 报告，由编排器代为压缩，或改走 `/clear` 加恢复消息的路径绕开。
 
 ```mermaid
 flowchart TD
-    MN["里程碑 Mn 完成<br>AC 全部 PASS + 交叉验证 PASS"] --> S1["第 1 步：持久化证据<br>.moai/state/verify/session/"]
+    MN["里程碑 Mn 完成<br>AC 全部 PASS + 交叉验证 PASS"] --> S1["第 1 步：先采集到暂存区<br>再导出到 .moai/reports/card-id/"]
     S1 --> S2["第 2 步：追加折叠行<br>progress.md §E.2"]
     S2 --> S3["第 3 步：执行 /compact<br>3 条保留指令"]
     S3 --> CHECK{"用量已下降且<br>低于阈值?"}
