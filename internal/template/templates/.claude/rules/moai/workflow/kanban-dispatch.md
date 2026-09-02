@@ -111,6 +111,8 @@ Before moving a card out of a working column, the lead reads the card's `progres
 
 This applies equally to the operator: when the lead reports a column advanced, it names what it read.
 
+When a phase's declared evidence should include an audit verdict (a plan-audit or sync-audit), the lead reads the verdict **file** itself under `.moai/reports/<card-id>/` per the audit-artifact convention (`.moai/docs/audit-artifact-convention.md`). An absent, unreadable, or uncommitted verdict file is a **gap** exactly like a missing progress record — the card stays put and the lead reports why.
+
 **The final PASS/FAIL verdict is the lead's**, read from the evidence on disk and never delegated to the lane that produced the work — the executor judging its own output is the failure shape this section exists to prevent. Why the division is structural: `kanban-dispatch-detail.md` § The verdict's home.
 
 ### CodeRabbit is not read from `gh pr checks`
