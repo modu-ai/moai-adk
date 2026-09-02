@@ -55,6 +55,9 @@ func lselStateDir(root string) string {
 // LSELDrainMarkerPresent reports whether the LSEL drain-ownership marker
 // exists under root (REQ-IBX-002).
 //
+// @MX:ANCHOR: [AUTO] LSEL drain-ownership probe — the single NFC-4 contact point
+// @MX:REASON: fan_in=3 (enforceInboxCap, moai inbox status, moai inbox drain); every ownership-regime decision funnels through this one read-only stat — a second probe implementation would fork the curator stand-down semantics.
+//
 // NFC-4 (curator-first precedence): this probe is the cap path's ONLY contact
 // with the marker — exactly one os.Stat, read-only. It never creates, writes,
 // truncates, or reads anything under .moai/state/lsel/ (no drain-offset.json
