@@ -17,6 +17,7 @@ Card: t395 · Worktree `.claude/worktrees/t395` · Branch `WT-stale-backlog-json
 | 1 | PASS-WITH-DEBT | 0.85 (Tier M threshold 0.80) | 5 blocking-class + 3 optional defects — `.moai/reports/t395/plan-audit.md` |
 | 2 | PASS | 0.94 | iter-1's 8 defects all RESOLVED; 3 new optional raised — `.moai/reports/t395/plan-audit-iter2.md`. spec.md 0.1.0 → 0.2.0 |
 | 3 | — | — | D9 closed (one clause). D10/D11/D12 accepted as residual risk by lead decision. spec.md 0.2.0 → 0.2.1 |
+| 4 | — | — | Disclosure breadth DECIDED by the operator — read surface in full. No criterion changed. spec.md 0.2.1 → 0.2.2 |
 
 Iteration 2 closures: D5 (AC-BJD-015 single-regex blindness → two enumerated
 greps), D2 (AC-BJD-007 → runnable commands), D4 (AC-BJD-010 Given → constructible
@@ -26,10 +27,12 @@ directory-based), D6 (three files / four sites; REQ-BJD-003 `Where` → `While`)
 D7 (§A.2 R5 citation replaced with the two greps that actually cover the sites),
 D8 (AC-BJD-002 count scoped to this SPEC's line + archive-tables Given).
 
-Carried forward, not closed here: **the disclosure breadth beyond the read
-surface** is an open operator decision (`plan.md` §D.1). No clarification-gate
-marker is placed — the run proceeds completely at the floor, and a later answer
-widens rather than contradicts.
+**Disclosure breadth: DECIDED 2026-09-02** (operator, relayed by the lead) — the
+read surface **in full**, not the `todo history` precedent alone; write verbs stay
+out. Recorded in `plan.md` §D.1 with the deciding evidence. No criterion changed:
+REQ-BJD-002 already bound a read command. The concrete verb list is enumerated
+from the code at run-phase (M3) with its derivation basis recorded — no artifact
+names it from recall.
 
 ## §E.2 Run-phase Evidence
 

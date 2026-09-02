@@ -27,9 +27,11 @@ store as the store that answered and naming `backlog.json` as not authoritative.
 
 Two clauses in that wording are load-bearing, not hedging:
 
-- **"read"** matches REQ-BJD-002's floor exactly. The wider breadth is an open
-  operator decision (`spec.md` REQ-BJD-002, `plan.md` §D.1); if it is later
-  answered wide, this criterion is **extended**, not rewritten.
+- **"read"** matches REQ-BJD-002 exactly, and the breadth behind it is settled:
+  the operator decided the read surface **in full** on 2026-09-02 (`spec.md`
+  REQ-BJD-002, `plan.md` §D.1). This criterion is satisfied by any verb in that
+  surface; the concrete verb list is enumerated from the code at run-phase, so
+  this criterion deliberately does not name one.
 - **"introduced by this SPEC"** and the archive-tables Given together fix what is
   counted. `internal/cli/todo_history.go:99-107` already writes a REQ-TAQ-013
   store-identity line to stderr on two branches, so a fixture whose archive

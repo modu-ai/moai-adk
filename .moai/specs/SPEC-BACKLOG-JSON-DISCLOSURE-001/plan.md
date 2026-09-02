@@ -59,31 +59,35 @@ Worktree `.claude/worktrees/t395`, branch `WT-stale-backlog-json`, based on
 - **No engine, migration, schema, or downgrade-route change** (`spec.md` §C).
 - Verification is package-scoped locally; the full-suite verdict is CI's.
 
-### §D.1 Open operator decision — disclosure breadth
+### §D.1 Disclosure breadth — DECIDED
 
-**Status: escalated to the operator, unanswered. Not a blocker.**
+**Decided 2026-09-02 by the operator, relayed through the lead. Read verbs in
+full: every verb that reads the queue and prints, not the `todo history`
+precedent alone.**
 
-Whether the disclosure rides only the `moai todo` read verbs or every verb is the
-operator's call. The lead escalated it; no answer has been received, and the
-run-phase must not pick it.
+**The reason is evidence, not preference, which is why it is recorded here.** The
+lead walked into this defect through `moai todo` — the list verb — on the day of
+the decision: the output ran to 107KB, was truncated, and the lead fell back to
+reading `sqlite3 backlog.db` directly. Disclosing on `history` alone would leave
+silent the one verb people actually reach for, which is the exact incident shape
+this SPEC exists to prevent. A precedent-shaped scope would have shipped a
+disclosure nobody encounters.
 
-- **The floor is decided and normative.** REQ-BJD-002 binds the read surface.
-  AC-BJD-002 verifies exactly that surface. M3 implements exactly that surface.
-  The three now say the same thing at the same breadth — before this iteration
-  they said three different things, which is what made the deferral unsafe.
-- **A later answer widens; it never contradicts.** Answering "every verb" extends
-  REQ-BJD-002 and extends AC-BJD-002's invocation set. No criterion is rewritten
-  and no implemented behaviour is undone.
-- **Why the floor rather than the ceiling.** Write verbs already hold the queue
-  lock and carry a different stdout contract, so extending to them is a decision
-  with consequences the read surface does not have. Building the ceiling first
-  and trimming later would be the reversible-cost mistake.
+- **The criteria are unchanged, and that is the point.** REQ-BJD-002 already
+  bound "a `moai todo` **read** command"; the decision names which read verbs,
+  not a different surface. AC-BJD-002 verifies a read command and needs no
+  rewrite. Nothing widened because the floor and the answer coincide — the
+  question was never read-vs-write, it was precedent-vs-full-read-surface.
+- **Write verbs stay out.** They hold the queue lock and carry a different
+  stdout contract; the decision did not reach them, and this SPEC does not.
+- **Run-phase enumerates; it does not choose.** The concrete verb list is
+  derived from the code at run-phase and its derivation basis recorded in M3.
+  Naming the verbs here from memory would substitute recall for measurement —
+  the same unverified-list mistake this SPEC has already corrected twice, in a
+  new place.
 
-No clarification-gate marker is placed on this section, deliberately: that marker
-means the run cannot proceed without an answer, and this run can — completely —
-at the floor. If the lead would rather this hard-gate Implementation Kickoff
-Approval instead of widening afterwards, the marker belongs here, and that is a
-one-line change.
+No clarification-gate marker is placed on this section: the decision has landed,
+so there is nothing left to clarify.
 
 (The marker's literal bracketed token is deliberately not written anywhere in
 this file: the plan-auditor's clarification-gate check greps for that token, so
@@ -140,11 +144,16 @@ Criteria: AC-BJD-008 (BLOCKING), AC-BJD-009, AC-BJD-010.
 
 ### M3 — the disclosure surface
 
-- Emit the disclosure from the `moai todo` **read** surface, on stderr, following
-  the shape `internal/cli/todo_history.go:99` already established. The read
-  surface is the decided scope (REQ-BJD-002); the breadth beyond it is §D.1's
-  open operator decision and is **not** the run-phase's to pick. Report which
-  read verbs carry it, and stop there.
+- Emit the disclosure from the `moai todo` **read** surface in full, on stderr,
+  following the shape `internal/cli/todo_history.go:99` already established.
+  §D.1 decided this scope; the run-phase does not re-open it and does not widen
+  past it.
+- **Enumerate the read verbs from the code, and record the basis.** Derive the
+  list from the verb registration site rather than from recall or from this
+  plan's prose, and write into this milestone's report both the enumeration and
+  how it was derived — the command run and what it returned. A verb list that
+  cannot say where it came from is an unattributed claim, and this SPEC has
+  already been bitten twice by lists that looked complete.
 - Keep the fixture's `backlog.db` archive tables present, so the existing
   REQ-TAQ-013 line at `todo_history.go:99-107` cannot co-fire and make
   AC-BJD-002's count ambiguous.
@@ -202,8 +211,13 @@ Criteria: AC-BJD-011, AC-BJD-015 (BLOCKING), AC-BJD-016.
   shape. A single `state/todo/backlog\.json` pattern cannot see the home-fallback
   site, so it reports completeness over three of four. A completeness check blind
   to an item in its own scope is the defect, not the wording around it.
-- **Picking the disclosure breadth in run-phase.** §D.1 is the operator's, not
-  the implementer's. Build the floor; report it; do not widen unasked.
+- **Picking the disclosure breadth in run-phase.** Still forbidden — the breadth
+  is now fixed in §D.1 by operator decision, so the run-phase **enumerates
+  against that decision** rather than choosing. Narrowing to the `history`
+  precedent and widening to the write verbs are both out of bounds.
+- **Enumerating the read verbs from memory.** The list is derived from the code
+  and its derivation recorded (M3). An enumeration that cannot cite where it came
+  from is the same unverified-list defect in a new place.
 - **Editing `.moai/docs/todo-queue-storage.md:20` or `:55`.** Both are correct
   and are the control. They share a string with the defect sites, which is
   exactly why a careless sweep reaches them.

@@ -1,7 +1,7 @@
 ---
 id: SPEC-BACKLOG-JSON-DISCLOSURE-001
 title: "A backlog.json at the canonical path is not the queue — disclose it, and stop reading it"
-version: "0.2.1"
+version: "0.2.2"
 status: draft
 created: 2026-09-02
 updated: 2026-09-02
@@ -25,6 +25,7 @@ related_specs:
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.2.2 | 2026-09-02 | Disclosure-breadth decision recorded (operator, relayed by the lead). The breadth question `plan.md` §D.1 held open is **answered: the read surface in full** — every verb that reads the queue and prints, not the `todo history` precedent alone. The deciding evidence is recorded because it is evidence rather than preference: the lead met this defect through the list verb the same day, its output truncating at 107KB and sending them to read `sqlite3 backlog.db` directly, so a precedent-scoped disclosure would have been silent on the verb people actually use. **No criterion changed** — REQ-BJD-002 already bound "a `moai todo` read command", and the decision names which read verbs rather than a different surface; the question was precedent-vs-full-read-surface, never read-vs-write. Write verbs remain out of scope. The concrete verb list is deliberately NOT named in any artifact: run-phase enumerates it from the code and records the derivation basis in M3, since naming it from recall would repeat the unverified-list defect this SPEC has already corrected twice. §D.1 retitled from open to DECIDED, the §G anti-pattern re-aimed from "do not pick the breadth" to "enumerate against the decision, do not re-open it", and a second §G entry added against enumerating from memory. D10/D11/D12 remain accepted residual risk, untouched. |
 | 0.2.1 | 2026-09-02 | Plan-audit iter-2 (`.moai/reports/t395/plan-audit-iter2.md`, PASS 0.94) closed 8/8 of iter-1's defects and raised three new optional ones. **D9 closed here**, one clause: the D8 repair had not propagated to AC-BJD-004, which restates its own Given and so did not inherit the archive-tables condition, leaving the REQ-TAQ-013 line free to fire on an archive-less fixture and reintroducing the counting ambiguity on the negative side. AC-BJD-004 now carries both of AC-BJD-002's qualifiers. **D10** (substring matching cannot separate an assertion from a labelled mention), **D11** (AC-BJD-007's universal negative rests on a naming convention — a stated limit of grep, not a fixable wording), and **D12** (AC-BJD-010 dropped the "`moai todo` write path" qualifier, and whether REQ-BJD-010 stays normative if deferral proves unreachable) are **accepted as recorded residual risk** by lead decision and are deliberately not repaired: D12 in particular is settled by the run-phase measurement AC-BJD-010 exists to collect, and guessing now would pre-empt that evidence. No text outside AC-BJD-004 changed. |
 | 0.2.0 | 2026-09-02 | Plan-audit iter-1 repair (`.moai/reports/t395/plan-audit.md`, PASS-WITH-DEBT 0.85); five blocking-class defects closed, wording only, no redesign. **D5**: AC-BJD-015's single regex structurally could not see the fourth defect site — `~/.moai/todo/<project-key>/backlog.json` does not match `state/todo/backlog\.json`, so the template mirror's only BLOCKING completeness check passed while `todo.md:21` stayed unrepaired; the criterion now enumerates its sites and runs two greps. **D2**: AC-BJD-007 delegated a universal negative to human judgement; replaced with two runnable commands and their expected values. **D4**: AC-BJD-010's Given had no construction technique, so it could be satisfied by measuring an already-checkpointed state; the Given is now constructible and self-evidencing, and a construction that fails yields a Gap rather than a pass. **D3**: REQ-BJD-002 / AC-BJD-002 / plan M3 split three ways on verb breadth; unified at the read-surface floor, with the breadth recorded as an open operator decision that widens rather than contradicts. **D1**: AC-BJD-008's rebinding named a single `f=` variable, which the multi-target repair AC-BJD-010 permits would invalidate; rebinding is now directory-based. Optional **D6** (four sites live in three files; REQ-BJD-003 mislabelled `Where` for what is runtime disk state), **D7** (§A.2 inherited an R5 citation whose grep did not cover the site it was cited for — conclusion true, attribution wrong), and **D8** (an existing REQ-TAQ-013 stderr line could make "exactly one" ambiguous) also closed. |
 | 0.1.0 | 2026-09-02 | Initial plan-phase authoring (card t395), written against the card **as re-aimed by the lead** after its original premise was disproven. The dispatching card said "the SQLite migration failed to remove the original `backlog.json`". Measurement (`.moai/reports/t395/premise-verdict.md`) showed the original *was* quarantined correctly on 2026-08-27 and that the present file was **created separately on 2026-08-31**, by a writer the investigation could not identify. The SPEC therefore follows the measured damage (a non-authoritative file that answers every direct read silently, and repository instructions that tell readers to read it) rather than the dispatched cause (migration cleanup). |
@@ -135,14 +136,15 @@ does not introduce a second one.
   present, the CLI shall emit one disclosure line naming the SQLite store as the
   store that answered and naming the `backlog.json` as not authoritative.
 
-  **Breadth is an open operator decision, and the read surface is the floor.**
-  Whether the disclosure also rides the write verbs was escalated to the operator
-  and is unanswered. The read surface is normative now and implementable now, so
-  nothing is blocked: a later answer **widens** this requirement rather than
-  contradicting it, and a widening changes no criterion below. The floor is
-  chosen rather than the ceiling because the write verbs already take the queue
-  lock and carry a different stdout contract, so extending to them is a decision
-  with consequences the read surface does not have. See `plan.md` §D.1.
+  **Breadth: decided 2026-09-02 by the operator — the read surface in full.**
+  "Read command" means every verb that reads the queue and prints, not the
+  `todo history` precedent alone. The deciding evidence was an encounter with
+  this defect through the list verb, whose 107KB output truncated and sent the
+  reader to `sqlite3 backlog.db` directly: a disclosure carried only by the
+  precedent verb would be silent on the verb people actually use. Write verbs
+  stay out of scope — they take the queue lock and carry a different stdout
+  contract. The concrete verb list is enumerated from the code at run-phase with
+  its derivation basis recorded, never named from recall. See `plan.md` §D.1.
 
 - **REQ-BJD-003** (State-driven) — **While** the queue layout has no
   `backlog.json` beside the database, the CLI shall emit no disclosure line.
