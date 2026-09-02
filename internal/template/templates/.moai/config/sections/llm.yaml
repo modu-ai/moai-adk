@@ -13,16 +13,21 @@ llm:
   # written back.
   #
   # Under a GLM backend (team_mode: glm/cg), z.ai exposes a 3-level
-  # reasoning_effort control (low/high/max; GLM-5.3 reasons ALWAYS — thinking
+  # reasoning_effort control (low/high/max; GLM-5.3 reasons ALWAYS — reasoning
   # cannot be disabled). The agent effort from the profile column above
   # collapses onto it:
-  #   effort low          -> reasoning_effort=low (thinking enabled)
+  #   effort low          -> reasoning_effort=low
   #   effort medium/high  -> reasoning_effort=max
   #   effort xhigh/max    -> reasoning_effort=max
   # So under GLM, every profile column's efforts above "low" converge on
   # reasoning_effort=max; only "low" stays at the low level. The
   # code-producing run-phase agent runs at reasoning_effort=max regardless
   # (coding-task recommendation).
+  #
+  # Delivery field (measured): the top-level reasoning_effort request field is
+  # the effective reasoning-control channel; a thinking-budget request object
+  # is ignored by the endpoint. Depth is controlled through reasoning_effort
+  # only.
   profile: "medium"
 
   # Legacy performance tier (read-time alias only — `profile` supersedes it).
@@ -223,12 +228,11 @@ llm:
     # manager-git occupies the low tier (its effort is low across all profile
     # columns → CollapseClaudeEffortToGLM("low") = low).
     #
-    # Wire state: the overlay is implemented and wired. Measured against the
-    # z.ai Anthropic-compat shim: the Anthropic `thinking` parameter is honored
-    # (depth scales with the budget); a top-level z.ai-style reasoning_effort
-    # field is ignored — the env reaches z.ai through the thinking-budget
-    # mapping, not a native reasoning_effort passthrough. This block is
-    # documentation-only; no code reads it at runtime.
+    # Wire state: the overlay is implemented and wired. Measured (null-controlled
+    # live differential): the top-level reasoning_effort request field is the
+    # effective delivery channel; a thinking-budget request object is ignored
+    # by the endpoint. This block is documentation-only; no code reads it at
+    # runtime.
 
     # Optional: override the statusline context window gauge per GLM model.
     # Claude Code reports context_window_size based on the
