@@ -2,7 +2,7 @@
 id: SPEC-LLMCFG-PRESERVE-001
 title: "User-edited llm.yaml survives moai update — keep the merge pipeline, pin the contract"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-02
 updated: 2026-09-02
 author: manager-spec (card t239)
