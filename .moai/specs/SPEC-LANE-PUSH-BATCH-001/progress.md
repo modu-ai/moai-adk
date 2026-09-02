@@ -91,9 +91,19 @@ ac_matrix:
   AC-LPB-006: PASS   # G21+G22+G23 — 3/3 MATCH
 green_batch: 28/28 MATCH, 0 discrepancies (per-command $? captured)
 push: none — lane push prohibition applies to this card too; lead batch-pushes develop
-commit: <pending-backfill-run-commit-sha>
+commit: 5e3ecd676
 ```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+- sync_status: **completed** (2026-09-02) — 3-phase close. frontmatter_status_transitions: `in-progress → implemented → completed` (spec.md `status:`, 본 sync 커밋이 운반 — merged close, 별도 Mx 커밋 없음). plan.md / acceptance.md는 artifact-statelessness 설계상 `status:` 필드를 갖지 않으므로 전이 대상이 아니다(spec-frontmatter-schema.md § Artifact Statelessness). `updated:`는 spec.md만 보유하며 이미 sync 커밋일(2026-09-02)과 일치해 갱신 불요.
+- sync_complete_at: 2026-09-02 (sync 커밋 착지일)
+- sync_commit_sha: "pending-backfill-sync-commit-sha" — backfill 커밋에서 실제 short SHA로 교체 (자기 참조 위험 회피, spec-frontmatter-schema.md D3 면제)
+- run 커밋 SHA: `5e3ecd676` (§E.3 백필 완료, 본 sync 커밋에서 반영)
+- **AC 최종 판정 (acceptance.md §1, 6 AC): 6 GREEN / 0 PENDING / 0 RED** — AC-LPB-001..006 전부 PASS. 판정 명령·관측 출력·트리 SHA가 동반된 28/28 GREEN 배치는 progress.md §E.2 (tree `cca6cc2f0afba6ca1a92a81ff864837ed976b3a4` 기준, per-command `$?` 캡처); run-phase는 오케스트레이터 독립 검증 배치 7/7 PASS로 재관측됨(2026-09-02).
+- **sync 범위 배제 (근거 명시)**:
+  - NO CHANGELOG.md — 본 SPEC은 리포 로컬 유지자 독트린만 수정(`CLAUDE.local.md`, `.claude/rules/local/*`, `.moai/docs/*`)으로, 배포 템플릿 내용도 사용자 대면 제품 동작도 아니다. 배제 근거 측정: `grep -c "SPEC-LANE-PUSH-BATCH-001" CHANGELOG.md` → `0` (exit 1 — 부재 확인, 병렬 BATCH-SYNC 세션의 선입력도 없음). B12 사전 배출 grep 통과, 배출 항목 0건.
+  - NO README / docs-site — 사용자 대면 문서가 다루는 기능 변화 없음(독트린 문언 변경만). 4-locale 동기화 의무는 사용자 대면 문서 변경 시에만 발동된다.
+  - Vercel 빌드 수 감소(3→1)는 운영자 관측 근거로 인용만 하고 재측정하지 않는다 — acceptance.md §5 DoD가 명시한 대로.
+- **MX Tag 검증 (sync 부단계)**: docs-only 카드 — 코드 파일 범위 0건으로 `@MX:*` 어노테이션 대상 없음. 신설 마크다운에 MX 태그 불요.
+- **sync-audit**: 대기 — 오케스트레이터가 sync 커밋 착지 후 별도 위임(sync-auditor, 이 커밋 이후 상태를 읽는다).
