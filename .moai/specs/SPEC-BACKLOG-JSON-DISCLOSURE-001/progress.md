@@ -173,10 +173,12 @@ window was NOT widened: every armed watch uses the same 16s bound.
 
 - **`internal/cli` package coverage (80.2%) was not baselined against the
   pre-change tree.** The figure is measured in this run; whether it moved is
-  unattributed. Every function this SPEC changed is at or above 86.7%, and the
-  new file is at 100%, so the change cannot plausibly account for the shortfall
-  — but that is reasoning, not a measurement, and it is recorded as a Gap
-  rather than a claim.
+  unattributed. The changed code is **not uniformly above the package figure**:
+  the new file is at 100% and four of the changed functions sit between 86.7%
+  and 93.2%, but `runTodoHistory` is at **72.7%** (the coverage row above),
+  below the 80.2% package figure. So the changed code cannot be used to argue
+  the shortfall away — and even for the functions that are above it, that would
+  be reasoning rather than a measurement. Recorded as a Gap, not a claim.
 - **AC-BJD-016's Go check proves embed-directive ↔ source parity at test-build
   time**, not that the on-disk `bin/moai` was rebuilt. The `strings bin/moai`
   probe above is the separate evidence for the shipped artifact; both are
