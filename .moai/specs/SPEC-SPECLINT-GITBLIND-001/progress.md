@@ -230,7 +230,7 @@ ok      github.com/modu-ai/moai-adk/internal/spec    61.597s  coverage: 90.3% of
 - `4647c1237` M2
 - `be9b1aea5` M3
 - (본 §E.2/§E.3 기록 커밋 별도)
-- **push 0회** — WT 브랜치·develop·CI 트리거 전무 (B9 준수). `git fetch origin develop` → `git rev-list --count --left-right origin/develop...HEAD` = `0 20` (로컬 선행 20 = 기존 17 + 본 카드 3, 미흡수 0).
+- **push 0회** — WT 브랜치·develop·CI 트리거 전무 (B9 준수). 측정: `git fetch origin develop` → `git rev-list --count --left-right origin/develop...HEAD` — 측정 시점 참조값 `0 20` (`8ea22404e` 트리, 2026-09-02 기준; 로컬 선행 20 = 기존 17 + 본 카드 3, 미흡수 0) <!-- moving-ref-ok: historical run-phase observation at 8ea22404e on 2026-09-02 — a reader re-measures with the named command at read time (sync-audit D1) -->
 
 ### E7 · Blocker
 
