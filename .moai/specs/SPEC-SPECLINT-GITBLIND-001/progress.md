@@ -248,7 +248,7 @@ ok      github.com/modu-ai/moai-adk/internal/spec    61.597s  coverage: 90.3% of
 
 ```yaml
 run_complete_at: 2026-09-02T11:35:00+09:00
-run_commit_sha: pending-backfill-run-phase   # self-referential — backfilled by the evidence commit's follow-up
+run_commit_sha: 8ea22404e   # backfilled — §E.2/§E.3 evidence commit (docs(SPEC-SPECLINT-GITBLIND-001): run-phase evidence)
 run_status: run-complete-ac011-pending
 ac_pass_count: 10
 ac_fail_count: 1                              # AC-SLGB-011 — CI-log-only, closes post-sync by design
