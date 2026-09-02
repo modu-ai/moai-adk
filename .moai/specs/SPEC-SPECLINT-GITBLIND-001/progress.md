@@ -268,7 +268,7 @@ m1_to_mN_commit_strategy: per-milestone       # M1 97e60f367 · M2 4647c1237 · 
 
 ```yaml
 sync_complete_at: 2026-09-02T14:30:00+09:00
-sync_commit_sha: pending-backfill-sync-phase   # self-referential — backfilled by the sync commit's follow-up
+sync_commit_sha: 9bd026c8f   # backfilled — the sync commit itself (chore(SPEC-SPECLINT-GITBLIND-001): sync-phase artifacts — 3-phase close)
 sync_status: sync-complete-3-phase-close
 b12_self_test_a: pass                          # grep -c 'SPEC-SPECLINT-GITBLIND-001' CHANGELOG.md = 0 before emission (no duplicate)
 b12_self_test_b: pass                          # 11 distinct AC-SLGB-### identifiers in acceptance.md; CHANGELOG entry states 11 ACs (10 PASS + AC-SLGB-011 pending) — count matches
