@@ -1,0 +1,5 @@
+[dry-run] SPEC SPEC-FULL-SUITE-DOCTRINE-001 — preview only, no staging performed
+Would apply the following transitions:
+  spec.md:frontmatter.status → completed
+  progress.md:§E.3.status → completed
+  progress.md:§E.5.mx_commit_sha → <derived-from-recent-mx-commit>
