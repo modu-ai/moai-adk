@@ -84,6 +84,41 @@ summary points to the file; it does not substitute for it.
 
 ---
 
+## Side-talk (advice attached to verdicts)
+
+An audit report sometimes carries advice beyond its verdict — operational
+warnings, "measure this next time" notes, policy suggestions. The verdict
+itself must carry evidence (§ What); the advice that follows it has no such
+requirement, yet a reader consumes both at the same confidence. Two observed
+failures shape this rule: advice that turned out to be exactly the valuable
+warning it needed to be, and advice whose cited rule was true but whose
+inference drawn from it was false.
+
+The convention:
+
+- Advice lives in a **separate section titled as unverified** (for example
+  "Operational Notes (unverified)") at the end of the artifact — never woven
+  into the verdict, the dimension scores, or the defect list it follows.
+- Advice is written as a **measurement instruction, not a conclusion**.
+  "Measure X — command Y" survives on its own, because the reader can run Y;
+  "X is false" may only be stated once X has been verified. A cited rule
+  being true is not the same as the advice drawn from it being true — the
+  inference is what needs measuring, not the rule.
+- Each advice line carries a **status label**: `measured` (the command and
+  its output are recorded, per § What), `inferred` (the reasoning rule is
+  named so the reader can check it), or `assumption` (a naked claim — the
+  weakest standing). A `measured` label without its recorded command is a
+  mislabel, not evidence.
+- Banning advice outright is rejected by design: valuable warnings arrive as
+  advice first, and forbidding them costs the next reader the very warning
+  that would have prevented a wasted re-measurement.
+
+This section is itself subject to the rule above: the incidents that shaped
+it are recorded in the artifacts of the cards that raised them, not asserted
+here.
+
+---
+
 ## Committing
 
 Audit artifacts are tracked files. They reach the integration branch with the
