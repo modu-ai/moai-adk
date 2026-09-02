@@ -169,16 +169,30 @@ window was NOT widened: every armed watch uses the same 16s bound.
 | coverage (package) | `go test -cover ./internal/kanban/ ./internal/cli/ ./internal/template/` | kanban **86.5%**, cli **80.2%**, template **86.3%** |
 | coverage (changed code) | `go tool cover -func` on the same profiles | `todo_disclosure.go` both functions **100.0%**; `InspectBacklogArchiveVouch` **100.0%**; `runTodoList` 93.2%, `runTodoPR` 88.1%, `newTodoWhyCmd` 86.7%, `runTodoHistory` 72.7% |
 
+**Tree attribution for the two coverage rows above.** They are the run-phase
+batch, measured on the **pre-merge run-phase tree `d7813ec2b`** — not on the
+current tree. On the current tree `41a3a500b`, after the develop merge brought
+`internal/cli/memory_drain.go` (178 lines of production code) into the package
+and so changed the denominator, `internal/cli` measures **80.3%** (measured
+twice independently there). Both figures are exact; Go coverage is
+deterministic per tree, so the difference is the tree, not noise. The branch is
+currently **56 commits behind `develop`** — absorbing those in the merge window
+can move the figure again, and a pre-merge measurement is not a post-merge
+basis (`CLAUDE.local.md` §4.1 rule 5). **Re-measure after the merge** rather
+than assuming these still apply.
+
 ### Gaps — explicitly NOT observed
 
 - **`internal/cli` package coverage (80.2%) was not baselined against the
   pre-change tree.** The figure is measured in this run; whether it moved is
-  unattributed. The changed code is **not uniformly above the package figure**:
-  the new file is at 100% and four of the changed functions sit between 86.7%
-  and 93.2%, but `runTodoHistory` is at **72.7%** (the coverage row above),
-  below the 80.2% package figure. So the changed code cannot be used to argue
-  the shortfall away — and even for the functions that are above it, that would
-  be reasoning rather than a measurement. Recorded as a Gap, not a claim.
+  unattributed. The changed code is **not uniformly above the package figure**.
+  By name and value: `discloseNonAuthoritativeBacklogJSON` 100.0%,
+  `discloseQueueLayout` 100.0%, `InspectBacklogArchiveVouch` 100.0%,
+  `runTodoList` 93.2%, `runTodoPR` 88.1%, `newTodoWhyCmd` 86.7%,
+  `runTodoHistory` **72.7%** — the last below the 80.2% package figure. So the
+  changed code cannot be used to argue the shortfall away, and for the ones
+  above it that would be reasoning rather than a measurement. Recorded as a
+  Gap, not a claim.
 - **AC-BJD-016's Go check proves embed-directive ↔ source parity at test-build
   time**, not that the on-disk `bin/moai` was rebuilt. The `strings bin/moai`
   probe above is the separate evidence for the shipped artifact; both are
