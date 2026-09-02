@@ -37,7 +37,7 @@
 - modules.md: `internal/factory` 유령 절의 내용을 기존 `### internal/kanban (33 non-test 파일)` 절에 병합 (중복 제목 제거, 서술 보존 — REQ-CMA-003). 개명 계기 언급은 양성 행의 부재 경로 재인용이 되어 삭제 (REQ-CMA-001 허용 집합은 P1–P5+P7로 열거 완결).
 - data-flow.md: ListActive 3지점 → `QueryActiveWork` (mermaid·흐름 단계), 인터페이스 블록 → 실제 리시버 메서드 4종(`Register(sessionID, specID, phase string) error`·`Heartbeat(sessionID string) error`·`Deregister(sessionID string) error`·`Query(optSpecID string) ([]Entry, error)`) + 패키지 함수 서명 (REQ-CMA-005, registry.go 직독 대조).
 - dependencies.md: bodp 각주를 5개 경고 노트와 같은 `> **`internal/bodp`** —` 형식으로 정렬 (REQ-CMA-004/D3).
-- 수정 후 전수: 부재 집합 = {P1–P5, P7} 7토큰, 전원 blockquote 행 (양성 부재 0) — AC-CMA-001.
+- 수정 후 전수: 부재 집합 = {P1–P5, P7} 6토큰, 전원 blockquote 행 (양성 부재 0) — AC-CMA-001. (sync-audit D1 정정: 7→6)
 - 뮤턴트 왕복 (실문서, `go run ./cmd/moai graph check --json`): `internal/zzz-phantom` 제목 주입 → citations value=1 verdict=stale driving_paths=[internal/zzz-phantom] → 원복 → value=0 verdict=fresh (AC-CMA-005).
 
 ### M3 — 스킬 재발 방지 (Template-First) [REQ-CMA-007]
@@ -52,7 +52,7 @@
 
 | AC | 상태 | 판정 명령 | 관측 출력 (요지) |
 |----|------|-----------|------------------|
-| AC-CMA-001 | PASS | 전수 grep+정리규칙 존재검사 (위 M0/M2 명령) | 부재 집합 = 7 blockquote 토큰 정확히 일치, 비-blockquote 부재 0 |
+| AC-CMA-001 | PASS | 전수 grep+정리규칙 존재검사 (위 M0/M2 명령) | 부재 집합 = 6 blockquote 토큰 정확히 일치, 비-blockquote 부재 0 (sync-audit D1 정정) |
 | AC-CMA-002 | PASS | `grep -n '### internal/factory' modules.md` / `grep -c '### internal/kanban'` / 양성 bodp grep | 0행 / 1 / 0건 + blockquote 노트 1 |
 | AC-CMA-003 | PASS | `grep -c 'ListActive' data-flow.md` / registry.go 서명 대조 | 0 / 인터페이스 블록 = 리시버 4종+Entry+QueryActiveWork, `Session` 인용 0 |
 | AC-CMA-004 | PASS | known-5 토큰 출현 검색 | 각 1건 이상 blockquote, 양성 0 |
@@ -73,11 +73,14 @@ ac_fail_count: 0
 preserve_list_post_run_count: 5   # known-5 경고 노트 (P1-P5) 전량 잔존 관측
 l44_pre_commit_fetch: "git fetch origin develop -q → exit 0"
 l44_post_push_fetch: "not pushed — lead batch (레인 push 금지, gitflow-lane-protocol §4)"
+e3_coverage:
+  internal/graph: "88.9% (sync-audit D2 추가 — package-wide baseline, 신규 citations 코드 포함 패키지)"
+  internal/cli: "80.3% (sync-audit D2 추가 — 선존 부채, 형제 카드 기록 80.1%; 본 카드는 개선 방향 기여)"
 new_warnings_or_lints_introduced: 0   # golangci-lint ./internal/graph/... ./internal/cli/... = 0 issues (baseline 0과 동일)
 cross_platform_build:
   darwin: "exit 0"
   windows_amd64: "exit 0"
-total_run_phase_files: 11   # go 5 (check.go, check_citations.go, graph_check.go, + test 3 포함 별도) · codemaps 3 · 스킬 2 · progress 1
+total_run_phase_files: 12   # go 7 (check.go, check_citations.go, graph_check.go, test 3, 기타 1) · codemaps 3 · 스킬 2 (sync-audit D4 정정: 11→12)
 m1_to_mN_commit_strategy: per-milestone conventional commits, no push, no amend, no --no-verify
 ```
 
@@ -85,7 +88,7 @@ m1_to_mN_commit_strategy: per-milestone conventional commits, no push, no amend,
 
 ```yaml
 sync_complete_at: 2026-09-02
-sync_commit_sha: "pending-backfill-<parent-of-sync-commit>"   # 커밋은 자신의 SHA를 모른다 — 리드/lane 후속 백필 (D3 SHA placeholder exemption)
+sync_commit_sha: "51319c589"   # D3 백필 완료 (sync-audit exemption — manager-docs 기계적 SHA 완성, 감사 판정 위반 없음)
 sync_status: complete
 b12_self_test_a: "grep -c 'SPEC-CODEMAPS-ACCURACY-001' CHANGELOG.md → 0 (중복 없음, emission 진행)"
 b12_self_test_b: "grep -oE 'AC-CMA-[0-9]+' acceptance.md | sort -u | wc -l → 9; CHANGELOG entry cites 9 ACs (9 PASS)"
@@ -99,6 +102,9 @@ canary_compliance_check:
   codemaps_regeneration: "not executed — accuracy는 run-phase 수리 + citations 축이 담당; 재생성은 범위 밖 (follow-up)"
   docs_site_4locale: "not expanded — citations 축·스킬 규약은 user-facing이나 본 크기 문서화는 scope 밖으로 판정 (blocker/scope-estimate 불요 — 스킬 양미러가 사용자 면 커버)"
 mx_tag_changes: "added 0 / removed 0 / updated 0 — checkCitations에 @MX:NOTE [AUTO] 이미 존재(run-phase); LayerCitations·MetricPositiveCitedPathAbsence 상수는 fan-in 2(check.go·check_citations.go)로 ANCHOR 기준 미달, NOTE 추가 불요"
+record_only_debts:
+  d6: "normalizeCitedPath는 `..` 세그먼트를 거부하지 않음 (읽기 전용 Lstat 존재 오라클; 악용은 repo 쓰기 권한 전제) — 후속 카드 기록 부채 (sync-audit PASS-WITH-DEBT 0.91)"
+  d5: "internal/cli 80.3%는 선존 부채(형제 카드 80.1% 기록) — 본 카드는 커버리지를 개선 방향으로 기여, 신규 회귀 아님"
 ```
 
 ## §F Phase 4 Mode Selection
