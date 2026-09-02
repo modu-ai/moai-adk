@@ -5,6 +5,7 @@ package spec
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -1371,7 +1372,17 @@ func (r *StatusGitConsistencyRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 	// Get git-implied status
 	gitStatus, err := getGitImpliedStatus(fm.ID)
 	if err != nil {
-		// If git history is unavailable, skip this check
+		// Observation failed. "Not observed" and "observed-and-matching" must
+		// not share one output (REQ-SLGB-001, SPEC-SPECLINT-GITBLIND-001):
+		// where the failure means the git signal is unobservable for this
+		// repository, surface the Info finding instead of silently skipping.
+		// Either way there is no StatusGitConsistency verdict — there is no
+		// gitStatus to compare against.
+		if gitObservationUnreachable(err) && takeUnreachableEmission() {
+			return []Finding{statusGitUnreachableFinding(doc, err)}
+		}
+		// Observed-and-harmless failure (shapes ②/③ in a full repository),
+		// or a repeat occurrence after this run's single emission (§2.2).
 		return nil
 	}
 
@@ -1388,4 +1399,57 @@ func (r *StatusGitConsistencyRule) Check(doc *SPECDoc, _ []*SPECDoc) []Finding {
 	}
 
 	return findings
+}
+
+// gitObservationUnreachable decides whether a getGitImpliedStatus error
+// means the git signal is UNOBSERVED for this repository, as opposed to
+// observed-and-harmless (SPEC-SPECLINT-GITBLIND-001 §2.1):
+//   - shape ① (errGitQueryFailed): base ref unresolvable / git unusable — a
+//     repository-level blindness that fires unconditionally;
+//   - shapes ② and ③: harmless in a full repository (no lifecycle commits /
+//     cosmetic-only commits), but in a shallow clone the truncated window can
+//     fabricate them — observation failure only while shallow.
+//
+// The deciding predicate for ②/③ is repository-level (shallow state), so it
+// rides the same per-run cache as cachedMainBranch: the shape decision never
+// spawns a per-SPEC subprocess.
+func gitObservationUnreachable(err error) bool {
+	switch {
+	case errors.Is(err, errGitQueryFailed):
+		return true
+	case errors.Is(err, errNoGitHistory), errors.Is(err, errNoClassifiableCommit):
+		return cachedIsShallowRepository()
+	default:
+		return false
+	}
+}
+
+// statusGitUnreachableFinding renders the Info-severity StatusGitUnreachable
+// finding — the observability surface of SPEC-SPECLINT-GITBLIND-001 M1.
+// REQ-SLGB-002: for the ref-resolution shape the message names the candidate
+// base refs whose resolution was attempted. §2.2: the message states both the
+// repository-wide scope and the resulting rule-wide skip explicitly, because
+// the one finding stands in for every SPEC the rule could not observe.
+// REQ-SLGB-005: Info severity, never changes the --strict exit code.
+func statusGitUnreachableFinding(doc *SPECDoc, err error) Finding {
+	detail := "shallow clone window makes the git signal unreliable"
+	if errors.Is(err, errGitQueryFailed) {
+		detail = fmt.Sprintf("no usable base ref (tried: %s)", triedBaseRefsSummary())
+	}
+	return Finding{
+		File:     doc.Path,
+		Line:     1,
+		Severity: SeverityInfo,
+		Code:     "StatusGitUnreachable",
+		Message: fmt.Sprintf(
+			"SPEC %s git status NOT OBSERVED — %s; this condition is repository-wide: StatusGitConsistency is skipped for every SPEC in this lint run (%v)",
+			doc.Frontmatter.ID, detail, err),
+	}
+}
+
+// triedBaseRefsSummary names the base refs the resolution chain consults, for
+// the REQ-SLGB-002 message. Sourced from the single mainBranchCandidates
+// chain (gitquery_cache.go) so the message and the walk cannot drift apart.
+func triedBaseRefsSummary() string {
+	return strings.Join(mainBranchCandidates, ", ")
 }
