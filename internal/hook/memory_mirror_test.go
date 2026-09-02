@@ -14,6 +14,9 @@ import (
 )
 
 // swapMirrorPrimaryRoot points the mirror's primary resolution at a fixture.
+// NOT parallel-safe (mutates the package-level agentMemoryPrimaryRootFn seam)
+// — callers must not t.Parallel(). Same contract the handoffRenameFunc seam
+// tests already hold, and the one captureStderr states for os.Stderr.
 func swapMirrorPrimaryRoot(t *testing.T, fn func(string) (string, bool, error)) {
 	t.Helper()
 	prev := agentMemoryPrimaryRootFn
@@ -36,8 +39,9 @@ func mirrorInput(t *testing.T, filePath string) *HookInput {
 // TestMirrorAgentMemoryCopiesToPrimary covers AC-AM-005: a Write targeting a
 // worktree agent-memory file is copied to the same agent-relative path in
 // the resolved primary store, and the primary index gains the line.
+//
+// NOT parallel: mutates the agentMemoryPrimaryRootFn package seam.
 func TestMirrorAgentMemoryCopiesToPrimary(t *testing.T) {
-	t.Parallel()
 	primary := t.TempDir()
 	tree := t.TempDir()
 	seedWorktreeX(t, tree)
@@ -65,8 +69,10 @@ func TestMirrorAgentMemoryCopiesToPrimary(t *testing.T) {
 // TestMirrorFailsOpenOnUnresolvablePrimary covers AC-AM-006: when the
 // primary root cannot be resolved, the hook path emits a stderr notice and
 // never blocks — no error propagates out of the wrapper.
+//
+// NOT parallel: mutates the agentMemoryPrimaryRootFn package seam, and
+// captures os.Stderr.
 func TestMirrorFailsOpenOnUnresolvablePrimary(t *testing.T) {
-	t.Parallel()
 	tree := t.TempDir()
 	seedWorktreeX(t, tree)
 	swapMirrorPrimaryRoot(t, func(string) (string, bool, error) {
@@ -85,8 +91,9 @@ func TestMirrorFailsOpenOnUnresolvablePrimary(t *testing.T) {
 // TestMirrorNoOpInPrimarySession covers AC-AM-008: when the session's
 // project root IS the primary (common dir == own .git), no copy occurs and
 // no `.wt-` self-duplicates appear.
+//
+// NOT parallel: mutates the agentMemoryPrimaryRootFn package seam.
 func TestMirrorNoOpInPrimarySession(t *testing.T) {
-	t.Parallel()
 	primary := t.TempDir()
 	seedWorktreeX(t, primary) // the "worktree" is the primary itself
 	swapMirrorPrimaryRoot(t, func(dir string) (string, bool, error) {
@@ -110,8 +117,9 @@ func TestMirrorNoOpInPrimarySession(t *testing.T) {
 // TestMirrorIgnoresUnanchoredPath pins the D7 negative at the mirror entry:
 // a docs/agent-memory path must not mirror even though the audit's looser
 // predicate would scan it.
+//
+// NOT parallel: mutates the agentMemoryPrimaryRootFn package seam.
 func TestMirrorIgnoresUnanchoredPath(t *testing.T) {
-	t.Parallel()
 	called := false
 	swapMirrorPrimaryRoot(t, func(string) (string, bool, error) {
 		called = true

@@ -1,0 +1,53 @@
+ok  	github.com/modu-ai/moai-adk/internal/hook	51.502s
+ok  	github.com/modu-ai/moai-adk/internal/hook/handoff	2.686s
+ok  	github.com/modu-ai/moai-adk/internal/hook/memo	2.725s
+ok  	github.com/modu-ai/moai-adk/internal/hook/memo/taxonomy	3.153s
+ok  	github.com/modu-ai/moai-adk/internal/hook/mx	21.297s
+ok  	github.com/modu-ai/moai-adk/internal/hook/mx/complexity	2.071s
+ok  	github.com/modu-ai/moai-adk/internal/hook/perf	46.189s
+2026/09/02 20:01:57 WARN ast-grep (sg) CLI not found; skipping scan binary=sg hint="install from https://ast-grep.github.io/guide/quick-start.html"
+2026/09/02 20:01:57 WARN ast-grep (sg) CLI not found; skipping scan binary=sg hint="install from https://ast-grep.github.io/guide/quick-start.html"
+2026/09/02 20:01:57 WARN ast-grep (sg) CLI not found; skipping scan binary=sg hint="install from https://ast-grep.github.io/guide/quick-start.html"
+2026/09/02 20:01:57 WARN ast-grep (sg) CLI not found; skipping scan binary=sg hint="install from https://ast-grep.github.io/guide/quick-start.html"
+2026/09/02 20:01:57 WARN ast-grep (sg) CLI not found; skipping scan binary=sg hint="install from https://ast-grep.github.io/guide/quick-start.html"
+2026/09/02 20:01:57 WARN ast-grep (sg) CLI not found; skipping scan binary=sg hint="install from https://ast-grep.github.io/guide/quick-start.html"
+2026/09/02 20:01:57 WARN ast-grep (sg) CLI not found; skipping scan binary=sg hint="install from https://ast-grep.github.io/guide/quick-start.html"
+2026/09/02 20:01:57 WARN ast-grep (sg) CLI not found; skipping scan binary=sg hint="install from https://ast-grep.github.io/guide/quick-start.html"
+2026/09/02 20:01:57 WARN ast-grep (sg) CLI not found; skipping scan binary=sg hint="install from https://ast-grep.github.io/guide/quick-start.html"
+2026/09/02 20:01:57 WARN ast-grep (sg) CLI not found; skipping scan binary=sg hint="install from https://ast-grep.github.io/guide/quick-start.html"
+2026/09/02 20:01:57 WARN ast-grep (sg) CLI not found; skipping scan binary=sg hint="install from https://ast-grep.github.io/guide/quick-start.html"
+2026/09/02 20:01:57 WARN ast-grep (sg) CLI not found; skipping scan binary=sg hint="install from https://ast-grep.github.io/guide/quick-start.html"
+2026/09/02 20:01:57 WARN ast-grep (sg) CLI not found; skipping scan binary=sg hint="install from https://ast-grep.github.io/guide/quick-start.html"
+2026/09/02 20:01:57 WARN ast-grep (sg) CLI not found; skipping scan binary=sg hint="install from https://ast-grep.github.io/guide/quick-start.html"
+2026/09/02 20:02:00 WARN no sources for step: treating as skip step=mypy extensions=.py,.pyi hint="add sources, or set gate.disabled_steps in .moai/config/sections/gate.yaml"
+--- FAIL: TestGateGraphFreshness_AllLayersFreshNotice (1.12s)
+    gate_graph_freshness_test.go:208: fresh posture must carry the literal all-fresh notice, got: "graph-freshness: citations=absent(value=0 threshold=0) (advisory)"
+2026/09/02 20:02:05 WARN cwd fallback used in quality gate cwd_fallback=true caller=QualityGate.runStep resolved_cwd=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t439/internal/hook/quality
+2026/09/02 20:02:05 WARN pytest collected no tests: treating as pass step=pytest hint="add tests, or set gate.skip_tests / gate.disabled_steps in .moai/config/sections/gate.yaml"
+2026/09/02 20:02:05 WARN cwd fallback used in quality gate cwd_fallback=true caller=QualityGate.runStep resolved_cwd=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t439/internal/hook/quality
+2026/09/02 20:02:05 WARN cwd fallback used in quality gate cwd_fallback=true caller=QualityGate.runStep resolved_cwd=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t439/internal/hook/quality
+2026/09/02 20:02:05 WARN cwd fallback used in quality gate cwd_fallback=true caller=QualityGate.runStep resolved_cwd=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t439/internal/hook/quality
+2026/09/02 20:02:08 WARN cwd fallback used in quality gate cwd_fallback=true caller=QualityGate.runStep resolved_cwd=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t439/internal/hook/quality
+2026/09/02 20:02:08 WARN cwd fallback used in quality gate cwd_fallback=true caller=test resolved_cwd=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t439/internal/hook/quality
+2026/09/02 20:02:08 WARN cwd fallback used in quality gate cwd_fallback=true caller=QualityGate.runStep resolved_cwd=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t439/internal/hook/quality
+2026/09/02 20:02:12 WARN no sources for step: treating as skip step="go vet" extensions=.go hint="add sources, or set gate.disabled_steps in .moai/config/sections/gate.yaml"
+2026/09/02 20:02:14 WARN no sources for step: treating as skip step="go vet" extensions=.go hint="add sources, or set gate.disabled_steps in .moai/config/sections/gate.yaml"
+2026/09/02 20:02:15 WARN no sources for step: treating as skip step=echo extensions=.py hint="add sources, or set gate.disabled_steps in .moai/config/sections/gate.yaml"
+2026/09/02 20:02:15 WARN no sources for step: treating as skip step="go vet" extensions=.go hint="add sources, or set gate.disabled_steps in .moai/config/sections/gate.yaml"
+2026/09/02 20:02:16 WARN cwd fallback used in quality gate cwd_fallback=true caller=QualityGate.runStep resolved_cwd=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t439/internal/hook/quality
+2026/09/02 20:02:16 WARN cwd fallback used in quality gate cwd_fallback=true caller=QualityGate.runStep resolved_cwd=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t439/internal/hook/quality
+2026/09/02 20:02:16 WARN cwd fallback used in quality gate cwd_fallback=true caller=test resolved_cwd=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t439/internal/hook/quality
+2026/09/02 20:02:17 WARN no sources for step: treating as skip step="go vet" extensions=.go hint="add sources, or set gate.disabled_steps in .moai/config/sections/gate.yaml"
+2026/09/02 20:02:17 WARN no sources for step: treating as skip step="go vet" extensions=.go hint="add sources, or set gate.disabled_steps in .moai/config/sections/gate.yaml"
+2026/09/02 20:02:17 WARN no sources for step: treating as skip step="go vet" extensions=.go hint="add sources, or set gate.disabled_steps in .moai/config/sections/gate.yaml"
+2026/09/02 20:02:17 WARN no sources for step: treating as skip step="go vet" extensions=.go hint="add sources, or set gate.disabled_steps in .moai/config/sections/gate.yaml"
+2026/09/02 20:02:17 WARN no sources for step: treating as skip step="go vet" extensions=.go hint="add sources, or set gate.disabled_steps in .moai/config/sections/gate.yaml"
+2026/09/02 20:02:17 WARN cwd fallback used in quality gate cwd_fallback=true caller=QualityGate.runStep resolved_cwd=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t439/internal/hook/quality
+2026/09/02 20:02:17 WARN cwd fallback used in quality gate cwd_fallback=true caller=QualityGate.runStep resolved_cwd=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t439/internal/hook/quality
+2026/09/02 20:02:17 WARN cwd fallback used in quality gate cwd_fallback=true caller=QualityGate.runStep resolved_cwd=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t439/internal/hook/quality
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook/quality	23.977s
+ok  	github.com/modu-ai/moai-adk/internal/hook/security	19.939s
+ok  	github.com/modu-ai/moai-adk/internal/hook/testutil	3.486s
+ok  	github.com/modu-ai/moai-adk/internal/hook/trace	5.522s
+FAIL
