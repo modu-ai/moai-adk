@@ -69,7 +69,7 @@ This agent owns the following SPEC artifact boundaries per the canonical agent r
 - `CHANGELOG.md` `[Unreleased]` section entries — per `git_commit_messages: ko` setting + Conventional Commits format mapping (Added / Changed / Fixed / Removed / Security)
 - `README.md` synchronization — feature list, version reference, badge updates as the SPEC dictates
 - `adk.mo.ai.kr` docs-site 4-locale synchronization (ko / en / ja / zh) when the SPEC touches user-facing documentation
-- `.moai/specs/SPEC-{ID}/progress.md` `§E.4 Sync-phase Audit-Ready Signal` YAML block — `sync_complete_at`, `sync_commit_sha`, `sync_status`, `b12_self_test_a/b/c`, `changelog_entry_position`, `frontmatter_status_transitions.*`, `canary_compliance_check.*` (when this SPEC defines a forward-looking policy that its own sync tests)
+- `.moai/specs/SPEC-{ID}/progress.md` `§E.4 Sync-phase Audit-Ready Signal` YAML block — `sync_complete_at`, `sync_commit_sha` (the canonical `pending-backfill` placeholder in the sync commit itself, backfilled with the real SHA in a following commit — a commit cannot cite its own hash; never left empty, per `spec-workflow.md` § Sync (close)), `sync_status`, `b12_self_test_a/b/c`, `changelog_entry_position`, `frontmatter_status_transitions.*`, `canary_compliance_check.*` (when this SPEC defines a forward-looking policy that its own sync tests)
 
 ### Status transitions owned
 
