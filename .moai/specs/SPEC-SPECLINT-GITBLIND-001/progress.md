@@ -81,11 +81,188 @@
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run-phase 실행: 2026-09-02, cycle_type=tdd (RED-GREEN-REFACTOR), 워크트리 `WT-lint-shallow-clone`.
+모든 측정은 이 워크트리에서. 판정 도구는 트리에서 빌드한 바이너리(`/tmp/t371-moai-red` = 구현 전, `/tmp/t371-moai-green` = M1/M2 후, `/tmp/t371-moai-final` = 최종).
+
+### 사전 RED 기준선 (구현 전 트리 `0c51dda7e`)
+
+**RED-1 · CLI 관측 3종 — `✓ No findings` 실측 (AC-001/003/006, AC-004a/004b의 [HARD] RED 전제).**
+바이너리: `go build -o /tmp/t371-moai-red ./cmd/moai` (rc 0). 픽스처: `scratch-t371-red/`
+(mainless = `git init -b develop` + unrelated commit; clone-empty/clone-unclass = `main` 소스 저장소의
+`git clone --depth 1 file://…` — `--is-shallow-repository` = true, local main 존재 실측). SPEC 문서는
+검증된 withscope 형태(`## 4. Scope` + `### 4.1 Out of Scope — unrelated surfaces` 포함, status draft).
+공통 명령: `<fixture>/ && /tmp/t371-moai-red spec lint --strict .moai/specs/SPEC-REPRO-001/spec.md`.
+
+| 픽스처 | 원문 stdout | exit |
+|---|---|---|
+| mainless (AC-001/003/006) | `✓ No findings — all SPEC documents are valid` | 0 |
+| clone-empty (AC-004a, shape ②) | `✓ No findings — all SPEC documents are valid` | 0 |
+| clone-unclass (AC-004b, shape ③) | `✓ No findings — all SPEC documents are valid` | 0 |
+
+(각 실행 앞에 바이너리 기동 WARN `config sections directory not found` 1행 — 픽스처에
+`.moai/config/sections` 가 없어서 나는 무해한 기동 로그.)
+
+**RED-2 · M1 인패키지 테스트 RED** — `go test -run 'TestStatusGitUnreachable' -v -count=1 ./internal/spec/`:
+
+```text
+--- FAIL: TestStatusGitUnreachable_NoBaseRef (0.42s)
+    lint_status_unreachable_test.go:177: StatusGitUnreachable findings = 0, want 1 (report held 0 findings total)
+--- FAIL: TestStatusGitUnreachable_MessageNamesTriedRefs (0.39s)
+    lint_status_unreachable_test.go:193: StatusGitUnreachable findings = 0, want 1
+--- FAIL: TestStatusGitUnreachable_EmittedOncePerRun (1.07s)
+    lint_status_unreachable_test.go:221: StatusGitUnreachable findings = 0, want exactly 1 (10 non-terminal SPECs linted in one run)
+--- FAIL: TestStatusGitUnreachable_ShallowNoHistory (0.67s)
+    lint_status_unreachable_test.go:237: StatusGitUnreachable findings = 0, want 1 (report held 0 findings total)
+--- FAIL: TestStatusGitUnreachable_ShallowWindowExhausted (0.69s)
+    lint_status_unreachable_test.go:253: StatusGitUnreachable findings = 0, want 1 (report held 0 findings total)
+--- PASS: TestStatusGitUnreachable_FullRepoStaysSilent (0.68s)   ← 예상된 공허 초록(AC-005; 아래 뮤테이션으로 봉인)
+--- FAIL: TestStatusGitUnreachable_InfoSeverityKeepsStrictGreen (0.41s)
+    lint_status_unreachable_test.go:305: StatusGitUnreachable findings = 0, want 1
+```
+
+**RED-3 · M2 RED** — `go test -run 'TestCachedMainBranch' -v -count=1 ./internal/spec/`:
+
+```text
+--- FAIL: TestCachedMainBranch_ResolutionChain/origin_main_only (0.31s)
+    lint_status_unreachable_test.go:346: cachedMainBranch() = "master", want "origin/main"
+--- FAIL: TestCachedMainBranch_ResolutionChain/none_resolvable (0.26s)
+    lint_status_unreachable_test.go:365: cachedMainBranch() = "master" (nonexistent-ref literal fallback) — no local master exists in this fixture; want the unresolvable signal
+--- FAIL: TestCachedMainBranch_MemoizedPerRun/unresolvable_then_main_created (0.27s)
+    lint_status_unreachable_test.go:409: first cachedMainBranch() = "master", want the unresolvable signal
+(통과: local_main_only / local_master_only / resolved_then_ref_deleted — 후자는 mainBranchSet 메모이즈가 이미 있어 오늘 초록인 상속 항목, 아래 뮤테이션으로 검증)
+```
+
+### GREEN 증거 (마일스톤별)
+
+- **M1** (`97e60f367`): 신규 7개 테스트 함수 전부 PASS(서브테스트 2개 포함). 패키지 전체
+  `go test -count=1 ./internal/spec/` → `ok … 58.772s`. CLI 관측 3종(pl `mainless`/`clone-empty`/`clone-unclass`)
+  전부 `StatusGitUnreachable` INFO 행 1건 + `✓ No findings` 줄 소실 + `--strict` exit 0 + 요약줄 `0 error(s), 0 warning(s)` 유지.
+- **M2** (`4647c1237`): `TestCachedMainBranch_*` 전부 PASS, M1 테스트 회귀 없음. 패키지 전체
+  `ok … 59.964s` (뮤탄트 복원 후). CLI(mainless): 메시지가 `tried: main, origin/main, master, origin/master` 로 4단 체인 전체 명시.
+- **M3** (`be9b1aea5`): 워크플로 편집(아래 AC-009/010). **CI는 트리거하지 않음** — 파일 편집만.
+
+### 뮤테이션 증명 (DoD — 심은 뮤탄트와 실패 출력, 복원 완료)
+
+**AC-005 뮤테이션** — `gitObservationUnreachable` 의 ②/③ 분기에서 shallow 술어(`cachedIsShallowRepository()`)를
+`return true` 로 교체(무조건 발화). `go test -run 'TestStatusGitUnreachable_FullRepoStaysSilent' -v -count=1 ./internal/spec/`:
+
+```text
+--- FAIL: TestStatusGitUnreachable_FullRepoStaysSilent/non_terminal_status_draft (0.40s)
+    lint_status_unreachable_test.go:272: StatusGitUnreachable findings = 1, want 0 in a full repository
+    (findings: [{… Severity:info Code:StatusGitUnreachable Message:SPEC SPEC-URO-001 git status NOT OBSERVED — shallow clone window makes the git signal unreliable; … (no git history found for SPEC-URO-001) …}])
+--- PASS: TestStatusGitUnreachable_FullRepoStaysSilent/terminal_status_completed_stays_silent (0.31s)
+```
+
+기대 실패(0건 → 1건) 관측. terminal 서브테스트는 통과 유지 — Check 가 git 에 닿기 전 반환하는 경로가
+여전히 조용함을 함께 증명(픽스처가 규칙에 실제로 닿는다는 것의 반증쌍). 복원 후 `git diff --stat` →
+빈 출력(잔여 diff 0) + `git status --short | grep -v '^??' | wc -l` → 0.
+
+**AC-008 뮤테이션** — `cachedMainBranch` 의 `mainBranchSet` 조기 반환 블록 제거.
+`go test -run 'TestCachedMainBranch_MemoizedPerRun' -v -count=1 ./internal/spec/`:
+
+```text
+--- FAIL: TestCachedMainBranch_MemoizedPerRun/resolved_then_ref_deleted (0.42s)
+    lint_status_unreachable_test.go:396: second cachedMainBranch() = "", want "main" (memoized per run)
+--- FAIL: TestCachedMainBranch_MemoizedPerRun/unresolvable_then_main_created (0.40s)
+    lint_status_unreachable_test.go:415: second cachedMainBranch() = "main", want "" (unresolvable must be cached too — no per-SPEC rev-parse storm)
+```
+
+두 서브테스트 모두 실패 — 상속된 초록이 아니라 메모이즈가 실제로 검증됨을 증명. 복원 후 패키지 전체 `ok … 59.964s`.
+
+### E1 · AC 이원 행렬 (최종 트리 기준)
+
+관측 트리: 최종 커밋 전 워킹트리 = `be9b1aea5` 내용 (Go/워크플로는 `be9b1aea5` 와 동일; 이 §E.2/§E.3 기록 커밋 제외).
+셀렉터 실행: `go test -run '<이름>' -v -count=1 ./internal/spec/` — 9개 테스트 함수 전부
+`=== RUN` 라인으로 실행 사실 확인(셀렉터 0매치 없음, 최종 일괄 실행 `ok … 6.910s`).
+
+| AC | 판정 | 근거 (명령 → 관측) |
+|---|---|---|
+| AC-SLGB-001 | PASS | `TestStatusGitUnreachable_NoBaseRef` PASS — mainless 픽스처에서 `StatusGitUnreachable` 정확히 1건; RED-1 CLI 관측으로 구현 전 `✓ No findings` 실측, 최종 CLI 관측으로 그 줄 소실 실측 |
+| AC-SLGB-002 | PASS | `TestStatusGitUnreachable_MessageNamesTriedRefs` PASS — 메시지에 `main`·`master`·`repository-wide` 명시(최종 메시지는 4단 체인 전체 + 규칙 전체 skip 명시) |
+| AC-SLGB-003 | PASS | `TestStatusGitUnreachable_EmittedOncePerRun` PASS — 비-terminal SPEC 10개 1회 실행 → 발화 정확히 1건 |
+| AC-SLGB-004a | PASS | `TestStatusGitUnreachable_ShallowNoHistory` PASS — shallow + 해소된 기준 브랜치 + 창 내 매치 0 → 발화 1건 |
+| AC-SLGB-004b | PASS | `TestStatusGitUnreachable_ShallowWindowExhausted` PASS — shallow + 창 내 전부 분류불가(chore(spec) sweep) → 발화 1건 |
+| AC-SLGB-005 | PASS | `TestStatusGitUnreachable_FullRepoStaysSilent` PASS + **위 뮤테이션으로 봉인**(술어 제거 시 0건→1건 실패 실측) |
+| AC-SLGB-006 | PASS | `TestStatusGitUnreachable_InfoSeverityKeepsStrictGreen` PASS (severity=`info`, Strict HasErrors=false) + 최종 CLI `--strict` exit 0 실측 |
+| AC-SLGB-007 | PASS | `TestCachedMainBranch_ResolutionChain` 4서브테스트 PASS — main / origin/main / master / 해소불가("" 신호; `"master"` 리터럴 아님을 단언) |
+| AC-SLGB-008 | PASS | `TestCachedMainBranch_MemoizedPerRun` 2서브테스트 PASS + **위 뮤테이션으로 봉인** |
+| AC-SLGB-009 | PASS | 최종 트리 grep: `grep -n 'fetch-depth' .github/workflows/spec-lint.yml` → `:40: fetch-depth: 0` rc 0; `grep -n 'git fetch origin main:main'` → `:53` rc 0; YAML 파싱으로 단계 순서 실측 `['actions/checkout@v7', 'actions/setup-go@v7', 'Fetch main ref', 'Run SPEC lint']` — fetch 가 lint 앞섬. RED(현 트리 재확인): fetch-depth grep rc 1 (트리 `4647c1237`) |
+| AC-SLGB-010 | PASS | `grep -n -A8 'paths:'` → 두 목록 모두 `.moai/specs/**` + `internal/spec/**` + `.github/workflows/spec-lint.yml` 3패턴. RED(재확인): 편집 전 두 목록 모두 `.moai/specs/**` 단독 |
+| AC-SLGB-011 | **FAIL/PENDING (의도됨)** | 로컬 판정 불가 [HARD] — 착지 후 조용한 head 의 `SPEC Lint` 잡 로그에서 `StatusGitConsistency` ≥1 관측으로만 닫힘. run-phase 에서 PASS 표시하지 않는다 |
+
+### E2 · 크로스플랫폼 빌드 (최종 트리)
+
+```
+$ go build ./...                          → rc 0
+$ GOOS=windows GOARCH=amd64 go build ./... → rc 0
+$ go vet ./internal/spec/... ./internal/cli/... → rc 0
+$ GOOS=windows go vet ./internal/spec/... ./internal/cli/... → rc 0
+```
+
+syscall 미도입(git exec 기존 패턴 유지) — B1 충족.
+
+### E3 · 커버리지
+
+```
+$ go test -cover -count=1 ./internal/spec/
+ok      github.com/modu-ai/moai-adk/internal/spec    61.597s  coverage: 90.3% of statements
+```
+
+### E4 · 서브에이전트 경계
+
+`grep -rn 'AskUserQuestion\|mcp__askuser' internal/spec/ | grep -v "_test.go" | grep -v "// "` → 0행. N/A 확인.
+
+### E5 · 린트 (NEW vs 기준선)
+
+`golangci-lint run --timeout=2m ./internal/spec/... ./internal/cli/...` → `0 issues.`
+사전 점검 기준선(동일 명령, `internal/spec/...` 만)도 `0 issues.` — **신규 0건, 기준선과 동일.**
+
+### 코퍼스 회귀 (실측)
+
+최종 바이너리로 이 워크트리 코퍼스 lint: `spec lint --strict` → exit 0,
+`StatusGitUnreachable` 행 **0행**(이 트리는 local main 해소 + 비-shallow — 올바른 침묵),
+`0 error(s), 1203 warning(s)`. 1203 은 트리 이동(타 카드 SPEC 유입)에 따른 코퍼스 증가분이며
+이 카드 코드가 내는 행은 0으로 실측(신규 코드의 유일한 발화 코드가 0행이므로 warning 수에 기여 없음).
+
+### E6 · 커밋 · push 금지 준수
+
+- `97e60f367` M1 (spec.md frontmatter `draft → in-progress` 동반)
+- `4647c1237` M2
+- `be9b1aea5` M3
+- (본 §E.2/§E.3 기록 커밋 별도)
+- **push 0회** — WT 브랜치·develop·CI 트리거 전무 (B9 준수). `git fetch origin develop` → `git rev-list --count --left-right origin/develop...HEAD` = `0 20` (로컬 선행 20 = 기존 17 + 본 카드 3, 미흡수 0).
+
+### E7 · Blocker
+
+없음. 단 spec.md §4 에 이미 기록된 잔여 위험은 그대로 안고 들어감: (a) `DetectDrift` 의 M2 관측 동작 변화
+(origin/main 해소 시 실제 record 등장 — 어떤 AC 도 커버 안 함, 의도된 공백), (b) 얕은 저장소에서 워커가
+창 안 분류가능 커밋을 무는 사각(후속 카드), (c) `OwnershipTransitionRule` 의 잘린-이력 사각(후속 카드),
+(d) AC-SLGB-011 미해결(CI 로그 판정 대기).
+
+### 스크래치 정리
+
+`scratch-t371-red/` (워크트리 내 미추적 RED/GREEN 관측 픽스처) — 증거 기록 완료 후 삭제. 원문 관측은
+본 §E.2 표와 위 인용문에 남아 있음.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-02T11:35:00+09:00
+run_commit_sha: pending-backfill-run-phase   # self-referential — backfilled by the evidence commit's follow-up
+run_status: run-complete-ac011-pending
+ac_pass_count: 10
+ac_fail_count: 1                              # AC-SLGB-011 — CI-log-only, closes post-sync by design
+preserve_list_post_run_count: 4               # gitquery_cache per-run semantics · lint_ownership Info model · drift_characterization helpers · printTable (untouched)
+l44_pre_commit_fetch: "0 20"                  # git rev-list --count --left-right origin/develop...HEAD after fetch — clean ahead, no unabsorbed origin commits
+l44_post_push_fetch: n/a                      # push forbidden on this card (B9) — lead batches pushes and reads CI
+new_warnings_or_lints_introduced: 0           # golangci-lint 0 issues on touched packages, baseline-identical; corpus lint adds 0 StatusGitUnreachable rows
+cross_platform_build:
+  unix: rc0
+  windows: rc0
+  windows_vet: rc0
+total_run_phase_files: 7                      # drift.go · gitquery_cache.go · lint.go · lint_status_unreachable_test.go(new) · spec-lint.yml · spec.md(frontmatter) · progress.md(this)
+m1_to_mN_commit_strategy: per-milestone       # M1 97e60f367 · M2 4647c1237 · M3 be9b1aea5 · evidence commit
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
