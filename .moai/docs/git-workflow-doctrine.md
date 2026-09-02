@@ -100,7 +100,7 @@ hotfix/vX.Y.Z-description (main의 tag에서 분기 → main 대상 PR)
 
 각 브랜치 유형별 머지 방식 **반드시** 준수:
 
-> **[HARD] 2026-08-27 개정.** 카드 통합(`WT-<slug>` → `develop`)은 이 표의 대상이 **아니다** — PR도 squash도 없고, 통합 워크트리 안에서 `git merge --no-ff`로 합친 뒤 `origin/develop`에 push한다(`gitflow-lane-protocol.md` §2·§4). 아래 표는 **`main`으로 가는 PR**에만 적용된다.
+> **[HARD] 2026-08-27 개정 / 2026-09-02 push 소관 변경.** 카드 통합(`WT-<slug>` → `develop`)은 이 표의 대상이 **아니다** — PR도 squash도 없고, 통합 워크트리 안에서 `git merge --no-ff`로 합친 뒤 레인은 로컬 병합 SHA를 리드에게 보고하고 push는 하지 않는다. develop push는 리드가 일괄로 수행한다(`gitflow-lane-protocol.md` §2·§4, `CLAUDE.local.md` §4.1). 아래 표는 **`main`으로 가는 PR**에만 적용된다.
 
 | 머지 유형 | 전략 | gh 명령어 | 이유 |
 |-----------|------|-----------|------|
@@ -326,7 +326,7 @@ git checkout main && git pull
 **Patch Release** — (2026-08-27 개정: 카드 PR 없음, 릴리스 PR만 `main`으로 간다):
 
 ```bash
-# 1. 카드 워크트리(WT-<slug>)에서 수정 → 통합 워크트리에서 develop 에 --no-ff 병합 → git push origin develop
+# 1. 카드 워크트리(WT-<slug>)에서 수정 → 통합 워크트리에서 develop 에 --no-ff 병합 → 리드 일괄 push (CLAUDE.local.md §4.1)
 # 2. origin/develop CI green 확인 → release/vX.Y.Z 를 develop 에서 분기 → main 릴리스 PR (merge commit, self-merge 0 approvals)
 # 3. main pull + tag + push (release 스크립트)
 ./scripts/release.sh v2.14.1

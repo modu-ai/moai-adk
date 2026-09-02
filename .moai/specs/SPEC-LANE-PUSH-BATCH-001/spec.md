@@ -2,7 +2,7 @@
 id: SPEC-LANE-PUSH-BATCH-001
 title: "Lane push prohibition — develop integration ends at the local merge, lead-side batched push"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-02
 updated: 2026-09-02
 author: manager-spec
