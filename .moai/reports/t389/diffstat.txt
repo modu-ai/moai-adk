@@ -1,0 +1,13 @@
+ docs-site/content/en/advanced/agent-guide.md  |  6 +++---
+ docs-site/content/en/advanced/manager-lead.md | 15 +++++++++------
+ docs-site/content/en/advanced/token-budget.md |  8 ++++----
+ docs-site/content/ja/advanced/agent-guide.md  |  6 +++---
+ docs-site/content/ja/advanced/manager-lead.md | 15 +++++++++------
+ docs-site/content/ja/advanced/token-budget.md |  8 ++++----
+ docs-site/content/ko/advanced/agent-guide.md  |  2 +-
+ docs-site/content/ko/advanced/manager-lead.md | 15 +++++++++------
+ docs-site/content/ko/advanced/token-budget.md |  8 +++++---
+ docs-site/content/zh/advanced/agent-guide.md  |  6 +++---
+ docs-site/content/zh/advanced/manager-lead.md | 15 +++++++++------
+ docs-site/content/zh/advanced/token-budget.md |  8 ++++----
+ 12 files changed, 63 insertions(+), 49 deletions(-)
