@@ -57,6 +57,8 @@ Flags:
   -b, --bypass                  Shorthand for --permission-mode bypassPermissions
   -w, --worktree [name]         Launch in an isolated git worktree (.claude/worktrees/<name>/);
                                 name omitted = auto-generated (same as claude --worktree)
+      --branch <existing>         With -w <name>: check out an EXISTING branch in the
+                                new worktree (see moai cc --help)
       --spawn                   Run this command in a new tmux window instead of
                                 replacing the current session (requires tmux)
 
@@ -276,6 +278,11 @@ func runGLM(cmd *cobra.Command, args []string) error {
 	}
 	// SPEC-WORKTREE-ENTRY-STRATEGY-001 M3a: see cc.go for the rationale.
 	if err := resolveWorktreeL2Path(filteredArgs); err != nil {
+		return err
+	}
+	// Card t295: see cc.go — `-w <name> --branch <existing>` creation path.
+	filteredArgs, err = resolveWorktreeExistingBranch(filteredArgs, cmd.ErrOrStderr())
+	if err != nil {
 		return err
 	}
 	filteredArgs = normalizeWorktreeFlag(filteredArgs)
