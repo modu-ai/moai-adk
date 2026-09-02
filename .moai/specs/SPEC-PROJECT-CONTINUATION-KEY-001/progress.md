@@ -151,7 +151,7 @@ Every path named in the CHANGELOG entry was checked to exist on this tree before
 
 ```yaml
 sync_complete_at: 2026-09-02
-sync_commit_sha: PENDING-BACKFILL   # a commit cannot name its own SHA; filled by the follow-up backfill commit
+sync_commit_sha: c7ac03fe8   # the sync commit; named by the follow-up backfill commit, since a commit cannot name its own SHA
 sync_status: complete
 b12_self_test_a: "grep -c 'SPEC-PROJECT-CONTINUATION-KEY-001' CHANGELOG.md -> 1 (NOT clean). Self-authored by this branch's M6 commit 7ea775a19, not a parallel session. Resolved by amending the existing entry in place; no duplicate bullet created."
 b12_self_test_b: "AC count 14, from `grep -cE '^### AC-PCK-' acceptance.md`. The token sweep returns 15; the extra token is the historical AC-PCK-015 renumbering note at acceptance.md:30. 14 matches ac_pass_count in E.3."
