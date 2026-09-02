@@ -106,14 +106,22 @@ recorded before the convention exists to suppress it. Copy the window's rows to
 `.moai/reports/t401/baseline-push-window.jsonl` and cite that path in `progress.md` §E.2; the live
 log is not a durable artifact.
 
-**The party that collects the window is the session that actually asks.** Under the kanban division
-of labour that is the **lead** session, which owns the operator channel — not the card's lane: a
-lane never prompts the operator, so it issues no `AskUserQuestion` calls and can produce no rows at
-all. Rows accumulate under the asking session's `CLAUDE_PROJECT_DIR` (its cwd when that variable is
-unset), at `.moai/logs/askuser-observations.jsonl`, which is generally **not** the card worktree —
-hence the copy step above, and hence the provenance record that accompanies it (§D.6, REQ-JFM-025).
-Manufacturing questions in order to fill the window is prohibited: a window filled that way is
-decoration, not a sample, and it is the very shape of vacuous evidence this SPEC exists to remove.
+**The party that collects the window is the session that actually asks — and whose observer is
+actually wired.** Under the kanban division of labour the asking party is the **lead** session,
+which owns the operator channel — not the card's lane: a lane never prompts the operator, so it
+issues no `AskUserQuestion` calls and can produce no rows at all. But asking is necessary, not
+sufficient. The rows exist only where the observer is live **in that session**: a session that was
+already running when the `AskUserQuestion` matcher was added to the settings does not pick the
+matcher up, so it asks and records nothing. The collecting session is therefore one started
+**after** the matcher landed. Rows accumulate under the asking session's `CLAUDE_PROJECT_DIR` (its
+cwd when that variable is unset), at `.moai/logs/askuser-observations.jsonl`, which is generally
+**not** the card worktree — hence the copy step above, and hence the provenance record that
+accompanies it (§D.6, REQ-JFM-025). Read an empty log in a session that demonstrably asked as
+evidence of an **unwired observer**, never as evidence that no labelled option was offered: those
+are a real absence and a vacuous green, and confusing them is the reading error this milestone
+exists to prevent. Manufacturing questions in order to fill the window is prohibited: a window
+filled that way is decoration, not a sample, and it is the very shape of vacuous evidence this SPEC
+exists to remove.
 
 **Do not proceed to M1 until the baseline row exists.** Opening the `pull` window (M6) without it
 leaves the falsifier unable to distinguish a followed convention from an inert detector — the

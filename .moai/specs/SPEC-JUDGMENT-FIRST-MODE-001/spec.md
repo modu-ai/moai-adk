@@ -305,10 +305,12 @@ session other than the one implementing the SPEC, the exported artifact shall ca
 record naming the source absolute path, the asking session's `session_id`, the collection interval,
 the row count and the `label_present: true` count measured at export time, and the export command;
 and the acceptance criteria shall assert both the artifact and its provenance. The window is
-collected by the session that actually asks — under the kanban division of labour the lead session,
-which owns the operator channel, and never the card's lane, which issues no `AskUserQuestion` calls
-at all — and its rows land under that session's `CLAUDE_PROJECT_DIR` (its cwd when unset), which is
-generally not the card worktree. An exported copy whose origin is unrecorded is an unattributed
+collected by the session that actually asks and whose observer is actually wired — under the kanban
+division of labour the lead session, which owns the operator channel, and never the card's lane,
+which issues no `AskUserQuestion` calls at all; and a session already running when the
+`AskUserQuestion` matcher was added does not pick the matcher up, so the collecting session is one
+started after the matcher landed — and its rows land under that session's `CLAUDE_PROJECT_DIR`
+(its cwd when unset), which is generally not the card worktree. An exported copy whose origin is unrecorded is an unattributed
 claim, and a criterion read from it asserts nothing.
 
 ## §D Constraints

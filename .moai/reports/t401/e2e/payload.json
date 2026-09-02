@@ -1,0 +1,1 @@
+{"session_id":"e2e-1","tool_name":"AskUserQuestion","tool_input":{"questions":[{"question":"Which route?","header":"Route","options":[{"label":"Rebase (권장)","description":"d"},{"label":"Abort","description":"d"}]}]}}

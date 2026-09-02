@@ -382,8 +382,10 @@ recorded by the observer, *When* the JSONL log is read, *Then* zero rows carry
   widened to match what is observable rather than the measurement narrowing to match an
   unobservable requirement (REQ-JFM-005, spec.md §B).
 - **The exported artifact carries its provenance, or it asserts nothing.** The window is collected
-  by the session that actually asks — under the kanban division of labour the lead session, not the
-  card's lane — and its rows land under that session's `CLAUDE_PROJECT_DIR` (cwd when unset), at
+  by the session that actually asks and whose observer is actually wired — under the kanban division
+  of labour the lead session, not the card's lane, and a session started after the `AskUserQuestion`
+  matcher landed, since one already running when the matcher was added does not pick it up — and its
+  rows land under that session's `CLAUDE_PROJECT_DIR` (cwd when unset), at
   `.moai/logs/askuser-observations.jsonl`, generally **not** this worktree. The exported
   `.moai/reports/t401/pull-window.jsonl` is therefore a copy whose origin the file itself does not
   record. It MUST be accompanied by `pull-window.jsonl.provenance.md` stating: the **source
@@ -431,9 +433,13 @@ label, *Then* it records `label_present: true`; and on one that does not, `false
      row count recorded in that file equal to the artifact's actual row count
      (`wc -l < .moai/reports/t401/baseline-push-window.jsonl`).
 - **The exported artifact carries its provenance, or it asserts nothing.** This window too is
-  collected by the session that actually asks — the lead session under kanban division of labour,
-  never the card's lane, which issues no `AskUserQuestion` calls at all — and its rows accumulate
-  under that session's `CLAUDE_PROJECT_DIR` (cwd when unset), at
+  collected by the session that actually asks and whose observer is actually wired — the lead session
+  under kanban division of labour, never the card's lane, which issues no `AskUserQuestion` calls at
+  all, and a session started after the `AskUserQuestion` matcher landed, since one already running
+  when the matcher was added does not pick it up; for this baseline that session must further
+  predate the convention landing, the window being the control recorded before the convention exists
+  to suppress the label — and its rows accumulate under that session's `CLAUDE_PROJECT_DIR`
+  (cwd when unset), at
   `.moai/logs/askuser-observations.jsonl`, generally **not** this worktree. The exported artifact
   MUST therefore be accompanied by `baseline-push-window.jsonl.provenance.md` recording: the
   **source absolute path**; the **asking session's `session_id`**; the **collection interval** (the
