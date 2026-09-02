@@ -2,7 +2,7 @@
 id: SPEC-PROJECT-CONTINUATION-KEY-001
 title: "workflow.project.continuation — a three-value completion-continuation key for /moai project whose delta is the recommended branch carry distance, bounded so it cannot relax the kickoff gate"
 version: "0.3.0"
-status: draft
+status: in-progress
 created: 2026-09-02
 updated: 2026-09-02
 author: manager-spec (card t191)
