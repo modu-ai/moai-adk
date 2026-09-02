@@ -32,6 +32,19 @@ func LessonsInboxPath(root string) string {
 	return filepath.Join(root, ".moai", "lessons-inbox.jsonl")
 }
 
+// LessonsInboxArchiveGens returns how many archive generations currently exist
+// for the live inbox path. Exported for `moai inbox status` so the generation
+// naming is derived in exactly one place (plan.md §G — no second derivation).
+func LessonsInboxArchiveGens(inboxPath string) int {
+	gens := 0
+	for g := 1; g <= config.DefaultInboxArchiveGenerations; g++ {
+		if _, err := os.Stat(inboxGenPath(inboxPath, g)); err == nil {
+			gens++
+		}
+	}
+	return gens
+}
+
 // lselStateDir is the LSEL drain-ownership marker directory — the state dir
 // the drain itself creates (plan.md §G: NOT the skill directory; ownership is
 // proven by drain activity, not by skill installation).
