@@ -1,0 +1,5 @@
+internal/cli/glm.go
+internal/cli/glm_max_context_test.go
+internal/config/envkeys.go
+internal/hook/session_start.go
+internal/hook/session_start_test.go

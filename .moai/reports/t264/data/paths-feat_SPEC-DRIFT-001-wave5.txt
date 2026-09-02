@@ -1,0 +1,4 @@
+internal/spec/scope_drift.go
+internal/spec/scope_drift_test.go
+internal/workflow/run_drift_guard.go
+internal/workflow/run_drift_guard_test.go

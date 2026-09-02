@@ -1,0 +1,20 @@
+error: cannot delete branch 'worktree-card-provenance' used by worktree at '/Users/goos/MoAI/moai-adk-go/.claude/worktrees/card-provenance'
+error: cannot delete branch 'worktree-installer-fix' used by worktree at '/Users/goos/MoAI/moai-adk-go/.claude/worktrees/installer-fix'
+error: cannot delete branch 'worktree-local-only-relocate' used by worktree at '/Users/goos/MoAI/moai-adk-go/.claude/worktrees/local-only-relocate'
+error: cannot delete branch 'worktree-local-tree-cleanup' used by worktree at '/Users/goos/MoAI/moai-adk-go/.claude/worktrees/local-tree-cleanup'
+Deleted branch worktree-card-readme (was 4681c6427).
+Deleted branch worktree-claude-md-diet (was ae61f8fc5).
+Deleted branch worktree-dead-enableteammode (was cef9bf3da).
+Deleted branch worktree-dispatch-doctrine (was 6e1fd4175).
+Deleted branch worktree-dispatch-lang-load (was 468820a9a).
+Deleted branch worktree-docs-v31-blockers (was 985d38b62).
+Deleted branch worktree-docs-v31-reland (was bc4474e86).
+Deleted branch worktree-glm-parse-fix (was 331568d74).
+Deleted branch worktree-herr-plan-refresh (was f516d7ea3).
+Deleted branch worktree-hotfix-llm-audit (was 80a610208).
+Deleted branch worktree-issue-1467-statusline-oauth-timeout (was c5b0f0087).
+Deleted branch worktree-kanban-chain-plan (was 2834ff2bc).
+Deleted branch worktree-kanban-lead-name (was 39a74d1e1).
+Deleted branch worktree-kanban-leadid (was 6ce2174a4).
+Deleted branch worktree-kanban-todo-cli (was d4e4be149).
+Deleted branch worktree-mcp-catalogue-guidance (was bca48aca1).
