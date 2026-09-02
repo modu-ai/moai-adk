@@ -139,6 +139,9 @@ const lessonsInboxSchemaVersion = 1
 // are logged and swallowed (a learning-loop write must never block the session).
 func appendLessonsInboxStub(root, eventKey, summary, source string) {
 	inboxPath := filepath.Join(root, ".moai", "lessons-inbox.jsonl")
+	// Write-time size cap + bounded rotation (SPEC-INBOX-DRAIN-GAP-001
+	// REQ-IBX-001..004) — fails open; see enforceInboxCap.
+	enforceInboxCap(root, inboxPath)
 	stub := lessonsInboxStub{
 		Timestamp: time.Now().UTC().Format(time.RFC3339),
 		EventKey:  eventKey,
