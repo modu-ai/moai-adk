@@ -402,9 +402,227 @@ template-managed surface.
 - **One consumer, one path.** `mx query` is the sole reader; if a second consumer
   appears it will need the same on-demand build, and nothing yet factors that out.
 
+### M2 + M4 — re-measurement after the develop absorption
+
+> Why this section exists: the M2 and M4 evidence above was measured at base
+> commits `bf9aef6f3` and `1e75032b3`, on a tree 1044 commits behind
+> `origin/develop`. Those numbers describe a tree that no longer exists. This
+> section re-measures every claim on the merge tree and records where the old
+> value did NOT reproduce. It supplements the sections above rather than
+> replacing them — the originals stay as the record of what was true then.
+
+#### Claim
+
+Every M2 and M4 claim reproduces on the merge tree, with one recorded exception
+(M2 evidence item 3's whole-run `rc=0`) whose cause is a check outside this
+SPEC. Two failures the original measurements did not surface were found by the
+full-package run, and both are repaired here.
+
+#### Evidence
+
+**Merge tree.** `git merge origin/develop` (`18ba3cddb`) into
+`WT-hook-wiring-drift` produced merge commit `e8050c135`. Four conflicts, all in
+files M2/M4 touched; resolution rationale is in that commit's message.
+
+**Binary attribution.** `make build` on the merge tree stamped
+`Commit=e8050c135` — identical to the merge commit — and every end-to-end
+observation below used that `./bin/moai`. The installed `~/go/bin/moai` (v3.1.2)
+was NOT used; a replacement of the shared binary was announced for later, and
+nothing here is measured across that boundary.
+
+| Claim (as recorded above) | Merge-tree measurement | Verdict |
+|---|---|---|
+| M2-1 nine HookWiring tests green | 9/9 PASS, `ok … 8.295s` | reproduces |
+| M2-1b template hook-entry tests | `ok … 0.457s` | reproduces |
+| M2-2 e2e reproduces D-1 both directions | `chain-event.sh`, `status-transition-ownership.sh x3` template-only; `status-transition-ownership.sh` project-only | reproduces |
+| M2-3 `moai doctor` exits 0 | whole run `rc=1`; Hook Wiring in isolation `rc=0` | **does NOT reproduce — see below** |
+| M2-7 build / vet / windows-vet / gofmt / lint | all exit 0, `0 issues.` | reproduces |
+| M2-8 golden delta is the new row + recount | same delta, carried in `e8050c135` | reproduces |
+| M2-9 full `internal/cli` green | `ok … 407.595s`, 0 FAIL, EXIT=0 (after the repairs below) | reproduces |
+| M4-1 `grep -c 'runMXColdStartScan\|mxScanNeeded'` = 0 | `0`; no leftover symbol anywhere in `internal/hook/` | reproduces |
+| M4-2 false comment absent (`rc=1`) | `rc=1` | reproduces |
+| M4-3 cold `mx query` answers and leaves the index | `rc=0`, index written, **506,662 bytes** (was 378,793 at `1e75032b3` — 1044 commits of additional source) | reproduces |
+| M4-4 `internal/hook` green | `rc=0`, `ok … 35.376s` | reproduces |
+| M4-4b targeted MX suites | hook `ok … 1.499s`, cli `ok … 0.776s` | reproduces |
+
+**M2 evidence item 3 — the one value that did not reproduce.** The recorded
+observation was `./bin/moai doctor >/dev/null 2>&1; echo rc=$?` → `rc=0`. On the
+merge tree the same command gives `rc=1`. The cause is attributed
+mechanically, not inferred:
+
+```
+$ ./bin/moai doctor | grep -n fail
+23:│    fail    Harness 5-Layer        L1:FAIL L2:FAIL L3:FAIL L4:FAIL L5:FAIL L6:FAIL
+27:│    11 ok, 0 warn, 1 fail          ← MoAI-ADK section (contains Harness 5-Layer)
+43:│    9 ok, 3 warn, 0 fail           ← Workspace section (contains Hook Wiring)
+
+$ ./bin/moai doctor --check "Hook Wiring"; echo rc=$?
+│    warn    Hook Wiring  hook wiring drift — template-only …
+│    0 ok, 1 warn, 0 fail
+rc=0
+```
+
+Isolated to its own check, the diagnostic exits 0 and reports `warn`. The
+whole-run `rc=1` comes entirely from `Harness 5-Layer`, which this SPEC does not
+touch. **AC-HWD-008's substance holds** — a drift is a `warn`, never a `fail`.
+What no longer holds is the incidental whole-run exit code the original evidence
+quoted, because that number was never a property of this check alone.
+
+**Two failures the original measurements missed.** Both were found by the full
+`internal/cli` run and neither is merge-introduced.
+
+*F1 — `TestBinaryLag_DoctorCheckNameSetIsUnchanged`.* A guard belonging to the
+binary-lag SPEC (REQ-BLV-009) that freezes the doctor check-name set against a
+fixed baseline SHA (`22f90b1c7`). M2 registers `hookWiringCheckName`, so it
+fires. Attribution was measured, not assumed: develop's own `doctor.go` was
+copied into place and the guard re-run against it —
+
+```
+$ cp <origin/develop:internal/cli/doctor.go> internal/cli/doctor.go
+$ go test -count=1 -run 'TestBinaryLag_DoctorCheckNameSetIsUnchanged' ./internal/cli/
+ok  	github.com/modu-ai/moai-adk/internal/cli	1.027s      ← passes on develop
+(restored; `git status --porcelain internal/cli/doctor.go` empty)
+```
+
+The guard passes on develop and fails only here, so M2 is the first change since
+the baseline to add a check name. Its *stated* intent is narrower than its
+implementation: it pins that the binary-lag SPEC itself registers no new name,
+but measures against a fixed point, so every later SPEC that legitimately adds a
+check trips it. Repaired with a documented one-entry allowlist
+(`namesAddedAfterBaseline`). **`lagBaselineSHA` was deliberately NOT bumped** —
+that would silence every other drift accumulated since the baseline, not just
+this entry. The guard was then shown to retain its teeth under two mutations:
+
+```
+mutant A (register an unlisted name "Hook Wiring Mutant")  → FAIL, names it
+mutant B (rename baseline entry "Git" → "Git Renamed")     → FAIL on both arms
+                                                             (added + removed)
+both reverted; guard green (`ok … 0.880s`)
+```
+
+*F2 — `TestSidecarUnavailable_StderrFormat`.* A second instance of the contract
+M4 removed, missed because the targeted selector used during M4 and during the
+first pass of this re-measurement (`TestMxQuery|TestMXIndex|TestBuildMXIndex`)
+does not match its name. The file is byte-identical on both merge sides
+(`git diff 8aa96bfb1 origin/develop -- internal/cli/mx_query_test.go` → empty),
+so it was already red at M4's own HEAD. Repointed to the one path that still
+errors after AC-HWD-012: a build that cannot succeed.
+
+A sibling sweep was run before the repair rather than after, since missing a
+sibling is what produced F2 in the first place:
+
+```
+$ grep -rn 'SidecarUnavailable|moai mx scan|사이드카 없을 때' internal/ | grep _test.go
+```
+
+The only remaining hits are `internal/mx/resolver_query_test.go`, which tests the
+**resolver-level** error — unchanged by M4, and still correct
+(`go test ./internal/mx/` → `ok … 5.044s`).
+
+**Both repaired tests were shown non-vacuous, and one was caught vacuous first.**
+
+| Test | Mutation | Result |
+|---|---|---|
+| `TestMxQueryCmd_AbsentSidecarIsBuiltOnDemand` | restore the old `SidecarUnavailable` error path | RED (restored → GREEN) |
+| same, "index left behind" half | disable M4's build block only | **PASS — vacuous** |
+| `TestSidecarUnavailable_StderrFormat` (first form) | swallow the build error | **PASS — vacuous** |
+| same, after tightening | swallow the build error | RED (restored → GREEN) |
+
+The two vacuous results share one cause and it is recorded rather than tidied
+away: develop added a second writer of the same artifact later in the same
+command (`graph.MXIndexNeedsRefresh` → `mx.RefreshIndex`, `mx_query.go:118-119`).
+Disabling M4's build block still leaves an index behind, and swallowing its error
+still yields a `SidecarUnavailable` from the resolver. The stderr test was
+tightened to assert the command-layer string `could not build the sidecar index`,
+which only M4's branch emits; the "index left behind" assertion in the other test
+is left as-is and is **declared non-load-bearing** here rather than presented as
+proof.
+
+**Static re-verification after the repairs.**
+
+```
+$ go build ./...                → exit 0        $ gofmt -l <edited files>   → no output
+$ go vet ./...                  → exit 0        $ GOOS=windows go vet ./... → exit 0
+$ golangci-lint run --timeout=5m ./internal/cli/... ./internal/hook/...   → 0 issues.
+$ go test -count=1 -timeout 1800s ./internal/cli/  → ok … 407.595s, EXIT=0, 0 FAIL
+```
+
+**A note on how the full-suite verdict was read.** The background runner reported
+`exit code 0` for the pre-repair run while the suite had in fact failed: the
+command ended in `tail`, whose status became the wrapper's. The verdict was taken
+from the log's own `ok`/`FAIL` line and `EXIT=` marker instead — the same hazard
+M2 evidence item 9 already recorded, hit again from the other direction.
+
+#### Baseline-attribution
+
+Every measurement above was taken in this tree
+(`.claude/worktrees/t216`), branch `WT-hook-wiring-drift`, at merge commit
+`e8050c135` plus the two test repairs described here, with `bin/moai` built from
+that same tree (`Commit=e8050c135`). No figure is carried over from the
+`bf9aef6f3` / `1e75032b3` measurements; where a figure differs from the original
+it is named as differing above.
+
+#### Gaps — what was explicitly NOT observed
+
+1. **`internal/hook` was not re-run after the two test repairs.** Both repairs
+   are in `internal/cli`; the `rc=0 / 35.376s` figure predates them and is
+   unaffected by construction, but it was not re-executed.
+2. **The edges-refresh landing rate was not measured.** M4 measured the MX
+   cold-start scan's artifact in 2 of 153 worktrees. No equivalent measurement
+   exists for the edges refresh develop added to the same goroutine; the claim
+   that it shares the defect class is a **code reading**, not an observation.
+3. **`golangci-lint` remains scoped to the touched packages**, not the repository.
+4. **Windows runtime is still unobserved** — `GOOS=windows go vet` proves
+   compilation only.
+5. **The M4 gap-2 capture is still open.** The delegate's pre-implementation
+   mutant record and the AC-HWD-013(c) RED-before-inversion capture were never
+   returned. This re-measurement adds mutation evidence for the two tests it
+   repaired; it does NOT retroactively supply that capture.
+6. **The stale-index path is still unexercised** (M4 gap 3 stands): the cold path
+   covers absence, not a present-but-expired index.
+7. **M1 and M3 remain not started.**
+
+#### Residual risk
+
+- **Two code paths now build the same index in one command.** M4's on-demand
+  build and develop's graph refresh both write `mx-index.json`. Nothing yet
+  factors that out, and the redundancy is what makes one assertion above
+  unfalsifiable. Reconciling them is outside M4's scope and is not attempted.
+- **A durable side effect is dispatched from the deferred goroutine again.** The
+  edges refresh occupies the position M4 emptied, for the reason M4 documented.
+  Preserved deliberately — it belongs to another SPEC — with the comments
+  corrected to describe the tear-down accurately. See §G.
+- **The allowlist in the binary-lag guard is a shared-surface edit.** It is one
+  entry, documented, and mutation-checked, but it modifies a guard this SPEC does
+  not own. If the binary-lag SPEC's owner prefers a different resolution, this is
+  the line to revisit.
+- **`Harness 5-Layer` fails on this checkout**, which makes `moai doctor`'s
+  whole-run exit code 1 for reasons unrelated to this SPEC. Any future criterion
+  quoting a whole-run exit code will inherit that.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase — M2 and M4 complete; M3 and M1 not started>_
+_<pending run-phase — M2 and M4 complete AND re-measured on the merge tree;
+M3 and M1 not started>_
+
+```yaml
+run_status: in-progress
+milestones_complete: [M2, M4]
+milestones_remaining: [M3, M1]
+measured_at_head: e8050c135
+measured_at_head_note: >-
+  merge commit absorbing origin/develop (18ba3cddb) into WT-hook-wiring-drift,
+  plus the two test repairs recorded in §E.2 "M2 + M4 — re-measurement after
+  the develop absorption". The M2/M4 evidence sections above remain attributed
+  to bf9aef6f3 / 1e75032b3; do not read their figures as current.
+binary_attribution: bin/moai built from this tree, Commit=e8050c135
+suites:
+  - internal/cli: ok 407.595s, 0 FAIL, EXIT=0
+  - internal/hook: ok 35.376s (pre-repair; repairs are cli-only)
+  - internal/mx: ok 5.044s
+static: go build / go vet / GOOS=windows go vet exit 0; gofmt clean; golangci-lint 0 issues
+open_gaps: [M4-gap-2 mutant capture, M4-gap-3 stale-index path, edges-refresh landing rate unmeasured]
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
