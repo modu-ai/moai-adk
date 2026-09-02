@@ -216,6 +216,13 @@ func (h *postToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOu
 		runMemoryAudit(input)
 	}
 
+	// Mirror worktree agent-memory writes into the primary store
+	// (SPEC-AGENT-MEMORY-DRAIN-001 M2). Fail-open like the audit above:
+	// every failure is a stderr notice; the write is never blocked.
+	if input.ToolName == "Write" || input.ToolName == "Edit" {
+		mirrorAgentMemory(input)
+	}
+
 	// Record evidence-bearing tool events for the Stop evidence gate
 	// (SPEC-STOP-EVIDENCE-WRITER-001). Bash test results + Edit/Write path-kind
 	// feed the session ledger that GATE-001's runEvidenceGate already consumes.
