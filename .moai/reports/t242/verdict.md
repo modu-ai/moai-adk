@@ -158,6 +158,16 @@ known boundary, not silently claimed.
 3. Path B/C population remains unimplemented (session-tool layer, above).
 4. Whether the local `settings.json` should gain the chain-event wiring once
    nodes exist is t216 d-1's separate axis; this verdict does not change it.
+5. **Depth-base documentation mismatch found during implementation.**
+   design.md:103 says a parentless spawn "creates a depth-0 root node", but
+   `CreateNodeAtSpawn` computes `depth = parentDepth + 1` with `parentDepth`
+   zero-initialized — a parentless node is depth **1** — and the existing
+   `TestCreateNodeAtSpawnDepth0` (whose name says 0) asserts
+   `Depth != 1 → "want 1 (first node)"` (populate_test.go:53-55). Code and
+   its test agree with each other and disagree with the design prose. The new
+   launcher tests follow the code's behavior. Which base is canonical is a
+   separate one-line decision (fix the prose or fix the +1) and is left here
+   recorded, not fixed — outside this card's disposition.
 
 ## Residual-risk
 
