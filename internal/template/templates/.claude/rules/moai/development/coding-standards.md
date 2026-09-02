@@ -20,6 +20,23 @@ User-facing documentation may use multiple languages:
 - README.md, CHANGELOG.md
 - User guides, API documentation
 
+### Programming-Language Neutrality Contract (16 languages)
+
+Template content treats the 16 supported programming languages equally:
+go, python, typescript, javascript, rust, java, kotlin, csharp, ruby, php,
+elixir, cpp, scala, r, flutter, swift (Dart's canonical name is "flutter").
+
+- No language is positioned as PRIMARY, and none is listed as enabled while
+  others are degraded to planned.
+- Language-specific tooling is selected by project markers (for example
+  `go.mod`, `pyproject.toml`, `tsconfig.json`, `Cargo.toml`, `pubspec.yaml`),
+  never by hardcoding one language as the default.
+- The word "language" is ambiguous in this repository and must be qualified:
+  the 16 programming languages above are a NEUTRALITY concern (templates must
+  treat them equally), while the 4 user-facing locales (ko, en, ja, zh) are a
+  TRANSLATION concern (user-facing prose is rendered per locale). The two
+  axes are independent.
+
 ## File Size Limits
 
 CLAUDE.md should stay under 40,000 characters. This is a MoAI CI-enforceable heuristic; the official Claude Code spec instead targets "under 200 lines per CLAUDE.md" and loads the file in full regardless of length. Any project-local instruction file that also loads in full at every session launch follows the same size discipline.
