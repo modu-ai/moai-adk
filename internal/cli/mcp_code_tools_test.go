@@ -36,7 +36,7 @@ func Finish() {
 	if err := os.WriteFile(filepath.Join(root, "internal", "svc", "svc.go"), []byte(src), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	edges, _, err := graph.BuildWithCodeLayers(root)
+	edges, _, _, err := graph.BuildWithCodeLayers(root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +93,7 @@ func TestGraphTools_HonorProjectRoot(t *testing.T) {
 		[]byte("package svc\n\nfunc Extra() {\n\tFinish()\n}\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	edgesB, _, err := graph.BuildWithCodeLayers(treeB)
+	edgesB, _, _, err := graph.BuildWithCodeLayers(treeB)
 	if err != nil {
 		t.Fatal(err)
 	}

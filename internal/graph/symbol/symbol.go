@@ -99,9 +99,9 @@ func ValidateGradeMatrix(matrix map[string]string) []string {
 
 // Extract walks the described source trees (the codemaps described roots —
 // the same universe the freshness gate judges) and returns code-derived
-// call/import edges, per-file declared-name records, and the grade matrix.
-// Languages without call captures (grade none) contribute nothing; per-file
-// failures fail open, never fatal.
+// call/import edges, per-file declared-name records, the scanned-file list,
+// and the grade matrix. Languages without call captures (grade none)
+// contribute nothing; per-file failures fail open, never fatal.
 //
 // Import modules are normalized to repository-local paths when the project's
 // module path prefixes them (go.mod `module` line), so code-imports and the
@@ -112,9 +112,16 @@ func ValidateGradeMatrix(matrix map[string]string) []string {
 // walk's function/method names so the mapper one package up can join callee
 // names to declaring files (REQ-GEC-002..004) without a second parse pass.
 //
+// scanned is the file list the walk actually PROCESSED (extractable-language
+// regular files the extractor accepted) — the shrink guard's scanned set
+// (REQ-GR-008): a file skipped by extraction (unsupported, unreadable,
+// unparseable) is NOT in scanned, so its edges vanishing from a rebuild is
+// flagged as unexplained when the file still exists on disk. The capture
+// rides the walk's own file iteration — no second scan.
+//
 // @MX:NOTE: [AUTO] symbol.Extract — REQ-GF-013 seam: astx consumed outside the navigator with no navigator-tier dep (tiers stays a graph-level concern)
 // @MX:SPEC:SPEC-V3R6-GRAPH-FRESHNESS-001
-func Extract(projectRoot string) (calls []CallEdge, imports []ImportEdge, decls []FileDecls, matrix map[string]string, err error) {
+func Extract(projectRoot string) (calls []CallEdge, imports []ImportEdge, decls []FileDecls, scanned []string, matrix map[string]string, err error) {
 	matrix = GradeMatrix()
 	modulePrefix := modulePath(projectRoot)
 
@@ -151,6 +158,7 @@ func Extract(projectRoot string) (calls []CallEdge, imports []ImportEdge, decls 
 				return nil
 			}
 			rel = filepath.ToSlash(rel)
+			scanned = append(scanned, rel) // the shrink guard's scanned set (REQ-GR-008)
 			grade := astx.GradeFor(lang)
 
 			for _, call := range set.Calls {
@@ -199,7 +207,7 @@ func Extract(projectRoot string) (calls []CallEdge, imports []ImportEdge, decls 
 			return nil
 		})
 		if walkErr != nil {
-			return nil, nil, nil, nil, fmt.Errorf("symbol: walk %s: %w", root, walkErr)
+			return nil, nil, nil, nil, nil, fmt.Errorf("symbol: walk %s: %w", root, walkErr)
 		}
 	}
 
@@ -216,7 +224,8 @@ func Extract(projectRoot string) (calls []CallEdge, imports []ImportEdge, decls 
 		return imports[i].Line < imports[j].Line
 	})
 	sort.Slice(decls, func(i, j int) bool { return decls[i].File < decls[j].File })
-	return calls, imports, decls, matrix, nil
+	sort.Strings(scanned)
+	return calls, imports, decls, scanned, matrix, nil
 }
 
 // enclosingFunction returns the name of the innermost range containing line,

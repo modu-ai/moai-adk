@@ -80,3 +80,27 @@ func handleGraphTraceCalls(ctx context.Context, req mcp.CallToolRequest) (*mcp.C
 		"provenance": graph.AnswerProvenance(root),
 	}), nil
 }
+
+// handleGraphShortestPath answers the A→B reachability query (SPEC-GRAPH-
+// REPORT-001 REQ-GR-001): a PathResult shaped by toolJSON — not-found and
+// ambiguous-candidates are valid ANSWERS, never tool errors; only load
+// failures (e.g. the absent-artifact actionable error) surface via toolErr.
+func handleGraphShortestPath(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	from, err := req.RequireString("from")
+	if err != nil {
+		return toolErr("graph_shortest_path", err), nil
+	}
+	to, err := req.RequireString("to")
+	if err != nil {
+		return toolErr("graph_shortest_path", err), nil
+	}
+	root, err := resolveToolProjectRoot(req)
+	if err != nil {
+		return toolErr("graph_shortest_path", err), nil
+	}
+	res, err := graph.ShortestPath(root, from, to)
+	if err != nil {
+		return toolErr("graph_shortest_path", err), nil
+	}
+	return toolJSON("graph_shortest_path", res), nil
+}

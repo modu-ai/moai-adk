@@ -28,7 +28,7 @@ func TestNoCGOConfidenceInert(t *testing.T) {
 		t.Errorf("grade matrix must stay intact under !cgo: %v", d)
 	}
 
-	all, _, err := BuildWithCodeLayers(root)
+	all, _, _, err := BuildWithCodeLayers(root)
 	if err != nil {
 		t.Fatalf("BuildWithCodeLayers under !cgo: %v", err)
 	}

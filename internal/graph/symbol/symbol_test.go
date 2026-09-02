@@ -38,7 +38,7 @@ func C() {}
 // The seam extracts the A→B→C chain with callers joined by containment.
 func TestExtract_JoinsCallersByContainment(t *testing.T) {
 	root := seamFixture(t)
-	calls, imports, _, _, err := Extract(root)
+	calls, imports, _, _, _, err := Extract(root)
 	if err != nil {
 		t.Fatalf("Extract: %v", err)
 	}
@@ -91,7 +91,7 @@ func TestExtract_ModuleNormalization(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, imports, _, _, err := Extract(root)
+	_, imports, _, _, _, err := Extract(root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,7 +134,7 @@ func TestExtract_ModuleNormalization(t *testing.T) {
 // declaring files without a second parse pass.
 func TestExtract_RetainsDeclaredNames(t *testing.T) {
 	root := seamFixture(t)
-	_, _, decls, _, err := Extract(root)
+	_, _, decls, _, _, err := Extract(root)
 	if err != nil {
 		t.Fatalf("Extract: %v", err)
 	}

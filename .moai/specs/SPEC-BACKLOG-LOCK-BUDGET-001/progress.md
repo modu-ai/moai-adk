@@ -239,20 +239,44 @@ this session cannot read.
 
 ```yaml
 sync_complete_at: 2026-08-28
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: 21ee55c5a   # backfilled 2026-09-02 by lane-7 — the sync commit "docs(SPEC-BACKLOG-LOCK-BUDGET-001): sync-phase artifacts (t354)"; verified an ancestor of origin/develop via git merge-base --is-ancestor
 sync_status: implemented-ci-pending
 b12_self_test_a: pass   # grep -c 'SPEC-BACKLOG-LOCK-BUDGET-001' CHANGELOG.md -> 0 (no duplicate entry)
 b12_self_test_b: pass   # AC ids in acceptance.md -> 6 distinct (AC-BLB-001..006); CHANGELOG entry states 6
 b12_self_test_c: pass   # every path claimed in the CHANGELOG entry verified present via ls
 changelog_entry_position: "[Unreleased] -> ### Fixed (top of section)"
 frontmatter_status_transitions:
-  spec_md: in-progress -> implemented
+  spec_md: in-progress -> implemented -> completed   # completed 2026-09-02: AC-BLB-006 closure evidence observed — see the closure block below
   plan_md: in-progress -> implemented
   acceptance_md: in-progress -> implemented
   progress_md: n/a           # carries no frontmatter block
-  completed_transition: withheld   # AC-BLB-006 (CI on the PR head) is unread; the terminal close waits on it
+  completed_transition: withheld_at_sync_then_discharged   # withheld at sync (AC-BLB-006 unread, 2026-08-28); discharged 2026-09-02 on the lead's CI read
 canary_compliance_check: n/a       # this SPEC defines no forward-looking policy that its own sync tests
 mx_tag_validation: not-applicable  # no new exported surface; the policy constants are unexported and the
                                    # existing @MX:ANCHOR on openEngine (backlog_store.go) is untouched
 docs_surface: none                 # internal/kanban only; no CLI flag, no template mirror, no docs-site page
 ```
+
+### Closure gate resolved — AC-BLB-006 (2026-09-02, card t354 status → completed via t372)
+
+At sync (2026-08-28) AC-BLB-006 was correctly left PENDING: the binding evidence — CI green —
+was unread, and this card was concurrently marked "superseded by t372" (its criterion separation
+work absorbed by SPEC-STRESS-INVARIANT-VERDICT-001, which `depends_on` this SPEC). The
+transitions were later bound together by lead-1's ruling: one CI read discharges both closure
+gates. It did:
+
+| Element | Value | How established |
+|---|---|---|
+| CI run | `33564147725` | `gh run list --branch develop` (lead-1, 2026-09-02) |
+| Develop head measured | `09bf452c0` — descends from this SPEC's landing merge `728f91006` ("Merge branch 'WT-concurrency-stress' into develop (t354)", ancestry re-verified by lane-7 via `git merge-base --is-ancestor`) | same read + lane-7 re-measure |
+| `run_attempt` | 1 | `gh api repos/.../runs/33564147725` direct read — no retry-masked first failure |
+| Both named jobs | `Test (ubuntu-latest)` = success, `Race Test` = success | job list of the same run |
+| Binding symptom absent | no `adds failed under contention` reported on a run that demonstrably executed the kanban package | log carries `SKIPPED TEST github.com/modu-ai/moai-adk/internal/kanban TestLandedCheck_Controls` — one unrelated skip, `TestConcurrencyStress` not skipped |
+| Reader | lead-1 (lanes do not read CI) | reported to lane-7 2026-09-02 |
+
+**The "PR head" reading, stated honestly.** AC-BLB-006 was authored 2026-08-28 against a PR-based
+flow; this repository moved to git-flow on 2026-08-27-29 and card work now integrates through
+local `develop` with the remote `origin/develop` head as the CI verdict surface. The criterion's
+intent — CI green on the head that carries the change, at `attempt=1` — is what was observed
+here, on head `09bf452c0`; the surface renamed, the evidence did not. Card t354 closes
+`completed` on this record, jointly discharged with SPEC-STRESS-INVARIANT-VERDICT-001.

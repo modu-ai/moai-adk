@@ -1,10 +1,10 @@
 ---
 id: SPEC-STRESS-INVARIANT-VERDICT-001
 title: "Separate the stress test's verdict criterion from lock acquisition: invariants decide, latency gets its own derivation guard (card t372)"
-version: "0.4.0"
-status: implemented
+version: "0.5.0"
+status: completed
 created: 2026-08-31
-updated: 2026-08-31
+updated: 2026-09-02
 author: manager-spec
 priority: P1
 phase: "v3.1.4 target"
@@ -25,6 +25,7 @@ depends_on: [SPEC-BACKLOG-LOCK-BUDGET-001]
 | 2026-08-31 | 0.2.0 | Plan-audit fix round (audit FAIL 0.69, `.moai/reports/t372/plan-audit.md`). Tier reclassified S → M with the requirement layer consolidated 17 → 16 REQ; attempt-conservation requirement added; the budget guard's verb corrected from *covers* to *coherent with, at the declared cost*; the guard's non-tautology shape made a requirement; the Unix sentinel's width and the closure gate's discriminating power added as non-claims; one misquoted CI run corrected. |
 | 2026-08-31 | 0.3.0 | Plan-audit iteration-2 fix round (audit PASS-WITH-DEBT 0.83, `.moai/reports/t372/plan-audit.md`, findings N1-N5). "The invariant block" bounded to the four REQ-SIV-005 assertions by identity; `successes` defined as a nil-error `Add` counter, distinct from `issuedCount`; REQ-SIV-009's cost-cancellation stated in the requirement and its mandated message wording corrected to a cost-independent relation; AC-SIV-012's mutant carve-out extended to AC-SIV-009; AC-SIV-014 relocated from §D.3 to §D.1. Finding N6 declined with evidence (`Event-detected` is the canonical GEARS label). |
 | 2026-08-31 | 0.4.0 | Kickoff-approval amendment (card t372, three lead conditions). REQ-SIV-009 now leads with the positive characterization — a **constant-coherence guard, not a runtime budget guard**, whose firing condition is a constant-axis regression — with the cost-cancellation limitation stated after it, and the mandated message wording reordered to match (`plan.md` §B + M1 step 3). AC-SIV-008's mutant constrained to the **constant axis**, with the cost-axis mutant named as a non-qualifying shape and its reason. REQ-SIV-013 reworded to carry the **pre-plant guard-census** obligation binding both mutant ACs (census + enumerating command, RED test named, non-zero selector match count, old-guard GREEN on the latency direction). Frontmatter `version` realigned with HISTORY (drifted at 0.2.0). Counts unchanged: 16 REQ / 14 AC. |
+| 2026-09-02 | 0.5.0 | Closure gate resolved, `implemented → completed`. AC-SIV-013's window observed green by the lead's CI read (2026-09-02): run `33564147725`, develop head `09bf452c0`, `run_attempt=1`, `Race Test = success`, the kanban package demonstrably executed (SKIPPED line names exactly one unrelated test), and the head descends from the landing commit `0fa8606fe`. Recorded in `progress.md` §E.4 and `acceptance.md` §D.4. Counts unchanged: 16 REQ / 14 AC. |
 
 ## §A Context — what was measured, and by whom
 
