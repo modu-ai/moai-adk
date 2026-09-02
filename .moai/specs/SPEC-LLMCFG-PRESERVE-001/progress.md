@@ -157,8 +157,8 @@ if a body correction round opens.
 ## §E.3 Run-phase Audit-Ready Signal
 
 run_complete_at: 2026-09-02
-run_commit_sha: pending-backfill-final-commit (this §E.3 block ships in the
-final M3 commit; the commit SHA cannot reference itself)
+run_commit_sha: e8639900b (M3 final commit; backfilled per the D3
+SHA-placeholder exemption — a commit cannot reference its own SHA)
 run_status: complete
 ac_pass_count: 6
 ac_fail_count: 0
