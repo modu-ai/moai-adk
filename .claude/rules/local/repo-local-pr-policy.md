@@ -9,7 +9,7 @@ paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/
 
 [HARD] Card workflow (git-flow transition 2026-08-27; model: CLAUDE.local.md §4.1, rules: .claude/rules/local/gitflow-lane-protocol.md):
 - Card worktrees branch FROM `develop` (never `main`).
-- Completed cards integrate into LOCAL `develop` via `git merge --no-ff` inside the single integration worktree (`.claude/worktrees/develop`). There are NO card-level PRs. Remote CI on `origin/develop` is the verdict surface; lanes push `origin/develop`.
+- Completed cards integrate into LOCAL `develop` via `git merge --no-ff` inside the single integration worktree (`.claude/worktrees/develop`). There are NO card-level PRs. Remote CI on `origin/develop` is the verdict surface; lanes report their local merge SHA and do NOT push — the lead collects lane merge SHAs and batch-pushes `origin/develop` (리드 일괄, 2026-09-02).
 - The orchestrator MUST NOT instruct lane agents (`manager-develop` / `manager-docs` / per-spawn workers) to open card PRs against `main`, regardless of Tier.
 - PR-based ceremony (spec-workflow Route B tier routing) applies ONLY to the release path above.
 

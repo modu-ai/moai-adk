@@ -638,6 +638,16 @@ func (h *preToolHandler) Handle(ctx context.Context, input *HookInput) (*HookOut
 		stopAdvisory = advisory
 	}
 
+	// AskUserQuestion observation. The third branch of the same kind as the two
+	// above, and the only one with no enforcement layer at all: it returns
+	// nothing, so there is no deny path to reach in either recommendation mode,
+	// on any input, malformed included. An observer that can block the question
+	// channel can deadlock the only path to the user, which is why the
+	// never-denies property is structural here rather than a runtime check.
+	if input.ToolName == "AskUserQuestion" {
+		h.observeQuestionChannel(input)
+	}
+
 	out := NewSafeDefaultOutput(permissionModeOf(input))
 	if gateNotice != "" {
 		out.SystemMessage = gateNotice

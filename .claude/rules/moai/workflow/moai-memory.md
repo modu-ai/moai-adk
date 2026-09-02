@@ -44,6 +44,19 @@ MoAI deals with two distinct memory directories. Keep their rules separate:
 
 The 4-type taxonomy below is a MoAI convention. The `### MEMORY.md Line Cap` rule applies to the auto-memory index in `~/.claude/projects/<hash>/memory/`, not to agent-memory files.
 
+## Worktree Mirror and Drain
+
+`.claude/agent-memory/` is gitignored and per-project — a worktree is its own project root, so memory written inside a worktree never reaches the primary checkout through git and dies with the tree.
+
+Two mechanisms keep that from happening:
+
+- **Write-time mirror.** The PostToolUse hook watches every Write/Edit whose target is a `.md` under the literal `.claude/agent-memory/` path segment. When the session works inside a worktree, the just-written file is copied to the same agent-relative path in the primary checkout's store. The mirror is fail-open: on any failure it emits a `[memory-mirror]` stderr notice and the write proceeds untouched. In the primary checkout itself the mirror is a no-op.
+- **`moai memory drain`.** The backfill: enumerates every registered worktree, reports per-tree agent-memory content, and with `--yes` copies the topic files into the primary store. Preview by default (writes nothing); `--json` emits machine-readable per-tree records.
+
+Reconciliation rules both share: files are copied, never moved or deleted (worktrees are never mutated); an existing primary file is never overwritten — a collision lands as `<topic>.wt-<worktree-name>.md`; the per-agent `MEMORY.md` index is never copied, and each newly-landed topic gains exactly one appended index line (derived from the worktree's index line or the file's frontmatter description).
+
+Known blind spot: memory written through Bash (heredoc, `cp`) bypasses the Write/Edit interception — run `moai memory drain` to harvest the residue; `moai memory doctor` detects unindexed leftovers.
+
 ## SPEC Context Persistence
 
 SPEC documents serve as persistent context for multi-session work:
