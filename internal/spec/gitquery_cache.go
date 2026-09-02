@@ -14,7 +14,8 @@ import (
 //
 // Keyed by query-kind per plan §H R1 (cross-rule isolation):
 //   - "git-dir": git rev-parse --git-dir (environment availability)
-//   - "main-branch": git rev-parse --verify main (branch existence → "main" or "master")
+//   - "main-branch": the ordered mainBranchCandidates resolution walk
+//     (local main → origin/main → local master → origin/master → unresolvable)
 //   - "transition": the most recent `status:` transition of one SPEC document,
 //     keyed additionally by that document (see transitions below)
 //
@@ -32,8 +33,10 @@ type gitEnvCache struct {
 	gitDirResult bool
 	gitDirCached bool
 
-	// mainBranch: "main" if git rev-parse --verify main succeeds, "master" otherwise.
-	// Keyed by "main-branch" (query-kind per R1).
+	// mainBranch: the first resolvable candidate of the mainBranchCandidates
+	// chain (mainBranchUnresolvable when none resolves). Keyed by
+	// "main-branch" (query-kind per R1); the unresolvable outcome is cached
+	// exactly like a hit (REQ-SLGB-007).
 	mainBranch    string
 	mainBranchSet bool
 
@@ -118,9 +121,22 @@ func cachedGitDirAvailable() bool {
 	return err == nil
 }
 
-// cachedMainBranch determines the default branch name ("main" or "master"),
-// using the per-run cache if available. Equivalent to checking
-// git rev-parse --verify main, falling back to "master".
+// mainBranchCandidates is the ordered base-ref resolution chain
+// (REQ-SLGB-006, SPEC-SPECLINT-GITBLIND-001 M2): local main → origin/main →
+// local master → origin/master. Single source for the resolution walk AND
+// the StatusGitUnreachable message (REQ-SLGB-002) — no scattered literals.
+var mainBranchCandidates = []string{"main", "origin/main", "master", "origin/master"}
+
+// mainBranchUnresolvable is the value cachedMainBranch returns when no
+// candidate in mainBranchCandidates resolves. The empty string names no ref,
+// so consumers that hand it to git fail visibly instead of silently querying
+// a ref that does not exist — the pre-M2 "master" literal did exactly that.
+const mainBranchUnresolvable = ""
+
+// cachedMainBranch resolves the base branch through the ordered
+// mainBranchCandidates chain, using the per-run cache if available. When no
+// candidate resolves it returns mainBranchUnresolvable — never a literal
+// naming a nonexistent ref (REQ-SLGB-006).
 func cachedMainBranch() string {
 	gitQueryCacheMu.RLock()
 	c := gitQueryCacheV
@@ -133,22 +149,28 @@ func cachedMainBranch() string {
 			gitQueryCacheMu.Unlock()
 			return result
 		}
-		branch := "main"
-		if _, err := exec.Command("git", "rev-parse", "--verify", "main").Output(); err != nil {
-			branch = "master"
-		}
+		branch := resolveMainBranch()
 		c.mainBranch = branch
 		c.mainBranchSet = true
 		gitQueryCacheMu.Unlock()
 		return branch
 	}
 
-	// No cache — direct check (original behavior)
-	branch := "main"
-	if _, err := exec.Command("git", "rev-parse", "--verify", "main").Output(); err != nil {
-		branch = "master"
+	// No cache — direct resolution (original behavior for non-Lint callers)
+	return resolveMainBranch()
+}
+
+// resolveMainBranch walks mainBranchCandidates in order and returns the
+// first ref `git rev-parse --verify` confirms. REQ-SLGB-007: the
+// unresolvable outcome is cached by the caller exactly like a hit — one walk
+// per Lint() run, never one per SPEC (4 rev-parse spawns × N SPECs).
+func resolveMainBranch() string {
+	for _, candidate := range mainBranchCandidates {
+		if _, err := exec.Command("git", "rev-parse", "--verify", candidate).Output(); err == nil {
+			return candidate
+		}
 	}
-	return branch
+	return mainBranchUnresolvable
 }
 
 // cachedIsShallowRepository reports whether the repository at the process

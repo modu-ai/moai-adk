@@ -311,3 +311,108 @@ func TestStatusGitUnreachable_InfoSeverityKeepsStrictGreen(t *testing.T) {
 		t.Error("HasErrors() = true under --strict, want false (Info must not change the exit code)")
 	}
 }
+
+// runGitIn runs one git command with its working directory pinned to dir.
+func runGitIn(t *testing.T, dir string, args ...string) {
+	t.Helper()
+
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git %v failed: %v\noutput: %s", args, err, out)
+	}
+}
+
+// AC-SLGB-007 (REQ-SLGB-006): the base ref resolves through the ordered
+// chain main → origin/main → master → origin/master, and reports the
+// unresolvable signal when none exists — never the literal "master", which
+// names a ref that does not exist in these fixtures.
+func TestCachedMainBranch_ResolutionChain(t *testing.T) {
+	t.Run("local_main_only", func(t *testing.T) {
+		root := setupGitRepoAt(t, "main", []fixtureCommit{{title: "chore: seed"}})
+		chdirForTest(t, root)
+
+		if got := cachedMainBranch(); got != "main" {
+			t.Fatalf("cachedMainBranch() = %q, want %q", got, "main")
+		}
+	})
+
+	t.Run("origin_main_only", func(t *testing.T) {
+		root := setupGitRepoAt(t, "develop", []fixtureCommit{{title: "chore: seed"}})
+		runGitIn(t, root, "update-ref", "refs/remotes/origin/main", "HEAD")
+		chdirForTest(t, root)
+
+		if got := cachedMainBranch(); got != "origin/main" {
+			t.Fatalf("cachedMainBranch() = %q, want %q", got, "origin/main")
+		}
+	})
+
+	t.Run("local_master_only", func(t *testing.T) {
+		root := setupGitRepoAt(t, "master", []fixtureCommit{{title: "chore: seed"}})
+		chdirForTest(t, root)
+
+		if got := cachedMainBranch(); got != "master" {
+			t.Fatalf("cachedMainBranch() = %q, want %q", got, "master")
+		}
+	})
+
+	t.Run("none_resolvable", func(t *testing.T) {
+		root := setupGitRepoAt(t, "develop", []fixtureCommit{{title: "chore: seed"}})
+		chdirForTest(t, root)
+
+		got := cachedMainBranch()
+		if got == "master" {
+			t.Fatal(`cachedMainBranch() = "master" (nonexistent-ref literal fallback) — no local master exists in this fixture; want the unresolvable signal`)
+		}
+		if got != "" {
+			t.Fatalf("cachedMainBranch() = %q, want the unresolvable signal (empty string)", got)
+		}
+	})
+}
+
+// AC-SLGB-008 (REQ-SLGB-007): with the per-run cache active, the resolution
+// is computed at most once per run — a ref deleted (or created) after the
+// first call must not change the second call's answer, and unresolvable is
+// cached exactly like a hit (no per-SPEC rev-parse storm). The
+// memoization-on-hit behavior predates this SPEC; it is held in place by the
+// mutation check recorded in progress.md §E.2, not by this test alone.
+func TestCachedMainBranch_MemoizedPerRun(t *testing.T) {
+	t.Run("resolved_then_ref_deleted", func(t *testing.T) {
+		root := setupGitRepoAt(t, "main", []fixtureCommit{{title: "chore: seed"}})
+		chdirForTest(t, root)
+
+		startGitQueryCache()
+		t.Cleanup(stopGitQueryCache)
+
+		first := cachedMainBranch()
+		if first != "main" {
+			t.Fatalf("first cachedMainBranch() = %q, want %q", first, "main")
+		}
+		// Remove the local main ref after the first resolution: the rename
+		// moves the checked-out branch, so refs/heads/main ceases to exist.
+		runGitIn(t, root, "branch", "-m", "main", "moved-away")
+
+		if again := cachedMainBranch(); again != first {
+			t.Fatalf("second cachedMainBranch() = %q, want %q (memoized per run)", again, first)
+		}
+	})
+
+	t.Run("unresolvable_then_main_created", func(t *testing.T) {
+		root := setupGitRepoAt(t, "develop", []fixtureCommit{{title: "chore: seed"}})
+		chdirForTest(t, root)
+
+		startGitQueryCache()
+		t.Cleanup(stopGitQueryCache)
+
+		first := cachedMainBranch()
+		if first != "" {
+			t.Fatalf("first cachedMainBranch() = %q, want the unresolvable signal", first)
+		}
+		// Make main resolvable after the unresolvable answer was cached.
+		runGitIn(t, root, "branch", "main")
+
+		if again := cachedMainBranch(); again != first {
+			t.Fatalf("second cachedMainBranch() = %q, want %q (unresolvable must be cached too — no per-SPEC rev-parse storm)", again, first)
+		}
+	})
+}

@@ -1448,9 +1448,8 @@ func statusGitUnreachableFinding(doc *SPECDoc, err error) Finding {
 }
 
 // triedBaseRefsSummary names the base refs the resolution chain consults, for
-// the REQ-SLGB-002 message. M1-era resolution verifies `main` and falls back
-// to the `master` literal; M2 replaces this summary with the ordered
-// mainBranchCandidates chain.
+// the REQ-SLGB-002 message. Sourced from the single mainBranchCandidates
+// chain (gitquery_cache.go) so the message and the walk cannot drift apart.
 func triedBaseRefsSummary() string {
-	return "main, master"
+	return strings.Join(mainBranchCandidates, ", ")
 }
