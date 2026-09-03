@@ -69,3 +69,33 @@ Measured in this run, in this tree (`.claude/worktrees/t437`, base b7462203a):
   in non-test Go source (an export or migration doc-comment, say) would be flagged and would
   need an explicit allowlist entry — deliberate, so the exception is stated rather than
   silently absorbed.
+
+---
+
+## What the integration tree showed that no card could show alone
+
+This card's sweep walks non-test Go and templ sources under `internal/`, `cmd/`, and `pkg/`. In the
+card's own branch that population is the branch's own code. In the integration tree it is every
+card that has landed since — here, cards t305 and t360, which the same lane wrote and merged
+first.
+
+That widened population is the point. Either of those cards could have introduced a fresh
+`state/todo/backlog.json` claim in non-test Go source; neither card's own suite would have said so,
+because the guard did not exist in their trees and their own tests do not look for it. Measured on
+the absorbed tree, the sweep passes:
+
+    go test ./internal/cli/ -run 'TestTodoHelp_NamesTheDatabaseStore|TestTodoStoreClaims_NoStaleGoSourceSite'
+      → both PASS
+
+So the pass is not a restatement of the card's own green — it is an observation about code the card
+never saw, which is exactly the gap the integration branch exists to close: every card was green on
+its own, and nobody looked at the combined state.
+
+The same run confirms the sibling t395 sweep still holds on the merged tree
+(`TestBacklogJSONDisclosure_EmbeddedTemplatesMatchSource`,
+`TestBacklogJSONDisclosure_TemplateMirrorIsComplete`), which matters because this card added a
+second sweep over a different layer; two sweeps that disagree would be worse than one.
+
+The limit stays what it was: the sweep sees the layers it walks. A claim landing in a shell script,
+a template, or a Markdown rule is outside both sweeps, and neither this observation nor the guard
+says anything about those.
