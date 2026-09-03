@@ -10,9 +10,9 @@ Card: `t470` · Branch `WT-queue-upgrade-proof` · Base `4e4607abe`
 - Requirements: 10 (`REQ-QUP-001`..`010`), one optional (`REQ-QUP-007`)
 - Acceptance criteria: 11 rows (`AC-QUP-001a`..`010`), one optional
   (`AC-QUP-007`); every row now names a requirement (no orphan)
-- Open clarifications: 2 — `[NEEDS CLARIFICATION: G2 definition]` and
+- Open clarifications at v0.3.0: 2 — `[NEEDS CLARIFICATION: G2 definition]` and
   `[NEEDS CLARIFICATION: downgrade intent vs quarantine rename]`, both in
-  `plan.md §A`
+  `plan.md §A`; both RESOLVED at v0.4.0 (see the closing entry below)
 - Plan audit: iteration 1 returned FAIL (score 0.875 vs Tier M threshold 0.80;
   cause was the MP-3 frontmatter defects and the MP-7 clarification gate, not
   the score). Verdict: `.moai/reports/t470/plan-audit.md`
@@ -31,9 +31,21 @@ Card: `t470` · Branch `WT-queue-upgrade-proof` · Base `4e4607abe`
   way `todo_root.go:95-99` does, and a failed derivation FAILS rather than
   passing) and the optional D12 (`AC-QUP-002`'s "holds the queue" limb given a
   stated observation). No production file touched — `REQ-QUP-009` holds
-- D5 is deliberately NOT remediated: both clarification markers stay open in
-  `plan.md §A` for the dispatcher. MP-7 remains failed until those answers
-  arrive, which is the expected state
+- Clarification gate CLOSED at SPEC `v0.4.0` (D5 resolved). Both markers in
+  `plan.md §A` are converted to RESOLVED records — question retained, answer
+  stated, source named (the dispatcher's ruling on card `t470`), consequence
+  stated; neither marker was edited out. G2 is ABSORBED into G1 (carried by
+  `AC-QUP-001a`/`001b`/`002`/`003`/`004`/`006`; the "closes as unstarted"
+  contingency is withdrawn). The downgrade marker's earlier mechanism was WRONG
+  and is corrected — the `.migrated` rename never contradicted the downgrade
+  intent (`export-json` re-creates `backlog.json`); the real hole is that the
+  export lands in the NEW directory while a v3.1.2 binary reads the legacy one,
+  ruled OUT OF SCOPE as a separate-card candidate. G4 was newly supplied and is
+  likewise OUT OF SCOPE, filed in `spec.md §E` beside G3 and G5. `AC-QUP-008`
+  gained a hand-verification note (worktree guard refuses the nested `$(...)`
+  form) with a matching pointer on its twin constraint `C-1`. **MP-7's blocking
+  condition is now cleared.** No production file touched — `REQ-QUP-009` holds
+- Open clarifications: 0 (was 2)
 
 ## §E.2 Run-phase Evidence
 

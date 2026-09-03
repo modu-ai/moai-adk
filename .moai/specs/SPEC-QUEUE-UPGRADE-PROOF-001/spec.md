@@ -1,7 +1,7 @@
 ---
 id: SPEC-QUEUE-UPGRADE-PROOF-001
 title: "Prove the v3.1.2-to-next queue upgrade path end to end"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-09-03
 updated: 2026-09-03
@@ -15,6 +15,32 @@ tier: M
 ---
 
 ## HISTORY
+
+### v0.4.0 (2026-09-03)
+
+- Clarification gate CLOSED (card t470). Both `[NEEDS CLARIFICATION]` markers in
+  `plan.md §A` are RESOLVED — converted into resolved records that retain the
+  original question, the answer, its source (the dispatcher's ruling on card
+  `t470`), and the consequence, rather than being edited out. **G2** turned out
+  to be defined on the card body all along and is **ABSORBED by G1**: fixture F1
+  fires the relocation and then the SQLite conversion in one `moai todo`
+  invocation, which is the chain G2 named, so it is carried by
+  `AC-QUP-001a`/`001b`/`002`/`003`/`004`/`006` with no new requirement or
+  criterion added; the earlier "closes as unstarted" contingency is withdrawn.
+  **The downgrade marker's mechanism as previously written was WRONG** and is
+  corrected: `moai todo export-json` (`internal/cli/todo_export.go:34-41`) IS
+  the downgrade route, a marker-less `backlog.json` beside the database is
+  explicitly left untouched as a downgrade export
+  (`internal/kanban/backlog_migrate.go:530-532`, `:604-606`), so the `.migrated`
+  quarantine never contradicted the downgrade intent. The real hole is the
+  DIRECTORY — `runTodoExportJSON` writes to the resolved `.moai/state/todo/`
+  (`todo_export.go:74`) while a `v3.1.2` binary reads `.moai/state/kanban/` —
+  ruled OUT OF SCOPE (this card proves the upgrade direction) and recorded as a
+  separate-card candidate. **G4** was newly supplied by the dispatcher and is
+  likewise OUT OF SCOPE (prevention-versus-notice is a design decision), filed
+  in `§E` beside G3 and G5 so the G-numbering is complete. `AC-QUP-008` gained
+  one hand-verification note; `C-1` gained a pointer to it. MP-7's blocking
+  condition is cleared. No production file touched — `REQ-QUP-009` holds.
 
 ### v0.3.0 (2026-09-03)
 
@@ -178,7 +204,10 @@ passing result is claimed.
   resolution the production code performs at `internal/kanban/todo_root.go:95-99`
   (`filepath.Dir(dirs.CommonDir)`). From a linked worktree the worktree-relative
   path names a different, absent file and is NOT the subject of this constraint.
-  A failed derivation fails the constraint rather than passing it.
+  A failed derivation fails the constraint rather than passing it. When this
+  derivation is issued BY HAND from inside a worktree session, run the
+  `git rev-parse` as its own command rather than nesting it in `$(...)` — see
+  `acceptance.md` `AC-QUP-008` for why the compound form is refused there.
 - **C-2** Verification scope is `go test ./internal/kanban/... ./internal/cli/`.
   A full local suite is prohibited.
 - **C-3** `./internal/cli/` alone runs past 600s on the development machine; any
@@ -222,13 +251,37 @@ oversight.
   `resolveStateDir` fails open and the user keeps running READ-ONLY on the
   legacy layout with no diagnostic on any surface.
 
-### Out of Scope — the downgrade-comment tension
+### Out of Scope — the downgrade export lands in the wrong directory
 
-- `state_dir.go` carries a comment asserting the queue document keeps the name
-  `backlog.json` so that an older binary can read it. The tension between that
-  assertion and the observed rename + directory move is recorded in `plan.md`
-  as a clarification marker. This SPEC neither resolves it nor proposes any
-  change on its account.
+- **The originally-suspected tension was not real.** The `.migrated` quarantine
+  rename does NOT contradict `state_dir.go`'s downgrade comment: `moai todo
+  export-json` (`internal/cli/todo_export.go:34-41`) exists as the downgrade
+  route and RE-CREATES `backlog.json`, and a marker-less `backlog.json` beside
+  the database is explicitly recognized as "an export written for a downgrade"
+  and left untouched (`internal/kanban/backlog_migrate.go:530-532`), that same
+  export being "the legacy artifact a downgrade-then-upgrade cycle migrates
+  back" (`:604-606`). Keeping the name is what makes the route work.
+- **The real hole is the DIRECTORY, not the filename.** `runTodoExportJSON`
+  writes to `store.Path()` (`todo_export.go:74`) — the resolved, i.e. NEW,
+  `.moai/state/todo/` — while a `v3.1.2` binary reads `.moai/state/kanban/`
+  (`git show v3.1.2:internal/kanban/backlog_store.go`, `BacklogPathForRoot`).
+  The export lands where the old binary will not look, the user must move it by
+  hand, and no surface says so. The comment at `state_dir.go:143-146` is right
+  about the filename and silent about the directory.
+- Excluded because it is on the DOWNGRADE direction while this card proves the
+  UPGRADE direction. Separate-card candidate. This SPEC proposes no change on
+  its account. Full record with the dispatcher's ruling: `plan.md §A`.
+
+### Out of Scope — split-brain guarded by notice rather than prevention (G4)
+
+- `export-json` re-creates `backlog.json` at the canonical path, and while the
+  store prefers the database, any consumer that bypasses `BacklogStore` and
+  reads the file directly (a human's `cat`, an agent, `backlog_check.sh`) gets
+  a stale answer.
+- Excluded because prevention-versus-notice is a design decision and belongs to
+  its own card, not to a proof card. Recorded here so the G-numbering is
+  complete — G1 delivered, G2 absorbed into G1, G3/G4/G5 excluded — and no
+  later reader wonders which items were considered.
 
 ### Out of Scope — schema versioning work
 

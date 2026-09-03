@@ -134,6 +134,13 @@ QUEUE_DB="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/
 relative `.git` from the primary checkout, so omitting it makes the derivation
 CWD-dependent — the very defect this limb is fixing.
 
+A run-phase implementer verifying this criterion BY HAND from inside a worktree
+session must issue the `git rev-parse` as its own command and substitute the
+result, rather than nesting it in `$(...)` as written above: the worktree
+session guard refuses the compound form as too complex to verify, and that
+refusal looks like a broken criterion when it is not. The Go test is unaffected
+— it never passes through that guard.
+
 **Resolution failure is a FAILURE of this criterion, never a pass.** If the
 `git rev-parse` exits non-zero, or the resolved `QUEUE_DB` does not begin with
 `/`, the criterion is reported FAILED naming the resolution error. It must not
@@ -231,9 +238,10 @@ anything. This criterion is what separates the proof from a vacuous green.
 - [ ] `.moai/reports/t470/verdict.md` exists on the branch and carries: Claim,
       Evidence (command + verbatim output), Baseline-attribution (tree SHA and
       the commands run in this run), Gaps, Residual-risk
-- [ ] The Gaps section names G2 (undefined — see the plan's clarification
-      marker), G3 (cross-process concurrency, excluded), and G5 (`moai doctor`
-      check, excluded) as not covered
+- [ ] The Gaps section states the complete G-numbering: G2 ABSORBED into G1
+      (covered by AC-QUP-001a/001b/002/003/004/006 per `plan.md §A`, therefore
+      NOT a gap), and G3 (cross-process concurrency), G4 (split-brain guarded by
+      notice), and G5 (`moai doctor` check) excluded and named as not covered
 - [ ] The `AC-QUP-010` mutation's RED output is recorded verbatim in the verdict,
       alongside the GREEN run of the same test with the mutation reverted
 - [ ] Quality gate above passes with its elapsed time recorded

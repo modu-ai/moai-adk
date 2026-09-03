@@ -2,47 +2,125 @@
 
 Card: `t470` · Tier M · Branch `WT-queue-upgrade-proof` · Base `4e4607abe`
 
-## §A Open clarifications
+## §A Resolved clarifications
 
-These block Implementation Kickoff Approval. They are stated as questions for
-the dispatcher, not as decisions this SPEC makes.
+Both markers raised at `v0.1.0` are now settled by the dispatcher's ruling on
+card `t470`. Each record below keeps the original question, states the answer,
+names its source, and states the consequence for this SPEC. Nothing here is
+deleted: a reader must be able to see what was asked and how it was settled.
 
-### [NEEDS CLARIFICATION: G2 definition]
+### RESOLVED — G2 definition
 
-The dispatch named "G2: close alongside G1" and never said what G2 is. No G4
-was mentioned at any point. This SPEC does not guess: G2 is left undefined, no
-requirement is written for it, and no acceptance criterion covers it. The
-orchestrator has queried the dispatcher; the definition will be injected before
-run-phase entry, at which point G2's requirements and ACs are appended.
+**What was asked.** The dispatch named "G2: close alongside G1" and never said
+what G2 is. This SPEC refused to guess, wrote no requirement for it, and
+recorded that if no definition arrived the card would close with G2 marked
+unstarted.
 
-Consequence if it arrives unresolved: the run phase delivers G1 (plus the
-optional F2 criterion) and nothing else, and the card closes with G2 recorded
-as unstarted rather than silently dropped.
+**The answer.** The definition existed on the `t470` card body all along; the
+dispatch simply did not carry it. Verbatim:
 
-### [NEEDS CLARIFICATION: downgrade intent vs quarantine rename]
+> **G2** = the chained case is unverified — the existing tests hand-plant their
+> layouts and measure each conversion separately, and none measures the path
+> where, from a real v3.1.2 layout, the rename and the SQLite conversion fire
+> one after the other.
 
-Two mechanical facts, both measured at tree `4e4607abe`:
+**Source.** The dispatcher's ruling on card `t470`, relayed with the card-body
+definition above.
 
-1. `internal/kanban/state_dir.go`, on the `backlogFileName` constant: the queue
-   document "stays `backlog.json` after the storage swap … keeping this name is
-   what makes the downgrade story literally true — an older binary reads only
-   this file and ignores the rest."
-2. On a successful migration, `migrateLegacyBacklog` calls
-   `quarantineLegacyBacklog`, which renames that file to
-   `backlog.json.migrated` (`backlogMigratedSuffix`,
-   `internal/kanban/backlog_migrate.go:41`). Separately, the directory itself
-   has moved from `.moai/state/kanban/` to `.moai/state/todo/`.
+**The ruling.** G2 is **ABSORBED by this SPEC's corrected G1**, not unstarted.
+Fixture F1 — the genuine three-field v3.1.2 record planted in
+`.moai/state/kanban/` (§B below) — makes a single `moai todo` invocation fire
+the directory relocation and then the JSON-to-SQLite conversion in sequence,
+which is exactly the chain G2 asked for.
 
-Taken literally together, an older binary after an upgrade would find neither
-the directory nor the file. The comment may carry a narrower meaning than it
-reads — for instance that the name is preserved during the pre-migration
-window, or that it is about the sibling `.db` artifact not colliding.
+**Consequence for this SPEC.** No new requirement and no new acceptance
+criterion is added; G2's content is already carried by criteria this SPEC
+already states. The criteria that carry it:
 
-**This SPEC does not resolve the tension and proposes no change on its
-account.** If the tension is real it is larger than this card; if it is not, it
-is a comment-wording matter. Either way the judgment is the dispatcher's. It is
-recorded here so that a future reader who notices the same thing finds it
-already logged rather than re-deriving it.
+| Chain step G2 names | Criterion that measures it |
+|---|---|
+| Starting from a real v3.1.2 layout (not a hand-planted develop-schema one) | `AC-QUP-006` (fixture fidelity: `version`, `last_seq`, `items` and nothing else) |
+| The rename fires | `AC-QUP-002` (legacy directory relocated to the current name, sentinel arrives) |
+| The SQLite conversion fires **after** it, in the same invocation | `AC-QUP-003` (legacy document quarantined as `.migrated`) and `AC-QUP-004` (`backlog.db` present) |
+| The chain preserves the queue end to end | `AC-QUP-001a` / `AC-QUP-001b` |
+| The chain is entered once, through the CLI, not per-layer through the API | `AC-QUP-005` (§C test-entry design) |
+
+The earlier contingency wording — that G2 would close as unstarted if no
+definition arrived — is **withdrawn**: that branch did not happen. G2 closes
+with G1.
+
+### RESOLVED — downgrade intent vs quarantine rename (and the earlier mechanism was WRONG)
+
+**What was asked.** `state_dir.go`'s comment on `backlogFileName` says the
+queue document keeps the name `backlog.json` so "an older binary reads only
+this file". `migrateLegacyBacklog` renames that file to
+`backlog.json.migrated`, and the directory itself moves from
+`.moai/state/kanban/` to `.moai/state/todo/`. Read together, an older binary
+after an upgrade would find neither the directory nor the file. Is the comment
+wrong, or is the rename wrong?
+
+**The mechanism as previously written here was incorrect.** The `.migrated`
+rename does **not** contradict the downgrade intent, and the rename was never
+the tension. Measured at this tree:
+
+1. `internal/cli/todo_export.go:34-41` — `moai todo export-json` exists
+   precisely as the downgrade route: "Write the live queue out as a
+   legacy-format backlog.json beside the database. Use this before downgrading
+   to a release that predates the SQLite queue store."
+2. `internal/kanban/backlog_migrate.go:530-532` — a `backlog.json` sitting
+   beside a database with no in-flight marker "is not pre-cutover legacy — it
+   is an export written for a downgrade — and it is left untouched."
+3. `internal/kanban/backlog_migrate.go:604-606` — that export "IS the legacy
+   artifact a downgrade-then-upgrade cycle migrates back".
+
+So the file is **meant to be re-created** by `export-json`, and keeping the
+name `backlog.json` is exactly the choice that makes that work. The quarantine
+rename moves the *consumed* legacy document out of the way; the *downgrade*
+artifact is written fresh.
+
+**The real hole is the DIRECTORY, not the filename.** `runTodoExportJSON`
+writes to `store.Path()` (`internal/cli/todo_export.go:74`) — the resolved,
+i.e. NEW, directory `.moai/state/todo/`. A `v3.1.2` binary reads
+`.moai/state/kanban/` (measured:
+`git show v3.1.2:internal/kanban/backlog_store.go`, `BacklogPathForRoot`). The
+export therefore lands where the old binary will not look; the user must move
+the file by hand, and nothing on any surface says so. The comment at
+`internal/kanban/state_dir.go:143-146` is right about the filename and silent
+about the directory.
+
+**Source.** The dispatcher's ruling on card `t470`, with the four citations
+above verified against this tree before being recorded.
+
+**The ruling.** **OUT OF SCOPE for `t470`.** This card proves the UPGRADE
+direction; the export-directory hole is on the DOWNGRADE direction, the
+opposite one. It is a **separate-card candidate**.
+
+**Consequence for this SPEC.** No requirement, no acceptance criterion, and no
+change of any kind is proposed on its account. `spec.md §E` carries the
+corrected mechanism in its exclusions list so a later reader finds it recorded
+rather than re-deriving it.
+
+### RESOLVED — G4, newly supplied and out of scope
+
+**What was asked.** Nothing: the dispatch omitted G4 entirely, and `v0.1.0`
+recorded that no G4 was ever mentioned. The dispatcher has now supplied it.
+
+**The definition.** Verbatim:
+
+> **G4** = split-brain is guarded by notice rather than prevention —
+> `export-json` re-creates `backlog.json` at the canonical path, and while the
+> store prefers the database, any consumer that bypasses `BacklogStore` and
+> reads the file directly (a human's `cat`, an agent, `backlog_check.sh`) gets
+> a stale answer.
+
+**Source.** The dispatcher's ruling on card `t470`.
+
+**The ruling.** **OUT OF SCOPE for `t470`.** Prevention-versus-notice is a
+design decision and belongs to its own card.
+
+**Consequence for this SPEC.** Recorded in `spec.md §E` alongside G3 and G5, so
+the G-numbering is complete (G1 delivered, G2 absorbed into G1, G3/G4/G5
+excluded) and no later reader wonders which items were considered.
 
 ## §B Fixture design — the highest-change-likelihood decision
 
@@ -153,9 +231,13 @@ card.
 ### M3 — record what was measured (Priority: Medium)
 
 Write the run-phase evidence at `.moai/reports/t470/verdict.md`: the commands
-run, their verbatim output, the baseline attribution, and the gaps —
-explicitly naming G2 (undefined), G3 (excluded), and G5 (excluded) as not
-covered.
+run, their verbatim output, the baseline attribution, and the gaps.
+
+The G-numbering is now complete (§A), so the verdict states it in full: G1
+delivered; **G2 absorbed into G1** — covered by the criteria named in §A's
+resolution table, therefore NOT a gap; G3 (cross-process concurrency), G4
+(split-brain guarded by notice), and G5 (`moai doctor` check) excluded and
+named as not covered.
 
 ## §E Technical approach
 
