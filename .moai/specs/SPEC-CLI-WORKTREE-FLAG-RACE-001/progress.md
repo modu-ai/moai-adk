@@ -52,7 +52,49 @@ diff shape the repair will produce; AC-WFR-003's fence is stated but unexercised
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+**Resumed by a different lane at HEAD `6a56c96bd`** (the original lane left no report; plan-phase
+artifacts re-read directly, `plan-audit-iter1.md` + `red-race-d592b0551.txt` both present). Local
+`develop` at `4e91bf6a9` was absorbed first per the lead's dispatch (merge commit `6a56c96bd`,
+conflict-free; one transient `fatal: Unable to write index.` on the first attempt — no path in the
+message, fsmonitor unset, lock count 0 → lead's cause-B disposition, one retry, succeeded).
+
+### AC-WFR-001a — fresh RED on the moved head (recorded before any code edit)
+
+- Command: `go test ./internal/cli/ -run TestResolveWorktreeExistingBranch -count=20 -race`
+- Tree: `6a56c96bd` (absorbed tip), this run
+- Output: `.moai/reports/t464/red-race-6a56c96bd.txt`, 1757 lines
+- Exit code: `1` (background task bbusrtk32 exit status, read directly)
+- `WARNING: DATA RACE` count: **30** (`grep -c`, count read as printed value)
+- `Log in goroutine after` count: **0** — this run panicked nowhere and **completed** all
+  20 iterations, unlike the `d592b0551` capture which truncated at a panic (spec §A.2).
+  This upgrades the RED: the panic manifestation did not reproduce this run, the warning
+  manifestation did, at 30 > 23, on a completed run. RED satisfied (AC-WFR-001a: exit 1
+  AND ≥1 warning or the panic — the warnings limb holds).
+
+### AC-WFR-006 — option choice and its criteria (written before the first code edit)
+
+**Choice: Option A — remove `t.Parallel()` from the four siblings (lines 66/96/126/161).**
+
+Evaluation against `spec.md` §D.3, criterion by criterion:
+
+| Criterion | Verdict | Ground |
+|---|---|---|
+| Blast radius | **A** | A is 4 lines in 1 file — the REQ-WFR-005 fence holds mechanically. B changes a production signature and its fence-compliance would depend on a consumer sweep of `resolveWorktreeExistingBranch` before a single line could be written. |
+| What is lost | **A** | The SPEC itself states these four tests are sub-millisecond stubs whose parallelism "buys no measurable wall-time" (`spec.md` §D.3) — Option A loses nothing measurable. |
+| Recurrence | **B** (only B wins this one) | A re-adds the defect if a later author re-adds `t.Parallel()`. But the standing regression guard (REQ-WFR-006, the `-race` repetition command) exists under either option, and B's structural fix is itself partial (spec §F4: the default-to-global fallback preserves the seam; the package-wide injection conversion is a separate card per §C). |
+| Consistency with the package | **A** | The package's dominant idiom is global-seam assignment (23 files); B introduces a second idiom into one file (`spec.md` §D.3). |
+| Reviewability | **A** | A four-line deletion vs a signature change plus four test rewrites. |
+
+Four of five criteria favour A; the one criterion favouring B is mitigated by the standing
+regression guard and is a partial fix even under B. This is not "A because it is smaller" —
+the deciding grounds are the SPEC's own statement that the lost parallelism is unmeasurable
+plus the fence holding mechanically without a consumer sweep.
+
+### Repair
+
+Applied after the entries above were written: the four `t.Parallel()` calls at lines 66/96/126/161
+of `internal/cli/worktree_branch_flag_test.go` removed; no other change. The `t.Parallel()` calls
+at lines 25 and 44 belong to other tests in the file and are untouched.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
