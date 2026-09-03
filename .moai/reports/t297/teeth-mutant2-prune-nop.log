@@ -1,0 +1,11 @@
+--- FAIL: TestPruneStaleProjectEntries_RemovesDeadKeepsLive (0.00s)
+    ledger_prune_test.go:51: dead entry "/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPruneStaleProjectEntries_RemovesDeadKeepsLive1436044031/003/dead-proj" survived the prune
+--- FAIL: TestPruneStaleProjectEntries_Idempotent (0.00s)
+    ledger_prune_test.go:81: second prune removed [/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestPruneStaleProjectEntries_Idempotent2443920180/002/dead-proj], want nothing (idempotence)
+--- FAIL: TestRegression_ColdStartResidueIsReclaimed (0.00s)
+    ledger_prune_test.go:238: final rows = 4, want 0 — cold-start residue must be fully reclaimed
+--- FAIL: TestRegression_LegacyDuplicatesFoldDeadOnesFirst (0.00s)
+    ledger_prune_test.go:278: final rows = 2 (map[/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRegression_LegacyDuplicatesFoldDeadOnesFirst1663560353/002:alpha /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRegression_LegacyDuplicatesFoldDeadOnesFirst1663560353/002/.claude/worktrees/t289:beta]), want 1 == distinct projects
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/profile	0.416s
+FAIL

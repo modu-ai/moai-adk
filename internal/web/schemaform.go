@@ -68,6 +68,10 @@ func consoleTabs() []consoleTab {
 		// The panel carries the target repository and the auto-submit consent
 		// toggle; both persist through the yamlpatch seam into feedback.yaml.
 		{ID: "feedback", LabelKey: "sec.feedback.title", Baseline: "Feedback"},
+		// gate — SPEC-PRECOMMIT-GATE-SCOPE-001 M2: the pre-commit heavy-gate
+		// opt-in panel. The single bool persists through the yamlpatch seam
+		// into gate.yaml; the runner honors it only under MOAI_PRECOMMIT=1.
+		{ID: "gate", LabelKey: "sec.gate.title", Baseline: "Quality Gate"},
 	}
 }
 
@@ -259,6 +263,14 @@ func schemaSectionMetas() []schemaSectionMeta {
 			TitleKey: "sec.feedback.title", DescKey: "sec.feedback.desc",
 			Title: "Feedback", Desc: "Target repository for the feedback workflow, and whether it may submit without asking each time.",
 			Fields: settings.SectionFields(settings.SectionFeedback), Extras: true,
+		},
+		{
+			// SPEC-PRECOMMIT-GATE-SCOPE-001 M2 (REQ-009): the pre-commit heavy
+			// gate opt-in, persisted through the yamlpatch seam into gate.yaml.
+			ID: settings.SectionGate, PanelID: "gate", Icon: "shield-check",
+			TitleKey: "sec.gate.title", DescKey: "sec.gate.desc",
+			Title: "Quality Gate", Desc: "Commit-time quality gate posture (gate.pre_commit.enabled).",
+			Fields: settings.SectionFields(settings.SectionGate), Extras: true,
 		},
 	}
 }

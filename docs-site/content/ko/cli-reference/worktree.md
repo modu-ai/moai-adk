@@ -79,7 +79,7 @@ moai worktree remove <path>
 moai worktree clean [--merged-only | --stale] [--yes] [--json] [--base <branch>]
 ```
 
-플래그 없이 실행하면 stale 워크트리 참조만 prune 합니다.
+플래그 없이 실행하면 stale 워크트리 참조만 prune 합니다. 런치 원장(`~/.moai/claude-profiles/launch.yaml` 의 `projects:` 항목) 중 프로젝트 디렉터리가 사라진 항목도 함께 정리하며, 제거한 항목 수를 출력합니다. `moai worktree remove` 와 `moai worktree done` 도 폐기하는 트리의 항목을 같은 방식으로 회수합니다.
 
 | 플래그 | 설명 |
 |--------|------|

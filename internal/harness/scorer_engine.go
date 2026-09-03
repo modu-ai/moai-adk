@@ -241,10 +241,10 @@ type ContractItem struct {
 // Adds a sub-criterion status field on top of the HRN-002 Sprint Contract shape.
 // Remains compatible with the existing SKILL.md acceptance_checklist format.
 type SprintContractYAML struct {
-	SpecID             string         `yaml:"spec_id"`
-	SchemaVersion      string         `yaml:"schema_version"`
-	Verdict            string         `yaml:"verdict"`
-	Rationale          string         `yaml:"rationale,omitempty"`
+	SpecID              string         `yaml:"spec_id"`
+	SchemaVersion       string         `yaml:"schema_version"`
+	Verdict             string         `yaml:"verdict"`
+	Rationale           string         `yaml:"rationale,omitempty"`
 	AcceptanceChecklist []ContractItem `yaml:"acceptance_checklist"`
 }
 
@@ -371,6 +371,7 @@ func sortedStringKeys[T any](m map[string]T) []string {
 // Flat condition: no SubCriterion exists anywhere in the ScoreCard.
 //   - Dimensions map is empty, or
 //   - no Criterion in any Dimension contains SubCriteria.
+//
 // "Partially populated" cards with SubCriteria in only some dimensions are permitted.
 func isFlat(card *ScoreCard) bool {
 	if len(card.Dimensions) == 0 {

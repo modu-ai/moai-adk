@@ -113,10 +113,10 @@ func TestLauncher_ResolveBackend_AllScenarios(t *testing.T) {
 	}
 
 	tests := []struct {
-		name   string
-		ciSet  bool
-		role   string
-		want   Sandbox
+		name  string
+		ciSet bool
+		role  string
+		want  Sandbox
 	}{
 		{"implementer-no-ci", false, "implementer", osDefault},
 		{"tester-no-ci", false, "tester", osDefault},

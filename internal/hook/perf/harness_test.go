@@ -414,19 +414,19 @@ func createFixtureProject(t *testing.T) string {
 
 	// Create a realistic set of section files matching the real project.
 	sections := map[string]string{
-		"user.yaml":          "user:\n  name: perf-test\n",
-		"language.yaml":      "language:\n  conversation_language: en\n  agent_prompt_language: en\n",
-		"quality.yaml":       "constitution:\n  development_mode: tdd\n",
+		"user.yaml":           "user:\n  name: perf-test\n",
+		"language.yaml":       "language:\n  conversation_language: en\n  agent_prompt_language: en\n",
+		"quality.yaml":        "constitution:\n  development_mode: tdd\n",
 		"git-convention.yaml": "git_convention:\n  commit_style: conventional\n",
-		"git-strategy.yaml":  "git_strategy:\n  merge_strategy: squash\n",
-		"llm.yaml":           "llm:\n  default_model: claude-sonnet-4-20250514\n",
-		"ralph.yaml":         "ralph:\n  stale_seconds: 3600\n",
-		"state.yaml":         "state:\n  dir: .moai/state\n",
-		"workflow.yaml":      "workflow:\n  default_mode: autopilot\n",
-		"statusline.yaml":    "statusline:\n  enabled: true\n",
-		"research.yaml":      "research:\n  enabled: false\n",
-		"feedback.yaml":      "feedback:\n  repository: modu-ai/moai-adk\n",
-		"handoff.yaml":       "handoff:\n  mode: manual\n",
+		"git-strategy.yaml":   "git_strategy:\n  merge_strategy: squash\n",
+		"llm.yaml":            "llm:\n  default_model: claude-sonnet-4-20250514\n",
+		"ralph.yaml":          "ralph:\n  stale_seconds: 3600\n",
+		"state.yaml":          "state:\n  dir: .moai/state\n",
+		"workflow.yaml":       "workflow:\n  default_mode: autopilot\n",
+		"statusline.yaml":     "statusline:\n  enabled: true\n",
+		"research.yaml":       "research:\n  enabled: false\n",
+		"feedback.yaml":       "feedback:\n  repository: modu-ai/moai-adk\n",
+		"handoff.yaml":        "handoff:\n  mode: manual\n",
 		"harness.yaml": `harness:
   default_profile: standard
   levels:
@@ -439,12 +439,12 @@ func createFixtureProject(t *testing.T) string {
   evaluator:
     memory_scope: per_iteration
 `,
-		"gate.yaml":          "gate:\n  enabled: true\n",
-		"system.yaml":        "system:\n  log_level: warn\n",
-		"constitution.yaml":  "constitution:\n  principles: []\n",
-		"context.yaml":       "context_search:\n  enabled: false\n",
-		"interview.yaml":     "interview:\n  max_rounds: 4\n",
-		"design.yaml":        "design:\n  system: default\n",
+		"gate.yaml":         "gate:\n  enabled: true\n",
+		"system.yaml":       "system:\n  log_level: warn\n",
+		"constitution.yaml": "constitution:\n  principles: []\n",
+		"context.yaml":      "context_search:\n  enabled: false\n",
+		"interview.yaml":    "interview:\n  max_rounds: 4\n",
+		"design.yaml":       "design:\n  system: default\n",
 	}
 
 	for name, content := range sections {
