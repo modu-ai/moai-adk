@@ -1,7 +1,7 @@
 ---
 id: SPEC-TODO-LANDING-ATTRIBUTION-001
 title: "The landed verdict: an attribution-position predicate, and a ref chain that asks the branch this repository actually integrates on"
-version: "0.1.0"
+version: "0.2.0"
 status: draft
 created: 2026-09-03
 updated: 2026-09-03
@@ -24,6 +24,7 @@ related_specs:
 
 | Version | Date | Change |
 |---------|------|--------|
+| 0.2.0 | 2026-09-03 | Plan-audit iteration-1 remediation, measured in this tree at HEAD `e227871b4` against `origin/develop` `7835148d3` (5,837 subjects). D1 (BLOCKING) closed: §A.4 form 3 was an occurrence test and is replaced by two positional shapes (3a, 3b) plus an explicit non-attribution rule for absorb-direction merges; `MUT-MERGE-ANY-TOKEN` added to the mutant set. D2 citation corrected and its residual re-stated as measured-disjoint. D4/D5/D6/D7/D8/D9 dispositions recorded in `acceptance.md`, `plan.md`, and `progress.md`. Requirement and criterion counts unchanged at 12/12. |
 | 0.1.0 | 2026-09-03 | Initial plan-phase authoring (card t472), measured in worktree `.claude/worktrees/t472` at HEAD `4bcac7079` (branch `WT-landed-drift-detect`). Two axes, merged by lead verdict into one SPEC: the attribution predicate (axis F) and the ref chain plus its disclosure (axes A+B). Every figure below is carried from this lane's own committed measurements at `.moai/reports/t472/premise-recheck.md` and `.moai/reports/t472/axis-bf-measurement.md`, or re-run in this tree and cited beside the command. |
 
 > **Provenance discipline.** Every `file:line` citation is measured at tree `4bcac7079`. Every figure
@@ -50,7 +51,7 @@ match itself.
 
 **Axes A+B — the verdict asks the wrong branch, and never says which.** `LandedRefFor`
 (`prlink_landed.go:74-80`) reads `git_strategy.worktree_base_branch` from the root the queue hangs
-from, which `todoLandedRef` (`internal/cli/todo.go:82-90`) deliberately resolves to the **primary
+from, which `todoLandedRef` (`internal/cli/todo.go:81-90` — doc comment `:81-87`, func `:88-90`) deliberately resolves to the **primary
 checkout** — "the queue and the integration branch are properties of one repository, not of
 whichever worktree the command happens to run in". That primary checkout is parked on `main`, whose
 copy of the key is empty, so resolution falls to the hardcoded `DefaultLandedRef = "origin/main"`
@@ -79,38 +80,92 @@ Both commits are **t230's**. `32d2221fa`'s body reads "the card about to change 
 t237/#1641. Re-measured: the issue is OPEN" — a statement that t237 has *not* landed, read as
 evidence that it has. Commits whose subject attributes t237: zero.
 
-Control (the comparison is not vacuous): on `origin/develop`, ids attributed in a subject = 291,
-ids mentioned anywhere in a message = 379. Both operands are non-empty.
+Control (the comparison is not vacuous), re-measured at `origin/develop` `7835148d3` under the
+**repaired** §A.4 enumeration (forms 1, 2, 3a, 3b):
+
+    # attributed ids — forms 1/2/3a
+    git log origin/develop --format=%s | grep -ohE '^[a-z]+\(t[0-9]+\)!?:|\((card )?t[0-9]+\)$|^Merge card t[0-9]+' \
+      | grep -oE 't[0-9]+' | sort -u | wc -l           → 257
+    # form 3b adds exactly one id beyond those three   → t412
+    # ids mentioned anywhere in a message
+    git log origin/develop --format=%B | grep -oE '\bt[0-9]+\b' | sort -u | wc -l   → 379
+
+Attributed = **258**, mentioned = **379**, and `attributed ⊆ mentioned` holds (`comm -23` → 0 lines).
+Both operands are non-empty, so the comparison asserts something.
+
+*Correction (plan-audit D9a).* Version 0.1.0 recorded this control as **291**. That figure was
+produced by a broader proxy (paren convention + bare token) than §A.4 defines, and does not
+reproduce under the SPEC's own enumeration. The figure above is the reproducible one. The control's
+purpose — both operands non-empty — held under either.
 
 ### A.3 Why matching the subject is not enough
 
 Two of the seven `develop` false positives survive a "match the subject only" repair, because they
 are **other cards' subjects mentioning this card**. Re-run in this tree:
 
-    git log origin/develop --perl-regexp --grep='\bt216\b' --oneline
+    git log origin/develop --perl-regexp --grep='\bt216\b' --oneline    # 3 lines, shown in full
+      48c35a4d4 Merge branch 'WT-incremental-rebuild' into develop (card t263)
       673d3d8a0 docs(t263): die-at-exit reproduced (0/5) — remedy sequenced behind t216
+      2f170549b fix(hooks): re-wire the navigator SessionStart hook (t243)
 
-    git log origin/develop --perl-regexp --grep='\bt443\b' --format='%h %s'
+    git log origin/develop --perl-regexp --grep='\bt443\b' --format='%h %s'   # 14 lines; 1 shown
       0d26f8a00 chore(catalog): revert sync-auditor hash to develop value — t443 jurisdiction (t461)
+      [13 further lines elided — body mentions and other cards' subjects; selection rule: the single
+       line whose *subject* contains the queried token is shown, the rest are body-only matches]
 
-`673d3d8a0` is attributed to **t263**; `0d26f8a00` is attributed to **t461**. In both, the queried
-card appears in the subject and is not the card the commit belongs to. The discriminator is
-therefore not *occurrence*, nor *occurrence in the subject*, but **attribution position**.
+None of the three `t216` lines attributes t216: `48c35a4d4` and `673d3d8a0` are **t263**'s and
+`2f170549b` is **t243**'s (its body mentions t216). `0d26f8a00` is attributed to **t461**. In the two
+subject-occurrence cases (`673d3d8a0`, `0d26f8a00`) the queried card appears in the subject and is
+not the card the commit belongs to. The discriminator is therefore not *occurrence*, nor
+*occurrence in the subject*, but **attribution position**.
 
-### A.4 The three attributing positions
+### A.4 The attributing positions — four positional shapes
 
-The two true positives (t401, t440) are caught by exactly these, and nothing else in the measured
-population is:
+Every shape below is a **position**, not an occurrence. A card token that appears anywhere else in a
+subject — mid-sentence, inside a branch name, inside a dependency or absorb note — attributes
+nothing. Counts re-measured at `origin/develop` `7835148d3`, 5,837 subjects, 414 of them merges.
 
-| Form | Shape | Example |
-|---|---|---|
-| Conventional-commit scope | `<type>(<card>):` at subject start | `docs(t440): ...` |
-| Trailing parenthetical | `(<card>)` or `(card <card>)` closing the subject | `... refresh catalog moai whole-tree hash (t447)` |
-| Merge subject | a merge subject naming the card | `Merge branch 'WT-...' into develop (card t263)` |
+| # | Form | Positional rule | Observed | Example |
+|---|---|---|---|---|
+| 1 | Conventional-commit scope | `<type>(<card>):` **at subject start** | 290 | `docs(t440): record develop-absorb re-measure evidence` |
+| 2 | Trailing parenthetical | `(<card>)` or `(card <card>)` **closing the subject** | 869 | `... refresh catalog moai whole-tree hash (t447)` |
+| 3a | Merge, card-led | subject **begins** `Merge card <card>` | 5 | `Merge card t440 (WT-delivery-notice-docs) into develop: ...` |
+| 3b | Merge, integration-targeted | the merge's **named target is the branch the landed ref resolves to**, AND the card token lies **inside the subject's trailing parenthetical group** | 76 | `Merge branch 'WT-mx-tag-edges' into develop (card t412 — SPEC-MX-TAG-EDGES-001)` |
 
-Control for the trailing form, at `4bcac7079`: `git log refs/remotes/origin/develop --format=%s`
-piped to `grep -cE '\(t[0-9]+\)'` returns 963, and `grep -cE '\(card t[0-9]+\)'` returns 214 — the
-convention is alive and dominant, not a handful of stragglers.
+**[HARD] The non-attribution rule.** A merge whose named target is a **card worktree branch**
+(`WT-…`) attributes **no card**, in any position. Such a merge absorbs work into a card's branch; the
+subject of the sentence is a branch, not a card, and its parenthetical is a dependency note or an
+absorb record rather than an attribution. Measured: **21** absorb-direction merges carry a card token
+inside a trailing parenthetical group and are excluded by this rule alone.
+
+    git log origin/develop --format=%s | grep -E '^Merge ' | grep -E 'into WT-' \
+      | grep -oE '\([^()]*\)$' | grep -cE 't[0-9]+'        → 21
+
+**Why 3b, and not "a merge subject naming the card" (plan-audit D1).** Version 0.1.0 wrote form 3 as
+*"a merge subject naming the card"* — an **occurrence** test, and therefore the exact reading §A.3
+rejects, reproduced inside this SPEC's own enumeration. Measured, the occurrence reading admits
+**146** merge subjects against the 5 that form 3a describes — a 29× widening — of which **50** are
+caught by no attributing form at all. Two of them state the case:
+
+    Merge branch 'WT-audit-evidence-store' into WT-audit-advice-integrity (t387 depends on t386 convention doc)
+    Merge branch 'develop' into WT-inbox-drain-gap (absorb t280, lane-15 window; includes t239 merge e79c010b8)
+
+The first names **t387 and t386**, as a dependency note; the second names **t280 and t239**, as an
+absorb record. Neither is an attribution, and both are excluded by the non-attribution rule above.
+
+**What the repair costs and what it buys, measured.** Under forms 1/2/3a the attributed-id set is
+**257**; form 3b adds exactly **one** further id — `t412`, whose only landing evidence is the merge
+`b6231290d ... into develop (card t412 — SPEC-MX-TAG-EDGES-001)`, whose trailing group carries text
+after the card id and so escapes form 2's `)$` anchor. Set total **258**.
+
+    comm -13 <attributed under 1/2/3a> <attributed under 3b>   → t412   (exactly one line)
+
+One under-count survives and is recorded rather than hidden: **t250** is attributed on `develop` only
+by `6786c3fa4 t250: graph freshness ... (#1648)` — a bare `t250:` prefix, which is none of the four
+shapes. It will read `not-landed`. That failure direction is **loud** (an operator who knows the card
+landed sees `not-landed`), which is the direction `plan.md` §D already accepts for a fifth
+convention; the alternative — widening to catch it — is the occurrence reading this SPEC exists to
+remove.
 
 ### A.5 The ref: the repository already knows the answer
 
@@ -134,11 +189,31 @@ wants the release meaning. One value can therefore answer all four.
 | Card-worktree base | `internal/cli/session_worktree.go:215` | integration |
 | doctor check | `internal/cli/doctor_worktree_base.go:43` | integration |
 | Landed ref | `internal/kanban/prlink_landed.go:75` | integration |
-| SessionStart alignment | `internal/hook/worktree_base_branch.go:156` | integration |
+| SessionStart alignment | `internal/hook/worktree_base_branch.go:125` (the write; see below) | integration |
 
 The fourth **writes** `refs/remotes/origin/HEAD` to match the setting. The key is therefore not
 inert, and no requirement below may be justified on the premise that changing its value is
 mechanism-free.
+
+*Correction (plan-audit D2).* Version 0.1.0 cited `worktree_base_branch.go:156` as the write. Measured
+at HEAD `e227871b4`: `:155` is `worktreeBaseBranchReadConfigReal`, a config **read**; the write is
+`WorktreeBaseBranchSetHead(configured)` at **`:125`**, backed by `worktreeBaseBranchSetHeadReal`
+(`git remote set-head`) at **`:170`**. The corrected citation is `:125` / `:170`.
+
+*And the write and chain level 2 are measurably disjoint.* `RunWorktreeBaseAlignment` gates on the
+primary checkout at `:92` and returns at `:97-100` when the configured key is **empty**:
+
+    // internal/hook/worktree_base_branch.go:92-100, HEAD e227871b4
+    if !WorktreeBaseBranchInPrimaryCheckout() { return data }
+    configured := worktreeBaseBranchReadConfig(projectRoot)
+    if configured == "" {
+        // REQ-WBR-005: the neutral value performs no git-metadata read at all.
+        return data
+    }
+
+Chain level 2 fires only when level 1 is **empty**; the writer fires only when level 1 is
+**non-empty**, from the same primary-checkout root `LandedRefFor` reads. The two are mutually
+exclusive by construction, so **no cycle exists**. §D records what remains.
 
 ### A.7 The ordering decision — [HARD]
 
@@ -159,10 +234,15 @@ Notation: GEARS. Requirement IDs are stable; milestone assignment is in `plan.md
   position** within a commit's subject line, and shall not decide it on the presence of the card
   token anywhere in the commit message.
 
-- **REQ-TLA-002** (Ubiquitous) — The set of attributing positions shall be exactly the three forms
-  enumerated in §A.4: conventional-commit scope, trailing parenthetical (bare and `card`-prefixed),
-  and merge subject. The enumeration shall live in one named place in the implementation, so a
-  fourth form is a reviewable one-place diff.
+- **REQ-TLA-002** (Ubiquitous) — The set of attributing positions shall be exactly the positional
+  shapes enumerated in §A.4 — conventional-commit scope (form 1), trailing parenthetical, bare and
+  `card`-prefixed (form 2), card-led merge subject (form 3a), and integration-targeted merge subject
+  whose trailing parenthetical group carries the card token (form 3b) — and shall include §A.4's
+  non-attribution rule: a merge whose named target is a card worktree branch (`WT-…`) shall attribute
+  no card. No shape shall be expressed as a bare occurrence test — "the subject contains the token"
+  is not a position, and admitting it reintroduces REQ-TLA-001's defect through the enumeration. The
+  enumeration and its non-attribution rule shall live in one named place in the implementation, so a
+  further form is a reviewable one-place diff.
 
 - **REQ-TLA-003** (unwanted) — The landed predicate shall not report `landed` for a commit whose
   only occurrence of the queried card token lies in the commit body.
@@ -248,6 +328,16 @@ boundary.
   routine for running it, which is not code.
 - Representative mutant, declared a non-goal: building a new query subcommand. An implementation
   that adds one has not delivered this axis; it has re-delivered `todo pr` under a second name.
+
+### Out of Scope — the level-2 / SessionStart-writer interaction
+
+- Measured disjoint (§A.6): chain level 2 fires only on an empty configured key, and
+  `RunWorktreeBaseAlignment`'s write fires only on a non-empty one, from the same primary-checkout
+  root. No cycle exists, so nothing here is a requirement.
+- What genuinely remains is the converse and it is **not** a coupling: a project that **configures**
+  the key never reaches level 2 at all, so the two surfaces never interact on this path. Should a
+  future change make the writer fire on an empty key, that disjointness ends — but repairing it then
+  is that change's obligation, not this SPEC's.
 
 ### Out of Scope — release-wait as the axis-A remedy
 
