@@ -69,6 +69,12 @@ type Verdict struct {
 	// callers/tests distinguish the cause.
 	WallClockExit bool            `json:"wall_clock_exit,omitempty"`
 	Stagnation    bool            `json:"stagnation,omitempty"`
+	// Unsatisfiable is set when a mechanical condition proved unrunnable — the
+	// shell reported exit 127 ("command not found") for a condition that did not
+	// declare 127 as its expected status. Such a condition can never pass, so
+	// the evaluator stops blocking instead of spending every remaining turn on
+	// it; the shape distinguishes this from an ordinary not-yet-converged turn.
+	Unsatisfiable bool `json:"unsatisfiable,omitempty"`
 	Verdict       *CeilingVerdict `json:"verdict,omitempty"`
 	Yielded       bool            `json:"yielded,omitempty"`
 	// SnapshotAttribution records, per reused Tier-1 condition, the snapshot
@@ -99,6 +105,11 @@ type Eval struct {
 // DefaultStagnationThreshold is the number of consecutive identical progress
 // notes that trigger the stagnation guard (REQ-GLE-017).
 const DefaultStagnationThreshold = 3
+
+// shellCommandNotFound is the POSIX shell's exit status for an unresolvable
+// command name. It is the language-independent signal that a condition's first
+// word names nothing runnable.
+const shellCommandNotFound = 127
 
 // outputTailLen is the max number of bytes of command output retained in a
 // failed-condition record (keeps the block JSON compact).
@@ -340,6 +351,7 @@ func (e *Eval) Evaluate(ctx context.Context, g *Goal) (Verdict, bool) {
 	// recorded exit code without executing; any miss/stale falls back to the
 	// existing CmdRunner execution path unchanged.
 	var failed []FailedCond
+	var unrunnable []FailedCond
 	var attributions []string
 	hasMechanical := false
 	// SPEC-INFINITE-GOAL-001 REQ-4: collect per-condition (exit, output) so the
@@ -374,7 +386,30 @@ func (e *Eval) Evaluate(ctx context.Context, g *Goal) (Verdict, bool) {
 				fc.Tail = tail(out + " (" + err.Error() + ")")
 			}
 			failed = append(failed, fc)
+			// Exit 127 is the shell's "command not found": the condition's first
+			// word names nothing runnable, so no number of further turns can make
+			// it exit as expected. A condition that DECLARES 127 as its expected
+			// status is a legitimate absence assertion and is excluded — it did
+			// not reach this branch at all.
+			if exit == shellCommandNotFound {
+				unrunnable = append(unrunnable, fc)
+			}
 		}
+	}
+	// Unsatisfiable-by-construction: stop the loop rather than block on a
+	// condition that can never pass. This is the backstop for goals armed before
+	// the arm-time runnability gate landed, and for prose whose first word
+	// happens to resolve at arm time.
+	if len(unrunnable) > 0 {
+		g.Status = StatusUnsatisfiable
+		v := Verdict{
+			Unsatisfiable:       true,
+			FailedConditions:    unrunnable,
+			Verdict:             e.unrunnableReport(g, unrunnable),
+			SnapshotAttribution: attributions,
+		}
+		e.appendProgress(g, "unsatisfiable-exit")
+		return v, false
 	}
 	// Compute the mechanical-condition fingerprint for this turn (D7). The
 	// fingerprint keys on per-condition (exit, output-hash) + a bounded file-set
@@ -463,6 +498,32 @@ func (e *Eval) ceilingReport(g *Goal, cause string) *CeilingVerdict {
 		BaselineAttribution: "measured against this session's goal state (.moai/state/goal/<session>.json)",
 		Gaps:                "the orchestrator did not surface evidence that all conditions hold; remaining conditions unverified",
 		ResidualRisk:        "stagnation or ceiling may indicate a semantic failure requiring E1/E3 escalation rather than further turns",
+	}
+}
+
+// unrunnableReport assembles the 5-section verdict for an unsatisfiable-by-
+// construction halt. It names the likely cause rather than only the symptom:
+// exit 127 on a condition that reads as prose almost always means a natural-
+// language claim was classified mechanical, and the remedy is the `model:`
+// declaration prefix.
+func (e *Eval) unrunnableReport(g *Goal, unrunnable []FailedCond) *CeilingVerdict {
+	var cmds []string
+	for _, f := range unrunnable {
+		cmds = append(cmds, fmt.Sprintf("%q", f.Cmd))
+	}
+	joined := strings.Join(cmds, ", ")
+	return &CeilingVerdict{
+		Claim: fmt.Sprintf(
+			"goal %q is unsatisfiable as declared: %d mechanical condition(s) exited 127 (command not found)",
+			g.Goal, len(unrunnable)),
+		Evidence: fmt.Sprintf(
+			"turn %d of %d; condition(s) %s were run as shell commands and the shell resolved no such command (exit 127)",
+			g.TurnsUsed, g.Ceiling.MaxTurns, joined),
+		BaselineAttribution: "measured against this session's goal state (.moai/state/goal/<session>.json) and the exit codes observed this turn",
+		Gaps: "whether the condition was ever meant as a command was NOT determined — a condition reading as prose was probably a claim about the " +
+			"conversation, misclassified into the mechanical tier. Re-arm it with the model: prefix (moai goal \"model: <claim>\") to declare the tier explicitly.",
+		ResidualRisk: "a genuine command that is merely absent from this environment produces the same exit 127; if the command was intended, install it " +
+			"or re-arm with the cmd: prefix once it resolves. No condition was evaluated on its merits this turn.",
 	}
 }
 

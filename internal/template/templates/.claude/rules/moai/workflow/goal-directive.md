@@ -8,6 +8,8 @@
 
 `/moai goal "<condition>"` registers a completion condition and arms it for the active session. The condition text is parsed into a `conditions[]` array mixing **mechanical** conditions (a shell command whose exit code decides) and **model** conditions (a claim the transcript must demonstrate). The `moai hook stop-goal` Stop-hook evaluator loads the session's goal state at each turn-end and emits a block decision until the goal converges or a bound fires — so the session keeps working without a prompt at each step.
 
+Prefix the condition with `model:` or `cmd:` to declare which tier is meant. Without a prefix the tier is inferred from an English substring test, which reads a claim written in any other language as a shell command — and a shell command that cannot run never exits 0, so the goal blocks every turn until its bound fires.
+
 State lives at `.moai/state/goal/<session-id>.json`, one file per session. A turn ceiling (default 30) bounds the loop; at the ceiling the evaluator emits a 5-section verdict (Claim / Evidence / Baseline-attribution / Gaps / Residual-risk) and stops blocking. The runtime's consecutive-block cap (default 8, `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`) overrides the block first on an unattended run — the effective bound is `min(ceiling, cap)` and a missing verdict must not be read as convergence. A stagnation guard halts the loop after N consecutive no-progress iterations with an E1/E3 escalation note.
 
 `/moai goal` is **arm-only** (see § Goal-Presentation Timing). The delivered verbs are `/moai goal "<condition>"` (register + arm), `/moai goal status [--all]`, and `/moai goal clear`. Full verb surface, the progression-mode axis, and the safety invariants live in `.claude/skills/moai/workflows/goal.md`.
