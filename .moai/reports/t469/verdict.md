@@ -26,7 +26,7 @@ All commands run from worktree `t469`, recorded verbatim in
 |---|---|---|---|
 | wrapper lint | `go run ./cmd/moai spec lint .moai/specs/SPEC-ACHWD-STRIP-EXEMPT-001/spec.md` | `0 error(s), 4 warning(s)` (1 `ModalityMalformed` on REQ-ASE-001 + 3 `CoverageIncomplete`, exit 0) | `sync-evidence/lint-wrapper.txt` |
 | HWD lint | `go run ./cmd/moai spec lint .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md` | `0 error(s), 18 warning(s)` (4 `ModalityMalformed` + 14 `CoverageIncomplete`, exit 0) — identical composition to the run-phase A5b measurement, both classes pre-existing | `sync-evidence/lint-hwd.txt` |
-| mirror check | AC-HWD-015 perl command (program extracted byte-for-byte to `sync-evidence/t469-mirror-check.pl`; the inline one-liner form was refused by the worktree session guard as unverifiable) | no output, `exit=0` | `sync-evidence/mirror-check.txt` |
+| mirror check | AC-HWD-015 perl command (program re-expressed as `sync-evidence/t469-mirror-check.pl` — **semantically equivalent, not byte-identical**: whitespace and a trailing `;` differ, all four regex substitution bodies character-identical; the inline one-liner form was refused by the worktree session guard as unverifiable) | no output, `exit=0` (re-observed by the sync-auditor at `a28706cff`; invocation + output + exit recorded in the evidence file) | `sync-evidence/mirror-check.txt` |
 
 Wrapper warning profile note (not smoothed): the wrapper SPEC has its own
 warning profile — 1 `ModalityMalformed` (REQ-ASE-001's lead clause breaks the
@@ -145,15 +145,19 @@ dimensions independently.
 
 ### Defects (all non-blocking; no must-pass dimension failed)
 
-- **D1** [minor] [optional] verdict.md Evidence table — "program extracted
+- **D1** [minor] [optional] **[REPAIRED 2026-09-03 — lead adjudication]** verdict.md Evidence table — "program extracted
   byte-for-byte" is a documentation overclaim: the `.pl` is semantically
   identical (regex bodies character-identical, both forms exit 0) but differs
   in whitespace and a trailing `;`. Required fix: reword to "semantically
-  identical, whitespace-normalized" or re-extract verbatim.
-- **D2** [minor] [optional] `sync-evidence/mirror-check.txt` is 0 bytes — it
+  identical, whitespace-normalized" or re-extract verbatim. → Evidence-table
+  wording lowered to semantic equivalence with the measured delta named.
+- **D2** [minor] [optional] **[REPAIRED 2026-09-03 — lead adjudication]** `sync-evidence/mirror-check.txt` is 0 bytes — it
   persists "no output" only; the "exit=0" half of the Observed cell is not in
   the cited file. Required fix: record `exit=0` in the file (or state in
-  verdict.md that the exit was observed in-session).
+  verdict.md that the exit was observed in-session). → file re-written from a
+  fresh auditor re-execution at `a28706cff` (invocation + observed no output +
+  `mirror-check-exit=0`; output emptiness independently observed via
+  `wc -c` → `0`).
 - **D3** [minor] [optional] wrapper progress.md §E.2/§E.3 remain
   `_<pending run-phase>_` in a completed SPEC, and the run-phase A5a/A5b
   evidence lives under §E.1 (the plan-phase section). Era classification is
@@ -170,6 +174,13 @@ dimensions independently.
   close-subject full-ID mandate's concern (drift-detector subject extraction)
   did not materialize on this tree (drift audit clean — measured), so this is
   a hygiene note, not a defect claim against the mandate.
+
+Lead adjudication on this findings list (2026-09-03): D1/D2 repaired in this
+record update; D3/D4/D5 record-only — no repair, left as recorded. The
+dimension scores and the 91 harmonic verdict reflect the audited sync-commit
+state `85296e031`; the repairs do not retroactively re-score it. The Mutant B
+compensating-control observation (Security row, check 4) stands as the card's
+non-vacuity evidence.
 
 ### Reasoned, not executed
 
