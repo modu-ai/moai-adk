@@ -2,7 +2,7 @@
 id: SPEC-LANE-PUSH-DOC-001
 title: "Lane push actor sentence repair — CLAUDE.local.md §4.1 [HARD] bullet second sentence names the lead, not the lane, as the develop pusher"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-03
 updated: 2026-09-03
 author: manager-spec
