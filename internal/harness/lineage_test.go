@@ -560,14 +560,14 @@ func TestWriteLineageEntry_LearnedSurfaceFields(t *testing.T) {
 
 	manifestPath := filepath.Join(t.TempDir(), "manifest.jsonl")
 	entry := LineageEntry{
-		ProposalID:      "hev2-030-001",
-		TargetPath:      "CLAUDE.md",
-		AppliedSurface:  "description",
-		Decision:        "approved",
-		Reason:          "curator managed-block write",
-		LearnedSurface:  "claude.md.learned-workflow",
-		BulletsChanged:  []string{"ledger-key-A", "ledger-key-B"},
-		SnapshotDir:     "/tmp/snapshots/2026-07-12T00-00-00.000000000Z",
+		ProposalID:     "hev2-030-001",
+		TargetPath:     "CLAUDE.md",
+		AppliedSurface: "description",
+		Decision:       "approved",
+		Reason:         "curator managed-block write",
+		LearnedSurface: "claude.md.learned-workflow",
+		BulletsChanged: []string{"ledger-key-A", "ledger-key-B"},
+		SnapshotDir:    "/tmp/snapshots/2026-07-12T00-00-00.000000000Z",
 	}
 	if err := WriteLineageEntry(manifestPath, entry); err != nil {
 		t.Fatalf("WriteLineageEntry: %v", err)
@@ -659,13 +659,13 @@ func TestLineageEntry_AdditiveFieldOrder(t *testing.T) {
 	t.Parallel()
 
 	entry := LineageEntry{
-		ProposalID:      "order-001",
-		TargetPath:      "CLAUDE.md",
-		AppliedSurface:  "description",
-		Decision:        "approved",
-		LearnedSurface:  "claude.md.learned-workflow",
-		BulletsChanged:  []string{"k1"},
-		SnapshotDir:     "/tmp/snap",
+		ProposalID:     "order-001",
+		TargetPath:     "CLAUDE.md",
+		AppliedSurface: "description",
+		Decision:       "approved",
+		LearnedSurface: "claude.md.learned-workflow",
+		BulletsChanged: []string{"k1"},
+		SnapshotDir:    "/tmp/snap",
 	}
 	data, _ := json.Marshal(entry)
 	s := string(data)

@@ -143,7 +143,7 @@ func TestValidate_RejectsInvalidIsolation(t *testing.T) {
 // low|medium|high|xhigh|max (AC-HV4-005a + design §C.2).
 func TestValidate_RejectsInvalidEffort(t *testing.T) {
 	cases := []struct {
-		effort   string
+		effort    string
 		wantValid bool
 	}{
 		{EffortLow, true},
@@ -174,7 +174,7 @@ func TestValidate_RejectsInvalidEffort(t *testing.T) {
 // inherit|haiku|sonnet|opus (AC-HV4-005a + design §C.2).
 func TestValidate_RejectsInvalidModel(t *testing.T) {
 	cases := []struct {
-		model    string
+		model     string
 		wantValid bool
 	}{
 		{ModelInherit, true},
@@ -204,7 +204,7 @@ func TestValidate_RejectsInvalidModel(t *testing.T) {
 // the 6-pattern catalog (AC-HV4-004b + design §C.2).
 func TestValidate_RejectsInvalidPattern(t *testing.T) {
 	cases := []struct {
-		pattern  string
+		pattern   string
 		wantValid bool
 	}{
 		{PatternPipeline, true},

@@ -139,10 +139,11 @@ func appendOrWriteJSON(path string, data []byte) error {
 //
 // @MX:WARN: writes to user .claude/settings.json — partial writes corrupt configuration.
 // @MX:REASON: both callers (settings.json write + archive write) depend on all-or-nothing
-//             semantics; a plain os.WriteFile body would break the atomicity contract implied
-//             by the function name. Pattern matches internal/runtime/persist.go (canonical
-//             reference) and the other atomic writers in this codebase (config/manager.go,
-//             manifest/manifest.go, template/deployer.go, harness/applier.go, harness/tier/tier.go).
+//
+//	semantics; a plain os.WriteFile body would break the atomicity contract implied
+//	by the function name. Pattern matches internal/runtime/persist.go (canonical
+//	reference) and the other atomic writers in this codebase (config/manager.go,
+//	manifest/manifest.go, template/deployer.go, harness/applier.go, harness/tier/tier.go).
 //
 // SPEC-V3R5-ATOMIC-WRITE-001 REQ-AWR-001..006 → AC-AWR-001..008.
 func atomicWrite(path string, data []byte, perm os.FileMode) error {
