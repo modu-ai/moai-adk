@@ -24,11 +24,93 @@ Plan-phase evidence captured on tree `d592b0551`:
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Milestones: M1 RED `9e8e19946` · M2 GREEN `fa72e39a8` · M3 doc-sweep `aa6c97580` (branch `WT-codex-path-parser`, cycle_type=tdd).
+
+### E8 — RED evidence (captured BEFORE implementation, tree `9e8e19946`)
+
+Command: `go test ./internal/cli/ -run 'CodexSkillPath' -count=1 -v`
+Census (D3): `go test ./internal/cli/ -run 'CodexSkillPath' -count=1 -v 2>&1 | grep -c '^=== RUN'` → **8** (positive; no `[no tests to run]`).
+Verdict: **5 FAIL / 3 PASS** — the 3 PASS are the pre-classified guards (AC-02 vacuous-green-today, AC-05, AC-06), matching spec.md §D.1 two-cell table.
+
+Verbatim failure excerpts (the right stated reason in every case — raw `os.Stat` ENOENT counting the shape as missing, remove directive attached):
+
+- AC-01 `TestCodexSkillPath_HomeRelativeExistingNotMissing` — `an existing ~-relative registration was reported missing: {Status:warn Message:~/.codex/config.toml: 1 stale skill entry … — remove the stale entries or restore the skill files}`
+- AC-03 `TestCodexSkillPath_RelativeNotMissingDistinctClassification` — `relative declaration inflated the missing count: "~/.codex/config.toml: 2 stale skill entries"` (+ 2 further errors: missing count lost; distinct relative classification absent from Detail)
+- AC-03 `TestCodexSkillPath_RelativeOnlyNonDestructiveFinding` — `a relative-only config was advised to remove entries: {Status:warn Message:… 1 stale skill entry …}`
+- AC-04 `TestCodexSkillPath_BackslashAndOtherUserHomeNotMissing` — `oddly-formed declarations inflated the missing count: "~/.codex/config.toml: 3 stale skill entries"`
+- AC-08 `TestCodexSkillPath_ExpansionUsesUserHomeSeam` — `~ expansion did not use the pinned user home seam: {Status:warn Message:… 2 stale skill entries …}`
+
+### E1 — AC matrix (all measurements this run, tree `aa6c97580` unless noted)
+
+Command (shared): `go test ./internal/cli/ -run 'CodexSkillPath' -count=1 -v` → 8/8 `--- PASS`, `ok github.com/modu-ai/moai-adk/internal/cli 1.308s`.
+
+| AC | Test | Status | Command (selector) | Actual output | Tree |
+|---|---|---|---|---|---|
+| AC-CSP-001-01 | HomeRelativeExistingNotMissing | PASS | `-run 'CodexSkillPath_HomeRelativeExistingNotMissing'` | `--- PASS … (0.01s)` | aa6c97580 |
+| AC-CSP-001-02 | HomeRelativeMissingStillCounted | PASS | `-run 'CodexSkillPath_HomeRelativeMissingStillCounted'` | `--- PASS … (0.01s)` | aa6c97580 |
+| AC-CSP-001-03 | RelativeNotMissingDistinctClassification + RelativeOnlyNonDestructiveFinding | PASS | `-run 'CodexSkillPath_Relative'` | both `--- PASS` | aa6c97580 |
+| AC-CSP-001-04 | BackslashAndOtherUserHomeNotMissing | PASS | `-run 'CodexSkillPath_BackslashAndOtherUserHomeNotMissing'` | `--- PASS … (0.01s)` | aa6c97580 |
+| AC-CSP-001-05 | AbsoluteExistingAndMissing + StaleHomeSkillsReported + HealthyHomeSkillsNoFinding | PASS | `-run 'TestCodexSkillPath_AbsoluteExistingAndMissing|TestCheckCodexWiring_StaleHomeSkillsReported|TestCheckCodexWiring_HealthyHomeSkillsNoFinding'` | all `--- PASS` / `ok` | aa6c97580 |
+| AC-CSP-001-06 | RealMissingWithSymlinkLoopIndeterminate + IndeterminateStatNotMissing | PASS | `-run 'CodexSkillPath_RealMissingWithSymlinkLoopIndeterminate|TestCheckCodexWiring_IndeterminateStatNotMissing'` | all `--- PASS` | aa6c97580 |
+| AC-CSP-001-07 | structural — source scan of the new fixture set | PASS | inspection: every fixture path is `t.TempDir()`-derived or a declared-shape literal (`~/…`, `skills/…`, `skills\…`, `~otheruser/…`, `~`); home pinned via `stubCodexHome` (seam + CODEX_HOME blank) in all 8 tests; zero reads of the developer home, zero writes outside temp roots | n/a (structural) | aa6c97580 |
+| AC-CSP-001-08 | ExpansionUsesUserHomeSeam | PASS | `-run 'CodexSkillPath_ExpansionUsesUserHomeSeam'` | `--- PASS … (0.00s)` | aa6c97580 |
+
+Fixture sweep (lead-mandated): `grep -n '/nonexistent' internal/cli/doctor_codex_test.go` → no output (exit 1). All 12 former literal sites now derive from `absentSkillPath(t, …)` / shared `absentRoot` temp roots. Width-band tests (MessageWidthStaysInBand, RenderedPanelStaysInBand) PASS unchanged with the longer temp paths — their band assertions bound the rendered Message/panel width, which cites config paths and counts, not the fixture skill paths.
+
+Regression: `go test ./internal/cli/ -run 'TestCheckCodexWiring' -count=1` → `ok … 0.799s` (19 tests). `go test ./internal/codexwiring/ -count=1` → `ok`.
+
+### E2 — Cross-platform builds (tree `aa6c97580`)
+
+- `go build ./...` → exit 0
+- `GOOS=windows GOARCH=amd64 go build ./...` → exit 0
+- Windows TEST-RUN verdict: deferred to CI (named Gap — a build verdict proves compilation only, not classification).
+
+### E3 — Coverage (informational vs 85%)
+
+- `go test -cover ./internal/codexwiring/ -count=1` → `ok … coverage: 88.2% of statements` (tree `aa6c97580`)
+- `go test -cover ./internal/cli/` → full-package run exceeds the local single-command budget (first attempt FAILED on the default 10m test timeout at 601.349s — the package's known long suite floor, aggravated by coverage instrumentation); retry with `-timeout=25m` in flight at §E.3 write time. Package-level number to be read from CI if the local retry does not complete.
+
+### E4 — Subagent boundary
+
+`grep -rn 'AskUserQuestion\|mcp__askuser' internal/cli/doctor_codex.go internal/cli/doctor_codex_test.go internal/codexwiring/skills.go` → no matches (exit 1).
+
+### E5 — Lint
+
+- Pre-flight baseline (tree `f813cdb0e`): `golangci-lint run --timeout=2m` → 1 pre-existing errcheck in `internal/template/catalog_tree_hash.go` (untouched by this SPEC).
+- Post-change (tree `aa6c97580`): `golangci-lint run --timeout=5m ./internal/cli/... ./internal/codexwiring/...` → `0 issues.` — NEW findings: 0.
+
+### E6 — Commits + push state
+
+- `9e8e19946` M1 (tests + spec frontmatter draft→in-progress) · `fa72e39a8` M2 (classification + expansion) · `aa6c97580` M3 (SkillEntry.Path doc posture) · progress/backfill commits follow this file.
+- Push state: **not pushed — lane protocol** (develop integration + push is the lead's window; the lane never pushes).
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-03
+run_commit_sha: "pending-backfill-run"   # backfilled below after this commit lands (D3 placeholder pattern)
+run_status: complete
+ac_pass_count: 8
+ac_fail_count: 0
+preserve_list_post_run_count: 7
+preserve_list_rows:
+  - "CODEX_HOME precedence via resolveCodexHomeDir (CodexHomeHonoured + CodexHomeConfigRead PASS)"
+  - "stat-error taxonomy: only fs.ErrNotExist feeds missing (AC-06 pair PASS)"
+  - "indeterminate-only config stays silent — no-finding-when-missing==0 posture preserved (HealthyHomeSkillsNoFinding, AbsentHomeConfigSilent PASS)"
+  - "no second home resolver — ~ expansion reuses the codexUserHomeDir seam (AC-08 PASS)"
+  - "read-only, fail-open in every direction (unresolvable user home counts indeterminate, never missing)"
+  - "unspecified-enabled declared split preserved (UnspecifiedEnabledReportedSeparately PASS)"
+  - "Message/rendered-panel width bands preserved (MessageWidthStaysInBand + RenderedPanelStaysInBand PASS)"
+l44_pre_commit_fetch: "not-run — lane worktree off develop; no origin-facing claim made in run-phase"
+l44_post_push_fetch: "not-run — no push (lane protocol: lead batch-pushes origin/develop)"
+new_warnings_or_lints_introduced: 0
+cross_platform_build:
+  darwin: "exit 0 (go build ./…, tree aa6c97580)"
+  windows: "exit 0 (GOOS=windows GOARCH=amd64 go build ./…, tree aa6c97580)"
+  windows_test_run: "deferred-to-CI (named gap; build proves compilation only)"
+total_run_phase_files: 5   # doctor_codex.go, doctor_codex_test.go, skills.go (doc comment), spec.md frontmatter, progress.md
+m1_to_mN_commit_strategy: "per-milestone commits: M1 9e8e19946, M2 fa72e39a8, M3 aa6c97580, + progress/backfill"
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
