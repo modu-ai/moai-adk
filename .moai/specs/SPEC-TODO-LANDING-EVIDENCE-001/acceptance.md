@@ -255,22 +255,37 @@ rows — the exact hazard `internal/kanban/backlog_migrate.go:604-608` records f
 `INSERT INTO items(seq, id, text, added_at, spec_id, state) VALUES (…)` — and (b) exercises a
 **reconstruction of the pre-change open path**: the `backlogDDL` const, the `schemaVersion` read, and
 the version switch **exactly as they stand at HEAD `e50964ad3`**, held as a frozen test-local copy,
-run against that same post-change database,
+run against that same post-change database, and (c) asserts the frozen copy has **not drifted** from
+the live code,
 **Then** both statements succeed and the SELECT returns the pre-change field values unchanged; the
 reconstructed open path returns no error and does not classify the database as `ErrBacklogCorrupt`;
-and `schema_version` reads exactly `"1"`.
+`schema_version` reads exactly `"1"`; **and** the frozen DDL string equals the live `backlogDDL`
+const byte for byte, and the frozen switch's accepted-version set equals the live one.
+
+**Why clause (c) exists — clause (b) alone is a coverage assertion, not a detector.** Version 0.2.0
+claimed (a) and (b) "fail independently"; that **overstated it** and the claim is withdrawn. The only
+RED then listed for (b) was the `schema_version` bump, which clause (a) already catches, and no
+mutation this SPEC permits reds (b) while (a) stays green — REQ-TLE-018 forbids the bump and
+`design.md` §2 rules that `backlogDDL` is not edited, so (b) was exercising a path that could not
+diverge. Clause (c) is what gives (b) an independent failure mode: it converts the replica's fidelity
+from an assumption into an assertion.
 
 **What this does and does not demonstrate.** Clause (b) exercises the code path a pre-change binary
 would take (`internal/kanban/backlog_sqlite.go:278-299`: DDL exec → `schemaVersion` → version
-switch), which clause (a) alone never reaches. It is still a **reconstruction compiled from today's
-source**, not a genuinely older build — a divergence between the frozen copy and a real released
-binary would be invisible to it. `spec.md` §G keeps REQ-TLE-018 listed as an argued claim with a
-partial demonstration for exactly this reason; this criterion narrows the gap, it does not close it.
+switch), which clause (a) alone never reaches, and clause (c) keeps that reconstruction honest over
+time. It is still a **reconstruction compiled from today's source**, not a genuinely older build — a
+divergence between the frozen copy and a real released binary is invisible to all three clauses.
+`spec.md` §G keeps REQ-TLE-018 listed as an argued claim with a partial demonstration for exactly
+this reason; this criterion narrows the gap, it does not close it.
 
-**RED**: bump `backlogSchemaVersion` → the version assertion fails, **and** the reconstructed open
-path rejects the database as `ErrBacklogCorrupt` at `backlog_sqlite.go:293-297` — the two clauses
-fail independently, which is the point of adding (b). Give `landing` a `NOT NULL` without a default
-→ the verbatim INSERT in (a) fails.
+**RED**: bump `backlogSchemaVersion` → the version assertion in (a) fails and the reconstructed open
+path in (b) rejects the database as `ErrBacklogCorrupt` at `backlog_sqlite.go:293-297` (both, from
+one mutation — they are not independent detectors of it). Give `landing` a `NOT NULL` without a
+default → the verbatim INSERT in (a) fails. **Edit `backlogDDL` — add a table, a column, or an index
+to the live const — while leaving the frozen copy untouched** → (a) and (b) both stay green and only
+(c) fails. That is (b)'s independent RED, and it is the drift this criterion exists to make loud:
+without (c) the replica goes silently stale while the test keeps reporting that it exercises the
+pre-change open path.
 
 ### AC-TLE-019 — the schema-freeze guard now sees column tuples, on BOTH tables (REQ-TLE-019)
 
@@ -312,26 +327,47 @@ cite this criterion's recorded RED.
 
 ### AC-TLE-020 — a supplied SHA is validated for existence and reachability (REQ-TLE-020)
 
-**Given** a fixture ref with a known history, and three `--sha` inputs: (a) a commit reachable from
-that ref, (b) a syntactically valid but non-existent object id, (c) a commit that exists but is
-**not** reachable from that ref (created on a detached side branch the fixture does not merge),
+**Given** a fixture ref with a known history, and four `--sha` conditions: (a) a commit reachable
+from that ref, (b) a syntactically valid but non-existent object id, (c) a commit that exists but is
+**not** reachable from that ref (created on a detached side branch the fixture does not merge), and
+(d) the checks **cannot be run** — exercised twice, once with `git` absent from the resolved command
+runner and once with a `--ref` that resolves to no ref,
 **When** the operator records a landing with each in turn,
 **Then** (a) exits 0 and stores the record with the **full resolved SHA**, not the abbreviated input
-form; (b) and (c) each exit 1, write nothing (`SELECT landing IS NULL` returns 1 for the card), and
-each names on stderr which check failed — existence for (b), reachability for (c), distinguishably.
+form; (b), (c), and (d) each exit 1, write nothing (`SELECT landing IS NULL` returns 1 for the card),
+and each names on stderr which check failed or could not run — existence for (b), reachability for
+(c), unrunnable for (d) — distinguishably from one another.
 
-**And the attribution boundary holds**: the card id is not passed to either check. Asserted by
-running (a) with the card renamed between two invocations and observing the same accept/reject
-outcome — the validation result is independent of which card the record belongs to.
+**Why (d) is a case and not an omission.** REQ-TLE-020 binds "**when** either check fails **or
+cannot be run**", and this codebase's neighbouring surface degrades rather than refuses on the same
+condition (`todo pr` is fail-open on an unanswerable landed question). The two are deliberately
+opposite and the difference must be pinned, not inferred: a read that cannot answer stays permissive
+because refusing would block every machine that cannot answer; a **write** that cannot validate
+refuses, because the alternative is storing an unvalidated SHA permanently — which is the whole
+reason REQ-TLE-020 exists. Without (d), an implementer could reasonably carry the fail-open habit
+across from `todo_pr.go` and satisfy every other clause.
 
-**RED**: skip validation entirely → (b) and (c) exit 0 and store a record, so both the exit-code and
-the NULL assertions fail. Validate existence but not reachability → (c) passes when it must fail.
-Store the supplied abbreviated form rather than the resolved SHA → (a)'s full-SHA assertion fails.
-Collapse the two stderr messages into one → the distinguishability assertion fails.
+**And the attribution boundary holds**: the card id reaches neither check. Asserted by recording the
+**same `--sha` against two different card ids** — two cards created in the same fixture queue, both
+records attempted with an identical SHA — and observing an identical accept/reject outcome and an
+identical stderr classification for both. Run for the accepting condition (a) and for at least one
+refusing condition (b or c), so the invariance is asserted on both branches.
 
-**Why the card-id clause is not decorative.** It is the mechanical guarantee that REQ-TLE-020 stays
-a referential-integrity check and never becomes attribution: an implementation that fed the card
-token into the validation would produce a card-dependent result and fail the rename assertion.
+**Why two card ids, and not one card renamed.** The predicate this clause guards against keys on the
+card **id**, not its text: `LandedGrepArgs` builds its argv as `` `--grep=\b` + cardID + `\b` ``
+(`internal/kanban/prlink_landed.go:96-108`), and no verb registered on the `todo` command changes a
+card's id — `edit` changes text only (`internal/cli/todo.go:148-152`). A rename therefore varies the
+wrong variable: an implementation that leaked the card token into validation would return the same
+result before and after a text rename, so the earlier rename-based form **passed with the leak
+intact**. Varying the id is what makes the clause able to fail.
+
+**RED**: skip validation entirely → (b), (c), and (d) exit 0 and store a record, so both the
+exit-code and the NULL assertions fail. Validate existence but not reachability → (c) passes when it
+must fail. Treat an unrunnable check as permissive → (d) exits 0 and stores. Store the supplied
+abbreviated form rather than the resolved SHA → (a)'s full-SHA assertion fails. Collapse the stderr
+messages → the distinguishability assertion fails. **Feed the card token into either check** → the
+two-card outcomes diverge and the boundary clause fails — this is the RED the rename form did not
+have.
 
 ### AC-TLE-021 — the two doctrine surfaces agree, and agree with the emitted row (REQ-TLE-021)
 
@@ -339,8 +375,13 @@ token into the validation would produce a card-dependent result and fail the ren
 `internal/template/templates/.claude/skills/moai/workflows/todo.md`,
 **When** the test extracts the `moai todo landed` verb-table row and the `moai todo pr` row from each
 file and compares them, and separately parses the column count those `todo pr` rows state,
-**Then** the extracted rows are byte-identical between the two files; **and** the stated column count
-equals the field count AC-TLE-015 measures on the rendered row (7).
+**Then** the extracted rows are byte-identical between the two files; **and** the column count the
+`todo pr` rows state equals the number of tab-separated fields in a row **this test renders and
+counts itself**, against its own fixture queue. (Today that number is 7; the literal is recorded
+here as a note, not as the comparand — a test cannot read another test's runtime value, so
+AC-TLE-021 re-renders rather than citing AC-TLE-015's measurement, and comparing prose against a
+hard-coded 7 would make this a doc-consistency check rather than the prose-versus-behaviour tie
+REQ-TLE-021 asks for.)
 
 **RED**: edit the local `todo.md` without mirroring to the template (the drift this repository has
 already paid for once, in the `.sh` / `.sh.tmpl` hook-wrapper pair) → the byte-identity assertion

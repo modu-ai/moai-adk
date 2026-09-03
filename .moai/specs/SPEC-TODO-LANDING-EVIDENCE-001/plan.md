@@ -34,12 +34,12 @@ rows must be shown unchanged before the `ALTER` is introduced.
    cannot be enumerated. Inherited from half A, recorded in `spec.md` §G, not closed here. M4's
    criterion (AC-TLE-015) therefore pins all seven fields, not just the two it adds — leaving
    fields 1-5 free would let a reorder ride along with the insertion.
-5. **`moai todo pr` shells out to `git` in the working directory**
+4. **`moai todo pr` shells out to `git` in the working directory**
    (`internal/kanban/prlink_landed.go:150-154` via the `todoRunCommand` seam at
    `internal/cli/todo_pr.go:57-65`), and git may write inside `.git/` during a read. Any
    byte-identity assertion over the project root must exclude `.git/` or it flakes for reasons
    unrelated to the property (AC-TLE-014).
-4. **`--json` currently marshals `PRLinkOutcome` alone** (`internal/cli/todo_pr.go:167`), which the
+5. **`--json` currently marshals `PRLinkOutcome` alone** (`internal/cli/todo_pr.go:167`), which the
    render does not merge with queue state. M4 must decide whether the evidence rides on the outcome
    struct or on a render-time wrapper; the wrapper is preferred because `PRLinkOutcome` is the
    resolver's type and REQ-TLE-011 keeps the resolver clean of stored data.
@@ -141,9 +141,14 @@ does not edit them.
 6. **`--sha` referential-integrity validation** (AC-TLE-020): resolve with
    `git rev-parse --verify <sha>^{commit}` (existence + full SHA) then
    `git merge-base --is-ancestor <resolved> <ref>` (reachability); store the resolved full SHA;
-   exit 1 naming which check failed otherwise, writing nothing. The card id is passed to neither
-   command — that is what keeps this a referential-integrity check rather than attribution
-   (`spec.md` §B.3.1).
+   exit 1 naming which check failed otherwise, writing nothing. **An unrunnable check — no git, or a
+   ref that resolves to nothing — is also exit 1**, deliberately opposite to `todo pr`'s fail-open
+   degradation on the same condition: a read that cannot answer stays permissive, a write that
+   cannot validate refuses (AC-TLE-020 case (d)). The card id is passed to neither command — that is
+   what keeps this a referential-integrity check rather than attribution (`spec.md` §B.3.1), and
+   AC-TLE-020 asserts it by recording one `--sha` against **two different card ids**, not by
+   renaming one card: the predicate keys on the id
+   (`internal/kanban/prlink_landed.go:96-108`), which no `todo` verb changes.
 
 Deliverables: `internal/cli/todo_landed.go` + tests; registration on the `todo` command.
 

@@ -1,7 +1,7 @@
 ---
 id: SPEC-TODO-LANDING-EVIDENCE-001
 title: "A card that knows its own landing state, half B — the evidence store: one additive column, an operator verb that records, and an attribution rule that survives REQ-1.10"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-09-03
 updated: 2026-09-03
@@ -30,6 +30,7 @@ related_specs:
 |---------|------|--------|
 | 0.1.0 | 2026-09-03 | Initial plan-phase authoring (card t359), measured in worktree `.claude/worktrees/t359`, branch `WT-landing-evidence`, at HEAD `e50964ad3`. Half A (`SPEC-TODO-LANDING-STATE-001`, card t331) is landed and `completed`; this SPEC builds the storage axis its §B.2 and §D handed over. Two premises the card carried were re-measured before being built on: the `REQ-TODO-013` reading (§B.1) and the claimed disagreement between the two SPECs carrying it (§A.3 — **the disagreement does not exist**; the card's premise is falsified here rather than reconciled). The `REQ-1.10` tension is resolved on the provenance axis without amending, weakening, or reversing that requirement (§B.3). *This row described both SPECs as `completed`; v0.2.0 measured them and corrected it — see D1 below and §A.3b.* |
 | 0.2.0 | 2026-09-03 | **Plan-audit iteration 1 remediation** (FAIL 0.80 vs the Tier L threshold 0.85; 9 blocking, all seven must-pass criteria passed — a score-driven FAIL concentrated in Testability 0.75). **D1**: three `completed` claims about two SPECs that measurably read `in-progress` are corrected, and the correction is followed through — §A.3b re-grounds why those requirements bind on two *measured* properties (the requirement is live in the tree; an `in-progress` SPEC makes reversal MORE disruptive, not less) instead of on a lifecycle field that was not read. **D2**: the ground for declining `--sha` validation was factually wrong — a referential-integrity check is not the card-token grep and makes no attribution claim. The false ground is withdrawn (§B.3.1), and the check is ADDED as REQ-TLE-020 / AC-TLE-020 rather than re-declined; §G now states plainly what a reachable-but-wrong operator typo costs. **D3**: §C.7's false claim that AC-TLE-015/016 verify the doctrine text is withdrawn and split into what is mechanically verified (mirror parity + stated column count, new REQ-TLE-021 / AC-TLE-021) and what is a DoD item with no criterion (the prose). **D4**: AC-TLE-015 now pins fields 1-5, not only the count and the two it adds. **D5**: AC-TLE-019 gains independent `archived_items` and tuple-drift plants (019a/b/c) — a guard extended for `items` alone previously satisfied it in full. **D6**: AC-TLE-014 excludes `.git/` (the `todo pr` git subprocess may write there during a read) and gains a non-empty + queue-present positive control so the exclusion cannot hollow it out. **D7**: the downgrade gap stops being deferred to a criterion that does not close it — AC-TLE-018 gains a reconstructed pre-change open path, and §G keeps REQ-TLE-018 listed as an argued claim with a partial demonstration. **D8**: §E maps REQ-TLE-004 → M3 (its criterion needs the M3 verb). **D9**: AC-TLE-005's Given gains the `spec_id` its Then asserts on. Non-blocking: **D10** redundant prompt-guard conjunct dropped in favour of the inherited `todo*.go` guard; **D11** §R.8's mis-labelled awk block re-pasted verbatim; **D12** REQ-TLE-001 reduced to the observable shape with the statement form left to `design.md` §2; **D13** the guard's remaining type/nullability blindness is closed by the REQ-TLE-019 tuple assertion rather than merely recorded. Counts: 19 → **21 requirements / 21 criteria** (Tier L ceiling 25/25). No source file was modified. |
+| 0.3.0 | 2026-09-03 | **Plan-audit iteration 2 delta** (PASS-WITH-DEBT 0.89 vs the Tier L threshold 0.85; trajectory 0.80 → 0.89, all thirteen iteration-1 defects resolved). A scoped three-item debt closure, not a full round — no decision is reopened. **E1**: AC-TLE-020's attribution-boundary clause could not fail. It varied the card's *text* (a rename) while the predicate it guards against keys on the card *id* — `LandedGrepArgs` builds `` `--grep=\b` + cardID + `\b` `` (`prlink_landed.go:96-108`) and no registered `todo` verb changes an id (`todo.go:148-152`), so an implementation leaking the card token passed with the leak intact. Replaced with **one `--sha` recorded against two different card ids**, asserted on both an accepting and a refusing branch. **E2**: AC-TLE-018 clause (b) was a coverage assertion, not a detector — its only listed RED (the version bump) is already caught by clause (a), and no permitted mutation redded (b) alone; the v0.2.0 claim that the two "fail independently" is **withdrawn**. New clause (c) asserts the frozen replica equals the live `backlogDDL` and accepted-version set, which supplies (b)'s independent RED (edit the live const, leave the copy — only (c) fails). §G gains **forward drift** as a hazard distinct from the released-binary divergence it already named. **E3**: AC-TLE-020 gains case (d), the cannot-be-run branch REQ-TLE-020 binds, with the write-refuses / read-degrades contrast stated so the `todo_pr.go` fail-open habit is not carried across. Non-blocking: **E4** the status block is re-pasted with full paths and its ordering disclosed; **E5** `plan.md` §B renumbered 1-5; **E6** AC-TLE-021 now re-renders and counts its own row rather than citing another test's runtime value, with `7` demoted to a note; **E7** §G's "nothing flags it" is **withdrawn as an overstatement** — rendering the commit's own subject beside the SHA attributes nothing and is exactly what lets a human notice, so it is recorded as considered-and-not-built, with the record-time capture named as the only shape compatible with §D's no-new-read-cost exclusion. Counts unchanged at **21 requirements / 21 criteria**. No source file was modified. |
 
 > **Provenance discipline.** Every `file:line` citation in this document was measured at HEAD
 > `e50964ad3` in the worktree `.claude/worktrees/t359`. Where a claim rests on a command rather
@@ -127,10 +128,10 @@ $ grep -m1 '^status:' .moai/specs/SPEC-KANBAN-QUEUE-PR-SYNC-001/spec.md \
     .moai/specs/SPEC-KANBAN-TODO-CLI-001/spec.md \
     .moai/specs/SPEC-TODO-ANALYSIS-001/spec.md \
     .moai/specs/SPEC-TODO-LANDING-STATE-001/spec.md
-SPEC-KANBAN-TODO-CLI-001/spec.md:status: in-progress
-SPEC-KANBAN-QUEUE-PR-SYNC-001/spec.md:status: in-progress
-SPEC-TODO-LANDING-STATE-001/spec.md:status: completed
-SPEC-TODO-ANALYSIS-001/spec.md:status: completed
+.moai/specs/SPEC-KANBAN-TODO-CLI-001/spec.md:status: in-progress
+.moai/specs/SPEC-KANBAN-QUEUE-PR-SYNC-001/spec.md:status: in-progress
+.moai/specs/SPEC-TODO-ANALYSIS-001/spec.md:status: completed
+.moai/specs/SPEC-TODO-LANDING-STATE-001/spec.md:status: completed
 ```
 
 So `REQ-TODO-013` (§A.3), `REQ-1.10` (§B.3), and `REQ-2.1` (§A.4, §B.2) all come from SPECs that
@@ -642,6 +643,15 @@ wrong despite what was.
   and a real released binary would be invisible to it. REQ-TLE-018 therefore remains **an argued
   claim with a partial demonstration**, not a demonstrated one, and it stays in this list after
   AC-TLE-018 passes.
+- **Forward drift of the frozen replica — a distinct hazard from the released-binary one, and the
+  only one of the two that is now detected.** AC-TLE-018 clause (b) holds a copy of `backlogDDL`,
+  the `schemaVersion` read, and the version switch frozen at HEAD `e50964ad3`. Nothing in the
+  language stops the live `backlogDDL` from being edited later by a different card; when that
+  happens the replica stops representing the current pre-change path, while the test keeps passing
+  and keeps reporting that it exercises it. v0.2.0 named only the *backward* divergence (replica vs
+  a real released binary) and was silent on this *forward* one. Clause (c) now asserts the frozen
+  copy equals the live const, so forward drift fails loudly and becomes a deliberate act rather than
+  a silent decay. The backward divergence remains undetected by construction and stays in this list.
 - The migration parity path (`backlog_migrate.go:585-630`) was read, not exercised. Whether its
   comparison is reachable for every archived row was not measured here.
 - No external consumer of `moai todo pr` was enumerated. Half A recorded that they cannot be
@@ -665,9 +675,24 @@ wrong despite what was.
   indistinguishable from a correct record by any check the machine can run — because telling them
   apart is exactly the card-to-commit attribution REQ-1.10 forbids the machine to attempt. Concretely,
   what such a typo costs: the record renders on `todo pr` as an operator-asserted delivering commit
-  and is believed; nothing flags it; and it is corrected only when a human notices and runs
-  `--clear` or re-records (§B.5). This is the residual the provenance argument genuinely carries,
-  stated plainly in place of version 0.1.0's false claim that no validation was possible.
+  and is believed, and it is corrected only when a human notices and runs `--clear` or re-records
+  (§B.5).
+
+  **A mitigation exists and was considered — v0.2.0's "nothing flags it" overstated the absence and
+  is withdrawn.** The machine cannot *detect* the error (that half stands), but it can make a human
+  likely to: **render the named commit's own subject line beside the SHA**. A commit's subject is a
+  fact about that commit, in the same non-attributing class as `ref_head` — it says nothing about
+  which card the commit delivered — and it is exactly what lets an operator who typed one SHA and
+  meant another see that the row describes the wrong change.
+
+  It is **not built here**, for a reason that constrains how a follow-up must build it. Reading the
+  subject at render time would put a new `git` subprocess on `todo pr`, which §D excludes and which
+  half A's cost argument protects. The only shape compatible with that exclusion is to capture the
+  subject **at record time**, alongside `ref_head` and `spec_status` (§B.4) — which adds a seventh
+  fact to the record and changes REQ-TLE-016's cell format. That is a change to the record shape,
+  i.e. a design decision, not a defect fix, so it is surfaced at the Implementation Kickoff Approval
+  gate rather than folded into a debt-closing revision. Recorded here so the next reader neither
+  re-derives it nor reaches for the render-time `git` call that §D forbids.
 - **The guard sees column tuples, not the whole schema.** REQ-TLE-019's
   `(name, type, notnull, dflt_value)` assertion catches an added, removed, reordered, retyped, or
   re-nullabled column. It does not catch a changed CHECK expression beyond the substring the

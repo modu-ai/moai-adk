@@ -1,47 +1,49 @@
 # Progress — SPEC-TODO-LANDING-EVIDENCE-001
 
 Card: **t359** · Worktree: `.claude/worktrees/t359` · Branch: `WT-landing-evidence`
-Tier: **L** (5 artifacts) · 21 requirements · 21 acceptance criteria · **v0.2.0**
+Tier: **L** (5 artifacts) · 21 requirements · 21 acceptance criteria · **v0.3.0**
 
 ## §E.1 Plan-phase Audit-Ready Signal
 
-**Iteration 1 verdict**: FAIL 0.80 vs the Tier L threshold 0.85 — 9 blocking (7 major, 2 minor),
-4 non-blocking. All seven must-pass criteria PASSED; the shortfall was Testability (0.75) and
-Traceability (0.80). Report: `.moai/reports/t359/plan-audit.md` @ `2f1c36151`.
+**Trajectory**: iter-1 FAIL 0.80 → iter-2 **PASS-WITH-DEBT 0.89** (Tier L threshold 0.85). All seven
+must-pass criteria pass in both rounds; all thirteen iteration-1 defects RESOLVED; no stagnation, no
+scope reduction. Reports: `.moai/reports/t359/plan-audit.md` @ `2f1c36151`,
+`plan-audit-iter2.md` @ `8a1ae5b70`.
 
-**v0.2.0 remediation — all 9 blocking + all 4 non-blocking addressed:**
+**v0.3.0 — iteration-2 debt closure (3 blocking + 4 non-blocking, all addressed):**
 
 | Defect | Disposition |
 |---|---|
-| D1 (major) | 4 coordinates corrected to the measured `in-progress`; §A.3b added, re-grounding why those requirements bind on two measured properties instead of a lifecycle field |
-| D2 (major) | Ground withdrawn as false; validation **added** — REQ-TLE-020 + AC-TLE-020 (existence + reachability, never delivery); §G states the surviving typo cost |
-| D3 (major) | §C.7's false coverage claim withdrawn; split into REQ-TLE-021/AC-TLE-021 (mirror parity + column count) and an explicitly uncovered DoD item |
-| D4 (major) | AC-TLE-015 now pins fields 1-5 individually |
-| D5 (major) | AC-TLE-019 split into 019a/b/c with independent plants (`items`, `archived_items`, tuple drift) |
-| D6 (major) | AC-TLE-014 excludes `.git/`, adds a non-empty + queue-present positive control |
-| D7 (major) | AC-TLE-018 gains a reconstructed pre-change open path; §G keeps REQ-TLE-018 an argued claim |
-| D8 (minor) | §E cell REQ-TLE-004 → M3; `plan.md` M1.4 no longer claims it |
-| D9 (minor) | AC-TLE-005's Given gains the `spec_id` |
-| D10 (non-blocking) | redundant prompt-guard conjunct dropped; inherited `todo*.go` guard cited with its controls |
-| D11 (non-blocking) | §R.8 awk block re-measured and re-pasted verbatim (7 lines, not 5) |
-| D12 (non-blocking) | REQ-TLE-001 reduced to the observable shape |
-| D13 (non-blocking) | **closed rather than recorded** — REQ-TLE-019 now asserts `(name, type, notnull, dflt_value)` tuples |
+| E1 (major) | AC-TLE-020's boundary clause could not fail — it varied card *text* while the predicate keys on card *id*. Replaced with one `--sha` against **two card ids**, asserted on an accepting and a refusing branch |
+| E2 (major) | AC-TLE-018 (b) was a coverage assertion, not a detector; the "fail independently" claim **withdrawn**. New clause (c) asserts the frozen replica equals the live `backlogDDL` + accepted-version set, supplying (b)'s independent RED. §G gains forward drift |
+| E3 (minor) | AC-TLE-020 case (d) added — the cannot-be-run branch REQ-TLE-020 binds, with the write-refuses vs read-degrades contrast made explicit |
+| E4 (non-blocking) | status block re-pasted with full paths; the non-argument output ordering disclosed |
+| E5 (non-blocking) | `plan.md` §B renumbered 1-5 |
+| E6 (non-blocking) | AC-TLE-021 re-renders and counts its own row; `7` demoted to a note |
+| E7 (non-blocking) | §G's "nothing flags it" **withdrawn**; the commit-subject mitigation recorded as considered-and-not-built, with record-time capture named as the only §D-compatible shape |
 
-**Counts**: 21 requirements / 21 criteria (Tier L ceiling 25/25) — 19/19 at v0.1.0, +2 from D2 and
-D3. Sequential `REQ-TLE-001`..`021`, no gaps; 21 AC headings; 21 traceability rows.
+**Counts**: unchanged at 21 requirements / 21 criteria (Tier L ceiling 25/25). This delta strengthened
+two criteria and added one case; it added no requirement.
 
-**Preserved from v0.1.0** (auditor-confirmed, deliberately not touched): all ~30 `file:line` pins;
-§A.3's premise falsification; AC-TLE-007's concurrency RED; AC-TLE-016's SHA-substitution step; the
-19-vs-25 headroom showing no merging. Four further pins were re-measured this round and two
-corrected (`todo_test.go:451-479` → `:451-480`; `prlink.go:101-114` confirmed exact).
+**Preserved from v0.2.0** (iteration-2-confirmed, deliberately not touched): D5's three plants,
+reproduced by the auditor and measured independent (`ITEMS-ONLY GUARD TRIPS=false`,
+`ARCHIVED GUARD TRIPS=true`; the name-set assertion does not separate 019c while the tuple assertion
+does) — so D13 is genuinely closed rather than recorded; the "record checks itself" argument for
+reachability at the requirement level; and the guard-ownership decay hand-off sitting inside
+AC-TLE-019 where run-phase reads it.
 
-**Still open for the Implementation Kickoff Approval gate**: the stored shape (§B.1 — one
-JSON-bearing column versus four scalar columns) and the seventh-column contract change (§G,
-inherited from half A). Neither is a defect; both are decisions the operator may wish to rule on.
+**Open for the Implementation Kickoff Approval gate** — three decisions, none a defect:
+1. The stored shape (§B.1 — one JSON-bearing column versus four scalar columns).
+2. The seventh-column contract change (§G, inherited from half A).
+3. **New at v0.3.0**: whether to capture the delivering commit's subject at record time (§G, E7).
+   It would add a seventh fact to the record and change REQ-TLE-016's cell format, so it is a design
+   decision rather than a debt fix — surfaced here rather than folded in.
 
-**Not resolved** (recorded, not closed): no pre-change binary is run against a post-change database
-by any criterion (§G); the `--sha` validation commands were named but not executed in this tree
-(`research.md` §R.10.5); a reachable-but-wrong operator SHA remains undetectable by construction.
+**Not resolved** (recorded, not closed): no criterion runs a genuinely older binary against a
+post-change database — the backward divergence between the frozen replica and a released build is
+undetected by construction (§G); the `--sha` validation commands are named but were not executed in
+this tree (`research.md` §R.10.5); a reachable-but-wrong operator SHA stays machine-undetectable, and
+the human-noticing mitigation is recorded but not built.
 
 ## §E.2 Run-phase Evidence
 

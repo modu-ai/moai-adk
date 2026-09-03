@@ -188,11 +188,16 @@ $ grep -m1 '^status:' .moai/specs/SPEC-KANBAN-QUEUE-PR-SYNC-001/spec.md \
     .moai/specs/SPEC-KANBAN-TODO-CLI-001/spec.md \
     .moai/specs/SPEC-TODO-ANALYSIS-001/spec.md \
     .moai/specs/SPEC-TODO-LANDING-STATE-001/spec.md
-SPEC-KANBAN-TODO-CLI-001/spec.md:status: in-progress
-SPEC-KANBAN-QUEUE-PR-SYNC-001/spec.md:status: in-progress
-SPEC-TODO-LANDING-STATE-001/spec.md:status: completed
-SPEC-TODO-ANALYSIS-001/spec.md:status: completed
+.moai/specs/SPEC-KANBAN-TODO-CLI-001/spec.md:status: in-progress
+.moai/specs/SPEC-KANBAN-QUEUE-PR-SYNC-001/spec.md:status: in-progress
+.moai/specs/SPEC-TODO-ANALYSIS-001/spec.md:status: completed
+.moai/specs/SPEC-TODO-LANDING-STATE-001/spec.md:status: completed
 ```
+
+(Full output, verbatim including paths. `grep -m1` emits in the order it resolves the files, which
+is not the argument order given above — v0.2.0 pasted this block with the `.moai/specs/` prefix
+stripped from every line and did not disclose the trim, the same class of lapse as D11; re-measured
+and re-pasted untrimmed here.)
 
 v0.1.0 asserted `completed` for the first two. That was inherited from the card text and never
 measured — the document opened by claiming every figure in it was measured in this tree, and this
