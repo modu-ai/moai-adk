@@ -368,3 +368,215 @@ run-phase and needs no ruling now. D7-D9 are the orchestrator's discretion.
 
 Re-audit on iteration 2 should be scoped to this enumerated defect delta plus a regression check —
 not a from-scratch review. Verdict authority remains with this agent.
+
+---
+---
+
+# Plan Audit — SPEC-TODO-LANDING-ATTRIBUTION-001 (card t472) — **ITERATION 2**
+
+Iteration: 2/2 (Tier M ceiling — no iteration 3 is available)
+**Verdict: PASS-WITH-DEBT**
+Aggregate score: **0.875** against the Tier M threshold **0.80** — delta **+0.0625** from iteration 1's 0.8125.
+**Ready for Implementation Kickoff Approval: NOT AS WRITTEN.** Ready after two text-only
+corrections (D1, D3 below). Neither is a design change. Detail in § Kickoff readiness.
+
+Reasoning context ignored per M1 Context Isolation. `.moai/reports/t472/axis-bf-measurement.md` and
+`premise-recheck.md` were read as *records of claims*; every figure below is labelled re-run or accepted.
+
+## Audit provenance (VCI §2.2)
+
+| | Value |
+|---|---|
+| Tree | `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t472` |
+| Branch | `WT-landed-drift-detect` |
+| HEAD at audit start | `165d69d14` |
+| HEAD at audit end | `165d69d14` — **unmoved**. Working tree clean at start. The iteration-1 process defect (foreign writes to an actively audited worktree) did **not** recur. |
+| Judging binary | `go build -o /tmp/moai-audit2 ./cmd/moai` from this tree, rc=0. The installed build was not used for any figure. |
+| Corpus refs | `origin/develop` = `7835148d3`, `origin/main` = `7ad9f8534` (re-read this run) |
+| Corpus size | 5,837 subjects, 414 merge subjects (re-counted this run) |
+| Lint | `spec lint --strict <SPEC>/spec.md` with the tree-built binary -> `No findings`, rc=0. Scoped to this SPEC only; no whole-corpus scan, no background process. |
+
+---
+
+## MUST-PASS criteria
+
+| | Criterion | State | Evidence (this run) |
+|---|---|---|---|
+| MP-1 | REQ number consistency | **PASS** | `REQ-TLA-001..012`, one definition each, sequential, uniform three-place padding. `REQ-TLA-001` appears 3x = 1 definition + 2 prose back-references. No gaps, no duplicate definitions. |
+| MP-2 | GEARS compliance (**requirement layer** — `REQ-TLA-*` in `spec.md`; `AC-TLA-*` are the verification layer, graded under Group 4, not here) | **PASS** | 001/002/005/007/010 Ubiquitous; 003/004/012 Unwanted (`shall not`); 006/009 Event-driven (`When ...`); 008 `Where` (static-config gate); 011 compound `While ... when ...`. 12/12. REQ-TLA-002 grew at 0.2.0 but stays Ubiquitous (`The set ... shall be exactly ...`). |
+| MP-3 | YAML frontmatter validity | **PASS** | 12 canonical fields present with canonical names (`spec.md:2-14`), `version: "0.2.0"` quoted, plus optional `tier: M` / `related_specs:`. Confirmed by the tree-built linter, rc=0. |
+| MP-4 | Language neutrality | **N/A (auto-pass)** | Single-language SPEC (`module: "internal/kanban, internal/cli"`). |
+| MP-5 | D7 cross-SPEC reconciliation | **PASS** | `SPEC-TODO-LANDING-STATE-001` = `completed`; `SPEC-KANBAN-QUEUE-PR-SYNC-001` = `in-progress`; `SPEC-WORKTREE-BASEREF-001` = `completed`. None retired/superseded/archived. No BLOCKING finding. |
+| MP-6 | D8 cross-platform discipline | **PASS** | `grep -c syscall spec.md` -> 0. Auto-PASS per D8-4. |
+| MP-7 | Clarification gate | **PASS** | `grep -rn 'NEEDS CLARIFICATION' <SPEC dir>` -> 0 matches. `research.md` absent (correct for Tier M). |
+
+No must-pass failure. The firewall holds.
+
+---
+
+## Category scores (rubric-anchored)
+
+| Dimension | Score | Band | Evidence |
+|-----------|-------|------|----------|
+| Clarity | 0.75 | 0.75 | Iteration-1's D1 contradiction is **gone**: forms 1/2/3a are unambiguous positions, so 0.75 is now *earned* rather than generously awarded. Not 1.0: (i) §A.4's preamble — "a card token ... inside a dependency or absorb note — attributes nothing" — contradicts form 3b's literal admission of **any** token inside the trailing group (iter-2 D1); (ii) form 3b's target ("the branch the landed ref resolves to") is unanalysed against the [HARD] M1-before-M2 order, in which the resolved ref is still `origin/main` (iter-2 D3). |
+| Completeness | **1.00** | 1.0 | Both iteration-1 completeness gaps closed and verified: §D carries the two-attribution ruling with its population table and `N >= 1` revisit trigger (iter-1 D3), and M3-2 is marked non-gating in both `plan.md:117-120` and `acceptance.md:236-240` (iter-1 D7). Six `### Out of Scope — <topic>` H3s, each with specific `-` bullets. HISTORY / §A / §B / §C / §D / §E present; frontmatter complete. |
+| Testability | 0.75 | 0.75 | 11 of 12 criteria are binary with a named, corpus-verified fixture; zero weasel words (`appropriate`/`adequate`/`reasonable`/`proper` -> 0 hits in spec.md and acceptance.md). AC-TLA-009's iter-1 D4 repair verified (asserts *which level answered*, not a ref-string inequality). Not 1.0: **AC-TLA-005 asserts a protection that measurably does not exist for form 3b** — iter-2 D1. |
+| Traceability | **1.00** | 1.0 | 12 REQ / 12 AC. Set comparison of defined REQ ids against ids appearing in `(maps REQ-...)` clauses -> **0 uncovered, 0 orphaned**. Re-run this iteration. |
+
+Aggregate = (0.75 + 1.00 + 0.75 + 1.00) / 4 = **0.875** >= 0.80.
+
+---
+
+## Iteration-1 regression check — every defect, with its disposition state
+
+| Iter-1 defect | State | How I established it |
+|---|---|---|
+| **D1** (BLOCKING) form 3 is an occurrence test | **VERIFIED FIXED** (new residuals raised as iter-2 D1/D3) | §A.4 now enumerates 3a/3b positionally plus the [HARD] non-attribution rule. Re-measured: the occurrence reading admits **146** merge subjects vs **5** form-3a — both reproduce exactly over the 414 merge subjects. Absorb-direction exclusion **21** reproduces with the SPEC's own command verbatim (my first attempt returned 26 through a sed artifact of my own; corrected by running the SPEC's own extraction form). Both new fixtures exist with the claimed subjects verbatim: `9a3837b5c Merge branch 'WT-audit-evidence-store' into WT-audit-advice-integrity (t387 depends on t386 convention doc)` and `c4ae1ecbd Merge origin/develop into WT-audit-participant-count — absorb upstream before integration (card t284)`. `MUT-MERGE-ANY-TOKEN` is genuinely red against AC-TLA-003 clause 3. |
+| **D2** citation + overstated residual | **VERIFIED FIXED** | Read the file: `:92` primary-checkout gate, `:97-100` empty-key return, `:125` `WorktreeBaseBranchSetHead(configured)`, `:155` `func worktreeBaseBranchReadConfigReal`, `:170` `func worktreeBaseBranchSetHeadReal` — all exact by line-numbered grep. Disjointness restated correctly and relocated to a `spec.md` §D exclusion. |
+| **D3** unmet §D tiebreak mandate | **VERIFIED FIXED** | `acceptance.md:179-212`. I re-derived the population table **independently**: scope 290, trailing 869, `^Merge card` 5, both 34, same-id 34, **different-id 0** — every cell matches. My own control (`docs(t1): x (t2)` -> `t1 vs t2`; `docs(t1): x (t1)` -> `t1 vs t1`) confirms the extractor discriminates, so the 0 is a measured 0. `N >= 1` revisit trigger present. |
+| **D4** value-inequality where provenance meant | **VERIFIED FIXED** | `acceptance.md:136-142`: the clause now asserts "the disclosure names **level 2** as the answering level", with the false-fail rationale recorded. |
+| **D5** swapped positive-control forms | **VERIFIED FIXED** | Re-measured: t401's only subject occurrence is `d5caf2d8e feat(SPEC-JUDGMENT-FIRST-MODE-001): ... (t401)` = trailing paren; t440 carries `b80cc9cf1 docs(t440): ...` = scope (plus `4c3b1653c Merge card t440 ...` and `63ea8693a ... (t440)`). `acceptance.md:33-40` now matches §B. |
+| **D6** truncated output as verbatim | **VERIFIED FIXED** | Re-ran both cited commands: the `t216` query returns **3** lines (spec.md §A.3 shows all 3); the `t443` query returns **14** lines (spec.md states "14 lines; 1 shown" with an elision marker and its selection rule). Counts exact. |
+| **D7** M3-2 unmapped work | **VERIFIED FIXED** | `plan.md:117-120` + `acceptance.md:236-240`, explicitly non-gating; M3-1 explicitly gated via AC-TLA-006. |
+| **D8** over-stated bidirectional preamble | **VERIFIED FIXED** | `acceptance.md:6-15`: scoped to AC-TLA-001..004 and -007, with a separate paragraph giving -005/-006 a mutation direction instead. |
+| **D9a** 291 does not reproduce | **VERIFIED FIXED** | Re-derived the whole control chain: forms 1/2/3a attributed-id set = **257**; adding form 3b = **258**; the set difference between them -> exactly **`t412`**, one line; message-mentioned = **379**; attributed-minus-mentioned -> **0** lines, so the subset holds and both operands are non-empty. Every figure in §A.2 reproduces. |
+| **D9b** stale status argument | **VERIFIED FIXED, with a fresh MINOR instance** | `progress.md:43-52` preserves the stale reading, marks it stale, and re-argues from a diff stat. The substance re-measures true. But see iter-2 D5. |
+| **D9c** foreign mid-audit commits | **NOT REPEATED** | HEAD `165d69d14` at start and at end; clean tree at start. |
+
+**No iteration-1 defect is unresolved.** No stagnation.
+
+---
+
+## The three questions the dispatch put
+
+### (a) Has the mutant merely moved? — **Partly yes, and by a measurably smaller amount.**
+
+Two mutants survive the repaired §A.4:
+
+- **MUT-TRAILING-GROUP-ANY-TOKEN.** Form 3b attributes when "the card token lies **inside** the subject's trailing parenthetical group". A group carrying more than one token — `... into develop (card t500 — absorb t280, includes t239)` — attributes all three under the literal rule. That is the occurrence reading relocated inside the parenthesis, and it is exactly what §A.4's own preamble forbids. **Measured blast radius: 0.** Of the 96 `into develop` merges with a trailing group, 76 carry a card token and **none names two distinct card tokens**; none carries absorb/dependency wording. I derived both figures myself (trailing-group extraction over the filtered set, then a per-line distinct-token count).
+- **MUT-NO-FORM-3B / MUT-HARDCODED-DEVELOP.** See D1 and D3 — no criterion exercises form 3b at all.
+
+So the mutant has not moved *back*: the 146/50/21 silent-false-positive class is genuinely excluded. But the new shape carries no falsifier of its own.
+
+### (b) Is the `WT-...` predicate sound? — **Load-bearing, but under-general, and keyed on a convention the SPEC does not own.**
+
+It *is* load-bearing: `c4ae1ecbd` ends `... (card t284)`, an exact trailing group, so **form 2 matches it** and only the non-attribution rule removes it. Not redundant with form 3b.
+
+Under-general on two measured grounds:
+
+1. This repository's own history contains card/agent worktree branches that are **not** `WT-`-prefixed: the merge-target census over the 414 merge subjects returns `worktree-t176`, `worktree-t166`, and four `worktree-agent-*` targets. A `WT-`-keyed rule does not fire on them. (No false attribution today — those subjects carry no trailing group — so this is soundness, not a live defect.)
+2. The prefix-independent formulation is strictly stronger and free: *a merge whose named target is not the branch the landed ref resolves to attributes no card.* That is form 3b's own target test, contraposed. It covers `WT-`, `worktree-`, and any downstream user's prefix, and needs no convention the SPEC does not own. The SPEC cites no doctrine for `WT-` (the owning [HARD] rule is `kanban-dispatch.md` § Isolation is entered, never provisioned).
+
+Graded MINOR (D4): the shipped surface is `moai todo`, which reaches repositories whose branch names MoAI does not prescribe.
+
+### (c) Is leaving the target-derivation to run-phase acceptable? — **No. It is a second occurrence of the D1 shape one layer down.**
+
+The *rule* is specified (§A.4 form 3b names "the branch the landed ref resolves to", and REQ-TLA-002 binds the enumeration to §A.4). What is missing is a falsifier: **AC-TLA-003 clause 1's fixture is `48c35a4d4 Merge branch 'WT-incremental-rebuild' into develop (card t263)`, whose trailing group is exact, so form 2 alone satisfies it.** An implementation that hardcodes `develop`, and an implementation that omits form 3b entirely, both pass all twelve criteria. See D1 and D3.
+
+---
+
+## Defects Found
+
+**D1 — form 3b carries no falsifying criterion, and AC-TLA-005 asserts a protection that measurably does not exist for it — Severity: major (SHOULD-FIX) — Class: blocking**
+`acceptance.md:95-100` (AC-TLA-005): *"When one shape — or the non-attribution rule — is removed from that declaration, Then the criterion for it (AC-TLA-001, -002, or -003's matching clause) fails."* For form 3b this is **false**. Measured this run:
+- AC-TLA-003 clause 1's fixture `48c35a4d4 ... into develop (card t263)` has an **exact** trailing group and is therefore matched by form 2 alone. Removing form 3b leaves the clause green.
+- The only id form 3b adds over forms 1/2/3a is **`t412`** (set difference -> exactly one line), attributed solely by `b6231290d Merge branch 'WT-mx-tag-edges' into develop (card t412 — SPEC-MX-TAG-EDGES-001)`. A grep for `t412` in `acceptance.md` -> **0 hits**. No criterion cites it.
+- Consequence: an implementation omitting form 3b passes every criterion (cost: t412 reads `not-landed` — loud), **and** an implementation reading the whole trailing group as an occurrence set passes every criterion (cost: 0 measured instances today — silent).
+
+**Required fix (text only):** add a clause to AC-TLA-003 using `t412` in both directions — green on `b6231290d` (non-exact trailing group, develop-targeted), red on `d8c91d907 Merge branch 'origin/develop' into WT-mx-tag-edges (window absorption, card t412)` and `57d2f3ae3 Merge branch 'WT-edge-confidence' into WT-mx-tag-edges (card t412 dependency absorption)`. All three fixtures exist verbatim in the corpus and exercise form 3b and the non-attribution rule together. Add one sentence to §A.4 form 3b restricting attribution to a **single** card token in the group, so the row stops contradicting its own preamble.
+
+**D2 — the recorded cost of the narrowing is wrong by a factor of seven; "exactly one under-count" does not reproduce — Severity: major (SHOULD-FIX) — Class: blocking**
+`spec.md:163-168`: *"One under-count survives ... t250."* `plan.md:142`: *"Measured cost ... exactly **one** card (`t250`)."* Measured this run over `origin/develop` `7835148d3`: ids appearing anywhere in a subject = **347**; attributed under forms 1/2/3a/3b = **258**; difference = **89**. Filtering that difference to ids whose subject occurrence sits in an *attributing-shaped* position the four forms miss yields, verbatim from the corpus:
+
+| Card | Its only subject-position evidence |
+|---|---|
+| t250 | `t250: graph freshness ... (#1648)` — bare prefix (the one the SPEC records) |
+| t40 | `Merge branch 'worktree-t40': t40 — moai update observability (3 quiet failures)` |
+| t36 | `test(timing): add in-run calibrated latency bounds; ... (card t36, absorbs t2)` |
+| t68 | `merge: Factory Mode -f N worker fan-out (t68, SPEC-FACTORY-WORKER-FANOUT-001)` |
+| t46, t73, t74 | `merge: anchor-session guards for worktree disposal + registry CWD relocation (t46/t73/t74)` |
+
+Each was confirmed to have **no** attributed occurrence anywhere in the corpus (all seven sit in the subject-ids-minus-attributed difference). The bare-prefix family alone has three members (`t279`, `t250`, `t225`), not one. The true under-count is **>= 7 cards**, and the missed shape is not only "a bare prefix" but "a trailing group carrying the card plus other text" — the same non-exactness form 3b was added to handle for merges, left unhandled for non-merges. This is an unattributed measured claim under VCI §2, and it is load-bearing: `plan.md` §D uses it as the mitigation ground for accepting the loud-failure direction. Operational impact today is nil (all seven are archived-era ids), which is why the severity is major rather than blocking-equivalent — but the figure a reviewer weighs the decision against is wrong by 7x.
+
+**Required fix (text only):** restate as a measured lower bound naming the seven ids and both missed shapes, or widen form 2 to accept a card token as the **first** token of a trailing group. Do not leave "exactly one" standing.
+
+**D3 — form 3b's target derivation is unfalsified, and the [HARD] M1-before-M2 order makes it resolve to `main` in the intervening window — Severity: major (SHOULD-FIX) — Class: blocking**
+§A.4 form 3b keys on "the branch the landed ref resolves to". After M1 lands and before M2 lands — the window the [HARD] ordering decision (`spec.md` §A.7, `plan.md` §A.3) deliberately creates — the resolver is still the un-repaired `LandedRefFor`, which returns `DefaultLandedRef = "origin/main"` (`prlink_landed.go:41,74-80`, read this run). A *correct* form-3b implementation therefore attributes **nothing** from the 76 `into develop` merges in that window, while a hardcoded-`develop` implementation attributes all 76. No criterion distinguishes them: AC-TLA-003 clause 1 is satisfied via form 2 (D1), and `acceptance.md` §F's post-M1 check names only t401 and t440, which are form 1 / form 2. Downstream the divergence is permanent rather than windowed: a user repository whose integration branch is `main` gets false positives from every `into develop` merge and misses every `into main` merge.
+
+**Required fix (text only):** state in §A.4 (or as a clause on AC-TLA-003) that form 3b's target is **derived from the resolved landed ref**, with a criterion that resolves the ref to something other than `develop` and asserts the target moves with it; and record in §A.7 what form 3b yields during the M1-only window.
+
+**D4 — the non-attribution rule keys on a branch-prefix convention the SPEC does not own, and which this corpus violates — Severity: minor — Class: optional**
+Grounding measurement in §(b) above: six merge targets in this repository's own history are card/agent worktree branches named `worktree-t176`, `worktree-t166`, `worktree-agent-*` — not `WT-`. No false attribution results today, so this is soundness rather than a live defect. The contraposed form-3b target test is strictly stronger, prefix-independent, and costs nothing.
+
+**Required fix:** restate the rule in target-mismatch terms, keeping `WT-...` as an illustrative example, and cite `kanban-dispatch.md` if the prefix form is retained.
+
+**D5 — the iter-1 D9b replacement figure is itself already stale and is not in R4 form — Severity: minor — Class: optional**
+`progress.md:46-48` reads *"... reports 6 files, 1101 insertions, 0 deletions"*. Re-run at HEAD `165d69d14`: **6 files, 1301 insertions, 0 deletions**. `HEAD` is a moving ref; the command is correctly stated first (R4 ordering), but the value is neither dated nor labelled a reference, so it drifted 200 lines within two commits. The argument's substance re-measures true (the name-only form returns only the four SPEC artifacts and the two files under `.moai/reports/t472/`), so nothing load-bearing fails — but the fix for a stale-figure defect reproduced that defect in miniature.
+
+**Required fix:** parenthesize and date the value, per VCI §2.1 remedy R4.
+
+---
+
+## The lint exemption decision — predicate applied independently
+
+The `<!-- moving-ref-ok: ... -->` marker on `acceptance.md:131` (the AC-TLA-009 fixture line) is
+**correct, and R3 is the right remedy.** I applied VCI §2.1 myself rather than reading the author's
+reasoning:
+
+- **Test 1 (substitution).** Substituting the SHA `refs/remotes/origin/HEAD` currently resolves to turns "constructed so that the symref lookup exits non-zero" into a different and weaker sentence. The claim is *about* the ref's absence. -> **SUBJECT**.
+- **Test 3.** Re-running next week gives the same answer — the fixture is constructed, not observed. -> reads ANCHOR. Tests 1 and 3 therefore **disagree**, which per the tie-break is evidence *against* ANCHOR and mandates Test 4.
+- **Test 4 (read-time action).** No. The reader builds a fixture by omitting the symref; nothing is measured against the live repository. -> **S1**.
+- **S1 -> R3.** Keep the ref, declare the exemption with a stated reason. The reason present is non-empty, names the instance shape, and states which tests it applied — it is not the cheapest available silencer. **R4 would be wrong here** (there is no read-time measuring command), and **R1/R2 would be actively harmful** (a pin names a value the criterion requires not to exist).
+
+Independently: the scoped `spec lint --strict` on `spec.md` returns `No findings`, rc=0. `acceptance.md` and `plan.md` are not SPEC-parseable and the linter rejects them at the frontmatter stage, so no lint verdict on the marker's own file was obtainable from this tool — recorded as a Gap, not as a pass.
+
+---
+
+## Kickoff readiness
+
+**Not ready as written.** The blocker is not the design — the design is sound and, wherever I could
+re-derive it, exactly reproducible. The blocker is that **AC-TLA-005 states a protection that does
+not exist** (D1): a run-phase that omits form 3b, or that hardcodes `develop` as its target (D3),
+passes all twelve criteria and satisfies the Definition of Done. That is the same failure shape as
+iteration-1's D1 — an enumeration entry with no falsifier — at roughly one-tenth the measured blast
+radius.
+
+**Ready after D1 and D3**, both of which are additions to `acceptance.md` using fixtures that already
+exist verbatim in this corpus (`b6231290d`, `d8c91d907`, `57d2f3ae3`). Neither changes a requirement,
+a milestone, or the ref-chain design. **D2** is a one-paragraph correction of a figure a reviewer
+weighs a decision against and should travel with them. D4 and D5 are the orchestrator's discretion
+(M6: an optional finding does not by itself justify a FAIL, and none of them is being used to
+manufacture one).
+
+**Ceiling note.** This is iteration 2 of the Tier M ceiling 2. There is no iteration 3, so the
+corrections above cannot be confirmed by a further audit round under the standing contract. The
+orchestrator either routes them as pre-Kickoff text edits and accepts them unaudited, or accepts the
+enumerated debt explicitly. A high aggregate score does not discharge D1 — the criterion set's own
+protection claim is measurably untrue, and score is not the instrument that repairs that.
+
+## Evidence discipline
+
+**Re-ran independently this iteration:** corpus size (5,837 / 414); form-3b yield 76 and its 0
+multi-card groups; occurrence-reading 146; form-3a 5; absorb-direction 21; attributed 257 / 258 and
+the one-line difference `t412`; mentioned 379; the subset check -> 0; the §D population table
+(290 / 869 / 5 / 34 / 34 / 0) with my own control; the iter-1 D6 line counts (3 and 14); the iter-1
+D5 positive-control forms; all five `worktree_base_branch.go` line citations;
+`prlink_landed.go:41,74-80,96-109`; `todo.go:81-90`; the two new AC-TLA-003 fixtures; the
+merge-target census; the diff stat and name list; the scoped lint; and the whole must-pass set.
+
+**Accepted from the record without re-derivation:** the 2/9 and 9/31 splits (re-derived in my own
+iteration-1 report against the same corpus ref `7835148d3`, so re-running would measure the same
+tree twice) and the lane's independent D1 reproduction in `axis-bf-measurement.md` (superseded for my
+purposes by my own re-derivation above).
+
+**Gaps — what I did NOT observe.** No whole-corpus lint (dispatch-prohibited; shared machine). No
+execution of the repaired predicate — none exists; this is a plan-phase audit of text. No lint
+verdict on `acceptance.md` (not SPEC-parseable by this tool). No measurement against `origin/main`
+beyond the ref read, so D3's downstream claim about `into main` repositories is reasoned from the
+rule, not observed in a corpus that has one. No queue query confirming the seven D2 under-count cards
+are archived — that is inspection of their id range, not a measurement.
+
+**Residual risk.** If the D2 under-count shape ("card token first in a non-exact trailing group") is
+more common on `origin/main` than on `origin/develop`, the loud-failure population after M1 lands is
+larger than either the SPEC or this audit measured — the corpus I judged is `develop`, and M1 ships
+against `main`.

@@ -273,3 +273,59 @@ N ≥ 1 이 되면 그때 실례를 들고 리드 판정을 받는다. 표본 0 
 감사가 이를 "foreign writes to an actively audited worktree"로 지적했고 옳다. 두 커밋 다
 근거 문서라 판정을 뒤집을 성질은 아니지만, 감사가 읽은 트리와 지금 트리가 다르다는 사실
 자체가 결함이다. 다음 감사에서는 창을 닫고 기다린다.
+
+---
+
+# plan-audit iter-2 검증 (lane-3)
+
+판정 PASS-WITH-DEBT **0.875** (임계 0.80, iter-1 대비 **+0.0625** 단조 상승), iter-1 결함 9건
+전부 VERIFIED FIXED. 신규 5건(D1·D2·D3 major). 감사 주장 두 건을 직접 확인했다.
+
+## 감사가 틀린 것 1건 — 감사 예산은 소진되지 않았다
+
+감사가 "Tier M 상한 2회를 소진했으므로 D1·D3 수정은 추가 감사 라운드로 확인할 수 없다"며
+선택지를 둘로 좁혔다(미감사 수용 / 부채 수용). **규칙과 다르다.**
+
+`.claude/rules/moai/workflow/spec-workflow.md:160`:
+
+> Maximum 3 plan-auditor iterations per SPEC plan-phase; after iter3, escalate via
+> PASS-with-debt OR scope-reduction OR explicit user override.
+
+상한은 **3회**이고 2회를 썼으므로 **iter-3 이 남아 있다.** 같은 줄의 STOP 조건도 살펴야
+하는데 — `iter(N+1)` 점수가 `iter(N)`보다 낮으면 STOP — 이번은 0.8125 → 0.875 로 **올랐다**.
+즉 계속 진행이 규칙상 인가된 경로다. 감사가 제시한 두 갈래는 실제보다 좁았다.
+
+## 감사가 맞은 것 — D1 공허성 확인
+
+`t412` 가 `acceptance.md` 에 **0회** 등장한다. 형태 3b 는 오직 t412 를 회수하려고 존재하는데,
+그것을 단언하는 기준이 없다. 즉 **형태 3b 를 통째로 빼도 12개 기준이 전부 초록이다.**
+이 카드가 축 F 에서 기각한 것과 같은 계열 — 실패를 관측한 적 없는 검사 — 이 이번엔 SPEC 의
+수정본 안에 들어왔다.
+
+## D2 확인 — 그리고 양쪽이 놓친 벡터 1건
+
+저자의 "과소계수는 정확히 1건(t250)"은 재현되지 않는다는 감사 지적이 맞다. 표본을 직접 보니
+형태가 여러 갈래다:
+
+    Merge branch 'worktree-t40': t40 — moai update observability (3 quiet failures)
+    merge: t36 — in-run calibrated latency bounds … — absorbs t2
+    test(timing): … (card t36, absorbs t2)
+    Merge branch 'WT-t250-followup' into develop — card t279 AC-GF-022 ordering deviation record
+
+**양쪽이 명명하지 않은 벡터**: 마지막 줄에서 `WT-t250-followup` 은 **브랜치 이름**이 t250 을
+운반하는데 이 커밋의 카드는 **t279** 다. 브랜치 이름은 제목 안에 있으므로 occurrence test 는
+t250 을 착지로 읽는다. 형태 3b 는 말미 괄호를 요구하므로 발화하지 않고, 비귀속 규칙은 대상이
+`develop` 이라 발화하지 않는다 — 즉 현행 §A.4 에서 이 제목은 어느 형태에도 안 걸리지만,
+**판별식을 조금이라도 느슨하게 잡으면 곧바로 거짓 양성이 된다.** 수정 라운드에 넣는다.
+
+`worktree-t40` 은 D4(=`WT-` 접두 규약을 SPEC 이 소유하지 않는다)의 실증이기도 하다 — 이
+코퍼스 자신이 구 접두사를 쓴다.
+
+`(card t36, absorbs t2)` 는 괄호군 안에 **두 카드**가 있는 사례다. 앞서 "두-귀속 0건"으로
+측정한 것은 *스코프 id ∧ 말미 괄호 id* 조합이었고, 이것은 *한 괄호군 안의 두 토큰*이라
+다른 축이다 — §D 타이브레이크가 이 축도 덮는지 확인이 필요하다.
+
+## 다음
+
+iter-3 이 남아 있고 점수가 올랐으므로, D1·D2·D3 수정 후 iter-3 으로 확인한다. 부채로
+받아들이지 않는다.
