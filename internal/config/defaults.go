@@ -854,6 +854,12 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// fact that ABSENT and TRUE are the same answer, and that only a
 		// literal `enabled: false` turns the guidance off.
 		Todo: WorkflowTodoConfig{},
+		// SPEC-PROJECT-CONTINUATION-KEY-001 REQ-PCK-002: the construction-time
+		// default is the named token, not the empty string. Absent and `card`
+		// resolve identically either way (ProjectContinuation maps "" to card),
+		// so this line is belt-and-braces: it makes the default readable from
+		// the struct rather than only from the resolver.
+		Project: WorkflowProjectConfig{Continuation: ProjectContinuationCard},
 		// SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001 REQ-1/REQ-4: the guard ships
 		// default-OFF (opt-in). Distributed users get an inert guard; the
 		// maintainer of a shared multi-session checkout opts in via local
