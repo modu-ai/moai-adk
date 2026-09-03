@@ -1,0 +1,36 @@
+fixture: live=       2 stubs, archived(.1)=       4 stubs
+--- drain.sh --inbox <live> ---
+drain: read 2 stubs (offset 0→2) — discarded 0 noise + 0 singletons; 1 candidate cluster(s) emitted to clusters.json
+--- drain exit=0 ---
+--- offset after drain ---
+{
+  "offset": 2,
+  "updated": "2026-09-03T01:02:05Z"
+}
+--- did any archived stub reach clusters.json? ---
+UNREACHABLE: no archived stub in clusters.json
+clusters.json:
+{
+  "drained_at": "2026-09-03T01:02:05Z",
+  "offset_before": 0,
+  "offset_after": 2,
+  "total_read": 2,
+  "noise_discarded": 0,
+  "singletons_discarded": 0,
+  "candidates": [
+    {
+      "event_key": "test_fail:live:",
+      "frequency": 2,
+      "first_seen": "2026-09-03T01:00:01Z",
+      "last_seen": "2026-09-03T01:00:02Z",
+      "sample_summaries": [
+        "live stub 1",
+        "live stub 2"
+      ],
+      "source": "test:live",
+      "importance": 2
+    }
+  ]
+}
+--- does drain.sh reference any archive generation? ---
+0

@@ -200,6 +200,137 @@ func TestMergeUserFilesAddsTemplateEntry(t *testing.T) {
 	}
 }
 
+// TestMergeKeepsUserDeletionInCarriedEventKey pins REQ-UHD-002
+// (SPEC-UPDATE-HOOK-DELIVERY-001): a hook entry the user deleted from an event
+// key they carry must stay deleted after an update. The base derived for a
+// carried event key carries the template's whole array (pruneToShared copies
+// non-map values wholesale), so the user's shorter array reads as "only user
+// changed" and is kept verbatim — this test is the guard that any future
+// array-awareness in the merge keeps honoring that deletion.
+func TestMergeKeepsUserDeletionInCarriedEventKey(t *testing.T) {
+	const userFile = `{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact|fork",
+        "hooks": [
+          {
+            "command": "bash",
+            "args": ["-c", "run", "${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-session-start.sh"],
+            "timeout": 30,
+            "type": "command"
+          }
+        ]
+      }
+    ]
+  }
+}`
+	const template = `{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact|fork",
+        "hooks": [
+          {
+            "command": "bash",
+            "args": ["-c", "run", "${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-session-start.sh"],
+            "timeout": 30,
+            "type": "command"
+          },
+          {
+            "command": "bash",
+            "args": ["-c", "run", "${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-session-start-navigator.sh"],
+            "timeout": 5,
+            "type": "command"
+          }
+        ]
+      }
+    ]
+  }
+}`
+
+	merged := mergeWithDerivedBase(t, ".claude/settings.json", userFile, template)
+
+	hooks, _ := merged["hooks"].(map[string]any)
+	sessionStart, _ := hooks["SessionStart"].([]any)
+	if len(sessionStart) != 1 {
+		t.Fatalf("SessionStart array length = %d, want 1 (the user's deletion must stand):\n%v",
+			len(sessionStart), merged)
+	}
+	kept, _ := json.Marshal(sessionStart[0])
+	if !strings.Contains(string(kept), "handle-session-start.sh") {
+		t.Errorf("user's kept entry was altered:\n%s", kept)
+	}
+	if strings.Contains(string(kept), "handle-session-start-navigator.sh") {
+		t.Errorf("user-deleted navigator entry was resurrected:\n%s", kept)
+	}
+}
+
+// TestMergeDropsTemplateAdditionInsideCarriedEventKey characterizes the
+// defective half of the same classification (SPEC-UPDATE-HOOK-DELIVERY-001
+// AC-UHD-003's defect surface): because the base's array equals the template's
+// array, a template-side addition inside an event key the user carries
+// classifies as "only user changed" and is dropped in silence. This test pins
+// the input state the Option B detector reports on; flipping THIS test is
+// explicitly out of scope (that would be Option A, rejected 2026-09-03).
+func TestMergeDropsTemplateAdditionInsideCarriedEventKey(t *testing.T) {
+	const userFile = `{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact|fork",
+        "hooks": [
+          {
+            "command": "bash",
+            "args": ["-c", "run", "${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-session-start.sh"],
+            "timeout": 30,
+            "type": "command"
+          }
+        ]
+      }
+    ]
+  }
+}`
+	// The template has GAINED the navigator entry since the user's file was
+	// written; the user's copy of the first entry is otherwise unchanged.
+	const template = `{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact|fork",
+        "hooks": [
+          {
+            "command": "bash",
+            "args": ["-c", "run", "${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-session-start.sh"],
+            "timeout": 30,
+            "type": "command"
+          },
+          {
+            "command": "bash",
+            "args": ["-c", "run", "${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-session-start-navigator.sh"],
+            "timeout": 5,
+            "type": "command"
+          }
+        ]
+      }
+    ]
+  }
+}`
+
+	merged := mergeWithDerivedBase(t, ".claude/settings.json", userFile, template)
+
+	hooks, _ := merged["hooks"].(map[string]any)
+	sessionStart, _ := hooks["SessionStart"].([]any)
+	if len(sessionStart) != 1 {
+		t.Fatalf("SessionStart array length = %d, want 1 (defect surface: the template's new entry is silently dropped):\n%v",
+			len(sessionStart), merged)
+	}
+	kept, _ := json.Marshal(sessionStart[0])
+	if strings.Contains(string(kept), "handle-session-start-navigator.sh") {
+		t.Errorf("expected the defect surface (no delivery) but the navigator entry appeared:\n%s", kept)
+	}
+}
+
 // TestDeriveTemplateBaseSupportsYAML keeps the helper honest for the other
 // structured format the merge engine compares by key, so a future mergeable
 // YAML file does not silently fall through to the unstructured path.
