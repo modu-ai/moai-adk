@@ -1,0 +1,46 @@
+PASS  J1 init exit=0 (got 0)
+PASS  J1 .moai scaffold present
+PASS  J1 .claude scaffold present
+PASS  J1 live-progress output present (>=5 lines)
+PASS  J1 NO_COLOR output ANSI-free
+PASS  J1b bare non-TTY init exit=0 (got 0)
+PASS  J1b scaffold present
+PASS  J1b ANSI-free
+PASS  J2 update --dry-run exit=0 (got 0)
+PASS  J2 preview/diff summary rendered
+PASS  J2 dry-run made no destructive changes (hash-identical tree)
+PASS  J2 NO_COLOR output ANSI-free
+PASS  J3 exit-code semantics consistent (default=0 nocolor=0)
+PASS  J3 section result tables present
+PASS  J3 NO_COLOR+pipe ANSI-free (ESC count 0)
+PASS  J4 status exit=0 (got 0)
+PASS  J4 status ANSI-free
+PASS  J4 status shows project name
+PASS  J4 status shows version
+PASS  J4 status shows config summary
+PASS  J4 status: no markdown fences leaking
+PASS  J4 spec view exit=0 (got 0)
+PASS  J4 spec view ANSI-free (plain passthrough)
+PASS  J4 spec view renders AC tree nodes
+PASS  J4 spec view tree glyphs present
+PASS  J4 spec view: no fences leaking
+PASS  J5 --help exit=0 (got 0)
+PASS  J5 help ANSI-free under NO_COLOR
+PASS  J5 stderr empty (stdout/stderr separation)
+PASS  J5 USAGE header present
+PASS  J5 COMMANDS group header present
+PASS  J5 PROJECT COMMANDS group header present
+PASS  J5 TOOLS group header present
+PASS  J5 restored logo present on root help (REQ-TUXIU-055)
+PASS  J5 compact banner prose (<=12 non-logo lines before USAGE, got 10 of 16)
+PASS  J5 stdout free of warnings
+PASS  J6 doctor/nocolor piped non-TTY ANSI-free (esc=0)
+PASS  J6 doctor/plain piped non-TTY ANSI-free (esc=0)
+PASS  J6 doctor exit consistent across combos (0 vs 0)
+PASS  J6 status/nocolor piped non-TTY ANSI-free (esc=0)
+PASS  J6 status/plain piped non-TTY ANSI-free (esc=0)
+PASS  J6 status exit consistent across combos (0 vs 0)
+PASS  J6 help/nocolor piped non-TTY ANSI-free (esc=0)
+PASS  J6 help/plain piped non-TTY ANSI-free (esc=0)
+PASS  J6 help exit consistent across combos (0 vs 0)
+PASS  J6 GOOS=windows GOARCH=amd64 build (got 0)
