@@ -224,6 +224,10 @@ func runGroupedChecksObserved(verbose bool, filterCheck string, obs checkObserve
 		{hookWiringCheckName, func(v bool) DiagnosticCheck {
 			return checkHookWiringDrift(cwd, hookWiringTemplateSource(), v)
 		}},
+		// SPEC-UPDATE-HOOK-DELIVERY-001 REQ-UHD-008: read-only detection of
+		// shipped-template hook entries missing from the project's
+		// settings.json (Option B — detect + guide; never writes).
+		{"Hook Delivery", func(v bool) DiagnosticCheck { return checkHookDelivery(cwd, v) }},
 		{"Hook opt-in:", func(v bool) DiagnosticCheck { return checkHookOptIn(cwd, v) }},
 		{"Slash Commands", func(v bool) DiagnosticCheck { return checkSlashCommands(cwd, v) }},
 		{"Skills Allowlist", func(v bool) DiagnosticCheck { return checkSkillsAllowlist(cwd, v) }},
