@@ -32,7 +32,7 @@ paths: ".moai/specs/**,.claude/skills/moai/workflows/run.md,.claude/skills/moai/
 
 리포 고유 사항:
 
-- 통합 워크트리 경로는 `.claude/worktrees/develop` 이고, 리드가 배치 시작 시 provisioning 한다.
+- 통합 워크트리 경로는 `.claude/worktrees/develop` 이고, 리드가 배치 시작 시 provisioning 한다. provisioning 경로는 런처의 기존-브랜치 플래그다: `moai cc -w develop --branch develop` (2026-09-02 착지 — 이전에는 인가된 생성 경로가 없어 raw `git worktree add` 이탈이 반복됐다).
 - 통합 브랜치는 `develop` 이며 push 대상은 `origin/develop` 이다(§4의 CI 판정 면).
 - 병합을 마치고 자기 카드 작업이 남아 있으면 `EnterWorktree(<card-id>)` 로 재진입한다 — `ExitWorktree` 는 primary 체크아웃으로 돌아가지 자기 트리로 돌아가지 않는다.
 

@@ -2868,6 +2868,9 @@
 - path: "workflow.multi.review_gate.enabled"
   class: W
   evidence: reader
+- path: "workflow.project.continuation"
+  class: P
+  evidence: .claude/skills/moai/workflows/project/doc-generation.md
 - path: "workflow.token_budget.plan"
   class: W
   evidence: reader
