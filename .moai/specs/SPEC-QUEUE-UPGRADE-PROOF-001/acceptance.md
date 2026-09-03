@@ -20,7 +20,7 @@ sub-criteria within one logical criterion.
 | AC-QUP-007 | REQ-QUP-007 | no (optional) | `findings` and `archived` survive from the legacy directory |
 | AC-QUP-008 | REQ-QUP-008 | yes | The proof never touches the live queue |
 | AC-QUP-009 | REQ-QUP-009 | yes | No production behavior changed |
-| AC-QUP-010 | — | yes | RED was established before GREEN was claimed |
+| AC-QUP-010 | REQ-QUP-010 | yes | RED was established before GREEN was claimed |
 
 ## §B Scenarios
 
@@ -44,10 +44,23 @@ crossed the composition rather than being re-derived from the items.
 
 ### AC-QUP-002 — directory relocated
 
-Given the same fixture,
+Given the same fixture, plus a sentinel registry file
+`<root>/.moai/state/kanban/companions.json` seeded INSIDE the legacy directory
+(`state_dir.go:13-16` records that the relocation moves the directory, not a
+file list, so the registry files ride along by construction),
+And given the preconditions asserted BEFORE any command runs — that
+`<root>/.moai/state/kanban/backlog.json` and the sentinel both exist, and that
+`<root>/.moai/state/todo/` does NOT exist —
 When the first `moai todo` command completes,
-Then `<root>/.moai/state/todo/` exists and holds the queue, and
-`<root>/.moai/state/kanban/` no longer exists.
+Then `<root>/.moai/state/todo/` exists and holds the queue, the sentinel is
+readable at `<root>/.moai/state/todo/companions.json` with its seeded bytes,
+and `<root>/.moai/state/kanban/` no longer exists.
+
+The two preconditions are load-bearing, not ceremony. The final limb is a
+negative-existence assertion, which passes vacuously when the legacy directory
+was never created; asserting its presence first is what makes that limb
+falsifiable. The sentinel supplies the matching POSITIVE evidence — the
+directory did not merely disappear, its contents arrived at the new name.
 
 ### AC-QUP-003 — legacy document quarantined, not destroyed
 
@@ -96,24 +109,77 @@ Given the delivered test source,
 When it is inspected and run,
 Then every path it touches is rooted under a `t.TempDir()`, the resolved queue
 root is asserted to be inside that temp directory before any command runs, and
-`.moai/state/todo/backlog.db` in this repository is unmodified — verified by
-`git status --short .moai/state/` reporting nothing for that path after the run.
+this repository's live queue at `.moai/state/todo/backlog.db` is unmodified —
+verified by observing the FILE, not git's view of it.
+
+The observation is a before/after comparison recorded in the verdict: capture
+`shasum -a 256 .moai/state/todo/backlog.db` together with its mtime
+(`stat -f '%m %z' <path>` on darwin) before the test run, and assert both are
+identical afterwards. When the file does not exist before the run, the
+assertion is that it still does not exist afterwards.
+
+`git status --short .moai/state/` is NOT a valid check here and must not be
+used: `.gitignore:311` ignores `.moai/state/`, confirmed with
+`git check-ignore -v .moai/state/todo/backlog.db`, so that command prints
+nothing whether or not the live queue was mutated — it cannot fail, and a check
+that cannot fail asserts nothing. The other two limbs of this criterion are
+unchanged.
 
 ### AC-QUP-009 — no production change
 
 Given the delivered branch,
-When `git diff --stat <base>..HEAD` is read,
+When `git diff --stat 4e4607abe..HEAD` is read (the SPEC base pinned in
+`plan.md:L3`; a moving ref would not be a baseline),
 Then every changed path is either a `_test.go` file, a file under
 `.moai/specs/SPEC-QUEUE-UPGRADE-PROOF-001/`, or `.moai/reports/t470/`. No
 non-test file under `internal/` is changed.
 
 ### AC-QUP-010 — RED before GREEN
 
-Given the composed-path test,
-When a deliberate mutation is applied — seeding the fixture under the CURRENT
-directory name instead of the legacy one, so no relocation is required —
-Then AC-QUP-002 fails, and the failure output is recorded verbatim in the
-verdict before the mutation is reverted.
+Given the composed-path test with its fixture unchanged — the legacy directory
+`<root>/.moai/state/kanban/` created and holding the seeded `backlog.json` and
+the `companions.json` sentinel —
+When the mutation is applied: **additionally pre-create an EMPTY
+`<root>/.moai/state/todo/` directory before the first `moai todo` command
+runs**, so both directories exist at resolution time,
+Then `AC-QUP-002` fails, with the observable symptom that
+`<root>/.moai/state/kanban/` STILL EXISTS after the command completes and no
+`companions.json` appears under `<root>/.moai/state/todo/`.
+
+The mutation is applied to the TEST's fixture only. No production file is
+touched, so `REQ-QUP-009` holds while RED is being established.
+
+Why this mutation severs the composed path (traced against the tree at base
+`4e4607abe`, not assumed):
+
+- `internal/kanban/state_dir.go:81-88` — `resolveStateDir` returns the CURRENT
+  directory unconditionally the moment it exists, and the comment states the
+  stale-copy policy explicitly: the legacy directory is then "left exactly where
+  it is". The relocation branch at `state_dir.go:100-103` is never reached.
+- `internal/kanban/backlog_store.go:603-607` — migration runs only in state B
+  (`!dbExists && jsonExists`) at the RESOLVED queue path. With the resolved path
+  now `todo/backlog.json`, which does not exist, neither `migrateLegacyBacklog`
+  nor `quarantineLegacyBacklog` runs against the seeded document at all.
+
+So the mutation makes legacy-DIRECTORY resolution the thing under test:
+everything downstream of the relocation is bypassed, and the seeded queue is
+never reached. `AC-QUP-001a` and `AC-QUP-003` go RED alongside `AC-QUP-002`
+(an empty listed queue; no `backlog.json.migrated`), which is corroboration —
+`AC-QUP-002` is the named criterion.
+
+Why it cannot pass vacuously: `AC-QUP-002`'s preconditions assert the legacy
+directory and its contents EXIST before the command runs. The negative-existence
+limb therefore has something to be false about, and the sentinel limb is a
+positive assertion that the mutation makes unsatisfiable.
+
+Explicitly rejected as the mutation: seeding the fixture under the CURRENT
+directory name instead of the legacy one. That mutation produces GREEN on every
+criterion and demonstrates nothing —
+`internal/kanban/backlog_migrate.go:434` keys `migrateLegacyBacklog` on the
+RESOLVED queue path, never on the directory's name, so a `backlog.json` in
+`todo/` migrates and quarantines exactly as one in `kanban/` does, and
+`AC-QUP-002`'s negative limb passes vacuously because the legacy directory was
+never created. It is recorded here so it is not re-proposed.
 
 A test that has only ever been observed passing has not been shown to assert
 anything. This criterion is what separates the proof from a vacuous green.
@@ -139,5 +205,7 @@ anything. This criterion is what separates the proof from a vacuous green.
 - [ ] The Gaps section names G2 (undefined — see the plan's clarification
       marker), G3 (cross-process concurrency, excluded), and G5 (`moai doctor`
       check, excluded) as not covered
+- [ ] The `AC-QUP-010` mutation's RED output is recorded verbatim in the verdict,
+      alongside the GREEN run of the same test with the mutation reverted
 - [ ] Quality gate above passes with its elapsed time recorded
 - [ ] No production file changed (AC-QUP-009)

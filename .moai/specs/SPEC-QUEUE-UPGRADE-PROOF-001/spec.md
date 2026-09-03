@@ -1,20 +1,32 @@
 ---
 id: SPEC-QUEUE-UPGRADE-PROOF-001
-title: Prove the v3.1.2-to-next queue upgrade path end to end
-version: 0.1.0
+title: "Prove the v3.1.2-to-next queue upgrade path end to end"
+version: "0.2.0"
 status: draft
 created: 2026-09-03
 updated: 2026-09-03
 author: manager-spec
-priority: HIGH
+priority: High
 phase: "v3.2.0 target"
 module: internal/kanban
-lifecycle: spec-first
-tags: [queue, upgrade, migration, testing, kanban]
+lifecycle: spec-anchored
+tags: "queue, upgrade, migration, testing, kanban"
 tier: M
 ---
 
 ## HISTORY
+
+### v0.2.0 (2026-09-03)
+
+- Plan-audit iteration 1 remediation (card t470). Frontmatter corrected so the
+  SPEC is mechanically lintable (`tags` string form, `lifecycle: spec-anchored`,
+  `priority: High`, quoted `title`/`version`). Added `REQ-QUP-010` so the
+  anti-vacuity criterion is anchored in the requirement layer. `AC-QUP-002`
+  gained a positive precondition and a relocation sentinel; `AC-QUP-008`'s
+  gitignored `git status` limb replaced with a digest comparison; `AC-QUP-010`'s
+  mutation replaced with one that actually produces RED. Both
+  `[NEEDS CLARIFICATION]` markers are deliberately left open — they are the
+  dispatcher's to resolve.
 
 ### v0.1.0 (2026-09-03)
 
@@ -133,6 +145,13 @@ directory and shall not read from or write to this repository's live queue.
 This SPEC shall not change the behavior of the directory layer, the storage
 layer, the migration, or the queue-root resolver. Its deliverable is tests, and
 documentation of what was measured.
+
+### REQ-QUP-010 — the proof is not accepted on an unfalsified GREEN
+
+The composed-path proof shall not be accepted on a GREEN it has never been
+shown capable of failing. A mutation that severs the composed path shall be
+applied once, and the resulting failure shall be recorded verbatim, before the
+passing result is claimed.
 
 ## §D Constraints
 

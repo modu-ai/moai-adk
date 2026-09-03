@@ -103,8 +103,13 @@ shape how:
 The second fact is a trap: a bare `t.TempDir()` is not a git repository, so the
 queue root would resolve to the home-based fallback and the fixture planted in
 the temp project would never be read. The existing suite already solves this —
-`internal/cli/todo_queue_root_test.go:100` uses `initGitRepo(t, primary)` plus
-`t.Setenv("CLAUDE_PROJECT_DIR", primary)`, and
+`internal/cli/todo_queue_root_test.go:89-91`
+(`TestResolveTodoQueueRoot_PrimaryIsItself`) uses `initGitRepo(t, primary)` at
+L89 plus `t.Setenv("CLAUDE_PROJECT_DIR", primary)` at L91 — the repo-root form.
+(The neighbouring `todo_queue_root_test.go:100`
+`TestResolveTodoQueueRoot_SubdirectoryResolvesToRepoRoot` calls the same
+`initGitRepo` but points `CLAUDE_PROJECT_DIR` at `sub`, not `primary`; it is the
+subdirectory variant, not the pattern to copy.) And
 `todo_queue_root_test.go:153` seeds a queue document directly and then exercises
 the command path. The new test reuses that pattern verbatim, changing exactly
 one thing: it seeds under `LegacyStateDirForRoot(root)` rather than
@@ -168,7 +173,7 @@ covered.
 
 | Risk | Consequence | Mitigation |
 |---|---|---|
-| Vacuous green — the test passes without ever entering the composed path | The proof asserts nothing | Establish RED first by a deliberate mutation (e.g. temporarily seed under the current directory name instead of the legacy one, and confirm the relocation assertion fails). Record the mutation and its observed failure in the verdict. |
+| Vacuous green — the test passes without ever entering the composed path | The proof asserts nothing | Establish RED first by the mutation `AC-QUP-010` names — pre-create an EMPTY `<root>/.moai/state/todo/` alongside the seeded legacy directory, which makes `resolveStateDir` take the stale-copy branch (`state_dir.go:81-88`) so no relocation runs and `AC-QUP-002` fails with the legacy directory still present. Record the mutation and its verbatim failure output in the verdict. Note the mutation explicitly REJECTED there: seeding under the current directory name instead of the legacy one produces GREEN on every criterion. |
 | `resolveTodoQueueRoot` resolving to the real repository | The test reads or mutates this repository's live queue | `initGitRepo(t, t.TempDir())` + `t.Setenv("CLAUDE_PROJECT_DIR", …)` + `userHomeDirFn` override, exactly as `todo_queue_root_test.go` does. Assert the resolved root is inside the temp dir before proceeding. |
 | `./internal/cli/` exceeding the default Bash timeout | The verification appears to fail when it merely ran long | Run the package with an explicit timeout at or above 600s, and record the elapsed time alongside the result. |
 | Scope creep into repair | The card stops being a proof | REQ-QUP-009 and the `§E Exclusions` section of `spec.md`. Any behavior-changing impulse goes to the exclusions list with its reason. |
