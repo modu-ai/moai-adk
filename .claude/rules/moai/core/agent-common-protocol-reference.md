@@ -303,6 +303,6 @@ The orchestrator interacts with three hook scripts that mechanically enforce orc
 |-------------|---------|---------------------|
 | `.claude/hooks/moai/status-transition-ownership.sh` | PostToolUse on Write/Edit of `.moai/specs/SPEC-*/{spec,plan,acceptance}.md` body | exit 0 always (advisory; audit-logged to `.moai/logs/status-transition-audit.log`; exit-2 blocking reserved for future enforcement) |
 | `.claude/hooks/moai/sync-phase-quality-gate.sh` | Stop hook on sync-phase commit completion | exit 0 always; failing check emits advisory `systemMessage`; blocking mode (opt-in `MOAI_SYNC_GATE_BLOCKING=1`) emits stdout JSON `{"decision":"block"}` |
-| `.claude/hooks/moai/team-ac-verify.sh` | TaskCompleted in team mode (dormant — harness `thorough` + team prerequisites) | exit 0 always; rejection via stdout JSON `{"continue":false,"stopReason":...,"ledger_note":...}` (`decision` NOT valid for TaskCompleted) |
+| `.claude/hooks/moai/team-ac-verify.sh` | TaskCompleted in team mode — registered in no settings surface, so no configuration flag (harness level, team mode) activates it; activation undecided | exit 0 always; rejection via stdout JSON `{"continue":false,"stopReason":...,"ledger_note":...}` (`decision` NOT valid for TaskCompleted) |
 
 Full per-row owning-policy detail and the hook subagent-boundary acceptance criterion (grep verifying no hook invokes AskUserQuestion): `agent-common-protocol-reference.md` § Hook Invocation Surface detail.

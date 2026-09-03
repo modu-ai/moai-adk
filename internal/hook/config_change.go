@@ -51,8 +51,9 @@ func (h *configChangeHandler) EventType() EventType {
 
 // Handle processes a ConfigChange event. The main return path completes
 // synchronously within ≤ 100 ms (p95) per REQ-HAE-002 / AC-HAE-003. The
-// 20ms debounce, YAML validation, and ConfigManager.Reload() all execute
-// in a background goroutine bounded by asyncDeadline (5s).
+// 20ms debounce, YAML validation, and ConfigManager.Reload() are all
+// DISPATCHED to a background goroutine carrying an asyncDeadline (5s) ctx.
+// Dispatched, not delivered: see the spawn-site note below.
 func (h *configChangeHandler) Handle(_ context.Context, input *HookInput) (*HookOutput, error) {
 	// Official stdin field is config_source; configuration_source is the
 	// legacy MoAI field name (kept as fallback for old payloads).
@@ -70,6 +71,14 @@ func (h *configChangeHandler) Handle(_ context.Context, input *HookInput) (*Hook
 	// REQ-HAE-002 async transition: debounce + validation + reload run in
 	// a background goroutine. Main handler returns immediately so the
 	// Claude Code main loop is unblocked.
+	//
+	// asyncDeadline is not the outcome that decides this goroutine's fate.
+	// `moai hook` is a one-shot process: it exits once the main handler
+	// returns, and exit kills the goroutine wherever it has reached — the
+	// deadline only ever fires when the process outlives it, which the hook
+	// process does not. Compounding it here: the 20ms debounce runs BEFORE
+	// any work, so this goroutine is still sleeping when the process exits.
+	// Same shape as file_changed.go; see the longer note there.
 	asyncCtx, cancel := context.WithTimeout(context.Background(), asyncDeadline)
 	h.wg.Add(1)
 	go func() {
