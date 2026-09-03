@@ -115,7 +115,7 @@ deny/matched, query → allow/unmatched). Run it on the pre-fix tree:
 Widen/distinguish the `git branch` pattern (or replace that single pattern
 entry with token-level discrimination) so the M1 matrix goes fully green:
 mutation flags (incl. `-f`, `--force`, `-u` family, `-t` family,
-`--edit-description`, combined clusters containing d/D/m/M/c/C/f) deny;
+`--edit-description`, combined clusters containing d/D/m/M/c/C/f/t/u) deny;
 query forms stay allowed; whole-token long-flag classification (REQ-WBG-F-004).
 Preserve fail-open, sentinel, and all §A.5 surfaces. RED→GREEN: M1 test
 flips to green in this milestone.

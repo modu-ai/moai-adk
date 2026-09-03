@@ -1,7 +1,7 @@
 ---
 id: SPEC-WORKTREE-BRANCH-GUARD-FLAGCLASS-001
 title: "Main-Checkout Branch-State Guard — git branch Mutation-vs-Query Flag-Class Completion"
-version: "0.6.0"
+version: "0.7.0"
 status: in-progress
 created: 2026-09-03
 updated: 2026-09-03
@@ -332,7 +332,7 @@ kept in parity in the same commit.
 
 | AC | Subject | Verifiable by |
 |----|---------|---------------|
-| AC-WBG-F-001 | Full expected matrix: every mutation cell (M-01..M-30) → deny, every query cell → allow (§D.1 table) | M1/M3 Go table test over the matcher + handler |
+| AC-WBG-F-001 | Full expected matrix: every mutation cell (M-01..M-33) → deny, every query cell → allow (§D.1 table) | M1/M3 Go table test over the matcher + handler |
 | AC-WBG-F-002 | Combined short-flag clusters containing `d/D/m/M/c/C/f/t/u` → deny (`-df`, `-fm`, `-vD`, `-vt`, mid-cluster `-vux`) | Matrix cells (incl. M-33) with RED-now |
 | AC-WBG-F-003 | Query allowlist regression: `--list develop -v`, `-vv`, `--merged`, `--no-merged`, `--points-at`, `--format`, `--contains` → allow | Matrix cells (green-now; must stay green post-fix) |
 | AC-WBG-F-004 | Whole-token classification: `--format` allow vs `--force` deny; `--contains`/`--merged`/`--no-merged` allow despite embedded letters | Matrix cells |
@@ -454,3 +454,12 @@ kept in parity in the same commit.
   `* main`; Q-16 cell added, closing an over-match regression the v0.5.0
   H1 edit introduced. Counts: M-rows 33 (37 variants), Q-rows 17,
   expected RED 28 rows / 29 variants.
+- 2026-09-03 v0.7.0 — terminal-gate debt sweep N1/N2/N4 (post-run; SPEC
+  body only, manager-develop forbidden surface): N1 §E AC-001 summary row
+  matrix range updated to the final M-01..M-33 (consistent with
+  acceptance.md and the 37-variant count); N4 plan §F M2 cluster
+  enumeration aligned to the final set `d/D/m/M/c/C/f/t/u`; N2 Q-14
+  parenthetical corrected to "ATTACHED value forms" so it cannot be read
+  as covering space-separated forms (M-31 pins the opposite). Run-phase
+  verified independently at HEAD `b8acd04cc` (package tests ok, coverage
+  85.4%, lint 0, doctrine pair parity confirmed).
