@@ -112,7 +112,44 @@ per C-2. No full local suite was run. No test spawns background load (C-4).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-03
+sync_commit_sha: pending-backfill
+sync_status: complete
+b12_self_test_a: "grep -c 'SPEC-QUEUE-UPGRADE-PROOF-001' CHANGELOG.md -> 0 (no duplicate; emission proceeded)"
+b12_self_test_b: "distinct AC identifiers in acceptance.md -> 11; CHANGELOG entry states 11 (match)"
+b12_self_test_c: "every path named in the CHANGELOG entry verified present on disk (ls)"
+changelog_entry_position: "[Unreleased] -> ### Added, first bullet"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented -> completed (carried on this single sync commit)"
+  plan_md: "no status: field (artifact-stateless on the status axis)"
+  acceptance_md: "no status: field (artifact-stateless on the status axis)"
+  updated_field: "2026-09-03 (already current; unchanged)"
+mx_tag_validation:
+  scope: "internal/cli/todo_composed_upgrade_test.go (the single delivered file)"
+  observed: "0 @MX: annotations; file declares only test functions, no exported production symbol"
+  action: "none — no annotation added; the MX quality gate targets exported production functions, high fan-in symbols, and dangerous patterns, none of which this file carries"
+docs_surfaces_checked:
+  readme: "README.md / README.ko.md / README.ja.md / README.zh.md — no queue-layout or storage-path content; nothing to change"
+  docs_site: "docs-site/content/{en,ko,ja,zh}/utility-commands/moai-todo.md describe the queue storage path and export-json; this card changes no behavior, so no edit"
+production_files_changed_in_sync: 0
+```
+
+**CHANGELOG decision (stated, not silent).** An entry WAS written. The card is a
+test-only regression guard with no behavior change, so the entry is not
+automatic — but the project records exactly this class: the `[Unreleased]`
+`### Added` section already carries `SPEC-LLMCFG-PRESERVE-001` ("test-only
+close, zero production changes") and `SPEC-CODEX-SIDECAR-GUARD-001` (added
+assertions only). What the entry tells a reader is not a new capability but a
+newly-guarded one, plus the boundary of what the guard does NOT cover (G3 / G4 /
+G5, and the downgrade-export directory hole) — information that exists nowhere
+a release reader would find it if the entry were omitted.
+
+**`sync_commit_sha` placeholder.** Written as the canonical `pending-backfill`
+in the sync commit itself and backfilled in a following commit. A commit cannot
+cite its own hash; leaving the slot EMPTY is not the alternative, because the
+SPEC is `completed` once this commit lands and nothing would ever schedule the
+repair.
 
 ## §F Phase 4 Mode Selection
 
