@@ -54,7 +54,7 @@ go test -count=1 -run 'TestAlwaysLoadedTokenBudget$' ./internal/config/ -v
 
 | 파일 | 바이트 | 토큰 | 착지 카드 |
 |---|---:|---:|---|
-| `workflow/kanban-dispatch.md` | +1,468 | +367 | t224(레인 spawn 권한 조항 ~+900B) + t386(감사 산출물 컨벤션 ~+570B) |
+| `workflow/kanban-dispatch.md` | +1,468 | +367 | t224(레인 spawn 권한 조항, 33,203→34,268 B) + t386(감사 산출물 컨벤션, 32,800→33,203 B) |
 | `core/agent-common-protocol.md` | +770 | +192 | t224 (경계 분류 문단) |
 | `AGENTS.md` | +545 | +136 | t196 역량 결속표 — **직전 상향(t421)이 예상했던 바로 그것** |
 | `core/moai-constitution.md` | +380 | +95 | t224 (오케스트레이터 룰 불릿) |
@@ -64,8 +64,10 @@ go test -count=1 -run 'TestAlwaysLoadedTokenBudget$' ./internal/config/ -v
 검산: 보정 시점 표면 = 76,939 − 810 = **76,129** — t421 주석 기록 실측값과 정확히 일치
 (t196 미착지 시점). 예측 여유 135가 소진되고 −539가 된 것.
 
-**측정 대상 변경(③) 기각 근거**: 17항목 전수가 매 턴 주입 집합(no-`paths:` 룰 + 3 고정
-슬롯)과 정확히 일치 — t368 배너 로고 건과 달리 주입되지 않는 외래물의 계수가 없다.
+**측정 대상 변경(③) 기각 근거**: 17항목이 가드가 정의한 배포 표면(no-`paths:` 룰 14 +
+3 고정 슬롯)과 정확히 일치하고, t368 배너 로고 건 같은 주입되지 않는 외래물의 계수가
+없다(단방향 신실성 — 열거 밖 주입물인 `CLAUDE.local.md`(추적됨, 49,597 B)는 가드
+설계상 부외이며 이번 창(b9efb3626↔400f37eb9)에서 불변이라 귀속 산술에 영향 없음).
 
 **문서 축소(②) 기각 근거**: 유일한 de-dup 후보였던 t224의 agent-common-protocol.md
 재진술은 `git show 02cf8ec39` 로 확인한 결과 **5표면 의도 설계**(kanban-dispatch 본문 /
@@ -117,3 +119,22 @@ go test ./internal/config/ -count=1  → ok (패키지 전체)
 1. 본 카드 develop 병합 후 창 재측정 진행 — 8장 전부 표면 추가분 0이라 순번 영향 없음.
 2. "대형 always-loaded 룰 다이어트(stub + lazy loading)" 카드를 큐에 올릴 것 — t421이
    두 차례 명시적으로 연기한 근본 해결이며, 다음 트립이 그 착수 근거다.
+
+---
+
+## sync-audit 기록 (2026-09-03)
+
+- **판정: PASS-WITH-DEBT — 92.5/100** (Functionality 88 · Security 100 · Craft 90 ·
+  Consistency 95). 독립 감사자(sync-auditor, opus)가 전수 재실측 — 판정 문서 수치를
+  신뢰하지 않고 blob을 다시 재 측정. 상세: `sync-audit-verdict.md` (같은 디렉터리).
+- 감사 발견 F1 [Medium] 수리 완료: 카드별 분할을 눈대정 추정(~+900B/~+570B)으로 적어
+  실측과 어긋났던 것을 blob 실측값으로 정정 — t386 +100 tok(32,800→33,203 B),
+  t224 +554 tok(kanban +267 / agent-common-protocol +192 / moai-constitution +95).
+  총계 +810과 파일 귀속은 처음부터 정확했음(감사자 확인).
+- F2 수리 완료: "17항목 = 주입 집합 일치" 서술을 단방향(배포 표면 일치 + 외래물
+  계수 없음)으로 한정하고 CLAUDE.local.md 부외 경계를 명시. F3 수리 완료: DEBT 체인
+  표기에 76,210 단계 복원. F4(여유 261 tok 선택)는 체인 관례 일치로 유지.
+- 감사자 확인 사항: 테스트 파일 diff 0행(미약화), 11개 변경 중 6개가 `paths:` 보유로
+  표면 밖(귀속 완전성), 최소성 — 축소 대안은 실행 불가(+192 < 539, 착지 설계 되돌림)
+  이므로 인상이 가장 작은 정직한 수리.
+
