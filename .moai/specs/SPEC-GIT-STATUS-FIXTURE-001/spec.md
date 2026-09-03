@@ -2,7 +2,7 @@
 id: SPEC-GIT-STATUS-FIXTURE-001
 title: "Pin bare-remote initial branch in internal/core/git status test fixtures (config-independence for CI)"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: "2026-09-04"
 updated: "2026-09-04"
 author: "manager-spec (card t474)"
