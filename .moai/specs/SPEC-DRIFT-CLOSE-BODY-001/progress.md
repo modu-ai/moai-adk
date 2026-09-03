@@ -103,7 +103,7 @@ m1_to_mN_commit_strategy: per-milestone
 
 ```yaml
 sync_complete_at: 2026-09-03
-sync_commit_sha: "pending-backfill"   # a commit cannot cite its own SHA; backfilled in the immediately following commit
+sync_commit_sha: "c1a389036"   # docs(SPEC-DRIFT-CLOSE-BODY-001): sync-phase artifacts — backfilled here; a commit cannot cite its own SHA
 sync_status: complete
 b12_self_test_a: "grep -c 'SPEC-DRIFT-CLOSE-BODY-001' CHANGELOG.md (pre-emission) -> 0, no duplicate from a parallel session"
 b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' spec.md | sort -u -> 7 distinct AC-DCB-* ids, matching progress.md §E.2 ac_pass_count: 7"
