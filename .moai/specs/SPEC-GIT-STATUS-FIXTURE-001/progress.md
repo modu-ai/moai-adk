@@ -57,7 +57,7 @@ spec: SPEC-GIT-STATUS-FIXTURE-001
 card: t474
 branch: WT-git-status-fixture
 run_complete_at: "2026-09-03T19:16:06Z"
-run_commit_sha: "pending-backfill-run"   # backfilled in the follow-up commit (self-referential SHA, D3 backfill window)
+run_commit_sha: "93dad8a115e3ddf00075beb5477ad820368937b0"   # backfilled in the follow-up commit (self-referential SHA, D3 backfill window)
 run_status: run-complete-local            # local ACs 001/002/004/005/006 PASS; AC-GSF-003 pending-external (merged-tree CI, lead-owned)
 ac_pass_count: 5
 ac_fail_count: 0
