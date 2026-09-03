@@ -184,10 +184,10 @@ canary_compliance_check:
 - docs-site `/moai gate` 페이지 4-locale 확장 (ko/en/ja/zh — ko 캐논, 동일 구조): 새 `##` 섹션 1개 —
   `gate.pre_commit.enabled` 키, `.moai/config/sections/gate.yaml` opt-in, `MOAI_PRECOMMIT=1`
   마커 한정 동작, `moai web` Gate 패널 경로, `SKIP_MOAI_PRECOMMIT=1` 우회. 기존 섹션 재작성 없음(범위 최소).
-  - ko: `docs-site/content/ko/utility-commands/moai-gate.md` (섹션 8 → 9)
-  - en: `docs-site/content/en/utility-commands/moai-gate.md` (9 → 10)
-  - ja: `docs-site/content/ja/utility-commands/moai-gate.md` (9 → 10)
-  - zh: `docs-site/content/zh/utility-commands/moai-gate.md` (9 → 10)
+  - ko: `docs-site/content/ko/utility-commands/moai-gate.md` (섹션 7 → 8)
+  - en: `docs-site/content/en/utility-commands/moai-gate.md` (7 → 8)
+  - ja: `docs-site/content/ja/utility-commands/moai-gate.md` (7 → 8)
+  - zh: `docs-site/content/zh/utility-commands/moai-gate.md` (7 → 8)
 - README 4-locale: gate 설정 키를 나열하는 섹션 부재 실측 (`gate.yaml` 언급은 ast_grep_gate 버전노트 1곳뿐) —
   건드리지 않음(부재는 유효 결과).
 - 검증 증거: `.moai/reports/t461/hugo_build_sync.log` — `hugo --gc --minify` exit 0, WARN/ERROR 0행,
