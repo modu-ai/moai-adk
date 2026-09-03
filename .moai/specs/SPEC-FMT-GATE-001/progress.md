@@ -134,3 +134,12 @@ docs_site_or_readme_edits: none          # REQ-FG-005 — no user-facing surface
 final_branch_tip_at_sync_open: 350107589 # §D.5 — activation a95939df5; terminal tip = backfill commit (see §D.5 note above)
 preserve_list_post_sync_count: 0         # internal/template/templates/** untouched by sync
 ```
+
+## Lead-coordination annotation — D4 closure ownership (2026-09-03)
+
+리드 회신(2026-09-03)을 기록으로 고정한다: sync-audit D4(CI Lint green 판독)의 소멸 조건 판정에는 동의하되, 「push 하면 소멸」과 「소멸했다」는 다른 사실이다.
+
+- **D4 상태: OPEN.** CI Lint green 판독은 아직 시행되지 않았다(이 기록 시점 기준, 레인은 push하지 않는다).
+- **판독 주체: 리드.** 리드의 일괄 develop push 이후 CI 판독으로 닫는다. push 시점은 미정 — 본 기록은 소멸을 선언하지 않는다.
+- **card done 전제:** 리드의 CI Lint green 판독. 레인의 선언이 아니라 리드의 판독이 그 전제를 충족시킨다.
+- 근거: `.moai/reports/t465/sync-audit.md` D4 항목(소멸 조건) — 소멸 조건의 존재와 소멸의 시행은 별개 사실이다.
