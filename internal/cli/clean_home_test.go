@@ -209,7 +209,7 @@ func TestCleanHome_RetentionFromHomeTier(t *testing.T) {
 		root := filepath.Join(home, ".moai")
 		writeTier(t, home, "")
 		writeHomeFixtureFile(t, filepath.Join(root, "logs", "very-old.log"), 10,
-			time.Now().AddDate(0, 0, -(config.DefaultHomeCleanRetentionDays + 10)))
+			time.Now().AddDate(0, 0, -(config.DefaultHomeCleanRetentionDays+10)))
 		writeHomeFixtureFile(t, filepath.Join(root, "logs", "mid-age.log"), 10,
 			time.Now().AddDate(0, 0, -20))
 

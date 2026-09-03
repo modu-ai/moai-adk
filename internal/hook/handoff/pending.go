@@ -52,13 +52,13 @@ func (e *EmbeddedGoal) IsUnbounded() bool {
 // REQ-AUTORESUME-006 mandates at least schema_version, body, directives,
 // conversation_language, and saved_at.
 type PendingRecord struct {
-	SchemaVersion        int            `json:"schema_version"`
-	SpecID               string         `json:"spec_id,omitempty"`
-	Phase                string         `json:"phase,omitempty"`
-	SavedAt              time.Time      `json:"saved_at"`
-	SavedBySession       string         `json:"saved_by_session,omitempty"`
-	ConversationLanguage string         `json:"conversation_language,omitempty"`
-	Directives           Directives     `json:"directives"`
+	SchemaVersion        int        `json:"schema_version"`
+	SpecID               string     `json:"spec_id,omitempty"`
+	Phase                string     `json:"phase,omitempty"`
+	SavedAt              time.Time  `json:"saved_at"`
+	SavedBySession       string     `json:"saved_by_session,omitempty"`
+	ConversationLanguage string     `json:"conversation_language,omitempty"`
+	Directives           Directives `json:"directives"`
 	// EmbeddedGoal, when non-nil, carries a live armed goal for /clear re-arm
 	// (SPEC-INFINITE-GOAL-001 REQ-6). Populated by `moai handoff save` when a
 	// goal is armed for the saving session.

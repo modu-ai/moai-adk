@@ -851,6 +851,22 @@ type GateConfig struct {
 	DisabledSteps map[string]bool `yaml:"disabled_steps"`
 	// Typecheck configures the type-check axis.
 	Typecheck GateTypecheck `yaml:"typecheck"`
+	// PreCommit scopes the heavy gate's pre-commit context
+	// (SPEC-PRECOMMIT-GATE-SCOPE-001). The runner honors it ONLY when the
+	// invoking hook exports the MOAI_PRECOMMIT=1 marker; a standalone
+	// `moai gate` run never reads it, so its existing gate.enabled contract is
+	// unchanged (operator decision 2).
+	PreCommit GatePreCommitConfig `yaml:"pre_commit"`
+}
+
+// GatePreCommitConfig configures the heavy gate's pre-commit context.
+type GatePreCommitConfig struct {
+	// Enabled opts the git pre-commit hook's heavy gate in. Default false:
+	// under the MOAI_PRECOMMIT=1 marker the runner skips the project-wide
+	// heavy steps (vet/lint/test/typecheck) so a pre-existing failure
+	// unrelated to the staged change cannot block unrelated commits. The
+	// standalone `moai gate` CLI ignores this key entirely.
+	Enabled bool `yaml:"enabled"`
 }
 
 // GateTypecheck configures the gate's type-check axis.

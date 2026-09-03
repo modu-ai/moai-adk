@@ -67,6 +67,12 @@ const (
 	// 필드 ≥1 불변식 위반 방지), 웹의 schemaSectionMetas()가 raw-only 섹션으로
 	// 렌더한다. RawBlockRef.Section 그룹핑 태그로만 사용된다.
 	SectionMx SectionID = "mx"
+
+	// gate 섹션 — pre-commit heavy gate opt-in (SPEC-PRECOMMIT-GATE-SCOPE-001
+	// REQ-009, seam 전용). gate.pre_commit.enabled bool 하나를 편집하며,
+	// yamlpatch seam으로 gate.yaml에 기록된다. 런너는 MOAI_PRECOMMIT=1 마커
+	// 하에서만 이 키를 존중한다 (단독 `moai gate` 불변).
+	SectionGate SectionID = "gate"
 )
 
 // NOTE: agent-settings 섹션(workflow.yaml team.role_profiles 렌더 표면)은 Agent
@@ -96,6 +102,7 @@ func AllSections() []SectionID {
 		SectionReport,
 		SectionMCP,
 		SectionCrossSession,
+		SectionGate,
 	}
 }
 

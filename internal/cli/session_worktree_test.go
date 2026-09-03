@@ -272,7 +272,10 @@ func TestEnterSessionWorktree_FailBackFalsification(t *testing.T) {
 	swapSessionWorktreeSeams(t, swSeams{
 		inWt:      func() bool { return false },
 		commonDir: func() (string, error) { return "", errFakeNotGitRepo },
-		add:       func(string, string, string) (string, error) { t.Fatal("add must not run pre-commonDir"); return "", nil },
+		add: func(string, string, string) (string, error) {
+			t.Fatal("add must not run pre-commonDir")
+			return "", nil
+		},
 	})
 	var out bytes.Buffer
 	got := enterSessionWorktree(nil, "init", &out)

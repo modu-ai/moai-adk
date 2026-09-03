@@ -26,22 +26,32 @@ import (
 // 모든 34개 필드(빈 라벨 제외)가 항목을 가진다.
 var schemaFieldBridge = map[string]func(t profileSetupText) uikit.TuiLabel{
 	// Identity
-	"f.user_name": func(t profileSetupText) uikit.TuiLabel { return uikit.TuiLabel{Title: t.UserNameTitle, Desc: t.UserNameDesc} },
+	"f.user_name": func(t profileSetupText) uikit.TuiLabel {
+		return uikit.TuiLabel{Title: t.UserNameTitle, Desc: t.UserNameDesc}
+	},
 	// Language (conversation_lang 는 langForm 첫 단계에서 처리되나 스키마 parity 위해 매핑 유지)
-	"f.conversation_lang": func(t profileSetupText) uikit.TuiLabel { return uikit.TuiLabel{Title: t.LangSelectTitle, Desc: t.LangSelectDesc} },
+	"f.conversation_lang": func(t profileSetupText) uikit.TuiLabel {
+		return uikit.TuiLabel{Title: t.LangSelectTitle, Desc: t.LangSelectDesc}
+	},
 	"f.git_commit_lang": func(t profileSetupText) uikit.TuiLabel {
 		return uikit.TuiLabel{Title: t.GitCommitLangTitle, Desc: t.GitCommitLangDesc}
 	},
 	"f.code_comment_lang": func(t profileSetupText) uikit.TuiLabel {
 		return uikit.TuiLabel{Title: t.CodeCommentLangTitle, Desc: t.CodeCommentLangDesc}
 	},
-	"f.doc_lang": func(t profileSetupText) uikit.TuiLabel { return uikit.TuiLabel{Title: t.DocLangTitle, Desc: t.DocLangDesc} },
+	"f.doc_lang": func(t profileSetupText) uikit.TuiLabel {
+		return uikit.TuiLabel{Title: t.DocLangTitle, Desc: t.DocLangDesc}
+	},
 	// Launch
 	"f.model": func(t profileSetupText) uikit.TuiLabel {
 		return uikit.TuiLabel{Title: t.ModelOverrideTitle, Desc: t.ModelOverrideDesc}
 	},
-	"f.model_policy": func(t profileSetupText) uikit.TuiLabel { return uikit.TuiLabel{Title: t.ModelPolicyTitle, Desc: t.ModelPolicyDesc} },
-	"f.effort_level": func(t profileSetupText) uikit.TuiLabel { return uikit.TuiLabel{Title: t.EffortLevelTitle, Desc: t.EffortLevelDesc} },
+	"f.model_policy": func(t profileSetupText) uikit.TuiLabel {
+		return uikit.TuiLabel{Title: t.ModelPolicyTitle, Desc: t.ModelPolicyDesc}
+	},
+	"f.effort_level": func(t profileSetupText) uikit.TuiLabel {
+		return uikit.TuiLabel{Title: t.EffortLevelTitle, Desc: t.EffortLevelDesc}
+	},
 	"f.permission_mode": func(t profileSetupText) uikit.TuiLabel {
 		return uikit.TuiLabel{Title: t.PermissionModeTitle, Desc: t.PermissionModeDesc}
 	},
