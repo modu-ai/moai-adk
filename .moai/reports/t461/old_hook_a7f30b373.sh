@@ -1,9 +1,7 @@
 #!/bin/sh
-# MoAI-ADK pre-commit hook — fast subset (gofmt + go vet) + opt-in heavy gate (moai gate)
+# MoAI-ADK pre-commit hook — fast subset (gofmt + go vet) + heavy gate (moai gate)
 # Bypass via: SKIP_MOAI_PRECOMMIT=1 git commit
-# Fast subset (gofmt + go vet) runs on every commit. The heavy gate (vet + lint
-# + test, 16-language detection) runs in your shell, outside the 5s hook budget,
-# and is opt-in: gate.pre_commit.enabled in .moai/config/sections/gate.yaml.
+# Heavy gate (vet + lint + test, 16-language detection) runs in your shell, outside the 5s hook budget.
 set -eu
 
 if [ "${SKIP_MOAI_PRECOMMIT:-0}" = "1" ]; then
@@ -62,21 +60,11 @@ fi
 
 # --- Heavy gate: vet + lint + test via 'moai gate' (16-language toolchain detection) ---
 # Runs in the user's shell, outside Claude Code's 5s PreToolUse hook budget.
-# MOAI_PRECOMMIT=1 marks the pre-commit context: the runner executes the
-# project-wide heavy steps only when gate.pre_commit.enabled is true in
-# .moai/config/sections/gate.yaml (off by default, so one pre-existing failure
-# unrelated to your staged change cannot block every commit). Toggle it in
-# 'moai web', Quality Gate panel.
 # Skipped when moai is not on PATH so non-moai downstream projects pass silently.
 if command -v moai >/dev/null 2>&1; then
-    if ! MOAI_PRECOMMIT=1 moai gate; then
+    if ! moai gate; then
         printf '\n[pre-commit] FAILED: moai gate reported errors above.\n' >&2
         printf '[pre-commit] Hint: address the reported issues, then re-commit.\n' >&2
-        printf '[pre-commit] Configure: .moai/config/sections/gate.yaml\n' >&2
-        printf '[pre-commit]   gate.pre_commit.enabled  opt in to the heavy gate in the pre-commit context\n' >&2
-        printf '[pre-commit]   gate.enabled              turn the gate off entirely\n' >&2
-        printf '[pre-commit]   gate.skip_tests           skip the test step\n' >&2
-        printf '[pre-commit]   gate.disabled_steps       skip individual steps by name\n' >&2
         printf '[pre-commit] Override: SKIP_MOAI_PRECOMMIT=1 git commit\n' >&2
         exit 1
     fi
