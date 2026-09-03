@@ -163,7 +163,7 @@ m5_handoff:
 
 ```yaml
 sync_complete_at: 2026-09-03
-sync_commit_sha: pending-backfill-sync
+sync_commit_sha: b0cd51195
 sync_status: complete
 changelog_entry_position: "CHANGELOG.md [Unreleased] → Added 섹션 말미 (SPEC-PRECOMMIT-GATE-SCOPE-001 1건, 사전 중복 grep 0 히트)"
 b12_self_test_a: "grep -c 'SPEC-PRECOMMIT-GATE-SCOPE-001' CHANGELOG.md → 0 (커밋 전, 중복 없음 확인)"
