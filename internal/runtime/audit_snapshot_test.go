@@ -166,10 +166,10 @@ func TestSkipEligibleByScorePerTier(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name      string
-		tier      string
-		score     float64
-		eligible  bool
+		name        string
+		tier        string
+		score       float64
+		eligible    bool
 		noteFlat090 string
 	}{
 		// Per-tier PASS threshold alignment.

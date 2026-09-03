@@ -202,9 +202,10 @@ func TestSlimFS_WalkDirNoLeak(t *testing.T) {
 // concurrent reads without data races.
 //
 // Two sub-tests:
-//   (a) reflective_struct_check — inspects slimFS field types via reflect.
-//   (b) concurrent_reads_race_clean — 32-goroutine fan-out to expose races
-//       when run with `go test -race`.
+//
+//	(a) reflective_struct_check — inspects slimFS field types via reflect.
+//	(b) concurrent_reads_race_clean — 32-goroutine fan-out to expose races
+//	    when run with `go test -race`.
 func TestSlimFS_ReadOnlyInvariant(t *testing.T) {
 	t.Parallel()
 
