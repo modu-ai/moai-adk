@@ -120,3 +120,57 @@ load difference is what makes them worth reporting at all. The spawn count is th
   three-package concurrent run (p95 98ms against a 25ms ceiling) and passed on every isolated
   re-run, with and without these changes. It measures SQLite-vs-JSON backlog reads and touches no
   git path. Recorded as a load-flake, not attributed to this change.
+
+---
+
+## Follow-up: the two residual risks, closed before the merge window
+
+Both were raised in the implementing agent's Residual-risk section and are resolved here, ahead of
+the window rather than inside it — a guard added after a re-measurement is a guard that
+re-measurement never saw.
+
+### R1 — the coupling this change created, now bound
+
+The deferral is safe only while the help path is the sole reader of `.Long`. That premise was
+verified, not assumed: `fang.WithoutManpage()` at `internal/cli/fang.go:92`, and zero `GenManTree`
+callers in the tree. But nothing tied the two together, so deleting that one line would ship blank
+man-page descriptions for `todo pr` and `todo done`, silently.
+
+`TestLandedRefNotMaterializedAtConstruction` was offered as covering this. It does not: it asserts
+that `.Long` IS empty at construction — the very state that would be wrong — so it stays green
+while the man pages ship blank. Measured, not argued: with `fang.WithoutManpage()` removed, that
+test still passed and only the new guard failed.
+
+`TestLandedRefDeferralHasExactlyOneConsumerSurface` is the protection. Removing the option produces:
+
+    fang.WithoutManpage() is gone from fang.go, which admits a SECOND reader of .Long.
+    `todo pr` and `todo done` defer their .Long until the help function runs ...
+    so cobra's man generator — which reads .Long directly and runs no help function —
+    would emit them EMPTY.
+
+It reads the source, because `fang.Option` values are functions and cannot be compared. That limit
+is stated in the test body: a rename preserving the behaviour would trip it, and an equivalent
+option spelled differently would not.
+
+### R2 — one of the two help guards WAS vacuous
+
+`strings.Contains(anything, "")` is true, so a `Contains(usage, ref)` assertion asserts nothing when
+`ref` is empty. Forcing `todoLandedRefOnce` to return `""`:
+
+- `TestHelpNamesTheResolvedLandedRef` FAILED — it already carried an empty check.
+- `TestUsageNamesTheResolvedLandedRef` PASSED. Vacuous.
+
+The sibling's empty check is now on the usage test too, and the same mutant now fails it:
+`todo_lazy_landedref_test.go:97: todoLandedRefOnce resolved to the empty string`.
+
+Worth recording that the check found a real one. Reading the two tests side by side, they look
+alike; only the mutant separated them.
+
+### Re-verification after both
+
+    gofmt -l internal/cli/todo_lazy_landedref_test.go   → clean
+    go vet ./internal/cli/                              → rc 0
+    go test ./internal/cli/ -count=1                    → ok 393.660s
+
+Both mutants restored; `grep -c MUTANT` is 0 in `todo.go` and `fang.go`, and `WithoutManpage`
+appears twice in `fang.go` (its doc line and the option) as before.
