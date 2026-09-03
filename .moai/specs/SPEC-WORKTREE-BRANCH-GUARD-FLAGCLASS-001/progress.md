@@ -245,7 +245,7 @@ m1_to_mN_commit_strategy: per-milestone Conventional Commits with card id t467 i
 
 ```yaml
 sync_complete_at: 2026-09-03
-sync_commit_sha: pending-backfill-sync   # D3 placeholder — a commit cannot cite its own SHA; real SHA backfilled in a follow-up commit
+sync_commit_sha: ca64ccdac7a46a540d4815cfcc46a3c6bef7ec08   # D3 backfill — sync commit originally landed as 2d86aba52, trailer corrected (🗿 MoAI) to ca64ccdac pre-push; both unpushed
 sync_status: completed
 b12_self_test_a: pass   # grep -c 'SPEC-WORKTREE-BRANCH-GUARD-FLAGCLASS-001' CHANGELOG.md → 0 before emission (no duplicate entry)
 b12_self_test_b: pass   # 9 distinct live AC identifiers in acceptance.md (AC-WBG-F-001..009; no [RETIRED]/[REF] exclusions) = CHANGELOG "Nine acceptance criteria PASS"
