@@ -134,6 +134,15 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Fully-autonomous", Desc: "샌드박스 증명 필요 (Docker/gVisor 등)"},
 			},
 		},
+		"project_continuation": {
+			Title:       "/moai project 완료 방식",
+			Description: "실행이 첫 기능 백로그 카드를 발급할지, 그리고 권장 다음 단계가 세션을 어디까지 끌고 갈지 정합니다. 기본값은 'card'입니다.",
+			Options: []OptionTranslation{
+				{Label: "None", Desc: "카드를 발급하지 않고 Create SPEC 을 권장"},
+				{Label: "Card", Desc: "카드를 발급하고 /moai plan 에서 멈춤"},
+				{Label: "Pipeline", Desc: "카드를 발급하고 킥오프 게이트까지 이어감"},
+			},
+		},
 		"audit_model": {
 			Title:       "감사 모델 선택",
 			Description: "활성 감사 백엔드. 'claude'가 배포 기본값입니다.",
@@ -293,6 +302,15 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Fully-autonomous", Desc: "サンドボックス証明が必要 (Docker/gVisor 等)"},
 			},
 		},
+		"project_continuation": {
+			Title:       "/moai project の完了方法",
+			Description: "実行が最初の機能のバックログカードを発行するか、そして推奨される次の一手がセッションをどこまで進めるかを決めます。既定値は 'card' です。",
+			Options: []OptionTranslation{
+				{Label: "None", Desc: "カードを発行せず Create SPEC を推奨"},
+				{Label: "Card", Desc: "カードを発行し /moai plan で止まる"},
+				{Label: "Pipeline", Desc: "カードを発行しキックオフゲートまで進む"},
+			},
+		},
 		"audit_model": {
 			Title:       "監査モデルを選択",
 			Description: "アクティブな監査バックエンド。'claude' が配布デフォルトです。",
@@ -450,6 +468,15 @@ var translations = map[string]map[string]QuestionTranslation{
 				{Label: "Semi-auto (推荐)", Desc: "每个重要操作前都确认"},
 				{Label: "Automatic", Desc: "自主运行里程碑;在关卡确认"},
 				{Label: "Fully-autonomous", Desc: "需要沙箱证明 (Docker/gVisor 等)"},
+			},
+		},
+		"project_continuation": {
+			Title:       "/moai project 的收尾方式",
+			Description: "决定本次运行是否发出首个功能的待办卡片，以及推荐的下一步把会话带到哪一步。默认值为 'card'。",
+			Options: []OptionTranslation{
+				{Label: "None", Desc: "不发卡片，推荐 Create SPEC"},
+				{Label: "Card", Desc: "发出卡片，停在 /moai plan"},
+				{Label: "Pipeline", Desc: "发出卡片，继续到启动关卡"},
 			},
 		},
 		"audit_model": {
