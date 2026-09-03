@@ -2,7 +2,7 @@
 id: SPEC-QUEUE-UPGRADE-PROOF-001
 title: "Prove the v3.1.2-to-next queue upgrade path end to end"
 version: "0.4.0"
-status: draft
+status: in-progress
 created: 2026-09-03
 updated: 2026-09-03
 author: manager-spec
