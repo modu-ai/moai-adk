@@ -1,7 +1,7 @@
 ---
 id: SPEC-GRAPH-GATE-RESTAMP-001
 title: "codemaps 게이트의 맨손 재스탬프 위조-초록 차단 — 측정 기점을 본문 최종 변경 커밋으로 이동"
-version: "0.1.2"
+version: "0.1.3"
 status: in-progress
 created: 2026-09-04
 updated: 2026-09-04
@@ -22,6 +22,7 @@ related_specs: [SPEC-GRAPH-FRESHNESS-CADENCE-001, SPEC-V3R6-GRAPH-FRESHNESS-001,
 
 | Version | Date | Change | Author |
 |---------|------|--------|--------|
+| 0.1.3 | 2026-09-04 | **§B.4와 §D.1의 거짓 문장 2건을 정정**(manager-develop이 하류에서 발견, 레인 결정). ① §B.4는 "모든 기존 codemaps 층 픽스처가 본문을 미추적으로 남긴다"고 했으나 거짓 — 내부 헬퍼 `writeCodemapsProvenanceBlock`은 본문을 **아예 쓰지 않으며**, 이를 직접 호출하는 픽스처는 본문이 없다. ② §D.1은 본문-부재 상태가 선행 "codemaps directory missing" 분기에서 이미 처분된다고 했으나 거짓 — 그 분기는 `os.Stat(dir).IsDir()`이라 `provenance.json`만 든 디렉터리는 통과한다. 본문-부재는 **도달 가능**하고 규칙 C로 떨어진다. 결정: **규칙 C를 C1/C2로 분리**한다 — C1(본문 부재) = absent + **시스템 오류 없음**(exit 1), C2(앵커 해석 불가) = absent + 시스템 오류(exit 2, 불변). C1은 형제 층 `checkCitations`의 `docs == 0` 처분과 일치시키는 **정정**이지 새 발명이 아니다. AC-4를 C1 형태로 재작성하고 C2의 도달 불가성을 명시, AC-5에 픽스처 1건 편집을 허가했다. | manager-spec |
 | 0.1.2 | 2026-09-04 | 규칙 A의 두 번째 구멍 종결(레인 결정). 기존 픽스처의 codemaps 본문이 **미추적**이라는 실측(§B.4)에 따라, 규칙 A의 프로브를 `git diff`와 `git ls-files --others --exclude-standard`의 **합집합**으로 정정했다 — `gitDiffNameList`가 described roots에 이미 쓰는 관용구를 재사용한다. 정정 전이라면 기존 codemaps 층 테스트가 전부 규칙 C(absent)로 떨어져 AC-5가 구조적으로 실패했을 것이다. 규칙 B/C의 로직은 불변이며, 정정 이후 규칙 C가 거의 도달 불가능해지는 사정을 §D.1에 명시했다. `acceptance.md`에 AC-7(미추적 본문 픽스처 회귀 잠금)을 신설했다. | manager-spec |
 | 0.1.1 | 2026-09-04 | §D.2의 미해소 항목 종결. 레인이 규칙 A 프로브의 오명명 지적을 수용해 결정했다: 규칙 A의 로직은 배차문 그대로 두고, `content_anchor_source` 토큰만 `working-tree-differs-from-stamp`로 개명한다. §D.1 표, §C REQ-GGR-004, §G Q2를 그에 맞춰 갱신하고 `[NEEDS CLARIFICATION]` 표식을 제거했다. 이 수리가 닫지 **않는** 잔여 위험 1건(본문에 사소한 미커밋 편집을 넣고 스탬프하면 규칙 A로 통과)을 §I에 신설해 명시적으로 범위 밖으로 선언했다. | manager-spec |
 | 0.1.0 | 2026-09-04 | 카드 t478 plan-phase 최초 저작. §B의 모든 수치는 워크트리 `.claude/worktrees/t478`(브랜치 `WT-graph-gate-restamp`, HEAD `456665e8d`)에서 직접 측정했다. 배차문이 제시한 앵커 규칙 A/B/C를 그대로 채택하되, 규칙 A의 프로브가 이 트리에서 실제로 발화하는 것을 관측해 §D.2에 판정으로 기록하고 `content_anchor_source` 토큰 명명을 운영자 결정 항목으로 남겼다. | manager-spec |
@@ -80,18 +81,41 @@ t475 본문에 적힌 산문 주의 한 줄뿐이며, 그 카드를 읽지 않�
 `entry-points.md`, `modules.md`, `overview.md`)을 출력한다. 그러나 이 트리에는 codemaps 본문에 대한
 **미커밋 변경이 없다**. 차이는 S 이후 HEAD가 전진하면서 들어온 **커밋된** 본문 변경에서 온다. §D.2 참조.
 
-### B.4 — 기존 픽스처의 codemaps 본문은 미추적이다
+### B.4 — 기존 픽스처의 codemaps 본문은 두 가지 모양이며, 둘 다 규칙 A/B를 통과하지 못한다
 
-`internal/graph/check_test.go`의 `writeCodemapsProvenance` 헬퍼는 픽스처의 base 커밋 **이후에**
-`.moai/project/codemaps/modules.md`를 디스크에 쓰고 **커밋하지 않는다**(`os.WriteFile`, 인용:
-`check_test.go` `writeCodemapsProvenance` 본문). 따라서 모든 기존 codemaps 층 픽스처에서 본문은
-미추적 상태다.
+`internal/graph/check_test.go`에는 헬퍼가 **두 겹**이고 본문 처리가 서로 다르다.
 
-이것이 규칙 A의 프로브를 합집합으로 정정해야 하는 이유다. `git diff --name-only S -- <paths>`는
-미추적 파일을 나열하지 않으므로, 정정 전 규칙 A는 이 픽스처들에서 발화하지 않는다. 규칙 B의
-`git log -1 S -- <paths>` 또한 비어 있다 — 그 픽스처의 어떤 커밋도 codemaps 디렉터리를 건드린 적이
-없다. 둘 다 떨어지면 규칙 C(absent + 시스템 오류)로 가고, fresh나 stale을 기대하는 **기존 테스트가
-전부 깨진다** — AC-5(회귀 잠금)가 구조적으로 실패한다.
+| 헬퍼 | 본문 처리 | 픽스처가 갖는 상태 |
+|---|---|---|
+| `writeCodemapsProvenance` (바깥) | base 커밋 **이후** `.moai/project/codemaps/modules.md`를 `os.WriteFile`로 쓰고 커밋하지 않음 | 본문 존재, **미추적** |
+| `writeCodemapsProvenanceBlock` (안쪽, 바깥 헬퍼가 감싸는 것) | 본문을 **아예 쓰지 않음** — `provenance.json`만 marshal해서 쓴다 | **본문 부재** |
+
+안쪽 헬퍼를 직접 호출하는 픽스처(`check_absent_test.go` 등)는 codemaps 디렉터리에 `provenance.json`
+하나만 갖는다. 두 모양 모두 정정 전 규칙 A(추적 diff 단독)로는 발화하지 않고, 규칙 B의
+`git log -1 S -- <본문 pathspec>`도 비어 있다 — 그 픽스처의 어떤 커밋도 codemaps 디렉터리를 건드린 적이
+없기 때문이다. 따라서 둘 다 규칙 C로 떨어진다.
+
+미추적-본문 모양은 §D.1의 합집합 정정(REQ-GGR-004a)이 해결한다. **본문-부재 모양은 합집합으로도 해결되지
+않는다** — 셀 본문 자체가 없다. 이것이 규칙 C를 C1/C2로 분리해야 하는 이유다(§D.1).
+
+### B.5 — 레인 실측: 정정 전 구현에서 기존 테스트 2건이 같은 원인으로 실패한다
+
+HEAD `2649fe296`의 구현에 대해 레인이 측정했다. 두 실패의 원인은 동일하다 — 규칙 C가
+**시스템 오류**를 반환한다는 것이다.
+
+```
+$ go test ./internal/graph/ -run TestCheckFreshness_DescribedRootsScopeFidelity -count=1
+--- FAIL: TestCheckFreshness_DescribedRootsScopeFidelity (0.52s)
+    check_regression_lock_test.go:80: CheckFreshness: codemaps stamp d3fb238fc81b not comparable in this checkout: no commit in the stamped history touches the codemaps body
+
+$ go test ./internal/cli/ -run TestGraphCheckCmd_AbsentExitsOne -count=1
+--- FAIL: TestGraphCheckCmd_AbsentExitsOne (0.46s)
+    graph_check_test.go:271: absent layers must exit 1, got graph check: codemaps stamp c369bcc3faed not comparable in this checkout: no commit in the stamped history touches the codemaps body
+```
+
+두 실패 중 어느 쪽도 **absent 판정이 틀렸다**고 말하지 않는다. 둘 다 **시스템 오류가 틀렸다**고 말한다.
+`AbsentExitsOne`은 exit 1을 단언하는데 exit 2 오류 경로를 받았다. 이 구분 — 확정된 관측 대 실패한 측정 —
+이 정확히 1/2 종료코드 계약이 이미 싣고 있는 구분이다.
 
 ## §C. 요구사항 (GEARS)
 
@@ -112,10 +136,15 @@ t475 본문에 적힌 산문 주의 한 줄뿐이며, 그 카드를 읽지 않�
 - **REQ-GGR-005** (When, event-driven). `When` 규칙 A가 발화하지 않고 S의 이력 안에서 본문을 건드린
   커밋이 발견되면, 층은 그 커밋을 앵커로 삼고 `content_anchor_source=last-body-change`를 보고해야
   한다(shall).
-- **REQ-GGR-006** (When, event-detected). `When` S의 이력 안에서 본문을 건드린 커밋이 하나도 발견되지
-  않으면(얕은 이력 등), 층은 `verdict=absent`를 보고하고 시스템 오류를 함께 반환해야 한다(shall) —
-  기존 not-comparable 경로와 동일한 처분이다.
+- **REQ-GGR-006** (When, event-detected). `When` 앵커가 해석되지 않고 codemaps 본문 집합이 비어 있음이
+  관측되면(C1), 층은 `verdict=absent`와 본문 부재를 명시하는 reason을 보고해야 하며, 시스템 오류를
+  반환해서는 안 된다(shall not) — exit 1. 형제 층 `checkCitations`의 `docs == 0` 처분과 동일하다.
+- **REQ-GGR-006a** (When, event-detected). `When` 본문은 존재하나 앵커가 해석되지 않으면(C2, 이력 절단),
+  층은 `verdict=absent`를 보고하고 시스템 오류를 함께 반환해야 한다(shall) — exit 2. 기존 not-comparable
+  경로와 동일한 처분이다.
 - **REQ-GGR-007** (Unwanted). 층은 앵커를 해석할 수 없는 상태를 `fresh`로 보고해서는 안 된다(shall not).
+  이는 C1·C2 양쪽에 구속된다 — **어떤 앵커 해석 결과도 결코 `fresh`를 낳지 않는다**는 것이 지켜야 할
+  성질이고, C1은 그 성질의 도달 가능한 증인이다(AC-4).
 - **REQ-GGR-008** (Ubiquitous). 앵커 walk는 S 자신의 이력으로 제한되어야 한다(shall). 그 제한이 앵커가
   S의 조상임을 보장하며, 값이 더 보수적인 방향(더 붉은 쪽)으로만 움직임을 보장한다(§B.2).
 - **REQ-GGR-009** (Ubiquitous). `LayerReport`는 `content_anchor`(sha)와 `content_anchor_source`(§D.1의
@@ -136,7 +165,8 @@ clean 스탬프 경로에서만 동작한다. 스탬프된 sha를 S라 한다.
 |---|---|---|---|
 | A | 작업 트리 본문이 S 시점 본문과 다름 — `git diff --name-only S -- <본문 pathspec>`과 `git ls-files --others --exclude-standard -- <본문 pathspec>`의 **합집합**이 비어 있지 않음 | S | `working-tree-differs-from-stamp` |
 | B | A가 아니고 `git log -1 --format=%H S -- <본문 pathspec>`이 비어 있지 않음 | 그 커밋 | `last-body-change` |
-| C | 그 외 | 없음 | — (`verdict=absent` + 시스템 오류) |
+| C1 | 그 외이고 **본문 집합이 비어 있음** — 작업 트리에도 S에도 본문이 없다(디렉터리에 `provenance.json`만) | 없음 | — (`verdict=absent`, **시스템 오류 없음** → exit 1) |
+| C2 | 그 외이고 본문은 존재하나 앵커가 해석되지 않음(이력 절단) | 없음 | — (`verdict=absent` + **시스템 오류** → exit 2) |
 
 규칙 A가 표현하는 의미: **작업 트리의 본문이 S 시점의 본문과 바이트 동일하지 않다면 본문은 최소한
 S만큼은 새롭고, 따라서 S에서 재는 것이 옳으며 지나치게 관대할 수 없다.** 추적 차이만 보면 미추적
@@ -148,12 +178,29 @@ S만큼은 새롭고, 따라서 S에서 재는 것이 옳으며 지나치게 관
 규칙 B의 walk를 S 이력으로 제한하는 것이 하중을 받는 부분이다 — 그 제한이 앵커의 조상성을 보장하고,
 따라서 이 변경이 게이트를 더 초록으로 만들 수 없음을 보장한다(§B.2 실측: 405 → 570, 조상성 rc=0).
 
-**규칙 C는 이 정정 이후 사실상 도달하기 어렵다.** 규칙 C에 닿으려면 본문이 S 시점 본문과 동일하고
-(추적·미추적 모두) **동시에** S의 이력에 본문을 건드린 커밋이 하나도 없어야 하는데, 그것은 양쪽 트리
-어디에도 본문이 존재하지 않는다는 뜻이고, 그 경우는 앞선 "codemaps directory missing" 분기가 이미
-absent로 처분한다. 그럼에도 규칙 C를 남기는 이유는 진짜로 측정 불가능한 경우 — 얕은 이력이 본문 커밋을
-잘라낸 상태 — 때문이며, 그때 규칙 C는 반드시 absent + 시스템 오류여야 한다. 결코 fresh가 아니다
-(REQ-GGR-006, REQ-GGR-007).
+**규칙 C는 두 갈래로 갈린다 — 확정된 관측(C1)과 실패한 측정(C2).** 종전 이 자리에는 "본문-부재는 선행
+`codemaps directory missing` 분기가 이미 absent로 처분하므로 규칙 C는 사실상 도달 불가"라고 적혀 있었다.
+**거짓이다.** 그 분기는 `os.Stat(dir); !info.IsDir()`(`check.go`)이므로 `provenance.json` 하나만 든
+디렉터리는 통과한다. 본문-부재는 도달 가능하며, §B.4가 보여주듯 기존 픽스처가 실제로 그 상태다.
+
+- **C1 — 본문 부재.** 기술하는 대상이 아예 없으므로 신선도는 판정 불가다. 그러나 이것은 **확정된 관측**이지
+  실패한 측정이 아니다 → `verdict=absent`, 본문 부재를 명시하는 reason, **시스템 오류 없음**. exit 1.
+- **C2 — 앵커 해석 불가.** 본문은 있는데 앵커가 해석되지 않는 경우(이력 절단) → `verdict=absent` +
+  시스템 오류. exit 2. 배차 원안 그대로다.
+
+**선례 — C1은 발명이 아니라 형제 층과의 정합이다.** 같은 파일군의 citations 층이 doc-less 상태를 이미
+이렇게 처분한다(`internal/graph/check_citations.go` `checkCitations`, `docs == 0` 분기):
+
+```go
+	if docs == 0 {
+		rep.Verdict = VerdictAbsent
+		rep.Reason = "no codemaps documents to check"
+		return rep
+	}
+```
+
+absent이고 오류가 없다. C1은 codemaps 층을 citations 층과 **일치**시키며, C1이 없는 상태가 오히려 두 층의
+분기(divergence)다.
 
 ### D.2 규칙 A 프로브의 오명명 — 라벨 개명으로 종결 (결정 완료)
 
@@ -167,7 +214,7 @@ absent로 처분한다. 그럼에도 규칙 C를 남기는 이유는 진짜로 �
    조상이거나 그 자신이므로 값은 더 보수적인 방향으로만 움직인다. 안전성 변화 없음.
 2. **규칙 A의 `content_anchor_source` 토큰을 `working-tree-differs-from-stamp`로 개명한다.** 프로브가
    실제로 잰 것을 정직하게 기술하는 이름이다. 나머지 두 토큰은 그대로다 — 규칙 B는 `last-body-change`,
-   규칙 C는 앵커를 아예 보고하지 않는다(absent + 시스템 오류).
+   규칙 C는 앵커를 아예 보고하지 않는다 — C1은 absent(오류 없음), C2는 absent + 시스템 오류.
 
 개명의 근거는 위 측정이다. 이 SPEC이 `content_anchor` / `content_anchor_source` 두 필드를 새로 싣는
 이유가 "앵커를 주장 대신 읽히게 한다"인 이상, `working-tree-regeneration`이라는 거짓 라벨은 그 목적에

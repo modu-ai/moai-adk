@@ -16,8 +16,11 @@
 - **규칙 A 토큰 명명 — 종결.** 프로브가 실제로 재는 것은 "미커밋 재생성"이 아니라 "작업 트리가 스탬프와
   다름"이다(`spec.md` §B.3, §D.2). 로직은 배차문 그대로 두고 토큰만 `working-tree-differs-from-stamp`로
   개명한다. 로직 변경 0.
+- **규칙 C의 C1/C2 분리 — 종결.** 본문-부재는 선행 `codemaps directory missing` 분기(`os.Stat(dir).IsDir()`)를
+  통과하므로 도달 가능하며, 시스템 오류로 처분하면 기존 테스트 2건이 깨진다(`spec.md` §B.5). C1은 absent +
+  오류 nil(exit 1), C2는 absent + 오류(exit 2). C1은 형제 층 `checkCitations`와의 정합이다.
 - **규칙 A 프로브 = 합집합 — 종결.** 기존 픽스처의 codemaps 본문은 미추적이라(`spec.md` §B.4) `git diff`
-  단독 프로브로는 규칙 A가 발화하지 않고 규칙 C(absent)로 떨어져 기존 테스트가 전부 깨진다. 프로브를
+  단독 프로브로는 규칙 A가 발화하지 않고 규칙 C로 떨어져 미추적-본문 픽스처가 깨진다. 프로브를
   `git diff` ∪ `git ls-files --others --exclude-standard`로 정정하며, 이는 `gitDiffNameList`가 이미 쓰는
   관용구의 재사용이다. 규칙 B/C의 로직은 불변.
 
@@ -53,9 +56,15 @@ func resolveContentAnchor(projectRoot, stampedSHA string) (anchor, source string
 - 규칙 A: `git diff --name-only <S> -- <본문 pathspec>`와
   `git ls-files --others --exclude-standard -- <본문 pathspec>`의 **합집합** → 비어 있지 않으면
   `(S, "working-tree-differs-from-stamp")`. 합집합 형태는 `gitDiffNameList`의 관용구 재사용이며, 추적
-  쪽만 거르면 미추적 본문이 세어지지 않아 기존 픽스처가 전부 규칙 C로 떨어진다(`spec.md` §B.4).
+  쪽만 거르면 미추적 본문이 세어지지 않아 미추적-본문 픽스처가 규칙 C로 떨어진다(`spec.md` §B.4).
+  본문-부재 픽스처는 합집합으로도 구제되지 않으며 C1이 그 몫이다.
 - 규칙 B: `git log -1 --format=%H <S> -- <본문 pathspec>` → 비어 있지 않으면 `(그 sha, "last-body-change")`.
-- 규칙 C: 둘 다 비면 오류 반환.
+- 규칙 C: 둘 다 비면 **본문 집합의 유무로 갈린다**.
+  - **C1 (본문 부재)**: `verdict=absent` + 본문 부재 reason, **오류 nil** (exit 1). 형제 층
+    `checkCitations`의 `docs == 0` 처분과 동일(`spec.md` §D.1 선례).
+  - **C2 (본문 존재, 앵커 미해석)**: `verdict=absent` + 시스템 오류 (exit 2). 배차 원안 그대로.
+  - 본문 집합의 유무는 규칙 A가 이미 계산한 합집합과 S 시점 본문 목록으로 판정한다 — 세 번째 git 호출
+    관용구를 새로 만들지 않는다.
 
 기존 `gitOutput` 헬퍼를 재사용한다(신규 프로세스 실행 규약을 만들지 않는다).
 
@@ -88,15 +97,16 @@ not-comparable 처분과 같은 모양으로 `verdict=absent` + 시스템 오류
 
 **M1 (Priority High) — 앵커 해석과 보고 필드**
 `LayerReport` 필드 2개 추가, `resolveContentAnchor` 구현, `checkCodemaps` clean 경로 배선.
-규칙 C는 기존 not-comparable 처분에 합류시킨다.
+규칙 C는 C1/C2로 갈라 배선한다 — C1은 absent + 오류 nil, C2만 기존 not-comparable 처분에 합류시킨다.
 
 **M2 (Priority High) — 뮤턴트 테스트**
 AC-1(맨손 재스탬프 → stale)과 AC-2(진짜 재생성 미커밋/커밋 → fresh)를 픽스처 저장소로 덮는다.
 AC-1은 수리 전 RED 관측을 증거로 남긴다.
 
-**M3 (Priority Medium) — 조상성·측정불가·회귀 잠금**
-AC-3(앵커 조상성), AC-4(규칙 C → absent + 시스템 오류), AC-5(기존 테스트 무회귀),
-AC-7(미추적 본문 픽스처 → 규칙 A, absent 아님 — AC-5의 구조적 전제를 잠근다).
+**M3 (Priority Medium) — 조상성·불변식·회귀 잠금**
+AC-3(앵커 조상성), AC-4(C1 → absent + 오류 nil, 그리고 "어떤 앵커 해석 결과도 fresh가 아니다" 불변식;
+C2는 도달 불가로 선언하고 픽스처를 만들지 않는다), AC-5(기존 테스트 무회귀 + 허가된 픽스처 편집 1건),
+AC-7(미추적 본문 픽스처 → 규칙 A, absent 아님).
 
 **M4 (Priority Low) — 증거 정리**
 `.moai/reports/t478/`에 검증 산출물을 반출하고 진행 기록을 닫는다.
@@ -107,8 +117,11 @@ M1 → M2를 뒤집을 수 없다. M3는 M1의 오류 경로에 의존한다. M4
 ## §G. 안티패턴
 
 - **행복 경로만 증명하기.** AC-2만 통과시키는 수리는 위조-초록을 그대로 둔 채 초록이 된다. AC-1이 본질이다.
-- **규칙 A 프로브를 추적 차이만으로 구현하기.** 미추적 본문이 세어지지 않아 기존 픽스처가 전부 규칙 C로
+- **규칙 A 프로브를 추적 차이만으로 구현하기.** 미추적 본문이 세어지지 않아 미추적-본문 픽스처가 규칙 C로
   떨어진다. AC-7이 이 뮤턴트를 잡는다.
+- **본문-부재를 시스템 오류로 처분하기.** 확정된 관측을 실패한 측정으로 보고하는 것이며, exit 1을 단언하는
+  기존 테스트를 exit 2로 깨뜨린다(`spec.md` §B.5 실측). AC-4가 이 뮤턴트를 잡는다.
+- **C2에 도달하는 척하는 픽스처 만들기.** 도달 불가 분기의 초록은 공허한 초록이다. C2는 선언하고 남긴다.
 - **파이프로 종료코드 읽기.** `moai graph check | tail`은 `tail`의 rc 0을 잡아 초록으로 읽힌다 —
   다른 레인에서 실측된 오독이다.
 - **앵커 walk를 S 이력 밖으로 넓히기.** 조상성 보장이 깨지고, 값이 더 초록인 쪽으로 움직일 수 있다.

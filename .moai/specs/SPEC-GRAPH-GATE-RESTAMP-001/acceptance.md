@@ -52,24 +52,49 @@
 - 실측 대조군(이 워크트리, 2026-09-04): 앵커 `2f28bc394`, 스탬프 `ad272be20`, 조상성 rc 0,
   described-root diff 405 → 570.
 
-### AC-4 — 측정 불가는 absent로 남는다 (fresh 아님, stale 아님)
+### AC-4 — 앵커 해석 결과는 결코 `fresh`가 아니다 (C1이 도달 가능한 증인)
 
-**Given** 스탬프된 sha의 이력 안에 codemaps 본문을 건드린 커밋이 하나도 없는 픽스처(얕은 이력 또는 본문이
-초기 커밋 이후 한 번도 변경되지 않은 저장소)
+**Given** codemaps 디렉터리에 `provenance.json`만 있고 본문 문서가 하나도 없는 픽스처 — 기존
+`internal/graph/check_test.go` `writeCodemapsProvenanceBlock`(안쪽 헬퍼)이 직접 만드는 바로 그 모양
+(`spec.md` §B.4)
 **When** codemaps 층을 판정하면
-**Then** `verdict == "absent"` 이고 반환된 시스템 오류가 non-nil이다.
+**Then** `verdict == "absent"` 이고 반환된 시스템 오류가 **nil**이며, verdict는 특히 `fresh`가 **아니다**.
 
-- `fresh`도 `stale`도 아니어야 한다. 두 값 중 어느 쪽이라도 이 AC는 실패다.
-- 규칙 A의 합집합 정정 이후 이 경로는 사실상 도달하기 어렵다(`spec.md` §D.1). 픽스처는 본문이 S 시점
-  본문과 추적·미추적 양쪽에서 동일하면서 S의 이력에 본문 커밋이 없는 상태를 만들어야 하며, 얕은 이력으로
-  본문 커밋을 잘라내는 형태가 그 예다. 도달이 어렵다는 사실이 이 AC를 면제하지는 않는다 — 도달했을 때
-  절대 fresh가 아니어야 한다는 것이 요지다.
+- 기대 신호는 측정 전에 고정한다: `verdict == "absent"` **그리고** `err == nil` **그리고**
+  `verdict != "fresh"`. 이것이 C1이며 exit 1이다.
+- reason은 본문 부재를 명시해야 한다.
+- 선례: 형제 층 `checkCitations`의 `docs == 0` 분기가 absent + 오류 없음으로 처분한다
+  (`internal/graph/check_citations.go`). C1은 그 처분과의 정합이지 새 발명이 아니다.
+
+**이 AC가 잠그는 성질은 C1 하나가 아니라 불변식이다: 어떤 앵커 해석 결과도 결코 `fresh`를 낳지 않는다.**
+C1은 그 불변식의 도달 가능한 증인이고, C2는 같은 불변식의 도달 불가능한 갈래다.
+
+**C2 분기는 픽스처로 덮지 않는다 — 의도된 미검증이다.** manager-develop이 측정한 바에 따르면 얕은 경계
+커밋과 루트 커밋 모두 모든 파일을 ADDED로 보고하므로, 본문이 존재하는 한
+`git log -1 <S> -- <본문 pathspec>`은 항상 비어 있지 않다. 즉 C2에 도달하는 git 상태가 없다. 그럼에도
+C2 분기는 **fail-closed로 의도적으로 남긴다**: 도달했을 때 absent + 시스템 오류여야 하며 결코 fresh가
+아니어야 한다(REQ-GGR-006a, REQ-GGR-007).
+
+- 도달 불가 분기를 **선언하고 근거를 남긴 미검증**은 정직하다. 언급 없이 남긴 미검증은 정직하지 않다.
+- **C2에 도달하는 척하는 픽스처를 만들지 않는다.** 도달하지 못하는 픽스처의 초록은 공허한 초록이다.
 
 ### AC-5 — 회귀 잠금 (AC-7이 이 항목의 구조적 전제를 잠근다)
 
 **Given** 기존 `internal/graph` 테스트 스위트
 **When** `go test ./internal/graph/...`를 실행하면
 **Then** 모두 통과한다.
+
+**허가된 픽스처 편집 — 정확히 1건.**
+
+- `TestGraphCheckCmd_AbsentExitsOne`은 C1 하에서 **무수정으로 통과한다**. codemaps가 mx-index / edges와
+  함께 absent가 되고 exit는 1로 유지되며, 이 테스트가 grep하는 reason 문자열은 그 두 층에서 계속 나온다.
+- `TestCheckFreshness_DescribedRootsScopeFidelity`는 여전히 실패한다. 본문 없는 안쪽 헬퍼를 쓰면서
+  codemaps `fresh`/value 0을 단언하기 때문이다. 이 테스트의 주제는 **described-roots 범위 충실성**이고
+  본문과 무관하다 — 본문 없는 모양은 부수적이다. 따라서 이 픽스처에 codemaps 본문 문서 하나를 준다.
+  모양은 `writeCodemapsProvenance`가 이미 쓰는 것과 동일하다(미추적 `modules.md`로 충분하며, 규칙 A를
+  타고 S에 앵커돼 기존 단언이 그대로 유지된다).
+- **그 테스트의 단언, 이름, 뮤턴트 판별식은 바꾸지 않는다.** 다른 어떤 기존 테스트도 수정하지 않는다 —
+  이 1건 외에 AC-5의 회귀 잠금은 원문대로 유효하다.
 
 추가로 다음이 변경되지 않았음을 확인한다.
 
