@@ -2,7 +2,7 @@
 id: SPEC-ACHWD-STRIP-EXEMPT-001
 title: "Apply the AC-HWD-015 strip-aware mirror amendment to SPEC-HOOK-WIRING-DRIFT-001 (card t469 wrapper record)"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-03
 updated: 2026-09-03
 author: manager-spec

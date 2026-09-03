@@ -17,7 +17,65 @@
   `go list -deps`) contains **no Go packages** — no package tests, no
   `go vet`, and no build are in scope. The §I.4 perl command and the spec
   lint are the entire check set. No local full suite is run.
-- A5 verification outputs: _appended below after payload application._
+- A5 verification outputs (measured 2026-09-03 on the amended tree, worktree
+  `t469`):
+
+  **A5a — the §I.4 A4 strip-aware mirror check:**
+
+  ```
+  $ perl -e 'local $/; my $rc=0; for my $f (@ARGV){ ... } exit $rc' \
+    .claude/rules/moai/development/hook-independence.md \
+    .claude/rules/moai/core/agent-common-protocol.md \
+    .claude/rules/moai/core/agent-common-protocol-reference.md
+  (no output)
+  A5-mirror-check-exit=0
+  ```
+
+  **A5b — the spec lint:**
+
+  ```
+  $ go run ./cmd/moai spec lint .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md
+  SEVERITY  CODE                FILE                                            LINE  MESSAGE
+  --------  ----                ----                                            ----  -------
+  WARNING   ModalityMalformed   .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  121   REQ REQ-HWD-001: EARS modality violation — SHALL missing or format mismatch
+  WARNING   ModalityMalformed   .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  132   REQ REQ-HWD-003: EARS modality violation — SHALL missing or format mismatch
+  WARNING   ModalityMalformed   .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  158   REQ REQ-HWD-005: EARS modality violation — SHALL missing or format mismatch
+  WARNING   ModalityMalformed   .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  183   REQ REQ-HWD-009: EARS modality violation — SHALL missing or format mismatch
+  WARNING   CoverageIncomplete  .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  121   REQ REQ-HWD-001 is not referenced by any AC
+  WARNING   CoverageIncomplete  .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  125   REQ REQ-HWD-002 is not referenced by any AC
+  WARNING   CoverageIncomplete  .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  132   REQ REQ-HWD-003 is not referenced by any AC
+  WARNING   CoverageIncomplete  .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  138   REQ REQ-HWD-004 is not referenced by any AC
+  WARNING   CoverageIncomplete  .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  158   REQ REQ-HWD-005 is not referenced by any AC
+  WARNING   CoverageIncomplete  .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  165   REQ REQ-HWD-006 is not referenced by any AC
+  WARNING   CoverageIncomplete  .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  171   REQ REQ-HWD-007 is not referenced by any AC
+  WARNING   CoverageIncomplete  .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  177   REQ REQ-HWD-008 is not referenced by any AC
+  WARNING   CoverageIncomplete  .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  183   REQ REQ-HWD-009 is not referenced by any AC
+  WARNING   CoverageIncomplete  .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  187   REQ REQ-HWD-010 is not referenced by any AC
+  WARNING   CoverageIncomplete  .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  191   REQ REQ-HWD-011 is not referenced by any AC
+  WARNING   CoverageIncomplete  .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  197   REQ REQ-HWD-012 is not referenced by any AC
+  WARNING   CoverageIncomplete  .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  210   REQ REQ-HWD-013 is not referenced by any AC
+  WARNING   CoverageIncomplete  .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md  225   REQ REQ-HWD-014 is not referenced by any AC
+
+  0 error(s), 18 warning(s)
+  A5-spec-lint-exit=0
+  ```
+
+  **Warning-composition note (AC-ASE-003's expectation was "18 pre-existing
+  CoverageIncomplete"):** the total is 18 as predicted and 0 errors as
+  required, but the composition is 4 `ModalityMalformed` + 14
+  `CoverageIncomplete`. Verified pre-existing, not amendment-caused: the four
+  ModalityMalformed lines are REQ-HWD-001/003/005/009 — wording the amendment
+  never touched — and `git diff 3a3f51e83 6765a75c0 -- internal/spec/lint.go
+  internal/spec/audit.go` is empty (the pre-run absorb did not change the
+  linter), so the same composition existed at audit time; the audit verdict's
+  "(all pre-existing CoverageIncomplete)" parenthetical was an imprecise
+  summary of the same 18. All 18 `CoverageIncomplete` findings are the known
+  cross-file spec.md↔acceptance.md resolution limitation the audit named.
+
+- Payload application status: A1 (frontmatter + HISTORY row + Amendments
+  sub-section), A2 (REQ-HWD-013 reword), A3 (§F Out of Scope H3), A4
+  (AC-HWD-015 rewrite) — applied verbatim from §I.4. Wrapper status flipped
+  `draft → in-progress` on this commit.
 
 ## §E.2 Run-phase Evidence
 

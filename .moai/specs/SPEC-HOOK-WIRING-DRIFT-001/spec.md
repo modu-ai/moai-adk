@@ -1,8 +1,8 @@
 ---
 id: SPEC-HOOK-WIRING-DRIFT-001
 title: "Hook wiring drift — close the local drift, make it detectable, record the dispositions, stop the MX dead work"
-version: "0.3.0"
-status: completed
+version: "0.4.0"
+status: in-progress
 created: 2026-08-24
 updated: 2026-09-03
 author: manager-spec
@@ -12,14 +12,27 @@ module: ".claude/settings.json, internal/cli/doctor.go, internal/cli/mx_query.go
 lifecycle: spec-anchored
 tags: "hooks, settings, wiring-drift, doctor, diagnostics, mx-index, dead-work, card-t216"
 tier: M
+amendment_of: SPEC-HOOK-WIRING-DRIFT-001
 ---
 
 # SPEC-HOOK-WIRING-DRIFT-001 — Hook wiring drift + dead-work cleanup
 
 ## HISTORY
 
+### Amendments
+
+| Field | Value |
+|---|---|
+| prior_completed_version | 0.3.0 |
+| prior_completed_sha | 4d57b3dcf |
+| prior_completed_record | progress.md §E.4 sync_commit_sha (backfilled at v0.3.0 close) |
+| rationale | AC-HWD-015's byte-identical mirror demand conflicts with REQ-HWD-014's neutrality stripping — line-275 divergence on agent-common-protocol-reference.md, pre-existing at a239cf050 |
+| scope | spec.md (REQ-HWD-013 reword, §F Out of Scope entry, frontmatter) + acceptance.md (AC-HWD-015 rewrite); no other AC re-opened; t216's landing stands |
+| re_close_path | SPEC returns to `completed` riding this card's sync commit (3-phase close convention; the transition is owned by manager-docs on the sync commit) |
+
 | Version | Date | Author | Change |
 |---------|------|--------|--------|
+| 0.4.0 | 2026-09-03 | manager-spec | Completed-SPEC amendment (card t469) — AC-HWD-015 strip-aware mirror identity, declared per the completed → in-progress amendment row (amendment_of self-reference). REQ-HWD-013's "byte-identical at closure" and REQ-HWD-014's forbidden-class ban are simultaneously unsatisfiable for any file whose LOCAL copy carries a forbidden-class token: the template copy must strip it (REQ-HWD-014) and therefore cannot stay byte-identical (REQ-HWD-013). Observed on agent-common-protocol-reference.md:275 — local ends "there (SPEC-SYNC-PARALLEL-DOCS-001 A9).", template ends "there." — and the same single-line divergence measured in both blobs at a239cf050 (ancestor of HEAD), so the conflict coexists with this SPEC's authoring rather than post-dating it. Class measurement: 47 of the managed-root local/template pairs differ and 24 of the 47 carry forbidden-class tokens in their diff lines — a class property, not a one-file accident; the amendment stays scoped to the three M3 files and the general strip-aware invariant is recorded out of scope. Fix: REQ-HWD-013 reworded to normalized identity over the four regex-addressable classes (internal date explicitly not normalized); AC-HWD-015 rewritten around ONE machine-checkable command (single plain perl invocation, exit 0/1, worktree-guard-safe) that normalizes forbidden-class tokens on both sides before comparing; four mutants constructed and executed (editorial text on the token-bearing line → exit 1; template-side bare token insert → exit 0 absorbed, closed by AC-HWD-016; template-side prose-wrapped token → exit 1 caught directly; mirror-only edit → exit 1). No retroactive re-judgment: t216's landing stands, no other AC re-opened. |
 | 0.3.0 | 2026-08-24 | manager-spec | Audit iteration 2 amendment. plan-audit returned **PASS 0.862** (Clarity 0.80 / Completeness 0.92 / Testability 0.80 / Traceability 0.95), all 7 must-pass PASS, no iteration-1 defect unresolved. Two process facts recorded first. **(1) The iteration-1 threshold was misapplied**: 0.85 is the Tier L value, and this SPEC is `tier: M`, whose SSOT threshold (`spec-workflow.md:138-142`) is **0.80** — so v0.1.0's 0.807 was a PASS, and the FAIL that produced v0.2.0 rested on the wrong number. The findings were real and the revision improved the document; the verdict was not. **(2) PASS did not make the remaining findings optional** — three blocking-class findings were absorbed into the Testability score rather than the must-pass firewall, and all are fixed here. **N1 (critical, and a self-inflicted regression from the D7 fix)**: widening AC-HWD-007 to close mutant M-3's false-pass hole made the criterion **unsatisfiable** — `moai doctor` writes `.moai/state/config-cache.json` on first run in a project, so snapshot (iii) changes against the freshly-built fixture no matter how the check is implemented. Reproduced independently here. Fixed by warming the fixture before snapshotting and naming the excluded path with its reason. **N2**: REQ-HWD-012 named six surfaces while AC-HWD-018 observed four, leaving `hook-independence.md`'s five "dormant" occurrences unbound — and AC-018's fresh-mutant note claimed AC-009/AC-010 closed that gap, which is false. Given extended to six; the false closure retracted; a line-specific caution added, since three of those five occurrences are correct and must survive. **N3**: AC-HWD-009's "on a line carrying one of the five classes" was defeated by a blanket line carrying all 11 names. Rewritten to bind one sole-name row per script **carrying that script's expected class** — a strengthening beyond the audit's prescription, because the prescribed wording alone is defeated by a second mutant constructed here. **N4/N5**: two measured-evidence corrections under the [HARD] §C-5 constraint. **N6/N7**: two rewordings. Both mutants for N3 and the N1 unsatisfiability were **constructed and executed**, not reasoned. |
 | 0.2.0 | 2026-08-24 | manager-spec | Audit iteration 1 amendment. plan-audit returned **FAIL 0.807** (Clarity 0.75 / Completeness 0.90 / Testability 0.75 / Traceability 0.85; threshold 0.85) with all 7 must-pass criteria PASS — score-driven, not gate-driven. The auditor independently re-ran nine `Pre-impl observed:` values and all matched exactly; what did not hold was **mutation adequacy**. It constructed four passing mutants, including one against the criterion v0.1.0 declared mutant-proof. Fixes: **M-1** (relocate-and-rename defeated AC-HWD-013's three single-file greps) forced package-scoped greps, the `spawnDeferredAdvisoryScans` arity check promoted from prose into the Then clause, and a behavioural no-index-written assertion; **M-2** (a hardcoded expected-entry list passed AC-HWD-005 + AC-HWD-006 without ever rendering the template) forced the new mechanism-binding AC-HWD-017 and an injectable template source; **M-3** (a diagnostic writing `.moai/logs/doctor-drift.log` passed AC-HWD-007 while violating REQ-HWD-004's "any other file on disk") forced REQ-HWD-004 to narrow to the project root and AC-HWD-007 to widen to `git status --porcelain` + gitignored-path snapshots; **M-4** (`git rm --cached`, or truncation to 0 bytes, passed AC-HWD-011's `ls` inventory) forced git-state assertions and retracted a false "none constructible" claim. Also: the three deferred baselines were measured (`0`, `0`, exit `0`) restoring §C-5; the M3 correction was extended to the two remaining "dormant" surfaces including an always-loaded one; the two constraint-only criteria were promoted to REQ-HWD-013/014; and AC-HWD-001/002 were retired into AC-HWD-003 to stay at the Tier M 16-criterion ceiling. |
 | 0.1.0 | 2026-08-24 | manager-spec | Initial draft, Tier M / Class C. Authored from the three plan-phase investigation reports (`.moai/reports/t216/d1-chain-event.md`, `d2-unwired-scripts.md`, `d3-mx-cold-start.md`), NOT from card t216 — see §A.2 for the five card premises the measurement disproved and how the scope was reframed as a result. |
@@ -210,8 +223,19 @@ hook-side scan.
   > should fire the hook remains §G-3.
 
 - **REQ-HWD-013** (Ubiquitous) — Every template-managed file this SPEC edits
-  shall be edited at its `internal/template/templates/` source first and mirrored
-  afterwards, and the two copies shall be byte-identical at closure.
+  shall be edited at its `internal/template/templates/` source first and
+  mirrored afterwards, and the two copies shall be identical at closure after
+  normalization of the four regex-addressable forbidden-class tokens REQ-HWD-014
+  requires the template copy to omit: the SPEC ID, the REQ token, the internal
+  card number, and the commit SHA.
+
+  > Amended v0.4.0 (card t469). "Byte-identical" was unsatisfiable together with
+  > REQ-HWD-014 for any file whose local copy carries a forbidden-class token —
+  > observed on `agent-common-protocol-reference.md:275`, pre-existing at
+  > `a239cf050`. The acceptance-side check is AC-HWD-015. The normalization
+  > covers FOUR of REQ-HWD-014's five classes; the internal-date class is
+  > explicitly NOT normalized (no agreed regex) — a date-mandated template
+  > divergence reports MISMATCH (plan.md §I.5 #2).
 
 - **REQ-HWD-014** (Unwanted) — No file this SPEC writes under
   `internal/template/templates/` shall contain a SPEC ID, a REQ token, an
@@ -348,6 +372,15 @@ Each is carried, with its evidence, in §G.
   last measurement recorded 764 missing tags on a fresh worktree).
 - Raising `mxIndexScanTimeout`. Explicitly ruled out: the 2 s box is never
   reached, so the change would deliver nothing (d3 §6 option F).
+
+### Out of Scope — strip-aware mirror invariant beyond this SPEC's files
+
+- A general strip-aware (normalize-then-compare) mirror check across ALL
+  template-managed pairs (47 differing pairs measured 2026-09-03, 24 carrying
+  forbidden-class tokens). This amendment normalizes only the three files
+  REQ-HWD-013 scopes; the fleet-wide invariant belongs to the
+  template-neutrality doctrine (`.moai/docs/template-internal-isolation-doctrine.md`
+  §25) or a dedicated follow-up SPEC.
 
 ---
 
