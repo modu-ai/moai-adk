@@ -36,12 +36,99 @@ open_decision: RESOLVED at run-phase M1 — Option B (detect + guide), operator 
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+Run-phase completed 2026-09-03 on branch WT-update-hook-delivery (recovered from an API-interrupted session; all evidence below re-measured in the recovery session). This tree also absorbed origin/develop at b77ae5d5e before M1.
+
+### AC matrix (Option B binding set; N/A per M1 decision)
+
+| AC | Status | Verification (command → observed, this run, tree below) |
+|---|---|---|
+| AC-UHD-001 | PASS (guard) | `go test ./internal/cli/update/... -count=1` → `ok … internal/cli/update/plan` + `ok … internal/cli/update/merge` (template-new event-key delivery unchanged; no merge behavior changed under Option B) |
+| AC-UHD-002 | PASS (guard) | `TestMergeKeepsUserDeletionInCarriedEventKey` (M2, f51cb973d) in the same run → `ok … internal/cli/update/merge` |
+| AC-UHD-003 | PASS (Option B report branch) | Defect surface pinned green at M2 (`TestMergeDropsTemplateAdditionInsideCarriedEventKey` — asserts the template-side addition inside a carried key is dropped silently today, i.e. the gap EXISTS); resolved by the Option B detector: smoke fixture (below) shows `moai doctor` naming the missing entry with its event key + remediation |
+| AC-UHD-006 | PASS | Smoke A (below): warn names `hooks.PreToolUse missing handle-pre-tool.sh (matcher AskUserQuestion)` + remediation incl. `git status --porcelain \| grep '^ D'`; rc=0; unit test `TestCheckHookDelivery_FlagsMissingEntryInCarriedEventKey` additionally asserts settings.json content+mtime unchanged (read-only) |
+| AC-UHD-008 | PASS | `TestCheckHookDelivery_InvalidJSONWarnsGracefully` (warn naming settings.json; broken file byte-unchanged after the check) in targeted run → `ok … internal/cli` |
+| AC-UHD-009 | PASS | `TestCheckHookDelivery_NonArrayHookValueWarnsAndSkips` (anomalous key named and skipped; other carried keys still resolve) in targeted run → `ok` |
+| AC-UHD-010 | PASS | `TestCheckHookDelivery_SilentWhenAllEntriesPresent` (full parity → ok, no report) + the check is stateless/read-only, so repeated doctor runs are idempotent; update-side idempotence unchanged (Option B, no merge change) |
+| AC-UHD-011 | PASS (guard) | Non-hook subtree untouched by construction — the check reads only; `TestCheckHookDelivery_DoesNotFlagTemplateNewEventKeys` + `TestCheckHookDelivery_UserAuthoredEntryNotFlagged` pin the comparison direction; merge tests unchanged → `ok` |
+| AC-UHD-012 | PASS (boundary) | `git diff d592b0551..HEAD -- internal/` touches only `internal/cli/{doctor.go,doctor_hook_delivery.go,doctor_hook_delivery_test.go,testdata/doctor-*.golden}` — zero matches on `installPreCommitHookOptional` / `.git/hooks` write paths |
+| AC-UHD-013 | PASS | `TestCheckHookDelivery_MissingSettingsJSONInformational` (ok; no settings.json created) + `TestCheckHookDelivery_NoHooksKeyInformational` (ok) in targeted run → `ok` |
+| AC-UHD-004, AC-UHD-005, AC-UHD-007 | N/A | Option A / Option C gated; not selected (M1) |
+
+### Mutation check (non-vacuous green proof)
+
+Corrupted the detection path in `doctor_hook_delivery.go` (`if _, found := userIDs[id]; !found` → `… && false`), then:
+
+```
+$ go test ./internal/cli/ -run 'TestCheckHookDelivery|TestHookEntryIdentities' -count=1
+--- FAIL: TestCheckHookDelivery_FlagsMissingEntryInCarriedEventKey (0.01s)
+--- FAIL: TestCheckHookDelivery_OptInAwareRendering (0.01s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.390s
+FAIL
+```
+
+Both RED-direction tests burn the detection path (the GREEN-direction `SilentWhenAllEntriesPresent` correctly still passes — the mutation empties `missing`, not the ok-path). Reverted; `diff` against pre-mutation backup byte-identical; targeted run back to `ok`.
+
+### Real-CLI smoke (built binary `bin/moai` @ f51cb973d+working tree, /tmp fixtures, opt_in=false rendering)
+
+Smoke A — fixture whose `.claude/settings.json` carries 3 of the template's 4 PreToolUse matcher blocks:
+
+```
+$ cd /tmp/t466-smoke-miss && bin/moai doctor --check "Hook Delivery"
+    STATUS  CHECK          MESSAGE
+    warn    Hook Delivery  hooks.PreToolUse missing handle-pre-tool.sh (matcher AskUserQuestion); re-add each missing entry under the named event key (copy the block from the template settings.json of your moai version); after moai update verify no managed file was deleted: git status --porcelain | grep '^ D'
+    0 ok, 1 warn, 0 fail
+rc=0
+```
+
+Smoke B — fixture carrying all 4 blocks: `ok   Hook Delivery  hook entries match the shipped template` / `1 ok, 0 warn, 0 fail`, rc=0.
+
+### Coverage (targeted run basis; package-wide verdict belongs to the full internal/cli run)
+
+```
+$ go test ./internal/cli/ -run 'TestCheckHookDelivery|TestHookEntryIdentities' -coverprofile=… -count=1
+doctor_hook_delivery.go: checkHookDelivery 81.7% / renderedTemplateHooks 69.2% / hookEntryIdentities 96.3% / sortedTemplateEventKeys 100.0%
+```
+
+`renderedTemplateHooks`'s uncovered branches are internal-anomaly error paths (embedded-load / render failure) unreachable in a healthy binary.
+
+### Quality gates (this run)
+
+| Gate | Command | Observed |
+|---|---|---|
+| Lint | `golangci-lint run --timeout=2m ./internal/cli/...` | `0 issues.` (2 staticcheck S1011 findings surfaced during the run — fixed in-tree before commit: test-loop append spread + detail-loop append spread) |
+| Vet | `go vet ./internal/cli/ ./cmd/moai/` | exit 0 |
+| Cross-platform | `GOOS=windows GOARCH=amd64 go build ./...` | exit 0 |
+| Merge/update packages | `go test ./internal/cli/update/... ./internal/merge/... -count=1` | 4× `ok` |
+| Doctor goldens | `UPDATE_GOLDEN=1 go test … -run TestDoctorGolden` → regenerated, then targeted run | `ok` |
+
+### Golden snapshot refresh (two attribution lines)
+
+`internal/cli/testdata/doctor-*.golden` regenerated. The diff carries (1) this SPEC's new `Hook Delivery` line + counts (4 ok, 8 warn / Pass 18) — mine; and (2) the `Agent Emit Embed` message losing its `(not a MoAI project root)` suffix — a PRE-EXISTING stale golden inherited by this tree: the message change landed in 8f6cc5d7f (t427, 2026-09-02) while the goldens were pinned at 96bfa0c99 (t392, 2026-09-01); the refresh resolves that inherited red alongside this SPEC's line.
+
+### Scope / reverse-dependency
+
+Touched packages: `internal/cli` (only). Reverse dependencies via `go list -json ./...`: `cmd/moai` (sole importer of `internal/cli`) — verified by `go vet` + `go build` (test files: none, main package). Doctor registration diff (doctor.go) is 4 added lines inside `runGroupedChecksObserved`'s `workspaceChecks`.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-03
+run_commit_sha: pending-backfill-run
+run_status: complete
+ac_pass_count: 10
+ac_fail_count: 0
+ac_na_count: 3
+preserve_list_post_run_count: 0
+l44_pre_commit_fetch: not-applicable — isolated card worktree, lane does not push; lead batch-pushes develop (gitflow-lane-protocol §4)
+l44_post_push_fetch: not-applicable — same; remote landing is the lead's verification
+new_warnings_or_lints_introduced: 0
+cross_platform_build.windows_amd64: pass
+total_run_phase_files: 9
+m1_to_mN_commit_strategy: per-milestone commits (M1 decision landing 7664729ab, M2 characterization f51cb973d, M3 detector+smoke this commit)
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending run-phase>_
+
