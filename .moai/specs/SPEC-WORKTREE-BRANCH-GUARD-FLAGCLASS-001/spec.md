@@ -1,7 +1,7 @@
 ---
 id: SPEC-WORKTREE-BRANCH-GUARD-FLAGCLASS-001
 title: "Main-Checkout Branch-State Guard — git branch Mutation-vs-Query Flag-Class Completion"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-09-03
 updated: 2026-09-03
@@ -183,15 +183,24 @@ M1 measurement matrix is the classification authority for every form.
 `-f`, `--force`, `-d`, `--delete`, `-D`, `-m`, `--move`, `-M`, `-c`,
 `--copy`, `-C`, `-u`, `--set-upstream`, `--set-upstream-to`,
 `--unset-upstream`, `-t`, `--track`, `--no-track`, `--edit-description`,
-or any combined short-flag cluster containing one of `d/D/m/M/c/C/f` — the
-guard SHALL deny it in the primary checkout with the
-`BRANCH_GUARD_VIOLATION:` sentinel prefix. An `=`-attached long-flag value
+or any short-flag cluster beginning with `u` (the attached-value spelling
+`-u<upstream>`) or containing one of `d/D/m/M/c/C/f/t` — the guard SHALL
+deny it in the primary checkout with the `BRANCH_GUARD_VIOLATION:`
+sentinel prefix. An `=`-attached long-flag value
 (`--set-upstream-to=<upstream>`, `--track=<mode>`) SHALL classify by the
-flag name before the `=`. Creation modifiers without an own mutation flag
-(`--recurse-submodules`, `--create-reflog`) are covered by the bare-operand
-creation rule, not enumerated separately. A bare branch-name creation
-operand (`git branch <name>`, `git branch <name> <start-point>`) SHALL
-continue to deny.
+flag name before the `=`. A non-flag operand SHALL be classified as a
+creation (deny) when no list action is selected and the operand is not
+consumed as the value of a preceding value-taking flag — covering
+option-prefixed creation forms (`git branch -- <name>`,
+`git branch -v <name>`, `git branch -q <name>`, `git branch --no-force
+<name>` — all auditor-measured creating branches on git 2.50.1) and
+creation modifiers (`--recurse-submodules`, `--create-reflog`) appearing
+alongside a creation operand. Query flags that select a list action
+(`--list`, `--contains`, `--merged`, `--no-merged`, `--points-at`,
+`--format`, `--show-current`) consume their pattern operands without
+triggering creation. A bare branch-name creation operand
+(`git branch <name>`, `git branch <name> <start-point>`) SHALL continue to
+deny.
 
 ### REQ-WBG-F-003 — Query forms allowed (Event-detected)
 
@@ -236,11 +245,22 @@ estimation.
 ### REQ-WBG-F-008 — Exemption-axes conditions documented (Ubiquitous)
 
 The test suite SHALL encode as documented conditions (not code changes)
-that both exemption axes are unreachable from a tool-spawned subagent:
-`AgentType` is populated only for a main-thread `claude --agent <name>`
-launch, and `MOAI_BRANCH_GUARD_EXEMPT=1` is read from the hook process's
-own environment (spawned before the guarded command runs, so exporting it
-inside the command is a no-op).
+the reachability of both exemption axes from a tool-spawned subagent. The
+`MOAI_BRANCH_GUARD_EXEMPT=1` axis is uncontested: the sentinel is read
+from the hook process's own environment (spawned before the guarded
+command runs, so exporting it inside the command is a no-op). The
+`AgentType` axis is CONTESTED by a pre-existing repo SSOT contradiction:
+`branch_guard.go:30-33` and t43 runtime observations hold that `AgentType`
+is populated only for a main-thread `claude --agent <name>` launch, while
+`.claude/rules/moai/core/hooks-system.md:114` states "All hook events
+include `agent_id` and `agent_type` fields when triggered from a subagent
+context (v2.1.69+)". The SPEC asserts NEITHER side as fact: M3 SHALL
+capture one real tool-spawned PreToolUse payload to measure which holds,
+and a capture contradicting the guard's reading becomes a
+doc-reconciliation blocker report — never a silent re-classification. The
+synthetic negative-path test (no `AgentType`, env unset → deny stands)
+pins the guard LOGIC only and is explicitly labeled as not proving the
+payload shape.
 
 ### REQ-WBG-F-009 — Bounded doctrine alignment (Ubiquitous)
 
@@ -283,7 +303,7 @@ kept in parity in the same commit.
 
 | AC | Subject | Verifiable by |
 |----|---------|---------------|
-| AC-WBG-F-001 | Full expected matrix: every mutation cell (M-01..M-23) → deny, every query cell → allow (§D.1 table) | M1/M3 Go table test over the matcher + handler |
+| AC-WBG-F-001 | Full expected matrix: every mutation cell (M-01..M-28) → deny, every query cell → allow (§D.1 table) | M1/M3 Go table test over the matcher + handler |
 | AC-WBG-F-002 | Combined short-flag clusters containing d/D/m/M/c/C/f → deny (`-df`, `-fm`, `-vD`) | Matrix cells with RED-now on `d592b0551` |
 | AC-WBG-F-003 | Query allowlist regression: `--list develop -v`, `-vv`, `--merged`, `--no-merged`, `--points-at`, `--format`, `--contains` → allow | Matrix cells (green-now; must stay green post-fix) |
 | AC-WBG-F-004 | Whole-token classification: `--format` allow vs `--force` deny; `--contains`/`--merged`/`--no-merged` allow despite embedded letters | Matrix cells |
@@ -338,3 +358,22 @@ kept in parity in the same commit.
   green-now characterization; measured vs inferred-pending-M1). D5
   tier-set wording (3 artifacts + progress.md). D6 citation :196→:194.
   D7 AC-008 negative-path cell adopted.
+- 2026-09-03 v0.3.0 — audit iteration 2 revision (score 0.83, clears
+  threshold; verdict FAIL defect-driven — iteration 1's D1-D7 all
+  verified RESOLVED): D8 attached `-u<upstream>` spelling added (M-24
+  cell + §G rule 2 "beginning with u"). D9 resolved via the
+  rule-extension route: REQ-002 false "covered by the bare-operand
+  creation rule" sentence replaced by the positional-creation rule
+  (non-flag operand = creation when no list action is selected and not
+  consumed as a value-taking flag's operand); option-prefixed creation
+  cells M-25..M-28 added (auditor-measured creating branches on git
+  2.50.1); `git branch -v <name>` deny-vs-permitted-list tension noted
+  (the Permitted list names operand-free inquiry forms). D10 `t` added to
+  the short-cluster set. D11 M1 expected-count updated to the §D.1
+  row set with §D.1 named normative authority. D12 AgentType-axis
+  SSOT contradiction (hooks-system.md:114) acknowledged and routed to an
+  M3 payload capture + doc-reconciliation blocker path; REQ-008/AC-008 no
+  longer assert either side as fact. D13 E-3 `-F` git-rejected
+  annotation (rc 129, fail-closed-safe, M-14 treatment) + E-5 tension
+  clause. D14 audit-measured cell labels split into git-form liveness
+  vs guard-allow inference.

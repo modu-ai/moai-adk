@@ -97,8 +97,13 @@ Create a permanent table-driven Go test (e.g.
 §D.1. Expected values are the doctrine-based TARGET matrix (mutation →
 deny/matched, query → allow/unmatched). Run it on the pre-fix tree:
 
-- Expected observation: the 10 under-match cells FAIL (RED — the defect),
-  all query cells and existing deny cells PASS (green-now).
+- Expected observation: every pre-fix allow row in acceptance.md §D.1
+  FAILs (RED — the defect). As of v0.3.0 that is 23 rows / 24 command
+  variants (§D.0's 10 guard-level measurements + audit-measured git-form
+  liveness M-20/M-22/M-23/M-24/M-25..M-28 + inferred-pending-M1
+  M-07/M-14/M-17/M-18/M-21). All query cells and existing deny cells PASS
+  (green-now). §D.1 is the normative expectation authority — the M1 run's
+  row set is read against §D.1, never against this count.
 - Record verbatim RED output + tree SHA in progress.md §E.2; this is the
   RED-now baseline that pins the fix class.
 - Decide the fix class from the matrix (see §G): if any probed form behaves
@@ -132,7 +137,15 @@ flips to green in this milestone.
    tool-spawned subagents. These are documented conditions, NOT code
    changes. Per D7 (audit iteration 1): also add the small negative-path
    condition test — subagent-shaped `HookInput` (no `AgentType`, env
-   unset) + mutating `git branch -f` → deny stands.
+   unset) + mutating `git branch -f` → deny stands; labeled as pinning
+   guard LOGIC only, not the payload shape. Per D12 (audit iteration 2):
+   the `AgentType` axis is contested by `hooks-system.md:114` ("All hook
+   events include `agent_id` and `agent_type` fields when triggered from a
+   subagent context (v2.1.69+)") vs the guard's reading
+   (`branch_guard.go:30-33`, t43 runtime observations) — M3 captures one
+   real tool-spawned PreToolUse payload and records which holds; a capture
+   contradicting the guard's reading becomes a doc-reconciliation blocker
+   report, never a silent re-classification.
 4. Bounded doctrine alignment (REQ-WBG-F-009 / AC-009): update the v1.3.2
    Query-vs-mutate bullet (`main-checkout-branch-guard.md:90-95`) and
    forbidden-table row 2's flag enumeration to name the extended mutation
@@ -161,12 +174,27 @@ create/deny" would deny pinned query cells whose query flags take operands
 **Deny iff either holds for the token stream after `git branch`** (after
 quoted-span collapse, `(?i)`):
 
-1. **First-token creation**: the FIRST token after `git branch` is a
-   non-flag operand (`git branch <name> [start-point]`) — creation. Later
-   non-flag tokens are operands of preceding flags, NOT creations.
+1. **Positional creation (extended at audit iteration 2, D9)**: a
+   non-flag operand is a creation when NO list action is selected and the
+   operand is not consumed as the value of a preceding value-taking flag.
+   This covers first-token creation (`git branch <name> [start-point]`)
+   AND option-prefixed creation (`git branch -- <name>`,
+   `git branch -v <name>`, `git branch -q <name>`,
+   `git branch --no-force <name>` — all auditor-measured creating branches
+   on git 2.50.1) and creation modifiers (`--recurse-submodules`,
+   `--create-reflog`) alongside a creation operand. Query flags that
+   select a list action (`--list`, `--contains`, `--merged`,
+   `--no-merged`, `--points-at`, `--format`, `--show-current`) consume
+   their pattern operands → allow (`--contains HEAD`, `--merged main`,
+   `--list develop -v` stay green). Note: `git branch -v vbranch`
+   therefore denies — matching git's measured semantics (flag + name =
+   create); the doctrine Permitted list's `-v`/`-vv` entries name
+   operand-free inquiry forms, noted for the REQ-WBG-F-009 bullet wording.
 2. **Mutating flag anywhere**: any token is a mutating flag —
-   - a short-flag cluster containing any of `d D m M c C f`, or equal to
-     `u` (e.g. `-d`, `-df`, `-vD`, `-u`, `-f`);
+   - a short-flag cluster beginning with `u` — `u` consumes an attached
+     value (`git branch -umain topic` parses and reaches upstream-setting
+     logic, audit-iter-2-measured) — or containing any of
+     `d D m M c C f t` (e.g. `-d`, `-df`, `-vD`, `-u`, `-f`, `-t`);
    - a long flag whose name — taken as the full token, split at `=` first
      when an attached value is present (`--set-upstream-to=origin/main` →
      name `--set-upstream-to`) — exactly matches a member of the mutation
