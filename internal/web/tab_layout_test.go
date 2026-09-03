@@ -16,11 +16,12 @@ import (
 // SPEC-MCP-CONSOLE-001 M2 appends the mcp panel (10th tab); the crosssession
 // posture panel is the 11th; SPEC-FEEDBACK-AUTO-SUBMIT-001 M7 appends the
 // reopened feedback panel as the 12th (reversing the SPEC-WEBCONF-SIMPLIFY-001
-// M3 tab removal for that section only).
+// M3 tab removal for that section only); SPEC-PRECOMMIT-GATE-SCOPE-001 M2
+// appends the gate panel as the 13th.
 var wantTabOrder = []string{
 	"identity", "language", "launch", "llm", "workflow",
 	"git-worktree", "audit", "agentfm", "report", "mcp", "crosssession",
-	"feedback",
+	"feedback", "gate",
 }
 
 // TestConsoleTabsOrder verifies AC-WCR-010.

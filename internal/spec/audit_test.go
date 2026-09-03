@@ -12,9 +12,9 @@ import (
 
 // auditFixtureSpec represents a SPEC fixture to write under a base dir.
 type auditFixtureSpec struct {
-	id          string
-	specMD      string
-	progressMD  string // empty = do not create progress.md (V2.x signal)
+	id         string
+	specMD     string
+	progressMD string // empty = do not create progress.md (V2.x signal)
 }
 
 // buildAuditFixture writes fixtures under tempDir/.moai/specs/<id>/ and returns
@@ -598,8 +598,8 @@ func TestAudit_FilterSpec_GatesAuditError(t *testing.T) {
 			// Directory-only entry — no spec.md. This produces an AuditError
 			// when audited. FilterSpec targeting the DRIFT-001 SPEC must NOT
 			// surface this AuditError.
-			id:        "SPEC-BROKEN-NOSPECMD-001",
-			specMD:    "", // empty = buildAuditFixture skips spec.md write
+			id:         "SPEC-BROKEN-NOSPECMD-001",
+			specMD:     "", // empty = buildAuditFixture skips spec.md write
 			progressMD: "",
 		},
 	}
@@ -616,5 +616,3 @@ func TestAudit_FilterSpec_GatesAuditError(t *testing.T) {
 		}
 	}
 }
-
-

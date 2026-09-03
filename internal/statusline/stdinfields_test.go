@@ -211,15 +211,15 @@ func TestCollectAll_RepoAndExceedsLongPropagation(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name         string
-		input        *StdinData
-		wantRepo     *RepoInfo
-		wantExceeds  bool
+		name        string
+		input       *StdinData
+		wantRepo    *RepoInfo
+		wantExceeds bool
 	}{
 		{
 			name: "repo + exceeds_200k both present",
 			input: &StdinData{
-				Workspace: &WorkspaceInfo{Repo: &RepoInfo{Host: "github.com", Owner: "modu-ai", Name: "moai-adk"}},
+				Workspace:   &WorkspaceInfo{Repo: &RepoInfo{Host: "github.com", Owner: "modu-ai", Name: "moai-adk"}},
 				ExceedsLong: true,
 			},
 			wantRepo:    &RepoInfo{Host: "github.com", Owner: "modu-ai", Name: "moai-adk"},

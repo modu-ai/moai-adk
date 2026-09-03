@@ -320,13 +320,21 @@ is not cosmetic here.
 **Mutation that must turn it red:** copy the local doctrine verbatim into the template; the
 neutrality guard reports the SPEC-ID and SHA tokens.
 
-### AC-MRG-013 — the R4 form is not flagged (DEFERRED out of this SPEC at v0.7.0)
+### AC-MRG-013 — the R4 form is not flagged (delivered by follow-up card t353, 2026-09-02)
 
-> **[HARD] DEFERRED, with CM-1 and CM-2, by operator decision on `spec.md` §H Q0 — option C.**
-> REQ-MRG-010 (the R4-form lint exclusion) leaves this SPEC's scope together with this criterion
-> and both of its counter-mutations. Nothing below was implemented, run, or observed; the text is
-> retained verbatim as the specification a follow-up would start from, **not** as a criterion this
-> SPEC claims.
+> **DELIVERED — adopted and decided by follow-up card t353 (2026-09-02).** The criterion below,
+> retained verbatim since v0.7.0, was the specification the follow-up ran against and is now a
+> decided criterion of this SPEC. Implementation at commit `0026dc7b9` (branch
+> `WT-r4-imperative-exempt`): `internal/spec/lint_movingref.go` keys the exclusion on
+> **imperative structure** — both conjuncts, an imperative measuring directive plus a
+> syntactically demoted dated reference — and never on a command token, exactly per the [HARD]
+> constraint the v0.7.0 deferral recorded. RED observed pre-fix, GREEN after (13 MovingRef
+> tests); both counter-mutations run and observed blocking their bypasses (CM-1 positional,
+> CM-2 command-token). Corpus lint 115→113 findings, with exactly the two genuinely-R4 lines
+> newly exempted (`SPEC-IGNORED-EVIDENCE-CITATION-001/progress.md:480`, self-declared R4;
+> `SPEC-SPECLINT-GITBLIND-001/progress.md:233`, Korean-form) and zero over-exemption. Lane
+> verdict: `.moai/reports/t353/verdict.md` (commit `d191d28b4`); implementation record:
+> `.moai/reports/t353/impl-record.md`.
 >
 > **Why:** `spec.md` §B.7 measured R4's reachable class as **0 of 42** candidate lines on two
 > independent probes, and M4 re-measured it against the rule's own 97 external findings with the
@@ -342,12 +350,16 @@ neutrality guard reports the SPEC-ID and SHA tokens.
 > itself is unaffected — it remains a doctrine remedy and stays named in the finding message
 > (REQ-MRG-004 / AC-MRG-008); only its **lint exclusion** is deferred.
 >
-> **Resume condition:** reconsider when the R4 form is actually observed in the corpus. M4 gives
-> this a sharper reading than §B.7 could: the rule found **0 external S2 lines** but **2 S2 lines
-> inside this SPEC's own directory**, both R4-form — exactly what §B.7 predicted when it wrote that
-> the class is "populated prospectively, by the R4 remediations M1's doctrine will produce". The
-> class has begun to fill, from this card's own output. When it holds live external occupants, the
-> exclusion has something to under-exempt and the trade-off inverts.
+> **Resume condition (historical):** the condition was measured **MET on 2026-09-02** — live
+> external R4-form occupants exist (the two lines named in the delivered-record header above,
+> previously silenced via R3 markers), the exclusion acquired something to under-exempt, and the
+> option-C trade-off inverted. The operator issued follow-up card t353 and it has delivered; see
+> the delivered-record header. The original condition, as recorded at v0.7.0: reconsider when the
+> R4 form is actually observed in the corpus. M4 gave this a sharper reading than §B.7 could: the
+> rule found **0 external S2 lines** but **2 S2 lines inside this SPEC's own directory**, both
+> R4-form — exactly what §B.7 predicted when it wrote that the class is "populated
+> prospectively, by the R4 remediations M1's doctrine will produce". The class began to fill from
+> this card's own output, and has since filled externally.
 >
 > No follow-up card is issued from here: card issuance is the operator's act.
 
