@@ -580,3 +580,275 @@ are archived — that is inspection of their id range, not a measurement.
 more common on `origin/main` than on `origin/develop`, the loud-failure population after M1 lands is
 larger than either the SPEC or this audit measured — the corpus I judged is `develop`, and M1 ships
 against `main`.
+
+---
+
+# Plan Audit — Iteration 3 (FINAL) — SPEC-TODO-LANDING-ATTRIBUTION-001
+
+Auditor: plan-auditor. Card t472. Tree `/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t472`,
+branch `WT-landed-drift-detect`, HEAD `11b0216ae`, working tree clean at audit start.
+SPEC version `0.3.0`, `status: draft`, `tier: M`.
+
+**Reasoning context ignored per M1 Context Isolation.** The dispatch's factual assertions were
+treated as claims to verify, not as findings to adopt. Every figure below is re-derived in this
+tree; the corpus is the pinned commit `7835148d3` (5,837 subjects) and, where stated, `origin/main`
+`7ad9f8534`.
+
+**Tool provenance (VCI §2.2).** `moai spec lint` was run from a binary built from THIS tree
+(`go build -o /tmp/t472audit/moai ./cmd/moai`, rc=0, at HEAD `11b0216ae`) — not the installed build,
+which is ~190 commits behind. Lint scope was the single file
+`.moai/specs/SPEC-TODO-LANDING-ATTRIBUTION-001/spec.md`; no whole-corpus scan, no background
+process.
+
+**Regex-engine note.** This shell aliases `grep` to `ugrep`, which mis-parses `\(` in ERE and
+silently returns zero matches for patterns of the form `\([^()]*t[0-9]+[^()]*\)$`. Every count below
+marked "real grep" was re-run through `command grep` (BSD). All form counts agree under both
+engines; the divergent pattern is called out where it matters.
+
+## Verdict
+
+    Verdict: PASS-WITH-DEBT — aggregate 0.8375 vs Tier M threshold 0.80 (delta from iter-2: -0.0375)
+    Kickoff-ready: NO. One blocking text defect (D3-1) must close first.
+
+The score fell. Under the LEAN retry clause a score regression is a STOP signal; this is also
+iteration 3 of a 3-iteration ceiling, so the disposition passes to the operator either way. The
+regression is not a re-grading of iteration 2's work — every iteration-2 remediation verified
+clean — it is a NEW measurement that falsifies a figure and a tolerance argument the SPEC states.
+
+## Must-Pass Results
+
+- **[PASS] MP-1 REQ number consistency** — `REQ-TLA-001`..`REQ-TLA-013`, 13 ids, sequential, no
+  gaps, no duplicates, uniform 3-digit padding. Measured:
+  `command grep -ohE 'REQ-TLA-[0-9]+' spec.md | sort -u` → 13 ids, 001-013 contiguous.
+- **[PASS] MP-2 GEARS format compliance** — judged against the **requirement layer only**
+  (`spec.md` §B `REQ-TLA-*`); the `AC-TLA-*` Given/When/Then entries in `acceptance.md` are the
+  verification layer and were graded under Group 4, not here. All 13 match a GEARS pattern:
+  Ubiquitous 001/002/005/007/010/013; unwanted (`shall not`) 003/004/012; event-driven 006/009;
+  Where-gate 008; compound While+When 011. No entry is a bare occurrence or user-story form.
+- **[PASS] MP-3 YAML frontmatter validity** — all 12 canonical fields present with correct types
+  (`spec.md:2-14`): `id`, `title`, `version: "0.3.0"` (quoted semver), `status: draft`,
+  `created: 2026-09-03`, `updated: 2026-09-04`, `author`, `priority: P1`, `phase`, `module`,
+  `lifecycle: spec-anchored`, `tags` (comma-separated string). Plus `tier: M`. No rejected
+  snake_case alias (`created_at` / `updated_at` / `labels` / `spec_id`) present.
+- **[N/A] MP-4 language neutrality** — single-language SPEC (Go; `internal/kanban`,
+  `internal/cli`). No multi-language tooling surface. Auto-passes.
+- **[PASS] MP-5 D7 cross-SPEC reconciliation** — referenced SPEC ids resolved and status-read:
+  `SPEC-TODO-LANDING-STATE-001` = completed, `SPEC-KANBAN-QUEUE-PR-SYNC-001` = in-progress,
+  `SPEC-WORKTREE-BASEREF-001` = completed, `SPEC-MX-TAG-EDGES-001` = completed. None is
+  retired / superseded / archived. No BLOCKING finding.
+- **[PASS] MP-6 D8 cross-platform discipline** — `command grep -c 'syscall' spec.md` → 0. Auto-PASS
+  per D8-4.
+- **[PASS] MP-7 clarification gate** —
+  `command grep -rn 'NEEDS CLARIFICATION' .moai/specs/SPEC-TODO-LANDING-ATTRIBUTION-001/` → no match
+  (rc=1). `research.md` does not exist (Tier M does not require it); `plan.md` is clean.
+
+Mechanical confirmation: `moai spec lint <spec.md>` → `No findings — all SPEC documents are valid`.
+
+## Category Scores
+
+| Dimension | Score | Band | Evidence |
+|---|---|---|---|
+| Clarity | 0.90 | 0.75-1.0 | Every requirement single-interpretation; fixtures quoted verbatim and all resolve in the corpus. Deduction: `REQ-TLA-002` and `REQ-TLA-013` carry multi-sentence rationale inside the normative statement, and `REQ-TLA-002` folds an implementation-structure clause ("shall live in one named place in the implementation") into a behavioural requirement. |
+| Completeness | 0.65 | 0.50-0.75 | All sections present (HISTORY / §A / §B / §C / §D with six `### Out of Scope — …` H3s carrying bullets / §E) and frontmatter complete — but the SPEC's central deliverable, the §A.4 enumeration, is measurably incomplete against its own doctrine, and the stated residual (7) is wrong by a factor of ~6.6. See D3-1. |
+| Testability | 0.80 | 0.75-1.0 | Every AC is binary, bidirectional, and named against a mutant; no weasel words; the AC-TLA-005 falsifier map reproduces exactly. Deduction: the criterion set and the §F Definition-of-Done positive controls (`t401`, `t440`) are both drawn from shapes the enumeration already handles, so **no criterion in the file can detect D3-1** — the same vacuity class iter-2 D1 closed for form 3b, recurring at the suite level. |
+| Traceability | 1.00 | 1.0 | 13 REQ, 13 AC headings (`AC-TLA-001`..`012` plus `AC-TLA-003b`). Every REQ has at least one AC (`REQ-TLA-013` ← AC-TLA-003 clause 6); every AC names existing REQs; zero orphans. Verified by set comparison of `REQ-TLA-*` across both files. |
+
+Aggregate (unweighted mean): **0.8375**.
+
+## What I verified, could not verify, or accepted from the record
+
+**VERIFIED — independently reproduced in this tree, exact match:**
+
+- Corpus size 5,837 subjects at `7835148d3`.
+- Form counts: form 1 = 290, form 2 = 869, form 3a = 5, form 3b = 76, form 3c = 31.
+- `347` ids in a subject / `258` attributed by forms 1-3b / `89` unattributed / `270` with form 3c /
+  the exact 12 ids form 3c adds (`t106 t110 t113 t114 t32 t36 t56 t59 t69 t79 t98 t99`).
+- **The AC-TLA-005 falsifier map, all five rows**: form 1 alone → 42, form 2 alone → 77, form 3a
+  alone → 1 (`t244`), form 3b alone → 1 (`t412`), form 3c alone → 12. Computed as
+  `comm -23 <form-set> <union of the other four>`. Every row reproduces.
+- The residual-7 ids (`t225 t250 t40 t46 t68 t73 t74`) are each genuinely unattributed by all five
+  forms.
+- **D1 closed**: `t412` appears 11× in `acceptance.md`; all four fixture subjects (`b6231290d` and
+  the three `into WT-mx-tag-edges` siblings) exist verbatim in the corpus.
+- **D3's refutation**: `origin/main` `7ad9f8534` → 4,457 subjects, 101 `^Merge` subjects, **0**
+  `into develop` merges with a card-bearing trailing group, **0** for `into main`. The window claim
+  from iteration 2 is refuted; my own iteration-2 Gap ("had not measured the `origin/main` corpus")
+  is now closed against me.
+- **D4**: 9 non-`WT-` merge targets, three carrying no prefix at all (`t403`, `t78`, `t86`).
+- 8 trailing groups corpus-wide naming two or more distinct cards; 0 on form 3b's own subject set.
+- 3 bare-`tNNN:`-prefix subjects, of which `t250` / `t225` are residual — matching the SPEC's claim
+  of 2 ids in that shape.
+
+**ACCEPTED FROM THE RECORD — not independently re-derived:**
+
+- **D2's refusal of the first-token widening.** The fixture is real (`merge: t79 — glm_task
+  delegation family (branch WT-t80)` exists verbatim; `t80`'s only other subject is
+  `Merge branch 'release/v3.1.1' into WT-t80`). The reasoning — trading a loud under-count for a
+  silent false positive is the wrong direction for a SPEC whose purpose is removing silent false
+  positives — is **sound, and I endorse it**. What I did not do is re-derive the widening's full
+  blast radius across the corpus.
+- **Form 3c's "31 of 31 the first token is the card the merge delivers".** I verified the *shape*
+  (31 subjects begin `merge: tNNN`; 110 `merge: ` subjects total, 79 not card-led). The *delivery
+  semantics* of each of the 31 requires per-commit content inspection I did not perform.
+- **D5** (`1101 → 1301 → 1569`, R4 form) — verified present in `progress.md:38-39,81-84`; the 1569
+  measurement itself accepted from the record.
+
+**COULD NOT VERIFY:**
+
+- Whether the 39 ids in D3-1 sit in the operative live queue. The store at
+  `.moai/state/todo/backlog.db` (45 `items`, 142 `archived_items`) contains 38 of the 39 in neither
+  table, which is consistent with the known `moai todo` / disk-store split. Their live-queue status
+  is therefore a **Gap**, and D3-1 below does not rest on it.
+- That the residual is exactly 46 or 49 rather than larger. I named one further shape exhaustively
+  and two partially; I did not classify the whole residual exhaustively either. Like the author's
+  19, my number is a **floor**.
+
+## Defects Found
+
+**D3-1 — `spec.md` §A.4 form 2 + §A.4.2, `plan.md` §D, `acceptance.md` §F — Severity: major — Class: blocking**
+
+Form 2 is anchored `\((card )?t[0-9]+\)$`. That `)$` excludes **43 subjects carrying 40 distinct
+card ids, 39 of them attributed by no form at all**, whose shape is form 2's own shape with a
+pull-request reference appended:
+
+    fix(hook): stop the registry walk at the home directory (t168) (#1609)
+    feat(kanban): moai todo pr — read-only card-to-PR and landed link (t210) (#1628)
+    feat: lead-session deputy — background-parallel dispatch/CI-watch via manager-lead (SPEC-LEAD-DEBOTTLENECK-001, t283) (#1664)
+
+Grounding measurement (real BSD grep; the shell's ugrep alias returns 0 for this pattern):
+
+    command grep -E '\([^()]*t[0-9]+[^()]*\) \(#[0-9]+\)$' subj.txt | wc -l        -> 43
+    ... same, ids extracted, sort -u                                               -> 40
+    comm -12 <those ids> <ids unattributed by all five forms>                      -> 39
+
+Three consequences, each independently blocking:
+
+1. **The stated residual is wrong for the third consecutive version.** `1` (v0.2.0) → `19`, reduced
+   to `7` (v0.3.0) → measured **at least 46** (the 7 union the 39), and at least 49 once two smaller
+   shapes are added (`t311` via `(closes t311)`; `t121` / `t128` via `merge(lane-1): t121 …`). This
+   is the same defect class the SPEC has now restated twice, because the classification method —
+   inspect part of the residual and name what is noticed — has never been exhaustive on any
+   iteration, mine included.
+2. **`plan.md` §D's tolerance argument does not hold.** Its ground is "all seven are archived-era
+   ids so today's operational impact is nil". The 39 are the repository's **most recent** merges, PR
+   `#1600`-`#1670`. The archived-era premise does not extend to them; whether they are live is a Gap
+   (above), but the dating claim is falsified.
+3. **This is not a new shape — it is a boundary defect in the SPEC's largest form.** These subjects
+   are already form 2 positionally: the card sits in a trailing parenthetical group carrying nothing
+   else, followed by a PR reference. And the shape occurs **43 times on `origin/main` `7ad9f8534`** —
+   the exact ref M1's window walks (`spec.md` §A.7). An implementation built to the enumeration as
+   written would answer `not-landed` for this repository's dominant PR-merge landing path, on the ref
+   the repaired predicate first ships against.
+
+No criterion in `acceptance.md` can detect this: the §F Definition-of-Done positive controls are
+`t401` (form 2, `)$`-exact) and `t440` (form 1) — both shapes the enumeration handles — so the DoD is
+satisfiable while 39 recent landings read `not-landed`.
+
+**Required fix (bounded, text-only):** restate form 2's anchor so the card-bearing group need only be
+the **last card-bearing** trailing group rather than the last group — for example by permitting a
+trailing non-card reference group (`(#NNNN)`) after it — or add it as a sixth enumerated form;
+re-state the residual figure in `spec.md` §A.4.2 and re-argue `plan.md` §D's tolerance at the
+corrected number; and add one AC clause with a `(tNNN) (#PR)` fixture so the shape carries a
+falsifier. Verifiable by the two commands quoted above.
+
+**D3-2 — `acceptance.md` §D (two-cards-in-one-group bullet) — Severity: minor — Class: blocking**
+
+§D claims the eight multi-card trailing groups were checked "id by id" and enumerates the ids whose
+rejection costs nothing. The measured population of residual ids sitting in a non-exact trailing
+group is `{t2, t311, t46, t68, t73, t74, t80}`. `t2` and `t80` are ruled on explicitly;
+`t46 / t68 / t73 / t74` are in the residual-7; **`t311` is ruled on nowhere.** Its sole subject
+occurrence is `merge(WT-codex-init): integrate card t340 … (closes t311)`. Required fix: classify
+`t311` — either as a further residual under-count or, like `t2`, as a correctly-unattributed note —
+and say which.
+
+**D3-3 — `spec.md` §A.4 preamble — Severity: minor — Class: optional**
+
+"Counts measured over the pinned commit `7835148d3`, 5,837 subjects, **414 of them merges**." 414 is
+the count of subjects **beginning** `Merge`. The actual merge-commit count at that corpus is **661**
+(`--merges`, one line per commit). 247 merge commits — including all 31 form-3c subjects and 137
+others — sit outside the denominator the merge-shape survey is described against. Required fix: say
+"414 subjects begin `Merge`", or state 661.
+
+**D3-4 — `spec.md` §A.4 (the nine-target list) — Severity: minor — Class: optional**
+
+The prose says "Nine targets"; the list printed above it has **eleven** entries. Two
+(`worktree-agent-a205e7a01ec2e0f27`, `worktree-agent-a350b7a40faaf39c6`) are **not** merge targets
+under the command cited beside the list — each appears once as a merge *source*. Re-running the
+SPEC's own extraction command yields exactly the nine the prose claims. Required fix: delete the two
+non-reproducing entries so the list matches the command quoted with it.
+
+**D3-5 — `acceptance.md` AC-TLA-005 entry test vs `plan.md` §D — Severity: minor — Class: optional**
+
+Asked directly whether the entry test is a real gate or a restatement: **it is a real gate.** It is
+mechanically computable, I reproduced all five columns exactly, and it has already done work — form
+3b's column of `1` is what exposed the iteration-2 vacuity. But `plan.md` §D restates it as a
+rejection rule ("reject it if that count is 0"), which is **stronger than the SPEC's own practice**:
+REQ-TLA-013's row reads `n/a` and is falsified by a constructed `release/v9` fixture, not a corpus
+id. A zero column means "no corpus falsifier exists", not "no falsifier exists". Required fix: narrow
+`plan.md` §D's wording to "admit only with a named falsifier; a zero column means the falsifier must
+be a constructed fixture, stated as such".
+
+## Regression Check (iterations 1-2)
+
+| Prior defect | State | Evidence |
+|---|---|---|
+| iter-2 D1 (form 3b unfalsified; `t412` absent) | **RESOLVED** | `t412` appears 11× in `acceptance.md`; AC-TLA-003 clauses 4-5 added; all four fixtures exist verbatim; form 3b alone → exactly `t412`. The author additionally found and closed the parallel form-3a vacuity (`AC-TLA-003b`, `t244`) — a defect iteration 2 did not find. |
+| iter-2 D2 (under-count figure) | **PARTIALLY RESOLVED; the class recurs** | The retraction 1 → 19 → 7 is correct as far as it goes and reproduces exactly. Form 3c is a sound, measured adoption. But the figure is still wrong — see D3-1. |
+| iter-2 D3 (M1-window divergence) | **RESOLVED — and my claim was refuted** | The `origin/main` measurement reproduces exactly (4,457 / 101 / 0 / 0). My iteration-2 window claim was an inference recorded as a Gap; it is false on this repository. The substitution (permanent downstream defect, `REQ-TLA-013` + clause 6) is **sound**, and the constructed `release/v9` fixture is **acceptable and in fact necessary** — by the author's own measurement no real subject can distinguish the two implementations, so a corpus fixture is impossible in principle. Leaving the M1→M2 ordering untouched is correct: the ordering's ground (2→9 false-positive growth) is independent, and nothing measured here disturbs it. |
+| iter-2 D4 (`WT-` prefix predicate) | **RESOLVED** | Contraposed target test; 9 targets verified, 3 prefix-free. The list defect D3-4 is cosmetic and does not affect the rule. |
+| iter-2 D5 (diff-stat figure) | **RESOLVED** | `progress.md` carries 1569 in R4 form with the file-name list as the load-bearing argument. |
+| Two-cards-in-one-group axis kept separate from the §D tiebreak | **VERIFIED SEPARATE** | The tiebreak's axis (scope-id ∧ trailing-id, 0 instances) and the one-group axis (8 instances) are counted, captioned, and ruled on separately; the enumeration rejects the second rather than tiebreaking it. Not conflated. Gap: `t311` (D3-2). |
+
+**Stagnation signal.** No individual defect persisted unchanged across all three iterations. But the
+*under-count figure* has been materially wrong in all three versions (1 → 19/7 → ≥46). The cause is
+methodological rather than clerical: the residual has never been classified exhaustively. That is the
+one item a fourth pass would have to change in kind rather than in degree.
+
+## The `AC-TLA-003b` sub-ID convention
+
+Asked directly: **not a problem.** The id is unique, greppable, traced to its REQs, and sits under
+the Tier M ceiling of 16 on either count (13 REQ / 12-or-13 AC). Pairing form 3a and form 3c under
+one heading is defensible — they are one shape in two spellings, as §A.4 states. The only cost is
+that the AC count is ambiguous in prose, and the SPEC already discloses both readings. No change
+required.
+
+## Enumerated debt a PASS-WITH-DEBT would carry
+
+1. **[blocking; must close before run-phase]** The §A.4 enumeration misses 39 unattributed card ids
+   in form 2's own positional shape with a trailing `(#PR)` group — 43 subjects on the pinned corpus
+   and 43 on `origin/main`, the ref M1 first ships against. Accepting this as debt means accepting
+   that the shipped predicate answers `not-landed` for the repository's dominant PR-merge landing
+   path.
+2. `t311` unclassified in a population §D claims to have checked id-by-id.
+3. "414 of them merges" understates the merge-commit denominator by 247.
+4. The nine-target list prints eleven entries, two unreproducible under its own command.
+5. `plan.md` §D's sixth-form rejection rule is stated more strongly than the SPEC's own practice.
+6. **Carried from iteration 2 and still open:** the residual's operational impact after M1 lands is
+   measured on `develop` while M1 sails against `main`. `t225` / `t250` (bare prefix) and `t40`
+   (legacy `worktree-`) may be commoner on `main`. Unmeasured, by author and auditor alike.
+7. **New Gap:** neither the author's 19 nor my 46 is a total. Neither party has classified the
+   residual exhaustively.
+
+## Kickoff readiness
+
+**Not ready for Implementation Kickoff Approval as written.** Debt items 2-7 are acceptable to carry
+into run-phase. Debt item 1 is not: it is a defect in the artifact run-phase would implement from,
+its failure direction is exactly the silent-miss-on-the-live-landing-path the SPEC exists to prevent,
+and no acceptance criterion in the file can catch it.
+
+**Recommended disposition.** The fix is bounded and mechanical — one enumeration row, two figures,
+one AC clause — and its correctness is checkable with the two commands quoted under D3-1. I recommend
+the lane apply that amendment and the lead verify it against those commands, rather than opening a
+fourth full audit iteration (which the ceiling does not permit) or reducing scope (the scope is not
+the problem; the enumeration's completeness is). Once D3-1 is closed and verified, this SPEC is
+Kickoff-ready with debt items 2-7 recorded.
+
+## Residual risk
+
+- My 46 is a floor. I named one shape exhaustively and two partially; the residual has still not
+  been classified end to end by anyone. A further shape may exist.
+- The live-queue impact of the 39 ids is unmeasured (the store split above). The finding does not
+  depend on it, but its severity would rise if any of them are live cards.
+- All figures here are measured against `7835148d3` and `7ad9f8534`. `origin/develop` has moved to
+  `25a3212a9`; a reader re-running against the branch name will measure a different corpus, as the
+  SPEC's own pin discipline (VCI §2.1 remedy R1) requires.
