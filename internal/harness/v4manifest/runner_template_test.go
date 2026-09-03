@@ -70,8 +70,8 @@ func TestRunnerTemplate_SingleConfigReadPath(t *testing.T) {
 	// No alternative config-read patterns (hard-coded specialist info, separate
 	// config files). These would indicate a second source of truth.
 	forbidden := []string{
-		"readConfig(",       // separate config file
-		"specialists.json",  // a second specialists file
+		"readConfig(",      // separate config file
+		"specialists.json", // a second specialists file
 		"hardcodedSpecialists",
 	}
 	for _, f := range forbidden {

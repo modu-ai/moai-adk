@@ -45,7 +45,7 @@ func TestGLMEnvSetParity(t *testing.T) {
 
 	// The set MUST be exactly the 3 canonical keys — no extras, no missing.
 	wantSet := map[string]bool{
-		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS":  true,
+		"CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS":   true,
 		"CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": true,
 		"CLAUDE_CODE_TEAMMATE_DISPLAY":             true,
 	}

@@ -603,7 +603,8 @@ func TestApplySchemaEditsAllFieldsRoundTrip(t *testing.T) {
 	root := t.TempDir()
 	seedTypedFixtures(t, root, "git-strategy", "llm", "quality",
 		"workflow", "harness", "ralph", "research", "feedback", "observability", "security",
-		"handoff", "cache", "report", "mcp", "crosssession") // SPEC-WEB-CONSOLE-013 M2 + SPEC-MCP-CONSOLE-001 M1 + crosssession
+		"handoff", "cache", "report", "mcp", "crosssession", // SPEC-WEB-CONSOLE-013 M2 + SPEC-MCP-CONSOLE-001 M1 + crosssession
+		"gate") // SPEC-PRECOMMIT-GATE-SCOPE-001 M2 (gate.pre_commit.enabled seam)
 
 	edits := map[string]string{}
 	for _, f := range AllFields() {

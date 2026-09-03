@@ -195,9 +195,9 @@ func (r *Registry) Register(sessionID, specID, phase string) error {
 			// subprocess that exits immediately, so its own PID would be dead
 			// before any liveness probe reads the registry back. See
 			// session_pid.go.
-			PID:           resolveSessionPID(),
-			Host:          host,
-			CWD:           cwd,
+			PID:  resolveSessionPID(),
+			Host: host,
+			CWD:  cwd,
 		})
 		return entries, nil
 	})

@@ -122,7 +122,7 @@ func TestAuditGateQuestions_DefaultProfile(t *testing.T) {
 	t.Parallel()
 	tmpDir := t.TempDir()
 	cases := []struct {
-		id        string
+		id          string
 		wantDefault string
 	}{
 		{"audit_gate_claude", config.AuditGateRequired},

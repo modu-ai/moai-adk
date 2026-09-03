@@ -1,0 +1,3 @@
+base   n=25 median=  161.02ms p95=  187.25ms min=  155.47ms max= 1607.98ms
+after  n=25 median=  162.55ms p95=  186.42ms min=  154.95ms max=  237.41ms
+delta  median +1.53ms (+1.0% of baseline)

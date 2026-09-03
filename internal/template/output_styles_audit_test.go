@@ -322,9 +322,9 @@ func TestOutputStylesExactlyThree(t *testing.T) {
 	}
 
 	expectedNames := map[string]bool{
-		styleFileMoAI:     true,
+		styleFileMoAI:      true,
 		styleFileMoAILearn: true,
-		styleFileMoAIEasy: true,
+		styleFileMoAIEasy:  true,
 	}
 	for _, name := range mdFiles {
 		if !expectedNames[name] {
