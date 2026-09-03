@@ -1,0 +1,11 @@
+# M2 probe B — skills key, value = skill NAME.
+name = "probe-b-name"
+description = '''
+M2 probe agent B. skills value is a skill name. Sentinel AGENT-B-NAME-9f32.
+'''
+developer_instructions = '''
+You are M2 probe agent B. Reply with exactly: PROBE-B-OK
+'''
+skills = ["moai-probe-m2skill"]
+model_reasoning_effort = "low"
+sandbox_mode = "read-only"
