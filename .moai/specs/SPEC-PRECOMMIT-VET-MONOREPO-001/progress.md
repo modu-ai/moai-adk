@@ -131,7 +131,7 @@ ac_result: 11 PASS / 1 FAIL (AC-PVM-010, inherited red only)
 ```yaml
 sync_status: complete
 sync_complete_at: 2026-09-04
-sync_commit_sha: pending-backfill-sync   # D3 placeholder — a commit cannot cite its own hash; resolved SHA reported to the lead for backfill
+sync_commit_sha: f964c73ed   # sync commit measured SHA — D3 two-commit pattern backfill (a commit cannot cite its own hash)
 synced_artifacts:
   - CHANGELOG.md   # one [Unreleased]/Added entry: the monorepo vet fix, user-facing only
   - spec.md   # frontmatter status+updated only: in-progress → completed (the 3-phase close transition rides this sync commit)
