@@ -245,6 +245,19 @@ and must write no displacement record), which no other row observes.
   `MOAI_SESSION_PID` with a session-lifetime pid, Windows acquires degrade to pid-0
   conservative (serialization preserved, reclaim requires `--force`). Acceptable per the
   asymmetry doctrine; documented, not hidden.
+- **A stamped-but-dead owner pid** — `MOAI_SESSION_PID` naming a pid that has already exited
+  when the record is stamped — was the one window that did NOT resolve toward TREAT-AS-LIVE on
+  Windows: the platform probe (internal/session/anchor_pid_windows.go) reported every pid alive,
+  so the dead value passed `sessionPIDFromEnv`'s liveness check and was recorded, while the
+  post-record verdict probed for real and read the window reclaimable. Found as F2 of the sync
+  audit ([MINOR][optional]; classified §G omission + follow-up card — not a regression this
+  SPEC introduced, the probe predates it). The code half landed as t426 axis 2 (4b86425d3): the
+  always-true stub was replaced by a real OpenProcess + GetExitCodeProcess probe, so the stale
+  env value is now rejected rather than recorded and the stale-entry verdict probes for real.
+  The path now fails toward TREAT-AS-LIVE the way unix does; the reject path is exercised by
+  TestSessionPIDFromEnv_RejectsUnusableValues (dead pid 6000) on every platform. Residual: the
+  Windows probe's own behavior has no direct unit test — its first behavioral observation is
+  the develop-pushed windows CI leg (local evidence is compile-only, GOOS=windows go vet).
 - **Ancestry walk finds the wrong long-lived process** when the acquire runs under an unknown
   wrapper (e.g. a version-manager shim). Mitigation: the wrapper-name set is the existing,
   tested one from session_pid.go; the `MOAI_SESSION_PID` env stamp short-circuits the walk

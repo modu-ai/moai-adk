@@ -89,6 +89,15 @@ func ValidAuditModels() []string {
 	return []string{AuditModelClaude, AuditModelCodex, AuditModelGLM, AuditModelMulti}
 }
 
+// ValidProjectContinuations returns the closed set for
+// workflow.project.continuation, derived from the ProjectContinuation*
+// constants the resolver validates against
+// (SPEC-PROJECT-CONTINUATION-KEY-001 REQ-PCK-001). Order is domain order, not
+// alphabetical: none does least, pipeline does most.
+func ValidProjectContinuations() []string {
+	return []string{ProjectContinuationNone, ProjectContinuationCard, ProjectContinuationPipeline}
+}
+
 // ValidAuditGates returns the closed set for workflow.audit.gates.*, derived
 // from the AuditGate* constants.
 func ValidAuditGates() []string {

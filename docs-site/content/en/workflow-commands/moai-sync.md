@@ -106,6 +106,32 @@ Whether a PR is created is decided automatically by the SPEC tier (the Hybrid Tr
 
 Tier S/M push directly to main because the CI 4 status checks + pre-push hook guarantee safety. Tier L requires a PR review window and full CI matrix verification due to its broad scope.
 
+The "direct push to main" in the Tier S/M rows assumes delivery from the main branch. For behavior on other branches, see the next section.
+
+### Delivery behavior by branch (git strategy)
+
+The final step of `/moai sync` — the push and PR delivery — is decided by the active mode's strategy key. It reads `git_strategy.{mode}.workflow` from `.moai/config/sections/git-strategy.yaml`, and the value is one of exactly two: `github-flow` or `git-flow`. All three modes (manual/personal/team) default to `github-flow`. When the key is neither of the two, the delivery step does not guess — it reports the offending value and stops.
+
+Under `github-flow`, the outcome depends on the current branch context:
+
+| Branch context | Delivery behavior |
+| ---- | ------- |
+| **main branch** (Tier S/M, no `--pr`) | direct push to main, no PR |
+| **Any branch other than main** | pushes that branch and opens a PR against main (updates it if one already exists) |
+| **Worktree branch** | pushes the worktree branch and opens a PR |
+| **A state matching no route** (detached HEAD etc.) | reports the branch state and stops — nothing is pushed and no PR is created |
+
+"main" in the table is the mode's `main_branch` setting; when it is not set, delivery behaves as if it were `main`.
+
+For a Tier S/M SPEC delivered from the main branch, this behaves exactly as it did through v3.1.2 — direct push, no PR. What changed is the remaining branch context:
+
+- **A PR is now created on any branch other than main.** Through v3.1.2 the delivery pushed to main regardless of branch name and created no PR.
+- **A branch state matching no route now stops the sync.** It used to push to main from any branch state and complete; now it pushes nothing and reports the state. If a sync that used to finish suddenly halts, check this point first.
+
+Selecting `git-flow` routes by branch name — `feature/*` opens a PR against develop, `release/*` and `hotfix/*` open a PR against main (a hotfix adds a back-merge PR to develop after merging), and a `WT-*` branch merges in the integration worktree without a PR.
+
+The previous-version key `github.spec_git_workflow` (system.yaml) is deprecated and will be removed in v3.3.0. The canonical key going forward is `git_strategy.{mode}.workflow` above.
+
 **Token-efficiency strategies:**
 
 - Loads only the SPEC document's metadata and summary
@@ -573,7 +599,7 @@ The created PR automatically includes the SPEC requirements, the list of changed
 
 ### Q: What if I don't want PRs created automatically?
 
-Set `auto_pr: false` in `git-strategy.yaml` and only the commit will be automated. You can create the PR yourself whenever you want.
+Set `auto_pr: false` in `git-strategy.yaml` and only the commit will be automated. You can create the PR yourself whenever you want. Note that running sync on a branch other than main creates a PR along with the branch push (see Delivery behavior by branch).
 
 ### Q: Can I change the CHANGELOG format?
 

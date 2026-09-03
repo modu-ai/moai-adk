@@ -110,6 +110,20 @@ func captureDoctorCmd(t *testing.T) (string, string) {
 	// (SPEC-V3R6-MOAI-CLEAN-HOME-001 REQ-MCH-008 hermeticity discipline).
 	t.Setenv("HOME", t.TempDir())
 	t.Setenv("MOAI_HOME", "")
+	// Pin the codex PATH lookup absent for the same hermeticity reason: the
+	// Codex Wiring check reports an unwired project differently depending on
+	// whether codex is installed, so the machine's real PATH would otherwise
+	// decide the snapshot. Absent is the snapshot's encoded baseline (the
+	// claude-only skip). The "moai" lookup is left to the real resolver — the
+	// skip branch never reaches it.
+	origLookPath := codexWiringLookPath
+	codexWiringLookPath = func(name string) (string, error) {
+		if name == "codex" {
+			return "", os.ErrNotExist
+		}
+		return origLookPath(name)
+	}
+	t.Cleanup(func() { codexWiringLookPath = origLookPath })
 	// Run the doctor command from an empty temp dir so every workspace
 	// filesystem check sees a clean baseline matching the golden snapshots.
 	t.Chdir(t.TempDir())

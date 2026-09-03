@@ -1,0 +1,12 @@
+--- FAIL: TestTodoHelp_NamesTheDatabaseStore (0.06s)
+    todo_help_store_test.go:38: todo Long help does not name the canonical store .moai/state/todo/backlog.db
+    todo_help_store_test.go:42: todo Long help still carries the stale primary (state/todo/backlog.json) claim — backlog.json is an export or legacy leftover, not the queue
+    todo_help_store_test.go:42: todo Long help still carries the stale home-fallback (todo/<project-key>/backlog.json) claim — backlog.json is an export or legacy leftover, not the queue
+--- FAIL: TestTodoStoreClaims_NoStaleGoSourceSite (0.07s)
+    todo_help_store_test.go:97: pattern primary (state/todo/backlog.json) expected zero non-test source matches, got 1:
+        ../../internal/cli/todo.go:96 — Long: `Operate the kanban backlog queue at .moai/state/todo/backlog.json.
+    todo_help_store_test.go:97: pattern home-fallback (todo/<project-key>/backlog.json) expected zero non-test source matches, got 1:
+        ../../internal/cli/todo.go:101 — without git metadata keeps its queue at ~/.moai/todo/<project-key>/backlog.json
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.060s
+FAIL

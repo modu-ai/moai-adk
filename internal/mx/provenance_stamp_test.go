@@ -58,6 +58,28 @@ func dirtyStampFixture(t *testing.T) string {
 	return root
 }
 
+// testdataDirtyStampFixture returns a fixture root whose only uncommitted
+// change is a committed testdata fixture file edited in place — no
+// described-worthy change at all under REQ-GFC-002.
+func testdataDirtyStampFixture(t *testing.T) string {
+	t.Helper()
+	root, _, _ := newStampFixture(t)
+	tdDir := filepath.Join(root, "internal", "testdata")
+	if err := os.MkdirAll(tdDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	fixture := filepath.Join(tdDir, "f.txt")
+	if err := os.WriteFile(fixture, []byte("v1\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	stampGit(t, root, "add", "internal/testdata/f.txt")
+	stampGit(t, root, "commit", "-q", "-m", "testdata fixture")
+	if err := os.WriteFile(fixture, []byte("v2\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return root
+}
+
 // TestResolveCommit covers REQ-SR-005's resolution contract: full shas, short
 // revs, and ref names resolve to the full sha; unresolvable input errors
 // without naming an absolute local path.
@@ -171,5 +193,78 @@ func TestStampCodemaps_DefaultPathUnchanged(t *testing.T) {
 	}
 	if want, got := 3, len(dpv.DescribedRoots); got != want {
 		t.Errorf("described_roots len = %d, want %d (%v)", got, want, dpv.DescribedRoots)
+	}
+}
+
+// TestStampCodemaps_ExplicitCommitAllowsTestdataOnlyDirty closes the residual
+// SPEC-GRAPH-FRESHNESS-CADENCE-001 deferred at v0.2.1 (card t327): the anchor
+// gate must read the REQ-GFC-002 predicate the codemaps fingerprint already
+// applies, so a tree dirty only under a testdata directory carries no anchor
+// contradiction and the --commit merge-base anchor is not refused.
+func TestStampCodemaps_ExplicitCommitAllowsTestdataOnlyDirty(t *testing.T) {
+	root := testdataDirtyStampFixture(t)
+	_, head, _ := newStampFixture(t)
+
+	pv, err := StampCodemaps(root, head)
+	if err != nil {
+		t.Fatalf("testdata-only dirty must not refuse the --commit anchor: %v", err)
+	}
+	if pv.Dirty {
+		t.Errorf("testdata-only dirty must not set dirty")
+	}
+	if pv.CommitSHA != head {
+		t.Errorf("commit_sha = %q, want the named commit %q", pv.CommitSHA, head)
+	}
+}
+
+// TestStampCodemaps_ExplicitCommitRejectsUntrackedDescribedSource guards the
+// --untracked-files=all half of the same fix: a new untracked described source
+// inside a fresh directory must still read dirty (the default porcelain view
+// collapses it to "dir/", whose bare directory path the predicate would
+// reject).
+func TestStampCodemaps_ExplicitCommitRejectsUntrackedDescribedSource(t *testing.T) {
+	root, head, _ := newStampFixture(t)
+	sub := filepath.Join(root, "internal", "newpkg")
+	if err := os.MkdirAll(sub, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sub, "c.go"), []byte("package newpkg\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := StampCodemaps(root, head); err == nil {
+		t.Fatal("untracked described source must keep refusing the --commit anchor")
+	}
+}
+
+// TestStampCodemaps_DefaultPathTestdataOnlyDirtyRecordsCommit extends the
+// flagless characterization the same way: a testdata-only dirty tree records
+// the commit anchor, not a dirty content fingerprint.
+func TestStampCodemaps_DefaultPathTestdataOnlyDirtyRecordsCommit(t *testing.T) {
+	root, _, _ := newStampFixture(t)
+	tdDir := filepath.Join(root, "internal", "testdata")
+	if err := os.MkdirAll(tdDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	fixture := filepath.Join(tdDir, "f.txt")
+	if err := os.WriteFile(fixture, []byte("v1\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	stampGit(t, root, "add", "internal/testdata/f.txt")
+	stampGit(t, root, "commit", "-q", "-m", "testdata fixture")
+	stampedHead := stampGit(t, root, "rev-parse", "HEAD")
+	if err := os.WriteFile(fixture, []byte("v2\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	pv, err := StampCodemaps(root, "")
+	if err != nil {
+		t.Fatalf("flagless path must not error: %v", err)
+	}
+	if pv.CommitSHA != stampedHead || pv.Dirty {
+		t.Errorf("testdata-only dirty default anchor = (%q, dirty=%v), want (%q, false)", pv.CommitSHA, pv.Dirty, stampedHead)
+	}
+	if pv.ContentFingerprint != "" {
+		t.Errorf("commit anchor must not carry a content fingerprint, got %q", pv.ContentFingerprint)
 	}
 }

@@ -27,6 +27,9 @@ func TestPage3QuestionsStructure(t *testing.T) {
 		{"worktree_auto_create", QuestionTypeConfirm, false, false},
 		{"todo_enabled", QuestionTypeConfirm, false, false},
 		{"feedback_auto_submit", QuestionTypeConfirm, false, false},
+		// SPEC-PROJECT-CONTINUATION-KEY-001: the /moai project completion
+		// selector, immediately before the audit block and ungated.
+		{"project_continuation", QuestionTypeSelect, true, false},
 		{"audit_model", QuestionTypeSelect, true, false},
 		{"audit_gate_claude", QuestionTypeSelect, true, false},
 		{"audit_gate_codex", QuestionTypeSelect, true, false},
@@ -266,10 +269,11 @@ func TestTotalVisibleQuestions_Page3AlwaysCounted(t *testing.T) {
 	// DesignEnabled reveals the nested claude_design_enabled.
 	res := &WizardResult{DesignEnabled: true}
 	got := TotalVisibleQuestions(all, res)
-	// Page 1 (3) + Page 2 (2) + Quality & Workflow (11) + Autonomy (1) = 17.
+	// Page 1 (3) + Page 2 (2) + Quality & Workflow (12) + Autonomy (1) = 18.
 	// SPEC-INIT-HARNESS-PROMPT-001 added agent_wiring to Quality & Workflow.
-	if got != 17 {
-		t.Errorf("TotalVisibleQuestions = %d, want 17 (3 Basic + 2 Model & Report + 11 Quality & Workflow + 1 Autonomy)", got)
+	// SPEC-PROJECT-CONTINUATION-KEY-001 added project_continuation (11 -> 12).
+	if got != 18 {
+		t.Errorf("TotalVisibleQuestions = %d, want 18 (3 Basic + 2 Model & Report + 12 Quality & Workflow + 1 Autonomy)", got)
 	}
 	// Quality & Workflow page membership (M4 audit + worktree + Issue-3 confirm
 	// + the agent_wiring harness selector).
@@ -279,7 +283,7 @@ func TestTotalVisibleQuestions_Page3AlwaysCounted(t *testing.T) {
 			n++
 		}
 	}
-	if n != 11 {
-		t.Errorf("visible Quality & Workflow questions = %d, want 11", n)
+	if n != 12 {
+		t.Errorf("visible Quality & Workflow questions = %d, want 12", n)
 	}
 }

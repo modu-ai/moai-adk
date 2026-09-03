@@ -80,6 +80,11 @@ func runClean(cmd *cobra.Command, _ []string) error {
 		return fmt.Errorf("prune worktrees: %w", err)
 	}
 
+	// One-time/periodic surface for launch-ledger reclamation (card t297):
+	// every dead projects[] row goes here, whether or not a disposal on this
+	// machine produced it.
+	pruneLaunchLedgerAfterDisposal(out, cmd.ErrOrStderr())
+
 	_, _ = fmt.Fprintln(out, wtSuccessCard("Cleaned stale worktree references"))
 	return nil
 }
@@ -154,6 +159,9 @@ func cleanMergedWorktrees(cmd *cobra.Command, base string) error {
 			removed++
 		}
 	}
+
+	// Reclaim launch-ledger rows left dead by the removals above (card t297).
+	pruneLaunchLedgerAfterDisposal(out, cmd.ErrOrStderr())
 
 	if removed == 0 {
 		_, _ = fmt.Fprintln(out, "No merged worktrees to clean.")
@@ -284,6 +292,12 @@ func cleanStaleWorktrees(cmd *cobra.Command, base string, apply bool) error {
 		removed++
 	}
 	_, _ = fmt.Fprintf(out, "Removed %d stale worktree(s). Branches were left intact.\n", removed)
+
+	// Reclaim launch-ledger rows left dead by the removals above (card t297).
+	// Apply limb only: the preview and the --json inventory remove nothing, so
+	// they reclaim nothing either.
+	pruneLaunchLedgerAfterDisposal(out, cmd.ErrOrStderr())
+
 	return cleanDegradedExit(lockErr)
 }
 

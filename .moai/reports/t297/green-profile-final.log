@@ -1,0 +1,16 @@
+--- PASS: TestPruneStaleProjectEntries_RemovesDeadKeepsLive (0.00s)
+--- PASS: TestPruneStaleProjectEntries_Idempotent (0.00s)
+--- PASS: TestPruneStaleProjectEntries_NoLedgerIsNoOp (0.00s)
+--- PASS: TestPruneStaleProjectEntries_LedgerWithoutProjectsIsNoOp (0.00s)
+--- PASS: TestPruneStaleProjectEntries_CorruptLedgerErrors (0.00s)
+--- PASS: TestPruneStaleProjectEntries_KeepsEntryWithDeadProfile (0.00s)
+--- PASS: TestRegression_DisposedWorktreesLeaveLedgerBounded (0.00s)
+--- PASS: TestRegression_ColdStartResidueIsReclaimed (0.00s)
+--- PASS: TestRegression_LegacyDuplicatesFoldDeadOnesFirst (0.00s)
+--- PASS: TestRecordFromSubtreeFoldsIntoRegisteredRoot (0.00s)
+--- PASS: TestRecordFromSubtreeThenResolveFromFreshSiblingWorktree (0.00s)
+--- PASS: TestRecordFromSubtreeWithNoRegisteredAncestorKeepsOwnRow (0.00s)
+--- PASS: TestRecordFromRegisteredNestedProjectUpdatesOwnRowNotParent (0.00s)
+--- PASS: TestRecordFromSubtreeWithLegacyOwnRowUpdatesOwnRow (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/profile	0.432s

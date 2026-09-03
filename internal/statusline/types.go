@@ -250,6 +250,7 @@ type StatusData struct {
 	SessionName       string         // Explicit session name (e.g., "Team-A-Lead"); empty when unnamed
 	AgentName         string         // Agent identity the session runs as (e.g., "manager-lead"); empty when none
 	Backlog           BacklogCounts  // Kanban backlog in-flight/waiting counts (Available=false when unreadable)
+	Landed            LandedCounts   // Picked cards the integration branch already names (Known()==false when unmeasured)
 	GitHub            GitHubCounts   // Cached open issue/PR counts (Available=false when never fetched)
 	Directory         string         // Project directory name (e.g., "modu-saju")
 	OutputStyle       string         // Output style name (e.g., "Mr.Alfred", "R2-D2")

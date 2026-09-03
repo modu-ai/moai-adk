@@ -652,12 +652,13 @@ func TestStepperTotal_DynamicDenominator(t *testing.T) {
 	}
 
 	// Adding page 3 expands the denominator further: 6 unconditional defaults
-	// (git conditionals hidden for manual) + 12 page-3 questions = 18.
+	// (git conditionals hidden for manual) + 13 page-3 questions = 19.
 	// SPEC-INIT-HARNESS-PROMPT-001 added agent_wiring to page 3 (11 -> 12).
+	// SPEC-PROJECT-CONTINUATION-KEY-001 added project_continuation (12 -> 13).
 	all := append(ReconfigureQuestions("/tmp/steppertotal"), Page3Questions("/tmp/steppertotal")...)
 	std := &WizardResult{GitMode: "manual", DesignEnabled: true}
-	if got := stepperDenominator(all, std); got != 18 {
-		t.Errorf("page-3 denominator: expected 18 (6 + 12 page-3), got %d", got)
+	if got := stepperDenominator(all, std); got != 19 {
+		t.Errorf("page-3 denominator: expected 19 (6 + 13 page-3), got %d", got)
 	}
 	// Single dynamic source invariant: stepperDenominator == TotalVisibleQuestions.
 	if stepperDenominator(all, std) != TotalVisibleQuestions(all, std) {

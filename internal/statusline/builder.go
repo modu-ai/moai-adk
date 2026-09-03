@@ -266,6 +266,15 @@ func (b *defaultBuilder) collectAll(ctx context.Context, input *StdinData) *Stat
 		if b.renderer.isSegmentEnabled(SegmentGitHub) {
 			maybeRefreshGitHubCounts(boardRoot)
 		}
+
+		// The landed judgment is read on the same terms: one small file read
+		// here, the git query in a detached child past its TTL. The spawn is
+		// gated on the same two switches the segment itself is gated on — a
+		// switched-off segment must stop the polling too, not just the drawing.
+		data.Landed = resolveLandedCounts(boardRoot)
+		if b.renderer.isSegmentEnabled(SegmentBacklog) && b.renderer.isTodoEnabled() {
+			maybeRefreshLandedCounts(boardRoot)
+		}
 	}
 
 	// SPEC-INFINITE-GOAL-001 REQ-3: resolve whether an armed goal exists for

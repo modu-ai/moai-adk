@@ -1,0 +1,10 @@
+--- FAIL: TestRunRemove_PrunesLaunchLedgerAfterSuccess (0.00s)
+    launch_ledger_test.go:125: prune calls after successful remove = 0, want 1
+--- FAIL: TestRunClean_PlainPrunesLaunchLedger (0.00s)
+    launch_ledger_test.go:192: prune calls after plain clean = 0, want 1
+--- FAIL: TestCleanStaleApply_PrunesLaunchLedger (0.00s)
+    launch_ledger_test.go:210: prune calls after stale apply = 0, want 1
+    launch_ledger_test.go:213: out = "  Removing stale worktree: /repo/wt-a [feature/a]\nRemoved 1 stale worktree(s). Branches were left intact.\n", want the pruned-count line
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli/worktree	0.417s
+FAIL

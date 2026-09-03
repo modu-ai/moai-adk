@@ -363,6 +363,17 @@ func seamSectionFields() []FieldDef {
 		// mapping on first edit. The polarity is the opposite though — this key
 		// is default-ON, so the console's "absent" rendering means enabled.
 		s(SectionWorkflow, "workflow", TypeBool, "workflow", "todo", "enabled"),
+		// SPEC-PROJECT-CONTINUATION-KEY-001 REQ-PCK-011: the /moai project
+		// Phase 14 completion selector. UNLIKE its two neighbours above, the
+		// distributed template DOES ship this key (`continuation: card`) — a
+		// three-value enum's domain is not discoverable from the key's absence,
+		// so shipping it is how `none` and `pipeline` become visible at all.
+		// The enum LABELS stay English by design (applyI18n's ".opt." guard);
+		// what each value DOES is carried by per-option descriptions whose keys
+		// avoid that substring so they follow the locale.
+		withOptionDesc(closedSeam(SectionWorkflow, "workflow", "f.workflow.project.continuation.opt.",
+			config.ValidProjectContinuations(), "", "", "workflow", "project", "continuation"),
+			"f.workflow.project.continuation.option."),
 		// SPEC-MOAI-MCP-SERVER-001 M4 (REQ-MCP-015 / AC-MCP-021): the audit
 		// selection surfaced in the web console. These are PersistSeam fields
 		// patched via yamlpatch (arbitrary-depth upsert — the doc example is a
@@ -602,7 +613,18 @@ func sectionExtraFields() []FieldDef {
 	fields = append(fields, reportFields()...)  // report.format (launch tab)
 	fields = append(fields, mcpFields()...)     // SPEC-MCP-CONSOLE-001 M1
 	fields = append(fields, crossSessionFields()...)
+	fields = append(fields, gateFields()...) // SPEC-PRECOMMIT-GATE-SCOPE-001 M2
 	return fields
+}
+
+// gateFields는 gate 섹션의 편집 FieldDef를 반환한다: pre_commit.enabled(bool).
+// yamlpatch seam으로 gate.yaml의 gate.pre_commit.enabled에 기록되며, 게이트
+// 러너는 MOAI_PRECOMMIT=1 마커 하에서만 이 키를 존중한다
+// (SPEC-PRECOMMIT-GATE-SCOPE-001 REQ-009).
+func gateFields() []FieldDef {
+	return []FieldDef{
+		seamField(SectionGate, "gate", TypeBool, "gate", "pre_commit", "enabled"),
+	}
 }
 
 // mcpFields generates one enablement bool per MCP tool declared in the shared
@@ -710,5 +732,6 @@ func SchemaSectionIDs() []SectionID {
 		SectionSecurity,
 		SectionHandoff,
 		SectionCache,
+		SectionGate,
 	}
 }

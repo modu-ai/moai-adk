@@ -53,6 +53,57 @@ func WritePhase1Configs(opts InitOptions, result *InitResult) error {
 	if err := writeFeedbackAutoSubmitYAML(sectionsDir, opts, result); err != nil {
 		return err
 	}
+	if err := writeWorkflowProjectContinuationYAML(sectionsDir, opts, result); err != nil {
+		return err
+	}
+	return nil
+}
+
+// writeWorkflowProjectContinuationYAML persists the project_continuation wizard
+// answer to workflow.project.continuation
+// (SPEC-PROJECT-CONTINUATION-KEY-001 REQ-PCK-010).
+//
+// An empty string means the question was never asked (--non-interactive), and
+// an unasked question writes NOTHING — the deployed workflow.yaml is left
+// byte-identical. Unlike its todo neighbour the template DOES ship this key
+// (`continuation: card`), so an unasked write would restate a value that is
+// already correct.
+//
+// The write goes through yamlpatch for the same reason writeWorkflowTodoYAML
+// does: a patch helper requiring the key to pre-exist would be a silent no-op
+// on a project whose workflow.yaml predates the key. yamlpatch upserts the
+// nested mapping and preserves the surrounding comments and key order. The
+// three-segment path is not a new capability — workflow.audit.model already
+// ships at that depth and yamlpatch is depth-agnostic.
+//
+// The no-deployer fallback (no workflow.yaml at all) creates a minimal block
+// here rather than deferring to yamlpatch, whose atomic write stats the
+// original to carry its permissions forward and fails when there is nothing
+// to stat.
+func writeWorkflowProjectContinuationYAML(sectionsDir string, opts InitOptions, result *InitResult) error {
+	if opts.ProjectContinuation == "" {
+		return nil
+	}
+
+	workflowPath := filepath.Join(sectionsDir, defs.WorkflowYAML)
+
+	if _, statErr := os.Stat(workflowPath); os.IsNotExist(statErr) {
+		content := fmt.Sprintf("workflow:\n    project:\n        continuation: %s\n", opts.ProjectContinuation)
+		if err := os.WriteFile(workflowPath, []byte(content), defs.FilePerm); err != nil {
+			return fmt.Errorf("write workflow.yaml: %w", err)
+		}
+		result.CreatedFiles = append(result.CreatedFiles,
+			filepath.Join(defs.MoAIDir, defs.SectionsSubdir, defs.WorkflowYAML))
+		return nil
+	}
+
+	edit := yamlpatch.KeyEdit{
+		Path:  []string{"workflow", "project", "continuation"},
+		Value: opts.ProjectContinuation,
+	}
+	if err := yamlpatch.PatchFile(workflowPath, []yamlpatch.KeyEdit{edit}); err != nil {
+		return fmt.Errorf("patch workflow.yaml project.continuation: %w", err)
+	}
 	return nil
 }
 

@@ -289,4 +289,3 @@ func RegisterVetoAsNegativeEvidence(registryPath, patternKey string, evidenceCou
 	}
 	return AppendNegativeEvidence(registryPath, entry)
 }
-

@@ -620,6 +620,15 @@ func NewDefaultGateConfig() GateConfig {
 			MXIndexChangedFiles:  DefaultGraphFreshnessMXIndexChangedFiles,
 			UpdateBudgetMS:       DefaultGraphFreshnessUpdateBudgetMS,
 		},
+		// The pre-commit context's heavy gate is default-OFF (the BranchGuard /
+		// agent_stop_guard opt-in pattern): a project-wide failure unrelated to
+		// the staged change must not block unrelated commits. Opt in via
+		// gate.yaml pre_commit.enabled (editable from `moai web`). A standalone
+		// `moai gate` run ignores this key (operator decision 2,
+		// SPEC-PRECOMMIT-GATE-SCOPE-001).
+		PreCommit: GatePreCommitConfig{
+			Enabled: false,
+		},
 	}
 }
 
@@ -854,6 +863,12 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// fact that ABSENT and TRUE are the same answer, and that only a
 		// literal `enabled: false` turns the guidance off.
 		Todo: WorkflowTodoConfig{},
+		// SPEC-PROJECT-CONTINUATION-KEY-001 REQ-PCK-002: the construction-time
+		// default is the named token, not the empty string. Absent and `card`
+		// resolve identically either way (ProjectContinuation maps "" to card),
+		// so this line is belt-and-braces: it makes the default readable from
+		// the struct rather than only from the resolver.
+		Project: WorkflowProjectConfig{Continuation: ProjectContinuationCard},
 		// SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001 REQ-1/REQ-4: the guard ships
 		// default-OFF (opt-in). Distributed users get an inert guard; the
 		// maintainer of a shared multi-session checkout opts in via local

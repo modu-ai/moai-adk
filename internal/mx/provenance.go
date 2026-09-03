@@ -180,8 +180,10 @@ func hashEntries(entries []hashEntry) string {
 
 // gitOut runs a git command in dir and returns trimmed stdout; on any error
 // it returns "" (fail-open by callers). Empty output with a nil error is a
-// real, expected state — a clean `git status --porcelain` produces exactly
-// that, and treeDirty's emptiness test depends on it (CR round-2 3855149357).
+// real, expected state — `git rev-parse` never prints it, but callers of
+// other subcommands must not treat an error as the empty output (CR round-2
+// 3855149357). treeDirty left this helper at t327: its NUL-separated parse
+// needs the raw bytes, not trimmed stdout.
 func gitOut(dir string, args ...string) string {
 	cmd := exec.Command("git", append([]string{"-C", dir}, args...)...)
 	out, err := cmd.Output()
@@ -220,11 +222,41 @@ func ResolveCommit(root, rev string) (string, error) {
 	return sha, nil
 }
 
-// treeDirty reports whether any file under the given repo-relative roots has
-// uncommitted changes (staged, unstaged, or untracked) versus HEAD.
+// treeDirty reports whether any described-worthy file under the given
+// repo-relative roots has uncommitted changes (staged, unstaged, or
+// untracked) versus HEAD (REQ-GFC-002 — the anchor gate sees the same
+// predicate the codemaps fingerprint applies). A tree dirty only outside the
+// predicate — testdata fixtures, _test.go edits — is not an anchor
+// contradiction and does not refuse the --commit merge-base anchor
+// (residual SPEC-GRAPH-FRESHNESS-CADENCE-001 deferred at v0.2.1, closed by
+// card t327).
+//
+// --untracked-files=all keeps untracked files listed one by one instead of
+// collapsing new directories to "dir/", whose bare directory path the
+// predicate would reject and so hide a new described source inside. -z avoids
+// the quoted-path and "old -> new" line forms entirely; for a rename or copy
+// record the next NUL record is the source path and is skipped. Git failure
+// keeps the previous fail-open reading (not dirty), as gitOut-based callers
+// saw before.
 func treeDirty(root string, roots []string) bool {
-	args := append([]string{"status", "--porcelain", "--"}, roots...)
-	return gitOut(root, args...) != ""
+	args := append([]string{"status", "--porcelain", "-z", "--untracked-files=all", "--"}, roots...)
+	out, err := exec.Command("git", append([]string{"-C", root}, args...)...).Output()
+	if err != nil {
+		return false
+	}
+	recs := strings.Split(string(out), "\x00")
+	for i := 0; i < len(recs); i++ {
+		if len(recs[i]) < 4 {
+			continue
+		}
+		if recs[i][0] == 'R' || recs[i][0] == 'C' {
+			i++ // the next NUL record is the rename/copy source path
+		}
+		if IsDescribedWorthy(recs[i][3:]) {
+			return true
+		}
+	}
+	return false
 }
 
 // fingerprintFunc computes a dirty-tree content fingerprint over described

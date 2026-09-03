@@ -1,0 +1,7 @@
+--- FAIL: TestRecordFromSubtreeFoldsIntoRegisteredRoot (0.00s)
+    write_normalization_test.go:83: projects rows = 4 (map[/private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRecordFromSubtreeFoldsIntoRegisteredRoot2403712155/002/proj:alpha /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRecordFromSubtreeFoldsIntoRegisteredRoot2403712155/002/proj/.claude/worktrees/wt1:beta /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRecordFromSubtreeFoldsIntoRegisteredRoot2403712155/002/proj/.claude/worktrees/wt2:beta /private/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestRecordFromSubtreeFoldsIntoRegisteredRoot2403712155/002/proj/.claude/worktrees/wt3:beta]), want 1 — worktree launches must fold into the registered root, not add rows
+--- FAIL: TestRecordFromSubtreeThenResolveFromFreshSiblingWorktree (0.00s)
+    write_normalization_test.go:109: fresh sibling worktree resolved to "alpha", want beta — the folded write is invisible to the ancestor walk
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/profile	0.468s
+FAIL

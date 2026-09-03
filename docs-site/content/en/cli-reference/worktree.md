@@ -77,7 +77,7 @@ The argument is a **file-system path**, not a branch name.
 moai worktree clean [--merged-only | --stale] [--yes] [--json] [--base <branch>]
 ```
 
-Run without flags, it only prunes stale worktree references.
+Run without flags, it only prunes stale worktree references. Dead entries in the launch ledger (`~/.moai/claude-profiles/launch.yaml`, the `projects:` map) whose project directory no longer exists are pruned as well, and the removed count is printed. `moai worktree remove` and `moai worktree done` reclaim the same entries for the trees they dispose.
 
 | Flag | Description |
 |--------|------|

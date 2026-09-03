@@ -108,7 +108,7 @@ The per-project record is written when you launch with `-p`, and it is updated a
 **Limitations to know**
 
 - Moving or renaming a project directory leaves the existing entry matching no path. The entry is skipped silently, so it does not break launching.
-- The `projects:` map grows as projects accumulate, and there is no command to prune it yet.
+- Worktree launches fold into the registered project's entry, so the map stays at one entry per project. Entries whose project directory is gone can be pruned with `moai worktree clean`.
 - `moai profile current` reports the global record as-is. So in a project whose remembered profile differs from the global record, the name reported by `moai profile current` may differ from the profile that `moai cc` without `-p` actually launches.
 
 ## First Launch of a New Profile

@@ -85,6 +85,10 @@ func runDoneWorktreeCleanup(branchName string, force, deleteBranch bool) (succes
 		return false, doneRemoveError(err, targetPath)
 	}
 
+	// Reclaim the launch-ledger row(s) that died with this tree (card t297).
+	// Quiet form: --auto suppresses success output, never the reclamation.
+	pruneLaunchLedgerAfterDisposal(nil, os.Stderr)
+
 	// Optionally delete the branch
 	if deleteBranch {
 		if err := WorktreeProvider.DeleteBranch(branchName); err != nil {
@@ -182,6 +186,9 @@ func runDone(cmd *cobra.Command, args []string) error {
 	if err := WorktreeProvider.Remove(targetPath, force); err != nil {
 		return doneRemoveError(err, targetPath)
 	}
+
+	// Reclaim the launch-ledger row(s) that died with this tree (card t297).
+	pruneLaunchLedgerAfterDisposal(out, cmd.ErrOrStderr())
 
 	details := []string{
 		fmt.Sprintf("Path: %s", targetPath),

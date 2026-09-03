@@ -326,7 +326,14 @@ Development Mode: [tdd/ddd] (auto-configured in Phase 12)
 
 ### Step 4.1.5: Issue the First-Feature Card
 
-[HARD] Issue exactly ONE backlog card carrying the project's first feature, so the run ends with the next piece of work on the queue instead of only in prose.
+[HARD] Resolve `workflow.project.continuation` FIRST — it governs both this step and Step 4.2.
+
+0. Read `workflow.project.continuation` from `.moai/config/sections/workflow.yaml`. The canonical domain is exactly `none | card | pipeline`.
+   - **Absent** → resolve `card`. A project that never set the key behaves exactly as it did before the key existed.
+   - **Unmatched** (any token outside the domain — a typo such as `pipelien`) → resolve `card`, and **record the offending value** for the Step 4.2 report. Do not stop the run and do not apply the offending value: halting a whole documentation run over a mistyped presentation preference is disproportionate, but a silent fallback would hide the typo for the life of the project.
+   - **`none`** → **skip the rest of this step entirely.** Issue no card, add nothing to the backlog, and say so in the Step 4.2 report. Steps 1-5 below do not run, and no `moai todo add` invocation is reachable on this path.
+
+[HARD] Under `card` and `pipeline` alike, issue exactly ONE backlog card carrying the project's first feature, so the run ends with the next piece of work on the queue instead of only in prose.
 
 `/moai project` is a **standing source** under `.claude/skills/moai/workflows/todo.md` § Standing sources — the operator authorized the card in advance, and this step derives it rather than inventing it. Every condition there binds; the mechanics here implement them.
 
@@ -345,17 +352,50 @@ moai todo add "[PROJECT] <goal, one line, bounded by scope>"
 
 ### Step 4.2: Next Steps
 
-[HARD] After displaying the summary — including the card id issued in Step 4.1.5, or the reason no card was issued — use AskUserQuestion to present these options:
+[HARD] After displaying the summary — including the card id issued in Step 4.1.5, or the reason no card was issued — use AskUserQuestion to present the next-steps options.
 
-- Create the SPEC and start now (Recommended): Pick the card issued in Step 4.1.5 and begin immediately. Selecting this branch IS the operator's pick (`todo.md` § Picking the next card) — record it with `moai todo next <n>` and continue in this same session with `/moai plan "<card text>"`. In Kanban Mode, report the pick to the lead instead and let it dispatch the card to the `plan` session. Run-phase entry still passes the Implementation Kickoff Approval gate, where the `ac_converge` goal is offered as the progression-mode axis and armed only after the gate passes — this branch never bypasses that gate.
+When Step 4.1.5 recorded an offending value, the summary carries one line naming it together with the canonical domain, so the typo reaches the operator rather than dying in a silent fallback: `workflow.project.continuation: "<offending value>" is not one of none | card | pipeline — resolved to card.` When no offending value was recorded, that line is absent.
+
+When the resolved value is `pipeline`, the summary carries the carry commitment in one line, for the same reason the offending-value line exists: an unhonoured carry degrades into default `card` behaviour with no signal anywhere, and the operator who configured `pipeline` would not see it for the life of the project. The line reads: `workflow.project.continuation: pipeline — this session is expected to carry past /moai plan and emit the Implementation Kickoff Approval gate; if the session stops at the plan boundary without that gate, the configured carry did not happen.` Under any other resolved value the line is absent.
+
+[HARD] **The operator-decision invariant, at every value of the key.** At every value the question is asked, the operator answers it, and it is never skipped, auto-answered, pre-filled, defaulted-on-no-answer, or bypassed. Within that invariant the key may change only three things — **which option is recommended, how far that option carries the session, and how that option is worded** — and it changes nothing else about the question.
+
+**The recommended option, by resolved value.** The three rows differ by **carry distance**: how far the recommended branch takes the session before it stops.
+
+| Resolved value | Recommended option | Carry distance |
+|---|---|---|
+| `none` | Create SPEC | the operator runs `/moai plan` themselves; no card exists |
+| `card` | Create the SPEC and start now | as far as `/moai plan`, and no further |
+| `pipeline` | Create the SPEC and continue to the kickoff gate | past `/moai plan`, to emitting the Implementation Kickoff Approval gate |
+
+**`none` — no card was issued, so the option set is the pre-P1 one.**
+
+- Create SPEC (Recommended): Run `/moai plan` to define your first feature specification. This is the natural next step after project setup.
+- Review and Edit Documentation: Open the generated files for review and manual editing before proceeding.
+- Generate project-specific harness: Proceed to Phase 15 (`project/meta-harness.md`) to build a domain-specific harness (agents + skills) tailored to this project via the v4 harness Builder.
+- Done: Complete the project setup workflow.
+
+  Exactly these four options are presented, and the four-option cap is therefore satisfied with **nothing routed to `Other`**. "Create SPEC later" is **omitted** under `none` — there is no queued card for it to refer to.
+
+**`card` — the shipped branch, terminating at `/moai plan`.**
+
+- Create the SPEC and start now (Recommended): Pick the card issued in Step 4.1.5 and begin immediately. Selecting this branch IS the operator's pick (`todo.md` § Picking the next card) — record it with `moai todo next <n>` and continue in this same session with `/moai plan "<card text>"`. In Kanban Mode, report the pick to the lead instead and let it dispatch the card to the `plan` session. Run-phase entry still passes the Implementation Kickoff Approval gate, where the `ac_converge` goal is offered as the progression-mode axis and armed only after the gate passes — this branch never bypasses that gate. **The session stops when `/moai plan` returns**; run-phase entry is a separately-initiated operator action in some later turn, and this branch neither proceeds to it nor emits its gate.
 - Create SPEC later: Leave the card queued and stop here. `/moai plan` picks it up whenever the operator returns.
 - Review and Edit Documentation: Open the generated files for review and manual editing before proceeding.
 - Generate project-specific harness: Proceed to Phase 15 (`project/meta-harness.md`) to build a domain-specific harness (agents + skills) tailored to this project via the v4 harness Builder.
 - Done: Complete the project setup workflow.
 
-[HARD] AskUserQuestion accepts at most 4 options per question. Present "Create the SPEC and start now", "Create SPEC later", "Generate project-specific harness", and "Done"; name "Review and Edit Documentation" in the response body as the fifth path, reachable by answering Other.
+**`pipeline` — the same card, carried one step further.**
 
-[HARD] No branch is taken on the operator's behalf. If no answer comes back, nothing starts — the card stays queued and the workflow ends. Starting work without that answer is a preselect, whatever the step is called.
+- Create the SPEC and continue to the kickoff gate (Recommended): Pick the card issued in Step 4.1.5 and begin immediately. Selecting this branch IS the operator's pick (`todo.md` § Picking the next card) — record it with `moai todo next <n>` and continue in this same session with `/moai plan "<card text>"`. **The session does not stop when `/moai plan` returns**: it continues past plan completion to the run-phase boundary and **emits the Implementation Kickoff Approval gate in this same session**, so the operator is asked the run-phase question here instead of having to initiate it separately. Run-phase entry still passes the Implementation Kickoff Approval gate, where the `ac_converge` goal is offered as the progression-mode axis and armed only after the gate passes — this branch never bypasses that gate. The orchestrator **emits that gate and stops for the operator's answer**; it never selects, answers, pre-fills, or defaults it, and if no answer comes back nothing starts. **Ordering**: the gate is emitted only once the plan phase's `[NEEDS CLARIFICATION]` markers are resolved (`plan.md:53`, `plan.md:73` — "Implementation Kickoff Approval proceeds only after all clarifications are resolved"); where markers remain open, this branch stops at their resolution rather than at the gate. **Stop-short naming**: where this branch stops short of the gate for any reason — open `[NEEDS CLARIFICATION]` markers, a context handoff, an operator interrupt — the stopping summary names it in one line: `workflow.project.continuation: pipeline — the carry stopped before the Implementation Kickoff Approval gate (<reason>).` In Kanban Mode, report the pick to the lead instead and let it dispatch the card to the `plan` session — carry distance is the lead's to decide there, so `pipeline` changes nothing in that mode.
+- Create SPEC later: Leave the card queued and stop here. `/moai plan` picks it up whenever the operator returns.
+- Review and Edit Documentation: Open the generated files for review and manual editing before proceeding.
+- Generate project-specific harness: Proceed to Phase 15 (`project/meta-harness.md`) to build a domain-specific harness (agents + skills) tailored to this project via the v4 harness Builder.
+- Done: Complete the project setup workflow.
+
+[HARD] AskUserQuestion accepts at most 4 options per question. **This cap is value-independent.** Under `card` and `pipeline`, present the recommended option, "Create SPEC later", "Generate project-specific harness", and "Done"; name "Review and Edit Documentation" in the response body as the fifth path, reachable by answering Other. Under `none` the four options above are presented as they stand and nothing is routed to Other.
+
+[HARD] No branch is taken on the operator's behalf. If no answer comes back, nothing starts — the card stays queued and the workflow ends. Starting work without that answer is a preselect, whatever the step is called. **This clause binds at every value of `workflow.project.continuation`**, including `none`, where there is no card to queue and the workflow simply ends.
 
 ---
 

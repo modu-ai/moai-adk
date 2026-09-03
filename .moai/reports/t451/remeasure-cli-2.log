@@ -1,0 +1,4 @@
+ok  	github.com/modu-ai/moai-adk/internal/cli	501.041s
+ok  	github.com/modu-ai/moai-adk/internal/codexwiring	1.042s
+?   	github.com/modu-ai/moai-adk/cmd/moai	[no test files]
+RC=0
