@@ -74,13 +74,15 @@ git checkout <activation-sha> && gofmt -l . | wc -l                    # 0 기�
 
 ## §F Milestones
 
-- **M1 (High) — CI 포맷 게이트 활성 (activation commit)**. 루트 `.github/workflows/ci.yml` Lint 잡에
-  format-gate 스텝 추가(gofmt -l 판정, 실패 시 위반 목록 출력). **t457 착지 후에만** §C 전제 게이트를
-  통과해 커밋한다. plan-phase 문서 커밋은 지금 즉시 본 브랜치에 착지(리드 승인됨) — 활성 커밋만 대기.
+- **M1 (High) — CI 포맷 게이트 + `make fmt-check` 단일 커밋 활성 (activation commit)**. 리드 결정
+  D1(2026-09-03, BINDING — §I): 루트 `.github/workflows/ci.yml` Lint 잡의 format-gate 스텝과
+  Makefile `fmt-check` 타깃(tracked-files 변형)을 **같은 activation 커밋**으로 인도한다. t457 착지
+  전에 타깃만 먼저 두지 않는다 — t457 착지 전까지 non-zero를 보고하는 타깃은 주인 없는 적색이며,
+  이 저장소는 이미 그 패턴("한동안 적색인 것이 정상")에서 시작한 상속 적색 46건(카드 t444)의 비용을
+  치르고 있다. 그 창에서 타깃은 `gofmt -l .` 이상의 정보를 추가하지 않는다. 단일 커밋 인도는
+  "언제부터 참인가"를 계보(genealogy)에서 답 가능하게 만든다. **t457 착지 후에만** §C 전제 게이트를
+  통과해 커밋한다. plan-phase 문서 커밋은 본 브랜치에 이미 착지 — 활성 커밋만 대기.
   완료 신호: activation-sha + §E 표 전체 행 실측값.
-- **M2 (Medium) — `make fmt-check` 로컬 패리티 타깃**. Makefile에 `fmt-check` 타깃 추가
-  (tracked-files 변형, 게이트와 동일 판정). t457 착지 전에도 착지 가능(단순 검사 명령, 차단 없음 —
-  현재 트리에서는 154파일을 보고하며 non-zero).
 - 완료 후: 리드에게 병합 SHA·증거 경로 보고 → 리드 일괄 develop push → CI 판정 확보.
 
 ## §G Anti-Patterns
@@ -101,3 +103,13 @@ git checkout <activation-sha> && gofmt -l . | wc -l                    # 0 기�
 - `.golangci.yml` — enable-set pinning 근거(주석 블록)
 - `internal/cli/gate.go` / `.moai/config/sections/gate.yaml` — 기각 표면의 현재 스텝 구성
 - CLAUDE.local.md §4.1 — "판정은 CI" 규율(활성 표면 선택 근거)
+
+## §I Lead Decisions (2026-09-03)
+
+- **D1 (BINDING) — 공개 질문 ① 해소**: `make fmt-check`는 게이트 활성과 **같은 커밋**으로
+  인도한다(§F M1). 타깃의 선행 착지 금지 — 착지 전 창의 non-zero 보고는 주인 없는 적색이며
+  상속 적색 46건(t444)의 패턴 재현이다. 그 창에서 타깃은 `gofmt -l .` 이상의 정보를 추가하지
+  않는다. 단일 커밋 인도는 "언제부터 참인가"를 계보에서 답 가능하게 한다.
+- **D2 (기록 전용) — 공개 질문 ② 해소**: `.golangci.yml` gofmt linter 제외는 올바른 범위
+  규율로 리드 승인. 후속 카드 후보는 리드가 등록했고 발행은 운영자 소관 — 본 레인은 발행하지
+  않는다(§G anti-pattern 상동).

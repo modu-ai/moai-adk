@@ -52,7 +52,8 @@ Then the output is exactly `0`
 Given a clean-format tree
 When `make fmt-check` runs
 Then exit code is 0
-Given a dirty-format tree (≥1 unformatted tracked .go file)
+Given a dirty-format tree (≥1 unformatted tracked .go file; predicate
+  `git ls-files -z '*.go' | xargs -0 gofmt -l` outputs ≥1 path)
 When `make fmt-check` runs
 Then exit code is non-zero AND the unformatted file list is printed
 ```
@@ -74,8 +75,8 @@ Then exit code is non-zero AND the unformatted file list is printed
 | AC-FG-002 | REQ-FG-002 | M1 |
 | AC-FG-003 | REQ-FG-003 | M1 |
 | AC-FG-004 | REQ-FG-004 | M1 |
-| AC-FG-005 | REQ-FG-005 | M1+M2 전체 커밋 범위 |
-| AC-FG-006 | REQ-FG-006 | M2 |
+| AC-FG-005 | REQ-FG-005 | 본 SPEC 전체 커밋 범위(문서 + activation) |
+| AC-FG-006 | REQ-FG-006 | M1 (단일 activation 커밋 — 리드 결정 D1) |
 
 ## §D.3 Edge Cases
 
@@ -105,6 +106,6 @@ Then exit code is non-zero AND the unformatted file list is printed
 ## §D.6 Forward-Looking
 
 - 본 게이트 활성 후 신규 위반 유입 시: 위반 카드 발행 시점에 `make fmt-check`가 레인 자가검증
-  경로가 된다(별도 요구 없음 — M2 산출물의 지속 효과).
+  경로가 된다(별도 요구 없음 — M1 산출물의 지속 효과).
 - 사용자 프로젝트 배포 표면 포맷 게이트(템플릿 CI / `moai gate` format 스텝)는 별도 카드 —
   본 SPEC 종결이 그 논의를 종결하지 않음을 명시한다.

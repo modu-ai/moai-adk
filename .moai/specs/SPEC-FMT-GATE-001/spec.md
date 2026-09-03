@@ -83,8 +83,10 @@ macOS 편향 경로 금지, 16 프로그래밍 언어 동등 취급)은 그대�
 
 ### REQ-FG-006 — 로컬 패리티 검사 (capability gate)
 
-**Where** 개발자가 저장소 루트에서 `make fmt-check` 를 실행하면, the Makefile shall `gofmt -l .` 출력이
-1행 이상일 때에만 non-zero로 종료한다(CI 게이트와 동일 판정).
+**Where** 개발자가 저장소 루트에서 `make fmt-check` 를 실행하면, the Makefile shall
+`git ls-files -z '*.go' | xargs -0 gofmt -l` 출력이 1행 이상일 때에만 non-zero로 종료한다
+(tracked `.go` 한정 — untracked 노이즈 제외. clean checkout에서 전수 `gofmt -l .`로 판정하는
+CI 게이트와 동치).
 
 ## §D 제약
 
@@ -123,3 +125,6 @@ macOS 편향 경로 금지, 16 프로그래밍 언어 동등 취급)은 그대�
 
 - 2026-09-03 — 최초 작성(plan-phase, card t465, Tier M). 기준선 실측: `gofmt -l .` @ `d592b0551`
   → 154 files(`.moai/reports/t465/gofmt-l.txt`). 선행 카드 t457 tip `e1fdf00d1` 착지 순서 REQ-FG-003으로 고정.
+- 2026-09-03 (2차) — 리드 결정 반영(plan.md §I): D1 `make fmt-check`를 활성 커밋과 동일 커밋
+  인도로 확정(BINDING), D2 `.golangci.yml` gofmt linter 제외 승인(기록 전용). plan-audit D1 결함
+  수리: REQ-FG-006 판정 기준을 tracked-files 변형으로 정정(acceptance.md §D.3 표면과 일치).
