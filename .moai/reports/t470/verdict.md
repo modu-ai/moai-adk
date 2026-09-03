@@ -201,13 +201,44 @@ $ git diff --stat 6765a75c0..HEAD
  6 files changed, 1745 insertions(+)
 ```
 
-(measured before the M1 commit; the M1 commit adds
-`internal/cli/todo_composed_upgrade_test.go` and the `spec.md` status
-transition, both inside the permitted set.)
+**CORRECTED at sync-audit (card t470, auditor finding F1).** The block above is
+a stale measurement and the sentence that followed it was FALSE at the final
+HEAD. Both defects are recorded rather than quietly overwritten, because the
+falsified sentence was already committed and a later reader would otherwise
+believe it.
 
-Every changed path is a `_test.go` file, a file under
-`.moai/specs/SPEC-QUEUE-UPGRADE-PROOF-001/`, or under `.moai/reports/t470/`. No
-non-test file under `internal/` is changed.
+- **The diff was measured BEFORE the M1 commit**, so it does not contain
+  `internal/cli/todo_composed_upgrade_test.go` — the very path the claim
+  generalizes over. The claim outran its own evidence.
+- **`CHANGELOG.md` is outside the `acceptance.md` allowlist.** It was added by
+  the sync commit `305a39bd6`, after this block was written.
+
+Re-measured at final HEAD `077da90b8`:
+
+```
+$ git diff --name-only 6765a75c0..HEAD | grep -v '_test\.go$' \
+    | grep -v '^\.moai/specs/SPEC-QUEUE-UPGRADE-PROOF-001/' \
+    | grep -v '^\.moai/reports/t470/'
+CHANGELOG.md
+```
+
+15 paths change in total: 1 `_test.go`, 4 SPEC artifacts, 9 under
+`.moai/reports/t470/`, and `CHANGELOG.md`. **`CHANGELOG.md` is a sync-phase
+deliverable, argued in `progress.md`, and is NOT in the allowlist `AC-QUP-009`
+names.** The criterion's own allowlist was written in plan-phase against a
+run-phase diff and did not anticipate the sync-phase artifact; the honest
+disposition is that the allowlist is incomplete, NOT that the edit was improper.
+
+The REQUIREMENT the criterion serves — `REQ-QUP-009`, no production change — is
+verified separately and holds at final HEAD:
+
+```
+$ git diff --name-only 6765a75c0..HEAD -- internal/ pkg/ cmd/ | grep -v '_test\.go$' | wc -l
+       0
+```
+
+Zero non-test files under `internal/`, `pkg/`, or `cmd/`. What was wrong here is
+the RECORD, not the work.
 
 ### E7 — commits
 

@@ -291,3 +291,90 @@ drift rather than removed it.
 The `export-json` row's silence about the downgrade export landing in the NEW
 directory is left uncorrected on purpose — that belongs to the separate-card
 finding recorded in `spec.md §E`, and reaching it from here would widen this card.
+
+## §I Sync-audit Verdict and the Corrections It Forced
+
+`sync-auditor`, adversarial stance, verdict at `.moai/reports/t470/sync-audit.md`.
+
+**PASS-WITH-DEBT — 91.6** (weighted harmonic mean, Tier M): Functionality 92
+(40%), Security 96 (25%), Craft 84 (20%), Consistency 95 (15%). Both must-pass
+dimensions cleared independently.
+
+The auditor re-ran the RED mutation itself rather than reading `red-mutation.log`
+and observed the same four failures at the same line numbers (236/236/236/249),
+including the symptom `AC-QUP-010` names by name. It also independently
+re-measured the controlled live-queue window — a THIRD clean observation.
+
+### F1 (blocking) — a committed verdict sentence that was false
+
+`verdict.md §E6` asserted every changed path was a `_test.go` file, a SPEC
+artifact, or a report. At final HEAD that is FALSE: `CHANGELOG.md`, added by the
+sync commit `305a39bd6`, sits outside the `acceptance.md` allowlist. Worse, the
+diff block quoted beneath the claim was measured BEFORE the M1 commit, so it did
+not even contain `internal/cli/todo_composed_upgrade_test.go` — **the claim
+outran its own evidence.**
+
+Verified independently by this lane before accepting the finding:
+
+```
+$ git diff --name-only 6765a75c0..HEAD | grep -v '_test\.go$' \
+    | grep -v '^\.moai/specs/SPEC-QUEUE-UPGRADE-PROOF-001/' \
+    | grep -v '^\.moai/reports/t470/'
+CHANGELOG.md
+```
+
+**Corrected in place at `verdict.md §E6`, with the defect recorded rather than
+quietly overwritten.** The requirement the criterion serves is separately intact:
+`git diff --name-only 6765a75c0..HEAD -- internal/ pkg/ cmd/ | grep -v '_test\.go$' | wc -l`
+returns `0`. What was wrong is the RECORD, not the work — and `AC-QUP-009`'s
+allowlist, written in plan-phase against a run-phase diff, simply did not
+anticipate a sync-phase artifact.
+
+### A correction against this lane's own reasoning (second one this card)
+
+`§G` justified leaving the mutation seam unguarded by saying repairing it "would
+add production-shaped scaffolding to a card whose `REQ-QUP-009` forbids exactly
+that." **That rationale is WRONG and the auditor was right to reject it.** Both
+parameters, and any guard over them, live inside `_test.go`; `REQ-QUP-009`
+governs production behavior and reaches none of it. The honest reason to leave
+the seam as delivered is narrower and sufficient: reproducing the RED costs two
+literal flips, so the seam earns its keep without a guard.
+
+The earlier wording is left standing in `§G` rather than edited out, so the
+correction is visible as a correction.
+
+### The seam's real hazard is asymmetric, which the earlier record missed
+
+The two parameters do not fail the same way, and only one of them is dangerous:
+
+| Flipped alone | Result |
+|---|---|
+| `preCreateCurrentDir` | **Loud RED** — self-exposing, caught immediately |
+| `currentDirPreCreated` | **Silent GREEN** — the early return at `:115-117` disarms `AC-QUP-002`'s precondition while the suite stays green |
+
+Nothing catches the second: no observable change in the committed configuration,
+so review, CI, and `unparam` all pass it (the auditor ran lint to confirm).
+Classified optional because the harm is latent, not active — but the earlier
+"either flag" framing understated it, and the asymmetry is the part worth
+carrying forward.
+
+### Auditor's own stated gaps, carried not resolved
+
+- It did NOT re-run the full `./internal/cli/` package (~935s, past the Bash
+  ceiling). **The package-level verdict in every report here rests on the
+  implementer's `cli_suite.log`, not on the auditor's own measurement.** It ran
+  targeted selectors twice plus `-race`, and `./internal/kanban/...` in full
+  (146.7s).
+- No `GOOS=windows` build, no coverage (zero production lines to attribute), no
+  causal reproduction of the AC-QUP-008 run-wide change, no plan-phase audit.
+- Its RED used the SAME mutation as the implementer's. It did not systematically
+  hunt a SECOND mutation that ought to go red and does not — the one it caught by
+  eye is that `AC-QUP-004` passes under the mutation and duplicates `AC-QUP-002`'s
+  check.
+
+### Residual the auditor flagged about its own finding
+
+A one-line text repair is the kind that gets deferred and forgotten. Once the
+card reaches `done` nothing schedules it, and the false sentence outlives the
+card. That is why it was classified blocking despite being one line — and it is
+why the repair landed in this same commit rather than being queued.
