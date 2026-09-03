@@ -103,3 +103,53 @@ offset=6409
 - 가드는 **관측일 뿐 예방이 아니다.** 마커가 사라진 채 append 가 오면 회전은 그대로 일어난다. 달라지는 것은 그 사실이 다음 세션 시작에 보인다는 점뿐이다.
 - 경고는 `backlog_check.sh` 가 배선돼 있을 때만 뜬다. 배선이 깨진 머신은 마커 부재의 원인이기도 하므로, 정확히 최악의 경우에 이 가드도 함께 침묵한다. 이 결합은 남아 있다.
 - 3회째 회전부터는 가장 오래된 세대가 축출된다(보존 2). 경고를 무시하고 회전이 반복되면 손실은 그때 비가역이 된다.
+
+---
+
+## 재측정 — develop `515fa4acd` 흡수 후 (lane-5)
+
+위 검증은 develop `5107bbfff` 기준이었다. 그 뒤 develop 이 215커밋 나아갔으므로 흡수하고 다시 쟀다.
+흡수: `e7a3210e3` (`git merge develop`, 충돌 0).
+
+**범위 산정** — 파일 델타 ∪ 역의존. Go 델타는 `internal/hook` 하나(`t459_repro_test.go`),
+셸 델타는 `backlog_check.sh` + `backlog_check_test.sh`. 역의존은
+`go list -f '{{.ImportPath}} {{join .Deps " "}}' ./...` 로 판정해 `cmd/moai`, `internal/cli`,
+`codexadapter`, `codexwiring`, `feedback`, `migration/migrations`, `permission` 7개가 나왔다.
+
+### Go 축 — `postmerge-go.log`
+
+`internal/cli` 를 제외한 7패키지. `grep -c '^FAIL'` = **0**.
+
+```
+ok  internal/hook              149.341s      ok  internal/hook/quality      33.383s
+ok  internal/hook/handoff        5.590s      ok  internal/hook/security     12.571s
+ok  internal/hook/memo           2.536s      ok  internal/hook/testutil      1.441s
+ok  internal/hook/memo/taxonomy  5.303s      ok  internal/hook/trace         5.792s
+ok  internal/hook/mx            27.465s      ok  internal/permission         4.578s
+ok  internal/hook/mx/complexity  5.974s      ok  internal/feedback           4.194s
+ok  internal/hook/perf         143.119s      ok  internal/codexadapter       1.080s
+                                             ok  internal/codexwiring        3.264s
+```
+
+`internal/cli` 는 **의도적으로 이 시점에 돌리지 않았다.** 600초를 넘는 스위트이고 같은 날 여러 레인이
+동시에 돌려 다른 레인 단계가 죽은 전례가 있다. 통합 창 안에서 최종 병합 트리 기준으로 돌린다 —
+그때가 판정에 쓰일 트리이기도 하다.
+
+### 셸 축 — 3스위트 전부 PASS
+
+```
+backlog_check_test.sh   PASS: t459: rotation-archived stubs reported (advisory does not go silent)
+                        backlog_check_test: PASS
+drain_test.sh           ALL DRAIN TESTS PASSED
+session_drain_test.sh   ALL SESSION DRAIN TESTS PASSED
+                        (mutant probe: REJECTS the offset-only-advance mutant)
+```
+
+셋 다 `mktemp -d` + `trap 'rm -rf' EXIT` 격리다. 이 저장소의 `.moai/state/lsel/` 는 이번에도 건드리지 않았다.
+
+### 이 재측정이 덧붙이지 못한 것
+
+- `internal/cli` (위 사유 — 창 안으로 이월)
+- 재현 자체를 다시 돌리지는 않았다. R1/R2/R3 은 `5107bbfff` 기준 관측이고, 이번에 다시 확인한 것은
+  **가드가 흡수 후에도 살아 있다**는 것(`backlog_check_test.sh` 의 t459 케이스 PASS)까지다.
+  전이 재현의 재실행은 회귀 테스트 `internal/hook/t459_repro_test.go` 가 `internal/hook` 통과로 대신한다.

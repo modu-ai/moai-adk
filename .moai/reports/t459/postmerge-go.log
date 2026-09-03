@@ -1,0 +1,17 @@
+ok  	github.com/modu-ai/moai-adk/internal/hook	149.341s
+ok  	github.com/modu-ai/moai-adk/internal/hook/handoff	5.590s
+ok  	github.com/modu-ai/moai-adk/internal/hook/memo	2.536s
+ok  	github.com/modu-ai/moai-adk/internal/hook/memo/taxonomy	5.303s
+ok  	github.com/modu-ai/moai-adk/internal/hook/mx	27.465s
+ok  	github.com/modu-ai/moai-adk/internal/hook/mx/complexity	5.974s
+ok  	github.com/modu-ai/moai-adk/internal/hook/perf	143.119s
+ok  	github.com/modu-ai/moai-adk/internal/hook/quality	33.383s
+ok  	github.com/modu-ai/moai-adk/internal/hook/security	12.571s
+ok  	github.com/modu-ai/moai-adk/internal/hook/testutil	1.441s
+ok  	github.com/modu-ai/moai-adk/internal/hook/trace	5.792s
+ok  	github.com/modu-ai/moai-adk/internal/permission	4.578s
+ok  	github.com/modu-ai/moai-adk/internal/feedback	4.194s
+ok  	github.com/modu-ai/moai-adk/internal/codexadapter	1.080s
+ok  	github.com/modu-ai/moai-adk/internal/codexwiring	3.264s
+ok  	github.com/modu-ai/moai-adk/internal/migration/migrations	6.680s
+?   	github.com/modu-ai/moai-adk/cmd/moai	[no test files]
