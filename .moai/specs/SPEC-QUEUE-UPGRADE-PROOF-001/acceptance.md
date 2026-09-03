@@ -1,0 +1,143 @@
+# Acceptance Criteria — SPEC-QUEUE-UPGRADE-PROOF-001
+
+Card: `t470` · Tier M
+
+Every criterion below is binary-testable and independently checkable by a
+command. Sub-IDs carrying a trailing letter (`AC-QUP-001a` / `001b`) pair
+sub-criteria within one logical criterion.
+
+## §A AC matrix
+
+| AC | Requirement | Mandatory | Summary |
+|---|---|---|---|
+| AC-QUP-001a | REQ-QUP-001 | yes | Cards and states survive the composed upgrade |
+| AC-QUP-001b | REQ-QUP-001 | yes | `last_seq` survives the composed upgrade |
+| AC-QUP-002 | REQ-QUP-002 | yes | Legacy directory is relocated to the current name |
+| AC-QUP-003 | REQ-QUP-003 | yes | Legacy document survives under the `.migrated` name |
+| AC-QUP-004 | REQ-QUP-004 | yes | SQLite artifact exists after the upgrade |
+| AC-QUP-005 | REQ-QUP-005 | yes | The proof runs as an automated test in the suite |
+| AC-QUP-006 | REQ-QUP-006 | yes | The F1 fixture carries the v3.1.2 record shape only |
+| AC-QUP-007 | REQ-QUP-007 | no (optional) | `findings` and `archived` survive from the legacy directory |
+| AC-QUP-008 | REQ-QUP-008 | yes | The proof never touches the live queue |
+| AC-QUP-009 | REQ-QUP-009 | yes | No production behavior changed |
+| AC-QUP-010 | — | yes | RED was established before GREEN was claimed |
+
+## §B Scenarios
+
+### AC-QUP-001a — cards and states survive
+
+Given a temporary project root that is a git repository and holds only the F1
+layout — a legacy state directory `<root>/.moai/state/kanban/` containing
+`backlog.json` with a `{version, last_seq, items}` record whose items span the
+`queued`, `picked`, and `dropped` states —
+When the first `moai todo` command runs against that root,
+Then the listed queue contains exactly the seeded items, each with the state it
+was seeded with, in the seeded order.
+
+### AC-QUP-001b — `last_seq` survives
+
+Given the same fixture, seeded with a `last_seq` strictly greater than the
+highest item id,
+When the first `moai todo` command runs and a new card is then added,
+Then the new card's id is `last_seq + 1`, demonstrating the high-water mark
+crossed the composition rather than being re-derived from the items.
+
+### AC-QUP-002 — directory relocated
+
+Given the same fixture,
+When the first `moai todo` command completes,
+Then `<root>/.moai/state/todo/` exists and holds the queue, and
+`<root>/.moai/state/kanban/` no longer exists.
+
+### AC-QUP-003 — legacy document quarantined, not destroyed
+
+Given the same fixture,
+When the first `moai todo` command completes,
+Then a file named `backlog.json.migrated` exists in
+`<root>/.moai/state/todo/`, its bytes are identical to the seeded fixture, and
+no file named `backlog.json` remains beside it.
+
+### AC-QUP-004 — SQLite artifact present
+
+Given the same fixture,
+When the first `moai todo` command completes,
+Then `<root>/.moai/state/todo/backlog.db` exists and is non-empty.
+
+### AC-QUP-005 — the proof is automated
+
+Given the delivered branch,
+When `go test ./internal/cli/ -run <the new test name> -v` is run,
+Then the named test is reported as run and passing — a zero-match selector is a
+failure of this criterion, not a pass.
+
+### AC-QUP-006 — fixture fidelity
+
+Given the delivered test source,
+When the F1 fixture literal is inspected,
+Then it contains the keys `version`, `last_seq`, and `items` and no others —
+specifically it contains neither `findings` nor `archived`, because
+`v3.1.2`'s `BacklogRecord` has no such fields.
+
+### AC-QUP-007 — forward-compatible fields survive (OPTIONAL)
+
+Given a second fixture placed in the LEGACY directory carrying `findings` and
+`archived` — a state reachable only for someone who ran a development build
+before the release, never for a `v3.1.2` user —
+When the first `moai todo` command runs against it,
+Then both collections are present and equal in the migrated store.
+
+This criterion is optional. Its absence does not fail the card; its presence
+must carry the reachability caveat in a comment so a reader does not mistake it
+for a user-facing scenario.
+
+### AC-QUP-008 — isolation
+
+Given the delivered test source,
+When it is inspected and run,
+Then every path it touches is rooted under a `t.TempDir()`, the resolved queue
+root is asserted to be inside that temp directory before any command runs, and
+`.moai/state/todo/backlog.db` in this repository is unmodified — verified by
+`git status --short .moai/state/` reporting nothing for that path after the run.
+
+### AC-QUP-009 — no production change
+
+Given the delivered branch,
+When `git diff --stat <base>..HEAD` is read,
+Then every changed path is either a `_test.go` file, a file under
+`.moai/specs/SPEC-QUEUE-UPGRADE-PROOF-001/`, or `.moai/reports/t470/`. No
+non-test file under `internal/` is changed.
+
+### AC-QUP-010 — RED before GREEN
+
+Given the composed-path test,
+When a deliberate mutation is applied — seeding the fixture under the CURRENT
+directory name instead of the legacy one, so no relocation is required —
+Then AC-QUP-002 fails, and the failure output is recorded verbatim in the
+verdict before the mutation is reverted.
+
+A test that has only ever been observed passing has not been shown to assert
+anything. This criterion is what separates the proof from a vacuous green.
+
+## §C Quality gate
+
+- `go test ./internal/kanban/... ./internal/cli/` passes. Run with an explicit
+  timeout at or above 600s: `./internal/cli/` alone runs past 600s on the
+  development machine, so a default-timeout failure there measures the timeout,
+  not the code.
+- `gofmt -l` reports nothing for the changed files.
+- `go vet ./internal/cli/ ./internal/kanban/...` is clean.
+- No full local suite (`go test ./...`) is run.
+- No background load is spawned by any test.
+
+## §D Definition of Done
+
+- [ ] AC-QUP-001a, 001b, 002, 003, 004, 005, 006, 008, 009, 010 all pass
+- [ ] AC-QUP-007 either passes or is explicitly recorded as not attempted
+- [ ] `.moai/reports/t470/verdict.md` exists on the branch and carries: Claim,
+      Evidence (command + verbatim output), Baseline-attribution (tree SHA and
+      the commands run in this run), Gaps, Residual-risk
+- [ ] The Gaps section names G2 (undefined — see the plan's clarification
+      marker), G3 (cross-process concurrency, excluded), and G5 (`moai doctor`
+      check, excluded) as not covered
+- [ ] Quality gate above passes with its elapsed time recorded
+- [ ] No production file changed (AC-QUP-009)
