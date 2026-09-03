@@ -817,15 +817,193 @@ compared against it.
   wrapper's real reachability. The next wrapper added or retired will not update
   this table, and no test will notice — see gap 4.
 
+### M1 — the settings.json parity commit
+
+#### Claim
+
+This project's `.claude/settings.json` now matches the settings template on the
+full `(event, matcher, script, if, timeout, async)` tuple, in both directions,
+and a test pins that property so a future divergence fails the build rather than
+waiting to be noticed in a `warn` row.
+
+#### Evidence
+
+**The opt-in branch was measured, not taken from the plan.** plan.md asserted
+"this project has hook opt-in **enabled**, so the observe entry is present and
+the template's `{{ if }}` branch is taken". That is plan.md's claim; three
+independent readings make it this milestone's measurement:
+
+```
+.moai/config/sections/system.yaml   → opt_in.enabled: true
+grep -c 'handle-harness-observe-subagent-stop' .claude/settings.json → 1
+./bin/moai doctor                   → "Hook opt-in: enabled"
+```
+
+The branch matters: it decides whether `chain-event.sh` goes second or third in
+the `SubagentStop` group.
+
+**The test AC-HWD-003 requires did not exist, and M1 wrote it.** plan.md's M1
+says "Files: `.claude/settings.json`" and "AC-HWD-003's parity test — landed red
+with M2 — turns green". No such test landed with M2:
+
+```
+$ grep -rl 'HookEntryParity' internal/ ; echo rc=$?
+rc=1
+```
+
+— the same result AC-HWD-003 recorded as its pre-impl observation at
+`@4842760a7`. All nine M2 tests are fixture-driven; none reads this project's
+`settings.json`. The criterion explicitly requires the test, so M1 delivered it
+(`internal/cli/hook_entry_parity_test.go`) and the milestone's file list is two
+files, not one. See the residual-risk note below.
+
+**It reuses the shipped comparison rather than re-deriving it.**
+`ParseHookEntries`, `RenderHookEntries`, `DiffHookEntries` and
+`hookWiringTemplateSource()` are the same helpers `checkHookWiringDrift` uses in
+production. A second implementation of the same tuple diff could pass while the
+shipped one is broken — that test would be worse than none.
+
+**RED observed before the fix, and it reproduced the hand measurement.**
+
+```
+$ go test -count=1 -run TestHookEntryParity -v ./internal/cli/
+--- FAIL: TestHookEntryParity_ChainEventRegistered
+    SubagentStop must carry exactly one chain-event.sh entry, found 0
+--- FAIL: TestHookEntryParity_StatusTransitionScoped
+    PostToolUse must carry exactly 3 status-transition-ownership.sh entries, found 1:
+    [PostToolUse/status-transition-ownership.sh matcher="Write|Edit|MultiEdit" timeout=5 async=false]
+--- FAIL: TestHookEntryParity_NoDivergenceEitherDirection
+    template-only: PostToolUse/status-transition-ownership.sh … if="Edit(**/.moai/specs/**)"  timeout=5 async=true
+    template-only: PostToolUse/status-transition-ownership.sh … if="MultiEdit(**/.moai/specs/**)" timeout=5 async=true
+    template-only: PostToolUse/status-transition-ownership.sh … if="Write(**/.moai/specs/**)" timeout=5 async=true
+    template-only: SubagentStop/chain-event.sh timeout=5 async=false
+    project-only:  PostToolUse/status-transition-ownership.sh matcher="Write|Edit|MultiEdit" timeout=5 async=false
+    hook-entry parity: 4 template-only, 1 project-only
+```
+
+**4 template-only and 1 project-only** is exactly the set-diff AC-HWD-003 records
+from the D-1 hand measurement. Full log: `.moai/state/verify/t216/parity-red.log`.
+
+**The change.** Two edits to `.claude/settings.json`, nothing else:
+
+1. `chain-event.sh` appended **last** in the `SubagentStop` group, after
+   `handle-subagent-stop.sh` and `handle-harness-observe-subagent-stop.sh`
+   (the opt-in branch is taken, per the measurement above) — `"timeout": 5`,
+   `"type": "command"`, **no** `async` key.
+2. The single unscoped synchronous `status-transition-ownership.sh` `PostToolUse`
+   entry replaced by the template's **three**, each with its `if` predicate
+   (`Write` / `Edit` / `MultiEdit` over `**/.moai/specs/**`), `"timeout": 5`,
+   `"async": true`.
+
+**GREEN on both surfaces after the fix**, the second one being the shipped code
+path rather than the test:
+
+```
+$ go test -count=1 -run TestHookEntryParity ./internal/cli/     → ok, 3/3 PASS
+$ ./bin/moai doctor --check "Hook Wiring" ; echo rc=$?
+│    ok      Hook Wiring  36 hook entries match the template  │
+rc=0
+```
+
+The count moves 33 → 36: minus the one unscoped entry, plus three scoped ones,
+plus `chain-event.sh`.
+
+**[HARD] Harness correction — the failure was observed, not assumed.** AC-HWD-003
+requires running the test against a `settings.json` with one entry removed and
+recording the failure verbatim, "a parity test seen only green proves nothing".
+The removed entry is deliberately one this milestone did **not** add —
+`handle-post-tool.sh` — since removing one of the two it was written for would
+only re-prove assertions already exercised:
+
+```
+--- PASS: TestHookEntryParity_ChainEventRegistered
+--- PASS: TestHookEntryParity_StatusTransitionScoped
+--- FAIL: TestHookEntryParity_NoDivergenceEitherDirection
+    template-only (registered in the template, missing from this project):
+      PostToolUse/handle-post-tool.sh matcher="Write|Edit|MultiEdit" timeout=10 async=true
+    hook-entry parity: 1 template-only, 0 project-only
+```
+
+The message names the script **and** the direction, which is what the criterion
+asks for. Mutant reverted; JSON re-validated; the suite is green again. Full log:
+`.moai/state/verify/t216/parity-mutant.log`.
+
+**Both directions were observed across the two runs** — the RED run produced a
+project-only line (the unscoped entry) and the mutant run a template-only line,
+so neither arm of the bidirectional diff is resting on an unexercised branch.
+
+**Static and regression.**
+
+```
+$ gofmt -l internal/cli/hook_entry_parity_test.go   → no output
+$ go vet ./internal/cli/                            → exit 0
+$ golangci-lint run --timeout=5m ./internal/cli/... → 0 issues.
+$ python3 -c "json.load(open('.claude/settings.json'))"  → parses
+$ go test -count=1 -timeout 1800s ./internal/cli/   → ok 480.005s, EXIT=0, 0 FAIL
+```
+
+#### Baseline-attribution
+
+Measured in this tree (`.claude/worktrees/t216`), branch `WT-hook-wiring-drift`,
+at `06b9b354d` plus this milestone's two files. The end-to-end doctor
+observation used `./bin/moai` built from this tree earlier in the run
+(`Commit=9a1434912`, stamped before M3's template edit); the diagnostic reads
+`.claude/settings.json` from disk and renders the embedded template, and the M3
+edit touched neither, so the binary's age does not affect this reading. The
+installed `~/go/bin/moai` was not used.
+
+**Template-First does not apply.** The template `.tmpl` is already correct and is
+untouched; the change is to this project's rendered `settings.json`, which is not
+a template surface. The new test is Go source under `internal/cli/`.
+
+#### Gaps — what was explicitly NOT observed
+
+1. **`moai update` was not run.** That it re-renders `settings.json` from the
+   template — and therefore that a re-render would have produced this parity on
+   its own — is a **code reading** of `ManagedCleanTargets` + `templateCarries`,
+   not an execution. Running it in this checkout is destructive and was not
+   attempted.
+2. **The backup path was not exercised.** `templateCarries(".claude/settings.json")`
+   returns false because the template FS carries only `settings.json.tmpl`, so
+   the file is backed up before removal; the backup's recoverability was read in
+   `copyRegularFile`, not tested.
+3. **The four new hook entries were never fired.** Parity is a registration
+   property. Whether `chain-event.sh` and the three scoped entries actually
+   execute, and what they do, is untested here — and for `chain-event.sh`
+   specifically, §G-1 records that it records no ledger event because no chain
+   node exists for a completion edge to attach to.
+4. **Only this project was measured.** Every other checkout initialized before
+   the template gained these entries carries the same drift, unmeasured.
+5. **The test pins this repository only.** It walks up to `go.mod` and reads that
+   tree; it says nothing about an installed user project.
+
+#### Residual risk
+
+- **The milestone's file list grew beyond plan.md.** plan.md scoped M1 to
+  `.claude/settings.json` alone, on the false premise that the parity test
+  already existed. Writing it here was necessary for AC-HWD-003 to be
+  dischargeable at all, but it means M1 landed a test the plan did not budget.
+  If the intent was for that test to be M2's, the plan's milestone boundary is
+  wrong, not this commit.
+- **`chain-event.sh` is now registered and inert.** The entry is parity with the
+  shipped template and nothing more; it records no ledger event today. A reader
+  seeing the registration may reasonably assume the completion edge is being
+  recorded. §G-1 states otherwise and the disposition table added in M3 names it
+  `reachable-via-template-settings` for the same reason.
+- **The three scoped entries are `async: true` where the replaced one was
+  synchronous.** That matches the template, which is the point, but it is a
+  behaviour change in this checkout: the ownership hook no longer blocks the
+  tool call. Nothing here measured its effect.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
 _<pending run-phase — M2 and M4 complete AND re-measured on the merge tree;
 M3 and M1 not started>_
 
 ```yaml
-run_status: in-progress
-milestones_complete: [M2, M3, M4]
-milestones_remaining: [M1]
+run_status: complete
+milestones_complete: [M1, M2, M3, M4]
+milestones_remaining: []
 measured_at_head: e8050c135
 measured_at_head_note: >-
   merge commit absorbing origin/develop (18ba3cddb) into WT-hook-wiring-drift,
