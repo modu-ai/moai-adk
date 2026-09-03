@@ -22,6 +22,15 @@ Card: `t470` · Branch `WT-queue-upgrade-proof` · Base `4e4607abe`
   D4 (`AC-QUP-008`'s gitignored `git status` limb replaced with a file digest
   comparison), D6 (`REQ-QUP-010` added; `AC-QUP-010` no longer an orphan), and
   the optional D7/D8/D9/D10. No production file touched — `REQ-QUP-009` holds
+- Plan audit: iteration 2 returned FAIL (score 0.9625, monotonic up from 0.875;
+  above the Tier M threshold 0.80). Cause was MP-7 alone. Verdict:
+  `.moai/reports/t470/plan-audit-iter2.md`. Tier M iteration ceiling (2) reached
+- Remediation landed at SPEC `v0.3.0`: D11 (`AC-QUP-008` + its twin constraint
+  `C-1` named the live queue repository-relative, which from a linked worktree
+  resolves to an absent file — both now derive the PRIMARY checkout's path the
+  way `todo_root.go:95-99` does, and a failed derivation FAILS rather than
+  passing) and the optional D12 (`AC-QUP-002`'s "holds the queue" limb given a
+  stated observation). No production file touched — `REQ-QUP-009` holds
 - D5 is deliberately NOT remediated: both clarification markers stay open in
   `plan.md §A` for the dispatcher. MP-7 remains failed until those answers
   arrive, which is the expected state

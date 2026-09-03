@@ -52,7 +52,10 @@ And given the preconditions asserted BEFORE any command runs — that
 `<root>/.moai/state/kanban/backlog.json` and the sentinel both exist, and that
 `<root>/.moai/state/todo/` does NOT exist —
 When the first `moai todo` command completes,
-Then `<root>/.moai/state/todo/` exists and holds the queue, the sentinel is
+Then `<root>/.moai/state/todo/` exists and holds the queue — observed as
+`<root>/.moai/state/todo/backlog.db` existing and non-empty, the same
+observation `AC-QUP-004` states, so no third weaker check is invented for it —
+the sentinel is
 readable at `<root>/.moai/state/todo/companions.json` with its seeded bytes,
 and `<root>/.moai/state/kanban/` no longer exists.
 
@@ -109,14 +112,40 @@ Given the delivered test source,
 When it is inspected and run,
 Then every path it touches is rooted under a `t.TempDir()`, the resolved queue
 root is asserted to be inside that temp directory before any command runs, and
-this repository's live queue at `.moai/state/todo/backlog.db` is unmodified —
-verified by observing the FILE, not git's view of it.
+the PRIMARY CHECKOUT's live queue is unmodified — verified by observing the
+FILE, not git's view of it.
 
-The observation is a before/after comparison recorded in the verdict: capture
-`shasum -a 256 .moai/state/todo/backlog.db` together with its mtime
-(`stat -f '%m %z' <path>` on darwin) before the test run, and assert both are
-identical afterwards. When the file does not exist before the run, the
-assertion is that it still does not exist afterwards.
+The queue at risk is the primary checkout's, NOT the worktree's, and that is by
+design: `internal/kanban/todo_root.go:95-99` resolves `primaryCheckoutRoot` as
+`filepath.Dir(dirs.CommonDir)`, so from any linked worktree the root the
+production code returns is the primary checkout. A worktree-relative
+`.moai/state/todo/backlog.db` names a file that does not exist there, and
+comparing that absent file before and after would assert nothing.
+
+The criterion therefore DERIVES the path the way the production code does,
+rather than hardcoding an absolute path that is machine-specific and would rot:
+
+```bash
+QUEUE_DB="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/.moai/state/todo/backlog.db"
+```
+
+`--path-format=absolute` is required, not decorative: the bare
+`--git-common-dir` prints an absolute path from a linked worktree but the
+relative `.git` from the primary checkout, so omitting it makes the derivation
+CWD-dependent — the very defect this limb is fixing.
+
+**Resolution failure is a FAILURE of this criterion, never a pass.** If the
+`git rev-parse` exits non-zero, or the resolved `QUEUE_DB` does not begin with
+`/`, the criterion is reported FAILED naming the resolution error. It must not
+fall through to the absent-before → absent-after branch, which would silently
+convert a broken derivation into a green.
+
+With `QUEUE_DB` resolved, the observation is a before/after comparison recorded
+in the verdict: capture `shasum -a 256 "$QUEUE_DB"` together with its mtime
+(`stat -f '%m %z' "$QUEUE_DB"` on darwin) before the test run, and assert both
+are identical afterwards. When the file does not exist before the run — the
+resolution itself having succeeded — the assertion is that it still does not
+exist afterwards.
 
 `git status --short .moai/state/` is NOT a valid check here and must not be
 used: `.gitignore:311` ignores `.moai/state/`, confirmed with

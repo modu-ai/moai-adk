@@ -1,7 +1,7 @@
 ---
 id: SPEC-QUEUE-UPGRADE-PROOF-001
 title: "Prove the v3.1.2-to-next queue upgrade path end to end"
-version: "0.2.0"
+version: "0.3.0"
 status: draft
 created: 2026-09-03
 updated: 2026-09-03
@@ -15,6 +15,22 @@ tier: M
 ---
 
 ## HISTORY
+
+### v0.3.0 (2026-09-03)
+
+- Plan-audit iteration 2 remediation (card t470). **D11**: `AC-QUP-008`'s
+  live-queue limb and its twin constraint `C-1` named
+  `.moai/state/todo/backlog.db` repository-relative, which from a linked
+  worktree resolves to an absent file while the live queue sits in the primary
+  checkout (`todo_root.go:95-99`, `filepath.Dir(dirs.CommonDir)`) — the
+  before/after comparison took the absent → absent branch and could not fail.
+  Both places now derive the primary checkout's path with
+  `dirname "$(git rev-parse --path-format=absolute --git-common-dir)"` and state
+  that a failed derivation FAILS the criterion rather than falling through to a
+  pass. **D12** (optional): `AC-QUP-002`'s "holds the queue" limb gained the
+  stated observation it lacked, reusing `AC-QUP-004`'s so no weaker third check
+  is invented. Both `[NEEDS CLARIFICATION]` markers remain open and unreworded —
+  MP-7 stays failed by design, the dispatcher's to resolve.
 
 ### v0.2.0 (2026-09-03)
 
@@ -155,8 +171,14 @@ passing result is claimed.
 
 ## §D Constraints
 
-- **C-1** Every test uses `t.TempDir()` isolation. Nothing may touch
-  `.moai/state/todo/backlog.db` in this repository.
+- **C-1** Every test uses `t.TempDir()` isolation. Nothing may touch the PRIMARY
+  CHECKOUT's live queue at `<primary>/.moai/state/todo/backlog.db`, where
+  `<primary>` is derived — not hardcoded — as
+  `dirname "$(git rev-parse --path-format=absolute --git-common-dir)"`, the same
+  resolution the production code performs at `internal/kanban/todo_root.go:95-99`
+  (`filepath.Dir(dirs.CommonDir)`). From a linked worktree the worktree-relative
+  path names a different, absent file and is NOT the subject of this constraint.
+  A failed derivation fails the constraint rather than passing it.
 - **C-2** Verification scope is `go test ./internal/kanban/... ./internal/cli/`.
   A full local suite is prohibited.
 - **C-3** `./internal/cli/` alone runs past 600s on the development machine; any
