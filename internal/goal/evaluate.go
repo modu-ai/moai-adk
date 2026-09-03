@@ -67,14 +67,14 @@ type Verdict struct {
 	// (SPEC-INFINITE-GOAL-001 REQ-4 / OQ-2). The emitted 5-section Verdict is
 	// indistinguishable in shape from a MaxTurns-ceiling verdict; this flag lets
 	// callers/tests distinguish the cause.
-	WallClockExit bool            `json:"wall_clock_exit,omitempty"`
-	Stagnation    bool            `json:"stagnation,omitempty"`
+	WallClockExit bool `json:"wall_clock_exit,omitempty"`
+	Stagnation    bool `json:"stagnation,omitempty"`
 	// Unsatisfiable is set when a mechanical condition proved unrunnable — the
 	// shell reported exit 127 ("command not found") for a condition that did not
 	// declare 127 as its expected status. Such a condition can never pass, so
 	// the evaluator stops blocking instead of spending every remaining turn on
 	// it; the shape distinguishes this from an ordinary not-yet-converged turn.
-	Unsatisfiable bool `json:"unsatisfiable,omitempty"`
+	Unsatisfiable bool            `json:"unsatisfiable,omitempty"`
 	Verdict       *CeilingVerdict `json:"verdict,omitempty"`
 	Yielded       bool            `json:"yielded,omitempty"`
 	// SnapshotAttribution records, per reused Tier-1 condition, the snapshot
