@@ -169,7 +169,49 @@ red)이며, 지배 규칙(프로젝트 중립성 가드)보다 엄격하다.
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-03
+sync_commit_sha: pending-backfill-sync
+sync_status: complete-clean
+changelog_entry_position: "[Unreleased] → ### Changed (top of section)"
+changelog_duplicate_precheck: "grep -c 'SPEC-CODEX-SKILL-LOADER-001' CHANGELOG.md → 0"
+ac_count_acceptance_md: 13
+ac_count_cited_in_changelog: 13
+b12_self_test_a: pass   # pre-emission duplicate grep returned 0
+b12_self_test_b: pass   # AC-ID sweep of acceptance.md → 13 distinct, non-zero
+b12_self_test_c: pass   # every path named in the CHANGELOG entry verified with ls
+frontmatter_status_transitions:
+  spec_md: "in-progress → implemented → completed (merged on this single sync commit)"
+  plan_md: not-touched
+  acceptance_md: not-touched
+  progress_md: not-touched   # §E.4 body only; no frontmatter block in this file
+docs_surface_changed:
+  readme: false
+  docs_site: false
+  reason: >-
+    This card shipped no user-visible feature. It recorded a measurement and
+    flipped one internal manifest row (agents-codex.yaml skill-loader
+    disposition) plus an emitted-artifact / catalog-hash cascade. Nothing on
+    the README or adk.mo.ai.kr surface describes the codex agent-role skills
+    key, so no docs change was warranted and none was manufactured.
+canary_compliance_check:
+  applicable: false
+  reason: "this SPEC defines no forward-looking policy that its own sync tests"
+settings_json_exclusion:
+  path: .claude/settings.json
+  state_at_sync: "modified, unstaged, NOT in the sync commit"
+  reason: >-
+    Unattributed whole-file rewrite observed mid-run (21 → 215 lines, mtime
+    preceding every M3 command); the lead ruled it outside this card and one of
+    its deleted hook matchers is another in-flight card's subject. Neither
+    staged nor reverted — both would erase an observed fact.
+sync_commit_sha_backfill:
+  owed: true
+  note: >-
+    A commit cannot cite its own hash. The slot above carries the canonical
+    placeholder and is backfilled by the immediately following commit on this
+    branch.
+```
 
 ## §E.0 Plan-phase closure — residual risk
 
