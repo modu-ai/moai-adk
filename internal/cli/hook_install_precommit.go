@@ -28,8 +28,12 @@ const preCommitBackupPrefix = "pre-commit.bak."
 var errPreCommitBackupFailed = errors.New("pre-commit backup failed")
 
 // preCommitHookContent is the canonical content of the pre-commit hook. It
-// runs the fast subset (gofmt -l + go vet on staged Go files) followed by the
-// heavy quality gate via `moai gate` (vet + lint + test, 16-language detection).
+// runs the fast subset (gofmt -l + go vet on staged Go files) on every commit,
+// then invokes `moai gate` with the MOAI_PRECOMMIT=1 marker: the heavy quality
+// gate (vet + lint + test, 16-language detection) runs only when the user opts
+// in via gate.pre_commit.enabled in .moai/config/sections/gate.yaml, so a
+// pre-existing project-wide failure unrelated to the staged change cannot
+// block unrelated commits (SPEC-PRECOMMIT-GATE-SCOPE-001).
 //
 // The heavy gate runs in the user's shell — outside Claude Code's 5s PreToolUse
 // hook budget — eliminating the census C-2 silent-drop defect. This is the
@@ -38,9 +42,11 @@ var errPreCommitBackupFailed = errors.New("pre-commit backup failed")
 // MUST stay byte-identical with internal/template/templates/.git_hooks/pre-commit.
 // TestPreCommitTemplateMatchesConstant enforces this; do not edit one without the other.
 const preCommitHookContent = `#!/bin/sh
-# MoAI-ADK pre-commit hook — fast subset (gofmt + go vet) + heavy gate (moai gate)
+# MoAI-ADK pre-commit hook — fast subset (gofmt + go vet) + opt-in heavy gate (moai gate)
 # Bypass via: SKIP_MOAI_PRECOMMIT=1 git commit
-# Heavy gate (vet + lint + test, 16-language detection) runs in your shell, outside the 5s hook budget.
+# Fast subset (gofmt + go vet) runs on every commit. The heavy gate (vet + lint
+# + test, 16-language detection) runs in your shell, outside the 5s hook budget,
+# and is opt-in: gate.pre_commit.enabled in .moai/config/sections/gate.yaml.
 set -eu
 
 if [ "${SKIP_MOAI_PRECOMMIT:-0}" = "1" ]; then
@@ -99,11 +105,21 @@ fi
 
 # --- Heavy gate: vet + lint + test via 'moai gate' (16-language toolchain detection) ---
 # Runs in the user's shell, outside Claude Code's 5s PreToolUse hook budget.
+# MOAI_PRECOMMIT=1 marks the pre-commit context: the runner executes the
+# project-wide heavy steps only when gate.pre_commit.enabled is true in
+# .moai/config/sections/gate.yaml (off by default, so one pre-existing failure
+# unrelated to your staged change cannot block every commit). Toggle it in
+# 'moai web', Quality Gate panel.
 # Skipped when moai is not on PATH so non-moai downstream projects pass silently.
 if command -v moai >/dev/null 2>&1; then
-    if ! moai gate; then
+    if ! MOAI_PRECOMMIT=1 moai gate; then
         printf '\n[pre-commit] FAILED: moai gate reported errors above.\n' >&2
         printf '[pre-commit] Hint: address the reported issues, then re-commit.\n' >&2
+        printf '[pre-commit] Configure: .moai/config/sections/gate.yaml\n' >&2
+        printf '[pre-commit]   gate.pre_commit.enabled  opt in to the heavy gate in the pre-commit context\n' >&2
+        printf '[pre-commit]   gate.enabled              turn the gate off entirely\n' >&2
+        printf '[pre-commit]   gate.skip_tests           skip the test step\n' >&2
+        printf '[pre-commit]   gate.disabled_steps       skip individual steps by name\n' >&2
         printf '[pre-commit] Override: SKIP_MOAI_PRECOMMIT=1 git commit\n' >&2
         exit 1
     fi

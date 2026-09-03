@@ -78,12 +78,12 @@ var guardianClasses = []VulnClass{
 		Severity:    SevHigh,
 		Description: "Deserializing untrusted data can execute arbitrary code",
 		Patterns: []*regexp.Regexp{
-			mp(`yaml\.load\s*\(`),                 // PyYAML without SafeLoader
-			mp(`pickle\.loads?\s*\(`),             // Python pickle
-			mp(`torch\.load\s*\(`),                // PyTorch (ML model poisoning)
-			mp(`Marshal\.load\s*\(`),              // Ruby Marshal
-			mp(`new\s+ObjectInputStream\s*\(`),    // Java native deserialization
-			mp(`\bunserialize\s*\(`),              // PHP unserialize
+			mp(`yaml\.load\s*\(`),              // PyYAML without SafeLoader
+			mp(`pickle\.loads?\s*\(`),          // Python pickle
+			mp(`torch\.load\s*\(`),             // PyTorch (ML model poisoning)
+			mp(`Marshal\.load\s*\(`),           // Ruby Marshal
+			mp(`new\s+ObjectInputStream\s*\(`), // Java native deserialization
+			mp(`\bunserialize\s*\(`),           // PHP unserialize
 		},
 	},
 	{
@@ -91,10 +91,10 @@ var guardianClasses = []VulnClass{
 		Severity:    SevHigh,
 		Description: "Assigning untrusted data to a DOM sink enables XSS",
 		Patterns: []*regexp.Regexp{
-			mp(`\.innerHTML\s*=`),          // raw innerHTML assignment
-			mp(`dangerouslySetInnerHTML`),  // React escape hatch
-			mp(`document\.write\s*\(`),     // document.write sink
-			mp(`v-html\s*=`),               // Vue raw HTML binding
+			mp(`\.innerHTML\s*=`),         // raw innerHTML assignment
+			mp(`dangerouslySetInnerHTML`), // React escape hatch
+			mp(`document\.write\s*\(`),    // document.write sink
+			mp(`v-html\s*=`),              // Vue raw HTML binding
 		},
 	},
 	{
@@ -105,8 +105,8 @@ var guardianClasses = []VulnClass{
 			// Assignment operator covers = / := (Go) / <- (R) across the 16 languages.
 			mp(`(?i)api[_-]?key\s*(:?=|<-)\s*["'][^"']+["']`), // api_key = "..." / apiKey := "..."
 			mp(`(?i)password\s*(:?=|<-)\s*["'][^"']+["']`),    // password = "..."
-			mp(`-----BEGIN [A-Z ]*PRIVATE KEY-----`),           // PEM private key block
-			mp(`\bAKIA[0-9A-Z]{16}\b`),                         // AWS access key id
+			mp(`-----BEGIN [A-Z ]*PRIVATE KEY-----`),          // PEM private key block
+			mp(`\bAKIA[0-9A-Z]{16}\b`),                        // AWS access key id
 		},
 	},
 	{
@@ -114,8 +114,8 @@ var guardianClasses = []VulnClass{
 		Severity:    SevHigh,
 		Description: "Dynamic code evaluation of untrusted input",
 		Patterns: []*regexp.Regexp{
-			mp(`\beval\s*\(`),          // eval() across many languages
-			mp(`new\s+Function\s*\(`),  // JS Function constructor
+			mp(`\beval\s*\(`),         // eval() across many languages
+			mp(`new\s+Function\s*\(`), // JS Function constructor
 		},
 	},
 	{
@@ -132,10 +132,10 @@ var guardianClasses = []VulnClass{
 		Severity:    SevHigh,
 		Description: "Spawning a shell with unsanitized input",
 		Patterns: []*regexp.Regexp{
-			mp(`shell\s*=\s*True`),            // Python subprocess(shell=True)
-			mp(`os\.system\s*\(`),             // os.system(cmd)
-			mp(`child_process\.exec\s*\(`),    // Node child_process.exec
-			mp(`["'\x60](sh|bash)\s+-c\b`),    // sh -c / bash -c string
+			mp(`shell\s*=\s*True`),         // Python subprocess(shell=True)
+			mp(`os\.system\s*\(`),          // os.system(cmd)
+			mp(`child_process\.exec\s*\(`), // Node child_process.exec
+			mp(`["'\x60](sh|bash)\s+-c\b`), // sh -c / bash -c string
 		},
 	},
 	{
@@ -187,14 +187,14 @@ var (
 	crossFileIDSourceMarkers = []*regexp.Regexp{
 		mp(`(?i)req(uest)?\.(params|query|args|body)\b`), // req.params.id / request.args
 		mp(`(?i)params\[["':]?id`),                       // params[:id] / params["id"]
-		mp(`(?i)request\.GET\b`),                          // Django request.GET
+		mp(`(?i)request\.GET\b`),                         // Django request.GET
 	}
 	// crossFileObjectSinkMarkers detect an object-access-by-id sink.
 	crossFileObjectSinkMarkers = []*regexp.Regexp{
-		mp(`(?i)find(ById|One)?\s*\(`),        // findById( / findOne(
-		mp(`(?i)WHERE\s+id\s*=`),              // WHERE id =
-		mp(`(?i)get_object_or_404\s*\(`),      // Django get_object_or_404
-		mp(`(?i)\.get\s*\(\s*(pk|id)\b`),      // Model.objects.get(id=...)
+		mp(`(?i)find(ById|One)?\s*\(`),   // findById( / findOne(
+		mp(`(?i)WHERE\s+id\s*=`),         // WHERE id =
+		mp(`(?i)get_object_or_404\s*\(`), // Django get_object_or_404
+		mp(`(?i)\.get\s*\(\s*(pk|id)\b`), // Model.objects.get(id=...)
 	}
 	// crossFileAuthzMarkers detect an authorization / ownership check.
 	crossFileAuthzMarkers = []*regexp.Regexp{

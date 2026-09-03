@@ -214,7 +214,23 @@ func (r *Renderer) renderSessionLine(data *StatusData) string {
 	// data would blur into the Backlog.Available == false path and make an
 	// intentionally-hidden segment indistinguishable from an unreadable queue.
 	if r.isSegmentEnabled(SegmentBacklog) && r.isTodoEnabled() && data.Backlog.Available {
-		segs = append(segs, fmt.Sprintf("🔄 TODO: %d/%d", data.Backlog.Picked, data.Backlog.Queued))
+		seg := fmt.Sprintf("🔄 TODO: %d/%d", data.Backlog.Picked, data.Backlog.Queued)
+		// The landed annotation ADDS a third number; it never subtracts from
+		// the first. The shipped criterion counts a card as landed when any
+		// commit merely NAMES it — another card's report commit included — so
+		// subtracting would silently under-report genuine in-flight work and
+		// would claim more than `moai todo pr` itself claims. "N of the picked
+		// are named on the integration branch" is a prompt to reconcile, not a
+		// re-derived truth.
+		//
+		// An unavailable judgment renders NOTHING, leaving the pair
+		// byte-identical to what it was before this annotation existed: "✓0"
+		// for a measurement nobody took would assert a fact nobody observed.
+		// An OBSERVED zero is a fact, and does render.
+		if data.Landed.Known() {
+			seg += fmt.Sprintf(" ✓%d", data.Landed.Landed)
+		}
+		segs = append(segs, seg)
 	}
 
 	// The GitHub counts do not belong on this line: the 2026-08-18 layout merge

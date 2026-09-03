@@ -61,6 +61,34 @@ mechanical condition (`go test ./... exits 0`); a claim referencing the
 transcript is a model condition (`all AC rows show PASS in the transcript`).
 The orchestrator MAY pass a structured condition set when arming programmatically.
 
+**Declare the tier explicitly with a `model:` or `cmd:` prefix.** Absent a
+prefix, the classifier decides by looking for the words "transcript" or
+"conversation" in the condition — an English substring test that silently misses
+a claim written in any other language, or in English phrased without those two
+words. Such a claim is treated as a shell command, which cannot exit 0, so the
+goal blocks every turn-end until its bound fires. The prefix removes the guess:
+
+```
+moai goal "model: every blocking AC has PASS evidence surfaced in the run"
+moai goal "cmd: go test ./internal/cli/... exits 0"
+```
+
+The prefix wins over the substring test in both directions, and a `cmd:`
+condition still accepts the trailing `exits <N>` clause. Arming is refused when a
+mechanical condition's first word resolves to no command — the message names the
+word and points back at the `model:` prefix. The refusal fires only on that
+positive evidence: assignments (`FOO=bar cmd`), path forms, subshells, and shell
+keywords are all left alone.
+
+An explicit `cmd:` prefix **exempts the condition from that refusal**. The check
+resolves the first word in the ARMING environment, so it would otherwise reject a
+legitimate goal naming a tool that exists at evaluation time but not yet at
+arming time — a different PATH, a container, a binary the goal itself builds.
+`cmd:` is how you say the tier was chosen deliberately. A mistake made that way
+is not silent either: the evaluator treats a condition that exits 127
+(`command not found`) as unsatisfiable as declared, stops blocking, and says so
+on the first turn-end rather than at the ceiling.
+
 Arming writes `.moai/state/goal/<session-id>.json` (atomic temp+rename). The
 Stop hook `handle-stop-goal.sh` picks it up on the next turn-end.
 
@@ -68,7 +96,12 @@ Stop hook `handle-stop-goal.sh` picks it up on the next turn-end.
 
 Print the active session's goal (or all sessions' goals with `--all`): the
 condition text, the conditions array, turns used vs ceiling, the progress log,
-and the lifecycle status (`armed` / `satisfied` / `ceiling-exit` / `cleared`).
+and the lifecycle status (`armed` / `satisfied` / `ceiling-exit` / `cleared` /
+`unsatisfiable`). `unsatisfiable` means a mechanical condition exited 127
+(command not found) without declaring 127 as its expected status: it can never
+pass, so the evaluator emitted a verdict and stopped blocking instead of
+spending the remaining turns on it. Re-arm with the `model:` prefix when the
+condition was a claim rather than a command.
 
 ### `/moai goal clear`
 

@@ -16,11 +16,11 @@ import (
 // @MX:NOTE: [AUTO] status regexes promoted to package level — REQ-PERF-004-A
 var (
 	// Table format: | Status | value | or | 상태 | value |
-	statusTableEnPattern  = regexp.MustCompile(`\|\s*Status\s*\|\s*([^\||]+)\s*\|`)
-	statusTableKoPattern  = regexp.MustCompile(`\|\s*상태\s*\|\s*([^\||]+)\s*\|`)
+	statusTableEnPattern = regexp.MustCompile(`\|\s*Status\s*\|\s*([^\||]+)\s*\|`)
+	statusTableKoPattern = regexp.MustCompile(`\|\s*상태\s*\|\s*([^\||]+)\s*\|`)
 	// Markdown list format: - **Status**: value or - **상태**: value
-	statusListEnPattern   = regexp.MustCompile(`-\s*\*\*Status\*\*:\s*(.+)`)
-	statusListKoPattern   = regexp.MustCompile(`-\s*\*\*상태\*\*:\s*(.+)`)
+	statusListEnPattern = regexp.MustCompile(`-\s*\*\*Status\*\*:\s*(.+)`)
+	statusListKoPattern = regexp.MustCompile(`-\s*\*\*상태\*\*:\s*(.+)`)
 )
 
 // ValidStatuses defines all allowed status values

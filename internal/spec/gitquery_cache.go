@@ -91,7 +91,8 @@ func stopGitQueryCache() {
 
 // cachedGitDirAvailable checks if git is available in the current directory,
 // using the per-run cache if available. Equivalent to:
-//   exec.Command("git", "rev-parse", "--git-dir").Output() → err == nil
+//
+//	exec.Command("git", "rev-parse", "--git-dir").Output() → err == nil
 //
 // When no cache is active (outside Lint() context, e.g., direct calls from
 // DetectDrift), performs the check directly (preserving original behavior).
@@ -176,8 +177,9 @@ func resolveMainBranch() string {
 // cachedIsShallowRepository reports whether the repository at the process
 // working directory is a shallow clone, using the per-run cache if active.
 // Equivalent to:
-//   exec.Command("git", "rev-parse", "--is-shallow-repository").Output()
-//     → err == nil && strings.TrimSpace(stdout) == "true"
+//
+//	exec.Command("git", "rev-parse", "--is-shallow-repository").Output()
+//	  → err == nil && strings.TrimSpace(stdout) == "true"
 //
 // A git failure (not a repository, git unavailable) reports false: that state
 // surfaces through the shape ① error path (git log failed) instead, which

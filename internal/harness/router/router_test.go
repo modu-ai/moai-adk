@@ -54,12 +54,12 @@ func minimalHarnessConfig() *config.HarnessConfig {
 				PlanAudit:     config.PlanAuditConfig{Enabled: true, MaxIterations: 3, RequireMustPass: true},
 			},
 			"thorough": {
-				Description:     "Maximum quality",
-				Evaluator:       true,
-				EvaluatorMode:   "per-sprint",
+				Description:      "Maximum quality",
+				Evaluator:        true,
+				EvaluatorMode:    "per-sprint",
 				EvaluatorProfile: "strict",
 				SprintContract:   true,
-				PlanAudit:       config.PlanAuditConfig{Enabled: true, MaxIterations: 3, RequireMustPass: true},
+				PlanAudit:        config.PlanAuditConfig{Enabled: true, MaxIterations: 3, RequireMustPass: true},
 			},
 		},
 	}

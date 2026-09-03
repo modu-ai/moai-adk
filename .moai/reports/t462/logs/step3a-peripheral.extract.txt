@@ -1,0 +1,66 @@
+# t462 step3a: MOAI_SKIP_LIVE_CODEX=1 go test -count=1 -v ./internal/config/... ./internal/core/project/... ./internal/github/workflow/... ./internal/hook/... ./internal/mcp/... ./internal/sessionmsg/... ./internal/settings/... ./internal/spec/... ./internal/web/...
+# exit=1 duration=589s swept(=== RUN)=5730 FAIL=3(2 tests: hook flake + spec catalog) SKIP=18
+# tree SHA bd7c58201; full verbose log machine-local at /tmp/t462-run-step3a.log
+# --- SKIP inventory (preceding reason line + skip line):
+    navigator_detect_nonoverlap_test.go:324: diff vs origin/main...HEAD touches no internal/navigator/detect/ file — AC-NS2-005a consume-only guard has no jurisdiction over this branch's change-set
+--- SKIP: TestConsumerOnly_M0AndMxByteUnchanged (1.24s)
+    session_start_migration_test.go:11: waiting for session-start migration integration
+--- SKIP: TestSessionStart_InvokesMigrationRunner (0.00s)
+    session_start_migration_test.go:18: waiting for RT-001 HookResponse SystemMessage merge
+--- SKIP: TestSessionStart_MigrationFailure_SurfacesViaSystemMessage (0.00s)
+    session_start_migration_test.go:25: waiting for system.yaml migrations.disabled implementation
+--- SKIP: TestSessionStart_DisabledViaSystemYaml (0.00s)
+    session_start_migration_test.go:32: waiting for system.yaml migrations.disabled implementation
+--- SKIP: TestSessionStart_EnabledByDefault (0.00s)
+    pre_tool_scan_test.go:119: ast-grep is available; test requires it to be absent
+--- SKIP: TestScanWriteContent_SupportedExtension_ScannerNotAvailable (0.00s)
+    gate_step_termination_test.go:48: helper process only
+--- SKIP: TestHelperOrphan (0.00s)
+    gate_step_termination_test.go:70: helper process only
+--- SKIP: TestHelperOrphanChild (0.00s)
+    gate_step_termination_test.go:81: helper process only
+--- SKIP: TestHelperNoisy (0.00s)
+    gate_summary_test.go:103: helper process only
+--- SKIP: TestHelperSummarySleep (0.00s)
+    --- PASS: TestSummaryDoesNotDropAnExistingNotice/rules-dir-unconfigured (0.20s)
+    --- SKIP: TestSummaryDoesNotDropAnExistingNotice/scanner-absent (0.00s)
+    gate_timeout_attribution_test.go:21: helper process only
+--- SKIP: TestHelperSleep (0.00s)
+--- PASS: TestAutoFix (0.05s)
+    --- SKIP: TestAutoFix/attempts_auto-fix_when_supported (0.00s)
+    gate_test.go:116: go.mod not found, skipping integration test
+--- SKIP: TestQualityGate_SkipTests (0.00s)
+    gate_test.go:99: go.mod not found, skipping integration test
+--- SKIP: TestQualityGate_Timeout (0.00s)
+    gate_test.go:138: go.mod not found, skipping integration test
+--- SKIP: TestQualityGate_ContextCanceled (0.00s)
+    lint_req_widen_corpus_test.go:54: corpus scan skipped; set MOAI_T362_CORPUS_SCAN=1 to run
+--- SKIP: TestCorpusREQWideningMeasurement (0.00s)
+    lint_req_widen_decompose_test.go:330: corpus scan skipped; set MOAI_T362_CORPUS_SCAN=1 to run
+--- SKIP: TestCorpusRejectedREQIDDecomposition (0.00s)
+ok  	github.com/modu-ai/moai-adk/internal/config	48.691s
+ok  	github.com/modu-ai/moai-adk/internal/config/atomicfile	2.599s
+ok  	github.com/modu-ai/moai-adk/internal/config/toolpolicy	3.886s
+ok  	github.com/modu-ai/moai-adk/internal/core/project	64.368s
+ok  	github.com/modu-ai/moai-adk/internal/github/workflow	5.988s
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	581.607s
+ok  	github.com/modu-ai/moai-adk/internal/hook/handoff	17.125s
+ok  	github.com/modu-ai/moai-adk/internal/hook/memo	1.462s
+ok  	github.com/modu-ai/moai-adk/internal/hook/memo/taxonomy	5.153s
+ok  	github.com/modu-ai/moai-adk/internal/hook/mx	35.812s
+ok  	github.com/modu-ai/moai-adk/internal/hook/mx/complexity	2.065s
+ok  	github.com/modu-ai/moai-adk/internal/hook/perf	125.387s
+ok  	github.com/modu-ai/moai-adk/internal/hook/quality	95.325s
+ok  	github.com/modu-ai/moai-adk/internal/hook/security	55.481s
+ok  	github.com/modu-ai/moai-adk/internal/hook/testutil	4.659s
+ok  	github.com/modu-ai/moai-adk/internal/hook/trace	11.671s
+ok  	github.com/modu-ai/moai-adk/internal/mcp	4.758s
+ok  	github.com/modu-ai/moai-adk/internal/sessionmsg	30.260s
+ok  	github.com/modu-ai/moai-adk/internal/settings	10.830s
+ok  	github.com/modu-ai/moai-adk/internal/settings/agentfm	5.818s
+ok  	github.com/modu-ai/moai-adk/internal/settings/yamlpatch	5.586s
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/spec	504.292s
+ok  	github.com/modu-ai/moai-adk/internal/web	204.892s
+FAIL

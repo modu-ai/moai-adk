@@ -20,11 +20,12 @@ package spec_test
 // deliberately share a SPEC id; DuplicateSPECIDRule never sees two of them in the
 // same run.
 //
-// NOT covered here: AC-MRG-013 and its CM-1 / CM-2 counter-mutations. REQ-MRG-010
-// (the R4-form exclusion) is DEFERRED out of M3 by operator decision (spec.md §H
-// Q0, option C) — spec.md §B.7 measured its reachable class as 0 of 42 candidate
-// lines on two independent probes, so an exclusion for it could only over-exempt.
-// No R4 branch exists in the rule, so there is nothing for those criteria to test.
+// AC-MRG-013 and its CM-1 / CM-2 counter-mutations were deferred out of M3 by
+// operator decision (spec.md §H Q0, option C). Card t353 later resumed REQ-MRG-010
+// once the resume condition held (live external R4-form occupants, silenced with
+// R3 markers), so the R4 criteria live here too — keyed, per the [HARD] constraint
+// the deferral left behind (plan.md §F M3 note), on imperative STRUCTURE, never on
+// a command token.
 
 import (
 	"os"
@@ -325,5 +326,90 @@ func TestMovingRef_ReadsSiblingArtifacts(t *testing.T) {
 func TestMovingRef_NegativeControlOnClaimConjunct(t *testing.T) {
 	if got := movingRefFindings(t, "no-claim"); len(got) != 0 {
 		t.Errorf("expected 0 findings on a claim-free instruction, got %d: %v", len(got), got)
+	}
+}
+
+// TestMovingRef_R4FormNotFlagged decides AC-MRG-013 (REQ-MRG-010, resumed from
+// its v0.7.0 deferral by card t353): a line in the R4 form — an imperative
+// measuring directive instructing the reader to run the command at read time,
+// PLUS a demoted dated reference carrying the value the command produces — is
+// not flagged. The doctrine's own recommended remedy must not be flagged by the
+// guard; flagging it would teach readers to avoid the correct form.
+//
+// The fixture is AC-MRG-013's retained fixture line, and its properties were
+// MEASURED flaggable absent the exclusion (acceptance.md's table): the R4
+// exclusion is the only thing that can exempt it — the line is not in the
+// divergence class and carries no SHA, no marker, no frozen-baseline variable.
+//
+// Mutations that must turn it red:
+//   - remove the R4-form exclusion from the rule; the finding reappears (this is
+//     the only mutation that proves the exclusion EXISTS);
+//   - drop either conjunct of the R4 predicate (imperative directive, or demoted
+//     dated reference); the exemption must collapse, not survive on one half.
+func TestMovingRef_R4FormNotFlagged(t *testing.T) {
+	if got := movingRefFindings(t, "r4-form"); len(got) != 0 {
+		t.Errorf("expected 0 findings on the R4 form, got %d: %v", len(got), got)
+	}
+}
+
+// TestMovingRef_R4KoreanFormNotFlagged is the Korean-idiom half of AC-MRG-013
+// (card t353): the imperative directive arrives as "측정: `<cmd>`" and the dated
+// reference as "(참조 판독 DATE: value)" — the shape of the live corpus line
+// SPEC-SPECLINT-GITBLIND-001/progress.md:233. An exclusion that recognizes only
+// the English idiom would flag the remedy in half the corpus's own language.
+//
+// Mutation that must turn it red: drop the Korean alternation from the R4
+// imperative-directive or dated-reference patterns; the finding reappears.
+func TestMovingRef_R4KoreanFormNotFlagged(t *testing.T) {
+	if got := movingRefFindings(t, "r4-korean"); len(got) != 0 {
+		t.Errorf("expected 0 findings on the Korean R4 form, got %d: %v", len(got), got)
+	}
+}
+
+// TestMovingRef_R4PositionalMutantStillFlagged decides CM-1 of AC-MRG-013
+// (REQ-MRG-010, card t353): a row that mentions a git command and a
+// parenthesized value but states a RESULT — no imperative directive, no dated
+// reference — MUST still be flagged.
+//
+// CM-1 blocks the exclusion shape "a git verb before the ref and a
+// parenthesized value after it", which would otherwise exempt AC-MRG-001's
+// fixture too. Both halves are load-bearing: this criterion must stay green
+// while TestMovingRef_R4FormNotFlagged holds.
+//
+// Mutation that must turn it red: key the R4 exclusion positionally (parenthesis
+// anywhere after the ref); this criterion AND AC-MRG-001 both go green-to-red —
+// the positional bypass measured during the iter-1 audit.
+func TestMovingRef_R4PositionalMutantStillFlagged(t *testing.T) {
+	got := movingRefFindings(t, "r4-cm1-positional")
+	if len(got) != 1 {
+		t.Fatalf("expected 1 finding on the CM-1 positional mutant, got %d: %v", len(got), got)
+	}
+	line := fixtureLine(t, got[0].File, got[0].Line)
+	if !strings.Contains(line, "git diff --name-only origin/main -- internal/ (unchanged)") {
+		t.Errorf("finding points at %s:%d, whose content is not the CM-1 row: %q", got[0].File, got[0].Line, line)
+	}
+}
+
+// TestMovingRef_R4CommandTokenMutantStillFlagged decides CM-2 of AC-MRG-013
+// (REQ-MRG-010, card t353): a fetch chained to a divergence read, carrying a
+// claim, MUST still be flagged.
+//
+// CM-2 exists because CM-1 protects AC-MRG-001's shape and nothing else: an
+// exclusion keyed on the fetch verb passes AC-MRG-001, -006, -013 and CM-1
+// while silencing 76 of 117 real unpinned divergence lines (spec.md §B.6,
+// re-measured at 43329ec8b). A token key is forgeable by construction — which
+// is why the [HARD] constraint settles the predicate on imperative structure.
+//
+// Mutation that must turn it red: key the R4 exclusion on ANY command token
+// (`git fetch`, or any other verb) instead of on imperative structure. CM-2
+// goes green-to-red while AC-MRG-001, -006 and CM-1 all stay passing.
+func TestMovingRef_R4CommandTokenMutantStillFlagged(t *testing.T) {
+	got := movingRefFindings(t, "r4-cm2-command-token")
+	if len(got) != 1 {
+		t.Fatalf("expected 1 finding on the CM-2 command-token mutant, got %d: %v", len(got), got)
+	}
+	line := fixtureLine(t, got[0].File, got[0].Line)
+	if !strings.Contains(line, "git fetch origin main") {
+		t.Errorf("finding points at %s:%d, whose content is not the CM-2 row: %q", got[0].File, got[0].Line, line)
 	}
 }
