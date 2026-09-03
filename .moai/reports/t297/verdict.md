@@ -92,7 +92,7 @@
 
 ## Sync-phase 기록 (manager-docs, 2026-09-03)
 
-sync_commit_sha: pending-backfill-t297-sync — 커밋은 자기 SHA를 인용할 수 없으므로 placeholder. 실측값은 레인 완료 보고에 첨부.
+sync_commit_sha: 49ce867da (D3 backfill — 커밋은 자기 SHA를 인용할 수 없어 sync 커밋에서 placeholder로 남겼던 값을 이후 커밋에서 백필)
 
 ### 판독한 것
 
