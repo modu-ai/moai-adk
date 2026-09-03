@@ -68,15 +68,22 @@ import (
 // 기각; 이번 성장분에 지방 없음. ③ 상한 — 가드의 자기 정의는 다이어트의 조용한
 // 회귀 트립와이어이지 착지 교리의 성장 상한이 아니므로, 소모 조항 전수 열거를 붙인
 // 보정으로 정당하다. 폭은 실측 76,939 + 여유 261(최근 조항 20~367 tok 대비 단일
-// 조항분) = 77,200. 참고: 창 대기 브랜치 8개는 표면 추가분 0(real diff) — 이
-// 상향이 창 재측정을 재트립시키지 않는다. 다음 트립에 자동 정당성은 없다 — 그
-// 트립이 다이어트 카드의 착수 근거다.
+// 조항분) = 77,200.
 //
-// @MX:DEBT: [AUTO] temporary budget raise chain (76,000 -> 76,210 -> 76,400 -> 77,200) standing in for the always-loaded rule diet
-// @MX:CEILING: 0.34% headroom — 261 tokens of 77,200; one always-loaded clause consumes it
+// [2026-09-03 창 재산정 — 리드 지시, 임의 인상 아닌 측정 재도출] 위 "창 대기
+// 브랜치 8개는 표면 추가분 0" 예측은 실측으로 기각됐다: 9장 착지 후 최종 develop
+// 트리(9636d143d) 실측 표면 77,432 — 카드 기여 +328(t300 VCI 편집 + t302/t345 신규
+// verification-completeness.md), 77,200으로는 232 초과. 도출: 77,432(실측) + t436
+// +81(선행 lane-5 실측치, 착지 대기) + 단일 소편 증분 ~87(오늘 최소 관측 단위인
+// t436 자체 크기) = 77,594 → 안정 상수로 올림 77,600. 착지 시점 여유 168. 오늘 하루
+// 성장 +493 전체를 덮지 않는 것은 의도다 — 그 이상 성장은 가드를 다시 트립해
+// 다이어트 카드의 착수 근거로 간다. 다음 트립에 자동 정당성은 없다.
+//
+// @MX:DEBT: [AUTO] temporary budget raise chain (76,000 -> 76,210 -> 76,400 -> 77,200 -> 77,600) standing in for the always-loaded rule diet
+// @MX:CEILING: 0.22% headroom — 168 tokens of 77,600; one small always-loaded clause consumes it
 // @MX:UPGRADE: drop this raise chain when the large always-loaded rule diet (stub + lazy loading) lands — measured targets: output-style moai.md 16.5K tok, kanban-dispatch.md 8.6K, agent-common-protocol.md 6.7K, verification-claim-integrity.md 6.3K (t453 measurement)
 // @MX:SPEC: SPEC-MEMORY-STORE-RECONCILE-001
-const AlwaysLoadedTokenBudget = 77200
+const AlwaysLoadedTokenBudget = 77600
 
 // CodexContractByteCeiling는 루트 AGENTS.md(코덱스 계약층)에 허용되는 바이트 상한이다.
 // codex는 프로젝트 지시문을 바이트 상한 아래에서 읽고 초과분을 **조용히** 잘라낸다 —
