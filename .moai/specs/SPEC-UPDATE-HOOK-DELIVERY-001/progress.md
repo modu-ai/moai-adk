@@ -132,7 +132,7 @@ m1_to_mN_commit_strategy: per-milestone commits (M1 decision landing 7664729ab, 
 
 ```yaml
 sync_complete_at: 2026-09-03
-sync_commit_sha: "pending-backfill-sync" # D3 placeholder — backfilled in the follow-up commit
+sync_commit_sha: "85743a34a" # D3 backfilled — the close commit 85743a34a (docs(SPEC-UPDATE-HOOK-DELIVERY-001): sync-phase 3-phase close (card t466))
 sync_status: complete
 b12_self_test_a: "grep -c 'SPEC-UPDATE-HOOK-DELIVERY-001' CHANGELOG.md → 0 pre-emission (no duplicate; emission proceeded)"
 b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l → 13 (AC-UHD-001..013, non-zero, plausible); CHANGELOG entry cites 13 ACs (10 PASS / 3 N/A, matching §E.3 counts)"
