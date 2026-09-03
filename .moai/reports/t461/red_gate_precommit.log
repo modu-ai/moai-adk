@@ -1,0 +1,18 @@
+--- FAIL: TestRunGatePreCommitMarkerSkipsHeavyGate (0.71s)
+    gate_precommit_test.go:79: runGate under marker + default opt-out returned error: quality gate failed
+        stderr: quality gate failed: go test
+        
+        --- FAIL: TestPreExistingFailure (0.00s)
+            fail_test.go:6: pre-existing project-wide failure
+        FAIL
+        FAIL	fixture	0.338s
+        FAIL
+        
+        quality gate steps (4 configured):
+          - go vet: executed in 206ms at 2026-09-03T13:11:31.887+09:00 — go vet ./...
+          - typecheck: skipped — no default for this language; set gate.typecheck.command to enable one
+          - golangci-lint: skipped — none of its config files exist in the project directory (.golangci.yml, .golangci.yaml, .golangci.toml, .golangci.json)
+          - go test: executed in 497ms at 2026-09-03T13:11:32.094+09:00 — go test ./...
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	3.254s
+FAIL

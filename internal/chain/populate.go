@@ -122,9 +122,9 @@ func (p *Populator) UpdateMilestone(nodeID, milestone, lastCompleted string) err
 		return fmt.Errorf("chain populate: UpdateMilestone requires non-empty nodeID")
 	}
 	return p.store.Append(ChainEvent{
-		EventType:             EventNodeUpdate,
-		NodeID:                nodeID,
-		Milestone:             milestone,
+		EventType:              EventNodeUpdate,
+		NodeID:                 nodeID,
+		Milestone:              milestone,
 		LastCompletedMilestone: lastCompleted,
 	})
 }
@@ -133,12 +133,12 @@ func (p *Populator) UpdateMilestone(nodeID, milestone, lastCompleted string) err
 // mechanical write path used by the chain-event hook (REQ-CHAIN-012).
 func (p *Populator) AppendCompletionEdge(parentNode, childNode, completedMilestone, nextResumeTarget string) error {
 	return p.store.Append(ChainEvent{
-		EventType:         EventCompletionEdge,
-		ParentNode:        parentNode,
-		ChildNode:         childNode,
+		EventType:          EventCompletionEdge,
+		ParentNode:         parentNode,
+		ChildNode:          childNode,
 		CompletedMilestone: completedMilestone,
-		CompletedAt:       nowFunc().Format(time.RFC3339),
-		NextResumeTarget:  nextResumeTarget,
+		CompletedAt:        nowFunc().Format(time.RFC3339),
+		NextResumeTarget:   nextResumeTarget,
 	})
 }
 

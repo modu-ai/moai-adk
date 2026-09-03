@@ -18,9 +18,9 @@ import (
 
 // symmetryTestCase defines one struct↔YAML symmetry check.
 type symmetryTestCase struct {
-	structType    reflect.Type
-	templateYAML  string // path relative to internal/template/templates/.moai/config/sections/
-	yamlTopKey    string // top-level YAML key (e.g., "constitution", "context_search")
+	structType   reflect.Type
+	templateYAML string // path relative to internal/template/templates/.moai/config/sections/
+	yamlTopKey   string // top-level YAML key (e.g., "constitution", "context_search")
 }
 
 // symmetryCases lists the 4 MIG-003 sections plus StatuslineConfig

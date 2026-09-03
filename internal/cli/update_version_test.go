@@ -135,11 +135,11 @@ func hasSuffix(s, p string) bool {
 // | --force | --yes) is permitted (proceeds).
 func TestValidateUpdateVersionConflicts(t *testing.T) {
 	cases := []struct {
-		name          string
-		version       string
+		name                                  string
+		version                               string
 		check, templatesOnly, restore, dryRun bool
-		wantConflict bool
-		wantFlag     string
+		wantConflict                          bool
+		wantFlag                              string
 	}{
 		{name: "version alone ok", version: "v3.0.0"},
 		{name: "version+check conflict", version: "v3.0.0", check: true, wantConflict: true, wantFlag: "--check"},
@@ -234,9 +234,9 @@ func TestUpdateFlagsNoVersionDefaultIsNoop(t *testing.T) {
 
 // mockAPIConfig configures a mock GitHub API + asset server.
 type mockAPIConfig struct {
-	tagStatusCode int                 // /releases/tags/<tag> status (200 or 404)
-	tagBody       string              // release JSON (when 200)
-	assets        map[string]string   // path → content served from the mock (checksums.txt, archive)
+	tagStatusCode int               // /releases/tags/<tag> status (200 or 404)
+	tagBody       string            // release JSON (when 200)
+	assets        map[string]string // path → content served from the mock (checksums.txt, archive)
 }
 
 // newMockGithubTLS starts a TLS httptest server that routes by URL path and
@@ -585,10 +585,10 @@ func TestIsVersionDowngrade(t *testing.T) {
 		requested, current string
 		want               bool
 	}{
-		{"v3.0.0", "v3.2.0", true},   // older requested → downgrade
-		{"v3.2.0", "v3.0.0", false},  // newer requested → upgrade
-		{"v3.0.0", "v3.0.0", false},  // same → not downgrade
-		{"3.0.0", "v3.2.0", true},    // bare requested, v-prefixed current
+		{"v3.0.0", "v3.2.0", true},      // older requested → downgrade
+		{"v3.2.0", "v3.0.0", false},     // newer requested → upgrade
+		{"v3.0.0", "v3.0.0", false},     // same → not downgrade
+		{"3.0.0", "v3.2.0", true},       // bare requested, v-prefixed current
 		{"v3.1.0-rc1", "v3.0.0", false}, // rc newer than stable
 		{"go-v3.0.0", "v3.2.0", true},   // go-v prefix handled
 	}
@@ -603,7 +603,10 @@ func TestIsVersionDowngrade(t *testing.T) {
 
 // TestCompareVersionLoose covers the version comparison helper.
 func TestCompareVersionLoose(t *testing.T) {
-	cases := []struct{ a, b string; want int }{
+	cases := []struct {
+		a, b string
+		want int
+	}{
 		{"v3.0.0", "v3.0.0", 0},
 		{"v3.1.0", "v3.0.0", 1},
 		{"v3.0.0", "v3.1.0", -1},

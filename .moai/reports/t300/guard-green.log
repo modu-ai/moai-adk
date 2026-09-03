@@ -1,0 +1,69 @@
+=== RUN   TestSanitizedPairParity
+=== PAUSE TestSanitizedPairParity
+=== RUN   TestVCIOrderingClausePresence
+=== PAUSE TestVCIOrderingClausePresence
+=== CONT  TestSanitizedPairParity
+=== CONT  TestVCIOrderingClausePresence
+=== RUN   TestSanitizedPairParity/manager-develop-prompt-template.md
+=== PAUSE TestSanitizedPairParity/manager-develop-prompt-template.md
+=== RUN   TestSanitizedPairParity/agent-common-protocol.md
+=== PAUSE TestSanitizedPairParity/agent-common-protocol.md
+=== RUN   TestSanitizedPairParity/verification-batch-pattern.md
+=== PAUSE TestSanitizedPairParity/verification-batch-pattern.md
+=== RUN   TestSanitizedPairParity/plan-auditor.md
+=== PAUSE TestSanitizedPairParity/plan-auditor.md
+=== RUN   TestSanitizedPairParity/askuser-protocol.md
+=== PAUSE TestSanitizedPairParity/askuser-protocol.md
+=== RUN   TestSanitizedPairParity/verification-claim-integrity.md
+=== PAUSE TestSanitizedPairParity/verification-claim-integrity.md
+=== RUN   TestSanitizedPairParity/runtime-recovery-doctrine.md
+=== PAUSE TestSanitizedPairParity/runtime-recovery-doctrine.md
+=== RUN   TestSanitizedPairParity/zone-registry.md
+=== PAUSE TestSanitizedPairParity/zone-registry.md
+=== RUN   TestSanitizedPairParity/main-checkout-branch-guard.md
+=== PAUSE TestSanitizedPairParity/main-checkout-branch-guard.md
+=== CONT  TestSanitizedPairParity/manager-develop-prompt-template.md
+=== CONT  TestSanitizedPairParity/verification-claim-integrity.md
+=== CONT  TestSanitizedPairParity/zone-registry.md
+=== CONT  TestSanitizedPairParity/runtime-recovery-doctrine.md
+=== CONT  TestSanitizedPairParity/plan-auditor.md
+=== CONT  TestSanitizedPairParity/askuser-protocol.md
+=== CONT  TestSanitizedPairParity/verification-batch-pattern.md
+=== CONT  TestSanitizedPairParity/agent-common-protocol.md
+=== CONT  TestSanitizedPairParity/main-checkout-branch-guard.md
+--- PASS: TestVCIOrderingClausePresence (0.00s)
+=== NAME  TestSanitizedPairParity/verification-batch-pattern.md
+    sanitized_pair_parity_test.go:192: .claude/rules/moai/workflow/verification-batch-pattern.md: normalized diff — 4 local-only, 4 template-only, ~4 reword pairs, net one-sided=0 (tolerance 4)
+    sanitized_pair_parity_test.go:218: .claude/rules/moai/workflow/verification-batch-pattern.md: within reword tolerance — intentional §25 sanitization, no structural drift
+=== NAME  TestSanitizedPairParity/main-checkout-branch-guard.md
+    sanitized_pair_parity_test.go:192: .claude/rules/moai/workflow/main-checkout-branch-guard.md: normalized diff — 2 local-only, 0 template-only, ~0 reword pairs, net one-sided=2 (tolerance 4)
+    sanitized_pair_parity_test.go:218: .claude/rules/moai/workflow/main-checkout-branch-guard.md: within reword tolerance — intentional §25 sanitization, no structural drift
+=== NAME  TestSanitizedPairParity/manager-develop-prompt-template.md
+    sanitized_pair_parity_test.go:192: .claude/rules/moai/development/manager-develop-prompt-template.md: normalized diff — 1 local-only, 1 template-only, ~1 reword pairs, net one-sided=0 (tolerance 4)
+    sanitized_pair_parity_test.go:218: .claude/rules/moai/development/manager-develop-prompt-template.md: within reword tolerance — intentional §25 sanitization, no structural drift
+=== NAME  TestSanitizedPairParity/runtime-recovery-doctrine.md
+    sanitized_pair_parity_test.go:183: .claude/rules/moai/workflow/runtime-recovery-doctrine.md: token-only divergence — normalized doctrine identical (84 content lines)
+=== NAME  TestSanitizedPairParity/askuser-protocol.md
+    sanitized_pair_parity_test.go:183: .claude/rules/moai/core/askuser-protocol.md: token-only divergence — normalized doctrine identical (189 content lines)
+=== NAME  TestSanitizedPairParity/verification-claim-integrity.md
+    sanitized_pair_parity_test.go:192: .claude/rules/moai/core/verification-claim-integrity.md: normalized diff — 12 local-only, 12 template-only, ~12 reword pairs, net one-sided=0 (tolerance 4)
+    sanitized_pair_parity_test.go:218: .claude/rules/moai/core/verification-claim-integrity.md: within reword tolerance — intentional §25 sanitization, no structural drift
+=== NAME  TestSanitizedPairParity/agent-common-protocol.md
+    sanitized_pair_parity_test.go:183: .claude/rules/moai/core/agent-common-protocol.md: token-only divergence — normalized doctrine identical (255 content lines)
+=== NAME  TestSanitizedPairParity/zone-registry.md
+    sanitized_pair_parity_test.go:183: .claude/rules/moai/core/zone-registry.md: token-only divergence — normalized doctrine identical (802 content lines)
+=== NAME  TestSanitizedPairParity/plan-auditor.md
+    sanitized_pair_parity_test.go:192: .claude/agents/moai/plan-auditor.md: normalized diff — 2 local-only, 1 template-only, ~1 reword pairs, net one-sided=1 (tolerance 4)
+    sanitized_pair_parity_test.go:218: .claude/agents/moai/plan-auditor.md: within reword tolerance — intentional §25 sanitization, no structural drift
+--- PASS: TestSanitizedPairParity (0.00s)
+    --- PASS: TestSanitizedPairParity/verification-batch-pattern.md (0.00s)
+    --- PASS: TestSanitizedPairParity/main-checkout-branch-guard.md (0.00s)
+    --- PASS: TestSanitizedPairParity/manager-develop-prompt-template.md (0.00s)
+    --- PASS: TestSanitizedPairParity/runtime-recovery-doctrine.md (0.00s)
+    --- PASS: TestSanitizedPairParity/askuser-protocol.md (0.00s)
+    --- PASS: TestSanitizedPairParity/verification-claim-integrity.md (0.01s)
+    --- PASS: TestSanitizedPairParity/agent-common-protocol.md (0.01s)
+    --- PASS: TestSanitizedPairParity/zone-registry.md (0.01s)
+    --- PASS: TestSanitizedPairParity/plan-auditor.md (0.01s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/template	0.265s

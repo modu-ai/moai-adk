@@ -69,7 +69,8 @@ A `Given … When … Then …` acceptance criterion is therefore the CORRECT fo
 - Event-driven: "When [trigger], the <subject> shall [response]"
 - State-driven: "While [condition], the <subject> shall [response]"
 - Where (capability-gate / feature flag / static config): "Where [capability exists], the <subject> shall [response]" — GEARS reframes `Where` as capability gate / feature flag / static config; NOT "feature option" (legacy EARS Optional usage)
-- Unwanted: "The <subject> shall not [action]" — GEARS canonical negative form; legacy `If [undesired condition], then the [system] shall [response]` retained with `[DEPRECATED — use shall not, per the canonical GEARS migration policy]` annotation
+- Event-detected: "**When** [undesired-condition-detected], the <subject> shall [response]" — the fifth GEARS pattern, replacing the legacy EARS `If [undesired condition], then the [system] shall [response]` form, which carries the `[DEPRECATED — use When <event-detected>, per the canonical GEARS migration policy]` annotation
+- Unwanted ("The <subject> shall not [action]"): NOT a GEARS pattern — legacy EARS negative usage only. Never canonical, never steered toward; it may be counted only as a legacy equivalent under the Score 1.0 allowance above, never as a fifth pattern
 
 Note: GEARS compound clause `[Where ...][While ...][When ...] The <subject> shall <behavior>` (any subset of the three modifiers chained) is PASS-equivalent at Score 1.0.
 

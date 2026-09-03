@@ -131,8 +131,8 @@ func TestPreCommitWarningWriterWiring(t *testing.T) {
 			t.Fatalf("read dir %s: %v", cliDir, err)
 		}
 		want := map[string]bool{
-			"init.go":                   false,
-			"update_template_sync.go":   false,
+			"init.go":                 false,
+			"update_template_sync.go": false,
 		}
 		for _, entry := range entries {
 			name := entry.Name()
