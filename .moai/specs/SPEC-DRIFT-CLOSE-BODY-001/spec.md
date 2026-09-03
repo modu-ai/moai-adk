@@ -2,7 +2,7 @@
 id: SPEC-DRIFT-CLOSE-BODY-001
 title: "본문 선언 close 인식 — subject가 못 담은 close로 생기는 drift 오탐 차단"
 version: "0.3.0"
-status: draft
+status: in-progress
 created: 2026-09-03
 updated: 2026-09-03
 author: manager-spec
