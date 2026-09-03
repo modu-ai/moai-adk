@@ -57,7 +57,7 @@ residual_risk:
 ```yaml
 sync_status: complete
 sync_complete_at: 2026-09-04
-sync_commit_sha: pending-backfill   # D3 placeholder — a commit cannot cite its own SHA; backfilled in the following commit
+sync_commit_sha: 475fda8a1   # backfilled — the sync commit itself (cannot cite its own SHA)
 carried_in_sync_commit:
   - spec.md          # in-progress -> completed frontmatter transition (status only; body untouched)
   - progress.md      # this §E.4 signal
