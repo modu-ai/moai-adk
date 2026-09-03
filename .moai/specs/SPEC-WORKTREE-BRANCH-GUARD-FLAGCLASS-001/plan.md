@@ -98,12 +98,13 @@ Create a permanent table-driven Go test (e.g.
 deny/matched, query → allow/unmatched). Run it on the pre-fix tree:
 
 - Expected observation: every pre-fix allow row in acceptance.md §D.1
-  FAILs (RED — the defect). As of v0.3.0 that is 23 rows / 24 command
+  FAILs (RED — the defect). As of v0.4.0 that is 25 rows / 26 command
   variants (§D.0's 10 guard-level measurements + audit-measured git-form
-  liveness M-20/M-22/M-23/M-24/M-25..M-28 + inferred-pending-M1
-  M-07/M-14/M-17/M-18/M-21). All query cells and existing deny cells PASS
-  (green-now). §D.1 is the normative expectation authority — the M1 run's
-  row set is read against §D.1, never against this count.
+  liveness M-20/M-22/M-23/M-24/M-25..M-29 + inferred-pending-M1
+  M-07/M-14/M-17/M-18/M-21/M-30). All query cells (Q-01..Q-14) and
+  existing deny cells PASS (green-now). §D.1 is the normative expectation
+  authority — the M1 run's row set is read against §D.1, never against
+  this count.
 - Record verbatim RED output + tree SHA in progress.md §E.2; this is the
   RED-now baseline that pins the fix class.
 - Decide the fix class from the matrix (see §G): if any probed form behaves
@@ -182,11 +183,17 @@ quoted-span collapse, `(?i)`):
    `git branch -v <name>`, `git branch -q <name>`,
    `git branch --no-force <name>` — all auditor-measured creating branches
    on git 2.50.1) and creation modifiers (`--recurse-submodules`,
-   `--create-reflog`) alongside a creation operand. Query flags that
-   select a list action (`--list`, `--contains`, `--merged`,
-   `--no-merged`, `--points-at`, `--format`, `--show-current`) consume
-   their pattern operands → allow (`--contains HEAD`, `--merged main`,
-   `--list develop -v` stay green). Note: `git branch -v vbranch`
+   `--create-reflog`) alongside a creation operand — including
+   `git branch --create-reflog <name>` (M-30). Value-consumption arity
+   rule (run-gate G1): a long flag is value-consuming iff git documents it
+   as taking a value; the pinned instance set is `--list`, `--contains`,
+   `--no-contains`, `--merged`, `--no-merged`, `--points-at`, `--format`,
+   `--sort`, `--color`, `--abbrev`, `--column`, `--show-current`, and
+   their SPACE-SEPARATED value forms (`git branch --sort committerdate`,
+   `git branch --no-contains HEAD`) consume the following token → allow
+   (`--contains HEAD`, `--merged main`, `--list develop -v`,
+   `--sort committerdate` stay green; Q-13/Q-14 pin the space-separated
+   forms). Note: `git branch -v vbranch`
    therefore denies — matching git's measured semantics (flag + name =
    create); the doctrine Permitted list's `-v`/`-vv` entries name
    operand-free inquiry forms, noted for the REQ-WBG-F-009 bullet wording.
@@ -194,7 +201,9 @@ quoted-span collapse, `(?i)`):
    - a short-flag cluster beginning with `u` — `u` consumes an attached
      value (`git branch -umain topic` parses and reaches upstream-setting
      logic, audit-iter-2-measured) — or containing any of
-     `d D m M c C f t` (e.g. `-d`, `-df`, `-vD`, `-u`, `-f`, `-t`);
+     `d D m M c C f t` (e.g. `-d`, `-df`, `-vD`, `-u`, `-f`, `-t`;
+     `git branch -vt vtbranch main` — auditor-measured setting tracking,
+     M-29 — exercises the cluster-`t` scan);
    - a long flag whose name — taken as the full token, split at `=` first
      when an attached value is present (`--set-upstream-to=origin/main` →
      name `--set-upstream-to`) — exactly matches a member of the mutation

@@ -1,7 +1,7 @@
 ---
 id: SPEC-WORKTREE-BRANCH-GUARD-FLAGCLASS-001
 title: "Main-Checkout Branch-State Guard — git branch Mutation-vs-Query Flag-Class Completion"
-version: "0.3.0"
+version: "0.4.0"
 status: draft
 created: 2026-09-03
 updated: 2026-09-03
@@ -108,7 +108,10 @@ table row — proportionate to the card.
    `git branch` denies in the primary checkout and every QUERY form stays
    allowed — EXTENDING the v1.3.2 mutation class per its shared-state
    rationale (the M1 measurement is the classification authority), not
-   merely re-implementing its literal six-flag enumeration.
+   merely re-implementing its literal six-flag enumeration. "Every" is
+   exact up to the named fail-open residual: git prefix-abbreviation
+   forms (`git branch --dele x`) classify as unknown → allow (acceptance
+   §D.1 note + E-5).
 2. **Full-flag-token classification.** Long flags classified by their
    complete token, never by substring — `--format` ≠ `--force`, and
    `--contains` / `--merged` / `--no-merged` must not be denied via the
@@ -195,10 +198,17 @@ option-prefixed creation forms (`git branch -- <name>`,
 `git branch -v <name>`, `git branch -q <name>`, `git branch --no-force
 <name>` — all auditor-measured creating branches on git 2.50.1) and
 creation modifiers (`--recurse-submodules`, `--create-reflog`) appearing
-alongside a creation operand. Query flags that select a list action
-(`--list`, `--contains`, `--merged`, `--no-merged`, `--points-at`,
-`--format`, `--show-current`) consume their pattern operands without
-triggering creation. A bare branch-name creation operand
+alongside a creation operand — including `git branch --create-reflog
+<name>` (M-30). Value-consuming query flags consume their operands
+WITHOUT triggering creation. General arity rule: a long flag is
+value-consuming iff git documents it as taking a value; the enumerated set
+is the pinned instance set — `--list`, `--contains`, `--no-contains`,
+`--merged`, `--no-merged`, `--points-at`, `--format`, `--sort`, `--color`,
+`--abbrev`, `--column`, `--show-current` — and their SPACE-SEPARATED
+value forms (`git branch --sort committerdate`,
+`git branch --no-contains HEAD`, `git branch --column always`,
+`git branch --abbrev 12`) consume the following token rather than reading
+it as a creation operand. A bare branch-name creation operand
 (`git branch <name>`, `git branch <name> <start-point>`) SHALL continue to
 deny.
 
@@ -303,7 +313,7 @@ kept in parity in the same commit.
 
 | AC | Subject | Verifiable by |
 |----|---------|---------------|
-| AC-WBG-F-001 | Full expected matrix: every mutation cell (M-01..M-28) → deny, every query cell → allow (§D.1 table) | M1/M3 Go table test over the matcher + handler |
+| AC-WBG-F-001 | Full expected matrix: every mutation cell (M-01..M-30) → deny, every query cell → allow (§D.1 table) | M1/M3 Go table test over the matcher + handler |
 | AC-WBG-F-002 | Combined short-flag clusters containing d/D/m/M/c/C/f → deny (`-df`, `-fm`, `-vD`) | Matrix cells with RED-now on `d592b0551` |
 | AC-WBG-F-003 | Query allowlist regression: `--list develop -v`, `-vv`, `--merged`, `--no-merged`, `--points-at`, `--format`, `--contains` → allow | Matrix cells (green-now; must stay green post-fix) |
 | AC-WBG-F-004 | Whole-token classification: `--format` allow vs `--force` deny; `--contains`/`--merged`/`--no-merged` allow despite embedded letters | Matrix cells |
@@ -377,3 +387,16 @@ kept in parity in the same commit.
   annotation (rc 129, fail-closed-safe, M-14 treatment) + E-5 tension
   clause. D14 audit-measured cell labels split into git-form liveness
   vs guard-allow inference.
+- 2026-09-03 v0.4.0 — run-gate audit revision (score 0.88, clears
+  threshold, verdict FAIL defect-driven; trajectory 0.79→0.83→0.88;
+  D8-D14 all verified RESOLVED): G1 value-consuming arity rule generalized
+  (pinned instance set extended with `--no-contains`/`--sort`/`--color`/
+  `--abbrev`/`--column`) + Q-13/Q-14 space-separated-value cells — closes
+  an over-match regression the positional-creation rule would otherwise
+  introduce. G5 grammar-vs-matrix gap closed: M-29 (`-vt` cluster —
+  auditor-measured setting tracking) and M-30 (`--create-reflog <name>`)
+  added so the cluster-`t` rule and modifier-creation rule are exercised.
+  G2 AC-001 variant count corrected (M-03/M-04/M-05 also dual-form → 32 at
+  v0.3.0; 34 at v0.4.0). G4 AC-008 Then-clause split per-axis (env
+  uncontested / AgentType M3-capture-decides). G3 §B headline qualified
+  with the abbreviation-prefix residual.
