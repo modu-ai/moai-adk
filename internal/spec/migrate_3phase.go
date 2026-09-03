@@ -23,13 +23,13 @@ import (
 
 // MigrationLogEntry records a single SPEC's §E.5→§E.4 fold.
 type MigrationLogEntry struct {
-	SpecID              string    `json:"spec_id"`
-	Era                 string    `json:"era"`
-	FoldedFrom          string    `json:"folded_from"`            // "§E.5"
-	FoldedTo            string    `json:"folded_to"`              // "§E.4"
-	MxCommitSha         string    `json:"mx_commit_sha,omitempty"`
-	MigratedAt          time.Time `json:"migrated_at"`
-	MigrationCommitSHA  string    `json:"migration_commit_sha,omitempty"`
+	SpecID             string    `json:"spec_id"`
+	Era                string    `json:"era"`
+	FoldedFrom         string    `json:"folded_from"` // "§E.5"
+	FoldedTo           string    `json:"folded_to"`   // "§E.4"
+	MxCommitSha        string    `json:"mx_commit_sha,omitempty"`
+	MigratedAt         time.Time `json:"migrated_at"`
+	MigrationCommitSHA string    `json:"migration_commit_sha,omitempty"`
 }
 
 // MigrationLog is the on-disk record at .moai/state/lifecycle-redesign-migration.json.

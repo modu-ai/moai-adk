@@ -138,7 +138,7 @@ func TestScaffolder_LanguageNeutralBody(t *testing.T) {
 	root := t.TempDir()
 	outDir := filepath.Join(root, ".moai", "proposals")
 	candidate := ProposalCandidate{
-		PatternKey: "code_change:func_extract:auth_module",
+		PatternKey:       "code_change:func_extract:auth_module",
 		ObservationCount: 5, Confidence: 0.9, Tier: "recommendation",
 		SourceTs: time.Date(2026, 5, 24, 0, 0, 0, 0, time.UTC),
 		DraftID:  "PROPOSAL-20260524-cafebabe",
@@ -183,7 +183,7 @@ func TestScaffolder_PreExistingProposalsPreserved(t *testing.T) {
 	}
 
 	candidate := ProposalCandidate{
-		PatternKey: "error_pattern:nil_deref:payment_handler",
+		PatternKey:       "error_pattern:nil_deref:payment_handler",
 		ObservationCount: 4, Confidence: 0.9, Tier: "approval_required",
 		SourceTs: time.Date(2026, 5, 24, 0, 0, 0, 0, time.UTC),
 		DraftID:  "PROPOSAL-20260524-feedface",
@@ -216,7 +216,7 @@ func TestScaffolder_IdempotentOverwrite(t *testing.T) {
 	root := t.TempDir()
 	outDir := filepath.Join(root, ".moai", "proposals")
 	candidate := ProposalCandidate{
-		PatternKey: "tool_failure:bash_timeout:db_migrate",
+		PatternKey:       "tool_failure:bash_timeout:db_migrate",
 		ObservationCount: 6, Confidence: 0.82, Tier: "recommendation",
 		SourceTs: time.Date(2026, 5, 24, 0, 0, 0, 0, time.UTC),
 		DraftID:  "PROPOSAL-20260524-aaaaaaaa",
@@ -331,7 +331,7 @@ func TestScaffolder_RejectsEmptyDraftID(t *testing.T) {
 	root := t.TempDir()
 	outDir := filepath.Join(root, ".moai", "proposals")
 	candidate := ProposalCandidate{
-		PatternKey: "code_change:func_extract:auth_module",
+		PatternKey:       "code_change:func_extract:auth_module",
 		ObservationCount: 5, Confidence: 0.85, Tier: "recommendation",
 		SourceTs: time.Date(2026, 5, 24, 0, 0, 0, 0, time.UTC),
 		DraftID:  "", // empty — must be rejected

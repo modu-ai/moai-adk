@@ -24,11 +24,11 @@ import (
 //
 // Three assertions:
 //
-//  (a) the user-set key AND its user-set value survive the merge (delete-never);
-//  (b) the removal IS surfaced — the retained-key advisory names the key
-//      (reported at least once, so the user is notified, not silently dropped);
-//  (c) no other user-set key is dropped (a hand-added unrelated user key is
-//      also retained).
+//	(a) the user-set key AND its user-set value survive the merge (delete-never);
+//	(b) the removal IS surfaced — the retained-key advisory names the key
+//	    (reported at least once, so the user is notified, not silently dropped);
+//	(c) no other user-set key is dropped (a hand-added unrelated user key is
+//	    also retained).
 //
 // Deferred sub-clause (AC-CKH-014 part b literal "emits no further report on a
 // second merge over the same tree"): the current merge engine emits the

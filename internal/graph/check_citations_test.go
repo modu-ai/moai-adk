@@ -119,12 +119,12 @@ func TestNormalizeCitedPath(t *testing.T) {
 		raw  string
 		want string
 	}{
-		{"internal/cli/", "internal/cli"},                     // trailing slash
-		{"internal/cli,", "internal/cli"},                      // trailing punctuation
+		{"internal/cli/", "internal/cli"},                           // trailing slash
+		{"internal/cli,", "internal/cli"},                           // trailing punctuation
 		{"internal/kanban/record.go.", "internal/kanban/record.go"}, // trailing period after .go
-		{"cmd/moai/main", "cmd/moai/main.go"},                  // call-chain map (spec §1.1 P8)
-		{"internal/graph/checkgo", "internal/graph/check.go"},  // .go-suffix restore (stripped period artifact)
-		{"internal/zzz-phantom", "internal/zzz-phantom"},       // no rule invents existence
+		{"cmd/moai/main", "cmd/moai/main.go"},                       // call-chain map (spec §1.1 P8)
+		{"internal/graph/checkgo", "internal/graph/check.go"},       // .go-suffix restore (stripped period artifact)
+		{"internal/zzz-phantom", "internal/zzz-phantom"},            // no rule invents existence
 	}
 	for _, tc := range cases {
 		if got := normalizeCitedPath(root, tc.raw); got != tc.want {

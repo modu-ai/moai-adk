@@ -241,7 +241,7 @@ func scanC2BareNarrative(root string) (map[string]struct{}, error) {
 			// Pass 2a: drop ID-embedded hits (SPEC-V3R, CONST-V3R, REQ-V3R, ...).
 			// Inspect a small left window for an ID-prefix form ending at start.
 			windowStart := max(start-16, 0)
-			window := text[windowStart : loc[1]]
+			window := text[windowStart:loc[1]]
 			if c2IDEmbeddedRe.MatchString(window) {
 				continue
 			}
