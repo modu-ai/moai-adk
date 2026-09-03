@@ -59,4 +59,12 @@ Shared evidence: today the gap is silent and undetected (research.md §A facts 1
 
 ## §G Resolution (populated at run-phase M1)
 
-_pending — the operator's option selection and, for Option A, the chosen identity scheme are recorded here at M1._
+**Decision: Option B — detect + guide only** (operator, 2026-09-03, recorded at run-phase M1 on tree b77ae5d5e).
+
+**Why A was rejected**: A's resurrection-avoidance requires a per-entry identity scheme (§B table), and each variant couples to a hazard this project has already been burned by — A2 writes bookkeeping into the user's settings.json, the exact file class whose wholesale-loss incident is recorded in CLAUDE.local.md §2.3 (`CleanMoaiManagedPaths` wiping local-only files); A3's sidecar lives under `.moai/state/`, which the same wipe root removes; A1 adds a visible identity field to shipped settings.json (a template-neutrality surface) plus a fallback rule for identity-less entries. A also makes a machine write into a user-owned config file as the merge-path default — the highest-blast-radius choice for a P1 release window.
+
+**Why C was rejected**: C leaves the silence intact — the defect's harm is that the gap is undetected; a documented silent drop still ships capabilities that never activate and requires docs to track every future template hook change (§D documentation-rot failure mode).
+
+**B's accepted cost** (§C failure modes, acknowledged at selection): the report re-raises on every release with new hooks; a user-deliberately-deleted entry is re-reported (the detector cannot distinguish user-deleted from never-delivered without A's identity machinery — the report wording stays neutral, "not present", never "deleted by update"); reported ≠ resolved.
+
+**Detection identity rule (B's own, recorded at M1)**: an entry's identity inside a hook event array is its `.claude/hooks/moai/*.sh` handler path (extracted from the entry's canonical JSON); an entry referencing no such path falls back to its canonical JSON serialization. This names entries precisely for the report without adding any field to shipped template content — the template-side hook set is read from the embedded `.claude/settings.json.tmpl`, rendered with the project's own `hook.opt_in.enabled` so an opt-out project is never flagged for hooks its update deliberately omitted.
