@@ -88,7 +88,7 @@ Regression: `go test ./internal/cli/ -run 'TestCheckCodexWiring' -count=1` → `
 
 ```yaml
 run_complete_at: 2026-09-03
-run_commit_sha: "pending-backfill-run"   # backfilled below after this commit lands (D3 placeholder pattern)
+run_commit_sha: "f943364f0"   # run-phase closing commit (backfilled per D3 placeholder pattern)
 run_status: complete
 ac_pass_count: 8
 ac_fail_count: 0
