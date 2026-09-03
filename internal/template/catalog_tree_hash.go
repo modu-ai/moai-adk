@@ -21,11 +21,14 @@ import (
 // (card t323). This function gives the claim and the deployment the same
 // boundary.
 //
-// Both consumers of the catalog hash share this one implementation: the
+// All three consumers of the catalog hash share this one implementation: the
 // generator (scripts/gen-catalog-hashes.go, over os.DirFS of the templates
-// tree) and the audit test (TestManifestHashFormat in catalog_tier_audit_test.go,
-// over the embedded FS) — so "what is hashed" has a single answer that cannot
-// drift into a pair.
+// tree), the audit test (TestManifestHashFormat in catalog_tier_audit_test.go,
+// over the embedded FS) and the on-disk parity guard (TestCatalogHashParity in
+// internal/spec/catalog_hash_test.go, over os.DirFS of the same tree) — so
+// "what is hashed" has a single answer that cannot drift into a set. The third
+// consumer was left on the v1 SKILL.md-only reading when this function landed,
+// and disagreed with the other two on 34 directory entries until card t441.
 func ComputeDirTreeHash(fsys fs.FS, dir string) (string, error) {
 	type entry struct {
 		rel string
