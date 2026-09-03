@@ -67,7 +67,7 @@ total_run_phase_files: 10
 m1_to_mN_commit_strategy: "3커밋 — 조항+교차참조(쌍둥이 동일 커밋) / 방출물+카탈로그 / 증거+진행기록"
 not_repaired_inherited_reds:
   - "agentemit golden: sync-auditor.toml sha256 mismatch — t443 소관"
-  - "TestManifestHashFormat: sync-auditor catalog hash stale — t443/t444 소관"
+  - "TestManifestHashFormat CATALOG_HASH_UNSTABLE 2건 — 모두 선존재 상속 적색 (본 브랜치 f5b9bb654 직접 측정): (1) sync-auditor catalog hash stale(4244c4a06 이래 — t443/t444 소관) (2) moai whole-tree entry(.claude/skills/moai/) hash stale — 흡수 머지 a261192b7로 develop(lane-5 regen)에서 유입. 상속 검증: 본 실행 저작 커밋(194fc9439..c27cc4d1c)의 catalog.yaml 델타는 plan-auditor 1줄뿐이고 .claude/skills/ 트리 델타는 0"
   - "쌍둥이 기존 2 hunk(D7-1 식별자, Tier ceiling 문단) — SPEC Out of Scope"
 ```
 
