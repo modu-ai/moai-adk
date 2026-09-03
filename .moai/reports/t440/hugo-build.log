@@ -1,0 +1,18 @@
+Start building sites … 
+hugo v0.160.1+extended+withdeploy darwin/arm64 BuildDate=2026-04-08T14:02:42Z VendorInfo=Homebrew
+
+
+              │ KO  │ EN  │ JA  │ ZH  
+──────────────┼─────┼─────┼─────┼─────
+ Pages        │ 187 │ 185 │ 185 │ 185 
+ Paginator    │   0 │   0 │   0 │   0 
+ pages        │     │     │     │     
+ Non-page     │  12 │  12 │  12 │  12 
+ files        │     │     │     │     
+ Static files │ 265 │ 265 │ 265 │ 265 
+ Processed    │   0 │   0 │   0 │   0 
+ images       │     │     │     │     
+ Aliases      │   6 │   5 │   5 │   5 
+ Cleaned      │   0 │   0 │   0 │   0 
+
+Total in 2926 ms
