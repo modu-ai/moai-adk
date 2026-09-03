@@ -222,3 +222,72 @@ every call site, with no mechanical guard against one being flipped and left
 flipped — which would silently disarm `AC-QUP-002`'s precondition. Recorded, not
 repaired: repairing it would add production-shaped scaffolding to a card whose
 `REQ-QUP-009` forbids exactly that.
+
+## §H Post-sync Corrections and Attributions
+
+Three records the sync commit could not carry, because each arrived after it.
+
+### AC-QUP-008 — the foreign actor is now named, and my inference was wrong
+
+The run-wide live-queue change (`4b4656fd…` → `ecefa722…`, mtime `1788421830` →
+`1788422246`) is attributed to the **`lead-1` session**, which stated it performed
+three writes to the primary checkout's live queue during the run window:
+`moai todo done t278`, `moai todo edit t446`, `moai todo edit t472`.
+
+**Disposition: attribution recorded, the Gap RETAINED.** A statement of authorship
+is not byte-level causal proof, and the lane declined to promote it by reproducing
+the causation in a controlled window: this card's judgment is that the upgrade path
+changed no production file, not that the queue is immutable, and a reproduction
+would widen the card's scope for a fact it does not need.
+
+**A correction against this lane's own earlier reasoning.** The run-phase report
+narrowed the candidate set to the three lanes observed running
+`go test ./internal/cli/...` concurrently (`t446`, `t454`, `t410`). That inference
+was WRONG — the writer was the lead, which the process listing could not have
+revealed, because the lead was not running the tests the listing was filtered on.
+
+The distinction matters and is recorded rather than smoothed over: **recording the
+verdict as a Gap was correct; the circumstantial reasoning inside it was not.** The
+two are separate claims, and the first being right did not make the second right.
+Had the run-wide window been written up as a PASS on the strength of that
+plausible-looking inference, the lead's own writes would never have surfaced —
+the restraint, not the reasoning, is what preserved the correction.
+
+### Shared-rule defect — the B12 acceptance-criterion counter under-counts
+
+Found by `manager-docs` during the CHANGELOG AC-count self-test, then reproduced
+independently by this lane rather than taken on report. The canonical counter in
+`.claude/rules/moai/development/manager-develop-prompt-template.md` § B12 collapses
+sub-lettered criteria into a single token:
+
+| Pattern | Command | Observed |
+|---|---|---|
+| B12 canonical | `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md \| sort -u \| wc -l` | `10` |
+| With trailing `[a-z]?` | `grep -oE 'AC-([A-Z0-9]+-)*[0-9]+[a-z]?' acceptance.md \| sort -u \| wc -l` | `11` |
+
+`AC-QUP-001a` and `AC-QUP-001b` both reduce to `AC-QUP-001`. The CHANGELOG entry
+states 11, the measured truth. **Not repaired here** — the defect is in a shared
+rule, not in this SPEC, and repairing it from inside a proof card would be the
+scope creep `REQ-QUP-009` and `spec.md §E` exist to prevent. Relayed to the lead
+as a card candidate.
+
+### Docs surfaces — independently swept, and not lagging
+
+`manager-docs` reported README and docs-site as requiring no change. This lane
+swept the same surfaces separately rather than accepting the claim:
+
+| Check | Command | Observed |
+|---|---|---|
+| SPEC referenced in README (4 locales) | `grep -rln 'SPEC-QUEUE-UPGRADE-PROOF-001\|state/kanban' README*.md \| wc -l` | `0` |
+| SPEC referenced in docs-site | `grep -rln 'SPEC-QUEUE-UPGRADE-PROOF-001' docs-site/content/ \| wc -l` | `0` |
+| Queue path documented | per-file `grep -o 'state/kanban\|state/todo'` over the 8 matching pages | `state/todo` on all 8; `state/kanban` on none |
+
+The eight pages are 4 locales × (`utility-commands/moai-todo.md`,
+`advanced/moai-web-console.md`), and every one documents the CURRENT path only.
+So "no edit" is right for a stronger reason than "nothing changed": the docs are
+not lagging the migration this card proves, and an edit would have introduced
+drift rather than removed it.
+
+The `export-json` row's silence about the downgrade export landing in the NEW
+directory is left uncorrected on purpose — that belongs to the separate-card
+finding recorded in `spec.md §E`, and reaching it from here would widen this card.
