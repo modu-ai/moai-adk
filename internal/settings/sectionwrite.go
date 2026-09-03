@@ -47,6 +47,10 @@ var sectionRootKeys = map[string]map[string]bool{
 	// / dialog_expiry). The launchers translate this file into a session
 	// --settings injection; the web console edits it through the seam.
 	"crosssession": {"crosssession": true},
+	// SPEC-PRECOMMIT-GATE-SCOPE-001 M2: gate.yaml's top-level key is `gate`
+	// (2026-09-03 실측 — template gate.yaml과 동일 형태). 미등록 시
+	// WriteSectionViaSeam이 "not seam-writable"로 소리 내어 실패한다.
+	"gate": {"gate": true},
 }
 
 // WriteSectionViaSeam은 projectRoot의 .moai/config/sections/<section>.yaml에

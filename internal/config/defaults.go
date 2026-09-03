@@ -620,6 +620,15 @@ func NewDefaultGateConfig() GateConfig {
 			MXIndexChangedFiles:  DefaultGraphFreshnessMXIndexChangedFiles,
 			UpdateBudgetMS:       DefaultGraphFreshnessUpdateBudgetMS,
 		},
+		// The pre-commit context's heavy gate is default-OFF (the BranchGuard /
+		// agent_stop_guard opt-in pattern): a project-wide failure unrelated to
+		// the staged change must not block unrelated commits. Opt in via
+		// gate.yaml pre_commit.enabled (editable from `moai web`). A standalone
+		// `moai gate` run ignores this key (operator decision 2,
+		// SPEC-PRECOMMIT-GATE-SCOPE-001).
+		PreCommit: GatePreCommitConfig{
+			Enabled: false,
+		},
 	}
 }
 
