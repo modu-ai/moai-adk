@@ -395,6 +395,9 @@
 - path: "gate.enabled"
   class: R
   evidence: none
+- path: "gate.pre_commit.enabled"
+  class: W
+  evidence: reader internal/cli/gate.go (runGate pre-commit marker branch — honored only under MOAI_PRECOMMIT=1)
 - path: "gate.skip_tests"
   class: R
   evidence: none
@@ -2868,6 +2871,9 @@
 - path: "workflow.multi.review_gate.enabled"
   class: W
   evidence: reader
+- path: "workflow.project.continuation"
+  class: P
+  evidence: .claude/skills/moai/workflows/project/doc-generation.md
 - path: "workflow.token_budget.plan"
   class: W
   evidence: reader

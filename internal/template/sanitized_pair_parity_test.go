@@ -19,8 +19,10 @@
 // IMPORTANT design note — why not "normalize then assert byte-identical":
 // §25 sanitization in this repo is implemented as prose REWORDING/REMOVAL, not
 // mechanical token substitution. Example (ci-watch-protocol.md):
-//   local:    "...added by SPEC-XXX Layer C in response to the W3 YYY meta-analysis..."
-//   template: "...added in response to a meta-analysis..."
+//
+//	local:    "...added by SPEC-XXX Layer C in response to the W3 YYY meta-analysis..."
+//	template: "...added in response to a meta-analysis..."
+//
 // A token-only normalization replaces SPEC-XXX with a placeholder but CANNOT
 // equalize the reworded surrounding prose. So a normalize-then-exact-match guard
 // would report EVERY current sanitized pair as drift (an always-red guard). This

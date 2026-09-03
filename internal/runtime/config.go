@@ -162,7 +162,7 @@ func defaultPerAgentBudget() map[string]int {
 		"expert-refactoring": 40000,
 		"expert-devops":      40000,
 		"expert-mobile":      40000,
-		"sync-auditor":   20000,
+		"sync-auditor":       20000,
 		"plan-auditor":       20000,
 	}
 }

@@ -110,6 +110,23 @@ Total: 18.5s
 
 `/moai gate`는 확인만 하고 파일에는 손대지 않는 **가벼운 검문소**입니다 (`--fix`를 줄 때만 린트·포맷을 바로잡습니다). 더 깊이 손봐야 하면 `/moai fix` (단발) 나 `/moai loop` (반복) 로 넘어가고, PR 전 종합 리뷰는 `/moai review`로 합니다. `--fresh` 모드는 `/moai loop`의 독립 최종 검증 패스가 자기 자신을 근거로 삼지 않는 증거를 얻으려고 이 게이트를 부를 때 씁니다.
 
+## Pre-commit 훅과 `gate.pre_commit.enabled`
+
+git pre-commit 훅도 이 게이트를 호출합니다. 훅은 `MOAI_PRECOMMIT=1` 마커를 붙여 `moai gate`를 실행하고, 러너는 **이 마커가 붙은 호출에서만** 새 설정 키 `gate.pre_commit.enabled`(기본값 `false`)를 읽습니다. 기본값이 꺼져 있기 때문에, 프로젝트 전체의 무거운 검사(vet·lint·test·typecheck)는 pre-commit 맥락에서 기본으로 건너뛰고 — 커밋과 무관한 기존 실패 하나가 모든 커밋을 막는 일을 막습니다. 훅은 여전히 매 커밋마다 빠른 스테이지 파일 검사(gofmt + `go vet`)를 돌립니다.
+
+```yaml
+# .moai/config/sections/gate.yaml
+gate:
+  pre_commit:
+    enabled: true   # 기본값 false — 프로젝트 전체 검사로 커밋을 막으려면 켭니다
+```
+
+{{< callout type="info" >}}
+`moai web`의 **Gate** 설정 패널에서도 같은 키를 편집할 수 있으며, 저장은 정확히 `.moai/config/sections/gate.yaml`에 기록됩니다.
+{{< /callout >}}
+
+단독으로 실행한 `moai gate`는 이 키를 무시하고 기존의 `gate.enabled` 설정을 그대로 따릅니다. 커밋을 급하게 해야 할 때는 `SKIP_MOAI_PRECOMMIT=1 git commit`으로 훅 자체를 건너뛸 수 있습니다.
+
 ## 관련 문서
 
 - [/moai fix - 일회성 자동 수정](/ko/utility-commands/moai-fix)

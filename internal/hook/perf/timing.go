@@ -46,10 +46,10 @@ type TimingSnapshot struct {
 // single-threaded for the phases measured). The zero value is a no-op
 // collector; use NewTimingCollector to get an active one.
 type TimingCollector struct {
-	enabled  bool
+	enabled   bool
 	procStart time.Time // process start (captured by caller before InitDependencies)
-	mu       sync.Mutex
-	snapshot TimingSnapshot
+	mu        sync.Mutex
+	snapshot  TimingSnapshot
 }
 
 // NewTimingCollector returns a collector that is active only when
@@ -58,7 +58,7 @@ type TimingCollector struct {
 // earliest available init point).
 func NewTimingCollector(procStart time.Time) *TimingCollector {
 	return &TimingCollector{
-		enabled:  Enabled(),
+		enabled:   Enabled(),
 		procStart: procStart,
 	}
 }
@@ -109,11 +109,11 @@ func (tc *TimingCollector) Emit(totalEnd time.Time) {
 	tc.mu.Unlock()
 
 	line := map[string]any{
-		"phase":           "perf_timing",
-		"fork_exec_ms":    snap.ForkExecMs,
-		"config_load_ms":  snap.ConfigLoadMs,
-		"dispatch_ms":     snap.DispatchMs,
-		"total_ms":        snap.TotalMs,
+		"phase":          "perf_timing",
+		"fork_exec_ms":   snap.ForkExecMs,
+		"config_load_ms": snap.ConfigLoadMs,
+		"dispatch_ms":    snap.DispatchMs,
+		"total_ms":       snap.TotalMs,
 	}
 	data, err := json.Marshal(line)
 	if err != nil {

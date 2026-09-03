@@ -221,6 +221,20 @@ const (
 	DefaultHomeCleanRetentionDays = 30
 	DefaultReleaseKeep            = 3
 
+	// Lessons-inbox lifecycle defaults (SPEC-INBOX-DRAIN-GAP-001 REQ-IBX-001 /
+	// REQ-IBX-004 — single source of truth; CLAUDE.local.md §14 — no duplicate
+	// literals). DefaultInboxMaxBytes is the collector-side write-time size cap
+	// for .moai/lessons-inbox.jsonl: an append observing the live file at or
+	// over this size rotates it into a bounded archive (marker-absent installs
+	// only — the LSEL curator owns the inbox lifecycle on its own machine).
+	// 1 MiB sits just under the measured t259 drain-stall scale (~1.1 MB), so
+	// a stalled drain no longer grows the inbox past roughly one generation.
+	// DefaultInboxArchiveGenerations is the retained rotated-generation count
+	// (lessons-inbox.jsonl.1, lessons-inbox.jsonl.2); the rotation chain is
+	// derived from it, never restated at the call site.
+	DefaultInboxMaxBytes           = 1 << 20
+	DefaultInboxArchiveGenerations = 2
+
 	// Memory taxonomy defaults (SPEC-V3R2-EXT-001)
 	// @MX:NOTE: [AUTO] 메모리 감사 서브시스템의 실제 배선(wiring)은 아래 패키지 레벨 상수 +
 	// MOAI_MEMORY_AUDIT 환경변수 경로다. 과거 workflow.memory.* YAML 블록을 미러링하던
@@ -606,6 +620,15 @@ func NewDefaultGateConfig() GateConfig {
 			MXIndexChangedFiles:  DefaultGraphFreshnessMXIndexChangedFiles,
 			UpdateBudgetMS:       DefaultGraphFreshnessUpdateBudgetMS,
 		},
+		// The pre-commit context's heavy gate is default-OFF (the BranchGuard /
+		// agent_stop_guard opt-in pattern): a project-wide failure unrelated to
+		// the staged change must not block unrelated commits. Opt in via
+		// gate.yaml pre_commit.enabled (editable from `moai web`). A standalone
+		// `moai gate` run ignores this key (operator decision 2,
+		// SPEC-PRECOMMIT-GATE-SCOPE-001).
+		PreCommit: GatePreCommitConfig{
+			Enabled: false,
+		},
 	}
 }
 
@@ -840,6 +863,12 @@ func NewDefaultWorkflowConfig() WorkflowConfig {
 		// fact that ABSENT and TRUE are the same answer, and that only a
 		// literal `enabled: false` turns the guidance off.
 		Todo: WorkflowTodoConfig{},
+		// SPEC-PROJECT-CONTINUATION-KEY-001 REQ-PCK-002: the construction-time
+		// default is the named token, not the empty string. Absent and `card`
+		// resolve identically either way (ProjectContinuation maps "" to card),
+		// so this line is belt-and-braces: it makes the default readable from
+		// the struct rather than only from the resolver.
+		Project: WorkflowProjectConfig{Continuation: ProjectContinuationCard},
 		// SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001 REQ-1/REQ-4: the guard ships
 		// default-OFF (opt-in). Distributed users get an inert guard; the
 		// maintainer of a shared multi-session checkout opts in via local

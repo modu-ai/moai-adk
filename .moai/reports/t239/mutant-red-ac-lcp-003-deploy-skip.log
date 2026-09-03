@@ -1,0 +1,6 @@
+2026/09/02 21:57:18 INFO SUNSET_CONFIG_DORMANT_NOTICE spec="SPEC-V3R2-MIG-003 REQ-018" yaml_path=.moai/config/sections/sunset.yaml advice="SunsetConfig has no runtime hot path; activation requires a new SPEC"
+--- FAIL: TestUpdateLLMYAMLFirstDeployCalm (0.21s)
+    update_llm_preserve_test.go:272: llm.yaml absent after update on a project that had none: open /var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestUpdateLLMYAMLFirstDeployCalm1817527394/001/.moai/config/sections/llm.yaml: no such file or directory
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	1.127s
+FAIL

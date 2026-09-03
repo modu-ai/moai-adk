@@ -1,0 +1,7 @@
+--- FAIL: TestRunDoctor_WithFix (18.36s)
+    coverage_improvement_test.go:737: runDoctor error: doctor: 1 check(s) failed
+--- FAIL: TestRunDoctor_Verbose (12.34s)
+    coverage_improvement_test.go:777: runDoctor error: doctor: 1 check(s) failed
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	32.409s
+FAIL

@@ -25,11 +25,11 @@ func TestCapture_SubagentStopTrigger(t *testing.T) {
 	})
 
 	event := capture.SubagentStopEvent{
-		AgentName:    "manager-develop",
-		AgentType:    "subagent",
-		SessionID:    "sess-001",
-		Timestamp:    time.Now().UTC(),
-		ContextHash:  "abc123",
+		AgentName:   "manager-develop",
+		AgentType:   "subagent",
+		SessionID:   "sess-001",
+		Timestamp:   time.Now().UTC(),
+		ContextHash: "abc123",
 	}
 
 	if err := c.OnSubagentStop(event); err != nil {

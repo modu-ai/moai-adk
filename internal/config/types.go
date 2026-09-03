@@ -113,9 +113,12 @@ type ModeProfile struct {
 	AutoCheckpoint string `yaml:"auto_checkpoint"` // manual mode only
 	BranchPrefix   string `yaml:"branch_prefix"`   // personal/team modes only
 	MainBranch     string `yaml:"main_branch"`     // personal/team modes only
-	// Manual-mode git-flow keys. These have NO Go consumer — they are
-	// pass-through fields whose only job is to survive a typed load-and-save
-	// round trip (SPEC-WORKTREE-BASEREF-001 REQ-WBR-013 / AC-WBR-014).
+	// Manual-mode git-flow keys. ReleaseBranchPrefix and RCVersionFormat have
+	// no Go consumer — they are pass-through fields whose only job is to
+	// survive a typed load-and-save round trip (SPEC-WORKTREE-BASEREF-001
+	// REQ-WBR-013 / AC-WBR-014). DevelopBranch gained one (card t449): the
+	// `moai integration acquire` record resolves its branch default through
+	// LoadGitFlowDevelopBranch.
 	//
 	// Measured before they existed: saving git_strategy through the typed path
 	// re-marshals this struct, so a `worktree_base_branch` edit made from the
@@ -415,6 +418,11 @@ type WorkflowConfig struct {
 	// directly: the pointer inside distinguishes "key absent" (= enabled)
 	// from "explicitly disabled", which a plain bool cannot express.
 	Todo WorkflowTodoConfig `yaml:"todo"`
+	// Project carries the /moai project Phase 14 completion-continuation key
+	// (SPEC-PROJECT-CONTINUATION-KEY-001 REQ-PCK-001). Read through
+	// Config.ProjectContinuation, never directly: the resolver supplies the
+	// absent-key default and reports an unmatched value rather than applying it.
+	Project WorkflowProjectConfig `yaml:"project"`
 	// SessionWorktree gates the automatic worktree isolation for
 	// moai init / moai profile / moai web (SPEC-SESSION-WORKTREE-001 REQ-SW-001 /
 	// REQ-SW-002). Default false: the feature ships INERT (byte-identical
@@ -614,6 +622,18 @@ type WorkflowWorktreeConfig struct {
 // registered and every verb keeps working regardless of this value (REQ-3).
 type WorkflowTodoConfig struct {
 	Enabled *bool `yaml:"enabled"`
+}
+
+// WorkflowProjectConfig mirrors workflow.project.* — the /moai project Phase 14
+// completion-continuation key (SPEC-PROJECT-CONTINUATION-KEY-001 REQ-PCK-001).
+//
+// Continuation is a plain string, NOT a *string. The pointer on
+// WorkflowTodoConfig.Enabled buys a distinction this domain does not have: the
+// default here is a NAMED token of the closed set — card — so "absent" and
+// "card" mean exactly the same thing, and no requirement reads a nil case.
+// Read it through Config.ProjectContinuation rather than dereferencing here.
+type WorkflowProjectConfig struct {
+	Continuation string `yaml:"continuation"`
 }
 
 // BranchGuardConfig mirrors workflow.branch_guard.* — the Main-Checkout
@@ -831,6 +851,22 @@ type GateConfig struct {
 	DisabledSteps map[string]bool `yaml:"disabled_steps"`
 	// Typecheck configures the type-check axis.
 	Typecheck GateTypecheck `yaml:"typecheck"`
+	// PreCommit scopes the heavy gate's pre-commit context
+	// (SPEC-PRECOMMIT-GATE-SCOPE-001). The runner honors it ONLY when the
+	// invoking hook exports the MOAI_PRECOMMIT=1 marker; a standalone
+	// `moai gate` run never reads it, so its existing gate.enabled contract is
+	// unchanged (operator decision 2).
+	PreCommit GatePreCommitConfig `yaml:"pre_commit"`
+}
+
+// GatePreCommitConfig configures the heavy gate's pre-commit context.
+type GatePreCommitConfig struct {
+	// Enabled opts the git pre-commit hook's heavy gate in. Default false:
+	// under the MOAI_PRECOMMIT=1 marker the runner skips the project-wide
+	// heavy steps (vet/lint/test/typecheck) so a pre-existing failure
+	// unrelated to the staged change cannot block unrelated commits. The
+	// standalone `moai gate` CLI ignores this key entirely.
+	Enabled bool `yaml:"enabled"`
 }
 
 // GateTypecheck configures the gate's type-check axis.
