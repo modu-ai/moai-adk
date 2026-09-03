@@ -2,7 +2,7 @@
 id: SPEC-WORKTREE-BRANCH-GUARD-FLAGCLASS-001
 title: "Main-Checkout Branch-State Guard — git branch Mutation-vs-Query Flag-Class Completion"
 version: "0.7.0"
-status: in-progress
+status: completed
 created: 2026-09-03
 updated: 2026-09-03
 author: manager-spec

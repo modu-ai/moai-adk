@@ -243,7 +243,23 @@ m1_to_mN_commit_strategy: per-milestone Conventional Commits with card id t467 i
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_complete_at: 2026-09-03
+sync_commit_sha: pending-backfill-sync   # D3 placeholder — a commit cannot cite its own SHA; real SHA backfilled in a follow-up commit
+sync_status: completed
+b12_self_test_a: pass   # grep -c 'SPEC-WORKTREE-BRANCH-GUARD-FLAGCLASS-001' CHANGELOG.md → 0 before emission (no duplicate entry)
+b12_self_test_b: pass   # 9 distinct live AC identifiers in acceptance.md (AC-WBG-F-001..009; no [RETIRED]/[REF] exclusions) = CHANGELOG "Nine acceptance criteria PASS"
+b12_self_test_c: pass   # implementation read directly, not from plan.md: internal/hook/branch_guard.go (matchGitBranchMutation + flag sets) + branch_guard_flagclass_test.go (4 test functions); paths verified by ls
+changelog_entry_position: CHANGELOG.md [Unreleased] → ### Fixed — first entry of the Fixed block (SPEC-linked form per house pattern)
+frontmatter_status_transitions:
+  spec_md: in-progress -> completed   # rides the single sync commit (3-phase close; no separate Mx commit)
+  plan_md: none
+  acceptance_md: none
+  progress_md: section-added          # §E.4 populated (this block)
+canary_compliance_check:
+  d12_contested_axis: remains contested — no resolution asserted in CHANGELOG or here; lead-side probe recipe at §E.2 M3.4
+  push_state: not pushed — lane protocol; lead batch-push owns origin/develop
+```
 
 ## §F Phase 4 Mode Selection
 
