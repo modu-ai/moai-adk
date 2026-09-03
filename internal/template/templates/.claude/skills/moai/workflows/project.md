@@ -56,7 +56,7 @@ This workflow is also triggered automatically when project documentation does no
 | Phase 11: MCP Server Provisioning | `project/doc-generation.md` | Detect stack, select recommended MCP servers, orchestrator approval, additive `.mcp.json` write |
 | Phase 12: Dev Methodology Config | `project/doc-generation.md` | Auto-set development_mode in quality.yaml |
 | Phase 13: DB Detection | `project/doc-generation.md` | Grep/Glob DB keyword detection, db-detection.json |
-| Phase 14: Completion | `project/doc-generation.md` | Summary report + one derived `[PROJECT] ` backlog card (standing source, skipped when `harness-spec.yaml` `goal` is empty or the card already exists) + next-steps AskUserQuestion whose chosen branch is the operator's pick |
+| Phase 14: Completion | `project/doc-generation.md` | Summary report + one derived `[PROJECT] ` backlog card (standing source, skipped when `harness-spec.yaml` `goal` is empty or the card already exists) + next-steps AskUserQuestion whose chosen branch is the operator's pick. Governed by `workflow.project.continuation` (`none` \| `card` \| `pipeline`; absent and unmatched both resolve to `card`), which selects the recommended option and how far it carries the session — never whether the question is asked |
 | Phase 15: Harness Generation Entry | `project/meta-harness.md` | Redirect to the v4 harness Builder (Context-First Discovery + orchestrator-direct 4-phase Builder) |
 | Phase 16: 5-Layer Activation | `project/meta-harness.md` | Install CLAUDE.md marker + main.md router, post-generation smoke gate |
 

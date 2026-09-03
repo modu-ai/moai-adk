@@ -68,11 +68,11 @@ type metricTask struct {
 
 // metricModule is one entry in module_tree.json.
 type metricModule struct {
-	PackagePath   string   `json:"package_path"`
-	DisplayName   string   `json:"display_name"`
-	Layer         string   `json:"layer"`
-	Responsibility string  `json:"responsibility"`
-	DependsOn     []string `json:"depends_on"`
+	PackagePath    string   `json:"package_path"`
+	DisplayName    string   `json:"display_name"`
+	Layer          string   `json:"layer"`
+	Responsibility string   `json:"responsibility"`
+	DependsOn      []string `json:"depends_on"`
 }
 
 // metricModuleTree is the blueprint module registry.
@@ -324,9 +324,9 @@ func TestReadsReductionMetric(t *testing.T) {
 
 	var withReads, withoutReads int
 	type perCase struct {
-		Name        string
-		With        int
-		Without     int
+		Name         string
+		With         int
+		Without      int
 		ReductionPct float64
 	}
 	var perCaseRows []perCase

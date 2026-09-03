@@ -206,4 +206,3 @@ func TestRunAgencyMigrationAdapter_DryRunFlagPropagatedCharacterization(t *testi
 		t.Errorf("dryRun=true mutated .moai under %s: pre=%v post=%v (dry-run must be read-only)", root, pre, post)
 	}
 }
-

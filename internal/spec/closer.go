@@ -60,8 +60,8 @@ type CloseOptions struct {
 
 // CloseResult is the structured output of Close().
 type CloseResult struct {
-	SpecID    string            `json:"spec_id"`
-	CommitSHA string            `json:"commit_sha,omitempty"`
+	SpecID    string `json:"spec_id"`
+	CommitSHA string `json:"commit_sha,omitempty"`
 	// Transitions records which fields were updated and to what values.
 	// Empty map indicates no-op (AC-LSG-018 fully-completed-noop fixture).
 	Transitions map[string]string `json:"transitions"`
@@ -521,12 +521,12 @@ func backfillProgressField(content, field, value string) string {
 // (`.result == "success" and .transitions == {}`) AND AC-LSG-020's
 // `.result == "success"` filter match the 5 no-op dogfood closes.
 type lifecycleCloseLogEntry struct {
-	Timestamp   string            `json:"timestamp"`   // RFC3339
+	Timestamp   string            `json:"timestamp"` // RFC3339
 	SpecID      string            `json:"spec_id"`
 	Mode        string            `json:"mode"`        // full-close | backfill-only
 	Transitions map[string]string `json:"transitions"` // changed fields; {} when none
 	CommitSHA   string            `json:"commit_sha"`
-	Result      string            `json:"result"`      // success | failure
+	Result      string            `json:"result"` // success | failure
 	DurationMs  int64             `json:"duration_ms"`
 }
 

@@ -32,9 +32,9 @@ func TestSentinelCatalog_LearningSet(t *testing.T) {
 	// The remaining 7 sentinels are returned as error strings by safety/tier packages.
 	// We verify their string values via literal comparison to catch silent renames.
 	sentinels := map[string]string{
-		"HARNESS_LEARNING_MUTED":              throttle.ReasonMuted,
-		"HARNESS_LEARNING_QUIET_WINDOW":       throttle.ReasonQuiet,
-		"HARNESS_LEARNING_BATCHED":            throttle.ReasonBatched,
+		"HARNESS_LEARNING_MUTED":        throttle.ReasonMuted,
+		"HARNESS_LEARNING_QUIET_WINDOW": throttle.ReasonQuiet,
+		"HARNESS_LEARNING_BATCHED":      throttle.ReasonBatched,
 		// Sentinel error strings (not exported as consts; verified by prefix match)
 		"HARNESS_LEARNING_FROZEN_BLOCKED":     "HARNESS_LEARNING_FROZEN_BLOCKED",
 		"HARNESS_LEARNING_CANARY_FAILED":      "HARNESS_LEARNING_CANARY_FAILED",

@@ -110,6 +110,23 @@ When everything passes, a commit-ready message is shown. When it fails without `
 
 `/moai gate` is a **lightweight checkpoint** that only validates and does not modify files (it corrects lint and format only when given `--fix`). When deeper resolution is needed, move on to `/moai fix` (one-shot) or `/moai loop` (iterative); for a comprehensive pre-PR review, use `/moai review`. `--fresh` mode is used when `/moai loop`'s independent final-verification pass calls this gate to obtain self-reference-free evidence.
 
+## The pre-commit hook and `gate.pre_commit.enabled`
+
+The git pre-commit hook also invokes this gate. The hook runs `moai gate` with a `MOAI_PRECOMMIT=1` marker, and the runner reads the new config key `gate.pre_commit.enabled` (default `false`) **only for calls carrying that marker**. Because the default is off, the project-wide heavy checks (vet, lint, test, typecheck) are skipped in the pre-commit context by default — one pre-existing failure unrelated to your staged change cannot block every commit. The hook still runs the fast staged-files subset (gofmt + `go vet`) on every commit.
+
+```yaml
+# .moai/config/sections/gate.yaml
+gate:
+  pre_commit:
+    enabled: true   # default false — opt in to block commits on project-wide failures
+```
+
+{{< callout type="info" >}}
+The same key is editable in the **Gate** panel of `moai web`, and saving writes exactly `.moai/config/sections/gate.yaml`.
+{{< /callout >}}
+
+A standalone `moai gate` run ignores this key and keeps following the existing `gate.enabled` setting. When you need to commit urgently, `SKIP_MOAI_PRECOMMIT=1 git commit` bypasses the hook itself.
+
 ## Related documents
 
 - [/moai fix - one-shot auto-fix](/en/utility-commands/moai-fix)
