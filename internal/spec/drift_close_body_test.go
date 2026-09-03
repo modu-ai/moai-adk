@@ -146,6 +146,12 @@ func TestDriftCloseBody_MentionIsNotClose(t *testing.T) {
 // basis: 12/12 or the predicate is wrong.
 // ---------------------------------------------------------------------------
 
+// closeBearingSubject is the subject the line-level table tests run under. Shape A
+// is gated on the containing commit's subject carrying a close signal, so the table
+// — which exercises the LINE predicate — supplies a subject that clears that gate.
+// The gate itself is measured separately, against the commit that motivated it.
+const closeBearingSubject = alphaCloseSubject
+
 type bodyLineCase struct {
 	n      int
 	source string
@@ -225,7 +231,7 @@ var closeBodyFixtureLines = []bodyLineCase{
 // non-close shape-B line (11).
 func TestDriftCloseBody_PredicateTable(t *testing.T) {
 	for _, tc := range closeBodyFixtureLines {
-		got := bodyDeclaresClose(tc.line, tc.specID)
+		got := bodyDeclaresClose(closeBearingSubject, tc.line, tc.specID)
 		if got != tc.want {
 			t.Errorf("line %d (%s, %s): bodyDeclaresClose = %v, want %v — %s\n  line: %s",
 				tc.n, tc.source, tc.specID, got, tc.want, tc.why, tc.line)
@@ -248,7 +254,7 @@ func TestDriftCloseBody_FullBodyScan(t *testing.T) {
 	}
 	body := "chore(release): squash merge\n\n" + line11 + "\n" + line12 + "\n"
 
-	if !bodyDeclaresClose(body, "SPEC-WORKTREE-ENTRY-STRATEGY-001") {
+	if !bodyDeclaresClose(closeBearingSubject, body, "SPEC-WORKTREE-ENTRY-STRATEGY-001") {
 		t.Errorf("bodyDeclaresClose = false, want true — the scan must sweep the whole body; line 11 is non-close and precedes the real close on line 12 (REQ-DCB-003)")
 	}
 }
@@ -358,6 +364,71 @@ func TestDriftCloseBody_SubjectNamingSpecIDIsPrimaryWalkTerritory(t *testing.T) 
 	}
 }
 
+// ---------------------------------------------------------------------------
+// The shape-A subject gate — found by the M3 corpus sweep, not by the 12-line
+// fixture. spec.md §5.3 anticipates exactly this: a counter-example outside the
+// fixture is answered by NARROWING the predicate, never by widening it.
+// ---------------------------------------------------------------------------
+
+// amendmentCommit reproduces ac3e38a0b: a shape-A-looking line that records an
+// AMENDMENT, inside a commit that closes nothing. Its own body states that the
+// status was preserved rather than transitioned.
+func amendmentCommit() commitRecord {
+	subject := "feat(SPEC-MCP-DEFAULT-ON-001): moai MCP server as first-class default (plan+amendment+run)"
+	body := subject + "\n\n" +
+		"Both completed SPECs amended per SPEC-MCP-DEFAULT-ON-001 REQ-A-6/REQ-A-7:\n" +
+		"- SPEC-AMEND-TARGET-001: REQ-MCP-002 opt-in->default-on, REQ-MCP-015 opt-out flag, AC-MCP-002/006 amended (0.1.0 -> 0.2.0)\n\n" +
+		"status: completed preserved (owner direction); amendment_of omitted.\n"
+	return commitRecord{subject: subject, fullMsg: body}
+}
+
+// TestDriftCloseBody_AmendmentRecordIsNotClose is the measured counter-example.
+// Without the subject gate the amendment line reads as a close and clears a row
+// whose close is not on the judged branch at all.
+func TestDriftCloseBody_AmendmentRecordIsNotClose(t *testing.T) {
+	c := amendmentCommit()
+
+	if bodyDeclaresClose(c.subject, c.fullMsg, "SPEC-AMEND-TARGET-001") {
+		t.Errorf("bodyDeclaresClose = true, want false — the line records an amendment (REQ/AC edits, 0.1.0 -> 0.2.0) inside a commit that closes nothing; shape A must be gated on the subject carrying a close signal")
+	}
+
+	// Converse: the same line inside a commit that IS a close still counts, so the
+	// gate narrows shape A rather than disabling it.
+	closeSubject := "docs: close out 4 A-tier SPECs with sync-phase"
+	if !bodyDeclaresClose(closeSubject, c.fullMsg, "SPEC-AMEND-TARGET-001") {
+		t.Errorf("bodyDeclaresClose = false, want true — the gate must narrow shape A, not disable it")
+	}
+}
+
+// TestDriftCloseBody_SubjectCloseSignalCoversMeasuredCloses discharges spec.md
+// §5.4 condition 3: a subject-side signal used as a gate must admit every measured
+// close subject. closeInfixMatch failed this (it drops 2 of 6, this card's own
+// target among them), which is why the gate is a broader `close` substring.
+func TestDriftCloseBody_SubjectCloseSignalCoversMeasuredCloses(t *testing.T) {
+	measured := []string{
+		"Close out 2 SPECs with 3-phase lifecycle completion (doc-only) (#1210)",                                                                            // 7beda68a5
+		"chore(SPEC group C): Mx-phase close (status implemented→completed, 2026-06-02)",                                                                    // e979a4d13
+		"docs(specs): batch sync-phase close — 5 B-grade SPECs (3-phase close) (#1240)",                                                                     // 2f449e189
+		"docs: close out 4 A-tier SPECs with sync-phase (CLI-TUI-MODERNIZE-001 · INVOCATION-MODEL-002 · WORKFLOW-CACHE-OPT-001 · ASTGREP-EDIT-001) (#1215)", // cd21df594
+		"chore(spec): close KANBAN-RENAME-001 + AGENT-MODEL-ENFORCE-001, supersede CONFIG-TIER-PERSIST-001 (#1516)",                                         // cd80f0644
+		"docs(SPEC-INTERNAL-TEST-001): sync-phase artifacts + 3-phase close",
+		"feat(SPEC-HIERARCHICAL-TEAM-001): hierarchical team wiring (Tier M, 3-phase close) (#1394)",
+	}
+	for _, s := range measured {
+		if !subjectCloseSignal(s) {
+			t.Errorf("subjectCloseSignal = false, want true — §5.4 condition 3 requires every measured close subject to pass\n  subject: %s", s)
+		}
+	}
+
+	// Two of these are exactly the subjects closeInfixMatch drops (§5.4), which is
+	// the reason the gate is not closeInfixMatch.
+	for _, s := range []string{measured[0], measured[1]} {
+		if closeInfixMatch(strings.ToLower(s)) {
+			t.Errorf("closeInfixMatch = true, want false — the §5.4 rejection measurement no longer reproduces; re-derive the gate\n  subject: %s", s)
+		}
+	}
+}
+
 // TestDriftCloseBody_ExistingFallbackStillFirst pins REQ-DCB-006: the combined-scope
 // fallback keeps deciding the cases it already decided.
 func TestDriftCloseBody_ExistingFallbackStillFirst(t *testing.T) {
@@ -387,12 +458,12 @@ func TestDriftCloseBody_ListMarkersStripped(t *testing.T) {
 	const id = "SPEC-MARKER-CASE-001"
 	for _, marker := range []string{"", "- ", "* ", "+ ", "  - ", "\t* "} {
 		line := marker + id + ": Mx verdict EVALUATE-PASS"
-		if !bodyDeclaresClose(line, id) {
+		if !bodyDeclaresClose(closeBearingSubject, line, id) {
 			t.Errorf("marker %q: bodyDeclaresClose = false, want true\n  line: %s", marker, line)
 		}
 	}
 	// A marker that is not a list marker must not be stripped into a shape-A match.
-	if bodyDeclaresClose("> "+id+": quoted", id) {
+	if bodyDeclaresClose(closeBearingSubject, "> "+id+": quoted", id) {
 		t.Errorf("blockquote marker was stripped — the marker set must stay narrow")
 	}
 	if !strings.Contains("> "+id, id) {

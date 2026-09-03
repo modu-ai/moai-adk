@@ -304,7 +304,7 @@ func inMemBodyDeclaredClose(commits []commitRecord, specID string) bool {
 		}
 
 		// gate (b): the body-line predicate.
-		if bodyDeclaresClose(c.fullMsg, specID) {
+		if bodyDeclaresClose(c.subject, c.fullMsg, specID) {
 			return true
 		}
 	}
@@ -337,6 +337,45 @@ var conventionalSubjectPattern = regexp.MustCompile(`^[a-z]+(\([^)]*\))?: `)
 // is a second lock rather than the only one: it exists so a later widening of either
 // shape cannot silently readmit a dependency reference.
 var bodyDeclaredCloseDenyKeys = []string{"depends_on:", "related:", "supersedes:", "blocked_by:"}
+
+// subjectCloseSignal is the shape-A-only narrowing found by the M3 corpus sweep.
+//
+// Shape A recognizes `<full-ID>: <anything>`, and "anything" turned out to include
+// a record that is not a close. ac3e38a0b carries
+// `- SPEC-MOAI-MCP-SERVER-001: REQ-MCP-002 opt-in->default-on, ... amended
+// (0.1.0 -> 0.2.0)` under a subject that closes nothing
+// (`feat(SPEC-MCP-DEFAULT-ON-001): moai MCP server as first-class default`); the
+// commit body says in as many words that the status was preserved, not
+// transitioned. No text predicate separates that line from a genuine verdict line
+// (`SPEC-XXX-001: Mx verdict EVALUATE-PASS`) without keyword matching, which
+// spec.md §5.3 rules out as the discriminator. So the narrowing is placed on the
+// CONTAINING COMMIT: a shape-A line counts only inside a commit whose subject says
+// it is closing something.
+//
+// The predicate is a bare `close` substring, deliberately broader than
+// closeInfixMatch, which spec.md §5.4 rejected by measurement for admitting only
+// three literals and dropping this card's own target. Measured against the close
+// subjects on record, all pass: `Close out 2 SPECs ...` (7beda68a5),
+// `chore(SPEC group C): Mx-phase close ...` (e979a4d13), `docs(specs): batch
+// sync-phase close ...` (2f449e189), `docs: close out 4 A-tier SPECs ...`
+// (cd21df594), `chore(spec): close KANBAN-RENAME-001 ...` (cd80f0644),
+// `docs(SPEC-INTERNAL-TEST-001): sync-phase artifacts + 3-phase close`, and
+// `feat(SPEC-HIERARCHICAL-TEAM-001): ... (Tier M, 3-phase close)` — satisfying
+// §5.4 condition 3.
+//
+// It binds shape A ONLY. Shape B already requires the line itself to classify as
+// `completed` through the validated chain, and 6da952899 is the measurement that
+// makes the distinction load-bearing: its subject
+// (`feat(factory+epic): Factory Mode multi-session bootstrap ...`) carries no close
+// signal while two of its body lines are genuine 3-phase closes. Extending this
+// gate to shape B would drop them.
+//
+// A narrowing can only ever reduce the set of cleared rows, so it cannot introduce
+// a regression in the AC-DCB-005 sense; measured on the corpus it removed exactly
+// one row (the false positive) and kept the other 18.
+func subjectCloseSignal(subject string) bool {
+	return strings.Contains(strings.ToLower(subject), "close")
+}
 
 // bodyDeclaresClose reports whether body contains a line declaring specID closed.
 //
@@ -373,7 +412,9 @@ var bodyDeclaredCloseDenyKeys = []string{"depends_on:", "related:", "supersedes:
 // from lifecycle inference by AC-LSCSK-003 and REQ-DCA-002; letting a body line reach
 // a conclusion the same text would be denied as a subject would reopen that guard
 // through the back door.
-func bodyDeclaresClose(body, specID string) bool {
+func bodyDeclaresClose(subject, body, specID string) bool {
+	subjectDeclaresClose := subjectCloseSignal(subject)
+
 	for _, raw := range strings.Split(body, "\n") {
 		line := strings.TrimRight(raw, " \t\r")
 
@@ -386,8 +427,9 @@ func bodyDeclaresClose(body, specID string) bool {
 			continue
 		}
 
-		// shape A — full ID at line start, immediately followed by ':'.
-		if strings.HasPrefix(stripped, specID+":") {
+		// shape A — full ID at line start, immediately followed by ':', inside a
+		// commit whose subject says it is closing something (subjectCloseSignal).
+		if subjectDeclaresClose && strings.HasPrefix(stripped, specID+":") {
 			return true
 		}
 
