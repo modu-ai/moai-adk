@@ -44,7 +44,7 @@ measurements taken at that SHA. Adjacent cards: t451 LANDED (5 commits), t452 NO
 | AC-CEM-002 tier-1 swept counts | **PASS** | step 1 exit 0; swept 103 = codexwiring 56 + codexadapter 47 (`=== RUN` counts, `-v`); `execution-log.md` §2, `logs/step1-*.verbose.log` |
 | AC-CEM-003 cli recursive standalone | **PASS** | recursive `./internal/cli/...`, `-timeout 1800s`, standalone (serial after draining 4 other lanes' cli suites); exit 0, 773s, swept 6660, wizard `ok`; first attempt killed in compile phase on 5-lane contention (recorded `execution-log.md` §2) |
 | AC-CEM-004 peripheral recursive | **PASS-WITH-DEBT** | steps 3a/3b recursive (`./internal/template/...` incl. agentemit): exits 1/1, swept 5730 + 1119, per-package ok/FAIL recorded. Debt: 2 packages FAIL — 1 contention flake (hook; PASSES in isolated rerun, `logs/hook-flake-rerun.verbose.log`) + 1 inherited sync-auditor hash/emission drift predating `e9c6a8564` (3 surfaces: spec catalog parity, template manifest format, agentemit golden; measured identical stored hash at both SHAs; repair out of scope per REQ-CEM-008) |
-| AC-CEM-005 live-gate inventory | **PASS** | 10 codex-live-gated skips enumerated with gate + file:line + reason (`execution-log.md` §4); skip treated as UNOBSERVED; opt-in gates unset (REQ-CEM-010) |
+| AC-CEM-005 live-gate inventory | **PASS** | 9 codex-live-gated skips enumerated with gate + file:line + reason (`execution-log.md` §4; corrected per sync-audit D1 — the earlier 10 double-counted `TestCodexLive_ReviewStartBaseBranchIsNotRejected`, `MOAI_SKIP_LIVE_CODEX`-gated at codex_review_target_live_test.go:136, as a 6th probe-gated test); skip treated as UNOBSERVED; opt-in gates unset (REQ-CEM-010) |
 | AC-CEM-006 positive control first | **PASS** | `positive-control.md` authored + committed before any zero-verdict: stray top-level `version` key DETECTED (exactly 1 violation, named); secondary missing-config.toml variant DETECTED; grep control `doctor`→7 before `codex`→0; binary built from pinned tree (AP-6 avoided) |
 | AC-CEM-007 named gap inventory | **PASS** | `gap-inventory.md` — G1–G8 each with name, establishing command, verbatim output, SHA `bd7c58201` |
 | AC-CEM-008 grep positive control | **PASS** | `positive-control.md` §grep — `grep -c doctor e2e/cli/tux3_journeys.sh` → 7 precedes the codex 0 |
@@ -55,9 +55,10 @@ measurements taken at that SHA. Adjacent cards: t451 LANDED (5 commits), t452 NO
 
 ### Run-phase census (the card's headline numbers)
 
-13,612 tests swept across 4 runs — **13,543 pass / 64 skip (10 codex-live-gated with reasons,
-54 environmental) / 5 fail (1 contention flake + 4 lines of one inherited sync-auditor
-hash/emission drift, out of scope)**. Surface: 128-file union executed via recursive package
+13,612 tests swept across 4 runs — **13,543 pass / 64 skip (9 codex-live-gated with reasons,
+55 environmental; sync-audit D1 correction) / 5 fail (2 FAIL lines = 1 contention flake,
+passing isolated; 3 FAIL lines = one inherited sync-auditor hash/emission drift — 3 surfaces,
+one root, pre-base — out of scope; sync-audit D2 correction)**. Surface: 128-file union executed via recursive package
 patterns. Named e2e journey gaps: G1–G8 (`gap-inventory.md`).
 
 ## §E.3 Run-phase Audit-Ready Signal
@@ -80,7 +81,7 @@ isolation: CODEX_HOME=/tmp throwaway; ~/.codex shasum identical before/after
 execution_totals: {swept: 13612, pass: 13543, skip: 64, fail: 5}
 inherited_reds: 1                   # sync-auditor catalog/emission drift (predates e9c6a8564)
 flakes_classified: 1                # hook TestScanWriteContentNoConfigNoTempFile (contention; passes isolated)
-live_gated_skips: 10                # enumerated with gates + reasons, execution-log.md §4
+live_gated_skips: 9                 # enumerated with gates + reasons, execution-log.md §4 (sync-audit D1: was 10 — ReviewStartBaseBranchIsNotRejected double-counted as probe-gated; MOAI_SKIP_LIVE_CODEX-gated at codex_review_target_live_test.go:136)
 total_run_phase_files: 9            # 4 new §F report files (inventory-run, positive-control, execution-log, gap-inventory) + 5 log extracts under logs/
 m1_to_mN_commit_strategy: single run-phase commit (measurement card; no production code)
 adjacent_cards: {t451: landed, t452: not-landed}

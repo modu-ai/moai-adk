@@ -79,16 +79,19 @@ the lead. Deterministic (hash equality on unchanged inputs), so it will redden C
 
 ## 4. SKIP inventory — live-gated tests (AC-CEM-005; a skip is UNOBSERVED, never a pass)
 
-Codex-axis live-gated skips (10, all in step 2):
+Codex-axis live-gated skips (9, all in step 2; correction — sync-audit D1: the earlier 10
+double-counted `TestCodexLive_ReviewStartBaseBranchIsNotRejected` as a 6th probe-gated test;
+it is `MOAI_SKIP_LIVE_CODEX`-gated at codex_review_target_live_test.go:136):
 
 | Gate | Test | File:line of skip reason | Reason |
 |---|---|---|---|
 | `MOAI_SKIP_LIVE_CODEX=1` (opt-out, set by this run per M1-D2) | `TestHandleCodexReviewGate_LiveCodexBlocksInjectionAndKey` | codex_review_gate_live_test.go:36 | gate set — live run would spend real codex quota; lead did not approve quota at kickoff |
 | `MOAI_SKIP_LIVE_CODEX=1` | review-target live test | codex_review_target_live_test.go:137 | same ("AC-CRT-010 UNOBSERVED") |
-| `MOAI_CODEX_LIVE_PROBE` (opt-in, unset) | `TestCodexLive_{ThreadReuseAndTurnInterrupt, SandboxPolicyStickiness, ReviewStartEmitsTurnStarted, ReviewStartBaseBranchIsNotRejected, OmittedSandboxPolicyBaseline, ExplicitReadOnlyApprovalStall}` (6) | codex_live_protocol_probe_test.go:177/330/395/461/508 | "live protocol probe is opt-in (it spends real codex quota)" — no approval, stays unset (REQ-CEM-010) |
+| `MOAI_SKIP_LIVE_CODEX=1` | `TestCodexLive_ReviewStartBaseBranchIsNotRejected` | codex_review_target_live_test.go:136 | gate set — live run would spend real codex quota; lead did not approve quota at kickoff (sync-audit D1: MOAI_SKIP_LIVE_CODEX-gated, NOT probe-gated) |
+| `MOAI_CODEX_LIVE_PROBE` (opt-in, unset) | `TestCodexLive_{ThreadReuseAndTurnInterrupt, SandboxPolicyStickiness, ReviewStartEmitsTurnStarted, OmittedSandboxPolicyBaseline, ExplicitReadOnlyApprovalStall}` (5) | codex_live_protocol_probe_test.go:177/330/395/508 | "live protocol probe is opt-in (it spends real codex quota)" — no approval, stays unset (REQ-CEM-010) |
 | `MOAI_AUDIT_PIN_LIVE` (opt-in, unset) | `TestAuditPinLive_{GLMDifferential, CodexPinConfirmation}` (2) | audit_pin_live_test.go:182/301 | "the live audit-pin gates are opt-in (they spend real z.ai / codex quota)" — no approval, stays unset |
 
-Non-codex environmental skips (54 across steps 2/3a/3b): migration-runner pending (7),
+Non-codex environmental skips (55 across steps 2/3a/3b): migration-runner pending (7),
 helper-process-only tests, `go.mod not found` integration gates, ast-grep-absent-requiring
 tests, Windows volume-letter gate, corpus-scan opt-in (`MOAI_T362_CORPUS_SCAN`), read-only-dir
 environment limits, etc. — full per-skip enumeration with reason lines in the `logs/*.extract.txt`
@@ -97,9 +100,10 @@ files. None of these is a codex-surface skip.
 ## 5. Judgment (prong A conclusion)
 
 Of the enumerated 128-file codex-axis union (inventory-run.md §4), every file sat in an executed
-recursive package pattern. Swept 13,612 tests: 13,543 pass, 64 skip (10 codex-live-gated, each
-reasoned above; 54 environmental), 5 fail (1 contention flake — passes in isolation; 4 one
-inherited sync-auditor hash/emission drift predating this card's base, out of scope to repair).
+recursive package pattern. Swept 13,612 tests: 13,543 pass, 64 skip (9 codex-live-gated, each
+reasoned above; 55 environmental), 5 fail (2 FAIL lines = 1 contention flake, passes in
+isolation; 3 FAIL lines = the inherited sync-auditor hash/emission drift — 3 surfaces, one
+root, predating this card's base, out of scope to repair).
 **The codex-axis unit surface is green on this tree except the named inherited drift; the
-uncovered codex surface is exactly the live-quota-gated tests (10) and the e2e journey layer
+uncovered codex surface is exactly the live-quota-gated tests (9) and the e2e journey layer
 (prong B, `gap-inventory.md` G1–G8).**
