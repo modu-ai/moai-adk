@@ -127,3 +127,52 @@ $ go test ./internal/cli/... -count=1 -timeout 900s   → exit 0
   적혀 있다. 기계적 가드는 없다.
 - 허용목록은 baseline 고정 방식의 구조적 부채를 그대로 안고 있다. 이후 SPEC마다
   1줄씩 늘어난다 — 이번 수리는 그 설계를 바꾸지 않았다(범위 밖).
+
+---
+
+## 병합 트리 재측정 (창 2회차 — lane-14)
+
+리드 호명 이후 `develop`이 `d7116400f` → `7896f30d7`(t237·t474 운반)로 움직여,
+그 tip을 흡수한 뒤 **병합할 트리에서 다시** 측정했다.
+
+- 흡수 대상: local `develop` @ `7896f30d7`
+- 흡수 병합 커밋: `1987a51da` (`Merge branch 'develop' into WT-binarylag-allowlist (t477)`) — 충돌 0
+- 측정 트리: `7f6072bbeb23c464e277c30e85292a0dc7ffef24` (HEAD `1987a51da`, 워킹트리 clean)
+
+### 판별식 재측정 — 종료코드가 아니라 매치 수
+
+```
+$ grep -c '"Hook Delivery"' internal/cli/doctor.go
+1
+$ grep -c '^\t`"Hook Delivery"`:' internal/cli/binary_lag_test.go
+1
+$ sed -n '/^var namesAddedAfterBaseline/,/^}/p' internal/cli/binary_lag_test.go | grep -c ': *true,'
+2
+```
+
+수치 3개 모두 창 1회차와 동일하다.
+
+### 패키지 전수 — t237이 같은 패키지에 들어온 뒤에도 초록
+
+```
+$ go test ./internal/cli/... -count=1 -timeout 900s
+... (전문: .moai/state/verify/t477/merged-cli.txt)
+exit=0
+$ grep -c '^ok ' merged-cli.txt   → 17
+$ grep -c '^FAIL' merged-cli.txt  → 0
+$ grep -c 'no test files' ...     → 0
+```
+
+t237(`hook_install_precommit.go`)과 t477(`binary_lag_test.go`)은 같은 패키지지만
+파일이 겹치지 않아 충돌이 없었고, 합류 후에도 17/17이 유지된다.
+
+### 귀속 — 측정 트리와 병합 트리의 델타
+
+이 부록 커밋은 재측정 **뒤에** 얹혔다. 따라서 측정 트리(`7f6072bbe`)와
+병합될 트리의 델타는 이 파일 하나(`.moai/reports/t477/verdict.md`)뿐이며
+**Go 파일 델타는 0**이다 — 아래 `git diff --stat` 으로 증명한다.
+
+### Gaps (변동 없음)
+
+- CI 판정 없음 — windows/linux 매트릭스는 리드 push 몫. darwin 단일 환경 관측은 예상이지 판정이 아니다.
+- `-cover` 억제 미재현 — 카드 범위 밖(별도 카드감).
