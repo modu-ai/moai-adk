@@ -1,0 +1,5 @@
+--- FAIL: TestResolveModelProfileReport_ReasoningKeysTheAgentsOwnSlot (0.00s)
+    model_glm_reasoning_slot_test.go:52: manager-git GLM_REASONING = "max", want "low" — sonnet reads the medium slot (glm-5.3), not the flash high slot (glm-5.3-flash)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/cli	0.917s
+FAIL
