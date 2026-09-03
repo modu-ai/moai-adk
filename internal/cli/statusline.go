@@ -24,6 +24,7 @@ const statuslineRenderBudget = 800 * time.Millisecond
 // immediately, so the fetch happens in a child that nothing waits on.
 var (
 	statuslineRefreshGitHub bool
+	statuslineRefreshLanded bool
 	statuslineBoardRoot     string
 )
 
@@ -41,7 +42,10 @@ func init() {
 		"Refresh the cached GitHub issue/PR counts and exit (internal; spawned by the render path)")
 	StatuslineCmd.Flags().StringVar(&statuslineBoardRoot, "board-root", "",
 		"Project root holding .moai/state (internal; used with --refresh-github)")
+	StatuslineCmd.Flags().BoolVar(&statuslineRefreshLanded, "refresh-landed", false,
+		"Refresh the cached landed-card count and exit (internal; spawned by the render path)")
 	_ = StatuslineCmd.Flags().MarkHidden("refresh-github")
+	_ = StatuslineCmd.Flags().MarkHidden("refresh-landed")
 	_ = StatuslineCmd.Flags().MarkHidden("board-root")
 }
 
@@ -56,6 +60,12 @@ func runStatusline(cmd *cobra.Command, _ []string) error {
 	// leave the status bar showing the previous value, not a failure.
 	if statuslineRefreshGitHub {
 		_ = statusline.RefreshGitHubCounts(cmd.Context(), statuslineBoardRoot)
+		return nil
+	}
+	// Same contract for the landed count: measure, write the cache, exit
+	// without rendering. A failed measurement leaves the previous value.
+	if statuslineRefreshLanded {
+		_ = statusline.RefreshLandedCounts(cmd.Context(), statuslineBoardRoot)
 		return nil
 	}
 

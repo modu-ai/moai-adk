@@ -1,0 +1,25 @@
+== .claude/rules/moai/development/hook-independence.md
+  ok   chain-event.sh                       line  109  reachable-via-template-settings
+  ok   handle-agent-hook.sh                 line  110  reachable-via-agent-frontmatter
+  ok   handle-session-start-compact.sh      line  111  reachable-via-in-binary-registry
+  ok   handle-elicitation.sh                line  112  dead-by-decision
+  ok   handle-elicitation-result.sh         line  113  dead-by-decision
+  ok   handle-notification.sh               line  114  dead-by-decision
+  ok   handle-task-created.sh               line  115  dead-by-decision
+  ok   handle-worktree-create.sh            line  116  dead-by-decision
+  ok   handle-worktree-remove.sh            line  117  dead-by-decision
+  ok   handle-session-start-navigator.sh    line  118  open-question
+  ok   team-ac-verify.sh                    line  119  open-question
+== internal/template/templates/.claude/rules/moai/development/hook-independence.md
+  ok   chain-event.sh                       line  109  reachable-via-template-settings
+  ok   handle-agent-hook.sh                 line  110  reachable-via-agent-frontmatter
+  ok   handle-session-start-compact.sh      line  111  reachable-via-in-binary-registry
+  ok   handle-elicitation.sh                line  112  dead-by-decision
+  ok   handle-elicitation-result.sh         line  113  dead-by-decision
+  ok   handle-notification.sh               line  114  dead-by-decision
+  ok   handle-task-created.sh               line  115  dead-by-decision
+  ok   handle-worktree-create.sh            line  116  dead-by-decision
+  ok   handle-worktree-remove.sh            line  117  dead-by-decision
+  ok   handle-session-start-navigator.sh    line  118  open-question
+  ok   team-ac-verify.sh                    line  119  open-question
+TOTAL FAILURES: 0

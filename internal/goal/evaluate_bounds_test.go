@@ -34,8 +34,8 @@ func TestAC005_WallClockBoundFiresVerdict(t *testing.T) {
 	g := NewGoal("s", "never converge", []Condition{
 		{Type: ConditionMechanical, Cmd: "false", ExpectExit: 0},
 	})
-	g.Ceiling.MaxTurns = 0               // infinite (AC-001)
-	g.Ceiling.MaxDuration = 3600         // 1 hour wall-clock bound
+	g.Ceiling.MaxTurns = 0       // infinite (AC-001)
+	g.Ceiling.MaxDuration = 3600 // 1 hour wall-clock bound
 	g.ProgressionMode = ProgressionAutonomous
 	// CreatedAt set to 2 hours ago → elapsed(2h) > MaxDuration(1h) → must fire.
 	g.CreatedAt = time.Now().Add(-2 * time.Hour).UTC().Format(time.RFC3339)
@@ -80,7 +80,7 @@ func TestAC005_WallClockNotYetElapsedDoesNotFire(t *testing.T) {
 		{Type: ConditionMechanical, Cmd: "false", ExpectExit: 0},
 	})
 	g.Ceiling.MaxTurns = 0
-	g.Ceiling.MaxDuration = 3600 // 1h
+	g.Ceiling.MaxDuration = 3600                        // 1h
 	g.CreatedAt = time.Now().UTC().Format(time.RFC3339) // just now → elapsed ~0
 	g.ProgressionMode = ProgressionAutonomous
 

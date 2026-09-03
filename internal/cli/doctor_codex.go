@@ -300,6 +300,66 @@ func wrapCodexDetail(text string, width int) []string {
 	return append(lines, cur)
 }
 
+// codexSkillPathShape classifies a declared [[skills.config]] path by shape,
+// BEFORE any filesystem check (SPEC-CODEX-SKILL-PATH-001). Only shapes that
+// resolve deterministically in this environment (absolute, and home-relative
+// after expansion) can feed the missing verdict; every other shape is a
+// declared classification that is reported and never acted on.
+type codexSkillPathShape int
+
+const (
+	// codexPathAbsolute is filepath.IsAbs. IsAbs is evaluated FIRST, so a
+	// Windows host classifies its own native C:\... paths here — never as
+	// oddly-formed — while a backslash-bearing fragment on any host does
+	// not.
+	codexPathAbsolute codexSkillPathShape = iota
+	// codexPathHomeRelative is exactly "~" or a "~/"-prefixed path — the
+	// user's own home, expandable here.
+	codexPathHomeRelative
+	// codexPathRelative declares a path with no observed resolution base in
+	// this repository. Guessing one would manufacture a verdict, so the
+	// entry is reported as relative and never stat'ed.
+	codexPathRelative
+	// codexPathOddlyFormed is a backslash-bearing non-absolute fragment (a
+	// Windows-shaped separator in a non-absolute position, or a residual
+	// un-decoded TOML escape) or another user's "~user" home form.
+	codexPathOddlyFormed
+)
+
+// classifyCodexSkillPath maps a declared path onto its shape. Ordering is
+// load-bearing: IsAbs runs before the backslash check (a native Windows
+// absolute stays absolute), and the home-relative forms are peeled off
+// before the residual "~"-prefixed shapes fall to oddly-formed.
+func classifyCodexSkillPath(p string) codexSkillPathShape {
+	if filepath.IsAbs(p) {
+		return codexPathAbsolute
+	}
+	if p == "~" || strings.HasPrefix(p, "~/") {
+		return codexPathHomeRelative
+	}
+	if strings.HasPrefix(p, "~") || strings.ContainsRune(p, '\\') {
+		return codexPathOddlyFormed
+	}
+	return codexPathRelative
+}
+
+// expandCodexHomeRelativePath expands a "~" or "~/"-prefixed declaration
+// against the USER home resolved through the existing codexUserHomeDir seam
+// (os.UserHomeDir) — the same seam resolveCodexHomeDir uses, never a second
+// resolver, and never CODEX_HOME: the env var locates the config, the user
+// home expands "~". ok=false means the home itself is unresolvable, which
+// the caller must treat as indeterminate, never absent.
+func expandCodexHomeRelativePath(p string) (expanded string, ok bool) {
+	home, err := codexUserHomeDir()
+	if err != nil || home == "" {
+		return "", false
+	}
+	if p == "~" {
+		return home, true
+	}
+	return filepath.Join(home, p[2:]), true
+}
+
 // codexStaleSkillFinding reports the user-layer [[skills.config]] entries
 // whose declared path no longer exists — registrations Codex neither prunes
 // nor complains about, so nothing else surfaces them.
@@ -329,13 +389,41 @@ func codexStaleSkillFinding() (codexFinding, bool) {
 	}
 
 	var missingEnabled, missingDisabled, missingUnspecified, indeterminate int
+	var relativeCount, oddlyFormed int
 	for _, e := range entries {
 		if e.Path == "" {
 			// An entry declaring no path says nothing about a file's
 			// existence — counted in the total, never as a missing path.
 			continue
 		}
-		_, serr := os.Stat(e.Path)
+		var statPath string
+		switch classifyCodexSkillPath(e.Path) {
+		case codexPathAbsolute:
+			statPath = e.Path
+		case codexPathHomeRelative:
+			expanded, ok := expandCodexHomeRelativePath(e.Path)
+			if !ok {
+				// The user home is unresolvable, so the path's existence is
+				// indeterminate — never absent (fail-open, not a guess).
+				indeterminate++
+				continue
+			}
+			statPath = expanded
+		case codexPathRelative:
+			// The base a relative path resolves against is not observed in
+			// this repository; stat'ing it against process cwd would decide
+			// the verdict on a base nobody chose. Reported as its own
+			// classification, never counted missing.
+			relativeCount++
+			continue
+		default:
+			// A backslash-bearing non-absolute fragment or a "~user" form:
+			// a declared shape this check cannot resolve here. Reported as
+			// its own classification, never counted missing.
+			oddlyFormed++
+			continue
+		}
+		_, serr := os.Stat(statPath)
 		switch {
 		case serr == nil:
 			// The path resolves. A DIRECTORY resolves too, and is likewise
@@ -362,7 +450,11 @@ func codexStaleSkillFinding() (codexFinding, bool) {
 		}
 	}
 	missing := missingEnabled + missingDisabled + missingUnspecified
-	if missing == 0 {
+	unresolvedShape := relativeCount + oddlyFormed
+	if missing == 0 && unresolvedShape == 0 {
+		// No missing path and no unresolvable shape: nothing to say. An
+		// indeterminate-only config stays silent too — the t451 posture,
+		// preserved verbatim.
 		return codexFinding{}, false
 	}
 
@@ -376,17 +468,41 @@ func codexStaleSkillFinding() (codexFinding, bool) {
 	// is quantified rather than summed away — but it is reported as DECLARED:
 	// an entry with no `enabled` key is counted as unspecified rather than
 	// folded into either side, because Codex's default for an absent key is
-	// not observed anywhere in this repository.
+	// not observed anywhere in this repository. The remove directive is
+	// bound to the missing segment alone: relative and oddly-formed entries
+	// are reported per classification and never advised away.
 	detail := fmt.Sprintf(
-		"%s declares %d [[skills.config]] %s; %d with a path that no longer exists (%d enabled, %d disabled, %d unspecified) — remove the stale entries or restore the skill files",
-		cfgPath, len(entries), pluralCodexEntries(len(entries)), missing,
-		missingEnabled, missingDisabled, missingUnspecified)
+		"%s declares %d [[skills.config]] %s",
+		cfgPath, len(entries), pluralCodexEntries(len(entries)))
+	if missing > 0 {
+		detail += fmt.Sprintf(
+			"; %d with a path that no longer exists (%d enabled, %d disabled, %d unspecified) — remove the stale entries or restore the skill files",
+			missing, missingEnabled, missingDisabled, missingUnspecified)
+	}
+	if relativeCount > 0 {
+		detail += fmt.Sprintf(
+			"; %d relative %s (not checked: the resolution base is not observed)",
+			relativeCount, pluralCodexEntries(relativeCount))
+	}
+	if oddlyFormed > 0 {
+		detail += fmt.Sprintf(
+			"; %d oddly-formed %s (not checked: backslash or ~other-user shape)",
+			oddlyFormed, pluralCodexEntries(oddlyFormed))
+	}
 	if indeterminate > 0 {
 		detail += fmt.Sprintf("; a further %d could not be checked and are NOT counted as missing", indeterminate)
 	}
 
+	summary := fmt.Sprintf("%s: %d stale skill %s", display, missing, pluralCodexEntries(missing))
+	if missing == 0 {
+		// Non-destructive summary for a config whose only finding is an
+		// unresolvable path SHAPE — no "stale", nothing to remove.
+		summary = fmt.Sprintf("%s: %d skill %s with a path shape this check cannot resolve",
+			display, unresolvedShape, pluralCodexEntries(unresolvedShape))
+	}
+
 	return codexFinding{
-		summary: fmt.Sprintf("%s: %d stale skill %s", display, missing, pluralCodexEntries(missing)),
+		summary: summary,
 		detail:  detail,
 	}, true
 }
