@@ -96,9 +96,98 @@ Applied after the entries above were written: the four `t.Parallel()` calls at l
 of `internal/cli/worktree_branch_flag_test.go` removed; no other change. The `t.Parallel()` calls
 at lines 25 and 44 belong to other tests in the file and are untouched.
 
+Repair commit: `76f2165a1` (carries the repair, the fresh RED capture, and this section's
+pre-edit entries).
+
+### AC-WFR-001b — GREEN under the same repetition shape
+
+- Command (identical shape to AC-WFR-001a): `go test ./internal/cli/ -run TestResolveWorktreeExistingBranch -count=20 -race`
+- Tree: working tree of repair commit `76f2165a1` (measured before the commit; the commit's tree content is identical)
+- Output: `.moai/reports/t464/green-race-76f2165a1.txt` (renamed from the `-pending` filename once the repair SHA existed), 1 line
+- Exit code: `0` (background task boucgwt21 exit status, read directly)
+- `WARNING: DATA RACE` count: **0** (printed count read, not the grep exit status)
+- `Log in goroutine after` count: **0**
+- Final line: `ok  	github.com/modu-ai/moai-adk/internal/cli	2.464s`
+- The GREEN ran the full 20 iterations where the original RED truncated at the panic — the
+  asymmetry runs in the safe direction (`spec.md` §D.4).
+
+### AC-WFR-002 — the four siblings survive intact
+
+- `grep -c 'func TestResolveWorktreeExistingBranch_' internal/cli/worktree_branch_flag_test.go` → **4**
+- Remaining `t.Parallel()` occurrences in the file: lines 25 and 44 only (other tests, untouched)
+- `git diff` on the file: exactly 4 deleted lines (`-	t.Parallel()`), zero changed assertions.
+
+### AC-WFR-003 — the diff stays inside the fence
+
+- Fence base: `develop` (the absorbed local develop) — the AC's `d592b0551` base predates the
+  absorb; `develop..HEAD` is the same logical measurement on the moved base.
+- `git diff develop --stat -- internal/cli/` → `internal/cli/worktree_branch_flag_test.go | 4 ----` — exactly one file, under Option A's fence (no `worktree_branch_flag.go` change).
+- Positive control (mandatory): `git diff develop --stat` (no pathspec) → 10 files, 4011 insertions, 101 deletions — non-empty, so the fence check measured something.
+
+### AC-WFR-005 — cross-platform compile (SHOULD)
+
+- `GOOS=linux GOARCH=amd64 go vet ./internal/cli/...` → rc=0
+- `GOOS=windows GOARCH=amd64 go vet ./internal/cli/...` → rc=0
+
+### AC-WFR-004 — package non-regression: measured twice; one pre-existing failure carries over
+
+1. **Run 1** (`go test ./internal/cli/... -race -timeout 600s`, per the AC's literal shape):
+   `WARNING: DATA RACE` count **0**, but the root `internal/cli` package panicked at
+   `test timed out after 10m0s` (601.790s) with `TestInstallVersionTag_NetworkFailureDownload`
+   in the running set, plus `TestBinaryLag_DoctorCheckNameSetIsUnchanged` FAIL. Evidence:
+   `.moai/reports/t464/package-race-76f2165a1.txt`.
+2. **Isolation probe**: the network test alone under `-race -count=1 -timeout 120s` exits **0**
+   (`.moai/reports/t464/hang-repro-76f2165a1.txt`) — it is not a hang; the 600s floor is simply
+   insufficient for this package under `-race` on this machine (the non-race package alone was
+   measured at ~679s in a prior card).
+3. **Run 2** (`-race -timeout 1800s`, exceeding the §D.4 floor): **0 race warnings, no timeout**,
+   16/16 subpackages `ok`; the root package FAILs on exactly one test,
+   `TestBinaryLag_DoctorCheckNameSetIsUnchanged` (binary_lag_test.go:205: *"this SPEC added
+   doctor check name Hook Delivery; REQ-BLV-009 rewires the existing Binary Freshness item and
+   registers no new name"*). Evidence: `.moai/reports/t464/package-race-1800s-76f2165a1.txt`.
+
+**Attribution of the AC-WFR-004 failure — measured, not assumed.** The failing test compares the
+doctor-check name set against a baseline allowlist (`namesAddedAfterBaseline`,
+binary_lag_test.go:184) that lists only `hookWiringCheckName` (t216). The name it rejects,
+`Hook Delivery`, is the check added by card t466 — which this branch absorbed from develop.
+Measured: `git show develop:internal/cli/doctor.go | grep -c 'Hook Delivery'` → **1** (develop
+carries it); `git diff develop --stat -- internal/cli/binary_lag_test.go internal/cli/doctor.go`
+→ **empty** (this branch touches neither file). The failure is **pre-existing on develop**
+(t466 landed without updating the binary-lag guard allowlist) and is unreachable by this card's
+diff: fixing it here would violate the REQ-WFR-005 fence. **Adjudication requested from the lead**
+(see §E.3).
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+**Claim** — the race repair is complete and proven (RED→GREEN on the identical `-race -count=20`
+command shape, fence held, siblings intact, cross-platform compiles clean). One MUST criterion
+(AC-WFR-004) exits non-zero solely on a **pre-existing develop defect owned by another card**;
+the lane cannot repair it without violating REQ-WFR-005.
+
+| AC | Status | Basis |
+|---|---|---|
+| AC-WFR-001a | **PASS** | Fresh RED at `6a56c96bd`: exit 1, `WARNING: DATA RACE` = 30 on a completed 20-iteration run (`red-race-6a56c96bd.txt`) — stronger than the cited truncated baseline. |
+| AC-WFR-001b | **PASS** | GREEN on the repaired tree: exit 0, warnings 0, panic 0 (`green-race-76f2165a1.txt`, full 20 iterations). |
+| AC-WFR-002 | **PASS** | 4 siblings present, assertions untouched; only the 4 `t.Parallel()` lines removed. |
+| AC-WFR-003 | **PASS** | Fence: one file under `internal/cli/` (`worktree_branch_flag_test.go`, 4 deletions); positive control non-empty. |
+| AC-WFR-004 | **BLOCKED-PRE-EXISTING** | 1800s `-race` rerun: 0 race warnings, no timeout, 16/16 subpackages ok; root package fails only `TestBinaryLag_DoctorCheckNameSetIsUnchanged` — measured pre-existing on develop (t466's "Hook Delivery" check never added to the binary-lag allowlist). Attribution evidence in §E.2. Not reachable by this card's diff (REQ-WFR-005 fence). |
+| AC-WFR-005 | **PASS** (SHOULD) | `GOOS=linux/windows go vet` both rc=0. |
+| AC-WFR-006 | **PASS** | Option A + criteria recorded above, written before the first edit. |
+
+**Blocker/adjudication for the lead** — AC-WFR-004's failing test is owned by card **t466**
+(SPEC-UPDATE-HOOK-DELIVERY-001), which landed `checkHookDelivery` under the name `"Hook Delivery"`
+without registering it in `namesAddedAfterBaseline` (binary_lag_test.go:184, which lists only
+t216's `hookWiringCheckName`). Options: (a) a small follow-up card under t466's ownership to add
+`"Hook Delivery"` to the allowlist (one line + the same class of test the guard already carries);
+(b) a lead ruling that AC-WFR-004 be judged on the race axis only — 0 race warnings across the
+package — with the binary-lag failure recorded as a carried pre-existing debt. This lane takes
+neither action on its own authority: (a) is outside the fence, (b) is a verdict reserved to the
+lead.
+
+**Standing regression evidence** (REQ-WFR-006): `go test ./internal/cli/ -run TestResolveWorktreeExistingBranch -count=20 -race` — RED at `6a56c96bd` (exit 1, 30 warnings) → GREEN at `76f2165a1` (exit 0, 0 warnings). Reproduce with either persisted capture in `.moai/reports/t464/`.
+
+**Not measured**: linux/amd64 behaviour of the race itself (`spec.md` §F2 — vet-only, unchanged);
+CI's full-suite verdict on the pushed head (lead's batch push, repository rule).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
