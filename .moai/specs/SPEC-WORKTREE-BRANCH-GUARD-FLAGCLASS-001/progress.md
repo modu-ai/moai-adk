@@ -28,7 +28,81 @@ audit_iterations:
 
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+### M1 — synthetic measurement matrix (RED, pre-fix)
+
+- **Command**: `go test ./internal/hook/ -run TestBranchGuardFlagClassMatrix -count=1 -v`
+- **Tree SHA**: `38274782c9ab06e6adbd035a7b8a9a118cbe1932` (pre-fix tree, branch
+  `WT-branchguard-flagclass`)
+- **Exit**: FAIL (RED — the defect)
+- **Verbatim output** (summary lines; per-cell FAIL lines below):
+
+```
+=== RUN   TestBranchGuardFlagClassMatrix
+--- FAIL: TestBranchGuardFlagClassMatrix (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/E-2_git_branch_--set-upstream-to=origin/main_topic (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/E-3a_git_branch_-F_topic (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/E-3b_git_branch_--FORCE_topic_abc1234 (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/E-6_git_branch_-f_x_y_&&_git_status (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/M-06_git_branch_-f_topic_abc1234 (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/M-07_git_branch_-f_topic (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/M-08_git_branch_--force_topic_abc1234 (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/M-09_git_branch_-df_old (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/M-10_git_branch_-fm_renamed (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/M-11_git_branch_-vD_old (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/M-12_git_branch_-u_origin/main_topic (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/M-13_git_branch_--set-upstream-to=origin/main_topic (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/M-14_git_branch_--set-upstream_origin/main_topic (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/M-15_git_branch_--unset-upstream_topic (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/M-16_git_branch_-t_topic_origin/main (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/M-17_git_branch_--track_topic_origin/main (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/M-18_git_branch_--no-track_topic_origin/main (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/M-19_git_branch_--edit-description_topic (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/M-20_git_branch_--delete_old (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/M-21a_git_branch_--move_renamed (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/M-21b_git_branch_--copy_copied (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/M-22_git_branch_--set-upstream-to_origin/main_topic (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/M-23_git_branch_--track=direct_topic_abc1234 (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/M-24_git_branch_-umain_topic (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/M-25_git_branch_-v_vbranch (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/M-26_git_branch_--_cr2 (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/M-27_git_branch_-q_qbranch (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/M-28_git_branch_--no-force_nfbranch (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/M-29_git_branch_-vt_vtbranch_main (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/M-30_git_branch_--create-reflog_crbranch (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/M-31_git_branch_--color_colprobe (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/M-32_git_branch_--abbrev_12_abbranch (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/M-33_git_branch_-vux_main_x (0.00s)
+    --- FAIL: TestBranchGuardFlagClassMatrix/P-01b_git_branch_--force_topic_abc1234 (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	0.679s
+FAIL
+```
+
+- **RED count**: 34 FAIL cells = §D.1's predicted 28 pre-fix allow M-rows
+  (29 command variants: M-06..M-33, M-21 dual-form) + 5 expected-deny
+  duplicate rows from the pair/edge tables (E-2 ≡ M-13, E-3a, E-3b, E-6,
+  P-01b ≡ M-08). All 22 query cells (Q-01..Q-17 incl. Q-15a/Q-15b), the
+  P-01a/P-02a-c whole-token allow cells, the E-5a/E-5b unknown-flag cells,
+  and every pre-fix deny cell (M-01..M-05a/b, E-1, E-4) PASS (green-now).
+- **§D.1 cross-read**: ZERO contradictions — every measured cell matches its
+  §D.1 expectation (allow rows where §D.1 says the pre-fix guard allows,
+  deny rows where §D.1 says it denies). No blocker per plan.md §D.
+- **Fix-class decision**: the matrix confirms the under-match defect is
+  flag-class-shaped (single-char class + "non-flag token" rule), not
+  anchor-shaped — the M2 fix is the token-level classifier (plan.md §G
+  corrected rule), replacing the `git branch` regex entry inside the
+  `branchStatePatterns` set.
+
+### Pre-flight baseline (Section C, recorded before M1)
+
+- `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0
+- `golangci-lint run --timeout=2m` → 1 pre-existing finding
+  (`internal/template/catalog_tree_hash.go:60:14` errcheck — outside this
+  card's change surface; BASELINE, not NEW)
+- `go test ./internal/hook/ -count=1` → `ok github.com/modu-ai/moai-adk/internal/hook 39.008s` (green baseline)
+- B2 pre-scan: `Retired`/`superseded` markers exist only in agent-retirement
+  machinery (`subagent_start.go`, `retired_events.go`, `audit_test.go`) — no
+  cross-SPEC policy conflict on the branch-guard surface.
 
 ## §E.3 Run-phase Audit-Ready Signal
 
