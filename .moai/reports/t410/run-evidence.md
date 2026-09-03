@@ -548,3 +548,38 @@ $ lsof /Users/goos/MoAI/moai-adk-go/.git/worktrees/t410/index.lock
 
 **리드에게 보고할 사항**: 이 워크트리에 대해 정체 불명의 행위자가 간헐적으로 git index lock을 잡는다. 이 카드의 작업은 영향을 받지 않았으나(모든 커밋 착지 확인), 병합 창에서 같은 경합이 나면 병합 커밋 직전 `HEAD` 재판독 규율이 더 중요해진다.
 
+---
+
+## 리드 독립 재측정과의 7행 격차 — 요약줄이 아니라 grep이 과대매칭이다
+
+리드가 `grep -c '^SPEC-.*DRIFT'`로 203 → 185를 얻었고, 원장의 요약줄은 196 → 178이다. 양쪽 다 정확히 **7행씩** 차이 나고 델타(18)는 같다. 원인을 측정했다.
+
+```
+$ grep -c '^SPEC-.*DRIFT' drift-before-remeasured.txt ; grep -c '^SPEC-.*DRIFT' drift-after.txt
+203
+185
+$ grep -cE '^SPEC-.*[[:space:]]DRIFT[[:space:]]*$' drift-before-remeasured.txt ; (같은 것을 after에)
+196
+178
+$ grep -c '^SPEC-[A-Z0-9-]*DRIFT' drift-after.txt
+9
+```
+
+**`^SPEC-.*DRIFT`의 `.*DRIFT`가 Drift? 열이 아니라 SPEC-ID 안의 `DRIFT` 문자열을 문다.** ID에 `DRIFT`를 담은 행이 9건이고, 그중 2건(`SPEC-UPDATE-DOC-DRIFT-001` · `SPEC-V3R6-TEMPLATE-MIRROR-DRIFT-001`)은 실제로 DRIFT라 양쪽이 함께 센다. 나머지 **7건은 `aligned`인데 ID 때문에 매치**된다:
+
+```
+SPEC-DRIFT-001                        implemented  era-exempt  aligned
+SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-001   completed    era-exempt  aligned
+SPEC-V3R4-STATUS-DRIFT-FOLLOWUP-002   completed    era-exempt  aligned
+SPEC-V3R6-CI-BASELINE-DRIFT-001       implemented  era-exempt  aligned
+SPEC-V3R6-DOCS-USER-DRIFT-001         implemented  era-exempt  aligned
+SPEC-V3R6-DRIFT-CONVENTION-ALIGN-001  completed    completed   aligned
+SPEC-V3R6-DRIFT-LEGACY-CONVENTION-001 completed    completed   aligned
+```
+
+196 + 7 = 203, 178 + 7 = 185. **요약줄이 제외하는 행 부류는 없다** — 요약줄의 `report.Count`는 `Drifted == true`인 record 수이고(`internal/cli/spec_drift.go:132`), 열 위치를 고정한 `grep -cE '^SPEC-.*[[:space:]]DRIFT[[:space:]]*$'`가 그 값을 정확히 재현한다. 두 수 중 요약줄이 옳고 `^SPEC-.*DRIFT`가 7만큼 과대매칭한다.
+
+이것이 이 카드가 다룬 결함과 **같은 형태**라는 점은 기록해 둘 만하다: 토큰(`DRIFT`)이 두 부류의 줄에 공통으로 나타나므로 키워드만으로는 가를 수 없고, 열 위치라는 구조를 요구해야 갈린다 — spec.md §5.3이 `(completed)`를 판별자로 쓰지 말라고 적은 것과 같은 이유다.
+
+**동시에 발견한 이 원장 자신의 오차 1건 (정정).** §C 사전 점검의 `grep -c '^SPEC-'` = 637은 **표 머리글 `SPEC-ID …` 한 줄을 포함한 값**이다. 실제 데이터 행은 636이며 요약줄의 분모 `/636`과 일치한다. 이 값은 "0이면 측정이 잘못된 것"이라는 온전성 검사로만 쓰였고 어떤 판정에도 들어가지 않았으나, 수를 적은 이상 정확해야 하므로 정정한다: **표의 SPEC 행 수는 636이다.**
+
