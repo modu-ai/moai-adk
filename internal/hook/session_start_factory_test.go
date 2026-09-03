@@ -103,18 +103,24 @@ func TestFactoryWorkerNoticeNamesLabel(t *testing.T) {
 	t.Setenv(config.EnvMoaiFactoryWorker, "lane-4")
 	t.Setenv(config.EnvMoaiFactoryWorkers, "3")
 
-	if got, want := factoryBootstrapNotice("", langEnglish),
-		"Factory Mode: joined a 3-lane run as lane-4."; got != want {
-		t.Errorf("lane notice = %q, want %q", got, want)
+	// Card t224: the notice is the join line PLUS the standing spawn authority
+	// (appended, never substituted) — assert the join line as a prefix-presence
+	// rather than whole-output equality.
+	got := factoryBootstrapNotice("", langEnglish)
+	if !strings.HasPrefix(got, "Factory Mode: joined a 3-lane run as lane-4.") {
+		t.Errorf("lane notice missing the join line prefix:\n%s", got)
+	}
+	if !strings.Contains(got, "Standing spawn authority") {
+		t.Errorf("lane notice lost the standing spawn authority:\n%s", got)
 	}
 
 	// The incremental `-f lane-<n>` form carries no count (workers=0); the
 	// count-less sentence must render, not fabricate a fan-out size and not
 	// leak a bad verb.
 	t.Setenv(config.EnvMoaiFactoryWorkers, "0")
-	if got, want := factoryBootstrapNotice("", langEnglish),
-		"Factory Mode: joined the factory run as lane-4."; got != want {
-		t.Errorf("count-less lane notice = %q, want %q", got, want)
+	if got := factoryBootstrapNotice("", langEnglish); !strings.HasPrefix(got,
+		"Factory Mode: joined the factory run as lane-4.") {
+		t.Errorf("count-less lane notice missing the join line prefix:\n%s", got)
 	}
 
 	// A malformed label emits nothing (fail-open, mirroring the companion

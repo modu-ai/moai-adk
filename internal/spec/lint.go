@@ -414,6 +414,14 @@ func discoverSPECs(baseDir string) ([]string, error) {
 // for each. discoverSPECs silently skips these; this function surfaces them so
 // accidentally-committed roadmap documents or non-SPEC directories are visible.
 //
+// It also emits SpecsDirMissingSpecFile for a SPEC-*/ directory that carries no
+// spec.md. Such a directory escapes BOTH filters otherwise: discoverSPECs skips
+// it (no spec.md to glob) and the foreign-entry check exempts it (the name IS
+// SPEC-*), leaving every lint rule blind to its contents. The schema admits no
+// Tier without spec.md (S=2 files, M=3, L=5), so the state is a defect rather
+// than a legitimate shape, and the correct repair is to make the directory
+// visible — not to widen discovery onto a file that does not exist.
+//
 // Whitelist: entries whose name starts with "_" (e.g. "_archive") are exempt —
 // the underscore prefix is the established ignore convention.
 //
@@ -432,6 +440,8 @@ func lintSpecsDirRootIntegrity(baseDir string) []Finding {
 		return nil
 	}
 
+	const missingSpecMsgTmpl = "%q: SPEC directory has no spec.md — discoverSPECs globs SPEC-*/spec.md, so every per-SPEC lint rule skips this directory without visiting it; add spec.md (required by every Tier: S=2 files, M=3, L=5) or move the directory out of .moai/specs/"
+
 	const msgTmpl = "%q: non-SPEC entry in .moai/specs/ — only SPEC-<DOMAIN>-<NNN>/ directories allowed; ROADMAP/planning docs belong in .moai/plans/ or project root (see spec-frontmatter-schema.md § Root Integrity)"
 
 	var findings []Finding
@@ -441,8 +451,23 @@ func lintSpecsDirRootIntegrity(baseDir string) []Finding {
 		if strings.HasPrefix(name, "_") {
 			continue
 		}
-		// Valid SPEC-* directories are the expected occupants.
+		// Valid SPEC-* directories are the expected occupants — but only
+		// when they carry the spec.md that discoverSPECs globs for. Without
+		// it, the directory is not passing the per-SPECDoc rules; it is never
+		// visited by them at all, so every rule is silently blind to whatever
+		// the directory holds. Surface that here, at the same directory level,
+		// rather than widening discoverSPECs (which would hand every rule a
+		// SPECDoc parsed from a file that does not exist).
 		if entry.IsDir() && strings.HasPrefix(name, "SPEC-") {
+			if _, statErr := os.Stat(filepath.Join(baseDir, name, "spec.md")); statErr != nil {
+				findings = append(findings, Finding{
+					File:     filepath.Join(baseDir, name),
+					Line:     1,
+					Severity: SeverityWarning,
+					Code:     "SpecsDirMissingSpecFile",
+					Message:  fmt.Sprintf(missingSpecMsgTmpl, name),
+				})
+			}
 			continue
 		}
 		// Anything else is foreign: loose files (any extension) and
