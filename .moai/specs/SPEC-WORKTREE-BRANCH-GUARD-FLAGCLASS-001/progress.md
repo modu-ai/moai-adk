@@ -34,3 +34,34 @@ _<pending run-phase>_
 ## §E.4 Sync-phase Audit-Ready Signal
 
 _<pending sync-phase>_
+
+## §F Phase 4 Mode Selection
+
+**Input parameters**: tier M (artifact set; scope discipline stays S) · scope 3 code/test files
+(`internal/hook/branch_guard.go` + new `branch_guard_flagclass_test.go` + M3 doctrine pair) ·
+domain count 1 (Go hook package; markdown pair inside M3) · file language mix Go + markdown ·
+concurrency benefit LOW (coding-heavy, single package) · Agent Teams prereqs not requested.
+
+**Mode evaluation**:
+
+| Mode | Selected | Rationale |
+|------|----------|-----------|
+| direct | no | Non-trivial multi-milestone implementation, not a typo/single-line change |
+| serial | **selected** | Coding-heavy TDD (M1 RED matrix → M2 GREEN fix → M3 tests), single package — Anthropic coding-task parallelism caveat |
+| fanout | no | No multi-domain research; strictly sequential milestone dependencies |
+| sweep | no | Not ≥~30-file mechanical uniform transform; no inter-file independence |
+
+**Decision: serial**
+
+**Justification**: the milestones are strictly sequential by design (M2 needs M1's measured
+matrix; M3 needs M2's fix), all work lands in one package, and coding-heavy work is the
+documented serial default. Parallel spawns would add coordination cost with zero concurrency
+benefit.
+
+**Gate record**: Implementation Kickoff Approval passed via the kanban lead's operator channel
+(lead-1 dispatch 2026-09-03: "run 진입 — 운영자 게이트 통과"); lanes cannot open operator
+gates, so approval authority rides the lead/operator exchange. Precondition completed by lead
+order: origin/develop `4e4607abe` absorbed (merge commit `1f65efef2`, SPEC artifacts
+unaffected). Phase 1 Plan Audit Gate re-execution armed: the artifact hash changed after the
+iter-2 verdict (`5bd15b303` → `b8b48266f`, v0.3.0 fixes D8-D14), so the cached verdict is
+invalid and the gate re-audits fresh — this gate verdict is the binding one before M1.
