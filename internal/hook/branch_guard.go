@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"time"
 
 	gitcore "github.com/modu-ai/moai-adk/internal/core/git"
@@ -49,10 +50,14 @@ const branchGuardAuditRelPath = ".moai/logs/branch-guard-audit.log"
 // pattern-matches without parsing the full reason (REQ-WBG-001).
 const branchGuardViolationPrefix = "BRANCH_GUARD_VIOLATION"
 
-// branchStatePattern pairs a compiled branch-state regex with a human-readable
-// deny-reason suffix naming the matched command class.
+// branchStatePattern pairs a branch-state matcher — a compiled regex OR a
+// predicate function — with a human-readable deny-reason suffix naming the
+// matched command class. The predicate form (match) carries the token-level
+// `git branch` flag-class classifier (SPEC-WORKTREE-BRANCH-GUARD-FLAGCLASS-001);
+// every other entry uses the regex form.
 type branchStatePattern struct {
 	re     *regexp.Regexp
+	match  func(string) bool
 	suffix string
 }
 
@@ -87,23 +92,19 @@ type branchStatePattern struct {
 //     trailing token is not in the mutating set and the bare-prefix branch is
 //     anchored to end-of-string. AC-REQ-2a/2b/2d.
 //
-// Branch-form completion (kanban card t42, 2026-08-15 measurement): the
-// `git branch` pattern above already discriminates subcommands via the
-// optional mutating-flag group + the "non-flag token" rule, so every read-only
-// inquiry passes (`git branch --list develop -v`, `-v`/`-vv`/`-a`/`-r`, bare
-// `git branch`, `--show-current`, `--contains`). The card's measured incident
-// — `git branch --list develop -v` denied in the primary checkout — does NOT
-// reproduce against any committed state of this file (pickaxe across history:
-// no revision ever carried an undiscriminating `git branch` pattern), so the
-// binary that produced it predates or diverged from this source; the
-// read-only test pins keep every inquiry form excluded regardless. What WAS
-// live here: the copy flags `-c`/`-C` (git 2.23+, branch copy — a mutating
-// form that creates a ref) were missing from the flag class, so
-// `git branch -c foo` slipped through as an under-match. They are added to
-// the class, completing the mutating set
-// create(bare-name)/-d/-D/-m/-M/-c/-C. Residual (accepted): exotic combined
-// short flags (`git branch -vD foo`) do not match — under-matching an
-// obfuscated form is the documented correct direction for a fail-open guard.
+// Branch-form completion (kanban card t42, 2026-08-15 measurement; superseded
+// for `git branch` by SPEC-WORKTREE-BRANCH-GUARD-FLAGCLASS-001, card t467):
+// the card's measured incident — `git branch --list develop -v` denied in the
+// primary checkout — does NOT reproduce against any committed state of this
+// file (pickaxe across history: no revision ever carried an undiscriminating
+// `git branch` pattern). t42 added the copy flags `-c`/`-C` to the then-regex
+// flag class; t467's M1 matrix then measured that the single-char class +
+// "non-flag token" rule under-matched every other mutation form
+// (`-f`/`--force`, `-u` family, `-t` family, `--delete`/`--move`/`--copy`,
+// `--edit-description`, combined clusters `-df`/`-vD`/`-vt`/`-vux`,
+// option-prefixed creation `-q qbranch`/`--no-force nfbranch`), closing the
+// residual t42 had accepted for combined short flags — the entry is now the
+// token-level classifier `matchGitBranchMutation` below.
 //
 // Patterns are case-insensitive (compiled with the (?i) prefix, matching the
 // existing compilePatterns convention in pre_tool.go).
@@ -117,7 +118,14 @@ var branchStatePatterns = func() []branchStatePattern {
 	}{
 		{`\bgit\s+switch\b`, "git switch"},
 		{`\bgit\s+checkout\s+(-b\s+)?[^\s-]`, "git checkout <branch/-b>"},
-		{`\bgit\s+branch\s+(-[dDmMcC]\s+)?[^\s-]`, "git branch"},
+		// NOTE: the `git branch` entry is NO LONGER a regex — it is the
+		// token-level flag-class classifier appended after this specs list
+		// (matchGitBranchMutation, SPEC-WORKTREE-BRANCH-GUARD-FLAGCLASS-001).
+		// The old `\bgit\s+branch\s+(-[dDmMcC]\s+)?[^\s-]` single-char class
+		// under-matched mutation forms (-f/--force, the -u upstream family,
+		// -t track, --delete/--move/--copy/--edit-description, combined
+		// clusters like -df/-vD, and option-prefixed creation like
+		// `-q qbranch`), which the M1 matrix measured as the defect.
 		{`\bgit\s+reset\s+--hard\b`, "git reset --hard"},
 		// `git stash` followed by EITHER a mutating subcommand (push/pop/apply/
 		// drop), end-of-input, OR a command separator/operator boundary ([;&|]).
@@ -137,7 +145,7 @@ var branchStatePatterns = func() []branchStatePattern {
 		// form always carries a branch argument (`git merge feature/x`).
 		{`\bgit\s+merge\s`, "git merge"},
 	}
-	out := make([]branchStatePattern, 0, len(specs))
+	out := make([]branchStatePattern, 0, len(specs)+1)
 	for _, s := range specs {
 		re, err := regexp.Compile("(?i)" + s.pattern)
 		if err != nil {
@@ -146,6 +154,10 @@ var branchStatePatterns = func() []branchStatePattern {
 		}
 		out = append(out, branchStatePattern{re: re, suffix: s.suffix})
 	}
+	// The `git branch` entry: predicate-matcher form (see the specs-list NOTE
+	// above). Kept INSIDE the set so blanking branchStatePatterns (M6
+	// deny-origin tests) disables it together with every regex entry.
+	out = append(out, branchStatePattern{match: matchGitBranchMutation, suffix: "git branch"})
 	return out
 }()
 
@@ -194,11 +206,235 @@ func substituteQuotedArguments(command string) string {
 func matchBranchStateCommand(command string) (string, bool) {
 	scanned := substituteQuotedArguments(command)
 	for _, p := range branchStatePatterns {
-		if p.re.MatchString(scanned) {
+		if p.match != nil {
+			if p.match(scanned) {
+				return p.suffix, true
+			}
+			continue
+		}
+		if p.re != nil && p.re.MatchString(scanned) {
 			return p.suffix, true
 		}
 	}
 	return "", false
+}
+
+// --- git branch flag-class discrimination (SPEC-WORKTREE-BRANCH-GUARD-FLAGCLASS-001) ---
+//
+// The corrected discrimination rule (plan.md §G): a `git branch` command is
+// MUTATING (deny) iff either holds for the token stream after `git branch`:
+//
+//  1. Positional creation — a non-flag operand appears with NO list/filter
+//     action selected and not consumed as the value of a preceding
+//     value-taking flag. Covers bare creation, creation at a start point,
+//     option-prefixed creation (`-- cr2`, `-q qbranch`, `--no-force nfbranch`,
+//     `--color colprobe`), and creation modifiers (`--create-reflog <name>`).
+//  2. Mutating flag anywhere — a short-flag cluster containing any of
+//     d/D/m/M/c/C/f/t/u (leading OR mid-cluster), or a long flag whose name —
+//     split at `=` first — exactly matches a member of the mutation set.
+//
+// Everything else allows. List/filter mode is selected by `--list`,
+// `--show-current`, `-l` anywhere in a cluster, OR any filter selector
+// (`--contains`/`--no-contains`/`--merged`/`--no-merged`/`--points-at`), and
+// is VARIADIC: all remaining positionals are filter patterns. Long flags with
+// a REQUIRED space-separated value (`--contains`, `--no-contains`, `--merged`,
+// `--no-merged`, `--points-at`, `--format`, `--sort`) consume the following
+// token; ATTACHED-ONLY optional-value flags (`--color`, `--abbrev`,
+// `--column`) consume an attached `=<value>` only — a space-separated token
+// after them is a positional (creation operand). Unknown flags fail OPEN
+// (E-5): git prefix-abbreviations (`--dele` for `--delete`) and unknown
+// short flags cannot be classified by full-token matching → allow, the
+// documented under-match direction. Classification is case-insensitive
+// (input is lowercased; a case-fold of a known mutation flag still denies).
+//
+// Residuals (named, fail-open): `git -C <path> branch …` breaks `git branch`
+// adjacency and escapes classification; shell-wrapped forms are excluded by
+// quoted-span collapse before this classifier runs.
+//
+// @MX:NOTE: [AUTO] git branch flag-class classifier — M1 matrix (branch_guard_flagclass_test.go) is the classification authority
+// @MX:SPEC: SPEC-WORKTREE-BRANCH-GUARD-FLAGCLASS-001
+
+// gitBranchCmdRe locates `git branch` occurrences (case-insensitive via the
+// pre-lowered input) in the quoted-collapsed command.
+var gitBranchCmdRe = regexp.MustCompile(`\bgit\s+branch\b`)
+
+// gitBranchSeparatorRe matches command separators/operators that end the
+// `git branch` segment of a compound command (E-6): the segment classifies
+// alone, then any sibling patterns (e.g. `git switch`) match independently.
+var gitBranchSeparatorRe = regexp.MustCompile(`&&|\|\||[;|&\n]`)
+
+// gitBranchMutationLongFlags — whole-token long-flag mutation set (plan §G
+// rule 2). Keys are the flag names without the `--` prefix and without any
+// attached `=value`.
+var gitBranchMutationLongFlags = map[string]bool{
+	"force":            true,
+	"delete":           true,
+	"move":             true,
+	"copy":             true,
+	"set-upstream":     true,
+	"set-upstream-to":  true,
+	"unset-upstream":   true,
+	"track":            true,
+	"no-track":         true,
+	"edit-description": true,
+}
+
+// gitBranchSpaceValueLongFlags — long flags with a REQUIRED space-separated
+// value: they consume the following token so it is never read as a creation
+// operand (Q-13/Q-14/Q-16 arity pins).
+var gitBranchSpaceValueLongFlags = map[string]bool{
+	"contains":    true,
+	"no-contains": true,
+	"merged":      true,
+	"no-merged":   true,
+	"points-at":   true,
+	"format":      true,
+	"sort":        true,
+}
+
+// gitBranchFilterSelectors — the subset of space-value flags that ALSO select
+// variadic list/filter mode: every positional after the consumed value is a
+// filter pattern, not a creation operand.
+var gitBranchFilterSelectors = map[string]bool{
+	"contains":    true,
+	"no-contains": true,
+	"merged":      true,
+	"no-merged":   true,
+	"points-at":   true,
+}
+
+// gitBranchListSelectors — list-action selectors that take NO value.
+var gitBranchListSelectors = map[string]bool{
+	"list":         true,
+	"show-current": true,
+}
+
+// gitBranchKnownLongFlags — the full known long-flag universe (the sets above
+// plus the attached-only optional-value flags). Used ONLY by the
+// prefix-abbreviation check: a strict prefix of a known flag is a git
+// prefix-abbreviation (`--dele` → `--delete`) that full-token matching cannot
+// classify → the command allows (E-5 fail-open).
+var gitBranchKnownLongFlags = func() map[string]bool {
+	m := map[string]bool{"color": true, "abbrev": true, "column": true}
+	for k := range gitBranchMutationLongFlags {
+		m[k] = true
+	}
+	for k := range gitBranchSpaceValueLongFlags {
+		m[k] = true
+	}
+	for k := range gitBranchListSelectors {
+		m[k] = true
+	}
+	return m
+}()
+
+const (
+	// gitBranchMutationShortChars — a short-flag cluster containing any of
+	// these letters is mutating (input is lowercased, so this covers
+	// d/D/m/M/c/C/f/F/t/T/u/U). No query short flag contains any of them.
+	gitBranchMutationShortChars = "dmcftu"
+	// gitBranchKnownShortChars — every real git branch short flag known to
+	// this classifier (query: a i l q r v; mutation: c d f m t u). A cluster
+	// containing a letter outside this set is not a real git branch flag —
+	// git rejects the invocation — and the command is unclassifiable → allow
+	// (E-5 fail-open).
+	gitBranchKnownShortChars = "acdfilmqrtuv"
+)
+
+// matchGitBranchMutation reports whether the quoted-collapsed command
+// contains a `git branch` invocation classified as mutating. It is the
+// predicate-matcher entry of branchStatePatterns (suffix "git branch").
+func matchGitBranchMutation(scanned string) bool {
+	lower := strings.ToLower(scanned)
+	for _, loc := range gitBranchCmdRe.FindAllStringIndex(lower, -1) {
+		if classifyGitBranchTail(lower[loc[1]:]) {
+			return true
+		}
+	}
+	return false
+}
+
+// classifyGitBranchTail classifies the token stream following one `git
+// branch` occurrence (already lowercased). Returns true when the invocation
+// presents a mutating flag or a positional creation operand.
+func classifyGitBranchTail(tail string) bool {
+	if m := gitBranchSeparatorRe.FindStringIndex(tail); m != nil {
+		tail = tail[:m[0]] // E-6: classify the git branch segment alone
+	}
+	listMode := false    // a list/filter action consumes positionals as patterns
+	consumeNext := false // next token is a space-separated flag value
+	for _, tok := range strings.Fields(tail) {
+		if consumeNext {
+			consumeNext = false
+			continue
+		}
+		switch {
+		case tok == "--":
+			// End-of-options marker: later positionals are creation operands
+			// (M-26). Nothing to consume; the positional arm below decides.
+		case strings.HasPrefix(tok, "--"):
+			name := strings.TrimPrefix(tok, "--")
+			attached := false
+			if i := strings.IndexByte(name, '='); i >= 0 {
+				name, attached = name[:i], true
+			}
+			if gitBranchMutationLongFlags[name] {
+				return true // rule 2: whole-token mutation membership
+			}
+			if gitBranchSpaceValueLongFlags[name] {
+				if gitBranchFilterSelectors[name] {
+					listMode = true
+				}
+				if !attached {
+					consumeNext = true
+				}
+				continue
+			}
+			if gitBranchListSelectors[name] {
+				listMode = true
+				continue
+			}
+			// Attached-only optional-value flags (color/abbrev/column) fall
+			// through: an attached =value is consumed by the split above; a
+			// space-separated token after them is a positional (M-31/M-32).
+			if isGitBranchFlagAbbreviation(name) {
+				return false // E-5: prefix-abbreviation → unclassifiable → allow
+			}
+			// A genuinely unknown long flag is neutral at the flag level;
+			// positional analysis still applies (M-28/M-30 measured creation).
+		case len(tok) > 1 && tok[0] == '-':
+			cluster := tok[1:]
+			if strings.ContainsAny(cluster, gitBranchMutationShortChars) {
+				return true // rule 2: cluster scan (leading or mid-cluster)
+			}
+			for i := 0; i < len(cluster); i++ {
+				if !strings.ContainsRune(gitBranchKnownShortChars, rune(cluster[i])) {
+					return false // E-5: unknown short flag → unclassifiable → allow
+				}
+			}
+			if strings.ContainsRune(cluster, 'l') {
+				listMode = true // -l anywhere in a cluster selects list mode
+			}
+		default:
+			if !listMode {
+				return true // rule 1: positional creation operand
+			}
+			// list/filter mode: the positional is a pattern — continue.
+		}
+	}
+	return false
+}
+
+// isGitBranchFlagAbbreviation reports whether name is a STRICT prefix of a
+// known long flag — a git prefix-abbreviation (`--dele` → `--delete`) that
+// full-token matching cannot classify.
+func isGitBranchFlagAbbreviation(name string) bool {
+	for k := range gitBranchKnownLongFlags {
+		if len(k) > len(name) && strings.HasPrefix(k, name) {
+			return true
+		}
+	}
+	return false
 }
 
 // isExemptAgent returns true when the invoking agent identity is the trusted
