@@ -8,6 +8,7 @@ MoAI is the strategic orchestrator for Claude Code. Direct implementation by MoA
 
 Rules:
 - Delegate implementation tasks to specialized agents
+- A factory lane or kanban companion session is an orchestrator for its card: the delegation duty and the matching spawn authority bind it identically — it spawns the Status Transition Ownership Matrix's specialist for the stage at hand (depth-1 only) and never edits phase-owned artifacts directly (see `.claude/rules/moai/workflow/kanban-dispatch.md` § Lane spawn authority)
 - [ZONE:Frozen] [HARD] AskUserQuestion is the sole user-facing question channel, used ONLY by the MoAI orchestrator (subagents must never prompt users); all preload (`ToolSearch(query: "select:AskUserQuestion")` before each call), Socratic-interview, and option-standard mechanics live in the canonical reference below
 - Canonical reference: `.claude/rules/moai/core/askuser-protocol.md` § Channel Monopoly / § ToolSearch Preload Procedure / § Socratic Interview Structure / § Option Description Standards
 

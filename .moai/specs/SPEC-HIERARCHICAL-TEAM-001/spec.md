@@ -100,7 +100,7 @@ Re-keying: the "team mode" condition is replaced with "parallel write workers wi
 
 **Mechanism (NOT a new Go primitive)**:
 
-1. **Evidence persistence**: each AC verification command's verbatim output is redirected to `.moai/state/verify/<session>/M<n>.<AC-id>.{log,out}` per the file-redirect contract (`agent-common-protocol-reference.md` § File-redirect contract). The evidence path is cited in the §E.2 row — the cited path MUST resolve at audit time (verification-claim-integrity §2).
+1. **Evidence persistence**: each AC verification command's verbatim output is redirected to `.moai/state/verify/<session>/M<n>.<AC-id>.{log,out}` as machine-local scratch per the file-redirect contract (`agent-common-protocol-reference.md` § File-redirect contract). The §E.2 row cites a TRACKED path: any cited evidence path MUST name a file exported under `.moai/reports/<card-id>/` (export before citing) — `.moai/state/` is gitignored and survives to no clone and no CI runner, so a citation pointing at it is a Gap, never a pass (verification-claim-integrity §2; revised by t390 — the pre-revision wording cited the gitignored scratch path itself).
 2. **Fold row**: manager-lead appends a `progress.md` §E.2 row of the form `M<n>: <AC-id-1>=PASS, <AC-id-2>=PASS | evidence: .moai/state/verify/<session>/M<n>.* | fold-at: <ISO-8601>`. This is the existing §E.2 row format — no schema change.
 3. **Compact**: manager-lead invokes `/compact <instructions>` where the instructions explicitly retain: (a) the SPEC ID + plan.md milestones M1..Mn summary, (b) the fold rows from §E.2, (c) the active milestone M{n+1} plan. Everything else is compact-eligible. This is the canonical `/compact` mechanism (context-window-management.md § Reduction Ladder) — manager-lead drives it explicitly rather than waiting for the runtime's auto-compact.
 
@@ -158,7 +158,7 @@ Re-keying: the "team mode" condition is replaced with "parallel write workers wi
 
 ### REQ-FOLD-002 — Context-Folding evidence-persistence obligation
 
-**The** evidence paths cited in the §E.2 fold row **shall** resolve at audit time per the verification-claim-integrity §2 attribution requirement. **The** evidence **shall** be persisted under `.moai/state/verify/<session>/` (NOT `/tmp` — the OS clears `/tmp` and the cited path would dangle). **When** an evidence path cannot be populated (command failed, output redirected elsewhere), the fold row **shall** mark that AC `GAP` rather than `PASS`, and manager-lead **shall** NOT proceed to M{n+1} without resolving the gap or returning a blocker report.
+**The** evidence paths cited in the §E.2 fold row **shall** resolve at audit time per the verification-claim-integrity §2 attribution requirement, and a cited path **shall** name a TRACKED file under `.moai/reports/<card-id>/` (export before citing) — `.moai/state/verify/<session>/` is gitignored machine-local scratch that reaches no clone, no CI runner, and no other machine, so a citation pointing at it **shall** be recorded as a Gap, never a pass. **The** raw command output **shall** be persisted as scratch under `.moai/state/verify/<session>/` during the milestone (NOT `/tmp` — the OS clears `/tmp` and the scratch would be lost) and retained across the `/compact`; the audit-time citation obligation rides the exported tracked copy. **When** an evidence path cannot be populated (command failed, output redirected elsewhere), the fold row **shall** mark that AC `GAP` rather than `PASS`, and manager-lead **shall** NOT proceed to M{n+1} without resolving the gap or returning a blocker report. (Revised by t390: the pre-revision wording required the fold-row citations themselves to resolve under the gitignored scratch path.)
 
 ### REQ-FOLD-003 — Context-Folding bounded-context invariant
 
@@ -224,7 +224,7 @@ Re-keying: the "team mode" condition is replaced with "parallel write workers wi
 - AC-WORKTREE-001 (REQ-WORKTREE-001): worktree-integration.md decision tree + HARD rule re-keyed to "parallel write workers within hierarchical team"; no residual "team mode" gating language in the decision tree.
 - AC-WORKTREE-002 (REQ-WORKTREE-002): agent-common-protocol.md § Background Agent's stale team-mode framing re-keyed; concurrency safeguard retained verbatim.
 - AC-FOLD-001 (REQ-FOLD-001): manager-lead executes the 3-step fold procedure at milestone Mn completion (evidence → fold row → `/compact`); fold row format matches existing §E.2 row.
-- AC-FOLD-002 (REQ-FOLD-002): evidence paths under `.moai/state/verify/<session>/M<n>.*` resolve at audit time; GAP-marked ACs do not advance.
+- AC-FOLD-002 (REQ-FOLD-002): fold-row citations are tracked paths under `.moai/reports/<card-id>/` that resolve at audit time (the gitignored `.moai/state/verify/<session>/` scratch is recorded but never cited); GAP-marked ACs do not advance. (Revised by t390 — the pre-revision row cited the scratch path itself.)
 - AC-FOLD-003 (REQ-FOLD-003): post-fold manager-lead context bounded by current-milestone + fold rows + rule prefix; handoff gate still fires at model-specific threshold.
 - AC-PEER-001 (REQ-PEER-001): Tier M/L ACs get a second-worker re-run; Tier S skips.
 - AC-PEER-002 (REQ-PEER-002): FAIL/PARTIAL peer reports produce a blocker (no silent advance to M{n+1}); orchestrator runs AskUserQuestion.
