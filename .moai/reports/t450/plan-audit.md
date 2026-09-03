@@ -91,3 +91,69 @@ FAIL 사유는 단일 blocking 결함 D1이다. 수리 지시:
 5. D6은 기록 목적으로 무수리 권고.
 
 이 감사의 판정 파일은 `.moai/reports/plan-audit/`가 아니라 카드 증거 경로 `.moai/reports/t450/plan-audit.md`에 기록됐다 — 이는 본 SPEC이 정론화하는 audit-artifact-convention.md § Where(.moai/reports/plan-audit/ FORBIDDEN, "writing there is disposal, not export")의 그 자체 적용이다.
+
+---
+
+# Iteration 2 — Delta Re-audit (수리 커밋 8faea987c)
+
+- 반복: 2/2 (Tier M 천장 — `tier: M`이 frontmatter에 추가돼 기계 해석도 M으로 resolution)
+- 감사 트리: `8faea987c` (브랜치 `WT-plan-auditor-residue`, 워킹트리 클린 — `git status --porcelain` 0행 관측)
+- 범위: 반복 1 결함 D1-D5의 델타 + 회귀 검사. 전면 재감사 아님(재시도 계약의 델타 스코프).
+
+## Verdict
+
+**PASS** — **Overall Score: 1.0** (반복 1의 0.90에서 상승 — 단조성 요건 0.90 이상 충족; Tier M 문턱 0.80 통과)
+
+차단 결함 없음. 반복 1의 5건 결함 전부 해소 확인. 신규 결함 없음(수리 커밋은 SPEC 산출물 4개 + 반복 1 판정문만 추가 — 에이전트·템플릿·문서 표면 무변경).
+
+## 이전 반복 결함 회귀 검사
+
+- D1 (blocking) — **RESOLVED**: 아래 델타 판정 참조.
+- D2 — **RESOLVED**: AC-005 재계측화 확인.
+- D3 — **RESOLVED**: spec.md:13에 `tier: M` 추가 확인. 프론트매터 13필드(정식 12 + 선택 `tier`), snake_case 별칭 여전히 0건 — MP-3 회귀 없음.
+- D4 — **RESOLVED**: plan.md §A가 실제 메커니즘으로 재서술됨.
+- D5 — **RESOLVED**: `grep 'NEEDS CLARIFICATION' plan.md` → 0매치(exit 1, 이번 실행). "[NEEDS CLARIFICATION 없음]" 대괄호 형태 소멸, "미해결 질의는 없다 — …" 평서문으로 대체. MP-7은 반복 1보다 더 엄격한 상태(형태 매칭도 0매치).
+- D6 (기록 목적) — 변화 없음, 무수리 권고 유지.
+
+## 델타 판정 (D1-D5)
+
+**D1 — AC-004 채택 규율: 충족.** acceptance.md:58의 판정 대상 문단이 도구를 명시한다 — 조항 범위 diff가 판정자, 전체 파일 diff는 적색 관측 수단일 뿐, 제외된 2 hunk의 존속은 실패가 아님. 이로써 도착 시 녹색인 판정 도구의 공허함이 침묵이 아니라 문서화됐다. 두 셀 모두 재실행으로 검증:
+
+- RED-now 셀(acceptance.md:64-70): `diff .claude/agents/moai/plan-auditor.md internal/template/templates/.claude/agents/moai/plan-auditor.md` → 이번 실행 재측정 좌표 `338c338` / `441c441` / `443,444d442` — 셀 기록 좌표와 정확히 일치, `diff -q` 재실행 exit=1 직접 관측. 트리 핀 7835148d3 명시.
+- 보조 기준선 셀(acceptance.md:72-79): `grep -c "Side-talk"` 양쪽 사본 → `.claude/agents/moai/plan-auditor.md:0` / `internal/template/templates/.claude/agents/moai/plan-auditor.md:0`, exit 1 — 축자 일치 재현.
+- Green 경로 셀(acceptance.md:81): M2가 전환 주체, 합격 출력 = 조항 범위 diff 0, 2 hunk 존속 합법 명시.
+
+§2.1 네 요소(명령/축자 stdout/종료코드/트리 SHA)가 두 셀에 갖춰졌고, 도구의 적색이 알려진 실패 입력(기존 2 hunk 드리프트)에서 관측됐다(verification-completeness §1.1/§1.2(b)). 채택 완료로 판정한다.
+
+- 잔여 관찰(optional, 수리 불요): 전체 파일 diff RED-now 셀의 출력란은 hunk 본문 전체가 아니라 좌표 헤더+주석 형태다. 좌표 헤더 자체는 diff의 축자 출력이고 적색을 유일하게 식별하며, 판정 대상 문단이 이 셀의 역할을 적색 관측으로 명시적으로 강등해 뒀으므로 규율 실질은 충족이다.
+
+**D2 — AC-005 재계측화: 녹색 형태가 실제로 뒤집힌다.** 판정 대상 문단(acceptance.md:83-85)이 저장소 전역 매치를 명시적으로 판정 대상에서 제외(런게이트 스트림의 합법적 잔존 인정). (a) 조건은 쌍둥이 사본 grep `reports/plan-audit/` → 양쪽 0 — 뒤집힘 검증: 각 사본의 유일 출현은 :395 한 곳이고(이번 실행 재측정, 양쪽 모두 동일 라인), REQ-002가 그것을 제거하므로 1→0 전환이 기계적으로 가능하다. RED-now 셀이 :395로 재지향됐고 축자 일치 재현(exit 0). (b)는 문서 판독 조건으로 종속 배치. 녹색 출력 형태가 Then 절에 명시됐다 — 반복 1의 "프록시가 뒤집히지 않음" 결함 해소.
+
+**D3 — `tier: M` 추가.** spec.md:13 확인. 이로써 선언된 Tier와 기계 resolution이 일치(문턱 0.80, 천장 2).
+
+**D4 — §A 메커니즘 서술 정정.** plan.md §A 신규 문단: 전체 재생성 명령 `AGENTEMIT_UPDATE=1 go test ./internal/template/agentemit/... -run TestGoldenCommittedArtifactsMatchEmission` — Makefile:39와 축자 일치(반복 1에서 직접 검증한 바와 동일). 스포트 체크: `internal/template/agentemit/golden_test.go:78-82` — "With AGENTEMIT_UPDATE=1 it (re)writes the committed .toml artifacts" + `emitRealSet(t)` + `update := os.Getenv("AGENTEMIT_UPDATE") == "1"` — "커밋된 .toml 전부 재작성" 서술이 코드와 일치. 카탈로그 `gen-catalog-hashes --entry plan-auditor` 및 2549f775f 기록 인용 유지. "범위 emit" 오서술 소멸.
+
+**D5 — 대괄호 부정문 제거.** 위 회귀 검사 참조 — 0매치.
+
+## 회귀 검사 (반복 1 기준 유지 확인)
+
+- REQ 계층: REQ-001..008이 :49-63(frontmatter tier 추가로 +1행 밀림)에 연속, 문면 반복 1과 동일 — MP-1·MP-2 회귀 없음.
+- AC 매트릭스(acceptance.md:7-16)와 AC-006 RED 셀·AC-007 GREEN 셀: 반복 1 판독과 동일 — 변경 없음.
+- AC-006 기준선(적색 sync-auditor.toml 1건): 반복 1에서 동일 트리 내용으로 재측정 완료, 수리 커밋은 코드 무변경이므로 유효.
+- MP-5: 수리 커밋이 새 SPEC-ID 참조를 추가하지 않음(5파일 diff 대상 확인) — D6 기록 유지, BLOCKING 없음.
+- MP-6: `syscall` 추가 없음.
+
+## Iteration 2 Gaps
+
+- run-phase 행위 확인(반출 파일의 카드 디렉터리 생성) — 여전히 plan-phase 관측 불가(§D.5 소관).
+- 조항 최종 문안(M1 산출)에 대한 중립성 가드 실행 — run-phase 몫.
+- `make agents-emit` 실행은 수행하지 않음(감사 read-only; 선례 end-state로 간접 증명, 반복 1과 동일).
+
+## Iteration 2 Residual-risk
+
+- AC-004의 조항 구간 추출 프록시 구체 구현은 run-phase M2에서 확정 — 추출 경계 오류는 AC-004를 무력화할 수 있으나, 이제 적색 관측 장치와 판정 대상 문단이 있어 무음 고장은 아니다.
+- develop 이동 시 AC-006의 "적색 1건" 기준선 재측정 필요 — acceptance.md 재측정 규정이 절차를 갖고 있다.
+
+## 최종 권고
+
+수리 없이 run-phase 진행을 승인한다. 반복 1 차단 결함 D1이 규율상 요구되는 두 셀과 함께 해소됐고, 나머지 결함은 전부 기록·해소됐으며, 신규 표면 변경이 없다.
