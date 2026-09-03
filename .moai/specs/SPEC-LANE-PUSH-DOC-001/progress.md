@@ -58,4 +58,34 @@ m1_to_mN_commit_strategy: 2 commits — M1 (sentence + draft->in-progress transi
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+phase: sync
+tier: S
+sync_complete_at: 2026-09-03
+sync_commit_sha: pending-backfill-sync
+sync_status: complete
+b12_self_test_a: PASS — pre-emission grep -c 'SPEC-LANE-PUSH-DOC-001' CHANGELOG.md returned 0 (no duplicate entry); post-edit count 1
+b12_self_test_b: PASS — 5 distinct ACs (AC-001..AC-005, spec.md §3) all covered in progress.md §E.2 (5/5 PASS); acceptance.md intentionally absent per Tier S policy
+b12_self_test_c: PASS — cited paths verified by ls/sed: CLAUDE.local.md line 349 re-read intact post-absorb (deliverable NOT re-edited in sync), .moai/reports/t463/run-evidence.md exists
+changelog_entry_position: "CHANGELOG.md [Unreleased] § Fixed, first entry (newest-first ordering preserved)"
+frontmatter_status_transitions:
+  spec_md: "in-progress -> implemented -> completed (merged close, single sync commit)"
+  updated_refreshed: 2026-09-03
+  plan_md: stateless on status axis (no status field, per spec-frontmatter-schema.md Artifact Statelessness)
+  acceptance_md: absent (Tier S policy)
+sync_commit_subject: "docs(SPEC-LANE-PUSH-DOC-001): sync-phase close — CHANGELOG + §E.4 + completed transition (card t463)"
+deliverable_re_edited_in_sync: false
+run_phase_files: 4
+evidence_export: .moai/reports/t463/sync-evidence.md
+mx_tag_validation: not-applicable (markdown-only SPEC; no Go surface, no exported functions introduced)
+```
+
+Sync-phase evidence (verbatim, this run, tree `WT-lane-push-doctrine` @ `aa4a55255` pre-commit):
+
+| Check | Command | Output |
+|-------|---------|--------|
+| Deliverable intact post-absorb | `sed -n '349p' CLAUDE.local.md` | `- **[HARD] WT 브랜치 push·CI 직접 요청 금지 (운영자 지시 2026-09-01).** 카드가 마감되면 원격 develop 반영이 **유일한** 공개 경로다 — 리드가 창 밖에서 레인 병합 SHA를 모아 일괄로 실행하는 `git push origin develop`이며, 레인은 그 push의 주체가 아니다. …` (rc=0) |
+| Status before transition | `grep -n 'status:' .moai/specs/SPEC-LANE-PUSH-DOC-001/spec.md` | `5:status: in-progress` |
+| Status after transition | `grep -n 'status:' .moai/specs/SPEC-LANE-PUSH-DOC-001/spec.md` | `5:status: completed` |
+| B12 pre-emission | `grep -c 'SPEC-LANE-PUSH-DOC-001' CHANGELOG.md` | `0` (before emission) → `1` (after emission, exactly the new entry) |
+| Pre-stage state | `git status --short` | ` M CHANGELOG.md` → staged-by-pathspec set adds the 4 sync files |
