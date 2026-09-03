@@ -37,7 +37,7 @@ tier: M
 - **Given** 어느 레인의 `notify_when_idle` 통지가 도착하고,
 - **When** 리드 또는 deputy가 그 통지를 처리하면,
 - **Then** 카드는 통지만으로 전진하지 않고 — progress.md 또는 위임된 증거 경로를 **읽은 뒤에만** 전진하며 — 교리 텍스트가 경계 절("scheduling hint, not completion evidence" 취지)을 `cross-session-messaging.md` 해당 절의 인용으로 운반한다.
-- 기계 검증: `grep -n "idle" .claude/rules/moai/workflow/kanban-dispatch.md .claude/agents/moai/manager-lead.md` 에서 경계 문언 + `cross-session-messaging.md` 상호참조가 함께 적중. RED-now: 상주 deputy 절 자체가 없어 적중 0.
+- 기계 검증: `grep -c 'scheduling hint' .claude/rules/moai/workflow/kanban-dispatch.md .claude/agents/moai/manager-lead.md` — M3가 `cross-session-messaging.md` § An idle notice is a scheduling hint 상호참조를 양쪽에 새기면 GREEN으로 뒤집는다. RED-now (트리 `109a4615d` 실측): `.claude/rules/moai/workflow/kanban-dispatch.md:0`, `.claude/agents/moai/manager-lead.md:0` — 상호참조가 아직 양쪽 모두 없다.
 
 ### AC-LDP-003 — 상주 deputy spawn 의무 [M1]
 - **Given** 새 `-k`/`-f` 배치가 시작되면,
@@ -65,7 +65,7 @@ tier: M
 ### AC-LDP-007 — 회차 보고 파일 분할 [M2]
 - **Given** 회차 N이 끝나면,
 - **When** 보고 파일을 갱신하면,
-- **Then** 회차 N 파일 1개 + 인덱스 1개만 변경되고, 단일 대형 파일의 전체 재작성은 발생하지 않는다 (`git diff --stat`로 회차당 변경 파일 ≤2 확인).
+- **Then** 회차 N 파일 1개 + 인덱스 1개만 생성·변경되고, 단일 대형 파일의 전체 재작성은 발생하지 않는다 (회차 디렉터리 파일 목록으로 확인: `ls .moai/reports/lead/`에서 회차당 신규 항목 ≤2 — 회차 파일 1 + 인덱스 1. `git diff --stat`은 쓰지 않는다: 회차 파일은 추적되지 않음. RED-now (트리 `109a4615d` 실측): `git ls-files .moai/reports/lead/` = 0행, `ls .moai/reports/lead/` = "No such file or directory").
 
 ### AC-LDP-008 — 템플릿 중립성 [M4]
 - **Given** `internal/template/templates/**`의 편집이 끝나면,
