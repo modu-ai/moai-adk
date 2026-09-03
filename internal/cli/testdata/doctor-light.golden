@@ -29,6 +29,7 @@
 │  Workspace ---                                                                                                                                       │
 │    STATUS  CHECK                 MESSAGE                                                                                                             │
 │    warn    Hooks Config          .claude/hooks/ not found — hook handlers unavailable                                                                │
+│    warn    Hook Wiring           not checked: .claude/settings.json not found                                                                        │
 │    ok      Hook opt-in:          disabled                                                                                                            │
 │    warn    Slash Commands        .claude/commands/ not found — slash commands unavailable                                                            │
 │    warn    Skills Allowlist      .claude/skills/ not found                                                                                           │
@@ -39,8 +40,8 @@
 │    warn    Telemetry Config      .moai/config/sections/telemetry.yaml not found — telemetry uses defaults                                            │
 │    warn    Glamour Cache         glamour not integrated                                                                                              │
 │    ok      Codex Wiring          not wired (claude-only project) — skipped                                                                           │
-│    3 ok, 8 warn, 0 fail                                                                                                                              │
+│    3 ok, 9 warn, 0 fail                                                                                                                              │
 │                                                                                                                                                      │
-│   Pass 17    Warn 11    Fail 0                                                                                                                       │
+│   Pass 17    Warn 12    Fail 0                                                                                                                       │
 │                                                                                                                                                      │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
