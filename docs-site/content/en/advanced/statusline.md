@@ -25,10 +25,12 @@ The base layout is three lines; when a session name or backlog observation exist
 🏷️ run | 👤 manager-develop | 🔄 TODO: 1/3
 ```
 
+Once a judgment has actually been obtained, the backlog number gains one more suffix — `🔄 TODO: 1/3 ✓2`.
+
 - **Line 1 — how the session is running**: model, reasoning depth, cache hit rate, Claude Code version, MoAI version, session time, and output style in one line. It tells you at once which configuration the session is running under.
 - **Line 2 — how much budget remains**: context-window usage (CW) and two rolling rate limits (5-hour · 7-day) as gauge bars. This is the evidence for deciding whether a heavy job can run right now.
 - **Line 3 — where, and on what**: directory, repository and branch, open issue and change-request counts, git status, the active SPEC task, and the review state of the open PR, bundled together. This is the line you will see most often in a PR-centric workflow.
-- **Line 4 (conditional) — as whom, and how much is queued**: the session name (🏷️), agent name (👤), and backlog state (🔄 `TODO: in progress/queued`). It appears naturally on named sessions — kanban companions — and segments shrink when their source of observation is missing; when all are empty, the line itself is omitted. It is also where the session name is highlighted, which makes it the first signal when you have several terminals open and lose track of which window plays which role.
+- **Line 4 (conditional) — as whom, and how much is queued**: the session name (🏷️), agent name (👤), and backlog state (🔄 `TODO: in progress/queued`). It appears naturally on named sessions — kanban companions — and segments shrink when their source of observation is missing; when all are empty, the line itself is omitted. It is also where the session name is highlighted, which makes it the first signal when you have several terminals open and lose track of which window plays which role. Once a judgment is available, the backlog count gains one more `✓N` suffix showing how many of the picked cards are already named in the integration branch's history — an annotation, not a subtraction from the picked count, and it renders nothing at all until a judgment has actually been obtained (no zero is ever shown for an unmeasured state).
 
 ## The path the data takes
 
@@ -195,7 +197,7 @@ statusline:
     github: true             # open issues/change-requests pair (repo-segment suffix)
     # line 4 — session line (on by default; rendered even when unstated)
     session: true            # 🏷️ session name + 👤 agent
-    backlog: true            # 🔄 TODO: in progress/queued
+    backlog: true            # 🔄 TODO: in progress/queued (+✓N)
 ```
 
 Sixteen keys form the official configuration schema. The `owner/name` repository part is a seventeenth element rendered inside the `git_branch` segment, outside the schema, so it has no individual toggle. The `github` key keeps its name but now toggles the `issues/change-requests` pair on the **line 3** repo segment, while the `forge` key above decides which hosting service is asked. Of the nineteen toggles written out above, sixteen are that schema; the remaining three (`github` · `session` · `backlog`) sit outside it. All three render on by default even when unstated in the configuration — segments whose source of observation is missing (session name, backlog queue, forge cache) are quietly omitted. The former named presets (full/compact/minimal) are retired, so toggle the combination you want per segment.
