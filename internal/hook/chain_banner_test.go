@@ -76,10 +76,10 @@ func TestSessionStartBannerBackfill(t *testing.T) {
 
 	projDir := chainBannerTestSetup(t, []chain.ChainEvent{
 		{
-			EventType:   chain.EventNodeEnter,
-			NodeID:      "N1",
+			EventType:    chain.EventNodeEnter,
+			NodeID:       "N1",
 			WorktreePath: wtPath,
-			Depth:       1,
+			Depth:        1,
 			OriginChain:  []string{"N0", "N1"},
 			EnteredAt:    "2026-08-13T10:00:00Z",
 			ResumeTarget: "Start M1",
@@ -149,12 +149,12 @@ func TestSessionStartBannerAtRoot(t *testing.T) {
 // TestFormatChainBanner verifies the banner formatting includes expected fields.
 func TestFormatChainBanner(t *testing.T) {
 	node := &chain.WorktreeNode{
-		NodeID:      "N2-very-long-id-here",
-		Depth:       2,
-		OriginChain: []string{"N0-aaaa", "N1-bbbb", "N2-very-long-id-here"},
-		SpecID:      "SPEC-X-001",
-		Milestone:   "M2",
-		ResumeTarget: "Continue M2",
+		NodeID:        "N2-very-long-id-here",
+		Depth:         2,
+		OriginChain:   []string{"N0-aaaa", "N1-bbbb", "N2-very-long-id-here"},
+		SpecID:        "SPEC-X-001",
+		Milestone:     "M2",
+		ResumeTarget:  "Continue M2",
 		ResumeCommand: "/moai run X",
 	}
 

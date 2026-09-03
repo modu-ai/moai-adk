@@ -1,0 +1,38 @@
+drift rows examined:        203
+LOOSE body-only close hits: 33
+TIGHT (line declares close): 15
+--- TIGHT hits (act on these) ---
+SPEC-AUTONOMY-TIERS-001  <-  a83934d55  feat(SPEC-HIERARCHICAL-TEAM-001): manager-lead 12th agent + hierarchical team (Tier M, 3-phase close) (#1394)
+SPEC-CLIFIX-LINTER-STALE-001  <-  2f449e189  docs(specs): batch sync-phase close — 5 B-grade SPECs (3-phase close) (#1240)
+SPEC-CONTEXT-ENGINE-RIGHTSIZE-001  <-  2f449e189  docs(specs): batch sync-phase close — 5 B-grade SPECs (3-phase close) (#1240)
+SPEC-GLM-KEY-INPUT-001  <-  2f449e189  docs(specs): batch sync-phase close — 5 B-grade SPECs (3-phase close) (#1240)
+SPEC-I18N-GOVERNANCE-001  <-  2f449e189  docs(specs): batch sync-phase close — 5 B-grade SPECs (3-phase close) (#1240)
+SPEC-INTERNAL-TEST-002  <-  80dea9684  docs(SPEC-INTERNAL-TEST-001): sync-phase artifacts + 3-phase close
+SPEC-TDD-ANTICHEAT-001  <-  2f449e189  docs(specs): batch sync-phase close — 5 B-grade SPECs (3-phase close) (#1240)
+SPEC-V3R6-CI-FLAKY-STABILIZE-003  <-  7beda68a5  Close out 2 SPECs with 3-phase lifecycle completion (doc-only) (#1210)
+SPEC-V3R6-CODERABBIT-ADOPTION-001  <-  7beda68a5  Close out 2 SPECs with 3-phase lifecycle completion (doc-only) (#1210)
+SPEC-V3R6-MAIN-RED-REMEDIATION-001  <-  e979a4d13  chore(SPEC group C): Mx-phase close (status implemented→completed, 2026-06-02)
+SPEC-V3R6-PROMPT-CACHE-001  <-  e979a4d13  chore(SPEC group C): Mx-phase close (status implemented→completed, 2026-06-02)
+SPEC-V3R6-SESSION-HANDOFF-AUTO-001  <-  e979a4d13  chore(SPEC group C): Mx-phase close (status implemented→completed, 2026-06-02)
+SPEC-WORKTREE-BRANCH-GUARD-001  <-  fb8aff006  chore(SPEC-WORKTREE-BRANCH-GUARD-DISCRIM-001): sync-phase artifacts — 3-phase close (#1491)
+SPEC-WORKTREE-BRANCH-GUARD-OPTIN-001  <-  fb8aff006  chore(SPEC-WORKTREE-BRANCH-GUARD-DISCRIM-001): sync-phase artifacts — 3-phase close (#1491)
+SPEC-WORKTREE-ENTRY-STRATEGY-001  <-  7beda68a5  Close out 2 SPECs with 3-phase lifecycle completion (doc-only) (#1210)
+--- LOOSE-only (mention, not a close — excluded) ---
+SPEC-CONFIG-AUDIT-REPAIR-001  <-  83610e03e  feat(SPEC-UPDATE-DATA-SURVIVAL-001): M5-M6 non-vacuous safety guards + partial-restore reporting + 3-phase close (#1275)
+SPEC-DESIGN-DOCSV2-001  <-  de4e724b3  docs(SPEC-DESIGN-MOAIWEBV2-001): sync-phase close — CHANGELOG + status transitions
+SPEC-FEEDBACK-AUTO-SUBMIT-001  <-  0a3def8fe  docs(SPEC-TODO-ENABLE-FLAG-001): sync-phase artifacts, 3-phase close
+SPEC-GOAL-HTML-WIRING-001  <-  ecc9df091  fix(SPEC-PROJECT-NAVIGATOR-004): navigator Next task excludes implemented, prefers in-progress (Tier M, 3-phase close) (#1397)
+SPEC-HANDOFF-GOALFIX-001  <-  51d18d3fe  docs(SPEC-INTERNAL-PERF-001): sync-phase artifacts + 3-phase close
+SPEC-INFINITE-GOAL-001  <-  535a88710  docs(SPEC-GOAL-HTML-FLOW-001): sync-phase artifacts (3-phase close) (#1336)
+SPEC-INTERNAL-SECURITY-001  <-  51d18d3fe  docs(SPEC-INTERNAL-PERF-001): sync-phase artifacts + 3-phase close
+SPEC-MCP-AGENT-WIRING-001  <-  d21b76ebb  docs(SPEC-MCP-DEFAULT-ON-001): sync-phase close — CHANGELOG + completed transition + §E.4 audit-ready (#1464)
+SPEC-MCP-CONSOLE-001  <-  d21b76ebb  docs(SPEC-MCP-DEFAULT-ON-001): sync-phase close — CHANGELOG + completed transition + §E.4 audit-ready (#1464)
+SPEC-MOAI-MCP-SERVER-001  <-  d21b76ebb  docs(SPEC-MCP-DEFAULT-ON-001): sync-phase close — CHANGELOG + completed transition + §E.4 audit-ready (#1464)
+SPEC-MODEL-TIER-PLANTYPE-001  <-  e013d4c86  docs(SPEC-GLM-EFFORT-TUNE-001): sync-phase artifacts + 3-phase close
+SPEC-NAVIGATOR-SYNC-003  <-  ecc9df091  fix(SPEC-PROJECT-NAVIGATOR-004): navigator Next task excludes implemented, prefers in-progress (Tier M, 3-phase close) (#1397)
+SPEC-PHASE-FIELD-VALIDATION-001  <-  16de546ba  docs(SPEC-PHASE-FRONTMATTER-OWNER-001): sync-phase close (3-phase plan→run→sync) (#1288)
+SPEC-PROJECT-NAVIGATOR-002  <-  adaff36e5  feat(SPEC-SYNC-PARALLEL-DOCS-001): sync audit optimization — A5/A7/A9/A6 (Tier M, 3-phase close) (#1396)
+SPEC-SUBAGENT-NESTING-DOCTRINE-001  <-  a83934d55  feat(SPEC-HIERARCHICAL-TEAM-001): manager-lead 12th agent + hierarchical team (Tier M, 3-phase close) (#1394)
+SPEC-TOKEN-BUDGET-STOP-001  <-  3169f06d0  docs(SPEC-HARNESS-RATCHET-REWIRE-001): sync-phase artifacts + 3-phase close
+SPEC-UPDATE-REINSTALL-LOOP-002  <-  83610e03e  feat(SPEC-UPDATE-DATA-SURVIVAL-001): M5-M6 non-vacuous safety guards + partial-restore reporting + 3-phase close (#1275)
+SPEC-V3R6-LIFECYCLE-SYNC-GATE-001  <-  adc75a33c  chore(SPEC-V3R6-HARNESS-CLASSIFIER-WIRING-001): retroactive Mx-phase EVALUATE-EXECUTE-DEFERRED + status backfill — PROCEED-WITH-DEBT (corrective for 69075e8cb hijack)

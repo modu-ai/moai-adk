@@ -194,8 +194,8 @@ func TestExtractCalls_Scaffolded(t *testing.T) {
 // least the named callee — the .scm syntax is exercised against the real
 // grammar, not just string-checked.
 var callPolyglotCases = []struct {
-	lang  string
-	src   string
+	lang   string
+	src    string
 	callee string
 }{
 	{"go", "package m\n\nimport \"fmt\"\n\nfunc A() { fmt.Println(1) }\n", "Println"},

@@ -1,0 +1,8 @@
+# AC-HWD-015 strip-aware mirror check — sync-auditor re-execution (2026-09-03)
+# Tree: worktree t469, branch WT-achwd-strip-exempt, HEAD a28706cff
+# Invocation, from the worktree root:
+$ perl .moai/reports/t469/sync-evidence/t469-mirror-check.pl .claude/rules/moai/development/hook-independence.md .claude/rules/moai/core/agent-common-protocol.md .claude/rules/moai/core/agent-common-protocol-reference.md
+
+(no output)
+
+mirror-check-exit=0

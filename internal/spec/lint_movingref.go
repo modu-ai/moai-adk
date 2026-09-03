@@ -55,12 +55,21 @@ package spec
 //     the anticipated mistake; AC-MRG-004 is the guard.
 //   - A bare `<!-- moving-ref-ok: -->` marker (REQ-MRG-003). A reason-less
 //     marker would make silencing cheaper than fixing, inverting the incentive.
-//   - The R4 form (REQ-MRG-010). DEFERRED out of M3 by operator decision (Q0
-//     option C): spec.md §B.7 measured R4's reachable class as 0 of 42
-//     candidate lines on two independent probes, so an exclusion for it can
-//     only over-exempt today, never under-exempt. Early R4-form lines are
-//     silenced with the R3 marker instead. R4 remains in the finding MESSAGE —
-//     the doctrine carries the remedy; only its lint exclusion is deferred.
+//
+// The R4 form (REQ-MRG-010) WAS one of those three — deferred out of M3 by
+// operator decision (Q0 option C) with spec.md §B.7 measuring its reachable
+// class as 0 of 42 candidate lines — and was later resumed by card t353 once
+// the deferral's own resume condition held: live external R4-form occupants,
+// silenced with R3 markers. It is now an exclusion keyed on imperative
+// STRUCTURE, never on a command token (plan.md §F [HARD], settled by the
+// deferral): the line must carry BOTH (a) an imperative measuring directive
+// directly introducing a backticked command — the claim clause instructing a
+// reader to run/re-measure — AND (b) a demoted dated reference, a parenthetical
+// carrying a calendar date together with the value the command produces.
+// Either conjunct alone is NOT the R4 form: (b) without (a) is CM-1's stated
+// result, and any command-token key is CM-2's forgeable bypass, which the
+// iter-1 audit measured silencing 76 of 117 real unpinned divergence lines
+// while passing every other criterion.
 //
 // Detection limits are stated in spec.md §F (L1-L7) and are NOT claimed covered
 // here. In particular L2: the detector reads SHAPE, never SUBJECT. It cannot
@@ -132,6 +141,44 @@ var divergenceFigurePattern = regexp.MustCompile(
 // figure carrying a date is already demoted to a dated reference (R4 shape).
 var datedReferencePattern = regexp.MustCompile(`\d{4}-\d{2}-\d{2}`)
 
+// r4ImperativePattern is conjunct (a) of the R4 form (REQ-MRG-010, resumed by
+// card t353): an imperative verb of measurement directly introducing a
+// backticked command — "run `<cmd>`", "measure with `<cmd>`", "re-measure
+// `<cmd>`", "측정: `<cmd>`" (the shape of the live corpus line
+// SPEC-SPECLINT-GITBLIND-001/progress.md:233). The backtick span immediately
+// after the imperative is the structural anchor: a verb with no command after
+// it is prose, and a command with no imperative before it is CM-1's passive
+// shape. The alternation is over MEASUREMENT-DIRECTIVE vocabulary, never over
+// a git command token — a token key is the CM-2 bypass, forgeable by
+// construction (plan.md §F M3 [HARD]).
+var r4ImperativePattern = regexp.MustCompile(
+	"(?i)(?:\\b(?:re-?measure|measure(?:\\s+with)?|run)\\s*[:：]?\\s*`|(?:측정|재측정)\\s*[:：]?\\s*`)")
+
+// r4ParentheticalPattern, r4DatePattern, and r4DemotionLabelPattern together
+// decide conjunct (b) of the R4 form: a parenthetical (or equivalent demotion)
+// carrying BOTH a calendar date and a demotion label naming its content as a
+// dated reference rather than the live criterion — "(reference reading
+// 2026-08-28: empty)", "(참조 판독 2026-08-28: empty)", "… 2026-09-02 기준; …".
+// The parenthetical is what makes the reference DEMOTED: a date stated in the
+// clause itself would be prose, not a demotion. A parenthetical with a value
+// but no date is CM-1's stated-result shape and does NOT satisfy this conjunct.
+var (
+	r4ParentheticalPattern = regexp.MustCompile(`\([^()]*\)`)
+	r4DatePattern          = regexp.MustCompile(`\d{4}-\d{2}-\d{2}`)
+	r4DemotionLabelPattern = regexp.MustCompile(`(?i)reference|reading|기준|참조|판독`)
+)
+
+// r4DatedReference reports whether the line carries conjunct (b): at least one
+// parenthetical holding a calendar date together with a demotion label.
+func r4DatedReference(line string) bool {
+	for _, paren := range r4ParentheticalPattern.FindAllString(line, -1) {
+		if r4DatePattern.MatchString(paren) && r4DemotionLabelPattern.MatchString(paren) {
+			return true
+		}
+	}
+	return false
+}
+
 // MovingRefUnpinnedRule implements the Rule interface for REQ-MRG-001.
 //
 // It reads SIBLING artifacts, not just `doc.Body`: `SPECDoc.Body` carries
@@ -196,6 +243,15 @@ func (r *MovingRefUnpinnedRule) scanLines(path string, lines []string) []Finding
 			divergenceFigurePattern.MatchString(line) &&
 			!datedReferencePattern.MatchString(line)
 		if !claim && !divergence {
+			continue
+		}
+
+		// REQ-MRG-010 (R4 form, resumed by card t353): exempt when the line
+		// carries BOTH conjuncts of the imperative structure — (a) the
+		// imperative measuring directive AND (b) the demoted dated reference.
+		// Either alone is NOT the R4 form: (b) without (a) is CM-1's stated
+		// result, and neither conjunct is a command token (CM-2).
+		if r4ImperativePattern.MatchString(line) && r4DatedReference(line) {
 			continue
 		}
 

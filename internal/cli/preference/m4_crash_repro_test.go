@@ -149,7 +149,7 @@ func TestScanDueRace_ConcurrentMarkScannedStaysValid(t *testing.T) {
 	// The ScanDue call itself verifies parseStampTimestamp succeeds (no
 	// corruption); the boolean is advisory and intentionally unused here —
 	// the raw-file check below is the load-bearing assertion.
-	if _, err := ScanDue(stateDir, base.Add(365 * 24 * time.Hour)); err != nil {
+	if _, err := ScanDue(stateDir, base.Add(365*24*time.Hour)); err != nil {
 		t.Fatalf("final ScanDue: %v", err)
 	}
 	// Also confirm the raw file content is a single non-empty line (no

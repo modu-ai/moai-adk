@@ -74,6 +74,7 @@ func TestOwnershipTransitionLookupInvalidatedPerRun(t *testing.T) {
 		t.Errorf("history lookups across two Lint() runs = %d, want 2 (per-run invalidation)", got)
 	}
 }
+
 // TestOwnershipTransitionLookupUncachedOutsideLint pins the direct-caller
 // behavior: with no per-run cache active, every call reaches git, exactly as
 // before memoization. This is what keeps callers outside Lint() unchanged.
@@ -134,4 +135,3 @@ func TestOwnershipTransitionMemoKeyedPerDocument(t *testing.T) {
 		t.Errorf("lookups for 2 distinct documents (3 calls) = %d, want 2", got)
 	}
 }
-

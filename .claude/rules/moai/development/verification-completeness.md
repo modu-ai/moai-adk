@@ -266,7 +266,62 @@ mechanically and provenance claims rot.
   written under this rule follow the two-cell pair of §2, and the evidence rows state the defect
   forms their clauses prohibit.
 
+## 6. Prediction-ledger metrics — count survival, not detection
+
+[ZONE:Evolvable] [HARD] A prediction ledger that scores a rule's effectiveness (a
+prediction/verified pair per rule, recorded at authoring and judged a round later) writes each
+prediction as a count of defects **surviving to adoption** — defects that reached an approved
+artifact or a passing gate — never as "zero audit findings". The audit-finding count moves the
+WRONG way for this purpose: the better the audit layer works, the more findings it reports on an
+unchanged defect-production rate, so "0 findings" reads as failure precisely when the rule and
+the audit layer are both working. Two different events are being conflated: **a defect occurred**
+(detection — the audit layer working) and **a defect survived to adoption** (the rule failing).
+An occurrence count may be recorded, but only as an inverse-sign auxiliary indicator kept
+separate from the survival count, and every expectation in the ledger states which of the two it
+measures.
+
+> Evidence: observed as a six-row prediction ledger whose predictions read "0 audit findings";
+> all six rows verified false in a round where the audit layer was demonstrably working — running
+> the probes the rule prescribes and citing the rule by name — while only a minority of the
+> detected defects had actually survived to adoption. The ledger's own defect note split the two
+> events after the fact; this section is that split promoted so the next ledger is written
+> right-side-up.
+
+## 7. Policy-rule application evidence — a rule applied without citation leaves no record
+
+[ZONE:Evolvable] [HARD] A decision that rests on a **policy-layer rule** — doctrine no gate
+enforces at the moment of violation — names the rule file and its clause (at minimum
+`<rule-file>.md §x.y`) in the artifact that carries the decision: a verdict, an audit report, a
+dispatch, a progress record, or the blocking message itself. A silent application is
+indistinguishable from an ignored rule: the rule acquires no execution record, and no later
+reader — auditor, operator, or the next session — can tell observance from ignorance. Citation
+is the minimum record because it costs nothing to write and survives every artifact format: it
+travels inside prose the artifact already carries.
+
+**The dormancy recipe (on demand, not a gate).** For any policy rule, sweep the decision
+artifacts its domain produces and count how many cite it — `grep -rl '<rule-stem>'
+.moai/reports --include='verdict.md' | wc -l`, read against the artifact population of that
+domain. Distinct decision artifacts in the rule's domain with zero citations across a recent
+window are a **dormancy signal**, not a proven defect: either the rule is not being loaded, it
+is loaded and not applied, or its scope statement no longer routes its readers to it. The
+recipe says which rules have gone quiet; the review of one uncited artifact says which of the
+three. (Mechanical checks have their own liveness story, §1.3; this section covers the class
+whose violation no gate catches.)
+
+**What citation proves, and what it cannot.** A citation makes an application OBSERVABLE and
+REVIEWABLE — a reviewer can read the cited clause against the cited decision and disagree. It
+does not prove obedience: an actor can cite a rule and violate it. That residual is owned by
+review, the same place §1.2's mutant probe and §2's RED-now cell put theirs.
+
+> Evidence: observed as a sweep of the decision-artifact corpus under
+> `.moai/reports/**/verdict.md` returning single-digit citations for the two load-bearing
+> policy rules of the very report format those artifacts follow, against a corpus in the
+> hundreds — and the citation count MOVING between two measurement trees days apart, which is
+> why this section fixes the convention and its recipe rather than a number. The application
+> record did not exist to sweep before the convention landed; the first citations under it
+> were carried by the card verdicts that landed it.
+
 ---
 
-Version: 1.0.0
+Version: 1.2.0
 Classification: Path-scoped doctrine rule — binds verification-artifact authoring (checks, gates, acceptance criteria, rules, assertions); changes no gate semantics.

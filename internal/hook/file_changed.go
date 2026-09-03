@@ -108,8 +108,15 @@ func (h *fileChangedHandler) Handle(_ context.Context, input *HookInput) (*HookO
 	// returns immediately so the Claude Code main loop is unblocked.
 	//
 	// context.Background() decouples from the request ctx — request
-	// cancellation MUST NOT cancel the side-effect (it runs to completion
-	// or the asyncDeadline expires).
+	// cancellation MUST NOT cancel the side-effect.
+	//
+	// The deadline is NOT the outcome that decides this goroutine's fate in
+	// the field. `moai hook` is a one-shot process: it exits once the main
+	// handler returns, and process exit kills the goroutine wherever it has
+	// reached. Completing, or timing out at asyncDeadline, only happens when
+	// the process outlives the goroutine — which the hook process does not.
+	// Measured: 0/10 runs reached the sidecar write. Treat every side-effect
+	// below as best-effort-and-usually-lost, not as deferred-but-guaranteed.
 	asyncCtx, cancel := context.WithTimeout(context.Background(), asyncDeadline)
 	h.wg.Add(1)
 	go func() {

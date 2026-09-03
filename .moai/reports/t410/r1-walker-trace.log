@@ -1,0 +1,12 @@
+=== RUN   TestT410_TraceWalker
+    t410_probe_test.go:27: branch=main
+    t410_probe_test.go:42: SKIP  7cffb9717  [subject lacks id]    feat(SPEC-HANDOFF-AUTORESUME-001): plan-phase 산출물 (Tier L, 5 artifacts)   extracted=[SPEC-HANDOFF-AUTORESUME-001]
+    t410_probe_test.go:42: SKIP  e979a4d13  [subject lacks id]    chore(SPEC group C): Mx-phase close (status implemented→completed, 2026-06-02)   extracted=[]
+    t410_probe_test.go:42: SKIP  8630b40d0  [subject lacks id]    feat(SPEC-V3R6-SPEC-LINT-CLEANUP-001): plan-phase iter-1 PASS 0.917 — Tier S minimal Section A baseline cleanup scope   extracted=[SPEC-V3R6-SPEC-LINT-CLEANUP-001]
+    t410_probe_test.go:42: SKIP  b6723b495  [subject lacks id]    chore(hook): resolveMemoryDir 실제 구현 — path-slug 변환   extracted=[]
+    t410_probe_test.go:54: ADOPT 97a36b5a2  [status=in-progress]  docs(SPEC-V3R6-SESSION-HANDOFF-AUTO-001): /moai mx Step C — 5 @MX tags on persist.go
+    t410_probe_test.go:60: WALKER RESULT: 97a36b5a2 -> in-progress
+    t410_probe_test.go:63: getGitImpliedStatus(SPEC-V3R6-SESSION-HANDOFF-AUTO-001) = "in-progress", err=<nil>
+--- PASS: TestT410_TraceWalker (0.29s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/spec	0.750s

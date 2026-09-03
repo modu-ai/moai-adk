@@ -27,32 +27,31 @@ type dashboardModel struct {
 	CreatedAt  string
 	Conditions []conditionModel
 	// Verdict section — nil when no verdict has been produced (AC-GHF-011).
-	HasVerdict        bool
-	Turn              int
-	Ceiling           int
-	FailedConditions  []FailedCond
-	CeilingExit       bool
-	WallClockExit     bool
-	Stagnation        bool
-	Claim             string
-	Evidence          string
-	BaselineAttrib    string
-	Gaps              string
-	ResidualRisk      string
-	SnapshotAttrib    []string
-	ReArmIndicator    string // non-empty when pending.json embedded_goal present (M5)
-	ReArmedView       string // non-empty when post-/clear new-session goal exists (M5)
-	UnboundedBanner   string // non-empty when IsUnbounded() (M5)
+	HasVerdict       bool
+	Turn             int
+	Ceiling          int
+	FailedConditions []FailedCond
+	CeilingExit      bool
+	WallClockExit    bool
+	Stagnation       bool
+	Claim            string
+	Evidence         string
+	BaselineAttrib   string
+	Gaps             string
+	ResidualRisk     string
+	SnapshotAttrib   []string
+	ReArmIndicator   string // non-empty when pending.json embedded_goal present (M5)
+	ReArmedView      string // non-empty when post-/clear new-session goal exists (M5)
+	UnboundedBanner  string // non-empty when IsUnbounded() (M5)
 }
 
 type conditionModel struct {
-	Index     int
-	Type      string
-	Cmd       string
+	Index      int
+	Type       string
+	Cmd        string
 	ExpectExit int
-	Claim     string
+	Claim      string
 }
-
 
 // ReArmContext carries the already-landed mechanical re-arm pipeline's state
 // for the dashboard's render-only re-arm UI (SPEC-GOAL-HTML-FLOW-001

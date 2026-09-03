@@ -63,16 +63,16 @@ func TestScoreCard_HierarchicalShape(t *testing.T) {
 		for ci := 1; ci <= 3; ci++ {
 			critID := "AC-HRN-003-0" + string(rune('0'+ci))
 			cs := CriterionScore{
-				Aggregate:    0.0,
-				SubCriteria:  make(map[string]SubCriterionScore),
+				Aggregate:   0.0,
+				SubCriteria: make(map[string]SubCriterionScore),
 			}
 			for si := 1; si <= 2; si++ {
 				subID := critID + ".sub" + string(rune('0'+si))
 				cs.SubCriteria[subID] = SubCriterionScore{
-					Score:       0.75,
+					Score:        0.75,
 					RubricAnchor: "0.75",
-					Evidence:    "fixture evidence",
-					Dimension:   dim,
+					Evidence:     "fixture evidence",
+					Dimension:    dim,
 				}
 			}
 			ds.Criteria[critID] = cs

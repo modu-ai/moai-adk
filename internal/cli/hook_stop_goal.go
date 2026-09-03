@@ -107,7 +107,7 @@ func runStopGoalHook(cmd *cobra.Command, _ []string) error {
 			_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "stop-goal save verdict: %v\n", err)
 		}
 	}
-	if !block && !verdict.CeilingExit && !verdict.Stagnation && !verdict.Yielded {
+	if !block && !verdict.CeilingExit && !verdict.Stagnation && !verdict.Yielded && !verdict.Unsatisfiable {
 		// All conditions satisfied — nothing to emit.
 		return nil
 	}
