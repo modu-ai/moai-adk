@@ -128,9 +128,17 @@ ac_result: 11 PASS / 1 FAIL (AC-PVM-010, inherited red only)
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-> Placeholder — populated by manager-docs on the single sync commit (3-phase close).
-
 ```yaml
-sync_status: pending
-sync_commit_sha: pending-backfill-sync
+sync_status: complete
+sync_complete_at: 2026-09-04
+sync_commit_sha: pending-backfill-sync   # D3 placeholder — a commit cannot cite its own hash; resolved SHA reported to the lead for backfill
+synced_artifacts:
+  - CHANGELOG.md   # one [Unreleased]/Added entry: the monorepo vet fix, user-facing only
+  - spec.md   # frontmatter status+updated only: in-progress → completed (the 3-phase close transition rides this sync commit)
+  - progress.md   # this §E.4 signal
+untouched_by_sync: §E.3 close record (run-phase-owned, byte-unchanged); internal/cli/** and internal/template/** (run-phase surfaces, closed at 45c60e1a3)
+ac_matrix: §E.2 (11 PASS / 1 FAIL — AC-PVM-010, inherited red owned by the t466/BinaryLag axis; unchanged by sync)
+gaps: main internal/cli package coverage unmeasured (suppressed by the inherited red — named in §E.2/§E.3, still unmeasured at sync); sync commit not pushed (lead owns integration)
 ```
+
+**Sync-phase close record (manager-docs).** This single sync commit carries: the CHANGELOG entry, the `spec.md` frontmatter `in-progress → completed` transition (`status`+`updated` only — body content untouched), and this §E.4 signal. `plan.md` / `acceptance.md` carry no `status:` field to transition (artifact status-statelessness). The AC-PVM-012 close-record check (`sed -n '/^## §E.3/,/^## §E.4/p' … | grep -c 'release card t204'` ≥ 1) re-measured on the post-edit working tree before commit — §E.3 is byte-unchanged, so the count is unaffected by the §E.4 rewrite. The inherited-red note and the coverage gap are recorded in §E.2/§E.3 and are deliberately NOT changelog material.

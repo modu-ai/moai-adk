@@ -2,7 +2,7 @@
 id: SPEC-PRECOMMIT-VET-MONOREPO-001
 title: "pre-commit go vet — run from each staged file's module root so monorepos whose only go.mod lives in a subdirectory are not blanket-blocked"
 version: "0.1.0"
-status: in-progress
+status: completed
 created: 2026-09-04
 updated: 2026-09-04
 author: manager-spec
