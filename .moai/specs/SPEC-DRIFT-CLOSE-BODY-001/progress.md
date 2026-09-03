@@ -118,9 +118,27 @@ canary_compliance_check:
   reason: "this SPEC fixes a drift-detector defect; it does not define a forward-looking convention with a self-consuming first-run test"
 docs_sync: "no user-facing doc surface describes the drift close-body convention. Scanned: README*.md, .moai/docs/, docs-site/ -> 2 pattern hits, both read by hand and confirmed unrelated (windows-guide.md WSL prose; verification-claim-integrity.md generic defect-claim examples). CHANGELOG.md is the only surface touched"
 tests:
-  affected_packages: "run-phase already verified internal/spec + 31 dependent packages (see §E.2/§E.3); this sync touched no source, only docs + frontmatter"
+  affected_packages: "internal/spec + 12 dependent packages (measured, see §E.4.1); this sync touched no source, only docs + frontmatter"
   full_suite: "NOT RUN locally per instruction; CI owns the full-suite verdict on push"
 push_state: "not pushed, not merged - lead pushes in batch and performs the develop merge later, per dispatch"
 ```
 
 **이월 부채 확인 — D4·D6은 이 sync가 건드리지 않는다.** run-phase 원장이 기록한 두 문서-층 결함(D4: REQ-DCB-002가 `inMemImpliedStatus` 오류 경로까지 주장; D6: Tier 파일 모집단·초과 시 동작)은 `spec.md`/`plan.md` **본문** 편집이 필요하고, manager-docs에게는 금지된 표면이다. 구현을 막지 않으므로 blocker를 올리지 않고 기록으로만 남긴다 — 필요하면 후속 카드가 manager-spec에게 재위임한다.
+
+### §E.4.1 정정 — 의존 패키지 수치 재측정 (sync-audit F2 상환)
+
+**Claim** — §E.4 초판의 `31 dependent packages`는 귀속이 없었을 뿐 아니라 **값이 틀렸다**. 실제는 12개이며, 그중 가장 무거운 `internal/cli`는 첫 배치 실행에서 판정이 나오지 않았다(초록도 적색도 아님).
+
+**Evidence**
+
+- 모집단 산출: `go list -f '{{.ImportPath}} {{join .Deps " "}}' ./... | grep -E ' [^ ]*/internal/spec( |$)' | awk '{print $1}' | wc -l` → `11` (전이 의존). 테스트 전용 임포터는 `.TestImports`/`.XTestImports`로 같은 방식 → `4`. 합집합 `sort -u` → **`12`**
+- 12개 전수 실행: `go test ./cmd/moai/... ./internal/cli/... ./internal/codexadapter/... ./internal/codexwiring/... ./internal/epic/... ./internal/feedback/... ./internal/harness/router/... ./internal/hook/... ./internal/migration/migrations/... ./internal/permission/... ./internal/spec/... ./internal/web/... -count=1` → 원장 `.moai/reports/t410/dependents-retest.log`. `grep -c '^ok'` → `35`. 이상 2건:
+  - `internal/spec` — `--- FAIL: TestCatalogHashParity`. 상속 적색(카드 diff의 template 파일 0개, `4244c4a06`이 기준선의 조상). 이 카드 소관 아님
+  - `internal/cli` — `panic: test timed out after 10m0s` (기본 한도). **시간 초과는 실패가 아니라 미판정이다**
+- `internal/cli` 재판정: `go test ./internal/cli/... -count=1 -timeout 30m` → `rc=0`, 원장 `.moai/reports/t410/cli-retest.log`, `grep -c '^ok'` → `17`, 비-ok 패키지 줄 0행
+
+**Baseline-attribution** — 전부 이 워크트리(`.claude/worktrees/t410`, 브랜치 `WT-drift-false-positive`), HEAD `3acc8569a`에서 오케스트레이터가 직접 실측. 감사자의 재측정을 인용하지 않고 다시 쟀다.
+
+**Gaps** — 12개 밖 패키지는 돌리지 않았다(전체 스위트는 부하 규율상 의도적 미실행 — 판정은 CI 몫). `internal/cli` 재실행은 30분 한도에서 한 번뿐이라 부하에 따른 재현성은 관측하지 않았다.
+
+**Residual-risk** — `internal/cli`의 첫 미판정이 순수한 시간 초과인지, 이 카드와 무관한 지연 회귀인지는 구분하지 않았다. 30분 한도 재실행이 초록이므로 전자로 본다.
