@@ -111,6 +111,8 @@ Before moving a card out of a working column, the lead reads the card's `progres
 
 This applies equally to the operator: when the lead reports a column advanced, it names what it read.
 
+When a phase's declared evidence should include an audit verdict (a plan-audit or sync-audit), the lead reads the verdict **file** itself under `.moai/reports/<card-id>/` per the audit-artifact convention (`.moai/docs/audit-artifact-convention.md`). An absent, unreadable, or uncommitted verdict file is a **gap** exactly like a missing progress record — the card stays put and the lead reports why.
+
 **The final PASS/FAIL verdict is the lead's**, read from the evidence on disk and never delegated to the lane that produced the work — the executor judging its own output is the failure shape this section exists to prevent. Why the division is structural: `kanban-dispatch-detail.md` § The verdict's home.
 
 ### CodeRabbit is not read from `gh pr checks`
@@ -232,6 +234,8 @@ The completion signal is the branch name, merge SHA, and evidence path.
 ## Factory Mode — the card travels whole
 
 `moai cc -f <N>` launches one lead plus lane sessions `lane-1..lane-N` ("lane" is the user-facing term). No per-column companions: the lead routes each card WHOLE to a free lane, which carries it `plan → run → sync` in-session — serial stages, each stage's execution spawned as sub-agents — and owns it end to end. A/B/C collapse into the lane (the class still names which ceremonies are skipped — `plan` for A and B — but no card changes sessions). Queue, evidence-reading, integration, and disposal rules are unchanged. Mechanics: `kanban-dispatch-detail.md` § Factory in-lane 3-stage.
+
+**Lane spawn authority (standing).** A lane is an orchestrator for its card: it spawns, with the Agent tool and WITHOUT asking, the specialist the Status Transition Ownership Matrix names for the stage at hand — plan-phase artifacts to `manager-spec`, implementation to `manager-develop`, sync-phase docs to `manager-docs`, plus the chain's prescribed auditors. Depth-1 only: agents a lane spawns are leaf workers and never spawn further agents. This authority is part of the lane's bootstrap context (the SessionStart join notice carries it verbatim), and it is deliberately NOT a per-dispatch grant: the runtime's default "don't spawn unless the user asks" guidance does not bind a lane, and a lead's approval can neither grant nor revoke what the bootstrap already grants — the lead is not the lane's user. The same authority binds kanban companion sessions. Observed defect this closes: two lanes refused to spawn `manager-spec` under the default guidance and fell back to editing SPEC bodies directly, routing artifact writes around the ownership matrix.
 
 ## Boundaries — what this protocol does not do
 

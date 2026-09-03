@@ -1,0 +1,36 @@
+=== RUN   TestLessonsInboxStub_GoldenJSONCarriesSchemaVersion
+--- PASS: TestLessonsInboxStub_GoldenJSONCarriesSchemaVersion (0.00s)
+=== RUN   TestInboxStubVersion_AbsenceReadsAsV1
+--- PASS: TestInboxStubVersion_AbsenceReadsAsV1 (0.00s)
+=== RUN   TestInboxCapConstants_PinnedDefaults
+--- PASS: TestInboxCapConstants_PinnedDefaults (0.00s)
+=== RUN   TestInboxCap_RotatesOverCapInbox
+--- PASS: TestInboxCap_RotatesOverCapInbox (0.00s)
+=== RUN   TestInboxCap_BoundaryAtCapRotates
+--- PASS: TestInboxCap_BoundaryAtCapRotates (0.00s)
+=== RUN   TestInboxStandDown_MarkerPresentNoRotation
+--- PASS: TestInboxStandDown_MarkerPresentNoRotation (0.00s)
+=== RUN   TestInboxRetention_MaxTwoGenerations
+--- PASS: TestInboxRetention_MaxTwoGenerations (0.00s)
+=== RUN   TestInboxRotation_PreEraLeftoverArchivesIdempotent
+--- PASS: TestInboxRotation_PreEraLeftoverArchivesIdempotent (0.00s)
+=== RUN   TestInboxCap_FailOpenOnRotationFailure
+--- PASS: TestInboxCap_FailOpenOnRotationFailure (0.00s)
+=== RUN   TestInboxCap_ConcurrentAppendsCrossCapBoundary
+--- PASS: TestInboxCap_ConcurrentAppendsCrossCapBoundary (0.00s)
+=== RUN   TestRecordToolFailureEvent_AppendsLessonsInboxStub
+--- PASS: TestRecordToolFailureEvent_AppendsLessonsInboxStub (0.00s)
+=== RUN   TestRecordTestFailEvent_AppendsLessonsInboxStub
+--- PASS: TestRecordTestFailEvent_AppendsLessonsInboxStub (0.00s)
+=== RUN   TestLessonsInbox_AppendOnly
+--- PASS: TestLessonsInbox_AppendOnly (0.00s)
+=== RUN   TestTruncateSummary
+=== RUN   TestTruncateSummary/empty_falls_back_to_category
+=== RUN   TestTruncateSummary/short_text_passes_through
+=== RUN   TestTruncateSummary/long_text_truncated
+--- PASS: TestTruncateSummary (0.00s)
+    --- PASS: TestTruncateSummary/empty_falls_back_to_category (0.00s)
+    --- PASS: TestTruncateSummary/short_text_passes_through (0.00s)
+    --- PASS: TestTruncateSummary/long_text_truncated (0.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	0.723s

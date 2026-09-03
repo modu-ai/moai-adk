@@ -354,7 +354,8 @@ Kanban(`moai cc -k`) / Factory(`moai cc -f N`) 모드에서 레인은 카드 작
 
 ```bash
 # 통합 워크트리 진입 (raw `git worktree add` 금지 — 런처 경유)
-moai cc -w develop
+moai cc -w develop                # 재진입
+moai cc -w develop --branch develop  # 최초 provisioning (기존 develop 브랜치 체크아웃)
 
 # 창 안에서
 moai integration acquire --name <lane>
