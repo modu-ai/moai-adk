@@ -38,17 +38,29 @@ func NewRepository(path string) (*gitManager, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), foundation.DefaultGitTimeout)
 	defer cancel()
 
-	// Verify the path is a git repository.
-	_, err = execGit(ctx, absPath, "rev-parse", "--git-dir")
+	// One spawn asks both questions: rev-parse prints one line per flag, in
+	// flag order, so --git-dir validates that this is a repository at all and
+	// --show-toplevel yields the root. git start-up dominates the cost of
+	// either question, so asking them separately doubled the price of opening
+	// a repository on the warm path.
+	out, err := execGit(ctx, absPath, "rev-parse", "--git-dir", "--show-toplevel")
 	if err != nil {
-		return nil, fmt.Errorf("open repository at %s: %w", absPath, ErrNotRepository)
-	}
-
-	// Get the repository root (toplevel).
-	root, err := execGit(ctx, absPath, "rev-parse", "--show-toplevel")
-	if err != nil {
+		// The combined form fails for two distinct reasons the caller's error
+		// taxonomy separates: not a repository at all, versus a repository
+		// with no work tree (a bare repo), where only --show-toplevel failed.
+		// Ask the discriminating question here, on the cold path, where a
+		// second spawn costs nothing that matters.
+		if _, probeErr := execGit(ctx, absPath, "rev-parse", "--git-dir"); probeErr != nil {
+			return nil, fmt.Errorf("open repository at %s: %w", absPath, ErrNotRepository)
+		}
 		return nil, fmt.Errorf("get repository root: %w", err)
 	}
+
+	lines := strings.Split(out, "\n")
+	if len(lines) < 2 {
+		return nil, fmt.Errorf("get repository root: unexpected rev-parse output %q", out)
+	}
+	root := strings.TrimSpace(lines[len(lines)-1])
 
 	cleanRoot := filepath.Clean(root)
 	logger := slog.Default().With("module", "git")
@@ -85,7 +97,10 @@ func (m *gitManager) Status() (*GitStatus, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), foundation.DefaultGitTimeout)
 	defer cancel()
 
-	out, err := execGit(ctx, m.root, "status", "--porcelain")
+	// --branch adds a leading `## ` header carrying the branch, its upstream,
+	// and the ahead/behind counts — the same three facts that otherwise cost a
+	// separate `symbolic-ref` and `rev-list` spawn apiece.
+	out, err := execGit(ctx, m.root, "status", "--porcelain", "--branch")
 	if err != nil {
 		return nil, fmt.Errorf("status: %w", err)
 	}
@@ -95,6 +110,13 @@ func (m *gitManager) Status() (*GitStatus, error) {
 	if out != "" {
 		lines := strings.SplitSeq(out, "\n")
 		for line := range lines {
+			// The header, and only the header, starts at column 0 with `## `:
+			// an entry line's first two columns are status codes, which are
+			// never '#', so a file literally named "## x" renders as "?? ## x".
+			if strings.HasPrefix(line, "## ") {
+				status.Branch, status.Ahead, status.Behind = parseStatusBranchHeader(line)
+				continue
+			}
 			if len(line) < 3 {
 				continue
 			}
@@ -121,37 +143,8 @@ func (m *gitManager) Status() (*GitStatus, error) {
 		}
 	}
 
-	// Get ahead/behind count relative to upstream.
-	// Errors are ignored (e.g., no upstream configured).
-	aheadBehind, err := execGit(ctx, m.root, "rev-list", "--count", "--left-right", "@{upstream}...HEAD")
-	if err == nil {
-		parts := strings.Split(aheadBehind, "\t")
-		if len(parts) == 2 {
-			// Parsing errors are intentionally ignored; invalid values default to 0.
-			behind, parseErr := strconv.Atoi(parts[0])
-			if parseErr == nil {
-				status.Behind = behind
-			} else {
-				m.logger.Debug("failed to parse behind count",
-					"value", parts[0],
-					"error", parseErr)
-			}
-			ahead, parseErr := strconv.Atoi(parts[1])
-			if parseErr == nil {
-				status.Ahead = ahead
-			} else {
-				m.logger.Debug("failed to parse ahead count",
-					"value", parts[1],
-					"error", parseErr)
-			}
-		} else {
-			m.logger.Debug("unexpected ahead/behind format",
-				"output", aheadBehind,
-				"parts", len(parts))
-		}
-	}
-
 	m.logger.Debug("status retrieved",
+		"branch", status.Branch,
 		"staged", len(status.Staged),
 		"modified", len(status.Modified),
 		"untracked", len(status.Untracked),
@@ -160,6 +153,79 @@ func (m *gitManager) Status() (*GitStatus, error) {
 	)
 
 	return status, nil
+}
+
+// parseStatusBranchHeader reads the `## ` header line `git status --porcelain
+// --branch` prints first, returning the branch name and the ahead/behind
+// counts relative to the upstream.
+//
+// Shapes, verified against real git output rather than assumed:
+//
+//	## main...origin/main [ahead 1, behind 2]
+//	## main...origin/main [ahead 3]
+//	## main...origin/main [behind 4]
+//	## main...origin/main            in sync
+//	## main                          no upstream configured
+//	## No commits yet on main        fresh repository
+//	## HEAD (no branch)              detached HEAD
+//
+// Absent counts are 0, which matches what Status reported before the header
+// carried them: the separate rev-list spawn failed on a branch with no
+// upstream and its error was ignored, leaving both fields at zero.
+func parseStatusBranchHeader(line string) (branch string, ahead, behind int) {
+	rest := strings.TrimPrefix(line, "## ")
+
+	// A repository with no commits still has a branch in HEAD, and
+	// symbolic-ref reports it — keep reporting the same name here. The
+	// upstream suffix, if configured, is left for the split below.
+	rest = strings.TrimPrefix(rest, "No commits yet on ")
+
+	// Divergence is a bracketed suffix; strip it before the branch/upstream
+	// split so that split never sees it.
+	if idx := strings.LastIndex(rest, " ["); idx >= 0 && strings.HasSuffix(rest, "]") {
+		ahead, behind = parseAheadBehind(rest[idx+2 : len(rest)-1])
+		rest = rest[:idx]
+	}
+
+	// `branch...upstream` when an upstream is configured, bare `branch`
+	// otherwise. A branch name cannot contain "..", so the separator is
+	// unambiguous.
+	if idx := strings.Index(rest, "..."); idx >= 0 {
+		rest = rest[:idx]
+	}
+
+	// Whatever is left holding whitespace is not a branch name: detached HEAD
+	// renders as `HEAD (no branch)`, and an unrecognised shape is safer
+	// reported as absent than as a branch. Callers fall back to
+	// CurrentBranch(), which owns the ErrDetachedHEAD contract.
+	if strings.ContainsAny(rest, " \t") {
+		return "", ahead, behind
+	}
+	return rest, ahead, behind
+}
+
+// parseAheadBehind reads the inside of the header's bracketed divergence
+// suffix — "ahead 1", "behind 2", or "ahead 1, behind 2". Unparseable fields
+// are skipped and leave their count at zero, matching the prior behaviour of
+// ignoring rev-list parse errors.
+func parseAheadBehind(s string) (ahead, behind int) {
+	for part := range strings.SplitSeq(s, ", ") {
+		field, value, ok := strings.Cut(part, " ")
+		if !ok {
+			continue
+		}
+		n, err := strconv.Atoi(value)
+		if err != nil {
+			continue
+		}
+		switch field {
+		case "ahead":
+			ahead = n
+		case "behind":
+			behind = n
+		}
+	}
+	return ahead, behind
 }
 
 // Log returns the most recent n commits from HEAD, newest first.
