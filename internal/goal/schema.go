@@ -71,6 +71,11 @@ const (
 	StatusCeilingExit Status = "ceiling-exit"
 	// StatusCleared: the goal was explicitly cleared (moai goal clear).
 	StatusCleared Status = "cleared"
+	// StatusUnsatisfiable: a mechanical condition proved unrunnable (the shell
+	// reported exit 127 for a condition that did not declare 127 as its expected
+	// status), so it can never be satisfied. The evaluator emits a verdict and
+	// stops blocking rather than burning every remaining turn on it.
+	StatusUnsatisfiable Status = "unsatisfiable"
 )
 
 // ProgressionMode selects post-approval progression behavior. It is chosen at
