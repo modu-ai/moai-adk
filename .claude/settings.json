@@ -126,7 +126,7 @@
             "async": true
           }
         ],
-        "matcher": "Write|Edit|MultiEdit"
+        "matcher": "Write|Edit|MultiEdit|EnterWorktree|ExitWorktree"
       },
       {
         "hooks": [
