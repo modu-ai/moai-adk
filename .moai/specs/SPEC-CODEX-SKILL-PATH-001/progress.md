@@ -146,3 +146,10 @@ Input parameters: tier S · scope 3 code files (`internal/cli/doctor_codex.go`, 
 Decision: serial (단일 manager-develop spawn, cycle_type=tdd)
 
 Justification: Tier S coding-heavy SPEC이 단일 도메인에 머물고 마일스톤 체인이 엄격히 순차(RED fixture → GREEN 분류기 → 보고 스윕)라서 manager-develop 1회 위임이 §E 귀속 행렬과 함께 전 체인을 운반한다. Boundary case 없음 — 결정트리 기본 분기.
+
+## Sync-audit fold record (2026-09-03, lane-8 orchestrator)
+
+- Sync-audit verdict: **PASS-WITH-DEBT 91/100** (harmonic mean; Func 95 / Sec 95 / Craft 82 / Cons 93) — `.moai/reports/t468/sync-verdict.md` (감사자 본문, 무수정 보존). 독립 확인: 27/27 PASS 0 SKIP, vet/gofmt/lint clean, AC 8/8, PRESERVE 7/7, stress points (a)-(e) 결함 없음.
+- **D1 [MINOR][blocking] 해소** — CHANGELOG.md:330의 Windows-호스트 분류 절이 규범과 정반대 서술. 수정 커밋 `2a3615b34` (manager-docs 재위임, 1파일 1행). orchestrator 델타 검증: diff-stat 1파일 + 절 재독 — REQ-CSP-004/`IsAbs`-우선 구현과 일치. Windows 런타임 처분은 여전히 CI 판정 대기(§E.3 기존 갭).
+- D2/D3 [INFO][optional] 수용 부채 — 감사자 자신이 Tier S 충분으로 판정. 직접 단위테스트 부재(분류기)/indeterminate-only 침묵 셀.
+- **프로세스 이벤트 기록 (일인-작성자 규율)** — run-phase E3 증거 커밋 `6e972f585`가 3-phase close(`135e325f5`) 이후이자 sync-audit 창 도중에 착지. 문서 전용(코드 0건)이라 감사자가 코드-동일성 diff로 스스로 브리지 — 판정 기반 불변. 순서 수용/접을지는 리드 판정 사항으로 완료 보고에 운반됨.
