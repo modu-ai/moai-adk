@@ -1045,10 +1045,9 @@ open_gaps: [M4-gap-2 mutant capture, M4-gap-3 stale-index path, edges-refresh la
 
 ```yaml
 sync_status: complete
-sync_commit_sha: pending-backfill-sync   # backfilled in a follow-up commit — a
-                                         # commit cannot cite its own SHA
-                                         # (SHA placeholder backfill exemption,
-                                         # spec-frontmatter-schema.md § D3)
+sync_commit_sha: 4d57b3dcf   # backfilled here; the sync commit cannot cite its
+                             # own SHA (SHA placeholder backfill exemption,
+                             # spec-frontmatter-schema.md § D3)
 sync_complete_at: 2026-09-03
 measured_at_head: 58990a6c6
 suites:
