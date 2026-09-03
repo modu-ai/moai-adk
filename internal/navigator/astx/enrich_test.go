@@ -15,11 +15,11 @@ import (
 func enrichBase(t *testing.T, capMap string) EnrichOptions {
 	t.Helper()
 	return EnrichOptions{
-		ProjectRoot:        filepath.Join("testdata", "enrich"),
-		CapabilityMapPath:  capMap,
-		MaxFilesPerPath:    2000,
-		PrimaryFilesN:      5,
-		PrimarySymbolsN:    10,
+		ProjectRoot:       filepath.Join("testdata", "enrich"),
+		CapabilityMapPath: capMap,
+		MaxFilesPerPath:   2000,
+		PrimaryFilesN:     5,
+		PrimarySymbolsN:   10,
 	}
 }
 

@@ -94,10 +94,10 @@ func TestPreviewTableClassificationMatchesClassify(t *testing.T) {
 	classes := classifyAll(in, pred)
 
 	wantByPath := map[string]ChangeClass{
-		"templates/new_file.yaml":            ClassAdd,
-		".claude/settings.json":              ClassUpdate,
-		".claude/skills/hns-my/SKILL.md":     ClassPreserveUserOwned,
-		".moai/config/config.yaml":           ClassConflict,
+		"templates/new_file.yaml":        ClassAdd,
+		".claude/settings.json":          ClassUpdate,
+		".claude/skills/hns-my/SKILL.md": ClassPreserveUserOwned,
+		".moai/config/config.yaml":       ClassConflict,
 	}
 	for _, c := range classes {
 		want, ok := wantByPath[c.RelPath]

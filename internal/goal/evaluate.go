@@ -55,14 +55,14 @@ type CeilingVerdict struct {
 // continues the turn per Claude Code hook semantics; an empty Decision lets the
 // turn end.
 type Verdict struct {
-	Decision         string          `json:"decision,omitempty"`
-	Reason           string          `json:"reason,omitempty"`
-	Mode             string          `json:"mode,omitempty"`
-	Turn             int             `json:"turn,omitempty"`
-	Ceiling          int             `json:"ceiling,omitempty"`
-	LastProgress     string          `json:"last_progress,omitempty"`
-	FailedConditions []FailedCond    `json:"failed_conditions,omitempty"`
-	CeilingExit      bool            `json:"ceiling_exit,omitempty"`
+	Decision         string       `json:"decision,omitempty"`
+	Reason           string       `json:"reason,omitempty"`
+	Mode             string       `json:"mode,omitempty"`
+	Turn             int          `json:"turn,omitempty"`
+	Ceiling          int          `json:"ceiling,omitempty"`
+	LastProgress     string       `json:"last_progress,omitempty"`
+	FailedConditions []FailedCond `json:"failed_conditions,omitempty"`
+	CeilingExit      bool         `json:"ceiling_exit,omitempty"`
 	// WallClockExit is set when the wall-clock bound (Ceiling.MaxDuration) fires
 	// (SPEC-INFINITE-GOAL-001 REQ-4 / OQ-2). The emitted 5-section Verdict is
 	// indistinguishable in shape from a MaxTurns-ceiling verdict; this flag lets

@@ -40,8 +40,12 @@ const (
 
 // SkillEntry is one [[skills.config]] entry as declared on disk.
 type SkillEntry struct {
-	// Path is the declared SKILL.md location (absolute, as Codex writes it).
-	// An entry that declares no path key yields the empty string.
+	// Path is the declared SKILL.md location, verbatim as written in the
+	// TOML basic string (no escape-sequence decoding). Codex writes an
+	// absolute path, but a hand-edited config may declare a ~-relative,
+	// relative, or oddly-formed one — consumers must classify the shape,
+	// not assume absoluteness. An entry that declares no path key yields
+	// the empty string.
 	Path string
 	// Enabled is the declared enabled flag, tri-state (see SkillEnabled).
 	Enabled SkillEnabled

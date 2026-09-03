@@ -646,9 +646,9 @@ func TestParser_AC_18_InvalidMaxDepthValues(t *testing.T) {
 
 	// Valid depths (0, 1, 2 - all < MaxDepth)
 	validNodes := []Acceptance{
-		{ID: "AC-DEPTH-001"},        // depth 0
-		{ID: "AC-DEPTH-001.a"},      // depth 1
-		{ID: "AC-DEPTH-001.a.i"},    // depth 2 (MaxDepth-1)
+		{ID: "AC-DEPTH-001"},     // depth 0
+		{ID: "AC-DEPTH-001.a"},   // depth 1
+		{ID: "AC-DEPTH-001.a.i"}, // depth 2 (MaxDepth-1)
 	}
 
 	for _, node := range validNodes {
