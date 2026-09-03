@@ -91,7 +91,7 @@ adjacent_cards: {t451: landed, t452: not-landed}
 ```yaml
 sync_status: complete
 sync_complete_at: 2026-09-03
-sync_commit_sha: pending-backfill-sync    # canonical placeholder — a commit cannot cite its own SHA; backfilled by the follow-up docs-scoped commit
+sync_commit_sha: 185ce7d57  # backfilled — the sync commit itself; see terminal_tip_note
 sync_branch: WT-codex-e2e
 sync_worktree: .claude/worktrees/t462
 spec_id: SPEC-CODEX-E2E-MEASURE-001
