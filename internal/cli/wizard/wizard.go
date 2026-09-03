@@ -435,6 +435,10 @@ func saveAnswer(id, value string, result *WizardResult, locale *string) {
 		result.ProjectMode = value
 	case "autonomy_tier":
 		result.AutonomyTier = value
+	// SPEC-PROJECT-CONTINUATION-KEY-001 (REQ-PCK-010): the /moai project
+	// completion selection, persisted to workflow.project.continuation.
+	case "project_continuation":
+		result.ProjectContinuation = value
 	case "audit_model":
 		result.AuditModel = value
 	case "audit_gate_claude":
