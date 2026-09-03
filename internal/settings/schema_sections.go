@@ -363,6 +363,17 @@ func seamSectionFields() []FieldDef {
 		// mapping on first edit. The polarity is the opposite though — this key
 		// is default-ON, so the console's "absent" rendering means enabled.
 		s(SectionWorkflow, "workflow", TypeBool, "workflow", "todo", "enabled"),
+		// SPEC-PROJECT-CONTINUATION-KEY-001 REQ-PCK-011: the /moai project
+		// Phase 14 completion selector. UNLIKE its two neighbours above, the
+		// distributed template DOES ship this key (`continuation: card`) — a
+		// three-value enum's domain is not discoverable from the key's absence,
+		// so shipping it is how `none` and `pipeline` become visible at all.
+		// The enum LABELS stay English by design (applyI18n's ".opt." guard);
+		// what each value DOES is carried by per-option descriptions whose keys
+		// avoid that substring so they follow the locale.
+		withOptionDesc(closedSeam(SectionWorkflow, "workflow", "f.workflow.project.continuation.opt.",
+			config.ValidProjectContinuations(), "", "", "workflow", "project", "continuation"),
+			"f.workflow.project.continuation.option."),
 		// SPEC-MOAI-MCP-SERVER-001 M4 (REQ-MCP-015 / AC-MCP-021): the audit
 		// selection surfaced in the web console. These are PersistSeam fields
 		// patched via yamlpatch (arbitrary-depth upsert — the doc example is a

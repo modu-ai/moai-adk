@@ -1,0 +1,22 @@
+warning: not deleting branch 'WT-t250-followup' that is not yet merged to
+         'refs/remotes/origin/WT-t250-followup', even though it is merged to HEAD
+error: the branch 'WT-t250-followup' is not fully merged
+hint: If you are sure you want to delete it, run 'git branch -D WT-t250-followup'
+hint: Disable this message with "git config set advice.forceDeleteBranch false"
+Deleted branch WT-rc-testbed (was 30f92045b).
+Deleted branch WT-gate-lint-skip (was 53e9880ef).
+Deleted branch worktree-card-relnotes (was 18d1ddfc8).
+Deleted branch worktree-t140 (was e7aeec088).
+Deleted branch worktree-t62 (was 4997b9cf2).
+Deleted branch WT-coverage-rule-scope (was d1ace1dbd).
+Deleted branch worktree-agent-a77cdfb3c00bf2557 (was b018bf1e9).
+Deleted branch WT-codex-init (was 4b36b00d6).
+Deleted branch WT-t100 (was 02d9cac05).
+Deleted branch WT-spawn-skip-removal (was 0b75fd4a1).
+Deleted branch WT-boardlock-errno (was 8a4cc02f1).
+Deleted branch WT-windows-debt (was 4b86425d3).
+Deleted branch WT-sessionmsg-depth (was 614dcc1b6).
+Deleted branch WT-glm-fable-slot (was 03db97c6c).
+Deleted branch WT-verify-geometry (was 5f53df800).
+Deleted branch WT-convergence-root (was 720149668).
+Deleted branch WT-primary-writes (was 993617ce1).

@@ -20,21 +20,24 @@ const (
 	VerdictAbsent = "absent"
 )
 
-// Layer names.
+// Layer names. The citations layer (accuracy axis) is defined alongside its
+// checker in check_citations.go — SPEC-CODEMAPS-ACCURACY-001 D1.
 const (
-	LayerCodemaps = "codemaps"
-	LayerMXIndex  = "mx-index"
-	LayerEdges    = "edges"
+	LayerCodemaps  = "codemaps"
+	LayerMXIndex   = "mx-index"
+	LayerEdges     = "edges"
+	LayerCitations = "citations"
 )
 
 // Metric kind tokens — the report names the metric each layer used, so a
 // reader can tell an endpoint git diff from a fingerprint comparison.
 const (
-	MetricDescribedSourceDiff  = "described-source-diff"
-	MetricInventoryContentDiff = "inventory-content-diff"
-	MetricSourceFingerprint    = "source-fingerprint-mismatch"
-	MetricGenerationFP         = "generation-fingerprint-mismatch"
-	MetricWrongTree            = "wrong-tree-anchor"
+	MetricDescribedSourceDiff      = "described-source-diff"
+	MetricInventoryContentDiff     = "inventory-content-diff"
+	MetricSourceFingerprint        = "source-fingerprint-mismatch"
+	MetricGenerationFP             = "generation-fingerprint-mismatch"
+	MetricWrongTree                = "wrong-tree-anchor"
+	MetricPositiveCitedPathAbsence = "positive-cited-path-absence"
 )
 
 // Thresholds are the per-layer red lines (acceptance.md §D.7). The edges layer
@@ -154,6 +157,11 @@ func CheckFreshness(projectRoot string, th Thresholds) (CheckResult, error) {
 	res.Layers = append(res.Layers, codemapsRep)
 	res.Layers = append(res.Layers, checkMXIndex(projectRoot, th))
 	res.Layers = append(res.Layers, checkEdges(projectRoot))
+	// The citations row is a pure read of the working tree (no git, no
+	// provenance) and cannot system-error, so it closes the walk: exit-code
+	// contract 0/1/2 unchanged — the row participates in Failed() exactly as
+	// the freshness rows do (SPEC-CODEMAPS-ACCURACY-001 REQ-CMA-002).
+	res.Layers = append(res.Layers, checkCitations(projectRoot))
 	return res, nil
 }
 

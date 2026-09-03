@@ -40,7 +40,7 @@ flowchart TD
 ```mermaid
 flowchart TD
     A["CLI /moai plan/run/sync"]
-    B["spec.Linter<br/>(13+3 규칙)"]
+    B["spec.Linter<br/>(19 규칙)"]
     C["spec.ClassifyEra<br/>(H-1..H-6)"]
     D["spec.Audit<br/>(SyncStatusDrift)"]
     E["spec.ClassifyPRTitle<br/>(git 유추 상태)"]
@@ -57,7 +57,7 @@ flowchart TD
 1. CLI `/moai plan` → manager-spec 위임
 2. CLI `/moai run` → manager-develop 위임 (TDD/DDD)
 3. CLI `/moai sync` → manager-docs 위임
-4. `Linter` frontmatter + ownership 검증 (13 단일 + 3 크로스 규칙)
+4. `Linter` frontmatter + ownership 검증 (19 규칙: 15 단일-문서 + 3 크로스-SPEC + 1 registry)
 5. `ClassifyEra()` grandfather (V2.x/V3R2-R4/V3R5) vs modern (V3R6)
 6. `Audit()` drift 감지 (SyncStatusDrift 유일 차원)
 7. `ClassifyPRTitle()` git 히스토리로부터 상태 추론 (50-commit 윈도우)
@@ -194,7 +194,7 @@ flowchart TD
     B["session.Registry.Register<br/>(active-sessions.json)"]
     C["Heartbeat"]
     D["PreToolUse<br/>race check"]
-    E["ListActive"]
+    E["QueryActiveWork"]
     F["SessionEnd hook"]
     G["Deregister"]
     H["PurgeStale<br/>(zombies)"]
@@ -211,7 +211,7 @@ flowchart TD
 1. SessionStart 훅 → `Registry.Register()` 활성 세션 기록
 2. active-sessions.json 에 진입
 3. Heartbeat 주기적 갱신 (stale 방지)
-4. PreToolUse: ListActive 쿼리, 병렬 세션 race 감지
+4. PreToolUse: `QueryActiveWork` 쿼리, 병렬 세션 race 감지
 5. SessionEnd 훅 → `Deregister()` 제거
 6. `PurgeStale()` 좀비 세션 정리
 
@@ -230,7 +230,7 @@ flowchart TD
     B["codemaps<br/>endpoint git-diff"]
     C["mx-index<br/>inventory hash-diff"]
     D["edges.jsonl<br/>source fingerprint"]
-    E["verdict fresh/stale/absent<br/>exit 0/1/2"]
+    E["exit 계약<br/>0 all-fresh / 1 stale·absent<br/>2 system error"]
     F["moai mx/graph query"]
     G["stale 판정 시<br/>changed-files-only refresh"]
     H["provenance 재스탬프<br/>tree root + commit"]
@@ -253,6 +253,7 @@ flowchart TD
 5. mtime은 어떤 레이어에서도 신선도 신호로 쓰지 않음 (fresh worktree checkout이 모든 mtime을 초기화)
 6. `moai mx query` / `moai graph query`는 답변 전 stale 레이어를 changed-files-only로 갱신 (LLM/네트워크 없음)
 7. provenance 블록이 트리 루트 + 커밋(dirty면 fingerprint)을 기록 — 잘못된 트리의 인덱스는 절대 증분 신뢰하지 않음
+8. 종료 코드 계약(`internal/cli/graph_check.go`): 0 = 전 계층 fresh, 1 = 임의 계층 stale **또는 absent**, 2 = 시스템 오류 — fresh worktree의 absent 2계층도 rc=1을 낸다 (verdict와 exit 코드는 1:1 매핑이 아니다)
 
 ---
 
@@ -350,12 +351,15 @@ type Deployer interface {
 
 ### Registry (Session)
 ```go
+// internal/session/registry.go — 리시버 메서드 (Registry)
 type Registry interface {
-    Register(spec, branch string) error
-    Heartbeat(spec string) error
-    ListActive(spec string) ([]Session, error)
-    Deregister(spec string) error
+    Register(sessionID, specID, phase string) error
+    Heartbeat(sessionID string) error
+    Deregister(sessionID string) error
+    Query(optSpecID string) ([]Entry, error)
 }
+// 패키지 함수 — 흐름 도식의 QueryActiveWork 노드가 여기로 연결된다
+func QueryActiveWork(optSpecID string) ([]Entry, error)
 ```
 
 ---

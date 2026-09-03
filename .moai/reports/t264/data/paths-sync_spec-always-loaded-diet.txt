@@ -1,0 +1,3 @@
+.moai/specs/SPEC-ALWAYS-LOADED-DIET-001/progress.md
+.moai/specs/SPEC-ALWAYS-LOADED-DIET-001/spec.md
+CHANGELOG.md

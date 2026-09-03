@@ -1,0 +1,12 @@
+.claude/skills/moai/workflows/todo.md
+.moai/specs/SPEC-KANBAN-TODO-CLI-001/acceptance.md
+.moai/specs/SPEC-KANBAN-TODO-CLI-001/plan.md
+.moai/specs/SPEC-KANBAN-TODO-CLI-001/progress.md
+.moai/specs/SPEC-KANBAN-TODO-CLI-001/research.md
+.moai/specs/SPEC-KANBAN-TODO-CLI-001/spec.md
+internal/cli/todo.go
+internal/cli/todo_test.go
+internal/kanban/backlog_store.go
+internal/kanban/backlog_store_errors_test.go
+internal/kanban/backlog_store_test.go
+internal/template/templates/.claude/skills/moai/workflows/todo.md

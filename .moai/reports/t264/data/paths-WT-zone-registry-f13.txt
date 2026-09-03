@@ -1,0 +1,11 @@
+.claude/rules/moai/core/zone-registry.md
+.claude/rules/moai/workflow/ci-autofix-protocol.md
+.moai/specs/SPEC-ZONE-REGISTRY-HARDEN-001/acceptance.md
+.moai/specs/SPEC-ZONE-REGISTRY-HARDEN-001/plan.md
+.moai/specs/SPEC-ZONE-REGISTRY-HARDEN-001/progress.md
+.moai/specs/SPEC-ZONE-REGISTRY-HARDEN-001/spec.md
+.moai/specs/SPEC-ZONE-REGISTRY-RESYNC-001/plan.md
+CHANGELOG.md
+internal/constitution/registry_sync_test.go
+internal/template/templates/.claude/rules/moai/core/zone-registry.md
+internal/template/templates/.claude/rules/moai/workflow/ci-autofix-protocol.md

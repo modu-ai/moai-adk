@@ -109,7 +109,7 @@ leaf manager-develop: [Read, Write, Edit, Grep, Glob, Bash, TaskCreate, TaskUpda
 leaf read-only validation: [Read, Grep, Glob, Bash]  ← no Write/Edit/Agent
 ```
 
-Here `manager-lead`'s `Write` and `Edit` are used for coordination only. That is, they serve to add a fold line to the §E.2 field of `progress.md`, or to write evidence files under `.moai/state/verify/` — they never touch source code. Code is always the leaf agents' job.
+Here `manager-lead`'s `Write` and `Edit` are used for coordination only. That is, they serve to add a fold line to the §E.2 field of `progress.md`, or to capture verification output to scratch and export the part that decided the verdict to `.moai/reports/<card-id>/` — they never touch source code. Code is always the leaf agents' job.
 
 Delegation routing attaches sequential and parallel separately. Work that must run in turn within one window (per-milestone implementation) goes out as sequential spawns; work that is independent of the rest (recon, read-only verification batches, per-card SPEC authoring) goes out as parallel spawns. Skill access is fully open — the `Skill` tool loads whatever domain skill is needed on the spot.
 
@@ -119,20 +119,23 @@ One point worth emphasizing is that `manager-lead` is not a new execution mode. 
 
 `manager-lead`'s most distinctive habit is folding the window light at milestone boundaries. This procedure is called **Context-Folding**. Once every AC in a milestone has a pass verdict, `manager-lead` takes three steps in order.
 
-1. **Save the evidence** — the output of the AC verification commands run in that milestone is left in a file. The path follows the form `.moai/state/verify/<session>/M<milestone>.<AC-id>.{log,out}`. The reason it sits under `.moai/state/` rather than under `/tmp` is that once the operating system clears `/tmp`, the cited path breaks.
-2. **Write the fold line** — a one-line summary is added to the §E.2 field of `progress.md`. This line follows the form "M2: AC-004=PASS, AC-005=PASS | evidence: .moai/state/verify/.../M2.* | fold-at: 2026-08-12T...". Later, at the audit stage, the evidence path on this line must point at a file that actually exists.
+1. **Capture the evidence, then export it** — the output of the AC verification commands run in that milestone is first captured to `.moai/state/verify/<session>/M<milestone>.<AC-id>.{log,out}`. That location is **machine-local scratch** and nothing more: it outlives `/tmp` clearance, but it is gitignored, so it reaches no clone, no CI runner, and no other machine. So **before** an AC row cites its evidence, the lines that decided the verdict — the exit code, the failure summary, the figure the row quotes — are exported to the tracked path `.moai/reports/<card-id>/M<milestone>.<AC-id>.log`, and the citation names that one file. Only the named file moves; the scratch directory is never exported wholesale, and the loss risk of what stays behind is recorded under Residual-risk in the verdict.
+2. **Write the fold line** — a one-line summary is added to the §E.2 field of `progress.md`. This line follows the form "M2: AC-004=PASS, AC-005=PASS | evidence: .moai/reports/t123/M2-report.md | fold-at: 2026-08-12T...". Later, at the audit stage, the evidence path on this line must point at a file that actually exists — and only a tracked path does.
 3. **Fold the window** — `/compact` is called with an explicit preservation instruction, keeping only the current milestone plan and the fold lines so far and clearing the rest.
 
 ```text
 # Example fold lines added to progress.md §E.2
-M1: AC-001=PASS, AC-002=PASS | evidence: .moai/state/verify/abc123/M1.* | fold-at: 2026-08-12T10:14:00Z
-M2: AC-003=PASS, AC-004=PASS | evidence: .moai/state/verify/abc123/M2.* | fold-at: 2026-08-12T11:42:00Z
+M1: AC-001=PASS, AC-002=PASS | evidence: .moai/reports/t123/M1-report.md | fold-at: 2026-08-12T10:14:00Z
+M2: AC-003=PASS, AC-004=PASS | evidence: .moai/reports/t123/M2-report.md | fold-at: 2026-08-12T11:42:00Z
 ```
 
 Once this procedure is done, `manager-lead`'s active context is proportional to "the size of the current milestone + the fold lines so far + the always-loaded head of the rules." Even with the fifth milestone ahead, the raw record of the first milestone does not occupy the window. That is how a 6-milestone Tier L run survives end-to-end in one window.
 
 ```bash
-# Check the evidence files left after milestone 2 (persisted under .moai/state/verify)
+# Check that the cited evidence opens at audit time — only the tracked path meets that condition
+ls .moai/reports/t123/M2-report.md
+
+# The verbatim output kept in scratch stays on this machine only
 ls .moai/state/verify/"$(moai session current)"/M2.*
 ```
 

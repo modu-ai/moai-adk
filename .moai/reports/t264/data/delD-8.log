@@ -1,0 +1,20 @@
+error: cannot delete branch 'worktree-readme-redesign' used by worktree at '/Users/goos/MoAI/moai-adk-go/.claude/worktrees/readme-redesign'
+error: cannot delete branch 'worktree-statusline-session-name' used by worktree at '/Users/goos/MoAI/moai-adk-go/.claude/worktrees/statusline-session-name'
+error: cannot delete branch 'WT-audit-verdict-converge' used by worktree at '/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t229'
+error: cannot delete branch 'WT-e2e-sweep' used by worktree at '/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t179'
+error: cannot delete branch 'WT-effort-matrix' used by worktree at '/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t205'
+error: cannot delete branch 'WT-glm-settings-persist' used by worktree at '/Users/goos/MoAI/moai-adk-go/.claude/worktrees/glm-settings-persist'
+error: cannot delete branch 'WT-harness-rules' used by worktree at '/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t261'
+Deleted branch worktree-mcp-progress-notifications (was 929b605b8).
+Deleted branch worktree-t36-budget-relative-tests (was e34bcd5b5).
+Deleted branch worktree-t65-glm-window (was b8a0e389e).
+Deleted branch worktree-todo-verb-wording (was a8f6d911d).
+Deleted branch wt-branch (was 486c19e0d).
+Deleted branch WT-deny-restore (was 4a711fec2).
+Deleted branch WT-docs-ignore-cmd (was f658c1973).
+Deleted branch WT-doctor-exit-contract (was 7fc161b36).
+Deleted branch WT-glm-livemap-race (was 17ec12a20).
+Deleted branch WT-glm-settings-rename (was 6a96e673f).
+Deleted branch WT-graph-freshness (was dc96d16f4).
+Deleted branch WT-lead-debottleneck (was 632d36a40).
+Deleted branch WT-lead-name-register (was 55afb746f).

@@ -10,6 +10,12 @@
             "args": ["-c", "[ -f \"$0\" ] && exec bash \"$0\"; d=\"${0%/.claude/hooks/moai/*}\"; mkdir -p \"$d/.moai/logs\" 2>/dev/null; printf \"%s %s\\n\" \"$(date -u +%FT%TZ)\" \"hook missing: $0\" >> \"$d/.moai/logs/hook-missing.log\" 2>/dev/null; exit 0", "${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-session-start.sh"],
             "timeout": 30,
             "type": "command"
+          },
+          {
+            "command": "bash",
+            "args": ["-c", "[ -f \"$0\" ] && exec bash \"$0\"; d=\"${0%/.claude/hooks/moai/*}\"; mkdir -p \"$d/.moai/logs\" 2>/dev/null; printf \"%s %s\\n\" \"$(date -u +%FT%TZ)\" \"hook missing: $0\" >> \"$d/.moai/logs/hook-missing.log\" 2>/dev/null; exit 0", "${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-session-start-navigator.sh"],
+            "timeout": 5,
+            "type": "command"
           }
         ]
       }
@@ -72,6 +78,17 @@
           }
         ],
         "matcher": "SendMessage|TaskStop"
+      },
+      {
+        "hooks": [
+          {
+            "command": "bash",
+            "args": ["-c", "[ -f \"$0\" ] && exec bash \"$0\"; d=\"${0%/.claude/hooks/moai/*}\"; mkdir -p \"$d/.moai/logs\" 2>/dev/null; printf \"%s %s\\n\" \"$(date -u +%FT%TZ)\" \"hook missing: $0\" >> \"$d/.moai/logs/hook-missing.log\" 2>/dev/null; exit 0", "${CLAUDE_PROJECT_DIR}/.claude/hooks/moai/handle-pre-tool.sh"],
+            "timeout": 10,
+            "type": "command"
+          }
+        ],
+        "matcher": "AskUserQuestion"
       }
     ],
     "PostToolUse": [

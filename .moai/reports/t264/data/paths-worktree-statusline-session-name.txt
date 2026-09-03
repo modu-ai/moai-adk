@@ -1,0 +1,11 @@
+internal/cli/statusline.go
+internal/statusline/backlog.go
+internal/statusline/builder.go
+internal/statusline/forge.go
+internal/statusline/forge_test.go
+internal/statusline/github.go
+internal/statusline/github_test.go
+internal/statusline/renderer.go
+internal/statusline/session_identity_test.go
+internal/statusline/types.go
+internal/template/templates/.moai/config/sections/statusline.yaml

@@ -1,0 +1,5 @@
+.claude/rules/moai/core/agent-common-protocol-reference.md
+.claude/rules/moai/development/manager-develop-prompt-template.md
+.golangci.yml
+internal/template/templates/.claude/rules/moai/core/agent-common-protocol-reference.md
+internal/template/templates/.claude/rules/moai/development/manager-develop-prompt-template.md

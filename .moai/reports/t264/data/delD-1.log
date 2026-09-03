@@ -1,0 +1,20 @@
+error: cannot delete branch 'card-wtiso' used by worktree at '/Users/goos/MoAI/moai-adk-go/.claude/worktrees/card-wtiso'
+Deleted branch backfill/spec-mcp-console-syncsha (was 1dd805ac6).
+Deleted branch card-readme-followup (was a83be9f8b).
+Deleted branch chore/backfill-sw-sync (was 761a274a4).
+Deleted branch chore/cc-update-20260827 (was 702d668c2).
+Deleted branch chore/config-dead-sweep-resume (was 315c1bead).
+Deleted branch chore/effort-matrix-rebalance (was ed6085be4).
+Deleted branch chore/glm-slot-unification (was 0ee114a19).
+Deleted branch chore/llm-yaml-gitignore (was 11c917480).
+Deleted branch chore/revert-kanban-rename (was 24c4674b5).
+Deleted branch chore/spec-lifecycle-close (was c8bd1e2b6).
+Deleted branch chore/spec-lint-legacy-frontmatter-backfill (was 8c252ad18).
+Deleted branch chore/untrack-moai-reports (was f837c3c36).
+Deleted branch chore/v31-sync-sha-backfill (was 381d9ba2e).
+Deleted branch ci/status-sync-skip (was f1858b9ed).
+Deleted branch cross-session-msg-doctrine (was d2dc0dc66).
+Deleted branch docs/cc-update-20260530 (was 429fd0d52).
+Deleted branch docs/install-chip-url (was 075f43d5c).
+Deleted branch docs/kanban-llm-consumer-repair (was 25b6a96aa).
+Deleted branch docs/kanban-worktree-entry-rule (was 7c88a09a9).
