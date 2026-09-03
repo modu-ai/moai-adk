@@ -104,9 +104,142 @@ FAIL
   machinery (`subagent_start.go`, `retired_events.go`, `audit_test.go`) — no
   cross-SPEC policy conflict on the branch-guard surface.
 
+### M2 — matcher fix (GREEN)
+
+- Commit `7d6f11687`: `git branch` regex entry replaced by the token-level
+  flag-class classifier (`matchGitBranchMutation` +
+  `classifyGitBranchTail` + `isGitBranchFlagAbbreviation`), slotted INTO
+  `branchStatePatterns` as a predicate-matcher entry (struct gains an
+  optional `match func(string) bool` field) so the M6 blanking tests keep
+  their deny-origin semantics. All non-`branch` patterns byte-identical.
+- **Command**: `go test ./internal/hook/ -run TestBranchGuardFlagClassMatrix -count=1`
+- **Verbatim output**: `ok  	github.com/modu-ai/moai-adk/internal/hook	1.192s` (exit 0)
+- Full package: `ok  github.com/modu-ai/moai-adk/internal/hook  68.269s` (exit 0) — all pre-existing pins green
+- `golangci-lint run ./internal/hook/...` → `0 issues.`; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0
+
+### M3 — test completion + doctrine alignment
+
+- **M3.1 end-to-end denial** (`TestBranchGuardFlagClass_EndToEndDenial`):
+  11 commands through `checkBranchState` in a real primary fixture
+  (`-f`, `--force`, `-df`, `-fm`, `-vD`, `-vux`, `-u`,
+  `--set-upstream-to=`, `--unset-upstream`, `-t`, `--edit-description`)
+  → all deny with `BRANCH_GUARD_VIOLATION: git branch` prefix. PASS.
+- **M3.2 query-allowlist regression**
+  (`TestBranchGuardFlagClass_QueryAllowlistEndToEnd`): `--merged`,
+  `--no-merged`, `--points-at`, `--format`, `--sort committerdate`,
+  `--list develop -v`, `--contains HEAD main` (Q-16), plus the N3 run-gate
+  debt case `git branch -al develop` → all allow. PASS.
+- **M3.3 condition tests** (`TestBranchGuardFlagClass_SubagentNegativePath`,
+  D7): subagent-shaped `HookInput` (AgentType zero-valued, env unset) +
+  `git branch -f x y` in a primary fixture → deny stands. Labeled in the
+  test's doc comment as pinning guard LOGIC only, NOT the payload shape.
+  REQ-WBG-F-008's two axes are encoded as documented conditions in the same
+  comment block.
+- **M3.4 D12 contested AgentType axis — capture IMPRACTICABLE (documented,
+  axis left contested, no resolution fabricated)**:
+  1. Nested `claude -p` probe (temp settings wiring a PreToolUse tee hook in
+     `/tmp/t467-capture`, run with `--setting-sources none`): REFUSED twice
+     by the runtime worktree-session guard with the verbatim reason
+     "this command runs claude … in a plain command, so what it runs cannot
+     be shown not to be git" (tried with and without a `cd /tmp` prefix).
+     Nested claude is the only route to a real tool-spawned PreToolUse
+     payload from this session (this agent has no Task/Agent tool).
+  2. The hook's own logging (`internal/hook/trace`, `trace-*.jsonl`, 275
+     PreToolUse rows incl. this session's subagent-context rows) records NO
+     `agent_type`/`agent_id` field — structurally inconclusive for the axis.
+  3. Per D12 and the coordinator's resume instruction: no capture
+     CONTRADICTED the guard's reading, so no doc-reconciliation blocker
+     fires; the axis REMAINS CONTESTED (`branch_guard.go:30-33` reading vs
+     `hooks-system.md:114`). A future capture from a non-worktree session
+     (or a lead-side probe) decides it; contradicting capture →
+     doc-reconciliation blocker, never silent re-classification.
+- **M3.5 doctrine pair (REQ-WBG-F-009 / AC-009)**: Query-vs-mutate bullet +
+  forbidden-table row 2 flag enumeration rewritten to name the extended
+  mutation class (shorts `-d|-D|-m|-M|-c|-C|-f|-u|-t`, longs
+  `--force`/`--delete`/`--move`/`--copy`/`--set-upstream-to`/`--unset-upstream`/`--track`/`--edit-description`,
+  combined clusters `-df`/`-vD`/`-vux`, positional/option-prefixed creation,
+  operand-free query forms, `--dele`-abbreviation fail-open). Version
+  1.3.2 → 1.3.3. Template copy edited FIRST
+  (`internal/template/templates/.claude/rules/moai/workflow/main-checkout-branch-guard.md`),
+  local mirror in the SAME commit. Parity: `diff` shows the only delta is
+  the local copy's two pre-existing SPEC-ID cross-ref lines (unchanged
+  sanitized-pair convention); template copy carries 0 SPEC-ID/date/SHA
+  tokens (`grep -c 'SPEC-\|t467\|20[0-9][0-9]-' → 0`).
+  `go test ./internal/template/ -run Mirror` → `ok … 1.671s`.
+
+### §E.2.1 Self-verification evidence (E1-E8, attribution triples)
+
+All measurements on branch `WT-branchguard-flagclass`, post-M2/M3 tree
+(final tree SHA = the M3 commit; see §E.3).
+
+- **E1 AC matrix (acceptance.md §D.2)**:
+
+| AC | Verdict | Evidence |
+|----|---------|----------|
+| AC-WBG-F-001 matrix convergence | **PASS** | `go test ./internal/hook/ -run TestBranchGuardFlagClassMatrix -count=1` → `ok … 1.192s`; 66/66 cells (33 M-rows/37 variants deny, 17 Q-rows allow, P-01/P-02 pairs, E-1..E-6) |
+| AC-WBG-F-002 combined clusters | **PASS** | M-09/M-10/M-11/M-29/M-33 cells + end-to-end `-df`/`-fm`/`-vD`/`-vux` deny |
+| AC-WBG-F-003 query allowlist regression | **PASS** | Q-01..Q-17 cells + end-to-end allow test; existing pins at `branch_guard_test.go` green unmodified |
+| AC-WBG-F-004 whole-token classification | **PASS** | P-01a/P-01b, P-02a/c cells; `--format` allow vs `--force` deny; no embedded-letter denies |
+| AC-WBG-F-005 preserved surfaces | **PASS** | `go test ./internal/hook/... -count=1` → all 11 packages `ok`; existing test files byte-untouched |
+| AC-WBG-F-006 opt-in gate | **PASS** | `pre_tool_branch_guard_optin_test.go` green unmodified (in the full-package run) |
+| AC-WBG-F-007 fail-open preserved | **PASS** | existing fail-open tests green unmodified; classifier adds no blocking path on uncertainty (E-5 arms) |
+| AC-WBG-F-008 exemption-axes conditions | **PASS** (AgentType axis left contested per D12) | `TestBranchGuardFlagClass_SubagentNegativePath` PASS; documented conditions in its doc comment; capture impracticable — see M3.4 |
+| AC-WBG-F-009 doctrine alignment | **PASS** | Template copy v1.3.3 + local mirror in the same commit; diff = pre-existing 2-line SPEC-ID delta only; `go test ./internal/template/ -run Mirror` → ok |
+
+- **E2 builds**: `go build ./...` → exit 0; `GOOS=windows GOARCH=amd64 go build ./...` → exit 0 (both re-verified post-M3).
+- **E3 coverage**: `go test -cover ./internal/hook/` →
+  `ok  github.com/modu-ai/moai-adk/internal/hook  99.430s  coverage: 85.5% of statements`
+  (≥ 85% package target; the matrix test drives every branch of
+  `classifyGitBranchTail`/`matchGitBranchMutation`/`isGitBranchFlagAbbreviation`).
+- **E4 subagent boundary**: `grep -rn 'AskUserQuestion' internal/hook | grep -v _test.go | grep -v '// '` → 1 match:
+  `pre_tool.go:647: if input.ToolName == "AskUserQuestion"` — PRE-EXISTING on
+  base tree `38274782c` (t401 judgment-first observer ToolName check, not an
+  invocation; the file header itself asserts "No AskUserQuestion calls").
+  NEW matches introduced by this card: 0.
+- **E5 lint vs baseline**: `golangci-lint run --timeout=2m` → 1 finding =
+  the pre-flight baseline finding (`internal/template/catalog_tree_hash.go:60`
+  errcheck). NEW findings vs baseline: **none**. `golangci-lint run ./internal/hook/...` → `0 issues.`
+- **E6 commits**: M1 `e6ea01064`, M2 `7d6f11687`, M3 = this commit
+  (branch HEAD; ahead-count vs `origin/develop` recorded in §E.3). NO push
+  (lane protocol).
+- **E7 blockers**: none on the §D.1 axis (M1 measured matrix matched §D.1
+  exactly; zero contradictions). One documented non-blocker: D12 capture
+  impracticability (M3.4) — not a blocker because no capture contradicted
+  the guard's reading; axis left contested per the no-fabrication rule.
+- **E8 RED evidence**: M1 verbatim RED output + tree SHA `38274782c…`
+  recorded above (this section, M1 block) BEFORE M2's green was accepted.
+
+Known observation for the debt sweep: one earlier `go test ./internal/hook/...`
+invocation (post-M3, output truncated to last 2 lines by `tail`) ended FAIL;
+the immediate re-run and the confirmation runs were green across all 11
+packages (`internal/hook` 74.5s/99.4s; subpackages ok). The truncated first
+FAIL is recorded as unattributed-flaky (candidate: the load-sensitive
+`perf` subpackage), NOT as evidence of a regression — the full green runs
+are the cited verdicts.
+
 ## §E.3 Run-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+run_complete_at: 2026-09-03
+run_commit_sha: "M3 commit = final branch HEAD of WT-branchguard-flagclass (M1 e6ea01064, M2 7d6f11687; placeholder — backfill final HEAD from the completion report / git log)"
+run_status: complete
+milestones:
+  M1: "matrix test + verbatim RED (34 cells = §D.1's 28 rows/29 variants + 5 expected-deny duplicate rows) on tree 38274782c — commit e6ea01064 (also: spec.md draft→in-progress)"
+  M2: "token-level git branch flag-class classifier inside branchStatePatterns (predicate-matcher entry) — commit 7d6f11687; matrix 66/66 GREEN"
+  M3: "end-to-end denial + query-allowlist + D7 negative-path condition tests; REQ-009 doctrine pair v1.3.3 (template-first, same commit); D12 capture impracticable → axis left contested — this commit"
+ac_pass_count: 9
+ac_fail_count: 0
+preserve_list_post_run_count: 6   # non-branch patterns ×5 regex entries + predicate entry; all byte-identical behavior
+l44_pre_commit_fetch: not-applicable-lane-protocol   # no push; card branch only
+l44_post_push_fetch: not-applicable-no-push
+new_warnings_or_lints_introduced: 0   # baseline 1 pre-existing errcheck (catalog_tree_hash.go:60) unchanged
+cross_platform_build:
+  darwin_arm64: pass
+  windows_amd64: pass
+coverage_pkg_internal_hook: 85.5   # go test -cover, ≥85 target
+total_run_phase_files: 4   # branch_guard.go, branch_guard_flagclass_test.go, doctrine pair (2 copies) — plus this SPEC dir's progress/spec frontmatter
+m1_to_mN_commit_strategy: per-milestone Conventional Commits with card id t467 in body
+```
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
