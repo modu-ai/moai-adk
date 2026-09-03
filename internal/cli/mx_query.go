@@ -3,7 +3,6 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -95,12 +94,17 @@ moai mx query --file-prefix internal/auth/ --format table`,
 			stateDir := filepath.Join(projectRoot, ".moai", "state")
 			mgr := mx.NewManager(stateDir)
 
-			// verify sidecar file exists (REQ-SPC-004-013)
-			sidecarPath := filepath.Join(stateDir, mx.SidecarFileName)
-			if _, err := os.Stat(sidecarPath); os.IsNotExist(err) {
-				_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
-					"SidecarUnavailable: sidecar index does not exist — run 'moai mx scan' to build the index\n")
-				return fmt.Errorf("SidecarUnavailable: no sidecar index")
+			// Build the sidecar index on demand when it is absent, empty,
+			// corrupt, or stale. The build is synchronous and runs in this
+			// process — the one that needs the answer — so nothing races a
+			// process exit. On a build failure the error is loud: an empty
+			// result set would be a wrong answer, not a degraded one.
+			if mxIndexNeedsRebuild(projectRoot) {
+				if err := buildMXIndex(projectRoot); err != nil {
+					_, _ = fmt.Fprintf(cmd.ErrOrStderr(),
+						"SidecarUnavailable: could not build the sidecar index: %v\n", err)
+					return fmt.Errorf("SidecarUnavailable: index build failed: %w", err)
+				}
 			}
 
 			// REQ-GF-007: refresh the mx-index (a mechanical input layer)

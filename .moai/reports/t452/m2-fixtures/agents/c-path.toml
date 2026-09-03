@@ -1,0 +1,11 @@
+# M2 probe C — skills key, value = relative PATH to the skill directory.
+name = "probe-c-path"
+description = '''
+M2 probe agent C. skills value is a path. Sentinel AGENT-C-PATH-9f33.
+'''
+developer_instructions = '''
+You are M2 probe agent C. Reply with exactly: PROBE-C-OK
+'''
+skills = [".agents/skills/moai-probe-m2skill"]
+model_reasoning_effort = "low"
+sandbox_mode = "read-only"

@@ -1,0 +1,8 @@
+=== RUN   TestScanWriteContentNoConfigNoTempFile
+=== RUN   TestScanWriteContentNoConfigNoTempFile/no_config_creates_no_temp_file
+=== RUN   TestScanWriteContentNoConfigNoTempFile/control:_resolvable_config_creates_exactly_one_temp_file
+--- PASS: TestScanWriteContentNoConfigNoTempFile (2.61s)
+    --- PASS: TestScanWriteContentNoConfigNoTempFile/no_config_creates_no_temp_file (1.61s)
+    --- PASS: TestScanWriteContentNoConfigNoTempFile/control:_resolvable_config_creates_exactly_one_temp_file (1.00s)
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/hook	3.227s
