@@ -611,4 +611,3 @@ func TestResult_SignalJSON_ConsistentHasMessage(t *testing.T) {
 		t.Errorf("status = %q", sig["status"])
 	}
 }
-

@@ -151,7 +151,7 @@ func TestFindDuplicateClusters_ByteEqualAndEqualEntryCount(t *testing.T) {
 		},
 		"gamma": {
 			"plugins": {Size: 169869312, Files: 11}, // entry count differs
-			"debug":   {Size: 8192, Files: 2},        // size differs
+			"debug":   {Size: 8192, Files: 2},       // size differs
 		},
 	}
 

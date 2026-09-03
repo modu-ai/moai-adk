@@ -84,7 +84,7 @@ func TestAC008_D8_RejectsUnboundedEmbeddedGoal(t *testing.T) {
 	rec := livePending("resume body")
 	rec.EmbeddedGoal = &handoff.EmbeddedGoal{
 		Condition: "unbounded exits 0",
-		MaxTurns:  0,    // infinite
+		MaxTurns:  0, // infinite
 		// NEITHER MaxDuration NOR CostCap → unbounded
 	}
 	rec.SavedAt = time.Now() // keep live

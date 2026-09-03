@@ -58,8 +58,8 @@ func recordToolFailureEvent(input *HookInput, category ErrorCategory) {
 	obs := harness.NewObserver(logPath)
 
 	evt := harness.Event{
-		EventType:  harness.EventTypeToolFailure,
-		Subject:    tool,
+		EventType:   harness.EventTypeToolFailure,
+		Subject:     tool,
 		ContextHash: string(category), // low-cardinality error-class token (D1)
 	}
 	if err := obs.RecordExtendedEvent(evt); err != nil {

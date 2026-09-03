@@ -69,28 +69,28 @@ func TestParseOldLogLinesNoCrash(t *testing.T) {
 	// 2026-06-18): 508 v1 lines + 100 v2 lines. These three representative lines
 	// exercise both legacy schemas.
 	fixtures := []struct {
-		name string
-		line string
+		name              string
+		line              string
 		wantSchemaVersion string
 	}{
 		{
-			name: "legacy v1 user_prompt line",
-			line: `{"timestamp":"2026-05-19T09:22:34.7666Z","event_type":"user_prompt","subject":"","context_hash":"","tier_increment":0,"schema_version":"v1","prompt_hash":"ced7535932b4ffa3","prompt_len":383,"prompt_lang":"en"}`,
+			name:              "legacy v1 user_prompt line",
+			line:              `{"timestamp":"2026-05-19T09:22:34.7666Z","event_type":"user_prompt","subject":"","context_hash":"","tier_increment":0,"schema_version":"v1","prompt_hash":"ced7535932b4ffa3","prompt_len":383,"prompt_lang":"en"}`,
 			wantSchemaVersion: "v1",
 		},
 		{
-			name: "legacy v1 session_stop line",
-			line: `{"timestamp":"2026-05-20T10:00:00Z","event_type":"session_stop","subject":"SPEC-X","context_hash":"","tier_increment":0,"schema_version":"v1","last_assistant_message_hash":"abc","last_assistant_message_len":100}`,
+			name:              "legacy v1 session_stop line",
+			line:              `{"timestamp":"2026-05-20T10:00:00Z","event_type":"session_stop","subject":"SPEC-X","context_hash":"","tier_increment":0,"schema_version":"v1","last_assistant_message_hash":"abc","last_assistant_message_len":100}`,
 			wantSchemaVersion: "v1",
 		},
 		{
-			name: "legacy v2 user_prompt line",
-			line: `{"timestamp":"2026-06-10T09:22:34.7666Z","event_type":"user_prompt","subject":"","context_hash":"","tier_increment":0,"schema_version":"v2","prompt_hash":"fa160429b1c38a5e","prompt_len":1040,"prompt_lang":"en"}`,
+			name:              "legacy v2 user_prompt line",
+			line:              `{"timestamp":"2026-06-10T09:22:34.7666Z","event_type":"user_prompt","subject":"","context_hash":"","tier_increment":0,"schema_version":"v2","prompt_hash":"fa160429b1c38a5e","prompt_len":1040,"prompt_lang":"en"}`,
 			wantSchemaVersion: "v2",
 		},
 		{
-			name: "legacy v2 subagent_stop line",
-			line: `{"timestamp":"2026-06-11T10:00:00Z","event_type":"subagent_stop","subject":"unknown","context_hash":"","tier_increment":0,"schema_version":"v2","agent_id":"ag-123"}`,
+			name:              "legacy v2 subagent_stop line",
+			line:              `{"timestamp":"2026-06-11T10:00:00Z","event_type":"subagent_stop","subject":"unknown","context_hash":"","tier_increment":0,"schema_version":"v2","agent_id":"ag-123"}`,
 			wantSchemaVersion: "v2",
 		},
 	}
