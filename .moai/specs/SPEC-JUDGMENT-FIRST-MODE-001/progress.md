@@ -14,7 +14,7 @@ sub-threshold aggregate).
 
 | Artifact | State |
 |---|---|
-| `spec.md` | authored — 24 GEARS requirements (REQ-JFM-024 added: detector positive control), 12-field frontmatter at `version: "0.2.0"`, `status: draft`, `tier: L`, HISTORY table (D6), exclusions section with 6 `### Out of Scope —` sub-headings |
+| `spec.md` | authored — 25 GEARS requirements (REQ-JFM-024 added: detector positive control; REQ-JFM-025 added by the provenance amendment), 12-field frontmatter at `version: "0.2.0"`, `status: draft`, `tier: L`, HISTORY table (D6), exclusions section with 6 `### Out of Scope —` sub-headings |
 | `plan.md` | authored — 7 milestones **reordered**: M0 (observer + pre-landing baseline) now leads, because that is the only position from which a live `label_present: true` control row is obtainable (D4) |
 | `acceptance.md` | authored — 23 Given-When-Then criteria, **13 release-blocking**, each with a measured two-cell RED-now + green-path pair; 6 regression-guards with baseline cells; AC-JFM-018 as the vacuity falsifier, entry-gated on AC-JFM-023 |
 | `design.md` | authored — mode resolution (+ mid-session flip semantics, D12), §6.3 now the single denominator owner (D3), observer record shape, rejected alternatives |
@@ -69,11 +69,28 @@ Open items carried into the audit and the Implementation Kickoff Approval gate:
    The reason is stated in spec.md §E.4 (Template-First: the quoted doctrine strings the criteria
    `grep` for are English and land in the neutral template tree). Operator-reversible (D11).
 
-No code written, no commit, no push in this phase.
+**Recorded branch state (truth pass, 2026-09-03 — replaces the former closing sentence of this
+section, which claimed no code, no commit and no push in this phase: true when written at 0.2.0,
+false since 2026-09-02 14:42).** Commit `d5caf2d8e` ("feat(SPEC-JUDGMENT-FIRST-MODE-001): M0 AskUserQuestion
+PreToolUse observer (t401)", 2026-09-02 14:42:03 +0900) landed on this branch —
+`internal/hook/askuser_observer.go` +186, `askuser_observer_test.go` +389, `pre_tool.go` +10,
+`.claude/settings.json` +11, template mirror `settings.json.tmpl` +11 — **before the
+Implementation Kickoff Approval gate was ever opened**, and is reachable from `origin/develop`
+(`git merge-base --is-ancestor d5caf2d8e origin/develop` → rc=0; re-measured in this tree
+2026-09-03). This is a **recorded gate-ordering violation**: no authorization for the pre-gate
+landing is on record here; the lane's own verdict
+(`.moai/reports/t401/plan-phase-verdict.md`) records that the Kickoff gate was never opened and
+was escalated as a blocker to the lead. Whether the landed M0 code is ratified or reverted is an
+**OPERATOR decision pending with the lead — it sits on the Implementation Kickoff Approval
+agenda**. The lane does not ratify and does not revert; this repair touches records only, not
+the code. The M0 pre-landing baseline row (REQ-JFM-024's `push`-mode control window) is
+**still uncollected**.
 
 **Provenance amendment (0.2.3, 2026-09-03).** Adopted from the decision document
-`.moai/reports/t401/provenance-eligibility-options.md`: **Option A rejected** — no `session_start`,
-no matcher SHA in the provenance record (reason recorded in REQ-JFM-025: the exported window's own
+`.moai/reports/t401/provenance-eligibility-options.md`: **Option B rejected** (the doc's own form:
+안 A + 안 C, 안 B 기각) — no `session_start`,
+no matcher SHA in the provenance record, per Option A's add-nothing stance (reason recorded in
+REQ-JFM-025: the exported window's own
 existence and row counts already prove the wired-session condition; confirmation stamps gating
 nothing leave a finished-verification impression); **Option C adopted** — `calls_issued` (the asking
 session's own count of `AskUserQuestion` calls issued during the interval) added to REQ-JFM-025's
@@ -84,9 +101,24 @@ observable mismatch signals, never silent passes (detectable, not eliminated). V
 RED-now cells re-measured and re-pinned to `HEAD 095f2799b`. The §E.1 audit-ready verdict line is
 deliberately NOT refreshed here — it is refreshed after the audit this amendment will receive.
 
+**Audit signal refresh (iter-5, 2026-09-03).** Plan-audit iteration 5 returned **FAIL 0.95**
+(report: `.moai/reports/plan-audit/SPEC-JUDGMENT-FIRST-MODE-001-review-5.md`) — above the Tier L
+0.85 threshold on aggregate; the FAIL rests solely on blocking defects D1 (this progress record's
+false "no code" state) and D2 (stale provenance-pin header in acceptance.md); must-pass 7/7 PASS.
+The iter-5 record-truth repairs (D1-D7 of that report) are applied in this commit — records only,
+no code change, no version bump (record-only repair; version stays 0.2.3). The next audit
+iteration (iter-6) **awaits lead authorization**: iteration-5 triggered the STOP signal on score
+regression (iter-4 0.96 → iter-5 0.95) and the plan-auditor iteration cap is already consumed, so
+no further iteration is self-served from the lane.
+
 ## §E.2 Run-phase Evidence
 
-_<pending run-phase>_
+_<pending run-phase — formal population at run phase not yet entered. M0 e2e evidence, however,
+IS committed on this branch under `.moai/reports/t401/e2e/` (`payload.json`,
+`payload-installed.json`, `fresh/` and `installed-v2/` captures;
+`installed-v2/.moai/reports/t401/wire-shape-check.md`), landing with the pre-gate M0 commit
+series — see the recorded gate-ordering violation in §E.1. This annotation points at that
+evidence; it is not the formal §E.2 population._
 
 ## §E.3 Run-phase Audit-Ready Signal
 

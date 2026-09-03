@@ -16,7 +16,8 @@ a baseline.
 
 **One exception to the pin, stated rather than left implicit.** The provenance cells added to
 AC-JFM-018 and AC-JFM-023 by the collection-owner amendment were measured later, in the same
-worktree and branch at tree `6352897a5`, and each carries that attribution inline. No cell measured
+worktree and branch — first measured at `6352897a5`, re-measured after the 0.2.3 fold at
+`095f2799b`; each cell carries its own inline pin (criterion-level pins govern). No cell measured
 at `ad272be20` was re-labelled with the newer tree.
 
 **Severity classes.**
@@ -182,14 +183,18 @@ recommendation in the same form it would carry under `push`.
 
 **AC-JFM-010 — regression-guard** — *Given* pull mode, *When* the Report-Before-Ask gate,
 Requested-Deliverable Primacy, the neutral-description rule, and the Implementation Kickoff
-Approval clause are read, *Then* each is byte-unchanged from base commit `ad272be20`.
+Approval mandate clause in `orchestration-mode-selection.md` are read, *Then* each is
+byte-unchanged from base commit `ad272be20`.
 
 - Verify: `git diff ad272be20 -- .claude/rules/moai/core/askuser-protocol.md .claude/rules/moai/workflow/orchestration-mode-selection.md`
-  showing no hunk touching § Report-Before-Ask Gate or § Requested-Deliverable Primacy, and no
-  change at all in `orchestration-mode-selection.md`.
+  showing no hunk touching § Report-Before-Ask Gate, § Requested-Deliverable Primacy, or
+  § Option Description Standards (the neutral-description rule's home), and no change at all in
+  `orchestration-mode-selection.md` (which carries the Implementation Kickoff Approval mandate
+  clause).
 - Baseline (this run): stdout empty; exit code `0`; `| wc -l` → `0`. This is the state the guard
   protects — M1 will add hunks to `askuser-protocol.md`, and this criterion asserts that none of
-  them lands inside the four named sections.
+  them lands inside the four named surfaces (the three `askuser-protocol.md` sections above plus
+  the whole of `orchestration-mode-selection.md`).
 - Why this is not release-blocking: green at arrival by construction (nothing has been edited yet),
   so it measures the absence of collateral damage, not the presence of the work.
 
@@ -397,10 +402,11 @@ recorded by the observer, *When* the JSONL log is read, *Then* zero rows carry
   the record: the exported window's own existence and row counts already prove the wired-session
   condition, so those fields would be confirmation stamps gating nothing, and fields that gate
   nothing leave the impression verification finished when it did not
-  (`.moai/reports/t401/provenance-eligibility-options.md`, Option A rejection). An artifact without
+  (`.moai/reports/t401/provenance-eligibility-options.md`, Option B rejection — the doc adopts
+  Option A + Option C). An artifact without
   that record is an unattributed claim under `verification-claim-integrity.md` §2 — a Gap, never a
   Claim.
-- Verify, both halves required:
+- Verify, all three halves required:
   1. `jq -s '[.[] | select(.mode=="pull")] | {n: length, violations: ([.[] | select(.label_present==true)] | length)}' .moai/reports/t401/pull-window.jsonl`
      returning `n >= 20` and `violations == 0`.
   2. `ls .moai/reports/t401/pull-window.jsonl.provenance.md` → exit code `0`, **and** the row count
@@ -426,7 +432,7 @@ recorded by the observer, *When* the JSONL log is read, *Then* zero rows carry
   3. Half 3 is red for the same reason as half 2: the provenance record that would carry
      `calls_issued` does not exist, so the contrast it asserts has no input and cannot be read —
      there is no sample, no record, and no issued-call count to contrast.
-  Red on both halves because no observer log exists and nothing has been exported, so there is no
+  Red on all three halves because no observer log exists and nothing has been exported, so there is no
   sample and no record of one; the criterion is unmet. (An absent log is a gap, and a gap is red; it
   is never read as `violations == 0`.)
 - Green path: M6, gated on AC-JFM-023 being green first.
@@ -477,8 +483,8 @@ label, *Then* it records `label_present: true`; and on one that does not, `false
   count** as measured at export time; the asking session's own count of `AskUserQuestion` calls
   issued during the interval (**`calls_issued`** — a value the asking session knows without the
   observer); and the **export command**. A `session_start` timestamp and a matcher SHA are
-  deliberately **not** part of the record (Option A rejection,
-  `.moai/reports/t401/provenance-eligibility-options.md`) — confirmation stamps gating nothing. A
+  deliberately **not** part of the record (Option B rejection — the doc adopts Option A + Option
+  C, `.moai/reports/t401/provenance-eligibility-options.md`) — confirmation stamps gating nothing. A
   copied JSONL with no record of
   which session collected it, from which tree, over which interval, is an unattributed claim under
   `verification-claim-integrity.md` §2 — and a positive control read from an unattributed sample
@@ -518,7 +524,9 @@ and `make build` regenerates the embedded filesystem with no uncommitted drift a
   in the criterion for exactly this reason.
 - Green path: M5, with a swept count of at least 6 (`askuser-protocol.md`,
   `branch-origin-protocol.md`, `run.md`, `moai.md`, `context-window-management.md`,
-  `settings.json`, plus `interview.yaml`), each paired.
+  `settings.json`, plus `interview.yaml`), each paired — and, since the 0.2.2 scope widening,
+  `plan/spec-assembly.md` as well (8 files in the enumeration; the floor of 6 stands, the list is
+  illustrative of the M0-M3 edit surface).
 - Note on `.github/`: `judgment-first-consistency.yaml` has **no template counterpart**, so
   REQ-JFM-021's counterpart clause does not fire on it. This is not because `.github/` is outside
   the template — it is not: `find internal/template/templates/.github -type f` → 4 files, including
