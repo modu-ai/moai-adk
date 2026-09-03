@@ -222,3 +222,36 @@ Clarity 0.75 (REQ-004 precedence + AC-06 Given ambiguities) / Completeness 1.0 /
 - The `moai` MCP binary serving the audit reported build lag vs tree HEAD (e79c010b8 ancestor
   of d592b0551); no verdict-critical fact depended on moai CLI output — all code evidence was
   read from source and all measurements run in-session.
+
+---
+
+# RUN-PHASE COMPLETION (orchestrator-verified, lane-8, 2026-09-03)
+
+**Claim**: SPEC-CODEX-SKILL-PATH-001 run-phase complete — 8/8 AC PASS, t451 PRESERVE set held, lead-mandated fixture retrofit + sibling sweep done. 5 commits on `WT-codex-path-parser`, tree clean at `7789510d2`, NOT pushed (lane protocol; develop integration is the lead's window).
+
+**Orchestrator verification matrix** (independent re-execution, this run, tree `7789510d2` unless noted):
+
+| # | Criterion | Result |
+|---|---|---|
+| V1 | Scope = 5 files only (doctor_codex.go, doctor_codex_test.go, skills.go comment, progress.md, spec frontmatter) | PASS — `git diff --stat f813cdb0e..HEAD` |
+| V2 | `go test ./internal/cli/ -run 'CodexSkillPath' -count=1` | PASS — `ok … 1.170s` (8 tests) |
+| V3 | `go test ./internal/cli/ -run 'TestCheckCodexWiring' -count=1` | PASS — `ok … 0.922s` (19 tests) |
+| V4 | `go test ./internal/codexwiring/ -count=1` | PASS — `ok … 0.870s` |
+| V5 | `go build ./...` / `GOOS=windows GOARCH=amd64 go build ./...` | PASS — exit 0 both |
+| V6 | `golangci-lint run ./internal/cli/... ./internal/codexwiring/...` | PASS — `0 issues.` (NEW findings: 0) |
+| V7 | `grep -n '/nonexistent' internal/cli/doctor_codex_test.go` | PASS — no matches (all 12 former literal sites → temp-root-derived) |
+| V8 | RED evidence + positive census (D3) in progress.md §E.2 | PASS — census 8, 5 FAIL / 3 PASS verbatim @ `9e8e19946`, every failure red for the raw-stat-ENOENT reason |
+| V9 | spec.md frontmatter `draft → in-progress` | PASS — `status: in-progress`, `updated: 2026-09-03` |
+| V10 | t451 no-finding posture (missing==0 && unresolvedShape==0 → silent; indeterminate-only silent) | PASS — doctor_codex.go:454-459 preserved verbatim |
+
+**Gaps** (explicitly NOT observed in run-phase):
+
+1. Windows TEST-RUN verdict — `GOOS=windows` proves compilation only (plan §E D1c); the CI windows leg must RUN `go test ./internal/cli/ -run 'CodexSkillPath|TestCheckCodexWiring_StaleHomeSkillsReported|TestCheckCodexWiring_HealthyHomeSkillsNoFinding' -count=1`.
+2. `internal/cli` full-package coverage number — local run exceeded the 10m test-timeout floor under coverage instrumentation; the full-suite verdict belongs to CI per lane protocol.
+3. `origin/develop` CI verdict — pending the lead's batch push; no origin-facing claim was made in run-phase.
+
+**Noted behavior delta** (manager-develop residual-risk, code-confirmed by orchestrator): a config whose entries are ALL unresolvable shapes (relative / oddly-formed) now emits a NON-destructive advisory ("path shape this check cannot resolve" — no "stale", no remove directive) where the pre-fix code emitted a FALSE stale finding. The reporting surface is AC-CSP-001-03/-04's requirement and was RED-tested (`RelativeOnlyNonDestructiveFinding`); silence is preserved for the missing==0-nothing-unresolvable and indeterminate-only cases.
+
+**Commits**: `9e8e19946` M1 RED · `fa72e39a8` M2 GREEN · `aa6c97580` M3 doc-sweep · `f943364f0` §E evidence · `7789510d2` SHA backfill.
+
+**Residual-risk**: the relative-only advisory is new user-visible behavior (delta note above); `~user` detection is prefix-based-conservative (never advises deletion); Windows runtime classification is confirmed only by the CI leg (Gap 1).
