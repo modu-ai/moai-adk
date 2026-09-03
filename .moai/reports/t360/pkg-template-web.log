@@ -1,0 +1,7 @@
+--- FAIL: TestManifestHashFormat (0.10s)
+    catalog_tier_audit_test.go:451: CATALOG_HASH_UNSTABLE: sync-auditor stored hash=f1b4487f7351e0da165545a152c4122b15ff5e1426772171b8fa70df196c55d0, computed hash=545d03d9bde4516f02cd48cebf5ab3891ddc2e56e39fd6641d93c2a61895ff5f (source=.claude/agents/moai/sync-auditor.md)
+    catalog_tier_audit_test.go:456: audited 45 catalog entries for hash validity
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	33.568s
+ok  	github.com/modu-ai/moai-adk/internal/web	8.061s
+FAIL

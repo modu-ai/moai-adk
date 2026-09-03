@@ -1,0 +1,12 @@
+--- FAIL: TestGLMSlotHalvesAgree (0.00s)
+    glm_slot_test.go:111: sonnet: effort half reads slot "high", want "medium"
+    glm_slot_test.go:111: haiku: effort half reads slot "high", want "low"
+    glm_slot_test.go:111: fable: effort half reads slot "high", want "fable"
+    glm_slot_test.go:129: "": effort half reads slot "high", want "" (no slot claim)
+    glm_slot_test.go:129: "inherit": effort half reads slot "high", want "" (no slot claim)
+    glm_slot_test.go:129: "glm-5.3": effort half reads slot "high", want "" (no slot claim)
+    glm_slot_test.go:129: "gpt-9": effort half reads slot "high", want "" (no slot claim)
+    glm_slot_test.go:129: "opusplan": effort half reads slot "high", want "" (no slot claim)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	0.419s
+FAIL

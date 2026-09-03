@@ -894,32 +894,19 @@ func loadGLMConfig(root string) (*GLMConfigFromYAML, error) {
 // for the GLM tier slot serving the main-session model (RC3,
 // glm-settings-persist).
 //
-// The alias→slot pairing mirrors setGLMEnv's ANTHROPIC_DEFAULT_*_MODEL
-// assignments — the ONE alias/slot mapping in the tree: opus feeds
-// Models.High (→ effort.high), sonnet Models.Medium, haiku Models.Low, fable
-// Models.Fable. The [1m] suffix is split before lookup (splitModelSuffix), and
-// a canonical claude-* id is reverse-mapped through
-// template.ModelAliasFromCanonicalID — the same helper resolveMainSessionModel
-// uses on the model under a GLM backend. An empty or unknown model (including
-// a raw GLM id, which is not an alias) resolves "": the caller falls back to
-// the prefs effort chain unchanged, byte-identical to the pre-RC3 launch.
+// Thin delegation to template.GLMSlotEffortForModel, which owns the ONE
+// alias/slot mapping in the tree (mirroring setGLMEnv's
+// ANTHROPIC_DEFAULT_*_MODEL assignments: opus feeds the high slot, sonnet
+// medium, haiku low, fable fable, with the [1m] suffix split and canonical
+// claude-* ids reverse-mapped). Sharing that mapping is what keeps this effort
+// half and the model half (template.GLMSlotModelOrHigh, which keys the wire
+// collapse) from drifting apart — t360 repaired exactly such a drift.
+//
+// An empty or unknown model (including a raw GLM id, which is not an alias)
+// resolves "": the caller falls back to the prefs effort chain unchanged,
+// byte-identical to the pre-RC3 launch.
 func glmSlotEffortForModel(model string, effort config.GLMTierEffort) string {
-	if model == "" {
-		return ""
-	}
-	base, _ := splitModelSuffix(model)
-	switch template.ModelAliasFromCanonicalID(base) {
-	case "opus":
-		return effort.High
-	case "sonnet":
-		return effort.Medium
-	case "haiku":
-		return effort.Low
-	case "fable":
-		return effort.Fable
-	default:
-		return ""
-	}
+	return template.GLMSlotEffortForModel(effort, model)
 }
 
 // resolveGLMMainSessionEffort resolves the effort fed to the GLM launch

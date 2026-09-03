@@ -133,7 +133,7 @@ func TestBuildEnvForGLMLaunch_OverlayGovernsStoredEffort(t *testing.T) {
 	base := []string{"PATH=/usr/bin"}
 
 	t.Run("non-flash model honors stored low", func(t *testing.T) {
-		env := buildEnvForGLMLaunch(config.DefaultGLM53, template.GLMStateLow, base)
+		env := buildEnvForGLMLaunch(config.GLMModels{High: config.DefaultGLM53}, "opus", template.GLMStateLow, base)
 		found := ""
 		for _, e := range env {
 			if len(e) > len(config.EnvAnthropicReasoningEffort) && e[:len(config.EnvAnthropicReasoningEffort)] == config.EnvAnthropicReasoningEffort {
@@ -146,7 +146,7 @@ func TestBuildEnvForGLMLaunch_OverlayGovernsStoredEffort(t *testing.T) {
 	})
 	t.Run("flash model pins every stored effort to max", func(t *testing.T) {
 		for _, effort := range []string{template.GLMStateLow, template.GLMStateHigh, template.GLMStateMax} {
-			env := buildEnvForGLMLaunch(config.DefaultGLM53Flash, effort, base)
+			env := buildEnvForGLMLaunch(config.GLMModels{High: config.DefaultGLM53Flash}, "opus", effort, base)
 			found := ""
 			for _, e := range env {
 				if len(e) > len(config.EnvAnthropicReasoningEffort) && e[:len(config.EnvAnthropicReasoningEffort)] == config.EnvAnthropicReasoningEffort {
@@ -174,12 +174,12 @@ func TestResolveGLMBackendForLaunch_ReturnsTierEffort(t *testing.T) {
 		t.Fatalf("write llm.yaml: %v", err)
 	}
 
-	glmBackend, highModel, effort := resolveGLMBackendForLaunch(root)
+	glmBackend, models, effort := resolveGLMBackendForLaunch(root)
 	if !glmBackend {
 		t.Fatalf("resolveGLMBackendForLaunch = false, want true (team_mode: glm)")
 	}
-	if highModel != config.DefaultGLM53 {
-		t.Errorf("high model = %q, want %q", highModel, config.DefaultGLM53)
+	if models.High != config.DefaultGLM53 {
+		t.Errorf("high model = %q, want %q", models.High, config.DefaultGLM53)
 	}
 	if effort.Medium != template.GLMStateLow {
 		t.Errorf("effort.Medium = %q, want %q — the stored tier effort did not reach the launcher", effort.Medium, template.GLMStateLow)

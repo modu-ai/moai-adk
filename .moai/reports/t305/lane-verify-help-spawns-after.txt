@@ -1,0 +1,1 @@
+-C /Users/goos/MoAI/moai-adk-go/.claude/worktrees/t305 rev-parse --path-format=absolute --git-dir --git-common-dir

@@ -1,0 +1,23 @@
+22:58  up 5 days, 11:25, 25 users, load averages: 5.66 9.93 12.63
+goos: darwin
+goarch: arm64
+pkg: github.com/modu-ai/moai-adk/internal/statusline
+cpu: Apple M4 Max
+BenchmarkStatuslineWarmPath-16       	      30	 102084797 ns/op
+BenchmarkStatuslineWarmPath-16       	      30	 104757335 ns/op
+BenchmarkStatuslineWarmPath-16       	      30	 125361772 ns/op
+BenchmarkStatuslineWarmPath-16       	      30	 120184724 ns/op
+BenchmarkStatuslineWarmPath-16       	      30	 115942688 ns/op
+BenchmarkPhaseBuilderInit-16         	      30	  33024857 ns/op
+BenchmarkPhaseBuilderInit-16         	      30	  32532238 ns/op
+BenchmarkPhaseBuilderInit-16         	      30	  33082112 ns/op
+BenchmarkPhaseBuilderInit-16         	      30	  31744683 ns/op
+BenchmarkPhaseBuilderInit-16         	      30	  31203590 ns/op
+BenchmarkPhaseGitCollectStatus-16    	      30	 107585889 ns/op
+BenchmarkPhaseGitCollectStatus-16    	      30	 101938538 ns/op
+BenchmarkPhaseGitCollectStatus-16    	      30	 104337775 ns/op
+BenchmarkPhaseGitCollectStatus-16    	      30	 113910694 ns/op
+BenchmarkPhaseGitCollectStatus-16    	      30	 103501721 ns/op
+PASS
+ok  	github.com/modu-ai/moai-adk/internal/statusline	41.312s
+22:59  up 5 days, 11:26, 25 users, load averages: 7.14 9.81 12.45

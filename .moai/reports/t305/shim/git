@@ -1,0 +1,7 @@
+#!/bin/sh
+# t305 spawn-counting shim. Put this directory first on PATH and point
+# T305_GIT_LOG at a file: every `git` invocation the measured process makes
+# appends one line, then runs for real. The count is exact and load-independent,
+# which is what makes it evidence rather than a timing impression.
+printf '%s\n' "$*" >> "$T305_GIT_LOG"
+exec /usr/bin/git "$@"
