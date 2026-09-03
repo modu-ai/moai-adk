@@ -65,7 +65,7 @@ patterns. Named e2e journey gaps: G1–G8 (`gap-inventory.md`).
 ```yaml
 run_status: complete
 run_complete_at: 2026-09-03
-run_commit_sha: <filled at commit>
+run_commit_sha: 6d99cd103
 base_sha_pinned: bd7c58201          # re-pinned from e9c6a8564 (absorb commit, recorded §E.2)
 branch: WT-codex-e2e
 worktree: .claude/worktrees/t462
