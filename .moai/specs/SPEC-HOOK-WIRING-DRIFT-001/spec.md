@@ -2,7 +2,7 @@
 id: SPEC-HOOK-WIRING-DRIFT-001
 title: "Hook wiring drift — close the local drift, make it detectable, record the dispositions, stop the MX dead work"
 version: "0.4.0"
-status: in-progress
+status: completed
 created: 2026-08-24
 updated: 2026-09-03
 author: manager-spec

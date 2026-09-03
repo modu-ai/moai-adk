@@ -87,7 +87,44 @@ _<pending run-phase>_
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: complete
+sync_commit_sha: pending-backfill-sync   # backfilled here; the sync commit cannot
+                                         # cite its own SHA (SHA placeholder backfill
+                                         # exemption, spec-frontmatter-schema.md § D3)
+sync_complete_at: 2026-09-03
+measured_at_head: 820db6cf9
+```
+
+What sync did (single sync commit, both closes riding it):
+
+1. **Wrapper close** — `SPEC-ACHWD-STRIP-EXEMPT-001` frontmatter
+   `in-progress → completed` (3-phase close convention: the `completed`
+   transition rides the sync commit; manager-docs owns it per the Status
+   Transition Ownership Matrix). No body content changed.
+2. **Amendment re-close** — `SPEC-HOOK-WIRING-DRIFT-001` frontmatter
+   `in-progress → completed` (v0.4.0 re-close, the path declared by the
+   `re_close_path` row of its `## Amendments` sub-section: the SPEC returns to
+   `completed` riding this card's sync commit). No body content and no other
+   frontmatter field touched — the `updated:` date was already refreshed by
+   the amendment commit and remains 2026-09-03.
+3. **CHANGELOG** — one `[Unreleased]` Added row for this wrapper SPEC,
+   adjacent to (above) the t216 row it amends; no separate row for the
+   re-close (the amendment is named inside the wrapper row).
+
+Verification (re-run at sync close, this tree):
+
+- `go run ./cmd/moai spec lint .moai/specs/SPEC-ACHWD-STRIP-EXEMPT-001/spec.md`
+  — output in the sync commit's evidence below; 0 errors expected.
+- `go run ./cmd/moai spec lint .moai/specs/SPEC-HOOK-WIRING-DRIFT-001/spec.md`
+  — 0 errors, 18 warnings (4 `ModalityMalformed` + 14 `CoverageIncomplete`),
+  both classes pre-existing per §E.1's composition note; unchanged from the
+  run-phase A5b measurement.
+- §I.4 strip-aware mirror check re-run on the final tree — exit 0 expected
+  (verbatim output in `.moai/reports/t469/verdict.md`).
+- Sync-auditor review is dispatched separately by the lane after this commit;
+  the verdict at `.moai/reports/t469/verdict.md` carries a placeholder row
+  for the auditor's co-authored score.
 
 ## Carried Debt (explicit carry-forward per lead instruction)
 
