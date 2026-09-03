@@ -126,7 +126,7 @@ Activation SHA `a95939df5` (recorded §E.2). Final branch tip at sync-open: `350
 
 ```yaml
 sync_complete_at: 2026-09-03
-sync_commit_sha: pending-backfill-sync   # named by the follow-up backfill commit (schema D3 placeholder)
+sync_commit_sha: 09c5b5431   # the sync commit; named by the follow-up backfill commit, since a commit cannot name its own SHA
 sync_status: complete
 changelog_entry_emitted: true            # [Unreleased] → Added; precedent SPEC-LLMCFG-PRESERVE-001
 ac_pass_count_at_sync: 6                 # unchanged from §E.3 — sync touched no code surface
