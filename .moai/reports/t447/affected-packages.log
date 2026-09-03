@@ -1,0 +1,31 @@
+--- FAIL: TestManifestHashFormat (0.07s)
+    catalog_tier_audit_test.go:451: CATALOG_HASH_UNSTABLE: moai stored hash=3fff7dba68fec63be60cff8cccb480f8510031533e4c2b95e71b25932b4236aa, computed hash=f01063f0d6a817ddd1c7f4fef46c41f7782ee701d6e008e05ac18403cc4a4bcf (source=.claude/skills/moai/ (whole tree))
+    catalog_tier_audit_test.go:451: CATALOG_HASH_UNSTABLE: sync-auditor stored hash=f1b4487f7351e0da165545a152c4122b15ff5e1426772171b8fa70df196c55d0, computed hash=545d03d9bde4516f02cd48cebf5ab3891ddc2e56e39fd6641d93c2a61895ff5f (source=.claude/agents/moai/sync-auditor.md)
+    catalog_tier_audit_test.go:456: audited 45 catalog entries for hash validity
+--- FAIL: TestCatalogHashCoversSkillSubfiles (0.10s)
+    catalog_tier_audit_test.go:491: CATALOG_HASH_SKINNY: moai hash=3fff7dba68fec63be60cff8cccb480f8510031533e4c2b95e71b25932b4236aa does not cover the deployed directory tree (whole-tree hash f01063f0d6a817ddd1c7f4fef46c41f7782ee701d6e008e05ac18403cc4a4bcf) — run gen-catalog-hashes.go --all (card t323)
+    catalog_tier_audit_test.go:499: audited 34 directory entries for whole-tree hash coverage
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	25.737s
+2026/09/03 01:25:46 INFO SUNSET_CONFIG_DORMANT_NOTICE spec="SPEC-V3R2-MIG-003 REQ-018" yaml_path=/Users/goos/MoAI/moai-adk-go/.claude/worktrees/t447/internal/template/templates/.moai/config/sections/sunset.yaml advice="SunsetConfig has no runtime hot path; activation requires a new SPEC"
+sandbox proof kind "docker" accepted as attestation (host GOOS=darwin); boundary not independently verified
+sandbox proof kind "gvisor" accepted as attestation (host GOOS=darwin); boundary not independently verified
+sandbox proof kind "docker" accepted as attestation (host GOOS=darwin); boundary not independently verified
+sandbox proof kind "podman" accepted as attestation (host GOOS=darwin); boundary not independently verified
+sandbox proof kind "gvisor" accepted as attestation (host GOOS=darwin); boundary not independently verified
+sandbox proof kind "firecracker" accepted as attestation (host GOOS=darwin); boundary not independently verified
+sandbox proof kind "e2b" accepted as attestation (host GOOS=darwin); boundary not independently verified
+sandbox proof kind "devcontainer" accepted as attestation (host GOOS=darwin); boundary not independently verified
+sandbox proof kind "kata" accepted as attestation (host GOOS=darwin); boundary not independently verified
+sandbox proof kind "sandbox-runtime" accepted as attestation (host GOOS=darwin); boundary not independently verified
+2026/09/03 01:25:46 WARN cache.yaml malformed, using safe default (disabled) path=testdata/cache-malformed/cache.yaml error="yaml: line 3: found unexpected end of stream"
+2026/09/03 01:25:46 WARN cache.yaml invalid, using safe default (disabled) path=testdata/cache-invalid-ttl/cache.yaml error="cacheStrategy.session_ttl \"2h\" invalid: want one of 1h|5m|off"
+2026/09/03 01:25:46 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestCache_DoesNotCreateConfigDir1473102064/001/fresh-project/.moai/config/sections
+2026/09/03 01:25:46 WARN HRN_SCHEMA_DRIFT: unknown keys in harness.yaml: [unknown_top_field] (path: testdata/harness-drift-strict/harness.yaml) unknown_keys=[unknown_top_field] path=testdata/harness-drift-strict/harness.yaml
+2026/09/03 01:25:46 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestProjectContinuationForRootmissing_.moai_tree4149939851/001/.moai/config/sections
+--- FAIL: TestAlwaysLoadedTokenBudget (0.00s)
+    token_budget_guard_test.go:69: always-loaded surface = 76939 tokens (budget 76400, headroom -539, 17 entries)
+    token_budget_guard_test.go:73: always-loaded surface = 76939 tokens, exceeds budget 76400 (overflow 539); surface has 17 entries — trim always-loaded rules or raise AlwaysLoadedTokenBudget with justification
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/config	3.806s
+FAIL

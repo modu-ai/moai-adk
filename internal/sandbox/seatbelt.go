@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-
 	// @MX:WARN: [AUTO] sandbox-exec has been deprecated by Apple (operational since macOS 10.5)
 	// @MX:REASON: Apple no longer officially supports sandbox-exec and it may be
 	//             removed in a future macOS version. An App Sandbox entitlement-based
@@ -32,9 +31,10 @@ func (s *SeatbeltBackend) Available() bool {
 //
 // @MX:WARN: [AUTO] execSandboxExec — the SBPL profile is generated just before exec and never written to a file
 // @MX:REASON: The -p flag of sandbox-exec accepts an inline profile, so no
-//             tmpfile is required. However, very long profiles may exceed the
-//             arg list limit. The current implementation uses -p; we can switch
-//             to -f (file) mode if needed.
+//
+//	tmpfile is required. However, very long profiles may exceed the
+//	arg list limit. The current implementation uses -p; we can switch
+//	to -f (file) mode if needed.
 func (s *SeatbeltBackend) Exec(opts SandboxOptions, cmd []string) ([]byte, error) {
 	if !s.Available() {
 		return nil, ErrSandboxBackendUnavailable

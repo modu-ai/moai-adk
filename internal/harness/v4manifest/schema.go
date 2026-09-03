@@ -285,7 +285,7 @@ var agentTiers = map[string]Tier{
 	"manager-develop": TierOrange,
 	"manager-design":  TierOrange,
 	"builder-harness": TierOrange,
-	"e2e-tester":  TierOrange,
+	"e2e-tester":      TierOrange,
 
 	// 🔵 — moderate / procedural reasoning (×5): sync-phase docs, git ops,
 	// TRUST 5 checks, template editing, workflow pattern application.

@@ -25,8 +25,8 @@ func TestAC004_Characterization_PathBodyUnchanged(t *testing.T) {
 	}
 
 	fixtures := []struct {
-		name    string
-		tag     Tag
+		name string
+		tag  Tag
 		// golden is the pre-change expected association slice (LITERAL, not
 		// runtime-derived). Source order: path → body.
 		golden []string
