@@ -124,6 +124,16 @@ func codexDetailText(c DiagnosticCheck) string {
 	return strings.Join(strings.Fields(c.Detail), " ")
 }
 
+// absentSkillPath derives a definitely-absent ABSOLUTE path under a fresh
+// temp root. It must never be a hardcoded leading-slash literal: on a Windows
+// host such a literal is not filepath.IsAbs, so once shape classification
+// lands (SPEC-CODEX-SKILL-PATH-001) it would reclassify as relative there and
+// silently corrupt the regression judgment.
+func absentSkillPath(t *testing.T, name string) string {
+	t.Helper()
+	return filepath.Join(t.TempDir(), "definitely-absent-"+name, "SKILL.md")
+}
+
 // liveSkillFile writes a SKILL.md that exists, and returns its path.
 func liveSkillFile(t *testing.T) string {
 	t.Helper()
@@ -178,9 +188,9 @@ func TestCheckCodexWiring_StaleHomeSkillsReported(t *testing.T) {
 	live := liveSkillFile(t)
 	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{
 		{Path: live, EnabledKey: "true"},
-		{Path: "/nonexistent/moai-a/SKILL.md", EnabledKey: "true"},
-		{Path: "/nonexistent/moai-b/SKILL.md", EnabledKey: "false"},
-		{Path: "/nonexistent/moai-c/SKILL.md", EnabledKey: "false"},
+		{Path: absentSkillPath(t, "moai-a"), EnabledKey: "true"},
+		{Path: absentSkillPath(t, "moai-b"), EnabledKey: "false"},
+		{Path: absentSkillPath(t, "moai-c"), EnabledKey: "false"},
 		{EnabledKey: "true"}, // declares no path — counted in the total, never as missing
 	})
 	stubCodexHome(t, home)
@@ -232,7 +242,7 @@ func TestCheckCodexWiring_StaleHomeSkillsReported(t *testing.T) {
 func TestCheckCodexWiring_EmptyPathEntryNotCountedMissing(t *testing.T) {
 	stubCodexLookup(t, true, true)
 	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{
-		{Path: "/nonexistent/only-one/SKILL.md", EnabledKey: "true"},
+		{Path: absentSkillPath(t, "only-one"), EnabledKey: "true"},
 		{EnabledKey: "true"},  // no path key
 		{EnabledKey: "false"}, // no path key
 	})
@@ -257,8 +267,8 @@ func TestCheckCodexWiring_EmptyPathEntryNotCountedMissing(t *testing.T) {
 func TestCheckCodexWiring_UnspecifiedEnabledReportedSeparately(t *testing.T) {
 	stubCodexLookup(t, true, true)
 	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{
-		{Path: "/nonexistent/a/SKILL.md"},                       // no enabled key
-		{Path: "/nonexistent/b/SKILL.md", EnabledKey: `"true"`}, // quoted string, still true
+		{Path: absentSkillPath(t, "a"), EnabledKey: ""},       // no enabled key
+		{Path: absentSkillPath(t, "b"), EnabledKey: `"true"`}, // quoted string, still true
 	})
 	stubCodexHome(t, home)
 
@@ -276,7 +286,7 @@ func TestCheckCodexWiring_UnspecifiedEnabledReportedSeparately(t *testing.T) {
 func TestCheckCodexWiring_CodexHomeHonoured(t *testing.T) {
 	stubCodexLookup(t, true, true)
 	staleHome := writeCodexHomeConfig(t, []codexSkillEntrySpec{
-		{Path: "/nonexistent/moai-a/SKILL.md", EnabledKey: "true"},
+		{Path: absentSkillPath(t, "moai-a"), EnabledKey: "true"},
 	})
 	stubCodexHome(t, staleHome)
 	t.Setenv(codexHomeEnvVar, t.TempDir()) // empty CODEX_HOME wins
@@ -300,7 +310,7 @@ func TestCheckCodexWiring_CodexHomeConfigRead(t *testing.T) {
 	if err := os.MkdirAll(envHome, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	cfg := "[[skills.config]]\npath = \"/nonexistent/env/SKILL.md\"\nenabled = true\n"
+	cfg := fmt.Sprintf("[[skills.config]]\npath = %q\nenabled = true\n", absentSkillPath(t, "env"))
 	if err := os.WriteFile(filepath.Join(envHome, "config.toml"), []byte(cfg), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -341,7 +351,7 @@ func TestCheckCodexWiring_IndeterminateStatNotMissing(t *testing.T) {
 	}
 
 	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{
-		{Path: "/nonexistent/real-miss/SKILL.md", EnabledKey: "true"},
+		{Path: absentSkillPath(t, "real-miss"), EnabledKey: "true"},
 		{Path: loopA, EnabledKey: "true"},
 	})
 	stubCodexHome(t, home)
@@ -379,10 +389,11 @@ func TestCheckCodexWiring_DirectoryPathNotMissing(t *testing.T) {
 // measured in runes against the band the committed golden rows already occupy.
 func TestCheckCodexWiring_MessageWidthStaysInBand(t *testing.T) {
 	stubCodexLookup(t, true, true)
+	absentRoot := t.TempDir() // one root for all 49 definitely-absent entries
 	entries := make([]codexSkillEntrySpec, 0, 49)
 	for i := 0; i < 49; i++ { // the real-world census that produced the 1272-column panel
 		entries = append(entries, codexSkillEntrySpec{
-			Path:       fmt.Sprintf("/nonexistent/moai-skill-%02d/SKILL.md", i),
+			Path:       filepath.Join(absentRoot, fmt.Sprintf("moai-skill-%02d", i), "SKILL.md"),
 			EnabledKey: "false",
 		})
 	}
@@ -425,10 +436,11 @@ const doctorGoldenPanelWidth = 152
 // width is asserted directly, on the real rendered output, in both modes.
 func TestCheckCodexWiring_RenderedPanelStaysInBand(t *testing.T) {
 	stubCodexLookup(t, true, true)
+	absentRoot := t.TempDir() // one root for all 49 definitely-absent entries
 	entries := make([]codexSkillEntrySpec, 0, 49)
 	for i := 0; i < 49; i++ {
 		entries = append(entries, codexSkillEntrySpec{
-			Path:       fmt.Sprintf("/nonexistent/moai-skill-%02d/SKILL.md", i),
+			Path:       filepath.Join(absentRoot, fmt.Sprintf("moai-skill-%02d", i), "SKILL.md"),
 			EnabledKey: "false",
 		})
 	}
@@ -534,7 +546,7 @@ func TestCheckCodexWiring_AbsentHomeConfigSilent(t *testing.T) {
 // stale-skill sub-check never runs either, even with a stale home config.
 func TestCheckCodexWiring_ClaudeOnlyMachineStaysSilent(t *testing.T) {
 	stubCodexLookup(t, true, false)
-	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{{Path: "/nonexistent/moai-a/SKILL.md", EnabledKey: "true"}})
+	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{{Path: absentSkillPath(t, "moai-a"), EnabledKey: "true"}})
 	stubCodexHome(t, home)
 
 	check := checkCodexWiring(t.TempDir(), false)
@@ -687,5 +699,240 @@ func TestDoctor_CodexWiringRegistered(t *testing.T) {
 	}
 	if !found {
 		t.Error("\"Codex Wiring\" check not reachable via runGroupedChecks — not registered in the Workspace group")
+	}
+}
+
+// --- SPEC-CODEX-SKILL-PATH-001: declared-path shape resolution ---
+//
+// The stale-skill sub-check used to stat e.Path RAW, so a ~-relative,
+// relative, or backslash-bearing declaration all fell into ENOENT and were
+// counted "missing" — advising the user to delete registrations that may be
+// perfectly valid. The tests below assert the POST-fix contract: only
+// determinately-resolvable shapes (absolute, and ~-relative after expansion
+// through the codexUserHomeDir seam) can feed the missing count; relative and
+// oddly-formed declarations are reported as their own classifications and are
+// never attached to the remove directive.
+
+// t468HomeSkillFile places a SKILL.md at home/rel so a ~-relative
+// declaration has an expansion target that EXISTS under the home the seam
+// pins.
+func t468HomeSkillFile(t *testing.T, home, rel string) {
+	t.Helper()
+	dir := filepath.Join(home, filepath.Dir(rel))
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(home, rel), []byte("# skill\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestCodexSkillPath_HomeRelativeExistingNotMissing (AC-CSP-001-01): a
+// ~/prefixed entry whose expansion target exists under the pinned user home
+// is NOT counted missing and emits no finding.
+func TestCodexSkillPath_HomeRelativeExistingNotMissing(t *testing.T) {
+	stubCodexLookup(t, true, true)
+	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{
+		{Path: "~/t468-live/SKILL.md", EnabledKey: "true"},
+	})
+	t468HomeSkillFile(t, home, "t468-live/SKILL.md")
+	stubCodexHome(t, home)
+
+	check := checkCodexWiring(wireProjectForDoctor(t), false)
+	if check.Status != uikit.CheckOK {
+		t.Errorf("an existing ~-relative registration was reported missing: %+v", check)
+	}
+	if strings.Contains(check.Message+" "+codexDetailText(check), "stale skill") {
+		t.Errorf("existing ~-relative registration produced a stale finding: %+v", check)
+	}
+}
+
+// TestCodexSkillPath_HomeRelativeMissingStillCounted (AC-CSP-001-02): the
+// other half of the expansion contract — a ~/prefixed entry whose expansion
+// target does NOT exist IS counted missing. Expansion must not create false
+// negatives either.
+func TestCodexSkillPath_HomeRelativeMissingStillCounted(t *testing.T) {
+	stubCodexLookup(t, true, true)
+	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{
+		{Path: "~/t468-definitely-absent/SKILL.md", EnabledKey: "true"},
+	})
+	stubCodexHome(t, home)
+
+	check := checkCodexWiring(wireProjectForDoctor(t), false)
+	if check.Status != uikit.CheckWarn {
+		t.Fatalf("a ~-relative entry with no expansion target was not reported: %+v", check)
+	}
+	if !strings.Contains(check.Message, "1 stale skill entry") {
+		t.Errorf("summary does not count the missing ~-relative entry: %q", check.Message)
+	}
+	if !strings.Contains(codexDetailText(check), "remove the stale entries") {
+		t.Errorf("missing ~-relative entry lost the remove directive: %q", check.Detail)
+	}
+}
+
+// TestCodexSkillPath_RelativeNotMissingDistinctClassification
+// (AC-CSP-001-03): a relative declaration is NOT counted missing, is
+// surfaced in Detail as its own relative classification, and the remove
+// directive stays bound to the genuinely-missing count only. The resolution
+// base for a relative path is unobserved in this repository, so the check
+// must not guess one.
+func TestCodexSkillPath_RelativeNotMissingDistinctClassification(t *testing.T) {
+	stubCodexLookup(t, true, true)
+	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{
+		// The anchor forces a finding so Detail renders at all; without a
+		// missing entry the sub-check is silent and there is no Detail to
+		// carry the classification in.
+		{Path: absentSkillPath(t, "anchor"), EnabledKey: "true"},
+		{Path: "skills/t468-foo/SKILL.md", EnabledKey: "true"},
+	})
+	stubCodexHome(t, home)
+
+	check := checkCodexWiring(wireProjectForDoctor(t), false)
+	if !strings.Contains(check.Message, "1 stale skill entry") {
+		t.Errorf("relative declaration inflated the missing count: %q", check.Message)
+	}
+	detail := codexDetailText(check)
+	if !strings.Contains(detail, "1 with a path that no longer exists") {
+		t.Errorf("missing count lost: %q", check.Detail)
+	}
+	if !strings.Contains(detail, "1 relative entry (not checked: the resolution base is not observed)") {
+		t.Errorf("Detail does not carry the distinct relative classification: %q", check.Detail)
+	}
+}
+
+// TestCodexSkillPath_RelativeOnlyNonDestructiveFinding (AC-CSP-001-03): a
+// config whose only unusual entry is relative may surface the classification,
+// but the finding must be non-destructive — the remove directive never
+// attaches to it.
+func TestCodexSkillPath_RelativeOnlyNonDestructiveFinding(t *testing.T) {
+	stubCodexLookup(t, true, true)
+	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{
+		{Path: "skills/t468-only/SKILL.md", EnabledKey: "true"},
+	})
+	stubCodexHome(t, home)
+
+	check := checkCodexWiring(wireProjectForDoctor(t), false)
+	combined := check.Message + " " + codexDetailText(check)
+	if strings.Contains(combined, "remove the stale entries") {
+		t.Errorf("a relative-only config was advised to remove entries: %+v", check)
+	}
+	if !strings.Contains(codexDetailText(check), "1 relative entry (not checked: the resolution base is not observed)") {
+		t.Errorf("relative classification not surfaced for a relative-only config: %q", check.Detail)
+	}
+}
+
+// TestCodexSkillPath_BackslashAndOtherUserHomeNotMissing (AC-CSP-001-04): a
+// backslash-bearing NON-absolute fragment ("skills\foo\SKILL.md" is not
+// filepath.IsAbs on darwin OR windows) and another user's ~user home form
+// are both oddly-formed — never missing, surfaced as their own
+// classification. On a Windows host a native C:\... absolute stays ABSOLUTE
+// (IsAbs decides), never oddly-formed.
+func TestCodexSkillPath_BackslashAndOtherUserHomeNotMissing(t *testing.T) {
+	stubCodexLookup(t, true, true)
+	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{
+		{Path: absentSkillPath(t, "anchor"), EnabledKey: "true"},
+		{Path: `skills\t468-foo\SKILL.md`, EnabledKey: "true"},
+		{Path: "~otheruser/skills/t468/SKILL.md", EnabledKey: "true"},
+	})
+	stubCodexHome(t, home)
+
+	check := checkCodexWiring(wireProjectForDoctor(t), false)
+	if !strings.Contains(check.Message, "1 stale skill entry") {
+		t.Errorf("oddly-formed declarations inflated the missing count: %q", check.Message)
+	}
+	detail := codexDetailText(check)
+	if !strings.Contains(detail, "1 with a path that no longer exists") {
+		t.Errorf("missing count lost: %q", check.Detail)
+	}
+	if !strings.Contains(detail, "2 oddly-formed entries (not checked: backslash or ~other-user shape)") {
+		t.Errorf("Detail does not carry the distinct oddly-formed classification: %q", check.Detail)
+	}
+}
+
+// TestCodexSkillPath_AbsoluteExistingAndMissing (AC-CSP-001-05): regression
+// guard — the pre-existing absolute behavior is untouched: an absolute entry
+// that exists yields no finding; an absolute entry that does not is counted
+// missing WITH the remove directive. Both fixture paths are temp-root-derived
+// absolutes so the same judgment holds on a Windows host.
+func TestCodexSkillPath_AbsoluteExistingAndMissing(t *testing.T) {
+	stubCodexLookup(t, true, true)
+	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{
+		{Path: liveSkillFile(t), EnabledKey: "true"},
+		{Path: absentSkillPath(t, "gone"), EnabledKey: "false"},
+	})
+	stubCodexHome(t, home)
+
+	check := checkCodexWiring(wireProjectForDoctor(t), false)
+	if !strings.Contains(check.Message, "1 stale skill entry") {
+		t.Errorf("absolute missing entry not counted: %q", check.Message)
+	}
+	detail := codexDetailText(check)
+	if !strings.Contains(detail, "(0 enabled, 1 disabled, 0 unspecified)") {
+		t.Errorf("declared split wrong for the absolute pair: %q", check.Detail)
+	}
+	if !strings.Contains(detail, "remove the stale entries") {
+		t.Errorf("absolute missing entry lost the remove directive: %q", check.Detail)
+	}
+}
+
+// TestCodexSkillPath_RealMissingWithSymlinkLoopIndeterminate
+// (AC-CSP-001-06): regression guard preserving the t451 stat-error taxonomy
+// verbatim — a real missing entry (temp-root absolute that does not exist) is
+// counted, a symlink loop (ELOOP, not ErrNotExist) stays indeterminate and
+// surfaced in Detail, never folded into missing.
+func TestCodexSkillPath_RealMissingWithSymlinkLoopIndeterminate(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation needs privileges on windows")
+	}
+	stubCodexLookup(t, true, true)
+	dir := t.TempDir()
+	loopA := filepath.Join(dir, "loopA")
+	loopB := filepath.Join(dir, "loopB")
+	if err := os.Symlink(loopB, loopA); err != nil {
+		t.Skipf("symlink unsupported here: %v", err)
+	}
+	if err := os.Symlink(loopA, loopB); err != nil {
+		t.Skipf("symlink unsupported here: %v", err)
+	}
+	if _, err := os.Stat(loopA); err == nil || errors.Is(err, fs.ErrNotExist) {
+		t.Skipf("symlink loop did not produce a non-ENOENT stat error: %v", err)
+	}
+
+	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{
+		{Path: absentSkillPath(t, "real-miss"), EnabledKey: "true"},
+		{Path: loopA, EnabledKey: "true"},
+	})
+	stubCodexHome(t, home)
+
+	check := checkCodexWiring(wireProjectForDoctor(t), false)
+	if !strings.Contains(check.Message, "1 stale skill entry") {
+		t.Errorf("indeterminate stat inflated the missing count: %q", check.Message)
+	}
+	if !strings.Contains(codexDetailText(check), "1 could not be checked and are NOT counted as missing") {
+		t.Errorf("Detail does not disclose the unchecked loop entry: %q", check.Detail)
+	}
+}
+
+// TestCodexSkillPath_ExpansionUsesUserHomeSeam (AC-CSP-001-08): the ~
+// expansion observably routes through the codexUserHomeDir seam (the USER
+// home), not through CODEX_HOME or the codex home. The seam home contains
+// the expansion target; the codex home (home/.codex) does not — expanding
+// against the codex home would report the entry missing. A bare ~ expands to
+// the seam-pinned user home itself and is likewise not missing.
+func TestCodexSkillPath_ExpansionUsesUserHomeSeam(t *testing.T) {
+	stubCodexLookup(t, true, true)
+	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{
+		{Path: "~/t468-seam-target/SKILL.md", EnabledKey: "true"},
+		{Path: "~", EnabledKey: "true"},
+	})
+	t468HomeSkillFile(t, home, "t468-seam-target/SKILL.md")
+	stubCodexHome(t, home)
+
+	check := checkCodexWiring(wireProjectForDoctor(t), false)
+	if check.Status != uikit.CheckOK {
+		t.Errorf("~ expansion did not use the pinned user home seam: %+v", check)
+	}
+	if strings.Contains(check.Message+" "+codexDetailText(check), "stale skill") {
+		t.Errorf("seam-pinned ~ entries produced a stale finding: %+v", check)
 	}
 }
