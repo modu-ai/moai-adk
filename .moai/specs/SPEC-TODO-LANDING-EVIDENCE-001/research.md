@@ -6,6 +6,9 @@ Nothing here is carried over from another tree or another time. What was **not**
 
 **Tree**: worktree `.claude/worktrees/t359`, branch `WT-landing-evidence`, HEAD `e50964ad3`.
 **Measured**: 2026-09-03.
+That HEAD is the default and holds unless a block says otherwise; a measurement taken at a later
+HEAD of this same worktree carries its own SHA inline at the point of use, and today §R.10.1's
+ordering note (`c0cfb2520`) is the only one.
 
 ---
 
@@ -194,10 +197,17 @@ $ grep -m1 '^status:' .moai/specs/SPEC-KANBAN-QUEUE-PR-SYNC-001/spec.md \
 .moai/specs/SPEC-TODO-LANDING-STATE-001/spec.md:status: completed
 ```
 
-(Full output, verbatim including paths. `grep -m1` emits in the order it resolves the files, which
-is not the argument order given above — v0.2.0 pasted this block with the `.moai/specs/` prefix
-stripped from every line and did not disclose the trim, the same class of lapse as D11; re-measured
-and re-pasted untrimmed here.)
+(Full output, verbatim including paths, and **one capture of a non-deterministic ordering**. The
+divergence from the argument order is the shell's, not `grep -m1`'s: `grep` here resolves to a shell
+function wrapping a parallel grep — `type grep` reports it as a function from the session's
+`shell-snapshots/` file — and that wrapper's output order varies between runs of the identical
+command. `/usr/bin/grep -m1`, given the same arguments, emits in argument order deterministically
+(6/6 identical runs, measured in this tree at HEAD `c0cfb2520`), so the property does not belong to
+`grep -m1`; v0.3.0 attributed it there and that attribution is **withdrawn**. The four values are
+not in dispute and match re-measurement; the ordering shown is simply one of several this shell
+produces, and a reader re-running the command will often see another. v0.2.0 additionally pasted
+this block with the `.moai/specs/` prefix stripped from every line and did not disclose the trim,
+the same class of lapse as D11; re-measured and re-pasted untrimmed here.)
 
 v0.1.0 asserted `completed` for the first two. That was inherited from the card text and never
 measured — the document opened by claiming every figure in it was measured in this tree, and this

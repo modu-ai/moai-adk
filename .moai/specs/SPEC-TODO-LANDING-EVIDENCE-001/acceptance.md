@@ -260,7 +260,7 @@ the live code,
 **Then** both statements succeed and the SELECT returns the pre-change field values unchanged; the
 reconstructed open path returns no error and does not classify the database as `ErrBacklogCorrupt`;
 `schema_version` reads exactly `"1"`; **and** the frozen DDL string equals the live `backlogDDL`
-const byte for byte, and the frozen switch's accepted-version set equals the live one.
+const byte for byte.
 
 **Why clause (c) exists — clause (b) alone is a coverage assertion, not a detector.** Version 0.2.0
 claimed (a) and (b) "fail independently"; that **overstated it** and the claim is withdrawn. The only
@@ -269,6 +269,15 @@ mutation this SPEC permits reds (b) while (a) stays green — REQ-TLE-018 forbid
 `design.md` §2 rules that `backlogDDL` is not edited, so (b) was exercising a path that could not
 diverge. Clause (c) is what gives (b) an independent failure mode: it converts the replica's fidelity
 from an assumption into an assertion.
+
+Version 0.3.0 stated clause (c) as two conjuncts; the second — that the frozen switch's
+accepted-version set equals the live one — is **withdrawn as unrealisable**, not softened. The live
+accepted-version set is control flow (`internal/kanban/backlog_sqlite.go:286-298`), not a structure
+a test can extract, and the cheapest runnable reading of it — comparing the `backlogSchemaVersion`
+const — leaves the named drift undetected, because adding a `case` to the live switch changes no
+const. The RED list below never carried a mutation that redded that conjunct, which is the same
+absence read from the other side. What remains of (c) is the DDL byte-identity assertion, which has
+the independent RED stated below.
 
 **What this does and does not demonstrate.** Clause (b) exercises the code path a pre-change binary
 would take (`internal/kanban/backlog_sqlite.go:278-299`: DDL exec → `schemaVersion` → version
@@ -327,7 +336,9 @@ cite this criterion's recorded RED.
 
 ### AC-TLE-020 — a supplied SHA is validated for existence and reachability (REQ-TLE-020)
 
-**Given** a fixture ref with a known history, and four `--sha` conditions: (a) a commit reachable
+**Given** a fixture ref with a known history — whose commit messages mention **exactly one** of the
+two card ids used by the attribution-boundary clause below, and not the other — and four `--sha`
+conditions: (a) a commit reachable
 from that ref, (b) a syntactically valid but non-existent object id, (c) a commit that exists but is
 **not** reachable from that ref (created on a detached side branch the fixture does not merge), and
 (d) the checks **cannot be run** — exercised twice, once with `git` absent from the resolved command
@@ -351,7 +362,9 @@ across from `todo_pr.go` and satisfy every other clause.
 **same `--sha` against two different card ids** — two cards created in the same fixture queue, both
 records attempted with an identical SHA — and observing an identical accept/reject outcome and an
 identical stderr classification for both. Run for the accepting condition (a) and for at least one
-refusing condition (b or c), so the invariance is asserted on both branches.
+refusing condition (b or c), so the invariance is asserted on both branches. The two cards are
+created against the pinned fixture ref of the Given: its history mentions exactly one of their two
+ids. That premise is what makes the clause able to fail — see the RED below.
 
 **Why two card ids, and not one card renamed.** The predicate this clause guards against keys on the
 card **id**, not its text: `LandedGrepArgs` builds its argv as `` `--grep=\b` + cardID + `\b` ``
@@ -367,7 +380,11 @@ must fail. Treat an unrunnable check as permissive → (d) exits 0 and stores. S
 abbreviated form rather than the resolved SHA → (a)'s full-SHA assertion fails. Collapse the stderr
 messages → the distinguishability assertion fails. **Feed the card token into either check** → the
 two-card outcomes diverge and the boundary clause fails — this is the RED the rename form did not
-have.
+have. **It fires on the Given's pinned fixture and only there**, which is why that premise is
+stated rather than assumed: were the history to mention neither id, both invocations would be
+refused alike, the outcomes would agree, and the leak would surface at condition (a) instead; were
+it to mention both, the leak would satisfy all three clauses and this criterion would miss it
+entirely.
 
 ### AC-TLE-021 — the two doctrine surfaces agree, and agree with the emitted row (REQ-TLE-021)
 
