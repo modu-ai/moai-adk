@@ -1043,4 +1043,114 @@ open_gaps: [M4-gap-2 mutant capture, M4-gap-3 stale-index path, edges-refresh la
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending sync-phase>_
+```yaml
+sync_status: complete
+sync_commit_sha: pending-backfill-sync   # backfilled in a follow-up commit — a
+                                         # commit cannot cite its own SHA
+                                         # (SHA placeholder backfill exemption,
+                                         # spec-frontmatter-schema.md § D3)
+sync_complete_at: 2026-09-03
+measured_at_head: 58990a6c6
+suites:
+  - internal/cli (root, serial): ok 679.238s, exit 0 — .moai/reports/t216/sync-evidence/cli-root-serial.log
+  - internal/hook (root, serial): ok 45.564s, exit 0 — .moai/reports/t216/sync-evidence/hook-root-serial.log
+  - internal/cli subpackages (16): all ok — .moai/reports/t216/sync-evidence/cli-58990a6c6.log
+  - internal/hook subpackages (10) + internal/mx (ok 26.756s) + internal/template
+    (ok 186.566s) + internal/template/agentemit (ok, cached): all ok —
+    .moai/reports/t216/sync-evidence/hook-mx-template-58990a6c6.log
+measurement_discipline: >-
+  No suite was re-run for sync-phase closure. All suite figures above are
+  carried verbatim from §E.3 (measured at the same HEAD, 58990a6c6, which is
+  also this sync commit's parent) per the dispatch's explicit no-re-run
+  constraint. A first attempt at this same HEAD ran internal/cli concurrently
+  with internal/hook and both root packages panicked on `test timed out`
+  (internal/hook 602.553s at a 600s limit; internal/cli 905.074s at a 900s
+  limit) with zero `--- FAIL` lines — contention, not defect; those contended
+  runs are discarded, not counted as failures.
+static:
+  go_build: exit 0
+  go_vet: exit 0
+  goos_windows_vet: exit 0
+  golangci_lint: "0 issues (./internal/cli/... ./internal/hook/... ./internal/template/...)"
+  gofmt: >-
+    NOT clean repo-wide — `gofmt -l internal cmd pkg` lists 153 files. ZERO
+    overlap with the 13 .go files this card touches (`comm -12` on both sorted
+    lists is empty; neither operand is empty — 153 and 13). Pre-existing,
+    repo-wide, attributed to card t457 per the sync-phase dispatch (not
+    independently re-verified here — out of this SPEC's scope). An
+    unqualified "gofmt clean" claim would be false at repo scope; this scoped
+    claim is what holds.
+  make_build: "exit 0, working tree clean afterwards, catalog.yaml unchanged"
+ac_hwd_011_zero_delta:
+  hook_scripts_local: "43 (unchanged)"
+  hook_scripts_template: "47 (unchanged)"
+  git_status_both_paths: "0 lines"
+ac_hwd_015_correction:
+  criterion_text: "the mirror diff is empty for all three M3 files"
+  measured: >-
+    Two of the three pairs (hook-independence.md, agent-common-protocol.md)
+    are byte-identical. agent-common-protocol-reference.md differs at exactly
+    one line (275 in the current tree).
+  disposition: >-
+    WORDING DEFECT, not a PASS. The one-line divergence is a SANCTIONED
+    template-neutrality strip: the local copy cites
+    "(SPEC-SYNC-PARALLEL-DOCS-001 A9)"; the template copy omits the SPEC-ID
+    citation because SPEC IDs are a forbidden content class in the
+    distributed template (CLAUDE.local.md §2.1). The divergence is
+    PRE-EXISTING — verified by diffing both blobs at the merge base
+    a239cf050, where the identical one-line divergence is already present.
+    The card's own M3 edit to that file pair landed byte-identically on both
+    sides (progress.md §E.2 M3 evidence already records this). AC-HWD-015 as
+    literally worded requires byte identity on all three pairs, which
+    conflicts with template neutrality on the one file where a SPEC-ID
+    citation must differ; this SPEC introduced zero new divergence against
+    that pre-existing baseline. Recorded per progress.md §E.2's own residual-risk
+    note ("A criterion defect, not a measurement problem") rather than worked
+    around silently.
+open_gaps:
+  M4-gap-2_mutant_capture: >-
+    Not closed. The delegated run that implemented M4 was stopped before it
+    reported; its pre-implementation mutant record and the AC-HWD-013(c)
+    RED-before-inversion capture were never returned to any session. Per
+    acceptance.md §D.6 item 3, that capture belongs to the small set of
+    mutants this SPEC executed rather than reasoned (AC-HWD-013(c)'s
+    behavioural baseline, AC-HWD-009's two iteration-2 mutants, and
+    AC-HWD-007's unsatisfiability fixture) — but the specific
+    pre-implementation capture for M4's inversion was lost with the stopped
+    agent's transcript and was never re-established in a later session. It
+    is left open rather than reasoned-and-marked-closed, because
+    reconstructing it after the fact would be exactly the "reasoned, not
+    executed" substitution acceptance.md §D.6 item 3 already distinguishes
+    from an executed mutant.
+  M4-gap-3_stale_index_path: >-
+    Not exercised. Progress.md §E.2 M4 evidence item 3 exercises only the
+    absent-index cold-start path (`ls .moai/state/mx-index.json` →
+    "No such file or directory", then `moai mx query` builds it). A
+    present-but-older-than-the-7-day-freshness-window index taking the same
+    on-demand rebuild path was never constructed or run — the 7-day freshness
+    window itself is untouched by M4 (§E.2 M4 Residual risk). No fixture for
+    that path exists in this SPEC's evidence.
+  edges_refresh_landing_rate_unmeasured: >-
+    No measurement of the edges-refresh landing rate was taken ON THIS TREE.
+    Per progress.md §E.3's M2+M4 re-measurement section (Gap 2), that gap was
+    subsequently closed BY ATTRIBUTION from a different lane's measurement,
+    not by a measurement in this SPEC: lane-8 measured the edges axis at 0/60
+    (L1 worktrees, artifact-file presence, develop 2660bcd09) for its own
+    card, with all three comparability axes (denominator unit, numerator
+    test, tree already carrying the edges refresh) confirmed to match this
+    section's own 2/153 MX-cold-start measurement. The two figures carry
+    different populations and different points in time and are never summed.
+    A third figure — 0/5 for the `file_changed` twin — circulated in a
+    dispatch but is attributable to NO measurement in either this SPEC or the
+    lane-8 measurement; both discarded it as unverified. This gap remains
+    unmeasured on this SPEC's own tree; it is recorded here as unmeasured
+    rather than as closed, since the closing measurement belongs to another
+    card.
+residual_risk:
+  - "Two code paths now build the same mx-index.json in one command (M4's on-demand build and develop's graph refresh). Nothing yet factors that out, and the redundancy is what makes one of M2+M4's re-measurement assertions unfalsifiable. Reconciling them is outside M4's scope (progress.md §E.3)."
+  - "A durable side effect (the edges refresh) is dispatched from the deferred goroutine again, occupying the position M4 emptied, for the reason M4 documented — preserved deliberately, belongs to another SPEC (progress.md §E.3 → §G)."
+  - "The binary-lag guard's namesAddedAfterBaseline allowlist is a shared-surface edit (one entry, documented, mutation-checked) that modifies a guard this SPEC does not own; if the binary-lag SPEC's owner prefers a different resolution, this is the line to revisit (progress.md §E.3)."
+  - "`Harness 5-Layer` fails on this checkout, making moai doctor's whole-run exit code 1 for reasons unrelated to this SPEC; any future criterion quoting a whole-run exit code inherits that (progress.md §E.3)."
+  - "AC-HWD-015 correction (this section): the criterion's literal wording ('empty for all three files') is unsatisfiable in the presence of template-neutrality stripping on agent-common-protocol-reference.md. The interpretation applied — the card's own edit must land identically on both sides, with only a pre-existing neutrality-driven residual permitted — preserves what the criterion protects, but it is an interpretation the plan should state explicitly rather than leave implicit."
+  - "gofmt drift (this section): 153 repo-wide files are gofmt-dirty, none touched by this card. The drift is real and pre-existing (owned by card t457); a future contributor diffing gofmt output against a stale copy of this repo without re-scoping to their own changed-file set would misattribute the drift to their own work."
+```
