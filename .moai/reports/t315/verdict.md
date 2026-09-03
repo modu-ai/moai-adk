@@ -28,11 +28,45 @@ HEAD `504d5ab5a`(로컬 develop `bac2cf15b` 흡수 후). 측정일 2026-09-03.
 
 ## 1. 이관 판정 — 필요하다. 다만 이 레인 소관이 아니다
 
+### 1.0 정정 — §1.1의 "develop 쪽"은 실제로 "이 브랜치"다 (2026-09-03, 리드 지적)
+
+아래 §1.1 표의 첫 세 행은 **`develop`을 잰 것이 아니라 이 워크트리(= 미병합 브랜치
+`WT-release-notes-gitflow`)를 잰 것**이다. 라벨이 틀렸다. 원문은 지우지 않고 여기에
+정정을 나란히 둔다.
+
+| 재측정 | 명령 | 관측 |
+|---|---|---|
+| develop의 D7a 문안 | `git show refs/heads/develop:CHANGELOG.md \| grep -c 'D7a release-note duty'` | **`0` — develop에 없다** |
+| develop의 t303 항목 | `git show refs/heads/develop:CHANGELOG.md \| grep -c 'SPEC-SYNC-STRATEGY-KEY-001'` | `1` (253행) |
+| develop 구간 경계 | `git show refs/heads/develop:CHANGELOG.md \| grep -n '^## \['` | `[Unreleased]` 8행, 다음 `[3.1.3]` 511행 |
+| 역방향 조상 | `git merge-base --is-ancestor develop origin/release/v3.1.4` | **rc=1 — 양방향 아님 = 갈라짐** |
+| 공통 조상 | `git merge-base develop origin/release/v3.1.4` | `9328a5242` |
+| 삽입 커밋 소재 | `git branch --contains bc6ae180e` | `WT-release-notes-gitflow` 단독 |
+
+**따라서 위험은 2층이다** — §1.2가 ②만 다뤘다:
+
+1. **t315가 develop에 병합돼야 한다** (창 대기 중, ahead 3)
+2. **develop이 main에 도달해야 한다** (릴리스 경로 — `release/v3.1.4`는 develop의 조상이 아님)
+
+①이 빠지면 "develop엔 있는데 release에만 없다"로 읽혀 **실제보다 작은 결함으로 보인다.**
+이 저장소에서 반복된 형태다 — 자기 브랜치에서 잰 값을 develop의 사실로 적는 것.
+
+**결론은 약해지지 않고 오히려 강해진다.** `release/v3.1.4`가 t303 항목을 이미
+`## [3.1.4] - 2026-08-31` 구간에 싣고 있으므로, 동작 변경은 "나갈지도 모른다"가 아니라
+**나가는 중이고 고지만 빠져 있다**.
+
+**살아남는 것**: §1.2의 배치 논거(develop의 t303 항목이 `[Unreleased]`에 있으니 D7a
+하위 불릿의 목표 슬롯이 그 구간인 것)는 **재측정으로 확인됐다** — develop 253행. 즉 배치
+판단은 옳고, 틀린 것은 문안이 이미 develop에 있다는 **소재 서술**뿐이다. §1.3의 세 가지
+(체인 우회 / SemVer 축 동반 / 저작이 아닌 배치 결정)도 전부 유효하다.
+
 ### 1.1 측정
+
+> 아래 표의 첫 세 행은 **이 브랜치** 기준이다 — §1.0의 정정을 먼저 읽을 것.
 
 | 측정 | 명령 | 관측 |
 |---|---|---|
-| develop 쪽 D7a 위치 | `grep -n 'card t315, D7a release-note duty' CHANGELOG.md` | 254행 |
+| ~~develop 쪽~~ **이 브랜치**의 D7a 위치 | `grep -n 'card t315, D7a release-note duty' CHANGELOG.md` | 254행 |
 | develop 쪽 구간 경계 | `grep -n '^## \[' CHANGELOG.md` | `[Unreleased]` 8행, 다음 구간 `[3.1.3]` 512행 → **254행은 `[Unreleased]` 안** |
 | develop에 `[3.1.4]` 구간 존재? | 위와 동일 | **없음** |
 | release 쪽 D7a 존재? | `git show origin/release/v3.1.4:CHANGELOG.md \| grep -c 'card t315, D7a release-note duty'` | **`0`** |
@@ -44,6 +78,10 @@ HEAD `504d5ab5a`(로컬 develop `bac2cf15b` 흡수 후). 측정일 2026-09-03.
 
 ### 1.2 판정
 
+> **§1.0 정정 적용**: 아래 문단의 "develop의 CHANGELOG에 있는 D7a 문안"은 틀렸다 —
+> 문안은 **이 브랜치에만** 있고 develop에는 0건이다. 위험은 2층(병합 + 릴리스 도달)이며,
+> 그 정정을 반영한 형태가 이 문단 바로 아래 "정정 후 판정"이다. 원문은 대조를 위해 남긴다.
+
 **이관이 필요하다.** 근거는 조상 관계 한 줄이다 — `release/v3.1.4`가 develop의 조상이
 아니므로, develop의 CHANGELOG에 있는 D7a 문안은 **#1685를 통해 main에 도달하지 않는다.**
 #1685가 지금 상태로 머지되면 v3.1.2 → v3.1.4로 올린 사용자가 배포 기본값 변화를 예고
@@ -52,6 +90,21 @@ HEAD `504d5ab5a`(로컬 develop `bac2cf15b` 흡수 후). 측정일 2026-09-03.
 develop 쪽 배치 자체는 **옳다.** develop의 t303 항목이 `[Unreleased]`에 있으므로, 그
 항목의 하위 불릿으로 붙은 D7a도 같은 구간에 있는 것이 정합적이다. 고칠 것이 없다.
 문제는 develop 쪽이 틀린 것이 아니라 **release 쪽에 없는 것**이다.
+
+#### 정정 후 판정 (이것이 유효한 형태다)
+
+**이관이 필요하다.** 문안은 지금 **어느 공개 경로에도 없다** — 미병합 브랜치
+`WT-release-notes-gitflow`에만 있고, develop 0건, `release/v3.1.4` 0건이다. 그리고
+`release/v3.1.4`는 develop의 조상이 아니고 그 역도 아니다(양방향 rc=1, 공통 조상
+`9328a5242`). 따라서 문안이 사용자에게 닿으려면 **두 층을 다 통과해야 한다**:
+① t315 → develop 병합(창 대기), ② develop → main 도달(릴리스 경로).
+
+한편 **동작 변경은 이미 나가는 중이다** — `release/v3.1.4`가 t303 항목을
+`## [3.1.4] - 2026-08-31` 구간에 싣고 있고 #1685는 OPEN이다. 즉 변경은 릴리스 선에
+올라타 있는데 고지는 두 층 뒤에 묶여 있다. 이 비대칭이 결함의 실제 크기다.
+
+배치 판단은 살아 있다 — develop의 t303 항목이 253행 `[Unreleased]` 안에 실재하므로
+하위 불릿의 목표 슬롯은 옳다(재측정 확인). 틀렸던 것은 배치가 아니라 **소재 서술**이다.
 
 ### 1.3 왜 이 레인이 이관하지 않는가
 
