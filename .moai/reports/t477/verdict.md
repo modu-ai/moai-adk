@@ -89,6 +89,19 @@ $ go test ./internal/cli/... -count=1 -timeout 900s  → exit 0
    ok 17 / FAIL 0
 ```
 
+### 병합 트리 재측정 (develop 흡수 후)
+
+카드 커밋 `b2f98f6aa` 이후 `develop`이 5커밋 앞서가 흡수했다.
+병합 커밋 `3a09587b8` 트리에서 재측정:
+
+```
+$ go test ./internal/cli/... -count=1 -timeout 900s   → exit 0
+   ok 17 / FAIL 0
+```
+
+이 회차의 최종 측정 트리는 `3a09587b8`이다. 창을 받을 시점에 `develop`이
+더 움직였으면 재흡수 후 다시 잰다.
+
 ## Baseline-attribution
 
 - 트리: `.claude/worktrees/t477`, 카드 커밋 직전 `d7116400f` (로컬 develop과 `git rev-list --count --left-right develop...HEAD` = `0 0`)
