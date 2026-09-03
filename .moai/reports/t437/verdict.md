@@ -136,6 +136,38 @@ That last one is worth a note beyond its ownership: 77,200 leaves 261 tokens of 
 surface whose largest single entry is 66,255 bytes. The guard will fire again on the next card that
 adds a line to any always-loaded rule, and raising the ceiling each time is not a strategy.
 
+**`TestResolveWorktreeExistingBranch_*`** (`internal/cli`) — a confirmed data race, not a flake.
+The distinction was worth the measurement it cost, because the two are handled differently and the
+evidence pointed at "flake" from three directions: it appeared in one full-suite run and not
+another, it passed 3/3 in isolation, and the two full runs differed by 310 seconds of wall time.
+None of that is evidence of anything. Running the siblings under the race detector is:
+
+    go test ./internal/cli/ -run 'TestResolveWorktreeExistingBranch' -count=20 -race
+      → WARNING: DATA RACE, and all four siblings observed failing
+
+    Write at 0x0001059170c8 by goroutine 27:
+      …TestResolveWorktreeExistingBranch_RejectsBadUsage()          worktree_branch_flag_test.go:130
+    Previous read at 0x0001059170c8 by goroutine 28:
+      …TestResolveWorktreeExistingBranch_MaterializeErrorPropagates()  worktree_branch_flag_test.go:162
+
+The mechanism: the siblings each call `t.Parallel()` and then assign the package-level
+`findProjectRootFn` and `launcherWorktreeMaterialize`, restoring them in `t.Cleanup`. Running
+concurrently, one sibling's stub is live while another calls through it, so the second reaches the
+first's `launcherWorktreeMaterialize` and its error assertion fails — exactly the observed shape.
+
+Scoped by measurement rather than by file-level grep: seven test files mention that global, but
+parsing function bodies shows only three tests mutate it *while parallel*, and all three are these
+siblings. The race is among themselves, not with the rest of the package.
+
+Two earlier readings are retracted here rather than quietly dropped. "Load-dependent" was wrong —
+load is an exposure condition, not the cause, and the race is present regardless. And the isolation
+pass was not evidence of a flake; it is explained by the siblings not overlapping when run alone.
+The earlier full-suite green does not mean the race was absent then, only that it did not fire.
+
+Owned by card t295, which introduced these tests. Deliberately not repaired here — out of this
+card's scope, and the fix (drop `t.Parallel()`, or replace global assignment with injection) is the
+owning card's call.
+
 ## How the re-measurement scope was chosen
 
 Not from a summary. The packages to re-run were derived from what the absorb actually carried:
