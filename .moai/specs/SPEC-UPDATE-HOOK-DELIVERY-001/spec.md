@@ -2,7 +2,7 @@
 id: SPEC-UPDATE-HOOK-DELIVERY-001
 title: "moai update — resolve silent non-delivery of newly-added hook entries in .claude/settings.json for existing projects"
 version: "0.2.0"
-status: in-progress
+status: completed
 created: 2026-09-03
 updated: 2026-09-03
 author: manager-spec

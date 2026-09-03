@@ -114,7 +114,7 @@ Touched packages: `internal/cli` (only). Reverse dependencies via `go list -json
 
 ```yaml
 run_complete_at: 2026-09-03
-run_commit_sha: pending-backfill-run
+run_commit_sha: 7664729ab, f51cb973d, 2b4582a43 (M1 decision landing / M2 characterization / M3 detector+smoke; a05c17164 catalog-hash chore follow-up excluded)
 run_status: complete
 ac_pass_count: 10
 ac_fail_count: 0
@@ -130,5 +130,25 @@ m1_to_mN_commit_strategy: per-milestone commits (M1 decision landing 7664729ab, 
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-_<pending run-phase>_
+```yaml
+sync_complete_at: 2026-09-03
+sync_commit_sha: "pending-backfill-sync" # D3 placeholder — backfilled in the follow-up commit
+sync_status: complete
+b12_self_test_a: "grep -c 'SPEC-UPDATE-HOOK-DELIVERY-001' CHANGELOG.md → 0 pre-emission (no duplicate; emission proceeded)"
+b12_self_test_b: "grep -oE 'AC-([A-Z0-9]+-)*[0-9]+' acceptance.md | sort -u | wc -l → 13 (AC-UHD-001..013, non-zero, plausible); CHANGELOG entry cites 13 ACs (10 PASS / 3 N/A, matching §E.3 counts)"
+b12_self_test_c: "all cited paths ls-verified — internal/cli/doctor_hook_delivery.go · internal/cli/doctor.go · internal/cli/doctor_hook_delivery_test.go · internal/cli/testdata/doctor-{dark,light,nocolor}.golden exist"
+changelog_entry_position: "CHANGELOG.md [Unreleased] → Added, top position (SPEC-UPDATE-HOOK-DELIVERY-001)"
+frontmatter_status_transitions:
+  spec_md: "in-progress → completed (3-phase close merged into the single sync commit — no separate Mx commit)"
+  plan_acceptance_progress: "plan.md / acceptance.md carry no status field (artifact statelessness) — nothing to transition; progress.md is body-only"
+  updated_bumped: "2026-09-03 → 2026-09-03 (same-day close; spec.md only)"
+canary_compliance_check:
+  spec_body_edits: 0   # spec.md / plan.md / acceptance.md body untouched — spec.md frontmatter status/updated only
+  codemaps_regeneration: "not executed — no exported API surface added (4 unexported leaf functions in internal/cli); the internal/cli codemap is unaffected by one doctor check registration (4 added lines in doctor.go)"
+docs_site_decision: "UPDATED — docs-site/content/{ko,en,ja,zh}/cli-reference/doctor.md gained a 'Hook Delivery' section (4-locale same-change, ko canonical, badge v3.1.4), inserted after Home Disk Usage before exit codes: the page enumerates doctor checks, so the new check belongs there. hugo build verified warning-free; section-count parity holds across the 4 locales."
+readme_decision: "no change — README.md:734 describes `moai doctor` generically with one illustrative example (Home Disk Usage), not an enumeration of checks, so the row is not stale; a 4-locale README resync for a non-enumeration surface is out of proportion (scope discipline)."
+mx_tag_changes: "validated, 0 added / 0 removed / 0 updated — no MUST-level gate fires: all 4 functions in doctor_hook_delivery.go are unexported (checkHookDelivery / renderedTemplateHooks / hookEntryIdentities / sortedTemplateEventKeys), checkHookDelivery fan_in = 1 (doctor.go registration only), and all are covered by doctor_hook_delivery_test.go. @MX:NOTE is a 'consider' for exported functions; none apply."
+e3_run_sha_backfill: "§E.3 run_commit_sha backfilled pending-backfill-run → 7664729ab, f51cb973d, 2b4582a43 — performed by manager-docs under the lead's explicit sync dispatch (the D3 exemption normally assigns §E.3 backfill to manager-develop; the orchestrator routed it here); values match the run session's §E.2/§E.3 record"
+```
+
 
