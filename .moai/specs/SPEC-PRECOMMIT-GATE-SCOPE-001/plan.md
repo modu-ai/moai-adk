@@ -149,6 +149,16 @@ AC-002/AC-006의 axis-conditional 표기는 해제된다: 통과 조건은 축 (
   5. 저장 경로 확인: `ApplySchemaEdits` → `WriteSectionViaSeam`
      (`internal/settings/sectionwrite.go`)가 `.moai/config/sections/<section>.yaml`에
      yamlpatch 기록(주석·미모델링 키 보존) — gate.yaml에 정확히 기록됨(실측 완료).
+  5a. **seam 경로 등록 (명시 작업 항목 — 누락 시 소리 내어 실패한다):**
+     (i) `sectionRootKeys` 화이트리스트(`internal/settings/sectionwrite.go:31`)에 `"gate":
+     {"gate": true}`를 추가한다 — 현재 키 11개(workflow, harness, ralph, feedback,
+     observability, security, handoff, cache, report, mcp, crosssession; 2026-09-03
+     리드 측정, `grep -c '"gate"'` → 0 재현)이고 gate는 부재다. 미등록 시
+     `WriteSectionViaSeam`이 `section %q is not seam-writable` 오류로 실패한다
+     (sectionwrite.go의 REQ-WC11-017/018 분기). (ii) `RouteForSection`
+     (`internal/settings/sectionroute.go`)에 섹션 "gate" 경로를 추가한다.
+     AC-010(2)이 이 누락을 잡아내지만, **잡아내는 것과 빠뜨리지 않는 것은 다르다** —
+     두 등록은 M2의 명시 작업 항목이며 테스트 발견에 의존하지 않는다.
   6. `schemaEditableField`는 `PersistSeam`/`PersistTypedSection`만 편집 대상으로 삼으므로
      위 FieldDef는 그 자격을 갖는다.
 - `workflow_agents` 은닉 선례 참고: 그 은닉은 스키마 레지스트리 수준의 부재

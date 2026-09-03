@@ -78,15 +78,11 @@ pre-commit heavy gate(`moai gate` 호출)의 기본 동작을 프로젝트 전�
 
 The pre-commit hook shall enforce a commit-unit quality contract: only quality failures attributable to the staged change may block the commit.
 
-### REQ-002 — 무관한 기존 실패가 커밋을 막지 않는다 (Event-driven, axis-conditional)
+### REQ-002 — 무관한 기존 실패가 커밋을 막지 않는다 (Event-driven)
 
 When a pre-existing project-wide quality failure unrelated to the staged change exists, the pre-commit hook shall allow the commit of an unrelated staged change.
 
-> 이 REQ의 충족 형태는 설계 축 선택에 따라 달라진다. 축 (a): heavy gate가 staged 범위로 좁혀져 무관한
-> 기존 실패가 판정에서 제외된다. 축 (b): heavy gate가 기본 OFF여서 기본 동작에서 실행되지 않는다.
-> 어떤 축이 선택되든 REQ-002 자체는 불변이며, AC-002의 통과 조건이 선택된 축으로 확정된다.
-
-### REQ-003 — 실패 메시지가 실제 remedy를 안내한다 (Event-detected, 축 (c) — 무조건)
+### REQ-003 — 실패 메시지가 실제 remedy를 안내한다 (Event-detected, 무조건)
 
 When the heavy gate fails in the pre-commit context, the hook shall print a failure message that names, in addition to `SKIP_MOAI_PRECOMMIT=1`, the config path `.moai/config/sections/gate.yaml` and the four keys `gate.pre_commit.enabled`, `gate.enabled`, `gate.skip_tests`, `gate.disabled_steps`.
 
