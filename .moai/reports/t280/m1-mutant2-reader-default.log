@@ -1,0 +1,6 @@
+--- FAIL: TestInboxStubVersion_AbsenceReadsAsV1 (0.00s)
+    inbox_lifecycle_test.go:65: InboxStubVersion(pre-upgrade line) = 0, want 1
+    inbox_lifecycle_test.go:79: InboxStubVersion(empty) = 0, want 1
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/hook	0.628s
+FAIL
