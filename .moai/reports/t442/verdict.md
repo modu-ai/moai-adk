@@ -63,3 +63,34 @@ output_tokens 중앙값도 같은 순서(flash: null 664 / low 541 / t512 555 / 
 - **Baseline-attribution**: 본 워크트리(`.claude/worktrees/t442`, 분기 `WT-glm-effort-measured`, develop `349cadc93` 흡수 기준), 2026-09-02 본 런, 직호출 curl.
 - **Gaps**: 상기 Gaps 절.
 - **Residual-risk**: 상기 Residual-risk 절.
+
+---
+
+## 판정 보충 — 원인 구분 (2026-09-03, 운영자 지시 "판정 요청")
+
+원 결론의 열린 절 — "엔드포인트가 바뀌었거나 t175 측정 자체가 결함이었거나, 구분되지 않는다(구분하려면 t175 원측정 재현 필요)" — 에 대한 추후 판정. **"t175 측정 설계 결함" 가설이 시간무관으로 입증됐고, "엔드포인트 변화" 가설은 이제 모순 설명에 불필요하다.**
+
+### 설계 결함 3건 — t175 기록 자체의 숫자로 입증 (과거 관측 불요)
+
+1. **P2는 구성상 무정보 프로브였다.** 시험값 `reasoning_effort: "max"`는 z.ai의 omit-default다(본 카드 측정: 양 모델 max ≈ null; REQ-GEM-005의 리드비준 근거 "max is z.ai's own omit-default"와도 일치). 요청값이 기본값과 같으면 "존중됨"과 "무시됨"을 그 프로브로는 구분할 수 없다. 프롬프트("Reply with the single word OK.")는 추론 수요가 0이라 깊이 판별도 불가 — 이중 무정보. 그런데도 P2 output=3이 "무시됨(MEASURED)"으로 기록됐다.
+2. **"budget에 깊이 비례"는 t175 자기 숫자가 반대 방향이다.** P1(budget 2048) output=48 > P3(budget 32768) output=23 — 비례가 참이라면 P3 ≥ P1이어야 한다. t175는 §6 갭에서 스스로 "P1 vs P3 output 차이는 태스크 난이도로 설명됨"이라 기록했다 — 즉 당시에도 비례는 관측된 적이 없었고, 그럼에도 "depth scales with budget"가 MEASURED로 적혔다.
+3. **thinking 블록 반환은 판별자가 아니다.** 항상-추론 바닥(본 카드 측정: null 조건에서도 thinking 블록 상시; SPEC C-5 "thinking cannot be disabled") 때문에 블록 존재는 thinking 파라미터 수용의 증거가 못 된다. P1의 "추론 블록 반환이염"은 무귀결 관측이었다.
+
+### 오늘의 원 프로브 동일 재실행 (3회 호출)
+
+`probe_shim.py`를 2026-09-03 그대로 실행 — 원문 출력 동봉: `.moai/reports/t442/t175-probe-rerun-2026-09-03.txt`
+
+| 프로브 | t175 (2026-08-22) | 오늘 재실행 (2026-09-03) |
+|---|---|---|
+| P1 (budget 2048) | output=48, blocks=[thinking,text] | output=42, blocks=[thinking,text] |
+| P2 (effort=max) | output=3, **blocks=[text]** | output=14, **blocks=[thinking,text]** |
+| P3 (budget 32768) | output=23 | output=46 |
+
+동일 프로브·동일 조건에서 **P2의 thinking 블록 유무가 실행 간에 뒤집힌다** — P2 관측이 판별자가 아니라 잡음이었다는 실증. budget 비례는 오늘도 부재(42 vs 46, 평탄).
+
+### 판정
+
+- **원인 구분: "측정 결함"으로 충분하다.** t175 프로브는 2026-08-22 당시에도 두 주장을 입증할 수 없는 설계였다 — 구 기록의 "MEASURED" 지위는 작성 시점에 이미 무근거였다. "엔드포인트가 바뀌었다"는 여전히 직접 관측 불가(08-22 상태는 재현 불가)하며, 참일 수 있으나 모순을 설명하는 데 필요하지 않다.
+- **본 카드의 정정(spec.md v0.1.2 + CHANGELOG)은 불변** — 어느 원인이든 구 기록이 현재의 참이 아니라는 본 판정서의 결론과 무관하다.
+- t175 원기록(`.moai/reports/t175/measurements.md`)은 계속 보존한다 — 이제 "결함 설계의 기록"으로서의 역사 가치를 가진다.
+- 리드 검토 이력(2026-09-02): 초기본의 근거 없는 원인 지목 괄호 삭제 경위는 앞 절에 기록됨 — 본 보충은 그 열린 절을 닫는 것이지 삭제된 추론을 되살리는 것이 아니다.
