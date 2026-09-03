@@ -224,3 +224,52 @@ A3 가 유력하나 판정은 SPEC 소관이다. **A3 도 축 F 를 대체하지
   말미 괄호다.
 
 N ≥ 1 이 되면 그때 실례를 들고 리드 판정을 받는다. 표본 0 위에서 미리 다투지 않는다.
+
+---
+
+# D1 독립 재현 (plan-audit iter-1 이후, lane-3)
+
+감사가 D1 을 BLOCKING 으로 냈다. 감사 판정을 그대로 싣지 않고 이 트리에서 다시 쟀다.
+코퍼스: `origin/develop 7835148d3` 제목 5,837행.
+
+## 재현 결과 — 감사와 일치하고, 규모는 더 크다
+
+`REQ-TLA-002` 형태 3 이 "머지 제목이 카드를 이름한다"로 적혀 있어 **occurrence test** 다.
+그 술어가 실제로 무엇을 잡는지:
+
+| 측정 | 건수 |
+|---|---|
+| 형태 3 원문 `^Merge card tNNN` (귀속 형태) | **5** |
+| 머지 제목 중 카드 id 를 어디든 담은 것 (occurrence test 의 범위) | **146** |
+| 그중 형태 2(말미 괄호)로 이미 잡히는 것 | 91 |
+| **형태 2·3 어느 쪽도 아닌데 occurrence test 는 잡는 것** | **50** |
+| 그중 흡수 방향(`into WT-`) 머지 | **26** (감사 수치와 일치) |
+
+귀속 형태 5건 대비 occurrence test 는 146건 — 29배다.
+
+## 왜 위험한가 — 표본이 스스로 말한다
+
+    Merge branch 'WT-audit-evidence-store' into WT-audit-advice-integrity (t387 depends on t386 convention doc)
+    Merge branch 'develop' into WT-inbox-drain-gap (absorb t280, lane-15 window; includes t239 merge e79c010b8)
+
+첫 줄은 t387·t386 **둘 다**, 둘째 줄은 t280·t239 **둘 다** 담는다. 전자는 의존 메모이고
+후자는 흡수 기록이다 — 어느 쪽도 귀속이 아니다. 이 카드가 축 F 에서 기각한 바로 그 형태
+(본문 언급을 귀속으로 오독)가 **SPEC 자신의 요구 안에** 들어 있다.
+
+`MUT-MERGE-ANY-TOKEN`(형태 3만 occurrence 로 구현한 뮤턴트)이 AC-TLA-001..007 을 온전히
+통과한다는 감사 지적도 성립한다. 오늘의 7/9 를 움직이지 않으므로 **조용히 착지한다** —
+그것이 이 결함을 BLOCKING 으로 두어야 하는 이유다.
+
+## 처방 방향 (SPEC 소관)
+
+형태 3 을 귀속 형태로 좁힌다. `^Merge card tNNN` 은 귀속이고, `Merge branch 'X' into Y (…)`
+의 괄호 안은 형태 2 가 이미 판정한다. 흡수 방향 머지는 어느 형태로도 귀속이 아니다 —
+그 머지의 주체는 브랜치이지 카드가 아니기 때문이다.
+
+## 프로세스 결함 1건 (내 잘못, 기록)
+
+감사가 도는 동안 이 워크트리에 커밋 2건(`a72fb378c`, `161554e4a`)을 얹었다. 감사 중인
+워크트리는 작성자가 하나여야 한다(`agent-common-protocol.md` § Background Agent Execution).
+감사가 이를 "foreign writes to an actively audited worktree"로 지적했고 옳다. 두 커밋 다
+근거 문서라 판정을 뒤집을 성질은 아니지만, 감사가 읽은 트리와 지금 트리가 다르다는 사실
+자체가 결함이다. 다음 감사에서는 창을 닫고 기다린다.
