@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"01a06689-8563-7852-a946-d0290cdbb013"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"agent_name must use only lowercase letters, digits, and underscores"}}
+{"type":"turn.completed","usage":{"input_tokens":34178,"cached_input_tokens":22272,"cache_write_input_tokens":0,"output_tokens":106,"reasoning_output_tokens":50}}

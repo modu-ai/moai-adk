@@ -2,7 +2,7 @@
 id: SPEC-CODEX-SKILL-LOADER-001
 title: "코덱스 에이전트가 moai 스킬을 참조할 수 있게 한다 — 적재 뿌리를 먼저 재측정하고, 그 판정으로 방출 규칙을 연다"
 version: "0.1.0"
-status: draft
+status: in-progress
 created: 2026-09-03
 updated: 2026-09-03
 author: manager-spec
