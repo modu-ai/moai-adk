@@ -99,3 +99,50 @@ second sweep over a different layer; two sweeps that disagree would be worse tha
 The limit stays what it was: the sweep sees the layers it walks. A claim landing in a shell script,
 a template, or a Markdown rule is outside both sweeps, and neither this observation nor the guard
 says anything about those.
+
+---
+
+## Reds excluded at merge time, and why each is not this card's
+
+Three tests are red on the absorbed tree. Each is attributed by measurement, not by argument: this
+branch's own contribution over `develop` is ten files —
+
+    git diff --name-only e969dc07d a9fa07a9a
+      → .moai/reports/t437/*  ·  internal/cli/todo{,_help_store_test}.go
+        internal/hook/session_start_kanban.go  ·  internal/web/screens{.templ,_templ.go}
+
+— and none of them is an input to any of the three.
+
+**`TestManifestHashFormat`** (`internal/template`) — `CATALOG_HASH_UNSTABLE` for `sync-auditor`.
+Present before this card's first absorb and unchanged by it. Owned by card t443.
+
+**`TestCatalogHashCoversSkillSubfiles`** (`internal/template`) — `CATALOG_HASH_SKINNY`: the `moai`
+catalog hash no longer covers its deployed directory tree. Attributed to the t191 absorb by
+**delta**, which is the only way it could be attributed at all: on the tree absorbed from
+`a239cf050` this package had exactly ONE red (`TestManifestHashFormat`); after absorbing
+`e969dc07d` it had two. Keeping that intermediate measurement is what made the second red
+attributable rather than merely present. t191 added skill subfiles under
+`templates/.claude/skills/moai/workflows/project/` without regenerating `catalog.yaml`. The repair
+belongs to card t436, whose `--entry moai` regeneration covers this too — deliberately NOT done
+here, because two cards regenerating the same line would collide.
+
+**`TestAlwaysLoadedTokenBudget`** (`internal/config`) — the always-loaded surface measures 76,939
+tokens against a 76,400 budget, 539 over. The surface is `.claude/rules/moai/**.md` without a
+`paths:` restriction, plus `CLAUDE.md`, `AGENTS.md`, and the active output style
+(`token_budget_guard.go:220`). This branch edits none of them, so the surface bytes are identical
+to `develop`'s and the result is too. Owned by card t453, which raises the ceiling to 77,200.
+
+That last one is worth a note beyond its ownership: 77,200 leaves 261 tokens of headroom against a
+surface whose largest single entry is 66,255 bytes. The guard will fire again on the next card that
+adds a line to any always-loaded rule, and raising the ceiling each time is not a strategy.
+
+## How the re-measurement scope was chosen
+
+Not from a summary. The packages to re-run were derived from what the absorb actually carried:
+
+    git diff --name-only <pre-absorb> <post-absorb> | grep '^internal/' | sed 's|/[^/]*$||' | sort -u
+
+That measurement found `internal/template/templates/` in the absorbed set, which a summary of the
+same absorb had omitted — and running the template package on that basis is what surfaced
+`TestCatalogHashCoversSkillSubfiles`. Had the scope been taken from the summary, that red would
+have merged unnoticed.
