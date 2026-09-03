@@ -504,7 +504,7 @@ func TestRouteModelFor3x12Matrix(t *testing.T) {
 	cfg, err := NewConfigManager().LoadRaw(root)
 	if err != nil {
 		t.Fatalf("LoadRaw: %v", err)
-}
+	}
 
 	// Expected {model, effort} per (perfTier, tier, phase) — design.md §D.5.
 	expected := map[string]map[string]ModelRoutingEntry{

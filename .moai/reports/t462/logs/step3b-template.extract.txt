@@ -1,0 +1,34 @@
+# t462 step3b: MOAI_SKIP_LIVE_CODEX=1 go test -count=1 -v ./internal/template/...
+# exit=1 duration=35s swept(=== RUN)=1119 FAIL=2(both sync-auditor emission drift) SKIP=15
+# tree SHA bd7c58201; full verbose log machine-local at /tmp/t462-run-step3b.log
+# --- SKIP inventory (preceding reason line + skip line):
+    settings_test.go:973: WSL2 PATH tests only apply on Linux
+--- SKIP: TestBuildSmartPATH_WSL2 (0.00s)
+--- PASS: TestTemplateAgentsStructure (0.00s)
+--- SKIP: TestEmbeddedTemplates_LLMConfig (0.00s)
+--- SKIP: TestEmbeddedTemplates_Announcements (0.00s)
+=== RUN   TestCommandsFrontmatterConsistency/.claude/commands/moai/goal.md.tmpl
+--- SKIP: TestRootLevelCommandsThinPattern (0.00s)
+    --- PASS: TestNoOrphanedManagerTDDReference/CLAUDE.md (0.00s)
+    --- SKIP: TestNoOrphanedManagerTDDReference/.claude/agents/moai/manager-ddd.md (0.00s)
+    --- SKIP: TestNoOrphanedManagerTDDReference/.claude/agents/moai/manager-strategy.md (0.00s)
+    --- PASS: TestNoOrphanedManagerDDDReference/.claude/skills/moai/references/reference.md (0.00s)
+    --- SKIP: TestNoOrphanedManagerDDDReference/.claude/agents/moai/expert-testing.md (0.00s)
+    --- PASS: TestNoOrphanedManagerDDDReference/.claude/output-styles/moai/moai.md (0.00s)
+    --- SKIP: TestNoOrphanedManagerDDDReference/.claude/agents/moai/expert-refactoring.md (0.00s)
+    --- SKIP: TestNoOrphanedManagerDDDReference/.claude/agents/moai/expert-mobile.md (0.00s)
+    --- SKIP: TestNoOrphanedManagerDDDReference/.claude/agents/moai/expert-devops.md (0.00s)
+    --- PASS: TestNoOrphanedManagerDDDReference/.claude/skills/moai-foundation-cc/SKILL.md (0.00s)
+    --- SKIP: TestNoOrphanedManagerDDDReference/.claude/agents/moai/manager-quality.md (0.00s)
+    --- SKIP: TestNoOrphanedManagerDDDReference/.claude/agents/moai/expert-backend.md (0.00s)
+    --- PASS: TestNoOrphanedManagerDDDReference/.claude/skills/moai-workflow-spec/SKILL.md (0.00s)
+    --- SKIP: TestNoOrphanedManagerDDDReference/.claude/agents/moai/expert-frontend.md (0.00s)
+    --- PASS: TestNoOrphanedManagerDDDReference/.claude/skills/moai/workflows/moai.md (0.00s)
+    --- SKIP: TestNoOrphanedManagerDDDReference/.claude/agents/moai/manager-strategy.md (0.00s)
+    --- PASS: TestNoOrphanedManagerDDDReference/.claude/rules/moai/workflow/worktree-integration.md (0.00s)
+    --- SKIP: TestNoOrphanedManagerDDDReference/.claude/agents/moai/expert-debug.md (0.00s)
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template	32.239s
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/template/agentemit	0.977s
+FAIL

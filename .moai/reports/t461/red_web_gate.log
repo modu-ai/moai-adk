@@ -1,0 +1,16 @@
+2026/09/03 13:22:18 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGatePanelRendered1642915386/001/.moai/config/sections
+2026/09/03 13:22:18 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGatePanelRendered1642915386/001/.moai/config/sections
+2026/09/03 13:22:18 WARN config sections directory not found, using defaults path=/var/folders/kt/nq2q81cn4gx3y41r7x47ggmr0000gn/T/TestGatePanelRendered1642915386/001/.moai/config/sections
+--- FAIL: TestGatePanelRendered (0.01s)
+    gate_panel_test.go:30: rendered console missing "data-tab=\"gate\""
+    gate_panel_test.go:30: rendered console missing "data-panel=\"gate\""
+    gate_panel_test.go:30: rendered console missing "name=\"gate.pre_commit.enabled\""
+    gate_panel_test.go:30: rendered console missing "name=\"gate.pre_commit.enabled__present\""
+--- FAIL: TestGateI18nKeysInAllLocales (0.00s)
+    gate_panel_test.go:44: i18n.js missing gate key "sec.gate.title" in all 4 locales
+    gate_panel_test.go:44: i18n.js missing gate key "sec.gate.desc" in all 4 locales
+    gate_panel_test.go:44: i18n.js missing gate key "f.gate.pre_commit.enabled.title" in all 4 locales
+    gate_panel_test.go:44: i18n.js missing gate key "f.gate.pre_commit.enabled.desc" in all 4 locales
+FAIL
+FAIL	github.com/modu-ai/moai-adk/internal/web	0.712s
+FAIL

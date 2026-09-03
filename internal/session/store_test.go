@@ -338,8 +338,8 @@ func TestCheckpoint_ValidatorRejectsBadHarness(t *testing.T) {
 		Phase:  PhaseRun,
 		SPECID: "SPEC-V3R2-RT-004",
 		Checkpoint: &RunCheckpoint{
-			SPECID: "SPEC-V3R2-RT-004",
-			Status: "pass",
+			SPECID:  "SPEC-V3R2-RT-004",
+			Status:  "pass",
 			Harness: "ultra", // invalid value (oneof=minimal standard thorough)
 		},
 		UpdatedAt: time.Now(),

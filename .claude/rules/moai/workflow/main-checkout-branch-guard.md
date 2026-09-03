@@ -18,7 +18,7 @@ wrong branch". The full mechanism: `main-checkout-branch-guard-detail.md` § Why
 | Forbidden | Why |
 |-----------|-----|
 | `git checkout <branch>` / `git switch` | relocates every concurrent session's tree |
-| `git checkout -b` / `git switch -c` / `git branch <name>` / `git branch -d|-D|-m|-M|-c|-C` | same, plus leaves a branch other sessions did not expect |
+| `git checkout -b` / `git switch -c` / `git branch <name>` / mutating `git branch` flags: `-d|-D|-m|-M|-c|-C|-f|-u|-t` and their long forms (`--force`/`--delete`/`--move`/`--copy`/`--set-upstream-to`/`--unset-upstream`/`--track`/`--edit-description`) and combined clusters (`-df`, `-vD`, `-vux`) | same, plus leaves a branch other sessions did not expect |
 | `git reset --hard` / `git checkout -- <path>` | discards work the orchestrator cannot see the provenance of |
 | `git stash` | the stash is repository-global; it silently absorbs other sessions' uncommitted changes |
 | `git rebase` / `git merge` onto the checked-out branch | rewrites or advances shared history mid-operation |
@@ -87,12 +87,18 @@ to the primary checkout and would lock out legitimate worktree flows.
   Disabled, no `git rev-parse` subprocess runs at all.
 - **Deny sentinel.** Every deny on this path is prefixed `BRANCH_GUARD_VIOLATION:`, so the
   orchestrator can match the source without parsing the reason string.
-- **Query-vs-mutate discrimination.** The `git branch` pattern matches only mutating forms — the
-  flag group `-d/-D/-m/-M/-c/-C` with an operand, or a first non-flag token (branch creation).
-  Read-only queries (bare `git branch`, `--list`, `-v`/`-vv`, `--show-current`, `--contains`)
-  match nothing and pass. `-f`/`-u` force/upstream forms sit outside the flag class and pass —
-  under-matching an unlisted form is the accepted fail-open direction; extending the flag class
-  is a policy change, not a doc correction.
+- **Query-vs-mutate discrimination.** The `git branch` matcher denies every mutating form: a
+  mutating flag anywhere — `-f`/`--force`, `-d`/`--delete`, `-m`/`--move`, `-c`/`--copy` (and
+  their uppercase forms), `-u`/`--set-upstream-to`/`--unset-upstream`, `-t`/`--track`,
+  `--edit-description`, or a short-flag cluster containing any of `d/D/m/M/c/C/f/t/u` (`-df`,
+  `-vD`, `-vux`) — or a positional branch-name operand with no list action selected (bare and
+  option-prefixed creation alike: `git branch <name>`, `git branch -q <name>`, `git branch
+  --no-force <name>` — a query flag plus a name operand creates a branch). Read-only queries
+  pass: bare `git branch`, `--list`/`-l` (mid-cluster too, e.g. `-al`), operand-free `-v`/`-vv`/
+  `-a`/`-r`, `--show-current`, and the filter/format/sort flags with their operands
+  (`--contains HEAD main` is a filter pattern, not a creation). Unclassifiable forms — git
+  prefix-abbreviations like `--dele` — under-match and pass; under-matching an unclassifiable
+  form is the accepted fail-open direction.
 - **Fail-open.** The deny fires only on positive evidence — primary checkout confirmed, a
   branch-state pattern matched, agent not exempt. Any uncertainty falls through to allow and
   appends to `.moai/logs/branch-guard-audit.log`.
@@ -116,5 +122,5 @@ IDs: `main-checkout-branch-guard-detail.md` § Mechanical enforcement.
 
 ---
 
-Version: 1.3.2
+Version: 1.3.3
 Classification: Evolvable operational rule — branch-state isolation; changes no gate semantics.

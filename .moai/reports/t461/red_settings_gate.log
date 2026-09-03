@@ -1,0 +1,4 @@
+# github.com/modu-ai/moai-adk/internal/settings [github.com/modu-ai/moai-adk/internal/settings.test]
+internal/settings/section_gate_test.go:31:26: undefined: SectionGate
+FAIL	github.com/modu-ai/moai-adk/internal/settings [build failed]
+FAIL

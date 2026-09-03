@@ -32,7 +32,7 @@ func TestApplyWizardPage3ToOpts_AuditSelection(t *testing.T) {
 		AuditGateCodex:    config.AuditGateOff,
 		AuditGateGLM:      config.AuditGateRequired,
 		CodexAuditEnabled: true,
-		MCPProvision:     true,
+		MCPProvision:      true,
 	}, &opts)
 
 	if opts.AuditModel != config.AuditModelGLM {

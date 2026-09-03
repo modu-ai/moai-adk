@@ -27,9 +27,9 @@ var expectedAgentTiers = map[string]Tier{
 	"sync-auditor":  TierRed,
 	// 🟠 — heavy reasoning (×4)
 	"manager-develop": TierOrange,
-	"manager-design":   TierOrange,
-	"builder-harness":  TierOrange,
-	"e2e-tester":   TierOrange,
+	"manager-design":  TierOrange,
+	"builder-harness": TierOrange,
+	"e2e-tester":      TierOrange,
 	// 🔵 — moderate reasoning (×5)
 	"manager-docs":            TierBlue,
 	"manager-git":             TierBlue,
@@ -37,13 +37,13 @@ var expectedAgentTiers = map[string]Tier{
 	"cli-template-specialist": TierBlue,
 	"workflow-specialist":     TierBlue,
 	// 🩵 — light / narrow-scope (×7)
-	"hns-github-specialist":                   TierLightBlue,
-	"hns-oss-docs-content-author-specialist":  TierLightBlue,
+	"hns-github-specialist":                     TierLightBlue,
+	"hns-oss-docs-content-author-specialist":    TierLightBlue,
 	"hns-oss-docs-locale-translator-specialist": TierLightBlue,
 	"hns-oss-docs-structure-curator-specialist": TierLightBlue,
-	"hns-release-specialist":                  TierLightBlue,
-	"hns-release-update-specialist":           TierLightBlue,
-	"hook-ci-specialist":                      TierLightBlue,
+	"hns-release-specialist":                    TierLightBlue,
+	"hns-release-update-specialist":             TierLightBlue,
+	"hook-ci-specialist":                        TierLightBlue,
 }
 
 // TestAgentTier_All20ExpectedAgents verifies that AgentTier returns the
