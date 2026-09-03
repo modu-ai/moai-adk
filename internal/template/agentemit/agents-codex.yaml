@@ -115,12 +115,28 @@ classes:
       The Claude task-tool family has no known Codex equivalent; body prose
       degrades gracefully (workflows fall back to prose reporting).
   - class: skill-loader
-    disposition: deferred-m1
+    disposition: documented-drop
     rationale: >-
-      skills.config value set is unmeasured and M1 owns skills
-      canonicalization to .agents/skills; M5 emits no skills field. When M1
-      lands this row switches from deferred to an emission rule without any
-      M5 artifact change.
+      Measured on codex-cli 0.152.1: an agent-role skills key is not
+      observable at all on the non-interactive path, so the ship-omitted rule
+      applies and no skills field is emitted. Probes ran in an isolated /tmp
+      project with an isolated CODEX_HOME. codex debug prompt-input renders
+      the skill roots table but never the project agent roles; a session
+      asked to print the spawn_agent tool schema returned one carrying no
+      role-selection parameter; and two controls placed in turn at
+      .codex/agents/moai/ and at .codex/agents/ — a known-bad sandbox_mode,
+      the field this manifest records as producing a visible "Ignoring
+      malformed agent role definition" on the earlier measured version, and a
+      syntactically invalid TOML — both left codex exec silent at exit 0. A
+      parser cannot silently accept invalid TOML, so the project agent-role
+      directory is unread on that path and the value set is unobservable
+      rather than merely unconfirmed. Session skill loading itself IS
+      confirmed on this version (the roots table lists the project
+      .agents/skills), so this drop is about the per-agent grant, not about
+      skills reaching a session. Re-probe when an observable agent-role
+      surface exists; the top-level codex_measured_version deliberately still
+      names the earlier version, which is the one the fields above were
+      measured against.
   - class: subagent-spawn
     disposition: documented-drop
     rationale: >-

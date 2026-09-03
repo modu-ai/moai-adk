@@ -1,0 +1,51 @@
+plan(SPEC-DRIFT-CLOSE-BODY-001): body-declared close recognition (t410, Tier S)
+
+The card called AC-EH3-007's remaining DRIFT row a false positive. It is one —
+but reproducing it on the landed tree disproved half of t382's stated cause,
+and the discovery this plan is built on was itself wrong in four places, each
+corrected in the record rather than quietly dropped.
+
+Reproduced, not inherited. Tracing the walker's own filters over the --grep
+window shows 7cffb9717 (the OTHER SPEC's plan commit t382 named as the cause)
+is correctly rejected: commitMatchesSPECID extracts only
+[SPEC-HANDOFF-AUTORESUME-001] from its subject. Body-matching is not a cause;
+the subject filter neutralizes it. The single operative cause is that the real
+close commit e979a4d13 (chore(SPEC group C): Mx-phase close) carries no full
+SPEC-ID token, so the walker falls through to an older docs(...) commit of the
+same SPEC and reads in-progress from it.
+
+Discovery corrections, all measured:
+- The TIGHT/LOOSE discriminator was the wrong axis. Both real closes and bare
+  mentions carry close|completed on the ID line; the axis is position, not
+  vocabulary. TIGHT 15 = 11 unadjudicated + 4 measured-false, not 15 targets.
+- The dominant true-close shape was missing entirely: squash sub-subjects,
+  which the existing filter chain would already accept as subjects. A
+  predicate built on the discovery's example alone would have missed 8 of the
+  11 remaining rows.
+- Candidate B is not a new mechanism. drift.go:223 already runs a FALLBACK-ONLY
+  combined-scope slot; chore(SPEC group C) misses it only because gate (a)
+  requires a scope prefix derived from the SPEC-ID.
+- The cited instance of the third violation shape does not demonstrate it — its
+  body names the sibling as the OWNER of residual debt, not as closed.
+
+closeInfixMatch is disqualified as the candidate gate, by measurement:
+transitions.go:80-82 accepts exactly 3-phase close / 4-phase close /
+mx-phase audit-ready, and this card's confirmed target says mx-phase close.
+Gating on it would ship the fix with the one row it exists to clear still red.
+
+plan-auditor: PASS-WITH-DEBT 0.80 (Tier S threshold 0.75), MUST-PASS 7/7.
+Blocking D1/D2/D3 closed, plus D5/D7. D1 independently reproduced by the lane:
+the AC predicate ^[-+].*^status: matches a prose diff line here (BSD grep) and
+is an unsatisfiable anchor under GNU grep — over-matching or vacuous, never the
+intended judgment; the replacement ^[-+]status: matches only the two real
+frontmatter lines (fixture in d1-fixture.txt). D4/D6 recorded as debt.
+
+7 REQ / 7 AC against the Tier S ceiling of 8. No AC treats 15 as an established
+count — AC-005 requires per-row adjudication to produce it. SPEC-ERA-H3-
+NARROWING-001 stays completed; AC-007 confines the t382 correction to a HISTORY
+note and measures that zero status: lines change.
+
+Evidence: .moai/reports/t410/ (discovery + corrections, walker trace, blast
+radius, drift row, plan-audit verdict, D1 fixture, walker probe).
+
+🗿 MoAI
