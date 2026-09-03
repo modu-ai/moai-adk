@@ -24,10 +24,14 @@ lead_decisions:
 plan_audit:
   repaired:
     - "D1 — spec.md REQ-FG-006 whole-tree predicate replaced with the tracked-variant form (aligned with acceptance.md §D.3)"
-  accepted_minor_debt:
-    - "D2 — tip-SHA recording form: deferred to run-phase judgment by lead instruction (seen, not missed)"
-    - "D3 — re-pin path: deferred to run-phase judgment by lead instruction (seen, not missed)"
+    - "D2 — final branch tip SHA recording obligation added to acceptance.md §D.5 (applied post-run 2026-09-03; recorded instance: activation a95939df5, tip 3e98a90cf)"
+    - "D3 — e1fdf00d1 re-pin procedure documented as a one-line note under spec.md REQ-FG-003 (applied post-run 2026-09-03)"
+  accepted_minor_debt: []   # cleared post-run 2026-09-03 — nothing carried into sync
+  ac_fg_005_attribution_fix: "post-hoc form amended to attribute to SPEC-delivered commits (card-id grep) — the literal d592b0551..HEAD form read 10 template paths after develop absorption bafa7a5a3, all from other cards; SPEC's own 4 commits (9e1b6a379, e00102f88, ce546a373, a95939df5) touch 0 template paths (no-pathspec catch-all control)"
 ```
+
+> 2026-09-03 (post-run) — plan-audit D2/D3 부채 청산 + AC-FG-005 귀속 정정을 런 판정 후
+> 적용했다(부채 청산 — sync로 이월 없음). 상세는 위 plan_audit 블록.
 
 ## §E.2 Run-phase Evidence
 

@@ -41,10 +41,20 @@ Then the output is exactly `0`
 ### AC-FG-005 — 배포 표면 불변
 
 ```text
-Given the full commit range delivered by this SPEC (base d592b0551..branch tip)
-When `git diff --name-only d592b0551..HEAD -- internal/template/templates/ | wc -l` runs
+Given the commits delivered by this SPEC (every commit whose message carries "card t465" —
+  attribution by the traceability carrier, NOT by the absorbed develop base)
+When `git log <tip> --grep='card t465' --oneline -- internal/template/templates/ | wc -l` runs
 Then the output is exactly `0`
 ```
+
+> **귀속 형태 개정 (2026-09-03, run-phase 판정 반영)** — 구형 문자 그대로 판정식
+> `git diff --name-only d592b0551..HEAD -- internal/template/templates/ | wc -l`은 develop 흡수
+> 머지(`bafa7a5a3`) 이후 **10 경로**를 읽는다. 이 10건은 전부 타 카드의 develop 착지 소관이며,
+> 본 SPEC 인도 4커밋(`9e1b6a379`·`e00102f88`·`ce546a373`·`a95939df5`)의 template 경로는
+> **0**이다(무-pathspec 대조군으로 확인). base `d592b0551`은 develop 흡수 이전 값이라 범위가 이
+> SPEC의 인도분을 초과하므로, 판정식을 SPEC 인도 커밋 귀속(card-id grep) 형태로 개정한다 —
+> 이후 develop 흡수가 반복돼도 판정이 살아남는다. REQ-FG-005의 의도(이 SPEC의 템플릿 불변)는
+> 그대로다.
 
 ### AC-FG-006 — 로컬 패리티 (`make fmt-check`)
 
@@ -98,7 +108,8 @@ Then exit code is non-zero AND the unformatted file list is printed
 ## §D.5 Closure Gates (Definition of Done)
 
 - [ ] AC-FG-001..006 전 항목 명령+실측 출력과 함께 progress.md §E.2에 기록
-- [ ] activation commit SHA가 progress.md에 기록되어 사후 감사 형태(§C of plan.md)로 재판정 가능
+- [ ] activation commit SHA **및 최종 브랜치 tip SHA**가 progress.md에 함께 기록됨 — 사후 재판정의
+  안정적 종점 (기록 인스턴스 2026-09-03: activation `a95939df5`, tip `3e98a90cf`)
 - [ ] develop push 후 CI Lint 잡 green 확인(리드 판독 기록)
 - [ ] `internal/template/templates/**` 0변경 유지(AC-FG-005)
 - [ ] 본 카드가 내는 커밋에 `gofmt -w`에 의한 `.go` 수정 0건

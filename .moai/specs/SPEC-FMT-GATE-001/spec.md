@@ -69,6 +69,7 @@ tip `e1fdf00d1`) 소관이며 본 SPEC은 정리가 아니라 **게이트 활성
 **Where** activation commit(포맷 게이트를 활성화하는 커밋)이 저장소 역사에 존재하면, the activation commit
 shall 커밋 `e1fdf00d1`(카드 t457 정리 브랜치 `WT-gofmt-drift` tip)을 조상으로 포함한다.
 기계 판정: `git merge-base --is-ancestor e1fdf00d1 <activation-commit>` → exit 0.
+> 재고정(re-pin) 절차: `WT-gofmt-drift`가 착지 전에 rewrite/squash되면 고정 `e1fdf00d1`은 영구 충족 불능이 된다 — 그때의 구제는 커밋 서브젝트 `gofmt entire tree`로 식별한 재작성 정리 tip으로 progress.md에 재고정하는 것이며, 게이트 완화가 아니다.
 
 ### REQ-FG-004 — 활성 시점 녹색 (state-driven)
 
