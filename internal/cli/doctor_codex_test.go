@@ -8,10 +8,15 @@ package cli
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/codexwiring"
@@ -61,22 +66,33 @@ func stubCodexLookup(t *testing.T, moaiFound, codexFound bool) {
 	t.Cleanup(func() { codexWiringLookPath = orig })
 }
 
-// stubCodexHome pins the home-directory seam so the stale-skill sub-check
-// never reads the developer's real ~/.codex/config.toml (t.Setenv("HOME", …)
-// is prohibited here — it pollutes parallel tests).
+// stubCodexHome pins the home-directory resolution so the stale-skill
+// sub-check never reads the developer's real ~/.codex/config.toml.
+//
+// BOTH inputs to resolveCodexHomeDir are pinned: the codexUserHomeDir seam
+// (so no t.Setenv("HOME", …), which pollutes parallel tests) AND CODEX_HOME,
+// which takes precedence over the seam. Pinning only the seam would let a
+// developer's exported CODEX_HOME decide the verdict.
 func stubCodexHome(t *testing.T, home string) {
 	t.Helper()
-	orig := codexWiringUserHomeDir
-	codexWiringUserHomeDir = func() (string, error) { return home, nil }
-	t.Cleanup(func() { codexWiringUserHomeDir = orig })
+	t.Setenv(codexHomeEnvVar, "") // blank is treated as unset by the resolver
+	orig := codexUserHomeDir
+	codexUserHomeDir = func() (string, error) { return home, nil }
+	t.Cleanup(func() { codexUserHomeDir = orig })
 }
 
-// writeCodexHomeConfig writes a ~/.codex/config.toml carrying one
-// [[skills.config]] entry per supplied path, and returns the home root.
-func writeCodexHomeConfig(t *testing.T, entries []struct {
-	Path    string
-	Enabled bool
-}) string {
+// codexSkillEntrySpec is one [[skills.config]] entry to write out. Both keys
+// are optional so a fixture can exercise an entry that declares no path (the
+// empty-path guard) and one that declares no enabled key (the unspecified
+// tri-state) — neither is expressible with plain string/bool fields.
+type codexSkillEntrySpec struct {
+	Path       string // written only when non-empty
+	EnabledKey string // written verbatim when non-empty ("true", "false", `"true"`, …)
+}
+
+// writeCodexHomeConfig writes a config.toml under a fresh home carrying one
+// [[skills.config]] entry per spec, and returns the home root.
+func writeCodexHomeConfig(t *testing.T, entries []codexSkillEntrySpec) string {
 	t.Helper()
 	home := t.TempDir()
 	dir := filepath.Join(home, ".codex")
@@ -86,11 +102,12 @@ func writeCodexHomeConfig(t *testing.T, entries []struct {
 	var sb strings.Builder
 	sb.WriteString("model = \"gpt-5\"\n\n")
 	for _, e := range entries {
-		sb.WriteString("[[skills.config]]\npath = \"" + e.Path + "\"\n")
-		if e.Enabled {
-			sb.WriteString("enabled = true\n")
-		} else {
-			sb.WriteString("enabled = false\n")
+		sb.WriteString("[[skills.config]]\n")
+		if e.Path != "" {
+			sb.WriteString("path = \"" + e.Path + "\"\n")
+		}
+		if e.EnabledKey != "" {
+			sb.WriteString("enabled = " + e.EnabledKey + "\n")
 		}
 		sb.WriteString("\n")
 	}
@@ -98,6 +115,23 @@ func writeCodexHomeConfig(t *testing.T, entries []struct {
 		t.Fatal(err)
 	}
 	return home
+}
+
+// codexDetailText collapses Detail's line wrapping back onto one line so an
+// ORDERED-PHRASE assertion is unaffected by where a wrap happened to fall.
+// Wrap position is a rendering concern; the phrase order is the contract.
+func codexDetailText(c DiagnosticCheck) string {
+	return strings.Join(strings.Fields(c.Detail), " ")
+}
+
+// liveSkillFile writes a SKILL.md that exists, and returns its path.
+func liveSkillFile(t *testing.T) string {
+	t.Helper()
+	p := filepath.Join(t.TempDir(), "SKILL.md")
+	if err := os.WriteFile(p, []byte("# skill\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return p
 }
 
 // TestCheckCodexWiring_UnwiredWithCodexInstalledWarns verifies the branch the
@@ -115,10 +149,18 @@ func TestCheckCodexWiring_UnwiredWithCodexInstalledWarns(t *testing.T) {
 	if !strings.Contains(check.Message, "moai init --agent codex") {
 		t.Errorf("action directive missing from Message (Detail is --verbose-only): %+v", check)
 	}
+	// The absent paths are evidence, not a directive, so they ride in Detail
+	// — naming both in Message is what pushed the row past the panel width.
 	for _, want := range []string{codexwiring.HooksRelPath, codexwiring.ConfigRelPath} {
-		if !strings.Contains(check.Message, want) {
-			t.Errorf("message does not name the absent path %q: %+v", want, check)
+		if !strings.Contains(codexDetailText(check), want) {
+			t.Errorf("Detail does not name the absent path %q: %+v", want, check)
 		}
+	}
+	// The claim stays scoped to what was read: only the two PROJECT files were
+	// inspected, so a machine-wide "the MoAI MCP server is not registered" is
+	// an unobserved premise and must not appear.
+	if strings.Contains(check.Message+" "+codexDetailText(check), "the MoAI MCP server is not registered") {
+		t.Errorf("finding asserts a machine-wide registration state it never observed: %+v", check)
 	}
 }
 
@@ -126,20 +168,20 @@ func TestCheckCodexWiring_UnwiredWithCodexInstalledWarns(t *testing.T) {
 // ~/.codex/config.toml [[skills.config]] entries whose path no longer exists
 // are reported, quantified, and split by enabled state (an enabled missing
 // path is live breakage; a disabled one is stale garbage).
+// The assertions here are deliberately ORDERED PHRASES on the correct field,
+// never bare substrings over Message+Detail. A search for "3" and "4" over the
+// concatenation passes just as happily when the numerator and denominator are
+// transposed, and a search over the concatenation cannot express "this must be
+// in Message" at all — both mutations survived that formulation.
 func TestCheckCodexWiring_StaleHomeSkillsReported(t *testing.T) {
 	stubCodexLookup(t, true, true)
-	live := filepath.Join(t.TempDir(), "SKILL.md")
-	if err := os.WriteFile(live, []byte("# skill\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	home := writeCodexHomeConfig(t, []struct {
-		Path    string
-		Enabled bool
-	}{
-		{Path: live, Enabled: true},
-		{Path: "/nonexistent/moai-a/SKILL.md", Enabled: true},
-		{Path: "/nonexistent/moai-b/SKILL.md", Enabled: false},
-		{Path: "/nonexistent/moai-c/SKILL.md", Enabled: false},
+	live := liveSkillFile(t)
+	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{
+		{Path: live, EnabledKey: "true"},
+		{Path: "/nonexistent/moai-a/SKILL.md", EnabledKey: "true"},
+		{Path: "/nonexistent/moai-b/SKILL.md", EnabledKey: "false"},
+		{Path: "/nonexistent/moai-c/SKILL.md", EnabledKey: "false"},
+		{EnabledKey: "true"}, // declares no path — counted in the total, never as missing
 	})
 	stubCodexHome(t, home)
 
@@ -147,18 +189,314 @@ func TestCheckCodexWiring_StaleHomeSkillsReported(t *testing.T) {
 	if check.Status != uikit.CheckWarn {
 		t.Errorf("stale home skills status = %v, want Warn: %+v", check.Status, check)
 	}
-	combined := check.Message + " " + check.Detail
-	if !strings.Contains(combined, "skills.config") {
-		t.Errorf("finding does not name the [[skills.config]] surface: %+v", check)
+	if !strings.Contains(check.Message, "config.toml") {
+		t.Errorf("summary does not name the config file: %q", check.Message)
 	}
-	if !strings.Contains(combined, "config.toml") {
-		t.Errorf("finding does not point at ~/.codex/config.toml: %+v", check)
+	// The summary carries the missing COUNT, as an ordered phrase: "3 stale"
+	// still reads as a count if the split were transposed, so the count and
+	// its noun are asserted together.
+	if !strings.Contains(check.Message, "3 stale skill entries") {
+		t.Errorf("summary does not carry the missing count as an ordered phrase: %q", check.Message)
 	}
-	// 3 of 4 missing, split 1 enabled / 2 disabled — every number must appear.
-	for _, want := range []string{"3", "4", "1 enabled", "2 disabled"} {
-		if !strings.Contains(combined, want) {
-			t.Errorf("finding does not quantify %q: %+v", want, check)
+
+	// Detail carries the denominator, the declared split, and the directive.
+	// Each is an ORDERED phrase: transposing numerator and denominator, or
+	// transposing the enabled and disabled counts, breaks the match.
+	for _, want := range []string{
+		"declares 5 [[skills.config]] entries",
+		"3 with a path that no longer exists",
+		"(1 enabled, 2 disabled, 0 unspecified)",
+		"remove the stale entries or restore the skill files",
+	} {
+		if !strings.Contains(codexDetailText(check), want) {
+			t.Errorf("Detail does not carry %q: %q", want, check.Detail)
 		}
+	}
+	// The transposed forms must be ABSENT — the positive assertions above
+	// would otherwise still pass on a message that merely contains the digits.
+	for _, forbidden := range []string{
+		"declares 3 [[skills.config]]",
+		"5 with a path that no longer exists",
+		"(2 enabled, 1 disabled",
+	} {
+		if strings.Contains(codexDetailText(check), forbidden) {
+			t.Errorf("Detail carries the transposed form %q: %q", forbidden, check.Detail)
+		}
+	}
+}
+
+// TestCheckCodexWiring_EmptyPathEntryNotCountedMissing isolates the empty-path
+// guard by its EFFECT on the count. os.Stat("") fails with ENOENT, so removing
+// the guard turns an entry that declares nothing into a missing path — the
+// same fixture with and without the guard differs only in this number.
+func TestCheckCodexWiring_EmptyPathEntryNotCountedMissing(t *testing.T) {
+	stubCodexLookup(t, true, true)
+	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{
+		{Path: "/nonexistent/only-one/SKILL.md", EnabledKey: "true"},
+		{EnabledKey: "true"},  // no path key
+		{EnabledKey: "false"}, // no path key
+	})
+	stubCodexHome(t, home)
+
+	check := checkCodexWiring(wireProjectForDoctor(t), false)
+	if !strings.Contains(check.Message, "1 stale skill entry") {
+		t.Errorf("path-less entries inflated the missing count: %q", check.Message)
+	}
+	if !strings.Contains(codexDetailText(check), "1 with a path that no longer exists") {
+		t.Errorf("Detail count wrong — path-less entries must not count as missing: %q", check.Detail)
+	}
+	if !strings.Contains(codexDetailText(check), "declares 3 [[skills.config]] entries") {
+		t.Errorf("path-less entries must still count in the total: %q", check.Detail)
+	}
+}
+
+// TestCheckCodexWiring_UnspecifiedEnabledReportedSeparately verifies an entry
+// declaring no `enabled` key is reported as unspecified rather than folded
+// into either side — the repository has not observed Codex's default, so
+// claiming one would be an unverified premise in a user-facing message.
+func TestCheckCodexWiring_UnspecifiedEnabledReportedSeparately(t *testing.T) {
+	stubCodexLookup(t, true, true)
+	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{
+		{Path: "/nonexistent/a/SKILL.md"},                       // no enabled key
+		{Path: "/nonexistent/b/SKILL.md", EnabledKey: `"true"`}, // quoted string, still true
+	})
+	stubCodexHome(t, home)
+
+	check := checkCodexWiring(wireProjectForDoctor(t), false)
+	if !strings.Contains(codexDetailText(check), "(1 enabled, 0 disabled, 1 unspecified)") {
+		t.Errorf("declared split wrong — quoted true must not demote to disabled, absent must not either: %q", check.Detail)
+	}
+}
+
+// TestCheckCodexWiring_CodexHomeHonoured verifies CODEX_HOME decides which
+// config the sub-check reads. The seam points at a home whose config is
+// stale; CODEX_HOME points at a directory with no config at all, and the
+// resolver's precedence means the finding must be SILENT. Reading the seam's
+// file here would warn about a file Codex never reads.
+func TestCheckCodexWiring_CodexHomeHonoured(t *testing.T) {
+	stubCodexLookup(t, true, true)
+	staleHome := writeCodexHomeConfig(t, []codexSkillEntrySpec{
+		{Path: "/nonexistent/moai-a/SKILL.md", EnabledKey: "true"},
+	})
+	stubCodexHome(t, staleHome)
+	t.Setenv(codexHomeEnvVar, t.TempDir()) // empty CODEX_HOME wins
+
+	check := checkCodexWiring(wireProjectForDoctor(t), false)
+	if check.Status != uikit.CheckOK {
+		t.Errorf("empty CODEX_HOME status = %v, want OK — the seam's stale config must not be read: %+v", check.Status, check)
+	}
+	if strings.Contains(check.Message+" "+codexDetailText(check), "stale skill") {
+		t.Errorf("CODEX_HOME ignored — finding came from the default home: %+v", check)
+	}
+}
+
+// TestCheckCodexWiring_CodexHomeConfigRead is the other half of the same
+// precedence: a stale config INSIDE CODEX_HOME must be found, so the check
+// examines the file Codex actually reads.
+func TestCheckCodexWiring_CodexHomeConfigRead(t *testing.T) {
+	stubCodexLookup(t, true, true)
+	stubCodexHome(t, t.TempDir()) // default home carries no config
+	envHome := filepath.Join(t.TempDir(), "codex-home")
+	if err := os.MkdirAll(envHome, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cfg := "[[skills.config]]\npath = \"/nonexistent/env/SKILL.md\"\nenabled = true\n"
+	if err := os.WriteFile(filepath.Join(envHome, "config.toml"), []byte(cfg), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv(codexHomeEnvVar, envHome)
+
+	check := checkCodexWiring(wireProjectForDoctor(t), false)
+	if check.Status != uikit.CheckWarn {
+		t.Fatalf("stale config under CODEX_HOME was not read: %+v", check)
+	}
+	if !strings.Contains(check.Message, codexHomeConfigEnvDisplay) {
+		t.Errorf("summary names the default home for an env-sourced config: %q", check.Message)
+	}
+	if !strings.Contains(codexDetailText(check), envHome) {
+		t.Errorf("Detail does not cite the resolved path it actually read: %q", check.Detail)
+	}
+}
+
+// TestCheckCodexWiring_IndeterminateStatNotMissing verifies a stat that fails
+// for a reason OTHER than non-existence is not counted as a missing path. The
+// finding advises REMOVING the entry, so a permission error or a symlink loop
+// counted as absent would advise deleting a healthy registration.
+func TestCheckCodexWiring_IndeterminateStatNotMissing(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation needs privileges on windows")
+	}
+	stubCodexLookup(t, true, true)
+	dir := t.TempDir()
+	loopA := filepath.Join(dir, "loopA")
+	loopB := filepath.Join(dir, "loopB")
+	if err := os.Symlink(loopB, loopA); err != nil {
+		t.Skipf("symlink unsupported here: %v", err)
+	}
+	if err := os.Symlink(loopA, loopB); err != nil {
+		t.Skipf("symlink unsupported here: %v", err)
+	}
+	if _, err := os.Stat(loopA); err == nil || errors.Is(err, fs.ErrNotExist) {
+		t.Skipf("symlink loop did not produce a non-ENOENT stat error: %v", err)
+	}
+
+	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{
+		{Path: "/nonexistent/real-miss/SKILL.md", EnabledKey: "true"},
+		{Path: loopA, EnabledKey: "true"},
+	})
+	stubCodexHome(t, home)
+
+	check := checkCodexWiring(wireProjectForDoctor(t), false)
+	if !strings.Contains(check.Message, "1 stale skill entry") {
+		t.Errorf("indeterminate stat inflated the missing count: %q", check.Message)
+	}
+	if !strings.Contains(codexDetailText(check), "1 could not be checked and are NOT counted as missing") {
+		t.Errorf("Detail does not disclose the unchecked entry: %q", check.Detail)
+	}
+}
+
+// TestCheckCodexWiring_DirectoryPathNotMissing verifies a declared path that
+// resolves to a DIRECTORY is not reported as missing. It exists; whether
+// Codex accepts it is not observed here, and reporting it would advise
+// removing a registration on a guess.
+func TestCheckCodexWiring_DirectoryPathNotMissing(t *testing.T) {
+	stubCodexLookup(t, true, true)
+	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{
+		{Path: t.TempDir(), EnabledKey: "true"},
+	})
+	stubCodexHome(t, home)
+
+	check := checkCodexWiring(wireProjectForDoctor(t), false)
+	if check.Status != uikit.CheckOK {
+		t.Errorf("a directory path was reported as missing: %+v", check)
+	}
+}
+
+// TestCheckCodexWiring_MessageWidthStaysInBand is the regression guard for the
+// panel-width blowout: the doctor box sizes itself to its widest row, so one
+// long Message widens every other row past the terminal. The two new branches
+// are exercised together — the worst realistic co-occurrence — and Message is
+// measured in runes against the band the committed golden rows already occupy.
+func TestCheckCodexWiring_MessageWidthStaysInBand(t *testing.T) {
+	stubCodexLookup(t, true, true)
+	entries := make([]codexSkillEntrySpec, 0, 49)
+	for i := 0; i < 49; i++ { // the real-world census that produced the 1272-column panel
+		entries = append(entries, codexSkillEntrySpec{
+			Path:       fmt.Sprintf("/nonexistent/moai-skill-%02d/SKILL.md", i),
+			EnabledKey: "false",
+		})
+	}
+	home := writeCodexHomeConfig(t, entries)
+	stubCodexHome(t, home)
+
+	// Unwired project + stale home config: both new findings at once.
+	check := checkCodexWiring(t.TempDir(), false)
+	if check.Status != uikit.CheckWarn {
+		t.Fatalf("premise broken — expected both findings: %+v", check)
+	}
+	if n := utf8.RuneCountInString(check.Message); n > codexMessageWidthCeiling {
+		t.Errorf("Message is %d runes, over the %d-rune band the existing doctor rows occupy: %q",
+			n, codexMessageWidthCeiling, check.Message)
+	}
+	// The bound must not have been bought by dropping the directive.
+	if !strings.Contains(check.Message, initCodexAdvice) {
+		t.Errorf("width bound dropped the action directive from Message: %q", check.Message)
+	}
+}
+
+// doctorGoldenPanelWidth is the rune width of the committed doctor golden
+// panels (internal/cli/testdata/doctor-{light,dark,nocolor}.golden — every
+// box-border row measures 152 runes). It is the width the rendered doctor
+// output already occupies, and therefore the ceiling this check must not
+// push past.
+const doctorGoldenPanelWidth = 152
+
+// TestCheckCodexWiring_RenderedPanelStaysInBand covers the RENDER, which is
+// where the width defect actually surfaced and where a Message-length
+// assertion alone would not have caught it: the panel sizes itself to its
+// widest row, and Detail becomes a row of its own under --verbose.
+//
+// A golden FIXTURE is the wrong vehicle here. The warn branch's Detail cites
+// the resolved config path, which is a t.TempDir() under test and the user's
+// real home in production, so a byte-comparison snapshot would either be
+// machine-dependent — the exact hermeticity failure the golden pin was added
+// to fix — or need the very path normalization that would blank out the
+// evidence being asserted. The invariant that broke is the WIDTH, so the
+// width is asserted directly, on the real rendered output, in both modes.
+func TestCheckCodexWiring_RenderedPanelStaysInBand(t *testing.T) {
+	stubCodexLookup(t, true, true)
+	entries := make([]codexSkillEntrySpec, 0, 49)
+	for i := 0; i < 49; i++ {
+		entries = append(entries, codexSkillEntrySpec{
+			Path:       fmt.Sprintf("/nonexistent/moai-skill-%02d/SKILL.md", i),
+			EnabledKey: "false",
+		})
+	}
+	stubCodexHome(t, writeCodexHomeConfig(t, entries))
+
+	for _, verbose := range []bool{false, true} {
+		check := checkCodexWiring(t.TempDir(), verbose)
+		if check.Status != uikit.CheckWarn {
+			t.Fatalf("verbose=%v premise broken — expected the warn branch: %+v", verbose, check)
+		}
+		var buf bytes.Buffer
+		rendered := renderDoctorGroups(&buf, []checkGroup{{
+			title:  "Codex",
+			checks: []DiagnosticCheck{check},
+		}}, verbose, resolveTheme())
+
+		widest, row := 0, ""
+		for _, ln := range strings.Split(rendered, "\n") {
+			if n := utf8.RuneCountInString(stripDoctorANSI(ln)); n > widest {
+				widest, row = n, ln
+			}
+		}
+		if widest > doctorGoldenPanelWidth {
+			t.Errorf("verbose=%v rendered panel is %d runes wide, over the %d-rune band the committed golden panels occupy; widest row: %q",
+				verbose, widest, doctorGoldenPanelWidth, row)
+		}
+	}
+}
+
+// stripDoctorANSI removes SGR escape sequences so a rendered row is measured
+// in visible runes rather than in styling bytes.
+func stripDoctorANSI(s string) string {
+	var b strings.Builder
+	for i := 0; i < len(s); {
+		if s[i] == 0x1b && i+1 < len(s) && s[i+1] == '[' {
+			j := i + 2
+			for j < len(s) && s[j] != 'm' {
+				j++
+			}
+			if j < len(s) {
+				i = j + 1
+				continue
+			}
+		}
+		b.WriteByte(s[i])
+		i++
+	}
+	return b.String()
+}
+
+// TestJoinCodexSummariesDropsTailNotDirective verifies the truncation rule
+// directly: when the summaries do not fit, the TAIL is dropped and the count
+// disclosed — the leading, directive-bearing summary always survives.
+func TestJoinCodexSummariesDropsTailNotDirective(t *testing.T) {
+	long := strings.Repeat("x", 90)
+	got := joinCodexSummaries([]codexFinding{
+		{summary: "lead — " + initCodexAdvice},
+		{summary: long},
+		{summary: long},
+	})
+	if n := utf8.RuneCountInString(got); n > codexMessageWidthCeiling {
+		t.Errorf("joined summary is %d runes, over the %d ceiling: %q", n, codexMessageWidthCeiling, got)
+	}
+	if !strings.Contains(got, initCodexAdvice) {
+		t.Errorf("leading directive dropped: %q", got)
+	}
+	if !strings.Contains(got, "(+2 more, see --verbose)") {
+		t.Errorf("dropped findings not disclosed: %q", got)
 	}
 }
 
@@ -167,14 +505,7 @@ func TestCheckCodexWiring_StaleHomeSkillsReported(t *testing.T) {
 // and a healthy project stays OK.
 func TestCheckCodexWiring_HealthyHomeSkillsNoFinding(t *testing.T) {
 	stubCodexLookup(t, true, true)
-	live := filepath.Join(t.TempDir(), "SKILL.md")
-	if err := os.WriteFile(live, []byte("# skill\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	home := writeCodexHomeConfig(t, []struct {
-		Path    string
-		Enabled bool
-	}{{Path: live, Enabled: true}})
+	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{{Path: liveSkillFile(t), EnabledKey: "true"}})
 	stubCodexHome(t, home)
 
 	check := checkCodexWiring(wireProjectForDoctor(t), false)
@@ -193,7 +524,7 @@ func TestCheckCodexWiring_AbsentHomeConfigSilent(t *testing.T) {
 	if check.Status != uikit.CheckOK {
 		t.Errorf("absent home config status = %v, want OK (silent skip): %+v", check.Status, check)
 	}
-	if strings.Contains(check.Message+check.Detail, "skills.config") {
+	if strings.Contains(check.Message+" "+codexDetailText(check), "skills.config") {
 		t.Errorf("absent home config produced a skills finding: %+v", check)
 	}
 }
@@ -203,17 +534,14 @@ func TestCheckCodexWiring_AbsentHomeConfigSilent(t *testing.T) {
 // stale-skill sub-check never runs either, even with a stale home config.
 func TestCheckCodexWiring_ClaudeOnlyMachineStaysSilent(t *testing.T) {
 	stubCodexLookup(t, true, false)
-	home := writeCodexHomeConfig(t, []struct {
-		Path    string
-		Enabled bool
-	}{{Path: "/nonexistent/moai-a/SKILL.md", Enabled: true}})
+	home := writeCodexHomeConfig(t, []codexSkillEntrySpec{{Path: "/nonexistent/moai-a/SKILL.md", EnabledKey: "true"}})
 	stubCodexHome(t, home)
 
 	check := checkCodexWiring(t.TempDir(), false)
 	if check.Status != uikit.CheckOK {
 		t.Errorf("claude-only machine status = %v, want OK: %+v", check.Status, check)
 	}
-	if strings.Contains(check.Message+check.Detail, "skills.config") {
+	if strings.Contains(check.Message+" "+codexDetailText(check), "skills.config") {
 		t.Errorf("claude-only machine was nagged about home skills: %+v", check)
 	}
 }
@@ -292,7 +620,7 @@ func TestCheckCodexWiring_ValidationFailureReported(t *testing.T) {
 	if check.Status != uikit.CheckWarn {
 		t.Errorf("violating hooks.json status = %v, want Warn: %+v", check.Status, check)
 	}
-	if !strings.Contains(check.Message+check.Detail, "version") {
+	if !strings.Contains(check.Message+" "+codexDetailText(check), "version") {
 		t.Errorf("diagnostic does not name the violating key: %+v", check)
 	}
 }
@@ -307,7 +635,7 @@ func TestCheckCodexWiring_MoaiNotOnPathReported(t *testing.T) {
 	if check.Status != uikit.CheckWarn {
 		t.Errorf("moai-not-on-PATH status = %v, want Warn: %+v", check.Status, check)
 	}
-	if !strings.Contains(strings.ToLower(check.Message+check.Detail), "path") {
+	if !strings.Contains(strings.ToLower(check.Message+" "+codexDetailText(check)), "path") {
 		t.Errorf("diagnostic does not mention PATH: %+v", check)
 	}
 }
@@ -336,7 +664,7 @@ func TestCheckCodexWiring_ConfigTableDriftReported(t *testing.T) {
 	if check.Status != uikit.CheckWarn {
 		t.Errorf("drifted config table status = %v, want Warn: %+v", check.Status, check)
 	}
-	if !strings.Contains(strings.ToLower(check.Message+check.Detail), "mcp_servers.moai") {
+	if !strings.Contains(strings.ToLower(check.Message+" "+codexDetailText(check)), "mcp_servers.moai") {
 		t.Errorf("diagnostic does not name the drifted table: %+v", check)
 	}
 }

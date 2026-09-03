@@ -17,11 +17,15 @@ package cli
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/modu-ai/moai-adk/internal/cli/uikit"
 	"github.com/modu-ai/moai-adk/internal/codexadapter"
@@ -32,12 +36,11 @@ import (
 // check's verdict never depends on the machine running the test suite).
 var codexWiringLookPath = exec.LookPath
 
-// codexWiringUserHomeDir is the home-directory seam. The stale-skill
-// sub-check reads the USER-layer ~/.codex/config.toml, which lives outside
-// the project root; the seam keeps tests off the developer's real home
-// without an environment mutation (t.Setenv("HOME", …) pollutes parallel
-// tests, CLAUDE.local.md §6).
-var codexWiringUserHomeDir = os.UserHomeDir
+// The user-layer config is located through resolveCodexHomeDir (mcp_codex.go)
+// rather than a home seam of this file's own: CODEX_HOME is a first-class
+// convention here (REQ-CL-005), and a second resolution that ignored it read
+// a file Codex does not, while leaving the file Codex DOES read unchecked.
+// That resolver already carries the codexUserHomeDir seam tests pin.
 
 // reTrustAdvice is the divergence action directive (AC-CW-012 token).
 const reTrustAdvice = "run codex /hooks to re-trust the changed hooks"
@@ -48,8 +51,31 @@ const reTrustAdvice = "run codex /hooks to re-trust the changed hooks"
 // user opts in explicitly.
 const initCodexAdvice = "run moai init --agent codex"
 
-// codexHomeConfigDisplay is how the user-layer config is named in findings.
-const codexHomeConfigDisplay = "~/.codex/config.toml"
+// codexHomeConfigDisplay / codexHomeConfigEnvDisplay are how the user-layer
+// config is NAMED in a finding summary. The symbolic form keeps the summary
+// inside the width band; the exact resolved path rides in Detail, where the
+// evidence belongs and the width is the reader's own opt-in.
+const (
+	codexHomeConfigDisplay    = "~/.codex/config.toml"
+	codexHomeConfigEnvDisplay = "$CODEX_HOME/config.toml"
+)
+
+// codexMessageWidthCeiling bounds a Message in RUNES. The doctor panel sizes
+// itself to its widest row, so one long message widens the whole box past the
+// terminal and breaks every other row's alignment. 113 is the longest message
+// the committed golden fixtures already carry (internal/cli/testdata/
+// doctor-nocolor.golden, the Constitution Registry row) — this check stays
+// inside the band the existing rows occupy rather than defining a new one.
+const codexMessageWidthCeiling = 113
+
+// codexFinding is one problem in two registers: a SHORT summary for Message,
+// which a plain `moai doctor` renders, and the full text for Detail, which
+// renders only under --verbose. Splitting them is what lets an action
+// directive stay visible without the enumeration behind it blowing the panel.
+type codexFinding struct {
+	summary string
+	detail  string
+}
 
 // checkCodexWiring verifies the Codex wiring of the project at root:
 // hooks.json presence + whitelist validity, sidecar-hash divergence, the
@@ -76,24 +102,35 @@ func checkCodexWiring(root string, verbose bool) DiagnosticCheck {
 		return check
 	}
 
-	var problems []string
-	var advice []string
+	var problems []codexFinding
+	// extraDetail carries observations that are not findings in their own
+	// right (an unreadable sidecar, a verbose-only note).
+	var extraDetail []string
 
 	if !wired {
 		// Codex IS installed but this project was never wired. Silence here
-		// costs the user the whole integration with no signal: the MoAI MCP
-		// server unregistered and every generated hook dead. The directive
-		// rides IN the message because Detail renders only under --verbose.
-		problems = append(problems, fmt.Sprintf(
-			"codex is installed but this project is not wired (%s and %s both absent) — the MoAI MCP server is not registered and the generated hooks cannot fire here; %s",
-			codexwiring.HooksRelPath, codexwiring.ConfigRelPath, initCodexAdvice))
+		// costs the user the whole integration with no signal: no
+		// project-layer MCP registration and every generated hook dead. The
+		// directive rides IN the summary because Detail renders only under
+		// --verbose.
+		//
+		// The claim is scoped to what was READ. Only the two PROJECT files
+		// were inspected, so this says nothing about whether the user-layer
+		// config registers the MoAI server — asserting a machine-wide "not
+		// registered" from a project-local absence is an unobserved premise.
+		problems = append(problems, codexFinding{
+			summary: "codex installed, project not wired — " + initCodexAdvice,
+			detail: fmt.Sprintf(
+				"codex resolves on PATH but this project declares no Codex wiring (%s and %s are both absent), so this project registers no MoAI MCP server and the generated hooks cannot fire here; %s",
+				codexwiring.HooksRelPath, codexwiring.ConfigRelPath, initCodexAdvice),
+		})
 	} else {
 		// hooks.json: presence, whitelist validity, sidecar divergence.
 		if hooksErr != nil {
-			problems = append(problems, fmt.Sprintf("%s missing (wiring active but the hook layer is gone)", codexwiring.HooksRelPath))
+			problems = append(problems, plainCodexFinding(fmt.Sprintf("%s missing (wiring active but the hook layer is gone)", codexwiring.HooksRelPath)))
 		} else {
 			if violations, verr := codexadapter.ValidateConfig(hooksRaw); verr != nil {
-				problems = append(problems, fmt.Sprintf("hooks.json unparseable: %v", verr))
+				problems = append(problems, plainCodexFinding(fmt.Sprintf("hooks.json unparseable: %v", verr)))
 			} else if len(violations) > 0 {
 				// Codex silently disables the whole file on one stray key (t83
 				// Finding D) — this is the observability backstop.
@@ -101,42 +138,47 @@ func checkCodexWiring(root string, verbose bool) DiagnosticCheck {
 				for i, v := range violations {
 					names[i] = v.Error()
 				}
-				problems = append(problems, "hooks.json fails the key whitelist ("+strings.Join(names, "; ")+") — Codex would silently ignore the file")
+				problems = append(problems, codexFinding{
+					summary: "hooks.json fails the key whitelist — Codex would silently ignore the file",
+					detail:  "hooks.json fails the key whitelist (" + strings.Join(names, "; ") + ") — Codex would silently ignore the file",
+				})
 			}
 
 			if sidecar, present, serr := codexwiring.LoadSidecar(root); serr != nil {
-				check.Detail = fmt.Sprintf("sidecar unreadable: %v", serr)
+				extraDetail = append(extraDetail, fmt.Sprintf("sidecar unreadable: %v", serr))
 			} else if present {
 				sum := sha256.Sum256(hooksRaw)
 				if sidecar.HooksSHA256 != hex.EncodeToString(sum[:]) {
 					// The directive rides IN the message (not Detail) so a plain
 					// `moai doctor` surfaces it — Detail only renders under
 					// --verbose (AC-CW-012 clause 2's plain-doctor reading).
-					problems = append(problems, "hooks.json differs from the last generated content (sidecar hash mismatch) — "+reTrustAdvice)
-					advice = append(advice, reTrustAdvice)
+					problems = append(problems, codexFinding{
+						summary: "hooks.json changed since generation — " + reTrustAdvice,
+						detail:  "hooks.json differs from the last generated content (sidecar hash mismatch) — " + reTrustAdvice,
+					})
 				}
 			} else if verbose {
-				check.Detail = "no trust sidecar recorded (never wired by this generator)"
+				extraDetail = append(extraDetail, "no trust sidecar recorded (never wired by this generator)")
 			}
 		}
 
 		// moai binary PATH resolution: the generated hook commands are
 		// `moai hook ...` — an unresolvable binary means none of them can fire.
 		if _, lerr := codexWiringLookPath("moai"); lerr != nil {
-			problems = append(problems, "moai binary not found on PATH — the generated hook commands cannot fire")
+			problems = append(problems, plainCodexFinding("moai binary not found on PATH — the generated hook commands cannot fire"))
 		}
 
 		// config.toml: table presence + canonical shape (drift is REPORTED; the
 		// writer never repairs a user-owned table, REQ-CW-005).
 		if cfgErr != nil {
-			problems = append(problems, fmt.Sprintf("%s missing (wiring active but the MCP registration is gone)", codexwiring.ConfigRelPath))
+			problems = append(problems, plainCodexFinding(fmt.Sprintf("%s missing (wiring active but the MCP registration is gone)", codexwiring.ConfigRelPath)))
 		} else {
 			status := codexwiring.InspectMCPTable(cfgRaw)
 			switch {
 			case !status.Present:
-				problems = append(problems, "[mcp_servers.moai] table missing from config.toml")
+				problems = append(problems, plainCodexFinding("[mcp_servers.moai] table missing from config.toml"))
 			case !status.Canonical:
-				problems = append(problems, "[mcp_servers.moai] table differs from the canonical registration (user-owned; left untouched)")
+				problems = append(problems, plainCodexFinding("[mcp_servers.moai] table differs from the canonical registration (user-owned; left untouched)"))
 			}
 		}
 	}
@@ -144,72 +186,215 @@ func checkCodexWiring(root string, verbose bool) DiagnosticCheck {
 	// User-layer skill registrations. Reached only when Codex is in play at
 	// all (wired project, or codex on PATH) — the guard above already
 	// returned for the claude-only case.
-	if finding := codexStaleSkillFinding(); finding != "" {
+	if finding, ok := codexStaleSkillFinding(); ok {
 		problems = append(problems, finding)
 	}
 
 	if len(problems) == 0 {
 		check.Status = uikit.CheckOK
 		check.Message = "wired and consistent (hooks valid, sidecar matches, moai on PATH, config canonical)"
+		check.Detail = joinCodexDetails(nil, extraDetail)
 		return check
 	}
 
 	check.Status = uikit.CheckWarn
-	check.Message = strings.Join(problems, "; ")
-	if len(advice) > 0 {
-		check.Detail = strings.Join(advice, "; ")
-	} else if verbose && check.Detail == "" {
+	check.Message = joinCodexSummaries(problems)
+	check.Detail = joinCodexDetails(problems, extraDetail)
+	if check.Detail == "" && verbose {
 		check.Detail = "advisory check — rerun `moai init --agent codex` to refresh the wiring"
 	}
 	return check
+}
+
+// plainCodexFinding is a finding whose full text is already short enough to
+// ride in Message unchanged.
+func plainCodexFinding(text string) codexFinding {
+	return codexFinding{summary: text, detail: text}
+}
+
+// joinCodexSummaries renders the Message, bounded by codexMessageWidthCeiling.
+//
+// Summaries are kept in order and dropped from the TAIL when they do not fit,
+// so a directive-bearing finding — which is always raised before the
+// user-layer sweep — survives truncation and stays visible on a plain
+// `moai doctor`. The dropped count is reported rather than hidden, and the
+// full text of every finding remains in Detail.
+//
+// One exception is deliberate: a single leading summary that alone exceeds
+// the ceiling is emitted whole. Cutting it mid-sentence would truncate its
+// own directive, which is the outcome the bound exists to prevent.
+func joinCodexSummaries(findings []codexFinding) string {
+	if len(findings) == 0 {
+		return ""
+	}
+	summaries := make([]string, len(findings))
+	for i, f := range findings {
+		summaries[i] = f.summary
+	}
+	if utf8.RuneCountInString(strings.Join(summaries, "; ")) <= codexMessageWidthCeiling {
+		return strings.Join(summaries, "; ")
+	}
+	// Upper bound on the marker, computed from the largest count it can name.
+	markerBudget := utf8.RuneCountInString(codexOverflowMarker(len(summaries)))
+	kept := 1
+	for i := 2; i <= len(summaries); i++ {
+		if utf8.RuneCountInString(strings.Join(summaries[:i], "; "))+markerBudget > codexMessageWidthCeiling {
+			break
+		}
+		kept = i
+	}
+	return strings.Join(summaries[:kept], "; ") + codexOverflowMarker(len(summaries)-kept)
+}
+
+// codexOverflowMarker names how many findings Message dropped for width.
+func codexOverflowMarker(dropped int) string {
+	return fmt.Sprintf(" (+%d more, see --verbose)", dropped)
+}
+
+// joinCodexDetails renders Detail as one line per finding. Detail renders
+// only under --verbose, and the panel sizes itself to its widest row, so the
+// per-finding text is kept on separate lines rather than concatenated into
+// one row that would widen the box all over again.
+func joinCodexDetails(findings []codexFinding, extra []string) string {
+	var texts []string
+	for _, f := range findings {
+		if f.detail != "" {
+			texts = append(texts, f.detail)
+		}
+	}
+	texts = append(texts, extra...)
+	if len(texts) == 0 {
+		return ""
+	}
+	var lines []string
+	for _, t := range texts {
+		lines = append(lines, wrapCodexDetail(t, codexMessageWidthCeiling)...)
+	}
+	return strings.Join(lines, "\n      ")
+}
+
+// wrapCodexDetail folds one detail text onto lines of at most width runes.
+// Detail becomes a row of its own under --verbose, so an unwrapped detail
+// widens the panel exactly as an unwrapped Message does — the width bound has
+// to hold on both surfaces or it holds on neither.
+//
+// A single token longer than width is emitted whole rather than split: the
+// tokens that get that long here are filesystem paths, and a path broken
+// across lines stops being copy-pasteable, which is the whole point of citing
+// it.
+func wrapCodexDetail(text string, width int) []string {
+	words := strings.Fields(text)
+	if len(words) == 0 {
+		return nil
+	}
+	var lines []string
+	cur := words[0]
+	for _, w := range words[1:] {
+		if utf8.RuneCountInString(cur)+1+utf8.RuneCountInString(w) > width {
+			lines = append(lines, cur)
+			cur = w
+			continue
+		}
+		cur += " " + w
+	}
+	return append(lines, cur)
 }
 
 // codexStaleSkillFinding reports the user-layer [[skills.config]] entries
 // whose declared path no longer exists — registrations Codex neither prunes
 // nor complains about, so nothing else surfaces them.
 //
+// The config is located through resolveCodexHomeDir, so CODEX_HOME decides
+// which file is read, exactly as it does everywhere else in this binary. A
+// resolution that ignored it would warn about a file Codex does not read
+// while leaving the file Codex DOES read unexamined — wrong in both
+// directions at once.
+//
 // Fail-open in every direction: an unresolvable home, an absent or unreadable
-// config, or a config declaring no entries all yield "" (a silent skip), so a
-// missing input never becomes a finding. The function READS only.
-func codexStaleSkillFinding() string {
-	home, err := codexWiringUserHomeDir()
-	if err != nil || home == "" {
-		return ""
+// config, or a config declaring no entries all yield ok=false (a silent
+// skip), so a missing input never becomes a finding. The function READS only.
+func codexStaleSkillFinding() (codexFinding, bool) {
+	codexHome, source := resolveCodexHomeDir()
+	if codexHome == "" {
+		return codexFinding{}, false
 	}
-	raw, err := os.ReadFile(filepath.Join(home, ".codex", "config.toml"))
+	cfgPath := filepath.Join(codexHome, path.Base(codexwiring.ConfigRelPath))
+	raw, err := os.ReadFile(cfgPath)
 	if err != nil {
-		return ""
+		return codexFinding{}, false
 	}
 	entries := codexwiring.ParseSkillEntries(raw)
 	if len(entries) == 0 {
-		return ""
+		return codexFinding{}, false
 	}
 
-	var missingEnabled, missingDisabled int
+	var missingEnabled, missingDisabled, missingUnspecified, indeterminate int
 	for _, e := range entries {
 		if e.Path == "" {
 			// An entry declaring no path says nothing about a file's
 			// existence — counted in the total, never as a missing path.
 			continue
 		}
-		if _, serr := os.Stat(e.Path); serr != nil {
-			if e.Enabled {
+		_, serr := os.Stat(e.Path)
+		switch {
+		case serr == nil:
+			// The path resolves. A DIRECTORY resolves too, and is likewise
+			// not a missing path: how Codex treats a directory here is not
+			// observed, and reporting one as missing would advise deleting a
+			// registration on a guess.
+		case errors.Is(serr, fs.ErrNotExist):
+			switch e.Enabled {
+			case codexwiring.SkillEnabledTrue:
 				missingEnabled++
-			} else {
+			case codexwiring.SkillEnabledFalse:
 				missingDisabled++
+			default:
+				missingUnspecified++
 			}
+		default:
+			// Permission denied, a symlink loop, an I/O error: the path's
+			// existence is INDETERMINATE, not absent. The finding tells the
+			// user to REMOVE the entry, so an unobserved absence must never
+			// reach the missing count — that would advise deleting a healthy
+			// registration on the strength of a stat this process was not
+			// allowed to complete. Surfaced in Detail, never acted on.
+			indeterminate++
 		}
 	}
-	missing := missingEnabled + missingDisabled
+	missing := missingEnabled + missingDisabled + missingUnspecified
 	if missing == 0 {
-		return ""
+		return codexFinding{}, false
 	}
 
-	// The enabled/disabled split is the severity axis, so it is quantified
-	// rather than summed away: a disabled missing path is stale bookkeeping
-	// that breaks nothing today, while an enabled one is a live registration
-	// pointing at a file that is not there.
-	return fmt.Sprintf(
-		"%s declares %d of %d [[skills.config]] entries whose path no longer exists (%d enabled, %d disabled) — remove the stale entries or restore the skill files",
-		codexHomeConfigDisplay, missing, len(entries), missingEnabled, missingDisabled)
+	display := codexHomeConfigDisplay
+	if source == codexHomeSourceEnv {
+		display = codexHomeConfigEnvDisplay
+	}
+
+	// The summary carries the count and the file; the denominator, the split
+	// and the directive ride in Detail. The split is the severity axis, so it
+	// is quantified rather than summed away — but it is reported as DECLARED:
+	// an entry with no `enabled` key is counted as unspecified rather than
+	// folded into either side, because Codex's default for an absent key is
+	// not observed anywhere in this repository.
+	detail := fmt.Sprintf(
+		"%s declares %d [[skills.config]] %s; %d with a path that no longer exists (%d enabled, %d disabled, %d unspecified) — remove the stale entries or restore the skill files",
+		cfgPath, len(entries), pluralCodexEntries(len(entries)), missing,
+		missingEnabled, missingDisabled, missingUnspecified)
+	if indeterminate > 0 {
+		detail += fmt.Sprintf("; a further %d could not be checked and are NOT counted as missing", indeterminate)
+	}
+
+	return codexFinding{
+		summary: fmt.Sprintf("%s: %d stale skill %s", display, missing, pluralCodexEntries(missing)),
+		detail:  detail,
+	}, true
+}
+
+// pluralCodexEntries picks the noun for an entry count.
+func pluralCodexEntries(n int) string {
+	if n == 1 {
+		return "entry"
+	}
+	return "entries"
 }
