@@ -224,7 +224,7 @@ CI's full-suite verdict on the pushed head (lead's batch push, repository rule).
 
 ## §E.4 Sync-phase Audit-Ready Signal
 
-sync_commit_sha: "pending-backfill-sync"
+sync_commit_sha: "a992556fd"
 
 Sync-phase activities, on the single sync commit: the `[Unreleased]` CHANGELOG entry for the
 race repair (duplicate-checked — `grep -c 'SPEC-CLI-WORKTREE-FLAG-RACE-001' CHANGELOG.md` → 0
